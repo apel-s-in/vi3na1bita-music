@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ada6e320659ad2f2124d877ca103bd4c84cbe54a.idx
-│   │       ├── pack-ada6e320659ad2f2124d877ca103bd4c84cbe54a.pack
-│   │       └── pack-ada6e320659ad2f2124d877ca103bd4c84cbe54a.rev
+│   │       ├── pack-6a0434c59e018ae0fa69e3ef9232bcaa18b0b730.idx
+│   │       ├── pack-6a0434c59e018ae0fa69e3ef9232bcaa18b0b730.pack
+│   │       └── pack-6a0434c59e018ae0fa69e3ef9232bcaa18b0b730.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -214,13 +214,14 @@ vi3na1bita-music/
 ├── src/
 │   ├── .gitkeep
 │   └── PlayerCore.ts
+├── albums.json
 ├── generate-context.js
 ├── index.html
 ├── manifest.json
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-08 21:08:48 UTC
+Сгенерировано: 2025-11-08 21:16:26 UTC
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
 name: Generate .meta context
@@ -263,6 +264,28 @@ jobs:
           file_pattern: ".meta/**"
           commit_user_name: github-actions[bot]
           commit_user_email: github-actions[bot]@users.noreply.github.com
+
+//=================================================
+// FILE: /albums.json
+{
+  "albums": [
+    {
+      "key": "mezhdu-zlom-i-dobrom",
+      "title": "Между Злом и Добром (2025)",
+      "base": "https://apel-s-in.github.io/vi3na1bita-mezhdu-zlom-i-dobrom/"
+    },
+    {
+      "key": "golos-dushi",
+      "title": "Голос Души",
+      "base": "https://apel-s-in.github.io/vi3na1bita-golos-dushi/"
+    },
+    {
+      "key": "krevetochka",
+      "title": "КРЕВЕツTOCHKA",
+      "base": "https://apel-s-in.github.io/krevetochka/"
+    }
+  ]
+}
 
 //=================================================
 // FILE: /albums/gallery/00/index.json
