@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-168a99f70841c6524d6a05c6e5e51f9834127839.idx
-│   │       ├── pack-168a99f70841c6524d6a05c6e5e51f9834127839.pack
-│   │       └── pack-168a99f70841c6524d6a05c6e5e51f9834127839.rev
+│   │       ├── pack-ae1b99153f02c70d0306327a9683531febbf2d82.idx
+│   │       ├── pack-ae1b99153f02c70d0306327a9683531febbf2d82.pack
+│   │       └── pack-ae1b99153f02c70d0306327a9683531febbf2d82.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -226,7 +226,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-08 23:06:50 UTC
+Сгенерировано: 2025-11-08 23:07:13 UTC
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
 name: Generate .meta context
@@ -5590,6 +5590,37 @@ ${lines}
 
 //=================================================
 // FILE: /manifest.json
+{
+  "name": "Витрина Разбита",
+  "short_name": "Витрина",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#181818",
+  "theme_color": "#181818",
+  "description": "Официальные альбомы группы Витрина Разбита. Слушайте онлайн и офлайн.",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "prefer_related_applications": false
+}
 
 
 //=================================================
