@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6a0434c59e018ae0fa69e3ef9232bcaa18b0b730.idx
-│   │       ├── pack-6a0434c59e018ae0fa69e3ef9232bcaa18b0b730.pack
-│   │       └── pack-6a0434c59e018ae0fa69e3ef9232bcaa18b0b730.rev
+│   │       ├── pack-4155cf57a23f3474dcd015f12a3e400ef25d2fda.idx
+│   │       ├── pack-4155cf57a23f3474dcd015f12a3e400ef25d2fda.pack
+│   │       └── pack-4155cf57a23f3474dcd015f12a3e400ef25d2fda.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -215,13 +215,15 @@ vi3na1bita-music/
 │   ├── .gitkeep
 │   └── PlayerCore.ts
 ├── albums.json
+├── custom.json
 ├── generate-context.js
 ├── index.html
 ├── manifest.json
+├── news.html
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-08 21:16:26 UTC
+Сгенерировано: 2025-11-08 21:17:29 UTC
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
 name: Generate .meta context
@@ -378,6 +380,50 @@ jobs:
         "webp": "albums/gallery/news/news-cover-02.webp",
         "full": "albums/gallery/news/news-cover-02.png"
       }
+    }
+  ]
+}
+
+//=================================================
+// FILE: /custom.json
+{
+  "rumEndpoint": "",
+  "sw": {
+    "mediaMaxCacheMB": 150,
+    "nonRangeMaxStoreMB": 25,
+    "nonRangeMaxStoreMBSlow": 10,
+    "allowUnknownSize": false,
+    "revalidateDays": 7
+  },
+  "items": [
+    {
+      "type": "ym",
+      "title": "Исполнитель — Витрина Разбита",
+      "subtitle": "Яндекс Музыка",
+      "url": "https://music.yandex.ru/artist/24739002?utm_source=web&utm_medium=copy_link",
+      "cover": ""
+    },
+    {
+      "type": "tgPost",
+      "title": "Свежий пост в Telegram",
+      "url": "https://t.me/vitrina_razbita/28",
+      "height": 480
+    },
+    {
+      "type": "vkPlaylist",
+      "title": "Альбом «Голос Души» (VK)",
+      "ownerId": 165137,
+      "playlistId": 3,
+      "hash": "b8300406c5f33725de",
+      "containerId": "vk_playlist_165137_3"
+    },
+    {
+      "type": "vkPlaylist",
+      "title": "Альбом «Между Злом и Добром» (VK)",
+      "ownerId": 165137,
+      "playlistId": 2,
+      "hash": "d70fba309dc0bea296",
+      "containerId": "vk_playlist_165137_2"
     }
   ]
 }
@@ -5565,6 +5611,110 @@ ${lines}
 //=================================================
 // FILE: /manifest.json
 
+
+//=================================================
+// FILE: /news.html
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Новости — Витрина Разбита</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg: #0b0e15;
+      --panel: #131a26;
+      --text: #eaf2ff;
+      --muted: #9db7dd;
+      --accent: #4daaff;
+      --danger: #E80100;
+      --border: #23324a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 14px;
+      background: var(--bg); color: var(--text);
+      font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;
+    }
+    .container { max-width: 760px; margin: 0 auto; }
+    h1 { margin: 6px 0 16px; font-size: 22px; }
+    .news-list { display: grid; gap: 14px; }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.25);
+    }
+    .card h2 { margin: 0 0 8px; font-size: 18px; }
+    .date { color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+    .media { margin: 10px 0; }
+    .media iframe, .media img, .media video {
+      width: 100%; border: 0; border-radius: 8px; min-height: 220px; background: #0b0e15;
+    }
+    .card p { margin: 8px 0; line-height: 1.45; }
+    .tags { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .tag { font-size: 12px; color: var(--accent); background: rgba(77,170,255,.12); border: 1px solid rgba(77,170,255,.25); padding: 4px 8px; border-radius: 999px; }
+    .error { color: var(--danger); background: rgba(232,1,0,.1); border: 1px solid rgba(232,1,0,.2); padding: 10px; border-radius: 8px; }
+    .loading { color: var(--muted); }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { color: #fff; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Новости</h1>
+    <div id="status" class="loading">Загрузка...</div>
+    <div id="news" class="news-list"></div>
+  </div>
+
+  <script>
+    async function loadNews() {
+      const status = document.getElementById('status');
+      const listEl = document.getElementById('news');
+      try {
+        const r = await fetch('./news/news.json', { cache: 'no-cache' });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const j = await r.json();
+        const items = Array.isArray(j.items) ? j.items : [];
+        status.style.display = 'none';
+        if (!items.length) {
+          status.style.display = '';
+          status.textContent = 'Пока новостей нет';
+          return;
+        }
+        listEl.innerHTML = items.map(renderCard).join('');
+      } catch (e) {
+        status.className = 'error';
+        status.textContent = 'Не удалось загрузить новости';
+      }
+    }
+    function esc(s) { return String(s || '').replace(/[<>&'"]/g, m => ({'<':'&lt;','>':'&gt;','&':'&amp;',"'":'&#39;','"':'&quot;'}[m])); }
+    function renderCard(it) {
+      const title = esc(it.title || 'Новость');
+      const date = esc(it.date || '');
+      const text = esc(it.text || '');
+      const tags = Array.isArray(it.tags) ? it.tags : [];
+      let media = '';
+      if (it.embedUrl) {
+        media = `<div class="media"><iframe loading="lazy" src="${esc(it.embedUrl)}" allowfullscreen></iframe></div>`;
+      } else if (it.image) {
+        media = `<div class="media"><img loading="lazy" src="${esc(it.image)}" alt=""></div>`;
+      } else if (it.video) {
+        media = `<div class="media"><video controls preload="metadata" src="${esc(it.video)}"></video></div>`;
+      }
+      return `<article class="card">
+        <h2>${title}</h2>
+        ${date ? `<div class="date">${date}</div>` : ''}
+        ${media}
+        ${text ? `<p>${text}</p>` : ''}
+        ${tags.length ? `<div class="tags">${tags.map(t=>`<span class="tag">#${esc(t)}</span>`).join('')}</div>` : ''}
+      </article>`;
+    }
+    loadNews();
+  </script>
+</body>
+</html>
 
 //=================================================
 // FILE: /service-worker.js
