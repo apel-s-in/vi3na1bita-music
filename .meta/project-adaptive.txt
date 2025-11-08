@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-36a0a34f111b380efc91238613eeca4cf09d7c79.idx
-│   │       ├── pack-36a0a34f111b380efc91238613eeca4cf09d7c79.pack
-│   │       └── pack-36a0a34f111b380efc91238613eeca4cf09d7c79.rev
+│   │       ├── pack-9101a9590fb0d3b9df58a3ddf5ce152b6f5b5432.idx
+│   │       ├── pack-9101a9590fb0d3b9df58a3ddf5ce152b6f5b5432.pack
+│   │       └── pack-9101a9590fb0d3b9df58a3ddf5ce152b6f5b5432.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -226,7 +226,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-08 23:03:55 UTC
+Сгенерировано: 2025-11-08 23:05:13 UTC
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
 name: Generate .meta context
@@ -4153,15 +4153,23 @@ function __toggleFavoritesOnly_impl(){
     const box = document.getElementById('next-up');
     const lp = document.getElementById('lyricsplayerblock');
     if (!box || !lp) return;
-    if (!isBrowsingOtherAlbum() || !playingTracks || !playingTracks.length) {
-      box.style.display = 'none';
-      return;
+    if (!isBrowsingOtherAlbum()) { box.style.display = 'none'; return; }
+
+    const pc = window.playerCore;
+    if (!pc || typeof pc.getNextIndex !== 'function') { box.style.display = 'none'; return; }
+    const nextIdx = pc.getNextIndex();
+    if (!Number.isInteger(nextIdx) || nextIdx < 0) { box.style.display = 'none'; return; }
+
+    let title = '—';
+    try {
+      const snap = typeof pc.getPlaylistSnapshot === 'function' ? pc.getPlaylistSnapshot() : null;
+      if (snap && snap[nextIdx] && snap[nextIdx].title) title = snap[nextIdx].title;
+    } catch {}
+    const titleEl = box.querySelector('.title');
+    if (titleEl) {
+      titleEl.textContent = `${String(nextIdx + 1).padStart(2, '0')}. ${title}`;
+      titleEl.title = `${String(nextIdx + 1).padStart(2, '0')}. ${title}`;
     }
-    const cand = computeNextIndexPlayback();
-    if (cand < 0) { box.style.display = 'none'; return; }
-    const title = playingTracks[cand]?.title || '—';
-    box.querySelector('.title').textContent = `${String(cand + 1).padStart(2, '0')}. ${title}`;
-    box.querySelector('.title').title = `${String(cand + 1).padStart(2, '0')}. ${title}`;
     box.style.display = '';
   }
 
@@ -4249,14 +4257,27 @@ function __toggleFavoritesOnly_impl(){
   function updateMiniNowHeader() {
     const box = document.getElementById('mini-now');
     if (!box) return;
-    const show = isBrowsingOtherAlbum() && Array.isArray(playingTracks) && playingTracks.length > 0 && playingTrack >= 0;
+
+    const pc = window.playerCore;
+    const idx = pc && typeof pc.getIndex === 'function' ? pc.getIndex() : -1;
+    const tr = pc && typeof pc.getCurrentTrack === 'function' ? pc.getCurrentTrack() : null;
+
+    const show = isBrowsingOtherAlbum() && pc && idx >= 0 && !!tr;
     if (!show) { box.style.display = 'none'; return; }
+
     box.style.display = 'flex';
-    document.getElementById('mini-now-num').textContent = `${String(playingTrack + 1).padStart(2, '0')}.`;
-    document.getElementById('mini-now-title').textContent = playingTracks[playingTrack]?.title || '—';
-    const liked = isLikedInPlayback(playingTrack);
+    const numEl = document.getElementById('mini-now-num');
+    const titleEl = document.getElementById('mini-now-title');
+    if (numEl) numEl.textContent = `${String(idx + 1).padStart(2, '0')}.`;
+    if (titleEl) titleEl.textContent = (tr && tr.title) ? tr.title : '—';
+
+    // Состояние звезды по текущему playingTrack (UI использует тот же индекс)
+    const liked = isLikedInPlayback(typeof playingTrack === 'number' ? playingTrack : idx);
     const starEl = document.getElementById('mini-now-star');
-    if (starEl) { starEl.src = liked ? 'img/star.png' : 'img/star2.png'; starEl.title = liked ? 'Убрать из понравившихся' : 'Добавить в понравившиеся'; }
+    if (starEl) {
+      starEl.src = liked ? 'img/star.png' : 'img/star2.png';
+      starEl.title = liked ? 'Убрать из понравившихся' : 'Добавить в понравившиеся';
+    }
   }
   function toggleLikePlayingFromMini(e) { if (e && e.stopPropagation) e.stopPropagation(); toggleLikePlaying(); updateMiniNowHeader(); updateNextUpLabel(); }
   async function openPlayingAlbumFromMini(e) {
