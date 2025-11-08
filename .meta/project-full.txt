@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ae14f9001d18743deac75992a99f906def18b791.idx
-│   │       ├── pack-ae14f9001d18743deac75992a99f906def18b791.pack
-│   │       └── pack-ae14f9001d18743deac75992a99f906def18b791.rev
+│   │       ├── pack-5a34dc9e80cca8cfb9aff4d4213316514ebc7372.idx
+│   │       ├── pack-5a34dc9e80cca8cfb9aff4d4213316514ebc7372.pack
+│   │       └── pack-5a34dc9e80cca8cfb9aff4d4213316514ebc7372.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -211,6 +211,8 @@ vi3na1bita-music/
 ├── news/
 │   ├── .gitkeep
 │   └── news.json
+├── scripts/
+│   └── player-adapter.js
 ├── src/
 │   ├── .gitkeep
 │   ├── PlayerCore.js
@@ -224,7 +226,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-08 22:56:12 UTC
+Сгенерировано: 2025-11-08 22:56:30 UTC
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
 name: Generate .meta context
@@ -6340,6 +6342,57 @@ async function clearCurrentOfflineResources() {
   await writeOfflineList([]);
   await postToAllClients({ type: 'OFFLINE_DONE' });
 }
+
+//=================================================
+// FILE: /scripts/player-adapter.js
+// scripts/player-adapter.js (ESM)
+// Адаптер LocalStorage ↔ PlayerCore: первичная инициализация громкости/режимов
+// и реакция на изменения LocalStorage (best-effort). Никаких UI-зависимостей.
+
+function initWhenReady() {
+  const pc = window.playerCore;
+  if (!pc) {
+    setTimeout(initWhenReady, 50);
+    return;
+  }
+  try {
+    // Применим сохранённые режимы
+    const repeat = localStorage.getItem('repeatMode') === '1';
+    const shuffle = localStorage.getItem('shuffleMode') === '1';
+    pc.setRepeat(!!repeat);
+    pc.setShuffle(!!shuffle);
+
+    // Громкость
+    const savedVolumeRaw = localStorage.getItem('playerVolume');
+    const savedVolume = parseFloat(savedVolumeRaw);
+    if (Number.isFinite(savedVolume)) pc.setVolume(savedVolume);
+
+    // Флаг «только избранные» — применится к текущему плейлисту (если есть)
+    const favsOnly = localStorage.getItem('favoritesOnlyMode') === '1';
+    pc.setFavoritesOnly(!!favsOnly, []); // список индексов будет подставляться UI при смене альбома
+  } catch {}
+}
+
+// Слежение за внешними изменениями LocalStorage (если открыто несколько вкладок)
+window.addEventListener('storage', (e) => {
+  const pc = window.playerCore;
+  if (!pc) return;
+  try {
+    if (e.key === 'repeatMode') pc.setRepeat(e.newValue === '1');
+    if (e.key === 'shuffleMode') pc.setShuffle(e.newValue === '1');
+    if (e.key === 'playerVolume') {
+      const v = parseFloat(e.newValue || '1');
+      if (Number.isFinite(v)) pc.setVolume(v);
+    }
+    if (e.key === 'favoritesOnlyMode') {
+      const on = e.newValue === '1';
+      // Без списка индексов — просто включим флаг; UI актуализирует позже
+      pc.setFavoritesOnly(on, []);
+    }
+  } catch {}
+});
+
+initWhenReady();
 
 //=================================================
 // FILE: /albums/gallery/news/news-01-baner.html
