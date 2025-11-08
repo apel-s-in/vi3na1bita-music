@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-02285c61a852ff9217da37a6a3a977ff64187b2b.idx
-│   │       ├── pack-02285c61a852ff9217da37a6a3a977ff64187b2b.pack
-│   │       └── pack-02285c61a852ff9217da37a6a3a977ff64187b2b.rev
+│   │       ├── pack-168a99f70841c6524d6a05c6e5e51f9834127839.idx
+│   │       ├── pack-168a99f70841c6524d6a05c6e5e51f9834127839.pack
+│   │       └── pack-168a99f70841c6524d6a05c6e5e51f9834127839.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -226,7 +226,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-08 23:05:45 UTC
+Сгенерировано: 2025-11-08 23:06:50 UTC
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
 name: Generate .meta context
@@ -6104,15 +6104,6 @@ async function readSwConfig() {
   } catch {
     return { ...DEFAULT_SW_CONFIG };
   }
-}
-// --- NET_STATE + лимиты для non-Range аудио ---
-async function writeNetState(state) {
-  try {
-    const cache = await caches.open(META_CACHE);
-    await cache.put(new Request('meta:net-state'), new Response(JSON.stringify(state || {}), {
-      headers: { 'content-type': 'application/json' }
-    }));
-  } catch {}
 }
 // --- NET_STATE + лимиты для non-Range аудио ---
 async function writeNetState(state) {
