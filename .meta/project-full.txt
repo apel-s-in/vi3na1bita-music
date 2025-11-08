@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5a34dc9e80cca8cfb9aff4d4213316514ebc7372.idx
-│   │       ├── pack-5a34dc9e80cca8cfb9aff4d4213316514ebc7372.pack
-│   │       └── pack-5a34dc9e80cca8cfb9aff4d4213316514ebc7372.rev
+│   │       ├── pack-590aacf00c0bdc8ba88e3b44c3495b9e4abd039f.idx
+│   │       ├── pack-590aacf00c0bdc8ba88e3b44c3495b9e4abd039f.pack
+│   │       └── pack-590aacf00c0bdc8ba88e3b44c3495b9e4abd039f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -226,7 +226,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-08 22:56:30 UTC
+Сгенерировано: 2025-11-08 23:03:28 UTC
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
 name: Generate .meta context
@@ -7116,6 +7116,22 @@ export class PlayerCore {
   }
   getSeek() { return this.seek(); }
   getDuration() { return this.howl ? (this.howl.duration() || 0) : 0; }
+
+  // Публичный «следующий» индекс по текущей логике shuffle/favoritesOnly
+  getNextIndex() {
+    return this._nextIndex();
+  }
+
+  // Снимок плейлиста для UI (заголовки и пр.)
+  getPlaylistSnapshot() {
+    return (this.playlist || []).map(t => ({
+      title: t && t.title || '',
+      artist: t && t.artist || this._albumArtist || '',
+      album: t && t.album || this._albumTitle || '',
+      cover: t && t.cover || this._albumCover || '',
+      lyrics: t && t.lyrics || ''
+    }));
+  }
 
   isPlaying() { return !!this.howl && !this._isPaused; }
   getIndex() { return this.index; }
