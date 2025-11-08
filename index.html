@@ -2136,83 +2136,47 @@
       }
 
       document.addEventListener('visibilitychange', async () => {
-        const a = document.getElementById('audio');
+        const pc = window.playerCore;
         const isHidden = document.hidden;
-  
+
         if (isHidden) {
           // Сохраняем текущее состояние
-          __wasPlayingBeforeHidden = !!(a && !a.paused);
-          __savedResumePosition = a ? a.currentTime : 0;
-    
+          __wasPlayingBeforeHidden = !!(pc && pc.isPlaying && pc.isPlaying());
+          __savedResumePosition = pc && pc.getSeek ? (pc.getSeek() || 0) : 0;
+
           // Останавливаем UI-анимации для экономии ресурсов
           if (coverAutoplay) { clearInterval(coverAutoplay); coverAutoplay = null; }
-          if (animationEnabled) { 
+          if (animationEnabled) {
             window.__savedAnimationState = animationEnabled;
             applyAnimationState(false);
           }
-          if (bitEnabled) { 
+          if (bitEnabled) {
             window.__savedBitState = bitEnabled;
-            stopLogoPulsation(); 
+            stopLogoPulsation();
           }
-    
-          // Для iOS - гарантируем, что воспроизведение продолжится
+          // iOS: поддержим аудиоконтекст (как и прежде)
           if (isIOS() && __wasPlayingBeforeHidden) {
             resumeAudioContextIfNeeded();
-            // Дополнительная проверка через 1с
-            setTimeout(() => {
-              if (document.hidden && a && a.paused) {
-                a.play().catch(e => console.warn('iOS background resume failed', e));
-              }
-            }, 1000);
           }
-    
           console.log('App going to background, position saved:', __savedResumePosition);
         } else {
-          // Восстанавливаем состояние из фона
+          // Вернулись на передний план
           checkSleepTimer();
-    
-          // iOS требует возобновления аудио-контекста
-          if (isIOS()) {
-            resumeAudioContextIfNeeded();
-          }
-    
-          // Если музыка играла до ухода в фон и не остановлена таймером сна
+
+          if (isIOS()) resumeAudioContextIfNeeded();
+
           if (__wasPlayingBeforeHidden && !sleepTimerTarget) {
-            if (a) {
-              // Восстанавливаем позицию
-              if (typeof __savedResumePosition === 'number' && !isNaN(__savedResumePosition)) {
-                try {
-                  a.currentTime = __savedResumePosition;
-                } catch (e) {
-                  console.warn('Failed to restore audio position', e);
-                }
-              }
-              
-              // Гарантируем продолжение воспроизведения
-              if (a.paused) {
-                const playAttempt = a.play();
-                if (playAttempt && playAttempt.catch) {
-                  playAttempt.catch(e => {
-                    console.warn('Play after foreground failed', e);
-                    // Для iOS - дополнительные попытки
-                    if (isIOS()) {
-                      setTimeout(() => {
-                        if (a.paused) {
-                          a.play().catch(console.warn);
-                          // Метод "тихого" воспроизведения для iOS
-                          initSilentAudioPlayback();
-                        }
-                      }, 500);
-                    }
-                  });
-                }
-              }
+            if (typeof __savedResumePosition === 'number') {
+              try { pc && pc.seek && pc.seek(__savedResumePosition); } catch {}
+            }
+            if (pc && pc.play && !pc.isPlaying()) {
+              try { pc.play(); } catch {}
             }
           }
-    
+
           // Синхронизируем UI
           syncUiFromPlayback();
-    
+
           // Восстанавливаем UI-анимации
           if (window.__savedAnimationState) {
             applyAnimationState(window.__savedAnimationState);
@@ -2223,22 +2187,13 @@
             startLogoPulsation();
             window.__savedBitState = null;
           }
-    
+
           // Возобновляем галерею
           if (!coverAutoplay && Array.isArray(coverGalleryArr) && coverGalleryArr.length > 1) {
             startCoverAutoPlay();
           }
-    
+
           console.log('App returning to foreground, resuming playback');
-        }
-  
-        // Обновляем состояние Media Session при любом изменении видимости
-        if (a && playingTracks && playingTrack >= 0) {
-          try {
-            setupMediaSessionForPlayback();
-          } catch (e) {
-            console.warn('Failed to update Media Session', e);
-          }
         }
       });
 
@@ -2246,17 +2201,15 @@
 
       window.addEventListener('offline', () => {
         startOfflineToasts();
-        const a = document.getElementById('audio');
-        if (a) {
-          try { __savedResumePosition = a.currentTime || 0; } catch {}
-        }
+        const pc = window.playerCore;
+        try { __savedResumePosition = pc && pc.getSeek ? (pc.getSeek() || 0) : 0; } catch {}
       });
       window.addEventListener('online', () => {
         stopOfflineToasts();
         NotificationSystem.success('Соединение восстановлено');
-        const a = document.getElementById('audio');
-        if (a && typeof __savedResumePosition === 'number') {
-          try { a.currentTime = __savedResumePosition; } catch {}
+        const pc = window.playerCore;
+        if (pc && typeof __savedResumePosition === 'number') {
+          try { pc.seek(__savedResumePosition); } catch {}
           __savedResumePosition = null;
         }
       });
@@ -3392,9 +3345,11 @@ function __toggleFavoritesOnly_impl(){
     playingShuffleIndex = 0;
   }
   function playFromPlaybackAlbum(idx, doPlay) {
+    // Обновим курсоры UI
     currentTrack = idx;
     playingTrack = idx;
 
+    // Гарантируем наличие блока плеера
     if (!document.getElementById('lyricsplayerblock')) {
       const holder = document.getElementById('now-playing');
       if (holder) {
@@ -3402,6 +3357,8 @@ function __toggleFavoritesOnly_impl(){
         renderLyricsBlock();
       }
     }
+
+    // Переставим плеер под активную строку в «Избранном»
     if (playingAlbumKey === SPECIAL_FAVORITES_KEY && viewMode === 'favorites') {
       updateFavoritesCurrentRow(idx);
       const list = document.getElementById('track-list');
@@ -3409,40 +3366,20 @@ function __toggleFavoritesOnly_impl(){
       const rows = list ? list.querySelectorAll('.track') : [];
       const row = rows[idx];
       if (list && lp && row) {
-        if (row.nextSibling) row.parentNode.insertBefore(lp, row.nextSibling); else row.parentNode.appendChild(lp);
+        if (row.nextSibling) row.parentNode.insertBefore(lp, row.nextSibling);
+        else row.parentNode.appendChild(lp);
       }
     }
     dedupePlayerBlock();
 
-    const a = document.getElementById('audio');
-    if (!a || !playingTracks) return;
-    stopAndCleanupAudio(a);
-    const tr = playingTracks[idx];
-    a.src = tr.audio;
-
-    loadLyrics(tr.lyrics);
-    setupMediaSessionForPlayback();
-    prefetchNextTrackAssetsForPlayback();
-
-    if (doPlay) {
-      a.currentTime = 0;
-      a.play().catch(()=>{});
-      // Фейд‑ин 180 мс
-      try {
-        const targetVol = Math.max(0, Math.min(1, (parseFloat(localStorage.getItem('playerVolume')) || a.volume || 1)));
-        if (targetVol > 0 && !a.muted) {
-          const prev = targetVol;
-          a.volume = 0.001;
-          const t0 = performance.now(), dur = 180;
-          const step = (ts) => {
-            const k = Math.min(1, (ts - t0) / dur);
-            a.volume = prev * k;
-            if (k < 1) requestAnimationFrame(step);
-          };
-          requestAnimationFrame(step);
-        }
-      } catch {}
-    }
+    // Воспроизведение через PlayerCore
+    try {
+      if (doPlay === false) {
+        window.playerCore.pause();
+      } else {
+        window.playerCore.play(idx);
+      }
+    } catch {}
 
     applyMiniModeUI();
     updateNextUpLabel();
@@ -3455,48 +3392,9 @@ function __toggleFavoritesOnly_impl(){
     // Хелпер оставлен для обратной совместимости и теперь ничего не делает.
     return;
   }
-
   // Новая функция для обновления позиции в Media Session
-  function updateMediaSessionPosition() {
-    if (!('mediaSession' in navigator)) return;
-  
-      if (window.playerCore && window.playerCore.setVolume) {
-        window.playerCore.setVolume(volume);
-      }
-  
-    try {
-      navigator.mediaSession.setPositionState({
-        duration: audio.duration || 0,
-        playbackRate: audio.playbackRate || 1,
-        position: audio.currentTime || 0
-      });
-    } catch (e) {
-      console.warn('Failed to update position state', e);
-    }
-  }
-
-  // Добавляем периодическое обновление позиции для Android
-  let __positionUpdateInterval = null;
-  function startPositionUpdates() {
-    if (__positionUpdateInterval) return;
-  
-    __positionUpdateInterval = setInterval(() => {
-      if (!document.hidden) {
-        updateMediaSessionPosition();
-      }
-    }, 1000);
-  }
-
-  function stopPositionUpdates() {
-    if (__positionUpdateInterval) {
-      clearInterval(__positionUpdateInterval);
-      __positionUpdateInterval = null;
-    }
-  }
-
-  // Запускаем обновления при воспроизведении
-  document.getElementById('audio')?.addEventListener('play', startPositionUpdates);
-  document.getElementById('audio')?.addEventListener('pause', stopPositionUpdates);
+  // Media Session позицию обновляет PlayerCore внутри onplay/onTick.
+  // Дополнительные таймеры не требуются.
   function initSilentAudioPlayback() {
     if (!isIOS()) return;
   
@@ -3738,15 +3636,16 @@ function __toggleFavoritesOnly_impl(){
     box.style.display = '';
   }
 
-  // Мягкая синхронизация UI по фактически играющему треку (без пересоздания <audio>)
+  // Мягкая синхронизация UI по фактически играющему треку (через PlayerCore)
   function syncUiFromPlayback() {
-    const a = document.getElementById('audio');
-    if (!a) return;
+    const pc = window.playerCore;
+    if (!pc) return;
 
-    // Если играем «этот же альбом», приводим курсор и подсветку к playingTrack
+    const idxNow = typeof pc.getIndex === 'function' ? pc.getIndex() : -1;
     if (playingAlbumKey === currentAlbumKey) {
-      if (typeof playingTrack === 'number' && playingTrack >= 0 && currentTrack !== playingTrack) {
-        currentTrack = playingTrack;
+      if (typeof idxNow === 'number' && idxNow >= 0 && currentTrack !== idxNow) {
+        currentTrack = idxNow;
+        playingTrack = idxNow;
         try {
           document.querySelectorAll('#track-list .track').forEach(el => el.classList.remove('current'));
           const row = document.getElementById(`trk${currentTrack}`);
@@ -3757,10 +3656,11 @@ function __toggleFavoritesOnly_impl(){
             else row.parentNode.appendChild(lp);
           }
         } catch {}
-        // Обновим лирику под текущий трек
-        const pc = getPlayerConfig();
-        const tr = pc?.tracks?.[currentTrack];
-        if (tr && tr.lyrics) loadLyrics(tr.lyrics);
+        // Обновим лирику под текущий трек (если есть путь)
+        const snap = typeof pc.getPlaylistSnapshot === 'function' ? pc.getPlaylistSnapshot() : null;
+        if (snap && snap[currentTrack] && snap[currentTrack].lyrics) {
+          loadLyrics(snap[currentTrack].lyrics);
+        }
       }
     }
 
@@ -3768,19 +3668,10 @@ function __toggleFavoritesOnly_impl(){
     updateMiniNowHeader();
     updateNextUpLabel();
 
-    // Обновим позицию в Media Session и таймеры UI один раз
-    try {
-      if ('mediaSession' in navigator && typeof navigator.mediaSession.setPositionState === 'function') {
-        navigator.mediaSession.setPositionState({
-          duration: isFinite(a.duration) ? a.duration : 0,
-          playbackRate: a.playbackRate || 1,
-          position: a.currentTime || 0
-        });
-      }
-    } catch {}
-    try { onAudioMetadataLoaded({ currentTarget: a }); } catch {}
-    try { onAudioTimeUpdate({ currentTarget: a }); } catch {}
+    // Разово обновим прогресс/таймеры из PlayerCore
+    updateUiFromCoreOnce();
   }
+
   function applyMiniModeUI() {
     const lp = document.getElementById('lyricsplayerblock');
     if (!lp) return;
@@ -4153,6 +4044,23 @@ function __toggleFavoritesOnly_impl(){
 
   /* Время/хоткеи/модалки */
   function formatTime(sec){ if (isNaN(sec)||sec<0) return '--:--'; const m=Math.floor(sec/60), s=Math.floor(sec%60); return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`; }
+
+  // Разовое обновление UI времени/прогресса от PlayerCore
+  function updateUiFromCoreOnce() {
+    try {
+      const pc = window.playerCore;
+      if (!pc) return;
+      const dur = pc.getDuration ? (pc.getDuration() || 0) : 0;
+      const pos = pc.getSeek ? (pc.getSeek() || 0) : 0;
+      const elapsedEl = document.getElementById('time-elapsed');
+      const remainingEl = document.getElementById('time-remaining');
+      const fill = document.getElementById('player-progress-fill');
+      if (elapsedEl) elapsedEl.textContent = formatTime(pos);
+      if (remainingEl) remainingEl.textContent = formatTime(Math.max(0, dur - pos));
+      if (fill && dur > 0) fill.style.width = `${(pos / dur) * 100}%`;
+    } catch {}
+  }
+
   window.addEventListener('keydown', function(e){
     if (e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA') return;
     const hasModal = document.querySelector('.modal-bg.active');
@@ -4658,13 +4566,7 @@ ${lines}
 
     // Если выходим из «фона» или выключаем эко — привести UI к актуальному состоянию
     if (!document.hidden) {
-      try {
-        const a = document.getElementById('audio');
-        if (a) {
-          onAudioMetadataLoaded({ currentTarget: a });
-          onAudioTimeUpdate({ currentTarget: a });
-        }
-      } catch {}
+      updateUiFromCoreOnce();
     }
   }
 
