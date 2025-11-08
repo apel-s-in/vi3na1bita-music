@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-50ca8a5e7dafc354eb4ef432de948916627b0efc.idx
-│   │       ├── pack-50ca8a5e7dafc354eb4ef432de948916627b0efc.pack
-│   │       └── pack-50ca8a5e7dafc354eb4ef432de948916627b0efc.rev
+│   │       ├── pack-80a03f0ce2dadfb6a4702f6be3d6e4786883cdc5.idx
+│   │       ├── pack-80a03f0ce2dadfb6a4702f6be3d6e4786883cdc5.pack
+│   │       └── pack-80a03f0ce2dadfb6a4702f6be3d6e4786883cdc5.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -224,7 +224,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-08 22:14:14 UTC
+Сгенерировано: 2025-11-08 22:28:01 UTC
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
 name: Generate .meta context
@@ -3337,8 +3337,7 @@ function showTrack(n, doPlay) {
     initializePlayerControls();
     prefetchNextTrackAssetsForPlayback();
 
-    detachAudioEventListeners(audioEl);
-    attachAudioEventListeners(audioEl);
+    // Управление источником/событиями выполняет PlayerCore (Howler) — ничего не вешаем на <audio>.
 
     applyMiniModeUI();
     updateNextUpLabel();
@@ -3471,8 +3470,10 @@ function showTrack(n, doPlay) {
           const rect = progressBar.getBoundingClientRect();
           const clientX = e3.changedTouches ? e3.changedTouches[0].clientX : e3.clientX;
           const percent = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-          const audio = document.getElementById('audio');
-          audio.currentTime = (audio.duration || 0) * percent;
+          const dur = (window.playerCore && window.playerCore.getDuration) ? (window.playerCore.getDuration() || 0) : 0;
+          if (dur > 0 && window.playerCore && window.playerCore.seek) {
+            window.playerCore.seek(dur * percent);
+          }
           isSeekingProgress = false;
           document.removeEventListener('mousemove', moveHandler);
           document.removeEventListener('mouseup', endHandler);
@@ -3610,18 +3611,22 @@ function showTrack(n, doPlay) {
     try { localStorage.setItem('playerVolume', value); } catch {}
   }
   function toggleMute() {
-    const audio = document.getElementById('audio');
-    if (!audio) return;
+    if (!window.playerCore) return;
     if (isMuted) {
       const saved = parseFloat(localStorage.getItem('playerVolume'));
-      audio.volume = Number.isFinite(saved) && saved > 0 ? saved : 1;
+      const vol = Number.isFinite(saved) && saved > 0 ? saved : 1;
+      window.playerCore.setVolume(vol);
       isMuted = false;
+      updateVolumeUI(vol);
     } else {
-      try { localStorage.setItem('playerVolume', audio.volume); } catch {}
-      audio.volume = 0;
+      try {
+        const curVol = (window.playerCore.getVolume && window.playerCore.getVolume()) || 1;
+        localStorage.setItem('playerVolume', curVol);
+      } catch {}
+      window.playerCore.setVolume(0);
       isMuted = true;
+      updateVolumeUI(0);
     }
-    updateVolumeUI(audio.volume);
   }
   function togglePlayPause() {
     if (!window.playerCore) return;
@@ -3906,112 +3911,9 @@ function toggleFavoritesOnly(){
 
   /* Media Session — единый путь */
   function setupMediaSessionForPlayback() {
-    if (!('mediaSession' in navigator) || !playingTracks) return;
-    const tr = playingTracks[playingTrack];
-    if (!tr) return;
-  
-    // Подбираем корректную обложку
-    let artUrl = playingCover || 'img/logo.png';
-    if (playingAlbumKey === SPECIAL_FAVORITES_KEY && Array.isArray(favoritesRefsModel)) {
-      const ref = favoritesRefsModel[playingTrack];
-      if (ref && ref.__cover) artUrl = ref.__cover;
-    }
-  
-    // Создаем несколько размеров обложки для разных платформ
-    const artSet = [
-      { src: artUrl, sizes: '96x96', type: 'image/png' },
-      { src: artUrl, sizes: '128x128', type: 'image/png' },
-      { src: artUrl, sizes: '192x192', type: 'image/png' },
-      { src: artUrl, sizes: '256x256', type: 'image/png' },
-      { src: artUrl, sizes: '384x384', type: 'image/png' },
-      { src: artUrl, sizes: '512x512', type: 'image/png' }
-    ];
-  
-    try {
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: tr.title,
-        artist: playingArtist || 'Витрина Разбита',
-        album: playingAlbumName || 'Альбом',
-        artwork: artSet
-      });
-    } catch (e) {
-      console.warn('Failed to set MediaMetadata', e);
-      // Fallback для старых браузеров
-      try {
-        navigator.mediaSession.metadata = new MediaMetadata({
-          title: tr.title,
-          artist: playingArtist || 'Витрина Разбита',
-          album: playingAlbumName || 'Альбом',
-          artwork: [{ src: artUrl, sizes: '512x512' }]
-        });
-      } catch (e2) {
-        console.warn('Fallback MediaMetadata also failed', e2);
-      }
-    }
-  
-    // Устанавливаем обработчики действий
-    const setupAction = (action, handler) => {
-      try {
-        navigator.mediaSession.setActionHandler(action, handler);
-      } catch (e) {
-        console.warn(`Failed to set ${action} handler`, e);
-      }
-    };
-  
-    const audio = document.getElementById('audio');
-    if (!audio) return;
-  
-    setupAction('play', () => {
-      audio.play().catch(e => console.warn('MediaSession play failed', e));
-      updatePlayPauseIcon();
-    });
-  
-    setupAction('pause', () => {
-      audio.pause();
-      updatePlayPauseIcon();
-    });
-  
-    setupAction('previoustrack', () => {
-      previousTrack();
-      // Обновляем метаданные после смены трека
-      setTimeout(() => setupMediaSessionForPlayback(), 100);
-    });
-  
-    setupAction('nexttrack', () => {
-      nextTrack();
-      // Обновляем метаданные после смены трека
-      setTimeout(() => setupMediaSessionForPlayback(), 100);
-    });
-  
-    setupAction('seekbackward', (details) => {
-      const skipTime = details.seekOffset || 10;
-      audio.currentTime = Math.max(0, audio.currentTime - skipTime);
-      updateMediaSessionPosition();
-    });
-  
-    setupAction('seekforward', (details) => {
-      const skipTime = details.seekOffset || 10;
-      audio.currentTime = Math.min(audio.duration, audio.currentTime + skipTime);
-      updateMediaSessionPosition();
-    });
-  
-    setupAction('seekto', (details) => {
-      if (typeof details.seekTime === 'number') {
-        audio.currentTime = details.seekTime;
-        updateMediaSessionPosition();
-      }
-    });
-  
-    // Android: добавляем обработчик для кнопки "стоп"
-    setupAction('stop', () => {
-      audio.pause();
-      audio.currentTime = 0;
-      updatePlayPauseIcon();
-      updateMediaSessionPosition();
-    });
-  
-    // Обновляем позицию воспроизведения
-    updateMediaSessionPosition();
+    // MediaSession полностью управляется PlayerCore (Howler).
+    // Хелпер оставлен для обратной совместимости и теперь ничего не делает.
+    return;
   }
 
   // Новая функция для обновления позиции в Media Session
@@ -4700,8 +4602,8 @@ function toggleFavoritesOnly(){
       case 'X': e.preventDefault(); stopPlayback(); break;
       case 'N': e.preventDefault(); nextTrack(); break;
       case 'P': e.preventDefault(); previousTrack(); break;
-      case 'J': e.preventDefault(); if (audio) audio.currentTime=Math.max(0,(audio.currentTime||0)-10); break;
-      case 'L': e.preventDefault(); if (audio) audio.currentTime=Math.min(audio.duration,(audio.currentTime||0)+10); break;
+      case 'J': e.preventDefault(); { const pc = window.playerCore; if (pc && pc.seek) pc.seek(Math.max(0, (pc.getSeek?.() || 0) - 10)); } break;
+      case 'L': e.preventDefault(); { const pc = window.playerCore; if (pc && pc.seek) { const dur = pc.getDuration?.() || 0; pc.seek(Math.min(dur, (pc.getSeek?.() || 0) + 10)); } } break;
       case '+': case '=': e.preventDefault(); const vs1=document.getElementById('volume-slider'); if (vs1){ vs1.value=Math.min(100, parseInt(vs1.value||'100') + 10); vs1.dispatchEvent(new Event('input')); } break;
       case '-': e.preventDefault(); const vs2=document.getElementById('volume-slider'); if (vs2){ vs2.value=Math.max(0, parseInt(vs2.value||'100') - 10); vs2.dispatchEvent(new Event('input')); } break;
       case 'M': case '0': e.preventDefault(); toggleMute(); break;
@@ -4792,8 +4694,7 @@ function toggleFavoritesOnly(){
   async function shareCurrentTrack(){
     const pc = getPlayerConfig(); const tr = pc?.tracks?.[playingTrack];
     if (!tr) return;
-    const a = document.getElementById('audio');
-    const t = a ? Math.floor(a.currentTime || 0) : 0;
+    const t = (window.playerCore && window.playerCore.getSeek) ? Math.floor(window.playerCore.getSeek() || 0) : 0;
     const timeParam = t > 10 ? `&time=${t}` : '';
     const shareUrl = location.origin + location.pathname + `?album=${playingAlbumKey}&track=${playingTrack}${timeParam}`;
     const txt = `🎵 ${tr.title} - ${pc.artist || 'Витрина Разбита'}\n🎧 Слушай:`;
@@ -4804,6 +4705,7 @@ function toggleFavoritesOnly(){
       NotificationSystem.success('Ссылка скопирована!');
     }
   }
+
   function copyLinkCurrentTrack(){
     const pc = getPlayerConfig(); const tr = pc?.tracks?.[playingTrack];
     if (!tr) return;
