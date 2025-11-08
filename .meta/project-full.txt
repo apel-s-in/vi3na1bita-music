@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9101a9590fb0d3b9df58a3ddf5ce152b6f5b5432.idx
-│   │       ├── pack-9101a9590fb0d3b9df58a3ddf5ce152b6f5b5432.pack
-│   │       └── pack-9101a9590fb0d3b9df58a3ddf5ce152b6f5b5432.rev
+│   │       ├── pack-02285c61a852ff9217da37a6a3a977ff64187b2b.idx
+│   │       ├── pack-02285c61a852ff9217da37a6a3a977ff64187b2b.pack
+│   │       └── pack-02285c61a852ff9217da37a6a3a977ff64187b2b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -226,7 +226,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-08 23:05:12 UTC
+Сгенерировано: 2025-11-08 23:05:45 UTC
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
 name: Generate .meta context
@@ -6413,7 +6413,34 @@ window.addEventListener('storage', (e) => {
   } catch {}
 });
 
+function installAutoSave(pc) {
+  let last = 0;
+  const throttleMs = 5000;
+  pc.on({
+    onTick: (pos, dur) => {
+      const now = Date.now();
+      if (now - last >= throttleMs) {
+        last = now;
+        try {
+          localStorage.setItem('pc:pos', String(Math.floor(pos || 0)));
+          localStorage.setItem('pc:dur', String(Math.floor(dur || 0)));
+          localStorage.setItem('pc:index', String(pc.getIndex ? pc.getIndex() : 0));
+        } catch {}
+      }
+    },
+    onTrackChange: () => {
+      try { localStorage.setItem('pc:index', String(pc.getIndex ? pc.getIndex() : 0)); } catch {}
+    }
+  });
+}
+
 initWhenReady();
+(function waitAndInstall(){
+  const pc = window.playerCore;
+  if (!pc) { setTimeout(waitAndInstall, 50); return; }
+  try { installAutoSave(pc); } catch {}
+})();
+
 
 //=================================================
 // FILE: /albums/gallery/news/news-01-baner.html
