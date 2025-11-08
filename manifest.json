@@ -1,1 +1,32 @@
+{
+  "name": "Витрина Разбита",
+  "short_name": "Витрина",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#181818",
+  "theme_color": "#181818",
+  "description": "Официальные альбомы группы Витрина Разбита. Слушайте онлайн и офлайн.",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "prefer_related_applications": false
+}
 
