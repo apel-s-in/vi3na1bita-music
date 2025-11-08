@@ -45,4 +45,31 @@ window.addEventListener('storage', (e) => {
   } catch {}
 });
 
+function installAutoSave(pc) {
+  let last = 0;
+  const throttleMs = 5000;
+  pc.on({
+    onTick: (pos, dur) => {
+      const now = Date.now();
+      if (now - last >= throttleMs) {
+        last = now;
+        try {
+          localStorage.setItem('pc:pos', String(Math.floor(pos || 0)));
+          localStorage.setItem('pc:dur', String(Math.floor(dur || 0)));
+          localStorage.setItem('pc:index', String(pc.getIndex ? pc.getIndex() : 0));
+        } catch {}
+      }
+    },
+    onTrackChange: () => {
+      try { localStorage.setItem('pc:index', String(pc.getIndex ? pc.getIndex() : 0)); } catch {}
+    }
+  });
+}
+
 initWhenReady();
+(function waitAndInstall(){
+  const pc = window.playerCore;
+  if (!pc) { setTimeout(waitAndInstall, 50); return; }
+  try { installAutoSave(pc); } catch {}
+})();
+
