@@ -18,6 +18,7 @@ type PlayerCoreEvents = {
   onTrackChange?: (track: PlayerTrack | null, index: number) => void;
   onEnd?: (track: PlayerTrack | null, index: number) => void;
   onTick?: (positionSec: number, durationSec: number) => void;
+  onSleepTriggered?: (track: PlayerTrack | null, index: number) => void;
 };
 
 type PlayerCoreOptions = {
@@ -53,6 +54,9 @@ export class PlayerCore {
   private _albumArtist = '';
   private _albumTitle = '';
   private _albumCover = '';
+
+  private _sleepTimerId: ReturnType<typeof setTimeout> | null = null;
+  private _sleepTargetTs = 0;
 
   constructor(opts: PlayerCoreOptions = {}) {
     this._tickIntervalMs = Math.max(100, opts.tickIntervalMs || 250);
@@ -207,6 +211,32 @@ export class PlayerCore {
     }, this._tickIntervalMs);
   }
   private _stopTicker() { if (this._ticker) { clearInterval(this._ticker); this._ticker = null; } }
+
+  // ===== Sleep timer API =====
+  setSleepTimer(ms: number) {
+    try { this.clearSleepTimer(); } catch {}
+    const n = Number(ms);
+    if (!Number.isFinite(n) || n <= 0) return;
+    this._sleepTargetTs = Date.now() + n;
+    this._sleepTimerId = setTimeout(() => {
+      this._sleepTimerId = null;
+      this._sleepTargetTs = 0;
+      try {
+        if (this.howl && !this._isPaused) this.howl.pause();
+      } catch {}
+      this._fire('onSleepTriggered', this.getCurrentTrack(), this.index);
+    }, n);
+  }
+  clearSleepTimer() {
+    if (this._sleepTimerId) {
+      try { clearTimeout(this._sleepTimerId); } catch {}
+      this._sleepTimerId = null;
+    }
+    this._sleepTargetTs = 0;
+  }
+  getSleepTimerTarget(): number {
+    return this._sleepTargetTs || 0;
+  }
 
   private _updateMediaSessionMeta() {
     if (!('mediaSession' in navigator)) return;
