@@ -1,0 +1,11 @@
+{
+  "items": [
+    { "type": "html", "src": "albums/gallery/news/news-01-baner.html" },
+    {
+      "formats": {
+        "webp": "albums/gallery/news/news-cover-02.webp",
+        "full": "albums/gallery/news/news-cover-02.png"
+      }
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "items": [
+    {
+      "formats": {
+        "webp": "albums/gallery/00/00-cover-01.webp",
+        "full": "albums/gallery/00/00-cover-01.png"
+      }
+    },
+    {
+      "formats": {
+        "webp": "albums/gallery/00/00-cover-02.webp",
+        "full": "albums/gallery/00/00-cover-02.png"
+      }
+    }
+  ]
+}
