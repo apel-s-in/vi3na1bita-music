@@ -4,7 +4,109 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
 <script type="module">
   import { PlayerCore } from './src/PlayerCore.js';
+
+  // Инициализируем PlayerCore и навешиваем “мост” к существующему UI.
   window.playerCore = new PlayerCore();
+
+  // Глобальные коллбеки: PlayerCore вызывает их, UI реагирует.
+  window.__coreOnPlay = () => {
+    try { updatePlayPauseIcon(); } catch {}
+    try { window.__startCoreTicker && window.__startCoreTicker(); } catch {}
+    try { setPlaybackLocks(true); } catch {}
+  };
+  window.__coreOnPause = () => {
+    try { updatePlayPauseIcon(); } catch {}
+    try { window.__stopCoreTicker && window.__stopCoreTicker(); } catch {}
+    try { setPlaybackLocks(false); } catch {}
+  };
+  window.__coreOnTrackChange = (track, idx) => {
+    try {
+      // Синхронизуем курсор UI
+      window.playingTrack = idx;
+      window.currentTrack = idx;
+      window.playingAlbumKey = window.currentAlbumKey || window.playingAlbumKey || null;
+
+      // При необходимости прорисуем блок плеера
+      if (!document.getElementById('lyricsplayerblock')) {
+        const holder = document.getElementById('now-playing');
+        if (holder) {
+          holder.innerHTML = '<div class="lyrics-player-block" id="lyricsplayerblock"></div>';
+        }
+      }
+      // Лирика
+      if (track && track.lyrics) {
+        if (typeof loadLyrics === 'function') loadLyrics(track.lyrics);
+      }
+      // Обновление MediaSession остаётся в PlayerCore, но UI можно подсветить
+      if (typeof updateMiniNowHeader === 'function') updateMiniNowHeader();
+      if (typeof updateNextUpLabel === 'function') updateNextUpLabel();
+      if (typeof renderLyricsBlock === 'function') renderLyricsBlock();
+      if (typeof updatePlayPauseIcon === 'function') updatePlayPauseIcon();
+    } catch {}
+  };
+
+  // Тикер: на основе seek()/duration() из PlayerCore обновляем прогресс/время и лирику
+  (function(){
+    let __coreTicker = null;
+    let __lastUiTs = 0;
+    let __lastProgressTs = 0;
+
+    function tick() {
+      try {
+        const pc = window.playerCore;
+        if (!pc || !pc.isPlaying()) return;
+        const now = Date.now();
+
+        const dur = pc.getDuration() || 0;
+        const pos = pc.getSeek() || 0;
+
+        // Обновления лирики (быстро, но с троттлингом внутри renderLyricsEnhanced)
+        try { if (typeof renderLyricsEnhanced === 'function') renderLyricsEnhanced(pos); } catch {}
+
+        // Обновление прогресса (троттлинг 1 Гц или eco-профиль)
+        if ((now - __lastProgressTs) >= (window.__progressThrottleMs || 1000)) {
+          __lastProgressTs = now;
+          const fill = document.getElementById('player-progress-fill');
+          if (fill && dur > 0) fill.style.width = `${(pos / dur) * 100}%`;
+        }
+
+        // Таймеры (эко троттл)
+        if ((now - __lastUiTs) >= (window.__uiUpdateMinIntervalMs || 1000)) {
+          __lastUiTs = now;
+          const elapsedEl = document.getElementById('time-elapsed');
+          const remainingEl = document.getElementById('time-remaining');
+          if (elapsedEl && typeof formatTime === 'function') elapsedEl.textContent = formatTime(pos);
+          if (remainingEl && typeof formatTime === 'function') remainingEl.textContent = formatTime(Math.max(0, dur - pos));
+        }
+      } catch {}
+    }
+
+    window.__startCoreTicker = () => {
+      if (__coreTicker) return;
+      __coreTicker = setInterval(tick, 250);
+    };
+    window.__stopCoreTicker = () => {
+      if (__coreTicker) { clearInterval(__coreTicker); __coreTicker = null; }
+    };
+  })();
+
+  // Отложим навешивание событий, пока все функции UI не определятся
+  window.__initPlayerCoreBindings = () => {
+    try {
+      window.playerCore.on({
+        onPlay: () => window.__coreOnPlay && window.__coreOnPlay(),
+        onPause: () => window.__coreOnPause && window.__coreOnPause(),
+        onTrackChange: (track, idx) => window.__coreOnTrackChange && window.__coreOnTrackChange(track, idx),
+        onEnd: () => {} // автонекст — внутри PlayerCore
+      });
+
+      // Инициализация повтор/shuffle из LocalStorage
+      try {
+        window.playerCore.setRepeat(localStorage.getItem('repeatMode') === '1');
+        window.playerCore.setShuffle(localStorage.getItem('shuffleMode') === '1');
+      } catch {}
+    } catch {}
+  };
 </script>
   <meta charset="UTF-8" />
   <title>Витрина Разбита</title>
@@ -1505,12 +1607,14 @@
       } catch {}
     })();
 
+
     buildTrackList();
     updateAvailableTracks();
     applyMiniModeUI();
     updateNextUpLabel();
     updateMiniNowHeader();
     parseDeepLink();
+    try { updatePlayerCorePlaylistFromConfig(); } catch {}
   }
 
   /* Прогрев соседних альбомов */
@@ -2305,12 +2409,46 @@
   const albumCoverCache = Object.create(null);
 
   /* Старые совместимые хелперы */
-  function getPlayerConfig() {
-    if (playingTracks) {
-      return { tracks: playingTracks, artist: playingArtist, albumName: playingAlbumName };
-    }
-    return config ? { tracks: config.tracks, artist: config.artist, albumName: config.albumName } : null;
+function getPlayerConfig() {
+  if (playingTracks) {
+    return { tracks: playingTracks, artist: playingArtist, albumName: playingAlbumName };
   }
+  return config ? { tracks: config.tracks, artist: config.artist, albumName: config.albumName } : null;
+}
+
+// Формируем плейлист PlayerCore из текущего альбома (без “фаворитов”-режима)
+// Вызывается при любом обновлении config/трек-листа.
+function updatePlayerCorePlaylistFromConfig() {
+  try {
+    if (!window.playerCore || !config || !Array.isArray(config.tracks)) return;
+    const artist = config.artist || 'Витрина Разбита';
+    const album = config.albumName || 'Альбом';
+    const cover = (typeof playingCover === 'string' && playingCover) ? playingCover : 'img/logo.png';
+    const tracks = config.tracks.map(t => ({
+      src: t.audio,
+      title: t.title,
+      artist,
+      album,
+      cover,
+      lyrics: t.lyrics
+    }));
+    if (tracks.length) {
+      const startIdx = (typeof currentTrack === 'number' && currentTrack >= 0 && currentTrack < tracks.length) ? currentTrack : 0;
+      window.playerCore.setPlaylist(tracks, startIdx);
+      // Применим текущие режимы
+      window.playerCore.setRepeat(!!repeatMode);
+      window.playerCore.setShuffle(!!shuffleMode);
+      const favList = getLiked();
+      window.playerCore.setFavoritesOnly(!!favoritesOnlyMode, favList);
+      // Применим сохранённую громкость
+      const savedVolumeRaw = localStorage.getItem('playerVolume');
+      const savedVolume = parseFloat(savedVolumeRaw);
+      const volume = Number.isFinite(savedVolume) ? savedVolume : 1;
+      window.playerCore.setVolume(volume);
+    }
+  } catch {}
+}
+
   function isBrowsingSameAsPlaying() { return !!(playingAlbumKey && playingAlbumKey === currentAlbumKey); }
 
   const NotificationSystem = {
@@ -2633,8 +2771,30 @@
     } catch {}
   }
 function showTrack(n, doPlay) {
-  if (doPlay) window.playerCore.play(n);
-  else window.playerCore.pause();
+  try {
+    // Синхронизируем курсоры UI
+    currentTrack = n;
+    playingTrack = n;
+    playingAlbumKey = currentAlbumKey || playingAlbumKey || null;
+
+    // Обеспечим плейлист для PlayerCore (если ещё не делали)
+    if (typeof updatePlayerCorePlaylistFromConfig === 'function') {
+      updatePlayerCorePlaylistFromConfig();
+    }
+
+    // Отрисуем блок плеера при необходимости
+    if (!document.getElementById('lyricsplayerblock')) {
+      const holder = document.getElementById('now-playing');
+      if (holder) holder.innerHTML = '<div class="lyrics-player-block" id="lyricsplayerblock"></div>';
+    }
+    if (typeof renderLyricsBlock === 'function') renderLyricsBlock();
+
+    // Запуск/пауза через PlayerCore
+    if (doPlay === false) window.playerCore.pause();
+    else window.playerCore.play(n);
+  } catch {
+    // Фолбэк: если вдруг нет PlayerCore — молча
+  }
 }
   function renderLyricsBlock() {
     const block = document.getElementById('lyricsplayerblock') || document.getElementById('now-playing');
@@ -2707,45 +2867,10 @@ function showTrack(n, doPlay) {
       </div>
     `;
 
-    // Вставляем/создаём единый audio
-    const slot = document.getElementById('audio-slot');
-    let audioEl = existingAudio;
-    if (!audioEl) {
-      audioEl = document.createElement('audio');
-      audioEl.id = 'audio';
-      audioEl.preload = 'metadata';
-      audioEl.playsInline = true;
-      // Критически важные атрибуты для iOS PWA
-      audioEl.setAttribute('playsinline', '');
-      audioEl.setAttribute('webkit-playsinline', '');
-      audioEl.setAttribute('x-webkit-airplay', 'allow');
-      audioEl.autoplay = true;
-      audioEl.setAttribute('autoplay', '');
-      audioEl.defaultMuted = false;
-      audioEl.crossOrigin = 'anonymous';
-      audioEl.setAttribute('aria-hidden', 'true');
-      audioEl.tabIndex = -1;
-  
-      // Инициализация Web Audio API для фонового режима iOS
-      if (isIOS()) {
-        initAudioContextForBackground();
-      }
-    }
-    if (slot && audioEl && audioEl.parentNode !== slot) {
-      slot.appendChild(audioEl);
-    }
-    __currentAudio = audioEl;
-
+    // Управление аудио выполняет PlayerCore (Howler). Здесь аудио-элемент не создаём.
     const pc = getPlayerConfig();
     const tr = pc?.tracks?.[playingTrack];
     if (!tr) return;
-
-    audioEl = document.getElementById('audio');
-    if (__currentAudio && __currentAudio !== audioEl) stopAndCleanupAudio(__currentAudio);
-    __currentAudio = audioEl;
-    audioEl.src = tr.audio;
-
-    attachPlaybackStateListeners();
 
     // Кнопка эко — восстановим визуальное состояние + dblclick для настройки интервала
     try {
@@ -3035,25 +3160,21 @@ function showTrack(n, doPlay) {
   }
 
   function seekToPosition(e) {
-    const audio = document.getElementById('audio');
-    if (!audio || !isFinite(audio.duration) || audio.duration <= 0) return;
+    if (!window.playerCore) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const clientX = e.clientX ?? (e.touches && e.touches[0] && e.touches[0].clientX);
     if (typeof clientX !== 'number') return;
     const percent = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    audio.currentTime = audio.duration * percent;
+    const dur = window.playerCore.getDuration() || 0;
+    if (dur > 0) window.playerCore.seek(dur * percent);
   }
   function onVolumeSliderChange(e) {
     const value = (e && e.target ? e.target.value : 100) / 100;
-    const audio = document.getElementById('audio');
-    if (audio) audio.volume = value;
+    if (window.playerCore && typeof window.playerCore.setVolume === 'function') {
+      window.playerCore.setVolume(value);
+    }
     updateVolumeUI(value);
     try { localStorage.setItem('playerVolume', value); } catch {}
-  }
-  function updateVolumeUI(volume){
-    const percent = Math.max(0, Math.min(100, Math.round(volume * 100)));
-    const vf = document.getElementById('volume-fill');
-    if (vf) vf.style.width = `${percent}%`;
   }
   function toggleMute() {
     const audio = document.getElementById('audio');
@@ -3069,27 +3190,45 @@ function showTrack(n, doPlay) {
     }
     updateVolumeUI(audio.volume);
   }
-  function togglePlayPause() { const a = getCurrentAudio(); if (!a) return; if (a.paused) { a.play().catch(()=>{}); } else { a.pause(); } }
-  function updatePlayPauseIcon() {
-    const a = document.getElementById('audio'), icon = document.getElementById('play-pause-icon'); if (!a || !icon) return;
-    icon.innerHTML = a.paused ? '<path d="M8 5v14l11-7z"/>' : '<path d="M6 6h4v12H6zM14 6h4v12h-4z"/>';
+  function togglePlayPause() {
+    if (!window.playerCore) return;
+    if (window.playerCore.isPlaying()) window.playerCore.pause();
+    else window.playerCore.play(typeof playingTrack === 'number' ? playingTrack : 0);
   }
-  function stopPlayback(){ const a = getCurrentAudio(); if (!a) return; a.pause(); a.currentTime = 0; updatePlayPauseIcon(); }
-  function toggleRepeat(){ repeatMode = !repeatMode; const btn=document.getElementById('repeat-btn'); if (repeatMode) btn.classList.add('repeat-active'); else btn.classList.remove('repeat-active'); localStorage.setItem('repeatMode', repeatMode?'1':'0'); }
+  function updatePlayPauseIcon() {
+    const icon = document.getElementById('play-pause-icon');
+    if (!icon) return;
+    const playing = !!(window.playerCore && typeof window.playerCore.isPlaying === 'function' && window.playerCore.isPlaying());
+    icon.innerHTML = playing ? '<path d="M6 6h4v12H6zM14 6h4v12h-4z"/>' : '<path d="M8 5v14l11-7z"/>';
+  }
+  function stopPlayback(){
+    if (!window.playerCore) return;
+    window.playerCore.stop();
+    updatePlayPauseIcon();
+  }
+
+  function toggleRepeat(){
+    repeatMode = !repeatMode;
+    const btn=document.getElementById('repeat-btn');
+    if (repeatMode) btn.classList.add('repeat-active'); else btn.classList.remove('repeat-active');
+    localStorage.setItem('repeatMode', repeatMode?'1':'0');
+    try { window.playerCore && window.playerCore.setRepeat(repeatMode); } catch {}
+  }
   function toggleShuffle(){
     shuffleMode = !shuffleMode;
     const btn = document.getElementById('shuffle-btn');
     if (shuffleMode) {
       btn && btn.classList.add('active');
-      if (isBrowsingOtherAlbum()) createPlayingShuffledPlaylist(); else createShuffledPlaylist();
       NotificationSystem.info('🔀 Случайный порядок');
     } else {
       btn && btn.classList.remove('active');
       NotificationSystem.info('Последовательно');
     }
     localStorage.setItem('shuffleMode', shuffleMode ? '1' : '0');
+    try { window.playerCore && window.playerCore.setShuffle(shuffleMode); } catch {}
     updateNextUpLabel();
   }
+
   function toggleFavoritesOnly(){
     const btn = document.getElementById('favorites-btn');
     const icon = document.getElementById('favorites-btn-icon');
@@ -3139,6 +3278,61 @@ function showTrack(n, doPlay) {
       }
     }
   }
+function toggleFavoritesOnly(){
+  const btn = document.getElementById('favorites-btn');
+  const icon = document.getElementById('favorites-btn-icon');
+  favoritesOnlyMode = !favoritesOnlyMode;
+  if (favoritesOnlyMode) { btn && btn.classList.add('favorites-active'); if (icon) icon.src = 'img/star.png'; NotificationSystem.success('⭐ Только избранные'); }
+  else { btn && btn.classList.remove('favorites-active'); if (icon) icon.src = 'img/star2.png'; NotificationSystem.info('Играют все треки'); }
+  localStorage.setItem('favoritesOnlyMode', favoritesOnlyMode ? '1' : '0');
+
+  const list = document.getElementById('track-list');
+  const filterBtn = document.getElementById('filter-favorites-btn');
+
+  if (viewMode === 'favorites') {
+    favoritesFilterActive = favoritesOnlyMode;
+    if (favoritesFilterActive) {
+      filterBtn && filterBtn.classList.add('filtered');
+      if (filterBtn) filterBtn.textContent = 'ПОКАЗАТЬ ВСЕ ПЕСНИ';
+      list && list.classList.add('filtered');
+      updateFavoriteClassesFavorites();
+    } else {
+      filterBtn && filterBtn.classList.remove('filtered');
+      if (filterBtn) filterBtn.textContent = 'Скрыть не отмеченные ⭐ песни';
+      list && list.classList.remove('filtered');
+    }
+  } else if (viewMode === 'album') {
+    favoritesFilterActive = favoritesOnlyMode;
+    if (favoritesFilterActive) {
+      filterBtn && filterBtn.classList.add('filtered');
+      if (filterBtn) filterBtn.textContent = 'ПОКАЗАТЬ ВСЕ ПЕСНИ';
+      list && list.classList.add('filtered');
+      updateFavoriteClasses();
+    } else {
+      filterBtn && filterBtn.classList.remove('filtered');
+      if (filterBtn) filterBtn.textContent = 'Скрыть не отмеченные ⭐ песни';
+      list && list.classList.remove('filtered');
+    }
+  }
+
+  if (playingAlbumKey) {
+    if (isBrowsingOtherAlbum() || playingAlbumKey === SPECIAL_FAVORITES_KEY) {
+      if (shuffleMode) createPlayingShuffledPlaylist();
+      updateNextUpLabel();
+    } else {
+      updateAvailableTracks();
+      if (shuffleMode) createShuffledPlaylist();
+      updateNextUpLabel();
+    }
+  }
+
+  // Синхронизация с PlayerCore (фильтр по индексам текущего альбома)
+  try {
+    const favList = Array.isArray(config?.tracks) ? getLiked() : [];
+    window.playerCore && window.playerCore.setFavoritesOnly(favoritesOnlyMode, favList);
+  } catch {}
+}
+
   function updateAvailableTracks(){
     const pc = getPlayerConfig();
     if (!pc || !Array.isArray(pc.tracks)) { availableTracks = []; return; }
@@ -3161,91 +3355,25 @@ function showTrack(n, doPlay) {
   function shouldUsePlaybackContext() { return playingAlbumKey === SPECIAL_FAVORITES_KEY || isBrowsingOtherAlbum(); }
 
   function previousTrack(){
+    if (!window.playerCore) return;
     if (repeatMode) {
-      const a = document.getElementById('audio'); if (a) { a.currentTime = 0; a.play().catch(()=>{}); }
+      window.playerCore.seek(0);
+      window.playerCore.play();
       return;
     }
-    if (shouldUsePlaybackContext()) {
-      const len = playingTracks ? playingTracks.length : 0;
-      const available = getAvailableTracksForAlbum(playingAlbumKey, len);
-      if (!available.length) { NotificationSystem.warning('Нет доступных треков'); return; }
-      if (shuffleMode) {
-        playingShuffleIndex = Math.max(0, playingShuffleIndex - 1);
-        const cand = playingShuffledPlaylist[playingShuffleIndex] ?? available[0];
-        playFromPlaybackAlbum(cand, true);
-        return;
-      }
-      if (favoritesOnlyMode) {
-        const idx = available.indexOf(playingTrack);
-        const prev = idx > 0 ? available[idx - 1] : available[available.length - 1];
-        playFromPlaybackAlbum(prev, true);
-        return;
-      }
-      const prev = playingTrack > 0 ? playingTrack - 1 : (len - 1);
-      playFromPlaybackAlbum(prev, true);
-      return;
-    }
-    updateAvailableTracks();
-    if (!availableTracks.length) { NotificationSystem.warning('Нет доступных треков'); return; }
-    if (shuffleMode) { shuffleIndex = Math.max(0, shuffleIndex - 1); showTrack(shuffledPlaylist[shuffleIndex] || availableTracks[0], true); return; }
-    if (favoritesOnlyMode) { const idx = availableTracks.indexOf(currentTrack); const prev = idx > 0 ? availableTracks[idx - 1] : availableTracks[availableTracks.length - 1]; showTrack(prev, true); return; }
-    const prev = currentTrack > 0 ? currentTrack - 1 : (config.tracks.length - 1);
-    showTrack(prev, true);
+    window.playerCore.prev();
   }
+
   function nextTrack(){
+    if (!window.playerCore) return;
     if (repeatMode) {
-      const a = document.getElementById('audio'); if (a) { a.currentTime = 0; a.play().catch(()=>{}); }
+      window.playerCore.seek(0);
+      window.playerCore.play();
       return;
     }
-    if (shouldUsePlaybackContext()) {
-      const len = playingTracks ? playingTracks.length : 0;
-      const available = getAvailableTracksForAlbum(playingAlbumKey, len);
-      if (!available.length) { NotificationSystem.warning('Нет доступных треков'); return; }
-      if (shuffleMode) {
-        if (!Array.isArray(playingShuffledPlaylist) || playingShuffledPlaylist.length === 0) createPlayingShuffledPlaylist();
-        playingShuffleIndex++;
-        if (playingShuffleIndex >= playingShuffledPlaylist.length) { createPlayingShuffledPlaylist(); playingShuffleIndex = 0; }
-        let candidate = playingShuffledPlaylist[playingShuffleIndex];
-        if (available.length > 1 && candidate === playingTrack) {
-          playingShuffleIndex = (playingShuffleIndex + 1) % playingShuffledPlaylist.length;
-          candidate = playingShuffledPlaylist[playingShuffleIndex];
-        }
-        playFromPlaybackAlbum(candidate, true);
-        return;
-      }
-      if (favoritesOnlyMode) {
-        const idx = available.indexOf(playingTrack);
-        const next = available[(idx + 1) % available.length];
-        playFromPlaybackAlbum(next, true);
-        return;
-      }
-      const n = (playingTrack + 1) % len;
-      playFromPlaybackAlbum(n, true);
-      return;
-    }
-    updateAvailableTracks();
-    if (!availableTracks.length) { NotificationSystem.warning('Нет доступных треков'); return; }
-    if (shuffleMode) {
-      if (!Array.isArray(shuffledPlaylist) || shuffledPlaylist.length === 0) createShuffledPlaylist();
-      shuffleIndex++;
-      if (shuffleIndex >= shuffledPlaylist.length) { createShuffledPlaylist(); shuffleIndex = 0; }
-      let candidate = shuffledPlaylist[shuffleIndex];
-      if (availableTracks.length > 1 && candidate === currentTrack) {
-        shuffleIndex = (shuffleIndex + 1) % shuffledPlaylist.length;
-        candidate = shuffledPlaylist[shuffleIndex];
-      }
-      showTrack(candidate, true);
-      return;
-    }
-    if (favoritesOnlyMode) {
-      const idx = availableTracks.indexOf(currentTrack);
-      const next = availableTracks[(idx + 1) % availableTracks.length];
-      showTrack(next, true);
-      return;
-    }
-    const n = (currentTrack + 1) % config.tracks.length;
-    showTrack(n, true);
+    window.playerCore.next();
   }
+
   function getAvailableTracksForAlbum(albumKey, tracksLen) {
     if (!tracksLen || tracksLen <= 0) return [];
     if (albumKey === SPECIAL_FAVORITES_KEY) {
@@ -5059,6 +5187,7 @@ ${lines}
 
   // Инициализация при загрузке
   window.addEventListener('load', () => {
+    try { window.__initPlayerCoreBindings && window.__initPlayerCoreBindings(); } catch {}
     // Помечаем iOS для UI-особенностей (скрыть слайдер громкости)
     try { if (/iphone|ipad|ipod/i.test(navigator.userAgent)) document.body.classList.add('ios'); } catch {}
 
