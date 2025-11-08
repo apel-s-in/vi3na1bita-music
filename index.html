@@ -3235,55 +3235,10 @@ function showTrack(n, doPlay) {
   }
 
   function toggleFavoritesOnly(){
-    const btn = document.getElementById('favorites-btn');
-    const icon = document.getElementById('favorites-btn-icon');
-    favoritesOnlyMode = !favoritesOnlyMode;
-    if (favoritesOnlyMode) { btn && btn.classList.add('favorites-active'); if (icon) icon.src = 'img/star.png'; NotificationSystem.success('⭐ Только избранные'); }
-    else { btn && btn.classList.remove('favorites-active'); if (icon) icon.src = 'img/star2.png'; NotificationSystem.info('Играют все треки'); }
-    localStorage.setItem('favoritesOnlyMode', favoritesOnlyMode ? '1' : '0');
-
-    const list = document.getElementById('track-list');
-    const filterBtn = document.getElementById('filter-favorites-btn');
-
-    if (viewMode === 'favorites') {
-      favoritesFilterActive = favoritesOnlyMode;
-      if (favoritesFilterActive) {
-        filterBtn && filterBtn.classList.add('filtered');
-        if (filterBtn) filterBtn.textContent = 'ПОКАЗАТЬ ВСЕ ПЕСНИ';
-        list && list.classList.add('filtered');
-        updateFavoriteClassesFavorites();
-      } else {
-        filterBtn && filterBtn.classList.remove('filtered');
-        if (filterBtn) filterBtn.textContent = 'Скрыть не отмеченные ⭐ песни';
-        list && list.classList.remove('filtered');
-      }
-    } else if (viewMode === 'album') {
-      // Новое: синхронизируем список текущего альбома с режимом «⭐»
-      favoritesFilterActive = favoritesOnlyMode;
-      if (favoritesFilterActive) {
-        filterBtn && filterBtn.classList.add('filtered');
-        if (filterBtn) filterBtn.textContent = 'ПОКАЗАТЬ ВСЕ ПЕСНИ';
-        list && list.classList.add('filtered');
-        updateFavoriteClasses();
-      } else {
-        filterBtn && filterBtn.classList.remove('filtered');
-        if (filterBtn) filterBtn.textContent = 'Скрыть не отмеченные ⭐ песни';
-        list && list.classList.remove('filtered');
-      }
-    }
-
-    if (playingAlbumKey) {
-      if (isBrowsingOtherAlbum() || playingAlbumKey === SPECIAL_FAVORITES_KEY) {
-        if (shuffleMode) createPlayingShuffledPlaylist();
-        updateNextUpLabel();
-      } else {
-        updateAvailableTracks();
-        if (shuffleMode) createShuffledPlaylist();
-        updateNextUpLabel();
-      }
-    }
+    return __toggleFavoritesOnly_impl();
   }
-function toggleFavoritesOnly(){
+
+function __toggleFavoritesOnly_impl(){
   const btn = document.getElementById('favorites-btn');
   const icon = document.getElementById('favorites-btn-icon');
   favoritesOnlyMode = !favoritesOnlyMode;
@@ -3487,8 +3442,9 @@ function toggleFavoritesOnly(){
   function updateMediaSessionPosition() {
     if (!('mediaSession' in navigator)) return;
   
-    const audio = document.getElementById('audio');
-    if (!audio) return;
+      if (window.playerCore && window.playerCore.setVolume) {
+        window.playerCore.setVolume(volume);
+      }
   
     try {
       navigator.mediaSession.setPositionState({
