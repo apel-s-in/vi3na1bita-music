@@ -134,6 +134,22 @@ export class PlayerCore {
   getSeek() { return this.seek(); }
   getDuration() { return this.howl ? (this.howl.duration() || 0) : 0; }
 
+  // Публичный «следующий» индекс по текущей логике shuffle/favoritesOnly
+  getNextIndex() {
+    return this._nextIndex();
+  }
+
+  // Снимок плейлиста для UI (заголовки и пр.)
+  getPlaylistSnapshot() {
+    return (this.playlist || []).map(t => ({
+      title: t && t.title || '',
+      artist: t && t.artist || this._albumArtist || '',
+      album: t && t.album || this._albumTitle || '',
+      cover: t && t.cover || this._albumCover || '',
+      lyrics: t && t.lyrics || ''
+    }));
+  }
+
   isPlaying() { return !!this.howl && !this._isPaused; }
   getIndex() { return this.index; }
   getCurrentTrack() {
