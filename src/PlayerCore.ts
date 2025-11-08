@@ -1,7 +1,6 @@
 // src/PlayerCore.ts
-// Ядро работы с треками, повтором, избранным, фоновым режимом и автопереходом для vi3na1bita-music
-// Полная замена старой логики audio-контроля. СКРЫВАЕТ от UI любые детали Howler.
-// Прерывание только по pause/stop/timer.
+// Ядро Howler.js для vi3na1bita-music: плейлист, play/pause/stop/prev/next,
+// repeat/shuffle/favoritesOnly, громкость/позиция, автопереход, MediaSession, тикер времени.
 
 export type PlayerTrack = {
   src: string;
@@ -13,269 +12,228 @@ export type PlayerTrack = {
 };
 
 type PlayerCoreEvents = {
-  onPlay?: (track: PlayerTrack, index: number) => void;
-  onPause?: (track: PlayerTrack, index: number) => void;
-  onStop?: (track: PlayerTrack, index: number) => void;
-  onTrackChange?: (track: PlayerTrack, index: number) => void;
-  onEnd?: (track: PlayerTrack, index: number) => void;
-  // можно расширить onFavorite, onRepeat и т.п.
+  onPlay?: (track: PlayerTrack | null, index: number) => void;
+  onPause?: (track: PlayerTrack | null, index: number) => void;
+  onStop?: (track: PlayerTrack | null, index: number) => void;
+  onTrackChange?: (track: PlayerTrack | null, index: number) => void;
+  onEnd?: (track: PlayerTrack | null, index: number) => void;
+  onTick?: (positionSec: number, durationSec: number) => void;
 };
+
+type PlayerCoreOptions = {
+  tickIntervalMs?: number;
+  events?: PlayerCoreEvents;
+};
+
+declare const Howler: any; // глобальный из CDN
+declare class Howl {
+  constructor(opts: any);
+  play(): void;
+  pause(): void;
+  stop(): void;
+  unload(): void;
+  seek(sec?: number): number;
+  duration(): number;
+  volume(v?: number): number;
+}
 
 export class PlayerCore {
   private playlist: PlayerTrack[] = [];
-  private index: number = 0;
+  private index = 0;
   private howl: Howl | null = null;
   private events: PlayerCoreEvents = {};
-  private repeat: boolean = false;
-  private shuffle: boolean = false;
-  private favoritesOnly: boolean = false;
+  private repeat = false;
+  private shuffle = false;
+  private favoritesOnly = false;
   private favorites: number[] = [];
   private shuffled: number[] = [];
-  private _isDestroyed = false;
-  private isPaused = false;
+  private _ticker: ReturnType<typeof setInterval> | null = null;
+  private _tickIntervalMs: number;
+  private _isPaused = true;
+  private _albumArtist = '';
+  private _albumTitle = '';
+  private _albumCover = '';
 
-  constructor(events: PlayerCoreEvents = {}) {
-    this.events = events;
+  constructor(opts: PlayerCoreOptions = {}) {
+    this._tickIntervalMs = Math.max(100, opts.tickIntervalMs || 250);
+    if (opts.events) this.events = { ...opts.events };
+    this._installMediaSessionHandlersOnce();
   }
 
-  setPlaylist(tracks: PlayerTrack[], startIndex = 0) {
+  setPlaylist(tracks: PlayerTrack[], startIndex = 0, albumMeta?: { artist?: string; album?: string; cover?: string }) {
     this.stop();
-    this.playlist = tracks.slice();
-    this.index = Math.max(0, Math.min(tracks.length - 1, startIndex));
-    this.syncShuffle();
+    this.playlist = Array.isArray(tracks) ? tracks.slice() : [];
+    this.index = Math.max(0, Math.min(this.playlist.length - 1, startIndex || 0));
+    this._albumArtist = (albumMeta?.artist) || (tracks?.[0]?.artist) || '';
+    this._albumTitle  = (albumMeta?.album)  || (tracks?.[0]?.album)  || '';
+    this._albumCover  = (albumMeta?.cover)  || (tracks?.[0]?.cover)  || '';
+    this._syncShuffle();
     this._fire('onTrackChange', this.getCurrentTrack(), this.index);
   }
 
-  setRepeat(repeat: boolean) {
-    this.repeat = !!repeat;
-  }
+  on(events: PlayerCoreEvents) { this.events = { ...this.events, ...events }; }
+  setEvents(events: PlayerCoreEvents) { this.events = { ...events }; }
 
-  setShuffle(shuffle: boolean) {
-    this.shuffle = !!shuffle;
-    this.syncShuffle();
-  }
-
-  setFavoritesOnly(favOnly: boolean, favList: number[] = []) {
-    this.favoritesOnly = !!favOnly;
-    this.favorites = Array.isArray(favList) ? favList.slice() : [];
-    this.syncShuffle();
+  setRepeat(v: boolean) { this.repeat = !!v; }
+  setShuffle(v: boolean) { this.shuffle = !!v; this._syncShuffle(); }
+  setFavoritesOnly(v: boolean, favorites: number[] = []) {
+    this.favoritesOnly = !!v;
+    this.favorites = Array.isArray(favorites) ? favorites.slice() : [];
+    this._syncShuffle();
   }
 
   play(index?: number) {
-    if (typeof index === 'number') {
-      this.index = this.getValidIndex(index);
-    }
+    if (typeof index === 'number') this.index = this._clampIndex(index);
     if (!this.playlist.length) return;
 
-    this.stopHowl();
-
-    const track = this.getCurrentTrack();
-    if (!track) return;
+    this._stopHowl();
+    const tr = this.getCurrentTrack();
+    if (!tr) return;
 
     this.howl = new Howl({
-      src: [track.src],
+      src: [tr.src],
       html5: true,
       onend: () => {
-        // ЗАПРЕЩЕНО останавливать музыку КРОМЕ: ручная пауза/стоп/таймер
-        if (this.repeat) {
-          this.play();
-          return;
-        }
-        if (this.hasAutoNext()) {
-          this.next();
-        } else {
-          // ничего не делаем — стоим на месте (ручная остановка)
-        }
-        this._fire('onEnd', track, this.index);
+        if (this.repeat) { this.play(); return; }
+        this.next();
+        this._fire('onEnd', tr, this.index);
       },
       onplay: () => {
-        this.isPaused = false;
-        this._fire('onPlay', track, this.index);
-        this._fire('onTrackChange', track, this.index);
-        this.updateMediaSession();
+        this._isPaused = false;
+        this._fire('onPlay', tr, this.index);
+        this._fire('onTrackChange', tr, this.index);
+        this._updateMediaSessionMeta();
+        this._startTicker();
       },
-      onpause: () => {
-        this.isPaused = true;
-        this._fire('onPause', track, this.index);
-      },
-      onstop: () => {
-        this.isPaused = true;
-        this._fire('onStop', track, this.index);
-      }
+      onpause: () => { this._isPaused = true; this._fire('onPause', tr, this.index); this._stopTicker(); },
+      onstop:  () => { this._isPaused = true; this._fire('onStop',  tr, this.index); this._stopTicker(); }
     });
 
+    try {
+      const saved = parseFloat(localStorage.getItem('playerVolume') || '');
+      if (Number.isFinite(saved)) this.setVolume(saved);
+    } catch {}
     this.howl.play();
   }
 
-  pause() {
-    if (this.howl && !this.isPaused) {
-      this.howl.pause();
-      // isPaused обновит onpause
-    }
+  pause() { if (this.howl && !this._isPaused) this.howl.pause(); }
+  stop()  { this._stopHowl(); this._isPaused = true; this._fire('onStop', this.getCurrentTrack(), this.index); }
+
+  next() { this._syncShuffle(); const n = this._nextIndex(); if (n < 0) return; this.index = n; this.play(); }
+  prev() { this._syncShuffle(); const p = this._prevIndex(); if (p < 0) return; this.index = p; this.play(); }
+
+  setVolume(v: number) {
+    const vol = Math.max(0, Math.min(1, Number(v)));
+    if (this.howl) this.howl.volume(vol);
+    else if (typeof Howler !== 'undefined') Howler.volume(vol);
+  }
+  getVolume(): number {
+    if (this.howl) return this.howl.volume();
+    if (typeof Howler !== 'undefined') return Howler.volume();
+    return 1;
   }
 
-  stop() {
-    this.stopHowl();
-    this.isPaused = true;
-    this._fire('onStop', this.getCurrentTrack(), this.index);
+  seek(sec?: number): number | void {
+    if (!this.howl) return;
+    if (typeof sec === 'number') this.howl.seek(Math.max(0, sec));
+    else return Number(this.howl.seek()) || 0;
   }
+  getSeek(): number { return (this.seek() as number) || 0; }
+  getDuration(): number { return this.howl ? (this.howl.duration() || 0) : 0; }
 
-  next() {
-    this.syncShuffle();
-    const nextIdx = this.getNextIndex();
-    if (nextIdx < 0) return;
-    this.index = nextIdx;
-    this.play();
-  }
-
-  prev() {
-    this.syncShuffle();
-    const prevIdx = this.getPrevIndex();
-    if (prevIdx < 0) return;
-    this.index = prevIdx;
-    this.play();
+  isPlaying() { return !!this.howl && !this._isPaused; }
+  getIndex() { return this.index; }
+  getCurrentTrack(): PlayerTrack | null {
+    if (!this.playlist.length) return null;
+    return this.playlist[this.index] || null;
   }
 
   destroy() {
-    this.stopHowl();
-    this._isDestroyed = true;
-    this.playlist = [];
-    this.events = {};
+    this.stop(); this._stopTicker(); this.playlist = []; this.events = {};
   }
 
-  isPlaying() {
-    return !!this.howl && !this.isPaused;
-  }
+  // ===== INTERNAL =====
+  private _clampIndex(i: number) { return Math.max(0, Math.min(this.playlist.length - 1, i)); }
+  private _fire<K extends keyof PlayerCoreEvents>(name: K, ...args: any[]) { try { const fn = this.events && this.events[name]; if (typeof fn === 'function') (fn as any)(...args); } catch {} }
+  private _stopHowl() { if (this.howl) { try { this.howl.stop(); this.howl.unload(); } catch {} this.howl = null; } }
 
-  getCurrentTrack() {
-    const arr = this.filteredPlaylist();
-    if (arr.length === 0) return null;
-    const idx = this.getDisplayIndex();
-    return arr[idx] || null;
-  }
-
-  getCurrentIndex() {
-    return this.index;
-  }
-
-  on(events: PlayerCoreEvents) {
-    this.events = { ...this.events, ...events };
-  }
-
-  setEvents(events: PlayerCoreEvents) {
-    this.events = { ...events };
-  }
-
-  // ===== ВНУТРЕННИЕ ======
-
-  /** Возвращает массив треков по mode (shuffle/favoritesOnly) — только для автонекст и prev/next */
-  private filteredPlaylist(): PlayerTrack[] {
-    let arr = this.playlist;
-    if (this.favoritesOnly && this.favorites && this.favorites.length > 0) {
-      arr = this.favorites.map(i => this.playlist[i]).filter(Boolean);
+  private _filteredIndices(): number[] {
+    if (!this.playlist.length) return [];
+    if (this.favoritesOnly && this.favorites.length) {
+      return this.favorites.filter(i => Number.isInteger(i) && i >= 0 && i < this.playlist.length);
     }
-    if (this.shuffle && this.shuffled && this.shuffled.length) {
-      arr = this.shuffled.map(i => arr[i]).filter(Boolean);
+    return this.playlist.map((_, i) => i);
+  }
+  private _syncShuffle() {
+    if (!this.shuffle) { this.shuffled = []; return; }
+    const base = this._filteredIndices();
+    const arr = base.slice();
+    for (let j = arr.length - 1; j > 0; j--) {
+      const k = Math.floor(Math.random() * (j + 1));
+      [arr[j], arr[k]] = [arr[k], arr[j]];
     }
-    return arr;
+    const i = arr.indexOf(this.index);
+    if (i > 0) { arr.splice(i, 1); arr.unshift(this.index); }
+    this.shuffled = arr;
+  }
+  private _displayList(): number[] {
+    const base = this._filteredIndices();
+    if (this.shuffle && this.shuffled.length) return this.shuffled.slice();
+    return base;
+  }
+  private _nextIndex(): number {
+    const arr = this._displayList(); if (!arr.length) return -1;
+    const pos = arr.indexOf(this.index);
+    const nextIdx = (pos + 1) % arr.length;
+    return arr[nextIdx];
+  }
+  private _prevIndex(): number {
+    const arr = this._displayList(); if (!arr.length) return -1;
+    const pos = arr.indexOf(this.index);
+    const prevIdx = (pos - 1 + arr.length) % arr.length;
+    return arr[prevIdx];
   }
 
-  private getDisplayIndex(): number {
-    // Для простоты: в режиме favoritesOnly/shuffle показываем индекс относительно отфильтрованного массива
-    if (this.favoritesOnly && this.favorites && this.favorites.length > 0) {
-      return Math.max(0, this.favorites.indexOf(this.index));
-    } else if (this.shuffle && this.shuffled && this.shuffled.length) {
-      return Math.max(0, this.shuffled.indexOf(this.index));
-    } else {
-      return Math.max(0, this.index);
-    }
+  private _startTicker() {
+    if (this._ticker) return;
+    this._ticker = setInterval(() => {
+      try {
+        if (!this.isPlaying()) return;
+        const pos = this.getSeek() || 0;
+        const dur = this.getDuration() || 0;
+        const fn = this.events && this.events.onTick;
+        if (typeof fn === 'function') fn(pos, dur);
+      } catch {}
+    }, this._tickIntervalMs);
   }
+  private _stopTicker() { if (this._ticker) { clearInterval(this._ticker); this._ticker = null; } }
 
-  private syncShuffle() {
-    if (this.shuffle) {
-      const arr = this.favoritesOnly && this.favorites.length
-        ? this.favorites.slice()
-        : this.playlist.map((_, idx) => idx);
-      this.shuffled = this.shuffleArray(arr);
-      // Начинаем с текущего трека, если есть
-      if (this.index && arr.includes(this.index)) {
-        // Переставим current индекс на первое место
-        const i = this.shuffled.indexOf(this.index);
-        if (i > 0) {
-          this.shuffled.splice(i, 1);
-          this.shuffled.unshift(this.index);
-        }
-      }
-    } else {
-      this.shuffled = [];
-    }
-  }
-
-  private getNextIndex(): number {
-    const arr = this.filteredPlaylist();
-    if (!arr.length) return -1;
-    const curIdx = this.getDisplayIndex();
-    return (curIdx + 1) % arr.length;
-  }
-
-  private getPrevIndex(): number {
-    const arr = this.filteredPlaylist();
-    if (!arr.length) return -1;
-    const curIdx = this.getDisplayIndex();
-    return ((curIdx - 1 + arr.length) % arr.length);
-  }
-
-  private getValidIndex(idx: number): number {
-    return Math.max(0, Math.min(this.playlist.length - 1, idx));
-  }
-
-  /** Проверка — разрешён ли автопереход (нельзя отменить кнопкой/энерго‑режимом/фоновой сменой вкладки) */
-  private hasAutoNext(): boolean {
-    // В "молния"/energy saver/music в фоне автопереход всегда разрешён
-    return true;
-  }
-
-  private stopHowl() {
-    if (this.howl) {
-      this.howl.stop();
-      this.howl.unload();
-      this.howl = null;
-    }
-  }
-
-  private _fire<K extends keyof PlayerCoreEvents>(ev: K, ...args: any[]) {
-    if (typeof this.events[ev] === "function") {
-      // @ts-ignore
-      this.events[ev](...args);
-    }
-  }
-
-  private shuffleArray(arr: number[]): number[] {
-    const a = arr.slice();
-    for (let i = a.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [a[i], a[j]] = [a[j], a[i]];
-    }
-    return a;
-  }
-
-  /** Обновление MediaSession метаданных (lockscreen/гарнитура/smartwatch).
-      Вызывать после play/track change, параметры брать из getCurrentTrack()
-  */
-  private updateMediaSession() {
+  private _updateMediaSessionMeta() {
     if (!('mediaSession' in navigator)) return;
     const t = this.getCurrentTrack();
-    if (!t) return;
     try {
-      navigator.mediaSession.metadata = new window.MediaMetadata({
-        title: t.title,
-        artist: t.artist || '',
-        album: t.album || '',
-        artwork: t.cover ? [
-          { src: t.cover, sizes: '512x512', type: 'image/png' }
+      (navigator as any).mediaSession.metadata = new (window as any).MediaMetadata({
+        title: t?.title || '',
+        artist: t?.artist || this._albumArtist || '',
+        album: t?.album || this._albumTitle || '',
+        artwork: (t?.cover || this._albumCover) ? [
+          { src: t?.cover || this._albumCover, sizes: '512x512', type: 'image/png' }
         ] : []
       });
+      (navigator as any).mediaSession.playbackState = this.isPlaying() ? 'playing' : 'paused';
+      const self = this;
+      (navigator as any).mediaSession.setActionHandler('play',         () => self.play());
+      (navigator as any).mediaSession.setActionHandler('pause',        () => self.pause());
+      (navigator as any).mediaSession.setActionHandler('previoustrack',() => self.prev());
+      (navigator as any).mediaSession.setActionHandler('nexttrack',    () => self.next());
+      (navigator as any).mediaSession.setActionHandler('seekbackward', (d: any) => self.seek((self.getSeek() || 0) - (d.seekOffset || 10)));
+      (navigator as any).mediaSession.setActionHandler('seekforward',  (d: any) => self.seek((self.getSeek() || 0) + (d.seekOffset || 10)));
+      (navigator as any).mediaSession.setActionHandler('seekto',       (d: any) => { if (typeof d.seekTime === 'number') self.seek(d.seekTime); });
+      (navigator as any).mediaSession.setActionHandler('stop',         () => self.stop());
     } catch {}
-    // Handlers — добавлять только 1 раз снаружи или через конструктор!
+  }
+
+  private _installMediaSessionHandlersOnce() {
+    // Хэндлеры действий задаются вместе с метаданными при onplay/track-change.
   }
 }
