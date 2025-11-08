@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-30561a5cab7800c854c1fcf1701747a30f0509cd.idx
-│   │       ├── pack-30561a5cab7800c854c1fcf1701747a30f0509cd.pack
-│   │       └── pack-30561a5cab7800c854c1fcf1701747a30f0509cd.rev
+│   │       ├── pack-ae14f9001d18743deac75992a99f906def18b791.idx
+│   │       ├── pack-ae14f9001d18743deac75992a99f906def18b791.pack
+│   │       └── pack-ae14f9001d18743deac75992a99f906def18b791.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -224,7 +224,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-08 22:52:55 UTC
+Сгенерировано: 2025-11-08 22:56:12 UTC
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
 name: Generate .meta context
@@ -530,17 +530,18 @@ jobs:
         onPlay: () => window.__coreOnPlay && window.__coreOnPlay(),
         onPause: () => window.__coreOnPause && window.__coreOnPause(),
         onTrackChange: (track, idx) => window.__coreOnTrackChange && window.__coreOnTrackChange(track, idx),
-        onEnd: () => {} // автонекст — внутри PlayerCore
+        onEnd: () => {}, // автонекст — внутри PlayerCore
+        onSleepTriggered: () => {
+          try { hideSleepOverlay(); } catch {}
+          try { updateSleepTimerUI(); } catch {}
+          try { NotificationSystem.info('Таймер сна: воспроизведение остановлено'); } catch {}
+        }
       });
-
-      // Инициализация повтор/shuffle из LocalStorage
-      try {
-        window.playerCore.setRepeat(localStorage.getItem('repeatMode') === '1');
-        window.playerCore.setShuffle(localStorage.getItem('shuffleMode') === '1');
-      } catch {}
+      // Инициализация режимов теперь в scripts/player-adapter.js
     } catch {}
   };
 </script>
+<script type="module" src="./scripts/player-adapter.js"></script>
   <meta charset="UTF-8" />
   <title>Витрина Разбита</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -3040,26 +3041,43 @@ function updatePlayerCorePlaylistFromConfig() {
     if (!Array.isArray(favoritesRefsModel) || favoritesRefsModel.length === 0) {
       await buildFavoritesRefsModel();
     }
-    // Переключаемся в контекст «Избранное»
+
+    // Контекст UI
     playingAlbumKey = SPECIAL_FAVORITES_KEY;
-    playingTracks = (favoritesRefsModel || []).map(it => ({
-      title: it.title,
-      audio: it.audio,
-      lyrics: it.lyrics,
-      fulltext: it.fulltext || null
-    }));
     playingArtist = 'Витрина Разбита';
     playingAlbumName = 'Избранное';
     playingCover = 'img/logo.png';
 
-    updateAvailableTracks();
+    // Формируем плейлист для PlayerCore (источник звука)
+    const playlist = (favoritesRefsModel || []).map(it => ({
+      src: it.audio,
+      title: it.title,
+      artist: it.__artist || 'Витрина Разбита',
+      album: it.__album || 'Избранное',
+      cover: it.__cover || 'img/logo.png',
+      lyrics: it.lyrics
+    }));
 
+    // Индекс
     let idx = Number(index);
-    if (!Number.isInteger(idx) || idx < 0 || idx >= (playingTracks?.length || 0)) {
+    if (!Number.isInteger(idx) || idx < 0 || idx >= (playlist.length || 0)) {
       idx = 0;
     }
-    // Запускаем воспроизведение выбранного
-    playFromPlaybackAlbum(idx, true);
+
+    // Отрисуем контейнер при необходимости (UI блок)
+    if (!document.getElementById('lyricsplayerblock')) {
+      const holder = document.getElementById('now-playing');
+      if (holder) holder.innerHTML = '<div class="lyrics-player-block" id="lyricsplayerblock"></div>';
+    }
+
+    // Передаём плейлист в ядро и запускаем
+    try {
+      window.playerCore.setPlaylist(playlist, idx, { artist: 'Витрина Разбита', album: 'Избранное', cover: 'img/logo.png' });
+      window.playerCore.play(idx);
+    } catch {}
+
+    // Обновим доступные треки для UI
+    updateAvailableTracks();
   }
 
   /* Список треков */
@@ -4819,11 +4837,13 @@ ${lines}
   function closeSleepMenu(e){ if (e && e.target.closest('#sleep-timer-btn')) return; document.getElementById('sleep-menu').classList.remove('active'); document.removeEventListener('click', closeSleepMenu); }
   function setSleepTimer(minutes) {
     closeSleepMenu();
-    if (minutes === 'off') { 
-      clearSleepTimer(); 
-      return; 
+    if (minutes === 'off') {
+      clearSleepTimer();
+      return;
     }
-    sleepTimerTarget = Date.now() + minutes * 60 * 1000;
+    const ms = minutes * 60 * 1000;
+    try { window.playerCore && window.playerCore.setSleepTimer(ms); } catch {}
+    sleepTimerTarget = Date.now() + ms; // локальная тень для бейджа/оверлея
     updateSleepTimerUI();
     if (sleepTimerInterval) clearInterval(sleepTimerInterval);
     sleepTimerInterval = setInterval(checkSleepTimer, 1000);
@@ -4845,6 +4865,7 @@ ${lines}
     if (badge) { badge.style.display = ''; badge.textContent = String(minsLeft); }
   }
   function clearSleepTimer() {
+    try { window.playerCore && window.playerCore.clearSleepTimer(); } catch {}
     sleepTimerTarget = null;
     if (sleepTimerInterval) { clearInterval(sleepTimerInterval); sleepTimerInterval = null; }
     updateSleepTimerUI();
@@ -4865,10 +4886,8 @@ ${lines}
     const msLeft = sleepTimerTarget - now;
 
     if (msLeft <= 0) {
-      const a = document.getElementById('audio');
-      if (a) a.pause();
+      // PlayerCore сам поставит на паузу и вызовет onSleepTriggered
       clearSleepTimer();
-      NotificationSystem.info('Таймер сна: воспроизведение остановлено');
       return;
     }
 
