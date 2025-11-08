@@ -414,15 +414,6 @@ async function writeNetState(state) {
     }));
   } catch {}
 }
-// --- NET_STATE + лимиты для non-Range аудио ---
-async function writeNetState(state) {
-  try {
-    const cache = await caches.open(META_CACHE);
-    await cache.put(new Request('meta:net-state'), new Response(JSON.stringify(state || {}), {
-      headers: { 'content-type': 'application/json' }
-    }));
-  } catch {}
-}
 async function readNetState() {
   try {
     const cache = await caches.open(META_CACHE);
