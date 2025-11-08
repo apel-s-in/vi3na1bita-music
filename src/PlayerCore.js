@@ -20,6 +20,10 @@ export class PlayerCore {
     this._albumArtist = '';
     this._albumTitle = '';
     this._albumCover = '';
+    // Sleep timer
+    this._sleepTimerId = null;
+    this._sleepTargetTs = 0;
+
     this._installMediaSessionHandlersOnce();
   }
 
@@ -207,6 +211,32 @@ export class PlayerCore {
   }
   _stopTicker() {
     if (this._ticker) { clearInterval(this._ticker); this._ticker = null; }
+  }
+
+  // ===== Sleep timer API =====
+  setSleepTimer(ms) {
+    try { this.clearSleepTimer(); } catch {}
+    const n = Number(ms);
+    if (!Number.isFinite(n) || n <= 0) return;
+    this._sleepTargetTs = Date.now() + n;
+    this._sleepTimerId = setTimeout(() => {
+      this._sleepTimerId = null;
+      this._sleepTargetTs = 0;
+      try {
+        if (this.howl && !this._isPaused) this.howl.pause();
+      } catch {}
+      this._fire('onSleepTriggered', this.getCurrentTrack(), this.index);
+    }, n);
+  }
+  clearSleepTimer() {
+    if (this._sleepTimerId) {
+      try { clearTimeout(this._sleepTimerId); } catch {}
+      this._sleepTimerId = null;
+    }
+    this._sleepTargetTs = 0;
+  }
+  getSleepTimerTarget() {
+    return this._sleepTargetTs || 0;
   }
 
   _updateMediaSessionMeta() {
