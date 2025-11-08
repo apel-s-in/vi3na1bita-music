@@ -22,7 +22,7 @@
 
 Название репозитория: vi3na1bita-music
 Адрес репозитория: https://github.com/apel-s-in/vi3na1bita-music
-Описание: Статическое PWA (GitHub Pages): альбомы/галереи (albums/gallery/*/index.json), мини‑плеер, офлайн (Service Worker).
+# ПОЛНЫЙ И ДЕТАЛЬНЫЙ АНАЛИЗ ПРИЛОЖЕНИЯ.
 Проект делается и обслуживается средствами https://github.com/ (GitHub Pages + GitHub Actions).
 
 СТРУКТУРА ПРОЕКТА:
@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5c7d5908039c654aa9e0d634341ee7a8a8745a88.idx
-│   │       ├── pack-5c7d5908039c654aa9e0d634341ee7a8a8745a88.pack
-│   │       └── pack-5c7d5908039c654aa9e0d634341ee7a8a8745a88.rev
+│   │       ├── pack-664cb421a23617bc8f2b7299bab376e2a73f841f.idx
+│   │       ├── pack-664cb421a23617bc8f2b7299bab376e2a73f841f.pack
+│   │       └── pack-664cb421a23617bc8f2b7299bab376e2a73f841f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -224,7 +224,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-08 22:33:38 UTC
+Сгенерировано: 2025-11-08 22:49:59 UTC
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
 name: Generate .meta context
@@ -6750,7 +6750,7 @@ function metaBlock() {
   return [
     `Название репозитория: ${m.name}`,
     `Адрес репозитория: ${m.url}`,
-    "Описание: Статическое PWA (GitHub Pages): альбомы/галереи (albums/gallery/*/index.json), мини‑плеер, офлайн (Service Worker).",
+    "# ПОЛНЫЙ И ДЕТАЛЬНЫЙ АНАЛИЗ ПРИЛОЖЕНИЯ.",
     m.madeWith,
     ""
   ].join("\n");
