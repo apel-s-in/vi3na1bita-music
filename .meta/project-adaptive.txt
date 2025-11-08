@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4155cf57a23f3474dcd015f12a3e400ef25d2fda.idx
-│   │       ├── pack-4155cf57a23f3474dcd015f12a3e400ef25d2fda.pack
-│   │       └── pack-4155cf57a23f3474dcd015f12a3e400ef25d2fda.rev
+│   │       ├── pack-0e855fbc38b2807c138109f21ffe2ba4ec44b73a.idx
+│   │       ├── pack-0e855fbc38b2807c138109f21ffe2ba4ec44b73a.pack
+│   │       └── pack-0e855fbc38b2807c138109f21ffe2ba4ec44b73a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -223,7 +223,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-08 21:17:29 UTC
+Сгенерировано: 2025-11-08 21:24:30 UTC
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
 name: Generate .meta context
@@ -434,6 +434,10 @@ jobs:
 <html lang="ru">
 <head>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
+<script type="module">
+  import { PlayerCore } from './src/PlayerCore.js';
+  window.playerCore = new PlayerCore();
+</script>
   <meta charset="UTF-8" />
   <title>Витрина Разбита</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -3060,64 +3064,10 @@ jobs:
       nodes.forEach(n => { if (n !== keep) n.remove(); });
     } catch {}
   }
-  function showTrack(n, doPlay) {
-    stopAndCleanupAudio(getCurrentAudio());
-    __currentAudio = null;
-
-    const holder = document.getElementById('now-playing');
-    if (holder && holder.firstChild) holder.innerHTML = '';
-
-    playingAlbumKey = currentAlbumKey;
-    playingTracks = (config && Array.isArray(config.tracks)) ? config.tracks : null;
-    playingArtist = (config && config.artist) ? config.artist : '';
-    playingAlbumName = (config && config.albumName) ? config.albumName : '';
-    playingCover = (Array.isArray(coverGalleryArr) && coverGalleryArr[0]) ? (coverGalleryArr[0].formats?.full || coverGalleryArr[0].src || 'img/logo.png') : 'img/logo.png';
-    if (shuffleMode) createPlayingShuffledPlaylist();
-
-    currentTrack = n;
-    playingTrack = n;
-    buildTrackList();
-
-    const audio = document.getElementById('audio');
-    if (!audio) return;
-    __currentAudio = audio;
-
-    try {
-      audio.muted = false;
-      const saved = parseFloat(localStorage.getItem('playerVolume'));
-      audio.volume = Number.isFinite(saved) && saved > 0 ? saved : 1;
-    } catch {}
-
-    if (doPlay) {
-      audio.currentTime = 0;
-      const tryPlay = () => {
-        const p = audio.play();
-        if (p && p.catch) p.catch(()=>{});
-        // Фейд‑ин 180 мс
-        try {
-          const targetVol = Math.max(0, Math.min(1, (parseFloat(localStorage.getItem('playerVolume')) || audio.volume || 1)));
-          if (targetVol > 0 && !audio.muted) {
-            const prev = targetVol;
-            audio.volume = 0.001;
-            const t0 = performance.now(), dur = 180;
-            const step = (ts) => {
-              const k = Math.min(1, (ts - t0) / dur);
-              audio.volume = prev * k;
-              if (k < 1) requestAnimationFrame(step);
-            };
-            requestAnimationFrame(step);
-          }
-        } catch {}
-      };
-      if (isNaN(audio.duration) || !isFinite(audio.duration)) {
-        audio.addEventListener('canplay', tryPlay, { once: true }); setTimeout(tryPlay, 200);
-      } else { tryPlay(); }
-    }
-
-    applyMiniModeUI();
-    updateMiniNowHeader();
-    updateNextUpLabel();
-  }
+function showTrack(n, doPlay) {
+  if (doPlay) window.playerCore.play(n);
+  else window.playerCore.pause();
+}
   function renderLyricsBlock() {
     const block = document.getElementById('lyricsplayerblock') || document.getElementById('now-playing');
     if (!block) return;
