@@ -146,7 +146,9 @@ export class PlayerCore {
       artist: t && t.artist || this._albumArtist || '',
       album: t && t.album || this._albumTitle || '',
       cover: t && t.cover || this._albumCover || '',
-      lyrics: t && t.lyrics || ''
+      lyrics: t && t.lyrics || '',
+      src: t && t.src || '',
+      fulltext: t && t.fulltext || ''
     }));
   }
 
