@@ -680,36 +680,6 @@ self.addEventListener('message', (event) => {
       }
     })());
   }
-  if (data.type === 'GET_SW_INFO') {
-    event.waitUntil((async () => {
-      try {
-        const [profile, cfg, net, mediaMap, offList] = await Promise.all([
-          readOfflineProfile().catch(()=>'default'),
-          readSwConfig().catch(()=>({})),
-          readNetState().catch(()=>({})),
-          readMediaMap().catch(()=>({ totalSize: 0, items: {} })),
-          readOfflineList().catch(()=>[])
-        ]);
-        const info = {
-          version: SW_VERSION,
-          profile,
-          config: cfg,
-          net,
-          media: {
-            totalBytes: Number(mediaMap.totalSize || 0),
-            items: mediaMap.items ? Object.keys(mediaMap.items).length : 0
-          },
-          offline: {
-            profile,
-            count: Array.isArray(offList) ? offList.length : 0
-          }
-        };
-        await postToAllClients({ type: 'SW_INFO', info });
-      } catch {
-        await postToAllClients({ type: 'SW_INFO', info: { version: SW_VERSION } });
-      }
-    })());
-  }
     const list = Array.isArray(data.urls) ? data.urls
                 : (data.url ? [data.url] : []);
     if (!list.length) return;
