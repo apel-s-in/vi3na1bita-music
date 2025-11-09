@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4b55e708735c768c04d01cc71389269f003b5833.idx
-│   │       ├── pack-4b55e708735c768c04d01cc71389269f003b5833.pack
-│   │       └── pack-4b55e708735c768c04d01cc71389269f003b5833.rev
+│   │       ├── pack-9379fcc1a3e08274cc51d84a272b1840468e2769.idx
+│   │       ├── pack-9379fcc1a3e08274cc51d84a272b1840468e2769.pack
+│   │       └── pack-9379fcc1a3e08274cc51d84a272b1840468e2769.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -219,9 +219,10 @@ vi3na1bita-music/
 │   │   ├── validate-content.mjs
 │   │   └── validate-manifest.mjs
 │   ├── e2e/
-│   │   └── smoke.spec.jsscripts/
-│   │       └── e2e/
-│   │           └── smoke.spec.js
+│   │   ├── smoke.spec.jsscripts/
+│   │   │   └── e2e/
+│   │   │       └── smoke.spec.js
+│   │   └── player.spec.js
 │   ├── energy.js
 │   └── player-adapter.js
 ├── src/
@@ -237,7 +238,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-09 12:27:02 UTC
+Сгенерировано: 2025-11-09 12:27:22 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6188,6 +6189,46 @@ if (errors.length) {
   process.exit(2);
 }
 console.log('Manifest validation OK');
+
+//=================================================
+// FILE: /scripts/e2e/player.spec.js
+// @ts-check
+import { test, expect } from '@playwright/test';
+
+const BASE = process.env.BASE_URL || 'http://127.0.0.1:4173';
+
+test('play track, toggle favorites-only and sleep timer UI', async ({ page }) => {
+  await page.goto(`${BASE}/index.html`, { waitUntil: 'load' });
+
+  // Вход по промокоду
+  await page.fill('#promo-inp', 'VITRINA2025');
+  await page.click('#promo-btn');
+  await expect(page.locator('#main-block')).toBeVisible();
+
+  // Дождаться списка альбомов и клик по первой строке треклиста
+  await page.waitForSelector('#track-list .track', { timeout: 10000 });
+  const firstTrack = page.locator('#track-list .track').first();
+  await firstTrack.click();
+
+  // Появился блок плеера и кнопка Play/Pause есть
+  await expect(page.locator('#lyricsplayerblock')).toBeVisible();
+  await expect(page.locator('#play-pause-icon')).toBeVisible();
+
+  // Включаем фильтр "только избранные" (кнопка в плеере)
+  await page.click('#favorites-btn');
+  const favBtn = page.locator('#favorites-btn');
+  await expect(favBtn).toHaveClass(/favorites-active/);
+
+  // Таймер сна: открыть меню и выбрать "15 минут", затем выключить
+  await page.click('#sleep-timer-btn');
+  await page.click('.sleep-menu-item:has-text("15 минут")');
+  // Бейдж должен появиться
+  await expect(page.locator('#sleep-timer-badge')).toBeVisible();
+  // Выключим
+  await page.click('#sleep-timer-btn');
+  await page.click('.sleep-menu-item:has-text("Выключить")');
+  await expect(page.locator('#sleep-timer-badge')).toBeHidden();
+});
 
 //=================================================
 // FILE: /scripts/e2e/smoke.spec.jsscripts/e2e/smoke.spec.js
