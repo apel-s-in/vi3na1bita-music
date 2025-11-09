@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-aa4c43a1395c755d5b8fc041154eb91eac0543b9.idx
-│   │       ├── pack-aa4c43a1395c755d5b8fc041154eb91eac0543b9.pack
-│   │       └── pack-aa4c43a1395c755d5b8fc041154eb91eac0543b9.rev
+│   │       ├── pack-783da85b4dcf45c40716b31523d1961cc790b94f.idx
+│   │       ├── pack-783da85b4dcf45c40716b31523d1961cc790b94f.pack
+│   │       └── pack-783da85b4dcf45c40716b31523d1961cc790b94f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -243,7 +243,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-09 13:48:37 UTC
+Сгенерировано: 2025-11-09 13:50:09 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6006,6 +6006,41 @@ test('play track, toggle favorites-only and sleep timer UI', async ({ page }) =>
   await page.click('.sleep-menu-item:has-text("Выключить")');
   await expect(page.locator('#sleep-timer-badge')).toBeHidden();
 });
+
+test('favorites view: add to favorites, play and verify mini-mode when browsing other album', async ({ page }) => {
+  const BASE = process.env.BASE_URL || 'http://127.0.0.1:4173';
+  await page.goto(`${BASE}/index.html`, { waitUntil: 'load' });
+
+  // Войти по промокоду
+  await page.fill('#promo-inp', 'VITRINA2025');
+  await page.click('#promo-btn');
+  await page.waitForSelector('#track-list .track', { timeout: 10000 });
+
+  // Отметить первый трек как избранный
+  const firstTrack = page.locator('#track-list .track').first();
+  await firstTrack.hover();
+  const star = firstTrack.locator('.like-star');
+  await star.click();
+
+  // Открыть представление «Избранное» (иконка с data-akey="__favorites__")
+  await page.click('.album-icon[data-akey="__favorites__"]');
+
+  // Кликнуть по первой строке в «Избранном», если есть
+  await page.waitForSelector('#track-list .track', { timeout: 10000 });
+  const favFirst = page.locator('#track-list .track').first();
+  await favFirst.click();
+
+  // Плеер видим
+  await expect(page.locator('#lyricsplayerblock')).toBeVisible();
+
+  // Переключиться на другой альбом (например, второй значок, не Favorites и не News)
+  const otherIcon = page.locator('.album-icon').filter({ hasNot: page.locator('[data-akey="__favorites__"]') }).nth(1);
+  await otherIcon.click();
+
+  // Проверить, что появился mini-режим (мини-шапка)
+  await expect(page.locator('#mini-now')).toBeVisible();
+});
+
 
 //=================================================
 // FILE: /scripts/e2e/smoke.spec.jsscripts/e2e/smoke.spec.js
