@@ -122,7 +122,30 @@ export function exitLyricsFullscreenIfAny() {
     document.exitFullscreen().catch(()=>{});
   }
 }
+// Делегирование кликов по кнопкам модалки лирики (без inline)
+(function installLyricsModalDelegation(){
+  if (window.__lyricsModalDelegationInstalled) return;
+  window.__lyricsModalDelegationInstalled = true;
 
+  document.addEventListener('click', (e) => {
+    const target = e.target instanceof Element ? e.target : null;
+    if (!target) return;
+    const modal = target.closest('#lyrics-text-modal');
+    if (!modal) return;
+
+    const actionBtn = target.closest('[data-action]');
+    if (!actionBtn) return;
+    const act = actionBtn.getAttribute('data-action');
+    switch (act) {
+      case 'copy-lyrics':      return copyLyricsFromModal();
+      case 'share-lyrics':     return shareLyricsFromModal();
+      case 'zoom--':           return zoomLyrics(-1);
+      case 'zoom++':           return zoomLyrics(1);
+      case 'fs-toggle':        return toggleLyricsFullscreen();
+      case 'close-lyrics-modal': return closeLyricsModal();
+    }
+  });
+})();
 window.UIModals = {
   openLyricsModal, closeLyricsModal, buildFallbackLyricsText,
   copyLyricsFromModal, shareLyricsFromModal, zoomLyrics,
