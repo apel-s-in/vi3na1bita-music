@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-03f80cd2a3f44973007b4e99965375169ca4f9f0.idx
-│   │       ├── pack-03f80cd2a3f44973007b4e99965375169ca4f9f0.pack
-│   │       └── pack-03f80cd2a3f44973007b4e99965375169ca4f9f0.rev
+│   │       ├── pack-9d0a063d92c3fae0f4fc17883cad1bc3f6fbb624.idx
+│   │       ├── pack-9d0a063d92c3fae0f4fc17883cad1bc3f6fbb624.pack
+│   │       └── pack-9d0a063d92c3fae0f4fc17883cad1bc3f6fbb624.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -227,6 +227,7 @@ vi3na1bita-music/
 │   ├── ui/
 │   │   ├── mini.js
 │   │   ├── modals.js
+│   │   ├── notify.js
 │   │   └── tracks.js
 │   ├── energy.js
 │   └── player-adapter.js
@@ -243,7 +244,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-09 14:42:05 UTC
+Сгенерировано: 2025-11-09 14:42:37 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6520,6 +6521,50 @@ window.UIModals = {
   copyLyricsFromModal, shareLyricsFromModal, zoomLyrics,
   toggleLyricsFullscreen, exitLyricsFullscreenIfAny
 };
+
+//=================================================
+// FILE: /scripts/ui/notify.js
+// scripts/ui/notify.js (ESM)
+// Модуль уведомлений: очередь + requestIdleCallback, API совместим с прежним NotificationSystem.
+
+(function(){
+  const hasRIC = typeof window.requestIdleCallback === 'function';
+  const idle = (cb) => hasRIC ? window.requestIdleCallback(cb, { timeout: 1000 }) : setTimeout(cb, 0);
+
+  const queue = [];
+  let showing = false;
+
+  async function showToast(message, type = 'info', duration = 3000) {
+    queue.push({ message, type, duration });
+    if (showing) return;
+    showing = true;
+    while (queue.length) {
+      const { message, type, duration } = queue.shift();
+      await new Promise(res => idle(res));
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.innerHTML = `<div class="toast-content"><span class="toast-emoji" aria-hidden="true"></span><span class="toast-text">${message}</span></div>`;
+      document.body.appendChild(toast);
+      await new Promise(r => setTimeout(r, 50));
+      toast.classList.add('show');
+      await new Promise(r => setTimeout(r, duration));
+      toast.classList.remove('show');
+      await new Promise(r => setTimeout(r, 300));
+      toast.remove();
+    }
+    showing = false;
+  }
+
+  const NotificationSystem = {
+    info(msg){ showToast(msg, 'info'); },
+    success(msg){ showToast(msg, 'success'); },
+    error(msg){ showToast(msg, 'error', 5000); },
+    warning(msg){ showToast(msg, 'warning', 4000); },
+    offline(msg){ showToast(msg, 'offline'); }
+  };
+
+  window.NotificationSystem = NotificationSystem;
+})();
 
 //=================================================
 // FILE: /scripts/ui/tracks.js
