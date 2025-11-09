@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-305d4012bd436e2a77690c761624e371947cbcc9.idx
-│   │       ├── pack-305d4012bd436e2a77690c761624e371947cbcc9.pack
-│   │       └── pack-305d4012bd436e2a77690c761624e371947cbcc9.rev
+│   │       ├── pack-5fe3ede79f839017cb88d46a923ab112dbba36fa.idx
+│   │       ├── pack-5fe3ede79f839017cb88d46a923ab112dbba36fa.pack
+│   │       └── pack-5fe3ede79f839017cb88d46a923ab112dbba36fa.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -249,7 +249,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-09 22:13:56 UTC
+Сгенерировано: 2025-11-09 22:16:04 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5052,36 +5052,6 @@ self.addEventListener('message', (event) => {
             });
           }
         } catch {}
-      }
-    })());
-  }
-  if (data.type === 'GET_SW_INFO') {
-    event.waitUntil((async () => {
-      try {
-        const [profile, cfg, net, mediaMap, offList] = await Promise.all([
-          readOfflineProfile().catch(()=>'default'),
-          readSwConfig().catch(()=>({})),
-          readNetState().catch(()=>({})),
-          readMediaMap().catch(()=>({ totalSize: 0, items: {} })),
-          readOfflineList().catch(()=>[])
-        ]);
-        const info = {
-          version: SW_VERSION,
-          profile,
-          config: cfg,
-          net,
-          media: {
-            totalBytes: Number(mediaMap.totalSize || 0),
-            items: mediaMap.items ? Object.keys(mediaMap.items).length : 0
-          },
-          offline: {
-            profile,
-            count: Array.isArray(offList) ? offList.length : 0
-          }
-        };
-        await postToAllClients({ type: 'SW_INFO', info });
-      } catch {
-        await postToAllClients({ type: 'SW_INFO', info: { version: SW_VERSION } });
       }
     })());
   }
