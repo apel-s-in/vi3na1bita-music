@@ -627,23 +627,28 @@ self.addEventListener('message', (event) => {
   if (data.type === 'OFFLINE_SET_PROFILE') {
     event.waitUntil(writeOfflineProfile(data.profile || 'default'));
   }
-  if (data.type === 'PREFETCH_AUDIO' && data.url) {
-    // Приоритетная докачка текущего трека (200-full) в MEDIA_CACHE
+  if (data.type === 'PREFETCH_AUDIO') {
+    // Поддерживаем одиночный url и массив urls (обратная совместимость)
+    const list = Array.isArray(data.urls) ? data.urls
+                : (data.url ? [data.url] : []);
+    if (!list.length) return;
     event.waitUntil((async () => {
-      try {
-        const req = new Request(data.url, { cache: 'reload', keepalive: true });
-        const res = await fetch(req);
-        if (res && res.ok && res.status === 200 && await shouldCacheNonRangeAudio(res)) {
-          const cache = await caches.open(MEDIA_CACHE);
-          await cache.put(req, res.clone());
-          const size = bytesFromHeader(res) || 0;
-          await upsertMediaItem(req.url, {
-            size,
-            etag: res.headers.get('etag'),
-            lastModified: res.headers.get('last-modified')
-          });
-        }
-      } catch {}
+      for (const u of list) {
+        try {
+          const req = new Request(u, { cache: 'reload', keepalive: true });
+          const res = await fetch(req);
+          if (res && res.ok && res.status === 200 && await shouldCacheNonRangeAudio(res)) {
+            const cache = await caches.open(MEDIA_CACHE);
+            await cache.put(req, res.clone());
+            const size = bytesFromHeader(res) || 0;
+            await upsertMediaItem(req.url, {
+              size,
+              etag: res.headers.get('etag'),
+              lastModified: res.headers.get('last-modified')
+            });
+          }
+        } catch {}
+      }
     })());
   }
 });
