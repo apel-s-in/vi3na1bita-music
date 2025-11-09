@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c49c1c0d9fcf2d395be847da59b71c5333934b38.idx
-│   │       ├── pack-c49c1c0d9fcf2d395be847da59b71c5333934b38.pack
-│   │       └── pack-c49c1c0d9fcf2d395be847da59b71c5333934b38.rev
+│   │       ├── pack-fde0a041224f9a21d7159c60e70e3c988db9a740.idx
+│   │       ├── pack-fde0a041224f9a21d7159c60e70e3c988db9a740.pack
+│   │       └── pack-fde0a041224f9a21d7159c60e70e3c988db9a740.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -74,7 +74,8 @@ vi3na1bita-music/
 │   └── index
 ├── .github/
 │   └── workflows/
-│       └── generate-context.yml
+│       ├── generate-context.yml
+│       └── validate.yml
 ├── .meta/
 │   └── .gitkeep
 ├── albums/
@@ -227,7 +228,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-09 00:03:24 UTC
+Сгенерировано: 2025-11-09 00:04:00 UTC
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
 name: Generate .meta context
@@ -270,6 +271,33 @@ jobs:
           file_pattern: ".meta/**"
           commit_user_name: github-actions[bot]
           commit_user_email: github-actions[bot]@users.noreply.github.com
+
+//=================================================
+// FILE: /.github/workflows/validate.yml
+name: Validate manifest and SW
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run manifest validator
+        run: node scripts/ci/validate-manifest.mjs
+
+      - name: Run SW linter
+        run: node scripts/ci/lint-sw.mjs
 
 //=================================================
 // FILE: /albums.json
