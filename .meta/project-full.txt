@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f3cdd5f05bd4e808d8257d9d8276d5ffc4a938db.idx
-│   │       ├── pack-f3cdd5f05bd4e808d8257d9d8276d5ffc4a938db.pack
-│   │       └── pack-f3cdd5f05bd4e808d8257d9d8276d5ffc4a938db.rev
+│   │       ├── pack-8b062bf7db70ad9e14c4780097bfd349dafd9a55.idx
+│   │       ├── pack-8b062bf7db70ad9e14c4780097bfd349dafd9a55.pack
+│   │       └── pack-8b062bf7db70ad9e14c4780097bfd349dafd9a55.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -244,7 +244,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-09 19:46:15 UTC
+Сгенерировано: 2025-11-09 19:47:06 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5646,23 +5646,28 @@ self.addEventListener('message', (event) => {
   if (data.type === 'OFFLINE_SET_PROFILE') {
     event.waitUntil(writeOfflineProfile(data.profile || 'default'));
   }
-  if (data.type === 'PREFETCH_AUDIO' && data.url) {
-    // Приоритетная докачка текущего трека (200-full) в MEDIA_CACHE
+  if (data.type === 'PREFETCH_AUDIO') {
+    // Поддерживаем одиночный url и массив urls (обратная совместимость)
+    const list = Array.isArray(data.urls) ? data.urls
+                : (data.url ? [data.url] : []);
+    if (!list.length) return;
     event.waitUntil((async () => {
-      try {
-        const req = new Request(data.url, { cache: 'reload', keepalive: true });
-        const res = await fetch(req);
-        if (res && res.ok && res.status === 200 && await shouldCacheNonRangeAudio(res)) {
-          const cache = await caches.open(MEDIA_CACHE);
-          await cache.put(req, res.clone());
-          const size = bytesFromHeader(res) || 0;
-          await upsertMediaItem(req.url, {
-            size,
-            etag: res.headers.get('etag'),
-            lastModified: res.headers.get('last-modified')
-          });
-        }
-      } catch {}
+      for (const u of list) {
+        try {
+          const req = new Request(u, { cache: 'reload', keepalive: true });
+          const res = await fetch(req);
+          if (res && res.ok && res.status === 200 && await shouldCacheNonRangeAudio(res)) {
+            const cache = await caches.open(MEDIA_CACHE);
+            await cache.put(req, res.clone());
+            const size = bytesFromHeader(res) || 0;
+            await upsertMediaItem(req.url, {
+              size,
+              etag: res.headers.get('etag'),
+              lastModified: res.headers.get('last-modified')
+            });
+          }
+        } catch {}
+      }
     })());
   }
 });
