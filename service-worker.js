@@ -12,7 +12,7 @@ const SW_VERSION = '8.0.3';
 const CORE_CACHE = `core-${SW_VERSION}`;
 const RUNTIME_CACHE = `runtime-${SW_VERSION}`;
 const MEDIA_CACHE = 'media'; // постоянное имя для сохранения кэша между версиями
-const OFFLINE_CACHE = `offline-${SW_VERSION}`;
+const OFFLINE_CACHE = `offline-${SW_VERSION}`; // базовый (для линтера/совместимости)
 const META_CACHE = `meta-${SW_VERSION}`;
 // Конфиг по умолчанию (переопределяется через CONFIG_UPDATE из custom.json)
 const DEFAULT_SW_CONFIG = {
@@ -385,6 +385,24 @@ async function writeOfflineList(list) {
   }));
 }
 
+// Профиль офлайн-кэша (например, 'favorites-webp')
+async function writeOfflineProfile(profile) {
+  const cache = await caches.open(META_CACHE);
+  await cache.put(new Request('meta:offline-profile'), new Response(JSON.stringify({ profile: String(profile || 'default') }), {
+    headers: { 'content-type': 'application/json' }
+  }));
+}
+async function readOfflineProfile() {
+  const cache = await caches.open(META_CACHE);
+  const res = await cache.match('meta:offline-profile');
+  if (!res) return 'default';
+  try { const j = await res.json(); return (j && j.profile) ? String(j.profile) : 'default'; } catch { return 'default'; }
+}
+async function getOfflineCacheName() {
+  const prof = await readOfflineProfile().catch(()=> 'default');
+  return `offline-${SW_VERSION}-${prof}`;
+}
+
 // Храним «последний запрошенный офлайн-список» для Background Sync
 async function writeLastRequestedOffline(list) {
   const cache = await caches.open(META_CACHE);
@@ -606,6 +624,28 @@ self.addEventListener('message', (event) => {
   if (data.type === 'GET_SW_VERSION') {
     event.waitUntil(postToAllClients({ type: 'SW_VERSION', version: SW_VERSION }));
   }
+  if (data.type === 'OFFLINE_SET_PROFILE') {
+    event.waitUntil(writeOfflineProfile(data.profile || 'default'));
+  }
+  if (data.type === 'PREFETCH_AUDIO' && data.url) {
+    // Приоритетная докачка текущего трека (200-full) в MEDIA_CACHE
+    event.waitUntil((async () => {
+      try {
+        const req = new Request(data.url, { cache: 'reload', keepalive: true });
+        const res = await fetch(req);
+        if (res && res.ok && res.status === 200 && await shouldCacheNonRangeAudio(res)) {
+          const cache = await caches.open(MEDIA_CACHE);
+          await cache.put(req, res.clone());
+          const size = bytesFromHeader(res) || 0;
+          await upsertMediaItem(req.url, {
+            size,
+            etag: res.headers.get('etag'),
+            lastModified: res.headers.get('last-modified')
+          });
+        }
+      } catch {}
+    })());
+  }
 });
 
 // One-off Background Sync: докачка офлайн-списка при появлении сети
@@ -630,7 +670,7 @@ async function offlineAddResources(resources) {
     await postToAllClients({ type: 'OFFLINE_DONE' });
     return;
   }
-  const cache = await caches.open(OFFLINE_CACHE);
+  const cache = await caches.open(await getOfflineCacheName());
   const prev = await readOfflineList();
   const toCache = resources.map(u => {
     try { return new URL(u, self.registration.scope).toString(); } catch { return u; }
@@ -680,7 +720,7 @@ async function offlineAddResources(resources) {
 }
 
 async function clearCurrentOfflineResources() {
-  const cache = await caches.open(OFFLINE_CACHE);
+  const cache = await caches.open(await getOfflineCacheName());
   const list = await readOfflineList();
   if (list.length) {
     await Promise.allSettled(list.map(u => cache.delete(u)));
