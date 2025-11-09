@@ -1,6 +1,7 @@
 // scripts/player-adapter.js (ESM)
-// Адаптер LocalStorage ↔ PlayerCore: первичная инициализация громкости/режимов
-// и реакция на изменения LocalStorage (best-effort). Никаких UI-зависимостей.
+// Адаптер LocalStorage ↔ PlayerCore: первичная инициализация громкости/режимов,
+// реакция на изменения LocalStorage (best-effort). Никаких UI-зависимостей.
+// Дополнительно: PlayerState (save/restore) и applyState (seek/play) для восстановления.
 
 function initWhenReady() {
   const pc = window.playerCore;
@@ -65,6 +66,45 @@ function installAutoSave(pc) {
     }
   });
 }
+
+// PlayerState и applyState
+export const PlayerState = {
+  key: 'playerStateV1',
+  save() {
+    try {
+      const pc = window.playerCore;
+      const st = {
+        album: window.playingAlbumKey || window.currentAlbumKey || null,
+        trackIndex: (typeof window.playingTrack === 'number' && window.playingTrack >= 0) ? window.playingTrack : window.currentTrack,
+        position: pc ? Math.floor(pc.getSeek?.() || 0) : 0,
+        volume: pc ? (pc.getVolume?.() ?? 1) : 1,
+        shuffle: localStorage.getItem('shuffleMode') === '1',
+        repeat:  localStorage.getItem('repeatMode') === '1',
+        favoritesOnly: localStorage.getItem('favoritesOnlyMode') === '1',
+        lyricsMode: (function(){ try { return localStorage.getItem('lyricsViewMode') || 'normal'; } catch { return 'normal'; } })()
+      };
+      localStorage.setItem(this.key, JSON.stringify(st));
+    } catch {}
+  },
+  restore() {
+    try { const raw = localStorage.getItem(this.key); return raw ? JSON.parse(raw) : null; }
+    catch { return null; }
+  }
+};
+export function applyState(state) {
+  try {
+    const pc = window.playerCore;
+    if (!pc) return;
+    if (typeof state.volume === 'number') pc.setVolume(state.volume);
+    if (typeof state.position === 'number') pc.seek(state.position || 0);
+    if (state.wasPlaying === true && Number.isInteger(state.trackIndex)) {
+      pc.play(state.trackIndex);
+    }
+  } catch {}
+}
+// Экспорт в window для index.html
+window.PlayerState = PlayerState;
+window.PlayerAdapter = { applyState };
 
 initWhenReady();
 (function waitAndInstall(){
