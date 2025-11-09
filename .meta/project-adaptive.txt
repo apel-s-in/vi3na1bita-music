@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e10aeefd3e5b2f308f78707b1de9e430b366828a.idx
-│   │       ├── pack-e10aeefd3e5b2f308f78707b1de9e430b366828a.pack
-│   │       └── pack-e10aeefd3e5b2f308f78707b1de9e430b366828a.rev
+│   │       ├── pack-29be6befaa88fab9775ac0bfbc8845c4abdaf133.idx
+│   │       ├── pack-29be6befaa88fab9775ac0bfbc8845c4abdaf133.pack
+│   │       └── pack-29be6befaa88fab9775ac0bfbc8845c4abdaf133.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -248,7 +248,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-09 21:29:46 UTC
+Сгенерировано: 2025-11-09 21:30:33 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7136,6 +7136,8 @@ window.showSystemInfo = showSystemInfo;
 export function buildTrackList() {
   const list = document.getElementById('track-list');
   if (!list) return;
+  // На всякий случай — снимем скрытие
+  try { list.style.display = ''; } catch {}
 
   const cfg = window.config || null;
   const tracks = Array.isArray(cfg?.tracks) ? cfg.tracks : [];
