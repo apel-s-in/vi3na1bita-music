@@ -2602,7 +2602,7 @@ function updatePlayerCorePlaylistFromConfig() {
     try {
       const nodes = Array.from(document.querySelectorAll('#lyricsplayerblock'));
       if (nodes.length <= 1) return;
-      let keep = nodes.find(n => n.querySelector('#audio')) || nodes[0];
+      let keep = nodes[0];
       nodes.forEach(n => { if (n !== keep) n.remove(); });
     } catch {}
   }
@@ -2636,8 +2636,7 @@ function showTrack(n, doPlay) {
     const block = document.getElementById('lyricsplayerblock') || document.getElementById('now-playing');
     if (!block) return;
 
-    // Берём существующий audio (если уже был), чтобы НЕ пересоздавать элемент
-    const existingAudio = document.getElementById('audio');
+    // Аудио-элемент не используется: источником управляет Howler (PlayerCore)
 
     block.innerHTML = `
       <div class="mini-now" id="mini-now" onclick="openPlayingAlbumFromMini(event)">
@@ -2900,8 +2899,7 @@ function showTrack(n, doPlay) {
       const volume = Number.isFinite(savedVolume) ? savedVolume : 1;
       volumeSlider.value = Math.round(volume * 100);
       updateVolumeUI(volume);
-      const audio = document.getElementById('audio');
-      if (audio) audio.volume = volume;
+      // Громкость источника применена через PlayerCore.setVolume
     }
   }
   /* onAudioMetadataLoaded removed — позиция/длительность обновляются через PlayerCore тикер */
@@ -3352,13 +3350,14 @@ function __toggleFavoritesOnly_impl(){
     }, 200);
   }
   function attachPlaybackStateListeners() {
-    // Обработчики onplay/onpause назначаются в attachAudioEventListeners(),
-    // чтобы не перетрёпывать setPlaybackLocks()/startPositionUpdates().
-    // Здесь лишь синхронизируем текущее состояние в Media Session один раз.
-    const a = document.getElementById('audio');
-    if (!a || !('mediaSession' in navigator)) return;
-    try { navigator.mediaSession.playbackState = a.paused ? 'paused' : 'playing'; } catch {}
+    if (!('mediaSession' in navigator)) return;
+    try {
+      const pc = window.playerCore;
+      const playing = pc && pc.isPlaying && pc.isPlaying();
+      navigator.mediaSession.playbackState = playing ? 'playing' : 'paused';
+    } catch {}
   }
+
   function toggleLikePlaying() {
     if (!playingTracks || playingTrack < 0) return;
     let albumForLike = playingAlbumKey;
@@ -3659,7 +3658,7 @@ function __toggleFavoritesOnly_impl(){
     const hasModal = document.querySelector('.modal-bg.active');
     if (e.key==='Escape' && hasModal){ e.preventDefault(); document.querySelectorAll('.modal-bg.active').forEach(m=>m.classList.remove('active')); return; }
     if (hasModal) return;
-    const audio=document.getElementById('audio');
+    // source: Howler (PlayerCore)
     switch(e.key.toUpperCase()){
       case ' ': case 'K': e.preventDefault(); togglePlayPause(); break;
       case 'X': e.preventDefault(); stopPlayback(); break;
@@ -3728,7 +3727,7 @@ function __toggleFavoritesOnly_impl(){
         const timeParam = parseInt(params.get('time')||'0', 10);
         if (!isNaN(timeParam) && timeParam > 0) {
           setTimeout(()=> {
-            const a=document.getElementById('audio'); if (a) a.currentTime = timeParam;
+            try { window.playerCore && window.playerCore.seek && window.playerCore.seek(timeParam); } catch {}
           }, 600);
         }
         setTimeout(()=>document.getElementById(`trk${idx}`)?.scrollIntoView({behavior:'smooth',block:'center'}), 300);
@@ -4054,30 +4053,47 @@ ${lines}
   }
   function initAudioContext() {
     try {
-      const audioEl = document.getElementById('audio');
-      if (!audioEl) return;
+      // Если уже есть анализатор — ничего не делаем
+      if (analyser && audioContext) return;
+
+      const pc = window.playerCore;
+      const howl = pc && pc.howl ? pc.howl : null;
+
+      // 1) WebAudio-режим Howler: используем его контекст и masterGain
+      if (window.Howler && window.Howler.ctx) {
+        audioContext = window.Howler.ctx;
+        if (!analyser) {
+          analyser = audioContext.createAnalyser();
+          analyser.fftSize = 256;
+        }
+        // Подключаем masterGain → analyser (параллельно с основным выводом)
+        if (window.Howler.masterGain && typeof window.Howler.masterGain.connect === 'function') {
+          try { window.Howler.masterGain.connect(analyser); } catch {}
+        }
+        return;
+      }
+
+      // 2) Fallback (html5=true внутри Howler): MediaElementSource из внутреннего узла
       if (!audioContext) {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
       }
       if (audioContext.state === 'suspended') { audioContext.resume().catch(()=>{}); }
-      // Отвяжем старые узлы, если были
-      try { if (audioSource) audioSource.disconnect(); } catch {}
-      audioSource = null;
 
       if (!analyser) {
         analyser = audioContext.createAnalyser();
         analyser.fftSize = 256;
       }
 
-      // ВАЖНО: подключаем источник только к анализатору, НЕ к destination!
-      // Так аудио продолжит играть через «родной» вывод элемента <audio>,
-      // а WebAudio в фоне (iOS) может быть приостановлен — без потери звука.
-      audioSource = audioContext.createMediaElementSource(audioEl);
-      audioSource.connect(analyser);
-      // Ничего не подключаем к audioContext.destination — исключаем влияние WebAudio на звук.
-
-    } catch (e) { /* без паники, просто не будет пульса */ }
+      // Достаём HTMLAudioElement из Howler (html5 путь)
+      const node = howl && howl._sounds && howl._sounds[0] && howl._sounds[0]._node;
+      if (node && !audioSource) {
+        audioSource = audioContext.createMediaElementSource(node);
+        audioSource.connect(analyser);
+        // Не подключаем к destination — звук и так идёт из элемента
+      }
+    } catch {}
   }
+
   function startLogoPulsation() {
     const logo = document.getElementById('logo-bottom');
     if (!logo) return;
@@ -4116,11 +4132,18 @@ ${lines}
     try { if (audioSource) { audioSource.disconnect(); audioSource = null; } } catch {}
     try { if (analyser) { analyser.disconnect(); analyser = null; } } catch {}
     try {
-      if (audioContext && audioContext.state !== 'closed' && typeof audioContext.close === 'function') {
+      const howlerCtx = (window.Howler && window.Howler.ctx) ? window.Howler.ctx : null;
+      if (audioContext && audioContext !== howlerCtx && audioContext.state !== 'closed' && typeof audioContext.close === 'function') {
         audioContext.close().catch(()=>{});
       }
     } catch {}
-    audioContext = null;
+    // Если используем Howler.ctx — не обнуляем его
+    if (window.Howler && window.Howler.ctx && audioContext === window.Howler.ctx) {
+      analyser = null;
+      audioSource = null;
+    } else {
+      audioContext = null;
+    }
   }
 
   /* ====== Ультра‑эконом: переключение/применение ====== */
