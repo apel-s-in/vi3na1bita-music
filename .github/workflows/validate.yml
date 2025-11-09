@@ -22,3 +22,7 @@ jobs:
 
       - name: Run SW linter
         run: node scripts/ci/lint-sw.mjs
+
+      - name: Validate albums and galleries
+        run: node scripts/ci/validate-content.mjs
+
