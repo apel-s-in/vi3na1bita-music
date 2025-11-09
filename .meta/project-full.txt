@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-08f20a5a61aa759655e16c86b6087e9511f8e662.idx
-│   │       ├── pack-08f20a5a61aa759655e16c86b6087e9511f8e662.pack
-│   │       └── pack-08f20a5a61aa759655e16c86b6087e9511f8e662.rev
+│   │       ├── pack-b17e13637d0d05f1b00921a7b315ac1ced148a8a.idx
+│   │       ├── pack-b17e13637d0d05f1b00921a7b315ac1ced148a8a.pack
+│   │       └── pack-b17e13637d0d05f1b00921a7b315ac1ced148a8a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -231,7 +231,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-09 00:15:44 UTC
+Сгенерировано: 2025-11-09 00:16:11 UTC
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
 name: Generate .meta context
@@ -301,6 +301,10 @@ jobs:
 
       - name: Run SW linter
         run: node scripts/ci/lint-sw.mjs
+
+      - name: Validate albums and galleries
+        run: node scripts/ci/validate-content.mjs
+
 
 //=================================================
 // FILE: /albums.json
