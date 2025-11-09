@@ -191,8 +191,26 @@ export function renderLyricsBlock() {
       lab.style.opacity = '.75';
       lab.style.fontSize = '12px';
 
+      const unlock = document.createElement('button');
+      unlock.type = 'button';
+      unlock.id = 'audio-output-unlock';
+      unlock.title = 'Показать названия устройств';
+      unlock.textContent = 'LBL';
+      unlock.style.cssText = 'height:32px;padding:0 8px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#cfe3ff;cursor:pointer;display:none;';
+      unlock.addEventListener('click', async () => {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          stream.getTracks().forEach(t => t.stop());
+          window.NotificationSystem && window.NotificationSystem.info('Названия устройств разблокированы');
+          setTimeout(refreshOptions, 300);
+        } catch {
+          window.NotificationSystem && window.NotificationSystem.warning('Разрешение не выдано');
+        }
+      });
+
       wrap.appendChild(lab);
       wrap.appendChild(sel);
+      wrap.appendChild(unlock);
       row2.insertBefore(wrap, row2.firstChild);
 
       async function refreshOptions() {
@@ -208,6 +226,10 @@ export function renderLyricsBlock() {
         };
         sel.appendChild(mk('', 'По умолчанию'));
         outs.forEach(d => sel.appendChild(mk(d.deviceId, d.label || 'Динамики')));
+
+        const noLabels = outs.length > 0 && outs.every(d => !d.label);
+        const unlockBtn = document.getElementById('audio-output-unlock');
+        if (unlockBtn) unlockBtn.style.display = noLabels ? '' : 'none';
 
         if (savedId && [...sel.options].some(o => o.value === savedId)) {
           sel.value = savedId;
