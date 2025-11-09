@@ -4122,6 +4122,10 @@ ${lines}
       if (offlineMode) {
         const resources = await buildOfflineFavoritesAndGalleriesList();
         NotificationSystem.info('ОФФЛАЙН: будут доступны ⭐ избранные треки. Добавьте любимые песни в избранное, чтобы они играли без интернета. Галереи (webp) тоже будут кэшированы.');
+
+        // Профиль оффлайна: избранные + webp галерей
+        try { reg.active.postMessage({ type: 'OFFLINE_SET_PROFILE', profile: 'favorites-webp' }); } catch {}
+
         reg.active.postMessage({ type: 'OFFLINE_CACHE_ADD', resources });
         // One-off Background Sync: докачать при появлении сети/выходе из фона (если доступно)
         try { if (reg.sync && reg.sync.register) { await reg.sync.register('offline-favorites-cache'); } } catch {}
