@@ -114,6 +114,9 @@ test('optional audio output setSinkId (skip when unsupported)', async ({ page })
     const dest = (window.Howler && window.Howler.ctx && window.Howler.ctx.destination) ? window.Howler.ctx.destination : null;
     return !!(dest && typeof dest.setSinkId === 'function' && navigator.mediaDevices);
   });
+  // Ничего не ассертим: тест опциональный. Просто не падаем.
+});
+
 test('sysinfo modal shows after GET_SW_INFO', async ({ page }) => {
   const BASE = process.env.BASE_URL || 'http://127.0.0.1:4173';
   await page.goto(`${BASE}/index.html`, { waitUntil: 'load' });
