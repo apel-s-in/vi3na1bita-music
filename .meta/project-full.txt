@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-04cce78b78094e6ff66f717b3df6239276c9aad1.idx
-│   │       ├── pack-04cce78b78094e6ff66f717b3df6239276c9aad1.pack
-│   │       └── pack-04cce78b78094e6ff66f717b3df6239276c9aad1.rev
+│   │       ├── pack-e46a8b3b752493385f3f1217389d4987a96333ff.idx
+│   │       ├── pack-e46a8b3b752493385f3f1217389d4987a96333ff.pack
+│   │       └── pack-e46a8b3b752493385f3f1217389d4987a96333ff.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -214,6 +214,7 @@ vi3na1bita-music/
 │   └── news.json
 ├── scripts/
 │   ├── ci/
+│   │   ├── lint-sw.mjs
 │   │   └── validate-manifest.mjs
 │   ├── energy.js
 │   └── player-adapter.js
@@ -230,7 +231,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-09 00:04:22 UTC
+Сгенерировано: 2025-11-09 00:04:49 UTC
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
 name: Generate .meta context
@@ -5911,6 +5912,49 @@ async function clearCurrentOfflineResources() {
   await writeOfflineList([]);
   await postToAllClients({ type: 'OFFLINE_DONE' });
 }
+
+//=================================================
+// FILE: /scripts/ci/lint-sw.mjs
+#!/usr/bin/env node
+import fs from 'node:fs';
+import path from 'node:path';
+
+const file = path.resolve('service-worker.js');
+if (!fs.existsSync(file)) {
+  console.error('service-worker.js not found');
+  process.exit(1);
+}
+const src = fs.readFileSync(file, 'utf8');
+
+const errors = [];
+const warns = [];
+
+if (!/const\s+SW_VERSION\s*=\s*['"`]\d+\.\d+\.\d+['"`]/.test(src)) {
+  errors.push('SW_VERSION is missing or has wrong format (x.y.z)');
+}
+
+const listeners = (name) => (src.match(new RegExp(`addEventListener\\(['"]${name}['"]`, 'g')) || []).length;
+['install','activate','fetch'].forEach(ev => {
+  const n = listeners(ev);
+  if (n === 0) errors.push(`No ${ev} event listener`);
+  if (n > 1) warns.push(`Multiple (${n}) ${ev} listeners`);
+});
+
+const consts = ['CORE_CACHE','RUNTIME_CACHE','MEDIA_CACHE','OFFLINE_CACHE','META_CACHE'];
+consts.forEach(cn => {
+  const n = (src.match(new RegExp(`\\bconst\\s+${cn}\\b`, 'g')) || []).length;
+  if (n === 0) errors.push(`Missing const ${cn}`);
+  if (n > 1) warns.push(`Duplicate const ${cn} (${n} times)`);
+});
+
+if (warns.length) {
+  console.warn('SW linter warnings:\n - ' + warns.join('\n - '));
+}
+if (errors.length) {
+  console.error('SW linter errors:\n - ' + errors.join('\n - '));
+  process.exit(2);
+}
+console.log('Service Worker lint OK');
 
 //=================================================
 // FILE: /scripts/ci/validate-manifest.mjs
