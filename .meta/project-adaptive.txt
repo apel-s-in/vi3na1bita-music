@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8edea7d3146f86f5bb2cc665a770318923e86017.idx
-│   │       ├── pack-8edea7d3146f86f5bb2cc665a770318923e86017.pack
-│   │       └── pack-8edea7d3146f86f5bb2cc665a770318923e86017.rev
+│   │       ├── pack-425489cba5eb5861ebefbf7d9f5ce0b5e428af76.idx
+│   │       ├── pack-425489cba5eb5861ebefbf7d9f5ce0b5e428af76.pack
+│   │       └── pack-425489cba5eb5861ebefbf7d9f5ce0b5e428af76.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -243,7 +243,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-09 14:09:10 UTC
+Сгенерировано: 2025-11-09 14:11:43 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2104,6 +2104,7 @@ jobs:
     } catch {}
 
     config = data;
+    if (!Array.isArray(config.tracks)) config.tracks = [];
 
     if (!skipCovers) {
       try {
@@ -2696,8 +2697,6 @@ jobs:
   let deferredPrompt = null;
 
   let shuffleMode = false;
-  let shuffledPlaylist = [];
-  let shuffleIndex = 0;
   let repeatMode = false;
   let autoNextDisabled = false; // «Один трек»: отключить автопереход (не действует при Repeat)
   let favoritesOnlyMode = false;
