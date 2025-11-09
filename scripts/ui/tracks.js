@@ -2,14 +2,22 @@
 // Вынос: buildTrackList + renderLyricsBlock (+ улучшенный выбор аудио‑выхода)
 export function buildTrackList() {
   const list = document.getElementById('track-list');
-  if (!window.config) { list.innerHTML = ''; return; }
+  if (!list) return;
+
+  const cfg = window.config || null;
+  const tracks = Array.isArray(cfg?.tracks) ? cfg.tracks : [];
 
   const preservedInNowPlaying = !!document.getElementById('now-playing')?.querySelector('#lyricsplayerblock');
   const foreignView = preservedInNowPlaying && window.isBrowsingOtherAlbum && window.isBrowsingOtherAlbum();
 
+  if (!tracks.length) {
+    list.innerHTML = '<div style="text-align:center; opacity:.8; margin:10px 0;">Треклист недоступен</div>';
+    return;
+  }
+
   let html = '';
-  for (let i = 0; i < window.config.tracks.length; i++) {
-    const t = window.config.tracks[i];
+  for (let i = 0; i < tracks.length; i++) {
+    const t = tracks[i];
     const isCur = (!foreignView && i === window.currentTrack) ? ' current' : '';
     html += `<div class="track${isCur}" id="trk${i}" onclick="pickAndPlayTrack(${i})">
       <span class="tnum">${String(i + 1).padStart(2, '0')}.</span>
@@ -221,6 +229,15 @@ export function renderLyricsBlock() {
       await refreshOptions();
       // На некоторых браузерах после начала воспроизведения labels появляются — обновим через 2 сек.
       setTimeout(refreshOptions, 2000);
+
+      // Добавляем обработчик смены устройств вывода
+      try {
+        if (navigator.mediaDevices && typeof navigator.mediaDevices.addEventListener === 'function') {
+          navigator.mediaDevices.addEventListener('devicechange', () => { refreshOptions(); });
+        } else if (navigator.mediaDevices && 'ondevicechange' in navigator.mediaDevices) {
+          navigator.mediaDevices.ondevicechange = () => { refreshOptions(); };
+        }
+      } catch {}
     } catch {}
   })();
 
