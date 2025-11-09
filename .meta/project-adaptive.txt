@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-10793a6645c1da6db2ff093b4258d1714bb4dd9d.idx
-│   │       ├── pack-10793a6645c1da6db2ff093b4258d1714bb4dd9d.pack
-│   │       └── pack-10793a6645c1da6db2ff093b4258d1714bb4dd9d.rev
+│   │       ├── pack-03f80cd2a3f44973007b4e99965375169ca4f9f0.idx
+│   │       ├── pack-03f80cd2a3f44973007b4e99965375169ca4f9f0.pack
+│   │       └── pack-03f80cd2a3f44973007b4e99965375169ca4f9f0.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -243,7 +243,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-09 14:13:52 UTC
+Сгенерировано: 2025-11-09 14:42:05 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -567,6 +567,13 @@ jobs:
       if (typeof updateNextUpLabel === 'function') updateNextUpLabel();
       if (typeof renderLyricsBlock === 'function') renderLyricsBlock();
       if (typeof updatePlayPauseIcon === 'function') updatePlayPauseIcon();
+
+      // Приоритетный префетч текущего аудио в SW (не прерывает воспроизведение)
+      try {
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller && track?.src) {
+          navigator.serviceWorker.controller.postMessage({ type: 'PREFETCH_AUDIO', url: track.src });
+        }
+      } catch {}
     } catch {}
   };
 
@@ -638,6 +645,7 @@ jobs:
 <script type="module" src="./scripts/ui/tracks.js"></script>
 <script type="module" src="./scripts/ui/mini.js"></script>
 <script type="module" src="./scripts/ui/modals.js"></script>
+<script type="module" src="./scripts/ui/notify.js"></script>
   <meta charset="UTF-8" />
   <title>Витрина Разбита</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -2855,31 +2863,7 @@ function updatePlayerCorePlaylistFromConfig() {
 
   function isBrowsingSameAsPlaying() { return !!(playingAlbumKey && playingAlbumKey === currentAlbumKey); }
 
-  const NotificationSystem = {
-    queue: [], isShowing: false,
-    show(message, type = 'info', duration = 3000) { this.queue.push({ message, type, duration }); if (!this.isShowing) this.processQueue(); },
-    async processQueue() {
-      if (this.queue.length===0) { this.isShowing=false; return; }
-      this.isShowing=true;
-      const { message, type, duration } = this.queue.shift();
-      const toast = document.createElement('div');
-      toast.className = `toast toast-${type}`;
-      toast.innerHTML = `<div class="toast-content"><span class="toast-emoji" aria-hidden="true"></span><span class="toast-text">${message}</span></div>`;
-      document.body.appendChild(toast);
-      await new Promise(r=>setTimeout(r,50));
-      toast.classList.add('show');
-      await new Promise(r=>setTimeout(r,duration));
-      toast.classList.remove('show');
-      await new Promise(r=>setTimeout(r,300));
-      toast.remove();
-      this.processQueue();
-    },
-    info(msg){ this.show(msg,'info'); },
-    success(msg){ this.show(msg,'success'); },
-    error(msg){ this.show(msg,'error',5000); },
-    warning(msg){ this.show(msg,'warning',4000); },
-    offline(msg){ this.show(msg,'offline'); }
-  };
+  // NotificationSystem перенесён в ./scripts/ui/notify.js (ESM). Доступен как window.NotificationSystem.
 
   /* Избранное v2 */
   const LIKED_STORAGE_KEY_V2 = 'likedTracks:v2';
@@ -3136,7 +3120,7 @@ function showTrack(n, doPlay) {
   // Троттлинг/стейт для лирики
   let __lyricsLastIdx = -1;
   let __lyricsLastTs = 0;
-  const __LYRICS_MIN_INTERVAL = 250; // мс
+  let __lyricsMinIntervalBase = 250; // мс
   function restoreLyricsViewMode() { try { const saved = localStorage.getItem('lyricsViewMode'); if (saved && ['normal','hidden','expanded'].includes(saved)) lyricsViewMode = saved; } catch {} }
   function saveLyricsViewMode() { try { localStorage.setItem('lyricsViewMode', lyricsViewMode); } catch {} }
   restoreLyricsViewMode();
@@ -3161,14 +3145,18 @@ function showTrack(n, doPlay) {
   function renderLyricsEnhanced(t){
     if (lyricsViewMode === 'hidden' || !Array.isArray(currentLyrics) || currentLyrics.length === 0) return;
 
+    // Динамический троттлинг: в ultraEco/фоне реже обновляем
+    const ecoIntervalMs = (window.ultraEcoEnabled || document.hidden)
+      ? Math.max(500, window.__uiUpdateMinIntervalMs || 1000)
+      : __lyricsMinIntervalBase;
+
     // определяем активную строку
     let idx = 0;
     for (let i = 0; i < currentLyrics.length; i++) {
       if (t >= currentLyrics[i].time) idx = i; else break;
     }
     const now = performance.now();
-    // если строка не изменилась и прошло меньше 250 мс — не рендерим
-    if (idx === __lyricsLastIdx && (now - __lyricsLastTs) < __LYRICS_MIN_INTERVAL) return;
+    if (idx === __lyricsLastIdx && (now - __lyricsLastTs) < ecoIntervalMs) return;
 
     __lyricsLastIdx = idx;
     __lyricsLastTs = now;
