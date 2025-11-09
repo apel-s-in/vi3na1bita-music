@@ -248,8 +248,16 @@ self.addEventListener('fetch', (event) => {
       if (cached) return cached;
       try {
         const netRes = await fetch(request);
-        if (netRes && (netRes.ok || netRes.type === 'opaque')) {
-          cache.put(request, netRes.clone()).catch(() => {});
+        if (netRes) {
+          if (netRes.type === 'opaque') {
+            // допускаем opaque-ответы (CDN и т.п.)
+            try { cache.put(request, netRes.clone()); } catch {}
+          } else if (netRes.ok) {
+            const ct = (netRes.headers.get('content-type') || '').toLowerCase();
+            if (!ct || ct.startsWith('image/')) {
+              try { cache.put(request, netRes.clone()); } catch {}
+            }
+          }
         }
         return netRes;
       } catch {
@@ -615,6 +623,7 @@ async function offlineAddResources(resources) {
   });
   let done = 0;
   const total = toCache.length;
+  const errors = [];
 
   for (const url of toCache) {
     try {
@@ -623,29 +632,36 @@ async function offlineAddResources(resources) {
       let res = await fetch(url, { cache: 'no-cache', keepalive: true }).catch(() => null);
 
       if (isAudio) {
-        // Для аудио: кэшируем только CORS 200 (не opaque), чтобы потом собирать 206 из полного буфера
         if (res && res.ok && res.type !== 'opaque') {
           await cache.put(url, res.clone());
+        } else {
+          errors.push(url);
         }
       } else {
-        // Для не-аудио: допускаем opaque как fallback (изображения, html, json и пр.)
         if (!res || !(res.ok || res.type === 'opaque')) {
           res = await fetch(url, { mode: 'no-cors' }).catch(() => null);
         }
         if (res) {
           await cache.put(url, res.clone());
+        } else {
+          errors.push(url);
         }
       }
 
       done++;
       await postToAllClients({ type: 'OFFLINE_PROGRESS', percent: Math.round(done / total * 100) });
-    } catch {
+    } catch (e) {
+      errors.push(url);
       done++;
       await postToAllClients({ type: 'OFFLINE_PROGRESS', percent: Math.round(done / total * 100) });
     }
   }
   await writeOfflineList([...prev, ...toCache]);
-  await writeLastRequestedOffline([]); // очистим «последний запрос» — успешно собрали
+  await writeLastRequestedOffline([]);
+  if (errors.length) {
+    console.warn('OFFLINE_CACHE_ADD errors:', errors);
+    await postToAllClients({ type: 'OFFLINE_ERROR', errors });
+  }
   await postToAllClients({ type: 'OFFLINE_DONE' });
 }
 
