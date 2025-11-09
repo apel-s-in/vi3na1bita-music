@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a396eb1d162425f807e9771143acb585cf83049c.idx
-│   │       ├── pack-a396eb1d162425f807e9771143acb585cf83049c.pack
-│   │       └── pack-a396eb1d162425f807e9771143acb585cf83049c.rev
+│   │       ├── pack-afb6ec861dee86c51a48545fce48fd016b85298d.idx
+│   │       ├── pack-afb6ec861dee86c51a48545fce48fd016b85298d.pack
+│   │       └── pack-afb6ec861dee86c51a48545fce48fd016b85298d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -248,7 +248,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-09 21:23:20 UTC
+Сгенерировано: 2025-11-09 21:26:39 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1260,22 +1260,22 @@ jobs:
         <div class="lyrics-modal-scroll"><pre class="lyrics-modal-pre" id="lyrics-modal-pre"></pre></div>
       </div>
       <div class="lyrics-modal-buttons">
-        <button class="lyrics-modal-btn primary bigcopy" type="button" onclick="copyLyricsFromModal()">Скопировать в буфер обмена</button>
+        <button class="lyrics-modal-btn primary bigcopy" type="button" data-action="copy-lyrics">Скопировать в буфер обмена</button>
         <div class="lyrics-controls-grid">
-          <button class="lyrics-square-btn" type="button" title="Уменьшить" aria-label="Уменьшить" onclick="zoomLyrics(-1)">
+          <button class="lyrics-square-btn" type="button" title="Уменьшить" aria-label="Уменьшить" data-action="zoom--">
             <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 5L20.49 19l-5-5zM9.5 14C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/><rect x="7" y="9" width="5" height="1.8" rx=".9"></rect></svg>
           </button>
-          <button class="lyrics-square-btn" id="lyrics-fs-btn" type="button" title="Полноэкранный режим" aria-label="Полноэкранный режим" onclick="toggleLyricsFullscreen()">
+          <button class="lyrics-square-btn" id="lyrics-fs-btn" type="button" title="Полноэкранный режим" aria-label="Полноэкранный режим" data-action="fs-toggle">
             <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 10V3h7v2H5v5H3zm16-5h-5V3h7v7h-2V5zM5 19h5v2H3v-7h2v5zm16-5h2v7h-7v-2h5v-5z"/></svg>
           </button>
-          <button class="lyrics-square-btn" type="button" title="Поделиться" aria-label="Поделиться" onclick="shareLyricsFromModal()">
+          <button class="lyrics-square-btn" type="button" title="Поделиться" aria-label="Поделиться" data-action="share-lyrics">
             <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14 9l-4-4v3H5v2h5v3l4-4zM19 13v5H5v-5H3v7h18v-7h-2z"/></svg>
           </button>
-          <button class="lyrics-square-btn" type="button" title="Увеличить" aria-label="Увеличить" onclick="zoomLyrics(1)">
+          <button class="lyrics-square-btn" type="button" title="Увеличить" aria-label="Увеличить" data-action="zoom++">
             <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 5L20.49 19l-5-5zM9.5 14C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/><path d="M10.4 7.7h-1.8v1.8H6.8v1.8h1.8v1.8h1.8v-1.8h1.8V9.5h-1.8V7.7z"/></svg>
           </button>
         </div>
-        <button class="lyrics-modal-btn" type="button" onclick="closeLyricsModal()">Закрыть</button>
+        <button class="lyrics-modal-btn" type="button" data-action="close-lyrics-modal">Закрыть</button>
       </div>
     </div>
   </div>
@@ -1357,31 +1357,26 @@ jobs:
     return !!(currentAlbumKey && playingAlbumKey !== currentAlbumKey);
   }
 
-  /* ====== Галерея — только index.json, мгновенный первый кадр ====== */
-  // Галереи доступны только локально в этом репозитории
+  /* ====== Галерея — вынесено в scripts/ui/gallery.js ====== */
+  // Константы и состояние (используются модулем галереи)
   const CENTRAL_GALLERY_BASE = './albums/gallery/';
 
-  // Жёсткая привязка альбом→центральная галерея
   const ALBUM_GALLERY_MAP = {
     'krevetochka': '00',
     'mezhdu-zlom-i-dobrom': '01',
     'golos-dushi': '02',
     '__reliz__': 'news'
-    // '__favorites__' — без галереи
   };
-
-  // Разрешённые id центральных галерей
   const CENTRAL_ALLOWED_IDS = new Set(['00','01','02','news']);
-
-  // Опубликованные альбомы (для warmup), без «третьего»
   const PUBLISHED_ALBUM_KEYS = new Set(['golos-dushi','mezhdu-zlom-i-dobrom','krevetochka']);
 
+  // Состояние (читается и обновляется модулем галереи)
   let coverGalleryArr = [];
   let coverGalleryIdx = 0;
   let coverAutoplay = null;
   let galleryRotationStarted = false;
 
-  /* Утилиты путей */
+  // Утилиты, используемые в других частях приложения
   function normalizeBase(b) {
     try {
       const hasScheme = /^[a-z]+:\/\//i.test(String(b));
@@ -1394,9 +1389,8 @@ jobs:
     }
   }
   function absJoin(base, rel) {
-    try {
-      return new URL(String(rel || ''), normalizeBase(base) + '/').toString();
-    } catch {
+    try { return new URL(String(rel || ''), normalizeBase(base) + '/').toString(); }
+    catch {
       const norm = normalizeBase(base);
       return norm + '/' + String(rel || '').replace(/^\/+/, '');
     }
@@ -1410,409 +1404,9 @@ jobs:
   }
   function centralIdForAlbumKey(albumKey) {
     if (!albumKey) return null;
-    if (albumKey === '__favorites__') return null; // избранное без галереи
+    if (albumKey === '__favorites__') return null;
     const id = ALBUM_GALLERY_MAP[albumKey] || null;
     return id && CENTRAL_ALLOWED_IDS.has(id) ? id : null;
-  }
-
-  function parseAspectFromFileName(url) {
-    try {
-      const name = url.split('?')[0].split('#')[0].split('/').pop();
-      const m = name.match(/(?:\(|-|_)(\d+)\s*[x:]\s*(\d+)\)?/i);
-      if (m) {
-        const w = parseInt(m[1], 10), h = parseInt(m[2], 10);
-        if (w > 0 && h > 0) return (w / h);
-      }
-    } catch {}
-    return 1;
-  }
-
-  /* Нормализация элемента из index.json
-     ВАЖНО: если путь уже «корневой» для сайта (albums/, img/, icons/, assets/),
-     НЕ префиксуем его baseDir — иначе получим дубли и 404. */
-  function normalizeGalleryItem(raw, baseDir) {
-    if (!raw) return null;
-
-    const toAbs = (p) => {
-      if (!p) return null;
-      const s = String(p).replace(/^\.?\//, '');
-      if (/^https?:\/\//i.test(s)) return s;
-      // Уже «корневой» для сайта — используем как есть (с ./)
-      if (/^(albums|img|icons|assets)\//i.test(s)) return `./${s}`;
-      // Иначе — относительно каталога галереи
-      return baseDir + s;
-    };
-
-    if (typeof raw === 'string') {
-      const isHtml = /\.html(\?|#|$)/i.test(raw);
-      const src = toAbs(raw);
-      return { type: isHtml ? 'html' : 'img', src, formats: null, ar: parseAspectFromFileName(src) || 1 };
-    }
-
-    const type = (String(raw.type || '').toLowerCase() === 'html') ? 'html' : 'img';
-    if (type === 'html') {
-      const src = toAbs(raw.src || '');
-      return { type: 'html', src, formats: null, ar: 1 };
-    }
-
-    const fm = raw.formats || {};
-    const formats = {
-      webp: toAbs(fm.webp || null),
-      full: toAbs(fm.full || raw.src || null),
-      thumb: toAbs(fm.thumb || null)
-    };
-    const src = formats.full || toAbs(raw.src || '');
-    const ar = (raw.width && raw.height && raw.width > 0 && raw.height > 0)
-      ? (raw.width / raw.height)
-      : (parseAspectFromFileName(src) || 1);
-    return { type: 'img', src, formats, ar };
-  }
-
-  /* Рендер кадра в слот */
-  let currentImageLoader = null;
-  function renderCoverItem(item) {
-    const slot = document.getElementById('cover-slot');
-    const wrap = document.getElementById('cover-wrap');
-    if (!slot || !item) return;
-    
-    // Отменяем предыдущую загрузку
-    if (currentImageLoader) {
-      currentImageLoader.onload = null;
-      currentImageLoader.onerror = null;
-      currentImageLoader = null;
-    }
-    
-    if (wrap && item.ar) wrap.style.aspectRatio = String(item.ar);
-
-    // HTML-баннер
-    if (item.type === 'html') {
-      const ifr = document.createElement('iframe');
-      ifr.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups allow-forms');
-      ifr.setAttribute('referrerpolicy', 'no-referrer');
-      ifr.loading = 'lazy';
-      ifr.src = item.src;
-      
-      // Очищаем старый контент перед заменой
-      while (slot.firstChild) {
-        if (slot.firstChild.tagName === 'IFRAME') {
-          slot.firstChild.src = 'about:blank';
-        }
-        slot.removeChild(slot.firstChild);
-      }
-      slot.appendChild(ifr);
-      return;
-    }
-
-    // Картинка: используем один Image для предзагрузки
-    const img = new Image();
-    currentImageLoader = img;
-    
-    img.decoding = 'async';
-    img.referrerPolicy = 'no-referrer';
-    
-    const applyImage = () => {
-      if (currentImageLoader !== img) return; // Проверяем актуальность
-      
-      const picture = document.createElement('picture');
-      if (item.formats?.webp) {
-        const s = document.createElement('source');
-        s.type = 'image/webp';
-        s.srcset = item.formats.webp;
-        picture.appendChild(s);
-      }
-      
-      const displayImg = document.createElement('img');
-      displayImg.src = img.src;
-      displayImg.alt = 'Обложка альбома';
-      displayImg.decoding = 'async';
-      displayImg.referrerPolicy = 'no-referrer';
-      displayImg.style.opacity = '0';
-      displayImg.style.transition = 'opacity .15s ease-out';
-      
-      picture.appendChild(displayImg);
-      
-      // Очищаем старый контент
-      while (slot.firstChild) {
-        if (slot.firstChild.tagName === 'IFRAME') {
-          slot.firstChild.src = 'about:blank';
-        }
-        slot.removeChild(slot.firstChild);
-      }
-      
-      slot.appendChild(picture);
-      
-      // Плавное появление
-      requestAnimationFrame(() => {
-        displayImg.style.opacity = '1';
-      });
-    };
-    
-    img.onload = applyImage;
-    img.onerror = () => {
-      if (currentImageLoader === img) {
-        console.warn('Failed to load image:', item.src);
-      }
-    };
-    
-    // Выбираем лучший источник (см. pickBestSrc)
-    img.src = pickBestSrc(item);
-  }
-
-  /* Быстрый вывод до сборки всей галереи */
-  function setQuickCoverSrc(url) {
-    try {
-      const slot = document.getElementById('cover-slot');
-      const wrap = document.getElementById('cover-wrap');
-      if (!slot) return;
-      slot.innerHTML = '';
-      const img = new Image();
-      img.decoding = 'async';
-      img.loading = 'eager';
-      img.referrerPolicy = 'no-referrer';
-      img.alt = 'Обложка альбома';
-      img.onload = () => {
-        try {
-          if (wrap && img.naturalWidth && img.naturalHeight) {
-            const ar = img.naturalWidth / img.naturalHeight;
-            if (isFinite(ar) && ar > 0) wrap.style.aspectRatio = String(ar);
-          }
-        } catch {}
-      };
-      img.src = url;
-      slot.appendChild(img);
-    } catch {}
-  }
-  function setQuickCoverHtml(url) {
-    try {
-      const slot = document.getElementById('cover-slot');
-      const wrap = document.getElementById('cover-wrap');
-      if (!slot) return;
-      slot.innerHTML = '';
-      if (wrap) wrap.style.aspectRatio = '1 / 1';
-      const ifr = document.createElement('iframe');
-      ifr.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups allow-forms');
-      ifr.setAttribute('referrerpolicy', 'no-referrer');
-      ifr.loading = 'lazy';
-      ifr.src = url;
-      slot.appendChild(ifr);
-    } catch {}
-  }
-  function showGalleryNav() {
-    const wrap = document.getElementById('cover-wrap');
-    if (wrap) wrap.classList.add('gallery-nav-ready');
-  }
-  function resetGallery() {
-    const wrap = document.getElementById('cover-wrap');
-    if (wrap) wrap.classList.remove('gallery-nav-ready');
-    
-    // Полная очистка автопроигрывания
-    if (coverAutoplay) {
-      clearInterval(coverAutoplay);
-      coverAutoplay = null;
-    }
-    
-    // Очистка текущего загрузчика изображений
-    if (currentImageLoader) {
-      currentImageLoader.onload = null;
-      currentImageLoader.onerror = null;
-      currentImageLoader = null;
-    }
-    
-    // Сброс состояния галереи
-    coverGalleryArr = [];
-    coverGalleryIdx = 0;
-    galleryRotationStarted = false;
-    
-    // Очистка слота
-    const slot = document.getElementById('cover-slot');
-    if (slot) {
-      while (slot.firstChild) {
-        if (slot.firstChild.tagName === 'IFRAME') {
-          slot.firstChild.src = 'about:blank';
-        }
-        slot.removeChild(slot.firstChild);
-      }
-    }
-  }
-
-  /* Построение галереи из центрального index.json */
-  async function buildCentralGalleryList(albumKey, signal) {
-    const id = centralIdForAlbumKey(albumKey);
-    if (!id) return [];
-    const baseDir = `${CENTRAL_GALLERY_BASE}${id}/`;
-    try {
-      const r = await fetch(baseDir + 'index.json', { cache: 'force-cache', signal });
-      if (!r.ok) return [];
-      const j = await r.json();
-      const arr = Array.isArray(j.items) ? j.items : (Array.isArray(j) ? j : []);
-      
-      // Простая обработка - уже дедуплицировано в index.json
-      const out = [];
-      for (const raw of arr) {
-        const norm = normalizeGalleryItem(raw, baseDir);
-        if (norm) {
-          // Если есть id в raw, используем его для проверки уникальности
-          if (!raw.id || !out.some(item => item.id === raw.id)) {
-            out.push(norm);
-          }
-        }
-      }
-      
-      return out;
-    } catch { return []; }
-  }
-
-  /* Общая сборка */
-  async function buildCoverGalleryList(albumKey, _baseUrl, signal) {
-    return await buildCentralGalleryList(albumKey, signal);
-  }
-
-  /* Установить элемент и префетч следующего */
-  let isTransitioning = false;
-  function setCoverImage(idx) {
-    if (!Array.isArray(coverGalleryArr) || !coverGalleryArr.length) return;
-    if (isTransitioning) return; // Предотвращаем наложение переходов
-    
-    isTransitioning = true;
-    coverGalleryIdx = (idx + coverGalleryArr.length) % coverGalleryArr.length;
-    const item = coverGalleryArr[coverGalleryIdx];
-    
-    if (item) {
-      renderCoverItem(item);
-      // Отложенный префетч следующего
-      setTimeout(() => {
-        prefetchNextCover();
-        isTransitioning = false;
-      }, 200);
-    } else {
-      isTransitioning = false;
-    }
-  }
-  const prefetchedUrls = new Set();
-
-  function isDesktopFast() {
-    try {
-      const nc = navigator.connection || navigator.webkitConnection || navigator.mozConnection;
-      const fast = !/2g|3g/.test(nc?.effectiveType || '') && (nc?.downlink || 5) >= 5;
-      const desktop = !/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      return desktop && fast;
-    } catch { return false; }
-  }
-
-  function pickBestSrc(item) {
-    if (!item || item.type !== 'img') return item?.src;
-    const webp = item.formats?.webp || null;
-    const full = item.formats?.full || item.src || null;
-    // Используем webp если есть; full — только если webp отсутствует
-    return webp || full;
-  }
-
-  function prefetchNextCover() {
-    if (!Array.isArray(coverGalleryArr) || coverGalleryArr.length < 2) return;
-
-    const nextIdx = (coverGalleryIdx + 1) % coverGalleryArr.length;
-    const it = coverGalleryArr[nextIdx];
-    if (!it || it.type !== 'img') return;
-
-    const webp = it.formats?.webp || null;
-
-    if (prefetchedUrls.size > 20) prefetchedUrls.clear();
-
-    try {
-      if (webp && !prefetchedUrls.has(webp)) {
-        const imgW = new Image();
-        imgW.src = webp;
-        prefetchedUrls.add(webp);
-      }
-    } catch {}
-  }
-
-  function startCoverAutoPlay() {
-    if (coverAutoplay) {
-      clearInterval(coverAutoplay);
-      coverAutoplay = null;
-    }
-    
-    // Проверяем, что галерея готова
-    if (!Array.isArray(coverGalleryArr) || coverGalleryArr.length <= 1) {
-      return;
-    }
-    
-    coverAutoplay = setInterval(() => {
-      // Дополнительная проверка перед переключением
-      if (Array.isArray(coverGalleryArr) && coverGalleryArr.length > 1) {
-        setCoverImage(coverGalleryIdx + 1);
-      }
-    }, 5000);
-    galleryRotationStarted = true;
-  }
-
-  /* Мгновенный первый кадр */
-  async function ensureQuickCoverForAlbum(meta) {
-    try {
-      const id = centralIdForAlbumKey(meta.key);
-      if (!id) { setQuickCoverSrc('img/logo.png'); return; }
-      const baseDir = `${CENTRAL_GALLERY_BASE}${id}/`;
-      const r = await fetch(baseDir + 'index.json', { cache: 'no-cache' });
-      if (r.ok) {
-        const j = await r.json();
-        const arr = Array.isArray(j.items) ? j.items : (Array.isArray(j) ? j : []);
-        // Нормализуем и ДЕДУПЛИЦИРУЕМ по базовому имени (чтобы не листало форматы одного кадра)
-        const tmp = [];
-        for (const raw of arr) {
-          const norm = normalizeGalleryItem(raw, baseDir);
-          if (norm) tmp.push(norm);
-        }
-        const pickKey = (item) => {
-          const url = (item.formats?.full || item.src || '').split('?')[0];
-          const name = url.split('/').pop() || '';
-          return name.replace(/\.(avif|webp|jpe?g|png)$/i, '').replace(/-thumb$/i, '');
-        };
-        const seen = new Set();
-        const out = [];
-        for (const it of tmp) {
-          const k = pickKey(it);
-          if (k && !seen.has(k)) { seen.add(k); out.push(it); }
-        }
-        const first = out[0] || null;
-        if (first) {
-          if (first.type === 'html') setQuickCoverHtml(first.src);
-          else setQuickCoverSrc(first.formats?.full || first.src);
-          showGalleryNav();
-          return;
-        }
-      }
-      setQuickCoverSrc('img/logo.png');
-      showGalleryNav();
-    } catch {
-      setQuickCoverSrc('img/logo.png');
-      showGalleryNav();
-    }
-  }
-
-  // Фон страницы: первый кадр локальной галереи альбома (или логотип)
-  async function applyAlbumBackgroundFromGallery(albumKey) {
-    try {
-      const id = centralIdForAlbumKey(albumKey);
-      if (!id) { document.body.style.background = '#181818'; return; }
-      const baseDir = `${CENTRAL_GALLERY_BASE}${id}/`;
-      const r = await fetch(baseDir + 'index.json', { cache: 'no-cache' });
-      if (!r.ok) { document.body.style.background = '#181818'; return; }
-      const j = await r.json();
-      const first = Array.isArray(j.items) ? j.items[0] : (Array.isArray(j) ? j[0] : null);
-      if (first) {
-        const norm = normalizeGalleryItem(first, baseDir);
-        if (norm && norm.type === 'img') {
-          const src = norm.formats?.full || norm.src || 'img/logo.png';
-          const attach = isMobileUA() ? '' : ' fixed';
-          document.body.style.background = `url(${src}) center/cover${attach} #111`;
-          return;
-        }
-      }
-      document.body.style.background = '#181818';
-    } catch {
-      document.body.style.background = '#181818';
-    }
   }
   </script>
 
