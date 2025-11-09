@@ -15,25 +15,63 @@ export function buildTrackList() {
     return;
   }
 
+  // Рендер без inline-обработчиков: используем data-index + делегирование
   let html = '';
   for (let i = 0; i < tracks.length; i++) {
     const t = tracks[i];
     const isCur = (!foreignView && i === window.currentTrack) ? ' current' : '';
-    html += `<div class="track${isCur}" id="trk${i}" onclick="pickAndPlayTrack(${i})">
-      <span class="tnum">${String(i + 1).padStart(2, '0')}.</span>
-      <span class="track-title">${t.title}</span>
-      <img src="${window.isLiked && window.isLiked(i) ? 'img/star.png' : 'img/star2.png'}"
-           class="like-star"
-           alt="звезда"
-           title="${window.isLiked && window.isLiked(i) ? 'Убрать из понравившихся' : 'Добавить в понравившиеся'}"
-           onclick="toggleLike(${i}, event)"/>
-    </div>`;
+    const liked = window.isLiked && window.isLiked(i);
+    html += `
+      <div class="track${isCur}" id="trk${i}" data-index="${i}">
+        <span class="tnum">${String(i + 1).padStart(2, '0')}.</span>
+        <span class="track-title">${t.title}</span>
+        <img
+          src="${liked ? 'img/star.png' : 'img/star2.png'}"
+          class="like-star"
+          alt="звезда"
+          title="${liked ? 'Убрать из понравившихся' : 'Добавить в понравившиеся'}"
+          data-action="toggle-like"
+        />
+      </div>`;
     if (i === window.currentTrack && (!preservedInNowPlaying || (window.currentAlbumKey === window.playingAlbumKey))) {
       html += `<div class="lyrics-player-block" id="lyricsplayerblock"></div>`;
     }
   }
 
   list.innerHTML = html;
+
+  // Единоразово навешиваем делегированные обработчики
+  if (!list.__delegatedHandlersInstalled) {
+    list.__delegatedHandlersInstalled = true;
+
+    list.addEventListener('click', (e) => {
+      const target = e.target;
+      if (!(target instanceof Element)) return;
+
+      // Клик по звезде
+      const star = target.closest('.like-star');
+      if (star) {
+        const row = target.closest('.track');
+        const idx = row ? parseInt(row.getAttribute('data-index') || '-1', 10) : -1;
+        if (Number.isInteger(idx) && idx >= 0) {
+          // Сохраняем поведение: останавливаем всплытие, чтобы строка не запускалась
+          e.stopPropagation();
+          window.toggleLike && window.toggleLike(idx, e);
+        }
+        return;
+      }
+
+      // Клик по строке — запустить трек
+      const row = target.closest('.track');
+      if (row) {
+        const idx = parseInt(row.getAttribute('data-index') || '-1', 10);
+        if (Number.isInteger(idx) && idx >= 0) {
+          window.pickAndPlayTrack && window.pickAndPlayTrack(idx);
+        }
+      }
+    });
+  }
+
   try { window.dedupePlayerBlock && window.dedupePlayerBlock(); } catch {}
 
   if (preservedInNowPlaying && window.currentAlbumKey === window.playingAlbumKey) {
