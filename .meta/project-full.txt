@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ae528ae37eeef468b258710e2aa59b292379d6c1.idx
-│   │       ├── pack-ae528ae37eeef468b258710e2aa59b292379d6c1.pack
-│   │       └── pack-ae528ae37eeef468b258710e2aa59b292379d6c1.rev
+│   │       ├── pack-68edbb882d4c976506d96d17e41aca240858bc32.idx
+│   │       ├── pack-68edbb882d4c976506d96d17e41aca240858bc32.pack
+│   │       └── pack-68edbb882d4c976506d96d17e41aca240858bc32.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -248,7 +248,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-09 20:52:03 UTC
+Сгенерировано: 2025-11-09 20:54:44 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5968,16 +5968,25 @@ test('optional audio output setSinkId (skip when unsupported)', async ({ page })
     const dest = (window.Howler && window.Howler.ctx && window.Howler.ctx.destination) ? window.Howler.ctx.destination : null;
     return !!(dest && typeof dest.setSinkId === 'function' && navigator.mediaDevices);
   });
-  test.skip(!supported, 'setSinkId not supported in this environment');
+test('sysinfo modal shows after GET_SW_INFO', async ({ page }) => {
+  const BASE = process.env.BASE_URL || 'http://127.0.0.1:4173';
+  await page.goto(`${BASE}/index.html`, { waitUntil: 'load' });
+  await page.fill('#promo-inp', 'VITRINA2025');
+  await page.click('#promo-btn');
 
-  await page.waitForTimeout(1000);
-  const selector = page.locator('#audio-output-select');
-  await selector.waitFor({ timeout: 5000 });
-  // Если опции есть — просто переключим на первую реальную (или оставим по умолчанию)
-  const count = await selector.locator('option').count();
-  if (count > 1) {
-    await selector.selectOption({ index: 1 }).catch(() => {});
-  }
+  // Ждём ини SW
+  await page.waitForTimeout(800);
+  // Кнопка «О СИСТЕМЕ» показывается на desktop
+  const sysbtn = page.locator('#sysinfo-btn');
+  await expect(sysbtn).toBeVisible({ timeout: 5000 });
+  await sysbtn.click();
+
+  // Появляется модалка
+  const modal = page.locator('.modal-bg .modal-feedback').filter({ hasText: 'О системе' });
+  await expect(modal).toBeVisible({ timeout: 5000 });
+
+  // В модалке есть версия SW
+  await expect(modal).toContainText(/SW версия:/);
 });
 
 
