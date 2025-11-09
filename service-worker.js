@@ -629,6 +629,60 @@ self.addEventListener('message', (event) => {
   }
   if (data.type === 'PREFETCH_AUDIO') {
     // Поддерживаем одиночный url и массив urls (обратная совместимость)
+  if (data.type === 'PREFETCH_AUDIO') {
+    // Поддерживаем одиночный url и массив urls (обратная совместимость)
+    const list = Array.isArray(data.urls) ? data.urls
+                : (data.url ? [data.url] : []);
+    if (!list.length) return;
+    event.waitUntil((async () => {
+      for (const u of list) {
+        try {
+          const req = new Request(u, { cache: 'reload', keepalive: true });
+          const res = await fetch(req);
+          if (res && res.ok && res.status === 200 && await shouldCacheNonRangeAudio(res)) {
+            const cache = await caches.open(MEDIA_CACHE);
+            await cache.put(req, res.clone());
+            const size = bytesFromHeader(res) || 0;
+            await upsertMediaItem(req.url, {
+              size,
+              etag: res.headers.get('etag'),
+              lastModified: res.headers.get('last-modified')
+            });
+          }
+        } catch {}
+      }
+    })());
+  }
+  if (data.type === 'GET_SW_INFO') {
+    event.waitUntil((async () => {
+      try {
+        const [profile, cfg, net, mediaMap, offList] = await Promise.all([
+          readOfflineProfile().catch(()=>'default'),
+          readSwConfig().catch(()=>({})),
+          readNetState().catch(()=>({})),
+          readMediaMap().catch(()=>({ totalSize: 0, items: {} })),
+          readOfflineList().catch(()=>[])
+        ]);
+        const info = {
+          version: SW_VERSION,
+          profile,
+          config: cfg,
+          net,
+          media: {
+            totalBytes: Number(mediaMap.totalSize || 0),
+            items: mediaMap.items ? Object.keys(mediaMap.items).length : 0
+          },
+          offline: {
+            profile,
+            count: Array.isArray(offList) ? offList.length : 0
+          }
+        };
+        await postToAllClients({ type: 'SW_INFO', info });
+      } catch {
+        await postToAllClients({ type: 'SW_INFO', info: { version: SW_VERSION } });
+      }
+    })());
+  }
     const list = Array.isArray(data.urls) ? data.urls
                 : (data.url ? [data.url] : []);
     if (!list.length) return;
