@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-0287c56d3549211e0fcb3eb736f4ebae8de3db5e.idx
-│   │       ├── pack-0287c56d3549211e0fcb3eb736f4ebae8de3db5e.pack
-│   │       └── pack-0287c56d3549211e0fcb3eb736f4ebae8de3db5e.rev
+│   │       ├── pack-e60eff08bb26a969fecdec378a85eed218b37602.idx
+│   │       ├── pack-e60eff08bb26a969fecdec378a85eed218b37602.pack
+│   │       └── pack-e60eff08bb26a969fecdec378a85eed218b37602.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -242,7 +242,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-09 13:47:06 UTC
+Сгенерировано: 2025-11-09 13:47:56 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -354,6 +354,9 @@ jobs:
 
       - name: Validate albums and galleries
         run: node scripts/ci/validate-content.mjs
+
+      - name: Validate PlayerCore JS/TS agreement
+        run: node scripts/ci/validate-playercore.mjs
 
 
 //=================================================
