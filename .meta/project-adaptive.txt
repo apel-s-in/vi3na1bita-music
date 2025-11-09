@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-33407c5e3ee76b701cda0e03b6b1e24f3d7afa5d.idx
-│   │       ├── pack-33407c5e3ee76b701cda0e03b6b1e24f3d7afa5d.pack
-│   │       └── pack-33407c5e3ee76b701cda0e03b6b1e24f3d7afa5d.rev
+│   │       ├── pack-6f12ac08b45aee6672239c4830c0469d14edba9c.idx
+│   │       ├── pack-6f12ac08b45aee6672239c4830c0469d14edba9c.pack
+│   │       └── pack-6f12ac08b45aee6672239c4830c0469d14edba9c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -237,7 +237,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-09 12:20:36 UTC
+Сгенерировано: 2025-11-09 12:23:06 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2391,14 +2391,7 @@ jobs:
         if (stBase && Number.isInteger(stBase.trackIndex) && stBase.trackIndex >= 0 && stBase.trackIndex < (config.tracks || []).length) {
           showTrack(stBase.trackIndex, false);
           setTimeout(()=> {
-            const pc = window.playerCore;
-            if (pc) {
-              if (typeof stBase.position === 'number') pc.seek(stBase.position || 0);
-              if (typeof stBase.volume === 'number') pc.setVolume(stBase.volume);
-              if (resume && resume.wasPlaying === true) {
-                pc.play(stBase.trackIndex);
-              }
-            }
+            try { window.PlayerAdapter && window.PlayerAdapter.applyState && window.PlayerAdapter.applyState(stBase); } catch {}
             applyLyricsViewMode();
             PlayerState.save();
           }, 300);
@@ -2792,8 +2785,26 @@ jobs:
 
   /* Старые совместимые хелперы */
 function getPlayerConfig() {
-  // Единый источник правды — config текущего альбома для UI-задач
-  // (в «Избранном» операции загрузки/текста управляются через playerCore/favoritesRefsModel).
+  // Основной источник — PlayerCore snapshot (работает и для «Избранного»)
+  try {
+    const pc = window.playerCore;
+    if (pc && typeof pc.getPlaylistSnapshot === 'function') {
+      const snap = pc.getPlaylistSnapshot();
+      if (Array.isArray(snap) && snap.length) {
+        return {
+          tracks: snap.map(t => ({
+            title: t.title,
+            audio: t.src || '',
+            lyrics: t.lyrics || '',
+            fulltext: t.fulltext || ''
+          })),
+          artist: snap[0].artist || 'Витрина Разбита',
+          albumName: snap[0].album || 'Альбом'
+        };
+      }
+    }
+  } catch {}
+  // Фолбэк — текущий открытый альбом
   return config ? { tracks: config.tracks, artist: config.artist, albumName: config.albumName } : null;
 }
 
@@ -2811,7 +2822,8 @@ function updatePlayerCorePlaylistFromConfig() {
       artist,
       album,
       cover,
-      lyrics: t.lyrics
+      lyrics: t.lyrics,
+      fulltext: t.fulltext
     }));
     if (tracks.length) {
       const startIdx = (typeof currentTrack === 'number' && currentTrack >= 0 && currentTrack < tracks.length) ? currentTrack : 0;
@@ -3253,33 +3265,33 @@ function showTrack(n, doPlay) {
     updateNextUpLabel();
     updateMiniNowHeader();
 
-    // Кнопка выбора аудиовыхода (если поддерживается)
-    try {
-      const audioEl = document.getElementById('audio');
-      const row2 = document.querySelectorAll('.player-controls-row')[1];
-      if (audioEl && row2 && typeof audioEl.setSinkId === 'function' && !document.getElementById('sink-btn')) {
-        const btn = document.createElement('button');
-        btn.className = 'player-control-btn';
-        btn.id = 'sink-btn';
-        btn.title = 'Выбрать аудиовыход';
-        btn.setAttribute('aria-label', 'Выбрать аудиовыход');
-        btn.textContent = 'OUT';
-        btn.onclick = async () => {
-          try {
-            const devices = (await navigator.mediaDevices?.enumerateDevices?.()) || [];
-            const outs = devices.filter(d => d.kind === 'audiooutput');
-            if (!outs.length) { NotificationSystem.info('Аудиовыходы недоступны'); return; }
-            const names = outs.map((d, i) => `${i+1}. ${d.label || 'Динамики'}`);
-            const pick = prompt(`Выберите устройство вывода (номер):\n${names.join('\n')}`, '1');
-            const idx = (parseInt(pick,10) || 1) - 1;
-            const dev = outs[Math.max(0, Math.min(outs.length - 1, idx))];
-            await audioEl.setSinkId(dev.deviceId);
-            NotificationSystem.success('Аудиовыход переключён');
-          } catch { NotificationSystem.error('Не удалось переключить аудиовыход'); }
-        };
-        row2.insertBefore(btn, row2.firstChild);
-      }
-    } catch {}
+      // Кнопка выбора аудиовыхода (если поддерживается): WebAudio setSinkId (экспериментально)
+      try {
+        const row2 = document.querySelectorAll('.player-controls-row')[1];
+        const dest = (window.Howler && window.Howler.ctx && window.Howler.ctx.destination) ? window.Howler.ctx.destination : null;
+        if (row2 && dest && typeof dest.setSinkId === 'function' && !document.getElementById('sink-btn')) {
+          const btn = document.createElement('button');
+          btn.className = 'player-control-btn';
+          btn.id = 'sink-btn';
+          btn.title = 'Выбрать аудиовыход';
+          btn.setAttribute('aria-label', 'Выбрать аудиовыход');
+          btn.textContent = 'OUT';
+          btn.onclick = async () => {
+            try {
+              const devices = (await navigator.mediaDevices?.enumerateDevices?.()) || [];
+              const outs = devices.filter(d => d.kind === 'audiooutput');
+              if (!outs.length) { NotificationSystem.info('Аудиовыходы недоступны'); return; }
+              const names = outs.map((d, i) => `${i+1}. ${d.label || 'Динамики'}`);
+              const pick = prompt(`Выберите устройство вывода (номер):\n${names.join('\n')}`, '1');
+              const idx = (parseInt(pick,10) || 1) - 1;
+              const dev = outs[Math.max(0, Math.min(outs.length - 1, idx))];
+              await dest.setSinkId(dev.deviceId);
+              NotificationSystem.success('Аудиовыход переключён');
+            } catch { NotificationSystem.error('Не удалось переключить аудиовыход'); }
+          };
+          row2.insertBefore(btn, row2.firstChild);
+        }
+      } catch {}
 
     dedupePlayerBlock();
   }
