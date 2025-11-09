@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-eb6a603525c5fc81c51b1fb5c14d9ebb6826301c.idx
-│   │       ├── pack-eb6a603525c5fc81c51b1fb5c14d9ebb6826301c.pack
-│   │       └── pack-eb6a603525c5fc81c51b1fb5c14d9ebb6826301c.rev
+│   │       ├── pack-f1c9b52bf660166d4aa5b38c31adf8c53b065390.idx
+│   │       ├── pack-f1c9b52bf660166d4aa5b38c31adf8c53b065390.pack
+│   │       └── pack-f1c9b52bf660166d4aa5b38c31adf8c53b065390.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -226,7 +226,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-08 23:23:47 UTC
+Сгенерировано: 2025-11-09 00:03:06 UTC
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
 name: Generate .meta context
@@ -544,6 +544,7 @@ jobs:
   };
 </script>
 <script type="module" src="./scripts/player-adapter.js"></script>
+<script type="module" src="./scripts/energy.js"></script>
   <meta charset="UTF-8" />
   <title>Витрина Разбита</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -1236,8 +1237,9 @@ jobs:
   let playingArtist = '';
   let playingAlbumName = '';
   let playingCover = 'img/logo.png';
-  let playingShuffledPlaylist = [];
-  let playingShuffleIndex = 0;
+  /* legacy shuffle state removed — PlayerCore управляет очередью */
+  // let playingShuffledPlaylist = [];
+  // let playingShuffleIndex = 0;
   let playingTrack = -1;
 
   function isBrowsingOtherAlbum() {
@@ -2237,93 +2239,7 @@ jobs:
     applyMiniModeUI();
   }
   function clearRelizView(){ const cont = document.getElementById('reliz-container'); if (cont) cont.remove(); }
-  function setupBackgroundEventHandlers() {
-    // Обработчик для iOS: событие окончания воспроизведения в фоне
-    document.addEventListener('webkitendfullscreen', () => {
-      console.log('iOS webkitendfullscreen event');
-      // Принудительно обновляем состояние
-      const audio = document.getElementById('audio');
-      if (audio && !audio.paused && document.hidden) {
-        syncUiFromPlayback();
-        setupMediaSessionForPlayback();
-      }
-    });
-  
-    // Обработчик для Android: Doze mode
-    document.addEventListener('freeze', () => {
-      console.log('App entering freeze state (Android Doze)');
-      // Сохраняем состояние перед заморозкой
-      const audio = document.getElementById('audio');
-     if (audio) {
-        __savedResumePosition = audio.currentTime;
-        localStorage.setItem('freezePosition', String(__savedResumePosition));
-      }
-    });
-  
-    // Обработчик для Android: выход из Doze mode
-    document.addEventListener('resume', () => {
-      console.log('App resuming from freeze state');
-      // Восстанавливаем позицию
-      const savedPosition = localStorage.getItem('freezePosition');
-      if (savedPosition) {
-        const pos = parseFloat(savedPosition);
-        if (!isNaN(pos)) {
-          __savedResumePosition = pos;
-          syncUiFromPlayback();
-        }
-        localStorage.removeItem('freezePosition');
-      }
-    });
-  
-    // Обработчик для всех устройств: событие потери аудио фокуса
-    try {
-      if ('onfocusout' in document) {
-        document.addEventListener('focusout', () => {
-          if (document.hidden) {
-            console.log('App lost focus and is hidden');
-            // Сохраняем состояние
-            const audio = document.getElementById('audio');
-            if (audio) {
-              __savedResumePosition = audio.currentTime;
-            }
-          }
-        });
-      }
-    } catch (e) {
-      console.warn('Failed to setup focusout handler', e);
-    }
-  
-    // Обработчик для iOS: предотвращение автоматической паузы при блокировке экрана
-    if (isIOS()) {
-      window.addEventListener('pagehide', (e) => {
-        if (e.persisted) {
-          console.log('iOS pagehide with persisted state - app moving to background');
-          // Принудительно сохраняем состояние
-          const audio = document.getElementById('audio');
-          if (audio) {
-            __savedResumePosition = audio.currentTime;
-            localStorage.setItem('iosBackgroundPosition', String(__savedResumePosition));
-          }
-        }
-      });
-    
-      window.addEventListener('pageshow', (e) => {
-        if (e.persisted) {
-          console.log('iOS pageshow with persisted state - app returning from background');
-          // Восстанавливаем позицию
-          const savedPosition = localStorage.getItem('iosBackgroundPosition');
-          if (savedPosition) {
-            const pos = parseFloat(savedPosition);
-            if (!isNaN(pos)) {
-              __savedResumePosition = pos;
-              syncUiFromPlayback();
-            }
-            localStorage.removeItem('iosBackgroundPosition');
-          }
-        }
-      });
-    }
-  }
+  /* background handlers removed — iOS/Android кейсы ведем через PlayerCore и Visibility API */
   // Вызываем функцию в initializeMainUi
   /* ====== Инициализация UI ====== */
   async function initializeMainUi() {
@@ -2398,12 +2314,12 @@ jobs:
         if (stBase && Number.isInteger(stBase.trackIndex) && stBase.trackIndex >= 0 && stBase.trackIndex < (config.tracks || []).length) {
           showTrack(stBase.trackIndex, false);
           setTimeout(()=> {
-            const a = document.getElementById('audio');
-            if (a) {
-              a.currentTime = stBase.position || 0;
-              a.volume = (typeof stBase.volume === 'number') ? stBase.volume : a.volume;
+            const pc = window.playerCore;
+            if (pc) {
+              if (typeof stBase.position === 'number') pc.seek(stBase.position || 0);
+              if (typeof stBase.volume === 'number') pc.setVolume(stBase.volume);
               if (resume && resume.wasPlaying === true) {
-                a.play().catch(()=>{});
+                pc.play(stBase.trackIndex);
               }
             }
             applyLyricsViewMode();
@@ -2490,19 +2406,18 @@ jobs:
       detectIOSAndShowInstallGuide();
 
       // Регистрация фоновых обработчиков (freeze/resume и пр.)
-      try { setupBackgroundEventHandlers(); } catch (e) { console.warn('BG handlers failed', e); }
-
+      /* setupBackgroundEventHandlers: удалено — путь через PlayerCore */
       // Service Worker + мягкое обновление с продолжением воспроизведения
       if ('serviceWorker' in navigator) {
         function persistResumeBeforeReload() {
           try {
-            const a = document.getElementById('audio');
-            const wasPlaying = a ? !a.paused : false;
+            const pc = window.playerCore;
+            const wasPlaying = pc ? !!pc.isPlaying?.() : false;
             const st = {
               album: playingAlbumKey || currentAlbumKey || null,
-              trackIndex: typeof playingTrack === 'number' && playingTrack >= 0 ? playingTrack : currentTrack,
-              position: a ? Math.floor(a.currentTime || 0) : 0,
-              volume: a ? a.volume : 1,
+              trackIndex: (typeof playingTrack === 'number' && playingTrack >= 0) ? playingTrack : currentTrack,
+              position: pc ? Math.floor(pc.getSeek?.() || 0) : 0,
+              volume: pc ? (pc.getVolume?.() ?? 1) : 1,
               wasPlaying
             };
             sessionStorage.setItem('resumeAfterReloadV1', JSON.stringify(st));
@@ -2680,13 +2595,14 @@ jobs:
     } catch {}
   }
 
-  // Автонастройка Wake Lock при смене видимости
+  // Автонастройка Wake Lock при смене видимости — через PlayerCore
   document.addEventListener('visibilitychange', () => {
     try {
-      const a = document.getElementById('audio');
-      const playing = a && !a.paused;
-      if (!document.hidden && playing) setPlaybackLocks(true);
-      else setPlaybackLocks(false);
+      const pc = window.playerCore;
+      const playing = pc && pc.isPlaying && pc.isPlaying();
+      (window.Energy && window.Energy.setPlaybackLocks
+        ? window.Energy.setPlaybackLocks(!document.hidden && playing)
+        : setPlaybackLocks(!document.hidden && playing));
     } catch {}
   });
 
@@ -3115,58 +3031,7 @@ function updatePlayerCorePlaylistFromConfig() {
   }
 
   /* Плеер */
-  function getCurrentAudio() { return __currentAudio || document.getElementById('audio') || null; }
-
-  // Единое управление слушателями audio — чтобы не копились при каждом ререндере
-  let __audioHandlers = null;
-  function detachAudioEventListeners(audio) {
-    if (!audio || !__audioHandlers) return;
-    try { audio.removeEventListener('loadedmetadata', __audioHandlers.onLoaded); } catch {}
-    try { audio.removeEventListener('timeupdate', __audioHandlers.onTime); } catch {}
-    try { audio.removeEventListener('ended', __audioHandlers.onEnded); } catch {}
-    try { audio.removeEventListener('waiting', __audioHandlers.onWaiting); } catch {}
-    try { audio.removeEventListener('stalled', __audioHandlers.onStalled); } catch {}
-    try { audio.removeEventListener('error', __audioHandlers.onError); } catch {}
-    try { audio.onplay = null; audio.onpause = null; } catch {}
-    __audioHandlers = null;
-  }
-  function attachAudioEventListeners(audio) {
-    if (!audio) return;
-    detachAudioEventListeners(audio);
-    const onLoaded  = onAudioMetadataLoaded;
-    const onTime    = onAudioTimeUpdate;
-    const onEnded   = onAudioEnded;
-    const onWaiting = (ev) => {
-      if (navigator.onLine === false) {
-        try { __savedResumePosition = audio.currentTime || 0; } catch {}
-        startOfflineToasts();
-      }
-    };
-    const onStalled = onWaiting;
-    const onError   = (ev) => {
-      if (navigator.onLine === false) {
-        startOfflineToasts();
-      }
-    };
-    audio.addEventListener('loadedmetadata', onLoaded);
-    audio.addEventListener('timeupdate',     onTime);
-    audio.addEventListener('ended',          onEnded);
-    audio.addEventListener('waiting',        onWaiting);
-    audio.addEventListener('stalled',        onStalled);
-    audio.addEventListener('error',          onError);
-    // playbackState обновляем через onplay/onpause (переприсваивается, не накапливается)
-    audio.onplay  = () => { try { navigator.mediaSession.playbackState = 'playing'; } catch {} ; try { setPlaybackLocks(true); } catch {} ; try { startPositionUpdates(); } catch {} };
-    audio.onpause = () => { try { navigator.mediaSession.playbackState = 'paused';  } catch {} ; try { setPlaybackLocks(false); } catch {} ; try { stopPositionUpdates(); } catch {} };
-    __audioHandlers = { onLoaded, onTime, onEnded, onWaiting, onStalled, onError };
-  }
-
-  function stopAndCleanupAudio(a) {
-    if (!a) return;
-    try { detachAudioEventListeners(a); } catch {}
-    try { a.pause(); } catch {}
-    try { a.currentTime = 0; } catch {}
-    try { a.removeAttribute('src'); a.load(); } catch {}
-  }
+  /* Audio-tag path removed. PlayerCore (Howler) полностью управляет источником звука. */
 
   function dedupePlayerBlock() {
     try {
@@ -3474,97 +3339,9 @@ function showTrack(n, doPlay) {
       if (audio) audio.volume = volume;
     }
   }
-  function onAudioMetadataLoaded(e) {
-    const audio = (e && (e.currentTarget || e.target)) || document.getElementById('audio');
-    if (!audio) return;
-    const duration = audio.duration || 0;
-    const elapsedEl = document.getElementById('time-elapsed');
-    const remainingEl = document.getElementById('time-remaining');
-    if (elapsedEl) elapsedEl.textContent = '00:00';
-    if (remainingEl) remainingEl.textContent = formatTime(duration);
-    // Media Session: стартовое состояние позиции
-    try {
-      if ('mediaSession' in navigator && typeof navigator.mediaSession.setPositionState === 'function') {
-        navigator.mediaSession.setPositionState({
-          duration: isFinite(duration) ? duration : 0,
-          playbackRate: audio.playbackRate || 1,
-          position: audio.currentTime || 0
-        });
-      }
-    } catch {}
-  }
-  function onAudioTimeUpdate(e) {
-    const audio = (e && (e.currentTarget || e.target)) || document.getElementById('audio');
-    if (!audio) return;
-
-    // В «Ультра‑эконом» в фоне не трогаем DOM вообще
-    if (ultraEcoEnabled && document.hidden) {
-      return;
-    }
-
-    const currentTime = audio.currentTime || 0;
-    const duration = audio.duration || 0;
-
-    if (!isSeekingProgress && duration > 0) {
-      const nowTs = Date.now();
-      if ((nowTs - __lastProgressFillTs) >= __progressThrottleMs) {
-        __lastProgressFillTs = nowTs;
-        const fill = document.getElementById('player-progress-fill');
-        if (fill) fill.style.width = `${(currentTime / duration) * 100}%`;
-      }
-    }
-
-    // Лирика (при эко-режиме обновляется реже через общий троттлинг ниже)
-    renderLyricsEnhanced(currentTime);
-
-    const now = Date.now();
-    if (now - lastTimeUpdate >= __uiUpdateMinIntervalMs) {
-      lastTimeUpdate = now;
-      const updateDom = () => {
-        const elapsedEl = document.getElementById('time-elapsed');
-        const remainingEl = document.getElementById('time-remaining');
-        if (elapsedEl) elapsedEl.textContent = formatTime(currentTime);
-        if (remainingEl) remainingEl.textContent = formatTime(Math.max(0, duration - currentTime));
-      };
-      const ric = window.requestIdleCallback || function(cb){ setTimeout(()=>cb({didTimeout:false}), 0); };
-      ric(updateDom);
-      // Media Session: обновляем позицию
-      try {
-        if ('mediaSession' in navigator && typeof navigator.mediaSession.setPositionState === 'function') {
-          navigator.mediaSession.setPositionState({
-            duration: isFinite(duration) ? duration : 0,
-            playbackRate: audio.playbackRate || 1,
-            position: currentTime
-          });
-        }
-      } catch {}
-      try { savePlayerStateThrottled(false); } catch {}
-    }
-    updatePlayPauseIcon();
-  }
-  function onAudioEnded(e) {
-    const remainingEl = document.getElementById('time-remaining');
-    if (remainingEl) remainingEl.textContent = '00:00';
-    const audio = (e && (e.currentTarget || e.target)) || document.getElementById('audio');
-
-    if (repeatMode && audio) {
-      audio.currentTime = 0;
-      const p = audio.play();
-      if (p && p.catch) p.catch(()=>{});
-      return;
-    }
-    // «Один трек»: если включено — не переходим дальше (кроме Repeat)
-    if (autoNextDisabled) {
-      try { audio.pause(); } catch {}
-      return;
-    }
-    // Ключ: в фоне (iOS, экран заблокирован/вкладка неактивна) не трогаем UI — мгновенно переключаем src
-    if (document.hidden) {
-      backgroundNextTrack();
-    } else {
-      nextTrack();
-    }
-  }
+  /* onAudioMetadataLoaded removed — позиция/длительность обновляются через PlayerCore тикер */
+  /* onAudioTimeUpdate removed — прогресс/время/лирика ведутся через PlayerCore и core‑ticker */
+  /* onAudioEnded removed — автонекст полностью внутри PlayerCore */
 
   function seekToPosition(e) {
     if (!window.playerCore) return;
@@ -3683,7 +3460,7 @@ function __toggleFavoritesOnly_impl(){
 
   if (playingAlbumKey) {
     if (isBrowsingOtherAlbum() || playingAlbumKey === SPECIAL_FAVORITES_KEY) {
-      if (shuffleMode) createPlayingShuffledPlaylist();
+      if (shuffleMode) { try { window.playerCore && window.playerCore.setShuffle(!!shuffleMode); } catch {} }
       updateNextUpLabel();
     } else {
       updateAvailableTracks();
@@ -3766,19 +3543,7 @@ function __toggleFavoritesOnly_impl(){
     if (availableTracks.includes(currentTrack)) shuffledPlaylist.unshift(currentTrack);
     shuffleIndex = 0;
   }
-  function createPlayingShuffledPlaylist() {
-    const len = playingTracks ? playingTracks.length : 0;
-    const available = getAvailableTracksForAlbum(playingAlbumKey, len);
-    playingShuffledPlaylist = [...available];
-    const i = playingShuffledPlaylist.indexOf(playingTrack);
-    if (i !== -1) playingShuffledPlaylist.splice(i, 1);
-    for (let j = playingShuffledPlaylist.length - 1; j > 0; j--) {
-      const k = Math.floor(Math.random() * (j + 1));
-      [playingShuffledPlaylist[j], playingShuffledPlaylist[k]] = [playingShuffledPlaylist[k], playingShuffledPlaylist[j]];
-    }
-    if (available.includes(playingTrack)) playingShuffledPlaylist.unshift(playingTrack);
-    playingShuffleIndex = 0;
-  }
+  /* createPlayingShuffledPlaylist removed — shuffle управляет PlayerCore */
   function playFromPlaybackAlbum(idx, doPlay) {
     // Обновим курсоры UI
     currentTrack = idx;
@@ -3865,188 +3630,9 @@ function __toggleFavoritesOnly_impl(){
       console.warn('Failed to initialize silent audio playback', e);
     }
   }
-  function computeNextIndexPlayback() {
-    const len = playingTracks ? playingTracks.length : 0;
-    const available = getAvailableTracksForAlbum(playingAlbumKey, len);
-    if (!available.length) return -1;
-    if (shuffleMode) {
-      if (!Array.isArray(playingShuffledPlaylist) || playingShuffledPlaylist.length === 0) createPlayingShuffledPlaylist();
-      const nextPos = Math.min(playingShuffleIndex + 1, Math.max(0, playingShuffledPlaylist.length - 1));
-      return playingShuffledPlaylist[nextPos] ?? -1;
-    }
-    if (favoritesOnlyMode) {
-      const i = available.indexOf(playingTrack);
-      return available[(i + 1) % available.length];
-    }
-    return (playingTrack + 1) % len;
-  }
-
+  /* computeNextIndexPlayback removed — используем playerCore.getNextIndex() */
   // ЛЁГКИЙ переход на следующий трек в фоне (iOS): без перерисовок, но с «озвучиванием»
-  function backgroundNextTrack() {
-    const a = document.getElementById('audio');
-    if (!a) return;
-
-    // Вспомогательная функция: подготовить элемент к «аудибл» воспроизведению в iOS PWA
-    function ensureAudible() {
-      try {
-        a.muted = false;
-        a.defaultMuted = false;
-        // если громкость случайно 0 — восстановим сохранённую или выставим 1
-        if (a.volume === 0) {
-          const saved = parseFloat(localStorage.getItem('playerVolume'));
-          a.volume = (Number.isFinite(saved) && saved > 0) ? saved : 1;
-        }
-      } catch {}
-    }
-    // Повторный запуск после готовности буфера
-    function replayOnCanPlayOnce() {
-      const handler = () => {
-        a.removeEventListener('canplay', handler);
-        // Дополнительный play() помогает iOS в Standalone «поймать» маршрут вывода
-        a.play().catch(()=>{});
-      };
-      a.addEventListener('canplay', handler, { once: true });
-    }
-
-    // Вычисляем индекс следующего трека в активном контексте
-    const pickNextIndex = () => {
-      if (shouldUsePlaybackContext()) {
-        const len = playingTracks ? playingTracks.length : 0;
-        const available = getAvailableTracksForAlbum(playingAlbumKey, len);
-        if (!available.length) return -1;
-        if (shuffleMode) {
-          if (!Array.isArray(playingShuffledPlaylist) || playingShuffledPlaylist.length === 0) {
-            createPlayingShuffledPlaylist();
-          }
-          playingShuffleIndex++;
-          if (playingShuffleIndex >= playingShuffledPlaylist.length) {
-            createPlayingShuffledPlaylist();
-            playingShuffleIndex = 0;
-          }
-          let idx = playingShuffledPlaylist[playingShuffleIndex];
-          if (available.length > 1 && idx === playingTrack) {
-            playingShuffleIndex = (playingShuffleIndex + 1) % playingShuffledPlaylist.length;
-            idx = playingShuffledPlaylist[playingShuffleIndex];
-          }
-          return idx;
-        }
-        if (favoritesOnlyMode) {
-          const pos = available.indexOf(playingTrack);
-          return available[(pos + 1) % available.length];
-        }
-        return (playingTrack + 1) % len;
-      } else {
-        updateAvailableTracks();
-        if (!availableTracks.length) return -1;
-        if (shuffleMode) {
-          if (!Array.isArray(shuffledPlaylist) || shuffledPlaylist.length === 0) createShuffledPlaylist();
-          shuffleIndex++;
-          if (shuffleIndex >= shuffledPlaylist.length) { createShuffledPlaylist(); shuffleIndex = 0; }
-          let idx = shuffledPlaylist[shuffleIndex];
-          if (availableTracks.length > 1 && idx === currentTrack) {
-            shuffleIndex = (shuffleIndex + 1) % shuffledPlaylist.length;
-            idx = shuffledPlaylist[shuffleIndex];
-          }
-          return idx;
-        }
-        if (favoritesOnlyMode) {
-          const pos = availableTracks.indexOf(currentTrack);
-          return availableTracks[(pos + 1) % availableTracks.length];
-        }
-        return (currentTrack + 1) % (config?.tracks?.length || 1);
-      }
-    };
-
-    const idx = pickNextIndex();
-    if (idx < 0) return;
-
-    // Выбираем трек и обновляем «контекст» при необходимости
-    let tr = null;
-    if (shouldUsePlaybackContext()) {
-      tr = playingTracks?.[idx] || null;
-      if (!tr) return;
-      playingTrack = idx;
-    } else {
-      tr = config?.tracks?.[idx] || null;
-      if (!tr) return;
-      currentTrack = idx;
-      playingTrack = idx;
-      playingAlbumKey = currentAlbumKey;
-      playingTracks = config?.tracks || null;
-      playingArtist = config?.artist || 'Витрина Разбита';
-      playingAlbumName = config?.albumName || 'Альбом';
-    }
-
-    // Критично для iOS Standalone: load()+play() и принудительное «озвучивание»
-    try {
-      ensureAudible();
-      a.src = tr.audio;
-      a.currentTime = 0;
-
-      // В iOS PWA чаще всего помогает последовательность load() → play() + повторный play при canplay
-      if (isIOSStandalone()) {
-        a.load();
-        replayOnCanPlayOnce();
-      }
-
-      const p = a.play();
-      if (p && p.catch) p.catch(()=>{});
-
-      // Мягкий фейд‑ин при старте (180 мс), если не мут и громкость > 0
-      try {
-        const targetVol = Math.max(0, Math.min(1, (parseFloat(localStorage.getItem('playerVolume')) || a.volume || 1)));
-        if (targetVol > 0 && !a.muted) {
-          const prev = targetVol;
-          a.volume = 0.001;
-          const t0 = performance.now(), dur = 180;
-          const step = (ts) => {
-            const k = Math.min(1, (ts - t0) / dur);
-            a.volume = prev * k;
-            if (k < 1) requestAnimationFrame(step);
-          };
-          requestAnimationFrame(step);
-        }
-      } catch {}
-
-      // Доп. устойчивость для iOS PWA: повторный play и «kick» через load()+play()
-      if (isIOSStandalone()) {
-        // Первая попытка через 700мс: если ПО‑ПРЕЖНЕМУ ПАУЗА — ещё play()
-        setTimeout(() => { if (document.hidden && a.paused) { a.play().catch(()=>{}); } }, 700);
-        // Вторая попытка через 1600мс: если всё ещё пауза — load()+play()
-        setTimeout(() => {
-          if (document.hidden && a.paused) {
-            try { a.load(); } catch {}
-            a.play().catch(()=>{});
-          }
-        }, 1600);
-        // Телеметрия: если к 2500мс всё ещё пауза — логируем и инкрементируем счётчик
-        setTimeout(() => {
-          try {
-            if (document.hidden && a.paused) {
-              const key = 'autonextFails:v1';
-              const raw = localStorage.getItem(key);
-              const cnt = raw ? parseInt(raw, 10) || 0 : 0;
-              localStorage.setItem(key, String(cnt + 1));
-              console.warn('[auto-next] iOS PWA fallback did not start playback. UA:', navigator.userAgent);
-              // RUM: отправим метрику (если задан endpoint), иначе лог
-              try {
-                const payload = { type: 'autonext_fail', album: playingAlbumKey, track: playingTrack, ua: navigator.userAgent, ts: Date.now(), url: location.href };
-                const ep = window.__rumEndpoint || '';
-                if (ep && navigator.sendBeacon) {
-                  navigator.sendBeacon(ep, JSON.stringify(payload));
-                } else {
-                  (window.console && console.log) && console.log('[RUM]', payload);
-                }
-              } catch {}
-            }
-          } catch {}
-        }, 2500);
-      }
-    } catch {}
-
-    try { setupMediaSessionForPlayback(); } catch {}
-    prefetchNextTrackAssetsForPlayback();
-  }
+  /* backgroundNextTrack removed — автонекст и фон ведёт PlayerCore */
   function updateNextUpLabel() {
     const box = document.getElementById('next-up');
     const lp = document.getElementById('lyricsplayerblock');
@@ -4350,11 +3936,10 @@ function __toggleFavoritesOnly_impl(){
             if (favoritesRefsModel && favoritesRefsModel[playingTrack] &&
                 favoritesRefsModel[playingTrack].__a === item.__a &&
                 favoritesRefsModel[playingTrack].__t === item.__t) {
-              createPlayingShuffledPlaylist(); nextTrack();
-            } else { createPlayingShuffledPlaylist(); updateNextUpLabel(); }
+              try { window.playerCore && window.playerCore.setShuffle(!!shuffleMode); } catch {} ; nextTrack();
+              } else { try { window.playerCore && window.playerCore.setShuffle(!!shuffleMode); } catch {} ; updateNextUpLabel(); }
             NotificationSystem.info('Трек снят из избранного');
-          } else {
-            createPlayingShuffledPlaylist(); updateNextUpLabel();
+            } else { try { window.playerCore && window.playerCore.setShuffle(!!shuffleMode); } catch {} ; updateNextUpLabel();
             NotificationSystem.success('Трек возвращён в избранное');
           }
         } else {
@@ -4453,19 +4038,27 @@ function __toggleFavoritesOnly_impl(){
 
   /* Prefetch следующего трека */
   function prefetchNextTrackAssetsForPlayback() {
-    const cand = computeNextIndexPlayback();
-    if (cand >= 0 && playingTracks?.[cand]) {
-      const t = playingTracks[cand];
-      prefetchAudioLink(t.audio, 'audio');
-      if (t.lyrics) prefetchAudioLink(t.lyrics, 'fetch');
-      if (t.fulltext) prefetchAudioLink(t.fulltext, 'fetch');
-    }
-    // Если включён Repeat — держим текущий трек тёплым в кэше
-    if (repeatMode && typeof playingTrack === 'number' && playingTrack >= 0 && playingTracks?.[playingTrack]) {
-      const cur = playingTracks[playingTrack];
-      prefetchAudioLink(cur.audio, 'audio');
-    }
+    try {
+      const pc = window.playerCore;
+      if (!pc || typeof pc.getNextIndex !== 'function') return;
+      const nextIdx = pc.getNextIndex();
+      const snap = typeof pc.getPlaylistSnapshot === 'function' ? pc.getPlaylistSnapshot() : null;
+      if (Number.isInteger(nextIdx) && nextIdx >= 0 && snap && snap[nextIdx]) {
+        const t = snap[nextIdx];
+        if (t?.cover) prefetchAudioLink(t.cover, 'image');
+        if (t?.lyrics) prefetchAudioLink(t.lyrics, 'fetch');
+        // аудио URL доступен только внутри Howler options; используем эвристики:
+        // если src присутствует в снапшоте — прогреем
+        if (t?.src) prefetchAudioLink(t.src, 'audio');
+      }
+      // При Repeat — держим текущий трек тёплым
+      const curIdx = typeof pc.getIndex === 'function' ? pc.getIndex() : -1;
+      if (repeatMode && curIdx >= 0 && snap && snap[curIdx] && snap[curIdx].src) {
+        prefetchAudioLink(snap[curIdx].src, 'audio');
+      }
+    } catch {}
   }
+
   function prefetchAudioLink(url, asType = 'audio') {
     if (!url) return;
     try {
@@ -5152,12 +4745,12 @@ ${lines}
     key: 'playerStateV1',
     save() {
       try {
-        const a = document.getElementById('audio');
+        const pc = window.playerCore;
         const st = {
           album: playingAlbumKey || currentAlbumKey || null,
           trackIndex: typeof playingTrack === 'number' && playingTrack >= 0 ? playingTrack : currentTrack,
-          position: a ? Math.floor(a.currentTime || 0) : 0,
-          volume: a ? a.volume : 1,
+          position: pc ? Math.floor(pc.getSeek?.() || 0) : 0,
+          volume: pc ? (pc.getVolume?.() ?? 1) : 1,
           shuffle: !!shuffleMode,
           repeat: !!repeatMode,
           favoritesOnly: !!favoritesOnlyMode,
