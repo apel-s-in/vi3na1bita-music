@@ -199,7 +199,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Страницы/данные «Новости»: cache-first
+  // Страницы/данные «Новости»: cache-first с строгой MIME-проверкой
   if (request.url.endsWith('/news.html') || request.url.includes('/news/news.json')) {
     event.respondWith((async () => {
       const cache = await caches.open(RUNTIME_CACHE);
@@ -207,12 +207,20 @@ self.addEventListener('fetch', (event) => {
       if (cached) return cached;
       try {
         const netRes = await fetch(request);
-        if (netRes && netRes.ok) {
-          cache.put(request, netRes.clone()).catch(() => {});
+        if (netRes) {
+          const ct = (netRes.headers.get('content-type') || '').toLowerCase();
+          const isNewsHtml = request.url.endsWith('/news.html');
+          const isNewsJson = request.url.includes('/news/news.json');
+          const okForCache =
+            (isNewsHtml && ct.includes('text/html')) ||
+            (isNewsJson && ct.includes('application/json'));
+          if ((netRes.ok || netRes.type === 'opaque') && okForCache) {
+            cache.put(request, netRes.clone()).catch(() => {});
+          }
         }
         return netRes;
       } catch {
-        return cached || new Response('', { status: 404 });
+        return (await cache.match(request)) || new Response('', { status: 404 });
       }
     })());
     return;
