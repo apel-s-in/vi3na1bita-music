@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-10c6d45a136e9c74554bd322ef7b28a82bda1f34.idx
-│   │       ├── pack-10c6d45a136e9c74554bd322ef7b28a82bda1f34.pack
-│   │       └── pack-10c6d45a136e9c74554bd322ef7b28a82bda1f34.rev
+│   │       ├── pack-0287c56d3549211e0fcb3eb736f4ebae8de3db5e.idx
+│   │       ├── pack-0287c56d3549211e0fcb3eb736f4ebae8de3db5e.pack
+│   │       └── pack-0287c56d3549211e0fcb3eb736f4ebae8de3db5e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -242,7 +242,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-09 13:45:23 UTC
+Сгенерировано: 2025-11-09 13:47:06 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5251,13 +5251,19 @@ self.addEventListener('fetch', (event) => {
       const cache = await caches.open(RUNTIME_CACHE);
       try {
         const netRes = await fetchWithTimeout(request, { timeout: 6000 });
-        if (netRes && (netRes.ok || netRes.type === 'opaque')) {
-          cache.put(request, netRes.clone()).catch(() => {});
+        if (netRes) {
+          // Строгая проверка MIME: кэшируем только application/json (или .json)
+          const ct = (netRes.headers.get('content-type') || '').toLowerCase();
+          const isJsonMime = ct.includes('application/json');
+          const isJsonPath = new URL(request.url).pathname.endsWith('.json');
+          if ((netRes.ok || netRes.type === 'opaque') && (isJsonMime || isJsonPath)) {
+            cache.put(request, netRes.clone()).catch(() => {});
+          }
           return netRes;
         }
         const cached = await cache.match(request);
         if (cached) return cached;
-        return netRes;
+        return new Response('Offline JSON', { status: 503 });
       } catch {
         const cached = await cache.match(request);
         if (cached) return cached;
