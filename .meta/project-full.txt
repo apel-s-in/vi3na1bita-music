@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-fde0a041224f9a21d7159c60e70e3c988db9a740.idx
-│   │       ├── pack-fde0a041224f9a21d7159c60e70e3c988db9a740.pack
-│   │       └── pack-fde0a041224f9a21d7159c60e70e3c988db9a740.rev
+│   │       ├── pack-04cce78b78094e6ff66f717b3df6239276c9aad1.idx
+│   │       ├── pack-04cce78b78094e6ff66f717b3df6239276c9aad1.pack
+│   │       └── pack-04cce78b78094e6ff66f717b3df6239276c9aad1.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -213,6 +213,8 @@ vi3na1bita-music/
 │   ├── .gitkeep
 │   └── news.json
 ├── scripts/
+│   ├── ci/
+│   │   └── validate-manifest.mjs
 │   ├── energy.js
 │   └── player-adapter.js
 ├── src/
@@ -228,7 +230,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-09 00:04:00 UTC
+Сгенерировано: 2025-11-09 00:04:22 UTC
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
 name: Generate .meta context
@@ -5909,6 +5911,49 @@ async function clearCurrentOfflineResources() {
   await writeOfflineList([]);
   await postToAllClients({ type: 'OFFLINE_DONE' });
 }
+
+//=================================================
+// FILE: /scripts/ci/validate-manifest.mjs
+#!/usr/bin/env node
+import fs from 'node:fs';
+import path from 'node:path';
+
+const file = path.resolve('manifest.json');
+if (!fs.existsSync(file)) {
+  console.error('manifest.json not found');
+  process.exit(1);
+}
+const raw = fs.readFileSync(file, 'utf8');
+let json;
+try {
+  json = JSON.parse(raw);
+} catch (e) {
+  console.error('manifest.json is not valid JSON:', e.message);
+  process.exit(1);
+}
+const errors = [];
+function req(key) { if (!(key in json)) errors.push(`Missing key: ${key}`); }
+
+req('name');
+req('short_name');
+req('start_url');
+req('icons');
+
+if (json.icons && !Array.isArray(json.icons)) {
+  errors.push('icons must be an array');
+}
+if (Array.isArray(json.icons) && json.icons.length === 0) {
+  errors.push('icons must contain at least one icon');
+}
+if (!json.display) errors.push('Missing key: display');
+if (!json.theme_color) errors.push('Missing key: theme_color');
+if (!json.background_color) errors.push('Missing key: background_color');
+
+if (errors.length) {
+  console.error('Manifest validation failed:\n - ' + errors.join('\n - '));
+  process.exit(2);
+}
+console.log('Manifest validation OK');
 
 //=================================================
 // FILE: /scripts/energy.js
