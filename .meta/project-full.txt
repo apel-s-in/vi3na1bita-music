@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a79992584e50d99abb01ef94905ef44561c5e104.idx
-│   │       ├── pack-a79992584e50d99abb01ef94905ef44561c5e104.pack
-│   │       └── pack-a79992584e50d99abb01ef94905ef44561c5e104.rev
+│   │       ├── pack-fe674be1bd171988ddfeb0b3ec8f93331fdf26a0.idx
+│   │       ├── pack-fe674be1bd171988ddfeb0b3ec8f93331fdf26a0.pack
+│   │       └── pack-fe674be1bd171988ddfeb0b3ec8f93331fdf26a0.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -248,7 +248,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-09 20:11:10 UTC
+Сгенерировано: 2025-11-09 20:17:01 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -651,6 +651,10 @@ jobs:
 <script type="module" src="./scripts/ui/mini.js"></script>
 <script type="module" src="./scripts/ui/modals.js"></script>
 <script type="module" src="./scripts/ui/notify.js"></script>
+<script type="module" src="./scripts/ui/sleep.js"></script>
+<script type="module" src="./scripts/ui/offline.js"></script>
+<script type="module" src="./scripts/ui/gallery.js"></script>
+<script type="module" src="./scripts/ui/sysinfo.js"></script>
   <meta charset="UTF-8" />
   <title>Витрина Разбита</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -1168,7 +1172,8 @@ jobs:
       <button id="install-pwa-btn" style="display: none;">УСТАНОВИТЬ КАК ПРИЛОЖЕНИЕ</button>
       <button id="download-album-main" onclick="openAlbumDownloadModal()">СКАЧАТЬ ВЕСЬ АЛЬБОМ</button>
 
-      <button class="hotkeys-btn" id="hotkeys-btn" style="display:none;" onclick="showHotkeysModal()">ГОРЯЧИЕ КЛАВИШИ</button>
+<button class="hotkeys-btn" id="hotkeys-btn" style="display:none;" onclick="showHotkeysModal()">ГОРЯЧИЕ КЛАВИШИ</button>
+<button class="hotkeys-btn" id="sysinfo-btn" style="display:none;" onclick="showSystemInfo()">О СИСТЕМЕ</button>
       <span class="feedback-link" id="feedback-link">ОБРАТНАЯ СВЯЗЬ</span>
       <a class="support-link" id="support-link" href="#" target="_blank">ПОДДЕРЖАТЬ</a>
       <button class="offline-btn online" id="offline-btn" onclick="offlineUIClick()">ONLINE</button>
@@ -4229,86 +4234,7 @@ ${lines}
   </script>
 
   <script>
-  /* ====== Таймер сна ====== */
-  function updateSleepTimerUI() {
-    const btn = document.getElementById('sleep-timer-btn');
-    const badge = document.getElementById('sleep-timer-badge');
-    if (!sleepTimerTarget) {
-      btn && btn.classList.remove('active');
-      if (badge) { badge.style.display = 'none'; badge.textContent = ''; }
-      return;
-    }
-    btn && btn.classList.add('active');
-    const minsLeft = Math.max(0, Math.ceil((sleepTimerTarget - Date.now()) / 60000));
-    if (badge) { badge.style.display = ''; badge.textContent = String(minsLeft); }
-  }
-  function clearSleepTimer() {
-    try { window.playerCore && window.playerCore.clearSleepTimer(); } catch {}
-    sleepTimerTarget = null;
-    if (sleepTimerInterval) { clearInterval(sleepTimerInterval); sleepTimerInterval = null; }
-    updateSleepTimerUI();
-    hideSleepOverlay();
-    NotificationSystem.info('Таймер сна выключен');
-  }
-  function showTimePickerForSleep() {
-    closeSleepMenu();
-    const val = prompt('Через сколько минут выключить воспроизведение?', '30');
-    const mins = parseInt(val, 10);
-    if (Number.isFinite(mins) && mins > 0) {
-      setSleepTimer(mins);
-    }
-  }
-  function checkSleepTimer() {
-    if (!sleepTimerTarget) return;
-    const now = Date.now();
-    const msLeft = sleepTimerTarget - now;
-
-    if (msLeft <= 0) {
-      // PlayerCore сам поставит на паузу и вызовет onSleepTriggered
-      clearSleepTimer();
-      return;
-    }
-
-    // В «Ультра‑эконом» не показываем пред-оверлей
-    if (!ultraEcoEnabled && msLeft <= 10000 && !document.querySelector('#sleep-overlay')) {
-      showSleepOverlay();
-    }
-    updateSleepTimerUI();
-  }
-  function showSleepOverlay() {
-    let ov = document.getElementById('sleep-overlay');
-    if (!ov) {
-      ov = document.createElement('div');
-      ov.id = 'sleep-overlay';
-      ov.className = 'sleep-overlay active';
-      ov.innerHTML = `
-        <div class="sleep-content">
-          <div class="sleep-icon">😴</div>
-          <div class="sleep-title">Скоро пауза</div>
-          <div class="sleep-message">Воспроизведение будет приостановлено по таймеру сна.</div>
-          <div class="sleep-buttons">
-            <button class="sleep-btn sleep-btn-secondary" onclick="cancelSleepOverlay()">Отмена</button>
-            <button class="sleep-btn sleep-btn-primary" onclick="confirmSleepOverlay()">Оставить</button>
-          </div>
-        </div>`;
-      document.body.appendChild(ov);
-    } else {
-      ov.classList.add('active');
-    }
-  }
-  function hideSleepOverlay() {
-    const ov = document.getElementById('sleep-overlay');
-    if (ov) ov.remove();
-  }
-  function cancelSleepOverlay() {
-    clearSleepTimer();
-    hideSleepOverlay();
-  }
-  function confirmSleepOverlay() {
-    // Ничего не делаем — таймер продолжится
-    hideSleepOverlay();
-  }
-
+  /* ====== Таймер сна: вынесено в scripts/ui/sleep.js ====== */
   /* ====== Анимация лирики, «бит» (пульс лого) ====== */
   function toggleAnimation() {
     if (energySaver) { NotificationSystem.info('Отключено в режиме энергосбережения'); return; }
@@ -4597,196 +4523,7 @@ ${lines}
     setTimeout(() => el && el.remove(), 350);
   }
 
-  /* ====== OFFLINE / Service Worker ====== */
-  function createOfflineUiExtras() {
-    const container = document.querySelector('.bottom-controls-center');
-    if (!container) return;
-    if (!document.getElementById('offline-progress-el')) {
-      const prog = document.createElement('div');
-      prog.id = 'offline-progress-el';
-      prog.className = 'offline-progress';
-      prog.innerHTML = '<div class="offline-progress-bar" id="offline-progress-bar" style="width:0%"></div>';
-      container.appendChild(prog);
-    }
-    if (!document.getElementById('offline-desc-el')) {
-      const desc = document.createElement('div');
-      desc.id = 'offline-desc-el';
-      desc.className = 'offline-desc';
-      desc.textContent = 'Доступно офлайн: выключено';
-      container.appendChild(desc);
-    }
-  }
-  function setOfflineUIState(state) {
-    createOfflineUiExtras();
-    const btn = document.getElementById('offline-btn');
-    const desc = document.getElementById('offline-desc-el');
-    if (state === 'offline') {
-      btn.classList.remove('online'); btn.classList.add('offline');
-      btn.textContent = 'OFFLINE';
-      desc && (desc.textContent = 'Доступно офлайн: включено');
-    } else {
-      btn.classList.remove('offline'); btn.classList.add('online');
-      btn.textContent = 'ONLINE';
-      desc && (desc.textContent = 'Доступно офлайн: выключено');
-    }
-  }
-  function syncOfflineState() {
-    const ls = localStorage.getItem('offlineMode') === '1';
-    offlineMode = ls;
-    setOfflineUIState(offlineMode ? 'offline' : 'online');
-  }
-  async function offlineUIClick() {
-    if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) {
-      NotificationSystem.warning('Service Worker недоступен');
-      return;
-    }
-    if (offlineDownloading) {
-      NotificationSystem.info('Уже идёт подготовка офлайн-данных...');
-      return;
-    }
-    offlineMode = !offlineMode;
-    localStorage.setItem('offlineMode', offlineMode ? '1' : '0');
-    setOfflineUIState(offlineMode ? 'offline' : 'online');
-    const reg = await navigator.serviceWorker.ready.catch(()=>null);
-    if (reg && reg.active) {
-      if (offlineMode) {
-        const resources = await buildOfflineFavoritesAndGalleriesList();
-        NotificationSystem.info('ОФФЛАЙН: будут доступны ⭐ избранные треки. Добавьте любимые песни в избранное, чтобы они играли без интернета. Галереи (webp) тоже будут кэшированы.');
-
-        // Профиль оффлайна: избранные + webp галерей
-        try { reg.active.postMessage({ type: 'OFFLINE_SET_PROFILE', profile: 'favorites-webp' }); } catch {}
-
-        reg.active.postMessage({ type: 'OFFLINE_CACHE_ADD', resources });
-        // One-off Background Sync: докачать при появлении сети/выходе из фона (если доступно)
-        try { if (reg.sync && reg.sync.register) { await reg.sync.register('offline-favorites-cache'); } } catch {}
-        NotificationSystem.info(`Кэшируем офлайн (${resources.length} файлов)...`);
-        offlineDownloading = true;
-      } else {
-        reg.active.postMessage({ type: 'OFFLINE_CACHE_CLEAR_CURRENT' });
-        NotificationSystem.info('Офлайн-кэш очищается...');
-      }
-    }
-  }
-  async function buildOfflineResourceListForCurrentView() {
-    const out = new Set();
-    // Базовые файлы приложения
-    ['.', './index.html', './manifest.json', './service-worker.js'].forEach(x => out.add(new URL(x, location.href).toString()));
-
-    // Текущий альбом или «избранное»
-    if (viewMode === 'album' && config) {
-      out.add(absJoin(albumBase, 'config.json'));
-      (config.tracks || []).forEach(t => {
-        out.add(t.audio);
-        out.add(t.lyrics);
-        if (t.fulltext) out.add(t.fulltext);
-      });
-      // Обложки из центральной галереи
-      try {
-        const id = centralIdForAlbumKey(currentAlbumKey);
-        if (id) {
-          out.add(new URL(`${CENTRAL_GALLERY_BASE}${id}/index.json`, location.href).toString());
-          if (Array.isArray(coverGalleryArr)) {
-            coverGalleryArr.forEach(it => {
-              if (it.type === 'img') {
-                if (it.formats?.webp) out.add(it.formats.webp);
-                if (it.formats?.full) out.add(it.formats.full);
-                if (it.src) out.add(it.src);
-              } else if (it.type === 'html') {
-                out.add(it.src);
-              }
-            });
-          }
-        }
-      } catch {}
-    } else if (viewMode === 'favorites' && Array.isArray(favoritesRefsModel)) {
-      for (const it of favoritesRefsModel) {
-        if (!it.__active) continue;
-        if (it.audio) out.add(it.audio);
-        if (it.lyrics) out.add(it.lyrics);
-        if (it.fulltext) out.add(it.fulltext);
-      }
-    }
-
-    // Иконки/картинки интерфейса
-    ['img/logo.png','img/star.png','img/star2.png'].forEach(p => out.add(new URL(p, location.href).toString()));
-
-    return Array.from(out);
-  }
-  // Оффлайн «Мини»: все избранные треки (всех альбомов) + все webp галерей
-  async function buildOfflineFavoritesAndGalleriesList() {
-    const out = new Set();
-    // База UI
-    ['.', './index.html', './manifest.json', './service-worker.js',
-     './img/logo.png','./img/star.png','./img/star2.png'
-    ].forEach(x => out.add(new URL(x, location.href).toString()));
-
-    // Избранные по всем альбомам
-    const likesMap = (function(){
-      try { return JSON.parse(localStorage.getItem('likedTracks:v2')) || {}; } catch { return {}; }
-    })();
-    const albumKeys = Object.keys(likesMap);
-    for (const akey of albumKeys) {
-      const liked = Array.isArray(likesMap[akey]) ? likesMap[akey] : [];
-      if (!liked.length) continue;
-      // Загружаем конфиг альбома и включаем треки/лирику/полный текст
-      const cfg = await getAlbumConfigByKey(akey);
-      if (!cfg || !Array.isArray(cfg.tracks)) continue;
-      liked.forEach(i => {
-        const t = cfg.tracks[i];
-        if (!t) return;
-        out.add(t.audio);
-        if (t.lyrics) out.add(t.lyrics);
-        if (t.fulltext) out.add(t.fulltext);
-      });
-    }
-
-    // Все центральные галереи (webp)
-    async function collectAllGalleryWebpUrls() {
-      const ids = Array.from(CENTRAL_ALLOWED_IDS || []);
-      for (const id of ids) {
-        try {
-          const baseDir = `${CENTRAL_GALLERY_BASE}${id}/`;
-          out.add(new URL(baseDir + 'index.json', location.href).toString());
-          const r = await fetch(baseDir + 'index.json', { cache: 'force-cache' });
-          if (!r.ok) continue;
-          const j = await r.json();
-          const items = Array.isArray(j.items) ? j.items : (Array.isArray(j) ? j : []);
-          for (const raw of items) {
-            const norm = normalizeGalleryItem(raw, baseDir);
-            if (norm && norm.type === 'img') {
-              if (norm.formats?.webp) out.add(norm.formats.webp);
-            }
-          }
-        } catch {}
-      }
-    }
-    await collectAllGalleryWebpUrls();
-
-    return Array.from(out);
-  }
-
-  // Сообщения от SW: прогресс
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.addEventListener('message', ev => {
-      const msg = ev.data || {};
-      if (msg.type === 'OFFLINE_PROGRESS') {
-        createOfflineUiExtras();
-        const bar = document.getElementById('offline-progress-bar');
-        if (bar && typeof msg.percent === 'number') {
-          bar.style.width = `${Math.max(0, Math.min(100, msg.percent))}%`;
-        }
-      }
-      if (msg.type === 'OFFLINE_DONE') {
-        offlineDownloading = false;
-        NotificationSystem.success('Офлайн-кэш готов!');
-      }
-      if (msg.type === 'OFFLINE_ERROR') {
-        offlineDownloading = false;
-        NotificationSystem.error('Ошибка кэширования офлайн');
-      }
-    });
-  }
-
+  /* ====== OFFLINE: вынесено в scripts/ui/offline.js ====== */
   /* ====== Мелочи ====== */
   function openInAppCurrentTrack() {
     const pc = getPlayerConfig();
