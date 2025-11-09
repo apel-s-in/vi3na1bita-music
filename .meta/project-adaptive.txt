@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-bd334850e662b49250b98629f79b3320e35c0dc8.idx
-│   │       ├── pack-bd334850e662b49250b98629f79b3320e35c0dc8.pack
-│   │       └── pack-bd334850e662b49250b98629f79b3320e35c0dc8.rev
+│   │       ├── pack-33407c5e3ee76b701cda0e03b6b1e24f3d7afa5d.idx
+│   │       ├── pack-33407c5e3ee76b701cda0e03b6b1e24f3d7afa5d.pack
+│   │       └── pack-33407c5e3ee76b701cda0e03b6b1e24f3d7afa5d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -237,7 +237,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-09 12:19:22 UTC
+Сгенерировано: 2025-11-09 12:20:36 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7274,6 +7274,7 @@ export type PlayerTrack = {
   album?: string;
   cover?: string;
   lyrics?: string;
+  fulltext?: string;
 };
 
 type PlayerCoreEvents = {
@@ -7416,13 +7417,15 @@ export class PlayerCore {
   }
 
   // Снимок плейлиста для UI (заголовки и пр.)
-  getPlaylistSnapshot(): Array<{ title: string; artist: string; album: string; cover: string; lyrics: string; }> {
+  getPlaylistSnapshot(): Array<{ title: string; artist: string; album: string; cover: string; lyrics: string; src: string; fulltext: string; }> {
     return (this.playlist || []).map(t => ({
       title: t?.title || '',
       artist: t?.artist || this._albumArtist || '',
       album: t?.album || this._albumTitle || '',
       cover: t?.cover || this._albumCover || '',
-      lyrics: t?.lyrics || ''
+      lyrics: t?.lyrics || '',
+      src: t?.src || '',
+      fulltext: (t as any)?.fulltext || ''
     }));
   }
 
