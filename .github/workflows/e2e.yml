@@ -1,0 +1,36 @@
+name: E2E smoke
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright
+        run: npx -y playwright@1.48.2 install --with-deps
+
+      - name: Start static server
+        run: |
+          npx -y http-server -p 4173 -c-1 . &
+          echo $! > server.pid
+          sleep 2
+
+      - name: Run smoke tests
+        env:
+          BASE_URL: http://127.0.0.1:4173
+        run: npx -y @playwright/test@1.48.2 scripts/e2e
+
+      - name: Stop server
+        if: always()
+        run: kill $(cat server.pid) || true
