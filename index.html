@@ -798,10 +798,6 @@
 
   /* Контекст воспроизведения (единый для обычного и «Избранного») */
   let playingAlbumKey = null;
-  let playingTracks = null;
-  let playingArtist = '';
-  let playingAlbumName = '';
-  let playingCover = 'img/logo.png';
   /* legacy shuffle state removed — PlayerCore управляет очередью */
   // let playingShuffledPlaylist = [];
   // let playingShuffleIndex = 0;
@@ -2280,9 +2276,8 @@
 
   /* Старые совместимые хелперы */
 function getPlayerConfig() {
-  if (playingTracks) {
-    return { tracks: playingTracks, artist: playingArtist, albumName: playingAlbumName };
-  }
+  // Единый источник правды — config текущего альбома для UI-задач
+  // (в «Избранном» операции загрузки/текста управляются через playerCore/favoritesRefsModel).
   return config ? { tracks: config.tracks, artist: config.artist, albumName: config.albumName } : null;
 }
 
@@ -2293,7 +2288,7 @@ function updatePlayerCorePlaylistFromConfig() {
     if (!window.playerCore || !config || !Array.isArray(config.tracks)) return;
     const artist = config.artist || 'Витрина Разбита';
     const album = config.albumName || 'Альбом';
-    const cover = (typeof playingCover === 'string' && playingCover) ? playingCover : 'img/logo.png';
+    const cover = 'img/logo.png';
     const tracks = config.tracks.map(t => ({
       src: t.audio,
       title: t.title,
@@ -2480,9 +2475,6 @@ function updatePlayerCorePlaylistFromConfig() {
 
     // Контекст UI
     playingAlbumKey = SPECIAL_FAVORITES_KEY;
-    playingArtist = 'Витрина Разбита';
-    playingAlbumName = 'Избранное';
-    playingCover = 'img/logo.png';
 
     // Формируем плейлист для PlayerCore (источник звука)
     const playlist = (favoritesRefsModel || []).map(it => ({
@@ -3042,7 +3034,7 @@ function __toggleFavoritesOnly_impl(){
   function updateAvailableTracks(){
     const pc = getPlayerConfig();
     if (!pc || !Array.isArray(pc.tracks)) { availableTracks = []; return; }
-    if (playingAlbumKey === SPECIAL_FAVORITES_KEY && Array.isArray(favoritesRefsModel)) {
+    if (playingAlbumKey === SPECIAL_FAVORITES_KEY) {
       const activeIdx = [];
       favoritesRefsModel.forEach((x, i) => { if (x.__active) activeIdx.push(i); });
       availableTracks = activeIdx; return;
@@ -3396,7 +3388,7 @@ function __toggleFavoritesOnly_impl(){
         const s = favRow.querySelector('.like-star');
         if (s) { s.src = was ? 'img/star2.png' : 'img/star.png'; s.title = was ? 'Вернуть в избранное' : 'Снять из избранного'; }
       }
-      if (favoritesOnlyMode && shuffleMode) createPlayingShuffledPlaylist();
+      if (favoritesOnlyMode && shuffleMode) { try { window.playerCore && window.playerCore.setShuffle(!!shuffleMode); } catch {} }
       updateNextUpLabel();
     }
   }
@@ -3495,7 +3487,7 @@ function __toggleFavoritesOnly_impl(){
         toggleLikeForAlbum(item.__a, item.__t, !wasActive);
         updateFavRow({a:item.__a,t:item.__t}, !wasActive);
         updateFavoritesRefsModelActiveFlag(item.__a, item.__t, !wasActive);
-        if (playingAlbumKey === SPECIAL_FAVORITES_KEY && Array.isArray(playingTracks)) {
+        if (playingAlbumKey === SPECIAL_FAVORITES_KEY) {
           if (wasActive) {
             if (favoritesRefsModel && favoritesRefsModel[playingTrack] &&
                 favoritesRefsModel[playingTrack].__a === item.__a &&
@@ -4100,9 +4092,19 @@ ${lines}
     if (animationFrame) cancelAnimationFrame(animationFrame);
     const dataArray = new Uint8Array(analyser ? analyser.frequencyBinCount : 32);
     let t0 = performance.now();
+    let lastUpdate = 0;
 
     function loop(ts) {
       if (!bitEnabled || !logo) return;
+
+      // ЭКО: ограничим частоту обновления
+      const ecoInterval = window.ultraEcoEnabled ? (window.__uiUpdateMinIntervalMs || 1000) : 0;
+      if (ecoInterval && (ts - lastUpdate) < ecoInterval) {
+        animationFrame = requestAnimationFrame(loop);
+        return;
+      }
+      lastUpdate = ts;
+
       const dt = (ts - t0) / 1000;
       t0 = ts;
 
@@ -4124,6 +4126,7 @@ ${lines}
     }
     animationFrame = requestAnimationFrame(loop);
   }
+
   function stopLogoPulsation() {
     if (animationFrame) { cancelAnimationFrame(animationFrame); animationFrame = null; }
     const logo = document.getElementById('logo-bottom');
@@ -4327,33 +4330,10 @@ ${lines}
     const now = Date.now();
     if (!force && (now - __psSaveTs) < 5000) return;
     __psSaveTs = now;
-    try { PlayerState.save(); } catch {}
+    try { (window.PlayerState && window.PlayerState.save && window.PlayerState.save()); } catch {}
   }
-  const PlayerState = {
-    key: 'playerStateV1',
-    save() {
-      try {
-        const pc = window.playerCore;
-        const st = {
-          album: playingAlbumKey || currentAlbumKey || null,
-          trackIndex: typeof playingTrack === 'number' && playingTrack >= 0 ? playingTrack : currentTrack,
-          position: pc ? Math.floor(pc.getSeek?.() || 0) : 0,
-          volume: pc ? (pc.getVolume?.() ?? 1) : 1,
-          shuffle: !!shuffleMode,
-          repeat: !!repeatMode,
-          favoritesOnly: !!favoritesOnlyMode,
-          lyricsMode: lyricsViewMode
-        };
-        localStorage.setItem(this.key, JSON.stringify(st));
-      } catch {}
-    },
-    restore() {
-      try {
-        const raw = localStorage.getItem(this.key);
-        return raw ? JSON.parse(raw) : null;
-      } catch { return null; }
-    }
-  };
+  // Тонкая прослойка: используем реализацию из scripts/player-adapter.js
+  const PlayerState = window.PlayerState || { save: ()=>{}, restore: ()=>null };
 
   /* ====== PWA / iOS установка ====== */
   function detectIOSAndShowInstallGuide() {
