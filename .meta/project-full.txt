@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c798f291927f1668a627a24770c2e874b9a809e8.idx
-│   │       ├── pack-c798f291927f1668a627a24770c2e874b9a809e8.pack
-│   │       └── pack-c798f291927f1668a627a24770c2e874b9a809e8.rev
+│   │       ├── pack-3a6536e7cd67c1f5d9bdc8abcb3e5e694973bb04.idx
+│   │       ├── pack-3a6536e7cd67c1f5d9bdc8abcb3e5e694973bb04.pack
+│   │       └── pack-3a6536e7cd67c1f5d9bdc8abcb3e5e694973bb04.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -249,7 +249,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-09 21:44:36 UTC
+Сгенерировано: 2025-11-09 21:47:41 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -656,6 +656,7 @@ jobs:
 <script type="module" src="./scripts/ui/offline.js"></script>
 <script type="module" src="./scripts/ui/gallery.js"></script>
 <script type="module" src="./scripts/ui/sysinfo.js"></script>
+<script type="module" src="./scripts/ui/bindings.js"></script>
   <meta charset="UTF-8" />
   <title>Витрина Разбита</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -1171,10 +1172,10 @@ jobs:
       <img class="logo-bottom" id="logo-bottom" src="img/logo.png" alt="Логотип" onclick="handleLogoClick()"/>
 
       <button id="install-pwa-btn" style="display: none;">УСТАНОВИТЬ КАК ПРИЛОЖЕНИЕ</button>
-      <button id="download-album-main" onclick="openAlbumDownloadModal()">СКАЧАТЬ ВЕСЬ АЛЬБОМ</button>
+      <button id="download-album-main">СКАЧАТЬ ВЕСЬ АЛЬБОМ</button>
 
-<button class="hotkeys-btn" id="hotkeys-btn" style="display:none;" onclick="showHotkeysModal()">ГОРЯЧИЕ КЛАВИШИ</button>
-<button class="hotkeys-btn" id="sysinfo-btn" style="display:none;" onclick="showSystemInfo()">О СИСТЕМЕ</button>
+<button class="hotkeys-btn" id="hotkeys-btn" style="display:none;">ГОРЯЧИЕ КЛАВИШИ</button>
+<button class="hotkeys-btn" id="sysinfo-btn" style="display:none;">О СИСТЕМЕ</button>
       <span class="feedback-link" id="feedback-link">ОБРАТНАЯ СВЯЗЬ</span>
       <a class="support-link" id="support-link" href="#" target="_blank">ПОДДЕРЖАТЬ</a>
       <button class="offline-btn online" id="offline-btn" onclick="offlineUIClick()">ONLINE</button>
@@ -1184,7 +1185,7 @@ jobs:
   <!-- Модалки: Обратная связь -->
   <div class="modal-bg" id="modal-feedback">
     <div class="modal-feedback" style="max-width:420px;">
-      <button class="bigclose" onclick="closeFeedbackModal()" title="Закрыть">
+      <button class="bigclose" data-action="close-feedback" title="Закрыть">
         <svg viewBox="0 0 48 48"><line x1="12" y1="12" x2="36" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><line x1="36" y1="12" x2="12" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/></svg>
       </button>
       <div style="font-size:1.12em;font-weight:700;margin-bottom:10px;">Обратная связь</div>
@@ -2085,7 +2086,7 @@ jobs:
         if (hot) hot.style.display = 'block';
       }
 
-      document.getElementById('feedback-link').onclick = openFeedbackModal;
+      // Открытие «Обратная связь» обрабатывается делегированно (см. scripts/ui/bindings.js)
       document.getElementById('modal-feedback').onclick = (e) => { if (e.target === e.currentTarget) closeFeedbackModal(); };
 
       // PWA install
