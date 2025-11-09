@@ -30,6 +30,24 @@ consts.forEach(cn => {
   if (n > 1) warns.push(`Duplicate const ${cn} (${n} times)`);
 });
 
+// Доп.проверки: DEFAULT_SW_CONFIG числовые лимиты и revalidateDays целочисленное
+const cfgMatch = src.match(/const\s+DEFAULT_SW_CONFIG\s*=\s*\{([\s\S]*?)\};/);
+if (cfgMatch) {
+  const body = cfgMatch[1];
+  const num = (key) => {
+    const m = body.match(new RegExp(`${key}\\s*:\\s*([0-9]+(?:\\.[0-9]+)?)`));
+    return m ? Number(m[1]) : null;
+  };
+  const revalidateDays = num('revalidateDays');
+  if (!(Number.isInteger(revalidateDays) && revalidateDays > 0)) {
+    errors.push('DEFAULT_SW_CONFIG.revalidateDays must be positive integer');
+  }
+  ['mediaMaxCacheMB','nonRangeMaxStoreMB','nonRangeMaxStoreMBSlow'].forEach(k => {
+    const v = num(k);
+    if (!(typeof v === 'number' && v > 0)) errors.push(`DEFAULT_SW_CONFIG.${k} must be positive number`);
+  });
+}
+
 if (warns.length) {
   console.warn('SW linter warnings:\n - ' + warns.join('\n - '));
 }
@@ -38,3 +56,4 @@ if (errors.length) {
   process.exit(2);
 }
 console.log('Service Worker lint OK');
+
