@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-fe4ffc23e49b57909bd8c7d4482718b44564494c.idx
-│   │       ├── pack-fe4ffc23e49b57909bd8c7d4482718b44564494c.pack
-│   │       └── pack-fe4ffc23e49b57909bd8c7d4482718b44564494c.rev
+│   │       ├── pack-c6d8e42cea346018e34082f4c6d0fc1f42d3c61b.idx
+│   │       ├── pack-c6d8e42cea346018e34082f4c6d0fc1f42d3c61b.pack
+│   │       └── pack-c6d8e42cea346018e34082f4c6d0fc1f42d3c61b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -248,7 +248,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-09 20:46:10 UTC
+Сгенерировано: 2025-11-09 20:48:01 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6550,6 +6550,85 @@ function syncOfflineState() {
   const ls = localStorage.getItem('offlineMode') === '1';
   window.offlineMode = ls;
   setOfflineUIState(ls ? 'offline' : 'online');
+  initOfflineProfileMenu(); // гарантируем меню профилей
+}
+
+// ---- Профили OFFLINE ----
+function getOfflineProfile() {
+  const p = localStorage.getItem('offlineProfile') || 'favorites-webp';
+  return p;
+}
+function setOfflineProfile(p) {
+  localStorage.setItem('offlineProfile', String(p || 'favorites-webp'));
+  try { if (navigator.serviceWorker?.controller) navigator.serviceWorker.controller.postMessage({ type: 'OFFLINE_SET_PROFILE', profile: p }); } catch {}
+  try { window.NotificationSystem && window.NotificationSystem.info(`Офлайн‑профиль: ${p}`); } catch {}
+}
+
+function buildOfflineProfileMenuEl() {
+  const menu = document.createElement('div');
+  menu.id = 'offline-profile-menu';
+  menu.style.cssText = 'position:absolute; z-index:9999; background: var(--modal-bg); border:1px solid rgba(255,255,255,.12); border-radius:10px; padding:8px; display:none; box-shadow:0 6px 24px rgba(0,0,0,.4);';
+  const cur = getOfflineProfile();
+  const mk = (value, label) => `<div class="profile-item" data-value="${value}" style="padding:8px 10px; border-radius:8px; cursor:pointer; ${cur===value?'background:rgba(255,255,255,.08);':''}">${label}${cur===value?' ✓':''}</div>`;
+  menu.innerHTML = [
+    '<div style="font-weight:800; font-size:.95em; margin:4px 6px 6px;">Офлайн‑профиль</div>',
+    mk('favorites-webp', '⭐ Избранные + webp галерей'),
+    mk(`album-current`, 'Текущий альбом (все треки)'),
+  ].join('');
+  menu.addEventListener('click', (e) => {
+    const t = e.target instanceof Element ? e.target : null;
+    if (!t) return;
+    const item = t.closest('.profile-item');
+    if (!item) return;
+    const val = item.getAttribute('data-value');
+    if (!val) return;
+    setOfflineProfile(val);
+    hideOfflineProfileMenu();
+  });
+  document.body.appendChild(menu);
+  return menu;
+}
+function showOfflineProfileMenu(anchor) {
+  const menu = document.getElementById('offline-profile-menu') || buildOfflineProfileMenuEl();
+  const rect = anchor.getBoundingClientRect();
+  menu.style.left = `${Math.min(window.innerWidth - 220, Math.max(10, rect.left))}px`;
+  menu.style.top  = `${rect.bottom + 6}px`;
+  menu.style.display = 'block';
+  const onDoc = (ev) => {
+    const t = ev.target instanceof Element ? ev.target : null;
+    if (!t) return;
+    if (!t.closest('#offline-profile-menu') && !t.closest('#offline-btn')) {
+      hideOfflineProfileMenu();
+    }
+  };
+  document.addEventListener('click', onDoc, { once: true });
+}
+function hideOfflineProfileMenu() {
+  const menu = document.getElementById('offline-profile-menu');
+  if (menu) menu.style.display = 'none';
+}
+function initOfflineProfileMenu() {
+  const btn = document.getElementById('offline-btn');
+  if (!btn || btn.__profileMenuReady) return;
+  btn.__profileMenuReady = true;
+  // Правый клик — открыть меню
+  btn.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    showOfflineProfileMenu(btn);
+  });
+  // Alt‑клик — тоже открыть меню
+  btn.addEventListener('click', (e) => {
+    if (e && (e.altKey || e.metaKey)) {
+      e.preventDefault();
+      showOfflineProfileMenu(btn);
+    }
+  });
+  // Долгое касание (мобайл)
+  let touchTimer = null;
+  btn.addEventListener('touchstart', () => { touchTimer = setTimeout(() => showOfflineProfileMenu(btn), 600); }, { passive: true });
+  btn.addEventListener('touchend',   () => { if (touchTimer) { clearTimeout(touchTimer); touchTimer = null; } }, { passive: true });
+  // Экспорт отладочной функции
+  window.openOfflineProfileMenu = () => showOfflineProfileMenu(btn);
 }
 
 async function buildOfflineResourceListForCurrentView() {
@@ -6659,25 +6738,36 @@ async function offlineUIClick() {
     try { window.NotificationSystem && window.NotificationSystem.info('Уже идёт подготовка офлайн-данных...'); } catch {}
     return;
   }
+
   window.offlineMode = !window.offlineMode;
   try { localStorage.setItem('offlineMode', window.offlineMode ? '1' : '0'); } catch {}
   setOfflineUIState(window.offlineMode ? 'offline' : 'online');
+
   const reg = await navigator.serviceWorker.ready.catch(()=>null);
-  if (reg && reg.active) {
-    if (window.offlineMode) {
-      const resources = await buildOfflineFavoritesAndGalleriesList();
-      try { window.NotificationSystem && window.NotificationSystem.info('ОФФЛАЙН: будут доступны ⭐ избранные треки. Добавьте любимые песни в избранное, чтобы они играли без интернета. Галереи (webp) тоже будут кэшированы.'); } catch {}
+  if (!reg || !reg.active) return;
 
-      try { reg.active.postMessage({ type: 'OFFLINE_SET_PROFILE', profile: 'favorites-webp' }); } catch {}
+  if (window.offlineMode) {
+    // Определяем профиль
+    const profile = getOfflineProfile();
+    try { reg.active.postMessage({ type: 'OFFLINE_SET_PROFILE', profile }); } catch {}
 
-      reg.active.postMessage({ type: 'OFFLINE_CACHE_ADD', resources });
-      try { if (reg.sync && reg.sync.register) { await reg.sync.register('offline-favorites-cache'); } } catch {}
-      try { window.NotificationSystem && window.NotificationSystem.info(`Кэшируем офлайн (${resources.length} файлов)...`); } catch {}
-      window.offlineDownloading = true;
+    // Список ресурсов в зависимости от профиля
+    let resources = [];
+    if (profile === 'album-current' || profile.startsWith('album')) {
+      try { resources = await buildOfflineResourceListForCurrentView(); } catch { resources = []; }
+      try { window.NotificationSystem && window.NotificationSystem.info('ОФФЛАЙН: будет доступен текущий альбом (и связанные данные).'); } catch {}
     } else {
-      reg.active.postMessage({ type: 'OFFLINE_CACHE_CLEAR_CURRENT' });
-      try { window.NotificationSystem && window.NotificationSystem.info('Офлайн-кэш очищается...'); } catch {}
+      resources = await buildOfflineFavoritesAndGalleriesList();
+      try { window.NotificationSystem && window.NotificationSystem.info('ОФФЛАЙН: ⭐ избранные треки и webp‑галереи будут доступны без интернета.'); } catch {}
     }
+
+    reg.active.postMessage({ type: 'OFFLINE_CACHE_ADD', resources });
+    try { if (reg.sync && reg.sync.register) { await reg.sync.register('offline-favorites-cache'); } } catch {}
+    try { window.NotificationSystem && window.NotificationSystem.info(`Кэшируем офлайн (${resources.length} файлов)...`); } catch {}
+    window.offlineDownloading = true;
+  } else {
+    reg.active.postMessage({ type: 'OFFLINE_CACHE_CLEAR_CURRENT' });
+    try { window.NotificationSystem && window.NotificationSystem.info('Офлайн-кэш очищается...'); } catch {}
   }
 }
 
