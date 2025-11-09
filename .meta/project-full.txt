@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3a6536e7cd67c1f5d9bdc8abcb3e5e694973bb04.idx
-│   │       ├── pack-3a6536e7cd67c1f5d9bdc8abcb3e5e694973bb04.pack
-│   │       └── pack-3a6536e7cd67c1f5d9bdc8abcb3e5e694973bb04.rev
+│   │       ├── pack-305d4012bd436e2a77690c761624e371947cbcc9.idx
+│   │       ├── pack-305d4012bd436e2a77690c761624e371947cbcc9.pack
+│   │       └── pack-305d4012bd436e2a77690c761624e371947cbcc9.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -249,7 +249,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-09 21:47:41 UTC
+Сгенерировано: 2025-11-09 22:13:55 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1627,8 +1627,10 @@ jobs:
     
     resetGallery();
     
-    // Очищаем кэш изображений
-    if (prefetchedUrls.size > 0) prefetchedUrls.clear();
+    // Очищаем кэш изображений (совместимо с новой галереей)
+    if (window.__galleryPrefetched && window.__galleryPrefetched.size > 0) {
+      window.__galleryPrefetched.clear();
+    }
 
     currentAlbumKey = key;
     const base = normalizeBase(meta.base);
@@ -3260,7 +3262,7 @@ function __toggleFavoritesOnly_impl(){
   }
 
   function toggleLikePlaying() {
-    if (!playingTracks || playingTrack < 0) return;
+    if (typeof playingTrack !== 'number' || playingTrack < 0) return;
     let albumForLike = playingAlbumKey;
     let indexForLike = playingTrack;
 
