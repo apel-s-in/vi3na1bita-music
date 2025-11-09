@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ae0f5ed90cd875dea34020499558cf04ac095db4.idx
-│   │       ├── pack-ae0f5ed90cd875dea34020499558cf04ac095db4.pack
-│   │       └── pack-ae0f5ed90cd875dea34020499558cf04ac095db4.rev
+│   │       ├── pack-bd334850e662b49250b98629f79b3320e35c0dc8.idx
+│   │       ├── pack-bd334850e662b49250b98629f79b3320e35c0dc8.pack
+│   │       └── pack-bd334850e662b49250b98629f79b3320e35c0dc8.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -237,7 +237,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-09 12:08:26 UTC
+Сгенерировано: 2025-11-09 12:19:22 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7116,7 +7116,9 @@ export class PlayerCore {
       artist: t && t.artist || this._albumArtist || '',
       album: t && t.album || this._albumTitle || '',
       cover: t && t.cover || this._albumCover || '',
-      lyrics: t && t.lyrics || ''
+      lyrics: t && t.lyrics || '',
+      src: t && t.src || '',
+      fulltext: t && t.fulltext || ''
     }));
   }
 
