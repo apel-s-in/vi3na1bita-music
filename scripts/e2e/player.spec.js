@@ -114,16 +114,25 @@ test('optional audio output setSinkId (skip when unsupported)', async ({ page })
     const dest = (window.Howler && window.Howler.ctx && window.Howler.ctx.destination) ? window.Howler.ctx.destination : null;
     return !!(dest && typeof dest.setSinkId === 'function' && navigator.mediaDevices);
   });
-  test.skip(!supported, 'setSinkId not supported in this environment');
+test('sysinfo modal shows after GET_SW_INFO', async ({ page }) => {
+  const BASE = process.env.BASE_URL || 'http://127.0.0.1:4173';
+  await page.goto(`${BASE}/index.html`, { waitUntil: 'load' });
+  await page.fill('#promo-inp', 'VITRINA2025');
+  await page.click('#promo-btn');
 
-  await page.waitForTimeout(1000);
-  const selector = page.locator('#audio-output-select');
-  await selector.waitFor({ timeout: 5000 });
-  // Если опции есть — просто переключим на первую реальную (или оставим по умолчанию)
-  const count = await selector.locator('option').count();
-  if (count > 1) {
-    await selector.selectOption({ index: 1 }).catch(() => {});
-  }
+  // Ждём ини SW
+  await page.waitForTimeout(800);
+  // Кнопка «О СИСТЕМЕ» показывается на desktop
+  const sysbtn = page.locator('#sysinfo-btn');
+  await expect(sysbtn).toBeVisible({ timeout: 5000 });
+  await sysbtn.click();
+
+  // Появляется модалка
+  const modal = page.locator('.modal-bg .modal-feedback').filter({ hasText: 'О системе' });
+  await expect(modal).toBeVisible({ timeout: 5000 });
+
+  // В модалке есть версия SW
+  await expect(modal).toContainText(/SW версия:/);
 });
 
 
