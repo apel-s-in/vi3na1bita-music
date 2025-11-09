@@ -26,3 +26,6 @@ jobs:
       - name: Validate albums and galleries
         run: node scripts/ci/validate-content.mjs
 
+      - name: Validate PlayerCore JS/TS agreement
+        run: node scripts/ci/validate-playercore.mjs
+
