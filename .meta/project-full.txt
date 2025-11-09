@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8b062bf7db70ad9e14c4780097bfd349dafd9a55.idx
-│   │       ├── pack-8b062bf7db70ad9e14c4780097bfd349dafd9a55.pack
-│   │       └── pack-8b062bf7db70ad9e14c4780097bfd349dafd9a55.rev
+│   │       ├── pack-049e9f3a10dbca9d19d115ebbdb5138d13c748b0.idx
+│   │       ├── pack-049e9f3a10dbca9d19d115ebbdb5138d13c748b0.pack
+│   │       └── pack-049e9f3a10dbca9d19d115ebbdb5138d13c748b0.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -244,7 +244,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-09 19:47:06 UTC
+Сгенерировано: 2025-11-09 19:49:24 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4648,6 +4648,10 @@ ${lines}
       if (offlineMode) {
         const resources = await buildOfflineFavoritesAndGalleriesList();
         NotificationSystem.info('ОФФЛАЙН: будут доступны ⭐ избранные треки. Добавьте любимые песни в избранное, чтобы они играли без интернета. Галереи (webp) тоже будут кэшированы.');
+
+        // Профиль оффлайна: избранные + webp галерей
+        try { reg.active.postMessage({ type: 'OFFLINE_SET_PROFILE', profile: 'favorites-webp' }); } catch {}
+
         reg.active.postMessage({ type: 'OFFLINE_CACHE_ADD', resources });
         // One-off Background Sync: докачать при появлении сети/выходе из фона (если доступно)
         try { if (reg.sync && reg.sync.register) { await reg.sync.register('offline-favorites-cache'); } } catch {}
