@@ -9,6 +9,7 @@ export type PlayerTrack = {
   album?: string;
   cover?: string;
   lyrics?: string;
+  fulltext?: string;
 };
 
 type PlayerCoreEvents = {
@@ -151,13 +152,15 @@ export class PlayerCore {
   }
 
   // Снимок плейлиста для UI (заголовки и пр.)
-  getPlaylistSnapshot(): Array<{ title: string; artist: string; album: string; cover: string; lyrics: string; }> {
+  getPlaylistSnapshot(): Array<{ title: string; artist: string; album: string; cover: string; lyrics: string; src: string; fulltext: string; }> {
     return (this.playlist || []).map(t => ({
       title: t?.title || '',
       artist: t?.artist || this._albumArtist || '',
       album: t?.album || this._albumTitle || '',
       cover: t?.cover || this._albumCover || '',
-      lyrics: t?.lyrics || ''
+      lyrics: t?.lyrics || '',
+      src: t?.src || '',
+      fulltext: (t as any)?.fulltext || ''
     }));
   }
 
