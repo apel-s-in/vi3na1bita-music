@@ -1579,6 +1579,7 @@
     } catch {}
 
     config = data;
+    if (!Array.isArray(config.tracks)) config.tracks = [];
 
     if (!skipCovers) {
       try {
@@ -2171,8 +2172,6 @@
   let deferredPrompt = null;
 
   let shuffleMode = false;
-  let shuffledPlaylist = [];
-  let shuffleIndex = 0;
   let repeatMode = false;
   let autoNextDisabled = false; // «Один трек»: отключить автопереход (не действует при Repeat)
   let favoritesOnlyMode = false;
