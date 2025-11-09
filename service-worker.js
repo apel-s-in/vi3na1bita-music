@@ -224,13 +224,19 @@ self.addEventListener('fetch', (event) => {
       const cache = await caches.open(RUNTIME_CACHE);
       try {
         const netRes = await fetchWithTimeout(request, { timeout: 6000 });
-        if (netRes && (netRes.ok || netRes.type === 'opaque')) {
-          cache.put(request, netRes.clone()).catch(() => {});
+        if (netRes) {
+          // Строгая проверка MIME: кэшируем только application/json (или .json)
+          const ct = (netRes.headers.get('content-type') || '').toLowerCase();
+          const isJsonMime = ct.includes('application/json');
+          const isJsonPath = new URL(request.url).pathname.endsWith('.json');
+          if ((netRes.ok || netRes.type === 'opaque') && (isJsonMime || isJsonPath)) {
+            cache.put(request, netRes.clone()).catch(() => {});
+          }
           return netRes;
         }
         const cached = await cache.match(request);
         if (cached) return cached;
-        return netRes;
+        return new Response('Offline JSON', { status: 503 });
       } catch {
         const cached = await cache.match(request);
         if (cached) return cached;
