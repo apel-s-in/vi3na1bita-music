@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-425489cba5eb5861ebefbf7d9f5ce0b5e428af76.idx
-│   │       ├── pack-425489cba5eb5861ebefbf7d9f5ce0b5e428af76.pack
-│   │       └── pack-425489cba5eb5861ebefbf7d9f5ce0b5e428af76.rev
+│   │       ├── pack-10793a6645c1da6db2ff093b4258d1714bb4dd9d.idx
+│   │       ├── pack-10793a6645c1da6db2ff093b4258d1714bb4dd9d.pack
+│   │       └── pack-10793a6645c1da6db2ff093b4258d1714bb4dd9d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -243,7 +243,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-09 14:11:43 UTC
+Сгенерировано: 2025-11-09 14:13:52 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5229,7 +5229,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Страницы/данные «Новости»: cache-first
+  // Страницы/данные «Новости»: cache-first с строгой MIME-проверкой
   if (request.url.endsWith('/news.html') || request.url.includes('/news/news.json')) {
     event.respondWith((async () => {
       const cache = await caches.open(RUNTIME_CACHE);
@@ -5237,12 +5237,20 @@ self.addEventListener('fetch', (event) => {
       if (cached) return cached;
       try {
         const netRes = await fetch(request);
-        if (netRes && netRes.ok) {
-          cache.put(request, netRes.clone()).catch(() => {});
+        if (netRes) {
+          const ct = (netRes.headers.get('content-type') || '').toLowerCase();
+          const isNewsHtml = request.url.endsWith('/news.html');
+          const isNewsJson = request.url.includes('/news/news.json');
+          const okForCache =
+            (isNewsHtml && ct.includes('text/html')) ||
+            (isNewsJson && ct.includes('application/json'));
+          if ((netRes.ok || netRes.type === 'opaque') && okForCache) {
+            cache.put(request, netRes.clone()).catch(() => {});
+          }
         }
         return netRes;
       } catch {
-        return cached || new Response('', { status: 404 });
+        return (await cache.match(request)) || new Response('', { status: 404 });
       }
     })());
     return;
