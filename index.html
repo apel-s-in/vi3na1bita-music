@@ -1096,8 +1096,10 @@
     
     resetGallery();
     
-    // Очищаем кэш изображений
-    if (prefetchedUrls.size > 0) prefetchedUrls.clear();
+    // Очищаем кэш изображений (совместимо с новой галереей)
+    if (window.__galleryPrefetched && window.__galleryPrefetched.size > 0) {
+      window.__galleryPrefetched.clear();
+    }
 
     currentAlbumKey = key;
     const base = normalizeBase(meta.base);
@@ -2729,7 +2731,7 @@ function __toggleFavoritesOnly_impl(){
   }
 
   function toggleLikePlaying() {
-    if (!playingTracks || playingTrack < 0) return;
+    if (typeof playingTrack !== 'number' || playingTrack < 0) return;
     let albumForLike = playingAlbumKey;
     let indexForLike = playingTrack;
 
