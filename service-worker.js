@@ -433,6 +433,10 @@ function bytesFromHeader(res) {
 }
 async function shouldCacheNonRangeAudio(response) {
   if (!response || !response.ok || response.status !== 200 || response.type === 'opaque') return false;
+  // Строже по MIME: если Content-Type задан и это не audio/* — не кэшируем
+  const ct = response.headers.get('content-type') || '';
+  if (ct && !/^audio\//i.test(ct)) return false;
+
   const ns = await readNetState();
   const cfg = await readSwConfig();
   const slow = !!ns.saveData || (typeof ns.downlink === 'number' && ns.downlink > 0 && ns.downlink <= 1.3) || (ns.effectiveType && /(^|-)2g$/.test(ns.effectiveType));
