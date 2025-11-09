@@ -1539,9 +1539,17 @@
       const resp = await fetch(absJoin(base, 'config.json'), { cache: 'no-cache', signal });
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
       const data = await resp.json();
-      (data.tracks || []).forEach(t => {
-        t.audio = absJoin(base, t.audio);
-        t.lyrics = absJoin(base, t.lyrics);
+      if (!Array.isArray(data.tracks)) {
+        try { NotificationSystem && NotificationSystem.error('config.json: отсутствует массив tracks[]'); } catch {}
+        data.tracks = [];
+      }
+      data.tracks.forEach((t, i) => {
+        const titleSafe = t && t.title ? t.title : `Трек #${i+1}`;
+        if (!t.audio) {
+          try { NotificationSystem && NotificationSystem.warning(`config.json: у «${titleSafe}» отсутствует поле audio`); } catch {}
+        }
+        if (t.audio) t.audio = absJoin(base, t.audio);
+        if (t.lyrics) t.lyrics = absJoin(base, t.lyrics);
         if (t.fulltext) t.fulltext = absJoin(base, t.fulltext);
       });
       albumConfigCache[key] = { base, config: data };
@@ -2407,9 +2415,11 @@ function updatePlayerCorePlaylistFromConfig() {
     try{
       const r = await fetch(absJoin(base,'config.json'), { cache:'no-cache' });
       const data = await r.json();
-      (data.tracks||[]).forEach(t=>{
-        t.audio = absJoin(base, t.audio);
-        t.lyrics = absJoin(base, t.lyrics);
+      if (!Array.isArray(data.tracks)) data.tracks = [];
+      data.tracks.forEach((t, i) => {
+        if (t.audio) t.audio = absJoin(base, t.audio);
+        else { try { NotificationSystem && NotificationSystem.warning(`config.json[${base}]: у трека #${i+1} нет поля audio`); } catch {} }
+        if (t.lyrics) t.lyrics = absJoin(base, t.lyrics);
         if (t.fulltext) t.fulltext = absJoin(base, t.fulltext);
       });
       albumConfigCache[albumKey] = { base, config: data };
@@ -3217,82 +3227,115 @@ function __toggleFavoritesOnly_impl(){
       if (row) row.classList.add('current');
     } catch {}
   }
-  async function openFavoritesView(){
-    applyRelizUiMode(false);
-    viewMode = 'favorites';
-    clearRelizView();
-    setActiveAlbumIcon(SPECIAL_FAVORITES_KEY);
-    setAlbumHeaderTitle(SPECIAL_FAVORITES_KEY);
+async function openFavoritesView(){
+  applyRelizUiMode(false);
+  viewMode = 'favorites';
+  clearRelizView();
+  setActiveAlbumIcon(SPECIAL_FAVORITES_KEY);
+  setAlbumHeaderTitle(SPECIAL_FAVORITES_KEY);
 
-    try {
-      const lp = document.getElementById('lyricsplayerblock');
-      const holder = document.getElementById('now-playing');
-      if (lp && holder && !holder.contains(lp)) { holder.innerHTML = ''; holder.appendChild(lp); }
-    } catch {}
+  try {
+    const lp = document.getElementById('lyricsplayerblock');
+    const holder = document.getElementById('now-playing');
+    if (lp && holder && !holder.contains(lp)) { holder.innerHTML = ''; holder.appendChild(lp); }
+  } catch {}
 
-    applyMiniModeUI();
+  applyMiniModeUI();
 
-    const cw = document.getElementById('cover-wrap'); if (cw) cw.style.display = 'none';
+  const cw = document.getElementById('cover-wrap'); if (cw) cw.style.display = 'none';
 
-    await buildFavoritesRefsModel();
+  await buildFavoritesRefsModel();
 
-    const list = document.getElementById('track-list');
-    list.style.display = '';
-    list.innerHTML = '<div style="text-align:center; opacity:.8; margin:6px 0 8px 0;">ИЗБРАННЫЕ ПЕСНИ</div>';
+  const list = document.getElementById('track-list');
+  list.style.display = '';
+  // Заголовок
+  let html = '<div style="text-align:center; opacity:.8; margin:6px 0 8px 0;">ИЗБРАННЫЕ ПЕСНИ</div>';
 
-    (favoritesRefsModel || []).forEach((item, idx) => {
-      const n = String(idx + 1).padStart(2,'0');
-      const row = document.createElement('div');
-      row.className = 'track' + (item.__active ? '' : ' inactive');
-      row.id = `fav_${item.__a}_${item.__t}`;
-      row.innerHTML = `
+  (favoritesRefsModel || []).forEach((item, idx) => {
+    const n = String(idx + 1).padStart(2,'0');
+    const activeCls = item.__active ? '' : ' inactive';
+    const star = item.__active ? 'img/star.png' : 'img/star2.png';
+    const starTitle = item.__active ? 'Снять из избранного' : 'Вернуть в избранное';
+    html += `
+      <div class="track${activeCls}" id="fav_${item.__a}_${item.__t}" data-akey="${item.__a}" data-t="${item.__t}" data-idx="${idx}">
         <span class="tnum">${n}.</span>
         <span class="track-title" title="${item.title} — ${item.__album}">
           ${item.title} <span style="opacity:.6;font-size:.9em;">— ${item.__album}</span>
         </span>
-        <img src="${item.__active ? 'img/star.png' : 'img/star2.png'}" class="like-star" alt="звезда"
-             title="${item.__active ? 'Снять из избранного' : 'Вернуть в избранное'}">
-      `;
-      row.addEventListener('click', async ()=>{ if (item.__active) ensureFavoritesPlayback(idx); else showFavInactivePrompt({ a: item.__a, t: item.__t, title: item.title, album: item.__album }); });
-      row.querySelector('.like-star').addEventListener('click', (e)=>{
+        <img src="${star}" class="like-star" alt="звезда" title="${starTitle}">
+      </div>`;
+  });
+
+  list.innerHTML = html;
+
+  if (!list.__favDelegationInstalled) {
+    list.__favDelegationInstalled = true;
+    list.addEventListener('click', (e) => {
+      const t = e.target instanceof Element ? e.target : null;
+      if (!t) return;
+      const row = t.closest('#track-list .track');
+      if (!row) return;
+      const a = row.getAttribute('data-akey');
+      const ti = parseInt(row.getAttribute('data-t') || '-1', 10);
+      const idx = parseInt(row.getAttribute('data-idx') || '-1', 10);
+
+      // Клик по звезде
+      if (t.closest('.like-star')) {
         e.stopPropagation();
-        const wasActive = getLikedForAlbum(item.__a).includes(item.__t);
-        toggleLikeForAlbum(item.__a, item.__t, !wasActive);
-        updateFavRow({a:item.__a,t:item.__t}, !wasActive);
-        updateFavoritesRefsModelActiveFlag(item.__a, item.__t, !wasActive);
+        const wasActive = getLikedForAlbum(a).includes(ti);
+        toggleLikeForAlbum(a, ti, !wasActive);
+        updateFavRow({ a, t: ti }, !wasActive);
+        updateFavoritesRefsModelActiveFlag(a, ti, !wasActive);
+
         if (playingAlbumKey === SPECIAL_FAVORITES_KEY) {
           if (wasActive) {
             if (favoritesRefsModel && favoritesRefsModel[playingTrack] &&
-                favoritesRefsModel[playingTrack].__a === item.__a &&
-                favoritesRefsModel[playingTrack].__t === item.__t) {
-              try { window.playerCore && window.playerCore.setShuffle(!!shuffleMode); } catch {} ; nextTrack();
-              } else { try { window.playerCore && window.playerCore.setShuffle(!!shuffleMode); } catch {} ; updateNextUpLabel(); }
+                favoritesRefsModel[playingTrack].__a === a &&
+                favoritesRefsModel[playingTrack].__t === ti) {
+              try { window.playerCore && window.playerCore.setShuffle(!!shuffleMode); } catch {}
+              nextTrack();
+            } else {
+              try { window.playerCore && window.playerCore.setShuffle(!!shuffleMode); } catch {}
+              updateNextUpLabel();
+            }
             NotificationSystem.info('Трек снят из избранного');
-            } else { try { window.playerCore && window.playerCore.setShuffle(!!shuffleMode); } catch {} ; updateNextUpLabel();
+          } else {
+            try { window.playerCore && window.playerCore.setShuffle(!!shuffleMode); } catch {}
+            updateNextUpLabel();
             NotificationSystem.success('Трек возвращён в избранное');
           }
         } else {
           if (wasActive) NotificationSystem.info('Трек снят из избранного');
           else NotificationSystem.success('Трек возвращён в избранное');
         }
-      });
-      list.appendChild(row);
-    });
-
-    if (playingAlbumKey === SPECIAL_FAVORITES_KEY && typeof playingTrack === 'number' && playingTrack >= 0) {
-      updateFavoritesCurrentRow(playingTrack);
-      const listTracks = Array.from(document.querySelectorAll('#track-list .track'));
-      const rowUnder = listTracks[playingTrack];
-      const lp = document.getElementById('lyricsplayerblock');
-      if (rowUnder && lp && rowUnder.parentNode) {
-        if (rowUnder.nextSibling) rowUnder.parentNode.insertBefore(lp, rowUnder.nextSibling);
-        else rowUnder.parentNode.appendChild(lp);
+        return;
       }
-    }
 
-    applyMiniModeUI();
-    list.classList.remove('filtered');
+      // Клик по строке
+      const modelItem = favoritesRefsModel?.[idx];
+      if (!modelItem) return;
+      if (modelItem.__active) {
+        ensureFavoritesPlayback(idx);
+      } else {
+        showFavInactivePrompt({ a, t: ti, title: modelItem.title, album: modelItem.__album });
+      }
+    });
   }
+
+  if (playingAlbumKey === SPECIAL_FAVORITES_KEY && typeof playingTrack === 'number' && playingTrack >= 0) {
+    updateFavoritesCurrentRow(playingTrack);
+    const rows = Array.from(document.querySelectorAll('#track-list .track'));
+    const rowUnder = rows[playingTrack];
+    const lp = document.getElementById('lyricsplayerblock');
+    if (rowUnder && lp && rowUnder.parentNode) {
+      if (rowUnder.nextSibling) rowUnder.parentNode.insertBefore(lp, rowUnder.nextSibling);
+      else rowUnder.parentNode.appendChild(lp);
+    }
+  }
+
+  applyMiniModeUI();
+  list.classList.remove('filtered');
+}
   function updateFavRow(ref, active){
     const row = document.getElementById(`fav_${ref.a}_${ref.t}`); if (!row) return;
     row.classList.toggle('inactive', !active);
