@@ -3,6 +3,8 @@
 export function buildTrackList() {
   const list = document.getElementById('track-list');
   if (!list) return;
+  // На всякий случай — снимем скрытие
+  try { list.style.display = ''; } catch {}
 
   const cfg = window.config || null;
   const tracks = Array.isArray(cfg?.tracks) ? cfg.tracks : [];
