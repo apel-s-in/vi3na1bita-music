@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ccf14c7467f3e9c365e3de6fb74d64001eaee102.idx
-│   │       ├── pack-ccf14c7467f3e9c365e3de6fb74d64001eaee102.pack
-│   │       └── pack-ccf14c7467f3e9c365e3de6fb74d64001eaee102.rev
+│   │       ├── pack-01e194aadc92420e76f4c6db9f0a1c5b8419cce0.idx
+│   │       ├── pack-01e194aadc92420e76f4c6db9f0a1c5b8419cce0.pack
+│   │       └── pack-01e194aadc92420e76f4c6db9f0a1c5b8419cce0.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -251,7 +251,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-09 22:31:22 UTC
+Сгенерировано: 2025-11-10 19:31:45 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -546,7 +546,13 @@ jobs:
 <script type="module" src="./scripts/ui/offline.js"></script>
 <script type="module" src="./scripts/ui/gallery.js"></script>
 <script type="module" src="./scripts/ui/sysinfo.js"></script>
-<script type="module" src="./scripts/ui/bindings.js"></script>
+<script type=“module” src=“./scripts/ui/bindings.js”></script>
+<script type=“module” src=“./scripts/ui/lyrics-runtime.js”></script>
+<script type=“module” src=“./scripts/app/albums.js”></script>
+<script type=“module” src=“./scripts/app/player-controls.js”></script>
+<script type=“module” src=“./scripts/app/downloads.js”></script>
+<script type=“module” src=“./scripts/app/pwa.js”></script>
+<script type=“module” src=“./scripts/app/navigation.js”></script>
   <meta charset="UTF-8" />
   <title>Витрина Разбита</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
