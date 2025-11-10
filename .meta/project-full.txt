@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2f43c57d742a095b5e3218515c6024246f9d0dda.idx
-│   │       ├── pack-2f43c57d742a095b5e3218515c6024246f9d0dda.pack
-│   │       └── pack-2f43c57d742a095b5e3218515c6024246f9d0dda.rev
+│   │       ├── pack-7613d46fe4e18b7c7413a88dfa59cb7a8af3491b.idx
+│   │       ├── pack-7613d46fe4e18b7c7413a88dfa59cb7a8af3491b.pack
+│   │       └── pack-7613d46fe4e18b7c7413a88dfa59cb7a8af3491b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -258,7 +258,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-10 20:28:22 UTC
+Сгенерировано: 2025-11-10 20:34:37 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3492,7 +3492,7 @@ async function openFavoritesView(){
     } catch {}
   }
 
-  window.addEventListener('keydown', function(e){
+  /* keydown хендлер перенесён в scripts/app/navigation.js */
     if (e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA') return;
     const hasModal = document.querySelector('.modal-bg.active');
     if (e.key==='Escape' && hasModal){ e.preventDefault(); document.querySelectorAll('.modal-bg.active').forEach(m=>m.classList.remove('active')); return; }
@@ -3538,41 +3538,12 @@ async function openFavoritesView(){
     if (e.key>='1' && e.key<='9' && !e.shiftKey && !e.ctrlKey && !e.altKey){
       const i=parseInt(e.key)-1; if (config && i<config.tracks.length){ e.preventDefault(); showTrack(i,true); }
     }
-  });
-  function showHotkeysModal(){ document.getElementById('hotkeys-modal').classList.add('active'); }
-  function closeHotkeysModal(){ document.getElementById('hotkeys-modal').classList.remove('active'); }
-
+  /* конец переноса горячих клавиш в scripts/app/navigation.js */
   /* Обратная связь */
   function openFeedbackModal(){ document.getElementById('modal-feedback').classList.add('active'); }
   function closeFeedbackModal(){ document.getElementById('modal-feedback').classList.remove('active'); }
 
-  /* Deep Link */
-  function parseDeepLink(){
-    const params = new URLSearchParams(location.search);
-    const view = params.get('view');
-    if (view === 'favorites') { openFavoritesView(); return; }
-    const albumParam = params.get('album');
-    if (albumParam && albumByKey(albumParam) && albumParam !== currentAlbumKey) {
-      const sel = document.getElementById('album-select');
-      sel.value = albumParam;
-      loadAlbumByKey(albumParam);
-      return;
-    }
-    const t = params.get('track');
-    if (t && config){
-      const idx=parseInt(t,10);
-      if (!isNaN(idx) && idx>=0 && idx<config.tracks.length){
-        showTrack(idx,true);
-        const timeParam = parseInt(params.get('time')||'0', 10);
-        if (!isNaN(timeParam) && timeParam > 0) {
-          setTimeout(()=> {
-            try { window.playerCore && window.playerCore.seek && window.playerCore.seek(timeParam); } catch {}
-          }, 600);
-        }
-        setTimeout(()=>document.getElementById(`trk${idx}`)?.scrollIntoView({behavior:'smooth',block:'center'}), 300);
-      }
-    }
-  }
+  /* Deep Link реализован в scripts/app/navigation.js (window.parseDeepLink) */
 
   /* Скачивания: трек/альбом */
   function getTrackFileName(track, idx, artist){ return `${String(idx+1).padStart(2,'0')} - ${track.title} - ${artist}.mp3`.replace(/[\\/:"*?<>|]+/g,'_'); }
