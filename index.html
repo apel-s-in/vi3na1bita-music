@@ -1,25 +1,6 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
-<script type="module" src="./scripts/core/bridge.js"></script>
-<script type="module" src="./scripts/player-adapter.js"></script>
-<script type="module" src="./scripts/energy.js"></script>
-<script type="module" src="./scripts/ui/tracks.js"></script>
-<script type="module" src="./scripts/ui/mini.js"></script>
-<script type="module" src="./scripts/ui/modals.js"></script>
-<script type="module" src="./scripts/ui/notify.js"></script>
-<script type="module" src="./scripts/ui/sleep.js"></script>
-<script type="module" src="./scripts/ui/offline.js"></script>
-<script type="module" src="./scripts/ui/gallery.js"></script>
-<script type="module" src="./scripts/ui/sysinfo.js"></script>
-<script type=“module” src=“./scripts/ui/bindings.js”></script>
-<script type=“module” src=“./scripts/ui/lyrics-runtime.js”></script>
-<script type=“module” src=“./scripts/app/albums.js”></script>
-<script type=“module” src=“./scripts/app/player-controls.js”></script>
-<script type=“module” src=“./scripts/app/downloads.js”></script>
-<script type=“module” src=“./scripts/app/pwa.js”></script>
-<script type=“module” src=“./scripts/app/navigation.js”></script>
   <meta charset="UTF-8" />
   <title>Витрина Разбита</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -43,6 +24,103 @@
   <link rel="alternate icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
   <link rel="alternate icon" href="icons/favicon-16.png" sizes="16x16" type="image/png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+
+  <!-- Howler + ESM-модули приложения -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
+
+  <!-- Глобальные константы и минимальное состояние (до модулей) -->
+  <script type="module">
+    // Версия для UI и согласована с service-worker.js
+    window.VERSION = '8.0.3';
+    window.BUILD_DATE = '2025-11-08';
+    window.PROMO_CODE = 'VITRINA2025';
+
+    // Режимы/ключи
+    window.SPECIAL_FAVORITES_KEY = '__favorites__';
+    window.SPECIAL_RELIZ_KEY = '__reliz__';
+    window.viewMode = 'album';
+
+    // Базовые коллекции/состояние
+    window.albumsIndex = [];
+    window.currentAlbumKey = null;
+    window.playingAlbumKey = null;
+    window.playingTrack = -1;
+    window.config = null;
+    window.albumBase = '';
+
+    // Иконки альбомов (визуальный порядок)
+    window.ICON_ALBUMS_ORDER = [
+      { key: window.SPECIAL_FAVORITES_KEY,  title: '⭐⭐⭐ИЗБРАННОЕ⭐⭐⭐', icon: 'img/icon_album/icon-album-00.png' },
+      { key: 'golos-dushi',          title: 'Голос Души',            icon: 'img/icon_album/icon-album-02.png' },
+      { key: 'mezhdu-zlom-i-dobrom', title: 'Между Злом и Добром',   icon: 'img/icon_album/icon-album-01.png' },
+      { key: 'krevetochka',          title: 'КРЕВЕツTOCHKA',         icon: 'img/icon_album/icon-album+00.png' },
+      { key: window.SPECIAL_RELIZ_KEY,      title: 'НОВОСТИ',               icon: 'img/icon_album/icon-album-news.png' }
+    ];
+    window.ICON_KEY_ALIASES = {
+      'golos-dushi': ['golos', 'golos-dushi'],
+      'mezhdu-zlom-i-dobrom': ['mzid', 'mezhdu-zlom-i-dobrom'],
+      'krevetochka': ['krevetochka']
+    };
+    window.ICON_TITLE_MAP = {
+      'golos-dushi': 'Голос Души',
+      'mezhdu-zlom-i-dobrom': 'Между Злом и Добром',
+      'krevetochka': 'КРЕВЕツTOCHKA'
+    };
+
+    // Центральная галерея (каркас)
+    window.CENTRAL_GALLERY_BASE = './albums/gallery/';
+    window.ALBUM_GALLERY_MAP = {
+      'krevetochka': '00',
+      'mezhdu-zlom-i-dobrom': '01',
+      'golos-dushi': '02',
+      [window.SPECIAL_RELIZ_KEY]: 'news'
+    };
+    window.CENTRAL_ALLOWED_IDS = new Set(['00','01','02','news']);
+    window.PUBLISHED_ALBUM_KEYS = new Set(['golos-dushi','mezhdu-zlom-i-dobrom','krevetochka']);
+
+    // Fallback список альбомов (если ./albums.json недоступен)
+    window.ALBUMS_FALLBACK = [
+      { key: 'mezhdu-zlom-i-dobrom', title: 'Между Злом и Добром (2025)', base: 'https://apel-s-in.github.io/vi3na1bita-mezhdu-zlom-i-dobrom/' },
+      { key: 'golos-dushi',          title: 'Голос Души',                base: 'https://apel-s-in.github.io/vi3na1bita-golos-dushi/' },
+      { key: 'krevetochka',          title: 'КРЕВЕツTOCHKA',             base: 'https://apel-s-in.github.io/krevetochka/' }
+    ];
+
+    // Простейшие утилиты, которые используют модули
+    window.isMobileUA = function(){ try { return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent); } catch { return false; } };
+    window.hasKeyboard = function(){
+      try {
+        const isDesktop = !/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const hasPointer = matchMedia('(pointer: fine)').matches;
+        const canHover = matchMedia('(hover: hover)').matches;
+        const noTouch = (navigator.maxTouchPoints || 0) === 0;
+        return (isDesktop && hasPointer) || (canHover && noTouch);
+      } catch { return true; }
+    };
+  </script>
+
+  <!-- Модули ядра и адаптеры -->
+  <script type="module" src="./scripts/core/bridge.js"></script>
+  <script type="module" src="./scripts/player-adapter.js"></script>
+  <script type="module" src="./scripts/energy.js"></script>
+
+  <!-- Модули UI -->
+  <script type="module" src="./scripts/ui/tracks.js"></script>
+  <script type="module" src="./scripts/ui/mini.js"></script>
+  <script type="module" src="./scripts/ui/modals.js"></script>
+  <script type="module" src="./scripts/ui/notify.js"></script>
+  <script type="module" src="./scripts/ui/sleep.js"></script>
+  <script type="module" src="./scripts/ui/offline.js"></script>
+  <script type="module" src="./scripts/ui/gallery.js"></script>
+  <script type="module" src="./scripts/ui/sysinfo.js"></script>
+  <script type="module" src="./scripts/ui/bindings.js"></script>
+  <script type="module" src="./scripts/ui/lyrics-runtime.js"></script>
+
+  <!-- Модули приложения -->
+  <script type="module" src="./scripts/app/albums.js"></script>
+  <script type="module" src="./scripts/app/player-controls.js"></script>
+  <script type="module" src="./scripts/app/downloads.js"></script>
+  <script type="module" src="./scripts/app/pwa.js"></script>
+  <script type="module" src="./scripts/app/navigation.js"></script>
 
   <style>
     :root {
@@ -161,9 +239,8 @@
     .track { display: flex; align-items: center; padding: 7px 8px; border-bottom: 1px solid var(--border-color); cursor: pointer; transition: background 0.13s; background: none; }
     .track:hover { background: rgba(255,255,255,0.05); }
     .track.current { background: #232b38; }
-    /* Неактивная строка в «Избранном» (звезда снята) */
     #track-list .track.inactive { opacity: 0.45; filter: grayscale(0.6); }
-    /* Мини‑строка под мини‑плеер (когда листаем другой альбом) */
+
     .mini-now {
       display:flex; align-items:center; gap:8px;
       padding: 6px 8px; border-radius: 8px;
@@ -241,14 +318,13 @@
     .volume-slider { appearance:none; width:100%; height:20px; background:transparent; outline:none; cursor:pointer; position:relative; z-index:2; }
     .volume-slider::-webkit-slider-thumb { appearance:none; width:20px; height:20px; background:#fff; border-radius:50%; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.3); }
     .volume-slider::-moz-range-thumb { width:20px; height:20px; background:#fff; border-radius:50%; cursor:pointer; border:none; box-shadow:0 2px 8px rgba(0,0,0,.3); }
-    /* iOS: системный регулятор громкости не управляется из веба — скрываем слайдер */
     body.ios .volume-control-wrapper { display: none !important; }
 
     /* Sleep */
     .sleep-timer-btn { background:none; border:none; color:var(--secondary-color); cursor:pointer; padding:8px; border-radius:50%; transition:.2s; display:flex; align-items:center; justify-content:center; width:44px; height:44px; position:relative; }
     .sleep-timer-btn:hover { background: rgba(77,170,255,.2); transform: scale(1.1); }
     .sleep-timer-btn.active { color: var(--primary-color); background: rgba(232,1,0,.2); }
-    .sleep-timer-badge { position:absolute; top:-2px; right:-2px; background:var(--primary-color); color:#fff; border-radius:10px; padding:2px 6px; font-size:10px; font-weight:bold; min-width:20px; text-align:center; }
+    .sleep-timer-badge { position:absolute; top:-2px; right:-2px; background: var(--primary-color); color:#fff; border-radius:10px; padding:2px 6px; font-size:10px; font-weight:bold; min-width:20px; text-align:center; }
     .sleep-menu { position:absolute; bottom:100%; left:50%; transform:translateX(-50%); background: var(--modal-bg); border-radius:12px; padding:10px; margin-bottom:10px; box-shadow:0 4px 20px rgba(0,0,0,.3); z-index:100; min-width:150px; display:none; }
     .sleep-menu.active { display:block; animation: slideUp .2s; }
     .sleep-menu-item { padding:8px 12px; cursor:pointer; border-radius:6px; transition: background .2s; white-space:nowrap; color:var(--text-color); }
@@ -279,7 +355,7 @@
       color: var(--secondary-color) !important; background:none; border:none; cursor:pointer; font-size:1em; text-transform:uppercase; font-weight:700; letter-spacing:.02em; text-decoration:underline; transition:.18s; padding:4px 16px; min-width:148px; text-align:center; border-radius:7px; display:block; margin: 0 auto;
     }
     .karaoke-btn:hover, .player-download-btn:hover { color:#fff !important; background:#273050; }
-    /* Ряд доп. кнопок (ТЕКСТ, СКАЧАТЬ, ЭКО) */
+
     .player-extra-buttons-row {
       display: grid;
       grid-template-columns: 1fr 1fr auto;
@@ -288,7 +364,6 @@
       width: 100%;
       max-width: 395px;
     }
-    /* Ультра‑эконом (молния) */
     .eco-btn {
       display: inline-flex;
       align-items: center;
@@ -388,21 +463,20 @@
 
     /* Модалка текста песни */
     #lyrics-text-modal { z-index: 110; }
-      #lyrics-text-modal .lyrics-modal {
-          position: relative;
-          /* Ширина по самой длинной строке (в ch) + внутренние отступы, с ограничениями */
-          width: min( calc(var(--lyrics-modal-ch, 64) * 1ch + 48px), 96vw, 960px );
-          max-width: min( calc(var(--lyrics-modal-ch, 64) * 1ch + 48px), 96vw, 960px );
-          height: min(92vh, 820px);
-          background: var(--modal-bg);
-          border: 1px solid rgba(255,255,255,.1);
-          border-radius: 16px;
-          box-shadow: 0 10px 32px rgba(0,0,0,.6);
-          overflow: hidden;
-          display: flex;
-          flex-direction: column;
-          padding: 12px;
-        }
+    #lyrics-text-modal .lyrics-modal {
+      position: relative;
+      width: min( calc(var(--lyrics-modal-ch, 64) * 1ch + 48px), 96vw, 960px );
+      max-width: min( calc(var(--lyrics-modal-ch, 64) * 1ch + 48px), 96vw, 960px );
+      height: min(92vh, 820px);
+      background: var(--modal-bg);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 16px;
+      box-shadow: 0 10px 32px rgba(0,0,0,.6);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      padding: 12px;
+    }
     @media (max-width: 600px) {
       #lyrics-text-modal .lyrics-modal { width: 100vw; max-width: 100vw; border-radius: 16px; }
     }
@@ -434,13 +508,13 @@
     .lyrics-modal:fullscreen { width: 100vw !important; max-width: 100vw !important; height: 100dvh !important; border-radius: 0 !important; margin: 0 !important; padding: 12px !important; }
     .lyrics-modal:fullscreen .lyrics-modal-content { flex: 1 1 auto; }
 
-    /* Клик по подложке закрывает окно */
     #lyrics-text-modal.active { display: flex; }
     #lyrics-text-modal { align-items: center; justify-content: center; }
   </style>
+
+  <!-- RUM и передача конфигурации/сети в SW -->
   <script src="./performance/rum.js" defer></script>
   <script>
-    // RUM init (при наличии rumEndpoint) + передача состояния сети и конфига в Service Worker
     (function(){
       async function postConfigToSW(cfg) {
         try {
@@ -458,13 +532,11 @@
           const r = await fetch('./custom.json', { cache: 'no-store' });
           if (!r.ok) return;
           const cfg = await r.json().catch(()=>null);
-          // RUM
           const ep = (cfg && (cfg.rumEndpoint || (cfg.rum && cfg.rum.endpoint))) || '';
           if (typeof initRUM === 'function' && ep) {
             window.__rumEndpoint = ep;
             initRUM({ endpoint: ep, sampleRate: 1.0 });
           }
-          // Отправим sw-конфиг
           await postConfigToSW(cfg);
         } catch {}
       }
@@ -501,7 +573,7 @@
       <img class="promo-cover" id="promo-cover" src="img/logo.png" alt="Обложка" draggable="false"/>
       <h2>Вход по промокоду</h2>
       <input id="promo-inp" type="text" placeholder="Введите промокод" autocomplete="off" autofocus />
-      <button id="promo-btn" onclick="checkPromo()">Войти</button>
+      <button id="promo-btn">Войти</button>
       <div id="promo-error"></div>
     </div>
   </div>
@@ -531,17 +603,17 @@
     <div class="track-list" id="track-list"></div>
 
     <div class="bottom-controls-center">
-      <button class="filter-favorites-btn" id="filter-favorites-btn" onclick="toggleFavoritesFilter()">Скрыть не отмеченные ⭐ песни</button>
-      <img class="logo-bottom" id="logo-bottom" src="img/logo.png" alt="Логотип" onclick="handleLogoClick()"/>
+      <button class="filter-favorites-btn" id="filter-favorites-btn">Скрыть не отмеченные ⭐ песни</button>
+      <img class="logo-bottom" id="logo-bottom" src="img/logo.png" alt="Логотип"/>
 
       <button id="install-pwa-btn" style="display: none;">УСТАНОВИТЬ КАК ПРИЛОЖЕНИЕ</button>
       <button id="download-album-main">СКАЧАТЬ ВЕСЬ АЛЬБОМ</button>
 
-<button class="hotkeys-btn" id="hotkeys-btn" style="display:none;">ГОРЯЧИЕ КЛАВИШИ</button>
-<button class="hotkeys-btn" id="sysinfo-btn" style="display:none;">О СИСТЕМЕ</button>
+      <button class="hotkeys-btn" id="hotkeys-btn" style="display:none;">ГОРЯЧИЕ КЛАВИШИ</button>
+      <button class="hotkeys-btn" id="sysinfo-btn" style="display:none;">О СИСТЕМЕ</button>
       <span class="feedback-link" id="feedback-link">ОБРАТНАЯ СВЯЗЬ</span>
       <a class="support-link" id="support-link" href="#" target="_blank">ПОДДЕРЖАТЬ</a>
-      <button class="offline-btn online" id="offline-btn" onclick="offlineUIClick()">ONLINE</button>
+      <button class="offline-btn online" id="offline-btn">ONLINE</button>
     </div>
   </div>
 
@@ -558,20 +630,21 @@
     </div>
   </div>
 
-  <!-- Модалки скачивания -->
+  <!-- Модалка скачивания трека -->
   <div class="modal-bg" id="download-modal">
     <div class="modal-feedback" style="max-width:400px;">
       <div class="download-modal-title">Что сделать с этим файлом?</div>
       <div style="margin-bottom:19px;font-size:.98em;" id="download-modal-filename"></div>
-      <button class="offline-btn online" style="width:98%;margin-bottom:10px;" onclick="downloadCurrentTrack()">Сохранить на устройство</button>
-      <button class="offline-btn" style="width:98%;margin-bottom:10px;" onclick="shareCurrentTrack()">Поделиться с друзьями</button>
-      <button class="offline-btn" style="width:98%;margin-bottom:10px;" onclick="openInAppCurrentTrack()">Открыть в приложении</button>
-      <button class="offline-btn" style="width:98%;margin-bottom:10px;" onclick="copyLinkCurrentTrack()">Скопировать ссылку</button>
-      <button class="offline-btn" style="width:98%;margin-bottom:10px;" onclick="openAlbumDownloadModal()">Скачать весь альбом</button>
-      <button class="offline-btn" style="width:98%;" onclick="closeDownloadModal()">Отмена</button>
+      <button class="offline-btn online" style="width:98%;margin-bottom:10px;">Сохранить на устройство</button>
+      <button class="offline-btn" style="width:98%;margin-bottom:10px;">Поделиться с друзьями</button>
+      <button class="offline-btn" style="width:98%;margin-bottom:10px;">Открыть в приложении</button>
+      <button class="offline-btn" style="width:98%;margin-bottom:10px;">Скопировать ссылку</button>
+      <button class="offline-btn" style="width:98%;margin-bottom:10px;">Скачать весь альбом</button>
+      <button class="offline-btn" style="width:98%;">Отмена</button>
     </div>
   </div>
 
+  <!-- Модалка «Скачать альбом» -->
   <div class="modal-bg" id="albumDownloadModal">
     <div class="modal-feedback" style="max-width: 400px;">
       <h2 style="text-align: center; margin-bottom: 25px;" id="album-title-modal">Альбом</h2>
@@ -583,12 +656,13 @@
         <label class="checkbox-container"><input type="checkbox" id="fullAlbum" checked><span class="checkmark"></span>Полностью альбом</label>
       </div>
       <div class="modal-buttons">
-        <button onclick="closeAlbumDownloadModal()" class="btn-secondary">ОТМЕНА</button>
-        <button onclick="prepareDownload()" class="btn-primary">СКАЧАТЬ</button>
+        <button class="btn-secondary">ОТМЕНА</button>
+        <button class="btn-primary">СКАЧАТЬ</button>
       </div>
     </div>
   </div>
 
+  <!-- Подтверждение размера архива -->
   <div class="modal-bg" id="sizeConfirmModal">
     <div class="modal-feedback" style="max-width: 350px;">
       <h3 style="text-align: center;">Подтверждение загрузки</h3>
@@ -598,12 +672,13 @@
         <p style="color: #888; font-size: 14px;">Файлов в архиве: <span id="fileCount">0</span></p>
       </div>
       <div class="modal-buttons">
-        <button onclick="closeSizeConfirmModal()" class="btn-secondary">ОТМЕНА</button>
-        <button onclick="startDownload()" class="btn-primary">СКАЧАТЬ</button>
+        <button class="btn-secondary">ОТМЕНА</button>
+        <button class="btn-primary">СКАЧАТЬ</button>
       </div>
     </div>
   </div>
 
+  <!-- Прогресс подготовки архива -->
   <div class="modal-bg" id="downloadProgressModal">
     <div class="modal-feedback" style="max-width: 400px;">
       <h3 style="text-align: center; margin-bottom: 20px;">Подготовка архива</h3>
@@ -688,2910 +763,142 @@
 
   <!-- Пустой контейнер под оффлайн модалки -->
   <div class="modal-bg" id="modal-offline"></div>
-<script>
-  /* ====== Версия и настройки ====== */
-  const VERSION = '8.0.3';
-  const BUILD_DATE = '2025-11-08';
-  const PROMO_CODE = 'VITRINA2025';
 
-  /* ====== Список альбомов: fallback ====== */
-  const ALBUMS_FALLBACK = [
-    { key: 'mezhdu-zlom-i-dobrom', title: 'Между Злом и Добром (2025)', base: 'https://apel-s-in.github.io/vi3na1bita-mezhdu-zlom-i-dobrom/' },
-    { key: 'golos-dushi',          title: 'Голос Души',                base: 'https://apel-s-in.github.io/vi3na1bita-golos-dushi/' },
-    { key: 'krevetochka',          title: 'КРЕВЕツTOCHKA',             base: 'https://apel-s-in.github.io/krevetochka/' }
-  ];
-
-  /* ====== Глобальные ====== */
-  let albumsIndex = [];
-  let currentAlbumKey = null;
-  let albumBase = '';
-  let config = null;
-
-  /* Контекст воспроизведения (единый для обычного и «Избранного») */
-  let playingAlbumKey = null;
-  /* legacy shuffle state removed — PlayerCore управляет очередью */
-  // let playingShuffledPlaylist = [];
-  // let playingShuffleIndex = 0;
-  let playingTrack = -1;
-
-  function isBrowsingOtherAlbum() {
-    const lp = document.getElementById('lyricsplayerblock');
-    if (!playingAlbumKey || !lp) return false;
-    if (viewMode === 'favorites') return playingAlbumKey !== SPECIAL_FAVORITES_KEY;
-    if (viewMode === 'reliz') return true;
-    return !!(currentAlbumKey && playingAlbumKey !== currentAlbumKey);
-  }
-
-  /* ====== Галерея — вынесено в scripts/ui/gallery.js ====== */
-  // Константы и состояние (используются модулем галереи)
-  const CENTRAL_GALLERY_BASE = './albums/gallery/';
-
-  const ALBUM_GALLERY_MAP = {
-    'krevetochka': '00',
-    'mezhdu-zlom-i-dobrom': '01',
-    'golos-dushi': '02',
-    '__reliz__': 'news'
-  };
-  const CENTRAL_ALLOWED_IDS = new Set(['00','01','02','news']);
-  const PUBLISHED_ALBUM_KEYS = new Set(['golos-dushi','mezhdu-zlom-i-dobrom','krevetochka']);
-
-  // Состояние (читается и обновляется модулем галереи)
-  let coverGalleryArr = [];
-  let coverGalleryIdx = 0;
-  let coverAutoplay = null;
-  let galleryRotationStarted = false;
-
-  // Утилиты, используемые в других частях приложения
-  function normalizeBase(b) {
-    try {
-      const hasScheme = /^[a-z]+:\/\//i.test(String(b));
-      const u = new URL(String(b), hasScheme ? undefined : (location.origin + '/'));
-      return u.origin + u.pathname.replace(/\/+$/, '');
-    } catch {
-      const s = String(b || '').replace(/[?#].*$/, '').replace(/\/+$/, '');
-      if (/^https?:\/\//i.test(s)) return s;
-      return location.origin + '/' + s.replace(/^\/+/, '');
-    }
-  }
-  function absJoin(base, rel) {
-    try { return new URL(String(rel || ''), normalizeBase(base) + '/').toString(); }
-    catch {
-      const norm = normalizeBase(base);
-      return norm + '/' + String(rel || '').replace(/^\/+/, '');
-    }
-  }
-  function albumOrderIndexStr(albumKey) {
-    try {
-      const i = (albumsIndex || []).findIndex(a => a && a.key === albumKey);
-      if (i < 0) return null;
-      return String(i + 1).padStart(2, '0');
-    } catch { return null; }
-  }
-  function centralIdForAlbumKey(albumKey) {
-    if (!albumKey) return null;
-    if (albumKey === '__favorites__') return null;
-    const id = ALBUM_GALLERY_MAP[albumKey] || null;
-    return id && CENTRAL_ALLOWED_IDS.has(id) ? id : null;
-  }
-  </script>
-
+  <!-- Минимальная инициализация приложения -->
   <script>
-  /* ====== Иконки/режимы ====== */
-  const SPECIAL_FAVORITES_KEY = '__favorites__';
-  const SPECIAL_RELIZ_KEY = '__reliz__';
-  let viewMode = 'album';
-
-  const ICON_ALBUMS_ORDER = [
-    { key: SPECIAL_FAVORITES_KEY,  title: '⭐⭐⭐ИЗБРАННОЕ⭐⭐⭐', icon: 'img/icon_album/icon-album-00.png' },
-    { key: 'golos-dushi',          title: 'Голос Души',            icon: 'img/icon_album/icon-album-02.png' },
-    { key: 'mezhdu-zlom-i-dobrom', title: 'Между Злом и Добром',   icon: 'img/icon_album/icon-album-01.png' },
-    { key: 'krevetochka',          title: 'КРЕВЕツTOCHKA',         icon: 'img/icon_album/icon-album+00.png' },
-    { key: SPECIAL_RELIZ_KEY,      title: 'НОВОСТИ',               icon: 'img/icon_album/icon-album-news.png' }
-  ];
-  const ICON_KEY_ALIASES = {
-    'golos-dushi': ['golos', 'golos-dushi'],
-    'mezhdu-zlom-i-dobrom': ['mzid', 'mezhdu-zlom-i-dobrom'],
-    'krevetochka': ['krevetochka']
-  };
-  const ICON_TITLE_MAP = {
-    'golos-dushi': 'Голос Души',
-    'mezhdu-zlom-i-dobrom': 'Между Злом и Добром',
-    'krevetochka': 'КРЕВЕツTOCHKA'
-  };
-  function albumByKey(key) { return albumsIndex.find(a => a.key === key) || null; }
-  function resolveRealAlbumKey(iconKey) {
-    if (albumByKey(iconKey)) return iconKey;
-    const aliases = ICON_KEY_ALIASES[iconKey] || [];
-    for (const k of aliases) if (albumByKey(k)) return k;
-    const expectedTitle = ICON_TITLE_MAP[iconKey];
-    if (expectedTitle) {
-      const found = albumsIndex.find(a => String(a.title).toLowerCase().includes(expectedTitle.toLowerCase()));
-      if (found) return found.key;
-    }
-    return null;
-  }
-
-  function isMobileUA() { try { return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent); } catch { return false; } }
-  function isIOSStandalone() {
-    try {
-      const iOS = /iP(hone|od|ad)/i.test(navigator.userAgent);
-      const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-      return iOS && !!standalone;
-    } catch { return false; }
-  }
-  function buildAlbumIcons(){
-    const box = document.getElementById('album-icons'); 
-    if (!box) return;
-
-    const isMob = isMobileUA();
-    const html = ICON_ALBUMS_ORDER.map(it=>{
-      let dataKey = it.key;
-      if (it.key !== SPECIAL_FAVORITES_KEY && it.key !== SPECIAL_RELIZ_KEY) {
-        const real = resolveRealAlbumKey(it.key);
-        dataKey = real || '__unknown__';
-      }
-      const title = it.title || '';
-      const baseIcon = it.icon || 'img/logo.png';
-      const path1x = isMob
-        ? baseIcon.replace(/icon_album\/(.+)\.png$/i, 'icon_album/mobile/$1@1x.jpg')
-        : baseIcon.replace(/\.png$/i, '@1x.png');
-      const path2x = isMob
-        ? path1x.replace(/@1x\.jpg$/i, '@2x.jpg')
-        : path1x.replace(/@1x\.png$/i, '@2x.png');
-
-      return `<div class="album-icon" data-akey="${dataKey}" data-icon="${it.key}" title="${title}">
-        <img loading="lazy" src="${path1x}" srcset="${path2x} 2x" alt="${title}" width="60" height="60">
-      </div>`;
-    }).join('');
-
-    box.innerHTML = html;
-    box.querySelectorAll('.album-icon').forEach(el=>{
-      el.onclick = ()=> onAlbumIconClick(el.getAttribute('data-akey'));
-    });
-
-    setActiveAlbumIcon(currentAlbumKey || document.getElementById('album-select')?.value || (albumsIndex[0]?.key || ''));
-  }
-  function setActiveAlbumIcon(key){
-    const box = document.getElementById('album-icons'); 
-    if (!box) return;
-    box.querySelectorAll('.album-icon').forEach(el=>{
-      const k = el.getAttribute('data-akey');
-      el.classList.toggle('active', k && key && k === key);
-    });
-  }
-  function setAlbumHeaderTitle(key) {
-    const el = document.getElementById('active-album-title');
-    if (!el) return;
-    let title = '—';
-    let cls = '';
-
-    if (key === SPECIAL_FAVORITES_KEY) { title = '★ ★ ★ ИЗБРАННОЕ ★ ★ ★'; cls = 'fav'; }
-    else if (key === SPECIAL_RELIZ_KEY) { title = 'НОВОСТИ'; cls = 'news'; }
-    else { const meta = albumByKey(key); title = meta?.title || (config?.albumName || 'Альбом'); }
-
-    el.textContent = title;
-    el.title = title;
-    el.className = 'active-album-title' + (cls ? (' ' + cls) : '');
-  }
-  function onAlbumIconClick(key){
-    if (key === SPECIAL_FAVORITES_KEY) { openFavoritesView(); setActiveAlbumIcon(key); setAlbumHeaderTitle(SPECIAL_FAVORITES_KEY); return; }
-    if (key === SPECIAL_RELIZ_KEY) { openRelizView(); setActiveAlbumIcon(key); setAlbumHeaderTitle(SPECIAL_RELIZ_KEY); return; }
-
-    if (!key || key === '__unknown__') {
-      const real = resolveRealAlbumKey(key);
-      if (real) key = real;
-    }
-    const meta = albumByKey(key);
-    if (!meta) { NotificationSystem.error('Альбом не найден'); return; }
-
-    // Если нажали на уже активный альбом в обычном режиме — просто переключаем видимость галереи
-    if (viewMode === 'album' && key === currentAlbumKey) {
-      __currentGalleryVisible = !__currentGalleryVisible;
-      setCoverWrapVisible(__currentGalleryVisible);
-      setActiveAlbumIcon(key);
-      setAlbumHeaderTitle(key);
-      return;
-    }
-
-    // Переход в альбом
-    applyRelizUiMode(false);
-    viewMode = 'album';
-    clearRelizView();
-    document.getElementById('track-list').style.display = '';
-    document.getElementById('cover-wrap').style.display = '';
-
-    const sel = document.getElementById('album-select'); if (sel) sel.value = key;
-    setActiveAlbumIcon(key);
-
-    // По умолчанию заходим с открытой галереей
-    __currentGalleryVisible = true;
-    setCoverWrapVisible(true);
-
-    loadAlbumByKey(key).then(()=> setAlbumHeaderTitle(key));
-  }
-
-  /* ====== Промокод ====== */
-  function checkPromo() {
-    const inp = document.getElementById('promo-inp');
-    const err = document.getElementById('promo-error');
-    const val = (inp?.value || '').trim();
-    if (!val) { if (err) err.innerText = 'Введите промокод'; return; }
-    if (val.toUpperCase() === PROMO_CODE.toUpperCase()) {
-      localStorage.setItem('promoPassed', '1'); showMain();
-    } else {
-      if (err) err.innerText = 'Неверный промокод. Попробуйте ещё!';
-    }
-  }
-  document.getElementById('promo-inp').addEventListener('keydown', e => { if (e.key === 'Enter') checkPromo(); });
-
-  /* ====== Служебные ====== */
-  function applyLogos() {
-    try {
-      const logoBottom = document.getElementById('logo-bottom');
-      if (logoBottom) logoBottom.src = pickLogoUrl();
-      const promo = document.getElementById('promo-cover');
-      if (promo) promo.src = pickLogoUrl();
-    } catch {}
-  }
-  function pickLogoUrl() {
-    const dpr = window.devicePixelRatio || 1;
-    const mobile = isMobileUA() || (Math.min(screen.width, screen.height) <= 820);
-    if (mobile) return dpr >= 2 ? 'img/mobile/logo@2x.jpg' : 'img/mobile/logo@1x.jpg';
-    if (dpr >= 3) return 'img/desktop/logo@3x.png';
-    if (dpr >= 2) return 'img/desktop/logo@2x.png';
-    return 'img/desktop/logo@1x.png';
-  }
-  function hasKeyboard() {
-    try {
-      const isDesktop = !/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      const hasPointer = matchMedia('(pointer: fine)').matches;
-      const canHover = matchMedia('(hover: hover)').matches;
-      const noTouch = (navigator.maxTouchPoints || 0) === 0;
-      return (isDesktop && hasPointer) || (canHover && noTouch);
-    } catch { return true; }
-  }
-  function showMain() {
-    document.getElementById('promocode-block').classList.add('hidden');
-    document.getElementById('main-block').classList.remove('hidden');
-    initializeMainUi();
-  }
-
-  /* ====== Загрузка списка альбомов ====== */
-  async function loadAlbumsIndex() {
-    const sel = document.getElementById('album-select');
-    try {
-      const r = await fetch('./albums.json', { cache:'no-cache' });
-      const j = await r.json();
-      albumsIndex = Array.isArray(j.albums) ? j.albums : [];
-      if (!albumsIndex.length) throw new Error('empty index');
-    } catch(e) {
-      albumsIndex = ALBUMS_FALLBACK.slice();
-    }
-    sel.innerHTML = albumsIndex.map(a => `<option value="${a.key}">${a.title}</option>`).join('');
-
-    const first = albumsIndex[0];
-    if (first) document.getElementById('promo-cover').src = 'img/logo.png';
-
-    buildAlbumIcons();
-    setActiveAlbumIcon(document.getElementById('album-select')?.value || albumsIndex[0]?.key || '');
-  }
-
-  /* ====== Загрузка/применение альбома ====== */
-  const albumConfigCache = {}; // { key: { base, config } }
-  let __albumLoadCtrl = null;
-  let __currentGalleryVisible = true;
-
-  async function loadAlbumByKey(key) {
-    const meta = albumByKey(key);
-    if (!meta) { NotificationSystem.error('Альбом не найден'); return; }
-
-    // Очистка памяти от предыдущего альбома
-    if (typeof gc === 'function') gc(); // Если доступен garbage collector
-    
-    resetGallery();
-    
-    // Очищаем кэш изображений (совместимо с новой галереей)
-    if (window.__galleryPrefetched && window.__galleryPrefetched.size > 0) {
-      window.__galleryPrefetched.clear();
-    }
-
-    currentAlbumKey = key;
-    const base = normalizeBase(meta.base);
-    albumBase = base;
-    localStorage.setItem('currentAlbum', currentAlbumKey);
-
-    try { __albumLoadCtrl?.abort(); } catch {}
-    __albumLoadCtrl = new AbortController();
-    const signal = __albumLoadCtrl.signal;
-
-    ensureQuickCoverForAlbum({ key, base });
-
-    if (albumConfigCache[key]?.config) {
-      const cached = albumConfigCache[key];
-      await applyAlbumConfig(cached.base, cached.config, { skipCovers: true, signal });
-
-      buildCoverGalleryList(key, base, signal).then(gal => {
-        if (signal.aborted) return;
-        if (Array.isArray(gal) && gal.length) {
-          coverGalleryArr = gal;
-        } else {
-          coverGalleryArr = [{ type:'img', src: 'img/logo.png', formats: { full: 'img/logo.png' }, ar: 1 }];
-        }
-        coverGalleryIdx = 0;
-        setCoverImage(0);
-        showGalleryNav();
-        if (!galleryRotationStarted) setTimeout(() => { if (!signal.aborted) startCoverAutoPlay(); }, 5000);
-      }).catch(()=>{});
-      warmupOtherAlbums(key);
-      return;
-    }
-
-    try {
-      const resp = await fetch(absJoin(base, 'config.json'), { cache: 'no-cache', signal });
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
-      const data = await resp.json();
-      if (!Array.isArray(data.tracks)) {
-        try { NotificationSystem && NotificationSystem.error('config.json: отсутствует массив tracks[]'); } catch {}
-        data.tracks = [];
-      }
-      data.tracks.forEach((t, i) => {
-        const titleSafe = t && t.title ? t.title : `Трек #${i+1}`;
-        if (!t.audio) {
-          try { NotificationSystem && NotificationSystem.warning(`config.json: у «${titleSafe}» отсутствует поле audio`); } catch {}
-        }
-        if (t.audio) t.audio = absJoin(base, t.audio);
-        if (t.lyrics) t.lyrics = absJoin(base, t.lyrics);
-        if (t.fulltext) t.fulltext = absJoin(base, t.fulltext);
-      });
-      albumConfigCache[key] = { base, config: data };
-      await applyAlbumConfig(base, data, { skipCovers: true, signal });
-
-      try {
-        const gal = await buildCoverGalleryList(currentAlbumKey, base, signal);
-        if (signal.aborted) return;
-        coverGalleryArr = (Array.isArray(gal) && gal.length) ? gal
-                          : [{ type:'img', src: 'img/logo.png', formats: { full: 'img/logo.png' }, ar: 1 }];
-        coverGalleryIdx = 0;
-        setCoverImage(0);
-        showGalleryNav();
-        if (!galleryRotationStarted) setTimeout(() => { if (!signal.aborted) startCoverAutoPlay(); }, 5000);
-      } catch {
-        if (signal.aborted) return;
-        coverGalleryArr = [{ type:'img', src: 'img/logo.png', formats: { full: 'img/logo.png' }, ar: 1 }];
-        coverGalleryIdx = 0;
-        setCoverImage(0); showGalleryNav();
-        if (!galleryRotationStarted) setTimeout(() => { if (!signal.aborted) startCoverAutoPlay(); }, 5000);
-      }
-
-      warmupOtherAlbums(key);
-    } catch(e) {
-      if (signal.aborted) return;
-      console.error('Не удалось загрузить config.json альбома:', e);
-      NotificationSystem.error('Не удалось загрузить альбом');
-      // Если альбом «не вышел» — показываем заглушку
-      try {
-        const meta = albumByKey(key);
-        renderComingSoonPlaceholder(meta?.title || 'Альбом');
-      } catch {}
-    } finally {
-      setActiveAlbumIcon(currentAlbumKey);
-      setCoverWrapVisible(__currentGalleryVisible);
-      setAlbumHeaderTitle(currentAlbumKey);
-    }
-  }
-
-  async function applyAlbumConfig(base, data, { skipCovers = false, signal } = {}) {
-    try {
-      if (data.background) {
-        const attach = isMobileUA() ? '' : ' fixed';
-        document.body.style.background = `url(${absJoin(base, data.background)}) center/cover${attach} #111`;
+    // Промокод
+    function checkPromo() {
+      const inp = document.getElementById('promo-inp');
+      const err = document.getElementById('promo-error');
+      const val = (inp?.value || '').trim();
+      if (!val) { if (err) err.innerText = 'Введите промокод'; return; }
+      if (val.toUpperCase() === String(window.PROMO_CODE || '').toUpperCase()) {
+        try { localStorage.setItem('promoPassed', '1'); } catch {}
+        showMain();
       } else {
-        document.body.style.background = `#181818`;
-      }
-    } catch {}
-
-    config = data;
-    if (!Array.isArray(config.tracks)) config.tracks = [];
-
-    if (!skipCovers) {
-      try {
-        const gal = await buildCoverGalleryList(currentAlbumKey, base, signal);
-        coverGalleryArr = (Array.isArray(gal) && gal.length) ? gal : [{ type:'img', src: 'img/logo.png', formats:{full:'img/logo.png'}, ar:1 }];
-      } catch {
-        coverGalleryArr = [{ type:'img', src: 'img/logo.png', formats:{full:'img/logo.png'}, ar:1 }];
-      }
-      if (!signal?.aborted) {
-        coverGalleryIdx = 0; setCoverImage(coverGalleryIdx);
-        showGalleryNav();
-        if (!galleryRotationStarted) setTimeout(() => { if (!signal?.aborted) startCoverAutoPlay(); }, 5000);
+        if (err) err.innerText = 'Неверный промокод. Попробуйте ещё!';
       }
     }
 
-    try { document.getElementById('support-link').href = (config.donateLink || '#'); } catch {}
-    try { document.getElementById('album-title-modal').textContent = (config.albumName || 'Альбом'); } catch {}
-    buildSocials();
-
-    (function preservePlayer() {
-      try {
-        const lp = document.getElementById('lyricsplayerblock');
-        const holder = document.getElementById('now-playing');
-        if (lp && holder && !holder.contains(lp)) {
-          holder.innerHTML = '';
-          holder.appendChild(lp);
-        }
-      } catch {}
-    })();
-
-
-    buildTrackList();
-    updateAvailableTracks();
-    applyMiniModeUI();
-    updateNextUpLabel();
-    updateMiniNowHeader();
-    parseDeepLink();
-    try { updatePlayerCorePlaylistFromConfig(); } catch {}
-  }
-
-  /* Прогрев соседних альбомов */
-  async function warmupOtherAlbums(currentKey) {
-    try {
-      const list = (albumsIndex || []).map(a => a.key);
-      const pos = list.indexOf(currentKey);
-      const neigh = [list[pos - 1], list[pos + 1]].filter(Boolean);
-
-      for (const key of neigh) {
-        // Пропускаем не опубликованные альбомы, чтобы не получать 404 в консоли
-        if (!PUBLISHED_ALBUM_KEYS.has(key)) continue;
-
-        if (albumConfigCache[key]?.config) continue;
-        const meta = albumByKey(key);
-        if (!meta) continue;
-        const base = normalizeBase(meta.base);
-
-        // Конфиг альбома (best-effort, без шумных ошибок)
-        try {
-          const r = await fetch(absJoin(base, 'config.json'), { cache: 'force-cache' });
-          if (r && r.ok) {
-            const data = await r.json();
-            (data.tracks || []).forEach(t => {
-              t.audio = absJoin(base, t.audio);
-              t.lyrics = absJoin(base, t.lyrics);
-              if (t.fulltext) t.fulltext = absJoin(base, t.fulltext);
-            });
-            albumConfigCache[key] = { base, config: data };
-          }
-        } catch {}
-
-        // Центральная галерея — только если id входит в белый список
-        try {
-          const cid = centralIdForAlbumKey(key);
-          if (cid) fetch(`${CENTRAL_GALLERY_BASE}${cid}/index.json`).catch(()=>{});
-        } catch {}
-      }
-    } catch {}
-  }
-
-  /* Соцсети */
-  function buildSocials() {
-    const linksEl = document.getElementById('social-links');
-    if (!config || !config.socials || !linksEl) { linksEl.innerHTML = ''; return; }
-    linksEl.innerHTML = (config.socials || []).map(x => `<a href="${x.url}" target="_blank" rel="noopener">${x.title}</a>`).join(" ");
-  }
-
-  /* Показ/скрытие галереи */
-  function setCoverWrapVisible(visible){
-    const cw = document.getElementById('cover-wrap');
-    if (cw) cw.style.display = visible ? '' : 'none';
-  }
-  function isIOS() {
-    return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-  }
-
-  function initAudioContextForBackground() {
-    try {
-      // Создаем AudioContext с правильными параметрами для iOS
-      window.__audioContext = new (window.AudioContext || window.webkitAudioContext)({
-        latencyHint: 'playback',
-        sampleRate: 44100
-      });
-    
-      // Гарантируем, что контекст не будет приостановлен
-      window.__audioContext.onstatechange = () => {
-        if (window.__audioContext.state === 'suspended') {
-          window.__audioContext.resume().catch(console.warn);
-        }
-      };
-    
-      // Создаем "тихий" осциллятор для удержания аудио в фоне
-      const oscillator = window.__audioContext.createOscillator();
-      const gainNode = window.__audioContext.createGain();
-      oscillator.connect(gainNode);
-      gainNode.connect(window.__audioContext.destination);
-      gainNode.gain.value = 0.00001; // почти бесшумный
-      oscillator.start(0);
-    
-      // Сохраняем ссылки для управления
-      window.__backgroundOscillator = oscillator;
-      window.__backgroundGainNode = gainNode;
-    
-      console.log('iOS AudioContext initialized for background playback');
-    } catch (e) {
-      console.warn('Failed to initialize iOS AudioContext', e);
-    }
-  }
-
-  function resumeAudioContextIfNeeded() {
-    try {
-      if (window.__audioContext && window.__audioContext.state === 'suspended') {
-        window.__audioContext.resume().catch(console.warn);
-      }
-    } catch (e) {
-      console.warn('Failed to resume audio context', e);
-    }
-  }
-  // Заглушка для ещё не вышедшего альбома (нет config.json)
-  function renderComingSoonPlaceholder(title){
-    try {
-      const slot = document.getElementById('cover-slot');
-      const list = document.getElementById('track-list');
-      if (slot) {
-        slot.replaceChildren();
-        const box = document.createElement('div');
-        box.style.cssText = 'display:flex;align-items:center;justify-content:center;width:100%;height:100%;background:#0f1219;color:#cfe3ff;font-weight:800;text-align:center;padding:16px;';
-        box.innerHTML = `<div><div style="font-size:18px;margin-bottom:6px;">Скоро релиз</div><div style="opacity:.85;">${(title||'Альбом')}</div></div>`;
-        slot.appendChild(box);
-      }
-      if (list) {
-        list.innerHTML = '<div style="text-align:center; opacity:.8; margin:10px 0;">Скоро релиз — треклист недоступен</div>';
-      }
-    } catch {}
-  }
-
-  /* «Новости» */
-  async function openRelizView(){
-    viewMode = 'reliz';
-    setActiveAlbumIcon(SPECIAL_RELIZ_KEY);
-    setAlbumHeaderTitle(SPECIAL_RELIZ_KEY);
-
-    const list = document.getElementById('track-list');
-    const cw = document.getElementById('cover-wrap');
-    if (list) list.style.display = 'none';
-    if (cw) cw.style.display = '';
-    applyRelizUiMode(true);
-
-    resetGallery();
-    __currentGalleryVisible = true;
-    setCoverWrapVisible(true);
-
-    clearRelizView();
-    let cont = document.getElementById('reliz-container');
-    if (!cont) {
-      cont = document.createElement('div');
-      cont.id = 'reliz-container';
-      const header = document.querySelector('header');
-      header && header.insertAdjacentElement('afterend', cont);
-    }
-    cont.innerHTML = '';
-
-    try {
-      ensureQuickCoverForAlbum({ key: SPECIAL_RELIZ_KEY, base: location.origin + location.pathname });
-
-      const ctrl = new AbortController();
-      __albumLoadCtrl = ctrl;
-      const signal = ctrl.signal;
-
-      const gal = await buildCoverGalleryList(SPECIAL_RELIZ_KEY, location.origin + location.pathname, signal);
-
-      if (signal.aborted) return;
-      coverGalleryArr = (Array.isArray(gal) && gal.length) ? gal : [{ type:'img', src: 'img/logo.png', ar: 1 }];
-      coverGalleryIdx = 0;
-      setCoverImage(0);
-      showGalleryNav();
-      if (!galleryRotationStarted) setTimeout(() => { if (!signal.aborted) startCoverAutoPlay(); }, 5000);
-    } catch (e) {
-      console.error('Новости: не удалось собрать галерею', e);
-      coverGalleryArr = [{ type:'img', src: 'img/logo.png', ar: 1 }];
-      coverGalleryIdx = 0;
-      setCoverImage(0);
-      showGalleryNav();
-      if (!galleryRotationStarted) setTimeout(() => startCoverAutoPlay(), 5000);
-    }
-
-    try {
-      const newsWrap = document.createElement('div');
-      newsWrap.style.margin = '12px auto';
-      newsWrap.style.maxWidth = '400px';
-      newsWrap.innerHTML = `
-        <iframe
-          src="./news.html"
-          title="Новости — Витрина Разбита"
-          style="width:100%; min-height: 800px; border:1px solid rgba(255,255,255,.1); border-radius:10px; background:#0b0e15;"
-          loading="lazy"
-          referrerpolicy="strict-origin-when-cross-origin"
-          allow="encrypted-media; picture-in-picture; fullscreen">
-        </iframe>`;
-      cont.appendChild(newsWrap);
-    } catch {}
-
-    applyMiniModeUI();
-  }
-  function clearRelizView(){ const cont = document.getElementById('reliz-container'); if (cont) cont.remove(); }
-  /* background handlers removed — iOS/Android кейсы ведем через PlayerCore и Visibility API */
-  // Вызываем функцию в initializeMainUi
-  /* ====== Инициализация UI ====== */
-  async function initializeMainUi() {
-    (async () => {
-      await loadAlbumsIndex();
-
-      const sel = document.getElementById('album-select');
-      const params = new URLSearchParams(location.search);
-      const urlAlbum = params.get('album');
-      const savedAlbum = localStorage.getItem('currentAlbum');
-      const first = albumsIndex[0]?.key || null;
-
-      const toLoad = urlAlbum && albumByKey(urlAlbum) ? urlAlbum
-                    : (savedAlbum && albumByKey(savedAlbum) ? savedAlbum : first);
-
-      if (toLoad) sel.value = toLoad;
-
-      const startKey = (params.get('view') === 'favorites') ? SPECIAL_FAVORITES_KEY
-                          : (params.get('view') === 'reliz') ? SPECIAL_RELIZ_KEY
-                          : (toLoad || first);
-
-      setAlbumHeaderTitle(startKey === SPECIAL_FAVORITES_KEY || startKey === SPECIAL_RELIZ_KEY ? startKey : (sel.value || startKey));
-      setActiveAlbumIcon(startKey === SPECIAL_FAVORITES_KEY || startKey === SPECIAL_RELIZ_KEY ? startKey : sel.value);
-
-      sel.onchange = () => {
-        applyRelizUiMode(false);
-        viewMode = 'album';
-        clearRelizView();
-        document.getElementById('track-list').style.display = '';
-        document.getElementById('cover-wrap').style.display = '';
-        setActiveAlbumIcon(sel.value);
-        __currentGalleryVisible = true;
-        setCoverWrapVisible(true);
-        loadAlbumByKey(sel.value);
-      };
-
-      if (localStorage.getItem('promoPassed') === '1') {
-        document.getElementById('promocode-block').classList.add('hidden');
-        document.getElementById('main-block').classList.remove('hidden');
-
-        try {
-          shuffleMode = localStorage.getItem('shuffleMode') === '1';
-          repeatMode = localStorage.getItem('repeatMode') === '1';
-          favoritesOnlyMode = localStorage.getItem('favoritesOnlyMode') === '1';
-          offlineMode = localStorage.getItem('offlineMode') === '1';
-          animationEnabled = localStorage.getItem('animationEnabled') === '1';
-          bitEnabled = localStorage.getItem('bitEnabled') === '1';
-          const savedIntensity = localStorage.getItem('bitIntensity'); if (savedIntensity) bitIntensity = parseInt(savedIntensity);
-          ultraEcoEnabled = localStorage.getItem('ultraEco') === '1';
-          // Применим эко-профиль (тихо): изменит троттлинги/анимации/галерею
-          applyEcoState(ultraEcoEnabled, { silent: true });
-        } catch {}
-
-        await loadAlbumByKey(sel.value);
-        try { warmupOtherAlbums(sel.value); } catch {}
-
-        // Восстановление после обновления/перезагрузки
-        const resumeRaw = sessionStorage.getItem('resumeAfterReloadV1');
-        let resume = null;
-        if (resumeRaw) {
-          try { resume = JSON.parse(resumeRaw); } catch {}
-          sessionStorage.removeItem('resumeAfterReloadV1');
-        }
-
-        const stBase = resume || PlayerState.restore();
-        if (stBase && stBase.album && albumByKey(stBase.album)) {
-          if (sel.value !== stBase.album) {
-            sel.value = stBase.album;
-            await loadAlbumByKey(stBase.album);
-          }
-        }
-        if (stBase && Number.isInteger(stBase.trackIndex) && stBase.trackIndex >= 0 && stBase.trackIndex < (config.tracks || []).length) {
-          showTrack(stBase.trackIndex, false);
-          setTimeout(()=> {
-            try { window.PlayerAdapter && window.PlayerAdapter.applyState && window.PlayerAdapter.applyState(stBase); } catch {}
-            applyLyricsViewMode();
-            PlayerState.save();
-          }, 300);
-        }
-      }
-
-      // Инициализация энергосбережения
-      try {
-        applyEnergySaver(detectEnergySaver());
-        const nc = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-        if (nc && 'onchange' in nc) {
-          nc.addEventListener('change', () => applyEnergySaver(detectEnergySaver()));
-        }
-        const mrm = matchMedia('(prefers-reduced-motion: reduce)');
-        if (mrm && 'addEventListener' in mrm) {
-          mrm.addEventListener('change', () => applyEnergySaver(detectEnergySaver()));
-        }
-      } catch {}
-
-      // Навигация галереи
-      const leftBtn  = document.getElementById('cover-gallery-arrow-left');
-      const rightBtn = document.getElementById('cover-gallery-arrow-right');
-      const galleryNavGuard = () => {
-        if (energySaver) { NotificationSystem.info('Галерея отключена в режиме энергосбережения'); return true; }
-        if (document.hidden) { NotificationSystem.info('Галерея приостановлена в фоне'); return true; }
-        return false;
-      };
-      leftBtn.onclick = () => {
-        if (galleryNavGuard()) return;
-        if (!coverGalleryArr.length) return;
-        setCoverImage(coverGalleryIdx - 1);
-        startCoverAutoPlay();
-      };
-      rightBtn.onclick = () => {
-        if (galleryNavGuard()) return;
-        if (!coverGalleryArr.length) return;
-        setCoverImage(coverGalleryIdx + 1);
-        startCoverAutoPlay();
-      };
-
-      let startX = null;
-      const el = document.getElementById('cover-wrap');
-      el.addEventListener('touchstart', e => { startX = e.touches[0].clientX; }, { passive: true });
-      el.addEventListener('touchend', e => {
-        if (startX === null) return;
-        const dx = e.changedTouches[0].clientX - startX;
-        if (Math.abs(dx) > 30) {
-          if (!coverGalleryArr.length) { startX = null; return; }
-          if (dx > 0) setCoverImage(coverGalleryIdx - 1); else setCoverImage(coverGalleryIdx + 1);
-          startCoverAutoPlay();
-        }
-        startX = null;
-      }, { passive: true });
-
-      if (hasKeyboard()) {
-        const hot = document.getElementById('hotkeys-btn');
-        if (hot) hot.style.display = 'block';
-      }
-
-      // Открытие «Обратная связь» обрабатывается делегированно (см. scripts/ui/bindings.js)
-      document.getElementById('modal-feedback').onclick = (e) => { if (e.target === e.currentTarget) closeFeedbackModal(); };
-
-      // PWA install
-      window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault();
-        deferredPrompt = e;
-        const btn = document.getElementById('install-pwa-btn');
-        if (btn) btn.style.display = '';
-      });
-      document.getElementById('install-pwa-btn').onclick = async () => {
-        if (deferredPrompt) {
-          deferredPrompt.prompt();
-          deferredPrompt.userChoice.finally(() => {
-            document.getElementById('install-pwa-btn').style.display = 'none';
-            deferredPrompt = null;
-          });
-        } else {
-          NotificationSystem.info('Ваш браузер не поддерживает установку PWA');
-        }
-      };
-
-      detectIOSAndShowInstallGuide();
-
-      // Регистрация фоновых обработчиков (freeze/resume и пр.)
-      /* setupBackgroundEventHandlers: удалено — путь через PlayerCore */
-      // Service Worker + мягкое обновление с продолжением воспроизведения
-      if ('serviceWorker' in navigator) {
-        function persistResumeBeforeReload() {
-          try {
-            const pc = window.playerCore;
-            const wasPlaying = pc ? !!pc.isPlaying?.() : false;
-            const st = {
-              album: playingAlbumKey || currentAlbumKey || null,
-              trackIndex: (typeof playingTrack === 'number' && playingTrack >= 0) ? playingTrack : currentTrack,
-              position: pc ? Math.floor(pc.getSeek?.() || 0) : 0,
-              volume: pc ? (pc.getVolume?.() ?? 1) : 1,
-              wasPlaying
-            };
-            sessionStorage.setItem('resumeAfterReloadV1', JSON.stringify(st));
-          } catch {}
-        }
-
-        function setupUpdateFlow(reg) {
-          function onNewSWWaiting(sw) {
-            // Попросим версию SW
-            try { sw.postMessage({ type: 'GET_SW_VERSION' }); } catch {}
-          }
-          if (reg.waiting) onNewSWWaiting(reg.waiting);
-          reg.addEventListener('updatefound', () => {
-            const sw = reg.installing;
-            if (!sw) return;
-            sw.addEventListener('statechange', () => {
-              if (sw.state === 'installed' && navigator.serviceWorker.controller) {
-                onNewSWWaiting(reg.waiting || sw);
-              }
-            });
-          });
-        }
-
-        navigator.serviceWorker.register('./service-worker.js').then(async reg => {
-          await navigator.serviceWorker.ready;
-          // Просим персистентное хранилище, чтобы кэш не очищали слишком агрессивно
-          try { if (navigator.storage?.persist) navigator.storage.persist().catch(()=>{}); } catch {}
-          syncOfflineState();
-          try { reg.active && reg.active.postMessage({ type: 'REQUEST_OFFLINE_STATE' }); } catch(e){}
-          try { reg.update(); } catch(e) {}
-          setInterval(async () => {
-            try { const r = await navigator.serviceWorker.getRegistration(); if (r) r.update(); } catch(e) {}
-          }, 60 * 60 * 1000);
-          setupUpdateFlow(reg);
-        });
-
-        navigator.serviceWorker.addEventListener('message', async (event) => {
-          const msg = event.data || {};
-          if (msg.type === 'OFFLINE_STATE') {
-            offlineMode = !!msg.value;
-            setOfflineUIState(offlineMode ? 'offline' : 'online');
-            return;
-          }
-          if (msg.type === 'SW_VERSION') {
-            const swVer = String(msg.version || '');
-            if (swVer && swVer !== VERSION) {
-              // Предложим обновить
-              const agree = confirm(`Доступно обновление плеера (${swVer}). Обновить сейчас? Воспроизведение продолжится с того же места.`);
-              if (agree) {
-                persistResumeBeforeReload();
-                const reg = await navigator.serviceWorker.getRegistration().catch(()=>null);
-                if (reg && (reg.waiting || reg.installing)) {
-                  const target = reg.waiting || reg.installing;
-                  try { target.postMessage({ type: 'SKIP_WAITING' }); } catch {}
-                }
-                // Ждём активации нового контроллера и перезагружаем
-                const onCtrl = () => {
-                  navigator.serviceWorker.removeEventListener('controllerchange', onCtrl);
-                  setTimeout(() => location.reload(), 150);
-                };
-                navigator.serviceWorker.addEventListener('controllerchange', onCtrl);
-              }
-            }
-          }
-        });
-      }
-
-      document.addEventListener('visibilitychange', async () => {
-        const pc = window.playerCore;
-        const isHidden = document.hidden;
-
-        if (isHidden) {
-          // Сохраняем текущее состояние
-          __wasPlayingBeforeHidden = !!(pc && pc.isPlaying && pc.isPlaying());
-          __savedResumePosition = pc && pc.getSeek ? (pc.getSeek() || 0) : 0;
-
-          // Останавливаем UI-анимации для экономии ресурсов
-          if (coverAutoplay) { clearInterval(coverAutoplay); coverAutoplay = null; }
-          if (animationEnabled) {
-            window.__savedAnimationState = animationEnabled;
-            applyAnimationState(false);
-          }
-          if (bitEnabled) {
-            window.__savedBitState = bitEnabled;
-            stopLogoPulsation();
-          }
-          // iOS: поддержим аудиоконтекст (как и прежде)
-          if (isIOS() && __wasPlayingBeforeHidden) {
-            resumeAudioContextIfNeeded();
-          }
-          console.log('App going to background, position saved:', __savedResumePosition);
-        } else {
-          // Вернулись на передний план
-          checkSleepTimer();
-
-          if (isIOS()) resumeAudioContextIfNeeded();
-
-          if (__wasPlayingBeforeHidden && !sleepTimerTarget) {
-            if (typeof __savedResumePosition === 'number') {
-              try { pc && pc.seek && pc.seek(__savedResumePosition); } catch {}
-            }
-            if (pc && pc.play && !pc.isPlaying()) {
-              try { pc.play(); } catch {}
-            }
-          }
-
-          // Синхронизируем UI
-          syncUiFromPlayback();
-
-          // Восстанавливаем UI-анимации
-          if (window.__savedAnimationState) {
-            applyAnimationState(window.__savedAnimationState);
-            window.__savedAnimationState = null;
-          }
-          if (window.__savedBitState) {
-            initAudioContext();
-            startLogoPulsation();
-            window.__savedBitState = null;
-          }
-
-          // Возобновляем галерею
-          if (!coverAutoplay && Array.isArray(coverGalleryArr) && coverGalleryArr.length > 1) {
-            startCoverAutoPlay();
-          }
-
-          console.log('App returning to foreground, resuming playback');
-        }
-      });
-
-      window.addEventListener('focus', checkSleepTimer);
-
-      window.addEventListener('offline', () => {
-        startOfflineToasts();
-        const pc = window.playerCore;
-        try { __savedResumePosition = pc && pc.getSeek ? (pc.getSeek() || 0) : 0; } catch {}
-      });
-      window.addEventListener('online', () => {
-        stopOfflineToasts();
-        NotificationSystem.success('Соединение восстановлено');
-        const pc = window.playerCore;
-        if (pc && typeof __savedResumePosition === 'number') {
-          try { pc.seek(__savedResumePosition); } catch {}
-          __savedResumePosition = null;
-        }
-      });
-    })();
-  }
-
-  /* ====== Фон: Web Locks + Wake Lock (Android) ====== */
-  let __wakeLock = null;
-  let __playbackLockReleaser = null;
-
-  async function setPlaybackLocks(active) {
-    try {
-      if (active) {
-        // Web Locks: удерживаем ресурс воспроизведения (если поддерживается)
-        if (navigator.locks && typeof navigator.locks.request === 'function' && !__playbackLockReleaser) {
-          navigator.locks.request('audio-playback', { mode: 'shared' }, async lock => {
-            await new Promise(resolve => { __playbackLockReleaser = resolve; });
-          }).catch(()=>{});
-        }
-        // Wake Lock (экран): полезно на Android при активном экране
-        if ('wakeLock' in navigator && !document.hidden && !__wakeLock) {
-          try {
-            __wakeLock = await navigator.wakeLock.request('screen');
-            __wakeLock.addEventListener('release', () => { __wakeLock = null; }, { once: true });
-          } catch (e) {
-            // может быть запрещено политикой/ОС — молча игнорируем
-          }
-        }
-      } else {
-        if (__playbackLockReleaser) { try { __playbackLockReleaser(); } catch {} __playbackLockReleaser = null; }
-        if (__wakeLock) { try { await __wakeLock.release(); } catch {} __wakeLock = null; }
-      }
-    } catch {}
-  }
-
-  // Автонастройка Wake Lock при смене видимости — через PlayerCore
-  document.addEventListener('visibilitychange', () => {
-    try {
-      const pc = window.playerCore;
-      const playing = pc && pc.isPlaying && pc.isPlaying();
-      (window.Energy && window.Energy.setPlaybackLocks
-        ? window.Energy.setPlaybackLocks(!document.hidden && playing)
-        : setPlaybackLocks(!document.hidden && playing));
-    } catch {}
-  });
-
-  /* ====== Плеер/избранное ====== */
-  let currentTrack = -1;
-  let currentLyrics = [];
-  let offlineMode = false;
-  let offlineDownloading = false;
-  let deferredPrompt = null;
-
-  let shuffleMode = false;
-  let repeatMode = false;
-  let autoNextDisabled = false; // «Один трек»: отключить автопереход (не действует при Repeat)
-  let favoritesOnlyMode = false;
-  let availableTracks = [];
-  let favoritesFilterActive = false;
-
-  let animationEnabled = false;
-  let bitEnabled = false;
-  let bitIntensity = 100;
-  let audioContext = null;
-  let analyser = null;
-  let audioSource = null;
-  let animationFrame = null;
-
-  let filesToDownload = [];
-
-  /* ====== Ультра‑эконом и сеть ====== */
-  let ultraEcoEnabled = false;
-  let __uiUpdateMinIntervalMs = 1000;   // 1с по умолчанию
-  let __progressThrottleMs   = 1000;
-  let __savedAnimationBeforeEco = null;
-  let __savedBitBeforeEco = null;
-  let __ecoAutoFromEnergy = false;
-
-  let __offlineToastInterval = null;
-  let __savedResumePosition = null;
-  let __wasPlayingBeforeHidden = false;
-  let __wasPlayingBeforeOffline = false;
-
-  function startOfflineToasts() {
-    try { if (__offlineToastInterval) return;
-      NotificationSystem.offline('Пропало интернет соединение');
-      __offlineToastInterval = setInterval(() => {
-        NotificationSystem.offline('Пропало интернет соединение');
-      }, 30000);
-    } catch {}
-  }
-  function stopOfflineToasts() {
-    try { if (__offlineToastInterval) { clearInterval(__offlineToastInterval); __offlineToastInterval = null; } } catch {}
-  }
-
-  // Энергосбережение
-  let energySaver = false;
-  let __savedAnimationBeforeEnergy = null;
-  let __savedBitBeforeEnergy = null;
-
-  function detectEnergySaver() {
-    try {
-      const nc = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-      const saveData = !!(nc && nc.saveData);
-      const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-      return saveData || reduced;
-    } catch { return false; }
-  }
-
-  function applyEnergySaver(on) {
-    energySaver = !!on;
-    if (energySaver) {
-      if (__savedAnimationBeforeEnergy === null) __savedAnimationBeforeEnergy = animationEnabled;
-      if (__savedBitBeforeEnergy === null) __savedBitBeforeEnergy = bitEnabled;
-      if (animationEnabled) applyAnimationState(false);
-      if (bitEnabled) stopLogoPulsation();
-      if (coverAutoplay) { clearInterval(coverAutoplay); coverAutoplay = null; }
-      // Авто-включаем «Ультра‑эконом» (можно потом отключить вручную)
-      if (!ultraEcoEnabled) { __ecoAutoFromEnergy = true; applyEcoState(true, { silent: true }); }
-    } else {
-      if (__savedAnimationBeforeEnergy !== null) {
-        applyAnimationState(__savedAnimationBeforeEnergy);
-        __savedAnimationBeforeEnergy = null;
-      }
-      if (__savedBitBeforeEnergy) {
-        initAudioContext();
-        startLogoPulsation();
-      }
-      __savedBitBeforeEnergy = null;
-      if (!coverAutoplay && Array.isArray(coverGalleryArr) && coverGalleryArr.length > 1 && !document.hidden) {
-        startCoverAutoPlay();
-      }
-      // Если Эко включали автоматом — вернём как было (если пользователь сам не зафиксировал включение)
-      if (__ecoAutoFromEnergy) {
-        __ecoAutoFromEnergy = false;
-        if (localStorage.getItem('ultraEco') !== '1') {
-          applyEcoState(false, { silent: true });
-        }
-      }
-    }
-  }
-  let __currentAudio = null;
-  let __wasMini = false;
-  let __savedLyricsModeForMini = null;
-  let __savedAnimationForMini = null;
-
-  const FAVORITES_REFS_KEY = 'favoritesAlbumRefs:v1';
-  let favoritesRefsModel = null;
-  // Кэш обложек альбомов (первая картинка из центральной галереи)
-  const albumCoverCache = Object.create(null);
-
-  /* Старые совместимые хелперы */
-function getPlayerConfig() {
-  // Основной источник — PlayerCore snapshot (работает и для «Избранного»)
-  try {
-    const pc = window.playerCore;
-    if (pc && typeof pc.getPlaylistSnapshot === 'function') {
-      const snap = pc.getPlaylistSnapshot();
-      if (Array.isArray(snap) && snap.length) {
-        return {
-          tracks: snap.map(t => ({
-            title: t.title,
-            audio: t.src || '',
-            lyrics: t.lyrics || '',
-            fulltext: t.fulltext || ''
-          })),
-          artist: snap[0].artist || 'Витрина Разбита',
-          albumName: snap[0].album || 'Альбом'
-        };
-      }
-    }
-  } catch {}
-  // Фолбэк — текущий открытый альбом
-  return config ? { tracks: config.tracks, artist: config.artist, albumName: config.albumName } : null;
-}
-
-// Формируем плейлист PlayerCore из текущего альбома (без “фаворитов”-режима)
-// Вызывается при любом обновлении config/трек-листа.
-function updatePlayerCorePlaylistFromConfig() {
-  try {
-    if (!window.playerCore || !config || !Array.isArray(config.tracks)) return;
-    const artist = config.artist || 'Витрина Разбита';
-    const album = config.albumName || 'Альбом';
-    const cover = 'img/logo.png';
-    const tracks = config.tracks.map(t => ({
-      src: t.audio,
-      title: t.title,
-      artist,
-      album,
-      cover,
-      lyrics: t.lyrics,
-      fulltext: t.fulltext
-    }));
-    if (tracks.length) {
-      const startIdx = (typeof currentTrack === 'number' && currentTrack >= 0 && currentTrack < tracks.length) ? currentTrack : 0;
-      window.playerCore.setPlaylist(tracks, startIdx);
-      // Применим текущие режимы
-      window.playerCore.setRepeat(!!repeatMode);
-      window.playerCore.setShuffle(!!shuffleMode);
-      const favList = getLiked();
-      window.playerCore.setFavoritesOnly(!!favoritesOnlyMode, favList);
-      // Применим сохранённую громкость
-      const savedVolumeRaw = localStorage.getItem('playerVolume');
-      const savedVolume = parseFloat(savedVolumeRaw);
-      const volume = Number.isFinite(savedVolume) ? savedVolume : 1;
-      window.playerCore.setVolume(volume);
-    }
-  } catch {}
-}
-
-  function isBrowsingSameAsPlaying() { return !!(playingAlbumKey && playingAlbumKey === currentAlbumKey); }
-
-  // NotificationSystem перенесён в ./scripts/ui/notify.js (ESM). Доступен как window.NotificationSystem.
-
-  /* Избранное v2 */
-  const LIKED_STORAGE_KEY_V2 = 'likedTracks:v2';
-  function getLikedMap() {
-    try { const raw = localStorage.getItem(LIKED_STORAGE_KEY_V2); const map = raw ? JSON.parse(raw) : {}; return (map && typeof map === 'object') ? map : {}; }
-    catch { return {}; }
-  }
-  function getLikedForAlbum(albumKey) {
-    try { const raw = localStorage.getItem(LIKED_STORAGE_KEY_V2); const map = raw ? JSON.parse(raw) : {}; const arr = map && typeof map === 'object' ? map[albumKey] : []; return Array.isArray(arr) ? arr : []; }
-    catch { return []; }
-  }
-  function getLiked() { return getLikedForAlbum(currentAlbumKey); }
-  function saveLiked(arr) {
-    if (!currentAlbumKey) return;
-    const map = getLikedMap();
-    map[currentAlbumKey] = Array.from(new Set(arr.filter(n => Number.isInteger(n))));
-    localStorage.setItem(LIKED_STORAGE_KEY_V2, JSON.stringify(map));
-  }
-  function isLiked(idx, albumKey = currentAlbumKey) { return getLikedForAlbum(albumKey).includes(idx); }
-  function isLikedInPlayback(idx) {
-    if (playingAlbumKey === SPECIAL_FAVORITES_KEY) {
-      const ref = favoritesRefsModel?.[idx];
-      return ref ? getLikedForAlbum(ref.__a).includes(ref.__t) : false;
-    }
-    return getLikedForAlbum(playingAlbumKey).includes(idx);
-  }
-
-  /* Ссылки на избранное (refs) */
-  function readFavoritesRefs(){ try { const raw = localStorage.getItem(FAVORITES_REFS_KEY); const arr = raw ? JSON.parse(raw) : []; return Array.isArray(arr)?arr:[]; } catch { return []; } }
-  function writeFavoritesRefs(arr){ try { localStorage.setItem(FAVORITES_REFS_KEY, JSON.stringify(arr)); } catch {} }
-  function ensureFavoritesRefsWithLikes(){
-    const refs = readFavoritesRefs();
-    const keySet = new Set(refs.map(x=>`${x.a}:${x.t}`));
-    for (const alb of albumsIndex) {
-      const liked = getLikedForAlbum(alb.key);
-      liked.forEach(ti=>{
-        const k = `${alb.key}:${ti}`;
-        if (!keySet.has(k)) { refs.push({ a: alb.key, t: ti }); keySet.add(k); }
-      });
-    }
-    writeFavoritesRefs(refs);
-    return refs;
-  }
-  function getSortedFavoritesRefs() {
-    const refs = ensureFavoritesRefsWithLikes().slice();
-    const order = ICON_ALBUMS_ORDER.map(x=>x.key).filter(k=>k!==SPECIAL_FAVORITES_KEY && k!==SPECIAL_RELIZ_KEY);
-    const orderMap = new Map(order.map((k,i)=>[k,i]));
-    refs.sort((r1,r2)=>{
-      const o1 = orderMap.has(r1.a) ? orderMap.get(r1.a) : 999;
-      const o2 = orderMap.has(r2.a) ? orderMap.get(r2.a) : 999;
-      if (o1 !== o2) return o1 - o2;
-      return (r1.t - r2.t);
-    });
-    return refs;
-  }
-  async function getAlbumConfigByKey(albumKey){
-    if (albumConfigCache[albumKey]?.config) return albumConfigCache[albumKey].config;
-    const meta = albumsIndex.find(a => a.key === albumKey);
-    if (!meta) return null;
-    const base = normalizeBase(meta.base);
-    try{
-      const r = await fetch(absJoin(base,'config.json'), { cache:'no-cache' });
-      const data = await r.json();
-      if (!Array.isArray(data.tracks)) data.tracks = [];
-      data.tracks.forEach((t, i) => {
-        if (t.audio) t.audio = absJoin(base, t.audio);
-        else { try { NotificationSystem && NotificationSystem.warning(`config.json[${base}]: у трека #${i+1} нет поля audio`); } catch {} }
-        if (t.lyrics) t.lyrics = absJoin(base, t.lyrics);
-        if (t.fulltext) t.fulltext = absJoin(base, t.fulltext);
-      });
-      albumConfigCache[albumKey] = { base, config: data };
-      return data;
-    } catch { return null; }
-  }
-  async function buildFavoritesRefsModel() {
-    const sortedRefs = getSortedFavoritesRefs();
-    const out = [];
-
-    async function getAlbumCoverUrl(albumKey) {
-      if (albumCoverCache[albumKey]) return albumCoverCache[albumKey];
-      try {
-        const cid = centralIdForAlbumKey(albumKey);
-        if (!cid) { albumCoverCache[albumKey] = 'img/logo.png'; return albumCoverCache[albumKey]; }
-        const baseDir = `${CENTRAL_GALLERY_BASE}${cid}/`;
-        const r = await fetch(baseDir + 'index.json', { cache: 'force-cache' });
-        const j = r.ok ? await r.json() : null;
-        const first = j && (Array.isArray(j.items) ? j.items[0] : (Array.isArray(j) ? j[0] : null));
-        if (first) {
-          const norm = normalizeGalleryItem(first, baseDir);
-          const url = (norm && (norm.formats?.webp || norm.formats?.full || norm.src)) || 'img/logo.png';
-          albumCoverCache[albumKey] = url;
-          return url;
-        }
-      } catch {}
-      albumCoverCache[albumKey] = 'img/logo.png';
-      return albumCoverCache[albumKey];
-    }
-
-    for (const ref of sortedRefs) {
-      const cfg = await getAlbumConfigByKey(ref.a);
-      const tr = cfg?.tracks?.[ref.t];
-      if (!tr) continue;
-      const active = getLikedForAlbum(ref.a).includes(ref.t);
-      const cover = await getAlbumCoverUrl(ref.a);
-      out.push({
-        title: tr.title,
-        audio: tr.audio,
-        lyrics: tr.lyrics,
-        fulltext: tr.fulltext || null,
-        __a: ref.a,
-        __t: ref.t,
-        __artist: cfg?.artist || 'Витрина Разбита',
-        __album: cfg?.albumName || 'Альбом',
-        __active: active,
-        __cover: cover
-      });
-    }
-    favoritesRefsModel = out;
-    return out;
-  }
-
-  function updateFavoritesRefsModelActiveFlag(albumKey, trackIndex, isActive) {
-    if (!Array.isArray(favoritesRefsModel)) return;
-    const item = favoritesRefsModel.find(x => x.__a === albumKey && x.__t === trackIndex);
-    if (item) item.__active = !!isActive;
-  }
-
-  // ИНИЦИАЛИЗАЦИЯ ВОСПРОИЗВЕДЕНИЯ ДЛЯ «ИЗБРАННОГО»
-  async function ensureFavoritesPlayback(index) {
-    // Подготовим модель если пусто
-    if (!Array.isArray(favoritesRefsModel) || favoritesRefsModel.length === 0) {
-      await buildFavoritesRefsModel();
-    }
-
-    // Контекст UI
-    playingAlbumKey = SPECIAL_FAVORITES_KEY;
-
-    // Формируем плейлист для PlayerCore (источник звука)
-    const playlist = (favoritesRefsModel || []).map(it => ({
-      src: it.audio,
-      title: it.title,
-      artist: it.__artist || 'Витрина Разбита',
-      album: it.__album || 'Избранное',
-      cover: it.__cover || 'img/logo.png',
-      lyrics: it.lyrics
-    }));
-
-    // Индекс
-    let idx = Number(index);
-    if (!Number.isInteger(idx) || idx < 0 || idx >= (playlist.length || 0)) {
-      idx = 0;
-    }
-
-    // Отрисуем контейнер при необходимости (UI блок)
-    if (!document.getElementById('lyricsplayerblock')) {
-      const holder = document.getElementById('now-playing');
-      if (holder) holder.innerHTML = '<div class="lyrics-player-block" id="lyricsplayerblock"></div>';
-    }
-
-    // Передаём плейлист в ядро и запускаем
-    try {
-      window.playerCore.setPlaylist(playlist, idx, { artist: 'Витрина Разбита', album: 'Избранное', cover: 'img/logo.png' });
-      window.playerCore.play(idx);
-    } catch {}
-
-    // Обновим доступные треки для UI
-    updateAvailableTracks();
-  }
-
-  /* Список треков */
-  function buildTrackList() {
-    // вынесено в scripts/ui/tracks.js
-    if (window.UITracks && typeof window.UITracks.buildTrackList === 'function') {
-      return window.UITracks.buildTrackList();
-    }
-  }
-
-  function pickAndPlayTrack(n){ showTrack(n, true); }
-  function toggleLike(idx, e) {
-    if (e) e.stopPropagation();
-    let liked = getLiked();
-    const was = liked.includes(idx);
-    liked = was ? liked.filter(x=>x!==idx) : [...liked, idx];
-    saveLiked(liked);
-    const star = e ? e.target : document.querySelector(`#trk${idx} .like-star`);
-    if (star){ star.src = was? 'img/star2.png':'img/star.png'; star.title = was?'Добавить в понравившиеся':'Убрать из понравившихся'; star.classList.add('animating'); setTimeout(()=>star.classList.remove('animating'),300); }
-
-    if (favoritesFilterActive) {
-      updateFavoriteClasses();
-      const count = document.querySelectorAll('.track.is-favorite').length;
-      if (count===0) {
-        toggleFavoritesFilter();
-        NotificationSystem.warning('Все треки удалены из избранного, фильтр отключён');
-      } else {
-        NotificationSystem.info(`⭐ Избранных треков: ${count}`);
-      }
-    }
-
-    if (favoritesOnlyMode && isBrowsingSameAsPlaying()) {
-          updateAvailableTracks();
-          if (!getLikedForPlayback().includes(playingTrack)) {
-            const nextFavorite = getNextFavoriteTrack();
-            if (nextFavorite !== -1) setTimeout(() => showTrack(nextFavorite, true), 300);
-            else { toggleFavoritesOnly(); NotificationSystem.warning('Все треки удалены из избранного'); }
-          }
-          if (shuffleMode) { try { window.playerCore && window.playerCore.setShuffle(!!shuffleMode); } catch {} }
-        }
-  }
-
-  /* Плеер */
-  /* Audio-tag path removed. PlayerCore (Howler) полностью управляет источником звука. */
-
-  function dedupePlayerBlock() {
-    try {
-      const nodes = Array.from(document.querySelectorAll('#lyricsplayerblock'));
-      if (nodes.length <= 1) return;
-      let keep = nodes[0];
-      nodes.forEach(n => { if (n !== keep) n.remove(); });
-    } catch {}
-  }
-function showTrack(n, doPlay) {
-  try {
-    // Синхронизируем курсоры UI
-    currentTrack = n;
-    playingTrack = n;
-    playingAlbumKey = currentAlbumKey || playingAlbumKey || null;
-
-    // Обеспечим плейлист для PlayerCore (если ещё не делали)
-    if (typeof updatePlayerCorePlaylistFromConfig === 'function') {
-      updatePlayerCorePlaylistFromConfig();
-    }
-
-    // Отрисуем блок плеера при необходимости
-    if (!document.getElementById('lyricsplayerblock')) {
-      const holder = document.getElementById('now-playing');
-      if (holder) holder.innerHTML = '<div class="lyrics-player-block" id="lyricsplayerblock"></div>';
-    }
-    if (typeof renderLyricsBlock === 'function') renderLyricsBlock();
-
-    // Запуск/пауза через PlayerCore
-    if (doPlay === false) window.playerCore.pause();
-    else window.playerCore.play(n);
-  } catch {
-    // Фолбэк: если вдруг нет PlayerCore — молча
-  }
-}
-  function renderLyricsBlock() {
-    // вынесено в scripts/ui/tracks.js
-    if (window.UITracks && typeof window.UITracks.renderLyricsBlock === 'function') {
-      return window.UITracks.renderLyricsBlock();
-    }
-  }
-
-  /* Лирика */
-  let lyricsViewMode = 'normal';
-  // Троттлинг/стейт для лирики
-  let __lyricsLastIdx = -1;
-  let __lyricsLastTs = 0;
-  let __lyricsMinIntervalBase = 250; // мс
-  function restoreLyricsViewMode() { try { const saved = localStorage.getItem('lyricsViewMode'); if (saved && ['normal','hidden','expanded'].includes(saved)) lyricsViewMode = saved; } catch {} }
-  function saveLyricsViewMode() { try { localStorage.setItem('lyricsViewMode', lyricsViewMode); } catch {} }
-  restoreLyricsViewMode();
-  function renderLyrics(time) {
-    if (!currentLyrics || !currentLyrics.length) { const el = document.getElementById('lyrics'); if (el) el.innerHTML = ''; return; }
-    const windowSize = (lyricsViewMode === 'expanded') ? 9 : 5;
-    const centerLine = Math.floor(windowSize / 2);
-    let active = 0;
-    for (let i = 0; i < currentLyrics.length; i++) if (time >= currentLyrics[i].time) active = i;
-    const start = Math.max(0, active - centerLine);
-    const padTop = Math.max(0, centerLine - active);
-    const rows = [];
-    for (let p = 0; p < padTop; ++p) rows.push('<div class="lyrics-window-line"></div>');
-    for (let i = start; i < Math.min(currentLyrics.length, start + windowSize - padTop); i++) {
-      const cls = (i === active) ? 'lyrics-window-line active' : 'lyrics-window-line';
-      rows.push(`<div class="${cls}">${currentLyrics[i] ? currentLyrics[i].line : ''}</div>`);
-    }
-    while (rows.length < windowSize) rows.push('<div class="lyrics-window-line"></div>');
-    const lyricsEl = document.getElementById('lyrics');
-    if (lyricsEl) lyricsEl.innerHTML = rows.join('');
-  }
-  function renderLyricsEnhanced(t){
-    if (lyricsViewMode === 'hidden' || !Array.isArray(currentLyrics) || currentLyrics.length === 0) return;
-
-    // Динамический троттлинг: в ultraEco/фоне реже обновляем
-    const ecoIntervalMs = (window.ultraEcoEnabled || document.hidden)
-      ? Math.max(500, window.__uiUpdateMinIntervalMs || 1000)
-      : __lyricsMinIntervalBase;
-
-    // определяем активную строку
-    let idx = 0;
-    for (let i = 0; i < currentLyrics.length; i++) {
-      if (t >= currentLyrics[i].time) idx = i; else break;
-    }
-    const now = performance.now();
-    if (idx === __lyricsLastIdx && (now - __lyricsLastTs) < ecoIntervalMs) return;
-
-    __lyricsLastIdx = idx;
-    __lyricsLastTs = now;
-    renderLyrics(t);
-  }
-
-  function copyLyrics(){
-    const pc = getPlayerConfig();
-    const idx = (typeof playingTrack === 'number' && playingTrack >= 0) ? playingTrack : currentTrack;
-    if (!pc || !pc.tracks || idx < 0 || !pc.tracks[idx] || !pc.tracks[idx].fulltext) { 
-      NotificationSystem.warning('Файл с текстом не найден!'); return;
-    }
-    fetch(pc.tracks[idx].fulltext).then(r=>r.text()).then(txt=>{
-      if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(txt).then(()=>NotificationSystem.success('Текст скопирован!'),()=>NotificationSystem.error('Не удалось скопировать'));
-      } else {
-        const ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta); ta.select();
-        try { document.execCommand('copy'); NotificationSystem.success('Текст скопирован!'); } catch { NotificationSystem.error('Не удалось скопировать'); }
-        document.body.removeChild(ta);
-      }
-    }).catch(()=> NotificationSystem.error('Не удалось загрузить текст!'));
-  }
-  function toggleLyricsView(){
-    const modes=['normal','hidden','expanded'];
-    lyricsViewMode = modes[(modes.indexOf(lyricsViewMode)+1)%modes.length];
-    applyLyricsViewMode();
-    saveLyricsViewMode();
-    const msg = {normal:'📝 Обычный вид лирики', hidden:'🚫 Лирика скрыта', expanded:'📖 Расширенный вид лирики'}[lyricsViewMode];
-    NotificationSystem.info(msg);
-  }
-  function applyLyricsViewMode(){
-    const w=document.getElementById('lyrics-window'), btn=document.querySelector('.lyrics-toggle-btn');
-    if (!w||!btn) return;
-    w.classList.remove('lyrics-normal','lyrics-hidden','lyrics-expanded'); btn.classList.remove('lyrics-normal','lyrics-hidden','lyrics-expanded');
-    w.classList.add(`lyrics-${lyricsViewMode}`); btn.classList.add(`lyrics-${lyricsViewMode}`);
-    // Если лирика скрыта — фон всегда выключаем
-    if (lyricsViewMode === 'hidden') applyAnimationState(false);
-  }
-
-  /* Контролы плеера */
-  let lastTimeUpdate = 0, isSeekingProgress=false, isMuted=false, sleepTimerInterval=null, sleepTimerTarget=null;
-  let __lastProgressFillTs = 0; // троттлинг перерисовки прогресса (1 Гц)
-  function initializePlayerControls() {
-    const progressBar = document.getElementById('player-progress-bar');
-    if (progressBar) {
-      progressBar.addEventListener('click', seekToPosition);
-      const startDrag = (e)=>{
-        isSeekingProgress = true;
-        const moveHandler = (e2) => {
-          const rect = progressBar.getBoundingClientRect();
-          const clientX = e2.touches ? e2.touches[0].clientX : e2.clientX;
-          const percent = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-          document.getElementById('player-progress-fill').style.width = `${percent*100}%`;
-        };
-        const endHandler = (e3) => {
-          const rect = progressBar.getBoundingClientRect();
-          const clientX = e3.changedTouches ? e3.changedTouches[0].clientX : e3.clientX;
-          const percent = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-          const dur = (window.playerCore && window.playerCore.getDuration) ? (window.playerCore.getDuration() || 0) : 0;
-          if (dur > 0 && window.playerCore && window.playerCore.seek) {
-            window.playerCore.seek(dur * percent);
-          }
-          isSeekingProgress = false;
-          document.removeEventListener('mousemove', moveHandler);
-          document.removeEventListener('mouseup', endHandler);
-          document.removeEventListener('touchmove', moveHandler);
-          document.removeEventListener('touchend', endHandler);
-        };
-        document.addEventListener('mousemove', moveHandler);
-        document.addEventListener('mouseup', endHandler);
-        document.addEventListener('touchmove', moveHandler, {passive:false});
-        document.addEventListener('touchend', endHandler);
-        e.preventDefault();
-      };
-      progressBar.addEventListener('mousedown', startDrag);
-      progressBar.addEventListener('touchstart', startDrag, {passive:false});
-    }
-    const volumeSlider = document.getElementById('volume-slider');
-    if (volumeSlider) {
-      volumeSlider.addEventListener('input', onVolumeSliderChange);
-      const savedVolumeRaw = localStorage.getItem('playerVolume');
-      const savedVolume = parseFloat(savedVolumeRaw);
-      const volume = Number.isFinite(savedVolume) ? savedVolume : 1;
-      volumeSlider.value = Math.round(volume * 100);
-      updateVolumeUI(volume);
-      // Громкость источника применена через PlayerCore.setVolume
-    }
-  }
-  /* onAudioMetadataLoaded removed — позиция/длительность обновляются через PlayerCore тикер */
-  /* onAudioTimeUpdate removed — прогресс/время/лирика ведутся через PlayerCore и core‑ticker */
-  /* onAudioEnded removed — автонекст полностью внутри PlayerCore */
-
-  function seekToPosition(e) {
-    if (!window.playerCore) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const clientX = e.clientX ?? (e.touches && e.touches[0] && e.touches[0].clientX);
-    if (typeof clientX !== 'number') return;
-    const percent = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    const dur = window.playerCore.getDuration() || 0;
-    if (dur > 0) window.playerCore.seek(dur * percent);
-  }
-  function onVolumeSliderChange(e) {
-    const value = (e && e.target ? e.target.value : 100) / 100;
-    if (window.playerCore && typeof window.playerCore.setVolume === 'function') {
-      window.playerCore.setVolume(value);
-    }
-    updateVolumeUI(value);
-    try { localStorage.setItem('playerVolume', value); } catch {}
-  }
-  function toggleMute() {
-    if (!window.playerCore) return;
-    if (isMuted) {
-      const saved = parseFloat(localStorage.getItem('playerVolume'));
-      const vol = Number.isFinite(saved) && saved > 0 ? saved : 1;
-      window.playerCore.setVolume(vol);
-      isMuted = false;
-      updateVolumeUI(vol);
-    } else {
-      try {
-        const curVol = (window.playerCore.getVolume && window.playerCore.getVolume()) || 1;
-        localStorage.setItem('playerVolume', curVol);
-      } catch {}
-      window.playerCore.setVolume(0);
-      isMuted = true;
-      updateVolumeUI(0);
-    }
-  }
-  function togglePlayPause() {
-    if (!window.playerCore) return;
-    if (window.playerCore.isPlaying()) window.playerCore.pause();
-    else window.playerCore.play(typeof playingTrack === 'number' ? playingTrack : 0);
-  }
-  function updatePlayPauseIcon() {
-    const icon = document.getElementById('play-pause-icon');
-    if (!icon) return;
-    const playing = !!(window.playerCore && typeof window.playerCore.isPlaying === 'function' && window.playerCore.isPlaying());
-    icon.innerHTML = playing ? '<path d="M6 6h4v12H6zM14 6h4v12h-4z"/>' : '<path d="M8 5v14l11-7z"/>';
-  }
-  function stopPlayback(){
-    if (!window.playerCore) return;
-    window.playerCore.stop();
-    updatePlayPauseIcon();
-  }
-
-  function toggleRepeat(){
-    repeatMode = !repeatMode;
-    const btn=document.getElementById('repeat-btn');
-    if (repeatMode) btn.classList.add('repeat-active'); else btn.classList.remove('repeat-active');
-    localStorage.setItem('repeatMode', repeatMode?'1':'0');
-    try { window.playerCore && window.playerCore.setRepeat(repeatMode); } catch {}
-  }
-  function toggleShuffle(){
-    shuffleMode = !shuffleMode;
-    const btn = document.getElementById('shuffle-btn');
-    if (shuffleMode) {
-      btn && btn.classList.add('active');
-      NotificationSystem.info('🔀 Случайный порядок');
-    } else {
-      btn && btn.classList.remove('active');
-      NotificationSystem.info('Последовательно');
-    }
-    localStorage.setItem('shuffleMode', shuffleMode ? '1' : '0');
-    try { window.playerCore && window.playerCore.setShuffle(shuffleMode); } catch {}
-    updateNextUpLabel();
-  }
-
-  function toggleFavoritesOnly(){
-    return __toggleFavoritesOnly_impl();
-  }
-
-function __toggleFavoritesOnly_impl(){
-  const btn = document.getElementById('favorites-btn');
-  const icon = document.getElementById('favorites-btn-icon');
-  favoritesOnlyMode = !favoritesOnlyMode;
-  if (favoritesOnlyMode) { btn && btn.classList.add('favorites-active'); if (icon) icon.src = 'img/star.png'; NotificationSystem.success('⭐ Только избранные'); }
-  else { btn && btn.classList.remove('favorites-active'); if (icon) icon.src = 'img/star2.png'; NotificationSystem.info('Играют все треки'); }
-  localStorage.setItem('favoritesOnlyMode', favoritesOnlyMode ? '1' : '0');
-
-  const list = document.getElementById('track-list');
-  const filterBtn = document.getElementById('filter-favorites-btn');
-
-  if (viewMode === 'favorites') {
-    favoritesFilterActive = favoritesOnlyMode;
-    if (favoritesFilterActive) {
-      filterBtn && filterBtn.classList.add('filtered');
-      if (filterBtn) filterBtn.textContent = 'ПОКАЗАТЬ ВСЕ ПЕСНИ';
-      list && list.classList.add('filtered');
-      updateFavoriteClassesFavorites();
-    } else {
-      filterBtn && filterBtn.classList.remove('filtered');
-      if (filterBtn) filterBtn.textContent = 'Скрыть не отмеченные ⭐ песни';
-      list && list.classList.remove('filtered');
-    }
-  } else if (viewMode === 'album') {
-    favoritesFilterActive = favoritesOnlyMode;
-    if (favoritesFilterActive) {
-      filterBtn && filterBtn.classList.add('filtered');
-      if (filterBtn) filterBtn.textContent = 'ПОКАЗАТЬ ВСЕ ПЕСНИ';
-      list && list.classList.add('filtered');
-      updateFavoriteClasses();
-    } else {
-      filterBtn && filterBtn.classList.remove('filtered');
-      if (filterBtn) filterBtn.textContent = 'Скрыть не отмеченные ⭐ песни';
-      list && list.classList.remove('filtered');
-    }
-  }
-
-  if (playingAlbumKey) {
-    if (isBrowsingOtherAlbum() || playingAlbumKey === SPECIAL_FAVORITES_KEY) {
-      if (shuffleMode) { try { window.playerCore && window.playerCore.setShuffle(!!shuffleMode); } catch {} }
-      updateNextUpLabel();
-    } else {
-      updateAvailableTracks();
-      if (shuffleMode) { try { window.playerCore && window.playerCore.setShuffle(!!shuffleMode); } catch {} }
-      updateNextUpLabel();
-    }
-  }
-
-  // Синхронизация с PlayerCore (фильтр по индексам текущего альбома)
-  try {
-    const favList = Array.isArray(config?.tracks) ? getLiked() : [];
-    window.playerCore && window.playerCore.setFavoritesOnly(favoritesOnlyMode, favList);
-  } catch {}
-}
-
-  function updateAvailableTracks(){
-    const pc = getPlayerConfig();
-    if (!pc || !Array.isArray(pc.tracks)) { availableTracks = []; return; }
-    if (playingAlbumKey === SPECIAL_FAVORITES_KEY) {
-      const activeIdx = [];
-      favoritesRefsModel.forEach((x, i) => { if (x.__active) activeIdx.push(i); });
-      availableTracks = activeIdx; return;
-    }
-    availableTracks = favoritesOnlyMode
-      ? getLikedForPlayback()
-      : Array.from({ length: pc.tracks.length }, (_, i) => i);
-  }
-  function getLikedForPlayback() { return getLikedForAlbum(playingAlbumKey); }
-  function getNextFavoriteTrack(){
-    const liked = getLikedForPlayback();
-    if (!liked.length) return -1;
-    const pos = liked.indexOf(playingTrack);
-    return pos !== -1 && pos < liked.length - 1 ? liked[pos + 1] : liked[0];
-  }
-  function shouldUsePlaybackContext() { return playingAlbumKey === SPECIAL_FAVORITES_KEY || isBrowsingOtherAlbum(); }
-
-  function previousTrack(){
-    if (!window.playerCore) return;
-    if (repeatMode) {
-      window.playerCore.seek(0);
-      window.playerCore.play();
-      return;
-    }
-    window.playerCore.prev();
-  }
-
-  function nextTrack(){
-    if (!window.playerCore) return;
-    if (repeatMode) {
-      window.playerCore.seek(0);
-      window.playerCore.play();
-      return;
-    }
-    window.playerCore.next();
-  }
-
-  function getAvailableTracksForAlbum(albumKey, tracksLen) {
-    if (!tracksLen || tracksLen <= 0) return [];
-    if (albumKey === SPECIAL_FAVORITES_KEY) {
-      if (!Array.isArray(favoritesRefsModel)) return [];
-      const activeIdx = [];
-      favoritesRefsModel.forEach((x, i) => { if (x.__active) activeIdx.push(i); });
-      return activeIdx;
-    }
-    if (favoritesOnlyMode) {
-      const liked = getLikedForAlbum(albumKey).filter(n => Number.isInteger(n) && n >= 0 && n < tracksLen);
-      return liked.length ? liked : Array.from({length: tracksLen}, (_,i)=>i);
-    }
-    return Array.from({length: tracksLen}, (_,i)=>i);
-  }
-  // legacy: удалено. shuffle управляет PlayerCore
-  function createShuffledPlaylist(){
-    try { window.playerCore && window.playerCore.setShuffle(!!shuffleMode); } catch {}
-  }
-
-  /* createPlayingShuffledPlaylist removed — shuffle управляет PlayerCore */
-  function playFromPlaybackAlbum(idx, doPlay) {
-    // Обновим курсоры UI
-    currentTrack = idx;
-    playingTrack = idx;
-
-    // Гарантируем наличие блока плеера
-    if (!document.getElementById('lyricsplayerblock')) {
-      const holder = document.getElementById('now-playing');
-      if (holder) {
-        holder.innerHTML = '<div class="lyrics-player-block" id="lyricsplayerblock"></div>';
-        renderLyricsBlock();
-      }
-    }
-
-    // Переставим плеер под активную строку в «Избранном»
-    if (playingAlbumKey === SPECIAL_FAVORITES_KEY && viewMode === 'favorites') {
-      updateFavoritesCurrentRow(idx);
-      const list = document.getElementById('track-list');
-      const lp = document.getElementById('lyricsplayerblock');
-      const rows = list ? list.querySelectorAll('.track') : [];
-      const row = rows[idx];
-      if (list && lp && row) {
-        if (row.nextSibling) row.parentNode.insertBefore(lp, row.nextSibling);
-        else row.parentNode.appendChild(lp);
-      }
-    }
-    dedupePlayerBlock();
-
-    // Воспроизведение через PlayerCore
-    try {
-      if (doPlay === false) {
-        window.playerCore.pause();
-      } else {
-        window.playerCore.play(idx);
-      }
-    } catch {}
-
-    applyMiniModeUI();
-    updateNextUpLabel();
-    updateMiniNowHeader();
-  }
-
-  /* Media Session — единый путь */
-  function setupMediaSessionForPlayback() {
-    // MediaSession полностью управляется PlayerCore (Howler).
-    // Хелпер оставлен для обратной совместимости и теперь ничего не делает.
-    return;
-  }
-  // Новая функция для обновления позиции в Media Session
-  // Media Session позицию обновляет PlayerCore внутри onplay/onTick.
-  // Дополнительные таймеры не требуются.
-  function initSilentAudioPlayback() {
-    if (!isIOS()) return;
-  
-    try {
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-    
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      gainNode.gain.value = 0.00001; // почти бесшумный
-    
-      oscillator.start(0);
-    
-      // Сохраняем для очистки
-      window.__silentOscillator = oscillator;
-      window.__silentAudioContext = audioContext;
-    
-      // Очищаем через 2 секунды
-      setTimeout(() => {
-        try {
-          oscillator.stop();
-          audioContext.close().catch(console.warn);
-          delete window.__silentOscillator;
-          delete window.__silentAudioContext;
-        } catch (e) {
-          console.warn('Failed to clean silent audio', e);
-        }
-      }, 2000);
-    
-      console.log('Silent audio playback initialized for iOS background mode');
-    } catch (e) {
-      console.warn('Failed to initialize silent audio playback', e);
-    }
-  }
-  /* computeNextIndexPlayback removed — используем playerCore.getNextIndex() */
-  // ЛЁГКИЙ переход на следующий трек в фоне (iOS): без перерисовок, но с «озвучиванием»
-  /* backgroundNextTrack removed — автонекст и фон ведёт PlayerCore */
-  function updateNextUpLabel() {
-    const box = document.getElementById('next-up');
-    const lp = document.getElementById('lyricsplayerblock');
-    if (!box || !lp) return;
-    if (!isBrowsingOtherAlbum()) { box.style.display = 'none'; return; }
-
-    const pc = window.playerCore;
-    if (!pc || typeof pc.getNextIndex !== 'function') { box.style.display = 'none'; return; }
-    const nextIdx = pc.getNextIndex();
-    if (!Number.isInteger(nextIdx) || nextIdx < 0) { box.style.display = 'none'; return; }
-
-    let title = '—';
-    try {
-      const snap = typeof pc.getPlaylistSnapshot === 'function' ? pc.getPlaylistSnapshot() : null;
-      if (snap && snap[nextIdx] && snap[nextIdx].title) title = snap[nextIdx].title;
-    } catch {}
-    const titleEl = box.querySelector('.title');
-    if (titleEl) {
-      titleEl.textContent = `${String(nextIdx + 1).padStart(2, '0')}. ${title}`;
-      titleEl.title = `${String(nextIdx + 1).padStart(2, '0')}. ${title}`;
-    }
-    box.style.display = '';
-  }
-
-  // Мягкая синхронизация UI по фактически играющему треку (через PlayerCore)
-  function syncUiFromPlayback() {
-    const pc = window.playerCore;
-    if (!pc) return;
-
-    const idxNow = typeof pc.getIndex === 'function' ? pc.getIndex() : -1;
-    if (playingAlbumKey === currentAlbumKey) {
-      if (typeof idxNow === 'number' && idxNow >= 0 && currentTrack !== idxNow) {
-        currentTrack = idxNow;
-        playingTrack = idxNow;
-        try {
-          document.querySelectorAll('#track-list .track').forEach(el => el.classList.remove('current'));
-          const row = document.getElementById(`trk${currentTrack}`);
-          if (row) row.classList.add('current');
-          const lp = document.getElementById('lyricsplayerblock');
-          if (row && lp && row.parentNode) {
-            if (row.nextSibling) row.parentNode.insertBefore(lp, row.nextSibling);
-            else row.parentNode.appendChild(lp);
-          }
-        } catch {}
-        // Обновим лирику под текущий трек (если есть путь)
-        const snap = typeof pc.getPlaylistSnapshot === 'function' ? pc.getPlaylistSnapshot() : null;
-        if (snap && snap[currentTrack] && snap[currentTrack].lyrics) {
-          loadLyrics(snap[currentTrack].lyrics);
-        }
-      }
-    }
-
-    applyMiniModeUI();
-    updateMiniNowHeader();
-    updateNextUpLabel();
-
-    // Разово обновим прогресс/таймеры из PlayerCore
-    updateUiFromCoreOnce();
-  }
-
-  function applyMiniModeUI() {
-    // вынесено в scripts/ui/mini.js
-    if (window.UIMini && typeof window.UIMini.applyMiniModeUI === 'function') {
-      return window.UIMini.applyMiniModeUI();
-    }
-  }
-
-  function applyRelizUiMode(on) {
-    const now = document.getElementById('now-playing');
-    const dl = document.getElementById('download-album-main');
-    const off = document.getElementById('offline-btn');
-    const hot = document.getElementById('hotkeys-btn');
-    const filterBtn = document.getElementById('filter-favorites-btn');
-
-    if (now) now.style.display = on ? 'none' : '';
-    if (dl) dl.style.display = on ? 'none' : '';
-    if (off) off.style.display = on ? 'none' : '';
-    if (filterBtn) filterBtn.style.display = on ? 'none' : '';
-    if (hot) hot.style.display = on ? 'block' : (hasKeyboard() ? 'block' : 'none');
-  }
-  function updateMiniNowHeader() {
-    // вынесено в scripts/ui/mini.js
-    if (window.UIMini && typeof window.UIMini.updateMiniNowHeader === 'function') {
-      return window.UIMini.updateMiniNowHeader();
-    }
-  }
-
-  function toggleLikePlayingFromMini(e) {
-    // вынесено в scripts/ui/mini.js
-    if (e && e.stopPropagation) e.stopPropagation();
-    if (window.UIMini && typeof window.UIMini.toggleLikePlayingFromMini === 'function') {
-      return window.UIMini.toggleLikePlayingFromMini();
-    }
-  }
-
-  async function openPlayingAlbumFromMini(e) {
-    // вынесено в scripts/ui/mini.js
-    if (window.UIMini && typeof window.UIMini.openPlayingAlbumFromMini === 'function') {
-      return window.UIMini.openPlayingAlbumFromMini(e);
-    }
-  }
-
-  function attachPlaybackStateListeners() {
-    if (!('mediaSession' in navigator)) return;
-    try {
-      const pc = window.playerCore;
-      const playing = pc && pc.isPlaying && pc.isPlaying();
-      navigator.mediaSession.playbackState = playing ? 'playing' : 'paused';
-    } catch {}
-  }
-
-  function toggleLikePlaying() {
-    if (typeof playingTrack !== 'number' || playingTrack < 0) return;
-    let albumForLike = playingAlbumKey;
-    let indexForLike = playingTrack;
-
-    if (playingAlbumKey === SPECIAL_FAVORITES_KEY) {
-      const ref = favoritesRefsModel?.[playingTrack];
-      if (!ref) return;
-      albumForLike = ref.__a;
-      indexForLike = ref.__t;
-    }
-    const map = getLikedMap();
-    const arr = Array.isArray(map[albumForLike]) ? map[albumForLike] : [];
-    const was = arr.includes(indexForLike);
-    const next = was ? arr.filter(x => x !== indexForLike) : [...arr, indexForLike];
-    map[albumForLike] = Array.from(new Set(next));
-    try { localStorage.setItem(LIKED_STORAGE_KEY_V2, JSON.stringify(map)); } catch {}
-
-    updateMiniNowHeader();
-
-    if (playingAlbumKey === SPECIAL_FAVORITES_KEY) {
-      updateFavoritesRefsModelActiveFlag(albumForLike, indexForLike, !was);
-      const favRow = document.getElementById(`fav_${albumForLike}_${indexForLike}`);
-      if (favRow) {
-        favRow.classList.toggle('inactive', was);
-        const s = favRow.querySelector('.like-star');
-        if (s) { s.src = was ? 'img/star2.png' : 'img/star.png'; s.title = was ? 'Вернуть в избранное' : 'Снять из избранного'; }
-      }
-      /* shuffle handled by PlayerCore */
-      updateNextUpLabel();
-      if (was) { nextTrack(); return; }
-    } else {
-      const favRow = document.getElementById(`fav_${albumForLike}_${indexForLike}`);
-      if (favRow) {
-        favRow.classList.toggle('inactive', was);
-        const s = favRow.querySelector('.like-star');
-        if (s) { s.src = was ? 'img/star2.png' : 'img/star.png'; s.title = was ? 'Вернуть в избранное' : 'Снять из избранного'; }
-      }
-      if (favoritesOnlyMode && shuffleMode) { try { window.playerCore && window.playerCore.setShuffle(!!shuffleMode); } catch {} }
-      updateNextUpLabel();
-    }
-  }
-
-  /* Фильтр/списки избранного */
-  function updateFavoriteClasses() {
-    const liked = getLiked();
-    document.querySelectorAll('.track').forEach(tr => tr.classList.remove('is-favorite'));
-    liked.forEach(idx => { const el = document.getElementById(`trk${idx}`); if (el) el.classList.add('is-favorite'); });
-  }
-  function updateFavoriteClassesFavorites() {
-    if (!Array.isArray(favoritesRefsModel)) return;
-    document.querySelectorAll('#track-list .track').forEach(tr => tr.classList.remove('is-favorite'));
-    favoritesRefsModel.forEach((item, i) => {
-      if (item.__active) {
-        const el = document.getElementById(`fav_${item.__a}_${item.__t}`);
-        if (el) el.classList.add('is-favorite');
-      }
-    });
-  }
-  function toggleFavoritesFilter() {
-    const btn = document.getElementById('filter-favorites-btn');
-    const list = document.getElementById('track-list');
-
-    if (viewMode === 'favorites') {
-      favoritesFilterActive = !favoritesFilterActive;
-      if (favoritesFilterActive) {
-        const anyActive = (favoritesRefsModel || []).some(x => x.__active);
-        if (!anyActive) { favoritesFilterActive = false; NotificationSystem.warning('Нет активных треков со ⭐!'); return; }
-        btn.textContent = 'ПОКАЗАТЬ ВСЕ ПЕСНИ';
-        btn.classList.add('filtered'); list.classList.add('filtered'); updateFavoriteClassesFavorites();
-      } else {
-        btn.textContent = 'Скрыть не отмеченные ⭐ песни';
-        btn.classList.remove('filtered'); list.classList.remove('filtered');
-      }
-      return;
-    }
-
-    const liked = getLiked();
-    favoritesFilterActive = !favoritesFilterActive;
-    if (favoritesFilterActive) {
-      if (!liked.length){ NotificationSystem.warning('Нет избранных треков!'); favoritesFilterActive=false; return; }
-      btn.textContent='ПОКАЗАТЬ ВСЕ ПЕСНИ'; btn.classList.add('filtered'); list.classList.add('filtered'); updateFavoriteClasses();
-    } else {
-      btn.textContent='Скрыть не отмеченные ⭐ песни'; btn.classList.remove('filtered'); list.classList.remove('filtered');
-    }
-  }
-  function updateFavoritesCurrentRow(idx) {
-    try {
-      const rows = document.querySelectorAll('#track-list .track');
-      rows.forEach(r => r.classList.remove('current'));
-      const row = rows[idx];
-      if (row) row.classList.add('current');
-    } catch {}
-  }
-async function openFavoritesView(){
-  applyRelizUiMode(false);
-  viewMode = 'favorites';
-  clearRelizView();
-  setActiveAlbumIcon(SPECIAL_FAVORITES_KEY);
-  setAlbumHeaderTitle(SPECIAL_FAVORITES_KEY);
-
-  try {
-    const lp = document.getElementById('lyricsplayerblock');
-    const holder = document.getElementById('now-playing');
-    if (lp && holder && !holder.contains(lp)) { holder.innerHTML = ''; holder.appendChild(lp); }
-  } catch {}
-
-  applyMiniModeUI();
-
-  const cw = document.getElementById('cover-wrap'); if (cw) cw.style.display = 'none';
-
-  await buildFavoritesRefsModel();
-
-  const list = document.getElementById('track-list');
-  list.style.display = '';
-  // Заголовок
-  let html = '<div style="text-align:center; opacity:.8; margin:6px 0 8px 0;">ИЗБРАННЫЕ ПЕСНИ</div>';
-
-  (favoritesRefsModel || []).forEach((item, idx) => {
-    const n = String(idx + 1).padStart(2,'0');
-    const activeCls = item.__active ? '' : ' inactive';
-    const star = item.__active ? 'img/star.png' : 'img/star2.png';
-    const starTitle = item.__active ? 'Снять из избранного' : 'Вернуть в избранное';
-    html += `
-      <div class="track${activeCls}" id="fav_${item.__a}_${item.__t}" data-akey="${item.__a}" data-t="${item.__t}" data-idx="${idx}">
-        <span class="tnum">${n}.</span>
-        <span class="track-title" title="${item.title} — ${item.__album}">
-          ${item.title} <span style="opacity:.6;font-size:.9em;">— ${item.__album}</span>
-        </span>
-        <img src="${star}" class="like-star" alt="звезда" title="${starTitle}">
-      </div>`;
-  });
-
-  list.innerHTML = html;
-
-  if (!list.__favDelegationInstalled) {
-    list.__favDelegationInstalled = true;
-    list.addEventListener('click', (e) => {
-      const t = e.target instanceof Element ? e.target : null;
-      if (!t) return;
-      const row = t.closest('#track-list .track');
-      if (!row) return;
-      const a = row.getAttribute('data-akey');
-      const ti = parseInt(row.getAttribute('data-t') || '-1', 10);
-      const idx = parseInt(row.getAttribute('data-idx') || '-1', 10);
-
-      // Клик по звезде
-      if (t.closest('.like-star')) {
-        e.stopPropagation();
-        const wasActive = getLikedForAlbum(a).includes(ti);
-        toggleLikeForAlbum(a, ti, !wasActive);
-        updateFavRow({ a, t: ti }, !wasActive);
-        updateFavoritesRefsModelActiveFlag(a, ti, !wasActive);
-
-        if (playingAlbumKey === SPECIAL_FAVORITES_KEY) {
-          if (wasActive) {
-            if (favoritesRefsModel && favoritesRefsModel[playingTrack] &&
-                favoritesRefsModel[playingTrack].__a === a &&
-                favoritesRefsModel[playingTrack].__t === ti) {
-              try { window.playerCore && window.playerCore.setShuffle(!!shuffleMode); } catch {}
-              nextTrack();
-            } else {
-              try { window.playerCore && window.playerCore.setShuffle(!!shuffleMode); } catch {}
-              updateNextUpLabel();
-            }
-            NotificationSystem.info('Трек снят из избранного');
-          } else {
-            try { window.playerCore && window.playerCore.setShuffle(!!shuffleMode); } catch {}
-            updateNextUpLabel();
-            NotificationSystem.success('Трек возвращён в избранное');
-          }
-        } else {
-          if (wasActive) NotificationSystem.info('Трек снят из избранного');
-          else NotificationSystem.success('Трек возвращён в избранное');
-        }
-        return;
-      }
-
-      // Клик по строке
-      const modelItem = favoritesRefsModel?.[idx];
-      if (!modelItem) return;
-      if (modelItem.__active) {
-        ensureFavoritesPlayback(idx);
-      } else {
-        showFavInactivePrompt({ a, t: ti, title: modelItem.title, album: modelItem.__album });
-      }
-    });
-  }
-
-  if (playingAlbumKey === SPECIAL_FAVORITES_KEY && typeof playingTrack === 'number' && playingTrack >= 0) {
-    updateFavoritesCurrentRow(playingTrack);
-    const rows = Array.from(document.querySelectorAll('#track-list .track'));
-    const rowUnder = rows[playingTrack];
-    const lp = document.getElementById('lyricsplayerblock');
-    if (rowUnder && lp && rowUnder.parentNode) {
-      if (rowUnder.nextSibling) rowUnder.parentNode.insertBefore(lp, rowUnder.nextSibling);
-      else rowUnder.parentNode.appendChild(lp);
-    }
-  }
-
-  applyMiniModeUI();
-  list.classList.remove('filtered');
-}
-  function updateFavRow(ref, active){
-    const row = document.getElementById(`fav_${ref.a}_${ref.t}`); if (!row) return;
-    row.classList.toggle('inactive', !active);
-    const star = row.querySelector('.like-star');
-    if (star) { star.src = active ? 'img/star.png' : 'img/star2.png'; star.title = active ? 'Снять из избранного' : 'Вернуть в избранное'; }
-  }
-  function toggleLikeForAlbum(albumKey, idx, makeLiked){
-    const map = getLikedMap();
-    const arr = Array.isArray(map[albumKey]) ? map[albumKey] : [];
-    const has = arr.includes(idx);
-    let next = arr.slice();
-    if (makeLiked && !has) next.push(idx);
-    if (!makeLiked && has) next = next.filter(x=>x!==idx);
-    map[albumKey] = Array.from(new Set(next));
-    try { localStorage.setItem(LIKED_STORAGE_KEY_V2, JSON.stringify(map)); } catch {}
-  }
-  function showFavInactivePrompt(ref){
-    const modal = document.createElement('div');
-    modal.className = 'modal-bg active';
-    modal.innerHTML = `
-      <div class="modal-feedback" style="max-width: 380px;">
-        <button class="bigclose" onclick="this.closest('.modal-bg').remove()" title="Закрыть">
-          <svg viewBox="0 0 48 48"><line x1="12" y1="12" x2="36" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><line x1="36" y1="12" x2="12" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/></svg>
-        </button>
-        <div style="font-weight:700; margin-bottom:10px;">Трек неактивен</div>
-        <div style="opacity:.8; margin-bottom:14px;">
-          Если хотите снова слушать трек в «ИЗБРАННОМ» — добавьте его в избранное.
-          Либо удалите из этого списка.
-        </div>
-        <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
-          <button class="offline-btn online" style="min-width:140px;" id="fav-add-btn">Добавить в ⭐</button>
-          <button class="offline-btn" style="min-width:140px;" id="fav-del-btn">Удалить</button>
-        </div>
-      </div>`;
-    document.body.appendChild(modal);
-    modal.querySelector('#fav-add-btn').onclick = ()=>{ toggleLikeForAlbum(ref.a, ref.t, true); updateFavRow(ref, true); updateFavoritesRefsModelActiveFlag(ref.a, ref.t, true); modal.remove(); NotificationSystem.success('Добавлено в избранное'); };
-    modal.querySelector('#fav-del-btn').onclick = ()=>{ modal.remove(); showFavDeleteConfirm(ref); };
-  }
-  function showFavDeleteConfirm(ref){
-    const modal = document.createElement('div');
-    modal.className = 'modal-bg active';
-    modal.innerHTML = `
-      <div class="modal-feedback" style="max-width: 390px;">
-        <button class="bigclose" onclick="this.closest('.modal-bg').remove()" title="Закрыть">
-          <svg viewBox="0 0 48 48"><line x1="12" y1="12" x2="36" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><line x1="36" y1="12" x2="12" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/></svg>
-        </button>
-        <div style="font-weight:700; margin-bottom:10px;">Удалить из «ИЗБРАННОГО»?</div>
-        <div style="opacity:.8; margin-bottom:12px;">
-          Если вы удалите трек, он исчезнет из списка «ИЗБРАННОЕ», но вы всегда сможете найти его в исходном альбоме.
-        </div>
-        <div style="display:flex; gap:10px; justify-content:center;">
-          <button class="offline-btn" style="min-width:120px;" id="fav-del-cancel">Отмена</button>
-          <button class="offline-btn online" style="min-width:120px;" id="fav-del-apply">Удалить</button>
-        </div>
-      </div>`;
-    document.body.appendChild(modal);
-
-    modal.querySelector('#fav-del-cancel').onclick = ()=> modal.remove();
-    modal.querySelector('#fav-del-apply').onclick = ()=>{
-      const refs = readFavoritesRefs().filter(x=> !(x.a===ref.a && x.t===ref.t));
-      writeFavoritesRefs(refs);
-      document.getElementById(`fav_${ref.a}_${ref.t}`)?.remove();
-      if (Array.isArray(favoritesRefsModel)) {
-        favoritesRefsModel = favoritesRefsModel.filter(x => !(x.__a === ref.a && x.__t === ref.t));
-        const rows = document.querySelectorAll('#track-list .track');
-        rows.forEach((row, i) => { const tnum = row.querySelector('.tnum'); if (tnum) tnum.textContent = `${String(i + 1).padStart(2,'0')}.`; });
-      }
-      modal.remove();
-      NotificationSystem.success('Удалено из «ИЗБРАННОГО»');
-    };
-  }
-
-  /* Prefetch следующего трека */
-  function prefetchNextTrackAssetsForPlayback() {
-    try {
-      const pc = window.playerCore;
-      if (!pc || typeof pc.getNextIndex !== 'function') return;
-      const nextIdx = pc.getNextIndex();
-      const snap = typeof pc.getPlaylistSnapshot === 'function' ? pc.getPlaylistSnapshot() : null;
-      if (Number.isInteger(nextIdx) && nextIdx >= 0 && snap && snap[nextIdx]) {
-        const t = snap[nextIdx];
-        if (t?.cover) prefetchAudioLink(t.cover, 'image');
-        if (t?.lyrics) prefetchAudioLink(t.lyrics, 'fetch');
-        // аудио URL доступен только внутри Howler options; используем эвристики:
-        // если src присутствует в снапшоте — прогреем
-        if (t?.src) prefetchAudioLink(t.src, 'audio');
-      }
-      // При Repeat — держим текущий трек тёплым
-      const curIdx = typeof pc.getIndex === 'function' ? pc.getIndex() : -1;
-      if (repeatMode && curIdx >= 0 && snap && snap[curIdx] && snap[curIdx].src) {
-        prefetchAudioLink(snap[curIdx].src, 'audio');
-      }
-    } catch {}
-  }
-
-  function prefetchAudioLink(url, asType = 'audio') {
-    if (!url) return;
-    try {
-      // Прогреваем через SW, чтобы положить ответ в MEDIA_CACHE
-      fetch(url, { cache: 'reload', mode: 'cors' }).catch(()=>{});
-    } catch (e) {}
-  }
-
-  /* Загрузка лирики */
-  function loadLyrics(file){ fetch(file).then(r=>r.json()).then(js=>{ currentLyrics=js; renderLyrics(0); }).catch(()=>{ currentLyrics=[]; }); }
-
-  /* Время/хоткеи/модалки */
-  function formatTime(sec){ if (isNaN(sec)||sec<0) return '--:--'; const m=Math.floor(sec/60), s=Math.floor(sec%60); return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`; }
-
-  // Разовое обновление UI времени/прогресса от PlayerCore
-  function updateUiFromCoreOnce() {
-    try {
-      const pc = window.playerCore;
-      if (!pc) return;
-      const dur = pc.getDuration ? (pc.getDuration() || 0) : 0;
-      const pos = pc.getSeek ? (pc.getSeek() || 0) : 0;
-      const elapsedEl = document.getElementById('time-elapsed');
-      const remainingEl = document.getElementById('time-remaining');
-      const fill = document.getElementById('player-progress-fill');
-      if (elapsedEl) elapsedEl.textContent = formatTime(pos);
-      if (remainingEl) remainingEl.textContent = formatTime(Math.max(0, dur - pos));
-      if (fill && dur > 0) fill.style.width = `${(pos / dur) * 100}%`;
-    } catch {}
-  }
-
-  /* keydown хендлер перенесён в scripts/app/navigation.js */
-    if (e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA') return;
-    const hasModal = document.querySelector('.modal-bg.active');
-    if (e.key==='Escape' && hasModal){ e.preventDefault(); document.querySelectorAll('.modal-bg.active').forEach(m=>m.classList.remove('active')); return; }
-    if (hasModal) return;
-    // source: Howler (PlayerCore)
-    switch(e.key.toUpperCase()){
-      case ' ': case 'K': e.preventDefault(); togglePlayPause(); break;
-      case 'X': e.preventDefault(); stopPlayback(); break;
-      case 'N': e.preventDefault(); nextTrack(); break;
-      case 'P': e.preventDefault(); previousTrack(); break;
-      case 'J': e.preventDefault(); { const pc = window.playerCore; if (pc && pc.seek) pc.seek(Math.max(0, (pc.getSeek?.() || 0) - 10)); } break;
-      case 'L': e.preventDefault(); { const pc = window.playerCore; if (pc && pc.seek) { const dur = pc.getDuration?.() || 0; pc.seek(Math.min(dur, (pc.getSeek?.() || 0) + 10)); } } break;
-      case '+': case '=': e.preventDefault(); const vs1=document.getElementById('volume-slider'); if (vs1){ vs1.value=Math.min(100, parseInt(vs1.value||'100') + 10); vs1.dispatchEvent(new Event('input')); } break;
-      case '-': e.preventDefault(); const vs2=document.getElementById('volume-slider'); if (vs2){ vs2.value=Math.max(0, parseInt(vs2.value||'100') - 10); vs2.dispatchEvent(new Event('input')); } break;
-      case 'M': case '0': e.preventDefault(); toggleMute(); break;
-      case 'R': e.preventDefault(); toggleRepeat(); break;
-      case 'U': e.preventDefault(); toggleShuffle(); break;
-      case 'F': e.preventDefault(); toggleFavoritesOnly(); break;
-      case 'T': e.preventDefault(); toggleSleepMenu(); break;
-      case 'A': e.preventDefault(); toggleAnimation(); break;
-      case 'B': e.preventDefault(); toggleBit(); break;
-      case 'O':
-        e.preventDefault();
-        autoNextDisabled = !autoNextDisabled;
-        if (repeatMode && autoNextDisabled) {
-          NotificationSystem.info('Повтор трека активен — опция «Один трек» без эффекта');
-        } else {
-          NotificationSystem.info(autoNextDisabled ? '⏹ Автопереход отключён' : '▶ Автопереход включён');
-        }
-        break;
-      case '1': if (bitEnabled){ bitIntensity=100; localStorage.setItem('bitIntensity','100'); NotificationSystem.info('💿 Интенсивность: 100%'); } break;
-      case '2': if (bitEnabled){ bitIntensity=50; localStorage.setItem('bitIntensity','50'); NotificationSystem.info('💿 Интенсивность: 50%'); } break;
-      case '3': if (bitEnabled){ bitIntensity=15; localStorage.setItem('bitIntensity','15'); NotificationSystem.info('💿 Интенсивность: 15%'); } break;
-      case 'Y': e.preventDefault(); if (currentTrack>=0) toggleLyricsView(); break;
-      case 'W': e.preventDefault(); document.getElementById('track-list')?.scrollIntoView({behavior:'smooth'}); break;
-      case 'D':
-        e.preventDefault();
-        if (isBrowsingSameAsPlaying()) { if (playingTrack >= 0) toggleLike(playingTrack); }
-        else { toggleLikePlaying(); }
-        break;
-      case '?': e.preventDefault(); showHotkeysModal(); break;
-    }
-    if (e.key>='1' && e.key<='9' && !e.shiftKey && !e.ctrlKey && !e.altKey){
-      const i=parseInt(e.key)-1; if (config && i<config.tracks.length){ e.preventDefault(); showTrack(i,true); }
-    }
-  /* конец переноса горячих клавиш в scripts/app/navigation.js */
-  /* Обратная связь */
-  function openFeedbackModal(){ document.getElementById('modal-feedback').classList.add('active'); }
-  function closeFeedbackModal(){ document.getElementById('modal-feedback').classList.remove('active'); }
-
-  /* Deep Link реализован в scripts/app/navigation.js (window.parseDeepLink) */
-
-  /* Скачивания: трек/альбом */
-  function getTrackFileName(track, idx, artist){ return `${String(idx+1).padStart(2,'0')} - ${track.title} - ${artist}.mp3`.replace(/[\\/:"*?<>|]+/g,'_'); }
-  function openDownloadModal(e){
-    if (e) e.preventDefault();
-    const pc = getPlayerConfig(); const tr = pc?.tracks?.[playingTrack];
-    if (!tr) return;
-    const fn = getTrackFileName(tr, playingTrack, pc.artist || 'Витрина Разбита');
-    document.getElementById('download-modal-filename').innerHTML=`<b>${fn}</b>`;
-    document.getElementById('download-modal').classList.add('active');
-  }
-  async function downloadCurrentTrack(){
-    const pc = getPlayerConfig(); const tr = pc?.tracks?.[playingTrack];
-    if (!tr) return;
-    const fn = getTrackFileName(tr, playingTrack, pc.artist || 'Витрина Разбита');
-    const a=document.createElement('a'); a.href=tr.audio; a.download=fn;
-    document.body.appendChild(a); a.click(); setTimeout(()=>{ document.body.removeChild(a); },250);
-    closeDownloadModal(); NotificationSystem.success('Файл будет загружен!');
-  }
-  async function shareCurrentTrack(){
-    const pc = getPlayerConfig(); const tr = pc?.tracks?.[playingTrack];
-    if (!tr) return;
-    const t = (window.playerCore && window.playerCore.getSeek) ? Math.floor(window.playerCore.getSeek() || 0) : 0;
-    const timeParam = t > 10 ? `&time=${t}` : '';
-    const shareUrl = location.origin + location.pathname + `?album=${playingAlbumKey}&track=${playingTrack}${timeParam}`;
-    const txt = `🎵 ${tr.title} - ${pc.artist || 'Витрина Разбита'}\n🎧 Слушай:`;
-    if (navigator.share){
-      try { await navigator.share({title: tr.title, text: txt, url: shareUrl}); NotificationSystem.success('Ссылка отправлена!'); closeDownloadModal(); } catch {}
-    } else {
-      await navigator.clipboard.writeText(`${txt}\n${shareUrl}`);
-      NotificationSystem.success('Ссылка скопирована!');
-    }
-  }
-
-  function copyLinkCurrentTrack(){
-    const pc = getPlayerConfig(); const tr = pc?.tracks?.[playingTrack];
-    if (!tr) return;
-    const directUrl = tr.audio;
-    if (navigator.clipboard && window.isSecureContext){
-      navigator.clipboard.writeText(directUrl).then(()=>NotificationSystem.success('Прямая ссылка скопирована!'),()=>NotificationSystem.error('Не удалось скопировать'));
-    } else {
-      const ta=document.createElement('textarea'); ta.value=directUrl; document.body.appendChild(ta); ta.select();
-      try{ document.execCommand('copy'); NotificationSystem.success('Прямая ссылка скопирована!'); }catch{ NotificationSystem.error('Не удалось скопировать'); }
-      document.body.removeChild(ta);
-    }
-    closeDownloadModal();
-  }
-  function closeDownloadModal(){ const m = document.getElementById('download-modal'); if (m) m.classList.remove('active'); }
-
-  function openAlbumDownloadModal(){ document.getElementById('albumDownloadModal').classList.add('active'); checkFavoritesAvailable(); }
-  function closeAlbumDownloadModal(){ document.getElementById('albumDownloadModal').classList.remove('active'); }
-  document.getElementById('albumDownloadModal').onclick = function(e){ if (e.target===this) closeAlbumDownloadModal(); };
-  function checkFavoritesAvailable(){ const favCheckbox=document.getElementById('onlyFavorites'); const liked=getLiked(); favCheckbox.disabled = liked.length===0; favCheckbox.parentElement.style.opacity = liked.length===0 ? '.5' : '1'; }
-
-  function loadJSZip(){ if (window.JSZip) return Promise.resolve(); return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'; s.onload=res; s.onerror=rej; document.head.appendChild(s); }); }
-
-  // Собираем файлы галереи текущего альбома из локального репозитория
-  async function gatherGalleryFilesForAlbum(albumKey) {
-    const id = centralIdForAlbumKey(albumKey);
-    if (!id) return [];
-    try {
-      const baseDir = `${CENTRAL_GALLERY_BASE}${id}/`;
-      const r = await fetch(baseDir + 'index.json', { cache: 'no-cache' });
-      if (!r.ok) return [];
-      const j = await r.json();
-      const arr = Array.isArray(j.items) ? j.items : (Array.isArray(j) ? j : []);
-      const files = [];
-      for (const raw of arr) {
-        const norm = normalizeGalleryItem(raw, baseDir);
-        if (!norm || norm.type !== 'img') continue;
-        const src = norm.formats?.full || norm.src;
-        if (src) {
-          const name = src.split('/').pop();
-          files.push({ url: src, name: `gallery/${name}`, type: 'image' });
-        }
-      }
-      return files;
-    } catch { return []; }
-  }
-
-  async function prepareFilesList(){
-    filesToDownload=[]; const added = new Set();
-    const liked = getLiked();
-    let idxs = [];
-    const onlyFav = document.getElementById('onlyFavorites').checked;
-    const fullAlbum = document.getElementById('fullAlbum').checked;
-    if (onlyFav && liked.length>0) idxs = liked;
-    else if (fullAlbum) idxs = config.tracks.map((_,i)=>i);
-
-    for (const i of idxs){
-      const t=config.tracks[i]; const num=String(i+1).padStart(2,'0'); const name=`${num} - ${t.title} - ${config.artist}.mp3`;
-      if (!added.has(name)){ added.add(name); filesToDownload.push({url: t.audio, name, type:'audio'}); }
-      if (document.getElementById('includeLyrics').checked && t.fulltext){
-        const n2 = `${num} - ${t.title} - ${config.artist}.txt`;
-        if (!added.has(n2)){ added.add(n2); try{ const r=await fetch(t.fulltext); const text=await r.text(); filesToDownload.push({content:text, name:n2, type:'text'}); }catch{} }
-      }
-    }
-    if (document.getElementById('includeCovers').checked){
-      const galleryFiles = await gatherGalleryFilesForAlbum(currentAlbumKey);
-      for (const f of galleryFiles) {
-        if (!added.has(f.name)){ added.add(f.name); filesToDownload.push(f); }
-      }
-      // На всякий случай — если галерея пуста, положим логотип
-      if (galleryFiles.length === 0) {
-        const nm = 'logo.png';
-        if (!added.has(nm)){ added.add(nm); filesToDownload.push({ url: 'img/logo.png', name: nm, type: 'image' }); }
-      }
-    }
-    if (!added.has('logo.png')) filesToDownload.push({url:'img/logo.png', name:'logo.png', type:'image'});
-    if (!added.has('social.txt')) filesToDownload.push({content: generateSocialText(), name:'social.txt', type:'text'});
-  }
-  function generateSocialText(){
-    const s = (config && config.socials) ? config.socials : [];
-    const lines = s.map(one=>`${one.title}: ${one.url}`).join('\n');
-    return `═══════════════════════════════════════
-         ВИТРИНА РАЗБИТА — ${config?.albumName||'Альбом'}
-═══════════════════════════════════════
-
-Спасибо за интерес к нашему творчеству!
-Поддержите нас и подпишитесь:
-
-${lines}
-
-С любовью, "Витрина Разбита"
-═══════════════════════════════════════`;
-  }
-  async function prepareDownload(){
-    await loadJSZip();
-    await prepareFilesList();
-    if (!filesToDownload.length) return NotificationSystem.error('Нет файлов для архива');
-
-    const sizeMB = await calculateArchiveSize();
-    document.getElementById('archiveSize').textContent = sizeMB+' МБ';
-    document.getElementById('fileCount').textContent = filesToDownload.length;
-    closeAlbumDownloadModal();
-    document.getElementById('sizeConfirmModal').classList.add('active');
-  }
-  function closeSizeConfirmModal(){ document.getElementById('sizeConfirmModal').classList.remove('active'); }
-  document.getElementById('sizeConfirmModal').onclick = function(e){ if (e.target===this) closeSizeConfirmModal(); };
-  async function calculateArchiveSize(){
-    let total=0; const promises=[];
-    for (const f of filesToDownload){
-      if (f.url){
-        const head = fetch(f.url, {method:'HEAD'}).then(r=>{ const s=r.headers.get('content-length'); return s?parseInt(s):null; }).catch(()=>null);
-        const heur = new Promise(r=>setTimeout(()=>r(f.type==='audio'? 5*1024*1024 : f.type==='image'? 500*1024 : 10*1024),500));
-        promises.push(Promise.race([head,heur]).then(sz=>{ if (sz) total+=sz; }));
-      } else if (f.content){
-        total += new Blob([f.content]).size;
-      }
-    }
-    await Promise.allSettled(promises);
-    total = Math.ceil(total*1.1);
-    return (total/1024/1024).toFixed(1);
-  }
-  function startDownload(){ document.getElementById('sizeConfirmModal').classList.remove('active'); createAndDownloadZip(); }
-  function showProgressModal(){ document.getElementById('downloadProgressModal').classList.add('active'); document.getElementById('progressFill').style.width='0%'; document.getElementById('progressText').textContent = `Загрузка файлов: 0/${filesToDownload.length}`; document.getElementById('errorsList').style.display='none'; }
-  function updateProgress(done,total){ document.getElementById('progressFill').style.width = `${Math.round(done/total*100)}%`; document.getElementById('progressText').textContent = `Загрузка файлов: ${done}/${total}`; }
-  function showErrors(errors){ if (errors.length){ document.getElementById('errorsList').style.display='block'; document.getElementById('errorsListContent').innerHTML = errors.map(e=>`<li>${e}</li>`).join(''); } }
-  async function createAndDownloadZip(){
-    await loadJSZip();
-    const zip = new JSZip(); const errors=[]; let done=0;
-    showProgressModal();
-    const BATCH=5;
-    for (let i=0;i<filesToDownload.length;i+=BATCH){
-      const batch=filesToDownload.slice(i,i+BATCH);
-      await Promise.allSettled(batch.map(async f=>{
-        try {
-          if (f.url){ const r=await fetch(f.url); if (!r.ok) throw new Error(`HTTP ${r.status}`); const b=await r.blob(); zip.file(f.name,b); }
-          else zip.file(f.name, f.content);
-          done++; updateProgress(done, filesToDownload.length);
-        } catch(e){ errors.push(f.name); done++; updateProgress(done, filesToDownload.length); }
-      }));
-    }
-    if (errors.length){ showErrors(errors); await new Promise(r=>setTimeout(r,1500)); }
-    document.getElementById('progressText').textContent='Создание архива...';
-    const content = await zip.generateAsync({type:'blob', compression:'DEFLATE', compressionOptions:{level:6}}, meta=>{
-      document.getElementById('progressText').textContent = `Создание архива: ${meta.percent.toFixed(0)}%`;
-      document.getElementById('progressFill').style.width = `${meta.percent.toFixed(0)}%`;
-    });
-    const a=document.createElement('a'); a.href=URL.createObjectURL(content);
-    const date=new Date().toISOString().split('T')[0];
-    const albumName = (config?.albumName || 'album').replace(/[\\/:"*?<>|]+/g,'_');
-    a.download = `vitrina-razbita-${albumName}-${date}.zip`; a.click();
-    setTimeout(()=>{ document.getElementById('downloadProgressModal').classList.remove('active'); URL.revokeObjectURL(a.href); NotificationSystem.success('Архив скачан!'); }, 800);
-  }
-
-  /* Sleep */
-  function toggleSleepMenu(){ const menu=document.getElementById('sleep-menu'); menu.classList.toggle('active'); if (menu.classList.contains('active')) setTimeout(()=>document.addEventListener('click', closeSleepMenu),100); }
-  function closeSleepMenu(e){ if (e && e.target.closest('#sleep-timer-btn')) return; document.getElementById('sleep-menu').classList.remove('active'); document.removeEventListener('click', closeSleepMenu); }
-  function setSleepTimer(minutes) {
-    closeSleepMenu();
-    if (minutes === 'off') {
-      clearSleepTimer();
-      return;
-    }
-    const ms = minutes * 60 * 1000;
-    try { window.playerCore && window.playerCore.setSleepTimer(ms); } catch {}
-    sleepTimerTarget = Date.now() + ms; // локальная тень для бейджа/оверлея
-    updateSleepTimerUI();
-    if (sleepTimerInterval) clearInterval(sleepTimerInterval);
-    sleepTimerInterval = setInterval(checkSleepTimer, 1000);
-  }
-  </script>
-
-  <script>
-  /* ====== Таймер сна: вынесено в scripts/ui/sleep.js ====== */
-  /* ====== Анимация лирики, «бит» (пульс лого) ====== */
-  function toggleAnimation() {
-    if (energySaver) { NotificationSystem.info('Отключено в режиме энергосбережения'); return; }
-    applyAnimationState(!animationEnabled);
-    localStorage.setItem('animationEnabled', animationEnabled ? '1' : '0');
-    NotificationSystem.info(animationEnabled ? '✨ Анимация лирики: ВКЛ' : '✨ Анимация лирики: ВЫКЛ');
-  }
-  function applyAnimationState(on) {
-    animationEnabled = !!on;
-    const win = document.getElementById('lyrics-window');
-    const bg = win ? win.querySelector('.lyrics-animated-bg') : null;
-    if (win) win.classList.toggle('animation-active', animationEnabled);
-    if (bg) bg.classList.toggle('active', animationEnabled);
-    const btn = document.getElementById('animation-btn');
-    if (btn) btn.classList.toggle('animation-active', animationEnabled);
-  }
-
-  function toggleBit() {
-    if (energySaver) { NotificationSystem.info('Пульсация отключена в режиме энергосбережения'); return; }
-    bitEnabled = !bitEnabled;
-    localStorage.setItem('bitEnabled', bitEnabled ? '1' : '0');
-    const btn = document.getElementById('bit-btn');
-    if (btn) btn.classList.toggle('bit-active', bitEnabled);
-    if (bitEnabled) {
-      initAudioContext();
-      startLogoPulsation();
-      NotificationSystem.info(`💿 Пульсация: ВКЛ (${bitIntensity}%)`);
-    } else {
-      stopLogoPulsation();
-      NotificationSystem.info('💿 Пульсация: ВЫКЛ');
-    }
-  }
-  function initAudioContext() {
-    try {
-      // Если уже есть анализатор — ничего не делаем
-      if (analyser && audioContext) return;
-
-      const pc = window.playerCore;
-      const howl = pc && pc.howl ? pc.howl : null;
-
-      // 1) WebAudio-режим Howler: используем его контекст и masterGain
-      if (window.Howler && window.Howler.ctx) {
-        audioContext = window.Howler.ctx;
-        if (!analyser) {
-          analyser = audioContext.createAnalyser();
-          analyser.fftSize = 256;
-        }
-        // Подключаем masterGain → analyser (параллельно с основным выводом)
-        if (window.Howler.masterGain && typeof window.Howler.masterGain.connect === 'function') {
-          try { window.Howler.masterGain.connect(analyser); } catch {}
-        }
-        return;
-      }
-
-      // 2) Fallback (html5=true внутри Howler): MediaElementSource из внутреннего узла
-      if (!audioContext) {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      if (audioContext.state === 'suspended') { audioContext.resume().catch(()=>{}); }
-
-      if (!analyser) {
-        analyser = audioContext.createAnalyser();
-        analyser.fftSize = 256;
-      }
-
-      // Достаём HTMLAudioElement из Howler (html5 путь)
-      const node = howl && howl._sounds && howl._sounds[0] && howl._sounds[0]._node;
-      if (node && !audioSource) {
-        audioSource = audioContext.createMediaElementSource(node);
-        audioSource.connect(analyser);
-        // Не подключаем к destination — звук и так идёт из элемента
-      }
-    } catch {}
-  }
-
-  function startLogoPulsation() {
-    const logo = document.getElementById('logo-bottom');
-    if (!logo) return;
-    if (animationFrame) cancelAnimationFrame(animationFrame);
-    const dataArray = new Uint8Array(analyser ? analyser.frequencyBinCount : 32);
-    let t0 = performance.now();
-    let lastUpdate = 0;
-
-    function loop(ts) {
-      if (!bitEnabled || !logo) return;
-
-      // ЭКО: ограничим частоту обновления
-      const ecoInterval = window.ultraEcoEnabled ? (window.__uiUpdateMinIntervalMs || 1000) : 0;
-      if (ecoInterval && (ts - lastUpdate) < ecoInterval) {
-        animationFrame = requestAnimationFrame(loop);
-        return;
-      }
-      lastUpdate = ts;
-
-      const dt = (ts - t0) / 1000;
-      t0 = ts;
-
-      let level = 0.35;
-      if (analyser) {
-        analyser.getByteFrequencyData(dataArray);
-        const bassCount = Math.max(4, Math.floor(dataArray.length * 0.2));
-        let sum = 0;
-        for (let i = 0; i < bassCount; i++) sum += dataArray[i];
-        level = (sum / (bassCount * 255));
-      } else {
-        level = 0.5 + 0.5 * Math.sin(ts / 200);
-      }
-
-      const intensity = Math.max(0, Math.min(1, bitIntensity / 100));
-      const scale = 1 + (level * 0.12 * intensity);
-      logo.style.transform = `scale(${scale.toFixed(3)})`;
-      animationFrame = requestAnimationFrame(loop);
-    }
-    animationFrame = requestAnimationFrame(loop);
-  }
-
-  function stopLogoPulsation() {
-    if (animationFrame) { cancelAnimationFrame(animationFrame); animationFrame = null; }
-    const logo = document.getElementById('logo-bottom');
-    if (logo) logo.style.transform = 'scale(1)';
-    // Полностью освобождаем аудио-ресурсы
-    try { if (audioSource) { audioSource.disconnect(); audioSource = null; } } catch {}
-    try { if (analyser) { analyser.disconnect(); analyser = null; } } catch {}
-    try {
-      const howlerCtx = (window.Howler && window.Howler.ctx) ? window.Howler.ctx : null;
-      if (audioContext && audioContext !== howlerCtx && audioContext.state !== 'closed' && typeof audioContext.close === 'function') {
-        audioContext.close().catch(()=>{});
-      }
-    } catch {}
-    // Если используем Howler.ctx — не обнуляем его
-    if (window.Howler && window.Howler.ctx && audioContext === window.Howler.ctx) {
-      analyser = null;
-      audioSource = null;
-    } else {
-      audioContext = null;
-    }
-  }
-
-  /* ====== Ультра‑эконом: переключение/применение ====== */
-  function applyEcoState(on, { silent = false } = {}) {
-    ultraEcoEnabled = !!on;
-    // Троттлинги
-    const ecoSec = Math.max(2, Math.min(60, parseInt(localStorage.getItem('ecoUiIntervalSec') || '5', 10)));
-    __uiUpdateMinIntervalMs = ultraEcoEnabled ? (ecoSec * 1000) : 1000;
-    __progressThrottleMs    = ultraEcoEnabled ? (ecoSec * 1000) : 1000;
-
-    // Анимации/бит/галерея
-    if (ultraEcoEnabled) {
-      if (__savedAnimationBeforeEco === null) __savedAnimationBeforeEco = animationEnabled;
-      if (__savedBitBeforeEco === null) __savedBitBeforeEco = bitEnabled;
-      if (animationEnabled) applyAnimationState(false);
-      if (bitEnabled) stopLogoPulsation();
-      if (coverAutoplay) { clearInterval(coverAutoplay); coverAutoplay = null; }
-    } else {
-      if (__savedAnimationBeforeEco !== null) { applyAnimationState(__savedAnimationBeforeEco); __savedAnimationBeforeEco = null; }
-      if (__savedBitBeforeEco) { try { initAudioContext(); startLogoPulsation(); } catch {} }
-      __savedBitBeforeEco = null;
-      if (!coverAutoplay && Array.isArray(coverGalleryArr) && coverGalleryArr.length > 1 && !document.hidden && !energySaver) {
-        startCoverAutoPlay();
-      }
-    }
-
-    // UI кнопка
-    try { const eb = document.getElementById('eco-btn'); if (eb) eb.classList.toggle('eco-active', ultraEcoEnabled); } catch {}
-
-    // Сохранение состояния (ручное включение/выключение)
-    try { localStorage.setItem('ultraEco', ultraEcoEnabled ? '1' : '0'); } catch {}
-
-    if (!silent) {
-      NotificationSystem.info(ultraEcoEnabled ? '⚡ Ультра‑эконом: ВКЛ' : '⚡ Ультра‑эконом: ВЫКЛ');
-    }
-
-    // Если выходим из «фона» или выключаем эко — привести UI к актуальному состоянию
-    if (!document.hidden) {
-      updateUiFromCoreOnce();
-    }
-  }
-
-  function toggleEco() {
-    // Если до этого авто-включили из энергосбережения — дальше управление вручную
-    __ecoAutoFromEnergy = false;
-    applyEcoState(!ultraEcoEnabled);
-  }
-
-  function handleLogoClick() {
-    // Лёгкий «тычок»
-    const logo = document.getElementById('logo-bottom');
-    if (!logo) return;
-    logo.style.transition = 'transform .08s ease-out';
-    logo.style.transform = 'scale(1.13)';
-    setTimeout(() => { logo.style.transform = 'scale(1)'; logo.style.transition = 'transform .1s ease-out'; }, 120);
-  }
-
-  /* ====== Модал лирики ====== */
-  let lyricsModalFont = 16;
-  function openLyricsModal() {
-    // вынесено в scripts/ui/modals.js
-    if (window.UIModals && typeof window.UIModals.openLyricsModal === 'function') {
-      return window.UIModals.openLyricsModal();
-    }
-  }
-
-  function closeLyricsModal() {
-    if (window.UIModals && typeof window.UIModals.closeLyricsModal === 'function') {
-      return window.UIModals.closeLyricsModal();
-    }
-  }
-  function buildFallbackLyricsText() {
-    if (window.UIModals && typeof window.UIModals.buildFallbackLyricsText === 'function') {
-      return window.UIModals.buildFallbackLyricsText();
-    }
-    return 'Текст не найден.';
-  }
-  function copyLyricsFromModal() {
-    if (window.UIModals && typeof window.UIModals.copyLyricsFromModal === 'function') {
-      return window.UIModals.copyLyricsFromModal();
-    }
-  }
-
-  async function shareLyricsFromModal() {
-    if (window.UIModals && typeof window.UIModals.shareLyricsFromModal === 'function') {
-      return window.UIModals.shareLyricsFromModal();
-    }
-  }
-
-  function zoomLyrics(delta) {
-    if (window.UIModals && typeof window.UIModals.zoomLyrics === 'function') {
-      return window.UIModals.zoomLyrics(delta);
-    }
-  }
-
-  function toggleLyricsFullscreen() {
-    if (window.UIModals && typeof window.UIModals.toggleLyricsFullscreen === 'function') {
-      return window.UIModals.toggleLyricsFullscreen();
-    }
-  }
-
-  function exitLyricsFullscreenIfAny() {
-    if (window.UIModals && typeof window.UIModals.exitLyricsFullscreenIfAny === 'function') {
-      return window.UIModals.exitLyricsFullscreenIfAny();
-    }
-  }
-
-  /* ====== Player State ====== */
-  // Троттлинг сохранений, чтобы не писать в localStorage каждую секунду
-  let __psSaveTs = 0;
-  function savePlayerStateThrottled(force = false) {
-    const now = Date.now();
-    if (!force && (now - __psSaveTs) < 5000) return;
-    __psSaveTs = now;
-    try { (window.PlayerState && window.PlayerState.save && window.PlayerState.save()); } catch {}
-  }
-  // Тонкая прослойка: используем реализацию из scripts/player-adapter.js
-  const PlayerState = window.PlayerState || { save: ()=>{}, restore: ()=>null };
-
-  /* ====== PWA / iOS установка ====== */
-  function detectIOSAndShowInstallGuide() {
-    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-    if (!isIOS || isStandalone) return;
-
-    // Появится спустя 2 секунды
-    setTimeout(() => {
-      if (localStorage.getItem('iosInstallDismissed') === '1') return;
-      let el = document.querySelector('.ios-install-prompt');
-      if (!el) {
-        el = document.createElement('div');
-        el.className = 'ios-install-prompt';
-        el.innerHTML = `
-          <button class="ios-prompt-close" aria-label="Закрыть" onclick="dismissIOSPrompt()">×</button>
-          <div class="ios-prompt-content">
-            <img class="ios-prompt-icon" src="icons/apple-touch-icon.png" alt="">
-            <div style="font-weight:800; font-size:18px; margin-bottom:8px;">Установить приложение</div>
-            <div style="opacity:.85;">Нажмите • Поделиться • и выберите «На экран «Домой»»</div>
-            <button class="ios-prompt-button" onclick="dismissIOSPrompt()">Понятно</button>
-          </div>`;
-        document.body.appendChild(el);
-      }
-      requestAnimationFrame(() => el.classList.add('show'));
-    }, 2000);
-  }
-  function dismissIOSPrompt() {
-    const el = document.querySelector('.ios-install-prompt');
-    if (el) el.classList.remove('show');
-    localStorage.setItem('iosInstallDismissed', '1');
-    setTimeout(() => el && el.remove(), 350);
-  }
-
-  /* ====== OFFLINE: вынесено в scripts/ui/offline.js ====== */
-  /* ====== Мелочи ====== */
-  function openInAppCurrentTrack() {
-    const pc = getPlayerConfig();
-    const tr = pc?.tracks?.[playingTrack];
-    if (!tr) return;
-    window.open(tr.audio, '_blank', 'noopener');
-    closeDownloadModal();
-  }
-
-  // Сохранение состояний кнопок плеера при перерисовке
-  function restorePlayerButtonsState() {
-    const btnSh = document.getElementById('shuffle-btn');
-    const btnRpt = document.getElementById('repeat-btn');
-    const btnFav = document.getElementById('favorites-btn');
-    const favIcon = document.getElementById('favorites-btn-icon');
-    const btnAnim = document.getElementById('animation-btn');
-    const btnBit = document.getElementById('bit-btn');
-    const btnEco = document.getElementById('eco-btn');
-    if (btnSh) btnSh.classList.toggle('active', shuffleMode);
-    if (btnRpt) btnRpt.classList.toggle('repeat-active', repeatMode);
-    if (btnFav) btnFav.classList.toggle('favorites-active', favoritesOnlyMode);
-    if (favIcon) favIcon.src = favoritesOnlyMode ? 'img/star.png' : 'img/star2.png';
-    if (btnAnim) btnAnim.classList.toggle('animation-active', animationEnabled);
-    if (btnBit) btnBit.classList.toggle('bit-active', bitEnabled);
-    if (btnEco) btnEco.classList.toggle('eco-active', ultraEcoEnabled);
-  }
-
-  // Инициализация при загрузке
-  window.addEventListener('load', () => {
-    try { window.__initPlayerCoreBindings && window.__initPlayerCoreBindings(); } catch {}
-    // Помечаем iOS для UI-особенностей (скрыть слайдер громкости)
-    try { if (/iphone|ipad|ipod/i.test(navigator.userAgent)) document.body.classList.add('ios'); } catch {}
-
-    applyLogos();
-    const passed = localStorage.getItem('promoPassed') === '1';
-    if (passed) {
+    // Показ главного экрана и запуск UI
+    function showMain() {
       document.getElementById('promocode-block').classList.add('hidden');
       document.getElementById('main-block').classList.remove('hidden');
       initializeMainUi();
     }
-    // Подсказка про Memory Saver + кнопка-инструкция
-    const showMemorySaverHelpModal = () => {
-      let modal = document.getElementById('memory-saver-modal');
-      if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'memory-saver-modal';
-        modal.className = 'modal-bg active';
-        modal.innerHTML = `
-          <div class="modal-feedback" style="max-width:480px;">
-            <button class="bigclose" onclick="this.closest('.modal-bg').remove()" title="Закрыть">
-              <svg viewBox="0 0 48 48"><line x1="12" y1="12" x2="36" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><line x1="36" y1="12" x2="12" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/></svg>
-            </button>
-            <div style="font-size:1.1em; font-weight:800; margin-bottom:8px;">Chrome: как не останавливать музыку</div>
-            <div style="color:#cfe3ff; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); border-radius:8px; padding:12px; line-height:1.4;">
-              Если в Chrome включён «Экономия памяти», неактивные вкладки выгружаются и музыка может остановиться.<br><br>
-              Чтобы добавить сайт в исключения:<br>
-              1) Откройте настройки Chrome → Производительность.<br>
-              2) В разделе «Экономия памяти» найдите «Сохранять сайты активными».<br>
-              3) Нажмите «Добавить» и укажите: <b>${location.origin}</b><br><br>
-              Быстрая ссылка: chrome://settings/performance
-            </div>
-            <div style="display:flex; gap:10px; justify-content:center; margin-top:12px;">
-              <button class="offline-btn online" onclick="navigator.clipboard && navigator.clipboard.writeText('chrome://settings/performance').then(()=>{},()=>{}); this.textContent='Ссылка скопирована'">Скопировать ссылку</button>
-              <button class="offline-btn" onclick="this.closest('.modal-bg').remove()">Понятно</button>
-            </div>
-          </div>`;
-        document.body.appendChild(modal);
-      } else {
-        modal.classList.add('active');
+
+    // Лого для разных DPR/платформ
+    function pickLogoUrl() {
+      const dpr = window.devicePixelRatio || 1;
+      const mobile = (window.isMobileUA && window.isMobileUA()) || (Math.min(screen.width, screen.height) <= 820);
+      if (mobile) return dpr >= 2 ? 'img/mobile/logo@2x.jpg' : 'img/mobile/logo@1x.jpg';
+      if (dpr >= 3) return 'img/desktop/logo@3x.png';
+      if (dpr >= 2) return 'img/desktop/logo@2x.png';
+      return 'img/desktop/logo@1x.png';
+    }
+    function applyLogos() {
+      try {
+        const logoBottom = document.getElementById('logo-bottom');
+        if (logoBottom) logoBottom.src = pickLogoUrl();
+        const promo = document.getElementById('promo-cover');
+        if (promo) promo.src = pickLogoUrl();
+      } catch {}
+    }
+
+    async function initializeMainUi() {
+      try {
+        // Загрузим индекс альбомов и построим иконки
+        if (window.loadAlbumsIndex) await window.loadAlbumsIndex();
+
+        // Выбор стартового альбома/режима
+        const sel = document.getElementById('album-select');
+        const params = new URLSearchParams(location.search);
+        const urlAlbum = params.get('album');
+        const savedAlbum = localStorage.getItem('currentAlbum');
+        const first = (Array.isArray(window.albumsIndex) && window.albumsIndex[0]) ? window.albumsIndex[0].key : null;
+
+        const toLoad = (urlAlbum && window.albumByKey && window.albumByKey(urlAlbum)) ? urlAlbum
+                      : ((savedAlbum && window.albumByKey && window.albumByKey(savedAlbum)) ? savedAlbum : first);
+        if (sel && toLoad) sel.value = toLoad;
+
+        const view = params.get('view');
+        if (view === 'favorites' && window.openFavoritesView) {
+          window.setAlbumHeaderTitle && window.setAlbumHeaderTitle(window.SPECIAL_FAVORITES_KEY);
+          window.openFavoritesView();
+        } else if (view === 'reliz' && window.openRelizView) {
+          window.setAlbumHeaderTitle && window.setAlbumHeaderTitle(window.SPECIAL_RELIZ_KEY);
+          window.openRelizView();
+        } else if (toLoad && window.loadAlbumByKey) {
+          window.setAlbumHeaderTitle && window.setAlbumHeaderTitle(toLoad);
+          await window.loadAlbumByKey(toLoad);
+        }
+
+        // Выбор альбома изменился
+        if (sel) {
+          sel.onchange = async () => {
+            if (window.applyRelizUiMode) window.applyRelizUiMode(false);
+            document.getElementById('track-list').style.display = '';
+            document.getElementById('cover-wrap').style.display = '';
+            window.setActiveAlbumIcon && window.setActiveAlbumIcon(sel.value);
+            await window.loadAlbumByKey && window.loadAlbumByKey(sel.value);
+          };
+        }
+
+        // Навигация галереи
+        const leftBtn  = document.getElementById('cover-gallery-arrow-left');
+        const rightBtn = document.getElementById('cover-gallery-arrow-right');
+        const guard = () => {
+          if (window.energySaver) { window.NotificationSystem && window.NotificationSystem.info('Галерея отключена в режиме энергосбережения'); return true; }
+          if (document.hidden) { window.NotificationSystem && window.NotificationSystem.info('Галерея приостановлена в фоне'); return true; }
+          return false;
+        };
+        if (leftBtn)  leftBtn.onclick  = () => { if (guard()) return; window.setCoverImage && window.setCoverImage((window.coverGalleryIdx || 0) - 1); window.startCoverAutoPlay && window.startCoverAutoPlay(); };
+        if (rightBtn) rightBtn.onclick = () => { if (guard()) return; window.setCoverImage && window.setCoverImage((window.coverGalleryIdx || 0) + 1); window.startCoverAutoPlay && window.startCoverAutoPlay(); };
+
+        // Показ подсказок/кнопок на десктопе
+        if (window.hasKeyboard && window.hasKeyboard()) {
+          const hot = document.getElementById('hotkeys-btn');
+          if (hot) hot.style.display = 'block';
+        }
+
+        // Регистрация Service Worker (для оффлайна/кэшей и sysinfo)
+        if ('serviceWorker' in navigator) {
+          try {
+            const reg = await navigator.serviceWorker.register('./service-worker.js');
+            await navigator.serviceWorker.ready;
+            try { reg.active && reg.active.postMessage({ type: 'REQUEST_OFFLINE_STATE' }); } catch {}
+            // Периодические обновления
+            setInterval(async () => {
+              try { const r = await navigator.serviceWorker.getRegistration(); if (r) r.update(); } catch {}
+            }, 60 * 60 * 1000);
+          } catch (e) {
+            console.warn('SW register failed', e);
+          }
+        }
+      } catch (e) {
+        console.error('init failed', e);
       }
-    };
-    try {
-      const isChrome = /Chrome\/\d+/.test(navigator.userAgent) && !/Edg\//.test(navigator.userAgent) && !/OPR\//.test(navigator.userAgent);
-      const ctr = document.querySelector('.bottom-controls-center');
-      if (isChrome && ctr && !document.getElementById('memory-saver-help-btn')) {
-        const btn = document.createElement('button');
-        btn.id = 'memory-saver-help-btn';
-        btn.className = 'offline-btn';
-        btn.style.width = '98%';
-        btn.style.background = '#273050';
-        btn.textContent = 'Как не останавливать музыку в Chrome';
-        btn.onclick = showMemorySaverHelpModal;
-        ctr.appendChild(btn);
-      }
-      if (document.wasDiscarded) {
-        showMemorySaverHelpModal();
-      }
-    } catch {}
-    // Периодическая проверка таймера сна
-    setInterval(checkSleepTimer, 1000);
-  });
+    }
+
+    // Навешиваем минимальные действия при загрузке
+    window.addEventListener('load', () => {
+      try { if (/iphone|ipad|ipod/i.test(navigator.userAgent)) document.body.classList.add('ios'); } catch {}
+      applyLogos();
+
+      // Делегирование кликов: промокод и логотип
+      document.getElementById('promo-btn')?.addEventListener('click', checkPromo);
+      document.getElementById('promo-inp')?.addEventListener('keydown', (e)=>{ if (e.key === 'Enter') checkPromo(); });
+      document.getElementById('logo-bottom')?.addEventListener('click', () => {
+        const logo = document.getElementById('logo-bottom');
+        if (!logo) return;
+        logo.style.transition = 'transform .08s ease-out';
+        logo.style.transform = 'scale(1.13)';
+        setTimeout(() => { logo.style.transform = 'scale(1)'; logo.style.transition = 'transform .1s ease-out'; }, 120);
+      });
+
+      const passed = localStorage.getItem('promoPassed') === '1';
+      if (passed) { document.getElementById('promocode-block').classList.add('hidden'); document.getElementById('main-block').classList.remove('hidden'); initializeMainUi(); }
+    });
   </script>
 </body>
 </html>
-
-
