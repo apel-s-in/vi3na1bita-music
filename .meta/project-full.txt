@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-024c3253cb1221bf434dafe757add6a5ce87feb7.idx
-│   │       ├── pack-024c3253cb1221bf434dafe757add6a5ce87feb7.pack
-│   │       └── pack-024c3253cb1221bf434dafe757add6a5ce87feb7.rev
+│   │       ├── pack-1f8e9d2865ad0fae7937e4d93f5f3b79e008999c.idx
+│   │       ├── pack-1f8e9d2865ad0fae7937e4d93f5f3b79e008999c.pack
+│   │       └── pack-1f8e9d2865ad0fae7937e4d93f5f3b79e008999c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -259,7 +259,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-11 11:25:30 UTC
+Сгенерировано: 2025-11-11 11:26:06 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5732,6 +5732,12 @@ export function toggleLikePlayingFromMini() {
 }
 
 window.UIMini = { applyMiniModeUI, updateMiniNowHeader, openPlayingAlbumFromMini, toggleLikePlayingFromMini };
+//Прямой проброс, т.к. остальной код обращается к window.* именам:
+window.applyMiniModeUI = window.applyMiniModeUI || applyMiniModeUI;
+window.updateMiniNowHeader = window.updateMiniNowHeader || updateMiniNowHeader;
+window.openPlayingAlbumFromMini = window.openPlayingAlbumFromMini || openPlayingAlbumFromMini;
+window.toggleLikePlayingFromMini = window.toggleLikePlayingFromMini || toggleLikePlayingFromMini;
+
 
 //=================================================
 // FILE: /scripts/ui/modals.js
