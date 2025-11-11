@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ce79f9e657b813e61e45b712014232e7e9673850.idx
-│   │       ├── pack-ce79f9e657b813e61e45b712014232e7e9673850.pack
-│   │       └── pack-ce79f9e657b813e61e45b712014232e7e9673850.rev
+│   │       ├── pack-4f61d933d99a9145c420eaea0cd0745fe0e4e489.idx
+│   │       ├── pack-4f61d933d99a9145c420eaea0cd0745fe0e4e489.pack
+│   │       └── pack-4f61d933d99a9145c420eaea0cd0745fe0e4e489.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -260,7 +260,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-11 12:41:42 UTC
+Сгенерировано: 2025-11-11 13:10:07 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4496,8 +4496,16 @@ function call(fnName, ...args) {
           if (sameAlbum) {
             // Пересоберём список (переместит плеер под текущую строку)
             if (typeof window.buildTrackList === 'function') window.buildTrackList();
+
+            // Дополнительно гарантируем перемещение блока прямо под текущую строку трека
+            const row = document.getElementById(`trk${idx}`);
+            const lp = document.getElementById('lyricsplayerblock');
+            if (row && lp && row.parentNode) {
+              if (row.nextSibling) row.parentNode.insertBefore(lp, row.nextSibling);
+              else row.parentNode.appendChild(lp);
+            }
           } else {
-            // Находимся в другом альбоме — только мини-режим
+            // Находимся в другом альбоме — мини-режим
             if (typeof window.applyMiniModeUI === 'function') window.applyMiniModeUI();
           }
 
