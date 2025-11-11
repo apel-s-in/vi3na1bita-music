@@ -1,237 +1,130 @@
 // scripts/ui/bindings.js (ESM)
-// Единственный делегированный обработчик кликов для UI-кнопок/модалок.
-// Цель: убрать inline-обработчики и прямые .onclick, обеспечить CSP-safe поведение.
-// Воспроизведение не трогаем: никакие действия этого файла не останавливают плеер,
-// кроме вызовов уже существующих функций по нажатию соответствующих кнопок Плеера.
+// Централизованная привязка всех обработчиков событий (клики, клавиатура).
 
-(function () {
-  const has = (fn) => typeof fn === 'function';
-  const call = (name, ...args) => {
-    try {
-      const fn = window[name];
-      if (typeof fn === 'function') return fn(...args);
-    } catch {}
-  };
-  const textOf = (el) => (el ? (el.textContent || '').trim().toLowerCase() : '');
+(function(){
+  // --- Делегирование событий клика ---
+  document.body.addEventListener('click', (e) => {
+    const target = e.target.closest('[data-action]');
+    if (!target) return;
 
-  // Делегирование кликов по всему документу
-  document.addEventListener('click', (e) => {
-    const t = e.target instanceof Element ? e.target : null;
-    if (!t) return;
+    const action = target.dataset.action;
+    const idx = parseInt(target.dataset.idx, 10);
+    
+    // Предотвращаем стандартное поведение для кнопок
+    if(target.tagName === 'BUTTON' || target.closest('button')) e.preventDefault();
 
-    // ========= Промокод (вход) =========
-    if (t.closest('#promo-btn')) {
-      e.preventDefault();
-      call('checkPromo');
-      return;
-    }
-
-    // ========= Нижние кнопки / общие действия =========
-
-    // Скрыть/показать не отмеченные ⭐ песни
-    if (t.closest('#filter-favorites-btn')) {
-      e.preventDefault();
-      call('toggleFavoritesFilter');
-      return;
-    }
-
-    // Логотип снизу (анимация «тычка»)
-    if (t.closest('#logo-bottom')) {
-      e.preventDefault();
-      call('handleLogoClick');
-      return;
-    }
-
-    // Установка PWA — вешается отдельно при beforeinstallprompt; здесь не вмешиваемся
-
-    // Скачать весь альбом
-    if (t.closest('#download-album-main')) {
-      e.preventDefault();
-      call('openAlbumDownloadModal');
-      return;
-    }
-
-    // Горячие клавиши (десктоп)
-    if (t.closest('#hotkeys-btn')) {
-      e.preventDefault();
-      call('showHotkeysModal');
-      return;
-    }
-
-    // О системе (десктоп)
-    if (t.closest('#sysinfo-btn')) {
-      e.preventDefault();
-      call('showSystemInfo');
-      return;
-    }
-
-    // OFFLINE: обычный клик переключает оффлайн-режим;
-    // alt/meta/right‑click/долгое касание — меню профиля обрабатывает scripts/ui/offline.js
-    const offBtn = t.closest('#offline-btn');
-    if (offBtn) {
-      // Предохранители: не обрабатывать alt/meta/ctrl и не мешать меню профилей
-      const ev = e;
-      const mod = (ev && (ev.altKey || ev.metaKey || ev.ctrlKey));
-      if (!mod) {
-        e.preventDefault();
-        call('offlineUIClick');
+    switch(action) {
+      // Player controls
+      case 'toggle-play-pause': window.togglePlayPause?.(); break;
+      case 'next-track': window.nextTrack?.(); break;
+      case 'prev-track': window.previousTrack?.(); break;
+      case 'stop-playback': window.stopPlayback?.(); break;
+      case 'toggle-mute': window.toggleMute?.(); break;
+      case 'toggle-shuffle': window.toggleShuffle?.(); break;
+      case 'toggle-repeat': window.toggleRepeat?.(); break;
+      case 'toggle-favorites-only': window.toggleFavoritesOnly?.(); break;
+      
+      // Track list
+      case 'play-track': if(Number.isInteger(idx)) window.playerCore?.play(idx); break;
+      case 'toggle-favorite': {
+          const akey = target.dataset.albumKey;
+          const tidx = parseInt(target.dataset.trackIndex, 10);
+          if (akey && Number.isInteger(tidx)) window.toggleFavorite?.(akey, tidx);
+          break;
       }
-      return;
+      case 'play-favorite': { // Для вида "Избранное"
+          const akey = target.dataset.favAlbum;
+          const tidx = parseInt(target.dataset.favTrack, 10);
+          // Здесь нужна специальная логика для проигрывания из плейлиста избранного
+          window.playerCore?.playFavorite?.(akey, tidx);
+          break;
+      }
+       case 'toggle-favorite-from-fav-view': {
+          const akey = target.parentElement.dataset.favAlbum;
+          const tidx = parseInt(target.parentElement.dataset.favTrack, 10);
+          if (akey && Number.isInteger(tidx)) window.toggleFavorite?.(akey, tidx);
+          break;
+       }
+
+
+      // UI & Effects
+      case 'toggle-animation': window.toggleAnimation?.(); break;
+      case 'toggle-bit': window.toggleBit?.(); break;
+      case 'toggle-eco': window.toggleEcoMode?.(); break;
+      case 'toggle-lyrics': window.toggleLyricsWindow?.(); break;
+      
+      // Gallery
+      case 'gallery-prev': window.prevCover?.(); break;
+      case 'gallery-next': window.nextCover?.(); break;
+
+      // Sleep timer
+      case 'open-sleep-menu': window.openSleepMenu?.(); break;
+      case 'set-sleep-timer': {
+          const minutes = parseInt(target.dataset.minutes, 10);
+          if(Number.isInteger(minutes)) window.setSleepTimer?.(minutes);
+          break;
+      }
+      case 'extend-sleep': window.extendSleepTimer?.(); break;
+      case 'close-sleep-overlay': window.closeSleepOverlay?.(); break;
+
+      // Modals
+      case 'open-feedback': window.toggleModal?.('modal-feedback', true); break;
+      case 'close-feedback': window.toggleModal?.('modal-feedback', false); break;
+      case 'open-hotkeys': window.toggleModal?.('hotkeys-modal', true); break;
+      case 'close-hotkeys': window.toggleModal?.('hotkeys-modal', false); break;
+      
+      // PWA & Downloads
+      case 'install-pwa': window.installPWA?.(); break;
+      case 'download-album': window.downloadAlbum?.(window.currentAlbumKey); break;
+      case 'download-track': {
+          // Эта логика может потребовать доработки, т.к. кнопка скачивания трека может быть не в списке
+          break;
+      }
+      case 'filter-favorites': window.__toggleFavoritesOnly_impl?.(); break;
+
+      // ... другие действия
     }
-
-    // ========= Обратная связь =========
-
-    // Открыть модалку «Обратная связь»
-    if (t.closest('#feedback-link')) {
-      e.preventDefault();
-      call('openFeedbackModal');
-      return;
-    }
-
-    // Закрыть модалку «Обратная связь» по крестику (data-action)
-    if (t.closest('[data-action="close-feedback"]')) {
-      e.preventDefault();
-      call('closeFeedbackModal');
-      return;
-    }
-
-    // Клик по подложке «Обратная связь» — закрыть (сохраняем прежнюю логику)
-    const fbModalBg = t.closest('#modal-feedback');
-    if (fbModalBg && t === fbModalBg) {
-      e.preventDefault();
-      call('closeFeedbackModal');
-      return;
-    }
-
-    // ========= Плеер (download) — вспомогательные кнопки в renderLyricsBlock =========
-
-    // «Скачать песню» рядом с караоке (якорь с id=download-open)
-    if (t.closest('#download-open')) {
-      e.preventDefault();
-      call('openDownloadModal', e);
-      return;
-    }
-
-    // ========= Модалка «Скачать трек» (download-modal) =========
-    // Примечание: в разметке много кнопок без id. Обрабатываем по тексту.
-    // Если позже добавите data-action на кнопки — эта логика не помешает.
-    const dlm = t.closest('#download-modal');
-    if (dlm) {
-      const btn = t.closest('button');
-      if (!btn) return;
-      const label = textOf(btn);
-
-      // Сохранить на устройство
-      if (label.includes('сохранить на устройство')) {
-        e.preventDefault();
-        call('downloadCurrentTrack');
-        return;
-      }
-      // Поделиться с друзьями
-      if (label.includes('поделиться')) {
-        e.preventDefault();
-        call('shareCurrentTrack');
-        return;
-      }
-      // Открыть в приложении
-      if (label.includes('открыть в приложении')) {
-        e.preventDefault();
-        call('openInAppCurrentTrack');
-        return;
-      }
-      // Скопировать ссылку
-      if (label.includes('скопировать ссылку')) {
-        e.preventDefault();
-        call('copyLinkCurrentTrack');
-        return;
-      }
-      // Скачать весь альбом
-      if (label.includes('скачать весь альбом')) {
-        e.preventDefault();
-        call('openAlbumDownloadModal');
-        return;
-      }
-      // Отмена
-      if (label.includes('отмена')) {
-        e.preventDefault();
-        call('closeDownloadModal');
-        return;
-      }
-      return;
-    }
-
-    // ========= Модалка «Скачать альбом» (albumDownloadModal) =========
-    const adm = t.closest('#albumDownloadModal');
-    if (adm) {
-      const btn = t.closest('button');
-      if (!btn) return;
-      const label = textOf(btn);
-      // Отмена
-      if (label.includes('отмена')) {
-        e.preventDefault();
-        call('closeAlbumDownloadModal');
-        return;
-      }
-      // СКАЧАТЬ
-      if (label.includes('скачать')) {
-        e.preventDefault();
-        call('prepareDownload');
-        return;
-      }
-      return;
-    }
-
-    // ========= Подтверждение размера архива (sizeConfirmModal) =========
-    const scm = t.closest('#sizeConfirmModal');
-    if (scm) {
-      const btn = t.closest('button');
-      if (!btn) return;
-      const label = textOf(btn);
-      // ОТМЕНА
-      if (label.includes('отмена')) {
-        e.preventDefault();
-        call('closeSizeConfirmModal');
-        return;
-      }
-      // СКАЧАТЬ
-      if (label.includes('скачать')) {
-        e.preventDefault();
-        call('startDownload');
-        return;
-      }
-      return;
-    }
-
-    // ========= Прогресс подготовки архива (downloadProgressModal) =========
-    // Закрытие происходит автоматически; ручного закрытия нет — пропускаем.
-
-    // ========= Лирика — часть действий уже делегируются в scripts/ui/modals.js =========
-    // Добавим подстраховку: если по каким-то причинам не подключился модуль модалок,
-    // обработаем data-action здесь же.
-    const actBtn = t.closest('#lyrics-text-modal [data-action]');
-    if (actBtn) {
-      const act = actBtn.getAttribute('data-action');
-      switch (act) {
-        case 'copy-lyrics':     e.preventDefault(); call('copyLyricsFromModal'); return;
-        case 'share-lyrics':    e.preventDefault(); call('shareLyricsFromModal'); return;
-        case 'zoom--':          e.preventDefault(); call('zoomLyrics', -1); return;
-        case 'zoom++':          e.preventDefault(); call('zoomLyrics', 1); return;
-        case 'fs-toggle':       e.preventDefault(); call('toggleLyricsFullscreen'); return;
-        case 'close-lyrics-modal': e.preventDefault(); call('closeLyricsModal'); return;
-      }
-    }
-
-    // ========= Закрытие любых «.modal-bg» по Esc обрабатывается глобально (keydown) =========
   });
 
-  // Дополнительно: предотвращаем скролл к верху для ссылок вида href="#"
-  document.addEventListener('click', (e) => {
-    const t = e.target instanceof Element ? e.target : null;
-    if (!t) return;
-    const a = t.closest('a[href="#"]');
-    if (a) e.preventDefault();
+  // --- Горячие клавиши ---
+  window.addEventListener('keydown', (e) => {
+    // Не перехватываем ввод в инпутах
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+    
+    const key = e.key.toLowerCase();
+    
+    let handled = true;
+    switch(key) {
+        case ' ': case 'k': window.togglePlayPause?.(); break;
+        case 'x': window.stopPlayback?.(); break;
+        case 'n': window.nextTrack?.(); break;
+        case 'p': window.previousTrack?.(); break;
+        case 'j': window.playerCore?.seek(Math.max(0, (window.playerCore.getSeek() || 0) - 10)); break;
+        case 'l': window.playerCore?.seek(Math.min((window.playerCore.getDuration() || 0), (window.playerCore.getSeek() || 0) + 10)); break;
+        case '+': window.playerCore?.setVolume(Math.min(1, (window.playerCore.getVolume() || 0) + 0.1)); break;
+        case '-': window.playerCore?.setVolume(Math.max(0, (window.playerCore.getVolume() || 0) - 0.1)); break;
+        case 'm': window.toggleMute?.(); break;
+        case 'r': window.toggleRepeat?.(); break;
+        case 'u': window.toggleShuffle?.(); break;
+        case 'f': window.toggleFavoritesOnly?.(); break;
+        case 't': window.openSleepMenu?.(); break;
+        case 'a': window.toggleAnimation?.(); break;
+        case 'b': window.toggleBit?.(); break;
+        case 'y': window.toggleLyricsWindow?.(); break;
+        case 'd': { // Добавить в избранное текущий трек
+            const akey = window.playingAlbumKey;
+            const tidx = window.playingTrack;
+            if(akey && typeof tidx === 'number') window.toggleFavorite?.(akey, tidx);
+            break;
+        }
+        case '?': window.toggleModal?.('hotkeys-modal', true); break;
+        case 'escape': 
+          window.toggleModal?.('hotkeys-modal', false);
+          window.toggleModal?.('modal-feedback', false);
+          window.closeSleepMenu?.();
+          break;
+        default: handled = false;
+    }
+    if (handled) e.preventDefault();
   });
-
-  // Поддержка «правого клика / Alt+клика» по OFFLINE — меню профилей (см. scripts/ui/offline.js)
-  // Здесь ничего не делаем, чтобы не конфликтовать: offline.js уже вешает свои обработчики.
 })();
