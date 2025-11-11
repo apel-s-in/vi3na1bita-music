@@ -1,228 +1,77 @@
 // scripts/core/bridge.js (ESM)
-// Централизованный мост PlayerCore ↔ UI. Создаёт playerCore,
-// вешает обработчики событий, особенно onTick для обновления UI без отдельного setInterval.
+// Мост между ядром плеера (PlayerCore) и UI-модулями.
+// Слушает события от плеера и вызывает соответствующие функции обновления UI.
 
-// Импорт ядра
-import { PlayerCore } from '../../src/PlayerCore.js';
-
-// Безопасные геттеры глобальных настроек троттлинга
-function uiThrottleMs() {
-  const v = Number(window.__uiUpdateMinIntervalMs || 1000);
-  return Number.isFinite(v) ? Math.max(100, v) : 1000;
-}
-function progressThrottleMs() {
-  const v = Number(window.__progressThrottleMs || 1000);
-  return Number.isFinite(v) ? Math.max(100, v) : 1000;
-}
-
-// Проброс блокировки экрана/ресурсов (WakeLock/WebLocks)
-async function setPlaybackLocksActive(active) {
-  try {
-    if (window.Energy && typeof window.Energy.setPlaybackLocks === 'function') {
-      await window.Energy.setPlaybackLocks(!!active);
-    } else if (typeof window.setPlaybackLocks === 'function') {
-      await window.setPlaybackLocks(!!active);
-    }
-  } catch {}
-}
-
-// «Мягкие» вызовы глобальных функций (если объявлены)
-function call(fnName, ...args) {
-  try {
-    const fn = window[fnName];
-    if (typeof fn === 'function') return fn(...args);
-  } catch {}
-}
-
-// Создание и (однократная) инициализация моста
-(function installCoreBridgeOnce() {
-  if (window.__pcBridgeInstalled) return;
-
-  // Инициализируем PlayerCore, если нет
+(function(){
   if (!window.playerCore) {
-    window.playerCore = new PlayerCore();
+    console.error("Player Core not initialized. Bridge cannot be created.");
+    return;
   }
   const pc = window.playerCore;
 
-  // Внутренние отметки троттлинга для onTick
-  let lastUiTs = 0;
-  let lastProgressTs = 0;
-  let lastLyricsIdx = -1;
-  let lastLyricsTs = 0;
-
-  // Обновление лирики с собственным троттлингом (eco/ultra‑eco)
-  function updateLyrics(posSec) {
-    try {
-      // Если у приложения есть «умный» рендер — используем его
-      if (typeof window.renderLyricsEnhanced === 'function') {
-        // Её собственный троттлинг уже внутри функции — просто вызываем
-        window.renderLyricsEnhanced(posSec);
-        return;
-      }
-
-      // Иначе — простейшая подстановка окна строк (не трогаем состояние, если нет данных)
-      if (!Array.isArray(window.currentLyrics) || window.currentLyrics.length === 0) return;
-
-      const baseInterval = 250; // как в прежней версии
-      const ecoInterval = (window.ultraEcoEnabled || document.hidden)
-        ? Math.max(500, uiThrottleMs())
-        : baseInterval;
-
-      // Определяем активный индекс по времени
-      let idx = 0;
-      for (let i = 0; i < window.currentLyrics.length; i++) {
-        if (posSec >= window.currentLyrics[i].time) idx = i;
-        else break;
-      }
-      const now = performance.now();
-      if (idx === lastLyricsIdx && (now - lastLyricsTs) < ecoInterval) return;
-      lastLyricsIdx = idx;
-      lastLyricsTs = now;
-
-      // Если есть базовый рендер — используем его
-      if (typeof window.renderLyrics === 'function') {
-        window.renderLyrics(posSec);
-      }
-    } catch {}
-  }
-
-  // Единая функция обновления прогресса/времени
-  function updateTimeAndProgress(pos, dur) {
-    try {
-      const now = Date.now();
-
-      // Прогресс — отдельный троттлинг
-      if ((now - lastProgressTs) >= progressThrottleMs()) {
-        lastProgressTs = now;
-        const fill = document.getElementById('player-progress-fill');
-        if (fill && dur > 0) {
-          fill.style.width = `${(pos / dur) * 100}%`;
-        }
-      }
-
-      // Таймеры — свой троттлинг
-      if ((now - lastUiTs) >= uiThrottleMs()) {
-        lastUiTs = now;
-        const elapsedEl = document.getElementById('time-elapsed');
-        const remainingEl = document.getElementById('time-remaining');
-        const fmt = (typeof window.formatTime === 'function')
-          ? window.formatTime
-          : (s) => {
-              if (!Number.isFinite(s) || s < 0) return '--:--';
-              const m = Math.floor(s / 60);
-              const sec = Math.floor(s % 60);
-              return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
-            };
-        if (elapsedEl) elapsedEl.textContent = fmt(pos);
-        if (remainingEl) remainingEl.textContent = fmt(Math.max(0, (dur || 0) - (pos || 0)));
-      }
-    } catch {}
-  }
-
-  // Префетч текущего трека (через SW)
-  function prefetchCurrentTrack(track) {
-    try {
-      if (!track || !track.src) return;
-      if (!('serviceWorker' in navigator)) return;
-      const ctl = navigator.serviceWorker.controller;
-      if (!ctl) return;
-      ctl.postMessage({ type: 'PREFETCH_AUDIO', url: track.src });
-    } catch {}
-  }
-
-  // Полная подписка событий
-  function bindEvents() {
-    pc.on({
-      onPlay: () => {
-        call('updatePlayPauseIcon');
-        setPlaybackLocksActive(true);
-      },
-      onPause: () => {
-        call('updatePlayPauseIcon');
-        setPlaybackLocksActive(false);
-      },
-      onStop: () => {
-        call('updatePlayPauseIcon');
-        setPlaybackLocksActive(false);
-      },
-      onTrackChange: (track, idx) => {
-        try {
-          // Синхронизация курсоров UI
-          window.playingTrack = idx;
-          window.currentTrack = idx;
-          window.playingAlbumKey = window.currentAlbumKey || window.playingAlbumKey || null;
-
-          // Убедимся, что контейнер слота плеера присутствует
-          const holder = document.getElementById('now-playing');
-          if (holder && !document.getElementById('lyricsplayerblock')) {
-            holder.innerHTML = '<div class="lyrics-player-block" id="lyricsplayerblock"></div>';
-          }
-
-          // Лирика
-          if (track && track.lyrics && typeof window.loadLyrics === 'function') {
-            window.loadLyrics(track.lyrics);
-          }
-
-          const sameAlbum = !window.playingAlbumKey || window.playingAlbumKey === window.currentAlbumKey;
-
-          if (sameAlbum) {
-            // Пересоберём список (переместит плеер под текущую строку)
-            if (typeof window.buildTrackList === 'function') window.buildTrackList();
-
-            // Дополнительно гарантируем перемещение блока прямо под текущую строку трека
-            const row = document.getElementById(`trk${idx}`);
-            const lp = document.getElementById('lyricsplayerblock');
-            if (row && lp && row.parentNode) {
-              if (row.nextSibling) row.parentNode.insertBefore(lp, row.nextSibling);
-              else row.parentNode.appendChild(lp);
-            }
-          } else {
-            // Находимся в другом альбоме — мини-режим
-            if (typeof window.applyMiniModeUI === 'function') window.applyMiniModeUI();
-          }
-
-          // Обновления UI
-          call('renderLyricsBlock'); // поддержка случаев, когда блока ещё не было
-          call('updateMiniNowHeader');
-          call('updateNextUpLabel');
-          call('updatePlayPauseIcon');
-
-          // Префетч текущего трека
-          prefetchCurrentTrack(track);
-        } catch {}
-      },
-      onTick: (pos, dur) => {
-        try {
-          // Централизованный onTick: время/прогресс/лирика
-          updateLyrics(pos || 0);
-          updateTimeAndProgress(pos || 0, dur || 0);
-
-          // При желании можно разово подсинхронизировать UI
-          if (typeof window.updateUiFromCoreOnce === 'function') {
-            // Небольшая оптимизация: разово дёргаем пореже
-            // Здесь не вызываем, т.к. updateTimeAndProgress уже сделал нужное
-          }
-        } catch {}
-      },
-      onSleepTriggered: () => {
-        call('hideSleepOverlay');
-        call('updateSleepTimerUI');
-        if (window.NotificationSystem && window.NotificationSystem.info) {
-          window.NotificationSystem.info('Таймер сна: воспроизведение остановлено');
-        }
-      }
-    });
-  }
-
-  // Совместимость: если где-то вызывают window.__initPlayerCoreBindings — предоставим её
-  window.__initPlayerCoreBindings = () => {
-    // Ставим подписки повторно безопасно: pc.on просто перетрёт ссылки, это ок
-    bindEvents();
+  // Форматирование времени
+  const formatTime = (secs) => {
+    if (!Number.isFinite(secs) || secs < 0) return '0:00';
+    const minutes = Math.floor(secs / 60);
+    const seconds = Math.floor(secs % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  // Первичная инициализация
-  bindEvents();
+  pc.on('play', (data) => {
+    if(window.updatePlayPauseIcon) window.updatePlayPauseIcon();
+    if(window.updateCurrentTrackHighlight) window.updateCurrentTrackHighlight(data.index);
+    document.body.classList.add('is-playing');
+  });
 
-  // Маркёр установлен
-  window.__pcBridgeInstalled = true;
+  pc.on('pause', () => {
+    if(window.updatePlayPauseIcon) window.updatePlayPauseIcon();
+    document.body.classList.remove('is-playing');
+  });
+
+  pc.on('stop', () => {
+    if(window.updatePlayPauseIcon) window.updatePlayPauseIcon();
+    if(window.updateCurrentTrackHighlight) window.updateCurrentTrackHighlight(-1);
+    document.body.classList.remove('is-playing');
+    // Сброс UI времени/прогресса
+    document.getElementById('player-progress-fill').style.width = '0%';
+    document.getElementById('time-current').textContent = '0:00';
+    document.getElementById('time-duration').textContent = '0:00';
+  });
+  
+  pc.on('trackchange', (data) => {
+    window.playingAlbumKey = data.albumKey;
+    window.playingTrack = data.index;
+
+    if(window.updateCurrentTrackHighlight) window.updateCurrentTrackHighlight(data.index);
+    if(window.updateURLHash) window.updateURLHash(data.albumKey, data.index);
+    if(window.fetchAndCacheLyrics) window.fetchAndCacheLyrics(data.track?.lyrics);
+    if(window.applyMiniModeUI) window.applyMiniModeUI();
+    if(window.updateNextUpLabel) window.updateNextUpLabel();
+  });
+  
+  pc.on('playlistchange', () => {
+     if(window.updateNextUpLabel) window.updateNextUpLabel();
+     if(window.buildTrackList) window.buildTrackList(); // Перерисовать список, если плейлист изменился
+  });
+
+  pc.on('timeupdate', (data) => {
+    const { seek, duration } = data;
+    if (duration > 0 && !document.body.classList.contains('eco-mode')) {
+      const percent = (seek / duration) * 100;
+      document.getElementById('player-progress-fill').style.width = `${percent}%`;
+    }
+    document.getElementById('time-current').textContent = formatTime(seek);
+    document.getElementById('time-duration').textContent = formatTime(duration);
+    
+    if(window.updateLyrics && !document.body.classList.contains('eco-mode')) window.updateLyrics(seek);
+  });
+  
+  pc.on('volumechange', (volume) => {
+      if(window.updateVolumeUI) window.updateVolumeUI(volume);
+  });
+  
+  pc.on('error', (data) => {
+     window.NotificationSystem?.error(`Ошибка: ${data.message}`);
+  });
+
 })();
