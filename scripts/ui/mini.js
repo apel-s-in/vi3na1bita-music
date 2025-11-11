@@ -86,3 +86,9 @@ export function toggleLikePlayingFromMini() {
 }
 
 window.UIMini = { applyMiniModeUI, updateMiniNowHeader, openPlayingAlbumFromMini, toggleLikePlayingFromMini };
+//Прямой проброс, т.к. остальной код обращается к window.* именам:
+window.applyMiniModeUI = window.applyMiniModeUI || applyMiniModeUI;
+window.updateMiniNowHeader = window.updateMiniNowHeader || updateMiniNowHeader;
+window.openPlayingAlbumFromMini = window.openPlayingAlbumFromMini || openPlayingAlbumFromMini;
+window.toggleLikePlayingFromMini = window.toggleLikePlayingFromMini || toggleLikePlayingFromMini;
+
