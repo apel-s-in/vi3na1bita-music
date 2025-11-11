@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-0e059deba16bf4169af0cfb127a8080b5e53f30b.idx
-│   │       ├── pack-0e059deba16bf4169af0cfb127a8080b5e53f30b.pack
-│   │       └── pack-0e059deba16bf4169af0cfb127a8080b5e53f30b.rev
+│   │       ├── pack-ba022f70fb1bc4a4495eb88e4437b2e2741ed4ad.idx
+│   │       ├── pack-ba022f70fb1bc4a4495eb88e4437b2e2741ed4ad.pack
+│   │       └── pack-ba022f70fb1bc4a4495eb88e4437b2e2741ed4ad.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -260,7 +260,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-11 15:44:16 UTC
+Сгенерировано: 2025-11-11 15:44:54 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6113,13 +6113,22 @@ export const setCoverWrapVisible = window.setCoverWrapVisible;
 
   // Утилита: загрузка JSON-лирики (оставим тут для удобства)
   async function loadLyrics(file) {
+    currentLyrics = [];
+    const box = document.getElementById('lyrics');
+    if (box) box.innerHTML = '';
+    if (!file) return;
     try {
-      const r = await fetch(file);
+      const r = await fetch(file, { cache: 'no-cache' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
       const js = await r.json();
       currentLyrics = Array.isArray(js) ? js : [];
       renderLyrics(0);
-    } catch {
+    } catch (err) {
       currentLyrics = [];
+      if (box) {
+        const msg = (err && err.message) ? String(err.message) : 'ошибка';
+        box.innerHTML = `<div class="lyrics-window-line" style="opacity:.8">Лирика недоступна (${msg})</div>`;
+      }
     }
   }
 
