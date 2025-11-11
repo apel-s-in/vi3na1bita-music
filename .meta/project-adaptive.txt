@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ba022f70fb1bc4a4495eb88e4437b2e2741ed4ad.idx
-│   │       ├── pack-ba022f70fb1bc4a4495eb88e4437b2e2741ed4ad.pack
-│   │       └── pack-ba022f70fb1bc4a4495eb88e4437b2e2741ed4ad.rev
+│   │       ├── pack-cb6859ab6d3c28c238e6a8f7e865b25dd9c7e9ec.idx
+│   │       ├── pack-cb6859ab6d3c28c238e6a8f7e865b25dd9c7e9ec.pack
+│   │       └── pack-cb6859ab6d3c28c238e6a8f7e865b25dd9c7e9ec.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -213,6 +213,8 @@ vi3na1bita-music/
 ├── news/
 │   ├── .gitkeep
 │   └── news.json
+├── performance/
+│   └── rum.js
 ├── scripts/
 │   ├── app/
 │   │   ├── albums.js
@@ -260,7 +262,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-11 15:44:54 UTC
+Сгенерировано: 2025-11-11 15:45:47 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2376,6 +2378,17 @@ async function clearCurrentOfflineResources() {
   await writeOfflineList([]);
   await postToAllClients({ type: 'OFFLINE_DONE' });
 }
+
+//=================================================
+// FILE: /performance/rum.js
+;(function(){
+  // Неболезненная заглушка: чтобы <script src="./performance/rum.js"> не давал 404
+  // и не ломал метрики. Если в custom.json появится endpoint — ваш код в index.html
+  // вызовет initRUM(...) при наличии совпадающей функции.
+  if (typeof window.initRUM !== 'function') {
+    window.initRUM = function initRUM() { /* no-op */ };
+  }
+})();
 
 //=================================================
 // FILE: /scripts/app/albums.js
