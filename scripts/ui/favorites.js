@@ -243,17 +243,114 @@
           <button class="bigclose" onclick="this.closest('.modal-bg').remove()" title="Закрыть">
             <svg viewBox="0 0 48 48"><line x1="12" y1="12" x2="36" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><line x1="36" y1="12" x2="12" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/></svg>
           </button>
-          <div style="font-size:1.1em; font-weight:800; margin-bottom:8px;">Трек не в избранном</div>
+          <div style="font-size:1.1em; font-weight:800; margin-bottom:8px;">Трек неактивен</div>
           <div style="color:#cfe3ff; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); border-radius:8px; padding:12px; line-height:1.5;">
             «${ref.title || 'Трек'}» из альбома «${ref.album || 'Альбом'}» снят из избранного.<br>
-            Нажмите ⭐, чтобы вернуть его обратно.
+            Нажмите ⭐, чтобы вернуть его обратно, либо удалите из списка «ИЗБРАННОЕ».
           </div>
-          <div style="display:flex; gap:10px; justify-content:center; margin-top:12px;">
-            <button class="offline-btn" onclick="this.closest('.modal-bg').remove()">Понятно</button>
-            <button class="offline-btn online" onclick="(function(){ try{ window.toggleLike && window.toggleLike(document.getElementById('fav_${ref.__a}_${ref.__t}').getAttribute('data-index')); }catch{}; document.getElementById('inactive-fav-modal')?.remove(); })()">Вернуть в ⭐</button>
+          <div style="display:flex; gap:10px; justify-content:center; margin-top:12px; flex-wrap:wrap;">
+            <button class="offline-btn online" id="btn-fav-return">Вернуть в ⭐</button>
+            <button class="offline-btn" id="btn-fav-delete">Удалить</button>
+            <button class="offline-btn" onclick="this.closest('.modal-bg').remove()">Отмена</button>
           </div>
         </div>`;
       document.body.appendChild(modal);
+
+      // Навешиваем действия
+      modal.querySelector('#btn-fav-return')?.addEventListener('click', () => {
+        try {
+          const row = document.getElementById(`fav_${ref.__a}_${ref.__t}`);
+          const idxStr = row ? row.getAttribute('data-index') : null;
+          if (idxStr) window.toggleLike && window.toggleLike(parseInt(idxStr, 10));
+        } catch {}
+        modal.remove();
+      });
+
+      modal.querySelector('#btn-fav-delete')?.addEventListener('click', () => {
+        modal.remove();
+        showFavDeleteConfirm(ref);
+      });
+    } else {
+      modal.classList.add('active');
+    }
+  }
+
+  // Подтверждение удаления элемента из «ИЗБРАННОГО»
+  function showFavDeleteConfirm(ref) {
+    if (!ref) return;
+    let modal = document.getElementById('fav-delete-modal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'fav-delete-modal';
+      modal.className = 'modal-bg active';
+      modal.innerHTML = `
+        <div class="modal-feedback" style="max-width: 390px;">
+          <button class="bigclose" onclick="this.closest('.modal-bg').remove()" title="Закрыть">
+            <svg viewBox="0 0 48 48"><line x1="12" y1="12" x2="36" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><line x1="36" y1="12" x2="12" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/></svg>
+          </button>
+          <div style="font-weight:700; margin-bottom:10px;">Удалить из «ИЗБРАННОГО»?</div>
+          <div style="opacity:.8; margin-bottom:12px;">
+            Трек «${ref.title || 'Трек'}» исчезнет из списка «ИЗБРАННОЕ». Вы всегда сможете найти его в исходном альбоме.
+          </div>
+          <div style="display:flex; gap:10px; justify-content:center;">
+            <button class="offline-btn" id="fav-del-cancel">Отмена</button>
+            <button class="offline-btn online" id="fav-del-apply">Удалить</button>
+          </div>
+        </div>`;
+      document.body.appendChild(modal);
+
+      const close = () => modal.remove();
+      modal.querySelector('#fav-del-cancel')?.addEventListener('click', close);
+
+      modal.querySelector('#fav-del-apply')?.addEventListener('click', () => {
+        try {
+          // 1) Сносим лайк из карты лайков
+          const map = (function(){ try { return JSON.parse(localStorage.getItem('likedTracks:v2')) || {}; } catch { return {}; } })();
+          const arr = Array.isArray(map[ref.__a]) ? map[ref.__a] : [];
+          map[ref.__a] = arr.filter(n => n !== ref.__t);
+          try { localStorage.setItem('likedTracks:v2', JSON.stringify(map)); } catch {}
+
+          // 2) Удаляем строку из DOM и перенумеровываем
+          const row = document.getElementById(`fav_${ref.__a}_${ref.__t}`);
+          if (row) row.remove();
+          const rows = document.querySelectorAll('#track-list .track .tnum');
+          rows.forEach((el, i) => { el.textContent = `${String(i + 1).padStart(2, '0')}.`; });
+
+          // 3) Удаляем из модели «Избранного»
+          if (Array.isArray(window.favoritesRefsModel)) {
+            window.favoritesRefsModel = window.favoritesRefsModel.filter(x => !(x.__a === ref.__a && x.__t === ref.__t));
+          }
+
+          // 4) Обновляем плейлист PlayerCore (только активные)
+          if (typeof window.updatePlayerCorePlaylistFromConfig === 'function') {
+            const active = (window.favoritesRefsModel || []).filter(x => x.__active !== false);
+            const cfg = {
+              albumName: 'Избранное',
+              artist: 'Витрина Разбита',
+              socials: [],
+              tracks: active.map(m => ({ title: m.title, audio: m.audio, lyrics: m.lyrics, fulltext: m.fulltext || '' }))
+            };
+            window.config = cfg;
+            window.updatePlayerCorePlaylistFromConfig();
+          }
+
+          // 5) Если удалили текущий проигрываемый — переключаемся на следующий
+          try {
+            const pc = window.playerCore;
+            if (pc && window.playingAlbumKey === window.SPECIAL_FAVORITES_KEY) {
+              // Проверим, совпадает ли удалённый трек с текущим
+              const cur = pc.getCurrentTrack && pc.getCurrentTrack();
+              if (cur && (cur.src === ref.audio)) {
+                pc.next && pc.next();
+              }
+            }
+          } catch {}
+
+          // 6) Сообщение и закрытие
+          try { window.NotificationSystem && window.NotificationSystem.success('Удалено из «ИЗБРАННОГО»'); } catch {}
+        } catch {}
+        close();
+      });
     } else {
       modal.classList.add('active');
     }
