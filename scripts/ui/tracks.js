@@ -7,7 +7,8 @@ export function buildTrackList() {
   try { list.style.display = ''; } catch {}
 
   const cfg = window.config || null;
-  const tracks = Array.isArray(cfg?.tracks) ? cfg.tracks : [];
+  const inFavorites = window.viewMode === 'favorites' && Array.isArray(window.favoritesRefsModel);
+  const tracks = inFavorites ? (window.favoritesRefsModel || []) : (Array.isArray(cfg?.tracks) ? cfg.tracks : []);
 
   const preservedInNowPlaying = !!document.getElementById('now-playing')?.querySelector('#lyricsplayerblock');
   const foreignView = preservedInNowPlaying && window.isBrowsingOtherAlbum && window.isBrowsingOtherAlbum();
@@ -18,25 +19,62 @@ export function buildTrackList() {
   }
 
   // Рендер без inline-обработчиков: используем data-index + делегирование
-  let html = '';
   for (let i = 0; i < tracks.length; i++) {
-    const t = tracks[i];
-    const isCur = (!foreignView && i === window.currentTrack) ? ' current' : '';
-    const liked = window.isLiked && window.isLiked(i);
-    html += `
-      <div class="track${isCur}" id="trk${i}" data-index="${i}">
-        <span class="tnum">${String(i + 1).padStart(2, '0')}.</span>
-        <span class="track-title">${t.title}</span>
-        <img
-          src="${liked ? 'img/star.png' : 'img/star2.png'}"
-          class="like-star"
-          alt="звезда"
-          title="${liked ? 'Убрать из понравившихся' : 'Добавить в понравившиеся'}"
-          data-action="toggle-like"
-        />
-      </div>`;
-    if (i === window.currentTrack && (!preservedInNowPlaying || (window.currentAlbumKey === window.playingAlbumKey))) {
-      html += `<div class="lyrics-player-block" id="lyricsplayerblock"></div>`;
+    if (inFavorites) {
+      const ref = tracks[i]; // favoritesRefsModel[i]
+      const isActive = !!ref.__active;
+      const liked = isActive; // активные = в лайках
+      const isCur = (!foreignView && window.playingAlbumKey === window.SPECIAL_FAVORITES_KEY && i === window.currentTrack) ? ' current' : '';
+      const rowId = `fav_${ref.__a}_${ref.__t}`;
+      const playlistIndex = (function(){
+        // индекс в реальном плейлисте PlayerCore: только активные присутствуют; inactive = -1
+        if (!isActive) return -1;
+        try {
+          const snap = window.playerCore && window.playerCore.getPlaylistSnapshot ? window.playerCore.getPlaylistSnapshot() : null;
+          if (!snap || !snap.length) return -1;
+          // ищем по title+src (минимум коллизий)
+          const kTitle = ref.title || '';
+          const kSrc = ref.audio || '';
+          for (let j=0;j<snap.length;j++){
+            if ((snap[j].title||'')===kTitle && (snap[j].src||'')===kSrc) return j;
+          }
+        } catch {}
+        return -1;
+      })();
+      html += `
+        <div class="track${isCur}${isActive ? '' : ' inactive'}" id="${rowId}" data-index="${i}" data-playlist-index="${playlistIndex}">
+          <span class="tnum">${String(i + 1).padStart(2, '0')}.</span>
+          <span class="track-title">${ref.title} <span style="opacity:.7">— ${ref.album}</span></span>
+          <img
+            src="${liked ? 'img/star.png' : 'img/star2.png'}"
+            class="like-star"
+            alt="звезда"
+            title="${liked ? 'Убрать из понравившихся' : 'Добавить в понравившиеся'}"
+            data-action="toggle-like"
+          />
+        </div>`;
+      if (i === window.currentTrack && window.playingAlbumKey === window.SPECIAL_FAVORITES_KEY && (!preservedInNowPlaying)) {
+        html += `<div class="lyrics-player-block" id="lyricsplayerblock"></div>`;
+      }
+    } else {
+      const t = tracks[i];
+      const isCur = (!foreignView && i === window.currentTrack) ? ' current' : '';
+      const liked = window.isLiked && window.isLiked(i);
+      html += `
+        <div class="track${isCur}" id="trk${i}" data-index="${i}">
+          <span class="tnum">${String(i + 1).padStart(2, '0')}.</span>
+          <span class="track-title">${t.title}</span>
+          <img
+            src="${liked ? 'img/star.png' : 'img/star2.png'}"
+            class="like-star"
+            alt="звезда"
+            title="${liked ? 'Убрать из понравившихся' : 'Добавить в понравившиеся'}"
+            data-action="toggle-like"
+          />
+        </div>`;
+      if (i === window.currentTrack && (!preservedInNowPlaying || (window.currentAlbumKey === window.playingAlbumKey))) {
+        html += `<div class="lyrics-player-block" id="lyricsplayerblock"></div>`;
+      }
     }
   }
 
@@ -63,11 +101,29 @@ export function buildTrackList() {
         return;
       }
 
-      // Клик по строке — запустить трек
+      // Клик по строке — поведение зависит от режима
       const row = target.closest('.track');
       if (row) {
         const idx = parseInt(row.getAttribute('data-index') || '-1', 10);
-        if (Number.isInteger(idx) && idx >= 0) {
+        if (!Number.isInteger(idx) || idx < 0) return;
+
+        if (inFavorites) {
+          const plIdx = parseInt(row.getAttribute('data-playlist-index') || '-1', 10);
+          const isInactive = row.classList.contains('inactive') || plIdx < 0;
+          if (isInactive) {
+            // Неактивный избранный — показать модалку с предложением вернуть в избранное
+            if (typeof window.showInactiveFavoriteModal === 'function') {
+              const ref = (window.favoritesRefsModel || [])[idx];
+              window.showInactiveFavoriteModal(ref);
+            } else if (window.NotificationSystem) {
+              window.NotificationSystem.info('Трек снят из избранного. Нажмите ⭐ чтобы вернуть.');
+            }
+            return;
+          }
+          // В плейлисте PlayerCore индекс plIdx — запускаем его
+          window.pickAndPlayTrack && window.pickAndPlayTrack(plIdx);
+          return;
+        } else {
           window.pickAndPlayTrack && window.pickAndPlayTrack(idx);
         }
       }
@@ -218,6 +274,16 @@ export function renderLyricsBlock() {
       }
       if (t.closest('#lyrics-toggle-btn')) {
         window.toggleLyricsView && window.toggleLyricsView();
+        return;
+      }
+      if (t.closest('#eco-btn')) {
+        const btn = document.getElementById('eco-btn');
+        const active = btn?.classList.contains('eco-active');
+        window.applyEcoState && window.applyEcoState(!active);
+        if (btn) {
+          btn.classList.toggle('eco-active', !active);
+          btn.setAttribute('aria-pressed', (!active).toString());
+        }
         return;
       }
     });
