@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b4642df5dd48fc3dd89db1d9efc4fc137ec1b1fc.idx
-│   │       ├── pack-b4642df5dd48fc3dd89db1d9efc4fc137ec1b1fc.pack
-│   │       └── pack-b4642df5dd48fc3dd89db1d9efc4fc137ec1b1fc.rev
+│   │       ├── pack-a55a56b10bf0190042fa6ee422e526b9ca4a2c4a.idx
+│   │       ├── pack-a55a56b10bf0190042fa6ee422e526b9ca4a2c4a.pack
+│   │       └── pack-a55a56b10bf0190042fa6ee422e526b9ca4a2c4a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -262,7 +262,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-11 16:02:26 UTC
+Сгенерировано: 2025-11-11 16:05:25 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7961,11 +7961,7 @@ export class PlayerCore {
       src: [tr.src],
       html5: true,
       onend: () => {
-        // Автопереход нельзя отключить ничем, кроме паузы/стопа/таймера.
-        if (this.repeat) {
-          this.play();
-          return;
-        }
+        if (this.repeat) { this.play(); return; }
         this.next();
         this._fire('onEnd', tr, this.index);
       },
@@ -7976,17 +7972,15 @@ export class PlayerCore {
         this._updateMediaSessionMeta();
         this._startTicker();
       },
-      onpause: () => {
-        this._isPaused = true;
-        this._fire('onPause', tr, this.index);
-        this._stopTicker();
+      onpause: () => { this._isPaused = true; this._fire('onPause', tr, this.index); this._stopTicker(); },
+      onstop:  () => { this._isPaused = true; this._fire('onStop',  tr, this.index); this._stopTicker(); },
+      onplayerror: () => {
+        try { (this.howl as any).once('unlock', () => { try { (this.howl as any).play(); } catch {} }); } catch {}
       },
-      onstop: () => {
-        this._isPaused = true;
-        this._fire('onStop', tr, this.index);
-        this._stopTicker();
+      onloaderror: () => {
+        try { setTimeout(() => { try { if (this.howl && !this._isPaused) (this.howl as any).play(); } catch {} }, 200); } catch {}
       }
-    });
+    } as any);
 
     // Сохраним громкость, если задавали раньше глобально
     try {
