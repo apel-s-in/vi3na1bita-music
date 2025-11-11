@@ -255,3 +255,7 @@ export function renderLyricsBlock() {
 
 // экспорт в глобал
 window.UITracks = { buildTrackList, renderLyricsBlock };
+// Проброс в глобальные имена, которые вызывает остальной код (applyAlbumConfig и др.)
+window.buildTrackList = window.buildTrackList || buildTrackList;
+window.renderLyricsBlock = window.renderLyricsBlock || renderLyricsBlock;
+
