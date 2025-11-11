@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-27358d5839a52d295a8d422944a36eb8e4864642.idx
-│   │       ├── pack-27358d5839a52d295a8d422944a36eb8e4864642.pack
-│   │       └── pack-27358d5839a52d295a8d422944a36eb8e4864642.rev
+│   │       ├── pack-3c6d4de7a33a8700c5d3fa3d58fbe1b3c630a72d.idx
+│   │       ├── pack-3c6d4de7a33a8700c5d3fa3d58fbe1b3c630a72d.pack
+│   │       └── pack-3c6d4de7a33a8700c5d3fa3d58fbe1b3c630a72d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-11 21:18:58 UTC
+Сгенерировано: 2025-11-11 21:19:33 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4103,7 +4103,7 @@ import PlayerCore from '../src/PlayerCore.js';
 
 //=================================================
 // FILE: /scripts/ui/favorites.js
-// scripts/app/favorites.js (ESM)
+// scripts/ui/favorites.js (ESM)
 // Логика работы с избранными треками и соответствующим UI.
 
 (function(){
