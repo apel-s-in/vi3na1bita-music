@@ -680,6 +680,8 @@ self.addEventListener('message', (event) => {
       }
     })());
   }
+});
+  }
     const list = Array.isArray(data.urls) ? data.urls
                 : (data.url ? [data.url] : []);
     if (!list.length) return;
