@@ -1,11 +1,8 @@
 // scripts/core/bootstrap.js (ESM)
 // Клей между window.config ↔ PlayerCore и UI. Восстанавливает
 // глобальные функции, которые раньше были инлайн в index.html.
-//
-// ВАЖНО: Ничего не останавливает плеер, кроме явных play/pause/stop/таймера сна.
 
 (function () {
-  // ------- Central gallery helper (нужен gallery.js) -------
   function centralIdForAlbumKey(albumKey) {
     try {
       const map = window.ALBUM_GALLERY_MAP || {};
@@ -18,7 +15,6 @@
   }
   window.centralIdForAlbumKey = window.centralIdForAlbumKey || centralIdForAlbumKey;
 
-  // ------- Модель «Избранного» (LS: likedTracks:v2) -------
   function readLikes() {
     try { return JSON.parse(localStorage.getItem('likedTracks:v2')) || {}; }
     catch { return {}; }
@@ -26,7 +22,6 @@
   function writeLikes(map) {
     try { localStorage.setItem('likedTracks:v2', JSON.stringify(map || {})); } catch {}
   }
-
   function getLiked(albumKey = window.currentAlbumKey) {
     const map = readLikes();
     const arr = Array.isArray(map?.[albumKey]) ? map[albumKey] : [];
@@ -53,27 +48,27 @@
     map[akey] = Array.from(new Set(arr)).sort((a, b) => a - b);
     writeLikes(map);
     updateFavoriteClasses();
-    // визуальная анимация звезды
     if (ev && ev.target && ev.target.classList) {
       ev.target.classList.add('animating');
       setTimeout(() => ev.target.classList.remove('animating'), 300);
     }
-    // Обновим кнопку «только избранные»
-    try { window.updateNextUpLabel && window.updateNextUpLabel(); } catch {}
+    try { window.updateNextUpLabel?.(); } catch {}
   }
   function toggleLikePlaying() {
-    if (!Number.isInteger(window.playingTrack) || window.playingTrack < 0) return;
+    const pc = window.playerCore;
+    if (!pc) return;
+    const playingIndex = pc.getIndex();
+    if (!Number.isInteger(playingIndex) || playingIndex < 0) return;
     const akey = window.playingAlbumKey || window.currentAlbumKey;
     if (!akey) return;
     const map = readLikes();
     const arr = Array.isArray(map[akey]) ? map[akey] : [];
-    const pos = arr.indexOf(window.playingTrack);
-    if (pos >= 0) arr.splice(pos, 1); else arr.push(window.playingTrack);
+    const pos = arr.indexOf(playingIndex);
+    if (pos >= 0) arr.splice(pos, 1); else arr.push(playingIndex);
     map[akey] = Array.from(new Set(arr)).sort((a, b) => a - b);
     writeLikes(map);
     updateFavoriteClasses();
   }
-
   function updateFavoriteClasses() {
     try {
       const list = document.getElementById('track-list');
@@ -91,11 +86,9 @@
           }
         }
       });
-      // Мини-шапка
-      try { window.updateMiniNowHeader && window.updateMiniNowHeader(); } catch {}
+      try { window.updateMiniNowHeader?.(); } catch {}
     } catch {}
   }
-
   function toggleFavoritesFilter() {
     window.favoritesFilterActive = !window.favoritesFilterActive;
     const list = document.getElementById('track-list');
@@ -109,7 +102,6 @@
     }
   }
 
-  // ------- Утилиты UI -------
   function handleLogoClick() {
     const logo = document.getElementById('logo-bottom');
     if (!logo) return;
@@ -117,23 +109,14 @@
     logo.style.transform = 'scale(1.13)';
     setTimeout(() => { logo.style.transform = 'scale(1)'; logo.style.transition = 'transform .1s ease-out'; }, 120);
   }
-
-  function openFeedbackModal() {
-    document.getElementById('modal-feedback')?.classList.add('active');
-  }
-  function closeFeedbackModal() {
-    document.getElementById('modal-feedback')?.classList.remove('active');
-  }
-
-  // Служебная чистка дублей блока плеера (на всякий случай)
+  function openFeedbackModal() { document.getElementById('modal-feedback')?.classList.add('active'); }
+  function closeFeedbackModal() { document.getElementById('modal-feedback')?.classList.remove('active'); }
   function dedupePlayerBlock() {
     try {
       const blocks = Array.from(document.querySelectorAll('#lyricsplayerblock'));
       if (blocks.length <= 1) return;
-      // Оставим ближайший к текущему треку
       const keep = blocks.pop();
       blocks.forEach(b => b.remove());
-      // Убедимся, что keep в правильном месте: после строки текущего трека
       const i = window.currentTrack;
       const row = Number.isInteger(i) && i >= 0 ? document.getElementById(`trk${i}`) : null;
       if (row && keep && keep.parentNode !== row.parentNode) {
@@ -143,27 +126,15 @@
     } catch {}
   }
 
-  // ------- PlayerCore ↔ config -------
   function getPlayerConfig() {
     const cfg = window.config || {};
     const tracks = Array.isArray(cfg.tracks) ? cfg.tracks : [];
     const artist = cfg.artist || 'Витрина Разбита';
     const album = cfg.albumName || (window.ICON_TITLE_MAP?.[window.currentAlbumKey] || 'Альбом');
-    const cover = (function () {
-      if (Array.isArray(window.coverGalleryArr) && window.coverGalleryArr.length) {
-        const it = window.coverGalleryArr[0];
-        return (it.formats?.full || it.src || 'img/logo.png');
-      }
-      return 'img/logo.png';
-    })();
+    const cover = window.coverGalleryArr?.[0]?.formats?.full || window.coverGalleryArr?.[0]?.src || 'img/logo.png';
     const snapshot = tracks.map(t => ({
-      title: t?.title || 'Трек',
-      artist,
-      album,
-      cover,
-      lyrics: t?.lyrics || '',
-      src: t?.audio || t?.src || '',
-      fulltext: t?.fulltext || ''
+      title: t?.title || 'Трек', artist, album, cover,
+      lyrics: t?.lyrics || '', src: t?.audio || t?.src || '', fulltext: t?.fulltext || ''
     }));
     return { artist, album, cover, tracks: snapshot };
   }
@@ -175,7 +146,6 @@
     const startIndex = Number.isInteger(window.currentTrack) && window.currentTrack >= 0 ? window.currentTrack : 0;
     pc.setPlaylist(pl.tracks, startIndex, { artist: pl.artist, album: pl.album, cover: pl.cover });
 
-    // Применим режимы
     try { pc.setRepeat(localStorage.getItem('repeatMode') === '1'); } catch {}
     try { pc.setShuffle(localStorage.getItem('shuffleMode') === '1'); } catch {}
     try {
@@ -184,13 +154,11 @@
       pc.setFavoritesOnly(favOnly, liked);
     } catch {}
 
-    // Подсветка «следующий»
-    try { window.updateNextUpLabel && window.updateNextUpLabel(); } catch {}
+    try { window.updateNextUpLabel?.(); } catch {}
   }
 
   function ensurePlayerCore() {
     if (!window.playerCore && typeof window.__initPlayerCoreBindings === 'function') {
-      // bridge.js создаёт playerCore. Если не успел — подождём.
       try { window.__initPlayerCoreBindings(); } catch {}
     }
     return window.playerCore || null;
@@ -198,8 +166,7 @@
 
   function pickAndPlayTrack(idx) {
     const pc = ensurePlayerCore();
-    if (!pc) return;
-    if (!Number.isInteger(idx) || idx < 0) return;
+    if (!pc || !Number.isInteger(idx) || idx < 0) return;
 
     window.currentTrack = idx;
     window.playingAlbumKey = window.currentAlbumKey || window.playingAlbumKey || null;
@@ -207,16 +174,15 @@
     updatePlayerCorePlaylistFromConfig();
     pc.play(idx);
 
-    // Перерисуем UI (вставка блока плеера под строку)
-    try { window.buildTrackList && window.buildTrackList(); } catch {}
-    try { window.renderLyricsBlock && window.renderLyricsBlock(); } catch {}
+    try { window.buildTrackList?.(); } catch {}
+    try { window.renderLyricsBlock?.(); } catch {}
     try { dedupePlayerBlock(); } catch {}
-    try { window.applyMiniModeUI && window.applyMiniModeUI(); } catch {}
+    try { window.applyMiniModeUI?.(); } catch {}
   }
 
   function showTrack(idx, play) {
     window.currentTrack = idx;
-    try { window.buildTrackList && window.buildTrackList(); } catch {}
+    try { window.buildTrackList?.(); } catch {}
     try { dedupePlayerBlock(); } catch {}
     if (play) pickAndPlayTrack(idx);
   }
@@ -235,16 +201,12 @@
       if (!Number.isInteger(n) || n < 0) { el.textContent = ''; return; }
       const pl = getPlayerConfig();
       const t = pl.tracks[n];
-      el.textContent = t ? t.title : '';
+      el.textContent = t ? `${String(n+1).padStart(2, '0')}. ${t.title}` : '';
     } catch {}
   }
 
-  // Ассист функция для offline.js (загружает config другого альбома при необходимости)
   async function getAlbumConfigByKey(akey) {
-    // Сначала попробуем через public API из albums.js (если появится)
     if (typeof window.__getAlbumConfigByKey === 'function') return window.__getAlbumConfigByKey(akey);
-
-    // Fallback: найти в albums.json базу и забрать config.json
     try {
       if (!window.albumsIndex || !window.albumsIndex.length) {
         await (window.loadAlbumsIndex ? window.loadAlbumsIndex() : Promise.resolve());
@@ -265,26 +227,11 @@
   }
 
   // ------- Экспорт в window.* -------
-  window.getPlayerConfig = window.getPlayerConfig || getPlayerConfig;
-  window.updatePlayerCorePlaylistFromConfig = window.updatePlayerCorePlaylistFromConfig || updatePlayerCorePlaylistFromConfig;
-  window.pickAndPlayTrack = window.pickAndPlayTrack || pickAndPlayTrack;
-  window.showTrack = window.showTrack || showTrack;
-
-  window.getLiked = window.getLiked || getLiked;
-  window.isLiked = window.isLiked || isLiked;
-  window.isLikedInPlayback = window.isLikedInPlayback || isLikedInPlayback;
-  window.toggleLike = window.toggleLike || toggleLike;
-  window.toggleLikePlaying = window.toggleLikePlaying || toggleLikePlaying;
-  window.updateFavoriteClasses = window.updateFavoriteClasses || updateFavoriteClasses;
-  window.toggleFavoritesFilter = window.toggleFavoritesFilter || toggleFavoritesFilter;
-
-  window.handleLogoClick = window.handleLogoClick || handleLogoClick;
-  window.openFeedbackModal = window.openFeedbackModal || openFeedbackModal;
-  window.closeFeedbackModal = window.closeFeedbackModal || closeFeedbackModal;
-
-  window.dedupePlayerBlock = window.dedupePlayerBlock || dedupePlayerBlock;
-  window.isBrowsingOtherAlbum = window.isBrowsingOtherAlbum || isBrowsingOtherAlbum;
-  window.updateNextUpLabel = window.updateNextUpLabel || updateNextUpLabel;
-
-  window.getAlbumConfigByKey = window.getAlbumConfigByKey || getAlbumConfigByKey;
+  Object.assign(window, {
+    getPlayerConfig, updatePlayerCorePlaylistFromConfig, pickAndPlayTrack, showTrack,
+    getLiked, isLiked, isLikedInPlayback, toggleLike, toggleLikePlaying,
+    updateFavoriteClasses, toggleFavoritesFilter, handleLogoClick,
+    openFeedbackModal, closeFeedbackModal, dedupePlayerBlock,
+    isBrowsingOtherAlbum, updateNextUpLabel, getAlbumConfigByKey
+  });
 })();
