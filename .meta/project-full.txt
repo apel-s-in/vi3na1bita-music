@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-078b33c9f30c18ad65e0eb64c05225fea52bf4ed.idx
-│   │       ├── pack-078b33c9f30c18ad65e0eb64c05225fea52bf4ed.pack
-│   │       └── pack-078b33c9f30c18ad65e0eb64c05225fea52bf4ed.rev
+│   │       ├── pack-97c12ba266c3d6f36ca02baeeaefc152458c1600.idx
+│   │       ├── pack-97c12ba266c3d6f36ca02baeeaefc152458c1600.pack
+│   │       └── pack-97c12ba266c3d6f36ca02baeeaefc152458c1600.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-11 21:09:42 UTC
+Сгенерировано: 2025-11-11 21:10:07 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5566,148 +5566,96 @@ window.buildOfflineResourceListForCurrentView = buildOfflineResourceListForCurre
 //=================================================
 // FILE: /scripts/ui/sleep.js
 // scripts/ui/sleep.js (ESM)
-// Вынос таймера сна UI из index.html с мостом window.UISleep + глобальные совместимые функции.
+// Логика таймера сна.
 
-function updateSleepTimerUI() {
-  const btn = document.getElementById('sleep-timer-btn');
-  const badge = document.getElementById('sleep-timer-badge');
-  const sleepTimerTarget = window.sleepTimerTarget || null;
-  if (!sleepTimerTarget) {
-    btn && btn.classList.remove('active');
-    if (badge) { badge.style.display = 'none'; badge.textContent = ''; }
-    return;
-  }
-  btn && btn.classList.add('active');
-  const minsLeft = Math.max(0, Math.ceil((sleepTimerTarget - Date.now()) / 60000));
-  if (badge) { badge.style.display = ''; badge.textContent = String(minsLeft); }
-}
+(function(){
+  let sleepTimerId = null;
+  let remainingTime = 0;
+  let intervalId = null;
 
-function clearSleepTimer() {
-  try { window.playerCore && window.playerCore.clearSleepTimer(); } catch {}
-  window.sleepTimerTarget = null;
-  if (window.sleepTimerInterval) { try { clearInterval(window.sleepTimerInterval); } catch {} window.sleepTimerInterval = null; }
-  updateSleepTimerUI();
-  hideSleepOverlay();
-  try { window.NotificationSystem && window.NotificationSystem.info('Таймер сна выключен'); } catch {}
-}
-
-function showTimePickerForSleep() {
-  closeSleepMenu();
-  const val = prompt('Через сколько минут выключить воспроизведение?', '30');
-  const mins = parseInt(val, 10);
-  if (Number.isFinite(mins) && mins > 0) {
-    setSleepTimer(mins);
-  }
-}
-
-function checkSleepTimer() {
-  const sleepTimerTarget = window.sleepTimerTarget || null;
-  if (!sleepTimerTarget) return;
-  const now = Date.now();
-  const msLeft = sleepTimerTarget - now;
-
-  if (msLeft <= 0) {
-    // PlayerCore поставит на паузу и вызовет onSleepTriggered
-    clearSleepTimer();
-    return;
+  function openSleepMenu() {
+    const menu = document.getElementById('sleep-menu');
+    if (menu) menu.classList.toggle('active');
   }
 
-  if (!window.ultraEcoEnabled && msLeft <= 10000 && !document.querySelector('#sleep-overlay')) {
-    showSleepOverlay();
+  function closeSleepMenu() {
+    const menu = document.getElementById('sleep-menu');
+    if (menu) menu.classList.remove('active');
   }
-  updateSleepTimerUI();
-}
+  
+  function updateTimerBadge() {
+    const badge = document.getElementById('sleep-timer-badge');
+    const btn = document.getElementById('sleep-timer-btn');
+    if(!badge || !btn) return;
 
-function showSleepOverlay() {
-  let ov = document.getElementById('sleep-overlay');
-  if (!ov) {
-    ov = document.createElement('div');
-    ov.id = 'sleep-overlay';
-    ov.className = 'sleep-overlay active';
-    ov.innerHTML = `
-      <div class="sleep-content">
-        <div class="sleep-icon">😴</div>
-        <div class="sleep-title">Скоро пауза</div>
-        <div class="sleep-message">Воспроизведение будет приостановлено по таймеру сна.</div>
-        <div class="sleep-buttons">
-          <button class="sleep-btn sleep-btn-secondary" onclick="cancelSleepOverlay()">Отмена</button>
-          <button class="sleep-btn sleep-btn-primary" onclick="confirmSleepOverlay()">Оставить</button>
-        </div>
-      </div>`;
-    document.body.appendChild(ov);
-  } else {
-    ov.classList.add('active');
+    if(sleepTimerId) {
+        btn.classList.add('active');
+        badge.style.display = 'block';
+        badge.textContent = `${Math.ceil(remainingTime / 60)}`;
+    } else {
+        btn.classList.remove('active');
+        badge.style.display = 'none';
+    }
   }
-}
 
-function hideSleepOverlay() {
-  const ov = document.getElementById('sleep-overlay');
-  if (ov) ov.remove();
-}
+  function setSleepTimer(minutes) {
+    cancelSleepTimer();
+    closeSleepMenu();
+    if (minutes === 0) return;
 
-function cancelSleepOverlay() {
-  clearSleepTimer();
-  hideSleepOverlay();
-}
+    remainingTime = minutes * 60;
+    
+    sleepTimerId = setTimeout(() => {
+      window.playerCore?.stop();
+      const overlay = document.getElementById('sleep-overlay');
+      if(overlay) overlay.classList.add('active');
+      cancelSleepTimer(); // Очистить после срабатывания
+    }, remainingTime * 1000);
 
-function confirmSleepOverlay() {
-  // Ничего не делаем — таймер продолжится
-  hideSleepOverlay();
-}
-
-function toggleSleepMenu() {
-  const menu = document.getElementById('sleep-menu');
-  if (!menu) return;
-  menu.classList.toggle('active');
-  if (menu.classList.contains('active')) {
-    setTimeout(() => document.addEventListener('click', closeSleepMenu), 100);
+    intervalId = setInterval(() => {
+        remainingTime--;
+        updateTimerBadge();
+        if(remainingTime <= 0) {
+            clearInterval(intervalId);
+        }
+    }, 1000);
+    
+    updateTimerBadge();
+    window.NotificationSystem?.info(`😴 Таймер сна установлен на ${minutes} минут`);
   }
-}
 
-function closeSleepMenu(e) {
-  if (e && e.target && e.target.closest && e.target.closest('#sleep-timer-btn')) return;
-  const el = document.getElementById('sleep-menu');
-  if (el) el.classList.remove('active');
-  document.removeEventListener('click', closeSleepMenu);
-}
-
-function setSleepTimer(minutes) {
-  closeSleepMenu();
-  if (minutes === 'off') {
-    clearSleepTimer();
-    return;
+  function cancelSleepTimer() {
+    if (sleepTimerId) {
+      clearTimeout(sleepTimerId);
+      sleepTimerId = null;
+    }
+    if(intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+    }
+    remainingTime = 0;
+    updateTimerBadge();
   }
-  const ms = minutes * 60 * 1000;
-  try { window.playerCore && window.playerCore.setSleepTimer(ms); } catch {}
-  window.sleepTimerTarget = Date.now() + ms;
-  updateSleepTimerUI();
-  if (window.sleepTimerInterval) { try { clearInterval(window.sleepTimerInterval); } catch {} }
-  window.sleepTimerInterval = setInterval(checkSleepTimer, 1000);
-}
 
-// Экспорт фасада и глобал‑совместимость
-window.UISleep = {
-  updateSleepTimerUI,
-  clearSleepTimer,
-  showTimePickerForSleep,
-  checkSleepTimer,
-  showSleepOverlay,
-  hideSleepOverlay,
-  toggleSleepMenu,
-  setSleepTimer
-};
+  function extendSleepTimer() {
+      const overlay = document.getElementById('sleep-overlay');
+      if(overlay) overlay.classList.remove('active');
+      setSleepTimer(15); // Продлить на 15 минут
+  }
+  
+  function closeSleepOverlay(){
+      const overlay = document.getElementById('sleep-overlay');
+      if(overlay) overlay.classList.remove('active');
+  }
 
-// Проброс глобальных имён (до удаления inline onclick)
-window.updateSleepTimerUI = updateSleepTimerUI;
-window.clearSleepTimer = clearSleepTimer;
-window.showTimePickerForSleep = showTimePickerForSleep;
-window.checkSleepTimer = checkSleepTimer;
-window.showSleepOverlay = showSleepOverlay;
-window.hideSleepOverlay = hideSleepOverlay;
-window.toggleSleepMenu = toggleSleepMenu;
-window.setSleepTimer = setSleepTimer;
-window.cancelSleepOverlay = cancelSleepOverlay;
-window.confirmSleepOverlay = confirmSleepOverlay;
+  // Export
+  window.openSleepMenu = openSleepMenu;
+  window.closeSleepMenu = closeSleepMenu;
+  window.setSleepTimer = setSleepTimer;
+  window.cancelSleepTimer = cancelSleepTimer;
+  window.extendSleepTimer = extendSleepTimer;
+  window.closeSleepOverlay = closeSleepOverlay;
+})();
 
 //=================================================
 // FILE: /scripts/ui/sysinfo.js
