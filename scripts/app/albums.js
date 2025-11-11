@@ -90,35 +90,7 @@
     const box = document.getElementById('album-icons');
     if (!box) return;
     box.querySelectorAll('.album-icon').forEach(el => {
-      const k = el.getAttribute('data-akey');
-      el.classList.toggle('active', k && key && k === key);
-    });
-  }
-
-  function setAlbumHeaderTitle(key) {
-    const el = document.getElementById('active-album-title');
-    if (!el) return;
-    let title = '—';
-    let cls = '';
-
-    if (key === window.SPECIAL_FAVORITES_KEY) { title = '★ ★ ★ ИЗБРАННОЕ ★ ★ ★'; cls = 'fav'; }
-    else if (key === window.SPECIAL_RELIZ_KEY) { title = 'НОВОСТИ'; cls = 'news'; }
-    else {
-      const meta = albumByKey(key);
-      title = meta?.title || (window.config?.albumName || 'Альбом');
-    }
-
-    el.textContent = title;
-    el.title = title;
-    el.className = 'active-album-title' + (cls ? (' ' + cls) : '');
-  }
-
-  // Состояние загрузчика альбома
-  const albumConfigCache = {}; // { key: { base, config } }
-  let __albumLoadCtrl = null;
-  let __currentGalleryVisible = true;
-
-  // Загрузка списка альбомов
+      const k = el.грузка списка альбомов
   async function loadAlbumsIndex() {
     const sel = document.getElementById('album-select');
     try {
@@ -555,4 +527,3 @@
     }
   });
 })();
-
