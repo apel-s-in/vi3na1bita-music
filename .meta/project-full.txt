@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3c6d4de7a33a8700c5d3fa3d58fbe1b3c630a72d.idx
-│   │       ├── pack-3c6d4de7a33a8700c5d3fa3d58fbe1b3c630a72d.pack
-│   │       └── pack-3c6d4de7a33a8700c5d3fa3d58fbe1b3c630a72d.rev
+│   │       ├── pack-a970ffc8abc3b413c624be5f7053cbdd75b840c7.idx
+│   │       ├── pack-a970ffc8abc3b413c624be5f7053cbdd75b840c7.pack
+│   │       └── pack-a970ffc8abc3b413c624be5f7053cbdd75b840c7.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-11 21:19:32 UTC
+Сгенерировано: 2025-11-11 21:21:11 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1055,6 +1055,45 @@ jobs:
 
     <div id="now-playing" style="width:100%; max-width:395px; margin:8px auto 0 auto;"></div>
     <div class="track-list" id="track-list"></div>
+
+    <!-- ===== НАЧАЛО БЛОКА ПЛЕЕРА ===== -->
+    <div class="lyrics-player-block" id="lyricsplayerblock" style="max-width: 400px; width: 100%; margin: 12px auto 0;">
+      <div id="lyrics-window" class="lyrics-normal">
+        <div class="lyrics-animated-bg"></div>
+        <div class="lyrics-scroll">
+          <div class="lyrics-window-line" id="lyrics-window-line1"></div>
+          <div class="lyrics-window-line active" id="lyrics-window-line2">Нажмите Play, чтобы начать</div>
+          <div class="lyrics-window-line" id="lyrics-window-line3"></div>
+        </div>
+      </div>
+      <div class="audio-wrapper">
+        <audio id="audio" preload="metadata"></audio>
+        <div class="player-progress-wrapper">
+          <div id="player-progress-bar" class="player-progress-bar">
+            <div id="player-progress-fill" class="player-progress-fill" style="width:0%"></div>
+          </div>
+        </div>
+        <div class="player-controls">
+          <div class="player-controls-row">
+            <button class="player-control-btn" id="shuffle-btn" title="Случайный порядок (U)" data-action="toggle-shuffle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line><polyline points="16 21 21 21 21 16"></polyline><line x1="15" y1="15" x2="21" y2="21"></line><line x1="4" y1="4" x2="9" y2="9"></line></svg></button>
+            <button class="player-control-btn" id="prev-btn" title="Предыдущий трек (P)" data-action="prev-track"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"></path></svg></button>
+            <button class="player-control-btn main" id="play-pause-btn" title="Пауза/Воспр. (K)" data-action="toggle-play-pause"><svg id="play-pause-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg></button>
+            <button class="player-control-btn" id="next-btn" title="Следующий трек (N)" data-action="next-track"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"></path></svg></button>
+            <button class="player-control-btn" id="repeat-btn" title="Повтор трека (R)" data-action="toggle-repeat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg></button>
+          </div>
+          <div class="player-controls-row">
+            <span id="time-current" class="time-in-controls">0:00</span>
+            <div class="volume-control-wrapper" style="flex:1;">
+              <input type="range" min="0" max="100" value="100" class="volume-slider" id="volume-slider" aria-label="Громкость">
+              <div class="volume-track"></div>
+              <div id="volume-fill" class="volume-fill" style="width:100%"></div>
+            </div>
+            <span id="time-duration" class="time-in-controls">0:00</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- ===== КОНЕЦ БЛОКА ПЛЕЕРА ===== -->
 
     <div class="bottom-controls-center">
       <button class="filter-favorites-btn" id="filter-favorites-btn">Скрыть не отмеченные ⭐ песни</button>
