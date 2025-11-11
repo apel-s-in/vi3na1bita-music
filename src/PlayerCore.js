@@ -1,5 +1,5 @@
 // src/PlayerCore.js (ESM)
-// Лёгкое ядро воспроизведения на Howler.js для vi3na1bita-music.
+// Ядро воспроизведения на Howler.js для vi3na1bita-music.
 // Управляет: плейлистом, play/pause/stop/prev/next, repeat/shuffle/favoritesOnly,
 // громкостью/позициями, автопереходом, MediaSession и "тикером" времени.
 
@@ -54,9 +54,15 @@ export class PlayerCore {
     if (typeof index === 'number') this.index = this._clampIndex(index);
     if (!this.playlist.length) return;
 
+    // Если Howl уже есть и играет тот же трек — просто возобновляем
+    if (this.howl && this._isPaused && this.howl._src === (this.playlist[this.index]?.src || '')) {
+      this.howl.play();
+      return;
+    }
+
     this._stopHowl();
     const tr = this.getCurrentTrack();
-    if (!tr) return;
+    if (!tr || !tr.src) return;
 
     this.howl = new Howl({
       src: [tr.src],
@@ -75,15 +81,17 @@ export class PlayerCore {
       },
       onpause: () => { this._isPaused = true; this._fire('onPause', tr, this.index); this._stopTicker(); },
       onstop:  () => { this._isPaused = true; this._fire('onStop',  tr, this.index); this._stopTicker(); },
-      onplayerror: () => {
-        try { (this.howl as any).once('unlock', () => { try { (this.howl as any).play(); } catch {} }); } catch {}
+      onplayerror: (_, err) => {
+        console.warn('Howler play error:', err);
+        // Попытка разблокировать аудио контекст
+        try { this.howl.once('unlock', () => { try { this.howl.play(); } catch {} }); } catch {}
       },
-      onloaderror: () => {
-        try { setTimeout(() => { try { if (this.howl && !this._isPaused) (this.howl as any).play(); } catch {} }, 200); } catch {}
+      onloaderror: (_, err) => {
+        console.warn('Howler load error:', err);
+        // Можно добавить логику для пропуска трека
       }
-    } as any);
+    });
 
-    // Сохраним громкость, если задавали раньше глобально
     try {
       const saved = parseFloat(localStorage.getItem('playerVolume'));
       if (Number.isFinite(saved)) this.setVolume(saved);
@@ -97,14 +105,14 @@ export class PlayerCore {
   next() {
     this._syncShuffle();
     const n = this._nextIndex();
-    if (n < 0) return;
+    if (n < 0) { this.stop(); return; }
     this.index = n;
     this.play();
   }
   prev() {
     this._syncShuffle();
     const p = this._prevIndex();
-    if (p < 0) return;
+    if (p < 0) { this.stop(); return; }
     this.index = p;
     this.play();
   }
@@ -128,21 +136,19 @@ export class PlayerCore {
   getSeek() { return this.seek(); }
   getDuration() { return this.howl ? (this.howl.duration() || 0) : 0; }
 
-  // Публичный «следующий» индекс по текущей логике shuffle/favoritesOnly
   getNextIndex() {
     return this._nextIndex();
   }
 
-  // Снимок плейлиста для UI (заголовки и пр.)
   getPlaylistSnapshot() {
     return (this.playlist || []).map(t => ({
-      title: t && t.title || '',
-      artist: t && t.artist || this._albumArtist || '',
-      album: t && t.album || this._albumTitle || '',
-      cover: t && t.cover || this._albumCover || '',
-      lyrics: t && t.lyrics || '',
-      src: t && t.src || '',
-      fulltext: t && t.fulltext || ''
+      title: t?.title || '',
+      artist: t?.artist || this._albumArtist || '',
+      album: t?.album || this._albumTitle || '',
+      cover: t?.cover || this._albumCover || '',
+      lyrics: t?.lyrics || '',
+      src: t?.src || '',
+      fulltext: t?.fulltext || ''
     }));
   }
 
@@ -160,7 +166,6 @@ export class PlayerCore {
     this.events = {};
   }
 
-  // ===== INTERNAL =====
   _clampIndex(i) { return Math.max(0, Math.min(this.playlist.length - 1, i)); }
   _fire(name, ...args) { try { const fn = this.events && this.events[name]; if (typeof fn === 'function') fn(...args); } catch {} }
 
@@ -179,12 +184,10 @@ export class PlayerCore {
     if (!this.shuffle) { this.shuffled = []; return; }
     const base = this._filteredIndices();
     const arr = base.slice();
-    // Fisher–Yates
     for (let j = arr.length - 1; j > 0; j--) {
       const k = Math.floor(Math.random() * (j + 1));
       [arr[j], arr[k]] = [arr[k], arr[j]];
     }
-    // Ставим текущий в начало
     const i = arr.indexOf(this.index);
     if (i > 0) { arr.splice(i, 1); arr.unshift(this.index); }
     this.shuffled = arr;
@@ -225,7 +228,6 @@ export class PlayerCore {
     if (this._ticker) { clearInterval(this._ticker); this._ticker = null; }
   }
 
-  // ===== Sleep timer API =====
   setSleepTimer(ms) {
     try { this.clearSleepTimer(); } catch {}
     const n = Number(ms);
@@ -266,6 +268,10 @@ export class PlayerCore {
       });
     } catch {}
     try { navigator.mediaSession.playbackState = this.isPlaying() ? 'playing' : 'paused'; } catch {}
+  }
+
+  _installMediaSessionHandlersOnce() {
+    if (!('mediaSession' in navigator) || window.__msInstalled) return;
     try {
       const self = this;
       navigator.mediaSession.setActionHandler('play', () => self.play());
@@ -276,11 +282,7 @@ export class PlayerCore {
       navigator.mediaSession.setActionHandler('seekforward', (d) => self.seek((self.getSeek() || 0) + (d.seekOffset || 10)));
       navigator.mediaSession.setActionHandler('seekto', (d) => { if (typeof d.seekTime === 'number') self.seek(d.seekTime); });
       navigator.mediaSession.setActionHandler('stop', () => self.stop());
+      window.__msInstalled = true;
     } catch {}
-  }
-
-  _installMediaSessionHandlersOnce() {
-    // Хэндлеры действия ставим вместе с метаданными в _updateMediaSessionMeta
-    // чтобы не плодить дубли — достаточно вызывать при onplay/onTrackChange.
   }
 }
