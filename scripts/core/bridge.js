@@ -3,7 +3,7 @@
 // вешает обработчики событий, особенно onTick для обновления UI без отдельного setInterval.
 
 // Импорт ядра
-import { PlayerCore } from '../src/PlayerCore.js';
+import { PlayerCore } from '../../src/PlayerCore.js';
 
 // Безопасные геттеры глобальных настроек троттлинга
 function uiThrottleMs() {
