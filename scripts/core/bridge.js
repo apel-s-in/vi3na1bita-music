@@ -163,8 +163,18 @@ function call(fnName, ...args) {
             window.loadLyrics(track.lyrics);
           }
 
-          // Перерисовка блока плеера (если нужно) и подсветки
-          call('renderLyricsBlock');
+          const sameAlbum = !window.playingAlbumKey || window.playingAlbumKey === window.currentAlbumKey;
+
+          if (sameAlbum) {
+            // Пересоберём список (переместит плеер под текущую строку)
+            if (typeof window.buildTrackList === 'function') window.buildTrackList();
+          } else {
+            // Находимся в другом альбоме — только мини-режим
+            if (typeof window.applyMiniModeUI === 'function') window.applyMiniModeUI();
+          }
+
+          // Обновления UI
+          call('renderLyricsBlock'); // поддержка случаев, когда блока ещё не было
           call('updateMiniNowHeader');
           call('updateNextUpLabel');
           call('updatePlayPauseIcon');
