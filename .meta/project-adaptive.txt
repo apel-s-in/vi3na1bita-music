@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f3da4b7c24420297d34835e8789b4473178bb495.idx
-│   │       ├── pack-f3da4b7c24420297d34835e8789b4473178bb495.pack
-│   │       └── pack-f3da4b7c24420297d34835e8789b4473178bb495.rev
+│   │       ├── pack-0e059deba16bf4169af0cfb127a8080b5e53f30b.idx
+│   │       ├── pack-0e059deba16bf4169af0cfb127a8080b5e53f30b.pack
+│   │       └── pack-0e059deba16bf4169af0cfb127a8080b5e53f30b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -260,7 +260,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-11 15:42:44 UTC
+Сгенерировано: 2025-11-11 15:44:17 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3423,7 +3423,9 @@ ${lines}
   }
 
   function onVolumeSliderChange(e) {
-    const value = (e && e.target ? e.target.value : 100) / 100;
+    let raw = e && e.target ? e.target.value : 100;
+    let value = Number.isFinite(+raw) ? (+raw) / 100 : 1;
+    value = Math.max(0, Math.min(1, value));
     if (window.playerCore && typeof window.playerCore.setVolume === 'function') {
       window.playerCore.setVolume(value);
     }
@@ -3464,6 +3466,14 @@ ${lines}
     const progressBar = document.getElementById('player-progress-bar');
     if (progressBar) {
       progressBar.addEventListener('click', seekToPosition);
+      const fill = document.getElementById('player-progress-fill');
+      if (fill) {
+        fill.addEventListener('click', (e) => {
+          e.stopPropagation();
+          seekToPosition({ currentTarget: progressBar, clientX: e.clientX });
+        });
+      }
+
       const startDrag = (e)=>{
         let isDragging = true;
         const moveHandler = (e2) => {
@@ -3498,6 +3508,7 @@ ${lines}
     const volumeSlider = document.getElementById('volume-slider');
     if (volumeSlider) {
       volumeSlider.addEventListener('input', onVolumeSliderChange);
+      volumeSlider.addEventListener('change', onVolumeSliderChange);
       const savedVolume = parseFloat(localStorage.getItem('playerVolume') || '1');
       const volume = Number.isFinite(savedVolume) ? savedVolume : 1;
       volumeSlider.value = String(Math.round(volume * 100));
