@@ -379,7 +379,16 @@
     try { window.updateNextUpLabel && window.updateNextUpLabel(); } catch {}
     try { window.updateMiniNowHeader && window.updateMiniNowHeader(); } catch {}
     try { window.parseDeepLink && window.parseDeepLink(); } catch {}
-    try { window.updatePlayerCorePlaylistFromConfig && window.updatePlayerCorePlaylistFromConfig(); } catch {}
+    // Не перебиваем текущее воспроизведение при просмотре другого альбома (мини-режим)
+    try {
+      const pc = window.playerCore;
+      const browsingOther = (window.playingAlbumKey && window.currentAlbumKey && window.playingAlbumKey !== window.currentAlbumKey);
+      if (!(pc && typeof pc.isPlaying === 'function' && pc.isPlaying() && browsingOther)) {
+        window.updatePlayerCorePlaylistFromConfig && window.updatePlayerCorePlaylistFromConfig();
+      }
+      // Обновим мини-режим UI
+      window.applyMiniModeUI && window.applyMiniModeUI();
+    } catch {}
   }
 
   // Прогрев соседних альбомов
