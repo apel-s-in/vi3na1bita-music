@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8c999327a490239f5225082c498a214cd89f01a6.idx
-│   │       ├── pack-8c999327a490239f5225082c498a214cd89f01a6.pack
-│   │       └── pack-8c999327a490239f5225082c498a214cd89f01a6.rev
+│   │       ├── pack-024c3253cb1221bf434dafe757add6a5ce87feb7.idx
+│   │       ├── pack-024c3253cb1221bf434dafe757add6a5ce87feb7.pack
+│   │       └── pack-024c3253cb1221bf434dafe757add6a5ce87feb7.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -259,7 +259,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-11 11:14:09 UTC
+Сгенерировано: 2025-11-11 11:25:30 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6734,6 +6734,10 @@ export function renderLyricsBlock() {
 
 // экспорт в глобал
 window.UITracks = { buildTrackList, renderLyricsBlock };
+// Проброс в глобальные имена, которые вызывает остальной код (applyAlbumConfig и др.)
+window.buildTrackList = window.buildTrackList || buildTrackList;
+window.renderLyricsBlock = window.renderLyricsBlock || renderLyricsBlock;
+
 
 //=================================================
 // FILE: /albums/gallery/news/news-01-baner.html
