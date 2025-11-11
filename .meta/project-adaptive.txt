@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b90451ec0619e74872746bdd99762da84f79a390.idx
-│   │       ├── pack-b90451ec0619e74872746bdd99762da84f79a390.pack
-│   │       └── pack-b90451ec0619e74872746bdd99762da84f79a390.rev
+│   │       ├── pack-1c8701f1b5f2dea43a4add07dfd053e4f0d5467d.idx
+│   │       ├── pack-1c8701f1b5f2dea43a4add07dfd053e4f0d5467d.pack
+│   │       └── pack-1c8701f1b5f2dea43a4add07dfd053e4f0d5467d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-11 21:08:12 UTC
+Сгенерировано: 2025-11-11 21:08:32 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4082,107 +4082,47 @@ test('news page renders list or shows status', async ({ page }) => {
 //=================================================
 // FILE: /scripts/energy.js
 // scripts/energy.js (ESM)
-// Единый модуль энергосбережения и Wake Lock/Web Locks.
-// Функции работают поверх window.* переменных/утилит, объявленных в index.html.
+// Управление режимом энергосбережения ("молния").
 
 (function(){
-  function detectEnergySaver() {
-    try {
-      const nc = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-      const saveData = !!(nc && nc.saveData);
-      const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-      return saveData || reduced;
-    } catch { return false; }
+  const ECO_MODE_KEY = 'ecoModeActive';
+  let isEcoMode = false;
+
+  function applyEcoMode(isActive) {
+    document.body.classList.toggle('eco-mode', isActive);
+    const btn = document.querySelector('.eco-btn');
+    if (btn) btn.classList.toggle('eco-active', isActive);
+
+    // Здесь можно добавить логику для остановки/возобновления анимаций
+    if(isActive) {
+        if(typeof window.stopCoverAutoPlay === 'function') window.stopCoverAutoPlay();
+        // Остановить другие анимации...
+    } else {
+        if(typeof window.startCoverAutoPlay === 'function') window.startCoverAutoPlay();
+    }
   }
 
-  async function setPlaybackLocks(active) {
+  function toggleEcoMode() {
+    isEcoMode = !isEcoMode;
     try {
-      if (active) {
-        if (navigator.locks && typeof navigator.locks.request === 'function' && !window.__playbackLockReleaser) {
-          navigator.locks.request('audio-playback', { mode: 'shared' }, async () => {
-            await new Promise(resolve => { window.__playbackLockReleaser = resolve; });
-          }).catch(()=>{});
-        }
-        if ('wakeLock' in navigator && !document.hidden && !window.__wakeLock) {
-          try {
-            window.__wakeLock = await navigator.wakeLock.request('screen');
-            window.__wakeLock.addEventListener('release', () => { window.__wakeLock = null; }, { once: true });
-          } catch {}
-        }
-      } else {
-        if (window.__playbackLockReleaser) { try { window.__playbackLockReleaser(); } catch {} window.__playbackLockReleaser = null; }
-        if (window.__wakeLock) { try { await window.__wakeLock.release(); } catch {} window.__wakeLock = null; }
-      }
+      localStorage.setItem(ECO_MODE_KEY, isEcoMode ? '1' : '0');
     } catch {}
+    applyEcoMode(isEcoMode);
+    window.NotificationSystem?.info(isEcoMode ? '⚡ Эко-режим включен' : 'Эко-режим выключен');
   }
 
-  function applyEcoState(on, { silent = false } = {}) {
-    window.ultraEcoEnabled = !!on;
-    const ecoSec = Math.max(2, Math.min(60, parseInt(localStorage.getItem('ecoUiIntervalSec') || '5', 10)));
-    window.__uiUpdateMinIntervalMs = window.ultraEcoEnabled ? (ecoSec * 1000) : 1000;
-    window.__progressThrottleMs    = window.ultraEcoEnabled ? (ecoSec * 1000) : 1000;
-
-    if (window.ultraEcoEnabled) {
-      if (window.__savedAnimationBeforeEco == null) window.__savedAnimationBeforeEco = window.animationEnabled;
-      if (window.__savedBitBeforeEco == null) window.__savedBitBeforeEco = window.bitEnabled;
-      if (window.animationEnabled && typeof window.applyAnimationState === 'function') window.applyAnimationState(false);
-      if (window.bitEnabled && typeof window.stopLogoPulsation === 'function') window.stopLogoPulsation();
-      if (window.coverAutoplay) { try { clearInterval(window.coverAutoplay); } catch {} window.coverAutoplay = null; }
-    } else {
-      if (window.__savedAnimationBeforeEco != null && typeof window.applyAnimationState === 'function') window.applyAnimationState(window.__savedAnimationBeforeEco);
-      window.__savedAnimationBeforeEco = null;
-      if (window.__savedBitBeforeEco) {
-        try { window.initAudioContext && window.initAudioContext(); window.startLogoPulsation && window.startLogoPulsation(); } catch {}
-      }
-      window.__savedBitBeforeEco = null;
-      if (!window.coverAutoplay && Array.isArray(window.coverGalleryArr) && window.coverGalleryArr.length > 1 && !document.hidden && !window.energySaver) {
-        window.startCoverAutoPlay && window.startCoverAutoPlay();
-      }
+  function restoreEcoMode() {
+    try {
+      isEcoMode = localStorage.getItem(ECO_MODE_KEY) === '1';
+    } catch {
+      isEcoMode = false;
     }
-
-    try { localStorage.setItem('ultraEco', window.ultraEcoEnabled ? '1' : '0'); } catch {}
-    if (!silent && window.NotificationSystem) {
-      window.NotificationSystem.info(window.ultraEcoEnabled ? '⚡ Ультра‑эконом: ВКЛ' : '⚡ Ультра‑эконом: ВЫКЛ');
-    }
-    if (!document.hidden && typeof window.updateUiFromCoreOnce === 'function') window.updateUiFromCoreOnce();
+    applyEcoMode(isEcoMode);
   }
 
-  function applyEnergySaver(on) {
-    window.energySaver = !!on;
-    if (window.energySaver) {
-      if (window.__savedAnimationBeforeEnergy == null) window.__savedAnimationBeforeEnergy = window.animationEnabled;
-      if (window.__savedBitBeforeEnergy == null) window.__savedBitBeforeEnergy = window.bitEnabled;
-      if (window.animationEnabled && typeof window.applyAnimationState === 'function') window.applyAnimationState(false);
-      if (window.bitEnabled && typeof window.stopLogoPulsation === 'function') window.stopLogoPulsation();
-      if (window.coverAutoplay) { try { clearInterval(window.coverAutoplay); } catch {} window.coverAutoplay = null; }
-      if (!window.ultraEcoEnabled) { window.__ecoAutoFromEnergy = true; applyEcoState(true, { silent: true }); }
-    } else {
-      if (window.__savedAnimationBeforeEnergy != null && typeof window.applyAnimationState === 'function') window.applyAnimationState(window.__savedAnimationBeforeEnergy);
-      window.__savedAnimationBeforeEnergy = null;
-      if (window.__savedBitBeforeEnergy) { try { window.initAudioContext && window.initAudioContext(); window.startLogoPulsation && window.startLogoPulsation(); } catch {} }
-      window.__savedBitBeforeEnergy = null;
-      if (!window.coverAutoplay && Array.isArray(window.coverGalleryArr) && window.coverGalleryArr.length > 1 && !document.hidden) {
-        window.startCoverAutoPlay && window.startCoverAutoPlay();
-      }
-      if (window.__ecoAutoFromEnergy) {
-        window.__ecoAutoFromEnergy = false;
-        if (localStorage.getItem('ultraEco') !== '1') applyEcoState(false, { silent: true });
-      }
-    }
-  }
-
-  // Экспорт в глобал
-  window.Energy = {
-    detectEnergySaver,
-    setPlaybackLocks,
-    applyEcoState,
-    applyEnergySaver
-  };
-  // Бэкенды совместимости (индекс вызывает эти имена напрямую)
-  window.detectEnergySaver = detectEnergySaver;
-  window.applyEnergySaver = applyEnergySaver;
-  window.applyEcoState = applyEcoState;
-  window.setPlaybackLocks = setPlaybackLocks;
+  // Export
+  window.toggleEcoMode = toggleEcoMode;
+  window.restoreEcoMode = restoreEcoMode;
 })();
 
 //=================================================
