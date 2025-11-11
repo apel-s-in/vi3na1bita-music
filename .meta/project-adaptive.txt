@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d5dee2a4221dcababcd98410f9677856e67b6e73.idx
-│   │       ├── pack-d5dee2a4221dcababcd98410f9677856e67b6e73.pack
-│   │       └── pack-d5dee2a4221dcababcd98410f9677856e67b6e73.rev
+│   │       ├── pack-27358d5839a52d295a8d422944a36eb8e4864642.idx
+│   │       ├── pack-27358d5839a52d295a8d422944a36eb8e4864642.pack
+│   │       └── pack-27358d5839a52d295a8d422944a36eb8e4864642.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-11 21:17:59 UTC
+Сгенерировано: 2025-11-11 21:18:58 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3856,7 +3856,7 @@ async function loadAppModules() {
     // Модули логики приложения
     './app/albums.js',
     './app/player-controls.js',
-    './app/favorites.js',
+    './ui/favorites.js', // ИСПРАВЛЕН ПУТЬ
     './app/downloads.js',
     './app/navigation.js',
     './app/pwa.js',
