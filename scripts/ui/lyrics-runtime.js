@@ -1,148 +1,105 @@
 // scripts/ui/lyrics-runtime.js (ESM)
-// Вынос функций лирики и состояния в отдельный модуль.
-// Совместимость: все функции пробрасываются в window.*
+// Отображение и анимация текста песни (лирики).
 
 (function(){
-  // Состояние лирики (глобально)
-  let currentLyrics = [];
-  let lyricsViewMode = 'normal';
+  let lyricsData = []; // [{ time: 123.4, line: "text" }]
+  let lyricsCache = new Map();
 
-  // Троттлинг для подсветки
-  let __lyricsLastIdx = -1;
-  let __lyricsLastTs = 0;
-  const __lyricsMinIntervalBase = 250; // мс
-
-  function restoreLyricsViewMode() {
-    try {
-      const saved = localStorage.getItem('lyricsViewMode');
-      if (saved && ['normal','hidden','expanded'].includes(saved)) {
-        lyricsViewMode = saved;
-      }
-    } catch {}
-  }
-  function saveLyricsViewMode() {
-    try { localStorage.setItem('lyricsViewMode', lyricsViewMode); } catch {}
-  }
-  restoreLyricsViewMode();
-
-  function renderLyrics(time) {
-    if (!Array.isArray(currentLyrics) || currentLyrics.length === 0) {
-      const el = document.getElementById('lyrics');
-      if (el) el.innerHTML = '';
+  async function fetchAndCacheLyrics(url) {
+    if (!url) {
+        lyricsData = [];
+        return;
+    }
+    if (lyricsCache.has(url)) {
+      lyricsData = lyricsCache.get(url);
       return;
     }
-    const windowSize = (lyricsViewMode === 'expanded') ? 9 : 5;
-    const centerLine = Math.floor(windowSize / 2);
-    let active = 0;
-    for (let i = 0; i < currentLyrics.length; i++) {
-      if (time >= currentLyrics[i].time) active = i;
-      else break;
-    }
-    const start = Math.max(0, active - centerLine);
-    const padTop = Math.max(0, centerLine - active);
-    const rows = [];
-    for (let p = 0; p < padTop; ++p) rows.push('<div class="lyrics-window-line"></div>');
-    for (let i = start; i < Math.min(currentLyrics.length, start + windowSize - padTop); i++) {
-      const cls = (i === active) ? 'lyrics-window-line active' : 'lyrics-window-line';
-      const line = (currentLyrics[i] && currentLyrics[i].line) ? currentLyrics[i].line : '';
-      rows.push(`<div class="${cls}">${line}</div>`);
-    }
-    while (rows.length < windowSize) rows.push('<div class="lyrics-window-line"></div>');
-    const lyricsEl = document.getElementById('lyrics');
-    if (lyricsEl) lyricsEl.innerHTML = rows.join('');
-  }
-
-  function renderLyricsEnhanced(t) {
-    if (lyricsViewMode === 'hidden' || !Array.isArray(currentLyrics) || currentLyrics.length === 0) return;
-
-    const ecoIntervalMs = (window.ultraEcoEnabled || document.hidden)
-      ? Math.max(500, window.__uiUpdateMinIntervalMs || 1000)
-      : __lyricsMinIntervalBase;
-
-    // определяем активную строку
-    let idx = 0;
-    for (let i = 0; i < currentLyrics.length; i++) {
-      if (t >= currentLyrics[i].time) idx = i;
-      else break;
-    }
-    const now = performance.now();
-    if (idx === __lyricsLastIdx && (now - __lyricsLastTs) < ecoIntervalMs) return;
-
-    __lyricsLastIdx = idx;
-    __lyricsLastTs = now;
-    renderLyrics(t);
-  }
-
-  function toggleLyricsView() {
-    const modes = ['normal','hidden','expanded'];
-    lyricsViewMode = modes[(modes.indexOf(lyricsViewMode) + 1) % modes.length];
-    applyLyricsViewMode();
-    saveLyricsViewMode();
-    const msg = {
-      normal: '📝 Обычный вид лирики',
-      hidden: '🚫 Лирика скрыта',
-      expanded: '📖 Расширенный вид лирики'
-    }[lyricsViewMode];
-    try { window.NotificationSystem && window.NotificationSystem.info(msg); } catch {}
-  }
-
-  function applyLyricsViewMode() {
-    const w = document.getElementById('lyrics-window');
-    const btn = document.querySelector('.lyrics-toggle-btn');
-    if (!w || !btn) return;
-    w.classList.remove('lyrics-normal','lyrics-hidden','lyrics-expanded');
-    btn.classList.remove('lyrics-normal','lyrics-hidden','lyrics-expanded');
-    w.classList.add(`lyrics-${lyricsViewMode}`);
-    btn.classList.add(`lyrics-${lyricsViewMode}`);
-    if (lyricsViewMode === 'hidden') {
-      try { typeof window.applyAnimationState === 'function' && window.applyAnimationState(false); } catch {}
-    }
-  }
-
-  function formatTime(sec) {
-    if (!Number.isFinite(sec) || sec < 0) return '--:--';
-    const m = Math.floor(sec / 60);
-    const s = Math.floor(sec % 60);
-    return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-  }
-
-  // Утилита: загрузка JSON-лирики (оставим тут для удобства)
-  async function loadLyrics(file) {
-    currentLyrics = [];
-    const box = document.getElementById('lyrics');
-    if (box) box.innerHTML = '';
-    if (!file) return;
     try {
-      const r = await fetch(file, { cache: 'no-cache' });
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      const js = await r.json();
-      currentLyrics = Array.isArray(js) ? js : [];
-      renderLyrics(0);
-    } catch (err) {
-      currentLyrics = [];
-      if (box) {
-        const msg = (err && err.message) ? String(err.message) : 'ошибка';
-        box.innerHTML = `<div class="lyrics-window-line" style="opacity:.8">Лирика недоступна (${msg})</div>`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('not found');
+      const text = await response.text();
+      lyricsData = text.split('\n').map(line => {
+        const match = line.match(/^\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)/);
+        if (match) {
+          const min = parseInt(match[1], 10);
+          const sec = parseInt(match[2], 10);
+          const ms = parseInt(match[3].padEnd(3, '0'), 10);
+          return { time: min * 60 + sec + ms / 1000, line: match[4].trim() };
+        }
+        return null;
+      }).filter(Boolean);
+      lyricsCache.set(url, lyricsData);
+    } catch (e) {
+      console.error('Failed to fetch lyrics:', e);
+      lyricsData = [];
+    }
+  }
+
+  function updateLyrics(currentTime) {
+    if (!lyricsData.length) {
+        document.getElementById('lyrics-window-line1').textContent = '';
+        document.getElementById('lyrics-window-line2').textContent = 'Текст песни отсутствует';
+        document.getElementById('lyrics-window-line3').textContent = '';
+        return;
+    }
+
+    let currentLineIndex = -1;
+    for (let i = 0; i < lyricsData.length; i++) {
+      if (currentTime >= lyricsData[i].time) {
+        currentLineIndex = i;
+      } else {
+        break;
       }
     }
+
+    const line1 = document.getElementById('lyrics-window-line1');
+    const line2 = document.getElementById('lyrics-window-line2');
+    const line3 = document.getElementById('lyrics-window-line3');
+    
+    if (line1) line1.textContent = lyricsData[currentLineIndex - 1]?.line || '';
+    if (line2) {
+        line2.textContent = lyricsData[currentLineIndex]?.line || (currentLineIndex === -1 ? '...' : '');
+        line2.classList.toggle('active', currentLineIndex > -1);
+    }
+    if (line3) line3.textContent = lyricsData[currentLineIndex + 1]?.line || '';
+  }
+  
+  function toggleLyricsWindow(forceState) {
+    const lw = document.getElementById('lyrics-window');
+    if (!lw) return;
+
+    // cycle: hidden -> normal -> expanded -> hidden
+    let newState;
+    if(forceState !== undefined) {
+      newState = forceState;
+    } else {
+      if(lw.classList.contains('lyrics-hidden')) newState = 'normal';
+      else if(lw.classList.contains('lyrics-normal')) newState = 'expanded';
+      else newState = 'hidden';
+    }
+    
+    lw.classList.toggle('lyrics-hidden', newState === 'hidden');
+    lw.classList.toggle('lyrics-normal', newState === 'normal');
+    lw.classList.toggle('lyrics-expanded', newState === 'expanded');
+    
+    const btn = document.getElementById('lyrics-toggle-btn');
+    if(btn) {
+       btn.classList.toggle('lyrics-hidden', newState === 'hidden');
+       btn.classList.toggle('lyrics-normal', newState === 'normal');
+       btn.classList.toggle('lyrics-expanded', newState === 'expanded');
+    }
+    
+    localStorage.setItem('lyricsWindowState', newState);
+  }
+  
+  function restoreLyricsWindowState() {
+      const state = localStorage.getItem('lyricsWindowState') || 'normal';
+      toggleLyricsWindow(state);
   }
 
-  // Совместимость: экспорт в window.*
-  window.currentLyrics = currentLyrics;
-  Object.defineProperty(window, 'currentLyrics', {
-    get(){ return currentLyrics; },
-    set(v){ currentLyrics = Array.isArray(v) ? v : []; }
-  });
-  window.lyricsViewMode = lyricsViewMode;
-  Object.defineProperty(window, 'lyricsViewMode', {
-    get(){ return lyricsViewMode; },
-    set(v){ if (['normal','hidden','expanded'].includes(v)) { lyricsViewMode = v; saveLyricsViewMode(); } }
-  });
-
-  window.renderLyrics = renderLyrics;
-  window.renderLyricsEnhanced = renderLyricsEnhanced;
-  window.toggleLyricsView = toggleLyricsView;
-  window.applyLyricsViewMode = applyLyricsViewMode;
-  window.formatTime = formatTime;
-  window.loadLyrics = loadLyrics;
+  // Export
+  window.fetchAndCacheLyrics = fetchAndCacheLyrics;
+  window.updateLyrics = updateLyrics;
+  window.toggleLyricsWindow = toggleLyricsWindow;
+  window.restoreLyricsWindowState = restoreLyricsWindowState;
 })();
