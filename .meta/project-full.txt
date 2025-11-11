@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b6f1346448927e94687710b7b188ea8c9da1e90b.idx
-│   │       ├── pack-b6f1346448927e94687710b7b188ea8c9da1e90b.pack
-│   │       └── pack-b6f1346448927e94687710b7b188ea8c9da1e90b.rev
+│   │       ├── pack-5f755e4cabab8a052e49f109d7ca7fc1044eac71.idx
+│   │       ├── pack-5f755e4cabab8a052e49f109d7ca7fc1044eac71.pack
+│   │       └── pack-5f755e4cabab8a052e49f109d7ca7fc1044eac71.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -259,7 +259,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-11 11:50:29 UTC
+Сгенерировано: 2025-11-11 11:53:00 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2556,6 +2556,11 @@ async function clearCurrentOfflineResources() {
     const meta = albumByKey(key);
     if (!meta) { window.NotificationSystem && window.NotificationSystem.error && window.NotificationSystem.error('Альбом не найден'); return; }
 
+    // При уходе из «Избранного» — снимаем overrides
+    if (typeof window.exitFavoritesView === 'function') {
+      try { window.exitFavoritesView(); } catch {}
+    }
+
     // Если нажали на уже активный — просто показываем/скрываем галерею
     if (window.viewMode === 'album' && key === window.currentAlbumKey) {
       __currentGalleryVisible = !__currentGalleryVisible;
@@ -2890,7 +2895,36 @@ async function clearCurrentOfflineResources() {
   window.openRelizView = window.openRelizView || openRelizView;
   window.clearRelizView = window.clearRelizView || clearRelizView;
   window.buildSocials = window.buildSocials || buildSocials;
+
+  // Официальный экспорт для offline.js / favorites.js
+  window.__getAlbumConfigByKey = window.__getAlbumConfigByKey || (async function __getAlbumConfigByKey(akey) {
+    try {
+      // Вернем из кэша, если есть
+      if (akey && albumConfigCache[akey]?.config) return albumConfigCache[akey].config;
+
+      if (!window.albumsIndex || !window.albumsIndex.length) {
+        await (window.loadAlbumsIndex ? window.loadAlbumsIndex() : Promise.resolve());
+      }
+      const meta = (window.albumsIndex || []).find(a => a.key === akey);
+      if (!meta) return null;
+
+      const base = normalizeBase(meta.base);
+      const resp = await fetch(absJoin(base, 'config.json'), { cache: 'force-cache' });
+      if (!resp.ok) return null;
+      const data = await resp.json();
+      (data.tracks || []).forEach((t) => {
+        if (t.audio)    t.audio    = absJoin(base, t.audio);
+        if (t.lyrics)   t.lyrics   = absJoin(base, t.lyrics);
+        if (t.fulltext) t.fulltext = absJoin(base, t.fulltext);
+      });
+      albumConfigCache[akey] = { base, config: data };
+      return data;
+    } catch {
+      return null;
+    }
+  });
 })();
+
 
 //=================================================
 // FILE: /scripts/app/downloads.js
