@@ -108,13 +108,22 @@
 
   // Утилита: загрузка JSON-лирики (оставим тут для удобства)
   async function loadLyrics(file) {
+    currentLyrics = [];
+    const box = document.getElementById('lyrics');
+    if (box) box.innerHTML = '';
+    if (!file) return;
     try {
-      const r = await fetch(file);
+      const r = await fetch(file, { cache: 'no-cache' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
       const js = await r.json();
       currentLyrics = Array.isArray(js) ? js : [];
       renderLyrics(0);
-    } catch {
+    } catch (err) {
       currentLyrics = [];
+      if (box) {
+        const msg = (err && err.message) ? String(err.message) : 'ошибка';
+        box.innerHTML = `<div class="lyrics-window-line" style="opacity:.8">Лирика недоступна (${msg})</div>`;
+      }
     }
   }
 
