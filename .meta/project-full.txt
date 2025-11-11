@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4f5b4c9d7bd22d7fc70691981d22edff66676e73.idx
-│   │       ├── pack-4f5b4c9d7bd22d7fc70691981d22edff66676e73.pack
-│   │       └── pack-4f5b4c9d7bd22d7fc70691981d22edff66676e73.rev
+│   │       ├── pack-158571db474f3bca8d6bc8f80e4dae71b33003ae.idx
+│   │       ├── pack-158571db474f3bca8d6bc8f80e4dae71b33003ae.pack
+│   │       └── pack-158571db474f3bca8d6bc8f80e4dae71b33003ae.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -258,7 +258,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-10 22:38:42 UTC
+Сгенерировано: 2025-11-11 11:12:34 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3931,7 +3931,7 @@ console.log('PlayerCore JS/TS validation OK');
 // вешает обработчики событий, особенно onTick для обновления UI без отдельного setInterval.
 
 // Импорт ядра
-import { PlayerCore } from '../src/PlayerCore.js';
+import { PlayerCore } from '../../src/PlayerCore.js';
 
 // Безопасные геттеры глобальных настроек троттлинга
 function uiThrottleMs() {
