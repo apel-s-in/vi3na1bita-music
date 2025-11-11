@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-fa270de3406938f87a509393b288066db27d399e.idx
-│   │       ├── pack-fa270de3406938f87a509393b288066db27d399e.pack
-│   │       └── pack-fa270de3406938f87a509393b288066db27d399e.rev
+│   │       ├── pack-c93c8afcb24bd815591ae4e665b22b551684d64b.idx
+│   │       ├── pack-c93c8afcb24bd815591ae4e665b22b551684d64b.pack
+│   │       └── pack-c93c8afcb24bd815591ae4e665b22b551684d64b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -260,7 +260,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-11 12:21:40 UTC
+Сгенерировано: 2025-11-11 12:22:46 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4431,8 +4431,18 @@ function call(fnName, ...args) {
             window.loadLyrics(track.lyrics);
           }
 
-          // Перерисовка блока плеера (если нужно) и подсветки
-          call('renderLyricsBlock');
+          const sameAlbum = !window.playingAlbumKey || window.playingAlbumKey === window.currentAlbumKey;
+
+          if (sameAlbum) {
+            // Пересоберём список (переместит плеер под текущую строку)
+            if (typeof window.buildTrackList === 'function') window.buildTrackList();
+          } else {
+            // Находимся в другом альбоме — только мини-режим
+            if (typeof window.applyMiniModeUI === 'function') window.applyMiniModeUI();
+          }
+
+          // Обновления UI
+          call('renderLyricsBlock'); // поддержка случаев, когда блока ещё не было
           call('updateMiniNowHeader');
           call('updateNextUpLabel');
           call('updatePlayPauseIcon');
