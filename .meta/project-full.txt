@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-75cd0b24354171144fd4c2b65636de131a525847.idx
-│   │       ├── pack-75cd0b24354171144fd4c2b65636de131a525847.pack
-│   │       └── pack-75cd0b24354171144fd4c2b65636de131a525847.rev
+│   │       ├── pack-d5dee2a4221dcababcd98410f9677856e67b6e73.idx
+│   │       ├── pack-d5dee2a4221dcababcd98410f9677856e67b6e73.pack
+│   │       └── pack-d5dee2a4221dcababcd98410f9677856e67b6e73.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-11 21:13:01 UTC
+Сгенерировано: 2025-11-11 21:17:59 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2230,7 +2230,35 @@ async function clearCurrentOfflineResources() {
     const box = document.getElementById('album-icons');
     if (!box) return;
     box.querySelectorAll('.album-icon').forEach(el => {
-      const k = el.грузка списка альбомов
+      const k = el.getAttribute('data-akey');
+      el.classList.toggle('active', k && key && k === key);
+    });
+  }
+
+  function setAlbumHeaderTitle(key) {
+    const el = document.getElementById('active-album-title');
+    if (!el) return;
+    let title = '—';
+    let cls = '';
+
+    if (key === window.SPECIAL_FAVORITES_KEY) { title = '★ ★ ★ ИЗБРАННОЕ ★ ★ ★'; cls = 'fav'; }
+    else if (key === window.SPECIAL_RELIZ_KEY) { title = 'НОВОСТИ'; cls = 'news'; }
+    else {
+      const meta = albumByKey(key);
+      title = meta?.title || (window.config?.albumName || 'Альбом');
+    }
+
+    el.textContent = title;
+    el.title = title;
+    el.className = 'active-album-title' + (cls ? (' ' + cls) : '');
+  }
+
+  // Состояние загрузчика альбома
+  const albumConfigCache = {}; // { key: { base, config } }
+  let __albumLoadCtrl = null;
+  let __currentGalleryVisible = true;
+
+  // Загрузка списка альбомов
   async function loadAlbumsIndex() {
     const sel = document.getElementById('album-select');
     try {
@@ -2474,16 +2502,6 @@ async function clearCurrentOfflineResources() {
     try { const t = document.getElementById('album-title-modal'); if (t) t.textContent = (window.config.albumName || 'Альбом'); } catch {}
     buildSocials();
 
-    // Перемещаем слот плеера под «now-playing»
-    try {
-      const lp = document.getElementById('lyricsplayerblock');
-      const holder = document.getElementById('now-playing');
-      if (lp && holder && !holder.contains(lp)) {
-        holder.innerHTML = '';
-        holder.appendChild(lp);
-      }
-    } catch {}
-
     // UI обновления
     try { window.buildTrackList && window.buildTrackList(); } catch {}
     try { window.updateAvailableTracks && window.updateAvailableTracks(); } catch {}
@@ -2496,7 +2514,16 @@ async function clearCurrentOfflineResources() {
       const pc = window.playerCore;
       const browsingOther = (window.playingAlbumKey && window.currentAlbumKey && window.playingAlbumKey !== window.currentAlbumKey);
       if (!(pc && typeof pc.isPlaying === 'function' && pc.isPlaying() && browsingOther)) {
-        window.updatePlayerCorePlaylistFromConfig && window.updatePlayerCorePlaylistFromConfig();
+        // Эта функция не существует и вызывает ошибку. Закомментируем.
+        // window.updatePlayerCorePlaylistFromConfig && window.updatePlayerCorePlaylistFromConfig();
+        if (window.playerCore && typeof window.playerCore.setPlaylist === 'function') {
+           const albumMeta = {
+              artist: window.config?.artist || 'Витрина Разбита',
+              album: window.config?.albumName || 'Альбом',
+              cover: window.coverGalleryArr?.[0]?.formats?.full || 'img/logo.png'
+           };
+           window.playerCore.setPlaylist(window.config.tracks, 0, albumMeta);
+        }
       }
       // Обновим мини-режим UI
       window.applyMiniModeUI && window.applyMiniModeUI();
