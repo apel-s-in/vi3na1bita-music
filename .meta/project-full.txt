@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-91902a284ba2211441cb5632544916f8a9446d34.idx
-│   │       ├── pack-91902a284ba2211441cb5632544916f8a9446d34.pack
-│   │       └── pack-91902a284ba2211441cb5632544916f8a9446d34.rev
+│   │       ├── pack-0bd55e0d0ce1862449f375155faaabc50af865ff.idx
+│   │       ├── pack-0bd55e0d0ce1862449f375155faaabc50af865ff.pack
+│   │       └── pack-0bd55e0d0ce1862449f375155faaabc50af865ff.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -260,7 +260,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-11 12:29:49 UTC
+Сгенерировано: 2025-11-11 12:34:45 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5272,8 +5272,33 @@ initWhenReady();
           setTimeout(() => ev.target.classList.remove('animating'), 300);
         }
 
-        // Пересобираем «Избранное»
-        openFavoritesView({ keepPlaying: true });
+        // Обновим активность в текущей модели (не удаляем строку)
+        const stillLiked = Array.isArray(map[ref.__a]) && map[ref.__a].includes(ref.__t);
+        ref.__active = !!stillLiked;
+
+        // Обновим звездочки/классы на месте
+        try {
+          const row = document.getElementById(`fav_${ref.__a}_${ref.__t}`);
+          if (row) {
+            row.classList.toggle('inactive', !ref.__active);
+            const star = row.querySelector('.like-star');
+            if (star) {
+              star.src = ref.__active ? 'img/star.png' : 'img/star2.png';
+              star.title = ref.__active ? 'Убрать из понравившихся' : 'Добавить в понравившиеся';
+            }
+          }
+        } catch {}
+
+        // Плейлист PlayerCore должен содержать только активные — перестроим конфиг и обновим плейлист
+        try {
+          const active = (favoritesRefsModel || []).filter(x => x.__active);
+          const favCfg = favoritesToConfig(active);
+          window.config = favCfg;
+          window.updatePlayerCorePlaylistFromConfig && window.updatePlayerCorePlaylistFromConfig();
+        } catch {}
+
+        // Обновим мини-UI
+        try { window.applyMiniModeUI && window.applyMiniModeUI(); } catch {}
       };
 
       __overridesInstalled = true;
@@ -5401,10 +5426,37 @@ initWhenReady();
     favoritesRefsModel = [];
     window.favoritesRefsModel = [];
   }
-
+  function showInactiveFavoriteModal(ref) {
+    if (!ref) return;
+    let modal = document.getElementById('inactive-fav-modal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'inactive-fav-modal';
+      modal.className = 'modal-bg active';
+      modal.innerHTML = `
+        <div class="modal-feedback" style="max-width:420px;">
+          <button class="bigclose" onclick="this.closest('.modal-bg').remove()" title="Закрыть">
+            <svg viewBox="0 0 48 48"><line x1="12" y1="12" x2="36" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><line x1="36" y1="12" x2="12" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/></svg>
+          </button>
+          <div style="font-size:1.1em; font-weight:800; margin-bottom:8px;">Трек не в избранном</div>
+          <div style="color:#cfe3ff; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); border-radius:8px; padding:12px; line-height:1.5;">
+            «${ref.title || 'Трек'}» из альбома «${ref.album || 'Альбом'}» снят из избранного.<br>
+            Нажмите ⭐, чтобы вернуть его обратно.
+          </div>
+          <div style="display:flex; gap:10px; justify-content:center; margin-top:12px;">
+            <button class="offline-btn" onclick="this.closest('.modal-bg').remove()">Понятно</button>
+            <button class="offline-btn online" onclick="(function(){ try{ window.toggleLike && window.toggleLike(document.getElementById('fav_${ref.__a}_${ref.__t}').getAttribute('data-index')); }catch{}; document.getElementById('inactive-fav-modal')?.remove(); })()">Вернуть в ⭐</button>
+          </div>
+        </div>`;
+      document.body.appendChild(modal);
+    } else {
+      modal.classList.add('active');
+    }
+  }
   // Экспорт
   window.openFavoritesView = window.openFavoritesView || openFavoritesView;
   window.exitFavoritesView = window.exitFavoritesView || exitFavoritesView;
+  window.showInactiveFavoriteModal = window.showInactiveFavoriteModal || showInactiveFavoriteModal;
 })();
 
 //=================================================
