@@ -62,11 +62,7 @@ export class PlayerCore {
       src: [tr.src],
       html5: true,
       onend: () => {
-        // Автопереход нельзя отключить ничем, кроме паузы/стопа/таймера.
-        if (this.repeat) {
-          this.play();
-          return;
-        }
+        if (this.repeat) { this.play(); return; }
         this.next();
         this._fire('onEnd', tr, this.index);
       },
@@ -77,17 +73,15 @@ export class PlayerCore {
         this._updateMediaSessionMeta();
         this._startTicker();
       },
-      onpause: () => {
-        this._isPaused = true;
-        this._fire('onPause', tr, this.index);
-        this._stopTicker();
+      onpause: () => { this._isPaused = true; this._fire('onPause', tr, this.index); this._stopTicker(); },
+      onstop:  () => { this._isPaused = true; this._fire('onStop',  tr, this.index); this._stopTicker(); },
+      onplayerror: () => {
+        try { (this.howl as any).once('unlock', () => { try { (this.howl as any).play(); } catch {} }); } catch {}
       },
-      onstop: () => {
-        this._isPaused = true;
-        this._fire('onStop', tr, this.index);
-        this._stopTicker();
+      onloaderror: () => {
+        try { setTimeout(() => { try { if (this.howl && !this._isPaused) (this.howl as any).play(); } catch {} }, 200); } catch {}
       }
-    });
+    } as any);
 
     // Сохраним громкость, если задавали раньше глобально
     try {
