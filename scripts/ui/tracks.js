@@ -19,6 +19,7 @@ export function buildTrackList() {
   }
 
   // Рендер без inline-обработчиков: используем data-index + делегирование
+  let html = '';
   for (let i = 0; i < tracks.length; i++) {
     if (inFavorites) {
       const ref = tracks[i]; // favoritesRefsModel[i]
@@ -108,10 +109,9 @@ export function buildTrackList() {
         if (!Number.isInteger(idx) || idx < 0) return;
 
         if (inFavorites) {
-          const plIdx = parseInt(row.getAttribute('data-playlist-index') || '-1', 10);
-          const isInactive = row.classList.contains('inactive') || plIdx < 0;
+          // В избранном «серые» строки (inactive) не запускаем — предлагаем вернуть в ⭐
+          const isInactive = row.classList.contains('inactive');
           if (isInactive) {
-            // Неактивный избранный — показать модалку с предложением вернуть в избранное
             if (typeof window.showInactiveFavoriteModal === 'function') {
               const ref = (window.favoritesRefsModel || [])[idx];
               window.showInactiveFavoriteModal(ref);
@@ -120,8 +120,9 @@ export function buildTrackList() {
             }
             return;
           }
-          // В плейлисте PlayerCore индекс plIdx — запускаем его
-          window.pickAndPlayTrack && window.pickAndPlayTrack(plIdx);
+          // Пользователь кликнул явным действием — разрешено перестроить плейлист на избранное и сыграть индекс i
+          try { window.updatePlayerCorePlaylistFromConfig && window.updatePlayerCorePlaylistFromConfig(); } catch {}
+          window.pickAndPlayTrack && window.pickAndPlayTrack(idx);
           return;
         } else {
           window.pickAndPlayTrack && window.pickAndPlayTrack(idx);
