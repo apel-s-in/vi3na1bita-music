@@ -22,16 +22,19 @@
   }
   function toggleMute() {
     if (!window.playerCore) return;
+    const btn = document.getElementById('mute-btn');
     const saved = parseFloat(localStorage.getItem('playerVolume') || '1');
     const cur = (window.playerCore.getVolume && window.playerCore.getVolume()) || 1;
     if (cur > 0) {
-      localStorage.setItem('playerVolume', String(cur));
+      try { localStorage.setItem('playerVolume', String(cur)); } catch {}
       window.playerCore.setVolume(0);
       updateVolumeUI(0);
+      if (btn) btn.classList.add('active');
     } else {
       const vol = Number.isFinite(saved) && saved > 0 ? saved : 1;
       window.playerCore.setVolume(vol);
       updateVolumeUI(vol);
+      if (btn) btn.classList.remove('active');
     }
   }
 
@@ -89,16 +92,25 @@
       const volume = Number.isFinite(savedVolume) ? savedVolume : 1;
       volumeSlider.value = String(Math.round(volume * 100));
       updateVolumeUI(volume);
+      const muteBtn = document.getElementById('mute-btn');
+      if (muteBtn) muteBtn.classList.toggle('active', volume === 0);
     }
   }
 
   function togglePlayPause() {
     if (!window.playerCore) return;
-    if (window.playerCore.isPlaying && window.playerCore.isPlaying()) {
-      window.playerCore.pause();
+    const pc = window.playerCore;
+    if (pc.isPlaying && pc.isPlaying()) {
+      pc.pause();
+      return;
+    }
+    // Возобновление: если уже есть трек/позиция — без индекса, иначе стартуем с выбранного
+    const canResume = typeof pc.getDuration === 'function' && typeof pc.getSeek === 'function' && (pc.getDuration() || 0) > 0;
+    if (canResume) {
+      pc.play(); // резюмирует
     } else {
       const idx = (typeof window.playingTrack === 'number' && window.playingTrack >= 0) ? window.playingTrack : 0;
-      window.playerCore.play(idx);
+      pc.play(idx);
     }
   }
   function updatePlayPauseIcon() {
@@ -167,6 +179,52 @@
     try { window.playerCore && window.playerCore.setFavoritesOnly && window.playerCore.setFavoritesOnly(next, []); } catch {}
     try { window.updateNextUpLabel && window.updateNextUpLabel(); } catch {}
   }
+  // Анимация лирики и «бит»
+  function syncLyricsAnimationUI() {
+    const wnd = document.getElementById('lyrics-window');
+    const btn = document.getElementById('animation-btn');
+    if (wnd) wnd.classList.toggle('animation-active', !!window.animationEnabled);
+    // «фон» активируется в шаблоне через .lyrics-animated-bg.active; просто добавим класс к контейнеру для совместимости
+    if (wnd) {
+      const bg = wnd.querySelector('.lyrics-animated-bg');
+      if (bg) bg.classList.toggle('active', !!window.animationEnabled);
+    }
+    if (btn) btn.classList.toggle('animation-active', !!window.animationEnabled);
+  }
+  function toggleAnimation() {
+    window.animationEnabled = !window.animationEnabled;
+    try { localStorage.setItem('lyricsAnimation', window.animationEnabled ? '1' : '0'); } catch {}
+    syncLyricsAnimationUI();
+    if (window.NotificationSystem) window.NotificationSystem.info(window.animationEnabled ? '🌈 Анимация лирики: ВКЛ' : '🌈 Анимация лирики: ВЫКЛ');
+  }
+  function restoreAnimationFlag() {
+    try { window.animationEnabled = localStorage.getItem('lyricsAnimation') !== '0'; } catch { window.animationEnabled = true; }
+    syncLyricsAnimationUI();
+  }
+
+  // «Бит» (пульсация логотипа) — минимальная заглушка: только состояние и подсветка кнопки
+  function syncBitUI() {
+    const btn = document.getElementById('bit-btn');
+    if (btn) btn.classList.toggle('bit-active', !!window.bitEnabled);
+  }
+  function toggleBit() {
+    window.bitEnabled = !window.bitEnabled;
+    try { localStorage.setItem('bitEnabled', window.bitEnabled ? '1' : '0'); } catch {}
+    syncBitUI();
+    if (window.NotificationSystem) window.NotificationSystem.info(window.bitEnabled ? '💓 Пульсация: ВКЛ' : '💓 Пульсация: ВЫКЛ');
+  }
+  function restoreBitFlag() {
+    try { window.bitEnabled = localStorage.getItem('bitEnabled') === '1'; } catch { window.bitEnabled = false; }
+    syncBitUI();
+  }
+
+  // Автовосстановление флагов при первом старте контролов
+  (function bootstrapVisualFlagsOnce(){
+    if (window.__visualFlagsRestored) return;
+    window.__visualFlagsRestored = true;
+    restoreAnimationFlag();
+    restoreBitFlag();
+  })();
 
   // Экспорт
   window.updateVolumeUI = updateVolumeUI;
@@ -182,4 +240,6 @@
   window.toggleRepeat = toggleRepeat;
   window.toggleShuffle = toggleShuffle;
   window.toggleFavoritesOnly = toggleFavoritesOnly;
+  window.toggleAnimation = toggleAnimation;
+  window.toggleBit = toggleBit;
 })();
