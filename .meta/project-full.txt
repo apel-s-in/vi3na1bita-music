@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-be307a93c7c027f5324b688a440b9dcf4610ed32.idx
-│   │       ├── pack-be307a93c7c027f5324b688a440b9dcf4610ed32.pack
-│   │       └── pack-be307a93c7c027f5324b688a440b9dcf4610ed32.rev
+│   │       ├── pack-f3da4b7c24420297d34835e8789b4473178bb495.idx
+│   │       ├── pack-f3da4b7c24420297d34835e8789b4473178bb495.pack
+│   │       └── pack-f3da4b7c24420297d34835e8789b4473178bb495.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -260,7 +260,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-11 13:12:29 UTC
+Сгенерировано: 2025-11-11 15:42:44 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2269,6 +2269,8 @@ self.addEventListener('message', (event) => {
         await postToAllClients({ type: 'SW_INFO', info: { version: SW_VERSION } });
       }
     })());
+  }
+});
   }
     const list = Array.isArray(data.urls) ? data.urls
                 : (data.url ? [data.url] : []);
