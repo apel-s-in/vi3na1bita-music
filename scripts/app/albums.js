@@ -178,6 +178,11 @@
     const meta = albumByKey(key);
     if (!meta) { window.NotificationSystem && window.NotificationSystem.error && window.NotificationSystem.error('Альбом не найден'); return; }
 
+    // При уходе из «Избранного» — снимаем overrides
+    if (typeof window.exitFavoritesView === 'function') {
+      try { window.exitFavoritesView(); } catch {}
+    }
+
     // Если нажали на уже активный — просто показываем/скрываем галерею
     if (window.viewMode === 'album' && key === window.currentAlbumKey) {
       __currentGalleryVisible = !__currentGalleryVisible;
@@ -512,4 +517,33 @@
   window.openRelizView = window.openRelizView || openRelizView;
   window.clearRelizView = window.clearRelizView || clearRelizView;
   window.buildSocials = window.buildSocials || buildSocials;
+
+  // Официальный экспорт для offline.js / favorites.js
+  window.__getAlbumConfigByKey = window.__getAlbumConfigByKey || (async function __getAlbumConfigByKey(akey) {
+    try {
+      // Вернем из кэша, если есть
+      if (akey && albumConfigCache[akey]?.config) return albumConfigCache[akey].config;
+
+      if (!window.albumsIndex || !window.albumsIndex.length) {
+        await (window.loadAlbumsIndex ? window.loadAlbumsIndex() : Promise.resolve());
+      }
+      const meta = (window.albumsIndex || []).find(a => a.key === akey);
+      if (!meta) return null;
+
+      const base = normalizeBase(meta.base);
+      const resp = await fetch(absJoin(base, 'config.json'), { cache: 'force-cache' });
+      if (!resp.ok) return null;
+      const data = await resp.json();
+      (data.tracks || []).forEach((t) => {
+        if (t.audio)    t.audio    = absJoin(base, t.audio);
+        if (t.lyrics)   t.lyrics   = absJoin(base, t.lyrics);
+        if (t.fulltext) t.fulltext = absJoin(base, t.fulltext);
+      });
+      albumConfigCache[akey] = { base, config: data };
+      return data;
+    } catch {
+      return null;
+    }
+  });
 })();
+
