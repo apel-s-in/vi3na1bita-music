@@ -13,7 +13,9 @@
   }
 
   function onVolumeSliderChange(e) {
-    const value = (e && e.target ? e.target.value : 100) / 100;
+    let raw = e && e.target ? e.target.value : 100;
+    let value = Number.isFinite(+raw) ? (+raw) / 100 : 1;
+    value = Math.max(0, Math.min(1, value));
     if (window.playerCore && typeof window.playerCore.setVolume === 'function') {
       window.playerCore.setVolume(value);
     }
@@ -54,6 +56,14 @@
     const progressBar = document.getElementById('player-progress-bar');
     if (progressBar) {
       progressBar.addEventListener('click', seekToPosition);
+      const fill = document.getElementById('player-progress-fill');
+      if (fill) {
+        fill.addEventListener('click', (e) => {
+          e.stopPropagation();
+          seekToPosition({ currentTarget: progressBar, clientX: e.clientX });
+        });
+      }
+
       const startDrag = (e)=>{
         let isDragging = true;
         const moveHandler = (e2) => {
@@ -88,6 +98,7 @@
     const volumeSlider = document.getElementById('volume-slider');
     if (volumeSlider) {
       volumeSlider.addEventListener('input', onVolumeSliderChange);
+      volumeSlider.addEventListener('change', onVolumeSliderChange);
       const savedVolume = parseFloat(localStorage.getItem('playerVolume') || '1');
       const volume = Number.isFinite(savedVolume) ? savedVolume : 1;
       volumeSlider.value = String(Math.round(volume * 100));
