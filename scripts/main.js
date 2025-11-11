@@ -29,7 +29,7 @@ async function loadAppModules() {
     // Модули логики приложения
     './app/albums.js',
     './app/player-controls.js',
-    './app/favorites.js',
+    './ui/favorites.js', // ИСПРАВЛЕН ПУТЬ
     './app/downloads.js',
     './app/navigation.js',
     './app/pwa.js',
