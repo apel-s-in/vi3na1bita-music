@@ -168,8 +168,16 @@ function call(fnName, ...args) {
           if (sameAlbum) {
             // Пересоберём список (переместит плеер под текущую строку)
             if (typeof window.buildTrackList === 'function') window.buildTrackList();
+
+            // Дополнительно гарантируем перемещение блока прямо под текущую строку трека
+            const row = document.getElementById(`trk${idx}`);
+            const lp = document.getElementById('lyricsplayerblock');
+            if (row && lp && row.parentNode) {
+              if (row.nextSibling) row.parentNode.insertBefore(lp, row.nextSibling);
+              else row.parentNode.appendChild(lp);
+            }
           } else {
-            // Находимся в другом альбоме — только мини-режим
+            // Находимся в другом альбоме — мини-режим
             if (typeof window.applyMiniModeUI === 'function') window.applyMiniModeUI();
           }
 
