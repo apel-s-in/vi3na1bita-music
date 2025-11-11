@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1b715c575fb4280afdb1b2ccda59e8b633508695.idx
-│   │       ├── pack-1b715c575fb4280afdb1b2ccda59e8b633508695.pack
-│   │       └── pack-1b715c575fb4280afdb1b2ccda59e8b633508695.rev
+│   │       ├── pack-fa270de3406938f87a509393b288066db27d399e.idx
+│   │       ├── pack-fa270de3406938f87a509393b288066db27d399e.pack
+│   │       └── pack-fa270de3406938f87a509393b288066db27d399e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -260,7 +260,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-11 11:53:53 UTC
+Сгенерировано: 2025-11-11 12:21:40 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2758,7 +2758,16 @@ async function clearCurrentOfflineResources() {
     try { window.updateNextUpLabel && window.updateNextUpLabel(); } catch {}
     try { window.updateMiniNowHeader && window.updateMiniNowHeader(); } catch {}
     try { window.parseDeepLink && window.parseDeepLink(); } catch {}
-    try { window.updatePlayerCorePlaylistFromConfig && window.updatePlayerCorePlaylistFromConfig(); } catch {}
+    // Не перебиваем текущее воспроизведение при просмотре другого альбома (мини-режим)
+    try {
+      const pc = window.playerCore;
+      const browsingOther = (window.playingAlbumKey && window.currentAlbumKey && window.playingAlbumKey !== window.currentAlbumKey);
+      if (!(pc && typeof pc.isPlaying === 'function' && pc.isPlaying() && browsingOther)) {
+        window.updatePlayerCorePlaylistFromConfig && window.updatePlayerCorePlaylistFromConfig();
+      }
+      // Обновим мини-режим UI
+      window.applyMiniModeUI && window.applyMiniModeUI();
+    } catch {}
   }
 
   // Прогрев соседних альбомов
