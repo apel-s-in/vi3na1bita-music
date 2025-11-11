@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5e9d623d2db506fb3a1856a258a83939e4174b6b.idx
-│   │       ├── pack-5e9d623d2db506fb3a1856a258a83939e4174b6b.pack
-│   │       └── pack-5e9d623d2db506fb3a1856a258a83939e4174b6b.rev
+│   │       ├── pack-1901373467f8893a67008f0845f8e71a213ac17c.idx
+│   │       ├── pack-1901373467f8893a67008f0845f8e71a213ac17c.pack
+│   │       └── pack-1901373467f8893a67008f0845f8e71a213ac17c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-11 21:04:08 UTC
+Сгенерировано: 2025-11-11 21:05:40 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2230,35 +2230,7 @@ async function clearCurrentOfflineResources() {
     const box = document.getElementById('album-icons');
     if (!box) return;
     box.querySelectorAll('.album-icon').forEach(el => {
-      const k = el.getAttribute('data-akey');
-      el.classList.toggle('active', k && key && k === key);
-    });
-  }
-
-  function setAlbumHeaderTitle(key) {
-    const el = document.getElementById('active-album-title');
-    if (!el) return;
-    let title = '—';
-    let cls = '';
-
-    if (key === window.SPECIAL_FAVORITES_KEY) { title = '★ ★ ★ ИЗБРАННОЕ ★ ★ ★'; cls = 'fav'; }
-    else if (key === window.SPECIAL_RELIZ_KEY) { title = 'НОВОСТИ'; cls = 'news'; }
-    else {
-      const meta = albumByKey(key);
-      title = meta?.title || (window.config?.albumName || 'Альбом');
-    }
-
-    el.textContent = title;
-    el.title = title;
-    el.className = 'active-album-title' + (cls ? (' ' + cls) : '');
-  }
-
-  // Состояние загрузчика альбома
-  const albumConfigCache = {}; // { key: { base, config } }
-  let __albumLoadCtrl = null;
-  let __currentGalleryVisible = true;
-
-  // Загрузка списка альбомов
+      const k = el.грузка списка альбомов
   async function loadAlbumsIndex() {
     const sel = document.getElementById('album-select');
     try {
@@ -2695,7 +2667,6 @@ async function clearCurrentOfflineResources() {
     }
   });
 })();
-
 
 //=================================================
 // FILE: /scripts/app/downloads.js
