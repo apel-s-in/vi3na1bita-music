@@ -1,4 +1,4 @@
-// scripts/app/favorites.js (ESM)
+// scripts/ui/favorites.js (ESM)
 // Логика работы с избранными треками и соответствующим UI.
 
 (function(){
