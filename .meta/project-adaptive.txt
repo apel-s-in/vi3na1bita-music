@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-cb6859ab6d3c28c238e6a8f7e865b25dd9c7e9ec.idx
-│   │       ├── pack-cb6859ab6d3c28c238e6a8f7e865b25dd9c7e9ec.pack
-│   │       └── pack-cb6859ab6d3c28c238e6a8f7e865b25dd9c7e9ec.rev
+│   │       ├── pack-b4642df5dd48fc3dd89db1d9efc4fc137ec1b1fc.idx
+│   │       ├── pack-b4642df5dd48fc3dd89db1d9efc4fc137ec1b1fc.pack
+│   │       └── pack-b4642df5dd48fc3dd89db1d9efc4fc137ec1b1fc.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -262,7 +262,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-11 15:45:47 UTC
+Сгенерировано: 2025-11-11 16:02:26 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2220,7 +2220,6 @@ self.addEventListener('message', (event) => {
     event.waitUntil(writeOfflineProfile(data.profile || 'default'));
   }
   if (data.type === 'PREFETCH_AUDIO') {
-    // Поддерживаем одиночный url и массив urls (обратная совместимость)
     const list = Array.isArray(data.urls) ? data.urls : (data.url ? [data.url] : []);
     if (!list.length) return;
     event.waitUntil((async () => {
@@ -2269,30 +2268,6 @@ self.addEventListener('message', (event) => {
         await postToAllClients({ type: 'SW_INFO', info });
       } catch {
         await postToAllClients({ type: 'SW_INFO', info: { version: SW_VERSION } });
-      }
-    })());
-  }
-});
-  }
-    const list = Array.isArray(data.urls) ? data.urls
-                : (data.url ? [data.url] : []);
-    if (!list.length) return;
-    event.waitUntil((async () => {
-      for (const u of list) {
-        try {
-          const req = new Request(u, { cache: 'reload', keepalive: true });
-          const res = await fetch(req);
-          if (res && res.ok && res.status === 200 && await shouldCacheNonRangeAudio(res)) {
-            const cache = await caches.open(MEDIA_CACHE);
-            await cache.put(req, res.clone());
-            const size = bytesFromHeader(res) || 0;
-            await upsertMediaItem(req.url, {
-              size,
-              etag: res.headers.get('etag'),
-              lastModified: res.headers.get('last-modified')
-            });
-          }
-        } catch {}
       }
     })());
   }
