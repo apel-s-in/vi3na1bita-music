@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a07977ada1c7cca0e7ec4b6b9897d65eb4d77db0.idx
-│   │       ├── pack-a07977ada1c7cca0e7ec4b6b9897d65eb4d77db0.pack
-│   │       └── pack-a07977ada1c7cca0e7ec4b6b9897d65eb4d77db0.rev
+│   │       ├── pack-0b93ed0780acb4145eb9bb78a55768b7db03e815.idx
+│   │       ├── pack-0b93ed0780acb4145eb9bb78a55768b7db03e815.pack
+│   │       └── pack-0b93ed0780acb4145eb9bb78a55768b7db03e815.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -254,7 +254,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-12 20:12:02 UTC
+Сгенерировано: 2025-11-12 20:23:46 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3848,6 +3848,45 @@ jobs:
   function shouldUsePlaybackContext() { return playingAlbumKey === SPECIAL_FAVORITES_KEY || isBrowsingOtherAlbum(); }
 
   function previousTrack(){
+    // Новый плеер: ранний выход при включённом флаге
+    if (window.__useNewPlayerCore && window.playerCore) {
+      const pc = window.playerCore;
+
+      // Инициализация плейлиста при первом обращении
+      const hasLoaded = (typeof pc.getDuration === 'function') && ((pc.getDuration() || 0) > 0);
+      if (!hasLoaded) {
+        const payload = __buildPlayerCorePayload();
+        if (payload) {
+          try {
+            pc.setPlaylist(payload.tracks, payload.index, payload.meta);
+            try { pc.setShuffle(!!window.shuffleMode); } catch {}
+            try { pc.setRepeat(!!window.repeatMode); } catch {}
+            try { pc.setFavoritesOnly(!!window.favoritesOnlyMode, []); } catch {}
+          } catch {}
+        }
+      }
+
+      // Поведение Repeat: сначала в начало, затем play
+      if (repeatMode) {
+        try { pc.seek(0); pc.play(); } catch {}
+      } else {
+        try { pc.prev && pc.prev(); } catch {}
+      }
+
+      // Синхронизация UI с текущим индексом нового плеера (без запуска старого <audio>)
+      setTimeout(() => {
+        try {
+          const idx = (typeof pc.getIndex === 'function') ? pc.getIndex() : 0;
+          showTrack(idx, false);
+          updateMiniNowHeader();
+          updateNextUpLabel();
+          updatePlayPauseIcon();
+        } catch {}
+      }, 0);
+      return;
+    }
+
+    // СТАРОЕ ПОВЕДЕНИЕ (без флага)
     if (repeatMode) {
       const a = document.getElementById('audio'); if (a) { a.currentTime = 0; a.play().catch(()=>{}); }
       return;
@@ -3880,6 +3919,45 @@ jobs:
     showTrack(prev, true);
   }
   function nextTrack(){
+    // Новый плеер: ранний выход при включённом флаге
+    if (window.__useNewPlayerCore && window.playerCore) {
+      const pc = window.playerCore;
+
+      // Инициализация плейлиста при первом обращении
+      const hasLoaded = (typeof pc.getDuration === 'function') && ((pc.getDuration() || 0) > 0);
+      if (!hasLoaded) {
+        const payload = __buildPlayerCorePayload();
+        if (payload) {
+          try {
+            pc.setPlaylist(payload.tracks, payload.index, payload.meta);
+            try { pc.setShuffle(!!window.shuffleMode); } catch {}
+            try { pc.setRepeat(!!window.repeatMode); } catch {}
+            try { pc.setFavoritesOnly(!!window.favoritesOnlyMode, []); } catch {}
+          } catch {}
+        }
+      }
+
+      // Поведение Repeat: сначала в начало, затем play
+      if (repeatMode) {
+        try { pc.seek(0); pc.play(); } catch {}
+      } else {
+        try { pc.next && pc.next(); } catch {}
+      }
+
+      // Синхронизация UI с текущим индексом нового плеера (без запуска старого <audio>)
+      setTimeout(() => {
+        try {
+          const idx = (typeof pc.getIndex === 'function') ? pc.getIndex() : 0;
+          showTrack(idx, false);
+          updateMiniNowHeader();
+          updateNextUpLabel();
+          updatePlayPauseIcon();
+        } catch {}
+      }, 0);
+      return;
+    }
+
+    // СТАРОЕ ПОВЕДЕНИЕ (без флага)
     if (repeatMode) {
       const a = document.getElementById('audio'); if (a) { a.currentTime = 0; a.play().catch(()=>{}); }
       return;
@@ -3933,6 +4011,7 @@ jobs:
     const n = (currentTrack + 1) % config.tracks.length;
     showTrack(n, true);
   }
+
   function getAvailableTracksForAlbum(albumKey, tracksLen) {
     if (!tracksLen || tracksLen <= 0) return [];
     if (albumKey === SPECIAL_FAVORITES_KEY) {
