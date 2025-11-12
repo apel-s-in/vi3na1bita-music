@@ -474,6 +474,12 @@
       });
     })();
   </script>
+  <!-- Howler.js для нового ядра плеера (html5 audio) -->
+  <script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.core.min.js"></script>
+  <!-- Кнопка «О системе»: модуль отображения информации от Service Worker -->
+  <script src="./scripts/ui/sysinfo.js" defer></script>
+  <!-- Адаптер нового ядра плеера: создаёт window.playerCore (без вмешательства в UI) -->
+  <script type="module" src="./scripts/player-adapter.js"></script>
 </head>
 <body>
   <!-- Промокод -->
@@ -519,6 +525,7 @@
       <button id="download-album-main" onclick="openAlbumDownloadModal()">СКАЧАТЬ ВЕСЬ АЛЬБОМ</button>
 
       <button class="hotkeys-btn" id="hotkeys-btn" style="display:none;" onclick="showHotkeysModal()">ГОРЯЧИЕ КЛАВИШИ</button>
+      <button class="hotkeys-btn" id="sysinfo-btn" style="display:none;" onclick="showSystemInfo()">О СИСТЕМЕ</button>
       <span class="feedback-link" id="feedback-link">ОБРАТНАЯ СВЯЗЬ</span>
       <a class="support-link" id="support-link" href="#" target="_blank">ПОДДЕРЖАТЬ</a>
       <button class="offline-btn online" id="offline-btn" onclick="offlineUIClick()">ONLINE</button>
