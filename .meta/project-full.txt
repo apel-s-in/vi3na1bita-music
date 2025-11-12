@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-94c751305aa41bcafc9cf50245f601b0bb7f5987.idx
-│   │       ├── pack-94c751305aa41bcafc9cf50245f601b0bb7f5987.pack
-│   │       └── pack-94c751305aa41bcafc9cf50245f601b0bb7f5987.rev
+│   │       ├── pack-2a136eb322808ede3c13429cecf2331f2a3cd76c.idx
+│   │       ├── pack-2a136eb322808ede3c13429cecf2331f2a3cd76c.pack
+│   │       └── pack-2a136eb322808ede3c13429cecf2331f2a3cd76c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -242,8 +242,7 @@ vi3na1bita-music/
 │   │   ├── notify.js
 │   │   ├── offline.js
 │   │   ├── sleep.js
-│   │   ├── sysinfo.js
-│   │   └── tracks.js
+│   │   └── sysinfo.js
 │   ├── energy.js
 │   └── player-adapter.js
 ├── src/
@@ -259,7 +258,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-12 19:50:09 UTC
+Сгенерировано: 2025-11-12 19:50:21 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9013,55 +9012,6 @@ if ('serviceWorker' in navigator) {
 
 // Экспорт глобали для onclick
 window.showSystemInfo = showSystemInfo;
-
-//=================================================
-// FILE: /scripts/ui/tracks.js
-// scripts/ui/tracks.js (ESM)
-// Рендеринг списка треков и управление подсветкой.
-
-(function(){
-  function buildTrackList() {
-    const listEl = document.getElementById('track-list');
-    if (!listEl || !window.config || !Array.isArray(window.config.tracks)) return;
-    
-    const albumKey = window.currentAlbumKey;
-    const tracks = window.config.tracks;
-    
-    const html = tracks.map((track, index) => {
-      const isFav = window.isFavorite ? window.isFavorite(albumKey, index) : false;
-      return `
-        <div class="track ${isFav ? 'is-favorite' : ''}" data-idx="${index}" data-action="play-track">
-          <span class="tnum">${index + 1}.</span>
-          <span class="track-title">${track.title || 'Без названия'}</span>
-          <img class="like-star" 
-               src="${isFav ? 'img/star.svg' : 'img/star-outline.svg'}" 
-               alt="Избранное" 
-               data-action="toggle-favorite" 
-               data-album-key="${albumKey}" 
-               data-track-index="${index}">
-        </div>
-      `;
-    }).join('');
-    
-    listEl.innerHTML = html;
-  }
-
-  function updateCurrentTrackHighlight(trackIndex) {
-    const tracks = document.querySelectorAll('#track-list .track');
-    tracks.forEach(el => {
-      const isCurrent = el.dataset.idx === String(trackIndex);
-      el.classList.toggle('current', isCurrent);
-      if (isCurrent) {
-          // Плавный скролл к текущему треку
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    });
-  }
-
-  // Экспорт
-  window.buildTrackList = buildTrackList;
-  window.updateCurrentTrackHighlight = updateCurrentTrackHighlight;
-})();
 
 //=================================================
 // FILE: /albums/gallery/news/news-01-baner.html
