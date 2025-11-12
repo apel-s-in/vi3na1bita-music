@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-78c6402971d5c529071b7089163ac3b7c8d91952.idx
-│   │       ├── pack-78c6402971d5c529071b7089163ac3b7c8d91952.pack
-│   │       └── pack-78c6402971d5c529071b7089163ac3b7c8d91952.rev
+│   │       ├── pack-6c0969cdcbd3aa5f142c9ddd5b6cff461ea24b19.idx
+│   │       ├── pack-6c0969cdcbd3aa5f142c9ddd5b6cff461ea24b19.pack
+│   │       └── pack-6c0969cdcbd3aa5f142c9ddd5b6cff461ea24b19.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -228,8 +228,7 @@ vi3na1bita-music/
 │   │   ├── validate-manifest.mjs
 │   │   └── validate-playercore.mjs
 │   ├── core/
-│   │   ├── bootstrap.js
-│   │   └── bridge.js
+│   │   └── bootstrap.js
 │   ├── e2e/
 │   │   ├── smoke.spec.jsscripts/
 │   │   │   └── e2e/
@@ -262,7 +261,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-12 19:48:41 UTC
+Сгенерировано: 2025-11-12 19:49:00 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8014,86 +8013,6 @@ console.log('PlayerCore JS/TS validation OK');
   }
 
   window.initializeMainUi = initializeMainUi;
-})();
-
-//=================================================
-// FILE: /scripts/core/bridge.js
-// scripts/core/bridge.js (ESM)
-// Мост между ядром плеера (PlayerCore) и UI-модулями.
-// Слушает события от плеера и вызывает соответствующие функции обновления UI.
-
-(function(){
-  if (!window.playerCore) {
-    console.error("Player Core not initialized. Bridge cannot be created.");
-    return;
-  }
-  const pc = window.playerCore;
-
-  // Форматирование времени
-  const formatTime = (secs) => {
-    if (!Number.isFinite(secs) || secs < 0) return '0:00';
-    const minutes = Math.floor(secs / 60);
-    const seconds = Math.floor(secs % 60);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-  };
-
-  pc.on('play', (data) => {
-    if(window.updatePlayPauseIcon) window.updatePlayPauseIcon();
-    if(window.updateCurrentTrackHighlight) window.updateCurrentTrackHighlight(data.index);
-    document.body.classList.add('is-playing');
-  });
-
-  pc.on('pause', () => {
-    if(window.updatePlayPauseIcon) window.updatePlayPauseIcon();
-    document.body.classList.remove('is-playing');
-  });
-
-  pc.on('stop', () => {
-    if(window.updatePlayPauseIcon) window.updatePlayPauseIcon();
-    if(window.updateCurrentTrackHighlight) window.updateCurrentTrackHighlight(-1);
-    document.body.classList.remove('is-playing');
-    // Сброс UI времени/прогресса
-    document.getElementById('player-progress-fill').style.width = '0%';
-    document.getElementById('time-current').textContent = '0:00';
-    document.getElementById('time-duration').textContent = '0:00';
-  });
-  
-  pc.on('trackchange', (data) => {
-    window.playingAlbumKey = data.albumKey;
-    window.playingTrack = data.index;
-
-    if(window.updateCurrentTrackHighlight) window.updateCurrentTrackHighlight(data.index);
-    if(window.updateURLHash) window.updateURLHash(data.albumKey, data.index);
-    if(window.fetchAndCacheLyrics) window.fetchAndCacheLyrics(data.track?.lyrics);
-    if(window.applyMiniModeUI) window.applyMiniModeUI();
-    if(window.updateNextUpLabel) window.updateNextUpLabel();
-  });
-  
-  pc.on('playlistchange', () => {
-     if(window.updateNextUpLabel) window.updateNextUpLabel();
-     if(window.buildTrackList) window.buildTrackList(); // Перерисовать список, если плейлист изменился
-  });
-
-  pc.on('timeupdate', (data) => {
-    const { seek, duration } = data;
-    if (duration > 0 && !document.body.classList.contains('eco-mode')) {
-      const percent = (seek / duration) * 100;
-      document.getElementById('player-progress-fill').style.width = `${percent}%`;
-    }
-    document.getElementById('time-current').textContent = formatTime(seek);
-    document.getElementById('time-duration').textContent = formatTime(duration);
-    
-    if(window.updateLyrics && !document.body.classList.contains('eco-mode')) window.updateLyrics(seek);
-  });
-  
-  pc.on('volumechange', (volume) => {
-      if(window.updateVolumeUI) window.updateVolumeUI(volume);
-  });
-  
-  pc.on('error', (data) => {
-     window.NotificationSystem?.error(`Ошибка: ${data.message}`);
-  });
-
 })();
 
 //=================================================
