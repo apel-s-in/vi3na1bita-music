@@ -3312,6 +3312,45 @@
   function shouldUsePlaybackContext() { return playingAlbumKey === SPECIAL_FAVORITES_KEY || isBrowsingOtherAlbum(); }
 
   function previousTrack(){
+    // Новый плеер: ранний выход при включённом флаге
+    if (window.__useNewPlayerCore && window.playerCore) {
+      const pc = window.playerCore;
+
+      // Инициализация плейлиста при первом обращении
+      const hasLoaded = (typeof pc.getDuration === 'function') && ((pc.getDuration() || 0) > 0);
+      if (!hasLoaded) {
+        const payload = __buildPlayerCorePayload();
+        if (payload) {
+          try {
+            pc.setPlaylist(payload.tracks, payload.index, payload.meta);
+            try { pc.setShuffle(!!window.shuffleMode); } catch {}
+            try { pc.setRepeat(!!window.repeatMode); } catch {}
+            try { pc.setFavoritesOnly(!!window.favoritesOnlyMode, []); } catch {}
+          } catch {}
+        }
+      }
+
+      // Поведение Repeat: сначала в начало, затем play
+      if (repeatMode) {
+        try { pc.seek(0); pc.play(); } catch {}
+      } else {
+        try { pc.prev && pc.prev(); } catch {}
+      }
+
+      // Синхронизация UI с текущим индексом нового плеера (без запуска старого <audio>)
+      setTimeout(() => {
+        try {
+          const idx = (typeof pc.getIndex === 'function') ? pc.getIndex() : 0;
+          showTrack(idx, false);
+          updateMiniNowHeader();
+          updateNextUpLabel();
+          updatePlayPauseIcon();
+        } catch {}
+      }, 0);
+      return;
+    }
+
+    // СТАРОЕ ПОВЕДЕНИЕ (без флага)
     if (repeatMode) {
       const a = document.getElementById('audio'); if (a) { a.currentTime = 0; a.play().catch(()=>{}); }
       return;
@@ -3344,6 +3383,45 @@
     showTrack(prev, true);
   }
   function nextTrack(){
+    // Новый плеер: ранний выход при включённом флаге
+    if (window.__useNewPlayerCore && window.playerCore) {
+      const pc = window.playerCore;
+
+      // Инициализация плейлиста при первом обращении
+      const hasLoaded = (typeof pc.getDuration === 'function') && ((pc.getDuration() || 0) > 0);
+      if (!hasLoaded) {
+        const payload = __buildPlayerCorePayload();
+        if (payload) {
+          try {
+            pc.setPlaylist(payload.tracks, payload.index, payload.meta);
+            try { pc.setShuffle(!!window.shuffleMode); } catch {}
+            try { pc.setRepeat(!!window.repeatMode); } catch {}
+            try { pc.setFavoritesOnly(!!window.favoritesOnlyMode, []); } catch {}
+          } catch {}
+        }
+      }
+
+      // Поведение Repeat: сначала в начало, затем play
+      if (repeatMode) {
+        try { pc.seek(0); pc.play(); } catch {}
+      } else {
+        try { pc.next && pc.next(); } catch {}
+      }
+
+      // Синхронизация UI с текущим индексом нового плеера (без запуска старого <audio>)
+      setTimeout(() => {
+        try {
+          const idx = (typeof pc.getIndex === 'function') ? pc.getIndex() : 0;
+          showTrack(idx, false);
+          updateMiniNowHeader();
+          updateNextUpLabel();
+          updatePlayPauseIcon();
+        } catch {}
+      }, 0);
+      return;
+    }
+
+    // СТАРОЕ ПОВЕДЕНИЕ (без флага)
     if (repeatMode) {
       const a = document.getElementById('audio'); if (a) { a.currentTime = 0; a.play().catch(()=>{}); }
       return;
@@ -3397,6 +3475,7 @@
     const n = (currentTrack + 1) % config.tracks.length;
     showTrack(n, true);
   }
+
   function getAvailableTracksForAlbum(albumKey, tracksLen) {
     if (!tracksLen || tracksLen <= 0) return [];
     if (albumKey === SPECIAL_FAVORITES_KEY) {
