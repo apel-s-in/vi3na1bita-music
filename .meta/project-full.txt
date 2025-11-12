@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-7957ca3d26d9a0fb442bbe1c7fddf0d660152ebd.idx
-│   │       ├── pack-7957ca3d26d9a0fb442bbe1c7fddf0d660152ebd.pack
-│   │       └── pack-7957ca3d26d9a0fb442bbe1c7fddf0d660152ebd.rev
+│   │       ├── pack-0ab380d5c16dd4ca22c10824cba8332daf44f4c4.idx
+│   │       ├── pack-0ab380d5c16dd4ca22c10824cba8332daf44f4c4.pack
+│   │       └── pack-0ab380d5c16dd4ca22c10824cba8332daf44f4c4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -220,8 +220,7 @@ vi3na1bita-music/
 │   │   ├── albums.js
 │   │   ├── downloads.js
 │   │   ├── navigation.js
-│   │   ├── player-controls.js
-│   │   └── pwa.js
+│   │   └── player-controls.js
 │   ├── ci/
 │   │   ├── lint-sw.mjs
 │   │   ├── validate-content.mjs
@@ -255,7 +254,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-12 19:51:05 UTC
+Сгенерировано: 2025-11-12 19:51:35 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7601,95 +7600,6 @@ async function clearCurrentOfflineResources() {
   window.toggleFavoritesOnly = toggleFavoritesOnly;
   window.toggleAnimation = toggleAnimation;
   window.toggleBit = toggleBit;
-})();
-
-//=================================================
-// FILE: /scripts/app/pwa.js
-// scripts/app/pwa.js (ESM)
-// Логика, связанная с Progressive Web App: установка, service worker.
-
-(function(){
-  let deferredPrompt;
-
-  window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    const installBtn = document.getElementById('install-pwa-btn');
-    if (installBtn) installBtn.style.display = 'block';
-  });
-
-  async function installPWA() {
-    if (!deferredPrompt) {
-      // Показываем инструкцию для iOS/Safari
-      if (window.isMobileUA && /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.navigator.standalone) {
-          showIosInstallPrompt();
-      } else {
-          window.NotificationSystem?.info('Приложение уже установлено или браузер не поддерживает установку.');
-      }
-      return;
-    }
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if(outcome === 'accepted') {
-        const installBtn = document.getElementById('install-pwa-btn');
-        if (installBtn) installBtn.style.display = 'none';
-    }
-    deferredPrompt = null;
-  }
-
-  function showIosInstallPrompt() {
-    let prompt = document.querySelector('.ios-install-prompt');
-    if (!prompt) {
-      prompt = document.createElement('div');
-      prompt.className = 'ios-install-prompt';
-      prompt.innerHTML = `
-        <div class="ios-prompt-content">
-          <button class="ios-prompt-close">&times;</button>
-          <img src="icons/apple-touch-icon.png" class="ios-prompt-icon" alt="icon">
-          <h3>Установить приложение</h3>
-          <p>Нажмите <img src="img/ios-share.png" alt="share icon" style="height:1.3em; vertical-align:middle;">, а затем 'На экран "Домой"'.</p>
-        </div>
-      `;
-      document.body.appendChild(prompt);
-      prompt.querySelector('.ios-prompt-close').addEventListener('click', () => {
-        prompt.classList.remove('show');
-      });
-    }
-    setTimeout(() => prompt.classList.add('show'), 100);
-  }
-
-  // Service Worker Registration
-  function registerServiceWorker() {
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/service-worker.js')
-          .then(registration => {
-            console.log('ServiceWorker registration successful with scope: ', registration.scope);
-            // Логика для отображения кнопки "обновить" при наличии нового SW
-            registration.onupdatefound = () => {
-              const installingWorker = registration.installing;
-              if (installingWorker) {
-                installingWorker.onstatechange = () => {
-                  if (installingWorker.state === 'installed') {
-                    if (navigator.serviceWorker.controller) {
-                      // Новый контент доступен, пожалуйста, обновите.
-                      window.NotificationSystem?.info('Доступно обновление. Перезагрузите страницу.', { duration: 10000 });
-                    }
-                  }
-                };
-              }
-            };
-          }).catch(error => {
-            console.log('ServiceWorker registration failed: ', error);
-          });
-      });
-    }
-  }
-
-  registerServiceWorker();
-
-  // Export
-  window.installPWA = installPWA;
 })();
 
 //=================================================
