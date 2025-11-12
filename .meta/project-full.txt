@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-fe18393ec759631eb7afc427a0dd0cdf71acfafa.idx
-│   │       ├── pack-fe18393ec759631eb7afc427a0dd0cdf71acfafa.pack
-│   │       └── pack-fe18393ec759631eb7afc427a0dd0cdf71acfafa.rev
+│   │       ├── pack-a07977ada1c7cca0e7ec4b6b9897d65eb4d77db0.idx
+│   │       ├── pack-a07977ada1c7cca0e7ec4b6b9897d65eb4d77db0.pack
+│   │       └── pack-a07977ada1c7cca0e7ec4b6b9897d65eb4d77db0.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -254,7 +254,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-12 20:05:00 UTC
+Сгенерировано: 2025-11-12 20:12:02 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3661,10 +3661,105 @@ jobs:
     }
     updateVolumeUI(audio.volume);
   }
-  function togglePlayPause() { const a = getCurrentAudio(); if (!a) return; if (a.paused) { a.play().catch(()=>{}); } else { a.pause(); } }
+  // Вспомогательный билд-пакет для PlayerCore: собрать треки и метаданные из текущего конфига
+  function __buildPlayerCorePayload() {
+    try {
+      const pcfg = getPlayerConfig();
+      if (!pcfg || !Array.isArray(pcfg.tracks) || pcfg.tracks.length === 0) return null;
+
+      const cover =
+        (typeof playingCover === 'string' && playingCover) ||
+        (Array.isArray(window.coverGalleryArr) && window.coverGalleryArr[0] && (window.coverGalleryArr[0].formats?.full || window.coverGalleryArr[0].src)) ||
+        'img/logo.png';
+
+      const tracks = pcfg.tracks.map(t => ({
+        src: t.audio,
+        title: t.title,
+        artist: pcfg.artist || 'Витрина Разбита',
+        album: pcfg.albumName || 'Альбом',
+        cover,
+        lyrics: t.lyrics,
+        fulltext: t.fulltext || ''
+      }));
+      const meta = {
+        artist: pcfg.artist || 'Витрина Разбита',
+        album: pcfg.albumName || 'Альбом',
+        cover
+      };
+      const idx =
+        (typeof playingTrack === 'number' && playingTrack >= 0) ? playingTrack
+        : (typeof currentTrack === 'number' && currentTrack >= 0 ? currentTrack : 0);
+
+      return { tracks, index: idx, meta };
+    } catch {
+      return null;
+    }
+  }
+
+  function togglePlayPause() {
+    // Флаг по умолчанию не задан => используем старую схему
+    if (!window.__useNewPlayerCore || !window.playerCore) {
+      const a = getCurrentAudio(); if (!a) return;
+      if (a.paused) { a.play().catch(()=>{}); } else { a.pause(); }
+      return;
+    }
+
+    // Новый движок: при старте глушим старый <audio>, чтобы не было двойного звука
+    try {
+      const a = getCurrentAudio();
+      if (a && !a.paused) a.pause();
+    } catch {}
+
+    const pc = window.playerCore;
+
+    // Если уже проигрывает — ставим на паузу
+    if (typeof pc.isPlaying === 'function' && pc.isPlaying()) {
+      pc.pause();
+      setTimeout(() => { try { updatePlayPauseIcon(); } catch {} }, 0);
+      return;
+    }
+
+    // Готовим плейлист при первом старте (или если не загружен трек)
+    const hasLoaded = (typeof pc.getDuration === 'function') && ((pc.getDuration() || 0) > 0);
+    if (!hasLoaded) {
+      const payload = __buildPlayerCorePayload();
+      if (payload) {
+        try {
+          pc.setPlaylist(payload.tracks, payload.index, payload.meta);
+          // Применяем базовые режимы
+          try { pc.setShuffle(!!window.shuffleMode); } catch {}
+          try { pc.setRepeat(!!window.repeatMode); } catch {}
+          try {
+            // список избранных индексов для текущего альбома — позже добавим полноценно
+            pc.setFavoritesOnly(!!window.favoritesOnlyMode, []);
+          } catch {}
+        } catch {}
+      }
+    }
+
+    // Резюмируем/стартуем
+    try { pc.play(); } catch {}
+    setTimeout(() => { try { updatePlayPauseIcon(); } catch {} }, 0);
+  }
   function updatePlayPauseIcon() {
-    const a = document.getElementById('audio'), icon = document.getElementById('play-pause-icon'); if (!a || !icon) return;
-    icon.innerHTML = a.paused ? '<path d="M8 5v14l11-7z"/>' : '<path d="M6 6h4v12H6zM14 6h4v12h-4z"/>';
+    const icon = document.getElementById('play-pause-icon');
+    if (!icon) return;
+
+    // Когда включён новый движок — источник истины playerCore
+    if (window.__useNewPlayerCore && window.playerCore && typeof window.playerCore.isPlaying === 'function') {
+      const playing = !!window.playerCore.isPlaying();
+      icon.innerHTML = playing
+        ? '<path d="M6 6h4v12H6zM14 6h4v12h-4z"/>'
+        : '<path d="M8 5v14l11-7z"/>';
+      return;
+    }
+
+    // Иначе — как раньше, по <audio>
+    const a = document.getElementById('audio');
+    if (!a) return;
+    icon.innerHTML = a.paused
+      ? '<path d="M8 5v14l11-7z"/>'
+      : '<path d="M6 6h4v12H6zM14 6h4v12h-4z"/>';
   }
   function stopPlayback(){ const a = getCurrentAudio(); if (!a) return; a.pause(); a.currentTime = 0; updatePlayPauseIcon(); }
   function toggleRepeat(){ repeatMode = !repeatMode; const btn=document.getElementById('repeat-btn'); if (repeatMode) btn.classList.add('repeat-active'); else btn.classList.remove('repeat-active'); localStorage.setItem('repeatMode', repeatMode?'1':'0'); }
