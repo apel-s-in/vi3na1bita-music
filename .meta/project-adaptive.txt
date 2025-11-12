@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-69c94bb94f3b5ddd54269732064bba30c0bb8622.idx
-│   │       ├── pack-69c94bb94f3b5ddd54269732064bba30c0bb8622.pack
-│   │       └── pack-69c94bb94f3b5ddd54269732064bba30c0bb8622.rev
+│   │       ├── pack-f82965c59454cbc8098950a679d37559892fd66c.idx
+│   │       ├── pack-f82965c59454cbc8098950a679d37559892fd66c.pack
+│   │       └── pack-f82965c59454cbc8098950a679d37559892fd66c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -254,7 +254,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-12 20:04:24 UTC
+Сгенерировано: 2025-11-12 20:04:42 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7199,55 +7199,7 @@ async function clearCurrentOfflineResources() {
 
 //=================================================
 // FILE: /scripts/app/navigation.js
-// scripts/app/navigation.js (ESM)
-// Логика навигации, deep-linking и обработка хеша URL.
 
-(function(){
-  function parseDeepLink() {
-    try {
-      const hash = location.hash.replace(/^#/, '');
-      if (!hash) return;
-      const parts = hash.split('/');
-      const albumKey = parts[0];
-      const trackNum = parts[1] ? parseInt(parts[1], 10) : NaN;
-      
-      if (albumKey && window.albumByKey(albumKey)) {
-        if (window.currentAlbumKey !== albumKey) {
-          if(typeof window.loadAlbumByKey === 'function') {
-            window.loadAlbumByKey(albumKey).then(() => {
-              if (Number.isInteger(trackNum) && trackNum > 0) {
-                 if(window.playerCore) window.playerCore.play(trackNum - 1);
-              }
-            });
-          }
-        } else {
-           if (Number.isInteger(trackNum) && trackNum > 0) {
-              if(window.playerCore) window.playerCore.play(trackNum - 1);
-           }
-        }
-      }
-    } catch (e) {
-      console.error('Deep link parsing error:', e);
-    }
-  }
-
-  function updateURLHash(albumKey, trackIndex) {
-    if (!albumKey) return;
-    const trackNum = (typeof trackIndex === 'number' && trackIndex >= 0) ? trackIndex + 1 : '';
-    const newHash = `#${albumKey}${trackNum ? '/' + trackNum : ''}`;
-    if (location.hash !== newHash) {
-      // Используем replaceState, чтобы не засорять историю браузера при каждом переключении трека
-      history.replaceState(null, '', newHash);
-    }
-  }
-
-  // Слушаем изменения хеша (например, при навигации кнопками "назад/вперед" в браузере)
-  window.addEventListener('hashchange', parseDeepLink, false);
-
-  // Экспорт
-  window.parseDeepLink = parseDeepLink;
-  window.updateURLHash = updateURLHash;
-})();
 
 //=================================================
 // FILE: /scripts/app/player-controls.js
