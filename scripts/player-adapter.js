@@ -1,50 +1,51 @@
 // scripts/player-adapter.js (ESM)
-// Адаптер для создания и настройки ядра плеера PlayerCore (Howler.js).
+// Адаптер: создаём window.playerCore на основе src/PlayerCore.js,
+// не вмешиваясь в существующий UI и <audio> на этом этапе.
 
-// Предполагается, что ваш PlayerCore находится в 'src/PlayerCore.js'
-// и является ESM-модулем, экспортирующим класс PlayerCore.
-// Если это не так, адаптируйте импорт.
-import PlayerCore from '../src/PlayerCore.js';
+import { PlayerCore } from '../src/PlayerCore.js';
 
-(function() {
+(function initPlayerCoreAdapter() {
   if (window.playerCore) return;
 
-  const savedVolume = parseFloat(localStorage.getItem('playerVolume') || '1');
-  
-  const player = new PlayerCore({
-    volume: Number.isFinite(savedVolume) ? savedVolume : 1,
-    repeat: localStorage.getItem('repeatMode') === '1',
-    shuffle: localStorage.getItem('shuffleMode') === '1',
-    favoritesOnly: localStorage.getItem('favoritesOnlyMode') === '1',
-    initialFavorites: Array.from(window.getFavorites ? window.getFavorites().keys() : []),
+  // Создаём ядро без событий (позже навесим onTick/onPlay и т.п. при маршрутизации UI)
+  const pc = new PlayerCore();
 
-    // Функция, которая предоставляет плееру актуальный плейлист
-    getPlaylist: () => {
-        // В режиме "Избранное" плейлист формируется особым образом
-        if (window.viewMode === 'favorites') {
-            const favs = Array.from((window.getFavorites ? window.getFavorites().values() : []) || []);
-            return favs.map(f => ({ ...f, audio: f.audio, title: f.title }));
-        }
-        // В обычном режиме
-        return window.config?.tracks || [];
-    },
-    
-    // Функция для получения метаданных альбома
-    getAlbumMeta: () => ({
-        key: window.currentAlbumKey,
-        title: window.config?.albumName || 'Витрина Разбита'
-    }),
-    
-    // Функция для получения URL обложки
-    getCover: () => {
-        const cover = window.coverGalleryArr?.[0];
-        return cover?.formats?.full || cover?.src || 'img/logo.png';
+  // Применим сохранённые режимы (без влияния на текущий <audio>)
+  try {
+    const vol = parseFloat(localStorage.getItem('playerVolume') || '1');
+    if (Number.isFinite(vol)) pc.setVolume(vol);
+  } catch {}
+  try { pc.setRepeat(localStorage.getItem('repeatMode') === '1'); } catch {}
+  try { pc.setShuffle(localStorage.getItem('shuffleMode') === '1'); } catch {}
+  try {
+    const favOnly = localStorage.getItem('favoritesOnlyMode') === '1';
+    // Пока не передаём список «избранных» индексов — заполним позже при реальной маршрутизации
+    pc.setFavoritesOnly(favOnly, []);
+  } catch {}
+
+  // Экспортируем в глобальную область
+  window.playerCore = pc;
+
+  // Если уже загружен альбом — передадим плейлист (снимок из текущей конфигурации)
+  try {
+    if (window.config && Array.isArray(window.config.tracks)) {
+      const tracks = (window.config.tracks || []).map(t => ({
+        src: t.audio,
+        title: t.title,
+        artist: window.config.artist || 'Витрина Разбита',
+        album: window.config.albumName || 'Альбом',
+        cover: (window.coverGalleryArr?.[0]?.formats?.full) || 'img/logo.png',
+        lyrics: t.lyrics,
+        fulltext: t.fulltext || ''
+      }));
+      const meta = {
+        artist: window.config.artist || 'Витрина Разбита',
+        album: window.config.albumName || 'Альбом',
+        cover: (window.coverGalleryArr?.[0]?.formats?.full) || 'img/logo.png'
+      };
+      pc.setPlaylist(tracks, 0, meta);
     }
-  });
+  } catch {}
 
-  window.playerCore = player;
-  
-  // Обновляем громкость в UI после инициализации
-  if(typeof window.updateVolumeUI === 'function') window.updateVolumeUI(player.getVolume());
-
+  // Никаких обработчиков событий и управления DOM пока не вешаем — UI остаётся в старом режиме
 })();
