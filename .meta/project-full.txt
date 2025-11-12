@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-37a6f10d889db9123412a09361ac8a850b7abff7.idx
-│   │       ├── pack-37a6f10d889db9123412a09361ac8a850b7abff7.pack
-│   │       └── pack-37a6f10d889db9123412a09361ac8a850b7abff7.rev
+│   │       ├── pack-f3af928ce2f944466a2342d8a566b4638d8390a3.idx
+│   │       ├── pack-f3af928ce2f944466a2342d8a566b4638d8390a3.pack
+│   │       └── pack-f3af928ce2f944466a2342d8a566b4638d8390a3.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -239,7 +239,6 @@ vi3na1bita-music/
 │   │   ├── gallery.js
 │   │   ├── modals.js
 │   │   ├── notify.js
-│   │   ├── offline.js
 │   │   ├── sleep.js
 │   │   └── sysinfo.js
 │   ├── energy.js
@@ -257,7 +256,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-12 19:50:34 UTC
+Сгенерировано: 2025-11-12 19:50:48 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8660,63 +8659,6 @@ import PlayerCore from '../src/PlayerCore.js';
   };
 
   window.NotificationSystem = NotificationSystem;
-})();
-
-//=================================================
-// FILE: /scripts/ui/offline.js
-// scripts/ui/offline.js (ESM)
-// Управление UI для оффлайн-режима.
-
-(function(){
-  function updateOfflineButtonState(state) {
-      const btn = document.getElementById('offline-btn');
-      if(!btn) return;
-      btn.classList.remove('online', 'offline', 'syncing');
-      btn.classList.add(state.status); // 'online', 'offline', 'syncing'
-      btn.textContent = state.status.toUpperCase();
-      
-      const progressWrap = document.querySelector('.offline-progress');
-      if (progressWrap) progressWrap.style.display = state.status === 'syncing' ? 'block' : 'none';
-  }
-  
-  function updateOfflineProgress(data) {
-      const { progress, total, currentFile } = data;
-      const bar = document.querySelector('.offline-progress-bar');
-      const desc = document.querySelector('.offline-desc');
-      if (bar) bar.style.width = `${(progress / total) * 100}%`;
-      if (desc) desc.textContent = `Кэширование: ${progress} / ${total}`;
-  }
-
-  function handleOfflineButtonClick() {
-    if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) {
-        window.NotificationSystem?.error('Service Worker не активен. Офлайн-режим недоступен.');
-        return;
-    }
-    window.NotificationSystem?.info('Запрос на переключение офлайн-режима отправлен...');
-    navigator.serviceWorker.controller.postMessage({ type: 'TOGGLE_OFFLINE' });
-  }
-
-  // Слушаем сообщения от Service Worker
-  navigator.serviceWorker.addEventListener('message', event => {
-    const { type, payload } = event.data;
-    if (type === 'OFFLINE_STATUS_UPDATE') {
-        updateOfflineButtonState(payload);
-    } else if (type === 'OFFLINE_PROGRESS') {
-        updateOfflineProgress(payload);
-    } else if (type === 'OFFLINE_COMPLETE') {
-        window.NotificationSystem?.success('Офлайн-кэш успешно обновлен!');
-        updateOfflineButtonState({ status: 'offline' });
-    } else if (type === 'CACHE_CLEANED') {
-        window.NotificationSystem?.info('Старый кэш очищен.');
-    }
-  });
-
-  // Запрашиваем начальный статус при загрузке
-  navigator.serviceWorker.ready.then(reg => {
-      reg.active?.postMessage({ type: 'GET_OFFLINE_STATUS' });
-  });
-
-  window.handleOfflineButtonClick = handleOfflineButtonClick;
 })();
 
 //=================================================
