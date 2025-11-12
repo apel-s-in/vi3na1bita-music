@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-99cbc943887b8b0027e05242fa6e9e67c9866227.idx
-│   │       ├── pack-99cbc943887b8b0027e05242fa6e9e67c9866227.pack
-│   │       └── pack-99cbc943887b8b0027e05242fa6e9e67c9866227.rev
+│   │       ├── pack-d7a0301dced3099bed2fa0ecff99a96b3ac0aa80.idx
+│   │       ├── pack-d7a0301dced3099bed2fa0ecff99a96b3ac0aa80.pack
+│   │       └── pack-d7a0301dced3099bed2fa0ecff99a96b3ac0aa80.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -254,7 +254,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-12 19:58:15 UTC
+Сгенерировано: 2025-11-12 19:59:56 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1010,6 +1010,12 @@ jobs:
       });
     })();
   </script>
+  <!-- Howler.js для нового ядра плеера (html5 audio) -->
+  <script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.core.min.js"></script>
+  <!-- Кнопка «О системе»: модуль отображения информации от Service Worker -->
+  <script src="./scripts/ui/sysinfo.js" defer></script>
+  <!-- Адаптер нового ядра плеера: создаёт window.playerCore (без вмешательства в UI) -->
+  <script type="module" src="./scripts/player-adapter.js"></script>
 </head>
 <body>
   <!-- Промокод -->
@@ -1055,6 +1061,7 @@ jobs:
       <button id="download-album-main" onclick="openAlbumDownloadModal()">СКАЧАТЬ ВЕСЬ АЛЬБОМ</button>
 
       <button class="hotkeys-btn" id="hotkeys-btn" style="display:none;" onclick="showHotkeysModal()">ГОРЯЧИЕ КЛАВИШИ</button>
+      <button class="hotkeys-btn" id="sysinfo-btn" style="display:none;" onclick="showSystemInfo()">О СИСТЕМЕ</button>
       <span class="feedback-link" id="feedback-link">ОБРАТНАЯ СВЯЗЬ</span>
       <a class="support-link" id="support-link" href="#" target="_blank">ПОДДЕРЖАТЬ</a>
       <button class="offline-btn online" id="offline-btn" onclick="offlineUIClick()">ONLINE</button>
