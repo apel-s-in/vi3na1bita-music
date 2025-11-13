@@ -1746,18 +1746,28 @@
     document.addEventListener('resume', () => {
       console.log('App resuming from freeze state');
       const savedPosition = localStorage.getItem('freezePosition');
-      if (savedPosition) {
-        const pos = parseFloat(savedPosition);
-        if (!isNaN(pos)) {
-          __savedResumePosition = pos;
-          try {
-            const pc = (window.__useNewPlayerCore && window.playerCore) ? window.playerCore : null;
-            if (pc) pc.seek(pos);
-          } catch {}
-          syncUiFromPlayback();
+      localStorage.removeItem('freezePosition');
+      if (!savedPosition) return;
+      const pos = parseFloat(savedPosition);
+      if (isNaN(pos)) return;
+
+      const TOL = 0.75;
+      const pc = (window.__useNewPlayerCore && window.playerCore) ? window.playerCore : null;
+      if (pc) {
+        try {
+          const cur = Number(pc.getSeek?.() || 0);
+          if (!Number.isFinite(cur) || cur < (pos - TOL)) pc.seek(pos);
+        } catch {}
+      } else {
+        const a = document.getElementById('audio');
+        if (a) {
+          const cur = Number(a.currentTime || 0);
+          if (!Number.isFinite(cur) || cur < (pos - TOL)) {
+            try { a.currentTime = pos; } catch {}
+          }
         }
-        localStorage.removeItem('freezePosition');
       }
+      syncUiFromPlayback();
     });
 
     // Потеря фокуса в скрытом состоянии — только сохранить позицию
@@ -1802,22 +1812,31 @@
       });
 
       window.addEventListener('pageshow', (e) => {
-        if (e.persisted) {
-          console.log('iOS pageshow with persisted state - app returning from background');
-          const savedPosition = localStorage.getItem('iosBackgroundPosition');
-          if (savedPosition) {
-            const pos = parseFloat(savedPosition);
-            if (!isNaN(pos)) {
-              __savedResumePosition = pos;
-              try {
-                const pc = (window.__useNewPlayerCore && window.playerCore) ? window.playerCore : null;
-                if (pc) pc.seek(pos);
-              } catch {}
-              syncUiFromPlayback();
+        if (!e.persisted) return;
+        console.log('iOS pageshow with persisted state - app returning from background');
+        const savedPosition = localStorage.getItem('iosBackgroundPosition');
+        localStorage.removeItem('iosBackgroundPosition');
+        if (!savedPosition) return;
+        const pos = parseFloat(savedPosition);
+        if (isNaN(pos)) return;
+
+        const TOL = 0.75;
+        const pc = (window.__useNewPlayerCore && window.playerCore) ? window.playerCore : null;
+        if (pc) {
+          try {
+            const cur = Number(pc.getSeek?.() || 0);
+            if (!Number.isFinite(cur) || cur < (pos - TOL)) pc.seek(pos);
+          } catch {}
+        } else {
+          const a = document.getElementById('audio');
+          if (a) {
+            const cur = Number(a.currentTime || 0);
+            if (!Number.isFinite(cur) || cur < (pos - TOL)) {
+              try { a.currentTime = pos; } catch {}
             }
-            localStorage.removeItem('iosBackgroundPosition');
           }
         }
+        syncUiFromPlayback();
       });
     }
   }
@@ -2074,101 +2093,80 @@
         const pc = (window.__useNewPlayerCore && window.playerCore) ? window.playerCore : null;
         const a = pc ? null : document.getElementById('audio');
         const isHidden = document.hidden;
-  
+
         if (isHidden) {
-          // Сохраняем текущее состояние (через PlayerCore или <audio>)
+          // Сохраняем состояние только для возможного fallback
           __wasPlayingBeforeHidden = pc ? !!pc.isPlaying?.() : !!(a && !a.paused);
           __savedResumePosition = pc ? (pc.getSeek?.() || 0) : (a ? a.currentTime : 0);
-    
-          // Останавливаем UI-анимации для экономии ресурсов
+
+          // Отключаем тяжёлый UI
           if (coverAutoplay) { clearInterval(coverAutoplay); coverAutoplay = null; }
-          if (animationEnabled) { 
-            window.__savedAnimationState = animationEnabled;
-            applyAnimationState(false);
-          }
-          if (bitEnabled) { 
-            window.__savedBitState = bitEnabled;
-            stopLogoPulsation(); 
-          }
-    
-          // Для iOS: поддержать аудиоконтекст (только для старого <audio>)
+          if (animationEnabled) { window.__savedAnimationState = animationEnabled; applyAnimationState(false); }
+          if (bitEnabled) { window.__savedBitState = bitEnabled; stopLogoPulsation(); }
+
+          // Только для старого <audio> на iOS: подпинываем аудиоконтекст
           if (!pc && isIOS() && __wasPlayingBeforeHidden) {
             resumeAudioContextIfNeeded();
-            setTimeout(() => {
-              if (document.hidden && a && a.paused) {
-                a.play().catch(e => console.warn('iOS background resume failed', e));
-              }
-            }, 1000);
+            setTimeout(() => { if (document.hidden && a && a.paused) a.play().catch(e => console.warn('iOS background resume failed', e)); }, 1000);
           }
-    
           console.log('App going to background, position saved:', __savedResumePosition);
         } else {
-          // Возврат из фона: только UI и синхронизация
+          // Возврат из фона: только UI
           checkSleepTimer();
-    
-          if (isIOS()) {
-            resumeAudioContextIfNeeded();
-          }
-    
-          // Если музыка играла до ухода в фон и не остановлена таймером сна
+          if (isIOS()) resumeAudioContextIfNeeded();
+
+          // Если музыка играла до ухода в фон и не было таймера сна — не отматываем.
+          // Восстанавливаем позицию только если она реально потерялась (меньше сохранённой > 0.75с).
+          const TOL = 0.75;
           if (__wasPlayingBeforeHidden && !sleepTimerTarget) {
             if (pc) {
-              // Только восстановим позицию (не форсируем play тут, PlayerCore сам держит состояние)
-              if (typeof __savedResumePosition === 'number' && !isNaN(__savedResumePosition)) {
+              const cur = Number(pc.getSeek?.() || 0);
+              const needRestore = (typeof __savedResumePosition === 'number' && !isNaN(__savedResumePosition)) &&
+                                  (!Number.isFinite(cur) || cur < (__savedResumePosition - TOL));
+              if (needRestore) {
                 try { pc.seek(__savedResumePosition); } catch (e) { console.warn('Failed to restore PC position', e); }
               }
             } else if (a) {
-              if (typeof __savedResumePosition === 'number' && !isNaN(__savedResumePosition)) {
+              const cur = Number(a.currentTime || 0);
+              const needRestore = (typeof __savedResumePosition === 'number' && !isNaN(__savedResumePosition)) &&
+                                  (!Number.isFinite(cur) || cur < (__savedResumePosition - TOL));
+              if (needRestore) {
                 try { a.currentTime = __savedResumePosition; } catch (e) { console.warn('Failed to restore audio position', e); }
               }
+              // Если было воспроизведение и вдруг встало на паузу — аккуратно резюмируем
               if (a.paused) {
                 const playAttempt = a.play();
                 if (playAttempt && playAttempt.catch) {
                   playAttempt.catch(e => {
                     console.warn('Play after foreground failed', e);
                     if (isIOS()) {
-                      setTimeout(() => {
-                        if (a.paused) {
-                          a.play().catch(console.warn);
-                          initSilentAudioPlayback();
-                        }
-                      }, 500);
+                      setTimeout(() => { if (a.paused) { a.play().catch(console.warn); initSilentAudioPlayback(); } }, 500);
                     }
                   });
                 }
               }
             }
           }
-    
+
           // Синхронизируем UI
           syncUiFromPlayback();
-    
+
           // Восстанавливаем UI-анимации
-          if (window.__savedAnimationState) {
-            applyAnimationState(window.__savedAnimationState);
-            window.__savedAnimationState = null;
-          }
-          if (window.__savedBitState) {
-            initAudioContext();
-            startLogoPulsation();
-            window.__savedBitState = null;
-          }
-    
+          if (window.__savedAnimationState) { applyAnimationState(window.__savedAnimationState); window.__savedAnimationState = null; }
+          if (window.__savedBitState) { initAudioContext(); startLogoPulsation(); window.__savedBitState = null; }
+
           // Возобновляем галерею
-          if (!coverAutoplay && Array.isArray(coverGalleryArr) && coverGalleryArr.length > 1) {
-            startCoverAutoPlay();
-          }
-    
+          if (!coverAutoplay && Array.isArray(coverGalleryArr) && coverGalleryArr.length > 1) startCoverAutoPlay();
+
+          // Сброс snapshot, чтобы другие события его не переиспользовали
+          __savedResumePosition = null;
           console.log('App returning to foreground, resuming playback (UI restored)');
         }
-  
-        // Обновляем Media Session: при новом плеере — только позицию, у старого — полный сетап
+
+        // Обновляем Media Session: новый плеер — только позиция; старый — полный сетап
         try {
-          if (pc) {
-            updateMediaSessionPosition();
-          } else if (a && playingTracks && playingTrack >= 0) {
-            setupMediaSessionForPlayback();
-          }
+          if (pc) updateMediaSessionPosition();
+          else if (a && playingTracks && playingTrack >= 0) setupMediaSessionForPlayback();
         } catch (e) {
           console.warn('Failed to update Media Session', e);
         }
@@ -2191,17 +2189,9 @@
       window.addEventListener('online', () => {
         stopOfflineToasts();
         NotificationSystem.success('Соединение восстановлено');
-        const pc = (window.__useNewPlayerCore && window.playerCore) ? window.playerCore : null;
-        if (pc && typeof __savedResumePosition === 'number') {
-          try { pc.seek(__savedResumePosition); } catch {}
-          __savedResumePosition = null;
-        } else {
-          const a = document.getElementById('audio');
-          if (a && typeof __savedResumePosition === 'number') {
-            try { a.currentTime = __savedResumePosition; } catch {}
-            __savedResumePosition = null;
-          }
-        }
+        // Восстановление сети не должно менять позицию воспроизведения.
+        __savedResumePosition = null;
+        try { updateMediaSessionPosition(); } catch {}
       });
     })();
   }
