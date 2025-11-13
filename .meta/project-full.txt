@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-0d9293645ce1eebf44a63c664b22167e511915c1.idx
-│   │       ├── pack-0d9293645ce1eebf44a63c664b22167e511915c1.pack
-│   │       └── pack-0d9293645ce1eebf44a63c664b22167e511915c1.rev
+│   │       ├── pack-84b0600661c44dc2e19e6533c1c3932ee1acbc69.idx
+│   │       ├── pack-84b0600661c44dc2e19e6533c1c3932ee1acbc69.pack
+│   │       └── pack-84b0600661c44dc2e19e6533c1c3932ee1acbc69.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -251,7 +251,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-13 22:00:24 UTC
+Сгенерировано: 2025-11-13 22:12:46 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3961,17 +3961,29 @@ jobs:
         }
       }
 
-      // Подсветка текущей строки и перенос блока под неё
+      // Найдём строку для подсветки/перемещения блока:
+      // 1) Обычный альбом: #trk{n}
+      // 2) Избранное: берём n-ую строку из списка .track
+      let row = document.getElementById(`trk${n}`);
+      if (!row) {
+        if (playingAlbumKey === SPECIAL_FAVORITES_KEY || viewMode === 'favorites') {
+          const rows = document.querySelectorAll('#track-list .track');
+          row = rows && rows[n] ? rows[n] : null;
+        }
+      }
+
+      // Подсветка текущей строки
       try {
         document.querySelectorAll('#track-list .track').forEach(el => el.classList.remove('current'));
-        const row = document.getElementById(`trk${n}`);
-        if (row) {
-          row.classList.add('current');
-          const lp = document.getElementById('lyricsplayerblock');
-          if (lp && row.parentNode) {
-            if (row.nextSibling) row.parentNode.insertBefore(lp, row.nextSibling);
-            else row.parentNode.appendChild(lp);
-          }
+        if (row) row.classList.add('current');
+      } catch {}
+
+      // Перенос блока плеера под текущую строку
+      try {
+        const lp = document.getElementById('lyricsplayerblock');
+        if (lp && row && row.parentNode) {
+          if (row.nextSibling) row.parentNode.insertBefore(lp, row.nextSibling);
+          else row.parentNode.appendChild(lp);
         }
       } catch {}
 
@@ -3994,6 +4006,7 @@ jobs:
       try { prefetchNextTrackAssetsForPlayback(); } catch {}
     } catch {}
   }
+
   function togglePlayPause() {
     // Флаг по умолчанию не задан => используем старую схему
     if (!window.__useNewPlayerCore || !window.playerCore) {
