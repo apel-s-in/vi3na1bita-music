@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3f11278a6ad1d62324ba238ef0d1211aeccabb4c.idx
-│   │       ├── pack-3f11278a6ad1d62324ba238ef0d1211aeccabb4c.pack
-│   │       └── pack-3f11278a6ad1d62324ba238ef0d1211aeccabb4c.rev
+│   │       ├── pack-fcc70be09ac605f3ffa712ffe48735ec56a2522c.idx
+│   │       ├── pack-fcc70be09ac605f3ffa712ffe48735ec56a2522c.pack
+│   │       └── pack-fcc70be09ac605f3ffa712ffe48735ec56a2522c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -254,7 +254,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-13 14:12:40 UTC
+Сгенерировано: 2025-11-13 15:15:46 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6222,6 +6222,14 @@ const DEFAULT_SW_CONFIG = {
   revalidateDays: 7 // через столько дней делать HEAD‑перевалидацию
 };
 
+function metaKey(name) {
+  try {
+    return new Request(new URL(`__meta__/${String(name)}`, self.registration.scope));
+  } catch {
+    return new Request(`__meta__/${String(name)}`);
+  }
+}
+
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -6568,7 +6576,7 @@ async function postToAllClients(msg) {
 
 async function readOfflineList() {
   const cache = await caches.open(META_CACHE);
-  const key = new Request('meta:offline-list');
+  const key = metaKey('offline-list');
   const res = await cache.match(key);
   if (!res) return [];
   try {
@@ -6578,7 +6586,7 @@ async function readOfflineList() {
 }
 async function writeOfflineList(list) {
   const cache = await caches.open(META_CACHE);
-  const key = new Request('meta:offline-list');
+  const key = metaKey('offline-list');
   await cache.put(key, new Response(JSON.stringify(Array.from(new Set(list))), {
     headers: { 'content-type': 'application/json' }
   }));
@@ -6587,13 +6595,13 @@ async function writeOfflineList(list) {
 // Профиль офлайн-кэша (например, 'favorites-webp')
 async function writeOfflineProfile(profile) {
   const cache = await caches.open(META_CACHE);
-  await cache.put(new Request('meta:offline-profile'), new Response(JSON.stringify({ profile: String(profile || 'default') }), {
+  await cache.put(metaKey('offline-profile'), new Response(JSON.stringify({ profile: String(profile || 'default') }), {
     headers: { 'content-type': 'application/json' }
   }));
 }
 async function readOfflineProfile() {
   const cache = await caches.open(META_CACHE);
-  const res = await cache.match('meta:offline-profile');
+  const res = await cache.match(metaKey('offline-profile'));
   if (!res) return 'default';
   try { const j = await res.json(); return (j && j.profile) ? String(j.profile) : 'default'; } catch { return 'default'; }
 }
@@ -6605,14 +6613,14 @@ async function getOfflineCacheName() {
 // Храним «последний запрошенный офлайн-список» для Background Sync
 async function writeLastRequestedOffline(list) {
   const cache = await caches.open(META_CACHE);
-  const key = new Request('meta:last-requested-offline');
+  const key = metaKey('last-requested-offline');
   await cache.put(key, new Response(JSON.stringify(Array.from(new Set(list))), {
     headers: { 'content-type': 'application/json' }
   }));
 }
 async function readLastRequestedOffline() {
   const cache = await caches.open(META_CACHE);
-  const key = new Request('meta:last-requested-offline');
+  const key = metaKey('last-requested-offline');
   const res = await cache.match(key);
   if (!res) return [];
   try { const j = await res.json(); return Array.isArray(j) ? j : []; } catch { return []; }
@@ -6620,14 +6628,14 @@ async function readLastRequestedOffline() {
 // ----- SW-config (из custom.json через CONFIG_UPDATE) -----
 async function writeSwConfig(cfg) {
   const cache = await caches.open(META_CACHE);
-  await cache.put(new Request('meta:sw-config'), new Response(JSON.stringify(cfg || {}), {
+  await cache.put(metaKey('sw-config'), new Response(JSON.stringify(cfg || {}), {
     headers: { 'content-type': 'application/json' }
   }));
 }
 async function readSwConfig() {
   try {
     const cache = await caches.open(META_CACHE);
-    const res = await cache.match('meta:sw-config');
+    const res = await cache.match(metaKey('sw-config'));
     if (!res) return { ...DEFAULT_SW_CONFIG };
     const j = await res.json().catch(()=>null);
     const base = { ...DEFAULT_SW_CONFIG };
@@ -6648,7 +6656,7 @@ async function readSwConfig() {
 async function writeNetState(state) {
   try {
     const cache = await caches.open(META_CACHE);
-    await cache.put(new Request('meta:net-state'), new Response(JSON.stringify(state || {}), {
+    await cache.put(metaKey('net-state'), new Response(JSON.stringify(state || {}), {
       headers: { 'content-type': 'application/json' }
     }));
   } catch {}
@@ -6656,7 +6664,7 @@ async function writeNetState(state) {
 async function readNetState() {
   try {
     const cache = await caches.open(META_CACHE);
-    const res = await cache.match('meta:net-state');
+    const res = await cache.match(metaKey('net-state'));
     if (!res) return { saveData: false, downlink: null, effectiveType: null };
     const j = await res.json().catch(()=>null);
     return j && typeof j === 'object' ? j : { saveData: false, downlink: null, effectiveType: null };
@@ -6689,14 +6697,14 @@ async function shouldCacheNonRangeAudio(response) {
 // ----- media-map (LRU) -----
 async function readMediaMap() {
   const cache = await caches.open(META_CACHE);
-  const res = await cache.match('meta:media-map');
+  const res = await cache.match(metaKey('media-map'));
   if (!res) return { totalSize: 0, items: {} };
   try { const j = await res.json(); return (j && typeof j === 'object') ? j : { totalSize: 0, items: {} }; }
   catch { return { totalSize: 0, items: {} }; }
 }
 async function writeMediaMap(map) {
   const cache = await caches.open(META_CACHE);
-  await cache.put('meta:media-map', new Response(JSON.stringify(map), { headers: { 'content-type': 'application/json' } }));
+  await cache.put(metaKey('media-map'), new Response(JSON.stringify(map), { headers: { 'content-type': 'application/json' } }));
 }
 async function touchMediaItem(url) {
   try {
