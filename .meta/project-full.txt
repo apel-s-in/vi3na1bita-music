@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-7fc95557698356e16daf8c492fe61d0a4ae69d21.idx
-│   │       ├── pack-7fc95557698356e16daf8c492fe61d0a4ae69d21.pack
-│   │       └── pack-7fc95557698356e16daf8c492fe61d0a4ae69d21.rev
+│   │       ├── pack-dfc654cd1dbcaf34375599c19e9bf87bf3ec7454.idx
+│   │       ├── pack-dfc654cd1dbcaf34375599c19e9bf87bf3ec7454.pack
+│   │       └── pack-dfc654cd1dbcaf34375599c19e9bf87bf3ec7454.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -251,7 +251,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-13 17:11:29 UTC
+Сгенерировано: 2025-11-13 20:17:17 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2566,13 +2566,14 @@ jobs:
       }
 
       document.addEventListener('visibilitychange', async () => {
-        const a = document.getElementById('audio');
+        const pc = (window.__useNewPlayerCore && window.playerCore) ? window.playerCore : null;
+        const a = pc ? null : document.getElementById('audio');
         const isHidden = document.hidden;
   
         if (isHidden) {
-          // Сохраняем текущее состояние
-          __wasPlayingBeforeHidden = !!(a && !a.paused);
-          __savedResumePosition = a ? a.currentTime : 0;
+          // Сохраняем текущее состояние (через PlayerCore или <audio>)
+          __wasPlayingBeforeHidden = pc ? !!pc.isPlaying?.() : !!(a && !a.paused);
+          __savedResumePosition = pc ? (pc.getSeek?.() || 0) : (a ? a.currentTime : 0);
     
           // Останавливаем UI-анимации для экономии ресурсов
           if (coverAutoplay) { clearInterval(coverAutoplay); coverAutoplay = null; }
@@ -2585,10 +2586,9 @@ jobs:
             stopLogoPulsation(); 
           }
     
-          // Для iOS - гарантируем, что воспроизведение продолжится
-          if (isIOS() && __wasPlayingBeforeHidden) {
+          // Для iOS: поддержать аудиоконтекст (только для старого <audio>)
+          if (!pc && isIOS() && __wasPlayingBeforeHidden) {
             resumeAudioContextIfNeeded();
-            // Дополнительная проверка через 1с
             setTimeout(() => {
               if (document.hidden && a && a.paused) {
                 a.play().catch(e => console.warn('iOS background resume failed', e));
@@ -2598,38 +2598,33 @@ jobs:
     
           console.log('App going to background, position saved:', __savedResumePosition);
         } else {
-          // Восстанавливаем состояние из фона
+          // Возврат из фона: только UI и синхронизация
           checkSleepTimer();
     
-          // iOS требует возобновления аудио-контекста
           if (isIOS()) {
             resumeAudioContextIfNeeded();
           }
     
           // Если музыка играла до ухода в фон и не остановлена таймером сна
           if (__wasPlayingBeforeHidden && !sleepTimerTarget) {
-            if (a) {
-              // Восстанавливаем позицию
+            if (pc) {
+              // Только восстановим позицию (не форсируем play тут, PlayerCore сам держит состояние)
               if (typeof __savedResumePosition === 'number' && !isNaN(__savedResumePosition)) {
-                try {
-                  a.currentTime = __savedResumePosition;
-                } catch (e) {
-                  console.warn('Failed to restore audio position', e);
-                }
+                try { pc.seek(__savedResumePosition); } catch (e) { console.warn('Failed to restore PC position', e); }
               }
-              
-              // Гарантируем продолжение воспроизведения
+            } else if (a) {
+              if (typeof __savedResumePosition === 'number' && !isNaN(__savedResumePosition)) {
+                try { a.currentTime = __savedResumePosition; } catch (e) { console.warn('Failed to restore audio position', e); }
+              }
               if (a.paused) {
                 const playAttempt = a.play();
                 if (playAttempt && playAttempt.catch) {
                   playAttempt.catch(e => {
                     console.warn('Play after foreground failed', e);
-                    // Для iOS - дополнительные попытки
                     if (isIOS()) {
                       setTimeout(() => {
                         if (a.paused) {
                           a.play().catch(console.warn);
-                          // Метод "тихого" воспроизведения для iOS
                           initSilentAudioPlayback();
                         }
                       }, 500);
@@ -2659,16 +2654,18 @@ jobs:
             startCoverAutoPlay();
           }
     
-          console.log('App returning to foreground, resuming playback');
+          console.log('App returning to foreground, resuming playback (UI restored)');
         }
   
-        // Обновляем состояние Media Session при любом изменении видимости
-        if (a && playingTracks && playingTrack >= 0) {
-          try {
+        // Обновляем Media Session: при новом плеере — только позицию, у старого — полный сетап
+        try {
+          if (pc) {
+            updateMediaSessionPosition();
+          } else if (a && playingTracks && playingTrack >= 0) {
             setupMediaSessionForPlayback();
-          } catch (e) {
-            console.warn('Failed to update Media Session', e);
           }
+        } catch (e) {
+          console.warn('Failed to update Media Session', e);
         }
       });
 
@@ -2676,18 +2673,29 @@ jobs:
 
       window.addEventListener('offline', () => {
         startOfflineToasts();
-        const a = document.getElementById('audio');
-        if (a) {
-          try { __savedResumePosition = a.currentTime || 0; } catch {}
+        const pc = (window.__useNewPlayerCore && window.playerCore) ? window.playerCore : null;
+        if (pc) {
+          try { __savedResumePosition = pc.getSeek?.() || 0; } catch {}
+        } else {
+          const a = document.getElementById('audio');
+          if (a) {
+            try { __savedResumePosition = a.currentTime || 0; } catch {}
+          }
         }
       });
       window.addEventListener('online', () => {
         stopOfflineToasts();
         NotificationSystem.success('Соединение восстановлено');
-        const a = document.getElementById('audio');
-        if (a && typeof __savedResumePosition === 'number') {
-          try { a.currentTime = __savedResumePosition; } catch {}
+        const pc = (window.__useNewPlayerCore && window.playerCore) ? window.playerCore : null;
+        if (pc && typeof __savedResumePosition === 'number') {
+          try { pc.seek(__savedResumePosition); } catch {}
           __savedResumePosition = null;
+        } else {
+          const a = document.getElementById('audio');
+          if (a && typeof __savedResumePosition === 'number') {
+            try { a.currentTime = __savedResumePosition; } catch {}
+            __savedResumePosition = null;
+          }
         }
       });
     })();
@@ -4325,6 +4333,12 @@ jobs:
 
   /* Media Session — единый путь */
   function setupMediaSessionForPlayback() {
+    // Гейт: если активен новый плеер — полностью делегируем Media Session ядру PlayerCore
+    if (window.__useNewPlayerCore && window.playerCore) {
+      // PlayerCore сам выставляет metadata + setActionHandler при onPlay/onTrackChange
+      return;
+    }
+
     if (!('mediaSession' in navigator) || !playingTracks) return;
     const tr = playingTracks[playingTrack];
     if (!tr) return;
@@ -4355,7 +4369,6 @@ jobs:
       });
     } catch (e) {
       console.warn('Failed to set MediaMetadata', e);
-      // Fallback для старых браузеров
       try {
         navigator.mediaSession.metadata = new MediaMetadata({
           title: tr.title,
@@ -4368,7 +4381,7 @@ jobs:
       }
     }
   
-    // Устанавливаем обработчики действий
+    // Устанавливаем обработчики действий для старого <audio>
     const setupAction = (action, handler) => {
       try {
         navigator.mediaSession.setActionHandler(action, handler);
@@ -4392,13 +4405,11 @@ jobs:
   
     setupAction('previoustrack', () => {
       previousTrack();
-      // Обновляем метаданные после смены трека
       setTimeout(() => setupMediaSessionForPlayback(), 100);
     });
   
     setupAction('nexttrack', () => {
       nextTrack();
-      // Обновляем метаданные после смены трека
       setTimeout(() => setupMediaSessionForPlayback(), 100);
     });
   
@@ -4421,7 +4432,6 @@ jobs:
       }
     });
   
-    // Android: добавляем обработчик для кнопки "стоп"
     setupAction('stop', () => {
       audio.pause();
       audio.currentTime = 0;
@@ -4429,14 +4439,30 @@ jobs:
       updateMediaSessionPosition();
     });
   
-    // Обновляем позицию воспроизведения
     updateMediaSessionPosition();
   }
 
   // Новая функция для обновления позиции в Media Session
   function updateMediaSessionPosition() {
     if (!('mediaSession' in navigator)) return;
+
+    // Новый плеер: берём позицию/длительность из PlayerCore
+    if (window.__useNewPlayerCore && window.playerCore) {
+      try {
+        const dur = Number(window.playerCore.getDuration?.() || 0);
+        const pos = Number(window.playerCore.getSeek?.() || 0);
+        navigator.mediaSession.setPositionState({
+          duration: isFinite(dur) ? dur : 0,
+          playbackRate: 1,
+          position: isFinite(pos) ? pos : 0
+        });
+      } catch (e) {
+        console.warn('Failed to update position state (PlayerCore)', e);
+      }
+      return;
+    }
   
+    // Старый плеер: <audio>
     const audio = document.getElementById('audio');
     if (!audio) return;
   
