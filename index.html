@@ -2635,6 +2635,74 @@
     } catch {}
   }
   function showTrack(n, doPlay) {
+    // Ветка нового плеера: не используем <audio> как источник звука
+    if (window.__useNewPlayerCore && window.playerCore) {
+      try {
+        // Отключим старый <audio>, если он был активен (во избежание двойного звука)
+        try { stopAndCleanupAudio(getCurrentAudio()); __currentAudio = null; } catch {}
+
+        // Обнулим держатель плеера (UI будет восстановлен ниже)
+        const holder = document.getElementById('now-playing');
+        if (holder && holder.firstChild) holder.innerHTML = '';
+
+        // Актуализируем «контекст» текущего альбома для UI
+        playingAlbumKey = currentAlbumKey;
+        playingTracks = (config && Array.isArray(config.tracks)) ? config.tracks : null;
+        playingArtist = (config && config.artist) ? config.artist : '';
+        playingAlbumName = (config && config.albumName) ? config.albumName : '';
+        playingCover = (Array.isArray(coverGalleryArr) && coverGalleryArr[0])
+          ? (coverGalleryArr[0].formats?.full || coverGalleryArr[0].src || 'img/logo.png')
+          : 'img/logo.png';
+        if (shuffleMode) createPlayingShuffledPlaylist();
+
+        // Курсоры и перерисовка списка (вставит #lyricsplayerblock при необходимости)
+        currentTrack = n;
+        playingTrack = n;
+        buildTrackList();
+
+        // Привязываем события нового плеера → UI (однократно)
+        ensurePlayerCoreUiBindings();
+
+        // Готовим плейлист для нового плеера
+        const payload = __buildPlayerCorePayload();
+        if (payload) {
+          // Всегда обновляем плейлист и индекс (без автозапуска если doPlay=false)
+          try {
+            window.playerCore.setPlaylist(payload.tracks, n, payload.meta);
+            // Состояния режимов
+            try { window.playerCore.setShuffle(!!window.shuffleMode); } catch {}
+            try { window.playerCore.setRepeat(!!window.repeatMode); } catch {}
+            try { window.playerCore.setFavoritesOnly(!!window.favoritesOnlyMode, []); } catch {}
+          } catch {}
+        }
+
+        // Запуск/резюмирование только если явно doPlay === true
+        if (doPlay) {
+          try { window.playerCore.play(n); } catch {}
+        }
+
+        // Лирика и UI
+        try {
+          const pcfg = getPlayerConfig();
+          const tr = pcfg?.tracks?.[n];
+          if (tr && tr.lyrics) loadLyrics(tr.lyrics);
+        } catch {}
+        restorePlayerButtonsState();
+        applyLyricsViewMode();
+        initializePlayerControls();
+        applyMiniModeUI();
+        updateMiniNowHeader();
+        updateNextUpLabel();
+        updatePlayPauseIcon();
+
+        return; // Ветка нового плеера завершена
+      } catch (e) {
+        console.warn('showTrack via PlayerCore failed, falling back to <audio>', e);
+        // Если что-то пошло не так — мягкий откат на старую логику ниже
+      }
+    }
+
+    // СТАРАЯ ВЕТКА (<audio>) — без изменений, для совместимости и когда фича-флаг выключен
     stopAndCleanupAudio(getCurrentAudio());
     __currentAudio = null;
 
@@ -3221,8 +3289,18 @@
       window.playerCore.on({
         onPlay: () => { try { updatePlayPauseIcon(); } catch {} },
         onPause: () => { try { updatePlayPauseIcon(); } catch {} },
-        onTick: __playerCoreTick
-        // onTrackChange мы не трогаем здесь, т.к. UI уже синхронизируется через showTrack(...) в next/prev
+        onTick: __playerCoreTick,
+        // При смене трека новым плеером (в т.ч. авто-next) — мягко синхронизируем UI
+        onTrackChange: (_track, idx) => {
+          try {
+            const n = (typeof idx === 'number') ? idx
+              : (typeof window.playerCore.getIndex === 'function' ? window.playerCore.getIndex() : 0);
+            showTrack(n, false);
+            updateMiniNowHeader();
+            updateNextUpLabel();
+            updatePlayPauseIcon();
+          } catch {}
+        }
       });
     } catch {}
   }
