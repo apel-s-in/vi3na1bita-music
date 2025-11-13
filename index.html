@@ -2713,7 +2713,10 @@
             // Состояния режимов
             try { window.playerCore.setShuffle(!!window.shuffleMode); } catch {}
             try { window.playerCore.setRepeat(!!window.repeatMode); } catch {}
-            try { window.playerCore.setFavoritesOnly(!!window.favoritesOnlyMode, []); } catch {}
+            try {
+              const likedIdx = (playingAlbumKey && playingAlbumKey !== SPECIAL_FAVORITES_KEY) ? getLikedForAlbum(playingAlbumKey) : [];
+              window.playerCore.setFavoritesOnly(!!window.favoritesOnlyMode, likedIdx);
+            } catch {}
           } catch {}
         }
 
@@ -3535,7 +3538,19 @@
     const a = getCurrentAudio(); if (!a) return;
     a.pause(); a.currentTime = 0; updatePlayPauseIcon();
   }
-  function toggleRepeat(){ repeatMode = !repeatMode; const btn=document.getElementById('repeat-btn'); if (repeatMode) btn.classList.add('repeat-active'); else btn.classList.remove('repeat-active'); localStorage.setItem('repeatMode', repeatMode?'1':'0'); }
+  function toggleRepeat(){
+    repeatMode = !repeatMode;
+    const btn = document.getElementById('repeat-btn');
+    if (btn) {
+      if (repeatMode) btn.classList.add('repeat-active'); else btn.classList.remove('repeat-active');
+    }
+    localStorage.setItem('repeatMode', repeatMode ? '1' : '0');
+    // Синхронизируем с новым ядром, если активно
+    if (window.__useNewPlayerCore && window.playerCore && typeof window.playerCore.setRepeat === 'function') {
+      try { window.playerCore.setRepeat(repeatMode); } catch {}
+    }
+  }
+
   function toggleShuffle(){
     shuffleMode = !shuffleMode;
     const btn = document.getElementById('shuffle-btn');
@@ -3548,8 +3563,15 @@
       NotificationSystem.info('Последовательно');
     }
     localStorage.setItem('shuffleMode', shuffleMode ? '1' : '0');
+
+    // Синхронизируем с новым ядром, если активно
+    if (window.__useNewPlayerCore && window.playerCore && typeof window.playerCore.setShuffle === 'function') {
+      try { window.playerCore.setShuffle(shuffleMode); } catch {}
+    }
+
     updateNextUpLabel();
   }
+
   function toggleFavoritesOnly(){
     const btn = document.getElementById('favorites-btn');
     const icon = document.getElementById('favorites-btn-icon');
@@ -3597,6 +3619,14 @@
         if (shuffleMode) createShuffledPlaylist();
         updateNextUpLabel();
       }
+    }
+
+    // Синхронизируем с PlayerCore, передаём индексы избранного в рамках текущего плейлиста
+    if (window.__useNewPlayerCore && window.playerCore && typeof window.playerCore.setFavoritesOnly === 'function') {
+      try {
+        const likedIdx = (playingAlbumKey && playingAlbumKey !== SPECIAL_FAVORITES_KEY) ? getLikedForAlbum(playingAlbumKey) : [];
+        window.playerCore.setFavoritesOnly(favoritesOnlyMode, likedIdx);
+      } catch {}
     }
   }
   function updateAvailableTracks(){
