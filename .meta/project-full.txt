@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-fcc70be09ac605f3ffa712ffe48735ec56a2522c.idx
-│   │       ├── pack-fcc70be09ac605f3ffa712ffe48735ec56a2522c.pack
-│   │       └── pack-fcc70be09ac605f3ffa712ffe48735ec56a2522c.rev
+│   │       ├── pack-63aa8e2d4819a9a70896af372ab67ba3fec9f7ac.idx
+│   │       ├── pack-63aa8e2d4819a9a70896af372ab67ba3fec9f7ac.pack
+│   │       └── pack-63aa8e2d4819a9a70896af372ab67ba3fec9f7ac.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -229,9 +229,6 @@ vi3na1bita-music/
 │   ├── core/
 │   │   └── bootstrap.js
 │   ├── e2e/
-│   │   ├── smoke.spec.jsscripts/
-│   │   │   └── e2e/
-│   │   │       └── smoke.spec.js
 │   │   └── player.spec.js
 │   ├── ui/
 │   │   ├── favorites.js
@@ -254,7 +251,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-13 15:15:45 UTC
+Сгенерировано: 2025-11-13 15:18:00 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7711,42 +7708,6 @@ test('sysinfo modal shows after GET_SW_INFO', async ({ page }) => {
 });
 
 
-
-//=================================================
-// FILE: /scripts/e2e/smoke.spec.jsscripts/e2e/smoke.spec.js
-// @ts-check
-import { test, expect } from '@playwright/test';
-
-const BASE = process.env.BASE_URL || 'http://127.0.0.1:4173';
-
-test('index loads and promo allows enter', async ({ page }) => {
-  await page.goto(`${BASE}/index.html`, { waitUntil: 'load' });
-  await expect(page).toHaveTitle(/Витрина Разбита/i);
-
-  // Промо-блок виден
-  const promo = page.locator('#promocode-block');
-  await expect(promo).toBeVisible();
-
-  // Вводим промокод и входим
-  await page.fill('#promo-inp', 'VITRINA2025');
-  await page.click('#promo-btn');
-
-  // Основной блок становится видимым
-  await expect(page.locator('#main-block')).toBeVisible();
-
-  // PlayerCore создан
-  const hasPC = await page.evaluate(() => !!window.playerCore);
-  expect(hasPC).toBeTruthy();
-});
-
-test('news page renders list or shows status', async ({ page }) => {
-  await page.goto(`${BASE}/news.html`, { waitUntil: 'load' });
-  await expect(page).toHaveTitle(/Новости — Витрина Разбита/i);
-  // Либо есть список, либо статус "Пока новостей нет"
-  const list = page.locator('#news');
-  const status = page.locator('#status');
-  await expect(list.or(status)).toBeVisible();
-});
 
 //=================================================
 // FILE: /scripts/energy.js
