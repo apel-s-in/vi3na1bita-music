@@ -3428,17 +3428,29 @@
         }
       }
 
-      // Подсветка текущей строки и перенос блока под неё
+      // Найдём строку для подсветки/перемещения блока:
+      // 1) Обычный альбом: #trk{n}
+      // 2) Избранное: берём n-ую строку из списка .track
+      let row = document.getElementById(`trk${n}`);
+      if (!row) {
+        if (playingAlbumKey === SPECIAL_FAVORITES_KEY || viewMode === 'favorites') {
+          const rows = document.querySelectorAll('#track-list .track');
+          row = rows && rows[n] ? rows[n] : null;
+        }
+      }
+
+      // Подсветка текущей строки
       try {
         document.querySelectorAll('#track-list .track').forEach(el => el.classList.remove('current'));
-        const row = document.getElementById(`trk${n}`);
-        if (row) {
-          row.classList.add('current');
-          const lp = document.getElementById('lyricsplayerblock');
-          if (lp && row.parentNode) {
-            if (row.nextSibling) row.parentNode.insertBefore(lp, row.nextSibling);
-            else row.parentNode.appendChild(lp);
-          }
+        if (row) row.classList.add('current');
+      } catch {}
+
+      // Перенос блока плеера под текущую строку
+      try {
+        const lp = document.getElementById('lyricsplayerblock');
+        if (lp && row && row.parentNode) {
+          if (row.nextSibling) row.parentNode.insertBefore(lp, row.nextSibling);
+          else row.parentNode.appendChild(lp);
         }
       } catch {}
 
@@ -3461,6 +3473,7 @@
       try { prefetchNextTrackAssetsForPlayback(); } catch {}
     } catch {}
   }
+
   function togglePlayPause() {
     // Флаг по умолчанию не задан => используем старую схему
     if (!window.__useNewPlayerCore || !window.playerCore) {
