@@ -3160,6 +3160,77 @@
     }
   }
 
+  // Один раз привязываем UI к событиям PlayerCore
+  function ensurePlayerCoreUiBindings() {
+    if (!window.__useNewPlayerCore || !window.playerCore) return;
+    if (window.__pcUiBound) return;
+    window.__pcUiBound = true;
+
+    try {
+      window.playerCore.on({
+        onPlay: () => { try { updatePlayPauseIcon(); } catch {} },
+        onPause: () => { try { updatePlayPauseIcon(); } catch {} },
+        onTick: __playerCoreTick
+        // onTrackChange мы не трогаем здесь, т.к. UI уже синхронизируется через showTrack(...) в next/prev
+      });
+    } catch {}
+  }
+
+  // Обработчик тиков PlayerCore: прогресс, таймеры, лирика, MediaSession, сохранение состояния
+  function __playerCoreTick(positionSec, durationSec) {
+    try {
+      // В «Ультра‑эконом» в фоне не обновляем DOM вообще (как и в onAudioTimeUpdate)
+      if (ultraEcoEnabled && document.hidden) {
+        return;
+      }
+
+      const pos = Number(positionSec) || 0;
+      const dur = Number(durationSec) || 0;
+
+      // Прогресс (троттлинг)
+      if (!isSeekingProgress && dur > 0) {
+        const nowTs = Date.now();
+        if ((nowTs - __lastProgressFillTs) >= __progressThrottleMs) {
+          __lastProgressFillTs = nowTs;
+          const fill = document.getElementById('player-progress-fill');
+          if (fill) fill.style.width = `${(pos / dur) * 100}%`;
+        }
+      }
+
+      // Лирика
+      renderLyricsEnhanced(pos);
+
+      // Таймеры (троттлинг)
+      const now = Date.now();
+      if (now - lastTimeUpdate >= __uiUpdateMinIntervalMs) {
+        lastTimeUpdate = now;
+        const updateDom = () => {
+          const elapsedEl = document.getElementById('time-elapsed');
+          const remainingEl = document.getElementById('time-remaining');
+          if (elapsedEl) elapsedEl.textContent = formatTime(pos);
+          if (remainingEl) remainingEl.textContent = formatTime(Math.max(0, dur - pos));
+        };
+        const ric = window.requestIdleCallback || function(cb){ setTimeout(()=>cb({didTimeout:false}), 0); };
+        ric(updateDom);
+
+        // Media Session: позиция
+        try {
+          if ('mediaSession' in navigator && typeof navigator.mediaSession.setPositionState === 'function') {
+            navigator.mediaSession.setPositionState({
+              duration: isFinite(dur) ? dur : 0,
+              playbackRate: 1,
+              position: pos
+            });
+          }
+        } catch {}
+
+        try { savePlayerStateThrottled(false); } catch {}
+      }
+
+      updatePlayPauseIcon();
+    } catch {}
+  }
+
   function togglePlayPause() {
     // Флаг по умолчанию не задан => используем старую схему
     if (!window.__useNewPlayerCore || !window.playerCore) {
@@ -3173,6 +3244,9 @@
       const a = getCurrentAudio();
       if (a && !a.paused) a.pause();
     } catch {}
+
+    // Привязка событий PlayerCore → UI (однократно)
+    ensurePlayerCoreUiBindings();
 
     const pc = window.playerCore;
 
@@ -3316,6 +3390,9 @@
     if (window.__useNewPlayerCore && window.playerCore) {
       const pc = window.playerCore;
 
+      // Привязка событий PlayerCore → UI (однократно)
+      ensurePlayerCoreUiBindings();
+
       // Инициализация плейлиста при первом обращении
       const hasLoaded = (typeof pc.getDuration === 'function') && ((pc.getDuration() || 0) > 0);
       if (!hasLoaded) {
@@ -3386,6 +3463,9 @@
     // Новый плеер: ранний выход при включённом флаге
     if (window.__useNewPlayerCore && window.playerCore) {
       const pc = window.playerCore;
+
+      // Привязка событий PlayerCore → UI (однократно)
+      ensurePlayerCoreUiBindings();
 
       // Инициализация плейлиста при первом обращении
       const hasLoaded = (typeof pc.getDuration === 'function') && ((pc.getDuration() || 0) > 0);
