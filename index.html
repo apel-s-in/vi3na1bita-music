@@ -3347,15 +3347,13 @@
         onPlay: () => { try { updatePlayPauseIcon(); } catch {} },
         onPause: () => { try { updatePlayPauseIcon(); } catch {} },
         onTick: __playerCoreTick,
-        // При смене трека новым плеером (в т.ч. авто-next) — мягко синхронизируем UI
+        // При смене трека новым плеером (в т.ч. авто-next) — синхронизируем UI без setPlaylist
         onTrackChange: (_track, idx) => {
           try {
-            const n = (typeof idx === 'number') ? idx
+            const n = (typeof idx === 'number')
+              ? idx
               : (typeof window.playerCore.getIndex === 'function' ? window.playerCore.getIndex() : 0);
-            showTrack(n, false);
-            updateMiniNowHeader();
-            updateNextUpLabel();
-            updatePlayPauseIcon();
+            __syncUiToPlayerCoreIndex(n);
           } catch {}
         }
       });
@@ -3417,6 +3415,59 @@
     } catch {}
   }
 
+  // Мягкая синхронизация UI с текущим индексом PlayerCore (без setPlaylist и без трогания звука)
+  function __syncUiToPlayerCoreIndex(n) {
+    try {
+      if (typeof n !== 'number' || n < 0) {
+        n = (typeof window.playerCore?.getIndex === 'function') ? window.playerCore.getIndex() : 0;
+      }
+
+      // Обновляем курсоры
+      playingTrack = n;
+      currentTrack = n;
+
+      // Гарантируем наличие блока плеера
+      if (!document.getElementById('lyricsplayerblock')) {
+        const holder = document.getElementById('now-playing');
+        if (holder) {
+          holder.innerHTML = '<div class="lyrics-player-block" id="lyricsplayerblock"></div>';
+          renderLyricsBlock();
+        }
+      }
+
+      // Подсветка текущей строки и перенос блока под неё
+      try {
+        document.querySelectorAll('#track-list .track').forEach(el => el.classList.remove('current'));
+        const row = document.getElementById(`trk${n}`);
+        if (row) {
+          row.classList.add('current');
+          const lp = document.getElementById('lyricsplayerblock');
+          if (lp && row.parentNode) {
+            if (row.nextSibling) row.parentNode.insertBefore(lp, row.nextSibling);
+            else row.parentNode.appendChild(lp);
+          }
+        }
+      } catch {}
+
+      // Лирика для текущего трека
+      const pcfg = getPlayerConfig();
+      const tr = pcfg?.tracks?.[n];
+      if (tr && tr.lyrics) loadLyrics(tr.lyrics);
+
+      // Обновление UI
+      restorePlayerButtonsState();
+      applyLyricsViewMode();
+      initializePlayerControls();
+
+      applyMiniModeUI();
+      updateMiniNowHeader();
+      updateNextUpLabel();
+      updatePlayPauseIcon();
+
+      // Префетч следующего (не влияет на звук)
+      try { prefetchNextTrackAssetsForPlayback(); } catch {}
+    } catch {}
+  }
   function togglePlayPause() {
     // Флаг по умолчанию не задан => используем старую схему
     if (!window.__useNewPlayerCore || !window.playerCore) {
@@ -3584,7 +3635,6 @@
     if (window.__useNewPlayerCore && window.playerCore) {
       const pc = window.playerCore;
 
-      // Привязка событий PlayerCore → UI (однократно)
       ensurePlayerCoreUiBindings();
 
       // Инициализация плейлиста при первом обращении
@@ -3608,14 +3658,11 @@
         try { pc.prev && pc.prev(); } catch {}
       }
 
-      // Синхронизация UI с текущим индексом нового плеера (без запуска старого <audio>)
+      // Синхронизация UI с текущим индексом нового плеера (без showTrack)
       setTimeout(() => {
         try {
           const idx = (typeof pc.getIndex === 'function') ? pc.getIndex() : 0;
-          showTrack(idx, false);
-          updateMiniNowHeader();
-          updateNextUpLabel();
-          updatePlayPauseIcon();
+          __syncUiToPlayerCoreIndex(idx);
         } catch {}
       }, 0);
       return;
@@ -3658,7 +3705,6 @@
     if (window.__useNewPlayerCore && window.playerCore) {
       const pc = window.playerCore;
 
-      // Привязка событий PlayerCore → UI (однократно)
       ensurePlayerCoreUiBindings();
 
       // Инициализация плейлиста при первом обращении
@@ -3682,14 +3728,11 @@
         try { pc.next && pc.next(); } catch {}
       }
 
-      // Синхронизация UI с текущим индексом нового плеера (без запуска старого <audio>)
+      // Синхронизация UI с текущим индексом нового плеера (без showTrack)
       setTimeout(() => {
         try {
           const idx = (typeof pc.getIndex === 'function') ? pc.getIndex() : 0;
-          showTrack(idx, false);
-          updateMiniNowHeader();
-          updateNextUpLabel();
-          updatePlayPauseIcon();
+          __syncUiToPlayerCoreIndex(idx);
         } catch {}
       }, 0);
       return;
