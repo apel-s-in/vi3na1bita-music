@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-12036a22ec4e704c42501dc85bf9596e160a0cb3.idx
-│   │       ├── pack-12036a22ec4e704c42501dc85bf9596e160a0cb3.pack
-│   │       └── pack-12036a22ec4e704c42501dc85bf9596e160a0cb3.rev
+│   │       ├── pack-c63d57aee8c15aeba580b66b898dbf212cf7effa.idx
+│   │       ├── pack-c63d57aee8c15aeba580b66b898dbf212cf7effa.pack
+│   │       └── pack-c63d57aee8c15aeba580b66b898dbf212cf7effa.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -251,7 +251,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-13 21:26:35 UTC
+Сгенерировано: 2025-11-13 21:38:30 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9071,7 +9071,18 @@ export class PlayerCore {
         ] : []
       });
     } catch {}
-    try { navigator.mediaSession.playbackState = this.isPlaying() ? 'playing' : 'paused'; } catch {}
+    try {
+      navigator.mediaSession.playbackState = this.isPlaying() ? 'playing' : 'paused';
+      const self = this;
+      navigator.mediaSession.setActionHandler('play',          () => self.play());
+      navigator.mediaSession.setActionHandler('pause',         () => self.pause());
+      navigator.mediaSession.setActionHandler('previoustrack', () => self.prev());
+      navigator.mediaSession.setActionHandler('nexttrack',     () => self.next());
+      navigator.mediaSession.setActionHandler('seekbackward',  (d) => self.seek((self.getSeek() || 0) - (d.seekOffset || 10)));
+      navigator.mediaSession.setActionHandler('seekforward',   (d) => self.seek((self.getSeek() || 0) + (d.seekOffset || 10)));
+      navigator.mediaSession.setActionHandler('seekto',        (d) => { if (typeof d.seekTime === 'number') self.seek(d.seekTime); });
+      navigator.mediaSession.setActionHandler('stop',          () => self.stop());
+    } catch {}
   }
 
   _installMediaSessionHandlersOnce() {
