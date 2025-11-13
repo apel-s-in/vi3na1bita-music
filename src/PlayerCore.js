@@ -267,7 +267,18 @@ export class PlayerCore {
         ] : []
       });
     } catch {}
-    try { navigator.mediaSession.playbackState = this.isPlaying() ? 'playing' : 'paused'; } catch {}
+    try {
+      navigator.mediaSession.playbackState = this.isPlaying() ? 'playing' : 'paused';
+      const self = this;
+      navigator.mediaSession.setActionHandler('play',          () => self.play());
+      navigator.mediaSession.setActionHandler('pause',         () => self.pause());
+      navigator.mediaSession.setActionHandler('previoustrack', () => self.prev());
+      navigator.mediaSession.setActionHandler('nexttrack',     () => self.next());
+      navigator.mediaSession.setActionHandler('seekbackward',  (d) => self.seek((self.getSeek() || 0) - (d.seekOffset || 10)));
+      navigator.mediaSession.setActionHandler('seekforward',   (d) => self.seek((self.getSeek() || 0) + (d.seekOffset || 10)));
+      navigator.mediaSession.setActionHandler('seekto',        (d) => { if (typeof d.seekTime === 'number') self.seek(d.seekTime); });
+      navigator.mediaSession.setActionHandler('stop',          () => self.stop());
+    } catch {}
   }
 
   _installMediaSessionHandlersOnce() {
