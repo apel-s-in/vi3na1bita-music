@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3962f7a5c6c34096e4a3001d92bd11a472ac2af5.idx
-│   │       ├── pack-3962f7a5c6c34096e4a3001d92bd11a472ac2af5.pack
-│   │       └── pack-3962f7a5c6c34096e4a3001d92bd11a472ac2af5.rev
+│   │       ├── pack-0d9293645ce1eebf44a63c664b22167e511915c1.idx
+│   │       ├── pack-0d9293645ce1eebf44a63c664b22167e511915c1.pack
+│   │       └── pack-0d9293645ce1eebf44a63c664b22167e511915c1.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -251,7 +251,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-13 21:46:09 UTC
+Сгенерировано: 2025-11-13 22:00:24 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4389,6 +4389,83 @@ jobs:
     currentTrack = idx;
     playingTrack = idx;
 
+    // Ветка нового ядра плеера: никакого <audio>, только PlayerCore
+    if (window.__useNewPlayerCore && window.playerCore) {
+      // На всякий — заглушим старый <audio>, если он где‑то остался
+      try { stopAndCleanupAudio(getCurrentAudio()); __currentAudio = null; } catch {}
+
+      // Гарантируем наличие блока плеера
+      if (!document.getElementById('lyricsplayerblock')) {
+        const holder = document.getElementById('now-playing');
+        if (holder) {
+          holder.innerHTML = '<div class="lyrics-player-block" id="lyricsplayerblock"></div>';
+          renderLyricsBlock();
+        }
+      }
+
+      // В представлении «Избранное» — подсветим строку и перенесём блок под неё
+      if (playingAlbumKey === SPECIAL_FAVORITES_KEY && viewMode === 'favorites') {
+        updateFavoritesCurrentRow(idx);
+        const list = document.getElementById('track-list');
+        const lp = document.getElementById('lyricsplayerblock');
+        const rows = list ? list.querySelectorAll('.track') : [];
+        const row = rows[idx];
+        if (list && lp && row) {
+          if (row.nextSibling) row.parentNode.insertBefore(lp, row.nextSibling);
+          else row.parentNode.appendChild(lp);
+        }
+      }
+      dedupePlayerBlock();
+
+      // Привяжем события ядра к UI (однократно)
+      ensurePlayerCoreUiBindings();
+
+      // Собираем плейлист из текущего контекста (для «Избранного» — из playingTracks)
+      const payload = __buildPlayerCorePayload();
+      if (payload) {
+        try {
+          // Полный плейлист с нужным индексом
+          window.playerCore.setPlaylist(payload.tracks, idx, payload.meta);
+
+          // Режимы
+          try { window.playerCore.setShuffle(!!window.shuffleMode); } catch {}
+          try { window.playerCore.setRepeat(!!window.repeatMode); } catch {}
+
+          // Ограничение набора треков:
+          // - В «Избранном»: играем только активные элементы (со ⭐) из favoritesRefsModel
+          // - В обычном альбомном режиме: используем режим «только избранные», если он включён
+          if (playingAlbumKey === SPECIAL_FAVORITES_KEY) {
+            const activeIdx = [];
+            (favoritesRefsModel || []).forEach((x, i) => { if (x && x.__active) activeIdx.push(i); });
+            window.playerCore.setFavoritesOnly(true, activeIdx);
+          } else {
+            const likedIdx = (playingAlbumKey && playingAlbumKey !== SPECIAL_FAVORITES_KEY) ? getLikedForAlbum(playingAlbumKey) : [];
+            window.playerCore.setFavoritesOnly(!!window.favoritesOnlyMode, likedIdx);
+          }
+        } catch {}
+      }
+
+      if (doPlay) {
+        try { window.playerCore.play(idx); } catch {}
+      }
+
+      // Лирика и прочий UI
+      try {
+        const pcfg = getPlayerConfig();
+        const tr = pcfg?.tracks?.[idx];
+        if (tr && tr.lyrics) loadLyrics(tr.lyrics);
+      } catch {}
+      restorePlayerButtonsState();
+      applyLyricsViewMode();
+      initializePlayerControls();
+      applyMiniModeUI();
+      updateNextUpLabel();
+      updateMiniNowHeader();
+      updatePlayPauseIcon();
+      return;
+    }
+
+    // Старая ветка: через <audio>
     if (!document.getElementById('lyricsplayerblock')) {
       const holder = document.getElementById('now-playing');
       if (holder) {
