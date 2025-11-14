@@ -72,7 +72,7 @@ export class PlayerCore {
     this._albumArtist = (albumMeta?.artist) || (tracks?.[0]?.artist) || '';
     this._albumTitle  = (albumMeta?.album)  || (tracks?.[0]?.album)  || '';
     this._albumCover  = (albumMeta?.cover)  || (tracks?.[0]?.cover)  || '';
-    this._syncShuffle();
+    this._syncShuffle(true);
     this._fire('onTrackChange', this.getCurrentTrack(), this.index);
   }
 
@@ -80,11 +80,11 @@ export class PlayerCore {
   setEvents(events: PlayerCoreEvents) { this.events = { ...events }; }
 
   setRepeat(v: boolean) { this.repeat = !!v; }
-  setShuffle(v: boolean) { this.shuffle = !!v; this._syncShuffle(); }
+  setShuffle(v: boolean) { this.shuffle = !!v; this._syncShuffle(true); }
   setFavoritesOnly(v: boolean, favorites: number[] = []) {
     this.favoritesOnly = !!v;
     this.favorites = Array.isArray(favorites) ? favorites.slice() : [];
-    this._syncShuffle();
+    this._syncShuffle(true);
   }
 
   play(index?: number) {
@@ -124,8 +124,8 @@ export class PlayerCore {
   pause() { if (this.howl && !this._isPaused) this.howl.pause(); }
   stop()  { this._stopHowl(); this._isPaused = true; this._fire('onStop', this.getCurrentTrack(), this.index); }
 
-  next() { this._syncShuffle(); const n = this._nextIndex(); if (n < 0) return; this.index = n; this.play(); }
-  prev() { this._syncShuffle(); const p = this._prevIndex(); if (p < 0) return; this.index = p; this.play(); }
+  next() { const n = this._nextIndex(); if (n < 0) return; this.index = n; this.play(); }
+  prev() { const p = this._prevIndex(); if (p < 0) return; this.index = p; this.play(); }
 
   setVolume(v: number) {
     const vol = Math.max(0, Math.min(1, Number(v)));
@@ -187,9 +187,17 @@ export class PlayerCore {
     }
     return this.playlist.map((_, i) => i);
   }
-  private _syncShuffle() {
+  private _syncShuffle(force: boolean = false) {
     if (!this.shuffle) { this.shuffled = []; return; }
     const base = this._filteredIndices();
+
+    if (!force &&
+        Array.isArray(this.shuffled) &&
+        this.shuffled.length === base.length &&
+        this.shuffled.includes(this.index)) {
+      return;
+    }
+
     const arr = base.slice();
     for (let j = arr.length - 1; j > 0; j--) {
       const k = Math.floor(Math.random() * (j + 1));
@@ -199,6 +207,7 @@ export class PlayerCore {
     if (i > 0) { arr.splice(i, 1); arr.unshift(this.index); }
     this.shuffled = arr;
   }
+
   private _displayList(): number[] {
     const base = this._filteredIndices();
     if (this.shuffle && this.shuffled.length) return this.shuffled.slice();
