@@ -1912,21 +1912,39 @@
           }
         }
         if (stBase && Number.isInteger(stBase.trackIndex) && stBase.trackIndex >= 0 && stBase.trackIndex < (config.tracks || []).length) {
+          // Отрисуем UI под нужный трек без автозапуска
           showTrack(stBase.trackIndex, false);
-          setTimeout(()=> {
-            const a = document.getElementById('audio');
-            if (a) {
-              a.currentTime = stBase.position || 0;
-              a.volume = (typeof stBase.volume === 'number') ? stBase.volume : a.volume;
-              if (resume && resume.wasPlaying === true) {
-                a.play().catch(()=>{});
+
+          setTimeout(() => {
+            // Новый плеер (предпочтительно)
+            if (window.__useNewPlayerCore && window.playerCore) {
+              try {
+                const pc = window.playerCore;
+                if (typeof stBase.volume === 'number') pc.setVolume(stBase.volume);
+                if (typeof stBase.position === 'number') pc.seek(stBase.position);
+                // Резюмируем только если до reload был проигрыш
+                if (resume && resume.wasPlaying === true) {
+                  // Явно укажем индекс на всякий случай
+                  pc.play(stBase.trackIndex);
+                }
+              } catch (e) {
+                console.warn('Restore via PlayerCore failed, falling back to <audio>', e);
+              }
+            } else {
+              // Старый фолбэк через <audio>
+              const a = document.getElementById('audio');
+              if (a) {
+                a.currentTime = stBase.position || 0;
+                a.volume = (typeof stBase.volume === 'number') ? stBase.volume : a.volume;
+                if (resume && resume.wasPlaying === true) {
+                  a.play().catch(()=>{});
+                }
               }
             }
             applyLyricsViewMode();
             PlayerState.save();
           }, 300);
         }
-      }
 
       // Инициализация энергосбережения
       try {
