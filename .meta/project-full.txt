@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-24ca005b87d108f5e548f0f947f935c22edb0a05.idx
-│   │       ├── pack-24ca005b87d108f5e548f0f947f935c22edb0a05.pack
-│   │       └── pack-24ca005b87d108f5e548f0f947f935c22edb0a05.rev
+│   │       ├── pack-df851a560e66445d05d269d7efb0f989def76393.idx
+│   │       ├── pack-df851a560e66445d05d269d7efb0f989def76393.pack
+│   │       └── pack-df851a560e66445d05d269d7efb0f989def76393.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -251,7 +251,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-14 15:38:41 UTC
+Сгенерировано: 2025-11-14 15:51:22 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1021,8 +1021,37 @@ jobs:
       window.__useNewPlayerCore = true;
     }
   </script>
-  <!-- Адаптер нового ядра плеера: создаёт window.playerCore (без вмешательства в UI) -->
-  <script type="module" src="./scripts/player-adapter.js"></script>
+  <!-- Адаптер нового ядра плеера грузим ЛЕНИВО, чтобы ни при каких ошибках модуля не блокировать вход -->
+  <script>
+    (function lazyLoadPlayerAdapter() {
+      function loadAdapterOnce() {
+        if (window.__pcAdapterLoaded) return;
+        window.__pcAdapterLoaded = true;
+        try {
+          import('./scripts/player-adapter.js').catch(e => console.warn('player-adapter load failed', e));
+        } catch (e) {
+          console.warn('player-adapter import() not supported', e);
+        }
+        try { document.removeEventListener('click', loadAdapterOnce, { once: true }); } catch {}
+        try { document.removeEventListener('keydown', loadAdapterOnce, { once: true }); } catch {}
+      }
+      // Если промо уже пройден — грузим сразу, иначе по первому действию пользователя
+      try {
+        if (localStorage.getItem('newPlayerCore') !== '0') window.__useNewPlayerCore = true;
+      } catch {}
+      try {
+        if (localStorage.getItem('promoPassed') === '1') {
+          loadAdapterOnce();
+        } else {
+          document.addEventListener('click', loadAdapterOnce, { once: true });
+          document.addEventListener('keydown', loadAdapterOnce, { once: true });
+        }
+      } catch {
+        // На всякий — пробуем сразу
+        loadAdapterOnce();
+      }
+    })();
+  </script>
 </head>
 <body>
   <!-- Промокод -->
@@ -1892,7 +1921,19 @@ jobs:
   function showMain() {
     document.getElementById('promocode-block').classList.add('hidden');
     document.getElementById('main-block').classList.remove('hidden');
-    initializeMainUi();
+    // Ленивая подгрузка адаптера нового плеера (если нужно)
+    try {
+      if (window.__useNewPlayerCore && !window.playerCore && !window.__pcAdapterLoaded) {
+        window.__pcAdapterLoaded = true;
+        import('./scripts/player-adapter.js').catch(e => console.warn('player-adapter load failed in showMain', e));
+      }
+    } catch {}
+    try {
+      initializeMainUi();
+    } catch (e) {
+      console.error('initializeMainUi failed', e);
+      try { window.NotificationSystem && window.NotificationSystem.error('Ошибка инициализации UI'); } catch {}
+    }
   }
 
   /* ====== Загрузка списка альбомов ====== */
