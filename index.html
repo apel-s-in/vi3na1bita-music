@@ -2934,9 +2934,22 @@
       </div>
     `;
 
+    // Dev-флаг для подготовки к полной чистке <audio>:
+    // localStorage.setItem('noLegacyAudio','1') — не создавать/не использовать <audio>
+    const __forceNoLegacyAudio = (window.__useNewPlayerCore && (localStorage.getItem('noLegacyAudio') === '1'));
+
     // Ветка нового плеера: НЕ создаём и не используем <audio>, только UI
-    if (window.__useNewPlayerCore && window.playerCore) {
+    if (window.__useNewPlayerCore && (window.playerCore || __forceNoLegacyAudio)) {
       try {
+        // Если ядро ещё не загружено — мягко инициируем адаптер
+        if (!window.playerCore) {
+          try {
+            if (!window.__pcAdapterLoaded) {
+              window.__pcAdapterLoaded = true;
+              import('./scripts/player-adapter.js').catch(()=>{});
+            }
+          } catch {}
+        }
         const pcfg = getPlayerConfig();
         const tr = pcfg?.tracks?.[playingTrack];
         if (tr && tr.lyrics) loadLyrics(tr.lyrics);
@@ -4860,18 +4873,16 @@ function syncUiFromPlayback() {
   function prefetchAudioLink(url, asType = 'audio') {
     if (!url) return;
     try {
-      // Предпочтительно: попросить Service Worker выполнить префетч
+      // Предпочтительно выполняем префетч через Service Worker
       if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
         try {
           navigator.serviceWorker.controller.postMessage({ type: 'PREFETCH_AUDIO', urls: [url] });
-          return; // SW возьмёт на себя кэширование
-        } catch (e) {
-          // мягкий фолбэк ниже
-        }
+          return;
+        } catch {}
       }
-      // Фолбэк: прямой fetch с cache: 'reload' (как было)
+      // Фолбэк — прямой fetch
       fetch(url, { cache: 'reload', mode: 'cors' }).catch(()=>{});
-    } catch (e) {}
+    } catch {}
   }
 
   /* Загрузка лирики */
@@ -5415,10 +5426,21 @@ ${lines}
     // Если выходим из «фона» или выключаем эко — привести UI к актуальному состоянию
     if (!document.hidden) {
       try {
-        const a = document.getElementById('audio');
-        if (a) {
-          onAudioMetadataLoaded({ currentTarget: a });
-          onAudioTimeUpdate({ currentTarget: a });
+        const pc = (window.__useNewPlayerCore && window.playerCore) ? window.playerCore : null;
+        if (pc) {
+          // Обновляем прогресс/таймеры/MediaSession через PlayerCore
+          try {
+            const pos = Number(pc.getSeek?.() || 0);
+            const dur = Number(pc.getDuration?.() || 0);
+            __playerCoreTick(pos, dur);
+          } catch {}
+          try { updateMediaSessionPosition(); } catch {}
+        } else {
+          const a = document.getElementById('audio');
+          if (a) {
+            onAudioMetadataLoaded({ currentTarget: a });
+            onAudioTimeUpdate({ currentTarget: a });
+          }
         }
       } catch {}
     }
