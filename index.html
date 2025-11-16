@@ -2737,7 +2737,18 @@
       nodes.forEach(n => { if (n !== keep) n.remove(); });
     } catch {}
   }
-  function showTrack(n, doPlay) {
+  async function showTrack(n, doPlay) {
+    const forceNoLegacy = (window.__useNewPlayerCore && (localStorage.getItem('noLegacyAudio') === '1'));
+
+    // Если используем новое ядро — при необходимости дождёмся адаптера
+    if (window.__useNewPlayerCore && !window.playerCore) {
+      const ready = await ensurePlayerCoreReady({ timeoutMs: 1800 });
+      if (!ready && forceNoLegacy) {
+        try { NotificationSystem.info('Инициализация плеера...'); } catch {}
+        return;
+      }
+    }
+
     // Ветка нового плеера: не используем <audio> как источник звука
     if (window.__useNewPlayerCore && window.playerCore) {
       try {
@@ -3404,6 +3415,25 @@
     }
   }
 
+  // Мягкая инициализация нового ядра плеера (адаптер + ожидание появления window.playerCore)
+  function ensurePlayerCoreReady(opts = {}) {
+    const timeoutMs = Number(opts.timeoutMs || 1500);
+    const intervalMs = Number(opts.intervalMs || 50);
+    return new Promise((resolve) => {
+      try {
+        if (!window.__pcAdapterLoaded) {
+          window.__pcAdapterLoaded = true;
+          import('./scripts/player-adapter.js').catch(()=>{});
+        }
+      } catch {}
+      const started = Date.now();
+      (function poll() {
+        if (window.playerCore) { resolve(true); return; }
+        if (Date.now() - started >= timeoutMs) { resolve(false); return; }
+        setTimeout(poll, intervalMs);
+      })();
+    });
+  }
   // Один раз привязываем UI к событиям PlayerCore
   function ensurePlayerCoreUiBindings() {
     if (!window.__useNewPlayerCore || !window.playerCore) return;
@@ -3549,8 +3579,21 @@
     } catch {}
   }
 
-  function togglePlayPause() {
-    // Флаг по умолчанию не задан => используем старую схему
+  async function togglePlayPause() {
+    const forceNoLegacy = (window.__useNewPlayerCore && (localStorage.getItem('noLegacyAudio') === '1'));
+
+    // Попробуем сначала новый движок: при необходимости дождёмся инициализации адаптера
+    if (window.__useNewPlayerCore) {
+      if (!window.playerCore) {
+        const ready = await ensurePlayerCoreReady({ timeoutMs: 1800 });
+        if (!ready && forceNoLegacy) {
+          try { NotificationSystem.info('Инициализация плеера...'); } catch {}
+          return; // ждём следующего действия пользователя
+        }
+      }
+    }
+
+    // Фолбэк на старую схему (<audio>), если новый движок недоступен и не запрещён legacy
     if (!window.__useNewPlayerCore || !window.playerCore) {
       const a = getCurrentAudio(); if (!a) return;
       if (a.paused) { a.play().catch(()=>{}); } else { a.pause(); }
@@ -3940,9 +3983,18 @@
     if (available.includes(playingTrack)) playingShuffledPlaylist.unshift(playingTrack);
     playingShuffleIndex = 0;
   }
-  function playFromPlaybackAlbum(idx, doPlay) {
+  async function playFromPlaybackAlbum(idx, doPlay) {
     currentTrack = idx;
     playingTrack = idx;
+
+    const forceNoLegacy = (window.__useNewPlayerCore && (localStorage.getItem('noLegacyAudio') === '1'));
+    if (window.__useNewPlayerCore && !window.playerCore) {
+      const ready = await ensurePlayerCoreReady({ timeoutMs: 1800 });
+      if (!ready && forceNoLegacy) {
+        try { NotificationSystem.info('Инициализация плеера...'); } catch {}
+        return;
+      }
+    }
 
     // Ветка нового ядра плеера: никакого <audio>, только PlayerCore
     if (window.__useNewPlayerCore && window.playerCore) {
