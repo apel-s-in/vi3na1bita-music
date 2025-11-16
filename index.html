@@ -3442,16 +3442,27 @@
 
     try {
       window.playerCore.on({
-        onPlay: () => { try { updatePlayPauseIcon(); } catch {} },
-        onPause: () => { try { updatePlayPauseIcon(); } catch {} },
+        onPlay: () => {
+          try { updatePlayPauseIcon(); } catch {}
+          try { updateMediaSessionPosition(); } catch {}
+          try { setPlaybackLocks(true); } catch {}
+        },
+        onPause: () => {
+          try { updatePlayPauseIcon(); } catch {}
+          try { updateMediaSessionPosition(); } catch {}
+          try { setPlaybackLocks(false); } catch {}
+        },
         onTick: __playerCoreTick,
-        // При смене трека новым плеером (в т.ч. авто-next) — синхронизируем UI без setPlaylist
+        // При смене трека новым плеером (в т.ч. авто-next) — мягко синхронизируем UI без setPlaylist
         onTrackChange: (_track, idx) => {
           try {
             const n = (typeof idx === 'number')
               ? idx
               : (typeof window.playerCore.getIndex === 'function' ? window.playerCore.getIndex() : 0);
             __syncUiToPlayerCoreIndex(n);
+            // Дополнительные лёгкие обновления мини-UI
+            try { updateMiniNowHeader(); } catch {}
+            try { updateNextUpLabel(); } catch {}
           } catch {}
         }
       });
