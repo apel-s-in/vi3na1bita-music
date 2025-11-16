@@ -3479,6 +3479,12 @@
           try { updateMediaSessionPosition(); } catch {}
           try { setPlaybackLocks(false); } catch {}
         },
+        onStop: () => {
+          // Стоп: явно отпускаем локи и синхронизируем UI/MediaSession
+          try { setPlaybackLocks(false); } catch {}
+          try { updatePlayPauseIcon(); } catch {}
+          try { updateMediaSessionPosition(); } catch {}
+        },
         onTick: __playerCoreTick,
         // При смене трека новым плеером (в т.ч. авто-next) — мягко синхронизируем UI без setPlaylist
         onTrackChange: (_track, idx) => {
