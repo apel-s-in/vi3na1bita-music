@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-caa48551443935105675c1b002511e04b913b410.idx
-│   │       ├── pack-caa48551443935105675c1b002511e04b913b410.pack
-│   │       └── pack-caa48551443935105675c1b002511e04b913b410.rev
+│   │       ├── pack-a541b92e729e8ba32d74b0435fbb3059899f15cf.idx
+│   │       ├── pack-a541b92e729e8ba32d74b0435fbb3059899f15cf.pack
+│   │       └── pack-a541b92e729e8ba32d74b0435fbb3059899f15cf.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -251,7 +251,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-16 15:12:39 UTC
+Сгенерировано: 2025-11-16 15:29:29 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3477,6 +3477,22 @@ jobs:
         </div>
       </div>
     `;
+
+    // Вставляем отсутствующий блок "Следующая" для мини-режима (если не создан)
+    (function ensureNextUpBlock(){
+      try {
+        if (!document.getElementById('next-up')) {
+          const el = document.createElement('div');
+          el.className = 'next-up';
+          el.id = 'next-up';
+          el.innerHTML = '<span class="label">Далее:</span><span class="title"></span>';
+          // Ставит "Далее" прямо перед окном лирики внутри #lyricsplayerblock
+          const ref = block.querySelector('#lyrics-window');
+          if (ref && ref.parentNode) ref.parentNode.insertBefore(el, ref);
+          else block.appendChild(el);
+        }
+      } catch {}
+    })();
 
     // Dev-флаг для подготовки к полной чистке <audio>:
     // localStorage.setItem('noLegacyAudio','1') — не создавать/не использовать <audio>
