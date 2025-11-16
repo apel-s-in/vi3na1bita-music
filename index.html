@@ -2740,9 +2740,25 @@
     audio.addEventListener('waiting',        onWaiting);
     audio.addEventListener('stalled',        onStalled);
     audio.addEventListener('error',          onError);
-    // playbackState обновляем через onplay/onpause (переприсваивается, не накапливается)
-    audio.onplay  = () => { try { navigator.mediaSession.playbackState = 'playing'; } catch {} ; try { setPlaybackLocks(true); } catch {} ; try { startPositionUpdates(); } catch {} };
-    audio.onpause = () => { try { navigator.mediaSession.playbackState = 'paused';  } catch {} ; try { setPlaybackLocks(false); } catch {} ; try { stopPositionUpdates(); } catch {} };
+    audio.addEventListener('error',          onError);
+    // playbackState / wakeLock / позиция управляются:
+    // - для нового ядра: PlayerCore.onPlay/onPause;
+    // - для legacy: только здесь.
+    if (!(window.__useNewPlayerCore && window.playerCore)) {
+      audio.onplay  = () => {
+        try { navigator.mediaSession.playbackState = 'playing'; } catch {}
+        try { setPlaybackLocks(true); } catch {}
+        try { startPositionUpdates(); } catch {}
+      };
+      audio.onpause = () => {
+        try { navigator.mediaSession.playbackState = 'paused'; } catch {}
+        try { setPlaybackLocks(false); } catch {}
+        try { stopPositionUpdates(); } catch {}
+      };
+    } else {
+      audio.onplay = null;
+      audio.onpause = null;
+    }
     __audioHandlers = { onLoaded, onTime, onEnded, onWaiting, onStalled, onError };
   }
 
@@ -3328,6 +3344,12 @@
     updatePlayPauseIcon();
   }
   function onAudioEnded(e) {
+    // Если включён новый плеер — авто-next и стоп реализуются в PlayerCore.onEnd.
+    // Здесь не вмешиваемся, чтобы не было двойного управления.
+    if (window.__useNewPlayerCore && window.playerCore) {
+      return;
+    }
+
     const remainingEl = document.getElementById('time-remaining');
     if (remainingEl) remainingEl.textContent = '00:00';
     const audio = (e && (e.currentTarget || e.target)) || document.getElementById('audio');
@@ -4096,9 +4118,12 @@
     }
   }
 
-  // Запускаем обновления при воспроизведении
-  document.getElementById('audio')?.addEventListener('play', startPositionUpdates);
-  document.getElementById('audio')?.addEventListener('pause', stopPositionUpdates);
+  // Запускаем обновления позиции ТОЛЬКО для legacy-плеера.
+  // При активном PlayerCore позиция обновляется через __playerCoreTick/updateMediaSessionPosition.
+  if (!(window.__useNewPlayerCore && window.playerCore)) {
+    document.getElementById('audio')?.addEventListener('play', startPositionUpdates);
+    document.getElementById('audio')?.addEventListener('pause', stopPositionUpdates);
+  }
   function initSilentAudioPlayback() {
     if (!isIOS()) return;
   
