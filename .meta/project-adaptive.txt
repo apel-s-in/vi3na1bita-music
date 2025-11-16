@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-af3ad023bb5cf74cdfc6bb32a842a6dd348e92b7.idx
-│   │       ├── pack-af3ad023bb5cf74cdfc6bb32a842a6dd348e92b7.pack
-│   │       └── pack-af3ad023bb5cf74cdfc6bb32a842a6dd348e92b7.rev
+│   │       ├── pack-c77a1bed5ec804c8cefd553f122ad24ae4627b8c.idx
+│   │       ├── pack-c77a1bed5ec804c8cefd553f122ad24ae4627b8c.pack
+│   │       └── pack-c77a1bed5ec804c8cefd553f122ad24ae4627b8c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -252,7 +252,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-16 19:46:07 UTC
+Сгенерировано: 2025-11-16 19:51:45 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3268,18 +3268,32 @@ jobs:
         startOfflineToasts();
       }
     };
-    audio.addEventListener('loadedmetadata', onLoaded);
-    audio.addEventListener('timeupdate',     onTime);
-    audio.addEventListener('ended',          onEnded);
-    audio.addEventListener('waiting',        onWaiting);
-    audio.addEventListener('stalled',        onStalled);
-    audio.addEventListener('error',          onError);
-    audio.addEventListener('error',          onError);
-    // playbackState / wakeLock / позиция управляются:
-    // - для нового ядра: PlayerCore.onPlay/onPause;
-    // - для legacy: только здесь.
+    // События <audio> нужны только в legacy-режиме. При активном PlayerCore
+    // прогресс/таймеры/окончание трека обрабатываются ядром.
     if (!(window.__useNewPlayerCore && window.playerCore)) {
+      audio.addEventListener('loadedmetadata', onLoaded);
+      audio.addEventListener('timeupdate',     onTime);
+      audio.addEventListener('ended',          onEnded);
+      audio.addEventListener('waiting',        onWaiting);
+      audio.addEventListener('stalled',        onStalled);
+      audio.addEventListener('error',          onError);
+
       audio.onplay  = () => {
+        try { navigator.mediaSession.playbackState = 'playing'; } catch {}
+        try { setPlaybackLocks(true); } catch {}
+        try { startPositionUpdates(); } catch {}
+      };
+      audio.onpause = () => {
+        try { navigator.mediaSession.playbackState = 'paused'; } catch {}
+        try { setPlaybackLocks(false); } catch {}
+        try { stopPositionUpdates(); } catch {}
+      };
+    } else {
+      // При PlayerCore не навешиваем timeupdate/loadedmetadata/ended на <audio> вообще.
+      audio.onplay = null;
+      audio.onpause = null;
+    }
+    __audioHandlers = { onLoaded, onTime, onEnded, onWaiting, onStalled, onError };
         try { navigator.mediaSession.playbackState = 'playing'; } catch {}
         try { setPlaybackLocks(true); } catch {}
         try { startPositionUpdates(); } catch {}
@@ -3810,6 +3824,11 @@ jobs:
     }
   }
   function onAudioMetadataLoaded(e) {
+    // Новый плеер сам сообщает UI о длительности через onTick/onTrackChange.
+    if (window.__useNewPlayerCore && window.playerCore) {
+      return;
+    }
+
     const audio = (e && (e.currentTarget || e.target)) || document.getElementById('audio');
     if (!audio) return;
     const duration = audio.duration || 0;
@@ -3829,6 +3848,12 @@ jobs:
     } catch {}
   }
   function onAudioTimeUpdate(e) {
+    // При активном новом ядре PlayerCore прогресс/таймеры/лирика обновляются через __playerCoreTick.
+    // Здесь не вмешиваемся, чтобы не было двойного источника истины.
+    if (window.__useNewPlayerCore && window.playerCore) {
+      return;
+    }
+
     const audio = (e && (e.currentTarget || e.target)) || document.getElementById('audio');
     if (!audio) return;
 
