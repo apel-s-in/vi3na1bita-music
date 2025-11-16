@@ -1369,14 +1369,7 @@
     } catch {}
   }
   // Алиас для совместимости с ошибочным вызовом applyLogs()
-  function applyLogs() {
-    try { return applyLogos(); } catch {}
-  }
-  // Ещё один алиас: встречается вызов в нижнем регистре (applylogs)
   function applylogs() {
-    try { return applyLogos(); } catch {}
-  }
-  function applyLogs() {
     try { return applyLogos(); } catch {}
   }
   function pickLogoUrl() {
