@@ -186,13 +186,19 @@
   function stopPlayback() {
     if (window.__useNewPlayerCore && pc()) {
       try { pc().stop && pc().stop(); } catch {}
+      // При стопе гарантированно отпускаем locks и обновляем Media Session/иконку
       try { window.updatePlayPauseIcon && window.updatePlayPauseIcon(); } catch {}
+      try { window.updateMediaSessionPosition && window.updateMediaSessionPosition(); } catch {}
+      try { window.setPlaybackLocks && window.setPlaybackLocks(false); } catch {}
       return;
     }
     try {
       const a = audioEl();
       if (a) { a.pause(); a.currentTime = 0; }
       applyPostUiSync();
+      // Фолбэк: привести Media Session и локи в консистентное состояние
+      try { window.updateMediaSessionPosition && window.updateMediaSessionPosition(); } catch {}
+      try { window.setPlaybackLocks && window.setPlaybackLocks(false); } catch {}
     } catch {}
   }
 
