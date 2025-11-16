@@ -2673,6 +2673,14 @@
       }
       if (shuffleMode) createShuffledPlaylist();
     }
+
+    // Если активен новый плеер и играем этот же альбом — синхронизируем набор избранного
+    if (window.__useNewPlayerCore && window.playerCore && isBrowsingSameAsPlaying()) {
+      try {
+        const likedIdx = getLikedForAlbum(playingAlbumKey);
+        window.playerCore.setFavoritesOnly(!!favoritesOnlyMode, likedIdx);
+      } catch {}
+    }
   }
 
   /* Плеер */
@@ -2953,10 +2961,14 @@
           el.className = 'next-up';
           el.id = 'next-up';
           el.innerHTML = '<span class="label">Далее:</span><span class="title"></span>';
-          // Ставит "Далее" прямо перед окном лирики внутри #lyricsplayerblock
-          const ref = block.querySelector('#lyrics-window');
-          if (ref && ref.parentNode) ref.parentNode.insertBefore(el, ref);
-          else block.appendChild(el);
+          // Размещаем "Далее" ПОД мини‑плеером — сразу после полосы громкости
+          const vol = block.querySelector('.volume-control-wrapper');
+          if (vol && vol.parentNode) {
+            if (vol.nextSibling) vol.parentNode.insertBefore(el, vol.nextSibling);
+            else vol.parentNode.appendChild(el);
+          } else {
+            block.appendChild(el);
+          }
         }
       } catch {}
     })();
@@ -3577,10 +3589,18 @@
         if (row) row.classList.add('current');
       } catch {}
 
-      // Перенос блока плеера под текущую строку
+      // Размещение блока плеера: в мини‑режиме держим ВВЕРХУ (#now-playing), иначе — под текущей строкой
       try {
         const lp = document.getElementById('lyricsplayerblock');
-        if (lp && row && row.parentNode) {
+        if (!lp) {
+          // no-op
+        } else if (isBrowsingOtherAlbum() && !(playingAlbumKey === SPECIAL_FAVORITES_KEY && viewMode === 'favorites')) {
+          const holder = document.getElementById('now-playing');
+          if (holder && lp.parentNode !== holder) {
+            holder.innerHTML = '';
+            holder.appendChild(lp);
+          }
+        } else if (row && row.parentNode) {
           if (row.nextSibling) row.parentNode.insertBefore(lp, row.nextSibling);
           else row.parentNode.appendChild(lp);
         }
@@ -4584,6 +4604,17 @@ function syncUiFromPlayback() {
     })();
     if (inMini) lp.classList.add('mini-mode'); else lp.classList.remove('mini-mode');
 
+    // В мини‑режиме плеер всегда держим сверху (#now-playing), а не под строкой другого альбома
+    try {
+      if (inMini) {
+        const holder = document.getElementById('now-playing');
+        if (holder && lp.parentNode !== holder) {
+          holder.innerHTML = '';
+          holder.appendChild(lp);
+        }
+      }
+    } catch {}
+
     try {
       if (inMini) {
         if (!__wasMini) __wasMini = true;
@@ -4703,6 +4734,24 @@ function syncUiFromPlayback() {
       }
       if (favoritesOnlyMode && shuffleMode) createPlayingShuffledPlaylist();
       updateNextUpLabel();
+    }
+
+    // Синхронизируем PlayerCore набор избранного
+    if (window.__useNewPlayerCore && window.playerCore) {
+      try {
+        if (playingAlbumKey === SPECIAL_FAVORITES_KEY) {
+          const activeIdx = [];
+          (favoritesRefsModel || []).forEach((x, i) => { if (x && x.__active) activeIdx.push(i); });
+          window.playerCore.setFavoritesOnly(true, activeIdx);
+        } else {
+          const likedIdx = getLikedForAlbum(playingAlbumKey);
+          window.playerCore.setFavoritesOnly(!!favoritesOnlyMode, likedIdx);
+          // Если включён режим «только ⭐» и текущий трек сняли со ⭐ — перейти к следующему
+          if (favoritesOnlyMode && was && isBrowsingSameAsPlaying()) {
+            setTimeout(() => { try { nextTrack(); } catch {} }, 0);
+          }
+        }
+      } catch {}
     }
   }
 
