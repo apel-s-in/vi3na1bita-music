@@ -4129,12 +4129,9 @@
     }
   }
 
-  // Запускаем обновления позиции ТОЛЬКО для legacy-плеера.
-  // При активном PlayerCore позиция обновляется через __playerCoreTick/updateMediaSessionPosition.
-  if (!(window.__useNewPlayerCore && window.playerCore)) {
-    document.getElementById('audio')?.addEventListener('play', startPositionUpdates);
-    document.getElementById('audio')?.addEventListener('pause', stopPositionUpdates);
-  }
+  // Обновления позиции Media Session в legacy-режиме запускаются через
+  // onplay/onpause внутри attachAudioEventListeners(audio).
+  // Для нового PlayerCore эта логика полностью вынесена в __playerCoreTick/updateMediaSessionPosition.
   function initSilentAudioPlayback() {
     if (!isIOS()) return;
   
