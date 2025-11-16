@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-edddfc124b757879cc88c0447fbc9213d9dbdbd2.idx
-│   │       ├── pack-edddfc124b757879cc88c0447fbc9213d9dbdbd2.pack
-│   │       └── pack-edddfc124b757879cc88c0447fbc9213d9dbdbd2.rev
+│   │       ├── pack-6fe2bc78fade9af4b9db3a26a285247bcb26ed68.idx
+│   │       ├── pack-6fe2bc78fade9af4b9db3a26a285247bcb26ed68.pack
+│   │       └── pack-6fe2bc78fade9af4b9db3a26a285247bcb26ed68.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -252,7 +252,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-16 19:19:59 UTC
+Сгенерировано: 2025-11-16 19:31:37 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3222,7 +3222,13 @@ jobs:
   }
 
   /* Плеер */
-  function getCurrentAudio() { return __currentAudio || document.getElementById('audio') || null; }
+  function getCurrentAudio() {
+    // Если активен новый плеер и ядро уже создано — не даём legacy <audio> стать источником звука.
+    if (window.__useNewPlayerCore && window.playerCore) {
+      return null;
+    }
+    return __currentAudio || document.getElementById('audio') || null;
+  }
 
   // Единое управление слушателями audio — чтобы не копились при каждом ререндере
   let __audioHandlers = null;
