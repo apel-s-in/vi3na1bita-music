@@ -107,6 +107,40 @@
       }, 0);
       return;
     }
+
+    // Фолбэк (legacy): рассчитать предыдущий индекс в контексте «игры»
+    try {
+      // Если ещё ничего не играет — запустим первый трек текущего альбома
+      if (!Array.isArray(window.playingTracks) || window.playingTracks.length === 0) {
+        if (typeof window.showTrack === 'function') window.showTrack(0, true);
+        return;
+      }
+      const len = window.playingTracks.length;
+      // База доступных с учётом режима «только ⭐»
+      const available = (typeof window.getAvailableTracksForAlbum === 'function')
+        ? window.getAvailableTracksForAlbum(window.playingAlbumKey, len)
+        : Array.from({ length: len }, (_, i) => i);
+
+      if (!available || available.length === 0) return;
+
+      let target = -1;
+      if (window.shuffleMode && Array.isArray(window.playingShuffledPlaylist) && window.playingShuffledPlaylist.length) {
+        const arr = window.playingShuffledPlaylist.slice();
+        const pos = arr.indexOf(window.playingTrack);
+        const prevPos = (pos - 1 + arr.length) % arr.length;
+        target = arr[prevPos];
+      } else if (window.favoritesOnlyMode) {
+        const pos = available.indexOf(window.playingTrack);
+        target = available[(pos - 1 + available.length) % available.length];
+      } else {
+        target = (window.playingTrack - 1 + len) % len;
+      }
+
+      if (Number.isFinite(target) && target >= 0) {
+        if (typeof window.playFromPlaybackAlbum === 'function') window.playFromPlaybackAlbum(target, true);
+        else if (typeof window.showTrack === 'function') window.showTrack(target, true);
+      }
+    } catch {}
   }
 
   function nextTrack() {
@@ -136,6 +170,17 @@
       }, 0);
       return;
     }
+
+    // Фолбэк (legacy): используем текущую функцию вычисления следующего индекса
+    try {
+      if (typeof window.computeNextIndexPlayback === 'function') {
+        const idx = window.computeNextIndexPlayback();
+        if (Number.isFinite(idx) && idx >= 0) {
+          if (typeof window.playFromPlaybackAlbum === 'function') window.playFromPlaybackAlbum(idx, true);
+          else if (typeof window.showTrack === 'function') window.showTrack(idx, true);
+        }
+      }
+    } catch {}
   }
 
   function stopPlayback() {
