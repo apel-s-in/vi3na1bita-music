@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c77a1bed5ec804c8cefd553f122ad24ae4627b8c.idx
-│   │       ├── pack-c77a1bed5ec804c8cefd553f122ad24ae4627b8c.pack
-│   │       └── pack-c77a1bed5ec804c8cefd553f122ad24ae4627b8c.rev
+│   │       ├── pack-f6bf9c441f753b07784bfac34e73d49cdd8e619f.idx
+│   │       ├── pack-f6bf9c441f753b07784bfac34e73d49cdd8e619f.pack
+│   │       └── pack-f6bf9c441f753b07784bfac34e73d49cdd8e619f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -252,7 +252,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-16 19:51:45 UTC
+Сгенерировано: 2025-11-16 19:59:22 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3290,20 +3290,6 @@ jobs:
       };
     } else {
       // При PlayerCore не навешиваем timeupdate/loadedmetadata/ended на <audio> вообще.
-      audio.onplay = null;
-      audio.onpause = null;
-    }
-    __audioHandlers = { onLoaded, onTime, onEnded, onWaiting, onStalled, onError };
-        try { navigator.mediaSession.playbackState = 'playing'; } catch {}
-        try { setPlaybackLocks(true); } catch {}
-        try { startPositionUpdates(); } catch {}
-      };
-      audio.onpause = () => {
-        try { navigator.mediaSession.playbackState = 'paused'; } catch {}
-        try { setPlaybackLocks(false); } catch {}
-        try { stopPositionUpdates(); } catch {}
-      };
-    } else {
       audio.onplay = null;
       audio.onpause = null;
     }
