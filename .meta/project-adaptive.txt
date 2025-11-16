@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a785d371bf29eedbdbc13b7504fabba08ffe078f.idx
-│   │       ├── pack-a785d371bf29eedbdbc13b7504fabba08ffe078f.pack
-│   │       └── pack-a785d371bf29eedbdbc13b7504fabba08ffe078f.rev
+│   │       ├── pack-df444c91849443bb5f80263956464a55b33e3592.idx
+│   │       ├── pack-df444c91849443bb5f80263956464a55b33e3592.pack
+│   │       └── pack-df444c91849443bb5f80263956464a55b33e3592.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -252,7 +252,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-16 20:16:52 UTC
+Сгенерировано: 2025-11-16 20:34:48 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3313,12 +3313,10 @@ jobs:
     } catch {}
   }
   async function showTrack(n, doPlay) {
-    const forceNoLegacy = (window.__useNewPlayerCore && (localStorage.getItem('noLegacyAudio') === '1'));
-
-    // Если используем новое ядро — при необходимости дождёмся адаптера
+    // Если включён новый движок — всегда ждём адаптер и НЕ переходим на legacy <audio>
     if (window.__useNewPlayerCore && !window.playerCore) {
       const ready = await ensurePlayerCoreReady({ timeoutMs: 1800 });
-      if (!ready && forceNoLegacy) {
+      if (!ready) {
         try { NotificationSystem.info('Инициализация плеера...'); } catch {}
         return;
       }
@@ -3540,12 +3538,8 @@ jobs:
       } catch {}
     })();
 
-    // Dev-флаг для подготовки к полной чистке <audio>:
-    // localStorage.setItem('noLegacyAudio','1') — не создавать/не использовать <audio>
-    const __forceNoLegacyAudio = (window.__useNewPlayerCore && (localStorage.getItem('noLegacyAudio') === '1'));
-
     // Ветка нового плеера: НЕ создаём и не используем <audio>, только UI
-    if (window.__useNewPlayerCore && (window.playerCore || __forceNoLegacyAudio)) {
+    if (window.__useNewPlayerCore) {
       try {
         // Если ядро ещё не загружено — мягко инициируем адаптер
         if (!window.playerCore) {
