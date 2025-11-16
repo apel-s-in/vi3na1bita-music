@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-61d1b9104dbb70150dbb3fed0da191c18727f89a.idx
-│   │       ├── pack-61d1b9104dbb70150dbb3fed0da191c18727f89a.pack
-│   │       └── pack-61d1b9104dbb70150dbb3fed0da191c18727f89a.rev
+│   │       ├── pack-d3fcd1d9f5cdeee0e14d3a019e0ddcfad788caa5.idx
+│   │       ├── pack-d3fcd1d9f5cdeee0e14d3a019e0ddcfad788caa5.pack
+│   │       └── pack-d3fcd1d9f5cdeee0e14d3a019e0ddcfad788caa5.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -251,7 +251,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-14 16:12:39 UTC
+Сгенерировано: 2025-11-16 11:02:34 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1902,6 +1902,13 @@ jobs:
     } catch {}
   }
   // Алиас для совместимости с ошибочным вызовом applyLogs()
+  function applyLogs() {
+    try { return applyLogos(); } catch {}
+  }
+  // Ещё один алиас: встречается вызов в нижнем регистре (applylogs)
+  function applylogs() {
+    try { return applyLogos(); } catch {}
+  }
   function applyLogs() {
     try { return applyLogos(); } catch {}
   }
