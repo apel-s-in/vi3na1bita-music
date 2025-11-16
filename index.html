@@ -4860,7 +4860,16 @@ function syncUiFromPlayback() {
   function prefetchAudioLink(url, asType = 'audio') {
     if (!url) return;
     try {
-      // Прогреваем через SW, чтобы положить ответ в MEDIA_CACHE
+      // Предпочтительно: попросить Service Worker выполнить префетч
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        try {
+          navigator.serviceWorker.controller.postMessage({ type: 'PREFETCH_AUDIO', urls: [url] });
+          return; // SW возьмёт на себя кэширование
+        } catch (e) {
+          // мягкий фолбэк ниже
+        }
+      }
+      // Фолбэк: прямой fetch с cache: 'reload' (как было)
       fetch(url, { cache: 'reload', mode: 'cors' }).catch(()=>{});
     } catch (e) {}
   }
