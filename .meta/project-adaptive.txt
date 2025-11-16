@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1a4b5f05555956f290b96d11f4662783109743d0.idx
-│   │       ├── pack-1a4b5f05555956f290b96d11f4662783109743d0.pack
-│   │       └── pack-1a4b5f05555956f290b96d11f4662783109743d0.rev
+│   │       ├── pack-287e6276ecb6481ea5578340a1c3f687a850320b.idx
+│   │       ├── pack-287e6276ecb6481ea5578340a1c3f687a850320b.pack
+│   │       └── pack-287e6276ecb6481ea5578340a1c3f687a850320b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -252,7 +252,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-16 19:05:54 UTC
+Сгенерировано: 2025-11-16 19:08:27 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3873,79 +3873,28 @@ jobs:
   }
 
   function seekToPosition(e) {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const clientX = e.clientX ?? (e.touches && e.touches[0] && e.touches[0].clientX);
-    if (typeof clientX !== 'number') return;
-    const percent = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-
-    // Новый плеер
-    if (window.__useNewPlayerCore && window.playerCore && typeof window.playerCore.getDuration === 'function') {
-      const dur = Number(window.playerCore.getDuration() || 0);
-      if (dur > 0) {
-        window.playerCore.seek(dur * percent);
-        return;
-      }
+    if (window.PlayerControls && typeof window.PlayerControls.seekFromEvent === 'function') {
+      return window.PlayerControls.seekFromEvent(e);
     }
-
-    // Старая схема
-    const audio = document.getElementById('audio');
-    if (!audio || !isFinite(audio.duration) || audio.duration <= 0) return;
-    audio.currentTime = audio.duration * percent;
   }
 
   function onVolumeSliderChange(e) {
-    const value = (e && e.target ? e.target.value : 100) / 100;
-    const vol = Math.max(0, Math.min(1, Number(value)));
-
-    if (window.__useNewPlayerCore && window.playerCore && typeof window.playerCore.setVolume === 'function') {
-      window.playerCore.setVolume(vol);
-    } else {
-      const audio = document.getElementById('audio');
-      if (audio) audio.volume = vol;
+    if (window.PlayerControls && typeof window.PlayerControls.onVolumeInput === 'function') {
+      return window.PlayerControls.onVolumeInput(e);
     }
-
-    updateVolumeUI(vol);
-    try { localStorage.setItem('playerVolume', String(vol)); } catch {}
   }
+
   function updateVolumeUI(volume){
     const percent = Math.max(0, Math.min(100, Math.round(volume * 100)));
     const vf = document.getElementById('volume-fill');
     if (vf) vf.style.width = `${percent}%`;
   }
   function toggleMute() {
-    // Новый плеер
-    if (window.__useNewPlayerCore && window.playerCore) {
-      const pc = window.playerCore;
-      const cur = (typeof pc.getVolume === 'function') ? (pc.getVolume() || 0) : 1;
-      if (cur > 0) {
-        try { localStorage.setItem('playerVolume', String(cur)); } catch {}
-        try { pc.setVolume(0); } catch {}
-        isMuted = true;
-        updateVolumeUI(0);
-      } else {
-        const saved = parseFloat(localStorage.getItem('playerVolume') || '1');
-        const vol = Number.isFinite(saved) && saved > 0 ? saved : 1;
-        try { pc.setVolume(vol); } catch {}
-        isMuted = false;
-        updateVolumeUI(vol);
-      }
-      return;
+    if (window.PlayerControls && typeof window.PlayerControls.toggleMute === 'function') {
+      return window.PlayerControls.toggleMute();
     }
-
-    // Старая схема
-    const audio = document.getElementById('audio');
-    if (!audio) return;
-    if (isMuted) {
-      const saved = parseFloat(localStorage.getItem('playerVolume'));
-      audio.volume = Number.isFinite(saved) && saved > 0 ? saved : 1;
-      isMuted = false;
-    } else {
-      try { localStorage.setItem('playerVolume', audio.volume); } catch {}
-      audio.volume = 0;
-      isMuted = true;
-    }
-    updateVolumeUI(audio.volume);
   }
+
   // Вспомогательный билд-пакет для PlayerCore: собрать треки и метаданные из текущего конфига
   function __buildPlayerCorePayload() {
     try {
