@@ -1372,6 +1372,13 @@
   function applyLogs() {
     try { return applyLogos(); } catch {}
   }
+  // Ещё один алиас: встречается вызов в нижнем регистре (applylogs)
+  function applylogs() {
+    try { return applyLogos(); } catch {}
+  }
+  function applyLogs() {
+    try { return applyLogos(); } catch {}
+  }
   function pickLogoUrl() {
     const dpr = window.devicePixelRatio || 1;
     const mobile = isMobileUA() || (Math.min(screen.width, screen.height) <= 820);
