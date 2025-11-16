@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-df444c91849443bb5f80263956464a55b33e3592.idx
-│   │       ├── pack-df444c91849443bb5f80263956464a55b33e3592.pack
-│   │       └── pack-df444c91849443bb5f80263956464a55b33e3592.rev
+│   │       ├── pack-8442210974fc9f2f6857d70594d77854913502c1.idx
+│   │       ├── pack-8442210974fc9f2f6857d70594d77854913502c1.pack
+│   │       └── pack-8442210974fc9f2f6857d70594d77854913502c1.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -252,7 +252,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-16 20:34:48 UTC
+Сгенерировано: 2025-11-16 20:41:29 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5540,11 +5540,27 @@ ${lines}
   function closeSleepMenu(e){ if (e && e.target.closest('#sleep-timer-btn')) return; document.getElementById('sleep-menu').classList.remove('active'); document.removeEventListener('click', closeSleepMenu); }
   function setSleepTimer(minutes) {
     closeSleepMenu();
-    if (minutes === 'off') { 
-      clearSleepTimer(); 
-      return; 
+    if (minutes === 'off') {
+      clearSleepTimer();
+      return;
     }
-    sleepTimerTarget = Date.now() + minutes * 60 * 1000;
+    const ms = Number(minutes) * 60 * 1000;
+
+    // Если активен новый плеер — используем его встроенный таймер
+    const pc = (window.__useNewPlayerCore && window.playerCore) ? window.playerCore : null;
+    if (pc && typeof pc.setSleepTimer === 'function') {
+      try {
+        pc.setSleepTimer(ms);
+        // Для UI берём фактическую цель из ядра (на случай квантизации таймеров в фоне)
+        sleepTimerTarget = (typeof pc.getSleepTimerTarget === 'function') ? pc.getSleepTimerTarget() : (Date.now() + ms);
+      } catch {
+        sleepTimerTarget = Date.now() + ms;
+      }
+    } else {
+      // Фолбэк — прежняя локальная реализация
+      sleepTimerTarget = Date.now() + ms;
+    }
+
     updateSleepTimerUI();
     if (sleepTimerInterval) clearInterval(sleepTimerInterval);
     sleepTimerInterval = setInterval(checkSleepTimer, 1000);
@@ -5556,16 +5572,30 @@ ${lines}
   function updateSleepTimerUI() {
     const btn = document.getElementById('sleep-timer-btn');
     const badge = document.getElementById('sleep-timer-badge');
-    if (!sleepTimerTarget) {
+
+    // Если есть PlayerCore — берём цель из него
+    const pc = (window.__useNewPlayerCore && window.playerCore) ? window.playerCore : null;
+    const target = pc && typeof pc.getSleepTimerTarget === 'function'
+      ? (pc.getSleepTimerTarget() || 0)
+      : (sleepTimerTarget || 0);
+
+    if (!target) {
       btn && btn.classList.remove('active');
       if (badge) { badge.style.display = 'none'; badge.textContent = ''; }
       return;
     }
+
     btn && btn.classList.add('active');
-    const minsLeft = Math.max(0, Math.ceil((sleepTimerTarget - Date.now()) / 60000));
+    const minsLeft = Math.max(0, Math.ceil((target - Date.now()) / 60000));
     if (badge) { badge.style.display = ''; badge.textContent = String(minsLeft); }
   }
   function clearSleepTimer() {
+    // Останавливаем таймер в ядре (если активно)
+    const pc = (window.__useNewPlayerCore && window.playerCore) ? window.playerCore : null;
+    if (pc && typeof pc.clearSleepTimer === 'function') {
+      try { pc.clearSleepTimer(); } catch {}
+    }
+
     sleepTimerTarget = null;
     if (sleepTimerInterval) { clearInterval(sleepTimerInterval); sleepTimerInterval = null; }
     updateSleepTimerUI();
@@ -5581,23 +5611,33 @@ ${lines}
     }
   }
   function checkSleepTimer() {
-    if (!sleepTimerTarget) return;
+    // Фактическая цель — из PlayerCore, если доступен
+    const pc = (window.__useNewPlayerCore && window.playerCore) ? window.playerCore : null;
+    const target = pc && typeof pc.getSleepTimerTarget === 'function'
+      ? (pc.getSleepTimerTarget() || 0)
+      : (sleepTimerTarget || 0);
+
+    if (!target) return;
+
+    // Держим локальный snap для UI в актуальном состоянии
+    sleepTimerTarget = target;
+
     const now = Date.now();
-    const msLeft = sleepTimerTarget - now;
+    const msLeft = target - now;
 
     if (msLeft <= 0) {
-      const pc = (window.__useNewPlayerCore && window.playerCore) ? window.playerCore : null;
-      if (pc) { try { pc.pause(); } catch {} }
-      else {
+      if (pc) {
+        try { pc.pause(); } catch {}
+      } else {
         const a = document.getElementById('audio');
-        if (a) a.pause();
+        if (a) { try { a.pause(); } catch {} }
       }
       clearSleepTimer();
       NotificationSystem.info('Таймер сна: воспроизведение остановлено');
       return;
     }
 
-    // В «Ультра‑эконом» не показываем пред-оверлей
+    // В «Ультра‑эконом» в фоне не показываем пред‑оверлей
     if (!ultraEcoEnabled && msLeft <= 10000 && !document.querySelector('#sleep-overlay')) {
       showSleepOverlay();
     }
