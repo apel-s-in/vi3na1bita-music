@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2cc5d677824301e6f30398952c6ca3ed3c9ac901.idx
-│   │       ├── pack-2cc5d677824301e6f30398952c6ca3ed3c9ac901.pack
-│   │       └── pack-2cc5d677824301e6f30398952c6ca3ed3c9ac901.rev
+│   │       ├── pack-399800dacc60c1ed346fab93462d5ea2f7a5ddef.idx
+│   │       ├── pack-399800dacc60c1ed346fab93462d5ea2f7a5ddef.pack
+│   │       └── pack-399800dacc60c1ed346fab93462d5ea2f7a5ddef.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -251,7 +251,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-16 13:20:52 UTC
+Сгенерировано: 2025-11-16 13:40:23 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7720,49 +7720,7 @@ test('sysinfo modal shows after GET_SW_INFO', async ({ page }) => {
 
 //=================================================
 // FILE: /scripts/energy.js
-// scripts/energy.js (ESM)
-// Управление режимом энергосбережения ("молния").
 
-(function(){
-  const ECO_MODE_KEY = 'ecoModeActive';
-  let isEcoMode = false;
-
-  function applyEcoMode(isActive) {
-    document.body.classList.toggle('eco-mode', isActive);
-    const btn = document.querySelector('.eco-btn');
-    if (btn) btn.classList.toggle('eco-active', isActive);
-
-    // Здесь можно добавить логику для остановки/возобновления анимаций
-    if(isActive) {
-        if(typeof window.stopCoverAutoPlay === 'function') window.stopCoverAutoPlay();
-        // Остановить другие анимации...
-    } else {
-        if(typeof window.startCoverAutoPlay === 'function') window.startCoverAutoPlay();
-    }
-  }
-
-  function toggleEcoMode() {
-    isEcoMode = !isEcoMode;
-    try {
-      localStorage.setItem(ECO_MODE_KEY, isEcoMode ? '1' : '0');
-    } catch {}
-    applyEcoMode(isEcoMode);
-    window.NotificationSystem?.info(isEcoMode ? '⚡ Эко-режим включен' : 'Эко-режим выключен');
-  }
-
-  function restoreEcoMode() {
-    try {
-      isEcoMode = localStorage.getItem(ECO_MODE_KEY) === '1';
-    } catch {
-      isEcoMode = false;
-    }
-    applyEcoMode(isEcoMode);
-  }
-
-  // Export
-  window.toggleEcoMode = toggleEcoMode;
-  window.restoreEcoMode = restoreEcoMode;
-})();
 
 //=================================================
 // FILE: /scripts/player-adapter.js
