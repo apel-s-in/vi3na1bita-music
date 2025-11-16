@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8442210974fc9f2f6857d70594d77854913502c1.idx
-│   │       ├── pack-8442210974fc9f2f6857d70594d77854913502c1.pack
-│   │       └── pack-8442210974fc9f2f6857d70594d77854913502c1.rev
+│   │       ├── pack-08b05ced2e0c462c1bcca5dfcf8fd8fad90caf45.idx
+│   │       ├── pack-08b05ced2e0c462c1bcca5dfcf8fd8fad90caf45.pack
+│   │       └── pack-08b05ced2e0c462c1bcca5dfcf8fd8fad90caf45.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -218,6 +218,7 @@ vi3na1bita-music/
 ├── scripts/
 │   ├── app/
 │   │   ├── albums.js
+│   │   ├── background-audio.js
 │   │   ├── downloads.js
 │   │   ├── navigation.js
 │   │   └── player-controls.js
@@ -252,7 +253,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-16 20:41:29 UTC
+Сгенерировано: 2025-11-16 20:47:29 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7252,6 +7253,103 @@ async function clearCurrentOfflineResources() {
 //=================================================
 // FILE: /scripts/app/albums.js
 
+
+//=================================================
+// FILE: /scripts/app/background-audio.js
+// scripts/app/background-audio.js
+// Фоновые iOS/Android аудио-хелперы, сохранение глобальных имён.
+// Логика идентична ранее находившейся в index.html.
+
+(function BackgroundAudioModule() {
+  function isIOSUA() {
+    try { return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream; }
+    catch { return false; }
+  }
+
+  function initAudioContextForBackground() {
+    try {
+      // Создаем AudioContext с правильными параметрами для iOS
+      window.__audioContext = new (window.AudioContext || window.webkitAudioContext)({
+        latencyHint: 'playback',
+        sampleRate: 44100
+      });
+
+      // Гарантируем, что контекст не будет приостановлен
+      window.__audioContext.onstatechange = () => {
+        if (window.__audioContext.state === 'suspended') {
+          window.__audioContext.resume().catch(console.warn);
+        }
+      };
+
+      // Создаем "тихий" осциллятор для удержания аудио в фоне
+      const oscillator = window.__audioContext.createOscillator();
+      const gainNode = window.__audioContext.createGain();
+      oscillator.connect(gainNode);
+      gainNode.connect(window.__audioContext.destination);
+      gainNode.gain.value = 0.00001; // почти бесшумный
+      oscillator.start(0);
+
+      // Сохраняем ссылки для управления
+      window.__backgroundOscillator = oscillator;
+      window.__backgroundGainNode = gainNode;
+
+      console.log('iOS AudioContext initialized for background playback');
+    } catch (e) {
+      console.warn('Failed to initialize iOS AudioContext', e);
+    }
+  }
+
+  function resumeAudioContextIfNeeded() {
+    try {
+      if (window.__audioContext && window.__audioContext.state === 'suspended') {
+        window.__audioContext.resume().catch(console.warn);
+      }
+    } catch (e) {
+      console.warn('Failed to resume audio context', e);
+    }
+  }
+
+  function initSilentAudioPlayback() {
+    if (!isIOSUA()) return;
+
+    try {
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      gainNode.gain.value = 0.00001; // почти бесшумный
+
+      oscillator.start(0);
+
+      // Сохраняем для очистки
+      window.__silentOscillator = oscillator;
+      window.__silentAudioContext = audioContext;
+
+      // Очищаем через 2 секунды
+      setTimeout(() => {
+        try {
+          oscillator.stop();
+          audioContext.close().catch(console.warn);
+          delete window.__silentOscillator;
+          delete window.__silentAudioContext;
+        } catch (e) {
+          console.warn('Failed to clean silent audio', e);
+        }
+      }, 2000);
+
+      console.log('Silent audio playback initialized for iOS background mode');
+    } catch (e) {
+      console.warn('Failed to initialize silent audio playback', e);
+    }
+  }
+
+  // Глобальные алиасы для совместимости с существующими вызовами в index.html
+  window.initAudioContextForBackground = initAudioContextForBackground;
+  window.resumeAudioContextIfNeeded = resumeAudioContextIfNeeded;
+  window.initSilentAudioPlayback = initSilentAudioPlayback;
+})();
 
 //=================================================
 // FILE: /scripts/app/downloads.js
