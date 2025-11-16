@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3bceb4d24ecf3c44300e8a04ccb5ffc43cba431f.idx
-│   │       ├── pack-3bceb4d24ecf3c44300e8a04ccb5ffc43cba431f.pack
-│   │       └── pack-3bceb4d24ecf3c44300e8a04ccb5ffc43cba431f.rev
+│   │       ├── pack-3b6f8bf02189349e96f7a1082e778fa7dc5039d8.idx
+│   │       ├── pack-3b6f8bf02189349e96f7a1082e778fa7dc5039d8.pack
+│   │       └── pack-3b6f8bf02189349e96f7a1082e778fa7dc5039d8.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -252,7 +252,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-16 20:07:51 UTC
+Сгенерировано: 2025-11-16 20:16:15 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4012,6 +4012,12 @@ jobs:
           try { updatePlayPauseIcon(); } catch {}
           try { updateMediaSessionPosition(); } catch {}
           try { setPlaybackLocks(false); } catch {}
+        },
+        onStop: () => {
+          // Стоп: явно отпускаем локи и синхронизируем UI/MediaSession
+          try { setPlaybackLocks(false); } catch {}
+          try { updatePlayPauseIcon(); } catch {}
+          try { updateMediaSessionPosition(); } catch {}
         },
         onTick: __playerCoreTick,
         // При смене трека новым плеером (в т.ч. авто-next) — мягко синхронизируем UI без setPlaylist
