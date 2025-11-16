@@ -2760,20 +2760,6 @@
       audio.onpause = null;
     }
     __audioHandlers = { onLoaded, onTime, onEnded, onWaiting, onStalled, onError };
-        try { navigator.mediaSession.playbackState = 'playing'; } catch {}
-        try { setPlaybackLocks(true); } catch {}
-        try { startPositionUpdates(); } catch {}
-      };
-      audio.onpause = () => {
-        try { navigator.mediaSession.playbackState = 'paused'; } catch {}
-        try { setPlaybackLocks(false); } catch {}
-        try { stopPositionUpdates(); } catch {}
-      };
-    } else {
-      audio.onplay = null;
-      audio.onpause = null;
-    }
-    __audioHandlers = { onLoaded, onTime, onEnded, onWaiting, onStalled, onError };
   }
 
   function stopAndCleanupAudio(a) {
