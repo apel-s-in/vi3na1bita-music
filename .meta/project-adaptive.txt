@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-399800dacc60c1ed346fab93462d5ea2f7a5ddef.idx
-│   │       ├── pack-399800dacc60c1ed346fab93462d5ea2f7a5ddef.pack
-│   │       └── pack-399800dacc60c1ed346fab93462d5ea2f7a5ddef.rev
+│   │       ├── pack-2088bf49dea70b6366f13b15dcfa86ec7ed4e30e.idx
+│   │       ├── pack-2088bf49dea70b6366f13b15dcfa86ec7ed4e30e.pack
+│   │       └── pack-2088bf49dea70b6366f13b15dcfa86ec7ed4e30e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -251,7 +251,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-16 13:40:23 UTC
+Сгенерировано: 2025-11-16 13:41:58 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4912,15 +4912,48 @@ jobs:
     const box = document.getElementById('next-up');
     const lp = document.getElementById('lyricsplayerblock');
     if (!box || !lp) return;
-    if (!isBrowsingOtherAlbum() || !playingTracks || !playingTracks.length) {
+
+    // Показываем в мини-режиме (когда просматриваем другой альбом)
+    if (!isBrowsingOtherAlbum()) {
+      box.style.display = 'none';
+      return;
+    }
+
+    // Новый плеер: вычисляем через PlayerCore, чтобы не расходиться с его логикой
+    const pc = (window.__useNewPlayerCore && window.playerCore) ? window.playerCore : null;
+    if (pc && typeof pc.getNextIndex === 'function') {
+      const nextIdx = Number(pc.getNextIndex());
+      if (!Number.isFinite(nextIdx) || nextIdx < 0) {
+        box.style.display = 'none';
+        return;
+      }
+      try {
+        const snap = (typeof pc.getPlaylistSnapshot === 'function') ? pc.getPlaylistSnapshot() : null;
+        const title = (Array.isArray(snap) && snap[nextIdx] && snap[nextIdx].title) ? snap[nextIdx].title : '—';
+        const label = `${String(nextIdx + 1).padStart(2, '0')}. ${title}`;
+        const titleEl = box.querySelector('.title');
+        if (titleEl) { titleEl.textContent = label; titleEl.title = label; }
+        box.style.display = '';
+        return;
+      } catch {
+        // Мягкий фолбэк ниже
+      }
+    }
+
+    // Фолбэк (старый путь через playingTracks/computeNextIndexPlayback)
+    if (!playingTracks || !playingTracks.length) {
       box.style.display = 'none';
       return;
     }
     const cand = computeNextIndexPlayback();
-    if (cand < 0) { box.style.display = 'none'; return; }
+    if (cand < 0) {
+      box.style.display = 'none';
+      return;
+    }
     const title = playingTracks[cand]?.title || '—';
-    box.querySelector('.title').textContent = `${String(cand + 1).padStart(2, '0')}. ${title}`;
-    box.querySelector('.title').title = `${String(cand + 1).padStart(2, '0')}. ${title}`;
+    const label = `${String(cand + 1).padStart(2, '0')}. ${title}`;
+    const titleEl = box.querySelector('.title');
+    if (titleEl) { titleEl.textContent = label; titleEl.title = label; }
     box.style.display = '';
   }
 
