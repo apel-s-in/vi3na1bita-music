@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b2d9cc662dfd6a757002bce2257ac05872d70cb5.idx
-│   │       ├── pack-b2d9cc662dfd6a757002bce2257ac05872d70cb5.pack
-│   │       └── pack-b2d9cc662dfd6a757002bce2257ac05872d70cb5.rev
+│   │       ├── pack-066d489b3511341f160459a16e54a2c1a100adbf.idx
+│   │       ├── pack-066d489b3511341f160459a16e54a2c1a100adbf.pack
+│   │       └── pack-066d489b3511341f160459a16e54a2c1a100adbf.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -251,7 +251,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-16 11:09:42 UTC
+Сгенерировано: 2025-11-16 11:20:17 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2428,7 +2428,6 @@ jobs:
   // Вызываем функцию в initializeMainUi
   /* ====== Инициализация UI ====== */
   async function initializeMainUi() {
-    (async () => {
       await loadAlbumsIndex();
 
       const sel = document.getElementById('album-select');
@@ -2796,7 +2795,6 @@ jobs:
         __savedResumePosition = null;
         try { updateMediaSessionPosition(); } catch {}
       });
-   })();
   }
 
   /* ====== Фон: Web Locks + Wake Lock (Android) ====== */
