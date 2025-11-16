@@ -480,6 +480,8 @@
   <script src="./scripts/ui/sysinfo.js" defer></script>
   <!-- Мини‑режим вынесен в модуль -->
   <script src="./scripts/ui/mini.js" defer></script>
+  <!-- iOS/Android фоновые аудио‑хелперы -->
+  <script src="./scripts/app/background-audio.js" defer></script>
   <!-- Контролы плеера: вынесены в модуль (делегаты внизу файла) -->
   <script src="./scripts/app/player-controls.js" defer></script>
   <script>
@@ -1629,48 +1631,9 @@
     return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
   }
 
-  function initAudioContextForBackground() {
-    try {
-      // Создаем AudioContext с правильными параметрами для iOS
-      window.__audioContext = new (window.AudioContext || window.webkitAudioContext)({
-        latencyHint: 'playback',
-        sampleRate: 44100
-      });
-    
-      // Гарантируем, что контекст не будет приостановлен
-      window.__audioContext.onstatechange = () => {
-        if (window.__audioContext.state === 'suspended') {
-          window.__audioContext.resume().catch(console.warn);
-        }
-      };
-    
-      // Создаем "тихий" осциллятор для удержания аудио в фоне
-      const oscillator = window.__audioContext.createOscillator();
-      const gainNode = window.__audioContext.createGain();
-      oscillator.connect(gainNode);
-      gainNode.connect(window.__audioContext.destination);
-      gainNode.gain.value = 0.00001; // почти бесшумный
-      oscillator.start(0);
-    
-      // Сохраняем ссылки для управления
-      window.__backgroundOscillator = oscillator;
-      window.__backgroundGainNode = gainNode;
-    
-      console.log('iOS AudioContext initialized for background playback');
-    } catch (e) {
-      console.warn('Failed to initialize iOS AudioContext', e);
-    }
-  }
-
-  function resumeAudioContextIfNeeded() {
-    try {
-      if (window.__audioContext && window.__audioContext.state === 'suspended') {
-        window.__audioContext.resume().catch(console.warn);
-      }
-    } catch (e) {
-      console.warn('Failed to resume audio context', e);
-    }
-  }
+// iOS фоновые функции вынесены в scripts/app/background-audio.js:
+// - window.initAudioContextForBackground()
+// - window.resumeAudioContextIfNeeded()
   // Заглушка для ещё не вышедшего альбома (нет config.json)
   function renderComingSoonPlaceholder(title){
     try {
@@ -2718,6 +2681,13 @@
   }
   function attachAudioEventListeners(audio) {
     if (!audio) return;
+    // При активном новом ядре событий legacy <audio> не навешиваем вовсе,
+    // чтобы исключить двойной источник состояния.
+    if (window.__useNewPlayerCore && window.playerCore) {
+      __audioHandlers = null;
+      return;
+    }
+
     detachAudioEventListeners(audio);
     const onLoaded  = onAudioMetadataLoaded;
     const onTime    = onAudioTimeUpdate;
@@ -2734,31 +2704,25 @@
         startOfflineToasts();
       }
     };
-    // События <audio> нужны только в legacy-режиме. При активном PlayerCore
-    // прогресс/таймеры/окончание трека обрабатываются ядром.
-    if (!(window.__useNewPlayerCore && window.playerCore)) {
-      audio.addEventListener('loadedmetadata', onLoaded);
-      audio.addEventListener('timeupdate',     onTime);
-      audio.addEventListener('ended',          onEnded);
-      audio.addEventListener('waiting',        onWaiting);
-      audio.addEventListener('stalled',        onStalled);
-      audio.addEventListener('error',          onError);
 
-      audio.onplay  = () => {
-        try { navigator.mediaSession.playbackState = 'playing'; } catch {}
-        try { setPlaybackLocks(true); } catch {}
-        try { startPositionUpdates(); } catch {}
-      };
-      audio.onpause = () => {
-        try { navigator.mediaSession.playbackState = 'paused'; } catch {}
-        try { setPlaybackLocks(false); } catch {}
-        try { stopPositionUpdates(); } catch {}
-      };
-    } else {
-      // При PlayerCore не навешиваем timeupdate/loadedmetadata/ended на <audio> вообще.
-      audio.onplay = null;
-      audio.onpause = null;
-    }
+    audio.addEventListener('loadedmetadata', onLoaded);
+    audio.addEventListener('timeupdate',     onTime);
+    audio.addEventListener('ended',          onEnded);
+    audio.addEventListener('waiting',        onWaiting);
+    audio.addEventListener('stalled',        onStalled);
+    audio.addEventListener('error',          onError);
+
+    audio.onplay  = () => {
+      try { navigator.mediaSession.playbackState = 'playing'; } catch {}
+      try { setPlaybackLocks(true); } catch {}
+      try { startPositionUpdates(); } catch {}
+    };
+    audio.onpause = () => {
+      try { navigator.mediaSession.playbackState = 'paused'; } catch {}
+      try { setPlaybackLocks(false); } catch {}
+      try { stopPositionUpdates(); } catch {}
+    };
+
     __audioHandlers = { onLoaded, onTime, onEnded, onWaiting, onStalled, onError };
   }
 
@@ -4132,41 +4096,8 @@
   // Обновления позиции Media Session в legacy-режиме запускаются через
   // onplay/onpause внутри attachAudioEventListeners(audio).
   // Для нового PlayerCore эта логика полностью вынесена в __playerCoreTick/updateMediaSessionPosition.
-  function initSilentAudioPlayback() {
-    if (!isIOS()) return;
-  
-    try {
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-    
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      gainNode.gain.value = 0.00001; // почти бесшумный
-    
-      oscillator.start(0);
-    
-      // Сохраняем для очистки
-      window.__silentOscillator = oscillator;
-      window.__silentAudioContext = audioContext;
-    
-      // Очищаем через 2 секунды
-      setTimeout(() => {
-        try {
-          oscillator.stop();
-          audioContext.close().catch(console.warn);
-          delete window.__silentOscillator;
-          delete window.__silentAudioContext;
-        } catch (e) {
-          console.warn('Failed to clean silent audio', e);
-        }
-      }, 2000);
-    
-      console.log('Silent audio playback initialized for iOS background mode');
-    } catch (e) {
-      console.warn('Failed to initialize silent audio playback', e);
-    }
-  }
+// iOS «тихий» проигрыватель вынесен в scripts/app/background-audio.js:
+// - window.initSilentAudioPlayback()
   function computeNextIndexPlayback() {
     const len = playingTracks ? playingTracks.length : 0;
     const available = getAvailableTracksForAlbum(playingAlbumKey, len);
