@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6fe2bc78fade9af4b9db3a26a285247bcb26ed68.idx
-│   │       ├── pack-6fe2bc78fade9af4b9db3a26a285247bcb26ed68.pack
-│   │       └── pack-6fe2bc78fade9af4b9db3a26a285247bcb26ed68.rev
+│   │       ├── pack-64abc9a5c117cd66b542dd16958f54e030c1e97a.idx
+│   │       ├── pack-64abc9a5c117cd66b542dd16958f54e030c1e97a.pack
+│   │       └── pack-64abc9a5c117cd66b542dd16958f54e030c1e97a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -252,7 +252,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-16 19:31:37 UTC
+Сгенерировано: 2025-11-16 19:37:59 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2293,6 +2293,10 @@ jobs:
   }
   function clearRelizView(){ const cont = document.getElementById('reliz-container'); if (cont) cont.remove(); }
   function setupBackgroundEventHandlers() {
+    // ВАЖНО: никакие фоновые обработчики не имеют права вызывать pause()/stop() у плеера.
+    // Исключение только одно — таймер сна (checkSleepTimer / setSleepTimer).
+    // Здесь мы ТОЛЬКО сохраняем позицию и синхронизируем UI/MediaSession, звук не трогаем.
+
     // Обработчик для iOS: событие окончания воспроизведения в фоне
     document.addEventListener('webkitendfullscreen', () => {
       console.log('iOS webkitendfullscreen event');
@@ -2690,6 +2694,8 @@ jobs:
       }
 
       document.addEventListener('visibilitychange', async () => {
+        // ВАЖНО: здесь НЕ ставим плеер на паузу и не останавливаем.
+        // Только запоминаем позицию и восстанавливаем UI/анимации при возврате.
         const pc = (window.__useNewPlayerCore && window.playerCore) ? window.playerCore : null;
         const a = pc ? null : document.getElementById('audio');
         const isHidden = document.hidden;
@@ -2726,26 +2732,27 @@ jobs:
               if (needRestore) {
                 try { pc.seek(__savedResumePosition); } catch (e) { console.warn('Failed to restore PC position', e); }
               }
-            } else if (a) {
-              const cur = Number(a.currentTime || 0);
-              const needRestore = (typeof __savedResumePosition === 'number' && !isNaN(__savedResumePosition)) &&
-                                  (!Number.isFinite(cur) || cur < (__savedResumePosition - TOL));
-              if (needRestore) {
-                try { a.currentTime = __savedResumePosition; } catch (e) { console.warn('Failed to restore audio position', e); }
-              }
-              // Если было воспроизведение и вдруг встало на паузу — аккуратно резюмируем
-              if (a.paused) {
-                const playAttempt = a.play();
-                if (playAttempt && playAttempt.catch) {
-                  playAttempt.catch(e => {
-                    console.warn('Play after foreground failed', e);
-                    if (isIOS()) {
-                      setTimeout(() => { if (a.paused) { a.play().catch(console.warn); initSilentAudioPlayback(); } }, 500);
-                    }
-                  });
-                }
+          } else if (a) {
+            // Эта ветка выполняется только когда НЕТ PlayerCore.
+            const cur = Number(a.currentTime || 0);
+            const needRestore = (typeof __savedResumePosition === 'number' && !isNaN(__savedResumePosition)) &&
+                                (!Number.isFinite(cur) || cur < (__savedResumePosition - TOL));
+            if (needRestore) {
+              try { a.currentTime = __savedResumePosition; } catch (e) { console.warn('Failed to restore audio position', e); }
+            }
+            // Если было воспроизведение и вдруг встало на паузу — аккуратно резюмируем
+            if (a.paused) {
+              const playAttempt = a.play();
+              if (playAttempt && playAttempt.catch) {
+                playAttempt.catch(e => {
+                  console.warn('Play after foreground failed', e);
+                  if (isIOS()) {
+                    setTimeout(() => { if (a.paused) { a.play().catch(console.warn); initSilentAudioPlayback(); } }, 500);
+                  }
+                });
               }
             }
+          }
           }
 
           // Синхронизируем UI
