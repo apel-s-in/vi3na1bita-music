@@ -2688,7 +2688,13 @@
   }
 
   /* Плеер */
-  function getCurrentAudio() { return __currentAudio || document.getElementById('audio') || null; }
+  function getCurrentAudio() {
+    // Если активен новый плеер и ядро уже создано — не даём legacy <audio> стать источником звука.
+    if (window.__useNewPlayerCore && window.playerCore) {
+      return null;
+    }
+    return __currentAudio || document.getElementById('audio') || null;
+  }
 
   // Единое управление слушателями audio — чтобы не копились при каждом ререндере
   let __audioHandlers = null;
