@@ -1,10 +1,13 @@
 // scripts/app/player-controls.js
-// Слой базовых контролов плеера (Play/Pause/Stop/Prev/Next).
+// Слой базовых контролов плеера (Play/Pause/Stop/Prev/Next/Seek/Volume/Mute).
 // Контракт: приоритет PlayerCore, мягкий фолбэк на legacy <audio>.
 // Важно: воспроизведение не прерывается никакими действиями, кроме Пауза/Стоп/Таймер сна.
 
 (function PlayerControlsModule(){
   function pc() { return (window.__useNewPlayerCore && window.playerCore) ? window.playerCore : null; }
+  function audioEl() {
+    return (window.getCurrentAudio && window.getCurrentAudio()) || document.getElementById('audio') || null;
+  }
 
   // Безопасная инициализация playerCore по требованию
   async function ensureCoreReadyOrFallback() {
@@ -28,15 +31,14 @@
     try { window.updatePlayPauseIcon && window.updatePlayPauseIcon(); } catch {}
   }
 
+  // ====== Play/Pause/Prev/Next/Stop ======
   async function togglePlayPause() {
     const ready = await ensureCoreReadyOrFallback();
 
     // Приоритет — PlayerCore
     if (window.__useNewPlayerCore && pc()) {
-      // Подписки событий → UI (однократно)
       try { window.ensurePlayerCoreUiBindings && window.ensurePlayerCoreUiBindings(); } catch {}
 
-      // Если уже проигрывает — пауза
       try {
         if (typeof pc().isPlaying === 'function' && pc().isPlaying()) {
           pc().pause();
@@ -64,16 +66,15 @@
         }
       } catch {}
 
-      // Старт/резюм
       try { pc().play(); } catch {}
       setTimeout(() => { try { window.updatePlayPauseIcon && window.updatePlayPauseIcon(); } catch {} }, 0);
       return;
     }
 
-    // Фолбэк — legacy <audio> (если флаг нового ядра выключен либо ядро не готово)
-    if (!ready && window.__useNewPlayerCore) return; // ждём, не ломаем звук
+    // Фолбэк — legacy <audio>
+    if (!ready && window.__useNewPlayerCore) return;
     try {
-      const a = (window.getCurrentAudio && window.getCurrentAudio()) || document.getElementById('audio');
+      const a = audioEl();
       if (!a) return;
       if (a.paused) { a.play().catch(()=>{}); } else { a.pause(); }
     } catch {}
@@ -82,7 +83,6 @@
   function previousTrack() {
     if (window.__useNewPlayerCore && pc()) {
       try { window.ensurePlayerCoreUiBindings && window.ensurePlayerCoreUiBindings(); } catch {}
-      // Гарантируем плейлист
       try {
         const hasLoaded = (typeof pc().getDuration === 'function') && ((pc().getDuration() || 0) > 0);
         if (!hasLoaded && typeof window.__buildPlayerCorePayload === 'function') {
@@ -95,12 +95,10 @@
           }
         }
       } catch {}
-      // Поведение Repeat: в начало текущего
       try {
         if (window.repeatMode) { pc().seek && pc().seek(0); pc().play && pc().play(); }
         else { pc().prev && pc().prev(); }
       } catch {}
-      // Синхронизация UI по индексу ядра
       setTimeout(() => {
         try {
           const idx = (typeof pc().getIndex === 'function') ? pc().getIndex() : 0;
@@ -108,20 +106,12 @@
         } catch {}
       }, 0);
       return;
-    }
-
-    // Фолбэк legacy
-    if (typeof window.previousTrack === 'function') {
-      // Вызовем оригинальную реализацию (но мы уже заменили её делегатом),
-      // поэтому повторяем логику старой ветки в PlayerControls нежелательно.
-      // Ничего не делаем — старый путь вызовется из исходной функции до миграции полной.
     }
   }
 
   function nextTrack() {
     if (window.__useNewPlayerCore && pc()) {
       try { window.ensurePlayerCoreUiBindings && window.ensurePlayerCoreUiBindings(); } catch {}
-      // Гарантируем плейлист
       try {
         const hasLoaded = (typeof pc().getDuration === 'function') && ((pc().getDuration() || 0) > 0);
         if (!hasLoaded && typeof window.__buildPlayerCorePayload === 'function') {
@@ -134,12 +124,10 @@
           }
         }
       } catch {}
-      // Поведение Repeat: в начало текущего
       try {
         if (window.repeatMode) { pc().seek && pc().seek(0); pc().play && pc().play(); }
         else { pc().next && pc().next(); }
       } catch {}
-      // Синхронизация UI по индексу ядра
       setTimeout(() => {
         try {
           const idx = (typeof pc().getIndex === 'function') ? pc().getIndex() : 0;
@@ -148,8 +136,6 @@
       }, 0);
       return;
     }
-
-    // Фолбэк legacy — см. комментарий в previousTrack()
   }
 
   function stopPlayback() {
@@ -159,9 +145,81 @@
       return;
     }
     try {
-      const a = (window.getCurrentAudio && window.getCurrentAudio()) || document.getElementById('audio');
+      const a = audioEl();
       if (a) { a.pause(); a.currentTime = 0; }
       applyPostUiSync();
+    } catch {}
+  }
+
+  // ====== Seek/Volume/Mute ======
+  function seekFromEvent(e) {
+    try {
+      const bar = e?.currentTarget || document.getElementById('player-progress-bar');
+      if (!bar || typeof bar.getBoundingClientRect !== 'function') return;
+      const rect = bar.getBoundingClientRect();
+      const clientX = e?.clientX ?? (e?.touches && e.touches[0] && e.touches[0].clientX);
+      if (typeof clientX !== 'number') return;
+      const percent = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+
+      if (window.__useNewPlayerCore && pc() && typeof pc().getDuration === 'function') {
+        const dur = Number(pc().getDuration() || 0);
+        if (dur > 0) { try { pc().seek(dur * percent); } catch {} }
+        return;
+      }
+      const a = audioEl();
+      if (a && isFinite(a.duration) && a.duration > 0) {
+        a.currentTime = a.duration * percent;
+      }
+    } catch {}
+  }
+
+  function onVolumeInput(e) {
+    const raw = e && e.target ? e.target.value : 100;
+    const vol = Math.max(0, Math.min(1, Number(raw) / 100));
+
+    if (window.__useNewPlayerCore && pc() && typeof pc().setVolume === 'function') {
+      try { pc().setVolume(vol); } catch {}
+    } else {
+      try { const a = audioEl(); if (a) a.volume = vol; } catch {}
+    }
+
+    try { window.updateVolumeUI && window.updateVolumeUI(vol); } catch {}
+    try { localStorage.setItem('playerVolume', String(vol)); } catch {}
+  }
+
+  function toggleMute() {
+    // Новый плеер
+    if (window.__useNewPlayerCore && pc()) {
+      try {
+        const cur = (typeof pc().getVolume === 'function') ? (pc().getVolume() || 0) : 1;
+        if (cur > 0) {
+          try { localStorage.setItem('playerVolume', String(cur)); } catch {}
+          pc().setVolume(0);
+          try { window.updateVolumeUI && window.updateVolumeUI(0); } catch {}
+        } else {
+          const saved = parseFloat(localStorage.getItem('playerVolume') || '1');
+          const vol = Number.isFinite(saved) && saved > 0 ? saved : 1;
+          pc().setVolume(vol);
+          try { window.updateVolumeUI && window.updateVolumeUI(vol); } catch {}
+        }
+      } catch {}
+      return;
+    }
+
+    // Старый плеер
+    try {
+      const a = audioEl();
+      if (!a) return;
+      if (a.volume > 0) {
+        localStorage.setItem('playerVolume', String(a.volume));
+        a.volume = 0;
+        try { window.updateVolumeUI && window.updateVolumeUI(0); } catch {}
+      } else {
+        const saved = parseFloat(localStorage.getItem('playerVolume') || '1');
+        const vol = Number.isFinite(saved) && saved > 0 ? saved : 1;
+        a.volume = vol;
+        try { window.updateVolumeUI && window.updateVolumeUI(vol); } catch {}
+      }
     } catch {}
   }
 
@@ -170,7 +228,9 @@
     togglePlayPause,
     previousTrack,
     nextTrack,
-    stopPlayback
+    stopPlayback,
+    seekFromEvent,
+    onVolumeInput,
+    toggleMute
   };
 })();
-
