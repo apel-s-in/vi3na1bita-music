@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6c2e6da4c44ced7f20f096eaf77da0a9583fa1c7.idx
-│   │       ├── pack-6c2e6da4c44ced7f20f096eaf77da0a9583fa1c7.pack
-│   │       └── pack-6c2e6da4c44ced7f20f096eaf77da0a9583fa1c7.rev
+│   │       ├── pack-60828c4dbfb8245e1fcb1fb4daac2a465434213d.idx
+│   │       ├── pack-60828c4dbfb8245e1fcb1fb4daac2a465434213d.pack
+│   │       └── pack-60828c4dbfb8245e1fcb1fb4daac2a465434213d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -251,7 +251,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-16 13:48:09 UTC
+Сгенерировано: 2025-11-16 13:51:28 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5393,7 +5393,16 @@ function syncUiFromPlayback() {
   function prefetchAudioLink(url, asType = 'audio') {
     if (!url) return;
     try {
-      // Прогреваем через SW, чтобы положить ответ в MEDIA_CACHE
+      // Предпочтительно: попросить Service Worker выполнить префетч
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        try {
+          navigator.serviceWorker.controller.postMessage({ type: 'PREFETCH_AUDIO', urls: [url] });
+          return; // SW возьмёт на себя кэширование
+        } catch (e) {
+          // мягкий фолбэк ниже
+        }
+      }
+      // Фолбэк: прямой fetch с cache: 'reload' (как было)
       fetch(url, { cache: 'reload', mode: 'cors' }).catch(()=>{});
     } catch (e) {}
   }
