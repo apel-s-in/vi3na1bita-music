@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f6bf9c441f753b07784bfac34e73d49cdd8e619f.idx
-│   │       ├── pack-f6bf9c441f753b07784bfac34e73d49cdd8e619f.pack
-│   │       └── pack-f6bf9c441f753b07784bfac34e73d49cdd8e619f.rev
+│   │       ├── pack-3bceb4d24ecf3c44300e8a04ccb5ffc43cba431f.idx
+│   │       ├── pack-3bceb4d24ecf3c44300e8a04ccb5ffc43cba431f.pack
+│   │       └── pack-3bceb4d24ecf3c44300e8a04ccb5ffc43cba431f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -252,7 +252,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-16 19:59:22 UTC
+Сгенерировано: 2025-11-16 20:07:51 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4663,12 +4663,9 @@ jobs:
     }
   }
 
-  // Запускаем обновления позиции ТОЛЬКО для legacy-плеера.
-  // При активном PlayerCore позиция обновляется через __playerCoreTick/updateMediaSessionPosition.
-  if (!(window.__useNewPlayerCore && window.playerCore)) {
-    document.getElementById('audio')?.addEventListener('play', startPositionUpdates);
-    document.getElementById('audio')?.addEventListener('pause', stopPositionUpdates);
-  }
+  // Обновления позиции Media Session в legacy-режиме запускаются через
+  // onplay/onpause внутри attachAudioEventListeners(audio).
+  // Для нового PlayerCore эта логика полностью вынесена в __playerCoreTick/updateMediaSessionPosition.
   function initSilentAudioPlayback() {
     if (!isIOS()) return;
   
