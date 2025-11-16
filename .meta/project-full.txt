@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c5d2460f91097bd4284c48ff804545ae1adaf55a.idx
-│   │       ├── pack-c5d2460f91097bd4284c48ff804545ae1adaf55a.pack
-│   │       └── pack-c5d2460f91097bd4284c48ff804545ae1adaf55a.rev
+│   │       ├── pack-074dd725cbb01e0bde7b6da1fce76e223e95835f.idx
+│   │       ├── pack-074dd725cbb01e0bde7b6da1fce76e223e95835f.pack
+│   │       └── pack-074dd725cbb01e0bde7b6da1fce76e223e95835f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -251,7 +251,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-16 11:27:57 UTC
+Сгенерировано: 2025-11-16 11:35:54 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2788,6 +2788,7 @@ jobs:
         __savedResumePosition = null;
         try { updateMediaSessionPosition(); } catch {}
       });
+    }
   }
 
   /* ====== Фон: Web Locks + Wake Lock (Android) ====== */
