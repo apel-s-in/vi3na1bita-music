@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3b6f8bf02189349e96f7a1082e778fa7dc5039d8.idx
-│   │       ├── pack-3b6f8bf02189349e96f7a1082e778fa7dc5039d8.pack
-│   │       └── pack-3b6f8bf02189349e96f7a1082e778fa7dc5039d8.rev
+│   │       ├── pack-a785d371bf29eedbdbc13b7504fabba08ffe078f.idx
+│   │       ├── pack-a785d371bf29eedbdbc13b7504fabba08ffe078f.pack
+│   │       └── pack-a785d371bf29eedbdbc13b7504fabba08ffe078f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -252,7 +252,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-16 20:16:15 UTC
+Сгенерировано: 2025-11-16 20:16:52 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7417,13 +7417,19 @@ async function clearCurrentOfflineResources() {
   function stopPlayback() {
     if (window.__useNewPlayerCore && pc()) {
       try { pc().stop && pc().stop(); } catch {}
+      // При стопе гарантированно отпускаем locks и обновляем Media Session/иконку
       try { window.updatePlayPauseIcon && window.updatePlayPauseIcon(); } catch {}
+      try { window.updateMediaSessionPosition && window.updateMediaSessionPosition(); } catch {}
+      try { window.setPlaybackLocks && window.setPlaybackLocks(false); } catch {}
       return;
     }
     try {
       const a = audioEl();
       if (a) { a.pause(); a.currentTime = 0; }
       applyPostUiSync();
+      // Фолбэк: привести Media Session и локи в консистентное состояние
+      try { window.updateMediaSessionPosition && window.updateMediaSessionPosition(); } catch {}
+      try { window.setPlaybackLocks && window.setPlaybackLocks(false); } catch {}
     } catch {}
   }
 
