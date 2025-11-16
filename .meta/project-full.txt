@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-65a9f78ecf9d1941d15f4736dd5243849a59dad5.idx
-│   │       ├── pack-65a9f78ecf9d1941d15f4736dd5243849a59dad5.pack
-│   │       └── pack-65a9f78ecf9d1941d15f4736dd5243849a59dad5.rev
+│   │       ├── pack-caa48551443935105675c1b002511e04b913b410.idx
+│   │       ├── pack-caa48551443935105675c1b002511e04b913b410.pack
+│   │       └── pack-caa48551443935105675c1b002511e04b913b410.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -251,7 +251,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-16 14:22:26 UTC
+Сгенерировано: 2025-11-16 15:12:39 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3975,16 +3975,27 @@ jobs:
 
     try {
       window.playerCore.on({
-        onPlay: () => { try { updatePlayPauseIcon(); } catch {} },
-        onPause: () => { try { updatePlayPauseIcon(); } catch {} },
+        onPlay: () => {
+          try { updatePlayPauseIcon(); } catch {}
+          try { updateMediaSessionPosition(); } catch {}
+          try { setPlaybackLocks(true); } catch {}
+        },
+        onPause: () => {
+          try { updatePlayPauseIcon(); } catch {}
+          try { updateMediaSessionPosition(); } catch {}
+          try { setPlaybackLocks(false); } catch {}
+        },
         onTick: __playerCoreTick,
-        // При смене трека новым плеером (в т.ч. авто-next) — синхронизируем UI без setPlaylist
+        // При смене трека новым плеером (в т.ч. авто-next) — мягко синхронизируем UI без setPlaylist
         onTrackChange: (_track, idx) => {
           try {
             const n = (typeof idx === 'number')
               ? idx
               : (typeof window.playerCore.getIndex === 'function' ? window.playerCore.getIndex() : 0);
             __syncUiToPlayerCoreIndex(n);
+            // Дополнительные лёгкие обновления мини-UI
+            try { updateMiniNowHeader(); } catch {}
+            try { updateNextUpLabel(); } catch {}
           } catch {}
         }
       });
