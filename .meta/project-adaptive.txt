@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2088bf49dea70b6366f13b15dcfa86ec7ed4e30e.idx
-│   │       ├── pack-2088bf49dea70b6366f13b15dcfa86ec7ed4e30e.pack
-│   │       └── pack-2088bf49dea70b6366f13b15dcfa86ec7ed4e30e.rev
+│   │       ├── pack-710b7212a53d230ef94b92f2d508576a222e0a7f.idx
+│   │       ├── pack-710b7212a53d230ef94b92f2d508576a222e0a7f.pack
+│   │       └── pack-710b7212a53d230ef94b92f2d508576a222e0a7f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -251,7 +251,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-16 13:41:58 UTC
+Сгенерировано: 2025-11-16 13:46:26 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5349,6 +5349,34 @@ function syncUiFromPlayback() {
 
   /* Prefetch следующего трека */
   function prefetchNextTrackAssetsForPlayback() {
+    // Новый плеер: префетчим, опираясь на его логику getNextIndex/snapshot
+    const pc = (window.__useNewPlayerCore && window.playerCore) ? window.playerCore : null;
+    if (pc && typeof pc.getNextIndex === 'function') {
+      try {
+        const nextIdx = Number(pc.getNextIndex());
+        if (Number.isFinite(nextIdx) && nextIdx >= 0) {
+          const snap = (typeof pc.getPlaylistSnapshot === 'function') ? pc.getPlaylistSnapshot() : null;
+          const t = Array.isArray(snap) ? snap[nextIdx] : null;
+          if (t) {
+            prefetchAudioLink(t.src, 'audio');
+            if (t.lyrics) prefetchAudioLink(t.lyrics, 'fetch');
+            if (t.fulltext) prefetchAudioLink(t.fulltext, 'fetch');
+          }
+        }
+        // Если включён Repeat — держим текущий трек тёплым в кэше
+        if (repeatMode) {
+          const curIdx = (typeof pc.getIndex === 'function') ? pc.getIndex() : -1;
+          const snap = (typeof pc.getPlaylistSnapshot === 'function') ? pc.getPlaylistSnapshot() : null;
+          const cur = (Array.isArray(snap) && curIdx >= 0) ? snap[curIdx] : null;
+          if (cur && cur.src) prefetchAudioLink(cur.src, 'audio');
+        }
+        return; // новый путь выполнен — выходим
+      } catch {
+        // мягкий фолбэк ниже
+      }
+    }
+
+    // Фолбэк (старый путь): через playingTracks/computeNextIndexPlayback()
     const cand = computeNextIndexPlayback();
     if (cand >= 0 && playingTracks?.[cand]) {
       const t = playingTracks[cand];
