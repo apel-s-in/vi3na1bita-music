@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-60828c4dbfb8245e1fcb1fb4daac2a465434213d.idx
-│   │       ├── pack-60828c4dbfb8245e1fcb1fb4daac2a465434213d.pack
-│   │       └── pack-60828c4dbfb8245e1fcb1fb4daac2a465434213d.rev
+│   │       ├── pack-317e0f0da5e17d2325a449a50535960bde9bc6cc.idx
+│   │       ├── pack-317e0f0da5e17d2325a449a50535960bde9bc6cc.pack
+│   │       └── pack-317e0f0da5e17d2325a449a50535960bde9bc6cc.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -251,7 +251,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-16 13:51:28 UTC
+Сгенерировано: 2025-11-16 14:04:31 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3467,9 +3467,22 @@ jobs:
       </div>
     `;
 
+    // Dev-флаг для подготовки к полной чистке <audio>:
+    // localStorage.setItem('noLegacyAudio','1') — не создавать/не использовать <audio>
+    const __forceNoLegacyAudio = (window.__useNewPlayerCore && (localStorage.getItem('noLegacyAudio') === '1'));
+
     // Ветка нового плеера: НЕ создаём и не используем <audio>, только UI
-    if (window.__useNewPlayerCore && window.playerCore) {
+    if (window.__useNewPlayerCore && (window.playerCore || __forceNoLegacyAudio)) {
       try {
+        // Если ядро ещё не загружено — мягко инициируем адаптер
+        if (!window.playerCore) {
+          try {
+            if (!window.__pcAdapterLoaded) {
+              window.__pcAdapterLoaded = true;
+              import('./scripts/player-adapter.js').catch(()=>{});
+            }
+          } catch {}
+        }
         const pcfg = getPlayerConfig();
         const tr = pcfg?.tracks?.[playingTrack];
         if (tr && tr.lyrics) loadLyrics(tr.lyrics);
@@ -5393,18 +5406,16 @@ function syncUiFromPlayback() {
   function prefetchAudioLink(url, asType = 'audio') {
     if (!url) return;
     try {
-      // Предпочтительно: попросить Service Worker выполнить префетч
+      // Предпочтительно выполняем префетч через Service Worker
       if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
         try {
           navigator.serviceWorker.controller.postMessage({ type: 'PREFETCH_AUDIO', urls: [url] });
-          return; // SW возьмёт на себя кэширование
-        } catch (e) {
-          // мягкий фолбэк ниже
-        }
+          return;
+        } catch {}
       }
-      // Фолбэк: прямой fetch с cache: 'reload' (как было)
+      // Фолбэк — прямой fetch
       fetch(url, { cache: 'reload', mode: 'cors' }).catch(()=>{});
-    } catch (e) {}
+    } catch {}
   }
 
   /* Загрузка лирики */
@@ -5948,10 +5959,21 @@ ${lines}
     // Если выходим из «фона» или выключаем эко — привести UI к актуальному состоянию
     if (!document.hidden) {
       try {
-        const a = document.getElementById('audio');
-        if (a) {
-          onAudioMetadataLoaded({ currentTarget: a });
-          onAudioTimeUpdate({ currentTarget: a });
+        const pc = (window.__useNewPlayerCore && window.playerCore) ? window.playerCore : null;
+        if (pc) {
+          // Обновляем прогресс/таймеры/MediaSession через PlayerCore
+          try {
+            const pos = Number(pc.getSeek?.() || 0);
+            const dur = Number(pc.getDuration?.() || 0);
+            __playerCoreTick(pos, dur);
+          } catch {}
+          try { updateMediaSessionPosition(); } catch {}
+        } else {
+          const a = document.getElementById('audio');
+          if (a) {
+            onAudioMetadataLoaded({ currentTarget: a });
+            onAudioTimeUpdate({ currentTarget: a });
+          }
         }
       } catch {}
     }
