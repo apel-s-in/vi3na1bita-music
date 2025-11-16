@@ -2945,6 +2945,22 @@
       </div>
     `;
 
+    // Вставляем отсутствующий блок "Следующая" для мини-режима (если не создан)
+    (function ensureNextUpBlock(){
+      try {
+        if (!document.getElementById('next-up')) {
+          const el = document.createElement('div');
+          el.className = 'next-up';
+          el.id = 'next-up';
+          el.innerHTML = '<span class="label">Далее:</span><span class="title"></span>';
+          // Ставит "Далее" прямо перед окном лирики внутри #lyricsplayerblock
+          const ref = block.querySelector('#lyrics-window');
+          if (ref && ref.parentNode) ref.parentNode.insertBefore(el, ref);
+          else block.appendChild(el);
+        }
+      } catch {}
+    })();
+
     // Dev-флаг для подготовки к полной чистке <audio>:
     // localStorage.setItem('noLegacyAudio','1') — не создавать/не использовать <audio>
     const __forceNoLegacyAudio = (window.__useNewPlayerCore && (localStorage.getItem('noLegacyAudio') === '1'));
