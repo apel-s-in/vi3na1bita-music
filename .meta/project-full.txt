@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ac2a95abee1ecd04fe4c7126c174f2d00b699d85.idx
-│   │       ├── pack-ac2a95abee1ecd04fe4c7126c174f2d00b699d85.pack
-│   │       └── pack-ac2a95abee1ecd04fe4c7126c174f2d00b699d85.rev
+│   │       ├── pack-4018524c84e7a2d741fe59f19307c1694f011986.idx
+│   │       ├── pack-4018524c84e7a2d741fe59f19307c1694f011986.pack
+│   │       └── pack-4018524c84e7a2d741fe59f19307c1694f011986.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -254,7 +254,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-17 13:49:30 UTC
+Сгенерировано: 2025-11-17 14:03:04 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1012,6 +1012,8 @@ jobs:
   </script>
   <!-- Howler.js для нового ядра плеера (html5 audio) -->
   <script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.core.min.js"></script>
+  <!-- PlayerCore Observer: централизатор событий ядра -->
+  <script src="./scripts/core/bootstrap.js" defer></script>
   <!-- Уведомления (единый модуль) -->
   <script src="./scripts/ui/notify.js" defer></script>
   <!-- Кнопка «О системе»: модуль отображения информации от Service Worker -->
@@ -3673,47 +3675,36 @@ jobs:
   }
   // Один раз привязываем UI к событиям PlayerCore
   function ensurePlayerCoreUiBindings() {
-    if (!window.__useNewPlayerCore || !window.playerCore) return;
-    if (window.__pcUiBound) return;
-    window.__pcUiBound = true;
+    if (!window.__useNewPlayerCore || !window.playerCore || !window.PlayerCoreObserver) return;
+    if (window.__pcUiObsId) return;
 
     try {
-      const pc = window.playerCore;
-      const prev = (pc && pc.events && typeof pc.events === 'object') ? { ...pc.events } : {};
-
-      pc.on({
-        onPlay: (track, idx) => {
-          try { if (typeof prev.onPlay === 'function') prev.onPlay(track, idx); } catch {}
+      window.__pcUiObsId = window.PlayerCoreObserver.add({
+        onPlay: () => {
           try { updatePlayPauseIcon(); } catch {}
           try { updateMediaSessionPosition(); } catch {}
           try { setPlaybackLocks(true); } catch {}
         },
-        onPause: (track, idx) => {
-          try { if (typeof prev.onPause === 'function') prev.onPause(track, idx); } catch {}
+        onPause: () => {
           try { updatePlayPauseIcon(); } catch {}
           try { updateMediaSessionPosition(); } catch {}
           try { setPlaybackLocks(false); } catch {}
         },
-        onStop: (track, idx) => {
-          try { if (typeof prev.onStop === 'function') prev.onStop(track, idx); } catch {}
-          // Стоп: явно отпускаем локи и синхронизируем UI/MediaSession
+        onStop: () => {
           try { setPlaybackLocks(false); } catch {}
           try { updatePlayPauseIcon(); } catch {}
           try { updateMediaSessionPosition(); } catch {}
         },
         onTick: (pos, dur) => {
-          try { if (typeof prev.onTick === 'function') prev.onTick(pos, dur); } catch {}
           __playerCoreTick(pos, dur);
         },
-        // При смене трека новым плеером (в т.ч. авто-next) — мягко синхронизируем UI без setPlaylist
-        onTrackChange: (track, idx) => {
-          try { if (typeof prev.onTrackChange === 'function') prev.onTrackChange(track, idx); } catch {}
+        onTrackChange: (_track, idx) => {
           try {
+            const pc = window.playerCore;
             const n = (typeof idx === 'number')
               ? idx
               : (typeof pc.getIndex === 'function' ? pc.getIndex() : 0);
             __syncUiToPlayerCoreIndex(n);
-            // Дополнительные лёгкие обновления мини-UI
             try { updateMiniNowHeader(); } catch {}
             try { updateNextUpLabel(); } catch {}
           } catch {}
