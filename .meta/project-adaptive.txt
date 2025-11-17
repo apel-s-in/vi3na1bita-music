@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-dea66b7dd335112b5470fc42f48798a36662c164.idx
-│   │       ├── pack-dea66b7dd335112b5470fc42f48798a36662c164.pack
-│   │       └── pack-dea66b7dd335112b5470fc42f48798a36662c164.rev
+│   │       ├── pack-059dc72bd4fa422b9f290b58fca3eb0a48118231.idx
+│   │       ├── pack-059dc72bd4fa422b9f290b58fca3eb0a48118231.pack
+│   │       └── pack-059dc72bd4fa422b9f290b58fca3eb0a48118231.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -254,7 +254,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-17 13:05:00 UTC
+Сгенерировано: 2025-11-17 13:21:28 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3526,6 +3526,10 @@ jobs:
       const audio = document.getElementById('audio');
       if (audio) audio.volume = volume;
     }
+  }
+  // legacy onAudioMetadataLoaded был удалён, но оставим совместимый обработчик для режима отката (<audio>)
+  function onAudioMetadataLoaded(e) {
+    try { onAudioTimeUpdate(e); } catch {}
   }
   // legacy onAudioMetadataLoaded удалён: проигрывание всегда через PlayerCore
   function onAudioTimeUpdate(e) {
