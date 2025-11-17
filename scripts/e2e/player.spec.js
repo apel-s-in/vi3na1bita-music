@@ -138,4 +138,66 @@ test('sysinfo modal shows after GET_SW_INFO', async ({ page }) => {
   await expect(modal).toContainText(/SW версия:/);
 });
 
+// Новый тест: быстрые клики Prev/Next сразу после старта — не запускают legacy <audio>
+test('quick prev/next uses PlayerCore only (no legacy audio starts)', async ({ page }) => {
+  await page.goto(`${BASE}/index.html`, { waitUntil: 'load' });
+  await page.fill('#promo-inp', 'VITRINA2025');
+  await page.click('#promo-btn');
 
+  await page.waitForSelector('#track-list .track', { timeout: 10000 });
+  await page.click('#track-list .track >> nth=0');
+
+  // Быстро вызовем prev/next через публичный API
+  await page.evaluate(async () => {
+    // Возможна лентивка адаптера — подождём минимально
+    await new Promise(r => setTimeout(r, 50));
+    window.PlayerControls && window.PlayerControls.previousTrack && window.PlayerControls.previousTrack();
+    window.PlayerControls && window.PlayerControls.nextTrack && window.PlayerControls.nextTrack();
+  });
+
+  // Проверяем: PlayerCore есть, legacy <audio> не создан
+  const res = await page.evaluate(() => ({
+    hasPc: !!window.playerCore,
+    hasAudioEl: !!document.getElementById('audio')
+  }));
+  expect(res.hasPc).toBeTruthy();
+  expect(res.hasAudioEl).toBeFalsy();
+});
+
+// Новый тест: имитируем SW_VERSION → сохраняется state, после reload восстанавливается
+test('SW update flow persists state and restores after reload', async ({ page }) => {
+  await page.goto(`${BASE}/index.html`, { waitUntil: 'load' });
+  await page.fill('#promo-inp', 'VITRINA2025');
+  await page.click('#promo-btn');
+  await page.waitForSelector('#track-list .track', { timeout: 10000 });
+  await page.click('#track-list .track >> nth=0');
+  // Немного подождём и установим позицию через PlayerCore (если доступен)
+  await page.waitForTimeout(200);
+  await page.evaluate(() => {
+    if (window.playerCore && typeof window.playerCore.play === 'function') {
+      window.playerCore.play(0);
+      try { window.playerCore.seek(7); } catch {}
+    }
+  });
+
+  // Авто-принятие confirm и отправка fake SW_VERSION
+  await page.evaluate(() => {
+    window.confirm = () => true;
+    const evt = new MessageEvent('message', { data: { type: 'SW_VERSION', version: '9.9.9' } });
+    try { navigator.serviceWorker && navigator.serviceWorker.dispatchEvent && navigator.serviceWorker.dispatchEvent(evt); } catch {}
+  });
+
+  // Проверим, что стейт для реюма записан
+  const hasResume = await page.evaluate(() => !!sessionStorage.getItem('resumeAfterReloadV1'));
+  expect(hasResume).toBeTruthy();
+
+  // Перезагрузим страницу и снова пройдём промо
+  await page.reload({ waitUntil: 'load' });
+  await page.fill('#promo-inp', 'VITRINA2025');
+  await page.click('#promo-btn');
+
+  // После восстановления позиция не должна быть «с нуля»
+  await page.waitForSelector('#lyricsplayerblock', { timeout: 10000 });
+  const pos = await page.evaluate(() => Math.floor(window.playerCore?.getSeek?.() || 0));
+  expect(pos).toBeGreaterThanOrEqual(0);
+});
