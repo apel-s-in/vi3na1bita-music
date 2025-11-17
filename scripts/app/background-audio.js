@@ -84,15 +84,24 @@
         if (hooked) return;
         const pc = window.playerCore;
         if (!pc || typeof pc.on !== 'function') return;
-        const prev = (pc && pc.events && typeof pc.events === 'object') ? { ...pc.events } : {};
-        pc.on({
-          onPlay: (track, idx) => {
-            try { if (typeof prev.onPlay === 'function') prev.onPlay(track, idx); } catch {}
-            if (hooked) return;
-            hooked = true;
-            try { initAudioContextForBackground(); } catch {}
-          }
-        });
+        if (window.PlayerCoreObserver) {
+          window.PlayerCoreObserver.add({
+            onPlay: () => {
+              if (hooked) return;
+              hooked = true;
+              try { initAudioContextForBackground(); } catch {}
+            }
+          });
+        } else {
+          // Фолбэк (не должен сработать при корректной загрузке bootstrap.js)
+          pc.on({
+            onPlay: () => {
+              if (hooked) return;
+              hooked = true;
+              try { initAudioContextForBackground(); } catch {}
+            }
+          });
+        }
       } catch {}
     }
     // Пытаемся сразу и при первом user-gesture/ленивой загрузке адаптера
