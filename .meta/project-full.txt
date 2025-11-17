@@ -1020,6 +1020,7 @@ jobs:
   <script src="./scripts/ui/sysinfo.js" defer></script>
   <!-- Мини‑режим вынесен в модуль -->
   <script src="./scripts/ui/mini.js" defer></script>
+  <script src="./scripts/ui/favorites-data.js" defer></script
   <script src="./scripts/ui/favorites.js" defer></script>
   <!-- iOS/Android фоновые аудио‑хелперы -->
   <script src="./scripts/app/background-audio.js" defer></script>
@@ -2719,6 +2720,44 @@ jobs:
   }
 
   /* Ссылки на избранное (refs) */
+  // Вся «данная» логика вынесена в scripts/ui/favorites-data.js,
+  // а UI — в scripts/ui/favorites.js.
+  // Здесь оставляем только инициализацию воспроизведения «Избранного»,
+  // чтобы не смешивать плеерную логику с UI.
+
+  let favoritesRefsModel = null;
+
+  // ИНИЦИАЛИЗАЦИЯ ВОСПРОИЗВЕДЕНИЯ ДЛЯ «ИЗБРАННОГО»
+  async function ensureFavoritesPlayback(index) {
+    // Подготовим модель если пусто
+    if (!Array.isArray(favoritesRefsModel) || favoritesRefsModel.length === 0) {
+      if (typeof window.buildFavoritesRefsModel === 'function') {
+        favoritesRefsModel = await window.buildFavoritesRefsModel();
+      }
+    }
+    // Переключаемся в контекст «Избранное»
+    playingAlbumKey = SPECIAL_FAVORITES_KEY;
+    playingTracks = (favoritesRefsModel || []).map(it => ({
+      title: it.title,
+      audio: it.audio,
+      lyrics: it.lyrics,
+      fulltext: it.fulltext || null
+    }));
+    playingArtist = 'Витрина Разбита';
+    playingAlbumName = 'Избранное';
+    playingCover = 'img/logo.png';
+
+    updateAvailableTracks();
+
+    let idx = Number(index);
+    if (!Number.isInteger(idx) || idx < 0 || idx >= (playingTracks?.length || 0)) {
+      idx = 0;
+    }
+    // Запускаем воспроизведение выбранного
+    playFromPlaybackAlbum(idx, true);
+  }
+
+  /* Список треков */
   function readFavoritesRefs(){ try { const raw = localStorage.getItem(FAVORITES_REFS_KEY); const arr = raw ? JSON.parse(raw) : []; return Array.isArray(arr)?arr:[]; } catch { return []; } }
   function writeFavoritesRefs(arr){ try { localStorage.setItem(FAVORITES_REFS_KEY, JSON.stringify(arr)); } catch {} }
   function ensureFavoritesRefsWithLikes(){
