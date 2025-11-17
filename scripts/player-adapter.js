@@ -26,6 +26,13 @@ import { PlayerCore } from '../src/PlayerCore.js';
   // Экспортируем в глобальную область
   window.playerCore = pc;
 
+  // Немедленно прикрепить диспетчер событий (без ожидания таймера в bootstrap)
+  try {
+    if (window.PlayerCoreObserver && typeof window.PlayerCoreObserver.attach === 'function') {
+      window.PlayerCoreObserver.attach(pc);
+    }
+  } catch {}
+
   // Если уже загружен альбом — передадим плейлист (снимок из текущей конфигурации)
   try {
     if (window.config && Array.isArray(window.config.tracks)) {
