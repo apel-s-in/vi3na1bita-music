@@ -476,6 +476,8 @@
   </script>
   <!-- Howler.js для нового ядра плеера (html5 audio) -->
   <script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.core.min.js"></script>
+  <!-- PlayerCore Observer: централизатор событий ядра -->
+  <script src="./scripts/core/bootstrap.js" defer></script>
   <!-- Уведомления (единый модуль) -->
   <script src="./scripts/ui/notify.js" defer></script>
   <!-- Кнопка «О системе»: модуль отображения информации от Service Worker -->
@@ -3137,47 +3139,36 @@
   }
   // Один раз привязываем UI к событиям PlayerCore
   function ensurePlayerCoreUiBindings() {
-    if (!window.__useNewPlayerCore || !window.playerCore) return;
-    if (window.__pcUiBound) return;
-    window.__pcUiBound = true;
+    if (!window.__useNewPlayerCore || !window.playerCore || !window.PlayerCoreObserver) return;
+    if (window.__pcUiObsId) return;
 
     try {
-      const pc = window.playerCore;
-      const prev = (pc && pc.events && typeof pc.events === 'object') ? { ...pc.events } : {};
-
-      pc.on({
-        onPlay: (track, idx) => {
-          try { if (typeof prev.onPlay === 'function') prev.onPlay(track, idx); } catch {}
+      window.__pcUiObsId = window.PlayerCoreObserver.add({
+        onPlay: () => {
           try { updatePlayPauseIcon(); } catch {}
           try { updateMediaSessionPosition(); } catch {}
           try { setPlaybackLocks(true); } catch {}
         },
-        onPause: (track, idx) => {
-          try { if (typeof prev.onPause === 'function') prev.onPause(track, idx); } catch {}
+        onPause: () => {
           try { updatePlayPauseIcon(); } catch {}
           try { updateMediaSessionPosition(); } catch {}
           try { setPlaybackLocks(false); } catch {}
         },
-        onStop: (track, idx) => {
-          try { if (typeof prev.onStop === 'function') prev.onStop(track, idx); } catch {}
-          // Стоп: явно отпускаем локи и синхронизируем UI/MediaSession
+        onStop: () => {
           try { setPlaybackLocks(false); } catch {}
           try { updatePlayPauseIcon(); } catch {}
           try { updateMediaSessionPosition(); } catch {}
         },
         onTick: (pos, dur) => {
-          try { if (typeof prev.onTick === 'function') prev.onTick(pos, dur); } catch {}
           __playerCoreTick(pos, dur);
         },
-        // При смене трека новым плеером (в т.ч. авто-next) — мягко синхронизируем UI без setPlaylist
-        onTrackChange: (track, idx) => {
-          try { if (typeof prev.onTrackChange === 'function') prev.onTrackChange(track, idx); } catch {}
+        onTrackChange: (_track, idx) => {
           try {
+            const pc = window.playerCore;
             const n = (typeof idx === 'number')
               ? idx
               : (typeof pc.getIndex === 'function' ? pc.getIndex() : 0);
             __syncUiToPlayerCoreIndex(n);
-            // Дополнительные лёгкие обновления мини-UI
             try { updateMiniNowHeader(); } catch {}
             try { updateNextUpLabel(); } catch {}
           } catch {}
