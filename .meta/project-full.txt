@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-16584017b568d3d9b89a57842f03c07b50788bd4.idx
-│   │       ├── pack-16584017b568d3d9b89a57842f03c07b50788bd4.pack
-│   │       └── pack-16584017b568d3d9b89a57842f03c07b50788bd4.rev
+│   │       ├── pack-41b50bad529b8c8e0259ef15c611f738a621e0df.idx
+│   │       ├── pack-41b50bad529b8c8e0259ef15c611f738a621e0df.pack
+│   │       └── pack-41b50bad529b8c8e0259ef15c611f738a621e0df.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -256,7 +256,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-17 20:46:01 UTC
+Сгенерировано: 2025-11-17 20:47:28 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8302,7 +8302,13 @@ import { PlayerCore } from '../src/PlayerCore.js';
     if (albumConfigCache[albumKey]?.config) return albumConfigCache[albumKey].config;
 
     const albumsIndex = w.albumsIndex || [];
-    const meta = albumsIndex.find(a => a && a.key === albumKey);
+    let meta = albumsIndex.find(a => a && a.key === albumKey) || null;
+    if (!meta && typeof w.resolveRealAlbumKey === 'function') {
+      try {
+        const real = w.resolveRealAlbumKey(albumKey);
+        if (real) meta = albumsIndex.find(a => a && a.key === real) || null;
+      } catch {}
+    }
     if (!meta) return null;
 
     const base = (typeof w.normalizeBase === 'function') ? w.normalizeBase(meta.base) : meta.base;
