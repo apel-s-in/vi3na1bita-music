@@ -4385,7 +4385,8 @@ function syncUiFromPlayback() {
           const pc = window.playerCore;
           const cur = (pc.getSeek && pc.getSeek()) || 0;
           const dur = (pc.getDuration && pc.getDuration()) || 0;
-          pc.seek(Math.min(dur || cur + 10, cur + 10));
+          const target = (Number.isFinite(dur) && dur > 0) ? Math.min(dur, cur + 10) : (cur + 10);
+          pc.seek(target);
         } else if (audio) {
           audio.currentTime = Math.min(audio.duration, (audio.currentTime || 0) + 10);
         }
@@ -4452,7 +4453,11 @@ function syncUiFromPlayback() {
         const timeParam = parseInt(params.get('time')||'0', 10);
         if (!isNaN(timeParam) && timeParam > 0) {
           setTimeout(()=> {
-            const a=document.getElementById('audio'); if (a) a.currentTime = timeParam;
+            if (window.__useNewPlayerCore && window.playerCore && typeof window.playerCore.seek === 'function') {
+              try { window.playerCore.seek(timeParam); } catch {}
+            } else {
+              const a=document.getElementById('audio'); if (a) a.currentTime = timeParam;
+            }
           }, 600);
         }
         setTimeout(()=>document.getElementById(`trk${idx}`)?.scrollIntoView({behavior:'smooth',block:'center'}), 300);
