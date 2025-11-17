@@ -68,7 +68,13 @@
     if (albumConfigCache[albumKey]?.config) return albumConfigCache[albumKey].config;
 
     const albumsIndex = w.albumsIndex || [];
-    const meta = albumsIndex.find(a => a && a.key === albumKey);
+    let meta = albumsIndex.find(a => a && a.key === albumKey) || null;
+    if (!meta && typeof w.resolveRealAlbumKey === 'function') {
+      try {
+        const real = w.resolveRealAlbumKey(albumKey);
+        if (real) meta = albumsIndex.find(a => a && a.key === real) || null;
+      } catch {}
+    }
     if (!meta) return null;
 
     const base = (typeof w.normalizeBase === 'function') ? w.normalizeBase(meta.base) : meta.base;
