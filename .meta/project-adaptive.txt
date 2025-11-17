@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-bff4d77b1891e6ae0e7813288509cc41d56c10d7.idx
-│   │       ├── pack-bff4d77b1891e6ae0e7813288509cc41d56c10d7.pack
-│   │       └── pack-bff4d77b1891e6ae0e7813288509cc41d56c10d7.rev
+│   │       ├── pack-a8a15fab2b3b4508ffb8946fe0e1cdc202ee0708.idx
+│   │       ├── pack-a8a15fab2b3b4508ffb8946fe0e1cdc202ee0708.pack
+│   │       └── pack-a8a15fab2b3b4508ffb8946fe0e1cdc202ee0708.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -256,7 +256,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-17 18:25:55 UTC
+Сгенерировано: 2025-11-17 18:26:59 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8120,6 +8120,13 @@ import { PlayerCore } from '../src/PlayerCore.js';
 
   // Экспортируем в глобальную область
   window.playerCore = pc;
+
+  // Немедленно прикрепить диспетчер событий (без ожидания таймера в bootstrap)
+  try {
+    if (window.PlayerCoreObserver && typeof window.PlayerCoreObserver.attach === 'function') {
+      window.PlayerCoreObserver.attach(pc);
+    }
+  } catch {}
 
   // Если уже загружен альбом — передадим плейлист (снимок из текущей конфигурации)
   try {
