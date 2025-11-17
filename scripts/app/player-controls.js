@@ -80,7 +80,16 @@
     } catch {}
   }
 
-  function previousTrack() {
+  async function previousTrack() {
+    // Если новое ядро включено, но ещё не готово — не откатываемся на legacy.
+    if (window.__useNewPlayerCore && !pc()) {
+      const ready = await (typeof ensureCoreReadyOrFallback === 'function' ? ensureCoreReadyOrFallback() : Promise.resolve(false));
+      if (!ready) {
+        window.NotificationSystem && window.NotificationSystem.info('Инициализация плеера...');
+        return;
+      }
+    }
+
     if (window.__useNewPlayerCore && pc()) {
       try { window.ensurePlayerCoreUiBindings && window.ensurePlayerCoreUiBindings(); } catch {}
       try {
@@ -143,7 +152,16 @@
     } catch {}
   }
 
-  function nextTrack() {
+  async function nextTrack() {
+    // Если новое ядро включено, но ещё не готово — не откатываемся на legacy.
+    if (window.__useNewPlayerCore && !pc()) {
+      const ready = await (typeof ensureCoreReadyOrFallback === 'function' ? ensureCoreReadyOrFallback() : Promise.resolve(false));
+      if (!ready) {
+        window.NotificationSystem && window.NotificationSystem.info('Инициализация плеера...');
+        return;
+      }
+    }
+
     if (window.__useNewPlayerCore && pc()) {
       try { window.ensurePlayerCoreUiBindings && window.ensurePlayerCoreUiBindings(); } catch {}
       try {
