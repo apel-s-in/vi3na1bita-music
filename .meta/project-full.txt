@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c0a5d2d700ab29c138ec086edb1fcca5fb0b11f1.idx
-│   │       ├── pack-c0a5d2d700ab29c138ec086edb1fcca5fb0b11f1.pack
-│   │       └── pack-c0a5d2d700ab29c138ec086edb1fcca5fb0b11f1.rev
+│   │       ├── pack-432a6656dc8e535cd392ec863251df9cebfd7d6d.idx
+│   │       ├── pack-432a6656dc8e535cd392ec863251df9cebfd7d6d.pack
+│   │       └── pack-432a6656dc8e535cd392ec863251df9cebfd7d6d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -254,7 +254,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-17 13:27:51 UTC
+Сгенерировано: 2025-11-17 13:28:44 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8219,55 +8219,7 @@ import { PlayerCore } from '../src/PlayerCore.js';
 
 //=================================================
 // FILE: /scripts/ui/notify.js
-// scripts/ui/notify.js (ESM)
-// Система уведомлений (тостов).
 
-(function(){
-  const NotificationSystem = {
-    show: function(message, options = {}) {
-      const { duration = 3000, type = 'info' } = options;
-
-      let toast = document.createElement('div');
-      toast.className = `toast toast-${type}`;
-
-      const emoji = {
-        info: 'ℹ️',
-        success: '✅',
-        error: '❌',
-        warning: '⚠️',
-        offline: '🌐'
-      }[type];
-
-      toast.innerHTML = `
-        <div class="toast-content">
-          ${emoji ? `<div class="toast-emoji">${emoji}</div>` : ''}
-          <span>${message}</span>
-        </div>`;
-      
-      document.body.appendChild(toast);
-
-      // Animate in
-      setTimeout(() => {
-        toast.classList.add('show');
-      }, 10);
-
-      // Animate out and remove
-      setTimeout(() => {
-        toast.classList.remove('show');
-        toast.addEventListener('transitionend', () => {
-          toast.remove();
-        });
-      }, duration);
-    },
-    info(message, options) { this.show(message, { ...options, type: 'info' }); },
-    success(message, options) { this.show(message, { ...options, type: 'success' }); },
-    error(message, options) { this.show(message, { ...options, type: 'error' }); },
-    warning(message, options) { this.show(message, { ...options, type: 'warning' }); },
-    offline(message, options) { this.show(message, { ...options, type: 'offline' }); },
-  };
-
-  window.NotificationSystem = NotificationSystem;
-})();
 
 //=================================================
 // FILE: /scripts/ui/sleep.js
