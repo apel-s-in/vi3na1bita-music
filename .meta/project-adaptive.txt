@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1bf28330ee441c491ffb166ff4b6802cd6ff3e1d.idx
-│   │       ├── pack-1bf28330ee441c491ffb166ff4b6802cd6ff3e1d.pack
-│   │       └── pack-1bf28330ee441c491ffb166ff4b6802cd6ff3e1d.rev
+│   │       ├── pack-dea66b7dd335112b5470fc42f48798a36662c164.idx
+│   │       ├── pack-dea66b7dd335112b5470fc42f48798a36662c164.pack
+│   │       └── pack-dea66b7dd335112b5470fc42f48798a36662c164.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -254,7 +254,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-17 12:41:04 UTC
+Сгенерировано: 2025-11-17 13:05:00 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2523,61 +2523,9 @@ jobs:
           }
         });
       }
-
       // visibilitychange перенесён в scripts/app/background-events.js
-              }
-            }
-          }
-          }
-
-          // Синхронизируем UI
-          syncUiFromPlayback();
-
-          // Восстанавливаем UI-анимации
-          if (window.__savedAnimationState) { applyAnimationState(window.__savedAnimationState); window.__savedAnimationState = null; }
-          if (window.__savedBitState) { initAudioContext(); startLogoPulsation(); window.__savedBitState = null; }
-
-          // Возобновляем галерею
-          if (!coverAutoplay && Array.isArray(coverGalleryArr) && coverGalleryArr.length > 1) startCoverAutoPlay();
-
-          // Сброс snapshot, чтобы другие события его не переиспользовали
-          __savedResumePosition = null;
-          console.log('App returning to foreground, resuming playback (UI restored)');
-        }
-
-        // Обновляем Media Session: новый плеер — только позиция; старый — полный сетап
-        try {
-          if (pc) updateMediaSessionPosition();
-          else if (a && playingTracks && playingTrack >= 0) setupMediaSessionForPlayback();
-        } catch (e) {
-          console.warn('Failed to update Media Session', e);
-        }
-      });
-
-      window.addEventListener('focus', checkSleepTimer);
-
-      window.addEventListener('offline', () => {
-        startOfflineToasts();
-        const pc = (window.__useNewPlayerCore && window.playerCore) ? window.playerCore : null;
-        if (pc) {
-          try { __savedResumePosition = pc.getSeek?.() || 0; } catch {}
-        } else {
-          const a = document.getElementById('audio');
-          if (a) {
-            try { __savedResumePosition = a.currentTime || 0; } catch {}
-          }
-        }
-      });
-      window.addEventListener('online', () => {
-        stopOfflineToasts();
-        NotificationSystem.success('Соединение восстановлено');
-        // Восстановление сети не должно менять позицию воспроизведения.
-        __savedResumePosition = null;
-        try { updateMediaSessionPosition(); } catch {}
-      });
     }
   }
-
   /* ====== Фон: Web Locks + Wake Lock (Android) ====== */
   let __wakeLock = null;
   let __playbackLockReleaser = null;
