@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8a82846cc55c17b0c4db2529d9e21166230bef74.idx
-│   │       ├── pack-8a82846cc55c17b0c4db2529d9e21166230bef74.pack
-│   │       └── pack-8a82846cc55c17b0c4db2529d9e21166230bef74.rev
+│   │       ├── pack-2eff8a7e0c00cb77a5457fbf53dff8634a676205.idx
+│   │       ├── pack-2eff8a7e0c00cb77a5457fbf53dff8634a676205.pack
+│   │       └── pack-2eff8a7e0c00cb77a5457fbf53dff8634a676205.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -254,7 +254,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-17 13:39:25 UTC
+Сгенерировано: 2025-11-17 13:49:14 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1012,6 +1012,8 @@ jobs:
   </script>
   <!-- Howler.js для нового ядра плеера (html5 audio) -->
   <script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.core.min.js"></script>
+  <!-- Уведомления (единый модуль) -->
+  <script src="./scripts/ui/notify.js" defer></script>
   <!-- Кнопка «О системе»: модуль отображения информации от Service Worker -->
   <script src="./scripts/ui/sysinfo.js" defer></script>
   <!-- Мини‑режим вынесен в модуль -->
@@ -2686,32 +2688,7 @@ jobs:
   }
   function isBrowsingSameAsPlaying() { return !!(playingAlbumKey && playingAlbumKey === currentAlbumKey); }
 
-  const NotificationSystem = {
-    queue: [], isShowing: false,
-    show(message, type = 'info', duration = 3000) { this.queue.push({ message, type, duration }); if (!this.isShowing) this.processQueue(); },
-    async processQueue() {
-      if (this.queue.length===0) { this.isShowing=false; return; }
-      this.isShowing=true;
-      const { message, type, duration } = this.queue.shift();
-      const toast = document.createElement('div');
-      toast.className = `toast toast-${type}`;
-      toast.innerHTML = `<div class="toast-content"><span class="toast-emoji" aria-hidden="true"></span><span class="toast-text">${message}</span></div>`;
-      document.body.appendChild(toast);
-      await new Promise(r=>setTimeout(r,50));
-      toast.classList.add('show');
-      await new Promise(r=>setTimeout(r,duration));
-      toast.classList.remove('show');
-      await new Promise(r=>setTimeout(r,300));
-      toast.remove();
-      this.processQueue();
-    },
-    info(msg){ this.show(msg,'info'); },
-    success(msg){ this.show(msg,'success'); },
-    error(msg){ this.show(msg,'error',5000); },
-    warning(msg){ this.show(msg,'warning',4000); },
-    offline(msg){ this.show(msg,'offline'); }
-  };
-
+  // NotificationSystem вынесен в scripts/ui/notify.js
   /* Избранное v2 */
   const LIKED_STORAGE_KEY_V2 = 'likedTracks:v2';
   function getLikedMap() {
