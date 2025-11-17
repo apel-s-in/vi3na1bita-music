@@ -2991,6 +2991,10 @@
       if (audio) audio.volume = volume;
     }
   }
+  // legacy onAudioMetadataLoaded был удалён, но оставим совместимый обработчик для режима отката (<audio>)
+  function onAudioMetadataLoaded(e) {
+    try { onAudioTimeUpdate(e); } catch {}
+  }
   // legacy onAudioMetadataLoaded удалён: проигрывание всегда через PlayerCore
   function onAudioTimeUpdate(e) {
     // При активном новом ядре PlayerCore прогресс/таймеры/лирика обновляются через __playerCoreTick.
