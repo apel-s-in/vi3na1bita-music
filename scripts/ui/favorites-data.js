@@ -30,15 +30,20 @@
   function ensureFavoritesRefsWithLikes() {
     const refs = readFavoritesRefs();
     const keySet = new Set(refs.map(x => `${x.a}:${x.t}`));
-    const albumsIndex = w.albumsIndex || [];
-    for (const alb of albumsIndex) {
-      if (!alb || !alb.key) continue;
-      const liked = getLikedForAlbum(alb.key);
-      liked.forEach(ti => {
-        const k = `${alb.key}:${ti}`;
-        if (!keySet.has(k)) { refs.push({ a: alb.key, t: ti }); keySet.add(k); }
-      });
-    }
+    try {
+      const map = getLikedMap();
+      const albumsIndex = w.albumsIndex || [];
+      const albumKeys = (Array.isArray(albumsIndex) && albumsIndex.length)
+        ? albumsIndex.map(a => a && a.key).filter(Boolean)
+        : Object.keys(map || {});
+      for (const akey of albumKeys) {
+        const liked = Array.isArray(map[akey]) ? map[akey] : [];
+        liked.forEach(ti => {
+          const k = `${akey}:${ti}`;
+          if (!keySet.has(k)) { refs.push({ a: akey, t: ti }); keySet.add(k); }
+        });
+      }
+    } catch {}
     writeFavoritesRefs(refs);
     return refs;
   }
