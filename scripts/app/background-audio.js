@@ -84,8 +84,10 @@
         if (hooked) return;
         const pc = window.playerCore;
         if (!pc || typeof pc.on !== 'function') return;
+        const prev = (pc && pc.events && typeof pc.events === 'object') ? { ...pc.events } : {};
         pc.on({
-          onPlay: () => {
+          onPlay: (track, idx) => {
+            try { if (typeof prev.onPlay === 'function') prev.onPlay(track, idx); } catch {}
             if (hooked) return;
             hooked = true;
             try { initAudioContextForBackground(); } catch {}
