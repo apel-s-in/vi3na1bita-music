@@ -3165,30 +3165,40 @@
     window.__pcUiBound = true;
 
     try {
-      window.playerCore.on({
-        onPlay: () => {
+      const pc = window.playerCore;
+      const prev = (pc && pc.events && typeof pc.events === 'object') ? { ...pc.events } : {};
+
+      pc.on({
+        onPlay: (track, idx) => {
+          try { if (typeof prev.onPlay === 'function') prev.onPlay(track, idx); } catch {}
           try { updatePlayPauseIcon(); } catch {}
           try { updateMediaSessionPosition(); } catch {}
           try { setPlaybackLocks(true); } catch {}
         },
-        onPause: () => {
+        onPause: (track, idx) => {
+          try { if (typeof prev.onPause === 'function') prev.onPause(track, idx); } catch {}
           try { updatePlayPauseIcon(); } catch {}
           try { updateMediaSessionPosition(); } catch {}
           try { setPlaybackLocks(false); } catch {}
         },
-        onStop: () => {
+        onStop: (track, idx) => {
+          try { if (typeof prev.onStop === 'function') prev.onStop(track, idx); } catch {}
           // Стоп: явно отпускаем локи и синхронизируем UI/MediaSession
           try { setPlaybackLocks(false); } catch {}
           try { updatePlayPauseIcon(); } catch {}
           try { updateMediaSessionPosition(); } catch {}
         },
-        onTick: __playerCoreTick,
+        onTick: (pos, dur) => {
+          try { if (typeof prev.onTick === 'function') prev.onTick(pos, dur); } catch {}
+          __playerCoreTick(pos, dur);
+        },
         // При смене трека новым плеером (в т.ч. авто-next) — мягко синхронизируем UI без setPlaylist
-        onTrackChange: (_track, idx) => {
+        onTrackChange: (track, idx) => {
+          try { if (typeof prev.onTrackChange === 'function') prev.onTrackChange(track, idx); } catch {}
           try {
             const n = (typeof idx === 'number')
               ? idx
-              : (typeof window.playerCore.getIndex === 'function' ? window.playerCore.getIndex() : 0);
+              : (typeof pc.getIndex === 'function' ? pc.getIndex() : 0);
             __syncUiToPlayerCoreIndex(n);
             // Дополнительные лёгкие обновления мини-UI
             try { updateMiniNowHeader(); } catch {}
