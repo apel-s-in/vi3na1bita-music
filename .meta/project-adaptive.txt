@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-432a6656dc8e535cd392ec863251df9cebfd7d6d.idx
-│   │       ├── pack-432a6656dc8e535cd392ec863251df9cebfd7d6d.pack
-│   │       └── pack-432a6656dc8e535cd392ec863251df9cebfd7d6d.rev
+│   │       ├── pack-8a82846cc55c17b0c4db2529d9e21166230bef74.idx
+│   │       ├── pack-8a82846cc55c17b0c4db2529d9e21166230bef74.pack
+│   │       └── pack-8a82846cc55c17b0c4db2529d9e21166230bef74.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -254,7 +254,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-17 13:28:44 UTC
+Сгенерировано: 2025-11-17 13:39:25 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7268,7 +7268,16 @@ async function clearCurrentOfflineResources() {
     } catch {}
   }
 
-  function previousTrack() {
+  async function previousTrack() {
+    // Если новое ядро включено, но ещё не готово — не откатываемся на legacy.
+    if (window.__useNewPlayerCore && !pc()) {
+      const ready = await (typeof ensureCoreReadyOrFallback === 'function' ? ensureCoreReadyOrFallback() : Promise.resolve(false));
+      if (!ready) {
+        window.NotificationSystem && window.NotificationSystem.info('Инициализация плеера...');
+        return;
+      }
+    }
+
     if (window.__useNewPlayerCore && pc()) {
       try { window.ensurePlayerCoreUiBindings && window.ensurePlayerCoreUiBindings(); } catch {}
       try {
@@ -7331,7 +7340,16 @@ async function clearCurrentOfflineResources() {
     } catch {}
   }
 
-  function nextTrack() {
+  async function nextTrack() {
+    // Если новое ядро включено, но ещё не готово — не откатываемся на legacy.
+    if (window.__useNewPlayerCore && !pc()) {
+      const ready = await (typeof ensureCoreReadyOrFallback === 'function' ? ensureCoreReadyOrFallback() : Promise.resolve(false));
+      if (!ready) {
+        window.NotificationSystem && window.NotificationSystem.info('Инициализация плеера...');
+        return;
+      }
+    }
+
     if (window.__useNewPlayerCore && pc()) {
       try { window.ensurePlayerCoreUiBindings && window.ensurePlayerCoreUiBindings(); } catch {}
       try {
