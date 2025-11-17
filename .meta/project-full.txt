@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c327501ad5e1571c64c7cfa3ae5f8b6765c314b4.idx
-│   │       ├── pack-c327501ad5e1571c64c7cfa3ae5f8b6765c314b4.pack
-│   │       └── pack-c327501ad5e1571c64c7cfa3ae5f8b6765c314b4.rev
+│   │       ├── pack-f88d958a036d65a793e2e936d83c19dd231a2522.idx
+│   │       ├── pack-f88d958a036d65a793e2e936d83c19dd231a2522.pack
+│   │       └── pack-f88d958a036d65a793e2e936d83c19dd231a2522.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -253,7 +253,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-16 20:53:30 UTC
+Сгенерировано: 2025-11-17 12:39:39 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1017,6 +1017,8 @@ jobs:
   <script src="./scripts/ui/mini.js" defer></script>
   <!-- iOS/Android фоновые аудио‑хелперы -->
   <script src="./scripts/app/background-audio.js" defer></script>
+  <!-- Фоновые события (visibility/freeze/resume/pagehide/pageshow) -->
+  <script src="./scripts/app/background-events.js" defer></script>
   <!-- Контролы плеера: вынесены в модуль (делегаты внизу файла) -->
   <script src="./scripts/app/player-controls.js" defer></script>
   <script>
@@ -2256,142 +2258,8 @@ jobs:
     applyMiniModeUI();
   }
   function clearRelizView(){ const cont = document.getElementById('reliz-container'); if (cont) cont.remove(); }
-  function setupBackgroundEventHandlers() {
-    // ВАЖНО: никакие фоновые обработчики не имеют права вызывать pause()/stop() у плеера.
-    // Исключение только одно — таймер сна (checkSleepTimer / setSleepTimer).
-    // Здесь мы ТОЛЬКО сохраняем позицию и синхронизируем UI/MediaSession, звук не трогаем.
-
-    // Обработчик для iOS: событие окончания воспроизведения в фоне
-    document.addEventListener('webkitendfullscreen', () => {
-      console.log('iOS webkitendfullscreen event');
-      const pc = (window.__useNewPlayerCore && window.playerCore) ? window.playerCore : null;
-      if (pc && document.hidden && pc.isPlaying?.()) {
-        try { updateMediaSessionPosition(); } catch {}
-      } else {
-        const audio = document.getElementById('audio');
-        if (audio && !audio.paused && document.hidden) {
-          syncUiFromPlayback();
-          setupMediaSessionForPlayback();
-        }
-      }
-    });
-
-    // Android: Doze mode — сохраняем только позицию (без управления звуком)
-    document.addEventListener('freeze', () => {
-      console.log('App entering freeze state (Android Doze)');
-      const pc = (window.__useNewPlayerCore && window.playerCore) ? window.playerCore : null;
-      if (pc) {
-        try {
-          __savedResumePosition = pc.getSeek?.() || 0;
-          localStorage.setItem('freezePosition', String(__savedResumePosition));
-        } catch {}
-      } else {
-        const audio = document.getElementById('audio');
-        if (audio) {
-          __savedResumePosition = audio.currentTime;
-          localStorage.setItem('freezePosition', String(__savedResumePosition));
-        }
-      }
-    });
-
-    document.addEventListener('resume', () => {
-      console.log('App resuming from freeze state');
-      const savedPosition = localStorage.getItem('freezePosition');
-      localStorage.removeItem('freezePosition');
-      if (!savedPosition) return;
-      const pos = parseFloat(savedPosition);
-      if (isNaN(pos)) return;
-
-      const TOL = 0.75;
-      const pc = (window.__useNewPlayerCore && window.playerCore) ? window.playerCore : null;
-      if (pc) {
-        try {
-          const cur = Number(pc.getSeek?.() || 0);
-          if (!Number.isFinite(cur) || cur < (pos - TOL)) pc.seek(pos);
-        } catch {}
-      } else {
-        const a = document.getElementById('audio');
-        if (a) {
-          const cur = Number(a.currentTime || 0);
-          if (!Number.isFinite(cur) || cur < (pos - TOL)) {
-            try { a.currentTime = pos; } catch {}
-          }
-        }
-      }
-      syncUiFromPlayback();
-    });
-
-    // Потеря фокуса в скрытом состоянии — только сохранить позицию
-    try {
-      if ('onfocusout' in document) {
-        document.addEventListener('focusout', () => {
-          if (document.hidden) {
-            console.log('App lost focus and is hidden');
-            const pc = (window.__useNewPlayerCore && window.playerCore) ? window.playerCore : null;
-            if (pc) {
-              try { __savedResumePosition = pc.getSeek?.() || 0; } catch {}
-            } else {
-              const audio = document.getElementById('audio');
-              if (audio) { __savedResumePosition = audio.currentTime; }
-            }
-          }
-        });
-      }
-    } catch (e) {
-      console.warn('Failed to setup focusout handler', e);
-    }
-
-    // iOS: pagehide/pageshow — сохраняем/восстанавливаем позицию, звук не трогаем
-    if (isIOS()) {
-      window.addEventListener('pagehide', (e) => {
-        if (e.persisted) {
-          console.log('iOS pagehide with persisted state - app moving to background');
-          const pc = (window.__useNewPlayerCore && window.playerCore) ? window.playerCore : null;
-          if (pc) {
-            try {
-              __savedResumePosition = pc.getSeek?.() || 0;
-              localStorage.setItem('iosBackgroundPosition', String(__savedResumePosition));
-            } catch {}
-          } else {
-            const audio = document.getElementById('audio');
-            if (audio) {
-              __savedResumePosition = audio.currentTime;
-              localStorage.setItem('iosBackgroundPosition', String(__savedResumePosition));
-            }
-          }
-        }
-      });
-
-      window.addEventListener('pageshow', (e) => {
-        if (!e.persisted) return;
-        console.log('iOS pageshow with persisted state - app returning from background');
-        const savedPosition = localStorage.getItem('iosBackgroundPosition');
-        localStorage.removeItem('iosBackgroundPosition');
-        if (!savedPosition) return;
-        const pos = parseFloat(savedPosition);
-        if (isNaN(pos)) return;
-
-        const TOL = 0.75;
-        const pc = (window.__useNewPlayerCore && window.playerCore) ? window.playerCore : null;
-        if (pc) {
-          try {
-            const cur = Number(pc.getSeek?.() || 0);
-            if (!Number.isFinite(cur) || cur < (pos - TOL)) pc.seek(pos);
-          } catch {}
-        } else {
-          const a = document.getElementById('audio');
-          if (a) {
-            const cur = Number(a.currentTime || 0);
-            if (!Number.isFinite(cur) || cur < (pos - TOL)) {
-              try { a.currentTime = pos; } catch {}
-            }
-          }
-        }
-        syncUiFromPlayback();
-      });
-    }
-  }
-  // Вызываем функцию в initializeMainUi
+  // Фоновые обработчики перенесены в scripts/app/background-events.js
+  // (visibilitychange/freeze/resume/pagehide/pageshow/focusout)
   /* ====== Инициализация UI ====== */
   async function initializeMainUi() {
       await loadAlbumsIndex();
@@ -2573,9 +2441,7 @@ jobs:
 
       detectIOSAndShowInstallGuide();
 
-      // Регистрация фоновых обработчиков (freeze/resume и пр.)
-      try { setupBackgroundEventHandlers(); } catch (e) { console.warn('BG handlers failed', e); }
-
+      // Регистрация фоновых обработчиков выполняется в scripts/app/background-events.js
       // Service Worker + мягкое обновление с продолжением воспроизведения
       if ('serviceWorker' in navigator) {
         function persistResumeBeforeReload() {
@@ -2657,63 +2523,7 @@ jobs:
         });
       }
 
-      document.addEventListener('visibilitychange', async () => {
-        // ВАЖНО: здесь НЕ ставим плеер на паузу и не останавливаем.
-        // Только запоминаем позицию и восстанавливаем UI/анимации при возврате.
-        const pc = (window.__useNewPlayerCore && window.playerCore) ? window.playerCore : null;
-        const a = pc ? null : document.getElementById('audio');
-        const isHidden = document.hidden;
-
-        if (isHidden) {
-          // Сохраняем состояние только для возможного fallback
-          __wasPlayingBeforeHidden = pc ? !!pc.isPlaying?.() : !!(a && !a.paused);
-          __savedResumePosition = pc ? (pc.getSeek?.() || 0) : (a ? a.currentTime : 0);
-
-          // Отключаем тяжёлый UI
-          if (coverAutoplay) { clearInterval(coverAutoplay); coverAutoplay = null; }
-          if (animationEnabled) { window.__savedAnimationState = animationEnabled; applyAnimationState(false); }
-          if (bitEnabled) { window.__savedBitState = bitEnabled; stopLogoPulsation(); }
-
-          // Только для старого <audio> на iOS: подпинываем аудиоконтекст
-          if (!pc && isIOS() && __wasPlayingBeforeHidden) {
-            resumeAudioContextIfNeeded();
-            setTimeout(() => { if (document.hidden && a && a.paused) a.play().catch(e => console.warn('iOS background resume failed', e)); }, 1000);
-          }
-          console.log('App going to background, position saved:', __savedResumePosition);
-        } else {
-          // Возврат из фона: только UI
-          checkSleepTimer();
-          if (isIOS()) resumeAudioContextIfNeeded();
-
-          // Если музыка играла до ухода в фон и не было таймера сна — не отматываем.
-          // Восстанавливаем позицию только если она реально потерялась (меньше сохранённой > 0.75с).
-          const TOL = 0.75;
-          if (__wasPlayingBeforeHidden && !sleepTimerTarget) {
-            if (pc) {
-              const cur = Number(pc.getSeek?.() || 0);
-              const needRestore = (typeof __savedResumePosition === 'number' && !isNaN(__savedResumePosition)) &&
-                                  (!Number.isFinite(cur) || cur < (__savedResumePosition - TOL));
-              if (needRestore) {
-                try { pc.seek(__savedResumePosition); } catch (e) { console.warn('Failed to restore PC position', e); }
-              }
-          } else if (a) {
-            // Эта ветка выполняется только когда НЕТ PlayerCore.
-            const cur = Number(a.currentTime || 0);
-            const needRestore = (typeof __savedResumePosition === 'number' && !isNaN(__savedResumePosition)) &&
-                                (!Number.isFinite(cur) || cur < (__savedResumePosition - TOL));
-            if (needRestore) {
-              try { a.currentTime = __savedResumePosition; } catch (e) { console.warn('Failed to restore audio position', e); }
-            }
-            // Если было воспроизведение и вдруг встало на паузу — аккуратно резюмируем
-            if (a.paused) {
-              const playAttempt = a.play();
-              if (playAttempt && playAttempt.catch) {
-                playAttempt.catch(e => {
-                  console.warn('Play after foreground failed', e);
-                  if (isIOS()) {
-                    setTimeout(() => { if (a.paused) { a.play().catch(console.warn); initSilentAudioPlayback(); } }, 500);
-                  }
-                });
+      // visibilitychange перенесён в scripts/app/background-events.js
               }
             }
           }
@@ -3768,30 +3578,7 @@ jobs:
       if (audio) audio.volume = volume;
     }
   }
-  function onAudioMetadataLoaded(e) {
-    // Новый плеер сам сообщает UI о длительности через onTick/onTrackChange.
-    if (window.__useNewPlayerCore && window.playerCore) {
-      return;
-    }
-
-    const audio = (e && (e.currentTarget || e.target)) || document.getElementById('audio');
-    if (!audio) return;
-    const duration = audio.duration || 0;
-    const elapsedEl = document.getElementById('time-elapsed');
-    const remainingEl = document.getElementById('time-remaining');
-    if (elapsedEl) elapsedEl.textContent = '00:00';
-    if (remainingEl) remainingEl.textContent = formatTime(duration);
-    // Media Session: стартовое состояние позиции
-    try {
-      if ('mediaSession' in navigator && typeof navigator.mediaSession.setPositionState === 'function') {
-        navigator.mediaSession.setPositionState({
-          duration: isFinite(duration) ? duration : 0,
-          playbackRate: audio.playbackRate || 1,
-          position: audio.currentTime || 0
-        });
-      }
-    } catch {}
-  }
+  // legacy onAudioMetadataLoaded удалён: проигрывание всегда через PlayerCore
   function onAudioTimeUpdate(e) {
     // При активном новом ядре PlayerCore прогресс/таймеры/лирика обновляются через __playerCoreTick.
     // Здесь не вмешиваемся, чтобы не было двойного источника истины.
