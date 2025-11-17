@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f279d05436559049683fcca37ba4fdf6a3f31b25.idx
-│   │       ├── pack-f279d05436559049683fcca37ba4fdf6a3f31b25.pack
-│   │       └── pack-f279d05436559049683fcca37ba4fdf6a3f31b25.rev
+│   │       ├── pack-b2e0d39ce1fc93bbdaa3f14792a021c470ad3a91.idx
+│   │       ├── pack-b2e0d39ce1fc93bbdaa3f14792a021c470ad3a91.pack
+│   │       └── pack-b2e0d39ce1fc93bbdaa3f14792a021c470ad3a91.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -254,7 +254,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-17 14:05:56 UTC
+Сгенерировано: 2025-11-17 14:29:08 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1020,6 +1020,7 @@ jobs:
   <script src="./scripts/ui/sysinfo.js" defer></script>
   <!-- Мини‑режим вынесен в модуль -->
   <script src="./scripts/ui/mini.js" defer></script>
+  <script src="./scripts/ui/favorites.js" defer></script>
   <!-- iOS/Android фоновые аудио‑хелперы -->
   <script src="./scripts/app/background-audio.js" defer></script>
   <!-- Фоновые события (visibility/freeze/resume/pagehide/pageshow) -->
