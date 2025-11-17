@@ -2342,25 +2342,26 @@
         __cover: cover
       });
     }
-    favoritesRefsModel = out;
+    window.favoritesRefsModel = out;
     return out;
   }
 
   function updateFavoritesRefsModelActiveFlag(albumKey, trackIndex, isActive) {
-    if (!Array.isArray(favoritesRefsModel)) return;
-    const item = favoritesRefsModel.find(x => x.__a === albumKey && x.__t === trackIndex);
+    const model = window.favoritesRefsModel;
+    if (!Array.isArray(model)) return;
+    const item = model.find(x => x.__a === albumKey && x.__t === trackIndex);
     if (item) item.__active = !!isActive;
   }
 
   // ИНИЦИАЛИЗАЦИЯ ВОСПРОИЗВЕДЕНИЯ ДЛЯ «ИЗБРАННОГО»
   async function ensureFavoritesPlayback(index) {
     // Подготовим модель если пусто
-    if (!Array.isArray(favoritesRefsModel) || favoritesRefsModel.length === 0) {
+    if (!Array.isArray(window.favoritesRefsModel) || window.favoritesRefsModel.length === 0) {
       await buildFavoritesRefsModel();
     }
     // Переключаемся в контекст «Избранное»
     playingAlbumKey = SPECIAL_FAVORITES_KEY;
-    playingTracks = (favoritesRefsModel || []).map(it => ({
+    playingTracks = (window.favoritesRefsModel || []).map(it => ({
       title: it.title,
       audio: it.audio,
       lyrics: it.lyrics,
@@ -4172,9 +4173,10 @@ function syncUiFromPlayback() {
     liked.forEach(idx => { const el = document.getElementById(`trk${idx}`); if (el) el.classList.add('is-favorite'); });
   }
   function updateFavoriteClassesFavorites() {
-    if (!Array.isArray(favoritesRefsModel)) return;
+    const model = window.favoritesRefsModel;
+    if (!Array.isArray(model)) return;
     document.querySelectorAll('#track-list .track').forEach(tr => tr.classList.remove('is-favorite'));
-    favoritesRefsModel.forEach((item, i) => {
+    model.forEach((item) => {
       if (item.__active) {
         const el = document.getElementById(`fav_${item.__a}_${item.__t}`);
         if (el) el.classList.add('is-favorite');
@@ -4246,7 +4248,7 @@ function syncUiFromPlayback() {
     list.style.display = '';
     list.innerHTML = '<div style="text-align:center; opacity:.8; margin:6px 0 8px 0;">ИЗБРАННЫЕ ПЕСНИ</div>';
 
-    (favoritesRefsModel || []).forEach((item, idx) => {
+    ((window.favoritesRefsModel) || []).forEach((item, idx) => {
       const n = String(idx + 1).padStart(2,'0');
       const row = document.createElement('div');
       row.className = 'track' + (item.__active ? '' : ' inactive');
