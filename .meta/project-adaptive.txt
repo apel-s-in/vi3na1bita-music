@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-09bdda522c1fc31deb31ded4ee7140a6a42024e3.idx
-│   │       ├── pack-09bdda522c1fc31deb31ded4ee7140a6a42024e3.pack
-│   │       └── pack-09bdda522c1fc31deb31ded4ee7140a6a42024e3.rev
+│   │       ├── pack-16584017b568d3d9b89a57842f03c07b50788bd4.idx
+│   │       ├── pack-16584017b568d3d9b89a57842f03c07b50788bd4.pack
+│   │       └── pack-16584017b568d3d9b89a57842f03c07b50788bd4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -256,7 +256,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-17 20:45:12 UTC
+Сгенерировано: 2025-11-17 20:46:01 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8596,6 +8596,9 @@ import { PlayerCore } from '../src/PlayerCore.js';
     if ((!Array.isArray(w.albumsIndex) || w.albumsIndex.length === 0) && hasFn('loadAlbumsIndex')) {
       try { await call('loadAlbumsIndex'); } catch {}
     }
+
+    // Миграция ключей избранного на актуальные ключи альбомов
+    try { w.migrateFavoritesKeys && w.migrateFavoritesKeys(); } catch {}
 
     // Перенос блока плеера наверх (как было)
     try {
