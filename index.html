@@ -1734,6 +1734,7 @@
   /* ====== Инициализация UI ====== */
   async function initializeMainUi() {
       await loadAlbumsIndex();
+      try { migrateFavoritesKeys(); } catch {}
 
       const sel = document.getElementById('album-select');
       const params = new URLSearchParams(location.search);
@@ -2144,6 +2145,61 @@
 
   const FAVORITES_REFS_KEY = 'favoritesAlbumRefs:v1';
   let favoritesRefsModel = null;
+
+  // Миграция ключей избранного/рефов на актуальные ключи из albumsIndex (однократно)
+  function migrateFavoritesKeys() {
+    try {
+      if (localStorage.getItem('favoritesMigrated:v1') === '1') return false;
+    } catch {}
+    try {
+      const known = new Set((albumsIndex || []).map(a => a && a.key).filter(Boolean));
+      if (!known.size) return false;
+      let changed = false;
+
+      // likedTracks:v2
+      const raw = localStorage.getItem(LIKED_STORAGE_KEY_V2);
+      const map = raw ? JSON.parse(raw) : {};
+      const nextMap = {};
+      Object.keys(map || {}).forEach(k => {
+        const arr = Array.isArray(map[k]) ? map[k] : [];
+        if (known.has(k)) {
+          nextMap[k] = Array.from(new Set(arr));
+        } else {
+          let real = null;
+          try { real = typeof resolveRealAlbumKey === 'function' ? resolveRealAlbumKey(k) : null; } catch {}
+          if (real && known.has(real)) {
+            const prev = Array.isArray(nextMap[real]) ? nextMap[real] : [];
+            nextMap[real] = Array.from(new Set(prev.concat(arr)));
+            changed = true;
+          } else {
+            // Сохраняем «как есть» (на случай, если альбом появится позже)
+            nextMap[k] = Array.from(new Set(arr));
+          }
+        }
+      });
+      if (changed) {
+        localStorage.setItem(LIKED_STORAGE_KEY_V2, JSON.stringify(nextMap));
+      }
+
+      // favoritesAlbumRefs:v1
+      const refs = readFavoritesRefs();
+      let refsChanged = false;
+      const mapped = refs.map(ref => {
+        if (known.has(ref.a)) return ref;
+        let real = null;
+        try { real = typeof resolveRealAlbumKey === 'function' ? resolveRealAlbumKey(ref.a) : null; } catch {}
+        if (real && known.has(real)) { refsChanged = true; return { a: real, t: ref.t }; }
+        return ref;
+      });
+      if (refsChanged) writeFavoritesRefs(mapped);
+
+      if (changed || refsChanged) {
+        localStorage.setItem('favoritesMigrated:v1', '1');
+      }
+      return changed || refsChanged;
+    } catch { return false; }
+  }
+
   // Кэш обложек альбомов (первая картинка из центральной галереи)
   const albumCoverCache = Object.create(null);
 
@@ -2219,8 +2275,17 @@
   }
   async function getAlbumConfigByKey(albumKey){
     if (albumConfigCache[albumKey]?.config) return albumConfigCache[albumKey].config;
-    const meta = albumsIndex.find(a => a.key === albumKey);
+
+    // Пытаемся найти meta по точному ключу или через алиасы
+    let meta = albumsIndex.find(a => a.key === albumKey) || null;
+    if (!meta && typeof resolveRealAlbumKey === 'function') {
+      try {
+        const real = resolveRealAlbumKey(albumKey);
+        if (real) meta = albumsIndex.find(a => a.key === real) || null;
+      } catch {}
+    }
     if (!meta) return null;
+
     const base = normalizeBase(meta.base);
     try{
       const r = await fetch(absJoin(base,'config.json'), { cache:'no-cache' });
@@ -4162,6 +4227,8 @@ function syncUiFromPlayback() {
     if (!Array.isArray(albumsIndex) || albumsIndex.length === 0) {
       try { await loadAlbumsIndex(); } catch {}
     }
+    // Миграция ключей избранного -> актуальные ключи альбомов
+    try { migrateFavoritesKeys(); } catch {}
 
     try {
       const lp = document.getElementById('lyricsplayerblock');
