@@ -182,6 +182,9 @@
       try { await call('loadAlbumsIndex'); } catch {}
     }
 
+    // Миграция ключей избранного на актуальные ключи альбомов
+    try { w.migrateFavoritesKeys && w.migrateFavoritesKeys(); } catch {}
+
     // Перенос блока плеера наверх (как было)
     try {
       const lp = document.getElementById('lyricsplayerblock');
