@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a8a15fab2b3b4508ffb8946fe0e1cdc202ee0708.idx
-│   │       ├── pack-a8a15fab2b3b4508ffb8946fe0e1cdc202ee0708.pack
-│   │       └── pack-a8a15fab2b3b4508ffb8946fe0e1cdc202ee0708.rev
+│   │       ├── pack-1d11a4db53c075b627793c5c4393ce17fa680ac2.idx
+│   │       ├── pack-1d11a4db53c075b627793c5c4393ce17fa680ac2.pack
+│   │       └── pack-1d11a4db53c075b627793c5c4393ce17fa680ac2.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -256,7 +256,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-17 18:26:59 UTC
+Сгенерировано: 2025-11-17 20:25:28 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2727,13 +2727,19 @@ jobs:
   function ensureFavoritesRefsWithLikes(){
     const refs = readFavoritesRefs();
     const keySet = new Set(refs.map(x=>`${x.a}:${x.t}`));
-    for (const alb of albumsIndex) {
-      const liked = getLikedForAlbum(alb.key);
-      liked.forEach(ti=>{
-        const k = `${alb.key}:${ti}`;
-        if (!keySet.has(k)) { refs.push({ a: alb.key, t: ti }); keySet.add(k); }
-      });
-    }
+    try {
+      const map = getLikedMap();
+      const albums = Array.isArray(albumsIndex) ? albumsIndex : [];
+      // Если список альбомов пуст — обходим ключи из likedTracks:v2
+      const albumKeys = albums.length ? albums.map(a => a.key) : Object.keys(map || {});
+      for (const akey of albumKeys) {
+        const liked = Array.isArray(map[akey]) ? map[akey] : [];
+        liked.forEach(ti => {
+          const k = `${akey}:${ti}`;
+          if (!keySet.has(k)) { refs.push({ a: akey, t: ti }); keySet.add(k); }
+        });
+      }
+    } catch {}
     writeFavoritesRefs(refs);
     return refs;
   }
@@ -4689,6 +4695,11 @@ function syncUiFromPlayback() {
     clearRelizView();
     setActiveAlbumIcon(SPECIAL_FAVORITES_KEY);
     setAlbumHeaderTitle(SPECIAL_FAVORITES_KEY);
+
+    // Гарантируем наличие списка альбомов (важно для сборки избранного)
+    if (!Array.isArray(albumsIndex) || albumsIndex.length === 0) {
+      try { await loadAlbumsIndex(); } catch {}
+    }
 
     try {
       const lp = document.getElementById('lyricsplayerblock');
