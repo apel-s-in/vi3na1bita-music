@@ -177,6 +177,11 @@
     call('setActiveAlbumIcon', w.SPECIAL_FAVORITES_KEY);
     call('setAlbumHeaderTitle', w.SPECIAL_FAVORITES_KEY);
 
+    // Гарантируем, что список альбомов загружен (для сборки избранного)
+    if ((!Array.isArray(w.albumsIndex) || w.albumsIndex.length === 0) && hasFn('loadAlbumsIndex')) {
+      try { await call('loadAlbumsIndex'); } catch {}
+    }
+
     // Перенос блока плеера наверх (как было)
     try {
       const lp = document.getElementById('lyricsplayerblock');
