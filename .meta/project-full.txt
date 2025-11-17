@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4acb606488d237dfdb76f8efb5bda7a691702b5f.idx
-│   │       ├── pack-4acb606488d237dfdb76f8efb5bda7a691702b5f.pack
-│   │       └── pack-4acb606488d237dfdb76f8efb5bda7a691702b5f.rev
+│   │       ├── pack-bff4d77b1891e6ae0e7813288509cc41d56c10d7.idx
+│   │       ├── pack-bff4d77b1891e6ae0e7813288509cc41d56c10d7.pack
+│   │       └── pack-bff4d77b1891e6ae0e7813288509cc41d56c10d7.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -256,7 +256,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-17 14:54:47 UTC
+Сгенерировано: 2025-11-17 18:25:55 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4923,7 +4923,8 @@ function syncUiFromPlayback() {
           const pc = window.playerCore;
           const cur = (pc.getSeek && pc.getSeek()) || 0;
           const dur = (pc.getDuration && pc.getDuration()) || 0;
-          pc.seek(Math.min(dur || cur + 10, cur + 10));
+          const target = (Number.isFinite(dur) && dur > 0) ? Math.min(dur, cur + 10) : (cur + 10);
+          pc.seek(target);
         } else if (audio) {
           audio.currentTime = Math.min(audio.duration, (audio.currentTime || 0) + 10);
         }
@@ -4990,7 +4991,11 @@ function syncUiFromPlayback() {
         const timeParam = parseInt(params.get('time')||'0', 10);
         if (!isNaN(timeParam) && timeParam > 0) {
           setTimeout(()=> {
-            const a=document.getElementById('audio'); if (a) a.currentTime = timeParam;
+            if (window.__useNewPlayerCore && window.playerCore && typeof window.playerCore.seek === 'function') {
+              try { window.playerCore.seek(timeParam); } catch {}
+            } else {
+              const a=document.getElementById('audio'); if (a) a.currentTime = timeParam;
+            }
           }, 600);
         }
         setTimeout(()=>document.getElementById(`trk${idx}`)?.scrollIntoView({behavior:'smooth',block:'center'}), 300);
