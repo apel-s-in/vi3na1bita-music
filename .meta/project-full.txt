@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d7973ee794b7fa4a2bc052ae56251a1011fd0d71.idx
-│   │       ├── pack-d7973ee794b7fa4a2bc052ae56251a1011fd0d71.pack
-│   │       └── pack-d7973ee794b7fa4a2bc052ae56251a1011fd0d71.rev
+│   │       ├── pack-c364afbcf8dbf8ba39ea2333c2703e66cab026da.idx
+│   │       ├── pack-c364afbcf8dbf8ba39ea2333c2703e66cab026da.pack
+│   │       └── pack-c364afbcf8dbf8ba39ea2333c2703e66cab026da.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -256,7 +256,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-17 20:26:07 UTC
+Сгенерировано: 2025-11-17 20:26:50 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8524,6 +8524,11 @@ import { PlayerCore } from '../src/PlayerCore.js';
     call('clearRelizView');
     call('setActiveAlbumIcon', w.SPECIAL_FAVORITES_KEY);
     call('setAlbumHeaderTitle', w.SPECIAL_FAVORITES_KEY);
+
+    // Гарантируем, что список альбомов загружен (для сборки избранного)
+    if ((!Array.isArray(w.albumsIndex) || w.albumsIndex.length === 0) && hasFn('loadAlbumsIndex')) {
+      try { await call('loadAlbumsIndex'); } catch {}
+    }
 
     // Перенос блока плеера наверх (как было)
     try {
