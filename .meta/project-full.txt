@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1d11a4db53c075b627793c5c4393ce17fa680ac2.idx
-│   │       ├── pack-1d11a4db53c075b627793c5c4393ce17fa680ac2.pack
-│   │       └── pack-1d11a4db53c075b627793c5c4393ce17fa680ac2.rev
+│   │       ├── pack-d7973ee794b7fa4a2bc052ae56251a1011fd0d71.idx
+│   │       ├── pack-d7973ee794b7fa4a2bc052ae56251a1011fd0d71.pack
+│   │       └── pack-d7973ee794b7fa4a2bc052ae56251a1011fd0d71.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -256,7 +256,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-17 20:25:28 UTC
+Сгенерировано: 2025-11-17 20:26:07 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8197,15 +8197,20 @@ import { PlayerCore } from '../src/PlayerCore.js';
   function ensureFavoritesRefsWithLikes() {
     const refs = readFavoritesRefs();
     const keySet = new Set(refs.map(x => `${x.a}:${x.t}`));
-    const albumsIndex = w.albumsIndex || [];
-    for (const alb of albumsIndex) {
-      if (!alb || !alb.key) continue;
-      const liked = getLikedForAlbum(alb.key);
-      liked.forEach(ti => {
-        const k = `${alb.key}:${ti}`;
-        if (!keySet.has(k)) { refs.push({ a: alb.key, t: ti }); keySet.add(k); }
-      });
-    }
+    try {
+      const map = getLikedMap();
+      const albumsIndex = w.albumsIndex || [];
+      const albumKeys = (Array.isArray(albumsIndex) && albumsIndex.length)
+        ? albumsIndex.map(a => a && a.key).filter(Boolean)
+        : Object.keys(map || {});
+      for (const akey of albumKeys) {
+        const liked = Array.isArray(map[akey]) ? map[akey] : [];
+        liked.forEach(ti => {
+          const k = `${akey}:${ti}`;
+          if (!keySet.has(k)) { refs.push({ a: akey, t: ti }); keySet.add(k); }
+        });
+      }
+    } catch {}
     writeFavoritesRefs(refs);
     return refs;
   }
