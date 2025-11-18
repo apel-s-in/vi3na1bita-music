@@ -311,4 +311,111 @@
               const likedIdx = getLikedForAlbumSafe(w.playingAlbumKey);
               w.playerCore.setFavoritesOnly(!!w.favoritesOnlyMode, likedIdx);
               if (w.favoritesOnlyMode && wasActive && typeof w.isBrowsingSameAsPlaying === 'function' && w.isBrowsingSameAsPlaying()) {
-                setTimeout(() => { try { call('nextTrack'); } catch {}
+                setTimeout(() => { try { call('nextTrack'); } catch {} }, 0);
+              }
+            }
+          } catch {}
+        }
+      });
+
+      list.appendChild(row);
+    });
+
+    // Если сейчас играет «Избранное» — подсветим текущую и подставим плеер под строку
+    if (w.playingAlbumKey === w.SPECIAL_FAVORITES_KEY && typeof w.playingTrack === 'number' && w.playingTrack >= 0) {
+      updateFavoritesCurrentRow(w.playingTrack);
+      const listTracks = Array.from(document.querySelectorAll('#track-list .track'));
+      const rowUnder = listTracks[w.playingTrack];
+      const lp = document.getElementById('lyricsplayerblock');
+      if (rowUnder && lp && rowUnder.parentNode) {
+        if (rowUnder.nextSibling) rowUnder.parentNode.insertBefore(lp, rowUnder.nextSibling);
+        else rowUnder.parentNode.appendChild(lp);
+      }
+    }
+
+    call('applyMiniModeUI');
+    list.classList.remove('filtered');
+  }
+
+  // Переключение «Скрыть не отмеченные ⭐ песни» (и для альбомов, и для «Избранного»)
+  function toggleFavoritesFilter() {
+    const btn = document.getElementById('filter-favorites-btn');
+    const list = document.getElementById('track-list');
+    if (!btn || !list) return;
+
+    let favoritesFilterActive = get('favoritesFilterActive', false);
+    const viewMode = get('viewMode', 'album');
+
+    if (viewMode === 'favorites') {
+      favoritesFilterActive = !favoritesFilterActive;
+      w.favoritesFilterActive = favoritesFilterActive;
+
+      if (favoritesFilterActive) {
+        const anyActive = (w.favoritesRefsModel || []).some(x => x.__active);
+        if (!anyActive) {
+          w.favoritesFilterActive = false;
+          w.NotificationSystem && w.NotificationSystem.warning('Нет активных треков со ⭐!');
+          return;
+        }
+        btn.textContent = 'ПОКАЗАТЬ ВСЕ ПЕСНИ';
+        btn.classList.add('filtered');
+        list.classList.add('filtered');
+        updateFavoriteClassesFavorites();
+      } else {
+        btn.textContent = 'Скрыть не отмеченные ⭐ песни';
+        btn.classList.remove('filtered');
+        list.classList.remove('filtered');
+      }
+      return;
+    }
+
+    // Обычный альбом
+    const liked = hasFn('getLiked') ? w.getLiked() : [];
+    favoritesFilterActive = !favoritesFilterActive;
+    w.favoritesFilterActive = favoritesFilterActive;
+
+    if (favoritesFilterActive) {
+      if (!liked.length) {
+        w.NotificationSystem && w.NotificationSystem.warning('Нет избранных треков!');
+        w.favoritesFilterActive = false;
+        return;
+      }
+      btn.textContent = 'ПОКАЗАТЬ ВСЕ ПЕСНИ';
+      btn.classList.add('filtered');
+      list.classList.add('filtered');
+      updateFavoriteClasses();
+    } else {
+      btn.textContent = 'Скрыть не отмеченные ⭐ песни';
+      btn.classList.remove('filtered');
+      list.classList.remove('filtered');
+    }
+  }
+
+  // Публичный API
+  const FavoritesUI = {
+    openFavoritesView,
+    updateFavoritesCurrentRow,
+    updateFavoriteClassesFavorites,
+    updateFavRow,
+    toggleLikeForAlbum,
+    showFavInactivePrompt,
+    showFavDeleteConfirm,
+    updateFavoriteClasses,
+    toggleFavoritesFilter
+  };
+
+  // Экспорт
+  w.FavoritesUI = FavoritesUI;
+
+  // Глобальные привязки (для onclick и вызовов из index.html)
+  w.openFavoritesView = FavoritesUI.openFavoritesView;
+  w.updateFavoritesCurrentRow = FavoritesUI.updateFavoritesCurrentRow;
+  w.updateFavoriteClassesFavorites = FavoritesUI.updateFavoriteClassesFavorites;
+  w.updateFavRow = FavoritesUI.updateFavRow;
+  w.toggleLikeForAlbum = FavoritesUI.toggleLikeForAlbum;
+  w.showFavInactivePrompt = FavoritesUI.showFavInactivePrompt;
+  w.showFavDeleteConfirm = FavoritesUI.showFavDeleteConfirm;
+  w.updateFavoriteClasses = FavoritesUI.updateFavoriteClasses;
+  w.toggleFavoritesFilter = FavoritesUI.toggleFavoritesFilter;
+
+})();
