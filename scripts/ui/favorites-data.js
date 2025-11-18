@@ -30,20 +30,29 @@
   function ensureFavoritesRefsWithLikes() {
     const refs = readFavoritesRefs();
     const keySet = new Set(refs.map(x => `${x.a}:${x.t}`));
+
     try {
       const map = getLikedMap();
-      const albumsIndex = w.albumsIndex || [];
-      const albumKeys = (Array.isArray(albumsIndex) && albumsIndex.length)
-        ? albumsIndex.map(a => a && a.key).filter(Boolean)
-        : Object.keys(map || {});
-      for (const akey of albumKeys) {
-        const liked = Array.isArray(map[akey]) ? map[akey] : [];
-        liked.forEach(ti => {
+      const albumsIndex = Array.isArray(w.albumsIndex) ? w.albumsIndex : [];
+
+      // Объединяем ключи из albumsIndex и likedTracks:v2 — это устраняет случай,
+      // когда в albums.json временно нет альбома, но в likedTracks он ещё есть.
+      const indexKeys = albumsIndex.map(a => a && a.key).filter(Boolean);
+      const likedKeys = Object.keys(map || {});
+      const allKeysSet = new Set([...indexKeys, ...likedKeys]);
+
+      for (const akey of allKeysSet) {
+        const liked = Array.isArray(map?.[akey]) ? map[akey] : [];
+        for (const ti of liked) {
           const k = `${akey}:${ti}`;
-          if (!keySet.has(k)) { refs.push({ a: akey, t: ti }); keySet.add(k); }
-        });
+          if (!keySet.has(k)) {
+            refs.push({ a: akey, t: ti });
+            keySet.add(k);
+          }
+        }
       }
     } catch {}
+
     writeFavoritesRefs(refs);
     return refs;
   }
