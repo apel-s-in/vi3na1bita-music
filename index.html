@@ -4082,87 +4082,18 @@ function syncUiFromPlayback() {
     }
   }
 
-  /* Фильтр/списки избранного */
-  function updateFavoriteClasses() {
-    const liked = getLiked();
-    document.querySelectorAll('.track').forEach(tr => tr.classList.remove('is-favorite'));
-    liked.forEach(idx => { const el = document.getElementById(`trk${idx}`); if (el) el.classList.add('is-favorite'); });
-  }
-  function updateFavoriteClassesFavorites(){
-    if (window.FavoritesUI && typeof window.FavoritesUI.updateFavoriteClassesFavorites==='function') {
-      window.FavoritesUI.updateFavoriteClassesFavorites();
-    }
-  }
-  function toggleFavoritesFilter() {
-    const btn = document.getElementById('filter-favorites-btn');
-    const list = document.getElementById('track-list');
-
-    if (viewMode === 'favorites') {
-      favoritesFilterActive = !favoritesFilterActive;
-      if (favoritesFilterActive) {
-        const anyActive = (favoritesRefsModel || []).some(x => x.__active);
-        if (!anyActive) { favoritesFilterActive = false; NotificationSystem.warning('Нет активных треков со ⭐!'); return; }
-        btn.textContent = 'ПОКАЗАТЬ ВСЕ ПЕСНИ';
-        btn.classList.add('filtered'); list.classList.add('filtered'); updateFavoriteClassesFavorites();
-      } else {
-        btn.textContent = 'Скрыть не отмеченные ⭐ песни';
-        btn.classList.remove('filtered'); list.classList.remove('filtered');
-      }
-      return;
-    }
-
-    const liked = getLiked();
-    favoritesFilterActive = !favoritesFilterActive;
-    if (favoritesFilterActive) {
-      if (!liked.length){ NotificationSystem.warning('Нет избранных треков!'); favoritesFilterActive=false; return; }
-      btn.textContent='ПОКАЗАТЬ ВСЕ ПЕСНИ'; btn.classList.add('filtered'); list.classList.add('filtered'); updateFavoriteClasses();
-    } else {
-      btn.textContent='Скрыть не отмеченные ⭐ песни'; btn.classList.remove('filtered'); list.classList.remove('filtered');
-    }
-  }
-  function updateFavoritesCurrentRow(idx){
-    if (window.FavoritesUI && typeof window.FavoritesUI.updateFavoritesCurrentRow==='function') {
-      window.FavoritesUI.updateFavoritesCurrentRow(idx);
-    }
-  }
-  async function openFavoritesView(){
-    if (window.FavoritesUI && typeof window.FavoritesUI.openFavoritesView==='function') {
-      return window.FavoritesUI.openFavoritesView();
-    }
-    // Мягкий fallback: если модуль ещё не готов — попробуем через DOM-сообщение
-    console.warn('FavoritesUI not ready');
-  }
-  function updateFavRow(ref, active){
-    if (window.FavoritesUI && typeof window.FavoritesUI.updateFavRow==='function') {
-      window.FavoritesUI.updateFavRow(ref, active);
-    }
-  }
-  function toggleLikeForAlbum(albumKey, idx, makeLiked){
-    if (window.FavoritesUI && typeof window.FavoritesUI.toggleLikeForAlbum==='function') {
-      window.FavoritesUI.toggleLikeForAlbum(albumKey, idx, makeLiked);
-    } else {
-      // Fallback на прямую запись в likedTracks:v2
-      const map = getLikedMap();
-      const arr = Array.isArray(map[albumKey]) ? map[albumKey] : [];
-      const has = arr.includes(idx);
-      let next = arr.slice();
-      if (makeLiked && !has) next.push(idx);
-      if (!makeLiked && has) next = next.filter(x=>x!==idx);
-      map[albumKey] = Array.from(new Set(next));
-      try { localStorage.setItem('likedTracks:v2', JSON.stringify(map)); } catch {}
-    }
-  }
-  function showFavInactivePrompt(ref){
-    if (window.FavoritesUI && typeof window.FavoritesUI.showFavInactivePrompt==='function') {
-      window.FavoritesUI.showFavInactivePrompt(ref);
-    }
-  }
-  function showFavDeleteConfirm(ref){
-    if (window.FavoritesUI && typeof window.FavoritesUI.showFavDeleteConfirm==='function') {
-      window.FavoritesUI.showFavDeleteConfirm(ref);
-    }
-  }
-
+  /* Фильтр/списки избранного — перенесено в scripts/ui/favorites.js */
+  // Централизованные реализации экспортируются модулем FavoritesUI:
+  // window.updateFavoriteClasses
+  // window.updateFavoriteClassesFavorites
+  // window.toggleFavoritesFilter
+  // window.updateFavoritesCurrentRow
+  // window.openFavoritesView
+  // window.updateFavRow
+  // window.toggleLikeForAlbum
+  // window.showFavInactivePrompt
+  // window.showFavDeleteConfirm
+  // Здесь дубликаты удалены, чтобы исключить no-redeclare/no-shadow и гонки по загрузке.
   /* Prefetch следующего трека */
   function prefetchNextTrackAssetsForPlayback() {
     // Новый плеер: префетчим, опираясь на его логику getNextIndex/snapshot
