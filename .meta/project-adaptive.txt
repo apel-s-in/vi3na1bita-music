@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8c5814421bda28185485470b488b0a6cb042b91d.idx
-│   │       ├── pack-8c5814421bda28185485470b488b0a6cb042b91d.pack
-│   │       └── pack-8c5814421bda28185485470b488b0a6cb042b91d.rev
+│   │       ├── pack-e1ab71bd9455c11cf60e975f3bd5724138103f2d.idx
+│   │       ├── pack-e1ab71bd9455c11cf60e975f3bd5724138103f2d.pack
+│   │       └── pack-e1ab71bd9455c11cf60e975f3bd5724138103f2d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -256,7 +256,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-18 18:35:50 UTC
+Сгенерировано: 2025-11-18 18:38:23 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2790,33 +2790,7 @@ jobs:
 
   /* Ссылки на избранное (refs): все функции предоставляет модуль scripts/ui/favorites-data.js */
 
-  // ИНИЦИАЛИЗАЦИЯ ВОСПРОИЗВЕДЕНИЯ ДЛЯ «ИЗБРАННОГО»
-  async function ensureFavoritesPlayback(index) {
-    // Подготовим модель если пусто
-    if (!Array.isArray(window.favoritesRefsModel) || window.favoritesRefsModel.length === 0) {
-      await (window.FavoritesData?.buildFavoritesRefsModel?.() ?? Promise.resolve([]));
-    }
-    // Переключаемся в контекст «Избранное»
-    playingAlbumKey = SPECIAL_FAVORITES_KEY;
-    playingTracks = (window.favoritesRefsModel || []).map(it => ({
-      title: it.title,
-      audio: it.audio,
-      lyrics: it.lyrics,
-      fulltext: it.fulltext || null
-    }));
-    playingArtist = 'Витрина Разбита';
-    playingAlbumName = 'Избранное';
-    playingCover = 'img/logo.png';
-
-    updateAvailableTracks();
-
-    let idx = Number(index);
-    if (!Number.isInteger(idx) || idx < 0 || idx >= (playingTracks?.length || 0)) {
-      idx = 0;
-    }
-    // Запускаем воспроизведение выбранного
-    playFromPlaybackAlbum(idx, true);
-  }
+  <!-- ИНИЦИАЛИЗАЦИЯ ВОСПРОИЗВЕДЕНИЯ ДЛЯ «ИЗБРАННОГО» — перенесено в scripts/ui/favorites.js -->
 
   /* Список треков */
   function buildTrackList() {
@@ -4542,67 +4516,7 @@ function syncUiFromPlayback() {
     if (!a || !('mediaSession' in navigator)) return;
     try { navigator.mediaSession.playbackState = a.paused ? 'paused' : 'playing'; } catch {}
   }
-  function toggleLikePlaying() {
-    if (!playingTracks || playingTrack < 0) return;
-    let albumForLike = playingAlbumKey;
-    let indexForLike = playingTrack;
-
-    if (playingAlbumKey === SPECIAL_FAVORITES_KEY) {
-      const ref = favoritesRefsModel?.[playingTrack];
-      if (!ref) return;
-      albumForLike = ref.__a;
-      indexForLike = ref.__t;
-    }
-    const map = getLikedMap();
-    const arr = Array.isArray(map[albumForLike]) ? map[albumForLike] : [];
-    const was = arr.includes(indexForLike);
-    const next = was ? arr.filter(x => x !== indexForLike) : [...arr, indexForLike];
-    map[albumForLike] = Array.from(new Set(next));
-    try { localStorage.setItem(LIKED_STORAGE_KEY_V2, JSON.stringify(map)); } catch {}
-
-    updateMiniNowHeader();
-
-    if (playingAlbumKey === SPECIAL_FAVORITES_KEY) {
-      window.FavoritesData?.updateFavoritesRefsModelActiveFlag?.(albumForLike, indexForLike, !was);
-      const favRow = document.getElementById(`fav_${albumForLike}_${indexForLike}`);
-      if (favRow) {
-        favRow.classList.toggle('inactive', was);
-        const s = favRow.querySelector('.like-star');
-        if (s) { s.src = was ? 'img/star2.png' : 'img/star.png'; s.title = was ? 'Вернуть в избранное' : 'Снять из избранного'; }
-      }
-      createPlayingShuffledPlaylist();
-      updateNextUpLabel();
-      if (was) { nextTrack(); return; }
-    } else {
-      const favRow = document.getElementById(`fav_${albumForLike}_${indexForLike}`);
-      if (favRow) {
-        favRow.classList.toggle('inactive', was);
-        const s = favRow.querySelector('.like-star');
-        if (s) { s.src = was ? 'img/star2.png' : 'img/star.png'; s.title = was ? 'Вернуть в избранное' : 'Снять из избранного'; }
-      }
-      if (favoritesOnlyMode && shuffleMode) createPlayingShuffledPlaylist();
-      updateNextUpLabel();
-    }
-
-    // Синхронизируем PlayerCore набор избранного
-    if (window.__useNewPlayerCore && window.playerCore) {
-      try {
-        if (playingAlbumKey === SPECIAL_FAVORITES_KEY) {
-          const activeIdx = [];
-          (favoritesRefsModel || []).forEach((x, i) => { if (x && x.__active) activeIdx.push(i); });
-          window.playerCore.setFavoritesOnly(true, activeIdx);
-        } else {
-          const likedIdx = getLikedForAlbum(playingAlbumKey);
-          window.playerCore.setFavoritesOnly(!!favoritesOnlyMode, likedIdx);
-          // Если включён режим «только ⭐» и текущий трек сняли со ⭐ — перейти к следующему
-          if (favoritesOnlyMode && was && isBrowsingSameAsPlaying()) {
-            setTimeout(() => { try { nextTrack(); } catch {} }, 0);
-          }
-        }
-      } catch {}
-    }
-  }
-
+  <!-- toggleLikePlaying — перенесено в scripts/ui/favorites.js -->
   /* Фильтр/списки избранного — перенесено в scripts/ui/favorites.js */
   // Централизованные реализации экспортируются модулем FavoritesUI:
   // window.updateFavoriteClasses
