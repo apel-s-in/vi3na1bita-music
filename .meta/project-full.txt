@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e1ab71bd9455c11cf60e975f3bd5724138103f2d.idx
-│   │       ├── pack-e1ab71bd9455c11cf60e975f3bd5724138103f2d.pack
-│   │       └── pack-e1ab71bd9455c11cf60e975f3bd5724138103f2d.rev
+│   │       ├── pack-208d536587aabb161f679cb8c0df8f632cf601a4.idx
+│   │       ├── pack-208d536587aabb161f679cb8c0df8f632cf601a4.pack
+│   │       └── pack-208d536587aabb161f679cb8c0df8f632cf601a4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -256,7 +256,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-18 18:38:22 UTC
+Сгенерировано: 2025-11-18 18:47:17 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8143,9 +8143,25 @@ import { PlayerCore } from '../src/PlayerCore.js';
 
   async function getAlbumCoverUrl(albumKey) {
     const now = Date.now();
+
+    // 1) sessionStorage-кэш
+    try {
+      const sKey = `favCoverCache:v1:${albumKey}`;
+      const raw = sessionStorage.getItem(sKey);
+      if (raw) {
+        const obj = JSON.parse(raw);
+        if (obj && obj.url && obj.ts && (now - obj.ts) < COVER_TTL_MS) {
+          albumCoverCache[albumKey] = { url: obj.url, ts: obj.ts };
+          return obj.url;
+        }
+      }
+    } catch {}
+
+    // 2) in-memory кэш
     const cache = albumCoverCache[albumKey];
     if (cache && (now - cache.ts) < COVER_TTL_MS) return cache.url;
 
+    // 3) загрузка index.json галереи
     try {
       const centralIdForAlbumKey = w.centralIdForAlbumKey;
       const normalizeGalleryItem = w.normalizeGalleryItem;
@@ -8153,6 +8169,7 @@ import { PlayerCore } from '../src/PlayerCore.js';
       const cid = typeof centralIdForAlbumKey === 'function' ? centralIdForAlbumKey(albumKey) : null;
       if (!cid) {
         albumCoverCache[albumKey] = { url: 'img/logo.png', ts: now };
+        try { sessionStorage.setItem(`favCoverCache:v1:${albumKey}`, JSON.stringify({ url: 'img/logo.png', ts: now })); } catch {}
         return 'img/logo.png';
       }
       const baseDir = `${CENTRAL_GALLERY_BASE}${cid}/`;
@@ -8164,11 +8181,14 @@ import { PlayerCore } from '../src/PlayerCore.js';
           const norm = typeof normalizeGalleryItem === 'function' ? normalizeGalleryItem(first, baseDir) : first;
           const url = (norm && (norm.formats?.webp || norm.formats?.full || norm.src)) || 'img/logo.png';
           albumCoverCache[albumKey] = { url, ts: now };
+          try { sessionStorage.setItem(`favCoverCache:v1:${albumKey}`, JSON.stringify({ url, ts: now })); } catch {}
           return url;
         }
       }
     } catch {}
+
     albumCoverCache[albumKey] = { url: 'img/logo.png', ts: now };
+    try { sessionStorage.setItem(`favCoverCache:v1:${albumKey}`, JSON.stringify({ url: 'img/logo.png', ts: now })); } catch {}
     return 'img/logo.png';
   }
 
