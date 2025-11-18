@@ -391,6 +391,117 @@
     }
   }
 
+  // ИНИЦИАЛИЗАЦИЯ ВОСПРОИЗВЕДЕНИЯ ДЛЯ «ИЗБРАННОГО» (перенесено из index.html)
+  async function ensureFavoritesPlayback(index) {
+    const w = window;
+    // Подготовим модель если пусто
+    if (!Array.isArray(w.favoritesRefsModel) || w.favoritesRefsModel.length === 0) {
+      await (w.FavoritesData?.buildFavoritesRefsModel?.() ?? Promise.resolve([]));
+    }
+    // Переключаемся в контекст «Избранное»
+    w.playingAlbumKey = w.SPECIAL_FAVORITES_KEY;
+    w.playingTracks = (w.favoritesRefsModel || []).map(it => ({
+      title: it.title,
+      audio: it.audio,
+      lyrics: it.lyrics,
+      fulltext: it.fulltext || null
+    }));
+    w.playingArtist = 'Витрина Разбита';
+    w.playingAlbumName = 'Избранное';
+    w.playingCover = 'img/logo.png';
+
+    if (typeof w.updateAvailableTracks === 'function') w.updateAvailableTracks();
+
+    let idx = Number(index);
+    if (!Number.isInteger(idx) || idx < 0 || idx >= (w.playingTracks?.length || 0)) idx = 0;
+
+    if (typeof w.playFromPlaybackAlbum === 'function') {
+      await w.playFromPlaybackAlbum(idx, true);
+    }
+  }
+
+  // Переключение лайка у текущего играемого трека (перенесено из index.html)
+  function toggleLikePlaying() {
+    const w = window;
+    if (!w.playingTracks || w.playingTrack < 0) return;
+
+    let albumForLike = w.playingAlbumKey;
+    let indexForLike = w.playingTrack;
+
+    if (w.playingAlbumKey === w.SPECIAL_FAVORITES_KEY) {
+      const ref = w.favoritesRefsModel?.[w.playingTrack];
+      if (!ref) return;
+      albumForLike = ref.__a;
+      indexForLike = ref.__t;
+    }
+
+    // Читаем/пишем likedTracks:v2
+    const map = (typeof w.getLikedMap === 'function') ? w.getLikedMap() : (() => {
+      try { return JSON.parse(localStorage.getItem('likedTracks:v2') || '{}') || {}; } catch { return {}; }
+    })();
+    const arr = Array.isArray(map[albumForLike]) ? map[albumForLike] : [];
+    const was = arr.includes(indexForLike);
+    const next = was ? arr.filter(x => x !== indexForLike) : [...arr, indexForLike];
+    map[albumForLike] = Array.from(new Set(next));
+    try { localStorage.setItem('likedTracks:v2', JSON.stringify(map)); } catch {}
+
+    // Обновим мини-шапку
+    try { w.updateMiniNowHeader && w.updateMiniNowHeader(); } catch {}
+
+    if (w.playingAlbumKey === w.SPECIAL_FAVORITES_KEY) {
+      // Синхронизация модели и строки «Избранного»
+      w.FavoritesData?.updateFavoritesRefsModelActiveFlag?.(albumForLike, indexForLike, !was);
+      const favRow = document.getElementById(`fav_${albumForLike}_${indexForLike}`);
+      if (favRow) {
+        favRow.classList.toggle('inactive', was);
+        const s = favRow.querySelector('.like-star');
+        if (s) {
+          s.src = was ? 'img/star2.png' : 'img/star.png';
+          s.title = was ? 'Вернуть в избранное' : 'Снять из избранного';
+        }
+      }
+      // Пересборка плейлиста «Избранного»
+      try { w.createPlayingShuffledPlaylist && w.createPlayingShuffledPlaylist(); } catch {}
+      try { w.updateNextUpLabel && w.updateNextUpLabel(); } catch {}
+
+      // Если сняли у текущего — next() (не пауза/стоп!)
+      if (was) { try { w.nextTrack && w.nextTrack(); } catch {} }
+    } else {
+      // Если список «Избранного» открыт — подсветим строку там
+      const favRow = document.getElementById(`fav_${albumForLike}_${indexForLike}`);
+      if (favRow) {
+        favRow.classList.toggle('inactive', was);
+        const s = favRow.querySelector('.like-star');
+        if (s) {
+          s.src = was ? 'img/star2.png' : 'img/star.png';
+          s.title = was ? 'Вернуть в избранное' : 'Снять из избранного';
+        }
+      }
+      if (w.favoritesOnlyMode && w.shuffleMode) {
+        try { w.createPlayingShuffledPlaylist && w.createPlayingShuffledPlaylist(); } catch {}
+      }
+      try { w.updateNextUpLabel && w.updateNextUpLabel(); } catch {}
+    }
+
+    // Синхронизация с PlayerCore
+    if (w.__useNewPlayerCore && w.playerCore && typeof w.playerCore.setFavoritesOnly === 'function') {
+      try {
+        if (w.playingAlbumKey === w.SPECIAL_FAVORITES_KEY) {
+          const activeIdx = [];
+          (w.favoritesRefsModel || []).forEach((x, i) => { if (x && x.__active) activeIdx.push(i); });
+          w.playerCore.setFavoritesOnly(true, activeIdx);
+        } else {
+          const likedIdx = (typeof w.getLikedForAlbum === 'function') ? w.getLikedForAlbum(w.playingAlbumKey) : [];
+          w.playerCore.setFavoritesOnly(!!w.favoritesOnlyMode, likedIdx);
+          // Если включён режим «только ⭐» и текущий трек сняли со ⭐ — перейти к следующему
+          if (w.favoritesOnlyMode && was && typeof w.isBrowsingSameAsPlaying === 'function' && w.isBrowsingSameAsPlaying()) {
+            setTimeout(() => { try { w.nextTrack && w.nextTrack(); } catch {} }, 0);
+          }
+        }
+      } catch {}
+    }
+  }
+
   // Публичный API
   const FavoritesUI = {
     openFavoritesView,
@@ -401,7 +512,9 @@
     showFavInactivePrompt,
     showFavDeleteConfirm,
     updateFavoriteClasses,
-    toggleFavoritesFilter
+    toggleFavoritesFilter,
+    ensureFavoritesPlayback,
+    toggleLikePlaying
   };
 
   // Экспорт
@@ -417,5 +530,8 @@
   w.showFavDeleteConfirm = FavoritesUI.showFavDeleteConfirm;
   w.updateFavoriteClasses = FavoritesUI.updateFavoriteClasses;
   w.toggleFavoritesFilter = FavoritesUI.toggleFavoritesFilter;
+  // Новые глобали (перенесено из index.html)
+  w.ensureFavoritesPlayback = FavoritesUI.ensureFavoritesPlayback;
+  w.toggleLikePlaying = FavoritesUI.toggleLikePlaying;
 
 })();
