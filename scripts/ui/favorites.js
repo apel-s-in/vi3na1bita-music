@@ -257,11 +257,13 @@
 
       // Клик по строке — играем, если активен; иначе подсказка
       row.addEventListener('click', async () => {
-        if (item.__active) {
+        const canPlay = !!item.__active && !!item.audio;
+        if (canPlay) {
           if (hasFn('ensureFavoritesPlayback')) {
             await call('ensureFavoritesPlayback', idx);
           }
         } else {
+          // Неактивный или «без аудио» (fallback) — открываем подсказку
           showFavInactivePrompt({ a: item.__a, t: item.__t, title: item.title, album: item.__album });
         }
       });
