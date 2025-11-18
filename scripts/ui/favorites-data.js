@@ -159,25 +159,61 @@
   async function buildFavoritesRefsModel() {
     const sortedRefs = getSortedFavoritesRefs();
     const out = [];
+
     for (const ref of sortedRefs) {
-      const cfg = await getAlbumConfigByKey(ref.a);
-      const tr = cfg?.tracks?.[ref.t];
-      if (!tr) continue;
+      // Активность — всегда из likedTracks:v2
       const active = getLikedForAlbum(ref.a).includes(ref.t);
+
+      // Пытаемся получить конфиг альбома и целевой трек
+      let cfg = null;
+      try { cfg = await getAlbumConfigByKey(ref.a); } catch {}
+      const tr = cfg?.tracks?.[ref.t] || null;
+
+      // Обложку стараемся получить из центральной галереи (устойчивее к CORS)
       const cover = await getAlbumCoverUrl(ref.a);
-      out.push({
-        title: tr.title,
-        audio: tr.audio,
-        lyrics: tr.lyrics,
-        fulltext: tr.fulltext || null,
-        __a: ref.a,
-        __t: ref.t,
-        __artist: cfg?.artist || 'Витрина Разбита',
-        __album: cfg?.albumName || 'Альбом',
-        __active: active,
-        __cover: cover
-      });
+
+      if (tr && tr.audio) {
+        out.push({
+          title: tr.title,
+          audio: tr.audio,
+          lyrics: tr.lyrics,
+          fulltext: tr.fulltext || null,
+          __a: ref.a,
+          __t: ref.t,
+          __artist: cfg?.artist || 'Витрина Разбита',
+          __album: cfg?.albumName || 'Альбом',
+          __active: active,
+          __cover: cover
+        });
+        continue;
+      }
+
+      // Fallback: нет конфига или трека — строим «неиграбельную» строку (показываем, но не запускаем)
+      try {
+        const albumMeta =
+          (Array.isArray(w.albumsIndex) ? w.albumsIndex.find(a => a && a.key === ref.a) : null) || null;
+        const albumTitle =
+          (albumMeta && albumMeta.title) ||
+          (w.ICON_TITLE_MAP && w.ICON_TITLE_MAP[ref.a]) ||
+          ref.a;
+
+        out.push({
+          title: `Трек ${String((ref.t || 0) + 1).padStart(2, '0')}`,
+          audio: null,                // важный признак: такой элемент не должен стартовать
+          lyrics: null,
+          fulltext: null,
+          __a: ref.a,
+          __t: ref.t,
+          __artist: 'Витрина Разбита',
+          __album: albumTitle,
+          __active: active,
+          __cover: cover
+        });
+      } catch {
+        // как крайний случай — пропустим ссылку, чтобы не зашумлять список
+      }
     }
+
     w.favoritesRefsModel = out;
     return out;
   }
