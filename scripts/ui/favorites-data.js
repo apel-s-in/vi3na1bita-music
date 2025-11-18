@@ -98,9 +98,25 @@
 
   async function getAlbumCoverUrl(albumKey) {
     const now = Date.now();
+
+    // 1) sessionStorage-кэш
+    try {
+      const sKey = `favCoverCache:v1:${albumKey}`;
+      const raw = sessionStorage.getItem(sKey);
+      if (raw) {
+        const obj = JSON.parse(raw);
+        if (obj && obj.url && obj.ts && (now - obj.ts) < COVER_TTL_MS) {
+          albumCoverCache[albumKey] = { url: obj.url, ts: obj.ts };
+          return obj.url;
+        }
+      }
+    } catch {}
+
+    // 2) in-memory кэш
     const cache = albumCoverCache[albumKey];
     if (cache && (now - cache.ts) < COVER_TTL_MS) return cache.url;
 
+    // 3) загрузка index.json галереи
     try {
       const centralIdForAlbumKey = w.centralIdForAlbumKey;
       const normalizeGalleryItem = w.normalizeGalleryItem;
@@ -108,6 +124,7 @@
       const cid = typeof centralIdForAlbumKey === 'function' ? centralIdForAlbumKey(albumKey) : null;
       if (!cid) {
         albumCoverCache[albumKey] = { url: 'img/logo.png', ts: now };
+        try { sessionStorage.setItem(`favCoverCache:v1:${albumKey}`, JSON.stringify({ url: 'img/logo.png', ts: now })); } catch {}
         return 'img/logo.png';
       }
       const baseDir = `${CENTRAL_GALLERY_BASE}${cid}/`;
@@ -119,11 +136,14 @@
           const norm = typeof normalizeGalleryItem === 'function' ? normalizeGalleryItem(first, baseDir) : first;
           const url = (norm && (norm.formats?.webp || norm.formats?.full || norm.src)) || 'img/logo.png';
           albumCoverCache[albumKey] = { url, ts: now };
+          try { sessionStorage.setItem(`favCoverCache:v1:${albumKey}`, JSON.stringify({ url, ts: now })); } catch {}
           return url;
         }
       }
     } catch {}
+
     albumCoverCache[albumKey] = { url: 'img/logo.png', ts: now };
+    try { sessionStorage.setItem(`favCoverCache:v1:${albumKey}`, JSON.stringify({ url: 'img/logo.png', ts: now })); } catch {}
     return 'img/logo.png';
   }
 
