@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-208d536587aabb161f679cb8c0df8f632cf601a4.idx
-│   │       ├── pack-208d536587aabb161f679cb8c0df8f632cf601a4.pack
-│   │       └── pack-208d536587aabb161f679cb8c0df8f632cf601a4.rev
+│   │       ├── pack-8f521d03b43c95c6a9c2d7d481ef56e002fd33e3.idx
+│   │       ├── pack-8f521d03b43c95c6a9c2d7d481ef56e002fd33e3.pack
+│   │       └── pack-8f521d03b43c95c6a9c2d7d481ef56e002fd33e3.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -256,7 +256,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-18 18:47:17 UTC
+Сгенерировано: 2025-11-18 20:13:51 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2693,7 +2693,7 @@ jobs:
   let __savedAnimationForMini = null;
 
   const FAVORITES_REFS_KEY = 'favoritesAlbumRefs:v1';
-  let favoritesRefsModel = null;
+  var favoritesRefsModel = null;
 
   // Миграция ключей избранного/рефов на актуальные ключи из albumsIndex (однократно)
   function migrateFavoritesKeys() {
@@ -2789,9 +2789,7 @@ jobs:
   }
 
   /* Ссылки на избранное (refs): все функции предоставляет модуль scripts/ui/favorites-data.js */
-
-  <!-- ИНИЦИАЛИЗАЦИЯ ВОСПРОИЗВЕДЕНИЯ ДЛЯ «ИЗБРАННОГО» — перенесено в scripts/ui/favorites.js -->
-
+  // ИНИЦИАЛИЗАЦИЯ ВОСПРОИЗВЕДЕНИЯ ДЛЯ «ИЗБРАННОГО» — перенесено в scripts/ui/favorites.js
   /* Список треков */
   function buildTrackList() {
     const list = document.getElementById('track-list');
@@ -4516,7 +4514,7 @@ function syncUiFromPlayback() {
     if (!a || !('mediaSession' in navigator)) return;
     try { navigator.mediaSession.playbackState = a.paused ? 'paused' : 'playing'; } catch {}
   }
-  <!-- toggleLikePlaying — перенесено в scripts/ui/favorites.js -->
+  // toggleLikePlaying — перенесено в scripts/ui/favorites.js
   /* Фильтр/списки избранного — перенесено в scripts/ui/favorites.js */
   // Централизованные реализации экспортируются модулем FavoritesUI:
   // window.updateFavoriteClasses
