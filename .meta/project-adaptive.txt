@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-50e4995af63586e89e49c66351328869db12a951.idx
-│   │       ├── pack-50e4995af63586e89e49c66351328869db12a951.pack
-│   │       └── pack-50e4995af63586e89e49c66351328869db12a951.rev
+│   │       ├── pack-d3c1af342001180b36907cb1b3fa3c3767ff863b.idx
+│   │       ├── pack-d3c1af342001180b36907cb1b3fa3c3767ff863b.pack
+│   │       └── pack-d3c1af342001180b36907cb1b3fa3c3767ff863b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -256,7 +256,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-18 10:20:47 UTC
+Сгенерировано: 2025-11-18 18:12:14 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1861,8 +1861,19 @@ jobs:
     el.className = 'active-album-title' + (cls ? (' ' + cls) : '');
   }
   function onAlbumIconClick(key){
-    if (key === SPECIAL_FAVORITES_KEY) { openFavoritesView(); setActiveAlbumIcon(key); setAlbumHeaderTitle(SPECIAL_FAVORITES_KEY); return; }
-    if (key === SPECIAL_RELIZ_KEY) { openRelizView(); setActiveAlbumIcon(key); setAlbumHeaderTitle(SPECIAL_RELIZ_KEY); return; }
+    // Поддерживаем алиасы для совместимости: favorites/fav/izbrannoe и news/reliz
+    if (key === SPECIAL_FAVORITES_KEY || key === 'favorites' || key === 'fav' || key === 'izbrannoe') {
+      openFavoritesView();
+      setActiveAlbumIcon(SPECIAL_FAVORITES_KEY);
+      setAlbumHeaderTitle(SPECIAL_FAVORITES_KEY);
+      return;
+    }
+    if (key === SPECIAL_RELIZ_KEY || key === 'news' || key === 'reliz') {
+      openRelizView();
+      setActiveAlbumIcon(SPECIAL_RELIZ_KEY);
+      setAlbumHeaderTitle(SPECIAL_RELIZ_KEY);
+      return;
+    }
 
     if (!key || key === '__unknown__') {
       const real = resolveRealAlbumKey(key);
@@ -2720,7 +2731,7 @@ jobs:
       }
 
       // favoritesAlbumRefs:v1
-      const refs = readFavoritesRefs();
+      const refs = (window.FavoritesData?.readFavoritesRefs?.() || []);
       let refsChanged = false;
       const mapped = refs.map(ref => {
         if (known.has(ref.a)) return ref;
@@ -2729,7 +2740,7 @@ jobs:
         if (real && known.has(real)) { refsChanged = true; return { a: real, t: ref.t }; }
         return ref;
       });
-      if (refsChanged) writeFavoritesRefs(mapped);
+      if (refsChanged) { try { window.FavoritesData?.writeFavoritesRefs?.(mapped); } catch {} }
 
       if (changed || refsChanged) {
         localStorage.setItem('favoritesMigrated:v1', '1');
@@ -2777,41 +2788,13 @@ jobs:
     return getLikedForAlbum(playingAlbumKey).includes(idx);
   }
 
-  /* Ссылки на избранное (refs) */
-  function readFavoritesRefs(){ return (window.FavoritesData && typeof window.FavoritesData.readFavoritesRefs==='function') ? window.FavoritesData.readFavoritesRefs() : []; }
-  function writeFavoritesRefs(arr){ if (window.FavoritesData && typeof window.FavoritesData.writeFavoritesRefs==='function') window.FavoritesData.writeFavoritesRefs(arr); }
-  function ensureFavoritesRefsWithLikes(){
-    return (window.FavoritesData && typeof window.FavoritesData.ensureFavoritesRefsWithLikes==='function')
-      ? window.FavoritesData.ensureFavoritesRefsWithLikes()
-      : (readFavoritesRefs() || []);
-  }
-  function getSortedFavoritesRefs(){
-    return (window.FavoritesData && typeof window.FavoritesData.getSortedFavoritesRefs==='function')
-      ? window.FavoritesData.getSortedFavoritesRefs()
-      : ensureFavoritesRefsWithLikes();
-  }
-  async function getAlbumConfigByKey(albumKey){
-    return (window.FavoritesData && typeof window.FavoritesData.getAlbumConfigByKey==='function')
-      ? window.FavoritesData.getAlbumConfigByKey(albumKey)
-      : null;
-  }
-  async function buildFavoritesRefsModel(){
-    return (window.FavoritesData && typeof window.FavoritesData.buildFavoritesRefsModel==='function')
-      ? window.FavoritesData.buildFavoritesRefsModel()
-      : [];
-  }
-
-  function updateFavoritesRefsModelActiveFlag(albumKey, trackIndex, isActive){
-    if (window.FavoritesData && typeof window.FavoritesData.updateFavoritesRefsModelActiveFlag==='function') {
-      window.FavoritesData.updateFavoritesRefsModelActiveFlag(albumKey, trackIndex, isActive);
-    }
-  }
+  /* Ссылки на избранное (refs): все функции предоставляет модуль scripts/ui/favorites-data.js */
 
   // ИНИЦИАЛИЗАЦИЯ ВОСПРОИЗВЕДЕНИЯ ДЛЯ «ИЗБРАННОГО»
   async function ensureFavoritesPlayback(index) {
     // Подготовим модель если пусто
     if (!Array.isArray(window.favoritesRefsModel) || window.favoritesRefsModel.length === 0) {
-      await buildFavoritesRefsModel();
+      await (window.FavoritesData?.buildFavoritesRefsModel?.() ?? Promise.resolve([]));
     }
     // Переключаемся в контекст «Избранное»
     playingAlbumKey = SPECIAL_FAVORITES_KEY;
@@ -4580,7 +4563,7 @@ function syncUiFromPlayback() {
     updateMiniNowHeader();
 
     if (playingAlbumKey === SPECIAL_FAVORITES_KEY) {
-      updateFavoritesRefsModelActiveFlag(albumForLike, indexForLike, !was);
+      window.FavoritesData?.updateFavoritesRefsModelActiveFlag?.(albumForLike, indexForLike, !was);
       const favRow = document.getElementById(`fav_${albumForLike}_${indexForLike}`);
       if (favRow) {
         favRow.classList.toggle('inactive', was);
@@ -5630,7 +5613,7 @@ ${lines}
       const liked = Array.isArray(likesMap[akey]) ? likesMap[akey] : [];
       if (!liked.length) continue;
       // Загружаем конфиг альбома и включаем треки/лирику/полный текст
-      const cfg = await getAlbumConfigByKey(akey);
+      const cfg = await (window.FavoritesData?.getAlbumConfigByKey?.(akey) ?? null);
       if (!cfg || !Array.isArray(cfg.tracks)) continue;
       liked.forEach(i => {
         const t = cfg.tracks[i];
