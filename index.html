@@ -2155,7 +2155,7 @@
   let __savedAnimationForMini = null;
 
   const FAVORITES_REFS_KEY = 'favoritesAlbumRefs:v1';
-  let favoritesRefsModel = null;
+  var favoritesRefsModel = null;
 
   // Миграция ключей избранного/рефов на актуальные ключи из albumsIndex (однократно)
   function migrateFavoritesKeys() {
@@ -2251,9 +2251,7 @@
   }
 
   /* Ссылки на избранное (refs): все функции предоставляет модуль scripts/ui/favorites-data.js */
-
-  <!-- ИНИЦИАЛИЗАЦИЯ ВОСПРОИЗВЕДЕНИЯ ДЛЯ «ИЗБРАННОГО» — перенесено в scripts/ui/favorites.js -->
-
+  // ИНИЦИАЛИЗАЦИЯ ВОСПРОИЗВЕДЕНИЯ ДЛЯ «ИЗБРАННОГО» — перенесено в scripts/ui/favorites.js
   /* Список треков */
   function buildTrackList() {
     const list = document.getElementById('track-list');
@@ -3978,7 +3976,7 @@ function syncUiFromPlayback() {
     if (!a || !('mediaSession' in navigator)) return;
     try { navigator.mediaSession.playbackState = a.paused ? 'paused' : 'playing'; } catch {}
   }
-  <!-- toggleLikePlaying — перенесено в scripts/ui/favorites.js -->
+  // toggleLikePlaying — перенесено в scripts/ui/favorites.js
   /* Фильтр/списки избранного — перенесено в scripts/ui/favorites.js */
   // Централизованные реализации экспортируются модулем FavoritesUI:
   // window.updateFavoriteClasses
