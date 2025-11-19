@@ -38,15 +38,12 @@ import { PlayerCore } from '../src/PlayerCore.js';
   } catch {}
 
   // Если уже есть активный контекст — передадим ЕГО в ядро.
-  // Приоритет: 1) playingTracks (в т.ч. «ИЗБРАННОЕ»), 2) config.tracks.
+  // ВАЖНО: больше НИКОГДА не подсовываем сюда «просто текущий альбом».
+  // Плейлист устанавливается только явно из UI (showTrack/ensureFavoritesPlayback).
   try {
-    let tracks = null;
-    let index = 0;
-    let meta = null;
-
     if (Array.isArray(window.playingTracks) && window.playingTracks.length) {
       const cover = window.playingCover || (window.coverGalleryArr?.[0]?.formats?.full) || 'img/logo.png';
-      tracks = window.playingTracks.map(t => ({
+      const tracks = window.playingTracks.map(t => ({
         src: t.audio,
         title: t.title,
         artist: window.playingArtist || 'Витрина Разбита',
@@ -55,32 +52,12 @@ import { PlayerCore } from '../src/PlayerCore.js';
         lyrics: t.lyrics,
         fulltext: t.fulltext || ''
       }));
-      meta = {
+      const meta = {
         artist: window.playingArtist || 'Витрина Разбита',
         album: window.playingAlbumName || 'Альбом',
         cover
       };
-      index = (Number.isInteger(window.playingTrack) && window.playingTrack >= 0) ? window.playingTrack : 0;
-    } else if (window.config && Array.isArray(window.config.tracks)) {
-      const cover = (window.coverGalleryArr?.[0]?.formats?.full) || 'img/logo.png';
-      tracks = (window.config.tracks || []).map(t => ({
-        src: t.audio,
-        title: t.title,
-        artist: window.config.artist || 'Витрина Разбита',
-        album: window.config.albumName || 'Альбом',
-        cover,
-        lyrics: t.lyrics,
-        fulltext: t.fulltext || ''
-      }));
-      meta = {
-        artist: window.config.artist || 'Витрина Разбита',
-        album: window.config.albumName || 'Альбом',
-        cover
-      };
-      index = 0;
-    }
-
-    if (tracks) {
+      const index = (Number.isInteger(window.playingTrack) && window.playingTrack >= 0) ? window.playingTrack : 0;
       pc.setPlaylist(tracks, index, meta);
     }
   } catch {}
