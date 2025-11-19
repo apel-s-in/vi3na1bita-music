@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-392d17b19dcd53cfb817b90c773d5af691c880af.idx
-│   │       ├── pack-392d17b19dcd53cfb817b90c773d5af691c880af.pack
-│   │       └── pack-392d17b19dcd53cfb817b90c773d5af691c880af.rev
+│   │       ├── pack-ffa562b1327c995f0a480e315ba1531dc07eac83.idx
+│   │       ├── pack-ffa562b1327c995f0a480e315ba1531dc07eac83.pack
+│   │       └── pack-ffa562b1327c995f0a480e315ba1531dc07eac83.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -256,7 +256,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-19 20:16:38 UTC
+Сгенерировано: 2025-11-19 21:49:30 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8684,8 +8684,9 @@ import { PlayerCore } from '../src/PlayerCore.js';
         const canPlay = !!item.__active && !!item.audio;
         if (canPlay) {
           if (hasFn('ensureFavoritesPlayback')) {
-            // Передаём ссылку по ключам альбом/трек — дальше резолвим на индекс "играбельного" плейлиста
-            await call('ensureFavoritesPlayback', { a: item.__a, t: item.__t });
+            // Передаём индекс строки модели (стабильнее любых алиасов):
+            // ensureFavoritesPlayback(idx) сам сопоставит его c playable.
+            await call('ensureFavoritesPlayback', idx);
           }
         } else {
           showFavInactivePrompt({ a: item.__a, t: item.__t, title: item.title, album: item.__album });
