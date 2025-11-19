@@ -1303,11 +1303,19 @@
   function setActiveAlbumIcon(key){
     const box = document.getElementById('album-icons'); 
     if (!box) return;
-    box.querySelectorAll('.album-icon').forEach(el=>{
-      const k = el.getAttribute('data-akey');
-      el.classList.toggle('active', k && key && k === key);
+    const favKey = (typeof SPECIAL_FAVORITES_KEY !== 'undefined') ? SPECIAL_FAVORITES_KEY : '__favorites__';
+    const normalizedKey = (key === 'favorites' || key === 'fav' || key === 'izbrannoe') ? favKey : key;
+
+    box.querySelectorAll('.album-icon').forEach(el => {
+      const ak = el.getAttribute('data-akey');
+      const ai = el.getAttribute('data-icon');
+      const match =
+        (ak && normalizedKey && ak === normalizedKey) ||
+        (ai && normalizedKey && ai === normalizedKey);
+      el.classList.toggle('active', !!match);
     });
   }
+
   function setAlbumHeaderTitle(key) {
     const el = document.getElementById('active-album-title');
     if (!el) return;
@@ -2227,9 +2235,18 @@
     catch { return {}; }
   }
   function getLikedForAlbum(albumKey) {
-    try { const raw = localStorage.getItem(LIKED_STORAGE_KEY_V2); const map = raw ? JSON.parse(raw) : {}; const arr = map && typeof map === 'object' ? map[albumKey] : []; return Array.isArray(arr) ? arr : []; }
-    catch { return []; }
+    try {
+      const raw = localStorage.getItem(LIKED_STORAGE_KEY_V2);
+      const map = raw ? JSON.parse(raw) : {};
+      const arr = (map && typeof map === 'object') ? map[albumKey] : [];
+      if (!Array.isArray(arr)) return [];
+      const norm = Array.from(new Set(arr.map(n => parseInt(n, 10)).filter(Number.isFinite)));
+      return norm;
+    } catch {
+      return [];
+    }
   }
+
   function getLiked() { return getLikedForAlbum(currentAlbumKey); }
   function saveLiked(arr) {
     if (!currentAlbumKey) return;
