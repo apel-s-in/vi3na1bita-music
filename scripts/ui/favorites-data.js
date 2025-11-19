@@ -82,31 +82,46 @@
   async function getAlbumConfigByKey(albumKey) {
     if (!albumKey) return null;
     const albumConfigCache = w.albumConfigCache || {};
-    if (albumConfigCache[albumKey]?.config) return albumConfigCache[albumKey].config;
 
-    const albumsIndex = w.albumsIndex || [];
-    let meta = albumsIndex.find(a => a && a.key === albumKey) || null;
-    if (!meta && typeof w.resolveRealAlbumKey === 'function') {
+    // Канонический ключ для alias
+    let realKey = albumKey;
+    if (typeof w.resolveRealAlbumKey === 'function') {
       try {
-        const real = w.resolveRealAlbumKey(albumKey);
-        if (real) meta = albumsIndex.find(a => a && a.key === real) || null;
+        const cand = w.resolveRealAlbumKey(albumKey);
+        if (cand) realKey = cand;
       } catch {}
     }
+
+    // 1) Пробуем кэш по обоим ключам
+    if (albumConfigCache[albumKey]?.config) return albumConfigCache[albumKey].config;
+    if (albumConfigCache[realKey]?.config)  return albumConfigCache[realKey].config;
+
+    // 2) Ищем meta по каноническому ключу (предпочтение realKey)
+    const albumsIndex = w.albumsIndex || [];
+    const meta = (albumsIndex.find(a => a && a.key === realKey) ||
+                  albumsIndex.find(a => a && a.key === albumKey)) || null;
     if (!meta) return null;
 
     const base = (typeof w.normalizeBase === 'function') ? w.normalizeBase(meta.base) : meta.base;
-    const absJoin = typeof w.absJoin === 'function' ? w.absJoin : ((b, r) => new URL(String(r||''), String(b||'') + '/').toString());
+    const absJoin = typeof w.absJoin === 'function'
+      ? w.absJoin
+      : ((b, r) => new URL(String(r || ''), String(b || '') + '/').toString());
 
     try {
       const r = await fetch(absJoin(base, 'config.json'), { cache: 'no-cache' });
+      if (!r || !r.ok) return null;
       const data = await r.json();
       (data.tracks || []).forEach(t => {
-        t.audio = absJoin(base, t.audio);
-        t.lyrics = absJoin(base, t.lyrics);
+        t.audio   = absJoin(base, t.audio);
+        t.lyrics  = absJoin(base, t.lyrics);
         if (t.fulltext) t.fulltext = absJoin(base, t.fulltext);
       });
+
+      // 3) Кладём в кэш под ОБОИМИ ключами (alias и canonical)
+      albumConfigCache[realKey]  = { base, config: data };
       albumConfigCache[albumKey] = { base, config: data };
       w.albumConfigCache = albumConfigCache;
+
       return data;
     } catch {
       return null;
