@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-386c110a64755ba3ef489532e4b09005d830fde2.idx
-│   │       ├── pack-386c110a64755ba3ef489532e4b09005d830fde2.pack
-│   │       └── pack-386c110a64755ba3ef489532e4b09005d830fde2.rev
+│   │       ├── pack-203e6a4f85c4645a1f336eb3d03239286ebfa1ec.idx
+│   │       ├── pack-203e6a4f85c4645a1f336eb3d03239286ebfa1ec.pack
+│   │       └── pack-203e6a4f85c4645a1f336eb3d03239286ebfa1ec.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -256,7 +256,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-19 16:27:52 UTC
+Сгенерировано: 2025-11-19 16:38:01 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8054,8 +8054,16 @@ import { PlayerCore } from '../src/PlayerCore.js';
     catch { return {}; }
   }
   function getLikedForAlbum(albumKey) {
-    try { const map = getLikedMap(); const arr = map && typeof map === 'object' ? map[albumKey] : []; return Array.isArray(arr) ? arr : []; }
-    catch { return []; }
+    try {
+      const map = getLikedMap();
+      const arr = (map && typeof map === 'object') ? map[albumKey] : [];
+      if (!Array.isArray(arr)) return [];
+      // Нормализуем к числам и убираем дубли
+      const norm = Array.from(new Set(arr.map(n => parseInt(n, 10)).filter(Number.isFinite)));
+      return norm;
+    } catch {
+      return [];
+    }
   }
 
   function readFavoritesRefs() {
