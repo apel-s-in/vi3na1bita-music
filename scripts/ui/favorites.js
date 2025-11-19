@@ -222,6 +222,19 @@
     // Скрываем галерею
     const cw = document.getElementById('cover-wrap'); if (cw) cw.style.display = 'none';
 
+    // Жёстко сбрасываем предыдущее состояние фильтра «⭐»,
+    // чтобы ничего не скрывалось в представлении «Избранное».
+    try {
+      w.favoritesFilterActive = false;
+      const listEl = document.getElementById('track-list');
+      const filterBtn = document.getElementById('filter-favorites-btn');
+      if (listEl) listEl.classList.remove('filtered');
+      if (filterBtn) {
+        filterBtn.classList.remove('filtered');
+        filterBtn.textContent = 'Скрыть не отмеченные ⭐ песни';
+      }
+    } catch {}
+    
     // Сбор модели «Избранного»
     if (hasFn('buildFavoritesRefsModel')) {
       await call('buildFavoritesRefsModel');
