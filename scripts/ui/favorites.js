@@ -274,8 +274,9 @@
         const canPlay = !!item.__active && !!item.audio;
         if (canPlay) {
           if (hasFn('ensureFavoritesPlayback')) {
-            // Передаём ссылку по ключам альбом/трек — дальше резолвим на индекс "играбельного" плейлиста
-            await call('ensureFavoritesPlayback', { a: item.__a, t: item.__t });
+            // Передаём индекс строки модели (стабильнее любых алиасов):
+            // ensureFavoritesPlayback(idx) сам сопоставит его c playable.
+            await call('ensureFavoritesPlayback', idx);
           }
         } else {
           showFavInactivePrompt({ a: item.__a, t: item.__t, title: item.title, album: item.__album });
