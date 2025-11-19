@@ -50,18 +50,30 @@
       // Инициализация плейлиста при первом старте
       try {
         const hasLoaded = (typeof pc().getDuration === 'function') && ((pc().getDuration() || 0) > 0);
-        if (!hasLoaded && typeof window.__buildPlayerCorePayload === 'function') {
-          const payload = window.__buildPlayerCorePayload();
-          if (payload) {
-            pc().setPlaylist(payload.tracks, payload.index, payload.meta);
-            try { pc().setShuffle(!!window.shuffleMode); } catch {}
-            try { pc().setRepeat(!!window.repeatMode); } catch {}
-            try {
-              const likedIdx = (window.playingAlbumKey && window.playingAlbumKey !== window.SPECIAL_FAVORITES_KEY)
-                ? (window.getLikedForAlbum ? window.getLikedForAlbum(window.playingAlbumKey) : [])
-                : [];
-              pc().setFavoritesOnly(!!window.favoritesOnlyMode, likedIdx);
-            } catch {}
+        if (!hasLoaded) {
+          // Спец‑ветка для «ИЗБРАННОГО»: никогда не инициализируем альбомом
+          if ((window.viewMode === 'favorites') || (window.playingAlbumKey === window.SPECIAL_FAVORITES_KEY)) {
+            if (typeof window.ensureFavoritesPlayback === 'function') {
+              // Запустим с первого активного избранного
+              await window.ensureFavoritesPlayback(0);
+              return;
+            }
+          }
+          // Обычная инициализация (альбом/конфиг)
+          if (typeof window.__buildPlayerCorePayload === 'function') {
+            const payload = window.__buildPlayerCorePayload();
+            if (payload) {
+              pc().setPlaylist(payload.tracks, payload.index, payload.meta);
+              try { pc().setShuffle(!!window.shuffleMode); } catch {}
+              try { pc().setRepeat(!!window.repeatMode); } catch {}
+              try {
+                const likedIdx = (window.playingAlbumKey && window.playingAlbumKey !== window.SPECIAL_FAVORITES_KEY)
+                  ? (window.getLikedForAlbum ? window.getLikedForAlbum(window.playingAlbumKey) : [])
+                  : [];
+                // В альбомном режиме можно включить фильтр ⭐, в «ИЗБРАННОМ» — нет (см. ensureFavoritesPlayback/playFromPlaybackAlbum)
+                pc().setFavoritesOnly(!!window.favoritesOnlyMode, likedIdx);
+              } catch {}
+            }
           }
         }
       } catch {}
