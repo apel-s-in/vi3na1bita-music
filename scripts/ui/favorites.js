@@ -274,7 +274,8 @@
         const canPlay = !!item.__active && !!item.audio;
         if (canPlay) {
           if (hasFn('ensureFavoritesPlayback')) {
-            await call('ensureFavoritesPlayback', idx);
+            // Передаём ссылку по ключам альбом/трек — дальше резолвим на индекс "играбельного" плейлиста
+            await call('ensureFavoritesPlayback', { a: item.__a, t: item.__t });
           }
         } else {
           showFavInactivePrompt({ a: item.__a, t: item.__t, title: item.title, album: item.__album });
@@ -403,22 +404,42 @@
   }
 
   // ИНИЦИАЛИЗАЦИЯ ВОСПРОИЗВЕДЕНИЯ ДЛЯ «ИЗБРАННОГО»
-  async function ensureFavoritesPlayback(index) {
-    // Перестроим модель при необходимости
+  async function ensureFavoritesPlayback(target) {
+    // Обеспечим модель
     if (!Array.isArray(w.favoritesRefsModel) || w.favoritesRefsModel.length === 0) {
       await (w.FavoritesData?.buildFavoritesRefsModel?.() ?? Promise.resolve([]));
     }
+    const model = Array.isArray(w.favoritesRefsModel) ? w.favoritesRefsModel : [];
 
-    // Строим «играбельный» подсписок (только активные с audio)
-    const playable = (w.favoritesRefsModel || []).map((it, i) => ({ it, i }))
+    // Играбельный подсписок: только активные с валидным audio
+    const playable = model.map((it, i) => ({ it, i }))
       .filter(x => x.it && x.it.__active && x.it.audio);
+
     if (!playable.length) {
       w.NotificationSystem && w.NotificationSystem.warning('Нет активных треков со ⭐');
       return;
     }
+
+    // Карта (a:t) -> индекс в playable
+    const keyOf = (a, t) => `${a}:${t}`;
+    const idxByKey = new Map();
+    playable.forEach((x, pos) => { idxByKey.set(keyOf(x.it.__a, x.it.__t), pos); });
+
+    // Для синхронизации UI: filteredIdx -> исходный индекс модели
     w.favPlayableMap = playable.map(x => x.i);
 
-    // Контекст воспроизведения — строго «Избранное»
+    // Резолв целевого индекса в playable
+    let idxFiltered = 0;
+    if (target && typeof target === 'object' && target.a && Number.isInteger(target.t)) {
+      const found = idxByKey.get(keyOf(target.a, target.t));
+      if (Number.isInteger(found)) idxFiltered = found;
+    } else {
+      const original = Number(target);
+      const found = playable.findIndex(x => x.i === original);
+      if (found >= 0) idxFiltered = found;
+    }
+
+    // Контекст «Избранного»
     w.playingAlbumKey = w.SPECIAL_FAVORITES_KEY;
     w.playingTracks = playable.map(x => ({
       title: x.it.title,
@@ -430,13 +451,8 @@
     w.playingAlbumName = 'Избранное';
     w.playingCover = (playable[0]?.it?.__cover) || 'img/logo.png';
 
-    // Найти индекс в «узком» плейлисте
-    const original = Number(index);
-    let idxFiltered = playable.findIndex(x => x.i === original);
-    if (idxFiltered < 0) idxFiltered = 0;
-
+    // Обновим доступные индексы и стартуем
     if (typeof w.updateAvailableTracks === 'function') w.updateAvailableTracks();
-
     if (typeof w.playFromPlaybackAlbum === 'function') {
       await w.playFromPlaybackAlbum(idxFiltered, true);
     }
