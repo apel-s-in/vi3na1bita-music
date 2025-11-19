@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-65482d816db96647da1ee93ba4b52634a2b38c1f.idx
-│   │       ├── pack-65482d816db96647da1ee93ba4b52634a2b38c1f.pack
-│   │       └── pack-65482d816db96647da1ee93ba4b52634a2b38c1f.rev
+│   │       ├── pack-392d17b19dcd53cfb817b90c773d5af691c880af.idx
+│   │       ├── pack-392d17b19dcd53cfb817b90c773d5af691c880af.pack
+│   │       └── pack-392d17b19dcd53cfb817b90c773d5af691c880af.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -256,7 +256,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-19 20:15:41 UTC
+Сгенерировано: 2025-11-19 20:16:38 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3970,11 +3970,22 @@ jobs:
   function updateAvailableTracks(){
     const pc = getPlayerConfig();
     if (!pc || !Array.isArray(pc.tracks)) { availableTracks = []; return; }
-    if (playingAlbumKey === SPECIAL_FAVORITES_KEY && Array.isArray(favoritesRefsModel)) {
-      const activeIdx = [];
-      favoritesRefsModel.forEach((x, i) => { if (x.__active) activeIdx.push(i); });
-      availableTracks = activeIdx; return;
+
+    // В режиме «Избранное» источником истины является текущий playable-плейлист
+    if (playingAlbumKey === SPECIAL_FAVORITES_KEY) {
+      if (Array.isArray(playingTracks) && playingTracks.length > 0) {
+        availableTracks = Array.from({ length: playingTracks.length }, (_, i) => i);
+      } else if (Array.isArray(favoritesRefsModel)) {
+        const activeIdx = [];
+        favoritesRefsModel.forEach((x, i) => { if (x.__active) activeIdx.push(i); });
+        availableTracks = activeIdx;
+      } else {
+        availableTracks = [];
+      }
+      return;
     }
+
+    // Обычный альбом
     availableTracks = favoritesOnlyMode
       ? getLikedForPlayback()
       : Array.from({ length: pc.tracks.length }, (_, i) => i);
