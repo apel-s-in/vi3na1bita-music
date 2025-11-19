@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ffa562b1327c995f0a480e315ba1531dc07eac83.idx
-│   │       ├── pack-ffa562b1327c995f0a480e315ba1531dc07eac83.pack
-│   │       └── pack-ffa562b1327c995f0a480e315ba1531dc07eac83.rev
+│   │       ├── pack-66f69d13e81f7c3e5adab209bfd2c5dbbcac57d7.idx
+│   │       ├── pack-66f69d13e81f7c3e5adab209bfd2c5dbbcac57d7.pack
+│   │       └── pack-66f69d13e81f7c3e5adab209bfd2c5dbbcac57d7.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -256,7 +256,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-19 21:49:30 UTC
+Сгенерировано: 2025-11-19 22:38:08 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8748,7 +8748,7 @@ import { PlayerCore } from '../src/PlayerCore.js';
     if (w.playingAlbumKey === w.SPECIAL_FAVORITES_KEY && typeof w.playingTrack === 'number' && w.playingTrack >= 0) {
       updateFavoritesCurrentRow(w.playingTrack);
       const listTracks = Array.from(document.querySelectorAll('#track-list .track'));
-      const rowUnder = listTracks[w.playingTrack];
+      const rowUnder = listTracks[playingTrack];
       const lp = document.getElementById('lyricsplayerblock');
       if (rowUnder && lp && rowUnder.parentNode) {
         if (rowUnder.nextSibling) rowUnder.parentNode.insertBefore(lp, rowUnder.nextSibling);
@@ -8837,7 +8837,7 @@ import { PlayerCore } from '../src/PlayerCore.js';
     playable.forEach((x, pos) => { idxByKey.set(keyOf(x.it.__a, x.it.__t), pos); });
 
     // Для синхронизации UI: filteredIdx -> исходный индекс модели
-    w.favPlayableMap = playable.map(x => x.i);
+    favPlayableMap = playable.map(x => x.i);
 
     // Резолв целевого индекса в playable
     let idxFiltered = 0;
@@ -8850,22 +8850,22 @@ import { PlayerCore } from '../src/PlayerCore.js';
       if (found >= 0) idxFiltered = found;
     }
 
-    // Контекст «Избранного»
-    w.playingAlbumKey = w.SPECIAL_FAVORITES_KEY;
-    w.playingTracks = playable.map(x => ({
+    // Контекст «Избранного» - использовать локальные переменные, а не window
+    playingAlbumKey = SPECIAL_FAVORITES_KEY;
+    playingTracks = playable.map(x => ({
       title: x.it.title,
       audio: x.it.audio,
       lyrics: x.it.lyrics,
       fulltext: x.it.fulltext || null
     }));
-    w.playingArtist = 'Витрина Разбита';
-    w.playingAlbumName = 'Избранное';
-    w.playingCover = (playable[0]?.it?.__cover) || 'img/logo.png';
+    playingArtist = 'Витрина Разбита';
+    playingAlbumName = 'Избранное';
+    playingCover = (playable[0]?.it?.__cover) || 'img/logo.png';
 
     // Обновим доступные индексы и стартуем
     if (typeof w.updateAvailableTracks === 'function') w.updateAvailableTracks();
-    if (typeof w.playFromPlaybackAlbum === 'function') {
-      await w.playFromPlaybackAlbum(idxFiltered, true);
+    if (typeof playFromPlaybackAlbum === 'function') {
+      await playFromPlaybackAlbum(idxFiltered, true);
     }
   }
 
