@@ -743,6 +743,7 @@
 
   /* ====== Глобальные ====== */
   let albumsIndex = [];
+  window.albumsIndex = albumsIndex; // экспорт для favorites-data.js
   let currentAlbumKey = null;
   let albumBase = '';
   let config = null;
@@ -768,6 +769,7 @@
   /* ====== Галерея — только index.json, мгновенный первый кадр ====== */
   // Галереи доступны только локально в этом репозитории
   const CENTRAL_GALLERY_BASE = './albums/gallery/';
+  window.CENTRAL_GALLERY_BASE = CENTRAL_GALLERY_BASE;
 
   // Жёсткая привязка альбом→центральная галерея
   const ALBUM_GALLERY_MAP = {
@@ -1228,7 +1230,16 @@
   /* ====== Иконки/режимы ====== */
   const SPECIAL_FAVORITES_KEY = '__favorites__';
   const SPECIAL_RELIZ_KEY = '__reliz__';
+  // Экспорт в window
+  window.SPECIAL_FAVORITES_KEY = SPECIAL_FAVORITES_KEY;
+  window.SPECIAL_RELIZ_KEY = SPECIAL_RELIZ_KEY;
+
   let viewMode = 'album';
+  // Двусторонняя синхронизация с window.viewMode
+  Object.defineProperty(window, 'viewMode', {
+    get() { return viewMode; },
+    set(v) { viewMode = v; }
+  });
 
   const ICON_ALBUMS_ORDER = [
     { key: SPECIAL_FAVORITES_KEY,  title: '⭐⭐⭐ИЗБРАННОЕ⭐⭐⭐', icon: 'img/icon_album/icon-album-00.png' },
@@ -1247,6 +1258,11 @@
     'mezhdu-zlom-i-dobrom': 'Между Злом и Добром',
     'krevetochka': 'КРЕВЕツTOCHKA'
   };
+  // Экспорт в window для favorites-data.js
+  window.ICON_ALBUMS_ORDER = ICON_ALBUMS_ORDER;
+  window.ICON_KEY_ALIASES = ICON_KEY_ALIASES;
+  window.ICON_TITLE_MAP = ICON_TITLE_MAP;
+
   function albumByKey(key) { return albumsIndex.find(a => a.key === key) || null; }
   function resolveRealAlbumKey(anyKey) {
     // 1) Уже реальный ключ
@@ -1468,9 +1484,11 @@
       const r = await fetch('./albums.json', { cache:'no-cache' });
       const j = await r.json();
       albumsIndex = Array.isArray(j.albums) ? j.albums : [];
+      window.albumsIndex = albumsIndex;
       if (!albumsIndex.length) throw new Error('empty index');
     } catch(e) {
       albumsIndex = ALBUMS_FALLBACK.slice();
+      window.albumsIndex = albumsIndex;
     }
     sel.innerHTML = albumsIndex.map(a => `<option value="${a.key}">${a.title}</option>`).join('');
 
@@ -1483,6 +1501,7 @@
 
   /* ====== Загрузка/применение альбома ====== */
   const albumConfigCache = {}; // { key: { base, config } }
+  window.albumConfigCache = albumConfigCache;
   let __albumLoadCtrl = null;
   let __currentGalleryVisible = true;
 
