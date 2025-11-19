@@ -3257,7 +3257,9 @@
       if (!row) {
         if (playingAlbumKey === SPECIAL_FAVORITES_KEY || viewMode === 'favorites') {
           const rows = document.querySelectorAll('#track-list .track');
-          row = rows && rows[n] ? rows[n] : null;
+          const origIdx = (Array.isArray(window.favPlayableMap) && Number.isInteger(window.favPlayableMap[n]))
+            ? window.favPlayableMap[n] : n;
+          row = rows && rows[origIdx] ? rows[origIdx] : null;
         }
       }
 
@@ -3462,12 +3464,18 @@
 
   function getAvailableTracksForAlbum(albumKey, tracksLen) {
     if (!tracksLen || tracksLen <= 0) return [];
-    if (albumKey === SPECIAL_FAVORITES_KEY) {
-      if (!Array.isArray(favoritesRefsModel)) return [];
-      const activeIdx = [];
-      favoritesRefsModel.forEach((x, i) => { if (x.__active) activeIdx.push(i); });
-      return activeIdx;
-    }
+      if (albumKey === SPECIAL_FAVORITES_KEY) {
+        // Если есть «играбельный» плейлист (PlayerCore) — индексы 0..N-1,
+        // иначе — fallback по активным ссылкам модели (как раньше)
+        if (Array.isArray(window.favPlayableMap) && Array.isArray(playingTracks) && playingTracks.length > 0) {
+          return Array.from({ length: playingTracks.length }, (_, i) => i);
+        }
+        if (!Array.isArray(favoritesRefsModel)) return [];
+        const activeIdx = [];
+        favoritesRefsModel.forEach((x, i) => { if (x.__active) activeIdx.push(i); });
+        return activeIdx;
+      }
+
     if (favoritesOnlyMode) {
       const liked = getLikedForAlbum(albumKey).filter(n => Number.isInteger(n) && n >= 0 && n < tracksLen);
       return liked.length ? liked : Array.from({length: tracksLen}, (_,i)=>i);
@@ -3528,11 +3536,13 @@
 
       // В представлении «Избранное» — подсветим строку и перенесём блок под неё
       if (playingAlbumKey === SPECIAL_FAVORITES_KEY && viewMode === 'favorites') {
-        updateFavoritesCurrentRow(idx);
+        const origIdx = (Array.isArray(window.favPlayableMap) && Number.isInteger(window.favPlayableMap[idx]))
+          ? window.favPlayableMap[idx] : idx;
+        updateFavoritesCurrentRow(origIdx);
         const list = document.getElementById('track-list');
         const lp = document.getElementById('lyricsplayerblock');
         const rows = list ? list.querySelectorAll('.track') : [];
-        const row = rows[idx];
+        const row = rows[origIdx];
         if (list && lp && row) {
           if (row.nextSibling) row.parentNode.insertBefore(lp, row.nextSibling);
           else row.parentNode.appendChild(lp);
