@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c05213020c8dcda8c30e0ed104ede5c72a775fb4.idx
-│   │       ├── pack-c05213020c8dcda8c30e0ed104ede5c72a775fb4.pack
-│   │       └── pack-c05213020c8dcda8c30e0ed104ede5c72a775fb4.rev
+│   │       ├── pack-e15892e60d16d0bac12d6dd2a5654d016ee4ef5b.idx
+│   │       ├── pack-e15892e60d16d0bac12d6dd2a5654d016ee4ef5b.pack
+│   │       └── pack-e15892e60d16d0bac12d6dd2a5654d016ee4ef5b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -256,7 +256,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-19 19:07:21 UTC
+Сгенерировано: 2025-11-19 19:07:51 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6980,18 +6980,30 @@ async function clearCurrentOfflineResources() {
       // Инициализация плейлиста при первом старте
       try {
         const hasLoaded = (typeof pc().getDuration === 'function') && ((pc().getDuration() || 0) > 0);
-        if (!hasLoaded && typeof window.__buildPlayerCorePayload === 'function') {
-          const payload = window.__buildPlayerCorePayload();
-          if (payload) {
-            pc().setPlaylist(payload.tracks, payload.index, payload.meta);
-            try { pc().setShuffle(!!window.shuffleMode); } catch {}
-            try { pc().setRepeat(!!window.repeatMode); } catch {}
-            try {
-              const likedIdx = (window.playingAlbumKey && window.playingAlbumKey !== window.SPECIAL_FAVORITES_KEY)
-                ? (window.getLikedForAlbum ? window.getLikedForAlbum(window.playingAlbumKey) : [])
-                : [];
-              pc().setFavoritesOnly(!!window.favoritesOnlyMode, likedIdx);
-            } catch {}
+        if (!hasLoaded) {
+          // Спец‑ветка для «ИЗБРАННОГО»: никогда не инициализируем альбомом
+          if ((window.viewMode === 'favorites') || (window.playingAlbumKey === window.SPECIAL_FAVORITES_KEY)) {
+            if (typeof window.ensureFavoritesPlayback === 'function') {
+              // Запустим с первого активного избранного
+              await window.ensureFavoritesPlayback(0);
+              return;
+            }
+          }
+          // Обычная инициализация (альбом/конфиг)
+          if (typeof window.__buildPlayerCorePayload === 'function') {
+            const payload = window.__buildPlayerCorePayload();
+            if (payload) {
+              pc().setPlaylist(payload.tracks, payload.index, payload.meta);
+              try { pc().setShuffle(!!window.shuffleMode); } catch {}
+              try { pc().setRepeat(!!window.repeatMode); } catch {}
+              try {
+                const likedIdx = (window.playingAlbumKey && window.playingAlbumKey !== window.SPECIAL_FAVORITES_KEY)
+                  ? (window.getLikedForAlbum ? window.getLikedForAlbum(window.playingAlbumKey) : [])
+                  : [];
+                // В альбомном режиме можно включить фильтр ⭐, в «ИЗБРАННОМ» — нет (см. ensureFavoritesPlayback/playFromPlaybackAlbum)
+                pc().setFavoritesOnly(!!window.favoritesOnlyMode, likedIdx);
+              } catch {}
+            }
           }
         }
       } catch {}
