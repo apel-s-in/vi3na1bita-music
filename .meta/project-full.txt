@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ef98dc8696e81601ecd86206545c4c28eaab2ccf.idx
-│   │       ├── pack-ef98dc8696e81601ecd86206545c4c28eaab2ccf.pack
-│   │       └── pack-ef98dc8696e81601ecd86206545c4c28eaab2ccf.rev
+│   │       ├── pack-b6832ffd04e57cabaa8aa1c1a55d38b9f943a93a.idx
+│   │       ├── pack-b6832ffd04e57cabaa8aa1c1a55d38b9f943a93a.pack
+│   │       └── pack-b6832ffd04e57cabaa8aa1c1a55d38b9f943a93a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -256,7 +256,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-19 17:45:42 UTC
+Сгенерировано: 2025-11-19 18:27:30 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8383,7 +8383,6 @@ import { PlayerCore } from '../src/PlayerCore.js';
 // UI «Избранного», гармонизированный с likedTracks:v2.
 // Централизует ВСЮ механику UI «Избранного» и вспомогательные операции фильтрации.
 // Добавлено: "пустой стейт" при пустом favoritesRefsModel и защита от двойных кликов по звезде (≈180 мс).
-
 (function FavoritesUIModule() {
   const w = window;
 
@@ -8432,7 +8431,7 @@ import { PlayerCore } from '../src/PlayerCore.js';
     } catch {}
   }
 
-  // Обновление класса .is-favorite в «Избранном» (для режима фильтра)
+  // Обновление .is-favorite в «Избранном»
   function updateFavoriteClassesFavorites() {
     try {
       const model = w.favoritesRefsModel;
@@ -8447,7 +8446,7 @@ import { PlayerCore } from '../src/PlayerCore.js';
     } catch {}
   }
 
-  // Обновление .is-favorite в «Альбомном» представлении (trk{idx})
+  // Обновление .is-favorite в альбомном представлении
   function updateFavoriteClasses() {
     try {
       const liked = hasFn('getLiked') ? w.getLiked() : [];
@@ -8695,17 +8694,15 @@ import { PlayerCore } from '../src/PlayerCore.js';
           else w.NotificationSystem && w.NotificationSystem.success('Трек возвращён в избранное');
         }
 
-        // Синхронизируем PlayerCore (на случай активного ядра)
+        // Синхронизация с PlayerCore: в режиме «ИЗБРАННОЕ» — НЕТ доп. фильтра в ядре
         if (w.__useNewPlayerCore && w.playerCore && typeof w.playerCore.setFavoritesOnly === 'function') {
           try {
             if (w.playingAlbumKey === w.SPECIAL_FAVORITES_KEY) {
-              const activeIdx = [];
-              (w.favoritesRefsModel || []).forEach((x, i) => { if (x && x.__active) activeIdx.push(i); });
-              w.playerCore.setFavoritesOnly(true, activeIdx);
+              w.playerCore.setFavoritesOnly(false, []); // плейлист уже отфильтрован
             } else {
               const likedIdx = getLikedForAlbumSafe(w.playingAlbumKey);
               w.playerCore.setFavoritesOnly(!!w.favoritesOnlyMode, likedIdx);
-              if (w.favoritesOnlyMode && wasActive && typeof w.isBrowsingSameAsPlaying === 'function' && w.isBrowsingSameAsPlaying()) {
+              if (w.favoritesOnlyMode && was && typeof w.isBrowsingSameAsPlaying === 'function' && w.isBrowsingSameAsPlaying()) {
                 setTimeout(() => { try { call('nextTrack'); } catch {} }, 0);
               }
             }
@@ -8732,7 +8729,7 @@ import { PlayerCore } from '../src/PlayerCore.js';
     list.classList.remove('filtered');
   }
 
-  // Переключение «Скрыть не отмеченные ⭐ песни» (и для альбомов, и для «Избранного»)
+  // Переключение «Скрыть не отмеченные ⭐ песни»
   function toggleFavoritesFilter() {
     const btn = document.getElementById('filter-favorites-btn');
     const list = document.getElementById('track-list');
@@ -8788,12 +8785,12 @@ import { PlayerCore } from '../src/PlayerCore.js';
 
   // ИНИЦИАЛИЗАЦИЯ ВОСПРОИЗВЕДЕНИЯ ДЛЯ «ИЗБРАННОГО»
   async function ensureFavoritesPlayback(index) {
-    // Перестроим модель на всякий случай (если ещё не построена)
+    // Перестроим модель при необходимости
     if (!Array.isArray(w.favoritesRefsModel) || w.favoritesRefsModel.length === 0) {
       await (w.FavoritesData?.buildFavoritesRefsModel?.() ?? Promise.resolve([]));
     }
 
-    // Строим «играбельный» подсписок и карту индексов DOM
+    // Строим «играбельный» подсписок (только активные с audio)
     const playable = (w.favoritesRefsModel || []).map((it, i) => ({ it, i }))
       .filter(x => x.it && x.it.__active && x.it.audio);
     if (!playable.length) {
@@ -8814,7 +8811,7 @@ import { PlayerCore } from '../src/PlayerCore.js';
     w.playingAlbumName = 'Избранное';
     w.playingCover = 'img/logo.png';
 
-    // Ищем filteredIndex соответствующий кликнутой строке index (originalRowIndex)
+    // Найти индекс в «узком» плейлисте
     const original = Number(index);
     let idxFiltered = playable.findIndex(x => x.i === original);
     if (idxFiltered < 0) idxFiltered = 0;
@@ -8826,9 +8823,8 @@ import { PlayerCore } from '../src/PlayerCore.js';
     }
   }
 
-  // Переключение лайка у текущего играемого трека (без изменений)
+  // Переключение лайка у текущего играемого трека
   function toggleLikePlaying() {
-    const w = window;
     if (!w.playingTracks || w.playingTrack < 0) return;
 
     let albumForLike = w.playingAlbumKey;
@@ -8854,6 +8850,7 @@ import { PlayerCore } from '../src/PlayerCore.js';
     try { w.updateMiniNowHeader && w.updateMiniNowHeader(); } catch {}
 
     if (w.playingAlbumKey === w.SPECIAL_FAVORITES_KEY) {
+      // Синхронизируем модель и строку «Избранного»
       w.FavoritesData?.updateFavoritesRefsModelActiveFlag?.(albumForLike, indexForLike, !was);
       const favRow = document.getElementById(`fav_${albumForLike}_${indexForLike}`);
       if (favRow) {
@@ -8864,7 +8861,7 @@ import { PlayerCore } from '../src/PlayerCore.js';
           s.title = was ? 'Вернуть в избранное' : 'Снять из избранного';
         }
       }
-      // Перестраиваем карту проигрываемых, чтобы индексы совпадали с PlayerCore
+      // Перестраиваем карту проигрываемых
       try {
         const playable = (w.favoritesRefsModel || []).map((it, i) => ({ it, i }))
           .filter(x => x.it && x.it.__active && x.it.audio);
@@ -8873,353 +8870,11 @@ import { PlayerCore } from '../src/PlayerCore.js';
 
       try { w.createPlayingShuffledPlaylist && w.createPlayingShuffledPlaylist(); } catch {}
       try { w.updateNextUpLabel && w.updateNextUpLabel(); } catch {}
+
+      // Сняли у текущего — перейти к следующему
       if (was) { try { w.nextTrack && w.nextTrack(); } catch {} }
     } else {
-      const favRow = document.getElementById(`fav_${albumForLike}_${indexForLike}`);
-      if (favRow) {
-        favRow.classList.toggle('inactive', was);
-        const s = favRow.querySelector('.like-star');
-        if (s) {
-          s.src = was ? 'img/star2.png' : 'img/star.png';
-          s.title = was ? 'Вернуть в избранное' : 'Снять из избранного';
-        }
-      }
-      if (w.favoritesOnlyMode && w.shuffleMode) {
-        try { w.createPlayingShuffledPlaylist && w.createPlayingShuffledPlaylist(); } catch {}
-      }
-      try { w.updateNextUpLabel && w.updateNextUpLabel(); } catch {}
-    }
-
-    if (w.__useNewPlayerCore && w.playerCore && typeof w.playerCore.setFavoritesOnly === 'function') {
-      try {
-        if (w.playingAlbumKey === w.SPECIAL_FAVORITES_KEY) {
-          const activeIdx = [];
-          (w.favoritesRefsModel || []).forEach((x, i) => { if (x && x.__active) activeIdx.push(i); });
-          w.playerCore.setFavoritesOnly(true, activeIdx);
-        } else {
-          const likedIdx = (typeof w.getLikedForAlbum === 'function') ? w.getLikedForAlbum(w.playingAlbumKey) : [];
-          w.playerCore.setFavoritesOnly(!!w.favoritesOnlyMode, likedIdx);
-          if (w.favoritesOnlyMode && was && typeof w.isBrowsingSameAsPlaying === 'function' && w.isBrowsingSameAsPlaying()) {
-            setTimeout(() => { try { w.nextTrack && w.nextTrack(); } catch {} }, 0);
-          }
-        }
-      } catch {}
-    }
-  }
-
-  // Публичный API
-  const FavoritesUI = {
-    openFavoritesView,
-    updateFavoritesCurrentRow,
-    updateFavoriteClassesFavorites,
-    updateFavRow,
-    toggleLikeForAlbum,
-    showFavInactivePrompt,
-    showFavDeleteConfirm,
-    updateFavoriteClasses,
-    toggleFavoritesFilter,
-    ensureFavoritesPlayback,
-    toggleLikePlaying
-  };
-
-  // Экспорт
-  w.FavoritesUI = FavoritesUI;
-
-  // Глобальные привязки
-  w.openFavoritesView = FavoritesUI.openFavoritesView;
-  w.updateFavoritesCurrentRow = FavoritesUI.updateFavoritesCurrentRow;
-  w.updateFavoriteClassesFavorites = FavoritesUI.updateFavoriteClassesFavorites;
-  w.updateFavRow = FavoritesUI.updateFavRow;
-  w.toggleLikeForAlbum = FavoritesUI.toggleLikeForAlbum;
-  w.showFavInactivePrompt = FavoritesUI.showFavInactivePrompt;
-  w.showFavDeleteConfirm = FavoritesUI.showFavDeleteConfirm;
-  w.updateFavoriteClasses = FavoritesUI.updateFavoriteClasses;
-  w.toggleFavoritesFilter = FavoritesUI.toggleFavoritesFilter;
-  w.ensureFavoritesPlayback = FavoritesUI.ensureFavoritesPlayback;
-  w.toggleLikePlaying = FavoritesUI.toggleLikePlaying;
-
-})();
-
-    // Гарантируем загрузку списка альбомов (для сборки избранного)
-    if ((!Array.isArray(w.albumsIndex) || w.albumsIndex.length === 0) && hasFn('loadAlbumsIndex')) {
-      try { await call('loadAlbumsIndex'); } catch {}
-    }
-
-    try { w.migrateFavoritesKeys && w.migrateFavoritesKeys(); } catch {}
-
-    // Перенос плеера
-    try {
-      const lp = document.getElementById('lyricsplayerblock');
-      const holder = document.getElementById('now-playing');
-      if (lp && holder && !holder.contains(lp)) { holder.innerHTML = ''; holder.appendChild(lp); }
-    } catch {}
-
-    call('applyMiniModeUI');
-
-    // Скрываем галерею
-    const cw = document.getElementById('cover-wrap'); if (cw) cw.style.display = 'none';
-
-    // Жёстко сбрасываем предыдущее состояние фильтра «⭐»,
-    // чтобы ничего не скрывалось в представлении «Избранное».
-    try {
-      w.favoritesFilterActive = false;
-      const listEl = document.getElementById('track-list');
-      const filterBtn = document.getElementById('filter-favorites-btn');
-      if (listEl) listEl.classList.remove('filtered');
-      if (filterBtn) {
-        filterBtn.classList.remove('filtered');
-        filterBtn.textContent = 'Скрыть не отмеченные ⭐ песни';
-      }
-    } catch {}
-    
-    // Сбор модели «Избранного»
-    if (hasFn('buildFavoritesRefsModel')) {
-      await call('buildFavoritesRefsModel');
-    }
-
-    // Рисуем список
-    const list = document.getElementById('track-list');
-    if (!list) return;
-    list.style.display = '';
-    list.innerHTML = '<div style="text-align:center; opacity:.8; margin:6px 0 8px 0;">ИЗБРАННЫЕ ПЕСНИ</div>';
-
-    const model = Array.isArray(w.favoritesRefsModel) ? w.favoritesRefsModel : [];
-    if (!model.length) {
-      renderEmptyState(list);
-      call('applyMiniModeUI');
-      list.classList.remove('filtered');
-      return;
-    }
-
-    model.forEach((item, idx) => {
-      const n = String(idx + 1).padStart(2, '0');
-      const row = document.createElement('div');
-      row.className = 'track' + (item.__active ? '' : ' inactive');
-      row.id = `fav_${item.__a}_${item.__t}`;
-      row.innerHTML = `
-        <span class="tnum">${n}.</span>
-        <span class="track-title" title="${item.title} — ${item.__album}">
-          ${item.title} <span style="opacity:.6;font-size:.9em;">— ${item.__album}</span>
-        </span>
-        <img src="${item.__active ? 'img/star.png' : 'img/star2.png'}" class="like-star" alt="звезда"
-             title="${item.__active ? 'Снять из избранного' : 'Вернуть в избранное'}">
-      `;
-
-      // Клик по строке — играем, если активен; иначе подсказка
-      row.addEventListener('click', async () => {
-        const canPlay = !!item.__active && !!item.audio;
-        if (canPlay) {
-          if (hasFn('ensureFavoritesPlayback')) {
-            await call('ensureFavoritesPlayback', idx);
-          }
-        } else {
-          // Неактивный или «без аудио» (fallback) — открываем подсказку
-          showFavInactivePrompt({ a: item.__a, t: item.__t, title: item.title, album: item.__album });
-        }
-      });
-
-      // Клик по звезде — смена статуса (с защитой от двойного клика)
-      row.querySelector('.like-star').addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (guardStarClick()) return;
-
-        const wasActive = getLikedForAlbumSafe(item.__a).includes(item.__t);
-        toggleLikeForAlbum(item.__a, item.__t, !wasActive);
-        updateFavRow({ a: item.__a, t: item.__t }, !wasActive);
-        call('updateFavoritesRefsModelActiveFlag', item.__a, item.__t, !wasActive);
-
-        // Сайд‑эффекты при активном «играем Избранное»
-        if (w.playingAlbumKey === w.SPECIAL_FAVORITES_KEY && Array.isArray(w.playingTracks)) {
-          if (wasActive) {
-            // Если сняли у текущего — пересобрать и перейти дальше
-            if (w.favoritesRefsModel && w.favoritesRefsModel[w.playingTrack] &&
-                w.favoritesRefsModel[w.playingTrack].__a === item.__a &&
-                w.favoritesRefsModel[w.playingTrack].__t === item.__t) {
-              call('createPlayingShuffledPlaylist');
-              call('nextTrack');
-            } else {
-              call('createPlayingShuffledPlaylist');
-              call('updateNextUpLabel');
-            }
-            w.NotificationSystem && w.NotificationSystem.info('Трек снят из избранного');
-          } else {
-            call('createPlayingShuffledPlaylist');
-            call('updateNextUpLabel');
-            w.NotificationSystem && w.NotificationSystem.success('Трек возвращён в избранное');
-          }
-        } else {
-          if (wasActive) w.NotificationSystem && w.NotificationSystem.info('Трек снят из избранного');
-          else w.NotificationSystem && w.NotificationSystem.success('Трек возвращён в избранное');
-        }
-
-        // Синхронизация с PlayerCore
-        if (w.__useNewPlayerCore && w.playerCore && typeof w.playerCore.setFavoritesOnly === 'function') {
-          try {
-            if (w.playingAlbumKey === w.SPECIAL_FAVORITES_KEY) {
-              const activeIdx = [];
-              (w.favoritesRefsModel || []).forEach((x, i) => { if (x && x.__active) activeIdx.push(i); });
-              w.playerCore.setFavoritesOnly(true, activeIdx);
-            } else {
-              const likedIdx = getLikedForAlbumSafe(w.playingAlbumKey);
-              w.playerCore.setFavoritesOnly(!!w.favoritesOnlyMode, likedIdx);
-              if (w.favoritesOnlyMode && wasActive && typeof w.isBrowsingSameAsPlaying === 'function' && w.isBrowsingSameAsPlaying()) {
-                setTimeout(() => { try { call('nextTrack'); } catch {} }, 0);
-              }
-            }
-          } catch {}
-        }
-      });
-
-      list.appendChild(row);
-    });
-
-    // Если сейчас играет «Избранное» — подсветим текущую и подставим плеер под строку
-    if (w.playingAlbumKey === w.SPECIAL_FAVORITES_KEY && typeof w.playingTrack === 'number' && w.playingTrack >= 0) {
-      updateFavoritesCurrentRow(w.playingTrack);
-      const listTracks = Array.from(document.querySelectorAll('#track-list .track'));
-      const rowUnder = listTracks[w.playingTrack];
-      const lp = document.getElementById('lyricsplayerblock');
-      if (rowUnder && lp && rowUnder.parentNode) {
-        if (rowUnder.nextSibling) rowUnder.parentNode.insertBefore(lp, rowUnder.nextSibling);
-        else rowUnder.parentNode.appendChild(lp);
-      }
-    }
-
-    call('applyMiniModeUI');
-    list.classList.remove('filtered');
-  }
-
-  // Переключение «Скрыть не отмеченные ⭐ песни» (и для альбомов, и для «Избранного»)
-  function toggleFavoritesFilter() {
-    const btn = document.getElementById('filter-favorites-btn');
-    const list = document.getElementById('track-list');
-    if (!btn || !list) return;
-
-    let favoritesFilterActive = get('favoritesFilterActive', false);
-    const viewMode = get('viewMode', 'album');
-
-    if (viewMode === 'favorites') {
-      favoritesFilterActive = !favoritesFilterActive;
-      w.favoritesFilterActive = favoritesFilterActive;
-
-      if (favoritesFilterActive) {
-        const anyActive = (w.favoritesRefsModel || []).some(x => x.__active);
-        if (!anyActive) {
-          w.favoritesFilterActive = false;
-          w.NotificationSystem && w.NotificationSystem.warning('Нет активных треков со ⭐!');
-          return;
-        }
-        btn.textContent = 'ПОКАЗАТЬ ВСЕ ПЕСНИ';
-        btn.classList.add('filtered');
-        list.classList.add('filtered');
-        updateFavoriteClassesFavorites();
-      } else {
-        btn.textContent = 'Скрыть не отмеченные ⭐ песни';
-        btn.classList.remove('filtered');
-        list.classList.remove('filtered');
-      }
-      return;
-    }
-
-    // Обычный альбом
-    const liked = hasFn('getLiked') ? w.getLiked() : [];
-    favoritesFilterActive = !favoritesFilterActive;
-    w.favoritesFilterActive = favoritesFilterActive;
-
-    if (favoritesFilterActive) {
-      if (!liked.length) {
-        w.NotificationSystem && w.NotificationSystem.warning('Нет избранных треков!');
-        w.favoritesFilterActive = false;
-        return;
-      }
-      btn.textContent = 'ПОКАЗАТЬ ВСЕ ПЕСНИ';
-      btn.classList.add('filtered');
-      list.classList.add('filtered');
-      updateFavoriteClasses();
-    } else {
-      btn.textContent = 'Скрыть не отмеченные ⭐ песни';
-      btn.classList.remove('filtered');
-      list.classList.remove('filtered');
-    }
-  }
-
-  // ИНИЦИАЛИЗАЦИЯ ВОСПРОИЗВЕДЕНИЯ ДЛЯ «ИЗБРАННОГО» (перенесено из index.html)
-  async function ensureFavoritesPlayback(index) {
-    const w = window;
-    // Подготовим модель если пусто
-    if (!Array.isArray(w.favoritesRefsModel) || w.favoritesRefsModel.length === 0) {
-      await (w.FavoritesData?.buildFavoritesRefsModel?.() ?? Promise.resolve([]));
-    }
-    // Переключаемся в контекст «Избранное»
-    w.playingAlbumKey = w.SPECIAL_FAVORITES_KEY;
-    w.playingTracks = (w.favoritesRefsModel || []).map(it => ({
-      title: it.title,
-      audio: it.audio,
-      lyrics: it.lyrics,
-      fulltext: it.fulltext || null
-    }));
-    w.playingArtist = 'Витрина Разбита';
-    w.playingAlbumName = 'Избранное';
-    w.playingCover = 'img/logo.png';
-
-    if (typeof w.updateAvailableTracks === 'function') w.updateAvailableTracks();
-
-    let idx = Number(index);
-    if (!Number.isInteger(idx) || idx < 0 || idx >= (w.playingTracks?.length || 0)) idx = 0;
-
-    if (typeof w.playFromPlaybackAlbum === 'function') {
-      await w.playFromPlaybackAlbum(idx, true);
-    }
-  }
-
-  // Переключение лайка у текущего играемого трека (перенесено из index.html)
-  function toggleLikePlaying() {
-    const w = window;
-    if (!w.playingTracks || w.playingTrack < 0) return;
-
-    let albumForLike = w.playingAlbumKey;
-    let indexForLike = w.playingTrack;
-
-    if (w.playingAlbumKey === w.SPECIAL_FAVORITES_KEY) {
-      const ref = w.favoritesRefsModel?.[w.playingTrack];
-      if (!ref) return;
-      albumForLike = ref.__a;
-      indexForLike = ref.__t;
-    }
-
-    // Читаем/пишем likedTracks:v2
-    const map = (typeof w.getLikedMap === 'function') ? w.getLikedMap() : (() => {
-      try { return JSON.parse(localStorage.getItem('likedTracks:v2') || '{}') || {}; } catch { return {}; }
-    })();
-    const arr = Array.isArray(map[albumForLike]) ? map[albumForLike] : [];
-    const was = arr.includes(indexForLike);
-    const next = was ? arr.filter(x => x !== indexForLike) : [...arr, indexForLike];
-    map[albumForLike] = Array.from(new Set(next));
-    try { localStorage.setItem('likedTracks:v2', JSON.stringify(map)); } catch {}
-
-    // Обновим мини-шапку
-    try { w.updateMiniNowHeader && w.updateMiniNowHeader(); } catch {}
-
-    if (w.playingAlbumKey === w.SPECIAL_FAVORITES_KEY) {
-      // Синхронизация модели и строки «Избранного»
-      w.FavoritesData?.updateFavoritesRefsModelActiveFlag?.(albumForLike, indexForLike, !was);
-      const favRow = document.getElementById(`fav_${albumForLike}_${indexForLike}`);
-      if (favRow) {
-        favRow.classList.toggle('inactive', was);
-        const s = favRow.querySelector('.like-star');
-        if (s) {
-          s.src = was ? 'img/star2.png' : 'img/star.png';
-          s.title = was ? 'Вернуть в избранное' : 'Снять из избранного';
-        }
-      }
-      // Пересборка плейлиста «Избранного»
-      try { w.createPlayingShuffledPlaylist && w.createPlayingShuffledPlaylist(); } catch {}
-      try { w.updateNextUpLabel && w.updateNextUpLabel(); } catch {}
-
-      // Если сняли у текущего — next() (не пауза/стоп!)
-      if (was) { try { w.nextTrack && w.nextTrack(); } catch {} }
-    } else {
-      // Если список «Избранного» открыт — подсветим строку там
+      // Если открыт список «Избранного» — подсветим строку там
       const favRow = document.getElementById(`fav_${albumForLike}_${indexForLike}`);
       if (favRow) {
         favRow.classList.toggle('inactive', was);
@@ -9239,9 +8894,8 @@ import { PlayerCore } from '../src/PlayerCore.js';
     if (w.__useNewPlayerCore && w.playerCore && typeof w.playerCore.setFavoritesOnly === 'function') {
       try {
         if (w.playingAlbumKey === w.SPECIAL_FAVORITES_KEY) {
-          const activeIdx = [];
-          (w.favoritesRefsModel || []).forEach((x, i) => { if (x && x.__active) activeIdx.push(i); });
-          w.playerCore.setFavoritesOnly(true, activeIdx);
+          // В «ИЗБРАННОМ» — плейлист уже отфильтрован, не включаем доп. фильтр
+          w.playerCore.setFavoritesOnly(false, []);
         } else {
           const likedIdx = (typeof w.getLikedForAlbum === 'function') ? w.getLikedForAlbum(w.playingAlbumKey) : [];
           w.playerCore.setFavoritesOnly(!!w.favoritesOnlyMode, likedIdx);
@@ -9282,7 +8936,6 @@ import { PlayerCore } from '../src/PlayerCore.js';
   w.showFavDeleteConfirm = FavoritesUI.showFavDeleteConfirm;
   w.updateFavoriteClasses = FavoritesUI.updateFavoriteClasses;
   w.toggleFavoritesFilter = FavoritesUI.toggleFavoritesFilter;
-  // Новые глобали (перенесено из index.html)
   w.ensureFavoritesPlayback = FavoritesUI.ensureFavoritesPlayback;
   w.toggleLikePlaying = FavoritesUI.toggleLikePlaying;
 
