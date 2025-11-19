@@ -3565,12 +3565,10 @@
           try { window.playerCore.setRepeat(!!window.repeatMode); } catch {}
 
           // Ограничение набора треков:
-          // - В «Избранном»: играем только активные элементы (со ⭐) из favoritesRefsModel
+          // - В «Избранном»: плейлист уже состоит ТОЛЬКО из активных избранных → доп. фильтр не нужен
           // - В обычном альбомном режиме: используем режим «только избранные», если он включён
           if (playingAlbumKey === SPECIAL_FAVORITES_KEY) {
-            const activeIdx = [];
-            (favoritesRefsModel || []).forEach((x, i) => { if (x && x.__active) activeIdx.push(i); });
-            window.playerCore.setFavoritesOnly(true, activeIdx);
+            window.playerCore.setFavoritesOnly(false, []);
           } else {
             const likedIdx = (playingAlbumKey && playingAlbumKey !== SPECIAL_FAVORITES_KEY) ? getLikedForAlbum(playingAlbumKey) : [];
             window.playerCore.setFavoritesOnly(!!window.favoritesOnlyMode, likedIdx);
