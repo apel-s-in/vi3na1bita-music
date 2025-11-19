@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-898c9ab2ed42e12a3c2e1a4cd10c178745c68278.idx
-│   │       ├── pack-898c9ab2ed42e12a3c2e1a4cd10c178745c68278.pack
-│   │       └── pack-898c9ab2ed42e12a3c2e1a4cd10c178745c68278.rev
+│   │       ├── pack-00fd89035951a4487abb6564dc7f802d96c633c4.idx
+│   │       ├── pack-00fd89035951a4487abb6564dc7f802d96c633c4.pack
+│   │       └── pack-00fd89035951a4487abb6564dc7f802d96c633c4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -256,7 +256,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-19 18:41:19 UTC
+Сгенерировано: 2025-11-19 18:42:35 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8807,7 +8807,7 @@ import { PlayerCore } from '../src/PlayerCore.js';
     }));
     w.playingArtist = 'Витрина Разбита';
     w.playingAlbumName = 'Избранное';
-    w.playingCover = 'img/logo.png';
+    w.playingCover = (playable[0]?.it?.__cover) || 'img/logo.png';
 
     // Найти индекс в «узком» плейлисте
     const original = Number(index);
