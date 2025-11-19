@@ -15,8 +15,16 @@
     catch { return {}; }
   }
   function getLikedForAlbum(albumKey) {
-    try { const map = getLikedMap(); const arr = map && typeof map === 'object' ? map[albumKey] : []; return Array.isArray(arr) ? arr : []; }
-    catch { return []; }
+    try {
+      const map = getLikedMap();
+      const arr = (map && typeof map === 'object') ? map[albumKey] : [];
+      if (!Array.isArray(arr)) return [];
+      // Нормализуем к числам и убираем дубли
+      const norm = Array.from(new Set(arr.map(n => parseInt(n, 10)).filter(Number.isFinite)));
+      return norm;
+    } catch {
+      return [];
+    }
   }
 
   function readFavoritesRefs() {
