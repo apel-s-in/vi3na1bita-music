@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ab2ec7f5cd716d9274e979d78e33a8d4fd24f26a.idx
-│   │       ├── pack-ab2ec7f5cd716d9274e979d78e33a8d4fd24f26a.pack
-│   │       └── pack-ab2ec7f5cd716d9274e979d78e33a8d4fd24f26a.rev
+│   │       ├── pack-0cb9929d43321bf8e1902aa9aeda7a2cb2258de6.idx
+│   │       ├── pack-0cb9929d43321bf8e1902aa9aeda7a2cb2258de6.pack
+│   │       └── pack-0cb9929d43321bf8e1902aa9aeda7a2cb2258de6.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -256,7 +256,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-19 16:39:21 UTC
+Сгенерировано: 2025-11-19 16:59:09 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1786,13 +1786,29 @@ jobs:
     'krevetochka': 'КРЕВЕツTOCHKA'
   };
   function albumByKey(key) { return albumsIndex.find(a => a.key === key) || null; }
-  function resolveRealAlbumKey(iconKey) {
-    if (albumByKey(iconKey)) return iconKey;
-    const aliases = ICON_KEY_ALIASES[iconKey] || [];
-    for (const k of aliases) if (albumByKey(k)) return k;
-    const expectedTitle = ICON_TITLE_MAP[iconKey];
+  function resolveRealAlbumKey(anyKey) {
+    // 1) Уже реальный ключ
+    if (albumByKey(anyKey)) return anyKey;
+
+    // 2) Обратное отображение алиасов: найти canonical по значению в ICON_KEY_ALIASES
+    try {
+      for (const [real, arr] of Object.entries(ICON_KEY_ALIASES || {})) {
+        if (Array.isArray(arr) && arr.includes(anyKey)) {
+          if (albumByKey(real)) return real;
+        }
+      }
+    } catch {}
+
+    // 3) Прямое отображение (как раньше): если в карте алиасов ключ — это canonical
+    const direct = (ICON_KEY_ALIASES && ICON_KEY_ALIASES[anyKey]) || [];
+    for (const k of direct) if (albumByKey(k)) return k;
+
+    // 4) По названию (fallback)
+    const expectedTitle = ICON_TITLE_MAP && ICON_TITLE_MAP[anyKey];
     if (expectedTitle) {
-      const found = albumsIndex.find(a => String(a.title).toLowerCase().includes(expectedTitle.toLowerCase()));
+      const found = (albumsIndex || []).find(a =>
+        a && String(a.title).toLowerCase().includes(String(expectedTitle).toLowerCase())
+      );
       if (found) return found.key;
     }
     return null;
@@ -1841,8 +1857,13 @@ jobs:
   function setActiveAlbumIcon(key){
     const box = document.getElementById('album-icons'); 
     if (!box) return;
+
     const favKey = (typeof SPECIAL_FAVORITES_KEY !== 'undefined') ? SPECIAL_FAVORITES_KEY : '__favorites__';
-    const normalizedKey = (key === 'favorites' || key === 'fav' || key === 'izbrannoe') ? favKey : key;
+    // Если сейчас показываем «Избранное», любой внешний вызов должен оставлять подсветку на fav
+    let normalizedKey = (key === 'favorites' || key === 'fav' || key === 'izbrannoe') ? favKey : key;
+    if (typeof viewMode !== 'undefined' && viewMode === 'favorites') {
+      normalizedKey = favKey;
+    }
 
     box.querySelectorAll('.album-icon').forEach(el => {
       const ak = el.getAttribute('data-akey');
