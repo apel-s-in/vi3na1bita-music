@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-203e6a4f85c4645a1f336eb3d03239286ebfa1ec.idx
-│   │       ├── pack-203e6a4f85c4645a1f336eb3d03239286ebfa1ec.pack
-│   │       └── pack-203e6a4f85c4645a1f336eb3d03239286ebfa1ec.rev
+│   │       ├── pack-ab2ec7f5cd716d9274e979d78e33a8d4fd24f26a.idx
+│   │       ├── pack-ab2ec7f5cd716d9274e979d78e33a8d4fd24f26a.pack
+│   │       └── pack-ab2ec7f5cd716d9274e979d78e33a8d4fd24f26a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -256,7 +256,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-19 16:38:01 UTC
+Сгенерировано: 2025-11-19 16:39:21 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1841,11 +1841,19 @@ jobs:
   function setActiveAlbumIcon(key){
     const box = document.getElementById('album-icons'); 
     if (!box) return;
-    box.querySelectorAll('.album-icon').forEach(el=>{
-      const k = el.getAttribute('data-akey');
-      el.classList.toggle('active', k && key && k === key);
+    const favKey = (typeof SPECIAL_FAVORITES_KEY !== 'undefined') ? SPECIAL_FAVORITES_KEY : '__favorites__';
+    const normalizedKey = (key === 'favorites' || key === 'fav' || key === 'izbrannoe') ? favKey : key;
+
+    box.querySelectorAll('.album-icon').forEach(el => {
+      const ak = el.getAttribute('data-akey');
+      const ai = el.getAttribute('data-icon');
+      const match =
+        (ak && normalizedKey && ak === normalizedKey) ||
+        (ai && normalizedKey && ai === normalizedKey);
+      el.classList.toggle('active', !!match);
     });
   }
+
   function setAlbumHeaderTitle(key) {
     const el = document.getElementById('active-album-title');
     if (!el) return;
@@ -2765,9 +2773,18 @@ jobs:
     catch { return {}; }
   }
   function getLikedForAlbum(albumKey) {
-    try { const raw = localStorage.getItem(LIKED_STORAGE_KEY_V2); const map = raw ? JSON.parse(raw) : {}; const arr = map && typeof map === 'object' ? map[albumKey] : []; return Array.isArray(arr) ? arr : []; }
-    catch { return []; }
+    try {
+      const raw = localStorage.getItem(LIKED_STORAGE_KEY_V2);
+      const map = raw ? JSON.parse(raw) : {};
+      const arr = (map && typeof map === 'object') ? map[albumKey] : [];
+      if (!Array.isArray(arr)) return [];
+      const norm = Array.from(new Set(arr.map(n => parseInt(n, 10)).filter(Number.isFinite)));
+      return norm;
+    } catch {
+      return [];
+    }
   }
+
   function getLiked() { return getLikedForAlbum(currentAlbumKey); }
   function saveLiked(arr) {
     if (!currentAlbumKey) return;
