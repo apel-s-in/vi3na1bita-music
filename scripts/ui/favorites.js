@@ -338,7 +338,7 @@
     if (w.playingAlbumKey === w.SPECIAL_FAVORITES_KEY && typeof w.playingTrack === 'number' && w.playingTrack >= 0) {
       updateFavoritesCurrentRow(w.playingTrack);
       const listTracks = Array.from(document.querySelectorAll('#track-list .track'));
-      const rowUnder = listTracks[w.playingTrack];
+      const rowUnder = listTracks[playingTrack];
       const lp = document.getElementById('lyricsplayerblock');
       if (rowUnder && lp && rowUnder.parentNode) {
         if (rowUnder.nextSibling) rowUnder.parentNode.insertBefore(lp, rowUnder.nextSibling);
@@ -427,7 +427,7 @@
     playable.forEach((x, pos) => { idxByKey.set(keyOf(x.it.__a, x.it.__t), pos); });
 
     // Для синхронизации UI: filteredIdx -> исходный индекс модели
-    w.favPlayableMap = playable.map(x => x.i);
+    favPlayableMap = playable.map(x => x.i);
 
     // Резолв целевого индекса в playable
     let idxFiltered = 0;
@@ -440,22 +440,22 @@
       if (found >= 0) idxFiltered = found;
     }
 
-    // Контекст «Избранного»
-    w.playingAlbumKey = w.SPECIAL_FAVORITES_KEY;
-    w.playingTracks = playable.map(x => ({
+    // Контекст «Избранного» - использовать локальные переменные, а не window
+    playingAlbumKey = SPECIAL_FAVORITES_KEY;
+    playingTracks = playable.map(x => ({
       title: x.it.title,
       audio: x.it.audio,
       lyrics: x.it.lyrics,
       fulltext: x.it.fulltext || null
     }));
-    w.playingArtist = 'Витрина Разбита';
-    w.playingAlbumName = 'Избранное';
-    w.playingCover = (playable[0]?.it?.__cover) || 'img/logo.png';
+    playingArtist = 'Витрина Разбита';
+    playingAlbumName = 'Избранное';
+    playingCover = (playable[0]?.it?.__cover) || 'img/logo.png';
 
     // Обновим доступные индексы и стартуем
     if (typeof w.updateAvailableTracks === 'function') w.updateAvailableTracks();
-    if (typeof w.playFromPlaybackAlbum === 'function') {
-      await w.playFromPlaybackAlbum(idxFiltered, true);
+    if (typeof playFromPlaybackAlbum === 'function') {
+      await playFromPlaybackAlbum(idxFiltered, true);
     }
   }
 
