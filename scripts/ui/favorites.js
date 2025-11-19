@@ -428,7 +428,7 @@
     }));
     w.playingArtist = 'Витрина Разбита';
     w.playingAlbumName = 'Избранное';
-    w.playingCover = 'img/logo.png';
+    w.playingCover = (playable[0]?.it?.__cover) || 'img/logo.png';
 
     // Найти индекс в «узком» плейлисте
     const original = Number(index);
