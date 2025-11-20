@@ -43,10 +43,30 @@
   // Обновление класса .current в списке «Избранного»
   function updateFavoritesCurrentRow(idx) {
     try {
-      const rows = document.querySelectorAll('#track-list .track');
-      rows.forEach(r => r.classList.remove('current'));
-      const row = rows[idx];
-      if (row) row.classList.add('current');
+      // Очищаем все подсветки
+      document.querySelectorAll('#track-list .track').forEach(r => r.classList.remove('current'));
+    
+      let targetRow = null;
+      const model = w.favoritesRefsModel || [];
+    
+      if (w.playingAlbumKey === w.SPECIAL_FAVORITES_KEY) {
+        // В режиме избранного используем оригинальный индекс
+        const originalIdx = w.playingTrackOriginalIdx || idx;
+        if (originalIdx >= 0 && originalIdx < model.length) {
+          const ref = model[originalIdx];
+          if (ref) {
+            targetRow = document.getElementById(`fav_${ref.__a}_${ref.__t}`);
+          }
+        }
+      }
+    
+      // Fallback: поиск по индексу в DOM
+      if (!targetRow && idx >= 0) {
+        const rows = document.querySelectorAll('#track-list .track');
+        if (idx < rows.length) targetRow = rows[idx];
+      }
+    
+      if (targetRow) targetRow.classList.add('current');
     } catch {}
   }
 
@@ -274,9 +294,12 @@
         const canPlay = !!item.__active && !!item.audio;
         if (canPlay) {
           if (hasFn('ensureFavoritesPlayback')) {
-            // Передаём индекс строки модели (стабильнее любых алиасов):
-            // ensureFavoritesPlayback(idx) сам сопоставит его c playable.
-            await call('ensureFavoritesPlayback', idx);
+            // Передаем объект с ключами альбома и трека для точного поиска
+            await call('ensureFavoritesPlayback', {
+              a: item.__a,
+              t: item.__t,
+              idx: idx  // сохраняем исходный индекс для UI
+            });
           }
         } else {
           showFavInactivePrompt({ a: item.__a, t: item.__t, title: item.title, album: item.__album });
@@ -427,18 +450,38 @@
     playable.forEach((x, pos) => { idxByKey.set(keyOf(x.it.__a, x.it.__t), pos); });
 
     // Для синхронизации UI: filteredIdx -> исходный индекс модели
-    favPlayableMap = playable.map(x => x.i);
+    w.favPlayableMap = playable.map(x => x.i);
+    // Обратная карта: исходный индекс -> filteredIdx (для правильного определения позиции в плейлисте)
+    w.favModelToFilteredMap = new Map();
+    playable.forEach((x, filteredIdx) => {
+      w.favModelToFilteredMap.set(x.i, filteredIdx);
+    });
 
     // Резолв целевого индекса в playable
     let idxFiltered = 0;
+    let originalIdx = 0;
+
     if (target && typeof target === 'object' && target.a && Number.isInteger(target.t)) {
       const found = idxByKey.get(keyOf(target.a, target.t));
-      if (Number.isInteger(found)) idxFiltered = found;
-    } else {
-      const original = Number(target);
-      const found = playable.findIndex(x => x.i === original);
-      if (found >= 0) idxFiltered = found;
+      if (Number.isInteger(found)) {
+        idxFiltered = found;
+        originalIdx = target.idx || found;
+      }
+    } else if (typeof target === 'number') {
+      originalIdx = target;
+      // Используем обратную карту для поиска правильного индекса в плейлисте
+      const filteredIdx = w.favModelToFilteredMap?.get(originalIdx);
+      if (Number.isInteger(filteredIdx) && filteredIdx >= 0 && filteredIdx < playable.length) {
+        idxFiltered = filteredIdx;
+      } else {
+        // Fallback: ищем по совпадению
+        const found = playable.findIndex(x => x.i === originalIdx);
+        if (found >= 0) idxFiltered = found;
+      }
     }
+
+    // Сохраняем исходный индекс для синхронизации UI
+    w.playingTrackOriginalIdx = originalIdx;
 
     // Контекст «Избранного» - использовать локальные переменные, а не window
     playingAlbumKey = SPECIAL_FAVORITES_KEY;
