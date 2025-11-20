@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9cb8d4547aac9b3fecafc420ff1831f345261909.idx
-│   │       ├── pack-9cb8d4547aac9b3fecafc420ff1831f345261909.pack
-│   │       └── pack-9cb8d4547aac9b3fecafc420ff1831f345261909.rev
+│   │       ├── pack-e1611c5e72a3fb4b12e9ebb012b21e38599cce0d.idx
+│   │       ├── pack-e1611c5e72a3fb4b12e9ebb012b21e38599cce0d.pack
+│   │       └── pack-e1611c5e72a3fb4b12e9ebb012b21e38599cce0d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -256,7 +256,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-20 19:44:40 UTC
+Сгенерировано: 2025-11-20 19:46:19 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4057,9 +4057,21 @@ jobs:
     playingShuffleIndex = 0;
   }
   async function playFromPlaybackAlbum(idx, doPlay) {
-    currentTrack = idx;
-    playingTrack = idx;
-
+    // Для избранного используем оригинальный индекс для UI, но правильный индекс для воспроизведения
+    if (playingAlbumKey === SPECIAL_FAVORITES_KEY && w.favModelToFilteredMap) {
+      const filteredIdx = w.favModelToFilteredMap.get(idx);
+      if (Number.isFinite(filteredIdx) && filteredIdx >= 0) {
+        currentTrack = idx; // Сохраняем исходный индекс для UI
+        playingTrack = filteredIdx; // Используем правильный индекс для воспроизведения
+        w.playingTrackOriginalIdx = idx; // Для синхронизации UI
+      } else {
+        currentTrack = idx;
+        playingTrack = idx;
+      }
+    } else {
+      currentTrack = idx;
+      playingTrack = idx;
+    }
     const forceNoLegacy = (window.__useNewPlayerCore && (localStorage.getItem('noLegacyAudio') === '1'));
     if (window.__useNewPlayerCore && !window.playerCore) {
       const ready = await ensurePlayerCoreReady({ timeoutMs: 1800 });
