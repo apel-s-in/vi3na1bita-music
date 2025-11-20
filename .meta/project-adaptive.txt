@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e1611c5e72a3fb4b12e9ebb012b21e38599cce0d.idx
-│   │       ├── pack-e1611c5e72a3fb4b12e9ebb012b21e38599cce0d.pack
-│   │       └── pack-e1611c5e72a3fb4b12e9ebb012b21e38599cce0d.rev
+│   │       ├── pack-5c843749686f230b944a78883d3c9a0c1e1a70a0.idx
+│   │       ├── pack-5c843749686f230b944a78883d3c9a0c1e1a70a0.pack
+│   │       └── pack-5c843749686f230b944a78883d3c9a0c1e1a70a0.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -256,7 +256,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-20 19:46:19 UTC
+Сгенерировано: 2025-11-20 20:36:33 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3015,260 +3015,166 @@ jobs:
       nodes.forEach(n => { if (n !== keep) n.remove(); });
     } catch {}
   }
-  async function showTrack(n, doPlay) {
-    // Если включён новый движок — всегда ждём адаптер и НЕ переходим на legacy <audio>
-    if (window.__useNewPlayerCore && !window.playerCore) {
-      const ready = await ensurePlayerCoreReady({ timeoutMs: 1800 });
-      if (!ready) {
-        try { NotificationSystem.info('Инициализация плеера...'); } catch {}
-        return;
-      }
+async function showTrack(n, doPlay) {
+  if (window.__useNewPlayerCore && !window.playerCore) {
+    const ready = await ensurePlayerCoreReady({ timeoutMs: 1800 });
+    if (!ready) {
+      NotificationSystem.warning('Плеер не отвечает, используем базовый режим');
+      localStorage.setItem('newPlayerCore', '0');
+      window.__useNewPlayerCore = false;
     }
-
-    // Ветка нового плеера: не используем <audio> как источник звука
-    if (window.__useNewPlayerCore && window.playerCore) {
-      try {
-        // Отключим старый <audio>, если он был активен (во избежание двойного звука)
-        try { stopAndCleanupAudio(getCurrentAudio()); __currentAudio = null; } catch {}
-
-        // Обнулим держатель плеера (UI будет восстановлен ниже)
-        const holder = document.getElementById('now-playing');
-        if (holder && holder.firstChild) holder.innerHTML = '';
-
-        // Актуализируем «контекст» текущего альбома для UI
-        playingAlbumKey = currentAlbumKey;
-        playingTracks = (config && Array.isArray(config.tracks)) ? config.tracks : null;
-        playingArtist = (config && config.artist) ? config.artist : '';
-        playingAlbumName = (config && config.albumName) ? config.albumName : '';
-        playingCover = (Array.isArray(coverGalleryArr) && coverGalleryArr[0])
-          ? (coverGalleryArr[0].formats?.full || coverGalleryArr[0].src || 'img/logo.png')
-          : 'img/logo.png';
-        if (shuffleMode) createPlayingShuffledPlaylist();
-
-        // Курсоры и перерисовка списка (вставит #lyricsplayerblock при необходимости)
-        currentTrack = n;
-        playingTrack = n;
-        buildTrackList();
-
-        // Привязываем события нового плеера → UI (однократно)
-        ensurePlayerCoreUiBindings();
-
-        // Готовим плейлист для нового плеера
-        const payload = __buildPlayerCorePayload();
-        if (payload) {
-          // Всегда обновляем плейлист и индекс (без автозапуска если doPlay=false)
-          try {
-            window.playerCore.setPlaylist(payload.tracks, n, payload.meta);
-            // Состояния режимов
-            try { window.playerCore.setShuffle(!!window.shuffleMode); } catch {}
-            try { window.playerCore.setRepeat(!!window.repeatMode); } catch {}
-            try {
-              const likedIdx = (playingAlbumKey && playingAlbumKey !== SPECIAL_FAVORITES_KEY) ? getLikedForAlbum(playingAlbumKey) : [];
-              window.playerCore.setFavoritesOnly(!!window.favoritesOnlyMode, likedIdx);
-            } catch {}
-          } catch {}
-        }
-
-        // Запуск/резюмирование только если явно doPlay === true
-        if (doPlay) {
-          try { window.playerCore.play(n); } catch {}
-        }
-
-        // Лирика и UI
-        try {
-          const pcfg = getPlayerConfig();
-          const tr = pcfg?.tracks?.[n];
-          if (tr && tr.lyrics) loadLyrics(tr.lyrics);
-        } catch {}
-        restorePlayerButtonsState();
-        applyLyricsViewMode();
-        initializePlayerControls();
-        applyMiniModeUI();
-        updateMiniNowHeader();
-        updateNextUpLabel();
-        updatePlayPauseIcon();
-
-        return; // Ветка нового плеера завершена
-      } catch (e) {
-        console.warn('showTrack via PlayerCore failed, falling back to <audio>', e);
-        // Если что-то пошло не так — мягкий откат на старую логику ниже
-      }
-    }
-
-    // СТАРАЯ ВЕТКА (<audio>) — без изменений, для совместимости и когда фича-флаг выключен
-    stopAndCleanupAudio(getCurrentAudio());
-    __currentAudio = null;
-
-    const holder = document.getElementById('now-playing');
-    if (holder && holder.firstChild) holder.innerHTML = '';
-
-    playingAlbumKey = currentAlbumKey;
-    playingTracks = (config && Array.isArray(config.tracks)) ? config.tracks : null;
-    playingArtist = (config && config.artist) ? config.artist : '';
-    playingAlbumName = (config && config.albumName) ? config.albumName : '';
-    playingCover = (Array.isArray(coverGalleryArr) && coverGalleryArr[0]) ? (coverGalleryArr[0].formats?.full || coverGalleryArr[0].src || 'img/logo.png') : 'img/logo.png';
-    if (shuffleMode) createPlayingShuffledPlaylist();
-
-    currentTrack = n;
-    playingTrack = n;
-    buildTrackList();
-
-    const audio = document.getElementById('audio');
-    if (!audio) return;
-    __currentAudio = audio;
-
-    try {
-      audio.muted = false;
-      const saved = parseFloat(localStorage.getItem('playerVolume'));
-      audio.volume = Number.isFinite(saved) && saved > 0 ? saved : 1;
-    } catch {}
-
-    if (doPlay) {
-      audio.currentTime = 0;
-      const tryPlay = () => {
-        const p = audio.play();
-        if (p && p.catch) p.catch(()=>{});
-        // Фейд‑ин 180 мс
-        try {
-          const targetVol = Math.max(0, Math.min(1, (parseFloat(localStorage.getItem('playerVolume')) || audio.volume || 1)));
-          if (targetVol > 0 && !audio.muted) {
-            const prev = targetVol;
-            audio.volume = 0.001;
-            const t0 = performance.now(), dur = 180;
-            const step = (ts) => {
-              const k = Math.min(1, (ts - t0) / dur);
-              audio.volume = prev * k;
-              if (k < 1) requestAnimationFrame(step);
-            };
-            requestAnimationFrame(step);
-          }
-        } catch {}
-      };
-      if (isNaN(audio.duration) || !isFinite(audio.duration)) {
-        audio.addEventListener('canplay', tryPlay, { once: true }); setTimeout(tryPlay, 200);
-      } else { tryPlay(); }
-    }
-
-    applyMiniModeUI();
-    updateMiniNowHeader();
-    updateNextUpLabel();
   }
-  function renderLyricsBlock() {
-    const block = document.getElementById('lyricsplayerblock') || document.getElementById('now-playing');
-    if (!block) return;
-
-    block.innerHTML = `
-      <div class="mini-now" id="mini-now" onclick="openPlayingAlbumFromMini(event)">
-        <span class="tnum" id="mini-now-num">--.</span>
-        <span class="track-title" id="mini-now-title">—</span>
-        <img src="img/star2.png" class="like-star" id="mini-now-star"
-             alt="звезда" title="Добавить в понравившиеся"
-             onclick="toggleLikePlayingFromMini(event)"/>
-      </div>
-      <div id="lyrics-window" class="lyrics-normal">
-        <div class="lyrics-animated-bg${animationEnabled ? ' active' : ''}"></div>
-        <div class="lyrics-scroll" id="lyrics"></div>
-      </div>
-      <div class="player-progress-wrapper">
-        <div class="player-progress-bar" id="player-progress-bar"><div class="player-progress-fill" id="player-progress-fill"><div class="player-progress-handle"></div></div></div>
-      </div>
-      <div class="audio-wrapper"><div id="audio-slot"></div></div>
-      <div class="player-controls" role="group" aria-label="Управление воспроизведением">
-        <div class="player-controls-row">
-          <span class="time-in-controls" id="time-elapsed">00:00</span>
-          <button class="player-control-btn" onclick="previousTrack()" title="Предыдущий трек (P)" aria-label="Предыдущий трек"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 5L4 12l7 7V5zm9 0v14l-7-7 7-7z"/></svg></button>
-          <button class="player-control-btn main" onclick="togglePlayPause()" title="Воспроизведение/Пауза (K/Пробел)" aria-label="Воспроизведение/Пауза"><svg id="play-pause-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
-          <button class="player-control-btn" onclick="stopPlayback()" title="Стоп (X)" aria-label="Стоп"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"/></svg></button>
-          <button class="player-control-btn" onclick="nextTrack()" title="Следующий трек (N)" aria-label="Следующий трек"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 5l7 7-7 7V5zM4 5v14l7-7-7-7z"/></svg></button>
-          <span class="time-in-controls" id="time-remaining">--:--</span>
-        </div>
-        <div class="player-controls-row">
-          <button class="player-control-btn" id="mute-btn" onclick="toggleMute()" title="Без звука (M)" aria-label="Без звука"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg></button>
-          <button class="player-control-btn${shuffleMode?' active':''}" id="shuffle-btn" onclick="toggleShuffle()" title="Случайный порядок (U)" aria-label="Shuffle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17h2.735a4 4 0 003.43-1.942l3.67-6.116A4 4 0 0116.265 7H21m0 0l-3-3m3 3l-3 3"/><path d="M3 7h2.735a4 4 0 013.43 1.942l3.67 6.116A4 4 0 0016.265 17H21m0 0l-3 3m3-3l-3-3"/></svg></button>
-          <button class="player-control-btn animation-btn${animationEnabled?' animation-active':''}" id="animation-btn" onclick="toggleAnimation()" title="Анимация лирики (A)" aria-label="Анимация">A</button>
-          <button class="player-control-btn bit-btn${bitEnabled?' bit-active':''}" id="bit-btn" onclick="toggleBit()" title="Пульсация логотипа (B)" aria-label="Пульсация">B</button>
-          <button class="player-control-btn${repeatMode?' repeat-active':''}" id="repeat-btn" onclick="toggleRepeat()" title="Повтор трека (R)" aria-label="Повтор"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg></button>
-          <button class="sleep-timer-btn" id="sleep-timer-btn" onclick="toggleSleepMenu()" title="Таймер сна (T)" aria-label="Таймер сна">
-            <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"></circle><path d="M12 7v5l3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-            <span class="sleep-timer-badge" id="sleep-timer-badge" style="display:none;">0</span>
-            <div class="sleep-menu" id="sleep-menu">
-              <div class="sleep-menu-item" onclick="setSleepTimer('off')">Выключить</div>
-              <div class="sleep-menu-item" onclick="setSleepTimer(15)">15 минут</div>
-              <div class="sleep-menu-item" onclick="setSleepTimer(30)">30 минут</div>
-              <div class="sleep-menu-item" onclick="setSleepTimer(60)">60 минут</div>
-              <div class="sleep-menu-item" onclick="showTimePickerForSleep()">К времени...</div>
-            </div>
-          </button>
-          <button class="player-control-btn${favoritesOnlyMode?' favorites-active':''}" id="favorites-btn" onclick="toggleFavoritesOnly()" title="Только избранные (F)" aria-label="Избранные"><img src="img/${favoritesOnlyMode?'star.png':'star2.png'}" alt="★" id="favorites-btn-icon"/></button>
-        </div>
-      </div>
-      <div class="volume-control-wrapper">
-        <div class="volume-track"></div><div class="volume-fill" id="volume-fill"></div>
-        <input type="range" class="volume-slider" id="volume-slider" min="0" max="100" value="100" aria-label="Громкость" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100">
-      </div>
-      <div class="player-buttons-wrapper">
-        <button class="lyrics-toggle-btn lyrics-normal" onclick="toggleLyricsView()" aria-label="Скрыть лирику" title="Скрыть лирику (Y)"><span class="lyrics-toggle-btn-visual">Т</span></button>
-        <div class="player-extra-buttons-row">
-          <button class="karaoke-btn" onclick="openLyricsModal()">ТЕКСТ</button>
-          <a class="player-download-btn" href="#" onclick="openDownloadModal(event)">СКАЧАТЬ ПЕСНЮ</a>
-          <button id="eco-btn" class="eco-btn" onclick="toggleEco()" aria-pressed="false" title="Ультра‑эконом: минимальные обновления UI в фоне">
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M13 3L4 14h6l-1 7 9-11h-6l1-7z"></path>
-            </svg>
-            <span class="eco-label">ЭКО</span>
-          </button>
-        </div>
-      </div>
-    `;
-
-    // Вставляем отсутствующий блок "Следующая" для мини-режима (если не создан)
-    (function ensureNextUpBlock(){
+  if (window.__useNewPlayerCore && window.playerCore) {
+    try {
+      try { stopAndCleanupAudio(getCurrentAudio()); __currentAudio = null; } catch {}
+      const holder = document.getElementById('now-playing');
+      if (holder && holder.firstChild) holder.innerHTML = '';
+      playingAlbumKey = currentAlbumKey;
+      playingTracks = (config && Array.isArray(config.tracks)) ? config.tracks : null;
+      playingArtist = (config && config.artist) ? config.artist : '';
+      playingAlbumName = (config && config.albumName) ? config.albumName : '';
+      playingCover = (Array.isArray(coverGalleryArr) && coverGalleryArr[0])
+        ? (coverGalleryArr[0].formats?.full || coverGalleryArr[0].src || 'img/logo.png')
+        : 'img/logo.png';
+      if (shuffleMode) createPlayingShuffledPlaylist();
+      currentTrack = n;
+      playingTrack = n;
+      buildTrackList();
+      ensurePlayerCoreUiBindings();
+      const payload = __buildPlayerCorePayload();
+      if (payload) {
+        window.playerCore.setPlaylist(payload.tracks, n, payload.meta);
+        window.playerCore.setShuffle(!!window.shuffleMode);
+        window.playerCore.setRepeat(!!window.repeatMode);
+        const likedIdx = (playingAlbumKey && playingAlbumKey !== SPECIAL_FAVORITES_KEY) 
+          ? getLikedForAlbum(playingAlbumKey) 
+          : [];
+        window.playerCore.setFavoritesOnly(!!window.favoritesOnlyMode, likedIdx);
+      }
+      if (doPlay) {
+        window.playerCore.play(n);
+      }
       try {
-        if (!document.getElementById('next-up')) {
-          const el = document.createElement('div');
-          el.className = 'next-up';
-          el.id = 'next-up';
-          el.innerHTML = '<span class="label">Далее:</span><span class="title"></span>';
-          // Размещаем "Далее" ПОД мини‑плеером — сразу после полосы громкости
-          const vol = block.querySelector('.volume-control-wrapper');
-          if (vol && vol.parentNode) {
-            if (vol.nextSibling) vol.parentNode.insertBefore(el, vol.nextSibling);
-            else vol.parentNode.appendChild(el);
-          } else {
-            block.appendChild(el);
-          }
-        }
-      } catch {}
-    })();
-
-    // Ветка нового плеера: НЕ создаём и не используем <audio>, только UI
-    if (window.__useNewPlayerCore) {
-      try {
-        // Если ядро ещё не загружено — мягко инициируем адаптер
-        if (!window.playerCore) {
-          try {
-            if (!window.__pcAdapterLoaded) {
-              window.__pcAdapterLoaded = true;
-              import('./scripts/player-adapter.js').catch(()=>{});
-            }
-          } catch {}
-        }
         const pcfg = getPlayerConfig();
-        const tr = pcfg?.tracks?.[playingTrack];
+        const tr = pcfg?.tracks?.[n];
         if (tr && tr.lyrics) loadLyrics(tr.lyrics);
       } catch {}
       restorePlayerButtonsState();
       applyLyricsViewMode();
       initializePlayerControls();
       applyMiniModeUI();
-      updateNextUpLabel();
       updateMiniNowHeader();
+      updateNextUpLabel();
       updatePlayPauseIcon();
-      dedupePlayerBlock();
       return;
+    } catch (e) {
+      console.warn('showTrack via PlayerCore failed, falling back to <audio>', e);
+      localStorage.setItem('newPlayerCore', '0');
+      window.__useNewPlayerCore = false;
     }
-
-    // Старая ветка: создание/подготовка <audio>
+  }
+  stopAndCleanupAudio(getCurrentAudio());
+  __currentAudio = null;
+  const holder = document.getElementById('now-playing');
+  if (holder && holder.firstChild) holder.innerHTML = '';
+  playingAlbumKey = currentAlbumKey;
+  playingTracks = (config && Array.isArray(config.tracks)) ? config.tracks : null;
+  playingArtist = (config && config.artist) ? config.artist : '';
+  playingAlbumName = (config && config.albumName) ? config.albumName : '';
+  playingCover = (Array.isArray(coverGalleryArr) && coverGalleryArr[0]) ? (coverGalleryArr[0].formats?.full || coverGalleryArr[0].src || 'img/logo.png') : 'img/logo.png';
+  if (shuffleMode) createPlayingShuffledPlaylist();
+  currentTrack = n;
+  playingTrack = n;
+  buildTrackList();
+  const audio = document.getElementById('audio');
+  if (!audio) return;
+  __currentAudio = audio;
+  try {
+    audio.muted = false;
+    const saved = parseFloat(localStorage.getItem('playerVolume'));
+    audio.volume = Number.isFinite(saved) && saved > 0 ? saved : 1;
+  } catch {}
+  if (doPlay) {
+    audio.currentTime = 0;
+    const tryPlay = () => {
+      const p = audio.play();
+      if (p && p.catch) p.catch(()=>{});
+    };
+    if (isNaN(audio.duration) || !isFinite(audio.duration)) {
+      audio.addEventListener('canplay', tryPlay, { once: true }); setTimeout(tryPlay, 200);
+    } else { tryPlay(); }
+  }
+  applyMiniModeUI();
+  updateMiniNowHeader();
+  updateNextUpLabel();
+}
+function renderLyricsBlock() {
+  const block = document.getElementById('lyricsplayerblock') || document.getElementById('now-playing');
+  if (!block) return;
+  block.innerHTML = `
+    <div class="mini-now" id="mini-now" onclick="openPlayingAlbumFromMini(event)">
+      <span class="tnum" id="mini-now-num">--.</span>
+      <span class="track-title" id="mini-now-title">—</span>
+      <img src="img/star2.png" class="like-star" id="mini-now-star"
+           alt="звезда" title="Добавить в понравившиеся"
+           onclick="toggleLikePlayingFromMini(event)"/>
+    </div>
+    <div id="lyrics-window" class="lyrics-normal">
+      <div class="lyrics-animated-bg${animationEnabled ? ' active' : ''}"></div>
+      <div class="lyrics-scroll" id="lyrics"></div>
+    </div>
+    <div class="player-progress-wrapper">
+      <div class="player-progress-bar" id="player-progress-bar"><div class="player-progress-fill" id="player-progress-fill"><div class="player-progress-handle"></div></div></div>
+    </div>
+    <div class="audio-wrapper"><div id="audio-slot"></div></div>
+    <div class="player-controls" role="group" aria-label="Управление воспроизведением">
+      <div class="player-controls-row">
+        <span class="time-in-controls" id="time-elapsed">00:00</span>
+        <button class="player-control-btn" onclick="previousTrack()" title="Предыдущий трек (P)" aria-label="Предыдущий трек"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 5L4 12l7 7V5zm9 0v14l-7-7 7-7z"/></svg></button>
+        <button class="player-control-btn main" onclick="togglePlayPause()" title="Воспроизведение/Пауза (K/Пробел)" aria-label="Воспроизведение/Пауза"><svg id="play-pause-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+        <button class="player-control-btn" onclick="stopPlayback()" title="Стоп (X)" aria-label="Стоп"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"/></svg></button>
+        <button class="player-control-btn" onclick="nextTrack()" title="Следующий трек (N)" aria-label="Следующий трек"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 5l7 7-7 7V5zM4 5v14l7-7-7-7z"/></svg></button>
+        <span class="time-in-controls" id="time-remaining">--:--</span>
+      </div>
+      <div class="player-controls-row">
+        <button class="player-control-btn" id="mute-btn" onclick="toggleMute()" title="Без звука (M)" aria-label="Без звука"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg></button>
+        <button class="player-control-btn${shuffleMode?' active':''}" id="shuffle-btn" onclick="toggleShuffle()" title="Случайный порядок (U)" aria-label="Shuffle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17h2.735a4 4 0 003.43-1.942l3.67-6.116A4 4 0 0116.265 7H21m0 0l-3-3m3 3l-3 3"/><path d="M3 7h2.735a4 4 0 013.43 1.942l3.67 6.116A4 4 0 0016.265 17H21m0 0l-3 3m3-3l-3-3"/></svg></button>
+        <button class="player-control-btn animation-btn${animationEnabled?' animation-active':''}" id="animation-btn" onclick="toggleAnimation()" title="Анимация лирики (A)" aria-label="Анимация">A</button>
+        <button class="player-control-btn bit-btn${bitEnabled?' bit-active':''}" id="bit-btn" onclick="toggleBit()" title="Пульсация логотипа (B)" aria-label="Пульсация">B</button>
+        <button class="player-control-btn${repeatMode?' repeat-active':''}" id="repeat-btn" onclick="toggleRepeat()" title="Повтор трека (R)" aria-label="Повтор"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg></button>
+        <button class="sleep-timer-btn" id="sleep-timer-btn" onclick="toggleSleepMenu()" title="Таймер сна (T)" aria-label="Таймер сна">
+          <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"></circle><path d="M12 7v5l3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          <span class="sleep-timer-badge" id="sleep-timer-badge" style="display:none;">0</span>
+          <div class="sleep-menu" id="sleep-menu">
+            <div class="sleep-menu-item" onclick="setSleepTimer('off')">Выключить</div>
+            <div class="sleep-menu-item" onclick="setSleepTimer(15)">15 минут</div>
+            <div class="sleep-menu-item" onclick="setSleepTimer(30)">30 минут</div>
+            <div class="sleep-menu-item" onclick="setSleepTimer(60)">60 минут</div>
+            <div class="sleep-menu-item" onclick="showTimePickerForSleep()">К времени...</div>
+          </div>
+        </button>
+        <button class="player-control-btn${favoritesOnlyMode?' favorites-active':''}" id="favorites-btn" onclick="toggleFavoritesOnly()" title="Только избранные (F)" aria-label="Избранные"><img src="img/${favoritesOnlyMode?'star.png':'star2.png'}" alt="★" id="favorites-btn-icon"/></button>
+      </div>
+    </div>
+    <div class="volume-control-wrapper">
+      <div class="volume-track"></div><div class="volume-fill" id="volume-fill"></div>
+      <input type="range" class="volume-slider" id="volume-slider" min="0" max="100" value="100" aria-label="Громкость" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100">
+    </div>
+    <div class="player-buttons-wrapper">
+      <button class="lyrics-toggle-btn lyrics-normal" onclick="toggleLyricsView()" aria-label="Скрыть лирику" title="Скрыть лирику (Y)"><span class="lyrics-toggle-btn-visual">Т</span></button>
+      <div class="player-extra-buttons-row">
+        <button class="karaoke-btn" onclick="openLyricsModal()">ТЕКСТ</button>
+        <a class="player-download-btn" href="#" onclick="openDownloadModal(event)">СКАЧАТЬ ПЕСНЮ</a>
+        <button id="eco-btn" class="eco-btn" onclick="toggleEco()" aria-pressed="false" title="Ультра‑эконом: минимальные обновления UI в фоне">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M13 3L4 14h6l-1 7 9-11h-6l1-7z"></path>
+          </svg>
+          <span class="eco-label">ЭКО</span>
+        </button>
+      </div>
+    </div>
+  `;
+  if (!(window.__useNewPlayerCore && window.playerCore)) {
     const existingAudio = document.getElementById('audio');
     const slot = document.getElementById('audio-slot');
     let audioEl = existingAudio;
@@ -3292,82 +3198,19 @@ jobs:
       slot.appendChild(audioEl);
     }
     __currentAudio = audioEl;
-
-    const pc = getPlayerConfig();
-    const tr = pc?.tracks?.[playingTrack];
-    if (!tr) return;
-
-    audioEl = document.getElementById('audio');
-    if (__currentAudio && __currentAudio !== audioEl) stopAndCleanupAudio(__currentAudio);
-    __currentAudio = audioEl;
-    audioEl.src = tr.audio;
-
     attachPlaybackStateListeners();
-
-    try {
-      const eb = document.getElementById('eco-btn');
-      if (eb) {
-        eb.classList.toggle('eco-active', ultraEcoEnabled);
-        if (!eb.__ecoDbl) {
-          eb.__ecoDbl = true;
-          eb.addEventListener('dblclick', () => {
-            const cur = parseInt(localStorage.getItem('ecoUiIntervalSec') || '5', 10);
-            const val = prompt('Интервал обновления UI в ЭКО (секунды, 2–60):', String(cur));
-            const n = parseInt(val || '5', 10);
-            if (Number.isFinite(n) && n >= 2 && n <= 60) {
-              localStorage.setItem('ecoUiIntervalSec', String(n));
-              if (ultraEcoEnabled) { __uiUpdateMinIntervalMs = n * 1000; __progressThrottleMs = n * 1000; }
-              NotificationSystem.success(`ЭКО: интервал ${n} с`);
-            }
-          });
-        }
-      }
-    } catch {}
-
-    loadLyrics(tr.lyrics);
-    setupMediaSessionForPlayback();
-    restorePlayerButtonsState();
-    applyLyricsViewMode();
-    initializePlayerControls();
-    prefetchNextTrackAssetsForPlayback();
-
     detachAudioEventListeners(audioEl);
     attachAudioEventListeners(audioEl);
-
-    applyMiniModeUI();
-    updateNextUpLabel();
-    updateMiniNowHeader();
-
-    // Опциональный setSinkId
-    try {
-      const audioEl2 = document.getElementById('audio');
-      const row2 = document.querySelectorAll('.player-controls-row')[1];
-      if (audioEl2 && row2 && typeof audioEl2.setSinkId === 'function' && !document.getElementById('sink-btn')) {
-        const btn = document.createElement('button');
-        btn.className = 'player-control-btn';
-        btn.id = 'sink-btn';
-        btn.title = 'Выбрать аудиовыход';
-        btn.setAttribute('aria-label', 'Выбрать аудиовыход');
-        btn.textContent = 'OUT';
-        btn.onclick = async () => {
-          try {
-            const devices = (await navigator.mediaDevices?.enumerateDevices?.()) || [];
-            const outs = devices.filter(d => d.kind === 'audiooutput');
-            if (!outs.length) { NotificationSystem.info('Аудиовыходы недоступны'); return; }
-            const names = outs.map((d, i) => `${i+1}. ${d.label || 'Динамики'}`);
-            const pick = prompt(`Выберите устройство вывода (номер):\n${names.join('\n')}`, '1');
-            const idx = (parseInt(pick,10) || 1) - 1;
-            const dev = outs[Math.max(0, Math.min(outs.length - 1, idx))];
-            await audioEl2.setSinkId(dev.deviceId);
-            NotificationSystem.success('Аудиовыход переключён');
-          } catch { NotificationSystem.error('Не удалось переключить аудиовыход'); }
-        };
-        row2.insertBefore(btn, row2.firstChild);
-      }
-    } catch {}
-
-    dedupePlayerBlock();
   }
+  restorePlayerButtonsState();
+  applyLyricsViewMode();
+  initializePlayerControls();
+  applyMiniModeUI();
+  updateNextUpLabel();
+  updateMiniNowHeader();
+  updatePlayPauseIcon();
+  dedupePlayerBlock();
+}
 
   /* Лирика */
   let lyricsViewMode = 'normal';
@@ -3844,11 +3687,43 @@ jobs:
     } catch {}
   }
 
-  async function togglePlayPause() {
-    if (window.PlayerControls && typeof window.PlayerControls.togglePlayPause === 'function') {
-      return window.PlayerControls.togglePlayPause();
+async function togglePlayPause() {
+  if (window.__useNewPlayerCore && window.playerCore) {
+    try {
+      if (window.playerCore.isPlaying?.()) {
+        window.playerCore.pause();
+      } else {
+        if (!window.playerCore.getDuration?.() || window.playerCore.getDuration() <= 0) {
+          const payload = __buildPlayerCorePayload();
+          if (payload) {
+            window.playerCore.setPlaylist(payload.tracks, payload.index, payload.meta);
+            window.playerCore.setShuffle(!!window.shuffleMode);
+            window.playerCore.setRepeat(!!window.repeatMode);
+            const likedIdx = (playingAlbumKey && playingAlbumKey !== SPECIAL_FAVORITES_KEY) 
+              ? getLikedForAlbum(playingAlbumKey) 
+              : [];
+            window.playerCore.setFavoritesOnly(!!window.favoritesOnlyMode, likedIdx);
+          }
+        }
+        window.playerCore.play();
+      }
+      setTimeout(updatePlayPauseIcon, 0);
+      return;
+    } catch (e) {
+      console.warn('togglePlayPause via PlayerCore failed, falling back to <audio>', e);
+      localStorage.setItem('newPlayerCore', '0');
+      window.__useNewPlayerCore = false;
     }
   }
+  const audio = document.getElementById('audio');
+  if (!audio) return;
+  if (audio.paused) {
+    audio.play().catch(()=>{});
+  } else {
+    audio.pause();
+  }
+  updatePlayPauseIcon();
+}
 
   function updatePlayPauseIcon() {
     const icon = document.getElementById('play-pause-icon');
