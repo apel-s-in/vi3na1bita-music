@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5c843749686f230b944a78883d3c9a0c1e1a70a0.idx
-│   │       ├── pack-5c843749686f230b944a78883d3c9a0c1e1a70a0.pack
-│   │       └── pack-5c843749686f230b944a78883d3c9a0c1e1a70a0.rev
+│   │       ├── pack-1f9f3e81fbc0115ad26a503644ecb35d20e1f2fa.idx
+│   │       ├── pack-1f9f3e81fbc0115ad26a503644ecb35d20e1f2fa.pack
+│   │       └── pack-1f9f3e81fbc0115ad26a503644ecb35d20e1f2fa.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -256,7 +256,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-20 20:36:33 UTC
+Сгенерировано: 2025-11-20 20:44:49 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3931,161 +3931,123 @@ async function togglePlayPause() {
     if (available.includes(playingTrack)) playingShuffledPlaylist.unshift(playingTrack);
     playingShuffleIndex = 0;
   }
-  async function playFromPlaybackAlbum(idx, doPlay) {
-    // Для избранного используем оригинальный индекс для UI, но правильный индекс для воспроизведения
-    if (playingAlbumKey === SPECIAL_FAVORITES_KEY && w.favModelToFilteredMap) {
-      const filteredIdx = w.favModelToFilteredMap.get(idx);
-      if (Number.isFinite(filteredIdx) && filteredIdx >= 0) {
-        currentTrack = idx; // Сохраняем исходный индекс для UI
-        playingTrack = filteredIdx; // Используем правильный индекс для воспроизведения
-        w.playingTrackOriginalIdx = idx; // Для синхронизации UI
-      } else {
-        currentTrack = idx;
-        playingTrack = idx;
-      }
+async function playFromPlaybackAlbum(idx, doPlay) {
+  // Для избранного используем оригинальный индекс для UI, но правильный индекс для воспроизведения
+  if (playingAlbumKey === SPECIAL_FAVORITES_KEY && window.favModelToFilteredMap) {
+    const filteredIdx = window.favModelToFilteredMap.get(idx);
+    if (Number.isFinite(filteredIdx) && filteredIdx >= 0) {
+      currentTrack = idx; // Сохраняем исходный индекс для UI
+      playingTrack = filteredIdx; // Используем правильный индекс для воспроизведения
+      window.playingTrackOriginalIdx = idx; // Для синхронизации UI
     } else {
       currentTrack = idx;
       playingTrack = idx;
     }
-    const forceNoLegacy = (window.__useNewPlayerCore && (localStorage.getItem('noLegacyAudio') === '1'));
-    if (window.__useNewPlayerCore && !window.playerCore) {
-      const ready = await ensurePlayerCoreReady({ timeoutMs: 1800 });
-      if (!ready && forceNoLegacy) {
-        try { NotificationSystem.info('Инициализация плеера...'); } catch {}
-        return;
-      }
-    }
-
-    // Ветка нового ядра плеера: никакого <audio>, только PlayerCore
-    if (window.__useNewPlayerCore && window.playerCore) {
-      // На всякий — заглушим старый <audio>, если он где‑то остался
-      try { stopAndCleanupAudio(getCurrentAudio()); __currentAudio = null; } catch {}
-
-      // Гарантируем наличие блока плеера
-      if (!document.getElementById('lyricsplayerblock')) {
-        const holder = document.getElementById('now-playing');
-        if (holder) {
-          holder.innerHTML = '<div class="lyrics-player-block" id="lyricsplayerblock"></div>';
-          renderLyricsBlock();
+  } else {
+    currentTrack = idx;
+    playingTrack = idx;
+  }
+  
+  const forceNoLegacy = (window.__useNewPlayerCore && (localStorage.getItem('noLegacyAudio') === '1'));
+  
+  if (window.__useNewPlayerCore && window.playerCore && !forceNoLegacy) {
+    try {
+      // Если ядро не инициализировано - подготовим плейлист
+      if (!window.playerCore.getPlaylistSnapshot?.().length) {
+        const payload = __buildPlayerCorePayload();
+        if (payload) {
+          window.playerCore.setPlaylist(payload.tracks, payload.index, payload.meta);
+          window.playerCore.setShuffle(!!window.shuffleMode);
+          window.playerCore.setRepeat(!!window.repeatMode);
+          const likedIdx = (playingAlbumKey && playingAlbumKey !== SPECIAL_FAVORITES_KEY) 
+            ? getLikedForAlbum(playingAlbumKey) 
+            : [];
+          window.playerCore.setFavoritesOnly(!!window.favoritesOnlyMode, likedIdx);
         }
       }
-
-      // В представлении «Избранное» — подсветим строку и перенесём блок под неё
-      if (playingAlbumKey === SPECIAL_FAVORITES_KEY && viewMode === 'favorites') {
-        const origIdx = (Array.isArray(window.favPlayableMap) && Number.isInteger(window.favPlayableMap[idx]))
-          ? window.favPlayableMap[idx] : idx;
-        updateFavoritesCurrentRow(origIdx);
-        const list = document.getElementById('track-list');
-        const lp = document.getElementById('lyricsplayerblock');
-        const rows = list ? list.querySelectorAll('.track') : [];
-        const row = rows[origIdx];
-        if (list && lp && row) {
-          if (row.nextSibling) row.parentNode.insertBefore(lp, row.nextSibling);
-          else row.parentNode.appendChild(lp);
-        }
+      
+      // Применяем специфику "ИЗБРАННОГО"
+      if (playingAlbumKey === SPECIAL_FAVORITES_KEY) {
+        // В "ИЗБРАННОМ" сначала синхронизируем состояние избранного
+        window.FavoritesData?.migrateFavoritesKeys?.();
+        // Получаем актуальный список для воспроизведения
+        const filteredIdx = window.favModelToFilteredMap?.get(idx) ?? idx;
+        window.playerCore.play(filteredIdx);
+      } else {
+        window.playerCore.play(playingTrack);
       }
-      dedupePlayerBlock();
-
-      // Привяжем события ядра к UI (однократно)
-      ensurePlayerCoreUiBindings();
-
-      // Собираем плейлист из текущего контекста (для «Избранного» — из playingTracks)
-      const payload = __buildPlayerCorePayload();
-      if (payload) {
-        try {
-          // Полный плейлист с нужным индексом
-          window.playerCore.setPlaylist(payload.tracks, idx, payload.meta);
-
-          // Режимы
-          try { window.playerCore.setShuffle(!!window.shuffleMode); } catch {}
-          try { window.playerCore.setRepeat(!!window.repeatMode); } catch {}
-
-          // Ограничение набора треков:
-          // - В «Избранном»: плейлист уже состоит ТОЛЬКО из активных избранных → доп. фильтр не нужен
-          // - В обычном альбомном режиме: используем режим «только избранные», если он включён
-          if (playingAlbumKey === SPECIAL_FAVORITES_KEY) {
-            window.playerCore.setFavoritesOnly(false, []);
-          } else {
-            const likedIdx = (playingAlbumKey && playingAlbumKey !== SPECIAL_FAVORITES_KEY) ? getLikedForAlbum(playingAlbumKey) : [];
-            window.playerCore.setFavoritesOnly(!!window.favoritesOnlyMode, likedIdx);
-          }
-        } catch {}
-      }
-
+      
       if (doPlay) {
-        try { window.playerCore.play(idx); } catch {}
+        window.playerCore.play();
       }
-
-      // Лирика и прочий UI
+      
+      // Лирика и UI
       try {
         const pcfg = getPlayerConfig();
-        const tr = pcfg?.tracks?.[idx];
+        const tr = pcfg?.tracks?.[playingTrack];
         if (tr && tr.lyrics) loadLyrics(tr.lyrics);
       } catch {}
+      
       restorePlayerButtonsState();
       applyLyricsViewMode();
       initializePlayerControls();
       applyMiniModeUI();
-      updateNextUpLabel();
       updateMiniNowHeader();
+      updateNextUpLabel();
       updatePlayPauseIcon();
       return;
+    } catch (e) {
+      console.warn('playFromPlaybackAlbum via PlayerCore failed, falling back to <audio>', e);
+      localStorage.setItem('newPlayerCore', '0');
+      window.__useNewPlayerCore = false;
     }
-
-    // Старая ветка: через <audio>
-    if (!document.getElementById('lyricsplayerblock')) {
-      const holder = document.getElementById('now-playing');
-      if (holder) {
-        holder.innerHTML = '<div class="lyrics-player-block" id="lyricsplayerblock"></div>';
-        renderLyricsBlock();
-      }
-    }
-    if (playingAlbumKey === SPECIAL_FAVORITES_KEY && viewMode === 'favorites') {
-      updateFavoritesCurrentRow(idx);
-      const list = document.getElementById('track-list');
-      const lp = document.getElementById('lyricsplayerblock');
-      const rows = list ? list.querySelectorAll('.track') : [];
-      const row = rows[idx];
-      if (list && lp && row) {
-        if (row.nextSibling) row.parentNode.insertBefore(lp, row.nextSibling); else row.parentNode.appendChild(lp);
-      }
-    }
-    dedupePlayerBlock();
-
-    const a = document.getElementById('audio');
-    if (!a || !playingTracks) return;
-    stopAndCleanupAudio(a);
-    const tr = playingTracks[idx];
-    a.src = tr.audio;
-
-    loadLyrics(tr.lyrics);
-    setupMediaSessionForPlayback();
-    prefetchNextTrackAssetsForPlayback();
-
-    if (doPlay) {
-      a.currentTime = 0;
-      a.play().catch(()=>{});
-      // Фейд‑ин 180 мс
-      try {
-        const targetVol = Math.max(0, Math.min(1, (parseFloat(localStorage.getItem('playerVolume')) || a.volume || 1)));
-        if (targetVol > 0 && !a.muted) {
-          const prev = targetVol;
-          a.volume = 0.001;
-          const t0 = performance.now(), dur = 180;
-          const step = (ts) => {
-            const k = Math.min(1, (ts - t0) / dur);
-            a.volume = prev * k;
-            if (k < 1) requestAnimationFrame(step);
-          };
-          requestAnimationFrame(step);
-        }
-      } catch {}
-    }
-
-    applyMiniModeUI();
-    updateNextUpLabel();
-    updateMiniNowHeader();
   }
+  
+  // СТАРАЯ ВЕТКА (<audio>)
+  const audio = document.getElementById('audio');
+  if (!audio) return;
+  
+  let tr = null;
+  if (playingAlbumKey === SPECIAL_FAVORITES_KEY) {
+    // В режиме "ИЗБРАННОГО" берем трек из модели
+    const ref = window.favoritesRefsModel?.[playingTrack];
+    if (ref && ref.__a && ref.__t) {
+      const albumConfig = getAlbumConfigByKey(ref.__a);
+      if (albumConfig && albumConfig.tracks && albumConfig.tracks[ref.__t]) {
+        tr = albumConfig.tracks[ref.__t];
+      }
+    }
+  } else {
+    tr = (playingTracks || config?.tracks)?.[playingTrack];
+  }
+  
+  if (!tr) return;
+  
+  try {
+    audio.src = tr.audio;
+    audio.currentTime = 0;
+    if (isIOSStandalone()) { 
+      audio.load(); 
+    }
+    if (doPlay) {
+      const p = audio.play();
+      if (p && p.catch) p.catch(()=>{});
+    }
+  } catch (e) {
+    console.error('Error playing track', e);
+  }
+  
+  try { setupMediaSessionForPlayback(); } catch {}
+  prefetchNextTrackAssetsForPlayback();
+  
+  // Обновляем UI
+  restorePlayerButtonsState();
+  applyLyricsViewMode();
+  initializePlayerControls();
+  applyMiniModeUI();
+  updateMiniNowHeader();
+  updateNextUpLabel();
+}
 
   /* Media Session — единый путь */
   function setupMediaSessionForPlayback() {
