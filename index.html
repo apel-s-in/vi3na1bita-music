@@ -3519,9 +3519,21 @@
     playingShuffleIndex = 0;
   }
   async function playFromPlaybackAlbum(idx, doPlay) {
-    currentTrack = idx;
-    playingTrack = idx;
-
+    // Для избранного используем оригинальный индекс для UI, но правильный индекс для воспроизведения
+    if (playingAlbumKey === SPECIAL_FAVORITES_KEY && w.favModelToFilteredMap) {
+      const filteredIdx = w.favModelToFilteredMap.get(idx);
+      if (Number.isFinite(filteredIdx) && filteredIdx >= 0) {
+        currentTrack = idx; // Сохраняем исходный индекс для UI
+        playingTrack = filteredIdx; // Используем правильный индекс для воспроизведения
+        w.playingTrackOriginalIdx = idx; // Для синхронизации UI
+      } else {
+        currentTrack = idx;
+        playingTrack = idx;
+      }
+    } else {
+      currentTrack = idx;
+      playingTrack = idx;
+    }
     const forceNoLegacy = (window.__useNewPlayerCore && (localStorage.getItem('noLegacyAudio') === '1'));
     if (window.__useNewPlayerCore && !window.playerCore) {
       const ready = await ensurePlayerCoreReady({ timeoutMs: 1800 });
