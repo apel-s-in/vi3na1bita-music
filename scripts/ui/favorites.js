@@ -293,12 +293,12 @@
       row.addEventListener('click', async () => {
         const canPlay = !!item.__active && !!item.audio;
         if (canPlay) {
-          if (hasFn('ensureFavoritesPlayback')) {
+          if (typeof window.ensureFavoritesPlayback === 'function') {
             // Передаем объект с ключами альбома и трека для точного поиска
-            await call('ensureFavoritesPlayback', {
+            await window.ensureFavoritesPlayback({
               a: item.__a,
               t: item.__t,
-              idx: idx  // сохраняем исходный индекс для UI
+              idx: idx // сохраняем исходный индекс для UI
             });
           }
         } else {
@@ -430,7 +430,7 @@
   // ИНИЦИАЛИЗАЦИЯ ВОСПРОИЗВЕДЕНИЯ ДЛЯ «ИЗБРАННОГО»
   async function ensureFavoritesPlayback(target) {
     // Обеспечим модель
-    if (!Array.isArray(w.favoritesRefsModel) || w.favoritesRefsModel.length === 0) {
+    if (!Array.isArray(window.favoritesRefsModel) || window.favoritesRefsModel.length === 0) {
       await (w.FavoritesData?.buildFavoritesRefsModel?.() ?? Promise.resolve([]));
     }
     const model = Array.isArray(w.favoritesRefsModel) ? w.favoritesRefsModel : [];
