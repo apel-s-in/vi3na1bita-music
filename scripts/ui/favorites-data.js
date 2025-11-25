@@ -5,7 +5,7 @@
 (function FavoritesDataModule() {
   const w = window;
 
-  const FAVORITES_REFS_KEY = 'favoritesAlbumRefs:v1';
+  const FAVORITES_REFS_KEY = window.FAVORITES_REFS_KEY || 'favoritesAlbumRefs:v1';
   const COVER_TTL_MS = 12 * 60 * 60 * 1000; // 12 часов
   const albumCoverCache = Object.create(null); // { [albumKey]: { url:string, ts:number } }
 
