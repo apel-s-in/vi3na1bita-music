@@ -1226,10 +1226,11 @@
   }
   </script>
 
+  <script type="module" src="scripts/ui/favorites-const.js"></script>
+  <script type="module" src="scripts/ui/favorites-storage.js"></script>
   <script>
   /* ====== Иконки/режимы ====== */
-  const SPECIAL_FAVORITES_KEY = '__favorites__';
-  const SPECIAL_RELIZ_KEY = '__reliz__';
+  // Константы вынесены в scripts/ui/favorites-const.js
   // Экспорт в window
   window.SPECIAL_FAVORITES_KEY = SPECIAL_FAVORITES_KEY;
   window.SPECIAL_RELIZ_KEY = SPECIAL_RELIZ_KEY;
@@ -2268,24 +2269,8 @@
   function isBrowsingSameAsPlaying() { return !!(playingAlbumKey && playingAlbumKey === currentAlbumKey); }
 
   // NotificationSystem вынесен в scripts/ui/notify.js
-  /* Избранное v2 */
-  const LIKED_STORAGE_KEY_V2 = 'likedTracks:v2';
-  function getLikedMap() {
-    try { const raw = localStorage.getItem(LIKED_STORAGE_KEY_V2); const map = raw ? JSON.parse(raw) : {}; return (map && typeof map === 'object') ? map : {}; }
-    catch { return {}; }
-  }
-  function getLikedForAlbum(albumKey) {
-    try {
-      const raw = localStorage.getItem(LIKED_STORAGE_KEY_V2);
-      const map = raw ? JSON.parse(raw) : {};
-      const arr = (map && typeof map === 'object') ? map[albumKey] : [];
-      if (!Array.isArray(arr)) return [];
-      const norm = Array.from(new Set(arr.map(n => parseInt(n, 10)).filter(Number.isFinite)));
-      return norm;
-    } catch {
-      return [];
-    }
-  }
+  /* Избранное v2 — вынесено в scripts/ui/favorites-storage.js */
+  // LIKED_STORAGE_KEY_V2, getLikedMap, getLikedForAlbum теперь приходят из модуля (см. подключение выше).
 
   function getLiked() { return getLikedForAlbum(currentAlbumKey); }
   function saveLiked(arr) {
