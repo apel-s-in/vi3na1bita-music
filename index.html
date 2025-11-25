@@ -480,6 +480,9 @@
   <script src="./scripts/core/bootstrap.js" defer></script>
   <!-- Уведомления (единый модуль) -->
   <script src="./scripts/ui/notify.js" defer></script>
+  <!-- Константы и storage «Избранного» (должны быть раньше favorites-data / favorites) -->
+  <script src="./scripts/ui/favorites-const.js" defer></script>
+  <script src="./scripts/ui/favorites-storage.js" defer></script>
   <!-- Кнопка «О системе»: модуль отображения информации от Service Worker -->
   <script src="./scripts/ui/sysinfo.js" defer></script>
   <!-- Мини‑режим вынесен в модуль -->
@@ -1226,16 +1229,12 @@
   }
   </script>
 
-  <script type="module" src="scripts/ui/favorites-const.js"></script>
-  <script type="module" src="scripts/ui/favorites-storage.js"></script>
   <script>
   /* ====== Иконки/режимы ====== */
-  // Константы вынесены в scripts/ui/favorites-const.js
-  // Экспорт в window
-  window.SPECIAL_FAVORITES_KEY = SPECIAL_FAVORITES_KEY;
-  window.SPECIAL_RELIZ_KEY = SPECIAL_RELIZ_KEY;
+  // Константы задаются в scripts/ui/favorites-const.js и уже лежат в window.SPECIAL_FAVORITES_KEY / window.SPECIAL_RELIZ_KEY
 
   let viewMode = 'album';
+
   // Двусторонняя синхронизация с window.viewMode
   Object.defineProperty(window, 'viewMode', {
     get() { return viewMode; },
