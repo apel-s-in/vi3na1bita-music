@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c59f7098c03a044b4104bcebb1b1238e82106ce1.idx
-│   │       ├── pack-c59f7098c03a044b4104bcebb1b1238e82106ce1.pack
-│   │       └── pack-c59f7098c03a044b4104bcebb1b1238e82106ce1.rev
+│   │       ├── pack-fda87d713ac168df3b9e735049711b80c8eaade5.idx
+│   │       ├── pack-fda87d713ac168df3b9e735049711b80c8eaade5.pack
+│   │       └── pack-fda87d713ac168df3b9e735049711b80c8eaade5.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -258,7 +258,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-25 18:19:20 UTC
+Сгенерировано: 2025-11-25 18:25:59 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4708,20 +4708,45 @@ function syncUiFromPlayback() {
     closeDownloadModal(); NotificationSystem.success('Файл будет загружен!');
   }
   async function shareCurrentTrack(){
-    const pcfg = getPlayerConfig(); const tr = pcfg?.tracks?.[playingTrack];
+    // 1) Берём метаданные для заголовка/текста
+    const pc = getPlayerConfig();
+    const tr = pc?.tracks?.[playingTrack];
     if (!tr) return;
-    let t = 0;
-    const pc = (window.__useNewPlayerCore && window.playerCore) ? window.playerCore : null;
-    if (pc && typeof pc.getSeek === 'function') t = Math.floor(pc.getSeek() || 0);
-    else {
-      const a = document.getElementById('audio');
-      t = a ? Math.floor(a.currentTime || 0) : 0;
+
+    // 2) Определяем реальную цель шэринга (альбом+индекс)
+    //    В обычном режиме используем playingAlbumKey/playingTrack.
+    //    В режиме «Избранное» смотрим favoritesRefsModel[playingTrack].
+    let targetAlbum = playingAlbumKey;
+    let targetIndex = playingTrack;
+
+    if (playingAlbumKey === SPECIAL_FAVORITES_KEY) {
+      const ref = Array.isArray(favoritesRefsModel) ? favoritesRefsModel[playingTrack] : null;
+      if (ref && typeof ref.__a === 'string' && Number.isInteger(ref.__t)) {
+        targetAlbum = ref.__a;
+        targetIndex = ref.__t;
+      } else {
+        NotificationSystem.error('Не удалось сформировать ссылку для избранного трека');
+        return;
+      }
     }
+
+    // 3) Добавляем позицию воспроизведения (если >10 сек.) как time=…
+    const a = document.getElementById('audio');
+    const t = a ? Math.floor(a.currentTime || 0) : 0;
     const timeParam = t > 10 ? `&time=${t}` : '';
-    const shareUrl = location.origin + location.pathname + `?album=${playingAlbumKey}&track=${playingTrack}${timeParam}`;
-    const txt = `🎵 ${tr.title} - ${pcfg.artist || 'Витрина Разбита'}\n🎧 Слушай:`;
+
+    // 4) Формируем корректный deep-link на реальный альбом/трек
+    const shareUrl = location.origin + location.pathname +
+                     `?album=${encodeURIComponent(targetAlbum)}&track=${targetIndex}${timeParam}`;
+
+    // 5) Текст и вызов Web Share API/clipboard — оставляем как было
+    const txt = `🎵 ${tr.title} - ${pc.artist || 'Витрина Разбита'}\n🎧 Слушай:`;
     if (navigator.share){
-      try { await navigator.share({title: tr.title, text: txt, url: shareUrl}); NotificationSystem.success('Ссылка отправлена!'); closeDownloadModal(); } catch {}
+      try {
+        await navigator.share({ title: tr.title, text: txt, url: shareUrl });
+        NotificationSystem.success('Ссылка отправлена!');
+        closeDownloadModal();
+      } catch {}
     } else {
       await navigator.clipboard.writeText(`${txt}\n${shareUrl}`);
       NotificationSystem.success('Ссылка скопирована!');
