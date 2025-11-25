@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-cda998b7d6c981f8075b9fb9c1f35b9d5185a4a3.idx
-│   │       ├── pack-cda998b7d6c981f8075b9fb9c1f35b9d5185a4a3.pack
-│   │       └── pack-cda998b7d6c981f8075b9fb9c1f35b9d5185a4a3.rev
+│   │       ├── pack-b5886a45bd67a17853010ea67c850c8ad02ee1e5.idx
+│   │       ├── pack-b5886a45bd67a17853010ea67c850c8ad02ee1e5.pack
+│   │       └── pack-b5886a45bd67a17853010ea67c850c8ad02ee1e5.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -234,6 +234,7 @@ vi3na1bita-music/
 │   │   ├── favorites.spec.js
 │   │   └── player.spec.js
 │   ├── ui/
+│   │   ├── favorites-const.js
 │   │   ├── favorites-data.js
 │   │   ├── favorites.js
 │   │   ├── mini.js
@@ -256,7 +257,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-20 21:14:18 UTC
+Сгенерировано: 2025-11-25 17:59:32 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8062,6 +8063,30 @@ import { PlayerCore } from '../src/PlayerCore.js';
 
   // Никаких обработчиков событий и управления DOM пока не вешаем — UI остаётся в старом режиме
 })();
+
+//=================================================
+// FILE: /scripts/ui/favorites-const.js
+// scripts/ui/favorites-const.js
+// Единая точка правды для ключей/констант «Избранного».
+// Важна обратная совместимость: прокинем в window, чтобы их видел inline-код index.html.
+
+export const SPECIAL_FAVORITES_KEY = '__favorites__';
+export const SPECIAL_RELIZ_KEY = '__reliz__';
+
+// Ключ хранилища лайков (V2)
+export const LIKED_STORAGE_KEY_V2 = 'likedTracks:v2';
+
+// Ключ хранилища ссылок «Избранного» (refs) — пригодится на Шаге 2.
+// Если в проекте уже используется другой ключ — скажи, подставлю тот же.
+export const FAVORITES_REFS_KEY = 'favoritesAlbumRefs:v1';
+
+// Back-compat для существующего inline-кода:
+Object.assign(window, {
+  SPECIAL_FAVORITES_KEY,
+  SPECIAL_RELIZ_KEY,
+  LIKED_STORAGE_KEY_V2,
+  FAVORITES_REFS_KEY,
+});
 
 //=================================================
 // FILE: /scripts/ui/favorites-data.js
