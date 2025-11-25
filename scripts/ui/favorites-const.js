@@ -1,0 +1,21 @@
+// scripts/ui/favorites-const.js
+// Единая точка правды для ключей/констант «Избранного».
+// Важна обратная совместимость: прокинем в window, чтобы их видел inline-код index.html.
+
+export const SPECIAL_FAVORITES_KEY = '__favorites__';
+export const SPECIAL_RELIZ_KEY = '__reliz__';
+
+// Ключ хранилища лайков (V2)
+export const LIKED_STORAGE_KEY_V2 = 'likedTracks:v2';
+
+// Ключ хранилища ссылок «Избранного» (refs) — пригодится на Шаге 2.
+// Если в проекте уже используется другой ключ — скажи, подставлю тот же.
+export const FAVORITES_REFS_KEY = 'favoritesAlbumRefs:v1';
+
+// Back-compat для существующего inline-кода:
+Object.assign(window, {
+  SPECIAL_FAVORITES_KEY,
+  SPECIAL_RELIZ_KEY,
+  LIKED_STORAGE_KEY_V2,
+  FAVORITES_REFS_KEY,
+});
