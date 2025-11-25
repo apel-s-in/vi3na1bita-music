@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-16575f855931b37b4f0e361e3a9890c3d256ea95.idx
-│   │       ├── pack-16575f855931b37b4f0e361e3a9890c3d256ea95.pack
-│   │       └── pack-16575f855931b37b4f0e361e3a9890c3d256ea95.rev
+│   │       ├── pack-c59f7098c03a044b4104bcebb1b1238e82106ce1.idx
+│   │       ├── pack-c59f7098c03a044b4104bcebb1b1238e82106ce1.pack
+│   │       └── pack-c59f7098c03a044b4104bcebb1b1238e82106ce1.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -258,7 +258,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-25 18:10:53 UTC
+Сгенерировано: 2025-11-25 18:19:20 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8083,7 +8083,7 @@ Object.assign(window, {
 (function FavoritesDataModule() {
   const w = window;
 
-  const FAVORITES_REFS_KEY = 'favoritesAlbumRefs:v1';
+  const FAVORITES_REFS_KEY = window.FAVORITES_REFS_KEY || 'favoritesAlbumRefs:v1';
   const COVER_TTL_MS = 12 * 60 * 60 * 1000; // 12 часов
   const albumCoverCache = Object.create(null); // { [albumKey]: { url:string, ts:number } }
 
