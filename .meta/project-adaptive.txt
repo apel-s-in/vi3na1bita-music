@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-fda87d713ac168df3b9e735049711b80c8eaade5.idx
-│   │       ├── pack-fda87d713ac168df3b9e735049711b80c8eaade5.pack
-│   │       └── pack-fda87d713ac168df3b9e735049711b80c8eaade5.rev
+│   │       ├── pack-9a31863c54468291111e7350c92944b36118cc92.idx
+│   │       ├── pack-9a31863c54468291111e7350c92944b36118cc92.pack
+│   │       └── pack-9a31863c54468291111e7350c92944b36118cc92.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -258,7 +258,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-11-25 18:25:59 UTC
+Сгенерировано: 2025-11-25 18:33:05 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2815,10 +2815,18 @@ jobs:
   function getLiked() { return getLikedForAlbum(currentAlbumKey); }
   function saveLiked(arr) {
     if (!currentAlbumKey) return;
-    const map = getLikedMap();
-    map[currentAlbumKey] = Array.from(new Set(arr.filter(n => Number.isInteger(n))));
-    localStorage.setItem(LIKED_STORAGE_KEY_V2, JSON.stringify(map));
+    // Используем безопасный API favorites-storage.js, чтобы не трогать LIKED_STORAGE_KEY_V2 напрямую
+    try {
+      const map = getLikedMap();
+      const filtered = Array.from(new Set((arr || []).filter(n => Number.isInteger(n))));
+      map[currentAlbumKey] = filtered;
+      // favorites-storage.js уже знает правильный ключ и структуру хранилища
+      localStorage.setItem('likedTracks:v2', JSON.stringify(map));
+    } catch {
+      // В худшем случае избранное не сохранится, но приложение не упадёт
+    }
   }
+
   function isLiked(idx, albumKey = currentAlbumKey) { return getLikedForAlbum(albumKey).includes(idx); }
   function isLikedInPlayback(idx) {
     if (playingAlbumKey === SPECIAL_FAVORITES_KEY) {
