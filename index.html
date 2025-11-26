@@ -3887,73 +3887,11 @@ function syncUiFromPlayback() {
     if (hot) hot.style.display = on ? 'block' : (hasKeyboard() ? 'block' : 'none');
   }
   function updateMiniNowHeader() {
-    const numEl = document.getElementById('mini-now-num');
-    const titleEl = document.getElementById('mini-now-title');
-    const starEl = document.getElementById('mini-now-star');
-  
-    try {
-      // Определяем текущий трек для отображения
-      let displayTrackIndex = -1;
-      let displayTrackTitle = '—';
-      let displayTrackNum = '--.';
-    
-      if (window.playingAlbumKey === window.SPECIAL_FAVORITES_KEY) {
-        // Для "Избранного" используем оригинальный индекс для отображения
-        if (typeof window.playingTrackOriginalIdx === 'number' && window.playingTrackOriginalIdx >= 0) {
-          displayTrackIndex = window.playingTrackOriginalIdx;
-          const ref = window.favoritesRefsModel?.[displayTrackIndex];
-          if (ref) {
-            displayTrackTitle = ref.title || '—';
-            displayTrackNum = `${displayTrackIndex + 1}.`;
-          }
-        } else if (typeof window.playingTrack === 'number' && window.playingTrack >= 0) {
-          displayTrackIndex = window.playingTrack;
-          const ref = window.favoritesRefsModel?.[displayTrackIndex];
-          if (ref) {
-            displayTrackTitle = ref.title || '—';
-            displayTrackNum = `${displayTrackIndex + 1}.`;
-          }
-        }
-      } else {
-        // Для обычных альбомов
-        const pc = getPlayerConfig();
-        if (pc && Array.isArray(pc.tracks) && typeof window.playingTrack === 'number' && window.playingTrack >= 0) {
-          displayTrackIndex = window.playingTrack;
-          const tr = pc.tracks[displayTrackIndex];
-          if (tr) {
-            displayTrackTitle = tr.title || '—';
-            displayTrackNum = `${displayTrackIndex + 1}.`;
-          }
-        }
-      }
-    
-      // Обновляем элементы UI
-      if (numEl) numEl.textContent = displayTrackNum;
-      if (titleEl) titleEl.textContent = displayTrackTitle;
-    
-      // Обновляем состояние звезды в мини-плеере
-      if (starEl && displayTrackIndex >= 0) {
-        let liked = false;
-      
-        if (window.playingAlbumKey === window.SPECIAL_FAVORITES_KEY) {
-          // Для "Избранного" проверяем активность трека в модели
-          const ref = window.favoritesRefsModel?.[displayTrackIndex];
-          liked = ref?.__active || false;
-        } else {
-          // Для обычных альбомов проверяем через функцию isLikedInPlayback
-          liked = typeof window.isLikedInPlayback === 'function' 
-            ? window.isLikedInPlayback(displayTrackIndex) 
-            : false;
-        }
-      
-        starEl.src = liked ? 'img/star.png' : 'img/star2.png';
-        starEl.title = liked ? 'Убрать из понравившихся' : 'Добавить в понравившиеся';
-      }
-    
-    } catch (e) {
-      console.error('Error updating mini now header', e);
+    if (window.MiniUI && typeof window.MiniUI.updateMiniNowHeader === 'function') {
+      return window.MiniUI.updateMiniNowHeader();
     }
   }
+
   function toggleLikePlayingFromMini(e) {
     if (window.MiniUI && typeof window.MiniUI.toggleLikePlayingFromMini === 'function') {
       return window.MiniUI.toggleLikePlayingFromMini(e);
