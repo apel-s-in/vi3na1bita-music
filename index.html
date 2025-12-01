@@ -2967,6 +2967,13 @@ function renderLyricsBlock() {
          playingTracks[0]?.audio && playingTracks[0].audio !== config?.tracks?.[0]?.audio);
       
       if (isFavoritesContext && Array.isArray(playingTracks) && playingTracks.length > 0) {
+        console.log('✅ __buildPlayerCorePayload: используем playingTracks для ИЗБРАННОГО', {
+          length: playingTracks.length,
+          firstAudio: playingTracks[0]?.audio,
+          playingAlbumKey,
+          viewMode
+        });
+        
         const cover = (typeof playingCover === 'string' && playingCover) || 'img/logo.png';
         
         const tracks = playingTracks.map(t => ({
@@ -2991,6 +2998,17 @@ function renderLyricsBlock() {
 
       // ✅ Для обычных альбомов — как раньше
       const pcfg = getPlayerConfig();
+      
+      // ✅ ЗАЩИТА: если pcfg содержит треки из playingTracks (режим ИЗБРАННОГО)
+      // но мы попали сюда — значит что-то сломано, возвращаем null
+      if (pcfg && Array.isArray(pcfg.tracks) && pcfg.tracks.length > 0) {
+        if (Array.isArray(playingTracks) && playingTracks.length > 0 &&
+            pcfg.tracks[0]?.audio === playingTracks[0]?.audio) {
+          console.error('❌ __buildPlayerCorePayload: попали в альбомную ветку при ИЗБРАННОМ!');
+          return null;
+        }
+      }
+      
       if (!pcfg || !Array.isArray(pcfg.tracks) || pcfg.tracks.length === 0) return null;
 
       const cover =
