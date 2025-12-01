@@ -142,6 +142,13 @@
     .track { display: flex; align-items: center; padding: 7px 8px; border-bottom: 1px solid var(--border-color); cursor: pointer; transition: background 0.13s; background: none; }
     .track:hover { background: rgba(255,255,255,0.05); }
     .track.current { background: #232b38; }
+    .track {
+      transition: background 0.13s, transform 0.1s;
+    }
+    .track:active {
+      transform: scale(0.98);
+      background: rgba(255,255,255,0.08) !important;
+    }
     /* Неактивная строка в «Избранном» (звезда снята) */
     #track-list .track.inactive { opacity: 0.45; filter: grayscale(0.6); }
     /* Мини‑строка под мини‑плеер (когда листаем другой альбом) */
@@ -482,13 +489,13 @@
   <script src="./scripts/ui/notify.js" defer></script>
   <!-- Константы и storage «Избранного» (должны быть раньше favorites-data / favorites) -->
   <script src="./scripts/ui/favorites-const.js"></script>
-  <script src="./scripts/ui/favorites-storage.js" defer></script>
+  <script src="./scripts/ui/favorites-storage.js"></script>
   <!-- Кнопка «О системе»: модуль отображения информации от Service Worker -->
   <script src="./scripts/ui/sysinfo.js" defer></script>
   <!-- Мини‑режим вынесен в модуль -->
   <script src="./scripts/ui/mini.js" defer></script>
   <script src="./scripts/ui/favorites-data.js" defer></script>
-  <script src="./scripts/ui/favorites.js" defer></script>
+  <script src="./scripts/ui/favorites.js"></script>
   <!-- iOS/Android фоновые аудио‑хелперы -->
   <script src="./scripts/app/background-audio.js" defer></script>
   <!-- Фоновые события (visibility/freeze/resume/pagehide/pageshow) -->
@@ -1792,6 +1799,21 @@
   // (visibilitychange/freeze/resume/pagehide/pageshow/focusout)
   /* ====== Инициализация UI ====== */
   async function initializeMainUi() {
+      // ✅ Гарантируем готовность модулей «Избранного»
+      await new Promise(resolve => {
+        if (typeof window.ensureFavoritesPlayback === 'function') {
+          resolve();
+        } else {
+          const check = setInterval(() => {
+            if (typeof window.ensureFavoritesPlayback === 'function') {
+              clearInterval(check);
+              resolve();
+            }
+          }, 50);
+          setTimeout(() => { clearInterval(check); resolve(); }, 2000);
+        }
+      });
+
       await loadAlbumsIndex();
       try { migrateFavoritesKeys(); } catch {}
 
