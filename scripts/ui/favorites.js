@@ -328,6 +328,17 @@
             // ✅ КРИТИЧНО: явно устанавливаем контекст «ИЗБРАННОГО» ДО вызова
             w.viewMode = 'favorites';
             w.playingAlbumKey = w.SPECIAL_FAVORITES_KEY;
+            w.currentAlbumKey = null; // ← сбрасываем текущий альбом
+            
+            // ✅ Дополнительная защита: логируем для отладки
+            console.log('🎵 Клик по избранному (до ensureFavoritesPlayback):', {
+              modelIdx: idx,
+              albumKey: item.__a,
+              trackIdx: item.__t,
+              audio: item.audio,
+              viewMode: w.viewMode,
+              playingAlbumKey: w.playingAlbumKey
+            });
             
             // ✅ Вызываем НАПРЯМУЮ функцию воспроизведения
             await ensureFavoritesPlayback({
@@ -615,6 +626,14 @@
         }
 
         w.playerCore.play(targetIdx);
+
+        // ✅ Отладочный лог ПОСЛЕ setPlaylist
+        console.log('🎵 PlayerCore.setPlaylist завершён (ИЗБРАННОЕ):', {
+          playlistLength: w.playerCore.getPlaylistSnapshot?.().length,
+          targetIdx,
+          firstTrackSrc: w.playerCore.getPlaylistSnapshot?.()?.[0]?.src,
+          expectedFirstSrc: w.playingTracks[0]?.audio
+        });
 
         if (payload?.tracks?.[targetIdx]?.lyrics) {
           call('loadLyrics', payload.tracks[targetIdx].lyrics);
