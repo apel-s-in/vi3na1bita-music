@@ -318,15 +318,27 @@
       `;
 
       // Клик по строке — играем, если активен; иначе подсказка
-      row.addEventListener('click', async () => {
+      row.addEventListener('click', async (e) => {
+        // Предотвращаем всплытие, чтобы не сработали другие обработчики
+        if (e) e.stopPropagation();
+        
         const canPlay = !!item.__active && !!item.audio;
         if (canPlay) {
-          // ✅ Используем локальную ссылку (гарантированно определена в замыкании)
-          await ensureFavoritesPlayback({
-            a: item.__a,
-            t: item.__t,
-            idx: idx
-          });
+          try {
+            // ✅ КРИТИЧНО: явно устанавливаем контекст «ИЗБРАННОГО» ДО вызова
+            w.viewMode = 'favorites';
+            w.playingAlbumKey = w.SPECIAL_FAVORITES_KEY;
+            
+            // ✅ Вызываем НАПРЯМУЮ функцию воспроизведения
+            await ensureFavoritesPlayback({
+              a: item.__a,
+              t: item.__t,
+              idx: idx
+            });
+          } catch (e) {
+            console.error('ensureFavoritesPlayback failed:', e);
+            w.NotificationSystem && w.NotificationSystem.error('Не удалось запустить трек');
+          }
         } else {
           showFavInactivePrompt({ a: item.__a, t: item.__t, title: item.title, album: item.__album });
         }
@@ -464,6 +476,13 @@
 
   // ИНИЦИАЛИЗАЦИЯ ВОСПРОИЗВЕДЕНИЯ ДЛЯ «ИЗБРАННОГО»
   async function ensureFavoritesPlayback(target) {
+    // ✅ ЗАЩИТА: проверяем, что мы действительно в режиме «ИЗБРАННОГО»
+    if (w.viewMode !== 'favorites' && w.playingAlbumKey !== w.SPECIAL_FAVORITES_KEY) {
+      console.warn('ensureFavoritesPlayback called outside favorites context, forcing context');
+      w.viewMode = 'favorites';
+      w.playingAlbumKey = w.SPECIAL_FAVORITES_KEY;
+    }
+
     // Обеспечим модель
     if (!Array.isArray(w.favoritesRefsModel) || w.favoritesRefsModel.length === 0) {
       await (w.FavoritesData?.buildFavoritesRefsModel?.() ?? Promise.resolve([]));
@@ -517,13 +536,19 @@
     const originalIdx = targetIdx;
     w.playingTrackOriginalIdx = originalIdx;
 
-    // Контекст «Избранного» - используем window
+    // ✅ КРИТИЧНО: Контекст «Избранного» - используем window
     w.playingAlbumKey = w.SPECIAL_FAVORITES_KEY;
+    w.viewMode = 'favorites'; // ✅ явно фиксируем режим
+    
+    // ✅ Собираем плейлист с ПОЛНЫМИ метаданными (для Media Session и UI)
     w.playingTracks = playable.map(x => ({
       title: x.it.title,
       audio: x.it.audio,
       lyrics: x.it.lyrics,
-      fulltext: x.it.fulltext || null
+      fulltext: x.it.fulltext || null,
+      artist: x.it.__artist || 'Витрина Разбита',
+      album: x.it.__album || 'Избранное',
+      cover: x.it.__cover || 'img/logo.png'
     }));
     w.playingArtist = 'Витрина Разбита';
     w.playingAlbumName = 'Избранное';
