@@ -34,17 +34,35 @@
 
   function computeCurrentIndex() {
     const core = pc();
+    let idx = -1;
+
     if (core && typeof core.getIndex === 'function') {
-      const idx = Number(core.getIndex());
-      if (Number.isFinite(idx) && idx >= 0) return idx;
+      const v = Number(core.getIndex());
+      if (Number.isFinite(v) && v >= 0) idx = v;
+    } else if (typeof window.playingTrack === 'number' && window.playingTrack >= 0) {
+      idx = window.playingTrack;
+    } else if (typeof window.currentTrack === 'number' && window.currentTrack >= 0) {
+      idx = window.currentTrack;
     }
-    if (typeof window.playingTrack === 'number' && window.playingTrack >= 0) return window.playingTrack;
-    if (typeof window.currentTrack === 'number' && window.currentTrack >= 0) return window.currentTrack;
-    return -1;
+
+    // В режиме ИЗБРАННОГО нужно отразить индекс обратно в модель favoritesRefsModel
+    if (idx >= 0 && window.playingAlbumKey === window.SPECIAL_FAVORITES_KEY && Array.isArray(window.favPlayableMap)) {
+      const modelIdx = window.favPlayableMap[idx];
+      return Number.isFinite(modelIdx) && modelIdx >= 0 ? modelIdx : idx;
+    }
+
+    return idx;
   }
 
   function computeTitleForIndex(idx) {
     if (idx < 0) return '—';
+
+    // В ИЗБРАННОМ idx уже модельный индекс (favoritesRefsModel)
+    if (window.playingAlbumKey === window.SPECIAL_FAVORITES_KEY && Array.isArray(window.favoritesRefsModel)) {
+      const it = window.favoritesRefsModel[idx];
+      return it && it.title ? it.title : '—';
+    }
+
     const core = pc();
     if (core && typeof core.getPlaylistSnapshot === 'function') {
       try {
