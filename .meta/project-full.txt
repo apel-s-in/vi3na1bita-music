@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a1912c0a7c300d2cb74d4fb74eb3c4077579ef08.idx
-│   │       ├── pack-a1912c0a7c300d2cb74d4fb74eb3c4077579ef08.pack
-│   │       └── pack-a1912c0a7c300d2cb74d4fb74eb3c4077579ef08.rev
+│   │       ├── pack-7ad879c7e947b09ace5ad1215dcdfe5c2ca3918d.idx
+│   │       ├── pack-7ad879c7e947b09ace5ad1215dcdfe5c2ca3918d.pack
+│   │       └── pack-7ad879c7e947b09ace5ad1215dcdfe5c2ca3918d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -258,7 +258,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-01 14:29:42 UTC
+Сгенерировано: 2025-12-01 14:34:27 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2864,6 +2864,12 @@ jobs:
     const list = document.getElementById('track-list');
     if (!config) { list.innerHTML = ''; return; }
 
+    // ✅ ЗАЩИТА: очищаем старые обработчики
+    const oldRows = list.querySelectorAll('.track');
+    oldRows.forEach(row => {
+      const clone = row.cloneNode(true);
+      row.parentNode.replaceChild(clone, row);
+    });
     const preservedInNowPlaying = !!document.getElementById('now-playing')?.querySelector('#lyricsplayerblock');
     const foreignView = preservedInNowPlaying && isBrowsingOtherAlbum();
 
