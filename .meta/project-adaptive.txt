@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4de48293b985105b52fe85565a45140125a78731.idx
-│   │       ├── pack-4de48293b985105b52fe85565a45140125a78731.pack
-│   │       └── pack-4de48293b985105b52fe85565a45140125a78731.rev
+│   │       ├── pack-e6c8c56ca18579a78c5890a3db8b1831fd6ab6b0.idx
+│   │       ├── pack-e6c8c56ca18579a78c5890a3db8b1831fd6ab6b0.pack
+│   │       └── pack-e6c8c56ca18579a78c5890a3db8b1831fd6ab6b0.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -258,7 +258,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-01 09:50:23 UTC
+Сгенерировано: 2025-12-01 10:04:30 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4018,15 +4018,16 @@ async function togglePlayPause() {
   
     let tr = null;
     if (playingAlbumKey === SPECIAL_FAVORITES_KEY) {
-      // В режиме "ИЗБРАННОГО" берем трек из модели
+      // В режиме "ИЗБРАННОГО" берём трек из модели (нужен await для загрузки конфига альбома)
       const ref = window.favoritesRefsModel?.[playingTrack];
-      if (ref && ref.__a && ref.__t) {
-        const albumConfig = getAlbumConfigByKey(ref.__a);
-        if (albumConfig && albumConfig.tracks && albumConfig.tracks[ref.__t]) {
+      if (ref && ref.__a != null && ref.__t != null) {
+        const albumConfig = await (window.FavoritesData?.getAlbumConfigByKey?.(ref.__a) ?? getAlbumConfigByKey(ref.__a));
+        if (albumConfig && Array.isArray(albumConfig.tracks) && albumConfig.tracks[ref.__t]) {
           tr = albumConfig.tracks[ref.__t];
         }
       }
     } else {
+
       tr = (playingTracks || config?.tracks)?.[playingTrack];
     }
   
@@ -4665,7 +4666,7 @@ function syncUiFromPlayback() {
     let targetIndex = playingTrack;
 
     if (playingAlbumKey === SPECIAL_FAVORITES_KEY) {
-      const ref = Array.isArray(favoritesRefsModel) ? favoritesRefsModel[playingTrack] : null;
+      const ref = Array.isArray(window.favoritesRefsModel) ? window.favoritesRefsModel[playingTrack] : null;
       if (ref && typeof ref.__a === 'string' && Number.isInteger(ref.__t)) {
         targetAlbum = ref.__a;
         targetIndex = ref.__t;
