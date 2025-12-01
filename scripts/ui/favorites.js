@@ -536,9 +536,10 @@
     const originalIdx = targetIdx;
     w.playingTrackOriginalIdx = originalIdx;
 
-    // ✅ КРИТИЧНО: Контекст «Избранного» - используем window
+    // ✅ КРИТИЧНО: Контекст «Избранного» - СНАЧАЛА устанавливаем, ПОТОМ используем
     w.playingAlbumKey = w.SPECIAL_FAVORITES_KEY;
-    w.viewMode = 'favorites'; // ✅ явно фиксируем режим
+    w.viewMode = 'favorites';
+    w.currentAlbumKey = null; // ← принудительно сбрасываем текущий альбом
     
     // ✅ Собираем плейлист с ПОЛНЫМИ метаданными (для Media Session и UI)
     w.playingTracks = playable.map(x => ({
