@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5b8a9729f52d0e4c1d4fbcbc3361f1a004705e42.idx
-│   │       ├── pack-5b8a9729f52d0e4c1d4fbcbc3361f1a004705e42.pack
-│   │       └── pack-5b8a9729f52d0e4c1d4fbcbc3361f1a004705e42.rev
+│   │       ├── pack-2d598e4bf94170d673402e1c2c9f01e6f0d09209.idx
+│   │       ├── pack-2d598e4bf94170d673402e1c2c9f01e6f0d09209.pack
+│   │       └── pack-2d598e4bf94170d673402e1c2c9f01e6f0d09209.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -258,7 +258,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-01 19:46:51 UTC
+Сгенерировано: 2025-12-01 19:48:44 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8945,15 +8945,15 @@ Object.assign(window, {
 
     const model = Array.isArray(w.favoritesRefsModel) ? w.favoritesRefsModel : [];
 
-    // ✅ Построение карты model[i] → playable[j]
+    // Пересобираем playable‑плейлист и карту соответствия МОДЕЛЬ → PLAYABLE
     const playable = [];
-    const modelToPlayableMap = new Map();
+    const modelToPlayableMap = new Map<number, number>();
 
     model.forEach((it, i) => {
       if (it && it.__active && it.audio) {
         const j = playable.length;
-        playable.push({ it, i });
-        modelToPlayableMap.set(i, j);
+        playable.push({ it, i });      // i — индекс в favoritesRefsModel
+        modelToPlayableMap.set(i, j);  // j — индекс в playingTracks / PlayerCore
       }
     });
 
@@ -8962,9 +8962,10 @@ Object.assign(window, {
       return;
     }
 
-    // Сохраняем карту глобально для UI-синхронизации
-    w.favModelToPlayableMap = modelToPlayableMap;
+    // Глобальная карта: playableIndex -> modelIndex
     w.favPlayableMap = playable.map(x => x.i);
+    // Обратная карта: modelIndex -> playableIndex
+    w.favModelToPlayableMap = modelToPlayableMap;
 
     // Определение целевого индекса в playable
     let targetIdx = 0;
