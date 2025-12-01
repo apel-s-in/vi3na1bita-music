@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-7f81721601d7327bd6e0361f74cf87114704acfd.idx
-│   │       ├── pack-7f81721601d7327bd6e0361f74cf87114704acfd.pack
-│   │       └── pack-7f81721601d7327bd6e0361f74cf87114704acfd.rev
+│   │       ├── pack-2a3acbb1c32070651c8b7a77d00d60470c35a4e8.idx
+│   │       ├── pack-2a3acbb1c32070651c8b7a77d00d60470c35a4e8.pack
+│   │       └── pack-2a3acbb1c32070651c8b7a77d00d60470c35a4e8.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -258,7 +258,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-01 18:43:26 UTC
+Сгенерировано: 2025-12-01 19:34:49 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3150,6 +3150,10 @@ function renderLyricsBlock() {
       <img src="img/star2.png" class="like-star" id="mini-now-star"
            alt="звезда" title="Добавить в понравившиеся"
            onclick="toggleLikePlayingFromMini(event)"/>
+    </div>
+    <div class="next-up" id="next-up">
+      <span class="label">Далее:</span>
+      <span class="title">—</span>
     </div>
     <div id="lyrics-window" class="lyrics-normal">
       <div class="lyrics-animated-bg${animationEnabled ? ' active' : ''}"></div>
