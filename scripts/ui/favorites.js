@@ -573,9 +573,42 @@
     // Если активен новый плеер
     if (w.__useNewPlayerCore && w.playerCore) {
       try {
+        // ✅ КРИТИЧНО: убедимся, что контекст установлен ДО вызова __buildPlayerCorePayload
+        w.playingAlbumKey = w.SPECIAL_FAVORITES_KEY;
+        w.viewMode = 'favorites';
+        
         const payload = hasFn('__buildPlayerCorePayload') ? call('__buildPlayerCorePayload') : null;
-        if (payload) {
-          w.playerCore.setPlaylist(payload.tracks, targetIdx, payload.meta);
+        
+        // ✅ ДОПОЛНИТЕЛЬНАЯ ЗАЩИТА: если payload вернул не те треки — собираем вручную
+        if (payload && Array.isArray(payload.tracks) && payload.tracks.length > 0) {
+          // Проверяем, что первый трек из payload соответствует первому в playingTracks
+          const firstPayload = payload.tracks[0]?.src;
+          const firstPlaying = w.playingTracks[0]?.audio;
+          
+          if (firstPayload !== firstPlaying) {
+            console.warn('__buildPlayerCorePayload returned wrong playlist, rebuilding manually');
+            const cover = w.playingCover || 'img/logo.png';
+            const manualPayload = {
+              tracks: w.playingTracks.map(t => ({
+                src: t.audio,
+                title: t.title,
+                artist: t.artist || w.playingArtist || 'Витрина Разбита',
+                album: t.album || w.playingAlbumName || 'Избранное',
+                cover: t.cover || cover,
+                lyrics: t.lyrics,
+                fulltext: t.fulltext || ''
+              })),
+              index: targetIdx,
+              meta: {
+                artist: w.playingArtist || 'Витрина Разбита',
+                album: w.playingAlbumName || 'Избранное',
+                cover
+              }
+            };
+            w.playerCore.setPlaylist(manualPayload.tracks, targetIdx, manualPayload.meta);
+          } else {
+            w.playerCore.setPlaylist(payload.tracks, targetIdx, payload.meta);
+          }
           w.playerCore.setShuffle(!!w.shuffleMode);
           w.playerCore.setRepeat(!!w.repeatMode);
           w.playerCore.setFavoritesOnly(false, []);
