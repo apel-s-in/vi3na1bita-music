@@ -2938,9 +2938,34 @@ function renderLyricsBlock() {
     }
   }
 
-  // Вспомогательный билд-пакет для PlayerCore: собрать треки и метаданные из текущего конфига
+  // Вспомогательный билд-пакет для PlayerCore: собрать треки и метаданные
   function __buildPlayerCorePayload() {
     try {
+      // ✅ В режиме «Избранного» берём уже собранный плейлист из playingTracks
+      if (playingAlbumKey === SPECIAL_FAVORITES_KEY && Array.isArray(playingTracks) && playingTracks.length > 0) {
+        const cover = (typeof playingCover === 'string' && playingCover) || 'img/logo.png';
+        
+        const tracks = playingTracks.map(t => ({
+          src: t.audio,           // ✅ Уже содержит правильные пути из разных альбомов
+          title: t.title,
+          artist: t.artist || playingArtist || 'Витрина Разбита',
+          album: t.album || playingAlbumName || 'Избранное',
+          cover: t.cover || cover,
+          lyrics: t.lyrics,
+          fulltext: t.fulltext || ''
+        }));
+        
+        const meta = {
+          artist: playingArtist || 'Витрина Разбита',
+          album: playingAlbumName || 'Избранное',
+          cover
+        };
+        
+        const idx = (typeof playingTrack === 'number' && playingTrack >= 0) ? playingTrack : 0;
+        return { tracks, index: idx, meta };
+      }
+
+      // ✅ Для обычных альбомов — как раньше
       const pcfg = getPlayerConfig();
       if (!pcfg || !Array.isArray(pcfg.tracks) || pcfg.tracks.length === 0) return null;
 
@@ -2958,11 +2983,13 @@ function renderLyricsBlock() {
         lyrics: t.lyrics,
         fulltext: t.fulltext || ''
       }));
+      
       const meta = {
         artist: pcfg.artist || 'Витрина Разбита',
         album: pcfg.albumName || 'Альбом',
         cover
       };
+      
       const idx =
         (typeof playingTrack === 'number' && playingTrack >= 0) ? playingTrack
         : (typeof currentTrack === 'number' && currentTrack >= 0 ? currentTrack : 0);
