@@ -3478,15 +3478,16 @@ async function togglePlayPause() {
   
     let tr = null;
     if (playingAlbumKey === SPECIAL_FAVORITES_KEY) {
-      // В режиме "ИЗБРАННОГО" берем трек из модели
+      // В режиме "ИЗБРАННОГО" берём трек из модели (нужен await для загрузки конфига альбома)
       const ref = window.favoritesRefsModel?.[playingTrack];
-      if (ref && ref.__a && ref.__t) {
-        const albumConfig = getAlbumConfigByKey(ref.__a);
-        if (albumConfig && albumConfig.tracks && albumConfig.tracks[ref.__t]) {
+      if (ref && ref.__a != null && ref.__t != null) {
+        const albumConfig = await (window.FavoritesData?.getAlbumConfigByKey?.(ref.__a) ?? getAlbumConfigByKey(ref.__a));
+        if (albumConfig && Array.isArray(albumConfig.tracks) && albumConfig.tracks[ref.__t]) {
           tr = albumConfig.tracks[ref.__t];
         }
       }
     } else {
+
       tr = (playingTracks || config?.tracks)?.[playingTrack];
     }
   
@@ -4125,7 +4126,7 @@ function syncUiFromPlayback() {
     let targetIndex = playingTrack;
 
     if (playingAlbumKey === SPECIAL_FAVORITES_KEY) {
-      const ref = Array.isArray(favoritesRefsModel) ? favoritesRefsModel[playingTrack] : null;
+      const ref = Array.isArray(window.favoritesRefsModel) ? window.favoritesRefsModel[playingTrack] : null;
       if (ref && typeof ref.__a === 'string' && Number.isInteger(ref.__t)) {
         targetAlbum = ref.__a;
         targetIndex = ref.__t;
