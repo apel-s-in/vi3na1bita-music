@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ae2ae620dabc7060bf49dd02ad3695bfa417ece4.idx
-│   │       ├── pack-ae2ae620dabc7060bf49dd02ad3695bfa417ece4.pack
-│   │       └── pack-ae2ae620dabc7060bf49dd02ad3695bfa417ece4.rev
+│   │       ├── pack-ab4605673394cef50853103458ca1fecd58068c8.idx
+│   │       ├── pack-ab4605673394cef50853103458ca1fecd58068c8.pack
+│   │       └── pack-ab4605673394cef50853103458ca1fecd58068c8.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -258,7 +258,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-01 14:49:25 UTC
+Сгенерировано: 2025-12-01 14:50:17 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3497,10 +3497,14 @@ function renderLyricsBlock() {
   // Вспомогательный билд-пакет для PlayerCore: собрать треки и метаданные
   function __buildPlayerCorePayload() {
     try {
-      // ✅ КРИТИЧНО: В режиме «Избранного» ВСЕГДА берём уже собранный плейлист из playingTracks
-      // Проверяем ОБОИМИ способами: по ключу И по viewMode (двойная защита)
-      const isFavoritesContext = (playingAlbumKey === SPECIAL_FAVORITES_KEY) || 
-                                  (viewMode === 'favorites' && Array.isArray(playingTracks) && playingTracks.length > 0);
+      // ✅ КРИТИЧНО: УСИЛЕННАЯ проверка контекста «ИЗБРАННОГО»
+      // Проверяем ВСЕ признаки: ключ, режим, наличие плейлиста
+      const isFavoritesContext = 
+        (playingAlbumKey === SPECIAL_FAVORITES_KEY) || 
+        (viewMode === 'favorites') ||
+        (playingAlbumKey === '__favorites__') ||
+        (Array.isArray(playingTracks) && playingTracks.length > 0 && 
+         playingTracks[0]?.audio && playingTracks[0].audio !== config?.tracks?.[0]?.audio);
       
       if (isFavoritesContext && Array.isArray(playingTracks) && playingTracks.length > 0) {
         const cover = (typeof playingCover === 'string' && playingCover) || 'img/logo.png';
