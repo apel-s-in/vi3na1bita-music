@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5426eebe9c9a15ef7fc4a3c36fc2ca46482a7d36.idx
-│   │       ├── pack-5426eebe9c9a15ef7fc4a3c36fc2ca46482a7d36.pack
-│   │       └── pack-5426eebe9c9a15ef7fc4a3c36fc2ca46482a7d36.rev
+│   │       ├── pack-b85b28bb510abcc4cdff97225bc2738c0827e548.idx
+│   │       ├── pack-b85b28bb510abcc4cdff97225bc2738c0827e548.pack
+│   │       └── pack-b85b28bb510abcc4cdff97225bc2738c0827e548.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -258,7 +258,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-01 14:47:25 UTC
+Сгенерировано: 2025-12-01 14:48:32 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2822,6 +2822,16 @@ jobs:
 
   /* Старые совместимые хелперы */
   function getPlayerConfig() {
+    // ✅ КРИТИЧНО: в режиме «ИЗБРАННОГО» ВСЕГДА возвращаем playingTracks
+    if (playingAlbumKey === SPECIAL_FAVORITES_KEY || viewMode === 'favorites') {
+      if (Array.isArray(playingTracks) && playingTracks.length > 0) {
+        return { tracks: playingTracks, artist: playingArtist, albumName: playingAlbumName };
+      }
+      // Если playingTracks пуст — вернём пустой конфиг (не config!)
+      return { tracks: [], artist: 'Витрина Разбита', albumName: 'Избранное' };
+    }
+    
+    // Обычный альбом
     if (playingTracks) {
       return { tracks: playingTracks, artist: playingArtist, albumName: playingAlbumName };
     }
