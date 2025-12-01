@@ -2282,6 +2282,16 @@
 
   /* Старые совместимые хелперы */
   function getPlayerConfig() {
+    // ✅ КРИТИЧНО: в режиме «ИЗБРАННОГО» ВСЕГДА возвращаем playingTracks
+    if (playingAlbumKey === SPECIAL_FAVORITES_KEY || viewMode === 'favorites') {
+      if (Array.isArray(playingTracks) && playingTracks.length > 0) {
+        return { tracks: playingTracks, artist: playingArtist, albumName: playingAlbumName };
+      }
+      // Если playingTracks пуст — вернём пустой конфиг (не config!)
+      return { tracks: [], artist: 'Витрина Разбита', albumName: 'Избранное' };
+    }
+    
+    // Обычный альбом
     if (playingTracks) {
       return { tracks: playingTracks, artist: playingArtist, albumName: playingAlbumName };
     }
