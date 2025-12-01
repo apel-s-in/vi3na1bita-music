@@ -45,12 +45,14 @@
     const list = document.getElementById('track-list');
     if (!list) return;
 
-    // Подсветка текущей строки
     try {
       document.querySelectorAll('#track-list .track').forEach(el => el.classList.remove('current'));
-      const origIdx = (Array.isArray(w.favPlayableMap) && Number.isInteger(w.favPlayableMap[idx]))
+    
+      // ✅ Обратное отображение: playable[idx] → model[i]
+      const origIdx = Array.isArray(w.favPlayableMap) && w.favPlayableMap[idx] !== undefined
         ? w.favPlayableMap[idx]
         : idx;
+    
       const rows = list.querySelectorAll('.track');
       const row = origIdx >= 0 && origIdx < rows.length ? rows[origIdx] : null;
       if (row) row.classList.add('current');
@@ -341,12 +343,25 @@
         call('updateFavoritesRefsModelActiveFlag', item.__a, item.__t, !wasActive);
 
         // Если сейчас играем «Избранное» — поддержим последовательность и UI
-        if (w.playingAlbumKey === w.SPECIAL_FAVORITES_KEY && Array.isArray(w.playingTracks)) {
-          try {
-            const playable = (w.favoritesRefsModel || []).map((it, i) => ({ it, i }))
-              .filter(x => x.it && x.it.__active && x.it.audio);
-            w.favPlayableMap = playable.map(x => x.i);
-          } catch {}
+          if (w.playingAlbumKey === w.SPECIAL_FAVORITES_KEY && Array.isArray(w.playingTracks)) {
+            try {
+              // ✅ ПОЛНАЯ пересборка playable + карты
+              const model = w.favoritesRefsModel || [];
+              const playable = [];
+              const modelToPlayableMap = new Map();
+
+              model.forEach((it, i) => {
+                if (it && it.__active && it.audio) {
+                  const j = playable.length;
+                  playable.push({ it, i });
+                  modelToPlayableMap.set(i, j);
+                }
+              });
+
+              w.favPlayableMap = playable.map(x => x.i);
+              w.favModelToPlayableMap = modelToPlayableMap;
+            } catch {}
+
           if (wasActive) {
             call('createPlayingShuffledPlaylist');
             call('nextTrack');
@@ -456,36 +471,46 @@
 
     const model = Array.isArray(w.favoritesRefsModel) ? w.favoritesRefsModel : [];
 
-    // Играбельный подсписок: только активные с валидным audio
-    const playable = model.map((it, i) => ({ it, i })).filter(x => x.it && x.it.__active && x.it.audio);
+    // ✅ НОВАЯ ЛОГИКА: построение карты model[i] → playable[j]
+    const playable = [];
+    const modelToPlayableMap = new Map(); // model[i] → playable[j]
+
+    model.forEach((it, i) => {
+      if (it && it.__active && it.audio) {
+        const j = playable.length;
+        playable.push({ it, i });
+        modelToPlayableMap.set(i, j);
+      }
+    });
+
     if (!playable.length) {
       w.NotificationSystem && w.NotificationSystem.warning('Нет активных треков со ⭐');
       return;
     }
 
-    // Карта (a:t) -> индекс в playable
-    const keyOf = (a, t) => `${a}:${t}`;
-    const idxByKey = new Map();
+    // Сохраняем карту глобально для UI-синхронизации
+    w.favModelToPlayableMap = modelToPlayableMap;
+    w.favPlayableMap = playable.map(x => x.i);
 
-    // Построение карты индексов
-    playable.forEach((x, i) => {
-      const key = keyOf(x.it.__a, x.it.__t);
-      idxByKey.set(key, i);
-    });
-
-    // Определение целевого индекса
+    // Определение целевого индекса в playable
     let targetIdx = 0;
 
     if (typeof target === 'object' && target !== null) {
-      const key = keyOf(target.a, target.t);
-      const foundIdx = idxByKey.get(key);
-      if (Number.isFinite(foundIdx) && foundIdx >= 0) {
-        targetIdx = foundIdx;
-        if (Number.isFinite(target.idx)) {
-          w.playingTrackOriginalIdx = target.idx;
-        }
+      // Клик по строке: target = { a: albumKey, t: trackIndex, idx: modelIndex }
+      const modelIdx = Number.isFinite(target.idx) ? target.idx : -1;
+      
+      if (modelIdx >= 0 && modelToPlayableMap.has(modelIdx)) {
+        // ✅ ПРАВИЛЬНОЕ отображение: modelIndex → playableIndex
+        targetIdx = modelToPlayableMap.get(modelIdx);
+      } else {
+        // Fallback: поиск по ключу (a:t)
+        const keyOf = (a, t) => `${a}:${t}`;
+        const targetKey = keyOf(target.a, target.t);
+        const found = playable.findIndex(x => keyOf(x.it.__a, x.it.__t) === targetKey);
+        if (found >= 0) targetIdx = found;
       }
     } else if (typeof target === 'number') {
+      // Прямой вызов с индексом playable
       targetIdx = Math.max(0, Math.min(playable.length - 1, target));
     }
 
