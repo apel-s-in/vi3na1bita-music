@@ -319,7 +319,6 @@
 
       // Клик по строке — играем, если активен; иначе подсказка
       row.addEventListener('click', async (e) => {
-        // Предотвращаем всплытие, чтобы не сработали другие обработчики
         if (e) e.stopPropagation();
         
         const canPlay = !!item.__active && !!item.audio;
@@ -328,19 +327,7 @@
             // ✅ КРИТИЧНО: явно устанавливаем контекст «ИЗБРАННОГО» ДО вызова
             w.viewMode = 'favorites';
             w.playingAlbumKey = w.SPECIAL_FAVORITES_KEY;
-            w.currentAlbumKey = null; // ← сбрасываем текущий альбом
             
-            // ✅ Дополнительная защита: логируем для отладки
-            console.log('🎵 Клик по избранному (до ensureFavoritesPlayback):', {
-              modelIdx: idx,
-              albumKey: item.__a,
-              trackIdx: item.__t,
-              audio: item.audio,
-              viewMode: w.viewMode,
-              playingAlbumKey: w.playingAlbumKey
-            });
-            
-            // ✅ Вызываем НАПРЯМУЮ функцию воспроизведения
             await ensureFavoritesPlayback({
               a: item.__a,
               t: item.__t,
@@ -366,24 +353,24 @@
         call('updateFavoritesRefsModelActiveFlag', item.__a, item.__t, !wasActive);
 
         // Если сейчас играем «Избранное» — поддержим последовательность и UI
-          if (w.playingAlbumKey === w.SPECIAL_FAVORITES_KEY && Array.isArray(w.playingTracks)) {
-            try {
-              // ✅ ПОЛНАЯ пересборка playable + карты
-              const model = w.favoritesRefsModel || [];
-              const playable = [];
-              const modelToPlayableMap = new Map();
+        if (w.playingAlbumKey === w.SPECIAL_FAVORITES_KEY && Array.isArray(w.playingTracks)) {
+          try {
+            // ✅ ПОЛНАЯ пересборка playable + карты
+            const model = w.favoritesRefsModel || [];
+            const playable = [];
+            const modelToPlayableMap = new Map();
 
-              model.forEach((it, i) => {
-                if (it && it.__active && it.audio) {
-                  const j = playable.length;
-                  playable.push({ it, i });
-                  modelToPlayableMap.set(i, j);
-                }
-              });
+            model.forEach((it, i) => {
+              if (it && it.__active && it.audio) {
+                const j = playable.length;
+                playable.push({ it, i });
+                modelToPlayableMap.set(i, j);
+              }
+            });
 
-              w.favPlayableMap = playable.map(x => x.i);
-              w.favModelToPlayableMap = modelToPlayableMap;
-            } catch {}
+            w.favPlayableMap = playable.map(x => x.i);
+            w.favModelToPlayableMap = modelToPlayableMap;
+          } catch {}
 
           if (wasActive) {
             call('createPlayingShuffledPlaylist');
@@ -487,13 +474,6 @@
 
   // ИНИЦИАЛИЗАЦИЯ ВОСПРОИЗВЕДЕНИЯ ДЛЯ «ИЗБРАННОГО»
   async function ensureFavoritesPlayback(target) {
-    // ✅ ЗАЩИТА: проверяем, что мы действительно в режиме «ИЗБРАННОГО»
-    if (w.viewMode !== 'favorites' && w.playingAlbumKey !== w.SPECIAL_FAVORITES_KEY) {
-      console.warn('ensureFavoritesPlayback called outside favorites context, forcing context');
-      w.viewMode = 'favorites';
-      w.playingAlbumKey = w.SPECIAL_FAVORITES_KEY;
-    }
-
     // Обеспечим модель
     if (!Array.isArray(w.favoritesRefsModel) || w.favoritesRefsModel.length === 0) {
       await (w.FavoritesData?.buildFavoritesRefsModel?.() ?? Promise.resolve([]));
@@ -501,9 +481,9 @@
 
     const model = Array.isArray(w.favoritesRefsModel) ? w.favoritesRefsModel : [];
 
-    // ✅ НОВАЯ ЛОГИКА: построение карты model[i] → playable[j]
+    // ✅ Построение карты model[i] → playable[j]
     const playable = [];
-    const modelToPlayableMap = new Map(); // model[i] → playable[j]
+    const modelToPlayableMap = new Map();
 
     model.forEach((it, i) => {
       if (it && it.__active && it.audio) {
@@ -526,33 +506,26 @@
     let targetIdx = 0;
 
     if (typeof target === 'object' && target !== null) {
-      // Клик по строке: target = { a: albumKey, t: trackIndex, idx: modelIndex }
       const modelIdx = Number.isFinite(target.idx) ? target.idx : -1;
       
       if (modelIdx >= 0 && modelToPlayableMap.has(modelIdx)) {
-        // ✅ ПРАВИЛЬНОЕ отображение: modelIndex → playableIndex
         targetIdx = modelToPlayableMap.get(modelIdx);
       } else {
-        // Fallback: поиск по ключу (a:t)
         const keyOf = (a, t) => `${a}:${t}`;
         const targetKey = keyOf(target.a, target.t);
         const found = playable.findIndex(x => keyOf(x.it.__a, x.it.__t) === targetKey);
         if (found >= 0) targetIdx = found;
       }
     } else if (typeof target === 'number') {
-      // Прямой вызов с индексом playable
       targetIdx = Math.max(0, Math.min(playable.length - 1, target));
     }
 
-    const originalIdx = targetIdx;
-    w.playingTrackOriginalIdx = originalIdx;
+    w.playingTrackOriginalIdx = targetIdx;
 
-    // ✅ КРИТИЧНО: Контекст «Избранного» - СНАЧАЛА устанавливаем, ПОТОМ используем
+    // ✅ Контекст «Избранного»
     w.playingAlbumKey = w.SPECIAL_FAVORITES_KEY;
     w.viewMode = 'favorites';
-    w.currentAlbumKey = null; // ← принудительно сбрасываем текущий альбом
     
-    // ✅ Собираем плейлист с ПОЛНЫМИ метаданными (для Media Session и UI)
     w.playingTracks = playable.map(x => ({
       title: x.it.title,
       audio: x.it.audio,
@@ -568,13 +541,9 @@
     w.playingTrack = targetIdx;
     w.currentTrack = targetIdx;
 
-    // Сохраняем карту для UI
     w.favPlayableMap = playable.map(x => x.i);
-
-    // Обновим доступные индексы
     call('updateAvailableTracks');
 
-    // Гарантируем наличие блока плеера в DOM
     const holder = document.getElementById('now-playing');
     if (holder && !document.getElementById('lyricsplayerblock')) {
       holder.innerHTML = '<div class="lyrics-player-block" id="lyricsplayerblock"></div>';
@@ -584,56 +553,15 @@
     // Если активен новый плеер
     if (w.__useNewPlayerCore && w.playerCore) {
       try {
-        // ✅ КРИТИЧНО: убедимся, что контекст установлен ДО вызова __buildPlayerCorePayload
-        w.playingAlbumKey = w.SPECIAL_FAVORITES_KEY;
-        w.viewMode = 'favorites';
-        
         const payload = hasFn('__buildPlayerCorePayload') ? call('__buildPlayerCorePayload') : null;
-        
-        // ✅ ДОПОЛНИТЕЛЬНАЯ ЗАЩИТА: если payload вернул не те треки — собираем вручную
-        if (payload && Array.isArray(payload.tracks) && payload.tracks.length > 0) {
-          // Проверяем, что первый трек из payload соответствует первому в playingTracks
-          const firstPayload = payload.tracks[0]?.src;
-          const firstPlaying = w.playingTracks[0]?.audio;
-          
-          if (firstPayload !== firstPlaying) {
-            console.warn('__buildPlayerCorePayload returned wrong playlist, rebuilding manually');
-            const cover = w.playingCover || 'img/logo.png';
-            const manualPayload = {
-              tracks: w.playingTracks.map(t => ({
-                src: t.audio,
-                title: t.title,
-                artist: t.artist || w.playingArtist || 'Витрина Разбита',
-                album: t.album || w.playingAlbumName || 'Избранное',
-                cover: t.cover || cover,
-                lyrics: t.lyrics,
-                fulltext: t.fulltext || ''
-              })),
-              index: targetIdx,
-              meta: {
-                artist: w.playingArtist || 'Витрина Разбита',
-                album: w.playingAlbumName || 'Избранное',
-                cover
-              }
-            };
-            w.playerCore.setPlaylist(manualPayload.tracks, targetIdx, manualPayload.meta);
-          } else {
-            w.playerCore.setPlaylist(payload.tracks, targetIdx, payload.meta);
-          }
+        if (payload) {
+          w.playerCore.setPlaylist(payload.tracks, targetIdx, payload.meta);
           w.playerCore.setShuffle(!!w.shuffleMode);
           w.playerCore.setRepeat(!!w.repeatMode);
           w.playerCore.setFavoritesOnly(false, []);
         }
 
         w.playerCore.play(targetIdx);
-
-        // ✅ Отладочный лог ПОСЛЕ setPlaylist
-        console.log('🎵 PlayerCore.setPlaylist завершён (ИЗБРАННОЕ):', {
-          playlistLength: w.playerCore.getPlaylistSnapshot?.().length,
-          targetIdx,
-          firstTrackSrc: w.playerCore.getPlaylistSnapshot?.()?.[0]?.src,
-          expectedFirstSrc: w.playingTracks[0]?.audio
-        });
 
         if (payload?.tracks?.[targetIdx]?.lyrics) {
           call('loadLyrics', payload.tracks[targetIdx].lyrics);
@@ -786,7 +714,6 @@
     toggleLikePlaying
   };
 
-  // Экспорт
   w.FavoritesUI = FavoritesUI;
 
   // Глобальные привязки (для onclick и вызовов из index.html)
