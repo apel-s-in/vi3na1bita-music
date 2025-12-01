@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d01f125bd1603b510efbef494b5bb73b8491be4c.idx
-│   │       ├── pack-d01f125bd1603b510efbef494b5bb73b8491be4c.pack
-│   │       └── pack-d01f125bd1603b510efbef494b5bb73b8491be4c.rev
+│   │       ├── pack-4de48293b985105b52fe85565a45140125a78731.idx
+│   │       ├── pack-4de48293b985105b52fe85565a45140125a78731.pack
+│   │       └── pack-4de48293b985105b52fe85565a45140125a78731.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -258,7 +258,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-01 09:44:48 UTC
+Сгенерировано: 2025-12-01 09:50:23 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1021,7 +1021,7 @@ jobs:
   <!-- Уведомления (единый модуль) -->
   <script src="./scripts/ui/notify.js" defer></script>
   <!-- Константы и storage «Избранного» (должны быть раньше favorites-data / favorites) -->
-  <script src="./scripts/ui/favorites-const.js" defer></script>
+  <script src="./scripts/ui/favorites-const.js"></script>
   <script src="./scripts/ui/favorites-storage.js" defer></script>
   <!-- Кнопка «О системе»: модуль отображения информации от Service Worker -->
   <script src="./scripts/ui/sysinfo.js" defer></script>
