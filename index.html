@@ -2324,6 +2324,12 @@
     const list = document.getElementById('track-list');
     if (!config) { list.innerHTML = ''; return; }
 
+    // ✅ ЗАЩИТА: очищаем старые обработчики
+    const oldRows = list.querySelectorAll('.track');
+    oldRows.forEach(row => {
+      const clone = row.cloneNode(true);
+      row.parentNode.replaceChild(clone, row);
+    });
     const preservedInNowPlaying = !!document.getElementById('now-playing')?.querySelector('#lyricsplayerblock');
     const foreignView = preservedInNowPlaying && isBrowsingOtherAlbum();
 
