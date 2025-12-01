@@ -2957,10 +2957,14 @@ function renderLyricsBlock() {
   // Вспомогательный билд-пакет для PlayerCore: собрать треки и метаданные
   function __buildPlayerCorePayload() {
     try {
-      // ✅ КРИТИЧНО: В режиме «Избранного» ВСЕГДА берём уже собранный плейлист из playingTracks
-      // Проверяем ОБОИМИ способами: по ключу И по viewMode (двойная защита)
-      const isFavoritesContext = (playingAlbumKey === SPECIAL_FAVORITES_KEY) || 
-                                  (viewMode === 'favorites' && Array.isArray(playingTracks) && playingTracks.length > 0);
+      // ✅ КРИТИЧНО: УСИЛЕННАЯ проверка контекста «ИЗБРАННОГО»
+      // Проверяем ВСЕ признаки: ключ, режим, наличие плейлиста
+      const isFavoritesContext = 
+        (playingAlbumKey === SPECIAL_FAVORITES_KEY) || 
+        (viewMode === 'favorites') ||
+        (playingAlbumKey === '__favorites__') ||
+        (Array.isArray(playingTracks) && playingTracks.length > 0 && 
+         playingTracks[0]?.audio && playingTracks[0].audio !== config?.tracks?.[0]?.audio);
       
       if (isFavoritesContext && Array.isArray(playingTracks) && playingTracks.length > 0) {
         const cover = (typeof playingCover === 'string' && playingCover) || 'img/logo.png';
