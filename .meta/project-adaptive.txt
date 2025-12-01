@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2a3acbb1c32070651c8b7a77d00d60470c35a4e8.idx
-│   │       ├── pack-2a3acbb1c32070651c8b7a77d00d60470c35a4e8.pack
-│   │       └── pack-2a3acbb1c32070651c8b7a77d00d60470c35a4e8.rev
+│   │       ├── pack-5b8a9729f52d0e4c1d4fbcbc3361f1a004705e42.idx
+│   │       ├── pack-5b8a9729f52d0e4c1d4fbcbc3361f1a004705e42.pack
+│   │       └── pack-5b8a9729f52d0e4c1d4fbcbc3361f1a004705e42.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -258,7 +258,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-01 19:34:49 UTC
+Сгенерировано: 2025-12-01 19:46:51 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3501,27 +3501,22 @@ function renderLyricsBlock() {
   // Вспомогательный билд-пакет для PlayerCore: собрать треки и метаданные
   function __buildPlayerCorePayload() {
     try {
-      // ✅ КРИТИЧНО: УСИЛЕННАЯ проверка контекста «ИЗБРАННОГО»
-      // Проверяем ВСЕ признаки: ключ, режим, наличие плейлиста
-      const isFavoritesContext = 
-        (playingAlbumKey === SPECIAL_FAVORITES_KEY) || 
+      // ===== ЖЁСТКАЯ ВЕТКА ДЛЯ ИЗБРАННОГО =====
+      const isFavCtx =
+        (playingAlbumKey === SPECIAL_FAVORITES_KEY) ||
         (viewMode === 'favorites') ||
-        (playingAlbumKey === '__favorites__') ||
-        (Array.isArray(playingTracks) && playingTracks.length > 0 && 
-         playingTracks[0]?.audio && playingTracks[0].audio !== config?.tracks?.[0]?.audio);
-      
-      if (isFavoritesContext && Array.isArray(playingTracks) && playingTracks.length > 0) {
-        console.log('✅ __buildPlayerCorePayload: используем playingTracks для ИЗБРАННОГО', {
-          length: playingTracks.length,
-          firstAudio: playingTracks[0]?.audio,
-          playingAlbumKey,
-          viewMode
-        });
-        
+        (playingAlbumKey === '__favorites__');
+
+      if (isFavCtx) {
+        if (!Array.isArray(playingTracks) || playingTracks.length === 0) {
+          console.warn('__buildPlayerCorePayload: favorites context, но playingTracks пуст');
+          return null;
+        }
+
         const cover = (typeof playingCover === 'string' && playingCover) || 'img/logo.png';
-        
+
         const tracks = playingTracks.map(t => ({
-          src: t.audio,           // ✅ Уже содержит правильные пути из разных альбомов
+          src: t.audio,
           title: t.title,
           artist: t.artist || playingArtist || 'Витрина Разбита',
           album: t.album || playingAlbumName || 'Избранное',
@@ -3529,35 +3524,29 @@ function renderLyricsBlock() {
           lyrics: t.lyrics,
           fulltext: t.fulltext || ''
         }));
-        
+
         const meta = {
           artist: playingArtist || 'Витрина Разбита',
           album: playingAlbumName || 'Избранное',
           cover
         };
-        
-        const idx = (typeof playingTrack === 'number' && playingTrack >= 0) ? playingTrack : 0;
+
+        const idx =
+          (typeof playingTrack === 'number' && playingTrack >= 0)
+            ? playingTrack
+            : 0;
+
         return { tracks, index: idx, meta };
       }
 
-      // ✅ Для обычных альбомов — как раньше
+      // ===== Обычный альбом =====
       const pcfg = getPlayerConfig();
-      
-      // ✅ ЗАЩИТА: если pcfg содержит треки из playingTracks (режим ИЗБРАННОГО)
-      // но мы попали сюда — значит что-то сломано, возвращаем null
-      if (pcfg && Array.isArray(pcfg.tracks) && pcfg.tracks.length > 0) {
-        if (Array.isArray(playingTracks) && playingTracks.length > 0 &&
-            pcfg.tracks[0]?.audio === playingTracks[0]?.audio) {
-          console.error('❌ __buildPlayerCorePayload: попали в альбомную ветку при ИЗБРАННОМ!');
-          return null;
-        }
-      }
-      
       if (!pcfg || !Array.isArray(pcfg.tracks) || pcfg.tracks.length === 0) return null;
 
       const cover =
         (typeof playingCover === 'string' && playingCover) ||
-        (Array.isArray(window.coverGalleryArr) && window.coverGalleryArr[0] && (window.coverGalleryArr[0].formats?.full || window.coverGalleryArr[0].src)) ||
+        (Array.isArray(window.coverGalleryArr) && window.coverGalleryArr[0] &&
+          (window.coverGalleryArr[0].formats?.full || window.coverGalleryArr[0].src)) ||
         'img/logo.png';
 
       const tracks = pcfg.tracks.map(t => ({
@@ -3569,19 +3558,20 @@ function renderLyricsBlock() {
         lyrics: t.lyrics,
         fulltext: t.fulltext || ''
       }));
-      
+
       const meta = {
         artist: pcfg.artist || 'Витрина Разбита',
         album: pcfg.albumName || 'Альбом',
         cover
       };
-      
+
       const idx =
         (typeof playingTrack === 'number' && playingTrack >= 0) ? playingTrack
         : (typeof currentTrack === 'number' && currentTrack >= 0 ? currentTrack : 0);
 
       return { tracks, index: idx, meta };
-    } catch {
+    } catch (e) {
+      console.warn('__buildPlayerCorePayload error', e);
       return null;
     }
   }
