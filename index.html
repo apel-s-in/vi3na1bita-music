@@ -2289,7 +2289,7 @@
   function isLiked(idx, albumKey = currentAlbumKey) { return getLikedForAlbum(albumKey).includes(idx); }
   function isLikedInPlayback(idx) {
     if (playingAlbumKey === SPECIAL_FAVORITES_KEY) {
-      const ref = favoritesRefsModel?.[idx];
+      const ref = window.favoritesRefsModel?.[idx];
       return ref ? getLikedForAlbum(ref.__a).includes(ref.__t) : false;
     }
     return getLikedForAlbum(playingAlbumKey).includes(idx);
@@ -3304,9 +3304,9 @@ async function togglePlayPause() {
     if (playingAlbumKey === SPECIAL_FAVORITES_KEY) {
       if (Array.isArray(playingTracks) && playingTracks.length > 0) {
         availableTracks = Array.from({ length: playingTracks.length }, (_, i) => i);
-      } else if (Array.isArray(favoritesRefsModel)) {
+      } else if (Array.isArray(window.favoritesRefsModel)) {
         const activeIdx = [];
-        favoritesRefsModel.forEach((x, i) => { if (x.__active) activeIdx.push(i); });
+        window.favoritesRefsModel.forEach((x, i) => { if (x.__active) activeIdx.push(i); });
         availableTracks = activeIdx;
       } else {
         availableTracks = [];
@@ -3348,9 +3348,9 @@ async function togglePlayPause() {
         if (Array.isArray(window.favPlayableMap) && Array.isArray(playingTracks) && playingTracks.length > 0) {
           return Array.from({ length: playingTracks.length }, (_, i) => i);
         }
-        if (!Array.isArray(favoritesRefsModel)) return [];
+        if (!Array.isArray(window.favoritesRefsModel)) return [];
         const activeIdx = [];
-        favoritesRefsModel.forEach((x, i) => { if (x.__active) activeIdx.push(i); });
+        window.favoritesRefsModel.forEach((x, i) => { if (x.__active) activeIdx.push(i); });
         return activeIdx;
       }
 
@@ -3537,8 +3537,8 @@ async function togglePlayPause() {
   
     // Подбираем корректную обложку
     let artUrl = playingCover || 'img/logo.png';
-    if (playingAlbumKey === SPECIAL_FAVORITES_KEY && Array.isArray(favoritesRefsModel)) {
-      const ref = favoritesRefsModel[playingTrack];
+    if (playingAlbumKey === SPECIAL_FAVORITES_KEY && Array.isArray(window.favoritesRefsModel)) {
+      const ref = window.favoritesRefsModel[playingTrack];
       if (ref && ref.__cover) artUrl = ref.__cover;
     }
   
@@ -4915,8 +4915,8 @@ ${lines}
           }
         }
       } catch {}
-    } else if (viewMode === 'favorites' && Array.isArray(favoritesRefsModel)) {
-      for (const it of favoritesRefsModel) {
+    } else if (viewMode === 'favorites' && Array.isArray(window.favoritesRefsModel)) {
+      for (const it of window.favoritesRefsModel) {
         if (!it.__active) continue;
         if (it.audio) out.add(it.audio);
         if (it.lyrics) out.add(it.lyrics);
