@@ -319,13 +319,12 @@
       row.addEventListener('click', async () => {
         const canPlay = !!item.__active && !!item.audio;
         if (canPlay) {
-          if (typeof w.ensureFavoritesPlayback === 'function') {
-            await w.ensureFavoritesPlayback({
-              a: item.__a,
-              t: item.__t,
-              idx: idx
-            });
-          }
+          // ✅ Используем локальную ссылку (гарантированно определена в замыкании)
+          await ensureFavoritesPlayback({
+            a: item.__a,
+            t: item.__t,
+            idx: idx
+          });
         } else {
           showFavInactivePrompt({ a: item.__a, t: item.__t, title: item.title, album: item.__album });
         }
