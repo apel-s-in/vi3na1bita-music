@@ -481,15 +481,15 @@
 
     const model = Array.isArray(w.favoritesRefsModel) ? w.favoritesRefsModel : [];
 
-    // ✅ Построение карты model[i] → playable[j]
+    // Пересобираем playable‑плейлист и карту соответствия МОДЕЛЬ → PLAYABLE
     const playable = [];
-    const modelToPlayableMap = new Map();
+    const modelToPlayableMap = new Map<number, number>();
 
     model.forEach((it, i) => {
       if (it && it.__active && it.audio) {
         const j = playable.length;
-        playable.push({ it, i });
-        modelToPlayableMap.set(i, j);
+        playable.push({ it, i });      // i — индекс в favoritesRefsModel
+        modelToPlayableMap.set(i, j);  // j — индекс в playingTracks / PlayerCore
       }
     });
 
@@ -498,9 +498,10 @@
       return;
     }
 
-    // Сохраняем карту глобально для UI-синхронизации
-    w.favModelToPlayableMap = modelToPlayableMap;
+    // Глобальная карта: playableIndex -> modelIndex
     w.favPlayableMap = playable.map(x => x.i);
+    // Обратная карта: modelIndex -> playableIndex
+    w.favModelToPlayableMap = modelToPlayableMap;
 
     // Определение целевого индекса в playable
     let targetIdx = 0;
