@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e6c8c56ca18579a78c5890a3db8b1831fd6ab6b0.idx
-│   │       ├── pack-e6c8c56ca18579a78c5890a3db8b1831fd6ab6b0.pack
-│   │       └── pack-e6c8c56ca18579a78c5890a3db8b1831fd6ab6b0.rev
+│   │       ├── pack-b922ccb5bb57c7426bb04062746e1c33df65ff34.idx
+│   │       ├── pack-b922ccb5bb57c7426bb04062746e1c33df65ff34.pack
+│   │       └── pack-b922ccb5bb57c7426bb04062746e1c33df65ff34.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -258,7 +258,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-01 10:04:30 UTC
+Сгенерировано: 2025-12-01 10:25:02 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8692,13 +8692,12 @@ Object.assign(window, {
       row.addEventListener('click', async () => {
         const canPlay = !!item.__active && !!item.audio;
         if (canPlay) {
-          if (typeof w.ensureFavoritesPlayback === 'function') {
-            await w.ensureFavoritesPlayback({
-              a: item.__a,
-              t: item.__t,
-              idx: idx
-            });
-          }
+          // ✅ Используем локальную ссылку (гарантированно определена в замыкании)
+          await ensureFavoritesPlayback({
+            a: item.__a,
+            t: item.__t,
+            idx: idx
+          });
         } else {
           showFavInactivePrompt({ a: item.__a, t: item.__t, title: item.title, album: item.__album });
         }
