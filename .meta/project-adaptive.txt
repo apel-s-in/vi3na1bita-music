@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c32d079319c258fab4f9df76bc85d514c5879912.idx
-│   │       ├── pack-c32d079319c258fab4f9df76bc85d514c5879912.pack
-│   │       └── pack-c32d079319c258fab4f9df76bc85d514c5879912.rev
+│   │       ├── pack-07bd7a5c8c367dd0b7eb7ba8485129b017751e75.idx
+│   │       ├── pack-07bd7a5c8c367dd0b7eb7ba8485129b017751e75.pack
+│   │       └── pack-07bd7a5c8c367dd0b7eb7ba8485129b017751e75.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -266,7 +266,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-06 20:39:41 UTC
+Сгенерировано: 2025-12-06 20:41:02 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -576,9 +576,12 @@ jobs:
   <script src="./performance/rum.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.core.min.js"></script>
   
-  <!-- Core modules -->
-  <script src="./scripts/core/bootstrap.js" defer></script>
-  <script src="./scripts/core/config.js" type="module"></script>
+    <!-- Core modules -->
+    <script src="./scripts/core/bootstrap.js"></script>
+    <script src="./scripts/core/config.js" type="module"></script>
+  
+    <!-- Player Core (ОБЯЗАТЕЛЬНО ПОСЛЕ Howler.js) -->
+    <script src="./scripts/player/player-adapter.js" type="module"></script>
   
   <!-- UI modules -->
   <script src="./scripts/ui/notify.js" defer></script>
