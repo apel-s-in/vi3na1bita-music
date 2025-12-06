@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e6c5bcc89a439d1be1a318d595101a5cad550814.idx
-│   │       ├── pack-e6c5bcc89a439d1be1a318d595101a5cad550814.pack
-│   │       └── pack-e6c5bcc89a439d1be1a318d595101a5cad550814.rev
+│   │       ├── pack-c7f45d2dea8ce92767ed98a8bf270ee66da36002.idx
+│   │       ├── pack-c7f45d2dea8ce92767ed98a8bf270ee66da36002.pack
+│   │       └── pack-c7f45d2dea8ce92767ed98a8bf270ee66da36002.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -265,7 +265,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-06 23:04:22 UTC
+Сгенерировано: 2025-12-06 23:05:02 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7044,7 +7044,6 @@ export class PlayerCore {
     // Sleep timer
     this._sleepTimerId = null;
     this._sleepTargetTs = 0;
-
     this._installMediaSessionHandlersOnce();
   }
 
@@ -7062,7 +7061,6 @@ export class PlayerCore {
 
   on(events) { this.events = { ...this.events, ...events }; }
   setEvents(events) { this.events = { ...events }; }
-
   setRepeat(v) { this.repeat = !!v; }
   setShuffle(v) { this.shuffle = !!v; this._syncShuffle(true); }
   setFavoritesOnly(v, favorites = []) {
@@ -7074,17 +7072,17 @@ export class PlayerCore {
   play(index) {
     if (typeof index === 'number') this.index = this._clampIndex(index);
     if (!this.playlist.length) return;
-
+    
     // Если Howl уже есть и играет тот же трек — просто возобновляем
     if (this.howl && this._isPaused && this.howl._src === (this.playlist[this.index]?.src || '')) {
       this.howl.play();
       return;
     }
-
+    
     this._stopHowl();
     const tr = this.getCurrentTrack();
     if (!tr || !tr.src) return;
-
+    
     this.howl = new Howl({
       src: [tr.src],
       html5: true,
@@ -7112,17 +7110,17 @@ export class PlayerCore {
         // Можно добавить логику для пропуска трека
       }
     });
-
+    
     try {
       const saved = parseFloat(localStorage.getItem('playerVolume'));
       if (Number.isFinite(saved)) this.setVolume(saved);
     } catch {}
+    
     this.howl.play();
   }
 
   pause() { if (this.howl && !this._isPaused) this.howl.pause(); }
   stop()  { this._stopHowl(); this._isPaused = true; this._fire('onStop', this.getCurrentTrack(), this.index); }
-
   next() {
     const n = this._nextIndex();
     if (n < 0) { this.stop(); return; }
@@ -7141,6 +7139,7 @@ export class PlayerCore {
     if (this.howl) this.howl.volume(vol);
     else if (typeof Howler !== 'undefined') Howler.volume(vol);
   }
+
   getVolume() {
     if (this.howl) return this.howl.volume();
     if (typeof Howler !== 'undefined') return Howler.volume();
@@ -7152,12 +7151,10 @@ export class PlayerCore {
     if (typeof sec === 'number') this.howl.seek(Math.max(0, sec));
     else return Number(this.howl.seek()) || 0;
   }
+
   getSeek() { return this.seek(); }
   getDuration() { return this.howl ? (this.howl.duration() || 0) : 0; }
-
-  getNextIndex() {
-    return this._nextIndex();
-  }
+  getNextIndex() { return this._nextIndex(); }
 
   getPlaylistSnapshot() {
     return (this.playlist || []).map(t => ({
@@ -7187,7 +7184,6 @@ export class PlayerCore {
 
   _clampIndex(i) { return Math.max(0, Math.min(this.playlist.length - 1, i)); }
   _fire(name, ...args) { try { const fn = this.events && this.events[name]; if (typeof fn === 'function') fn(...args); } catch {} }
-
   _stopHowl() {
     if (this.howl) { try { this.howl.stop(); this.howl.unload(); } catch {} this.howl = null; }
   }
@@ -7199,17 +7195,16 @@ export class PlayerCore {
     }
     return this.playlist.map((_, i) => i);
   }
+
   _syncShuffle(force = false) {
     if (!this.shuffle) { this.shuffled = []; return; }
     const base = this._filteredIndices();
-
     // Если уже есть валидная последовательность и она подходит — не пересоздаём без нужды.
     if (!force && Array.isArray(this.shuffled) &&
         this.shuffled.length === base.length &&
         this.shuffled.includes(this.index)) {
       return;
     }
-
     const arr = base.slice();
     for (let j = arr.length - 1; j > 0; j--) {
       const k = Math.floor(Math.random() * (j + 1));
@@ -7219,11 +7214,13 @@ export class PlayerCore {
     if (i > 0) { arr.splice(i, 1); arr.unshift(this.index); }
     this.shuffled = arr;
   }
+
   _displayList() {
     const base = this._filteredIndices();
     if (this.shuffle && this.shuffled.length) return this.shuffled.slice();
     return base;
   }
+
   _nextIndex() {
     const arr = this._displayList();
     if (!arr.length) return -1;
@@ -7231,6 +7228,7 @@ export class PlayerCore {
     const nextIdx = (pos + 1) % arr.length;
     return arr[nextIdx];
   }
+
   _prevIndex() {
     const arr = this._displayList();
     if (!arr.length) return -1;
@@ -7251,6 +7249,7 @@ export class PlayerCore {
       } catch {}
     }, this._tickIntervalMs);
   }
+
   _stopTicker() {
     if (this._ticker) { clearInterval(this._ticker); this._ticker = null; }
   }
@@ -7269,6 +7268,7 @@ export class PlayerCore {
       this._fire('onSleepTriggered', this.getCurrentTrack(), this.index);
     }, n);
   }
+
   clearSleepTimer() {
     if (this._sleepTimerId) {
       try { clearTimeout(this._sleepTimerId); } catch {}
@@ -7276,6 +7276,7 @@ export class PlayerCore {
     }
     this._sleepTargetTs = 0;
   }
+
   getSleepTimerTarget() {
     return this._sleepTargetTs || 0;
   }
