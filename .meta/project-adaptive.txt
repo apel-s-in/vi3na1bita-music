@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ee8344437fb8768d6e5ea20f88a4ff4cfea92df3.idx
-│   │       ├── pack-ee8344437fb8768d6e5ea20f88a4ff4cfea92df3.pack
-│   │       └── pack-ee8344437fb8768d6e5ea20f88a4ff4cfea92df3.rev
+│   │       ├── pack-6ebb56c993176225ae769b3ac31eec89dd0c417d.idx
+│   │       ├── pack-6ebb56c993176225ae769b3ac31eec89dd0c417d.pack
+│   │       └── pack-6ebb56c993176225ae769b3ac31eec89dd0c417d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── sw.js
 
 
-Сгенерировано: 2025-12-06 21:58:53 UTC
+Сгенерировано: 2025-12-06 22:14:15 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2552,17 +2552,10 @@ export const APP_CONFIG = {
   // Порядок отображения иконок альбомов
   ICON_ALBUMS_ORDER: [
     { key: '__favorites__', title: 'Избранное', icon: 'img/icon_album/icon-album-00.png' },
-    { key: '__reliz__', title: 'Новости', icon: 'img/icon_album/icon-album-news.png' },
     { key: 'mezhdu-zlom-i-dobrom', title: 'Между Злом и Добром', icon: 'img/icon_album/icon-album-01.png' },
     { key: 'golos-dushi', title: 'Голос Души', icon: 'img/icon_album/icon-album-02.png' },
-    { key: 'krevetochka', title: 'КРЕВЕцTOCHKA', icon: 'img/icon_album/icon-album+00.png' }
-    { key: 'vr_02', title: 'Альбом 2', icon: 'img/icon_album/icon-album-02.png' },
-    { key: 'vr_03', title: 'Альбом 3', icon: 'img/icon_album/icon-album-03.png' },
-    { key: 'vr_04', title: 'Альбом 4', icon: 'img/icon_album/icon-album-04.png' },
-    { key: 'vr_05', title: 'Альбом 5', icon: 'img/icon_album/icon-album-05.png' },
-    { key: 'vr_06', title: 'Альбом 6', icon: 'img/icon_album/icon-album-06.png' },
-    { key: 'vr_07', title: 'Альбом 7', icon: 'img/icon_album/icon-album-07.png' },
-    { key: 'vr_08', title: 'Альбом 8', icon: 'img/icon_album/icon-album-08.png' }
+    { key: 'krevetochka', title: 'КРЕВЕцTOCHKA', icon: 'img/icon_album/icon-album+00.png' },
+    { key: '__reliz__', title: 'Новости', icon: 'img/icon_album/icon-album-news.png' }
   ],
   
   // Ссылки
