@@ -151,8 +151,8 @@
     saveState() {
       try {
         if (window.playerCore) {
-          const currentTrack = window.playerCore.getCurrentTrackIndex();
-          const position = window.playerCore.getCurrentPosition();
+          const currentTrack = window.playerCore.getIndex();
+          const position = window.playerCore.getSeek();
           
           localStorage.setItem('lastTrackIndex', currentTrack.toString());
           localStorage.setItem('lastTrackPosition', position.toString());
