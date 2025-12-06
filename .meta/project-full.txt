@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-27992f529b6dd528681c1943903a1bec0d4fa255.idx
-│   │       ├── pack-27992f529b6dd528681c1943903a1bec0d4fa255.pack
-│   │       └── pack-27992f529b6dd528681c1943903a1bec0d4fa255.rev
+│   │       ├── pack-e557a56e3ecf01028c52bc118fa275af27e9a7b7.idx
+│   │       ├── pack-e557a56e3ecf01028c52bc118fa275af27e9a7b7.pack
+│   │       └── pack-e557a56e3ecf01028c52bc118fa275af27e9a7b7.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -234,6 +234,8 @@ vi3na1bita-music/
 │   ├── e2e/
 │   │   ├── favorites.spec.js
 │   │   └── player.spec.js
+│   ├── player/
+│   │   └── player-adapter.js
 │   ├── ui/
 │   │   ├── favorites-const.js
 │   │   ├── favorites-data.js
@@ -263,7 +265,7 @@ vi3na1bita-music/
 └── sw.js
 
 
-Сгенерировано: 2025-12-06 21:36:56 UTC
+Сгенерировано: 2025-12-06 21:37:53 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3490,6 +3492,88 @@ test('SW update flow persists state and restores after reload', async ({ page })
 //=================================================
 // FILE: /scripts/energy.js
 
+
+//=================================================
+// FILE: /scripts/player/player-adapter.js
+// scripts/player/player-adapter.js
+// ⭐ ИСПРАВЛЕНО: правильный путь к PlayerCore
+
+import { PlayerCore } from '../../src/PlayerCore.js';  // ✅ ПРАВИЛЬНЫЙ ПУТЬ!
+
+(function initPlayerAdapter() {
+  if (window.playerCore) {
+    console.warn('⚠️ PlayerCore already exists');
+    return;
+  }
+
+  console.log('🎵 Initializing PlayerCore adapter...');
+
+  // Создаём экземпляр плеера
+  const playerCore = new PlayerCore();
+
+  // Подписка на события
+  playerCore.on({
+    onTrackChange: (track, index) => {
+      console.log('🎵 Track changed:', track?.title);
+      
+      // Обновляем UI
+      if (window.PlayerControls) {
+        window.PlayerControls.updateNowPlaying({ track, index });
+      }
+    },
+    
+    onPlay: (track, index) => {
+      console.log('▶️ Playing:', track?.title);
+      if (window.PlayerControls) {
+        window.PlayerControls.updatePlayPauseButton(true);
+      }
+    },
+    
+    onPause: (track, index) => {
+      console.log('⏸️ Paused');
+      if (window.PlayerControls) {
+        window.PlayerControls.updatePlayPauseButton(false);
+      }
+    },
+    
+    onStop: (track, index) => {
+      console.log('⏹️ Stopped');
+      if (window.PlayerControls) {
+        window.PlayerControls.updatePlayPauseButton(false);
+      }
+    },
+    
+    onEnd: (track, index) => {
+      console.log('⏭️ Track ended');
+    },
+    
+    onTick: (position, duration) => {
+      if (window.PlayerControls) {
+        window.PlayerControls.updateProgress(position, duration);
+      }
+    }
+  });
+
+  // Восстановление настроек
+  try {
+    const volume = parseFloat(localStorage.getItem('playerVolume') || '1');
+    if (Number.isFinite(volume)) {
+      playerCore.setVolume(volume);
+    }
+  } catch (e) {
+    console.error('Failed to restore volume:', e);
+  }
+
+  try {
+    playerCore.setRepeat(localStorage.getItem('repeatMode') === '1');
+    playerCore.setShuffle(localStorage.getItem('shuffleMode') === '1');
+  } catch (e) {}
+
+  // Экспорт в глобальную область
+  window.playerCore = playerCore;
+
+  console.log('✅ PlayerCore adapter initialized');
+})();
 
 //=================================================
 // FILE: /scripts/ui/favorites-const.js
