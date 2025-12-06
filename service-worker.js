@@ -23,7 +23,8 @@ const PRECACHE_ASSETS = [
   '/scripts/core/config.js',
   
   // Player
-  '/scripts/player/player-adapter.js',
+  '/scripts/player-adapter.js',  // ✅ Адаптер в корне scripts/
+  '/scripts/player/PlayerCore.js',  // ✅ Ядро в подпапке
   
   // UI
   '/scripts/ui/notify.js',
