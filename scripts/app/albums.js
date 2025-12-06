@@ -6,19 +6,19 @@ import { APP_CONFIG } from '../core/config.js';
 class AlbumsManager {
   constructor() {
     this.currentAlbum = null;
-    this.albumsData = new Map(); // Кэш загруженных альбомов
+    this.albumsData = new Map();
     this.isLoading = false;
   }
 
   async initialize() {
     if (!window.albumsIndex || window.albumsIndex.length === 0) {
-      console.error('No albums found');
+      console.error('❌ No albums found');
       return;
     }
 
     this.renderAlbumIcons();
     
-    // Загрузить последний или первый альбом
+    // Загрузить последний альбом
     const lastAlbum = localStorage.getItem('currentAlbum');
     const albumToLoad = lastAlbum || window.albumsIndex[0].key;
     
@@ -32,7 +32,7 @@ class AlbumsManager {
     container.innerHTML = '';
 
     APP_CONFIG.ICON_ALBUMS_ORDER.forEach(({ key, title, icon }) => {
-      // Проверка существования альбома (кроме спецальбомов)
+      // Проверка существования (кроме спецальбомов)
       if (!key.startsWith('__')) {
         const exists = window.albumsIndex.some(a => a.key === key);
         if (!exists) return;
@@ -51,14 +51,14 @@ class AlbumsManager {
 
   async loadAlbum(albumKey) {
     if (this.isLoading) {
-      console.warn('Album loading in progress, skipping');
+      console.warn('⚠️ Album loading in progress');
       return;
     }
 
     this.isLoading = true;
 
     try {
-      // Остановить текущий трек
+      // Остановить плеер
       if (window.playerCore) {
         window.playerCore.stop();
       }
@@ -82,8 +82,10 @@ class AlbumsManager {
       this.currentAlbum = albumKey;
       localStorage.setItem('currentAlbum', albumKey);
 
+      console.log(`✅ Album loaded: ${albumKey}`);
+
     } catch (error) {
-      console.error('Failed to load album:', error);
+      console.error('❌ Failed to load album:', error);
       window.NotificationSystem?.error('Ошибка загрузки альбома');
     } finally {
       this.isLoading = false;
@@ -96,48 +98,56 @@ class AlbumsManager {
       throw new Error(`Album ${albumKey} not found`);
     }
 
-    // Загрузить данные альбома
+    // Загрузить tracks.json
     let albumData = this.albumsData.get(albumKey);
     
     if (!albumData) {
-      const response = await fetch(`${albumInfo.base}tracks.json`, { cache: 'no-cache' });
+      const response = await fetch(`${albumInfo.base}tracks.json`, {
+        cache: 'no-cache'
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
       albumData = await response.json();
       this.albumsData.set(albumKey, albumData);
     }
 
-    // Отобразить альбом
+    // Отобразить UI
     this.renderAlbumTitle(albumInfo.title);
     this.renderCover(albumInfo, albumData);
     this.renderSocials(albumData.social_links);
     this.renderTrackList(albumData.tracks, albumInfo);
 
-    // Загрузить треки в плеер
+    // Загрузить в плеер
     if (window.playerCore) {
       const tracks = albumData.tracks.map((t, idx) => ({
         title: t.title,
         url: `${albumInfo.base}${t.file}`,
-        album: albumKey,
-        trackNumber: idx  // ✅ Индекс в плейлисте
+        artist: 'Витрина Разбита',
+        album: albumInfo.title,
+        cover: `${albumInfo.base}${albumData.cover || 'cover.jpg'}`,
+        trackNumber: idx
       }));
       
       window.playerCore.setPlaylist(tracks, 0, {
         artist: 'Витрина Разбита',
         album: albumInfo.title,
-        cover: albumData.cover || `${albumInfo.base}cover.jpg`
+        cover: `${albumInfo.base}${albumData.cover || 'cover.jpg'}`
       });
     }
 
-    // Инициализировать галерею
-    if (window.NavigationManager) {
-      window.NavigationManager.initGallery(albumKey, albumData);
-    }
+    // Показать галерею
+    const coverWrap = document.getElementById('cover-wrap');
+    if (coverWrap) coverWrap.style.display = '';
   }
 
   async loadFavoritesAlbum() {
     const favorites = window.FavoritesManager?.getAllFavorites() || {};
     const allTracks = [];
 
-    // Собрать все избранные треки из всех альбомов
+    // Собрать все избранные треки
     for (const albumKey in favorites) {
       const albumInfo = window.albumsIndex.find(a => a.key === albumKey);
       if (!albumInfo) continue;
@@ -149,7 +159,9 @@ class AlbumsManager {
       let albumData = this.albumsData.get(albumKey);
       if (!albumData) {
         try {
-          const response = await fetch(`${albumInfo.base}tracks.json`, { cache: 'no-cache' });
+          const response = await fetch(`${albumInfo.base}tracks.json`, {
+            cache: 'no-cache'
+          });
           albumData = await response.json();
           this.albumsData.set(albumKey, albumData);
         } catch (error) {
@@ -167,14 +179,14 @@ class AlbumsManager {
             album: albumKey,
             albumTitle: albumInfo.title,
             albumBase: albumInfo.base,
-            originalTrackNum: num  // ✅ Сохраняем оригинальный номер для UI
+            originalTrackNum: num
           });
         }
       });
     }
 
     if (allTracks.length === 0) {
-      this.renderAlbumTitle('⭐⭐⭐ ИЗБРАННОЕ ⭐⭐⭐');
+      this.renderAlbumTitle('⭐⭐⭐ ИЗБРАННОЕ ⭐⭐⭐', 'fav');
       this.showEmptyFavorites();
       return;
     }
@@ -184,19 +196,29 @@ class AlbumsManager {
     this.renderFavoritesCover();
     this.renderFavoritesTrackList(allTracks);
 
-    // ✅ КРИТИЧНО: Загрузить в плеер с правильными индексами
+    // Загрузить в плеер
     if (window.playerCore) {
       const tracks = allTracks.map((t, idx) => ({
         title: t.title,
         url: `${t.albumBase}${t.file}`,
-        album: t.album,
-        trackNumber: idx,  // ✅ Индекс в плейлисте избранного (0, 1, 2...)
+        artist: 'Витрина Разбита',
+        album: t.albumTitle,
+        cover: 'img/icon_album/icon-album-00.png',
+        trackNumber: idx,
         originalAlbum: t.album,
-        originalTrackNum: t.originalTrackNum  // ✅ Для звездочки в UI
+        originalTrackNum: t.originalTrackNum
       }));
       
-      window.playerCore.loadPlaylist(tracks);
+      window.playerCore.setPlaylist(tracks, 0, {
+        artist: 'Витрина Разбита',
+        album: 'Избранное',
+        cover: 'img/icon_album/icon-album-00.png'
+      });
     }
+
+    // Скрыть галерею
+    const coverWrap = document.getElementById('cover-wrap');
+    if (coverWrap) coverWrap.style.display = 'none';
   }
 
   async loadNewsAlbum() {
@@ -210,13 +232,18 @@ class AlbumsManager {
           <h3>Следите за новостями</h3>
           <p>Новые треки и альбомы появятся здесь</p>
           <div style="margin-top: 20px;">
-            <a href="https://t.me/vitrina_razbita" target="_blank" style="color: #4daaff; text-decoration: underline;">
+            <a href="https://t.me/vitrina_razbita" target="_blank" 
+               style="color: #4daaff; text-decoration: underline;">
               Telegram канал
             </a>
           </div>
         </div>
       `;
     }
+
+    // Скрыть галерею
+    const coverWrap = document.getElementById('cover-wrap');
+    if (coverWrap) coverWrap.style.display = 'none';
   }
 
   renderAlbumTitle(title, modifier = '') {
@@ -232,22 +259,31 @@ class AlbumsManager {
     const coverSlot = document.getElementById('cover-slot');
     if (!coverSlot) return;
 
-    const coverUrl = albumData.cover || `${albumInfo.base}cover.jpg`;
-    coverSlot.innerHTML = `<img src="${coverUrl}" alt="${albumInfo.title}" draggable="false">`;
+    const coverUrl = albumData.cover 
+      ? `${albumInfo.base}${albumData.cover}` 
+      : `${albumInfo.base}cover.jpg`;
+    
+    coverSlot.innerHTML = `
+      <img src="${coverUrl}" alt="${albumInfo.title}" draggable="false">
+    `;
   }
 
   renderFavoritesCover() {
     const coverSlot = document.getElementById('cover-slot');
     if (!coverSlot) return;
     
-    coverSlot.innerHTML = `<img src="img/icon_album/icon-album-00.png" alt="Избранное" draggable="false">`;
+    coverSlot.innerHTML = `
+      <img src="img/icon_album/icon-album-00.png" alt="Избранное" draggable="false">
+    `;
   }
 
   renderNewsCover() {
     const coverSlot = document.getElementById('cover-slot');
     if (!coverSlot) return;
     
-    coverSlot.innerHTML = `<img src="img/icon_album/icon-album-news.png" alt="Новости" draggable="false">`;
+    coverSlot.innerHTML = `
+      <img src="img/icon_album/icon-album-news.png" alt="Новости" draggable="false">
+    `;
   }
 
   renderSocials(links) {
@@ -287,13 +323,12 @@ class AlbumsManager {
     container.innerHTML = '';
 
     tracks.forEach((track, index) => {
-      // ✅ Передаём originalTrackNum для звездочки, но index для воспроизведения
       const trackEl = this.createTrackElement(
-        track, 
-        track.album, 
-        index, 
+        track,
+        track.album,
+        index,
         track.albumTitle,
-        track.originalTrackNum  // ✅ Для проверки isFavorite
+        track.originalTrackNum
       );
       container.appendChild(trackEl);
     });
@@ -305,28 +340,39 @@ class AlbumsManager {
     trackEl.dataset.index = index;
     trackEl.dataset.album = albumKey;
 
-    // ✅ Для избранного используем originalTrackNum, иначе track.num
-    const trackNumForFavorites = originalTrackNum !== null ? originalTrackNum : track.num;
-    const isFavorite = window.FavoritesManager?.isFavorite(albumKey, trackNumForFavorites) || false;
+    const trackNumForFavorites = originalTrackNum !== null 
+      ? originalTrackNum 
+      : track.num;
+    
+    const isFavorite = window.FavoritesManager?.isFavorite(
+      albumKey,
+      trackNumForFavorites
+    ) || false;
 
     trackEl.innerHTML = `
       <div class="tnum">${track.num || index + 1}</div>
-      <div class="track-title">${track.title}${albumTitle ? ` <span style="color: #666;">(${albumTitle})</span>` : ''}</div>
-      <button class="like-star" data-album="${albumKey}" data-num="${trackNumForFavorites}" aria-label="Избранное">
+      <div class="track-title">
+        ${track.title}
+        ${albumTitle ? `<span style="color: #666;"> (${albumTitle})</span>` : ''}
+      </div>
+      <button class="like-star" 
+              data-album="${albumKey}" 
+              data-num="${trackNumForFavorites}" 
+              aria-label="Избранное">
         ${isFavorite ? '⭐' : '☆'}
       </button>
     `;
 
-    // Клик по треку
+    // Клик по треку - воспроизведение
     trackEl.addEventListener('click', (e) => {
-      if (e.target.classList.contains('like-star')) return; // Игнорировать клик по звездочке
+      if (e.target.classList.contains('like-star')) return;
       
       if (window.playerCore) {
-        window.playerCore.playTrack(index);  // ✅ Играем по индексу в текущем плейлисте
+        window.playerCore.playTrack(index);
       }
     });
 
-    // Клик по звездочке
+    // Клик по звездочке - избранное
     const star = trackEl.querySelector('.like-star');
     star?.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -359,8 +405,12 @@ class AlbumsManager {
     container.innerHTML = `
       <div style="padding: 40px 20px; text-align: center; color: #999;">
         <div style="font-size: 48px; margin-bottom: 20px;">☆</div>
-        <p style="font-size: 18px; margin-bottom: 10px;">Нет избранных треков</p>
-        <p style="font-size: 14px;">Отметьте треки звёздочкой ⭐</p>
+        <p style="font-size: 18px; margin-bottom: 10px;">
+          Нет избранных треков
+        </p>
+        <p style="font-size: 14px;">
+          Отметьте треки звёздочкой ⭐
+        </p>
       </div>
     `;
 
@@ -394,7 +444,7 @@ class AlbumsManager {
   }
 }
 
-// Создать глобальный экземпляр
+// Глобальный экземпляр
 window.AlbumsManager = new AlbumsManager();
 
 export default AlbumsManager;
