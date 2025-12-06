@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f656f1d2e4ac53a7cf29f7813edff7c8b86b1658.idx
-│   │       ├── pack-f656f1d2e4ac53a7cf29f7813edff7c8b86b1658.pack
-│   │       └── pack-f656f1d2e4ac53a7cf29f7813edff7c8b86b1658.rev
+│   │       ├── pack-d8739f9b93951f36ebe7e221f9b8c7bd2edae25d.idx
+│   │       ├── pack-d8739f9b93951f36ebe7e221f9b8c7bd2edae25d.pack
+│   │       └── pack-d8739f9b93951f36ebe7e221f9b8c7bd2edae25d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -265,7 +265,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-06 23:00:43 UTC
+Сгенерировано: 2025-12-06 23:01:11 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4170,8 +4170,16 @@ import { PlayerCore } from '../../src/PlayerCore.js';
   // Экспорт в глобальную область
   window.playerCore = playerCore;
 
+  // Публичные хелперы для совместимости со старым кодом
+  window.playTrack = (index) => playerCore.play(index);
+  window.pauseTrack = () => playerCore.pause();
+  window.nextTrack = () => playerCore.next();
+  window.previousTrack = () => playerCore.prev();
+  window.stopTrack = () => playerCore.stop();
+
   console.log('✅ PlayerCore adapter initialized');
 })();
+
 
 //=================================================
 // FILE: /scripts/ui/favorites-const.js
