@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e871d20636294eedd49a89fc2f1fd5a54dfae710.idx
-│   │       ├── pack-e871d20636294eedd49a89fc2f1fd5a54dfae710.pack
-│   │       └── pack-e871d20636294eedd49a89fc2f1fd5a54dfae710.rev
+│   │       ├── pack-421bd73cc65310391c56e9835dde7e383fcabfa4.idx
+│   │       ├── pack-421bd73cc65310391c56e9835dde7e383fcabfa4.pack
+│   │       └── pack-421bd73cc65310391c56e9835dde7e383fcabfa4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -266,7 +266,7 @@ vi3na1bita-music/
 └── sw.js
 
 
-Сгенерировано: 2025-12-06 21:13:36 UTC
+Сгенерировано: 2025-12-06 21:14:00 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -836,37 +836,51 @@ jobs:
 //=================================================
 // FILE: /scripts/app.js
 // scripts/app.js
-// Главный модуль приложения - инициализация и оркестрация
+// Главная точка входа приложения
 
 import { APP_CONFIG } from './core/config.js';
+import AlbumsManager from './app/albums.js';
+import NavigationManager from './app/navigation.js';
+import DownloadsManager from './app/downloads.js';
 
-class MusicApp {
+class App {
   constructor() {
     this.initialized = false;
-    this.playerReady = false;
+    this.promoUnlocked = false;
   }
 
-  async init() {
+  async initialize() {
     if (this.initialized) return;
-    
+
+    console.log(`🎵 Initializing Vitrina Razbita v${APP_CONFIG.APP_VERSION}`);
+
     try {
-      // Проверка промокода
+      // 1. Проверка промокода
       await this.checkPromocode();
-      
-      // Инициализация PlayerCore
-      await this.initPlayerCore();
-      
-      // Инициализация UI
-      await this.initUI();
-      
-      // Загрузка альбомов
-      await this.loadAlbums();
-      
-      // Восстановление состояния
-      await this.restoreState();
-      
+
+      if (!this.promoUnlocked) {
+        console.log('⏸️ Waiting for promocode...');
+        return;
+      }
+
+      // 2. Инициализация UI системы
+      this.initializeNotifications();
+
+      // 3. Ждём загрузки плеера
+      await this.waitForPlayer();
+
+      // 4. Инициализация модулей
+      await this.initializeModules();
+
+      // 5. PWA функции
+      this.initializePWA();
+
+      // 6. Online/Offline индикатор
+      this.initializeOnlineStatus();
+
       this.initialized = true;
-      console.log('✅ App initialized');
+      console.log('✅ App initialized successfully');
+
     } catch (error) {
       console.error('❌ App initialization failed:', error);
       window.NotificationSystem?.error('Ошибка инициализации приложения');
@@ -874,202 +888,230 @@ class MusicApp {
   }
 
   async checkPromocode() {
-    const passed = localStorage.getItem('promoPassed') === '1';
-    
-    if (passed) {
-      this.showMain();
+    const promocodeBlock = document.getElementById('promocode-block');
+    const mainBlock = document.getElementById('main-block');
+
+    // Проверка сохранённого промокода
+    const savedPromo = localStorage.getItem('promocode');
+    if (savedPromo === APP_CONFIG.PROMOCODE) {
+      this.unlockApp(promocodeBlock, mainBlock);
       return;
     }
 
-    // Обработчик промокода
-    const input = document.getElementById('promo-inp');
-    const button = document.getElementById('promo-btn');
-    const error = document.getElementById('promo-error');
+    // Обработчик ввода промокода
+    const promoInput = document.getElementById('promo-inp');
+    const promoBtn = document.getElementById('promo-btn');
+    const promoError = document.getElementById('promo-error');
 
-    const check = () => {
-      const value = (input?.value || '').trim();
-      if (!value) {
-        if (error) error.innerText = 'Введите промокод';
-        return;
-      }
-      
-      if (value.toUpperCase() === APP_CONFIG.PROMO_CODE.toUpperCase()) {
-        localStorage.setItem('promoPassed', '1');
-        this.showMain();
+    const checkPromo = () => {
+      const value = promoInput.value.trim();
+
+      if (value === APP_CONFIG.PROMOCODE) {
+        localStorage.setItem('promocode', value);
+        this.unlockApp(promocodeBlock, mainBlock);
       } else {
-        if (error) error.innerText = 'Неверный промокод';
+        promoError.textContent = '❌ Неверный промокод';
+        promoInput.classList.add('error');
+        setTimeout(() => {
+          promoError.textContent = '';
+          promoInput.classList.remove('error');
+        }, 2000);
       }
     };
 
-    button?.addEventListener('click', check);
-    input?.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') check();
+    promoBtn?.addEventListener('click', checkPromo);
+    promoInput?.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') checkPromo();
     });
   }
 
-  showMain() {
-    document.getElementById('promocode-block')?.classList.add('hidden');
-    document.getElementById('main-block')?.classList.remove('hidden');
+  unlockApp(promocodeBlock, mainBlock) {
+    if (promocodeBlock) promocodeBlock.classList.add('hidden');
+    if (mainBlock) mainBlock.classList.remove('hidden');
+    
+    this.promoUnlocked = true;
+    console.log('🔓 App unlocked');
+
+    // Продолжить инициализацию
+    this.initialize();
   }
 
-  async initPlayerCore() {
-    // Ждём загрузки Howler.js
+  initializeNotifications() {
+    // NotificationSystem уже загружен через notify.js
+    if (window.NotificationSystem) {
+      console.log('✅ Notification system ready');
+    }
+  }
+
+  async waitForPlayer() {
     return new Promise((resolve) => {
-      const checkHowler = () => {
-        if (typeof Howler === 'undefined') {
-          setTimeout(checkHowler, 50);
-          return;
+      if (window.playerCore) {
+        console.log('✅ PlayerCore already loaded');
+        resolve();
+        return;
+      }
+
+      // Ждём загрузки плеера (максимум 5 секунд)
+      let attempts = 0;
+      const checkInterval = setInterval(() => {
+        attempts++;
+        
+        if (window.playerCore) {
+          clearInterval(checkInterval);
+          console.log('✅ PlayerCore loaded');
+          resolve();
+        } else if (attempts > 50) {
+          clearInterval(checkInterval);
+          console.error('❌ PlayerCore loading timeout');
+          resolve(); // Продолжить без плеера
         }
-      
-        // Затем ждём PlayerCore
-        const checkCore = () => {
-          if (window.playerCore) {
-            this.playerReady = true;
-            console.log('✅ PlayerCore ready');
-            resolve();
-          } else {
-            setTimeout(checkCore, 100);
-          }
-        };
-        checkCore();
-      };
-      checkHowler();
+      }, 100);
     });
   }
 
-  async initUI() {
-    // UI модули загружаются через script tags
-    // Здесь только финальная инициализация
-    
-    // Логотипы
-    this.applyLogos();
-    
-    // PWA install button
-    this.initPWA();
-    
-    // Обработчики событий
-    this.attachEventListeners();
-  }
-
-  applyLogos() {
-    const dpr = window.devicePixelRatio || 1;
-    const mobile = /Android|webOS|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    
-    let logoUrl;
-    if (mobile) {
-      logoUrl = dpr >= 2 ? 'img/mobile/logo@2x.jpg' : 'img/mobile/logo@1x.jpg';
-    } else {
-      if (dpr >= 3) logoUrl = 'img/desktop/logo@3x.png';
-      else if (dpr >= 2) logoUrl = 'img/desktop/logo@2x.png';
-      else logoUrl = 'img/desktop/logo@1x.png';
+  async initializeModules() {
+    // Проверка загрузки альбомов из bootstrap.js
+    if (!window.albumsIndex || window.albumsIndex.length === 0) {
+      console.error('❌ Albums index not loaded');
+      window.NotificationSystem?.error('Не удалось загрузить список альбомов');
+      return;
     }
 
-    const logoBottom = document.getElementById('logo-bottom');
-    const promoCover = document.getElementById('promo-cover');
-    if (logoBottom) logoBottom.src = logoUrl;
-    if (promoCover) promoCover.src = logoUrl;
+    console.log(`📀 Albums loaded: ${window.albumsIndex.length}`);
+
+    // Инициализация модулей
+    if (window.AlbumsManager) {
+      await window.AlbumsManager.initialize();
+    }
+
+    if (window.NavigationManager) {
+      window.NavigationManager.initialize();
+    }
+
+    if (window.FavoritesManager) {
+      console.log('⭐ Favorites manager ready');
+    }
+
+    // Кнопка фильтрации избранного
+    this.initializeFavoritesFilter();
   }
 
-  initPWA() {
+  initializeFavoritesFilter() {
+    const filterBtn = document.getElementById('filter-favorites-btn');
+    if (!filterBtn) return;
+
+    let favoritesOnly = false;
+
+    filterBtn.addEventListener('click', () => {
+      favoritesOnly = !favoritesOnly;
+
+      if (favoritesOnly) {
+        filterBtn.textContent = 'Показать все песни';
+        filterBtn.classList.add('active');
+        this.filterTracksByFavorites(true);
+      } else {
+        filterBtn.textContent = 'Скрыть не отмеченные ⭐ песни';
+        filterBtn.classList.remove('active');
+        this.filterTracksByFavorites(false);
+      }
+    });
+  }
+
+  filterTracksByFavorites(showOnlyFavorites) {
+    const currentAlbum = window.AlbumsManager?.getCurrentAlbum();
+    if (!currentAlbum) return;
+
+    const tracks = document.querySelectorAll('.track');
+    
+    tracks.forEach((trackEl) => {
+      const albumKey = trackEl.dataset.album;
+      const trackNum = parseInt(trackEl.querySelector('.like-star')?.dataset.num);
+
+      if (!trackNum) return;
+
+      const isFavorite = window.FavoritesManager?.isFavorite(albumKey, trackNum);
+
+      if (showOnlyFavorites && !isFavorite) {
+        trackEl.style.display = 'none';
+      } else {
+        trackEl.style.display = '';
+      }
+    });
+  }
+
+  initializePWA() {
+    // Регистрация Service Worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js')
+        .then((registration) => {
+          console.log('✅ Service Worker registered:', registration.scope);
+        })
+        .catch((error) => {
+          console.error('❌ Service Worker registration failed:', error);
+        });
+    }
+
+    // Кнопка установки PWA
     let deferredPrompt;
+    const installBtn = document.getElementById('install-pwa-btn');
 
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredPrompt = e;
-      const btn = document.getElementById('install-pwa-btn');
-      if (btn) btn.style.display = '';
-    });
-
-    document.getElementById('install-pwa-btn')?.addEventListener('click', async () => {
-      if (deferredPrompt) {
-        deferredPrompt.prompt();
-        deferredPrompt.userChoice.finally(() => {
-          const btn = document.getElementById('install-pwa-btn');
-          if (btn) btn.style.display = 'none';
-          deferredPrompt = null;
-        });
-      }
-    });
-  }
-
-  attachEventListeners() {
-    // Логотип
-    document.getElementById('logo-bottom')?.addEventListener('click', () => {
-      const logo = document.getElementById('logo-bottom');
-      if (!logo) return;
-      logo.style.transition = 'transform .08s ease-out';
-      logo.style.transform = 'scale(1.13)';
-      setTimeout(() => {
-        logo.style.transform = 'scale(1)';
-        logo.style.transition = 'transform .1s ease-out';
-      }, 120);
-    });
-
-    // Обратная связь
-    document.getElementById('feedback-link')?.addEventListener('click', () => {
-      window.NotificationSystem?.info('Раздел в разработке. Напишите нам в Telegram: @vitrina_razbita');
-    });
-
-    // Фильтр избранного
-    document.getElementById('filter-favorites-btn')?.addEventListener('click', () => {
-      if (typeof window.toggleFavoritesFilter === 'function') {
-        window.toggleFavoritesFilter();
-      }
-    });
-
-    // Скачать альбом
-    document.getElementById('download-album-main')?.addEventListener('click', () => {
-      window.NotificationSystem?.info('Функция скачивания альбома в разработке');
-    });
-
-    // Оффлайн кнопка
-    document.getElementById('offline-btn')?.addEventListener('click', () => {
-      window.NotificationSystem?.info('Оффлайн режим в разработке');
-    });
-  }
-
-  async loadAlbums() {
-    try {
-      const response = await fetch('./albums.json', { cache: 'no-cache' });
-      const data = await response.json();
-      window.albumsIndex = Array.isArray(data.albums) ? data.albums : [];
-    } catch (error) {
-      console.warn('Failed to load albums.json, using fallback');
-      window.albumsIndex = APP_CONFIG.ALBUMS_FALLBACK.slice();
-    }
-
-    if (window.albumsIndex.length > 0) {
-      // Инициализация альбомов через albums.js модуль
-      if (typeof window.AlbumsManager?.initialize === 'function') {
-        await window.AlbumsManager.initialize();
-      }
-    }
-  }
-
-  async restoreState() {
-    try {
-      // Восстановление режимов
-      window.shuffleMode = localStorage.getItem('shuffleMode') === '1';
-      window.repeatMode = localStorage.getItem('repeatMode') === '1';
-      window.favoritesOnlyMode = localStorage.getItem('favoritesOnlyMode') === '1';
-      window.animationEnabled = localStorage.getItem('animationEnabled') === '1';
       
-      // Восстановление последнего альбома
-      const lastAlbum = localStorage.getItem('currentAlbum');
-      if (lastAlbum && typeof window.AlbumsManager?.loadAlbum === 'function') {
-        await window.AlbumsManager.loadAlbum(lastAlbum);
+      if (installBtn) {
+        installBtn.style.display = 'block';
       }
-    } catch (error) {
-      console.warn('Failed to restore state:', error);
-    }
+    });
+
+    installBtn?.addEventListener('click', async () => {
+      if (!deferredPrompt) return;
+
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      
+      console.log(`PWA install outcome: ${outcome}`);
+      deferredPrompt = null;
+      installBtn.style.display = 'none';
+    });
+
+    window.addEventListener('appinstalled', () => {
+      console.log('✅ PWA installed');
+      window.NotificationSystem?.success('Приложение установлено!');
+    });
+  }
+
+  initializeOnlineStatus() {
+    const statusBtn = document.getElementById('offline-btn');
+    if (!statusBtn) return;
+
+    const updateStatus = () => {
+      const isOnline = navigator.onLine;
+      
+      statusBtn.textContent = isOnline ? 'ONLINE' : 'OFFLINE';
+      statusBtn.className = isOnline ? 'offline-btn online' : 'offline-btn offline';
+    };
+
+    window.addEventListener('online', updateStatus);
+    window.addEventListener('offline', updateStatus);
+    
+    updateStatus();
   }
 }
 
-// Автостарт при загрузке
-window.addEventListener('DOMContentLoaded', () => {
-  window.musicApp = new MusicApp();
-  window.musicApp.init();
-});
+// Создание и инициализация приложения
+const app = new App();
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => app.initialize());
+} else {
+  app.initialize();
+}
+
+// Экспорт для отладки
+window.app = app;
+
+export default app;
 
 //=================================================
 // FILE: /scripts/app/albums.js
