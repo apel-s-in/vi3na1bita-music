@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8a0d45256c255ee484aaf2b043da3c41524fc87d.idx
-│   │       ├── pack-8a0d45256c255ee484aaf2b043da3c41524fc87d.pack
-│   │       └── pack-8a0d45256c255ee484aaf2b043da3c41524fc87d.rev
+│   │       ├── pack-b1b02474707632d74fcff331d1565102d25bb87d.idx
+│   │       ├── pack-b1b02474707632d74fcff331d1565102d25bb87d.pack
+│   │       └── pack-b1b02474707632d74fcff331d1565102d25bb87d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -262,7 +262,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-06 20:26:24 UTC
+Сгенерировано: 2025-12-06 20:27:02 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -789,777 +789,369 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-/* service-worker.js — Витрина Разбита
-   Стратегии:
-   - Навигация (HTML): network-first с таймаутом и fallback из кэша
-   - JSON (config/index/news): network-first с fallback
-   - Изображения: cache-first
-   - Аудио: stale-while-revalidate (без кеша для Range-запросов)
-   - Скрипты/стили/шрифты: cache-first
-   Офлайн-пакеты: через сообщения OFFLINE_CACHE_ADD / OFFLINE_CACHE_CLEAR_CURRENT с прогрессом.
-*/
+// service-worker.js
+// Оптимизированный Service Worker с умным кэшированием
 
-const SW_VERSION = '8.0.3';
-const CORE_CACHE = `core-${SW_VERSION}`;
-const RUNTIME_CACHE = `runtime-${SW_VERSION}`;
-const MEDIA_CACHE = 'media'; // постоянное имя для сохранения кэша между версиями
-const OFFLINE_CACHE = `offline-${SW_VERSION}`; // базовый (для линтера/совместимости)
-const META_CACHE = `meta-${SW_VERSION}`;
-// Конфиг по умолчанию (переопределяется через CONFIG_UPDATE из custom.json)
-const DEFAULT_SW_CONFIG = {
-  mediaMaxCacheMB: 150,
-  nonRangeMaxStoreMB: 25,
-  nonRangeMaxStoreMBSlow: 10,
-  allowUnknownSize: false,
-  revalidateDays: 7 // через столько дней делать HEAD‑перевалидацию
+const CACHE_VERSION = 'v8.1.0';
+const CACHE_PREFIX = 'vitrina-razbita';
+
+const CACHES = {
+  static: `${CACHE_PREFIX}-static-${CACHE_VERSION}`,
+  dynamic: `${CACHE_PREFIX}-dynamic-${CACHE_VERSION}`,
+  audio: `${CACHE_PREFIX}-audio-${CACHE_VERSION}`,
+  images: `${CACHE_PREFIX}-images-${CACHE_VERSION}`
 };
 
-function metaKey(name) {
-  try {
-    return new Request(new URL(`__meta__/${String(name)}`, self.registration.scope));
-  } catch {
-    return new Request(`__meta__/${String(name)}`);
-  }
-}
-
-const CORE_ASSETS = [
-  './',
-  './index.html',
-  './news.html',
-  './news/news.json',
-  './manifest.json',
-  './img/logo.png',
-  './img/star.png',
-  './img/star2.png',
-  './icons/favicon-16.png',
-  './icons/favicon-32.png',
-  './icons/apple-touch-icon.png'
+// Критические ресурсы для предварительного кэширования
+const PRECACHE_ASSETS = [
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/styles/main.css',
+  
+  // Core scripts
+  '/scripts/core/bootstrap.js',
+  '/scripts/core/config.js',
+  
+  // Player
+  '/scripts/player/PlayerCore.js',
+  '/scripts/player/player-adapter.js',
+  
+  // UI
+  '/scripts/ui/notify.js',
+  '/scripts/ui/favorites-const.js',
+  '/scripts/ui/favorites-storage.js',
+  '/scripts/ui/favorites-data.js',
+  '/scripts/ui/favorites.js',
+  '/scripts/ui/mini.js',
+  '/scripts/ui/sysinfo.js',
+  
+  // App modules
+  '/scripts/app/background-audio.js',
+  '/scripts/app/background-events.js',
+  '/scripts/app/player-controls.js',
+  '/scripts/app/albums.js',
+  '/scripts/app/navigation.js',
+  '/scripts/app/downloads.js',
+  '/scripts/app.js',
+  
+  // Performance
+  '/performance/rum.js',
+  
+  // Images
+  '/img/logo.png',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
+  '/icons/favicon-32.png',
+  
+  // Album icons
+  '/img/icon_album/icon-album-00.png',
+  '/img/icon_album/icon-album-01.png',
+  '/img/icon_album/icon-album-02.png',
+  '/img/icon_album/icon-album+00.png',
+  '/img/icon_album/icon-album-news.png',
+  
+  // External dependencies
+  'https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.core.min.js'
 ];
 
-self.addEventListener('install', (event) => {
-  event.waitUntil((async () => {
-    const cache = await caches.open(CORE_CACHE);
+// Стратегии кэширования
+const CACHE_STRATEGIES = {
+  // Сначала кэш, затем сеть (для статики)
+  cacheFirst: async (request, cacheName) => {
+    const cached = await caches.match(request);
+    if (cached) {
+      return cached;
+    }
+    
+    const response = await fetch(request);
+    if (response.ok) {
+      const cache = await caches.open(cacheName);
+      cache.put(request, response.clone());
+    }
+    return response;
+  },
+  
+  // Сначала сеть, затем кэш (для динамики)
+  networkFirst: async (request, cacheName) => {
     try {
-      await cache.addAll(CORE_ASSETS.map(url => new Request(url, { cache: 'reload' })));
-    } catch (e) {
-      console.warn('SW install: some core assets failed to cache', e);
-    }
-    await self.skipWaiting();
-  })());
-});
-
-self.addEventListener('activate', (event) => {
-  event.waitUntil((async () => {
-    const keys = await caches.keys();
-    await Promise.all(keys.map(async (k) => {
-      // Сохраняем постоянный MEDIA_CACHE и любые старые media-* (мягкая миграция),
-      // остальное — по белому списку.
-      if (
-        k === CORE_CACHE || k === RUNTIME_CACHE || k === MEDIA_CACHE ||
-        k === OFFLINE_CACHE || k === META_CACHE || k.startsWith('media-')
-      ) return;
-      await caches.delete(k);
-    }));
-    await self.clients.claim();
-    try { await postToAllClients({ type: 'SW_VERSION', version: SW_VERSION }); } catch {}
-  })());
-});
-
-// Утилита: запрос с таймаутом
-async function fetchWithTimeout(req, { timeout = 5000 } = {}) {
-  const ctrl = new AbortController();
-  const id = setTimeout(() => ctrl.abort(), timeout);
-  try {
-    const res = await fetch(req, { signal: ctrl.signal });
-    return res;
-  } finally {
-    clearTimeout(id);
-  }
-}
-
-function isJSONRequest(request) {
-  const url = new URL(request.url);
-  return url.pathname.endsWith('.json') || request.headers.get('accept')?.includes('application/json');
-}
-function isNavigationRequest(request) {
-  return request.mode === 'navigate' || (request.destination === '' && request.method === 'GET');
-}
-function isImageRequest(request) {
-  return request.destination === 'image';
-}
-function isAudioRequest(request) {
-  return request.destination === 'audio' || request.destination === 'media';
-}
-function isStaticAsset(request) {
-  const d = request.destination;
-  return d === 'script' || d === 'style' || d === 'font' || d === 'worker';
-}
-
-/** Разбор заголовка Range: bytes=start-end */
-function parseRangeHeader(range, totalLength) {
-  const m = /^bytes=(\d*)-(\d*)$/.exec(String(range || ''));
-  if (!m) return null;
-  let start = m[1] === '' ? 0 : parseInt(m[1], 10);
-  let end = m[2] === '' ? (totalLength - 1) : parseInt(m[2], 10);
-  if (Number.isNaN(start)) start = 0;
-  if (Number.isNaN(end)) end = totalLength - 1;
-  start = Math.max(0, start);
-  end = Math.min(totalLength - 1, end);
-  if (end < start) return null;
-  return { start, end };
-}
-
-/** 206 Partial Content из кэша (MEDIA/ОFFLINE), либо сетью как fallback */
-async function serveRangeFromCacheOrNetwork(request) {
-  const url = request.url;
-  const rangeHeader = request.headers.get('range');
-
-  // Для фоновых запросов увеличиваем таймаут
-  const clients = await self.clients.matchAll({ includeUncontrolled: true, type: 'window' }).catch(() => []);
-  const isBackground = request.headers.get('purpose') === 'prefetch' ||
-                       (request.referrer && request.referrer.includes('background')) ||
-                       clients.length === 0;
-
-  // Пробуем любой кэш (вкл. старые media-*)
-  let res = await caches.match(url);
-  if (res && (res.status === 206 || res.type === 'opaque')) {
-    res = null; // нужен только 200-full
-  }
-
-  if (!res) {
-    try {
-      const timeout = isBackground ? 30000 : 10000;
-      const controller = new AbortController();
-      const id = setTimeout(() => controller.abort(), timeout);
-      const net = await fetch(request, { signal: controller.signal, keepalive: true });
-      clearTimeout(id);
-      // 206 не кэшируем, 200 можно положить (через non-Range путь)
-      return net;
-    } catch {
-      return new Response('', { status: 404 });
-    }
-  }
-
-  // Есть полный буфер — собираем 206 Partial Content
-  await touchMediaItem(url).catch(()=>{});
-  const buf = await res.arrayBuffer();
-  const total = buf.byteLength;
-  const range = parseRangeHeader(rangeHeader, total);
-  if (!range) {
-    return new Response('', { status: 416, headers: { 'Content-Range': `bytes */${total}` } });
-  }
-  const { start, end } = range;
-  const chunk = buf.slice(start, end + 1);
-  const contentType = res.headers.get('content-type') || 'audio/mpeg';
-
-  const headers = new Headers();
-  headers.set('Content-Type', contentType);
-  headers.set('Content-Length', String(chunk.byteLength));
-  headers.set('Accept-Ranges', 'bytes');
-  headers.set('Content-Range', `bytes ${start}-${end}/${total}`);
-  headers.set('Cache-Control', 'public, max-age=31536000');
-  return new Response(chunk, { status: 206, headers });
-}
-
-self.addEventListener('fetch', (event) => {
-  const { request } = event;
-
-  // Не вмешиваемся в другие методы кроме GET
-  if (request.method !== 'GET') return;
-
-  // Особый случай: Range-запросы для аудио — пробуем 206 из кэша, иначе сеть
-    if (isAudioRequest(request) && request.headers.has('range')) {
-      event.respondWith(serveRangeFromCacheOrNetwork(request));
-      return;
-    }
-
-  // Навигация: network-first с таймаутом
-  if (isNavigationRequest(request)) {
-    event.respondWith((async () => {
-      const cache = await caches.open(CORE_CACHE);
-      try {
-        const netRes = await fetchWithTimeout(request, { timeout: 6000 });
-        if (netRes && netRes.ok) {
-          cache.put(request, netRes.clone()).catch(() => {});
-          return netRes;
-        }
-        const cached = await cache.match(request);
-        if (cached) return cached;
-        // fallback на index.html
-        const index = await cache.match('./index.html');
-        if (index) return index;
-        return netRes; // как есть (даже если не ok)
-      } catch {
-        const cached = await cache.match(request) || await cache.match('./index.html');
-        if (cached) return cached;
-        return new Response('Offline', { status: 503, statusText: 'Offline' });
+      const response = await fetch(request);
+      if (response.ok) {
+        const cache = await caches.open(cacheName);
+        cache.put(request, response.clone());
       }
-    })());
-    return;
-  }
-
-  // Страницы/данные «Новости»: cache-first с строгой MIME-проверкой
-  if (request.url.endsWith('/news.html') || request.url.includes('/news/news.json')) {
-    event.respondWith((async () => {
-      const cache = await caches.open(RUNTIME_CACHE);
-      const cached = await cache.match(request);
-      if (cached) return cached;
-      try {
-        const netRes = await fetch(request);
-        if (netRes) {
-          const ct = (netRes.headers.get('content-type') || '').toLowerCase();
-          const isNewsHtml = request.url.endsWith('/news.html');
-          const isNewsJson = request.url.includes('/news/news.json');
-          const okForCache =
-            (isNewsHtml && ct.includes('text/html')) ||
-            (isNewsJson && ct.includes('application/json'));
-          if ((netRes.ok || netRes.type === 'opaque') && okForCache) {
-            cache.put(request, netRes.clone()).catch(() => {});
-          }
-        }
-        return netRes;
-      } catch {
-        return (await cache.match(request)) || new Response('', { status: 404 });
-      }
-    })());
-    return;
-  }
-
-  // JSON: network-first с fallback
-  if (isJSONRequest(request)) {
-    event.respondWith((async () => {
-      const cache = await caches.open(RUNTIME_CACHE);
-      try {
-        const netRes = await fetchWithTimeout(request, { timeout: 6000 });
-        if (netRes) {
-          // Строгая проверка MIME: кэшируем только application/json (или .json)
-          const ct = (netRes.headers.get('content-type') || '').toLowerCase();
-          const isJsonMime = ct.includes('application/json');
-          const isJsonPath = new URL(request.url).pathname.endsWith('.json');
-          if ((netRes.ok || netRes.type === 'opaque') && (isJsonMime || isJsonPath)) {
-            cache.put(request, netRes.clone()).catch(() => {});
-          }
-          return netRes;
-        }
-        const cached = await cache.match(request);
-        if (cached) return cached;
-        return new Response('Offline JSON', { status: 503 });
-      } catch {
-        const cached = await cache.match(request);
-        if (cached) return cached;
-        return new Response('Offline JSON', { status: 503 });
-      }
-    })());
-    return;
-  }
-
-  // Изображения: cache-first
-  if (isImageRequest(request)) {
-    event.respondWith((async () => {
-      const cache = await caches.open(MEDIA_CACHE);
-      const cached = await cache.match(request);
-      if (cached) return cached;
-      try {
-        const netRes = await fetch(request);
-        if (netRes) {
-          if (netRes.type === 'opaque') {
-            // допускаем opaque-ответы (CDN и т.п.)
-            try { cache.put(request, netRes.clone()); } catch {}
-          } else if (netRes.ok) {
-            const ct = (netRes.headers.get('content-type') || '').toLowerCase();
-            if (!ct || ct.startsWith('image/')) {
-              try { cache.put(request, netRes.clone()); } catch {}
-            }
-          }
-        }
-        return netRes;
-      } catch {
-        return cached || new Response('', { status: 404 });
-      }
-    })());
-    return;
-  }
-
-  // Аудио: stale-while-revalidate (кэшируем ТОЛЬКО 200 full по лимитам; LRU; редкая HEAD‑ревалидация)
-  if (isAudioRequest(request)) {
-    event.respondWith((async () => {
-      const url = request.url;
-      // Любой кэш (учтём возможные старые media-*)
-      const cached = await caches.match(url);
-
-      if (!request.headers.has('range')) {
-        // Фоновая ревалидация (HEAD) для кэшированного
-        if (cached) { maybeHeadRevalidate(url).catch(()=>{}); }
-        // Параллельно — попытка перевалидировать через GET и положить в persistent media
-        (async () => {
-          try {
-            const netRes = await fetch(request, { keepalive: true });
-            if (netRes && netRes.ok && netRes.status === 200 && await shouldCacheNonRangeAudio(netRes)) {
-              const cache = await caches.open(MEDIA_CACHE);
-              await cache.put(url, netRes.clone());
-              const size = bytesFromHeader(netRes) || 0;
-              await upsertMediaItem(url, {
-                size,
-                etag: netRes.headers.get('etag'),
-                lastModified: netRes.headers.get('last-modified')
-              });
-            }
-          } catch {}
-        })();
-      }
-
-      // Отдаём кэш, если есть
+      return response;
+    } catch (error) {
+      const cached = await caches.match(request);
       if (cached) {
-        touchMediaItem(url).catch(()=>{});
         return cached;
       }
-
-      // Иначе — сеть
-      try {
-        const netRes = await fetch(request);
-        // Положим только 200 full по лимитам
-        if (!request.headers.has('range') && netRes && netRes.ok && netRes.status === 200 && await shouldCacheNonRangeAudio(netRes)) {
-          const cache = await caches.open(MEDIA_CACHE);
-          await cache.put(url, netRes.clone());
-          const size = bytesFromHeader(netRes) || 0;
-          await upsertMediaItem(url, {
-            size,
-            etag: netRes.headers.get('etag'),
-            lastModified: netRes.headers.get('last-modified')
-          });
-        }
-        return netRes;
-      } catch {
-        return new Response('', { status: 404 });
-      }
-    })());
-    return;
+      throw error;
+    }
+  },
+  
+  // Только сеть (для API)
+  networkOnly: async (request) => {
+    return fetch(request);
+  },
+  
+  // Только кэш
+  cacheOnly: async (request) => {
+    return caches.match(request);
   }
+};
 
-  // Скрипты/стили/шрифты: cache-first
-  if (isStaticAsset(request)) {
-    event.respondWith((async () => {
-      const cache = await caches.open(RUNTIME_CACHE);
-      const cached = await cache.match(request);
-      if (cached) return cached;
-      try {
-        const netRes = await fetch(request);
-        if (netRes && netRes.ok) {
-          cache.put(request, netRes.clone()).catch(() => {});
-        }
-        return netRes;
-      } catch {
-        return cached || new Response('', { status: 404 });
-      }
-    })());
-    return;
-  }
-
-  // По умолчанию — просто прокси в сеть
-  event.respondWith(fetch(request));
+// Установка Service Worker
+self.addEventListener('install', (event) => {
+  console.log('[SW] Installing...', CACHE_VERSION);
+  
+  event.waitUntil(
+    caches.open(CACHES.static)
+      .then(cache => {
+        console.log('[SW] Precaching assets');
+        return cache.addAll(PRECACHE_ASSETS);
+      })
+      .then(() => self.skipWaiting())
+      .catch(error => {
+        console.error('[SW] Precache failed:', error);
+      })
+  );
 });
 
-// ===== Сообщения от клиента (офлайн кэш пакетами и состояние) =====
+// Активация Service Worker
+self.addEventListener('activate', (event) => {
+  console.log('[SW] Activating...', CACHE_VERSION);
+  
+  event.waitUntil(
+    Promise.all([
+      // Удалить старые кэши
+      caches.keys().then(cacheNames => {
+        return Promise.all(
+          cacheNames.map(cacheName => {
+            if (cacheName.startsWith(CACHE_PREFIX) && 
+                !Object.values(CACHES).includes(cacheName)) {
+              console.log('[SW] Deleting old cache:', cacheName);
+              return caches.delete(cacheName);
+            }
+          })
+        );
+      }),
+      
+      // Захватить контроль над всеми клиентами
+      self.clients.claim()
+    ])
+  );
+});
 
-async function postToAllClients(msg) {
-  const clientsList = await self.clients.matchAll({ includeUncontrolled: true, type: 'window' });
-  for (const c of clientsList) c.postMessage(msg);
-}
+// Обработка запросов
+self.addEventListener('fetch', (event) => {
+  const { request } = event;
+  const url = new URL(request.url);
+  
+  // Игнорировать не-GET запросы
+  if (request.method !== 'GET') {
+    return;
+  }
+  
+  // Игнорировать chrome-extension и другие схемы
+  if (!url.protocol.startsWith('http')) {
+    return;
+  }
+  
+  event.respondWith(handleFetch(request, url));
+});
 
-async function readOfflineList() {
-  const cache = await caches.open(META_CACHE);
-  const key = metaKey('offline-list');
-  const res = await cache.match(key);
-  if (!res) return [];
+async function handleFetch(request, url) {
   try {
-    const json = await res.json();
-    return Array.isArray(json) ? json : [];
-  } catch { return []; }
-}
-async function writeOfflineList(list) {
-  const cache = await caches.open(META_CACHE);
-  const key = metaKey('offline-list');
-  await cache.put(key, new Response(JSON.stringify(Array.from(new Set(list))), {
-    headers: { 'content-type': 'application/json' }
-  }));
-}
-
-// Профиль офлайн-кэша (например, 'favorites-webp')
-async function writeOfflineProfile(profile) {
-  const cache = await caches.open(META_CACHE);
-  await cache.put(metaKey('offline-profile'), new Response(JSON.stringify({ profile: String(profile || 'default') }), {
-    headers: { 'content-type': 'application/json' }
-  }));
-}
-async function readOfflineProfile() {
-  const cache = await caches.open(META_CACHE);
-  const res = await cache.match(metaKey('offline-profile'));
-  if (!res) return 'default';
-  try { const j = await res.json(); return (j && j.profile) ? String(j.profile) : 'default'; } catch { return 'default'; }
-}
-async function getOfflineCacheName() {
-  const prof = await readOfflineProfile().catch(()=> 'default');
-  return `offline-${SW_VERSION}-${prof}`;
-}
-
-// Храним «последний запрошенный офлайн-список» для Background Sync
-async function writeLastRequestedOffline(list) {
-  const cache = await caches.open(META_CACHE);
-  const key = metaKey('last-requested-offline');
-  await cache.put(key, new Response(JSON.stringify(Array.from(new Set(list))), {
-    headers: { 'content-type': 'application/json' }
-  }));
-}
-async function readLastRequestedOffline() {
-  const cache = await caches.open(META_CACHE);
-  const key = metaKey('last-requested-offline');
-  const res = await cache.match(key);
-  if (!res) return [];
-  try { const j = await res.json(); return Array.isArray(j) ? j : []; } catch { return []; }
-}
-// ----- SW-config (из custom.json через CONFIG_UPDATE) -----
-async function writeSwConfig(cfg) {
-  const cache = await caches.open(META_CACHE);
-  await cache.put(metaKey('sw-config'), new Response(JSON.stringify(cfg || {}), {
-    headers: { 'content-type': 'application/json' }
-  }));
-}
-async function readSwConfig() {
-  try {
-    const cache = await caches.open(META_CACHE);
-    const res = await cache.match(metaKey('sw-config'));
-    if (!res) return { ...DEFAULT_SW_CONFIG };
-    const j = await res.json().catch(()=>null);
-    const base = { ...DEFAULT_SW_CONFIG };
-    if (j && j.sw && typeof j.sw === 'object') {
-      const sw = j.sw;
-      base.mediaMaxCacheMB = Number.isFinite(sw.mediaMaxCacheMB) ? sw.mediaMaxCacheMB : base.mediaMaxCacheMB;
-      base.nonRangeMaxStoreMB = Number.isFinite(sw.nonRangeMaxStoreMB) ? sw.nonRangeMaxStoreMB : base.nonRangeMaxStoreMB;
-      base.nonRangeMaxStoreMBSlow = Number.isFinite(sw.nonRangeMaxStoreMBSlow) ? sw.nonRangeMaxStoreMBSlow : base.nonRangeMaxStoreMBSlow;
-      base.allowUnknownSize = typeof sw.allowUnknownSize === 'boolean' ? sw.allowUnknownSize : base.allowUnknownSize;
-      base.revalidateDays = Number.isFinite(sw.revalidateDays) ? sw.revalidateDays : base.revalidateDays;
+    // 1. Аудио файлы (.mp3)
+    if (url.pathname.endsWith('.mp3')) {
+      return await CACHE_STRATEGIES.cacheFirst(request, CACHES.audio);
     }
-    return base;
-  } catch {
-    return { ...DEFAULT_SW_CONFIG };
+    
+    // 2. Изображения (.jpg, .png, .webp, .svg)
+    if (/\.(jpg|jpeg|png|webp|svg|gif)$/i.test(url.pathname)) {
+      return await CACHE_STRATEGIES.cacheFirst(request, CACHES.images);
+    }
+    
+    // 3. Статические ресурсы (JS, CSS)
+    if (/\.(js|css)$/i.test(url.pathname)) {
+      return await CACHE_STRATEGIES.cacheFirst(request, CACHES.static);
+    }
+    
+    // 4. HTML страницы
+    if (request.mode === 'navigate' || url.pathname.endsWith('.html')) {
+      return await CACHE_STRATEGIES.networkFirst(request, CACHES.static);
+    }
+    
+    // 5. API запросы (albums.json, tracks.json)
+    if (url.pathname.endsWith('.json')) {
+      return await CACHE_STRATEGIES.networkFirst(request, CACHES.dynamic);
+    }
+    
+    // 6. Внешние ресурсы (CDN)
+    if (url.origin !== self.location.origin) {
+      return await CACHE_STRATEGIES.cacheFirst(request, CACHES.static);
+    }
+    
+    // 7. Все остальное - сначала сеть
+    return await CACHE_STRATEGIES.networkFirst(request, CACHES.dynamic);
+    
+  } catch (error) {
+    console.error('[SW] Fetch failed:', request.url, error);
+    
+    // Если это навигация и нет соединения - показать офлайн страницу
+    if (request.mode === 'navigate') {
+      const cache = await caches.open(CACHES.static);
+      const cached = await cache.match('/index.html');
+      if (cached) {
+        return cached;
+      }
+    }
+    
+    // Вернуть базовую ошибку
+    return new Response('Offline', {
+      status: 503,
+      statusText: 'Service Unavailable',
+      headers: new Headers({
+        'Content-Type': 'text/plain'
+      })
+    });
   }
 }
-// --- NET_STATE + лимиты для non-Range аудио ---
-async function writeNetState(state) {
-  try {
-    const cache = await caches.open(META_CACHE);
-    await cache.put(metaKey('net-state'), new Response(JSON.stringify(state || {}), {
-      headers: { 'content-type': 'application/json' }
-    }));
-  } catch {}
-}
-async function readNetState() {
-  try {
-    const cache = await caches.open(META_CACHE);
-    const res = await cache.match(metaKey('net-state'));
-    if (!res) return { saveData: false, downlink: null, effectiveType: null };
-    const j = await res.json().catch(()=>null);
-    return j && typeof j === 'object' ? j : { saveData: false, downlink: null, effectiveType: null };
-  } catch {
-    return { saveData: false, downlink: null, effectiveType: null };
-  }
-}
-function bytesFromHeader(res) {
-  const h = res && res.headers ? res.headers.get('content-length') : null;
-  if (!h) return null;
-  const n = parseInt(h, 10);
-  return Number.isFinite(n) && n >= 0 ? n : null;
-}
-async function shouldCacheNonRangeAudio(response) {
-  if (!response || !response.ok || response.status !== 200 || response.type === 'opaque') return false;
-  // Строже по MIME: если Content-Type задан и это не audio/* — не кэшируем
-  const ct = response.headers.get('content-type') || '';
-  if (ct && !/^audio\//i.test(ct)) return false;
 
-  const ns = await readNetState();
-  const cfg = await readSwConfig();
-  const slow = !!ns.saveData || (typeof ns.downlink === 'number' && ns.downlink > 0 && ns.downlink <= 1.3) || (ns.effectiveType && /(^|-)2g$/.test(ns.effectiveType));
-  const limitMB = slow ? cfg.nonRangeMaxStoreMBSlow : cfg.nonRangeMaxStoreMB;
-  const limitB = limitMB * 1024 * 1024;
-  const size = bytesFromHeader(response);
-  if (size == null) return !!cfg.allowUnknownSize;
-  return size <= limitB;
-}
-
-// ----- media-map (LRU) -----
-async function readMediaMap() {
-  const cache = await caches.open(META_CACHE);
-  const res = await cache.match(metaKey('media-map'));
-  if (!res) return { totalSize: 0, items: {} };
-  try { const j = await res.json(); return (j && typeof j === 'object') ? j : { totalSize: 0, items: {} }; }
-  catch { return { totalSize: 0, items: {} }; }
-}
-async function writeMediaMap(map) {
-  const cache = await caches.open(META_CACHE);
-  await cache.put(metaKey('media-map'), new Response(JSON.stringify(map), { headers: { 'content-type': 'application/json' } }));
-}
-async function touchMediaItem(url) {
-  try {
-    const map = await readMediaMap();
-    if (map.items[url]) {
-      map.items[url].lastAccess = Date.now();
-      await writeMediaMap(map);
-    }
-  } catch {}
-}
-async function upsertMediaItem(url, meta) {
-  const map = await readMediaMap();
-  const prev = map.items[url];
-  const size = Number.isFinite(meta.size) ? meta.size : 0;
-  if (!prev) {
-    map.items[url] = {
-      size,
-      etag: meta.etag || null,
-      lastModified: meta.lastModified || null,
-      lastAccess: Date.now(),
-      revalidatedAt: meta.revalidatedAt || 0
-    };
-    map.totalSize += size;
-  } else {
-    const delta = size - (prev.size || 0);
-    map.totalSize += delta;
-    prev.size = size;
-    prev.etag = meta.etag || prev.etag || null;
-    prev.lastModified = meta.lastModified || prev.lastModified || null;
-    prev.lastAccess = Date.now();
-    if (meta.revalidatedAt) prev.revalidatedAt = meta.revalidatedAt;
-  }
-  await writeMediaMap(map);
-  await ensureMediaBudget(map);
-}
-async function ensureMediaBudget(mapMaybe) {
-  const map = mapMaybe || await readMediaMap();
-  const cfg = await readSwConfig();
-  const maxBytes = (cfg.mediaMaxCacheMB || 150) * 1024 * 1024;
-  if (map.totalSize <= maxBytes) return;
-  const mediaCache = await caches.open(MEDIA_CACHE);
-  const items = Object.entries(map.items);
-  // Сортируем по lastAccess (старые — первыми)
-  items.sort((a, b) => (a[1].lastAccess || 0) - (b[1].lastAccess || 0));
-  for (const [url, meta] of items) {
-    try { await mediaCache.delete(url); } catch {}
-    map.totalSize -= meta.size || 0;
-    delete map.items[url];
-    if (map.totalSize <= maxBytes) break;
-  }
-  await writeMediaMap(map);
-}
-async function maybeHeadRevalidate(url) {
-  try {
-    const cfg = await readSwConfig();
-    const map = await readMediaMap();
-    const meta = map.items[url];
-    if (!meta) return;
-    const days = Math.max(1, cfg.revalidateDays || 7);
-    const now = Date.now();
-    const due = !meta.revalidatedAt || (now - meta.revalidatedAt) > days * 24 * 60 * 60 * 1000;
-    if (!due) return;
-
-    const headReq = new Request(url, { method: 'HEAD', cache: 'no-cache' });
-    const head = await fetch(headReq).catch(()=>null);
-    if (!head || !(head.ok || head.status === 304)) {
-      // отметим попытку, чтобы не ддосить
-      meta.revalidatedAt = now;
-      await writeMediaMap(map);
-      return;
-    }
-    const etag = head.headers.get('etag');
-    const lm = head.headers.get('last-modified');
-    const changed = (etag && etag !== meta.etag) || (lm && lm !== meta.lastModified);
-    // Обновим отметку regardless
-    meta.revalidatedAt = now;
-    await writeMediaMap(map);
-
-    if (!changed) return;
-
-    // Забираем новый full‑200 и кладём (с лимитами)
-    const getRes = await fetch(new Request(url, { cache: 'reload' })).catch(()=>null);
-    if (getRes && getRes.ok && getRes.status === 200 && await shouldCacheNonRangeAudio(getRes)) {
-      const cache = await caches.open(MEDIA_CACHE);
-      await cache.put(url, getRes.clone());
-      const size = bytesFromHeader(getRes) || 0;
-      await upsertMediaItem(url, {
-        size,
-        etag: getRes.headers.get('etag'),
-        lastModified: getRes.headers.get('last-modified'),
-        revalidatedAt: now
-      });
-    }
-  } catch {}
-}
-
+// Обработка сообщений от клиентов
 self.addEventListener('message', (event) => {
-  const data = event.data || {};
-  if (data.type === 'OFFLINE_CACHE_ADD') {
-    const resources = Array.isArray(data.resources) ? data.resources : [];
-    event.waitUntil((async () => {
-      await writeLastRequestedOffline(resources);
-      await offlineAddResources(resources);
-    })());
-  }
-  if (data.type === 'OFFLINE_CACHE_CLEAR_CURRENT') {
-    event.waitUntil(clearCurrentOfflineResources());
-  }
-  if (data.type === 'REQUEST_OFFLINE_STATE') {
-    event.waitUntil((async () => {
-      const list = await readOfflineList();
-      postToAllClients({ type: 'OFFLINE_STATE', value: list.length > 0 });
-    })());
-  }
-  if (data.type === 'NET_STATE' && data.state) {
-    event.waitUntil(writeNetState(data.state));
-  }
-  if (data.type === 'CONFIG_UPDATE' && data.config) {
-    event.waitUntil(writeSwConfig(data.config));
-  }
-  if (data.type === 'SKIP_WAITING') {
-    event.waitUntil(self.skipWaiting());
-  }
-  if (data.type === 'GET_SW_VERSION') {
-    event.waitUntil(postToAllClients({ type: 'SW_VERSION', version: SW_VERSION }));
-  }
-  if (data.type === 'OFFLINE_SET_PROFILE') {
-    event.waitUntil(writeOfflineProfile(data.profile || 'default'));
-  }
-  if (data.type === 'PREFETCH_AUDIO') {
-    const list = Array.isArray(data.urls) ? data.urls : (data.url ? [data.url] : []);
-    if (!list.length) return;
-    event.waitUntil((async () => {
-      for (const u of list) {
-        try {
-          const req = new Request(u, { cache: 'reload', keepalive: true });
-          const res = await fetch(req);
-          if (res && res.ok && res.status === 200 && await shouldCacheNonRangeAudio(res)) {
-            const cache = await caches.open(MEDIA_CACHE);
-            await cache.put(req, res.clone());
-            const size = bytesFromHeader(res) || 0;
-            await upsertMediaItem(req.url, {
-              size,
-              etag: res.headers.get('etag'),
-              lastModified: res.headers.get('last-modified')
-            });
-          }
-        } catch {}
-      }
-    })());
-  }
-  if (data.type === 'GET_SW_INFO') {
-    event.waitUntil((async () => {
-      try {
-        const [profile, cfg, net, mediaMap, offList] = await Promise.all([
-          readOfflineProfile().catch(()=>'default'),
-          readSwConfig().catch(()=>({})),
-          readNetState().catch(()=>({})),
-          readMediaMap().catch(()=>({ totalSize: 0, items: {} })),
-          readOfflineList().catch(()=>[])
-        ]);
-        const info = {
-          version: SW_VERSION,
-          profile,
-          config: cfg,
-          net,
-          media: {
-            totalBytes: Number(mediaMap.totalSize || 0),
-            items: mediaMap.items ? Object.keys(mediaMap.items).length : 0
-          },
-          offline: {
-            profile,
-            count: Array.isArray(offList) ? offList.length : 0
-          }
-        };
-        await postToAllClients({ type: 'SW_INFO', info });
-      } catch {
-        await postToAllClients({ type: 'SW_INFO', info: { version: SW_VERSION } });
-      }
-    })());
+  const { type, payload } = event.data;
+  
+  switch (type) {
+    case 'SKIP_WAITING':
+      self.skipWaiting();
+      break;
+      
+    case 'CLEAR_CACHE':
+      handleClearCache(payload);
+      break;
+      
+    case 'CACHE_AUDIO':
+      handleCacheAudio(payload);
+      break;
+      
+    case 'GET_CACHE_SIZE':
+      handleGetCacheSize().then(size => {
+        event.ports[0].postMessage({ size });
+      });
+      break;
   }
 });
 
-// One-off Background Sync: докачка офлайн-списка при появлении сети
-self.addEventListener('sync', (event) => {
-  if (event.tag === 'offline-favorites-cache') {
-    event.waitUntil((async () => {
-      try {
-        const pending = await readLastRequestedOffline();
-        if (pending && pending.length) {
-          await offlineAddResources(pending);
-        }
-      } catch (e) {
-        // пропускаем — sync повторится позже
+// Очистка кэша
+async function handleClearCache(payload) {
+  const { cacheType } = payload || {};
+  
+  if (cacheType && CACHES[cacheType]) {
+    await caches.delete(CACHES[cacheType]);
+    console.log('[SW] Cache cleared:', cacheType);
+  } else {
+    // Очистить все кэши кроме статического
+    for (const [key, cacheName] of Object.entries(CACHES)) {
+      if (key !== 'static') {
+        await caches.delete(cacheName);
       }
-    })());
+    }
+    console.log('[SW] All dynamic caches cleared');
   }
-});
+}
 
-async function offlineAddResources(resources) {
-  if (!resources || !resources.length) {
-    await writeOfflineList([]);
-    await postToAllClients({ type: 'OFFLINE_DONE' });
+// Кэширование аудио
+async function handleCacheAudio(payload) {
+  const { urls } = payload || {};
+  
+  if (!urls || !Array.isArray(urls)) {
     return;
   }
-  const cache = await caches.open(await getOfflineCacheName());
-  const prev = await readOfflineList();
-  const toCache = resources.map(u => {
-    try { return new URL(u, self.registration.scope).toString(); } catch { return u; }
-  });
-  let done = 0;
-  const total = toCache.length;
-  const errors = [];
-
-  for (const url of toCache) {
+  
+  const cache = await caches.open(CACHES.audio);
+  
+  for (const url of urls) {
     try {
-      const isAudio = /\.(mp3|m4a|aac|flac|ogg|wav)(\?|#|$)/i.test(url);
-
-      let res = await fetch(url, { cache: 'no-cache', keepalive: true }).catch(() => null);
-
-      if (isAudio) {
-        if (res && res.ok && res.type !== 'opaque') {
-          await cache.put(url, res.clone());
-        } else {
-          errors.push(url);
-        }
-      } else {
-        if (!res || !(res.ok || res.type === 'opaque')) {
-          res = await fetch(url, { mode: 'no-cors' }).catch(() => null);
-        }
-        if (res) {
-          await cache.put(url, res.clone());
-        } else {
-          errors.push(url);
-        }
+      const response = await fetch(url);
+      if (response.ok) {
+        await cache.put(url, response);
+        console.log('[SW] Audio cached:', url);
       }
-
-      done++;
-      await postToAllClients({ type: 'OFFLINE_PROGRESS', percent: Math.round(done / total * 100) });
-    } catch (e) {
-      errors.push(url);
-      done++;
-      await postToAllClients({ type: 'OFFLINE_PROGRESS', percent: Math.round(done / total * 100) });
+    } catch (error) {
+      console.error('[SW] Failed to cache audio:', url, error);
     }
   }
-  await writeOfflineList([...prev, ...toCache]);
-  await writeLastRequestedOffline([]);
-  if (errors.length) {
-    console.warn('OFFLINE_CACHE_ADD errors:', errors);
-    await postToAllClients({ type: 'OFFLINE_ERROR', errors });
-  }
-  await postToAllClients({ type: 'OFFLINE_DONE' });
 }
 
-async function clearCurrentOfflineResources() {
-  const cache = await caches.open(await getOfflineCacheName());
-  const list = await readOfflineList();
-  if (list.length) {
-    await Promise.allSettled(list.map(u => cache.delete(u)));
+// Получить размер кэша
+async function handleGetCacheSize() {
+  let totalSize = 0;
+  
+  const cacheNames = await caches.keys();
+  
+  for (const cacheName of cacheNames) {
+    if (!cacheName.startsWith(CACHE_PREFIX)) continue;
+    
+    const cache = await caches.open(cacheName);
+    const requests = await cache.keys();
+    
+    for (const request of requests) {
+      const response = await cache.match(request);
+      if (response) {
+        const blob = await response.blob();
+        totalSize += blob.size;
+      }
+    }
   }
-  await writeOfflineList([]);
-  await postToAllClients({ type: 'OFFLINE_DONE' });
+  
+  return totalSize;
 }
+
+// Фоновая синхронизация (опционально)
+self.addEventListener('sync', (event) => {
+  console.log('[SW] Background sync:', event.tag);
+  
+  if (event.tag === 'sync-favorites') {
+    event.waitUntil(syncFavorites());
+  }
+});
+
+async function syncFavorites() {
+  // Здесь можно синхронизировать избранное с сервером
+  console.log('[SW] Syncing favorites...');
+}
+
+// Push уведомления (опционально)
+self.addEventListener('push', (event) => {
+  console.log('[SW] Push received');
+  
+  const data = event.data ? event.data.json() : {};
+  const title = data.title || 'Витрина Разбита';
+  const options = {
+    body: data.body || 'Новое уведомление',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/badge-72.png',
+    tag: data.tag || 'default',
+    data: data.url || '/'
+  };
+  
+  event.waitUntil(
+    self.registration.showNotification(title, options)
+  );
+});
+
+// Клик по уведомлению
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  
+  event.waitUntil(
+    clients.openWindow(event.notification.data)
+  );
+});
+
+console.log('[SW] Service Worker loaded', CACHE_VERSION);
 
 //=================================================
 // FILE: /performance/rum.js
