@@ -11,17 +11,10 @@ export const APP_CONFIG = {
   // Порядок отображения иконок альбомов
   ICON_ALBUMS_ORDER: [
     { key: '__favorites__', title: 'Избранное', icon: 'img/icon_album/icon-album-00.png' },
-    { key: '__reliz__', title: 'Новости', icon: 'img/icon_album/icon-album-news.png' },
     { key: 'mezhdu-zlom-i-dobrom', title: 'Между Злом и Добром', icon: 'img/icon_album/icon-album-01.png' },
     { key: 'golos-dushi', title: 'Голос Души', icon: 'img/icon_album/icon-album-02.png' },
-    { key: 'krevetochka', title: 'КРЕВЕцTOCHKA', icon: 'img/icon_album/icon-album+00.png' }
-    { key: 'vr_02', title: 'Альбом 2', icon: 'img/icon_album/icon-album-02.png' },
-    { key: 'vr_03', title: 'Альбом 3', icon: 'img/icon_album/icon-album-03.png' },
-    { key: 'vr_04', title: 'Альбом 4', icon: 'img/icon_album/icon-album-04.png' },
-    { key: 'vr_05', title: 'Альбом 5', icon: 'img/icon_album/icon-album-05.png' },
-    { key: 'vr_06', title: 'Альбом 6', icon: 'img/icon_album/icon-album-06.png' },
-    { key: 'vr_07', title: 'Альбом 7', icon: 'img/icon_album/icon-album-07.png' },
-    { key: 'vr_08', title: 'Альбом 8', icon: 'img/icon_album/icon-album-08.png' }
+    { key: 'krevetochka', title: 'КРЕВЕцTOCHKA', icon: 'img/icon_album/icon-album+00.png' },
+    { key: '__reliz__', title: 'Новости', icon: 'img/icon_album/icon-album-news.png' }
   ],
   
   // Ссылки
