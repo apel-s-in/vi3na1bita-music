@@ -1,5 +1,5 @@
 // scripts/core/bootstrap.js
-// КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: загрузка albums.json ДО инициализации UI
+// ⭐ ИСПРАВЛЕНО: синхронная загрузка albums.json через XMLHttpRequest
 
 (function() {
   'use strict';
@@ -14,7 +14,7 @@
       ];
     }
 
-    async init() {
+    init() {
       console.log('🚀 Bootstrapping application...');
 
       // 1. Проверка совместимости
@@ -33,31 +33,35 @@
       // 4. Обработка ошибок
       this.setupErrorHandling();
 
-      // 5. ⭐ КРИТИЧНО: Загрузить albums.json
-      await this.loadAlbumsIndex();
+      // 5. ⭐ КРИТИЧНО: Синхронная загрузка albums.json
+      this.loadAlbumsIndexSync();
 
       console.log('✅ Bootstrap complete');
     }
 
-    async loadAlbumsIndex() {
+    loadAlbumsIndexSync() {
       try {
-        console.log('📀 Loading albums index...');
-        const response = await fetch('./albums.json', { cache: 'no-cache' });
+        console.log('📀 Loading albums index (sync)...');
         
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-
-        const data = await response.json();
+        // ⭐ Используем XMLHttpRequest для синхронной загрузки
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', './albums.json', false); // false = синхронно
+        xhr.send(null);
         
-        if (!data || !Array.isArray(data.albums)) {
-          throw new Error('Invalid albums.json format');
+        if (xhr.status === 200) {
+          const data = JSON.parse(xhr.responseText);
+          
+          if (!data || !Array.isArray(data.albums)) {
+            throw new Error('Invalid albums.json format');
+          }
+
+          // ⭐ Публикуем в глобальную область
+          window.albumsIndex = data.albums;
+
+          console.log(`✅ Albums index loaded: ${data.albums.length} albums`);
+        } else {
+          throw new Error(`HTTP ${xhr.status}`);
         }
-
-        // ⭐ Публикуем в глобальную область
-        window.albumsIndex = data.albums;
-
-        console.log(`✅ Albums index loaded: ${data.albums.length} albums`);
       } catch (error) {
         console.error('❌ Failed to load albums.json:', error);
         window.albumsIndex = [];
@@ -189,14 +193,7 @@
     }
   }
 
-  // ⭐ Запуск при загрузке DOM
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', async () => {
-      const bootstrap = new AppBootstrap();
-      await bootstrap.init();
-    });
-  } else {
-    const bootstrap = new AppBootstrap();
-    bootstrap.init();
-  }
+  // ⭐ Запуск НЕМЕДЛЕННО (не ждём DOMContentLoaded)
+  const bootstrap = new AppBootstrap();
+  bootstrap.init();
 })();
