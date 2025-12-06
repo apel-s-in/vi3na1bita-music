@@ -632,5 +632,86 @@
   } else {
     initPlayerUI();
   }
+  // ========== FAVORITES-ONLY MODE ==========
+
+  let favoritesOnlyMode = false;
+
+  function initFavoritesOnlyMode() {
+    const btn = document.getElementById('favorites-btn');
+    if (!btn) return;
+
+    // Восстановить состояние
+    try {
+      favoritesOnlyMode = localStorage.getItem('favoritesOnlyMode') === '1';
+      applyFavoritesOnlyState();
+    } catch {}
+
+    btn.addEventListener('click', toggleFavoritesOnly);
+  }
+
+  function toggleFavoritesOnly() {
+    favoritesOnlyMode = !favoritesOnlyMode;
+    
+    applyFavoritesOnlyState();
+    
+    try {
+      localStorage.setItem('favoritesOnlyMode', favoritesOnlyMode ? '1' : '0');
+    } catch {}
+
+    if (favoritesOnlyMode) {
+      w.NotificationSystem?.success('⭐ Режим: только избранные');
+      applyFavoritesFilter();
+    } else {
+      w.NotificationSystem?.info('🎵 Режим: все треки');
+    }
+  }
+
+  function applyFavoritesOnlyState() {
+    const btn = document.getElementById('favorites-btn');
+    const icon = document.getElementById('favorites-btn-icon');
+    
+    if (btn) {
+      btn.classList.toggle('favorites-active', favoritesOnlyMode);
+    }
+    
+    if (icon) {
+      icon.src = favoritesOnlyMode ? 'img/star.png' : 'img/star2.png';
+    }
+  }
+
+  function applyFavoritesFilter() {
+    if (!w.playerCore || !favoritesOnlyMode) return;
+
+    const currentAlbum = w.AlbumsManager?.getCurrentAlbum();
+    if (!currentAlbum || currentAlbum.startsWith('__')) return;
+
+    // Получить индексы избранных треков
+    const likedIndices = w.getLikedForAlbum?.(currentAlbum) || [];
+    
+    if (likedIndices.length === 0) {
+      w.NotificationSystem?.warning('Нет избранных треков в этом альбоме');
+      favoritesOnlyMode = false;
+      applyFavoritesOnlyState();
+      return;
+    }
+
+    // Применить фильтр к PlayerCore
+    if (typeof w.playerCore.setFavoritesOnly === 'function') {
+      w.playerCore.setFavoritesOnly(true, likedIndices);
+      
+      // Если текущий трек не в избранном - переключить на первый избранный
+      const currentIndex = w.playerCore.getIndex();
+      if (!likedIndices.includes(currentIndex)) {
+        w.playerCore.play(likedIndices[0]);
+      }
+    }
+  }
+
+  // Добавить в инициализацию
+  const originalInit = initPlayerUI;
+  initPlayerUI = function() {
+    originalInit();
+    initFavoritesOnlyMode();
+  };
 
 })();
