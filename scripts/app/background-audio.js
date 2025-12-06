@@ -27,7 +27,7 @@
       const actionHandlers = {
         play: () => window.playerCore?.play(),
         pause: () => window.playerCore?.pause(),
-        previoustrack: () => window.playerCore?.previous(),
+        previoustrack: () => window.playerCore?.prev(),
         nexttrack: () => window.playerCore?.next(),
         seekto: (details) => {
           if (details.seekTime && window.playerCore) {
@@ -52,13 +52,13 @@
       }
 
       // Обновление метаданных при смене трека
-      window.playerCore.on('trackChanged', (data) => {
-        this.updateMetadata(data.track);
-      });
-
-      // Обновление позиции воспроизведения
-      window.playerCore.on('progress', (data) => {
-        this.updatePositionState(data);
+      window.playerCore.on({
+        onTrackChange: (track) => {
+          this.updateMetadata(track);
+        },
+        onTick: (position, duration) => {
+          this.updatePositionState({ position, duration });
+        }
       });
     }
 
