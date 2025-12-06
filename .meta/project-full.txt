@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d1816912127f9aa65278029116ca0fd4fddd3f34.idx
-│   │       ├── pack-d1816912127f9aa65278029116ca0fd4fddd3f34.pack
-│   │       └── pack-d1816912127f9aa65278029116ca0fd4fddd3f34.rev
+│   │       ├── pack-bda037097ae64cc043877dcd208416498ea4c781.idx
+│   │       ├── pack-bda037097ae64cc043877dcd208416498ea4c781.pack
+│   │       └── pack-bda037097ae64cc043877dcd208416498ea4c781.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -266,7 +266,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-06 20:46:27 UTC
+Сгенерировано: 2025-12-06 20:48:11 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3824,8 +3824,13 @@ export class PlayerCore {
     this._albumArtist = meta.artist || '';
     this._albumTitle = meta.album || '';
     this._albumCover = meta.cover || '';
-    this._fire('trackChanged', { track: this.getCurrentTrack(), index: this.index });
+    this._syncShuffle(true);
   }
+
+// Добавить метод loadPlaylist для обратной совместимости
+loadPlaylist(tracks, startIndex = 0, meta = {}) {
+  this.setPlaylist(tracks, startIndex, meta);
+}
 
   on(eventName, callback) {
     if (!this.events[eventName]) this.events[eventName] = [];
