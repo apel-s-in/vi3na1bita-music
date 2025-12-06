@@ -1,7 +1,7 @@
 // scripts/player-adapter.js
 // Адаптер для интеграции PlayerCore
 
-import { PlayerCore } from './player/PlayerCore.js';  // ✅ ИСПРАВЛЕН ПУТЬ
+import { PlayerCore } from './player/PlayerCore.js';
 
 (function initPlayerCoreAdapter() {
   if (window.playerCore) {
@@ -13,23 +13,21 @@ import { PlayerCore } from './player/PlayerCore.js';  // ✅ ИСПРАВЛЕН 
 
   const pc = new PlayerCore();
 
-  // Подписка на события
-  pc.on({
-    onTrackChange: (track, index) => {
-      console.log('Track changed:', track?.title, 'index:', index);
-    },
-    onPlay: (track, index) => {
-      console.log('Playing:', track?.title);
-    },
-    onPause: (track, index) => {
-      console.log('Paused:', track?.title);
-    },
-    onStop: (track, index) => {
-      console.log('Stopped');
-    },
-    onEnd: (track, index) => {
-      console.log('Track ended:', track?.title);
-    }
+  // Подписка на события (старый формат on)
+  pc.on('trackChanged', (data) => {
+    console.log('Track changed:', data);
+  });
+
+  pc.on('play', (data) => {
+    console.log('Playing:', data);
+  });
+
+  pc.on('pause', (data) => {
+    console.log('Paused:', data);
+  });
+
+  pc.on('error', (data) => {
+    console.error('Player error:', data);
   });
 
   // Восстановление настроек
