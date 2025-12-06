@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-55e017eb8ccaf382f1948053580ab4e00b1070a2.idx
-│   │       ├── pack-55e017eb8ccaf382f1948053580ab4e00b1070a2.pack
-│   │       └── pack-55e017eb8ccaf382f1948053580ab4e00b1070a2.rev
+│   │       ├── pack-1d5332403376f1c2b4f42caa413d84252b69f5fa.idx
+│   │       ├── pack-1d5332403376f1c2b4f42caa413d84252b69f5fa.pack
+│   │       └── pack-1d5332403376f1c2b4f42caa413d84252b69f5fa.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -266,7 +266,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-06 20:54:51 UTC
+Сгенерировано: 2025-12-06 20:55:30 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3830,10 +3830,9 @@ export class PlayerCore {
     this._syncShuffle(true);
   }
 
-// Добавить метод loadPlaylist для обратной совместимости
-loadPlaylist(tracks, startIndex = 0, meta = {}) {
-  this.setPlaylist(tracks, startIndex, meta);
-}
+  loadPlaylist(tracks, startIndex = 0, meta = {}) {
+    this.setPlaylist(tracks, startIndex, meta);
+  }
 
   on(eventName, callback) {
     if (!this.events[eventName]) this.events[eventName] = [];
@@ -4000,6 +3999,12 @@ loadPlaylist(tracks, startIndex = 0, meta = {}) {
       [indices[i], indices[j]] = [indices[j], indices[i]];
     }
     this.shuffled = indices;
+  }
+
+  _syncShuffle(force) {
+    if (this.shuffle) {
+      this._createShuffledPlaylist();
+    }
   }
 
   playTrack(index) {
