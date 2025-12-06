@@ -22,20 +22,30 @@ function getLikedForAlbum(albumKey) {
     const raw = localStorage.getItem(__LIKED_KEY);
     const map = raw ? JSON.parse(raw) : {};
     const arr = (map && typeof map === 'object') ? map[albumKey] : [];
-    return Array.isArray(arr) ? arr : [];
+    // Нормализуем к числам и убираем дубликаты
+    return Array.from(new Set((Array.isArray(arr) ? arr : [])
+      .map(n => parseInt(n, 10))
+      .filter(Number.isFinite)));
   } catch {
     return [];
   }
 }
 
 function toggleLikeForAlbum(albumKey, idx, makeLiked) {
+  const index = parseInt(idx, 10);
+  if (!Number.isFinite(index)) return;
   const map = getLikedMap();
-  const arr = Array.isArray(map[albumKey]) ? map[albumKey] : [];
-  const has = arr.includes(idx);
+  const arrRaw = Array.isArray(map[albumKey]) ? map[albumKey] : [];
+  const arr = Array.from(new Set(arrRaw
+    .map(n => parseInt(n, 10))
+    .filter(Number.isFinite)));
+  const has = arr.includes(index);
+
   let next = arr.slice();
-  if (makeLiked && !has) next.push(idx);
-  if (!makeLiked && has) next = next.filter(x => x !== idx);
-  map[albumKey] = Array.from(new Set(next));
+  if (makeLiked && !has) next.push(index);
+  if (!makeLiked && has) next = next.filter(x => x !== index);
+
+  map[albumKey] = next;
   try { localStorage.setItem(__LIKED_KEY, JSON.stringify(map)); } catch {}
 }
 
