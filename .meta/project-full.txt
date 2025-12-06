@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-54a2a04c7e02be34dc76a46193c85a12aa461d3a.idx
-│   │       ├── pack-54a2a04c7e02be34dc76a46193c85a12aa461d3a.pack
-│   │       └── pack-54a2a04c7e02be34dc76a46193c85a12aa461d3a.rev
+│   │       ├── pack-4d2255e7e6359f8c265d0f80fc6eac089a80283b.idx
+│   │       ├── pack-4d2255e7e6359f8c265d0f80fc6eac089a80283b.pack
+│   │       └── pack-4d2255e7e6359f8c265d0f80fc6eac089a80283b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -265,7 +265,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-06 22:58:53 UTC
+Сгенерировано: 2025-12-06 22:59:59 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1202,11 +1202,73 @@ class App {
     }
 
     this.initializeFavoritesFilter();
+    this.initializeKeyboardShortcuts();
+  }
+
+  initializeKeyboardShortcuts() {
+    document.addEventListener('keydown', (e) => {
+      // Игнорировать если фокус на input
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      
+      const key = e.key.toLowerCase();
+      
+      switch(key) {
+        case ' ':
+        case 'k':
+          e.preventDefault();
+          document.getElementById('play-pause-btn')?.click();
+          break;
+        case 'p':
+          e.preventDefault();
+          window.playerCore?.prev();
+          break;
+        case 'n':
+          e.preventDefault();
+          window.playerCore?.next();
+          break;
+        case 'x':
+          e.preventDefault();
+          window.playerCore?.stop();
+          break;
+        case 'm':
+          e.preventDefault();
+          document.getElementById('mute-btn')?.click();
+          break;
+        case 'u':
+          e.preventDefault();
+          document.getElementById('shuffle-btn')?.click();
+          break;
+        case 'r':
+          e.preventDefault();
+          document.getElementById('repeat-btn')?.click();
+          break;
+        case 'y':
+          e.preventDefault();
+          window.PlayerUI?.toggleLyricsView();
+          break;
+        case 'a':
+          e.preventDefault();
+          window.PlayerUI?.toggleAnimation();
+          break;
+        case 'b':
+          e.preventDefault();
+          window.PlayerUI?.toggleBit();
+          break;
+        case 'f':
+          e.preventDefault();
+          document.getElementById('favorites-btn')?.click();
+          break;
+        case 't':
+          e.preventDefault();
+          document.getElementById('sleep-timer-btn')?.click();
+          break;
+      }
+    });
+
+    console.log('⌨️ Keyboard shortcuts initialized');
   }
 
   initializeFavoritesFilter() {
-    const filterBtn = document.getElementById('filter-favorites-btn');
-    if (!filterBtn) return;
 
     let favoritesOnly = false;
 
