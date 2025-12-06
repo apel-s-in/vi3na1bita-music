@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d9e4a5e4888361c13b7ed0b53ceb311d4b86af5d.idx
-│   │       ├── pack-d9e4a5e4888361c13b7ed0b53ceb311d4b86af5d.pack
-│   │       └── pack-d9e4a5e4888361c13b7ed0b53ceb311d4b86af5d.rev
+│   │       ├── pack-8a0d45256c255ee484aaf2b043da3c41524fc87d.idx
+│   │       ├── pack-8a0d45256c255ee484aaf2b043da3c41524fc87d.pack
+│   │       └── pack-8a0d45256c255ee484aaf2b043da3c41524fc87d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -262,7 +262,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-06 20:25:58 UTC
+Сгенерировано: 2025-12-06 20:26:24 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3404,79 +3404,192 @@ console.log('PlayerCore JS/TS validation OK');
 //=================================================
 // FILE: /scripts/core/bootstrap.js
 // scripts/core/bootstrap.js
-// PlayerCoreObserver — централизатор событий PlayerCore.
-// Позволяет добавлять несколько наблюдателей без перезаписи pc.events.
-// Глобальный API:
-//   window.PlayerCoreObserver.add(observer) -> id
-//   window.PlayerCoreObserver.remove(id)
-//   window.PlayerCoreObserver.attach(pc?)  // переустановить диспетчер (обычно не нужно)
+// Начальная загрузка и проверка совместимости
 
-(function initPlayerCoreObserver(){
-  if (window.PlayerCoreObserver) return;
+(function() {
+  'use strict';
 
-  const observers = new Map(); // id -> { onPlay, onPause, onStop, onTick, onTrackChange, onEnd, onSleepTriggered }
-  let nextId = 1;
-  let attachedPc = null;
+  class AppBootstrap {
+    constructor() {
+      this.requiredFeatures = [
+        'localStorage',
+        'fetch',
+        'Promise',
+        'addEventListener'
+      ];
+    }
 
-  function dispatch(name, args) {
-    // Вызовы в порядке добавления — без исключений, каждую ловим локально
-    for (const [, ob] of observers) {
-      const fn = ob && ob[name];
-      if (typeof fn === 'function') {
-        try { fn.apply(null, args); } catch {}
+    checkCompatibility() {
+      const missing = [];
+
+      // LocalStorage
+      if (!this.checkLocalStorage()) {
+        missing.push('LocalStorage');
+      }
+
+      // Fetch API
+      if (typeof fetch === 'undefined') {
+        missing.push('Fetch API');
+      }
+
+      // Promises
+      if (typeof Promise === 'undefined') {
+        missing.push('Promises');
+      }
+
+      // Event Listeners
+      if (!document.addEventListener) {
+        missing.push('Event Listeners');
+      }
+
+      // Web Audio API (желательно)
+      if (!window.AudioContext && !window.webkitAudioContext) {
+        console.warn('Web Audio API not supported, falling back to HTML5 Audio');
+      }
+
+      if (missing.length > 0) {
+        this.showCompatibilityError(missing);
+        return false;
+      }
+
+      return true;
+    }
+
+    checkLocalStorage() {
+      try {
+        localStorage.setItem('__test', '1');
+        localStorage.removeItem('__test');
+        return true;
+      } catch (e) {
+        return false;
       }
     }
+
+    showCompatibilityError(missing) {
+      const errorHtml = `
+        <div style="
+          position: fixed;
+          inset: 0;
+          background: #181818;
+          color: #fff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-family: sans-serif;
+          padding: 20px;
+          text-align: center;
+          z-index: 99999;
+        ">
+          <div>
+            <h1 style="color: #E80100; margin-bottom: 20px;">⚠️ Браузер не поддерживается</h1>
+            <p style="margin-bottom: 15px;">Для работы приложения требуются следующие функции:</p>
+            <ul style="list-style: none; padding: 0; margin-bottom: 20px;">
+              ${missing.map(f => `<li style="margin: 5px 0;">❌ ${f}</li>`).join('')}
+            </ul>
+            <p style="color: #999;">Пожалуйста, обновите браузер до последней версии.</p>
+            <p style="margin-top: 15px; font-size: 14px; color: #666;">
+              Рекомендуем: Chrome, Firefox, Safari, Edge (последние версии)
+            </p>
+          </div>
+        </div>
+      `;
+
+      document.body.innerHTML = errorHtml;
+    }
+
+    detectIOS() {
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      if (isIOS) {
+        document.body.classList.add('ios');
+        console.log('📱 iOS detected');
+      }
+      return isIOS;
+    }
+
+    detectStandalone() {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                          window.navigator.standalone === true;
+      
+      if (isStandalone) {
+        document.body.classList.add('standalone');
+        console.log('📲 PWA mode detected');
+      }
+      
+      return isStandalone;
+    }
+
+    preventDefaultBehaviors() {
+      // Отключить pull-to-refresh на мобильных
+      document.body.addEventListener('touchstart', (e) => {
+        if (e.touches.length > 1) {
+          e.preventDefault();
+        }
+      }, { passive: false });
+
+      // Отключить двойной тап для зума
+      let lastTouchEnd = 0;
+      document.addEventListener('touchend', (e) => {
+        const now = Date.now();
+        if (now - lastTouchEnd <= 300) {
+          e.preventDefault();
+        }
+        lastTouchEnd = now;
+      }, false);
+
+      // Предотвратить контекстное меню на обложках
+      document.addEventListener('contextmenu', (e) => {
+        if (e.target.tagName === 'IMG' || e.target.closest('#cover-slot')) {
+          e.preventDefault();
+        }
+      });
+    }
+
+    setupErrorHandling() {
+      window.addEventListener('error', (e) => {
+        console.error('Global error:', e.error);
+        // Можно отправить на сервер аналитики
+      });
+
+      window.addEventListener('unhandledrejection', (e) => {
+        console.error('Unhandled promise rejection:', e.reason);
+        // Можно отправить на сервер аналитики
+      });
+    }
+
+    init() {
+      console.log('🚀 Bootstrapping application...');
+
+      // Проверка совместимости
+      if (!this.checkCompatibility()) {
+        console.error('❌ Browser compatibility check failed');
+        return;
+      }
+
+      // Детектирование платформы
+      this.detectIOS();
+      this.detectStandalone();
+
+      // Предотвращение нежелательного поведения
+      this.preventDefaultBehaviors();
+
+      // Обработка ошибок
+      this.setupErrorHandling();
+
+      console.log('✅ Bootstrap complete');
+    }
   }
 
-  function bindTo(pc) {
-    if (!pc || typeof pc.on !== 'function') return;
-    attachedPc = pc;
-    pc.on({
-      onPlay:           (t, i) => dispatch('onPlay', [t, i]),
-      onPause:          (t, i) => dispatch('onPause', [t, i]),
-      onStop:           (t, i) => dispatch('onStop', [t, i]),
-      onTrackChange:    (t, i) => dispatch('onTrackChange', [t, i]),
-      onEnd:            (t, i) => dispatch('onEnd', [t, i]),
-      onTick:           (p, d) => dispatch('onTick', [p, d]),
-      onSleepTriggered: (t, i) => dispatch('onSleepTriggered', [t, i])
+  // Запуск при загрузке DOM
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      const bootstrap = new AppBootstrap();
+      bootstrap.init();
     });
+  } else {
+    const bootstrap = new AppBootstrap();
+    bootstrap.init();
   }
-
-  function ensureAttached() {
-    if (attachedPc && window.playerCore === attachedPc) return;
-    if (window.playerCore) {
-      bindTo(window.playerCore);
-    }
-  }
-
-  const API = {
-    add(observer) {
-      ensureAttached();
-      const id = nextId++;
-      observers.set(id, observer || {});
-      // Переустановки pc.on не требуется — диспетчер уже навешан; просто начнём вызывать нового наблюдателя
-      return id;
-    },
-    remove(id) {
-      observers.delete(id);
-    },
-    attach(pc) {
-      bindTo(pc || window.playerCore || null);
-    }
-  };
-
-  window.PlayerCoreObserver = API;
-
-  // Попробуем привязаться, когда адаптер загрузится
-  const id = setInterval(() => {
-    if (window.playerCore) {
-      try { bindTo(window.playerCore); } catch {}
-      clearInterval(id);
-    }
-  }, 200);
-  setTimeout(() => clearInterval(id), 10000);
 })();
-
 
 //=================================================
 // FILE: /scripts/core/config.js
