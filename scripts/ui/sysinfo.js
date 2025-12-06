@@ -1,88 +1,220 @@
-// scripts/ui/sysinfo.js (ESM)
-// Кнопка «О СИСТЕМЕ»: запрашивает у SW инфо и показывает модал.
+// scripts/ui/sysinfo.js
+// Модальное окно с информацией о системе и приложении
 
-function formatBytes(n) {
-  if (!Number.isFinite(n) || n <= 0) return '0 B';
-  const u = ['B','KB','MB','GB']; let i = 0;
-  while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
-  return `${n.toFixed(1)} ${u[i]}`;
-}
+(function() {
+  'use strict';
 
-function buildModal(info) {
-  const m = document.createElement('div');
-  m.className = 'modal-bg active';
-  const cfg = info?.config || {};
-  const net = info?.net || {};
-  const media = info?.media || {};
-  const offline = info?.offline || {};
-  const ver = info?.version || '(нет)';
-  const prof = offline?.profile || info?.profile || 'default';
-
-  m.innerHTML = `
-    <div class="modal-feedback" style="max-width: 520px;">
-      <button class="bigclose" onclick="this.closest('.modal-bg').remove()" title="Закрыть">
-        <svg viewBox="0 0 48 48"><line x1="12" y1="12" x2="36" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><line x1="36" y1="12" x2="12" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/></svg>
-      </button>
-      <div style="font-weight:800; font-size:1.1em; margin-bottom:10px;">О системе</div>
-      <div style="font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:.95em; line-height:1.5;">
-        <div><b>SW версия:</b> ${ver}</div>
-        <div><b>Оффлайн профиль:</b> ${prof}</div>
-        <div><b>Оффлайн файлов:</b> ${offline?.count ?? 0}</div>
-        <div><b>MediaCache:</b> ${formatBytes(media?.totalBytes || 0)} (${media?.items || 0} объектов)</div>
-        <hr style="border-color:#333; margin:8px 0;">
-        <div><b>Сеть:</b> saveData=${net?.saveData ? '1' : '0'}, downlink=${net?.downlink ?? '—'}Mb/s, type=${net?.effectiveType ?? '—'}</div>
-        <hr style="border-color:#333; margin:8px 0;">
-        <div><b>SW лимиты:</b> mediaMax=${cfg?.mediaMaxCacheMB ?? '-'}MB; nonRange=${cfg?.nonRangeMaxStoreMB ?? '-'}MB; slow=${cfg?.nonRangeMaxStoreMBSlow ?? '-'}MB; revalidateDays=${cfg?.revalidateDays ?? '-'}</div>
-      </div>
-    </div>`;
-  return m;
-}
-
-function showSystemInfoModal(info) {
-  const m = buildModal(info);
-  document.body.appendChild(m);
-}
-
-function requestSystemInfo() {
-  if (!('serviceWorker' in navigator)) {
-    window.NotificationSystem && window.NotificationSystem.warning('Service Worker недоступен');
-    return;
-  }
-  const send = () => {
-    try {
-      const ctl = navigator.serviceWorker.controller;
-      if (ctl) ctl.postMessage({ type: 'GET_SW_INFO' });
-    } catch {}
-  };
-  // Ответ обработаем через message
-  send();
-}
-
-function showSystemInfo() {
-  requestSystemInfo();
-}
-
-// Поймаем ответ
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.addEventListener('message', (ev) => {
-    const msg = ev.data || {};
-    if (msg.type === 'SW_INFO' && msg.info) {
-      showSystemInfoModal(msg.info);
+  class SystemInfoManager {
+    constructor() {
+      this.modal = null;
+      this.init();
     }
-  });
-}
 
-// Показать кнопку при наличии клавиатуры (как для hotkeys)
-(function bootstrap() {
-  const btn = document.getElementById('sysinfo-btn');
-  if (!btn) return;
-  try {
-    const hasKeyboard = window.hasKeyboard ? window.hasKeyboard() : true;
-    btn.style.display = hasKeyboard ? 'block' : 'none';
-  } catch {
-    btn.style.display = 'block';
+    init() {
+      // Кнопка открытия
+      const button = document.getElementById('sysinfo-btn');
+      if (button) {
+        button.style.display = '';
+        button.addEventListener('click', () => this.show());
+      }
+
+      // Горячая клавиша Ctrl+I
+      document.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'i') {
+          e.preventDefault();
+          this.show();
+        }
+      });
+    }
+
+    show() {
+      if (this.modal) {
+        this.modal.classList.add('active');
+        return;
+      }
+
+      this.createModal();
+    }
+
+    createModal() {
+      const modalBg = document.createElement('div');
+      modalBg.className = 'modal-bg sysinfo-modal';
+      
+      const info = this.collectSystemInfo();
+
+      modalBg.innerHTML = `
+        <div class="modal-feedback" style="max-width: 500px; max-height: 80vh; overflow-y: auto;">
+          <button class="bigclose" aria-label="Закрыть">
+            <svg width="31" height="31" viewBox="0 0 31 31">
+              <line x1="8" y1="8" x2="23" y2="23" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+              <line x1="23" y1="8" x2="8" y2="23" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+          </button>
+          
+          <h2 style="margin-top: 0; color: #4daaff;">О системе</h2>
+          
+          <div style="font-size: 14px; line-height: 1.6;">
+            <h3 style="color: #8ab8fd; margin-top: 20px;">Приложение</h3>
+            <div><strong>Версия:</strong> ${info.app.version}</div>
+            <div><strong>Дата сборки:</strong> ${info.app.buildDate}</div>
+            <div><strong>PWA:</strong> ${info.app.isPWA ? '✅ Да' : '❌ Нет'}</div>
+            
+            <h3 style="color: #8ab8fd; margin-top: 20px;">Браузер</h3>
+            <div><strong>User Agent:</strong> ${info.browser.userAgent}</div>
+            <div><strong>Язык:</strong> ${info.browser.language}</div>
+            <div><strong>Online:</strong> ${info.browser.online ? '✅' : '❌'}</div>
+            
+            <h3 style="color: #8ab8fd; margin-top: 20px;">Устройство</h3>
+            <div><strong>Разрешение:</strong> ${info.device.resolution}</div>
+            <div><strong>DPR:</strong> ${info.device.dpr}</div>
+            <div><strong>Touch:</strong> ${info.device.touch ? '✅' : '❌'}</div>
+            <div><strong>Platform:</strong> ${info.device.platform}</div>
+            
+            <h3 style="color: #8ab8fd; margin-top: 20px;">Плеер</h3>
+            <div><strong>Ядро:</strong> ${info.player.core}</div>
+            <div><strong>Версия Howler:</strong> ${info.player.howlerVersion}</div>
+            <div><strong>Поддержка Web Audio:</strong> ${info.player.webAudio ? '✅' : '❌'}</div>
+            <div><strong>Поддержка HTML5:</strong> ${info.player.html5 ? '✅' : '❌'}</div>
+            
+            <h3 style="color: #8ab8fd; margin-top: 20px;">Хранилище</h3>
+            <div><strong>LocalStorage:</strong> ${info.storage.localStorage ? '✅' : '❌'}</div>
+            <div><strong>IndexedDB:</strong> ${info.storage.indexedDB ? '✅' : '❌'}</div>
+            <div><strong>Cache API:</strong> ${info.storage.cacheAPI ? '✅' : '❌'}</div>
+            <div><strong>Service Worker:</strong> ${info.storage.serviceWorker ? '✅' : '❌'}</div>
+            
+            <h3 style="color: #8ab8fd; margin-top: 20px;">Память</h3>
+            <div><strong>Используется:</strong> ${info.memory.used}</div>
+            <div><strong>Лимит:</strong> ${info.memory.limit}</div>
+            
+            <h3 style="color: #8ab8fd; margin-top: 20px;">Производительность</h3>
+            <div><strong>Время загрузки:</strong> ${info.performance.loadTime}</div>
+            <div><strong>DOM загружен:</strong> ${info.performance.domContentLoaded}</div>
+          </div>
+          
+          <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #394866; text-align: center; font-size: 12px; color: #999;">
+            Витрина Разбита © 2025
+          </div>
+        </div>
+      `;
+
+      // Закрытие
+      const closeBtn = modalBg.querySelector('.bigclose');
+      closeBtn?.addEventListener('click', () => this.hide());
+
+      modalBg.addEventListener('click', (e) => {
+        if (e.target === modalBg) {
+          this.hide();
+        }
+      });
+
+      document.getElementById('modals-container')?.appendChild(modalBg);
+      this.modal = modalBg;
+
+      requestAnimationFrame(() => {
+        modalBg.classList.add('active');
+      });
+    }
+
+    collectSystemInfo() {
+      const APP_CONFIG = window.APP_CONFIG || {};
+      
+      return {
+        app: {
+          version: APP_CONFIG.VERSION || 'unknown',
+          buildDate: APP_CONFIG.BUILD_DATE || 'unknown',
+          isPWA: window.matchMedia('(display-mode: standalone)').matches
+        },
+        browser: {
+          userAgent: navigator.userAgent,
+          language: navigator.language,
+          online: navigator.onLine
+        },
+        device: {
+          resolution: `${window.screen.width}×${window.screen.height}`,
+          dpr: window.devicePixelRatio || 1,
+          touch: 'ontouchstart' in window,
+          platform: navigator.platform
+        },
+        player: {
+          core: window.playerCore ? 'PlayerCore (Howler.js)' : 'Не загружен',
+          howlerVersion: window.Howler ? Howler.version : 'N/A',
+          webAudio: window.Howler ? Howler.usingWebAudio : false,
+          html5: window.Howler ? !Howler.usingWebAudio : false
+        },
+        storage: {
+          localStorage: this.checkLocalStorage(),
+          indexedDB: 'indexedDB' in window,
+          cacheAPI: 'caches' in window,
+          serviceWorker: 'serviceWorker' in navigator
+        },
+        memory: this.getMemoryInfo(),
+        performance: this.getPerformanceInfo()
+      };
+    }
+
+    checkLocalStorage() {
+      try {
+        localStorage.setItem('test', '1');
+        localStorage.removeItem('test');
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    getMemoryInfo() {
+      if (performance.memory) {
+        return {
+          used: this.formatBytes(performance.memory.usedJSHeapSize),
+          limit: this.formatBytes(performance.memory.jsHeapSizeLimit)
+        };
+      }
+      return {
+        used: 'N/A',
+        limit: 'N/A'
+      };
+    }
+
+    getPerformanceInfo() {
+      const perf = performance.timing;
+      const loadTime = perf.loadEventEnd - perf.navigationStart;
+      const domTime = perf.domContentLoadedEventEnd - perf.navigationStart;
+
+      return {
+        loadTime: loadTime > 0 ? `${loadTime}ms` : 'N/A',
+        domContentLoaded: domTime > 0 ? `${domTime}ms` : 'N/A'
+      };
+    }
+
+    formatBytes(bytes) {
+      if (bytes === 0) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+    }
+
+    hide() {
+      if (this.modal) {
+        this.modal.classList.remove('active');
+        setTimeout(() => {
+          if (this.modal && this.modal.parentNode) {
+            this.modal.parentNode.removeChild(this.modal);
+          }
+          this.modal = null;
+        }, 300);
+      }
+    }
   }
-})();
 
-// Экспорт глобали для onclick
-window.showSystemInfo = showSystemInfo;
+  // Инициализация при загрузке DOM
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      window.SystemInfoManager = new SystemInfoManager();
+    });
+  } else {
+    window.SystemInfoManager = new SystemInfoManager();
+  }
+
+  console.log('✅ System info manager initialized');
+})();
