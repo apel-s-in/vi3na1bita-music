@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1f1692dcae9b6d11b33a47725453335f3bb5eaf7.idx
-│   │       ├── pack-1f1692dcae9b6d11b33a47725453335f3bb5eaf7.pack
-│   │       └── pack-1f1692dcae9b6d11b33a47725453335f3bb5eaf7.rev
+│   │       ├── pack-26cae70398aa11b2f310f0a5e5b3c5547b9b2339.idx
+│   │       ├── pack-26cae70398aa11b2f310f0a5e5b3c5547b9b2339.pack
+│   │       └── pack-26cae70398aa11b2f310f0a5e5b3c5547b9b2339.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -265,7 +265,7 @@ vi3na1bita-music/
 └── sw.js
 
 
-Сгенерировано: 2025-12-06 21:57:28 UTC
+Сгенерировано: 2025-12-06 21:57:46 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -551,38 +551,48 @@ jobs:
   <meta charset="UTF-8" />
   <title>Витрина Разбита</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Официальные альбомы группы Витрина Разбита">
+  
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#181818" />
+  
+  <!-- iOS -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   
   <!-- Styles -->
   <link rel="stylesheet" href="styles/main.css">
   
-  <!-- ⭐ 1. Howler.js (CDN) -->
+  <!-- Howler.js -->
   <script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.core.min.js"></script>
   
-  <!-- ⭐ 2. Bootstrap (СИНХРОННО загружает albums.json) -->
+  <!-- Core -->
   <script src="./scripts/core/bootstrap.js"></script>
-  
-  <!-- ⭐ 3. Config -->
   <script src="./scripts/core/config.js" type="module"></script>
   
-  <!-- ⭐ 4. Player adapter (загружает src/PlayerCore.js) -->
+  <!-- Player -->
   <script src="./scripts/player/player-adapter.js" type="module"></script>
   
-  <!-- ⭐ 5. UI modules -->
+  <!-- UI -->
   <script src="./scripts/ui/notify.js" defer></script>
   <script src="./scripts/ui/favorites-const.js" defer></script>
   <script src="./scripts/ui/favorites-storage.js" defer></script>
   <script src="./scripts/ui/favorites-data.js" defer></script>
   <script src="./scripts/ui/favorites.js" defer></script>
+  <script src="./scripts/ui/mini.js" defer></script>
+  <script src="./scripts/ui/modals.js" defer></script>
+  <script src="./scripts/ui/sysinfo.js" defer></script>
   
-  <!-- ⭐ 6. App modules (ПРАВИЛЬНЫЙ ПОРЯДОК!) -->
-  <script src="./scripts/app/player-controls.js" defer></script>
+  <!-- App -->
   <script src="./scripts/app/background-audio.js" defer></script>
   <script src="./scripts/app/background-events.js" defer></script>
   <script src="./scripts/app/albums.js" type="module"></script>
   <script src="./scripts/app/navigation.js" type="module"></script>
   <script src="./scripts/app/downloads.js" type="module"></script>
   
-  <!-- ⭐ 7. Main app -->
+  <!-- Main -->
   <script src="./scripts/app.js" type="module"></script>
 </head>
 <body>
@@ -591,7 +601,7 @@ jobs:
     <div class="promo-inner">
       <img class="promo-cover" src="img/logo.png" alt="Обложка" draggable="false"/>
       <h2>Вход по промокоду</h2>
-      <input id="promo-inp" type="text" placeholder="Введите промокод" />
+      <input id="promo-inp" type="text" placeholder="Введите промокод" autocomplete="off" />
       <button id="promo-btn">Войти</button>
       <div id="promo-error"></div>
     </div>
@@ -604,9 +614,21 @@ jobs:
       <div id="album-icons" class="album-icons"></div>
       
       <div id="cover-wrap">
-        <button class="cover-gallery-arrow" id="cover-gallery-arrow-left">←</button>
+        <button class="cover-gallery-arrow" id="cover-gallery-arrow-left">
+          <svg width="34" height="34" viewBox="0 0 34 34">
+            <circle cx="17" cy="17" r="16" fill="#23252e" opacity="0.65"/>
+            <polyline points="20,10 13,17 20,24" fill="none" stroke="#fff" stroke-width="2.9" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        
         <div id="cover-slot"></div>
-        <button class="cover-gallery-arrow" id="cover-gallery-arrow-right">→</button>
+        
+        <button class="cover-gallery-arrow" id="cover-gallery-arrow-right">
+          <svg width="34" height="34" viewBox="0 0 34 34">
+            <circle cx="17" cy="17" r="16" fill="#23252e" opacity="0.65"/>
+            <polyline points="14,10 21,17 14,24" fill="none" stroke="#fff" stroke-width="2.9" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
       </div>
 
       <div id="social-links" class="socials-under-cover"></div>
