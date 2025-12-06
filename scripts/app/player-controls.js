@@ -1,317 +1,198 @@
 // scripts/app/player-controls.js
-// Слой базовых контролов плеера (Play/Pause/Stop/Prev/Next/Seek/Volume/Mute).
-// Контракт: приоритет PlayerCore, мягкий фолбэк на legacy <audio>.
-// Важно: воспроизведение не прерывается никакими действиями, кроме Пауза/Стоп/Таймер сна.
+// Управление интерфейсом плеера - ТОЛЬКО PlayerCore
 
-(function PlayerControlsModule(){
-  function pc() { return (window.__useNewPlayerCore && window.playerCore) ? window.playerCore : null; }
-  function audioEl() {
-    return (window.getCurrentAudio && window.getCurrentAudio()) || document.getElementById('audio') || null;
-  }
+(function() {
+  'use strict';
 
-  // Безопасная инициализация playerCore по требованию
-  async function ensureCoreReadyOrFallback() {
-    const forceNoLegacy = (window.__useNewPlayerCore && (localStorage.getItem('noLegacyAudio') === '1'));
-    if (!window.__useNewPlayerCore) return true;
-    if (pc()) return true;
-    try {
-      const ready = await (window.ensurePlayerCoreReady ? window.ensurePlayerCoreReady({ timeoutMs: 1800 }) : Promise.resolve(false));
-      if (!ready && forceNoLegacy) {
-        window.NotificationSystem && window.NotificationSystem.info('Инициализация плеера...');
-        return false;
-      }
-      return ready;
-    } catch { return false; }
-  }
+  let isInitialized = false;
 
-  function applyPostUiSync() {
-    try { window.applyMiniModeUI && window.applyMiniModeUI(); } catch {}
-    try { window.updateMiniNowHeader && window.updateMiniNowHeader(); } catch {}
-    try { window.updateNextUpLabel && window.updateNextUpLabel(); } catch {}
-    try { window.updatePlayPauseIcon && window.updatePlayPauseIcon(); } catch {}
-  }
-
-  // ====== Play/Pause/Prev/Next/Stop ======
-  async function togglePlayPause() {
-    const ready = await ensureCoreReadyOrFallback();
-
-    // Приоритет — PlayerCore
-    if (window.__useNewPlayerCore && pc()) {
-      try { window.ensurePlayerCoreUiBindings && window.ensurePlayerCoreUiBindings(); } catch {}
-
-      try {
-        if (typeof pc().isPlaying === 'function' && pc().isPlaying()) {
-          pc().pause();
-          setTimeout(() => { try { window.updatePlayPauseIcon && window.updatePlayPauseIcon(); } catch {} }, 0);
-          return;
-        }
-      } catch {}
-
-      // Инициализация плейлиста при первом старте
-      try {
-        const hasLoaded = (typeof pc().getDuration === 'function') && ((pc().getDuration() || 0) > 0);
-        if (!hasLoaded) {
-          // Спец‑ветка для «ИЗБРАННОГО»: никогда не инициализируем альбомом
-          if ((window.viewMode === 'favorites') || (window.playingAlbumKey === window.SPECIAL_FAVORITES_KEY)) {
-            if (typeof window.ensureFavoritesPlayback === 'function') {
-              // Запустим с первого активного избранного
-              await window.ensureFavoritesPlayback(0);
-              return;
-            }
-          }
-          // Обычная инициализация (альбом/конфиг)
-          if (typeof window.__buildPlayerCorePayload === 'function') {
-            const payload = window.__buildPlayerCorePayload();
-            if (payload) {
-              pc().setPlaylist(payload.tracks, payload.index, payload.meta);
-              try { pc().setShuffle(!!window.shuffleMode); } catch {}
-              try { pc().setRepeat(!!window.repeatMode); } catch {}
-              try {
-                const likedIdx = (window.playingAlbumKey && window.playingAlbumKey !== window.SPECIAL_FAVORITES_KEY)
-                  ? (window.getLikedForAlbum ? window.getLikedForAlbum(window.playingAlbumKey) : [])
-                  : [];
-                // В альбомном режиме можно включить фильтр ⭐, в «ИЗБРАННОМ» — нет (см. ensureFavoritesPlayback/playFromPlaybackAlbum)
-                pc().setFavoritesOnly(!!window.favoritesOnlyMode, likedIdx);
-              } catch {}
-            }
-          }
-        }
-      } catch {}
-
-      try { pc().play(); } catch {}
-      setTimeout(() => { try { window.updatePlayPauseIcon && window.updatePlayPauseIcon(); } catch {} }, 0);
+  function init() {
+    if (isInitialized) return;
+    if (!window.playerCore) {
+      console.warn('PlayerCore not ready, retrying...');
+      setTimeout(init, 200);
       return;
     }
 
-    // Фолбэк — legacy <audio>
-    if (!ready && window.__useNewPlayerCore) return;
-    try {
-      const a = audioEl();
-      if (!a) return;
-      if (a.paused) { a.play().catch(()=>{}); } else { a.pause(); }
-    } catch {}
+    isInitialized = true;
+
+    // Подписка на события плеера
+    subscribeToPlayerEvents();
+
+    // Обновление UI при переключении треков
+    window.playerCore.on('trackChanged', updateNowPlaying);
+    window.playerCore.on('play', updatePlayState);
+    window.playerCore.on('pause', updatePlayState);
+    window.playerCore.on('stop', clearNowPlaying);
+
+    console.log('✅ Player controls initialized');
   }
 
-  async function previousTrack() {
-    // Если новое ядро включено, но ещё не готово — не откатываемся на legacy.
-    if (window.__useNewPlayerCore && !pc()) {
-      const ready = await (typeof ensureCoreReadyOrFallback === 'function' ? ensureCoreReadyOrFallback() : Promise.resolve(false));
-      if (!ready) {
-        window.NotificationSystem && window.NotificationSystem.info('Инициализация плеера...');
-        return;
-      }
-    }
+  function subscribeToPlayerEvents() {
+    // Обновление текущего трека
+    window.playerCore.on('trackChanged', (data) => {
+      updateCurrentTrackInList(data.index);
+      updateNowPlaying(data);
+    });
 
-    if (window.__useNewPlayerCore && pc()) {
-      try { window.ensurePlayerCoreUiBindings && window.ensurePlayerCoreUiBindings(); } catch {}
-      try {
-        const hasLoaded = (typeof pc().getDuration === 'function') && ((pc().getDuration() || 0) > 0);
-        if (!hasLoaded && typeof window.__buildPlayerCorePayload === 'function') {
-          const payload = window.__buildPlayerCorePayload();
-          if (payload) {
-            pc().setPlaylist(payload.tracks, payload.index, payload.meta);
-            try { pc().setShuffle(!!window.shuffleMode); } catch {}
-            try { pc().setRepeat(!!window.repeatMode); } catch {}
-            try { pc().setFavoritesOnly(!!window.favoritesOnlyMode, []); } catch {}
-          }
-        }
-      } catch {}
-      try {
-        if (window.repeatMode) { pc().seek && pc().seek(0); pc().play && pc().play(); }
-        else { pc().prev && pc().prev(); }
-      } catch {}
-      setTimeout(() => {
-        try {
-          const idx = (typeof pc().getIndex === 'function') ? pc().getIndex() : 0;
-          window.__syncUiToPlayerCoreIndex && window.__syncUiToPlayerCoreIndex(idx);
-        } catch {}
-      }, 0);
+    // Обновление прогресса
+    window.playerCore.on('progress', (data) => {
+      updateProgressDisplay(data);
+    });
+
+    // Ошибки
+    window.playerCore.on('error', (error) => {
+      console.error('Player error:', error);
+      window.NotificationSystem?.error('Ошибка воспроизведения');
+    });
+  }
+
+  function updateNowPlaying(data) {
+    const container = document.getElementById('now-playing');
+    if (!container) return;
+
+    const track = data.track;
+    if (!track) {
+      container.innerHTML = '';
       return;
     }
 
-    // Фолбэк (legacy): рассчитать предыдущий индекс в контексте «игры»
-    try {
-      // Если ещё ничего не играет — запустим первый трек текущего альбома
-      if (!Array.isArray(window.playingTracks) || window.playingTracks.length === 0) {
-        if (typeof window.showTrack === 'function') window.showTrack(0, true);
-        return;
-      }
-      const len = window.playingTracks.length;
-      // База доступных с учётом режима «только ⭐»
-      const available = (typeof window.getAvailableTracksForAlbum === 'function')
-        ? window.getAvailableTracksForAlbum(window.playingAlbumKey, len)
-        : Array.from({ length: len }, (_, i) => i);
+    container.innerHTML = `
+      <div class="mini-now">
+        <div class="tnum">${track.trackNumber || '—'}</div>
+        <div class="track-title">${track.title || 'Неизвестный трек'}</div>
+        <button class="mini-play-pause" aria-label="Воспроизведение/Пауза">
+          ${window.playerCore.isPlaying() ? '⏸' : '▶'}
+        </button>
+      </div>
+    `;
 
-      if (!available || available.length === 0) return;
-
-      let target = -1;
-      if (window.shuffleMode && Array.isArray(window.playingShuffledPlaylist) && window.playingShuffledPlaylist.length) {
-        const arr = window.playingShuffledPlaylist.slice();
-        const pos = arr.indexOf(window.playingTrack);
-        const prevPos = (pos - 1 + arr.length) % arr.length;
-        target = arr[prevPos];
-      } else if (window.favoritesOnlyMode) {
-        const pos = available.indexOf(window.playingTrack);
-        target = available[(pos - 1 + available.length) % available.length];
+    // Обработчик кнопки play/pause
+    const playPauseBtn = container.querySelector('.mini-play-pause');
+    playPauseBtn?.addEventListener('click', () => {
+      if (window.playerCore.isPlaying()) {
+        window.playerCore.pause();
       } else {
-        target = (window.playingTrack - 1 + len) % len;
+        window.playerCore.play();
       }
+    });
 
-      if (Number.isFinite(target) && target >= 0) {
-        if (typeof window.playFromPlaybackAlbum === 'function') window.playFromPlaybackAlbum(target, true);
-        else if (typeof window.showTrack === 'function') window.showTrack(target, true);
-      }
-    } catch {}
+    // Показать следующий трек (если есть)
+    const nextTrack = window.playerCore.getNextTrack();
+    showNextUp(nextTrack);
   }
 
-  async function nextTrack() {
-    // Если новое ядро включено, но ещё не готово — не откатываемся на legacy.
-    if (window.__useNewPlayerCore && !pc()) {
-      const ready = await (typeof ensureCoreReadyOrFallback === 'function' ? ensureCoreReadyOrFallback() : Promise.resolve(false));
-      if (!ready) {
-        window.NotificationSystem && window.NotificationSystem.info('Инициализация плеера...');
-        return;
-      }
+  function showNextUp(nextTrack) {
+    let nextUpEl = document.querySelector('.next-up');
+    
+    if (!nextTrack) {
+      if (nextUpEl) nextUpEl.style.display = 'none';
+      return;
     }
 
-    if (window.__useNewPlayerCore && pc()) {
-      try { window.ensurePlayerCoreUiBindings && window.ensurePlayerCoreUiBindings(); } catch {}
-      try {
-        const hasLoaded = (typeof pc().getDuration === 'function') && ((pc().getDuration() || 0) > 0);
-        if (!hasLoaded && typeof window.__buildPlayerCorePayload === 'function') {
-          const payload = window.__buildPlayerCorePayload();
-          if (payload) {
-            pc().setPlaylist(payload.tracks, payload.index, payload.meta);
-            try { pc().setShuffle(!!window.shuffleMode); } catch {}
-            try { pc().setRepeat(!!window.repeatMode); } catch {}
-            try { pc().setFavoritesOnly(!!window.favoritesOnlyMode, []); } catch {}
+    if (!nextUpEl) {
+      const container = document.getElementById('now-playing');
+      if (!container) return;
+
+      nextUpEl = document.createElement('div');
+      nextUpEl.className = 'next-up';
+      container.appendChild(nextUpEl);
+    }
+
+    nextUpEl.innerHTML = `
+      <span class="label">Следующий:</span>
+      <span class="title">${nextTrack.title}</span>
+    `;
+    nextUpEl.style.display = 'flex';
+  }
+
+  function clearNowPlaying() {
+    const container = document.getElementById('now-playing');
+    if (container) {
+      container.innerHTML = '';
+    }
+  }
+
+  function updatePlayState() {
+    const playPauseBtn = document.querySelector('.mini-play-pause');
+    if (playPauseBtn) {
+      playPauseBtn.textContent = window.playerCore.isPlaying() ? '⏸' : '▶';
+    }
+  }
+
+  function updateCurrentTrackInList(index) {
+    // Снять подсветку со всех треков
+    document.querySelectorAll('.track').forEach(t => {
+      t.classList.remove('current');
+    });
+
+    // Подсветить текущий
+    const currentTrack = document.querySelector(`.track[data-index="${index}"]`);
+    if (currentTrack) {
+      currentTrack.classList.add('current');
+      
+      // Прокрутить к треку
+      currentTrack.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'nearest' 
+      });
+    }
+  }
+
+  function updateProgressDisplay(data) {
+    // Можно добавить прогресс-бар если нужен
+    // Пока просто логируем
+    // console.log('Progress:', data.percent.toFixed(1) + '%');
+  }
+
+  // Глобальные клавиши управления
+  function setupGlobalHotkeys() {
+    document.addEventListener('keydown', (e) => {
+      if (!window.playerCore) return;
+
+      // Игнорировать если фокус в input/textarea
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        return;
+      }
+
+      switch(e.code) {
+        case 'Space':
+          e.preventDefault();
+          if (window.playerCore.isPlaying()) {
+            window.playerCore.pause();
+          } else {
+            window.playerCore.play();
           }
-        }
-      } catch {}
-      try {
-        if (window.repeatMode) { pc().seek && pc().seek(0); pc().play && pc().play(); }
-        else { pc().next && pc().next(); }
-      } catch {}
-      setTimeout(() => {
-        try {
-          const idx = (typeof pc().getIndex === 'function') ? pc().getIndex() : 0;
-          window.__syncUiToPlayerCoreIndex && window.__syncUiToPlayerCoreIndex(idx);
-        } catch {}
-      }, 0);
-      return;
-    }
+          break;
 
-    // Фолбэк (legacy): используем текущую функцию вычисления следующего индекса
-    try {
-      if (typeof window.computeNextIndexPlayback === 'function') {
-        const idx = window.computeNextIndexPlayback();
-        if (Number.isFinite(idx) && idx >= 0) {
-          if (typeof window.playFromPlaybackAlbum === 'function') window.playFromPlaybackAlbum(idx, true);
-          else if (typeof window.showTrack === 'function') window.showTrack(idx, true);
-        }
+        case 'ArrowUp':
+          e.preventDefault();
+          window.playerCore.previous();
+          break;
+
+        case 'ArrowDown':
+          e.preventDefault();
+          window.playerCore.next();
+          break;
+
+        case 'KeyM':
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            window.playerCore.toggleMute();
+          }
+          break;
       }
-    } catch {}
+    });
   }
 
-  function stopPlayback() {
-    if (window.__useNewPlayerCore && pc()) {
-      try { pc().stop && pc().stop(); } catch {}
-      // При стопе гарантированно отпускаем locks и обновляем Media Session/иконку
-      try { window.updatePlayPauseIcon && window.updatePlayPauseIcon(); } catch {}
-      try { window.updateMediaSessionPosition && window.updateMediaSessionPosition(); } catch {}
-      try { window.setPlaybackLocks && window.setPlaybackLocks(false); } catch {}
-      return;
-    }
-    try {
-      const a = audioEl();
-      if (a) { a.pause(); a.currentTime = 0; }
-      applyPostUiSync();
-      // Фолбэк: привести Media Session и локи в консистентное состояние
-      try { window.updateMediaSessionPosition && window.updateMediaSessionPosition(); } catch {}
-      try { window.setPlaybackLocks && window.setPlaybackLocks(false); } catch {}
-    } catch {}
+  // Автостарт
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      init();
+      setupGlobalHotkeys();
+    });
+  } else {
+    init();
+    setupGlobalHotkeys();
   }
-
-  // ====== Seek/Volume/Mute ======
-  function seekFromEvent(e) {
-    try {
-      const bar = e?.currentTarget || document.getElementById('player-progress-bar');
-      if (!bar || typeof bar.getBoundingClientRect !== 'function') return;
-      const rect = bar.getBoundingClientRect();
-      const clientX = e?.clientX ?? (e?.touches && e.touches[0] && e.touches[0].clientX);
-      if (typeof clientX !== 'number') return;
-      const percent = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-
-      if (window.__useNewPlayerCore && pc() && typeof pc().getDuration === 'function') {
-        const dur = Number(pc().getDuration() || 0);
-        if (dur > 0) { try { pc().seek(dur * percent); } catch {} }
-        return;
-      }
-      const a = audioEl();
-      if (a && isFinite(a.duration) && a.duration > 0) {
-        a.currentTime = a.duration * percent;
-      }
-    } catch {}
-  }
-
-  function onVolumeInput(e) {
-    const raw = e && e.target ? e.target.value : 100;
-    const vol = Math.max(0, Math.min(1, Number(raw) / 100));
-
-    if (window.__useNewPlayerCore && pc() && typeof pc().setVolume === 'function') {
-      try { pc().setVolume(vol); } catch {}
-    } else {
-      try { const a = audioEl(); if (a) a.volume = vol; } catch {}
-    }
-
-    try { window.updateVolumeUI && window.updateVolumeUI(vol); } catch {}
-    try { localStorage.setItem('playerVolume', String(vol)); } catch {}
-  }
-
-  function toggleMute() {
-    // Новый плеер
-    if (window.__useNewPlayerCore && pc()) {
-      try {
-        const cur = (typeof pc().getVolume === 'function') ? (pc().getVolume() || 0) : 1;
-        if (cur > 0) {
-          try { localStorage.setItem('playerVolume', String(cur)); } catch {}
-          pc().setVolume(0);
-          try { window.updateVolumeUI && window.updateVolumeUI(0); } catch {}
-        } else {
-          const saved = parseFloat(localStorage.getItem('playerVolume') || '1');
-          const vol = Number.isFinite(saved) && saved > 0 ? saved : 1;
-          pc().setVolume(vol);
-          try { window.updateVolumeUI && window.updateVolumeUI(vol); } catch {}
-        }
-      } catch {}
-      return;
-    }
-
-    // Старый плеер
-    try {
-      const a = audioEl();
-      if (!a) return;
-      if (a.volume > 0) {
-        localStorage.setItem('playerVolume', String(a.volume));
-        a.volume = 0;
-        try { window.updateVolumeUI && window.updateVolumeUI(0); } catch {}
-      } else {
-        const saved = parseFloat(localStorage.getItem('playerVolume') || '1');
-        const vol = Number.isFinite(saved) && saved > 0 ? saved : 1;
-        a.volume = vol;
-        try { window.updateVolumeUI && window.updateVolumeUI(vol); } catch {}
-      }
-    } catch {}
-  }
-
-  // Публичный API
-  window.PlayerControls = {
-    togglePlayPause,
-    previousTrack,
-    nextTrack,
-    stopPlayback,
-    seekFromEvent,
-    onVolumeInput,
-    toggleMute
-  };
 })();
