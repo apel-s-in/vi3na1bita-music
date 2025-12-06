@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4ee952b4d03bb9f1673845a1c661952520e0ddb4.idx
-│   │       ├── pack-4ee952b4d03bb9f1673845a1c661952520e0ddb4.pack
-│   │       └── pack-4ee952b4d03bb9f1673845a1c661952520e0ddb4.rev
+│   │       ├── pack-92d1b55e74544f5d04132272929455581adf9dae.idx
+│   │       ├── pack-92d1b55e74544f5d04132272929455581adf9dae.pack
+│   │       └── pack-92d1b55e74544f5d04132272929455581adf9dae.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -262,7 +262,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-06 20:25:05 UTC
+Сгенерировано: 2025-12-06 20:25:38 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2192,118 +2192,135 @@ export default AlbumsManager;
 //=================================================
 // FILE: /scripts/app/background-audio.js
 // scripts/app/background-audio.js
-// Фоновые iOS/Android аудио-хелперы + адаптер к PlayerCore для автозапуска на iOS.
+// Поддержка фонового воспроизведения (Media Session API)
 
-(function BackgroundAudioModule() {
-  function isIOSUA() {
-    try { return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream; }
-    catch { return false; }
-  }
+(function() {
+  'use strict';
 
-  function initAudioContextForBackground() {
-    try {
-      window.__audioContext = new (window.AudioContext || window.webkitAudioContext)({
-        latencyHint: 'playback',
-        sampleRate: 44100
-      });
-      window.__audioContext.onstatechange = () => {
-        if (window.__audioContext.state === 'suspended') {
-          window.__audioContext.resume().catch(console.warn);
+  class BackgroundAudioManager {
+    constructor() {
+      this.isSupported = 'mediaSession' in navigator;
+      this.init();
+    }
+
+    init() {
+      if (!this.isSupported) {
+        console.warn('Media Session API not supported');
+        return;
+      }
+
+      this.setupMediaSession();
+      this.attachPlayerEvents();
+
+      console.log('✅ Background audio initialized');
+    }
+
+    setupMediaSession() {
+      // Обработчики действий
+      const actionHandlers = {
+        play: () => window.playerCore?.play(),
+        pause: () => window.playerCore?.pause(),
+        previoustrack: () => window.playerCore?.previous(),
+        nexttrack: () => window.playerCore?.next(),
+        seekto: (details) => {
+          if (details.seekTime && window.playerCore) {
+            window.playerCore.seek(details.seekTime);
+          }
         }
       };
-      const oscillator = window.__audioContext.createOscillator();
-      const gainNode = window.__audioContext.createGain();
-      oscillator.connect(gainNode);
-      gainNode.connect(window.__audioContext.destination);
-      gainNode.gain.value = 0.00001;
-      oscillator.start(0);
-      window.__backgroundOscillator = oscillator;
-      window.__backgroundGainNode = gainNode;
-      console.log('iOS AudioContext initialized for background playback');
-    } catch (e) {
-      console.warn('Failed to initialize iOS AudioContext', e);
-    }
-  }
 
-  function resumeAudioContextIfNeeded() {
-    try {
-      if (window.__audioContext && window.__audioContext.state === 'suspended') {
-        window.__audioContext.resume().catch(console.warn);
-      }
-    } catch (e) {
-      console.warn('Failed to resume audio context', e);
-    }
-  }
-
-  function initSilentAudioPlayback() {
-    if (!isIOSUA()) return;
-    try {
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      gainNode.gain.value = 0.00001;
-      oscillator.start(0);
-      window.__silentOscillator = oscillator;
-      window.__silentAudioContext = audioContext;
-      setTimeout(() => {
+      for (const [action, handler] of Object.entries(actionHandlers)) {
         try {
-          oscillator.stop();
-          audioContext.close().catch(console.warn);
-          delete window.__silentOscillator;
-          delete window.__silentAudioContext;
-        } catch (e) {
-          console.warn('Failed to clean silent audio', e);
+          navigator.mediaSession.setActionHandler(action, handler);
+        } catch (error) {
+          console.warn(`Action ${action} not supported:`, error);
         }
-      }, 2000);
-      console.log('Silent audio playback initialized for iOS background mode');
-    } catch (e) {
-      console.warn('Failed to initialize silent audio playback', e);
+      }
+    }
+
+    attachPlayerEvents() {
+      if (!window.playerCore) {
+        setTimeout(() => this.attachPlayerEvents(), 500);
+        return;
+      }
+
+      // Обновление метаданных при смене трека
+      window.playerCore.on('trackChanged', (data) => {
+        this.updateMetadata(data.track);
+      });
+
+      // Обновление позиции воспроизведения
+      window.playerCore.on('progress', (data) => {
+        this.updatePositionState(data);
+      });
+    }
+
+    updateMetadata(track) {
+      if (!this.isSupported || !track) return;
+
+      try {
+        const albumInfo = window.albumsIndex?.find(a => a.key === track.album);
+        const albumTitle = albumInfo?.title || 'Витрина Разбита';
+        
+        // Получить обложку
+        let artworkUrl = 'icons/icon-512.png';
+        if (albumInfo) {
+          const albumData = window.AlbumsManager?.getAlbumData(track.album);
+          if (albumData?.cover) {
+            artworkUrl = `${albumInfo.base}${albumData.cover}`;
+          }
+        }
+
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: track.title || 'Неизвестный трек',
+          artist: 'Витрина Разбита',
+          album: albumTitle,
+          artwork: [
+            { src: artworkUrl, sizes: '512x512', type: 'image/png' }
+          ]
+        });
+
+        console.log('🎵 Media metadata updated:', track.title);
+      } catch (error) {
+        console.error('Failed to update metadata:', error);
+      }
+    }
+
+    updatePositionState(data) {
+      if (!this.isSupported) return;
+
+      try {
+        if ('setPositionState' in navigator.mediaSession) {
+          navigator.mediaSession.setPositionState({
+            duration: data.duration || 0,
+            playbackRate: 1.0,
+            position: data.position || 0
+          });
+        }
+      } catch (error) {
+        console.error('Failed to update position state:', error);
+      }
+    }
+
+    clearMetadata() {
+      if (!this.isSupported) return;
+
+      try {
+        navigator.mediaSession.metadata = null;
+      } catch (error) {
+        console.error('Failed to clear metadata:', error);
+      }
     }
   }
 
-  // Глобальные алиасы
-  window.initAudioContextForBackground = initAudioContextForBackground;
-  window.resumeAudioContextIfNeeded = resumeAudioContextIfNeeded;
-  window.initSilentAudioPlayback = initSilentAudioPlayback;
-
-  // Адаптер к PlayerCore: на iOS один раз запускаем initAudioContextForBackground при первом play()
-  (function hookPlayerCoreOnce() {
-    if (!isIOSUA()) return;
-    let hooked = false;
-    function bindIfReady() {
-      try {
-        if (hooked) return;
-        const pc = window.playerCore;
-        if (!pc || typeof pc.on !== 'function') return;
-        if (window.PlayerCoreObserver) {
-          window.PlayerCoreObserver.add({
-            onPlay: () => {
-              if (hooked) return;
-              hooked = true;
-              try { initAudioContextForBackground(); } catch {}
-            }
-          });
-        } else {
-          // Фолбэк (не должен сработать при корректной загрузке bootstrap.js)
-          pc.on({
-            onPlay: () => {
-              if (hooked) return;
-              hooked = true;
-              try { initAudioContextForBackground(); } catch {}
-            }
-          });
-        }
-      } catch {}
-    }
-    // Пытаемся сразу и при первом user-gesture/ленивой загрузке адаптера
-    bindIfReady();
-    const id = setInterval(() => { if (hooked) { clearInterval(id); } else { bindIfReady(); } }, 300);
-    // Остановим опрос через 10 сек
-    setTimeout(() => clearInterval(id), 10000);
-  })();
-
+  // Инициализация
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      window.BackgroundAudioManager = new BackgroundAudioManager();
+    });
+  } else {
+    window.BackgroundAudioManager = new BackgroundAudioManager();
+  }
 })();
 
 //=================================================
