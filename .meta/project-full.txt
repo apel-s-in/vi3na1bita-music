@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5f1b3cc9945f8a0608544abda089c97cd7f63c99.idx
-│   │       ├── pack-5f1b3cc9945f8a0608544abda089c97cd7f63c99.pack
-│   │       └── pack-5f1b3cc9945f8a0608544abda089c97cd7f63c99.rev
+│   │       ├── pack-a695484c7e97d14211edd8b9574a045615ddfe33.idx
+│   │       ├── pack-a695484c7e97d14211edd8b9574a045615ddfe33.pack
+│   │       └── pack-a695484c7e97d14211edd8b9574a045615ddfe33.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -266,7 +266,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-06 23:50:09 UTC
+Сгенерировано: 2025-12-06 23:50:56 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9337,6 +9337,42 @@ input:focus-visible {
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   margin: 20px auto;
+}
+/* Lyrics Modal */
+.lyrics-modal .lyrics-fulltext::-webkit-scrollbar {
+  width: 8px;
+}
+
+.lyrics-modal .lyrics-fulltext::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.05);
+  border-radius: 4px;
+}
+
+.lyrics-modal .lyrics-fulltext::-webkit-scrollbar-thumb {
+  background: rgba(77,170,255,0.3);
+  border-radius: 4px;
+}
+
+.modal-action-btn {
+  background: rgba(77,170,255,0.15);
+  border: 1px solid rgba(77,170,255,0.3);
+  color: #4daaff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.modal-action-btn:hover {
+  background: rgba(77,170,255,0.25);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(77,170,255,0.2);
+}
+
+.modal-action-btn:active {
+  transform: translateY(0);
 }
 
 @keyframes spin {
