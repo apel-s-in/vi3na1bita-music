@@ -1,4 +1,3 @@
-
 // scripts/app/downloads.js
 // Управление скачиванием треков и альбомов
 
@@ -6,198 +5,130 @@ class DownloadsManager {
   constructor() {
     this.downloadQueue = [];
     this.isDownloading = false;
-    this.activeDownloads = new Set();
-  }
-
-  async downloadTrack(trackUrl, trackTitle, albumKey) {
-    try {
-      window.NotificationSystem?.info(`Начинаю загрузку: ${trackTitle}`);
-
-      const response = await fetch(trackUrl);
-      if (!response.ok) throw new Error('Download failed');
-
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${trackTitle}.mp3`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      window.NotificationSystem?.success(`Скачан: ${trackTitle}`);
-    } catch (error) {
-      console.error('Download failed:', error);
-      window.NotificationSystem?.error(`Ошибка загрузки: ${trackTitle}`);
-    }
   }
 
   async downloadAlbum(albumKey) {
     const albumInfo = window.albumsIndex?.find(a => a.key === albumKey);
     if (!albumInfo) {
-      window.NotificationSystem?.error('Альбом не найден');
+      console.error('Album not found:', albumKey);
       return;
     }
 
+    // Получить данные альбома
     const albumData = window.AlbumsManager?.getAlbumData(albumKey);
     if (!albumData) {
-      window.NotificationSystem?.error('Данные альбома не загружены');
+      window.NotificationSystem?.error('Не удалось загрузить данные альбома');
       return;
     }
 
-    window.NotificationSystem?.info(`Подготовка к скачиванию альбома: ${albumInfo.title}`);
+    window.NotificationSystem?.info(`Подготовка к скачиванию: ${albumInfo.title}`);
 
-    const tracks = albumData.tracks || [];
-    if (tracks.length === 0) {
-      window.NotificationSystem?.warning('Альбом пуст');
-      return;
-    }
+    // Подготовить список файлов
+    const files = albumData.tracks.map(track => ({
+      url: `${albumInfo.base}${track.file}`,
+      filename: `${albumInfo.title} - ${track.num}. ${track.title}.mp3`
+    }));
 
-    // Скачивание с задержкой между треками
-    for (let i = 0; i < tracks.length; i++) {
-      const track = tracks[i];
-      const trackUrl = `${albumInfo.base}${track.file}`;
-      
-      await this.downloadTrack(trackUrl, track.title, albumKey);
-      
-      // Задержка между загрузками
-      if (i < tracks.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-    }
-
-    window.NotificationSystem?.success(`Альбом "${albumInfo.title}" скачан`);
-  }
-
-  async downloadAllFavorites() {
-    const favorites = window.FavoritesManager?.getAllFavorites() || {};
-    const allTracks = [];
-
-    // Собрать все избранные треки
-    for (const albumKey in favorites) {
-      const albumInfo = window.albumsIndex?.find(a => a.key === albumKey);
-      if (!albumInfo) continue;
-
-      const trackNumbers = favorites[albumKey];
-      if (!trackNumbers || trackNumbers.length === 0) continue;
-
-      const albumData = window.AlbumsManager?.getAlbumData(albumKey);
-      if (!albumData) continue;
-
-      trackNumbers.forEach(num => {
-        const track = albumData.tracks.find(t => t.num === num);
-        if (track) {
-          allTracks.push({
-            url: `${albumInfo.base}${track.file}`,
-            title: track.title,
-            album: albumKey
-          });
-        }
+    // Добавить обложку
+    if (albumData.cover) {
+      files.push({
+        url: `${albumInfo.base}${albumData.cover}`,
+        filename: `${albumInfo.title} - cover.jpg`
       });
     }
 
-    if (allTracks.length === 0) {
-      window.NotificationSystem?.warning('Нет избранных треков для скачивания');
+    // Начать скачивание
+    this.downloadFiles(files, albumInfo.title);
+  }
+
+  async downloadFiles(files, albumTitle) {
+    if (!files || files.length === 0) return;
+
+    // Проверка поддержки скачивания
+    if (!this.isDownloadSupported()) {
+      this.fallbackDownload(files);
       return;
     }
 
-    window.NotificationSystem?.info(`Начинаю скачивание ${allTracks.length} избранных треков`);
+    window.NotificationSystem?.info(`Скачивание ${files.length} файлов...`);
 
-    for (let i = 0; i < allTracks.length; i++) {
-      const track = allTracks[i];
-      await this.downloadTrack(track.url, track.title, track.album);
-      
-      if (i < allTracks.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 500));
+    let completed = 0;
+
+    for (const file of files) {
+      try {
+        await this.downloadFile(file.url, file.filename);
+        completed++;
+        
+        window.NotificationSystem?.info(
+          `Скачано ${completed} из ${files.length}`,
+          { duration: 2000 }
+        );
+        
+        // Задержка между скачиваниями (чтобы не блокировал браузер)
+        await this.delay(500);
+        
+      } catch (error) {
+        console.error('Download failed:', file.filename, error);
       }
     }
 
-    window.NotificationSystem?.success('Все избранные треки скачаны');
+    window.NotificationSystem?.success(`✅ Альбом "${albumTitle}" скачан!`);
   }
 
-  // Проверка доступности скачивания (офлайн кэш)
-  async checkOfflineAvailability(albumKey) {
-    if (!('caches' in window)) return false;
-
-    try {
-      const albumInfo = window.albumsIndex?.find(a => a.key === albumKey);
-      if (!albumInfo) return false;
-
-      const albumData = window.AlbumsManager?.getAlbumData(albumKey);
-      if (!albumData) return false;
-
-      const cache = await caches.open('vitrina-audio-v1');
-      const tracks = albumData.tracks || [];
-
-      let cachedCount = 0;
-      for (const track of tracks) {
-        const trackUrl = `${albumInfo.base}${track.file}`;
-        const cached = await cache.match(trackUrl);
-        if (cached) cachedCount++;
-      }
-
-      return cachedCount === tracks.length;
-    } catch (error) {
-      console.error('Failed to check offline availability:', error);
-      return false;
-    }
+  async downloadFile(url, filename) {
+    return new Promise((resolve, reject) => {
+      fetch(url)
+        .then(response => {
+          if (!response.ok) throw new Error('Network error');
+          return response.blob();
+        })
+        .then(blob => {
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = this.sanitizeFilename(filename);
+          link.style.display = 'none';
+          
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+          // Освободить память
+          setTimeout(() => URL.revokeObjectURL(link.href), 100);
+          
+          resolve();
+        })
+        .catch(reject);
+    });
   }
 
-  // Кэширование альбома для офлайн доступа
-  async cacheAlbumForOffline(albumKey) {
-    if (!('caches' in window)) {
-      window.NotificationSystem?.error('Офлайн режим не поддерживается');
-      return;
-    }
+  sanitizeFilename(filename) {
+    // Удалить недопустимые символы
+    return filename.replace(/[<>:"/\\|?*]/g, '_');
+  }
 
-    const albumInfo = window.albumsIndex?.find(a => a.key === albumKey);
-    if (!albumInfo) return;
+  isDownloadSupported() {
+    // Проверка поддержки download attribute
+    const a = document.createElement('a');
+    return typeof a.download !== 'undefined';
+  }
 
-    const albumData = window.AlbumsManager?.getAlbumData(albumKey);
-    if (!albumData) return;
+  fallbackDownload(files) {
+    // Открыть каждый файл в новой вкладке (пользователь сам скачает)
+    window.NotificationSystem?.info('Откроются вкладки для скачивания');
+    
+    files.forEach((file, index) => {
+      setTimeout(() => {
+        window.open(file.url, '_blank');
+      }, index * 300);
+    });
+  }
 
-    try {
-      window.NotificationSystem?.info(`Кэширование альбома: ${albumInfo.title}`);
-
-      const cache = await caches.open('vitrina-audio-v1');
-      const tracks = albumData.tracks || [];
-
-      for (let i = 0; i < tracks.length; i++) {
-        const track = tracks[i];
-        const trackUrl = `${albumInfo.base}${track.file}`;
-        
-        await cache.add(trackUrl);
-        
-        const progress = Math.round(((i + 1) / tracks.length) * 100);
-        window.NotificationSystem?.info(`Кэширование: ${progress}%`);
-      }
-
-      window.NotificationSystem?.success('Альбом доступен офлайн');
-    } catch (error) {
-      console.error('Caching failed:', error);
-      window.NotificationSystem?.error('Ошибка кэширования');
-    }
+  delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 }
 
 // Глобальный экземпляр
 window.DownloadsManager = new DownloadsManager();
-
-// Привязка к кнопке
-document.addEventListener('DOMContentLoaded', () => {
-  const downloadBtn = document.getElementById('download-album-main');
-  downloadBtn?.addEventListener('click', () => {
-    const currentAlbum = window.AlbumsManager?.getCurrentAlbum();
-    if (!currentAlbum) return;
-
-    if (currentAlbum === '__favorites__') {
-      window.DownloadsManager.downloadAllFavorites();
-    } else if (currentAlbum !== '__reliz__') {
-      window.DownloadsManager.downloadAlbum(currentAlbum);
-    }
-  });
-});
 
 export default DownloadsManager;
