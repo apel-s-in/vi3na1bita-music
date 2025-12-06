@@ -1,130 +1,186 @@
 // scripts/app/background-events.js
-// Фоновые события: visibilitychange/freeze/resume/pagehide/pageshow/focusout.
-// Только безопасные операции: сохранить позицию, обновить UI/MediaSession, НЕ pause/stop.
+// Обработка фоновых событий (visibility, online/offline, battery)
 
-(function BackgroundEvents() {
-  function pc() { return (window.playerCore || null); }
-  function isIOS() { try { return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream; } catch { return false; } }
+(function() {
+  'use strict';
 
-  // freeze/resume: сохранить/восстановить позицию (без управления звуком)
-  document.addEventListener('freeze', () => {
-    try {
-      const p = pc();
-      if (p && typeof p.getSeek === 'function') {
-        window.__savedResumePosition = p.getSeek() || 0;
-        localStorage.setItem('freezePosition', String(window.__savedResumePosition));
-      } else {
-        // legacy пути больше нет — ветка оставлена для совместимости
-        localStorage.setItem('freezePosition', String(window.__savedResumePosition || 0));
-      }
-    } catch {}
-  });
+  class BackgroundEventsManager {
+    constructor() {
+      this.wasPlaying = false;
+      this.isOnline = navigator.onLine;
+      this.init();
+    }
 
-  document.addEventListener('resume', () => {
-    try {
-      const raw = localStorage.getItem('freezePosition');
-      localStorage.removeItem('freezePosition');
-      if (!raw) return;
-      const pos = parseFloat(raw);
-      if (!Number.isFinite(pos)) return;
+    init() {
+      this.setupVisibilityHandler();
+      this.setupNetworkHandlers();
+      this.setupBatteryHandler();
+      this.setupBeforeUnloadHandler();
 
-      const TOL = 0.75;
-      const p = pc();
-      if (p) {
-        const cur = Number(p.getSeek?.() || 0);
-        if (!Number.isFinite(cur) || cur < (pos - TOL)) p.seek(pos);
-      }
-      if (typeof window.syncUiFromPlayback === 'function') window.syncUiFromPlayback();
-    } catch {}
-  });
+      console.log('✅ Background events initialized');
+    }
 
-  // Потеря фокуса при скрытии — только сохранить позицию
-  try {
-    if ('onfocusout' in document) {
-      document.addEventListener('focusout', () => {
+    // Обработка изменения видимости страницы
+    setupVisibilityHandler() {
+      document.addEventListener('visibilitychange', () => {
         if (document.hidden) {
-          try { window.__savedResumePosition = pc()?.getSeek?.() || 0; } catch {}
+          this.onPageHidden();
+        } else {
+          this.onPageVisible();
         }
       });
     }
-  } catch {}
 
-  // iOS BFCache: pagehide/pageshow — сохранить/восстановить позицию
-  if (isIOS()) {
-    window.addEventListener('pagehide', (e) => {
-      if (!e.persisted) return;
-      try {
-        window.__savedResumePosition = pc()?.getSeek?.() || 0;
-        localStorage.setItem('iosBackgroundPosition', String(window.__savedResumePosition));
-      } catch {}
-    });
-
-    window.addEventListener('pageshow', (e) => {
-      if (!e.persisted) return;
-      try {
-        const raw = localStorage.getItem('iosBackgroundPosition');
-        localStorage.removeItem('iosBackgroundPosition');
-        if (!raw) return;
-        const pos = parseFloat(raw);
-        if (!Number.isFinite(pos)) return;
-        const TOL = 0.75;
-        const p = pc();
-        if (p) {
-          const cur = Number(p.getSeek?.() || 0);
-          if (!Number.isFinite(cur) || cur < (pos - TOL)) p.seek(pos);
-        }
-        if (typeof window.syncUiFromPlayback === 'function') window.syncUiFromPlayback();
-      } catch {}
-    });
-  }
-
-  // visibilitychange: без паузы/стопа — сохраняем позицию, ослабляем/возвращаем UI, обновляем MediaSession
-  document.addEventListener('visibilitychange', async () => {
-    try {
-      const isHidden = document.hidden;
-      const p = pc();
-      if (isHidden) {
-        // Сохраняем только для возможной подстраховки
-        window.__wasPlayingBeforeHidden = p ? !!p.isPlaying?.() : false;
-        window.__savedResumePosition = p ? (p.getSeek?.() || 0) : 0;
-
-        // Облегчаем UI
-        if (window.coverAutoplay) { clearInterval(window.coverAutoplay); window.coverAutoplay = null; }
-        if (window.animationEnabled) { window.__savedAnimationState = window.animationEnabled; window.applyAnimationState && window.applyAnimationState(false); }
-        if (window.bitEnabled) { window.__savedBitState = window.bitEnabled; window.stopLogoPulsation && window.stopLogoPulsation(); }
-      } else {
-        // Возврат: таймер сна, iOS resume аудиоконтекста (через фоновые хелперы)
-        try { window.checkSleepTimer && window.checkSleepTimer(); } catch {}
-        try { window.resumeAudioContextIfNeeded && window.resumeAudioContextIfNeeded(); } catch {}
-
-        // Восстановление позиции — только если реально потерялась
-        const TOL = 0.75;
-        if (window.__wasPlayingBeforeHidden && !window.sleepTimerTarget && p) {
-          const cur = Number(p.getSeek?.() || 0);
-          const saved = window.__savedResumePosition;
-          const needRestore = (typeof saved === 'number' && !isNaN(saved)) &&
-                              (!Number.isFinite(cur) || cur < (saved - TOL));
-          if (needRestore) { try { p.seek(saved); } catch {} }
-        }
-
-        // UI синхронизация
-        try { window.syncUiFromPlayback && window.syncUiFromPlayback(); } catch {}
-        if (window.__savedAnimationState != null && window.applyAnimationState) {
-          window.applyAnimationState(window.__savedAnimationState); window.__savedAnimationState = null;
-        }
-        if (window.__savedBitState && window.startLogoPulsation) {
-          try { window.initAudioContext && window.initAudioContext(); } catch {}
-          window.startLogoPulsation(); window.__savedBitState = null;
-        }
-        if (!window.coverAutoplay && Array.isArray(window.coverGalleryArr) && window.coverGalleryArr.length > 1) {
-          window.startCoverAutoPlay && window.startCoverAutoPlay();
-        }
-        window.__savedResumePosition = null;
+    onPageHidden() {
+      console.log('📱 Page hidden');
+      
+      // Сохранить состояние воспроизведения
+      if (window.playerCore) {
+        this.wasPlaying = window.playerCore.isPlaying();
       }
 
-      // Обновляем Media Session позицию
-      try { window.updateMediaSessionPosition && window.updateMediaSessionPosition(); } catch {}
-    } catch {}
-  });
+      // Можно приостановить воспроизведение на мобильных устройствах для экономии батареи
+      // (опционально, зависит от требований)
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      if (isMobile && this.wasPlaying) {
+        // window.playerCore?.pause();
+        // Закомментировано - пусть играет в фоне
+      }
+    }
 
+    onPageVisible() {
+      console.log('📱 Page visible');
+      
+      // Возобновить воспроизведение если было активно
+      if (this.wasPlaying && window.playerCore) {
+        // window.playerCore.play();
+        // Закомментировано - ручное управление пользователем предпочтительнее
+      }
+    }
+
+    // Обработка онлайн/офлайн
+    setupNetworkHandlers() {
+      window.addEventListener('online', () => {
+        this.onOnline();
+      });
+
+      window.addEventListener('offline', () => {
+        this.onOffline();
+      });
+    }
+
+    onOnline() {
+      console.log('🌐 Online');
+      this.isOnline = true;
+      
+      window.NotificationSystem?.success('Соединение восстановлено');
+      
+      const offlineBtn = document.getElementById('offline-btn');
+      if (offlineBtn) {
+        offlineBtn.className = 'offline-btn online';
+        offlineBtn.textContent = 'ONLINE';
+      }
+    }
+
+    onOffline() {
+      console.log('📴 Offline');
+      this.isOnline = false;
+      
+      window.NotificationSystem?.offline('Нет подключения к интернету');
+      
+      const offlineBtn = document.getElementById('offline-btn');
+      if (offlineBtn) {
+        offlineBtn.className = 'offline-btn offline';
+        offlineBtn.textContent = 'OFFLINE';
+      }
+    }
+
+    // Обработка батареи (опционально)
+    async setupBatteryHandler() {
+      if (!('getBattery' in navigator)) {
+        console.warn('Battery API not supported');
+        return;
+      }
+
+      try {
+        const battery = await navigator.getBattery();
+        
+        battery.addEventListener('levelchange', () => {
+          this.onBatteryLevelChange(battery);
+        });
+
+        battery.addEventListener('chargingchange', () => {
+          this.onChargingChange(battery);
+        });
+
+        // Начальное состояние
+        this.onBatteryLevelChange(battery);
+      } catch (error) {
+        console.warn('Battery API error:', error);
+      }
+    }
+
+    onBatteryLevelChange(battery) {
+      const level = Math.round(battery.level * 100);
+      console.log(`🔋 Battery level: ${level}%`);
+
+      // Предупреждение при низком заряде
+      if (level < 15 && !battery.charging) {
+        window.NotificationSystem?.warning(
+          `Низкий заряд батареи: ${level}%`,
+          4000
+        );
+      }
+    }
+
+    onChargingChange(battery) {
+      if (battery.charging) {
+        console.log('🔌 Charging');
+      } else {
+        console.log('🔋 Not charging');
+      }
+    }
+
+    // Сохранение состояния перед закрытием
+    setupBeforeUnloadHandler() {
+      window.addEventListener('beforeunload', () => {
+        this.saveState();
+      });
+    }
+
+    saveState() {
+      try {
+        if (window.playerCore) {
+          const currentTrack = window.playerCore.getCurrentTrackIndex();
+          const position = window.playerCore.getCurrentPosition();
+          
+          localStorage.setItem('lastTrackIndex', currentTrack.toString());
+          localStorage.setItem('lastTrackPosition', position.toString());
+        }
+
+        const currentAlbum = window.AlbumsManager?.getCurrentAlbum();
+        if (currentAlbum) {
+          localStorage.setItem('currentAlbum', currentAlbum);
+        }
+
+        console.log('💾 State saved');
+      } catch (error) {
+        console.error('Failed to save state:', error);
+      }
+    }
+
+    // Публичные методы
+    getNetworkStatus() {
+      return this.isOnline;
+    }
+  }
+
+  // Инициализация
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      window.BackgroundEventsManager = new BackgroundEventsManager();
+    });
+  } else {
+    window.BackgroundEventsManager = new BackgroundEventsManager();
+  }
 })();
