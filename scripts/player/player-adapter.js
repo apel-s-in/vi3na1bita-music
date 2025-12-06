@@ -1,7 +1,7 @@
 // scripts/player/player-adapter.js
 // ⭐ ИСПРАВЛЕНО: корректный относительный путь
 
-import { PlayerCore } from '../src/PlayerCore.js';  // ✅ ПРАВИЛЬНО!
+import { PlayerCore } from '../../src/PlayerCore.js';
 
 (function initPlayerAdapter() {
   if (window.playerCore) {
