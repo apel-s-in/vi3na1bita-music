@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f78585ab28b68d14a332b8f189fc57ed761c5f15.idx
-│   │       ├── pack-f78585ab28b68d14a332b8f189fc57ed761c5f15.pack
-│   │       └── pack-f78585ab28b68d14a332b8f189fc57ed761c5f15.rev
+│   │       ├── pack-291aa5c3b2d4d246af5e5fe04470b04d18d5622e.idx
+│   │       ├── pack-291aa5c3b2d4d246af5e5fe04470b04d18d5622e.pack
+│   │       └── pack-291aa5c3b2d4d246af5e5fe04470b04d18d5622e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -266,7 +266,7 @@ vi3na1bita-music/
 └── sw.js
 
 
-Сгенерировано: 2025-12-06 21:15:04 UTC
+Сгенерировано: 2025-12-06 21:15:37 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -688,35 +688,37 @@ jobs:
 {
   "name": "Витрина Разбита",
   "short_name": "Витрина",
+  "description": "Официальные альбомы группы Витрина Разбита. Слушайте онлайн и офлайн.",
   "start_url": "./",
-  "scope": "./",
   "display": "standalone",
   "background_color": "#181818",
   "theme_color": "#181818",
-  "description": "Официальные альбомы группы Витрина Разбита. Слушайте онлайн и офлайн.",
+  "orientation": "portrait-primary",
   "icons": [
     {
       "src": "icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
     },
     {
       "src": "icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "icons/apple-touch-icon.png",
-      "sizes": "180x180",
-      "type": "image/png",
-      "purpose": "maskable any"
+      "purpose": "any maskable"
     }
   ],
-  "prefer_related_applications": false
+  "screenshots": [
+    {
+      "src": "img/screenshot-1.png",
+      "sizes": "540x720",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ],
+  "categories": ["music", "entertainment"],
+  "lang": "ru"
 }
-
 
 //=================================================
 // FILE: /news.html
