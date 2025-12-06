@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6f8315869bee9048a9f65567c10e42720672ac1a.idx
-│   │       ├── pack-6f8315869bee9048a9f65567c10e42720672ac1a.pack
-│   │       └── pack-6f8315869bee9048a9f65567c10e42720672ac1a.rev
+│   │       ├── pack-797242b530555edcbb6a0a0c5d79a7f556c11bdc.idx
+│   │       ├── pack-797242b530555edcbb6a0a0c5d79a7f556c11bdc.pack
+│   │       └── pack-797242b530555edcbb6a0a0c5d79a7f556c11bdc.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -265,7 +265,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-06 23:05:43 UTC
+Сгенерировано: 2025-12-06 23:06:13 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2383,7 +2383,6 @@ export default albumsManager;
 // FILE: /scripts/app/downloads.js
 // scripts/app/downloads.js
 // Управление скачиванием треков и альбомов
-
 class DownloadsManager {
   constructor() {
     this.downloadQueue = [];
@@ -2396,22 +2395,22 @@ class DownloadsManager {
       console.error('Album not found:', albumKey);
       return;
     }
-
+    
     // Получить данные альбома
     const albumData = window.AlbumsManager?.getAlbumData(albumKey);
     if (!albumData) {
       window.NotificationSystem?.error('Не удалось загрузить данные альбома');
       return;
     }
-
+    
     window.NotificationSystem?.info(`Подготовка к скачиванию: ${albumInfo.title}`);
-
+    
     // Подготовить список файлов
     const files = albumData.tracks.map(track => ({
       url: `${albumInfo.base}${track.file}`,
       filename: `${albumInfo.title} - ${track.num}. ${track.title}.mp3`
     }));
-
+    
     // Добавить обложку
     if (albumData.cover) {
       files.push({
@@ -2419,42 +2418,38 @@ class DownloadsManager {
         filename: `${albumInfo.title} - cover.jpg`
       });
     }
-
+    
     // Начать скачивание
     this.downloadFiles(files, albumInfo.title);
   }
 
   async downloadFiles(files, albumTitle) {
     if (!files || files.length === 0) return;
-
+    
     // Проверка поддержки скачивания
     if (!this.isDownloadSupported()) {
       this.fallbackDownload(files);
       return;
     }
-
+    
     window.NotificationSystem?.info(`Скачивание ${files.length} файлов...`);
-
     let completed = 0;
-
+    
     for (const file of files) {
       try {
         await this.downloadFile(file.url, file.filename);
         completed++;
-        
         window.NotificationSystem?.info(
           `Скачано ${completed} из ${files.length}`,
           { duration: 2000 }
         );
-        
         // Задержка между скачиваниями (чтобы не блокировал браузер)
         await this.delay(500);
-        
       } catch (error) {
         console.error('Download failed:', file.filename, error);
       }
     }
-
+    
     window.NotificationSystem?.success(`✅ Альбом "${albumTitle}" скачан!`);
   }
 
@@ -2470,14 +2465,11 @@ class DownloadsManager {
           link.href = URL.createObjectURL(blob);
           link.download = this.sanitizeFilename(filename);
           link.style.display = 'none';
-          
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
-          
           // Освободить память
           setTimeout(() => URL.revokeObjectURL(link.href), 100);
-          
           resolve();
         })
         .catch(reject);
@@ -2498,7 +2490,6 @@ class DownloadsManager {
   fallbackDownload(files) {
     // Открыть каждый файл в новой вкладке (пользователь сам скачает)
     window.NotificationSystem?.info('Откроются вкладки для скачивания');
-    
     files.forEach((file, index) => {
       setTimeout(() => {
         window.open(file.url, '_blank');
@@ -2513,7 +2504,6 @@ class DownloadsManager {
 
 // Глобальный экземпляр
 window.DownloadsManager = new DownloadsManager();
-
 export default DownloadsManager;
 
 //=================================================
