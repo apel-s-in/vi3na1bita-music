@@ -4,7 +4,7 @@ import { APP_CONFIG } from './core/config.js';
 import AlbumsManager from './app/albums.js';
 import NavigationManager from './app/navigation.js';
 import DownloadsManager from './app/downloads.js';
-import FavoritesManager from '../ui/favorites.js';
+// FavoritesManager загружается через обычный скрипт, не через ESM
 
 class App {
   constructor() {
