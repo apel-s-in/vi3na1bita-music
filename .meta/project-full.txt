@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2172a8a84d362a560ff6fefa277b2ebd915e6827.idx
-│   │       ├── pack-2172a8a84d362a560ff6fefa277b2ebd915e6827.pack
-│   │       └── pack-2172a8a84d362a560ff6fefa277b2ebd915e6827.rev
+│   │       ├── pack-c32d079319c258fab4f9df76bc85d514c5879912.idx
+│   │       ├── pack-c32d079319c258fab4f9df76bc85d514c5879912.pack
+│   │       └── pack-c32d079319c258fab4f9df76bc85d514c5879912.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -266,7 +266,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-06 20:39:10 UTC
+Сгенерировано: 2025-12-06 20:39:41 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3728,71 +3728,60 @@ test('SW update flow persists state and restores after reload', async ({ page })
 
 //=================================================
 // FILE: /scripts/player-adapter.js
-// scripts/player-adapter.js (ESM)
-// Адаптер: создаём window.playerCore на основе src/PlayerCore.js,
-// не вмешиваясь в существующий UI и <audio> на этом этапе.
+// scripts/player-adapter.js
+// Адаптер для интеграции PlayerCore
 
-import { PlayerCore } from '../src/PlayerCore.js';
+import { PlayerCore } from './PlayerCore.js';
 
 (function initPlayerCoreAdapter() {
-  if (window.playerCore) return;
+  if (window.playerCore) {
+    console.log('PlayerCore already initialized');
+    return;
+  }
 
-  // Создаём ядро без событий (позже навесим onTick/onPlay и т.п. при маршрутизации UI)
+  console.log('Initializing PlayerCore...');
+
   const pc = new PlayerCore();
 
-  // Применим сохранённые режимы (без влияния на текущий <audio>)
-  try {
-    const vol = parseFloat(localStorage.getItem('playerVolume') || '1');
-    if (Number.isFinite(vol)) pc.setVolume(vol);
-  } catch {}
-  try { pc.setRepeat(localStorage.getItem('repeatMode') === '1'); } catch {}
-  try { pc.setShuffle(localStorage.getItem('shuffleMode') === '1'); } catch {}
-  try {
-    const favOnly = localStorage.getItem('favoritesOnlyMode') === '1';
-    // Если уже играем «ИЗБРАННОЕ» — фильтр в ядре не нужен (плейлист уже отфильтрован)
-    const isFavoritesCtx = (window.playingAlbumKey === window.SPECIAL_FAVORITES_KEY);
-    const likedIdx = (!isFavoritesCtx && window.playingAlbumKey && window.getLikedForAlbum)
-      ? window.getLikedForAlbum(window.playingAlbumKey)
-      : [];
-    pc.setFavoritesOnly(isFavoritesCtx ? false : favOnly, likedIdx);
-  } catch {}
+  // Подписка на события
+  pc.on('trackChanged', (data) => {
+    console.log('Track changed:', data);
+  });
 
-  // Экспортируем в глобальную область
+  pc.on('play', (data) => {
+    console.log('Playing:', data);
+  });
+
+  pc.on('pause', (data) => {
+    console.log('Paused:', data);
+  });
+
+  pc.on('error', (data) => {
+    console.error('Player error:', data);
+  });
+
+  // Восстановление настроек
+  try {
+    const volume = parseFloat(localStorage.getItem('playerVolume') || '1');
+    if (Number.isFinite(volume)) {
+      pc.setVolume(volume);
+    }
+  } catch (e) {
+    console.error('Failed to restore volume:', e);
+  }
+
+  try {
+    pc.setRepeat(localStorage.getItem('repeatMode') === '1');
+  } catch (e) {}
+
+  try {
+    pc.setShuffle(localStorage.getItem('shuffleMode') === '1');
+  } catch (e) {}
+
+  // Экспорт в глобальную область
   window.playerCore = pc;
 
-  // Немедленно прикрепить диспетчер событий (без ожидания таймера в bootstrap)
-  try {
-    if (window.PlayerCoreObserver && typeof window.PlayerCoreObserver.attach === 'function') {
-      window.PlayerCoreObserver.attach(pc);
-    }
-  } catch {}
-
-  // Если уже есть активный контекст — передадим ЕГО в ядро.
-  // ВАЖНО: больше НИКОГДА не подсовываем сюда «просто текущий альбом».
-  // Плейлист устанавливается только явно из UI (showTrack/ensureFavoritesPlayback).
-  try {
-    if (Array.isArray(window.playingTracks) && window.playingTracks.length) {
-      const cover = window.playingCover || (window.coverGalleryArr?.[0]?.formats?.full) || 'img/logo.png';
-      const tracks = window.playingTracks.map(t => ({
-        src: t.audio,
-        title: t.title,
-        artist: window.playingArtist || 'Витрина Разбита',
-        album: window.playingAlbumName || 'Альбом',
-        cover,
-        lyrics: t.lyrics,
-        fulltext: t.fulltext || ''
-      }));
-      const meta = {
-        artist: window.playingArtist || 'Витрина Разбита',
-        album: window.playingAlbumName || 'Альбом',
-        cover
-      };
-      const index = (Number.isInteger(window.playingTrack) && window.playingTrack >= 0) ? window.playingTrack : 0;
-      pc.setPlaylist(tracks, index, meta);
-    }
-  } catch {}
-
-  // Никаких обработчиков событий и управления DOM пока не вешаем — UI остаётся в старом режиме
+  console.log('✅ PlayerCore initialized');
 })();
 
 //=================================================
