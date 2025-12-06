@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-bda037097ae64cc043877dcd208416498ea4c781.idx
-│   │       ├── pack-bda037097ae64cc043877dcd208416498ea4c781.pack
-│   │       └── pack-bda037097ae64cc043877dcd208416498ea4c781.rev
+│   │       ├── pack-ad44c5d150866ad38154c5846717eafbef3ec8bd.idx
+│   │       ├── pack-ad44c5d150866ad38154c5846717eafbef3ec8bd.pack
+│   │       └── pack-ad44c5d150866ad38154c5846717eafbef3ec8bd.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -266,7 +266,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-06 20:48:11 UTC
+Сгенерировано: 2025-12-06 20:49:18 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1532,7 +1532,11 @@ class AlbumsManager {
         trackNumber: idx  // ✅ Индекс в плейлисте
       }));
       
-      window.playerCore.loadPlaylist(tracks);
+      window.playerCore.setPlaylist(tracks, 0, {
+        artist: 'Витрина Разбита',
+        album: albumInfo.title,
+        cover: albumData.cover || `${albumInfo.base}cover.jpg`
+      });
     }
 
     // Инициализировать галерею
