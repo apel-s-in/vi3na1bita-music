@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-42518a525afaf37008dddc3c72e1f71a47c20275.idx
-│   │       ├── pack-42518a525afaf37008dddc3c72e1f71a47c20275.pack
-│   │       └── pack-42518a525afaf37008dddc3c72e1f71a47c20275.rev
+│   │       ├── pack-5c80c4c67d7c91d35288f53180792ba2d852700a.idx
+│   │       ├── pack-5c80c4c67d7c91d35288f53180792ba2d852700a.pack
+│   │       └── pack-5c80c4c67d7c91d35288f53180792ba2d852700a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -250,8 +250,7 @@ vi3na1bita-music/
 │   ├── utils/
 │   │   └── sw-manager.js
 │   ├── app.js
-│   ├── energy.js
-│   └── player-adapter.js
+│   └── energy.js
 ├── src/
 │   ├── .gitkeep
 │   ├── PlayerCore.js
@@ -267,7 +266,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-06 21:03:25 UTC
+Сгенерировано: 2025-12-06 21:04:04 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3742,64 +3741,6 @@ test('SW update flow persists state and restores after reload', async ({ page })
 //=================================================
 // FILE: /scripts/energy.js
 
-
-//=================================================
-// FILE: /scripts/player-adapter.js
-// scripts/player-adapter.js
-// Адаптер для интеграции PlayerCore
-
-import { PlayerCore } from './player/PlayerCore.js';
-
-(function initPlayerCoreAdapter() {
-  if (window.playerCore) {
-    console.log('PlayerCore already initialized');
-    return;
-  }
-
-  console.log('Initializing PlayerCore...');
-
-  const pc = new PlayerCore();
-
-  // Подписка на события (старый формат on)
-  pc.on('trackChanged', (data) => {
-    console.log('Track changed:', data);
-  });
-
-  pc.on('play', (data) => {
-    console.log('Playing:', data);
-  });
-
-  pc.on('pause', (data) => {
-    console.log('Paused:', data);
-  });
-
-  pc.on('error', (data) => {
-    console.error('Player error:', data);
-  });
-
-  // Восстановление настроек
-  try {
-    const volume = parseFloat(localStorage.getItem('playerVolume') || '1');
-    if (Number.isFinite(volume)) {
-      pc.setVolume(volume);
-    }
-  } catch (e) {
-    console.error('Failed to restore volume:', e);
-  }
-
-  try {
-    pc.setRepeat(localStorage.getItem('repeatMode') === '1');
-  } catch (e) {}
-
-  try {
-    pc.setShuffle(localStorage.getItem('shuffleMode') === '1');
-  } catch (e) {}
-
-  // Экспорт в глобальную область
-  window.playerCore = pc;
-
-  console.log('✅ PlayerCore initialized');
-})();
 
 //=================================================
 // FILE: /scripts/player/player-adapter.js
