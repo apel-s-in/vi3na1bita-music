@@ -1,5 +1,5 @@
 // scripts/app.js
-// Главная точка входа приложения
+// ⭐ ИСПРАВЛЕНО: ждём завершения bootstrap перед инициализацией
 
 import { APP_CONFIG } from './core/config.js';
 import AlbumsManager from './app/albums.js';
@@ -18,7 +18,10 @@ class App {
     console.log(`🎵 Initializing Vitrina Razbita v${APP_CONFIG.APP_VERSION}`);
 
     try {
-      // 1. Проверка промокода
+      // 1. Ждём загрузки albumsIndex
+      await this.waitForAlbumsIndex();
+
+      // 2. Проверка промокода
       await this.checkPromocode();
 
       if (!this.promoUnlocked) {
@@ -26,19 +29,19 @@ class App {
         return;
       }
 
-      // 2. Инициализация UI системы
+      // 3. Инициализация UI системы
       this.initializeNotifications();
 
-      // 3. Ждём загрузки плеера
+      // 4. Ждём загрузки плеера
       await this.waitForPlayer();
 
-      // 4. Инициализация модулей
+      // 5. Инициализация модулей
       await this.initializeModules();
 
-      // 5. PWA функции
+      // 6. PWA функции
       this.initializePWA();
 
-      // 6. Online/Offline индикатор
+      // 7. Online/Offline индикатор
       this.initializeOnlineStatus();
 
       this.initialized = true;
@@ -48,6 +51,34 @@ class App {
       console.error('❌ App initialization failed:', error);
       window.NotificationSystem?.error('Ошибка инициализации приложения');
     }
+  }
+
+  async waitForAlbumsIndex() {
+    return new Promise((resolve) => {
+      // Если уже загружен - сразу resolve
+      if (window.albumsIndex && window.albumsIndex.length > 0) {
+        console.log('✅ Albums index already loaded');
+        resolve();
+        return;
+      }
+
+      // Ждём максимум 10 секунд
+      let attempts = 0;
+      const checkInterval = setInterval(() => {
+        attempts++;
+        
+        if (window.albumsIndex && window.albumsIndex.length > 0) {
+          clearInterval(checkInterval);
+          console.log('✅ Albums index loaded');
+          resolve();
+        } else if (attempts > 100) { // 100 * 100ms = 10 секунд
+          clearInterval(checkInterval);
+          console.error('❌ Albums index loading timeout');
+          window.albumsIndex = []; // Инициализируем пустым массивом
+          resolve();
+        }
+      }, 100);
+    });
   }
 
   async checkPromocode() {
@@ -100,7 +131,6 @@ class App {
   }
 
   initializeNotifications() {
-    // NotificationSystem уже загружен через notify.js
     if (window.NotificationSystem) {
       console.log('✅ Notification system ready');
     }
@@ -114,7 +144,6 @@ class App {
         return;
       }
 
-      // Ждём загрузки плеера (максимум 5 секунд)
       let attempts = 0;
       const checkInterval = setInterval(() => {
         attempts++;
@@ -126,14 +155,13 @@ class App {
         } else if (attempts > 50) {
           clearInterval(checkInterval);
           console.error('❌ PlayerCore loading timeout');
-          resolve(); // Продолжить без плеера
+          resolve();
         }
       }, 100);
     });
   }
 
   async initializeModules() {
-    // Проверка загрузки альбомов из bootstrap.js
     if (!window.albumsIndex || window.albumsIndex.length === 0) {
       console.error('❌ Albums index not loaded');
       window.NotificationSystem?.error('Не удалось загрузить список альбомов');
@@ -142,7 +170,6 @@ class App {
 
     console.log(`📀 Albums loaded: ${window.albumsIndex.length}`);
 
-    // Инициализация модулей
     if (window.AlbumsManager) {
       await window.AlbumsManager.initialize();
     }
@@ -155,7 +182,6 @@ class App {
       console.log('⭐ Favorites manager ready');
     }
 
-    // Кнопка фильтрации избранного
     this.initializeFavoritesFilter();
   }
 
@@ -203,7 +229,6 @@ class App {
   }
 
   initializePWA() {
-    // Регистрация Service Worker
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js')
         .then((registration) => {
@@ -214,7 +239,6 @@ class App {
         });
     }
 
-    // Кнопка установки PWA
     let deferredPrompt;
     const installBtn = document.getElementById('install-pwa-btn');
 
@@ -271,7 +295,6 @@ if (document.readyState === 'loading') {
   app.initialize();
 }
 
-// Экспорт для отладки
 window.app = app;
 
 export default app;
