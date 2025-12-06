@@ -1,108 +1,117 @@
 // scripts/app/navigation.js
-// Навигация: обработка кнопок навигации, модальные окна
-
-import { APP_CONFIG } from '../core/config.js';
-
+// Навигация и управление интерфейсом
 class NavigationManager {
   constructor() {
     this.modalsContainer = null;
     this.activeModal = null;
+    this.sleepTimer = null;
+    this.sleepTimerTarget = null;
   }
-
+  
   initialize() {
     this.modalsContainer = document.getElementById('modals-container');
-    
-    this.attachEventListeners();
+    this.setupEventListeners();
     this.setupMediaSessionHandlers();
-    
     console.log('✅ NavigationManager initialized');
   }
-
-  attachEventListeners() {
+  
+  setupEventListeners() {
     // Кнопка "О системе"
     const sysinfoBtn = document.getElementById('sysinfo-btn');
     sysinfoBtn?.addEventListener('click', () => {
       this.showSystemInfo();
     });
-
+    
     // Кнопка "Обратная связь"
     const feedbackLink = document.getElementById('feedback-link');
     feedbackLink?.addEventListener('click', () => {
       this.showFeedbackModal();
     });
-
+    
     // Кнопка "Поддержать"
     const supportLink = document.getElementById('support-link');
     if (supportLink) {
-      supportLink.href = APP_CONFIG.SUPPORT_URL;
+      supportLink.href = 'https://example.com/support';
     }
-
+    
     // Кнопка "Скачать весь альбом"
     const downloadBtn = document.getElementById('download-album-main');
     downloadBtn?.addEventListener('click', () => {
       this.downloadCurrentAlbum();
     });
-
+    
+    // Горячие клавиши
+    const hotkeysBtn = document.getElementById('hotkeys-btn');
+    hotkeysBtn?.addEventListener('click', () => {
+      this.showHotkeysModal();
+    });
+    
     // Закрытие модального окна при клике вне его
     this.modalsContainer?.addEventListener('click', (e) => {
       if (e.target === this.modalsContainer) {
         this.closeModal();
       }
     });
-
-    // Закрытие модального окна по Escape
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && this.activeModal) {
-        this.closeModal();
-      }
-    });
+    
+    // Скролл для мини-режима
+    window.addEventListener('scroll', () => {
+      this.handleScroll();
+    }, { passive: true });
   }
-
+  
+  handleScroll() {
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    const miniMode = document.body.classList.contains('mini-mode');
+    
+    if (scrollTop > 300 && !miniMode) {
+      this.enableMiniMode();
+    } else if (scrollTop < 100 && miniMode) {
+      this.disableMiniMode();
+    }
+  }
+  
   setupMediaSessionHandlers() {
     if (!('mediaSession' in navigator)) return;
-
+    
     try {
       navigator.mediaSession.setActionHandler('play', () => {
         window.playerCore?.play();
       });
-
+      
       navigator.mediaSession.setActionHandler('pause', () => {
         window.playerCore?.pause();
       });
-
+      
       navigator.mediaSession.setActionHandler('previoustrack', () => {
         window.playerCore?.prev();
       });
-
+      
       navigator.mediaSession.setActionHandler('nexttrack', () => {
         window.playerCore?.next();
       });
-
+      
       console.log('✅ Media Session handlers set');
     } catch (e) {
       console.error('Failed to setup Media Session:', e);
     }
   }
-
+  
   showSystemInfo() {
-    if (window.SystemInfo && typeof window.SystemInfo.show === 'function') {
-      window.SystemInfo.show();
-    } else {
-      this.showModal(`
-        <h2>О системе</h2>
-        <div style="text-align: left; padding: 20px;">
-          <p><strong>Версия:</strong> ${APP_CONFIG.APP_VERSION}</p>
-          <p><strong>User Agent:</strong> ${navigator.userAgent}</p>
-          <p><strong>Платформа:</strong> ${navigator.platform}</p>
-          <p><strong>Язык:</strong> ${navigator.language}</p>
-          <p><strong>Размер экрана:</strong> ${window.innerWidth}×${window.innerHeight}</p>
-          <p><strong>Online:</strong> ${navigator.onLine ? 'Да' : 'Нет'}</p>
-        </div>
-        <button class="modal-close-btn">Закрыть</button>
-      `);
-    }
+    this.showModal(`
+      <h2>О системе</h2>
+      <div style="text-align: left; padding: 20px;">
+        <p><strong>Версия:</strong> ${APP_CONFIG.APP_VERSION}</p>
+        <p><strong>User Agent:</strong> ${navigator.userAgent}</p>
+        <p><strong>Платформа:</strong> ${navigator.platform}</p>
+        <p><strong>Язык:</strong> ${navigator.language}</p>
+        <p><strong>Размер экрана:</strong> ${window.innerWidth}×${window.innerHeight}</p>
+        <p><strong>Online:</strong> ${navigator.onLine ? 'Да' : 'Нет'}</p>
+        <p><strong>Service Worker:</strong> ${'serviceWorker' in navigator ? 'Да' : 'Нет'}</p>
+      </div>
+      <button class="modal-close-btn">Закрыть</button>
+    `);
   }
-
+  
   showFeedbackModal() {
     this.showModal(`
       <h2>Обратная связь</h2>
@@ -111,19 +120,16 @@ class NavigationManager {
           Есть предложения или нашли ошибку?<br>
           Напишите нам!
         </p>
-        
         <div style="display: flex; flex-direction: column; gap: 15px; max-width: 300px; margin: 0 auto;">
           <a href="https://t.me/vitrina_razbita" target="_blank" 
              style="background: #0088cc; color: white; padding: 15px; border-radius: 8px; text-decoration: none; display: block;">
             📱 Telegram
           </a>
-          
-          <a href="mailto:${APP_CONFIG.SUPPORT_EMAIL}" target="_blank"
+          <a href="mailto:support@vitrina-razbita.ru" target="_blank"
              style="background: #4daaff; color: white; padding: 15px; border-radius: 8px; text-decoration: none; display: block;">
             ✉️ Email
           </a>
-          
-          <a href="${APP_CONFIG.GITHUB_URL}" target="_blank"
+          <a href="https://github.com/apel-s-in/vi3na1bita-music" target="_blank"
              style="background: #333; color: white; padding: 15px; border-radius: 8px; text-decoration: none; display: block;">
             🐙 GitHub
           </a>
@@ -132,43 +138,76 @@ class NavigationManager {
       <button class="modal-close-btn">Закрыть</button>
     `);
   }
-
+  
+  showHotkeysModal() {
+    this.showModal(`
+      <h2>📌 Горячие клавиши</h2>
+      <div class="hotkeys-section">
+        <h3>▶️ Воспроизведение</h3>
+        <div class="hotkey-item"><span class="hotkey-combo">K / Пробел</span><span class="hotkey-desc">Воспроизведение/Пауза</span></div>
+        <div class="hotkey-item"><span class="hotkey-combo">X</span><span class="hotkey-desc">Стоп</span></div>
+        <div class="hotkey-item"><span class="hotkey-combo">N / P</span><span class="hotkey-desc">Следующий/Предыдущий трек</span></div>
+        <div class="hotkey-item"><span class="hotkey-combo">J / L</span><span class="hotkey-desc">Перемотка ←10сек / 10сек→</span></div>
+        <div class="hotkey-item"><span class="hotkey-combo">+ / -</span><span class="hotkey-desc">Громкость ±10%</span></div>
+      </div>
+      <div class="hotkeys-section">
+        <h3>🎵 Режимы</h3>
+        <div class="hotkey-item"><span class="hotkey-combo">R</span><span class="hotkey-desc">Повтор</span></div>
+        <div class="hotkey-item"><span class="hotkey-combo">U</span><span class="hotkey-desc">Случайный порядок</span></div>
+        <div class="hotkey-item"><span class="hotkey-combo">F</span><span class="hotkey-desc">Только избранные</span></div>
+        <div class="hotkey-item"><span class="hotkey-combo">M</span><span class="hotkey-desc">Без звука</span></div>
+        <div class="hotkey-item"><span class="hotkey-combo">T</span><span class="hotkey-desc">Таймер сна</span></div>
+      </div>
+      <div class="hotkeys-section">
+        <h3>✨ Эффекты</h3>
+        <div class="hotkey-item"><span class="hotkey-combo">A</span><span class="hotkey-desc">Анимация лирики</span></div>
+        <div class="hotkey-item"><span class="hotkey-combo">B</span><span class="hotkey-desc">Пульсация логотипа</span></div>
+        <div class="hotkey-item"><span class="hotkey-combo">1 / 2 / 3</span><span class="hotkey-desc">Интенсивность (100%/50%/15%)</span></div>
+      </div>
+      <div class="hotkeys-section">
+        <h3>📱 Интерфейс</h3>
+        <div class="hotkey-item"><span class="hotkey-combo">Y</span><span class="hotkey-desc">Показать/скрыть лирику</span></div>
+        <div class="hotkey-item"><span class="hotkey-combo">W</span><span class="hotkey-desc">Прокрутить к списку треков</span></div>
+        <div class="hotkey-item"><span class="hotkey-combo">D</span><span class="hotkey-desc">Добавить/удалить из избранного</span></div>
+        <div class="hotkey-item"><span class="hotkey-combo">Esc</span><span class="hotkey-desc">Закрыть модальное окно</span></div>
+        <div class="hotkey-item"><span class="hotkey-combo">?</span><span class="hotkey-desc">Эта справка</span></div>
+      </div>
+      <button class="modal-close-btn">Закрыть</button>
+    `);
+  }
+  
   async downloadCurrentAlbum() {
     const currentAlbum = window.AlbumsManager?.getCurrentAlbum();
-    
     if (!currentAlbum) {
-      window.NotificationSystem?.error('Не выбран альбом');
+      if (window.NotificationSystem) {
+        window.NotificationSystem.error('Не выбран альбом');
+      }
       return;
     }
-
+    
     // Специальные альбомы нельзя скачать
     if (currentAlbum.startsWith('__')) {
-      window.NotificationSystem?.info('Этот альбом нельзя скачать целиком');
+      if (window.NotificationSystem) {
+        window.NotificationSystem.info('Этот альбом нельзя скачать целиком');
+      }
       return;
     }
-
-    // Найти данные альбома
-    const albumInfo = window.albumsIndex?.find(a => a.key === currentAlbum);
-    if (!albumInfo) {
-      window.NotificationSystem?.error('Альбом не найден');
-      return;
-    }
-
-    // Использовать Downloads Manager если доступен
+    
+    // Используем Downloads Manager
     if (window.DownloadsManager) {
       window.DownloadsManager.downloadAlbum(currentAlbum);
     } else {
-      // Fallback: открыть директорию альбома
-      window.open(albumInfo.base, '_blank');
-      window.NotificationSystem?.info('Откройте папку и скачайте файлы');
+      // Fallback: показать сообщение
+      if (window.NotificationSystem) {
+        window.NotificationSystem.info('Функция скачивания временно недоступна');
+      }
     }
   }
-
+  
   showModal(content) {
     if (!this.modalsContainer) return;
-
     this.closeModal(); // Закрыть предыдущее модальное окно
-
+    
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.innerHTML = `
@@ -176,25 +215,23 @@ class NavigationManager {
         ${content}
       </div>
     `;
-
+    
     // Закрытие по кнопке
     const closeBtn = modal.querySelector('.modal-close-btn');
     closeBtn?.addEventListener('click', () => this.closeModal());
-
+    
     this.modalsContainer.appendChild(modal);
     this.activeModal = modal;
-
+    
     // Анимация появления
     requestAnimationFrame(() => {
       modal.classList.add('show');
     });
   }
-
+  
   closeModal() {
     if (!this.activeModal) return;
-
     this.activeModal.classList.remove('show');
-    
     setTimeout(() => {
       if (this.activeModal && this.activeModal.parentNode) {
         this.activeModal.parentNode.removeChild(this.activeModal);
@@ -202,9 +239,161 @@ class NavigationManager {
       this.activeModal = null;
     }, 300);
   }
+  
+  enableMiniMode() {
+    document.body.classList.add('mini-mode');
+    localStorage.setItem('miniMode', '1');
+    
+    // Скрыть ненужные элементы
+    this.hideElements([
+      '#cover-wrap',
+      '#social-links',
+      '.album-icons',
+      '.active-album-title'
+    ]);
+    
+    console.log('📱 Mini mode enabled');
+  }
+  
+  disableMiniMode() {
+    document.body.classList.remove('mini-mode');
+    localStorage.setItem('miniMode', '0');
+    
+    // Показать элементы обратно
+    this.showElements([
+      '#cover-wrap',
+      '#social-links',
+      '.album-icons',
+      '.active-album-title'
+    ]);
+    
+    console.log('📱 Mini mode disabled');
+  }
+  
+  hideElements(selectors) {
+    selectors.forEach(selector => {
+      const el = document.querySelector(selector);
+      if (el) {
+        el.style.display = 'none';
+      }
+    });
+  }
+  
+  showElements(selectors) {
+    selectors.forEach(selector => {
+      const el = document.querySelector(selector);
+      if (el) {
+        el.style.display = '';
+      }
+    });
+  }
+  
+  // Таймер сна
+  setSleepTimer(minutes) {
+    if (minutes === 'off') {
+      this.clearSleepTimer();
+      return;
+    }
+    
+    this.sleepTimerTarget = Date.now() + minutes * 60 * 1000;
+    this.updateSleepTimerUI();
+    
+    if (this.sleepTimer) {
+      clearInterval(this.sleepTimer);
+    }
+    
+    this.sleepTimer = setInterval(() => this.checkSleepTimer(), 1000);
+    
+    if (window.NotificationSystem) {
+      window.NotificationSystem.info(`Таймер сна установлен на ${minutes} минут`);
+    }
+  }
+  
+  clearSleepTimer() {
+    if (this.sleepTimer) {
+      clearInterval(this.sleepTimer);
+      this.sleepTimer = null;
+    }
+    this.sleepTimerTarget = null;
+    this.updateSleepTimerUI();
+    
+    const overlay = document.getElementById('sleep-overlay');
+    if (overlay) overlay.remove();
+    
+    if (window.NotificationSystem) {
+      window.NotificationSystem.info('Таймер сна выключен');
+    }
+  }
+  
+  checkSleepTimer() {
+    if (!this.sleepTimerTarget) return;
+    
+    const now = Date.now();
+    const msLeft = this.sleepTimerTarget - now;
+    
+    if (msLeft <= 0) {
+      window.playerCore?.pause();
+      this.clearSleepTimer();
+      
+      if (window.NotificationSystem) {
+        window.NotificationSystem.info('Таймер сна: воспроизведение остановлено');
+      }
+    } else if (msLeft <= 10000 && !document.querySelector('#sleep-overlay')) {
+      this.showSleepOverlay();
+    }
+    
+    this.updateSleepTimerUI();
+  }
+  
+  updateSleepTimerUI() {
+    const badge = document.getElementById('sleep-timer-badge');
+    if (!this.sleepTimerTarget) {
+      if (badge) badge.style.display = 'none';
+      return;
+    }
+    
+    const minsLeft = Math.max(0, Math.ceil((this.sleepTimerTarget - Date.now()) / 60000));
+    if (badge) {
+      badge.textContent = String(minsLeft);
+      badge.style.display = '';
+    }
+  }
+  
+  showSleepOverlay() {
+    let overlay = document.getElementById('sleep-overlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'sleep-overlay';
+      overlay.className = 'sleep-overlay';
+      overlay.innerHTML = `
+        <div class="sleep-content">
+          <div class="sleep-icon">😴</div>
+          <div class="sleep-title">Скоро пауза</div>
+          <div class="sleep-message">Воспроизведение будет приостановлено по таймеру сна.</div>
+          <div class="sleep-buttons">
+            <button class="sleep-btn sleep-btn-secondary" onclick="window.NavigationManager?.cancelSleepTimer()">Отмена</button>
+            <button class="sleep-btn sleep-btn-primary" onclick="document.getElementById('sleep-overlay')?.remove()">Оставить</button>
+          </div>
+        </div>`;
+      document.body.appendChild(overlay);
+    }
+  }
+  
+  cancelSleepTimer() {
+    this.clearSleepTimer();
+    const overlay = document.getElementById('sleep-overlay');
+    if (overlay) overlay.remove();
+  }
 }
 
 // Глобальный экземпляр
 window.NavigationManager = new NavigationManager();
+
+// Обработчик для кнопки отмены таймера сна
+window.cancelSleepTimer = () => {
+  if (window.NavigationManager) {
+    window.NavigationManager.cancelSleepTimer();
+  }
+};
 
 export default NavigationManager;
