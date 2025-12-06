@@ -120,7 +120,11 @@ class AlbumsManager {
         trackNumber: idx  // ✅ Индекс в плейлисте
       }));
       
-      window.playerCore.loadPlaylist(tracks);
+      window.playerCore.setPlaylist(tracks, 0, {
+        artist: 'Витрина Разбита',
+        album: albumInfo.title,
+        cover: albumData.cover || `${albumInfo.base}cover.jpg`
+      });
     }
 
     // Инициализировать галерею
