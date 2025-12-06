@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ea5d10a2c9ec9c4e2584a08af9c27a85b42fee70.idx
-│   │       ├── pack-ea5d10a2c9ec9c4e2584a08af9c27a85b42fee70.pack
-│   │       └── pack-ea5d10a2c9ec9c4e2584a08af9c27a85b42fee70.rev
+│   │       ├── pack-3e16da24b56378dda821dc779958d4d7132420ef.idx
+│   │       ├── pack-3e16da24b56378dda821dc779958d4d7132420ef.pack
+│   │       └── pack-3e16da24b56378dda821dc779958d4d7132420ef.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-06 22:17:07 UTC
+Сгенерировано: 2025-12-06 22:17:33 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1235,7 +1235,7 @@ class App {
 
   initializePWA() {
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js')
+      navigator.serviceWorker.register('./service-worker.js')
         .then((registration) => {
           console.log('✅ Service Worker registered:', registration.scope);
         })
