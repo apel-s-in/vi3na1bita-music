@@ -1,7 +1,7 @@
 // scripts/player/player-adapter.js
-// ⭐ ИСПРАВЛЕНО: правильный путь к PlayerCore
+// ⭐ ИСПРАВЛЕНО: корректный относительный путь
 
-import { PlayerCore } from '../../src/PlayerCore.js';  // ✅ ПРАВИЛЬНЫЙ ПУТЬ!
+import { PlayerCore } from '../src/PlayerCore.js';  // ✅ ПРАВИЛЬНО!
 
 (function initPlayerAdapter() {
   if (window.playerCore) {
@@ -11,7 +11,6 @@ import { PlayerCore } from '../../src/PlayerCore.js';  // ✅ ПРАВИЛЬНЫ
 
   console.log('🎵 Initializing PlayerCore adapter...');
 
-  // Создаём экземпляр плеера
   const playerCore = new PlayerCore();
 
   // Подписка на события
@@ -19,7 +18,6 @@ import { PlayerCore } from '../../src/PlayerCore.js';  // ✅ ПРАВИЛЬНЫ
     onTrackChange: (track, index) => {
       console.log('🎵 Track changed:', track?.title);
       
-      // Обновляем UI
       if (window.PlayerControls) {
         window.PlayerControls.updateNowPlaying({ track, index });
       }
