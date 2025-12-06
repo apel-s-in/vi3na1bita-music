@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-cab5a20f31dd19a21684fd2937f7a59260c6defb.idx
-│   │       ├── pack-cab5a20f31dd19a21684fd2937f7a59260c6defb.pack
-│   │       └── pack-cab5a20f31dd19a21684fd2937f7a59260c6defb.rev
+│   │       ├── pack-d1816912127f9aa65278029116ca0fd4fddd3f34.idx
+│   │       ├── pack-d1816912127f9aa65278029116ca0fd4fddd3f34.pack
+│   │       └── pack-d1816912127f9aa65278029116ca0fd4fddd3f34.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -266,7 +266,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-06 20:42:49 UTC
+Сгенерировано: 2025-12-06 20:46:27 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3742,7 +3742,7 @@ test('SW update flow persists state and restores after reload', async ({ page })
 // scripts/player-adapter.js
 // Адаптер для интеграции PlayerCore
 
-import { PlayerCore } from './PlayerCore.js';
+import { PlayerCore } from './player/PlayerCore.js';  // ✅ ИСПРАВЛЕН ПУТЬ
 
 (function initPlayerCoreAdapter() {
   if (window.playerCore) {
@@ -3755,20 +3755,22 @@ import { PlayerCore } from './PlayerCore.js';
   const pc = new PlayerCore();
 
   // Подписка на события
-  pc.on('trackChanged', (data) => {
-    console.log('Track changed:', data);
-  });
-
-  pc.on('play', (data) => {
-    console.log('Playing:', data);
-  });
-
-  pc.on('pause', (data) => {
-    console.log('Paused:', data);
-  });
-
-  pc.on('error', (data) => {
-    console.error('Player error:', data);
+  pc.on({
+    onTrackChange: (track, index) => {
+      console.log('Track changed:', track?.title, 'index:', index);
+    },
+    onPlay: (track, index) => {
+      console.log('Playing:', track?.title);
+    },
+    onPause: (track, index) => {
+      console.log('Paused:', track?.title);
+    },
+    onStop: (track, index) => {
+      console.log('Stopped');
+    },
+    onEnd: (track, index) => {
+      console.log('Track ended:', track?.title);
+    }
   });
 
   // Восстановление настроек
