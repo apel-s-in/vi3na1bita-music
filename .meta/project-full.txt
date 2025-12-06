@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-772f8c8752c5f8b61512e32eafd11bda8fd46db8.idx
-│   │       ├── pack-772f8c8752c5f8b61512e32eafd11bda8fd46db8.pack
-│   │       └── pack-772f8c8752c5f8b61512e32eafd11bda8fd46db8.rev
+│   │       ├── pack-ea5d10a2c9ec9c4e2584a08af9c27a85b42fee70.idx
+│   │       ├── pack-ea5d10a2c9ec9c4e2584a08af9c27a85b42fee70.pack
+│   │       └── pack-ea5d10a2c9ec9c4e2584a08af9c27a85b42fee70.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-06 22:16:29 UTC
+Сгенерировано: 2025-12-06 22:17:07 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5008,8 +5008,8 @@ class ServiceWorkerManager {
     }
 
     try {
-      this.registration = await navigator.serviceWorker.register('/service-worker.js', {
-        scope: '/'
+      this.registration = await navigator.serviceWorker.register('./service-worker.js', {
+        scope: './'
       });
 
       console.log('✅ Service Worker registered:', this.registration.scope);
