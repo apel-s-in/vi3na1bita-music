@@ -1,5 +1,5 @@
 // scripts/app/albums.js
-// ⭐ ИСПРАВЛЕНО: НЕ создаёт UI плеера (это делает player-controls.js)
+// Управление альбомами - УПРОЩЁННАЯ версия без создания UI плеера
 
 import { APP_CONFIG } from '../core/config.js';
 
@@ -11,7 +11,6 @@ class AlbumsManager {
   }
 
   async initialize() {
-    // ⭐ Проверяем, что albums.json загружен
     if (!window.albumsIndex || window.albumsIndex.length === 0) {
       console.error('❌ No albums found');
       return;
@@ -21,7 +20,6 @@ class AlbumsManager {
 
     this.renderAlbumIcons();
     
-    // Загрузить последний альбом
     const lastAlbum = localStorage.getItem('currentAlbum');
     const albumToLoad = lastAlbum || window.albumsIndex[0].key;
     
@@ -52,18 +50,11 @@ class AlbumsManager {
   }
 
   async loadAlbum(albumKey) {
-    if (this.isLoading) {
-      console.warn('⚠️ Album loading in progress');
-      return;
-    }
-
+    if (this.isLoading) return;
     this.isLoading = true;
 
     try {
-      if (window.playerCore) {
-        window.playerCore.stop();
-      }
-
+      window.playerCore?.stop();
       this.clearUI();
 
       if (albumKey === '__favorites__') {
@@ -90,20 +81,13 @@ class AlbumsManager {
 
   async loadRegularAlbum(albumKey) {
     const albumInfo = window.albumsIndex.find(a => a.key === albumKey);
-    if (!albumInfo) {
-      throw new Error(`Album ${albumKey} not found`);
-    }
+    if (!albumInfo) throw new Error(`Album ${albumKey} not found`);
 
     let albumData = this.albumsData.get(albumKey);
     
     if (!albumData) {
-      const response = await fetch(`${albumInfo.base}tracks.json`, {
-        cache: 'no-cache'
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
+      const response = await fetch(`${albumInfo.base}tracks.json`, { cache: 'no-cache' });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       
       albumData = await response.json();
       this.albumsData.set(albumKey, albumData);
@@ -114,7 +98,6 @@ class AlbumsManager {
     this.renderSocials(albumData.social_links);
     this.renderTrackList(albumData.tracks, albumInfo);
 
-    // ⭐ Загрузить в PlayerCore
     if (window.playerCore) {
       const tracks = albumData.tracks.map((t, idx) => ({
         src: `${albumInfo.base}${t.file}`,
@@ -136,6 +119,51 @@ class AlbumsManager {
     if (coverWrap) coverWrap.style.display = '';
   }
 
+  async loadFavoritesAlbum() {
+    this.renderAlbumTitle('⭐⭐⭐ ИЗБРАННОЕ ⭐⭐⭐', 'fav');
+    
+    // Используем ВАШУ функцию openFavoritesView
+    if (typeof window.openFavoritesView === 'function') {
+      await window.openFavoritesView();
+    } else {
+      const container = document.getElementById('track-list');
+      if (container) {
+        container.innerHTML = `
+          <div style="padding: 20px; text-align: center; color: #8ab8fd;">
+            <h3>Избранные треки</h3>
+            <p>Отметьте треки звёздочкой ⭐</p>
+          </div>
+        `;
+      }
+    }
+
+    const coverWrap = document.getElementById('cover-wrap');
+    if (coverWrap) coverWrap.style.display = 'none';
+  }
+
+  async loadNewsAlbum() {
+    this.renderAlbumTitle('📰 НОВОСТИ 📰', 'news');
+    
+    const container = document.getElementById('track-list');
+    if (container) {
+      container.innerHTML = `
+        <div style="padding: 20px; text-align: center; color: #8ab8fd;">
+          <h3>Следите за новостями</h3>
+          <p>Новые треки появятся здесь</p>
+          <div style="margin-top: 20px;">
+            <a href="https://t.me/vitrina_razbita" target="_blank" 
+               style="color: #4daaff; text-decoration: underline;">
+              Telegram канал
+            </a>
+          </div>
+        </div>
+      `;
+    }
+
+    const coverWrap = document.getElementById('cover-wrap');
+    if (coverWrap) coverWrap.style.display = 'none';
+  }
+
   renderAlbumTitle(title, modifier = '') {
     const titleEl = document.getElementById('active-album-title');
     if (titleEl) {
@@ -153,9 +181,7 @@ class AlbumsManager {
       ? `${albumInfo.base}${albumData.cover}` 
       : `${albumInfo.base}cover.jpg`;
     
-    coverSlot.innerHTML = `
-      <img src="${coverUrl}" alt="${albumInfo.title}" draggable="false">
-    `;
+    coverSlot.innerHTML = `<img src="${coverUrl}" alt="${albumInfo.title}" draggable="false">`;
   }
 
   renderSocials(links) {
@@ -163,7 +189,6 @@ class AlbumsManager {
     if (!container) return;
 
     container.innerHTML = '';
-
     if (!links || links.length === 0) return;
 
     links.forEach(link => {
@@ -194,49 +219,34 @@ class AlbumsManager {
     trackEl.dataset.index = index;
     trackEl.dataset.album = albumKey;
 
-    const isFavorite = window.FavoritesManager?.isFavorite(albumKey, track.num) || false;
+    const isFavorite = window.getLikedForAlbum?.(albumKey)?.includes(track.num) || false;
 
     trackEl.innerHTML = `
       <div class="tnum">${track.num || index + 1}</div>
       <div class="track-title">${track.title}</div>
-      <button class="like-star" 
-              data-album="${albumKey}" 
-              data-num="${track.num || index + 1}">
-        ${isFavorite ? '⭐' : '☆'}
-      </button>
+      <img src="${isFavorite ? 'img/star.png' : 'img/star2.png'}" 
+           class="like-star" 
+           alt="звезда"
+           data-album="${albumKey}" 
+           data-num="${track.num || index + 1}">
     `;
 
-    // ⭐ Клик по треку - воспроизведение
     trackEl.addEventListener('click', (e) => {
       if (e.target.classList.contains('like-star')) return;
-      
-      if (window.playerCore) {
-        window.playerCore.play(index);
-      }
+      window.playerCore?.play(index);
     });
 
-    // Клик по звездочке
     const star = trackEl.querySelector('.like-star');
     star?.addEventListener('click', (e) => {
       e.stopPropagation();
-      this.toggleFavorite(albumKey, track.num || index + 1, star);
+      const trackNum = parseInt(star.dataset.num);
+      const wasLiked = window.getLikedForAlbum?.(albumKey)?.includes(trackNum);
+      
+      window.toggleLikeForAlbum?.(albumKey, trackNum, !wasLiked);
+      star.src = wasLiked ? 'img/star2.png' : 'img/star.png';
     });
 
     return trackEl;
-  }
-
-  toggleFavorite(albumKey, trackNum, starEl) {
-    if (!window.FavoritesManager) return;
-
-    const isFav = window.FavoritesManager.isFavorite(albumKey, trackNum);
-
-    if (isFav) {
-      window.FavoritesManager.removeFavorite(albumKey, trackNum);
-      starEl.textContent = '☆';
-    } else {
-      window.FavoritesManager.addFavorite(albumKey, trackNum);
-      starEl.textContent = '⭐';
-    }
   }
 
   updateActiveIcon(albumKey) {
@@ -261,46 +271,6 @@ class AlbumsManager {
 
   getAlbumData(albumKey) {
     return this.albumsData.get(albumKey);
-  }
-
-  async loadFavoritesAlbum() {
-    this.renderAlbumTitle('⭐⭐⭐ ИЗБРАННОЕ ⭐⭐⭐', 'fav');
-    
-    const newsContainer = document.getElementById('track-list');
-    if (newsContainer) {
-      newsContainer.innerHTML = `
-        <div style="padding: 20px; text-align: center; color: #8ab8fd;">
-          <h3>Избранные треки</h3>
-          <p>Здесь будут ваши любимые песни</p>
-        </div>
-      `;
-    }
-
-    const coverWrap = document.getElementById('cover-wrap');
-    if (coverWrap) coverWrap.style.display = 'none';
-  }
-
-  async loadNewsAlbum() {
-    this.renderAlbumTitle('📰 НОВОСТИ 📰', 'news');
-    
-    const newsContainer = document.getElementById('track-list');
-    if (newsContainer) {
-      newsContainer.innerHTML = `
-        <div style="padding: 20px; text-align: center; color: #8ab8fd;">
-          <h3>Следите за новостями</h3>
-          <p>Новые треки появятся здесь</p>
-          <div style="margin-top: 20px;">
-            <a href="https://t.me/vitrina_razbita" target="_blank" 
-               style="color: #4daaff; text-decoration: underline;">
-              Telegram канал
-            </a>
-          </div>
-        </div>
-      `;
-    }
-
-    const coverWrap = document.getElementById('cover-wrap');
-    if (coverWrap) coverWrap.style.display = 'none';
   }
 }
 
