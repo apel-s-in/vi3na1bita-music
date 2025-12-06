@@ -76,18 +76,27 @@ class MusicApp {
   }
 
   async initPlayerCore() {
-    // Адаптер загружается автоматически через player-adapter.js
-    // Ждём готовности
+    // Ждём загрузки Howler.js
     return new Promise((resolve) => {
-      const check = () => {
-        if (window.playerCore) {
-          this.playerReady = true;
-          resolve();
-        } else {
-          setTimeout(check, 100);
+      const checkHowler = () => {
+        if (typeof Howler === 'undefined') {
+          setTimeout(checkHowler, 50);
+          return;
         }
+      
+        // Затем ждём PlayerCore
+        const checkCore = () => {
+          if (window.playerCore) {
+            this.playerReady = true;
+            console.log('✅ PlayerCore ready');
+            resolve();
+          } else {
+            setTimeout(checkCore, 100);
+          }
+        };
+        checkCore();
       };
-      check();
+      checkHowler();
     });
   }
 
