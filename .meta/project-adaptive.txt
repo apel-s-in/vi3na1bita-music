@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-291aa5c3b2d4d246af5e5fe04470b04d18d5622e.idx
-│   │       ├── pack-291aa5c3b2d4d246af5e5fe04470b04d18d5622e.pack
-│   │       └── pack-291aa5c3b2d4d246af5e5fe04470b04d18d5622e.rev
+│   │       ├── pack-13e45568451825401ddce9741db00c76f5893cc5.idx
+│   │       ├── pack-13e45568451825401ddce9741db00c76f5893cc5.pack
+│   │       └── pack-13e45568451825401ddce9741db00c76f5893cc5.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -266,7 +266,7 @@ vi3na1bita-music/
 └── sw.js
 
 
-Сгенерировано: 2025-12-06 21:15:37 UTC
+Сгенерировано: 2025-12-06 21:18:01 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3144,56 +3144,53 @@ console.log('PlayerCore JS/TS validation OK');
 //=================================================
 // FILE: /scripts/core/config.js
 // scripts/core/config.js
-// Централизованная конфигурация приложения
+// Конфигурация приложения
 
 export const APP_CONFIG = {
-  VERSION: '8.1.0',
-  BUILD_DATE: '2025-12-06',
-  PROMO_CODE: 'VITRINA2025',
+  // Версия приложения
+  APP_VERSION: '1.0.0',
   
-  ALBUMS_FALLBACK: [
-    {
-      key: 'mezhdu-zlom-i-dobrom',
-      title: 'Между Злом и Добром (2025)',
-      base: 'https://apel-s-in.github.io/vi3na1bita-mezhdu-zlom-i-dobrom/'
-    },
-    {
-      key: 'golos-dushi',
-      title: 'Голос Души',
-      base: 'https://apel-s-in.github.io/vi3na1bita-golos-dushi/'
-    },
-    {
-      key: 'krevetochka',
-      title: 'КРЕВЕцTOCHKA',
-      base: 'https://apel-s-in.github.io/krevetochka/'
-    }
+  // ✅ ПРОМОКОД ДЛЯ ВХОДА
+  PROMOCODE: 'VITRINA2025',
+  
+  // Порядок отображения иконок альбомов
+  ICON_ALBUMS_ORDER: [
+    { key: '__favorites__', title: 'Избранное', icon: 'img/icon_album/icon-album-00.png' },
+    { key: '__reliz__', title: 'Новости', icon: 'img/icon_album/icon-album-news.png' },
+    { key: 'vr_01', title: 'Альбом 1', icon: 'img/icon_album/icon-album-01.png' },
+    { key: 'vr_02', title: 'Альбом 2', icon: 'img/icon_album/icon-album-02.png' },
+    { key: 'vr_03', title: 'Альбом 3', icon: 'img/icon_album/icon-album-03.png' },
+    { key: 'vr_04', title: 'Альбом 4', icon: 'img/icon_album/icon-album-04.png' },
+    { key: 'vr_05', title: 'Альбом 5', icon: 'img/icon_album/icon-album-05.png' },
+    { key: 'vr_06', title: 'Альбом 6', icon: 'img/icon_album/icon-album-06.png' },
+    { key: 'vr_07', title: 'Альбом 7', icon: 'img/icon_album/icon-album-07.png' },
+    { key: 'vr_08', title: 'Альбом 8', icon: 'img/icon_album/icon-album-08.png' }
   ],
   
-  CENTRAL_GALLERY_BASE: './albums/gallery/',
-  ALBUM_GALLERY_MAP: {
-    'krevetochka': '00',
-    'mezhdu-zlom-i-dobrom': '01',
-    'golos-dushi': '02',
-    '__reliz__': 'news'
+  // Ссылки
+  SUPPORT_URL: 'https://example.com/support',
+  SUPPORT_EMAIL: 'support@vitrina-razbita.ru',
+  GITHUB_URL: 'https://github.com/yourusername/vitrina-razbita',
+  
+  // Настройки плеера
+  PLAYER_SETTINGS: {
+    defaultVolume: 1.0,
+    crossfade: false,
+    preload: true
   },
   
-  ICON_ALBUMS_ORDER: [
-    { key: '__favorites__', title: '⭐⭐⭐ИЗБРАННОЕ⭐⭐⭐', icon: 'img/icon_album/icon-album-00.png' },
-    { key: 'golos-dushi', title: 'Голос Души', icon: 'img/icon_album/icon-album-02.png' },
-    { key: 'mezhdu-zlom-i-dobrom', title: 'Между Злом и Добром', icon: 'img/icon_album/icon-album-01.png' },
-    { key: 'krevetochka', title: 'КРЕВЕцTOCHKA', icon: 'img/icon_album/icon-album+00.png' },
-    { key: '__reliz__', title: 'НОВОСТИ', icon: 'img/icon_album/icon-album-news.png' }
-  ]
+  // Настройки кэширования
+  CACHE_VERSION: 'v1.0.0',
+  CACHE_AUDIO: false, // Кэшировать ли аудио файлы
+  
+  // Аналитика (опционально)
+  ANALYTICS_ENABLED: false,
+  ANALYTICS_ID: null
 };
 
-// Экспорт в window для обратной совместимости
+// Экспорт в глобальную область для совместимости
 if (typeof window !== 'undefined') {
   window.APP_CONFIG = APP_CONFIG;
-  window.VERSION = APP_CONFIG.VERSION;
-  window.ALBUMS_FALLBACK = APP_CONFIG.ALBUMS_FALLBACK;
-  window.CENTRAL_GALLERY_BASE = APP_CONFIG.CENTRAL_GALLERY_BASE;
-  window.ALBUM_GALLERY_MAP = APP_CONFIG.ALBUM_GALLERY_MAP;
-  window.ICON_ALBUMS_ORDER = APP_CONFIG.ICON_ALBUMS_ORDER;
 }
 
 //=================================================
