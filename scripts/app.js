@@ -183,11 +183,73 @@ class App {
     }
 
     this.initializeFavoritesFilter();
+    this.initializeKeyboardShortcuts();
+  }
+
+  initializeKeyboardShortcuts() {
+    document.addEventListener('keydown', (e) => {
+      // Игнорировать если фокус на input
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      
+      const key = e.key.toLowerCase();
+      
+      switch(key) {
+        case ' ':
+        case 'k':
+          e.preventDefault();
+          document.getElementById('play-pause-btn')?.click();
+          break;
+        case 'p':
+          e.preventDefault();
+          window.playerCore?.prev();
+          break;
+        case 'n':
+          e.preventDefault();
+          window.playerCore?.next();
+          break;
+        case 'x':
+          e.preventDefault();
+          window.playerCore?.stop();
+          break;
+        case 'm':
+          e.preventDefault();
+          document.getElementById('mute-btn')?.click();
+          break;
+        case 'u':
+          e.preventDefault();
+          document.getElementById('shuffle-btn')?.click();
+          break;
+        case 'r':
+          e.preventDefault();
+          document.getElementById('repeat-btn')?.click();
+          break;
+        case 'y':
+          e.preventDefault();
+          window.PlayerUI?.toggleLyricsView();
+          break;
+        case 'a':
+          e.preventDefault();
+          window.PlayerUI?.toggleAnimation();
+          break;
+        case 'b':
+          e.preventDefault();
+          window.PlayerUI?.toggleBit();
+          break;
+        case 'f':
+          e.preventDefault();
+          document.getElementById('favorites-btn')?.click();
+          break;
+        case 't':
+          e.preventDefault();
+          document.getElementById('sleep-timer-btn')?.click();
+          break;
+      }
+    });
+
+    console.log('⌨️ Keyboard shortcuts initialized');
   }
 
   initializeFavoritesFilter() {
-    const filterBtn = document.getElementById('filter-favorites-btn');
-    if (!filterBtn) return;
 
     let favoritesOnly = false;
 
