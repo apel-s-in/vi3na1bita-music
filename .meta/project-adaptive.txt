@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-07bd7a5c8c367dd0b7eb7ba8485129b017751e75.idx
-│   │       ├── pack-07bd7a5c8c367dd0b7eb7ba8485129b017751e75.pack
-│   │       └── pack-07bd7a5c8c367dd0b7eb7ba8485129b017751e75.rev
+│   │       ├── pack-572f87fc455c12542e7154e6185ae8de049214f4.idx
+│   │       ├── pack-572f87fc455c12542e7154e6185ae8de049214f4.pack
+│   │       └── pack-572f87fc455c12542e7154e6185ae8de049214f4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -266,7 +266,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-06 20:41:02 UTC
+Сгенерировано: 2025-12-06 20:42:03 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1251,18 +1251,27 @@ class MusicApp {
   }
 
   async initPlayerCore() {
-    // Адаптер загружается автоматически через player-adapter.js
-    // Ждём готовности
+    // Ждём загрузки Howler.js
     return new Promise((resolve) => {
-      const check = () => {
-        if (window.playerCore) {
-          this.playerReady = true;
-          resolve();
-        } else {
-          setTimeout(check, 100);
+      const checkHowler = () => {
+        if (typeof Howler === 'undefined') {
+          setTimeout(checkHowler, 50);
+          return;
         }
+      
+        // Затем ждём PlayerCore
+        const checkCore = () => {
+          if (window.playerCore) {
+            this.playerReady = true;
+            console.log('✅ PlayerCore ready');
+            resolve();
+          } else {
+            setTimeout(checkCore, 100);
+          }
+        };
+        checkCore();
       };
-      check();
+      checkHowler();
     });
   }
 
