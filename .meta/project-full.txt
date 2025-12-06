@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1d5332403376f1c2b4f42caa413d84252b69f5fa.idx
-│   │       ├── pack-1d5332403376f1c2b4f42caa413d84252b69f5fa.pack
-│   │       └── pack-1d5332403376f1c2b4f42caa413d84252b69f5fa.rev
+│   │       ├── pack-83ff681ccd407dca4223b183720dfca8c38916c4.idx
+│   │       ├── pack-83ff681ccd407dca4223b183720dfca8c38916c4.pack
+│   │       └── pack-83ff681ccd407dca4223b183720dfca8c38916c4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -266,7 +266,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-06 20:55:30 UTC
+Сгенерировано: 2025-12-06 21:02:28 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3803,7 +3803,7 @@ import { PlayerCore } from './player/PlayerCore.js';
 //=================================================
 // FILE: /scripts/player/PlayerCore.js
 // scripts/player/PlayerCore.js
-// Ядро воспроизведения на Howler.js
+// Единственное ядро плеера на Howler.js - все остальные версии удалены
 
 export class PlayerCore {
   constructor() {
@@ -3818,8 +3818,12 @@ export class PlayerCore {
     this._albumArtist = '';
     this._albumTitle = '';
     this._albumCover = '';
+    
+    console.log('✅ PlayerCore initialized');
   }
 
+  // ========== ПУБЛИЧНЫЙ API ==========
+  
   setPlaylist(tracks, startIndex = 0, meta = {}) {
     this.stop();
     this.playlist = Array.isArray(tracks) ? tracks : [];
@@ -3828,58 +3832,92 @@ export class PlayerCore {
     this._albumTitle = meta.album || '';
     this._albumCover = meta.cover || '';
     this._syncShuffle(true);
+    
+    console.log(`📀 Playlist set: ${this.playlist.length} tracks`);
   }
 
   loadPlaylist(tracks, startIndex = 0, meta = {}) {
+    // Алиас для обратной совместимости
     this.setPlaylist(tracks, startIndex, meta);
   }
 
   on(eventName, callback) {
-    if (!this.events[eventName]) this.events[eventName] = [];
-    this.events[eventName].push(callback);
-  }
-
-  _fire(eventName, data) {
-    if (!this.events[eventName]) return;
-    this.events[eventName].forEach(cb => {
-      try { cb(data); } catch (e) { console.error('Event callback error:', e); }
-    });
+    if (typeof eventName === 'object') {
+      // Поддержка on({ onPlay: fn, onPause: fn })
+      Object.assign(this.events, eventName);
+    } else if (typeof callback === 'function') {
+      if (!this.events[eventName]) this.events[eventName] = [];
+      this.events[eventName].push(callback);
+    }
   }
 
   play(index) {
-    if (typeof index === 'number') this.index = Math.max(0, Math.min(this.playlist.length - 1, index));
-    if (!this.playlist.length) return;
+    if (typeof index === 'number') {
+      this.index = Math.max(0, Math.min(this.playlist.length - 1, index));
+    }
+    
+    if (!this.playlist.length) {
+      console.warn('⚠️ Playlist is empty');
+      return;
+    }
 
     const track = this.getCurrentTrack();
-    if (!track || !track.url) return;
+    if (!track || !track.url) {
+      console.error('❌ Invalid track:', track);
+      return;
+    }
 
     this.stop();
+
+    console.log(`▶️ Playing: ${track.title} (${this.index})`);
 
     this.howl = new Howl({
       src: [track.url],
       html5: true,
+      format: ['mp3'],
+      
+      onload: () => {
+        console.log('✅ Track loaded');
+      },
+      
       onplay: () => {
         this._isPaused = false;
         this._fire('play', { track, index: this.index });
+        this._fire('trackChanged', { track, index: this.index });
+        this._updateMediaSession();
       },
+      
       onpause: () => {
         this._isPaused = true;
         this._fire('pause', { track, index: this.index });
       },
+      
       onstop: () => {
         this._isPaused = true;
         this._fire('stop', { track, index: this.index });
       },
+      
       onend: () => {
+        console.log('⏭️ Track ended');
+        this._fire('end', { track, index: this.index });
+        
         if (this.repeat) {
           this.play();
         } else {
           this.next();
         }
       },
+      
       onloaderror: (id, err) => {
-        console.error('Load error:', err);
-        this._fire('error', { error: err });
+        console.error('❌ Load error:', err);
+        this._fire('error', { error: err, track });
+        // Пропускаем проблемный трек
+        setTimeout(() => this.next(), 500);
+      },
+      
+      onplayerror: (id, err) => {
+        console.error('❌ Play error:', err);
+        this._fire('error', { error: err, track });
       }
     });
 
@@ -3887,7 +3925,10 @@ export class PlayerCore {
   }
 
   pause() {
-    if (this.howl && !this._isPaused) this.howl.pause();
+    if (this.howl && !this._isPaused) {
+      this.howl.pause();
+      console.log('⏸️ Paused');
+    }
   }
 
   stop() {
@@ -3895,7 +3936,9 @@ export class PlayerCore {
       try {
         this.howl.stop();
         this.howl.unload();
-      } catch (e) {}
+      } catch (e) {
+        console.error('Stop error:', e);
+      }
       this.howl = null;
     }
     this._isPaused = true;
@@ -3906,6 +3949,10 @@ export class PlayerCore {
     if (nextIndex >= 0) {
       this.index = nextIndex;
       this.play();
+      console.log(`⏭️ Next track: ${nextIndex}`);
+    } else {
+      console.log('⏹️ End of playlist');
+      this.stop();
     }
   }
 
@@ -3914,35 +3961,40 @@ export class PlayerCore {
     if (prevIndex >= 0) {
       this.index = prevIndex;
       this.play();
+      console.log(`⏮️ Previous track: ${prevIndex}`);
     }
   }
 
-  _getNextIndex() {
-    if (!this.playlist.length) return -1;
-    return (this.index + 1) % this.playlist.length;
-  }
-
-  _getPrevIndex() {
-    if (!this.playlist.length) return -1;
-    return (this.index - 1 + this.playlist.length) % this.playlist.length;
+  playTrack(index) {
+    this.play(index);
   }
 
   seek(seconds) {
     if (!this.howl) return 0;
+    
     if (typeof seconds === 'number') {
       this.howl.seek(Math.max(0, seconds));
+      console.log(`⏩ Seek to: ${seconds}s`);
     }
+    
     return this.howl.seek() || 0;
   }
 
   setVolume(volume) {
     const vol = Math.max(0, Math.min(1, Number(volume)));
+    
     if (this.howl) {
       this.howl.volume(vol);
     }
+    
     if (typeof Howler !== 'undefined') {
       Howler.volume(vol);
     }
+    
+    // Сохраняем в localStorage
+    try {
+      localStorage.setItem('playerVolume', vol.toString());
+    } catch (e) {}
   }
 
   getVolume() {
@@ -3953,9 +4005,26 @@ export class PlayerCore {
 
   toggleMute() {
     if (!this.howl) return;
-    this.howl.mute(!this.howl._muted);
+    const isMuted = this.howl._muted;
+    this.howl.mute(!isMuted);
+    console.log(isMuted ? '🔊 Unmuted' : '🔇 Muted');
   }
 
+  setRepeat(value) {
+    this.repeat = !!value;
+    console.log(`🔁 Repeat: ${this.repeat}`);
+  }
+
+  setShuffle(value) {
+    this.shuffle = !!value;
+    if (this.shuffle) {
+      this._createShuffledPlaylist();
+    }
+    console.log(`🔀 Shuffle: ${this.shuffle}`);
+  }
+
+  // ========== ГЕТТЕРЫ ==========
+  
   isPlaying() {
     return !!this.howl && !this._isPaused;
   }
@@ -3981,34 +4050,91 @@ export class PlayerCore {
     return nextIndex >= 0 ? this.playlist[nextIndex] : null;
   }
 
-  setRepeat(value) {
-    this.repeat = !!value;
+  // ========== ВНУТРЕННИЕ МЕТОДЫ ==========
+  
+  _fire(eventName, data) {
+    if (!this.events[eventName]) return;
+    
+    const handlers = Array.isArray(this.events[eventName]) 
+      ? this.events[eventName] 
+      : [this.events[eventName]];
+    
+    handlers.forEach(callback => {
+      try {
+        callback(data);
+      } catch (e) {
+        console.error(`Event callback error (${eventName}):`, e);
+      }
+    });
   }
 
-  setShuffle(value) {
-    this.shuffle = !!value;
-    if (this.shuffle) {
-      this._createShuffledPlaylist();
+  _getNextIndex() {
+    if (!this.playlist.length) return -1;
+    
+    if (this.shuffle && this.shuffled.length) {
+      const currentPos = this.shuffled.indexOf(this.index);
+      const nextPos = (currentPos + 1) % this.shuffled.length;
+      return this.shuffled[nextPos];
     }
+    
+    return (this.index + 1) % this.playlist.length;
+  }
+
+  _getPrevIndex() {
+    if (!this.playlist.length) return -1;
+    
+    if (this.shuffle && this.shuffled.length) {
+      const currentPos = this.shuffled.indexOf(this.index);
+      const prevPos = (currentPos - 1 + this.shuffled.length) % this.shuffled.length;
+      return this.shuffled[prevPos];
+    }
+    
+    return (this.index - 1 + this.playlist.length) % this.playlist.length;
   }
 
   _createShuffledPlaylist() {
     const indices = this.playlist.map((_, i) => i);
+    
+    // Fisher-Yates shuffle
     for (let i = indices.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [indices[i], indices[j]] = [indices[j], indices[i]];
     }
+    
     this.shuffled = indices;
+    console.log('🔀 Shuffled playlist created');
   }
 
-  _syncShuffle(force) {
+  _syncShuffle(force = false) {
     if (this.shuffle) {
       this._createShuffledPlaylist();
     }
   }
 
-  playTrack(index) {
-    this.play(index);
+  _updateMediaSession() {
+    if (!('mediaSession' in navigator)) return;
+    
+    const track = this.getCurrentTrack();
+    if (!track) return;
+
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: track.title || 'Неизвестный трек',
+        artist: track.artist || this._albumArtist || 'Витрина Разбита',
+        album: track.album || this._albumTitle || 'Альбом',
+        artwork: [
+          {
+            src: track.cover || this._albumCover || 'icons/icon-512.png',
+            sizes: '512x512',
+            type: 'image/png'
+          }
+        ]
+      });
+
+      console.log('🎵 Media Session updated');
+    } catch (e) {
+      console.error('MediaSession error:', e);
+    }
   }
 }
 
