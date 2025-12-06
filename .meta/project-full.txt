@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8307df4136d19f943a19a853551d61607423b46f.idx
-│   │       ├── pack-8307df4136d19f943a19a853551d61607423b46f.pack
-│   │       └── pack-8307df4136d19f943a19a853551d61607423b46f.rev
+│   │       ├── pack-8ae7910032a41c9e6102b7535d5ab6ada1d1e63c.idx
+│   │       ├── pack-8ae7910032a41c9e6102b7535d5ab6ada1d1e63c.pack
+│   │       └── pack-8ae7910032a41c9e6102b7535d5ab6ada1d1e63c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -266,7 +266,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-06 21:04:27 UTC
+Сгенерировано: 2025-12-06 21:05:06 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -564,24 +564,21 @@ jobs:
   <meta name="apple-mobile-web-app-title" content="Витрина Разбита">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 
-  <!-- Preload -->
-  <link rel="preload" href="img/logo.png" as="image">
-
   <!-- Favicons -->
   <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
-  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 
+  <!-- Styles -->
   <link rel="stylesheet" href="styles/main.css">
   
-  <script src="./performance/rum.js" defer></script>
+  <!-- Howler.js (CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.core.min.js"></script>
   
-    <!-- Core modules -->
-    <script src="./scripts/core/bootstrap.js"></script>
-    <script src="./scripts/core/config.js" type="module"></script>
+  <!-- Core modules -->
+  <script src="./scripts/core/bootstrap.js"></script>
+  <script src="./scripts/core/config.js" type="module"></script>
   
-    <!-- Player Core (ОБЯЗАТЕЛЬНО ПОСЛЕ Howler.js) -->
-    <script src="./scripts/player/player-adapter.js" type="module"></script>
+  <!-- Player (PlayerCore + адаптер) -->
+  <script src="./scripts/player/player-adapter.js" type="module"></script>
   
   <!-- UI modules -->
   <script src="./scripts/ui/notify.js" defer></script>
@@ -593,67 +590,7 @@ jobs:
   <script src="./scripts/ui/sysinfo.js" defer></script>
   
   <!-- App modules -->
-  <script src="./scripts/app/background-audio.js" defer></script>
-  <script src="./scripts/app/background-events.js" defer></script>
-  <script src="./scripts/app/player-controls.js" defer></script>
-  <script src="./scripts/app/albums.js" type="module"></script>
-  <script src="./scripts/app/navigation.js" type="module"></script>
-  <script src="./scripts/app/downloads.js" type="module"></script>
-  
-  <!-- Main app -->
-  <script src="./scripts/app.js" type="module"></script>
-</head>
-<body>
-  <!-- Promocode -->
-  <div id="promocode-block">
-    <div class="promo-inner">
-      <img class="promo-cover" id="promo-cover" src="img/logo.png" alt="Обложка" draggable="false"/>
-      <h2>Вход по промокоду</h2>
-      <input id="promo-inp" type="text" placeholder="Введите промокод" autocomplete="off" autofocus />
-      <button id="promo-btn">Войти</button>
-      <div id="promo-error"></div>
-    </div>
-  </div>
-
-  <!-- Main app -->
-  <div id="main-block" class="hidden">
-    <header>
-      <div id="active-album-title" class="active-album-title">—</div>
-      <div id="album-icons" class="album-icons" aria-label="Альбомы"></div>
-      
-      <div id="cover-wrap">
-        <button class="cover-gallery-arrow" id="cover-gallery-arrow-left" title="Назад" aria-label="Предыдущая обложка">
-          <svg width="34" height="34" viewBox="0 0 34 34"><circle cx="17" cy="17" r="16" fill="#23252e" opacity="0.65"/><polyline points="20,10 13,17 20,24" fill="none" stroke="#fff" stroke-width="2.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-        <div id="cover-slot" aria-label="Обложка альбома"></div>
-        <button class="cover-gallery-arrow" id="cover-gallery-arrow-right" title="Вперёд" aria-label="Следующая обложка">
-          <svg width="34" height="34" viewBox="0 0 34 34"><circle cx="17" cy="17" r="16" fill="#23252e" opacity="0.65"/><polyline points="14,10 21,17 14,24" fill="none" stroke="#fff" stroke-width="2.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-      </div>
-
-      <div id="social-links" class="socials-under-cover"></div>
-    </header>
-
-    <div id="now-playing"></div>
-    <div class="track-list" id="track-list"></div>
-
-    <div class="bottom-controls-center">
-      <button class="filter-favorites-btn" id="filter-favorites-btn">Скрыть не отмеченные ⭐ песни</button>
-      <img class="logo-bottom" id="logo-bottom" src="img/logo.png" alt="Логотип"/>
-      <button id="install-pwa-btn" style="display: none;">УСТАНОВИТЬ КАК ПРИЛОЖЕНИЕ</button>
-      <button id="download-album-main">СКАЧАТЬ ВЕСЬ АЛЬБОМ</button>
-      <button class="hotkeys-btn" id="hotkeys-btn" style="display:none;">ГОРЯЧИЕ КЛАВИШИ</button>
-      <button class="hotkeys-btn" id="sysinfo-btn" style="display:none;">О СИСТЕМЕ</button>
-      <span class="feedback-link" id="feedback-link">ОБРАТНАЯ СВЯЗЬ</span>
-      <a class="support-link" id="support-link" href="#" target="_blank">ПОДДЕРЖАТЬ</a>
-      <button class="offline-btn online" id="offline-btn">ONLINE</button>
-    </div>
-  </div>
-
-  <!-- Modals container -->
-  <div id="modals-container"></div>
-</body>
-</html>
+  <script src="./scripts/app/background-
 
 //=================================================
 // FILE: /manifest.json
