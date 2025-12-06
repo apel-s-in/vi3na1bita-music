@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <title>Витрина Разбита</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="description" content="Официальные альбомы группы Витрина Разбита. Слушайте онлайн и офлайн.">
+  <meta name="description" content="Официальные альбомы группы Витрина Разбита">
 
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
@@ -16,50 +16,50 @@
   <meta name="apple-mobile-web-app-title" content="Витрина Разбита">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 
-  <!-- Favicons -->
-  <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
-
   <!-- Styles -->
   <link rel="stylesheet" href="styles/main.css">
   
-  <!-- Howler.js (CDN) -->
+  <!-- ⭐ 1. Howler.js (CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.core.min.js"></script>
   
-  <!-- Core modules -->
+  <!-- ⭐ 2. Bootstrap (СИНХРОННО, загружает albums.json) -->
   <script src="./scripts/core/bootstrap.js"></script>
+  
+  <!-- ⭐ 3. Config -->
   <script src="./scripts/core/config.js" type="module"></script>
   
-  <!-- Player (PlayerCore + адаптер) -->
+  <!-- ⭐ 4. Player Core -->
   <script src="./scripts/player/player-adapter.js" type="module"></script>
   
-  <!-- UI modules -->
+  <!-- ⭐ 5. UI modules (defer) -->
   <script src="./scripts/ui/notify.js" defer></script>
-  <script src="./scripts/ui/favorites-const.js"></script>
-  <script src="./scripts/ui/favorites-storage.js"></script>
+  <script src="./scripts/ui/favorites-const.js" defer></script>
+  <script src="./scripts/ui/favorites-storage.js" defer></script>
   <script src="./scripts/ui/favorites-data.js" defer></script>
   <script src="./scripts/ui/favorites.js" defer></script>
   <script src="./scripts/ui/mini.js" defer></script>
   <script src="./scripts/ui/sysinfo.js" defer></script>
   
-  <!-- App modules -->
+  <!-- ⭐ 6. App modules (defer, правильный порядок) -->
   <script src="./scripts/app/background-audio.js" defer></script>
   <script src="./scripts/app/background-events.js" defer></script>
+  
+  <!-- ⭐ 7. Player Controls (ПЕРЕД albums.js!) -->
   <script src="./scripts/app/player-controls.js" defer></script>
+  
+  <!-- ⭐ 8. Albums, Navigation, Downloads -->
   <script src="./scripts/app/albums.js" type="module"></script>
   <script src="./scripts/app/navigation.js" type="module"></script>
   <script src="./scripts/app/downloads.js" type="module"></script>
   
-  <!-- Main app -->
+  <!-- ⭐ 9. Main app (ПОСЛЕДНИЙ!) -->
   <script src="./scripts/app.js" type="module"></script>
-  
-  <!-- Performance monitoring (опционально) -->
-  <script src="./performance/rum.js" defer></script>
 </head>
 <body>
   <!-- Promocode screen -->
   <div id="promocode-block">
     <div class="promo-inner">
-      <img class="promo-cover" id="promo-cover" src="img/logo.png" alt="Обложка" draggable="false"/>
+      <img class="promo-cover" src="img/logo.png" alt="Обложка" draggable="false"/>
       <h2>Вход по промокоду</h2>
       <input id="promo-inp" type="text" placeholder="Введите промокод" autocomplete="off" autofocus />
       <button id="promo-btn">Войти</button>
@@ -71,11 +71,10 @@
   <div id="main-block" class="hidden">
     <header>
       <div id="active-album-title" class="active-album-title">—</div>
-      <div id="album-icons" class="album-icons" aria-label="Альбомы"></div>
+      <div id="album-icons" class="album-icons"></div>
       
       <div id="cover-wrap">
-        <button class="cover-gallery-arrow" id="cover-gallery-arrow-left" 
-                title="Назад" aria-label="Предыдущая обложка">
+        <button class="cover-gallery-arrow" id="cover-gallery-arrow-left">
           <svg width="34" height="34" viewBox="0 0 34 34">
             <circle cx="17" cy="17" r="16" fill="#23252e" opacity="0.65"/>
             <polyline points="20,10 13,17 20,24" fill="none" stroke="#fff" 
@@ -83,10 +82,9 @@
           </svg>
         </button>
         
-        <div id="cover-slot" aria-label="Обложка альбома"></div>
+        <div id="cover-slot"></div>
         
-        <button class="cover-gallery-arrow" id="cover-gallery-arrow-right" 
-                title="Вперёд" aria-label="Следующая обложка">
+        <button class="cover-gallery-arrow" id="cover-gallery-arrow-right">
           <svg width="34" height="34" viewBox="0 0 34 34">
             <circle cx="17" cy="17" r="16" fill="#23252e" opacity="0.65"/>
             <polyline points="14,10 21,17 14,24" fill="none" stroke="#fff" 
@@ -98,7 +96,9 @@
       <div id="social-links" class="socials-under-cover"></div>
     </header>
 
+    <!-- ⭐ Player UI будет создан здесь -->
     <div id="now-playing"></div>
+    
     <div class="track-list" id="track-list"></div>
 
     <div class="bottom-controls-center">
@@ -106,7 +106,7 @@
         Скрыть не отмеченные ⭐ песни
       </button>
       
-      <img class="logo-bottom" id="logo-bottom" src="img/logo.png" alt="Логотип"/>
+      <img class="logo-bottom" src="img/logo.png" alt="Логотип"/>
       
       <button id="install-pwa-btn" style="display: none;">
         УСТАНОВИТЬ КАК ПРИЛОЖЕНИЕ
@@ -130,7 +130,7 @@
     </div>
   </div>
 
-  <!-- Modals container -->
+  <!-- Modals -->
   <div id="modals-container"></div>
 </body>
 </html>
