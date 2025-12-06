@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4cc4d21b55ed5b806d176b2b919f9b43c007bd70.idx
-│   │       ├── pack-4cc4d21b55ed5b806d176b2b919f9b43c007bd70.pack
-│   │       └── pack-4cc4d21b55ed5b806d176b2b919f9b43c007bd70.rev
+│   │       ├── pack-626870e3de2060a210e6df19b1f5832cfe517b5a.idx
+│   │       ├── pack-626870e3de2060a210e6df19b1f5832cfe517b5a.pack
+│   │       └── pack-626870e3de2060a210e6df19b1f5832cfe517b5a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -266,7 +266,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-06 23:54:15 UTC
+Сгенерировано: 2025-12-06 23:55:23 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1090,7 +1090,7 @@ import { APP_CONFIG } from './core/config.js';
 import AlbumsManager from './app/albums.js';
 import NavigationManager from './app/navigation.js';
 import DownloadsManager from './app/downloads.js';
-import FavoritesManager from '../ui/favorites.js';
+// FavoritesManager загружается через обычный скрипт, не через ESM
 
 class App {
   constructor() {
