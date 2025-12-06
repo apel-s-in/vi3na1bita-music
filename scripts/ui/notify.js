@@ -1,96 +1,146 @@
 // scripts/ui/notify.js
-// Единый модуль уведомлений (тосты) с очередью показа.
-// Глобальный API: window.NotificationSystem.{show,info,success,warning,error,offline}
+// Централизованная система уведомлений
 
-(function initNotificationSystem() {
-  if (window.NotificationSystem && window.NotificationSystem.__unified) return;
+(function() {
+  'use strict';
 
-  const queue = [];
-  let isShowing = false;
-
-  const TYPE_DEFAULT_DURATION = {
-    info: 3000,
-    success: 3000,
-    warning: 4000,
-    error: 5000,
-    offline: 3000
-  };
-
-  const EMOJI = {
-    info: 'ℹ️',
-    success: '✅',
-    error: '❌',
-    warning: '⚠️',
-    offline: '🌐'
-  };
-
-  function toNumber(n, fallback) {
-    const x = Number(n);
-    return Number.isFinite(x) && x > 0 ? x : fallback;
-  }
-
-  function normalizeShowArgs(message, type, duration) {
-    // Поддержка вызова show(options)
-    if (typeof message === 'object' && message !== null) {
-      const o = message;
-      const t = String(o.type || 'info');
-      const d = toNumber(o.duration, TYPE_DEFAULT_DURATION[t] || 3000);
-      return { message: String(o.message || ''), type: t, duration: d };
+  class NotificationSystem {
+    constructor() {
+      this.container = null;
+      this.queue = [];
+      this.isShowing = false;
+      this.currentToast = null;
+      this.init();
     }
-    const t = String(type || 'info');
-    const d = toNumber(duration, TYPE_DEFAULT_DURATION[t] || 3000);
-    return { message: String(message || ''), type: t, duration: d };
-  }
 
-  async function processQueue() {
-    if (isShowing) return;
-    isShowing = true;
+    init() {
+      // Создать контейнер для toast'ов если его нет
+      if (!this.container) {
+        this.container = document.createElement('div');
+        this.container.id = 'toast-container';
+        this.container.style.cssText = `
+          position: fixed;
+          bottom: 80px;
+          left: 50%;
+          transform: translateX(-50%);
+          z-index: 10000;
+          pointer-events: none;
+        `;
+        document.body.appendChild(this.container);
+      }
+    }
 
-    while (queue.length > 0) {
-      const { message, type, duration } = queue.shift();
+    show(message, type = 'info', duration = 3000) {
+      const toast = {
+        message,
+        type,
+        duration,
+        id: Date.now() + Math.random()
+      };
 
-      const toast = document.createElement('div');
-      toast.className = `toast toast-${type}`;
-      toast.innerHTML = `
+      this.queue.push(toast);
+      this.processQueue();
+    }
+
+    processQueue() {
+      if (this.isShowing || this.queue.length === 0) return;
+
+      this.isShowing = true;
+      const toast = this.queue.shift();
+      this.displayToast(toast);
+    }
+
+    displayToast(toast) {
+      const toastEl = document.createElement('div');
+      toastEl.className = `toast toast-${toast.type}`;
+      
+      const emoji = this.getEmoji(toast.type);
+      
+      toastEl.innerHTML = `
         <div class="toast-content">
-          <span class="toast-emoji" aria-hidden="true">${EMOJI[type] || ''}</span>
-          <span class="toast-text">${message}</span>
+          <span class="toast-emoji">${emoji}</span>
+          <span class="toast-message">${this.escapeHtml(toast.message)}</span>
         </div>
       `;
 
-      document.body.appendChild(toast);
-      // Плавное появление
-      await new Promise(r => setTimeout(r, 10));
-      toast.classList.add('show');
+      this.container.appendChild(toastEl);
+      this.currentToast = toastEl;
 
-      // Ожидание видимости
-      await new Promise(r => setTimeout(r, duration));
+      // Анимация появления
+      requestAnimationFrame(() => {
+        toastEl.classList.add('show');
+      });
 
-      // Скрытие и удаление
-      toast.classList.remove('show');
-      await new Promise(r => setTimeout(r, 300));
-      try { toast.remove(); } catch {}
+      // Автоматическое скрытие
+      setTimeout(() => {
+        this.hideToast(toastEl);
+      }, toast.duration);
     }
 
-    isShowing = false;
+    hideToast(toastEl) {
+      if (!toastEl) return;
+
+      toastEl.classList.remove('show');
+
+      setTimeout(() => {
+        if (toastEl.parentNode) {
+          toastEl.parentNode.removeChild(toastEl);
+        }
+        
+        this.isShowing = false;
+        this.currentToast = null;
+        this.processQueue();
+      }, 300);
+    }
+
+    getEmoji(type) {
+      const emojis = {
+        info: 'ℹ️',
+        success: '✅',
+        error: '❌',
+        warning: '⚠️',
+        offline: '📴'
+      };
+      return emojis[type] || 'ℹ️';
+    }
+
+    escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Публичные методы
+    info(message, duration) {
+      this.show(message, 'info', duration);
+    }
+
+    success(message, duration) {
+      this.show(message, 'success', duration);
+    }
+
+    error(message, duration) {
+      this.show(message, 'error', duration || 4000);
+    }
+
+    warning(message, duration) {
+      this.show(message, 'warning', duration);
+    }
+
+    offline(message, duration) {
+      this.show(message, 'offline', duration);
+    }
+
+    clear() {
+      this.queue = [];
+      if (this.currentToast) {
+        this.hideToast(this.currentToast);
+      }
+    }
   }
 
-  function enqueueShow(message, type = 'info', duration) {
-    const { message: msg, type: t, duration: dur } = normalizeShowArgs(message, type, duration);
-    queue.push({ message: msg, type: t, duration: dur });
-    if (!isShowing) processQueue().catch(() => { isShowing = false; });
-  }
+  // Глобальный экземпляр
+  window.NotificationSystem = new NotificationSystem();
 
-  const NotificationSystem = {
-    __unified: true,
-    show: enqueueShow,
-    info(msg, duration)    { enqueueShow(msg, 'info', duration); },
-    success(msg, duration) { enqueueShow(msg, 'success', duration); },
-    warning(msg, duration) { enqueueShow(msg, 'warning', duration); },
-    error(msg, duration)   { enqueueShow(msg, 'error', duration); },
-    offline(msg, duration) { enqueueShow(msg, 'offline', duration); }
-  };
-
-  window.NotificationSystem = NotificationSystem;
+  console.log('✅ Notification system initialized');
 })();
-
