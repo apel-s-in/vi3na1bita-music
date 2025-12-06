@@ -71,7 +71,7 @@ class NavigationManager {
       });
 
       navigator.mediaSession.setActionHandler('previoustrack', () => {
-        window.playerCore?.previous();
+        window.playerCore?.prev();
       });
 
       navigator.mediaSession.setActionHandler('nexttrack', () => {
