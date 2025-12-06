@@ -113,11 +113,11 @@ class AlbumsManager {
 
     // Загрузить треки в плеер
     if (window.playerCore) {
-      const tracks = albumData.tracks.map(t => ({
+      const tracks = albumData.tracks.map((t, idx) => ({
         title: t.title,
         url: `${albumInfo.base}${t.file}`,
         album: albumKey,
-        trackNumber: t.num
+        trackNumber: idx  // ✅ Индекс в плейлисте
       }));
       
       window.playerCore.loadPlaylist(tracks);
@@ -162,7 +162,8 @@ class AlbumsManager {
             ...track,
             album: albumKey,
             albumTitle: albumInfo.title,
-            albumBase: albumInfo.base
+            albumBase: albumInfo.base,
+            originalTrackNum: num  // ✅ Сохраняем оригинальный номер для UI
           });
         }
       });
@@ -179,13 +180,15 @@ class AlbumsManager {
     this.renderFavoritesCover();
     this.renderFavoritesTrackList(allTracks);
 
-    // Загрузить в плеер
+    // ✅ КРИТИЧНО: Загрузить в плеер с правильными индексами
     if (window.playerCore) {
-      const tracks = allTracks.map(t => ({
+      const tracks = allTracks.map((t, idx) => ({
         title: t.title,
         url: `${t.albumBase}${t.file}`,
         album: t.album,
-        trackNumber: t.num
+        trackNumber: idx,  // ✅ Индекс в плейлисте избранного (0, 1, 2...)
+        originalAlbum: t.album,
+        originalTrackNum: t.originalTrackNum  // ✅ Для звездочки в UI
       }));
       
       window.playerCore.loadPlaylist(tracks);
@@ -280,23 +283,32 @@ class AlbumsManager {
     container.innerHTML = '';
 
     tracks.forEach((track, index) => {
-      const trackEl = this.createTrackElement(track, track.album, index, track.albumTitle);
+      // ✅ Передаём originalTrackNum для звездочки, но index для воспроизведения
+      const trackEl = this.createTrackElement(
+        track, 
+        track.album, 
+        index, 
+        track.albumTitle,
+        track.originalTrackNum  // ✅ Для проверки isFavorite
+      );
       container.appendChild(trackEl);
     });
   }
 
-  createTrackElement(track, albumKey, index, albumTitle = null) {
+  createTrackElement(track, albumKey, index, albumTitle = null, originalTrackNum = null) {
     const trackEl = document.createElement('div');
     trackEl.className = 'track';
     trackEl.dataset.index = index;
     trackEl.dataset.album = albumKey;
 
-    const isFavorite = window.FavoritesManager?.isFavorite(albumKey, track.num) || false;
+    // ✅ Для избранного используем originalTrackNum, иначе track.num
+    const trackNumForFavorites = originalTrackNum !== null ? originalTrackNum : track.num;
+    const isFavorite = window.FavoritesManager?.isFavorite(albumKey, trackNumForFavorites) || false;
 
     trackEl.innerHTML = `
-      <div class="tnum">${track.num}</div>
+      <div class="tnum">${track.num || index + 1}</div>
       <div class="track-title">${track.title}${albumTitle ? ` <span style="color: #666;">(${albumTitle})</span>` : ''}</div>
-      <button class="like-star" data-album="${albumKey}" data-num="${track.num}" aria-label="Избранное">
+      <button class="like-star" data-album="${albumKey}" data-num="${trackNumForFavorites}" aria-label="Избранное">
         ${isFavorite ? '⭐' : '☆'}
       </button>
     `;
@@ -306,7 +318,7 @@ class AlbumsManager {
       if (e.target.classList.contains('like-star')) return; // Игнорировать клик по звездочке
       
       if (window.playerCore) {
-        window.playerCore.playTrack(index);
+        window.playerCore.playTrack(index);  // ✅ Играем по индексу в текущем плейлисте
       }
     });
 
@@ -314,7 +326,7 @@ class AlbumsManager {
     const star = trackEl.querySelector('.like-star');
     star?.addEventListener('click', (e) => {
       e.stopPropagation();
-      this.toggleFavorite(albumKey, track.num, star);
+      this.toggleFavorite(albumKey, trackNumForFavorites, star);
     });
 
     return trackEl;
@@ -382,4 +394,3 @@ class AlbumsManager {
 window.AlbumsManager = new AlbumsManager();
 
 export default AlbumsManager;
-
