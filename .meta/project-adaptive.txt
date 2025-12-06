@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ea64094f71afaa4151e6a1f706518718b7db62ec.idx
-│   │       ├── pack-ea64094f71afaa4151e6a1f706518718b7db62ec.pack
-│   │       └── pack-ea64094f71afaa4151e6a1f706518718b7db62ec.rev
+│   │       ├── pack-dc9e3ae01561c06464c02877dcec423732c59624.idx
+│   │       ├── pack-dc9e3ae01561c06464c02877dcec423732c59624.pack
+│   │       └── pack-dc9e3ae01561c06464c02877dcec423732c59624.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -265,7 +265,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-06 23:09:21 UTC
+Сгенерировано: 2025-12-06 23:32:49 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1321,6 +1321,12 @@ self.addEventListener('fetch', (event) => {
   
   if (!url.protocol.startsWith('http')) return;
   
+  // Обработка Range-запросов для аудио
+  if (request.headers.has('range') && url.pathname.endsWith('.mp3')) {
+    event.respondWith(handleRangeRequest(request));
+    return;
+  }
+  
   if (url.hostname === 'cdn.jsdelivr.net') {
     event.respondWith(fetch(request));
     return;
@@ -1333,6 +1339,42 @@ self.addEventListener('fetch', (event) => {
   
   event.respondWith(cacheFirst(request));
 });
+
+// Обработка Range-запросов
+async function handleRangeRequest(request) {
+  try {
+    const cache = await caches.open(MEDIA_CACHE);
+    const cached = await cache.match(request);
+    
+    if (cached) {
+      const rangeHeader = request.headers.get('range');
+      if (rangeHeader) {
+        const parts = rangeHeader.replace(/bytes=/, '').split('-');
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : undefined;
+        
+        const blob = await cached.blob();
+        const slicedBlob = blob.slice(start, end ? end + 1 : blob.size);
+        
+        const responseHeaders = new Headers(cached.headers);
+        responseHeaders.set('Content-Range', `bytes ${start}-${end || (blob.size - 1)}/${blob.size}`);
+        responseHeaders.set('Accept-Ranges', 'bytes');
+        responseHeaders.set('Content-Length', slicedBlob.size);
+        
+        return new Response(slicedBlob, {
+          status: 206,
+          statusText: 'Partial Content',
+          headers: responseHeaders
+        });
+      }
+    }
+    
+    return cached;
+  } catch (error) {
+    console.error('Range request failed:', error);
+    return fetch(request);
+  }
+}
 
 async function cacheFirst(request) {
   try {
@@ -1418,6 +1460,11 @@ self.addEventListener('message', (event) => {
   
   if (event.data?.type === 'GET_SW_VERSION') {
     event.ports[0]?.postMessage({ version: SW_VERSION });
+  }
+  
+  if (event.data?.type === 'REQUEST_OFFLINE_STATE') {
+    const offline = !navigator.onLine;
+    event.ports[0]?.postMessage({ type: 'OFFLINE_STATE', value: offline });
   }
 });
 
