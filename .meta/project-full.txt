@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-78330cd52cfd4a1e1335fa74c098cb74a342c883.idx
-│   │       ├── pack-78330cd52cfd4a1e1335fa74c098cb74a342c883.pack
-│   │       └── pack-78330cd52cfd4a1e1335fa74c098cb74a342c883.rev
+│   │       ├── pack-485f48b59a8da4a7040578dc9f2bfd545e37f3ff.idx
+│   │       ├── pack-485f48b59a8da4a7040578dc9f2bfd545e37f3ff.pack
+│   │       └── pack-485f48b59a8da4a7040578dc9f2bfd545e37f3ff.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -265,7 +265,7 @@ vi3na1bita-music/
 └── sw.js
 
 
-Сгенерировано: 2025-12-06 21:43:31 UTC
+Сгенерировано: 2025-12-06 21:56:30 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3531,7 +3531,7 @@ test('SW update flow persists state and restores after reload', async ({ page })
 // scripts/player/player-adapter.js
 // ⭐ ИСПРАВЛЕНО: корректный относительный путь
 
-import { PlayerCore } from '../src/PlayerCore.js';  // ✅ ПРАВИЛЬНО!
+import { PlayerCore } from '../../src/PlayerCore.js';
 
 (function initPlayerAdapter() {
   if (window.playerCore) {
