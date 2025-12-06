@@ -23,7 +23,6 @@ const PRECACHE_ASSETS = [
   '/scripts/core/config.js',
   
   // Player
-  '/scripts/player/PlayerCore.js',
   '/scripts/player/player-adapter.js',
   
   // UI
