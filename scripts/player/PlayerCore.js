@@ -23,8 +23,13 @@ export class PlayerCore {
     this._albumArtist = meta.artist || '';
     this._albumTitle = meta.album || '';
     this._albumCover = meta.cover || '';
-    this._fire('trackChanged', { track: this.getCurrentTrack(), index: this.index });
+    this._syncShuffle(true);
   }
+
+// Добавить метод loadPlaylist для обратной совместимости
+loadPlaylist(tracks, startIndex = 0, meta = {}) {
+  this.setPlaylist(tracks, startIndex, meta);
+}
 
   on(eventName, callback) {
     if (!this.events[eventName]) this.events[eventName] = [];
