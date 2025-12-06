@@ -483,7 +483,7 @@
 
     // Пересобираем playable‑плейлист и карту соответствия МОДЕЛЬ → PLAYABLE
     const playable = [];
-    const modelToPlayableMap = new Map<number, number>();
+    const modelToPlayableMap = new Map();
 
     model.forEach((it, i) => {
       if (it && it.__active && it.audio) {
