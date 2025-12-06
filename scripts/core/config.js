@@ -12,7 +12,9 @@ export const APP_CONFIG = {
   ICON_ALBUMS_ORDER: [
     { key: '__favorites__', title: 'Избранное', icon: 'img/icon_album/icon-album-00.png' },
     { key: '__reliz__', title: 'Новости', icon: 'img/icon_album/icon-album-news.png' },
-    { key: 'vr_01', title: 'Альбом 1', icon: 'img/icon_album/icon-album-01.png' },
+    { key: 'mezhdu-zlom-i-dobrom', title: 'Между Злом и Добром', icon: 'img/icon_album/icon-album-01.png' },
+    { key: 'golos-dushi', title: 'Голос Души', icon: 'img/icon_album/icon-album-02.png' },
+    { key: 'krevetochka', title: 'КРЕВЕцTOCHKA', icon: 'img/icon_album/icon-album+00.png' }
     { key: 'vr_02', title: 'Альбом 2', icon: 'img/icon_album/icon-album-02.png' },
     { key: 'vr_03', title: 'Альбом 3', icon: 'img/icon_album/icon-album-03.png' },
     { key: 'vr_04', title: 'Альбом 4', icon: 'img/icon_album/icon-album-04.png' },
