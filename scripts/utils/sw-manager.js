@@ -14,8 +14,8 @@ class ServiceWorkerManager {
     }
 
     try {
-      this.registration = await navigator.serviceWorker.register('/service-worker.js', {
-        scope: '/'
+      this.registration = await navigator.serviceWorker.register('./service-worker.js', {
+        scope: './'
       });
 
       console.log('✅ Service Worker registered:', this.registration.scope);
