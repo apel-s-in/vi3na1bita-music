@@ -42,4 +42,95 @@
   <script src="./scripts/ui/sysinfo.js" defer></script>
   
   <!-- App modules -->
-  <script src="./scripts/app/background-
+  <script src="./scripts/app/background-audio.js" defer></script>
+  <script src="./scripts/app/background-events.js" defer></script>
+  <script src="./scripts/app/player-controls.js" defer></script>
+  <script src="./scripts/app/albums.js" type="module"></script>
+  <script src="./scripts/app/navigation.js" type="module"></script>
+  <script src="./scripts/app/downloads.js" type="module"></script>
+  
+  <!-- Main app -->
+  <script src="./scripts/app.js" type="module"></script>
+  
+  <!-- Performance monitoring (опционально) -->
+  <script src="./performance/rum.js" defer></script>
+</head>
+<body>
+  <!-- Promocode screen -->
+  <div id="promocode-block">
+    <div class="promo-inner">
+      <img class="promo-cover" id="promo-cover" src="img/logo.png" alt="Обложка" draggable="false"/>
+      <h2>Вход по промокоду</h2>
+      <input id="promo-inp" type="text" placeholder="Введите промокод" autocomplete="off" autofocus />
+      <button id="promo-btn">Войти</button>
+      <div id="promo-error"></div>
+    </div>
+  </div>
+
+  <!-- Main application -->
+  <div id="main-block" class="hidden">
+    <header>
+      <div id="active-album-title" class="active-album-title">—</div>
+      <div id="album-icons" class="album-icons" aria-label="Альбомы"></div>
+      
+      <div id="cover-wrap">
+        <button class="cover-gallery-arrow" id="cover-gallery-arrow-left" 
+                title="Назад" aria-label="Предыдущая обложка">
+          <svg width="34" height="34" viewBox="0 0 34 34">
+            <circle cx="17" cy="17" r="16" fill="#23252e" opacity="0.65"/>
+            <polyline points="20,10 13,17 20,24" fill="none" stroke="#fff" 
+                      stroke-width="2.9" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        
+        <div id="cover-slot" aria-label="Обложка альбома"></div>
+        
+        <button class="cover-gallery-arrow" id="cover-gallery-arrow-right" 
+                title="Вперёд" aria-label="Следующая обложка">
+          <svg width="34" height="34" viewBox="0 0 34 34">
+            <circle cx="17" cy="17" r="16" fill="#23252e" opacity="0.65"/>
+            <polyline points="14,10 21,17 14,24" fill="none" stroke="#fff" 
+                      stroke-width="2.9" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <div id="social-links" class="socials-under-cover"></div>
+    </header>
+
+    <div id="now-playing"></div>
+    <div class="track-list" id="track-list"></div>
+
+    <div class="bottom-controls-center">
+      <button class="filter-favorites-btn" id="filter-favorites-btn">
+        Скрыть не отмеченные ⭐ песни
+      </button>
+      
+      <img class="logo-bottom" id="logo-bottom" src="img/logo.png" alt="Логотип"/>
+      
+      <button id="install-pwa-btn" style="display: none;">
+        УСТАНОВИТЬ КАК ПРИЛОЖЕНИЕ
+      </button>
+      
+      <button id="download-album-main">
+        СКАЧАТЬ ВЕСЬ АЛЬБОМ
+      </button>
+      
+      <button class="hotkeys-btn" id="sysinfo-btn" style="display:none;">
+        О СИСТЕМЕ
+      </button>
+      
+      <span class="feedback-link" id="feedback-link">ОБРАТНАЯ СВЯЗЬ</span>
+      
+      <a class="support-link" id="support-link" href="#" target="_blank">
+        ПОДДЕРЖАТЬ
+      </a>
+      
+      <button class="offline-btn online" id="offline-btn">ONLINE</button>
+    </div>
+  </div>
+
+  <!-- Modals container -->
+  <div id="modals-container"></div>
+</body>
+</html>
