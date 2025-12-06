@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-0525db01afcdbce5d7b0c9123291d590a4798b4b.idx
-│   │       ├── pack-0525db01afcdbce5d7b0c9123291d590a4798b4b.pack
-│   │       └── pack-0525db01afcdbce5d7b0c9123291d590a4798b4b.rev
+│   │       ├── pack-f96e5702beeed7ce7d1e0fc7b19b7eb158a776cb.idx
+│   │       ├── pack-f96e5702beeed7ce7d1e0fc7b19b7eb158a776cb.pack
+│   │       └── pack-f96e5702beeed7ce7d1e0fc7b19b7eb158a776cb.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -258,7 +258,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-06 19:43:42 UTC
+Сгенерировано: 2025-12-06 19:44:34 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8436,20 +8436,30 @@ function getLikedForAlbum(albumKey) {
     const raw = localStorage.getItem(__LIKED_KEY);
     const map = raw ? JSON.parse(raw) : {};
     const arr = (map && typeof map === 'object') ? map[albumKey] : [];
-    return Array.isArray(arr) ? arr : [];
+    // Нормализуем к числам и убираем дубликаты
+    return Array.from(new Set((Array.isArray(arr) ? arr : [])
+      .map(n => parseInt(n, 10))
+      .filter(Number.isFinite)));
   } catch {
     return [];
   }
 }
 
 function toggleLikeForAlbum(albumKey, idx, makeLiked) {
+  const index = parseInt(idx, 10);
+  if (!Number.isFinite(index)) return;
   const map = getLikedMap();
-  const arr = Array.isArray(map[albumKey]) ? map[albumKey] : [];
-  const has = arr.includes(idx);
+  const arrRaw = Array.isArray(map[albumKey]) ? map[albumKey] : [];
+  const arr = Array.from(new Set(arrRaw
+    .map(n => parseInt(n, 10))
+    .filter(Number.isFinite)));
+  const has = arr.includes(index);
+
   let next = arr.slice();
-  if (makeLiked && !has) next.push(idx);
-  if (!makeLiked && has) next = next.filter(x => x !== idx);
-  map[albumKey] = Array.from(new Set(next));
+  if (makeLiked && !has) next.push(index);
+  if (!makeLiked && has) next = next.filter(x => x !== index);
+
+  map[albumKey] = next;
   try { localStorage.setItem(__LIKED_KEY, JSON.stringify(map)); } catch {}
 }
 
