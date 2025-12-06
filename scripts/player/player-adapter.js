@@ -1,85 +1,141 @@
 // scripts/player/player-adapter.js
-// ⭐ ИСПРАВЛЕНО: корректный относительный путь
-
+// Адаптер для PlayerCore
 import { PlayerCore } from '../../src/PlayerCore.js';
 
-(function initPlayerAdapter() {
-  if (window.playerCore) {
-    console.warn('⚠️ PlayerCore already exists');
-    return;
+class PlayerAdapter {
+  constructor() {
+    this.player = null;
+    this.initialized = false;
+    this.init();
   }
 
-  console.log('🎵 Initializing PlayerCore adapter...');
+  init() {
+    if (this.initialized || window.playerCore) return;
+    
+    console.log('🎵 Initializing PlayerCore adapter...');
+    
+    // Создаем экземпляр PlayerCore
+    this.player = new PlayerCore({
+      events: {
+        onTrackChange: (track, index) => this.handleTrackChange(track, index),
+        onPlay: (track, index) => this.handlePlay(track, index),
+        onPause: (track, index) => this.handlePause(track, index),
+        onStop: (track, index) => this.handleStop(track, index),
+        onEnd: (track, index) => this.handleEnd(track, index),
+        onTick: (position, duration) => this.handleTick(position, duration),
+        onSleepTriggered: (track, index) => this.handleSleepTriggered(track, index)
+      }
+    });
+    
+    // Восстановление настроек
+    this.restoreSettings();
+    
+    // Экспорт в глобальную область
+    window.playerCore = this.player;
+    this.initialized = true;
+    console.log('✅ PlayerCore adapter initialized');
+  }
 
-  const playerCore = new PlayerCore();
+  handleTrackChange(track, index) {
+    console.log('🎵 Track changed:', track?.title);
+    if (window.PlayerControls) {
+      window.PlayerControls.updateNowPlaying({ track, index });
+    }
+    // Обновление медиа-сессии
+    if (window.BackgroundAudioManager) {
+      window.BackgroundAudioManager.updateMetadata(track);
+    }
+  }
 
-  // Подписка на события
-  playerCore.on({
-    onTrackChange: (track, index) => {
-      console.log('🎵 Track changed:', track?.title);
+  handlePlay(track, index) {
+    console.log('▶️ Playing:', track?.title);
+    if (window.PlayerControls) {
+      window.PlayerControls.updatePlayPauseButton(true);
+    }
+    // Обновление состояния фонового воспроизведения
+    if (window.BackgroundEventsManager) {
+      window.BackgroundEventsManager.setPlaybackLocks(true);
+    }
+  }
+
+  handlePause(track, index) {
+    console.log('⏸️ Paused');
+    if (window.PlayerControls) {
+      window.PlayerControls.updatePlayPauseButton(false);
+    }
+    if (window.BackgroundEventsManager) {
+      window.BackgroundEventsManager.setPlaybackLocks(false);
+    }
+  }
+
+  handleStop(track, index) {
+    console.log('⏹️ Stopped');
+    if (window.PlayerControls) {
+      window.PlayerControls.updatePlayPauseButton(false);
+    }
+    if (window.BackgroundEventsManager) {
+      window.BackgroundEventsManager.setPlaybackLocks(false);
+    }
+  }
+
+  handleEnd(track, index) {
+    console.log('⏭️ Track ended');
+    // Автопереход на следующий трек
+    if (!window.autoNextDisabled) {
+      this.player.next();
+    }
+  }
+
+  handleTick(position, duration) {
+    if (window.PlayerControls) {
+      window.PlayerControls.updateProgress(position, duration);
+    }
+    // Обновление позиции в медиа-сессии
+    if (window.BackgroundAudioManager) {
+      window.BackgroundAudioManager.updatePositionState({
+        position,
+        duration
+      });
+    }
+  }
+
+  handleSleepTriggered(track, index) {
+    console.log('😴 Sleep timer triggered');
+    if (window.NotificationSystem) {
+      window.NotificationSystem.info('Таймер сна: воспроизведение остановлено');
+    }
+  }
+
+  restoreSettings() {
+    try {
+      // Громкость
+      const volume = parseFloat(localStorage.getItem('playerVolume') || '1');
+      if (Number.isFinite(volume)) {
+        this.player.setVolume(volume);
+      }
       
-      if (window.PlayerControls) {
-        window.PlayerControls.updateNowPlaying({ track, index });
+      // Режимы воспроизведения
+      this.player.setRepeat(localStorage.getItem('repeatMode') === '1');
+      this.player.setShuffle(localStorage.getItem('shuffleMode') === '1');
+      
+      // Избранные треки
+      const favoritesOnly = localStorage.getItem('favoritesOnlyMode') === '1';
+      if (favoritesOnly && window.getLikedForAlbum) {
+        const currentAlbum = window.AlbumsManager?.getCurrentAlbum();
+        const liked = currentAlbum ? window.getLikedForAlbum(currentAlbum) : [];
+        this.player.setFavoritesOnly(true, liked);
       }
-    },
-    
-    onPlay: (track, index) => {
-      console.log('▶️ Playing:', track?.title);
-      if (window.PlayerControls) {
-        window.PlayerControls.updatePlayPauseButton(true);
-      }
-    },
-    
-    onPause: (track, index) => {
-      console.log('⏸️ Paused');
-      if (window.PlayerControls) {
-        window.PlayerControls.updatePlayPauseButton(false);
-      }
-    },
-    
-    onStop: (track, index) => {
-      console.log('⏹️ Stopped');
-      if (window.PlayerControls) {
-        window.PlayerControls.updatePlayPauseButton(false);
-      }
-    },
-    
-    onEnd: (track, index) => {
-      console.log('⏭️ Track ended');
-    },
-    
-    onTick: (position, duration) => {
-      if (window.PlayerControls) {
-        window.PlayerControls.updateProgress(position, duration);
-      }
+    } catch (e) {
+      console.error('Failed to restore player settings:', e);
     }
-  });
-
-  // Восстановление настроек
-  try {
-    const volume = parseFloat(localStorage.getItem('playerVolume') || '1');
-    if (Number.isFinite(volume)) {
-      playerCore.setVolume(volume);
-    }
-  } catch (e) {
-    console.error('Failed to restore volume:', e);
   }
+}
 
-  try {
-    playerCore.setRepeat(localStorage.getItem('repeatMode') === '1');
-    playerCore.setShuffle(localStorage.getItem('shuffleMode') === '1');
-  } catch (e) {}
-
-  // Экспорт в глобальную область
-  window.playerCore = playerCore;
-
-  // Публичные хелперы для совместимости со старым кодом
-  window.playTrack = (index) => playerCore.play(index);
-  window.pauseTrack = () => playerCore.pause();
-  window.nextTrack = () => playerCore.next();
-  window.previousTrack = () => playerCore.prev();
-  window.stopTrack = () => playerCore.stop();
-
-  console.log('✅ PlayerCore adapter initialized');
-})();
-
+// Инициализация при загрузке
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    new PlayerAdapter();
+  });
+} else {
+  new PlayerAdapter();
+}
