@@ -17,6 +17,14 @@ export const APP_CONFIG = {
     { key: '__reliz__', title: 'Новости', icon: 'img/icon_album/icon-album-news.png' }
   ],
   
+  // Соответствие альбомов галереям
+  ALBUM_TO_GALLERY_MAP: {
+    'mezhdu-zlom-i-dobrom': '01',
+    'golos-dushi': '02',
+    'krevetochka': '00',
+    '__reliz__': 'news'
+  },
+  
   // Ссылки
   SUPPORT_URL: 'https://example.com/support',
   SUPPORT_EMAIL: 'support@vitrina-razbita.ru',
