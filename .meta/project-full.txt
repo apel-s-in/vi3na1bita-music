@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8d30009918d850d7b60b84127fba98c1584d30e5.idx
-│   │       ├── pack-8d30009918d850d7b60b84127fba98c1584d30e5.pack
-│   │       └── pack-8d30009918d850d7b60b84127fba98c1584d30e5.rev
+│   │       ├── pack-3d4cb1f293319b115013515d922848b8aca38d16.idx
+│   │       ├── pack-3d4cb1f293319b115013515d922848b8aca38d16.pack
+│   │       └── pack-3d4cb1f293319b115013515d922848b8aca38d16.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── sw.js
 
 
-Сгенерировано: 2025-12-06 22:15:06 UTC
+Сгенерировано: 2025-12-06 22:15:33 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1686,8 +1686,8 @@ export default AlbumsManager;
     saveState() {
       try {
         if (window.playerCore) {
-          const currentTrack = window.playerCore.getCurrentTrackIndex();
-          const position = window.playerCore.getCurrentPosition();
+          const currentTrack = window.playerCore.getIndex();
+          const position = window.playerCore.getSeek();
           
           localStorage.setItem('lastTrackIndex', currentTrack.toString());
           localStorage.setItem('lastTrackPosition', position.toString());
