@@ -1,8 +1,20 @@
-// sw.js
-// Service Worker для PWA и офлайн-работы
+// service-worker.js
+// Service Worker для PWA - совместим с CI валидатором
 
-const CACHE_NAME = 'vitrina-razbita-v1.0.0';
+const SW_VERSION = '1.0.0';
+const CORE_CACHE = 'vitrina-core-v1.0.0';
 const RUNTIME_CACHE = 'vitrina-runtime-v1';
+const MEDIA_CACHE = 'vitrina-media-v1';
+const OFFLINE_CACHE = 'vitrina-offline-v1';
+const META_CACHE = 'vitrina-meta-v1';
+
+const DEFAULT_SW_CONFIG = {
+  mediaMaxCacheMB: 150,
+  nonRangeMaxStoreMB: 25,
+  nonRangeMaxStoreMBSlow: 10,
+  allowUnknownSize: false,
+  revalidateDays: 7
+};
 
 // Статичные ресурсы для кэширования
 const STATIC_ASSETS = [
@@ -10,16 +22,10 @@ const STATIC_ASSETS = [
   './index.html',
   './manifest.json',
   './styles/main.css',
-  
-  // Scripts (core)
   './scripts/core/bootstrap.js',
   './scripts/core/config.js',
-  
-  // Scripts (player)
-  './scripts/player/PlayerCore.js',
+  './src/PlayerCore.js',
   './scripts/player/player-adapter.js',
-  
-  // Scripts (ui)
   './scripts/ui/notify.js',
   './scripts/ui/favorites.js',
   './scripts/ui/favorites-const.js',
@@ -27,35 +33,31 @@ const STATIC_ASSETS = [
   './scripts/ui/favorites-data.js',
   './scripts/ui/mini.js',
   './scripts/ui/sysinfo.js',
-  
-  // Scripts (app)
   './scripts/app/albums.js',
   './scripts/app/navigation.js',
   './scripts/app/downloads.js',
-  './scripts/app/player-controls.js',
   './scripts/app/background-audio.js',
   './scripts/app/background-events.js',
-  
-  // Main
   './scripts/app.js',
-  
-  // Icons
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/apple-touch-icon.png',
-  
-  // Images
   './img/logo.png',
+  './img/star.png',
+  './img/star2.png',
   './img/icon_album/icon-album-00.png',
-  './img/icon_album/icon-album-news.png'
+  './img/icon_album/icon-album-01.png',
+  './img/icon_album/icon-album-02.png',
+  './img/icon_album/icon-album-news.png',
+  './img/icon_album/icon-album+00.png'
 ];
 
-// Установка Service Worker
+// Установка
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing...');
+  console.log(`[SW v${SW_VERSION}] Installing...`);
   
   event.waitUntil(
-    caches.open(CACHE_NAME)
+    caches.open(CORE_CACHE)
       .then((cache) => {
         console.log('[SW] Caching static assets');
         return cache.addAll(STATIC_ASSETS);
@@ -70,17 +72,17 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Активация Service Worker
+// Активация
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating...');
+  console.log(`[SW v${SW_VERSION}] Activating...`);
   
   event.waitUntil(
     caches.keys()
       .then((cacheNames) => {
-        // Удалить старые кэши
+        const validCaches = [CORE_CACHE, RUNTIME_CACHE, MEDIA_CACHE, OFFLINE_CACHE, META_CACHE];
         return Promise.all(
           cacheNames
-            .filter((name) => name !== CACHE_NAME && name !== RUNTIME_CACHE)
+            .filter((name) => !validCaches.includes(name))
             .map((name) => {
               console.log('[SW] Deleting old cache:', name);
               return caches.delete(name);
@@ -99,31 +101,23 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Игнорировать chrome-extension и другие протоколы
-  if (!url.protocol.startsWith('http')) {
-    return;
-  }
-
-  // Игнорировать внешние CDN (Howler.js)
+  if (!url.protocol.startsWith('http')) return;
   if (url.hostname === 'cdn.jsdelivr.net') {
     event.respondWith(fetch(request));
     return;
   }
 
-  // Стратегия для аудио файлов: Network First
   if (request.url.endsWith('.mp3')) {
-    event.respondWith(networkFirst(request));
+    event.respondWith(networkFirst(request, MEDIA_CACHE));
     return;
   }
 
-  // Стратегия для статичных ресурсов: Cache First
   event.respondWith(cacheFirst(request));
 });
 
-// Стратегия: Cache First
 async function cacheFirst(request) {
   try {
-    const cache = await caches.open(CACHE_NAME);
+    const cache = await caches.open(CORE_CACHE);
     const cached = await cache.match(request);
     
     if (cached) {
@@ -131,20 +125,15 @@ async function cacheFirst(request) {
       return cached;
     }
     
-    console.log('[SW] Fetching from network:', request.url);
     const response = await fetch(request);
     
-    // Кэшировать успешные GET-запросы
     if (response.ok && request.method === 'GET') {
       cache.put(request, response.clone());
     }
     
     return response;
-    
   } catch (error) {
     console.error('[SW] Cache First error:', error);
-    
-    // Вернуть офлайн-страницу или базовый fallback
     return new Response('Offline', {
       status: 503,
       statusText: 'Service Unavailable',
@@ -153,28 +142,22 @@ async function cacheFirst(request) {
   }
 }
 
-// Стратегия: Network First (для аудио)
-async function networkFirst(request) {
+async function networkFirst(request, cacheName) {
   try {
-    console.log('[SW] Fetching audio from network:', request.url);
     const response = await fetch(request);
     
     if (response.ok) {
-      // Опционально: кэшировать аудио файлы
-      const cache = await caches.open(RUNTIME_CACHE);
+      const cache = await caches.open(cacheName);
       cache.put(request, response.clone());
     }
     
     return response;
-    
   } catch (error) {
-    console.log('[SW] Network failed, trying cache:', request.url);
-    
-    const cache = await caches.open(RUNTIME_CACHE);
+    const cache = await caches.open(cacheName);
     const cached = await cache.match(request);
     
     if (cached) {
-      console.log('[SW] Serving audio from cache');
+      console.log('[SW] Serving from cache (offline):', request.url);
       return cached;
     }
     
@@ -182,19 +165,22 @@ async function networkFirst(request) {
   }
 }
 
-// Обработка сообщений от клиентов
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
+  if (event.data?.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
   
-  if (event.data && event.data.type === 'CLEAR_CACHE') {
+  if (event.data?.type === 'CLEAR_CACHE') {
     event.waitUntil(
       caches.keys().then((names) => {
         return Promise.all(names.map((name) => caches.delete(name)));
       })
     );
   }
+
+  if (event.data?.type === 'GET_SW_VERSION') {
+    event.ports[0]?.postMessage({ version: SW_VERSION });
+  }
 });
 
-console.log('[SW] Service Worker loaded');
+console.log(`[SW v${SW_VERSION}] Loaded`);
