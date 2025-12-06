@@ -1,5 +1,5 @@
 // scripts/core/bootstrap.js
-// ⭐ ИСПРАВЛЕНО: синхронная загрузка albums.json через XMLHttpRequest
+// ⭐ ИСПРАВЛЕНО: асинхронная загрузка albums.json (XMLHttpRequest sync DEPRECATED!)
 
 (function() {
   'use strict';
@@ -14,7 +14,7 @@
       ];
     }
 
-    init() {
+    async init() {
       console.log('🚀 Bootstrapping application...');
 
       // 1. Проверка совместимости
@@ -33,38 +33,45 @@
       // 4. Обработка ошибок
       this.setupErrorHandling();
 
-      // 5. ⭐ КРИТИЧНО: Синхронная загрузка albums.json
-      this.loadAlbumsIndexSync();
+      // 5. ⭐ КРИТИЧНО: Асинхронная загрузка albums.json
+      await this.loadAlbumsIndex();
 
       console.log('✅ Bootstrap complete');
     }
 
-    loadAlbumsIndexSync() {
+    async loadAlbumsIndex() {
       try {
-        console.log('📀 Loading albums index (sync)...');
+        console.log('📀 Loading albums index...');
         
-        // ⭐ Используем XMLHttpRequest для синхронной загрузки
-        const xhr = new XMLHttpRequest();
-        xhr.open('GET', './albums.json', false); // false = синхронно
-        xhr.send(null);
-        
-        if (xhr.status === 200) {
-          const data = JSON.parse(xhr.responseText);
-          
-          if (!data || !Array.isArray(data.albums)) {
-            throw new Error('Invalid albums.json format');
+        const response = await fetch('./albums.json', { 
+          cache: 'no-cache',
+          headers: {
+            'Accept': 'application/json'
           }
-
-          // ⭐ Публикуем в глобальную область
-          window.albumsIndex = data.albums;
-
-          console.log(`✅ Albums index loaded: ${data.albums.length} albums`);
-        } else {
-          throw new Error(`HTTP ${xhr.status}`);
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
         }
+
+        const data = await response.json();
+        
+        if (!data || !Array.isArray(data.albums)) {
+          throw new Error('Invalid albums.json format');
+        }
+
+        // ⭐ Публикуем в глобальную область
+        window.albumsIndex = data.albums;
+
+        console.log(`✅ Albums index loaded: ${data.albums.length} albums`);
       } catch (error) {
         console.error('❌ Failed to load albums.json:', error);
         window.albumsIndex = [];
+        
+        // Показать ошибку пользователю
+        if (window.NotificationSystem) {
+          window.NotificationSystem.error('Не удалось загрузить список альбомов');
+        }
       }
     }
 
@@ -85,10 +92,6 @@
 
       if (!document.addEventListener) {
         missing.push('Event Listeners');
-      }
-
-      if (!window.AudioContext && !window.webkitAudioContext) {
-        console.warn('Web Audio API not supported');
       }
 
       if (missing.length > 0) {
@@ -193,7 +196,14 @@
     }
   }
 
-  // ⭐ Запуск НЕМЕДЛЕННО (не ждём DOMContentLoaded)
-  const bootstrap = new AppBootstrap();
-  bootstrap.init();
+  // ⭐ Запуск при загрузке DOM (асинхронно)
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', async () => {
+      const bootstrap = new AppBootstrap();
+      await bootstrap.init();
+    });
+  } else {
+    const bootstrap = new AppBootstrap();
+    bootstrap.init();
+  }
 })();
