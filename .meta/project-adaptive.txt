@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-aea0c790205072f3b6919061c4f6211e665d5850.idx
-│   │       ├── pack-aea0c790205072f3b6919061c4f6211e665d5850.pack
-│   │       └── pack-aea0c790205072f3b6919061c4f6211e665d5850.rev
+│   │       ├── pack-0525db01afcdbce5d7b0c9123291d590a4798b4b.idx
+│   │       ├── pack-0525db01afcdbce5d7b0c9123291d590a4798b4b.pack
+│   │       └── pack-0525db01afcdbce5d7b0c9123291d590a4798b4b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -258,7 +258,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-01 19:51:04 UTC
+Сгенерировано: 2025-12-06 19:43:42 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8947,7 +8947,7 @@ Object.assign(window, {
 
     // Пересобираем playable‑плейлист и карту соответствия МОДЕЛЬ → PLAYABLE
     const playable = [];
-    const modelToPlayableMap = new Map<number, number>();
+    const modelToPlayableMap = new Map();
 
     model.forEach((it, i) => {
       if (it && it.__active && it.audio) {
