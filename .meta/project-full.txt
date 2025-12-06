@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3d4cb1f293319b115013515d922848b8aca38d16.idx
-│   │       ├── pack-3d4cb1f293319b115013515d922848b8aca38d16.pack
-│   │       └── pack-3d4cb1f293319b115013515d922848b8aca38d16.rev
+│   │       ├── pack-053f9d36ecea1f88daae35be175c5dc13cbe7aeb.idx
+│   │       ├── pack-053f9d36ecea1f88daae35be175c5dc13cbe7aeb.pack
+│   │       └── pack-053f9d36ecea1f88daae35be175c5dc13cbe7aeb.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── sw.js
 
 
-Сгенерировано: 2025-12-06 22:15:33 UTC
+Сгенерировано: 2025-12-06 22:16:01 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1932,7 +1932,7 @@ class NavigationManager {
       });
 
       navigator.mediaSession.setActionHandler('previoustrack', () => {
-        window.playerCore?.previous();
+        window.playerCore?.prev();
       });
 
       navigator.mediaSession.setActionHandler('nexttrack', () => {
