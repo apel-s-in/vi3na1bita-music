@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-425404016585c35588b97a48dc2a7e244524ab74.idx
-│   │       ├── pack-425404016585c35588b97a48dc2a7e244524ab74.pack
-│   │       └── pack-425404016585c35588b97a48dc2a7e244524ab74.rev
+│   │       ├── pack-12ade109846e66e452a6cae02d98ad9399fc457c.idx
+│   │       ├── pack-12ade109846e66e452a6cae02d98ad9399fc457c.pack
+│   │       └── pack-12ade109846e66e452a6cae02d98ad9399fc457c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -266,7 +266,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-06 21:09:46 UTC
+Сгенерировано: 2025-12-06 21:10:10 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2422,221 +2422,208 @@ export default DownloadsManager;
 //=================================================
 // FILE: /scripts/app/navigation.js
 // scripts/app/navigation.js
-// Управление навигацией, галереей обложек, историей
+// Навигация: обработка кнопок навигации, модальные окна
 
 import { APP_CONFIG } from '../core/config.js';
 
 class NavigationManager {
   constructor() {
-    this.currentGalleryIndex = 0;
-    this.galleryItems = [];
-    this.currentAlbumKey = null;
-    this.isTransitioning = false;
-    this.touchStartX = 0;
-    this.touchEndX = 0;
+    this.modalsContainer = null;
+    this.activeModal = null;
   }
 
-  initGallery(albumKey, albumData) {
-    this.currentAlbumKey = albumKey;
-    this.currentGalleryIndex = 0;
-    this.galleryItems = [];
+  initialize() {
+    this.modalsContainer = document.getElementById('modals-container');
+    
+    this.attachEventListeners();
+    this.setupMediaSessionHandlers();
+    
+    console.log('✅ NavigationManager initialized');
+  }
 
-    // Определить путь к галерее
-    const galleryFolder = APP_CONFIG.ALBUM_GALLERY_MAP[albumKey];
-    if (!galleryFolder) {
-      this.disableGalleryNavigation();
+  attachEventListeners() {
+    // Кнопка "О системе"
+    const sysinfoBtn = document.getElementById('sysinfo-btn');
+    sysinfoBtn?.addEventListener('click', () => {
+      this.showSystemInfo();
+    });
+
+    // Кнопка "Обратная связь"
+    const feedbackLink = document.getElementById('feedback-link');
+    feedbackLink?.addEventListener('click', () => {
+      this.showFeedbackModal();
+    });
+
+    // Кнопка "Поддержать"
+    const supportLink = document.getElementById('support-link');
+    if (supportLink) {
+      supportLink.href = APP_CONFIG.SUPPORT_URL;
+    }
+
+    // Кнопка "Скачать весь альбом"
+    const downloadBtn = document.getElementById('download-album-main');
+    downloadBtn?.addEventListener('click', () => {
+      this.downloadCurrentAlbum();
+    });
+
+    // Закрытие модального окна при клике вне его
+    this.modalsContainer?.addEventListener('click', (e) => {
+      if (e.target === this.modalsContainer) {
+        this.closeModal();
+      }
+    });
+
+    // Закрытие модального окна по Escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this.activeModal) {
+        this.closeModal();
+      }
+    });
+  }
+
+  setupMediaSessionHandlers() {
+    if (!('mediaSession' in navigator)) return;
+
+    try {
+      navigator.mediaSession.setActionHandler('play', () => {
+        window.playerCore?.play();
+      });
+
+      navigator.mediaSession.setActionHandler('pause', () => {
+        window.playerCore?.pause();
+      });
+
+      navigator.mediaSession.setActionHandler('previoustrack', () => {
+        window.playerCore?.previous();
+      });
+
+      navigator.mediaSession.setActionHandler('nexttrack', () => {
+        window.playerCore?.next();
+      });
+
+      console.log('✅ Media Session handlers set');
+    } catch (e) {
+      console.error('Failed to setup Media Session:', e);
+    }
+  }
+
+  showSystemInfo() {
+    if (window.SystemInfo && typeof window.SystemInfo.show === 'function') {
+      window.SystemInfo.show();
+    } else {
+      this.showModal(`
+        <h2>О системе</h2>
+        <div style="text-align: left; padding: 20px;">
+          <p><strong>Версия:</strong> ${APP_CONFIG.APP_VERSION}</p>
+          <p><strong>User Agent:</strong> ${navigator.userAgent}</p>
+          <p><strong>Платформа:</strong> ${navigator.platform}</p>
+          <p><strong>Язык:</strong> ${navigator.language}</p>
+          <p><strong>Размер экрана:</strong> ${window.innerWidth}×${window.innerHeight}</p>
+          <p><strong>Online:</strong> ${navigator.onLine ? 'Да' : 'Нет'}</p>
+        </div>
+        <button class="modal-close-btn">Закрыть</button>
+      `);
+    }
+  }
+
+  showFeedbackModal() {
+    this.showModal(`
+      <h2>Обратная связь</h2>
+      <div style="padding: 20px; text-align: center;">
+        <p style="margin-bottom: 20px; color: #8ab8fd;">
+          Есть предложения или нашли ошибку?<br>
+          Напишите нам!
+        </p>
+        
+        <div style="display: flex; flex-direction: column; gap: 15px; max-width: 300px; margin: 0 auto;">
+          <a href="https://t.me/vitrina_razbita" target="_blank" 
+             style="background: #0088cc; color: white; padding: 15px; border-radius: 8px; text-decoration: none; display: block;">
+            📱 Telegram
+          </a>
+          
+          <a href="mailto:${APP_CONFIG.SUPPORT_EMAIL}" target="_blank"
+             style="background: #4daaff; color: white; padding: 15px; border-radius: 8px; text-decoration: none; display: block;">
+            ✉️ Email
+          </a>
+          
+          <a href="${APP_CONFIG.GITHUB_URL}" target="_blank"
+             style="background: #333; color: white; padding: 15px; border-radius: 8px; text-decoration: none; display: block;">
+            🐙 GitHub
+          </a>
+        </div>
+      </div>
+      <button class="modal-close-btn">Закрыть</button>
+    `);
+  }
+
+  async downloadCurrentAlbum() {
+    const currentAlbum = window.AlbumsManager?.getCurrentAlbum();
+    
+    if (!currentAlbum) {
+      window.NotificationSystem?.error('Не выбран альбом');
       return;
     }
 
-    const galleryBase = `${APP_CONFIG.CENTRAL_GALLERY_BASE}${galleryFolder}/`;
-
-    // Собрать элементы галереи
-    this.galleryItems = [
-      { type: 'cover', url: albumData.cover || 'cover.jpg' }
-    ];
-
-    // Добавить iframe если есть
-    if (albumData.iframe_url) {
-      this.galleryItems.push({
-        type: 'iframe',
-        url: albumData.iframe_url
-      });
+    // Специальные альбомы нельзя скачать
+    if (currentAlbum.startsWith('__')) {
+      window.NotificationSystem?.info('Этот альбом нельзя скачать целиком');
+      return;
     }
 
-    // Добавить изображения галереи (1.jpg, 2.jpg, ...)
-    const galleryCount = albumData.gallery_count || 0;
-    for (let i = 1; i <= galleryCount; i++) {
-      this.galleryItems.push({
-        type: 'image',
-        url: `${galleryBase}${i}.jpg`
-      });
+    // Найти данные альбома
+    const albumInfo = window.albumsIndex?.find(a => a.key === currentAlbum);
+    if (!albumInfo) {
+      window.NotificationSystem?.error('Альбом не найден');
+      return;
     }
 
-    if (this.galleryItems.length > 1) {
-      this.enableGalleryNavigation();
-      this.attachGalleryListeners();
+    // Использовать Downloads Manager если доступен
+    if (window.DownloadsManager) {
+      window.DownloadsManager.downloadAlbum(currentAlbum);
     } else {
-      this.disableGalleryNavigation();
-    }
-
-    this.showGalleryItem(0);
-  }
-
-  enableGalleryNavigation() {
-    const wrap = document.getElementById('cover-wrap');
-    if (wrap) {
-      wrap.classList.add('gallery-nav-ready');
+      // Fallback: открыть директорию альбома
+      window.open(albumInfo.base, '_blank');
+      window.NotificationSystem?.info('Откройте папку и скачайте файлы');
     }
   }
 
-  disableGalleryNavigation() {
-    const wrap = document.getElementById('cover-wrap');
-    if (wrap) {
-      wrap.classList.remove('gallery-nav-ready');
-    }
+  showModal(content) {
+    if (!this.modalsContainer) return;
+
+    this.closeModal(); // Закрыть предыдущее модальное окно
+
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal-content">
+        ${content}
+      </div>
+    `;
+
+    // Закрытие по кнопке
+    const closeBtn = modal.querySelector('.modal-close-btn');
+    closeBtn?.addEventListener('click', () => this.closeModal());
+
+    this.modalsContainer.appendChild(modal);
+    this.activeModal = modal;
+
+    // Анимация появления
+    requestAnimationFrame(() => {
+      modal.classList.add('show');
+    });
   }
 
-  attachGalleryListeners() {
-    const leftBtn = document.getElementById('cover-gallery-arrow-left');
-    const rightBtn = document.getElementById('cover-gallery-arrow-right');
-    const coverSlot = document.getElementById('cover-slot');
+  closeModal() {
+    if (!this.activeModal) return;
 
-    // Кнопки
-    leftBtn?.removeEventListener('click', this.boundPrev);
-    rightBtn?.removeEventListener('click', this.boundNext);
+    this.activeModal.classList.remove('show');
     
-    this.boundPrev = () => this.previousGalleryItem();
-    this.boundNext = () => this.nextGalleryItem();
-    
-    leftBtn?.addEventListener('click', this.boundPrev);
-    rightBtn?.addEventListener('click', this.boundNext);
-
-    // Свайп
-    if (coverSlot) {
-      coverSlot.removeEventListener('touchstart', this.boundTouchStart);
-      coverSlot.removeEventListener('touchend', this.boundTouchEnd);
-      
-      this.boundTouchStart = (e) => {
-        this.touchStartX = e.changedTouches[0].screenX;
-      };
-      
-      this.boundTouchEnd = (e) => {
-        this.touchEndX = e.changedTouches[0].screenX;
-        this.handleSwipe();
-      };
-      
-      coverSlot.addEventListener('touchstart', this.boundTouchStart, { passive: true });
-      coverSlot.addEventListener('touchend', this.boundTouchEnd, { passive: true });
-    }
-
-    // Клавиши
-    document.removeEventListener('keydown', this.boundKeyHandler);
-    this.boundKeyHandler = (e) => this.handleKeyNavigation(e);
-    document.addEventListener('keydown', this.boundKeyHandler);
-  }
-
-  handleSwipe() {
-    const diff = this.touchStartX - this.touchEndX;
-    const threshold = 50;
-
-    if (Math.abs(diff) > threshold) {
-      if (diff > 0) {
-        this.nextGalleryItem();
-      } else {
-        this.previousGalleryItem();
-      }
-    }
-  }
-
-  handleKeyNavigation(e) {
-    if (this.galleryItems.length <= 1) return;
-
-    if (e.key === 'ArrowLeft') {
-      e.preventDefault();
-      this.previousGalleryItem();
-    } else if (e.key === 'ArrowRight') {
-      e.preventDefault();
-      this.nextGalleryItem();
-    }
-  }
-
-  previousGalleryItem() {
-    if (this.isTransitioning || this.galleryItems.length <= 1) return;
-    
-    this.currentGalleryIndex = 
-      (this.currentGalleryIndex - 1 + this.galleryItems.length) % this.galleryItems.length;
-    
-    this.showGalleryItem(this.currentGalleryIndex);
-  }
-
-  nextGalleryItem() {
-    if (this.isTransitioning || this.galleryItems.length <= 1) return;
-    
-    this.currentGalleryIndex = 
-      (this.currentGalleryIndex + 1) % this.galleryItems.length;
-    
-    this.showGalleryItem(this.currentGalleryIndex);
-  }
-
-  showGalleryItem(index) {
-    if (this.isTransitioning) return;
-    
-    const item = this.galleryItems[index];
-    if (!item) return;
-
-    const coverSlot = document.getElementById('cover-slot');
-    if (!coverSlot) return;
-
-    this.isTransitioning = true;
-
-    // Плавное исчезновение
-    coverSlot.style.opacity = '0';
-    coverSlot.style.transition = 'opacity 0.2s ease-out';
-
     setTimeout(() => {
-      // Отрисовка нового контента
-      if (item.type === 'iframe') {
-        coverSlot.innerHTML = `
-          <iframe 
-            src="${item.url}" 
-            frameborder="0" 
-            allow="autoplay; fullscreen; picture-in-picture"
-            allowfullscreen
-            loading="lazy"
-          ></iframe>
-        `;
-      } else {
-        // image или cover
-        const albumInfo = window.albumsIndex?.find(a => a.key === this.currentAlbumKey);
-        const baseUrl = albumInfo?.base || '';
-        const imgUrl = item.type === 'cover' ? `${baseUrl}${item.url}` : item.url;
-        
-        coverSlot.innerHTML = `<img src="${imgUrl}" alt="Изображение ${index + 1}" draggable="false">`;
+      if (this.activeModal && this.activeModal.parentNode) {
+        this.activeModal.parentNode.removeChild(this.activeModal);
       }
-
-      // Плавное появление
-      setTimeout(() => {
-        coverSlot.style.opacity = '1';
-        this.isTransitioning = false;
-      }, 50);
-    }, 200);
-  }
-
-  cleanup() {
-    // Очистка слушателей при размонтировании
-    const leftBtn = document.getElementById('cover-gallery-arrow-left');
-    const rightBtn = document.getElementById('cover-gallery-arrow-right');
-    const coverSlot = document.getElementById('cover-slot');
-
-    leftBtn?.removeEventListener('click', this.boundPrev);
-    rightBtn?.removeEventListener('click', this.boundNext);
-    
-    if (coverSlot) {
-      coverSlot.removeEventListener('touchstart', this.boundTouchStart);
-      coverSlot.removeEventListener('touchend', this.boundTouchEnd);
-    }
-
-    document.removeEventListener('keydown', this.boundKeyHandler);
+      this.activeModal = null;
+    }, 300);
   }
 }
 
@@ -2644,7 +2631,6 @@ class NavigationManager {
 window.NavigationManager = new NavigationManager();
 
 export default NavigationManager;
-
 
 //=================================================
 // FILE: /scripts/app/player-controls.js
