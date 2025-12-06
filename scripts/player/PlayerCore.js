@@ -26,10 +26,9 @@ export class PlayerCore {
     this._syncShuffle(true);
   }
 
-// Добавить метод loadPlaylist для обратной совместимости
-loadPlaylist(tracks, startIndex = 0, meta = {}) {
-  this.setPlaylist(tracks, startIndex, meta);
-}
+  loadPlaylist(tracks, startIndex = 0, meta = {}) {
+    this.setPlaylist(tracks, startIndex, meta);
+  }
 
   on(eventName, callback) {
     if (!this.events[eventName]) this.events[eventName] = [];
@@ -196,6 +195,12 @@ loadPlaylist(tracks, startIndex = 0, meta = {}) {
       [indices[i], indices[j]] = [indices[j], indices[i]];
     }
     this.shuffled = indices;
+  }
+
+  _syncShuffle(force) {
+    if (this.shuffle) {
+      this._createShuffledPlaylist();
+    }
   }
 
   playTrack(index) {
