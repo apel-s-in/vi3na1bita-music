@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6ebb56c993176225ae769b3ac31eec89dd0c417d.idx
-│   │       ├── pack-6ebb56c993176225ae769b3ac31eec89dd0c417d.pack
-│   │       └── pack-6ebb56c993176225ae769b3ac31eec89dd0c417d.rev
+│   │       ├── pack-8d30009918d850d7b60b84127fba98c1584d30e5.idx
+│   │       ├── pack-8d30009918d850d7b60b84127fba98c1584d30e5.pack
+│   │       └── pack-8d30009918d850d7b60b84127fba98c1584d30e5.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── sw.js
 
 
-Сгенерировано: 2025-12-06 22:14:15 UTC
+Сгенерировано: 2025-12-06 22:15:06 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1428,7 +1428,7 @@ export default AlbumsManager;
       const actionHandlers = {
         play: () => window.playerCore?.play(),
         pause: () => window.playerCore?.pause(),
-        previoustrack: () => window.playerCore?.previous(),
+        previoustrack: () => window.playerCore?.prev(),
         nexttrack: () => window.playerCore?.next(),
         seekto: (details) => {
           if (details.seekTime && window.playerCore) {
@@ -1453,13 +1453,13 @@ export default AlbumsManager;
       }
 
       // Обновление метаданных при смене трека
-      window.playerCore.on('trackChanged', (data) => {
-        this.updateMetadata(data.track);
-      });
-
-      // Обновление позиции воспроизведения
-      window.playerCore.on('progress', (data) => {
-        this.updatePositionState(data);
+      window.playerCore.on({
+        onTrackChange: (track) => {
+          this.updateMetadata(track);
+        },
+        onTick: (position, duration) => {
+          this.updatePositionState({ position, duration });
+        }
       });
     }
 
