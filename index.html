@@ -5,36 +5,30 @@
   <title>Витрина Разбита</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="description" content="Официальные альбомы группы Витрина Разбита. Слушайте онлайн и офлайн.">
-
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#181818" />
-
   <!-- iOS -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Витрина Разбита">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-
+  <!-- FAVICONS -->
+  <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="alternate icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="alternate icon" href="icons/favicon-16.png" sizes="16x16" type="image/png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <!-- Preload -->
   <link rel="preload" href="img/logo.png" as="image">
-
-  <!-- Favicons -->
-  <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
-
   <!-- Styles -->
   <link rel="stylesheet" href="styles/main.css">
-
   <!-- Howler.js -->
   <script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.core.min.js"></script>
-  
   <!-- Core -->
   <script src="./scripts/core/bootstrap.js"></script>
   <script src="./scripts/core/config.js" type="module"></script>
-  
-  <!-- Player Core -->
+  <!-- Player -->
   <script src="./scripts/player/player-adapter.js" type="module"></script>
-  
   <!-- UI -->
   <script src="./scripts/ui/notify.js" defer></script>
   <script src="./scripts/ui/favorites-const.js" defer></script>
@@ -44,19 +38,16 @@
   <script src="./scripts/ui/mini.js" defer></script>
   <script src="./scripts/ui/modals.js" defer></script>
   <script src="./scripts/ui/sysinfo.js" defer></script>
-  
-  <!-- App Modules -->
+  <script src="./scripts/ui/sleep.js" defer></script>
+  <!-- App -->
   <script src="./scripts/app/background-audio.js" defer></script>
   <script src="./scripts/app/background-events.js" defer></script>
   <script src="./scripts/app/albums.js" type="module"></script>
   <script src="./scripts/app/navigation.js" type="module"></script>
   <script src="./scripts/app/downloads.js" type="module"></script>
-  <script src="./scripts/app/player-ui.js" defer></script>
-  
   <!-- Main -->
   <script src="./scripts/app.js" type="module"></script>
-  
-  <!-- Performance -->
+  <!-- RUM -->
   <script src="./performance/rum.js" defer></script>
 </head>
 <body>
@@ -70,13 +61,11 @@
       <div id="promo-error"></div>
     </div>
   </div>
-
   <!-- Main -->
   <div id="main-block" class="hidden">
     <header>
       <div id="active-album-title" class="active-album-title">—</div>
-      <div id="album-icons" class="album-icons" aria-label="Альбомы"></div>
-      
+      <div id="album-icons" class="album-icons"></div>
       <div id="cover-wrap">
         <button class="cover-gallery-arrow" id="cover-gallery-arrow-left" title="Назад" aria-label="Предыдущая обложка">
           <svg width="34" height="34" viewBox="0 0 34 34">
@@ -84,9 +73,7 @@
             <polyline points="20,10 13,17 20,24" fill="none" stroke="#fff" stroke-width="2.9" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
-        
-        <div id="cover-slot" aria-label="Обложка альбома"></div>
-        
+        <div id="cover-slot"></div>
         <button class="cover-gallery-arrow" id="cover-gallery-arrow-right" title="Вперёд" aria-label="Следующая обложка">
           <svg width="34" height="34" viewBox="0 0 34 34">
             <circle cx="17" cy="17" r="16" fill="#23252e" opacity="0.65"/>
@@ -94,35 +81,451 @@
           </svg>
         </button>
       </div>
-
       <div id="social-links" class="socials-under-cover"></div>
     </header>
-
     <div id="now-playing"></div>
     <div class="track-list" id="track-list"></div>
-
     <div class="bottom-controls-center">
       <button class="filter-favorites-btn" id="filter-favorites-btn">
         Скрыть не отмеченные ⭐ песни
       </button>
-      
       <img class="logo-bottom" id="logo-bottom" src="img/logo.png" alt="Логотип"/>
-      
       <button id="install-pwa-btn" style="display: none;">
         УСТАНОВИТЬ КАК ПРИЛОЖЕНИЕ
       </button>
-      
       <button id="download-album-main">СКАЧАТЬ ВЕСЬ АЛЬБОМ</button>
-      
-      <button class="hotkeys-btn" id="hotkeys-btn" style="display:none;">ГОРЯЧИЕ КЛАВИШИ</button>
+      <button class="hotkeys-btn" id="hotkeys-btn" style="display:none;">
+        ГОРЯЧИЕ КЛАВИШИ
+      </button>
       <span class="feedback-link" id="feedback-link">ОБРАТНАЯ СВЯЗЬ</span>
       <a class="support-link" id="support-link" href="#" target="_blank">ПОДДЕРЖАТЬ</a>
-      
       <button class="offline-btn online" id="offline-btn">ONLINE</button>
     </div>
   </div>
-
-  <!-- Modals Container -->
+  <!-- Modals container -->
   <div id="modals-container"></div>
+  <script>
+    // Версия и настройки
+    const VERSION = '8.0.3';
+    const BUILD_DATE = '2025-11-08';
+    const PROMO_CODE = 'VITRINA2025';
+    
+    // Список альбомов: fallback
+    const ALBUMS_FALLBACK = [
+      { key: 'mezhdu-zlom-i-dobrom', title: 'Между Злом и Добром (2025)', base: 'https://apel-s-in.github.io/vi3na1bita-mezhdu-zlom-i-dobrom/' },
+      { key: 'golos-dushi',          title: 'Голос Души',                base: 'https://apel-s-in.github.io/vi3na1bita-golos-dushi/' },
+      { key: 'krevetochka',          title: 'КРЕВЕцTOCHKA',             base: 'https://apel-s-in.github.io/krevetochka/' }
+    ];
+    
+    // Глобальные переменные
+    let albumsIndex = [];
+    let currentAlbumKey = null;
+    let albumBase = '';
+    let config = null;
+    let currentTrack = -1;
+    let currentLyrics = [];
+    let offlineMode = false;
+    let shuffleMode = false;
+    let repeatMode = false;
+    let favoritesOnlyMode = false;
+    let animationEnabled = false;
+    let bitEnabled = false;
+    let bitIntensity = 100;
+    let ultraEcoEnabled = false;
+    let energySaver = false;
+    let sleepTimerTarget = null;
+    let sleepTimerInterval = null;
+    let coverGalleryArr = [];
+    let coverGalleryIdx = 0;
+    let coverAutoplay = null;
+    let galleryRotationStarted = false;
+    let favoritesRefsModel = null;
+    let __currentGalleryVisible = true;
+    let __lastProgressFillTs = 0;
+    let __uiUpdateMinIntervalMs = 1000;
+    let __progressThrottleMs = 1000;
+    let __wasPlayingBeforeHidden = false;
+    let __savedResumePosition = null;
+    let __offlineToastInterval = null;
+    
+    // Ключи для специальных альбомов
+    const SPECIAL_FAVORITES_KEY = '__favorites__';
+    const SPECIAL_RELIZ_KEY = '__reliz__';
+    let viewMode = 'album';
+    
+    // Порядок отображения иконок альбомов
+    const ICON_ALBUMS_ORDER = [
+      { key: SPECIAL_FAVORITES_KEY,  title: '⭐⭐⭐ИЗБРАННОЕ⭐⭐⭐', icon: 'img/icon_album/icon-album-00.png' },
+      { key: 'mezhdu-zlom-i-dobrom', title: 'Между Злом и Добром',   icon: 'img/icon_album/icon-album-01.png' },
+      { key: 'golos-dushi',          title: 'Голос Души',            icon: 'img/icon_album/icon-album-02.png' },
+      { key: 'krevetochka',          title: 'КРЕВЕцTOCHKA',         icon: 'img/icon_album/icon-album+00.png' },
+      { key: SPECIAL_RELIZ_KEY,      title: 'НОВОСТИ',               icon: 'img/icon_album/icon-album-news.png' }
+    ];
+    
+    // Отображение PWA установки для iOS
+    function detectIOSAndShowInstallGuide() {
+      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) && !window.MSStream;
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+      
+      if (!isIOS || isStandalone) return;
+      
+      setTimeout(() => {
+        if (localStorage.getItem('iosInstallDismissed') === '1') return;
+        
+        let el = document.createElement('div');
+        el.className = 'ios-install-prompt';
+        el.innerHTML = `
+          <button class="ios-prompt-close" aria-label="Закрыть" onclick="dismissIOSPrompt()">×</button>
+          <div class="ios-prompt-content">
+            <img class="ios-prompt-icon" src="icons/apple-touch-icon.png" alt="Иконка приложения">
+            <div style="font-weight:800; font-size:18px; margin-bottom:8px;">Установить приложение</div>
+            <div style="opacity:.85;">Нажмите • Поделиться • и выберите «На экран «Домой»»</div>
+            <button class="ios-prompt-button" onclick="dismissIOSPrompt()">Понятно</button>
+          </div>`;
+        document.body.appendChild(el);
+        
+        requestAnimationFrame(() => el.classList.add('show'));
+      }, 2000);
+    }
+    
+    function dismissIOSPrompt() {
+      const el = document.querySelector('.ios-install-prompt');
+      if (el) {
+        el.classList.remove('show');
+        localStorage.setItem('iosInstallDismissed', '1');
+        setTimeout(() => el && el.remove(), 350);
+      }
+    }
+    
+    // Инициализация при загрузке
+    window.addEventListener('load', () => {
+      if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+        document.body.classList.add('ios');
+      }
+      
+      // Проверка промокода
+      const passed = localStorage.getItem('promoPassed') === '1';
+      if (passed) {
+        document.getElementById('promocode-block').classList.add('hidden');
+        document.getElementById('main-block').classList.remove('hidden');
+        window.APP?.initialize?.();
+      }
+      
+      // Показ подсказки про Memory Saver в Chrome
+      try {
+        const isChrome = /Chrome\/\d+/.test(navigator.userAgent) && !/Edg\//.test(navigator.userAgent) && !/OPR\//.test(navigator.userAgent);
+        const ctr = document.querySelector('.bottom-controls-center');
+        if (isChrome && ctr && !document.getElementById('memory-saver-help-btn')) {
+          const btn = document.createElement('button');
+          btn.id = 'memory-saver-help-btn';
+          btn.className = 'offline-btn';
+          btn.style.width = '98%';
+          btn.style.background = '#273050';
+          btn.style.marginTop = '8px';
+          btn.textContent = 'Как не останавливать музыку в Chrome';
+          btn.onclick = () => {
+            let modal = document.createElement('div');
+            modal.className = 'modal-bg active';
+            modal.innerHTML = `
+              <div class="modal-feedback" style="max-width:480px;">
+                <button class="bigclose" onclick="this.closest('.modal-bg').remove()" title="Закрыть">
+                  <svg viewBox="0 0 48 48"><line x1="12" y1="12" x2="36" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><line x1="36" y1="12" x2="12" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/></svg>
+                </button>
+                <div style="font-size:1.1em; font-weight:800; margin-bottom:8px;">Chrome: как не останавливать музыку</div>
+                <div style="color:#cfe3ff; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); border-radius:8px; padding:12px; line-height:1.4;">
+                  Если в Chrome включён «Экономия памяти», неактивные вкладки выгружаются и музыка может остановиться.<br><br>
+                  Чтобы добавить сайт в исключения:<br>
+                  1) Откройте настройки Chrome → Производительность.<br>
+                  2) В разделе «Экономия памяти» найдите «Сохранять сайты активными».<br>
+                  3) Нажмите «Добавить» и укажите: <b>${location.origin}</b><br><br>
+                  Быстрая ссылка: chrome://settings/performance
+                </div>
+                <div style="display:flex; gap:10px; justify-content:center; margin-top:12px;">
+                  <button class="offline-btn online" onclick="navigator.clipboard && navigator.clipboard.writeText('chrome://settings/performance').then(()=>{},()=>{}); this.textContent='Ссылка скопирована'">Скопировать ссылку</button>
+                  <button class="offline-btn" onclick="this.closest('.modal-bg').remove()">Понятно</button>
+                </div>
+              </div>`;
+            document.body.appendChild(modal);
+          };
+          ctr.appendChild(btn);
+        }
+      } catch {}
+      
+      // Периодическая проверка таймера сна
+      setInterval(() => {
+        if (sleepTimerTarget) {
+          const now = Date.now();
+          const msLeft = sleepTimerTarget - now;
+          
+          if (msLeft <= 0) {
+            const audio = document.getElementById('audio');
+            if (audio && !audio.paused) {
+              audio.pause();
+              window.NotificationSystem?.info('Таймер сна: воспроизведение остановлено');
+            }
+            sleepTimerTarget = null;
+            if (sleepTimerInterval) {
+              clearInterval(sleepTimerInterval);
+              sleepTimerInterval = null;
+            }
+            updateSleepTimerUI();
+          } else if (msLeft <= 10000 && !ultraEcoEnabled && !document.querySelector('#sleep-overlay')) {
+            showSleepOverlay();
+          }
+          
+          updateSleepTimerUI();
+        }
+      }, 1000);
+      
+      // Автоматическое определение энергосбережения
+      applyEnergySaver(detectEnergySaver());
+      
+      // Показ установки для iOS
+      detectIOSAndShowInstallGuide();
+    });
+    
+    // Функция обновления UI таймера сна
+    function updateSleepTimerUI() {
+      const btn = document.getElementById('sleep-timer-btn');
+      const badge = document.getElementById('sleep-timer-badge');
+      
+      if (!sleepTimerTarget) {
+        if (btn) btn.classList.remove('active');
+        if (badge) {
+          badge.style.display = 'none';
+          badge.textContent = '';
+        }
+        return;
+      }
+      
+      if (btn) btn.classList.add('active');
+      const minsLeft = Math.max(0, Math.ceil((sleepTimerTarget - Date.now()) / 60000));
+      
+      if (badge) {
+        badge.style.display = '';
+        badge.textContent = String(minsLeft);
+      }
+    }
+    
+    // Показать оверлей таймера сна
+    function showSleepOverlay() {
+      let ov = document.getElementById('sleep-overlay');
+      if (!ov) {
+        ov = document.createElement('div');
+        ov.id = 'sleep-overlay';
+        ov.className = 'sleep-overlay';
+        ov.innerHTML = `
+          <div class="sleep-content">
+            <div class="sleep-icon">😴</div>
+            <div class="sleep-title">Скоро пауза</div>
+            <div class="sleep-message">Воспроизведение будет приостановлено по таймеру сна.</div>
+            <div class="sleep-buttons">
+              <button class="sleep-btn sleep-btn-secondary" onclick="cancelSleepOverlay()">Отмена</button>
+              <button class="sleep-btn sleep-btn-primary" onclick="confirmSleepOverlay()">Оставить</button>
+            </div>
+          </div>`;
+        document.body.appendChild(ov);
+      }
+      ov.classList.add('active');
+    }
+    
+    // Отмена таймера сна
+    function cancelSleepOverlay() {
+      clearSleepTimer();
+      const ov = document.getElementById('sleep-overlay');
+      if (ov) ov.remove();
+    }
+    
+    // Подтверждение таймера сна
+    function confirmSleepOverlay() {
+      const ov = document.getElementById('sleep-overlay');
+      if (ov) ov.remove();
+    }
+    
+    // Очистка таймера сна
+    function clearSleepTimer() {
+      sleepTimerTarget = null;
+      if (sleepTimerInterval) {
+        clearInterval(sleepTimerInterval);
+        sleepTimerInterval = null;
+      }
+      updateSleepTimerUI();
+      const ov = document.getElementById('sleep-overlay');
+      if (ov) ov.remove();
+      window.NotificationSystem?.info('Таймер сна выключен');
+    }
+    
+    // Установка таймера сна
+    function setSleepTimer(minutes) {
+      if (minutes === 'off') {
+        clearSleepTimer();
+        return;
+      }
+      
+      sleepTimerTarget = Date.now() + minutes * 60 * 1000;
+      updateSleepTimerUI();
+      
+      if (sleepTimerInterval) {
+        clearInterval(sleepTimerInterval);
+      }
+      sleepTimerInterval = setInterval(() => {
+        if (!sleepTimerTarget) {
+          clearInterval(sleepTimerInterval);
+          sleepTimerInterval = null;
+          return;
+        }
+        
+        const now = Date.now();
+        const msLeft = sleepTimerTarget - now;
+        
+        if (msLeft <= 0) {
+          const audio = document.getElementById('audio');
+          if (audio && !audio.paused) {
+            audio.pause();
+            window.NotificationSystem?.info('Таймер сна: воспроизведение остановлено');
+          }
+          clearSleepTimer();
+        } else if (msLeft <= 10000 && !ultraEcoEnabled && !document.querySelector('#sleep-overlay')) {
+          showSleepOverlay();
+        }
+        
+        updateSleepTimerUI();
+      }, 1000);
+    }
+    
+    // Обнаружение режима энергосбережения
+    function detectEnergySaver() {
+      try {
+        const nc = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+        const saveData = !!(nc && nc.saveData);
+        const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+        return saveData || reduced;
+      } catch {
+        return false;
+      }
+    }
+    
+    // Применение режима энергосбережения
+    function applyEnergySaver(on) {
+      energySaver = !!on;
+      
+      if (energySaver) {
+        if (animationEnabled) {
+          window.__savedAnimationBeforeEnergy = animationEnabled;
+          toggleAnimation();
+        }
+        
+        if (bitEnabled) {
+          window.__savedBitBeforeEnergy = bitEnabled;
+          toggleBit();
+        }
+        
+        if (coverAutoplay) {
+          clearInterval(coverAutoplay);
+          coverAutoplay = null;
+        }
+        
+        // Автоматически включаем ультра-экономию
+        if (!ultraEcoEnabled) {
+          window.__ecoAutoFromEnergy = true;
+          toggleEco();
+        }
+      } else {
+        if (window.__savedAnimationBeforeEnergy) {
+          toggleAnimation();
+          window.__savedAnimationBeforeEnergy = null;
+        }
+        
+        if (window.__savedBitBeforeEnergy) {
+          toggleBit();
+          window.__savedBitBeforeEnergy = null;
+        }
+        
+        if (!coverAutoplay && Array.isArray(coverGalleryArr) && coverGalleryArr.length > 1 && !document.hidden) {
+          startCoverAutoPlay();
+        }
+        
+        // Если ЭКО было включено автоматически, возвращаем как было
+        if (window.__ecoAutoFromEnergy) {
+          window.__ecoAutoFromEnergy = false;
+          if (localStorage.getItem('ultraEco') !== '1') {
+            toggleEco();
+          }
+        }
+      }
+    }
+    
+    // Форматирование времени
+    function formatTime(sec) {
+      if (isNaN(sec) || sec < 0) return '--:--';
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+    
+    // Проверка поддержки клавиатуры
+    function hasKeyboard() {
+      try {
+        const isDesktop = !/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const hasPointer = matchMedia('(pointer: fine)').matches;
+        const canHover = matchMedia('(hover: hover)').matches;
+        const noTouch = (navigator.maxTouchPoints || 0) === 0;
+        return (isDesktop && hasPointer) || (canHover && noTouch);
+      } catch {
+        return true;
+      }
+    }
+    
+    // Обработчик горячих клавиш
+    window.addEventListener('keydown', function(e) {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      
+      const hasModal = document.querySelector('.modal-bg.active');
+      if (e.key === 'Escape' && hasModal) {
+        e.preventDefault();
+        document.querySelectorAll('.modal-bg.active').forEach(m => m.classList.remove('active'));
+        return;
+      }
+      
+      if (hasModal) return;
+      
+      switch(e.key.toUpperCase()) {
+        case ' ': case 'K': e.preventDefault(); togglePlayPause(); break;
+        case 'X': e.preventDefault(); stopPlayback(); break;
+        case 'N': e.preventDefault(); nextTrack(); break;
+        case 'P': e.preventDefault(); previousTrack(); break;
+        case 'J': e.preventDefault(); seekAudio(-10); break;
+        case 'L': e.preventDefault(); seekAudio(10); break;
+        case '+': case '=': e.preventDefault(); adjustVolume(10); break;
+        case '-': e.preventDefault(); adjustVolume(-10); break;
+        case 'M': e.preventDefault(); toggleMute(); break;
+        case 'R': e.preventDefault(); toggleRepeat(); break;
+        case 'U': e.preventDefault(); toggleShuffle(); break;
+        case 'F': e.preventDefault(); toggleFavoritesOnly(); break;
+        case 'T': e.preventDefault(); toggleSleepMenu(); break;
+        case 'A': e.preventDefault(); toggleAnimation(); break;
+        case 'B': e.preventDefault(); toggleBit(); break;
+        case '1': if (bitEnabled) { setBitIntensity(100); } break;
+        case '2': if (bitEnabled) { setBitIntensity(50); } break;
+        case '3': if (bitEnabled) { setBitIntensity(15); } break;
+        case 'Y': e.preventDefault(); toggleLyricsView(); break;
+        case 'W': e.preventDefault(); document.getElementById('track-list')?.scrollIntoView({behavior: 'smooth'}); break;
+        case 'D': e.preventDefault(); toggleLikePlaying(); break;
+        case '?': e.preventDefault(); showHotkeysModal(); break;
+        case 'O': e.preventDefault(); autoNextDisabled = !autoNextDisabled; 
+                  window.NotificationSystem?.info(autoNextDisabled ? '⏹ Автопереход отключён' : '▶ Автопереход включён');
+                  break;
+      }
+      
+      // Номера треков 1-9
+      if (e.key >= '1' && e.key <= '9' && !e.shiftKey && !e.ctrlKey && !e.altKey) {
+        const idx = parseInt(e.key) - 1;
+        if (config && idx < config.tracks.length) {
+          e.preventDefault();
+          showTrack(idx, true);
+        }
+      }
+    });
+  </script>
 </body>
 </html>
