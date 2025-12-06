@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-485f48b59a8da4a7040578dc9f2bfd545e37f3ff.idx
-│   │       ├── pack-485f48b59a8da4a7040578dc9f2bfd545e37f3ff.pack
-│   │       └── pack-485f48b59a8da4a7040578dc9f2bfd545e37f3ff.rev
+│   │       ├── pack-1f1692dcae9b6d11b33a47725453335f3bb5eaf7.idx
+│   │       ├── pack-1f1692dcae9b6d11b33a47725453335f3bb5eaf7.pack
+│   │       └── pack-1f1692dcae9b6d11b33a47725453335f3bb5eaf7.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -265,7 +265,7 @@ vi3na1bita-music/
 └── sw.js
 
 
-Сгенерировано: 2025-12-06 21:56:31 UTC
+Сгенерировано: 2025-12-06 21:57:28 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3017,7 +3017,9 @@ export const APP_CONFIG = {
   ICON_ALBUMS_ORDER: [
     { key: '__favorites__', title: 'Избранное', icon: 'img/icon_album/icon-album-00.png' },
     { key: '__reliz__', title: 'Новости', icon: 'img/icon_album/icon-album-news.png' },
-    { key: 'vr_01', title: 'Альбом 1', icon: 'img/icon_album/icon-album-01.png' },
+    { key: 'mezhdu-zlom-i-dobrom', title: 'Между Злом и Добром', icon: 'img/icon_album/icon-album-01.png' },
+    { key: 'golos-dushi', title: 'Голос Души', icon: 'img/icon_album/icon-album-02.png' },
+    { key: 'krevetochka', title: 'КРЕВЕцTOCHKA', icon: 'img/icon_album/icon-album+00.png' }
     { key: 'vr_02', title: 'Альбом 2', icon: 'img/icon_album/icon-album-02.png' },
     { key: 'vr_03', title: 'Альбом 3', icon: 'img/icon_album/icon-album-03.png' },
     { key: 'vr_04', title: 'Альбом 4', icon: 'img/icon_album/icon-album-04.png' },
