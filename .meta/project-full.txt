@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4d2255e7e6359f8c265d0f80fc6eac089a80283b.idx
-│   │       ├── pack-4d2255e7e6359f8c265d0f80fc6eac089a80283b.pack
-│   │       └── pack-4d2255e7e6359f8c265d0f80fc6eac089a80283b.rev
+│   │       ├── pack-f656f1d2e4ac53a7cf29f7813edff7c8b86b1658.idx
+│   │       ├── pack-f656f1d2e4ac53a7cf29f7813edff7c8b86b1658.pack
+│   │       └── pack-f656f1d2e4ac53a7cf29f7813edff7c8b86b1658.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -265,7 +265,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-06 22:59:59 UTC
+Сгенерировано: 2025-12-06 23:00:42 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3585,6 +3585,14 @@ export const APP_CONFIG = {
     { key: 'krevetochka', title: 'КРЕВЕцTOCHKA', icon: 'img/icon_album/icon-album+00.png' },
     { key: '__reliz__', title: 'Новости', icon: 'img/icon_album/icon-album-news.png' }
   ],
+  
+  // Соответствие альбомов галереям
+  ALBUM_TO_GALLERY_MAP: {
+    'mezhdu-zlom-i-dobrom': '01',
+    'golos-dushi': '02',
+    'krevetochka': '00',
+    '__reliz__': 'news'
+  },
   
   // Ссылки
   SUPPORT_URL: 'https://example.com/support',
