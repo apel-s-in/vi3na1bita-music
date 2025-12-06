@@ -99,6 +99,12 @@ self.addEventListener('fetch', (event) => {
   
   if (!url.protocol.startsWith('http')) return;
   
+  // Обработка Range-запросов для аудио
+  if (request.headers.has('range') && url.pathname.endsWith('.mp3')) {
+    event.respondWith(handleRangeRequest(request));
+    return;
+  }
+  
   if (url.hostname === 'cdn.jsdelivr.net') {
     event.respondWith(fetch(request));
     return;
@@ -111,6 +117,42 @@ self.addEventListener('fetch', (event) => {
   
   event.respondWith(cacheFirst(request));
 });
+
+// Обработка Range-запросов
+async function handleRangeRequest(request) {
+  try {
+    const cache = await caches.open(MEDIA_CACHE);
+    const cached = await cache.match(request);
+    
+    if (cached) {
+      const rangeHeader = request.headers.get('range');
+      if (rangeHeader) {
+        const parts = rangeHeader.replace(/bytes=/, '').split('-');
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : undefined;
+        
+        const blob = await cached.blob();
+        const slicedBlob = blob.slice(start, end ? end + 1 : blob.size);
+        
+        const responseHeaders = new Headers(cached.headers);
+        responseHeaders.set('Content-Range', `bytes ${start}-${end || (blob.size - 1)}/${blob.size}`);
+        responseHeaders.set('Accept-Ranges', 'bytes');
+        responseHeaders.set('Content-Length', slicedBlob.size);
+        
+        return new Response(slicedBlob, {
+          status: 206,
+          statusText: 'Partial Content',
+          headers: responseHeaders
+        });
+      }
+    }
+    
+    return cached;
+  } catch (error) {
+    console.error('Range request failed:', error);
+    return fetch(request);
+  }
+}
 
 async function cacheFirst(request) {
   try {
@@ -196,6 +238,11 @@ self.addEventListener('message', (event) => {
   
   if (event.data?.type === 'GET_SW_VERSION') {
     event.ports[0]?.postMessage({ version: SW_VERSION });
+  }
+  
+  if (event.data?.type === 'REQUEST_OFFLINE_STATE') {
+    const offline = !navigator.onLine;
+    event.ports[0]?.postMessage({ type: 'OFFLINE_STATE', value: offline });
   }
 });
 
