@@ -1,13 +1,11 @@
 // service-worker.js
 // Service Worker для PWA - совместим с CI валидатором
-
 const SW_VERSION = '1.0.0';
 const CORE_CACHE = 'vitrina-core-v1.0.0';
 const RUNTIME_CACHE = 'vitrina-runtime-v1';
 const MEDIA_CACHE = 'vitrina-media-v1';
 const OFFLINE_CACHE = 'vitrina-offline-v1';
 const META_CACHE = 'vitrina-meta-v1';
-
 const DEFAULT_SW_CONFIG = {
   mediaMaxCacheMB: 150,
   nonRangeMaxStoreMB: 25,
@@ -55,7 +53,6 @@ const STATIC_ASSETS = [
 // Установка
 self.addEventListener('install', (event) => {
   console.log(`[SW v${SW_VERSION}] Installing...`);
-  
   event.waitUntil(
     caches.open(CORE_CACHE)
       .then((cache) => {
@@ -75,7 +72,6 @@ self.addEventListener('install', (event) => {
 // Активация
 self.addEventListener('activate', (event) => {
   console.log(`[SW v${SW_VERSION}] Activating...`);
-  
   event.waitUntil(
     caches.keys()
       .then((cacheNames) => {
@@ -100,18 +96,19 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
-
+  
   if (!url.protocol.startsWith('http')) return;
+  
   if (url.hostname === 'cdn.jsdelivr.net') {
     event.respondWith(fetch(request));
     return;
   }
-
+  
   if (request.url.endsWith('.mp3')) {
     event.respondWith(networkFirst(request, MEDIA_CACHE));
     return;
   }
-
+  
   event.respondWith(cacheFirst(request));
 });
 
@@ -119,18 +116,15 @@ async function cacheFirst(request) {
   try {
     const cache = await caches.open(CORE_CACHE);
     const cached = await cache.match(request);
-    
     if (cached) {
       console.log('[SW] Serving from cache:', request.url);
       return cached;
     }
     
     const response = await fetch(request);
-    
     if (response.ok && request.method === 'GET') {
       cache.put(request, response.clone());
     }
-    
     return response;
   } catch (error) {
     console.error('[SW] Cache First error:', error);
@@ -145,27 +139,49 @@ async function cacheFirst(request) {
 async function networkFirst(request, cacheName) {
   try {
     const response = await fetch(request);
-    
     if (response.ok) {
       const cache = await caches.open(cacheName);
       cache.put(request, response.clone());
     }
-    
     return response;
   } catch (error) {
     const cache = await caches.open(cacheName);
     const cached = await cache.match(request);
-    
     if (cached) {
       console.log('[SW] Serving from cache (offline):', request.url);
       return cached;
     }
-    
     throw error;
   }
 }
 
+// Управление офлайн-кэшем
 self.addEventListener('message', (event) => {
+  if (event.data?.type === 'OFFLINE_CACHE_ADD') {
+    const { resources } = event.data;
+    event.waitUntil(
+      caches.open(OFFLINE_CACHE)
+        .then(cache => cache.addAll(resources))
+        .then(() => event.ports[0]?.postMessage({ status: 'success' }))
+        .catch(error => {
+          console.error('[SW] OFFLINE_CACHE_ADD failed:', error);
+          event.ports[0]?.postMessage({ status: 'error', message: error.message });
+        })
+    );
+  }
+  
+  if (event.data?.type === 'OFFLINE_CACHE_CLEAR_CURRENT') {
+    event.waitUntil(
+      caches.delete(OFFLINE_CACHE)
+        .then(() => caches.open(OFFLINE_CACHE))
+        .then(() => event.ports[0]?.postMessage({ status: 'success' }))
+        .catch(error => {
+          console.error('[SW] OFFLINE_CACHE_CLEAR_CURRENT failed:', error);
+          event.ports[0]?.postMessage({ status: 'error', message: error.message });
+        })
+    );
+  }
+  
   if (event.data?.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
@@ -177,7 +193,7 @@ self.addEventListener('message', (event) => {
       })
     );
   }
-
+  
   if (event.data?.type === 'GET_SW_VERSION') {
     event.ports[0]?.postMessage({ version: SW_VERSION });
   }
