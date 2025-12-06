@@ -73,5 +73,13 @@ import { PlayerCore } from '../../src/PlayerCore.js';
   // Экспорт в глобальную область
   window.playerCore = playerCore;
 
+  // Публичные хелперы для совместимости со старым кодом
+  window.playTrack = (index) => playerCore.play(index);
+  window.pauseTrack = () => playerCore.pause();
+  window.nextTrack = () => playerCore.next();
+  window.previousTrack = () => playerCore.prev();
+  window.stopTrack = () => playerCore.stop();
+
   console.log('✅ PlayerCore adapter initialized');
 })();
+
