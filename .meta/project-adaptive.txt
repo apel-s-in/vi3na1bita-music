@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e557a56e3ecf01028c52bc118fa275af27e9a7b7.idx
-│   │       ├── pack-e557a56e3ecf01028c52bc118fa275af27e9a7b7.pack
-│   │       └── pack-e557a56e3ecf01028c52bc118fa275af27e9a7b7.rev
+│   │       ├── pack-a1536cf84bddc549210d024a61f746a5f3328c14.idx
+│   │       ├── pack-a1536cf84bddc549210d024a61f746a5f3328c14.pack
+│   │       └── pack-a1536cf84bddc549210d024a61f746a5f3328c14.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -265,7 +265,7 @@ vi3na1bita-music/
 └── sw.js
 
 
-Сгенерировано: 2025-12-06 21:37:53 UTC
+Сгенерировано: 2025-12-06 21:42:50 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3496,9 +3496,9 @@ test('SW update flow persists state and restores after reload', async ({ page })
 //=================================================
 // FILE: /scripts/player/player-adapter.js
 // scripts/player/player-adapter.js
-// ⭐ ИСПРАВЛЕНО: правильный путь к PlayerCore
+// ⭐ ИСПРАВЛЕНО: корректный относительный путь
 
-import { PlayerCore } from '../../src/PlayerCore.js';  // ✅ ПРАВИЛЬНЫЙ ПУТЬ!
+import { PlayerCore } from '../src/PlayerCore.js';  // ✅ ПРАВИЛЬНО!
 
 (function initPlayerAdapter() {
   if (window.playerCore) {
@@ -3508,7 +3508,6 @@ import { PlayerCore } from '../../src/PlayerCore.js';  // ✅ ПРАВИЛЬНЫ
 
   console.log('🎵 Initializing PlayerCore adapter...');
 
-  // Создаём экземпляр плеера
   const playerCore = new PlayerCore();
 
   // Подписка на события
@@ -3516,7 +3515,6 @@ import { PlayerCore } from '../../src/PlayerCore.js';  // ✅ ПРАВИЛЬНЫ
     onTrackChange: (track, index) => {
       console.log('🎵 Track changed:', track?.title);
       
-      // Обновляем UI
       if (window.PlayerControls) {
         window.PlayerControls.updateNowPlaying({ track, index });
       }
