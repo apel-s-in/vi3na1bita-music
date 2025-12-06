@@ -1,5 +1,5 @@
 // scripts/core/bootstrap.js
-// Начальная загрузка и проверка совместимости
+// КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: загрузка albums.json ДО инициализации UI
 
 (function() {
   'use strict';
@@ -14,32 +14,77 @@
       ];
     }
 
+    async init() {
+      console.log('🚀 Bootstrapping application...');
+
+      // 1. Проверка совместимости
+      if (!this.checkCompatibility()) {
+        console.error('❌ Browser compatibility check failed');
+        return;
+      }
+
+      // 2. Детектирование платформы
+      this.detectIOS();
+      this.detectStandalone();
+
+      // 3. Предотвращение нежелательного поведения
+      this.preventDefaultBehaviors();
+
+      // 4. Обработка ошибок
+      this.setupErrorHandling();
+
+      // 5. ⭐ КРИТИЧНО: Загрузить albums.json
+      await this.loadAlbumsIndex();
+
+      console.log('✅ Bootstrap complete');
+    }
+
+    async loadAlbumsIndex() {
+      try {
+        console.log('📀 Loading albums index...');
+        const response = await fetch('./albums.json', { cache: 'no-cache' });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        if (!data || !Array.isArray(data.albums)) {
+          throw new Error('Invalid albums.json format');
+        }
+
+        // ⭐ Публикуем в глобальную область
+        window.albumsIndex = data.albums;
+
+        console.log(`✅ Albums index loaded: ${data.albums.length} albums`);
+      } catch (error) {
+        console.error('❌ Failed to load albums.json:', error);
+        window.albumsIndex = [];
+      }
+    }
+
     checkCompatibility() {
       const missing = [];
 
-      // LocalStorage
       if (!this.checkLocalStorage()) {
         missing.push('LocalStorage');
       }
 
-      // Fetch API
       if (typeof fetch === 'undefined') {
         missing.push('Fetch API');
       }
 
-      // Promises
       if (typeof Promise === 'undefined') {
         missing.push('Promises');
       }
 
-      // Event Listeners
       if (!document.addEventListener) {
         missing.push('Event Listeners');
       }
 
-      // Web Audio API (желательно)
       if (!window.AudioContext && !window.webkitAudioContext) {
-        console.warn('Web Audio API not supported, falling back to HTML5 Audio');
+        console.warn('Web Audio API not supported');
       }
 
       if (missing.length > 0) {
@@ -77,14 +122,11 @@
         ">
           <div>
             <h1 style="color: #E80100; margin-bottom: 20px;">⚠️ Браузер не поддерживается</h1>
-            <p style="margin-bottom: 15px;">Для работы приложения требуются следующие функции:</p>
+            <p style="margin-bottom: 15px;">Для работы требуются:</p>
             <ul style="list-style: none; padding: 0; margin-bottom: 20px;">
               ${missing.map(f => `<li style="margin: 5px 0;">❌ ${f}</li>`).join('')}
             </ul>
-            <p style="color: #999;">Пожалуйста, обновите браузер до последней версии.</p>
-            <p style="margin-top: 15px; font-size: 14px; color: #666;">
-              Рекомендуем: Chrome, Firefox, Safari, Edge (последние версии)
-            </p>
+            <p style="color: #999;">Обновите браузер до последней версии.</p>
           </div>
         </div>
       `;
@@ -114,14 +156,12 @@
     }
 
     preventDefaultBehaviors() {
-      // Отключить pull-to-refresh на мобильных
       document.body.addEventListener('touchstart', (e) => {
         if (e.touches.length > 1) {
           e.preventDefault();
         }
       }, { passive: false });
 
-      // Отключить двойной тап для зума
       let lastTouchEnd = 0;
       document.addEventListener('touchend', (e) => {
         const now = Date.now();
@@ -131,7 +171,6 @@
         lastTouchEnd = now;
       }, false);
 
-      // Предотвратить контекстное меню на обложках
       document.addEventListener('contextmenu', (e) => {
         if (e.target.tagName === 'IMG' || e.target.closest('#cover-slot')) {
           e.preventDefault();
@@ -142,43 +181,19 @@
     setupErrorHandling() {
       window.addEventListener('error', (e) => {
         console.error('Global error:', e.error);
-        // Можно отправить на сервер аналитики
       });
 
       window.addEventListener('unhandledrejection', (e) => {
         console.error('Unhandled promise rejection:', e.reason);
-        // Можно отправить на сервер аналитики
       });
-    }
-
-    init() {
-      console.log('🚀 Bootstrapping application...');
-
-      // Проверка совместимости
-      if (!this.checkCompatibility()) {
-        console.error('❌ Browser compatibility check failed');
-        return;
-      }
-
-      // Детектирование платформы
-      this.detectIOS();
-      this.detectStandalone();
-
-      // Предотвращение нежелательного поведения
-      this.preventDefaultBehaviors();
-
-      // Обработка ошибок
-      this.setupErrorHandling();
-
-      console.log('✅ Bootstrap complete');
     }
   }
 
-  // Запуск при загрузке DOM
+  // ⭐ Запуск при загрузке DOM
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       const bootstrap = new AppBootstrap();
-      bootstrap.init();
+      await bootstrap.init();
     });
   } else {
     const bootstrap = new AppBootstrap();
