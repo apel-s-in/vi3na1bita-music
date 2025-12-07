@@ -573,9 +573,9 @@
   }
 
   function toggleAnimation() {
-    // Если лирика скрыта — не даём включать анимацию (как в старом приложении).
+    // Если лирика скрыта — не даём включать анимацию
     if (lyricsViewMode === 'hidden') {
-      w.NotificationSystem?.info?.('Лирика скрыта — анимация недоступна');
+      w.NotificationSystem?.info('Лирика скрыта — анимация недоступна');
       return;
     }
 
@@ -590,6 +590,9 @@
 
     if (bg) bg.classList.toggle('active', animationEnabled);
     if (btn) btn.classList.toggle('active', animationEnabled);
+
+    // Уведомление
+    w.NotificationSystem?.info(animationEnabled ? '✨ Анимация лирики: ВКЛ' : '✨ Анимация лирики: ВЫКЛ');
   }
 
   function toggleBit() {
@@ -1120,14 +1123,19 @@
       if (volumeFill) volumeFill.style.width = `${volume}%`;
     }
     
+    // Восстановление режима лирики
     const savedLyricsMode = localStorage.getItem('lyricsViewMode');
-    if (savedLyricsMode) {
+    if (savedLyricsMode && ['normal', 'hidden', 'expanded'].includes(savedLyricsMode)) {
       lyricsViewMode = savedLyricsMode;
+    } else {
+      lyricsViewMode = 'normal';
     }
     
+    // Восстановление анимации лирики
     const savedAnimation = localStorage.getItem('lyricsAnimationEnabled');
     animationEnabled = savedAnimation === '1';
     
+    // Восстановление пульсации логотипа
     const savedBit = localStorage.getItem('bitEnabled');
     bitEnabled = savedBit === '1';
     
@@ -1135,8 +1143,10 @@
       setTimeout(startBitEffect, 1000);
     }
 
-    // Если плеер уже создан к моменту восстановления, применим режим лирики к DOM
+    // Применяем режим лирики к DOM (если плеер уже создан)
     renderLyricsViewMode();
+    
+    console.log(`✅ Settings restored: lyrics=${lyricsViewMode}, animation=${animationEnabled}`);
   }
 
   function formatTime(sec) {
