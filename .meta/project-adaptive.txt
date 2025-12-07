@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1aecaecda398c34c40bfe88dfb944b2d55c84678.idx
-│   │       ├── pack-1aecaecda398c34c40bfe88dfb944b2d55c84678.pack
-│   │       └── pack-1aecaecda398c34c40bfe88dfb944b2d55c84678.rev
+│   │       ├── pack-6c8c98aa3ab22adb141f91594be0c2e2df86923e.idx
+│   │       ├── pack-6c8c98aa3ab22adb141f91594be0c2e2df86923e.pack
+│   │       └── pack-6c8c98aa3ab22adb141f91594be0c2e2df86923e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 21:45:23 UTC
+Сгенерировано: 2025-12-07 21:46:29 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4127,7 +4127,23 @@ export default NavigationManager;
     updateMiniHeader,
     updateNextUpLabel,
     togglePlayPause,
-    toggleLikePlaying
+    toggleLikePlaying,
+    /**
+     * Текущая распарсенная лирика (для LyricsModal и других модулей).
+     * Формат: [{ time: number, text: string }]
+     */
+    get currentLyrics() {
+      return currentLyrics;
+    },
+    /**
+     * Упрощённое представление для бэкомпат: [{ line: string }]
+     * именно это сейчас ожидает lyrics-modal.js.
+     */
+    get currentLyricsLines() {
+      return Array.isArray(currentLyrics)
+        ? currentLyrics.map(l => ({ line: l.text }))
+        : [];
+    }
   };
 
   // Автоинициализация
