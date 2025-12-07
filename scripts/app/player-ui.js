@@ -328,7 +328,7 @@
     const track = w.playerCore?.getCurrentTrack();
     const index = w.playerCore?.getIndex();
     
-    if (!track) {
+    if (!track || index === undefined || index < 0) {
       header.style.display = 'none';
       return;
     }
@@ -344,8 +344,29 @@
     
     if (star) {
       const playingAlbum = w.AlbumsManager?.getPlayingAlbum?.();
-      const liked = w.FavoritesManager?.getLikedForAlbum(playingAlbum)?.includes(index);
-      star.src = liked ? 'img/star.png' : 'img/star2.png';
+      let isLiked = false;
+
+      if (playingAlbum && w.FavoritesManager) {
+        // Обычный альбом: номер трека = track.num, если есть, иначе index+1
+        if (playingAlbum !== w.SPECIAL_FAVORITES_KEY) {
+          const numVal = typeof track.num === 'number' ? track.num : (index + 1);
+          isLiked = !!w.FavoritesManager.isFavorite(playingAlbum, numVal);
+        } else {
+          // Виртуальный альбом Избранное: ищем исходный альбом и номер трека по uid
+          const uid = track.uid || null;
+          if (uid && Array.isArray(w.favoritesRefsModel)) {
+            const ref = w.favoritesRefsModel.find((it) => {
+              const refUid = w.AlbumsManager?.getTrackUid?.(it.__a, it.__t) || `${it.__a}_${it.__t}`;
+              return refUid === uid;
+            });
+            if (ref) {
+              isLiked = !!w.FavoritesManager.isFavorite(ref.__a, ref.__t);
+            }
+          }
+        }
+      }
+
+      star.src = isLiked ? 'img/star.png' : 'img/star2.png';
     }
   }
 
@@ -755,19 +776,49 @@
   function toggleLikePlaying() {
     const playingAlbum = w.AlbumsManager?.getPlayingAlbum?.();
     const index = w.playerCore?.getIndex();
+    const track = w.playerCore?.getCurrentTrack();
 
-    if (!playingAlbum || index === undefined) return;
+    if (!playingAlbum || index === undefined || !track) return;
 
-    // Везде считаем, что номер трека = index + 1 (как в likedTracks:v2)
-    const trackNum = index + 1;
-    const liked = w.FavoritesManager?.getLikedForAlbum(playingAlbum) || [];
-    const isLiked = liked.includes(trackNum);
+    const fm = w.FavoritesManager;
+    const uid = track.uid || null;
 
-    if (w.FavoritesManager && typeof w.FavoritesManager.toggleLike === 'function') {
-      w.FavoritesManager.toggleLike(playingAlbum, trackNum, !isLiked);
-    } else if (typeof w.toggleLikeForAlbum === 'function') {
-      // Back‑compat: если по какой‑то причине класс недоступен
-      w.toggleLikeForAlbum(playingAlbum, trackNum, !isLiked);
+    // Обычный альбом: работаем по номеру трека в альбоме (track.num)
+    if (playingAlbum !== w.SPECIAL_FAVORITES_KEY) {
+      const trackNum = typeof track.num === 'number' ? track.num : (index + 1);
+      const isLiked = !!fm?.isFavorite?.(playingAlbum, trackNum);
+
+      if (fm && typeof fm.toggleLike === 'function') {
+        fm.toggleLike(playingAlbum, trackNum, !isLiked);
+      } else if (typeof w.toggleLikeForAlbum === 'function') {
+        w.toggleLikeForAlbum(playingAlbum, trackNum, !isLiked);
+      }
+    } else {
+      // Виртуальный плейлист Избранного — лайкаем исходный трек
+      if (!uid || !Array.isArray(w.favoritesRefsModel) || !fm) {
+        updateMiniHeader();
+        return;
+      }
+
+      const ref = w.favoritesRefsModel.find((it) => {
+        const refUid = w.AlbumsManager?.getTrackUid?.(it.__a, it.__t) || `${it.__a}_${it.__t}`;
+        return refUid === uid;
+      });
+
+      if (!ref) {
+        updateMiniHeader();
+        return;
+      }
+
+      const albumKey = ref.__a;
+      const trackNum = ref.__t;
+      const isLiked = !!fm.isFavorite?.(albumKey, trackNum);
+
+      fm.toggleLike(albumKey, trackNum, !isLiked);
+      // Обновляем активность в refsModel (для UI списка избранного)
+      if (typeof w.updateFavoritesRefsModelActiveFlag === 'function') {
+        w.updateFavoritesRefsModelActiveFlag(albumKey, trackNum, !isLiked);
+      }
     }
 
     updateMiniHeader();
