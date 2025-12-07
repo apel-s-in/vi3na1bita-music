@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ea12cbc9378913349fbd11587f563c1e810644e7.idx
-│   │       ├── pack-ea12cbc9378913349fbd11587f563c1e810644e7.pack
-│   │       └── pack-ea12cbc9378913349fbd11587f563c1e810644e7.rev
+│   │       ├── pack-1db87cd6e0307a19797c8a2edbe61fbea0a5f628.idx
+│   │       ├── pack-1db87cd6e0307a19797c8a2edbe61fbea0a5f628.pack
+│   │       └── pack-1db87cd6e0307a19797c8a2edbe61fbea0a5f628.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -266,7 +266,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 10:44:13 UTC
+Сгенерировано: 2025-12-07 10:46:56 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2530,24 +2530,130 @@ class AlbumsManager {
   async loadFavoritesAlbum() {
     this.renderAlbumTitle('⭐⭐⭐ ИЗБРАННОЕ ⭐⭐⭐', 'fav');
     
-    if (typeof window.openFavoritesView === 'function') {
-      await window.openFavoritesView();
-    } else {
-      const container = document.getElementById('track-list');
-      if (container) {
-        container.innerHTML = `
-          <div style="padding: 20px; text-align: center; color: #8ab8fd;">
-            <h3>Избранные треки</h3>
-            <p>Отметьте треки звёздочкой ⭐</p>
-          </div>
-        `;
-      }
-    }
-
     const coverWrap = document.getElementById('cover-wrap');
     if (coverWrap) coverWrap.style.display = 'none';
+
+    // Построить модель избранного
+    if (window.buildFavoritesRefsModel) {
+      await window.buildFavoritesRefsModel();
+    }
+
+    const model = window.favoritesRefsModel || [];
+    const container = document.getElementById('track-list');
+    
+    if (!container) return;
+
+    if (model.length === 0) {
+      container.innerHTML = `
+        <div style="padding: 20px; text-align: center; color: #8ab8fd;">
+          <h3>Избранные треки</h3>
+          <p>Отметьте треки звёздочкой ⭐</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = '';
+
+    model.forEach((item, index) => {
+      const trackEl = document.createElement('div');
+      trackEl.className = 'track' + (item.__active ? '' : ' inactive');
+      trackEl.id = `fav_${item.__a}_${item.__t}`;
+      trackEl.dataset.index = index;
+
+      const num = String(index + 1).padStart(2, '0');
+      
+      trackEl.innerHTML = `
+        <div class="tnum">${num}</div>
+        <div class="track-title" title="${item.title} — ${item.__album}">
+          ${item.title} <span style="opacity:.6;font-size:.9em;">— ${item.__album}</span>
+        </div>
+        <img src="${item.__active ? 'img/star.png' : 'img/star2.png'}" 
+             class="like-star" 
+             alt="звезда"
+             data-album="${item.__a}" 
+             data-num="${item.__t}">
+      `;
+
+      // Клик по строке
+      trackEl.addEventListener('click', async (e) => {
+        if (e.target.classList.contains('like-star')) return;
+        
+        if (item.__active && item.audio) {
+          // Запустить воспроизведение из избранного
+          await this.ensureFavoritesPlayback(index);
+        } else {
+          window.NotificationSystem?.warning('Трек недоступен. Добавьте его в избранное из альбома.');
+        }
+      });
+
+      // Клик по звездочке
+      const star = trackEl.querySelector('.like-star');
+      star?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        
+        const wasActive = item.__active;
+        window.toggleLikeForAlbum?.(item.__a, item.__t, !wasActive);
+        
+        // Обновить визуальное состояние
+        trackEl.classList.toggle('inactive', wasActive);
+        star.src = wasActive ? 'img/star2.png' : 'img/star.png';
+        
+        // Обновить модель
+        window.updateFavoritesRefsModelActiveFlag?.(item.__a, item.__t, !wasActive);
+        
+        // Если снят флаг у играющего трека в избранном
+        if (window.playerCore && 
+            window.AlbumsManager?.getCurrentAlbum() === '__favorites__' &&
+            window.playerCore.getIndex() === index && wasActive) {
+          window.playerCore.next();
+        }
+      });
+
+      container.appendChild(trackEl);
+    });
   }
 
+  async ensureFavoritesPlayback(index) {
+    const model = window.favoritesRefsModel || [];
+    
+    if (!model.length) {
+      window.NotificationSystem?.warning('Нет избранных треков');
+      return;
+    }
+
+    // Подготовить плейлист для PlayerCore
+    const tracks = model
+      .filter(item => item.__active && item.audio)
+      .map(item => ({
+        src: item.audio,
+        title: item.title,
+        artist: item.__artist || 'Витрина Разбита',
+        album: item.__album || 'Избранное',
+        cover: item.__cover || 'img/logo.png',
+        lyrics: item.lyrics || null,
+        fulltext: item.fulltext || null
+      }));
+
+    if (!tracks.length) {
+      window.NotificationSystem?.warning('Нет доступных треков');
+      return;
+    }
+
+    // Установить плейлист в PlayerCore
+    if (window.playerCore) {
+      window.playerCore.setPlaylist(tracks, index, {
+        artist: 'Витрина Разбита',
+        album: 'Избранное',
+        cover: 'img/logo.png'
+      });
+      
+      window.playerCore.play(index);
+    }
+  }
+  getAlbumConfigByKey(albumKey) {
+    return this.albumsData.get(albumKey);
+  }
   async loadNewsAlbum() {
     this.renderAlbumTitle('📰 НОВОСТИ 📰', 'news');
     
