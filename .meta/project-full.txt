@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5b71cd3ab62b2b600c1b6a01361e9eb5e89b0b3d.idx
-│   │       ├── pack-5b71cd3ab62b2b600c1b6a01361e9eb5e89b0b3d.pack
-│   │       └── pack-5b71cd3ab62b2b600c1b6a01361e9eb5e89b0b3d.rev
+│   │       ├── pack-4344ecb4af2ab19a46cb2f3e83fd951912141445.idx
+│   │       ├── pack-4344ecb4af2ab19a46cb2f3e83fd951912141445.pack
+│   │       └── pack-4344ecb4af2ab19a46cb2f3e83fd951912141445.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 20:31:45 UTC
+Сгенерировано: 2025-12-07 20:32:39 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3145,35 +3145,43 @@ export default NavigationManager;
     }
 
     const inMiniMode = isBrowsingOtherAlbum();
-    
+    const nowPlaying = document.getElementById('now-playing');
+
     if (inMiniMode) {
-      const holder = document.getElementById('now-playing');
-      if (holder && !holder.contains(playerBlock)) {
-        holder.innerHTML = '';
-        
+      if (nowPlaying && !nowPlaying.contains(playerBlock)) {
+        nowPlaying.innerHTML = '';
+
         const miniHeader = createMiniHeader();
-        holder.appendChild(miniHeader);
-        
-        holder.appendChild(playerBlock);
-        
+        nowPlaying.appendChild(miniHeader);
+
+        nowPlaying.appendChild(playerBlock);
+
         const nextUp = createNextUpElement();
-        holder.appendChild(nextUp);
+        nowPlaying.appendChild(nextUp);
       }
-      
+
+      // В мини-режиме ЛИРИКА не показывается (экономия места и ресурсов)
       const lyricsWindow = playerBlock.querySelector('#lyrics-window');
       if (lyricsWindow) {
         lyricsWindow.style.display = 'none';
       }
-      
+
       const lyricsToggle = playerBlock.querySelector('.lyrics-toggle-btn');
       if (lyricsToggle) {
         lyricsToggle.style.display = 'none';
       }
-      
+
+      // Мини-шапка и "Далее" видны
+      const miniHeaderEl = document.getElementById('mini-now');
+      if (miniHeaderEl) miniHeaderEl.style.display = 'flex';
+
+      const nextUpEl = document.getElementById('next-up');
+      if (nextUpEl) nextUpEl.style.display = 'flex';
+
     } else {
       const trackList = document.getElementById('track-list');
       if (!trackList) return;
-      
+
       const trackRow = trackList.querySelector(`.track[data-index="${trackIndex}"]`);
       if (trackRow) {
         if (trackRow.nextSibling !== playerBlock) {
@@ -3184,16 +3192,24 @@ export default NavigationManager;
           }
         }
       }
-      
+
+      // В обычном режиме показываем окно лирики и кнопку
       const lyricsWindow = playerBlock.querySelector('#lyrics-window');
       if (lyricsWindow) {
         lyricsWindow.style.display = '';
       }
-      
+
       const lyricsToggle = playerBlock.querySelector('.lyrics-toggle-btn');
       if (lyricsToggle) {
         lyricsToggle.style.display = '';
       }
+
+      // Мини-шапка и "Далее" скрываем (но не удаляем, mini.js может управлять стилем рамки)
+      const miniHeaderEl = document.getElementById('mini-now');
+      if (miniHeaderEl) miniHeaderEl.style.display = 'none';
+
+      const nextUpEl = document.getElementById('next-up');
+      if (nextUpEl) nextUpEl.style.display = 'none';
     }
 
     updateMiniHeader();
