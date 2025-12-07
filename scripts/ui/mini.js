@@ -144,58 +144,11 @@
     }
 
     updateMiniNowHeader() {
-      const miniNow = document.getElementById('mini-now');
-      if (!miniNow || !window.playerCore) return;
-
-      const track = window.playerCore.getCurrentTrack();
-      const index = window.playerCore.getIndex();
-
-      if (!track) {
-        miniNow.style.display = 'none';
-        return;
+      // Делегируем обновление мини-заголовка PlayerUI,
+      // чтобы был единый источник правды по содержимому mini-now.
+      if (window.PlayerUI && typeof window.PlayerUI.updateMiniHeader === 'function') {
+        window.PlayerUI.updateMiniHeader();
       }
-
-      const num = document.getElementById('mini-now-num');
-      const title = document.getElementById('mini-now-title');
-      const star = document.getElementById('mini-now-star');
-
-      if (num) num.textContent = `${String(index + 1).padStart(2, '0')}.`;
-      if (title) title.textContent = track.title || '—';
-
-      if (star) {
-        const albumKey = window.AlbumsManager?.getCurrentAlbum();
-        const liked = window.FavoritesManager?.isFavorite(albumKey, index);
-        star.src = liked ? 'img/star.png' : 'img/star2.png';
-      }
-    }
-
-    disableMiniMode() {
-      if (!this.isMiniMode) return;
-
-      this.isMiniMode = false;
-      document.body.classList.remove('mini-mode');
-      localStorage.setItem('miniMode', '0');
-
-      // Показать элементы обратно
-      this.showElements([
-        '#cover-wrap',
-        '#social-links',
-        '.album-icons',
-        '.active-album-title'
-      ]);
-
-      // Вернуть now-playing в нормальное состояние
-      const nowPlaying = document.getElementById('now-playing');
-      if (nowPlaying) {
-        nowPlaying.style.position = '';
-        nowPlaying.style.top = '';
-        nowPlaying.style.zIndex = '';
-        nowPlaying.style.background = '';
-        nowPlaying.style.padding = '';
-        nowPlaying.style.boxShadow = '';
-      }
-
-      console.log('📱 Mini mode disabled');
     }
 
     toggleMiniMode() {
