@@ -167,10 +167,6 @@
   };
 
   // Автоинициализация
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initSleepTimer);
-  } else {
-    initSleepTimer();
-  }
+  // (Lyrics Modal не требует автозапуска)
 
 })();
