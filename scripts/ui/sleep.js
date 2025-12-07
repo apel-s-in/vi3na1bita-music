@@ -232,7 +232,14 @@
   w.SleepTimer = {
     setSleepTimer,
     clearSleepTimer,
-    updateBadge
+    updateBadge,
+    // Показать меню таймера сна (используется горячей клавишей T и кнопкой в PlayerUI)
+    show() {
+      const btn = document.getElementById('sleep-timer-btn');
+      if (!btn) return;
+      // Если меню уже открыто – просто закрыть/открыть по toggleSleepMenu
+      toggleSleepMenu({ currentTarget: btn });
+    }
   };
 
   // Автоинициализация
