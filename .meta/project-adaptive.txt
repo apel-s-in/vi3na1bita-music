@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d6bf67e57563a75c865218b2a760e31f1580e2f8.idx
-│   │       ├── pack-d6bf67e57563a75c865218b2a760e31f1580e2f8.pack
-│   │       └── pack-d6bf67e57563a75c865218b2a760e31f1580e2f8.rev
+│   │       ├── pack-0759209dd8fbf17503aac117fc7f3b5a75e825de.idx
+│   │       ├── pack-0759209dd8fbf17503aac117fc7f3b5a75e825de.pack
+│   │       └── pack-0759209dd8fbf17503aac117fc7f3b5a75e825de.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -266,7 +266,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 09:47:35 UTC
+Сгенерировано: 2025-12-07 09:54:57 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -582,6 +582,7 @@ jobs:
   
   <!-- Core -->
   <script src="./scripts/core/bootstrap.js"></script>
+  <!-- ⚠️ bootstrap.js должен быть обычным скриптом, НЕ type="module" -->
   <script src="./scripts/core/config.js" type="module"></script>
   
   <!-- Player Core -->
