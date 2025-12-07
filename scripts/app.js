@@ -36,10 +36,7 @@ import { APP_CONFIG } from './core/config.js';
         // 5. Инициализация UI плеера
         await this.initializePlayerUI();
 
-        // 6. Регистрация Service Worker
-        await this.registerServiceWorker();
-
-        // 7. Инициализация дополнительных модулей
+        // 6. Инициализация дополнительных модулей
         this.initializeModules();
 
         // 8. Настройка горячих клавиш
@@ -57,12 +54,19 @@ import { APP_CONFIG } from './core/config.js';
     }
 
     async loadAlbumsIndex() {
-      // Индекс уже загружается в scripts/core/bootstrap.js из ./albums.json
-      // и публикуется в window.albumsIndex. Здесь только проверяем и логируем.
+      // Индекс альбомов уже загружается в scripts/core/bootstrap.js из ./albums.json
+      // и публикуется в window.albumsIndex. Здесь только проверяем наличие и логируем.
       if (Array.isArray(w.albumsIndex) && w.albumsIndex.length > 0) {
         console.log(`✅ Albums index already loaded: ${w.albumsIndex.length} albums`);
         return;
       }
+
+      console.warn(
+        '⚠️ albumsIndex is empty in Application.loadAlbumsIndex(). ' +
+        'Проверьте загрузку ./albums.json в scripts/core/bootstrap.js'
+      );
+      w.albumsIndex = w.albumsIndex || [];
+    }
 
       console.warn('⚠️ albumsIndex is empty in Application.loadAlbumsIndex(). ' +
                    'Проверьте загрузку ./albums.json в scripts/core/bootstrap.js');
@@ -283,30 +287,6 @@ import { APP_CONFIG } from './core/config.js';
         const btn = document.getElementById('install-pwa-btn');
         if (btn) btn.style.display = 'none';
       });
-    }
-
-    async registerServiceWorker() {
-      if (!('serviceWorker' in navigator)) {
-        console.warn('⚠️ Service Worker not supported');
-        return;
-      }
-
-      try {
-        const registration = await navigator.serviceWorker.register('./sw.js', {
-          scope: './'
-        });
-
-        console.log('✅ Service Worker registered:', registration.scope);
-        this.serviceWorkerRegistered = true;
-
-        // Проверка обновлений каждые 5 минут
-        setInterval(() => {
-          registration.update();
-        }, 5 * 60 * 1000);
-
-      } catch (error) {
-        console.error('❌ Service Worker registration failed:', error);
-      }
     }
   }
 
