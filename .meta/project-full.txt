@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-0759209dd8fbf17503aac117fc7f3b5a75e825de.idx
-│   │       ├── pack-0759209dd8fbf17503aac117fc7f3b5a75e825de.pack
-│   │       └── pack-0759209dd8fbf17503aac117fc7f3b5a75e825de.rev
+│   │       ├── pack-8ceffe2fee96cfdf34c547266e3317801288b464.idx
+│   │       ├── pack-8ceffe2fee96cfdf34c547266e3317801288b464.pack
+│   │       └── pack-8ceffe2fee96cfdf34c547266e3317801288b464.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -266,7 +266,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 09:54:57 UTC
+Сгенерировано: 2025-12-07 10:04:29 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4834,7 +4834,7 @@ console.log('PlayerCore JS/TS validation OK');
 //=================================================
 // FILE: /scripts/core/bootstrap.js
 // scripts/core/bootstrap.js
-// ⭐ ИСПРАВЛЕНО: асинхронная загрузка albums.json (XMLHttpRequest sync DEPRECATED!)
+// ⭐ ИСПРАВЛЕНО: убраны все экспорты, async/await обёрнут в IIFE
 
 (function() {
   'use strict';
@@ -5037,11 +5037,11 @@ console.log('PlayerCore JS/TS validation OK');
 
     setupErrorHandling() {
       window.addEventListener('error', (e) => {
-        console.error('Global error:', e.error);
+        console.error('💥 Global error:', e.error || e.message);
       });
 
       window.addEventListener('unhandledrejection', (e) => {
-        console.error('Unhandled promise rejection:', e.reason);
+        console.error('💥 Unhandled promise rejection:', e.reason);
       });
     }
   }
