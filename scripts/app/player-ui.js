@@ -22,6 +22,12 @@
   let lyricsLastIdx = -1;
   let lyricsLastTs = 0;
 
+  // Флаг: сейчас ли мы в контекстном мини-режиме (играет один альбом, просматриваем другой)
+  let isInContextMiniMode = false;
+
+  // Сохранённый режим отображения лирики при входе в мини-режим
+  let savedLyricsViewModeForMini = null;
+
   function initPlayerUI() {
     if (!w.albumsIndex || w.albumsIndex.length === 0) {
       setTimeout(initPlayerUI, 100);
@@ -106,16 +112,8 @@
         nowPlaying.appendChild(nextUp);
       }
 
-      // В мини-режиме ЛИРИКА не показывается (экономия места и ресурсов)
-      const lyricsWindow = playerBlock.querySelector('#lyrics-window');
-      if (lyricsWindow) {
-        lyricsWindow.style.display = 'none';
-      }
-
-      const lyricsToggle = playerBlock.querySelector('.lyrics-toggle-btn');
-      if (lyricsToggle) {
-        lyricsToggle.style.display = 'none';
-      }
+      // Применяем состояние лирики для контекстного мини-режима
+      applyMiniLyricsState();
 
       // Мини-шапка и "Далее" видны
       const miniHeaderEl = document.getElementById('mini-now');
@@ -139,18 +137,10 @@
         }
       }
 
-      // В обычном режиме показываем окно лирики и кнопку
-      const lyricsWindow = playerBlock.querySelector('#lyrics-window');
-      if (lyricsWindow) {
-        lyricsWindow.style.display = '';
-      }
+      // В полноэкранном режиме восстанавливаем режим и видимость лирики
+      restoreLyricsStateIfNeeded();
 
-      const lyricsToggle = playerBlock.querySelector('.lyrics-toggle-btn');
-      if (lyricsToggle) {
-        lyricsToggle.style.display = '';
-      }
-
-      // Мини-шапка и "Далее" скрываем (но не удаляем, mini.js может управлять стилем рамки)
+      // Мини-шапка и "Далее" скрываем (но не удаляем)
       const miniHeaderEl = document.getElementById('mini-now');
       if (miniHeaderEl) miniHeaderEl.style.display = 'none';
 
@@ -615,21 +605,10 @@
     const modes = ['normal', 'medium', 'large', 'compact'];
     const currentIndex = modes.indexOf(lyricsViewMode);
     lyricsViewMode = modes[(currentIndex + 1) % modes.length];
-    
+
     localStorage.setItem('lyricsViewMode', lyricsViewMode);
-    
-    const lyricsWindow = document.getElementById('lyrics-window');
-    const btn = document.getElementById('lyrics-toggle-btn');
-    
-    if (lyricsWindow) {
-      lyricsWindow.className = `lyrics-${lyricsViewMode}`;
-    }
-    
-    if (btn) {
-      btn.className = `lyrics-toggle-btn lyrics-${lyricsViewMode}`;
-      const label = btn.querySelector('.lyrics-toggle-label');
-      if (label) label.textContent = getLyricsModeLabel();
-    }
+
+    renderLyricsViewMode();
   }
 
   function getLyricsModeLabel() {
@@ -641,7 +620,103 @@
     };
     return labels[lyricsViewMode] || 'Нормальный';
   }
+  /**
+   * Применяет текущий lyricsViewMode к DOM (классы на #lyrics-window и кнопке режима).
+   */
+  function renderLyricsViewMode() {
+    const playerBlock = document.getElementById('lyricsplayerblock');
+    if (!playerBlock) return;
 
+    const lyricsWindow = playerBlock.querySelector('#lyrics-window');
+    const btn = playerBlock.querySelector('#lyrics-toggle-btn');
+    if (!lyricsWindow || !btn) return;
+
+    // Сбрасываем классы размеров
+    lyricsWindow.classList.remove(
+      'lyrics-normal',
+      'lyrics-medium',
+      'lyrics-large',
+      'lyrics-compact',
+      'lyrics-hidden',
+      'lyrics-expanded'
+    );
+
+    btn.classList.remove(
+      'lyrics-normal',
+      'lyrics-medium',
+      'lyrics-large',
+      'lyrics-compact'
+    );
+
+    // Назначаем новые
+    const cls = `lyrics-${lyricsViewMode}`;
+    lyricsWindow.classList.add(cls);
+    btn.classList.add(cls);
+
+    const label = btn.querySelector('.lyrics-toggle-label');
+    if (label) {
+      label.textContent = getLyricsModeLabel();
+    }
+  }
+
+  /**
+   * Применяет состояние лирики для контекстного мини-режима:
+   *  - помечаем, что сейчас в мини-режиме,
+   *  - сохраняем текущий режим отображения (один раз),
+   *  - скрываем окно лирики и кнопку переключения.
+   */
+  function applyMiniLyricsState() {
+    const playerBlock = document.getElementById('lyricsplayerblock');
+    if (!playerBlock) return;
+
+    isInContextMiniMode = true;
+
+    if (!savedLyricsViewModeForMini) {
+      savedLyricsViewModeForMini = lyricsViewMode || 'normal';
+    }
+
+    const lyricsWindow = playerBlock.querySelector('#lyrics-window');
+    if (lyricsWindow) {
+      lyricsWindow.style.display = 'none';
+    }
+
+    const lyricsToggle = playerBlock.querySelector('.lyrics-toggle-btn');
+    if (lyricsToggle) {
+      lyricsToggle.style.display = 'none';
+    }
+  }
+
+  /**
+   * Восстанавливает состояние лирики после выхода из контекстного мини-режима:
+   *  - возвращает видимость окна и кнопки,
+   *  - восстанавливает сохранённый режим отображения (если был),
+   *  - заново применяет классы через renderLyricsViewMode.
+   */
+  function restoreLyricsStateIfNeeded() {
+    const playerBlock = document.getElementById('lyricsplayerblock');
+    if (!playerBlock) return;
+
+    if (!isInContextMiniMode) return;
+
+    isInContextMiniMode = false;
+
+    const lyricsWindow = playerBlock.querySelector('#lyrics-window');
+    if (lyricsWindow) {
+      lyricsWindow.style.display = '';
+    }
+
+    const lyricsToggle = playerBlock.querySelector('.lyrics-toggle-btn');
+    if (lyricsToggle) {
+      lyricsToggle.style.display = '';
+    }
+
+    if (savedLyricsViewModeForMini) {
+      lyricsViewMode = savedLyricsViewModeForMini;
+      savedLyricsViewModeForMini = null;
+    }
+
+    renderLyricsViewMode();
+  }
   function toggleFavoritesOnly() {
     const currentAlbum = w.AlbumsManager?.getCurrentAlbum();
     
@@ -776,6 +851,9 @@
 
   function renderLyricsEnhanced(position) {
     if (!currentLyrics.length) return;
+
+    // В контекстном мини-режиме лирика скрыта, нет смысла перерисовывать строки.
+    if (isInContextMiniMode) return;
     
     let activeIdx = -1;
     
@@ -835,6 +913,9 @@
     if (bitEnabled) {
       setTimeout(startBitEffect, 1000);
     }
+
+    // Если плеер уже создан к моменту восстановления, применим режим лирики к DOM
+    renderLyricsViewMode();
   }
 
   function formatTime(sec) {
