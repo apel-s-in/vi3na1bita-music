@@ -9,12 +9,11 @@ class FavoritesManager {
 
   /**
    * Инициализация менеджера избранного.
-   * Сейчас — лёгкая заглушка: прогреваем refs‑модель, чтобы перейти на единый источник правды.
    * Вызывается из Application.initialize().
+   * Сейчас прогреваем refs‑модель, чтобы «Избранное» сразу было готово.
    */
   async initialize() {
     try {
-      // Построим модель refs один раз при старте, чтобы FavoritesAlbum сразу имел данные.
       await this.updateRefsModel();
       console.log('✅ FavoritesManager initialized');
     } catch (e) {
