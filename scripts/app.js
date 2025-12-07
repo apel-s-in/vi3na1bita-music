@@ -52,15 +52,31 @@ import { APP_CONFIG } from './core/config.js';
     }
 
     async loadAlbumsIndex() {
-      // Индекс альбомов уже загружается в scripts/core/bootstrap.js из ./albums.json
-      // и публикуется в window.albumsIndex. Здесь только проверяем наличие и логируем.
+      // Индекс альбомов загружается в scripts/core/bootstrap.js из ./albums.json
+      // и публикуется в window.albumsIndex. Здесь дожидаемся, чтобы не стартовать раньше bootstrap.
+      const maxWaitMs = 2000;
+      const stepMs = 50;
+      let waited = 0;
+
+      // Если уже есть валидный индекс — просто используем его
       if (Array.isArray(w.albumsIndex) && w.albumsIndex.length > 0) {
         console.log(`✅ Albums index already loaded: ${w.albumsIndex.length} albums`);
         return;
       }
 
+      // Подождём, пока bootstrap поднимет albumsIndex
+      while ((!Array.isArray(w.albumsIndex) || w.albumsIndex.length === 0) && waited < maxWaitMs) {
+        await new Promise(r => setTimeout(r, stepMs));
+        waited += stepMs;
+      }
+
+      if (Array.isArray(w.albumsIndex) && w.albumsIndex.length > 0) {
+        console.log(`✅ Albums index loaded after bootstrap wait: ${w.albumsIndex.length} albums`);
+        return;
+      }
+
       console.warn(
-        '⚠️ albumsIndex is empty in Application.loadAlbumsIndex(). ' +
+        '⚠️ albumsIndex is empty in Application.loadAlbumsIndex() даже после ожидания. ' +
         'Проверьте загрузку ./albums.json в scripts/core/bootstrap.js'
       );
       w.albumsIndex = w.albumsIndex || [];
