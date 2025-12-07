@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5a2f312574ec9a0f7506c18e0ee591a694e986b1.idx
-│   │       ├── pack-5a2f312574ec9a0f7506c18e0ee591a694e986b1.pack
-│   │       └── pack-5a2f312574ec9a0f7506c18e0ee591a694e986b1.rev
+│   │       ├── pack-3cd118c7d5b2089c3592488588658a2bad5d2449.idx
+│   │       ├── pack-3cd118c7d5b2089c3592488588658a2bad5d2449.pack
+│   │       └── pack-3cd118c7d5b2089c3592488588658a2bad5d2449.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 23:13:52 UTC
+Сгенерировано: 2025-12-07 23:14:26 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8848,7 +8848,15 @@ header {
   background: rgba(0,0,0,0.07);
   text-shadow: 0 1px 7px rgba(115,22,22,0.27);
 }
-
+/* Placeholder для "текст не найден" */
+.lyrics-placeholder {
+  text-align: center;
+  padding: 40px 16px;
+  color: #5a6989;
+  font-size: 14px;
+  opacity: 0.6;
+  user-select: none;
+}
 /* Placeholder для пустых строк */
 .lyrics-placeholder {
   text-align: center;
