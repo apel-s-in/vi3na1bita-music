@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b0c074d2e9dc33db4a0057c7aee3327a3f894b41.idx
-│   │       ├── pack-b0c074d2e9dc33db4a0057c7aee3327a3f894b41.pack
-│   │       └── pack-b0c074d2e9dc33db4a0057c7aee3327a3f894b41.rev
+│   │       ├── pack-43c90764daf77f962f507beaa2f89ae611de24d3.idx
+│   │       ├── pack-43c90764daf77f962f507beaa2f89ae611de24d3.pack
+│   │       └── pack-43c90764daf77f962f507beaa2f89ae611de24d3.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -266,7 +266,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 10:52:36 UTC
+Сгенерировано: 2025-12-07 10:53:19 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3545,6 +3545,10 @@ class NavigationManager {
   }
   
   showHotkeysModal() {
+    if (!this.modalsContainer) {
+      this.modalsContainer = document.getElementById('modals-container');
+    }
+    
     this.showModal(`
       <h2>📌 Горячие клавиши</h2>
       <div class="hotkeys-section">
