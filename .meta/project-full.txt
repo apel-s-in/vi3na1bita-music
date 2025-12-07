@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-702a59dbe8a4b1f0eb47eb3efb676d06b6b966bb.idx
-│   │       ├── pack-702a59dbe8a4b1f0eb47eb3efb676d06b6b966bb.pack
-│   │       └── pack-702a59dbe8a4b1f0eb47eb3efb676d06b6b966bb.rev
+│   │       ├── pack-5a2f312574ec9a0f7506c18e0ee591a694e986b1.idx
+│   │       ├── pack-5a2f312574ec9a0f7506c18e0ee591a694e986b1.pack
+│   │       └── pack-5a2f312574ec9a0f7506c18e0ee591a694e986b1.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 23:12:53 UTC
+Сгенерировано: 2025-12-07 23:13:52 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3199,7 +3199,11 @@ export default NavigationManager;
     if (!track) return;
     
     ensurePlayerBlock(index);
-    loadLyrics(track.lyrics);
+    
+    // Загружаем лирику и сразу рендерим первый кадр
+    loadLyrics(track.lyrics).then(() => {
+      renderLyrics(0);
+    });
     
     const downloadBtn = document.getElementById('track-download-btn');
     if (downloadBtn && track.src) {
@@ -4064,11 +4068,11 @@ export default NavigationManager;
     lyricsLastIdx = -1;
     
     const container = document.getElementById('lyrics');
-    if (!container) return;
+    if (!container) return Promise.resolve();
     
     if (!lyricsUrl) {
       container.innerHTML = '<div class="lyrics-placeholder">Текст не найден</div>';
-      return;
+      return Promise.resolve();
     }
     
     try {
@@ -4077,7 +4081,6 @@ export default NavigationManager;
       
       // Пытаемся сначала как JSON (старый формат lyrics/NN.json),
       // если не получилось — fallback на текст (LRC).
-      let bodyText = null;
       let asJson = null;
 
       try {
@@ -4089,14 +4092,17 @@ export default NavigationManager;
       if (Array.isArray(asJson)) {
         parseLyrics(asJson);
       } else {
-        bodyText = await response.text();
+        const bodyText = await response.text();
         parseLyrics(bodyText);
       }
 
-      renderLyrics();
+      // НЕ вызываем renderLyrics() здесь — это сделает onTrackChange
+      return Promise.resolve();
+      
     } catch (error) {
       console.error('Failed to load lyrics:', error);
       container.innerHTML = '<div class="lyrics-placeholder">Ошибка загрузки текста</div>';
+      return Promise.resolve();
     }
   }
 
