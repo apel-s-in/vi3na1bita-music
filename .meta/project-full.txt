@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-333c0fd9de17e803528ae1bcbde8236252a807ef.idx
-│   │       ├── pack-333c0fd9de17e803528ae1bcbde8236252a807ef.pack
-│   │       └── pack-333c0fd9de17e803528ae1bcbde8236252a807ef.rev
+│   │       ├── pack-b0c074d2e9dc33db4a0057c7aee3327a3f894b41.idx
+│   │       ├── pack-b0c074d2e9dc33db4a0057c7aee3327a3f894b41.pack
+│   │       └── pack-b0c074d2e9dc33db4a0057c7aee3327a3f894b41.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -266,7 +266,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 10:51:39 UTC
+Сгенерировано: 2025-12-07 10:52:35 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5283,7 +5283,9 @@ if (typeof window !== 'undefined') {
   window.SPECIAL_FAVORITES_KEY = APP_CONFIG.SPECIAL_FAVORITES_KEY;
   window.SPECIAL_RELIZ_KEY = APP_CONFIG.SPECIAL_RELIZ_KEY;
   window.ICON_ALBUMS_ORDER = APP_CONFIG.ICON_ALBUMS_ORDER;
+  window.CENTRAL_GALLERY_BASE = APP_CONFIG.CENTRAL_GALLERY_BASE;
 }
+
 
 //=================================================
 // FILE: /scripts/e2e/favorites.spec.js
