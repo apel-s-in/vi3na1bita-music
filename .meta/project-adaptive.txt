@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-47a94f6bee8500a66532c0c005abccba42b0316e.idx
-│   │       ├── pack-47a94f6bee8500a66532c0c005abccba42b0316e.pack
-│   │       └── pack-47a94f6bee8500a66532c0c005abccba42b0316e.rev
+│   │       ├── pack-c6678c29a59cbc4f78c72dacf72557802931c3b9.idx
+│   │       ├── pack-c6678c29a59cbc4f78c72dacf72557802931c3b9.pack
+│   │       └── pack-c6678c29a59cbc4f78c72dacf72557802931c3b9.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 21:05:32 UTC
+Сгенерировано: 2025-12-07 21:06:19 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6971,6 +6971,15 @@ class ServiceWorkerManager {
   async applyUpdate() {
     if (!this.registration || !this.registration.waiting) {
       return;
+    }
+
+    // Сохраняем состояние плеера перед обновлением, чтобы после reload восстановиться
+    try {
+      if (window.PlayerState && typeof window.PlayerState.save === 'function') {
+        window.PlayerState.save({ forReload: true });
+      }
+    } catch (e) {
+      console.warn('PlayerState.save before SW update failed:', e);
     }
 
     // Отправить сообщение SW для пропуска ожидания
