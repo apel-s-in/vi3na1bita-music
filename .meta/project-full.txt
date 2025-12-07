@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-50472ea30f5af4dc351561dc605c13dc5ab12ce3.idx
-│   │       ├── pack-50472ea30f5af4dc351561dc605c13dc5ab12ce3.pack
-│   │       └── pack-50472ea30f5af4dc351561dc605c13dc5ab12ce3.rev
+│   │       ├── pack-10307116c33e9c30b6fd63a184a3b8ec7be8a407.idx
+│   │       ├── pack-10307116c33e9c30b6fd63a184a3b8ec7be8a407.pack
+│   │       └── pack-10307116c33e9c30b6fd63a184a3b8ec7be8a407.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -267,7 +267,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 12:06:59 UTC
+Сгенерировано: 2025-12-07 13:35:54 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -583,6 +583,9 @@ jobs:
   <script src="./scripts/core/bootstrap.js"></script>
   <script src="./scripts/core/config.js" type="module"></script>
   
+  <!-- Player Core (новая платформа) -->
+  <script src="./src/PlayerCore.js" type="module"></script>
+  
   <!-- UI Modules -->
   <script src="./scripts/ui/notify.js" defer></script>
   <script src="./scripts/ui/favorites-const.js" defer></script>
@@ -591,10 +594,13 @@ jobs:
   <script src="./scripts/ui/favorites.js" defer></script>
   <script src="./scripts/ui/favorites-view.js" defer></script>
   <script src="./scripts/ui/sleep.js" defer></script>
+  <script src="./scripts/ui/lyrics-modal.js" defer></script>
+  <script src="./scripts/ui/sysinfo.js" defer></script>
   
   <!-- App Modules -->
   <script src="./scripts/app/background-audio.js" defer></script>
   <script src="./scripts/app/background-events.js" defer></script>
+  <script src="./scripts/app/player-ui.js" defer></script>
   <script src="./scripts/app/albums.js" type="module"></script>
   <script src="./scripts/app/navigation.js" type="module"></script>
   <script src="./scripts/app/downloads.js" type="module"></script>
@@ -714,6 +720,31 @@ jobs:
       if (savedPromo === 'VITRINA2025') {
         unlockAppDirectly();
       }
+      
+      // Обработчик ввода промокода
+      const promoInput = document.getElementById('promo-inp');
+      const promoBtn = document.getElementById('promo-btn');
+      const promoError = document.getElementById('promo-error');
+      
+      const checkPromo = () => {
+        const value = promoInput.value.trim();
+        if (value === 'VITRINA2025') {
+          localStorage.setItem('promocode', value);
+          unlockAppDirectly();
+        } else {
+          promoError.textContent = '❌ Неверный промокод';
+          promoInput.classList.add('error');
+          setTimeout(() => {
+            promoError.textContent = '';
+            promoInput.classList.remove('error');
+          }, 2000);
+        }
+      };
+      
+      promoBtn?.addEventListener('click', checkPromo);
+      promoInput?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') checkPromo();
+      });
       
       // iOS: показать подсказку про установку
       detectIOSAndShowInstallGuide();
