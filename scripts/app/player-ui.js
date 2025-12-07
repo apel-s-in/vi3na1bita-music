@@ -77,6 +77,19 @@
       return; // Уже создан
     }
 
+    // Добавить элемент "Далее" для мини-режима
+    const nextUpExists = document.getElementById('next-up');
+    if (!nextUpExists) {
+      const nextUp = document.createElement('div');
+      nextUp.id = 'next-up';
+      nextUp.className = 'next-up';
+      nextUp.innerHTML = `
+        <span class="label">Далее:</span>
+        <span class="title" title="">—</span>
+      `;
+      container.appendChild(nextUp);
+    }
+
     container.innerHTML = `
       <div class="lyrics-player-block" id="lyricsplayerblock">
         <div id="lyrics-window" class="lyrics-${lyricsViewMode}">
@@ -193,6 +206,49 @@
         </div>
       </div>
     `;
+    // Добавить мини-заголовок
+    const miniNowExists = document.getElementById('mini-now');
+    if (!miniNowExists) {
+      const miniNow = document.createElement('div');
+      miniNow.className = 'mini-now';
+      miniNow.id = 'mini-now';
+      miniNow.innerHTML = `
+        <span class="tnum" id="mini-now-num">--.</span>
+        <span class="track-title" id="mini-now-title">—</span>
+        <img src="img/star2.png" class="like-star" id="mini-now-star" alt="звезда">
+      `;
+      
+      miniNow.addEventListener('click', (e) => {
+        if (e.target.id !== 'mini-now-star') {
+          // Клик по мини-заголовку - вернуться к играющему альбому
+          const playingAlbum = window.AlbumsManager?.getCurrentAlbum();
+          if (playingAlbum && playingAlbum !== '__favorites__' && playingAlbum !== '__reliz__') {
+            window.AlbumsManager?.loadAlbum(playingAlbum);
+          }
+        }
+      });
+
+      const star = miniNow.querySelector('#mini-now-star');
+      star?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const track = w.playerCore?.getCurrentTrack();
+        if (!track) return;
+        
+        const albumKey = window.AlbumsManager?.getCurrentAlbum();
+        const index = w.playerCore?.getIndex();
+        
+        if (albumKey && typeof index === 'number') {
+          const liked = window.FavoritesManager?.isFavorite(albumKey, index);
+          window.FavoritesManager?.toggleLike(albumKey, index, !liked);
+          star.src = liked ? 'img/star2.png' : 'img/star.png';
+        }
+      });
+
+      const playerBlock = document.getElementById('lyricsplayerblock');
+      if (playerBlock && playerBlock.parentNode) {
+        playerBlock.parentNode.insertBefore(miniNow, playerBlock);
+      }
+    }
 
     bindPlayerEvents();
   }
@@ -872,8 +928,11 @@
     toggleAnimation,
     toggleBit,
     toggleFavoritesOnly,
+    updateVolumeUI,
     currentLyrics: () => currentLyrics,
-    getLyricsViewMode: () => lyricsViewMode
+    getLyricsViewMode: () => lyricsViewMode,
+    bitIntensity: bitIntensity,
+    bitEnabled: bitEnabled
   };
 
   // Автоинициализация
