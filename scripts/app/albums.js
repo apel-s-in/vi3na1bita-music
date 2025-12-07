@@ -300,16 +300,32 @@ class AlbumsManager {
         e.stopPropagation();
         
         const wasActive = item.__active;
-        window.toggleLikeForAlbum?.(item.__a, item.__t, !wasActive);
-        
-        trackEl.classList.toggle('inactive', wasActive);
-        star.src = wasActive ? 'img/star2.png' : 'img/star.png';
-        
-        window.updateFavoritesRefsModelActiveFlag?.(item.__a, item.__t, !wasActive);
-        
-        if (window.playerCore && 
+        const makeLiked = !wasActive;
+
+        // Основной путь: через FavoritesManager
+        if (window.FavoritesManager && typeof window.FavoritesManager.toggleLike === 'function') {
+          window.FavoritesManager.toggleLike(item.__a, item.__t, makeLiked);
+        } else if (typeof window.toggleLikeForAlbum === 'function') {
+          // Back‑compat: глобальная обёртка (delegates в FavoritesManager или raw localStorage)
+          window.toggleLikeForAlbum(item.__a, item.__t, makeLiked);
+        }
+
+        // Обновляем локальную модель/DOM‑состояние
+        item.__active = makeLiked;
+        trackEl.classList.toggle('inactive', !makeLiked);
+        star.src = makeLiked ? 'img/star.png' : 'img/star2.png';
+
+        // Обновляем refs‑модель (FavoritesData) если доступна
+        if (typeof window.updateFavoritesRefsModelActiveFlag === 'function') {
+          window.updateFavoritesRefsModelActiveFlag(item.__a, item.__t, makeLiked);
+        }
+
+        // Если сняли звезду с текущего играющего трека в представлении Избранного —
+        // по ТЗ всегда вызываем next(), но не stop.
+        if (window.playerCore &&
             this.getCurrentAlbum() === '__favorites__' &&
-            window.playerCore.getIndex() === index && wasActive) {
+            window.playerCore.getIndex() === index &&
+            wasActive && !makeLiked) {
           window.playerCore.next();
         }
       });
