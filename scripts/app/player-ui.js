@@ -1008,61 +1008,97 @@
     currentLyrics.sort((a, b) => a.time - b.time);
   }
 
-  function renderLyrics() {
+  /**
+   * Рендеринг окна лирики в стиле караоке (как в старом приложении).
+   * Показывает окно из N строк с активной строкой по центру.
+   * Размер окна зависит от режима: normal (5 строк) / expanded (9 строк).
+   */
+  function renderLyrics(position) {
     const container = document.getElementById('lyrics');
     if (!container) return;
-    
-    if (currentLyrics.length === 0) {
+
+    if (!currentLyrics || currentLyrics.length === 0) {
       container.innerHTML = '<div class="lyrics-placeholder">Текст не найден</div>';
       return;
     }
-    
-    container.innerHTML = '';
-    
-    currentLyrics.forEach((line, index) => {
-      const div = document.createElement('div');
-      div.className = 'lyrics-line';
-      div.dataset.index = index;
-      div.textContent = line.text || '♪';
-      container.appendChild(div);
-    });
-  }
 
-  function renderLyricsEnhanced(position) {
-    if (!currentLyrics.length) return;
+    // Размер окна зависит от режима
+    const windowSize = (lyricsViewMode === 'expanded') ? 9 : 5;
+    const centerLine = Math.floor(windowSize / 2);
 
-    // Если лирика скрыта режимом или мы в мини-режиме — не тратим ресурсы.
-    if (lyricsViewMode === 'hidden' || isInContextMiniMode) return;
-    
+    // Определение активной строки по времени
     let activeIdx = -1;
-    
     for (let i = 0; i < currentLyrics.length; i++) {
-      if (currentLyrics[i].time <= position) {
+      if (position >= currentLyrics[i].time) {
         activeIdx = i;
       } else {
         break;
       }
     }
+
+    // Вычисление диапазона отображаемых строк
+    const start = Math.max(0, activeIdx - centerLine);
+    const padTop = Math.max(0, centerLine - activeIdx);
+
+    // Формирование HTML
+    const rows = [];
+
+    // Пустые строки сверху (для центрирования)
+    for (let p = 0; p < padTop; ++p) {
+      rows.push('<div class="lyrics-window-line"></div>');
+    }
+
+    // Строки лирики
+    for (let i = start; i < Math.min(currentLyrics.length, start + windowSize - padTop); i++) {
+      const cls = (i === activeIdx) ? 'lyrics-window-line active' : 'lyrics-window-line';
+      const text = currentLyrics[i] ? (currentLyrics[i].text || currentLyrics[i].line || '') : '';
+      rows.push(`<div class="${cls}">${escapeHtml(text)}</div>`);
+    }
+
+    // Пустые строки снизу
+    while (rows.length < windowSize) {
+      rows.push('<div class="lyrics-window-line"></div>');
+    }
+
+    container.innerHTML = rows.join('');
+  }
+
+  /**
+   * Оптимизированный рендеринг с троттлингом (не чаще 250ms или при смене строки).
+   */
+  function renderLyricsEnhanced(position) {
+    // Если лирика скрыта режимом или мы в мини-режиме — не тратим ресурсы
+    if (lyricsViewMode === 'hidden' || isInContextMiniMode) return;
     
-    if (activeIdx === lyricsLastIdx) return;
-    
+    if (!Array.isArray(currentLyrics) || currentLyrics.length === 0) return;
+
+    // Определяем активную строку
+    let activeIdx = -1;
+    for (let i = 0; i < currentLyrics.length; i++) {
+      if (position >= currentLyrics[i].time) {
+        activeIdx = i;
+      } else {
+        break;
+      }
+    }
+
     const now = Date.now();
-    if (now - lyricsLastTs < LYRICS_MIN_INTERVAL) return;
-    
+
+    // Не рендерим если строка не изменилась И прошло меньше LYRICS_MIN_INTERVAL
+    if (activeIdx === lyricsLastIdx && (now - lyricsLastTs) < LYRICS_MIN_INTERVAL) {
+      return;
+    }
+
     lyricsLastIdx = activeIdx;
     lyricsLastTs = now;
     
-    const container = document.getElementById('lyrics');
-    if (!container) return;
-    
-    const lines = container.querySelectorAll('.lyrics-line');
-    lines.forEach((line, idx) => {
-      line.classList.toggle('active', idx === activeIdx);
-    });
-    
-    if (activeIdx >= 0 && lines[activeIdx]) {
-      lines[activeIdx].scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
+    renderLyrics(position);
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str || '';
+    return div.innerHTML;
   }
 
   function restoreSettings() {
