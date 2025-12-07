@@ -68,11 +68,6 @@ import { APP_CONFIG } from './core/config.js';
       w.albumsIndex = w.albumsIndex || [];
     }
 
-      console.warn('⚠️ albumsIndex is empty in Application.loadAlbumsIndex(). ' +
-                   'Проверьте загрузку ./albums.json в scripts/core/bootstrap.js');
-      w.albumsIndex = w.albumsIndex || [];
-    }
-
     async initializePlayerCore() {
       return new Promise((resolve) => {
         const check = () => {
