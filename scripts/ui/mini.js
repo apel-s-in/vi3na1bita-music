@@ -75,20 +75,14 @@
       document.body.classList.add('mini-mode');
       localStorage.setItem('miniMode', '1');
 
-      // Скрыть ненужные элементы
+      // Скрыть крупные элементы при прокрутке (обложка, иконки, заголовок),
+      // НО не трогаем содержимое now-playing и мини-плеер — этим управляет PlayerUI.
       this.hideElements([
         '#cover-wrap',
         '#social-links',
         '.album-icons',
         '.active-album-title'
       ]);
-
-      // Показать мини-заголовок и "Далее"
-      const miniNow = document.getElementById('mini-now');
-      const nextUp = document.getElementById('next-up');
-      
-      if (miniNow) miniNow.style.display = 'flex';
-      if (nextUp) nextUp.style.display = 'flex';
 
       // Зафиксировать now-playing вверху
       const nowPlaying = document.getElementById('now-playing');
@@ -101,7 +95,7 @@
         nowPlaying.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
       }
 
-      // Обновить мини-заголовок
+      // Обновить мини-заголовок (содержимое делегировано PlayerUI)
       this.updateMiniNowHeader();
 
       console.log('📱 Mini mode enabled');
@@ -122,14 +116,8 @@
         '.active-album-title'
       ]);
 
-      // Скрыть мини-элементы
-      const miniNow = document.getElementById('mini-now');
-      const nextUp = document.getElementById('next-up');
-      
-      if (miniNow) miniNow.style.display = 'none';
-      if (nextUp) nextUp.style.display = 'none';
-
-      // Вернуть now-playing в нормальное состояние
+      // Видимость mini-now / next-up управляется PlayerUI по контексту.
+      // Здесь только снимаем sticky-оформление now-playing.
       const nowPlaying = document.getElementById('now-playing');
       if (nowPlaying) {
         nowPlaying.style.position = '';
