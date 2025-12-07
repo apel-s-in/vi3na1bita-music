@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-cad4d9995ed80a080463d0b97fa253c310df1993.idx
-│   │       ├── pack-cad4d9995ed80a080463d0b97fa253c310df1993.pack
-│   │       └── pack-cad4d9995ed80a080463d0b97fa253c310df1993.rev
+│   │       ├── pack-672d0ad7ea2aefb8e2e2f7f24446b46cfbf12b4b.idx
+│   │       ├── pack-672d0ad7ea2aefb8e2e2f7f24446b46cfbf12b4b.pack
+│   │       └── pack-672d0ad7ea2aefb8e2e2f7f24446b46cfbf12b4b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 22:45:06 UTC
+Сгенерировано: 2025-12-07 22:46:51 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3399,7 +3399,6 @@ export default NavigationManager;
       <div class="player-buttons-wrapper">
         <button class="lyrics-toggle-btn lyrics-${lyricsViewMode}" id="lyrics-toggle-btn" title="Режим лирики (Y)">
           <span class="lyrics-toggle-btn-visual">Т</span>
-          <span class="lyrics-toggle-label">${getLyricsModeLabel()}</span>
         </button>
         
         <div class="player-extra-buttons-row">
@@ -3840,10 +3839,8 @@ export default NavigationManager;
     lyricsWindow.classList.add(cls);
     btn.classList.add(cls);
 
-    const label = btn.querySelector('.lyrics-toggle-label');
-    if (label) {
-      label.textContent = getLyricsModeLabel();
-    }
+    // Дополнительной текстовой подписи под кнопкой больше нет: размеры/цвет кнопки
+    // меняются только через классы lyrics-normal/hidden/expanded.
 
     // Если лирика скрыта — фон/анимацию по старым правилам всегда выключаем
     if (lyricsViewMode === 'hidden') {
