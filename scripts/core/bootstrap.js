@@ -23,6 +23,13 @@
         return;
       }
 
+      // 1.5. Ждём загрузки Howler.js
+      const howlerReady = await this.waitForHowler();
+      if (!howlerReady) {
+        console.error('❌ Howler.js loading timeout');
+        return;
+      }
+
       // 2. Детектирование платформы
       this.detectIOS();
       this.detectStandalone();
@@ -94,20 +101,18 @@
         missing.push('Event Listeners');
       }
 
-      // Проверка Web Audio API
+      // Проверка Web Audio API (предупреждение, не блокирует)
       if (typeof AudioContext === 'undefined' && typeof webkitAudioContext === 'undefined') {
-        console.warn('⚠️ Web Audio API not supported');
+        console.warn('⚠️ Web Audio API not supported - некоторые функции могут быть недоступны');
       }
 
-      // Проверка MediaSession API (опционально)
+      // Проверка MediaSession API (предупреждение, не блокирует)
       if (!('mediaSession' in navigator)) {
         console.warn('⚠️ Media Session API not supported - фоновое управление будет ограничено');
       }
 
-      // Проверка Howler.js
-      if (typeof Howl === 'undefined') {
-        missing.push('Howler.js (аудио библиотека не загружена)');
-      }
+      // ✅ ИСПРАВЛЕНО: Howler.js проверяется ПОСЛЕ загрузки
+      // Убираем из критических проверок
 
       if (missing.length > 0) {
         this.showCompatibilityError(missing);
@@ -116,7 +121,27 @@
 
       return true;
     }
+    async waitForHowler() {
+      // Ждём загрузки Howler.js максимум 5 секунд
+      const maxAttempts = 50;
+      let attempts = 0;
 
+      while (typeof Howl === 'undefined' && attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+      }
+
+      if (typeof Howl === 'undefined') {
+        console.error('❌ Howler.js failed to load');
+        if (window.NotificationSystem) {
+          window.NotificationSystem.error('Не удалось загрузить аудио-библиотеку. Попробуйте перезагрузить страницу.');
+        }
+        return false;
+      }
+
+      console.log('✅ Howler.js loaded successfully');
+      return true;
+    }
     checkLocalStorage() {
       try {
         localStorage.setItem('__test', '1');
