@@ -105,6 +105,15 @@ class ServiceWorkerManager {
       return;
     }
 
+    // Сохраняем состояние плеера перед обновлением, чтобы после reload восстановиться
+    try {
+      if (window.PlayerState && typeof window.PlayerState.save === 'function') {
+        window.PlayerState.save({ forReload: true });
+      }
+    } catch (e) {
+      console.warn('PlayerState.save before SW update failed:', e);
+    }
+
     // Отправить сообщение SW для пропуска ожидания
     this.registration.waiting.postMessage({ type: 'SKIP_WAITING' });
 
