@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c6678c29a59cbc4f78c72dacf72557802931c3b9.idx
-│   │       ├── pack-c6678c29a59cbc4f78c72dacf72557802931c3b9.pack
-│   │       └── pack-c6678c29a59cbc4f78c72dacf72557802931c3b9.rev
+│   │       ├── pack-cf4283539a7dd41d0dc4c3362908b5933ab94393.idx
+│   │       ├── pack-cf4283539a7dd41d0dc4c3362908b5933ab94393.pack
+│   │       └── pack-cf4283539a7dd41d0dc4c3362908b5933ab94393.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 21:06:19 UTC
+Сгенерировано: 2025-12-07 21:13:19 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2347,10 +2347,6 @@ class AlbumsManager {
     return `${albumKey}_${Number(trackNum)}`;
   }
 }
-
-window.AlbumsManager = new AlbumsManager();
-
-export default AlbumsManager;
 
 window.AlbumsManager = new AlbumsManager();
 
