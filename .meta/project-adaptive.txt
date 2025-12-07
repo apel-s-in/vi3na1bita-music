@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-759ac2af90ae434fcac33351bbcf68bbcb543d6c.idx
-│   │       ├── pack-759ac2af90ae434fcac33351bbcf68bbcb543d6c.pack
-│   │       └── pack-759ac2af90ae434fcac33351bbcf68bbcb543d6c.rev
+│   │       ├── pack-b3057505e4fbd66a985452200f2e723138fa860e.idx
+│   │       ├── pack-b3057505e4fbd66a985452200f2e723138fa860e.pack
+│   │       └── pack-b3057505e4fbd66a985452200f2e723138fa860e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -266,7 +266,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 10:21:18 UTC
+Сгенерировано: 2025-12-07 10:22:35 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -558,7 +558,8 @@ jobs:
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#181818" />
   
-  <!-- iOS -->
+  <!-- iOS & PWA -->
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Витрина Разбита">
