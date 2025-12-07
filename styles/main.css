@@ -399,36 +399,52 @@ header {
 .lyrics-window-line {
   text-align: center;
   padding: 8px 16px;
-  color: #5a6989;
+  color: #eee;
   font-size: 15px;
-  transition: color 0.3s, transform 0.3s, font-size 0.3s, font-weight 0.3s;
+  opacity: 0.57;
+  transition: color 0.3s, opacity 0.3s, font-size 0.3s, font-weight 0.3s, background 0.3s;
   user-select: none;
   line-height: 1.4;
+  margin: 2px 0;
 }
 
 .lyrics-window-line.active {
-  color: #eaf2ff;
-  font-size: 17px;
-  font-weight: 600;
-  transform: scale(1.05);
-  text-shadow: 0 0 8px rgba(77,170,255,0.3);
+  color: #E80100;
+  font-size: 1.19em;
+  font-weight: bold;
+  opacity: 1;
+  background: rgba(0,0,0,0.07);
+  text-shadow: 0 1px 7px rgba(115,22,22,0.27);
 }
 
+/* Placeholder для пустых строк */
+.lyrics-placeholder {
+  text-align: center;
+  padding: 40px 16px;
+  color: #5a6989;
+  font-size: 14px;
+  opacity: 0.6;
+}
+
+/* Обычный режим: ~5 строк (8.7em как в старом приложении) */
 .lyrics-normal {
-  min-height: 180px;
-  max-height: 240px;
+  min-height: 8.7em;
+  max-height: 8.7em;
 }
 
+/* Скрыто: высота 0, невидимо */
 .lyrics-hidden {
   min-height: 0 !important;
   max-height: 0 !important;
   opacity: 0;
   pointer-events: none;
+  overflow: hidden;
 }
 
+/* Расширенный режим: ~9 строк (15.6em) */
 .lyrics-expanded {
-  min-height: 320px;
-  max-height: 420px;
+  min-height: 15.6em;
+  max-height: 15.6em;
 }
 
 /* Animated Background */
@@ -781,11 +797,39 @@ header {
   width: 44px;
   min-width: 44px;
   height: 44px;
+  user-select: none;
+}
+
+/* Normal mode */
+.lyrics-toggle-btn.lyrics-normal .lyrics-toggle-btn-visual {
+  color: var(--secondary-color);
+  font-size: 36px;
+}
+
+/* Hidden mode — красная кнопка */
+.lyrics-toggle-btn.lyrics-hidden {
+  background: rgba(232,1,0,0.12);
+  border-color: rgba(232,1,0,0.25);
+}
+
+.lyrics-toggle-btn.lyrics-hidden .lyrics-toggle-btn-visual {
+  color: var(--primary-color);
+  font-size: 36px;
+}
+
+/* Expanded mode — меньший размер Т */
+.lyrics-toggle-btn.lyrics-expanded .lyrics-toggle-btn-visual {
+  color: var(--secondary-color);
+  font-size: 20px;
 }
 
 .lyrics-toggle-btn:hover {
   background: rgba(77,170,255,0.2);
   transform: translateY(-1px);
+}
+
+.lyrics-toggle-btn:hover .lyrics-toggle-btn-visual {
+  transform: scale(1.1);
 }
 
 .lyrics-toggle-btn:active {
@@ -794,8 +838,9 @@ header {
 
 .lyrics-toggle-btn-visual {
   display: inline-block;
-  font-size: 22px;
   line-height: 1;
+  transition: all 0.2s;
+  pointer-events: none;
 }
 
 /* Контейнер для остальных трёх кнопок */
