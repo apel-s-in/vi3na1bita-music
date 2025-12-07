@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-497cd783eef082f864c0e94f4a1e453a8fec9ca1.idx
-│   │       ├── pack-497cd783eef082f864c0e94f4a1e453a8fec9ca1.pack
-│   │       └── pack-497cd783eef082f864c0e94f4a1e453a8fec9ca1.rev
+│   │       ├── pack-8cd50d22548a9576b700afe62b748a442a97c0a5.idx
+│   │       ├── pack-8cd50d22548a9576b700afe62b748a442a97c0a5.pack
+│   │       └── pack-8cd50d22548a9576b700afe62b748a442a97c0a5.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 21:16:32 UTC
+Сгенерировано: 2025-12-07 21:43:37 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1606,6 +1606,9 @@ import { APP_CONFIG } from './core/config.js';
       w.app.initialize();
     }
   }
+
+})(); // end of AppModule IIFE
+
 // ========== PlayerState (сохранение/восстановление состояния плеера) ==========
 (function PlayerStateModule() {
   'use strict';
