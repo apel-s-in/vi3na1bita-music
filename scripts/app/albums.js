@@ -147,38 +147,6 @@ class AlbumsManager {
       window.PlayerUI.updateNextUpLabel?.();
     }
 
-    // Готовим плейлист для этого альбома (но применяем его только если сейчас ничего не играет)
-    const tracksForCore = albumData.tracks
-      .filter(t => !!t.file)
-      .map((t) => ({
-        src: t.file,
-        title: t.title,
-        artist: albumData.artist || 'Витрина Разбита',
-        album: albumData.title || albumInfo.title,
-        cover: new URL(albumData.cover || 'cover.jpg', albumInfo.base).toString(),
-        lyrics: t.lyrics || null,
-        fulltext: t.fulltext || null
-      }));
-
-    if (window.playerCore && tracksForCore.length > 0) {
-      const hasCurrentTrack = typeof window.playerCore.getCurrentTrack === 'function'
-        ? !!window.playerCore.getCurrentTrack()
-        : false;
-
-      // Если сейчас ничего не играет — можем подготовить плейлист этого альбома.
-      // Если уже что‑то играет (другой альбом или избранное) — не трогаем плейлист, чтобы не сбивать мини‑плеер.
-      if (!hasCurrentTrack) {
-        window.playerCore.setPlaylist(tracksForCore, 0, {
-          artist: albumData.artist || 'Витрина Разбита',
-          album: albumData.title || albumInfo.title,
-          cover: new URL(albumData.cover || 'cover.jpg', albumInfo.base).toString()
-        });
-
-        // Плеер будет играть из этого альбома, когда пользователь выберет трек
-        this.playingAlbum = albumKey;
-      }
-    }
-
     const coverWrap = document.getElementById('cover-wrap');
     if (coverWrap) coverWrap.style.display = '';
   }
@@ -340,19 +308,6 @@ class AlbumsManager {
       container.appendChild(trackEl);
     });
 
-    // Устанавливаем плейлист избранного в PlayerCore
-    const tracks = model
-      .filter(item => item.__active && item.audio)
-      .map(item => ({
-        src: item.audio,
-        title: item.title,
-        artist: item.__artist || 'Витрина Разбита',
-        album: item.__album || 'Избранное',
-        cover: item.__cover || 'img/logo.png',
-        lyrics: item.lyrics || null,
-        fulltext: item.fulltext || null
-      }));
-
     if (window.playerCore) {
       window.playerCore.setPlaylist(tracks, 0, {
         artist: 'Витрина Разбита',
@@ -390,12 +345,19 @@ class AlbumsManager {
     }
 
     if (window.playerCore) {
-      window.playerCore.setPlaylist(tracks, index, {
-        artist: 'Витрина Разбита',
-        album: 'Избранное',
-        cover: 'img/logo.png'
-      });
-      
+      const snapshot = window.playerCore.getPlaylistSnapshot?.() || [];
+      const samePlaylist =
+        snapshot.length === tracks.length &&
+        snapshot.every((t, i) => t.src === tracks[i].src);
+
+      if (!samePlaylist) {
+        window.playerCore.setPlaylist(tracks, index, {
+          artist: 'Витрина Разбита',
+          album: 'Избранное',
+          cover: 'img/logo.png'
+        });
+      }
+
       window.playerCore.play(index);
       this.playingAlbum = '__favorites__';
       
@@ -515,12 +477,57 @@ class AlbumsManager {
 
     trackEl.addEventListener('click', (e) => {
       if (e.target.classList.contains('like-star')) return;
-      
+
+      const albumData = this.albumsData.get(albumKey);
+      if (!albumData || !window.playerCore) {
+        this.highlightCurrentTrack(index);
+        window.NotificationSystem?.error('Альбом ещё не готов к воспроизведению');
+        return;
+      }
+
+      // Проверяем, соответствует ли текущий плейлист этому альбому
+      const snapshot = window.playerCore.getPlaylistSnapshot?.() || [];
+      const needsNewPlaylist =
+        snapshot.length !== albumData.tracks.length ||
+        snapshot.some((t, i) => {
+          const ad = albumData.tracks[i];
+          return !ad || !ad.file || t.src !== ad.file;
+        });
+
+      if (needsNewPlaylist) {
+        const albumInfo = window.albumsIndex?.find(a => a.key === albumKey);
+        const base = albumInfo?.base || '';
+
+        const tracksForCore = albumData.tracks
+          .filter(t => !!t.file)
+          .map((t) => ({
+            src: t.file,
+            title: t.title,
+            artist: albumData.artist || 'Витрина Разбита',
+            album: albumData.title || albumInfo?.title || '',
+            cover: albumData.cover
+              ? new URL(albumData.cover, base).toString()
+              : (albumInfo ? new URL('cover.jpg', albumInfo.base).toString() : 'img/logo.png'),
+            lyrics: t.lyrics || null,
+            fulltext: t.fulltext || null
+          }));
+
+        if (tracksForCore.length > 0) {
+          window.playerCore.setPlaylist(tracksForCore, index, {
+            artist: albumData.artist || 'Витрина Разбита',
+            album: albumData.title || albumInfo?.title || '',
+            cover: albumData.cover
+              ? new URL(albumData.cover, base).toString()
+              : (albumInfo ? new URL('cover.jpg', albumInfo.base).toString() : 'img/logo.png')
+          });
+        }
+      }
+
       this.highlightCurrentTrack(index);
-      
-      window.playerCore?.play(index);
+
+      window.playerCore.play(index);
       this.playingAlbum = albumKey;
-      
+
       window.PlayerUI?.ensurePlayerBlock(index);
     });
 
