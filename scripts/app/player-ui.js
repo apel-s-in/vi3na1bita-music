@@ -271,7 +271,6 @@
       <div class="player-buttons-wrapper">
         <button class="lyrics-toggle-btn lyrics-${lyricsViewMode}" id="lyrics-toggle-btn" title="Режим лирики (Y)">
           <span class="lyrics-toggle-btn-visual">Т</span>
-          <span class="lyrics-toggle-label">${getLyricsModeLabel()}</span>
         </button>
         
         <div class="player-extra-buttons-row">
@@ -712,10 +711,8 @@
     lyricsWindow.classList.add(cls);
     btn.classList.add(cls);
 
-    const label = btn.querySelector('.lyrics-toggle-label');
-    if (label) {
-      label.textContent = getLyricsModeLabel();
-    }
+    // Дополнительной текстовой подписи под кнопкой больше нет: размеры/цвет кнопки
+    // меняются только через классы lyrics-normal/hidden/expanded.
 
     // Если лирика скрыта — фон/анимацию по старым правилам всегда выключаем
     if (lyricsViewMode === 'hidden') {
