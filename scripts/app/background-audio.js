@@ -13,49 +13,13 @@ class BackgroundAudioManager {
       return;
     }
     
-    this.setupMediaSession();
+    // Управление mediaSession (action handlers) делает только PlayerCore.updateMediaSession.
+    // Здесь подписываемся только на события плеера и обновляем метаданные/позицию.
     this.attachPlayerEvents();
     console.log('✅ Background audio initialized');
     
     // iOS специфика
     this.setupIOSBackgroundAudio();
-  }
-  
-  setupMediaSession() {
-    // Обработчики действий
-    const actionHandlers = {
-      play: () => window.playerCore?.play(),
-      pause: () => window.playerCore?.pause(),
-      previoustrack: () => window.playerCore?.prev(),
-      nexttrack: () => window.playerCore?.next(),
-      seekbackward: (details) => {
-        if (window.playerCore) {
-          const current = window.playerCore.getSeek() || 0;
-          window.playerCore.seek(Math.max(0, current - (details.seekOffset || 10)));
-        }
-      },
-      seekforward: (details) => {
-        if (window.playerCore) {
-          const current = window.playerCore.getSeek() || 0;
-          const duration = window.playerCore.getDuration() || 0;
-          window.playerCore.seek(Math.min(duration, current + (details.seekOffset || 10)));
-        }
-      },
-      seekto: (details) => {
-        if (details.seekTime && window.playerCore) {
-          window.playerCore.seek(details.seekTime);
-        }
-      },
-      stop: () => window.playerCore?.stop()
-    };
-    
-    for (const [action, handler] of Object.entries(actionHandlers)) {
-      try {
-        navigator.mediaSession.setActionHandler(action, handler);
-      } catch (error) {
-        console.warn(`Action ${action} not supported:`, error);
-      }
-    }
   }
   
   attachPlayerEvents() {
