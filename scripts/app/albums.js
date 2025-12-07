@@ -1,11 +1,12 @@
 // scripts/app/albums.js
-// Управление альбомами с интеграцией старого функционала
+// Управление альбомами на новой платформе PlayerCore
 
 import { APP_CONFIG } from '../core/config.js';
 
 class AlbumsManager {
   constructor() {
     this.currentAlbum = null;
+    this.playingAlbum = null;
     this.albumsData = new Map();
     this.isLoading = false;
     this.galleryIndex = 0;
@@ -44,7 +45,7 @@ class AlbumsManager {
       const iconEl = document.createElement('div');
       iconEl.className = 'album-icon';
       iconEl.dataset.album = key;
-      iconEl.dataset.akey = key; // Для E2E тестов
+      iconEl.dataset.akey = key;
       iconEl.title = title;
       iconEl.innerHTML = `<img src="${icon}" alt="${title}" draggable="false">`;
 
@@ -58,12 +59,6 @@ class AlbumsManager {
     this.isLoading = true;
 
     try {
-      // Остановить плеер ТОЛЬКО если не играет
-      // (согласно требованию: "плеер всегда играет")
-      if (window.playerCore && !window.playerCore.isPlaying()) {
-        window.playerCore.stop();
-      }
-
       this.clearUI();
 
       if (albumKey === '__favorites__') {
@@ -88,16 +83,12 @@ class AlbumsManager {
     }
   }
 
-async loadRegularAlbum(albumKey) {
+  async loadRegularAlbum(albumKey) {
     const albumInfo = window.albumsIndex.find(a => a.key === albumKey);
     if (!albumInfo) {
       throw new Error(`Album ${albumKey} not found`);
     }
 
-    // КРИТИЧНО: Не останавливаем воспроизведение при переключении альбомов!
-    // Плеер должен продолжать играть
-
-    // 1. Загружаем config.json (новый формат альбома)
     let albumData = this.albumsData.get(albumKey);
 
     if (!albumData) {
@@ -110,12 +101,10 @@ async loadRegularAlbum(albumKey) {
       const raw = await response.json();
       const data = raw || {};
 
-      // Нормализуем треки: абсолютные URL для аудио/лирики/полного текста
       const tracks = Array.isArray(data.tracks) ? data.tracks : [];
       const normTracks = tracks.map((t, idx) => ({
         num: t.num ?? (idx + 1),
         title: t.title || `Трек ${idx + 1}`,
-        // В новом формате поле обычно audio, а не file
         file: t.audio ? new URL(t.audio, base).toString() : null,
         lyrics: t.lyrics ? new URL(t.lyrics, base).toString() : null,
         fulltext: t.fulltext ? new URL(t.fulltext, base).toString() : null
@@ -134,37 +123,41 @@ async loadRegularAlbum(albumKey) {
       this.albumsData.set(albumKey, albumData);
     }
 
-    // 2. Загрузка галереи (центральные обложки)
     await this.loadGallery(albumKey);
 
-    // 3. Рендер UI
     this.renderAlbumTitle(albumData.title || albumInfo.title);
     this.renderCover(albumInfo, albumData);
     this.renderSocials(albumData.social_links);
     this.renderTrackList(albumData.tracks, albumInfo);
 
-        // 4. КРИТИЧНО: Обновляем мини-режим
-        if (w.PlayerUI) {
-          w.PlayerUI.updateMiniHeader?.();
-          w.PlayerUI.updateNextUpLabel?.();
-        }
-      const tracksForCore = albumData.tracks
-        .filter(t => !!t.file)
-        .map((t) => ({
-          src: t.file,
-          title: t.title,
-          artist: albumData.artist || 'Витрина Разбита',
-          album: albumData.title || albumInfo.title,
-          cover: new URL(albumData.cover || 'cover.jpg', albumInfo.base).toString(),
-          lyrics: t.lyrics || null,
-          fulltext: t.fulltext || null
-        }));
+    // Обновляем мини-режим
+    if (window.PlayerUI) {
+      window.PlayerUI.updateMiniHeader?.();
+      window.PlayerUI.updateNextUpLabel?.();
+    }
 
+    // Устанавливаем плейлист в PlayerCore
+    const tracksForCore = albumData.tracks
+      .filter(t => !!t.file)
+      .map((t) => ({
+        src: t.file,
+        title: t.title,
+        artist: albumData.artist || 'Витрина Разбита',
+        album: albumData.title || albumInfo.title,
+        cover: new URL(albumData.cover || 'cover.jpg', albumInfo.base).toString(),
+        lyrics: t.lyrics || null,
+        fulltext: t.fulltext || null
+      }));
+
+    if (window.playerCore) {
       window.playerCore.setPlaylist(tracksForCore, 0, {
         artist: albumData.artist || 'Витрина Разбита',
         album: albumData.title || albumInfo.title,
         cover: new URL(albumData.cover || 'cover.jpg', albumInfo.base).toString()
       });
+      
+      // Сохраняем ключ играющего альбома
+      this.playingAlbum = albumKey;
     }
 
     const coverWrap = document.getElementById('cover-wrap');
@@ -172,7 +165,6 @@ async loadRegularAlbum(albumKey) {
   }
 
   async loadGallery(albumKey) {
-    // Определение centralId для галереи
     let centralId = null;
     
     if (albumKey === 'mezhdu-zlom-i-dobrom') centralId = '01';
@@ -195,6 +187,7 @@ async loadRegularAlbum(albumKey) {
         this.galleryIndex = 0;
         
         this.updateGalleryNavigation();
+        this.renderGalleryCover();
       }
     } catch (error) {
       console.warn('Failed to load gallery:', error);
@@ -253,7 +246,6 @@ async loadRegularAlbum(albumKey) {
     const coverWrap = document.getElementById('cover-wrap');
     if (coverWrap) coverWrap.style.display = 'none';
 
-    // Построить модель избранного
     if (window.buildFavoritesRefsModel) {
       await window.buildFavoritesRefsModel();
     }
@@ -280,6 +272,8 @@ async loadRegularAlbum(albumKey) {
       trackEl.className = 'track' + (item.__active ? '' : ' inactive');
       trackEl.id = `fav_${item.__a}_${item.__t}`;
       trackEl.dataset.index = index;
+      trackEl.dataset.album = item.__a;
+      trackEl.dataset.originalTrack = item.__t;
 
       const num = String(index + 1).padStart(2, '0');
       
@@ -295,19 +289,16 @@ async loadRegularAlbum(albumKey) {
              data-num="${item.__t}">
       `;
 
-      // Клик по строке
       trackEl.addEventListener('click', async (e) => {
         if (e.target.classList.contains('like-star')) return;
         
         if (item.__active && item.audio) {
-          // Запустить воспроизведение из избранного
           await this.ensureFavoritesPlayback(index);
         } else {
           window.NotificationSystem?.warning('Трек недоступен. Добавьте его в избранное из альбома.');
         }
       });
 
-      // Клик по звездочке
       const star = trackEl.querySelector('.like-star');
       star?.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -315,16 +306,13 @@ async loadRegularAlbum(albumKey) {
         const wasActive = item.__active;
         window.toggleLikeForAlbum?.(item.__a, item.__t, !wasActive);
         
-        // Обновить визуальное состояние
         trackEl.classList.toggle('inactive', wasActive);
         star.src = wasActive ? 'img/star2.png' : 'img/star.png';
         
-        // Обновить модель
         window.updateFavoritesRefsModelActiveFlag?.(item.__a, item.__t, !wasActive);
         
-        // Если снят флаг у играющего трека в избранном
         if (window.playerCore && 
-            window.AlbumsManager?.getCurrentAlbum() === '__favorites__' &&
+            this.getCurrentAlbum() === '__favorites__' &&
             window.playerCore.getIndex() === index && wasActive) {
           window.playerCore.next();
         }
@@ -332,6 +320,29 @@ async loadRegularAlbum(albumKey) {
 
       container.appendChild(trackEl);
     });
+
+    // Устанавливаем плейлист избранного в PlayerCore
+    const tracks = model
+      .filter(item => item.__active && item.audio)
+      .map(item => ({
+        src: item.audio,
+        title: item.title,
+        artist: item.__artist || 'Витрина Разбита',
+        album: item.__album || 'Избранное',
+        cover: item.__cover || 'img/logo.png',
+        lyrics: item.lyrics || null,
+        fulltext: item.fulltext || null
+      }));
+
+    if (window.playerCore) {
+      window.playerCore.setPlaylist(tracks, 0, {
+        artist: 'Витрина Разбита',
+        album: 'Избранное',
+        cover: 'img/logo.png'
+      });
+      
+      this.playingAlbum = '__favorites__';
+    }
   }
 
   async ensureFavoritesPlayback(index) {
@@ -342,7 +353,6 @@ async loadRegularAlbum(albumKey) {
       return;
     }
 
-    // Подготовить плейлист для PlayerCore
     const tracks = model
       .filter(item => item.__active && item.audio)
       .map(item => ({
@@ -360,7 +370,6 @@ async loadRegularAlbum(albumKey) {
       return;
     }
 
-    // Установить плейлист в PlayerCore
     if (window.playerCore) {
       window.playerCore.setPlaylist(tracks, index, {
         artist: 'Витрина Разбита',
@@ -369,15 +378,17 @@ async loadRegularAlbum(albumKey) {
       });
       
       window.playerCore.play(index);
+      this.playingAlbum = '__favorites__';
+      
+      // Обновляем UI
+      this.highlightCurrentTrack(index);
+      window.PlayerUI?.ensurePlayerBlock(index);
     }
   }
-  getAlbumConfigByKey(albumKey) {
-    return this.albumsData.get(albumKey);
-  }
+
   async loadNewsAlbum() {
     this.renderAlbumTitle('📰 НОВОСТИ 📰', 'news');
     
-    // Загрузка галереи новостей
     await this.loadGallery('__reliz__');
     
     const coverSlot = document.getElementById('cover-slot');
@@ -483,18 +494,17 @@ async loadRegularAlbum(albumKey) {
            data-num="${track.num || index + 1}">
     `;
 
-    // Клик по треку - воспроизведение
     trackEl.addEventListener('click', (e) => {
       if (e.target.classList.contains('like-star')) return;
       
-      // Обновляем подсветку
-      document.querySelectorAll('.track.current').forEach(el => el.classList.remove('current'));
-      trackEl.classList.add('current');
+      this.highlightCurrentTrack(index);
       
       window.playerCore?.play(index);
+      this.playingAlbum = albumKey;
+      
+      window.PlayerUI?.ensurePlayerBlock(index);
     });
 
-    // Клик по звездочке - избранное
     const star = trackEl.querySelector('.like-star');
     star?.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -504,11 +514,16 @@ async loadRegularAlbum(albumKey) {
       window.toggleLikeForAlbum?.(albumKey, trackNum, !wasLiked);
       star.src = wasLiked ? 'img/star2.png' : 'img/star.png';
       
-      // Обновить класс is-favorite
       trackEl.classList.toggle('is-favorite', !wasLiked);
     });
 
     return trackEl;
+  }
+
+  highlightCurrentTrack(index) {
+    document.querySelectorAll('.track.current').forEach(el => el.classList.remove('current'));
+    const trackEl = document.querySelector(`.track[data-index="${index}"]`);
+    if (trackEl) trackEl.classList.add('current');
   }
 
   updateActiveIcon(albumKey) {
@@ -535,28 +550,19 @@ async loadRegularAlbum(albumKey) {
     return this.currentAlbum;
   }
 
+  getPlayingAlbum() {
+    return this.playingAlbum;
+  }
+
   getAlbumData(albumKey) {
+    return this.albumsData.get(albumKey);
+  }
+
+  getAlbumConfigByKey(albumKey) {
     return this.albumsData.get(albumKey);
   }
 }
 
 window.AlbumsManager = new AlbumsManager();
-  // ========== УПРАВЛЕНИЕ ВОСПРОИЗВЕДЕНИЕМ ==========
-
-  playTrack(index, autoplay = false) {
-    const albumData = this.albumsData.get(this.currentAlbum);
-    if (!albumData || !albumData.tracks[index]) return;
-
-    const track = albumData.tracks[index];
-    const audio = document.getElementById('audio');
-    
-    if (!audio) {
-      // Создаём плеер если его нет
-      w.PlayerUI?.ensurePlayerBlock?.(index);
-      return;
-    }
-
-    // Устанавливаем источник
 
 export default AlbumsManager;
-
