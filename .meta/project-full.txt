@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c7dfef302016216cd2e285d8d54f7949cedd2ce2.idx
-│   │       ├── pack-c7dfef302016216cd2e285d8d54f7949cedd2ce2.pack
-│   │       └── pack-c7dfef302016216cd2e285d8d54f7949cedd2ce2.rev
+│   │       ├── pack-bed04b4822dcc1c7c0f646c4f5799fadd8fd9814.idx
+│   │       ├── pack-bed04b4822dcc1c7c0f646c4f5799fadd8fd9814.pack
+│   │       └── pack-bed04b4822dcc1c7c0f646c4f5799fadd8fd9814.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -266,7 +266,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 09:40:47 UTC
+Сгенерировано: 2025-12-07 09:42:33 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4856,6 +4856,21 @@ console.log('PlayerCore JS/TS validation OK');
 
       if (!document.addEventListener) {
         missing.push('Event Listeners');
+      }
+
+      // Проверка Web Audio API
+      if (typeof AudioContext === 'undefined' && typeof webkitAudioContext === 'undefined') {
+        console.warn('⚠️ Web Audio API not supported');
+      }
+
+      // Проверка MediaSession API (опционально)
+      if (!('mediaSession' in navigator)) {
+        console.warn('⚠️ Media Session API not supported - фоновое управление будет ограничено');
+      }
+
+      // Проверка Howler.js
+      if (typeof Howl === 'undefined') {
+        missing.push('Howler.js (аудио библиотека не загружена)');
       }
 
       if (missing.length > 0) {
