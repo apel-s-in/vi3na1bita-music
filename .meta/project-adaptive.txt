@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-43c90764daf77f962f507beaa2f89ae611de24d3.idx
-│   │       ├── pack-43c90764daf77f962f507beaa2f89ae611de24d3.pack
-│   │       └── pack-43c90764daf77f962f507beaa2f89ae611de24d3.rev
+│   │       ├── pack-6c2dcc9c2572107fd32a875bdd021214d9d0d7da.idx
+│   │       ├── pack-6c2dcc9c2572107fd32a875bdd021214d9d0d7da.pack
+│   │       └── pack-6c2dcc9c2572107fd32a875bdd021214d9d0d7da.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -240,6 +240,7 @@ vi3na1bita-music/
 │   │   ├── favorites-const.js
 │   │   ├── favorites-data.js
 │   │   ├── favorites-storage.js
+│   │   ├── favorites-view.js
 │   │   ├── favorites.js
 │   │   ├── lyrics-modal.js
 │   │   ├── mini.js
@@ -266,7 +267,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 10:53:19 UTC
+Сгенерировано: 2025-12-07 10:53:52 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6348,6 +6349,29 @@ Object.assign(window, {
   getLikedForAlbum,
   toggleLikeForAlbum,
 });
+
+//=================================================
+// FILE: /scripts/ui/favorites-view.js
+// scripts/ui/favorites-view.js
+// Функционал для представления "Избранное"
+
+(function FavoritesViewModule() {
+  'use strict';
+
+  const w = window;
+
+  async function openFavoritesView() {
+    // Делегируем в AlbumsManager
+    if (w.AlbumsManager) {
+      await w.AlbumsManager.loadAlbum('__favorites__');
+    }
+  }
+
+  // Экспорт
+  w.openFavoritesView = openFavoritesView;
+
+  console.log('✅ Favorites view module loaded');
+})();
 
 //=================================================
 // FILE: /scripts/ui/favorites.js
