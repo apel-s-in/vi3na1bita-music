@@ -48,6 +48,7 @@
   <script src="./scripts/ui/favorites-storage.js" defer></script>
   <script src="./scripts/ui/favorites-data.js" defer></script>
   <script src="./scripts/ui/favorites.js" defer></script>
+  <script src="./scripts/ui/favorites-view.js" defer></script>
   <script src="./scripts/ui/mini.js" defer></script>
   <script src="./scripts/ui/modals.js" defer></script>
   <script src="./scripts/ui/sysinfo.js" defer></script>
@@ -66,6 +67,42 @@
   
   <!-- Performance Monitoring -->
   <script src="./performance/rum.js" defer></script>
+  <style>
+    /* Дополнительные стили для совместимости */
+    .eco-btn.eco-active {
+      background: rgba(232, 1, 0, 0.12);
+      border-color: rgba(232, 1, 0, 0.25);
+      color: var(--primary-color);
+    }
+    
+    #sysinfo-btn {
+      display: none;
+      color: var(--secondary-color) !important;
+      text-decoration: underline !important;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      cursor: pointer;
+      transition: color 0.18s;
+      font-size: 1em;
+      text-align: center;
+      width: 100%;
+      margin: 6px 0;
+      background: none;
+      border: none;
+      padding: 8px;
+    }
+    
+    #sysinfo-btn:hover {
+      color: #fff !important;
+    }
+    
+    @media (min-width: 768px) {
+      #sysinfo-btn {
+        display: block;
+      }
+    }
+  </style>
 </head>
 <body>
   <!-- Promocode Screen -->
@@ -129,6 +166,9 @@
       </button>
       
       <button class="hotkeys-btn" id="hotkeys-btn" style="display:none;">
+      <button id="sysinfo-btn" style="display:none;">
+        О СИСТЕМЕ
+      </button>
         ГОРЯЧИЕ КЛАВИШИ
       </button>
       
