@@ -14,11 +14,8 @@ class NavigationManager {
   }
   
   setupEventListeners() {
-    // Кнопка "О системе"
-    const sysinfoBtn = document.getElementById('sysinfo-btn');
-    sysinfoBtn?.addEventListener('click', () => {
-      this.showSystemInfo();
-    });
+    // Кнопкой "О системе" управляет SystemInfoManager (scripts/ui/sysinfo.js),
+    // здесь ничего не вешаем, чтобы избежать дублирования UI.
     
     // Кнопка "Обратная связь"
     const feedbackLink = document.getElementById('feedback-link');
@@ -52,58 +49,10 @@ class NavigationManager {
     });
   }
   
-  handleScroll() {
-    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-    const miniMode = document.body.classList.contains('mini-mode');
-    
-    if (scrollTop > 300 && !miniMode) {
-      this.enableMiniMode();
-    } else if (scrollTop < 100 && miniMode) {
-      this.disableMiniMode();
-    }
-  }
-  
-  setupMediaSessionHandlers() {
-    if (!('mediaSession' in navigator)) return;
-    
-    try {
-      navigator.mediaSession.setActionHandler('play', () => {
-        window.playerCore?.play();
-      });
-      
-      navigator.mediaSession.setActionHandler('pause', () => {
-        window.playerCore?.pause();
-      });
-      
-      navigator.mediaSession.setActionHandler('previoustrack', () => {
-        window.playerCore?.prev();
-      });
-      
-      navigator.mediaSession.setActionHandler('nexttrack', () => {
-        window.playerCore?.next();
-      });
-      
-      console.log('✅ Media Session handlers set');
-    } catch (e) {
-      console.error('Failed to setup Media Session:', e);
-    }
-  }
-  
-  showSystemInfo() {
-    this.showModal(`
-      <h2>О системе</h2>
-      <div style="text-align: left; padding: 20px;">
-        <p><strong>Версия:</strong> ${APP_CONFIG.APP_VERSION}</p>
-        <p><strong>User Agent:</strong> ${navigator.userAgent}</p>
-        <p><strong>Платформа:</strong> ${navigator.platform}</p>
-        <p><strong>Язык:</strong> ${navigator.language}</p>
-        <p><strong>Размер экрана:</strong> ${window.innerWidth}×${window.innerHeight}</p>
-        <p><strong>Online:</strong> ${navigator.onLine ? 'Да' : 'Нет'}</p>
-        <p><strong>Service Worker:</strong> ${'serviceWorker' in navigator ? 'Да' : 'Нет'}</p>
-      </div>
-      <button class="modal-close-btn">Закрыть</button>
-    `);
-  }
+  // Мини-режим и MediaSession обрабатываются отдельными модулями:
+  // - mini.js (MiniModeManager) — отвечает за mini-mode и sticky now-playing;
+  // - BackgroundAudioManager / PlayerCore — отвечают за mediaSession.
+  // NavigationManager больше не вмешивается в эти области, чтобы не дублировать логику.
   
   showFeedbackModal() {
     this.showModal(`
