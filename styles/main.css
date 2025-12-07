@@ -763,20 +763,64 @@ header {
   border-top: 1px solid rgba(255,255,255,0.05);
 }
 
+/* Переносим кнопку лирики в один ряд с остальными (ТЕКСТ/СКАЧАТЬ/ЭКО) */
 .lyrics-toggle-btn {
   background: rgba(77,170,255,0.12);
   border: 1px solid rgba(77,170,255,0.25);
   color: #4daaff;
-  padding: 10px 16px;
+  padding: 10px 12px;
   border-radius: 8px;
   cursor: pointer;
   font-weight: bold;
   transition: all 0.2s;
-  display: block;
-  width: 100%;
-  margin-bottom: 10px;
-  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
   letter-spacing: 0.02em;
+  flex: 1;
+  min-width: 80px;
+  gap: 4px;
+}
+
+.lyrics-toggle-btn:hover {
+  background: rgba(77,170,255,0.2);
+  transform: translateY(-1px);
+}
+
+.lyrics-toggle-btn:active {
+  transform: translateY(0);
+}
+
+.lyrics-toggle-btn-visual {
+  display: inline-block;
+  font-size: 16px;
+  margin-right: 4px;
+}
+
+.player-extra-buttons-row {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+/* Кнопки ТЕКСТ/СКАЧАТЬ/ЭКО и LYRICS в одном ряду при нормальной ширине */
+.player-extra-buttons-row,
+.player-buttons-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Внутри player-buttons-wrapper первый ребёнок — lyrics-toggle-btn,
+   второй — player-extra-buttons-row. Делаем так, чтобы все 4 кнопки
+   воспринимались как равноправные flex‑элементы: */
+.player-buttons-wrapper > .lyrics-toggle-btn,
+.player-buttons-wrapper > .player-extra-buttons-row > .karaoke-btn,
+.player-buttons-wrapper > .player-extra-buttons-row > .player-download-btn,
+.player-buttons-wrapper > .player-extra-buttons-row > .eco-btn {
+  flex: 1;
 }
 
 .lyrics-toggle-btn:hover {
