@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a95ac85e82ff920cc8b9cfb3ab3a9714e1f19596.idx
-│   │       ├── pack-a95ac85e82ff920cc8b9cfb3ab3a9714e1f19596.pack
-│   │       └── pack-a95ac85e82ff920cc8b9cfb3ab3a9714e1f19596.rev
+│   │       ├── pack-2cb3ae8139948241e26ca8148ea874dd6bd5ea7a.idx
+│   │       ├── pack-2cb3ae8139948241e26ca8148ea874dd6bd5ea7a.pack
+│   │       └── pack-2cb3ae8139948241e26ca8148ea874dd6bd5ea7a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -266,7 +266,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 10:06:18 UTC
+Сгенерировано: 2025-12-07 10:07:12 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6422,13 +6422,6 @@ export default FavoritesManager;
     });
 
     document.body.appendChild(modal);
-  }
-
-  function closeSleepMenu() {
-    if (sleepMenu && sleepMenu.parentNode) {
-      sleepMenu.parentNode.removeChild(sleepMenu);
-    }
-    sleepMenu = null;
   }
 
   async function copyLyrics(text, modal) {
