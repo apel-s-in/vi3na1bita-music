@@ -16,9 +16,22 @@
       this.setupNetworkHandlers();
       this.setupBatteryHandler();
       this.setupBeforeUnloadHandler();
+      this.setupPopstateHandler();
 
       console.log('✅ Background events initialized');
     }
+
+  // Обработка навигации браузера (Back/Forward)
+  setupPopstateHandler() {
+    window.addEventListener('popstate', (event) => {
+      console.log('📍 Popstate event:', event.state);
+      
+      // Восстановить состояние приложения
+      if (event.state && event.state.albumKey) {
+        window.AlbumsManager?.loadAlbum(event.state.albumKey);
+      }
+    });
+  }
 
     // Обработка изменения видимости страницы
     setupVisibilityHandler() {
