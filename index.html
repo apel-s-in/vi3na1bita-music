@@ -29,8 +29,9 @@
   <!-- Howler.js -->
   <script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.core.min.js"></script>
 
-  <!-- Preload albums data -->
-  <link rel="preload" href="./albums.json" as="fetch" crossorigin>
+  <!-- Preconnect для внешних ресурсов -->
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
   
   <!-- Core -->
   <script src="./scripts/core/bootstrap.js"></script>
