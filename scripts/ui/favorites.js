@@ -206,4 +206,3 @@ class FavoritesManager {
 
 // Глобальный экземпляр
 window.FavoritesManager = new FavoritesManager();
-export default FavoritesManager;
