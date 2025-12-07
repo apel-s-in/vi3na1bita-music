@@ -14,8 +14,19 @@ class AlbumsManager {
   }
 
   async initialize() {
-    if (!window.albumsIndex || window.albumsIndex.length === 0) {
-      console.error('❌ No albums found');
+    // albumsIndex заполняется в scripts/core/bootstrap.js и может прийти чуть позже,
+    // чем Application/AlbumsManager. Дождёмся его появления.
+    const maxWaitMs = 2000;
+    const stepMs = 50;
+    let waited = 0;
+
+    while ((!window.albumsIndex || window.albumsIndex.length === 0) && waited < maxWaitMs) {
+      await new Promise(r => setTimeout(r, stepMs));
+      waited += stepMs;
+    }
+
+    if (!Array.isArray(window.albumsIndex) || window.albumsIndex.length === 0) {
+      console.error('❌ No albums found (albumsIndex is empty after wait)');
       return;
     }
 
