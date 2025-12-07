@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b16956ed5546749d679bbbd80c59aae9206a42da.idx
-│   │       ├── pack-b16956ed5546749d679bbbd80c59aae9206a42da.pack
-│   │       └── pack-b16956ed5546749d679bbbd80c59aae9206a42da.rev
+│   │       ├── pack-6c8606640f3f2292bc08f43760690c04bd0a7c27.idx
+│   │       ├── pack-6c8606640f3f2292bc08f43760690c04bd0a7c27.pack
+│   │       └── pack-6c8606640f3f2292bc08f43760690c04bd0a7c27.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 21:48:08 UTC
+Сгенерировано: 2025-12-07 21:58:48 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2384,49 +2384,13 @@ class BackgroundAudioManager {
       return;
     }
     
-    this.setupMediaSession();
+    // Управление mediaSession (action handlers) делает только PlayerCore.updateMediaSession.
+    // Здесь подписываемся только на события плеера и обновляем метаданные/позицию.
     this.attachPlayerEvents();
     console.log('✅ Background audio initialized');
     
     // iOS специфика
     this.setupIOSBackgroundAudio();
-  }
-  
-  setupMediaSession() {
-    // Обработчики действий
-    const actionHandlers = {
-      play: () => window.playerCore?.play(),
-      pause: () => window.playerCore?.pause(),
-      previoustrack: () => window.playerCore?.prev(),
-      nexttrack: () => window.playerCore?.next(),
-      seekbackward: (details) => {
-        if (window.playerCore) {
-          const current = window.playerCore.getSeek() || 0;
-          window.playerCore.seek(Math.max(0, current - (details.seekOffset || 10)));
-        }
-      },
-      seekforward: (details) => {
-        if (window.playerCore) {
-          const current = window.playerCore.getSeek() || 0;
-          const duration = window.playerCore.getDuration() || 0;
-          window.playerCore.seek(Math.min(duration, current + (details.seekOffset || 10)));
-        }
-      },
-      seekto: (details) => {
-        if (details.seekTime && window.playerCore) {
-          window.playerCore.seek(details.seekTime);
-        }
-      },
-      stop: () => window.playerCore?.stop()
-    };
-    
-    for (const [action, handler] of Object.entries(actionHandlers)) {
-      try {
-        navigator.mediaSession.setActionHandler(action, handler);
-      } catch (error) {
-        console.warn(`Action ${action} not supported:`, error);
-      }
-    }
   }
   
   attachPlayerEvents() {
