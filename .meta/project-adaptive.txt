@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-12dd4bef352017d2dbdf3f60aa76a4e3661804a6.idx
-│   │       ├── pack-12dd4bef352017d2dbdf3f60aa76a4e3661804a6.pack
-│   │       └── pack-12dd4bef352017d2dbdf3f60aa76a4e3661804a6.rev
+│   │       ├── pack-3df61af764c037fe41048c65f6e62a3ee12765b2.idx
+│   │       ├── pack-3df61af764c037fe41048c65f6e62a3ee12765b2.pack
+│   │       └── pack-3df61af764c037fe41048c65f6e62a3ee12765b2.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -234,8 +234,6 @@ vi3na1bita-music/
 │   ├── e2e/
 │   │   ├── favorites.spec.js
 │   │   └── player.spec.js
-│   ├── player/
-│   │   └── player-adapter.js
 │   ├── ui/
 │   │   ├── favorites-const.js
 │   │   ├── favorites-data.js
@@ -266,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 13:59:44 UTC
+Сгенерировано: 2025-12-07 14:00:13 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4936,150 +4934,6 @@ test('SW update flow persists state and restores after reload', async ({ page })
 //=================================================
 // FILE: /scripts/energy.js
 
-
-//=================================================
-// FILE: /scripts/player/player-adapter.js
-// scripts/player/player-adapter.js
-// Адаптер для PlayerCore
-import { PlayerCore } from '../../src/PlayerCore.js';
-
-class PlayerAdapter {
-  constructor() {
-    this.player = null;
-    this.initialized = false;
-    this.init();
-  }
-
-  init() {
-    if (this.initialized || window.playerCore) return;
-    
-    console.log('🎵 Initializing PlayerCore adapter...');
-    
-    // Создаем экземпляр PlayerCore
-    this.player = new PlayerCore({
-      events: {
-        onTrackChange: (track, index) => this.handleTrackChange(track, index),
-        onPlay: (track, index) => this.handlePlay(track, index),
-        onPause: (track, index) => this.handlePause(track, index),
-        onStop: (track, index) => this.handleStop(track, index),
-        onEnd: (track, index) => this.handleEnd(track, index),
-        onTick: (position, duration) => this.handleTick(position, duration),
-        onSleepTriggered: (track, index) => this.handleSleepTriggered(track, index)
-      }
-    });
-    
-    // Восстановление настроек
-    this.restoreSettings();
-    
-    // Экспорт в глобальную область
-    window.playerCore = this.player;
-    this.initialized = true;
-    console.log('✅ PlayerCore adapter initialized');
-  }
-
-  handleTrackChange(track, index) {
-    console.log('🎵 Track changed:', track?.title);
-    if (window.PlayerControls) {
-      window.PlayerControls.updateNowPlaying({ track, index });
-    }
-    // Обновление медиа-сессии
-    if (window.BackgroundAudioManager) {
-      window.BackgroundAudioManager.updateMetadata(track);
-    }
-  }
-
-  handlePlay(track, index) {
-    console.log('▶️ Playing:', track?.title);
-    if (window.PlayerControls) {
-      window.PlayerControls.updatePlayPauseButton(true);
-    }
-    // Обновление состояния фонового воспроизведения
-    if (window.BackgroundEventsManager) {
-      window.BackgroundEventsManager.setPlaybackLocks(true);
-    }
-  }
-
-  handlePause(track, index) {
-    console.log('⏸️ Paused');
-    if (window.PlayerControls) {
-      window.PlayerControls.updatePlayPauseButton(false);
-    }
-    if (window.BackgroundEventsManager) {
-      window.BackgroundEventsManager.setPlaybackLocks(false);
-    }
-  }
-
-  handleStop(track, index) {
-    console.log('⏹️ Stopped');
-    if (window.PlayerControls) {
-      window.PlayerControls.updatePlayPauseButton(false);
-    }
-    if (window.BackgroundEventsManager) {
-      window.BackgroundEventsManager.setPlaybackLocks(false);
-    }
-  }
-
-  handleEnd(track, index) {
-    console.log('⏭️ Track ended');
-    // Автопереход на следующий трек
-    if (!window.autoNextDisabled) {
-      this.player.next();
-    }
-  }
-
-  handleTick(position, duration) {
-    if (window.PlayerControls) {
-      window.PlayerControls.updateProgress(position, duration);
-    }
-    // Обновление позиции в медиа-сессии
-    if (window.BackgroundAudioManager) {
-      window.BackgroundAudioManager.updatePositionState({
-        position,
-        duration
-      });
-    }
-  }
-
-  handleSleepTriggered(track, index) {
-    console.log('😴 Sleep timer triggered');
-    if (window.NotificationSystem) {
-      window.NotificationSystem.info('Таймер сна: воспроизведение остановлено');
-    }
-  }
-
-  restoreSettings() {
-    try {
-      // Громкость
-      const volume = parseFloat(localStorage.getItem('playerVolume') || '1');
-      if (Number.isFinite(volume)) {
-        this.player.setVolume(volume);
-      }
-      
-      // Режимы воспроизведения
-      this.player.setRepeat(localStorage.getItem('repeatMode') === '1');
-      this.player.setShuffle(localStorage.getItem('shuffleMode') === '1');
-      
-      // Избранные треки
-      const favoritesOnly = localStorage.getItem('favoritesOnlyMode') === '1';
-      if (favoritesOnly && window.getLikedForAlbum) {
-        const currentAlbum = window.AlbumsManager?.getCurrentAlbum();
-        const liked = currentAlbum ? window.getLikedForAlbum(currentAlbum) : [];
-        this.player.setFavoritesOnly(true, liked);
-      }
-    } catch (e) {
-      console.error('Failed to restore player settings:', e);
-    }
-  }
-}
-
-// Инициализация при загрузке
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    new PlayerAdapter();
-  });
-} else {
-  new PlayerAdapter();
-}
 
 //=================================================
 // FILE: /scripts/ui/favorites-const.js
