@@ -147,7 +147,7 @@ class AlbumsManager {
       window.PlayerUI.updateNextUpLabel?.();
     }
 
-    // Устанавливаем плейлист в PlayerCore
+    // Готовим плейлист для этого альбома (но применяем его только если сейчас ничего не играет)
     const tracksForCore = albumData.tracks
       .filter(t => !!t.file)
       .map((t) => ({
@@ -160,15 +160,23 @@ class AlbumsManager {
         fulltext: t.fulltext || null
       }));
 
-    if (window.playerCore) {
-      window.playerCore.setPlaylist(tracksForCore, 0, {
-        artist: albumData.artist || 'Витрина Разбита',
-        album: albumData.title || albumInfo.title,
-        cover: new URL(albumData.cover || 'cover.jpg', albumInfo.base).toString()
-      });
-      
-      // Сохраняем ключ играющего альбома
-      this.playingAlbum = albumKey;
+    if (window.playerCore && tracksForCore.length > 0) {
+      const hasCurrentTrack = typeof window.playerCore.getCurrentTrack === 'function'
+        ? !!window.playerCore.getCurrentTrack()
+        : false;
+
+      // Если сейчас ничего не играет — можем подготовить плейлист этого альбома.
+      // Если уже что‑то играет (другой альбом или избранное) — не трогаем плейлист, чтобы не сбивать мини‑плеер.
+      if (!hasCurrentTrack) {
+        window.playerCore.setPlaylist(tracksForCore, 0, {
+          artist: albumData.artist || 'Витрина Разбита',
+          album: albumData.title || albumInfo.title,
+          cover: new URL(albumData.cover || 'cover.jpg', albumInfo.base).toString()
+        });
+
+        // Плеер будет играть из этого альбома, когда пользователь выберет трек
+        this.playingAlbum = albumKey;
+      }
     }
 
     const coverWrap = document.getElementById('cover-wrap');
