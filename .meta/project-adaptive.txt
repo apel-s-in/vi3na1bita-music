@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-72f3a74456d90e534f7dfe66d3c82c6ffa3036b9.idx
-│   │       ├── pack-72f3a74456d90e534f7dfe66d3c82c6ffa3036b9.pack
-│   │       └── pack-72f3a74456d90e534f7dfe66d3c82c6ffa3036b9.rev
+│   │       ├── pack-51622904bbad9b2538d1dc467fca7a662418e14a.idx
+│   │       ├── pack-51622904bbad9b2538d1dc467fca7a662418e14a.pack
+│   │       └── pack-51622904bbad9b2538d1dc467fca7a662418e14a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -267,7 +267,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 11:00:22 UTC
+Сгенерировано: 2025-12-07 11:53:37 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -576,20 +576,9 @@ jobs:
   <!-- Styles -->
   <link rel="stylesheet" href="styles/main.css">
   
-  <!-- Howler.js -->
-  <script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.core.min.js"></script>
-
-  <!-- Preconnect для внешних ресурсов -->
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
-  
   <!-- Core -->
   <script src="./scripts/core/bootstrap.js"></script>
-  <!-- ⚠️ bootstrap.js должен быть обычным скриптом, НЕ type="module" -->
   <script src="./scripts/core/config.js" type="module"></script>
-  
-  <!-- Player Core -->
-  <script src="./scripts/player/player-adapter.js" type="module"></script>
   
   <!-- UI Modules -->
   <script src="./scripts/ui/notify.js" defer></script>
@@ -598,15 +587,11 @@ jobs:
   <script src="./scripts/ui/favorites-data.js" defer></script>
   <script src="./scripts/ui/favorites.js" defer></script>
   <script src="./scripts/ui/favorites-view.js" defer></script>
-  <script src="./scripts/ui/mini.js" defer></script>
-  <script src="./scripts/ui/modals.js" defer></script>
-  <script src="./scripts/ui/sysinfo.js" defer></script>
   <script src="./scripts/ui/sleep.js" defer></script>
   
   <!-- App Modules -->
   <script src="./scripts/app/background-audio.js" defer></script>
   <script src="./scripts/app/background-events.js" defer></script>
-  <script src="./scripts/app/player-ui.js" defer></script>
   <script src="./scripts/app/albums.js" type="module"></script>
   <script src="./scripts/app/navigation.js" type="module"></script>
   <script src="./scripts/app/downloads.js" type="module"></script>
@@ -616,42 +601,6 @@ jobs:
   
   <!-- Performance Monitoring -->
   <script src="./performance/rum.js" defer></script>
-  <style>
-    /* Дополнительные стили для совместимости */
-    .eco-btn.eco-active {
-      background: rgba(232, 1, 0, 0.12);
-      border-color: rgba(232, 1, 0, 0.25);
-      color: var(--primary-color);
-    }
-    
-    #sysinfo-btn {
-      display: none;
-      color: var(--secondary-color) !important;
-      text-decoration: underline !important;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.03em;
-      cursor: pointer;
-      transition: color 0.18s;
-      font-size: 1em;
-      text-align: center;
-      width: 100%;
-      margin: 6px 0;
-      background: none;
-      border: none;
-      padding: 8px;
-    }
-    
-    #sysinfo-btn:hover {
-      color: #fff !important;
-    }
-    
-    @media (min-width: 768px) {
-      #sysinfo-btn {
-        display: block;
-      }
-    }
-  </style>
 </head>
 <body>
   <!-- Promocode Screen -->
@@ -696,7 +645,9 @@ jobs:
       <div id="social-links" class="socials-under-cover"></div>
     </header>
 
-    <div id="now-playing"></div>
+    <!-- Мини-плеер (показывается ТОЛЬКО при просмотре другого альбома) -->
+    <div id="now-playing" style="width:100%; max-width:395px; margin:8px auto 0 auto;"></div>
+    
     <div class="track-list" id="track-list"></div>
 
     <div class="bottom-controls-center">
@@ -715,10 +666,11 @@ jobs:
       </button>
       
       <button class="hotkeys-btn" id="hotkeys-btn" style="display:none;">
+        ГОРЯЧИЕ КЛАВИШИ
+      </button>
+      
       <button id="sysinfo-btn" style="display:none;">
         О СИСТЕМЕ
-      </button>
-        ГОРЯЧИЕ КЛАВИШИ
       </button>
       
       <span class="feedback-link" id="feedback-link">ОБРАТНАЯ СВЯЗЬ</span>
@@ -907,7 +859,6 @@ jobs:
       
       document.body.appendChild(modal);
       
-      // Копирование ссылки
       const copyBtn = modal.querySelector('#copy-chrome-settings-btn');
       copyBtn?.addEventListener('click', async () => {
         try {
@@ -939,377 +890,6 @@ jobs:
       div.textContent = str || '';
       return div.innerHTML;
     }
-    
-    // ========== ГЛОБАЛЬНЫЕ ФУНКЦИИ ДЛЯ ГОРЯЧИХ КЛАВИШ ==========
-    
-    function togglePlayPause() {
-      if (!window.playerCore) return;
-      window.playerCore.isPlaying() ? window.playerCore.pause() : window.playerCore.play();
-    }
-    
-    function stopPlayback() {
-      window.playerCore?.stop();
-    }
-    
-    function nextTrack() {
-      window.playerCore?.next();
-    }
-    
-    function previousTrack() {
-      window.playerCore?.prev();
-    }
-    
-    function seekAudio(seconds) {
-      if (!window.playerCore) return;
-      const current = window.playerCore.getSeek() || 0;
-      const duration = window.playerCore.getDuration() || 0;
-      const newPos = Math.max(0, Math.min(duration, current + seconds));
-      window.playerCore.seek(newPos);
-    }
-    
-    function adjustVolume(delta) {
-      if (!window.playerCore) return;
-      const current = window.playerCore.getVolume();
-      const newVolume = Math.max(0, Math.min(1, current + (delta / 100)));
-      window.playerCore.setVolume(newVolume);
-      
-      // Обновить UI громкости
-      if (window.PlayerUI) {
-        window.PlayerUI.updateVolumeUI?.(newVolume);
-      }
-      
-      localStorage.setItem('playerVolume', String(newVolume));
-    }
-    
-    function toggleMute() {
-      document.getElementById('mute-btn')?.click();
-    }
-    
-    function toggleRepeat() {
-      document.getElementById('repeat-btn')?.click();
-    }
-    
-    function toggleShuffle() {
-      document.getElementById('shuffle-btn')?.click();
-    }
-    
-    function toggleFavoritesOnly() {
-      document.getElementById('favorites-btn')?.click();
-    }
-    
-    function toggleSleepMenu() {
-      document.getElementById('sleep-timer-btn')?.click();
-    }
-    
-    function toggleAnimation() {
-      window.PlayerUI?.toggleAnimation();
-    }
-    
-    function toggleBit() {
-      window.PlayerUI?.toggleBit();
-    }
-    
-    function setBitIntensity(value) {
-      if (window.PlayerUI) {
-        window.PlayerUI.bitIntensity = value;
-        window.NotificationSystem?.info(`💿 Интенсивность: ${value}%`);
-      }
-    }
-    
-    function toggleLyricsView() {
-      window.PlayerUI?.toggleLyricsView();
-    }
-    
-    function toggleLikePlaying() {
-      const track = window.playerCore?.getCurrentTrack();
-      if (!track) return;
-      
-      const albumKey = window.AlbumsManager?.getCurrentAlbum();
-      const index = window.playerCore?.getIndex();
-      
-      if (albumKey !== null && typeof index === 'number') {
-        const star = document.querySelector(`.track[data-index="${index}"] .like-star`);
-        star?.click();
-      }
-    }
-    
-    function toggleEco() {
-      document.getElementById('eco-btn')?.click();
-    }
-    
-    function showHotkeysModal() {
-      window.NavigationManager?.showHotkeysModal();
-    }
-    
-    // ========== ГОРЯЧИЕ КЛАВИШИ ==========
-    
-    window.addEventListener('keydown', (e) => {
-      // Игнорировать если фокус на input
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-      
-      // Закрытие модальных окон по Escape
-      const hasModal = document.querySelector('.modal-bg.active, .modal-overlay.show');
-      if (e.key === 'Escape' && hasModal) {
-        e.preventDefault();
-        document.querySelectorAll('.modal-bg.active').forEach(m => m.classList.remove('active'));
-        document.querySelectorAll('.modal-overlay.show').forEach(m => m.classList.remove('show'));
-        return;
-      }
-      
-      if (hasModal) return;
-      
-      const key = e.key.toUpperCase();
-      
-      switch(key) {
-        case ' ':
-        case 'K':
-          e.preventDefault();
-          togglePlayPause();
-          break;
-        case 'X':
-          e.preventDefault();
-          stopPlayback();
-          break;
-        case 'N':
-          e.preventDefault();
-          nextTrack();
-          break;
-        case 'P':
-          e.preventDefault();
-          previousTrack();
-          break;
-        case 'J':
-          e.preventDefault();
-          seekAudio(-10);
-          break;
-        case 'L':
-          e.preventDefault();
-          seekAudio(10);
-          break;
-        case '+':
-        case '=':
-          e.preventDefault();
-          adjustVolume(10);
-          break;
-        case '-':
-          e.preventDefault();
-          adjustVolume(-10);
-          break;
-        case 'M':
-          e.preventDefault();
-          toggleMute();
-          break;
-        case 'R':
-          e.preventDefault();
-          toggleRepeat();
-          break;
-        case 'U':
-          e.preventDefault();
-          toggleShuffle();
-          break;
-        case 'F':
-          e.preventDefault();
-          toggleFavoritesOnly();
-          break;
-        case 'T':
-          e.preventDefault();
-          toggleSleepMenu();
-          break;
-        case 'A':
-          e.preventDefault();
-          toggleAnimation();
-          break;
-        case 'B':
-          e.preventDefault();
-          toggleBit();
-          break;
-        case '1':
-          if (window.PlayerUI?.bitEnabled) {
-            e.preventDefault();
-            setBitIntensity(100);
-          }
-          break;
-        case '2':
-          if (window.PlayerUI?.bitEnabled) {
-            e.preventDefault();
-            setBitIntensity(50);
-          }
-          break;
-        case '3':
-          if (window.PlayerUI?.bitEnabled) {
-            e.preventDefault();
-            setBitIntensity(15);
-          }
-          break;
-        case 'Y':
-          e.preventDefault();
-          toggleLyricsView();
-          break;
-        case 'W':
-          e.preventDefault();
-          document.getElementById('track-list')?.scrollIntoView({
-            behavior: 'smooth'
-          });
-          break;
-        case 'D':
-          e.preventDefault();
-          toggleLikePlaying();
-          break;
-        case '?':
-          e.preventDefault();
-          showHotkeysModal();
-          break;
-        case 'O':
-          e.preventDefault();
-          window.autoNextDisabled = !window.autoNextDisabled;
-          window.NotificationSystem?.info(
-            window.autoNextDisabled ? '⏹ Автопереход отключён' : '▶ Автопереход включён'
-          );
-          break;
-      }
-      
-      // Быстрый выбор трека по цифре (1-9)
-      if (e.key >= '1' && e.key <= '9' && !e.shiftKey && !e.ctrlKey && !e.altKey) {
-        const idx = parseInt(e.key) - 1;
-        const tracks = document.querySelectorAll('.track');
-        if (tracks[idx]) {
-          e.preventDefault();
-          tracks[idx].click();
-        }
-      }
-    });
-    
-    // ========== SLEEP TIMER ==========
-    
-    function setSleepTimer(minutes) {
-      if (minutes === 'off') {
-        clearSleepTimer();
-        return;
-      }
-      
-      window.sleepTimerTarget = Date.now() + minutes * 60 * 1000;
-      updateSleepTimerUI();
-      
-      if (window.sleepTimerInterval) {
-        clearInterval(window.sleepTimerInterval);
-      }
-      
-      window.sleepTimerInterval = setInterval(() => {
-        if (!window.sleepTimerTarget) {
-          clearInterval(window.sleepTimerInterval);
-          window.sleepTimerInterval = null;
-          return;
-        }
-        
-        const now = Date.now();
-        const msLeft = window.sleepTimerTarget - now;
-        
-        if (msLeft <= 0) {
-          // КРИТИЧНО: используем PlayerCore
-          if (window.playerCore && window.playerCore.isPlaying()) {
-            window.playerCore.pause();
-            window.NotificationSystem?.info('⏰ Таймер сна: воспроизведение остановлено');
-          }
-          clearSleepTimer();
-        } else if (msLeft <= 10000 && !document.querySelector('#sleep-overlay')) {
-          showSleepOverlay();
-        }
-        
-        updateSleepTimerUI();
-      }, 1000);
-      
-      window.NotificationSystem?.success(`⏰ Таймер установлен: ${minutes} мин`);
-    }
-    
-    function clearSleepTimer() {
-      window.sleepTimerTarget = null;
-      
-      if (window.sleepTimerInterval) {
-        clearInterval(window.sleepTimerInterval);
-        window.sleepTimerInterval = null;
-      }
-      
-      updateSleepTimerUI();
-      
-      const overlay = document.getElementById('sleep-overlay');
-      if (overlay) overlay.remove();
-      
-      // Также очистить в PlayerCore
-      if (window.playerCore && typeof window.playerCore.clearSleepTimer === 'function') {
-        window.playerCore.clearSleepTimer();
-      }
-    }
-    
-    function updateSleepTimerUI() {
-      const badge = document.getElementById('sleep-timer-badge');
-      if (!badge) return;
-      
-      if (!window.sleepTimerTarget) {
-        badge.style.display = 'none';
-        badge.textContent = '';
-        return;
-      }
-      
-      const minsLeft = Math.max(0, Math.ceil((window.sleepTimerTarget - Date.now()) / 60000));
-      badge.textContent = String(minsLeft);
-      badge.style.display = minsLeft > 0 ? '' : 'none';
-    }
-    
-    function showSleepOverlay() {
-      let overlay = document.getElementById('sleep-overlay');
-      if (!overlay) {
-        overlay = document.createElement('div');
-        overlay.id = 'sleep-overlay';
-        overlay.className = 'sleep-overlay';
-        overlay.innerHTML = `
-          <div class="sleep-content">
-            <div class="sleep-icon">😴</div>
-            <div class="sleep-title">Скоро пауза</div>
-            <div class="sleep-message">
-              Воспроизведение будет приостановлено по таймеру сна.
-            </div>
-            <div class="sleep-buttons">
-              <button class="sleep-btn sleep-btn-secondary" onclick="cancelSleepOverlay()">
-                Отмена
-              </button>
-              <button class="sleep-btn sleep-btn-primary" onclick="confirmSleepOverlay()">
-                Оставить
-              </button>
-            </div>
-          </div>
-        `;
-        document.body.appendChild(overlay);
-      }
-      overlay.classList.add('active');
-    }
-    
-    function cancelSleepOverlay() {
-      clearSleepTimer();
-      const overlay = document.getElementById('sleep-overlay');
-      if (overlay) overlay.remove();
-    }
-    
-    function confirmSleepOverlay() {
-      const overlay = document.getElementById('sleep-overlay');
-      if (overlay) overlay.remove();
-    }
-    
-    // ========== ПЕРИОДИЧЕСКИЕ ЗАДАЧИ ==========
-    
-    // Обновление UI таймера каждую секунду
-    setInterval(() => {
-      updateSleepTimerUI();
-    }, 1000);
-    
-    // ========== ОБРАБОТЧИКИ ОШИБОК ==========
-    
-    window.addEventListener('error', (e) => {
-      console.error('💥 Global error:', e.error || e.message);
-    });
-    
-    window.addEventListener('unhandledrejection', (e) => {
-      console.error('💥 Unhandled promise rejection:', e.reason);
-    });
     
     // ========== ЭКСПОРТ ГЛОБАЛЬНЫХ ПЕРЕМЕННЫХ ==========
     
