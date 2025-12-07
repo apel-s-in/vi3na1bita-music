@@ -77,6 +77,24 @@
     if (downloadBtn && track.src) {
       downloadBtn.href = track.src;
       downloadBtn.download = `${track.title}.mp3`;
+
+      // Попробуем вывести примерный размер файла из albumData.tracks[].size
+      let sizeHint = '';
+      const playingAlbumKey = w.AlbumsManager?.getPlayingAlbum?.();
+      const albumData = playingAlbumKey
+        ? w.AlbumsManager?.getAlbumData?.(playingAlbumKey)
+        : null;
+
+      if (albumData && Array.isArray(albumData.tracks)) {
+        const byNum = albumData.tracks.find(t => t.file === track.src || t.title === track.title);
+        if (byNum && typeof byNum.size === 'number') {
+          sizeHint = ` (~${byNum.size.toFixed(2)} МБ)`;
+        }
+      }
+
+      downloadBtn.title = sizeHint
+        ? `Скачать трек${sizeHint}`
+        : 'Скачать трек';
     }
   }
 
