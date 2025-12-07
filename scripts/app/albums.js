@@ -119,6 +119,7 @@ class AlbumsManager {
         const lyrics = t.lyrics ? new URL(t.lyrics, base).toString() : null;
         const fulltext = t.fulltext ? new URL(t.fulltext, base).toString() : null;
         const uid = window.AlbumsManager?.getTrackUid?.(albumKey, num) || `${albumKey}_${num}`;
+        const sizeMB = typeof t.size === 'number' ? t.size : null;
 
         return {
           num,
@@ -126,7 +127,8 @@ class AlbumsManager {
           file,
           lyrics,
           fulltext,
-          uid
+          uid,
+          size: sizeMB
         };
       });
 
@@ -273,17 +275,19 @@ class AlbumsManager {
 
       const num = String(index + 1).padStart(2, '0');
       
-      trackEl.innerHTML = `
-        <div class="tnum">${num}</div>
-        <div class="track-title" title="${item.title} — ${item.__album}">
-          ${item.title} <span style="opacity:.6;font-size:.9em;">— ${item.__album}</span>
-        </div>
-        <img src="${item.__active ? 'img/star.png' : 'img/star2.png'}" 
-             class="like-star" 
-             alt="звезда"
-             data-album="${item.__a}" 
-             data-num="${item.__t}">
-      `;
+    const sizeHint = typeof track.size === 'number'
+      ? ` · ~${track.size.toFixed(2)} МБ`
+      : '';
+
+    trackEl.innerHTML = `
+      <div class="tnum">${track.num || index + 1}</div>
+      <div class="track-title" title="${track.title}${sizeHint}">${track.title}</div>
+      <img src="${isFavorite ? 'img/star.png' : 'img/star2.png'}" 
+           class="like-star" 
+           alt="звезда"
+           data-album="${albumKey}" 
+           data-num="${track.num || index + 1}">
+    `;
 
       trackEl.addEventListener('click', async (e) => {
         if (e.target.classList.contains('like-star')) return;
