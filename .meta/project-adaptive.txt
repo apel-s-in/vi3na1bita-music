@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2cb3ae8139948241e26ca8148ea874dd6bd5ea7a.idx
-│   │       ├── pack-2cb3ae8139948241e26ca8148ea874dd6bd5ea7a.pack
-│   │       └── pack-2cb3ae8139948241e26ca8148ea874dd6bd5ea7a.rev
+│   │       ├── pack-03ec73b78715c43472a0d48872a7e5675dab6cdc.idx
+│   │       ├── pack-03ec73b78715c43472a0d48872a7e5675dab6cdc.pack
+│   │       └── pack-03ec73b78715c43472a0d48872a7e5675dab6cdc.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -266,7 +266,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 10:07:12 UTC
+Сгенерировано: 2025-12-07 10:07:52 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6481,11 +6481,7 @@ export default FavoritesManager;
   };
 
   // Автоинициализация
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initSleepTimer);
-  } else {
-    initSleepTimer();
-  }
+  // (Lyrics Modal не требует автозапуска)
 
 })();
 
