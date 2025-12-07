@@ -82,8 +82,31 @@ export class PlayerCore {
       onplayerror: (_, err) => {
         console.warn('Howler play error:', err);
         // Попытка разблокировать аудио контекст
-        try { this.howl.once('unlock', () => { try { this.howl.play(); } catch {} }); } catch {}
+        try { 
+          this.howl.once('unlock', () => { 
+            try { 
+              this.howl.play(); 
+            } catch (e) {
+              console.error('Failed to resume after unlock:', e);
+            }
+          }); 
+        } catch (e) {
+          console.error('Failed to setup unlock handler:', e);
+        }
+        
+        // Уведомить пользователя
+        if (window.NotificationSystem) {
+          window.NotificationSystem.error('Ошибка воспроизведения. Попробуйте перезагрузить страницу.');
+        }
       },
+      onloaderror: (_, err) => {
+        console.warn('Howler load error:', err);
+        if (window.NotificationSystem) {
+          window.NotificationSystem.error('Не удалось загрузить аудио');
+        }
+        // Пропустить трек
+        setTimeout(() => this.next(), 1000);
+      }
       onloaderror: (_, err) => {
         console.warn('Howler load error:', err);
         // Можно добавить логику для пропуска трека
