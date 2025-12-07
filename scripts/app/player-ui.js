@@ -741,6 +741,11 @@
   function toggleFavoritesOnly() {
     const currentAlbum = w.AlbumsManager?.getCurrentAlbum();
     
+    if (!currentAlbum) {
+      w.NotificationSystem?.warning('Альбом не выбран');
+      return;
+    }
+
     if (currentAlbum === '__favorites__') {
       w.NotificationSystem?.info('Вы уже в разделе Избранное');
       return;
@@ -748,7 +753,6 @@
     
     const btn = document.getElementById('favorites-btn');
     const icon = document.getElementById('favorites-btn-icon');
-    
     const isActive = btn?.classList.contains('active');
     
     if (isActive) {
@@ -758,19 +762,37 @@
       document.querySelectorAll('.track').forEach(el => {
         el.style.display = '';
       });
-    } else {
-      btn?.classList.add('active');
-      if (icon) icon.src = 'img/star.png';
-      
-      const liked = w.FavoritesManager?.getLikedForAlbum(currentAlbum) || [];
-      
-      document.querySelectorAll('.track').forEach(el => {
-        const index = parseInt(el.dataset.index, 10);
-        if (!liked.includes(index + 1)) {
-          el.style.display = 'none';
-        }
-      });
+      return;
     }
+
+    // Включаем фильтр
+    btn?.classList.add('active');
+    if (icon) icon.src = 'img/star.png';
+    
+    const likedNums = w.FavoritesManager?.getLikedForAlbum(currentAlbum) || [];
+    const albumData = w.AlbumsManager?.getAlbumData?.(currentAlbum) || null;
+    
+    document.querySelectorAll('.track').forEach(el => {
+      const idx = parseInt(el.dataset.index, 10);
+      if (!Number.isFinite(idx)) {
+        el.style.display = 'none';
+        return;
+      }
+
+      let trackNum = idx + 1;
+      if (albumData && Array.isArray(albumData.tracks) && albumData.tracks[idx]) {
+        const t = albumData.tracks[idx];
+        if (Number.isFinite(Number(t.num))) {
+          trackNum = Number(t.num);
+        }
+      }
+
+      if (!likedNums.includes(trackNum)) {
+        el.style.display = 'none';
+      } else {
+        el.style.display = '';
+      }
+    });
   }
 
   function toggleLikePlaying() {
