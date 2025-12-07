@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-738233f64e1c195c1ea2596265b295f34bac51dc.idx
-│   │       ├── pack-738233f64e1c195c1ea2596265b295f34bac51dc.pack
-│   │       └── pack-738233f64e1c195c1ea2596265b295f34bac51dc.rev
+│   │       ├── pack-4b3cd7d4b7be9d6f2a28bb0d60c13cca213fa407.idx
+│   │       ├── pack-4b3cd7d4b7be9d6f2a28bb0d60c13cca213fa407.pack
+│   │       └── pack-4b3cd7d4b7be9d6f2a28bb0d60c13cca213fa407.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -266,7 +266,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 10:19:04 UTC
+Сгенерировано: 2025-12-07 10:20:05 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6309,7 +6309,6 @@ class FavoritesManager {
 
 // Глобальный экземпляр
 window.FavoritesManager = new FavoritesManager();
-export default FavoritesManager;
 
 //=================================================
 // FILE: /scripts/ui/lyrics-modal.js
