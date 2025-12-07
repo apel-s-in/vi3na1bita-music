@@ -664,15 +664,22 @@
   function toggleLikePlaying() {
     const playingAlbum = w.AlbumsManager?.getPlayingAlbum?.();
     const index = w.playerCore?.getIndex();
-    
+
     if (!playingAlbum || index === undefined) return;
-    
+
+    // Везде считаем, что номер трека = index + 1 (как в likedTracks:v2)
     const trackNum = index + 1;
     const liked = w.FavoritesManager?.getLikedForAlbum(playingAlbum) || [];
     const isLiked = liked.includes(trackNum);
-    
-    w.FavoritesManager?.toggleLikeForAlbum(playingAlbum, trackNum, !isLiked);
-    
+
+    // FavoritesManager имеет метод toggleLike(albumKey, trackIndex, makeLiked?)
+    if (w.FavoritesManager && typeof w.FavoritesManager.toggleLike === 'function') {
+      w.FavoritesManager.toggleLike(playingAlbum, trackNum, !isLiked);
+    } else if (typeof w.toggleLikeForAlbum === 'function') {
+      // Back‑compat: если вдруг класс недоступен
+      w.toggleLikeForAlbum(playingAlbum, trackNum, !isLiked);
+    }
+
     updateMiniHeader();
   }
 
