@@ -10,14 +10,14 @@
       this.currentIndex = -1;
       this.sound = null;
       this.isReady = false;
-      
+
       this.repeatMode = false;
       this.shuffleMode = false;
       this.originalPlaylist = [];
-      
+
       this.tickInterval = null;
       this.tickRate = 100; // мс
-      
+
       this.callbacks = {
         onTrackChange: [],
         onPlay: [],
@@ -25,14 +25,20 @@
         onStop: [],
         onEnd: [],
         onTick: [],
-        onError: []
+        onError: [],
+        // Пользовательские события
+        onSleepTriggered: []
       };
-      
+
       this.metadata = {
         artist: 'Витрина Разбита',
         album: '',
         cover: ''
       };
+
+      // Таймер сна
+      this.sleepTimerTarget = 0;   // timestamp (ms) когда нужно остановить воспроизведение
+      this.sleepTimerId = null;    // id setTimeout для таймера сна
     }
 
     initialize() {
@@ -349,7 +355,67 @@
       }
     }
 
-    // ========== MEDIA SESSION API ==========
+    // ========== ТАЙМЕР СНА ==========
+
+    /**
+     * Устанавливает таймер сна на указанное количество миллисекунд.
+     * По срабатыванию НЕ останавливает плеер жёстко, а:
+     *  - генерирует событие onSleepTriggered,
+     *  - приложение (SleepTimerModule) решает, что делать (по ТЗ: именно таймер может инициировать стоп/паузу).
+     */
+    setSleepTimer(ms) {
+      const delay = Number(ms) || 0;
+      if (delay <= 0) {
+        this.clearSleepTimer();
+        return;
+      }
+
+      const now = Date.now();
+      this.sleepTimerTarget = now + delay;
+
+      if (this.sleepTimerId) {
+        clearTimeout(this.sleepTimerId);
+        this.sleepTimerId = null;
+      }
+
+      this.sleepTimerId = setTimeout(() => {
+        this.sleepTimerId = null;
+        const target = this.sleepTimerTarget;
+        this.sleepTimerTarget = 0;
+
+        // Генерируем событие — UI/модули решают, что делать (стоп/пауза и т.п.)
+        this.trigger('onSleepTriggered', { targetAt: target });
+
+        // По базовому правилу: именно таймер сна имеет право инициировать остановку,
+        // но делаем это мягко: если кто-то в onSleepTriggered уже остановил плеер,
+        // вторично не трогаем.
+        if (this.isPlaying()) {
+          try {
+            this.pause();
+          } catch (e) {
+            console.warn('Sleep timer pause failed:', e);
+          }
+        }
+      }, delay);
+    }
+
+    /**
+     * Сбрасывает таймер сна.
+     */
+    clearSleepTimer() {
+      if (this.sleepTimerId) {
+        clearTimeout(this.sleepTimerId);
+        this.sleepTimerId = null;
+      }
+      this.sleepTimerTarget = 0;
+    }
+
+    /**
+     * Возвращает absolute timestamp (ms) срабатывания таймера сна, либо 0, если таймер не установлен.
+     */
+    getSleepTimerTarget() {
+      return this.sleepTimerTarget || 0;
+    }
 
     updateMediaSession() {
       if (!('mediaSession' in navigator)) return;
