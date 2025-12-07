@@ -1,6 +1,6 @@
 // service-worker.js
 // Service Worker для PWA - совместим с CI валидатором
-const SW_VERSION = '1.0.0';
+const SW_VERSION = '8.0.3';
 const CORE_CACHE = 'vitrina-core-v1.0.0';
 const RUNTIME_CACHE = 'vitrina-runtime-v1';
 const MEDIA_CACHE = 'vitrina-media-v1';
