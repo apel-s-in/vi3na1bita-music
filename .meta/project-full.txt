@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6c8c98aa3ab22adb141f91594be0c2e2df86923e.idx
-│   │       ├── pack-6c8c98aa3ab22adb141f91594be0c2e2df86923e.pack
-│   │       └── pack-6c8c98aa3ab22adb141f91594be0c2e2df86923e.rev
+│   │       ├── pack-43e89f6bfa693cf12e40fbd5896d3b4a6776fa46.idx
+│   │       ├── pack-43e89f6bfa693cf12e40fbd5896d3b4a6776fa46.pack
+│   │       └── pack-43e89f6bfa693cf12e40fbd5896d3b4a6776fa46.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 21:46:28 UTC
+Сгенерировано: 2025-12-07 21:47:16 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5940,15 +5940,33 @@ window.FavoritesManager = new FavoritesManager();
   }
 
   function showLyricsFromTimeline(track) {
-    // Собрать текст из timeline лирики
-    if (!w.PlayerUI || !w.PlayerUI.currentLyrics || !w.PlayerUI.currentLyrics.length) {
+    // Собрать текст из таймлайна лирики, экспортированного из PlayerUI
+    if (!w.PlayerUI) {
       w.NotificationSystem?.warning('Текст песни недоступен');
       return;
     }
 
-    const lines = w.PlayerUI.currentLyrics.map(item => item.line).filter(Boolean);
+    // Предпочитаем бэкомпат-API currentLyricsLines, если есть,
+    // иначе пробуем взять сырые currentLyrics и вытащить text.
+    const rawLines = Array.isArray(w.PlayerUI.currentLyricsLines)
+      ? w.PlayerUI.currentLyricsLines
+      : (Array.isArray(w.PlayerUI.currentLyrics) ? w.PlayerUI.currentLyrics : []);
+
+    if (!rawLines.length) {
+      w.NotificationSystem?.warning('Текст песни недоступен');
+      return;
+    }
+
+    const lines = rawLines
+      .map(item => (typeof item.line === 'string' ? item.line : (item.text || '')))
+      .filter(Boolean);
+
+    if (!lines.length) {
+      w.NotificationSystem?.warning('Текст песни недоступен');
+      return;
+    }
+
     const text = lines.join('\n');
-    
     showModal(track, text);
   }
 
