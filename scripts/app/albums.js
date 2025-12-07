@@ -466,7 +466,9 @@ class AlbumsManager {
     trackEl.dataset.index = index;
     trackEl.dataset.album = albumKey;
 
-    const isFavorite = window.getLikedForAlbum?.(albumKey)?.includes(track.num) || false;
+    const isFavorite = window.FavoritesManager
+      ? window.FavoritesManager.isFavorite(albumKey, track.num)
+      : (window.getLikedForAlbum?.(albumKey)?.includes(track.num) || false);
 
     trackEl.innerHTML = `
       <div class="tnum">${track.num || index + 1}</div>
@@ -538,13 +540,23 @@ class AlbumsManager {
     const star = trackEl.querySelector('.like-star');
     star?.addEventListener('click', (e) => {
       e.stopPropagation();
-      const trackNum = parseInt(star.dataset.num);
-      const wasLiked = window.getLikedForAlbum?.(albumKey)?.includes(trackNum);
-      
-      window.toggleLikeForAlbum?.(albumKey, trackNum, !wasLiked);
-      star.src = wasLiked ? 'img/star2.png' : 'img/star.png';
-      
-      trackEl.classList.toggle('is-favorite', !wasLiked);
+      const trackNum = parseInt(star.dataset.num, 10);
+      if (!Number.isFinite(trackNum)) return;
+
+      let isLiked = false;
+
+      if (window.FavoritesManager) {
+        isLiked = !!window.FavoritesManager.isFavorite(albumKey, trackNum);
+        window.FavoritesManager.toggleLike(albumKey, trackNum, !isLiked);
+      } else if (typeof window.toggleLikeForAlbum === 'function') {
+        // Back‑compat, если по какой‑то причине FavoritesManager недоступен
+        isLiked = (window.getLikedForAlbum?.(albumKey)?.includes(trackNum) || false);
+        window.toggleLikeForAlbum(albumKey, trackNum, !isLiked);
+      }
+
+      const nowLiked = !isLiked;
+      star.src = nowLiked ? 'img/star.png' : 'img/star2.png';
+      trackEl.classList.toggle('is-favorite', nowLiked);
     });
 
     return trackEl;
