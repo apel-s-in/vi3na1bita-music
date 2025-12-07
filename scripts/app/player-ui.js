@@ -91,35 +91,43 @@
     }
 
     const inMiniMode = isBrowsingOtherAlbum();
-    
+    const nowPlaying = document.getElementById('now-playing');
+
     if (inMiniMode) {
-      const holder = document.getElementById('now-playing');
-      if (holder && !holder.contains(playerBlock)) {
-        holder.innerHTML = '';
-        
+      if (nowPlaying && !nowPlaying.contains(playerBlock)) {
+        nowPlaying.innerHTML = '';
+
         const miniHeader = createMiniHeader();
-        holder.appendChild(miniHeader);
-        
-        holder.appendChild(playerBlock);
-        
+        nowPlaying.appendChild(miniHeader);
+
+        nowPlaying.appendChild(playerBlock);
+
         const nextUp = createNextUpElement();
-        holder.appendChild(nextUp);
+        nowPlaying.appendChild(nextUp);
       }
-      
+
+      // В мини-режиме ЛИРИКА не показывается (экономия места и ресурсов)
       const lyricsWindow = playerBlock.querySelector('#lyrics-window');
       if (lyricsWindow) {
         lyricsWindow.style.display = 'none';
       }
-      
+
       const lyricsToggle = playerBlock.querySelector('.lyrics-toggle-btn');
       if (lyricsToggle) {
         lyricsToggle.style.display = 'none';
       }
-      
+
+      // Мини-шапка и "Далее" видны
+      const miniHeaderEl = document.getElementById('mini-now');
+      if (miniHeaderEl) miniHeaderEl.style.display = 'flex';
+
+      const nextUpEl = document.getElementById('next-up');
+      if (nextUpEl) nextUpEl.style.display = 'flex';
+
     } else {
       const trackList = document.getElementById('track-list');
       if (!trackList) return;
-      
+
       const trackRow = trackList.querySelector(`.track[data-index="${trackIndex}"]`);
       if (trackRow) {
         if (trackRow.nextSibling !== playerBlock) {
@@ -130,16 +138,24 @@
           }
         }
       }
-      
+
+      // В обычном режиме показываем окно лирики и кнопку
       const lyricsWindow = playerBlock.querySelector('#lyrics-window');
       if (lyricsWindow) {
         lyricsWindow.style.display = '';
       }
-      
+
       const lyricsToggle = playerBlock.querySelector('.lyrics-toggle-btn');
       if (lyricsToggle) {
         lyricsToggle.style.display = '';
       }
+
+      // Мини-шапка и "Далее" скрываем (но не удаляем, mini.js может управлять стилем рамки)
+      const miniHeaderEl = document.getElementById('mini-now');
+      if (miniHeaderEl) miniHeaderEl.style.display = 'none';
+
+      const nextUpEl = document.getElementById('next-up');
+      if (nextUpEl) nextUpEl.style.display = 'none';
     }
 
     updateMiniHeader();
