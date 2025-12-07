@@ -83,6 +83,13 @@
         '.active-album-title'
       ]);
 
+      // Показать мини-заголовок и "Далее"
+      const miniNow = document.getElementById('mini-now');
+      const nextUp = document.getElementById('next-up');
+      
+      if (miniNow) miniNow.style.display = 'flex';
+      if (nextUp) nextUp.style.display = 'flex';
+
       // Зафиксировать now-playing вверху
       const nowPlaying = document.getElementById('now-playing');
       if (nowPlaying) {
@@ -94,7 +101,72 @@
         nowPlaying.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
       }
 
+      // Обновить мини-заголовок
+      this.updateMiniNowHeader();
+
       console.log('📱 Mini mode enabled');
+    }
+
+    disableMiniMode() {
+      if (!this.isMiniMode) return;
+
+      this.isMiniMode = false;
+      document.body.classList.remove('mini-mode');
+      localStorage.setItem('miniMode', '0');
+
+      // Показать элементы обратно
+      this.showElements([
+        '#cover-wrap',
+        '#social-links',
+        '.album-icons',
+        '.active-album-title'
+      ]);
+
+      // Скрыть мини-элементы
+      const miniNow = document.getElementById('mini-now');
+      const nextUp = document.getElementById('next-up');
+      
+      if (miniNow) miniNow.style.display = 'none';
+      if (nextUp) nextUp.style.display = 'none';
+
+      // Вернуть now-playing в нормальное состояние
+      const nowPlaying = document.getElementById('now-playing');
+      if (nowPlaying) {
+        nowPlaying.style.position = '';
+        nowPlaying.style.top = '';
+        nowPlaying.style.zIndex = '';
+        nowPlaying.style.background = '';
+        nowPlaying.style.padding = '';
+        nowPlaying.style.boxShadow = '';
+      }
+
+      console.log('📱 Mini mode disabled');
+    }
+
+    updateMiniNowHeader() {
+      const miniNow = document.getElementById('mini-now');
+      if (!miniNow || !window.playerCore) return;
+
+      const track = window.playerCore.getCurrentTrack();
+      const index = window.playerCore.getIndex();
+
+      if (!track) {
+        miniNow.style.display = 'none';
+        return;
+      }
+
+      const num = document.getElementById('mini-now-num');
+      const title = document.getElementById('mini-now-title');
+      const star = document.getElementById('mini-now-star');
+
+      if (num) num.textContent = `${String(index + 1).padStart(2, '0')}.`;
+      if (title) title.textContent = track.title || '—';
+
+      if (star) {
+        const albumKey = window.AlbumsManager?.getCurrentAlbum();
+        const liked = window.FavoritesManager?.isFavorite(albumKey, index);
+        star.src = liked ? 'img/star.png' : 'img/star2.png';
+      }
     }
 
     disableMiniMode() {
