@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-76dd6759076ce06ad9aca151f5f1734d7d47e642.idx
-│   │       ├── pack-76dd6759076ce06ad9aca151f5f1734d7d47e642.pack
-│   │       └── pack-76dd6759076ce06ad9aca151f5f1734d7d47e642.rev
+│   │       ├── pack-609246c236de223a34e8674051016f8bb239fc34.idx
+│   │       ├── pack-609246c236de223a34e8674051016f8bb239fc34.pack
+│   │       └── pack-609246c236de223a34e8674051016f8bb239fc34.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -266,7 +266,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 10:09:07 UTC
+Сгенерировано: 2025-12-07 10:10:14 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8140,8 +8140,31 @@ export class PlayerCore {
       onplayerror: (_, err) => {
         console.warn('Howler play error:', err);
         // Попытка разблокировать аудио контекст
-        try { this.howl.once('unlock', () => { try { this.howl.play(); } catch {} }); } catch {}
+        try { 
+          this.howl.once('unlock', () => { 
+            try { 
+              this.howl.play(); 
+            } catch (e) {
+              console.error('Failed to resume after unlock:', e);
+            }
+          }); 
+        } catch (e) {
+          console.error('Failed to setup unlock handler:', e);
+        }
+        
+        // Уведомить пользователя
+        if (window.NotificationSystem) {
+          window.NotificationSystem.error('Ошибка воспроизведения. Попробуйте перезагрузить страницу.');
+        }
       },
+      onloaderror: (_, err) => {
+        console.warn('Howler load error:', err);
+        if (window.NotificationSystem) {
+          window.NotificationSystem.error('Не удалось загрузить аудио');
+        }
+        // Пропустить трек
+        setTimeout(() => this.next(), 1000);
+      }
       onloaderror: (_, err) => {
         console.warn('Howler load error:', err);
         // Можно добавить логику для пропуска трека
