@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4b3cd7d4b7be9d6f2a28bb0d60c13cca213fa407.idx
-│   │       ├── pack-4b3cd7d4b7be9d6f2a28bb0d60c13cca213fa407.pack
-│   │       └── pack-4b3cd7d4b7be9d6f2a28bb0d60c13cca213fa407.rev
+│   │       ├── pack-759ac2af90ae434fcac33351bbcf68bbcb543d6c.idx
+│   │       ├── pack-759ac2af90ae434fcac33351bbcf68bbcb543d6c.pack
+│   │       └── pack-759ac2af90ae434fcac33351bbcf68bbcb543d6c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -266,7 +266,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 10:20:05 UTC
+Сгенерировано: 2025-12-07 10:21:18 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3210,17 +3210,14 @@ class DownloadsManager {
   }
 
   async downloadFile(url, filename) {
-  async downloadFile(url, filename) {
     return new Promise((resolve, reject) => {
-      // Проверка сети перед скачиванием
       if (!navigator.onLine) {
         reject(new Error('Нет подключения к интернету'));
         return;
       }
     
-      // Добавляем таймаут для fetch
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 секунд
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
     
       fetch(url, { signal: controller.signal })
         .then(response => {
@@ -3230,7 +3227,6 @@ class DownloadsManager {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
           }
         
-          // Проверка типа контента
           const contentType = response.headers.get('content-type');
           if (!contentType || (!contentType.includes('audio') && !contentType.includes('octet-stream'))) {
             console.warn('⚠️ Unexpected content type:', contentType);
@@ -3251,7 +3247,6 @@ class DownloadsManager {
           link.click();
           document.body.removeChild(link);
         
-          // Освободить память
           setTimeout(() => URL.revokeObjectURL(link.href), 100);
         
           console.log(`✅ Downloaded: ${filename} (${(blob.size / 1024 / 1024).toFixed(2)} MB)`);
