@@ -24,9 +24,7 @@ import { APP_CONFIG } from './core/config.js';
         // 1. Загрузка индекса альбомов
         await this.loadAlbumsIndex();
 
-        // 2. Инициализация PlayerCore
-        await this.initializePlayerCore();
-
+        // 2. Ожидаем, что PlayerCore уже инициализировался (src/PlayerCore.js делает это сам)
         // 3. Инициализация избранного
         await this.initializeFavorites();
 
@@ -66,21 +64,6 @@ import { APP_CONFIG } from './core/config.js';
         'Проверьте загрузку ./albums.json в scripts/core/bootstrap.js'
       );
       w.albumsIndex = w.albumsIndex || [];
-    }
-
-    async initializePlayerCore() {
-      return new Promise((resolve) => {
-        const check = () => {
-          if (w.playerCore && typeof w.playerCore.initialize === 'function') {
-            w.playerCore.initialize();
-            console.log('✅ PlayerCore initialized');
-            resolve();
-          } else {
-            setTimeout(check, 50);
-          }
-        };
-        check();
-      });
     }
 
     async initializeFavorites() {
