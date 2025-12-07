@@ -1,7 +1,7 @@
 {
   "name": "Витрина Разбита",
-  "short_name": "Витрина",
-  "description": "Официальные альбомы группы Витрина Разбита. Слушайте онлайн и офлайн.",
+  "short_name": "Vi3na1bita",
+  "description": "Официальные альбомы группы Витрина Разбита",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#181818",
@@ -21,14 +21,6 @@
       "purpose": "any maskable"
     }
   ],
-  "screenshots": [
-    {
-      "src": "img/screenshot-1.png",
-      "sizes": "540x720",
-      "type": "image/png",
-      "form_factor": "narrow"
-    }
-  ],
   "categories": ["music", "entertainment"],
-  "lang": "ru"
+  "screenshots": []
 }
