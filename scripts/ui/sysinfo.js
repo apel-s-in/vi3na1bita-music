@@ -58,6 +58,7 @@
             <div><strong>Версия:</strong> ${info.app.version}</div>
             <div><strong>Дата сборки:</strong> ${info.app.buildDate}</div>
             <div><strong>PWA:</strong> ${info.app.isPWA ? '✅ Да' : '❌ Нет'}</div>
+            <div id="sw-version-placeholder"><strong>SW версия:</strong> ...</div>
             
             <h3 style="color: #8ab8fd; margin-top: 20px;">Браузер</h3>
             <div><strong>User Agent:</strong> ${info.browser.userAgent}</div>
@@ -108,6 +109,13 @@
       });
 
       document.getElementById('modals-container')?.appendChild(modalBg);
+      // Асинхронная загрузка версии SW
+      this.getSWVersion().then(ver => {
+        const placeholder = modalBg.querySelector('#sw-version-placeholder');
+        if (placeholder) {
+          placeholder.innerHTML = `<strong>SW версия:</strong> ${ver}`;
+        }
+      });
       this.modal = modalBg;
 
       requestAnimationFrame(() => {
@@ -120,8 +128,8 @@
       
       return {
         app: {
-          version: APP_CONFIG.VERSION || 'unknown',
-          buildDate: APP_CONFIG.BUILD_DATE || 'unknown',
+          version: APP_CONFIG.APP_VERSION || window.VERSION || 'unknown',
+          buildDate: APP_CONFIG.BUILD_DATE || window.BUILD_DATE || 'unknown',
           isPWA: window.matchMedia('(display-mode: standalone)').matches
         },
         browser: {
@@ -185,7 +193,29 @@
         domContentLoaded: domTime > 0 ? `${domTime}ms` : 'N/A'
       };
     }
+    async getSWVersion() {
+      try {
+        const registration = await navigator.serviceWorker.getRegistration();
+        if (!registration || !registration.active) return 'N/A';
 
+        return new Promise((resolve) => {
+          const messageChannel = new MessageChannel();
+          
+          messageChannel.port1.onmessage = (event) => {
+            resolve(event.data.version || 'N/A');
+          };
+
+          registration.active.postMessage(
+            { type: 'GET_SW_VERSION' },
+            [messageChannel.port2]
+          );
+
+          setTimeout(() => resolve('N/A'), 1000);
+        });
+      } catch {
+        return 'N/A';
+      }
+    }
     formatBytes(bytes) {
       if (bytes === 0) return '0 B';
       const k = 1024;
