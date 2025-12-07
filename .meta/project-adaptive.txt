@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8ceffe2fee96cfdf34c547266e3317801288b464.idx
-│   │       ├── pack-8ceffe2fee96cfdf34c547266e3317801288b464.pack
-│   │       └── pack-8ceffe2fee96cfdf34c547266e3317801288b464.rev
+│   │       ├── pack-a95ac85e82ff920cc8b9cfb3ab3a9714e1f19596.idx
+│   │       ├── pack-a95ac85e82ff920cc8b9cfb3ab3a9714e1f19596.pack
+│   │       └── pack-a95ac85e82ff920cc8b9cfb3ab3a9714e1f19596.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -266,7 +266,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 10:04:29 UTC
+Сгенерировано: 2025-12-07 10:06:18 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2952,9 +2952,22 @@ if (document.readyState === 'loading') {
       this.setupNetworkHandlers();
       this.setupBatteryHandler();
       this.setupBeforeUnloadHandler();
+      this.setupPopstateHandler();
 
       console.log('✅ Background events initialized');
     }
+
+  // Обработка навигации браузера (Back/Forward)
+  setupPopstateHandler() {
+    window.addEventListener('popstate', (event) => {
+      console.log('📍 Popstate event:', event.state);
+      
+      // Восстановить состояние приложения
+      if (event.state && event.state.albumKey) {
+        window.AlbumsManager?.loadAlbum(event.state.albumKey);
+      }
+    });
+  }
 
     // Обработка изменения видимости страницы
     setupVisibilityHandler() {
