@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d619cf25aee04020b17905353dee47d46752de27.idx
-│   │       ├── pack-d619cf25aee04020b17905353dee47d46752de27.pack
-│   │       └── pack-d619cf25aee04020b17905353dee47d46752de27.rev
+│   │       ├── pack-7bf1301c1adc299afa9e441ce2e3f2b567dd0864.idx
+│   │       ├── pack-7bf1301c1adc299afa9e441ce2e3f2b567dd0864.pack
+│   │       └── pack-7bf1301c1adc299afa9e441ce2e3f2b567dd0864.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -267,7 +267,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 11:55:15 UTC
+Сгенерировано: 2025-12-07 11:59:44 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1995,11 +1995,14 @@ class AlbumsManager {
     }
   }
 
-  async loadRegularAlbum(albumKey) {
+async loadRegularAlbum(albumKey) {
     const albumInfo = window.albumsIndex.find(a => a.key === albumKey);
     if (!albumInfo) {
       throw new Error(`Album ${albumKey} not found`);
     }
+
+    // КРИТИЧНО: Не останавливаем воспроизведение при переключении альбомов!
+    // Плеер должен продолжать играть
 
     // 1. Загружаем config.json (новый формат альбома)
     let albumData = this.albumsData.get(albumKey);
@@ -2047,8 +2050,11 @@ class AlbumsManager {
     this.renderSocials(albumData.social_links);
     this.renderTrackList(albumData.tracks, albumInfo);
 
-    // 4. Подготовка плейлиста для PlayerCore
-    if (window.playerCore) {
+        // 4. КРИТИЧНО: Обновляем мини-режим
+        if (w.PlayerUI) {
+          w.PlayerUI.updateMiniHeader?.();
+          w.PlayerUI.updateNextUpLabel?.();
+        }
       const tracksForCore = albumData.tracks
         .filter(t => !!t.file)
         .map((t) => ({
@@ -2442,8 +2448,25 @@ class AlbumsManager {
 }
 
 window.AlbumsManager = new AlbumsManager();
+  // ========== УПРАВЛЕНИЕ ВОСПРОИЗВЕДЕНИЕМ ==========
+
+  playTrack(index, autoplay = false) {
+    const albumData = this.albumsData.get(this.currentAlbum);
+    if (!albumData || !albumData.tracks[index]) return;
+
+    const track = albumData.tracks[index];
+    const audio = document.getElementById('audio');
+    
+    if (!audio) {
+      // Создаём плеер если его нет
+      w.PlayerUI?.ensurePlayerBlock?.(index);
+      return;
+    }
+
+    // Устанавливаем источник
 
 export default AlbumsManager;
+
 
 //=================================================
 // FILE: /scripts/app/background-audio.js
