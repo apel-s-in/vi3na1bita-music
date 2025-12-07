@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-87cbac57ef10ab9b49ac604ec08f3146616a6d6c.idx
-│   │       ├── pack-87cbac57ef10ab9b49ac604ec08f3146616a6d6c.pack
-│   │       └── pack-87cbac57ef10ab9b49ac604ec08f3146616a6d6c.rev
+│   │       ├── pack-47a94f6bee8500a66532c0c005abccba42b0316e.idx
+│   │       ├── pack-47a94f6bee8500a66532c0c005abccba42b0316e.pack
+│   │       └── pack-47a94f6bee8500a66532c0c005abccba42b0316e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 21:01:14 UTC
+Сгенерировано: 2025-12-07 21:05:32 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1343,6 +1343,11 @@ import { APP_CONFIG } from './core/config.js';
         // 6. Инициализация дополнительных модулей
         this.initializeModules();
 
+        // 7. Восстановление состояния плеера (если есть сохранённый PlayerState)
+        if (w.PlayerState && typeof w.PlayerState.apply === 'function') {
+          await w.PlayerState.apply();
+        }
+
         // 8. Настройка горячих клавиш
         this.setupHotkeys();
 
@@ -1601,8 +1606,133 @@ import { APP_CONFIG } from './core/config.js';
       w.app.initialize();
     }
   }
+// ========== PlayerState (сохранение/восстановление состояния плеера) ==========
+(function PlayerStateModule() {
+  'use strict';
 
+  const STORAGE_KEY = 'playerStateV1';
+  const SESSION_RESUME_KEY = 'resumeAfterReloadV1';
+
+  function save(options = {}) {
+    try {
+      if (!window.playerCore) return;
+
+      const track = window.playerCore.getCurrentTrack();
+      const index = window.playerCore.getIndex();
+      const position = window.playerCore.getPosition();
+      const volume = window.playerCore.getVolume();
+      const wasPlaying = window.playerCore.isPlaying();
+
+      const playingAlbum = window.AlbumsManager?.getPlayingAlbum?.() || null;
+
+      const state = {
+        album: playingAlbum,
+        trackIndex: typeof index === 'number' ? index : 0,
+        position: Math.floor(position || 0),
+        volume: typeof volume === 'number' ? volume : 100,
+        wasPlaying: !!wasPlaying
+      };
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+
+      if (options.forReload) {
+        // Краткоживущий стейт для SW‑обновления (одна перезагрузка)
+        sessionStorage.setItem(SESSION_RESUME_KEY, '1');
+      }
+
+      // Не трогаем воспроизведение: только фиксируем снимок.
+    } catch (e) {
+      console.warn('PlayerState.save failed:', e);
+    }
+  }
+
+  async function apply() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+
+      const state = JSON.parse(raw);
+      if (!state || typeof state !== 'object') return;
+
+      const albumKey = state.album;
+      const trackIndex = Number.isFinite(state.trackIndex) ? state.trackIndex : 0;
+      const position = Number.isFinite(state.position) ? state.position : 0;
+      const volume = Number.isFinite(state.volume) ? state.volume : 100;
+      const wasPlaying = !!state.wasPlaying;
+
+      if (!albumKey || !window.AlbumsManager || !window.playerCore) return;
+
+      // 1. Загружаем альбом или «Избранное»
+      await window.AlbumsManager.loadAlbum(albumKey);
+
+      // 2. Формируем плейлист так же, как при обычном клике по треку
+      if (albumKey === window.SPECIAL_FAVORITES_KEY) {
+        // Виртуальный плейлист избранного
+        await window.AlbumsManager.ensureFavoritesPlayback(trackIndex);
+      } else {
+        // Обычный альбом
+        const albumData = window.AlbumsManager.getAlbumData(albumKey);
+        const albumInfo = (window.albumsIndex || []).find(a => a.key === albumKey);
+        if (!albumData || !albumInfo) return;
+
+        const base = albumInfo.base || '';
+        const tracksForCore = albumData.tracks
+          .filter(t => !!t.file)
+          .map((t) => ({
+            src: t.file,
+            title: t.title,
+            artist: albumData.artist || 'Витрина Разбита',
+            album: albumKey,
+            cover: albumData.cover
+              ? new URL(albumData.cover, base).toString()
+              : (albumInfo ? new URL('cover.jpg', albumInfo.base).toString() : 'img/logo.png'),
+            lyrics: t.lyrics || null,
+            fulltext: t.fulltext || null,
+            uid: t.uid || window.AlbumsManager?.getTrackUid?.(albumKey, t.num) || `${albumKey}_${t.num}`
+          }));
+
+        if (tracksForCore.length > 0) {
+          window.playerCore.setPlaylist(tracksForCore, trackIndex, {
+            artist: albumData.artist || 'Витрина Разбита',
+            album: albumData.title || albumInfo.title || '',
+            cover: albumData.cover
+              ? new URL(albumData.cover, base).toString()
+              : (albumInfo ? new URL('cover.jpg', albumInfo.base).toString() : 'img/logo.png')
+          });
+          window.AlbumsManager.setPlayingAlbum(albumKey);
+          window.playerCore.play(trackIndex);
+        }
+      }
+
+      // 3. Громкость и позиция
+      window.playerCore.setVolume(volume);
+      if (position > 0) {
+        try { window.playerCore.seek(position); } catch {}
+      }
+
+      // 4. Если до этого играло — продолжаем; если нет — ставим на паузу в нужном месте
+      if (!wasPlaying && window.playerCore.isPlaying()) {
+        window.playerCore.pause();
+      }
+
+      // Правило «ничто не останавливает» соблюдено: мы либо продолжаем играть,
+      // либо мягко ставим на паузу только если до этого была пауза.
+    } catch (e) {
+      console.warn('PlayerState.apply failed:', e);
+    } finally {
+      try {
+        // После удачного применения сбрасываем одноразовый флаг SW‑реюма
+        sessionStorage.removeItem(SESSION_RESUME_KEY);
+      } catch {}
+    }
+  }
+
+  window.PlayerState = {
+    save,
+    apply
+  };
 })();
+
 
 //=================================================
 // FILE: /scripts/app/albums.js
