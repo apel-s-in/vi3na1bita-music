@@ -672,11 +672,10 @@
     const liked = w.FavoritesManager?.getLikedForAlbum(playingAlbum) || [];
     const isLiked = liked.includes(trackNum);
 
-    // FavoritesManager имеет метод toggleLike(albumKey, trackIndex, makeLiked?)
     if (w.FavoritesManager && typeof w.FavoritesManager.toggleLike === 'function') {
       w.FavoritesManager.toggleLike(playingAlbum, trackNum, !isLiked);
     } else if (typeof w.toggleLikeForAlbum === 'function') {
-      // Back‑compat: если вдруг класс недоступен
+      // Back‑compat: если по какой‑то причине класс недоступен
       w.toggleLikeForAlbum(playingAlbum, trackNum, !isLiked);
     }
 
