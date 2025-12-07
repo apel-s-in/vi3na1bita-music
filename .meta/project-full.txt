@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-90765c4c9e26db3f819cbd463a47c6ef2b0b26ca.idx
-│   │       ├── pack-90765c4c9e26db3f819cbd463a47c6ef2b0b26ca.pack
-│   │       └── pack-90765c4c9e26db3f819cbd463a47c6ef2b0b26ca.rev
+│   │       ├── pack-183cb6b4e35abe6df0d17d38d6149e049dd8e4ca.idx
+│   │       ├── pack-183cb6b4e35abe6df0d17d38d6149e049dd8e4ca.pack
+│   │       └── pack-183cb6b4e35abe6df0d17d38d6149e049dd8e4ca.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 14:15:22 UTC
+Сгенерировано: 2025-12-07 14:23:36 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1330,9 +1330,7 @@ import { APP_CONFIG } from './core/config.js';
         // 1. Загрузка индекса альбомов
         await this.loadAlbumsIndex();
 
-        // 2. Инициализация PlayerCore
-        await this.initializePlayerCore();
-
+        // 2. Ожидаем, что PlayerCore уже инициализировался (src/PlayerCore.js делает это сам)
         // 3. Инициализация избранного
         await this.initializeFavorites();
 
@@ -1372,21 +1370,6 @@ import { APP_CONFIG } from './core/config.js';
         'Проверьте загрузку ./albums.json в scripts/core/bootstrap.js'
       );
       w.albumsIndex = w.albumsIndex || [];
-    }
-
-    async initializePlayerCore() {
-      return new Promise((resolve) => {
-        const check = () => {
-          if (w.playerCore && typeof w.playerCore.initialize === 'function') {
-            w.playerCore.initialize();
-            console.log('✅ PlayerCore initialized');
-            resolve();
-          } else {
-            setTimeout(check, 50);
-          }
-        };
-        check();
-      });
     }
 
     async initializeFavorites() {
