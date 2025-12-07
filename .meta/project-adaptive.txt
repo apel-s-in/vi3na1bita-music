@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-253d3fa5e00c6173ea688218d3133ef1fbba0267.idx
-│   │       ├── pack-253d3fa5e00c6173ea688218d3133ef1fbba0267.pack
-│   │       └── pack-253d3fa5e00c6173ea688218d3133ef1fbba0267.rev
+│   │       ├── pack-f551efeabbb12567fe3bb2f68940e851952acaf3.idx
+│   │       ├── pack-f551efeabbb12567fe3bb2f68940e851952acaf3.pack
+│   │       └── pack-f551efeabbb12567fe3bb2f68940e851952acaf3.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 21:59:59 UTC
+Сгенерировано: 2025-12-07 22:01:29 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2041,16 +2041,32 @@ class AlbumsManager {
         e.stopPropagation();
         
         const wasActive = item.__active;
-        window.toggleLikeForAlbum?.(item.__a, item.__t, !wasActive);
-        
-        trackEl.classList.toggle('inactive', wasActive);
-        star.src = wasActive ? 'img/star2.png' : 'img/star.png';
-        
-        window.updateFavoritesRefsModelActiveFlag?.(item.__a, item.__t, !wasActive);
-        
-        if (window.playerCore && 
+        const makeLiked = !wasActive;
+
+        // Основной путь: через FavoritesManager
+        if (window.FavoritesManager && typeof window.FavoritesManager.toggleLike === 'function') {
+          window.FavoritesManager.toggleLike(item.__a, item.__t, makeLiked);
+        } else if (typeof window.toggleLikeForAlbum === 'function') {
+          // Back‑compat: глобальная обёртка (delegates в FavoritesManager или raw localStorage)
+          window.toggleLikeForAlbum(item.__a, item.__t, makeLiked);
+        }
+
+        // Обновляем локальную модель/DOM‑состояние
+        item.__active = makeLiked;
+        trackEl.classList.toggle('inactive', !makeLiked);
+        star.src = makeLiked ? 'img/star.png' : 'img/star2.png';
+
+        // Обновляем refs‑модель (FavoritesData) если доступна
+        if (typeof window.updateFavoritesRefsModelActiveFlag === 'function') {
+          window.updateFavoritesRefsModelActiveFlag(item.__a, item.__t, makeLiked);
+        }
+
+        // Если сняли звезду с текущего играющего трека в представлении Избранного —
+        // по ТЗ всегда вызываем next(), но не stop.
+        if (window.playerCore &&
             this.getCurrentAlbum() === '__favorites__' &&
-            window.playerCore.getIndex() === index && wasActive) {
+            window.playerCore.getIndex() === index &&
+            wasActive && !makeLiked) {
           window.playerCore.next();
         }
       });
