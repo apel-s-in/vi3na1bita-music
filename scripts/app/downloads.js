@@ -71,13 +71,39 @@ class DownloadsManager {
   }
 
   async downloadFile(url, filename) {
+  async downloadFile(url, filename) {
     return new Promise((resolve, reject) => {
-      fetch(url)
+      // Проверка сети перед скачиванием
+      if (!navigator.onLine) {
+        reject(new Error('Нет подключения к интернету'));
+        return;
+      }
+    
+      // Добавляем таймаут для fetch
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 секунд
+    
+      fetch(url, { signal: controller.signal })
         .then(response => {
-          if (!response.ok) throw new Error('Network error');
+          clearTimeout(timeoutId);
+        
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+        
+          // Проверка типа контента
+          const contentType = response.headers.get('content-type');
+          if (!contentType || (!contentType.includes('audio') && !contentType.includes('octet-stream'))) {
+            console.warn('⚠️ Unexpected content type:', contentType);
+          }
+        
           return response.blob();
         })
         .then(blob => {
+          if (blob.size === 0) {
+            throw new Error('Файл пустой (0 байт)');
+          }
+        
           const link = document.createElement('a');
           link.href = URL.createObjectURL(blob);
           link.download = this.sanitizeFilename(filename);
@@ -85,11 +111,22 @@ class DownloadsManager {
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
+        
           // Освободить память
           setTimeout(() => URL.revokeObjectURL(link.href), 100);
+        
+          console.log(`✅ Downloaded: ${filename} (${(blob.size / 1024 / 1024).toFixed(2)} MB)`);
           resolve();
         })
-        .catch(reject);
+        .catch(error => {
+          clearTimeout(timeoutId);
+        
+          if (error.name === 'AbortError') {
+            reject(new Error('Превышено время ожидания скачивания'));
+          } else {
+            reject(error);
+          }
+        });
     });
   }
 
