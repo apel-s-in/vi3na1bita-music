@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b3057505e4fbd66a985452200f2e723138fa860e.idx
-│   │       ├── pack-b3057505e4fbd66a985452200f2e723138fa860e.pack
-│   │       └── pack-b3057505e4fbd66a985452200f2e723138fa860e.rev
+│   │       ├── pack-ea12cbc9378913349fbd11587f563c1e810644e7.idx
+│   │       ├── pack-ea12cbc9378913349fbd11587f563c1e810644e7.pack
+│   │       └── pack-ea12cbc9378913349fbd11587f563c1e810644e7.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -266,7 +266,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 10:22:35 UTC
+Сгенерировано: 2025-12-07 10:44:13 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -10274,6 +10274,229 @@ input:focus-visible {
 
 .modal-action-btn:active {
   transform: translateY(0);
+}
+/* ========== SLEEP OVERLAY ========== */
+
+.sleep-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.95);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.5s;
+}
+
+.sleep-overlay.active {
+  display: flex;
+}
+
+.sleep-content {
+  text-align: center;
+  padding: 40px;
+  max-width: 400px;
+}
+
+.sleep-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+  opacity: 0.5;
+}
+
+.sleep-title {
+  font-size: 24px;
+  margin-bottom: 10px;
+  color: var(--text-color);
+}
+
+.sleep-message {
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 30px;
+}
+
+.sleep-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.sleep-btn {
+  padding: 12px 24px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+  transition: opacity 0.2s;
+}
+
+.sleep-btn-primary {
+  background: var(--primary-color);
+  color: white;
+}
+
+.sleep-btn-secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-color);
+}
+
+.sleep-btn:hover {
+  opacity: 0.8;
+}
+
+/* ========== HOTKEYS MODAL ========== */
+
+.hotkeys-modal {
+  max-width: 600px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.hotkeys-section {
+  margin-bottom: 24px;
+}
+
+.hotkeys-section h3 {
+  color: #8ab8fd;
+  font-size: 16px;
+  margin-bottom: 12px;
+}
+
+.hotkey-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+}
+
+.hotkey-combo {
+  font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+  background: rgba(77, 170, 255, 0.15);
+  padding: 4px 10px;
+  border-radius: 4px;
+  color: #4daaff;
+  font-weight: bold;
+  font-size: 13px;
+}
+
+.hotkey-desc {
+  color: #cfe3ff;
+  font-size: 14px;
+  margin-left: 16px;
+  flex: 1;
+  text-align: right;
+}
+
+/* ========== iOS INSTALL PROMPT ========== */
+
+.ios-install-prompt {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #1a1a1a;
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  padding: 20px;
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
+  z-index: 10000;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.ios-install-prompt.show {
+  transform: translateY(0);
+}
+
+.ios-prompt-content {
+  max-width: 400px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.ios-prompt-icon {
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 15px;
+  display: block;
+}
+
+.ios-prompt-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 28px;
+  cursor: pointer;
+  line-height: 1;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ios-prompt-button {
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 12px 30px;
+  border-radius: 25px;
+  font-weight: bold;
+  margin-top: 20px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.ios-prompt-button:hover {
+  opacity: 0.9;
+}
+
+/* ========== NEXT UP (MINI MODE) ========== */
+
+.next-up {
+  display: none;
+  margin: 8px 4px 0 4px;
+  font-size: 0.98em;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+}
+
+.mini-mode .next-up {
+  display: flex;
+}
+
+.next-up .label {
+  color: #8ab8fd;
+  opacity: 0.9;
+  font-size: 13px;
+}
+
+.next-up .title {
+  color: var(--primary-color);
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1;
+  font-size: 14px;
+}
+
+/* ========== ECO MODE ACTIVE STATE ========== */
+
+.eco-btn.active {
+  background: rgba(232, 1, 0, 0.12);
+  border-color: rgba(232, 1, 0, 0.25);
+  color: var(--primary-color);
 }
 
 @keyframes spin {
