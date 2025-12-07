@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c41ecf611ad6357f5b11317175b95367b2d762f9.idx
-│   │       ├── pack-c41ecf611ad6357f5b11317175b95367b2d762f9.pack
-│   │       └── pack-c41ecf611ad6357f5b11317175b95367b2d762f9.rev
+│   │       ├── pack-e99fa6f84bc36e69ad97139c03af229f816a5c01.idx
+│   │       ├── pack-e99fa6f84bc36e69ad97139c03af229f816a5c01.pack
+│   │       └── pack-e99fa6f84bc36e69ad97139c03af229f816a5c01.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -266,7 +266,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 10:47:54 UTC
+Сгенерировано: 2025-12-07 10:50:28 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3884,6 +3884,19 @@ export default NavigationManager;
       return; // Уже создан
     }
 
+    // Добавить элемент "Далее" для мини-режима
+    const nextUpExists = document.getElementById('next-up');
+    if (!nextUpExists) {
+      const nextUp = document.createElement('div');
+      nextUp.id = 'next-up';
+      nextUp.className = 'next-up';
+      nextUp.innerHTML = `
+        <span class="label">Далее:</span>
+        <span class="title" title="">—</span>
+      `;
+      container.appendChild(nextUp);
+    }
+
     container.innerHTML = `
       <div class="lyrics-player-block" id="lyricsplayerblock">
         <div id="lyrics-window" class="lyrics-${lyricsViewMode}">
@@ -4000,6 +4013,49 @@ export default NavigationManager;
         </div>
       </div>
     `;
+    // Добавить мини-заголовок
+    const miniNowExists = document.getElementById('mini-now');
+    if (!miniNowExists) {
+      const miniNow = document.createElement('div');
+      miniNow.className = 'mini-now';
+      miniNow.id = 'mini-now';
+      miniNow.innerHTML = `
+        <span class="tnum" id="mini-now-num">--.</span>
+        <span class="track-title" id="mini-now-title">—</span>
+        <img src="img/star2.png" class="like-star" id="mini-now-star" alt="звезда">
+      `;
+      
+      miniNow.addEventListener('click', (e) => {
+        if (e.target.id !== 'mini-now-star') {
+          // Клик по мини-заголовку - вернуться к играющему альбому
+          const playingAlbum = window.AlbumsManager?.getCurrentAlbum();
+          if (playingAlbum && playingAlbum !== '__favorites__' && playingAlbum !== '__reliz__') {
+            window.AlbumsManager?.loadAlbum(playingAlbum);
+          }
+        }
+      });
+
+      const star = miniNow.querySelector('#mini-now-star');
+      star?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const track = w.playerCore?.getCurrentTrack();
+        if (!track) return;
+        
+        const albumKey = window.AlbumsManager?.getCurrentAlbum();
+        const index = w.playerCore?.getIndex();
+        
+        if (albumKey && typeof index === 'number') {
+          const liked = window.FavoritesManager?.isFavorite(albumKey, index);
+          window.FavoritesManager?.toggleLike(albumKey, index, !liked);
+          star.src = liked ? 'img/star2.png' : 'img/star.png';
+        }
+      });
+
+      const playerBlock = document.getElementById('lyricsplayerblock');
+      if (playerBlock && playerBlock.parentNode) {
+        playerBlock.parentNode.insertBefore(miniNow, playerBlock);
+      }
+    }
 
     bindPlayerEvents();
   }
@@ -4679,8 +4735,11 @@ export default NavigationManager;
     toggleAnimation,
     toggleBit,
     toggleFavoritesOnly,
+    updateVolumeUI,
     currentLyrics: () => currentLyrics,
-    getLyricsViewMode: () => lyricsViewMode
+    getLyricsViewMode: () => lyricsViewMode,
+    bitIntensity: bitIntensity,
+    bitEnabled: bitEnabled
   };
 
   // Автоинициализация
