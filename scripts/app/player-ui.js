@@ -983,7 +983,23 @@
     updateMiniHeader,
     updateNextUpLabel,
     togglePlayPause,
-    toggleLikePlaying
+    toggleLikePlaying,
+    /**
+     * Текущая распарсенная лирика (для LyricsModal и других модулей).
+     * Формат: [{ time: number, text: string }]
+     */
+    get currentLyrics() {
+      return currentLyrics;
+    },
+    /**
+     * Упрощённое представление для бэкомпат: [{ line: string }]
+     * именно это сейчас ожидает lyrics-modal.js.
+     */
+    get currentLyricsLines() {
+      return Array.isArray(currentLyrics)
+        ? currentLyrics.map(l => ({ line: l.text }))
+        : [];
+    }
   };
 
   // Автоинициализация
