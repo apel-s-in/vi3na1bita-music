@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-609246c236de223a34e8674051016f8bb239fc34.idx
-│   │       ├── pack-609246c236de223a34e8674051016f8bb239fc34.pack
-│   │       └── pack-609246c236de223a34e8674051016f8bb239fc34.rev
+│   │       ├── pack-738233f64e1c195c1ea2596265b295f34bac51dc.idx
+│   │       ├── pack-738233f64e1c195c1ea2596265b295f34bac51dc.pack
+│   │       └── pack-738233f64e1c195c1ea2596265b295f34bac51dc.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -266,7 +266,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 10:10:14 UTC
+Сгенерировано: 2025-12-07 10:19:04 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8139,7 +8139,6 @@ export class PlayerCore {
       onstop:  () => { this._isPaused = true; this._fire('onStop',  tr, this.index); this._stopTicker(); },
       onplayerror: (_, err) => {
         console.warn('Howler play error:', err);
-        // Попытка разблокировать аудио контекст
         try { 
           this.howl.once('unlock', () => { 
             try { 
@@ -8152,7 +8151,6 @@ export class PlayerCore {
           console.error('Failed to setup unlock handler:', e);
         }
         
-        // Уведомить пользователя
         if (window.NotificationSystem) {
           window.NotificationSystem.error('Ошибка воспроизведения. Попробуйте перезагрузить страницу.');
         }
@@ -8162,12 +8160,7 @@ export class PlayerCore {
         if (window.NotificationSystem) {
           window.NotificationSystem.error('Не удалось загрузить аудио');
         }
-        // Пропустить трек
         setTimeout(() => this.next(), 1000);
-      }
-      onloaderror: (_, err) => {
-        console.warn('Howler load error:', err);
-        // Можно добавить логику для пропуска трека
       }
     });
     
