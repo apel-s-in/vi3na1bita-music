@@ -88,11 +88,14 @@ class AlbumsManager {
     }
   }
 
-  async loadRegularAlbum(albumKey) {
+async loadRegularAlbum(albumKey) {
     const albumInfo = window.albumsIndex.find(a => a.key === albumKey);
     if (!albumInfo) {
       throw new Error(`Album ${albumKey} not found`);
     }
+
+    // КРИТИЧНО: Не останавливаем воспроизведение при переключении альбомов!
+    // Плеер должен продолжать играть
 
     // 1. Загружаем config.json (новый формат альбома)
     let albumData = this.albumsData.get(albumKey);
@@ -140,8 +143,11 @@ class AlbumsManager {
     this.renderSocials(albumData.social_links);
     this.renderTrackList(albumData.tracks, albumInfo);
 
-    // 4. Подготовка плейлиста для PlayerCore
-    if (window.playerCore) {
+        // 4. КРИТИЧНО: Обновляем мини-режим
+        if (w.PlayerUI) {
+          w.PlayerUI.updateMiniHeader?.();
+          w.PlayerUI.updateNextUpLabel?.();
+        }
       const tracksForCore = albumData.tracks
         .filter(t => !!t.file)
         .map((t) => ({
@@ -535,5 +541,22 @@ class AlbumsManager {
 }
 
 window.AlbumsManager = new AlbumsManager();
+  // ========== УПРАВЛЕНИЕ ВОСПРОИЗВЕДЕНИЕМ ==========
+
+  playTrack(index, autoplay = false) {
+    const albumData = this.albumsData.get(this.currentAlbum);
+    if (!albumData || !albumData.tracks[index]) return;
+
+    const track = albumData.tracks[index];
+    const audio = document.getElementById('audio');
+    
+    if (!audio) {
+      // Создаём плеер если его нет
+      w.PlayerUI?.ensurePlayerBlock?.(index);
+      return;
+    }
+
+    // Устанавливаем источник
 
 export default AlbumsManager;
+
