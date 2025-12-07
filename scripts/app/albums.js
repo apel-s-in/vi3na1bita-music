@@ -90,44 +90,74 @@ class AlbumsManager {
 
   async loadRegularAlbum(albumKey) {
     const albumInfo = window.albumsIndex.find(a => a.key === albumKey);
-    if (!albumInfo) throw new Error(`Album ${albumKey} not found`);
+    if (!albumInfo) {
+      throw new Error(`Album ${albumKey} not found`);
+    }
 
-    // Загрузка tracks.json
+    // 1. Загружаем config.json (новый формат альбома)
     let albumData = this.albumsData.get(albumKey);
-    
+
     if (!albumData) {
-      const response = await fetch(`${albumInfo.base}tracks.json`, { cache: 'no-cache' });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      
-      albumData = await response.json();
+      const base = albumInfo.base.endsWith('/') ? albumInfo.base : `${albumInfo.base}/`;
+      const response = await fetch(`${base}config.json`, { cache: 'no-cache' });
+      if (!response.ok) {
+        throw new Error(`Failed to load config.json for ${albumKey}: HTTP ${response.status}`);
+      }
+
+      const raw = await response.json();
+      const data = raw || {};
+
+      // Нормализуем треки: абсолютные URL для аудио/лирики/полного текста
+      const tracks = Array.isArray(data.tracks) ? data.tracks : [];
+      const normTracks = tracks.map((t, idx) => ({
+        num: t.num ?? (idx + 1),
+        title: t.title || `Трек ${idx + 1}`,
+        // В новом формате поле обычно audio, а не file
+        file: t.audio ? new URL(t.audio, base).toString() : null,
+        lyrics: t.lyrics ? new URL(t.lyrics, base).toString() : null,
+        fulltext: t.fulltext ? new URL(t.fulltext, base).toString() : null
+      }));
+
+      const coverPath = data.cover || 'cover.jpg';
+
+      albumData = {
+        title: data.albumName || albumInfo.title,
+        artist: data.artist || 'Витрина Разбита',
+        cover: coverPath,
+        social_links: Array.isArray(data.social_links) ? data.social_links : [],
+        tracks: normTracks
+      };
+
       this.albumsData.set(albumKey, albumData);
     }
 
-    // Загрузка галереи
+    // 2. Загрузка галереи (центральные обложки)
     await this.loadGallery(albumKey);
 
-    this.renderAlbumTitle(albumInfo.title);
+    // 3. Рендер UI
+    this.renderAlbumTitle(albumData.title || albumInfo.title);
     this.renderCover(albumInfo, albumData);
     this.renderSocials(albumData.social_links);
     this.renderTrackList(albumData.tracks, albumInfo);
 
-    // Загрузка в PlayerCore
+    // 4. Подготовка плейлиста для PlayerCore
     if (window.playerCore) {
-      const tracks = albumData.tracks.map((t, idx) => ({
-        src: `${albumInfo.base}${t.file}`,
-        title: t.title,
-        artist: 'Витрина Разбита',
-        album: albumInfo.title,
-        cover: `${albumInfo.base}${albumData.cover || 'cover.jpg'}`,
-        lyrics: t.lyrics ? `${albumInfo.base}${t.lyrics}` : null,
-        fulltext: t.fulltext ? `${albumInfo.base}${t.fulltext}` : null
-      }));
-      
-      // КРИТИЧНО: setPlaylist БЕЗ автоматического воспроизведения
-      window.playerCore.setPlaylist(tracks, 0, {
-        artist: 'Витрина Разбита',
-        album: albumInfo.title,
-        cover: `${albumInfo.base}${albumData.cover || 'cover.jpg'}`
+      const tracksForCore = albumData.tracks
+        .filter(t => !!t.file)
+        .map((t) => ({
+          src: t.file,
+          title: t.title,
+          artist: albumData.artist || 'Витрина Разбита',
+          album: albumData.title || albumInfo.title,
+          cover: new URL(albumData.cover || 'cover.jpg', albumInfo.base).toString(),
+          lyrics: t.lyrics || null,
+          fulltext: t.fulltext || null
+        }));
+
+      window.playerCore.setPlaylist(tracksForCore, 0, {
+        artist: albumData.artist || 'Витрина Разбита',
+        album: albumData.title || albumInfo.title,
+        cover: new URL(albumData.cover || 'cover.jpg', albumInfo.base).toString()
       });
     }
 
