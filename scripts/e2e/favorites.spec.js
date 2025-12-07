@@ -257,4 +257,86 @@ test('favorites playing: removing star of current track triggers next and update
     window.MiniUI && window.MiniUI.updateNextUpLabel && window.MiniUI.updateNextUpLabel();
     window.MiniUI && window.MiniUI.updateMiniNowHeader && window.MiniUI.updateMiniNowHeader();
   });
+test('mini-player star toggles favorite in __favorites__ and syncs with list', async ({ page }) => {
+  const BASE = process.env.BASE_URL || 'http://127.0.0.1:4173';
+  await page.goto(`${BASE}/index.html`, { waitUntil: 'load' });
+
+  // Вход по промокоду
+  await page.fill('#promo-inp', 'VITRINA2025');
+  await page.click('#promo-btn');
+  await page.waitForSelector('#track-list .track', { timeout: 10000 });
+
+  // 1. Отметим первый трек как избранный в альбомном списке
+  const firstAlbumRow = page.locator('#track-list .track').first();
+  await firstAlbumRow.hover();
+  await firstAlbumRow.locator('.like-star').click();
+
+  // 2. Перейдём в «Избранное» и запустим первый трек
+  await page.click('.album-icon[data-akey="__favorites__"]');
+  await page.waitForSelector('#track-list .track', { timeout: 10000 });
+  const favFirst = page.locator('#track-list .track').first();
+  const favId = await favFirst.getAttribute('id'); // fav_{album}_{num}
+  await favFirst.click();
+  await expect(page.locator('#lyricsplayerblock')).toBeVisible();
+
+  // Убедимся, что трек реально играет из __favorites__
+  await page.waitForTimeout(200);
+
+  // 3. Переключимся на другой альбом, чтобы включился mini-режим
+  const otherIcon = page
+    .locator('.album-icon')
+    .filter({ hasNot: page.locator('[data-akey="__favorites__"]') })
+    .nth(1);
+  await otherIcon.click();
+
+  // Мини-плеер видим
+  const miniStar = page.locator('#mini-now-star');
+  await expect(page.locator('#mini-now')).toBeVisible({ timeout: 5000 });
+  await expect(miniStar).toBeVisible();
+
+  // 4. Считаем текущее состояние лайка из localStorage
+  const before = await page.evaluate(() => {
+    const pc = window.playerCore;
+    const t = pc?.getCurrentTrack?.();
+    const idx = pc?.getIndex?.();
+    const album = window.AlbumsManager?.getPlayingAlbum?.() || null;
+    const raw = localStorage.getItem('likedTracks:v2');
+    const map = raw ? JSON.parse(raw) : {};
+    return { album, idx, likedMap: map };
+  });
+
+  // Нажмём звезду в мини-плеере (toggleLikePlaying)
+  await miniStar.click();
+  await page.waitForTimeout(200);
+
+  // 5. Проверим, что состояние в favorites-списке и localStorage синхронно обновилось
+  await page.click('.album-icon[data-akey="__favorites__"]');
+  await page.waitForSelector('#track-list .track', { timeout: 10000 });
+
+  const favRowAfter = page.locator(`#${favId}`);
+  const starAfter = favRowAfter.locator('.like-star');
+
+  const { albumKey, trackNum, present } = await page.evaluate((favRowId) => {
+    const m = favRowId.match(/^fav_(.+)_(\d+)$/);
+    const a = m ? m[1] : '';
+    const t = m ? parseInt(m[2], 10) : -1;
+    const raw = localStorage.getItem('likedTracks:v2');
+    const map = raw ? JSON.parse(raw) : {};
+    const arr = Array.isArray(map[a]) ? map[a] : [];
+    return { albumKey: a, trackNum: t, present: arr.includes(t) };
+  }, favId);
+
+  // Если до этого лайк был, теперь его не должно быть (или наоборот).
+  await expect(starAfter).toBeVisible();
+  // Строка должна быть inactive, если лайк снят, либо без inactive, если поставлен.
+  if (present) {
+    await expect(favRowAfter).not.toHaveClass(/inactive/);
+  } else {
+    await expect(favRowAfter).toHaveClass(/inactive/);
+  }
+
+  // Мини-шапка должна соответствовать текущему состоянию лайка (updateMiniHeader)
+  await page.evaluate(() => {
+    window.PlayerUI && window.PlayerUI.updateMiniHeader && window.PlayerUI.updateMiniHeader();
+  });
 });
