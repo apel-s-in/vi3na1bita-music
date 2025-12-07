@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6c2dcc9c2572107fd32a875bdd021214d9d0d7da.idx
-│   │       ├── pack-6c2dcc9c2572107fd32a875bdd021214d9d0d7da.pack
-│   │       └── pack-6c2dcc9c2572107fd32a875bdd021214d9d0d7da.rev
+│   │       ├── pack-9089f31e74c55c5562bd49d5b2d1ccfb9616bda8.idx
+│   │       ├── pack-9089f31e74c55c5562bd49d5b2d1ccfb9616bda8.pack
+│   │       └── pack-9089f31e74c55c5562bd49d5b2d1ccfb9616bda8.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -267,7 +267,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 10:53:52 UTC
+Сгенерировано: 2025-12-07 10:56:15 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -597,6 +597,7 @@ jobs:
   <script src="./scripts/ui/favorites-storage.js" defer></script>
   <script src="./scripts/ui/favorites-data.js" defer></script>
   <script src="./scripts/ui/favorites.js" defer></script>
+  <script src="./scripts/ui/favorites-view.js" defer></script>
   <script src="./scripts/ui/mini.js" defer></script>
   <script src="./scripts/ui/modals.js" defer></script>
   <script src="./scripts/ui/sysinfo.js" defer></script>
@@ -615,6 +616,42 @@ jobs:
   
   <!-- Performance Monitoring -->
   <script src="./performance/rum.js" defer></script>
+  <style>
+    /* Дополнительные стили для совместимости */
+    .eco-btn.eco-active {
+      background: rgba(232, 1, 0, 0.12);
+      border-color: rgba(232, 1, 0, 0.25);
+      color: var(--primary-color);
+    }
+    
+    #sysinfo-btn {
+      display: none;
+      color: var(--secondary-color) !important;
+      text-decoration: underline !important;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      cursor: pointer;
+      transition: color 0.18s;
+      font-size: 1em;
+      text-align: center;
+      width: 100%;
+      margin: 6px 0;
+      background: none;
+      border: none;
+      padding: 8px;
+    }
+    
+    #sysinfo-btn:hover {
+      color: #fff !important;
+    }
+    
+    @media (min-width: 768px) {
+      #sysinfo-btn {
+        display: block;
+      }
+    }
+  </style>
 </head>
 <body>
   <!-- Promocode Screen -->
@@ -678,6 +715,9 @@ jobs:
       </button>
       
       <button class="hotkeys-btn" id="hotkeys-btn" style="display:none;">
+      <button id="sysinfo-btn" style="display:none;">
+        О СИСТЕМЕ
+      </button>
         ГОРЯЧИЕ КЛАВИШИ
       </button>
       
