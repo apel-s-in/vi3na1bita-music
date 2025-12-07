@@ -300,6 +300,9 @@ import { APP_CONFIG } from './core/config.js';
       w.app.initialize();
     }
   }
+
+})(); // end of AppModule IIFE
+
 // ========== PlayerState (сохранение/восстановление состояния плеера) ==========
 (function PlayerStateModule() {
   'use strict';
