@@ -1,5 +1,5 @@
 // scripts/core/bootstrap.js
-// ⭐ ИСПРАВЛЕНО: асинхронная загрузка albums.json (XMLHttpRequest sync DEPRECATED!)
+// ⭐ ИСПРАВЛЕНО: убраны все экспорты, async/await обёрнут в IIFE
 
 (function() {
   'use strict';
@@ -202,11 +202,11 @@
 
     setupErrorHandling() {
       window.addEventListener('error', (e) => {
-        console.error('Global error:', e.error);
+        console.error('💥 Global error:', e.error || e.message);
       });
 
       window.addEventListener('unhandledrejection', (e) => {
-        console.error('Unhandled promise rejection:', e.reason);
+        console.error('💥 Unhandled promise rejection:', e.reason);
       });
     }
   }
