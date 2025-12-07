@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-14bf80da3b4960ce6dae99d1144bf63c77bc0e99.idx
-│   │       ├── pack-14bf80da3b4960ce6dae99d1144bf63c77bc0e99.pack
-│   │       └── pack-14bf80da3b4960ce6dae99d1144bf63c77bc0e99.rev
+│   │       ├── pack-70b8d63e74a810b5fda1659bf2ea6e2af29a25ee.idx
+│   │       ├── pack-70b8d63e74a810b5fda1659bf2ea6e2af29a25ee.pack
+│   │       └── pack-70b8d63e74a810b5fda1659bf2ea6e2af29a25ee.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 15:38:20 UTC
+Сгенерировано: 2025-12-07 15:52:39 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5307,6 +5307,21 @@ class FavoritesManager {
     this.storageKey = 'likedTracks:v2';
     this.refsKey = 'favoritesAlbumRefs:v1';
     this.refsModel = null;
+  }
+
+  /**
+   * Инициализация менеджера избранного.
+   * Сейчас — лёгкая заглушка: прогреваем refs‑модель, чтобы перейти на единый источник правды.
+   * Вызывается из Application.initialize().
+   */
+  async initialize() {
+    try {
+      // Построим модель refs один раз при старте, чтобы FavoritesAlbum сразу имел данные.
+      await this.updateRefsModel();
+      console.log('✅ FavoritesManager initialized');
+    } catch (e) {
+      console.warn('FavoritesManager.initialize failed:', e);
+    }
   }
 
   // Получение карты избранных треков
