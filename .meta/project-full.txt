@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-183cb6b4e35abe6df0d17d38d6149e049dd8e4ca.idx
-│   │       ├── pack-183cb6b4e35abe6df0d17d38d6149e049dd8e4ca.pack
-│   │       └── pack-183cb6b4e35abe6df0d17d38d6149e049dd8e4ca.rev
+│   │       ├── pack-1c4d869ec6b8beb982ec1fcea412a6bdf8fce554.idx
+│   │       ├── pack-1c4d869ec6b8beb982ec1fcea412a6bdf8fce554.pack
+│   │       └── pack-1c4d869ec6b8beb982ec1fcea412a6bdf8fce554.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 14:23:36 UTC
+Сгенерировано: 2025-12-07 14:44:39 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3810,15 +3810,22 @@ export default NavigationManager;
   function toggleLikePlaying() {
     const playingAlbum = w.AlbumsManager?.getPlayingAlbum?.();
     const index = w.playerCore?.getIndex();
-    
+
     if (!playingAlbum || index === undefined) return;
-    
+
+    // Везде считаем, что номер трека = index + 1 (как в likedTracks:v2)
     const trackNum = index + 1;
     const liked = w.FavoritesManager?.getLikedForAlbum(playingAlbum) || [];
     const isLiked = liked.includes(trackNum);
-    
-    w.FavoritesManager?.toggleLikeForAlbum(playingAlbum, trackNum, !isLiked);
-    
+
+    // FavoritesManager имеет метод toggleLike(albumKey, trackIndex, makeLiked?)
+    if (w.FavoritesManager && typeof w.FavoritesManager.toggleLike === 'function') {
+      w.FavoritesManager.toggleLike(playingAlbum, trackNum, !isLiked);
+    } else if (typeof w.toggleLikeForAlbum === 'function') {
+      // Back‑compat: если вдруг класс недоступен
+      w.toggleLikeForAlbum(playingAlbum, trackNum, !isLiked);
+    }
+
     updateMiniHeader();
   }
 
