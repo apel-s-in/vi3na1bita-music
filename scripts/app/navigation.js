@@ -4,8 +4,6 @@ class NavigationManager {
   constructor() {
     this.modalsContainer = null;
     this.activeModal = null;
-    this.sleepTimer = null;
-    this.sleepTimerTarget = null;
   }
   
   initialize() {
@@ -52,11 +50,6 @@ class NavigationManager {
         this.closeModal();
       }
     });
-    
-    // Скролл для мини-режима
-    window.addEventListener('scroll', () => {
-      this.handleScroll();
-    }, { passive: true });
   }
   
   handleScroll() {
@@ -211,7 +204,7 @@ class NavigationManager {
   showModal(content) {
     if (!this.modalsContainer) return;
     this.closeModal(); // Закрыть предыдущее модальное окно
-    
+
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.innerHTML = `
@@ -219,20 +212,20 @@ class NavigationManager {
         ${content}
       </div>
     `;
-    
+
     // Закрытие по кнопке
     const closeBtn = modal.querySelector('.modal-close-btn');
     closeBtn?.addEventListener('click', () => this.closeModal());
-    
+
     this.modalsContainer.appendChild(modal);
     this.activeModal = modal;
-    
+
     // Анимация появления
     requestAnimationFrame(() => {
       modal.classList.add('show');
     });
   }
-  
+
   closeModal() {
     if (!this.activeModal) return;
     this.activeModal.classList.remove('show');
@@ -243,161 +236,9 @@ class NavigationManager {
       this.activeModal = null;
     }, 300);
   }
-  
-  enableMiniMode() {
-    document.body.classList.add('mini-mode');
-    localStorage.setItem('miniMode', '1');
-    
-    // Скрыть ненужные элементы
-    this.hideElements([
-      '#cover-wrap',
-      '#social-links',
-      '.album-icons',
-      '.active-album-title'
-    ]);
-    
-    console.log('📱 Mini mode enabled');
-  }
-  
-  disableMiniMode() {
-    document.body.classList.remove('mini-mode');
-    localStorage.setItem('miniMode', '0');
-    
-    // Показать элементы обратно
-    this.showElements([
-      '#cover-wrap',
-      '#social-links',
-      '.album-icons',
-      '.active-album-title'
-    ]);
-    
-    console.log('📱 Mini mode disabled');
-  }
-  
-  hideElements(selectors) {
-    selectors.forEach(selector => {
-      const el = document.querySelector(selector);
-      if (el) {
-        el.style.display = 'none';
-      }
-    });
-  }
-  
-  showElements(selectors) {
-    selectors.forEach(selector => {
-      const el = document.querySelector(selector);
-      if (el) {
-        el.style.display = '';
-      }
-    });
-  }
-  
-  // Таймер сна
-  setSleepTimer(minutes) {
-    if (minutes === 'off') {
-      this.clearSleepTimer();
-      return;
-    }
-    
-    this.sleepTimerTarget = Date.now() + minutes * 60 * 1000;
-    this.updateSleepTimerUI();
-    
-    if (this.sleepTimer) {
-      clearInterval(this.sleepTimer);
-    }
-    
-    this.sleepTimer = setInterval(() => this.checkSleepTimer(), 1000);
-    
-    if (window.NotificationSystem) {
-      window.NotificationSystem.info(`Таймер сна установлен на ${minutes} минут`);
-    }
-  }
-  
-  clearSleepTimer() {
-    if (this.sleepTimer) {
-      clearInterval(this.sleepTimer);
-      this.sleepTimer = null;
-    }
-    this.sleepTimerTarget = null;
-    this.updateSleepTimerUI();
-    
-    const overlay = document.getElementById('sleep-overlay');
-    if (overlay) overlay.remove();
-    
-    if (window.NotificationSystem) {
-      window.NotificationSystem.info('Таймер сна выключен');
-    }
-  }
-  
-  checkSleepTimer() {
-    if (!this.sleepTimerTarget) return;
-    
-    const now = Date.now();
-    const msLeft = this.sleepTimerTarget - now;
-    
-    if (msLeft <= 0) {
-      window.playerCore?.pause();
-      this.clearSleepTimer();
-      
-      if (window.NotificationSystem) {
-        window.NotificationSystem.info('Таймер сна: воспроизведение остановлено');
-      }
-    } else if (msLeft <= 10000 && !document.querySelector('#sleep-overlay')) {
-      this.showSleepOverlay();
-    }
-    
-    this.updateSleepTimerUI();
-  }
-  
-  updateSleepTimerUI() {
-    const badge = document.getElementById('sleep-timer-badge');
-    if (!this.sleepTimerTarget) {
-      if (badge) badge.style.display = 'none';
-      return;
-    }
-    
-    const minsLeft = Math.max(0, Math.ceil((this.sleepTimerTarget - Date.now()) / 60000));
-    if (badge) {
-      badge.textContent = String(minsLeft);
-      badge.style.display = '';
-    }
-  }
-  
-  showSleepOverlay() {
-    let overlay = document.getElementById('sleep-overlay');
-    if (!overlay) {
-      overlay = document.createElement('div');
-      overlay.id = 'sleep-overlay';
-      overlay.className = 'sleep-overlay';
-      overlay.innerHTML = `
-        <div class="sleep-content">
-          <div class="sleep-icon">😴</div>
-          <div class="sleep-title">Скоро пауза</div>
-          <div class="sleep-message">Воспроизведение будет приостановлено по таймеру сна.</div>
-          <div class="sleep-buttons">
-            <button class="sleep-btn sleep-btn-secondary" onclick="window.NavigationManager?.cancelSleepTimer()">Отмена</button>
-            <button class="sleep-btn sleep-btn-primary" onclick="document.getElementById('sleep-overlay')?.remove()">Оставить</button>
-          </div>
-        </div>`;
-      document.body.appendChild(overlay);
-    }
-  }
-  
-  cancelSleepTimer() {
-    this.clearSleepTimer();
-    const overlay = document.getElementById('sleep-overlay');
-    if (overlay) overlay.remove();
-  }
 }
 
 // Глобальный экземпляр
 window.NavigationManager = new NavigationManager();
-
-// Обработчик для кнопки отмены таймера сна
-window.cancelSleepTimer = () => {
-  if (window.NavigationManager) {
-    window.NavigationManager.cancelSleepTimer();
-  }
-};
 
 export default NavigationManager;
