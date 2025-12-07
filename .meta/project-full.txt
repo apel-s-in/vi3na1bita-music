@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8bd2d8852fffa7419db6b4575c192405cf9825f3.idx
-│   │       ├── pack-8bd2d8852fffa7419db6b4575c192405cf9825f3.pack
-│   │       └── pack-8bd2d8852fffa7419db6b4575c192405cf9825f3.rev
+│   │       ├── pack-18d33f5caedf55693853cc1207f030c4e3c2a633.idx
+│   │       ├── pack-18d33f5caedf55693853cc1207f030c4e3c2a633.pack
+│   │       └── pack-18d33f5caedf55693853cc1207f030c4e3c2a633.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -266,7 +266,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 00:10:22 UTC
+Сгенерировано: 2025-12-07 09:39:38 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1419,7 +1419,7 @@ jobs:
 // FILE: /service-worker.js
 // service-worker.js
 // Service Worker для PWA - совместим с CI валидатором
-const SW_VERSION = '1.0.0';
+const SW_VERSION = '8.0.3';
 const CORE_CACHE = 'vitrina-core-v1.0.0';
 const RUNTIME_CACHE = 'vitrina-runtime-v1';
 const MEDIA_CACHE = 'vitrina-media-v1';
