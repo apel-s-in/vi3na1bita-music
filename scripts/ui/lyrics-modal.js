@@ -110,13 +110,6 @@
     document.body.appendChild(modal);
   }
 
-  function closeSleepMenu() {
-    if (sleepMenu && sleepMenu.parentNode) {
-      sleepMenu.parentNode.removeChild(sleepMenu);
-    }
-    sleepMenu = null;
-  }
-
   async function copyLyrics(text, modal) {
     try {
       await navigator.clipboard.writeText(text);
