@@ -94,6 +94,21 @@
         missing.push('Event Listeners');
       }
 
+      // Проверка Web Audio API
+      if (typeof AudioContext === 'undefined' && typeof webkitAudioContext === 'undefined') {
+        console.warn('⚠️ Web Audio API not supported');
+      }
+
+      // Проверка MediaSession API (опционально)
+      if (!('mediaSession' in navigator)) {
+        console.warn('⚠️ Media Session API not supported - фоновое управление будет ограничено');
+      }
+
+      // Проверка Howler.js
+      if (typeof Howl === 'undefined') {
+        missing.push('Howler.js (аудио библиотека не загружена)');
+      }
+
       if (missing.length > 0) {
         this.showCompatibilityError(missing);
         return false;
