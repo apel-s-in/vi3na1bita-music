@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5ab3423a1a2680385bd745c3a9730c8cb331fd90.idx
-│   │       ├── pack-5ab3423a1a2680385bd745c3a9730c8cb331fd90.pack
-│   │       └── pack-5ab3423a1a2680385bd745c3a9730c8cb331fd90.rev
+│   │       ├── pack-90765c4c9e26db3f819cbd463a47c6ef2b0b26ca.idx
+│   │       ├── pack-90765c4c9e26db3f819cbd463a47c6ef2b0b26ca.pack
+│   │       └── pack-90765c4c9e26db3f819cbd463a47c6ef2b0b26ca.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 14:07:52 UTC
+Сгенерировано: 2025-12-07 14:15:22 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1371,11 +1371,6 @@ import { APP_CONFIG } from './core/config.js';
         '⚠️ albumsIndex is empty in Application.loadAlbumsIndex(). ' +
         'Проверьте загрузку ./albums.json в scripts/core/bootstrap.js'
       );
-      w.albumsIndex = w.albumsIndex || [];
-    }
-
-      console.warn('⚠️ albumsIndex is empty in Application.loadAlbumsIndex(). ' +
-                   'Проверьте загрузку ./albums.json в scripts/core/bootstrap.js');
       w.albumsIndex = w.albumsIndex || [];
     }
 
