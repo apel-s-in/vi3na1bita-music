@@ -613,7 +613,3 @@ class AlbumsManager {
 window.AlbumsManager = new AlbumsManager();
 
 export default AlbumsManager;
-
-window.AlbumsManager = new AlbumsManager();
-
-export default AlbumsManager;
