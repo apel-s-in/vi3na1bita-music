@@ -113,13 +113,22 @@ class AlbumsManager {
       const data = raw || {};
 
       const tracks = Array.isArray(data.tracks) ? data.tracks : [];
-      const normTracks = tracks.map((t, idx) => ({
-        num: t.num ?? (idx + 1),
-        title: t.title || `Трек ${idx + 1}`,
-        file: t.audio ? new URL(t.audio, base).toString() : null,
-        lyrics: t.lyrics ? new URL(t.lyrics, base).toString() : null,
-        fulltext: t.fulltext ? new URL(t.fulltext, base).toString() : null
-      }));
+      const normTracks = tracks.map((t, idx) => {
+        const num = t.num ?? (idx + 1);
+        const file = t.audio ? new URL(t.audio, base).toString() : null;
+        const lyrics = t.lyrics ? new URL(t.lyrics, base).toString() : null;
+        const fulltext = t.fulltext ? new URL(t.fulltext, base).toString() : null;
+        const uid = window.AlbumsManager?.getTrackUid?.(albumKey, num) || `${albumKey}_${num}`;
+
+        return {
+          num,
+          title: t.title || `Трек ${idx + 1}`,
+          file,
+          lyrics,
+          fulltext,
+          uid
+        };
+      });
 
       const coverPath = data.cover || 'cover.jpg';
 
@@ -308,15 +317,8 @@ class AlbumsManager {
       container.appendChild(trackEl);
     });
 
-    if (window.playerCore) {
-      window.playerCore.setPlaylist(tracks, 0, {
-        artist: 'Витрина Разбита',
-        album: 'Избранное',
-        cover: 'img/logo.png'
-      });
-      
-      this.playingAlbum = '__favorites__';
-    }
+    // Плейлист для избранного формируется и запускается ТОЛЬКО через ensureFavoritesPlayback.
+    // Здесь ничего не трогаем в playerCore / playingAlbum, чтобы не ломать контекст воспроизведения.
   }
 
   async ensureFavoritesPlayback(index) {
@@ -333,10 +335,11 @@ class AlbumsManager {
         src: item.audio,
         title: item.title,
         artist: item.__artist || 'Витрина Разбита',
-        album: item.__album || 'Избранное',
+        album: window.SPECIAL_FAVORITES_KEY || '__favorites__',
         cover: item.__cover || 'img/logo.png',
         lyrics: item.lyrics || null,
-        fulltext: item.fulltext || null
+        fulltext: item.fulltext || null,
+        uid: window.AlbumsManager?.getTrackUid?.(item.__a, item.__t) || `${item.__a}_${item.__t}`
       }));
 
     if (!tracks.length) {
@@ -359,7 +362,7 @@ class AlbumsManager {
       }
 
       window.playerCore.play(index);
-      this.playingAlbum = '__favorites__';
+      this.setPlayingAlbum(window.SPECIAL_FAVORITES_KEY || '__favorites__');
       
       // Обновляем UI
       this.highlightCurrentTrack(index);
@@ -504,12 +507,13 @@ class AlbumsManager {
             src: t.file,
             title: t.title,
             artist: albumData.artist || 'Витрина Разбита',
-            album: albumData.title || albumInfo?.title || '',
+            album: albumKey, // важно: здесь храним КЛЮЧ альбома для MediaSession/mini
             cover: albumData.cover
               ? new URL(albumData.cover, base).toString()
               : (albumInfo ? new URL('cover.jpg', albumInfo.base).toString() : 'img/logo.png'),
             lyrics: t.lyrics || null,
-            fulltext: t.fulltext || null
+            fulltext: t.fulltext || null,
+            uid: t.uid || window.AlbumsManager?.getTrackUid?.(albumKey, t.num) || `${albumKey}_${t.num}`
           }));
 
         if (tracksForCore.length > 0) {
@@ -526,7 +530,7 @@ class AlbumsManager {
       this.highlightCurrentTrack(index);
 
       window.playerCore.play(index);
-      this.playingAlbum = albumKey;
+      this.setPlayingAlbum(albumKey);
 
       window.PlayerUI?.ensurePlayerBlock(index);
     });
@@ -580,6 +584,14 @@ class AlbumsManager {
     return this.playingAlbum;
   }
 
+  /**
+   * Явно задаём альбом, из которого в данный момент ИДЁТ воспроизведение.
+   * Менять ТОЛЬКО в моментах смены плейлиста/режима (альбомный трек, избранное, восстановление стейта).
+   */
+  setPlayingAlbum(albumKey) {
+    this.playingAlbum = albumKey || null;
+  }
+
   getAlbumData(albumKey) {
     return this.albumsData.get(albumKey);
   }
@@ -587,7 +599,20 @@ class AlbumsManager {
   getAlbumConfigByKey(albumKey) {
     return this.albumsData.get(albumKey);
   }
+
+  /**
+   * Унифицированный UID трека: albumKey_trackNum.
+   * Используем для связки плеера, избранного и мини-плеера, не зависящей от индекса в массиве.
+   */
+  getTrackUid(albumKey, trackNum) {
+    if (!albumKey || !Number.isFinite(Number(trackNum))) return null;
+    return `${albumKey}_${Number(trackNum)}`;
+  }
 }
+
+window.AlbumsManager = new AlbumsManager();
+
+export default AlbumsManager;
 
 window.AlbumsManager = new AlbumsManager();
 
