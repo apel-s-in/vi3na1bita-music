@@ -140,6 +140,10 @@ class NavigationManager {
   }
   
   showHotkeysModal() {
+    if (!this.modalsContainer) {
+      this.modalsContainer = document.getElementById('modals-container');
+    }
+    
     this.showModal(`
       <h2>📌 Горячие клавиши</h2>
       <div class="hotkeys-section">
