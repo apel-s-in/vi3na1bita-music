@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f91a78e3daea2304ef68b3857e340206394fe70d.idx
-│   │       ├── pack-f91a78e3daea2304ef68b3857e340206394fe70d.pack
-│   │       └── pack-f91a78e3daea2304ef68b3857e340206394fe70d.rev
+│   │       ├── pack-d916e44147855c36ca2b6f1357b37602f9718dab.idx
+│   │       ├── pack-d916e44147855c36ca2b6f1357b37602f9718dab.pack
+│   │       └── pack-d916e44147855c36ca2b6f1357b37602f9718dab.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -267,7 +267,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 13:40:58 UTC
+Сгенерировано: 2025-12-07 13:42:27 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -939,8 +939,8 @@ jobs:
 // FILE: /manifest.json
 {
   "name": "Витрина Разбита",
-  "short_name": "Витрина",
-  "description": "Официальные альбомы группы Витрина Разбита. Слушайте онлайн и офлайн.",
+  "short_name": "Vi3na1bita",
+  "description": "Официальные альбомы группы Витрина Разбита",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#181818",
@@ -960,16 +960,8 @@ jobs:
       "purpose": "any maskable"
     }
   ],
-  "screenshots": [
-    {
-      "src": "img/screenshot-1.png",
-      "sizes": "540x720",
-      "type": "image/png",
-      "form_factor": "narrow"
-    }
-  ],
   "categories": ["music", "entertainment"],
-  "lang": "ru"
+  "screenshots": []
 }
 
 //=================================================
