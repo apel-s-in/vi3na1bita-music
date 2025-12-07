@@ -71,17 +71,14 @@ class DownloadsManager {
   }
 
   async downloadFile(url, filename) {
-  async downloadFile(url, filename) {
     return new Promise((resolve, reject) => {
-      // Проверка сети перед скачиванием
       if (!navigator.onLine) {
         reject(new Error('Нет подключения к интернету'));
         return;
       }
     
-      // Добавляем таймаут для fetch
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 секунд
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
     
       fetch(url, { signal: controller.signal })
         .then(response => {
@@ -91,7 +88,6 @@ class DownloadsManager {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
           }
         
-          // Проверка типа контента
           const contentType = response.headers.get('content-type');
           if (!contentType || (!contentType.includes('audio') && !contentType.includes('octet-stream'))) {
             console.warn('⚠️ Unexpected content type:', contentType);
@@ -112,7 +108,6 @@ class DownloadsManager {
           link.click();
           document.body.removeChild(link);
         
-          // Освободить память
           setTimeout(() => URL.revokeObjectURL(link.href), 100);
         
           console.log(`✅ Downloaded: ${filename} (${(blob.size / 1024 / 1024).toFixed(2)} MB)`);
