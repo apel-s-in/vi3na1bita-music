@@ -81,7 +81,6 @@ export class PlayerCore {
       onstop:  () => { this._isPaused = true; this._fire('onStop',  tr, this.index); this._stopTicker(); },
       onplayerror: (_, err) => {
         console.warn('Howler play error:', err);
-        // Попытка разблокировать аудио контекст
         try { 
           this.howl.once('unlock', () => { 
             try { 
@@ -94,7 +93,6 @@ export class PlayerCore {
           console.error('Failed to setup unlock handler:', e);
         }
         
-        // Уведомить пользователя
         if (window.NotificationSystem) {
           window.NotificationSystem.error('Ошибка воспроизведения. Попробуйте перезагрузить страницу.');
         }
@@ -104,12 +102,7 @@ export class PlayerCore {
         if (window.NotificationSystem) {
           window.NotificationSystem.error('Не удалось загрузить аудио');
         }
-        // Пропустить трек
         setTimeout(() => this.next(), 1000);
-      }
-      onloaderror: (_, err) => {
-        console.warn('Howler load error:', err);
-        // Можно добавить логику для пропуска трека
       }
     });
     
