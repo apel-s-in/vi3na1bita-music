@@ -930,10 +930,26 @@
     
     try {
       const response = await fetch(lyricsUrl, { cache: 'force-cache' });
-      if (!response.ok) throw new Error('Failed to load lyrics');
+      if (!response.ok) throw new Error(`Failed to load lyrics: HTTP ${response.status}`);
       
-      const text = await response.text();
-      parseLyrics(text);
+      // Пытаемся сначала как JSON (старый формат lyrics/NN.json),
+      // если не получилось — fallback на текст (LRC).
+      let bodyText = null;
+      let asJson = null;
+
+      try {
+        asJson = await response.clone().json();
+      } catch {
+        // ignore, попробуем как текст
+      }
+
+      if (Array.isArray(asJson)) {
+        parseLyrics(asJson);
+      } else {
+        bodyText = await response.text();
+        parseLyrics(bodyText);
+      }
+
       renderLyrics();
     } catch (error) {
       console.error('Failed to load lyrics:', error);
@@ -941,19 +957,39 @@
     }
   }
 
-  function parseLyrics(text) {
-    const lines = text.split('\n');
+  /**
+   * Унифицированный парсер лирики:
+   *  - если source — массив [{ time:number, line:string }] (старый JSON-формат) → напрямую;
+   *  - если source — строка LRC ([mm:ss.xx] text) → парсим по таймкодам.
+   */
+  function parseLyrics(source) {
     currentLyrics = [];
-    
+
+    // JSON-массив из config.json (lyrics/*.json)
+    if (Array.isArray(source)) {
+      source.forEach((item) => {
+        if (!item || typeof item.time !== 'number') return;
+        const text = (item.line || item.text || '').trim();
+        if (!text) return;
+        currentLyrics.push({ time: item.time, text });
+      });
+      currentLyrics.sort((a, b) => a.time - b.time);
+      return;
+    }
+
+    // Строка LRC
+    const text = String(source || '');
+    const lines = text.split('\n');
+
     lines.forEach(line => {
       const match = line.match(/^\[(\d{2}):(\d{2})\.(\d{2})\](.*)$/);
       if (match) {
         const [, mm, ss, cs, txt] = match;
-        const time = parseInt(mm) * 60 + parseInt(ss) + parseInt(cs) / 100;
-        currentLyrics.push({ time, text: txt.trim() });
+        const time = parseInt(mm, 10) * 60 + parseInt(ss, 10) + parseInt(cs, 10) / 100;
+        currentLyrics.push({ time, text: (txt || '').trim() });
       }
     });
-    
+
     currentLyrics.sort((a, b) => a.time - b.time);
   }
 
