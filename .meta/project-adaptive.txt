@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-43e89f6bfa693cf12e40fbd5896d3b4a6776fa46.idx
-│   │       ├── pack-43e89f6bfa693cf12e40fbd5896d3b4a6776fa46.pack
-│   │       └── pack-43e89f6bfa693cf12e40fbd5896d3b4a6776fa46.rev
+│   │       ├── pack-b16956ed5546749d679bbbd80c59aae9206a42da.idx
+│   │       ├── pack-b16956ed5546749d679bbbd80c59aae9206a42da.pack
+│   │       └── pack-b16956ed5546749d679bbbd80c59aae9206a42da.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 21:47:16 UTC
+Сгенерировано: 2025-12-07 21:48:08 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3885,6 +3885,11 @@ export default NavigationManager;
   function toggleFavoritesOnly() {
     const currentAlbum = w.AlbumsManager?.getCurrentAlbum();
     
+    if (!currentAlbum) {
+      w.NotificationSystem?.warning('Альбом не выбран');
+      return;
+    }
+
     if (currentAlbum === '__favorites__') {
       w.NotificationSystem?.info('Вы уже в разделе Избранное');
       return;
@@ -3892,7 +3897,6 @@ export default NavigationManager;
     
     const btn = document.getElementById('favorites-btn');
     const icon = document.getElementById('favorites-btn-icon');
-    
     const isActive = btn?.classList.contains('active');
     
     if (isActive) {
@@ -3902,19 +3906,37 @@ export default NavigationManager;
       document.querySelectorAll('.track').forEach(el => {
         el.style.display = '';
       });
-    } else {
-      btn?.classList.add('active');
-      if (icon) icon.src = 'img/star.png';
-      
-      const liked = w.FavoritesManager?.getLikedForAlbum(currentAlbum) || [];
-      
-      document.querySelectorAll('.track').forEach(el => {
-        const index = parseInt(el.dataset.index, 10);
-        if (!liked.includes(index + 1)) {
-          el.style.display = 'none';
-        }
-      });
+      return;
     }
+
+    // Включаем фильтр
+    btn?.classList.add('active');
+    if (icon) icon.src = 'img/star.png';
+    
+    const likedNums = w.FavoritesManager?.getLikedForAlbum(currentAlbum) || [];
+    const albumData = w.AlbumsManager?.getAlbumData?.(currentAlbum) || null;
+    
+    document.querySelectorAll('.track').forEach(el => {
+      const idx = parseInt(el.dataset.index, 10);
+      if (!Number.isFinite(idx)) {
+        el.style.display = 'none';
+        return;
+      }
+
+      let trackNum = idx + 1;
+      if (albumData && Array.isArray(albumData.tracks) && albumData.tracks[idx]) {
+        const t = albumData.tracks[idx];
+        if (Number.isFinite(Number(t.num))) {
+          trackNum = Number(t.num);
+        }
+      }
+
+      if (!likedNums.includes(trackNum)) {
+        el.style.display = 'none';
+      } else {
+        el.style.display = '';
+      }
+    });
   }
 
   function toggleLikePlaying() {
