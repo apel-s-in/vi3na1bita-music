@@ -71,7 +71,11 @@
     if (!track) return;
     
     ensurePlayerBlock(index);
-    loadLyrics(track.lyrics);
+    
+    // Загружаем лирику и сразу рендерим первый кадр
+    loadLyrics(track.lyrics).then(() => {
+      renderLyrics(0);
+    });
     
     const downloadBtn = document.getElementById('track-download-btn');
     if (downloadBtn && track.src) {
@@ -936,11 +940,11 @@
     lyricsLastIdx = -1;
     
     const container = document.getElementById('lyrics');
-    if (!container) return;
+    if (!container) return Promise.resolve();
     
     if (!lyricsUrl) {
       container.innerHTML = '<div class="lyrics-placeholder">Текст не найден</div>';
-      return;
+      return Promise.resolve();
     }
     
     try {
@@ -949,7 +953,6 @@
       
       // Пытаемся сначала как JSON (старый формат lyrics/NN.json),
       // если не получилось — fallback на текст (LRC).
-      let bodyText = null;
       let asJson = null;
 
       try {
@@ -961,14 +964,17 @@
       if (Array.isArray(asJson)) {
         parseLyrics(asJson);
       } else {
-        bodyText = await response.text();
+        const bodyText = await response.text();
         parseLyrics(bodyText);
       }
 
-      renderLyrics();
+      // НЕ вызываем renderLyrics() здесь — это сделает onTrackChange
+      return Promise.resolve();
+      
     } catch (error) {
       console.error('Failed to load lyrics:', error);
       container.innerHTML = '<div class="lyrics-placeholder">Ошибка загрузки текста</div>';
+      return Promise.resolve();
     }
   }
 
