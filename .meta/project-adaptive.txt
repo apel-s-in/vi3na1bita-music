@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d0f7e30c4b52cbc77c328c589b94cd605818c373.idx
-│   │       ├── pack-d0f7e30c4b52cbc77c328c589b94cd605818c373.pack
-│   │       └── pack-d0f7e30c4b52cbc77c328c589b94cd605818c373.rev
+│   │       ├── pack-cad4d9995ed80a080463d0b97fa253c310df1993.idx
+│   │       ├── pack-cad4d9995ed80a080463d0b97fa253c310df1993.pack
+│   │       └── pack-cad4d9995ed80a080463d0b97fa253c310df1993.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 22:44:14 UTC
+Сгенерировано: 2025-12-07 22:45:06 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3205,6 +3205,24 @@ export default NavigationManager;
     if (downloadBtn && track.src) {
       downloadBtn.href = track.src;
       downloadBtn.download = `${track.title}.mp3`;
+
+      // Попробуем вывести примерный размер файла из albumData.tracks[].size
+      let sizeHint = '';
+      const playingAlbumKey = w.AlbumsManager?.getPlayingAlbum?.();
+      const albumData = playingAlbumKey
+        ? w.AlbumsManager?.getAlbumData?.(playingAlbumKey)
+        : null;
+
+      if (albumData && Array.isArray(albumData.tracks)) {
+        const byNum = albumData.tracks.find(t => t.file === track.src || t.title === track.title);
+        if (byNum && typeof byNum.size === 'number') {
+          sizeHint = ` (~${byNum.size.toFixed(2)} МБ)`;
+        }
+      }
+
+      downloadBtn.title = sizeHint
+        ? `Скачать трек${sizeHint}`
+        : 'Скачать трек';
     }
   }
 
