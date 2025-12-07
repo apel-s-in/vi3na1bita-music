@@ -57,18 +57,16 @@ import { APP_CONFIG } from './core/config.js';
     }
 
     async loadAlbumsIndex() {
-      try {
-        const response = await fetch('./albums/index.json', { cache: 'no-cache' });
-        if (!response.ok) throw new Error('Failed to load albums index');
-
-        const data = await response.json();
-        w.albumsIndex = Array.isArray(data.albums) ? data.albums : [];
-
-        console.log(`✅ Loaded ${w.albumsIndex.length} albums`);
-      } catch (error) {
-        console.error('❌ Failed to load albums index:', error);
-        w.albumsIndex = [];
+      // Индекс уже загружается в scripts/core/bootstrap.js из ./albums.json
+      // и публикуется в window.albumsIndex. Здесь только проверяем и логируем.
+      if (Array.isArray(w.albumsIndex) && w.albumsIndex.length > 0) {
+        console.log(`✅ Albums index already loaded: ${w.albumsIndex.length} albums`);
+        return;
       }
+
+      console.warn('⚠️ albumsIndex is empty in Application.loadAlbumsIndex(). ' +
+                   'Проверьте загрузку ./albums.json в scripts/core/bootstrap.js');
+      w.albumsIndex = w.albumsIndex || [];
     }
 
     async initializePlayerCore() {
