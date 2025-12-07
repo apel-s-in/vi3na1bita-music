@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e91ff4e25dc097a3c634dcd712b9169cbee70589.idx
-│   │       ├── pack-e91ff4e25dc097a3c634dcd712b9169cbee70589.pack
-│   │       └── pack-e91ff4e25dc097a3c634dcd712b9169cbee70589.rev
+│   │       ├── pack-e45c3aad2391c6966870440174182d88ad2237af.idx
+│   │       ├── pack-e45c3aad2391c6966870440174182d88ad2237af.pack
+│   │       └── pack-e45c3aad2391c6966870440174182d88ad2237af.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 16:50:08 UTC
+Сгенерировано: 2025-12-07 16:55:20 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1755,7 +1755,7 @@ class AlbumsManager {
       window.PlayerUI.updateNextUpLabel?.();
     }
 
-    // Устанавливаем плейлист в PlayerCore
+    // Готовим плейлист для этого альбома (но применяем его только если сейчас ничего не играет)
     const tracksForCore = albumData.tracks
       .filter(t => !!t.file)
       .map((t) => ({
@@ -1768,15 +1768,23 @@ class AlbumsManager {
         fulltext: t.fulltext || null
       }));
 
-    if (window.playerCore) {
-      window.playerCore.setPlaylist(tracksForCore, 0, {
-        artist: albumData.artist || 'Витрина Разбита',
-        album: albumData.title || albumInfo.title,
-        cover: new URL(albumData.cover || 'cover.jpg', albumInfo.base).toString()
-      });
-      
-      // Сохраняем ключ играющего альбома
-      this.playingAlbum = albumKey;
+    if (window.playerCore && tracksForCore.length > 0) {
+      const hasCurrentTrack = typeof window.playerCore.getCurrentTrack === 'function'
+        ? !!window.playerCore.getCurrentTrack()
+        : false;
+
+      // Если сейчас ничего не играет — можем подготовить плейлист этого альбома.
+      // Если уже что‑то играет (другой альбом или избранное) — не трогаем плейлист, чтобы не сбивать мини‑плеер.
+      if (!hasCurrentTrack) {
+        window.playerCore.setPlaylist(tracksForCore, 0, {
+          artist: albumData.artist || 'Витрина Разбита',
+          album: albumData.title || albumInfo.title,
+          cover: new URL(albumData.cover || 'cover.jpg', albumInfo.base).toString()
+        });
+
+        // Плеер будет играть из этого альбома, когда пользователь выберет трек
+        this.playingAlbum = albumKey;
+      }
     }
 
     const coverWrap = document.getElementById('cover-wrap');
