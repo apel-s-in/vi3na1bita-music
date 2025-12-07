@@ -38,15 +38,33 @@
   }
 
   function showLyricsFromTimeline(track) {
-    // Собрать текст из timeline лирики
-    if (!w.PlayerUI || !w.PlayerUI.currentLyrics || !w.PlayerUI.currentLyrics.length) {
+    // Собрать текст из таймлайна лирики, экспортированного из PlayerUI
+    if (!w.PlayerUI) {
       w.NotificationSystem?.warning('Текст песни недоступен');
       return;
     }
 
-    const lines = w.PlayerUI.currentLyrics.map(item => item.line).filter(Boolean);
+    // Предпочитаем бэкомпат-API currentLyricsLines, если есть,
+    // иначе пробуем взять сырые currentLyrics и вытащить text.
+    const rawLines = Array.isArray(w.PlayerUI.currentLyricsLines)
+      ? w.PlayerUI.currentLyricsLines
+      : (Array.isArray(w.PlayerUI.currentLyrics) ? w.PlayerUI.currentLyrics : []);
+
+    if (!rawLines.length) {
+      w.NotificationSystem?.warning('Текст песни недоступен');
+      return;
+    }
+
+    const lines = rawLines
+      .map(item => (typeof item.line === 'string' ? item.line : (item.text || '')))
+      .filter(Boolean);
+
+    if (!lines.length) {
+      w.NotificationSystem?.warning('Текст песни недоступен');
+      return;
+    }
+
     const text = lines.join('\n');
-    
     showModal(track, text);
   }
 
