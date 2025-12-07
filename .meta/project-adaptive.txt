@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1c4d869ec6b8beb982ec1fcea412a6bdf8fce554.idx
-│   │       ├── pack-1c4d869ec6b8beb982ec1fcea412a6bdf8fce554.pack
-│   │       └── pack-1c4d869ec6b8beb982ec1fcea412a6bdf8fce554.rev
+│   │       ├── pack-25e2804468857726f0c7f3bbde7152875bed65ca.idx
+│   │       ├── pack-25e2804468857726f0c7f3bbde7152875bed65ca.pack
+│   │       └── pack-25e2804468857726f0c7f3bbde7152875bed65ca.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 14:44:39 UTC
+Сгенерировано: 2025-12-07 14:45:35 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6451,7 +6451,14 @@ console.log('✅ Notification system initialized');
   w.SleepTimer = {
     setSleepTimer,
     clearSleepTimer,
-    updateBadge
+    updateBadge,
+    // Показать меню таймера сна (используется горячей клавишей T и кнопкой в PlayerUI)
+    show() {
+      const btn = document.getElementById('sleep-timer-btn');
+      if (!btn) return;
+      // Если меню уже открыто – просто закрыть/открыть по toggleSleepMenu
+      toggleSleepMenu({ currentTarget: btn });
+    }
   };
 
   // Автоинициализация
