@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1db87cd6e0307a19797c8a2edbe61fbea0a5f628.idx
-│   │       ├── pack-1db87cd6e0307a19797c8a2edbe61fbea0a5f628.pack
-│   │       └── pack-1db87cd6e0307a19797c8a2edbe61fbea0a5f628.rev
+│   │       ├── pack-c41ecf611ad6357f5b11317175b95367b2d762f9.idx
+│   │       ├── pack-c41ecf611ad6357f5b11317175b95367b2d762f9.pack
+│   │       └── pack-c41ecf611ad6357f5b11317175b95367b2d762f9.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -266,7 +266,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 10:46:56 UTC
+Сгенерировано: 2025-12-07 10:47:54 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6117,6 +6117,89 @@ Object.assign(window, {
     const item = model.find(x => x.__a === albumKey && x.__t === trackIndex);
     if (item) item.__active = !!isActive;
   }
+  // Утилиты для работы с центральными галереями
+  function centralIdForAlbumKey(albumKey) {
+    if (!albumKey) return null;
+    if (albumKey === '__favorites__') return null;
+    
+    const ALBUM_GALLERY_MAP = {
+      'krevetochka': '00',
+      'mezhdu-zlom-i-dobrom': '01',
+      'golos-dushi': '02',
+      '__reliz__': 'news'
+    };
+    
+    const CENTRAL_ALLOWED_IDS = new Set(['00', '01', '02', 'news']);
+    const id = ALBUM_GALLERY_MAP[albumKey] || null;
+    return id && CENTRAL_ALLOWED_IDS.has(id) ? id : null;
+  }
+
+  function normalizeGalleryItem(raw, baseDir) {
+    if (!raw) return null;
+
+    const toAbs = (p) => {
+      if (!p) return null;
+      const s = String(p).replace(/^\.?\//, '');
+      if (/^https?:\/\//i.test(s)) return s;
+      if (/^(albums|img|icons|assets)\//i.test(s)) return `./${s}`;
+      return baseDir + s;
+    };
+
+    if (typeof raw === 'string') {
+      const isHtml = /\.html(\?|#|$)/i.test(raw);
+      const src = toAbs(raw);
+      return { 
+        type: isHtml ? 'html' : 'img', 
+        src, 
+        formats: null, 
+        ar: 1 
+      };
+    }
+
+    const type = (String(raw.type || '').toLowerCase() === 'html') ? 'html' : 'img';
+    if (type === 'html') {
+      const src = toAbs(raw.src || '');
+      return { type: 'html', src, formats: null, ar: 1 };
+    }
+
+    const fm = raw.formats || {};
+    const formats = {
+      webp: toAbs(fm.webp || null),
+      full: toAbs(fm.full || raw.src || null),
+      thumb: toAbs(fm.thumb || null)
+    };
+    const src = formats.full || toAbs(raw.src || '');
+    
+    return { type: 'img', src, formats, ar: 1 };
+  }
+
+  function normalizeBase(b) {
+    try {
+      const hasScheme = /^[a-z]+:\/\//i.test(String(b));
+      const u = new URL(String(b), hasScheme ? undefined : (location.origin + '/'));
+      return u.origin + u.pathname.replace(/\/+$/, '');
+    } catch {
+      const s = String(b || '').replace(/[?#].*$/, '').replace(/\/+$/, '');
+      if (/^https?:\/\//i.test(s)) return s;
+      return location.origin + '/' + s.replace(/^\/+/, '');
+    }
+  }
+
+  function absJoin(base, rel) {
+    try {
+      return new URL(String(rel || ''), normalizeBase(base) + '/').toString();
+    } catch {
+      const norm = normalizeBase(base);
+      return norm + '/' + String(rel || '').replace(/^\/+/, '');
+    }
+  }
+
+  // Экспорт утилит
+  w.centralIdForAlbumKey = centralIdForAlbumKey;
+  w.normalizeGalleryItem = normalizeGalleryItem;
+  w.normalizeBase = normalizeBase;
+  w.absJoin = absJoin;
+  w.CENTRAL_GALLERY_BASE = w.APP_CONFIG?.CENTRAL_GALLERY_BASE || './albums/gallery/';
 
   // Экспорт API
   w.FavoritesData = {
