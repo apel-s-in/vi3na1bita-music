@@ -165,32 +165,78 @@
 
     next() {
       if (this.playlist.length === 0) return;
-      
-      let nextIndex = this.currentIndex + 1;
-      
-      if (nextIndex >= this.playlist.length) {
-        nextIndex = 0;
+  
+      // ✅ Учитываем режим "только избранные"
+      const availableIndices = window.availableFavoriteIndices;
+  
+      if (Array.isArray(availableIndices) && availableIndices.length > 0) {
+        // Режим "только избранные" активен
+        const currentPos = availableIndices.indexOf(this.currentIndex);
+    
+        if (currentPos === -1) {
+          // Текущий трек не в списке избранных — переходим к первому избранному
+          this.play(availableIndices[0]);
+          return;
+        }
+    
+        let nextPos = currentPos + 1;
+    
+        if (nextPos >= availableIndices.length) {
+          nextPos = 0; // Зацикливаемся
+        }
+    
+        this.play(availableIndices[nextPos]);
+      } else {
+        // Обычный режим — следующий трек по порядку
+        let nextIndex = this.currentIndex + 1;
+    
+        if (nextIndex >= this.playlist.length) {
+          nextIndex = 0;
+        }
+    
+        this.play(nextIndex);
       }
-      
-      this.play(nextIndex);
     }
 
     prev() {
       if (this.playlist.length === 0) return;
-      
+  
       // Если играем больше 3 секунд, перематываем на начало
       if (this.getPosition() > 3) {
         this.seek(0);
         return;
       }
-      
-      let prevIndex = this.currentIndex - 1;
-      
-      if (prevIndex < 0) {
-        prevIndex = this.playlist.length - 1;
+  
+      // ✅ Учитываем режим "только избранные"
+      const availableIndices = window.availableFavoriteIndices;
+  
+      if (Array.isArray(availableIndices) && availableIndices.length > 0) {
+        // Режим "только избранные" активен
+        const currentPos = availableIndices.indexOf(this.currentIndex);
+    
+        if (currentPos === -1) {
+          // Текущий трек не в списке избранных — переходим к последнему избранному
+          this.play(availableIndices[availableIndices.length - 1]);
+          return;
+        }
+    
+        let prevPos = currentPos - 1;
+    
+        if (prevPos < 0) {
+          prevPos = availableIndices.length - 1; // Зацикливаемся
+        }
+    
+        this.play(availableIndices[prevPos]);
+      } else {
+        // Обычный режим — предыдущий трек по порядку
+        let prevIndex = this.currentIndex - 1;
+    
+        if (prevIndex < 0) {
+          prevIndex = this.playlist.length - 1;
+        }
+    
+        this.play(prevIndex);
       }
-      
-      this.play(prevIndex);
     }
 
     // ========== ПЕРЕМОТКА И ПОЗИЦИЯ ==========
