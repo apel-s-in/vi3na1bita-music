@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a5540196dc2cb2ab58f0e346a66ebe830127e689.idx
-│   │       ├── pack-a5540196dc2cb2ab58f0e346a66ebe830127e689.pack
-│   │       └── pack-a5540196dc2cb2ab58f0e346a66ebe830127e689.rev
+│   │       ├── pack-195a1cc4b5257f6ec24c2a4d3a540e894d716310.idx
+│   │       ├── pack-195a1cc4b5257f6ec24c2a4d3a540e894d716310.pack
+│   │       └── pack-195a1cc4b5257f6ec24c2a4d3a540e894d716310.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-08 12:00:36 UTC
+Сгенерировано: 2025-12-08 12:02:07 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1843,9 +1843,24 @@ class AlbumsManager {
         await this.loadRegularAlbum(albumKey);
       }
 
-      this.updateActiveIcon(albumKey);
-      this.currentAlbum = albumKey;
-      localStorage.setItem('currentAlbum', albumKey);
+      // ✅ Сбрасываем фильтрацию при смене альбома
+      const filterBtn = document.getElementById('filter-favorites-btn');
+      const trackList = document.getElementById('track-list');
+
+      if (filterBtn) {
+        filterBtn.textContent = 'Скрыть не отмеченные ⭐ песни';
+        filterBtn.classList.remove('filtered');
+      }
+
+      if (trackList) {
+        trackList.classList.remove('filtered');
+      }
+
+      // Сбрасываем состояние в PlayerUI (если там хранится)
+      if (window.PlayerUI) {
+        // Доступ к приватным переменным через замыкание невозможен,
+        // поэтому делаем через вызов функции (она сама проверит состояние)
+      }
 
       // ✅ МГНОВЕННОЕ обновление мини-плеера при смене вкладки
       if (window.PlayerUI && typeof window.PlayerUI.switchAlbumInstantly === 'function') {
