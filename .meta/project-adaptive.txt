@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-75bcdfe4d1b138dfc90c353359eeeb87871cea5b.idx
-│   │       ├── pack-75bcdfe4d1b138dfc90c353359eeeb87871cea5b.pack
-│   │       └── pack-75bcdfe4d1b138dfc90c353359eeeb87871cea5b.rev
+│   │       ├── pack-a92dac8de82932ebde228fda73b26942736c8693.idx
+│   │       ├── pack-a92dac8de82932ebde228fda73b26942736c8693.pack
+│   │       └── pack-a92dac8de82932ebde228fda73b26942736c8693.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-08 10:05:35 UTC
+Сгенерировано: 2025-12-08 10:08:58 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -10321,6 +10321,8 @@ header {
   background: #232b38;
   margin-bottom: 8px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  /* ✅ Убираем transition для мгновенного появления/скрытия */
+  transition: none !important;
 }
 
 .mini-now .tnum {
@@ -10749,8 +10751,10 @@ input:focus-visible {
   align-items: center;
   gap: 8px;
   padding: 6px 10px;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255,255,255,0.03);
   border-radius: 8px;
+  /* ✅ Убираем transition для мгновенного появления/скрытия */
+  transition: none !important;
 }
 
 .mini-mode .next-up {
