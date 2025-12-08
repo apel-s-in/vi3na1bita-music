@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d3c9f3e0dd3fac9e4b569c89e8fc652b753bdf72.idx
-│   │       ├── pack-d3c9f3e0dd3fac9e4b569c89e8fc652b753bdf72.pack
-│   │       └── pack-d3c9f3e0dd3fac9e4b569c89e8fc652b753bdf72.rev
+│   │       ├── pack-1a6717d5d85d510bd7adc27bd1f0636d6dd715b8.idx
+│   │       ├── pack-1a6717d5d85d510bd7adc27bd1f0636d6dd715b8.pack
+│   │       └── pack-1a6717d5d85d510bd7adc27bd1f0636d6dd715b8.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-08 09:16:06 UTC
+Сгенерировано: 2025-12-08 09:19:57 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3401,13 +3401,21 @@ export default NavigationManager;
       </div>
       
       <div class="player-buttons-wrapper">
-        <button class="lyrics-toggle-btn lyrics-${lyricsViewMode}" id="lyrics-toggle-btn" title="Режим лирики (Y)">
-          <span class="lyrics-toggle-btn-visual">Т</span>
-        </button>
-        
         <div class="player-extra-buttons-row">
+          <button class="lyrics-toggle-btn lyrics-${lyricsViewMode}" id="lyrics-toggle-btn" title="Режим лирики (Y)">
+            <span class="lyrics-toggle-btn-visual">Т</span>
+          </button>
+          
+          <button class="animation-btn" id="animation-btn" title="Анимация лирики (A)">A</button>
+          
           <button class="karaoke-btn" id="lyrics-text-btn" title="Полный текст песни">📝</button>
+          
+          <button class="pulse-btn" id="pulse-btn" title="Пульсация логотипа">
+            <span id="pulse-heart">🤍</span>
+          </button>
+          
           <a class="player-download-btn" href="#" id="track-download-btn" download title="Скачать трек">💾</a>
+          
           <button id="eco-btn" class="eco-btn" title="Эконом режим">
             <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
               <path d="M13 3L4 14h6l-1 7 9-11h-6l1-7z"/>
@@ -3576,7 +3584,7 @@ export default NavigationManager;
     block.querySelector('#lyrics-toggle-btn')?.addEventListener('click', toggleLyricsView);
 
     block.querySelector('#animation-btn')?.addEventListener('click', toggleAnimation);
-    block.querySelector('#bit-btn')?.addEventListener('click', toggleBit);
+    block.querySelector('#pulse-btn')?.addEventListener('click', togglePulse);
 
     block.querySelector('#favorites-btn')?.addEventListener('click', toggleFavoritesOnly);
 
@@ -3722,12 +3730,15 @@ export default NavigationManager;
     w.NotificationSystem?.info(animationEnabled ? '✨ Анимация лирики: ВКЛ' : '✨ Анимация лирики: ВЫКЛ');
   }
 
-  function toggleBit() {
+  function togglePulse() {
     bitEnabled = !bitEnabled;
     localStorage.setItem('bitEnabled', bitEnabled ? '1' : '0');
     
-    const btn = document.getElementById('bit-btn');
+    const btn = document.getElementById('pulse-btn');
+    const heart = document.getElementById('pulse-heart');
+    
     if (btn) btn.classList.toggle('active', bitEnabled);
+    if (heart) heart.textContent = bitEnabled ? '❤️' : '🤍';
     
     if (bitEnabled) {
       startBitEffect();
@@ -4077,8 +4088,20 @@ export default NavigationManager;
       return Promise.resolve();
     }
     
-    // Показываем прелоадер
-    container.innerHTML = '<div class="lyrics-placeholder">Загрузка текста...</div>';
+    // 🆕 КЭШИРОВАНИЕ: проверяем sessionStorage
+    const cacheKey = `lyrics_cache_${lyricsUrl}`;
+    const cached = sessionStorage.getItem(cacheKey);
+    
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        parseLyrics(parsed);
+        return Promise.resolve();
+      } catch {}
+    }
+    
+    // Показываем спиннер
+    container.innerHTML = '<div class="lyrics-spinner"></div>';
     
     try {
       const response = await fetch(lyricsUrl, { 
@@ -4100,6 +4123,10 @@ export default NavigationManager;
           if (!Array.isArray(asJson)) {
             throw new Error('Invalid lyrics JSON: not an array');
           }
+          
+          // 🆕 Сохраняем в sessionStorage
+          sessionStorage.setItem(cacheKey, JSON.stringify(asJson));
+          
           parseLyrics(asJson);
         } catch (parseError) {
           console.error('JSON parse error:', parseError);
@@ -4108,6 +4135,10 @@ export default NavigationManager;
       } else {
         // LRC или plain text
         const bodyText = await response.text();
+        
+        // 🆕 Сохраняем в sessionStorage
+        sessionStorage.setItem(cacheKey, JSON.stringify(bodyText));
+        
         parseLyrics(bodyText);
       }
 
@@ -4375,6 +4406,10 @@ export default NavigationManager;
     if (bitEnabled) {
       setTimeout(startBitEffect, 1000);
     }
+    
+    // 🆕 Обновляем иконку сердечка при загрузке
+    const heart = document.getElementById('pulse-heart');
+    if (heart) heart.textContent = bitEnabled ? '❤️' : '🤍';
 
     // Применяем режим лирики к DOM (если плеер уже создан)
     renderLyricsViewMode();
