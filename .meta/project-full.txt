@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-783470628f85b0cea2a74429fc9efc24ad6d002c.idx
-│   │       ├── pack-783470628f85b0cea2a74429fc9efc24ad6d002c.pack
-│   │       └── pack-783470628f85b0cea2a74429fc9efc24ad6d002c.rev
+│   │       ├── pack-0c8d0806dfe8361e752fe2a496dd18222bfa0d12.idx
+│   │       ├── pack-0c8d0806dfe8361e752fe2a496dd18222bfa0d12.pack
+│   │       └── pack-0c8d0806dfe8361e752fe2a496dd18222bfa0d12.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-08 19:19:13 UTC
+Сгенерировано: 2025-12-08 19:20:08 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1948,11 +1948,18 @@ class AlbumsManager {
 
       const coverPath = data.cover || 'cover.jpg';
 
+      // Поддержка обоих форматов: social_links (новый) и socials (старый)
+      const socialLinks = Array.isArray(data.social_links) 
+        ? data.social_links 
+        : (Array.isArray(data.socials) 
+            ? data.socials.map(s => ({ label: s.title, url: s.url }))
+            : []);
+
       albumData = {
         title: data.albumName || albumInfo.title,
         artist: data.artist || 'Витрина Разбита',
         cover: coverPath,
-        social_links: Array.isArray(data.social_links) ? data.social_links : [],
+        social_links: socialLinks,
         tracks: normTracks
       };
 
