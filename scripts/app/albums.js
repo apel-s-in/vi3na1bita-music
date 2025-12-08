@@ -99,6 +99,11 @@ class AlbumsManager {
         // поэтому делаем через вызов функции (она сама проверит состояние)
       }
 
+      // ✅ КРИТИЧНО: Сохраняем текущий альбом
+      this.currentAlbum = albumKey;
+      this.updateActiveIcon(albumKey);
+      localStorage.setItem('currentAlbum', albumKey);
+
       // ✅ МГНОВЕННОЕ обновление мини-плеера при смене вкладки
       if (window.PlayerUI && typeof window.PlayerUI.switchAlbumInstantly === 'function') {
         window.PlayerUI.switchAlbumInstantly(albumKey);
