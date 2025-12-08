@@ -321,13 +321,24 @@ import { APP_CONFIG } from './core/config.js';
       const wasPlaying = window.playerCore.isPlaying();
 
       const playingAlbum = window.AlbumsManager?.getPlayingAlbum?.() || null;
+      const currentAlbum = window.AlbumsManager?.getCurrentAlbum?.() || null;
+
+      // ✅ Сохраняем режим отображения и состояние анимации
+      const lyricsViewMode = localStorage.getItem('lyricsViewMode') || 'normal';
+      const animationEnabled = localStorage.getItem('lyricsAnimationEnabled') === '1';
 
       const state = {
         album: playingAlbum,
+        currentAlbum: currentAlbum, // ✅ Добавляем текущий просматриваемый альбом
         trackIndex: typeof index === 'number' ? index : 0,
         position: Math.floor(position || 0),
         volume: typeof volume === 'number' ? volume : 100,
-        wasPlaying: !!wasPlaying
+        wasPlaying: !!wasPlaying,
+        // ✅ Сохраняем UI состояние
+        lyricsViewMode: lyricsViewMode,
+        animationEnabled: animationEnabled,
+        // ✅ Сохраняем режим мини-плеера
+        isMiniMode: !!(playingAlbum && currentAlbum && playingAlbum !== currentAlbum)
       };
 
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -352,15 +363,34 @@ import { APP_CONFIG } from './core/config.js';
       if (!state || typeof state !== 'object') return;
 
       const albumKey = state.album;
+      const currentAlbum = state.currentAlbum || albumKey; // ✅ Восстанавливаем просматриваемый альбом
       const trackIndex = Number.isFinite(state.trackIndex) ? state.trackIndex : 0;
       const position = Number.isFinite(state.position) ? state.position : 0;
       const volume = Number.isFinite(state.volume) ? state.volume : 100;
       const wasPlaying = !!state.wasPlaying;
 
+      // ✅ Восстанавливаем UI состояние
+      if (state.lyricsViewMode) {
+        localStorage.setItem('lyricsViewMode', state.lyricsViewMode);
+      }
+      if (typeof state.animationEnabled === 'boolean') {
+        localStorage.setItem('lyricsAnimationEnabled', state.animationEnabled ? '1' : '0');
+      }
+
       if (!albumKey || !window.AlbumsManager || !window.playerCore) return;
 
-      // 1. Загружаем альбом или «Избранное»
-      await window.AlbumsManager.loadAlbum(albumKey);
+      // 1. ✅ Сначала загружаем ПРОСМАТРИВАЕМЫЙ альбом (для корректного UI)
+      if (currentAlbum && currentAlbum !== albumKey) {
+        await window.AlbumsManager.loadAlbum(currentAlbum);
+      }
+
+      // 2. Потом настраиваем ИГРАЮЩИЙ плейлист
+      if (albumKey === currentAlbum) {
+        // Обычный режим: играет тот же альбом что и просматриваем
+        await window.AlbumsManager.loadAlbum(albumKey);
+      } else {
+        // ✅ Мини-режим: играет один альбом, просматриваем другой
+        // Плейлист формируем для играющего альбома
 
       // 2. Формируем плейлист так же, как при обычном клике по треку
       if (albumKey === window.SPECIAL_FAVORITES_KEY) {
