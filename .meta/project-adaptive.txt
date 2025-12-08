@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d2c3d41b0f7ff32f62e510c59487d1530e49a037.idx
-│   │       ├── pack-d2c3d41b0f7ff32f62e510c59487d1530e49a037.pack
-│   │       └── pack-d2c3d41b0f7ff32f62e510c59487d1530e49a037.rev
+│   │       ├── pack-9981e46fc63b3e980b479300d9cc7f238029344a.idx
+│   │       ├── pack-9981e46fc63b3e980b479300d9cc7f238029344a.pack
+│   │       └── pack-9981e46fc63b3e980b479300d9cc7f238029344a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-08 16:04:17 UTC
+Сгенерировано: 2025-12-08 16:13:32 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3211,7 +3211,15 @@ export default NavigationManager;
 
     restoreSettings();
     attachPlayerCoreEvents();
-    
+  
+    // ✅ КРИТИЧНО: Привязываем кнопку фильтрации
+    const filterBtn = document.getElementById('filter-favorites-btn');
+    if (filterBtn) {
+      filterBtn.addEventListener('click', () => {
+        toggleFavoritesFilter();
+      });
+    }
+  
     console.log('✅ PlayerUI initialized');
   }
 
@@ -3644,13 +3652,12 @@ export default NavigationManager;
     block.querySelector('#lyrics-toggle-btn')?.addEventListener('click', toggleLyricsView);
     block.querySelector('#animation-btn')?.addEventListener('click', toggleAnimation);
     block.querySelector('#pulse-btn')?.addEventListener('click', togglePulse);
-    const favBtn = block.querySelector('#favorites-btn');
-    if (favBtn) {
-      // Удаляем все старые обработчики (если были)
-      favBtn.replaceWith(favBtn.cloneNode(true));
-      const newFavBtn = block.querySelector('#favorites-btn');
-  
-      newFavBtn.addEventListener('click', () => {
+    // ✅ КРИТИЧНО: Привязываем кнопку звёздочки
+    const favoritesBtn = block.querySelector('#favorites-btn');
+    if (favoritesBtn) {
+      favoritesBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         toggleFavoritesOnly();
       });
     }
@@ -4386,9 +4393,15 @@ export default NavigationManager;
   // ========== ФИЛЬТРАЦИЯ ТРЕКОВ В СПИСКЕ ==========
 
   function toggleFavoritesFilter() {
-    const currentAlbum = w.AlbumsManager?.getCurrentAlbum();
-    const trackList = document.getElementById('track-list');
-    const btn = document.getElementById('filter-favorites-btn');
+      console.log('🔍 toggleFavoritesFilter() called'); // ✅ ОТЛАДКА
+  
+      const currentAlbum = w.AlbumsManager?.getCurrentAlbum();
+      const trackList = document.getElementById('track-list');
+      const btn = document.getElementById('filter-favorites-btn');
+  
+      console.log('Current album:', currentAlbum); // ✅ ОТЛАДКА
+      console.log('Track list:', trackList); // ✅ ОТЛАДКА
+      console.log('Filter button:', btn); // ✅ ОТЛАДКА
   
     if (!currentAlbum || !trackList || !btn) return;
   
@@ -4442,6 +4455,13 @@ export default NavigationManager;
   }
 
   function toggleFavoritesFilterForFavorites() {
+    console.log('⭐ toggleFavoritesOnly() called'); // ✅ ОТЛАДКА
+  
+    const btn = document.getElementById('favorites-btn');
+    const icon = document.getElementById('favorites-btn-icon');
+  
+    console.log('Favorites button:', btn); // ✅ ОТЛАДКА
+    console.log('Favorites icon:', icon); // ✅ ОТЛАДКА
     const trackList = document.getElementById('track-list');
     const btn = document.getElementById('filter-favorites-btn');
   
