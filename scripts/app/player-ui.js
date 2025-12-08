@@ -185,7 +185,9 @@
     block.innerHTML = `
       <div id="lyrics-window" class="lyrics-${lyricsViewMode}">
         <div class="lyrics-animated-bg${animationEnabled ? ' active' : ''}"></div>
-        <div class="lyrics-scroll" id="lyrics"></div>
+        <div class="lyrics-scroll" id="lyrics">
+          <div class="lyrics-placeholder lyrics-spinner"></div>
+        </div>
       </div>
       
       <div class="player-progress-wrapper">
@@ -241,8 +243,7 @@
             </svg>
           </button>
           
-          <button class="player-control-btn animation-btn" id="animation-btn" title="Анимация лирики (A)">A</button>
-          <button class="player-control-btn bit-btn" id="bit-btn" title="Пульсация логотипа (B)">B</button>
+          <!-- Кнопки A и B убраны отсюда, будут в player-buttons-wrapper -->
           
           <button class="player-control-btn" id="repeat-btn" title="Повтор трека (R)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
