@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f27c6e45eb87c1b0f037054a93a1688f7416c9af.idx
-│   │       ├── pack-f27c6e45eb87c1b0f037054a93a1688f7416c9af.pack
-│   │       └── pack-f27c6e45eb87c1b0f037054a93a1688f7416c9af.rev
+│   │       ├── pack-23d1a5b0d35b05346d34d73eae772eae84f10544.idx
+│   │       ├── pack-23d1a5b0d35b05346d34d73eae772eae84f10544.pack
+│   │       └── pack-23d1a5b0d35b05346d34d73eae772eae84f10544.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-08 19:47:57 UTC
+Сгенерировано: 2025-12-08 19:48:39 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3116,7 +3116,9 @@ class GalleryManager {
 
   renderHtml(slot, src) {
     const iframe = document.createElement('iframe');
-    iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups allow-forms');
+    
+    // ✅ ИСПРАВЛЕНО: Убираем allow-same-origin (безопасность)
+    iframe.setAttribute('sandbox', 'allow-scripts allow-popups allow-forms');
     iframe.setAttribute('referrerpolicy', 'no-referrer');
     iframe.loading = 'lazy';
     iframe.src = src;
