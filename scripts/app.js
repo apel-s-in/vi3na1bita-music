@@ -384,14 +384,6 @@ import { APP_CONFIG } from './core/config.js';
         await window.AlbumsManager.loadAlbum(currentAlbum);
       }
 
-      // 2. Потом настраиваем ИГРАЮЩИЙ плейлист
-      if (albumKey === currentAlbum) {
-        // Обычный режим: играет тот же альбом что и просматриваем
-        await window.AlbumsManager.loadAlbum(albumKey);
-      } else {
-        // ✅ Мини-режим: играет один альбом, просматриваем другой
-        // Плейлист формируем для играющего альбома
-
       // 2. Формируем плейлист так же, как при обычном клике по треку
       if (albumKey === window.SPECIAL_FAVORITES_KEY) {
         // Виртуальный плейлист избранного
