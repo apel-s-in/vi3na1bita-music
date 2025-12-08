@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-99f6a6d8322125d9660a1aead4c776a22e45baed.idx
-│   │       ├── pack-99f6a6d8322125d9660a1aead4c776a22e45baed.pack
-│   │       └── pack-99f6a6d8322125d9660a1aead4c776a22e45baed.rev
+│   │       ├── pack-e6a20ccf76b4074f6cb96829daaa14dd371690d3.idx
+│   │       ├── pack-e6a20ccf76b4074f6cb96829daaa14dd371690d3.pack
+│   │       └── pack-e6a20ccf76b4074f6cb96829daaa14dd371690d3.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-08 20:56:35 UTC
+Сгенерировано: 2025-12-08 20:58:47 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8306,7 +8306,9 @@ export default ServiceWorkerManager;
           <!-- ВАШ ВСТАВЛЕННЫЙ КОД Яндекс Музыки (адаптивный на весь квадрат) -->
           <iframe
             frameborder="0"
-            allow="clipboard-write"
+            sandbox="allow-scripts allow-popups allow-forms"
+            referrerpolicy="no-referrer"
+            allow="clipboard-write; autoplay; encrypted-media"
             style="border:none;width:614px;height:614px;"
             width="614"
             height="614"
