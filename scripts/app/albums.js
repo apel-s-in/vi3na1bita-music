@@ -273,21 +273,18 @@ class AlbumsManager {
       trackEl.dataset.album = item.__a;
       trackEl.dataset.originalTrack = item.__t;
 
-      const num = String(index + 1).padStart(2, '0');
-      
-    const sizeHint = typeof track.size === 'number'
-      ? ` · ~${track.size.toFixed(2)} МБ`
-      : '';
+      const displayNum = String(index + 1).padStart(2, '0');
+      const isActive = item.__active;
 
-    trackEl.innerHTML = `
-      <div class="tnum">${track.num || index + 1}</div>
-      <div class="track-title" title="${track.title}${sizeHint}">${track.title}</div>
-      <img src="${isFavorite ? 'img/star.png' : 'img/star2.png'}" 
-           class="like-star" 
-           alt="звезда"
-           data-album="${albumKey}" 
-           data-num="${track.num || index + 1}">
-    `;
+      trackEl.innerHTML = `
+        <div class="tnum">${displayNum}</div>
+        <div class="track-title" title="${item.title || 'Трек'}">${item.title || 'Трек'}</div>
+        <img src="${isActive ? 'img/star.png' : 'img/star2.png'}" 
+             class="like-star" 
+             alt="звезда"
+             data-album="${item.__a}" 
+             data-num="${item.__t}">
+      `;
 
       trackEl.addEventListener('click', async (e) => {
         if (e.target.classList.contains('like-star')) return;
