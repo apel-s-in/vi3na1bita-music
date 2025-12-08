@@ -36,6 +36,7 @@ const STATIC_ASSETS = [
   // Скрипты ядра и UI
   './scripts/core/bootstrap.js',
   './scripts/core/config.js',
+  './scripts/app/gallery.js',
   './scripts/ui/notify.js',
   './scripts/ui/favorites-const.js',
   './scripts/ui/favorites-storage.js',
