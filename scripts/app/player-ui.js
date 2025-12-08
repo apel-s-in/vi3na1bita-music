@@ -1586,7 +1586,34 @@
       w.availableFavoriteIndices = null;
     }
   }
-
+  function resetFiltersOnAlbumChange() {
+    favoritesFilterActive = false;
+    favoritesOnlyMode = false;
+  
+    const filterBtn = document.getElementById('filter-favorites-btn');
+    const trackList = document.getElementById('track-list');
+    const favBtn = document.getElementById('favorites-btn');
+    const favIcon = document.getElementById('favorites-btn-icon');
+  
+    if (filterBtn) {
+      filterBtn.textContent = 'Скрыть не отмеченные ⭐ песни';
+      filterBtn.classList.remove('filtered');
+    }
+  
+    if (trackList) {
+      trackList.classList.remove('filtered');
+    }
+  
+    if (favBtn) {
+      favBtn.classList.remove('favorites-active');
+    }
+  
+    if (favIcon) {
+      favIcon.src = 'img/star2.png';
+    }
+  
+    w.availableFavoriteIndices = null;
+  }
   function rebuildShuffledPlaylist() {
     console.log('🔀 rebuildShuffledPlaylist() called'); // ✅ ОТЛАДКА
   
