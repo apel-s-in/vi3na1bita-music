@@ -47,6 +47,8 @@ class AlbumsManager {
 
     container.innerHTML = '';
 
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
     APP_CONFIG.ICON_ALBUMS_ORDER.forEach(({ key, title, icon }) => {
       if (!key.startsWith('__')) {
         const exists = window.albumsIndex.some(a => a.key === key);
@@ -58,7 +60,17 @@ class AlbumsManager {
       iconEl.dataset.album = key;
       iconEl.dataset.akey = key;
       iconEl.title = title;
-      iconEl.innerHTML = `<img src="${icon}" alt="${title}" draggable="false">`;
+
+      // Адаптивные пути (как в старом коде)
+      const baseIcon = icon || 'img/logo.png';
+      const path1x = isMobile
+        ? baseIcon.replace(/icon_album\/(.+)\.png$/i, 'icon_album/mobile/$1@1x.jpg')
+        : baseIcon.replace(/\.png$/i, '@1x.png');
+      const path2x = isMobile
+        ? path1x.replace(/@1x\.jpg$/i, '@2x.jpg')
+        : path1x.replace(/@1x\.png$/i, '@2x.png');
+
+      iconEl.innerHTML = `<img src="${path1x}" srcset="${path2x} 2x" alt="${title}" draggable="false" loading="lazy" width="60" height="60">`;
 
       iconEl.addEventListener('click', () => this.loadAlbum(key));
       container.appendChild(iconEl);
@@ -184,10 +196,16 @@ class AlbumsManager {
       this.albumsData.set(albumKey, albumData);
     }
 
+    // Загрузка галереи через GalleryManager
     await this.loadGallery(albumKey);
 
     this.renderAlbumTitle(albumData.title || albumInfo.title);
-    this.renderCover(albumInfo, albumData);
+    
+    // Рендер обложки только если галерея пуста
+    if (!window.GalleryManager || window.GalleryManager.getItemsCount() === 0) {
+      this.renderCover(albumInfo, albumData);
+    }
+    
     this.renderSocials(albumData.social_links);
     this.renderTrackList(albumData.tracks, albumInfo);
 
@@ -406,15 +424,12 @@ class AlbumsManager {
     const coverSlot = document.getElementById('cover-slot');
     if (!coverSlot) return;
 
-    if (this.galleryItems.length > 0) {
-      this.renderGalleryCover();
-    } else {
-      const coverUrl = albumData.cover 
-        ? `${albumInfo.base}${albumData.cover}` 
-        : `${albumInfo.base}cover.jpg`;
-      
-      coverSlot.innerHTML = `<img src="${coverUrl}" alt="${albumInfo.title}" draggable="false" loading="lazy">`;
-    }
+    // Простой fallback на cover.jpg из базы альбома
+    const coverUrl = albumData.cover 
+      ? `${albumInfo.base}${albumData.cover}` 
+      : `${albumInfo.base}cover.jpg`;
+    
+    coverSlot.innerHTML = `<img src="${coverUrl}" alt="${albumInfo.title}" draggable="false" loading="lazy">`;
   }
 
   renderSocials(links) {
