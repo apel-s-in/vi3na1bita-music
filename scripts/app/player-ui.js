@@ -125,6 +125,19 @@
   // ✅ Debounce для предотвращения множественных вызовов
   let ensurePlayerBlockTimeout = null;
   
+  function ensurePlayerBlock(trackIndex) {
+    // Отменяем предыдущий отложенный вызов
+    if (ensurePlayerBlockTimeout) {
+      clearTimeout(ensurePlayerBlockTimeout);
+    }
+    
+    // Откладываем выполнение на 50ms
+    ensurePlayerBlockTimeout = setTimeout(() => {
+      ensurePlayerBlockTimeout = null;
+      _doEnsurePlayerBlock(trackIndex);
+    }, 50);
+  }
+  
   function _doEnsurePlayerBlock(trackIndex) {
     let playerBlock = document.getElementById('lyricsplayerblock');
   
@@ -544,25 +557,6 @@
       });
     }
     
-    block.querySelector('#sleep-timer-btn')?.addEventListener('click', () => w.SleepTimer?.show?.());
-    block.querySelector('#lyrics-text-btn')?.addEventListener('click', () => w.LyricsModal?.show?.());
-
-    const downloadBtn = block.querySelector('#track-download-btn');
-    downloadBtn?.addEventListener('click', (e) => {
-      const track = w.playerCore?.getCurrentTrack();
-      if (!track || !track.src) {
-        e.preventDefault();
-        w.NotificationSystem?.error('Трек недоступен для скачивания');
-      }
-    });
-
-    block.querySelector('#eco-btn')?.addEventListener('click', toggleEcoMode);
-
-    document.addEventListener('mousemove', handleSeeking);
-    document.addEventListener('touchmove', handleSeeking);
-    document.addEventListener('mouseup', stopSeeking);
-    document.addEventListener('touchend', stopSeeking);
-  }
     block.querySelector('#sleep-timer-btn')?.addEventListener('click', () => w.SleepTimer?.show?.());
     block.querySelector('#lyrics-text-btn')?.addEventListener('click', () => w.LyricsModal?.show?.());
 
