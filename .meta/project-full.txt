@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-dc537a951e93b93d28e7f81aed28f1bb7d848033.idx
-│   │       ├── pack-dc537a951e93b93d28e7f81aed28f1bb7d848033.pack
-│   │       └── pack-dc537a951e93b93d28e7f81aed28f1bb7d848033.rev
+│   │       ├── pack-953b128d1139539f1540b06adcb5a82509e02bec.idx
+│   │       ├── pack-953b128d1139539f1540b06adcb5a82509e02bec.pack
+│   │       └── pack-953b128d1139539f1540b06adcb5a82509e02bec.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-08 08:05:11 UTC
+Сгенерировано: 2025-12-08 08:06:36 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8964,6 +8964,36 @@ header {
   font-size: 14px;
   opacity: 0.6;
   user-select: none;
+}
+/* Обратный отсчёт перед началом текста */
+.lyrics-countdown {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 4em; /* Размер как ~3 строки текста */
+  font-weight: 900;
+  color: rgba(77,170,255,0.35); /* Полупрозрачный голубой */
+  z-index: 0.5; /* Между фоном (0) и текстом (1) */
+  pointer-events: none;
+  user-select: none;
+  text-shadow: 0 2px 12px rgba(77,170,255,0.2);
+  animation: countdownPulse 1s ease-in-out infinite;
+}
+
+.lyrics-countdown.fade-out {
+  animation: countdownFadeOut 1s ease-out forwards;
+}
+
+@keyframes countdownPulse {
+  0%, 100% { transform: scale(1); opacity: 0.35; }
+  50% { transform: scale(1.05); opacity: 0.45; }
+}
+
+@keyframes countdownFadeOut {
+  from { opacity: 0.35; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.9); }
 }
 
 /* Обычный режим: 5 строк */
