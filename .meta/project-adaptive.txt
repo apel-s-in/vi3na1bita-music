@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-bd7f6b98aa037478dd8790bbdb6bf011ddd34351.idx
-│   │       ├── pack-bd7f6b98aa037478dd8790bbdb6bf011ddd34351.pack
-│   │       └── pack-bd7f6b98aa037478dd8790bbdb6bf011ddd34351.rev
+│   │       ├── pack-75bcdfe4d1b138dfc90c353359eeeb87871cea5b.idx
+│   │       ├── pack-75bcdfe4d1b138dfc90c353359eeeb87871cea5b.pack
+│   │       └── pack-75bcdfe4d1b138dfc90c353359eeeb87871cea5b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-08 10:03:20 UTC
+Сгенерировано: 2025-12-08 10:05:35 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4011,10 +4011,15 @@ export default NavigationManager;
       savedAnimationForMini = animationEnabled ? true : false;
     }
 
-    // В мини-режиме само окно и кнопка режима скрываются
+    // ✅ В мини-режиме МГНОВЕННО скрываем лирику
     const lyricsWindow = playerBlock.querySelector('#lyrics-window');
     if (lyricsWindow) {
       lyricsWindow.style.display = 'none';
+      lyricsWindow.style.transition = 'none'; // Убираем плавность
+      // Восстанавливаем transition после скрытия
+      setTimeout(() => {
+        if (lyricsWindow) lyricsWindow.style.transition = '';
+      }, 50);
     }
 
     const lyricsToggle = playerBlock.querySelector('.lyrics-toggle-btn');
@@ -4043,9 +4048,15 @@ export default NavigationManager;
 
     isInContextMiniMode = false;
 
+    // ✅ МГНОВЕННО восстанавливаем окно лирики
     const lyricsWindow = playerBlock.querySelector('#lyrics-window');
     if (lyricsWindow) {
+      lyricsWindow.style.transition = 'none'; // Убираем плавность
       lyricsWindow.style.display = '';
+      // Восстанавливаем transition
+      setTimeout(() => {
+        if (lyricsWindow) lyricsWindow.style.transition = '';
+      }, 50);
     }
 
     const lyricsToggle = playerBlock.querySelector('.lyrics-toggle-btn');
@@ -4545,6 +4556,7 @@ export default NavigationManager;
     updateNextUpLabel,
     togglePlayPause,
     toggleLikePlaying,
+    switchAlbumInstantly, // ✅ Добавляем новую функцию
     /**
      * Текущая распарсенная лирика (для LyricsModal и других модулей).
      * Формат: [{ time: number, text: string }]
