@@ -1517,6 +1517,10 @@
     togglePlayPause,
     toggleLikePlaying,
     switchAlbumInstantly,
+    // ✅ Новые функции для фильтрации
+    toggleFavoritesFilter,
+    toggleFavoritesOnly,
+    updateAvailableTracksForPlayback,
     get currentLyrics() {
       return currentLyrics;
     },
