@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-195a1cc4b5257f6ec24c2a4d3a540e894d716310.idx
-│   │       ├── pack-195a1cc4b5257f6ec24c2a4d3a540e894d716310.pack
-│   │       └── pack-195a1cc4b5257f6ec24c2a4d3a540e894d716310.rev
+│   │       ├── pack-098e3e56f8e3c67f567202d96f7cf3f81a180e70.idx
+│   │       ├── pack-098e3e56f8e3c67f567202d96f7cf3f81a180e70.pack
+│   │       └── pack-098e3e56f8e3c67f567202d96f7cf3f81a180e70.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-08 12:02:07 UTC
+Сгенерировано: 2025-12-08 16:02:45 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3644,7 +3644,16 @@ export default NavigationManager;
     block.querySelector('#lyrics-toggle-btn')?.addEventListener('click', toggleLyricsView);
     block.querySelector('#animation-btn')?.addEventListener('click', toggleAnimation);
     block.querySelector('#pulse-btn')?.addEventListener('click', togglePulse);
-    block.querySelector('#favorites-btn')?.addEventListener('click', toggleFavoritesOnly);
+    const favBtn = block.querySelector('#favorites-btn');
+    if (favBtn) {
+      // Удаляем все старые обработчики (если были)
+      favBtn.replaceWith(favBtn.cloneNode(true));
+      const newFavBtn = block.querySelector('#favorites-btn');
+  
+      newFavBtn.addEventListener('click', () => {
+        toggleFavoritesOnly();
+      });
+    }
     block.querySelector('#sleep-timer-btn')?.addEventListener('click', () => w.SleepTimer?.show?.());
     block.querySelector('#lyrics-text-btn')?.addEventListener('click', () => w.LyricsModal?.show?.());
 
@@ -4681,6 +4690,8 @@ export default NavigationManager;
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   }
 
+  // ========== ПУБЛИЧНЫЙ API ==========
+
   w.PlayerUI = {
     initialize: initPlayerUI,
     ensurePlayerBlock,
@@ -4689,7 +4700,7 @@ export default NavigationManager;
     togglePlayPause,
     toggleLikePlaying,
     switchAlbumInstantly,
-    // ✅ Новые функции для фильтрации
+    // ✅ КРИТИЧНО: Экспортируем функции фильтрации
     toggleFavoritesFilter,
     toggleFavoritesOnly,
     updateAvailableTracksForPlayback,
@@ -4702,6 +4713,10 @@ export default NavigationManager;
         : [];
     }
   };
+
+  // ✅ КРИТИЧНО: Глобальный доступ для onclick в HTML
+  w.toggleFavoritesFilter = toggleFavoritesFilter;
+  w.toggleFavoritesOnly = toggleFavoritesOnly;
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initPlayerUI);
