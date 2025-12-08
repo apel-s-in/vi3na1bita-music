@@ -195,78 +195,9 @@ class AlbumsManager {
   }
 
   async loadGallery(albumKey) {
-    let centralId = null;
-    
-    if (albumKey === 'mezhdu-zlom-i-dobrom') centralId = '01';
-    else if (albumKey === 'golos-dushi') centralId = '02';
-    else if (albumKey === 'krevetochka') centralId = '00';
-
-    if (!centralId) {
-      this.galleryItems = [];
-      return;
-    }
-
-    try {
-      const response = await fetch(`./albums/gallery/${centralId}/index.json`, {
-        cache: 'force-cache'
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        this.galleryItems = Array.isArray(data.items) ? data.items : [];
-        this.galleryIndex = 0;
-        
-        this.updateGalleryNavigation();
-        this.renderGalleryCover();
-      }
-    } catch (error) {
-      console.warn('Failed to load gallery:', error);
-      this.galleryItems = [];
-    }
-  }
-
-  setupGalleryNavigation() {
-    const leftBtn = document.getElementById('cover-gallery-arrow-left');
-    const rightBtn = document.getElementById('cover-gallery-arrow-right');
-
-    leftBtn?.addEventListener('click', () => {
-      if (this.galleryItems.length <= 1) return;
-      this.galleryIndex = (this.galleryIndex - 1 + this.galleryItems.length) % this.galleryItems.length;
-      this.renderGalleryCover();
-    });
-
-    rightBtn?.addEventListener('click', () => {
-      if (this.galleryItems.length <= 1) return;
-      this.galleryIndex = (this.galleryIndex + 1) % this.galleryItems.length;
-      this.renderGalleryCover();
-    });
-  }
-
-  updateGalleryNavigation() {
-    const coverWrap = document.getElementById('cover-wrap');
-    if (!coverWrap) return;
-
-    if (this.galleryItems.length > 1) {
-      coverWrap.classList.add('gallery-nav-ready');
-    } else {
-      coverWrap.classList.remove('gallery-nav-ready');
-    }
-  }
-
-  renderGalleryCover() {
-    if (!this.galleryItems.length) return;
-
-    const item = this.galleryItems[this.galleryIndex];
-    const coverSlot = document.getElementById('cover-slot');
-    if (!coverSlot) return;
-
-    if (item.type === 'html' && item.src) {
-      coverSlot.innerHTML = `<iframe src="${item.src}" frameborder="0" loading="lazy"></iframe>`;
-    } else if (item.formats) {
-      const src = item.formats.webp || item.formats.full || item.src;
-      coverSlot.innerHTML = `<img src="${src}" alt="Обложка" draggable="false" loading="lazy">`;
-    } else if (item.src) {
-      coverSlot.innerHTML = `<img src="${item.src}" alt="Обложка" draggable="false" loading="lazy">`;
+    // Делегируем в GalleryManager
+    if (window.GalleryManager) {
+      await window.GalleryManager.loadGallery(albumKey);
     }
   }
 
@@ -484,9 +415,18 @@ class AlbumsManager {
     if (!container) return;
 
     container.innerHTML = '';
-    if (!links || links.length === 0) return;
+    
+    // Поддержка старого формата из config.json: { socials: [{title, url}] }
+    const normalized = Array.isArray(links) 
+      ? links.map(link => ({
+          label: link.label || link.title || 'Ссылка',
+          url: link.url
+        }))
+      : [];
 
-    links.forEach(link => {
+    if (normalized.length === 0) return;
+
+    normalized.forEach(link => {
       const a = document.createElement('a');
       a.href = link.url;
       a.target = '_blank';
@@ -625,16 +565,15 @@ class AlbumsManager {
 
   clearUI() {
     const trackList = document.getElementById('track-list');
-    const coverSlot = document.getElementById('cover-slot');
     const socials = document.getElementById('social-links');
 
     if (trackList) trackList.innerHTML = '';
-    if (coverSlot) coverSlot.innerHTML = '';
     if (socials) socials.innerHTML = '';
     
-    this.galleryItems = [];
-    this.galleryIndex = 0;
-    this.updateGalleryNavigation();
+    // Очистка галереи через GalleryManager
+    if (window.GalleryManager) {
+      window.GalleryManager.clear();
+    }
   }
 
   getCurrentAlbum() {
