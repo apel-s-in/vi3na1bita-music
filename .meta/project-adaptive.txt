@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-03308021accf96412530e3e632e6a438028f47e9.idx
-│   │       ├── pack-03308021accf96412530e3e632e6a438028f47e9.pack
-│   │       └── pack-03308021accf96412530e3e632e6a438028f47e9.rev
+│   │       ├── pack-bd7f6b98aa037478dd8790bbdb6bf011ddd34351.idx
+│   │       ├── pack-bd7f6b98aa037478dd8790bbdb6bf011ddd34351.pack
+│   │       └── pack-bd7f6b98aa037478dd8790bbdb6bf011ddd34351.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-08 10:02:05 UTC
+Сгенерировано: 2025-12-08 10:03:20 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1854,6 +1854,16 @@ class AlbumsManager {
       this.updateActiveIcon(albumKey);
       this.currentAlbum = albumKey;
       localStorage.setItem('currentAlbum', albumKey);
+
+      // ✅ МГНОВЕННОЕ обновление мини-плеера при смене вкладки
+      if (window.PlayerUI && typeof window.PlayerUI.switchAlbumInstantly === 'function') {
+        window.PlayerUI.switchAlbumInstantly(albumKey);
+      }
+
+      // ✅ Сохраняем состояние после переключения альбома
+      if (window.PlayerState && typeof window.PlayerState.save === 'function') {
+        window.PlayerState.save();
+      }
 
       console.log(`✅ Album loaded: ${albumKey}`);
 
