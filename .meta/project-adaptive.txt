@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-bba9ad2daeacedfd447ed2eedb33514f288deb65.idx
-│   │       ├── pack-bba9ad2daeacedfd447ed2eedb33514f288deb65.pack
-│   │       └── pack-bba9ad2daeacedfd447ed2eedb33514f288deb65.rev
+│   │       ├── pack-6e39256cba4ad87b087c16b8d4113a792f2da9e1.idx
+│   │       ├── pack-6e39256cba4ad87b087c16b8d4113a792f2da9e1.pack
+│   │       └── pack-6e39256cba4ad87b087c16b8d4113a792f2da9e1.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-08 07:56:24 UTC
+Сгенерировано: 2025-12-08 07:57:34 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9298,17 +9298,20 @@ header {
   justify-content: space-between;
 }
 
-/* Кнопки ТЕКСТ / СКАЧАТЬ / ЭКО */
+/* Кнопки ТЕКСТ / СКАЧАТЬ / ЭКО — одинаковый размер 44×44px */
 .karaoke-btn,
 .player-download-btn,
 .eco-btn {
-  flex: 1;
-  min-width: 0;
-  padding: 10px 12px;
+  width: 44px;
+  min-width: 44px;
+  max-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  max-height: 44px;
+  padding: 0;
   border-radius: 8px;
   font-weight: bold;
-  font-size: 12px;
-  letter-spacing: 0.03em;
+  font-size: 18px; /* Размер эмодзи */
   cursor: pointer;
   transition: all 0.2s;
   text-align: center;
@@ -9316,7 +9319,7 @@ header {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  flex-shrink: 0;
 }
 
 .karaoke-btn {
