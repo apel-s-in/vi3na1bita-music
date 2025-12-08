@@ -159,13 +159,25 @@
       if (!trackList) return;
 
       const trackRow = trackList.querySelector(`.track[data-index="${trackIndex}"]`);
-      if (trackRow && trackRow.nextSibling !== playerBlock) {
-        if (trackRow.nextSibling) {
-          trackRow.parentNode.insertBefore(playerBlock, trackRow.nextSibling);
-        } else {
-          trackRow.parentNode.appendChild(playerBlock);
+  
+      if (trackRow) {
+        // ✅ КРИТИЧНО: Проверяем, находится ли блок В DOM
+        if (!playerBlock.parentNode) {
+          // Блок НЕ в DOM — вставляем после трека
+          if (trackRow.nextSibling) {
+            trackRow.parentNode.insertBefore(playerBlock, trackRow.nextSibling);
+          } else {
+            trackRow.parentNode.appendChild(playerBlock);
+          }
+        } else if (trackRow.nextSibling !== playerBlock) {
+          // Блок УЖЕ в DOM, но НЕ после текущего трека — перемещаем
+          if (trackRow.nextSibling) {
+            trackRow.parentNode.insertBefore(playerBlock, trackRow.nextSibling);
+          } else {
+            trackRow.parentNode.appendChild(playerBlock);
+          }
         }
-        
+    
         setTimeout(() => {
           trackRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }, 50);
@@ -1283,15 +1295,8 @@
   }
 
   function toggleFavoritesFilterForFavorites() {
-    console.log('⭐ toggleFavoritesOnly() called'); // ✅ ОТЛАДКА
-  
-    const btn = document.getElementById('favorites-btn');
-    const icon = document.getElementById('favorites-btn-icon');
-  
-    console.log('Favorites button:', btn); // ✅ ОТЛАДКА
-    console.log('Favorites icon:', icon); // ✅ ОТЛАДКА
-    const trackList = document.getElementById('track-list');
-    const btn = document.getElementById('filter-favorites-btn');
+      const trackList = document.getElementById('track-list');
+      const btn = document.getElementById('filter-favorites-btn');
   
     if (!trackList || !btn) return;
   
