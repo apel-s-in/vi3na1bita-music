@@ -125,6 +125,7 @@
     const nowPlaying = document.getElementById('now-playing');
 
     if (inMiniMode) {
+      // ✅ МГНОВЕННОЕ переключение в мини-режим
       if (nowPlaying && !nowPlaying.contains(playerBlock)) {
         nowPlaying.innerHTML = '';
 
@@ -137,8 +138,26 @@
         nowPlaying.appendChild(nextUp);
       }
 
-      // Применяем состояние лирики для контекстного мини-режима
+      // ✅ Применяем состояние лирики МГНОВЕННО
       applyMiniLyricsState();
+
+      // ✅ Мгновенно показываем мини-элементы
+      const miniHeaderEl = document.getElementById('mini-now');
+      if (miniHeaderEl) {
+        miniHeaderEl.style.display = 'flex';
+        miniHeaderEl.style.transition = 'none'; // Убираем плавность
+      }
+
+      const nextUpEl = document.getElementById('next-up');
+      if (nextUpEl) {
+        nextUpEl.style.display = 'flex';
+        nextUpEl.style.transition = 'none';
+      }
+
+      // ✅ Прокручиваем к мини-плееру при переключении
+      setTimeout(() => {
+        nowPlaying.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 50);
 
       // Мини-шапка и "Далее" видны
       const miniHeaderEl = document.getElementById('mini-now');
@@ -153,6 +172,7 @@
 
       const trackRow = trackList.querySelector(`.track[data-index="${trackIndex}"]`);
       if (trackRow) {
+        // ✅ МГНОВЕННОЕ перемещение блока плеера
         if (trackRow.nextSibling !== playerBlock) {
           if (trackRow.nextSibling) {
             trackRow.parentNode.insertBefore(playerBlock, trackRow.nextSibling);
@@ -160,10 +180,28 @@
             trackRow.parentNode.appendChild(playerBlock);
           }
         }
+
+        // ✅ Мгновенная прокрутка к плееру
+        setTimeout(() => {
+          trackRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 50);
       }
 
-      // В полноэкранном режиме восстанавливаем режим и видимость лирики
+      // ✅ МГНОВЕННОЕ восстановление режима лирики
       restoreLyricsStateIfNeeded();
+
+      // ✅ Мгновенно скрываем мини-элементы
+      const miniHeaderEl = document.getElementById('mini-now');
+      if (miniHeaderEl) {
+        miniHeaderEl.style.display = 'none';
+        miniHeaderEl.style.transition = 'none';
+      }
+
+      const nextUpEl = document.getElementById('next-up');
+      if (nextUpEl) {
+        nextUpEl.style.display = 'none';
+        nextUpEl.style.transition = 'none';
+      }
 
       // Мини-шапка и "Далее" скрываем (но не удаляем)
       const miniHeaderEl = document.getElementById('mini-now');
@@ -433,6 +471,41 @@
     if (titleEl) {
       titleEl.textContent = nextTrack.title || '—';
       titleEl.title = nextTrack.title || '—';
+    }
+  }
+  /**
+   * ✅ МГНОВЕННОЕ переключение между вкладками альбомов
+   * Вызывается из AlbumsManager при смене альбома
+   */
+  function switchAlbumInstantly(newAlbumKey) {
+    const playingAlbum = w.AlbumsManager?.getPlayingAlbum?.();
+    
+    // Проверяем нужно ли включить мини-режим
+    const shouldBeMini = !!(playingAlbum && playingAlbum !== newAlbumKey);
+    
+    // Получаем текущий индекс играющего трека
+    const currentIndex = w.playerCore?.getIndex() || 0;
+    
+    if (shouldBeMini) {
+      // ✅ Мгновенно переводим в мини-режим
+      ensurePlayerBlock(currentIndex);
+      
+      // Обновляем все UI элементы
+      updateMiniHeader();
+      updateNextUpLabel();
+      
+      // Сохраняем состояние
+      if (w.PlayerState && typeof w.PlayerState.save === 'function') {
+        w.PlayerState.save();
+      }
+    } else {
+      // ✅ Мгновенно переводим в обычный режим
+      ensurePlayerBlock(currentIndex);
+      
+      // Сохраняем состояние
+      if (w.PlayerState && typeof w.PlayerState.save === 'function') {
+        w.PlayerState.save();
+      }
     }
   }
 
