@@ -276,13 +276,21 @@
       </div>
       
       <div class="player-buttons-wrapper">
-        <button class="lyrics-toggle-btn lyrics-${lyricsViewMode}" id="lyrics-toggle-btn" title="Режим лирики (Y)">
-          <span class="lyrics-toggle-btn-visual">Т</span>
-        </button>
-        
         <div class="player-extra-buttons-row">
+          <button class="lyrics-toggle-btn lyrics-${lyricsViewMode}" id="lyrics-toggle-btn" title="Режим лирики (Y)">
+            <span class="lyrics-toggle-btn-visual">Т</span>
+          </button>
+          
+          <button class="animation-btn" id="animation-btn" title="Анимация лирики (A)">A</button>
+          
           <button class="karaoke-btn" id="lyrics-text-btn" title="Полный текст песни">📝</button>
+          
+          <button class="pulse-btn" id="pulse-btn" title="Пульсация логотипа">
+            <span id="pulse-heart">🤍</span>
+          </button>
+          
           <a class="player-download-btn" href="#" id="track-download-btn" download title="Скачать трек">💾</a>
+          
           <button id="eco-btn" class="eco-btn" title="Эконом режим">
             <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
               <path d="M13 3L4 14h6l-1 7 9-11h-6l1-7z"/>
@@ -451,7 +459,7 @@
     block.querySelector('#lyrics-toggle-btn')?.addEventListener('click', toggleLyricsView);
 
     block.querySelector('#animation-btn')?.addEventListener('click', toggleAnimation);
-    block.querySelector('#bit-btn')?.addEventListener('click', toggleBit);
+    block.querySelector('#pulse-btn')?.addEventListener('click', togglePulse);
 
     block.querySelector('#favorites-btn')?.addEventListener('click', toggleFavoritesOnly);
 
@@ -597,12 +605,15 @@
     w.NotificationSystem?.info(animationEnabled ? '✨ Анимация лирики: ВКЛ' : '✨ Анимация лирики: ВЫКЛ');
   }
 
-  function toggleBit() {
+  function togglePulse() {
     bitEnabled = !bitEnabled;
     localStorage.setItem('bitEnabled', bitEnabled ? '1' : '0');
     
-    const btn = document.getElementById('bit-btn');
+    const btn = document.getElementById('pulse-btn');
+    const heart = document.getElementById('pulse-heart');
+    
     if (btn) btn.classList.toggle('active', bitEnabled);
+    if (heart) heart.textContent = bitEnabled ? '❤️' : '🤍';
     
     if (bitEnabled) {
       startBitEffect();
@@ -952,8 +963,20 @@
       return Promise.resolve();
     }
     
-    // Показываем прелоадер
-    container.innerHTML = '<div class="lyrics-placeholder">Загрузка текста...</div>';
+    // 🆕 КЭШИРОВАНИЕ: проверяем sessionStorage
+    const cacheKey = `lyrics_cache_${lyricsUrl}`;
+    const cached = sessionStorage.getItem(cacheKey);
+    
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        parseLyrics(parsed);
+        return Promise.resolve();
+      } catch {}
+    }
+    
+    // Показываем спиннер
+    container.innerHTML = '<div class="lyrics-spinner"></div>';
     
     try {
       const response = await fetch(lyricsUrl, { 
@@ -975,6 +998,10 @@
           if (!Array.isArray(asJson)) {
             throw new Error('Invalid lyrics JSON: not an array');
           }
+          
+          // 🆕 Сохраняем в sessionStorage
+          sessionStorage.setItem(cacheKey, JSON.stringify(asJson));
+          
           parseLyrics(asJson);
         } catch (parseError) {
           console.error('JSON parse error:', parseError);
@@ -983,6 +1010,10 @@
       } else {
         // LRC или plain text
         const bodyText = await response.text();
+        
+        // 🆕 Сохраняем в sessionStorage
+        sessionStorage.setItem(cacheKey, JSON.stringify(bodyText));
+        
         parseLyrics(bodyText);
       }
 
@@ -1250,6 +1281,10 @@
     if (bitEnabled) {
       setTimeout(startBitEffect, 1000);
     }
+    
+    // 🆕 Обновляем иконку сердечка при загрузке
+    const heart = document.getElementById('pulse-heart');
+    if (heart) heart.textContent = bitEnabled ? '❤️' : '🤍';
 
     // Применяем режим лирики к DOM (если плеер уже создан)
     renderLyricsViewMode();
