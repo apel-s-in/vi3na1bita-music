@@ -166,11 +166,18 @@ class AlbumsManager {
 
       const coverPath = data.cover || 'cover.jpg';
 
+      // Поддержка обоих форматов: social_links (новый) и socials (старый)
+      const socialLinks = Array.isArray(data.social_links) 
+        ? data.social_links 
+        : (Array.isArray(data.socials) 
+            ? data.socials.map(s => ({ label: s.title, url: s.url }))
+            : []);
+
       albumData = {
         title: data.albumName || albumInfo.title,
         artist: data.artist || 'Витрина Разбита',
         cover: coverPath,
-        social_links: Array.isArray(data.social_links) ? data.social_links : [],
+        social_links: socialLinks,
         tracks: normTracks
       };
 
