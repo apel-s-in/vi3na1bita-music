@@ -472,7 +472,16 @@
     block.querySelector('#lyrics-toggle-btn')?.addEventListener('click', toggleLyricsView);
     block.querySelector('#animation-btn')?.addEventListener('click', toggleAnimation);
     block.querySelector('#pulse-btn')?.addEventListener('click', togglePulse);
-    block.querySelector('#favorites-btn')?.addEventListener('click', toggleFavoritesOnly);
+    const favBtn = block.querySelector('#favorites-btn');
+    if (favBtn) {
+      // Удаляем все старые обработчики (если были)
+      favBtn.replaceWith(favBtn.cloneNode(true));
+      const newFavBtn = block.querySelector('#favorites-btn');
+  
+      newFavBtn.addEventListener('click', () => {
+        toggleFavoritesOnly();
+      });
+    }
     block.querySelector('#sleep-timer-btn')?.addEventListener('click', () => w.SleepTimer?.show?.());
     block.querySelector('#lyrics-text-btn')?.addEventListener('click', () => w.LyricsModal?.show?.());
 
@@ -1509,6 +1518,8 @@
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   }
 
+  // ========== ПУБЛИЧНЫЙ API ==========
+
   w.PlayerUI = {
     initialize: initPlayerUI,
     ensurePlayerBlock,
@@ -1517,7 +1528,7 @@
     togglePlayPause,
     toggleLikePlaying,
     switchAlbumInstantly,
-    // ✅ Новые функции для фильтрации
+    // ✅ КРИТИЧНО: Экспортируем функции фильтрации
     toggleFavoritesFilter,
     toggleFavoritesOnly,
     updateAvailableTracksForPlayback,
@@ -1530,6 +1541,10 @@
         : [];
     }
   };
+
+  // ✅ КРИТИЧНО: Глобальный доступ для onclick в HTML
+  w.toggleFavoritesFilter = toggleFavoritesFilter;
+  w.toggleFavoritesOnly = toggleFavoritesOnly;
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initPlayerUI);
