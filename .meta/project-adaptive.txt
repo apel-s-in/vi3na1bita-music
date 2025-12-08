@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f38301806939f510ce40acd44029f5eb9e5370b9.idx
-│   │       ├── pack-f38301806939f510ce40acd44029f5eb9e5370b9.pack
-│   │       └── pack-f38301806939f510ce40acd44029f5eb9e5370b9.rev
+│   │       ├── pack-60ee460cef487ea1b6bf1ccf82c9454b0532341a.idx
+│   │       ├── pack-60ee460cef487ea1b6bf1ccf82c9454b0532341a.pack
+│   │       └── pack-60ee460cef487ea1b6bf1ccf82c9454b0532341a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-08 10:34:49 UTC
+Сгенерировано: 2025-12-08 10:38:34 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1689,14 +1689,6 @@ import { APP_CONFIG } from './core/config.js';
       if (currentAlbum && currentAlbum !== albumKey) {
         await window.AlbumsManager.loadAlbum(currentAlbum);
       }
-
-      // 2. Потом настраиваем ИГРАЮЩИЙ плейлист
-      if (albumKey === currentAlbum) {
-        // Обычный режим: играет тот же альбом что и просматриваем
-        await window.AlbumsManager.loadAlbum(albumKey);
-      } else {
-        // ✅ Мини-режим: играет один альбом, просматриваем другой
-        // Плейлист формируем для играющего альбома
 
       // 2. Формируем плейлист так же, как при обычном клике по треку
       if (albumKey === window.SPECIAL_FAVORITES_KEY) {
