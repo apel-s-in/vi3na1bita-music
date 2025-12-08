@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ba923e80b7d09a5ca9a7b8c2a0a71960db45c5ef.idx
-│   │       ├── pack-ba923e80b7d09a5ca9a7b8c2a0a71960db45c5ef.pack
-│   │       └── pack-ba923e80b7d09a5ca9a7b8c2a0a71960db45c5ef.rev
+│   │       ├── pack-252a5c338c01dfea2f85f9cff4bdc2c13599d975.idx
+│   │       ├── pack-252a5c338c01dfea2f85f9cff4bdc2c13599d975.pack
+│   │       └── pack-252a5c338c01dfea2f85f9cff4bdc2c13599d975.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-08 16:56:33 UTC
+Сгенерировано: 2025-12-08 18:45:21 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3258,7 +3258,10 @@ export default NavigationManager;
 
   function onTrackChange(track, index) {
     if (!track) return;
-    
+  
+    // ✅ КРИТИЧНО: Обновляем подсветку трека
+    w.AlbumsManager?.highlightCurrentTrack?.(index);
+  
     ensurePlayerBlock(index);
     
     loadLyrics(track.lyrics).then(() => {
@@ -3834,10 +3837,73 @@ export default NavigationManager;
 
   function toggleShuffle() {
     if (!w.playerCore) return;
+  
+    console.log('🔀 toggleShuffle() called, favoritesOnlyMode:', favoritesOnlyMode); // ✅ ОТЛАДКА
+  
+    // ✅ Если режим "только избранные" ВКЛ — используем кастомную логику
+    if (favoritesOnlyMode) {
+      const playingAlbum = w.AlbumsManager?.getPlayingAlbum?.();
     
+      if (playingAlbum && playingAlbum !== w.SPECIAL_FAVORITES_KEY) {
+        // Проверяем текущее состояние shuffle
+        const wasShuffled = w.playerCore.isShuffle();
+      
+        if (!wasShuffled) {
+          // Включаем shuffle с учётом фильтрации
+          rebuildShuffledPlaylist();
+          w.playerCore.shuffleMode = true; // ✅ Вручную устанавливаем флаг
+        } else {
+          // Выключаем shuffle — восстанавливаем оригинальный плейлист
+          const originalPlaylist = w.playerCore.originalPlaylist || [];
+          const likedNums = w.FavoritesManager?.getLikedForAlbum(playingAlbum) || [];
+        
+          // Фильтруем оригинальный плейлист по избранным
+          const favoriteTracks = originalPlaylist.filter(track => {
+            const uid = track.uid || null;
+          
+            if (uid) {
+              const parts = uid.split('_');
+              if (parts.length >= 2) {
+                const trackNum = parseInt(parts[parts.length - 1], 10);
+                return Number.isFinite(trackNum) && likedNums.includes(trackNum);
+              }
+            }
+          
+            return false;
+          });
+        
+          const currentTrack = w.playerCore?.getCurrentTrack();
+          const newIndex = currentTrack 
+            ? favoriteTracks.findIndex(t => t.src === currentTrack.src)
+            : 0;
+        
+          w.playerCore.setPlaylist(favoriteTracks, Math.max(0, newIndex), {
+            artist: 'Витрина Разбита',
+            album: playingAlbum,
+            cover: favoriteTracks[0]?.cover || 'img/logo.png'
+          });
+        
+          w.playerCore.shuffleMode = false; // ✅ Вручную сбрасываем флаг
+        
+          updateAvailableTracksForPlayback();
+        
+          console.log(`🔀 Shuffle OFF: restored ${favoriteTracks.length} favorite tracks`);
+        }
+      
+        const btn = document.getElementById('shuffle-btn');
+        if (btn) btn.classList.toggle('active', w.playerCore.isShuffle());
+      
+        return;
+      }
+    }
+  
+    // ✅ Обычный режим — делегируем в PlayerCore
     w.playerCore.toggleShuffle();
     const btn = document.getElementById('shuffle-btn');
     if (btn) btn.classList.toggle('active', w.playerCore.isShuffle());
+  
+    // ✅ Обновляем availableFavoriteIndices (на случай если режим включили ПОСЛЕ shuffle)
+    updateAvailableTracksForPlayback();
   }
 
   function toggleAnimation() {
@@ -4046,59 +4112,42 @@ export default NavigationManager;
   }
 
   function toggleFavoritesOnly() {
-    const currentAlbum = w.AlbumsManager?.getCurrentAlbum();
-    
-    if (!currentAlbum) {
-      w.NotificationSystem?.warning('Альбом не выбран');
-      return;
-    }
-
-    if (currentAlbum === '__favorites__') {
-      w.NotificationSystem?.info('Вы уже в разделе Избранное');
-      return;
-    }
-    
+    console.log('⭐ toggleFavoritesOnly() called'); // ✅ ОТЛАДКА
+  
     const btn = document.getElementById('favorites-btn');
     const icon = document.getElementById('favorites-btn-icon');
-    const isActive = btn?.classList.contains('active');
-    
-    if (isActive) {
-      btn?.classList.remove('active');
-      if (icon) icon.src = 'img/star2.png';
-      
-      document.querySelectorAll('.track').forEach(el => {
-        el.style.display = '';
-      });
-      return;
+  
+    if (!btn || !icon) return;
+  
+    // Переключаем режим
+    favoritesOnlyMode = !favoritesOnlyMode;
+  
+    // Обновляем UI кнопки
+    if (favoritesOnlyMode) {
+      btn.classList.add('favorites-active');
+      icon.src = 'img/star.png';
+      w.NotificationSystem?.success('⭐ Только избранные треки');
+    } else {
+      btn.classList.remove('favorites-active');
+      icon.src = 'img/star2.png';
+      w.NotificationSystem?.info('Играют все треки');
     }
-
-    btn?.classList.add('active');
-    if (icon) icon.src = 'img/star.png';
-    
-    const likedNums = w.FavoritesManager?.getLikedForAlbum(currentAlbum) || [];
-    const albumData = w.AlbumsManager?.getAlbumData?.(currentAlbum) || null;
-    
-    document.querySelectorAll('.track').forEach(el => {
-      const idx = parseInt(el.dataset.index, 10);
-      if (!Number.isFinite(idx)) {
-        el.style.display = 'none';
-        return;
-      }
-
-      let trackNum = idx + 1;
-      if (albumData && Array.isArray(albumData.tracks) && albumData.tracks[idx]) {
-        const t = albumData.tracks[idx];
-        if (Number.isFinite(Number(t.num))) {
-          trackNum = Number(t.num);
-        }
-      }
-
-      if (!likedNums.includes(trackNum)) {
-        el.style.display = 'none';
-      } else {
-        el.style.display = '';
-      }
-    });
+  
+    // Сохраняем состояние
+    try {
+      localStorage.setItem('favoritesOnlyMode', favoritesOnlyMode ? '1' : '0');
+    } catch {}
+  
+    // ✅ СИНХРОНИЗАЦИЯ: звёздочка автоматически включает фильтр списка
+    syncFilterWithFavoritesMode();
+  
+    // ✅ Обновляем доступные треки для навигации
+    updateAvailableTracksForPlayback();
+  
+    // ✅ Если shuffle включён — пересоздаём плейлист с учётом фильтрации
+    if (w.playerCore?.isShuffle?.()) {
+      rebuildShuffledPlaylist();
+    }
   }
 
   function toggleLikePlaying() {
@@ -4670,46 +4719,47 @@ export default NavigationManager;
   function updateAvailableTracksForPlayback() {
     const playingAlbum = w.AlbumsManager?.getPlayingAlbum?.();
     const snapshot = w.playerCore?.getPlaylistSnapshot?.() || [];
-  
+
     if (!playingAlbum || snapshot.length === 0) return;
-  
-    // Для режима "Избранное" — отдельная логика (делегируем в AlbumsManager)
+
+    // Для режима "Избранное" — отдельная логика
     if (playingAlbum === w.SPECIAL_FAVORITES_KEY) {
-      // Ничего не делаем — плейлист уже содержит только активные треки
+      w.availableFavoriteIndices = null;
       return;
     }
-  
-    // Для обычных альбомов: если режим "только избранные" ВКЛ —
-    // нужно изолировать треки для prev/next
+
+    // Для обычных альбомов: если режим "только избранные" ВКЛ
     if (favoritesOnlyMode) {
       const likedNums = w.FavoritesManager?.getLikedForAlbum(playingAlbum) || [];
-    
+  
       if (likedNums.length === 0) {
         w.NotificationSystem?.warning('Нет избранных треков для навигации');
+        w.availableFavoriteIndices = null;
         return;
       }
-    
-      // Сохраняем индексы избранных треков в глобальную переменную
-      // (используется в модифицированных prev/next)
+  
       w.availableFavoriteIndices = [];
     
+      // ✅ КРИТИЧНО: Сравниваем треки по UID, а не по индексу!
       snapshot.forEach((track, idx) => {
-        const albumData = w.AlbumsManager?.getAlbumData?.(playingAlbum);
-        if (!albumData || !Array.isArray(albumData.tracks)) return;
+        // Извлекаем UID из track.uid или формируем из album + trackNum
+        const uid = track.uid || null;
       
-        const originalTrack = albumData.tracks[idx];
-        if (!originalTrack) return;
-      
-        const trackNum = Number.isFinite(Number(originalTrack.num)) 
-          ? Number(originalTrack.num) 
-          : (idx + 1);
-      
-        if (likedNums.includes(trackNum)) {
-          w.availableFavoriteIndices.push(idx);
+        if (uid) {
+          // Парсим UID: "albumKey_trackNum"
+          const parts = uid.split('_');
+          if (parts.length >= 2) {
+            const trackNum = parseInt(parts[parts.length - 1], 10);
+          
+            if (Number.isFinite(trackNum) && likedNums.includes(trackNum)) {
+              w.availableFavoriteIndices.push(idx);
+            }
+          }
         }
       });
     
-      console.log(`✅ Available favorite tracks: ${w.availableFavoriteIndices.length}`);
+      console.log(`✅ Available favorite tracks: ${w.availableFavoriteIndices.length} / ${snapshot.length}`);
+      console.log(`✅ Indices:`, w.availableFavoriteIndices);
     } else {
       // Режим "все треки" — сбрасываем ограничения
       w.availableFavoriteIndices = null;
@@ -4717,48 +4767,71 @@ export default NavigationManager;
   }
 
   function rebuildShuffledPlaylist() {
-    // Пересоздаём shuffle-плейлист с учётом фильтрации
-    // (в старом приложении это делал createShuffledPlaylist)
+    console.log('🔀 rebuildShuffledPlaylist() called'); // ✅ ОТЛАДКА
   
     const playingAlbum = w.AlbumsManager?.getPlayingAlbum?.();
-    const snapshot = w.playerCore?.getPlaylistSnapshot?.() || [];
-  
-    if (!playingAlbum || snapshot.length === 0) return;
-  
+    const originalPlaylist = w.playerCore?.originalPlaylist || [];
+
+    if (!playingAlbum || originalPlaylist.length === 0) {
+      console.warn('⚠️ No original playlist to shuffle');
+      return;
+    }
+
     if (favoritesOnlyMode && playingAlbum !== w.SPECIAL_FAVORITES_KEY) {
-      const likedIndices = w.availableFavoriteIndices || [];
-    
-      if (likedIndices.length === 0) {
+      const likedNums = w.FavoritesManager?.getLikedForAlbum(playingAlbum) || [];
+  
+      if (likedNums.length === 0) {
         w.NotificationSystem?.warning('Нет избранных треков для shuffle');
         return;
       }
+  
+      // ✅ КРИТИЧНО: Фильтруем из ОРИГИНАЛЬНОГО плейлиста по UID
+      const favoriteTracks = originalPlaylist.filter(track => {
+        const uid = track.uid || null;
+      
+        if (uid) {
+          const parts = uid.split('_');
+          if (parts.length >= 2) {
+            const trackNum = parseInt(parts[parts.length - 1], 10);
+            return Number.isFinite(trackNum) && likedNums.includes(trackNum);
+          }
+        }
+      
+        return false;
+      });
     
-      // Создаём новый плейлист только из избранных треков
-      const favoriteTracks = likedIndices.map(i => snapshot[i]).filter(Boolean);
-    
-      // Перемешиваем
-      for (let i = favoriteTracks.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [favoriteTracks[i], favoriteTracks[j]] = [favoriteTracks[j], favoriteTracks[i]];
+      if (favoriteTracks.length === 0) {
+        w.NotificationSystem?.warning('Нет избранных треков для shuffle');
+        return;
       }
-    
+  
+      // Перемешиваем
+      const shuffled = [...favoriteTracks];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+  
       // Применяем новый плейлист
       const currentTrack = w.playerCore?.getCurrentTrack();
       const newIndex = currentTrack 
-        ? favoriteTracks.findIndex(t => t.src === currentTrack.src)
+        ? shuffled.findIndex(t => t.src === currentTrack.src)
         : 0;
-    
-      w.playerCore?.setPlaylist(favoriteTracks, Math.max(0, newIndex), {
+  
+      w.playerCore?.setPlaylist(shuffled, Math.max(0, newIndex), {
         artist: 'Витрина Разбита',
         album: playingAlbum,
-        cover: favoriteTracks[0]?.cover || 'img/logo.png'
+        cover: shuffled[0]?.cover || 'img/logo.png'
       });
     
-      console.log(`🔀 Shuffled playlist: ${favoriteTracks.length} favorite tracks`);
+      // ✅ КРИТИЧНО: Обновляем availableFavoriteIndices после setPlaylist
+      updateAvailableTracksForPlayback();
+  
+      console.log(`🔀 Shuffled ${shuffled.length} favorite tracks from ${originalPlaylist.length} total`);
     } else {
-      // Обычный shuffle по всем трекам
-      // (делегируем в PlayerCore, но он уже умеет это делать)
-      console.log('🔀 Shuffling all tracks');
+      // Обычный shuffle всех треков
+      w.playerCore?.toggleShuffle();
+      console.log('🔀 Shuffling all tracks via PlayerCore');
     }
   }
 
