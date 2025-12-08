@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-700ea3074720fea308904ebdf85897654e126869.idx
-│   │       ├── pack-700ea3074720fea308904ebdf85897654e126869.pack
-│   │       └── pack-700ea3074720fea308904ebdf85897654e126869.rev
+│   │       ├── pack-a5540196dc2cb2ab58f0e346a66ebe830127e689.idx
+│   │       ├── pack-a5540196dc2cb2ab58f0e346a66ebe830127e689.pack
+│   │       └── pack-a5540196dc2cb2ab58f0e346a66ebe830127e689.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-08 11:56:13 UTC
+Сгенерировано: 2025-12-08 12:00:36 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4674,6 +4674,10 @@ export default NavigationManager;
     togglePlayPause,
     toggleLikePlaying,
     switchAlbumInstantly,
+    // ✅ Новые функции для фильтрации
+    toggleFavoritesFilter,
+    toggleFavoritesOnly,
+    updateAvailableTracksForPlayback,
     get currentLyrics() {
       return currentLyrics;
     },
