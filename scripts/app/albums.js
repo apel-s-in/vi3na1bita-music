@@ -84,6 +84,16 @@ class AlbumsManager {
       this.currentAlbum = albumKey;
       localStorage.setItem('currentAlbum', albumKey);
 
+      // ✅ МГНОВЕННОЕ обновление мини-плеера при смене вкладки
+      if (window.PlayerUI && typeof window.PlayerUI.switchAlbumInstantly === 'function') {
+        window.PlayerUI.switchAlbumInstantly(albumKey);
+      }
+
+      // ✅ Сохраняем состояние после переключения альбома
+      if (window.PlayerState && typeof window.PlayerState.save === 'function') {
+        window.PlayerState.save();
+      }
+
       console.log(`✅ Album loaded: ${albumKey}`);
 
     } catch (error) {
