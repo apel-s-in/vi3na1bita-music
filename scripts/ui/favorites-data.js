@@ -7,19 +7,18 @@
 
   const FAVORITES_REFS_KEY = window.FAVORITES_REFS_KEY || 'favoritesAlbumRefs:v1';
   const COVER_TTL_MS = 12 * 60 * 60 * 1000; // 12 часов
-  const albumCoverCache = Object.create(null); // { [albumKey]: { url:string, ts:number } }
+  const albumCoverCache = Object.create(null);
 
-  // Безопасные геттеры likedTracks:v2
   function getLikedMap() {
     try { const raw = localStorage.getItem('likedTracks:v2'); const obj = raw ? JSON.parse(raw) : {}; return obj && typeof obj === 'object' ? obj : {}; }
     catch { return {}; }
   }
+  
   function getLikedForAlbum(albumKey) {
     try {
       const map = getLikedMap();
       const arr = (map && typeof map === 'object') ? map[albumKey] : [];
       if (!Array.isArray(arr)) return [];
-      // Нормализуем к числам и убираем дубли
       const norm = Array.from(new Set(arr.map(n => parseInt(n, 10)).filter(Number.isFinite)));
       return norm;
     } catch {
@@ -31,6 +30,7 @@
     try { const raw = localStorage.getItem(FAVORITES_REFS_KEY); const arr = raw ? JSON.parse(raw) : []; return Array.isArray(arr) ? arr : []; }
     catch { return []; }
   }
+  
   function writeFavoritesRefs(arr) {
     try { localStorage.setItem(FAVORITES_REFS_KEY, JSON.stringify(Array.isArray(arr) ? arr : [])); } catch {}
   }
@@ -43,8 +43,6 @@
       const map = getLikedMap();
       const albumsIndex = Array.isArray(w.albumsIndex) ? w.albumsIndex : [];
 
-      // Объединяем ключи из albumsIndex и likedTracks:v2 — это устраняет случай,
-      // когда в albums.json временно нет альбома, но в likedTracks он ещё есть.
       const indexKeys = albumsIndex.map(a => a && a.key).filter(Boolean);
       const likedKeys = Object.keys(map || {});
       const allKeysSet = new Set([...indexKeys, ...likedKeys]);
@@ -83,7 +81,6 @@
     if (!albumKey) return null;
     const albumConfigCache = w.albumConfigCache || {};
 
-    // Канонический ключ для alias
     let realKey = albumKey;
     if (typeof w.resolveRealAlbumKey === 'function') {
       try {
@@ -92,11 +89,9 @@
       } catch {}
     }
 
-    // 1) Пробуем кэш по обоим ключам
     if (albumConfigCache[albumKey]?.config) return albumConfigCache[albumKey].config;
     if (albumConfigCache[realKey]?.config)  return albumConfigCache[realKey].config;
 
-    // 2) Ищем meta по каноническому ключу (предпочтение realKey)
     const albumsIndex = w.albumsIndex || [];
     const meta = (albumsIndex.find(a => a && a.key === realKey) ||
                   albumsIndex.find(a => a && a.key === albumKey)) || null;
@@ -117,7 +112,6 @@
         if (t.fulltext) t.fulltext = absJoin(base, t.fulltext);
       });
 
-      // 3) Кладём в кэш под ОБОИМИ ключами (alias и canonical)
       albumConfigCache[realKey]  = { base, config: data };
       albumConfigCache[albumKey] = { base, config: data };
       w.albumConfigCache = albumConfigCache;
@@ -131,7 +125,6 @@
   async function getAlbumCoverUrl(albumKey) {
     const now = Date.now();
 
-    // 1) sessionStorage-кэш
     try {
       const sKey = `favCoverCache:v1:${albumKey}`;
       const raw = sessionStorage.getItem(sKey);
@@ -144,11 +137,9 @@
       }
     } catch {}
 
-    // 2) in-memory кэш
     const cache = albumCoverCache[albumKey];
     if (cache && (now - cache.ts) < COVER_TTL_MS) return cache.url;
 
-    // 3) загрузка index.json галереи
     try {
       const centralIdForAlbumKey = w.centralIdForAlbumKey;
       const normalizeGalleryItem = w.normalizeGalleryItem;
@@ -184,15 +175,12 @@
     const out = [];
 
     for (const ref of sortedRefs) {
-      // Активность — всегда из likedTracks:v2
       const active = getLikedForAlbum(ref.a).includes(ref.t);
 
-      // Пытаемся получить конфиг альбома и целевой трек
       let cfg = null;
       try { cfg = await getAlbumConfigByKey(ref.a); } catch {}
       const tr = cfg?.tracks?.[ref.t] || null;
 
-      // Обложку стараемся получить из центральной галереи (устойчивее к CORS)
       const cover = await getAlbumCoverUrl(ref.a);
 
       if (tr && tr.audio) {
@@ -211,29 +199,12 @@
         continue;
       }
 
-      // Fallback: нет конфига или трека — строим «неиграбельную» строку (показываем, но не запускаем)
-      try {
-        const albumMeta =
-          (Array.isArray(w.albumsIndex) ? w.albumsIndex.find(a => a && a.key === ref.a) : null) || null;
-        const albumTitle =
-          (albumMeta && albumMeta.title) ||
-          (w.ICON_TITLE_MAP && w.ICON_TITLE_MAP[ref.a]) ||
-          ref.a;
-
-        out.push({
-          title: `Трек ${String((ref.t || 0) + 1).padStart(2, '0')}`,
-          audio: null,                // важный признак: такой элемент не должен стартовать
-          lyrics: null,
-          fulltext: null,
-          __a: ref.a,
-          __t: ref.t,
-          __artist: 'Витрина Разбита',
-          __album: albumTitle,
-          __active: active,
-          __cover: cover
-        });
-      } catch {
-        // как крайний случай — пропустим ссылку, чтобы не зашумлять список
+      // ❌ ПРОПУСКАЕМ неполные треки ПОЛНОСТЬЮ
+      console.warn(`⚠️ Track not found: album=${ref.a}, track=${ref.t}`);
+      
+      // ✅ Автоматически удаляем из localStorage
+      if (window.FavoritesManager && typeof window.FavoritesManager.toggleLike === 'function') {
+        window.FavoritesManager.toggleLike(ref.a, ref.t, false);
       }
     }
 
@@ -247,7 +218,7 @@
     const item = model.find(x => x.__a === albumKey && x.__t === trackIndex);
     if (item) item.__active = !!isActive;
   }
-  // Утилиты для работы с центральными галереями
+
   function centralIdForAlbumKey(albumKey) {
     if (!albumKey) return null;
     if (albumKey === '__favorites__') return null;
@@ -324,14 +295,12 @@
     }
   }
 
-  // Экспорт утилит
   w.centralIdForAlbumKey = centralIdForAlbumKey;
   w.normalizeGalleryItem = normalizeGalleryItem;
   w.normalizeBase = normalizeBase;
   w.absJoin = absJoin;
   w.CENTRAL_GALLERY_BASE = w.APP_CONFIG?.CENTRAL_GALLERY_BASE || './albums/gallery/';
 
-  // Экспорт API
   w.FavoritesData = {
     readFavoritesRefs,
     writeFavoritesRefs,
@@ -343,7 +312,6 @@
     getAlbumCoverUrl
   };
 
-  // Совместимость со старым кодом (глобали)
   w.readFavoritesRefs = readFavoritesRefs;
   w.writeFavoritesRefs = writeFavoritesRefs;
   w.ensureFavoritesRefsWithLikes = ensureFavoritesRefsWithLikes;
