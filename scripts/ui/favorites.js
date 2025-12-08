@@ -46,10 +46,24 @@ class FavoritesManager {
     }
   }
 
-  // Переключение избранного для трека
+  // ✅ Переключение избранного для трека с валидацией
   toggleLike(albumKey, trackIndex, makeLiked = null) {
     const index = parseInt(trackIndex, 10);
     if (!Number.isFinite(index)) return;
+    
+    // ✅ КРИТИЧНО: Проверяем, что трек существует в альбоме
+    if (makeLiked) {
+      const albumData = window.AlbumsManager?.getAlbumData?.(albumKey);
+      if (albumData && Array.isArray(albumData.tracks)) {
+        const trackExists = albumData.tracks.some(t => t.num === index || t.num === (index + 1));
+        
+        if (!trackExists) {
+          console.warn(`⚠️ Track ${index} not found in album ${albumKey}`);
+          window.NotificationSystem?.warning('Трек не найден в альбоме');
+          return false;
+        }
+      }
+    }
     
     const map = this.getLikedMap();
     const arrRaw = Array.isArray(map[albumKey]) ? map[albumKey] : [];
