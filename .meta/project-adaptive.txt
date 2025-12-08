@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-02ba995918062654aaaf54f1b33da7842647a58d.idx
-│   │       ├── pack-02ba995918062654aaaf54f1b33da7842647a58d.pack
-│   │       └── pack-02ba995918062654aaaf54f1b33da7842647a58d.rev
+│   │       ├── pack-1a77086f67ab375572a9feb1ef43f4faaa63f5b4.idx
+│   │       ├── pack-1a77086f67ab375572a9feb1ef43f4faaa63f5b4.pack
+│   │       └── pack-1a77086f67ab375572a9feb1ef43f4faaa63f5b4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-08 11:53:52 UTC
+Сгенерировано: 2025-12-08 11:54:53 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4306,6 +4306,23 @@ export default NavigationManager;
   }
 
   function restoreSettings() {
+    // ✅ Восстанавливаем режим "только избранные"
+    const savedMode = localStorage.getItem('favoritesOnlyMode');
+    favoritesOnlyMode = (savedMode === '1');
+  
+    const btn = document.getElementById('favorites-btn');
+    const icon = document.getElementById('favorites-btn-icon');
+  
+    if (btn && icon) {
+      if (favoritesOnlyMode) {
+        btn.classList.add('favorites-active');
+        icon.src = 'img/star.png';
+      } else {
+        btn.classList.remove('favorites-active');
+        icon.src = 'img/star2.png';
+      }
+    }
+  
     const savedVolume = localStorage.getItem('playerVolume');
     if (savedVolume !== null) {
       const volume = parseInt(savedVolume, 10);
