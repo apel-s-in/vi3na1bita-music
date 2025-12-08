@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9626826946260f6181c4c7016e4006421aa75507.idx
-│   │       ├── pack-9626826946260f6181c4c7016e4006421aa75507.pack
-│   │       └── pack-9626826946260f6181c4c7016e4006421aa75507.rev
+│   │       ├── pack-783470628f85b0cea2a74429fc9efc24ad6d002c.idx
+│   │       ├── pack-783470628f85b0cea2a74429fc9efc24ad6d002c.pack
+│   │       └── pack-783470628f85b0cea2a74429fc9efc24ad6d002c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-08 19:17:50 UTC
+Сгенерировано: 2025-12-08 19:19:13 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1336,10 +1336,13 @@ import { APP_CONFIG } from './core/config.js';
         // 3. Инициализация избранного
         await this.initializeFavorites();
 
-        // 4. Инициализация менеджера альбомов
+        // 4. Инициализация галереи
+        await this.initializeGallery();
+
+        // 5. Инициализация менеджера альбомов
         await this.initializeAlbums();
 
-        // 5. Инициализация UI плеера
+        // 6. Инициализация UI плеера
         await this.initializePlayerUI();
 
         // 6. Инициализация дополнительных модулей
@@ -1431,6 +1434,20 @@ import { APP_CONFIG } from './core/config.js';
           if (w.PlayerUI && typeof w.PlayerUI.initialize === 'function') {
             w.PlayerUI.initialize();
             console.log('✅ PlayerUI initialized');
+            resolve();
+          } else {
+            setTimeout(check, 50);
+          }
+        };
+        check();
+      });
+    }
+    async initializeGallery() {
+      return new Promise((resolve) => {
+        const check = () => {
+          if (w.GalleryManager && typeof w.GalleryManager.initialize === 'function') {
+            w.GalleryManager.initialize();
+            console.log('✅ Gallery initialized');
             resolve();
           } else {
             setTimeout(check, 50);
