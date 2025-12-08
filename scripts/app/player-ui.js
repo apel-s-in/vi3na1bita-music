@@ -1149,6 +1149,23 @@
   }
 
   function restoreSettings() {
+    // ✅ Восстанавливаем режим "только избранные"
+    const savedMode = localStorage.getItem('favoritesOnlyMode');
+    favoritesOnlyMode = (savedMode === '1');
+  
+    const btn = document.getElementById('favorites-btn');
+    const icon = document.getElementById('favorites-btn-icon');
+  
+    if (btn && icon) {
+      if (favoritesOnlyMode) {
+        btn.classList.add('favorites-active');
+        icon.src = 'img/star.png';
+      } else {
+        btn.classList.remove('favorites-active');
+        icon.src = 'img/star2.png';
+      }
+    }
+  
     const savedVolume = localStorage.getItem('playerVolume');
     if (savedVolume !== null) {
       const volume = parseInt(savedVolume, 10);
