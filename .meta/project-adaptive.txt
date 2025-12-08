@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-07d855d9ca910ef630605e9bf56f24e343322752.idx
-│   │       ├── pack-07d855d9ca910ef630605e9bf56f24e343322752.pack
-│   │       └── pack-07d855d9ca910ef630605e9bf56f24e343322752.rev
+│   │       ├── pack-02ba995918062654aaaf54f1b33da7842647a58d.idx
+│   │       ├── pack-02ba995918062654aaaf54f1b33da7842647a58d.pack
+│   │       └── pack-02ba995918062654aaaf54f1b33da7842647a58d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-08 11:50:39 UTC
+Сгенерировано: 2025-12-08 11:53:52 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8457,32 +8457,78 @@ try { main(); } catch (e) { console.error("❌", e); process.exit(1); }
 
     next() {
       if (this.playlist.length === 0) return;
-      
-      let nextIndex = this.currentIndex + 1;
-      
-      if (nextIndex >= this.playlist.length) {
-        nextIndex = 0;
+  
+      // ✅ Учитываем режим "только избранные"
+      const availableIndices = window.availableFavoriteIndices;
+  
+      if (Array.isArray(availableIndices) && availableIndices.length > 0) {
+        // Режим "только избранные" активен
+        const currentPos = availableIndices.indexOf(this.currentIndex);
+    
+        if (currentPos === -1) {
+          // Текущий трек не в списке избранных — переходим к первому избранному
+          this.play(availableIndices[0]);
+          return;
+        }
+    
+        let nextPos = currentPos + 1;
+    
+        if (nextPos >= availableIndices.length) {
+          nextPos = 0; // Зацикливаемся
+        }
+    
+        this.play(availableIndices[nextPos]);
+      } else {
+        // Обычный режим — следующий трек по порядку
+        let nextIndex = this.currentIndex + 1;
+    
+        if (nextIndex >= this.playlist.length) {
+          nextIndex = 0;
+        }
+    
+        this.play(nextIndex);
       }
-      
-      this.play(nextIndex);
     }
 
     prev() {
       if (this.playlist.length === 0) return;
-      
+  
       // Если играем больше 3 секунд, перематываем на начало
       if (this.getPosition() > 3) {
         this.seek(0);
         return;
       }
-      
-      let prevIndex = this.currentIndex - 1;
-      
-      if (prevIndex < 0) {
-        prevIndex = this.playlist.length - 1;
+  
+      // ✅ Учитываем режим "только избранные"
+      const availableIndices = window.availableFavoriteIndices;
+  
+      if (Array.isArray(availableIndices) && availableIndices.length > 0) {
+        // Режим "только избранные" активен
+        const currentPos = availableIndices.indexOf(this.currentIndex);
+    
+        if (currentPos === -1) {
+          // Текущий трек не в списке избранных — переходим к последнему избранному
+          this.play(availableIndices[availableIndices.length - 1]);
+          return;
+        }
+    
+        let prevPos = currentPos - 1;
+    
+        if (prevPos < 0) {
+          prevPos = availableIndices.length - 1; // Зацикливаемся
+        }
+    
+        this.play(availableIndices[prevPos]);
+      } else {
+        // Обычный режим — предыдущий трек по порядку
+        let prevIndex = this.currentIndex - 1;
+    
+        if (prevIndex < 0) {
+          prevIndex = this.playlist.length - 1;
+        }
+    
+        this.play(prevIndex);
       }
-      
-      this.play(prevIndex);
     }
 
     // ========== ПЕРЕМОТКА И ПОЗИЦИЯ ==========
