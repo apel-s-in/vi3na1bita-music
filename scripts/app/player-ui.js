@@ -28,6 +28,8 @@
   // Сохранённый режим отображения лирики и флаг анимации при входе в мини-режим
   let savedLyricsViewModeForMini = null;
   let savedAnimationForMini = null;
+  // Таймер обратного отсчёта перед началом лирики
+  let countdownValue = null; // Текущее значение обратного отсчёта (null = выключен)
 
   function initPlayerUI() {
     if (!w.albumsIndex || w.albumsIndex.length === 0) {
@@ -949,33 +951,59 @@
       return Promise.resolve();
     }
     
+    // Показываем прелоадер
+    container.innerHTML = '<div class="lyrics-placeholder">Загрузка текста...</div>';
+    
     try {
-      const response = await fetch(lyricsUrl, { cache: 'force-cache' });
-      if (!response.ok) throw new Error(`Failed to load lyrics: HTTP ${response.status}`);
+      const response = await fetch(lyricsUrl, { 
+        cache: 'force-cache',
+        headers: { 'Accept': 'application/json, text/plain' }
+      });
       
-      // Пытаемся сначала как JSON (старый формат lyrics/NN.json),
-      // если не получилось — fallback на текст (LRC).
-      let asJson = null;
-
-      try {
-        asJson = await response.clone().json();
-      } catch {
-        // ignore, попробуем как текст
+      // ✅ FALLBACK при 404
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
       }
-
-      if (Array.isArray(asJson)) {
-        parseLyrics(asJson);
+      
+      const contentType = response.headers.get('content-type') || '';
+      
+      // ✅ ОБРАБОТКА ОШИБОК парсинга JSON
+      if (contentType.includes('application/json')) {
+        try {
+          const asJson = await response.json();
+          if (!Array.isArray(asJson)) {
+            throw new Error('Invalid lyrics JSON: not an array');
+          }
+          parseLyrics(asJson);
+        } catch (parseError) {
+          console.error('JSON parse error:', parseError);
+          throw new Error('Невалидный JSON');
+        }
       } else {
+        // LRC или plain text
         const bodyText = await response.text();
         parseLyrics(bodyText);
       }
 
-      // НЕ вызываем renderLyrics() здесь — это сделает onTrackChange
+      // Если парсинг успешен но лирика пустая
+      if (currentLyrics.length === 0) {
+        container.innerHTML = '<div class="lyrics-placeholder">Текст пустой</div>';
+      }
+
       return Promise.resolve();
       
     } catch (error) {
       console.error('Failed to load lyrics:', error);
-      container.innerHTML = '<div class="lyrics-placeholder">Ошибка загрузки текста</div>';
+      
+      // ✅ Разные сообщения для разных ошибок
+      let errorMsg = 'Ошибка загрузки текста';
+      if (error.message.includes('404')) {
+        errorMsg = 'Текст не найден (404)';
+      } else if (error.message.includes('Невалидный')) {
+        errorMsg = 'Неверный формат текста';
+      }
+      
+      container.innerHTML = `<div class="lyrics-placeholder">${errorMsg}</div>`;
       return Promise.resolve();
     }
   }
@@ -985,8 +1013,16 @@
    *  - если source — массив [{ time:number, line:string }] (старый JSON-формат) → напрямую;
    *  - если source — строка LRC ([mm:ss.xx] text) → парсим по таймкодам.
    */
+  /**
+   * Универсальный парсер лирики с поддержкой:
+   *  - JSON массив [{ time, line/text }]
+   *  - LRC с метаданными [ar:artist], [ti:title], [al:album]
+   *  - Стандартный LRC [mm:ss.xx]text
+   *  - Упрощённый LRC [mm:ss]text
+   */
   function parseLyrics(source) {
     currentLyrics = [];
+    const metadata = {}; // Для расширенного LRC
 
     // JSON-массив из config.json (lyrics/*.json)
     if (Array.isArray(source)) {
@@ -1000,20 +1036,53 @@
       return;
     }
 
-    // Строка LRC
+    // Строка LRC (стандартный или расширенный)
     const text = String(source || '');
     const lines = text.split('\n');
 
     lines.forEach(line => {
-      const match = line.match(/^\[(\d{2}):(\d{2})\.(\d{2})\](.*)$/);
-      if (match) {
-        const [, mm, ss, cs, txt] = match;
+      const trimmed = line.trim();
+      if (!trimmed) return;
+
+      // ✅ Расширенные метаданные LRC
+      const metaMatch = trimmed.match(/^\[([a-z]{2}):(.*)\]$/i);
+      if (metaMatch) {
+        const [, key, value] = metaMatch;
+        metadata[key.toLowerCase()] = value.trim();
+        return;
+      }
+
+      // ✅ Стандартный LRC с сотыми: [mm:ss.xx]text
+      const match1 = trimmed.match(/^\[(\d{1,2}):(\d{2})\.(\d{2})\](.*)$/);
+      if (match1) {
+        const [, mm, ss, cs, txt] = match1;
         const time = parseInt(mm, 10) * 60 + parseInt(ss, 10) + parseInt(cs, 10) / 100;
-        currentLyrics.push({ time, text: (txt || '').trim() });
+        const lyricText = (txt || '').trim();
+        if (lyricText) {
+          currentLyrics.push({ time, text: lyricText });
+        }
+        return;
+      }
+
+      // ✅ Упрощённый LRC без сотых: [mm:ss]text
+      const match2 = trimmed.match(/^\[(\d{1,2}):(\d{2})\](.*)$/);
+      if (match2) {
+        const [, mm, ss, txt] = match2;
+        const time = parseInt(mm, 10) * 60 + parseInt(ss, 10);
+        const lyricText = (txt || '').trim();
+        if (lyricText) {
+          currentLyrics.push({ time, text: lyricText });
+        }
+        return;
       }
     });
 
     currentLyrics.sort((a, b) => a.time - b.time);
+
+    // Логируем метаданные если есть
+    if (Object.keys(metadata).length > 0) {
+      console.log('📝 LRC metadata:', metadata);
+    }
   }
 
   /**
@@ -1021,20 +1090,61 @@
    * Показывает окно из N строк с активной строкой по центру.
    * Размер окна зависит от режима: normal (5 строк) / expanded (9 строк).
    */
+  /**
+   * Рендеринг окна лирики с ОБРАТНЫМ ОТСЧЁТОМ перед началом текста.
+   * 
+   * Логика:
+   * 1. Если первая строка начинается ПОЗЖЕ 5 секунд → показываем обратный отсчёт
+   * 2. Отсчёт показывается ДО первой строки: 10-9-8-7-6-5-4-3-2-1
+   * 3. За 1 секунду до первой строки отсчёт исчезает (плавное fade-out)
+   * 4. Текст плавно подъезжает к центру к моменту первой строки
+   */
   function renderLyrics(position) {
     const container = document.getElementById('lyrics');
     if (!container) return;
 
     if (!currentLyrics || currentLyrics.length === 0) {
       container.innerHTML = '<div class="lyrics-placeholder">Текст не найден</div>';
+      countdownValue = null;
       return;
     }
 
-    // Размер окна зависит от режима
+    const firstLineTime = currentLyrics[0]?.time || 0;
+    const COUNTDOWN_THRESHOLD = 5; // Если первая строка позже 5 сек — показываем отсчёт
     const windowSize = (lyricsViewMode === 'expanded') ? 9 : 5;
     const centerLine = Math.floor(windowSize / 2);
 
-    // Определение активной строки по времени
+    // ✅ ОБРАТНЫЙ ОТСЧЁТ: если position < firstLineTime И firstLineTime > 5 сек
+    if (position < firstLineTime && firstLineTime > COUNTDOWN_THRESHOLD) {
+      const remaining = firstLineTime - position;
+      const secondsLeft = Math.ceil(remaining);
+
+      // За 1 секунду до начала — скрываем отсчёт (плавное исчезновение)
+      if (remaining < 1) {
+        countdownValue = null;
+        // НЕ показываем "0", просто пустое окно с подготовкой к тексту
+        container.innerHTML = `
+          <div class="lyrics-countdown fade-out" style="opacity: ${remaining.toFixed(2)};">
+            ${secondsLeft}
+          </div>
+        `;
+        return;
+      }
+
+      // Показываем обратный отсчёт
+      countdownValue = secondsLeft;
+      container.innerHTML = `
+        <div class="lyrics-countdown">
+          ${secondsLeft}
+        </div>
+      `;
+      return;
+    }
+
+    // Сбрасываем отсчёт если текст уже начался
+    countdownValue = null;
+
+    // ✅ ОБЫЧНЫЙ РЕЖИМ КАРАОКЕ
     let activeIdx = -1;
     for (let i = 0; i < currentLyrics.length; i++) {
       if (position >= currentLyrics[i].time) {
@@ -1044,14 +1154,12 @@
       }
     }
 
-    // Вычисление диапазона отображаемых строк
     const start = Math.max(0, activeIdx - centerLine);
     const padTop = Math.max(0, centerLine - activeIdx);
 
-    // Формирование HTML
     const rows = [];
 
-    // Пустые строки сверху (для центрирования)
+    // Пустые строки сверху
     for (let p = 0; p < padTop; ++p) {
       rows.push('<div class="lyrics-window-line"></div>');
     }
