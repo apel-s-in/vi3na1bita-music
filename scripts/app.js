@@ -28,10 +28,13 @@ import { APP_CONFIG } from './core/config.js';
         // 3. Инициализация избранного
         await this.initializeFavorites();
 
-        // 4. Инициализация менеджера альбомов
+        // 4. Инициализация галереи
+        await this.initializeGallery();
+
+        // 5. Инициализация менеджера альбомов
         await this.initializeAlbums();
 
-        // 5. Инициализация UI плеера
+        // 6. Инициализация UI плеера
         await this.initializePlayerUI();
 
         // 6. Инициализация дополнительных модулей
@@ -123,6 +126,20 @@ import { APP_CONFIG } from './core/config.js';
           if (w.PlayerUI && typeof w.PlayerUI.initialize === 'function') {
             w.PlayerUI.initialize();
             console.log('✅ PlayerUI initialized');
+            resolve();
+          } else {
+            setTimeout(check, 50);
+          }
+        };
+        check();
+      });
+    }
+    async initializeGallery() {
+      return new Promise((resolve) => {
+        const check = () => {
+          if (w.GalleryManager && typeof w.GalleryManager.initialize === 'function') {
+            w.GalleryManager.initialize();
+            console.log('✅ Gallery initialized');
             resolve();
           } else {
             setTimeout(check, 50);
