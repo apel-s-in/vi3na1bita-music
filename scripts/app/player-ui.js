@@ -141,11 +141,11 @@
       // ✅ Применяем состояние лирики МГНОВЕННО
       applyMiniLyricsState();
 
-      // ✅ Мгновенно показываем мини-элементы
+      // ✅ Мгновенно показываем мини-элементы (ЕДИНОЖДЫ!)
       const miniHeaderEl = document.getElementById('mini-now');
       if (miniHeaderEl) {
         miniHeaderEl.style.display = 'flex';
-        miniHeaderEl.style.transition = 'none'; // Убираем плавность
+        miniHeaderEl.style.transition = 'none';
       }
 
       const nextUpEl = document.getElementById('next-up');
@@ -158,13 +158,6 @@
       setTimeout(() => {
         nowPlaying.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 50);
-
-      // Мини-шапка и "Далее" видны
-      const miniHeaderEl = document.getElementById('mini-now');
-      if (miniHeaderEl) miniHeaderEl.style.display = 'flex';
-
-      const nextUpEl = document.getElementById('next-up');
-      if (nextUpEl) nextUpEl.style.display = 'flex';
 
     } else {
       const trackList = document.getElementById('track-list');
@@ -190,7 +183,7 @@
       // ✅ МГНОВЕННОЕ восстановление режима лирики
       restoreLyricsStateIfNeeded();
 
-      // ✅ Мгновенно скрываем мини-элементы
+      // ✅ Мгновенно скрываем мини-элементы (ЕДИНОЖДЫ!)
       const miniHeaderEl = document.getElementById('mini-now');
       if (miniHeaderEl) {
         miniHeaderEl.style.display = 'none';
@@ -202,13 +195,6 @@
         nextUpEl.style.display = 'none';
         nextUpEl.style.transition = 'none';
       }
-
-      // Мини-шапка и "Далее" скрываем (но не удаляем)
-      const miniHeaderEl = document.getElementById('mini-now');
-      if (miniHeaderEl) miniHeaderEl.style.display = 'none';
-
-      const nextUpEl = document.getElementById('next-up');
-      if (nextUpEl) nextUpEl.style.display = 'none';
     }
 
     updateMiniHeader();
