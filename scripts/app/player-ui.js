@@ -39,7 +39,15 @@
 
     restoreSettings();
     attachPlayerCoreEvents();
-    
+  
+    // ✅ КРИТИЧНО: Привязываем кнопку фильтрации
+    const filterBtn = document.getElementById('filter-favorites-btn');
+    if (filterBtn) {
+      filterBtn.addEventListener('click', () => {
+        toggleFavoritesFilter();
+      });
+    }
+  
     console.log('✅ PlayerUI initialized');
   }
 
@@ -472,13 +480,12 @@
     block.querySelector('#lyrics-toggle-btn')?.addEventListener('click', toggleLyricsView);
     block.querySelector('#animation-btn')?.addEventListener('click', toggleAnimation);
     block.querySelector('#pulse-btn')?.addEventListener('click', togglePulse);
-    const favBtn = block.querySelector('#favorites-btn');
-    if (favBtn) {
-      // Удаляем все старые обработчики (если были)
-      favBtn.replaceWith(favBtn.cloneNode(true));
-      const newFavBtn = block.querySelector('#favorites-btn');
-  
-      newFavBtn.addEventListener('click', () => {
+    // ✅ КРИТИЧНО: Привязываем кнопку звёздочки
+    const favoritesBtn = block.querySelector('#favorites-btn');
+    if (favoritesBtn) {
+      favoritesBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         toggleFavoritesOnly();
       });
     }
@@ -1214,9 +1221,15 @@
   // ========== ФИЛЬТРАЦИЯ ТРЕКОВ В СПИСКЕ ==========
 
   function toggleFavoritesFilter() {
-    const currentAlbum = w.AlbumsManager?.getCurrentAlbum();
-    const trackList = document.getElementById('track-list');
-    const btn = document.getElementById('filter-favorites-btn');
+      console.log('🔍 toggleFavoritesFilter() called'); // ✅ ОТЛАДКА
+  
+      const currentAlbum = w.AlbumsManager?.getCurrentAlbum();
+      const trackList = document.getElementById('track-list');
+      const btn = document.getElementById('filter-favorites-btn');
+  
+      console.log('Current album:', currentAlbum); // ✅ ОТЛАДКА
+      console.log('Track list:', trackList); // ✅ ОТЛАДКА
+      console.log('Filter button:', btn); // ✅ ОТЛАДКА
   
     if (!currentAlbum || !trackList || !btn) return;
   
@@ -1270,6 +1283,13 @@
   }
 
   function toggleFavoritesFilterForFavorites() {
+    console.log('⭐ toggleFavoritesOnly() called'); // ✅ ОТЛАДКА
+  
+    const btn = document.getElementById('favorites-btn');
+    const icon = document.getElementById('favorites-btn-icon');
+  
+    console.log('Favorites button:', btn); // ✅ ОТЛАДКА
+    console.log('Favorites icon:', icon); // ✅ ОТЛАДКА
     const trackList = document.getElementById('track-list');
     const btn = document.getElementById('filter-favorites-btn');
   
