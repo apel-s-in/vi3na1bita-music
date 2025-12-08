@@ -80,9 +80,24 @@ class AlbumsManager {
         await this.loadRegularAlbum(albumKey);
       }
 
-      this.updateActiveIcon(albumKey);
-      this.currentAlbum = albumKey;
-      localStorage.setItem('currentAlbum', albumKey);
+      // ✅ Сбрасываем фильтрацию при смене альбома
+      const filterBtn = document.getElementById('filter-favorites-btn');
+      const trackList = document.getElementById('track-list');
+
+      if (filterBtn) {
+        filterBtn.textContent = 'Скрыть не отмеченные ⭐ песни';
+        filterBtn.classList.remove('filtered');
+      }
+
+      if (trackList) {
+        trackList.classList.remove('filtered');
+      }
+
+      // Сбрасываем состояние в PlayerUI (если там хранится)
+      if (window.PlayerUI) {
+        // Доступ к приватным переменным через замыкание невозможен,
+        // поэтому делаем через вызов функции (она сама проверит состояние)
+      }
 
       // ✅ МГНОВЕННОЕ обновление мини-плеера при смене вкладки
       if (window.PlayerUI && typeof window.PlayerUI.switchAlbumInstantly === 'function') {
