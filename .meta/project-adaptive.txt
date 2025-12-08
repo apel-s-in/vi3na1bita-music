@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2c0505a06ed4725842a14f72f0a2c31663749d53.idx
-│   │       ├── pack-2c0505a06ed4725842a14f72f0a2c31663749d53.pack
-│   │       └── pack-2c0505a06ed4725842a14f72f0a2c31663749d53.rev
+│   │       ├── pack-bba9ad2daeacedfd447ed2eedb33514f288deb65.idx
+│   │       ├── pack-bba9ad2daeacedfd447ed2eedb33514f288deb65.pack
+│   │       └── pack-bba9ad2daeacedfd447ed2eedb33514f288deb65.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-07 23:45:56 UTC
+Сгенерировано: 2025-12-08 07:56:24 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3406,13 +3406,12 @@ export default NavigationManager;
         </button>
         
         <div class="player-extra-buttons-row">
-          <button class="karaoke-btn" id="lyrics-text-btn">📝 ТЕКСТ</button>
-          <a class="player-download-btn" href="#" id="track-download-btn" download>💾 СКАЧАТЬ</a>
-          <button id="eco-btn" class="eco-btn" title="Ультра-эконом">
-            <svg viewBox="0 0 24 24" fill="currentColor">
+          <button class="karaoke-btn" id="lyrics-text-btn" title="Полный текст песни">📝</button>
+          <a class="player-download-btn" href="#" id="track-download-btn" download title="Скачать трек">💾</a>
+          <button id="eco-btn" class="eco-btn" title="Эконом режим">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
               <path d="M13 3L4 14h6l-1 7 9-11h-6l1-7z"/>
             </svg>
-            <span class="eco-label">ЭКО</span>
           </button>
         </div>
       </div>
