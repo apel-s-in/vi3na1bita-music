@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-252a5c338c01dfea2f85f9cff4bdc2c13599d975.idx
-│   │       ├── pack-252a5c338c01dfea2f85f9cff4bdc2c13599d975.pack
-│   │       └── pack-252a5c338c01dfea2f85f9cff4bdc2c13599d975.rev
+│   │       ├── pack-ec8812cc160e59f912a09a95bc6d8051c2464888.idx
+│   │       ├── pack-ec8812cc160e59f912a09a95bc6d8051c2464888.pack
+│   │       └── pack-ec8812cc160e59f912a09a95bc6d8051c2464888.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-08 18:45:21 UTC
+Сгенерировано: 2025-12-08 18:48:36 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4765,7 +4765,34 @@ export default NavigationManager;
       w.availableFavoriteIndices = null;
     }
   }
-
+  function resetFiltersOnAlbumChange() {
+    favoritesFilterActive = false;
+    favoritesOnlyMode = false;
+  
+    const filterBtn = document.getElementById('filter-favorites-btn');
+    const trackList = document.getElementById('track-list');
+    const favBtn = document.getElementById('favorites-btn');
+    const favIcon = document.getElementById('favorites-btn-icon');
+  
+    if (filterBtn) {
+      filterBtn.textContent = 'Скрыть не отмеченные ⭐ песни';
+      filterBtn.classList.remove('filtered');
+    }
+  
+    if (trackList) {
+      trackList.classList.remove('filtered');
+    }
+  
+    if (favBtn) {
+      favBtn.classList.remove('favorites-active');
+    }
+  
+    if (favIcon) {
+      favIcon.src = 'img/star2.png';
+    }
+  
+    w.availableFavoriteIndices = null;
+  }
   function rebuildShuffledPlaylist() {
     console.log('🔀 rebuildShuffledPlaylist() called'); // ✅ ОТЛАДКА
   
