@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b3561bee721eecd68b2df2a7639c18b8ab05ec7f.idx
-│   │       ├── pack-b3561bee721eecd68b2df2a7639c18b8ab05ec7f.pack
-│   │       └── pack-b3561bee721eecd68b2df2a7639c18b8ab05ec7f.rev
+│   │       ├── pack-1f3786ee053006cb5da5d7c27522ea16a908fa6b.idx
+│   │       ├── pack-1f3786ee053006cb5da5d7c27522ea16a908fa6b.pack
+│   │       └── pack-1f3786ee053006cb5da5d7c27522ea16a908fa6b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-08 20:53:28 UTC
+Сгенерировано: 2025-12-08 20:54:31 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6679,10 +6679,24 @@ class FavoritesManager {
     }
   }
 
-  // Переключение избранного для трека
+  // ✅ Переключение избранного для трека с валидацией
   toggleLike(albumKey, trackIndex, makeLiked = null) {
     const index = parseInt(trackIndex, 10);
     if (!Number.isFinite(index)) return;
+    
+    // ✅ КРИТИЧНО: Проверяем, что трек существует в альбоме
+    if (makeLiked) {
+      const albumData = window.AlbumsManager?.getAlbumData?.(albumKey);
+      if (albumData && Array.isArray(albumData.tracks)) {
+        const trackExists = albumData.tracks.some(t => t.num === index || t.num === (index + 1));
+        
+        if (!trackExists) {
+          console.warn(`⚠️ Track ${index} not found in album ${albumKey}`);
+          window.NotificationSystem?.warning('Трек не найден в альбоме');
+          return false;
+        }
+      }
+    }
     
     const map = this.getLikedMap();
     const arrRaw = Array.isArray(map[albumKey]) ? map[albumKey] : [];
