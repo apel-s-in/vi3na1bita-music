@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a92dac8de82932ebde228fda73b26942736c8693.idx
-│   │       ├── pack-a92dac8de82932ebde228fda73b26942736c8693.pack
-│   │       └── pack-a92dac8de82932ebde228fda73b26942736c8693.rev
+│   │       ├── pack-f38301806939f510ce40acd44029f5eb9e5370b9.idx
+│   │       ├── pack-f38301806939f510ce40acd44029f5eb9e5370b9.pack
+│   │       └── pack-f38301806939f510ce40acd44029f5eb9e5370b9.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-08 10:08:58 UTC
+Сгенерировано: 2025-12-08 10:34:49 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3306,11 +3306,11 @@ export default NavigationManager;
       // ✅ Применяем состояние лирики МГНОВЕННО
       applyMiniLyricsState();
 
-      // ✅ Мгновенно показываем мини-элементы
+      // ✅ Мгновенно показываем мини-элементы (ЕДИНОЖДЫ!)
       const miniHeaderEl = document.getElementById('mini-now');
       if (miniHeaderEl) {
         miniHeaderEl.style.display = 'flex';
-        miniHeaderEl.style.transition = 'none'; // Убираем плавность
+        miniHeaderEl.style.transition = 'none';
       }
 
       const nextUpEl = document.getElementById('next-up');
@@ -3323,13 +3323,6 @@ export default NavigationManager;
       setTimeout(() => {
         nowPlaying.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 50);
-
-      // Мини-шапка и "Далее" видны
-      const miniHeaderEl = document.getElementById('mini-now');
-      if (miniHeaderEl) miniHeaderEl.style.display = 'flex';
-
-      const nextUpEl = document.getElementById('next-up');
-      if (nextUpEl) nextUpEl.style.display = 'flex';
 
     } else {
       const trackList = document.getElementById('track-list');
@@ -3355,7 +3348,7 @@ export default NavigationManager;
       // ✅ МГНОВЕННОЕ восстановление режима лирики
       restoreLyricsStateIfNeeded();
 
-      // ✅ Мгновенно скрываем мини-элементы
+      // ✅ Мгновенно скрываем мини-элементы (ЕДИНОЖДЫ!)
       const miniHeaderEl = document.getElementById('mini-now');
       if (miniHeaderEl) {
         miniHeaderEl.style.display = 'none';
@@ -3367,13 +3360,6 @@ export default NavigationManager;
         nextUpEl.style.display = 'none';
         nextUpEl.style.transition = 'none';
       }
-
-      // Мини-шапка и "Далее" скрываем (но не удаляем)
-      const miniHeaderEl = document.getElementById('mini-now');
-      if (miniHeaderEl) miniHeaderEl.style.display = 'none';
-
-      const nextUpEl = document.getElementById('next-up');
-      if (nextUpEl) nextUpEl.style.display = 'none';
     }
 
     updateMiniHeader();
