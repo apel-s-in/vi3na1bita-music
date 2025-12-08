@@ -40,9 +40,10 @@
     restoreSettings();
     attachPlayerCoreEvents();
   
-    // ✅ КРИТИЧНО: Привязываем кнопку фильтрации
+    // ✅ КРИТИЧНО: Привязываем кнопку фильтрации ОДИН РАЗ
     const filterBtn = document.getElementById('filter-favorites-btn');
-    if (filterBtn) {
+    if (filterBtn && !filterBtn.__bound) {
+      filterBtn.__bound = true;
       filterBtn.addEventListener('click', () => {
         toggleFavoritesFilter();
       });
@@ -121,31 +122,28 @@
     return playingAlbum !== currentAlbum;
   }
 
-  function ensurePlayerBlock(trackIndex) {
-    console.log('🎯 ensurePlayerBlock() called, trackIndex:', trackIndex); // ✅ ОТЛАДКА
+  // ✅ Debounce для предотвращения множественных вызовов
+  let ensurePlayerBlockTimeout = null;
   
+  function _doEnsurePlayerBlock(trackIndex) {
     let playerBlock = document.getElementById('lyricsplayerblock');
   
-    // ✅ КРИТИЧНО: Если блок не существует — создаём его
     if (!playerBlock) {
-      console.log('🆕 Creating new player block'); // ✅ ОТЛАДКА
       playerBlock = createPlayerBlock();
     }
 
     const inMiniMode = isBrowsingOtherAlbum();
-    console.log('📱 Mini mode:', inMiniMode); // ✅ ОТЛАДКА
 
     if (inMiniMode) {
       const nowPlaying = document.getElementById('now-playing');
     
       if (!nowPlaying) {
-        console.error('❌ #now-playing not found!'); // ✅ ОТЛАДКА
+        console.error('❌ #now-playing not found!');
         return;
       }
 
-      // ✅ Вставляем блок в #now-playing только если его там нет
       if (!nowPlaying.contains(playerBlock)) {
-        console.log('📌 Inserting player into #now-playing'); // ✅ ОТЛАДКА
+        console.log('📌 Inserting player into #now-playing');
       
         nowPlaying.innerHTML = '';
         nowPlaying.appendChild(createMiniHeader());
@@ -172,35 +170,31 @@
       }, 50);
 
     } else {
-      // ✅ ОБЫЧНЫЙ РЕЖИМ: вставляем блок под трек
       const trackList = document.getElementById('track-list');
     
       if (!trackList) {
-        console.error('❌ #track-list not found!'); // ✅ ОТЛАДКА
+        console.error('❌ #track-list not found!');
         return;
       }
 
-      console.log('🔍 Searching for track with index:', trackIndex); // ✅ ОТЛАДКА
+      console.log('🔍 Searching for track with index:', trackIndex);
       const trackRow = trackList.querySelector(`.track[data-index="${trackIndex}"]`);
     
       if (!trackRow) {
-        console.warn(`⚠️ Track row [data-index="${trackIndex}"] not found!`); // ✅ ОТЛАДКА
+        console.warn(`⚠️ Track row [data-index="${trackIndex}"] not found!`);
       
-        // ✅ ФОЛЛБЕК: Вставляем блок в конец списка треков
         if (!playerBlock.parentNode) {
-          console.log('📌 Fallback: appending player to track-list end'); // ✅ ОТЛАДКА
+          console.log('📌 Fallback: appending player to track-list end');
           trackList.appendChild(playerBlock);
         }
       
         return;
       }
 
-      console.log('✅ Track row found:', trackRow); // ✅ ОТЛАДКА
+      console.log('✅ Track row found:', trackRow);
 
-      // ✅ КРИТИЧНО: Гарантированная вставка блока в DOM
       if (!playerBlock.parentNode) {
-        // Блок НЕ в DOM — вставляем СРАЗУ после трека
-        console.log('📌 Inserting NEW player block after track'); // ✅ ОТЛАДКА
+        console.log('📌 Inserting NEW player block after track');
       
         if (trackRow.nextSibling) {
           trackRow.parentNode.insertBefore(playerBlock, trackRow.nextSibling);
@@ -208,8 +202,7 @@
           trackRow.parentNode.appendChild(playerBlock);
         }
       } else if (trackRow.nextSibling !== playerBlock) {
-        // Блок УЖЕ в DOM, но НЕ после текущего трека — ПЕРЕМЕЩАЕМ
-        console.log('🔄 Moving EXISTING player block after track'); // ✅ ОТЛАДКА
+        console.log('🔄 Moving EXISTING player block after track');
       
         if (trackRow.nextSibling) {
           trackRow.parentNode.insertBefore(playerBlock, trackRow.nextSibling);
@@ -217,14 +210,13 @@
           trackRow.parentNode.appendChild(playerBlock);
         }
       } else {
-        console.log('✅ Player block already in correct position'); // ✅ ОТЛАДКА
+        console.log('✅ Player block already in correct position');
       }
 
-      // ✅ Проверяем, что блок действительно вставлен
       if (playerBlock.parentNode) {
-        console.log('✅ Player block successfully inserted into DOM'); // ✅ ОТЛАДКА
+        console.log('✅ Player block successfully inserted into DOM');
       } else {
-        console.error('❌ Player block NOT in DOM after insertion!'); // ✅ ОТЛАДКА
+        console.error('❌ Player block NOT in DOM after insertion!');
       }
 
       setTimeout(() => {
@@ -249,7 +241,7 @@
     updateMiniHeader();
     updateNextUpLabel();
   
-    console.log('✅ ensurePlayerBlock() completed'); // ✅ ОТЛАДКА
+    console.log('✅ ensurePlayerBlock() completed');
   }
 
   function createPlayerBlock() {
@@ -542,7 +534,7 @@
     block.querySelector('#lyrics-toggle-btn')?.addEventListener('click', toggleLyricsView);
     block.querySelector('#animation-btn')?.addEventListener('click', toggleAnimation);
     block.querySelector('#pulse-btn')?.addEventListener('click', togglePulse);
-    // ✅ КРИТИЧНО: Привязываем кнопку звёздочки
+    
     const favoritesBtn = block.querySelector('#favorites-btn');
     if (favoritesBtn) {
       favoritesBtn.addEventListener('click', (e) => {
@@ -551,6 +543,26 @@
         toggleFavoritesOnly();
       });
     }
+    
+    block.querySelector('#sleep-timer-btn')?.addEventListener('click', () => w.SleepTimer?.show?.());
+    block.querySelector('#lyrics-text-btn')?.addEventListener('click', () => w.LyricsModal?.show?.());
+
+    const downloadBtn = block.querySelector('#track-download-btn');
+    downloadBtn?.addEventListener('click', (e) => {
+      const track = w.playerCore?.getCurrentTrack();
+      if (!track || !track.src) {
+        e.preventDefault();
+        w.NotificationSystem?.error('Трек недоступен для скачивания');
+      }
+    });
+
+    block.querySelector('#eco-btn')?.addEventListener('click', toggleEcoMode);
+
+    document.addEventListener('mousemove', handleSeeking);
+    document.addEventListener('touchmove', handleSeeking);
+    document.addEventListener('mouseup', stopSeeking);
+    document.addEventListener('touchend', stopSeeking);
+  }
     block.querySelector('#sleep-timer-btn')?.addEventListener('click', () => w.SleepTimer?.show?.());
     block.querySelector('#lyrics-text-btn')?.addEventListener('click', () => w.LyricsModal?.show?.());
 
