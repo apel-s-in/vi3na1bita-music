@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-82627d58a721cef3e2a905a114a34fc7492354e9.idx
-│   │       ├── pack-82627d58a721cef3e2a905a114a34fc7492354e9.pack
-│   │       └── pack-82627d58a721cef3e2a905a114a34fc7492354e9.rev
+│   │       ├── pack-2cad7c03a69cdd0f376184abdcbda8e4b4c5e689.idx
+│   │       ├── pack-2cad7c03a69cdd0f376184abdcbda8e4b4c5e689.pack
+│   │       └── pack-2cad7c03a69cdd0f376184abdcbda8e4b4c5e689.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-08 16:51:50 UTC
+Сгенерировано: 2025-12-08 16:53:21 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1843,6 +1843,13 @@ class AlbumsManager {
         await this.loadRegularAlbum(albumKey);
       }
 
+      // ✅ КРИТИЧНО: Сохраняем currentAlbum ПЕРЕД любыми UI-операциями
+      this.currentAlbum = albumKey;
+      this.updateActiveIcon(albumKey);
+      localStorage.setItem('currentAlbum', albumKey);
+      
+      console.log(`✅ currentAlbum set to: ${albumKey}`); // ✅ ОТЛАДКА
+
       // ✅ Сбрасываем фильтрацию при смене альбома
       const filterBtn = document.getElementById('filter-favorites-btn');
       const trackList = document.getElementById('track-list');
@@ -1861,11 +1868,6 @@ class AlbumsManager {
         // Доступ к приватным переменным через замыкание невозможен,
         // поэтому делаем через вызов функции (она сама проверит состояние)
       }
-
-      // ✅ КРИТИЧНО: Сохраняем текущий альбом
-      this.currentAlbum = albumKey;
-      this.updateActiveIcon(albumKey);
-      localStorage.setItem('currentAlbum', albumKey);
 
       // ✅ МГНОВЕННОЕ обновление мини-плеера при смене вкладки
       if (window.PlayerUI && typeof window.PlayerUI.switchAlbumInstantly === 'function') {
