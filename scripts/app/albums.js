@@ -9,13 +9,12 @@ class AlbumsManager {
     this.playingAlbum = null;
     this.albumsData = new Map();
     this.isLoading = false;
-    this.galleryIndex = 0;
-    this.galleryItems = [];
+    
+    // ✅ Флаг видимости галереи (toggle при повторном клике)
+    this.isGalleryVisible = true;
   }
 
   async initialize() {
-    // albumsIndex заполняется в scripts/core/bootstrap.js и может прийти чуть позже,
-    // чем Application/AlbumsManager. Дождёмся его появления.
     const maxWaitMs = 2000;
     const stepMs = 50;
     let waited = 0;
@@ -33,7 +32,6 @@ class AlbumsManager {
     console.log(`✅ Albums available: ${window.albumsIndex.length}`);
 
     this.renderAlbumIcons();
-    this.setupGalleryNavigation();
     
     const lastAlbum = localStorage.getItem('currentAlbum');
     const albumToLoad = lastAlbum || window.albumsIndex[0].key;
@@ -61,7 +59,6 @@ class AlbumsManager {
       iconEl.dataset.akey = key;
       iconEl.title = title;
 
-      // Адаптивные пути (как в старом коде)
       const baseIcon = icon || 'img/logo.png';
       const path1x = isMobile
         ? baseIcon.replace(/icon_album\/(.+)\.png$/i, 'icon_album/mobile/$1@1x.jpg')
@@ -72,16 +69,57 @@ class AlbumsManager {
 
       iconEl.innerHTML = `<img src="${path1x}" srcset="${path2x} 2x" alt="${title}" draggable="false" loading="lazy" width="60" height="60">`;
 
-      iconEl.addEventListener('click', () => this.loadAlbum(key));
+      // ✅ КРИТИЧНО: Обработка кликов с проверкой активности
+      iconEl.addEventListener('click', () => this.handleAlbumIconClick(key));
+      
       container.appendChild(iconEl);
     });
   }
 
+  /**
+   * ✅ НОВАЯ ЛОГИКА: Если кликнули на УЖЕ активный альбом — toggle галереи
+   */
+  async handleAlbumIconClick(albumKey) {
+    console.log(`🎯 Album icon clicked: ${albumKey}, current: ${this.currentAlbum}`);
+    
+    // Повторный клик по текущему альбому — toggle видимости галереи
+    if (this.currentAlbum === albumKey && !albumKey.startsWith('__')) {
+      this.toggleGalleryVisibility();
+      return;
+    }
+    
+    // Иначе загружаем новый альбом
+    await this.loadAlbum(albumKey);
+  }
+
+  /**
+   * ✅ Toggle видимости галереи
+   */
+  toggleGalleryVisibility() {
+    this.isGalleryVisible = !this.isGalleryVisible;
+    
+    const coverWrap = document.getElementById('cover-wrap');
+    if (coverWrap) {
+      coverWrap.style.display = this.isGalleryVisible ? '' : 'none';
+    }
+    
+    window.NotificationSystem?.info(
+      this.isGalleryVisible ? '🖼️ Галерея показана' : '🚫 Галерея скрыта'
+    );
+  }
+
   async loadAlbum(albumKey) {
-    if (this.isLoading) return;
+    if (this.isLoading) {
+      console.warn('⚠️ Album loading already in progress');
+      return;
+    }
+    
     this.isLoading = true;
 
     try {
+      // ✅ Сбрасываем видимость галереи (по умолчанию показана)
+      this.isGalleryVisible = true;
+      
       this.clearUI();
 
       if (albumKey === '__favorites__') {
@@ -92,14 +130,13 @@ class AlbumsManager {
         await this.loadRegularAlbum(albumKey);
       }
 
-      // ✅ КРИТИЧНО: Сохраняем currentAlbum ПЕРЕД любыми UI-операциями
       this.currentAlbum = albumKey;
       this.updateActiveIcon(albumKey);
       localStorage.setItem('currentAlbum', albumKey);
       
-      console.log(`✅ currentAlbum set to: ${albumKey}`); // ✅ ОТЛАДКА
+      console.log(`✅ currentAlbum set to: ${albumKey}`);
 
-      // ✅ Сбрасываем фильтрацию при смене альбома
+      // Сброс фильтрации
       const filterBtn = document.getElementById('filter-favorites-btn');
       const trackList = document.getElementById('track-list');
 
@@ -112,18 +149,10 @@ class AlbumsManager {
         trackList.classList.remove('filtered');
       }
 
-      // Сбрасываем состояние в PlayerUI (если там хранится)
-      if (window.PlayerUI) {
-        // Доступ к приватным переменным через замыкание невозможен,
-        // поэтому делаем через вызов функции (она сама проверит состояние)
-      }
-
-      // ✅ МГНОВЕННОЕ обновление мини-плеера при смене вкладки
       if (window.PlayerUI && typeof window.PlayerUI.switchAlbumInstantly === 'function') {
         window.PlayerUI.switchAlbumInstantly(albumKey);
       }
 
-      // ✅ Сохраняем состояние после переключения альбома
       if (window.PlayerState && typeof window.PlayerState.save === 'function') {
         window.PlayerState.save();
       }
@@ -149,6 +178,7 @@ class AlbumsManager {
     if (!albumData) {
       const base = albumInfo.base.endsWith('/') ? albumInfo.base : `${albumInfo.base}/`;
       const response = await fetch(`${base}config.json`, { cache: 'no-cache' });
+      
       if (!response.ok) {
         throw new Error(`Failed to load config.json for ${albumKey}: HTTP ${response.status}`);
       }
@@ -178,7 +208,6 @@ class AlbumsManager {
 
       const coverPath = data.cover || 'cover.jpg';
 
-      // Поддержка обоих форматов: social_links (новый) и socials (старый)
       const socialLinks = Array.isArray(data.social_links) 
         ? data.social_links 
         : (Array.isArray(data.socials) 
@@ -196,31 +225,31 @@ class AlbumsManager {
       this.albumsData.set(albumKey, albumData);
     }
 
-    // Загрузка галереи через GalleryManager
+    // ✅ Загрузка галереи ТОЛЬКО через GalleryManager
     await this.loadGallery(albumKey);
 
     this.renderAlbumTitle(albumData.title || albumInfo.title);
     
-    // Рендер обложки только если галерея пуста
+    // ✅ КРИТИЧНО: НЕ рендерить cover.jpg если галерея загружена
     if (!window.GalleryManager || window.GalleryManager.getItemsCount() === 0) {
+      console.warn(`⚠️ Gallery empty for ${albumKey}, using fallback cover`);
       this.renderCover(albumInfo, albumData);
     }
     
     this.renderSocials(albumData.social_links);
     this.renderTrackList(albumData.tracks, albumInfo);
 
-    // Обновляем мини-режим
     if (window.PlayerUI) {
       window.PlayerUI.updateMiniHeader?.();
       window.PlayerUI.updateNextUpLabel?.();
     }
 
+    // ✅ Показываем галерею (по умолчанию видима)
     const coverWrap = document.getElementById('cover-wrap');
     if (coverWrap) coverWrap.style.display = '';
   }
 
   async loadGallery(albumKey) {
-    // Делегируем в GalleryManager
     if (window.GalleryManager) {
       await window.GalleryManager.loadGallery(albumKey);
     }
@@ -291,26 +320,20 @@ class AlbumsManager {
         const wasActive = item.__active;
         const makeLiked = !wasActive;
 
-        // Основной путь: через FavoritesManager
         if (window.FavoritesManager && typeof window.FavoritesManager.toggleLike === 'function') {
           window.FavoritesManager.toggleLike(item.__a, item.__t, makeLiked);
         } else if (typeof window.toggleLikeForAlbum === 'function') {
-          // Back‑compat: глобальная обёртка (delegates в FavoritesManager или raw localStorage)
           window.toggleLikeForAlbum(item.__a, item.__t, makeLiked);
         }
 
-        // Обновляем локальную модель/DOM‑состояние
         item.__active = makeLiked;
         trackEl.classList.toggle('inactive', !makeLiked);
         star.src = makeLiked ? 'img/star.png' : 'img/star2.png';
 
-        // Обновляем refs‑модель (FavoritesData) если доступна
         if (typeof window.updateFavoritesRefsModelActiveFlag === 'function') {
           window.updateFavoritesRefsModelActiveFlag(item.__a, item.__t, makeLiked);
         }
 
-        // Если сняли звезду с текущего играющего трека в представлении Избранного —
-        // по ТЗ всегда вызываем next(), но не stop.
         if (window.playerCore &&
             this.getCurrentAlbum() === '__favorites__' &&
             window.playerCore.getIndex() === index &&
@@ -321,9 +344,6 @@ class AlbumsManager {
 
       container.appendChild(trackEl);
     });
-
-    // Плейлист для избранного формируется и запускается ТОЛЬКО через ensureFavoritesPlayback.
-    // Здесь ничего не трогаем в playerCore / playingAlbum, чтобы не ломать контекст воспроизведения.
   }
 
   async ensureFavoritesPlayback(index) {
@@ -369,7 +389,6 @@ class AlbumsManager {
       window.playerCore.play(index);
       this.setPlayingAlbum(window.SPECIAL_FAVORITES_KEY || '__favorites__');
       
-      // Обновляем UI
       this.highlightCurrentTrack(index);
       window.PlayerUI?.ensurePlayerBlock(index);
     }
@@ -378,14 +397,9 @@ class AlbumsManager {
   async loadNewsAlbum() {
     this.renderAlbumTitle('📰 НОВОСТИ 📰', 'news');
     
+    // ✅ Показываем галерею для __reliz__
     await this.loadGallery('__reliz__');
     
-    const coverSlot = document.getElementById('cover-slot');
-    if (coverSlot && this.galleryItems.length) {
-      this.galleryIndex = 0;
-      this.renderGalleryCover();
-    }
-
     const container = document.getElementById('track-list');
     if (container) {
       container.innerHTML = `
@@ -424,7 +438,6 @@ class AlbumsManager {
     const coverSlot = document.getElementById('cover-slot');
     if (!coverSlot) return;
 
-    // Простой fallback на cover.jpg из базы альбома
     const coverUrl = albumData.cover 
       ? `${albumInfo.base}${albumData.cover}` 
       : `${albumInfo.base}cover.jpg`;
@@ -438,7 +451,6 @@ class AlbumsManager {
 
     container.innerHTML = '';
     
-    // Поддержка старого формата из config.json: { socials: [{title, url}] }
     const normalized = Array.isArray(links) 
       ? links.map(link => ({
           label: link.label || link.title || 'Ссылка',
@@ -501,7 +513,6 @@ class AlbumsManager {
         return;
       }
 
-      // Проверяем, соответствует ли текущий плейлист этому альбому
       const snapshot = window.playerCore.getPlaylistSnapshot?.() || [];
       const needsNewPlaylist =
         snapshot.length !== albumData.tracks.length ||
@@ -520,7 +531,7 @@ class AlbumsManager {
             src: t.file,
             title: t.title,
             artist: albumData.artist || 'Витрина Разбита',
-            album: albumKey, // важно: здесь храним КЛЮЧ альбома для MediaSession/mini
+            album: albumKey,
             cover: albumData.cover
               ? new URL(albumData.cover, base).toString()
               : (albumInfo ? new URL('cover.jpg', albumInfo.base).toString() : 'img/logo.png'),
@@ -560,7 +571,6 @@ class AlbumsManager {
         isLiked = !!window.FavoritesManager.isFavorite(albumKey, trackNum);
         window.FavoritesManager.toggleLike(albumKey, trackNum, !isLiked);
       } else if (typeof window.toggleLikeForAlbum === 'function') {
-        // Back‑compat, если по какой‑то причине FavoritesManager недоступен
         isLiked = (window.getLikedForAlbum?.(albumKey)?.includes(trackNum) || false);
         window.toggleLikeForAlbum(albumKey, trackNum, !isLiked);
       }
@@ -592,7 +602,6 @@ class AlbumsManager {
     if (trackList) trackList.innerHTML = '';
     if (socials) socials.innerHTML = '';
     
-    // Очистка галереи через GalleryManager
     if (window.GalleryManager) {
       window.GalleryManager.clear();
     }
@@ -606,10 +615,6 @@ class AlbumsManager {
     return this.playingAlbum;
   }
 
-  /**
-   * Явно задаём альбом, из которого в данный момент ИДЁТ воспроизведение.
-   * Менять ТОЛЬКО в моментах смены плейлиста/режима (альбомный трек, избранное, восстановление стейта).
-   */
   setPlayingAlbum(albumKey) {
     this.playingAlbum = albumKey || null;
   }
@@ -622,10 +627,6 @@ class AlbumsManager {
     return this.albumsData.get(albumKey);
   }
 
-  /**
-   * Унифицированный UID трека: albumKey_trackNum.
-   * Используем для связки плеера, избранного и мини-плеера, не зависящей от индекса в массиве.
-   */
   getTrackUid(albumKey, trackNum) {
     if (!albumKey || !Number.isFinite(Number(trackNum))) return null;
     return `${albumKey}_${Number(trackNum)}`;
