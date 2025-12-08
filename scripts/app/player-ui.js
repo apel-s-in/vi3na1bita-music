@@ -278,13 +278,12 @@
         </button>
         
         <div class="player-extra-buttons-row">
-          <button class="karaoke-btn" id="lyrics-text-btn">📝 ТЕКСТ</button>
-          <a class="player-download-btn" href="#" id="track-download-btn" download>💾 СКАЧАТЬ</a>
-          <button id="eco-btn" class="eco-btn" title="Ультра-эконом">
-            <svg viewBox="0 0 24 24" fill="currentColor">
+          <button class="karaoke-btn" id="lyrics-text-btn" title="Полный текст песни">📝</button>
+          <a class="player-download-btn" href="#" id="track-download-btn" download title="Скачать трек">💾</a>
+          <button id="eco-btn" class="eco-btn" title="Эконом режим">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
               <path d="M13 3L4 14h6l-1 7 9-11h-6l1-7z"/>
             </svg>
-            <span class="eco-label">ЭКО</span>
           </button>
         </div>
       </div>
