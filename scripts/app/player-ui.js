@@ -846,10 +846,15 @@
       savedAnimationForMini = animationEnabled ? true : false;
     }
 
-    // В мини-режиме само окно и кнопка режима скрываются
+    // ✅ В мини-режиме МГНОВЕННО скрываем лирику
     const lyricsWindow = playerBlock.querySelector('#lyrics-window');
     if (lyricsWindow) {
       lyricsWindow.style.display = 'none';
+      lyricsWindow.style.transition = 'none'; // Убираем плавность
+      // Восстанавливаем transition после скрытия
+      setTimeout(() => {
+        if (lyricsWindow) lyricsWindow.style.transition = '';
+      }, 50);
     }
 
     const lyricsToggle = playerBlock.querySelector('.lyrics-toggle-btn');
@@ -878,9 +883,15 @@
 
     isInContextMiniMode = false;
 
+    // ✅ МГНОВЕННО восстанавливаем окно лирики
     const lyricsWindow = playerBlock.querySelector('#lyrics-window');
     if (lyricsWindow) {
+      lyricsWindow.style.transition = 'none'; // Убираем плавность
       lyricsWindow.style.display = '';
+      // Восстанавливаем transition
+      setTimeout(() => {
+        if (lyricsWindow) lyricsWindow.style.transition = '';
+      }, 50);
     }
 
     const lyricsToggle = playerBlock.querySelector('.lyrics-toggle-btn');
@@ -1380,6 +1391,7 @@
     updateNextUpLabel,
     togglePlayPause,
     toggleLikePlaying,
+    switchAlbumInstantly, // ✅ Добавляем новую функцию
     /**
      * Текущая распарсенная лирика (для LyricsModal и других модулей).
      * Формат: [{ time: number, text: string }]
