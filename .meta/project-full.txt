@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-098e3e56f8e3c67f567202d96f7cf3f81a180e70.idx
-│   │       ├── pack-098e3e56f8e3c67f567202d96f7cf3f81a180e70.pack
-│   │       └── pack-098e3e56f8e3c67f567202d96f7cf3f81a180e70.rev
+│   │       ├── pack-e3548662ad59718125c030f94bfabb94f9c3ce78.idx
+│   │       ├── pack-e3548662ad59718125c030f94bfabb94f9c3ce78.pack
+│   │       └── pack-e3548662ad59718125c030f94bfabb94f9c3ce78.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-08 16:02:45 UTC
+Сгенерировано: 2025-12-08 16:03:52 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -654,9 +654,10 @@ jobs:
     <div class="track-list" id="track-list"></div>
 
     <div class="bottom-controls-center">
-      <button class="filter-favorites-btn" id="filter-favorites-btn" onclick="window.PlayerUI && window.PlayerUI.toggleFavoritesFilter && window.PlayerUI.toggleFavoritesFilter()">
+      <button class="filter-favorites-btn" id="filter-favorites-btn">
         Скрыть не отмеченные ⭐ песни
       </button>
+
       
       <img class="logo-bottom" id="logo-bottom" src="img/logo.png" alt="Логотип"/>
       
