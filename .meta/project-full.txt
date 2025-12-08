@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-47d1858e24c2a43fd2578cc416884382aa6ea2bf.idx
-│   │       ├── pack-47d1858e24c2a43fd2578cc416884382aa6ea2bf.pack
-│   │       └── pack-47d1858e24c2a43fd2578cc416884382aa6ea2bf.rev
+│   │       ├── pack-82627d58a721cef3e2a905a114a34fc7492354e9.idx
+│   │       ├── pack-82627d58a721cef3e2a905a114a34fc7492354e9.pack
+│   │       └── pack-82627d58a721cef3e2a905a114a34fc7492354e9.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-08 16:32:13 UTC
+Сгенерировано: 2025-12-08 16:51:50 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3296,17 +3296,31 @@ export default NavigationManager;
   }
 
   function ensurePlayerBlock(trackIndex) {
+    console.log('🎯 ensurePlayerBlock() called, trackIndex:', trackIndex); // ✅ ОТЛАДКА
+  
     let playerBlock = document.getElementById('lyricsplayerblock');
-    
+  
+    // ✅ КРИТИЧНО: Если блок не существует — создаём его
     if (!playerBlock) {
+      console.log('🆕 Creating new player block'); // ✅ ОТЛАДКА
       playerBlock = createPlayerBlock();
     }
 
     const inMiniMode = isBrowsingOtherAlbum();
-    const nowPlaying = document.getElementById('now-playing');
+    console.log('📱 Mini mode:', inMiniMode); // ✅ ОТЛАДКА
 
     if (inMiniMode) {
-      if (nowPlaying && !nowPlaying.contains(playerBlock)) {
+      const nowPlaying = document.getElementById('now-playing');
+    
+      if (!nowPlaying) {
+        console.error('❌ #now-playing not found!'); // ✅ ОТЛАДКА
+        return;
+      }
+
+      // ✅ Вставляем блок в #now-playing только если его там нет
+      if (!nowPlaying.contains(playerBlock)) {
+        console.log('📌 Inserting player into #now-playing'); // ✅ ОТЛАДКА
+      
         nowPlaying.innerHTML = '';
         nowPlaying.appendChild(createMiniHeader());
         nowPlaying.appendChild(playerBlock);
@@ -3317,7 +3331,7 @@ export default NavigationManager;
 
       const miniHeaderEl = document.getElementById('mini-now');
       const nextUpEl = document.getElementById('next-up');
-      
+    
       if (miniHeaderEl) {
         miniHeaderEl.style.display = 'flex';
         miniHeaderEl.style.transition = 'none';
@@ -3332,39 +3346,70 @@ export default NavigationManager;
       }, 50);
 
     } else {
+      // ✅ ОБЫЧНЫЙ РЕЖИМ: вставляем блок под трек
       const trackList = document.getElementById('track-list');
-      if (!trackList) return;
-
-      const trackRow = trackList.querySelector(`.track[data-index="${trackIndex}"]`);
-  
-      if (trackRow) {
-        // ✅ КРИТИЧНО: Проверяем, находится ли блок В DOM
-        if (!playerBlock.parentNode) {
-          // Блок НЕ в DOM — вставляем после трека
-          if (trackRow.nextSibling) {
-            trackRow.parentNode.insertBefore(playerBlock, trackRow.nextSibling);
-          } else {
-            trackRow.parentNode.appendChild(playerBlock);
-          }
-        } else if (trackRow.nextSibling !== playerBlock) {
-          // Блок УЖЕ в DOM, но НЕ после текущего трека — перемещаем
-          if (trackRow.nextSibling) {
-            trackRow.parentNode.insertBefore(playerBlock, trackRow.nextSibling);
-          } else {
-            trackRow.parentNode.appendChild(playerBlock);
-          }
-        }
     
-        setTimeout(() => {
-          trackRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 50);
+      if (!trackList) {
+        console.error('❌ #track-list not found!'); // ✅ ОТЛАДКА
+        return;
       }
+
+      console.log('🔍 Searching for track with index:', trackIndex); // ✅ ОТЛАДКА
+      const trackRow = trackList.querySelector(`.track[data-index="${trackIndex}"]`);
+    
+      if (!trackRow) {
+        console.warn(`⚠️ Track row [data-index="${trackIndex}"] not found!`); // ✅ ОТЛАДКА
+      
+        // ✅ ФОЛЛБЕК: Вставляем блок в конец списка треков
+        if (!playerBlock.parentNode) {
+          console.log('📌 Fallback: appending player to track-list end'); // ✅ ОТЛАДКА
+          trackList.appendChild(playerBlock);
+        }
+      
+        return;
+      }
+
+      console.log('✅ Track row found:', trackRow); // ✅ ОТЛАДКА
+
+      // ✅ КРИТИЧНО: Гарантированная вставка блока в DOM
+      if (!playerBlock.parentNode) {
+        // Блок НЕ в DOM — вставляем СРАЗУ после трека
+        console.log('📌 Inserting NEW player block after track'); // ✅ ОТЛАДКА
+      
+        if (trackRow.nextSibling) {
+          trackRow.parentNode.insertBefore(playerBlock, trackRow.nextSibling);
+        } else {
+          trackRow.parentNode.appendChild(playerBlock);
+        }
+      } else if (trackRow.nextSibling !== playerBlock) {
+        // Блок УЖЕ в DOM, но НЕ после текущего трека — ПЕРЕМЕЩАЕМ
+        console.log('🔄 Moving EXISTING player block after track'); // ✅ ОТЛАДКА
+      
+        if (trackRow.nextSibling) {
+          trackRow.parentNode.insertBefore(playerBlock, trackRow.nextSibling);
+        } else {
+          trackRow.parentNode.appendChild(playerBlock);
+        }
+      } else {
+        console.log('✅ Player block already in correct position'); // ✅ ОТЛАДКА
+      }
+
+      // ✅ Проверяем, что блок действительно вставлен
+      if (playerBlock.parentNode) {
+        console.log('✅ Player block successfully inserted into DOM'); // ✅ ОТЛАДКА
+      } else {
+        console.error('❌ Player block NOT in DOM after insertion!'); // ✅ ОТЛАДКА
+      }
+
+      setTimeout(() => {
+        trackRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 50);
 
       restoreLyricsStateIfNeeded();
 
       const miniHeaderEl = document.getElementById('mini-now');
       const nextUpEl = document.getElementById('next-up');
-      
+    
       if (miniHeaderEl) {
         miniHeaderEl.style.display = 'none';
         miniHeaderEl.style.transition = 'none';
@@ -3377,6 +3422,8 @@ export default NavigationManager;
 
     updateMiniHeader();
     updateNextUpLabel();
+  
+    console.log('✅ ensurePlayerBlock() completed'); // ✅ ОТЛАДКА
   }
 
   function createPlayerBlock() {
