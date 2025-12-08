@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-953b128d1139539f1540b06adcb5a82509e02bec.idx
-│   │       ├── pack-953b128d1139539f1540b06adcb5a82509e02bec.pack
-│   │       └── pack-953b128d1139539f1540b06adcb5a82509e02bec.rev
+│   │       ├── pack-9840c7db97c183376a9b6aa628784f200c897c06.idx
+│   │       ├── pack-9840c7db97c183376a9b6aa628784f200c897c06.pack
+│   │       └── pack-9840c7db97c183376a9b6aa628784f200c897c06.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-08 08:06:36 UTC
+Сгенерировано: 2025-12-08 09:15:08 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3310,7 +3310,9 @@ export default NavigationManager;
     block.innerHTML = `
       <div id="lyrics-window" class="lyrics-${lyricsViewMode}">
         <div class="lyrics-animated-bg${animationEnabled ? ' active' : ''}"></div>
-        <div class="lyrics-scroll" id="lyrics"></div>
+        <div class="lyrics-scroll" id="lyrics">
+          <div class="lyrics-placeholder lyrics-spinner"></div>
+        </div>
       </div>
       
       <div class="player-progress-wrapper">
@@ -3366,8 +3368,7 @@ export default NavigationManager;
             </svg>
           </button>
           
-          <button class="player-control-btn animation-btn" id="animation-btn" title="Анимация лирики (A)">A</button>
-          <button class="player-control-btn bit-btn" id="bit-btn" title="Пульсация логотипа (B)">B</button>
+          <!-- Кнопки A и B убраны отсюда, будут в player-buttons-wrapper -->
           
           <button class="player-control-btn" id="repeat-btn" title="Повтор трека (R)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
