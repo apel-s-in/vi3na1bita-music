@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6b4d176c7e8920cd654f4e5f6fad789f4ed3649c.idx
-│   │       ├── pack-6b4d176c7e8920cd654f4e5f6fad789f4ed3649c.pack
-│   │       └── pack-6b4d176c7e8920cd654f4e5f6fad789f4ed3649c.rev
+│   │       ├── pack-d55302f422136eaf2b0218e35dcae5de3fabac4c.idx
+│   │       ├── pack-d55302f422136eaf2b0218e35dcae5de3fabac4c.pack
+│   │       └── pack-d55302f422136eaf2b0218e35dcae5de3fabac4c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-08 19:56:52 UTC
+Сгенерировано: 2025-12-08 20:18:42 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3633,6 +3633,19 @@ export default NavigationManager;
   // ✅ Debounce для предотвращения множественных вызовов
   let ensurePlayerBlockTimeout = null;
   
+  function ensurePlayerBlock(trackIndex) {
+    // Отменяем предыдущий отложенный вызов
+    if (ensurePlayerBlockTimeout) {
+      clearTimeout(ensurePlayerBlockTimeout);
+    }
+    
+    // Откладываем выполнение на 50ms
+    ensurePlayerBlockTimeout = setTimeout(() => {
+      ensurePlayerBlockTimeout = null;
+      _doEnsurePlayerBlock(trackIndex);
+    }, 50);
+  }
+  
   function _doEnsurePlayerBlock(trackIndex) {
     let playerBlock = document.getElementById('lyricsplayerblock');
   
@@ -4052,25 +4065,6 @@ export default NavigationManager;
       });
     }
     
-    block.querySelector('#sleep-timer-btn')?.addEventListener('click', () => w.SleepTimer?.show?.());
-    block.querySelector('#lyrics-text-btn')?.addEventListener('click', () => w.LyricsModal?.show?.());
-
-    const downloadBtn = block.querySelector('#track-download-btn');
-    downloadBtn?.addEventListener('click', (e) => {
-      const track = w.playerCore?.getCurrentTrack();
-      if (!track || !track.src) {
-        e.preventDefault();
-        w.NotificationSystem?.error('Трек недоступен для скачивания');
-      }
-    });
-
-    block.querySelector('#eco-btn')?.addEventListener('click', toggleEcoMode);
-
-    document.addEventListener('mousemove', handleSeeking);
-    document.addEventListener('touchmove', handleSeeking);
-    document.addEventListener('mouseup', stopSeeking);
-    document.addEventListener('touchend', stopSeeking);
-  }
     block.querySelector('#sleep-timer-btn')?.addEventListener('click', () => w.SleepTimer?.show?.());
     block.querySelector('#lyrics-text-btn')?.addEventListener('click', () => w.LyricsModal?.show?.());
 
