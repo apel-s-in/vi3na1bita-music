@@ -151,7 +151,9 @@ class GalleryManager {
 
   renderHtml(slot, src) {
     const iframe = document.createElement('iframe');
-    iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups allow-forms');
+    
+    // ✅ ИСПРАВЛЕНО: Убираем allow-same-origin (безопасность)
+    iframe.setAttribute('sandbox', 'allow-scripts allow-popups allow-forms');
     iframe.setAttribute('referrerpolicy', 'no-referrer');
     iframe.loading = 'lazy';
     iframe.src = src;
