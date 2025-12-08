@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4ced9f2184d30b106ed3c2ebe18ae2107b11624a.idx
-│   │       ├── pack-4ced9f2184d30b106ed3c2ebe18ae2107b11624a.pack
-│   │       └── pack-4ced9f2184d30b106ed3c2ebe18ae2107b11624a.rev
+│   │       ├── pack-47d1858e24c2a43fd2578cc416884382aa6ea2bf.idx
+│   │       ├── pack-47d1858e24c2a43fd2578cc416884382aa6ea2bf.pack
+│   │       └── pack-47d1858e24c2a43fd2578cc416884382aa6ea2bf.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-08 16:31:08 UTC
+Сгенерировано: 2025-12-08 16:32:13 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1861,6 +1861,11 @@ class AlbumsManager {
         // Доступ к приватным переменным через замыкание невозможен,
         // поэтому делаем через вызов функции (она сама проверит состояние)
       }
+
+      // ✅ КРИТИЧНО: Сохраняем текущий альбом
+      this.currentAlbum = albumKey;
+      this.updateActiveIcon(albumKey);
+      localStorage.setItem('currentAlbum', albumKey);
 
       // ✅ МГНОВЕННОЕ обновление мини-плеера при смене вкладки
       if (window.PlayerUI && typeof window.PlayerUI.switchAlbumInstantly === 'function') {
