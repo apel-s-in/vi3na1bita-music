@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9981e46fc63b3e980b479300d9cc7f238029344a.idx
-│   │       ├── pack-9981e46fc63b3e980b479300d9cc7f238029344a.pack
-│   │       └── pack-9981e46fc63b3e980b479300d9cc7f238029344a.rev
+│   │       ├── pack-4ced9f2184d30b106ed3c2ebe18ae2107b11624a.idx
+│   │       ├── pack-4ced9f2184d30b106ed3c2ebe18ae2107b11624a.pack
+│   │       └── pack-4ced9f2184d30b106ed3c2ebe18ae2107b11624a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-08 16:13:32 UTC
+Сгенерировано: 2025-12-08 16:31:08 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3331,13 +3331,25 @@ export default NavigationManager;
       if (!trackList) return;
 
       const trackRow = trackList.querySelector(`.track[data-index="${trackIndex}"]`);
-      if (trackRow && trackRow.nextSibling !== playerBlock) {
-        if (trackRow.nextSibling) {
-          trackRow.parentNode.insertBefore(playerBlock, trackRow.nextSibling);
-        } else {
-          trackRow.parentNode.appendChild(playerBlock);
+  
+      if (trackRow) {
+        // ✅ КРИТИЧНО: Проверяем, находится ли блок В DOM
+        if (!playerBlock.parentNode) {
+          // Блок НЕ в DOM — вставляем после трека
+          if (trackRow.nextSibling) {
+            trackRow.parentNode.insertBefore(playerBlock, trackRow.nextSibling);
+          } else {
+            trackRow.parentNode.appendChild(playerBlock);
+          }
+        } else if (trackRow.nextSibling !== playerBlock) {
+          // Блок УЖЕ в DOM, но НЕ после текущего трека — перемещаем
+          if (trackRow.nextSibling) {
+            trackRow.parentNode.insertBefore(playerBlock, trackRow.nextSibling);
+          } else {
+            trackRow.parentNode.appendChild(playerBlock);
+          }
         }
-        
+    
         setTimeout(() => {
           trackRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }, 50);
@@ -4455,15 +4467,8 @@ export default NavigationManager;
   }
 
   function toggleFavoritesFilterForFavorites() {
-    console.log('⭐ toggleFavoritesOnly() called'); // ✅ ОТЛАДКА
-  
-    const btn = document.getElementById('favorites-btn');
-    const icon = document.getElementById('favorites-btn-icon');
-  
-    console.log('Favorites button:', btn); // ✅ ОТЛАДКА
-    console.log('Favorites icon:', icon); // ✅ ОТЛАДКА
-    const trackList = document.getElementById('track-list');
-    const btn = document.getElementById('filter-favorites-btn');
+      const trackList = document.getElementById('track-list');
+      const btn = document.getElementById('filter-favorites-btn');
   
     if (!trackList || !btn) return;
   
