@@ -806,10 +806,117 @@ header {
   border-top: 1px solid rgba(255,255,255,0.05);
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
-/* Кнопка "Т" — фиксированный размер, НЕ влияет на соседние */
+/* Контейнер для 5 кнопок (Т + Анимация + Текст + Скачать + Эко + Пульсация) */
+.player-extra-buttons-row {
+  display: flex;
+  flex: 1;
+  gap: 8px;
+  justify-content: space-between;
+  width: 100%;
+}
+
+/* ВСЕ кнопки — одинаковый размер 44×44px */
+.lyrics-toggle-btn,
+.animation-btn,
+.pulse-btn,
+.karaoke-btn,
+.player-download-btn,
+.eco-btn {
+  width: 44px;
+  min-width: 44px;
+  max-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  max-height: 44px;
+  padding: 0;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+/* Кнопка "Т" (лирика) */
 .lyrics-toggle-btn {
+  background: rgba(77,170,255,0.12);
+  border: 1px solid rgba(77,170,255,0.25);
+  color: #4daaff;
+}
+
+.lyrics-toggle-btn.lyrics-normal .lyrics-toggle-btn-visual {
+  color: var(--secondary-color);
+  font-size: 28px;
+}
+
+.lyrics-toggle-btn.lyrics-hidden {
+  background: rgba(232,1,0,0.12);
+  border-color: rgba(232,1,0,0.25);
+}
+
+.lyrics-toggle-btn.lyrics-hidden .lyrics-toggle-btn-visual {
+  color: var(--primary-color);
+  font-size: 28px;
+}
+
+.lyrics-toggle-btn.lyrics-expanded .lyrics-toggle-btn-visual {
+  color: var(--secondary-color);
+  font-size: 18px;
+}
+
+.lyrics-toggle-btn:hover {
+  background: rgba(77,170,255,0.2);
+  transform: translateY(-1px);
+}
+
+/* Кнопка "A" (анимация лирики) */
+.animation-btn {
+  background: linear-gradient(135deg, #4a1a7a, #2a0a4a);
+  border: 1px solid rgba(138,43,226,0.3);
+  color: #c8a2ff;
+}
+
+.animation-btn.active {
+  background: linear-gradient(135deg, #5a2a8a, #3a1a5a);
+  box-shadow: 0 0 12px rgba(138,43,226,0.4);
+}
+
+.animation-btn:hover {
+  background: linear-gradient(135deg, #5a2a8a, #3a1a5a);
+  transform: translateY(-1px);
+}
+
+/* Кнопка "❤️" (пульсация логотипа) */
+.pulse-btn {
+  background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #fff;
+  font-size: 20px;
+}
+
+.pulse-btn.active {
+  background: linear-gradient(135deg, #4a1a1a, #2a0a0a);
+  border-color: rgba(232,1,0,0.3);
+  color: #E80100;
+  box-shadow: 0 0 12px rgba(232,1,0,0.3);
+}
+
+.pulse-btn:hover {
+  background: linear-gradient(135deg, #3a3a3a, #2a2a2a);
+  transform: translateY(-1px);
+}
+
+/* Кнопка "📝" (текст) */
+.karaoke-btn {
   background: rgba(77,170,255,0.12);
   border: 1px solid rgba(77,170,255,0.25);
   color: #4daaff;
