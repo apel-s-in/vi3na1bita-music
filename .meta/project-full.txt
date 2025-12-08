@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e3548662ad59718125c030f94bfabb94f9c3ce78.idx
-│   │       ├── pack-e3548662ad59718125c030f94bfabb94f9c3ce78.pack
-│   │       └── pack-e3548662ad59718125c030f94bfabb94f9c3ce78.rev
+│   │       ├── pack-d2c3d41b0f7ff32f62e510c59487d1530e49a037.idx
+│   │       ├── pack-d2c3d41b0f7ff32f62e510c59487d1530e49a037.pack
+│   │       └── pack-d2c3d41b0f7ff32f62e510c59487d1530e49a037.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-08 16:03:52 UTC
+Сгенерировано: 2025-12-08 16:04:17 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -658,7 +658,6 @@ jobs:
         Скрыть не отмеченные ⭐ песни
       </button>
 
-      
       <img class="logo-bottom" id="logo-bottom" src="img/logo.png" alt="Логотип"/>
       
       <button id="install-pwa-btn" style="display: none;">
