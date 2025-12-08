@@ -80,6 +80,13 @@ class AlbumsManager {
         await this.loadRegularAlbum(albumKey);
       }
 
+      // ✅ КРИТИЧНО: Сохраняем currentAlbum ПЕРЕД любыми UI-операциями
+      this.currentAlbum = albumKey;
+      this.updateActiveIcon(albumKey);
+      localStorage.setItem('currentAlbum', albumKey);
+      
+      console.log(`✅ currentAlbum set to: ${albumKey}`); // ✅ ОТЛАДКА
+
       // ✅ Сбрасываем фильтрацию при смене альбома
       const filterBtn = document.getElementById('filter-favorites-btn');
       const trackList = document.getElementById('track-list');
@@ -98,11 +105,6 @@ class AlbumsManager {
         // Доступ к приватным переменным через замыкание невозможен,
         // поэтому делаем через вызов функции (она сама проверит состояние)
       }
-
-      // ✅ КРИТИЧНО: Сохраняем текущий альбом
-      this.currentAlbum = albumKey;
-      this.updateActiveIcon(albumKey);
-      localStorage.setItem('currentAlbum', albumKey);
 
       // ✅ МГНОВЕННОЕ обновление мини-плеера при смене вкладки
       if (window.PlayerUI && typeof window.PlayerUI.switchAlbumInstantly === 'function') {
