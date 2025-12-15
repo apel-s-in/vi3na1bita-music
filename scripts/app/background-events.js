@@ -21,17 +21,17 @@
       console.log('✅ Background events initialized');
     }
 
-  // Обработка навигации браузера (Back/Forward)
-  setupPopstateHandler() {
-    window.addEventListener('popstate', (event) => {
-      console.log('📍 Popstate event:', event.state);
-      
-      // Восстановить состояние приложения
-      if (event.state && event.state.albumKey) {
-        window.AlbumsManager?.loadAlbum(event.state.albumKey);
-      }
-    });
-  }
+    // Обработка навигации браузера (Back/Forward)
+    setupPopstateHandler() {
+      window.addEventListener('popstate', (event) => {
+        console.log('📍 Popstate event:', event.state);
+
+        // Восстановить состояние приложения (не трогаем плеер!)
+        if (event.state && event.state.albumKey) {
+          window.AlbumsManager?.loadAlbum(event.state.albumKey);
+        }
+      });
+    }
 
     // Обработка изменения видимости страницы
     setupVisibilityHandler() {
@@ -46,48 +46,32 @@
 
     onPageHidden() {
       console.log('📱 Page hidden');
-      
-      // Сохранить состояние воспроизведения
+
+      // Сохранить состояние воспроизведения (НИЧЕГО не останавливаем)
       if (window.playerCore) {
         this.wasPlaying = window.playerCore.isPlaying();
-      }
-
-      // Можно приостановить воспроизведение на мобильных устройствах для экономии батареи
-      // (опционально, зависит от требований)
-      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-      if (isMobile && this.wasPlaying) {
-        // window.playerCore?.pause();
-        // Закомментировано - пусть играет в фоне
       }
     }
 
     onPageVisible() {
       console.log('📱 Page visible');
-      
-      // Возобновить воспроизведение если было активно
-      if (this.wasPlaying && window.playerCore) {
-        // window.playerCore.play();
-        // Закомментировано - ручное управление пользователем предпочтительнее
-      }
+
+      // Ничего не делаем: правило "ничто не прерывает музыку"
+      // и возобновление тоже не форсим (пользователь/система сами решают).
     }
 
     // Обработка онлайн/офлайн
     setupNetworkHandlers() {
-      window.addEventListener('online', () => {
-        this.onOnline();
-      });
-
-      window.addEventListener('offline', () => {
-        this.onOffline();
-      });
+      window.addEventListener('online', () => this.onOnline());
+      window.addEventListener('offline', () => this.onOffline());
     }
 
     onOnline() {
       console.log('🌐 Online');
       this.isOnline = true;
-      
+
       window.NotificationSystem?.success('Соединение восстановлено');
-      
+
       const offlineBtn = document.getElementById('offline-btn');
       if (offlineBtn) {
         offlineBtn.className = 'offline-btn online';
@@ -98,9 +82,9 @@
     onOffline() {
       console.log('📴 Offline');
       this.isOnline = false;
-      
+
       window.NotificationSystem?.offline('Нет подключения к интернету');
-      
+
       const offlineBtn = document.getElementById('offline-btn');
       if (offlineBtn) {
         offlineBtn.className = 'offline-btn offline';
@@ -117,7 +101,7 @@
 
       try {
         const battery = await navigator.getBattery();
-        
+
         battery.addEventListener('levelchange', () => {
           this.onBatteryLevelChange(battery);
         });
@@ -126,7 +110,6 @@
           this.onChargingChange(battery);
         });
 
-        // Начальное состояние
         this.onBatteryLevelChange(battery);
       } catch (error) {
         console.warn('Battery API error:', error);
@@ -137,12 +120,8 @@
       const level = Math.round(battery.level * 100);
       console.log(`🔋 Battery level: ${level}%`);
 
-      // Предупреждение при низком заряде
       if (level < 15 && !battery.charging) {
-        window.NotificationSystem?.warning(
-          `Низкий заряд батареи: ${level}%`,
-          4000
-        );
+        window.NotificationSystem?.warning(`Низкий заряд батареи: ${level}%`, 4000);
       }
     }
 
@@ -154,7 +133,7 @@
       }
     }
 
-    // Сохранение состояния перед закрытием
+    // Сохранение состояния перед закрытием (НЕ трогаем воспроизведение)
     setupBeforeUnloadHandler() {
       window.addEventListener('beforeunload', () => {
         this.saveState();
@@ -163,17 +142,28 @@
 
     saveState() {
       try {
-        if (window.playerCore) {
-          const currentTrack = window.playerCore.getIndex();
-          const position = window.playerCore.getSeek();
-          
-          localStorage.setItem('lastTrackIndex', currentTrack.toString());
-          localStorage.setItem('lastTrackPosition', position.toString());
+        // Основной источник истины — PlayerState.save (если есть).
+        if (window.PlayerState && typeof window.PlayerState.save === 'function') {
+          window.PlayerState.save();
         }
 
-        const currentAlbum = window.AlbumsManager?.getCurrentAlbum();
+        // Дополнительные маркеры (не обязательны)
+        const currentAlbum = window.AlbumsManager?.getCurrentAlbum?.();
         if (currentAlbum) {
           localStorage.setItem('currentAlbum', currentAlbum);
+        }
+
+        // Исправлено: getSeek() не существует, используем getPosition()
+        if (window.playerCore) {
+          const currentTrack = window.playerCore.getIndex();
+          const position = window.playerCore.getPosition();
+
+          if (Number.isFinite(currentTrack)) {
+            localStorage.setItem('lastTrackIndex', String(currentTrack));
+          }
+          if (Number.isFinite(position)) {
+            localStorage.setItem('lastTrackPosition', String(Math.floor(position)));
+          }
         }
 
         console.log('💾 State saved');
@@ -188,7 +178,6 @@
     }
   }
 
-  // Инициализация
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
       window.BackgroundEventsManager = new BackgroundEventsManager();
