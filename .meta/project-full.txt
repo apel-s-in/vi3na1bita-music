@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-db2c0e7219b58c28c16facf494d1d93abe80a177.idx
-│   │       ├── pack-db2c0e7219b58c28c16facf494d1d93abe80a177.pack
-│   │       └── pack-db2c0e7219b58c28c16facf494d1d93abe80a177.rev
+│   │       ├── pack-158c33b316b1bfad41ddce8b31ea81081f0cccfc.idx
+│   │       ├── pack-158c33b316b1bfad41ddce8b31ea81081f0cccfc.pack
+│   │       └── pack-158c33b316b1bfad41ddce8b31ea81081f0cccfc.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-15 19:14:58 UTC
+Сгенерировано: 2025-12-15 19:15:32 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6621,29 +6621,33 @@ Object.assign(window, {
 //=================================================
 // FILE: /scripts/ui/favorites.js
 // scripts/ui/favorites.js
-// Управление избранными треками
+// Управление избранными треками (хранилище лайков).
+// ВАЖНО: модель "Избранного" строится в scripts/ui/favorites-data.js (buildFavoritesRefsModel).
+// Этот модуль НЕ должен пытаться читать AlbumsManager.getAlbumConfigByKey(), т.к. там не raw config.json.
+
 class FavoritesManager {
   constructor() {
     this.storageKey = 'likedTracks:v2';
-    this.refsKey = 'favoritesAlbumRefs:v1';
-    this.refsModel = null;
   }
 
-  /**
-   * Инициализация менеджера избранного.
-   * Вызывается из Application.initialize().
-   * Сейчас прогреваем refs‑модель, чтобы «Избранное» сразу было готово.
-   */
   async initialize() {
+    // Ничего тяжёлого не делаем: только гарантируем корректный JSON
     try {
-      await this.updateRefsModel();
+      const raw = localStorage.getItem(this.storageKey);
+      if (!raw) {
+        localStorage.setItem(this.storageKey, JSON.stringify({}));
+      } else {
+        const j = JSON.parse(raw);
+        if (!j || typeof j !== 'object') {
+          localStorage.setItem(this.storageKey, JSON.stringify({}));
+        }
+      }
       console.log('✅ FavoritesManager initialized');
     } catch (e) {
       console.warn('FavoritesManager.initialize failed:', e);
     }
   }
 
-  // Получение карты избранных треков
   getLikedMap() {
     try {
       const raw = localStorage.getItem(this.storageKey);
@@ -6654,207 +6658,70 @@ class FavoritesManager {
     }
   }
 
-  // Получение избранных треков для альбома
   getLikedForAlbum(albumKey) {
     try {
       const map = this.getLikedMap();
       const arr = (map && typeof map === 'object') ? map[albumKey] : [];
-      // Нормализуем к числам и убираем дубликаты
-      return Array.from(new Set((Array.isArray(arr) ? arr : [])
-        .map(n => parseInt(n, 10))
-        .filter(Number.isFinite)));
+      return Array.from(
+        new Set(
+          (Array.isArray(arr) ? arr : [])
+            .map(n => parseInt(n, 10))
+            .filter(Number.isFinite)
+        )
+      );
     } catch {
       return [];
     }
   }
 
-  // ✅ Переключение избранного для трека с валидацией
-  toggleLike(albumKey, trackIndex, makeLiked = null) {
-    const index = parseInt(trackIndex, 10);
-    if (!Number.isFinite(index)) return;
-    
-    // ✅ КРИТИЧНО: Проверяем, что трек существует в альбоме
-    if (makeLiked) {
-      const albumData = window.AlbumsManager?.getAlbumData?.(albumKey);
-      if (albumData && Array.isArray(albumData.tracks)) {
-        const trackExists = albumData.tracks.some(t => t.num === index || t.num === (index + 1));
-        
-        if (!trackExists) {
-          console.warn(`⚠️ Track ${index} not found in album ${albumKey}`);
-          window.NotificationSystem?.warning('Трек не найден в альбоме');
-          return false;
-        }
-      }
-    }
-    
-    const map = this.getLikedMap();
-    const arrRaw = Array.isArray(map[albumKey]) ? map[albumKey] : [];
-    const arr = Array.from(new Set(arrRaw
-      .map(n => parseInt(n, 10))
-      .filter(Number.isFinite)));
-    
-    const has = arr.includes(index);
-    const shouldLike = makeLiked !== null ? makeLiked : !has;
-    
-    let next = arr.slice();
-    if (shouldLike && !has) next.push(index);
-    if (!shouldLike && has) next = next.filter(x => x !== index);
-    
-    map[albumKey] = Array.from(new Set(next));
-    try {
-      localStorage.setItem(this.storageKey, JSON.stringify(map));
-      // Обновляем refs модель
-      this.updateRefsModel();
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  // Проверка, является ли трек избранным
   isFavorite(albumKey, trackIndex) {
     return this.getLikedForAlbum(albumKey).includes(parseInt(trackIndex, 10));
   }
 
-  // Обновление модели refs
-  async updateRefsModel() {
-    const refs = this.readFavoritesRefs();
+  toggleLike(albumKey, trackIndex, makeLiked = null) {
+    const index = parseInt(trackIndex, 10);
+    if (!Number.isFinite(index)) return false;
+
     const map = this.getLikedMap();
-    
-    // Добавляем новые избранные в refs
-    Object.entries(map).forEach(([albumKey, trackIndices]) => {
-      trackIndices.forEach(trackIndex => {
-        const key = `${albumKey}:${trackIndex}`;
-        if (!refs.some(r => r.a === albumKey && r.t === trackIndex)) {
-          refs.push({ a: albumKey, t: trackIndex });
-        }
-      });
-    });
-    
-    // Удаляем неактивные refs
-    const activeRefs = refs.filter(ref => {
-      const liked = this.getLikedForAlbum(ref.a);
-      return liked.includes(ref.t);
-    });
-    
-    this.writeFavoritesRefs(activeRefs);
-    await this.buildFavoritesRefsModel();
-  }
+    const arrRaw = Array.isArray(map[albumKey]) ? map[albumKey] : [];
+    const arr = Array.from(
+      new Set(arrRaw.map(n => parseInt(n, 10)).filter(Number.isFinite))
+    );
 
-  // Чтение refs из localStorage
-  readFavoritesRefs() {
+    const has = arr.includes(index);
+    const shouldLike = makeLiked !== null ? !!makeLiked : !has;
+
+    let next = arr.slice();
+    if (shouldLike && !has) next.push(index);
+    if (!shouldLike && has) next = next.filter(x => x !== index);
+
+    map[albumKey] = Array.from(new Set(next));
+
     try {
-      const raw = localStorage.getItem(this.refsKey);
-      const arr = raw ? JSON.parse(raw) : [];
-      return Array.isArray(arr) ? arr : [];
+      localStorage.setItem(this.storageKey, JSON.stringify(map));
     } catch {
-      return [];
+      return false;
     }
-  }
 
-  // Запись refs в localStorage
-  writeFavoritesRefs(arr) {
+    // Синхронизируем refs (чтобы Избранное пополнялось), но НЕ удаляем refs на unlike
+    // (в старой логике refs нужны и для неактивных строк)
     try {
-      localStorage.setItem(this.refsKey, JSON.stringify(Array.isArray(arr) ? arr : []));
-    } catch {}
-  }
-
-  // Построение модели избранных
-  async buildFavoritesRefsModel() {
-    const refs = this.readFavoritesRefs();
-    const model = [];
-    
-    for (const ref of refs) {
-      // Активность — всегда из likedTracks:v2
-      const active = this.getLikedForAlbum(ref.a).includes(ref.t);
-      
-      // Пытаемся получить конфиг альбома и целевой трек
-      let cfg = null;
-      try {
-        cfg = await window.AlbumsManager?.getAlbumConfigByKey(ref.a);
-      } catch {}
-      
-      const tr = cfg?.tracks?.[ref.t] || null;
-      
-      // Обложку стараемся получить из центральной галереи
-      const cover = await this.getAlbumCoverUrl(ref.a);
-      
-      if (tr && tr.audio) {
-        model.push({
-          title: tr.title,
-          audio: tr.audio,
-          lyrics: tr.lyrics,
-          fulltext: tr.fulltext || null,
-          __a: ref.a,
-          __t: ref.t,
-          __artist: cfg?.artist || 'Витрина Разбита',
-          __album: cfg?.albumName || 'Альбом',
-          __active: active,
-          __cover: cover
-        });
-      }
-    }
-    
-    this.refsModel = model;
-    return model;
-  }
-
-  // Получение URL обложки альбома
-  async getAlbumCoverUrl(albumKey) {
-    try {
-      const centralIdForAlbumKey = window.centralIdForAlbumKey;
-      const normalizeGalleryItem = window.normalizeGalleryItem;
-      const CENTRAL_GALLERY_BASE = window.APP_CONFIG?.CENTRAL_GALLERY_BASE || './albums/gallery/';
-      
-      const cid = typeof centralIdForAlbumKey === 'function' ? centralIdForAlbumKey(albumKey) : null;
-      if (!cid) return 'img/logo.png';
-      
-      const baseDir = `${CENTRAL_GALLERY_BASE}${cid}/`;
-      const r = await fetch(baseDir + 'index.json', { cache: 'force-cache' });
-      
-      if (r.ok) {
-        const j = await r.json();
-        const first = Array.isArray(j.items) ? j.items[0] : (Array.isArray(j) ? j[0] : null);
-        if (first) {
-          const norm = typeof normalizeGalleryItem === 'function' ? normalizeGalleryItem(first, baseDir) : first;
-          return (norm && (norm.formats?.webp || norm.formats?.full || norm.src)) || 'img/logo.png';
-        }
+      if (typeof window.ensureFavoritesRefsWithLikes === 'function') {
+        window.ensureFavoritesRefsWithLikes();
       }
     } catch {}
-    
-    return 'img/logo.png';
-  }
 
-  // Обновление флага активности в модели
-  updateRefsModelActiveFlag(albumKey, trackIndex, isActive) {
-    if (!Array.isArray(this.refsModel)) return;
-    
-    const item = this.refsModel.find(x => x.__a === albumKey && x.__t === trackIndex);
-    if (item) {
-      item.__active = !!isActive;
-    }
-  }
+    // Синхронизируем флаг активности в уже построенной модели (если она есть)
+    try {
+      if (typeof window.updateFavoritesRefsModelActiveFlag === 'function') {
+        window.updateFavoritesRefsModelActiveFlag(albumKey, index, shouldLike);
+      }
+    } catch {}
 
-  // Получение отсортированных refs
-  getSortedRefs() {
-    const refs = this.readFavoritesRefs().slice();
-    const ICON_ALBUMS_ORDER = (window.ICON_ALBUMS_ORDER || []).map(x => x.key)
-      .filter(k => k !== window.SPECIAL_FAVORITES_KEY && k !== window.SPECIAL_RELIZ_KEY);
-    
-    const orderMap = new Map(ICON_ALBUMS_ORDER.map((k, i) => [k, i]));
-    
-    refs.sort((r1, r2) => {
-      const o1 = orderMap.has(r1.a) ? orderMap.get(r1.a) : 999;
-      const o2 = orderMap.has(r2.a) ? orderMap.get(r2.a) : 999;
-      if (o1 !== o2) return o1 - o2;
-      return (r1.t - r2.t);
-    });
-    
-    return refs;
+    return true;
   }
 }
 
-// Глобальный экземпляр
 window.FavoritesManager = new FavoritesManager();
 
 //=================================================
