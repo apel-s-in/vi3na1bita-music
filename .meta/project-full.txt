@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-082e5cc6c4c7e33583222e64b4bb5b1fd78e28f7.idx
-│   │       ├── pack-082e5cc6c4c7e33583222e64b4bb5b1fd78e28f7.pack
-│   │       └── pack-082e5cc6c4c7e33583222e64b4bb5b1fd78e28f7.rev
+│   │       ├── pack-928e88c45741db578999e41cea8308c7a098509d.idx
+│   │       ├── pack-928e88c45741db578999e41cea8308c7a098509d.pack
+│   │       └── pack-928e88c45741db578999e41cea8308c7a098509d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-16 13:46:03 UTC
+Сгенерировано: 2025-12-16 13:48:04 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4345,6 +4345,17 @@ export default NavigationManager;
 
     const logo = document.getElementById('logo-bottom');
     if (logo) logo.style.transform = 'scale(1)';
+
+    // ✅ Освобождаем ресурсы WebAudio (лучше для iOS/Chrome)
+    try { if (analyser) { analyser.disconnect(); } } catch {}
+    analyser = null;
+
+    try {
+      if (audioContext && audioContext.state !== 'closed' && typeof audioContext.close === 'function') {
+        audioContext.close().catch(() => {});
+      }
+    } catch {}
+    audioContext = null;
   }
 
   function toggleLyricsView() {
