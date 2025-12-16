@@ -50,28 +50,54 @@
     // ========== УПРАВЛЕНИЕ ПЛЕЙЛИСТОМ ==========
 
     setPlaylist(tracks, startIndex = 0, metadata = {}) {
-      this.stop();
-      
-      this.playlist = tracks.map(t => ({
+      // ✅ ВАЖНО: setPlaylist НЕ имеет права останавливать музыку (stop запрещён правилами).
+      const wasPlaying = this.isPlaying();
+      const prev = this.getCurrentTrack();
+      const prevUid = prev?.uid || null;
+      const prevPos = this.getPosition();
+
+      this.playlist = (Array.isArray(tracks) ? tracks : []).map(t => ({
         src: t.src,
         title: t.title || 'Без названия',
         artist: t.artist || 'Витрина Разбита',
         album: t.album || '',
         cover: t.cover || '',
         lyrics: t.lyrics || null,
-        fulltext: t.fulltext || null
+        fulltext: t.fulltext || null,
+
+        // ✅ ЕДИНСТВЕННЫЙ ИСТОЧНИК ПРАВДЫ ДЛЯ ТРЕКА
+        uid: (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null
       }));
-      
+
       this.originalPlaylist = [...this.playlist];
       this.metadata = { ...this.metadata, ...metadata };
-      
+
       if (this.shuffleMode) {
         this.shufflePlaylist();
       }
-      
-      this.currentIndex = Math.max(0, Math.min(startIndex, this.playlist.length - 1));
-      
+
+      // Сохраняем текущий трек по uid, иначе — startIndex
+      let nextIndex = -1;
+      if (prevUid) {
+        nextIndex = this.playlist.findIndex(t => t.uid && t.uid === prevUid);
+      }
+      if (nextIndex === -1) {
+        nextIndex = Math.max(0, Math.min(startIndex, this.playlist.length - 1));
+      }
+      this.currentIndex = nextIndex;
+
       console.log(`✅ Playlist set: ${this.playlist.length} tracks`);
+
+      // Если играло — продолжаем играть (без onStop)
+      if (wasPlaying && this.playlist.length > 0) {
+        this.load(this.currentIndex, { autoPlay: true, resumePosition: prevPos });
+      } else {
+        const cur = this.getCurrentTrack();
+        if (cur) {
+          this.trigger('onTrackChange', cur, this.currentIndex);
+          this.updateMediaSession();
+        }
+      }
     }
 
     getPlaylistSnapshot() {
@@ -90,10 +116,9 @@
         return;
       }
       
+      // Howler вызовет onplay → там мы запускаем тик и триггерим onPlay.
       this.sound.play();
-      this.startTick();
       this.updateMediaSession();
-      this.trigger('onPlay', this.getCurrentTrack(), this.currentIndex);
     }
 
     pause() {
@@ -105,24 +130,39 @@
     }
 
     stop() {
+      // ✅ Единственная “жёсткая остановка”, разрешённая правилами (кнопка Stop).
       if (this.sound) {
-        this.sound.stop();
-        this.sound.unload();
+        try { this.sound.stop(); } catch {}
+        try { this.sound.unload(); } catch {}
         this.sound = null;
       }
-      
+
       this.stopTick();
       this.trigger('onStop', this.getCurrentTrack(), this.currentIndex);
     }
 
-    load(index) {
+    _silentUnloadCurrentSound() {
+      // ✅ Техническая смена трека/плейлиста: НЕ триггерим onStop.
+      if (this.sound) {
+        try { this.sound.stop(); } catch {}
+        try { this.sound.unload(); } catch {}
+        this.sound = null;
+      }
+      this.stopTick();
+    }
+
+    load(index, options = {}) {
       if (index < 0 || index >= this.playlist.length) return;
-      
-      this.stop();
+
+      const { autoPlay = false, resumePosition = null } = options || {};
+
+      // ✅ НЕЛЬЗЯ stop(): это нарушит правило.
+      this._silentUnloadCurrentSound();
+
       this.currentIndex = index;
-      
+
       const track = this.playlist[index];
-      
+
       this.sound = new Howl({
         src: [track.src],
         html5: true,
@@ -141,6 +181,14 @@
           this.trigger('onEnd', track, index);
           this.handleTrackEnd();
         },
+        onload: () => {
+          if (typeof resumePosition === 'number' && Number.isFinite(resumePosition) && resumePosition > 0) {
+            try { this.seek(resumePosition); } catch {}
+          }
+          if (autoPlay) {
+            try { this.play(); } catch {}
+          }
+        },
         onloaderror: (id, error) => {
           console.error('❌ Load error:', error);
           this.trigger('onError', { type: 'load', error, track, index });
@@ -150,7 +198,7 @@
           this.trigger('onError', { type: 'play', error, track, index });
         }
       });
-      
+
       this.trigger('onTrackChange', track, index);
       this.updateMediaSession();
     }
