@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-971301df8ec023859e4118463c53541fc9004876.idx
-│   │       ├── pack-971301df8ec023859e4118463c53541fc9004876.pack
-│   │       └── pack-971301df8ec023859e4118463c53541fc9004876.rev
+│   │       ├── pack-7868e2a1a1c13869897f3721a954b072fdec76af.idx
+│   │       ├── pack-7868e2a1a1c13869897f3721a954b072fdec76af.pack
+│   │       └── pack-7868e2a1a1c13869897f3721a954b072fdec76af.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-16 15:37:19 UTC
+Сгенерировано: 2025-12-16 15:38:37 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1124,7 +1124,8 @@ const STATIC_ASSETS = [
   './src/PlayerCore.js',
 
   // Howler.js (CDN)
-  'https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js'
+  // ВАЖНО: не precache на install, чтобы не ронять установку SW из-за opaque/CORS/CDN-ошибок.
+  // CDN будет загружаться по сети; при необходимости закэшируется через runtime-стратегию.
 ];
 
 // ========== INSTALL ==========
