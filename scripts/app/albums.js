@@ -200,10 +200,9 @@ class AlbumsManager {
         const lyrics = t.lyrics ? new URL(t.lyrics, base).toString() : null;
         const fulltext = t.fulltext ? new URL(t.fulltext, base).toString() : null;
 
-        // ✅ ЕДИНСТВЕННЫЙ ИСТОЧНИК ПРАВДЫ: uid приходит из config.json альбома
         const uid = (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null;
 
-        // num оставляем ТОЛЬКО как отображаемый номер строки (не ID)
+        // num оставляем только для UI-отображения
         const num = idx + 1;
 
         const sizeMB = typeof t.size === 'number' ? t.size : null;
@@ -730,10 +729,11 @@ class AlbumsManager {
   getAlbumConfigByKey(albumKey) {
     return this.albumsData.get(albumKey);
   }
-
-  getTrackUid(albumKey, trackNum) {
-    if (!albumKey || !Number.isFinite(Number(trackNum))) return null;
-    return `${albumKey}_${Number(trackNum)}`;
+  getTrackUid(albumKey, trackUid) {
+    // ✅ Back-compat: теперь uid приходит из config.json (строка).
+    // albumKey оставляем в сигнатуре для старых вызовов, но сам uid не генерируем.
+    const uid = String(trackUid || '').trim();
+    return uid || null;
   }
 }
 
