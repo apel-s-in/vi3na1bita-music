@@ -85,7 +85,7 @@ test('reload restores state via PlayerState.applyState', async ({ page }) => {
     const st = {
       album: window.currentAlbumKey || null,
       trackIndex: 0,
-      position: Math.floor(pc?.getSeek?.() || 5),
+      position: Math.floor(pc?.getPosition?.() || 5),
       volume: pc?.getVolume?.() ?? 1,
       wasPlaying: true
     };
@@ -98,7 +98,7 @@ test('reload restores state via PlayerState.applyState', async ({ page }) => {
 
   await page.waitForSelector('#lyricsplayerblock', { timeout: 10000 });
   // Проверим, что воспроизведение продолжается (или готово продолжиться) и индекс/позиция восстановлены близко к сохранённым
-  const pos = await page.evaluate(() => Math.floor(window.playerCore?.getSeek?.() || 0));
+  const pos = await page.evaluate(() => Math.floor(window.playerCore?.getPosition?.() || 0));
   expect(pos).toBeGreaterThanOrEqual(0); // допускаем расхождение, главное — не с нуля
 });
 
@@ -198,6 +198,6 @@ test('SW update flow persists state and restores after reload', async ({ page })
 
   // После восстановления позиция не должна быть «с нуля»
   await page.waitForSelector('#lyricsplayerblock', { timeout: 10000 });
-  const pos = await page.evaluate(() => Math.floor(window.playerCore?.getSeek?.() || 0));
+  const pos = await page.evaluate(() => Math.floor(window.playerCore?.getPosition?.() || 0));
   expect(pos).toBeGreaterThanOrEqual(0);
 });
