@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ab3b9c32bbd098377cf4edf60bc8e8e40ed6a36f.idx
-│   │       ├── pack-ab3b9c32bbd098377cf4edf60bc8e8e40ed6a36f.pack
-│   │       └── pack-ab3b9c32bbd098377cf4edf60bc8e8e40ed6a36f.rev
+│   │       ├── pack-34b7e7c7ef5174ee5e044576a31e3dc2f74ccc2e.idx
+│   │       ├── pack-34b7e7c7ef5174ee5e044576a31e3dc2f74ccc2e.pack
+│   │       └── pack-34b7e7c7ef5174ee5e044576a31e3dc2f74ccc2e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-16 09:51:20 UTC
+Сгенерировано: 2025-12-16 09:54:04 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5859,6 +5859,8 @@ test('favorites playing: removing star of current track triggers next and update
     window.MiniUI && window.MiniUI.updateNextUpLabel && window.MiniUI.updateNextUpLabel();
     window.MiniUI && window.MiniUI.updateMiniNowHeader && window.MiniUI.updateMiniNowHeader();
   });
+});
+
 test('mini-player star toggles favorite in __favorites__ and syncs with list', async ({ page }) => {
   const BASE = process.env.BASE_URL || 'http://127.0.0.1:4173';
   await page.goto(`${BASE}/index.html`, { waitUntil: 'load' });
