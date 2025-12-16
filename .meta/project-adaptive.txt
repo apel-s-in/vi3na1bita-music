@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-34b7e7c7ef5174ee5e044576a31e3dc2f74ccc2e.idx
-│   │       ├── pack-34b7e7c7ef5174ee5e044576a31e3dc2f74ccc2e.pack
-│   │       └── pack-34b7e7c7ef5174ee5e044576a31e3dc2f74ccc2e.rev
+│   │       ├── pack-b746bdfa81cc71aeb2586f2f47b75a09118ae7b0.idx
+│   │       ├── pack-b746bdfa81cc71aeb2586f2f47b75a09118ae7b0.pack
+│   │       └── pack-b746bdfa81cc71aeb2586f2f47b75a09118ae7b0.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-16 09:54:04 UTC
+Сгенерировано: 2025-12-16 10:43:15 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6353,16 +6353,47 @@ Object.assign(window, {
   }
 
   async function buildFavoritesRefsModel() {
-    const sortedRefs = getSortedFavoritesRefs();
+    // ✅ ВАЖНО: "ИЗБРАННОЕ" строим ТОЛЬКО из likedTracks:v2.
+    // Никаких refs как источника списка. При снятии лайка строка остаётся, но становится неактивной.
+    // Удаление строки — только вручную через модалку (removeFavoritesRef).
+
+    const map = getLikedMap();
     const out = [];
 
-    for (const ref of sortedRefs) {
-      const active = getLikedForAlbum(ref.a).includes(ref.t);
+    // Стабильный порядок альбомов: как в иконках (без спец-ключей)
+    const iconOrder = (Array.isArray(w.ICON_ALBUMS_ORDER) ? w.ICON_ALBUMS_ORDER : [])
+      .map(x => x && x.key)
+      .filter(k => k && k !== w.SPECIAL_FAVORITES_KEY && k !== w.SPECIAL_RELIZ_KEY);
 
+    const orderMap = new Map(iconOrder.map((k, i) => [k, i]));
+
+    // Собираем пары (albumKey, trackIndex) из likedTracks:v2
+    const pairs = [];
+    try {
+      const keys = Object.keys(map || {});
+      for (const akey of keys) {
+        const arr = Array.isArray(map[akey]) ? map[akey] : [];
+        for (const n of arr) {
+          const ti = parseInt(n, 10);
+          if (!Number.isFinite(ti)) continue;
+          pairs.push({ a: akey, t: ti });
+        }
+      }
+    } catch {}
+
+    // Сортировка: порядок альбомов + номер трека
+    pairs.sort((r1, r2) => {
+      const o1 = orderMap.has(r1.a) ? orderMap.get(r1.a) : 999;
+      const o2 = orderMap.has(r2.a) ? orderMap.get(r2.a) : 999;
+      if (o1 !== o2) return o1 - o2;
+      return r1.t - r2.t;
+    });
+
+    for (const ref of pairs) {
       let cfg = null;
       try { cfg = await getAlbumConfigByKey(ref.a); } catch {}
-      const tr = cfg?.tracks?.[ref.t] || null;
 
+      const tr = cfg?.tracks?.[ref.t] || null;
       const cover = await getAlbumCoverUrl(ref.a);
 
       if (tr && tr.audio) {
@@ -6375,32 +6406,25 @@ Object.assign(window, {
           __t: ref.t,
           __artist: cfg?.artist || 'Витрина Разбита',
           __album: cfg?.albumName || 'Альбом',
-          __active: active,
+          __active: true,
           __cover: cover
         });
-        continue;
+      } else {
+        // Теоретически сюда попадём редко (если config.json не загрузился).
+        // Но лайки НЕ трогаем. Показываем строку серой, чтобы пользователь мог удалить/пере-добавить.
+        out.push({
+          title: tr?.title || `Трек ${ref.t + 1}`,
+          audio: null,
+          lyrics: null,
+          fulltext: null,
+          __a: ref.a,
+          __t: ref.t,
+          __artist: cfg?.artist || 'Витрина Разбита',
+          __album: cfg?.albumName || 'Альбом',
+          __active: false,
+          __cover: cover
+        });
       }
-
-      // ⚠️ Трек не найден (альбом недоступен / config.json не загрузился / индекс вне диапазона).
-      // ВАЖНО: НЕ трогаем likedTracks:v2 автоматически — refs могут быть неактивными.
-      console.warn(`⚠️ Track not found: album=${ref.a}, track=${ref.t}`);
-
-      // Добавляем “неактивную” строку в модель, чтобы UI мог:
-      // - показать её серой,
-      // - предложить “Добавить в ⭐” или “Удалить” через модалку,
-      // - дать возможность очистить refs кнопкой “Удалить недоступные”.
-      out.push({
-        title: `Трек ${ref.t}`,
-        audio: null,
-        lyrics: null,
-        fulltext: null,
-        __a: ref.a,
-        __t: ref.t,
-        __artist: 'Витрина Разбита',
-        __album: 'Альбом',
-        __active: false,
-        __cover: cover
-      });
     }
 
     w.favoritesRefsModel = out;
