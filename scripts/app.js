@@ -515,7 +515,7 @@
               : (albumInfo ? new URL('cover.jpg', albumInfo.base).toString() : 'img/logo.png'),
             lyrics: t.lyrics || null,
             fulltext: t.fulltext || null,
-            uid: t.uid || window.AlbumsManager?.getTrackUid?.(albumKey, t.num) || `${albumKey}_${t.num}`
+            uid: (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null
           }));
 
         if (tracksForCore.length > 0) {
