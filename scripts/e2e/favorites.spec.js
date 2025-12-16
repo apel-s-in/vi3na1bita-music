@@ -204,7 +204,7 @@ test('SW update flow persists state and restores after reload', async ({ page })
   await page.evaluate(() => {
     window.confirm = () => true;
     const evt = new MessageEvent('message', { data: { type: 'SW_VERSION', version: '9.9.9' } });
-    try { navigator.serviceWorker && navigator.serviceWorker.dispatchEvent && navigator.serviceWorker.dispatchEvent(evt); } catch {}
+    try { window.dispatchEvent(evt); } catch {}
   });
 
   const hasResume = await page.evaluate(() => !!sessionStorage.getItem('resumeAfterReloadV1'));
