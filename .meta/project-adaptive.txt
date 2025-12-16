@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-66324105e6425e229334737cd2b50cdb47fd51b4.idx
-│   │       ├── pack-66324105e6425e229334737cd2b50cdb47fd51b4.pack
-│   │       └── pack-66324105e6425e229334737cd2b50cdb47fd51b4.rev
+│   │       ├── pack-b031243274ed7ee453a706574562e4fab40d79ec.idx
+│   │       ├── pack-b031243274ed7ee453a706574562e4fab40d79ec.pack
+│   │       └── pack-b031243274ed7ee453a706574562e4fab40d79ec.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-16 21:11:31 UTC
+Сгенерировано: 2025-12-16 21:11:58 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6333,121 +6333,197 @@ Object.assign(window, {
 //=================================================
 // FILE: /scripts/ui/favorites-data.js
 // scripts/ui/favorites-data.js
-// Data-хелперы «Избранного» + TTL-кэш обложек.
-// Экспортирует совместимые функции в window.* для обратной совместимости.
+// Data-хелперы «Избранного» + модель refs по UID + миграция legacy refs.
+// Поведение oldstar:
+// - refs (список строк) живут отдельно
+// - лайк (likedTrackUids:v1) определяет активность строки
+// - снятие ⭐ НЕ удаляет ref (удаление только через модалку)
 
 (function FavoritesDataModule() {
   const w = window;
 
-  const FAVORITES_REFS_KEY = window.FAVORITES_REFS_KEY || 'favoritesAlbumRefs:v1';
+  const LEGACY_REFS_KEY = w.FAVORITES_REFS_KEY || 'favoritesAlbumRefs:v1'; // {a, t:number}
+  const REFS_UID_KEY = 'favoritesAlbumRefsByUid:v1'; // {a, uid:string}
+
   const COVER_TTL_MS = 12 * 60 * 60 * 1000; // 12 часов
   const albumCoverCache = Object.create(null);
 
-  function getLikedMap() {
-    try { const raw = localStorage.getItem('likedTracks:v2'); const obj = raw ? JSON.parse(raw) : {}; return obj && typeof obj === 'object' ? obj : {}; }
-    catch { return {}; }
-  }
-  
-  function getLikedForAlbum(albumKey) {
+  const absJoin = typeof w.absJoin === 'function'
+    ? w.absJoin
+    : ((b, r) => new URL(String(r || ''), String(b || '') + '/').toString());
+
+  function getLikedUidMap() {
+    if (w.FavoritesManager && typeof w.FavoritesManager.getLikedUidMap === 'function') {
+      return w.FavoritesManager.getLikedUidMap();
+    }
+    // fallback: прямое чтение
     try {
-      const map = getLikedMap();
+      const raw = localStorage.getItem('likedTrackUids:v1');
+      const obj = raw ? JSON.parse(raw) : {};
+      return obj && typeof obj === 'object' ? obj : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function getLikedUidsForAlbum(albumKey) {
+    try {
+      const map = getLikedUidMap();
       const arr = (map && typeof map === 'object') ? map[albumKey] : [];
       if (!Array.isArray(arr)) return [];
-      const norm = Array.from(new Set(arr.map(n => parseInt(n, 10)).filter(Number.isFinite)));
-      return norm;
+      return Array.from(new Set(arr.map(x => String(x || '').trim()).filter(Boolean)));
     } catch {
       return [];
     }
   }
 
-  function readFavoritesRefs() {
-    try { const raw = localStorage.getItem(FAVORITES_REFS_KEY); const arr = raw ? JSON.parse(raw) : []; return Array.isArray(arr) ? arr : []; }
-    catch { return []; }
+  function readFavoritesRefsByUid() {
+    try {
+      const raw = localStorage.getItem(REFS_UID_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr : [];
+    } catch {
+      return [];
+    }
   }
-  
-  function writeFavoritesRefs(arr) {
-    try { localStorage.setItem(FAVORITES_REFS_KEY, JSON.stringify(Array.isArray(arr) ? arr : [])); } catch {}
+
+  function writeFavoritesRefsByUid(arr) {
+    try {
+      localStorage.setItem(REFS_UID_KEY, JSON.stringify(Array.isArray(arr) ? arr : []));
+    } catch {}
+  }
+
+  async function migrateLegacyRefsIfNeeded() {
+    // Если новый ключ уже есть — не трогаем
+    try {
+      const already = localStorage.getItem(REFS_UID_KEY);
+      if (already) return;
+    } catch {}
+
+    // Если legacy нет — создадим пустой
+    let legacyRaw = null;
+    try { legacyRaw = localStorage.getItem(LEGACY_REFS_KEY); } catch {}
+    if (!legacyRaw) {
+      writeFavoritesRefsByUid([]);
+      return;
+    }
+
+    let legacy = null;
+    try { legacy = JSON.parse(legacyRaw); } catch { legacy = []; }
+    if (!Array.isArray(legacy) || legacy.length === 0) {
+      writeFavoritesRefsByUid([]);
+      return;
+    }
+
+    const albumsIndex = Array.isArray(w.albumsIndex) ? w.albumsIndex : [];
+    if (!albumsIndex.length) {
+      // нет индекса — миграцию отложим, но чтобы не сломаться создадим пустое
+      writeFavoritesRefsByUid([]);
+      return;
+    }
+
+    const out = [];
+    const seen = new Set();
+
+    for (const ref of legacy) {
+      const a = String(ref?.a || '').trim();
+      const t = parseInt(ref?.t, 10);
+      if (!a || !Number.isFinite(t)) continue;
+
+      const meta = albumsIndex.find(x => x && x.key === a);
+      if (!meta || !meta.base) continue;
+
+      let cfg = null;
+      try {
+        const r = await fetch(absJoin(meta.base, 'config.json'), { cache: 'no-cache' });
+        if (!r.ok) continue;
+        cfg = await r.json();
+      } catch {
+        continue;
+      }
+
+      const tracks = Array.isArray(cfg?.tracks) ? cfg.tracks : [];
+      const tr = tracks[t] || null; // legacy refs использовали 0-based index
+      const uid = String(tr?.uid || '').trim();
+      if (!uid) continue;
+
+      const k = `${a}:${uid}`;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push({ a, uid });
+    }
+
+    writeFavoritesRefsByUid(out);
   }
 
   function ensureFavoritesRefsWithLikes() {
-    const refs = readFavoritesRefs();
-    const keySet = new Set(refs.map(x => `${x.a}:${x.t}`));
+    // ✅ ВАЖНО для твоего realtime: если поставили ⭐ в альбоме — строка должна появиться в “ИЗБРАННОЕ”.
+    const refs = readFavoritesRefsByUid();
+    const seen = new Set(refs.map(x => `${x?.a}:${x?.uid}`));
 
-    try {
-      const map = getLikedMap();
-      const albumsIndex = Array.isArray(w.albumsIndex) ? w.albumsIndex : [];
+    const map = getLikedUidMap();
+    const keys = Object.keys(map || {});
 
-      const indexKeys = albumsIndex.map(a => a && a.key).filter(Boolean);
-      const likedKeys = Object.keys(map || {});
-      const allKeysSet = new Set([...indexKeys, ...likedKeys]);
+    let changed = false;
 
-      for (const akey of allKeysSet) {
-        const liked = Array.isArray(map?.[akey]) ? map[akey] : [];
-        for (const ti of liked) {
-          const k = `${akey}:${ti}`;
-          if (!keySet.has(k)) {
-            refs.push({ a: akey, t: ti });
-            keySet.add(k);
-          }
-        }
+    for (const a of keys) {
+      const uids = Array.isArray(map[a]) ? map[a] : [];
+      for (const rawUid of uids) {
+        const uid = String(rawUid || '').trim();
+        if (!uid) continue;
+        const k = `${a}:${uid}`;
+        if (seen.has(k)) continue;
+        refs.push({ a, uid });
+        seen.add(k);
+        changed = true;
       }
-    } catch {}
+    }
 
-    writeFavoritesRefs(refs);
+    if (changed) writeFavoritesRefsByUid(refs);
     return refs;
   }
 
-  function getSortedFavoritesRefs() {
+  function getSortedFavoritesRefsByUid() {
     const refs = ensureFavoritesRefsWithLikes().slice();
-    const ICON_ALBUMS_ORDER = (w.ICON_ALBUMS_ORDER || []).map(x => x.key)
+
+    const order = (w.ICON_ALBUMS_ORDER || []).map(x => x.key)
       .filter(k => k !== w.SPECIAL_FAVORITES_KEY && k !== w.SPECIAL_RELIZ_KEY);
-    const orderMap = new Map(ICON_ALBUMS_ORDER.map((k, i) => [k, i]));
+    const orderMap = new Map(order.map((k, i) => [k, i]));
+
     refs.sort((r1, r2) => {
       const o1 = orderMap.has(r1.a) ? orderMap.get(r1.a) : 999;
       const o2 = orderMap.has(r2.a) ? orderMap.get(r2.a) : 999;
       if (o1 !== o2) return o1 - o2;
-      return (r1.t - r2.t);
+      return String(r1.uid || '').localeCompare(String(r2.uid || ''));
     });
+
     return refs;
   }
 
   async function getAlbumConfigByKey(albumKey) {
     if (!albumKey) return null;
+
     const albumConfigCache = w.albumConfigCache || {};
 
-    let realKey = albumKey;
-    if (typeof w.resolveRealAlbumKey === 'function') {
-      try {
-        const cand = w.resolveRealAlbumKey(albumKey);
-        if (cand) realKey = cand;
-      } catch {}
-    }
-
     if (albumConfigCache[albumKey]?.config) return albumConfigCache[albumKey].config;
-    if (albumConfigCache[realKey]?.config)  return albumConfigCache[realKey].config;
 
-    const albumsIndex = w.albumsIndex || [];
-    const meta = (albumsIndex.find(a => a && a.key === realKey) ||
-                  albumsIndex.find(a => a && a.key === albumKey)) || null;
+    const albumsIndex = Array.isArray(w.albumsIndex) ? w.albumsIndex : [];
+    const meta = albumsIndex.find(a => a && a.key === albumKey) || null;
     if (!meta) return null;
 
-    const base = (typeof w.normalizeBase === 'function') ? w.normalizeBase(meta.base) : meta.base;
-    const absJoin = typeof w.absJoin === 'function'
-      ? w.absJoin
-      : ((b, r) => new URL(String(r || ''), String(b || '') + '/').toString());
-
     try {
-      const r = await fetch(absJoin(base, 'config.json'), { cache: 'no-cache' });
-      if (!r || !r.ok) return null;
+      const r = await fetch(absJoin(meta.base, 'config.json'), { cache: 'no-cache' });
+      if (!r.ok) return null;
       const data = await r.json();
+
+      // нормализуем пути (как раньше)
       (data.tracks || []).forEach(t => {
-        t.audio   = absJoin(base, t.audio);
-        t.lyrics  = absJoin(base, t.lyrics);
-        if (t.fulltext) t.fulltext = absJoin(base, t.fulltext);
+        if (t.audio) t.audio = absJoin(meta.base, t.audio);
+        if (t.lyrics) t.lyrics = absJoin(meta.base, t.lyrics);
+        if (t.fulltext) t.fulltext = absJoin(meta.base, t.fulltext);
       });
 
-      albumConfigCache[realKey]  = { base, config: data };
-      albumConfigCache[albumKey] = { base, config: data };
+      albumConfigCache[albumKey] = { base: meta.base, config: data };
       w.albumConfigCache = albumConfigCache;
 
       return data;
@@ -6474,23 +6550,23 @@ Object.assign(window, {
     const cache = albumCoverCache[albumKey];
     if (cache && (now - cache.ts) < COVER_TTL_MS) return cache.url;
 
+    // Берём первую картинку из центральной галереи (как раньше)
     try {
-      const centralIdForAlbumKey = w.centralIdForAlbumKey;
-      const normalizeGalleryItem = w.normalizeGalleryItem;
-      const CENTRAL_GALLERY_BASE = w.CENTRAL_GALLERY_BASE || './albums/gallery/';
-      const cid = typeof centralIdForAlbumKey === 'function' ? centralIdForAlbumKey(albumKey) : null;
+      const cid = typeof w.centralIdForAlbumKey === 'function' ? w.centralIdForAlbumKey(albumKey) : null;
+      const baseDir = `${w.CENTRAL_GALLERY_BASE || './albums/gallery/'}${cid}/`;
+
       if (!cid) {
         albumCoverCache[albumKey] = { url: 'img/logo.png', ts: now };
         try { sessionStorage.setItem(`favCoverCache:v1:${albumKey}`, JSON.stringify({ url: 'img/logo.png', ts: now })); } catch {}
         return 'img/logo.png';
       }
-      const baseDir = `${CENTRAL_GALLERY_BASE}${cid}/`;
+
       const r = await fetch(baseDir + 'index.json', { cache: 'force-cache' });
       if (r.ok) {
         const j = await r.json();
         const first = Array.isArray(j.items) ? j.items[0] : (Array.isArray(j) ? j[0] : null);
         if (first) {
-          const norm = typeof normalizeGalleryItem === 'function' ? normalizeGalleryItem(first, baseDir) : first;
+          const norm = typeof w.normalizeGalleryItem === 'function' ? w.normalizeGalleryItem(first, baseDir) : first;
           const url = (norm && (norm.formats?.webp || norm.formats?.full || norm.src)) || 'img/logo.png';
           albumCoverCache[albumKey] = { url, ts: now };
           try { sessionStorage.setItem(`favCoverCache:v1:${albumKey}`, JSON.stringify({ url, ts: now })); } catch {}
@@ -6505,158 +6581,76 @@ Object.assign(window, {
   }
 
   async function buildFavoritesRefsModel() {
-    // ✅ ЦЕЛЕВОЕ ПОВЕДЕНИЕ:
-    // - "ИЗБРАННОЕ" = список refs (favoritesAlbumRefs:v1) + вычисление активности по likedTracks:v2.
-    // - Снятие ⭐ В ИЗБРАННОЕ: лайк снимается, но ref остаётся -> строка становится неактивной (oldstar).
-    // - Снятие ⭐ В АЛЬБОМЕ: лайк снимается и ref удаляется (строгое поведение в альбомах).
+    await migrateLegacyRefsIfNeeded();
 
-    const refs = getSortedFavoritesRefs();
+    const refs = getSortedFavoritesRefsByUid();
     const out = [];
 
     for (const ref of refs) {
+      const a = String(ref?.a || '').trim();
+      const uid = String(ref?.uid || '').trim();
+      if (!a || !uid) continue;
+
       let cfg = null;
-      try { cfg = await getAlbumConfigByKey(ref.a); } catch {}
+      try { cfg = await getAlbumConfigByKey(a); } catch {}
 
-      const tr = cfg?.tracks?.[ref.t] || null;
-      const cover = await getAlbumCoverUrl(ref.a);
+      const tracks = Array.isArray(cfg?.tracks) ? cfg.tracks : [];
+      const tr = tracks.find(t => String(t?.uid || '').trim() === uid) || null;
 
-      const isActive = getLikedForAlbum(ref.a).includes(ref.t);
+      const cover = await getAlbumCoverUrl(a);
+      const isActive = getLikedUidsForAlbum(a).includes(uid);
 
-      if (tr && tr.audio) {
-        out.push({
-          title: tr.title,
-          audio: isActive ? tr.audio : null,
-          lyrics: isActive ? tr.lyrics : null,
-          fulltext: isActive ? (tr.fulltext || null) : null,
-          __a: ref.a,
-          __t: ref.t,
-          __artist: cfg?.artist || 'Витрина Разбита',
-          __album: cfg?.albumName || 'Альбом',
-          __active: isActive,
-          __cover: cover
-        });
-      } else {
-        // Альбом/трек временно не доступны: показываем строку серой.
-        out.push({
-          title: tr?.title || `Трек ${ref.t + 1}`,
-          audio: null,
-          lyrics: null,
-          fulltext: null,
-          __a: ref.a,
-          __t: ref.t,
-          __artist: cfg?.artist || 'Витрина Разбита',
-          __album: cfg?.albumName || 'Альбом',
-          __active: false,
-          __cover: cover
-        });
-      }
+      out.push({
+        title: tr?.title || 'Трек',
+        uid,
+        audio: (isActive && tr?.audio) ? tr.audio : null,
+        lyrics: (isActive && tr?.lyrics) ? tr.lyrics : null,
+        fulltext: (isActive && tr?.fulltext) ? (tr.fulltext || null) : null,
+        __a: a,
+        __uid: uid,
+        __artist: cfg?.artist || 'Витрина Разбита',
+        __album: cfg?.albumName || 'Альбом',
+        __active: isActive,
+        __cover: cover
+      });
     }
 
     w.favoritesRefsModel = out;
     return out;
   }
 
-  function updateFavoritesRefsModelActiveFlag(albumKey, trackIndex, isActive) {
+  function updateFavoritesRefsModelActiveFlag(albumKey, uid, isActive) {
+    const a = String(albumKey || '').trim();
+    const u = String(uid || '').trim();
     const model = w.favoritesRefsModel;
-    if (!Array.isArray(model)) return;
-    const item = model.find(x => x.__a === albumKey && x.__t === trackIndex);
-    if (item) item.__active = !!isActive;
-  }
+    if (!a || !u || !Array.isArray(model)) return;
 
-  function centralIdForAlbumKey(albumKey) {
-    if (!albumKey) return null;
-    if (albumKey === '__favorites__') return null;
-    
-    const ALBUM_GALLERY_MAP = {
-      'krevetochka': '00',
-      'mezhdu-zlom-i-dobrom': '01',
-      'golos-dushi': '02',
-      '__reliz__': 'news'
-    };
-    
-    const CENTRAL_ALLOWED_IDS = new Set(['00', '01', '02', 'news']);
-    const id = ALBUM_GALLERY_MAP[albumKey] || null;
-    return id && CENTRAL_ALLOWED_IDS.has(id) ? id : null;
-  }
+    const item = model.find(x => x && x.__a === a && x.__uid === u);
+    if (!item) return;
 
-  function normalizeGalleryItem(raw, baseDir) {
-    if (!raw) return null;
+    item.__active = !!isActive;
 
-    const toAbs = (p) => {
-      if (!p) return null;
-      const s = String(p).replace(/^\.?\//, '');
-      if (/^https?:\/\//i.test(s)) return s;
-      if (/^(albums|img|icons|assets)\//i.test(s)) return `./${s}`;
-      return baseDir + s;
-    };
-
-    if (typeof raw === 'string') {
-      const isHtml = /\.html(\?|#|$)/i.test(raw);
-      const src = toAbs(raw);
-      return { 
-        type: isHtml ? 'html' : 'img', 
-        src, 
-        formats: null, 
-        ar: 1 
-      };
-    }
-
-    const type = (String(raw.type || '').toLowerCase() === 'html') ? 'html' : 'img';
-    if (type === 'html') {
-      const src = toAbs(raw.src || '');
-      return { type: 'html', src, formats: null, ar: 1 };
-    }
-
-    const fm = raw.formats || {};
-    const formats = {
-      webp: toAbs(fm.webp || null),
-      full: toAbs(fm.full || raw.src || null),
-      thumb: toAbs(fm.thumb || null)
-    };
-    const src = formats.full || toAbs(raw.src || '');
-    
-    return { type: 'img', src, formats, ar: 1 };
-  }
-
-  function normalizeBase(b) {
-    try {
-      const hasScheme = /^[a-z]+:\/\//i.test(String(b));
-      const u = new URL(String(b), hasScheme ? undefined : (location.origin + '/'));
-      return u.origin + u.pathname.replace(/\/+$/, '');
-    } catch {
-      const s = String(b || '').replace(/[?#].*$/, '').replace(/\/+$/, '');
-      if (/^https?:\/\//i.test(s)) return s;
-      return location.origin + '/' + s.replace(/^\/+/, '');
+    if (item.__active) {
+      // При активации — данные подхватятся при следующем buildFavoritesRefsModel,
+      // но для realtime можно оставить как есть (UI обновит классы/звёзды).
+    } else {
+      item.audio = null;
+      item.lyrics = null;
+      item.fulltext = null;
     }
   }
 
-  function absJoin(base, rel) {
-    try {
-      return new URL(String(rel || ''), normalizeBase(base) + '/').toString();
-    } catch {
-      const norm = normalizeBase(base);
-      return norm + '/' + String(rel || '').replace(/^\/+/, '');
-    }
-  }
+  function removeFavoritesRef(albumKey, uid) {
+    const a = String(albumKey || '').trim();
+    const u = String(uid || '').trim();
+    if (!a || !u) return false;
 
-  w.centralIdForAlbumKey = centralIdForAlbumKey;
-  w.normalizeGalleryItem = normalizeGalleryItem;
-  w.normalizeBase = normalizeBase;
-  w.absJoin = absJoin;
-  w.CENTRAL_GALLERY_BASE = w.APP_CONFIG?.CENTRAL_GALLERY_BASE || './albums/gallery/';
+    const refs = readFavoritesRefsByUid();
+    const next = refs.filter(r => !(r && r.a === a && String(r.uid || '').trim() === u));
+    writeFavoritesRefsByUid(next);
 
-  function removeFavoritesRef(albumKey, trackIndex) {
-    const a = String(albumKey || '');
-    const t = parseInt(trackIndex, 10);
-    if (!a || !Number.isFinite(t)) return false;
-
-    const refs = readFavoritesRefs();
-    const next = refs.filter(r => !(r && r.a === a && r.t === t));
-    writeFavoritesRefs(next);
-
-    // Если модель уже в памяти — удалим элемент
     if (Array.isArray(w.favoritesRefsModel)) {
-      w.favoritesRefsModel = w.favoritesRefsModel.filter(it => !(it && it.__a === a && it.__t === t));
+      w.favoritesRefsModel = w.favoritesRefsModel.filter(it => !(it && it.__a === a && it.__uid === u));
     }
 
     return true;
@@ -6676,11 +6670,11 @@ Object.assign(window, {
   }
 
   function showFavoritesDeleteConfirm(params) {
-    const albumKey = String(params?.albumKey || '');
-    const trackIndex = parseInt(params?.trackIndex, 10);
+    const albumKey = String(params?.albumKey || '').trim();
+    const uid = String(params?.uid || '').trim();
     const title = String(params?.title || 'Трек');
 
-    if (!albumKey || !Number.isFinite(trackIndex)) return;
+    if (!albumKey || !uid) return;
 
     const modal = createModalBg(`
       <div class="modal-feedback" style="max-width: 420px;">
@@ -6698,7 +6692,7 @@ Object.assign(window, {
         <div style="color:#9db7dd; line-height:1.45; margin-bottom: 14px;">
           <div style="margin-bottom: 8px;"><strong>Трек:</strong> ${escapeHtml(title)}</div>
           <div style="opacity:.9;">
-            Трек исчезнет из списка «ИЗБРАННОЕ». Если он был отмечен ⭐ — отметка может остаться в альбоме.
+            Трек исчезнет из списка «ИЗБРАННОЕ». Лайк (⭐) можно оставить/снять отдельно.
           </div>
         </div>
 
@@ -6713,13 +6707,13 @@ Object.assign(window, {
     modal.querySelector('[data-act="cancel"]')?.addEventListener('click', () => modal.remove());
 
     modal.querySelector('[data-act="delete"]')?.addEventListener('click', () => {
-      const ok = removeFavoritesRef(albumKey, trackIndex);
+      const ok = removeFavoritesRef(albumKey, uid);
 
-      // Удалим строку из DOM если она есть
-      const rowId = `fav_${albumKey}_${trackIndex}`;
+      // Удалим строку из DOM (если есть)
+      const rowId = `fav_${albumKey}_${uid}`;
       document.getElementById(rowId)?.remove();
 
-      // Перенумерация (только треки, не кнопки)
+      // Перенумерация
       const rows = Array.from(document.querySelectorAll('#track-list .track'));
       rows.forEach((row, i) => {
         const n = row.querySelector('.tnum');
@@ -6738,11 +6732,11 @@ Object.assign(window, {
   }
 
   function showFavoritesInactiveModal(params) {
-    const albumKey = String(params?.albumKey || '');
-    const trackIndex = parseInt(params?.trackIndex, 10);
+    const albumKey = String(params?.albumKey || '').trim();
+    const uid = String(params?.uid || '').trim();
     const title = String(params?.title || 'Трек');
 
-    if (!albumKey || !Number.isFinite(trackIndex)) return;
+    if (!albumKey || !uid) return;
 
     const modal = createModalBg(`
       <div class="modal-feedback" style="max-width: 420px;">
@@ -6774,18 +6768,15 @@ Object.assign(window, {
     modal.querySelector('.bigclose')?.addEventListener('click', () => modal.remove());
 
     modal.querySelector('[data-act="add"]')?.addEventListener('click', () => {
-      // Включаем лайк (это вернёт __active = true)
+      // Включаем лайк по uid (реальный источник правды)
       if (w.FavoritesManager && typeof w.FavoritesManager.toggleLike === 'function') {
-        w.FavoritesManager.toggleLike(albumKey, trackIndex, true);
-      } else if (typeof w.toggleLikeForAlbum === 'function') {
-        w.toggleLikeForAlbum(albumKey, trackIndex, true);
+        w.FavoritesManager.toggleLike(albumKey, uid, true);
       }
 
-      // Подправим модель
-      updateFavoritesRefsModelActiveFlag(albumKey, trackIndex, true);
+      updateFavoritesRefsModelActiveFlag(albumKey, uid, true);
 
-      // Подправим DOM строки (если есть)
-      const row = document.getElementById(`fav_${albumKey}_${trackIndex}`);
+      // DOM строки
+      const row = document.getElementById(`fav_${albumKey}_${uid}`);
       if (row) {
         row.classList.remove('inactive');
         const star = row.querySelector('.like-star');
@@ -6800,41 +6791,55 @@ Object.assign(window, {
 
     modal.querySelector('[data-act="remove"]')?.addEventListener('click', () => {
       modal.remove();
-      showFavoritesDeleteConfirm({ albumKey, trackIndex, title, onDeleted: params?.onDeleted });
+      showFavoritesDeleteConfirm({ albumKey, uid, title, onDeleted: params?.onDeleted });
     });
   }
 
-  // маленькая утилита, чтобы не зависеть от index.html escapeHtml
   function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = String(str || '');
     return div.innerHTML;
   }
 
+  // Realtime: при изменении лайков — подтянуть refs и синхронизировать модель
+  window.addEventListener('favorites:changed', (e) => {
+    const d = e?.detail || {};
+    const a = String(d.albumKey || '').trim();
+    const uid = String(d.uid || '').trim();
+    const liked = !!d.liked;
+    if (!a || !uid) return;
+
+    try {
+      // ✅ Если поставили лайк — гарантируем, что ref существует (строка появится/активируется)
+      if (liked) ensureFavoritesRefsWithLikes();
+      updateFavoritesRefsModelActiveFlag(a, uid, liked);
+    } catch {}
+  });
+
   w.FavoritesData = {
-    readFavoritesRefs,
-    writeFavoritesRefs,
+    // refs
+    readFavoritesRefsByUid,
+    writeFavoritesRefsByUid,
     ensureFavoritesRefsWithLikes,
-    getSortedFavoritesRefs,
-    getAlbumConfigByKey,
+    getSortedFavoritesRefsByUid,
+
+    // model builder
     buildFavoritesRefsModel,
     updateFavoritesRefsModelActiveFlag,
+
+    // covers/config
+    getAlbumConfigByKey,
     getAlbumCoverUrl,
 
-    // NEW API (модалки + удаление ref)
+    // удаление ref только через модалку
     removeFavoritesRef,
     showFavoritesInactiveModal,
     showFavoritesDeleteConfirm
   };
 
-  w.readFavoritesRefs = readFavoritesRefs;
-  w.writeFavoritesRefs = writeFavoritesRefs;
-  w.ensureFavoritesRefsWithLikes = ensureFavoritesRefsWithLikes;
-  w.getSortedFavoritesRefs = getSortedFavoritesRefs;
-  w.getAlbumConfigByKey = getAlbumConfigByKey;
+  // Back-compat имена (чтобы AlbumsManager не падал)
   w.buildFavoritesRefsModel = buildFavoritesRefsModel;
   w.updateFavoritesRefsModelActiveFlag = updateFavoritesRefsModelActiveFlag;
-
 })();
 
 //=================================================
