@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f1e301dd57ce4d2d14c56f829f67cfdd8920f691.idx
-│   │       ├── pack-f1e301dd57ce4d2d14c56f829f67cfdd8920f691.pack
-│   │       └── pack-f1e301dd57ce4d2d14c56f829f67cfdd8920f691.rev
+│   │       ├── pack-0f1da9b2b95699aa21cf7479f5789be76c65082b.idx
+│   │       ├── pack-0f1da9b2b95699aa21cf7479f5789be76c65082b.pack
+│   │       └── pack-0f1da9b2b95699aa21cf7479f5789be76c65082b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-16 17:30:10 UTC
+Сгенерировано: 2025-12-16 17:30:48 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1069,7 +1069,7 @@ jobs:
 // service-worker.js
 // Единый Service Worker для PWA "Витрина Разбита"
 
-const SW_VERSION = '8.0.3';
+const SW_VERSION = '8.0.4';
 
 // Основные кэши (ожидаются lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
