@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f68cf613c6ac8bad3543517df59b4eca8a465a56.idx
-│   │       ├── pack-f68cf613c6ac8bad3543517df59b4eca8a465a56.pack
-│   │       └── pack-f68cf613c6ac8bad3543517df59b4eca8a465a56.rev
+│   │       ├── pack-a87a3c6ee43995003554fa78a98a10ad93574b53.idx
+│   │       ├── pack-a87a3c6ee43995003554fa78a98a10ad93574b53.pack
+│   │       └── pack-a87a3c6ee43995003554fa78a98a10ad93574b53.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-16 15:30:22 UTC
+Сгенерировано: 2025-12-16 15:36:19 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2017,9 +2017,9 @@ class AlbumsManager {
       console.log(`✅ currentAlbum set to: ${albumKey}`);
 
       // Сброс фильтрации
-      const filterBtn = document.getElementById('filter-favorites-btn');
       const trackList = document.getElementById('track-list');
 
+      // filterBtn уже получен выше в этом методе; переиспользуем его, чтобы не объявлять повторно
       if (filterBtn) {
         filterBtn.textContent = 'Скрыть не отмеченные ⭐ песни';
         filterBtn.classList.remove('filtered');
