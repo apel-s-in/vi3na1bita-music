@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-36925df336c80bc96db199ce7630b925cbdae1fb.idx
-│   │       ├── pack-36925df336c80bc96db199ce7630b925cbdae1fb.pack
-│   │       └── pack-36925df336c80bc96db199ce7630b925cbdae1fb.rev
+│   │       ├── pack-cede4db159eb87df79529fc4e87e1f71a897b2d5.idx
+│   │       ├── pack-cede4db159eb87df79529fc4e87e1f71a897b2d5.pack
+│   │       └── pack-cede4db159eb87df79529fc4e87e1f71a897b2d5.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-16 20:59:54 UTC
+Сгенерировано: 2025-12-16 21:00:39 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1825,7 +1825,7 @@ self.addEventListener('message', (event) => {
               : (albumInfo ? new URL('cover.jpg', albumInfo.base).toString() : 'img/logo.png'),
             lyrics: t.lyrics || null,
             fulltext: t.fulltext || null,
-            uid: t.uid || window.AlbumsManager?.getTrackUid?.(albumKey, t.num) || `${albumKey}_${t.num}`
+            uid: (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null
           }));
 
         if (tracksForCore.length > 0) {
