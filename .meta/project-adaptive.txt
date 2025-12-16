@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6655e1a2279797d17a3a54bb41270b5e95080f09.idx
-│   │       ├── pack-6655e1a2279797d17a3a54bb41270b5e95080f09.pack
-│   │       └── pack-6655e1a2279797d17a3a54bb41270b5e95080f09.rev
+│   │       ├── pack-730d602c6fadc8c4c16fe07181ab5398aafa7b2f.idx
+│   │       ├── pack-730d602c6fadc8c4c16fe07181ab5398aafa7b2f.pack
+│   │       └── pack-730d602c6fadc8c4c16fe07181ab5398aafa7b2f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-16 13:42:34 UTC
+Сгенерировано: 2025-12-16 13:43:20 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1907,8 +1907,6 @@ class AlbumsManager {
     try {
       // ✅ Сбрасываем видимость галереи (по умолчанию показана)
       this.isGalleryVisible = true;
-      
-      this.clearUI();
 
       this.clearUI();
 
