@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e0dfb996ad9f543bd754304444b304bc569a13b9.idx
-│   │       ├── pack-e0dfb996ad9f543bd754304444b304bc569a13b9.pack
-│   │       └── pack-e0dfb996ad9f543bd754304444b304bc569a13b9.rev
+│   │       ├── pack-6655e1a2279797d17a3a54bb41270b5e95080f09.idx
+│   │       ├── pack-6655e1a2279797d17a3a54bb41270b5e95080f09.pack
+│   │       └── pack-6655e1a2279797d17a3a54bb41270b5e95080f09.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-16 13:32:53 UTC
+Сгенерировано: 2025-12-16 13:42:34 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1460,26 +1460,31 @@ import { APP_CONFIG } from './core/config.js';
 
     initializeModules() {
       // Таймер сна
+      // (scripts/ui/sleep.js) сам автоинициализируется, но оставим безопасный вызов при наличии initialize()
       if (w.SleepTimer && typeof w.SleepTimer.initialize === 'function') {
         w.SleepTimer.initialize();
       }
 
       // Модальное окно текста
+      // (scripts/ui/lyrics-modal.js) не требует initialize()
       if (w.LyricsModal && typeof w.LyricsModal.initialize === 'function') {
         w.LyricsModal.initialize();
       }
 
       // Системная информация
-      if (w.SystemInfo && typeof w.SystemInfo.initialize === 'function') {
-        w.SystemInfo.initialize();
+      // Реальное имя: SystemInfoManager (scripts/ui/sysinfo.js), initialize() нет — он сам запускается в ctor.
+      if (w.SystemInfoManager && typeof w.SystemInfoManager.initialize === 'function') {
+        w.SystemInfoManager.initialize();
       }
 
       // Менеджер загрузок
-      if (w.DownloadManager && typeof w.DownloadManager.initialize === 'function') {
-        w.DownloadManager.initialize();
+      // Реальное имя: DownloadsManager (scripts/app/downloads.js), initialize() нет.
+      if (w.DownloadsManager && typeof w.DownloadsManager.initialize === 'function') {
+        w.DownloadsManager.initialize();
       }
 
       // Background Audio API
+      // Реальное имя: BackgroundAudioManager (scripts/app/background-audio.js), initialize() нет — ctor сам вызывает init().
       if (w.BackgroundAudioManager && typeof w.BackgroundAudioManager.initialize === 'function') {
         w.BackgroundAudioManager.initialize();
       }
