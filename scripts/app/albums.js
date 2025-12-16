@@ -412,33 +412,8 @@ class AlbumsManager {
       container.appendChild(trackEl);
     });
   }
-  /**
-   * ✅ Очистка недоступных треков из избранного
-   */
-  async cleanupUnavailableFavorites() {
-    const model = window.favoritesRefsModel || [];
-    let removed = 0;
-
-    for (const item of model) {
-      // Удаляем из списка (refs) треки без аудио ИЛИ неактивные
-      if (!item.audio || !item.__active) {
-        if (window.FavoritesData && typeof window.FavoritesData.removeFavoritesRef === 'function') {
-          const ok = window.FavoritesData.removeFavoritesRef(item.__a, item.__t);
-          if (ok) removed++;
-        } else {
-          // fallback (если модуль не подцепился)
-          removed++;
-        }
-      }
-    }
-
-    if (removed > 0) {
-      window.NotificationSystem?.success(`✅ Удалено из списка: ${removed}`);
-      await this.loadAlbum('__favorites__');
-    } else {
-      window.NotificationSystem?.info('Нет недоступных треков');
-    }
-  }
+  // cleanupUnavailableFavorites удалён по дизайну:
+  // удаление из "ИЗБРАННОЕ" выполняется только через модалку на неактивной строке.
 
   async ensureFavoritesPlayback(index) {
     const model = Array.isArray(window.favoritesRefsModel) ? window.favoritesRefsModel : [];
