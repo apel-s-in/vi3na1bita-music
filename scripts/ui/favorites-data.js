@@ -301,6 +301,172 @@
   w.absJoin = absJoin;
   w.CENTRAL_GALLERY_BASE = w.APP_CONFIG?.CENTRAL_GALLERY_BASE || './albums/gallery/';
 
+  function removeFavoritesRef(albumKey, trackIndex) {
+    const a = String(albumKey || '');
+    const t = parseInt(trackIndex, 10);
+    if (!a || !Number.isFinite(t)) return false;
+
+    const refs = readFavoritesRefs();
+    const next = refs.filter(r => !(r && r.a === a && r.t === t));
+    writeFavoritesRefs(next);
+
+    // Если модель уже в памяти — удалим элемент
+    if (Array.isArray(w.favoritesRefsModel)) {
+      w.favoritesRefsModel = w.favoritesRefsModel.filter(it => !(it && it.__a === a && it.__t === t));
+    }
+
+    return true;
+  }
+
+  function createModalBg(html) {
+    const bg = document.createElement('div');
+    bg.className = 'modal-bg active';
+    bg.innerHTML = html;
+
+    bg.addEventListener('click', (e) => {
+      if (e.target === bg) bg.remove();
+    });
+
+    document.body.appendChild(bg);
+    return bg;
+  }
+
+  function showFavoritesDeleteConfirm(params) {
+    const albumKey = String(params?.albumKey || '');
+    const trackIndex = parseInt(params?.trackIndex, 10);
+    const title = String(params?.title || 'Трек');
+
+    if (!albumKey || !Number.isFinite(trackIndex)) return;
+
+    const modal = createModalBg(`
+      <div class="modal-feedback" style="max-width: 420px;">
+        <button class="bigclose" title="Закрыть" aria-label="Закрыть">
+          <svg viewBox="0 0 48 48">
+            <line x1="12" y1="12" x2="36" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+            <line x1="36" y1="12" x2="12" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+          </svg>
+        </button>
+
+        <div style="font-size: 1.08em; font-weight: 900; color: #eaf2ff; margin-bottom: 10px;">
+          Удалить из «ИЗБРАННОГО»?
+        </div>
+
+        <div style="color:#9db7dd; line-height:1.45; margin-bottom: 14px;">
+          <div style="margin-bottom: 8px;"><strong>Трек:</strong> ${escapeHtml(title)}</div>
+          <div style="opacity:.9;">
+            Трек исчезнет из списка «ИЗБРАННОЕ». Если он был отмечен ⭐ — отметка может остаться в альбоме.
+          </div>
+        </div>
+
+        <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+          <button class="offline-btn" data-act="cancel" style="min-width: 130px;">Отмена</button>
+          <button class="offline-btn online" data-act="delete" style="min-width: 130px;">Удалить</button>
+        </div>
+      </div>
+    `);
+
+    modal.querySelector('.bigclose')?.addEventListener('click', () => modal.remove());
+    modal.querySelector('[data-act="cancel"]')?.addEventListener('click', () => modal.remove());
+
+    modal.querySelector('[data-act="delete"]')?.addEventListener('click', () => {
+      const ok = removeFavoritesRef(albumKey, trackIndex);
+
+      // Удалим строку из DOM если она есть
+      const rowId = `fav_${albumKey}_${trackIndex}`;
+      document.getElementById(rowId)?.remove();
+
+      // Перенумерация (только треки, не кнопки)
+      const rows = Array.from(document.querySelectorAll('#track-list .track'));
+      rows.forEach((row, i) => {
+        const n = row.querySelector('.tnum');
+        if (n) n.textContent = String(i + 1).padStart(2, '0');
+      });
+
+      modal.remove();
+
+      if (ok) {
+        w.NotificationSystem?.success('Удалено из «ИЗБРАННОГО»');
+        if (typeof params?.onDeleted === 'function') params.onDeleted();
+      } else {
+        w.NotificationSystem?.error('Не удалось удалить');
+      }
+    });
+  }
+
+  function showFavoritesInactiveModal(params) {
+    const albumKey = String(params?.albumKey || '');
+    const trackIndex = parseInt(params?.trackIndex, 10);
+    const title = String(params?.title || 'Трек');
+
+    if (!albumKey || !Number.isFinite(trackIndex)) return;
+
+    const modal = createModalBg(`
+      <div class="modal-feedback" style="max-width: 420px;">
+        <button class="bigclose" title="Закрыть" aria-label="Закрыть">
+          <svg viewBox="0 0 48 48">
+            <line x1="12" y1="12" x2="36" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+            <line x1="36" y1="12" x2="12" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+          </svg>
+        </button>
+
+        <div style="font-size: 1.08em; font-weight: 900; color: #eaf2ff; margin-bottom: 10px;">
+          Трек неактивен
+        </div>
+
+        <div style="color:#9db7dd; line-height:1.45; margin-bottom: 14px;">
+          <div style="margin-bottom: 8px;"><strong>Трек:</strong> ${escapeHtml(title)}</div>
+          <div style="opacity:.9;">
+            Вы можете вернуть трек в ⭐ или удалить его из списка «ИЗБРАННОЕ».
+          </div>
+        </div>
+
+        <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+          <button class="offline-btn online" data-act="add" style="min-width: 160px;">Добавить в ⭐</button>
+          <button class="offline-btn" data-act="remove" style="min-width: 160px;">Удалить</button>
+        </div>
+      </div>
+    `);
+
+    modal.querySelector('.bigclose')?.addEventListener('click', () => modal.remove());
+
+    modal.querySelector('[data-act="add"]')?.addEventListener('click', () => {
+      // Включаем лайк (это вернёт __active = true)
+      if (w.FavoritesManager && typeof w.FavoritesManager.toggleLike === 'function') {
+        w.FavoritesManager.toggleLike(albumKey, trackIndex, true);
+      } else if (typeof w.toggleLikeForAlbum === 'function') {
+        w.toggleLikeForAlbum(albumKey, trackIndex, true);
+      }
+
+      // Подправим модель
+      updateFavoritesRefsModelActiveFlag(albumKey, trackIndex, true);
+
+      // Подправим DOM строки (если есть)
+      const row = document.getElementById(`fav_${albumKey}_${trackIndex}`);
+      if (row) {
+        row.classList.remove('inactive');
+        const star = row.querySelector('.like-star');
+        if (star) star.src = 'img/star.png';
+      }
+
+      modal.remove();
+      w.NotificationSystem?.success('Добавлено в ⭐');
+
+      if (typeof params?.onChanged === 'function') params.onChanged({ active: true });
+    });
+
+    modal.querySelector('[data-act="remove"]')?.addEventListener('click', () => {
+      modal.remove();
+      showFavoritesDeleteConfirm({ albumKey, trackIndex, title, onDeleted: params?.onDeleted });
+    });
+  }
+
+  // маленькая утилита, чтобы не зависеть от index.html escapeHtml
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = String(str || '');
+    return div.innerHTML;
+  }
+
   w.FavoritesData = {
     readFavoritesRefs,
     writeFavoritesRefs,
@@ -309,7 +475,12 @@
     getAlbumConfigByKey,
     buildFavoritesRefsModel,
     updateFavoritesRefsModelActiveFlag,
-    getAlbumCoverUrl
+    getAlbumCoverUrl,
+
+    // NEW API (модалки + удаление ref)
+    removeFavoritesRef,
+    showFavoritesInactiveModal,
+    showFavoritesDeleteConfirm
   };
 
   w.readFavoritesRefs = readFavoritesRefs;
