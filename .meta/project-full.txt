@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-933f5fed568ce677f11acc43b65cf903502681e9.idx
-│   │       ├── pack-933f5fed568ce677f11acc43b65cf903502681e9.pack
-│   │       └── pack-933f5fed568ce677f11acc43b65cf903502681e9.rev
+│   │       ├── pack-e6070850f34a776bfd7e80fd9a1480f49deffe32.idx
+│   │       ├── pack-e6070850f34a776bfd7e80fd9a1480f49deffe32.pack
+│   │       └── pack-e6070850f34a776bfd7e80fd9a1480f49deffe32.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-16 21:38:21 UTC
+Сгенерировано: 2025-12-16 21:44:18 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4126,21 +4126,24 @@ export default NavigationManager;
 
     if (star) {
       const playingAlbum = w.AlbumsManager?.getPlayingAlbum?.();
+      const uid = String(track?.uid || '').trim();
       let isLiked = false;
 
-      if (playingAlbum && w.FavoritesManager) {
+      if (playingAlbum && w.FavoritesManager && uid) {
         if (playingAlbum !== w.SPECIAL_FAVORITES_KEY) {
-          const numVal = typeof track.num === 'number' ? track.num : (index + 1);
-          isLiked = !!w.FavoritesManager.isFavorite(playingAlbum, numVal);
+          isLiked = !!w.FavoritesManager.isFavorite(playingAlbum, uid);
         } else {
-          const uid = track.uid || null;
-          if (uid && Array.isArray(w.favoritesRefsModel)) {
-            const ref = w.favoritesRefsModel.find((it) => {
-              const refUid = w.AlbumsManager?.getTrackUid?.(it.__a, it.__t) || `${it.__a}_${it.__t}`;
-              return refUid === uid;
-            });
+          // В режиме __favorites__ лайк относится к исходному альбому трека
+          const srcAlbum = String(track?.sourceAlbum || '').trim();
+          if (srcAlbum) {
+            isLiked = !!w.FavoritesManager.isFavorite(srcAlbum, uid);
+          } else {
+            // fallback: если sourceAlbum не проставлен — попробуем найти в favoritesRefsModel
+            const ref = Array.isArray(w.favoritesRefsModel)
+              ? w.favoritesRefsModel.find(it => String(it?.__uid || '').trim() === uid)
+              : null;
             if (ref) {
-              isLiked = !!w.FavoritesManager.isFavorite(ref.__a, ref.__t);
+              isLiked = !!w.FavoritesManager.isFavorite(ref.__a, uid);
             }
           }
         }
@@ -4637,47 +4640,23 @@ export default NavigationManager;
 
   function toggleLikePlaying() {
     const playingAlbum = w.AlbumsManager?.getPlayingAlbum?.();
-    const index = w.playerCore?.getIndex();
     const track = w.playerCore?.getCurrentTrack();
 
-    if (!playingAlbum || index === undefined || !track) return;
+    if (!playingAlbum || !track || !w.FavoritesManager) return;
 
-    const fm = w.FavoritesManager;
-    const uid = track.uid || null;
+    const uid = String(track?.uid || '').trim();
+    if (!uid) return;
 
     if (playingAlbum !== w.SPECIAL_FAVORITES_KEY) {
-      const trackNum = typeof track.num === 'number' ? track.num : (index + 1);
-      const isLiked = !!fm?.isFavorite?.(playingAlbum, trackNum);
-
-      if (fm && typeof fm.toggleLike === 'function') {
-        fm.toggleLike(playingAlbum, trackNum, !isLiked);
-      } else if (typeof w.toggleLikeForAlbum === 'function') {
-        w.toggleLikeForAlbum(playingAlbum, trackNum, !isLiked);
-      }
+      const isLiked = !!w.FavoritesManager.isFavorite(playingAlbum, uid);
+      w.FavoritesManager.toggleLike(playingAlbum, uid, !isLiked);
     } else {
-      if (!uid || !Array.isArray(w.favoritesRefsModel) || !fm) {
-        updateMiniHeader();
-        return;
-      }
+      // В режиме __favorites__ лайк относится к исходному альбому трека
+      const srcAlbum = String(track?.sourceAlbum || '').trim();
+      if (!srcAlbum) return;
 
-      const ref = w.favoritesRefsModel.find((it) => {
-        const refUid = w.AlbumsManager?.getTrackUid?.(it.__a, it.__t) || `${it.__a}_${it.__t}`;
-        return refUid === uid;
-      });
-
-      if (!ref) {
-        updateMiniHeader();
-        return;
-      }
-
-      const albumKey = ref.__a;
-      const trackNum = ref.__t;
-      const isLiked = !!fm.isFavorite?.(albumKey, trackNum);
-
-      fm.toggleLike(albumKey, trackNum, !isLiked);
-      if (typeof w.updateFavoritesRefsModelActiveFlag === 'function') {
-        w.updateFavoritesRefsModelActiveFlag(albumKey, trackNum, !isLiked);
-      }
+      const isLiked = !!w.FavoritesManager.isFavorite(srcAlbum, uid);
+      w.FavoritesManager.toggleLike(srcAlbum, uid, !isLiked);
     }
 
     updateMiniHeader();
@@ -5009,12 +4988,12 @@ export default NavigationManager;
       return;
     }
 
-    const likedNums = w.FavoritesManager?.getLikedForAlbum(currentAlbum) || [];
+    const likedUids = w.FavoritesManager?.getLikedUidsForAlbum?.(currentAlbum) || [];
 
     favoritesFilterActive = !favoritesFilterActive;
 
     if (favoritesFilterActive) {
-      if (likedNums.length === 0) {
+      if (likedUids.length === 0) {
         favoritesFilterActive = false;
         w.NotificationSystem?.warning('Нет избранных треков в этом альбоме');
         return;
@@ -5024,7 +5003,7 @@ export default NavigationManager;
       btn.classList.add('filtered');
       trackList.classList.add('filtered');
 
-      updateFavoriteClasses(likedNums);
+      updateFavoriteClasses(likedUids);
 
       w.NotificationSystem?.success('Показаны только избранные треки');
     } else {
@@ -5074,8 +5053,9 @@ export default NavigationManager;
     }
   }
 
-  function updateFavoriteClasses(likedNums) {
-    const albumData = w.AlbumsManager?.getAlbumData?.(w.AlbumsManager?.getCurrentAlbum());
+  function updateFavoriteClasses(likedUids) {
+    const albumKey = w.AlbumsManager?.getCurrentAlbum?.();
+    const albumData = w.AlbumsManager?.getAlbumData?.(albumKey);
     if (!albumData || !Array.isArray(albumData.tracks)) return;
 
     document.querySelectorAll('.track').forEach(el => {
@@ -5083,9 +5063,9 @@ export default NavigationManager;
       if (!Number.isFinite(idx)) return;
 
       const track = albumData.tracks[idx];
-      const trackNum = Number.isFinite(Number(track?.num)) ? Number(track.num) : (idx + 1);
+      const uid = String(track?.uid || '').trim();
 
-      if (likedNums.includes(trackNum)) {
+      if (uid && Array.isArray(likedUids) && likedUids.includes(uid)) {
         el.classList.add('is-favorite');
       } else {
         el.classList.remove('is-favorite');
@@ -5097,20 +5077,22 @@ export default NavigationManager;
     const model = w.favoritesRefsModel || [];
 
     document.querySelectorAll('.track').forEach(el => {
-      const id = el.id || '';
-      const match = id.match(/^fav_(.+)_(\d+)$/);
+      const id = String(el.id || '');
+      const match = id.match(/^fav_(.+)_(.+)$/);
 
-      if (match) {
-        const albumKey = match[1];
-        const trackNum = parseInt(match[2], 10);
+      if (!match) return;
 
-        const item = model.find(x => x.__a === albumKey && x.__t === trackNum);
+      const albumKey = match[1];
+      const uid = match[2];
 
-        if (item && item.__active) {
-          el.classList.add('is-favorite');
-        } else {
-          el.classList.remove('is-favorite');
-        }
+      const item = Array.isArray(model)
+        ? model.find(x => x && x.__a === albumKey && String(x.__uid || '').trim() === String(uid || '').trim())
+        : null;
+
+      if (item && item.__active) {
+        el.classList.add('is-favorite');
+      } else {
+        el.classList.remove('is-favorite');
       }
     });
   }
