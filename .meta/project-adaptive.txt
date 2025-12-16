@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-7868e2a1a1c13869897f3721a954b072fdec76af.idx
-│   │       ├── pack-7868e2a1a1c13869897f3721a954b072fdec76af.pack
-│   │       └── pack-7868e2a1a1c13869897f3721a954b072fdec76af.rev
+│   │       ├── pack-b7b2a0c2bff72dac55288d8015a0405b3930deb1.idx
+│   │       ├── pack-b7b2a0c2bff72dac55288d8015a0405b3930deb1.pack
+│   │       └── pack-b7b2a0c2bff72dac55288d8015a0405b3930deb1.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-16 15:38:37 UTC
+Сгенерировано: 2025-12-16 15:44:25 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3692,7 +3692,13 @@ export default NavigationManager;
   let countdownValue = null;
 
   function initPlayerUI() {
+    // ✅ Защита от повторной инициализации (например, при повторном выполнении скрипта из-за кеша/SW)
+    if (w.__playerUIInitialized) return;
+    w.__playerUIInitialized = true;
+
     if (!w.albumsIndex || w.albumsIndex.length === 0) {
+      // albumsIndex ещё не готов — снимем флаг и попробуем позже
+      w.__playerUIInitialized = false;
       setTimeout(initPlayerUI, 100);
       return;
     }
@@ -3701,10 +3707,10 @@ export default NavigationManager;
     attachPlayerCoreEvents();
 
     // ✅ КРИТИЧНО: Привязываем кнопку фильтрации ОДИН РАЗ
-    const filterBtn = document.getElementById('filter-favorites-btn');
-    if (filterBtn && !filterBtn.__bound) {
-      filterBtn.__bound = true;
-      filterBtn.addEventListener('click', () => {
+    const filterBtnEl = document.getElementById('filter-favorites-btn');
+    if (filterBtnEl && !filterBtnEl.__bound) {
+      filterBtnEl.__bound = true;
+      filterBtnEl.addEventListener('click', () => {
         toggleFavoritesFilter();
       });
     }
