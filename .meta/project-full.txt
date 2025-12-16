@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e8b5258f641df4a58d7f5ed3d6d208495b94af1b.idx
-│   │       ├── pack-e8b5258f641df4a58d7f5ed3d6d208495b94af1b.pack
-│   │       └── pack-e8b5258f641df4a58d7f5ed3d6d208495b94af1b.rev
+│   │       ├── pack-d2833392cf145329daaa1d490bcd605f5338a767.idx
+│   │       ├── pack-d2833392cf145329daaa1d490bcd605f5338a767.pack
+│   │       └── pack-d2833392cf145329daaa1d490bcd605f5338a767.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-16 21:58:10 UTC
+Сгенерировано: 2025-12-16 22:00:09 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -11262,7 +11262,8 @@ body.ios #mute-btn {
     font-size: 12px;
     min-width: 38px;
   }
-  
+}
+
 @media (max-width: 600px) {
   .player-extra-buttons-row {
     flex-wrap: wrap;
