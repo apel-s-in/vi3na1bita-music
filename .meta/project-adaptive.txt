@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5e7e85fb6fae65e231c53fd7cc821d1db56484f5.idx
-│   │       ├── pack-5e7e85fb6fae65e231c53fd7cc821d1db56484f5.pack
-│   │       └── pack-5e7e85fb6fae65e231c53fd7cc821d1db56484f5.rev
+│   │       ├── pack-b1c51b23257a2bd697cb80e1233ff633dd31aafc.idx
+│   │       ├── pack-b1c51b23257a2bd697cb80e1233ff633dd31aafc.pack
+│   │       └── pack-b1c51b23257a2bd697cb80e1233ff633dd31aafc.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-16 21:00:59 UTC
+Сгенерировано: 2025-12-16 21:05:01 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4328,20 +4328,11 @@ export default NavigationManager;
           w.playerCore.shuffleMode = true;
         } else {
           const originalPlaylist = w.playerCore.originalPlaylist || [];
-          const likedNums = w.FavoritesManager?.getLikedForAlbum(playingAlbum) || [];
+          const likedUids = w.FavoritesManager?.getLikedUidsForAlbum?.(playingAlbum) || [];
 
           const favoriteTracks = originalPlaylist.filter(track => {
-            const uid = track.uid || null;
-
-            if (uid) {
-              const parts = uid.split('_');
-              if (parts.length >= 2) {
-                const trackNum = parseInt(parts[parts.length - 1], 10);
-                return Number.isFinite(trackNum) && likedNums.includes(trackNum);
-              }
-            }
-
-            return false;
+            const uid = String(track?.uid || '').trim();
+            return uid && likedUids.includes(uid);
           });
 
           const currentTrack = w.playerCore?.getCurrentTrack();
@@ -5148,9 +5139,9 @@ export default NavigationManager;
     }
 
     if (favoritesOnlyMode) {
-      const likedNums = w.FavoritesManager?.getLikedForAlbum(playingAlbum) || [];
+      const likedUids = w.FavoritesManager?.getLikedUidsForAlbum?.(playingAlbum) || [];
 
-      if (likedNums.length === 0) {
+      if (likedUids.length === 0) {
         w.availableFavoriteIndices = null;
         return;
       }
@@ -5158,17 +5149,9 @@ export default NavigationManager;
       w.availableFavoriteIndices = [];
 
       snapshot.forEach((track, idx) => {
-        const uid = track.uid || null;
-
-        if (uid) {
-          const parts = uid.split('_');
-          if (parts.length >= 2) {
-            const trackNum = parseInt(parts[parts.length - 1], 10);
-
-            if (Number.isFinite(trackNum) && likedNums.includes(trackNum)) {
-              w.availableFavoriteIndices.push(idx);
-            }
-          }
+        const uid = String(track?.uid || '').trim();
+        if (uid && likedUids.includes(uid)) {
+          w.availableFavoriteIndices.push(idx);
         }
       });
     } else {
@@ -5193,18 +5176,11 @@ export default NavigationManager;
         return;
       }
 
+      const likedUids = w.FavoritesManager?.getLikedUidsForAlbum?.(playingAlbum) || [];
+
       const favoriteTracks = originalPlaylist.filter(track => {
-        const uid = track.uid || null;
-
-        if (uid) {
-          const parts = uid.split('_');
-          if (parts.length >= 2) {
-            const trackNum = parseInt(parts[parts.length - 1], 10);
-            return Number.isFinite(trackNum) && likedNums.includes(trackNum);
-          }
-        }
-
-        return false;
+        const uid = String(track?.uid || '').trim();
+        return uid && likedUids.includes(uid);
       });
 
       if (favoriteTracks.length === 0) {
