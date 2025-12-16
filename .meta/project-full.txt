@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b1c51b23257a2bd697cb80e1233ff633dd31aafc.idx
-│   │       ├── pack-b1c51b23257a2bd697cb80e1233ff633dd31aafc.pack
-│   │       └── pack-b1c51b23257a2bd697cb80e1233ff633dd31aafc.rev
+│   │       ├── pack-4bfd6f6cd632047d477f919a7f3d6c1087f46f96.idx
+│   │       ├── pack-4bfd6f6cd632047d477f919a7f3d6c1087f46f96.pack
+│   │       └── pack-4bfd6f6cd632047d477f919a7f3d6c1087f46f96.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-16 21:05:01 UTC
+Сгенерировано: 2025-12-16 21:09:49 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9025,7 +9025,7 @@ try { main(); } catch (e) { console.error("❌", e); process.exit(1); }
     // ========== УПРАВЛЕНИЕ ПЛЕЙЛИСТОМ ==========
 
     setPlaylist(tracks, startIndex = 0, metadata = {}) {
-      // ✅ ВАЖНО: setPlaylist НЕ имеет права останавливать музыку (stop запрещён правилами).
+      // ✅ БАЗОВОЕ ПРАВИЛО: setPlaylist НЕ останавливает воспроизведение.
       const wasPlaying = this.isPlaying();
       const prev = this.getCurrentTrack();
       const prevUid = prev?.uid || null;
@@ -9039,8 +9039,6 @@ try { main(); } catch (e) { console.error("❌", e); process.exit(1); }
         cover: t.cover || '',
         lyrics: t.lyrics || null,
         fulltext: t.fulltext || null,
-
-        // ✅ ЕДИНСТВЕННЫЙ ИСТОЧНИК ПРАВДЫ ДЛЯ ТРЕКА
         uid: (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null
       }));
 
@@ -9063,7 +9061,7 @@ try { main(); } catch (e) { console.error("❌", e); process.exit(1); }
 
       console.log(`✅ Playlist set: ${this.playlist.length} tracks`);
 
-      // Если играло — продолжаем играть (без onStop)
+      // Если играло — продолжаем играть без onStop (тихая смена Howl делается через load)
       if (wasPlaying && this.playlist.length > 0) {
         this.load(this.currentIndex, { autoPlay: true, resumePosition: prevPos });
       } else {
@@ -9126,12 +9124,22 @@ try { main(); } catch (e) { console.error("❌", e); process.exit(1); }
       this.stopTick();
     }
 
+    _silentUnloadCurrentSound() {
+      // ✅ Техническая смена трека/плейлиста: НЕ триггерим onStop.
+      if (this.sound) {
+        try { this.sound.stop(); } catch {}
+        try { this.sound.unload(); } catch {}
+        this.sound = null;
+      }
+      this.stopTick();
+    }
+
     load(index, options = {}) {
       if (index < 0 || index >= this.playlist.length) return;
 
       const { autoPlay = false, resumePosition = null } = options || {};
 
-      // ✅ НЕЛЬЗЯ stop(): это нарушит правило.
+      // ✅ НЕЛЬЗЯ stop(): это нарушит базовое правило.
       this._silentUnloadCurrentSound();
 
       this.currentIndex = index;
