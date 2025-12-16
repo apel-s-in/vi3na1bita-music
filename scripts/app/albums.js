@@ -119,8 +119,6 @@ class AlbumsManager {
     try {
       // ✅ Сбрасываем видимость галереи (по умолчанию показана)
       this.isGalleryVisible = true;
-      
-      this.clearUI();
 
       this.clearUI();
 
