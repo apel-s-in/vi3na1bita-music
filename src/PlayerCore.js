@@ -50,7 +50,7 @@
     // ========== УПРАВЛЕНИЕ ПЛЕЙЛИСТОМ ==========
 
     setPlaylist(tracks, startIndex = 0, metadata = {}) {
-      // ✅ ВАЖНО: setPlaylist НЕ имеет права останавливать музыку (stop запрещён правилами).
+      // ✅ БАЗОВОЕ ПРАВИЛО: setPlaylist НЕ останавливает воспроизведение.
       const wasPlaying = this.isPlaying();
       const prev = this.getCurrentTrack();
       const prevUid = prev?.uid || null;
@@ -64,8 +64,6 @@
         cover: t.cover || '',
         lyrics: t.lyrics || null,
         fulltext: t.fulltext || null,
-
-        // ✅ ЕДИНСТВЕННЫЙ ИСТОЧНИК ПРАВДЫ ДЛЯ ТРЕКА
         uid: (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null
       }));
 
@@ -88,7 +86,7 @@
 
       console.log(`✅ Playlist set: ${this.playlist.length} tracks`);
 
-      // Если играло — продолжаем играть (без onStop)
+      // Если играло — продолжаем играть без onStop (тихая смена Howl делается через load)
       if (wasPlaying && this.playlist.length > 0) {
         this.load(this.currentIndex, { autoPlay: true, resumePosition: prevPos });
       } else {
@@ -151,12 +149,22 @@
       this.stopTick();
     }
 
+    _silentUnloadCurrentSound() {
+      // ✅ Техническая смена трека/плейлиста: НЕ триггерим onStop.
+      if (this.sound) {
+        try { this.sound.stop(); } catch {}
+        try { this.sound.unload(); } catch {}
+        this.sound = null;
+      }
+      this.stopTick();
+    }
+
     load(index, options = {}) {
       if (index < 0 || index >= this.playlist.length) return;
 
       const { autoPlay = false, resumePosition = null } = options || {};
 
-      // ✅ НЕЛЬЗЯ stop(): это нарушит правило.
+      // ✅ НЕЛЬЗЯ stop(): это нарушит базовое правило.
       this._silentUnloadCurrentSound();
 
       this.currentIndex = index;
