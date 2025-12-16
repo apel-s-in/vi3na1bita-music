@@ -56,7 +56,8 @@ const STATIC_ASSETS = [
   './src/PlayerCore.js',
 
   // Howler.js (CDN)
-  'https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js'
+  // ВАЖНО: не precache на install, чтобы не ронять установку SW из-за opaque/CORS/CDN-ошибок.
+  // CDN будет загружаться по сети; при необходимости закэшируется через runtime-стратегию.
 ];
 
 // ========== INSTALL ==========
