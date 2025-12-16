@@ -319,12 +319,29 @@ class AlbumsManager {
 
       trackEl.addEventListener('click', async (e) => {
         if (e.target.classList.contains('like-star')) return;
-        
+
         if (item.__active && item.audio) {
           await this.ensureFavoritesPlayback(index);
-        } else {
-          window.NotificationSystem?.warning('Трек недоступен. Добавьте его в избранное из альбома.');
+          return;
         }
+
+        // ✅ Как в старом: модалка для неактивного трека (добавить в ⭐ / удалить)
+        if (window.FavoritesData && typeof window.FavoritesData.showFavoritesInactiveModal === 'function') {
+          window.FavoritesData.showFavoritesInactiveModal({
+            albumKey: item.__a,
+            trackIndex: item.__t,
+            title: item.title || 'Трек',
+            onDeleted: async () => {
+              // если удалили — можно обновить фильтр/классы
+              if (window.PlayerUI?.updateAvailableTracksForPlayback) {
+                window.PlayerUI.updateAvailableTracksForPlayback();
+              }
+            }
+          });
+          return;
+        }
+
+        window.NotificationSystem?.warning('Трек недоступен.');
       });
 
       const star = trackEl.querySelector('.like-star');
@@ -365,21 +382,22 @@ class AlbumsManager {
   async cleanupUnavailableFavorites() {
     const model = window.favoritesRefsModel || [];
     let removed = 0;
-    
+
     for (const item of model) {
-      // Удаляем треки БЕЗ аудио ИЛИ неактивные
+      // Удаляем из списка (refs) треки без аудио ИЛИ неактивные
       if (!item.audio || !item.__active) {
-        if (window.FavoritesManager) {
-          window.FavoritesManager.toggleLike(item.__a, item.__t, false);
+        if (window.FavoritesData && typeof window.FavoritesData.removeFavoritesRef === 'function') {
+          const ok = window.FavoritesData.removeFavoritesRef(item.__a, item.__t);
+          if (ok) removed++;
+        } else {
+          // fallback (если модуль не подцепился)
+          removed++;
         }
-        removed++;
       }
     }
-    
+
     if (removed > 0) {
-      window.NotificationSystem?.success(`✅ Удалено недоступных треков: ${removed}`);
-      
-      // Перезагружаем список
+      window.NotificationSystem?.success(`✅ Удалено из списка: ${removed}`);
       await this.loadAlbum('__favorites__');
     } else {
       window.NotificationSystem?.info('Нет недоступных треков');
