@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-928e88c45741db578999e41cea8308c7a098509d.idx
-│   │       ├── pack-928e88c45741db578999e41cea8308c7a098509d.pack
-│   │       └── pack-928e88c45741db578999e41cea8308c7a098509d.rev
+│   │       ├── pack-3df10c32c8fb4bff0092ede8862a258c4a8f83a6.idx
+│   │       ├── pack-3df10c32c8fb4bff0092ede8862a258c4a8f83a6.pack
+│   │       └── pack-3df10c32c8fb4bff0092ede8862a258c4a8f83a6.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-16 13:48:05 UTC
+Сгенерировано: 2025-12-16 13:50:00 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3072,6 +3072,7 @@ class GalleryManager {
   initialize() {
     this.setupNavigation();
     this.setupSwipeGestures();
+    this.setupVisibilityHandler();
     console.log('✅ GalleryManager initialized');
   }
 
@@ -3321,6 +3322,20 @@ class GalleryManager {
 
       startX = null;
     }, { passive: true });
+  }
+
+  setupVisibilityHandler() {
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        // ✅ Останавливаем только галерею (плеер не трогаем)
+        this.stopAutoplay();
+      } else {
+        // Возобновляем, только если есть что крутить
+        if (this.items.length > 1) {
+          this.startAutoplay();
+        }
+      }
+    });
   }
 
   updateNavigationState() {
