@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b746bdfa81cc71aeb2586f2f47b75a09118ae7b0.idx
-│   │       ├── pack-b746bdfa81cc71aeb2586f2f47b75a09118ae7b0.pack
-│   │       └── pack-b746bdfa81cc71aeb2586f2f47b75a09118ae7b0.rev
+│   │       ├── pack-1d92abbec78af004a870846b01c371ade1eda558.idx
+│   │       ├── pack-1d92abbec78af004a870846b01c371ade1eda558.pack
+│   │       └── pack-1d92abbec78af004a870846b01c371ade1eda558.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-16 10:43:15 UTC
+Сгенерировано: 2025-12-16 10:43:49 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6931,13 +6931,9 @@ class FavoritesManager {
       return false;
     }
 
-    // Синхронизируем refs (чтобы Избранное пополнялось), но НЕ удаляем refs на unlike
-    // (в старой логике refs нужны и для неактивных строк)
-    try {
-      if (typeof window.ensureFavoritesRefsWithLikes === 'function') {
-        window.ensureFavoritesRefsWithLikes();
-      }
-    } catch {}
+    // ✅ Новая логика: "ИЗБРАННОЕ" строится только по likedTracks:v2.
+    // refs больше не используются для автопополнения списка.
+    // Поэтому НЕ добавляем никаких refs автоматически.
 
     // Синхронизируем флаг активности в уже построенной модели (если она есть)
     try {
