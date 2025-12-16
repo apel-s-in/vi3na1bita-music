@@ -51,6 +51,9 @@ import { APP_CONFIG } from './core/config.js';
         // 9. Обработка PWA установки
         this.setupPWAInstall();
 
+        // 10. Обработка сообщений от Service Worker (update flow)
+        this.setupServiceWorkerMessaging();
+
         console.log('✅ Application initialized successfully');
 
       } catch (error) {
@@ -179,6 +182,87 @@ import { APP_CONFIG } from './core/config.js';
       if (w.BackgroundAudioManager && typeof w.BackgroundAudioManager.initialize === 'function') {
         w.BackgroundAudioManager.initialize();
       }
+    }
+
+    setupServiceWorkerMessaging() {
+      // ✅ Реальный update flow через сообщения от SW.
+      // Это нужно для:
+      // - предложения обновления,
+      // - сохранения позиции/трека перед reload,
+      // - корректного восстановления через PlayerState после reload.
+      if (!('serviceWorker' in navigator)) return;
+
+      // Защита от повторной установки обработчика
+      if (this.__swMsgBound) return;
+      this.__swMsgBound = true;
+
+      const handle = async (event) => {
+        const msg = event?.data || {};
+        if (!msg || typeof msg !== 'object') return;
+
+        // Сообщение о версии SW (может присылать SW или тест)
+        if (msg.type === 'SW_VERSION') {
+          const swVer = String(msg.version || '');
+          const appVer = String(w.VERSION || '');
+
+          // Если версия не указана — игнорируем
+          if (!swVer) return;
+
+          // Если версии совпадают — обновлять нечего
+          if (appVer && swVer === appVer) return;
+
+          // Предложение пользователю
+          const agree = window.confirm(
+            `Доступно обновление плеера (${swVer}). Обновить сейчас? Воспроизведение продолжится с того же места.`
+          );
+
+          if (!agree) return;
+
+          // Сохраняем состояние (для восстановления после reload)
+          try {
+            if (w.PlayerState && typeof w.PlayerState.save === 'function') {
+              w.PlayerState.save({ forReload: true });
+            }
+          } catch (e) {
+            console.warn('PlayerState.save before SW update failed:', e);
+          }
+
+          // Пытаемся применить обновление через ServiceWorkerManager (если есть)
+          try {
+            if (w.ServiceWorkerManager && typeof w.ServiceWorkerManager.applyUpdate === 'function') {
+              await w.ServiceWorkerManager.applyUpdate();
+              return;
+            }
+          } catch (e) {
+            console.warn('ServiceWorkerManager.applyUpdate failed:', e);
+          }
+
+          // Fallback: напрямую попросим waiting-SW активироваться
+          try {
+            const reg = await navigator.serviceWorker.getRegistration();
+            const waiting = reg?.waiting || null;
+            if (waiting) {
+              waiting.postMessage({ type: 'SKIP_WAITING' });
+              navigator.serviceWorker.addEventListener('controllerchange', () => {
+                window.location.reload();
+              }, { once: true });
+              return;
+            }
+          } catch (e) {
+            console.warn('Fallback SW update failed:', e);
+          }
+
+          // Если не удалось — просто перезагрузим страницу (лучше чем “ничего”)
+          window.location.reload();
+        }
+      };
+
+      // Реальные сообщения от SW
+      navigator.serviceWorker.addEventListener('message', handle);
+
+      // ✅ Для e2e (и для безопасного fallback): позволяем симулировать сообщение через window.dispatchEvent(...)
+      // Никаких побочных эффектов без confirm().
+      window.addEventListener('message', handle);
     }
 
     setupHotkeys() {
