@@ -149,16 +149,6 @@
       this.stopTick();
     }
 
-    _silentUnloadCurrentSound() {
-      // ✅ Техническая смена трека/плейлиста: НЕ триггерим onStop.
-      if (this.sound) {
-        try { this.sound.stop(); } catch {}
-        try { this.sound.unload(); } catch {}
-        this.sound = null;
-      }
-      this.stopTick();
-    }
-
     load(index, options = {}) {
       if (index < 0 || index >= this.playlist.length) return;
 
