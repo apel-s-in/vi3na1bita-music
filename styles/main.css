@@ -1710,7 +1710,8 @@ body.ios #mute-btn {
     font-size: 12px;
     min-width: 38px;
   }
-  
+}
+
 @media (max-width: 600px) {
   .player-extra-buttons-row {
     flex-wrap: wrap;
