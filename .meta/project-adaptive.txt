@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ff89ed6a72c308ab8a3460224870f484b8110184.idx
-│   │       ├── pack-ff89ed6a72c308ab8a3460224870f484b8110184.pack
-│   │       └── pack-ff89ed6a72c308ab8a3460224870f484b8110184.rev
+│   │       ├── pack-f68cf613c6ac8bad3543517df59b4eca8a465a56.idx
+│   │       ├── pack-f68cf613c6ac8bad3543517df59b4eca8a465a56.pack
+│   │       └── pack-f68cf613c6ac8bad3543517df59b4eca8a465a56.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-16 14:44:03 UTC
+Сгенерировано: 2025-12-16 15:30:22 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1310,7 +1310,9 @@ self.addEventListener('message', (event) => {
 // scripts/app.js
 // Главная точка входа приложения
 
-import { APP_CONFIG } from './core/config.js';
+// import { APP_CONFIG } from './core/config.js';
+// ВАЖНО: config.js уже подключён в index.html как type="module" и экспортирует window.APP_CONFIG.
+// Чтобы не ломаться из-за путей/кэша/SW на GitHub Pages — используем глобальный window.APP_CONFIG.
 
 (function AppModule() {
   'use strict';
