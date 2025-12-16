@@ -199,13 +199,26 @@
         continue;
       }
 
-      // ❌ ПРОПУСКАЕМ неполные треки ПОЛНОСТЬЮ
+      // ⚠️ Трек не найден (альбом недоступен / config.json не загрузился / индекс вне диапазона).
+      // ВАЖНО: НЕ трогаем likedTracks:v2 автоматически — refs могут быть неактивными.
       console.warn(`⚠️ Track not found: album=${ref.a}, track=${ref.t}`);
-      
-      // ✅ Автоматически удаляем из localStorage
-      if (window.FavoritesManager && typeof window.FavoritesManager.toggleLike === 'function') {
-        window.FavoritesManager.toggleLike(ref.a, ref.t, false);
-      }
+
+      // Добавляем “неактивную” строку в модель, чтобы UI мог:
+      // - показать её серой,
+      // - предложить “Добавить в ⭐” или “Удалить” через модалку,
+      // - дать возможность очистить refs кнопкой “Удалить недоступные”.
+      out.push({
+        title: `Трек ${ref.t}`,
+        audio: null,
+        lyrics: null,
+        fulltext: null,
+        __a: ref.a,
+        __t: ref.t,
+        __artist: 'Витрина Разбита',
+        __album: 'Альбом',
+        __active: false,
+        __cover: cover
+      });
     }
 
     w.favoritesRefsModel = out;
