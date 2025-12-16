@@ -1,7 +1,7 @@
 // service-worker.js
 // Единый Service Worker для PWA "Витрина Разбита"
 
-const SW_VERSION = '8.0.3';
+const SW_VERSION = '8.0.4';
 
 // Основные кэши (ожидаются lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
