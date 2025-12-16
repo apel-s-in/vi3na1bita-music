@@ -81,13 +81,9 @@ class FavoritesManager {
       return false;
     }
 
-    // Синхронизируем refs (чтобы Избранное пополнялось), но НЕ удаляем refs на unlike
-    // (в старой логике refs нужны и для неактивных строк)
-    try {
-      if (typeof window.ensureFavoritesRefsWithLikes === 'function') {
-        window.ensureFavoritesRefsWithLikes();
-      }
-    } catch {}
+    // ✅ Новая логика: "ИЗБРАННОЕ" строится только по likedTracks:v2.
+    // refs больше не используются для автопополнения списка.
+    // Поэтому НЕ добавляем никаких refs автоматически.
 
     // Синхронизируем флаг активности в уже построенной модели (если она есть)
     try {
