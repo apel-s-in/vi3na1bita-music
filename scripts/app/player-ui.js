@@ -32,7 +32,13 @@
   let countdownValue = null;
 
   function initPlayerUI() {
+    // ✅ Защита от повторной инициализации (например, при повторном выполнении скрипта из-за кеша/SW)
+    if (w.__playerUIInitialized) return;
+    w.__playerUIInitialized = true;
+
     if (!w.albumsIndex || w.albumsIndex.length === 0) {
+      // albumsIndex ещё не готов — снимем флаг и попробуем позже
+      w.__playerUIInitialized = false;
       setTimeout(initPlayerUI, 100);
       return;
     }
@@ -41,10 +47,10 @@
     attachPlayerCoreEvents();
 
     // ✅ КРИТИЧНО: Привязываем кнопку фильтрации ОДИН РАЗ
-    const filterBtn = document.getElementById('filter-favorites-btn');
-    if (filterBtn && !filterBtn.__bound) {
-      filterBtn.__bound = true;
-      filterBtn.addEventListener('click', () => {
+    const filterBtnEl = document.getElementById('filter-favorites-btn');
+    if (filterBtnEl && !filterBtnEl.__bound) {
+      filterBtnEl.__bound = true;
+      filterBtnEl.addEventListener('click', () => {
         toggleFavoritesFilter();
       });
     }
