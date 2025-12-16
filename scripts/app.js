@@ -435,10 +435,20 @@
       const lyricsViewMode = localStorage.getItem('lyricsViewMode') || 'normal';
       const animationEnabled = localStorage.getItem('lyricsAnimationEnabled') === '1';
 
+      const trackUid = String(track?.uid || '').trim() || null;
+      const sourceAlbum = String(track?.sourceAlbum || '').trim() || null;
+
       const state = {
         album: playingAlbum,
         currentAlbum: currentAlbum, // ✅ Добавляем текущий просматриваемый альбом
+
+        // ✅ Новый источник правды для восстановления: uid
+        trackUid,
+        sourceAlbum,
+
+        // legacy fallback (если uid нет)
         trackIndex: typeof index === 'number' ? index : 0,
+
         position: Math.floor(position || 0),
         volume: typeof volume === 'number' ? volume : 100,
         wasPlaying: !!wasPlaying,
@@ -472,6 +482,8 @@
 
       const albumKey = state.album;
       const currentAlbum = state.currentAlbum || albumKey; // ✅ Восстанавливаем просматриваемый альбом
+      const trackUid = String(state.trackUid || '').trim();
+      const sourceAlbum = String(state.sourceAlbum || '').trim();
       const trackIndex = Number.isFinite(state.trackIndex) ? state.trackIndex : 0;
       const position = Number.isFinite(state.position) ? state.position : 0;
       const volume = Number.isFinite(state.volume) ? state.volume : 100;
@@ -495,7 +507,20 @@
       // 2. Формируем плейлист так же, как при обычном клике по треку
       if (albumKey === window.SPECIAL_FAVORITES_KEY) {
         // Виртуальный плейлист избранного
-        await window.AlbumsManager.ensureFavoritesPlayback(trackIndex);
+        // ✅ Восстановление по uid: найдём индекс строки в favoritesRefsModel
+        let idxToPlay = trackIndex;
+
+        if (trackUid) {
+          const model = Array.isArray(window.favoritesRefsModel) ? window.favoritesRefsModel : [];
+          const found = model.findIndex(it =>
+            it &&
+            String(it.__uid || '').trim() === trackUid &&
+            (!sourceAlbum || String(it.__a || '').trim() === sourceAlbum)
+          );
+          if (found >= 0) idxToPlay = found;
+        }
+
+        await window.AlbumsManager.ensureFavoritesPlayback(idxToPlay);
       } else {
         // Обычный альбом
         const albumData = window.AlbumsManager.getAlbumData(albumKey);
@@ -519,7 +544,15 @@
           }));
 
         if (tracksForCore.length > 0) {
-          window.playerCore.setPlaylist(tracksForCore, trackIndex, {
+          // ✅ Восстановление по uid (если есть), иначе — trackIndex
+          let startIndex = trackIndex;
+
+          if (trackUid) {
+            const found = tracksForCore.findIndex(t => String(t?.uid || '').trim() === trackUid);
+            if (found >= 0) startIndex = found;
+          }
+
+          window.playerCore.setPlaylist(tracksForCore, startIndex, {
             artist: albumData.artist || 'Витрина Разбита',
             album: albumData.title || albumInfo.title || '',
             cover: albumData.cover
@@ -527,7 +560,7 @@
               : (albumInfo ? new URL('cover.jpg', albumInfo.base).toString() : 'img/logo.png')
           });
           window.AlbumsManager.setPlayingAlbum(albumKey);
-          window.playerCore.play(trackIndex);
+          window.playerCore.play(startIndex);
         }
       }
 
