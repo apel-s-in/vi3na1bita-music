@@ -1,7 +1,9 @@
 // scripts/app/albums.js
 // Управление альбомами на новой платформе PlayerCore
 
-import { APP_CONFIG } from '../core/config.js';
+// import { APP_CONFIG } from '../core/config.js';
+// ВАЖНО: config.js публикует window.APP_CONFIG. Используем глобальный конфиг для устойчивости на GitHub Pages/SW.
+const APP_CONFIG = window.APP_CONFIG;
 
 class AlbumsManager {
   constructor() {
