@@ -745,9 +745,13 @@
         analyser = audioContext.createAnalyser();
         analyser.fftSize = 256;
 
-        const source = audioContext.createMediaElementSource(w.playerCore?.getAudioElement?.());
+        const el = w.playerCore?.getAudioElement?.();
+        if (!el) throw new Error('No audio element for bit effect');
+
+        const source = audioContext.createMediaElementSource(el);
         source.connect(analyser);
-        analyser.connect(audioContext.destination);
+        // ✅ ВАЖНО: НЕ подключаем к destination, чтобы WebAudio не влиял на звук.
+        // analyser.connect(audioContext.destination);
       } catch (e) {
         console.error('Failed to init AudioContext:', e);
         return;
