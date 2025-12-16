@@ -254,8 +254,8 @@ test('favorites playing: removing star of current track triggers next and update
 
   // Если сейчас мини-режим возможен — «Далее»/мини-шапка обновятся без ошибок (не строго ассертим видимость)
   await page.evaluate(() => {
-    window.MiniUI && window.MiniUI.updateNextUpLabel && window.MiniUI.updateNextUpLabel();
-    window.MiniUI && window.MiniUI.updateMiniNowHeader && window.MiniUI.updateMiniNowHeader();
+    window.PlayerUI && window.PlayerUI.updateNextUpLabel && window.PlayerUI.updateNextUpLabel();
+    window.PlayerUI && window.PlayerUI.updateMiniHeader && window.PlayerUI.updateMiniHeader();
   });
 });
 
