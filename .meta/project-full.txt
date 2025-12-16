@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ebdea13a69e8155b63945116083194546d32b303.idx
-│   │       ├── pack-ebdea13a69e8155b63945116083194546d32b303.pack
-│   │       └── pack-ebdea13a69e8155b63945116083194546d32b303.rev
+│   │       ├── pack-04735de349d108acfec3a164adce4cdf200ee1bd.idx
+│   │       ├── pack-04735de349d108acfec3a164adce4cdf200ee1bd.pack
+│   │       └── pack-04735de349d108acfec3a164adce4cdf200ee1bd.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-16 21:21:17 UTC
+Сгенерировано: 2025-12-16 21:22:14 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6969,11 +6969,20 @@ Object.assign(window, {
   }
 
   function toggleLikeForAlbum(albumKey, idx, makeLiked) {
+    // ✅ Legacy API: больше не поддерживает числовые индексы как источник правды.
+    // Оставляем только чтобы старый код не падал.
+    // Если передали uid строкой — работаем, иначе игнорируем.
     if (window.FavoritesManager && typeof window.FavoritesManager.toggleLike === 'function') {
-      window.FavoritesManager.toggleLike(albumKey, idx, makeLiked);
+      const uid = String(idx || '').trim();
+      if (uid) {
+        window.FavoritesManager.toggleLike(albumKey, uid, makeLiked);
+      } else {
+        console.warn('toggleLikeForAlbum called with non-uid argument; ignored');
+      }
       return;
     }
-    rawToggleLikeForAlbum(albumKey, idx, makeLiked);
+
+    console.warn('FavoritesManager not ready; toggleLikeForAlbum ignored');
   }
 
   // Back‑compat: оставляем глобальные имена, которые уже вызывает index.html и старый код.
