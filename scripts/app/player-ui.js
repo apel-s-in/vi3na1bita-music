@@ -46,6 +46,39 @@
     restoreSettings();
     attachPlayerCoreEvents();
 
+    // ✅ Realtime sync лайков: обновляем UI и пересчитываем доступные индексы/очередь без остановки музыки
+    if (!w.__favoritesChangedBound) {
+      w.__favoritesChangedBound = true;
+
+      window.addEventListener('favorites:changed', () => {
+        try {
+          // 1) Обновить мини-шапку и “Далее”
+          updateMiniHeader();
+          updateNextUpLabel();
+
+          // 2) Пересчитать доступные индексы для next/prev в режиме "только избранные"
+          updateAvailableTracksForPlayback();
+
+          // 3) Если текущий режим "только избранные" активен, а текущий трек перестал быть избранным —
+          // перейти на следующий доступный (не стопаем).
+          if (favoritesOnlyMode && w.playerCore && w.AlbumsManager) {
+            const playingAlbum = w.AlbumsManager.getPlayingAlbum?.();
+            if (playingAlbum && playingAlbum !== w.SPECIAL_FAVORITES_KEY) {
+              const avail = w.availableFavoriteIndices;
+              const idx = w.playerCore.getIndex?.();
+              if (Array.isArray(avail) && typeof idx === 'number' && idx >= 0) {
+                if (!avail.includes(idx) && avail.length > 0) {
+                  w.playerCore.next();
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('favorites:changed handler failed:', e);
+        }
+      });
+    }
+
     // ✅ КРИТИЧНО: Привязываем кнопку фильтрации ОДИН РАЗ
     const filterBtnEl = document.getElementById('filter-favorites-btn');
     if (filterBtnEl && !filterBtnEl.__bound) {
@@ -1501,14 +1534,12 @@
     }
 
     if (favoritesOnlyMode && playingAlbum !== w.SPECIAL_FAVORITES_KEY) {
-      const likedNums = w.FavoritesManager?.getLikedForAlbum(playingAlbum) || [];
+      const likedUids = w.FavoritesManager?.getLikedUidsForAlbum?.(playingAlbum) || [];
 
-      if (likedNums.length === 0) {
+      if (likedUids.length === 0) {
         w.NotificationSystem?.warning('Нет избранных треков для shuffle');
         return;
       }
-
-      const likedUids = w.FavoritesManager?.getLikedUidsForAlbum?.(playingAlbum) || [];
 
       const favoriteTracks = originalPlaylist.filter(track => {
         const uid = String(track?.uid || '').trim();
