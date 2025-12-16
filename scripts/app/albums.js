@@ -196,11 +196,16 @@ class AlbumsManager {
 
       const tracks = Array.isArray(data.tracks) ? data.tracks : [];
       const normTracks = tracks.map((t, idx) => {
-        const num = t.num ?? (idx + 1);
         const file = t.audio ? new URL(t.audio, base).toString() : null;
         const lyrics = t.lyrics ? new URL(t.lyrics, base).toString() : null;
         const fulltext = t.fulltext ? new URL(t.fulltext, base).toString() : null;
-        const uid = window.AlbumsManager?.getTrackUid?.(albumKey, num) || `${albumKey}_${num}`;
+
+        // ✅ ЕДИНСТВЕННЫЙ ИСТОЧНИК ПРАВДЫ: uid приходит из config.json альбома
+        const uid = (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null;
+
+        // num оставляем ТОЛЬКО как отображаемый номер строки (не ID)
+        const num = idx + 1;
+
         const sizeMB = typeof t.size === 'number' ? t.size : null;
 
         return {
@@ -454,7 +459,7 @@ class AlbumsManager {
       cover: item.__cover || 'img/logo.png',
       lyrics: item.lyrics || null,
       fulltext: item.fulltext || null,
-      uid: window.AlbumsManager?.getTrackUid?.(item.__a, item.__t) || `${item.__a}_${item.__t}`
+      uid: (typeof item.uid === 'string' && item.uid.trim()) ? item.uid.trim() : null
     }));
 
     if (!tracks.length) {
@@ -582,8 +587,8 @@ class AlbumsManager {
     trackEl.dataset.album = albumKey;
 
     const isFavorite = window.FavoritesManager
-      ? window.FavoritesManager.isFavorite(albumKey, track.num)
-      : (window.getLikedForAlbum?.(albumKey)?.includes(track.num) || false);
+      ? window.FavoritesManager.isFavorite(albumKey, track.uid)
+      : false;
 
     trackEl.innerHTML = `
       <div class="tnum">${track.num || index + 1}</div>
@@ -592,7 +597,7 @@ class AlbumsManager {
            class="like-star" 
            alt="звезда"
            data-album="${albumKey}" 
-           data-num="${track.num || index + 1}">
+           data-uid="${track.uid || ''}">
     `;
 
     trackEl.addEventListener('click', (e) => {
@@ -629,7 +634,7 @@ class AlbumsManager {
               : (albumInfo ? new URL('cover.jpg', albumInfo.base).toString() : 'img/logo.png'),
             lyrics: t.lyrics || null,
             fulltext: t.fulltext || null,
-            uid: t.uid || window.AlbumsManager?.getTrackUid?.(albumKey, t.num) || `${albumKey}_${t.num}`
+            uid: (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null
           }));
 
         if (tracksForCore.length > 0) {
@@ -654,17 +659,18 @@ class AlbumsManager {
     const star = trackEl.querySelector('.like-star');
     star?.addEventListener('click', (e) => {
       e.stopPropagation();
-      const trackNum = parseInt(star.dataset.num, 10);
-      if (!Number.isFinite(trackNum)) return;
+
+      const trackUid = String(star.dataset.uid || '').trim();
+      if (!trackUid) {
+        window.NotificationSystem?.warning('UID трека не найден в config.json');
+        return;
+      }
 
       let isLiked = false;
 
       if (window.FavoritesManager) {
-        isLiked = !!window.FavoritesManager.isFavorite(albumKey, trackNum);
-        window.FavoritesManager.toggleLike(albumKey, trackNum, !isLiked);
-      } else if (typeof window.toggleLikeForAlbum === 'function') {
-        isLiked = (window.getLikedForAlbum?.(albumKey)?.includes(trackNum) || false);
-        window.toggleLikeForAlbum(albumKey, trackNum, !isLiked);
+        isLiked = !!window.FavoritesManager.isFavorite(albumKey, trackUid);
+        window.FavoritesManager.toggleLike(albumKey, trackUid, !isLiked);
       }
 
       const nowLiked = !isLiked;
@@ -672,9 +678,9 @@ class AlbumsManager {
       trackEl.classList.toggle('is-favorite', nowLiked);
 
       // ✅ Строгое поведение в альбомах:
-      // если звезду сняли в альбоме — убираем строку из "ИЗБРАННОЕ" (refs).
+      // если звезду сняли в альбоме — убираем строку из "ИЗБРАННОЕ" (refs) по uid
       if (!nowLiked && window.FavoritesData && typeof window.FavoritesData.removeFavoritesRef === 'function') {
-        window.FavoritesData.removeFavoritesRef(albumKey, trackNum);
+        window.FavoritesData.removeFavoritesRef(albumKey, trackUid);
       }
     });
 
