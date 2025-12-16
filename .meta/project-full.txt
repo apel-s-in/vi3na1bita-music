@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3df10c32c8fb4bff0092ede8862a258c4a8f83a6.idx
-│   │       ├── pack-3df10c32c8fb4bff0092ede8862a258c4a8f83a6.pack
-│   │       └── pack-3df10c32c8fb4bff0092ede8862a258c4a8f83a6.rev
+│   │       ├── pack-78dc6fe3be428fbd5bacdddc3b606def127b55e1.idx
+│   │       ├── pack-78dc6fe3be428fbd5bacdddc3b606def127b55e1.pack
+│   │       └── pack-78dc6fe3be428fbd5bacdddc3b606def127b55e1.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-16 13:50:00 UTC
+Сгенерировано: 2025-12-16 13:54:07 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5793,7 +5793,7 @@ test('reload restores state via PlayerState.applyState', async ({ page }) => {
     const st = {
       album: window.currentAlbumKey || null,
       trackIndex: 0,
-      position: Math.floor(pc?.getSeek?.() || 5),
+      position: Math.floor(pc?.getPosition?.() || 5),
       volume: pc?.getVolume?.() ?? 1,
       wasPlaying: true
     };
@@ -5805,7 +5805,7 @@ test('reload restores state via PlayerState.applyState', async ({ page }) => {
   await page.click('#promo-btn');
 
   await page.waitForSelector('#lyricsplayerblock', { timeout: 10000 });
-  const pos = await page.evaluate(() => Math.floor(window.playerCore?.getSeek?.() || 0));
+  const pos = await page.evaluate(() => Math.floor(window.playerCore?.getPosition?.() || 0));
   expect(pos).toBeGreaterThanOrEqual(0);
 });
 
@@ -5892,7 +5892,7 @@ test('SW update flow persists state and restores after reload', async ({ page })
   await page.click('#promo-btn');
 
   await page.waitForSelector('#lyricsplayerblock', { timeout: 10000 });
-  const pos = await page.evaluate(() => Math.floor(window.playerCore?.getSeek?.() || 0));
+  const pos = await page.evaluate(() => Math.floor(window.playerCore?.getPosition?.() || 0));
   expect(pos).toBeGreaterThanOrEqual(0);
 });
 
