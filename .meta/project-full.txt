@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2ad2508bab4b2c0c7816c06528d6042e7c0527bc.idx
-│   │       ├── pack-2ad2508bab4b2c0c7816c06528d6042e7c0527bc.pack
-│   │       └── pack-2ad2508bab4b2c0c7816c06528d6042e7c0527bc.rev
+│   │       ├── pack-55044fcfd6d2ce39bc11ceff960be3dfe1d396e0.idx
+│   │       ├── pack-55044fcfd6d2ce39bc11ceff960be3dfe1d396e0.pack
+│   │       └── pack-55044fcfd6d2ce39bc11ceff960be3dfe1d396e0.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-16 22:03:25 UTC
+Сгенерировано: 2025-12-16 22:04:53 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4368,7 +4368,7 @@ export default NavigationManager;
             cover: favoriteTracks[0]?.cover || 'img/logo.png'
           });
 
-          w.playerCore.shuffleMode = false;
+          w.playerCore.setShuffleMode?.(false);
 
           updateAvailableTracksForPlayback();
         }
@@ -5114,8 +5114,8 @@ export default NavigationManager;
       if (currentAlbum === w.SPECIAL_FAVORITES_KEY) {
         updateFavoriteClassesFavorites();
       } else {
-        const likedNums = w.FavoritesManager?.getLikedForAlbum(currentAlbum) || [];
-        updateFavoriteClasses(likedNums);
+        const likedUids = w.FavoritesManager?.getLikedUidsForAlbum?.(currentAlbum) || [];
+        updateFavoriteClasses(likedUids);
       }
     } else {
       filterBtn.textContent = 'Скрыть не отмеченные ⭐ песни';
