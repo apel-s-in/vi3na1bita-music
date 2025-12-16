@@ -660,20 +660,11 @@
           w.playerCore.shuffleMode = true;
         } else {
           const originalPlaylist = w.playerCore.originalPlaylist || [];
-          const likedNums = w.FavoritesManager?.getLikedForAlbum(playingAlbum) || [];
+          const likedUids = w.FavoritesManager?.getLikedUidsForAlbum?.(playingAlbum) || [];
 
           const favoriteTracks = originalPlaylist.filter(track => {
-            const uid = track.uid || null;
-
-            if (uid) {
-              const parts = uid.split('_');
-              if (parts.length >= 2) {
-                const trackNum = parseInt(parts[parts.length - 1], 10);
-                return Number.isFinite(trackNum) && likedNums.includes(trackNum);
-              }
-            }
-
-            return false;
+            const uid = String(track?.uid || '').trim();
+            return uid && likedUids.includes(uid);
           });
 
           const currentTrack = w.playerCore?.getCurrentTrack();
@@ -1480,9 +1471,9 @@
     }
 
     if (favoritesOnlyMode) {
-      const likedNums = w.FavoritesManager?.getLikedForAlbum(playingAlbum) || [];
+      const likedUids = w.FavoritesManager?.getLikedUidsForAlbum?.(playingAlbum) || [];
 
-      if (likedNums.length === 0) {
+      if (likedUids.length === 0) {
         w.availableFavoriteIndices = null;
         return;
       }
@@ -1490,17 +1481,9 @@
       w.availableFavoriteIndices = [];
 
       snapshot.forEach((track, idx) => {
-        const uid = track.uid || null;
-
-        if (uid) {
-          const parts = uid.split('_');
-          if (parts.length >= 2) {
-            const trackNum = parseInt(parts[parts.length - 1], 10);
-
-            if (Number.isFinite(trackNum) && likedNums.includes(trackNum)) {
-              w.availableFavoriteIndices.push(idx);
-            }
-          }
+        const uid = String(track?.uid || '').trim();
+        if (uid && likedUids.includes(uid)) {
+          w.availableFavoriteIndices.push(idx);
         }
       });
     } else {
@@ -1525,18 +1508,11 @@
         return;
       }
 
+      const likedUids = w.FavoritesManager?.getLikedUidsForAlbum?.(playingAlbum) || [];
+
       const favoriteTracks = originalPlaylist.filter(track => {
-        const uid = track.uid || null;
-
-        if (uid) {
-          const parts = uid.split('_');
-          if (parts.length >= 2) {
-            const trackNum = parseInt(parts[parts.length - 1], 10);
-            return Number.isFinite(trackNum) && likedNums.includes(trackNum);
-          }
-        }
-
-        return false;
+        const uid = String(track?.uid || '').trim();
+        return uid && likedUids.includes(uid);
       });
 
       if (favoriteTracks.length === 0) {
