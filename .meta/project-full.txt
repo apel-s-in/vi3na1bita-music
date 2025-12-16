@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b7b2a0c2bff72dac55288d8015a0405b3930deb1.idx
-│   │       ├── pack-b7b2a0c2bff72dac55288d8015a0405b3930deb1.pack
-│   │       └── pack-b7b2a0c2bff72dac55288d8015a0405b3930deb1.rev
+│   │       ├── pack-f1e301dd57ce4d2d14c56f829f67cfdd8920f691.idx
+│   │       ├── pack-f1e301dd57ce4d2d14c56f829f67cfdd8920f691.pack
+│   │       └── pack-f1e301dd57ce4d2d14c56f829f67cfdd8920f691.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-16 15:44:25 UTC
+Сгенерировано: 2025-12-16 17:30:10 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1876,7 +1876,9 @@ self.addEventListener('message', (event) => {
 // scripts/app/albums.js
 // Управление альбомами на новой платформе PlayerCore
 
-import { APP_CONFIG } from '../core/config.js';
+// import { APP_CONFIG } from '../core/config.js';
+// ВАЖНО: config.js публикует window.APP_CONFIG. Используем глобальный конфиг для устойчивости на GitHub Pages/SW.
+const APP_CONFIG = window.APP_CONFIG;
 
 class AlbumsManager {
   constructor() {
