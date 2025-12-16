@@ -257,6 +257,8 @@ test('favorites playing: removing star of current track triggers next and update
     window.MiniUI && window.MiniUI.updateNextUpLabel && window.MiniUI.updateNextUpLabel();
     window.MiniUI && window.MiniUI.updateMiniNowHeader && window.MiniUI.updateMiniNowHeader();
   });
+});
+
 test('mini-player star toggles favorite in __favorites__ and syncs with list', async ({ page }) => {
   const BASE = process.env.BASE_URL || 'http://127.0.0.1:4173';
   await page.goto(`${BASE}/index.html`, { waitUntil: 'load' });
