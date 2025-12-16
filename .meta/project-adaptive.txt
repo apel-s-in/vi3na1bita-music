@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-91f4f2740c2a912295413d7a3c3f88dc5681c207.idx
-│   │       ├── pack-91f4f2740c2a912295413d7a3c3f88dc5681c207.pack
-│   │       └── pack-91f4f2740c2a912295413d7a3c3f88dc5681c207.rev
+│   │       ├── pack-31a8e02e6512042dfebe90b3098da0b4838e7a9d.idx
+│   │       ├── pack-31a8e02e6512042dfebe90b3098da0b4838e7a9d.pack
+│   │       └── pack-31a8e02e6512042dfebe90b3098da0b4838e7a9d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-16 22:07:51 UTC
+Сгенерировано: 2025-12-16 22:08:25 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6396,7 +6396,7 @@ test('SW update flow persists state and restores after reload', async ({ page })
 const SPECIAL_FAVORITES_KEY = '__favorites__';
 const SPECIAL_RELIZ_KEY = '__reliz__';
 
-// Ключ хранилища лайков (V2)
+// Legacy ключ хранилища лайков (V2, numbers). Основной ключ — likedTrackUids:v1 (uid-based).
 const LIKED_STORAGE_KEY_V2 = 'likedTracks:v2';
 
 // Ключ хранилища ссылок «Избранного» (refs)
