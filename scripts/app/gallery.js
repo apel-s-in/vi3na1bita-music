@@ -26,6 +26,7 @@ class GalleryManager {
   initialize() {
     this.setupNavigation();
     this.setupSwipeGestures();
+    this.setupVisibilityHandler();
     console.log('✅ GalleryManager initialized');
   }
 
@@ -275,6 +276,20 @@ class GalleryManager {
 
       startX = null;
     }, { passive: true });
+  }
+
+  setupVisibilityHandler() {
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        // ✅ Останавливаем только галерею (плеер не трогаем)
+        this.stopAutoplay();
+      } else {
+        // Возобновляем, только если есть что крутить
+        if (this.items.length > 1) {
+          this.startAutoplay();
+        }
+      }
+    });
   }
 
   updateNavigationState() {
