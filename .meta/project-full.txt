@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-cb678971a3fe1e26b582a396e0b5ea5a79e1a715.idx
-│   │       ├── pack-cb678971a3fe1e26b582a396e0b5ea5a79e1a715.pack
-│   │       └── pack-cb678971a3fe1e26b582a396e0b5ea5a79e1a715.rev
+│   │       ├── pack-ef53b388f91ed763581d9fc8431bd01c64dd7a60.idx
+│   │       ├── pack-ef53b388f91ed763581d9fc8431bd01c64dd7a60.pack
+│   │       └── pack-ef53b388f91ed763581d9fc8431bd01c64dd7a60.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-16 14:01:50 UTC
+Сгенерировано: 2025-12-16 14:06:25 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5931,8 +5931,8 @@ test('favorites playing: removing star of current track triggers next and update
 
   // Если сейчас мини-режим возможен — «Далее»/мини-шапка обновятся без ошибок (не строго ассертим видимость)
   await page.evaluate(() => {
-    window.MiniUI && window.MiniUI.updateNextUpLabel && window.MiniUI.updateNextUpLabel();
-    window.MiniUI && window.MiniUI.updateMiniNowHeader && window.MiniUI.updateMiniNowHeader();
+    window.PlayerUI && window.PlayerUI.updateNextUpLabel && window.PlayerUI.updateNextUpLabel();
+    window.PlayerUI && window.PlayerUI.updateMiniHeader && window.PlayerUI.updateMiniHeader();
   });
 });
 
