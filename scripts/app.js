@@ -151,26 +151,31 @@ import { APP_CONFIG } from './core/config.js';
 
     initializeModules() {
       // Таймер сна
+      // (scripts/ui/sleep.js) сам автоинициализируется, но оставим безопасный вызов при наличии initialize()
       if (w.SleepTimer && typeof w.SleepTimer.initialize === 'function') {
         w.SleepTimer.initialize();
       }
 
       // Модальное окно текста
+      // (scripts/ui/lyrics-modal.js) не требует initialize()
       if (w.LyricsModal && typeof w.LyricsModal.initialize === 'function') {
         w.LyricsModal.initialize();
       }
 
       // Системная информация
-      if (w.SystemInfo && typeof w.SystemInfo.initialize === 'function') {
-        w.SystemInfo.initialize();
+      // Реальное имя: SystemInfoManager (scripts/ui/sysinfo.js), initialize() нет — он сам запускается в ctor.
+      if (w.SystemInfoManager && typeof w.SystemInfoManager.initialize === 'function') {
+        w.SystemInfoManager.initialize();
       }
 
       // Менеджер загрузок
-      if (w.DownloadManager && typeof w.DownloadManager.initialize === 'function') {
-        w.DownloadManager.initialize();
+      // Реальное имя: DownloadsManager (scripts/app/downloads.js), initialize() нет.
+      if (w.DownloadsManager && typeof w.DownloadsManager.initialize === 'function') {
+        w.DownloadsManager.initialize();
       }
 
       // Background Audio API
+      // Реальное имя: BackgroundAudioManager (scripts/app/background-audio.js), initialize() нет — ctor сам вызывает init().
       if (w.BackgroundAudioManager && typeof w.BackgroundAudioManager.initialize === 'function') {
         w.BackgroundAudioManager.initialize();
       }
