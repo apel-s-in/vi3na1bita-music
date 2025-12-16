@@ -8,8 +8,11 @@
 (function FavoritesStorageCompat() {
   'use strict';
 
-  // Берём ключ либо из favorites-const.js, либо fallback.
-  const __LIKED_KEY = (typeof window.LIKED_STORAGE_KEY_V2 === 'string')
+  // ✅ Основной источник правды: likedTrackUids:v1 (uid-модель)
+  const __LIKED_UID_KEY = 'likedTrackUids:v1';
+
+  // Legacy (numbers): оставляем только для совместимости чтения, но не как источник истины.
+  const __LIKED_KEY_V2 = (typeof window.LIKED_STORAGE_KEY_V2 === 'string')
     ? window.LIKED_STORAGE_KEY_V2
     : 'likedTracks:v2';
 
@@ -17,9 +20,9 @@
    * Вспомогательный чистый геттер: напрямую читает likedTracks:v2 из localStorage.
    * Используется только как fallback, когда FavoritesManager ещё не инициализирован.
    */
-  function rawGetLikedMap() {
+  function rawGetLikedUidMap() {
     try {
-      const raw = localStorage.getItem(__LIKED_KEY);
+      const raw = localStorage.getItem(__LIKED_UID_KEY);
       const map = raw ? JSON.parse(raw) : {};
       return (map && typeof map === 'object') ? map : {};
     } catch {
@@ -27,9 +30,36 @@
     }
   }
 
-  function rawGetLikedForAlbum(albumKey) {
+  function rawGetLikedUidsForAlbum(albumKey) {
     try {
-      const map = rawGetLikedMap();
+      const map = rawGetLikedUidMap();
+      const arr = (map && typeof map === 'object') ? map[albumKey] : [];
+      return Array.from(
+        new Set(
+          (Array.isArray(arr) ? arr : [])
+            .map(x => String(x || '').trim())
+            .filter(Boolean)
+        )
+      );
+    } catch {
+      return [];
+    }
+  }
+
+  // Legacy helpers (numbers) — только чтобы старые вызовы не падали
+  function rawGetLikedMapV2() {
+    try {
+      const raw = localStorage.getItem(__LIKED_KEY_V2);
+      const map = raw ? JSON.parse(raw) : {};
+      return (map && typeof map === 'object') ? map : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function rawGetLikedForAlbumV2(albumKey) {
+    try {
+      const map = rawGetLikedMapV2();
       const arr = (map && typeof map === 'object') ? map[albumKey] : [];
       return Array.from(
         new Set(
@@ -78,17 +108,28 @@
    */
 
   function getLikedMap() {
-    if (window.FavoritesManager && typeof window.FavoritesManager.getLikedMap === 'function') {
-      return window.FavoritesManager.getLikedMap();
+    // ✅ Возвращаем uid-map (likedTrackUids:v1)
+    if (window.FavoritesManager && typeof window.FavoritesManager.getLikedUidMap === 'function') {
+      return window.FavoritesManager.getLikedUidMap();
     }
-    return rawGetLikedMap();
+    return rawGetLikedUidMap();
   }
 
   function getLikedForAlbum(albumKey) {
-    if (window.FavoritesManager && typeof window.FavoritesManager.getLikedForAlbum === 'function') {
-      return window.FavoritesManager.getLikedForAlbum(albumKey);
+    // ✅ Возвращаем uid[] (строки)
+    if (window.FavoritesManager && typeof window.FavoritesManager.getLikedUidsForAlbum === 'function') {
+      return window.FavoritesManager.getLikedUidsForAlbum(albumKey);
     }
-    return rawGetLikedForAlbum(albumKey);
+    return rawGetLikedUidsForAlbum(albumKey);
+  }
+
+  // Legacy API: оставляем имена, но явно обозначаем "v2"
+  function getLikedMapV2() {
+    return rawGetLikedMapV2();
+  }
+
+  function getLikedForAlbumV2(albumKey) {
+    return rawGetLikedForAlbumV2(albumKey);
   }
 
   function toggleLikeForAlbum(albumKey, idx, makeLiked) {
@@ -110,8 +151,15 @@
 
   // Back‑compat: оставляем глобальные имена, которые уже вызывает index.html и старый код.
   Object.assign(window, {
+    // Основной (uid)
     getLikedMap,
     getLikedForAlbum,
+
+    // Legacy (numbers) — если где-то остался старый код/отладка
+    getLikedMapV2,
+    getLikedForAlbumV2,
+
+    // Старое имя toggleLikeForAlbum оставляем (оно теперь uid-aware)
     toggleLikeForAlbum,
   });
 })();
