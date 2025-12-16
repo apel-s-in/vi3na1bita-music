@@ -1299,7 +1299,9 @@
     if (!currentAlbum || !trackList || !btn) return;
 
     if (currentAlbum === w.SPECIAL_FAVORITES_KEY) {
-      toggleFavoritesFilterForFavorites();
+      // ✅ В "ИЗБРАННОЕ" нет смысла показывать кнопку фильтра "скрыть не отмеченные",
+      // потому что список строится по лайкам. Оставляем кнопку скрытой (см. AlbumsManager.loadFavoritesAlbum).
+      w.NotificationSystem?.info('Фильтр недоступен для «ИЗБРАННОЕ»');
       return;
     }
 
