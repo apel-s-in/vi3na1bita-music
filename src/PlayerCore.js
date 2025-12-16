@@ -339,16 +339,23 @@
       return this.repeatMode;
     }
 
-    toggleShuffle() {
-      this.shuffleMode = !this.shuffleMode;
-      
+    setShuffleMode(enabled) {
+      const next = !!enabled;
+      if (this.shuffleMode === next) return;
+
+      this.shuffleMode = next;
+
       if (this.shuffleMode) {
         this.shufflePlaylist();
       } else {
         this.playlist = [...this.originalPlaylist];
       }
-      
+
       console.log(`🔀 Shuffle: ${this.shuffleMode}`);
+    }
+
+    toggleShuffle() {
+      this.setShuffleMode(!this.shuffleMode);
     }
 
     isShuffle() {
