@@ -143,9 +143,9 @@ class AlbumsManager {
       console.log(`✅ currentAlbum set to: ${albumKey}`);
 
       // Сброс фильтрации
-      const filterBtn = document.getElementById('filter-favorites-btn');
       const trackList = document.getElementById('track-list');
 
+      // filterBtn уже получен выше в этом методе; переиспользуем его, чтобы не объявлять повторно
       if (filterBtn) {
         filterBtn.textContent = 'Скрыть не отмеченные ⭐ песни';
         filterBtn.classList.remove('filtered');
