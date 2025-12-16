@@ -714,7 +714,7 @@
             cover: favoriteTracks[0]?.cover || 'img/logo.png'
           });
 
-          w.playerCore.shuffleMode = false;
+          w.playerCore.setShuffleMode?.(false);
 
           updateAvailableTracksForPlayback();
         }
@@ -1460,8 +1460,8 @@
       if (currentAlbum === w.SPECIAL_FAVORITES_KEY) {
         updateFavoriteClassesFavorites();
       } else {
-        const likedNums = w.FavoritesManager?.getLikedForAlbum(currentAlbum) || [];
-        updateFavoriteClasses(likedNums);
+        const likedUids = w.FavoritesManager?.getLikedUidsForAlbum?.(currentAlbum) || [];
+        updateFavoriteClasses(likedUids);
       }
     } else {
       filterBtn.textContent = 'Скрыть не отмеченные ⭐ песни';
