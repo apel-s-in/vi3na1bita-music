@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-7ad063e666adf8fd226ce6be68a24d2b11c20efe.idx
-│   │       ├── pack-7ad063e666adf8fd226ce6be68a24d2b11c20efe.pack
-│   │       └── pack-7ad063e666adf8fd226ce6be68a24d2b11c20efe.rev
+│   │       ├── pack-082e5cc6c4c7e33583222e64b4bb5b1fd78e28f7.idx
+│   │       ├── pack-082e5cc6c4c7e33583222e64b4bb5b1fd78e28f7.pack
+│   │       └── pack-082e5cc6c4c7e33583222e64b4bb5b1fd78e28f7.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-16 13:44:14 UTC
+Сгенерировано: 2025-12-16 13:46:03 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4303,9 +4303,13 @@ export default NavigationManager;
         analyser = audioContext.createAnalyser();
         analyser.fftSize = 256;
 
-        const source = audioContext.createMediaElementSource(w.playerCore?.getAudioElement?.());
+        const el = w.playerCore?.getAudioElement?.();
+        if (!el) throw new Error('No audio element for bit effect');
+
+        const source = audioContext.createMediaElementSource(el);
         source.connect(analyser);
-        analyser.connect(audioContext.destination);
+        // ✅ ВАЖНО: НЕ подключаем к destination, чтобы WebAudio не влиял на звук.
+        // analyser.connect(audioContext.destination);
       } catch (e) {
         console.error('Failed to init AudioContext:', e);
         return;
