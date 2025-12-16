@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8aae20e7d233c6b698222c96b9aa94f8c82df0b5.idx
-│   │       ├── pack-8aae20e7d233c6b698222c96b9aa94f8c82df0b5.pack
-│   │       └── pack-8aae20e7d233c6b698222c96b9aa94f8c82df0b5.rev
+│   │       ├── pack-d81b1b6d12a036a573db9612f9c237460b737a19.idx
+│   │       ├── pack-d81b1b6d12a036a573db9612f9c237460b737a19.pack
+│   │       └── pack-d81b1b6d12a036a573db9612f9c237460b737a19.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-16 10:46:31 UTC
+Сгенерировано: 2025-12-16 10:47:21 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4838,7 +4838,9 @@ export default NavigationManager;
     if (!currentAlbum || !trackList || !btn) return;
 
     if (currentAlbum === w.SPECIAL_FAVORITES_KEY) {
-      toggleFavoritesFilterForFavorites();
+      // ✅ В "ИЗБРАННОЕ" нет смысла показывать кнопку фильтра "скрыть не отмеченные",
+      // потому что список строится по лайкам. Оставляем кнопку скрытой (см. AlbumsManager.loadFavoritesAlbum).
+      w.NotificationSystem?.info('Фильтр недоступен для «ИЗБРАННОЕ»');
       return;
     }
 
