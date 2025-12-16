@@ -1,7 +1,9 @@
 // scripts/app.js
 // Главная точка входа приложения
 
-import { APP_CONFIG } from './core/config.js';
+// import { APP_CONFIG } from './core/config.js';
+// ВАЖНО: config.js уже подключён в index.html как type="module" и экспортирует window.APP_CONFIG.
+// Чтобы не ломаться из-за путей/кэша/SW на GitHub Pages — используем глобальный window.APP_CONFIG.
 
 (function AppModule() {
   'use strict';
