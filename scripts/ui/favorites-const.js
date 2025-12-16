@@ -5,7 +5,7 @@
 const SPECIAL_FAVORITES_KEY = '__favorites__';
 const SPECIAL_RELIZ_KEY = '__reliz__';
 
-// Ключ хранилища лайков (V2)
+// Legacy ключ хранилища лайков (V2, numbers). Основной ключ — likedTrackUids:v1 (uid-based).
 const LIKED_STORAGE_KEY_V2 = 'likedTracks:v2';
 
 // Ключ хранилища ссылок «Избранного» (refs)
