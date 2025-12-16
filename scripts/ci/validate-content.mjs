@@ -22,7 +22,23 @@ albums.forEach((a, i) => {
   if (typeof a.key !== 'string' || typeof a.title !== 'string' || typeof a.base !== 'string') {
     fail(`albums.json: album[${i}] key/title/base must be strings`);
   }
+  if (!/^https?:\/\//i.test(a.base)) {
+    fail(`albums.json: album[${i}].base must be absolute http(s) url`);
+  }
+  if (!/\/$/.test(a.base)) {
+    warn(`albums.json: album[${i}].base should end with "/" (got: ${a.base})`);
+  }
 });
+
+// 1.5) Уникальность ключей альбомов
+{
+  const keys = albums.map(a => a.key);
+  const uniq = new Set(keys);
+  if (uniq.size !== keys.length) {
+    const dup = keys.filter((k, idx) => keys.indexOf(k) !== idx);
+    fail(`albums.json: duplicate album keys: ${Array.from(new Set(dup)).join(', ')}`);
+  }
+}
 
 // 2) Проверка центральных галерей и index.json наличия/структуры
 const galleryRoot = path.resolve('albums/gallery');
@@ -78,6 +94,57 @@ if (fs.existsSync(customFile)) {
     }
   } catch (e) {
     fail('custom.json invalid JSON: ' + e.message);
+  }
+}
+// 4) Опционально: проверить уникальность uid в удалённых config.json (НЕ фейлим билд из-за сети)
+{
+  // Node 20: fetch доступен. Если вдруг его нет — просто предупреждаем.
+  const hasFetch = typeof fetch === 'function';
+  if (!hasFetch) {
+    warn('fetch() is not available in this Node runtime; skip remote config.json uid checks');
+  } else {
+    for (const a of albums) {
+      const base = a.base.endsWith('/') ? a.base : `${a.base}/`;
+      const url = `${base}config.json`;
+
+      try {
+        const r = await fetch(url, { cache: 'no-cache' });
+        if (!r.ok) {
+          warn(`remote config.json not reachable for "${a.key}": HTTP ${r.status} (${url})`);
+          continue;
+        }
+
+        const cfg = await r.json();
+        const tracks = Array.isArray(cfg?.tracks) ? cfg.tracks : null;
+        if (!tracks) {
+          warn(`remote config.json "${a.key}": tracks must be array (${url})`);
+          continue;
+        }
+
+        const seen = new Set();
+        const dups = new Set();
+        let missing = 0;
+
+        for (const t of tracks) {
+          const uid = String(t?.uid || '').trim();
+          if (!uid) {
+            missing++;
+            continue;
+          }
+          if (seen.has(uid)) dups.add(uid);
+          seen.add(uid);
+        }
+
+        if (missing > 0) {
+          warn(`remote config.json "${a.key}": ${missing} track(s) have empty uid (${url})`);
+        }
+        if (dups.size > 0) {
+          warn(`remote config.json "${a.key}": duplicate uid(s): ${Array.from(dups).join(', ')} (${url})`);
+        }
+      } catch (e) {
+        warn(`remote config.json check failed for "${a.key}": ${e?.message || e} (${url})`);
+      }
+    }
   }
 }
 
