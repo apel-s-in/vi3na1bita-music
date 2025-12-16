@@ -277,24 +277,9 @@ class AlbumsManager {
       return;
     }
 
-    // ✅ Подсчёт недоступных треков
-    const unavailableCount = model.filter(item => !item.audio || !item.__active).length;
-    
+    // ✅ Новая логика: нет "удалить недоступные" как массовой чистки.
+    // Удаление — только через модалку при клике по серой строке.
     container.innerHTML = '';
-    
-    // ✅ Показываем кнопку очистки если есть недоступные
-    if (unavailableCount > 0) {
-      const cleanBtn = document.createElement('button');
-      cleanBtn.className = 'offline-btn';
-      cleanBtn.style.cssText = 'width: 100%; margin-bottom: 12px; background: #273050;';
-      cleanBtn.textContent = `🗑️ Удалить недоступные треки (${unavailableCount})`;
-      
-      cleanBtn.addEventListener('click', () => {
-        this.cleanupUnavailableFavorites();
-      });
-      
-      container.appendChild(cleanBtn);
-    }
 
     model.forEach((item, index) => {
       const trackEl = document.createElement('div');
@@ -307,13 +292,18 @@ class AlbumsManager {
       const displayNum = String(index + 1).padStart(2, '0');
       const isActive = item.__active;
 
+      const albumTitle = item.__album || 'Альбом';
+      const trackTitle = item.title || 'Трек';
+
       trackEl.innerHTML = `
-        <div class="tnum">${displayNum}</div>
-        <div class="track-title" title="${item.title || 'Трек'}">${item.title || 'Трек'}</div>
-        <img src="${isActive ? 'img/star.png' : 'img/star2.png'}" 
-             class="like-star" 
+        <div class="tnum">${displayNum}.</div>
+        <div class="track-title" title="${trackTitle} - ${albumTitle}">
+          ${trackTitle} - <span style="opacity:.6;">${albumTitle}</span>
+        </div>
+        <img src="${isActive ? 'img/star.png' : 'img/star2.png'}"
+             class="like-star"
              alt="звезда"
-             data-album="${item.__a}" 
+             data-album="${item.__a}"
              data-num="${item.__t}">
       `;
 
@@ -347,8 +337,10 @@ class AlbumsManager {
       const star = trackEl.querySelector('.like-star');
       star?.addEventListener('click', (e) => {
         e.stopPropagation();
-        
-        const wasActive = item.__active;
+
+        // ✅ В "ИЗБРАННОЕ" снятие звезды НЕ удаляет строку.
+        // Оно переводит строку в неактивную (серую) и трек перестаёт быть воспроизводимым.
+        const wasActive = !!item.__active;
         const makeLiked = !wasActive;
 
         if (window.FavoritesManager && typeof window.FavoritesManager.toggleLike === 'function') {
@@ -358,15 +350,26 @@ class AlbumsManager {
         }
 
         item.__active = makeLiked;
+
+        // Если лайк снят — делаем трек "не воспроизводимым" в рамках избранного
+        if (!makeLiked) {
+          item.audio = null;
+          item.lyrics = null;
+          item.fulltext = null;
+        }
+
         trackEl.classList.toggle('inactive', !makeLiked);
         star.src = makeLiked ? 'img/star.png' : 'img/star2.png';
 
-        if (typeof window.updateFavoritesRefsModelActiveFlag === 'function') {
-          window.updateFavoritesRefsModelActiveFlag(item.__a, item.__t, makeLiked);
+        // Перестроим доступные индексы для режима "только избранные"/очереди.
+        if (window.PlayerUI && typeof window.PlayerUI.updateAvailableTracksForPlayback === 'function') {
+          window.PlayerUI.updateAvailableTracksForPlayback();
         }
 
+        // Если сейчас играет именно эта строка избранного, и мы сняли лайк —
+        // переключаемся на следующий доступный трек (это НЕ "остановка").
         if (window.playerCore &&
-            this.getCurrentAlbum() === '__favorites__' &&
+            this.getPlayingAlbum() === (window.SPECIAL_FAVORITES_KEY || '__favorites__') &&
             window.playerCore.getIndex() === index &&
             wasActive && !makeLiked) {
           window.playerCore.next();
@@ -405,25 +408,44 @@ class AlbumsManager {
   }
 
   async ensureFavoritesPlayback(index) {
-    const model = window.favoritesRefsModel || [];
-    
+    const model = Array.isArray(window.favoritesRefsModel) ? window.favoritesRefsModel : [];
+
     if (!model.length) {
       window.NotificationSystem?.warning('Нет избранных треков');
       return;
     }
 
-    const tracks = model
-      .filter(item => item.__active && item.audio)
-      .map(item => ({
-        src: item.audio,
-        title: item.title,
-        artist: item.__artist || 'Витрина Разбита',
-        album: window.SPECIAL_FAVORITES_KEY || '__favorites__',
-        cover: item.__cover || 'img/logo.png',
-        lyrics: item.lyrics || null,
-        fulltext: item.fulltext || null,
-        uid: window.AlbumsManager?.getTrackUid?.(item.__a, item.__t) || `${item.__a}_${item.__t}`
-      }));
+    // ✅ Доступные треки избранного — только активные с аудио
+    const activeItems = model.filter(item => item && item.__active && item.audio);
+
+    if (!activeItems.length) {
+      window.NotificationSystem?.warning('Нет доступных треков');
+      return;
+    }
+
+    // Индекс клика в UI (model index) надо перевести в индекс активного списка
+    const clicked = model[index];
+    let startIndex = 0;
+
+    if (clicked && clicked.__active && clicked.audio) {
+      const uid = `${clicked.__a}_${clicked.__t}`;
+      const idxInActive = activeItems.findIndex(it => `${it.__a}_${it.__t}` === uid);
+      startIndex = idxInActive >= 0 ? idxInActive : 0;
+    } else {
+      // На всякий случай: если кликнули не туда, стартуем с первого активного
+      startIndex = 0;
+    }
+
+    const tracks = activeItems.map(item => ({
+      src: item.audio,
+      title: item.title,
+      artist: item.__artist || 'Витрина Разбита',
+      album: window.SPECIAL_FAVORITES_KEY || '__favorites__',
+      cover: item.__cover || 'img/logo.png',
+      lyrics: item.lyrics || null,
+      fulltext: item.fulltext || null,
+      uid: window.AlbumsManager?.getTrackUid?.(item.__a, item.__t) || `${item.__a}_${item.__t}`
+    }));
 
     if (!tracks.length) {
       window.NotificationSystem?.warning('Нет доступных треков');
@@ -431,24 +453,26 @@ class AlbumsManager {
     }
 
     if (window.playerCore) {
-      const snapshot = window.playerCore.getPlaylistSnapshot?.() || [];
-      const samePlaylist =
-        snapshot.length === tracks.length &&
-        snapshot.every((t, i) => t.src === tracks[i].src);
+      // Всегда ставим плейлист "активных" (иначе next/prev будут попадать на неактивные)
+      window.playerCore.setPlaylist(tracks, startIndex, {
+        artist: 'Витрина Разбита',
+        album: 'Избранное',
+        cover: 'img/logo.png'
+      });
 
-      if (!samePlaylist) {
-        window.playerCore.setPlaylist(tracks, index, {
-          artist: 'Витрина Разбита',
-          album: 'Избранное',
-          cover: 'img/logo.png'
-        });
-      }
+      window.playerCore.play(startIndex);
 
-      window.playerCore.play(index);
       this.setPlayingAlbum(window.SPECIAL_FAVORITES_KEY || '__favorites__');
-      
+
+      // Подсветка в UI: подсветим исходную строку (в model), а не индекс плейлиста.
+      // Визуально пользователю важна строка, по которой он нажал.
       this.highlightCurrentTrack(index);
       window.PlayerUI?.ensurePlayerBlock(index);
+
+      // ✅ ВАЖНО: обновим доступные индексы — теперь плейлист уже активный, можно оставить null.
+      if (window.PlayerUI && typeof window.PlayerUI.updateAvailableTracksForPlayback === 'function') {
+        window.PlayerUI.updateAvailableTracksForPlayback();
+      }
     }
   }
 
