@@ -335,10 +335,9 @@ class AlbumsManager {
         if (window.FavoritesData && typeof window.FavoritesData.showFavoritesInactiveModal === 'function') {
           window.FavoritesData.showFavoritesInactiveModal({
             albumKey: item.__a,
-            trackIndex: item.__t,
+            uid: item.__uid,
             title: item.title || 'Трек',
             onDeleted: async () => {
-              // если удалили — можно обновить фильтр/классы
               if (window.PlayerUI?.updateAvailableTracksForPlayback) {
                 window.PlayerUI.updateAvailableTracksForPlayback();
               }
@@ -384,22 +383,8 @@ class AlbumsManager {
         trackEl.classList.toggle('inactive', !makeLiked);
         star.src = makeLiked ? 'img/star.png' : 'img/star2.png';
 
-        // ✅ Синхронизация UI альбомного списка, если пользователь сейчас смотрит этот альбом
-        try {
-          const cur = this.getCurrentAlbum();
-          if (cur && cur === item.__a) {
-            const rows = document.querySelectorAll('#track-list .track');
-            rows.forEach((row) => {
-              const s = row.querySelector('.like-star');
-              if (!s) return;
-              const a = s.getAttribute('data-album');
-              const n = parseInt(s.getAttribute('data-num') || '', 10);
-              if (a === item.__a && n === item.__t) {
-                s.setAttribute('src', makeLiked ? 'img/star.png' : 'img/star2.png');
-              }
-            });
-          }
-        } catch {}
+        // ✅ Realtime синхронизация делается через событие favorites:changed и общий ререндер/обновление UI.
+        // Здесь не делаем ручных обходов DOM по data-num (uid-модель).
 
         // Перестроим доступные индексы для режима "только избранные"/очереди.
         if (window.PlayerUI && typeof window.PlayerUI.updateAvailableTracksForPlayback === 'function') {
@@ -458,7 +443,10 @@ class AlbumsManager {
       cover: item.__cover || 'img/logo.png',
       lyrics: item.lyrics || null,
       fulltext: item.fulltext || null,
-      uid: (typeof item.__uid === 'string' && item.__uid.trim()) ? item.__uid.trim() : null
+      uid: (typeof item.__uid === 'string' && item.__uid.trim()) ? item.__uid.trim() : null,
+
+      // ✅ ВАЖНО: исходный альбом трека (для лайка/мини-звезды)
+      sourceAlbum: item.__a
     }));
 
     if (!tracks.length) {
@@ -676,11 +664,9 @@ class AlbumsManager {
       star.src = nowLiked ? 'img/star.png' : 'img/star2.png';
       trackEl.classList.toggle('is-favorite', nowLiked);
 
-      // ✅ Строгое поведение в альбомах:
-      // если звезду сняли в альбоме — убираем строку из "ИЗБРАННОЕ" (refs) по uid
-      if (!nowLiked && window.FavoritesData && typeof window.FavoritesData.removeFavoritesRef === 'function') {
-        window.FavoritesData.removeFavoritesRef(albumKey, trackUid);
-      }
+      // ✅ Oldstar правило:
+      // refs НЕ удаляем автоматически (удаление из «ИЗБРАННОЕ» только через модалку).
+      // Снятие ⭐ лишь деактивирует строку в «ИЗБРАННОЕ» (через favorites:changed / buildFavoritesRefsModel).
     });
 
     return trackEl;
