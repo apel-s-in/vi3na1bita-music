@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4bfd6f6cd632047d477f919a7f3d6c1087f46f96.idx
-│   │       ├── pack-4bfd6f6cd632047d477f919a7f3d6c1087f46f96.pack
-│   │       └── pack-4bfd6f6cd632047d477f919a7f3d6c1087f46f96.rev
+│   │       ├── pack-b80d3debbc82f46459bebf539355fab76f4bd07c.idx
+│   │       ├── pack-b80d3debbc82f46459bebf539355fab76f4bd07c.pack
+│   │       └── pack-b80d3debbc82f46459bebf539355fab76f4bd07c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-16 21:09:49 UTC
+Сгенерировано: 2025-12-16 21:11:05 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2075,10 +2075,9 @@ class AlbumsManager {
         const lyrics = t.lyrics ? new URL(t.lyrics, base).toString() : null;
         const fulltext = t.fulltext ? new URL(t.fulltext, base).toString() : null;
 
-        // ✅ ЕДИНСТВЕННЫЙ ИСТОЧНИК ПРАВДЫ: uid приходит из config.json альбома
         const uid = (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null;
 
-        // num оставляем ТОЛЬКО как отображаемый номер строки (не ID)
+        // num оставляем только для UI-отображения
         const num = idx + 1;
 
         const sizeMB = typeof t.size === 'number' ? t.size : null;
@@ -2605,10 +2604,11 @@ class AlbumsManager {
   getAlbumConfigByKey(albumKey) {
     return this.albumsData.get(albumKey);
   }
-
-  getTrackUid(albumKey, trackNum) {
-    if (!albumKey || !Number.isFinite(Number(trackNum))) return null;
-    return `${albumKey}_${Number(trackNum)}`;
+  getTrackUid(albumKey, trackUid) {
+    // ✅ Back-compat: теперь uid приходит из config.json (строка).
+    // albumKey оставляем в сигнатуре для старых вызовов, но сам uid не генерируем.
+    const uid = String(trackUid || '').trim();
+    return uid || null;
   }
 }
 
