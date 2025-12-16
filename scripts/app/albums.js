@@ -300,10 +300,10 @@ class AlbumsManager {
     model.forEach((item, index) => {
       const trackEl = document.createElement('div');
       trackEl.className = 'track' + (item.__active ? '' : ' inactive');
-      trackEl.id = `fav_${item.__a}_${item.__t}`;
+      trackEl.id = `fav_${item.__a}_${item.__uid}`;
       trackEl.dataset.index = index;
       trackEl.dataset.album = item.__a;
-      trackEl.dataset.originalTrack = item.__t;
+      trackEl.dataset.uid = item.__uid;
 
       const displayNum = String(index + 1).padStart(2, '0');
       const isActive = item.__active;
@@ -320,7 +320,7 @@ class AlbumsManager {
              class="like-star"
              alt="звезда"
              data-album="${item.__a}"
-             data-num="${item.__t}">
+             data-uid="${item.__uid}">
       `;
 
       trackEl.addEventListener('click', async (e) => {
@@ -359,10 +359,11 @@ class AlbumsManager {
         const wasActive = !!item.__active;
         const makeLiked = !wasActive;
 
+        const uid = String(item.__uid || '').trim();
+        if (!uid) return;
+
         if (window.FavoritesManager && typeof window.FavoritesManager.toggleLike === 'function') {
-          window.FavoritesManager.toggleLike(item.__a, item.__t, makeLiked);
-        } else if (typeof window.toggleLikeForAlbum === 'function') {
-          window.toggleLikeForAlbum(item.__a, item.__t, makeLiked);
+          window.FavoritesManager.toggleLike(item.__a, uid, makeLiked);
         }
 
         // ✅ ВАЖНО: в "ИЗБРАННОЕ" refs храним всегда (oldstar-механика).
@@ -442,11 +443,10 @@ class AlbumsManager {
     let startIndex = 0;
 
     if (clicked && clicked.__active && clicked.audio) {
-      const uid = `${clicked.__a}_${clicked.__t}`;
-      const idxInActive = activeItems.findIndex(it => `${it.__a}_${it.__t}` === uid);
+      const uid = String(clicked.__uid || '').trim();
+      const idxInActive = activeItems.findIndex(it => String(it.__uid || '').trim() === uid && String(it.__a || '').trim() === String(clicked.__a || '').trim());
       startIndex = idxInActive >= 0 ? idxInActive : 0;
     } else {
-      // На всякий случай: если кликнули не туда, стартуем с первого активного
       startIndex = 0;
     }
 
@@ -458,7 +458,7 @@ class AlbumsManager {
       cover: item.__cover || 'img/logo.png',
       lyrics: item.lyrics || null,
       fulltext: item.fulltext || null,
-      uid: (typeof item.uid === 'string' && item.uid.trim()) ? item.uid.trim() : null
+      uid: (typeof item.__uid === 'string' && item.__uid.trim()) ? item.__uid.trim() : null
     }));
 
     if (!tracks.length) {
