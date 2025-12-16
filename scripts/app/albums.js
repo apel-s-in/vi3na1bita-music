@@ -122,6 +122,14 @@ class AlbumsManager {
       
       this.clearUI();
 
+      this.clearUI();
+
+      // ✅ Кнопка фильтра видима во всех режимах, кроме "ИЗБРАННОЕ" и "НОВОСТИ"
+      const filterBtn = document.getElementById('filter-favorites-btn');
+      if (filterBtn) {
+        filterBtn.style.display = (albumKey === '__favorites__' || albumKey === '__reliz__') ? 'none' : '';
+      }
+
       if (albumKey === '__favorites__') {
         await this.loadFavoritesAlbum();
       } else if (albumKey === '__reliz__') {
