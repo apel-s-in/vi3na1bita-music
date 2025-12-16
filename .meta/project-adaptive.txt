@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d81b1b6d12a036a573db9612f9c237460b737a19.idx
-│   │       ├── pack-d81b1b6d12a036a573db9612f9c237460b737a19.pack
-│   │       └── pack-d81b1b6d12a036a573db9612f9c237460b737a19.rev
+│   │       ├── pack-ab3f1780d10e25fd6eff348babe588d6acfe6b6a.idx
+│   │       ├── pack-ab3f1780d10e25fd6eff348babe588d6acfe6b6a.pack
+│   │       └── pack-ab3f1780d10e25fd6eff348babe588d6acfe6b6a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-16 10:47:21 UTC
+Сгенерировано: 2025-12-16 10:47:56 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2040,6 +2040,10 @@ class AlbumsManager {
     
     const coverWrap = document.getElementById('cover-wrap');
     if (coverWrap) coverWrap.style.display = 'none';
+
+    // ✅ Скрываем кнопку фильтра в избранном (не нужна)
+    const filterBtn = document.getElementById('filter-favorites-btn');
+    if (filterBtn) filterBtn.style.display = 'none';
 
     if (window.buildFavoritesRefsModel) {
       await window.buildFavoritesRefsModel();
