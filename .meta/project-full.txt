@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ab3f1780d10e25fd6eff348babe588d6acfe6b6a.idx
-│   │       ├── pack-ab3f1780d10e25fd6eff348babe588d6acfe6b6a.pack
-│   │       └── pack-ab3f1780d10e25fd6eff348babe588d6acfe6b6a.rev
+│   │       ├── pack-0166b3dd5d41c22a17e02fe8c2b688273f7c6a75.idx
+│   │       ├── pack-0166b3dd5d41c22a17e02fe8c2b688273f7c6a75.pack
+│   │       └── pack-0166b3dd5d41c22a17e02fe8c2b688273f7c6a75.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-16 10:47:56 UTC
+Сгенерировано: 2025-12-16 10:49:02 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1904,6 +1904,14 @@ class AlbumsManager {
       this.isGalleryVisible = true;
       
       this.clearUI();
+
+      this.clearUI();
+
+      // ✅ Кнопка фильтра видима во всех режимах, кроме "ИЗБРАННОЕ" и "НОВОСТИ"
+      const filterBtn = document.getElementById('filter-favorites-btn');
+      if (filterBtn) {
+        filterBtn.style.display = (albumKey === '__favorites__' || albumKey === '__reliz__') ? 'none' : '';
+      }
 
       if (albumKey === '__favorites__') {
         await this.loadFavoritesAlbum();
