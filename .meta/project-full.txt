@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b4c4c11b49d24f1e8af50fbb312971192137d93d.idx
-│   │       ├── pack-b4c4c11b49d24f1e8af50fbb312971192137d93d.pack
-│   │       └── pack-b4c4c11b49d24f1e8af50fbb312971192137d93d.rev
+│   │       ├── pack-ff89ed6a72c308ab8a3460224870f484b8110184.idx
+│   │       ├── pack-ff89ed6a72c308ab8a3460224870f484b8110184.pack
+│   │       └── pack-ff89ed6a72c308ab8a3460224870f484b8110184.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-16 14:41:43 UTC
+Сгенерировано: 2025-12-16 14:44:02 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5965,7 +5965,7 @@ test('SW update flow persists state and restores after reload', async ({ page })
   await page.evaluate(() => {
     window.confirm = () => true;
     const evt = new MessageEvent('message', { data: { type: 'SW_VERSION', version: '9.9.9' } });
-    try { navigator.serviceWorker && navigator.serviceWorker.dispatchEvent && navigator.serviceWorker.dispatchEvent(evt); } catch {}
+    try { window.dispatchEvent(evt); } catch {}
   });
 
   const hasResume = await page.evaluate(() => !!sessionStorage.getItem('resumeAfterReloadV1'));
