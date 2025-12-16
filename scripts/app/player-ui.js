@@ -787,6 +787,17 @@
 
     const logo = document.getElementById('logo-bottom');
     if (logo) logo.style.transform = 'scale(1)';
+
+    // ✅ Освобождаем ресурсы WebAudio (лучше для iOS/Chrome)
+    try { if (analyser) { analyser.disconnect(); } } catch {}
+    analyser = null;
+
+    try {
+      if (audioContext && audioContext.state !== 'closed' && typeof audioContext.close === 'function') {
+        audioContext.close().catch(() => {});
+      }
+    } catch {}
+    audioContext = null;
   }
 
   function toggleLyricsView() {
