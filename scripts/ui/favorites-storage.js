@@ -92,11 +92,20 @@
   }
 
   function toggleLikeForAlbum(albumKey, idx, makeLiked) {
+    // ✅ Legacy API: больше не поддерживает числовые индексы как источник правды.
+    // Оставляем только чтобы старый код не падал.
+    // Если передали uid строкой — работаем, иначе игнорируем.
     if (window.FavoritesManager && typeof window.FavoritesManager.toggleLike === 'function') {
-      window.FavoritesManager.toggleLike(albumKey, idx, makeLiked);
+      const uid = String(idx || '').trim();
+      if (uid) {
+        window.FavoritesManager.toggleLike(albumKey, uid, makeLiked);
+      } else {
+        console.warn('toggleLikeForAlbum called with non-uid argument; ignored');
+      }
       return;
     }
-    rawToggleLikeForAlbum(albumKey, idx, makeLiked);
+
+    console.warn('FavoritesManager not ready; toggleLikeForAlbum ignored');
   }
 
   // Back‑compat: оставляем глобальные имена, которые уже вызывает index.html и старый код.
