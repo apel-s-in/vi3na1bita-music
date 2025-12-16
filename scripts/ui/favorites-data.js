@@ -171,65 +171,38 @@
   }
 
   async function buildFavoritesRefsModel() {
-    // ✅ ВАЖНО: "ИЗБРАННОЕ" строим ТОЛЬКО из likedTracks:v2.
-    // Никаких refs как источника списка. При снятии лайка строка остаётся, но становится неактивной.
-    // Удаление строки — только вручную через модалку (removeFavoritesRef).
+    // ✅ ЦЕЛЕВОЕ ПОВЕДЕНИЕ:
+    // - "ИЗБРАННОЕ" = список refs (favoritesAlbumRefs:v1) + вычисление активности по likedTracks:v2.
+    // - Снятие ⭐ В ИЗБРАННОЕ: лайк снимается, но ref остаётся -> строка становится неактивной (oldstar).
+    // - Снятие ⭐ В АЛЬБОМЕ: лайк снимается и ref удаляется (строгое поведение в альбомах).
 
-    const map = getLikedMap();
+    const refs = getSortedFavoritesRefs();
     const out = [];
 
-    // Стабильный порядок альбомов: как в иконках (без спец-ключей)
-    const iconOrder = (Array.isArray(w.ICON_ALBUMS_ORDER) ? w.ICON_ALBUMS_ORDER : [])
-      .map(x => x && x.key)
-      .filter(k => k && k !== w.SPECIAL_FAVORITES_KEY && k !== w.SPECIAL_RELIZ_KEY);
-
-    const orderMap = new Map(iconOrder.map((k, i) => [k, i]));
-
-    // Собираем пары (albumKey, trackIndex) из likedTracks:v2
-    const pairs = [];
-    try {
-      const keys = Object.keys(map || {});
-      for (const akey of keys) {
-        const arr = Array.isArray(map[akey]) ? map[akey] : [];
-        for (const n of arr) {
-          const ti = parseInt(n, 10);
-          if (!Number.isFinite(ti)) continue;
-          pairs.push({ a: akey, t: ti });
-        }
-      }
-    } catch {}
-
-    // Сортировка: порядок альбомов + номер трека
-    pairs.sort((r1, r2) => {
-      const o1 = orderMap.has(r1.a) ? orderMap.get(r1.a) : 999;
-      const o2 = orderMap.has(r2.a) ? orderMap.get(r2.a) : 999;
-      if (o1 !== o2) return o1 - o2;
-      return r1.t - r2.t;
-    });
-
-    for (const ref of pairs) {
+    for (const ref of refs) {
       let cfg = null;
       try { cfg = await getAlbumConfigByKey(ref.a); } catch {}
 
       const tr = cfg?.tracks?.[ref.t] || null;
       const cover = await getAlbumCoverUrl(ref.a);
 
+      const isActive = getLikedForAlbum(ref.a).includes(ref.t);
+
       if (tr && tr.audio) {
         out.push({
           title: tr.title,
-          audio: tr.audio,
-          lyrics: tr.lyrics,
-          fulltext: tr.fulltext || null,
+          audio: isActive ? tr.audio : null,
+          lyrics: isActive ? tr.lyrics : null,
+          fulltext: isActive ? (tr.fulltext || null) : null,
           __a: ref.a,
           __t: ref.t,
           __artist: cfg?.artist || 'Витрина Разбита',
           __album: cfg?.albumName || 'Альбом',
-          __active: true,
+          __active: isActive,
           __cover: cover
         });
       } else {
-        // Теоретически сюда попадём редко (если config.json не загрузился).
-        // Но лайки НЕ трогаем. Показываем строку серой, чтобы пользователь мог удалить/пере-добавить.
+        // Альбом/трек временно не доступны: показываем строку серой.
         out.push({
           title: tr?.title || `Трек ${ref.t + 1}`,
           audio: null,
