@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6a0ca4bcd86a41c5b648d87cf56dd3438996857e.idx
-│   │       ├── pack-6a0ca4bcd86a41c5b648d87cf56dd3438996857e.pack
-│   │       └── pack-6a0ca4bcd86a41c5b648d87cf56dd3438996857e.rev
+│   │       ├── pack-ab3b9c32bbd098377cf4edf60bc8e8e40ed6a36f.idx
+│   │       ├── pack-ab3b9c32bbd098377cf4edf60bc8e8e40ed6a36f.pack
+│   │       └── pack-ab3b9c32bbd098377cf4edf60bc8e8e40ed6a36f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -264,7 +264,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-16 09:33:44 UTC
+Сгенерировано: 2025-12-16 09:51:20 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6379,13 +6379,26 @@ Object.assign(window, {
         continue;
       }
 
-      // ❌ ПРОПУСКАЕМ неполные треки ПОЛНОСТЬЮ
+      // ⚠️ Трек не найден (альбом недоступен / config.json не загрузился / индекс вне диапазона).
+      // ВАЖНО: НЕ трогаем likedTracks:v2 автоматически — refs могут быть неактивными.
       console.warn(`⚠️ Track not found: album=${ref.a}, track=${ref.t}`);
-      
-      // ✅ Автоматически удаляем из localStorage
-      if (window.FavoritesManager && typeof window.FavoritesManager.toggleLike === 'function') {
-        window.FavoritesManager.toggleLike(ref.a, ref.t, false);
-      }
+
+      // Добавляем “неактивную” строку в модель, чтобы UI мог:
+      // - показать её серой,
+      // - предложить “Добавить в ⭐” или “Удалить” через модалку,
+      // - дать возможность очистить refs кнопкой “Удалить недоступные”.
+      out.push({
+        title: `Трек ${ref.t}`,
+        audio: null,
+        lyrics: null,
+        fulltext: null,
+        __a: ref.a,
+        __t: ref.t,
+        __artist: 'Витрина Разбита',
+        __album: 'Альбом',
+        __active: false,
+        __cover: cover
+      });
     }
 
     w.favoritesRefsModel = out;
