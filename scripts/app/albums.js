@@ -258,6 +258,10 @@ class AlbumsManager {
     const coverWrap = document.getElementById('cover-wrap');
     if (coverWrap) coverWrap.style.display = 'none';
 
+    // ✅ Скрываем кнопку фильтра в избранном (не нужна)
+    const filterBtn = document.getElementById('filter-favorites-btn');
+    if (filterBtn) filterBtn.style.display = 'none';
+
     if (window.buildFavoritesRefsModel) {
       await window.buildFavoritesRefsModel();
     }
