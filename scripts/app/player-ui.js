@@ -368,6 +368,7 @@
       <div class="volume-control-wrapper">
         <div class="volume-track"></div>
         <div class="volume-fill" id="volume-fill"></div>
+        <div class="volume-handle" id="volume-handle"></div>
         <input type="range" class="volume-slider" id="volume-slider" min="0" max="100" value="100" aria-label="Громкость">
       </div>
       
@@ -684,14 +685,31 @@
     if (remaining) remaining.textContent = `-${formatTime(duration - position)}`;
   }
 
-  function onVolumeChange(e) {
-    const value = parseInt(e.target.value, 10);
-    w.playerCore?.setVolume(value);
+  function renderVolumeUI(value) {
+    const v = Math.max(0, Math.min(100, Number(value) || 0));
 
     const fill = document.getElementById('volume-fill');
-    if (fill) fill.style.width = `${value}%`;
+    const handle = document.getElementById('volume-handle');
+    const slider = document.getElementById('volume-slider');
 
-    localStorage.setItem('playerVolume', value);
+    if (fill) fill.style.width = `${v}%`;
+
+    if (handle && slider) {
+      const rect = slider.getBoundingClientRect();
+      const x = rect.left + (rect.width * (v / 100));
+      // translate в координаты wrapper: проще — через left в %
+      handle.style.left = `calc(20px + ( (100% - 40px) * ${v / 100} ))`;
+    }
+  }
+
+  function onVolumeChange(e) {
+    const value = parseInt(e.target.value, 10);
+    const v = Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0;
+
+    w.playerCore?.setVolume(v);
+    renderVolumeUI(v);
+
+    try { localStorage.setItem('playerVolume', String(v)); } catch {}
   }
 
   function toggleMute() {
@@ -1163,7 +1181,7 @@
           sessionStorage.setItem(cacheKey, JSON.stringify(asJson));
           parseLyrics(asJson);
         } catch (parseError) {
-          console.error('JSON parse error:', parseError);
+          // По ТЗ: не шумим в консоли из-за лирики, просто считаем что лирики нет
           throw new Error('Невалидный JSON');
         }
       } else {
@@ -1245,9 +1263,7 @@
 
     currentLyrics.sort((a, b) => a.time - b.time);
 
-    if (Object.keys(metadata).length > 0) {
-      console.log('📝 LRC metadata:', metadata);
-    }
+    // LRC metadata не логируем (не засоряем консоль)
   }
 
   function renderLyrics(position) {
@@ -1387,7 +1403,7 @@
     const volumeFill = document.getElementById('volume-fill');
 
     if (volumeSlider) volumeSlider.value = String(volume);
-    if (volumeFill) volumeFill.style.width = `${Math.max(0, Math.min(100, volume))}%`;
+    renderVolumeUI(volume);
 
     const savedLyricsMode = localStorage.getItem('lyricsViewMode');
     if (savedLyricsMode && ['normal', 'hidden', 'expanded'].includes(savedLyricsMode)) {
