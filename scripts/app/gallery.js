@@ -16,10 +16,11 @@ class GalleryManager {
       'krevetochka': '00',
       'mezhdu-zlom-i-dobrom': '01',
       'golos-dushi': '02',
+      'odnazhdy-v-skazke': '03',
       '__reliz__': 'news'
     };
     
-    this.ALLOWED_IDS = new Set(['00', '01', '02', 'news']);
+    this.ALLOWED_IDS = new Set(['00', '01', '02', '03', 'news']);
     this.GALLERY_BASE = './albums/gallery/';
   }
 
