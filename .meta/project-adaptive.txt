@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-63c6ae30202b12591a31ed825914157ccb32cf78.idx
-│   │       ├── pack-63c6ae30202b12591a31ed825914157ccb32cf78.pack
-│   │       └── pack-63c6ae30202b12591a31ed825914157ccb32cf78.rev
+│   │       ├── pack-c2f3a0b26fe17abbf3fb2bd98ff78bc0632d2fc2.idx
+│   │       ├── pack-c2f3a0b26fe17abbf3fb2bd98ff78bc0632d2fc2.pack
+│   │       └── pack-c2f3a0b26fe17abbf3fb2bd98ff78bc0632d2fc2.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -284,7 +284,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-17 19:26:11 UTC
+Сгенерировано: 2025-12-17 19:28:20 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2215,7 +2215,8 @@ class AlbumsManager {
       trackEl.innerHTML = `
         <div class="tnum">${displayNum}.</div>
         <div class="track-title" title="${trackTitle} - ${albumTitle}">
-          ${trackTitle} - ${albumTitle}
+          <span class="fav-track-name">${trackTitle}</span>
+          <span class="fav-album-name"> — ${albumTitle}</span>
         </div>
         <img src="${isActive ? 'img/star.png' : 'img/star2.png'}"
              class="like-star"
@@ -2494,8 +2495,10 @@ class AlbumsManager {
       ? window.FavoritesManager.isFavorite(albumKey, track.uid)
       : false;
 
+    const numText = `${String(track.num || (index + 1)).padStart(2, '0')}.`;
+
     trackEl.innerHTML = `
-      <div class="tnum">${track.num || index + 1}</div>
+      <div class="tnum">${numText}</div>
       <div class="track-title">${track.title}</div>
       <img src="${isFavorite ? 'img/star.png' : 'img/star2.png'}" 
            class="like-star" 
