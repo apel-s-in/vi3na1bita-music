@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-31dbef3aded50cc07e9a97516dbf7476f5209ecf.idx
-│   │       ├── pack-31dbef3aded50cc07e9a97516dbf7476f5209ecf.pack
-│   │       └── pack-31dbef3aded50cc07e9a97516dbf7476f5209ecf.rev
+│   │       ├── pack-350700bde5fe3aa54c5561620a67fe354fc07c51.idx
+│   │       ├── pack-350700bde5fe3aa54c5561620a67fe354fc07c51.pack
+│   │       └── pack-350700bde5fe3aa54c5561620a67fe354fc07c51.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -265,7 +265,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-17 12:38:22 UTC
+Сгенерировано: 2025-12-17 12:39:16 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6303,15 +6303,15 @@ test('SW update flow persists state and restores after reload', async ({ page })
     }
   });
 
-  // Авто-принятие confirm и отправка fake SW_VERSION
+  // ✅ ЕДИНЫЙ способ симуляции SW-message: window.dispatchEvent
   await page.evaluate(() => {
     window.confirm = () => true;
     const evt = new MessageEvent('message', { data: { type: 'SW_VERSION', version: '9.9.9' } });
-    try { navigator.serviceWorker && navigator.serviceWorker.dispatchEvent && navigator.serviceWorker.dispatchEvent(evt); } catch {}
+    try { window.dispatchEvent(evt); } catch {}
   });
 
-  // Проверим, что стейт для реюма записан
-  const hasResume = await page.evaluate(() => !!sessionStorage.getItem('resumeAfterReloadV1'));
+  // Проверим, что стейт для реюма записан (V2)
+  const hasResume = await page.evaluate(() => !!sessionStorage.getItem('resumeAfterReloadV2'));
   expect(hasResume).toBeTruthy();
 
   // Перезагрузим страницу и снова пройдём промо
