@@ -28,84 +28,12 @@ class BackgroundAudioManager {
       return;
     }
     
-    // Обновление метаданных при смене трека
+    // Здесь — только позиция (setPositionState). Метаданные и action handlers — в src/PlayerCore.js.
     window.playerCore.on({
-      onTrackChange: (track) => {
-        this.updateMetadata(track);
-      },
       onTick: (position, duration) => {
         this.updatePositionState({ position, duration });
       }
     });
-  }
-  
-  async updateMetadata(track) {
-    if (!this.isSupported || !track) return;
-    
-    try {
-      const albumInfo = window.albumsIndex?.find(a => a.key === track.album);
-      const albumTitle = albumInfo?.title || 'Витрина Разбита';
-      
-      // Получить обложку: источник — центральная галерея (первая картинка).
-      // Fallback: track.cover / icons/icon-512.png
-      let artworkUrl = track.cover || 'icons/icon-512.png';
-
-      try {
-        const gm = window.GalleryManager;
-        const albumKey = track.album;
-
-        if (gm && typeof gm.getCentralId === 'function') {
-          const id = gm.getCentralId(albumKey);
-          if (id) {
-            const baseDir = `./albums/gallery/${id}/`;
-            const r = await fetch(`${baseDir}index.json`, { cache: 'force-cache' });
-            if (r.ok) {
-              const j = await r.json();
-              const first = Array.isArray(j.items) ? j.items[0] : null;
-              if (first) {
-                const raw = first;
-                const toAbs = (p) => {
-                  if (!p) return null;
-                  const s = String(p).replace(/^\.?\//, '');
-                  if (/^https?:\/\//i.test(s)) return s;
-                  if (/^(albums|img|icons|assets)\//i.test(s)) return `./${s}`;
-                  return baseDir + s;
-                };
-
-                if (raw && typeof raw === 'object' && raw.formats) {
-                  artworkUrl = toAbs(raw.formats.webp || raw.formats.full) || artworkUrl;
-                } else if (typeof raw === 'string') {
-                  artworkUrl = toAbs(raw) || artworkUrl;
-                } else if (raw && typeof raw === 'object' && raw.src) {
-                  artworkUrl = toAbs(raw.src) || artworkUrl;
-                }
-              }
-            }
-          }
-        }
-      } catch {}
-      
-      // Создаем несколько размеров обложки для разных платформ
-      const artwork = [
-        { src: artworkUrl, sizes: '96x96', type: 'image/png' },
-        { src: artworkUrl, sizes: '128x128', type: 'image/png' },
-        { src: artworkUrl, sizes: '192x192', type: 'image/png' },
-        { src: artworkUrl, sizes: '256x256', type: 'image/png' },
-        { src: artworkUrl, sizes: '384x384', type: 'image/png' },
-        { src: artworkUrl, sizes: '512x512', type: 'image/png' }
-      ];
-      
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: track.title || 'Неизвестный трек',
-        artist: track.artist || 'Витрина Разбита',
-        album: albumTitle,
-        artwork: artwork
-      });
-      
-      console.log('🎵 Media metadata updated:', track.title);
-    } catch (error) {
-      console.error('Failed to update metadata:', error);
-    }
   }
   
   updatePositionState(data) {
