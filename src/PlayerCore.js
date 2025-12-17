@@ -518,41 +518,49 @@
 
     updateMediaSession() {
       if (!('mediaSession' in navigator)) return;
-      
+
       const track = this.getCurrentTrack();
       if (!track) return;
-      
+
+      const artworkUrl = track.cover || this.metadata.cover || 'icons/icon-512.png';
+      const artwork = artworkUrl ? [
+        { src: artworkUrl, sizes: '96x96', type: 'image/png' },
+        { src: artworkUrl, sizes: '128x128', type: 'image/png' },
+        { src: artworkUrl, sizes: '192x192', type: 'image/png' },
+        { src: artworkUrl, sizes: '256x256', type: 'image/png' },
+        { src: artworkUrl, sizes: '384x384', type: 'image/png' },
+        { src: artworkUrl, sizes: '512x512', type: 'image/png' }
+      ] : [];
+
       navigator.mediaSession.metadata = new MediaMetadata({
-        title: track.title,
+        title: track.title || 'Без названия',
         artist: track.artist || this.metadata.artist,
         album: track.album || this.metadata.album,
-        artwork: track.cover ? [
-          { src: track.cover, sizes: '512x512', type: 'image/jpeg' }
-        ] : []
+        artwork
       });
-      
+
+      // action handlers — единый источник правды
       navigator.mediaSession.setActionHandler('play', () => this.play());
       navigator.mediaSession.setActionHandler('pause', () => this.pause());
       navigator.mediaSession.setActionHandler('stop', () => this.stop());
       navigator.mediaSession.setActionHandler('previoustrack', () => this.prev());
       navigator.mediaSession.setActionHandler('nexttrack', () => this.next());
-      
+
       navigator.mediaSession.setActionHandler('seekbackward', (details) => {
-        const skipTime = details.seekOffset || 10;
+        const skipTime = details?.seekOffset || 10;
         this.seek(Math.max(0, this.getPosition() - skipTime));
       });
-      
+
       navigator.mediaSession.setActionHandler('seekforward', (details) => {
-        const skipTime = details.seekOffset || 10;
+        const skipTime = details?.seekOffset || 10;
         this.seek(Math.min(this.getDuration(), this.getPosition() + skipTime));
       });
-      
+
       navigator.mediaSession.setActionHandler('seekto', (details) => {
-        if (details.fastSeek && 'fastSeek' in this.sound) {
-          this.sound.fastSeek(details.seekTime);
-        } else {
-          this.seek(details.seekTime);
-        }
+        const t = details?.seekTime;
+        if (typeof t !== 'number') return;
+        // Howler не даёт fastSeek стабильно на Howl; используем seek.
+        this.seek(t);
       });
     }
 
