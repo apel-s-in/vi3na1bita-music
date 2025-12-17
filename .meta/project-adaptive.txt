@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f20de8e21f13fbc160d4c4fc6e6b45153fb2123e.idx
-│   │       ├── pack-f20de8e21f13fbc160d4c4fc6e6b45153fb2123e.pack
-│   │       └── pack-f20de8e21f13fbc160d4c4fc6e6b45153fb2123e.rev
+│   │       ├── pack-22b69002d9539d6b2ccf5f9d892f1a76cbb7aceb.idx
+│   │       ├── pack-22b69002d9539d6b2ccf5f9d892f1a76cbb7aceb.pack
+│   │       └── pack-22b69002d9539d6b2ccf5f9d892f1a76cbb7aceb.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -284,7 +284,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-17 20:03:12 UTC
+Сгенерировано: 2025-12-17 20:53:30 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -10552,6 +10552,7 @@ header {
 .volume-fill {
   position: absolute;
   left: 20px;
+  right: 20px; /* ✅ фикс зоны, чтобы fill не вылезал */
   height: 4px;
   background: linear-gradient(90deg, #4daaff, #357ac9);
   border-radius: 2px;
@@ -10559,7 +10560,21 @@ header {
   transform: translateY(-50%);
   width: 0%;
   pointer-events: none;
-  transition: width 0.1s;
+  transition: width 0.08s linear;
+}
+
+/* ✅ свой “кружок” громкости, строго по правому краю fill */
+.volume-handle {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+  pointer-events: none;
+  z-index: 3;
 }
 
 .volume-slider {
@@ -10582,11 +10597,10 @@ header {
   -webkit-appearance: none;
   width: 14px;
   height: 14px;
-  background: white;
+  background: transparent; /* ✅ прячем нативный кружок */
   border-radius: 50%;
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-  transition: transform 0.1s;
+  box-shadow: none;
 }
 
 .volume-slider::-webkit-slider-thumb:hover {
@@ -10596,11 +10610,11 @@ header {
 .volume-slider::-moz-range-thumb {
   width: 14px;
   height: 14px;
-  background: white;
+  background: transparent; /* ✅ прячем нативный кружок */
   border-radius: 50%;
   cursor: pointer;
   border: none;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  box-shadow: none;
 }
 
 /* Player Extra Buttons */
