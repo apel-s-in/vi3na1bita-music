@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d1be159ea900baf4d8ff7027f21044553b0b9f1a.idx
-│   │       ├── pack-d1be159ea900baf4d8ff7027f21044553b0b9f1a.pack
-│   │       └── pack-d1be159ea900baf4d8ff7027f21044553b0b9f1a.rev
+│   │       ├── pack-614d0a3bef1560d13d7e2dab649c0b56c388052c.idx
+│   │       ├── pack-614d0a3bef1560d13d7e2dab649c0b56c388052c.pack
+│   │       └── pack-614d0a3bef1560d13d7e2dab649c0b56c388052c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -284,7 +284,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-17 16:08:22 UTC
+Сгенерировано: 2025-12-17 16:13:19 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3246,10 +3246,11 @@ class GalleryManager {
       'krevetochka': '00',
       'mezhdu-zlom-i-dobrom': '01',
       'golos-dushi': '02',
+      'odnazhdy-v-skazke': '03',
       '__reliz__': 'news'
     };
     
-    this.ALLOWED_IDS = new Set(['00', '01', '02', 'news']);
+    this.ALLOWED_IDS = new Set(['00', '01', '02', '03', 'news']);
     this.GALLERY_BASE = './albums/gallery/';
   }
 
