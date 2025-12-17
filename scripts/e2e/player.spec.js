@@ -149,15 +149,15 @@ test('SW update flow persists state and restores after reload', async ({ page })
     }
   });
 
-  // Авто-принятие confirm и отправка fake SW_VERSION
+  // ✅ ЕДИНЫЙ способ симуляции SW-message: window.dispatchEvent
   await page.evaluate(() => {
     window.confirm = () => true;
     const evt = new MessageEvent('message', { data: { type: 'SW_VERSION', version: '9.9.9' } });
-    try { navigator.serviceWorker && navigator.serviceWorker.dispatchEvent && navigator.serviceWorker.dispatchEvent(evt); } catch {}
+    try { window.dispatchEvent(evt); } catch {}
   });
 
-  // Проверим, что стейт для реюма записан
-  const hasResume = await page.evaluate(() => !!sessionStorage.getItem('resumeAfterReloadV1'));
+  // Проверим, что стейт для реюма записан (V2)
+  const hasResume = await page.evaluate(() => !!sessionStorage.getItem('resumeAfterReloadV2'));
   expect(hasResume).toBeTruthy();
 
   // Перезагрузим страницу и снова пройдём промо
