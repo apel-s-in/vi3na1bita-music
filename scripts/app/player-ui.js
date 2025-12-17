@@ -8,6 +8,7 @@
 
   let currentLyrics = [];
   let lyricsViewMode = 'normal';
+  let hasTimedLyricsForCurrentTrack = false;
   let isSeekingProgress = false;
   let isMuted = false;
   let animationEnabled = false;
@@ -1007,6 +1008,17 @@
       lyricsToggle.style.display = '';
     }
 
+    // ✅ Если у текущего трека нет таймкод‑лирики — ничего не “воскрешаем”.
+    // Кнопки Т/А должны оставаться disabled всегда.
+    if (!hasTimedLyricsForCurrentTrack) {
+      lyricsViewMode = 'hidden';
+      animationEnabled = false;
+      savedLyricsViewModeForMini = null;
+      savedAnimationForMini = null;
+      setLyricsAvailability(false);
+      return;
+    }
+
     if (savedLyricsViewModeForMini !== null) {
       lyricsViewMode = savedLyricsViewModeForMini;
       savedLyricsViewModeForMini = null;
@@ -1136,12 +1148,14 @@
   async function loadLyrics(lyricsUrl) {
     currentLyrics = [];
     lyricsLastIdx = -1;
+    hasTimedLyricsForCurrentTrack = false;
 
     const container = document.getElementById('lyrics');
     if (!container) return Promise.resolve();
 
     // ✅ Если ссылки на таймкод-лирику нет — прячем окно и дизейблим кнопки
     if (!lyricsUrl) {
+      hasTimedLyricsForCurrentTrack = false;
       setLyricsAvailability(false);
       return Promise.resolve();
     }
@@ -1159,9 +1173,12 @@
 
         // Если после парсинга пусто — считаем, что лирики нет
         if (!Array.isArray(currentLyrics) || currentLyrics.length === 0) {
+          hasTimedLyricsForCurrentTrack = false;
           setLyricsAvailability(false);
           return Promise.resolve();
         }
+
+        hasTimedLyricsForCurrentTrack = true;
 
         // Включаем отображение и применяем режим
         setLyricsAvailability(true);
@@ -1205,11 +1222,13 @@
 
       if (currentLyrics.length === 0) {
         // ✅ Пустая лирика = лирики нет
+        hasTimedLyricsForCurrentTrack = false;
         setLyricsAvailability(false);
         return Promise.resolve();
       }
 
       // Лирика есть
+      hasTimedLyricsForCurrentTrack = true;
       setLyricsAvailability(true);
       renderLyricsViewMode();
       return Promise.resolve();
