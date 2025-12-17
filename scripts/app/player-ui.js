@@ -560,6 +560,36 @@
     const volumeSlider = block.querySelector('#volume-slider');
     volumeSlider?.addEventListener('input', onVolumeChange);
 
+    const volumeWrap = block.querySelector('.volume-control-wrapper');
+    if (volumeWrap && !volumeWrap.__bound) {
+      volumeWrap.__bound = true;
+
+      const setFromClientX = (clientX) => {
+        const slider = document.getElementById('volume-slider');
+        if (!slider) return;
+
+        const rect = slider.getBoundingClientRect();
+        const p = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+        const v = Math.round(p * 100);
+
+        slider.value = String(v);
+        onVolumeChange({ target: slider });
+      };
+
+      volumeWrap.addEventListener('pointerdown', (e) => {
+        if (e && typeof e.clientX === 'number') {
+          setFromClientX(e.clientX);
+        }
+      });
+
+      volumeWrap.addEventListener('pointermove', (e) => {
+        // drag по полосе при зажатой кнопке
+        if (e && e.buttons === 1 && typeof e.clientX === 'number') {
+          setFromClientX(e.clientX);
+        }
+      });
+    }
+
     const progressBar = block.querySelector('#player-progress-bar');
     progressBar?.addEventListener('mousedown', startSeeking);
     progressBar?.addEventListener('touchstart', startSeeking);
