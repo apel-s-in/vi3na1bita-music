@@ -416,10 +416,7 @@
   'use strict';
 
   const STORAGE_KEY_V2 = 'playerStateV2';
-  const STORAGE_KEY_V1 = 'playerStateV1';
-
   const SESSION_RESUME_KEY_V2 = 'resumeAfterReloadV2';
-  const SESSION_RESUME_KEY_V1 = 'resumeAfterReloadV1';
 
   function save(options = {}) {
     try {
@@ -477,30 +474,8 @@
 
   async function apply() {
     try {
-      let raw = localStorage.getItem(STORAGE_KEY_V2);
-
-      // ✅ Миграция: если V2 нет — пробуем V1 и конвертируем в V2 (best-effort)
-      if (!raw) {
-        const rawV1 = localStorage.getItem(STORAGE_KEY_V1);
-        if (!rawV1) return;
-
-        try {
-          const st1 = JSON.parse(rawV1);
-          if (st1 && typeof st1 === 'object') {
-            const migrated = {
-              ...st1,
-              // V1 мог не иметь этих полей
-              trackUid: (typeof st1.trackUid === 'string' && st1.trackUid.trim()) ? st1.trackUid.trim() : null,
-              sourceAlbum: (typeof st1.sourceAlbum === 'string' && st1.sourceAlbum.trim()) ? st1.sourceAlbum.trim() : null
-            };
-
-            localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(migrated));
-            raw = JSON.stringify(migrated);
-          }
-        } catch {
-          return;
-        }
-      }
+      const raw = localStorage.getItem(STORAGE_KEY_V2);
+      if (!raw) return;
 
       const state = JSON.parse(raw);
       if (!state || typeof state !== 'object') return;
@@ -608,8 +583,6 @@
       try {
         // После удачного применения сбрасываем одноразовый флаг SW‑реюма
         sessionStorage.removeItem(SESSION_RESUME_KEY_V2);
-        // back-compat cleanup
-        sessionStorage.removeItem(SESSION_RESUME_KEY_V1);
       } catch {}
     }
   }
