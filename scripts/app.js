@@ -318,7 +318,7 @@
 
           case 'b':
             e.preventDefault();
-            document.getElementById('bit-btn')?.click();
+            document.getElementById('pulse-btn')?.click();
             break;
 
           case 'f':
