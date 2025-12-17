@@ -1,13 +1,10 @@
 // scripts/ui/favorites.js
 // Управление избранными треками по UID (единственный источник правды).
-// NEW storage: likedTrackUids:v1 => { [albumKey]: string[] }
-// LEGACY: likedTracks:v2 (numbers) => миграция в uid по config.json (по 1-based индексу)
+// Storage: likedTrackUids:v1 => { [albumKey]: string[] }
 
 class FavoritesManager {
   constructor() {
     this.storageKey = 'likedTrackUids:v1';
-    this.legacyStorageKey = 'likedTracks:v2';
-    this._migrated = false;
   }
 
   async initialize() {
@@ -22,8 +19,6 @@ class FavoritesManager {
         }
       }
 
-      // Неблокирующая миграция
-      this.migrateLegacyIfNeeded().catch(() => {});
       console.log('✅ FavoritesManager initialized (uid-based)');
     } catch (e) {
       console.warn('FavoritesManager.initialize failed:', e);
@@ -95,67 +90,7 @@ class FavoritesManager {
     return true;
   }
 
-  // ========= MIGRATION =========
-  async migrateLegacyIfNeeded() {
-    if (this._migrated) return;
-    this._migrated = true;
-
-    let legacyRaw = null;
-    try { legacyRaw = localStorage.getItem(this.legacyStorageKey); } catch {}
-    if (!legacyRaw) return;
-
-    let legacyMap = null;
-    try { legacyMap = JSON.parse(legacyRaw); } catch { return; }
-    if (!legacyMap || typeof legacyMap !== 'object') return;
-
-    const albumsIndex = Array.isArray(window.albumsIndex) ? window.albumsIndex : [];
-    if (!albumsIndex.length) return;
-
-    const newMap = this.getLikedUidMap();
-    let changed = false;
-
-    const absJoin = typeof window.absJoin === 'function'
-      ? window.absJoin
-      : ((b, r) => new URL(String(r || ''), String(b || '') + '/').toString());
-
-    for (const albumKey of Object.keys(legacyMap)) {
-      const nums = Array.isArray(legacyMap[albumKey]) ? legacyMap[albumKey] : [];
-      const normNums = Array.from(new Set(nums.map(n => parseInt(n, 10)).filter(Number.isFinite)));
-      if (!normNums.length) continue;
-
-      const meta = albumsIndex.find(a => a && a.key === albumKey);
-      if (!meta || !meta.base) continue;
-
-      let cfg = null;
-      try {
-        const r = await fetch(absJoin(meta.base, 'config.json'), { cache: 'no-cache' });
-        if (!r.ok) continue;
-        cfg = await r.json();
-      } catch {
-        continue;
-      }
-
-      const tracks = Array.isArray(cfg?.tracks) ? cfg.tracks : [];
-      if (!tracks.length) continue;
-
-      const uids = [];
-      for (const n of normNums) {
-        const t = tracks[n - 1];
-        const uid = String(t?.uid || '').trim();
-        if (uid) uids.push(uid);
-      }
-
-      if (!uids.length) continue;
-
-      const prev = Array.isArray(newMap[albumKey]) ? newMap[albumKey] : [];
-      newMap[albumKey] = Array.from(new Set([...prev, ...uids]));
-      changed = true;
-    }
-
-    if (changed) {
-      try { localStorage.setItem(this.storageKey, JSON.stringify(newMap)); } catch {}
-    }
-  }
+  // likedTracks:v2 миграция удалена: проект полностью на uid-ветке.
 }
 
 window.FavoritesManager = new FavoritesManager();
