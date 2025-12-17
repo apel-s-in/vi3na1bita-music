@@ -11,6 +11,7 @@ export const APP_CONFIG = {
     { key: '__favorites__', title: '⭐⭐⭐ИЗБРАННОЕ⭐⭐⭐', icon: 'img/icon_album/icon-album-00.png' },
     { key: 'mezhdu-zlom-i-dobrom', title: 'Между Злом и Добром', icon: 'img/icon_album/icon-album-01.png' },
     { key: 'golos-dushi', title: 'Голос Души', icon: 'img/icon_album/icon-album-02.png' },
+    { key: 'odnazhdy-v-skazke', title: 'Однажды в Сказке', icon: 'img/icon_album/icon-album-03.png' },
     { key: 'krevetochka', title: 'КРЕВЕцTOCHKA', icon: 'img/icon_album/icon-album+00.png' },
     { key: '__reliz__', title: 'НОВОСТИ', icon: 'img/icon_album/icon-album-news.png' }
   ],
@@ -36,7 +37,7 @@ export const APP_CONFIG = {
   // Настройки галереи
   CENTRAL_GALLERY_BASE: './albums/gallery/',
   // Публикация альбомов
-  PUBLISHED_ALBUM_KEYS: new Set(['golos-dushi', 'mezhdu-zlom-i-dobrom', 'krevetochka'])
+  PUBLISHED_ALBUM_KEYS: new Set(['odnazhdy-v-skazke', 'golos-dushi', 'mezhdu-zlom-i-dobrom', 'krevetochka'])
 };
 
 // Экспорт в глобальную область для совместимости
