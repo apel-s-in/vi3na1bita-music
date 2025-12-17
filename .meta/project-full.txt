@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a31f8125fd7172da6e12d2bff4fb9317202c6e33.idx
-│   │       ├── pack-a31f8125fd7172da6e12d2bff4fb9317202c6e33.pack
-│   │       └── pack-a31f8125fd7172da6e12d2bff4fb9317202c6e33.rev
+│   │       ├── pack-d2cdcd3003b2817aba45fc2616b48a37953251bd.idx
+│   │       ├── pack-d2cdcd3003b2817aba45fc2616b48a37953251bd.pack
+│   │       └── pack-d2cdcd3003b2817aba45fc2616b48a37953251bd.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -284,7 +284,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-17 20:56:37 UTC
+Сгенерировано: 2025-12-17 20:59:50 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2544,7 +2544,7 @@ class AlbumsManager {
             album: albumKey,
             cover: albumData.cover
               ? new URL(albumData.cover, base).toString()
-              : (albumInfo ? new URL('cover.jpg', albumInfo.base).toString() : 'img/logo.png'),
+              : 'img/logo.png',
             lyrics: t.lyrics || null,
             fulltext: t.fulltext || null,
             uid: (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null
@@ -2556,7 +2556,7 @@ class AlbumsManager {
             album: albumData.title || albumInfo?.title || '',
             cover: albumData.cover
               ? new URL(albumData.cover, base).toString()
-              : (albumInfo ? new URL('cover.jpg', albumInfo.base).toString() : 'img/logo.png')
+              : 'img/logo.png',
           });
         }
       }
