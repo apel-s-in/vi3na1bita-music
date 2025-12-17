@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-350700bde5fe3aa54c5561620a67fe354fc07c51.idx
-│   │       ├── pack-350700bde5fe3aa54c5561620a67fe354fc07c51.pack
-│   │       └── pack-350700bde5fe3aa54c5561620a67fe354fc07c51.rev
+│   │       ├── pack-c3e6497f3dadc3361e46dc1c22f4c47c2142f329.idx
+│   │       ├── pack-c3e6497f3dadc3361e46dc1c22f4c47c2142f329.pack
+│   │       └── pack-c3e6497f3dadc3361e46dc1c22f4c47c2142f329.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -265,7 +265,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-17 12:39:16 UTC
+Сгенерировано: 2025-12-17 12:40:31 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1629,7 +1629,7 @@ self.addEventListener('message', (event) => {
 
           case 'b':
             e.preventDefault();
-            document.getElementById('bit-btn')?.click();
+            document.getElementById('pulse-btn')?.click();
             break;
 
           case 'f':
