@@ -201,8 +201,7 @@
       // iOS: показать подсказку про установку
       detectIOSAndShowInstallGuide();
       
-      // Chrome: показать подсказку про Memory Saver
-      showChromeMemorySaverHint();
+      // Chrome: подсказка про Memory Saver удалена по дизайну
     });
     
     function unlockAppDirectly() {
@@ -262,104 +261,6 @@
         localStorage.setItem('iosInstallDismissed', '1');
         setTimeout(() => el.remove(), 350);
       }
-    }
-    
-    // ========== CHROME MEMORY SAVER HINT ==========
-    
-    function showChromeMemorySaverHint() {
-      try {
-        const isChrome = /Chrome\/\d+/.test(navigator.userAgent) && 
-                        !/Edg\//.test(navigator.userAgent) && 
-                        !/OPR\//.test(navigator.userAgent);
-        
-        if (!isChrome) return;
-        
-        const alreadyShown = localStorage.getItem('chromeMemoryHintShown') === '1';
-        if (alreadyShown) return;
-        
-        const container = document.querySelector('.bottom-controls-center');
-        if (!container) return;
-        
-        const btn = document.createElement('button');
-        btn.id = 'memory-saver-help-btn';
-        btn.className = 'offline-btn';
-        btn.style.cssText = 'width: 98%; background: #273050; margin-top: 8px;';
-        btn.textContent = 'Как не останавливать музыку в Chrome';
-        
-        btn.onclick = () => {
-          showMemorySaverModal();
-          localStorage.setItem('chromeMemoryHintShown', '1');
-        };
-        
-        container.appendChild(btn);
-      } catch (e) {
-        console.warn('Failed to show Chrome hint:', e);
-      }
-    }
-    
-    function showMemorySaverModal() {
-      const modal = document.createElement('div');
-      modal.className = 'modal-bg active';
-      modal.innerHTML = `
-        <div class="modal-feedback" style="max-width:480px;">
-          <button class="bigclose" onclick="this.closest('.modal-bg').remove()" 
-                  title="Закрыть" aria-label="Закрыть">
-            <svg viewBox="0 0 48 48">
-              <line x1="12" y1="12" x2="36" y2="36" stroke="currentColor" 
-                    stroke-width="6" stroke-linecap="round"/>
-              <line x1="36" y1="12" x2="12" y2="36" stroke="currentColor" 
-                    stroke-width="6" stroke-linecap="round"/>
-            </svg>
-          </button>
-          
-          <div style="font-size:1.1em; font-weight:800; margin-bottom:12px; color: #4daaff;">
-            Chrome: как не останавливать музыку
-          </div>
-          
-          <div style="color:#cfe3ff; background:rgba(255,255,255,.06); 
-                      border:1px solid rgba(255,255,255,.1); border-radius:8px; 
-                      padding:14px; line-height:1.5;">
-            Если в Chrome включён режим <strong>«Экономия памяти»</strong>, 
-            неактивные вкладки выгружаются и музыка останавливается.
-            <br><br>
-            <strong>Чтобы добавить сайт в исключения:</strong><br>
-            1️⃣ Откройте <code style="background:rgba(0,0,0,.3); padding:2px 6px; 
-               border-radius:4px;">chrome://settings/performance</code><br>
-            2️⃣ В разделе «Экономия памяти» найдите:<br>
-            <em>«Сохранять сайты активными»</em><br>
-            3️⃣ Нажмите <strong>«Добавить»</strong> и укажите:<br>
-            <code style="background:rgba(77,170,255,.15); padding:3px 8px; 
-                  border-radius:4px; color:#4daaff;">${location.origin}</code>
-          </div>
-          
-          <div style="display:flex; gap:10px; justify-content:center; margin-top:16px; flex-wrap:wrap;">
-            <button class="offline-btn online" id="copy-chrome-settings-btn">
-              📋 Скопировать ссылку
-            </button>
-            <button class="offline-btn" onclick="this.closest('.modal-bg').remove()">
-              Понятно
-            </button>
-          </div>
-        </div>
-      `;
-      
-      document.body.appendChild(modal);
-      
-      const copyBtn = modal.querySelector('#copy-chrome-settings-btn');
-      copyBtn?.addEventListener('click', async () => {
-        try {
-          await navigator.clipboard.writeText('chrome://settings/performance');
-          copyBtn.textContent = '✅ Ссылка скопирована';
-          copyBtn.style.background = '#27b34c';
-          
-          setTimeout(() => {
-            copyBtn.textContent = '📋 Скопировать ссылку';
-            copyBtn.style.background = '';
-          }, 2000);
-        } catch (e) {
-          console.error('Copy failed:', e);
-        }
-      });
     }
     
     // ========== УТИЛИТЫ ==========
