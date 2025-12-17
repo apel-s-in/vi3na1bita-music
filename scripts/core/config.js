@@ -2,7 +2,7 @@
 // Конфигурация приложения
 export const APP_CONFIG = {
   // Версия приложения
-  APP_VERSION: '8.0.3',
+  APP_VERSION: '8.0.4',
   BUILD_DATE: '2025-11-08',
   // ✅ ПРОМОКОД ДЛЯ ВХОДА
   PROMOCODE: 'VITRINA2025',
