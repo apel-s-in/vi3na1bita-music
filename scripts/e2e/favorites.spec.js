@@ -53,64 +53,50 @@ test('toggle star in favorites updates row state and localStorage (uid-based)', 
 });
 
 test('favorites view: add to favorites, play and verify mini-mode when browsing other album', async ({ page }) => {
-  const BASE = process.env.BASE_URL || 'http://127.0.0.1:4173';
-  await page.goto(`${BASE}/index.html`, { waitUntil: 'load' });
+  await loginByPromo(page);
 
-  // Войти по промокоду
-  await page.fill('#promo-inp', 'VITRINA2025');
-  await page.click('#promo-btn');
-  await page.waitForSelector('#track-list .track', { timeout: 10000 });
+  await likeFirstTrack(page);
+  await openFavorites(page);
 
-  // Отметить первый трек как избранный
-  const firstTrack = page.locator('#track-list .track').first();
-  await firstTrack.hover();
-  const star = firstTrack.locator('.like-star');
-  await star.click();
-
-  // Открыть представление «Избранное» (иконка с data-akey="__favorites__")
-  await page.click('.album-icon[data-akey="__favorites__"]');
-
-  // Кликнуть по первой строке в «Избранном», если есть
-  await page.waitForSelector('#track-list .track', { timeout: 10000 });
-  const favFirst = page.locator('#track-list .track').first();
-  await favFirst.click();
-
-  // Плеер видим
+  await page.locator('#track-list .track').first().click();
   await expect(page.locator('#lyricsplayerblock')).toBeVisible();
 
-  // Переключиться на другой альбом (например, второй значок, не Favorites и не News)
-  const otherIcon = page.locator('.album-icon').filter({ hasNot: page.locator('[data-akey="__favorites__"]') }).nth(1);
+  const otherIcon = page
+    .locator('.album-icon')
+    .filter({ hasNot: page.locator('[data-akey="__favorites__"]') })
+    .nth(1);
   await otherIcon.click();
 
-  // Проверить, что появился mini-режим (мини-шапка)
   await expect(page.locator('#mini-now')).toBeVisible();
 });
 
 // Доп. тест: восстановление после перезагрузки (PlayerState.applyState)
 test('reload restores state via PlayerState.applyState', async ({ page }) => {
-  await page.goto(`${BASE}/index.html`, { waitUntil: 'load' });
-  await page.fill('#promo-inp', 'VITRINA2025');
-  await page.click('#promo-btn');
-  await page.waitForSelector('#track-list .track', { timeout: 10000 });
-  await page.click('#track-list .track >> nth=0');
-  await page.waitForSelector('#lyricsplayerblock', { timeout: 10000 });
+  await loginByPromo(page);
+  await playFirstTrack(page);
 
-  // Сохраним состояние вручную (эмулируем PlayerState.save)
+  // ✅ Сидируем state только V2/uid
   await page.evaluate(() => {
     const pc = window.playerCore;
+    const track = pc?.getCurrentTrack?.() || null;
+    const albumKey = window.AlbumsManager?.getPlayingAlbum?.() || null;
+
     const st = {
-      album: window.currentAlbumKey || null,
-      trackIndex: 0,
+      album: albumKey,
+      currentAlbum: window.AlbumsManager?.getCurrentAlbum?.() || albumKey,
+      trackUid: String(track?.uid || '').trim() || null,
+      sourceAlbum: String(track?.sourceAlbum || '').trim() || null,
+      trackIndex: typeof pc?.getIndex === 'function' ? (pc.getIndex() || 0) : 0,
       position: Math.floor(pc?.getPosition?.() || 5),
-      volume: pc?.getVolume?.() ?? 1,
+      volume: typeof pc?.getVolume === 'function' ? (pc.getVolume() ?? 100) : 100,
       wasPlaying: true
     };
-    localStorage.setItem('playerStateV1', JSON.stringify(st));
+
+    localStorage.setItem('playerStateV2', JSON.stringify(st));
   });
 
   await page.reload({ waitUntil: 'load' });
-  await page.fill('#promo-inp', 'VITRINA2025'); // после reload может снова спросить промо
-  await page.click('#promo-btn');
+  await loginByPromo(page);
 
   await page.waitForSelector('#lyricsplayerblock', { timeout: 10000 });
   const pos = await page.evaluate(() => Math.floor(window.playerCore?.getPosition?.() || 0));
