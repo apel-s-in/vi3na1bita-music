@@ -156,7 +156,9 @@ class GalleryManager {
     
     // ✅ Локальные html-баннеры (albums/gallery/...) доверенные.
     // Для корректной работы вложенных виджетов (например, Яндекс.Музыка) нужен allow-same-origin.
-    iframe.setAttribute('sandbox', 'allow-scripts allow-popups allow-forms allow-same-origin');
+    // ✅ Минимизируем security-ошибки от сторонних виджетов внутри баннера:
+    // не даём outer-iframe same-origin.
+    iframe.setAttribute('sandbox', 'allow-scripts allow-popups allow-forms');
     iframe.setAttribute('referrerpolicy', 'no-referrer');
     iframe.loading = 'lazy';
     iframe.src = src;
