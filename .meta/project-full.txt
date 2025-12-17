@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ce9133ca4056ccf1b725eb80c2022fbbc7320535.idx
-│   │       ├── pack-ce9133ca4056ccf1b725eb80c2022fbbc7320535.pack
-│   │       └── pack-ce9133ca4056ccf1b725eb80c2022fbbc7320535.rev
+│   │       ├── pack-f7f0cc581e9dfe27e5d41220073e54d9fab4cfdd.idx
+│   │       ├── pack-f7f0cc581e9dfe27e5d41220073e54d9fab4cfdd.pack
+│   │       └── pack-f7f0cc581e9dfe27e5d41220073e54d9fab4cfdd.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -284,7 +284,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-17 21:27:33 UTC
+Сгенерировано: 2025-12-17 21:28:34 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9592,41 +9592,49 @@ try { main(); } catch (e) { console.error("❌", e); process.exit(1); }
 
     updateMediaSession() {
       if (!('mediaSession' in navigator)) return;
-      
+
       const track = this.getCurrentTrack();
       if (!track) return;
-      
+
+      const artworkUrl = track.cover || this.metadata.cover || 'icons/icon-512.png';
+      const artwork = artworkUrl ? [
+        { src: artworkUrl, sizes: '96x96', type: 'image/png' },
+        { src: artworkUrl, sizes: '128x128', type: 'image/png' },
+        { src: artworkUrl, sizes: '192x192', type: 'image/png' },
+        { src: artworkUrl, sizes: '256x256', type: 'image/png' },
+        { src: artworkUrl, sizes: '384x384', type: 'image/png' },
+        { src: artworkUrl, sizes: '512x512', type: 'image/png' }
+      ] : [];
+
       navigator.mediaSession.metadata = new MediaMetadata({
-        title: track.title,
+        title: track.title || 'Без названия',
         artist: track.artist || this.metadata.artist,
         album: track.album || this.metadata.album,
-        artwork: track.cover ? [
-          { src: track.cover, sizes: '512x512', type: 'image/jpeg' }
-        ] : []
+        artwork
       });
-      
+
+      // action handlers — единый источник правды
       navigator.mediaSession.setActionHandler('play', () => this.play());
       navigator.mediaSession.setActionHandler('pause', () => this.pause());
       navigator.mediaSession.setActionHandler('stop', () => this.stop());
       navigator.mediaSession.setActionHandler('previoustrack', () => this.prev());
       navigator.mediaSession.setActionHandler('nexttrack', () => this.next());
-      
+
       navigator.mediaSession.setActionHandler('seekbackward', (details) => {
-        const skipTime = details.seekOffset || 10;
+        const skipTime = details?.seekOffset || 10;
         this.seek(Math.max(0, this.getPosition() - skipTime));
       });
-      
+
       navigator.mediaSession.setActionHandler('seekforward', (details) => {
-        const skipTime = details.seekOffset || 10;
+        const skipTime = details?.seekOffset || 10;
         this.seek(Math.min(this.getDuration(), this.getPosition() + skipTime));
       });
-      
+
       navigator.mediaSession.setActionHandler('seekto', (details) => {
-        if (details.fastSeek && 'fastSeek' in this.sound) {
-          this.sound.fastSeek(details.seekTime);
-        } else {
-          this.seek(details.seekTime);
-        }
+        const t = details?.seekTime;
+        if (typeof t !== 'number') return;
+        // Howler не даёт fastSeek стабильно на Howl; используем seek.
+        this.seek(t);
       });
     }
 
