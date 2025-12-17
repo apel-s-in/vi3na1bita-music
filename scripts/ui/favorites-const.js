@@ -5,8 +5,7 @@
 const SPECIAL_FAVORITES_KEY = '__favorites__';
 const SPECIAL_RELIZ_KEY = '__reliz__';
 
-// Legacy ключ хранилища лайков (V2, numbers). Основной ключ — likedTrackUids:v1 (uid-based).
-const LIKED_STORAGE_KEY_V2 = 'likedTracks:v2';
+// likedTracks:v2 больше не поддерживаем. Единственный ключ лайков: likedTrackUids:v1 (uid-based).
 
 // Ключ хранилища ссылок «Избранного» (refs)
 const FAVORITES_REFS_KEY = 'favoritesAlbumRefs:v1';
@@ -15,6 +14,5 @@ const FAVORITES_REFS_KEY = 'favoritesAlbumRefs:v1';
 Object.assign(window, {
   SPECIAL_FAVORITES_KEY,
   SPECIAL_RELIZ_KEY,
-  LIKED_STORAGE_KEY_V2,
   FAVORITES_REFS_KEY,
 });
