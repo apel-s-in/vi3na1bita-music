@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-614d0a3bef1560d13d7e2dab649c0b56c388052c.idx
-│   │       ├── pack-614d0a3bef1560d13d7e2dab649c0b56c388052c.pack
-│   │       └── pack-614d0a3bef1560d13d7e2dab649c0b56c388052c.rev
+│   │       ├── pack-04840bc05e7aaf0e0086e2954c85053ec223005d.idx
+│   │       ├── pack-04840bc05e7aaf0e0086e2954c85053ec223005d.pack
+│   │       └── pack-04840bc05e7aaf0e0086e2954c85053ec223005d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -118,7 +118,7 @@ vi3na1bita-music/
 │   │   │   ├── 02-cover-04.webp
 │   │   │   └── index.json
 │   │   ├── 03/
-│   │   │   ├── 03-Cover-01.jpg
+│   │   │   ├── 03-cover-01.jpg
 │   │   │   ├── 03-Cover-01.png
 │   │   │   ├── 03-Cover-01.webp
 │   │   │   ├── 03-Cover-02.jpg
@@ -284,7 +284,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-17 16:13:19 UTC
+Сгенерировано: 2025-12-17 17:48:02 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
