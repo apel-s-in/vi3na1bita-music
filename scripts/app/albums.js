@@ -584,6 +584,22 @@ class AlbumsManager {
     trackEl.dataset.index = index;
     trackEl.dataset.album = albumKey;
 
+    // ✅ Индекс воспроизведения внутри playlist (после фильтрации по file).
+    // Это защищает от рассинхрона, если в альбоме появятся треки без audio/file.
+    const albumDataForIndex = this.albumsData.get(albumKey);
+    if (albumDataForIndex && Array.isArray(albumDataForIndex.tracks)) {
+      const playable = albumDataForIndex.tracks.filter(t => !!t && !!t.file);
+      const idxInPlayable = playable.findIndex(t => t && t.uid && track.uid && String(t.uid) === String(track.uid));
+      if (idxInPlayable >= 0) {
+        trackEl.dataset.playIndex = String(idxInPlayable);
+      } else {
+        // fallback: если uid нет/не найден — используем UI index (лучше чем ничего)
+        trackEl.dataset.playIndex = String(index);
+      }
+    } else {
+      trackEl.dataset.playIndex = String(index);
+    }
+
     const isFavorite = window.FavoritesManager
       ? window.FavoritesManager.isFavorite(albumKey, track.uid)
       : false;
@@ -616,6 +632,12 @@ class AlbumsManager {
           return !ad || !ad.file || t.src !== ad.file;
         });
 
+      const playIndex = (() => {
+        const raw = trackEl.dataset.playIndex;
+        const n = Number.parseInt(String(raw || ''), 10);
+        return Number.isFinite(n) && n >= 0 ? n : index;
+      })();
+
       if (needsNewPlaylist) {
         const albumInfo = window.albumsIndex?.find(a => a.key === albumKey);
         const base = albumInfo?.base || '';
@@ -636,7 +658,7 @@ class AlbumsManager {
           }));
 
         if (tracksForCore.length > 0) {
-          window.playerCore.setPlaylist(tracksForCore, index, {
+          window.playerCore.setPlaylist(tracksForCore, playIndex, {
             artist: albumData.artist || 'Витрина Разбита',
             album: albumData.title || albumInfo?.title || '',
             cover: albumData.cover
@@ -648,9 +670,10 @@ class AlbumsManager {
 
       this.highlightCurrentTrack(index);
 
-      window.playerCore.play(index);
+      window.playerCore.play(playIndex);
       this.setPlayingAlbum(albumKey);
 
+      // ensurePlayerBlock должен получать индекс текущей строки UI (чтобы вставить блок под неё)
       window.PlayerUI?.ensurePlayerBlock(index);
     });
 
