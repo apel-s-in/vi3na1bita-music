@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1d5509e52db632e93bf52cb4cabedb2a668c25ff.idx
-│   │       ├── pack-1d5509e52db632e93bf52cb4cabedb2a668c25ff.pack
-│   │       └── pack-1d5509e52db632e93bf52cb4cabedb2a668c25ff.rev
+│   │       ├── pack-8c8e21a7307a9976ae590b33c8d38191006b7a15.idx
+│   │       ├── pack-8c8e21a7307a9976ae590b33c8d38191006b7a15.pack
+│   │       └── pack-8c8e21a7307a9976ae590b33c8d38191006b7a15.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -284,7 +284,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-17 19:58:24 UTC
+Сгенерировано: 2025-12-17 20:01:16 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9899,7 +9899,8 @@ header {
 
 .album-icons {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(56px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: auto;
   gap: 10px;
   align-items: center;
   justify-items: center;
@@ -9910,13 +9911,31 @@ header {
   overflow: hidden;
 }
 
+/* Нижний ряд: только 2 иконки по центру (колонки 2 и 3) */
+.album-icon[data-album="__favorites__"] {
+  grid-row: 2;
+  grid-column: 2;
+}
+.album-icon[data-album="__reliz__"] {
+  grid-row: 2;
+  grid-column: 3;
+}
+
+/* Верхний ряд: 4 обычных альбома (в заданном порядке уже управляет JS) */
+.album-icon[data-album="odnazhdy-v-skazke"],
+.album-icon[data-album="golos-dushi"],
+.album-icon[data-album="mezhdu-zlom-i-dobrom"],
+.album-icon[data-album="krevetochka"] {
+  grid-row: 1;
+}
+
 .album-icons::-webkit-scrollbar {
   display: none;
 }
 
 .album-icon {
-  width: 60px;
-  height: 60px;
+  width: clamp(62px, 16vw, 82px);
+  height: clamp(62px, 16vw, 82px);
   border-radius: 10px;
   overflow: hidden;
   border: 1px solid var(--border-color);
@@ -9937,8 +9956,8 @@ header {
   filter: none;
   opacity: 1;
   box-shadow: 0 2px 10px rgba(0,0,0,0.35);
-  width: 66px;
-  height: 66px;
+  width: clamp(68px, 17vw, 88px);
+  height: clamp(68px, 17vw, 88px);
 }
 
 .album-icon:hover {
@@ -10514,14 +10533,19 @@ header {
 }
 
 .volume-slider {
-  width: 100%;
-  height: 4px;
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: auto;
+  height: 28px; /* удобнее попадать пальцем */
   background: transparent;
   outline: none;
   -webkit-appearance: none;
   cursor: pointer;
-  position: relative;
   z-index: 2;
+  margin: 0;
 }
 
 .volume-slider::-webkit-slider-thumb {
