@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-61a03167807262d39370343975480197dacd78ab.idx
-│   │       ├── pack-61a03167807262d39370343975480197dacd78ab.pack
-│   │       └── pack-61a03167807262d39370343975480197dacd78ab.rev
+│   │       ├── pack-180bb04a1b2f9d52aa2860d447adb20491f46249.idx
+│   │       ├── pack-180bb04a1b2f9d52aa2860d447adb20491f46249.pack
+│   │       └── pack-180bb04a1b2f9d52aa2860d447adb20491f46249.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -284,7 +284,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-17 21:30:46 UTC
+Сгенерировано: 2025-12-17 21:32:08 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -10518,7 +10518,6 @@ header {
 .volume-fill {
   position: absolute;
   left: 20px;
-  right: 20px; /* ✅ фикс зоны, чтобы fill не вылезал */
   height: 4px;
   background: linear-gradient(90deg, #4daaff, #357ac9);
   border-radius: 2px;
