@@ -734,6 +734,9 @@
   }
 
   function toggleAnimation() {
+    const animBtn = document.getElementById('animation-btn');
+    if (animBtn && animBtn.classList.contains('disabled')) return;
+
     if (lyricsViewMode === 'hidden') {
       w.NotificationSystem?.info('Лирика скрыта — анимация недоступна');
       return;
@@ -834,6 +837,9 @@
   }
 
   function toggleLyricsView() {
+    const btn = document.getElementById('lyrics-toggle-btn');
+    if (btn && btn.classList.contains('disabled')) return;
+
     const modes = ['normal', 'hidden', 'expanded'];
     const currentIndex = modes.indexOf(lyricsViewMode);
     const nextIndex = (currentIndex === -1 ? 0 : (currentIndex + 1) % modes.length);
@@ -1023,6 +1029,49 @@
     }
   }
 
+  function setLyricsAvailability(enabled) {
+    const playerBlock = document.getElementById('lyricsplayerblock');
+    if (!playerBlock) return;
+
+    const lyricsWindow = playerBlock.querySelector('#lyrics-window');
+    const lyricsBtn = playerBlock.querySelector('#lyrics-toggle-btn');
+    const animBtn = playerBlock.querySelector('#animation-btn');
+    const bg = playerBlock.querySelector('.lyrics-animated-bg');
+
+    if (lyricsWindow) {
+      lyricsWindow.style.display = enabled ? '' : 'none';
+    }
+
+    if (lyricsBtn) {
+      lyricsBtn.classList.toggle('disabled', !enabled);
+      lyricsBtn.setAttribute('aria-disabled', enabled ? 'false' : 'true');
+      lyricsBtn.setAttribute('tabindex', enabled ? '0' : '-1');
+    }
+
+    if (!enabled) {
+      // если лирики нет — анимацию всегда выключаем и блокируем кнопку
+      animationEnabled = false;
+      try { localStorage.setItem('lyricsAnimationEnabled', '0'); } catch {}
+      if (bg) bg.classList.remove('active');
+      if (animBtn) {
+        animBtn.classList.remove('active');
+        animBtn.classList.add('disabled');
+        animBtn.setAttribute('aria-disabled', 'true');
+        animBtn.setAttribute('tabindex', '-1');
+      }
+
+      // режим лирики приводим к hidden, чтобы не было попыток рендера
+      lyricsViewMode = 'hidden';
+      try { localStorage.setItem('lyricsViewMode', 'hidden'); } catch {}
+    } else {
+      if (animBtn) {
+        animBtn.classList.remove('disabled');
+        animBtn.setAttribute('aria-disabled', 'false');
+        animBtn.setAttribute('tabindex', '0');
+      }
+    }
+  }
+
   async function loadLyrics(lyricsUrl) {
     currentLyrics = [];
     lyricsLastIdx = -1;
@@ -1030,10 +1079,14 @@
     const container = document.getElementById('lyrics');
     if (!container) return Promise.resolve();
 
+    // ✅ Если ссылки на таймкод-лирику нет — прячем окно и дизейблим кнопки
     if (!lyricsUrl) {
-      container.innerHTML = '<div class="lyrics-placeholder">Текст не найден</div>';
+      setLyricsAvailability(false);
       return Promise.resolve();
     }
+
+    // Лирика есть — включаем окно (режим применим позже)
+    setLyricsAvailability(true);
 
     const cacheKey = `lyrics_cache_${lyricsUrl}`;
     const cached = sessionStorage.getItem(cacheKey);
@@ -1042,6 +1095,16 @@
       try {
         const parsed = JSON.parse(cached);
         parseLyrics(parsed);
+
+        // Если после парсинга пусто — считаем, что лирики нет
+        if (!Array.isArray(currentLyrics) || currentLyrics.length === 0) {
+          setLyricsAvailability(false);
+          return Promise.resolve();
+        }
+
+        // Включаем отображение и применяем режим
+        setLyricsAvailability(true);
+        renderLyricsViewMode();
         return Promise.resolve();
       } catch {}
     }
@@ -1080,22 +1143,20 @@
       }
 
       if (currentLyrics.length === 0) {
-        container.innerHTML = '<div class="lyrics-placeholder">Текст пустой</div>';
+        // ✅ Пустая лирика = лирики нет
+        setLyricsAvailability(false);
+        return Promise.resolve();
       }
 
+      // Лирика есть
+      setLyricsAvailability(true);
+      renderLyricsViewMode();
       return Promise.resolve();
 
     } catch (error) {
-      console.error('Failed to load lyrics:', error);
-
-      let errorMsg = 'Ошибка загрузки текста';
-      if (error.message.includes('404')) {
-        errorMsg = 'Текст не найден (404)';
-      } else if (error.message.includes('Невалидный')) {
-        errorMsg = 'Неверный формат текста';
-      }
-
-      container.innerHTML = `<div class="lyrics-placeholder">${errorMsg}</div>`;
+      // ✅ По ТЗ: без ошибок в консоли. Просто считаем, что таймкод‑лирики нет.
+      // Не показываем окно и дизейблим кнопки.
+      setLyricsAvailability(false);
       return Promise.resolve();
     }
   }
