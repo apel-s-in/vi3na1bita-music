@@ -42,7 +42,7 @@ albums.forEach((a, i) => {
 
 // 2) Проверка центральных галерей и index.json наличия/структуры
 const galleryRoot = path.resolve('albums/gallery');
-const required = ['00','01','02','news'];
+const required = ['00','01','02','03','news'];
 required.forEach(id => {
   const dir = path.join(galleryRoot, id);
   const idx = path.join(dir, 'index.json');
