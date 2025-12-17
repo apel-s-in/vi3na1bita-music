@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-534377b63b8a315798670d6e8ea58979e9d92d40.idx
-│   │       ├── pack-534377b63b8a315798670d6e8ea58979e9d92d40.pack
-│   │       └── pack-534377b63b8a315798670d6e8ea58979e9d92d40.rev
+│   │       ├── pack-257486d762659fffca6c0fa1a813774b7670d84b.idx
+│   │       ├── pack-257486d762659fffca6c0fa1a813774b7670d84b.pack
+│   │       └── pack-257486d762659fffca6c0fa1a813774b7670d84b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -284,7 +284,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-17 19:20:35 UTC
+Сгенерировано: 2025-12-17 19:23:03 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5081,17 +5081,25 @@ export default NavigationManager;
       }
     }
 
+    // ✅ Громкость: если первый запуск/очистка — ставим 50%.
+    // Далее используем сохранённое значение и не сбрасываем его.
+    let volume = 50;
     const savedVolume = localStorage.getItem('playerVolume');
+
     if (savedVolume !== null) {
-      const volume = parseInt(savedVolume, 10);
-      w.playerCore?.setVolume(volume);
-
-      const volumeSlider = document.getElementById('volume-slider');
-      const volumeFill = document.getElementById('volume-fill');
-
-      if (volumeSlider) volumeSlider.value = volume;
-      if (volumeFill) volumeFill.style.width = `${volume}%`;
+      const v = parseInt(savedVolume, 10);
+      if (Number.isFinite(v)) volume = v;
+    } else {
+      try { localStorage.setItem('playerVolume', String(volume)); } catch {}
     }
+
+    w.playerCore?.setVolume(volume);
+
+    const volumeSlider = document.getElementById('volume-slider');
+    const volumeFill = document.getElementById('volume-fill');
+
+    if (volumeSlider) volumeSlider.value = String(volume);
+    if (volumeFill) volumeFill.style.width = `${Math.max(0, Math.min(100, volume))}%`;
 
     const savedLyricsMode = localStorage.getItem('lyricsViewMode');
     if (savedLyricsMode && ['normal', 'hidden', 'expanded'].includes(savedLyricsMode)) {
