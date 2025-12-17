@@ -336,7 +336,8 @@ class AlbumsManager {
       trackEl.innerHTML = `
         <div class="tnum">${displayNum}.</div>
         <div class="track-title" title="${trackTitle} - ${albumTitle}">
-          ${trackTitle} - ${albumTitle}
+          <span class="fav-track-name">${trackTitle}</span>
+          <span class="fav-album-name"> — ${albumTitle}</span>
         </div>
         <img src="${isActive ? 'img/star.png' : 'img/star2.png'}"
              class="like-star"
@@ -615,8 +616,10 @@ class AlbumsManager {
       ? window.FavoritesManager.isFavorite(albumKey, track.uid)
       : false;
 
+    const numText = `${String(track.num || (index + 1)).padStart(2, '0')}.`;
+
     trackEl.innerHTML = `
-      <div class="tnum">${track.num || index + 1}</div>
+      <div class="tnum">${numText}</div>
       <div class="track-title">${track.title}</div>
       <img src="${isFavorite ? 'img/star.png' : 'img/star2.png'}" 
            class="like-star" 
