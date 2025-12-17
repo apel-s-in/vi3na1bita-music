@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c3e6497f3dadc3361e46dc1c22f4c47c2142f329.idx
-│   │       ├── pack-c3e6497f3dadc3361e46dc1c22f4c47c2142f329.pack
-│   │       └── pack-c3e6497f3dadc3361e46dc1c22f4c47c2142f329.rev
+│   │       ├── pack-a6ed252b2c93d37524dc54eebf750cb1249972cb.idx
+│   │       ├── pack-a6ed252b2c93d37524dc54eebf750cb1249972cb.pack
+│   │       └── pack-a6ed252b2c93d37524dc54eebf750cb1249972cb.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -265,7 +265,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-17 12:40:31 UTC
+Сгенерировано: 2025-12-17 12:42:25 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -696,7 +696,7 @@ jobs:
   <script>
     // ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
     
-    const VERSION = '8.0.3';
+    const VERSION = '8.0.4';
     const BUILD_DATE = '2025-12-07';
     
     // Флаги и состояние
