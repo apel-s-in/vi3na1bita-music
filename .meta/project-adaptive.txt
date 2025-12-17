@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a6ed252b2c93d37524dc54eebf750cb1249972cb.idx
-│   │       ├── pack-a6ed252b2c93d37524dc54eebf750cb1249972cb.pack
-│   │       └── pack-a6ed252b2c93d37524dc54eebf750cb1249972cb.rev
+│   │       ├── pack-c85fd7202106f88020c0f30b217d82904184dbcf.idx
+│   │       ├── pack-c85fd7202106f88020c0f30b217d82904184dbcf.pack
+│   │       └── pack-c85fd7202106f88020c0f30b217d82904184dbcf.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -265,7 +265,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-17 12:42:25 UTC
+Сгенерировано: 2025-12-17 12:43:06 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5802,7 +5802,7 @@ console.log('Manifest validation OK');
 // Конфигурация приложения
 export const APP_CONFIG = {
   // Версия приложения
-  APP_VERSION: '8.0.3',
+  APP_VERSION: '8.0.4',
   BUILD_DATE: '2025-11-08',
   // ✅ ПРОМОКОД ДЛЯ ВХОДА
   PROMOCODE: 'VITRINA2025',
