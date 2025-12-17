@@ -1,24 +1,12 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
-
-const BASE = process.env.BASE_URL || 'http://127.0.0.1:4173';
+import { loginByPromo, likeFirstTrack, openFavorites, playFirstTrack } from './utils.js';
 
 test('favorites UI builds and plays from favorites list', async ({ page }) => {
-  await page.goto(`${BASE}/index.html`, { waitUntil: 'load' });
-  await page.fill('#promo-inp', 'VITRINA2025');
-  await page.click('#promo-btn');
+  await loginByPromo(page);
 
-  // Отметим первый трек как избранный в текущем альбоме
-  await page.waitForSelector('#track-list .track', { timeout: 10000 });
-  const firstRow = page.locator('#track-list .track').first();
-  await firstRow.hover();
-  await firstRow.locator('.like-star').click();
-
-  // Открыть «Избранное»
-  await page.click('.album-icon[data-akey="__favorites__"]');
-
-  // Должны увидеть хотя бы одну строку
-  await page.waitForSelector('#track-list .track', { timeout: 10000 });
+  await likeFirstTrack(page);
+  await openFavorites(page);
   const favCount = await page.locator('#track-list .track').count();
   expect(favCount).toBeGreaterThan(0);
 
@@ -28,9 +16,7 @@ test('favorites UI builds and plays from favorites list', async ({ page }) => {
 });
 
 test('toggle star in favorites updates row state and localStorage (uid-based)', async ({ page }) => {
-  await page.goto(`${BASE}/index.html`, { waitUntil: 'load' });
-  await page.fill('#promo-inp', 'VITRINA2025');
-  await page.click('#promo-btn');
+  await loginByPromo(page);
 
   // Если пусто — отметим трек как избранный
   await page.waitForSelector('#track-list .track', { timeout: 10000 });
