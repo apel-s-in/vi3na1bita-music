@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9da95be4213c9aa7fe5877e7d370ac9ca80257e5.idx
-│   │       ├── pack-9da95be4213c9aa7fe5877e7d370ac9ca80257e5.pack
-│   │       └── pack-9da95be4213c9aa7fe5877e7d370ac9ca80257e5.rev
+│   │       ├── pack-83447d36dc992febcbeae55149e3e2511648e9fa.idx
+│   │       ├── pack-83447d36dc992febcbeae55149e3e2511648e9fa.pack
+│   │       └── pack-83447d36dc992febcbeae55149e3e2511648e9fa.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -284,7 +284,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-17 21:35:12 UTC
+Сгенерировано: 2025-12-17 21:36:44 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3293,7 +3293,9 @@ class GalleryManager {
     
     // ✅ Локальные html-баннеры (albums/gallery/...) доверенные.
     // Для корректной работы вложенных виджетов (например, Яндекс.Музыка) нужен allow-same-origin.
-    iframe.setAttribute('sandbox', 'allow-scripts allow-popups allow-forms allow-same-origin');
+    // ✅ Минимизируем security-ошибки от сторонних виджетов внутри баннера:
+    // не даём outer-iframe same-origin.
+    iframe.setAttribute('sandbox', 'allow-scripts allow-popups allow-forms');
     iframe.setAttribute('referrerpolicy', 'no-referrer');
     iframe.loading = 'lazy';
     iframe.src = src;
