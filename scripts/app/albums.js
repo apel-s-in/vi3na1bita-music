@@ -36,9 +36,20 @@ class AlbumsManager {
     this.renderAlbumIcons();
     
     const lastAlbum = localStorage.getItem('currentAlbum');
-    const albumToLoad = lastAlbum || window.albumsIndex[0].key;
-    
-    await this.loadAlbum(albumToLoad);
+
+    // ✅ Если альбом не сохранён (первый запуск/очистка) — берём первый "обычный" альбом
+    // из ICON_ALBUMS_ORDER, чтобы порядок был стабильный и управляемый.
+    let albumToLoad = lastAlbum;
+
+    if (!albumToLoad) {
+      const ordered = (APP_CONFIG?.ICON_ALBUMS_ORDER || []).map(x => x.key).filter(Boolean);
+      const firstRegular = ordered.find(k => k && !String(k).startsWith('__') && window.albumsIndex.some(a => a.key === k));
+      albumToLoad = firstRegular || (window.albumsIndex[0]?.key || null);
+    }
+
+    if (albumToLoad) {
+      await this.loadAlbum(albumToLoad);
+    }
   }
 
   renderAlbumIcons() {
