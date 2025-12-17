@@ -1057,6 +1057,22 @@ header {
   pointer-events: none;
 }
 
+/* Disabled (нет таймкод-лирики) */
+.lyrics-toggle-btn.disabled,
+.animation-btn.disabled {
+  background: var(--primary-bg) !important;
+  border-color: rgba(255,255,255,0.06) !important;
+  color: rgba(255,255,255,0.25) !important;
+  box-shadow: none !important;
+  cursor: default !important;
+  opacity: 0.9;
+  pointer-events: none; /* полностью не кликается */
+}
+
+.lyrics-toggle-btn.disabled .lyrics-toggle-btn-visual {
+  color: rgba(255,255,255,0.25) !important;
+}
+
 /* Контейнер для ВСЕХ кнопок (Т + A + 📝 + ❤️ + 💾 + ⚡) */
 .player-extra-buttons-row {
   display: flex;
