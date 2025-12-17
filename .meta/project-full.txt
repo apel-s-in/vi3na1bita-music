@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-209020b0c3b8869875aa97b8453821628570cb25.idx
-│   │       ├── pack-209020b0c3b8869875aa97b8453821628570cb25.pack
-│   │       └── pack-209020b0c3b8869875aa97b8453821628570cb25.rev
+│   │       ├── pack-f20de8e21f13fbc160d4c4fc6e6b45153fb2123e.idx
+│   │       ├── pack-f20de8e21f13fbc160d4c4fc6e6b45153fb2123e.pack
+│   │       └── pack-f20de8e21f13fbc160d4c4fc6e6b45153fb2123e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -284,7 +284,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-17 20:02:06 UTC
+Сгенерировано: 2025-12-17 20:03:12 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -10788,6 +10788,22 @@ header {
   line-height: 1;
   transition: font-size 0.2s, color 0.2s, transform 0.1s;
   pointer-events: none;
+}
+
+/* Disabled (нет таймкод-лирики) */
+.lyrics-toggle-btn.disabled,
+.animation-btn.disabled {
+  background: var(--primary-bg) !important;
+  border-color: rgba(255,255,255,0.06) !important;
+  color: rgba(255,255,255,0.25) !important;
+  box-shadow: none !important;
+  cursor: default !important;
+  opacity: 0.9;
+  pointer-events: none; /* полностью не кликается */
+}
+
+.lyrics-toggle-btn.disabled .lyrics-toggle-btn-visual {
+  color: rgba(255,255,255,0.25) !important;
 }
 
 /* Контейнер для ВСЕХ кнопок (Т + A + 📝 + ❤️ + 💾 + ⚡) */
