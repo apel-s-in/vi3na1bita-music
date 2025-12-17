@@ -26,4 +26,18 @@ jobs:
       - name: Validate albums and galleries
         run: node scripts/ci/validate-content.mjs
 
+  remote-validate:
+    name: Remote content validate (informational)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Remote validate (warnings only)
+        run: node scripts/ci/validate-content.mjs
