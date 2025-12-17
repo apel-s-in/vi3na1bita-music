@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3486c1e4f1fec67c049d04af1bc5c38d10534180.idx
-│   │       ├── pack-3486c1e4f1fec67c049d04af1bc5c38d10534180.pack
-│   │       └── pack-3486c1e4f1fec67c049d04af1bc5c38d10534180.rev
+│   │       ├── pack-35899bfd4d65e7fed1c675abd7ac9736aa6a2c9e.idx
+│   │       ├── pack-35899bfd4d65e7fed1c675abd7ac9736aa6a2c9e.pack
+│   │       └── pack-35899bfd4d65e7fed1c675abd7ac9736aa6a2c9e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -265,7 +265,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-17 11:27:02 UTC
+Сгенерировано: 2025-12-17 11:29:55 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5854,25 +5854,13 @@ if (typeof window !== 'undefined') {
 // FILE: /scripts/e2e/favorites.spec.js
 // @ts-check
 import { test, expect } from '@playwright/test';
-
-const BASE = process.env.BASE_URL || 'http://127.0.0.1:4173';
+import { loginByPromo, likeFirstTrack, openFavorites, playFirstTrack } from './utils.js';
 
 test('favorites UI builds and plays from favorites list', async ({ page }) => {
-  await page.goto(`${BASE}/index.html`, { waitUntil: 'load' });
-  await page.fill('#promo-inp', 'VITRINA2025');
-  await page.click('#promo-btn');
+  await loginByPromo(page);
 
-  // Отметим первый трек как избранный в текущем альбоме
-  await page.waitForSelector('#track-list .track', { timeout: 10000 });
-  const firstRow = page.locator('#track-list .track').first();
-  await firstRow.hover();
-  await firstRow.locator('.like-star').click();
-
-  // Открыть «Избранное»
-  await page.click('.album-icon[data-akey="__favorites__"]');
-
-  // Должны увидеть хотя бы одну строку
-  await page.waitForSelector('#track-list .track', { timeout: 10000 });
+  await likeFirstTrack(page);
+  await openFavorites(page);
   const favCount = await page.locator('#track-list .track').count();
   expect(favCount).toBeGreaterThan(0);
 
@@ -5882,9 +5870,7 @@ test('favorites UI builds and plays from favorites list', async ({ page }) => {
 });
 
 test('toggle star in favorites updates row state and localStorage (uid-based)', async ({ page }) => {
-  await page.goto(`${BASE}/index.html`, { waitUntil: 'load' });
-  await page.fill('#promo-inp', 'VITRINA2025');
-  await page.click('#promo-btn');
+  await loginByPromo(page);
 
   // Если пусто — отметим трек как избранный
   await page.waitForSelector('#track-list .track', { timeout: 10000 });
