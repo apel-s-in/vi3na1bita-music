@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d5593631d8c9c5d546cd42d8c81b8d52b47ba3c6.idx
-│   │       ├── pack-d5593631d8c9c5d546cd42d8c81b8d52b47ba3c6.pack
-│   │       └── pack-d5593631d8c9c5d546cd42d8c81b8d52b47ba3c6.rev
+│   │       ├── pack-be523017a3e7f76a84793e0b067bf496a25d3d1b.idx
+│   │       ├── pack-be523017a3e7f76a84793e0b067bf496a25d3d1b.pack
+│   │       └── pack-be523017a3e7f76a84793e0b067bf496a25d3d1b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -284,7 +284,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-17 17:51:20 UTC
+Сгенерировано: 2025-12-17 17:56:53 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2218,10 +2218,21 @@ class AlbumsManager {
     // ✅ Загрузка галереи ТОЛЬКО через GalleryManager
     await this.loadGallery(albumKey);
 
+    // ✅ Fallback: если галерея не загрузилась/пуста — показываем logo.png,
+    // не трогая воспроизведение (базовое правило плеера соблюдаем).
+    try {
+      const count = window.GalleryManager?.getItemsCount?.() || 0;
+      if (count <= 0) {
+        const slot = document.getElementById('cover-slot');
+        if (slot) {
+          slot.innerHTML = `<img src="img/logo.png" alt="Обложка" draggable="false" loading="lazy">`;
+        }
+      }
+    } catch {}
+
     this.renderAlbumTitle(albumData.title || albumInfo.title);
     
-    // ✅ КРИТИЧНО: НЕ рендерить cover.jpg ВООБЩЕ (галерея всегда есть)
-    // Если галерея пуста — GalleryManager сам покажет logo.png
+    // ✅ cover.jpg намеренно не рендерим: источник обложек — центральная галерея.
     
     this.renderSocials(albumData.social_links);
     this.renderTrackList(albumData.tracks, albumInfo);
