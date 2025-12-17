@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ee858fd9706e927da9cbcb68d5271397a6e249db.idx
-│   │       ├── pack-ee858fd9706e927da9cbcb68d5271397a6e249db.pack
-│   │       └── pack-ee858fd9706e927da9cbcb68d5271397a6e249db.rev
+│   │       ├── pack-d27f1949f32fbf2802b752d3425251f66981e8f9.idx
+│   │       ├── pack-d27f1949f32fbf2802b752d3425251f66981e8f9.pack
+│   │       └── pack-d27f1949f32fbf2802b752d3425251f66981e8f9.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -265,7 +265,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-17 12:24:47 UTC
+Сгенерировано: 2025-12-17 12:25:31 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6986,10 +6986,7 @@ Object.assign(window, {
   // ✅ Основной источник правды: likedTrackUids:v1 (uid-модель)
   const __LIKED_UID_KEY = 'likedTrackUids:v1';
 
-  // Legacy (numbers): оставляем только для совместимости чтения, но не как источник истины.
-  const __LIKED_KEY_V2 = (typeof window.LIKED_STORAGE_KEY_V2 === 'string')
-    ? window.LIKED_STORAGE_KEY_V2
-    : 'likedTracks:v2';
+  // likedTracks:v2 удалён. Остаётся только uid-ветка.
 
   /**
    * Вспомогательный чистый геттер: напрямую читает likedTracks:v2 из localStorage.
