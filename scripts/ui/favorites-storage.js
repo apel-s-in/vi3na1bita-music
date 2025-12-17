@@ -11,10 +11,7 @@
   // ✅ Основной источник правды: likedTrackUids:v1 (uid-модель)
   const __LIKED_UID_KEY = 'likedTrackUids:v1';
 
-  // Legacy (numbers): оставляем только для совместимости чтения, но не как источник истины.
-  const __LIKED_KEY_V2 = (typeof window.LIKED_STORAGE_KEY_V2 === 'string')
-    ? window.LIKED_STORAGE_KEY_V2
-    : 'likedTracks:v2';
+  // likedTracks:v2 удалён. Остаётся только uid-ветка.
 
   /**
    * Вспомогательный чистый геттер: напрямую читает likedTracks:v2 из localStorage.
