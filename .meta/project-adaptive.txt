@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-876ab5b6cef1102b904633d5b4a19e849aa9a970.idx
-│   │       ├── pack-876ab5b6cef1102b904633d5b4a19e849aa9a970.pack
-│   │       └── pack-876ab5b6cef1102b904633d5b4a19e849aa9a970.rev
+│   │       ├── pack-4560455efdb3917c13e70bb37c99997a40bad51c.idx
+│   │       ├── pack-4560455efdb3917c13e70bb37c99997a40bad51c.pack
+│   │       └── pack-4560455efdb3917c13e70bb37c99997a40bad51c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -116,6 +116,20 @@ vi3na1bita-music/
 │   │   │   ├── 02-cover-04.jpg
 │   │   │   ├── 02-cover-04.png
 │   │   │   ├── 02-cover-04.webp
+│   │   │   └── index.json
+│   │   ├── 03/
+│   │   │   ├── 03-Cover-01.jpg
+│   │   │   ├── 03-Cover-01.png
+│   │   │   ├── 03-Cover-01.webp
+│   │   │   ├── 03-Cover-02.jpg
+│   │   │   ├── 03-Cover-02.png
+│   │   │   ├── 03-Cover-02.webp
+│   │   │   ├── 03-Cover-03.jpg
+│   │   │   ├── 03-Cover-03.png
+│   │   │   ├── 03-Cover-03.webp
+│   │   │   ├── 03-Cover-04.jpg
+│   │   │   ├── 03-Cover-04.png
+│   │   │   ├── 03-Cover-04.webp
 │   │   │   └── index.json
 │   │   └── news/
 │   │       ├── thumbs/
@@ -265,7 +279,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-17 15:28:58 UTC
+Сгенерировано: 2025-12-17 15:51:13 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -497,6 +511,37 @@ jobs:
       "formats": {
         "webp": "albums/gallery/02/02-cover-04.webp",
         "full": "albums/gallery/02/02-cover-04.png"
+      }
+    }
+  ]
+}
+
+//=================================================
+// FILE: /albums/gallery/03/index.json
+{
+  "items": [
+    {
+      "formats": {
+        "webp": "albums/gallery/03/03-cover-01.webp",
+        "full": "albums/gallery/03/03-cover-01.png"
+      }
+    },
+    {
+      "formats": {
+        "webp": "albums/gallery/03/03-cover-02.webp",
+        "full": "albums/gallery/03/03-cover-02.png"
+      }
+    },
+    {
+      "formats": {
+        "webp": "albums/gallery/03/03-cover-03.webp",
+        "full": "albums/gallery/03/03-cover-03.png"
+      }
+    },
+    {
+      "formats": {
+        "webp": "albums/gallery/03/03-cover-04.webp",
+        "full": "albums/gallery/03/03-cover-04.png"
       }
     }
   ]
