@@ -195,15 +195,16 @@ header {
 /* ========== ALBUM ICONS ========== */
 
 .album-icons {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(56px, 1fr));
   gap: 10px;
   align-items: center;
-  justify-content: center;
+  justify-items: center;
   margin: 12px auto 0 auto;
   max-width: 400px;
-  overflow-x: auto;
-  padding: 4px 0;
-  scrollbar-width: none;
+  width: 100%;
+  padding: 4px 8px;
+  overflow: hidden;
 }
 
 .album-icons::-webkit-scrollbar {
@@ -220,7 +221,6 @@ header {
   filter: grayscale(70%) brightness(0.88);
   opacity: 0.72;
   transition: transform 0.15s, filter 0.15s, opacity 0.15s, box-shadow 0.15s, width 0.15s ease, height 0.15s ease;
-  flex: 0 0 auto;
 }
 
 .album-icon img {
