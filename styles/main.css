@@ -819,7 +819,6 @@ header {
 .volume-fill {
   position: absolute;
   left: 20px;
-  right: 20px; /* ✅ фикс зоны, чтобы fill не вылезал */
   height: 4px;
   background: linear-gradient(90deg, #4daaff, #357ac9);
   border-radius: 2px;
