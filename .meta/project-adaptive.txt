@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-67172e8b291a9437000e342278de018af91bf4ef.idx
-│   │       ├── pack-67172e8b291a9437000e342278de018af91bf4ef.pack
-│   │       └── pack-67172e8b291a9437000e342278de018af91bf4ef.rev
+│   │       ├── pack-3411df9ed869f57d21f33cf1d0d5a34a8a574c05.idx
+│   │       ├── pack-3411df9ed869f57d21f33cf1d0d5a34a8a574c05.pack
+│   │       └── pack-3411df9ed869f57d21f33cf1d0d5a34a8a574c05.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -265,7 +265,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-17 11:40:11 UTC
+Сгенерировано: 2025-12-17 12:22:29 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6447,8 +6447,7 @@ export async function seedPlayerStateV2FromCurrent(page, opts = {}) {
 const SPECIAL_FAVORITES_KEY = '__favorites__';
 const SPECIAL_RELIZ_KEY = '__reliz__';
 
-// Legacy ключ хранилища лайков (V2, numbers). Основной ключ — likedTrackUids:v1 (uid-based).
-const LIKED_STORAGE_KEY_V2 = 'likedTracks:v2';
+// likedTracks:v2 больше не поддерживаем. Единственный ключ лайков: likedTrackUids:v1 (uid-based).
 
 // Ключ хранилища ссылок «Избранного» (refs)
 const FAVORITES_REFS_KEY = 'favoritesAlbumRefs:v1';
@@ -6457,7 +6456,6 @@ const FAVORITES_REFS_KEY = 'favoritesAlbumRefs:v1';
 Object.assign(window, {
   SPECIAL_FAVORITES_KEY,
   SPECIAL_RELIZ_KEY,
-  LIKED_STORAGE_KEY_V2,
   FAVORITES_REFS_KEY,
 });
 
