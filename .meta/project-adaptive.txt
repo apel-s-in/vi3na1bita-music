@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-34d479153b894ad9e59012fa6f832d5e0b62ec20.idx
-│   │       ├── pack-34d479153b894ad9e59012fa6f832d5e0b62ec20.pack
-│   │       └── pack-34d479153b894ad9e59012fa6f832d5e0b62ec20.rev
+│   │       ├── pack-80df62212e5d82290226177a506d28ce0a01a355.idx
+│   │       ├── pack-80df62212e5d82290226177a506d28ce0a01a355.pack
+│   │       └── pack-80df62212e5d82290226177a506d28ce0a01a355.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -284,7 +284,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-17 18:14:42 UTC
+Сгенерировано: 2025-12-17 19:17:24 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9884,15 +9884,16 @@ header {
 /* ========== ALBUM ICONS ========== */
 
 .album-icons {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(56px, 1fr));
   gap: 10px;
   align-items: center;
-  justify-content: center;
+  justify-items: center;
   margin: 12px auto 0 auto;
   max-width: 400px;
-  overflow-x: auto;
-  padding: 4px 0;
-  scrollbar-width: none;
+  width: 100%;
+  padding: 4px 8px;
+  overflow: hidden;
 }
 
 .album-icons::-webkit-scrollbar {
@@ -9909,7 +9910,6 @@ header {
   filter: grayscale(70%) brightness(0.88);
   opacity: 0.72;
   transition: transform 0.15s, filter 0.15s, opacity 0.15s, box-shadow 0.15s, width 0.15s ease, height 0.15s ease;
-  flex: 0 0 auto;
 }
 
 .album-icon img {
