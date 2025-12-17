@@ -665,7 +665,7 @@ class AlbumsManager {
             album: albumKey,
             cover: albumData.cover
               ? new URL(albumData.cover, base).toString()
-              : (albumInfo ? new URL('cover.jpg', albumInfo.base).toString() : 'img/logo.png'),
+              : 'img/logo.png',
             lyrics: t.lyrics || null,
             fulltext: t.fulltext || null,
             uid: (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null
@@ -677,7 +677,7 @@ class AlbumsManager {
             album: albumData.title || albumInfo?.title || '',
             cover: albumData.cover
               ? new URL(albumData.cover, base).toString()
-              : (albumInfo ? new URL('cover.jpg', albumInfo.base).toString() : 'img/logo.png')
+              : 'img/logo.png',
           });
         }
       }
