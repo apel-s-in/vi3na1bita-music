@@ -46,60 +46,8 @@
     }
   }
 
-  // Legacy helpers (numbers) — только чтобы старые вызовы не падали
-  function rawGetLikedMapV2() {
-    try {
-      const raw = localStorage.getItem(__LIKED_KEY_V2);
-      const map = raw ? JSON.parse(raw) : {};
-      return (map && typeof map === 'object') ? map : {};
-    } catch {
-      return {};
-    }
-  }
-
-  function rawGetLikedForAlbumV2(albumKey) {
-    try {
-      const map = rawGetLikedMapV2();
-      const arr = (map && typeof map === 'object') ? map[albumKey] : [];
-      return Array.from(
-        new Set(
-          (Array.isArray(arr) ? arr : [])
-            .map(n => parseInt(n, 10))
-            .filter(Number.isFinite)
-        )
-      );
-    } catch {
-      return [];
-    }
-  }
-
-  function rawToggleLikeForAlbum(albumKey, idx, makeLiked) {
-    const index = parseInt(idx, 10);
-    if (!Number.isFinite(index)) return;
-
-    const map = rawGetLikedMap();
-    const arrRaw = Array.isArray(map[albumKey]) ? map[albumKey] : [];
-    const arr = Array.from(
-      new Set(
-        arrRaw
-          .map(n => parseInt(n, 10))
-          .filter(Number.isFinite)
-      )
-    );
-    const has = arr.includes(index);
-
-    let next = arr.slice();
-    const shouldLike = makeLiked !== undefined ? !!makeLiked : !has;
-    if (shouldLike && !has) next.push(index);
-    if (!shouldLike && has) next = next.filter(x => x !== index);
-
-    map[albumKey] = next;
-    try {
-      localStorage.setItem(__LIKED_KEY, JSON.stringify(map));
-    } catch {
-      // ignore storage errors
-    }
-  }
+  // Legacy helpers (numbers) удалены: likedTracks:v2 остаётся только для миграции в FavoritesManager.
+  // Здесь intentionally нет v2 API, чтобы не поддерживать сломанную/опасную ветку.
 
   /**
    * Публичный совместимый API.
@@ -123,14 +71,7 @@
     return rawGetLikedUidsForAlbum(albumKey);
   }
 
-  // Legacy API: оставляем имена, но явно обозначаем "v2"
-  function getLikedMapV2() {
-    return rawGetLikedMapV2();
-  }
-
-  function getLikedForAlbumV2(albumKey) {
-    return rawGetLikedForAlbumV2(albumKey);
-  }
+  // Legacy API (v2) намеренно не экспортируем. План: удалить likedTracks:v2 через 1–2 релиза.
 
   function toggleLikeForAlbum(albumKey, idx, makeLiked) {
     // ✅ Legacy API: больше не поддерживает числовые индексы как источник правды.
@@ -154,10 +95,6 @@
     // Основной (uid)
     getLikedMap,
     getLikedForAlbum,
-
-    // Legacy (numbers) — если где-то остался старый код/отладка
-    getLikedMapV2,
-    getLikedForAlbumV2,
 
     // Старое имя toggleLikeForAlbum оставляем (оно теперь uid-aware)
     toggleLikeForAlbum,
