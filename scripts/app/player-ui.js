@@ -567,9 +567,12 @@
 
       const setFromClientX = (clientX) => {
         const slider = document.getElementById('volume-slider');
-        if (!slider) return;
+        const track = document.querySelector('.volume-track');
+        if (!slider || !track) return;
 
-        const rect = slider.getBoundingClientRect();
+        const rect = track.getBoundingClientRect();
+        if (!rect.width) return;
+
         const p = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
         const v = Math.round(p * 100);
 
@@ -690,15 +693,17 @@
 
     const fill = document.getElementById('volume-fill');
     const handle = document.getElementById('volume-handle');
-    const slider = document.getElementById('volume-slider');
+    const track = document.querySelector('.volume-track');
 
-    if (fill) fill.style.width = `${v}%`;
+    const p = v / 100;
 
-    if (handle && slider) {
-      const rect = slider.getBoundingClientRect();
-      const x = rect.left + (rect.width * (v / 100));
-      // translate в координаты wrapper: проще — через left в %
-      handle.style.left = `calc(20px + ( (100% - 40px) * ${v / 100} ))`;
+    if (fill) {
+      fill.style.width = `${p * 100}%`;
+    }
+
+    if (handle && track) {
+      // handle позиционируем по дорожке (а не по wrapper/slider)
+      handle.style.left = `${p * 100}%`;
     }
   }
 
@@ -832,10 +837,18 @@
         const el = w.playerCore?.getAudioElement?.();
         if (!el) throw new Error('No audio element for bit effect');
 
-        const source = audioContext.createMediaElementSource(el);
+        // ✅ createMediaElementSource можно создать только 1 раз на один и тот же HTMLMediaElement.
+        // Поэтому кешируем source на элементе.
+        if (!w.__bitMediaSourceCache) w.__bitMediaSourceCache = new WeakMap();
+
+        let source = w.__bitMediaSourceCache.get(el) || null;
+        if (!source) {
+          source = audioContext.createMediaElementSource(el);
+          w.__bitMediaSourceCache.set(el, source);
+        }
+
+        try { source.disconnect(); } catch {}
         source.connect(analyser);
-        // ✅ ВАЖНО: НЕ подключаем к destination, чтобы WebAudio не влиял на звук.
-        // analyser.connect(audioContext.destination);
       } catch (e) {
         console.error('Failed to init AudioContext:', e);
         return;
