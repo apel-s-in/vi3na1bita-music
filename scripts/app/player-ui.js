@@ -1278,17 +1278,25 @@
       }
     }
 
+    // ✅ Громкость: если первый запуск/очистка — ставим 50%.
+    // Далее используем сохранённое значение и не сбрасываем его.
+    let volume = 50;
     const savedVolume = localStorage.getItem('playerVolume');
+
     if (savedVolume !== null) {
-      const volume = parseInt(savedVolume, 10);
-      w.playerCore?.setVolume(volume);
-
-      const volumeSlider = document.getElementById('volume-slider');
-      const volumeFill = document.getElementById('volume-fill');
-
-      if (volumeSlider) volumeSlider.value = volume;
-      if (volumeFill) volumeFill.style.width = `${volume}%`;
+      const v = parseInt(savedVolume, 10);
+      if (Number.isFinite(v)) volume = v;
+    } else {
+      try { localStorage.setItem('playerVolume', String(volume)); } catch {}
     }
+
+    w.playerCore?.setVolume(volume);
+
+    const volumeSlider = document.getElementById('volume-slider');
+    const volumeFill = document.getElementById('volume-fill');
+
+    if (volumeSlider) volumeSlider.value = String(volume);
+    if (volumeFill) volumeFill.style.width = `${Math.max(0, Math.min(100, volume))}%`;
 
     const savedLyricsMode = localStorage.getItem('lyricsViewMode');
     if (savedLyricsMode && ['normal', 'hidden', 'expanded'].includes(savedLyricsMode)) {
