@@ -240,10 +240,21 @@ class AlbumsManager {
     // ✅ Загрузка галереи ТОЛЬКО через GalleryManager
     await this.loadGallery(albumKey);
 
+    // ✅ Fallback: если галерея не загрузилась/пуста — показываем logo.png,
+    // не трогая воспроизведение (базовое правило плеера соблюдаем).
+    try {
+      const count = window.GalleryManager?.getItemsCount?.() || 0;
+      if (count <= 0) {
+        const slot = document.getElementById('cover-slot');
+        if (slot) {
+          slot.innerHTML = `<img src="img/logo.png" alt="Обложка" draggable="false" loading="lazy">`;
+        }
+      }
+    } catch {}
+
     this.renderAlbumTitle(albumData.title || albumInfo.title);
     
-    // ✅ КРИТИЧНО: НЕ рендерить cover.jpg ВООБЩЕ (галерея всегда есть)
-    // Если галерея пуста — GalleryManager сам покажет logo.png
+    // ✅ cover.jpg намеренно не рендерим: источник обложек — центральная галерея.
     
     this.renderSocials(albumData.social_links);
     this.renderTrackList(albumData.tracks, albumInfo);
