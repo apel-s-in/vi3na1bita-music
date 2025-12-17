@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4560455efdb3917c13e70bb37c99997a40bad51c.idx
-│   │       ├── pack-4560455efdb3917c13e70bb37c99997a40bad51c.pack
-│   │       └── pack-4560455efdb3917c13e70bb37c99997a40bad51c.rev
+│   │       ├── pack-2b6ad2f894b43f7fefaa39fd134b95b82ff38384.idx
+│   │       ├── pack-2b6ad2f894b43f7fefaa39fd134b95b82ff38384.pack
+│   │       └── pack-2b6ad2f894b43f7fefaa39fd134b95b82ff38384.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -279,7 +279,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-17 15:51:13 UTC
+Сгенерировано: 2025-12-17 15:54:27 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5457,7 +5457,7 @@ albums.forEach((a, i) => {
 
 // 2) Проверка центральных галерей и index.json наличия/структуры
 const galleryRoot = path.resolve('albums/gallery');
-const required = ['00','01','02','news'];
+const required = ['00','01','02','03','news'];
 required.forEach(id => {
   const dir = path.join(galleryRoot, id);
   const idx = path.join(dir, 'index.json');
