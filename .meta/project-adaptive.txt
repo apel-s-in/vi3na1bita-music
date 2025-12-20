@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9f7eab160b177f40b6986866fa9beba72727ac5f.idx
-│   │       ├── pack-9f7eab160b177f40b6986866fa9beba72727ac5f.pack
-│   │       └── pack-9f7eab160b177f40b6986866fa9beba72727ac5f.rev
+│   │       ├── pack-56358d0225a613d0e0239840bae172b2996a9cee.idx
+│   │       ├── pack-56358d0225a613d0e0239840bae172b2996a9cee.pack
+│   │       └── pack-56358d0225a613d0e0239840bae172b2996a9cee.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -284,7 +284,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 16:13:36 UTC
+Сгенерировано: 2025-12-20 16:16:06 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8286,6 +8286,13 @@ console.log('✅ Notification system initialized');
     sleepMenu = document.createElement('div');
     sleepMenu.className = 'sleep-menu';
 
+    // ✅ Портал в body, чтобы меню не обрезалось overflow'ами плеера
+    // и всегда помещалось на экране.
+    const rect = anchor.getBoundingClientRect();
+    sleepMenu.style.position = 'fixed';
+    sleepMenu.style.right = `${Math.max(8, window.innerWidth - rect.right)}px`;
+    sleepMenu.style.bottom = `${Math.max(8, window.innerHeight - rect.top)}px`;
+
     const items = [];
 
     // Текущий таймер
@@ -8312,7 +8319,7 @@ console.log('✅ Notification system initialized');
     });
 
     sleepMenu.innerHTML = items.join('');
-    anchor.appendChild(sleepMenu);
+    document.body.appendChild(sleepMenu);
 
     // Обработчики
     sleepMenu.querySelectorAll('.sleep-menu-item').forEach(item => {
