@@ -11,6 +11,9 @@ class AlbumsManager {
     this.playingAlbum = null;
     this.albumsData = new Map();
     this.isLoading = false;
+
+    // ✅ Кэш URL обложки альбома (первая картинка из центральной галереи)
+    this.albumCoverUrlCache = new Map();
     
     // ✅ Флаг видимости галереи (toggle при повторном клике)
     this.isGalleryVisible = true;
@@ -266,9 +269,16 @@ class AlbumsManager {
 
       this.albumsData.set(albumKey, albumData);
     }
-
     // ✅ Загрузка галереи ТОЛЬКО через GalleryManager
     await this.loadGallery(albumKey);
+
+    // ✅ Обложка для PlayerCore/MediaSession: первая картинка центральной галереи (или logo)
+    try {
+      const coverUrl = await window.GalleryManager?.getFirstCoverUrl?.(albumKey);
+      this.albumCoverUrlCache.set(albumKey, coverUrl || 'img/logo.png');
+    } catch {
+      this.albumCoverUrlCache.set(albumKey, 'img/logo.png');
+    }
 
     // ✅ Fallback: если галерея не загрузилась/пуста — показываем logo.png,
     // не трогая воспроизведение (базовое правило плеера соблюдаем).
@@ -752,8 +762,7 @@ class AlbumsManager {
       })();
 
       if (needsNewPlaylist) {
-        const albumInfo = window.albumsIndex?.find(a => a.key === albumKey);
-        const base = albumInfo?.base || '';
+        const coverUrl = this.albumCoverUrlCache.get(albumKey) || 'img/logo.png';
 
         const tracksForCore = albumData.tracks
           .filter(t => !!t.file)
@@ -762,9 +771,7 @@ class AlbumsManager {
             title: t.title,
             artist: albumData.artist || 'Витрина Разбита',
             album: albumKey,
-            cover: albumData.cover
-              ? new URL(albumData.cover, base).toString()
-              : 'img/logo.png',
+            cover: coverUrl,
             lyrics: t.lyrics || null,
             fulltext: t.fulltext || null,
             uid: (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null,
@@ -775,9 +782,7 @@ class AlbumsManager {
           window.playerCore.setPlaylist(tracksForCore, playIndex, {
             artist: albumData.artist || 'Витрина Разбита',
             album: albumData.title || albumInfo?.title || '',
-            cover: albumData.cover
-              ? new URL(albumData.cover, base).toString()
-              : 'img/logo.png',
+            cover: coverUrl,
           });
         }
       }
