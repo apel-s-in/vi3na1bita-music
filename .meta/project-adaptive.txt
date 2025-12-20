@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e01d57691229833cd2c00df9e31efbccc48e201f.idx
-│   │       ├── pack-e01d57691229833cd2c00df9e31efbccc48e201f.pack
-│   │       └── pack-e01d57691229833cd2c00df9e31efbccc48e201f.rev
+│   │       ├── pack-16197eff72781ff88f4deaba9f20624fb467d49d.idx
+│   │       ├── pack-16197eff72781ff88f4deaba9f20624fb467d49d.pack
+│   │       └── pack-16197eff72781ff88f4deaba9f20624fb467d49d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -274,7 +274,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 23:42:57 UTC
+Сгенерировано: 2025-12-20 23:43:21 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1118,437 +1118,321 @@ self.addEventListener('message', e => {
 
 //=================================================
 // FILE: /scripts/app/albums.js
-// scripts/app/albums.js — Управление альбомами (оптимизировано)
+// scripts/app/albums.js — Менеджер альбомов
+(function() {
+  'use strict';
 
-const APP_CONFIG = window.APP_CONFIG;
+  const $ = id => document.getElementById(id);
+  const escHtml = s => { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; };
 
-class AlbumsManager {
-  constructor() {
-    this.currentAlbum = null;
-    this.playingAlbum = null;
-    this.albumsData = new Map();
-    this.albumCoverUrlCache = new Map();
-    this.isLoading = false;
-    this.isGalleryVisible = true;
-  }
+  const state = {
+    currentAlbum: null,
+    albumConfig: null,
+    tracks: []
+  };
 
-  async initialize() {
-    await this._waitForAlbumsIndex();
-    if (!window.albumsIndex?.length) {
-      console.error('❌ No albums found');
-      return;
-    }
-    console.log(`✅ Albums available: ${window.albumsIndex.length}`);
-    this.renderAlbumIcons();
-    
-    const lastAlbum = localStorage.getItem('currentAlbum');
-    const ordered = (APP_CONFIG?.ICON_ALBUMS_ORDER || []).map(x => x.key).filter(Boolean);
-    const albumToLoad = lastAlbum || ordered.find(k => !k.startsWith('__') && window.albumsIndex.some(a => a.key === k)) || window.albumsIndex[0]?.key;
-    
-    if (albumToLoad) await this.loadAlbum(albumToLoad);
-  }
-
-  async _waitForAlbumsIndex(maxWait = 2000) {
-    const step = 50;
-    let waited = 0;
-    while ((!window.albumsIndex?.length) && waited < maxWait) {
-      await new Promise(r => setTimeout(r, step));
-      waited += step;
-    }
-  }
-
-  renderAlbumIcons() {
-    const container = document.getElementById('album-icons');
+  // ==================== РЕНДЕРИНГ ИКОНОК АЛЬБОМОВ ====================
+  function renderAlbumIcons() {
+    const container = $('album-icons');
     if (!container) return;
-    container.innerHTML = '';
 
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const albums = window.APP_CONFIG?.ICON_ALBUMS_ORDER || [];
+    container.innerHTML = albums.map(a => `
+      <div class="album-icon-item" data-key="${escHtml(a.key)}" title="${escHtml(a.title)}">
+        <img src="${escHtml(a.icon)}" alt="${escHtml(a.title)}" loading="lazy" draggable="false">
+        <div class="album-icon-title">${escHtml(a.title)}</div>
+      </div>
+    `).join('');
 
-    APP_CONFIG.ICON_ALBUMS_ORDER.forEach(({ key, title, icon }) => {
-      if (!key.startsWith('__') && !window.albumsIndex.some(a => a.key === key)) return;
-
-      const el = document.createElement('div');
-      el.className = 'album-icon';
-      el.dataset.album = key;
-      el.dataset.akey = key;
-      el.title = title;
-
-      const base = icon || 'img/logo.png';
-      const p1x = isMobile ? base.replace(/icon_album\/(.+)\.png$/i, 'icon_album/mobile/$1@1x.jpg') : base.replace(/\.png$/i, '@1x.png');
-      const p2x = isMobile ? p1x.replace(/@1x\.jpg$/i, '@2x.jpg') : p1x.replace(/@1x\.png$/i, '@2x.png');
-
-      el.innerHTML = `<img src="${p1x}" srcset="${p2x} 2x" alt="${title}" draggable="false" loading="lazy" width="60" height="60">`;
-      el.addEventListener('click', () => this._onIconClick(key));
-      container.appendChild(el);
+    container.addEventListener('click', e => {
+      const item = e.target.closest('.album-icon-item');
+      if (item?.dataset.key) loadAlbum(item.dataset.key);
     });
   }
 
-  async _onIconClick(key) {
-    if (this.currentAlbum === key && !key.startsWith('__')) {
-      this._toggleGallery();
+  // ==================== ЗАГРУЗКА АЛЬБОМА ====================
+  async function loadAlbum(key) {
+    if (!key) return;
+
+    // Специальные альбомы
+    if (key === '__favorites__') {
+      await loadFavoritesAlbum();
       return;
     }
-    await this.loadAlbum(key);
-  }
 
-  _toggleGallery() {
-    this.isGalleryVisible = !this.isGalleryVisible;
-    const wrap = document.getElementById('cover-wrap');
-    if (wrap) wrap.style.display = this.isGalleryVisible ? '' : 'none';
-    window.NotificationSystem?.info(this.isGalleryVisible ? '🖼️ Галерея показана' : '🚫 Галерея скрыта');
-  }
+    if (key === '__reliz__') {
+      await loadRelizAlbum();
+      return;
+    }
 
-  async loadAlbum(key) {
-    if (this.isLoading) return;
-    this.isLoading = true;
+    // Обычный альбом
+    const meta = (window.albumsIndex || []).find(a => a.key === key);
+    if (!meta?.base) {
+      window.NotificationSystem?.error?.('Альбом не найден');
+      return;
+    }
 
     try {
-      this.isGalleryVisible = true;
-      this._clearUI();
-      this._updateFilterBtn(key);
-
-      if (key === '__favorites__') await this._loadFavorites();
-      else if (key === '__reliz__') await this._loadNews();
-      else await this._loadRegular(key);
-
-      this.currentAlbum = key;
-      this._updateActiveIcon(key);
-      localStorage.setItem('currentAlbum', key);
-      this._resetFilter();
-
-      window.PlayerUI?.switchAlbumInstantly?.(key);
-      window.PlayerState?.save?.();
-      console.log(`✅ Album loaded: ${key}`);
-    } catch (e) {
-      console.error('❌ Failed to load album:', e);
-      window.NotificationSystem?.error('Ошибка загрузки альбома');
-    } finally {
-      this.isLoading = false;
-    }
-  }
-
-  _updateFilterBtn(key) {
-    const btn = document.getElementById('filter-favorites-btn');
-    if (btn) btn.style.display = (key === '__favorites__' || key === '__reliz__') ? 'none' : '';
-  }
-
-  _resetFilter() {
-    const btn = document.getElementById('filter-favorites-btn');
-    const list = document.getElementById('track-list');
-    if (btn) { btn.textContent = 'Скрыть не отмеченные ⭐ песни'; btn.classList.remove('filtered'); }
-    if (list) list.classList.remove('filtered');
-  }
-
-  async _loadRegular(key) {
-    const info = window.albumsIndex.find(a => a.key === key);
-    if (!info) throw new Error(`Album ${key} not found`);
-
-    let data = this.albumsData.get(key);
-    if (!data) {
-      const base = info.base.endsWith('/') ? info.base : `${info.base}/`;
-      const res = await fetch(`${base}config.json`, { cache: 'no-cache' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-      const raw = await res.json();
-      const tracks = (raw.tracks || []).map((t, i) => ({
-        num: i + 1,
-        title: t.title || `Трек ${i + 1}`,
-        file: t.audio ? new URL(t.audio, base).toString() : null,
-        lyrics: t.lyrics ? new URL(t.lyrics, base).toString() : (t.lrc ? new URL(t.lrc, base).toString() : null),
+      const base = meta.base.endsWith('/') ? meta.base : `${meta.base}/`;
+      const r = await fetch(`${base}config.json`, { cache: 'no-cache' });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      
+      const cfg = await r.json();
+      state.currentAlbum = key;
+      state.albumConfig = cfg;
+      state.tracks = (cfg.tracks || []).map((t, i) => ({
+        ...t,
+        index: i,
+        albumKey: key,
+        audio: t.audio ? new URL(t.audio, base).toString() : null,
+        lyrics: t.lyrics ? new URL(t.lyrics, base).toString() : null,
         fulltext: t.fulltext ? new URL(t.fulltext, base).toString() : null,
-        uid: t.uid?.trim() || null,
-        size: t.size ?? null,
-        hasLyrics: typeof t.hasLyrics === 'boolean' ? t.hasLyrics : !!(t.lyrics || t.lrc)
+        cover: cfg.cover ? new URL(cfg.cover, base).toString() : 'img/logo.png',
+        artist: t.artist || cfg.artist || 'Витрина Разбита',
+        album: cfg.albumName || cfg.title || key
       }));
 
-      data = {
-        title: raw.albumName || info.title,
-        artist: raw.artist || 'Витрина Разбита',
-        cover: raw.cover || 'cover.jpg',
-        social_links: raw.social_links || raw.socials?.map(s => ({ label: s.title, url: s.url })) || [],
-        tracks
-      };
-      this.albumsData.set(key, data);
+      renderTrackList();
+      window.GalleryManager?.loadGallery?.(key);
+      updateAlbumHeader(cfg);
+      
+      // Обновляем плейлист в плеере
+      window.playerCore?.setPlaylist?.(state.tracks);
+      
+      console.log(`✅ Album loaded: ${key}, ${state.tracks.length} tracks`);
+    } catch (e) {
+      console.error('Album load error:', e);
+      window.NotificationSystem?.error?.('Ошибка загрузки альбома');
+    }
+  }
+
+  // ==================== ИЗБРАННОЕ ====================
+  async function loadFavoritesAlbum() {
+    state.currentAlbum = '__favorites__';
+    state.albumConfig = { albumName: '⭐ ИЗБРАННОЕ ⭐', artist: 'Витрина Разбита' };
+
+    try {
+      const model = await window.buildFavoritesRefsModel?.() || [];
+      state.tracks = model.filter(t => t.__active).map((t, i) => ({
+        ...t,
+        index: i,
+        albumKey: t.__a,
+        cover: t.__cover || 'img/logo.png',
+        artist: t.__artist,
+        album: t.__album
+      }));
+
+      renderFavoritesTrackList();
+      window.GalleryManager?.clear?.();
+      updateAlbumHeader(state.albumConfig);
+      window.playerCore?.setPlaylist?.(state.tracks);
+    } catch (e) {
+      console.error('Favorites load error:', e);
+      state.tracks = [];
+      renderFavoritesTrackList();
+    }
+  }
+
+  // ==================== РЕЛИЗЫ/НОВОСТИ ====================
+  async function loadRelizAlbum() {
+    state.currentAlbum = '__reliz__';
+    state.albumConfig = { albumName: 'НОВОСТИ', artist: '' };
+    state.tracks = [];
+
+    try {
+      const r = await fetch('./albums/news/news.json', { cache: 'no-cache' });
+      if (r.ok) {
+        const data = await r.json();
+        renderNewsContent(data);
+      } else {
+        renderNewsContent({ items: [] });
+      }
+    } catch {
+      renderNewsContent({ items: [] });
     }
 
-    await this._loadGallery(key);
-    try {
-      const cover = await window.GalleryManager?.getFirstCoverUrl?.(key);
-      this.albumCoverUrlCache.set(key, cover || 'img/logo.png');
-    } catch { this.albumCoverUrlCache.set(key, 'img/logo.png'); }
-
-    this._renderTitle(data.title || info.title);
-    this._renderSocials(data.social_links);
-    this._renderTracks(data.tracks, info);
-
-    window.PlayerUI?.updateMiniHeader?.();
-    window.PlayerUI?.updateNextUpLabel?.();
-
-    const wrap = document.getElementById('cover-wrap');
-    if (wrap) wrap.style.display = '';
+    window.GalleryManager?.loadGallery?.('__reliz__');
+    updateAlbumHeader(state.albumConfig);
   }
 
-  async _loadGallery(key) {
-    await window.GalleryManager?.loadGallery?.(key);
-  }
-
-  async _loadFavorites() {
-    this._renderTitle('⭐⭐⭐ ИЗБРАННОЕ ⭐⭐⭐', 'fav');
-    document.getElementById('cover-wrap')?.style && (document.getElementById('cover-wrap').style.display = 'none');
-
-    await window.buildFavoritesRefsModel?.();
-    const model = window.favoritesRefsModel || [];
-    const container = document.getElementById('track-list');
+  // ==================== РЕНДЕРИНГ ====================
+  function renderTrackList() {
+    const container = $('track-list');
     if (!container) return;
 
-    if (!model.length) {
-      container.innerHTML = `<div style="padding:20px;text-align:center;color:#8ab8fd"><h3>Избранные треки</h3><p>Отметьте треки звёздочкой ⭐</p></div>`;
+    if (!state.tracks.length) {
+      container.innerHTML = '<div class="empty-message">Нет треков</div>';
       return;
     }
 
-    container.innerHTML = '';
-    model.forEach((item, i) => {
-      const el = document.createElement('div');
-      el.className = 'track' + (item.__active ? '' : ' inactive');
-      el.id = `fav_${item.__a}_${item.__uid}`;
-      el.dataset.index = i;
-      el.dataset.album = item.__a;
-      el.dataset.uid = item.__uid;
-
-      el.innerHTML = `
-        <div class="tnum">${String(i + 1).padStart(2, '0')}.</div>
-        <div class="track-title" title="${item.title} - ${item.__album}">
-          <span class="fav-track-name">${item.title}</span>
-          <span class="fav-album-name"> — ${item.__album}</span>
+    container.innerHTML = state.tracks.map((t, i) => {
+      const isFav = window.FavoritesManager?.isFavorite?.(t.albumKey, t.uid);
+      return `
+        <div class="track-item" data-index="${i}" data-uid="${escHtml(t.uid)}">
+          <div class="track-num">${i + 1}</div>
+          <div class="track-info">
+            <div class="track-title">${escHtml(t.title)}</div>
+            <div class="track-artist">${escHtml(t.artist)}</div>
+          </div>
+          <button class="track-fav-btn ${isFav ? 'active' : ''}" data-uid="${escHtml(t.uid)}">${isFav ? '⭐' : '☆'}</button>
         </div>
-        <img src="${item.__active ? 'img/star.png' : 'img/star2.png'}" class="like-star" alt="★" data-album="${item.__a}" data-uid="${item.__uid}">
       `;
+    }).join('');
 
-      el.addEventListener('click', async (e) => {
-        if (e.target.classList.contains('like-star')) return;
-        if (item.__active && item.audio) {
-          await this.ensureFavoritesPlayback(i);
-        } else {
-          window.FavoritesData?.showFavoritesInactiveModal?.({
-            albumKey: item.__a, uid: item.__uid, title: item.title,
-            onDeleted: () => window.PlayerUI?.updateAvailableTracksForPlayback?.()
-          });
-        }
-      });
-
-      el.querySelector('.like-star')?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const wasActive = item.__active;
-        window.FavoritesManager?.toggleLike?.(item.__a, item.__uid, !wasActive);
-        if (!wasActive) window.FavoritesData?.ensureFavoritesRefsWithLikes?.();
-
-        item.__active = !wasActive;
-        if (!item.__active) { item.audio = null; item.lyrics = null; }
-        el.classList.toggle('inactive', !item.__active);
-        el.querySelector('.like-star').src = item.__active ? 'img/star.png' : 'img/star2.png';
-
-        window.PlayerUI?.updateAvailableTracksForPlayback?.();
-        if (window.playerCore && this.playingAlbum === '__favorites__' && window.playerCore.getIndex() === i && wasActive && !item.__active) {
-          window.playerCore.next();
-        }
-      });
-
-      container.appendChild(el);
-    });
+    bindTrackListEvents(container);
   }
 
-  async ensureFavoritesPlayback(index) {
-    const model = window.favoritesRefsModel || [];
-    const active = model.filter(it => it?.__active && it.audio);
-    if (!active.length) { window.NotificationSystem?.warning('Нет доступных треков'); return; }
-
-    const clicked = model[index];
-    let start = 0;
-    if (clicked?.__active && clicked.audio) {
-      const idx = active.findIndex(it => it.__uid === clicked.__uid && it.__a === clicked.__a);
-      start = idx >= 0 ? idx : 0;
-    }
-
-    const tracks = active.map(it => ({
-      src: it.audio, title: it.title, artist: it.__artist || 'Витрина Разбита',
-      album: '__favorites__', cover: it.__cover || 'img/logo.png',
-      lyrics: it.lyrics, fulltext: it.fulltext, uid: it.__uid, sourceAlbum: it.__a
-    }));
-
-    window.playerCore?.setPlaylist(tracks, start, { artist: 'Витрина Разбита', album: 'Избранное', cover: 'img/logo.png' });
-    window.playerCore?.play(start);
-    this.playingAlbum = '__favorites__';
-    this.highlightCurrentTrack(index);
-    window.PlayerUI?.ensurePlayerBlock?.(index);
-    window.PlayerUI?.updateAvailableTracksForPlayback?.();
-  }
-
-  async _loadNews() {
-    this._renderTitle('📰 НОВОСТИ 📰', 'news');
-    await this._loadGallery('__reliz__');
-    document.getElementById('cover-wrap')?.style && (document.getElementById('cover-wrap').style.display = '');
-
-    const container = document.getElementById('track-list');
+  function renderFavoritesTrackList() {
+    const container = $('track-list');
     if (!container) return;
 
-    container.innerHTML = `
-      <div style="padding:14px 10px;text-align:center;color:#8ab8fd">
-        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:12px">
-          <a href="https://t.me/vitrina_razbita" target="_blank" style="color:#4daaff;text-decoration:underline">Telegram</a>
-          <span style="opacity:.6">·</span>
-          <a href="./news.html" target="_blank" style="color:#4daaff;text-decoration:underline">Страница новостей</a>
+    if (!state.tracks.length) {
+      container.innerHTML = '<div class="empty-message">Избранное пусто.<br>Добавьте треки, нажав ☆</div>';
+      return;
+    }
+
+    container.innerHTML = state.tracks.map((t, i) => `
+      <div class="track-item" data-index="${i}" data-uid="${escHtml(t.uid)}" data-album="${escHtml(t.albumKey)}" id="fav_${escHtml(t.albumKey)}_${escHtml(t.uid)}">
+        <div class="track-num">${i + 1}</div>
+        <div class="track-info">
+          <div class="track-title">${escHtml(t.title)}</div>
+          <div class="track-artist">${escHtml(t.__album || t.artist)}</div>
         </div>
-        <div id="news-inline-status" style="opacity:.85">Загрузка...</div>
+        <button class="track-fav-btn active" data-uid="${escHtml(t.uid)}" data-album="${escHtml(t.albumKey)}">⭐</button>
       </div>
-      <div id="news-inline-list" style="display:grid;gap:12px;padding:0 0 10px"></div>
-    `;
+    `).join('');
 
-    try {
-      const r = await fetch('./news/news.json', { cache: 'no-cache' });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const items = (await r.json())?.items || [];
+    bindFavoritesEvents(container);
+  }
 
-      const status = document.getElementById('news-inline-status');
-      const list = document.getElementById('news-inline-list');
-      if (!list) return;
+  function renderNewsContent(data) {
+    const container = $('track-list');
+    if (!container) return;
 
-      if (!items.length) { if (status) status.textContent = 'Пока новостей нет'; return; }
-      if (status) status.style.display = 'none';
-
-      const esc = s => String(s || '').replace(/[<>&'"]/g, m => ({'<':'&lt;','>':'&gt;','&':'&amp;',"'":'&#39;','"':'&quot;'}[m]));
-      list.innerHTML = items.map(it => {
-        let media = '';
-        if (it.embedUrl) media = `<div style="margin:10px 0"><iframe loading="lazy" style="width:100%;border:0;border-radius:10px;min-height:220px;background:#0b0e15" src="${esc(it.embedUrl)}" allowfullscreen></iframe></div>`;
-        else if (it.image) media = `<div style="margin:10px 0"><img loading="lazy" style="width:100%;border:0;border-radius:10px" src="${esc(it.image)}" alt=""></div>`;
-        else if (it.video) media = `<div style="margin:10px 0"><video controls preload="metadata" style="width:100%;border:0;border-radius:10px;min-height:220px" src="${esc(it.video)}"></video></div>`;
-
-        const tags = (it.tags || []).map(t => `<span style="font-size:12px;color:#4daaff;background:rgba(77,170,255,.12);border:1px solid rgba(77,170,255,.25);padding:4px 8px;border-radius:999px">#${esc(t)}</span>`).join('');
-
-        return `<article style="background:#131a26;border:1px solid #23324a;border-radius:12px;padding:12px;box-shadow:0 4px 16px rgba(0,0,0,.25)">
-          <div style="font-weight:900;font-size:16px;color:#eaf2ff">${esc(it.title || 'Новость')}</div>
-          ${it.date ? `<div style="color:#9db7dd;font-size:13px;margin-top:6px">${esc(it.date)}</div>` : ''}
-          ${media}
-          ${it.text ? `<div style="margin-top:8px;line-height:1.45;color:#eaf2ff">${esc(it.text)}</div>` : ''}
-          ${tags ? `<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center">${tags}</div>` : ''}
-        </article>`;
-      }).join('');
-    } catch {
-      const status = document.getElementById('news-inline-status');
-      if (status) { status.textContent = 'Не удалось загрузить новости'; status.style.color = '#ff6b6b'; }
+    const items = data?.items || [];
+    if (!items.length) {
+      container.innerHTML = '<div class="empty-message">Нет новостей</div>';
+      return;
     }
+
+    container.innerHTML = items.map(item => `
+      <div class="news-item">
+        <div class="news-date">${escHtml(item.date || '')}</div>
+        <div class="news-title">${escHtml(item.title || '')}</div>
+        <div class="news-text">${escHtml(item.text || '')}</div>
+      </div>
+    `).join('');
   }
 
-  _renderTitle(title, mod = '') {
-    const el = document.getElementById('active-album-title');
-    if (el) { el.textContent = title; el.className = 'active-album-title' + (mod ? ` ${mod}` : ''); }
+  function updateAlbumHeader(cfg) {
+    const title = $('album-title');
+    const artist = $('album-artist');
+    if (title) title.textContent = cfg?.albumName || cfg?.title || '';
+    if (artist) artist.textContent = cfg?.artist || '';
   }
 
-  _renderSocials(links) {
-    const container = document.getElementById('social-links');
-    if (!container) return;
-    container.innerHTML = '';
-    (links || []).forEach(l => {
-      const a = document.createElement('a');
-      a.href = l.url; a.target = '_blank'; a.rel = 'noopener noreferrer';
-      a.textContent = l.label || l.title || 'Ссылка';
-      container.appendChild(a);
-    });
-  }
-
-  _renderTracks(tracks, info) {
-    const container = document.getElementById('track-list');
-    if (!container) return;
-    container.innerHTML = '';
-    tracks.forEach((t, i) => container.appendChild(this._createTrackEl(t, info.key, i)));
-  }
-
-  _createTrackEl(track, albumKey, index) {
-    const el = document.createElement('div');
-    el.className = 'track';
-    el.id = `trk${index}`;
-    el.dataset.index = index;
-    el.dataset.album = albumKey;
-
-    const data = this.albumsData.get(albumKey);
-    const playable = data?.tracks?.filter(t => t?.file) || [];
-    const playIdx = playable.findIndex(t => t.uid && track.uid && t.uid === track.uid);
-    el.dataset.playIndex = playIdx >= 0 ? playIdx : index;
-
-    const isFav = window.FavoritesManager?.isFavorite?.(albumKey, track.uid);
-
-    el.innerHTML = `
-      <div class="tnum">${String(track.num || index + 1).padStart(2, '0')}.</div>
-      <div class="track-title">${track.title}</div>
-      <img src="${isFav ? 'img/star.png' : 'img/star2.png'}" class="like-star" alt="★" data-album="${albumKey}" data-uid="${track.uid || ''}">
-    `;
-
-    el.addEventListener('click', (e) => {
-      if (e.target.classList.contains('like-star')) return;
-      const d = this.albumsData.get(albumKey);
-      if (!d || !window.playerCore) { window.NotificationSystem?.error('Альбом не готов'); return; }
-
-      const snap = window.playerCore.getPlaylistSnapshot?.() || [];
-      const needNew = snap.length !== d.tracks.length || snap.some((t, i) => t.src !== d.tracks[i]?.file);
-      const pIdx = Number(el.dataset.playIndex) || index;
-
-      if (needNew) {
-        const cover = this.albumCoverUrlCache.get(albumKey) || 'img/logo.png';
-        const list = d.tracks.filter(t => t.file).map(t => ({
-          src: t.file, title: t.title, artist: d.artist || 'Витрина Разбита',
-          album: albumKey, cover, lyrics: t.lyrics, fulltext: t.fulltext, uid: t.uid, hasLyrics: t.hasLyrics
-        }));
-        if (list.length) window.playerCore.setPlaylist(list, pIdx, { artist: d.artist, album: d.title, cover });
+  // ==================== СОБЫТИЯ ====================
+  function bindTrackListEvents(container) {
+    container.addEventListener('click', e => {
+      // Клик по кнопке избранного
+      const favBtn = e.target.closest('.track-fav-btn');
+      if (favBtn) {
+        e.stopPropagation();
+        const uid = favBtn.dataset.uid;
+        if (uid && state.currentAlbum) {
+          window.FavoritesManager?.toggleLike?.(state.currentAlbum, uid);
+          const isFav = window.FavoritesManager?.isFavorite?.(state.currentAlbum, uid);
+          favBtn.textContent = isFav ? '⭐' : '☆';
+          favBtn.classList.toggle('active', isFav);
+        }
+        return;
       }
 
-      this.highlightCurrentTrack(index);
-      window.playerCore.play(pIdx);
-      this.playingAlbum = albumKey;
-      window.PlayerUI?.ensurePlayerBlock?.(index);
+      // Клик по треку
+      const item = e.target.closest('.track-item');
+      if (item) {
+        const idx = parseInt(item.dataset.index);
+        if (!isNaN(idx) && state.tracks[idx]) {
+          window.playerCore?.playTrack?.(idx);
+        }
+      }
     });
-
-    el.querySelector('.like-star')?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const uid = track.uid?.trim();
-      if (!uid) { window.NotificationSystem?.warning('UID не найден'); return; }
-
-      const liked = window.FavoritesManager?.isFavorite?.(albumKey, uid);
-      window.FavoritesManager?.toggleLike?.(albumKey, uid, !liked);
-      e.target.src = !liked ? 'img/star.png' : 'img/star2.png';
-      el.classList.toggle('is-favorite', !liked);
-    });
-
-    return el;
   }
 
-  highlightCurrentTrack(index) {
-    document.querySelectorAll('.track.current').forEach(el => el.classList.remove('current'));
-    if (typeof index === 'number' && index >= 0) {
-      document.querySelector(`.track[data-index="${index}"]`)?.classList.add('current');
+  function bindFavoritesEvents(container) {
+    container.addEventListener('click', e => {
+      const favBtn = e.target.closest('.track-fav-btn');
+      if (favBtn) {
+        e.stopPropagation();
+        const uid = favBtn.dataset.uid;
+        const albumKey = favBtn.dataset.album;
+        const item = favBtn.closest('.track-item');
+        const title = item?.querySelector('.track-title')?.textContent || 'Трек';
+
+        window.FavoritesData?.showFavoritesDeleteConfirm?.({
+          albumKey, uid, title,
+          onDeleted: () => loadFavoritesAlbum()
+        });
+        return;
+      }
+
+      const item = e.target.closest('.track-item');
+      if (item) {
+        const idx = parseInt(item.dataset.index);
+        if (!isNaN(idx) && state.tracks[idx]) {
+          window.playerCore?.playTrack?.(idx);
+        }
+      }
+    });
+  }
+
+  // ==================== ОБНОВЛЕНИЕ ИЗБРАННОГО ====================
+  function onFavoritesChanged(e) {
+    if (state.currentAlbum === '__favorites__') {
+      loadFavoritesAlbum();
+    } else {
+      // Обновляем кнопки в текущем списке
+      const { albumKey, uid, liked } = e.detail || {};
+      if (albumKey === state.currentAlbum) {
+        const btn = document.querySelector(`.track-fav-btn[data-uid="${uid}"]`);
+        if (btn) {
+          btn.textContent = liked ? '⭐' : '☆';
+          btn.classList.toggle('active', liked);
+        }
+      }
     }
   }
 
-  _updateActiveIcon(key) {
-    document.querySelectorAll('.album-icon').forEach(el => el.classList.toggle('active', el.dataset.album === key));
+  // ==================== ИНИЦИАЛИЗАЦИЯ ====================
+  function initialize() {
+    renderAlbumIcons();
+
+    window.addEventListener('favorites:changed', onFavoritesChanged);
+
+    // Загружаем первый альбом
+    const firstAlbum = window.APP_CONFIG?.ICON_ALBUMS_ORDER?.[0]?.key;
+    if (firstAlbum) {
+      setTimeout(() => loadAlbum(firstAlbum), 100);
+    }
+
+    console.log('✅ AlbumsManager initialized');
   }
 
-  _clearUI() {
-    const list = document.getElementById('track-list');
-    const socials = document.getElementById('social-links');
-    if (list) list.innerHTML = '';
-    if (socials) socials.innerHTML = '';
-    window.GalleryManager?.clear?.();
+  // ==================== ЭКСПОРТ ====================
+  window.AlbumsManager = {
+    initialize,
+    loadAlbum,
+    getCurrentAlbum: () => state.currentAlbum,
+    getTracks: () => state.tracks,
+    getConfig: () => state.albumConfig
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initialize);
+  } else {
+    initialize();
   }
-
-  getCurrentAlbum() { return this.currentAlbum; }
-  getPlayingAlbum() { return this.playingAlbum; }
-  setPlayingAlbum(key) { this.playingAlbum = key || null; }
-  getAlbumData(key) { return this.albumsData.get(key); }
-  getAlbumConfigByKey(key) { return this.albumsData.get(key); }
-  getTrackUid(_, uid) { return uid?.trim() || null; }
-}
-
-window.AlbumsManager = new AlbumsManager();
-export default AlbumsManager;
+})();
 
 //=================================================
 // FILE: /scripts/app/background.js
