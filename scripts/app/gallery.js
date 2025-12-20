@@ -45,7 +45,26 @@ class GalleryManager {
       this.currentIndex = 0;
       this.updateNavigationState();
       
-      // ✅ Показываем logo.png как fallback для альбомов без галереи
+      const slot = document.getElementById('cover-slot');
+      if (slot) {
+        slot.innerHTML = `<img src="img/logo.png" alt="Обложка" draggable="false" loading="lazy">`;
+      }
+      return;
+    }
+
+    // ✅ Кэшируем 404 для галерей чтобы не делать повторные запросы
+    const gallery404Key = `gallery_404_cache:v1`;
+    let gallery404Cache = {};
+    try {
+      const raw = sessionStorage.getItem(gallery404Key);
+      gallery404Cache = raw ? JSON.parse(raw) : {};
+    } catch {}
+
+    if (gallery404Cache[id]) {
+      this.items = [];
+      this.currentIndex = 0;
+      this.updateNavigationState();
+      
       const slot = document.getElementById('cover-slot');
       if (slot) {
         slot.innerHTML = `<img src="img/logo.png" alt="Обложка" draggable="false" loading="lazy">`;
@@ -57,7 +76,14 @@ class GalleryManager {
       const baseDir = `${this.GALLERY_BASE}${id}/`;
       const response = await fetch(`${baseDir}index.json`, { cache: 'force-cache' });
       
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (!response.ok) {
+        // ✅ Кэшируем 404
+        if (response.status === 404) {
+          gallery404Cache[id] = Date.now();
+          try { sessionStorage.setItem(gallery404Key, JSON.stringify(gallery404Cache)); } catch {}
+        }
+        throw new Error(`HTTP ${response.status}`);
+      }
 
       const data = await response.json();
       const rawItems = Array.isArray(data.items) ? data.items : (Array.isArray(data) ? data : []);
