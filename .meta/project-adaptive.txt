@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f4ca115b99a8a1fc1ed62a7f1feccee602664322.idx
-│   │       ├── pack-f4ca115b99a8a1fc1ed62a7f1feccee602664322.pack
-│   │       └── pack-f4ca115b99a8a1fc1ed62a7f1feccee602664322.rev
+│   │       ├── pack-fa69fc47eca33b73464aa94a4f37bb093ba99eae.idx
+│   │       ├── pack-fa69fc47eca33b73464aa94a4f37bb093ba99eae.pack
+│   │       └── pack-fa69fc47eca33b73464aa94a4f37bb093ba99eae.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -284,7 +284,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 14:32:37 UTC
+Сгенерировано: 2025-12-20 14:33:59 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3179,7 +3179,14 @@ class GalleryManager {
     
     if (!id) {
       this.items = [];
+      this.currentIndex = 0;
       this.updateNavigationState();
+      
+      // ✅ Показываем logo.png как fallback для альбомов без галереи
+      const slot = document.getElementById('cover-slot');
+      if (slot) {
+        slot.innerHTML = `<img src="img/logo.png" alt="Обложка" draggable="false" loading="lazy">`;
+      }
       return;
     }
 
@@ -3206,9 +3213,16 @@ class GalleryManager {
 
       console.log(`✅ Gallery loaded: ${this.items.length} items`);
     } catch (error) {
-      console.warn('Failed to load gallery:', error);
+      // ✅ Тихо обрабатываем ошибку загрузки галереи (не засоряем консоль)
       this.items = [];
+      this.currentIndex = 0;
       this.updateNavigationState();
+      
+      // ✅ Показываем logo.png как fallback
+      const slot = document.getElementById('cover-slot');
+      if (slot) {
+        slot.innerHTML = `<img src="img/logo.png" alt="Обложка" draggable="false" loading="lazy">`;
+      }
     }
   }
 
