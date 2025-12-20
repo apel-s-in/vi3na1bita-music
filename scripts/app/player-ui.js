@@ -720,25 +720,18 @@
 
   function renderVolumeUI(value) {
     const v = Math.max(0, Math.min(100, Number(value) || 0));
+    const p = v / 100;
 
     const fill = document.getElementById('volume-fill');
     const handle = document.getElementById('volume-handle');
-    const track = document.querySelector('.volume-track');
-    const wrapper = document.querySelector('.volume-control-wrapper');
-
-    const p = v / 100;
 
     if (fill) {
       fill.style.width = `${p * 100}%`;
     }
 
-    // ✅ Позиционируем handle относительно wrapper, учитывая padding (20px с каждой стороны)
-    if (handle && wrapper) {
-      const wrapperRect = wrapper.getBoundingClientRect();
-      const padding = 20; // padding слева и справа
-      const trackWidth = wrapperRect.width - (padding * 2);
-      const handleOffset = padding + (trackWidth * p);
-      handle.style.left = `${handleOffset}px`;
+    // ✅ handle всегда на конце fill (в процентах), не вылезает из линии
+    if (handle) {
+      handle.style.left = `${p * 100}%`;
     }
   }
 
