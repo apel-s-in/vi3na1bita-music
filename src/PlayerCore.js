@@ -677,6 +677,43 @@
       this.playlist = this.playlist.concat(toAdd);
     }
 
+    removeFromPlaylistTailIfNotPlayed(params = {}) {
+      // ✅ “Умный Spotify”: убрать трек из очереди, если:
+      // - он не текущий
+      // - он ещё не встречался в shuffleHistory
+      // - он есть в плейлисте (обычно ближе к хвосту)
+      const uid = String(params?.uid || '').trim();
+      if (!uid) return false;
+
+      const current = this.getCurrentTrack();
+      const currentUid = String(current?.uid || '').trim();
+      if (currentUid && currentUid === uid) return false;
+
+      // Уже проигрывался?
+      const srcToCheck = (() => {
+        const t = this.playlist.find(x => String(x?.uid || '').trim() === uid) || null;
+        return t?.src || null;
+      })();
+
+      if (!srcToCheck) return false;
+
+      const played = Array.isArray(this.shuffleHistory)
+        ? this.shuffleHistory.some(h => h && h.src === srcToCheck)
+        : false;
+
+      if (played) return false;
+
+      const beforeLen = this.playlist.length;
+      this.playlist = this.playlist.filter(t => String(t?.uid || '').trim() !== uid);
+
+      // Корректировка currentIndex если удалили элемент “до” текущего
+      if (this.currentIndex >= this.playlist.length) {
+        this.currentIndex = this.playlist.length - 1;
+      }
+
+      return this.playlist.length !== beforeLen;
+    }
+
     getAudioElement() {
       // Howler использует Web Audio API, но может предоставить HTML5 audio
       if (this.sound && this.sound._sounds && this.sound._sounds[0]) {
