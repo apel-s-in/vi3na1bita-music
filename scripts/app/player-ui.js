@@ -168,7 +168,7 @@
     <button class="player-control-btn" id="shuffle-btn" title="Shuffle (U)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17h2.735a4 4 0 003.43-1.942l3.67-6.116A4 4 0 0116.265 7H21m0 0l-3-3m3 3l-3 3"/><path d="M3 7h2.735a4 4 0 013.43 1.942l3.67 6.116A4 4 0 0016.265 17H21m0 0l-3 3m3-3l-3-3"/></svg></button>
     <button class="player-control-btn" id="repeat-btn" title="Repeat (R)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg></button>
     <button class="sleep-timer-btn" id="sleep-timer-btn" title="Таймер сна (T)"><svg viewBox="0 0 24 24" width="24" height="24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="sleep-timer-badge" id="sleep-timer-badge" style="display:none">0</span></button>
-    <button class="player-control-btn" id="favorites-btn" title="Только избранные (F)"><img src="img/star2.png" alt="★" id="favorites-btn-icon"/></button>
+    <button class="player-control-btn" id="favorites-btn" title="Только избранные (F)"><img src="img/star2.png" alt="★" id="favorites-btn-icon" width="20" height="20"/></button>
   </div>
 </div>
 <div class="volume-control-wrapper">
