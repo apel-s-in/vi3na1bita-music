@@ -206,9 +206,18 @@ class AlbumsManager {
       const data = raw || {};
 
       const tracks = Array.isArray(data.tracks) ? data.tracks : [];
-      const normTracks = tracks.map((t, idx) => {
+        const normTracks = tracks.map((t, idx) => {
         const file = t.audio ? new URL(t.audio, base).toString() : null;
-        const lyrics = t.lyrics ? new URL(t.lyrics, base).toString() : null;
+        
+        // ✅ Автоопределение URL лирики: поддержка .lrc и .json
+        let lyrics = null;
+        if (t.lyrics) {
+          lyrics = new URL(t.lyrics, base).toString();
+        } else if (t.lrc) {
+          // ✅ Поддержка поля lrc напрямую
+          lyrics = new URL(t.lrc, base).toString();
+        }
+        
         const fulltext = t.fulltext ? new URL(t.fulltext, base).toString() : null;
 
         const uid = (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null;
@@ -218,6 +227,15 @@ class AlbumsManager {
 
         const sizeMB = typeof t.size === 'number' ? t.size : null;
 
+        // ✅ Флаг hasLyrics для оптимизации (без HEAD-запросов)
+        // Если явно указан — используем, иначе определяем по наличию URL
+        let hasLyrics = null;
+        if (typeof t.hasLyrics === 'boolean') {
+          hasLyrics = t.hasLyrics;
+        } else {
+          hasLyrics = !!(lyrics || t.lyrics || t.lrc);
+        }
+
         return {
           num,
           title: t.title || `Трек ${idx + 1}`,
@@ -225,7 +243,8 @@ class AlbumsManager {
           lyrics,
           fulltext,
           uid,
-          size: sizeMB
+          size: sizeMB,
+          hasLyrics // ✅ Новое поле
         };
       });
 
@@ -668,7 +687,8 @@ class AlbumsManager {
               : 'img/logo.png',
             lyrics: t.lyrics || null,
             fulltext: t.fulltext || null,
-            uid: (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null
+            uid: (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null,
+            hasLyrics: t.hasLyrics // ✅ Передаём флаг в PlayerCore
           }));
 
         if (tracksForCore.length > 0) {
