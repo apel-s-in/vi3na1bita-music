@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4d0eac4d67c2ad04781262be1eabcca2c4608589.idx
-│   │       ├── pack-4d0eac4d67c2ad04781262be1eabcca2c4608589.pack
-│   │       └── pack-4d0eac4d67c2ad04781262be1eabcca2c4608589.rev
+│   │       ├── pack-0d151caf15a5e878f06fc200630d4bcdf6f82969.idx
+│   │       ├── pack-0d151caf15a5e878f06fc200630d4bcdf6f82969.pack
+│   │       └── pack-0d151caf15a5e878f06fc200630d4bcdf6f82969.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -285,7 +285,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 20:01:25 UTC
+Сгенерировано: 2025-12-20 20:05:53 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3991,12 +3991,25 @@ export default NavigationManager;
       const changedUid = String(d.uid || '').trim();
       const liked = !!d.liked;
 
+      // ✅ Like: добавить в хвост
       if (liked && changedAlbum === playingAlbum && changedUid) {
         const inCurrent = current.some(t => String(t?.uid || '').trim() === changedUid);
         if (!inCurrent) {
           const add = targetFavoritesPlaylist.find(t => String(t?.uid || '').trim() === changedUid) || null;
           if (add) {
             pc.appendToPlaylistTail?.([add]);
+            ensureAvailableIndicesForPlayback();
+            return;
+          }
+        }
+      }
+
+      // ✅ Unlike НЕ текущего: убрать из хвоста очереди, если ещё не проигран (умный режим)
+      if (!liked && changedAlbum === playingAlbum && changedUid) {
+        const repeat = !!pc.isRepeat?.();
+        if (!repeat) {
+          const removed = pc.removeFromPlaylistTailIfNotPlayed?.({ uid: changedUid });
+          if (removed) {
             ensureAvailableIndicesForPlayback();
             return;
           }
