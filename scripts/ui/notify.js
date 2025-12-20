@@ -1,5 +1,4 @@
-// scripts/ui/notify.js
-// Система уведомлений
+// scripts/ui/notify.js — Система уведомлений (оптимизировано)
 class NotificationSystem {
   constructor() {
     this.container = null;
@@ -10,17 +9,8 @@ class NotificationSystem {
   }
   
   init() {
-    // Создаем контейнер для уведомлений
     this.container = document.createElement('div');
     this.container.id = 'toast-container';
-    this.container.style.cssText = `
-      position: fixed;
-      bottom: 80px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 10000;
-      pointer-events: none;
-    `;
     document.body.appendChild(this.container);
   }
   
