@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-086118620b8264273e3b7d5a905207708a9b51b4.idx
-│   │       ├── pack-086118620b8264273e3b7d5a905207708a9b51b4.pack
-│   │       └── pack-086118620b8264273e3b7d5a905207708a9b51b4.rev
+│   │       ├── pack-9f7eab160b177f40b6986866fa9beba72727ac5f.idx
+│   │       ├── pack-9f7eab160b177f40b6986866fa9beba72727ac5f.pack
+│   │       └── pack-9f7eab160b177f40b6986866fa9beba72727ac5f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -284,7 +284,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 16:12:15 UTC
+Сгенерировано: 2025-12-20 16:13:36 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4330,8 +4330,8 @@ export default NavigationManager;
       volumeWrap.__bound = true;
 
       const setFromClientX = (clientX) => {
-        const slider = document.getElementById('volume-slider');
-        const track = document.querySelector('.volume-track');
+        const slider = block.querySelector('#volume-slider');
+        const track = block.querySelector('.volume-track');
         if (!slider || !track) return;
 
         const rect = track.getBoundingClientRect();
