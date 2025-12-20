@@ -243,37 +243,15 @@
 
       // ✅ При next() мы должны запомнить текущий трек в истории, чтобы prev мог вернуться “как Spotify”.
       this._pushHistoryForCurrent();
-  
-      // ✅ Учитываем режим "только избранные"
-      const availableIndices = window.availableFavoriteIndices;
-  
-      if (Array.isArray(availableIndices) && availableIndices.length > 0) {
-        // Режим "только избранные" активен
-        const currentPos = availableIndices.indexOf(this.currentIndex);
-    
-        if (currentPos === -1) {
-          // Текущий трек не в списке избранных — переходим к первому избранному
-          this.play(availableIndices[0]);
-          return;
-        }
-    
-        let nextPos = currentPos + 1;
-    
-        if (nextPos >= availableIndices.length) {
-          nextPos = 0; // Зацикливаемся
-        }
-    
-        this.play(availableIndices[nextPos]);
-      } else {
-        // Обычный режим — следующий трек по порядку
-        let nextIndex = this.currentIndex + 1;
-    
-        if (nextIndex >= this.playlist.length) {
-          nextIndex = 0;
-        }
-    
-        this.play(nextIndex);
+
+      // Следующий трек по текущему эффективному плейлисту
+      let nextIndex = this.currentIndex + 1;
+
+      if (nextIndex >= this.playlist.length) {
+        nextIndex = 0;
       }
+
+      this.play(nextIndex);
     }
 
     prev() {
@@ -292,33 +270,14 @@
         return;
       }
 
-      // ✅ Fallback: режим "только избранные" (legacy индексы) или обычный порядок
-      const availableIndices = window.availableFavoriteIndices;
+      // ✅ Fallback: предыдущий по текущему эффективному плейлисту
+      let prevIndex = this.currentIndex - 1;
 
-      if (Array.isArray(availableIndices) && availableIndices.length > 0) {
-        const currentPos = availableIndices.indexOf(this.currentIndex);
-
-        if (currentPos === -1) {
-          this.play(availableIndices[availableIndices.length - 1]);
-          return;
-        }
-
-        let prevPos = currentPos - 1;
-
-        if (prevPos < 0) {
-          prevPos = availableIndices.length - 1;
-        }
-
-        this.play(availableIndices[prevPos]);
-      } else {
-        let prevIndex = this.currentIndex - 1;
-
-        if (prevIndex < 0) {
-          prevIndex = this.playlist.length - 1;
-        }
-
-        this.play(prevIndex);
+      if (prevIndex < 0) {
+        prevIndex = this.playlist.length - 1;
       }
+
+      this.play(prevIndex);
     }
 
     // ========== ПЕРЕМОТКА И ПОЗИЦИЯ ==========
