@@ -30,17 +30,18 @@ class DownloadsManager {
         filename: `${albumInfo.title} - ${track.num}. ${track.title}.mp3`
       }));
 
-    // cover в albumData сейчас относительный (например 'cover.jpg').
-    // ВАЖНО: ты сейчас не рендеришь cover.jpg, но для скачивания можно оставить.
-    if (albumData.cover) {
-      try {
-        const coverUrl = new URL(String(albumData.cover), albumInfo.base).toString();
+    // ✅ Обложка: берём ПЕРВУЮ картинку центральной галереи (или пропускаем).
+    try {
+      const coverUrl = await window.GalleryManager?.getFirstCoverUrl?.(albumKey);
+      if (coverUrl && typeof coverUrl === 'string' && coverUrl !== 'img/logo.png') {
+        const extMatch = coverUrl.split('?')[0].match(/\.([a-z0-9]+)$/i);
+        const ext = extMatch ? extMatch[1].toLowerCase() : 'img';
         files.push({
           url: coverUrl,
-          filename: `${albumInfo.title} - cover.jpg`
+          filename: `${albumInfo.title} - cover.${ext}`
         });
-      } catch {}
-    }
+      }
+    } catch {}
 
     this.downloadFiles(files, albumInfo.title);
   }
