@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-7ba8fa6ab028bc602ade036af43cfe487a74d5a4.idx
-│   │       ├── pack-7ba8fa6ab028bc602ade036af43cfe487a74d5a4.pack
-│   │       └── pack-7ba8fa6ab028bc602ade036af43cfe487a74d5a4.rev
+│   │       ├── pack-3cd4081b3d916bfde04d296c098409eea3561b0d.idx
+│   │       ├── pack-3cd4081b3d916bfde04d296c098409eea3561b0d.pack
+│   │       └── pack-3cd4081b3d916bfde04d296c098409eea3561b0d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -285,7 +285,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 20:50:27 UTC
+Сгенерировано: 2025-12-20 20:51:20 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3127,17 +3127,18 @@ class DownloadsManager {
         filename: `${albumInfo.title} - ${track.num}. ${track.title}.mp3`
       }));
 
-    // cover в albumData сейчас относительный (например 'cover.jpg').
-    // ВАЖНО: ты сейчас не рендеришь cover.jpg, но для скачивания можно оставить.
-    if (albumData.cover) {
-      try {
-        const coverUrl = new URL(String(albumData.cover), albumInfo.base).toString();
+    // ✅ Обложка: берём ПЕРВУЮ картинку центральной галереи (или пропускаем).
+    try {
+      const coverUrl = await window.GalleryManager?.getFirstCoverUrl?.(albumKey);
+      if (coverUrl && typeof coverUrl === 'string' && coverUrl !== 'img/logo.png') {
+        const extMatch = coverUrl.split('?')[0].match(/\.([a-z0-9]+)$/i);
+        const ext = extMatch ? extMatch[1].toLowerCase() : 'img';
         files.push({
           url: coverUrl,
-          filename: `${albumInfo.title} - cover.jpg`
+          filename: `${albumInfo.title} - cover.${ext}`
         });
-      } catch {}
-    }
+      }
+    } catch {}
 
     this.downloadFiles(files, albumInfo.title);
   }
