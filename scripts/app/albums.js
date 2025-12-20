@@ -722,6 +722,12 @@ class AlbumsManager {
 
   highlightCurrentTrack(index) {
     document.querySelectorAll('.track.current').forEach(el => el.classList.remove('current'));
+    
+    // ✅ Защита от некорректного индекса
+    if (typeof index !== 'number' || index < 0 || !Number.isFinite(index)) {
+      return;
+    }
+    
     const trackEl = document.querySelector(`.track[data-index="${index}"]`);
     if (trackEl) trackEl.classList.add('current');
   }
