@@ -104,15 +104,28 @@
       overflow:hidden;
       box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03), 0 10px 24px rgba(0,0,0,0.45);
     }
-    /* Делаем сам iframe Я.Музыки резиновым на весь квадрат */
-    .embed iframe{
+    /* ✅ Вместо iframe: кликабельная кнопка на всю область (без сетевых запросов/ошибок) */
+    .embed-link{
       position:absolute;
       inset:0;
-      width:100% !important;
-      height:100% !important;
-      border:0 !important;
-      display:block;
-      background: transparent;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      padding: 18px;
+      color: var(--text);
+      text-decoration:none;
+      font-weight:800;
+      font-size: clamp(16px, 3vw, 22px);
+      background:
+        radial-gradient(120% 140% at 50% 50%, rgba(10,13,23,0.65), rgba(6,8,15,0.9)),
+        var(--bg-2);
+    }
+    .embed-link:hover{
+      filter: brightness(1.05);
+    }
+    .embed-link:active{
+      filter: brightness(0.95);
     }
 
     /* Низ карточки */
@@ -155,20 +168,13 @@
         <h1 class="title">«Голос Души» — уже на Яндекс&nbsp;Музыке</h1>
         <p class="subtitle">Слушайте новый альбом группы «Витрина Разбита»</p>
 
-        <div class="embed" role="group" aria-label="Плеер Яндекс Музыки">
-          <!-- ВАШ ВСТАВЛЕННЫЙ КОД Яндекс Музыки (адаптивный на весь квадрат) -->
-          <iframe
-            frameborder="0"
-            sandbox="allow-scripts allow-popups allow-forms allow-same-origin"
-            referrerpolicy="no-referrer"
-            loading="lazy"
-            allow="clipboard-write; autoplay; encrypted-media"
-            style="border:none;width:614px;height:614px;"
-            width="614"
-            height="614"
-            src="https://music.yandex.ru/iframe/album/38188979">
-              Слушайте <a href="https://music.yandex.ru/album/38188979?utm_source=web&utm_medium=copy_link">Голос Души</a> — <a href="https://music.yandex.ru/artist/24739002">Витрина Разбита</a> на Яндекс Музыке
-          </iframe>
+        <div class="embed" role="group" aria-label="Открыть в Яндекс Музыке">
+          <a class="embed-link"
+             href="https://music.yandex.ru/album/38188979?utm_source=web&utm_medium=copy_link"
+             target="_blank"
+             rel="noopener">
+            Открыть альбом в Яндекс Музыке
+          </a>
         </div>
 
         <div class="footer">
