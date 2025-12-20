@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-54aad99cc150334022d90f7e870f9c8ef04c320c.idx
-│   │       ├── pack-54aad99cc150334022d90f7e870f9c8ef04c320c.pack
-│   │       └── pack-54aad99cc150334022d90f7e870f9c8ef04c320c.rev
+│   │       ├── pack-d8f40a581701c351f180e0f566a7a45d97855784.idx
+│   │       ├── pack-d8f40a581701c351f180e0f566a7a45d97855784.pack
+│   │       └── pack-d8f40a581701c351f180e0f566a7a45d97855784.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -278,7 +278,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 22:41:02 UTC
+Сгенерировано: 2025-12-20 22:45:39 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8189,6 +8189,34 @@ header { width: 100%; text-align: center; }
   border-color: var(--blue);
   color: var(--blue);
   box-shadow: 0 0 12px rgba(77, 170, 255, 0.3);
+}
+
+/* === FIX: Звезда в кнопке избранного === */
+#favorites-btn {
+  overflow: hidden;
+  position: relative;
+}
+
+#favorites-btn img,
+#favorites-btn-icon {
+  width: 20px;
+  height: 20px;
+  max-width: 20px;
+  max-height: 20px;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+}
+
+/* === FIX: Кнопка избранного в плеере === */
+#favorites-btn.favorites-active {
+  background: rgba(255, 215, 0, 0.2);
+  border-color: #ffd700;
+}
+
+#favorites-btn.favorites-active img,
+#favorites-btn.favorites-active #favorites-btn-icon {
+  filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.5));
 }
 
 /* === ТАЙМЕР СНА === */
