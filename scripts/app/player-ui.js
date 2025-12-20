@@ -165,6 +165,12 @@
   let ensurePlayerBlockTimeout = null;
 
   function ensurePlayerBlock(trackIndex) {
+    // ✅ Защита от некорректного индекса
+    if (typeof trackIndex !== 'number' || trackIndex < 0 || !Number.isFinite(trackIndex)) {
+      console.warn('⚠️ ensurePlayerBlock called with invalid trackIndex:', trackIndex);
+      return;
+    }
+
     // Отменяем предыдущий отложенный вызов
     if (ensurePlayerBlockTimeout) {
       clearTimeout(ensurePlayerBlockTimeout);
@@ -695,6 +701,7 @@
     const fill = document.getElementById('volume-fill');
     const handle = document.getElementById('volume-handle');
     const track = document.querySelector('.volume-track');
+    const wrapper = document.querySelector('.volume-control-wrapper');
 
     const p = v / 100;
 
@@ -702,9 +709,13 @@
       fill.style.width = `${p * 100}%`;
     }
 
-    if (handle && track) {
-      // handle позиционируем по дорожке (а не по wrapper/slider)
-      handle.style.left = `${p * 100}%`;
+    // ✅ Позиционируем handle относительно wrapper, учитывая padding (20px с каждой стороны)
+    if (handle && wrapper) {
+      const wrapperRect = wrapper.getBoundingClientRect();
+      const padding = 20; // padding слева и справа
+      const trackWidth = wrapperRect.width - (padding * 2);
+      const handleOffset = padding + (trackWidth * p);
+      handle.style.left = `${handleOffset}px`;
     }
   }
 
@@ -829,44 +840,65 @@
   }
 
   function startBitEffect() {
-    if (!audioContext) {
-      try {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        analyser = audioContext.createAnalyser();
-        analyser.fftSize = 256;
+    // ✅ КРИТИЧНО: Пульсация НЕ должна влиять на воспроизведение музыки.
+    // Используем отдельный AnalyserNode через Howler.ctx, если доступен.
+    // Если Howler использует Web Audio — подключаемся к его masterGain.
+    // Если нет — используем fallback на основе громкости без реального анализа.
 
-        const el = w.playerCore?.getAudioElement?.();
-        if (!el) throw new Error('No audio element for bit effect');
-
-        // ✅ createMediaElementSource можно создать только 1 раз на один и тот же HTMLMediaElement.
-        // Поэтому кешируем source на элементе.
-        if (!w.__bitMediaSourceCache) w.__bitMediaSourceCache = new WeakMap();
-
-        let source = w.__bitMediaSourceCache.get(el) || null;
-        if (!source) {
-          source = audioContext.createMediaElementSource(el);
-          w.__bitMediaSourceCache.set(el, source);
+    try {
+      // Проверяем, есть ли Howler и использует ли он Web Audio
+      if (w.Howler && w.Howler.ctx && w.Howler.masterGain) {
+        if (!audioContext) {
+          audioContext = w.Howler.ctx;
         }
 
-        try { source.disconnect(); } catch {}
-        source.connect(analyser);
-      } catch (e) {
-        console.error('Failed to init AudioContext:', e);
-        return;
+        if (!analyser) {
+          analyser = audioContext.createAnalyser();
+          analyser.fftSize = 256;
+          analyser.smoothingTimeConstant = 0.8;
+
+          // ✅ Подключаем analyser к masterGain Howler (не к отдельному элементу)
+          // Это безопасно и не прерывает воспроизведение
+          try {
+            w.Howler.masterGain.connect(analyser);
+            // analyser также должен быть подключен к destination для звука
+            // Но masterGain уже подключен к destination, так что analyser — параллельно
+          } catch (e) {
+            console.warn('Failed to connect analyser to Howler masterGain:', e);
+          }
+        }
+      } else {
+        // Fallback: Howler не использует Web Audio или недоступен
+        // Используем простую анимацию без реального анализа звука
+        console.log('📊 Pulse: Using fallback animation (no Web Audio)');
       }
+    } catch (e) {
+      console.warn('Failed to init pulse effect AudioContext:', e);
     }
 
     animateBit();
   }
 
   function animateBit() {
-    if (!bitEnabled || !analyser) return;
+    if (!bitEnabled) return;
 
-    const dataArray = new Uint8Array(analyser.frequencyBinCount);
-    analyser.getByteFrequencyData(dataArray);
+    let intensity = 0;
 
-    const avg = dataArray.reduce((sum, val) => sum + val, 0) / dataArray.length;
-    const intensity = (avg / 255) * (bitIntensity / 100);
+    if (analyser) {
+      // Реальный анализ через Web Audio
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      analyser.getByteFrequencyData(dataArray);
+      const avg = dataArray.reduce((sum, val) => sum + val, 0) / dataArray.length;
+      intensity = (avg / 255) * (bitIntensity / 100);
+    } else {
+      // ✅ Fallback: симуляция пульсации на основе того, играет ли музыка
+      // Это не идеально, но не прерывает воспроизведение
+      if (w.playerCore && w.playerCore.isPlaying()) {
+        // Плавная синусоидальная пульсация
+        const time = Date.now() / 1000;
+        intensity = (Math.sin(time * 2) * 0.5 + 0.5) * 0.3 * (bitIntensity / 100);
+      }
+    }
 
     const logo = document.getElementById('logo-bottom');
     if (logo) {
@@ -886,16 +918,16 @@
     const logo = document.getElementById('logo-bottom');
     if (logo) logo.style.transform = 'scale(1)';
 
-    // ✅ Освобождаем ресурсы WebAudio (лучше для iOS/Chrome)
-    try { if (analyser) { analyser.disconnect(); } } catch {}
-    analyser = null;
+    // ✅ НЕ закрываем audioContext, если это Howler.ctx — иначе сломаем воспроизведение!
+    // Только отключаем analyser от графа
+    if (analyser) {
+      try { analyser.disconnect(); } catch {}
+      analyser = null;
+    }
 
-    try {
-      if (audioContext && audioContext.state !== 'closed' && typeof audioContext.close === 'function') {
-        audioContext.close().catch(() => {});
-      }
-    } catch {}
-    audioContext = null;
+    // ✅ НЕ закрываем audioContext, т.к. это может быть Howler.ctx
+    // audioContext оставляем как есть для повторного использования
+    // audioContext = null; // УДАЛЕНО — нельзя закрывать Howler.ctx
   }
 
   function toggleLyricsView() {
