@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e8abdcf568b93ec13b033ba81f8163f88194c5e6.idx
-│   │       ├── pack-e8abdcf568b93ec13b033ba81f8163f88194c5e6.pack
-│   │       └── pack-e8abdcf568b93ec13b033ba81f8163f88194c5e6.rev
+│   │       ├── pack-28332b8c671fc8529bab3d0f1316e62aecbdf28f.idx
+│   │       ├── pack-28332b8c671fc8529bab3d0f1316e62aecbdf28f.pack
+│   │       └── pack-28332b8c671fc8529bab3d0f1316e62aecbdf28f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -265,8 +265,7 @@ vi3na1bita-music/
 │   │   └── sysinfo.js
 │   ├── utils/
 │   │   └── sw-manager.js
-│   ├── app.js
-│   └── energy.js
+│   └── app.js
 ├── src/
 │   ├── .gitkeep
 │   └── PlayerCore.js
@@ -281,7 +280,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 21:58:06 UTC
+Сгенерировано: 2025-12-20 21:58:27 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7478,10 +7477,6 @@ export async function seedPlayerStateV2FromCurrent(page, opts = {}) {
     localStorage.setItem('playerStateV2', JSON.stringify(st));
   }, { position, wasPlaying });
 }
-
-//=================================================
-// FILE: /scripts/energy.js
-
 
 //=================================================
 // FILE: /scripts/ui/favorites.js
