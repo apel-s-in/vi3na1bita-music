@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-dad6261715ad6f96cb4074ce214dbd1814e0edd0.idx
-│   │       ├── pack-dad6261715ad6f96cb4074ce214dbd1814e0edd0.pack
-│   │       └── pack-dad6261715ad6f96cb4074ce214dbd1814e0edd0.rev
+│   │       ├── pack-34e4718d16355592c92f720ab805bbeb481e7c11.idx
+│   │       ├── pack-34e4718d16355592c92f720ab805bbeb481e7c11.pack
+│   │       └── pack-34e4718d16355592c92f720ab805bbeb481e7c11.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -285,7 +285,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 19:35:55 UTC
+Сгенерировано: 2025-12-20 19:36:54 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -666,6 +666,7 @@ jobs:
   <!-- App Modules -->
   <script src="./scripts/app/background-audio.js" defer></script>
   <script src="./scripts/app/background-events.js" defer></script>
+  <script src="./scripts/app/playback-policy.js" defer></script>
   <script src="./scripts/app/player-ui.js" defer></script>
   <script src="./scripts/app/gallery.js" type="module"></script>
   <script src="./scripts/app/albums.js" type="module"></script>
