@@ -118,6 +118,16 @@
 
     ensurePlayerBlock(index);
 
+    // ✅ Сразу (до fetch) выставляем корректную доступность по hasLyrics/lyrics url
+    // чтобы на первом треке не было “мига” активных кнопок.
+    try {
+      const has = checkTrackHasLyrics(track);
+      if (!has) {
+        hasTimedLyricsForCurrentTrack = false;
+        setLyricsAvailability(false);
+      }
+    } catch {}
+
     // ✅ Загрузка лирики (тихо обрабатывает отсутствие файла)
     loadLyrics(track.lyrics).then(() => {
       // Рендерим лирику только если она есть и режим не hidden
