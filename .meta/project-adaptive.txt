@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3bcfebe3e460bb88becc9dac1f8c59044a486f26.idx
-│   │       ├── pack-3bcfebe3e460bb88becc9dac1f8c59044a486f26.pack
-│   │       └── pack-3bcfebe3e460bb88becc9dac1f8c59044a486f26.rev
+│   │       ├── pack-54aad99cc150334022d90f7e870f9c8ef04c320c.idx
+│   │       ├── pack-54aad99cc150334022d90f7e870f9c8ef04c320c.pack
+│   │       └── pack-54aad99cc150334022d90f7e870f9c8ef04c320c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -278,7 +278,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 22:38:06 UTC
+Сгенерировано: 2025-12-20 22:41:02 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8943,6 +8943,33 @@ body.ios #mute-btn { display: none !important; }
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* === FIX: Звёзды не перекрывают плеер === */
+.track-list .track .like-star {
+  pointer-events: auto;
+}
+
+.lyrics-player-block * {
+  position: relative;
+}
+
+.lyrics-player-block .player-controls,
+.lyrics-player-block .player-buttons-wrapper,
+.lyrics-player-block .volume-control-wrapper {
+  z-index: 5;
+}
+
+.lyrics-player-block .player-control-btn,
+.lyrics-player-block .lyrics-toggle-btn,
+.lyrics-player-block .animation-btn,
+.lyrics-player-block .pulse-btn,
+.lyrics-player-block .karaoke-btn,
+.lyrics-player-block .player-download-btn,
+.lyrics-player-block .eco-btn,
+.lyrics-player-block .sleep-timer-btn {
+  position: relative;
+  z-index: 10;
 }
 
 /* === PRINT === */
