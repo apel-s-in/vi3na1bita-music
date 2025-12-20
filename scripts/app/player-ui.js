@@ -389,9 +389,10 @@
       </div>
       
       <div class="volume-control-wrapper">
-        <div class="volume-track"></div>
-        <div class="volume-fill" id="volume-fill"></div>
-        <div class="volume-handle" id="volume-handle"></div>
+        <div class="volume-track" id="volume-track">
+          <div class="volume-fill" id="volume-fill"></div>
+          <div class="volume-handle" id="volume-handle"></div>
+        </div>
         <input type="range" class="volume-slider" id="volume-slider" min="0" max="100" value="100" aria-label="Громкость">
       </div>
       
@@ -717,20 +718,18 @@
 
     const fill = document.getElementById('volume-fill');
     const handle = document.getElementById('volume-handle');
-    const track = document.querySelector('.volume-control-wrapper .volume-track');
+    const track = document.getElementById('volume-track');
 
     if (fill) {
       fill.style.width = `${p * 100}%`;
     }
 
-    // ✅ handle позиционируем по реальной ширине трека (пиксели), чтобы не “улетал” из-за padding/left/right.
     if (handle && track) {
       const rect = track.getBoundingClientRect();
-      const x = rect.width * p;
+      const handleHalf = 7; // 14px / 2 (см. CSS)
+      const xRaw = rect.width * p;
+      const x = Math.max(handleHalf, Math.min(rect.width - handleHalf, xRaw));
       handle.style.left = `${x}px`;
-    } else if (handle) {
-      // fallback (если трек не найден)
-      handle.style.left = `${p * 100}%`;
     }
   }
 
