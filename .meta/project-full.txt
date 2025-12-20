@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b0f145fb35a73aeaa8273a404ce23c27605648f4.idx
-│   │       ├── pack-b0f145fb35a73aeaa8273a404ce23c27605648f4.pack
-│   │       └── pack-b0f145fb35a73aeaa8273a404ce23c27605648f4.rev
+│   │       ├── pack-9b6af13e6834ebcfd875be5db05e09b00f6c1f11.idx
+│   │       ├── pack-9b6af13e6834ebcfd875be5db05e09b00f6c1f11.pack
+│   │       └── pack-9b6af13e6834ebcfd875be5db05e09b00f6c1f11.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -279,7 +279,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 21:58:43 UTC
+Сгенерировано: 2025-12-20 21:59:06 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -610,54 +610,100 @@ jobs:
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Витрина Разбита</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="description" content="Официальные альбомы группы Витрина Разбита. Слушайте онлайн и офлайн.">
-  
-  <!-- PWA -->
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="description" content="Официальные альбомы группы Витрина Разбита">
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#181818" />
-  
-  <!-- iOS & PWA -->
+  <meta name="theme-color" content="#181818">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Витрина Разбита">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  
-  <!-- Favicons -->
   <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
-  <link rel="icon" href="icons/favicon-16.png" sizes="16x16" type="image/png">
-  
-  <!-- Preload -->
   <link rel="preload" href="img/logo.png" as="image">
-  
-  <!-- Styles -->
   <link rel="stylesheet" href="styles/main.css">
-  
-  <!-- КРИТИЧНО: Howler.js должен загрузиться ПЕРВЫМ -->
   <script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js"></script>
-  
-  <!-- Core -->
+</head>
+<body>
+  <div id="promocode-block">
+    <div class="promo-inner">
+      <img class="promo-cover" src="img/logo.png" alt="Обложка" draggable="false">
+      <h2>Вход по промокоду</h2>
+      <input id="promo-inp" type="text" placeholder="Введите промокод" autocomplete="off" autofocus>
+      <button id="promo-btn">Войти</button>
+      <div id="promo-error"></div>
+    </div>
+  </div>
+
+  <div id="main-block" class="hidden">
+    <header>
+      <div id="active-album-title" class="active-album-title">—</div>
+      <div id="album-icons" class="album-icons"></div>
+      <div id="cover-wrap">
+        <button class="cover-gallery-arrow" id="cover-gallery-arrow-left" title="Назад">
+          <svg width="34" height="34" viewBox="0 0 34 34"><circle cx="17" cy="17" r="16" fill="#23252e" opacity=".65"/><polyline points="20,10 13,17 20,24" fill="none" stroke="#fff" stroke-width="2.9" stroke-linecap="round"/></svg>
+        </button>
+        <div id="cover-slot"></div>
+        <button class="cover-gallery-arrow" id="cover-gallery-arrow-right" title="Вперёд">
+          <svg width="34" height="34" viewBox="0 0 34 34"><circle cx="17" cy="17" r="16" fill="#23252e" opacity=".65"/><polyline points="14,10 21,17 14,24" fill="none" stroke="#fff" stroke-width="2.9" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div id="social-links" class="socials-under-cover"></div>
+    </header>
+    <div id="now-playing" style="width:100%;max-width:395px;margin:8px auto 0"></div>
+    <div class="track-list" id="track-list"></div>
+    <div class="bottom-controls-center">
+      <button class="filter-favorites-btn" id="filter-favorites-btn">Скрыть не отмеченные ⭐ песни</button>
+      <img class="logo-bottom" id="logo-bottom" src="img/logo.png" alt="Логотип">
+      <button id="install-pwa-btn" style="display:none">УСТАНОВИТЬ КАК ПРИЛОЖЕНИЕ</button>
+      <button id="download-album-main">СКАЧАТЬ ВЕСЬ АЛЬБОМ</button>
+      <button class="hotkeys-btn" id="hotkeys-btn" style="display:none">ГОРЯЧИЕ КЛАВИШИ</button>
+      <button id="sysinfo-btn" style="display:none">О СИСТЕМЕ</button>
+      <span class="feedback-link" id="feedback-link">ОБРАТНАЯ СВЯЗЬ</span>
+      <a class="support-link" id="support-link" href="#" target="_blank">ПОДДЕРЖАТЬ</a>
+      <button class="offline-btn online" id="offline-btn">ONLINE</button>
+    </div>
+  </div>
+  <div id="modals-container"></div>
+
+  <script>
+    const VERSION='8.0.4',BUILD_DATE='2025-12-07';
+    window.VERSION=VERSION;window.BUILD_DATE=BUILD_DATE;
+    window.autoNextDisabled=false;window.sleepTimerTarget=null;window.sleepTimerInterval=null;
+
+    window.addEventListener('load',()=>{
+      if(/iPhone|iPad|iPod/i.test(navigator.userAgent))document.body.classList.add('ios');
+      if(localStorage.getItem('promocode')==='VITRINA2025')unlockApp();
+      
+      const inp=document.getElementById('promo-inp'),btn=document.getElementById('promo-btn'),err=document.getElementById('promo-error');
+      const check=()=>{
+        if(inp.value.trim()==='VITRINA2025'){localStorage.setItem('promocode',inp.value.trim());unlockApp();}
+        else{err.textContent='❌ Неверный промокод';inp.classList.add('error');setTimeout(()=>{err.textContent='';inp.classList.remove('error');},2000);}
+      };
+      btn?.addEventListener('click',check);
+      inp?.addEventListener('keypress',e=>{if(e.key==='Enter')check();});
+    });
+
+    function unlockApp(){
+      document.getElementById('promocode-block')?.classList.add('hidden');
+      document.getElementById('main-block')?.classList.remove('hidden');
+      const wait=setInterval(()=>{if(window.app?.initialize){clearInterval(wait);window.app.initialize();}},100);
+    }
+
+    function formatTime(s){if(isNaN(s)||s<0)return'--:--';const m=Math.floor(s/60),sec=Math.floor(s%60);return`${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;}
+    function escapeHtml(s){const d=document.createElement('div');d.textContent=s||'';return d.innerHTML;}
+  </script>
+
   <script src="./scripts/core/bootstrap.js"></script>
   <script src="./scripts/core/config.js" type="module"></script>
-  
-  <!-- Player Core (новая платформа) -->
   <script src="./src/PlayerCore.js" type="module"></script>
-  
-  <!-- UI Modules -->
   <script src="./scripts/ui/notify.js" defer></script>
-  <script src="./scripts/ui/favorites-const.js" defer></script>
-  <script src="./scripts/ui/favorites-storage.js" defer></script>
-  <script src="./scripts/ui/favorites-data.js" defer></script>
   <script src="./scripts/ui/favorites.js" defer></script>
-  <script src="./scripts/ui/favorites-view.js" defer></script>
   <script src="./scripts/ui/sleep.js" defer></script>
   <script src="./scripts/ui/lyrics-modal.js" defer></script>
   <script src="./scripts/ui/sysinfo.js" defer></script>
-  
-  <!-- App Modules -->
   <script src="./scripts/app/background-audio.js" defer></script>
   <script src="./scripts/app/background-events.js" defer></script>
   <script src="./scripts/app/playback-policy.js" defer></script>
@@ -666,235 +712,7 @@ jobs:
   <script src="./scripts/app/albums.js" type="module"></script>
   <script src="./scripts/app/navigation.js" type="module"></script>
   <script src="./scripts/app/downloads.js" type="module"></script>
-  
-  <!-- Main App -->
   <script src="./scripts/app.js" type="module"></script>
-  
-  <!-- Performance Monitoring -->
-  <script src="./performance/rum.js" defer></script>
-</head>
-<body>
-  <!-- Promocode Screen -->
-  <div id="promocode-block">
-    <div class="promo-inner">
-      <img class="promo-cover" id="promo-cover" src="img/logo.png" alt="Обложка" draggable="false"/>
-      <h2>Вход по промокоду</h2>
-      <input id="promo-inp" type="text" placeholder="Введите промокод" autocomplete="off" autofocus />
-      <button id="promo-btn">Войти</button>
-      <div id="promo-error"></div>
-    </div>
-  </div>
-
-  <!-- Main Application -->
-  <div id="main-block" class="hidden">
-    <header>
-      <div id="active-album-title" class="active-album-title">—</div>
-      <div id="album-icons" class="album-icons" aria-label="Альбомы"></div>
-      
-      <div id="cover-wrap">
-        <button class="cover-gallery-arrow" id="cover-gallery-arrow-left" 
-                title="Назад" aria-label="Предыдущая обложка">
-          <svg width="34" height="34" viewBox="0 0 34 34">
-            <circle cx="17" cy="17" r="16" fill="#23252e" opacity="0.65"/>
-            <polyline points="20,10 13,17 20,24" fill="none" stroke="#fff" 
-                      stroke-width="2.9" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
-        
-        <div id="cover-slot" aria-label="Обложка альбома"></div>
-        
-        <button class="cover-gallery-arrow" id="cover-gallery-arrow-right" 
-                title="Вперёд" aria-label="Следующая обложка">
-          <svg width="34" height="34" viewBox="0 0 34 34">
-            <circle cx="17" cy="17" r="16" fill="#23252e" opacity="0.65"/>
-            <polyline points="14,10 21,17 14,24" fill="none" stroke="#fff" 
-                      stroke-width="2.9" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
-      </div>
-
-      <div id="social-links" class="socials-under-cover"></div>
-    </header>
-
-    <!-- Мини-плеер (показывается ТОЛЬКО при просмотре другого альбома) -->
-    <div id="now-playing" style="width:100%; max-width:395px; margin:8px auto 0 auto;"></div>
-    
-    <div class="track-list" id="track-list"></div>
-
-    <div class="bottom-controls-center">
-      <button class="filter-favorites-btn" id="filter-favorites-btn">
-        Скрыть не отмеченные ⭐ песни
-      </button>
-
-      <img class="logo-bottom" id="logo-bottom" src="img/logo.png" alt="Логотип"/>
-      
-      <button id="install-pwa-btn" style="display: none;">
-        УСТАНОВИТЬ КАК ПРИЛОЖЕНИЕ
-      </button>
-      
-      <button id="download-album-main">
-        СКАЧАТЬ ВЕСЬ АЛЬБОМ
-      </button>
-      
-      <button class="hotkeys-btn" id="hotkeys-btn" style="display:none;">
-        ГОРЯЧИЕ КЛАВИШИ
-      </button>
-      
-      <button id="sysinfo-btn" style="display:none;">
-        О СИСТЕМЕ
-      </button>
-      
-      <span class="feedback-link" id="feedback-link">ОБРАТНАЯ СВЯЗЬ</span>
-      
-      <a class="support-link" id="support-link" href="#" target="_blank">
-        ПОДДЕРЖАТЬ
-      </a>
-      
-      <button class="offline-btn online" id="offline-btn">ONLINE</button>
-    </div>
-  </div>
-
-  <!-- Modals Container -->
-  <div id="modals-container"></div>
-
-  <!-- Inline Scripts -->
-  <script>
-    // ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
-    
-    const VERSION = '8.0.4';
-    const BUILD_DATE = '2025-12-07';
-    
-    // Флаги и состояние
-    window.autoNextDisabled = false;
-    window.sleepTimerTarget = null;
-    window.sleepTimerInterval = null;
-    
-    // ========== ПРОВЕРКА ПРОМОКОДА ПРИ ЗАГРУЗКЕ ==========
-    
-    window.addEventListener('load', () => {
-      // Определение iOS
-      if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-        document.body.classList.add('ios');
-      }
-      
-      // Автоматический вход если промокод уже сохранён
-      const savedPromo = localStorage.getItem('promocode');
-      if (savedPromo === 'VITRINA2025') {
-        unlockAppDirectly();
-      }
-      
-      // Обработчик ввода промокода
-      const promoInput = document.getElementById('promo-inp');
-      const promoBtn = document.getElementById('promo-btn');
-      const promoError = document.getElementById('promo-error');
-      
-      const checkPromo = () => {
-        const value = promoInput.value.trim();
-        if (value === 'VITRINA2025') {
-          localStorage.setItem('promocode', value);
-          unlockAppDirectly();
-        } else {
-          promoError.textContent = '❌ Неверный промокод';
-          promoInput.classList.add('error');
-          setTimeout(() => {
-            promoError.textContent = '';
-            promoInput.classList.remove('error');
-          }, 2000);
-        }
-      };
-      
-      promoBtn?.addEventListener('click', checkPromo);
-      promoInput?.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') checkPromo();
-      });
-      
-      // iOS: показать подсказку про установку
-      detectIOSAndShowInstallGuide();
-      
-      // Chrome: подсказка про Memory Saver удалена по дизайну
-    });
-    
-    function unlockAppDirectly() {
-      const promocodeBlock = document.getElementById('promocode-block');
-      const mainBlock = document.getElementById('main-block');
-      
-      if (promocodeBlock) promocodeBlock.classList.add('hidden');
-      if (mainBlock) mainBlock.classList.remove('hidden');
-      
-      // Ждём загрузки window.app
-      const waitForApp = setInterval(() => {
-        if (window.app && typeof window.app.initialize === 'function') {
-          clearInterval(waitForApp);
-          window.app.initialize();
-        }
-      }, 100);
-    }
-    
-    // ========== iOS INSTALL GUIDE ==========
-    
-    function detectIOSAndShowInstallGuide() {
-      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) && !window.MSStream;
-      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
-                           window.navigator.standalone === true;
-      
-      if (!isIOS || isStandalone) return;
-      
-      setTimeout(() => {
-        if (localStorage.getItem('iosInstallDismissed') === '1') return;
-        
-        const el = document.createElement('div');
-        el.className = 'ios-install-prompt';
-        el.innerHTML = `
-          <button class="ios-prompt-close" aria-label="Закрыть" onclick="dismissIOSPrompt()">×</button>
-          <div class="ios-prompt-content">
-            <img class="ios-prompt-icon" src="icons/apple-touch-icon.png" alt="Иконка">
-            <div style="font-weight:800; font-size:18px; margin-bottom:8px;">
-              Установить приложение
-            </div>
-            <div style="opacity:.85; margin-bottom:14px;">
-              Нажмите кнопку <strong>Поделиться</strong> ↗️<br>
-              и выберите <strong>«На экран «Домой»»</strong>
-            </div>
-            <button class="ios-prompt-button" onclick="dismissIOSPrompt()">Понятно</button>
-          </div>
-        `;
-        document.body.appendChild(el);
-        
-        requestAnimationFrame(() => el.classList.add('show'));
-      }, 3000);
-    }
-    
-    function dismissIOSPrompt() {
-      const el = document.querySelector('.ios-install-prompt');
-      if (el) {
-        el.classList.remove('show');
-        localStorage.setItem('iosInstallDismissed', '1');
-        setTimeout(() => el.remove(), 350);
-      }
-    }
-    
-    // ========== УТИЛИТЫ ==========
-    
-    function formatTime(sec) {
-      if (isNaN(sec) || sec < 0) return '--:--';
-      const m = Math.floor(sec / 60);
-      const s = Math.floor(sec % 60);
-      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-    }
-    
-    function escapeHtml(str) {
-      const div = document.createElement('div');
-      div.textContent = str || '';
-      return div.innerHTML;
-    }
-    
-    // ========== ЭКСПОРТ ГЛОБАЛЬНЫХ ПЕРЕМЕННЫХ ==========
-    
-    window.VERSION = VERSION;
-    window.BUILD_DATE = BUILD_DATE;
-    
-    console.log(`🎵 Витрина Разбита v${VERSION} (${BUILD_DATE})`);
-  </script>
 </body>
 </html>
 
