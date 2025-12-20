@@ -538,7 +538,8 @@
             cover: 'img/logo.png',
             lyrics: t.lyrics || null,
             fulltext: t.fulltext || null,
-            uid: (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null
+            uid: (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null,
+            hasLyrics: (typeof t.hasLyrics === 'boolean') ? t.hasLyrics : null
           }));
 
         if (tracksForCore.length > 0) {
