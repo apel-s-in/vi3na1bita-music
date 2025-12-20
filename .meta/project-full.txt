@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ab7022ad21c6b497626b6009c78d25e5ffc96b47.idx
-│   │       ├── pack-ab7022ad21c6b497626b6009c78d25e5ffc96b47.pack
-│   │       └── pack-ab7022ad21c6b497626b6009c78d25e5ffc96b47.rev
+│   │       ├── pack-745865a9f921ce5859645ed2924fe68772ba2874.idx
+│   │       ├── pack-745865a9f921ce5859645ed2924fe68772ba2874.pack
+│   │       └── pack-745865a9f921ce5859645ed2924fe68772ba2874.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -274,7 +274,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 23:45:35 UTC
+Сгенерировано: 2025-12-20 23:45:54 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -734,29 +734,32 @@ jobs:
 // FILE: /manifest.json
 {
   "name": "Витрина Разбита",
-  "short_name": "Vi3na1bita",
-  "description": "Официальные альбомы группы Витрина Разбита",
-  "start_url": "./",
+  "short_name": "Витрина",
+  "description": "Музыкальный плеер",
+  "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#181818",
-  "theme_color": "#181818",
-  "orientation": "portrait-primary",
+  "orientation": "portrait",
+  "theme_color": "#0a0a0a",
+  "background_color": "#0a0a0a",
+  "lang": "ru",
   "icons": [
-    {
-      "src": "icons/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "icons/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
+    { "src": "icons/icon-72.png", "sizes": "72x72", "type": "image/png" },
+    { "src": "icons/icon-96.png", "sizes": "96x96", "type": "image/png" },
+    { "src": "icons/icon-128.png", "sizes": "128x128", "type": "image/png" },
+    { "src": "icons/icon-144.png", "sizes": "144x144", "type": "image/png" },
+    { "src": "icons/icon-152.png", "sizes": "152x152", "type": "image/png" },
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-384.png", "sizes": "384x384", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ],
   "categories": ["music", "entertainment"],
-  "screenshots": []
+  "shortcuts": [
+    {
+      "name": "Избранное",
+      "url": "./index.html?album=__favorites__",
+      "icons": [{ "src": "icons/icon-96.png", "sizes": "96x96" }]
+    }
+  ]
 }
 
 //=================================================
