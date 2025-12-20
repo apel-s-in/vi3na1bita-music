@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2ee171fd249d4ecfd3be406747d61baf9517eae8.idx
-│   │       ├── pack-2ee171fd249d4ecfd3be406747d61baf9517eae8.pack
-│   │       └── pack-2ee171fd249d4ecfd3be406747d61baf9517eae8.rev
+│   │       ├── pack-4d0eac4d67c2ad04781262be1eabcca2c4608589.idx
+│   │       ├── pack-4d0eac4d67c2ad04781262be1eabcca2c4608589.pack
+│   │       └── pack-4d0eac4d67c2ad04781262be1eabcca2c4608589.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -285,7 +285,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 19:59:34 UTC
+Сгенерировано: 2025-12-20 20:01:25 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -10632,6 +10632,43 @@ try { main(); } catch (e) { console.error("❌", e); process.exit(1); }
       // ВАЖНО: originalPlaylist сохраняем как есть — это “источник правды”.
       // В текущем shuffled/favorites-only плейлисте добавляем в хвост.
       this.playlist = this.playlist.concat(toAdd);
+    }
+
+    removeFromPlaylistTailIfNotPlayed(params = {}) {
+      // ✅ “Умный Spotify”: убрать трек из очереди, если:
+      // - он не текущий
+      // - он ещё не встречался в shuffleHistory
+      // - он есть в плейлисте (обычно ближе к хвосту)
+      const uid = String(params?.uid || '').trim();
+      if (!uid) return false;
+
+      const current = this.getCurrentTrack();
+      const currentUid = String(current?.uid || '').trim();
+      if (currentUid && currentUid === uid) return false;
+
+      // Уже проигрывался?
+      const srcToCheck = (() => {
+        const t = this.playlist.find(x => String(x?.uid || '').trim() === uid) || null;
+        return t?.src || null;
+      })();
+
+      if (!srcToCheck) return false;
+
+      const played = Array.isArray(this.shuffleHistory)
+        ? this.shuffleHistory.some(h => h && h.src === srcToCheck)
+        : false;
+
+      if (played) return false;
+
+      const beforeLen = this.playlist.length;
+      this.playlist = this.playlist.filter(t => String(t?.uid || '').trim() !== uid);
+
+      // Корректировка currentIndex если удалили элемент “до” текущего
+      if (this.currentIndex >= this.playlist.length) {
+        this.currentIndex = this.playlist.length - 1;
+      }
+
+      return this.playlist.length !== beforeLen;
     }
 
     getAudioElement() {
