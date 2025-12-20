@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8d110a3861398eb2e72aa5e069f03da8e13aaee2.idx
-│   │       ├── pack-8d110a3861398eb2e72aa5e069f03da8e13aaee2.pack
-│   │       └── pack-8d110a3861398eb2e72aa5e069f03da8e13aaee2.rev
+│   │       ├── pack-9e9cbf01110fbd0834d8111233a12e89a741c7a0.idx
+│   │       ├── pack-9e9cbf01110fbd0834d8111233a12e89a741c7a0.pack
+│   │       └── pack-9e9cbf01110fbd0834d8111233a12e89a741c7a0.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -284,7 +284,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 14:36:30 UTC
+Сгенерировано: 2025-12-20 14:37:16 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4412,7 +4412,11 @@ export default NavigationManager;
     const v = Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0;
 
     w.playerCore?.setVolume(v);
-    renderVolumeUI(v);
+    
+    // ✅ Вызываем renderVolumeUI после небольшой задержки для плавности
+    requestAnimationFrame(() => {
+      renderVolumeUI(v);
+    });
 
     try { localStorage.setItem('playerVolume', String(v)); } catch {}
   }
