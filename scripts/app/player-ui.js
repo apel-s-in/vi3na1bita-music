@@ -724,7 +724,11 @@
     const v = Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0;
 
     w.playerCore?.setVolume(v);
-    renderVolumeUI(v);
+    
+    // ✅ Вызываем renderVolumeUI после небольшой задержки для плавности
+    requestAnimationFrame(() => {
+      renderVolumeUI(v);
+    });
 
     try { localStorage.setItem('playerVolume', String(v)); } catch {}
   }
