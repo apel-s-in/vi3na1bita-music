@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8f1f1cfa73e150557f7f890abe9e6aa497e3d126.idx
-│   │       ├── pack-8f1f1cfa73e150557f7f890abe9e6aa497e3d126.pack
-│   │       └── pack-8f1f1cfa73e150557f7f890abe9e6aa497e3d126.rev
+│   │       ├── pack-cb3d4596621986b3927bd1d416a4816bbddadbc7.idx
+│   │       ├── pack-cb3d4596621986b3927bd1d416a4816bbddadbc7.pack
+│   │       └── pack-cb3d4596621986b3927bd1d416a4816bbddadbc7.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -284,7 +284,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 14:50:07 UTC
+Сгенерировано: 2025-12-20 14:51:06 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4917,8 +4917,12 @@ export default NavigationManager;
       }
     }
 
-    if (!enabled) {
-      // ✅ Лирики нет — выключаем анимацию и приводим режим к hidden
+    // ✅ Визуальный индикатор: если лирики нет, показываем placeholder в окне
+    const container = document.getElementById('lyrics');
+    if (!enabled && container && lyricsWindow && lyricsWindow.style.display !== 'none') {
+      // Если окно лирики видимо, но лирики нет — показываем placeholder
+      container.innerHTML = '<div class="lyrics-placeholder" style="padding: 20px; font-size: 13px;">♪ Текст песни недоступен</div>';
+    }
       animationEnabled = false;
       // НЕ сохраняем в localStorage — это временное состояние для текущего трека
       if (bg) bg.classList.remove('active');
