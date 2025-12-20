@@ -74,7 +74,9 @@
         cover: t.cover || '',
         lyrics: t.lyrics || null,
         fulltext: t.fulltext || null,
-        uid: (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null
+        uid: (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null,
+        hasLyrics: (typeof t.hasLyrics === 'boolean') ? t.hasLyrics : null,
+        sourceAlbum: t.sourceAlbum || null
       }));
 
       if (!preserveOriginalPlaylist) {
