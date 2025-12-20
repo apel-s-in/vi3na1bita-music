@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6647fd3c4d58348137b3f4fe791b302d895c5698.idx
-│   │       ├── pack-6647fd3c4d58348137b3f4fe791b302d895c5698.pack
-│   │       └── pack-6647fd3c4d58348137b3f4fe791b302d895c5698.rev
+│   │       ├── pack-640d5fe5b0cd2c077487f01f23679693c58042b3.idx
+│   │       ├── pack-640d5fe5b0cd2c077487f01f23679693c58042b3.pack
+│   │       └── pack-640d5fe5b0cd2c077487f01f23679693c58042b3.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -274,7 +274,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 23:29:45 UTC
+Сгенерировано: 2025-12-20 23:30:09 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3518,68 +3518,48 @@ if (typeof window !== 'undefined') {
 
 //=================================================
 // FILE: /scripts/core/utils.js
-// scripts/core/utils.js
-// Общие утилиты приложения
+// scripts/core/utils.js — Общие утилиты
+const Utils = {
+  $(id) { return document.getElementById(id); },
+  $q(sel) { return document.querySelector(sel); },
+  $qa(sel) { return document.querySelectorAll(sel); },
+  
+  escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s || '';
+    return d.innerHTML;
+  },
+  
+  formatTime(s) {
+    if (isNaN(s) || s < 0) return '--:--';
+    const m = Math.floor(s / 60), sec = Math.floor(s % 60);
+    return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+  },
+  
+  async waitFor(fn, maxMs = 2000, step = 50) {
+    let t = 0;
+    while (!fn() && t < maxMs) { await new Promise(r => setTimeout(r, step)); t += step; }
+    return fn();
+  },
+  
+  createModal(html, onClose) {
+    const bg = document.createElement('div');
+    bg.className = 'modal-bg active';
+    bg.innerHTML = html;
+    const close = () => { bg.remove(); onClose?.(); };
+    bg.addEventListener('click', e => e.target === bg && close());
+    bg.querySelector('.bigclose')?.addEventListener('click', close);
+    document.body.appendChild(bg);
+    return bg;
+  },
+  
+  isMobile: () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent),
+  isIOS: () => /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream,
+  isStandalone: () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone
+};
 
-export function escapeHtml(s) {
-  const d = document.createElement('div');
-  d.textContent = s || '';
-  return d.innerHTML;
-}
-
-export function formatTime(s) {
-  if (isNaN(s) || s < 0) return '--:--';
-  const m = Math.floor(s / 60), sec = Math.floor(s % 60);
-  return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
-}
-
-export function $(id) {
-  return document.getElementById(id);
-}
-
-export function $q(sel) {
-  return document.querySelector(sel);
-}
-
-export function $qa(sel) {
-  return document.querySelectorAll(sel);
-}
-
-export async function waitFor(condition, maxMs = 2000, stepMs = 50) {
-  let waited = 0;
-  while (!condition() && waited < maxMs) {
-    await new Promise(r => setTimeout(r, stepMs));
-    waited += stepMs;
-  }
-  return condition();
-}
-
-export function createModal(html, onClose) {
-  const bg = document.createElement('div');
-  bg.className = 'modal-bg active';
-  bg.innerHTML = html;
-  bg.addEventListener('click', e => { if (e.target === bg) { bg.remove(); onClose?.(); } });
-  bg.querySelector('.bigclose')?.addEventListener('click', () => { bg.remove(); onClose?.(); });
-  document.body.appendChild(bg);
-  return bg;
-}
-
-export function isMobile() {
-  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-}
-
-export function isIOS() {
-  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-}
-
-export function isStandalone() {
-  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-}
-
-// Глобальный экспорт для совместимости
-if (typeof window !== 'undefined') {
-  window.Utils = { escapeHtml, formatTime, $, $q, $qa, waitFor, createModal, isMobile, isIOS, isStandalone };
-}
+if (typeof window !== 'undefined') window.Utils = Utils;
+export default Utils;
 
 //=================================================
 // FILE: /scripts/e2e/favorites.spec.js
