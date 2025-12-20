@@ -535,9 +535,7 @@
             title: t.title,
             artist: albumData.artist || 'Витрина Разбита',
             album: albumKey,
-            cover: albumData.cover
-              ? new URL(albumData.cover, base).toString()
-              : (albumInfo ? new URL('cover.jpg', albumInfo.base).toString() : 'img/logo.png'),
+            cover: 'img/logo.png',
             lyrics: t.lyrics || null,
             fulltext: t.fulltext || null,
             uid: (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null
@@ -555,9 +553,7 @@
           window.playerCore.setPlaylist(tracksForCore, startIndex, {
             artist: albumData.artist || 'Витрина Разбита',
             album: albumData.title || albumInfo.title || '',
-            cover: albumData.cover
-              ? new URL(albumData.cover, base).toString()
-              : (albumInfo ? new URL('cover.jpg', albumInfo.base).toString() : 'img/logo.png')
+            cover: 'img/logo.png'
           });
           window.AlbumsManager.setPlayingAlbum(albumKey);
           window.playerCore.play(startIndex);
