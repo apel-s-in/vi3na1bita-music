@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3b7dabac21a252b67a64d692e52bcd715f605dda.idx
-│   │       ├── pack-3b7dabac21a252b67a64d692e52bcd715f605dda.pack
-│   │       └── pack-3b7dabac21a252b67a64d692e52bcd715f605dda.rev
+│   │       ├── pack-3bcfebe3e460bb88becc9dac1f8c59044a486f26.idx
+│   │       ├── pack-3bcfebe3e460bb88becc9dac1f8c59044a486f26.pack
+│   │       └── pack-3bcfebe3e460bb88becc9dac1f8c59044a486f26.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -278,7 +278,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 22:33:02 UTC
+Сгенерировано: 2025-12-20 22:38:06 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7971,6 +7971,9 @@ header { width: 100%; text-align: center; }
   border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  position: relative;
+  z-index: 10;
+  isolation: isolate;
 }
 
 /* === ОКНО ЛИРИКИ === */
@@ -8427,6 +8430,8 @@ header { width: 100%; text-align: center; }
   width: 100%;
   font-size: 1.05em;
   color: #eee;
+  position: relative;
+  z-index: 1;
 }
 
 .track-list.filtered .track:not(.is-favorite) { display: none !important; }
@@ -8438,6 +8443,9 @@ header { width: 100%; text-align: center; }
   border-bottom: 1px solid var(--border);
   cursor: pointer;
   transition: background 0.13s ease;
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
 }
 
 .track:hover { background: rgba(255, 255, 255, 0.05); }
@@ -8472,9 +8480,14 @@ header { width: 100%; text-align: center; }
   margin-left: auto;
   width: 20px;
   height: 20px;
+  min-width: 20px;
+  max-width: 20px;
   cursor: pointer;
   opacity: 0.97;
   transition: transform var(--transition);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .like-star:hover {
