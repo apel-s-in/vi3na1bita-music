@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c19a77f20d068209878b6bb2d0d89f0c9d82e78b.idx
-│   │       ├── pack-c19a77f20d068209878b6bb2d0d89f0c9d82e78b.pack
-│   │       └── pack-c19a77f20d068209878b6bb2d0d89f0c9d82e78b.rev
+│   │       ├── pack-008c7c7805454db176e5e550e6ba5c30e2a8a369.idx
+│   │       ├── pack-008c7c7805454db176e5e550e6ba5c30e2a8a369.pack
+│   │       └── pack-008c7c7805454db176e5e550e6ba5c30e2a8a369.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -285,7 +285,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 19:45:45 UTC
+Сгенерировано: 2025-12-20 19:46:59 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -11326,7 +11326,7 @@ header {
 }
 
 /* Volume Control */
-/* ✅ Делаем геометрию как у player-progress-bar (та же "полезная" ширина) */
+/* ✅ Единый layout без дублей: трек занимает ширину внутри padding, handle позиционируется JS-ом по пикселям */
 .volume-control-wrapper {
   position: relative;
   padding: 16px 20px 12px 20px; /* как .player-progress-wrapper */
@@ -11334,21 +11334,18 @@ header {
   border-top: 1px solid rgba(255,255,255,0.05);
 }
 
-/* Линия громкости: 100% ширины внутри padding */
 .volume-track {
   position: relative;
   height: 6px; /* как player-progress-bar */
   background: rgba(255,255,255,0.08);
   border-radius: 3px;
-  overflow: hidden;
 }
 
-/* Заполнение */
 .volume-fill {
   position: absolute;
   left: 0;
   top: 0;
-  height: 100%;
+  height: 6px;
   background: linear-gradient(90deg, #4daaff, #357ac9);
   width: 0%;
   border-radius: 3px;
@@ -11356,11 +11353,10 @@ header {
   transition: width 0.08s linear;
 }
 
-/* ✅ Белый кругляш: всегда на конце fill и не вылезает */
 .volume-handle {
   position: absolute;
   top: 50%;
-  left: 0%;
+  left: 0;
   transform: translate(-50%, -50%);
   width: 14px;
   height: 14px;
@@ -11372,7 +11368,6 @@ header {
   transition: left 0.05s linear;
 }
 
-/* Range поверх линии */
 .volume-slider {
   position: absolute;
   left: 20px;
@@ -11389,70 +11384,24 @@ header {
   margin: 0;
 }
 
-/* Поддержка старого layout: убираем абсолютное позиционирование line/fill из старой версии */
-.volume-track {
-  left: auto;
-  right: auto;
-  top: auto;
-  transform: none;
-  pointer-events: none; /* клики обрабатывает range/обёртка */
-}
-
-.volume-track {
-  position: absolute;
-  left: 20px;
-  right: 20px;
-  height: 4px;
-  background: rgba(255,255,255,0.08);
-  border-radius: 2px;
-  top: 50%;
-  transform: translateY(-50%);
-  pointer-events: none;
-}
-
-.volume-fill {
-  position: absolute;
-  left: 20px;
-  height: 4px;
-  background: linear-gradient(90deg, #4daaff, #357ac9);
-  border-radius: 2px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 0%;
-  pointer-events: none;
-  transition: width 0.08s linear;
-}
-
-/* ✅ Кружок громкости - позиционируется через JS */
-.volume-handle {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
+.volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
   width: 14px;
   height: 14px;
-  background: #fff;
+  background: transparent; /* прячем нативный кружок */
   border-radius: 50%;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.35);
-  pointer-events: none;
-  z-index: 3;
-  left: 20px; /* Начальная позиция = padding слева */
-  transition: left 0.05s linear;
+  cursor: pointer;
+  box-shadow: none;
 }
 
-.volume-slider {
-  position: absolute;
-  left: 20px;
-  right: 20px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: auto;
-  height: 28px; /* удобнее попадать пальцем */
-  background: transparent;
-  outline: none;
-  -webkit-appearance: none;
+.volume-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: transparent; /* прячем нативный кружок */
+  border-radius: 50%;
   cursor: pointer;
-  z-index: 2;
-  margin: 0;
+  border: none;
+  box-shadow: none;
 }
 
 .volume-slider::-webkit-slider-thumb {
