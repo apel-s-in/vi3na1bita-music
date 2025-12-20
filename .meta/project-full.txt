@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1a302413fff70aea9bb65fa6740eeb0b0766e00f.idx
-│   │       ├── pack-1a302413fff70aea9bb65fa6740eeb0b0766e00f.pack
-│   │       └── pack-1a302413fff70aea9bb65fa6740eeb0b0766e00f.rev
+│   │       ├── pack-98989378a8f217ec434b9eccc023c9f6434c42b5.idx
+│   │       ├── pack-98989378a8f217ec434b9eccc023c9f6434c42b5.pack
+│   │       └── pack-98989378a8f217ec434b9eccc023c9f6434c42b5.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -285,7 +285,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 20:09:15 UTC
+Сгенерировано: 2025-12-20 20:48:28 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4476,9 +4476,10 @@ export default NavigationManager;
       </div>
       
       <div class="volume-control-wrapper">
-        <div class="volume-track"></div>
-        <div class="volume-fill" id="volume-fill"></div>
-        <div class="volume-handle" id="volume-handle"></div>
+        <div class="volume-track" id="volume-track">
+          <div class="volume-fill" id="volume-fill"></div>
+          <div class="volume-handle" id="volume-handle"></div>
+        </div>
         <input type="range" class="volume-slider" id="volume-slider" min="0" max="100" value="100" aria-label="Громкость">
       </div>
       
@@ -4804,20 +4805,18 @@ export default NavigationManager;
 
     const fill = document.getElementById('volume-fill');
     const handle = document.getElementById('volume-handle');
-    const track = document.querySelector('.volume-control-wrapper .volume-track');
+    const track = document.getElementById('volume-track');
 
     if (fill) {
       fill.style.width = `${p * 100}%`;
     }
 
-    // ✅ handle позиционируем по реальной ширине трека (пиксели), чтобы не “улетал” из-за padding/left/right.
     if (handle && track) {
       const rect = track.getBoundingClientRect();
-      const x = rect.width * p;
+      const handleHalf = 7; // 14px / 2 (см. CSS)
+      const xRaw = rect.width * p;
+      const x = Math.max(handleHalf, Math.min(rect.width - handleHalf, xRaw));
       handle.style.left = `${x}px`;
-    } else if (handle) {
-      // fallback (если трек не найден)
-      handle.style.left = `${p * 100}%`;
     }
   }
 
