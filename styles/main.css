@@ -829,11 +829,11 @@ header {
   transition: width 0.08s linear;
 }
 
-/* ✅ свой “кружок” громкости, строго по правому краю fill */
+/* ✅ Кружок громкости - позиционируется через JS */
 .volume-handle {
   position: absolute;
   top: 50%;
-  transform: translate(-50%, -50%);
+  transform: translateY(-50%);
   width: 14px;
   height: 14px;
   background: #fff;
@@ -841,6 +841,8 @@ header {
   box-shadow: 0 2px 6px rgba(0,0,0,0.35);
   pointer-events: none;
   z-index: 3;
+  left: 20px; /* Начальная позиция = padding слева */
+  transition: left 0.05s linear;
 }
 
 .volume-slider {
