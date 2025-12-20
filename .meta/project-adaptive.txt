@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-98989378a8f217ec434b9eccc023c9f6434c42b5.idx
-│   │       ├── pack-98989378a8f217ec434b9eccc023c9f6434c42b5.pack
-│   │       └── pack-98989378a8f217ec434b9eccc023c9f6434c42b5.rev
+│   │       ├── pack-bfcba4ba61c76aa7aa4cf00d2b804f26195f8df4.idx
+│   │       ├── pack-bfcba4ba61c76aa7aa4cf00d2b804f26195f8df4.pack
+│   │       └── pack-bfcba4ba61c76aa7aa4cf00d2b804f26195f8df4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -285,7 +285,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 20:48:28 UTC
+Сгенерировано: 2025-12-20 20:49:11 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -10075,7 +10075,9 @@ try { main(); } catch (e) { console.error("❌", e); process.exit(1); }
         cover: t.cover || '',
         lyrics: t.lyrics || null,
         fulltext: t.fulltext || null,
-        uid: (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null
+        uid: (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null,
+        hasLyrics: (typeof t.hasLyrics === 'boolean') ? t.hasLyrics : null,
+        sourceAlbum: t.sourceAlbum || null
       }));
 
       if (!preserveOriginalPlaylist) {
