@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-0f0fe8c0c81dc816a9624ba1deb0aa757ef35f37.idx
-│   │       ├── pack-0f0fe8c0c81dc816a9624ba1deb0aa757ef35f37.pack
-│   │       └── pack-0f0fe8c0c81dc816a9624ba1deb0aa757ef35f37.rev
+│   │       ├── pack-8f1f1cfa73e150557f7f890abe9e6aa497e3d126.idx
+│   │       ├── pack-8f1f1cfa73e150557f7f890abe9e6aa497e3d126.pack
+│   │       └── pack-8f1f1cfa73e150557f7f890abe9e6aa497e3d126.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -284,7 +284,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 14:49:12 UTC
+Сгенерировано: 2025-12-20 14:50:07 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -10963,20 +10963,32 @@ header {
   pointer-events: none;
 }
 
-/* Disabled (нет таймкод-лирики) */
+/* ✅ Disabled состояние для кнопок без лирики (Т, А, 📝) */
 .lyrics-toggle-btn.disabled,
-.animation-btn.disabled {
-  background: var(--primary-bg) !important;
+.animation-btn.disabled,
+.karaoke-btn.disabled {
+  background: rgba(30, 30, 30, 0.6) !important;
   border-color: rgba(255,255,255,0.06) !important;
-  color: rgba(255,255,255,0.25) !important;
+  color: rgba(255,255,255,0.2) !important;
   box-shadow: none !important;
-  cursor: default !important;
-  opacity: 0.9;
-  pointer-events: none; /* полностью не кликается */
+  cursor: not-allowed !important;
+  opacity: 0.5;
+  pointer-events: none;
+  filter: grayscale(100%);
 }
 
 .lyrics-toggle-btn.disabled .lyrics-toggle-btn-visual {
-  color: rgba(255,255,255,0.25) !important;
+  color: rgba(255,255,255,0.2) !important;
+}
+
+/* ✅ Визуальная подсказка при наведении на disabled (для устройств с мышью) */
+@media (hover: hover) {
+  .lyrics-toggle-btn.disabled:hover,
+  .animation-btn.disabled:hover,
+  .karaoke-btn.disabled:hover {
+    /* Подсветка не нужна — кнопка не кликабельна */
+    transform: none !important;
+  }
 }
 
 /* Контейнер для ВСЕХ кнопок (Т + A + 📝 + ❤️ + 💾 + ⚡) */
