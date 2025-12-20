@@ -54,29 +54,16 @@
     // ========== УПРАВЛЕНИЕ ПЛЕЙЛИСТОМ ==========
 
     setPlaylist(tracks, startIndex = 0, metadata = {}, options = {}) {
-      // ✅ БАЗОВОЕ ПРАВИЛО: setPlaylist НЕ останавливает воспроизведение.
       const wasPlaying = this.isPlaying();
       const prev = this.getCurrentTrack();
       const prevUid = prev?.uid || null;
       const prevPos = this.getPosition();
-
-      const {
-        preserveOriginalPlaylist = false,
-        preserveShuffleMode = false,
-        resetHistory = true
-      } = options || {};
+      const { preserveOriginalPlaylist = false, preserveShuffleMode = false, resetHistory = true } = options || {};
 
       this.playlist = (Array.isArray(tracks) ? tracks : []).map(t => ({
-        src: t.src,
-        title: t.title || 'Без названия',
-        artist: t.artist || 'Витрина Разбита',
-        album: t.album || '',
-        cover: t.cover || '',
-        lyrics: t.lyrics || null,
-        fulltext: t.fulltext || null,
-        uid: (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null,
-        hasLyrics: (typeof t.hasLyrics === 'boolean') ? t.hasLyrics : null,
-        sourceAlbum: t.sourceAlbum || null
+        src: t.src, title: t.title || 'Без названия', artist: t.artist || 'Витрина Разбита',
+        album: t.album || '', cover: t.cover || '', lyrics: t.lyrics || null, fulltext: t.fulltext || null,
+        uid: t.uid?.trim() || null, hasLyrics: t.hasLyrics ?? null, sourceAlbum: t.sourceAlbum || null
       }));
 
       if (!preserveOriginalPlaylist) {
