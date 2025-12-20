@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4e7fc1745b11ef4a919417fdab92382e1af8fc85.idx
-│   │       ├── pack-4e7fc1745b11ef4a919417fdab92382e1af8fc85.pack
-│   │       └── pack-4e7fc1745b11ef4a919417fdab92382e1af8fc85.rev
+│   │       ├── pack-51956be214ffafa4017dc1aa9eb2ef720ef322bf.idx
+│   │       ├── pack-51956be214ffafa4017dc1aa9eb2ef720ef322bf.pack
+│   │       └── pack-51956be214ffafa4017dc1aa9eb2ef720ef322bf.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -280,7 +280,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 23:01:51 UTC
+Сгенерировано: 2025-12-20 23:02:14 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5711,126 +5711,50 @@ export async function seedPlayerStateV2FromCurrent(page, opts = {}) {
 
 //=================================================
 // FILE: /scripts/ui/notify.js
-// scripts/ui/notify.js — Система уведомлений (оптимизировано)
-class NotificationSystem {
-  constructor() {
-    this.container = null;
-    this.queue = [];
-    this.isShowing = false;
-    this.currentToast = null;
-    this.init();
-  }
-  
-  init() {
-    this.container = document.createElement('div');
-    this.container.id = 'toast-container';
-    document.body.appendChild(this.container);
-  }
-  
-  show(message, type = 'info', duration = 3000) {
-    const toast = {
-      message,
-      type,
-      duration,
-      id: Date.now() + Math.random()
-    };
-    this.queue.push(toast);
-    this.processQueue();
-  }
-  
-  processQueue() {
-    if (this.isShowing || this.queue.length === 0) return;
-    this.isShowing = true;
-    const toast = this.queue.shift();
-    this.displayToast(toast);
-  }
-  
-  displayToast(toast) {
-    const toastEl = document.createElement('div');
-    toastEl.className = `toast toast-${toast.type}`;
-    const emoji = this.getEmoji(toast.type);
-    toastEl.innerHTML = `
-      <div class="toast-content">
-        <span class="toast-emoji">${emoji}</span>
-        <span class="toast-message">${this.escapeHtml(toast.message)}</span>
-      </div>
-    `;
-    this.container.appendChild(toastEl);
-    this.currentToast = toastEl;
-    
-    // Анимация появления
-    requestAnimationFrame(() => {
-      toastEl.classList.add('show');
-    });
-    
-    // Автоматическое скрытие
-    setTimeout(() => {
-      this.hideToast(toastEl);
-    }, toast.duration);
-  }
-  
-  hideToast(toastEl) {
-    if (!toastEl) return;
-    toastEl.classList.remove('show');
-    setTimeout(() => {
-      if (toastEl.parentNode) {
-        toastEl.parentNode.removeChild(toastEl);
-      }
-      this.isShowing = false;
-      this.currentToast = null;
-      this.processQueue();
-    }, 300);
-  }
-  
-  getEmoji(type) {
-    const emojis = {
-      info: 'ℹ️',
-      success: '✅',
-      error: '❌',
-      warning: '⚠️',
-      offline: '📴'
-    };
-    return emojis[type] || 'ℹ️';
-  }
-  
-  escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  }
-  
-  // Публичные методы
-  info(message, duration) {
-    this.show(message, 'info', duration || 2000);
-  }
-  
-  success(message, duration) {
-    this.show(message, 'success', duration || 2500);
-  }
-  
-  error(message, duration) {
-    this.show(message, 'error', duration || 4000);
-  }
-  
-  warning(message, duration) {
-    this.show(message, 'warning', duration || 3000);
-  }
-  
-  offline(message, duration) {
-    this.show(message, 'offline', duration || 3000);
-  }
-  
-  clear() {
-    this.queue = [];
-    if (this.currentToast) {
-      this.hideToast(this.currentToast);
-    }
-  }
-}
+// scripts/ui/notify.js — Система уведомлений (минимизировано)
+(function() {
+  const EMOJIS = { info: 'ℹ️', success: '✅', error: '❌', warning: '⚠️', offline: '📴' };
+  const DURATIONS = { info: 2000, success: 2500, error: 4000, warning: 3000, offline: 3000 };
 
-// Глобальный экземпляр
-window.NotificationSystem = new NotificationSystem();
-console.log('✅ Notification system initialized');
+  class Notify {
+    constructor() {
+      this.queue = [];
+      this.showing = false;
+      this.container = document.createElement('div');
+      this.container.id = 'toast-container';
+      document.body.appendChild(this.container);
+    }
+
+    show(msg, type = 'info', dur) {
+      this.queue.push({ msg, type, dur: dur || DURATIONS[type] || 2000 });
+      this.process();
+    }
+
+    process() {
+      if (this.showing || !this.queue.length) return;
+      this.showing = true;
+      const { msg, type, dur } = this.queue.shift();
+      const el = document.createElement('div');
+      el.className = `toast toast-${type}`;
+      el.innerHTML = `<div class="toast-content"><span class="toast-emoji">${EMOJIS[type] || 'ℹ️'}</span><span class="toast-message">${window.Utils?.escapeHtml?.(msg) || msg}</span></div>`;
+      this.container.appendChild(el);
+      requestAnimationFrame(() => el.classList.add('show'));
+      setTimeout(() => {
+        el.classList.remove('show');
+        setTimeout(() => { el.remove(); this.showing = false; this.process(); }, 300);
+      }, dur);
+    }
+
+    info(m, d) { this.show(m, 'info', d); }
+    success(m, d) { this.show(m, 'success', d); }
+    error(m, d) { this.show(m, 'error', d); }
+    warning(m, d) { this.show(m, 'warning', d); }
+    offline(m, d) { this.show(m, 'offline', d); }
+    clear() { this.queue = []; }
+  }
+
+  window.NotificationSystem = new Notify();
+})();
 
 //=================================================
 // FILE: /scripts/ui/sleep.js
