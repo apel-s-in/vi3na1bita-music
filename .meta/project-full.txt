@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1354b091348bef2d026d514888a0c9994daf1b75.idx
-│   │       ├── pack-1354b091348bef2d026d514888a0c9994daf1b75.pack
-│   │       └── pack-1354b091348bef2d026d514888a0c9994daf1b75.rev
+│   │       ├── pack-3ab153840884ed2abf0965b6ca370c35ffe40a52.idx
+│   │       ├── pack-3ab153840884ed2abf0965b6ca370c35ffe40a52.pack
+│   │       └── pack-3ab153840884ed2abf0965b6ca370c35ffe40a52.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -284,7 +284,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 15:22:28 UTC
+Сгенерировано: 2025-12-20 15:25:01 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3208,7 +3208,26 @@ class GalleryManager {
       this.currentIndex = 0;
       this.updateNavigationState();
       
-      // ✅ Показываем logo.png как fallback для альбомов без галереи
+      const slot = document.getElementById('cover-slot');
+      if (slot) {
+        slot.innerHTML = `<img src="img/logo.png" alt="Обложка" draggable="false" loading="lazy">`;
+      }
+      return;
+    }
+
+    // ✅ Кэшируем 404 для галерей чтобы не делать повторные запросы
+    const gallery404Key = `gallery_404_cache:v1`;
+    let gallery404Cache = {};
+    try {
+      const raw = sessionStorage.getItem(gallery404Key);
+      gallery404Cache = raw ? JSON.parse(raw) : {};
+    } catch {}
+
+    if (gallery404Cache[id]) {
+      this.items = [];
+      this.currentIndex = 0;
+      this.updateNavigationState();
+      
       const slot = document.getElementById('cover-slot');
       if (slot) {
         slot.innerHTML = `<img src="img/logo.png" alt="Обложка" draggable="false" loading="lazy">`;
@@ -3220,7 +3239,14 @@ class GalleryManager {
       const baseDir = `${this.GALLERY_BASE}${id}/`;
       const response = await fetch(`${baseDir}index.json`, { cache: 'force-cache' });
       
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (!response.ok) {
+        // ✅ Кэшируем 404
+        if (response.status === 404) {
+          gallery404Cache[id] = Date.now();
+          try { sessionStorage.setItem(gallery404Key, JSON.stringify(gallery404Cache)); } catch {}
+        }
+        throw new Error(`HTTP ${response.status}`);
+      }
 
       const data = await response.json();
       const rawItems = Array.isArray(data.items) ? data.items : (Array.isArray(data) ? data : []);
