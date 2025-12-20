@@ -56,6 +56,13 @@
     sleepMenu = document.createElement('div');
     sleepMenu.className = 'sleep-menu';
 
+    // ✅ Портал в body, чтобы меню не обрезалось overflow'ами плеера
+    // и всегда помещалось на экране.
+    const rect = anchor.getBoundingClientRect();
+    sleepMenu.style.position = 'fixed';
+    sleepMenu.style.right = `${Math.max(8, window.innerWidth - rect.right)}px`;
+    sleepMenu.style.bottom = `${Math.max(8, window.innerHeight - rect.top)}px`;
+
     const items = [];
 
     // Текущий таймер
@@ -82,7 +89,7 @@
     });
 
     sleepMenu.innerHTML = items.join('');
-    anchor.appendChild(sleepMenu);
+    document.body.appendChild(sleepMenu);
 
     // Обработчики
     sleepMenu.querySelectorAll('.sleep-menu-item').forEach(item => {
