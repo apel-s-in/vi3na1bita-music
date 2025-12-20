@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-65a6bea90a169609fef4845771fc713430c5d099.idx
-│   │       ├── pack-65a6bea90a169609fef4845771fc713430c5d099.pack
-│   │       └── pack-65a6bea90a169609fef4845771fc713430c5d099.rev
+│   │       ├── pack-e8abdcf568b93ec13b033ba81f8163f88194c5e6.idx
+│   │       ├── pack-e8abdcf568b93ec13b033ba81f8163f88194c5e6.pack
+│   │       └── pack-e8abdcf568b93ec13b033ba81f8163f88194c5e6.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -256,7 +256,6 @@ vi3na1bita-music/
 │   │   ├── player.spec.js
 │   │   └── utils.js
 │   ├── ui/
-│   │   ├── favorites-view.js
 │   │   ├── favorites.js
 │   │   ├── lyrics-modal.js
 │   │   ├── mini.js
@@ -282,7 +281,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 21:57:53 UTC
+Сгенерировано: 2025-12-20 21:58:05 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7483,29 +7482,6 @@ export async function seedPlayerStateV2FromCurrent(page, opts = {}) {
 //=================================================
 // FILE: /scripts/energy.js
 
-
-//=================================================
-// FILE: /scripts/ui/favorites-view.js
-// scripts/ui/favorites-view.js
-// Функционал для представления "Избранное"
-
-(function FavoritesViewModule() {
-  'use strict';
-
-  const w = window;
-
-  async function openFavoritesView() {
-    // Делегируем в AlbumsManager
-    if (w.AlbumsManager) {
-      await w.AlbumsManager.loadAlbum('__favorites__');
-    }
-  }
-
-  // Экспорт
-  w.openFavoritesView = openFavoritesView;
-
-  console.log('✅ Favorites view module loaded');
-})();
 
 //=================================================
 // FILE: /scripts/ui/favorites.js
