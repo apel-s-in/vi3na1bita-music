@@ -523,6 +523,34 @@ header { width: 100%; text-align: center; }
   box-shadow: 0 0 12px rgba(77, 170, 255, 0.3);
 }
 
+/* === FIX: Звезда в кнопке избранного === */
+#favorites-btn {
+  overflow: hidden;
+  position: relative;
+}
+
+#favorites-btn img,
+#favorites-btn-icon {
+  width: 20px;
+  height: 20px;
+  max-width: 20px;
+  max-height: 20px;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+}
+
+/* === FIX: Кнопка избранного в плеере === */
+#favorites-btn.favorites-active {
+  background: rgba(255, 215, 0, 0.2);
+  border-color: #ffd700;
+}
+
+#favorites-btn.favorites-active img,
+#favorites-btn.favorites-active #favorites-btn-icon {
+  filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.5));
+}
+
 /* === ТАЙМЕР СНА === */
 .sleep-timer-btn {
   position: relative;
