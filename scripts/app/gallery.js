@@ -42,7 +42,14 @@ class GalleryManager {
     
     if (!id) {
       this.items = [];
+      this.currentIndex = 0;
       this.updateNavigationState();
+      
+      // ✅ Показываем logo.png как fallback для альбомов без галереи
+      const slot = document.getElementById('cover-slot');
+      if (slot) {
+        slot.innerHTML = `<img src="img/logo.png" alt="Обложка" draggable="false" loading="lazy">`;
+      }
       return;
     }
 
@@ -69,9 +76,16 @@ class GalleryManager {
 
       console.log(`✅ Gallery loaded: ${this.items.length} items`);
     } catch (error) {
-      console.warn('Failed to load gallery:', error);
+      // ✅ Тихо обрабатываем ошибку загрузки галереи (не засоряем консоль)
       this.items = [];
+      this.currentIndex = 0;
       this.updateNavigationState();
+      
+      // ✅ Показываем logo.png как fallback
+      const slot = document.getElementById('cover-slot');
+      if (slot) {
+        slot.innerHTML = `<img src="img/logo.png" alt="Обложка" draggable="false" loading="lazy">`;
+      }
     }
   }
 
