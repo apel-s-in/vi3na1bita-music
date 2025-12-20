@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-690dcb867177a2fe9778b676b2bac60be5e3e158.idx
-│   │       ├── pack-690dcb867177a2fe9778b676b2bac60be5e3e158.pack
-│   │       └── pack-690dcb867177a2fe9778b676b2bac60be5e3e158.rev
+│   │       ├── pack-e40e90b2a39282665cb9a3a9ab8da11aad536089.idx
+│   │       ├── pack-e40e90b2a39282665cb9a3a9ab8da11aad536089.pack
+│   │       └── pack-e40e90b2a39282665cb9a3a9ab8da11aad536089.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -284,7 +284,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 14:35:22 UTC
+Сгенерировано: 2025-12-20 14:35:54 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2601,6 +2601,12 @@ class AlbumsManager {
 
   highlightCurrentTrack(index) {
     document.querySelectorAll('.track.current').forEach(el => el.classList.remove('current'));
+    
+    // ✅ Защита от некорректного индекса
+    if (typeof index !== 'number' || index < 0 || !Number.isFinite(index)) {
+      return;
+    }
+    
     const trackEl = document.querySelector(`.track[data-index="${index}"]`);
     if (trackEl) trackEl.classList.add('current');
   }
