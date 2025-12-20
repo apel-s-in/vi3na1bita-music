@@ -51,31 +51,24 @@
     if (!w.__favoritesChangedBound) {
       w.__favoritesChangedBound = true;
 
-      window.addEventListener('favorites:changed', () => {
+      window.addEventListener('favorites:changed', (e) => {
         try {
-          // 1) Обновить мини-шапку и “Далее”
+          // 1) UI обновления
           updateMiniHeader();
           updateNextUpLabel();
 
-          // 2) Пересчитать доступные индексы для next/prev в режиме "только избранные"
-          updateAvailableTracksForPlayback();
-
-          // 3) Если текущий режим "только избранные" активен, а текущий трек перестал быть избранным —
-          // перейти на следующий доступный (не стопаем).
-          if (favoritesOnlyMode && w.playerCore && w.AlbumsManager) {
-            const playingAlbum = w.AlbumsManager.getPlayingAlbum?.();
-            if (playingAlbum && playingAlbum !== w.SPECIAL_FAVORITES_KEY) {
-              const avail = w.availableFavoriteIndices;
-              const idx = w.playerCore.getIndex?.();
-              if (Array.isArray(avail) && typeof idx === 'number' && idx >= 0) {
-                if (!avail.includes(idx) && avail.length > 0) {
-                  w.playerCore.next();
-                }
-              }
-            }
+          // 2) Единая политика очереди/режимов (применяем к playingAlbum)
+          if (w.PlaybackPolicy && typeof w.PlaybackPolicy.apply === 'function') {
+            w.PlaybackPolicy.apply({
+              reason: 'favoritesChanged',
+              changed: e?.detail || {}
+            });
           }
-        } catch (e) {
-          console.warn('favorites:changed handler failed:', e);
+
+          // 3) Fallback пересчёта доступных индексов (legacy)
+          updateAvailableTracksForPlayback();
+        } catch (err) {
+          console.warn('favorites:changed handler failed:', err);
         }
       });
     }
@@ -724,13 +717,19 @@
 
     const fill = document.getElementById('volume-fill');
     const handle = document.getElementById('volume-handle');
+    const track = document.querySelector('.volume-control-wrapper .volume-track');
 
     if (fill) {
       fill.style.width = `${p * 100}%`;
     }
 
-    // ✅ handle всегда на конце fill (в процентах), не вылезает из линии
-    if (handle) {
+    // ✅ handle позиционируем по реальной ширине трека (пиксели), чтобы не “улетал” из-за padding/left/right.
+    if (handle && track) {
+      const rect = track.getBoundingClientRect();
+      const x = rect.width * p;
+      handle.style.left = `${x}px`;
+    } else if (handle) {
+      // fallback (если трек не найден)
       handle.style.left = `${p * 100}%`;
     }
   }
@@ -770,50 +769,15 @@
   function toggleShuffle() {
     if (!w.playerCore) return;
 
-    if (favoritesOnlyMode) {
-      const playingAlbum = w.AlbumsManager?.getPlayingAlbum?.();
-
-      if (playingAlbum && playingAlbum !== w.SPECIAL_FAVORITES_KEY) {
-        const wasShuffled = w.playerCore.isShuffle();
-
-        if (!wasShuffled) {
-          rebuildShuffledPlaylist();
-          w.playerCore.shuffleMode = true;
-        } else {
-          const originalPlaylist = w.playerCore.originalPlaylist || [];
-          const likedUids = w.FavoritesManager?.getLikedUidsForAlbum?.(playingAlbum) || [];
-
-          const favoriteTracks = originalPlaylist.filter(track => {
-            const uid = String(track?.uid || '').trim();
-            return uid && likedUids.includes(uid);
-          });
-
-          const currentTrack = w.playerCore?.getCurrentTrack();
-          const newIndex = currentTrack
-            ? favoriteTracks.findIndex(t => t.src === currentTrack.src)
-            : 0;
-
-          w.playerCore.setPlaylist(favoriteTracks, Math.max(0, newIndex), {
-            artist: 'Витрина Разбита',
-            album: playingAlbum,
-            cover: favoriteTracks[0]?.cover || 'img/logo.png'
-          });
-
-          w.playerCore.setShuffleMode?.(false);
-
-          updateAvailableTracksForPlayback();
-        }
-
-        const btn = document.getElementById('shuffle-btn');
-        if (btn) btn.classList.toggle('active', w.playerCore.isShuffle());
-
-        return;
-      }
-    }
-
     w.playerCore.toggleShuffle();
+
     const btn = document.getElementById('shuffle-btn');
     if (btn) btn.classList.toggle('active', w.playerCore.isShuffle());
+
+    // ✅ После смены shuffle пересчитаем политику очереди (favoritesOnly + shuffle)
+    if (w.PlaybackPolicy && typeof w.PlaybackPolicy.apply === 'function') {
+      w.PlaybackPolicy.apply({ reason: 'toggle' });
+    }
 
     updateAvailableTracksForPlayback();
   }
@@ -1132,8 +1096,8 @@
 
     updateAvailableTracksForPlayback();
 
-    if (w.playerCore?.isShuffle?.()) {
-      rebuildShuffledPlaylist();
+    if (w.PlaybackPolicy && typeof w.PlaybackPolicy.apply === 'function') {
+      w.PlaybackPolicy.apply({ reason: 'toggle' });
     }
   }
 
