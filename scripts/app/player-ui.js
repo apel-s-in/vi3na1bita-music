@@ -201,6 +201,12 @@
   }
 
   function _doEnsurePlayerBlock(trackIndex) {
+    // ✅ Дополнительная защита от некорректного индекса
+    if (typeof trackIndex !== 'number' || trackIndex < 0 || !Number.isFinite(trackIndex)) {
+      console.warn('⚠️ _doEnsurePlayerBlock: invalid trackIndex', trackIndex);
+      return;
+    }
+
     let playerBlock = document.getElementById('lyricsplayerblock');
 
     if (!playerBlock) {
