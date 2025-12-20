@@ -396,6 +396,35 @@ class GalleryManager {
   getCurrentIndex() {
     return this.currentIndex;
   }
+
+  /**
+   * ✅ Возвращает URL первой обложки из центральной галереи для albumKey
+   * (webp приоритетнее), либо img/logo.png.
+   * НЕ трогает воспроизведение.
+   */
+  async getFirstCoverUrl(albumKey) {
+    const id = this.getCentralId(albumKey);
+    if (!id) return 'img/logo.png';
+
+    const baseDir = `${this.GALLERY_BASE}${id}/`;
+
+    try {
+      const response = await fetch(`${baseDir}index.json`, { cache: 'force-cache' });
+      if (!response.ok) return 'img/logo.png';
+
+      const data = await response.json();
+      const rawItems = Array.isArray(data.items) ? data.items : (Array.isArray(data) ? data : []);
+      const first = rawItems && rawItems.length ? rawItems[0] : null;
+      if (!first) return 'img/logo.png';
+
+      const norm = this.normalizeItem(first, baseDir);
+      if (!norm || norm.type !== 'img') return 'img/logo.png';
+
+      return norm.formats?.webp || norm.formats?.full || norm.src || 'img/logo.png';
+    } catch {
+      return 'img/logo.png';
+    }
+  }
 }
 
 window.GalleryManager = new GalleryManager();
