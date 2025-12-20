@@ -33,16 +33,9 @@
   let countdownValue = null;
 
   function initPlayerUI() {
-    // ✅ Защита от повторной инициализации (например, при повторном выполнении скрипта из-за кеша/SW)
-    if (w.__playerUIInitialized) return;
-    w.__playerUIInitialized = true;
-
-    if (!w.albumsIndex || w.albumsIndex.length === 0) {
-      // albumsIndex ещё не готов — снимем флаг и попробуем позже
-      w.__playerUIInitialized = false;
-      setTimeout(initPlayerUI, 100);
-      return;
-    }
+  if (w.__playerUIInitialized) return;
+  if (!w.albumsIndex?.length) { setTimeout(initPlayerUI, 100); return; }
+  w.__playerUIInitialized = true;
 
     restoreSettings();
     attachPlayerCoreEvents();
