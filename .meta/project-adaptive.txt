@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-bb7d99e9966a11213aec6ad2c31861ce15c5c036.idx
-│   │       ├── pack-bb7d99e9966a11213aec6ad2c31861ce15c5c036.pack
-│   │       └── pack-bb7d99e9966a11213aec6ad2c31861ce15c5c036.rev
+│   │       ├── pack-ab7022ad21c6b497626b6009c78d25e5ffc96b47.idx
+│   │       ├── pack-ab7022ad21c6b497626b6009c78d25e5ffc96b47.pack
+│   │       └── pack-ab7022ad21c6b497626b6009c78d25e5ffc96b47.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -274,7 +274,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 23:45:18 UTC
+Сгенерировано: 2025-12-20 23:45:35 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -606,102 +606,127 @@ jobs:
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Витрина Разбита</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="description" content="Официальные альбомы группы Витрина Разбита">
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#181818">
-  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0a">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Витрина Разбита">
+  <meta name="description" content="Витрина Разбита — музыкальный плеер">
+  
+  <title>Витрина Разбита</title>
+  
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
+  
+  <!-- Preload critical -->
+  <link rel="preload" href="styles/main.css" as="style">
   <link rel="preload" href="img/logo.png" as="image">
+  
   <link rel="stylesheet" href="styles/main.css">
-  <script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js"></script>
+  
+  <!-- Howler.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js" defer></script>
 </head>
 <body>
-  <div id="promocode-block">
-    <div class="promo-inner">
-      <img class="promo-cover" src="img/logo.png" alt="Обложка" draggable="false">
-      <h2>Вход по промокоду</h2>
-      <input id="promo-inp" type="text" placeholder="Введите промокод" autocomplete="off" autofocus>
-      <button id="promo-btn">Войти</button>
-      <div id="promo-error"></div>
-    </div>
+  <!-- Splash -->
+  <div id="splash" style="position:fixed;inset:0;background:#0a0a0a;display:flex;align-items:center;justify-content:center;z-index:9999">
+    <img src="img/logo.png" alt="Loading" style="width:120px;animation:pulse 1.5s infinite">
   </div>
+  <style>@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}</style>
 
-  <div id="main-block" class="hidden">
-    <header>
-      <div id="active-album-title" class="active-album-title">—</div>
-      <div id="album-icons" class="album-icons"></div>
-      <div id="cover-wrap">
-        <button class="cover-gallery-arrow" id="cover-gallery-arrow-left" title="Назад">
-          <svg width="34" height="34" viewBox="0 0 34 34"><circle cx="17" cy="17" r="16" fill="#23252e" opacity=".65"/><polyline points="20,10 13,17 20,24" fill="none" stroke="#fff" stroke-width="2.9" stroke-linecap="round"/></svg>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <img src="img/logo.png" alt="Витрина Разбита" class="logo">
+      <div class="header-actions">
+        <button class="header-btn" id="sleep-timer-btn" title="Таймер сна">
+          ⏰
+          <span id="sleep-timer-badge" style="display:none"></span>
         </button>
-        <div id="cover-slot"></div>
-        <button class="cover-gallery-arrow" id="cover-gallery-arrow-right" title="Вперёд">
-          <svg width="34" height="34" viewBox="0 0 34 34"><circle cx="17" cy="17" r="16" fill="#23252e" opacity=".65"/><polyline points="14,10 21,17 14,24" fill="none" stroke="#fff" stroke-width="2.9" stroke-linecap="round"/></svg>
-        </button>
+        <button class="header-btn" id="sysinfo-btn" title="О системе">ℹ️</button>
+        <button class="header-btn" id="install-btn" style="display:none" title="Установить">📲</button>
       </div>
-      <div id="social-links" class="socials-under-cover"></div>
     </header>
-    <div id="now-playing" style="width:100%;max-width:395px;margin:8px auto 0"></div>
-    <div class="track-list" id="track-list"></div>
-    <div class="bottom-controls-center">
-      <button class="filter-favorites-btn" id="filter-favorites-btn">Скрыть не отмеченные ⭐ песни</button>
-      <img class="logo-bottom" id="logo-bottom" src="img/logo.png" alt="Логотип">
-      <button id="install-pwa-btn" style="display:none">УСТАНОВИТЬ КАК ПРИЛОЖЕНИЕ</button>
-      <button id="download-album-main">СКАЧАТЬ ВЕСЬ АЛЬБОМ</button>
-      <button class="hotkeys-btn" id="hotkeys-btn" style="display:none">ГОРЯЧИЕ КЛАВИШИ</button>
-      <button id="sysinfo-btn" style="display:none">О СИСТЕМЕ</button>
-      <span class="feedback-link" id="feedback-link">ОБРАТНАЯ СВЯЗЬ</span>
-      <a class="support-link" id="support-link" href="#" target="_blank">ПОДДЕРЖАТЬ</a>
-      <button class="offline-btn online" id="offline-btn">ONLINE</button>
+
+    <!-- Main -->
+    <main class="main-content">
+      <!-- Album Icons -->
+      <section class="album-icons-section">
+        <div id="album-icons" class="album-icons"></div>
+      </section>
+
+      <!-- Cover Gallery -->
+      <section class="cover-section">
+        <div id="cover-wrap">
+          <div id="cover-slot">
+            <img src="img/logo.png" alt="Обложка" draggable="false">
+          </div>
+          <button class="gallery-arrow" id="cover-gallery-arrow-left">‹</button>
+          <button class="gallery-arrow" id="cover-gallery-arrow-right">›</button>
+        </div>
+      </section>
+
+      <!-- Tracks -->
+      <section class="tracks-section">
+        <div class="album-header">
+          <h2 id="album-title"></h2>
+          <p id="album-artist"></p>
+        </div>
+        <div id="track-list"></div>
+      </section>
+    </main>
+
+    <!-- Lyrics Panel -->
+    <div id="lyrics-panel">
+      <div id="lyrics-box"></div>
     </div>
+
+    <!-- Player Bar -->
+    <footer class="player-bar">
+      <div class="player-track-info">
+        <div id="track-title">Витрина Разбита</div>
+        <div id="track-artist"></div>
+      </div>
+
+      <div class="progress-container">
+        <span class="time" id="time-current">--:--</span>
+        <div id="progress-bar">
+          <div id="progress-fill"></div>
+        </div>
+        <span class="time" id="time-total">--:--</span>
+      </div>
+
+      <div class="player-controls">
+        <button class="control-btn" id="shuffle-btn" title="Перемешать">🔀</button>
+        <button class="control-btn" id="prev-btn" title="Назад">⏮</button>
+        <button class="control-btn" id="play-pause-btn" title="Воспроизвести">▶</button>
+        <button class="control-btn" id="next-btn" title="Вперёд">⏭</button>
+        <button class="control-btn" id="repeat-btn" title="Повтор">🔁</button>
+        <button class="control-btn" id="favorite-btn" title="Избранное">☆</button>
+        <button class="control-btn" id="lyrics-toggle-btn" title="Текст">📜</button>
+      </div>
+
+      <div class="volume-container">
+        <span id="volume-icon">🔊</span>
+        <div id="volume-bar">
+          <div id="volume-fill"></div>
+        </div>
+      </div>
+    </footer>
   </div>
-  <div id="modals-container"></div>
 
-  <script>
-    const VERSION='8.1.0',BUILD_DATE='2025-12-21';
-    window.VERSION=VERSION;window.BUILD_DATE=BUILD_DATE;
-
-    window.addEventListener('load',()=>{
-      if(/iPhone|iPad|iPod/i.test(navigator.userAgent))document.body.classList.add('ios');
-      if(localStorage.getItem('promocode')==='VITRINA2025')unlockApp();
-      
-      const inp=document.getElementById('promo-inp'),btn=document.getElementById('promo-btn'),err=document.getElementById('promo-error');
-      const check=()=>{
-        if(inp.value.trim()==='VITRINA2025'){localStorage.setItem('promocode',inp.value.trim());unlockApp();}
-        else{err.textContent='❌ Неверный промокод';inp.classList.add('error');setTimeout(()=>{err.textContent='';inp.classList.remove('error');},2000);}
-      };
-      btn?.addEventListener('click',check);
-      inp?.addEventListener('keypress',e=>{if(e.key==='Enter')check();});
-    });
-
-    function unlockApp(){
-      document.getElementById('promocode-block')?.classList.add('hidden');
-      document.getElementById('main-block')?.classList.remove('hidden');
-      const wait=setInterval(()=>{if(window.app?.initialize){clearInterval(wait);window.app.initialize();}},100);
-    }
-  </script>
-
-  <script src="./scripts/core/utils.js" type="module"></script>
-  <script src="./scripts/core/bootstrap.js"></script>
-  <script src="./scripts/core/config.js" type="module"></script>
-  <script src="./src/PlayerCore.js" type="module"></script>
-  <script src="./scripts/ui/notify.js" defer></script>
-  <script src="./scripts/ui/favorites.js" defer></script>
-  <script src="./scripts/ui/sleep.js" defer></script>
-  <script src="./scripts/ui/modals.js" defer></script>
-  <script src="./scripts/app/background.js" defer></script>
-  <script src="./scripts/app/playback-policy.js" defer></script>
-  <script src="./scripts/app/player-ui.js" defer></script>
-  <script src="./scripts/app/gallery.js" type="module"></script>
-  <script src="./scripts/app/albums.js" type="module"></script>
-  <script src="./scripts/app/downloads.js" type="module"></script>
-  <script src="./scripts/app.js" type="module"></script>
+  <!-- Scripts -->
+  <script src="scripts/core/config.js"></script>
+  <script src="scripts/core/utils.js"></script>
+  <script src="scripts/core/bootstrap.js"></script>
+  <script src="src/PlayerCore.js"></script>
+  <script src="scripts/ui/notify.js"></script>
+  <script src="scripts/ui/favorites.js"></script>
+  <script src="scripts/app/gallery.js"></script>
+  <script src="scripts/app/albums.js"></script>
+  <script src="scripts/app/player-ui.js"></script>
+  <script src="scripts/app/background.js"></script>
+  <script src="scripts/app.js"></script>
 </body>
 </html>
 
