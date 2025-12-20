@@ -1159,27 +1159,7 @@ header { width: 100%; text-align: center; }
   font-size: 14px;
 }
 
-/* === ГОРЯЧИЕ КЛАВИШИ === */
-.hotkeys-grid {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 10px 20px;
-  margin-top: 16px;
-}
-
-.hotkey-key {
-  background: rgba(255, 255, 255, 0.1);
-  padding: 4px 10px;
-  border-radius: var(--radius-sm);
-  font-family: monospace;
-  font-size: 14px;
-  text-align: center;
-}
-
-.hotkey-desc {
-  color: var(--text-muted);
-  font-size: 14px;
-}
+/* (hotkeys-grid удалён — используется inline в модалке) */
 
 /* === СИСТЕМНАЯ ИНФОРМАЦИЯ === */
 .sysinfo-content {
@@ -1199,49 +1179,7 @@ header { width: 100%; text-align: center; }
 .sysinfo-label { color: var(--text-muted); }
 .sysinfo-value { color: var(--text); font-weight: 500; }
 
-/* === FEEDBACK ФОРМА === */
-.feedback-form {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.feedback-form input,
-.feedback-form textarea {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 12px;
-  color: var(--text);
-  font-size: 14px;
-  outline: none;
-  transition: border-color var(--transition);
-}
-
-.feedback-form input:focus,
-.feedback-form textarea:focus { border-color: var(--blue); }
-
-.feedback-form textarea {
-  min-height: 120px;
-  resize: vertical;
-}
-
-.feedback-form button {
-  background: var(--blue);
-  color: #fff;
-  border: none;
-  border-radius: var(--radius-sm);
-  padding: 12px;
-  font-size: 14px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all var(--transition);
-}
-
-.feedback-form button:hover {
-  background: var(--blue-dark);
-  transform: translateY(-1px);
-}
+/* (feedback-form удалён — не используется) */
 
 /* === iOS СПЕЦИФИКА === */
 body.ios .volume-control-wrapper { display: none !important; }
