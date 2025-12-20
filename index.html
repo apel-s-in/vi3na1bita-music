@@ -60,9 +60,8 @@
   <div id="modals-container"></div>
 
   <script>
-    const VERSION='8.0.4',BUILD_DATE='2025-12-07';
+    const VERSION='8.1.0',BUILD_DATE='2025-12-21';
     window.VERSION=VERSION;window.BUILD_DATE=BUILD_DATE;
-    window.autoNextDisabled=false;window.sleepTimerTarget=null;window.sleepTimerInterval=null;
 
     window.addEventListener('load',()=>{
       if(/iPhone|iPad|iPod/i.test(navigator.userAgent))document.body.classList.add('ios');
@@ -82,26 +81,21 @@
       document.getElementById('main-block')?.classList.remove('hidden');
       const wait=setInterval(()=>{if(window.app?.initialize){clearInterval(wait);window.app.initialize();}},100);
     }
-
-    function formatTime(s){if(isNaN(s)||s<0)return'--:--';const m=Math.floor(s/60),sec=Math.floor(s%60);return`${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;}
-    function escapeHtml(s){const d=document.createElement('div');d.textContent=s||'';return d.innerHTML;}
   </script>
 
+  <script src="./scripts/core/utils.js" type="module"></script>
   <script src="./scripts/core/bootstrap.js"></script>
   <script src="./scripts/core/config.js" type="module"></script>
   <script src="./src/PlayerCore.js" type="module"></script>
   <script src="./scripts/ui/notify.js" defer></script>
   <script src="./scripts/ui/favorites.js" defer></script>
   <script src="./scripts/ui/sleep.js" defer></script>
-  <script src="./scripts/ui/lyrics-modal.js" defer></script>
-  <script src="./scripts/ui/sysinfo.js" defer></script>
-  <script src="./scripts/app/background-audio.js" defer></script>
-  <script src="./scripts/app/background-events.js" defer></script>
+  <script src="./scripts/ui/modals.js" defer></script>
+  <script src="./scripts/app/background.js" defer></script>
   <script src="./scripts/app/playback-policy.js" defer></script>
   <script src="./scripts/app/player-ui.js" defer></script>
   <script src="./scripts/app/gallery.js" type="module"></script>
   <script src="./scripts/app/albums.js" type="module"></script>
-  <script src="./scripts/app/navigation.js" type="module"></script>
   <script src="./scripts/app/downloads.js" type="module"></script>
   <script src="./scripts/app.js" type="module"></script>
 </body>
