@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-bc0798e99a568b99a51723784c297427193aedbb.idx
-│   │       ├── pack-bc0798e99a568b99a51723784c297427193aedbb.pack
-│   │       └── pack-bc0798e99a568b99a51723784c297427193aedbb.rev
+│   │       ├── pack-fc9dd91f30f7912d6d1a2dd29ccea81263efeab3.idx
+│   │       ├── pack-fc9dd91f30f7912d6d1a2dd29ccea81263efeab3.pack
+│   │       └── pack-fc9dd91f30f7912d6d1a2dd29ccea81263efeab3.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -240,7 +240,6 @@ vi3na1bita-music/
 │   │   ├── background.js
 │   │   ├── downloads.js
 │   │   ├── gallery.js
-│   │   ├── navigation.js
 │   │   ├── playback-policy.js
 │   │   └── player-ui.js
 │   ├── ci/
@@ -257,7 +256,6 @@ vi3na1bita-music/
 │   │   └── utils.js
 │   ├── ui/
 │   │   ├── favorites.js
-│   │   ├── lyrics-modal.js
 │   │   ├── modals.js
 │   │   ├── notify.js
 │   │   ├── sleep.js
@@ -279,7 +277,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 23:04:11 UTC
+Сгенерировано: 2025-12-20 23:04:46 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2371,171 +2369,6 @@ class GalleryManager {
 window.GalleryManager = new GalleryManager();
 
 export default GalleryManager;
-
-//=================================================
-// FILE: /scripts/app/navigation.js
-// scripts/app/navigation.js
-// Навигация и управление интерфейсом
-
-class NavigationManager {
-  constructor() {
-    this.modalsContainer = null;
-    this.activeModal = null;
-  }
-
-  initialize() {
-    this.modalsContainer = document.getElementById('modals-container');
-    this.setupEventListeners();
-    console.log('✅ NavigationManager initialized');
-  }
-
-  setupEventListeners() {
-    // Кнопкой "О системе" управляет SystemInfoManager (scripts/ui/sysinfo.js)
-
-    const feedbackLink = document.getElementById('feedback-link');
-    feedbackLink?.addEventListener('click', () => {
-      this.showFeedbackModal();
-    });
-
-    const supportLink = document.getElementById('support-link');
-    if (supportLink) {
-      supportLink.href = window.APP_CONFIG?.SUPPORT_URL || 'https://example.com/support';
-    }
-
-    const downloadBtn = document.getElementById('download-album-main');
-    downloadBtn?.addEventListener('click', () => {
-      this.downloadCurrentAlbum();
-    });
-
-    const hotkeysBtn = document.getElementById('hotkeys-btn');
-    hotkeysBtn?.addEventListener('click', () => {
-      this.showHotkeysModal();
-    });
-
-    this.modalsContainer?.addEventListener('click', (e) => {
-      if (e.target === this.modalsContainer) {
-        this.closeModal();
-      }
-    });
-  }
-
-  showFeedbackModal() {
-    this.showModal(`
-      <h2>Обратная связь</h2>
-      <div style="padding: 20px; text-align: center;">
-        <p style="margin-bottom: 20px; color: #8ab8fd;">
-          Есть предложения или нашли ошибку?<br>
-          Напишите нам!
-        </p>
-        <div style="display: flex; flex-direction: column; gap: 15px; max-width: 300px; margin: 0 auto;">
-          <a href="https://t.me/vitrina_razbita" target="_blank"
-             style="background: #0088cc; color: white; padding: 15px; border-radius: 8px; text-decoration: none; display: block;">
-            Telegram
-          </a>
-          <a href="mailto:${(window.APP_CONFIG?.SUPPORT_EMAIL || 'support@vitrina-razbita.ru')}" target="_blank"
-             style="background: #4daaff; color: white; padding: 15px; border-radius: 8px; text-decoration: none; display: block;">
-            Email
-          </a>
-          <a href="${(window.APP_CONFIG?.GITHUB_URL || 'https://github.com/apel-s-in/vi3na1bita-music')}" target="_blank"
-             style="background: #333; color: white; padding: 15px; border-radius: 8px; text-decoration: none; display: block;">
-            GitHub
-          </a>
-        </div>
-      </div>
-      <button class="modal-close-btn">Закрыть</button>
-    `);
-  }
-
-  showHotkeysModal() {
-    if (!this.modalsContainer) {
-      this.modalsContainer = document.getElementById('modals-container');
-    }
-
-    this.showModal(`
-      <h2>Горячие клавиши</h2>
-      <div class="hotkeys-section">
-        <h3>Воспроизведение</h3>
-        <div class="hotkey-item"><span class="hotkey-combo">K / Пробел</span><span class="hotkey-desc">Воспроизведение/Пауза</span></div>
-        <div class="hotkey-item"><span class="hotkey-combo">X</span><span class="hotkey-desc">Стоп</span></div>
-        <div class="hotkey-item"><span class="hotkey-combo">N / P</span><span class="hotkey-desc">Следующий/Предыдущий трек</span></div>
-      </div>
-      <div class="hotkeys-section">
-        <h3>Режимы</h3>
-        <div class="hotkey-item"><span class="hotkey-combo">R</span><span class="hotkey-desc">Повтор</span></div>
-        <div class="hotkey-item"><span class="hotkey-combo">U</span><span class="hotkey-desc">Случайный порядок</span></div>
-        <div class="hotkey-item"><span class="hotkey-combo">F</span><span class="hotkey-desc">Только избранные</span></div>
-        <div class="hotkey-item"><span class="hotkey-combo">T</span><span class="hotkey-desc">Таймер сна</span></div>
-      </div>
-      <button class="modal-close-btn">Закрыть</button>
-    `);
-  }
-
-  async downloadCurrentAlbum() {
-    const currentAlbum = window.AlbumsManager?.getCurrentAlbum?.();
-    if (!currentAlbum) {
-      window.NotificationSystem?.error('Не выбран альбом');
-      return;
-    }
-
-    if (String(currentAlbum).startsWith('__')) {
-      window.NotificationSystem?.info('Этот раздел нельзя скачать целиком');
-      return;
-    }
-
-    if (window.DownloadsManager) {
-      window.DownloadsManager.downloadAlbum(currentAlbum);
-    } else {
-      window.NotificationSystem?.info('Функция скачивания временно недоступна');
-    }
-  }
-
-  showModal(content) {
-    if (!this.modalsContainer) return;
-    this.closeModal();
-
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    modal.innerHTML = `
-      <div class="modal-content">
-        ${content}
-      </div>
-    `;
-
-    const closeBtn = modal.querySelector('.modal-close-btn');
-    closeBtn?.addEventListener('click', () => this.closeModal());
-
-    this.modalsContainer.appendChild(modal);
-    this.activeModal = modal;
-
-    requestAnimationFrame(() => {
-      modal.classList.add('show');
-    });
-  }
-
-  closeModal() {
-    if (!this.activeModal) return;
-    this.activeModal.classList.remove('show');
-    setTimeout(() => {
-      if (this.activeModal && this.activeModal.parentNode) {
-        this.activeModal.parentNode.removeChild(this.activeModal);
-      }
-      this.activeModal = null;
-    }, 300);
-  }
-}
-
-window.NavigationManager = new NavigationManager();
-
-// Автоинициализация (иначе initialize() нигде не вызывается)
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    try { window.NavigationManager.initialize(); } catch (e) { console.warn('NavigationManager init failed:', e); }
-  });
-} else {
-  try { window.NavigationManager.initialize(); } catch (e) { console.warn('NavigationManager init failed:', e); }
-}
-
-export default NavigationManager;
 
 //=================================================
 // FILE: /scripts/app/playback-policy.js
@@ -4790,199 +4623,6 @@ export async function seedPlayerStateV2FromCurrent(page, opts = {}) {
   w.getLikedMap = getLikedUidMap;
   w.getLikedForAlbum = getLikedUidsForAlbum;
   w.toggleLikeForAlbum = (a, uid, liked) => toggleLike(a, uid, liked);
-})();
-
-//=================================================
-// FILE: /scripts/ui/lyrics-modal.js
-// scripts/ui/lyrics-modal.js
-// Модальное окно с полным текстом песни
-
-(function LyricsModalModule() {
-  'use strict';
-
-  const w = window;
-
-  function showFullLyricsModal() {
-    const track = w.playerCore?.getCurrentTrack();
-    if (!track) {
-      w.NotificationSystem?.warning('Нет активного трека');
-      return;
-    }
-
-    // Получить полный текст
-    const fulltext = track.fulltext;
-    
-    if (fulltext) {
-      loadFulltextAndShow(fulltext, track);
-    } else {
-      showLyricsFromTimeline(track);
-    }
-  }
-
-  async function loadFulltextAndShow(url, track) {
-    try {
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Failed to load fulltext');
-      
-      const text = await response.text();
-      showModal(track, text);
-      
-    } catch (error) {
-      console.error('Failed to load fulltext:', error);
-      w.NotificationSystem?.error('Не удалось загрузить текст песни');
-    }
-  }
-
-  function showLyricsFromTimeline(track) {
-    // Собрать текст из таймлайна лирики, экспортированного из PlayerUI
-    if (!w.PlayerUI) {
-      w.NotificationSystem?.warning('Текст песни недоступен');
-      return;
-    }
-
-    // Предпочитаем бэкомпат-API currentLyricsLines, если есть,
-    // иначе пробуем взять сырые currentLyrics и вытащить text.
-    const rawLines = Array.isArray(w.PlayerUI.currentLyricsLines)
-      ? w.PlayerUI.currentLyricsLines
-      : (Array.isArray(w.PlayerUI.currentLyrics) ? w.PlayerUI.currentLyrics : []);
-
-    if (!rawLines.length) {
-      w.NotificationSystem?.warning('Текст песни недоступен');
-      return;
-    }
-
-    const lines = rawLines
-      .map(item => (typeof item.line === 'string' ? item.line : (item.text || '')))
-      .filter(Boolean);
-
-    if (!lines.length) {
-      w.NotificationSystem?.warning('Текст песни недоступен');
-      return;
-    }
-
-    const text = lines.join('\n');
-    showModal(track, text);
-  }
-
-  function showModal(track, text) {
-    const modal = document.createElement('div');
-    modal.className = 'modal-bg active';
-    
-    modal.innerHTML = `
-      <div class="modal-feedback lyrics-modal" style="max-width: 520px; max-height: 80vh;">
-        <button class="bigclose" title="Закрыть">
-          <svg viewBox="0 0 48 48">
-            <line x1="12" y1="12" x2="36" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
-            <line x1="36" y1="12" x2="12" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
-          </svg>
-        </button>
-        
-        <h2 style="margin-bottom: 8px;">${escapeHtml(track.title)}</h2>
-        <div style="color: #8ab8fd; margin-bottom: 20px; font-size: 14px;">
-          ${escapeHtml(track.artist || 'Витрина Разбита')} · ${escapeHtml(track.album || '')}
-        </div>
-        
-        <div class="lyrics-fulltext" style="
-          max-height: 50vh;
-          overflow-y: auto;
-          padding: 16px;
-          background: rgba(0,0,0,0.2);
-          border-radius: 10px;
-          line-height: 1.8;
-          white-space: pre-wrap;
-          font-size: 15px;
-          scrollbar-width: thin;
-          scrollbar-color: rgba(77,170,255,0.3) transparent;
-        ">
-          ${escapeHtml(text)}
-        </div>
-        
-        <div style="display: flex; gap: 10px; margin-top: 20px; justify-content: center;">
-          <button class="modal-action-btn" id="copy-lyrics-btn">
-            📋 Копировать
-          </button>
-          <button class="modal-action-btn" id="share-lyrics-btn">
-            📤 Поделиться
-          </button>
-        </div>
-      </div>
-    `;
-
-    const closeBtn = modal.querySelector('.bigclose');
-    closeBtn?.addEventListener('click', () => modal.remove());
-
-    const copyBtn = modal.querySelector('#copy-lyrics-btn');
-    copyBtn?.addEventListener('click', () => copyLyrics(text, modal));
-
-    const shareBtn = modal.querySelector('#share-lyrics-btn');
-    shareBtn?.addEventListener('click', () => shareLyrics(track, text));
-
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) modal.remove();
-    });
-
-    document.body.appendChild(modal);
-  }
-
-  async function copyLyrics(text, modal) {
-    try {
-      await navigator.clipboard.writeText(text);
-      w.NotificationSystem?.success('Текст скопирован');
-      modal.remove();
-    } catch (error) {
-      // Fallback для старых браузеров
-      const textarea = document.createElement('textarea');
-      textarea.value = text;
-      textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
-      document.body.appendChild(textarea);
-      textarea.select();
-      
-      try {
-        document.execCommand('copy');
-        w.NotificationSystem?.success('Текст скопирован');
-        modal.remove();
-      } catch (e) {
-        w.NotificationSystem?.error('Не удалось скопировать');
-      }
-      
-      document.body.removeChild(textarea);
-    }
-  }
-
-  async function shareLyrics(track, text) {
-    const shareData = {
-      title: track.title,
-      text: `${track.title} - ${track.artist}\n\n${text}`
-    };
-
-    if (navigator.share) {
-      try {
-        await navigator.share(shareData);
-      } catch (error) {
-        if (error.name !== 'AbortError') {
-          console.error('Share failed:', error);
-        }
-      }
-    } else {
-      w.NotificationSystem?.info('Функция "Поделиться" недоступна в этом браузере');
-    }
-  }
-
-  function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str || '';
-    return div.innerHTML;
-  }
-
-  // Публичный API
-  w.LyricsModal = {
-    show: showFullLyricsModal
-  };
-
-  // Автоинициализация
-  // (Lyrics Modal не требует автозапуска)
-
 })();
 
 //=================================================
