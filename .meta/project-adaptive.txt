@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-641d796886e961f16929baed1d792181d5416d36.idx
-│   │       ├── pack-641d796886e961f16929baed1d792181d5416d36.pack
-│   │       └── pack-641d796886e961f16929baed1d792181d5416d36.rev
+│   │       ├── pack-086118620b8264273e3b7d5a905207708a9b51b4.idx
+│   │       ├── pack-086118620b8264273e3b7d5a905207708a9b51b4.pack
+│   │       └── pack-086118620b8264273e3b7d5a905207708a9b51b4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -284,7 +284,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 16:11:00 UTC
+Сгенерировано: 2025-12-20 16:12:15 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4454,25 +4454,18 @@ export default NavigationManager;
 
   function renderVolumeUI(value) {
     const v = Math.max(0, Math.min(100, Number(value) || 0));
+    const p = v / 100;
 
     const fill = document.getElementById('volume-fill');
     const handle = document.getElementById('volume-handle');
-    const track = document.querySelector('.volume-track');
-    const wrapper = document.querySelector('.volume-control-wrapper');
-
-    const p = v / 100;
 
     if (fill) {
       fill.style.width = `${p * 100}%`;
     }
 
-    // ✅ Позиционируем handle относительно wrapper, учитывая padding (20px с каждой стороны)
-    if (handle && wrapper) {
-      const wrapperRect = wrapper.getBoundingClientRect();
-      const padding = 20; // padding слева и справа
-      const trackWidth = wrapperRect.width - (padding * 2);
-      const handleOffset = padding + (trackWidth * p);
-      handle.style.left = `${handleOffset}px`;
+    // ✅ handle всегда на конце fill (в процентах), не вылезает из линии
+    if (handle) {
+      handle.style.left = `${p * 100}%`;
     }
   }
 
