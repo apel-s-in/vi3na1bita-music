@@ -117,45 +117,16 @@ class GalleryManager {
 
   normalizeItem(raw, baseDir) {
     if (!raw) return null;
-
     const toAbs = (p) => {
       if (!p) return null;
       const s = String(p).replace(/^\.?\//, '');
-      if (/^https?:\/\//i.test(s)) return s;
-      if (/^(albums|img|icons|assets)\//i.test(s)) return `./${s}`;
-      return baseDir + s;
+      return /^https?:\/\//i.test(s) ? s : /^(albums|img|icons|assets)\//i.test(s) ? `./${s}` : baseDir + s;
     };
-
-    if (typeof raw === 'string') {
-      const isHtml = /\.html(\?|#|$)/i.test(raw);
-      return {
-        type: isHtml ? 'html' : 'img',
-        src: toAbs(raw),
-        formats: null
-      };
-    }
-
-    const type = String(raw.type || '').toLowerCase() === 'html' ? 'html' : 'img';
-
-    if (type === 'html') {
-      return {
-        type: 'html',
-        src: toAbs(raw.src || ''),
-        formats: null
-      };
-    }
-
-    const formats = {
-      webp: toAbs(raw.formats?.webp || null),
-      full: toAbs(raw.formats?.full || raw.src || null),
-      thumb: toAbs(raw.formats?.thumb || null)
-    };
-
-    return {
-      type: 'img',
-      src: formats.full || toAbs(raw.src || ''),
-      formats
-    };
+    if (typeof raw === 'string') return { type: /\.html(\?|#|$)/i.test(raw) ? 'html' : 'img', src: toAbs(raw), formats: null };
+    const type = raw.type?.toLowerCase() === 'html' ? 'html' : 'img';
+    if (type === 'html') return { type: 'html', src: toAbs(raw.src || ''), formats: null };
+    const formats = { webp: toAbs(raw.formats?.webp), full: toAbs(raw.formats?.full || raw.src), thumb: toAbs(raw.formats?.thumb) };
+    return { type: 'img', src: formats.full || toAbs(raw.src), formats };
   }
 
   renderItem(index) {
