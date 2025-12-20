@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e0a98b187a6beeef9981bdcb2953d05241bb81b4.idx
-│   │       ├── pack-e0a98b187a6beeef9981bdcb2953d05241bb81b4.pack
-│   │       └── pack-e0a98b187a6beeef9981bdcb2953d05241bb81b4.rev
+│   │       ├── pack-6867c177b4289c44be13a5963163bbce59bc246f.idx
+│   │       ├── pack-6867c177b4289c44be13a5963163bbce59bc246f.pack
+│   │       └── pack-6867c177b4289c44be13a5963163bbce59bc246f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -285,7 +285,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 19:49:26 UTC
+Сгенерировано: 2025-12-20 19:55:41 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3640,6 +3640,35 @@ class GalleryManager {
 
   getCurrentIndex() {
     return this.currentIndex;
+  }
+
+  /**
+   * ✅ Возвращает URL первой обложки из центральной галереи для albumKey
+   * (webp приоритетнее), либо img/logo.png.
+   * НЕ трогает воспроизведение.
+   */
+  async getFirstCoverUrl(albumKey) {
+    const id = this.getCentralId(albumKey);
+    if (!id) return 'img/logo.png';
+
+    const baseDir = `${this.GALLERY_BASE}${id}/`;
+
+    try {
+      const response = await fetch(`${baseDir}index.json`, { cache: 'force-cache' });
+      if (!response.ok) return 'img/logo.png';
+
+      const data = await response.json();
+      const rawItems = Array.isArray(data.items) ? data.items : (Array.isArray(data) ? data : []);
+      const first = rawItems && rawItems.length ? rawItems[0] : null;
+      if (!first) return 'img/logo.png';
+
+      const norm = this.normalizeItem(first, baseDir);
+      if (!norm || norm.type !== 'img') return 'img/logo.png';
+
+      return norm.formats?.webp || norm.formats?.full || norm.src || 'img/logo.png';
+    } catch {
+      return 'img/logo.png';
+    }
   }
 }
 
