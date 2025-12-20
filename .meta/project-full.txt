@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3c3e522d602ea27529dbb399eadd7bfb37fa595f.idx
-│   │       ├── pack-3c3e522d602ea27529dbb399eadd7bfb37fa595f.pack
-│   │       └── pack-3c3e522d602ea27529dbb399eadd7bfb37fa595f.rev
+│   │       ├── pack-7ba8fa6ab028bc602ade036af43cfe487a74d5a4.idx
+│   │       ├── pack-7ba8fa6ab028bc602ade036af43cfe487a74d5a4.pack
+│   │       └── pack-7ba8fa6ab028bc602ade036af43cfe487a74d5a4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -285,7 +285,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 20:49:52 UTC
+Сгенерировано: 2025-12-20 20:50:27 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4205,6 +4205,16 @@ export default NavigationManager;
     w.AlbumsManager?.highlightCurrentTrack?.(index);
 
     ensurePlayerBlock(index);
+
+    // ✅ Сразу (до fetch) выставляем корректную доступность по hasLyrics/lyrics url
+    // чтобы на первом треке не было “мига” активных кнопок.
+    try {
+      const has = checkTrackHasLyrics(track);
+      if (!has) {
+        hasTimedLyricsForCurrentTrack = false;
+        setLyricsAvailability(false);
+      }
+    } catch {}
 
     // ✅ Загрузка лирики (тихо обрабатывает отсутствие файла)
     loadLyrics(track.lyrics).then(() => {
