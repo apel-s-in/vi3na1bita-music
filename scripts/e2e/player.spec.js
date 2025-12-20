@@ -284,7 +284,39 @@ test('favoritesOnly + shuffle: liking another track adds it to tail of queue', a
       likedUids: window.FavoritesManager?.getLikedUidsForAlbum?.(window.AlbumsManager?.getPlayingAlbum?.() || '') || []
     };
   });
+test('shuffle history: next-next-prev returns to previously played track', async ({ page }) => {
+  await loginByPromo(page);
+  await page.waitForSelector('#track-list .track', { timeout: 10000 });
 
+  // Запустим первый трек
+  await page.click('#track-list .track >> nth=0');
+
+  // Включим shuffle
+  await page.click('#shuffle-btn');
+  await expect(page.locator('#shuffle-btn')).toHaveClass(/active/);
+
+  // Зафиксируем первый трек (uid)
+  const first = await page.evaluate(() => String(window.playerCore?.getCurrentTrack?.()?.uid || ''));
+
+  // next, next
+  await page.click('#next-btn');
+  await page.waitForTimeout(200);
+  const second = await page.evaluate(() => String(window.playerCore?.getCurrentTrack?.()?.uid || ''));
+
+  await page.click('#next-btn');
+  await page.waitForTimeout(200);
+  const third = await page.evaluate(() => String(window.playerCore?.getCurrentTrack?.()?.uid || ''));
+
+  // prev должен вернуться на второй (по истории), а не “по массиву”
+  await page.click('#prev-btn');
+  await page.waitForTimeout(200);
+  const back = await page.evaluate(() => String(window.playerCore?.getCurrentTrack?.()?.uid || ''));
+
+  expect(first).toBeTruthy();
+  expect(second).toBeTruthy();
+  expect(third).toBeTruthy();
+  expect(back).toBe(second);
+});
   expect(after.len).toBeGreaterThanOrEqual(beforeLen);
   // В хвосте должен быть один из лайкнутых (в идеале — второй трек, но uid нам проще подтвердить через likedUids)
   expect(after.likedUids.includes(after.tailUid)).toBeTruthy();
