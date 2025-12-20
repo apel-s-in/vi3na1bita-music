@@ -1186,6 +1186,7 @@
     const animBtn = playerBlock.querySelector('#animation-btn');
     const karaokeBtn = playerBlock.querySelector('#lyrics-text-btn');
     const bg = playerBlock.querySelector('.lyrics-animated-bg');
+    const container = document.getElementById('lyrics');
 
     if (lyricsWindow) {
       lyricsWindow.style.display = enabled ? '' : 'none';
@@ -1207,44 +1208,27 @@
       animBtn.style.pointerEvents = enabled ? '' : 'none';
     }
 
-    // ✅ Кнопка "📝" (полный текст) — зависит от fulltext, но если нет лирики, тоже дизейблим
-    if (karaokeBtn && !enabled) {
-      karaokeBtn.classList.add('disabled');
-      karaokeBtn.style.pointerEvents = 'none';
-      karaokeBtn.style.opacity = '0.4';
-    } else if (karaokeBtn && enabled) {
-      // Проверим, есть ли fulltext у текущего трека
+    // ✅ Кнопка "📝" (полный текст)
+    if (karaokeBtn) {
       const track = w.playerCore?.getCurrentTrack();
       const hasFulltext = !!(track && track.fulltext);
-      const hasTimedLyrics = hasTimedLyricsForCurrentTrack && currentLyrics.length > 0;
+      const hasTimedLyrics = enabled && hasTimedLyricsForCurrentTrack && currentLyrics.length > 0;
       
-      if (hasFulltext || hasTimedLyrics) {
-        karaokeBtn.classList.remove('disabled');
-        karaokeBtn.style.pointerEvents = '';
-        karaokeBtn.style.opacity = '';
-      } else {
-        karaokeBtn.classList.add('disabled');
-        karaokeBtn.style.pointerEvents = 'none';
-        karaokeBtn.style.opacity = '0.4';
-      }
+      const karaokeEnabled = hasFulltext || hasTimedLyrics;
+      
+      karaokeBtn.classList.toggle('disabled', !karaokeEnabled);
+      karaokeBtn.style.pointerEvents = karaokeEnabled ? '' : 'none';
+      karaokeBtn.style.opacity = karaokeEnabled ? '' : '0.4';
     }
 
-    // ✅ Визуальный индикатор: если лирики нет, показываем placeholder в окне
-    const container = document.getElementById('lyrics');
-    if (!enabled && container && lyricsWindow && lyricsWindow.style.display !== 'none') {
-      // Если окно лирики видимо, но лирики нет — показываем placeholder
-      container.innerHTML = '<div class="lyrics-placeholder" style="padding: 20px; font-size: 13px;">♪ Текст песни недоступен</div>';
-    }
+    if (!enabled) {
+      // ✅ Лирики нет — выключаем анимацию
       animationEnabled = false;
-      // НЕ сохраняем в localStorage — это временное состояние для текущего трека
       if (bg) bg.classList.remove('active');
       if (animBtn) animBtn.classList.remove('active');
 
-      // Режим лирики: hidden (но не сохраняем — при следующем треке с лирикой восстановим)
       lyricsViewMode = 'hidden';
       
-      // Очищаем контейнер лирики
-      const container = document.getElementById('lyrics');
       if (container) {
         container.innerHTML = '';
       }
@@ -1268,7 +1252,6 @@
       }
     }
 
-    // ✅ Обновляем визуальное состояние кнопки "Т"
     renderLyricsViewMode();
   }
 
