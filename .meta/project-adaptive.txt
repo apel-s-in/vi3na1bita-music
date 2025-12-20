@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-562f9f93085e84d3b2b4b5a78c0671069325de74.idx
-│   │       ├── pack-562f9f93085e84d3b2b4b5a78c0671069325de74.pack
-│   │       └── pack-562f9f93085e84d3b2b4b5a78c0671069325de74.rev
+│   │       ├── pack-3b7dabac21a252b67a64d692e52bcd715f605dda.idx
+│   │       ├── pack-3b7dabac21a252b67a64d692e52bcd715f605dda.pack
+│   │       └── pack-3b7dabac21a252b67a64d692e52bcd715f605dda.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -278,7 +278,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 22:32:24 UTC
+Сгенерировано: 2025-12-20 22:33:02 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5532,8 +5532,7 @@ export async function seedPlayerStateV2FromCurrent(page, opts = {}) {
 
 //=================================================
 // FILE: /scripts/ui/notify.js
-// scripts/ui/notify.js
-// Система уведомлений
+// scripts/ui/notify.js — Система уведомлений (оптимизировано)
 class NotificationSystem {
   constructor() {
     this.container = null;
@@ -5544,17 +5543,8 @@ class NotificationSystem {
   }
   
   init() {
-    // Создаем контейнер для уведомлений
     this.container = document.createElement('div');
     this.container.id = 'toast-container';
-    this.container.style.cssText = `
-      position: fixed;
-      bottom: 80px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 10000;
-      pointer-events: none;
-    `;
     document.body.appendChild(this.container);
   }
   
