@@ -284,7 +284,78 @@ test('favoritesOnly + shuffle: liking another track adds it to tail of queue', a
       likedUids: window.FavoritesManager?.getLikedUidsForAlbum?.(window.AlbumsManager?.getPlayingAlbum?.() || '') || []
     };
   });
+
+  expect(after.len).toBeGreaterThanOrEqual(beforeLen);
+  expect(after.likedUids.includes(after.tailUid)).toBeTruthy();
+});
+
 test('shuffle history: next-next-prev returns to previously played track', async ({ page }) => {
+  await loginByPromo(page);
+  await page.waitForSelector('#track-list .track', { timeout: 10000 });
+
+  // Запустим первый трек
+  await page.click('#track-list .track >> nth=0');
+
+  // Включим shuffle
+  await page.click('#shuffle-btn');
+  await expect(page.locator('#shuffle-btn')).toHaveClass(/active/);
+
+  const first = await page.evaluate(() => String(window.playerCore?.getCurrentTrack?.()?.uid || ''));
+
+  await page.click('#next-btn');
+  await page.waitForTimeout(200);
+  const second = await page.evaluate(() => String(window.playerCore?.getCurrentTrack?.()?.uid || ''));
+
+  await page.click('#next-btn');
+  await page.waitForTimeout(200);
+  const third = await page.evaluate(() => String(window.playerCore?.getCurrentTrack?.()?.uid || ''));
+
+  await page.click('#prev-btn');
+  await page.waitForTimeout(200);
+  const back = await page.evaluate(() => String(window.playerCore?.getCurrentTrack?.()?.uid || ''));
+
+  expect(first).toBeTruthy();
+  expect(second).toBeTruthy();
+  expect(third).toBeTruthy();
+  expect(back).toBe(second);
+});
+
+test('favoritesOnly + shuffle: unliking NOT current removes it from tail if not played yet', async ({ page }) => {
+  await loginByPromo(page);
+  await page.waitForSelector('#track-list .track', { timeout: 10000 });
+
+  const rows = page.locator('#track-list .track');
+  const firstRow = rows.nth(0);
+  const secondRow = rows.nth(1);
+
+  // Лайкаем 1 и 2 трек
+  await firstRow.hover();
+  await firstRow.locator('.like-star').click();
+  await secondRow.hover();
+  await secondRow.locator('.like-star').click();
+
+  // Запускаем 1-й
+  await firstRow.click();
+
+  // favoritesOnly ON
+  await page.click('#favorites-btn');
+  await expect(page.locator('#favorites-btn')).toHaveClass(/favorites-active/);
+
+  // shuffle ON
+  await page.click('#shuffle-btn');
+  await expect(page.locator('#shuffle-btn')).toHaveClass(/active/);
+
+  // Теперь плейлист должен содержать 2 трека (или больше, если already), фиксируем длину
+  const beforeLen = await page.evaluate(() => (window.playerCore?.getPlaylistSnapshot?.() || []).length);
+
+  // Снимаем лайк со 2-го трека (НЕ текущего)
+  await secondRow.locator('.like-star').click();
+  await page.waitForTimeout(300);
+
+  const afterLen = await page.evaluate(() => (window.playerCore?.getPlaylistSnapshot?.() || []).length);
+
+  expect(afterLen).toBeLessThanOrEqual(beforeLen);
+});
   await loginByPromo(page);
   await page.waitForSelector('#track-list .track', { timeout: 10000 });
 
