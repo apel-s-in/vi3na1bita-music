@@ -150,7 +150,11 @@
     }
 
     load(index, options = {}) {
-      if (index < 0 || index >= this.playlist.length) return;
+      // ✅ Дополнительная защита от некорректного индекса
+      if (typeof index !== 'number' || !Number.isFinite(index) || index < 0 || index >= this.playlist.length) {
+        console.warn('⚠️ PlayerCore.load called with invalid index:', index);
+        return;
+      }
 
       const { autoPlay = false, resumePosition = null } = options || {};
 
