@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-28332b8c671fc8529bab3d0f1316e62aecbdf28f.idx
-│   │       ├── pack-28332b8c671fc8529bab3d0f1316e62aecbdf28f.pack
-│   │       └── pack-28332b8c671fc8529bab3d0f1316e62aecbdf28f.rev
+│   │       ├── pack-b0f145fb35a73aeaa8273a404ce23c27605648f4.idx
+│   │       ├── pack-b0f145fb35a73aeaa8273a404ce23c27605648f4.pack
+│   │       └── pack-b0f145fb35a73aeaa8273a404ce23c27605648f4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -259,7 +259,6 @@ vi3na1bita-music/
 │   │   ├── favorites.js
 │   │   ├── lyrics-modal.js
 │   │   ├── mini.js
-│   │   ├── modals.js
 │   │   ├── notify.js
 │   │   ├── sleep.js
 │   │   └── sysinfo.js
@@ -280,7 +279,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 21:58:27 UTC
+Сгенерировано: 2025-12-20 21:58:43 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8106,33 +8105,6 @@ export async function seedPlayerStateV2FromCurrent(page, opts = {}) {
   window.MiniModeManager = new MiniModeManager();
 
   console.log('✅ Mini mode manager initialized');
-})();
-
-//=================================================
-// FILE: /scripts/ui/modals.js
-// scripts/ui/modals.js (ESM)
-// Универсальная система управления модальными окнами.
-
-(function(){
-  function toggleModal(modalId, show) {
-    const modal = document.getElementById(modalId);
-    if (!modal) return;
-    
-    const doShow = show === undefined ? !modal.classList.contains('active') : show;
-    modal.classList.toggle('active', doShow);
-    
-    // Закрытие по клику на фон
-    if(doShow) {
-        modal.addEventListener('click', e => {
-            if(e.target === modal) {
-                toggleModal(modalId, false);
-            }
-        });
-    }
-  }
-
-  // Экспорт
-  window.toggleModal = toggleModal;
 })();
 
 //=================================================
