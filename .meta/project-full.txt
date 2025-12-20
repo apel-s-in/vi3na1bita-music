@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2cae034b903f88d976df58cbc18c4192b30091d7.idx
-│   │       ├── pack-2cae034b903f88d976df58cbc18c4192b30091d7.pack
-│   │       └── pack-2cae034b903f88d976df58cbc18c4192b30091d7.rev
+│   │       ├── pack-83e5cb6966e1b468e6faf2463d15bfd507b16c01.idx
+│   │       ├── pack-83e5cb6966e1b468e6faf2463d15bfd507b16c01.pack
+│   │       └── pack-83e5cb6966e1b468e6faf2463d15bfd507b16c01.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -274,7 +274,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 23:44:26 UTC
+Сгенерировано: 2025-12-20 23:44:52 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1517,154 +1517,194 @@ self.addEventListener('message', e => {
 
 //=================================================
 // FILE: /scripts/app/downloads.js
-// scripts/app/downloads.js
-// Управление скачиванием треков и альбомов
+// scripts/app/downloads.js — Менеджер загрузок
+(function() {
+  'use strict';
 
-class DownloadsManager {
-  constructor() {
-    this.downloadQueue = [];
-    this.isDownloading = false;
-  }
+  const $ = id => document.getElementById(id);
+  const escHtml = s => { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; };
 
-  async downloadAlbum(albumKey) {
-    const albumInfo = window.albumsIndex?.find(a => a.key === albumKey);
-    if (!albumInfo) {
-      console.error('Album not found:', albumKey);
-      return;
+  const state = {
+    queue: [],
+    isDownloading: false,
+    abortController: null
+  };
+
+  // ==================== СКАЧИВАНИЕ ТРЕКА ====================
+  async function downloadTrack(track) {
+    if (!track?.audio) {
+      window.NotificationSystem?.error?.('Аудио недоступно');
+      return false;
     }
 
-    const albumData = window.AlbumsManager?.getAlbumData(albumKey);
-    if (!albumData) {
-      window.NotificationSystem?.error('Не удалось загрузить данные альбома');
-      return;
-    }
-
-    window.NotificationSystem?.info(`Подготовка к скачиванию: ${albumInfo.title}`);
-
-    // track.file уже абсолютный URL (AlbumsManager нормализует через new URL(...))
-    const files = (albumData.tracks || [])
-      .filter(t => !!t && typeof t.file === 'string' && t.file.length > 0)
-      .map(track => ({
-        url: track.file,
-        filename: `${albumInfo.title} - ${track.num}. ${track.title}.mp3`
-      }));
-
-    // ✅ Обложка: берём ПЕРВУЮ картинку центральной галереи (или пропускаем).
     try {
-      const coverUrl = await window.GalleryManager?.getFirstCoverUrl?.(albumKey);
-      if (coverUrl && typeof coverUrl === 'string' && coverUrl !== 'img/logo.png') {
-        const extMatch = coverUrl.split('?')[0].match(/\.([a-z0-9]+)$/i);
-        const ext = extMatch ? extMatch[1].toLowerCase() : 'img';
-        files.push({
-          url: coverUrl,
-          filename: `${albumInfo.title} - cover.${ext}`
-        });
-      }
-    } catch {}
+      window.NotificationSystem?.info?.(`Загрузка: ${track.title}`);
+      
+      state.abortController = new AbortController();
+      const response = await fetch(track.audio, { 
+        signal: state.abortController.signal,
+        cache: 'force-cache'
+      });
 
-    this.downloadFiles(files, albumInfo.title);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${sanitizeFilename(track.title)}.mp3`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      
+      window.NotificationSystem?.success?.(`Загружено: ${track.title}`);
+      return true;
+    } catch (e) {
+      if (e.name === 'AbortError') {
+        window.NotificationSystem?.warning?.('Загрузка отменена');
+      } else {
+        console.error('Download error:', e);
+        window.NotificationSystem?.error?.('Ошибка загрузки');
+      }
+      return false;
+    } finally {
+      state.abortController = null;
+    }
   }
 
-  async downloadFiles(files, albumTitle) {
-    if (!files || files.length === 0) return;
+  function sanitizeFilename(name) {
+    return (name || 'track')
+      .replace(/[<>:"/\\|?*]/g, '')
+      .replace(/\s+/g, '_')
+      .substring(0, 100);
+  }
 
-    if (!this.isDownloadSupported()) {
-      this.fallbackDownload(files);
+  // ==================== СКАЧИВАНИЕ АЛЬБОМА (ZIP) ====================
+  async function downloadAlbum(albumKey) {
+    const tracks = window.AlbumsManager?.getTracks?.() || [];
+    const config = window.AlbumsManager?.getConfig?.();
+    
+    if (!tracks.length) {
+      window.NotificationSystem?.warning?.('Нет треков для загрузки');
       return;
     }
 
-    window.NotificationSystem?.info(`Скачивание ${files.length} файлов...`);
-    let completed = 0;
-
-    for (const file of files) {
+    // Проверяем наличие JSZip
+    if (typeof JSZip === 'undefined') {
+      // Пробуем загрузить
       try {
-        await this.downloadFile(file.url, file.filename);
-        completed++;
-        window.NotificationSystem?.info(`Скачано ${completed} из ${files.length}`, 2000);
-        await this.delay(500);
-      } catch (error) {
-        console.error('Download failed:', file.filename, error);
-      }
-    }
-
-    window.NotificationSystem?.success(`✅ Альбом "${albumTitle}" скачан!`);
-  }
-
-  async downloadFile(url, filename) {
-    return new Promise((resolve, reject) => {
-      if (!navigator.onLine) {
-        reject(new Error('Нет подключения к интернету'));
+        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+      } catch {
+        window.NotificationSystem?.error?.('Не удалось загрузить архиватор');
         return;
       }
+    }
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
+    const zip = new JSZip();
+    const albumName = sanitizeFilename(config?.albumName || albumKey);
+    let successCount = 0;
 
-      fetch(url, { signal: controller.signal })
-        .then(response => {
-          clearTimeout(timeoutId);
+    window.NotificationSystem?.info?.(`Подготовка альбома: ${tracks.length} треков...`);
 
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-          }
+    for (let i = 0; i < tracks.length; i++) {
+      const track = tracks[i];
+      if (!track?.audio) continue;
 
-          return response.blob();
-        })
-        .then(blob => {
-          if (blob.size === 0) {
-            throw new Error('Файл пустой (0 байт)');
-          }
+      try {
+        const response = await fetch(track.audio, { cache: 'force-cache' });
+        if (!response.ok) continue;
+        
+        const blob = await response.blob();
+        const filename = `${String(i + 1).padStart(2, '0')}_${sanitizeFilename(track.title)}.mp3`;
+        zip.file(filename, blob);
+        successCount++;
+      } catch (e) {
+        console.warn(`Failed to add track: ${track.title}`, e);
+      }
+    }
 
-          const link = document.createElement('a');
-          link.href = URL.createObjectURL(blob);
-          link.download = this.sanitizeFilename(filename);
-          link.style.display = 'none';
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
+    if (successCount === 0) {
+      window.NotificationSystem?.error?.('Не удалось загрузить треки');
+      return;
+    }
 
-          setTimeout(() => URL.revokeObjectURL(link.href), 250);
+    try {
+      window.NotificationSystem?.info?.('Создание архива...');
+      const content = await zip.generateAsync({ 
+        type: 'blob',
+        compression: 'DEFLATE',
+        compressionOptions: { level: 6 }
+      });
 
-          console.log(`✅ Downloaded: ${filename} (${(blob.size / 1024 / 1024).toFixed(2)} MB)`);
-          resolve();
-        })
-        .catch(error => {
-          clearTimeout(timeoutId);
+      const url = URL.createObjectURL(content);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${albumName}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      
+      window.NotificationSystem?.success?.(`Альбом загружен: ${successCount} треков`);
+    } catch (e) {
+      console.error('ZIP creation error:', e);
+      window.NotificationSystem?.error?.('Ошибка создания архива');
+    }
+  }
 
-          if (error && error.name === 'AbortError') {
-            reject(new Error('Превышено время ожидания скачивания'));
-          } else {
-            reject(error);
-          }
-        });
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = src;
+      script.onload = resolve;
+      script.onerror = reject;
+      document.head.appendChild(script);
     });
   }
 
-  sanitizeFilename(filename) {
-    return String(filename || 'file').replace(/[<>:"/\\|?*]/g, '_');
+  // ==================== ОТМЕНА ====================
+  function cancelDownload() {
+    state.abortController?.abort();
   }
 
-  isDownloadSupported() {
-    const a = document.createElement('a');
-    return typeof a.download !== 'undefined';
-  }
+  // ==================== UI ====================
+  function showDownloadModal(track) {
+    const html = `
+      <div class="modal-feedback" style="max-width:400px">
+        <button class="bigclose">×</button>
+        <h2>Скачать трек</h2>
+        <p style="margin:16px 0"><strong>${escHtml(track?.title || 'Трек')}</strong></p>
+        <p style="color:#888;font-size:14px">${escHtml(track?.artist || '')}</p>
+        <div style="display:flex;gap:12px;margin-top:24px;justify-content:center">
+          <button class="modal-action-btn" id="dl-confirm">Скачать</button>
+          <button class="modal-action-btn" style="background:#444" id="dl-cancel">Отмена</button>
+        </div>
+      </div>
+    `;
 
-  fallbackDownload(files) {
-    window.NotificationSystem?.info('Откроются вкладки для скачивания');
-    files.forEach((file, index) => {
-      setTimeout(() => {
-        window.open(file.url, '_blank');
-      }, index * 300);
+    const modal = window.Utils?.createModal?.(html);
+    if (!modal) return;
+
+    modal.querySelector('#dl-confirm')?.addEventListener('click', () => {
+      modal.remove();
+      downloadTrack(track);
     });
+
+    modal.querySelector('#dl-cancel')?.addEventListener('click', () => modal.remove());
   }
 
-  delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
-}
-
-window.DownloadsManager = new DownloadsManager();
-export default DownloadsManager;
+  // ==================== ЭКСПОРТ ====================
+  window.DownloadsManager = {
+    downloadTrack,
+    downloadAlbum,
+    cancelDownload,
+    showDownloadModal
+  };
+})();
 
 //=================================================
 // FILE: /scripts/app/gallery.js
