@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-16ada946a3ed1cc910c7761618cb8593443d0587.idx
-│   │       ├── pack-16ada946a3ed1cc910c7761618cb8593443d0587.pack
-│   │       └── pack-16ada946a3ed1cc910c7761618cb8593443d0587.rev
+│   │       ├── pack-2ee171fd249d4ecfd3be406747d61baf9517eae8.idx
+│   │       ├── pack-2ee171fd249d4ecfd3be406747d61baf9517eae8.pack
+│   │       └── pack-2ee171fd249d4ecfd3be406747d61baf9517eae8.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -285,7 +285,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 19:57:30 UTC
+Сгенерировано: 2025-12-20 19:59:34 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1888,6 +1888,9 @@ class AlbumsManager {
     this.playingAlbum = null;
     this.albumsData = new Map();
     this.isLoading = false;
+
+    // ✅ Кэш URL обложки альбома (первая картинка из центральной галереи)
+    this.albumCoverUrlCache = new Map();
     
     // ✅ Флаг видимости галереи (toggle при повторном клике)
     this.isGalleryVisible = true;
@@ -2143,9 +2146,16 @@ class AlbumsManager {
 
       this.albumsData.set(albumKey, albumData);
     }
-
     // ✅ Загрузка галереи ТОЛЬКО через GalleryManager
     await this.loadGallery(albumKey);
+
+    // ✅ Обложка для PlayerCore/MediaSession: первая картинка центральной галереи (или logo)
+    try {
+      const coverUrl = await window.GalleryManager?.getFirstCoverUrl?.(albumKey);
+      this.albumCoverUrlCache.set(albumKey, coverUrl || 'img/logo.png');
+    } catch {
+      this.albumCoverUrlCache.set(albumKey, 'img/logo.png');
+    }
 
     // ✅ Fallback: если галерея не загрузилась/пуста — показываем logo.png,
     // не трогая воспроизведение (базовое правило плеера соблюдаем).
@@ -2629,8 +2639,7 @@ class AlbumsManager {
       })();
 
       if (needsNewPlaylist) {
-        const albumInfo = window.albumsIndex?.find(a => a.key === albumKey);
-        const base = albumInfo?.base || '';
+        const coverUrl = this.albumCoverUrlCache.get(albumKey) || 'img/logo.png';
 
         const tracksForCore = albumData.tracks
           .filter(t => !!t.file)
@@ -2639,9 +2648,7 @@ class AlbumsManager {
             title: t.title,
             artist: albumData.artist || 'Витрина Разбита',
             album: albumKey,
-            cover: albumData.cover
-              ? new URL(albumData.cover, base).toString()
-              : 'img/logo.png',
+            cover: coverUrl,
             lyrics: t.lyrics || null,
             fulltext: t.fulltext || null,
             uid: (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null,
@@ -2652,9 +2659,7 @@ class AlbumsManager {
           window.playerCore.setPlaylist(tracksForCore, playIndex, {
             artist: albumData.artist || 'Витрина Разбита',
             album: albumData.title || albumInfo?.title || '',
-            cover: albumData.cover
-              ? new URL(albumData.cover, base).toString()
-              : 'img/logo.png',
+            cover: coverUrl,
           });
         }
       }
