@@ -145,12 +145,25 @@
       const changedUid = String(d.uid || '').trim();
       const liked = !!d.liked;
 
+      // ✅ Like: добавить в хвост
       if (liked && changedAlbum === playingAlbum && changedUid) {
         const inCurrent = current.some(t => String(t?.uid || '').trim() === changedUid);
         if (!inCurrent) {
           const add = targetFavoritesPlaylist.find(t => String(t?.uid || '').trim() === changedUid) || null;
           if (add) {
             pc.appendToPlaylistTail?.([add]);
+            ensureAvailableIndicesForPlayback();
+            return;
+          }
+        }
+      }
+
+      // ✅ Unlike НЕ текущего: убрать из хвоста очереди, если ещё не проигран (умный режим)
+      if (!liked && changedAlbum === playingAlbum && changedUid) {
+        const repeat = !!pc.isRepeat?.();
+        if (!repeat) {
+          const removed = pc.removeFromPlaylistTailIfNotPlayed?.({ uid: changedUid });
+          if (removed) {
             ensureAvailableIndicesForPlayback();
             return;
           }
