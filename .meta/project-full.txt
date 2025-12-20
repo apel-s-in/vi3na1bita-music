@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6a37304d18239a6b98d24079a5f4f5d9a47f332a.idx
-│   │       ├── pack-6a37304d18239a6b98d24079a5f4f5d9a47f332a.pack
-│   │       └── pack-6a37304d18239a6b98d24079a5f4f5d9a47f332a.rev
+│   │       ├── pack-562f9f93085e84d3b2b4b5a78c0671069325de74.idx
+│   │       ├── pack-562f9f93085e84d3b2b4b5a78c0671069325de74.pack
+│   │       └── pack-562f9f93085e84d3b2b4b5a78c0671069325de74.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -278,7 +278,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 22:30:53 UTC
+Сгенерировано: 2025-12-20 22:32:24 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2697,45 +2697,16 @@ class GalleryManager {
 
   normalizeItem(raw, baseDir) {
     if (!raw) return null;
-
     const toAbs = (p) => {
       if (!p) return null;
       const s = String(p).replace(/^\.?\//, '');
-      if (/^https?:\/\//i.test(s)) return s;
-      if (/^(albums|img|icons|assets)\//i.test(s)) return `./${s}`;
-      return baseDir + s;
+      return /^https?:\/\//i.test(s) ? s : /^(albums|img|icons|assets)\//i.test(s) ? `./${s}` : baseDir + s;
     };
-
-    if (typeof raw === 'string') {
-      const isHtml = /\.html(\?|#|$)/i.test(raw);
-      return {
-        type: isHtml ? 'html' : 'img',
-        src: toAbs(raw),
-        formats: null
-      };
-    }
-
-    const type = String(raw.type || '').toLowerCase() === 'html' ? 'html' : 'img';
-
-    if (type === 'html') {
-      return {
-        type: 'html',
-        src: toAbs(raw.src || ''),
-        formats: null
-      };
-    }
-
-    const formats = {
-      webp: toAbs(raw.formats?.webp || null),
-      full: toAbs(raw.formats?.full || raw.src || null),
-      thumb: toAbs(raw.formats?.thumb || null)
-    };
-
-    return {
-      type: 'img',
-      src: formats.full || toAbs(raw.src || ''),
-      formats
-    };
+    if (typeof raw === 'string') return { type: /\.html(\?|#|$)/i.test(raw) ? 'html' : 'img', src: toAbs(raw), formats: null };
+    const type = raw.type?.toLowerCase() === 'html' ? 'html' : 'img';
+    if (type === 'html') return { type: 'html', src: toAbs(raw.src || ''), formats: null };
+    const formats = { webp: toAbs(raw.formats?.webp), full: toAbs(raw.formats?.full || raw.src), thumb: toAbs(raw.formats?.thumb) };
+    return { type: 'img', src: formats.full || toAbs(raw.src), formats };
   }
 
   renderItem(index) {
