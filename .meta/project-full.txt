@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c3857fb94c2c4a270da91e632704a130c073ceb4.idx
-│   │       ├── pack-c3857fb94c2c4a270da91e632704a130c073ceb4.pack
-│   │       └── pack-c3857fb94c2c4a270da91e632704a130c073ceb4.rev
+│   │       ├── pack-6a37304d18239a6b98d24079a5f4f5d9a47f332a.idx
+│   │       ├── pack-6a37304d18239a6b98d24079a5f4f5d9a47f332a.pack
+│   │       └── pack-6a37304d18239a6b98d24079a5f4f5d9a47f332a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -278,7 +278,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 22:30:03 UTC
+Сгенерировано: 2025-12-20 22:30:53 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7053,29 +7053,16 @@ try { main(); } catch (e) { console.error("❌", e); process.exit(1); }
     // ========== УПРАВЛЕНИЕ ПЛЕЙЛИСТОМ ==========
 
     setPlaylist(tracks, startIndex = 0, metadata = {}, options = {}) {
-      // ✅ БАЗОВОЕ ПРАВИЛО: setPlaylist НЕ останавливает воспроизведение.
       const wasPlaying = this.isPlaying();
       const prev = this.getCurrentTrack();
       const prevUid = prev?.uid || null;
       const prevPos = this.getPosition();
-
-      const {
-        preserveOriginalPlaylist = false,
-        preserveShuffleMode = false,
-        resetHistory = true
-      } = options || {};
+      const { preserveOriginalPlaylist = false, preserveShuffleMode = false, resetHistory = true } = options || {};
 
       this.playlist = (Array.isArray(tracks) ? tracks : []).map(t => ({
-        src: t.src,
-        title: t.title || 'Без названия',
-        artist: t.artist || 'Витрина Разбита',
-        album: t.album || '',
-        cover: t.cover || '',
-        lyrics: t.lyrics || null,
-        fulltext: t.fulltext || null,
-        uid: (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null,
-        hasLyrics: (typeof t.hasLyrics === 'boolean') ? t.hasLyrics : null,
-        sourceAlbum: t.sourceAlbum || null
+        src: t.src, title: t.title || 'Без названия', artist: t.artist || 'Витрина Разбита',
+        album: t.album || '', cover: t.cover || '', lyrics: t.lyrics || null, fulltext: t.fulltext || null,
+        uid: t.uid?.trim() || null, hasLyrics: t.hasLyrics ?? null, sourceAlbum: t.sourceAlbum || null
       }));
 
       if (!preserveOriginalPlaylist) {
