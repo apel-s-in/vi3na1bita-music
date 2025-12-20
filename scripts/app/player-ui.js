@@ -1272,6 +1272,87 @@
     renderLyricsViewMode();
   }
 
+  // ✅ Кэш для 404 ответов — не проверяем повторно
+  const LYRICS_404_CACHE_KEY = 'lyrics_404_cache:v1';
+  
+  // ✅ Кэш предзагруженной лирики следующего трека
+  let prefetchedLyrics = null;
+  let prefetchedLyricsUrl = null;
+
+  function getLyrics404Cache() {
+    try {
+      const raw = sessionStorage.getItem(LYRICS_404_CACHE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function setLyrics404Cache(url) {
+    try {
+      const cache = getLyrics404Cache();
+      cache[url] = Date.now();
+      // Ограничиваем размер кэша (макс 100 записей)
+      const keys = Object.keys(cache);
+      if (keys.length > 100) {
+        const oldest = keys.sort((a, b) => cache[a] - cache[b]).slice(0, 50);
+        oldest.forEach(k => delete cache[k]);
+      }
+      sessionStorage.setItem(LYRICS_404_CACHE_KEY, JSON.stringify(cache));
+    } catch {}
+  }
+
+  function isLyrics404Cached(url) {
+    const cache = getLyrics404Cache();
+    return !!cache[url];
+  }
+
+  /**
+   * ✅ Проверяет, есть ли лирика у трека БЕЗ HEAD-запроса
+   * Использует поле hasLyrics из config.json (если есть)
+   */
+  function checkTrackHasLyrics(track) {
+    if (!track) return false;
+    
+    // 1. Если явно указано hasLyrics: false — лирики нет
+    if (track.hasLyrics === false) return false;
+    
+    // 2. Если hasLyrics: true или есть URL лирики — считаем что есть
+    if (track.hasLyrics === true) return true;
+    if (track.lyrics) return true;
+    
+    return false;
+  }
+
+  /**
+   * ✅ Автоопределение формата лирики по URL или содержимому
+   */
+  function detectLyricsFormat(url, content) {
+    // По расширению
+    if (url) {
+      const lower = url.toLowerCase();
+      if (lower.endsWith('.lrc')) return 'lrc';
+      if (lower.endsWith('.json')) return 'json';
+      if (lower.endsWith('.txt')) return 'lrc'; // .txt обычно LRC-формат
+    }
+    
+    // По содержимому
+    if (content) {
+      const trimmed = content.trim();
+      // JSON начинается с [ или {
+      if (trimmed.startsWith('[') && !trimmed.match(/^$$\d{1,2}:\d{2}/)) {
+        try {
+          JSON.parse(trimmed);
+          return 'json';
+        } catch {}
+      }
+      // LRC содержит таймкоды [mm:ss.xx]
+      if (/\[\d{1,2}:\d{2}[.\d]*$$/.test(trimmed)) return 'lrc';
+    }
+    
+    return 'unknown';
+  }
+
   async function loadLyrics(lyricsUrl) {
     currentLyrics = [];
     lyricsLastIdx = -1;
@@ -1280,93 +1361,134 @@
     const container = document.getElementById('lyrics');
     if (!container) return Promise.resolve();
 
-    // ✅ Если ссылки на таймкод-лирику нет — прячем окно и дизейблим кнопки (это НЕ ошибка)
+    // ✅ Если ссылки на лирику нет — проверяем hasLyrics флаг трека
+    if (!lyricsUrl) {
+      const track = w.playerCore?.getCurrentTrack();
+      if (!checkTrackHasLyrics(track)) {
+        hasTimedLyricsForCurrentTrack = false;
+        setLyricsAvailability(false);
+        return Promise.resolve();
+      }
+    }
+
+    // ✅ Если URL нет после всех проверок — дизейблим
     if (!lyricsUrl) {
       hasTimedLyricsForCurrentTrack = false;
       setLyricsAvailability(false);
       return Promise.resolve();
     }
 
-    // ✅ Проверяем существование файла HEAD-запросом (не логируем 404)
-    try {
-      const headResponse = await fetch(lyricsUrl, { method: 'HEAD', cache: 'force-cache' });
-      if (!headResponse.ok) {
-        // Файл не существует — это нормально, просто дизейблим кнопки
-        hasTimedLyricsForCurrentTrack = false;
-        setLyricsAvailability(false);
-        return Promise.resolve();
-      }
-    } catch {
-      // Сетевая ошибка или CORS — тоже не логируем, просто дизейблим
+    // ✅ Проверяем кэш 404 — если уже знаем что файла нет, не делаем запрос
+    if (isLyrics404Cached(lyricsUrl)) {
       hasTimedLyricsForCurrentTrack = false;
       setLyricsAvailability(false);
       return Promise.resolve();
     }
 
-    // Файл существует — пробуем загрузить
+    // ✅ Проверяем предзагруженную лирику
+    if (prefetchedLyricsUrl === lyricsUrl && prefetchedLyrics !== null) {
+      currentLyrics = prefetchedLyrics;
+      prefetchedLyrics = null;
+      prefetchedLyricsUrl = null;
+      
+      if (currentLyrics.length > 0) {
+        hasTimedLyricsForCurrentTrack = true;
+        setLyricsAvailability(true);
+        renderLyricsViewMode();
+      } else {
+        hasTimedLyricsForCurrentTrack = false;
+        setLyricsAvailability(false);
+      }
+      
+      // Запускаем предзагрузку следующего трека
+      prefetchNextTrackLyrics();
+      return Promise.resolve();
+    }
+
+    // ✅ Проверяем кэш в sessionStorage
     const cacheKey = `lyrics_cache_${lyricsUrl}`;
     const cached = sessionStorage.getItem(cacheKey);
 
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
+        
+        // Проверяем, не закэширован ли маркер "нет лирики"
+        if (parsed === null || parsed === '__NO_LYRICS__') {
+          hasTimedLyricsForCurrentTrack = false;
+          setLyricsAvailability(false);
+          prefetchNextTrackLyrics();
+          return Promise.resolve();
+        }
+        
         parseLyrics(parsed);
 
         if (!Array.isArray(currentLyrics) || currentLyrics.length === 0) {
           hasTimedLyricsForCurrentTrack = false;
           setLyricsAvailability(false);
+          prefetchNextTrackLyrics();
           return Promise.resolve();
         }
 
         hasTimedLyricsForCurrentTrack = true;
         setLyricsAvailability(true);
         renderLyricsViewMode();
+        prefetchNextTrackLyrics();
         return Promise.resolve();
       } catch {
-        // Кэш повреждён — удаляем и загружаем заново
         try { sessionStorage.removeItem(cacheKey); } catch {}
       }
     }
 
-    // Показываем спиннер только если файл точно существует
+    // ✅ Показываем спиннер
     container.innerHTML = '<div class="lyrics-spinner"></div>';
 
     try {
       const response = await fetch(lyricsUrl, {
         cache: 'force-cache',
-        headers: { 'Accept': 'application/json, text/plain' }
+        headers: { 'Accept': 'application/json, text/plain, */*' }
       });
 
       if (!response.ok) {
-        // Файл недоступен — тихо дизейблим (без console.error)
+        // ✅ Кэшируем 404 чтобы не проверять повторно
+        if (response.status === 404) {
+          setLyrics404Cache(lyricsUrl);
+        }
         hasTimedLyricsForCurrentTrack = false;
         setLyricsAvailability(false);
+        prefetchNextTrackLyrics();
         return Promise.resolve();
       }
 
       const contentType = response.headers.get('content-type') || '';
+      const bodyText = await response.text();
+      
+      // ✅ Автоопределение формата
+      const format = detectLyricsFormat(lyricsUrl, bodyText);
 
-      if (contentType.includes('application/json')) {
+      if (format === 'json' || contentType.includes('application/json')) {
         try {
-          const asJson = await response.json();
+          const asJson = JSON.parse(bodyText);
           if (!Array.isArray(asJson)) {
-            // Невалидный формат — тихо дизейблим
+            // Кэшируем как "нет лирики"
+            try { sessionStorage.setItem(cacheKey, JSON.stringify('__NO_LYRICS__')); } catch {}
             hasTimedLyricsForCurrentTrack = false;
             setLyricsAvailability(false);
+            prefetchNextTrackLyrics();
             return Promise.resolve();
           }
 
           sessionStorage.setItem(cacheKey, JSON.stringify(asJson));
           parseLyrics(asJson);
         } catch {
-          // Ошибка парсинга JSON — тихо дизейблим
+          try { sessionStorage.setItem(cacheKey, JSON.stringify('__NO_LYRICS__')); } catch {}
           hasTimedLyricsForCurrentTrack = false;
           setLyricsAvailability(false);
+          prefetchNextTrackLyrics();
           return Promise.resolve();
         }
       } else {
-        // LRC или текстовый формат
-        const bodyText = await response.text();
+        // ✅ LRC или текстовый формат
         sessionStorage.setItem(cacheKey, JSON.stringify(bodyText));
         parseLyrics(bodyText);
       }
@@ -1374,35 +1496,123 @@
       if (currentLyrics.length === 0) {
         hasTimedLyricsForCurrentTrack = false;
         setLyricsAvailability(false);
+        prefetchNextTrackLyrics();
         return Promise.resolve();
       }
 
-      // ✅ Лирика успешно загружена и распарсена
       hasTimedLyricsForCurrentTrack = true;
       setLyricsAvailability(true);
       renderLyricsViewMode();
+      prefetchNextTrackLyrics();
       return Promise.resolve();
 
     } catch {
-      // ✅ Любая ошибка — тихо дизейблим кнопки (без логирования)
       hasTimedLyricsForCurrentTrack = false;
       setLyricsAvailability(false);
+      prefetchNextTrackLyrics();
       return Promise.resolve();
     }
   }
 
-  function parseLyrics(source) {
-    currentLyrics = [];
-    const metadata = {};
+  /**
+   * ✅ Предзагрузка лирики следующего трека
+   */
+  async function prefetchNextTrackLyrics() {
+    // Сбрасываем предыдущую предзагрузку
+    prefetchedLyrics = null;
+    prefetchedLyricsUrl = null;
 
+    if (!w.playerCore) return;
+
+    const nextIndex = w.playerCore.getNextIndex();
+    if (nextIndex < 0) return;
+
+    const playlist = w.playerCore.getPlaylistSnapshot();
+    const nextTrack = playlist[nextIndex];
+
+    if (!nextTrack || !nextTrack.lyrics) return;
+
+    const lyricsUrl = nextTrack.lyrics;
+
+    // Проверяем кэш 404
+    if (isLyrics404Cached(lyricsUrl)) return;
+
+    // Проверяем sessionStorage кэш
+    const cacheKey = `lyrics_cache_${lyricsUrl}`;
+    const cached = sessionStorage.getItem(cacheKey);
+
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (parsed && parsed !== '__NO_LYRICS__') {
+          // Парсим и сохраняем
+          const tempLyrics = [];
+          parseLyricsInto(parsed, tempLyrics);
+          if (tempLyrics.length > 0) {
+            prefetchedLyrics = tempLyrics;
+            prefetchedLyricsUrl = lyricsUrl;
+          }
+        }
+      } catch {}
+      return;
+    }
+
+    // ✅ Загружаем в фоне (без блокировки UI)
+    try {
+      const response = await fetch(lyricsUrl, {
+        cache: 'force-cache',
+        headers: { 'Accept': 'application/json, text/plain, */*' }
+      });
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          setLyrics404Cache(lyricsUrl);
+        }
+        return;
+      }
+
+      const bodyText = await response.text();
+      const format = detectLyricsFormat(lyricsUrl, bodyText);
+
+      let dataToCache = bodyText;
+      const tempLyrics = [];
+
+      if (format === 'json') {
+        try {
+          const asJson = JSON.parse(bodyText);
+          if (Array.isArray(asJson)) {
+            dataToCache = asJson;
+            parseLyricsInto(asJson, tempLyrics);
+          }
+        } catch {}
+      } else {
+        parseLyricsInto(bodyText, tempLyrics);
+      }
+
+      // Кэшируем
+      try { sessionStorage.setItem(cacheKey, JSON.stringify(dataToCache)); } catch {}
+
+      if (tempLyrics.length > 0) {
+        prefetchedLyrics = tempLyrics;
+        prefetchedLyricsUrl = lyricsUrl;
+      }
+    } catch {
+      // Тихо игнорируем ошибки предзагрузки
+    }
+  }
+
+  /**
+   * ✅ Парсинг лирики в указанный массив (для предзагрузки)
+   */
+  function parseLyricsInto(source, targetArray) {
     if (Array.isArray(source)) {
       source.forEach((item) => {
         if (!item || typeof item.time !== 'number') return;
         const text = (item.line || item.text || '').trim();
         if (!text) return;
-        currentLyrics.push({ time: item.time, text });
+        targetArray.push({ time: item.time, text });
       });
-      currentLyrics.sort((a, b) => a.time - b.time);
+      targetArray.sort((a, b) => a.time - b.time);
       return;
     }
 
@@ -1413,39 +1623,42 @@
       const trimmed = line.trim();
       if (!trimmed) return;
 
-      const metaMatch = trimmed.match(/^\[([a-z]{2}):(.*)\]$/i);
-      if (metaMatch) {
-        const [, key, value] = metaMatch;
-        metadata[key.toLowerCase()] = value.trim();
-        return;
-      }
+      // Пропускаем метаданные LRC
+      const metaMatch = trimmed.match(/^$$([a-z]{2}):(.*)$$$/i);
+      if (metaMatch) return;
 
-      const match1 = trimmed.match(/^\[(\d{1,2}):(\d{2})\.(\d{2})\](.*)$/);
+      // [mm:ss.xx] формат
+      const match1 = trimmed.match(/^$$(\d{1,2}):(\d{2})\.(\d{2,3})$$(.*)$/);
       if (match1) {
         const [, mm, ss, cs, txt] = match1;
-        const time = parseInt(mm, 10) * 60 + parseInt(ss, 10) + parseInt(cs, 10) / 100;
+        const csValue = cs.length === 3 ? parseInt(cs, 10) / 1000 : parseInt(cs, 10) / 100;
+        const time = parseInt(mm, 10) * 60 + parseInt(ss, 10) + csValue;
         const lyricText = (txt || '').trim();
         if (lyricText) {
-          currentLyrics.push({ time, text: lyricText });
+          targetArray.push({ time, text: lyricText });
         }
         return;
       }
 
-      const match2 = trimmed.match(/^\[(\d{1,2}):(\d{2})\](.*)$/);
+      // [mm:ss] формат (без сотых)
+      const match2 = trimmed.match(/^$$(\d{1,2}):(\d{2})$$(.*)$/);
       if (match2) {
         const [, mm, ss, txt] = match2;
         const time = parseInt(mm, 10) * 60 + parseInt(ss, 10);
         const lyricText = (txt || '').trim();
         if (lyricText) {
-          currentLyrics.push({ time, text: lyricText });
+          targetArray.push({ time, text: lyricText });
         }
         return;
       }
     });
 
-    currentLyrics.sort((a, b) => a.time - b.time);
+    targetArray.sort((a, b) => a.time - b.time);
+  }
 
-    // LRC metadata не логируем (не засоряем консоль)
+  function parseLyrics(source) {
+    currentLyrics = [];
+    parseLyricsInto(source, currentLyrics);
   }
 
   function renderLyrics(position) {
