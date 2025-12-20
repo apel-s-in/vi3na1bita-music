@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5e69abd12cd9357c8c2ccc7a0715c32b6b71d575.idx
-│   │       ├── pack-5e69abd12cd9357c8c2ccc7a0715c32b6b71d575.pack
-│   │       └── pack-5e69abd12cd9357c8c2ccc7a0715c32b6b71d575.rev
+│   │       ├── pack-1354b091348bef2d026d514888a0c9994daf1b75.idx
+│   │       ├── pack-1354b091348bef2d026d514888a0c9994daf1b75.pack
+│   │       └── pack-1354b091348bef2d026d514888a0c9994daf1b75.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -284,7 +284,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 15:18:27 UTC
+Сгенерировано: 2025-12-20 15:22:28 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4894,6 +4894,7 @@ export default NavigationManager;
     const animBtn = playerBlock.querySelector('#animation-btn');
     const karaokeBtn = playerBlock.querySelector('#lyrics-text-btn');
     const bg = playerBlock.querySelector('.lyrics-animated-bg');
+    const container = document.getElementById('lyrics');
 
     if (lyricsWindow) {
       lyricsWindow.style.display = enabled ? '' : 'none';
@@ -4915,44 +4916,27 @@ export default NavigationManager;
       animBtn.style.pointerEvents = enabled ? '' : 'none';
     }
 
-    // ✅ Кнопка "📝" (полный текст) — зависит от fulltext, но если нет лирики, тоже дизейблим
-    if (karaokeBtn && !enabled) {
-      karaokeBtn.classList.add('disabled');
-      karaokeBtn.style.pointerEvents = 'none';
-      karaokeBtn.style.opacity = '0.4';
-    } else if (karaokeBtn && enabled) {
-      // Проверим, есть ли fulltext у текущего трека
+    // ✅ Кнопка "📝" (полный текст)
+    if (karaokeBtn) {
       const track = w.playerCore?.getCurrentTrack();
       const hasFulltext = !!(track && track.fulltext);
-      const hasTimedLyrics = hasTimedLyricsForCurrentTrack && currentLyrics.length > 0;
+      const hasTimedLyrics = enabled && hasTimedLyricsForCurrentTrack && currentLyrics.length > 0;
       
-      if (hasFulltext || hasTimedLyrics) {
-        karaokeBtn.classList.remove('disabled');
-        karaokeBtn.style.pointerEvents = '';
-        karaokeBtn.style.opacity = '';
-      } else {
-        karaokeBtn.classList.add('disabled');
-        karaokeBtn.style.pointerEvents = 'none';
-        karaokeBtn.style.opacity = '0.4';
-      }
+      const karaokeEnabled = hasFulltext || hasTimedLyrics;
+      
+      karaokeBtn.classList.toggle('disabled', !karaokeEnabled);
+      karaokeBtn.style.pointerEvents = karaokeEnabled ? '' : 'none';
+      karaokeBtn.style.opacity = karaokeEnabled ? '' : '0.4';
     }
 
-    // ✅ Визуальный индикатор: если лирики нет, показываем placeholder в окне
-    const container = document.getElementById('lyrics');
-    if (!enabled && container && lyricsWindow && lyricsWindow.style.display !== 'none') {
-      // Если окно лирики видимо, но лирики нет — показываем placeholder
-      container.innerHTML = '<div class="lyrics-placeholder" style="padding: 20px; font-size: 13px;">♪ Текст песни недоступен</div>';
-    }
+    if (!enabled) {
+      // ✅ Лирики нет — выключаем анимацию
       animationEnabled = false;
-      // НЕ сохраняем в localStorage — это временное состояние для текущего трека
       if (bg) bg.classList.remove('active');
       if (animBtn) animBtn.classList.remove('active');
 
-      // Режим лирики: hidden (но не сохраняем — при следующем треке с лирикой восстановим)
       lyricsViewMode = 'hidden';
       
-      // Очищаем контейнер лирики
-      const container = document.getElementById('lyrics');
       if (container) {
         container.innerHTML = '';
       }
@@ -4976,7 +4960,6 @@ export default NavigationManager;
       }
     }
 
-    // ✅ Обновляем визуальное состояние кнопки "Т"
     renderLyricsViewMode();
   }
 
