@@ -522,33 +522,113 @@ class AlbumsManager {
 
   async loadNewsAlbum() {
     this.renderAlbumTitle('📰 НОВОСТИ 📰', 'news');
-    
+
     // ✅ Показываем галерею для __reliz__
     await this.loadGallery('__reliz__');
-    
-    const container = document.getElementById('track-list');
-    if (container) {
-      container.innerHTML = `
-        <div style="padding: 20px; text-align: center; color: #8ab8fd;">
-          <h3>Следите за новостями</h3>
-          <p>Новые треки появятся здесь</p>
-          <div style="margin-top: 20px;">
-            <a href="https://t.me/vitrina_razbita" target="_blank" 
-               style="color: #4daaff; text-decoration: underline;">
-              Telegram канал
-            </a>
-            ·
-            <a href="./news.html" target="_blank"
-               style="color: #4daaff; text-decoration: underline;">
-              Страница новостей
-            </a>
-          </div>
-        </div>
-      `;
-    }
 
     const coverWrap = document.getElementById('cover-wrap');
     if (coverWrap) coverWrap.style.display = '';
+
+    const container = document.getElementById('track-list');
+    if (!container) return;
+
+    container.innerHTML = `
+      <div style="padding: 14px 10px; text-align: center; color: #8ab8fd;">
+        <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom: 12px;">
+          <a href="https://t.me/vitrina_razbita" target="_blank"
+             style="color: #4daaff; text-decoration: underline;">
+            Telegram канал
+          </a>
+          <span style="opacity:.6;">·</span>
+          <a href="./news.html" target="_blank"
+             style="color: #4daaff; text-decoration: underline;">
+            Страница новостей
+          </a>
+        </div>
+        <div id="news-inline-status" style="opacity:.85;">Загрузка...</div>
+      </div>
+      <div id="news-inline-list" style="display:grid; gap:12px; padding: 0 0 10px 0;"></div>
+    `;
+
+    try {
+      const r = await fetch('./news/news.json', { cache: 'no-cache' });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const j = await r.json();
+      const items = Array.isArray(j?.items) ? j.items : [];
+
+      const status = document.getElementById('news-inline-status');
+      const list = document.getElementById('news-inline-list');
+
+      if (!list) return;
+
+      if (!items.length) {
+        if (status) status.textContent = 'Пока новостей нет';
+        return;
+      }
+
+      if (status) status.style.display = 'none';
+
+      const esc = (s) => String(s || '').replace(/[<>&'"]/g, m => ({
+        '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&#39;', '"': '&quot;'
+      }[m]));
+
+      const renderCard = (it) => {
+        const title = esc(it.title || 'Новость');
+        const date = esc(it.date || '');
+        const text = esc(it.text || '');
+        const tags = Array.isArray(it.tags) ? it.tags : [];
+
+        let media = '';
+        if (it.embedUrl) {
+          media = `<div style="margin: 10px 0;">
+            <iframe loading="lazy"
+              style="width:100%; border:0; border-radius:10px; min-height:220px; background:#0b0e15;"
+              src="${esc(it.embedUrl)}"
+              allowfullscreen></iframe>
+          </div>`;
+        } else if (it.image) {
+          media = `<div style="margin: 10px 0;">
+            <img loading="lazy"
+              style="width:100%; border:0; border-radius:10px; background:#0b0e15;"
+              src="${esc(it.image)}" alt="">
+          </div>`;
+        } else if (it.video) {
+          media = `<div style="margin: 10px 0;">
+            <video controls preload="metadata"
+              style="width:100%; border:0; border-radius:10px; min-height:220px; background:#0b0e15;"
+              src="${esc(it.video)}"></video>
+          </div>`;
+        }
+
+        const tagHtml = tags.length
+          ? `<div style="margin-top: 8px; display:flex; gap:8px; flex-wrap:wrap; justify-content:center;">
+              ${tags.map(t => `<span style="font-size:12px; color:#4daaff; background: rgba(77,170,255,.12); border: 1px solid rgba(77,170,255,.25); padding:4px 8px; border-radius:999px;">#${esc(t)}</span>`).join('')}
+            </div>`
+          : '';
+
+        return `<article style="
+          background: #131a26;
+          border: 1px solid #23324a;
+          border-radius: 12px;
+          padding: 12px;
+          box-shadow: 0 4px 16px rgba(0,0,0,.25);
+        ">
+          <div style="font-weight: 900; font-size: 16px; color:#eaf2ff;">${title}</div>
+          ${date ? `<div style="color:#9db7dd; font-size: 13px; margin-top: 6px;">${date}</div>` : ''}
+          ${media}
+          ${text ? `<div style="margin-top: 8px; line-height: 1.45; color:#eaf2ff;">${text}</div>` : ''}
+          ${tagHtml}
+        </article>`;
+      };
+
+      list.innerHTML = items.map(renderCard).join('');
+    } catch (e) {
+      const status = document.getElementById('news-inline-status');
+      if (status) {
+        status.textContent = 'Не удалось загрузить новости';
+        status.style.color = '#ff6b6b';
+      }
+    }
   }
 
   renderAlbumTitle(title, modifier = '') {
