@@ -15,6 +15,10 @@
       this.shuffleMode = false;
       this.originalPlaylist = [];
 
+      // ✅ Shuffle history (как Spotify): стек реально проигранных треков (по src)
+      this.shuffleHistory = [];
+      this.historyMax = 200;
+
       this.tickInterval = null;
       this.tickRate = 100; // мс
 
@@ -49,12 +53,18 @@
 
     // ========== УПРАВЛЕНИЕ ПЛЕЙЛИСТОМ ==========
 
-    setPlaylist(tracks, startIndex = 0, metadata = {}) {
+    setPlaylist(tracks, startIndex = 0, metadata = {}, options = {}) {
       // ✅ БАЗОВОЕ ПРАВИЛО: setPlaylist НЕ останавливает воспроизведение.
       const wasPlaying = this.isPlaying();
       const prev = this.getCurrentTrack();
       const prevUid = prev?.uid || null;
       const prevPos = this.getPosition();
+
+      const {
+        preserveOriginalPlaylist = false,
+        preserveShuffleMode = false,
+        resetHistory = true
+      } = options || {};
 
       this.playlist = (Array.isArray(tracks) ? tracks : []).map(t => ({
         src: t.src,
@@ -67,8 +77,20 @@
         uid: (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null
       }));
 
-      this.originalPlaylist = [...this.playlist];
+      if (!preserveOriginalPlaylist) {
+        this.originalPlaylist = [...this.playlist];
+      }
       this.metadata = { ...this.metadata, ...metadata };
+
+      if (resetHistory) {
+        this.shuffleHistory = [];
+      }
+
+      // Если попросили сохранить shuffleMode — не трогаем флаг.
+      // Иначе он действует как текущий.
+      if (!preserveShuffleMode) {
+        // ничего
+      }
 
       if (this.shuffleMode) {
         this.shufflePlaylist();
@@ -108,6 +130,9 @@
       if (index !== null && index >= 0 && index < this.playlist.length) {
         this.load(index);
       }
+
+      // ✅ History: фиксируем факт перехода на новый трек (если он реально сменился)
+      this._pushHistoryForCurrent();
       
       if (!this.sound) {
         console.warn('⚠️ No sound loaded');
@@ -215,6 +240,9 @@
 
     next() {
       if (this.playlist.length === 0) return;
+
+      // ✅ При next() мы должны запомнить текущий трек в истории, чтобы prev мог вернуться “как Spotify”.
+      this._pushHistoryForCurrent();
   
       // ✅ Учитываем режим "только избранные"
       const availableIndices = window.availableFavoriteIndices;
@@ -250,41 +278,45 @@
 
     prev() {
       if (this.playlist.length === 0) return;
-  
+
       // Если играем больше 3 секунд, перематываем на начало
       if (this.getPosition() > 3) {
         this.seek(0);
         return;
       }
-  
-      // ✅ Учитываем режим "только избранные"
+
+      // ✅ Shuffle history (как Spotify): если есть история — возвращаемся к реально проигранному
+      const histIdx = this._popHistoryPrevIndex();
+      if (typeof histIdx === 'number' && histIdx >= 0) {
+        this.play(histIdx);
+        return;
+      }
+
+      // ✅ Fallback: режим "только избранные" (legacy индексы) или обычный порядок
       const availableIndices = window.availableFavoriteIndices;
-  
+
       if (Array.isArray(availableIndices) && availableIndices.length > 0) {
-        // Режим "только избранные" активен
         const currentPos = availableIndices.indexOf(this.currentIndex);
-    
+
         if (currentPos === -1) {
-          // Текущий трек не в списке избранных — переходим к последнему избранному
           this.play(availableIndices[availableIndices.length - 1]);
           return;
         }
-    
+
         let prevPos = currentPos - 1;
-    
+
         if (prevPos < 0) {
-          prevPos = availableIndices.length - 1; // Зацикливаемся
+          prevPos = availableIndices.length - 1;
         }
-    
+
         this.play(availableIndices[prevPos]);
       } else {
-        // Обычный режим — предыдущий трек по порядку
         let prevIndex = this.currentIndex - 1;
-    
+
         if (prevIndex < 0) {
           prevIndex = this.playlist.length - 1;
         }
-    
+
         this.play(prevIndex);
       }
     }
@@ -368,6 +400,9 @@
 
     shufflePlaylist() {
       const currentTrack = this.playlist[this.currentIndex];
+
+      // ✅ При reshuffle сбрасываем history, чтобы prev не прыгал в “старые” индексы другого порядка
+      this.shuffleHistory = [];
       
       const shuffled = [...this.playlist];
       for (let i = shuffled.length - 1; i > 0; i--) {
@@ -569,6 +604,78 @@
     }
 
     // ========== УТИЛИТЫ ==========
+
+    _pushHistoryForCurrent() {
+      // История нужна в основном для shuffle, но мы не запрещаем писать её и без shuffle.
+      // Важный момент: это не должно влиять на воспроизведение.
+      try {
+        const track = this.getCurrentTrack();
+        if (!track || !track.src) return;
+
+        const src = track.src;
+
+        const last = this.shuffleHistory.length ? this.shuffleHistory[this.shuffleHistory.length - 1] : null;
+        if (last && last.src === src) return;
+
+        this.shuffleHistory.push({ src });
+
+        if (this.shuffleHistory.length > this.historyMax) {
+          this.shuffleHistory.splice(0, this.shuffleHistory.length - this.historyMax);
+        }
+      } catch {}
+    }
+
+    _popHistoryPrevIndex() {
+      try {
+        if (!this.shuffleMode) return -1;
+        if (!Array.isArray(this.shuffleHistory) || this.shuffleHistory.length === 0) return -1;
+
+        // pop текущую “точку”, затем берём предыдущую
+        const popped = this.shuffleHistory.pop();
+        const prev = this.shuffleHistory.length ? this.shuffleHistory[this.shuffleHistory.length - 1] : null;
+
+        const src = prev?.src || null;
+        if (!src) return -1;
+
+        const idx = this.playlist.findIndex(t => t && t.src === src);
+        return idx >= 0 ? idx : -1;
+      } catch {
+        return -1;
+      }
+    }
+
+    appendToPlaylistTail(tracks) {
+      // ✅ Добавление в конец очереди без остановки (используется PlaybackPolicy 6.2)
+      const list = Array.isArray(tracks) ? tracks : [];
+      if (list.length === 0) return;
+
+      const existing = new Set(this.playlist.map(t => String(t?.src || '').trim()).filter(Boolean));
+      const toAdd = [];
+
+      for (const t of list) {
+        const src = String(t?.src || '').trim();
+        if (!src) continue;
+        if (existing.has(src)) continue;
+        existing.add(src);
+        toAdd.push({
+          src,
+          title: t.title || 'Без названия',
+          artist: t.artist || 'Витрина Разбита',
+          album: t.album || '',
+          cover: t.cover || '',
+          lyrics: t.lyrics || null,
+          fulltext: t.fulltext || null,
+          uid: (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null,
+          sourceAlbum: t.sourceAlbum || null
+        });
+      }
+
+      if (toAdd.length === 0) return;
+
+      // ВАЖНО: originalPlaylist сохраняем как есть — это “источник правды”.
+      // В текущем shuffled/favorites-only плейлисте добавляем в хвост.
+      this.playlist = this.playlist.concat(toAdd);
+    }
 
     getAudioElement() {
       // Howler использует Web Audio API, но может предоставить HTML5 audio
