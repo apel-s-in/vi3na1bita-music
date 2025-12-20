@@ -1229,8 +1229,12 @@
       }
     }
 
-    if (!enabled) {
-      // ✅ Лирики нет — выключаем анимацию и приводим режим к hidden
+    // ✅ Визуальный индикатор: если лирики нет, показываем placeholder в окне
+    const container = document.getElementById('lyrics');
+    if (!enabled && container && lyricsWindow && lyricsWindow.style.display !== 'none') {
+      // Если окно лирики видимо, но лирики нет — показываем placeholder
+      container.innerHTML = '<div class="lyrics-placeholder" style="padding: 20px; font-size: 13px;">♪ Текст песни недоступен</div>';
+    }
       animationEnabled = false;
       // НЕ сохраняем в localStorage — это временное состояние для текущего трека
       if (bg) bg.classList.remove('active');
