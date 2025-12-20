@@ -596,8 +596,8 @@
       volumeWrap.__bound = true;
 
       const setFromClientX = (clientX) => {
-        const slider = document.getElementById('volume-slider');
-        const track = document.querySelector('.volume-track');
+        const slider = block.querySelector('#volume-slider');
+        const track = block.querySelector('.volume-track');
         if (!slider || !track) return;
 
         const rect = track.getBoundingClientRect();
