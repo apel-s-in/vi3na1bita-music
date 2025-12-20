@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-71949526e9d784a68e303393f1d5aaef42b52449.idx
-│   │       ├── pack-71949526e9d784a68e303393f1d5aaef42b52449.pack
-│   │       └── pack-71949526e9d784a68e303393f1d5aaef42b52449.rev
+│   │       ├── pack-641d796886e961f16929baed1d792181d5416d36.idx
+│   │       ├── pack-641d796886e961f16929baed1d792181d5416d36.pack
+│   │       └── pack-641d796886e961f16929baed1d792181d5416d36.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -284,7 +284,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-20 15:27:26 UTC
+Сгенерировано: 2025-12-20 16:11:00 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -10939,12 +10939,76 @@ header {
 }
 
 /* Volume Control */
+/* ✅ Делаем геометрию как у player-progress-bar (та же "полезная" ширина) */
 .volume-control-wrapper {
   position: relative;
-  padding: 12px 20px 14px 20px;
+  padding: 16px 20px 12px 20px; /* как .player-progress-wrapper */
   background: rgba(15,18,24,0.5);
   border-top: 1px solid rgba(255,255,255,0.05);
-  height: 40px;
+}
+
+/* Линия громкости: 100% ширины внутри padding */
+.volume-track {
+  position: relative;
+  height: 6px; /* как player-progress-bar */
+  background: rgba(255,255,255,0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+/* Заполнение */
+.volume-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #4daaff, #357ac9);
+  width: 0%;
+  border-radius: 3px;
+  pointer-events: none;
+  transition: width 0.08s linear;
+}
+
+/* ✅ Белый кругляш: всегда на конце fill и не вылезает */
+.volume-handle {
+  position: absolute;
+  top: 50%;
+  left: 0%;
+  transform: translate(-50%, -50%);
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+  pointer-events: none;
+  z-index: 3;
+  transition: left 0.05s linear;
+}
+
+/* Range поверх линии */
+.volume-slider {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: auto;
+  height: 28px;
+  background: transparent;
+  outline: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  z-index: 4;
+  margin: 0;
+}
+
+/* Поддержка старого layout: убираем абсолютное позиционирование line/fill из старой версии */
+.volume-track {
+  left: auto;
+  right: auto;
+  top: auto;
+  transform: none;
+  pointer-events: none; /* клики обрабатывает range/обёртка */
 }
 
 .volume-track {
