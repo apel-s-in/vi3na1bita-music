@@ -1277,6 +1277,33 @@ body.ios #mute-btn { display: none !important; }
   }
 }
 
+/* === FIX: Звёзды не перекрывают плеер === */
+.track-list .track .like-star {
+  pointer-events: auto;
+}
+
+.lyrics-player-block * {
+  position: relative;
+}
+
+.lyrics-player-block .player-controls,
+.lyrics-player-block .player-buttons-wrapper,
+.lyrics-player-block .volume-control-wrapper {
+  z-index: 5;
+}
+
+.lyrics-player-block .player-control-btn,
+.lyrics-player-block .lyrics-toggle-btn,
+.lyrics-player-block .animation-btn,
+.lyrics-player-block .pulse-btn,
+.lyrics-player-block .karaoke-btn,
+.lyrics-player-block .player-download-btn,
+.lyrics-player-block .eco-btn,
+.lyrics-player-block .sleep-timer-btn {
+  position: relative;
+  z-index: 10;
+}
+
 /* === PRINT === */
 @media print {
   body { background: #fff; color: #000; }
