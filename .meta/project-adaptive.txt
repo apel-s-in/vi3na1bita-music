@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-066168454884d6403d8d84be4e98fbceaae46f1f.idx
-│   │       ├── pack-066168454884d6403d8d84be4e98fbceaae46f1f.pack
-│   │       └── pack-066168454884d6403d8d84be4e98fbceaae46f1f.rev
+│   │       ├── pack-4081f9fdd09c6d1288d0db7d65895dfa35d2438d.idx
+│   │       ├── pack-4081f9fdd09c6d1288d0db7d65895dfa35d2438d.pack
+│   │       └── pack-4081f9fdd09c6d1288d0db7d65895dfa35d2438d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -285,7 +285,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-21 13:46:38 UTC
+Сгенерировано: 2025-12-21 13:47:38 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2398,7 +2398,7 @@ class AlbumsManager {
       // Подсветка в UI: подсветим исходную строку (в model), а не индекс плейлиста.
       // Визуально пользователю важна строка, по которой он нажал.
       this.highlightCurrentTrack(index);
-      window.PlayerUI?.ensurePlayerBlock(index);
+      window.PlayerUI?.ensurePlayerBlock(index, { userInitiated: true });
 
       // ✅ ВАЖНО: обновим доступные индексы — теперь плейлист уже активный, можно оставить null.
       if (window.PlayerUI && typeof window.PlayerUI.updateAvailableTracksForPlayback === 'function') {
@@ -2670,7 +2670,7 @@ class AlbumsManager {
       this.setPlayingAlbum(albumKey);
 
       // ensurePlayerBlock должен получать индекс текущей строки UI (чтобы вставить блок под неё)
-      window.PlayerUI?.ensurePlayerBlock(index);
+      window.PlayerUI?.ensurePlayerBlock(index, { userInitiated: true });
     });
 
     const star = trackEl.querySelector('.like-star');
