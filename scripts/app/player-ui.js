@@ -184,7 +184,7 @@
   // ✅ Debounce для предотвращения множественных вызовов
   let ensurePlayerBlockTimeout = null;
 
-  function ensurePlayerBlock(trackIndex) {
+  function ensurePlayerBlock(trackIndex, options = {}) {
     // ✅ Защита от некорректного индекса
     if (typeof trackIndex !== 'number' || trackIndex < 0 || !Number.isFinite(trackIndex)) {
       console.warn('⚠️ ensurePlayerBlock called with invalid trackIndex:', trackIndex);
@@ -197,13 +197,14 @@
     }
 
     // Откладываем выполнение на 50ms
+    const opts = options && typeof options === 'object' ? options : {};
     ensurePlayerBlockTimeout = setTimeout(() => {
       ensurePlayerBlockTimeout = null;
-      _doEnsurePlayerBlock(trackIndex);
+      _doEnsurePlayerBlock(trackIndex, opts);
     }, 50);
   }
 
-  function _doEnsurePlayerBlock(trackIndex) {
+  function _doEnsurePlayerBlock(trackIndex, options = {}) {
     // ✅ Дополнительная защита от некорректного индекса
     if (typeof trackIndex !== 'number' || trackIndex < 0 || !Number.isFinite(trackIndex)) {
       console.warn('⚠️ _doEnsurePlayerBlock: invalid trackIndex', trackIndex);
@@ -247,9 +248,7 @@
         nextUpEl.style.transition = 'none';
       }
 
-      setTimeout(() => {
-        nowPlaying.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 50);
+      // ✅ В мини-режиме автоскролл отключён по дизайну.
 
     } else {
       const trackList = document.getElementById('track-list');
@@ -285,9 +284,12 @@
         }
       }
 
-      setTimeout(() => {
-        trackRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 50);
+      // ✅ Скроллим к играющему треку ТОЛЬКО по пользовательскому клику.
+      if (options && options.userInitiated) {
+        setTimeout(() => {
+          trackRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 50);
+      }
 
       restoreLyricsStateIfNeeded();
 
