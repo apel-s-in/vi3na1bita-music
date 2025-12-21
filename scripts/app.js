@@ -150,78 +150,28 @@
       }
     }
 
-    async initializePlayerUI() {
-      const ok = await this._waitForReady(() =>
-        !!(w.PlayerUI && typeof w.PlayerUI.initialize === 'function')
-      );
-
-      if (ok) {
-        w.PlayerUI.initialize();
-        console.log('✅ PlayerUI initialized');
-      } else {
-        console.warn('⚠️ PlayerUI not ready');
-      }
-    }
-
-    async initializePlayerUI() {
-      return new Promise((resolve) => {
-        const check = () => {
-          if (w.PlayerUI && typeof w.PlayerUI.initialize === 'function') {
-            w.PlayerUI.initialize();
-            console.log('✅ PlayerUI initialized');
-            resolve();
-          } else {
-            setTimeout(check, 50);
-          }
-        };
-        check();
-      });
-    }
-    async initializeGallery() {
-      return new Promise((resolve) => {
-        const check = () => {
-          if (w.GalleryManager && typeof w.GalleryManager.initialize === 'function') {
-            w.GalleryManager.initialize();
-            console.log('✅ Gallery initialized');
-            resolve();
-          } else {
-            setTimeout(check, 50);
-          }
-        };
-        check();
-      });
-    }
+    // initializePlayerUI / initializeGallery должны быть объявлены только один раз.
+    // Инициализацию выполняем через единый _waitForReady, без дублей.
 
     initializeModules() {
-      // Таймер сна
-      // (scripts/ui/sleep.js) сам автоинициализируется, но оставим безопасный вызов при наличии initialize()
-      if (w.SleepTimer && typeof w.SleepTimer.initialize === 'function') {
-        w.SleepTimer.initialize();
-      }
+      // Большинство модулей в проекте самоинициализируются при загрузке скрипта.
+      // Здесь оставляем только безопасные no-op вызовы на случай появления initialize() в будущем.
+      const maybeInit = (obj, name) => {
+        try {
+          if (obj && typeof obj.initialize === 'function') {
+            obj.initialize();
+            console.log(`✅ ${name} initialized`);
+          }
+        } catch (e) {
+          console.warn(`${name}.initialize failed:`, e);
+        }
+      };
 
-      // Модальное окно текста
-      // (scripts/ui/lyrics-modal.js) не требует initialize()
-      if (w.LyricsModal && typeof w.LyricsModal.initialize === 'function') {
-        w.LyricsModal.initialize();
-      }
-
-      // Системная информация
-      // Реальное имя: SystemInfoManager (scripts/ui/sysinfo.js), initialize() нет — он сам запускается в ctor.
-      if (w.SystemInfoManager && typeof w.SystemInfoManager.initialize === 'function') {
-        w.SystemInfoManager.initialize();
-      }
-
-      // Менеджер загрузок
-      // Реальное имя: DownloadsManager (scripts/app/downloads.js), initialize() нет.
-      if (w.DownloadsManager && typeof w.DownloadsManager.initialize === 'function') {
-        w.DownloadsManager.initialize();
-      }
-
-      // Background Audio API
-      // Реальное имя: BackgroundAudioManager (scripts/app/background-audio.js), initialize() нет — ctor сам вызывает init().
-      if (w.BackgroundAudioManager && typeof w.BackgroundAudioManager.initialize === 'function') {
-        w.BackgroundAudioManager.initialize();
-      }
+      maybeInit(w.SleepTimer, 'SleepTimer');
+      maybeInit(w.LyricsModal, 'LyricsModal');
+      maybeInit(w.SystemInfoManager, 'SystemInfoManager');
+      maybeInit(w.DownloadsManager, 'DownloadsManager');
+      maybeInit(w.BackgroundAudioManager, 'BackgroundAudioManager');
     }
 
     setupServiceWorkerMessaging() {
