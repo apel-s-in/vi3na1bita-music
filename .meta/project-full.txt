@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4b5e785a71c5b6ae7bfcce51e3f364c2d70688d4.idx
-│   │       ├── pack-4b5e785a71c5b6ae7bfcce51e3f364c2d70688d4.pack
-│   │       └── pack-4b5e785a71c5b6ae7bfcce51e3f364c2d70688d4.rev
+│   │       ├── pack-122d80c2bf044750849f3389e8175763c692108b.idx
+│   │       ├── pack-122d80c2bf044750849f3389e8175763c692108b.pack
+│   │       └── pack-122d80c2bf044750849f3389e8175763c692108b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -283,7 +283,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-21 14:20:37 UTC
+Сгенерировано: 2025-12-21 15:14:35 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -10365,11 +10365,12 @@ try { main(); } catch (e) { console.error("❌", e); process.exit(1); }
     }
 
     setMuted(muted) {
-      if (this.sound) {
-        this.sound.mute(muted);
-      } else {
-        Howler.mute(muted);
-      }
+      // ✅ Глобальный mute: должен сохраняться между треками (как обычный плеер).
+      // Не влияет на play/pause/stop — только на громкость.
+      try { Howler.mute(!!muted); } catch {}
+
+      // Дополнительно применим к текущему sound (не обязательно, но безопасно)
+      try { this.sound?.mute?.(!!muted); } catch {}
     }
 
     // ========== РЕЖИМЫ ВОСПРОИЗВЕДЕНИЯ ==========
