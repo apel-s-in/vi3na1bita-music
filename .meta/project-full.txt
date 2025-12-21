@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-221991144a78031598bf0b0182ba47d7cc7f42a9.idx
-│   │       ├── pack-221991144a78031598bf0b0182ba47d7cc7f42a9.pack
-│   │       └── pack-221991144a78031598bf0b0182ba47d7cc7f42a9.rev
+│   │       ├── pack-7d6487333813b3e89f99cd1693d8892f9cfbbecb.idx
+│   │       ├── pack-7d6487333813b3e89f99cd1693d8892f9cfbbecb.pack
+│   │       └── pack-7d6487333813b3e89f99cd1693d8892f9cfbbecb.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -283,7 +283,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-21 15:19:07 UTC
+Сгенерировано: 2025-12-21 17:57:39 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -10387,7 +10387,9 @@ try { main(); } catch (e) { console.error("❌", e); process.exit(1); }
       }
       
       Howler.volume(volume);
-      localStorage.setItem('playerVolume', Math.round(percent));
+      try {
+        localStorage.setItem('playerVolume', String(Math.round(percent)));
+      } catch {}
     }
 
     getVolume() {
