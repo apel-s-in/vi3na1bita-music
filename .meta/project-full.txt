@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-43237e7e24ea8985a5b3346d00c04e16386e308d.idx
-│   │       ├── pack-43237e7e24ea8985a5b3346d00c04e16386e308d.pack
-│   │       └── pack-43237e7e24ea8985a5b3346d00c04e16386e308d.rev
+│   │       ├── pack-4b5e785a71c5b6ae7bfcce51e3f364c2d70688d4.idx
+│   │       ├── pack-4b5e785a71c5b6ae7bfcce51e3f364c2d70688d4.pack
+│   │       └── pack-4b5e785a71c5b6ae7bfcce51e3f364c2d70688d4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,6 @@ vi3na1bita-music/
 │   │   ├── favorites-view.js
 │   │   ├── favorites.js
 │   │   ├── lyrics-modal.js
-│   │   ├── modals.js
 │   │   ├── notify.js
 │   │   ├── sleep.js
 │   │   └── sysinfo.js
@@ -284,7 +283,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-21 14:20:16 UTC
+Сгенерировано: 2025-12-21 14:20:37 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8606,33 +8605,6 @@ window.FavoritesManager = new FavoritesManager();
   // Автоинициализация
   // (Lyrics Modal не требует автозапуска)
 
-})();
-
-//=================================================
-// FILE: /scripts/ui/modals.js
-// scripts/ui/modals.js (ESM)
-// Универсальная система управления модальными окнами.
-
-(function(){
-  function toggleModal(modalId, show) {
-    const modal = document.getElementById(modalId);
-    if (!modal) return;
-    
-    const doShow = show === undefined ? !modal.classList.contains('active') : show;
-    modal.classList.toggle('active', doShow);
-    
-    // Закрытие по клику на фон
-    if(doShow) {
-        modal.addEventListener('click', e => {
-            if(e.target === modal) {
-                toggleModal(modalId, false);
-            }
-        });
-    }
-  }
-
-  // Экспорт
-  window.toggleModal = toggleModal;
 })();
 
 //=================================================
