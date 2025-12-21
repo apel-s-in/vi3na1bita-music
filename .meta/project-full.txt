@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-eaaf8cfef94b2a404f4b2bcf386423133c4ce848.idx
-│   │       ├── pack-eaaf8cfef94b2a404f4b2bcf386423133c4ce848.pack
-│   │       └── pack-eaaf8cfef94b2a404f4b2bcf386423133c4ce848.rev
+│   │       ├── pack-ddd178b4298810e5a526b78b8b52c7017fa4a03b.idx
+│   │       ├── pack-ddd178b4298810e5a526b78b8b52c7017fa4a03b.pack
+│   │       └── pack-ddd178b4298810e5a526b78b8b52c7017fa4a03b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -273,7 +273,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-21 10:43:25 UTC
+Сгенерировано: 2025-12-21 10:43:57 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1058,178 +1058,209 @@ self.addEventListener('message', (event) => {
 
 //=================================================
 // FILE: /scripts/app.js
-// scripts/app.js — Главный файл инициализации
-(function() {
+// scripts/app.js — Главная точка входа (оптимизировано)
+(function AppModule() {
   'use strict';
+  const w = window;
 
-  const VERSION = window.APP_CONFIG?.APP_VERSION || '8.1.0';
-
-  // ==================== ЛЕНИВАЯ ЗАГРУЗКА МОДУЛЕЙ ====================
-  const lazyModules = {
-    modals: { loaded: false, path: './scripts/ui/modals.js' },
-    sleep: { loaded: false, path: './scripts/ui/sleep.js' }
-  };
-
-  async function loadModule(name) {
-    const mod = lazyModules[name];
-    if (!mod || mod.loaded) return;
-    
-    try {
-      const script = document.createElement('script');
-      script.src = mod.path;
-      await new Promise((resolve, reject) => {
-        script.onload = resolve;
-        script.onerror = reject;
-        document.head.appendChild(script);
-      });
-      mod.loaded = true;
-      console.log(`✅ Lazy loaded: ${name}`);
-    } catch (e) {
-      console.error(`❌ Failed to load: ${name}`, e);
+  class Application {
+    constructor() {
+      this.initialized = false;
     }
-  }
 
-  // Прокси для ленивых модулей
-  window.LyricsModal = {
-    show: async () => {
-      await loadModule('modals');
-      window.Modals?.showLyrics?.();
-    }
-  };
+    async initialize() {
+      if (this.initialized) return;
+      this.initialized = true;
+      console.log(`🎵 Initializing app v${w.VERSION}`);
 
-  window.SleepTimer = window.SleepTimer || {
-    show: async () => {
-      await loadModule('sleep');
-      window.SleepTimer?.show?.();
-    }
-  };
+      try {
+        await w.Utils?.waitFor?.(() => w.albumsIndex?.length > 0, 2000);
+        
+        const modules = [
+          ['FavoritesManager', 'initialize'],
+          ['GalleryManager', 'initialize'],
+          ['AlbumsManager', 'initialize'],
+          ['PlayerUI', 'initialize']
+        ];
+        
+        for (const [name, method] of modules) {
+          await w.Utils?.waitFor?.(() => w[name]?.[method], 2000);
+          w[name][method]();
+          console.log(`✅ ${name} initialized`);
+        }
 
-  // ==================== SERVICE WORKER ====================
-  async function registerServiceWorker() {
-    if (!('serviceWorker' in navigator)) return;
-
-    try {
-      const reg = await navigator.serviceWorker.register('./service-worker.js');
-      console.log('✅ SW registered');
-
-      reg.addEventListener('updatefound', () => {
-        const newWorker = reg.installing;
-        newWorker?.addEventListener('statechange', () => {
-          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            showUpdateNotification();
+        await w.PlayerState?.apply?.();
+        this.setupHotkeys();
+        this.setupPWA();
+        this.setupSWMessaging();
+        
+        // Download button
+        document.getElementById('download-album-main')?.addEventListener('click', () => {
+          const album = w.AlbumsManager?.getCurrentAlbum?.();
+          if (!album || album.startsWith('__')) {
+            w.NotificationSystem?.info('Этот раздел нельзя скачать');
+            return;
           }
+          w.DownloadsManager?.downloadAlbum(album);
         });
+
+        console.log('✅ Application initialized');
+      } catch (e) {
+        console.error('❌ Init failed:', e);
+        w.NotificationSystem?.error('Ошибка инициализации');
+      }
+    }
+
+    setupHotkeys() {
+      document.addEventListener('keydown', (e) => {
+        if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+        const k = e.key.toLowerCase();
+        const pc = w.playerCore;
+        
+        const actions = {
+          'k': () => w.PlayerUI?.togglePlayPause?.(),
+          ' ': () => w.PlayerUI?.togglePlayPause?.(),
+          'n': () => pc?.next(),
+          'p': () => pc?.prev(),
+          'x': () => pc?.stop(),
+          'm': () => document.getElementById('mute-btn')?.click(),
+          'r': () => document.getElementById('repeat-btn')?.click(),
+          'u': () => document.getElementById('shuffle-btn')?.click(),
+          'a': () => document.getElementById('animation-btn')?.click(),
+          'b': () => document.getElementById('pulse-btn')?.click(),
+          'f': () => document.getElementById('favorites-btn')?.click(),
+          't': () => w.SleepTimer?.show?.(),
+          'y': () => document.getElementById('lyrics-toggle-btn')?.click(),
+          'arrowleft': () => pc?.seek(Math.max(0, pc.getPosition() - 5)),
+          'arrowright': () => pc?.seek(Math.min(pc.getDuration(), pc.getPosition() + 5)),
+          'arrowup': () => pc?.setVolume(Math.min(100, (pc.getVolume() || 100) + 5)),
+          'arrowdown': () => pc?.setVolume(Math.max(0, (pc.getVolume() || 100) - 5))
+        };
+        
+        if (actions[k]) { e.preventDefault(); actions[k](); }
       });
-    } catch (e) {
-      console.error('❌ SW registration failed:', e);
+    }
+
+    setupPWA() {
+      let prompt = null;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        prompt = e;
+        const btn = document.getElementById('install-pwa-btn');
+        if (btn) {
+          btn.style.display = 'block';
+          btn.onclick = async () => {
+            prompt?.prompt();
+            const { outcome } = await prompt?.userChoice || {};
+            if (outcome === 'accepted') w.NotificationSystem?.success('Установлено!');
+            prompt = null;
+            btn.style.display = 'none';
+          };
+        }
+      });
+    }
+
+    setupSWMessaging() {
+      if (!('serviceWorker' in navigator)) return;
+      const handle = async (e) => {
+        const msg = e?.data;
+        if (msg?.type !== 'SW_VERSION' || !msg.version || msg.version === w.VERSION) return;
+        if (!confirm(`Обновить до ${msg.version}?`)) return;
+        w.PlayerState?.save?.({ forReload: true });
+        try {
+          const reg = await navigator.serviceWorker.getRegistration();
+          reg?.waiting?.postMessage({ type: 'SKIP_WAITING' });
+          navigator.serviceWorker.addEventListener('controllerchange', () => location.reload(), { once: true });
+        } catch { location.reload(); }
+      };
+      navigator.serviceWorker.addEventListener('message', handle);
+      window.addEventListener('message', handle);
     }
   }
 
-  function showUpdateNotification() {
-    const notify = window.NotificationSystem;
-    if (notify) {
-      notify.info('Доступно обновление! Обновите страницу.', 10000);
+  w.app = new Application();
+  if (localStorage.getItem('promocode') === 'VITRINA2025') {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => w.app.initialize());
+    } else w.app.initialize();
+  }
+})();
+
+// PlayerState
+(function() {
+  const KEY = 'playerStateV2';
+
+  function save(opts = {}) {
+    try {
+      const pc = window.playerCore;
+      if (!pc) return;
+      const track = pc.getCurrentTrack();
+      const state = {
+        album: window.AlbumsManager?.getPlayingAlbum?.(),
+        currentAlbum: window.AlbumsManager?.getCurrentAlbum?.(),
+        trackUid: track?.uid?.trim() || null,
+        sourceAlbum: track?.sourceAlbum?.trim() || null,
+        trackIndex: pc.getIndex() || 0,
+        position: Math.floor(pc.getPosition() || 0),
+        volume: pc.getVolume() ?? 100,
+        wasPlaying: pc.isPlaying()
+      };
+      localStorage.setItem(KEY, JSON.stringify(state));
+      if (opts.forReload) sessionStorage.setItem('resumeAfterReloadV2', '1');
+    } catch {}
+  }
+
+  async function apply() {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (!raw) return;
+      const s = JSON.parse(raw);
+      if (!s?.album || !window.AlbumsManager || !window.playerCore) return;
+
+      if (s.currentAlbum && s.currentAlbum !== s.album) {
+        await window.AlbumsManager.loadAlbum(s.currentAlbum);
+      }
+
+      if (s.album === '__favorites__') {
+        let idx = s.trackIndex || 0;
+        if (s.trackUid) {
+          const model = window.favoritesRefsModel || [];
+          const found = model.findIndex(it => it?.__uid === s.trackUid);
+          if (found >= 0) idx = found;
+        }
+        await window.AlbumsManager.ensureFavoritesPlayback(idx);
+      } else {
+        const data = window.AlbumsManager.getAlbumData(s.album);
+        const info = window.albumsIndex?.find(a => a.key === s.album);
+        if (!data || !info) return;
+        
+        const tracks = data.tracks.filter(t => t.file).map(t => ({
+          src: t.file, title: t.title, artist: data.artist || 'Витрина Разбита',
+          album: s.album, cover: 'img/logo.png', lyrics: t.lyrics, fulltext: t.fulltext,
+          uid: t.uid?.trim() || null, hasLyrics: t.hasLyrics
+        }));
+        
+        if (tracks.length) {
+          let idx = s.trackIndex || 0;
+          if (s.trackUid) {
+            const found = tracks.findIndex(t => t.uid === s.trackUid);
+            if (found >= 0) idx = found;
+          }
+          window.playerCore.setPlaylist(tracks, idx, { artist: data.artist, album: data.title, cover: 'img/logo.png' });
+          window.AlbumsManager.setPlayingAlbum(s.album);
+          window.playerCore.play(idx);
+        }
+      }
+
+      window.playerCore.setVolume(s.volume ?? 100);
+      if (s.position > 0) try { window.playerCore.seek(s.position); } catch {}
+      if (!s.wasPlaying && window.playerCore.isPlaying()) window.playerCore.pause();
+    } catch {} finally {
+      try { sessionStorage.removeItem('resumeAfterReloadV2'); } catch {}
     }
   }
 
-  // ==================== PWA INSTALL ====================
-  let deferredPrompt = null;
-
-  function initPWAInstall() {
-    window.addEventListener('beforeinstallprompt', e => {
-      e.preventDefault();
-      deferredPrompt = e;
-      showInstallButton();
-    });
-
-    window.addEventListener('appinstalled', () => {
-      deferredPrompt = null;
-      hideInstallButton();
-      window.NotificationSystem?.success?.('Приложение установлено!');
-    });
-  }
-
-  function showInstallButton() {
-    const btn = document.getElementById('install-btn');
-    if (btn) btn.style.display = '';
-    btn?.addEventListener('click', async () => {
-      if (!deferredPrompt) return;
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      console.log('Install prompt outcome:', outcome);
-      deferredPrompt = null;
-    });
-  }
-
-  function hideInstallButton() {
-    const btn = document.getElementById('install-btn');
-    if (btn) btn.style.display = 'none';
-  }
-
-  // ==================== ONLINE/OFFLINE ====================
-  function initNetworkStatus() {
-    const updateStatus = () => {
-      document.body.classList.toggle('offline', !navigator.onLine);
-      if (!navigator.onLine) {
-        window.NotificationSystem?.warning?.('Нет соединения');
-      }
-    };
-
-    window.addEventListener('online', () => {
-      document.body.classList.remove('offline');
-      window.NotificationSystem?.success?.('Соединение восстановлено');
-    });
-
-    window.addEventListener('offline', updateStatus);
-    updateStatus();
-  }
-
-  // ==================== ИНИЦИАЛИЗАЦИЯ ====================
-  async function init() {
-    console.log(`🎵 Витрина Разбита v${VERSION}`);
-
-    // Инициализация менеджеров
-    window.FavoritesManager?.initialize?.();
-    window.GalleryManager?.initialize?.();
-    window.AlbumsManager?.initialize?.();
-
-    // Service Worker
-    await registerServiceWorker();
-
-    // PWA
-    initPWAInstall();
-    initNetworkStatus();
-
-    // Прелоад модалок при взаимодействии
-    document.addEventListener('click', () => {
-      loadModule('modals');
-      loadModule('sleep');
-    }, { once: true });
-
-    // Скрыть сплэш
-    setTimeout(() => {
-      const splash = document.getElementById('splash');
-      if (splash) {
-        splash.style.opacity = '0';
-        setTimeout(() => splash.remove(), 300);
-      }
-    }, 500);
-
-    console.log('✅ App initialized');
-  }
-
-  // ==================== ЗАПУСК ====================
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
-
-  // Глобальный экспорт
-  window.App = {
-    version: VERSION,
-    loadModule
-  };
+  window.PlayerState = { save, apply };
 })();
 
 //=================================================
