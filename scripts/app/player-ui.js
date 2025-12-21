@@ -32,6 +32,11 @@
   let savedAnimationForMini = null;
   let countdownValue = null;
 
+  // Jump-to-playing (кнопка-стрелка в родном альбоме)
+  let jumpBtnWrap = null;
+  let jumpObserver = null;
+  let lastNativeTrackRow = null;
+
   function initPlayerUI() {
     // ✅ Защита от повторной инициализации (например, при повторном выполнении скрипта из-за кеша/SW)
     if (w.__playerUIInitialized) return;
@@ -181,6 +186,70 @@
     return playingAlbum !== currentAlbum;
   }
 
+  function ensureJumpToPlayingButton() {
+    if (jumpBtnWrap) return jumpBtnWrap;
+
+    jumpBtnWrap = document.createElement('div');
+    jumpBtnWrap.className = 'jump-to-playing';
+    jumpBtnWrap.innerHTML = `<button type="button" aria-label="Перейти к текущему треку">↑</button>`;
+
+    jumpBtnWrap.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const playerBlock = document.getElementById('lyricsplayerblock');
+      const target = lastNativeTrackRow || playerBlock;
+      if (!target) return;
+
+      try {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } catch {}
+    });
+
+    document.body.appendChild(jumpBtnWrap);
+    return jumpBtnWrap;
+  }
+
+  function setJumpVisible(visible) {
+    const el = ensureJumpToPlayingButton();
+    el.style.display = visible ? 'flex' : 'none';
+  }
+
+  function updateJumpObserver() {
+    const inMiniMode = isBrowsingOtherAlbum();
+    const playerBlock = document.getElementById('lyricsplayerblock');
+
+    // Кнопка нужна только в родном альбоме
+    if (inMiniMode || !playerBlock) {
+      setJumpVisible(false);
+      if (jumpObserver) {
+        try { jumpObserver.disconnect(); } catch {}
+        jumpObserver = null;
+      }
+      return;
+    }
+
+    if (!('IntersectionObserver' in window)) {
+      // Без observer — просто не показываем (безопасный fallback)
+      setJumpVisible(false);
+      return;
+    }
+
+    if (!jumpObserver) {
+      jumpObserver = new IntersectionObserver((entries) => {
+        const entry = entries && entries[0];
+        if (!entry) return;
+
+        const fullyOut = entry.intersectionRatio === 0;
+        const stillNative = !isBrowsingOtherAlbum();
+        setJumpVisible(fullyOut && stillNative);
+      }, { threshold: [0] });
+    }
+
+    try { jumpObserver.disconnect(); } catch {}
+    jumpObserver.observe(playerBlock);
+  }
+
   // ✅ Debounce для предотвращения множественных вызовов
   let ensurePlayerBlockTimeout = null;
 
@@ -259,6 +328,7 @@
       }
 
       const trackRow = trackList.querySelector(`.track[data-index="${trackIndex}"]`);
+      lastNativeTrackRow = trackRow || null;
 
       if (!trackRow) {
         console.warn(`⚠️ Track row [data-index="${trackIndex}"] not found!`);
@@ -308,6 +378,7 @@
 
     updateMiniHeader();
     updateNextUpLabel();
+    updateJumpObserver();
   }
 
   function createPlayerBlock() {
@@ -630,9 +701,7 @@
       });
     }
 
-    const progressBar = block.querySelector('#player-progress-bar');
-    progressBar?.addEventListener('mousedown', startSeeking);
-    progressBar?.addEventListener('touchstart', startSeeking);
+    // Seek handlers подключаем ниже (pointer-based, без утечек listeners).
 
     block.querySelector('#lyrics-toggle-btn')?.addEventListener('click', toggleLyricsView);
     block.querySelector('#animation-btn')?.addEventListener('click', toggleAnimation);
