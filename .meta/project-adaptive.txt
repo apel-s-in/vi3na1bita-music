@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-64b1905f11369960077b6b1fe3145b2a167ed9d8.idx
-│   │       ├── pack-64b1905f11369960077b6b1fe3145b2a167ed9d8.pack
-│   │       └── pack-64b1905f11369960077b6b1fe3145b2a167ed9d8.rev
+│   │       ├── pack-c28408164d93a0d6935ee815b8d51172a1203b09.idx
+│   │       ├── pack-c28408164d93a0d6935ee815b8d51172a1203b09.pack
+│   │       └── pack-c28408164d93a0d6935ee815b8d51172a1203b09.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -283,7 +283,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-21 18:25:35 UTC
+Сгенерировано: 2025-12-21 18:26:15 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1265,27 +1265,41 @@ self.addEventListener('message', (event) => {
     const port = ports && ports[0];
     if (!port) return;
 
+    // ✅ Облегчённый расчёт:
+    // - НЕ читаем body (arrayBuffer), чтобы не фризить устройства.
+    // - Считаем количество записей и суммарный Content-Length (если доступен).
     event.waitUntil(
       (async () => {
-        let total = 0;
+        let totalBytes = 0;
+        let totalEntries = 0;
+
         try {
           const names = await caches.keys();
           for (const name of names) {
             const cache = await caches.open(name);
             const reqs = await cache.keys();
+            totalEntries += reqs.length;
+
             for (const req of reqs) {
               const resp = await cache.match(req);
-              if (resp) {
-                const clone = resp.clone();
-                const buf = await clone.arrayBuffer();
-                total += buf.byteLength;
+              if (!resp) continue;
+
+              const len = resp.headers.get('content-length');
+              if (len) {
+                const n = Number(len);
+                if (Number.isFinite(n) && n > 0) totalBytes += n;
               }
             }
           }
         } catch (e) {
-          // игнорируем ошибки, просто вернём то, что насчитали
+          // игнорируем ошибки
         }
-        port.postMessage({ size: total });
+
+        port.postMessage({
+          size: totalBytes,
+          entries: totalEntries,
+          approx: true
+        });
       })()
     );
     return;
