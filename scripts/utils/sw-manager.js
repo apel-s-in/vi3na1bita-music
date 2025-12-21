@@ -120,7 +120,7 @@ class ServiceWorkerManager {
     // Перезагрузить страницу при активации нового SW
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       window.location.reload();
-    });
+    }, { once: true });
   }
 
   async clearCache(cacheType) {
