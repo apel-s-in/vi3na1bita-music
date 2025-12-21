@@ -95,34 +95,72 @@
       w.albumsIndex = w.albumsIndex || [];
     }
 
+    async _waitForReady(checkFn, maxMs = 2000) {
+      // ✅ Единый механизм ожидания: используем Utils.waitFor если доступно,
+      // иначе делаем минимальный fallback.
+      const waitFor = w.Utils?.waitFor;
+      if (typeof waitFor === 'function') {
+        return waitFor(checkFn, maxMs, 50);
+      }
+
+      const started = Date.now();
+      while (!checkFn() && (Date.now() - started) < maxMs) {
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise(r => setTimeout(r, 50));
+      }
+      return checkFn();
+    }
+
     async initializeFavorites() {
-      return new Promise((resolve) => {
-        const check = () => {
-          if (w.FavoritesManager && typeof w.FavoritesManager.initialize === 'function') {
-            w.FavoritesManager.initialize();
-            console.log('✅ Favorites initialized');
-            resolve();
-          } else {
-            setTimeout(check, 50);
-          }
-        };
-        check();
-      });
+      const ok = await this._waitForReady(() =>
+        !!(w.FavoritesManager && typeof w.FavoritesManager.initialize === 'function')
+      );
+
+      if (ok) {
+        w.FavoritesManager.initialize();
+        console.log('✅ Favorites initialized');
+      } else {
+        console.warn('⚠️ FavoritesManager not ready');
+      }
+    }
+
+    async initializeGallery() {
+      const ok = await this._waitForReady(() =>
+        !!(w.GalleryManager && typeof w.GalleryManager.initialize === 'function')
+      );
+
+      if (ok) {
+        w.GalleryManager.initialize();
+        console.log('✅ Gallery initialized');
+      } else {
+        console.warn('⚠️ GalleryManager not ready');
+      }
     }
 
     async initializeAlbums() {
-      return new Promise((resolve) => {
-        const check = () => {
-          if (w.AlbumsManager && typeof w.AlbumsManager.initialize === 'function') {
-            w.AlbumsManager.initialize();
-            console.log('✅ Albums initialized');
-            resolve();
-          } else {
-            setTimeout(check, 50);
-          }
-        };
-        check();
-      });
+      const ok = await this._waitForReady(() =>
+        !!(w.AlbumsManager && typeof w.AlbumsManager.initialize === 'function')
+      );
+
+      if (ok) {
+        w.AlbumsManager.initialize();
+        console.log('✅ Albums initialized');
+      } else {
+        console.warn('⚠️ AlbumsManager not ready');
+      }
+    }
+
+    async initializePlayerUI() {
+      const ok = await this._waitForReady(() =>
+        !!(w.PlayerUI && typeof w.PlayerUI.initialize === 'function')
+      );
+
+      if (ok) {
+        w.PlayerUI.initialize();
+        console.log('✅ PlayerUI initialized');
+      } else {
+        console.warn('⚠️ PlayerUI not ready');
+      }
     }
 
     async initializePlayerUI() {
