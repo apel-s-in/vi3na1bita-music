@@ -60,6 +60,36 @@ const STATIC_ASSETS = [
   // CDN будет загружаться по сети; при необходимости закэшируется через runtime-стратегию.
 ];
 
+// ✅ Точный static-match: нормализуем пути в абсолютные URL внутри scope и сравниваем строго.
+// Это устраняет ложные совпадения из-за endsWith и стабильнее при querystring/hash.
+const normalizeUrlForMatch = (href) => {
+  try {
+    const u = new URL(href);
+    u.hash = '';
+    u.search = '';
+    // Нормализуем "/" как "/index.html" для cache-сопоставления
+    if (u.pathname.endsWith('/')) u.pathname += 'index.html';
+    return u.href;
+  } catch {
+    return String(href || '');
+  }
+};
+
+const STATIC_URLS = (() => {
+  const scope = (self.registration && self.registration.scope) ? self.registration.scope : self.location.origin + '/';
+  const set = new Set();
+
+  for (const asset of STATIC_ASSETS) {
+    // Только локальные пути (http(s) можно оставить, но у тебя их нет)
+    try {
+      const abs = new URL(asset, scope).href;
+      set.add(normalizeUrlForMatch(abs));
+    } catch {}
+  }
+
+  return set;
+})();
+
 // ========== INSTALL ==========
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -108,12 +138,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Статика: cache-first из CORE/RUNTIME
-  const isStatic = STATIC_ASSETS.some((asset) =>
-    asset.startsWith('http')
-      ? request.url === asset
-      : request.url.endsWith(asset.replace('./', ''))
-  );
+  // Статика: cache-first из CORE/RUNTIME (точное сравнение)
+  const isStatic = STATIC_URLS.has(normalizeUrlForMatch(url.href));
 
   if (isStatic) {
     event.respondWith(
