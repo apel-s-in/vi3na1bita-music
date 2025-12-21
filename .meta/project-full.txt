@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-082c6bf3df098cd3376bae9d23b9b621a44f1455.idx
-│   │       ├── pack-082c6bf3df098cd3376bae9d23b9b621a44f1455.pack
-│   │       └── pack-082c6bf3df098cd3376bae9d23b9b621a44f1455.rev
+│   │       ├── pack-5e08ccca457deda8bbbbe11caab44bbefccfb0af.idx
+│   │       ├── pack-5e08ccca457deda8bbbbe11caab44bbefccfb0af.pack
+│   │       └── pack-5e08ccca457deda8bbbbe11caab44bbefccfb0af.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -284,7 +284,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-21 14:03:35 UTC
+Сгенерировано: 2025-12-21 14:15:37 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7582,42 +7582,6 @@ test('favoritesOnly + shuffle: unliking NOT current removes it from tail if not 
   const afterLen = await page.evaluate(() => (window.playerCore?.getPlaylistSnapshot?.() || []).length);
 
   expect(afterLen).toBeLessThanOrEqual(beforeLen);
-});
-  await loginByPromo(page);
-  await page.waitForSelector('#track-list .track', { timeout: 10000 });
-
-  // Запустим первый трек
-  await page.click('#track-list .track >> nth=0');
-
-  // Включим shuffle
-  await page.click('#shuffle-btn');
-  await expect(page.locator('#shuffle-btn')).toHaveClass(/active/);
-
-  // Зафиксируем первый трек (uid)
-  const first = await page.evaluate(() => String(window.playerCore?.getCurrentTrack?.()?.uid || ''));
-
-  // next, next
-  await page.click('#next-btn');
-  await page.waitForTimeout(200);
-  const second = await page.evaluate(() => String(window.playerCore?.getCurrentTrack?.()?.uid || ''));
-
-  await page.click('#next-btn');
-  await page.waitForTimeout(200);
-  const third = await page.evaluate(() => String(window.playerCore?.getCurrentTrack?.()?.uid || ''));
-
-  // prev должен вернуться на второй (по истории), а не “по массиву”
-  await page.click('#prev-btn');
-  await page.waitForTimeout(200);
-  const back = await page.evaluate(() => String(window.playerCore?.getCurrentTrack?.()?.uid || ''));
-
-  expect(first).toBeTruthy();
-  expect(second).toBeTruthy();
-  expect(third).toBeTruthy();
-  expect(back).toBe(second);
-});
-  expect(after.len).toBeGreaterThanOrEqual(beforeLen);
-  // В хвосте должен быть один из лайкнутых (в идеале — второй трек, но uid нам проще подтвердить через likedUids)
-  expect(after.likedUids.includes(after.tailUid)).toBeTruthy();
 });
 
 //=================================================
