@@ -14,24 +14,13 @@
     init() {
       this.setupVisibilityHandler();
       this.setupNetworkHandlers();
-      this.setupBatteryHandler();
       this.setupBeforeUnloadHandler();
-      this.setupPopstateHandler();
 
       console.log('✅ Background events initialized');
     }
 
     // Обработка навигации браузера (Back/Forward)
-    setupPopstateHandler() {
-      window.addEventListener('popstate', (event) => {
-        console.log('📍 Popstate event:', event.state);
-
-        // Восстановить состояние приложения (не трогаем плеер!)
-        if (event.state && event.state.albumKey) {
-          window.AlbumsManager?.loadAlbum(event.state.albumKey);
-        }
-      });
-    }
+    // Пока отключено по дизайну (не используем history state в приложении).
 
     // Обработка изменения видимости страницы
     setupVisibilityHandler() {
@@ -92,46 +81,7 @@
       }
     }
 
-    // Обработка батареи (опционально)
-    async setupBatteryHandler() {
-      if (!('getBattery' in navigator)) {
-        console.warn('Battery API not supported');
-        return;
-      }
-
-      try {
-        const battery = await navigator.getBattery();
-
-        battery.addEventListener('levelchange', () => {
-          this.onBatteryLevelChange(battery);
-        });
-
-        battery.addEventListener('chargingchange', () => {
-          this.onChargingChange(battery);
-        });
-
-        this.onBatteryLevelChange(battery);
-      } catch (error) {
-        console.warn('Battery API error:', error);
-      }
-    }
-
-    onBatteryLevelChange(battery) {
-      const level = Math.round(battery.level * 100);
-      console.log(`🔋 Battery level: ${level}%`);
-
-      if (level < 15 && !battery.charging) {
-        window.NotificationSystem?.warning(`Низкий заряд батареи: ${level}%`, 4000);
-      }
-    }
-
-    onChargingChange(battery) {
-      if (battery.charging) {
-        console.log('🔌 Charging');
-      } else {
-        console.log('🔋 Not charging');
-      }
-    }
+    // Battery API пока отключён (лишние permissions/разнобой поддержки браузеров).
 
     // Сохранение состояния перед закрытием (НЕ трогаем воспроизведение)
     setupBeforeUnloadHandler() {
