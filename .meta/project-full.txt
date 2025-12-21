@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-7928352fa2defefd224275b22809700eb1287370.idx
-│   │       ├── pack-7928352fa2defefd224275b22809700eb1287370.pack
-│   │       └── pack-7928352fa2defefd224275b22809700eb1287370.rev
+│   │       ├── pack-875109f75de457e0a1e4c29ccc654555c103f07c.idx
+│   │       ├── pack-875109f75de457e0a1e4c29ccc654555c103f07c.pack
+│   │       └── pack-875109f75de457e0a1e4c29ccc654555c103f07c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -258,6 +258,7 @@ vi3na1bita-music/
 │   │   ├── player.spec.js
 │   │   └── utils.js
 │   ├── ui/
+│   │   ├── favorites-const.js
 │   │   ├── favorites.js
 │   │   ├── modals.js
 │   │   ├── notify.js
@@ -277,7 +278,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-21 11:06:14 UTC
+Сгенерировано: 2025-12-21 11:07:02 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7662,6 +7663,27 @@ export async function seedPlayerStateV2FromCurrent(page, opts = {}) {
     localStorage.setItem('playerStateV2', JSON.stringify(st));
   }, { position, wasPlaying });
 }
+
+//=================================================
+// FILE: /scripts/ui/favorites-const.js
+// scripts/ui/favorites-const.js
+// Единая точка правды для ключей/констант «Избранного».
+// Важна обратная совместимость: прокинем в window, чтобы их видел inline-код index.html.
+
+const SPECIAL_FAVORITES_KEY = '__favorites__';
+const SPECIAL_RELIZ_KEY = '__reliz__';
+
+// likedTracks:v2 больше не поддерживаем. Единственный ключ лайков: likedTrackUids:v1 (uid-based).
+
+// Ключ хранилища ссылок «Избранного» (refs)
+const FAVORITES_REFS_KEY = 'favoritesAlbumRefs:v1';
+
+// Back-compat для существующего inline-кода:
+Object.assign(window, {
+  SPECIAL_FAVORITES_KEY,
+  SPECIAL_RELIZ_KEY,
+  FAVORITES_REFS_KEY,
+});
 
 //=================================================
 // FILE: /scripts/ui/favorites.js
