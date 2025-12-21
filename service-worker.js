@@ -226,27 +226,41 @@ self.addEventListener('message', (event) => {
     const port = ports && ports[0];
     if (!port) return;
 
+    // ✅ Облегчённый расчёт:
+    // - НЕ читаем body (arrayBuffer), чтобы не фризить устройства.
+    // - Считаем количество записей и суммарный Content-Length (если доступен).
     event.waitUntil(
       (async () => {
-        let total = 0;
+        let totalBytes = 0;
+        let totalEntries = 0;
+
         try {
           const names = await caches.keys();
           for (const name of names) {
             const cache = await caches.open(name);
             const reqs = await cache.keys();
+            totalEntries += reqs.length;
+
             for (const req of reqs) {
               const resp = await cache.match(req);
-              if (resp) {
-                const clone = resp.clone();
-                const buf = await clone.arrayBuffer();
-                total += buf.byteLength;
+              if (!resp) continue;
+
+              const len = resp.headers.get('content-length');
+              if (len) {
+                const n = Number(len);
+                if (Number.isFinite(n) && n > 0) totalBytes += n;
               }
             }
           }
         } catch (e) {
-          // игнорируем ошибки, просто вернём то, что насчитали
+          // игнорируем ошибки
         }
-        port.postMessage({ size: total });
+
+        port.postMessage({
+          size: totalBytes,
+          entries: totalEntries,
+          approx: true
+        });
       })()
     );
     return;
