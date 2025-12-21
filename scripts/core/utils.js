@@ -41,18 +41,25 @@
       const bg = document.createElement('div');
       bg.className = 'modal-bg active';
       bg.innerHTML = html;
+
       const close = () => {
         bg.remove();
         if (onClose) onClose();
       };
-      bg.addEventListener('click', e => {
+
+      bg.addEventListener('click', (e) => {
         if (e.target === bg) close();
       });
+
       const closeBtn = bg.querySelector('.bigclose');
       if (closeBtn) {
         closeBtn.addEventListener('click', close);
       }
-      document.body.appendChild(bg);
+
+      // ✅ Единый контейнер для модалок (если есть), иначе fallback в body.
+      const host = document.getElementById('modals-container') || document.body;
+      host.appendChild(bg);
+
       return bg;
     },
     
