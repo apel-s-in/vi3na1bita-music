@@ -318,11 +318,12 @@
     }
 
     setMuted(muted) {
-      if (this.sound) {
-        this.sound.mute(muted);
-      } else {
-        Howler.mute(muted);
-      }
+      // ✅ Глобальный mute: должен сохраняться между треками (как обычный плеер).
+      // Не влияет на play/pause/stop — только на громкость.
+      try { Howler.mute(!!muted); } catch {}
+
+      // Дополнительно применим к текущему sound (не обязательно, но безопасно)
+      try { this.sound?.mute?.(!!muted); } catch {}
     }
 
     // ========== РЕЖИМЫ ВОСПРОИЗВЕДЕНИЯ ==========
