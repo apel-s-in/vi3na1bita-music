@@ -309,7 +309,9 @@
       }
       
       Howler.volume(volume);
-      localStorage.setItem('playerVolume', Math.round(percent));
+      try {
+        localStorage.setItem('playerVolume', String(Math.round(percent)));
+      } catch {}
     }
 
     getVolume() {
