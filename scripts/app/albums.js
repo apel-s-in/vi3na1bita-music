@@ -521,7 +521,7 @@ class AlbumsManager {
       // Подсветка в UI: подсветим исходную строку (в model), а не индекс плейлиста.
       // Визуально пользователю важна строка, по которой он нажал.
       this.highlightCurrentTrack(index);
-      window.PlayerUI?.ensurePlayerBlock(index);
+      window.PlayerUI?.ensurePlayerBlock(index, { userInitiated: true });
 
       // ✅ ВАЖНО: обновим доступные индексы — теперь плейлист уже активный, можно оставить null.
       if (window.PlayerUI && typeof window.PlayerUI.updateAvailableTracksForPlayback === 'function') {
@@ -793,7 +793,7 @@ class AlbumsManager {
       this.setPlayingAlbum(albumKey);
 
       // ensurePlayerBlock должен получать индекс текущей строки UI (чтобы вставить блок под неё)
-      window.PlayerUI?.ensurePlayerBlock(index);
+      window.PlayerUI?.ensurePlayerBlock(index, { userInitiated: true });
     });
 
     const star = trackEl.querySelector('.like-star');
