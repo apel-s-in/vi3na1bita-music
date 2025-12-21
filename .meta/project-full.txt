@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f5204df324aa05b73e87437fcb4d9847490d0d3d.idx
-│   │       ├── pack-f5204df324aa05b73e87437fcb4d9847490d0d3d.pack
-│   │       └── pack-f5204df324aa05b73e87437fcb4d9847490d0d3d.rev
+│   │       ├── pack-f0aa1c3c728ef20d5c3f4abdbc4c6be4701547ef.idx
+│   │       ├── pack-f0aa1c3c728ef20d5c3f4abdbc4c6be4701547ef.pack
+│   │       └── pack-f0aa1c3c728ef20d5c3f4abdbc4c6be4701547ef.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -281,7 +281,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-21 11:08:59 UTC
+Сгенерировано: 2025-12-21 11:09:49 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8327,128 +8327,102 @@ Object.assign(window, {
 
 //=================================================
 // FILE: /scripts/ui/favorites.js
-// scripts/ui/favorites.js — Управление избранным
-(function() {
-  'use strict';
-  const KEY = 'likedTrackUids:v1';
-  const REFS_KEY = 'favoritesAlbumRefsByUid:v1';
-  
-  const getMap = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } };
-  const setMap = m => { try { localStorage.setItem(KEY, JSON.stringify(m || {})); } catch {} };
-  
-  const getLiked = album => { const arr = getMap()[album]; return Array.isArray(arr) ? [...new Set(arr.map(x => String(x||'').trim()).filter(Boolean))] : []; };
-  const isFav = (album, uid) => album && uid && getLiked(album).includes(String(uid).trim());
-  
-  const toggle = (album, uid, liked = null) => {
-    const a = String(album||'').trim(), u = String(uid||'').trim();
-    if (!a || !u) return false;
-    const map = getMap();
-    let arr = [...new Set((map[a]||[]).map(x => String(x||'').trim()).filter(Boolean))];
-    const has = arr.includes(u), shouldLike = liked !== null ? !!liked : !has;
-    if (shouldLike && !has) arr.push(u);
-    else if (!shouldLike && has) arr = arr.filter(x => x !== u);
-    map[a] = [...new Set(arr)];
-    setMap(map);
-    try { window.dispatchEvent(new CustomEvent('favorites:changed', { detail: { albumKey: a, uid: u, liked: shouldLike } })); } catch {}
-    return true;
-  };
-  
-  // Refs
-  const readRefs = () => { try { return JSON.parse(localStorage.getItem(REFS_KEY)) || []; } catch { return []; } };
-  const writeRefs = arr => { try { localStorage.setItem(REFS_KEY, JSON.stringify(arr || [])); } catch {} };
-  
-  const ensureRefs = () => {
-    const refs = readRefs(), seen = new Set(refs.map(x => `${x?.a}:${x?.uid}`)), map = getMap();
-    let changed = false;
-    for (const a of Object.keys(map)) {
-      for (const uid of (map[a] || [])) {
-        const u = String(uid||'').trim(), k = `${a}:${u}`;
-        if (u && !seen.has(k)) { refs.push({ a, uid: u }); seen.add(k); changed = true; }
-      }
-    }
-    if (changed) writeRefs(refs);
-    return refs;
-  };
-  
-  const removeRef = (album, uid) => {
-    const a = String(album||'').trim(), u = String(uid||'').trim();
-    if (!a || !u) return false;
-    writeRefs(readRefs().filter(r => !(r?.a === a && String(r?.uid||'').trim() === u)));
-    return true;
-  };
-  
-  // Build model
-  async function buildModel() {
-    ensureRefs();
-    const refs = readRefs(), out = [], idx = window.albumsIndex || [];
-    for (const ref of refs) {
-      const a = String(ref?.a||'').trim(), uid = String(ref?.uid||'').trim();
-      if (!a || !uid) continue;
-      const meta = idx.find(x => x?.key === a);
-      if (!meta?.base) continue;
-      let cfg = null;
-      try {
-        const base = meta.base.endsWith('/') ? meta.base : `${meta.base}/`;
-        const r = await fetch(`${base}config.json`, { cache: 'no-cache' });
-        if (r.ok) cfg = await r.json();
-      } catch {}
-      const tracks = cfg?.tracks || [], tr = tracks.find(t => String(t?.uid||'').trim() === uid);
-      const isActive = getLiked(a).includes(uid), base = meta.base.endsWith('/') ? meta.base : `${meta.base}/`;
-      out.push({
-        title: tr?.title || 'Трек', uid,
-        audio: isActive && tr?.audio ? new URL(tr.audio, base).toString() : null,
-        lyrics: isActive && tr?.lyrics ? new URL(tr.lyrics, base).toString() : null,
-        fulltext: isActive && tr?.fulltext ? new URL(tr.fulltext, base).toString() : null,
-        __a: a, __uid: uid, __active: isActive,
-        __artist: cfg?.artist || 'Витрина Разбита',
-        __album: cfg?.albumName || 'Альбом', __cover: 'img/logo.png'
-      });
-    }
-    window.favoritesRefsModel = out;
-    return out;
+// scripts/ui/favorites.js
+// Управление избранными треками по UID (единственный источник правды).
+// Storage: likedTrackUids:v1 => { [albumKey]: string[] }
+
+class FavoritesManager {
+  constructor() {
+    this.storageKey = 'likedTrackUids:v1';
   }
-  
-  // Modals
-  const esc = s => { const d = document.createElement('div'); d.textContent = String(s||''); return d.innerHTML; };
-  
-  const createModal = html => {
-    const bg = document.createElement('div');
-    bg.className = 'modal-bg active';
-    bg.innerHTML = html;
-    bg.addEventListener('click', e => e.target === bg && bg.remove());
-    document.body.appendChild(bg);
-    return bg;
-  };
-  
-  const showDelete = ({ albumKey, uid, title, onDeleted }) => {
-    if (!albumKey || !uid) return;
-    const m = createModal(`<div class="modal-feedback" style="max-width:420px"><button class="bigclose">×</button><h3>Удалить из избранного?</h3><p><strong>${esc(title)}</strong></p><div style="display:flex;gap:10px;justify-content:center;margin-top:16px"><button class="offline-btn" data-act="cancel">Отмена</button><button class="offline-btn online" data-act="delete">Удалить</button></div></div>`);
-    m.querySelector('.bigclose')?.addEventListener('click', () => m.remove());
-    m.querySelector('[data-act="cancel"]')?.addEventListener('click', () => m.remove());
-    m.querySelector('[data-act="delete"]')?.addEventListener('click', () => {
-      removeRef(albumKey, uid);
-      document.getElementById(`fav_${albumKey}_${uid}`)?.remove();
-      m.remove();
-      window.NotificationSystem?.success('Удалено');
-      onDeleted?.();
-    });
-  };
-  
-  const showInactive = ({ albumKey, uid, title, onDeleted }) => {
-    if (!albumKey || !uid) return;
-    const m = createModal(`<div class="modal-feedback" style="max-width:420px"><button class="bigclose">×</button><h3>Трек неактивен</h3><p><strong>${esc(title)}</strong></p><div style="display:flex;gap:10px;justify-content:center;margin-top:16px"><button class="offline-btn online" data-act="add">Добавить ⭐</button><button class="offline-btn" data-act="remove">Удалить</button></div></div>`);
-    m.querySelector('.bigclose')?.addEventListener('click', () => m.remove());
-    m.querySelector('[data-act="add"]')?.addEventListener('click', () => { toggle(albumKey, uid, true); m.remove(); window.NotificationSystem?.success('Добавлено ⭐'); });
-    m.querySelector('[data-act="remove"]')?.addEventListener('click', () => { m.remove(); showDelete({ albumKey, uid, title, onDeleted }); });
-  };
-  
-  const init = () => { try { if (!localStorage.getItem(KEY)) setMap({}); } catch {} console.log('✅ FavoritesManager initialized'); };
-  
-  window.FavoritesManager = { initialize: init, getLikedUidMap: getMap, getLikedUidsForAlbum: getLiked, isFavorite: isFav, toggleLike: toggle };
-  window.FavoritesData = { readFavoritesRefsByUid: readRefs, writeFavoritesRefsByUid: writeRefs, ensureFavoritesRefsWithLikes: ensureRefs, buildFavoritesRefsModel: buildModel, removeFavoritesRef: removeRef, showFavoritesInactiveModal: showInactive, showFavoritesDeleteConfirm: showDelete };
-  window.buildFavoritesRefsModel = buildModel;
-  window.openFavoritesView = async () => window.AlbumsManager?.loadAlbum('__favorites__');
-})();
+
+  async initialize() {
+    try {
+      const raw = localStorage.getItem(this.storageKey);
+      if (!raw) {
+        localStorage.setItem(this.storageKey, JSON.stringify({}));
+      } else {
+        const j = JSON.parse(raw);
+        if (!j || typeof j !== 'object') {
+          localStorage.setItem(this.storageKey, JSON.stringify({}));
+        }
+      }
+
+      console.log('✅ FavoritesManager initialized (uid-based)');
+    } catch (e) {
+      console.warn('FavoritesManager.initialize failed:', e);
+    }
+  }
+
+  _emitChange(payload) {
+    // ✅ Realtime sync: все места UI слушают событие и обновляют звёзды/списки/очередь.
+    try {
+      window.dispatchEvent(new CustomEvent('favorites:changed', { detail: payload }));
+    } catch {}
+  }
+
+  getLikedUidMap() {
+    try {
+      const raw = localStorage.getItem(this.storageKey);
+      const map = raw ? JSON.parse(raw) : {};
+      return (map && typeof map === 'object') ? map : {};
+    } catch {
+      return {};
+    }
+  }
+
+  getLikedUidsForAlbum(albumKey) {
+    try {
+      const map = this.getLikedUidMap();
+      const arr = (map && typeof map === 'object') ? map[albumKey] : [];
+      if (!Array.isArray(arr)) return [];
+      return Array.from(new Set(arr.map(x => String(x || '').trim()).filter(Boolean)));
+    } catch {
+      return [];
+    }
+  }
+
+  isFavorite(albumKey, trackUid) {
+    const a = String(albumKey || '').trim();
+    const uid = String(trackUid || '').trim();
+    if (!a || !uid) return false;
+    return this.getLikedUidsForAlbum(a).includes(uid);
+  }
+
+  toggleLike(albumKey, trackUid, makeLiked = null) {
+    const a = String(albumKey || '').trim();
+    const uid = String(trackUid || '').trim();
+    if (!a || !uid) return false;
+
+    const map = this.getLikedUidMap();
+    const prevArr = Array.isArray(map[a]) ? map[a] : [];
+    const arr = Array.from(new Set(prevArr.map(x => String(x || '').trim()).filter(Boolean)));
+
+    const has = arr.includes(uid);
+    const shouldLike = (makeLiked !== null) ? !!makeLiked : !has;
+
+    let next = arr.slice();
+    if (shouldLike && !has) next.push(uid);
+    if (!shouldLike && has) next = next.filter(x => x !== uid);
+
+    map[a] = Array.from(new Set(next));
+
+    try {
+      localStorage.setItem(this.storageKey, JSON.stringify(map));
+    } catch {
+      return false;
+    }
+
+    // Realtime событие
+    this._emitChange({ albumKey: a, uid, liked: shouldLike });
+
+    return true;
+  }
+
+  // likedTracks:v2 миграция удалена: проект полностью на uid-ветке.
+}
+
+window.FavoritesManager = new FavoritesManager();
 
 //=================================================
 // FILE: /scripts/ui/modals.js
