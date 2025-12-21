@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9f6557c99def3b3b1f9e4316741e191e3027364c.idx
-│   │       ├── pack-9f6557c99def3b3b1f9e4316741e191e3027364c.pack
-│   │       └── pack-9f6557c99def3b3b1f9e4316741e191e3027364c.rev
+│   │       ├── pack-9e385a58edef68712228521895e43d752005cb7b.idx
+│   │       ├── pack-9e385a58edef68712228521895e43d752005cb7b.pack
+│   │       └── pack-9e385a58edef68712228521895e43d752005cb7b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -274,7 +274,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-21 10:50:15 UTC
+Сгенерировано: 2025-12-21 10:52:05 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1051,15 +1051,38 @@ const DEFAULT_SW_CONFIG = {
 
 // Статический список ресурсов «ядра»
 const STATIC_ASSETS = [
-  './', './index.html', './news.html', './manifest.json',
-  './styles/main.css', './img/logo.png', './img/star.png', './img/star2.png',
-  './icons/favicon-32.png', './icons/favicon-16.png', './icons/apple-touch-icon.png',
-  './scripts/core/bootstrap.js', './scripts/core/config.js',
-  './scripts/app/gallery.js', './scripts/app/albums.js', './scripts/app/navigation.js',
-  './scripts/app/downloads.js', './scripts/app/background-audio.js',
-  './scripts/app/background-events.js', './scripts/app/player-ui.js', './scripts/app.js',
-  './scripts/ui/notify.js', './scripts/ui/favorites.js', './scripts/ui/sleep.js',
-  './scripts/ui/lyrics-modal.js', './scripts/ui/sysinfo.js',
+  './',
+  './index.html',
+  './news.html',
+  './manifest.json',
+  './styles/main.css',
+  './img/logo.png',
+  './img/star.png',
+  './img/star2.png',
+  './icons/favicon-32.png',
+  './icons/favicon-16.png',
+  './icons/apple-touch-icon.png',
+
+  // Скрипты ядра и UI
+  './scripts/core/bootstrap.js',
+  './scripts/core/config.js',
+  './scripts/app/gallery.js',
+  './scripts/ui/notify.js',
+  './scripts/ui/favorites-const.js',
+  './scripts/ui/favorites-storage.js',
+  './scripts/ui/favorites-data.js',
+  './scripts/ui/favorites.js',
+  './scripts/ui/favorites-view.js',
+  './scripts/ui/sleep.js',
+  './scripts/ui/lyrics-modal.js',
+  './scripts/ui/sysinfo.js',
+  './scripts/app/background-audio.js',
+  './scripts/app/background-events.js',
+  './scripts/app/player-ui.js',
+  './scripts/app/albums.js',
+  './scripts/app/navigation.js',
+  './scripts/app/downloads.js',
+  './scripts/app.js',
   './src/PlayerCore.js',
 
   // Howler.js (CDN)
