@@ -746,15 +746,15 @@
       const opts = { signal: ctrl.signal, passive: false };
 
       document.addEventListener('pointermove', handleSeeking, opts);
-      document.addEventListener('pointerup', stopSeeking, opts);
-      document.addEventListener('pointercancel', stopSeeking, opts);
+      document.addEventListener('pointerup', endSeek, opts);
+      document.addEventListener('pointercancel', endSeek, opts);
 
       // Fallback для старых браузеров без pointer events
       document.addEventListener('mousemove', handleSeeking, opts);
-      document.addEventListener('mouseup', stopSeeking, opts);
+      document.addEventListener('mouseup', endSeek, opts);
       document.addEventListener('touchmove', handleSeeking, opts);
-      document.addEventListener('touchend', stopSeeking, opts);
-      document.addEventListener('touchcancel', stopSeeking, opts);
+      document.addEventListener('touchend', endSeek, opts);
+      document.addEventListener('touchcancel', endSeek, opts);
     };
 
     const removeSeekDocumentListeners = () => {
@@ -765,14 +765,14 @@
       }
     };
 
-    // Переопределяем start/stop так, чтобы управлять жизненным циклом listeners
-    const _startSeeking = (e) => {
+    // Seek lifecycle (локально): вешаем document listeners только на время drag
+    const beginSeek = (e) => {
       isSeekingProgress = true;
       addSeekDocumentListeners();
       handleSeeking(e);
     };
 
-    const _stopSeeking = () => {
+    const endSeek = () => {
       isSeekingProgress = false;
       removeSeekDocumentListeners();
     };
@@ -782,17 +782,19 @@
 
       progressBarEl.addEventListener('pointerdown', (e) => {
         try { e.preventDefault(); } catch {}
-        _startSeeking(e);
+        beginSeek(e);
       });
 
       // Fallback (если pointerdown не сработает)
-      progressBarEl.addEventListener('mousedown', _startSeeking);
-      progressBarEl.addEventListener('touchstart', _startSeeking, { passive: true });
+      progressBarEl.addEventListener('mousedown', beginSeek);
+      progressBarEl.addEventListener('touchstart', beginSeek, { passive: true });
     }
 
-    // ВАЖНО: используем новые stopSeeking/startSeeking для внешних вызовов
-    startSeeking = _startSeeking;
-    stopSeeking = _stopSeeking;
+    // Документные события завершают seek через endSeek
+    // (они подключаются в addSeekDocumentListeners)
+    const _endSeek = endSeek;
+    // eslint-disable-next-line no-unused-vars
+    const stopSeeking = _endSeek;
   }
 
   function togglePlayPause() {
@@ -815,11 +817,6 @@
     }
   }
 
-  function startSeeking(e) {
-    isSeekingProgress = true;
-    handleSeeking(e);
-  }
-
   function handleSeeking(e) {
     if (!isSeekingProgress) return;
 
@@ -832,10 +829,6 @@
 
     const duration = w.playerCore.getDuration();
     w.playerCore.seek(duration * percent);
-  }
-
-  function stopSeeking() {
-    isSeekingProgress = false;
   }
 
   function updateProgress(position, duration) {
