@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-049526f1ad5e0870aab1878f5212989c0515566a.idx
-│   │       ├── pack-049526f1ad5e0870aab1878f5212989c0515566a.pack
-│   │       └── pack-049526f1ad5e0870aab1878f5212989c0515566a.rev
+│   │       ├── pack-066168454884d6403d8d84be4e98fbceaae46f1f.idx
+│   │       ├── pack-066168454884d6403d8d84be4e98fbceaae46f1f.pack
+│   │       └── pack-066168454884d6403d8d84be4e98fbceaae46f1f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -285,7 +285,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-21 13:38:45 UTC
+Сгенерировано: 2025-12-21 13:46:38 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4384,7 +4384,7 @@ export default NavigationManager;
   // ✅ Debounce для предотвращения множественных вызовов
   let ensurePlayerBlockTimeout = null;
 
-  function ensurePlayerBlock(trackIndex) {
+  function ensurePlayerBlock(trackIndex, options = {}) {
     // ✅ Защита от некорректного индекса
     if (typeof trackIndex !== 'number' || trackIndex < 0 || !Number.isFinite(trackIndex)) {
       console.warn('⚠️ ensurePlayerBlock called with invalid trackIndex:', trackIndex);
@@ -4397,13 +4397,14 @@ export default NavigationManager;
     }
 
     // Откладываем выполнение на 50ms
+    const opts = options && typeof options === 'object' ? options : {};
     ensurePlayerBlockTimeout = setTimeout(() => {
       ensurePlayerBlockTimeout = null;
-      _doEnsurePlayerBlock(trackIndex);
+      _doEnsurePlayerBlock(trackIndex, opts);
     }, 50);
   }
 
-  function _doEnsurePlayerBlock(trackIndex) {
+  function _doEnsurePlayerBlock(trackIndex, options = {}) {
     // ✅ Дополнительная защита от некорректного индекса
     if (typeof trackIndex !== 'number' || trackIndex < 0 || !Number.isFinite(trackIndex)) {
       console.warn('⚠️ _doEnsurePlayerBlock: invalid trackIndex', trackIndex);
@@ -4447,9 +4448,7 @@ export default NavigationManager;
         nextUpEl.style.transition = 'none';
       }
 
-      setTimeout(() => {
-        nowPlaying.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 50);
+      // ✅ В мини-режиме автоскролл отключён по дизайну.
 
     } else {
       const trackList = document.getElementById('track-list');
@@ -4485,9 +4484,12 @@ export default NavigationManager;
         }
       }
 
-      setTimeout(() => {
-        trackRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 50);
+      // ✅ Скроллим к играющему треку ТОЛЬКО по пользовательскому клику.
+      if (options && options.userInitiated) {
+        setTimeout(() => {
+          trackRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 50);
+      }
 
       restoreLyricsStateIfNeeded();
 
