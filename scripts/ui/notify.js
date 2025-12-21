@@ -1,68 +1,130 @@
-// scripts/ui/notify.js — Система уведомлений
-(function() {
-  'use strict';
-
-  const CONTAINER_ID = 'notification-container';
-  const DEFAULT_DURATION = 4000;
-  const MAX_NOTIFICATIONS = 5;
-
-  let container = null;
-
-  function ensureContainer() {
-    if (container) return container;
-    container = document.getElementById(CONTAINER_ID);
-    if (!container) {
-      container = document.createElement('div');
-      container.id = CONTAINER_ID;
-      container.className = 'notification-container';
-      document.body.appendChild(container);
-    }
-    return container;
+// scripts/ui/notify.js
+// Система уведомлений
+class NotificationSystem {
+  constructor() {
+    this.container = null;
+    this.queue = [];
+    this.isShowing = false;
+    this.currentToast = null;
+    this.init();
   }
-
-  function show(message, type = 'info', duration = DEFAULT_DURATION) {
-    const cont = ensureContainer();
-    
-    // Удаляем старые, если превышен лимит
-    while (cont.children.length >= MAX_NOTIFICATIONS) {
-      cont.firstChild?.remove();
-    }
-
-    const el = document.createElement('div');
-    el.className = `notification ${type}`;
-    el.innerHTML = `
-      <div class="notification-content">${escHtml(message)}</div>
-      <button class="notification-close">×</button>
+  
+  init() {
+    // Создаем контейнер для уведомлений
+    this.container = document.createElement('div');
+    this.container.id = 'toast-container';
+    this.container.style.cssText = `
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10000;
+      pointer-events: none;
     `;
-
-    el.querySelector('.notification-close')?.addEventListener('click', () => remove(el));
-    cont.appendChild(el);
-
-    if (duration > 0) {
-      setTimeout(() => remove(el), duration);
+    document.body.appendChild(this.container);
+  }
+  
+  show(message, type = 'info', duration = 3000) {
+    const toast = {
+      message,
+      type,
+      duration,
+      id: Date.now() + Math.random()
+    };
+    this.queue.push(toast);
+    this.processQueue();
+  }
+  
+  processQueue() {
+    if (this.isShowing || this.queue.length === 0) return;
+    this.isShowing = true;
+    const toast = this.queue.shift();
+    this.displayToast(toast);
+  }
+  
+  displayToast(toast) {
+    const toastEl = document.createElement('div');
+    toastEl.className = `toast toast-${toast.type}`;
+    const emoji = this.getEmoji(toast.type);
+    toastEl.innerHTML = `
+      <div class="toast-content">
+        <span class="toast-emoji">${emoji}</span>
+        <span class="toast-message">${this.escapeHtml(toast.message)}</span>
+      </div>
+    `;
+    this.container.appendChild(toastEl);
+    this.currentToast = toastEl;
+    
+    // Анимация появления
+    requestAnimationFrame(() => {
+      toastEl.classList.add('show');
+    });
+    
+    // Автоматическое скрытие
+    setTimeout(() => {
+      this.hideToast(toastEl);
+    }, toast.duration);
+  }
+  
+  hideToast(toastEl) {
+    if (!toastEl) return;
+    toastEl.classList.remove('show');
+    setTimeout(() => {
+      if (toastEl.parentNode) {
+        toastEl.parentNode.removeChild(toastEl);
+      }
+      this.isShowing = false;
+      this.currentToast = null;
+      this.processQueue();
+    }, 300);
+  }
+  
+  getEmoji(type) {
+    const emojis = {
+      info: 'ℹ️',
+      success: '✅',
+      error: '❌',
+      warning: '⚠️',
+      offline: '📴'
+    };
+    return emojis[type] || 'ℹ️';
+  }
+  
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+  
+  // Публичные методы
+  info(message, duration) {
+    this.show(message, 'info', duration || 2000);
+  }
+  
+  success(message, duration) {
+    this.show(message, 'success', duration || 2500);
+  }
+  
+  error(message, duration) {
+    this.show(message, 'error', duration || 4000);
+  }
+  
+  warning(message, duration) {
+    this.show(message, 'warning', duration || 3000);
+  }
+  
+  offline(message, duration) {
+    this.show(message, 'offline', duration || 3000);
+  }
+  
+  clear() {
+    this.queue = [];
+    if (this.currentToast) {
+      this.hideToast(this.currentToast);
     }
-
-    return el;
   }
+}
 
-  function remove(el) {
-    if (!el?.parentNode) return;
-    el.style.opacity = '0';
-    el.style.transform = 'translateX(100%)';
-    setTimeout(() => el.remove(), 300);
-  }
-
-  function escHtml(s) {
-    const d = document.createElement('div');
-    d.textContent = s || '';
-    return d.innerHTML;
-  }
-
-  // Shorthand methods
-  const success = (msg, dur) => show(msg, 'success', dur);
-  const error = (msg, dur) => show(msg, 'error', dur);
-  const warning = (msg, dur) => show(msg, 'warning', dur);
-  const info = (msg, dur) => show(msg, 'info', dur);
-
-  window.NotificationSystem = { show, success, error, warning, info };
-})();
+// Глобальный экземпляр
+window.NotificationSystem = new NotificationSystem();
+console.log('✅ Notification system initialized');
