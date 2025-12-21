@@ -1723,9 +1723,8 @@ header {
   border-radius: 8px;
 }
 
-.mini-mode .next-up {
-  display: flex;
-}
+/* mini-mode (scroll-based) больше не используется.
+   Видимость next-up контролирует PlayerUI через inline style. */
 
 .next-up .label {
   color: #8ab8fd;
@@ -2131,9 +2130,8 @@ input:focus-visible {
   transition: none !important;
 }
 
-.mini-mode .next-up {
-  display: flex;
-}
+/* mini-mode (scroll-based) больше не используется.
+   Видимость next-up контролирует PlayerUI через inline style. */
 
 .next-up .label {
   color: #8ab8fd;
