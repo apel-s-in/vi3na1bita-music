@@ -36,11 +36,7 @@ class NavigationManager {
       this.showHotkeysModal();
     });
 
-    this.modalsContainer?.addEventListener('click', (e) => {
-      if (e.target === this.modalsContainer) {
-        this.closeModal();
-      }
-    });
+    // Закрытие по клику на фон делает сам modal-bg (Utils.createModal)
   }
 
   showFeedbackModal() {
@@ -66,7 +62,6 @@ class NavigationManager {
           </a>
         </div>
       </div>
-      <button class="modal-close-btn">Закрыть</button>
     `);
   }
 
@@ -90,7 +85,6 @@ class NavigationManager {
         <div class="hotkey-item"><span class="hotkey-combo">F</span><span class="hotkey-desc">Только избранные</span></div>
         <div class="hotkey-item"><span class="hotkey-combo">T</span><span class="hotkey-desc">Таймер сна</span></div>
       </div>
-      <button class="modal-close-btn">Закрыть</button>
     `);
   }
 
@@ -113,38 +107,43 @@ class NavigationManager {
     }
   }
 
-  showModal(content) {
-    if (!this.modalsContainer) return;
+  showModal(contentHtml) {
+    // ✅ Унификация: используем modal-bg (как sysinfo/lyrics/favorites-data)
+    // и единый хелпер Utils.createModal.
     this.closeModal();
 
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    modal.innerHTML = `
-      <div class="modal-content">
-        ${content}
+    const html = `
+      <div class="modal-feedback" style="max-width: 520px;">
+        <button class="bigclose" title="Закрыть" aria-label="Закрыть">
+          <svg viewBox="0 0 48 48">
+            <line x1="12" y1="12" x2="36" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+            <line x1="36" y1="12" x2="12" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+          </svg>
+        </button>
+
+        ${contentHtml}
       </div>
     `;
 
-    const closeBtn = modal.querySelector('.modal-close-btn');
-    closeBtn?.addEventListener('click', () => this.closeModal());
+    if (window.Utils && typeof window.Utils.createModal === 'function') {
+      this.activeModal = window.Utils.createModal(html);
+      return;
+    }
 
-    this.modalsContainer.appendChild(modal);
-    this.activeModal = modal;
+    // Fallback (если Utils ещё не готов)
+    const bg = document.createElement('div');
+    bg.className = 'modal-bg active';
+    bg.innerHTML = html;
+    bg.addEventListener('click', (e) => { if (e.target === bg) bg.remove(); });
 
-    requestAnimationFrame(() => {
-      modal.classList.add('show');
-    });
+    (document.getElementById('modals-container') || document.body).appendChild(bg);
+    this.activeModal = bg;
   }
 
   closeModal() {
     if (!this.activeModal) return;
-    this.activeModal.classList.remove('show');
-    setTimeout(() => {
-      if (this.activeModal && this.activeModal.parentNode) {
-        this.activeModal.parentNode.removeChild(this.activeModal);
-      }
-      this.activeModal = null;
-    }, 300);
+    try { this.activeModal.remove(); } catch {}
+    this.activeModal = null;
   }
 }
 
