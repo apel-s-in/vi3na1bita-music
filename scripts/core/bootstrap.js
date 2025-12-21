@@ -1,46 +1,249 @@
-// scripts/core/bootstrap.js — Инициализация
-(async function() {
+// scripts/core/bootstrap.js
+// ⭐ ИСПРАВЛЕНО: убраны все экспорты, async/await обёрнут в IIFE
+
+(function() {
   'use strict';
-  
-  console.log('🚀 Bootstrapping...');
-  
-  // Проверка совместимости
-  const missing = [];
-  try { localStorage.setItem('__t', '1'); localStorage.removeItem('__t'); } catch { missing.push('LocalStorage'); }
-  if (typeof fetch === 'undefined') missing.push('Fetch');
-  if (typeof Promise === 'undefined') missing.push('Promises');
-  
-  if (missing.length) {
-    document.body.innerHTML = `<div style="position:fixed;inset:0;background:#181818;color:#fff;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px"><div><h1 style="color:#E80100">⚠️ Браузер не поддерживается</h1><p>Требуются: ${missing.join(', ')}</p></div></div>`;
-    return;
+
+  class AppBootstrap {
+    constructor() {
+      this.requiredFeatures = [
+        'localStorage',
+        'fetch',
+        'Promise',
+        'addEventListener'
+      ];
+    }
+
+    async init() {
+      console.log('🚀 Bootstrapping application...');
+
+      // 1. Проверка совместимости
+      if (!this.checkCompatibility()) {
+        console.error('❌ Browser compatibility check failed');
+        return;
+      }
+
+      // 1.5. Ждём загрузки Howler.js
+      const howlerReady = await this.waitForHowler();
+      if (!howlerReady) {
+        console.error('❌ Howler.js loading timeout');
+        return;
+      }
+
+      // 2. Детектирование платформы
+      this.detectIOS();
+      this.detectStandalone();
+
+      // 3. Предотвращение нежелательного поведения
+      this.preventDefaultBehaviors();
+
+      // 4. Обработка ошибок
+      this.setupErrorHandling();
+
+      // 5. ⭐ КРИТИЧНО: Асинхронная загрузка albums.json
+      await this.loadAlbumsIndex();
+
+      console.log('✅ Bootstrap complete');
+    }
+
+    async loadAlbumsIndex() {
+      try {
+        console.log('📀 Loading albums index...');
+        
+        const response = await fetch('./albums.json', { 
+          cache: 'no-cache',
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        if (!data || !Array.isArray(data.albums)) {
+          throw new Error('Invalid albums.json format');
+        }
+
+        // ⭐ Публикуем в глобальную область
+        window.albumsIndex = data.albums;
+
+        console.log(`✅ Albums index loaded: ${data.albums.length} albums`);
+      } catch (error) {
+        console.error('❌ Failed to load albums.json:', error);
+        window.albumsIndex = [];
+        
+        // Показать ошибку пользователю
+        if (window.NotificationSystem) {
+          window.NotificationSystem.error('Не удалось загрузить список альбомов');
+        }
+      }
+    }
+
+    checkCompatibility() {
+      const missing = [];
+
+      if (!this.checkLocalStorage()) {
+        missing.push('LocalStorage');
+      }
+
+      if (typeof fetch === 'undefined') {
+        missing.push('Fetch API');
+      }
+
+      if (typeof Promise === 'undefined') {
+        missing.push('Promises');
+      }
+
+      if (!document.addEventListener) {
+        missing.push('Event Listeners');
+      }
+
+      // Проверка Web Audio API (предупреждение, не блокирует)
+      if (typeof AudioContext === 'undefined' && typeof webkitAudioContext === 'undefined') {
+        console.warn('⚠️ Web Audio API not supported - некоторые функции могут быть недоступны');
+      }
+
+      // Проверка MediaSession API (предупреждение, не блокирует)
+      if (!('mediaSession' in navigator)) {
+        console.warn('⚠️ Media Session API not supported - фоновое управление будет ограничено');
+      }
+
+      // ✅ ИСПРАВЛЕНО: Howler.js проверяется ПОСЛЕ загрузки
+      // Убираем из критических проверок
+
+      if (missing.length > 0) {
+        this.showCompatibilityError(missing);
+        return false;
+      }
+
+      return true;
+    }
+    async waitForHowler() {
+      // Ждём загрузки Howler.js максимум 5 секунд
+      const maxAttempts = 50;
+      let attempts = 0;
+
+      while (typeof Howl === 'undefined' && attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+      }
+
+      if (typeof Howl === 'undefined') {
+        console.error('❌ Howler.js failed to load');
+        if (window.NotificationSystem) {
+          window.NotificationSystem.error('Не удалось загрузить аудио-библиотеку. Попробуйте перезагрузить страницу.');
+        }
+        return false;
+      }
+
+      console.log('✅ Howler.js loaded successfully');
+      return true;
+    }
+    checkLocalStorage() {
+      try {
+        localStorage.setItem('__test', '1');
+        localStorage.removeItem('__test');
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    showCompatibilityError(missing) {
+      const errorHtml = `
+        <div style="
+          position: fixed;
+          inset: 0;
+          background: #181818;
+          color: #fff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-family: sans-serif;
+          padding: 20px;
+          text-align: center;
+          z-index: 99999;
+        ">
+          <div>
+            <h1 style="color: #E80100; margin-bottom: 20px;">⚠️ Браузер не поддерживается</h1>
+            <p style="margin-bottom: 15px;">Для работы требуются:</p>
+            <ul style="list-style: none; padding: 0; margin-bottom: 20px;">
+              ${missing.map(f => `<li style="margin: 5px 0;">❌ ${f}</li>`).join('')}
+            </ul>
+            <p style="color: #999;">Обновите браузер до последней версии.</p>
+          </div>
+        </div>
+      `;
+
+      document.body.innerHTML = errorHtml;
+    }
+
+    detectIOS() {
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      if (isIOS) {
+        document.body.classList.add('ios');
+        console.log('📱 iOS detected');
+      }
+      return isIOS;
+    }
+
+    detectStandalone() {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                          window.navigator.standalone === true;
+      
+      if (isStandalone) {
+        document.body.classList.add('standalone');
+        console.log('📲 PWA mode detected');
+      }
+      
+      return isStandalone;
+    }
+
+    preventDefaultBehaviors() {
+      document.body.addEventListener('touchstart', (e) => {
+        if (e.touches.length > 1) {
+          e.preventDefault();
+        }
+      }, { passive: false });
+
+      let lastTouchEnd = 0;
+      document.addEventListener('touchend', (e) => {
+        const now = Date.now();
+        if (now - lastTouchEnd <= 300) {
+          e.preventDefault();
+        }
+        lastTouchEnd = now;
+      }, false);
+
+      document.addEventListener('contextmenu', (e) => {
+        if (e.target.tagName === 'IMG' || e.target.closest('#cover-slot')) {
+          e.preventDefault();
+        }
+      });
+    }
+
+    setupErrorHandling() {
+      window.addEventListener('error', (e) => {
+        console.error('💥 Global error:', e.error || e.message);
+      });
+
+      window.addEventListener('unhandledrejection', (e) => {
+        console.error('💥 Unhandled promise rejection:', e.reason);
+      });
+    }
   }
-  
-  // Ждём Howler.js
-  let tries = 0;
-  while (typeof Howl === 'undefined' && tries++ < 50) await new Promise(r => setTimeout(r, 100));
-  if (typeof Howl === 'undefined') {
-    console.error('❌ Howler.js не загружен');
-    return;
+
+  // ⭐ Запуск при загрузке DOM (асинхронно)
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', async () => {
+      const bootstrap = new AppBootstrap();
+      await bootstrap.init();
+    });
+  } else {
+    const bootstrap = new AppBootstrap();
+    bootstrap.init();
   }
-  
-  // Платформа
-  if (/iPad|iPhone|iPod/.test(navigator.userAgent)) document.body.classList.add('ios');
-  if (window.matchMedia('(display-mode: standalone)').matches) document.body.classList.add('standalone');
-  
-  // Загрузка albums.json
-  try {
-    const r = await fetch('./albums.json', { cache: 'no-cache' });
-    const d = await r.json();
-    window.albumsIndex = d?.albums || [];
-    console.log(`✅ Albums: ${window.albumsIndex.length}`);
-  } catch (e) {
-    console.error('❌ albums.json:', e);
-    window.albumsIndex = [];
-  }
-  
-  // Глобальная обработка ошибок
-  window.addEventListener('error', e => console.error('💥', e.error || e.message));
-  window.addEventListener('unhandledrejection', e => console.error('💥', e.reason));
-  
-  console.log('✅ Bootstrap complete');
 })();
