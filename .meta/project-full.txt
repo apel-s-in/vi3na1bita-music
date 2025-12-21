@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-385a538a5261a3ea1ca5912fa9463015ddd9d1ef.idx
-│   │       ├── pack-385a538a5261a3ea1ca5912fa9463015ddd9d1ef.pack
-│   │       └── pack-385a538a5261a3ea1ca5912fa9463015ddd9d1ef.rev
+│   │       ├── pack-3c4443a0142e307f7bed6881cb7220f5ed14b730.idx
+│   │       ├── pack-3c4443a0142e307f7bed6881cb7220f5ed14b730.pack
+│   │       └── pack-3c4443a0142e307f7bed6881cb7220f5ed14b730.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -285,7 +285,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-21 13:32:47 UTC
+Сгенерировано: 2025-12-21 13:34:55 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -12591,9 +12591,8 @@ header {
   border-radius: 8px;
 }
 
-.mini-mode .next-up {
-  display: flex;
-}
+/* mini-mode (scroll-based) больше не используется.
+   Видимость next-up контролирует PlayerUI через inline style. */
 
 .next-up .label {
   color: #8ab8fd;
@@ -12999,9 +12998,8 @@ input:focus-visible {
   transition: none !important;
 }
 
-.mini-mode .next-up {
-  display: flex;
-}
+/* mini-mode (scroll-based) больше не используется.
+   Видимость next-up контролирует PlayerUI через inline style. */
 
 .next-up .label {
   color: #8ab8fd;
