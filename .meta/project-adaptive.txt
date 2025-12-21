@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5e08ccca457deda8bbbbe11caab44bbefccfb0af.idx
-│   │       ├── pack-5e08ccca457deda8bbbbe11caab44bbefccfb0af.pack
-│   │       └── pack-5e08ccca457deda8bbbbe11caab44bbefccfb0af.rev
+│   │       ├── pack-f57c30287757c63792f9486ffb7b50cdbfbf2479.idx
+│   │       ├── pack-f57c30287757c63792f9486ffb7b50cdbfbf2479.pack
+│   │       └── pack-f57c30287757c63792f9486ffb7b50cdbfbf2479.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -284,7 +284,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-21 14:15:37 UTC
+Сгенерировано: 2025-12-21 14:17:23 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6889,18 +6889,25 @@ if (typeof window !== 'undefined') {
       const bg = document.createElement('div');
       bg.className = 'modal-bg active';
       bg.innerHTML = html;
+
       const close = () => {
         bg.remove();
         if (onClose) onClose();
       };
-      bg.addEventListener('click', e => {
+
+      bg.addEventListener('click', (e) => {
         if (e.target === bg) close();
       });
+
       const closeBtn = bg.querySelector('.bigclose');
       if (closeBtn) {
         closeBtn.addEventListener('click', close);
       }
-      document.body.appendChild(bg);
+
+      // ✅ Единый контейнер для модалок (если есть), иначе fallback в body.
+      const host = document.getElementById('modals-container') || document.body;
+      host.appendChild(bg);
+
       return bg;
     },
     
