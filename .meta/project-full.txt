@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c28408164d93a0d6935ee815b8d51172a1203b09.idx
-│   │       ├── pack-c28408164d93a0d6935ee815b8d51172a1203b09.pack
-│   │       └── pack-c28408164d93a0d6935ee815b8d51172a1203b09.rev
+│   │       ├── pack-d4de71facba61375430a8bf0df1ba2bc5de3be57.idx
+│   │       ├── pack-d4de71facba61375430a8bf0df1ba2bc5de3be57.pack
+│   │       └── pack-d4de71facba61375430a8bf0df1ba2bc5de3be57.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -283,7 +283,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-21 18:26:15 UTC
+Сгенерировано: 2025-12-21 18:28:49 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2945,24 +2945,13 @@ if (document.readyState === 'loading') {
     init() {
       this.setupVisibilityHandler();
       this.setupNetworkHandlers();
-      this.setupBatteryHandler();
       this.setupBeforeUnloadHandler();
-      this.setupPopstateHandler();
 
       console.log('✅ Background events initialized');
     }
 
     // Обработка навигации браузера (Back/Forward)
-    setupPopstateHandler() {
-      window.addEventListener('popstate', (event) => {
-        console.log('📍 Popstate event:', event.state);
-
-        // Восстановить состояние приложения (не трогаем плеер!)
-        if (event.state && event.state.albumKey) {
-          window.AlbumsManager?.loadAlbum(event.state.albumKey);
-        }
-      });
-    }
+    // Пока отключено по дизайну (не используем history state в приложении).
 
     // Обработка изменения видимости страницы
     setupVisibilityHandler() {
@@ -3023,46 +3012,7 @@ if (document.readyState === 'loading') {
       }
     }
 
-    // Обработка батареи (опционально)
-    async setupBatteryHandler() {
-      if (!('getBattery' in navigator)) {
-        console.warn('Battery API not supported');
-        return;
-      }
-
-      try {
-        const battery = await navigator.getBattery();
-
-        battery.addEventListener('levelchange', () => {
-          this.onBatteryLevelChange(battery);
-        });
-
-        battery.addEventListener('chargingchange', () => {
-          this.onChargingChange(battery);
-        });
-
-        this.onBatteryLevelChange(battery);
-      } catch (error) {
-        console.warn('Battery API error:', error);
-      }
-    }
-
-    onBatteryLevelChange(battery) {
-      const level = Math.round(battery.level * 100);
-      console.log(`🔋 Battery level: ${level}%`);
-
-      if (level < 15 && !battery.charging) {
-        window.NotificationSystem?.warning(`Низкий заряд батареи: ${level}%`, 4000);
-      }
-    }
-
-    onChargingChange(battery) {
-      if (battery.charging) {
-        console.log('🔌 Charging');
-      } else {
-        console.log('🔋 Not charging');
-      }
-    }
+    // Battery API пока отключён (лишние permissions/разнобой поддержки браузеров).
 
     // Сохранение состояния перед закрытием (НЕ трогаем воспроизведение)
     setupBeforeUnloadHandler() {
