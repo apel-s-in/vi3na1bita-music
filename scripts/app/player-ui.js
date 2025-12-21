@@ -659,10 +659,69 @@
 
     block.querySelector('#eco-btn')?.addEventListener('click', toggleEcoMode);
 
-    document.addEventListener('mousemove', handleSeeking);
-    document.addEventListener('touchmove', handleSeeking);
-    document.addEventListener('mouseup', stopSeeking);
-    document.addEventListener('touchend', stopSeeking);
+    // ✅ Seek: document-level listeners вешаем ТОЛЬКО на время перетаскивания,
+    // чтобы не было утечек обработчиков при пересоздании/перемещении блока плеера.
+    // Используем Pointer Events (мышь/тач/перо) с fallback.
+    const progressBarEl = block.querySelector('#player-progress-bar');
+
+    const seekControllerKey = '__seekAbortController';
+    const addSeekDocumentListeners = () => {
+      // Если уже есть активный контроллер — ничего не делаем
+      if (w[seekControllerKey]) return;
+
+      const ctrl = new AbortController();
+      w[seekControllerKey] = ctrl;
+
+      const opts = { signal: ctrl.signal, passive: false };
+
+      document.addEventListener('pointermove', handleSeeking, opts);
+      document.addEventListener('pointerup', stopSeeking, opts);
+      document.addEventListener('pointercancel', stopSeeking, opts);
+
+      // Fallback для старых браузеров без pointer events
+      document.addEventListener('mousemove', handleSeeking, opts);
+      document.addEventListener('mouseup', stopSeeking, opts);
+      document.addEventListener('touchmove', handleSeeking, opts);
+      document.addEventListener('touchend', stopSeeking, opts);
+      document.addEventListener('touchcancel', stopSeeking, opts);
+    };
+
+    const removeSeekDocumentListeners = () => {
+      const ctrl = w[seekControllerKey];
+      if (ctrl) {
+        try { ctrl.abort(); } catch {}
+        w[seekControllerKey] = null;
+      }
+    };
+
+    // Переопределяем start/stop так, чтобы управлять жизненным циклом listeners
+    const _startSeeking = (e) => {
+      isSeekingProgress = true;
+      addSeekDocumentListeners();
+      handleSeeking(e);
+    };
+
+    const _stopSeeking = () => {
+      isSeekingProgress = false;
+      removeSeekDocumentListeners();
+    };
+
+    if (progressBarEl && !progressBarEl.__seekBound) {
+      progressBarEl.__seekBound = true;
+
+      progressBarEl.addEventListener('pointerdown', (e) => {
+        try { e.preventDefault(); } catch {}
+        _startSeeking(e);
+      });
+
+      // Fallback (если pointerdown не сработает)
+      progressBarEl.addEventListener('mousedown', _startSeeking);
+      progressBarEl.addEventListener('touchstart', _startSeeking, { passive: true });
+    }
+
+    // ВАЖНО: используем новые stopSeeking/startSeeking для внешних вызовов
+    startSeeking = _startSeeking;
+    stopSeeking = _stopSeeking;
   }
 
   function togglePlayPause() {
