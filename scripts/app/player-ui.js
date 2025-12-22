@@ -820,18 +820,50 @@
     w.playerCore.seek(duration * percent);
   }
 
+  // ✅ Кэш DOM для тиков прогресса (уменьшаем getElementById на каждом onTick)
+  const progressDom = {
+    fill: null,
+    elapsed: null,
+    remaining: null
+  };
+
+  function cacheProgressDomIfNeeded() {
+    // Если плеер-блок ещё не создан — нечего кэшировать
+    const block = document.getElementById('lyricsplayerblock');
+    if (!block) return;
+
+    // Если уже закешировано и элементы всё ещё в DOM — оставляем
+    if (progressDom.fill && progressDom.fill.isConnected &&
+        progressDom.elapsed && progressDom.elapsed.isConnected &&
+        progressDom.remaining && progressDom.remaining.isConnected) {
+      return;
+    }
+
+    progressDom.fill = document.getElementById('player-progress-fill');
+    progressDom.elapsed = document.getElementById('time-elapsed');
+    progressDom.remaining = document.getElementById('time-remaining');
+  }
+
   function updateProgress(position, duration) {
     if (isSeekingProgress) return;
 
-    const percent = (position / duration) * 100;
-    const fill = document.getElementById('player-progress-fill');
-    if (fill) fill.style.width = `${Math.min(100, percent)}%`;
+    cacheProgressDomIfNeeded();
 
-    const elapsed = document.getElementById('time-elapsed');
-    const remaining = document.getElementById('time-remaining');
+    const safeDuration = (typeof duration === 'number' && duration > 0) ? duration : 0;
+    const percent = safeDuration ? (position / safeDuration) * 100 : 0;
 
-    if (elapsed) elapsed.textContent = formatTime(position);
-    if (remaining) remaining.textContent = `-${formatTime(duration - position)}`;
+    if (progressDom.fill) {
+      progressDom.fill.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+    }
+
+    const fmt = w.Utils?.formatTime || ((s) => '--:--');
+
+    if (progressDom.elapsed) {
+      progressDom.elapsed.textContent = fmt(position);
+    }
+    if (progressDom.remaining) {
+      progressDom.remaining.textContent = `-${fmt((safeDuration || 0) - (position || 0))}`;
+    }
   }
 
   function renderVolumeUI(value) {
@@ -1782,7 +1814,7 @@
     for (let i = start; i < Math.min(currentLyrics.length, start + windowSize - padTop); i++) {
       const cls = (i === activeIdx) ? 'lyrics-window-line active' : 'lyrics-window-line';
       const text = currentLyrics[i] ? (currentLyrics[i].text || currentLyrics[i].line || '') : '';
-      rows.push(`<div class="${cls}">${escapeHtml(text)}</div>`);
+      rows.push(`<div class="${cls}">${w.Utils?.escapeHtml ? w.Utils.escapeHtml(text) : String(text || '')}</div>`);
     }
 
     while (rows.length < windowSize) {
@@ -1815,12 +1847,6 @@
     lyricsLastTs = now;
 
     renderLyrics(position);
-  }
-
-  function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str || '';
-    return div.innerHTML;
   }
 
   function restoreSettings() {
@@ -1959,13 +1985,6 @@
     } else {
       w.availableFavoriteIndices = null;
     }
-  }
-
-  function formatTime(sec) {
-    if (isNaN(sec) || sec < 0) return '00:00';
-    const m = Math.floor(sec / 60);
-    const s = Math.floor(sec % 60);
-    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   }
 
   // ========== ПУБЛИЧНЫЙ API ==========
