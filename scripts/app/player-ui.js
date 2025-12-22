@@ -30,7 +30,6 @@
   let isInContextMiniMode = false;
   let savedLyricsViewModeForMini = null;
   let savedAnimationForMini = null;
-  let countdownValue = null;
 
   // Jump-to-playing (кнопка-стрелка в родном альбоме)
   let jumpBtnWrap = null;
@@ -1745,7 +1744,6 @@
 
     if (!currentLyrics || currentLyrics.length === 0) {
       container.innerHTML = '<div class="lyrics-placeholder">Текст не найден</div>';
-      countdownValue = null;
       return;
     }
 
@@ -1759,7 +1757,6 @@
       const secondsLeft = Math.ceil(remaining);
 
       if (remaining < 1) {
-        countdownValue = null;
         container.innerHTML = `
           <div class="lyrics-countdown fade-out" style="opacity: ${remaining.toFixed(2)};">
             ${secondsLeft}
@@ -1768,7 +1765,6 @@
         return;
       }
 
-      countdownValue = secondsLeft;
       container.innerHTML = `
         <div class="lyrics-countdown">
           ${secondsLeft}
@@ -1776,8 +1772,6 @@
       `;
       return;
     }
-
-    countdownValue = null;
 
     let activeIdx = -1;
     for (let i = 0; i < currentLyrics.length; i++) {
@@ -1953,40 +1947,6 @@
     }
   }
 
-  function toggleFavoritesFilterForFavorites() {
-    const trackList = document.getElementById('track-list');
-    const btn = document.getElementById('filter-favorites-btn');
-
-    if (!trackList || !btn) return;
-
-    favoritesFilterActive = !favoritesFilterActive;
-
-    if (favoritesFilterActive) {
-      const model = w.favoritesRefsModel || [];
-      const activeCount = model.filter(x => x.__active).length;
-
-      if (activeCount === 0) {
-        favoritesFilterActive = false;
-        w.NotificationSystem?.warning('Нет активных треков со ⭐');
-        return;
-      }
-
-      btn.textContent = 'ПОКАЗАТЬ ВСЕ ПЕСНИ';
-      btn.classList.add('filtered');
-      trackList.classList.add('filtered');
-
-      updateFavoriteClassesFavorites();
-
-      w.NotificationSystem?.success('Показаны только активные треки');
-    } else {
-      btn.textContent = 'Скрыть не отмеченные ⭐ песни';
-      btn.classList.remove('filtered');
-      trackList.classList.remove('filtered');
-
-      w.NotificationSystem?.info('Показаны все треки');
-    }
-  }
-
   function updateFavoriteClasses(likedUids) {
     const albumKey = w.AlbumsManager?.getCurrentAlbum?.();
     const albumData = w.AlbumsManager?.getAlbumData?.(albumKey);
@@ -2091,56 +2051,6 @@
       });
     } else {
       w.availableFavoriteIndices = null;
-    }
-  }
-
-  function rebuildShuffledPlaylist() {
-    const playingAlbum = w.AlbumsManager?.getPlayingAlbum?.();
-    const originalPlaylist = w.playerCore?.originalPlaylist || [];
-
-    if (!playingAlbum || originalPlaylist.length === 0) {
-      console.warn('⚠️ No original playlist to shuffle');
-      return;
-    }
-
-    if (favoritesOnlyMode && playingAlbum !== w.SPECIAL_FAVORITES_KEY) {
-      const likedUids = w.FavoritesManager?.getLikedUidsForAlbum?.(playingAlbum) || [];
-
-      if (likedUids.length === 0) {
-        w.NotificationSystem?.warning('Нет избранных треков для shuffle');
-        return;
-      }
-
-      const favoriteTracks = originalPlaylist.filter(track => {
-        const uid = String(track?.uid || '').trim();
-        return uid && likedUids.includes(uid);
-      });
-
-      if (favoriteTracks.length === 0) {
-        w.NotificationSystem?.warning('Нет избранных треков для shuffle');
-        return;
-      }
-
-      const shuffled = [...favoriteTracks];
-      for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-      }
-
-      const currentTrack = w.playerCore?.getCurrentTrack();
-      const newIndex = currentTrack
-        ? shuffled.findIndex(t => t.src === currentTrack.src)
-        : 0;
-
-      w.playerCore?.setPlaylist(shuffled, Math.max(0, newIndex), {
-        artist: 'Витрина Разбита',
-        album: playingAlbum,
-        cover: shuffled[0]?.cover || 'img/logo.png'
-      });
-
-      updateAvailableTracksForPlayback();
-    } else {
-      w.playerCore?.toggleShuffle();
     }
   }
 
