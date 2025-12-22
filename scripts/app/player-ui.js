@@ -1908,6 +1908,22 @@
 
     renderLyricsViewMode();
 
+    // ✅ Применяем политику очереди на старте, если включён favoritesOnlyMode.
+    // Важно: НЕ останавливаем воспроизведение (PlaybackPolicy + PlayerCore.setPlaylist работают “мягко”).
+    try {
+      if (favoritesOnlyMode && w.Utils?.waitFor) {
+        w.Utils.waitFor(() => !!w.playerCore, 2000, 50).then(() => {
+          try {
+            if (w.PlaybackPolicy && typeof w.PlaybackPolicy.apply === 'function') {
+              w.PlaybackPolicy.apply({ reason: 'init' });
+            }
+          } catch (e) {
+            console.warn('PlaybackPolicy.apply(init) failed:', e);
+          }
+        });
+      }
+    } catch {}
+
     console.log(`✅ Settings restored: lyrics=${lyricsViewMode}, animation=${animationEnabled}`);
   }
 
