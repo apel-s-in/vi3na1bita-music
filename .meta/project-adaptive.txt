@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-bca4d4bf025477a9fa65fc229a4b37d024144b5c.idx
-│   │       ├── pack-bca4d4bf025477a9fa65fc229a4b37d024144b5c.pack
-│   │       └── pack-bca4d4bf025477a9fa65fc229a4b37d024144b5c.rev
+│   │       ├── pack-1e55f9eb946d8e4d4ef62874830078db02ab2e4a.idx
+│   │       ├── pack-1e55f9eb946d8e4d4ef62874830078db02ab2e4a.pack
+│   │       └── pack-1e55f9eb946d8e4d4ef62874830078db02ab2e4a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -283,7 +283,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-22 11:50:24 UTC
+Сгенерировано: 2025-12-22 14:03:57 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -779,20 +779,26 @@ jobs:
         document.body.classList.add('ios');
       }
       
+      // ✅ Промокод берём только из window.APP_CONFIG.PROMOCODE
+      // Поведение:
+      // - первый запуск/после чистки: показать экран промокода
+      // - если промокод сохранён и совпадает — вход сразу
+      const PROMO = String(window.APP_CONFIG?.PROMOCODE || '').trim();
+
       // Автоматический вход если промокод уже сохранён
       const savedPromo = localStorage.getItem('promocode');
-      if (savedPromo === 'VITRINA2025') {
+      if (PROMO && savedPromo === PROMO) {
         unlockAppDirectly();
       }
-      
+
       // Обработчик ввода промокода
       const promoInput = document.getElementById('promo-inp');
       const promoBtn = document.getElementById('promo-btn');
       const promoError = document.getElementById('promo-error');
-      
+
       const checkPromo = () => {
         const value = promoInput.value.trim();
-        if (value === 'VITRINA2025') {
+        if (PROMO && value === PROMO) {
           localStorage.setItem('promocode', value);
           unlockAppDirectly();
         } else {
