@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-7cf881184867493c22d74c952920112786ba2a7a.idx
-│   │       ├── pack-7cf881184867493c22d74c952920112786ba2a7a.pack
-│   │       └── pack-7cf881184867493c22d74c952920112786ba2a7a.rev
+│   │       ├── pack-bca4d4bf025477a9fa65fc229a4b37d024144b5c.idx
+│   │       ├── pack-bca4d4bf025477a9fa65fc229a4b37d024144b5c.pack
+│   │       └── pack-bca4d4bf025477a9fa65fc229a4b37d024144b5c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -283,7 +283,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-22 11:48:04 UTC
+Сгенерировано: 2025-12-22 11:50:23 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5943,6 +5943,22 @@ export default NavigationManager;
     if (heart) heart.textContent = bitEnabled ? '❤️' : '🤍';
 
     renderLyricsViewMode();
+
+    // ✅ Применяем политику очереди на старте, если включён favoritesOnlyMode.
+    // Важно: НЕ останавливаем воспроизведение (PlaybackPolicy + PlayerCore.setPlaylist работают “мягко”).
+    try {
+      if (favoritesOnlyMode && w.Utils?.waitFor) {
+        w.Utils.waitFor(() => !!w.playerCore, 2000, 50).then(() => {
+          try {
+            if (w.PlaybackPolicy && typeof w.PlaybackPolicy.apply === 'function') {
+              w.PlaybackPolicy.apply({ reason: 'init' });
+            }
+          } catch (e) {
+            console.warn('PlaybackPolicy.apply(init) failed:', e);
+          }
+        });
+      }
+    } catch {}
 
     console.log(`✅ Settings restored: lyrics=${lyricsViewMode}, animation=${animationEnabled}`);
   }
