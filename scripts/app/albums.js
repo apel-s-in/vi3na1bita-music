@@ -138,12 +138,6 @@ class AlbumsManager {
 
       this.clearUI();
 
-      // ✅ Кнопка фильтра видима во всех режимах, кроме "ИЗБРАННОЕ" и "НОВОСТИ"
-      const filterBtn = document.getElementById('filter-favorites-btn');
-      if (filterBtn) {
-        filterBtn.style.display = (albumKey === '__favorites__' || albumKey === '__reliz__') ? 'none' : '';
-      }
-
       if (albumKey === '__favorites__') {
         await this.loadFavoritesAlbum();
       } else if (albumKey === '__reliz__') {
@@ -160,12 +154,6 @@ class AlbumsManager {
 
       // Сброс фильтрации
       const trackList = document.getElementById('track-list');
-
-      // filterBtn уже получен выше в этом методе; переиспользуем его, чтобы не объявлять повторно
-      if (filterBtn) {
-        filterBtn.textContent = 'Скрыть не отмеченные ⭐ песни';
-        filterBtn.classList.remove('filtered');
-      }
 
       if (trackList) {
         trackList.classList.remove('filtered');
@@ -320,10 +308,6 @@ class AlbumsManager {
     
     const coverWrap = document.getElementById('cover-wrap');
     if (coverWrap) coverWrap.style.display = 'none';
-
-    // ✅ Скрываем кнопку фильтра в избранном (не нужна)
-    const filterBtn = document.getElementById('filter-favorites-btn');
-    if (filterBtn) filterBtn.style.display = 'none';
 
     if (window.buildFavoritesRefsModel) {
       await window.buildFavoritesRefsModel();
