@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-cf2dbf927b98b6f95cabf84ca3367621fed8bada.idx
-│   │       ├── pack-cf2dbf927b98b6f95cabf84ca3367621fed8bada.pack
-│   │       └── pack-cf2dbf927b98b6f95cabf84ca3367621fed8bada.rev
+│   │       ├── pack-59179761f846887aba98296431ae917f95872014.idx
+│   │       ├── pack-59179761f846887aba98296431ae917f95872014.pack
+│   │       └── pack-59179761f846887aba98296431ae917f95872014.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -283,7 +283,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-22 10:59:34 UTC
+Сгенерировано: 2025-12-22 11:25:12 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4079,7 +4079,6 @@ export default NavigationManager;
   let bitIntensity = 100;
 
   // ========== ФИЛЬТРАЦИЯ ИЗБРАННОГО ==========
-  let favoritesFilterActive = false;
   let favoritesOnlyMode = false;
 
   let audioContext = null;
