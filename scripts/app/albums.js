@@ -389,8 +389,9 @@ class AlbumsManager {
       star?.addEventListener('click', (e) => {
         e.stopPropagation();
 
-        // ✅ В "ИЗБРАННОЕ" снятие звезды НЕ удаляет строку.
-        // Оно переводит строку в неактивную (серую) и трек перестаёт быть воспроизводимым.
+        // ✅ Новое правило для «ИЗБРАННОЕ»:
+        // - если строка активная: ⭐ снимаем => строка становится серой (inactive), но НЕ удаляется сразу
+        // - если строка серая: ⭐ ставим => мгновенно возвращаем (без модалки)
         const wasActive = !!item.__active;
         const makeLiked = !wasActive;
 
@@ -401,10 +402,10 @@ class AlbumsManager {
           window.FavoritesManager.toggleLike(item.__a, uid, makeLiked);
         }
 
-        // ✅ ВАЖНО: в "ИЗБРАННОЕ" refs храним всегда (oldstar-механика).
-        // Если включили лайк — гарантируем, что ref существует.
-        if (makeLiked && window.FavoritesData && typeof window.FavoritesData.ensureFavoritesRefsWithLikes === 'function') {
-          window.FavoritesData.ensureFavoritesRefsWithLikes();
+        // ✅ Если включили лайк — гарантируем, что ref существует.
+        // (На случай если строка пришла из старого стораджа/миграции)
+        if (makeLiked && window.FavoritesData && typeof window.FavoritesData.addFavoritesRefIfMissing === 'function') {
+          window.FavoritesData.addFavoritesRefIfMissing(item.__a, uid);
         }
 
         item.__active = makeLiked;
@@ -801,9 +802,19 @@ class AlbumsManager {
       star.src = nowLiked ? 'img/star.png' : 'img/star2.png';
       trackEl.classList.toggle('is-favorite', nowLiked);
 
-      // ✅ Oldstar правило:
-      // refs НЕ удаляем автоматически (удаление из «ИЗБРАННОЕ» только через модалку).
-      // Снятие ⭐ лишь деактивирует строку в «ИЗБРАННОЕ» (через favorites:changed / buildFavoritesRefsModel).
+      // ✅ Новое правило:
+      // - ⭐ в родном альбоме: добавляет трек в «ИЗБРАННОЕ»
+      // - снятие ⭐ в родном альбоме: УДАЛЯЕТ трек из «ИЗБРАННОЕ» полностью
+      try {
+        if (window.FavoritesData) {
+          if (nowLiked && typeof window.FavoritesData.addFavoritesRefIfMissing === 'function') {
+            window.FavoritesData.addFavoritesRefIfMissing(albumKey, trackUid);
+          }
+          if (!nowLiked && typeof window.FavoritesData.removeFavoritesRef === 'function') {
+            window.FavoritesData.removeFavoritesRef(albumKey, trackUid);
+          }
+        }
+      } catch {}
     });
 
     return trackEl;
