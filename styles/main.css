@@ -917,8 +917,6 @@ header {
   padding: 0;
 }
 
-.track-list.filtered .track:not(.is-favorite) { display: none !important; }
-
 .track {
   display: flex;
   align-items: center;
