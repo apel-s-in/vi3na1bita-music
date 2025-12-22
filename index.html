@@ -166,20 +166,26 @@
         document.body.classList.add('ios');
       }
       
+      // ✅ Промокод берём только из window.APP_CONFIG.PROMOCODE
+      // Поведение:
+      // - первый запуск/после чистки: показать экран промокода
+      // - если промокод сохранён и совпадает — вход сразу
+      const PROMO = String(window.APP_CONFIG?.PROMOCODE || '').trim();
+
       // Автоматический вход если промокод уже сохранён
       const savedPromo = localStorage.getItem('promocode');
-      if (savedPromo === 'VITRINA2025') {
+      if (PROMO && savedPromo === PROMO) {
         unlockAppDirectly();
       }
-      
+
       // Обработчик ввода промокода
       const promoInput = document.getElementById('promo-inp');
       const promoBtn = document.getElementById('promo-btn');
       const promoError = document.getElementById('promo-error');
-      
+
       const checkPromo = () => {
         const value = promoInput.value.trim();
-        if (value === 'VITRINA2025') {
+        if (PROMO && value === PROMO) {
           localStorage.setItem('promocode', value);
           unlockAppDirectly();
         } else {
