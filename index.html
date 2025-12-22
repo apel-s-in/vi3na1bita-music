@@ -32,6 +32,7 @@
   
   <!-- Core -->
   <script src="./scripts/core/bootstrap.js"></script>
+  <script src="./scripts/core/utils.js"></script>
   <script src="./scripts/core/config.js" type="module"></script>
   
   <!-- Player Core (новая платформа) -->
@@ -262,20 +263,11 @@
     }
     
     // ========== УТИЛИТЫ ==========
-    
-    function formatTime(sec) {
-      if (isNaN(sec) || sec < 0) return '--:--';
-      const m = Math.floor(sec / 60);
-      const s = Math.floor(sec % 60);
-      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-    }
-    
-    function escapeHtml(str) {
-      const div = document.createElement('div');
-      div.textContent = str || '';
-      return div.innerHTML;
-    }
-    
+    // ✅ Утилиты вынесены в scripts/core/utils.js (window.Utils.*)
+    // Back-compat: если где-то в legacy-коде ещё вызываются window.formatTime/escapeHtml.
+    window.formatTime = window.Utils?.formatTime;
+    window.escapeHtml = window.Utils?.escapeHtml;
+
     // ========== ЭКСПОРТ ГЛОБАЛЬНЫХ ПЕРЕМЕННЫХ ==========
     
     window.VERSION = VERSION;
