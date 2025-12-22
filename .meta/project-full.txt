@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d4de71facba61375430a8bf0df1ba2bc5de3be57.idx
-│   │       ├── pack-d4de71facba61375430a8bf0df1ba2bc5de3be57.pack
-│   │       └── pack-d4de71facba61375430a8bf0df1ba2bc5de3be57.rev
+│   │       ├── pack-cf2dbf927b98b6f95cabf84ca3367621fed8bada.idx
+│   │       ├── pack-cf2dbf927b98b6f95cabf84ca3367621fed8bada.pack
+│   │       └── pack-cf2dbf927b98b6f95cabf84ca3367621fed8bada.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -283,7 +283,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-21 18:28:49 UTC
+Сгенерировано: 2025-12-22 10:59:34 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4093,7 +4093,6 @@ export default NavigationManager;
   let isInContextMiniMode = false;
   let savedLyricsViewModeForMini = null;
   let savedAnimationForMini = null;
-  let countdownValue = null;
 
   // Jump-to-playing (кнопка-стрелка в родном альбоме)
   let jumpBtnWrap = null;
@@ -5808,7 +5807,6 @@ export default NavigationManager;
 
     if (!currentLyrics || currentLyrics.length === 0) {
       container.innerHTML = '<div class="lyrics-placeholder">Текст не найден</div>';
-      countdownValue = null;
       return;
     }
 
@@ -5822,7 +5820,6 @@ export default NavigationManager;
       const secondsLeft = Math.ceil(remaining);
 
       if (remaining < 1) {
-        countdownValue = null;
         container.innerHTML = `
           <div class="lyrics-countdown fade-out" style="opacity: ${remaining.toFixed(2)};">
             ${secondsLeft}
@@ -5831,7 +5828,6 @@ export default NavigationManager;
         return;
       }
 
-      countdownValue = secondsLeft;
       container.innerHTML = `
         <div class="lyrics-countdown">
           ${secondsLeft}
@@ -5839,8 +5835,6 @@ export default NavigationManager;
       `;
       return;
     }
-
-    countdownValue = null;
 
     let activeIdx = -1;
     for (let i = 0; i < currentLyrics.length; i++) {
@@ -6016,40 +6010,6 @@ export default NavigationManager;
     }
   }
 
-  function toggleFavoritesFilterForFavorites() {
-    const trackList = document.getElementById('track-list');
-    const btn = document.getElementById('filter-favorites-btn');
-
-    if (!trackList || !btn) return;
-
-    favoritesFilterActive = !favoritesFilterActive;
-
-    if (favoritesFilterActive) {
-      const model = w.favoritesRefsModel || [];
-      const activeCount = model.filter(x => x.__active).length;
-
-      if (activeCount === 0) {
-        favoritesFilterActive = false;
-        w.NotificationSystem?.warning('Нет активных треков со ⭐');
-        return;
-      }
-
-      btn.textContent = 'ПОКАЗАТЬ ВСЕ ПЕСНИ';
-      btn.classList.add('filtered');
-      trackList.classList.add('filtered');
-
-      updateFavoriteClassesFavorites();
-
-      w.NotificationSystem?.success('Показаны только активные треки');
-    } else {
-      btn.textContent = 'Скрыть не отмеченные ⭐ песни';
-      btn.classList.remove('filtered');
-      trackList.classList.remove('filtered');
-
-      w.NotificationSystem?.info('Показаны все треки');
-    }
-  }
-
   function updateFavoriteClasses(likedUids) {
     const albumKey = w.AlbumsManager?.getCurrentAlbum?.();
     const albumData = w.AlbumsManager?.getAlbumData?.(albumKey);
@@ -6154,56 +6114,6 @@ export default NavigationManager;
       });
     } else {
       w.availableFavoriteIndices = null;
-    }
-  }
-
-  function rebuildShuffledPlaylist() {
-    const playingAlbum = w.AlbumsManager?.getPlayingAlbum?.();
-    const originalPlaylist = w.playerCore?.originalPlaylist || [];
-
-    if (!playingAlbum || originalPlaylist.length === 0) {
-      console.warn('⚠️ No original playlist to shuffle');
-      return;
-    }
-
-    if (favoritesOnlyMode && playingAlbum !== w.SPECIAL_FAVORITES_KEY) {
-      const likedUids = w.FavoritesManager?.getLikedUidsForAlbum?.(playingAlbum) || [];
-
-      if (likedUids.length === 0) {
-        w.NotificationSystem?.warning('Нет избранных треков для shuffle');
-        return;
-      }
-
-      const favoriteTracks = originalPlaylist.filter(track => {
-        const uid = String(track?.uid || '').trim();
-        return uid && likedUids.includes(uid);
-      });
-
-      if (favoriteTracks.length === 0) {
-        w.NotificationSystem?.warning('Нет избранных треков для shuffle');
-        return;
-      }
-
-      const shuffled = [...favoriteTracks];
-      for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-      }
-
-      const currentTrack = w.playerCore?.getCurrentTrack();
-      const newIndex = currentTrack
-        ? shuffled.findIndex(t => t.src === currentTrack.src)
-        : 0;
-
-      w.playerCore?.setPlaylist(shuffled, Math.max(0, newIndex), {
-        artist: 'Витрина Разбита',
-        album: playingAlbum,
-        cover: shuffled[0]?.cover || 'img/logo.png'
-      });
-
-      updateAvailableTracksForPlayback();
-    } else {
-      w.playerCore?.toggleShuffle();
     }
   }
 
