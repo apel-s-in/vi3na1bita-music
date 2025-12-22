@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-dc8786b22fa74c3ea9ecfed0647d4c3252df4e03.idx
-│   │       ├── pack-dc8786b22fa74c3ea9ecfed0647d4c3252df4e03.pack
-│   │       └── pack-dc8786b22fa74c3ea9ecfed0647d4c3252df4e03.rev
+│   │       ├── pack-c058df30e4904e64a74a694e02900d0b84d9af07.idx
+│   │       ├── pack-c058df30e4904e64a74a694e02900d0b84d9af07.pack
+│   │       └── pack-c058df30e4904e64a74a694e02900d0b84d9af07.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -283,7 +283,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-22 11:34:49 UTC
+Сгенерировано: 2025-12-22 11:47:14 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -645,6 +645,7 @@ jobs:
   
   <!-- Core -->
   <script src="./scripts/core/bootstrap.js"></script>
+  <script src="./scripts/core/utils.js"></script>
   <script src="./scripts/core/config.js" type="module"></script>
   
   <!-- Player Core (новая платформа) -->
@@ -875,20 +876,11 @@ jobs:
     }
     
     // ========== УТИЛИТЫ ==========
-    
-    function formatTime(sec) {
-      if (isNaN(sec) || sec < 0) return '--:--';
-      const m = Math.floor(sec / 60);
-      const s = Math.floor(sec % 60);
-      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-    }
-    
-    function escapeHtml(str) {
-      const div = document.createElement('div');
-      div.textContent = str || '';
-      return div.innerHTML;
-    }
-    
+    // ✅ Утилиты вынесены в scripts/core/utils.js (window.Utils.*)
+    // Back-compat: если где-то в legacy-коде ещё вызываются window.formatTime/escapeHtml.
+    window.formatTime = window.Utils?.formatTime;
+    window.escapeHtml = window.Utils?.escapeHtml;
+
     // ========== ЭКСПОРТ ГЛОБАЛЬНЫХ ПЕРЕМЕННЫХ ==========
     
     window.VERSION = VERSION;
