@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e0e9a89c925a19e982ec69be188d7d1636688fdd.idx
-│   │       ├── pack-e0e9a89c925a19e982ec69be188d7d1636688fdd.pack
-│   │       └── pack-e0e9a89c925a19e982ec69be188d7d1636688fdd.rev
+│   │       ├── pack-59541ee87b56aa22c50c3bbd52ce47c90bf72230.idx
+│   │       ├── pack-59541ee87b56aa22c50c3bbd52ce47c90bf72230.pack
+│   │       └── pack-59541ee87b56aa22c50c3bbd52ce47c90bf72230.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -283,7 +283,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-22 11:25:50 UTC
+Сгенерировано: 2025-12-22 11:26:30 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -11708,40 +11708,6 @@ header {
   width: 100%;
   max-width: 300px;
   padding-bottom: env(safe-area-inset-bottom);
-}
-
-.filter-favorites-btn {
-  display: block;
-  margin: 0 auto 15px;
-  padding: 12px 20px;
-  background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
-  color: var(--secondary-color);
-  border: 2px solid var(--border-color);
-  border-radius: 12px;
-  font-size: 0.95em;
-  font-weight: 800;
-  cursor: pointer;
-  transition: all 0.3s;
-  text-align: center;
-  width: 100%;
-  white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-}
-
-.filter-favorites-btn:hover {
-  background: linear-gradient(135deg, #3a3a3a, #2a2a2a);
-  border-color: var(--secondary-color);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-}
-
-.filter-favorites-btn:active { transform: translateY(0); }
-
-.filter-favorites-btn.filtered,
-.filter-favorites-btn.active {
-  background: linear-gradient(135deg, #4a1a1a, #2a0a0a);
-  border-color: var(--primary-color);
-  color: #fff;
 }
 
 #install-pwa-btn,
