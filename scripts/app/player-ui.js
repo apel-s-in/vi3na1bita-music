@@ -76,15 +76,6 @@
       });
     }
 
-    // ✅ КРИТИЧНО: Привязываем кнопку фильтрации ОДИН РАЗ
-    const filterBtnEl = document.getElementById('filter-favorites-btn');
-    if (filterBtnEl && !filterBtnEl.__bound) {
-      filterBtnEl.__bound = true;
-      filterBtnEl.addEventListener('click', () => {
-        toggleFavoritesFilter();
-      });
-    }
-
     console.log('✅ PlayerUI initialized');
   }
 
@@ -1222,8 +1213,6 @@
       localStorage.setItem('favoritesOnlyMode', favoritesOnlyMode ? '1' : '0');
     } catch {}
 
-    syncFilterWithFavoritesMode();
-
     updateAvailableTracksForPlayback();
 
     if (w.PlaybackPolicy && typeof w.PlaybackPolicy.apply === 'function') {
@@ -1896,56 +1885,6 @@
     console.log(`✅ Settings restored: lyrics=${lyricsViewMode}, animation=${animationEnabled}`);
   }
 
-  function toggleFavoritesFilter() {
-    const currentAlbum = w.AlbumsManager?.getCurrentAlbum();
-    const trackList = document.getElementById('track-list');
-    const btn = document.getElementById('filter-favorites-btn');
-
-    if (!currentAlbum || !trackList || !btn) return;
-
-    if (currentAlbum === w.SPECIAL_FAVORITES_KEY) {
-      // ✅ В "ИЗБРАННОЕ" нет смысла показывать кнопку фильтра "скрыть не отмеченные",
-      // потому что список строится по лайкам. Оставляем кнопку скрытой (см. AlbumsManager.loadFavoritesAlbum).
-      w.NotificationSystem?.info('Фильтр недоступен для «ИЗБРАННОЕ»');
-      return;
-    }
-
-    if (currentAlbum === w.SPECIAL_RELIZ_KEY) {
-      w.NotificationSystem?.info('Фильтр недоступен для новостей');
-      return;
-    }
-
-    const likedUids = w.FavoritesManager?.getLikedUidsForAlbum?.(currentAlbum) || [];
-
-    favoritesFilterActive = !favoritesFilterActive;
-
-    if (favoritesFilterActive) {
-      if (likedUids.length === 0) {
-        favoritesFilterActive = false;
-        w.NotificationSystem?.warning('Нет избранных треков в этом альбоме');
-        return;
-      }
-
-      btn.textContent = 'ПОКАЗАТЬ ВСЕ ПЕСНИ';
-      btn.classList.add('filtered');
-      trackList.classList.add('filtered');
-
-      updateFavoriteClasses(likedUids);
-
-      w.NotificationSystem?.success('Показаны только избранные треки');
-    } else {
-      btn.textContent = 'Скрыть не отмеченные ⭐ песни';
-      btn.classList.remove('filtered');
-      trackList.classList.remove('filtered');
-
-      document.querySelectorAll('.track.is-favorite').forEach(el => {
-        el.classList.remove('is-favorite');
-      });
-
-      w.NotificationSystem?.info('Показаны все треки');
-    }
-  }
-
   function updateFavoriteClasses(likedUids) {
     const albumKey = w.AlbumsManager?.getCurrentAlbum?.();
     const albumData = w.AlbumsManager?.getAlbumData?.(albumKey);
@@ -1988,37 +1927,6 @@
         el.classList.remove('is-favorite');
       }
     });
-  }
-
-  function syncFilterWithFavoritesMode() {
-    const currentAlbum = w.AlbumsManager?.getCurrentAlbum();
-    const filterBtn = document.getElementById('filter-favorites-btn');
-    const trackList = document.getElementById('track-list');
-
-    if (!filterBtn || !trackList) return;
-
-    favoritesFilterActive = favoritesOnlyMode;
-
-    if (favoritesFilterActive) {
-      filterBtn.textContent = 'ПОКАЗАТЬ ВСЕ ПЕСНИ';
-      filterBtn.classList.add('filtered');
-      trackList.classList.add('filtered');
-
-      if (currentAlbum === w.SPECIAL_FAVORITES_KEY) {
-        updateFavoriteClassesFavorites();
-      } else {
-        const likedUids = w.FavoritesManager?.getLikedUidsForAlbum?.(currentAlbum) || [];
-        updateFavoriteClasses(likedUids);
-      }
-    } else {
-      filterBtn.textContent = 'Скрыть не отмеченные ⭐ песни';
-      filterBtn.classList.remove('filtered');
-      trackList.classList.remove('filtered');
-
-      document.querySelectorAll('.track.is-favorite').forEach(el => {
-        el.classList.remove('is-favorite');
-      });
-    }
   }
 
   function updateAvailableTracksForPlayback() {
@@ -2070,7 +1978,6 @@
     togglePlayPause,
     toggleLikePlaying,
     switchAlbumInstantly,
-    toggleFavoritesFilter,
     toggleFavoritesOnly,
     updateAvailableTracksForPlayback,
     get currentLyrics() {
@@ -2083,7 +1990,6 @@
     }
   };
 
-  w.toggleFavoritesFilter = toggleFavoritesFilter;
   w.toggleFavoritesOnly = toggleFavoritesOnly;
 
   if (document.readyState === 'loading') {
