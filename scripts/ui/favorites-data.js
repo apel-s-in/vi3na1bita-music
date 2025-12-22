@@ -122,35 +122,38 @@
     writeFavoritesRefsByUid(out);
   }
 
-  function ensureFavoritesRefsWithLikes() {
-    // ✅ ВАЖНО для твоего realtime: если поставили ⭐ в альбоме — строка должна появиться в “ИЗБРАННОЕ”.
+  function addFavoritesRefIfMissing(albumKey, uid) {
+    const a = String(albumKey || '').trim();
+    const u = String(uid || '').trim();
+    if (!a || !u) return false;
+
     const refs = readFavoritesRefsByUid();
-    const seen = new Set(refs.map(x => `${x?.a}:${x?.uid}`));
+    const exists = refs.some(r => r && r.a === a && String(r.uid || '').trim() === u);
+    if (exists) return false;
 
-    const map = getLikedUidMap();
-    const keys = Object.keys(map || {});
+    refs.push({ a, uid: u });
+    writeFavoritesRefsByUid(refs);
+    return true;
+  }
 
-    let changed = false;
+  function removeFavoritesRef(albumKey, uid) {
+    const a = String(albumKey || '').trim();
+    const u = String(uid || '').trim();
+    if (!a || !u) return false;
 
-    for (const a of keys) {
-      const uids = Array.isArray(map[a]) ? map[a] : [];
-      for (const rawUid of uids) {
-        const uid = String(rawUid || '').trim();
-        if (!uid) continue;
-        const k = `${a}:${uid}`;
-        if (seen.has(k)) continue;
-        refs.push({ a, uid });
-        seen.add(k);
-        changed = true;
-      }
+    const refs = readFavoritesRefsByUid();
+    const next = refs.filter(r => !(r && r.a === a && String(r.uid || '').trim() === u));
+    writeFavoritesRefsByUid(next);
+
+    if (Array.isArray(w.favoritesRefsModel)) {
+      w.favoritesRefsModel = w.favoritesRefsModel.filter(it => !(it && it.__a === a && it.__uid === u));
     }
 
-    if (changed) writeFavoritesRefsByUid(refs);
-    return refs;
+    return next.length !== refs.length;
   }
 
   function getSortedFavoritesRefsByUid() {
-    const refs = ensureFavoritesRefsWithLikes().slice();
+    const refs = readFavoritesRefsByUid().slice();
 
     const order = (w.ICON_ALBUMS_ORDER || []).map(x => x.key)
       .filter(k => k !== w.SPECIAL_FAVORITES_KEY && k !== w.SPECIAL_RELIZ_KEY);
@@ -306,21 +309,7 @@
     }
   }
 
-  function removeFavoritesRef(albumKey, uid) {
-    const a = String(albumKey || '').trim();
-    const u = String(uid || '').trim();
-    if (!a || !u) return false;
-
-    const refs = readFavoritesRefsByUid();
-    const next = refs.filter(r => !(r && r.a === a && String(r.uid || '').trim() === u));
-    writeFavoritesRefsByUid(next);
-
-    if (Array.isArray(w.favoritesRefsModel)) {
-      w.favoritesRefsModel = w.favoritesRefsModel.filter(it => !(it && it.__a === a && it.__uid === u));
-    }
-
-    return true;
-  }
+  // removeFavoritesRef реализован выше как removeFavoritesRef(albumKey, uid)
 
   function createModalBg(html) {
     const bg = document.createElement('div');
@@ -476,8 +465,16 @@
     if (!a || !uid) return;
 
     try {
-      // ✅ Если поставили лайк — гарантируем, что ref существует (строка появится/активируется)
-      if (liked) ensureFavoritesRefsWithLikes();
+      // ✅ Новая политика:
+      // - liked=true  => добавить ref (если нет)
+      // - liked=false => удалить ref (полностью)
+      if (liked) {
+        addFavoritesRefIfMissing(a, uid);
+      } else {
+        removeFavoritesRef(a, uid);
+      }
+
+      // Модель обновляем для realtime UI (если уже построена)
       updateFavoritesRefsModelActiveFlag(a, uid, liked);
     } catch {}
   });
@@ -486,7 +483,8 @@
     // refs
     readFavoritesRefsByUid,
     writeFavoritesRefsByUid,
-    ensureFavoritesRefsWithLikes,
+    addFavoritesRefIfMissing,
+    removeFavoritesRef,
     getSortedFavoritesRefsByUid,
 
     // model builder
