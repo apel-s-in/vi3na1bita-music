@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-59179761f846887aba98296431ae917f95872014.idx
-│   │       ├── pack-59179761f846887aba98296431ae917f95872014.pack
-│   │       └── pack-59179761f846887aba98296431ae917f95872014.rev
+│   │       ├── pack-e0e9a89c925a19e982ec69be188d7d1636688fdd.idx
+│   │       ├── pack-e0e9a89c925a19e982ec69be188d7d1636688fdd.pack
+│   │       └── pack-e0e9a89c925a19e982ec69be188d7d1636688fdd.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -283,7 +283,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-22 11:25:12 UTC
+Сгенерировано: 2025-12-22 11:25:50 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -726,9 +726,6 @@ jobs:
     <div class="track-list" id="track-list"></div>
 
     <div class="bottom-controls-center">
-      <button class="filter-favorites-btn" id="filter-favorites-btn">
-        Скрыть не отмеченные ⭐ песни
-      </button>
 
       <img class="logo-bottom" id="logo-bottom" src="img/logo.png" alt="Логотип"/>
       
