@@ -16,7 +16,6 @@
   let bitIntensity = 100;
 
   // ========== ФИЛЬТРАЦИЯ ИЗБРАННОГО ==========
-  let favoritesFilterActive = false;
   let favoritesOnlyMode = false;
 
   let audioContext = null;
