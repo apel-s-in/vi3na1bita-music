@@ -981,14 +981,14 @@
 
   function startBitEffect() {
     // ✅ КРИТИЧНО: пульсация НЕ должна влиять на воспроизведение.
-    // Но для реального "такта" нужен Web Audio backend.
+    // Для "такта" нужен реальный анализ => нужен WebAudio backend.
     // Поэтому:
-    // 1) Просим PlayerCore пересобрать текущий Howl в WebAudio (html5:false) БЕЗ stop().
-    // 2) Подключаем analyser параллельно masterGain.
-    // 3) Если WebAudio недоступен/заблокирован — честно падаем в fallback (но стараемся максимально избегать синуса).
+    // 1) мягко переводим текущий Howl в WebAudio (html5:false) БЕЗ stop(),
+    // 2) подключаем analyser к Howler.masterGain,
+    // 3) если анализ невозможен — отключаем pulse (без синус-имитации).
 
     try {
-      // Попробуем переключить текущий трек на WebAudio backend (это не stop/pause, а тех. пересборка)
+      // Попробуем переключить backend без прерывания
       try {
         w.playerCore?.rebuildCurrentSound?.({ preferWebAudio: true });
       } catch {}
@@ -996,7 +996,7 @@
       if (w.Howler && w.Howler.ctx && w.Howler.masterGain) {
         if (!audioContext) audioContext = w.Howler.ctx;
 
-        // Если контекст suspended — попробуем resume без побочных эффектов
+        // Попробуем вывести ctx в running (не должно прерывать трек)
         if (audioContext && audioContext.state === 'suspended') {
           try { audioContext.resume(); } catch {}
         }
@@ -1015,6 +1015,20 @@
       }
     } catch {
       analyser = null;
+    }
+
+    // Если analyser не поднялся — отключаем pulse (без синуса)
+    if (!analyser) {
+      bitEnabled = false;
+      try { localStorage.setItem('bitEnabled', '0'); } catch {}
+
+      const btn = document.getElementById('pulse-btn');
+      const heart = document.getElementById('pulse-heart');
+      if (btn) btn.classList.remove('active');
+      if (heart) heart.textContent = '🤍';
+
+      w.NotificationSystem?.warning('Пульсация недоступна: браузер/режим не даёт Web Audio анализ');
+      return;
     }
 
     animateBit();
@@ -1045,14 +1059,10 @@
       }
     }
     
-    // ✅ Fallback: если analyser недоступен или AudioContext suspended
-    if (intensity === 0 && w.playerCore && w.playerCore.isPlaying()) {
-      // Плавная синусоидальная пульсация с лёгким "дыханием"
-      const time = Date.now() / 1000;
-      // Комбинируем две синусоиды для более естественного эффекта
-      const wave1 = Math.sin(time * 2.5) * 0.5 + 0.5;
-      const wave2 = Math.sin(time * 1.3 + 0.5) * 0.3 + 0.7;
-      intensity = wave1 * wave2 * 0.25 * (bitIntensity / 100);
+    // ✅ Никакой синус-имитации: либо реальный анализ, либо 0 (чтобы было честно)
+    // Если analyser вдруг "ослеп" (например, ctx снова стал suspended) — просто не пульсируем.
+    if (!analyser || !audioContext || audioContext.state !== 'running') {
+      intensity = 0;
     }
 
     const logo = document.getElementById('logo-bottom');
