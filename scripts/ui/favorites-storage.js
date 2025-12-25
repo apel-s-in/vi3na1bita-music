@@ -3,4 +3,5 @@
 // Этот файл оставлен для совместимости с inline-кодом index.html, если используется.
 // Все новые вызовы должны использовать window.FavoritesManager напрямую.
 
-console.warn('⚠️ Файл scripts/ui/favorites-storage.js устарел. Используйте window.FavoritesManager.');
+// no-op: оставлено для обратной совместимости (без шума в консоли)
+
