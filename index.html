@@ -150,8 +150,8 @@
   <script>
     // ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
     
-    const VERSION = '8.0.4';
-    const BUILD_DATE = '2025-12-07';
+    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.0.4');
+    const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2025-12-07');
     
     // Флаги и состояние
     window.autoNextDisabled = false;
