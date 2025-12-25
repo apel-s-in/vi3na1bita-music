@@ -105,9 +105,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c03fac2d0b95ebcc3c674f8457b17d6a1331e578.idx
-│   │       ├── pack-c03fac2d0b95ebcc3c674f8457b17d6a1331e578.pack
-│   │       └── pack-c03fac2d0b95ebcc3c674f8457b17d6a1331e578.rev
+│   │       ├── pack-abe891ad5d2530968c2474617b24b909c1b070ad.idx
+│   │       ├── pack-abe891ad5d2530968c2474617b24b909c1b070ad.pack
+│   │       └── pack-abe891ad5d2530968c2474617b24b909c1b070ad.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -332,7 +332,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-25 18:51:16 UTC
+Сгенерировано: 2025-12-25 18:52:53 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4774,9 +4774,12 @@ export default NavigationManager;
 
   function switchAlbumInstantly(newAlbumKey) {
     const playingAlbum = w.AlbumsManager?.getPlayingAlbum?.();
-    const currentIndex = w.playerCore?.getIndex() || 0;
+    const idx = (typeof w.playerCore?.getIndex === 'function') ? w.playerCore.getIndex() : -1;
 
-    ensurePlayerBlock(currentIndex);
+    if (Number.isFinite(idx) && idx >= 0) {
+      ensurePlayerBlock(idx);
+    }
+
     updateMiniHeader();
     updateNextUpLabel();
 
