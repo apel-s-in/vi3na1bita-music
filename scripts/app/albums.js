@@ -50,6 +50,28 @@ class AlbumsManager {
       albumToLoad = firstRegular || (window.albumsIndex[0]?.key || null);
     }
 
+    if (!this.__favoritesAlbumSyncBound) {
+      this.__favoritesAlbumSyncBound = true;
+
+      // ✅ Realtime обновление звёзд в РОДНЫХ альбомах (и в любом текущем DOM треклиста)
+      window.addEventListener('favorites:changed', (ev) => {
+        const d = ev?.detail || {};
+        const a = String(d.albumKey || '').trim();
+        const uid = String(d.uid || '').trim();
+        const liked = !!d.liked;
+
+        if (!a || !uid) return;
+
+        // Обновляем все звёзды, у которых совпал album+uid
+        const selector = `.like-star[data-album="${CSS.escape(a)}"][data-uid="${CSS.escape(uid)}"]`;
+        document.querySelectorAll(selector).forEach((img) => {
+          try {
+            img.src = liked ? 'img/star.png' : 'img/star2.png';
+          } catch {}
+        });
+      });
+    }
+
     if (albumToLoad) {
       await this.loadAlbum(albumToLoad);
     }
@@ -824,25 +846,36 @@ class AlbumsManager {
     });
 
     const star = trackEl.querySelector('.like-star');
-      star?.addEventListener('click', (e) => {
-           e.stopPropagation();
-           const trackUid = String(star.dataset.uid || '').trim();
-           if (!trackUid) {
-               window.NotificationSystem?.warning('UID трека не найден в config.json');
-               return;
-          }
-          // Делегирование в FavoritesManager
-           if (window.FavoritesManager && typeof window.FavoritesManager.toggleLike === 'function') {
-               // Это вызовет событие favorites:changed, которое обновит UI
-               window.FavoritesManager.toggleLike(
-                 albumKey,
-                 trackUid,
-                 !window.FavoritesManager.isFavorite(albumKey, trackUid),
-                 { source: 'album' }
-               );
-           }
-           // Логика обновления UI будет в обработчике события favorites:changed
-      });
+    star?.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const trackUid = String(star.dataset.uid || '').trim();
+      if (!trackUid) {
+        window.NotificationSystem?.warning('UID трека не найден в config.json');
+        return;
+      }
+
+      if (!window.FavoritesManager || typeof window.FavoritesManager.toggleLike !== 'function') {
+        window.NotificationSystem?.error('FavoritesManager недоступен');
+        return;
+      }
+
+      const nextLiked = !window.FavoritesManager.isFavorite(albumKey, trackUid);
+
+      // ✅ 1) МГНОВЕННЫЙ UI (optimistic): чтобы звезда желтела сразу
+      star.src = nextLiked ? 'img/star.png' : 'img/star2.png';
+      star.classList.add('animating');
+      setTimeout(() => star.classList.remove('animating'), 320);
+
+      // ✅ 2) Источник истины (storage + события)
+      window.FavoritesManager.toggleLike(
+        albumKey,
+        trackUid,
+        nextLiked,
+        { source: 'album' }
+      );
+    });
 
     return trackEl;
   }
