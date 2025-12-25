@@ -170,8 +170,10 @@ class FavoritesManager {
       const activeItems = model.filter(it => it && it.__active && it.audio);
 
       if (activeItems.length === 0) {
-        // ✅ По ТЗ: если активных не осталось — STOP (это разрешено таймером/кнопками/этим правилом избранного)
-        pc.stop?.();
+        // ✅ БАЗОВОЕ ПРАВИЛО ПЛЕЕРА: никакая функция, кроме кнопок Stop/Pause и таймера,
+        // не имеет права останавливать воспроизведение.
+        // Здесь вместо STOP делаем мягкую PAUSE.
+        pc.pause?.();
         return;
       }
 
@@ -201,7 +203,8 @@ class FavoritesManager {
       if (nextIndexInModel >= 0) {
         window.AlbumsManager?.ensureFavoritesPlayback?.(nextIndexInModel);
       } else {
-        pc.stop?.();
+        // См. базовое правило: не стопаем “автоматикой”.
+        pc.pause?.();
       }
     } catch (e) {
       console.warn('_handlePlayingFavoritesAfterUnlike failed:', e);
