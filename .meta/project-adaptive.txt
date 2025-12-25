@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b4e9dd2ec783d1bcd4c8ce9658455c866184f923.idx
-│   │       ├── pack-b4e9dd2ec783d1bcd4c8ce9658455c866184f923.pack
-│   │       └── pack-b4e9dd2ec783d1bcd4c8ce9658455c866184f923.rev
+│   │       ├── pack-09e6d64d5f98530999fc5898dacb20f601658ffa.idx
+│   │       ├── pack-09e6d64d5f98530999fc5898dacb20f601658ffa.pack
+│   │       └── pack-09e6d64d5f98530999fc5898dacb20f601658ffa.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -283,7 +283,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-25 16:03:57 UTC
+Сгенерировано: 2025-12-25 16:05:14 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7865,7 +7865,8 @@ Object.assign(window, {
     return div.innerHTML;
   }
 
-  // Realtime: при изменении лайков — подтянуть refs и синхронизировать модель
+  // Realtime: при изменении лайков — ТОЛЬКО обновляем модель (active/inactive),
+  // но НЕ управляем refs здесь. Управление refs — единая ответственность FavoritesManager.
   window.addEventListener('favorites:changed', (e) => {
     const d = e?.detail || {};
     const a = String(d.albumKey || '').trim();
@@ -7874,16 +7875,6 @@ Object.assign(window, {
     if (!a || !uid) return;
 
     try {
-      // ✅ Новая политика:
-      // - liked=true  => добавить ref (если нет)
-      // - liked=false => удалить ref (полностью)
-      if (liked) {
-        addFavoritesRefIfMissing(a, uid);
-      } else {
-        removeFavoritesRef(a, uid);
-      }
-
-      // Модель обновляем для realtime UI (если уже построена)
       updateFavoritesRefsModelActiveFlag(a, uid, liked);
     } catch {}
   });
