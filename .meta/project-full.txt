@@ -105,9 +105,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4714de50a474a2c1ca81fc19025e907b68842d17.idx
-│   │       ├── pack-4714de50a474a2c1ca81fc19025e907b68842d17.pack
-│   │       └── pack-4714de50a474a2c1ca81fc19025e907b68842d17.rev
+│   │       ├── pack-34606a18303362e319f835783d09ad0251442835.idx
+│   │       ├── pack-34606a18303362e319f835783d09ad0251442835.pack
+│   │       └── pack-34606a18303362e319f835783d09ad0251442835.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -313,7 +313,6 @@ vi3na1bita-music/
 │   │   ├── favorites-view.js
 │   │   ├── favorites.js
 │   │   ├── lyrics-modal.js
-│   │   ├── navigation.js
 │   │   ├── notify.js
 │   │   ├── sleep.js
 │   │   └── sysinfo.js
@@ -334,7 +333,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-25 20:15:22 UTC
+Сгенерировано: 2025-12-25 20:17:02 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8672,65 +8671,6 @@ window.FavoritesManager = new FavoritesManager();
   // Автоинициализация
   // (Lyrics Modal не требует автозапуска)
 
-})();
-
-//=================================================
-// FILE: /scripts/ui/navigation.js
-// scripts/ui/navigation.js
-(function NavigationModule() {
-  'use strict';
-  const w = window;
-
-  function init() {
-    const menuBtn = w.Utils.$('menu-btn');
-    const menuModal = w.Utils.$('menu-modal');
-    const closeModal = w.Utils.$q('.menu-close');
-
-    if (menuBtn) {
-      menuBtn.addEventListener('click', () => {
-        if (menuModal) menuModal.classList.add('active');
-      });
-    }
-    if (closeModal) {
-      closeModal.addEventListener('click', () => {
-        if (menuModal) menuModal.classList.remove('active');
-      });
-    }
-
-    // Меню-ссылки
-    const menuLinks = w.Utils.$qa('.menu-link');
-    menuLinks.forEach(link => {
-      link.addEventListener('click', () => {
-        if (menuModal) menuModal.classList.remove('active');
-      });
-    });
-
-    // Обработчики кнопок
-    w.Utils.$('sysinfo-btn')?.addEventListener('click', () => w.SysInfo?.show?.());
-    w.Utils.$('favorites-data-btn')?.addEventListener('click', () => w.FavoritesData?.showInactiveFavoritesModal?.());
-    w.Utils.$('clear-cache-btn')?.addEventListener('click', clearCache);
-  }
-
-  async function clearCache() {
-    if ('serviceWorker' in navigator) {
-      const registrations = await navigator.serviceWorker.getRegistrations();
-      for (const reg of registrations) {
-        await reg.unregister();
-      }
-      caches.keys().then(keys => {
-        return Promise.all(keys.map(key => caches.delete(key)));
-      });
-    }
-    localStorage.clear();
-    w.NotificationSystem?.success('Кэш и данные очищены. Перезагрузите страницу.');
-  }
-
-  w.NavigationManager = { init };
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
 })();
 
 //=================================================
