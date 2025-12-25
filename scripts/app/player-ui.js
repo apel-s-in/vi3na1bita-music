@@ -647,16 +647,89 @@
   }
 
   function bindPlayerEvents(block) {
-    const playPauseBtn = block.querySelector('#play-pause-btn');
-    playPauseBtn?.addEventListener('click', togglePlayPause);
+    if (!block || block.__eventsBound) return;
+    block.__eventsBound = true;
 
-    block.querySelector('#prev-btn')?.addEventListener('click', () => w.playerCore?.prev());
-    block.querySelector('#next-btn')?.addEventListener('click', () => w.playerCore?.next());
-    block.querySelector('#stop-btn')?.addEventListener('click', () => w.playerCore?.stop());
-    block.querySelector('#repeat-btn')?.addEventListener('click', toggleRepeat);
-    block.querySelector('#shuffle-btn')?.addEventListener('click', toggleShuffle);
-    block.querySelector('#mute-btn')?.addEventListener('click', toggleMute);
+    // 1) Делегирование кликов по кнопкам/ссылкам внутри блока
+    block.addEventListener('click', (e) => {
+      const t = e.target;
+      const el = t?.closest?.('button, a');
+      if (!el || !block.contains(el)) return;
 
+      const id = el.id;
+
+      switch (id) {
+        case 'play-pause-btn':
+          togglePlayPause();
+          return;
+
+        case 'prev-btn':
+          w.playerCore?.prev();
+          return;
+
+        case 'next-btn':
+          w.playerCore?.next();
+          return;
+
+        case 'stop-btn':
+          w.playerCore?.stop();
+          return;
+
+        case 'repeat-btn':
+          toggleRepeat();
+          return;
+
+        case 'shuffle-btn':
+          toggleShuffle();
+          return;
+
+        case 'mute-btn':
+          toggleMute();
+          return;
+
+        case 'lyrics-toggle-btn':
+          toggleLyricsView();
+          return;
+
+        case 'animation-btn':
+          toggleAnimation();
+          return;
+
+        case 'pulse-btn':
+          togglePulse();
+          return;
+
+        case 'favorites-btn':
+          e.preventDefault();
+          e.stopPropagation();
+          toggleFavoritesOnly();
+          return;
+
+        case 'sleep-timer-btn':
+          w.SleepTimer?.show?.();
+          return;
+
+        case 'lyrics-text-btn':
+          w.LyricsModal?.show?.();
+          return;
+
+        case 'eco-btn':
+          toggleEcoMode();
+          return;
+
+        case 'track-download-btn': {
+          const track = w.playerCore?.getCurrentTrack();
+          if (!track || !track.src) {
+            e.preventDefault();
+            w.NotificationSystem?.error('Трек недоступен для скачивания');
+            return;
+          }
+          return;
+        }
+      }
+    });
+
+    // 2) Volume: input остаётся отдельным (это не click)
     const volumeSlider = block.querySelector('#volume-slider');
     volumeSlider?.addEventListener('input', onVolumeChange);
 
@@ -680,56 +753,19 @@
       };
 
       volumeWrap.addEventListener('pointerdown', (e) => {
-        if (e && typeof e.clientX === 'number') {
-          setFromClientX(e.clientX);
-        }
+        if (e && typeof e.clientX === 'number') setFromClientX(e.clientX);
       });
 
       volumeWrap.addEventListener('pointermove', (e) => {
-        // drag по полосе при зажатой кнопке
-        if (e && e.buttons === 1 && typeof e.clientX === 'number') {
-          setFromClientX(e.clientX);
-        }
+        if (e && e.buttons === 1 && typeof e.clientX === 'number') setFromClientX(e.clientX);
       });
     }
 
-    // Seek handlers подключаем ниже (pointer-based, без утечек listeners).
-
-    block.querySelector('#lyrics-toggle-btn')?.addEventListener('click', toggleLyricsView);
-    block.querySelector('#animation-btn')?.addEventListener('click', toggleAnimation);
-    block.querySelector('#pulse-btn')?.addEventListener('click', togglePulse);
-
-    const favoritesBtn = block.querySelector('#favorites-btn');
-    if (favoritesBtn) {
-      favoritesBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        toggleFavoritesOnly();
-      });
-    }
-
-    block.querySelector('#sleep-timer-btn')?.addEventListener('click', () => w.SleepTimer?.show?.());
-    block.querySelector('#lyrics-text-btn')?.addEventListener('click', () => w.LyricsModal?.show?.());
-
-    const downloadBtn = block.querySelector('#track-download-btn');
-    downloadBtn?.addEventListener('click', (e) => {
-      const track = w.playerCore?.getCurrentTrack();
-      if (!track || !track.src) {
-        e.preventDefault();
-        w.NotificationSystem?.error('Трек недоступен для скачивания');
-      }
-    });
-
-    block.querySelector('#eco-btn')?.addEventListener('click', toggleEcoMode);
-
-    // ✅ Seek: document-level listeners вешаем ТОЛЬКО на время перетаскивания,
-    // чтобы не было утечек обработчиков при пересоздании/перемещении блока плеера.
-    // Используем Pointer Events (мышь/тач/перо) с fallback.
+    // 3) Seek: оставляем как было (pointer-based), но без лишних локальных переменных/мусора
     const progressBarEl = block.querySelector('#player-progress-bar');
-
     const seekControllerKey = '__seekAbortController';
+
     const addSeekDocumentListeners = () => {
-      // Если уже есть активный контроллер — ничего не делаем
       if (w[seekControllerKey]) return;
 
       const ctrl = new AbortController();
@@ -741,7 +777,6 @@
       document.addEventListener('pointerup', endSeek, opts);
       document.addEventListener('pointercancel', endSeek, opts);
 
-      // Fallback для старых браузеров без pointer events
       document.addEventListener('mousemove', handleSeeking, opts);
       document.addEventListener('mouseup', endSeek, opts);
       document.addEventListener('touchmove', handleSeeking, opts);
@@ -751,42 +786,33 @@
 
     const removeSeekDocumentListeners = () => {
       const ctrl = w[seekControllerKey];
-      if (ctrl) {
-        try { ctrl.abort(); } catch {}
-        w[seekControllerKey] = null;
-      }
+      if (!ctrl) return;
+      try { ctrl.abort(); } catch {}
+      w[seekControllerKey] = null;
     };
 
-    // Seek lifecycle (локально): вешаем document listeners только на время drag
-    const beginSeek = (e) => {
+    const beginSeek = (ev) => {
       isSeekingProgress = true;
       addSeekDocumentListeners();
-      handleSeeking(e);
+      handleSeeking(ev);
     };
 
-    const endSeek = () => {
+    function endSeek() {
       isSeekingProgress = false;
       removeSeekDocumentListeners();
-    };
+    }
 
     if (progressBarEl && !progressBarEl.__seekBound) {
       progressBarEl.__seekBound = true;
 
-      progressBarEl.addEventListener('pointerdown', (e) => {
-        try { e.preventDefault(); } catch {}
-        beginSeek(e);
+      progressBarEl.addEventListener('pointerdown', (ev) => {
+        try { ev.preventDefault(); } catch {}
+        beginSeek(ev);
       });
 
-      // Fallback (если pointerdown не сработает)
       progressBarEl.addEventListener('mousedown', beginSeek);
       progressBarEl.addEventListener('touchstart', beginSeek, { passive: true });
     }
-
-    // Документные события завершают seek через endSeek
-    // (они подключаются в addSeekDocumentListeners)
-    const _endSeek = endSeek;
-    // eslint-disable-next-line no-unused-vars
-    const stopSeeking = _endSeek;
   }
 
   function togglePlayPause() {
