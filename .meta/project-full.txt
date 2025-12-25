@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-17c7da28c874dee49de3b87fac2810cf300bc07d.idx
-│   │       ├── pack-17c7da28c874dee49de3b87fac2810cf300bc07d.pack
-│   │       └── pack-17c7da28c874dee49de3b87fac2810cf300bc07d.rev
+│   │       ├── pack-233cd2a5ee631964a0d9bcd30fd5e891c7253073.idx
+│   │       ├── pack-233cd2a5ee631964a0d9bcd30fd5e891c7253073.pack
+│   │       └── pack-233cd2a5ee631964a0d9bcd30fd5e891c7253073.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -283,7 +283,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-25 16:16:40 UTC
+Сгенерировано: 2025-12-25 16:17:19 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7971,7 +7971,8 @@ Object.assign(window, {
 // Этот файл оставлен для совместимости с inline-кодом index.html, если используется.
 // Все новые вызовы должны использовать window.FavoritesManager напрямую.
 
-console.warn('⚠️ Файл scripts/ui/favorites-storage.js устарел. Используйте window.FavoritesManager.');
+// no-op: оставлено для обратной совместимости (без шума в консоли)
+
 
 //=================================================
 // FILE: /scripts/ui/favorites-view.js
