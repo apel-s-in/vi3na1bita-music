@@ -431,7 +431,8 @@
     return div.innerHTML;
   }
 
-  // Realtime: при изменении лайков — подтянуть refs и синхронизировать модель
+  // Realtime: при изменении лайков — ТОЛЬКО обновляем модель (active/inactive),
+  // но НЕ управляем refs здесь. Управление refs — единая ответственность FavoritesManager.
   window.addEventListener('favorites:changed', (e) => {
     const d = e?.detail || {};
     const a = String(d.albumKey || '').trim();
@@ -440,16 +441,6 @@
     if (!a || !uid) return;
 
     try {
-      // ✅ Новая политика:
-      // - liked=true  => добавить ref (если нет)
-      // - liked=false => удалить ref (полностью)
-      if (liked) {
-        addFavoritesRefIfMissing(a, uid);
-      } else {
-        removeFavoritesRef(a, uid);
-      }
-
-      // Модель обновляем для realtime UI (если уже построена)
       updateFavoritesRefsModelActiveFlag(a, uid, liked);
     } catch {}
   });
