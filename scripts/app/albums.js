@@ -380,10 +380,7 @@ class AlbumsManager {
             uid: item.__uid,
             title: item.title || 'Трек',
             onDeleted: async () => {
-              // Если удалили ref, пересоберём экран «ИЗБРАННОЕ» целиком (редкое действие)
-              if (this.currentAlbum === window.SPECIAL_FAVORITES_KEY) {
-                await this.loadFavoritesAlbum();
-              }
+              // ✅ Теперь строка удаляется realtime через favorites:refsChanged (без полного reload списка).
               window.PlayerUI?.updateAvailableTracksForPlayback?.();
             }
           });
@@ -423,6 +420,37 @@ class AlbumsManager {
         }
 
         // Плеер/очередь не трогаем (базовое правило соблюдаем)
+      });
+
+      // ✅ Realtime: refsChanged — точечное удаление строки без полной перезагрузки списка
+      window.addEventListener('favorites:refsChanged', (ev) => {
+        if (this.currentAlbum !== window.SPECIAL_FAVORITES_KEY) return;
+
+        const d = ev?.detail || {};
+        const albumKey = String(d.albumKey || '').trim();
+        const uid = String(d.uid || '').trim();
+        const action = String(d.action || '').trim();
+
+        if (!albumKey || !uid) return;
+
+        if (action === 'refRemoved') {
+          const id = `fav_${albumKey}_${uid}`;
+          const row = document.getElementById(id);
+          if (row) row.remove();
+
+          // Если список стал пустым — покажем empty state (без полного loadFavoritesAlbum)
+          try {
+            const left = container.querySelectorAll('.track').length;
+            if (left === 0) {
+              container.innerHTML = `
+                <div style="padding: 20px; text-align: center; color: #8ab8fd;">
+                  <h3>Избранные треки</h3>
+                  <p>Отметьте треки звёздочкой ⭐</p>
+                </div>
+              `;
+            }
+          } catch {}
+        }
       });
     }
 
