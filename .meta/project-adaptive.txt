@@ -105,9 +105,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8285607219c3046125dc5b7cd49932f7fef73465.idx
-│   │       ├── pack-8285607219c3046125dc5b7cd49932f7fef73465.pack
-│   │       └── pack-8285607219c3046125dc5b7cd49932f7fef73465.rev
+│   │       ├── pack-fdf4d5a37b2266aa2d6a43f149c0af34ec614123.idx
+│   │       ├── pack-fdf4d5a37b2266aa2d6a43f149c0af34ec614123.pack
+│   │       └── pack-fdf4d5a37b2266aa2d6a43f149c0af34ec614123.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -332,7 +332,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-25 18:55:01 UTC
+Сгенерировано: 2025-12-25 19:28:30 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -809,140 +809,7 @@ jobs:
   <div id="modals-container"></div>
 
   <!-- Inline Scripts -->
-  <script>
-    // ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
-    
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.0.4');
-    const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2025-12-07');
-    
-    // Флаги и состояние
-    window.autoNextDisabled = false;
-    window.sleepTimerTarget = null;
-    window.sleepTimerInterval = null;
-    
-    // ========== ПРОВЕРКА ПРОМОКОДА ПРИ ЗАГРУЗКЕ ==========
-    
-    window.addEventListener('load', () => {
-      // Определение iOS
-      if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-        document.body.classList.add('ios');
-      }
-      
-      // ✅ Промокод берём только из window.APP_CONFIG.PROMOCODE
-      // Поведение:
-      // - первый запуск/после чистки: показать экран промокода
-      // - если промокод сохранён и совпадает — вход сразу
-      const PROMO = String(window.APP_CONFIG?.PROMOCODE || '').trim();
-
-      // Автоматический вход если промокод уже сохранён
-      const savedPromo = localStorage.getItem('promocode');
-      if (PROMO && savedPromo === PROMO) {
-        unlockAppDirectly();
-      }
-
-      // Обработчик ввода промокода
-      const promoInput = document.getElementById('promo-inp');
-      const promoBtn = document.getElementById('promo-btn');
-      const promoError = document.getElementById('promo-error');
-
-      const checkPromo = () => {
-        const value = promoInput.value.trim();
-        if (PROMO && value === PROMO) {
-          localStorage.setItem('promocode', value);
-          unlockAppDirectly();
-        } else {
-          promoError.textContent = '❌ Неверный промокод';
-          promoInput.classList.add('error');
-          setTimeout(() => {
-            promoError.textContent = '';
-            promoInput.classList.remove('error');
-          }, 2000);
-        }
-      };
-      
-      promoBtn?.addEventListener('click', checkPromo);
-      promoInput?.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') checkPromo();
-      });
-      
-      // iOS: показать подсказку про установку
-      detectIOSAndShowInstallGuide();
-      
-      // Chrome: подсказка про Memory Saver удалена по дизайну
-    });
-    
-    function unlockAppDirectly() {
-      const promocodeBlock = document.getElementById('promocode-block');
-      const mainBlock = document.getElementById('main-block');
-      
-      if (promocodeBlock) promocodeBlock.classList.add('hidden');
-      if (mainBlock) mainBlock.classList.remove('hidden');
-      
-      // Ждём загрузки window.app
-      const waitForApp = setInterval(() => {
-        if (window.app && typeof window.app.initialize === 'function') {
-          clearInterval(waitForApp);
-          window.app.initialize();
-        }
-      }, 100);
-    }
-    
-    // ========== iOS INSTALL GUIDE ==========
-    
-    function detectIOSAndShowInstallGuide() {
-      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) && !window.MSStream;
-      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
-                           window.navigator.standalone === true;
-      
-      if (!isIOS || isStandalone) return;
-      
-      setTimeout(() => {
-        if (localStorage.getItem('iosInstallDismissed') === '1') return;
-        
-        const el = document.createElement('div');
-        el.className = 'ios-install-prompt';
-        el.innerHTML = `
-          <button class="ios-prompt-close" aria-label="Закрыть" onclick="dismissIOSPrompt()">×</button>
-          <div class="ios-prompt-content">
-            <img class="ios-prompt-icon" src="icons/apple-touch-icon.png" alt="Иконка">
-            <div style="font-weight:800; font-size:18px; margin-bottom:8px;">
-              Установить приложение
-            </div>
-            <div style="opacity:.85; margin-bottom:14px;">
-              Нажмите кнопку <strong>Поделиться</strong> ↗️<br>
-              и выберите <strong>«На экран «Домой»»</strong>
-            </div>
-            <button class="ios-prompt-button" onclick="dismissIOSPrompt()">Понятно</button>
-          </div>
-        `;
-        document.body.appendChild(el);
-        
-        requestAnimationFrame(() => el.classList.add('show'));
-      }, 3000);
-    }
-    
-    function dismissIOSPrompt() {
-      const el = document.querySelector('.ios-install-prompt');
-      if (el) {
-        el.classList.remove('show');
-        localStorage.setItem('iosInstallDismissed', '1');
-        setTimeout(() => el.remove(), 350);
-      }
-    }
-    
-    // ========== УТИЛИТЫ ==========
-    // ✅ Утилиты вынесены в scripts/core/utils.js (window.Utils.*)
-    // Back-compat: если где-то в legacy-коде ещё вызываются window.formatTime/escapeHtml.
-    window.formatTime = window.Utils?.formatTime;
-    window.escapeHtml = window.Utils?.escapeHtml;
-
-    // ========== ЭКСПОРТ ГЛОБАЛЬНЫХ ПЕРЕМЕННЫХ ==========
-    
-    window.VERSION = VERSION;
-    window.BUILD_DATE = BUILD_DATE;
-    
-    console.log(`🎵 Витрина Разбита v${VERSION} (${BUILD_DATE})`);
-  </script>
+  <script type="module" src="./scripts/app/main.js"></script>
 </body>
 </html>
 
