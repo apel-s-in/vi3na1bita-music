@@ -205,58 +205,20 @@
 
         // Сообщение о версии SW (может присылать SW или тест)
         if (msg.type === 'SW_VERSION') {
-          const swVer = String(msg.version || '');
-          const appVer = String(w.VERSION || '');
-
-          // Если версия не указана — игнорируем
+          const swVer = String(msg.version || '').trim();
+          const appVer = String(w.VERSION || '').trim();
           if (!swVer) return;
-
-          // Если версии совпадают — обновлять нечего
           if (appVer && swVer === appVer) return;
 
-          // Предложение пользователю
-          const agree = window.confirm(
-            `Доступно обновление плеера (${swVer}). Обновить сейчас? Воспроизведение продолжится с того же места.`
-          );
-
-          if (!agree) return;
-
-          // Сохраняем состояние (для восстановления после reload)
+          // ✅ ЕДИНЫЙ источник UI-логики обновления — ServiceWorkerManager.
+          // Здесь только маршрутизируем событие (и поддерживаем e2e-симуляцию).
           try {
-            if (w.PlayerState && typeof w.PlayerState.save === 'function') {
-              w.PlayerState.save({ forReload: true });
+            if (w.ServiceWorkerManager && typeof w.ServiceWorkerManager.handleVersionMessage === 'function') {
+              w.ServiceWorkerManager.handleVersionMessage({ swVer, appVer });
             }
           } catch (e) {
-            console.warn('PlayerState.save before SW update failed:', e);
+            console.warn('ServiceWorkerManager.handleVersionMessage failed:', e);
           }
-
-          // Пытаемся применить обновление через ServiceWorkerManager (если есть)
-          try {
-            if (w.ServiceWorkerManager && typeof w.ServiceWorkerManager.applyUpdate === 'function') {
-              await w.ServiceWorkerManager.applyUpdate();
-              return;
-            }
-          } catch (e) {
-            console.warn('ServiceWorkerManager.applyUpdate failed:', e);
-          }
-
-          // Fallback: напрямую попросим waiting-SW активироваться
-          try {
-            const reg = await navigator.serviceWorker.getRegistration();
-            const waiting = reg?.waiting || null;
-            if (waiting) {
-              waiting.postMessage({ type: 'SKIP_WAITING' });
-              navigator.serviceWorker.addEventListener('controllerchange', () => {
-                window.location.reload();
-              }, { once: true });
-              return;
-            }
-          } catch (e) {
-            console.warn('Fallback SW update failed:', e);
-          }
-
-          // Если не удалось — просто перезагрузим страницу (лучше чем “ничего”)
-          window.location.reload();
         }
       };
 
