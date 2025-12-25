@@ -127,10 +127,8 @@ class FavoritesManager {
       // - если действие из «Избранного» — ref НЕ удаляем (буферная строка остаётся)
       // - иначе (родной альбом/мини) — удаляем ref полностью
       if (source !== 'favorites') {
-        const removed = this.removeRef(a, uid);
-        if (removed) {
-          this._emitRefsChange({ action: 'refRemoved', albumKey: a, uid, source });
-        }
+        // removeRef сам отправляет favorites:refsChanged (один раз)
+        this.removeRef(a, uid, { source });
       }
     }
 
