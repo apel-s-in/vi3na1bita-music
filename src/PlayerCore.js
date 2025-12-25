@@ -192,9 +192,11 @@
 
       const track = this.playlist[index];
 
+      const html5 = (typeof options.html5 === 'boolean') ? options.html5 : true;
+
       this.sound = new Howl({
         src: [track.src],
-        html5: true,
+        html5,
         preload: true,
         volume: this.getVolume() / 100,
         onplay: () => {
@@ -676,6 +678,47 @@
       }
 
       return this.playlist.length !== beforeLen;
+    }
+
+    rebuildCurrentSound(options = {}) {
+      // ✅ Техническая пересборка Howl под другой backend (html5/webAudio),
+      // НЕ должна прерывать музыку "стопом".
+      try {
+        const track = this.getCurrentTrack();
+        if (!track) return false;
+
+        const preferWebAudio = !!options.preferWebAudio;
+
+        // Какой backend хотим:
+        // - preferWebAudio=true => html5:false
+        // - иначе => html5:true
+        const targetHtml5 = !preferWebAudio;
+
+        const wasPlaying = this.isPlaying();
+        const pos = this.getPosition();
+        const idx = this.currentIndex;
+
+        // Если уже есть sound и его режим совпадает — ничего не делаем
+        const curHtml5 = !!(this.sound && this.sound._html5);
+        if (this.sound && curHtml5 === targetHtml5) {
+          return true;
+        }
+
+        // Смена backend — пересоздаём sound "тихо"
+        this._silentUnloadCurrentSound();
+
+        // load с нужным html5 и автоплеем
+        this.load(idx, {
+          autoPlay: wasPlaying,
+          resumePosition: pos,
+          html5: targetHtml5
+        });
+
+        return true;
+      } catch (e) {
+        console.warn('rebuildCurrentSound failed:', e);
+        return false;
+      }
     }
 
     getAudioElement() {
