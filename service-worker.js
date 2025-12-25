@@ -39,7 +39,6 @@ const STATIC_ASSETS = [
   './scripts/app/gallery.js',
   './scripts/ui/notify.js',
   './scripts/ui/favorites-const.js',
-  './scripts/ui/favorites-storage.js',
   './scripts/ui/favorites-data.js',
   './scripts/ui/favorites.js',
   './scripts/ui/favorites-view.js',
