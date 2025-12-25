@@ -394,7 +394,12 @@ class AlbumsManager {
 
           if (window.FavoritesManager && typeof window.FavoritesManager.toggleLike === 'function') {
                // Это вызовет событие favorites:changed, которое обновит UI
-              window.FavoritesManager.toggleLike(albumKey, uid, !item.__active);
+              window.FavoritesManager.toggleLike(
+                albumKey,
+                uid,
+                !item.__active,
+                { source: 'favorites' }
+              );
           }
           // Логика обновления UI будет в обработчике события favorites:changed
       });
@@ -753,7 +758,12 @@ class AlbumsManager {
           // Делегирование в FavoritesManager
            if (window.FavoritesManager && typeof window.FavoritesManager.toggleLike === 'function') {
                // Это вызовет событие favorites:changed, которое обновит UI
-               window.FavoritesManager.toggleLike(albumKey, trackUid, !window.FavoritesManager.isFavorite(albumKey, trackUid));
+               window.FavoritesManager.toggleLike(
+                 albumKey,
+                 trackUid,
+                 !window.FavoritesManager.isFavorite(albumKey, trackUid),
+                 { source: 'album' }
+               );
            }
            // Логика обновления UI будет в обработчике события favorites:changed
       });
