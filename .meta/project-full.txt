@@ -107,9 +107,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-23e1ba077c04ab54d8e34d83d7b9c2de6eb802da.idx
-│   │       ├── pack-23e1ba077c04ab54d8e34d83d7b9c2de6eb802da.pack
-│   │       └── pack-23e1ba077c04ab54d8e34d83d7b9c2de6eb802da.rev
+│   │       ├── pack-63efc4ecbb46392a7b6a70a5ce7217503fc46991.idx
+│   │       ├── pack-63efc4ecbb46392a7b6a70a5ce7217503fc46991.pack
+│   │       └── pack-63efc4ecbb46392a7b6a70a5ce7217503fc46991.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -334,7 +334,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-25 21:19:21 UTC
+Сгенерировано: 2025-12-25 21:19:45 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1123,7 +1123,6 @@ const STATIC_ASSETS = [
   './scripts/app/gallery.js',
   './scripts/ui/notify.js',
   './scripts/ui/favorites-const.js',
-  './scripts/ui/favorites-storage.js',
   './scripts/ui/favorites-data.js',
   './scripts/ui/favorites.js',
   './scripts/ui/favorites-view.js',
