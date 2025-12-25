@@ -45,6 +45,13 @@ class FavoritesManager {
     } catch {}
   }
 
+  _emitRefsChange(payload) {
+    // ✅ Realtime sync для изменения refs (удаление строк из «ИЗБРАННОЕ», и т.п.)
+    try {
+      window.dispatchEvent(new CustomEvent('favorites:refsChanged', { detail: payload }));
+    } catch {}
+  }
+
   getLikedUidMap() {
     try {
       const raw = localStorage.getItem(this.storageKey);
@@ -120,7 +127,10 @@ class FavoritesManager {
       // - если действие из «Избранного» — ref НЕ удаляем (буферная строка остаётся)
       // - иначе (родной альбом/мини) — удаляем ref полностью
       if (source !== 'favorites') {
-        this.removeRef(a, uid);
+        const removed = this.removeRef(a, uid);
+        if (removed) {
+          this._emitRefsChange({ action: 'refRemoved', albumKey: a, uid, source });
+        }
       }
     }
 
@@ -212,15 +222,23 @@ class FavoritesManager {
     return true;
   }
 
-  removeRef(albumKey, uid) {
+  removeRef(albumKey, uid, options = {}) {
     const a = String(albumKey || '').trim();
     const u = String(uid || '').trim();
     if (!a || !u) return false;
 
+    const source = String(options?.source || 'unknown');
+
     const refs = this.readRefs();
     const next = refs.filter(r => !(r && r.a === a && String(r.uid || '').trim() === u));
     this.writeRefs(next);
-    return next.length !== refs.length;
+
+    const removed = next.length !== refs.length;
+    if (removed) {
+      this._emitRefsChange({ action: 'refRemoved', albumKey: a, uid: u, source });
+    }
+
+    return removed;
   }
 
   readRefs() {
