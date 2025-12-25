@@ -980,44 +980,40 @@
   }
 
   function startBitEffect() {
-    // ✅ КРИТИЧНО: Пульсация НЕ должна влиять на воспроизведение музыки.
-    // Стратегия:
-    // 1) Если Howler использует Web Audio и masterGain доступен — 
-    //    создаём AnalyserNode и подключаем ПАРАЛЛЕЛЬНО (не разрывая цепочку masterGain → destination).
-    // 2) Если Howler недоступен или не использует Web Audio — fallback на синусоидальную анимацию.
-    // 3) НИКОГДА не используем createMediaElementSource (он "захватывает" элемент и может сломать воспроизведение).
+    // ✅ КРИТИЧНО: пульсация НЕ должна влиять на воспроизведение.
+    // Но для реального "такта" нужен Web Audio backend.
+    // Поэтому:
+    // 1) Просим PlayerCore пересобрать текущий Howl в WebAudio (html5:false) БЕЗ stop().
+    // 2) Подключаем analyser параллельно masterGain.
+    // 3) Если WebAudio недоступен/заблокирован — честно падаем в fallback (но стараемся максимально избегать синуса).
 
     try {
-      // Проверяем, есть ли Howler и использует ли он Web Audio
+      // Попробуем переключить текущий трек на WebAudio backend (это не stop/pause, а тех. пересборка)
+      try {
+        w.playerCore?.rebuildCurrentSound?.({ preferWebAudio: true });
+      } catch {}
+
       if (w.Howler && w.Howler.ctx && w.Howler.masterGain) {
-        // ✅ Используем существующий AudioContext от Howler (не создаём новый!)
-        if (!audioContext) {
-          audioContext = w.Howler.ctx;
+        if (!audioContext) audioContext = w.Howler.ctx;
+
+        // Если контекст suspended — попробуем resume без побочных эффектов
+        if (audioContext && audioContext.state === 'suspended') {
+          try { audioContext.resume(); } catch {}
         }
 
-        // ✅ Создаём analyser только один раз
         if (!analyser) {
           analyser = audioContext.createAnalyser();
           analyser.fftSize = 256;
           analyser.smoothingTimeConstant = 0.85;
 
-          // ✅ ВАЖНО: подключаем analyser ПАРАЛЛЕЛЬНО основной цепочке.
-          // masterGain уже подключен к destination. Мы добавляем analyser как "слушателя",
-          // не разрывая основной путь звука.
-          // Схема: masterGain → destination (звук)
-          //        masterGain → analyser (анализ, без звука из analyser)
           try {
             w.Howler.masterGain.connect(analyser);
-            // analyser НЕ подключаем к destination — он только для чтения данных
           } catch {
-            // Если не удалось — будем использовать fallback
             analyser = null;
           }
         }
       }
-      // Если analyser не создан — будет использоваться fallback в animateBit()
     } catch {
-      // Ошибка инициализации — fallback в animateBit()
       analyser = null;
     }
 
