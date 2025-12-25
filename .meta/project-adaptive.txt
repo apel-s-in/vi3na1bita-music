@@ -107,9 +107,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c03c406403b6a167747ad3bd6fdaba667c7dab99.idx
-│   │       ├── pack-c03c406403b6a167747ad3bd6fdaba667c7dab99.pack
-│   │       └── pack-c03c406403b6a167747ad3bd6fdaba667c7dab99.rev
+│   │       ├── pack-0400391a92af2d66ba44fabcd74f04fb21f4f9ec.idx
+│   │       ├── pack-0400391a92af2d66ba44fabcd74f04fb21f4f9ec.pack
+│   │       └── pack-0400391a92af2d66ba44fabcd74f04fb21f4f9ec.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -334,7 +334,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-25 21:31:34 UTC
+Сгенерировано: 2025-12-25 21:32:32 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9277,11 +9277,25 @@ class ServiceWorkerManager {
     });
   }
 
+  handleVersionMessage({ swVer, appVer } = {}) {
+    // ✅ Единая точка входа для update UI из AppModule (и e2e).
+    // Никаких confirm() — только единый UI (toast + кнопка).
+    const s = String(swVer || '').trim();
+    const a = String(appVer || '').trim();
+    if (!s) return;
+    if (a && s === a) return;
+
+    this.availableVersion = s;
+    this.showUpdateNotification();
+  }
+
   showUpdateNotification() {
-    window.NotificationSystem?.info(
-      'Доступна новая версия приложения. Обновить?',
-      10000
-    );
+    const ver = String(this.availableVersion || '').trim();
+    const msg = ver
+      ? `Доступна новая версия приложения (${ver}).`
+      : 'Доступна новая версия приложения.';
+
+    window.NotificationSystem?.info(msg, 10000);
 
     // Показать кнопку обновления
     this.showUpdateButton();
