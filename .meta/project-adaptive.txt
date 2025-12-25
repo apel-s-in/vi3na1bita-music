@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a7908f53aa798a9016d33648f9176bbd476915b5.idx
-│   │       ├── pack-a7908f53aa798a9016d33648f9176bbd476915b5.pack
-│   │       └── pack-a7908f53aa798a9016d33648f9176bbd476915b5.rev
+│   │       ├── pack-259972a41642be373bba8e98f2296aca9b889ad5.idx
+│   │       ├── pack-259972a41642be373bba8e98f2296aca9b889ad5.pack
+│   │       └── pack-259972a41642be373bba8e98f2296aca9b889ad5.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -283,7 +283,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-25 15:29:52 UTC
+Сгенерировано: 2025-12-25 15:40:13 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7616,33 +7616,38 @@ Object.assign(window, {
   }
 
   function addFavoritesRefIfMissing(albumKey, uid) {
-    const a = String(albumKey || '').trim();
-    const u = String(uid || '').trim();
-    if (!a || !u) return false;
-
-    const refs = readFavoritesRefsByUid();
-    const exists = refs.some(r => r && r.a === a && String(r.uid || '').trim() === u);
-    if (exists) return false;
-
-    refs.push({ a, uid: u });
-    writeFavoritesRefsByUid(refs);
-    return true;
+      // Делегирование в FavoritesManager
+      if (w.FavoritesManager && typeof w.FavoritesManager.addRef === 'function') {
+          return w.FavoritesManager.addRef(albumKey, uid);
+      }
+      // Fallback для обратной совместимости, если FavoritesManager недоступен
+      const a = String(albumKey || '').trim();
+      const u = String(uid || '').trim();
+      if (!a || !u) return false;
+      const refs = readFavoritesRefsByUid();
+      const exists = refs.some(r => r && r.a === a && String(r.uid || '').trim() === u);
+      if (exists) return false;
+      refs.push({ a, uid: u });
+      writeFavoritesRefsByUid(refs);
+      return true;
   }
 
   function removeFavoritesRef(albumKey, uid) {
-    const a = String(albumKey || '').trim();
-    const u = String(uid || '').trim();
-    if (!a || !u) return false;
-
-    const refs = readFavoritesRefsByUid();
-    const next = refs.filter(r => !(r && r.a === a && String(r.uid || '').trim() === u));
-    writeFavoritesRefsByUid(next);
-
-    if (Array.isArray(w.favoritesRefsModel)) {
-      w.favoritesRefsModel = w.favoritesRefsModel.filter(it => !(it && it.__a === a && it.__uid === u));
-    }
-
-    return next.length !== refs.length;
+      // Делегирование в FavoritesManager
+      if (w.FavoritesManager && typeof w.FavoritesManager.removeRef === 'function') {
+          return w.FavoritesManager.removeRef(albumKey, uid);
+      }
+      // Fallback для обратной совместимости, если FavoritesManager недоступен
+      const a = String(albumKey || '').trim();
+      const u = String(uid || '').trim();
+      if (!a || !u) return false;
+      const refs = readFavoritesRefsByUid();
+      const next = refs.filter(r => !(r && r.a === a && String(r.uid || '').trim() === u));
+      writeFavoritesRefsByUid(next);
+      if (Array.isArray(w.favoritesRefsModel)) {
+          w.favoritesRefsModel = w.favoritesRefsModel.filter(it => !(it && it.__a === a && it.__uid === u));
+      }
+      return next.length !== refs.length;
   }
 
   function getSortedFavoritesRefsByUid() {
@@ -7817,130 +7822,100 @@ Object.assign(window, {
     return bg;
   }
 
-  function showFavoritesDeleteConfirm(params) {
-    const albumKey = String(params?.albumKey || '').trim();
-    const uid = String(params?.uid || '').trim();
-    const title = String(params?.title || 'Трек');
+  function showFavoritesInactiveModal(params) {
+      const albumKey = String(params?.albumKey || '').trim();
+      const uid = String(params?.uid || '').trim();
+      const title = String(params?.title || 'Трек');
+      if (!albumKey || !uid) return;
 
-    if (!albumKey || !uid) return;
-
-    const modal = createModalBg(`
-      <div class="modal-feedback" style="max-width: 420px;">
-        <button class="bigclose" title="Закрыть" aria-label="Закрыть">
-          <svg viewBox="0 0 48 48">
-            <line x1="12" y1="12" x2="36" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
-            <line x1="36" y1="12" x2="12" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
-          </svg>
-        </button>
-
-        <div style="font-size: 1.08em; font-weight: 900; color: #eaf2ff; margin-bottom: 10px;">
-          Удалить из «ИЗБРАННОГО»?
-        </div>
-
-        <div style="color:#9db7dd; line-height:1.45; margin-bottom: 14px;">
-          <div style="margin-bottom: 8px;"><strong>Трек:</strong> ${escapeHtml(title)}</div>
-          <div style="opacity:.9;">
-            Трек исчезнет из списка «ИЗБРАННОЕ». Лайк (⭐) можно оставить/снять отдельно.
+      const modal = createModalBg(`
+          <div class="modal-feedback" style="max-width: 420px;">
+              <button class="bigclose" title="Закрыть" aria-label="Закрыть">
+                  <svg viewBox="0 0 48 48">
+                      <line x1="12" y1="12" x2="36" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+                      <line x1="36" y1="12" x2="12" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+                  </svg>
+              </button>
+              <div style="font-size: 1.08em; font-weight: 900; color: #eaf2ff; margin-bottom: 10px;">
+                  Трек неактивен
+              </div>
+              <div style="color:#9db7dd; line-height:1.45; margin-bottom: 14px;">
+                  <div style="margin-bottom: 8px;"><strong>Трек:</strong> ${escapeHtml(title)}</div>
+                  <div style="opacity:.9;">
+                      Вы можете вернуть трек в ⭐ или удалить его из списка «ИЗБРАННОЕ».
+                  </div>
+              </div>
+              <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+                  <button class="offline-btn online" data-act="add" style="min-width: 160px;">Добавить в ⭐</button>
+                  <button class="offline-btn" data-act="remove" style="min-width: 160px;">Удалить</button>
+              </div>
           </div>
-        </div>
+      `);
 
-        <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
-          <button class="offline-btn" data-act="cancel" style="min-width: 130px;">Отмена</button>
-          <button class="offline-btn online" data-act="delete" style="min-width: 130px;">Удалить</button>
-        </div>
-      </div>
-    `);
-
-    modal.querySelector('.bigclose')?.addEventListener('click', () => modal.remove());
-    modal.querySelector('[data-act="cancel"]')?.addEventListener('click', () => modal.remove());
-
-    modal.querySelector('[data-act="delete"]')?.addEventListener('click', () => {
-      const ok = removeFavoritesRef(albumKey, uid);
-
-      // Удалим строку из DOM (если есть)
-      const rowId = `fav_${albumKey}_${uid}`;
-      document.getElementById(rowId)?.remove();
-
-      // Перенумерация
-      const rows = Array.from(document.querySelectorAll('#track-list .track'));
-      rows.forEach((row, i) => {
-        const n = row.querySelector('.tnum');
-        if (n) n.textContent = String(i + 1).padStart(2, '0');
+      modal.querySelector('.bigclose')?.addEventListener('click', () => modal.remove());
+      modal.querySelector('[data-act="add"]')?.addEventListener('click', () => {
+          // Делегирование в FavoritesManager
+          if (w.FavoritesManager && typeof w.FavoritesManager.toggleLike === 'function') {
+              w.FavoritesManager.toggleLike(albumKey, uid, true);
+          }
+          modal.remove();
+          // Событие favorites:changed обновит UI
       });
-
-      modal.remove();
-
-      if (ok) {
-        w.NotificationSystem?.success('Удалено из «ИЗБРАННОГО»');
-        if (typeof params?.onDeleted === 'function') params.onDeleted();
-      } else {
-        w.NotificationSystem?.error('Не удалось удалить');
-      }
-    });
+      modal.querySelector('[data-act="remove"]')?.addEventListener('click', () => {
+          modal.remove();
+          showFavoritesDeleteConfirm({ albumKey, uid, title, onDeleted: params?.onDeleted });
+      });
   }
 
-  function showFavoritesInactiveModal(params) {
-    const albumKey = String(params?.albumKey || '').trim();
-    const uid = String(params?.uid || '').trim();
-    const title = String(params?.title || 'Трек');
+  function showFavoritesDeleteConfirm(params) {
+      const albumKey = String(params?.albumKey || '').trim();
+      const uid = String(params?.uid || '').trim();
+      const title = String(params?.title || 'Трек');
+      if (!albumKey || !uid) return;
 
-    if (!albumKey || !uid) return;
-
-    const modal = createModalBg(`
-      <div class="modal-feedback" style="max-width: 420px;">
-        <button class="bigclose" title="Закрыть" aria-label="Закрыть">
-          <svg viewBox="0 0 48 48">
-            <line x1="12" y1="12" x2="36" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
-            <line x1="36" y1="12" x2="12" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
-          </svg>
-        </button>
-
-        <div style="font-size: 1.08em; font-weight: 900; color: #eaf2ff; margin-bottom: 10px;">
-          Трек неактивен
-        </div>
-
-        <div style="color:#9db7dd; line-height:1.45; margin-bottom: 14px;">
-          <div style="margin-bottom: 8px;"><strong>Трек:</strong> ${escapeHtml(title)}</div>
-          <div style="opacity:.9;">
-            Вы можете вернуть трек в ⭐ или удалить его из списка «ИЗБРАННОЕ».
+      const modal = createModalBg(`
+          <div class="modal-feedback" style="max-width: 420px;">
+              <button class="bigclose" title="Закрыть" aria-label="Закрыть">
+                  <svg viewBox="0 0 48 48">
+                      <line x1="12" y1="12" x2="36" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+                      <line x1="36" y1="12" x2="12" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+                  </svg>
+              </button>
+              <div style="font-size: 1.08em; font-weight: 900; color: #eaf2ff; margin-bottom: 10px;">
+                  Удалить из «ИЗБРАННОГО»?
+              </div>
+              <div style="color:#9db7dd; line-height:1.45; margin-bottom: 14px;">
+                  <div style="margin-bottom: 8px;"><strong>Трек:</strong> ${escapeHtml(title)}</div>
+                  <div style="opacity:.9;">
+                      Трек исчезнет из списка «ИЗБРАННОЕ». Лайк (⭐) можно оставить/снять отдельно.
+                  </div>
+              </div>
+              <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+                  <button class="offline-btn" data-act="cancel" style="min-width: 130px;">Отмена</button>
+                  <button class="offline-btn online" data-act="delete" style="min-width: 130px;">Удалить</button>
+              </div>
           </div>
-        </div>
+      `);
 
-        <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
-          <button class="offline-btn online" data-act="add" style="min-width: 160px;">Добавить в ⭐</button>
-          <button class="offline-btn" data-act="remove" style="min-width: 160px;">Удалить</button>
-        </div>
-      </div>
-    `);
-
-    modal.querySelector('.bigclose')?.addEventListener('click', () => modal.remove());
-
-    modal.querySelector('[data-act="add"]')?.addEventListener('click', () => {
-      // Включаем лайк по uid (реальный источник правды)
-      if (w.FavoritesManager && typeof w.FavoritesManager.toggleLike === 'function') {
-        w.FavoritesManager.toggleLike(albumKey, uid, true);
-      }
-
-      updateFavoritesRefsModelActiveFlag(albumKey, uid, true);
-
-      // DOM строки
-      const row = document.getElementById(`fav_${albumKey}_${uid}`);
-      if (row) {
-        row.classList.remove('inactive');
-        const star = row.querySelector('.like-star');
-        if (star) star.src = 'img/star.png';
-      }
-
-      modal.remove();
-      w.NotificationSystem?.success('Добавлено в ⭐');
-
-      if (typeof params?.onChanged === 'function') params.onChanged({ active: true });
-    });
-
-    modal.querySelector('[data-act="remove"]')?.addEventListener('click', () => {
-      modal.remove();
-      showFavoritesDeleteConfirm({ albumKey, uid, title, onDeleted: params?.onDeleted });
-    });
+      modal.querySelector('.bigclose')?.addEventListener('click', () => modal.remove());
+      modal.querySelector('[data-act="cancel"]')?.addEventListener('click', () => modal.remove());
+      modal.querySelector('[data-act="delete"]')?.addEventListener('click', () => {
+          // Делегирование в FavoritesManager
+          let success = false;
+          if (w.FavoritesManager && typeof w.FavoritesManager.removeRef === 'function') {
+              success = w.FavoritesManager.removeRef(params.albumKey, params.uid);
+          } else {
+              // Fallback на старую логику
+              success = removeFavoritesRef(params.albumKey, params.uid);
+          }
+          modal.remove();
+          if (success) {
+              w.NotificationSystem?.success('Удалено из «ИЗБРАННОГО»');
+              if (typeof params?.onDeleted === 'function') params.onDeleted();
+          } else {
+              w.NotificationSystem?.error('Не удалось удалить');
+          }
+      });
   }
 
   function escapeHtml(str) {
