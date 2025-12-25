@@ -632,9 +632,12 @@
 
   function switchAlbumInstantly(newAlbumKey) {
     const playingAlbum = w.AlbumsManager?.getPlayingAlbum?.();
-    const currentIndex = w.playerCore?.getIndex() || 0;
+    const idx = (typeof w.playerCore?.getIndex === 'function') ? w.playerCore.getIndex() : -1;
 
-    ensurePlayerBlock(currentIndex);
+    if (Number.isFinite(idx) && idx >= 0) {
+      ensurePlayerBlock(idx);
+    }
+
     updateMiniHeader();
     updateNextUpLabel();
 
