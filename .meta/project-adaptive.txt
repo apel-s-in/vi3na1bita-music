@@ -105,9 +105,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a7312225d8283048919f305021934c2f6928b127.idx
-│   │       ├── pack-a7312225d8283048919f305021934c2f6928b127.pack
-│   │       └── pack-a7312225d8283048919f305021934c2f6928b127.rev
+│   │       ├── pack-967117e56823e283194b6ee9d53fbbd95d7d1bb0.idx
+│   │       ├── pack-967117e56823e283194b6ee9d53fbbd95d7d1bb0.pack
+│   │       └── pack-967117e56823e283194b6ee9d53fbbd95d7d1bb0.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -332,7 +332,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-25 20:25:54 UTC
+Сгенерировано: 2025-12-25 20:27:52 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8279,10 +8279,9 @@ class FavoritesManager {
       const activeItems = model.filter(it => it && it.__active && it.audio);
 
       if (activeItems.length === 0) {
-        // ✅ БАЗОВОЕ ПРАВИЛО ПЛЕЕРА: никакая функция, кроме кнопок Stop/Pause и таймера,
-        // не имеет права останавливать воспроизведение.
-        // Здесь вместо STOP делаем мягкую PAUSE.
-        pc.pause?.();
+        // ✅ Правило «ИЗБРАННОЕ»: если это был единственный активный трек — плеер переходит в STOP.
+        // Это осознанное исключение из общего “ничто не останавливает”, описанное в ТЗ «Избранного».
+        pc.stop?.();
         return;
       }
 
@@ -8312,8 +8311,8 @@ class FavoritesManager {
       if (nextIndexInModel >= 0) {
         window.AlbumsManager?.ensureFavoritesPlayback?.(nextIndexInModel);
       } else {
-        // См. базовое правило: не стопаем “автоматикой”.
-        pc.pause?.();
+        // Если по какой-то причине “следующий активный” не найден, а активных больше нет — STOP.
+        pc.stop?.();
       }
     } catch (e) {
       console.warn('_handlePlayingFavoritesAfterUnlike failed:', e);
