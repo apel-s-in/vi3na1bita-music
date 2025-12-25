@@ -224,29 +224,13 @@
     const cache = albumCoverCache[albumKey];
     if (cache && (now - cache.ts) < COVER_TTL_MS) return cache.url;
 
-    // Берём первую картинку из центральной галереи (как раньше)
+    // ✅ Обложка: берём первую картинку центральной галереи через GalleryManager (единый источник)
     try {
-      const cid = typeof w.centralIdForAlbumKey === 'function' ? w.centralIdForAlbumKey(albumKey) : null;
-      const baseDir = `${w.CENTRAL_GALLERY_BASE || './albums/gallery/'}${cid}/`;
-
-      if (!cid) {
-        albumCoverCache[albumKey] = { url: 'img/logo.png', ts: now };
-        try { sessionStorage.setItem(`favCoverCache:v1:${albumKey}`, JSON.stringify({ url: 'img/logo.png', ts: now })); } catch {}
-        return 'img/logo.png';
-      }
-
-      const r = await fetch(baseDir + 'index.json', { cache: 'force-cache' });
-      if (r.ok) {
-        const j = await r.json();
-        const first = Array.isArray(j.items) ? j.items[0] : (Array.isArray(j) ? j[0] : null);
-        if (first) {
-          const norm = typeof w.normalizeGalleryItem === 'function' ? w.normalizeGalleryItem(first, baseDir) : first;
-          const url = (norm && (norm.formats?.webp || norm.formats?.full || norm.src)) || 'img/logo.png';
-          albumCoverCache[albumKey] = { url, ts: now };
-          try { sessionStorage.setItem(`favCoverCache:v1:${albumKey}`, JSON.stringify({ url, ts: now })); } catch {}
-          return url;
-        }
-      }
+      const url = await w.GalleryManager?.getFirstCoverUrl?.(albumKey);
+      const safe = (url && typeof url === 'string') ? url : 'img/logo.png';
+      albumCoverCache[albumKey] = { url: safe, ts: now };
+      try { sessionStorage.setItem(`favCoverCache:v1:${albumKey}`, JSON.stringify({ url: safe, ts: now })); } catch {}
+      return safe;
     } catch {}
 
     albumCoverCache[albumKey] = { url: 'img/logo.png', ts: now };
