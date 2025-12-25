@@ -105,9 +105,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-abe891ad5d2530968c2474617b24b909c1b070ad.idx
-│   │       ├── pack-abe891ad5d2530968c2474617b24b909c1b070ad.pack
-│   │       └── pack-abe891ad5d2530968c2474617b24b909c1b070ad.rev
+│   │       ├── pack-8285607219c3046125dc5b7cd49932f7fef73465.idx
+│   │       ├── pack-8285607219c3046125dc5b7cd49932f7fef73465.pack
+│   │       └── pack-8285607219c3046125dc5b7cd49932f7fef73465.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -332,7 +332,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-25 18:52:53 UTC
+Сгенерировано: 2025-12-25 18:55:01 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8205,10 +8205,8 @@ class FavoritesManager {
       // - если действие из «Избранного» — ref НЕ удаляем (буферная строка остаётся)
       // - иначе (родной альбом/мини) — удаляем ref полностью
       if (source !== 'favorites') {
-        const removed = this.removeRef(a, uid);
-        if (removed) {
-          this._emitRefsChange({ action: 'refRemoved', albumKey: a, uid, source });
-        }
+        // removeRef сам отправляет favorites:refsChanged (один раз)
+        this.removeRef(a, uid, { source });
       }
     }
 
