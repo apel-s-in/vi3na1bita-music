@@ -1263,14 +1263,14 @@
 
     if (playingAlbum !== w.SPECIAL_FAVORITES_KEY) {
       const isLiked = !!w.FavoritesManager.isFavorite(playingAlbum, uid);
-      w.FavoritesManager.toggleLike(playingAlbum, uid, !isLiked);
+      w.FavoritesManager.toggleLike(playingAlbum, uid, !isLiked, { source: 'mini' });
     } else {
       // В режиме __favorites__ лайк относится к исходному альбому трека
       const srcAlbum = String(track?.sourceAlbum || '').trim();
       if (!srcAlbum) return;
 
       const isLiked = !!w.FavoritesManager.isFavorite(srcAlbum, uid);
-      w.FavoritesManager.toggleLike(srcAlbum, uid, !isLiked);
+      w.FavoritesManager.toggleLike(srcAlbum, uid, !isLiked, { source: 'mini' });
     }
 
     updateMiniHeader();
