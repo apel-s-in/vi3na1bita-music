@@ -360,12 +360,11 @@ class AlbumsManager {
       `;
 
       trackEl.addEventListener('click', async (e) => {
-        if (e.target.classList.contains('like-star')) return;
-
-        if (item.__active && item.audio) {
-          await this.ensureFavoritesPlayback(index);
-          return;
-        }
+          if (e.target.classList.contains('like-star')) return;
+           if (item.__active && item.audio) {
+              await this.ensureFavoritesPlayback(index);
+               return;
+          }
 
         // ✅ Как в старом: модалка для неактивного трека (добавить в ⭐ / удалить)
         if (window.FavoritesData && typeof window.FavoritesData.showFavoritesInactiveModal === 'function') {
@@ -387,55 +386,17 @@ class AlbumsManager {
 
       const star = trackEl.querySelector('.like-star');
       star?.addEventListener('click', (e) => {
-        e.stopPropagation();
+           e.stopPropagation();
+          // Клик по звезде на строке "Избранного" — мгновенное переключение лайка
+          const uid = String(item.__uid || '').trim();
+           const albumKey = item.__a;
+           if (!uid || !albumKey) return;
 
-        // ✅ Новое правило для «ИЗБРАННОЕ»:
-        // - если строка активная: ⭐ снимаем => строка становится серой (inactive), но НЕ удаляется сразу
-        // - если строка серая: ⭐ ставим => мгновенно возвращаем (без модалки)
-        const wasActive = !!item.__active;
-        const makeLiked = !wasActive;
-
-        const uid = String(item.__uid || '').trim();
-        if (!uid) return;
-
-        if (window.FavoritesManager && typeof window.FavoritesManager.toggleLike === 'function') {
-          window.FavoritesManager.toggleLike(item.__a, uid, makeLiked);
-        }
-
-        // ✅ Если включили лайк — гарантируем, что ref существует.
-        // (На случай если строка пришла из старого стораджа/миграции)
-        if (makeLiked && window.FavoritesData && typeof window.FavoritesData.addFavoritesRefIfMissing === 'function') {
-          window.FavoritesData.addFavoritesRefIfMissing(item.__a, uid);
-        }
-
-        item.__active = makeLiked;
-
-        // Если лайк снят в избранном — строка остаётся, но становится не воспроизводимой
-        if (!makeLiked) {
-          item.audio = null;
-          item.lyrics = null;
-          item.fulltext = null;
-        }
-
-        trackEl.classList.toggle('inactive', !makeLiked);
-        star.src = makeLiked ? 'img/star.png' : 'img/star2.png';
-
-        // ✅ Realtime синхронизация делается через событие favorites:changed и общий ререндер/обновление UI.
-        // Здесь не делаем ручных обходов DOM по data-num (uid-модель).
-
-        // Перестроим доступные индексы для режима "только избранные"/очереди.
-        if (window.PlayerUI && typeof window.PlayerUI.updateAvailableTracksForPlayback === 'function') {
-          window.PlayerUI.updateAvailableTracksForPlayback();
-        }
-
-        // Если сейчас играет именно эта строка избранного, и мы сняли лайк —
-        // переключаемся на следующий доступный трек (это НЕ "остановка").
-        if (window.playerCore &&
-            this.getPlayingAlbum() === (window.SPECIAL_FAVORITES_KEY || '__favorites__') &&
-            window.playerCore.getIndex() === index &&
-            wasActive && !makeLiked) {
-          window.playerCore.next();
-        }
+          if (window.FavoritesManager && typeof window.FavoritesManager.toggleLike === 'function') {
+               // Это вызовет событие favorites:changed, которое обновит UI
+              window.FavoritesManager.toggleLike(albumKey, uid, !item.__active);
+          }
+          // Логика обновления UI будет в обработчике события favorites:changed
       });
 
       container.appendChild(trackEl);
@@ -782,40 +743,20 @@ class AlbumsManager {
     });
 
     const star = trackEl.querySelector('.like-star');
-    star?.addEventListener('click', (e) => {
-      e.stopPropagation();
-
-      const trackUid = String(star.dataset.uid || '').trim();
-      if (!trackUid) {
-        window.NotificationSystem?.warning('UID трека не найден в config.json');
-        return;
-      }
-
-      let isLiked = false;
-
-      if (window.FavoritesManager) {
-        isLiked = !!window.FavoritesManager.isFavorite(albumKey, trackUid);
-        window.FavoritesManager.toggleLike(albumKey, trackUid, !isLiked);
-      }
-
-      const nowLiked = !isLiked;
-      star.src = nowLiked ? 'img/star.png' : 'img/star2.png';
-      trackEl.classList.toggle('is-favorite', nowLiked);
-
-      // ✅ Новое правило:
-      // - ⭐ в родном альбоме: добавляет трек в «ИЗБРАННОЕ»
-      // - снятие ⭐ в родном альбоме: УДАЛЯЕТ трек из «ИЗБРАННОЕ» полностью
-      try {
-        if (window.FavoritesData) {
-          if (nowLiked && typeof window.FavoritesData.addFavoritesRefIfMissing === 'function') {
-            window.FavoritesData.addFavoritesRefIfMissing(albumKey, trackUid);
+      star?.addEventListener('click', (e) => {
+           e.stopPropagation();
+           const trackUid = String(star.dataset.uid || '').trim();
+           if (!trackUid) {
+               window.NotificationSystem?.warning('UID трека не найден в config.json');
+               return;
           }
-          if (!nowLiked && typeof window.FavoritesData.removeFavoritesRef === 'function') {
-            window.FavoritesData.removeFavoritesRef(albumKey, trackUid);
-          }
-        }
-      } catch {}
-    });
+          // Делегирование в FavoritesManager
+           if (window.FavoritesManager && typeof window.FavoritesManager.toggleLike === 'function') {
+               // Это вызовет событие favorites:changed, которое обновит UI
+               window.FavoritesManager.toggleLike(albumKey, trackUid, !window.FavoritesManager.isFavorite(albumKey, trackUid));
+           }
+           // Логика обновления UI будет в обработчике события favorites:changed
+      });
 
     return trackEl;
   }
