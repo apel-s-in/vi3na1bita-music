@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-18d7cb249de332e195f2cbd2f2e2f3581470a9c0.idx
-│   │       ├── pack-18d7cb249de332e195f2cbd2f2e2f3581470a9c0.pack
-│   │       └── pack-18d7cb249de332e195f2cbd2f2e2f3581470a9c0.rev
+│   │       ├── pack-5a05ce89a818f299428d5c3b43edff3c03a7e359.idx
+│   │       ├── pack-5a05ce89a818f299428d5c3b43edff3c03a7e359.pack
+│   │       └── pack-5a05ce89a818f299428d5c3b43edff3c03a7e359.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -283,7 +283,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-25 16:07:20 UTC
+Сгенерировано: 2025-12-25 16:10:25 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5267,14 +5267,14 @@ export default NavigationManager;
 
     if (playingAlbum !== w.SPECIAL_FAVORITES_KEY) {
       const isLiked = !!w.FavoritesManager.isFavorite(playingAlbum, uid);
-      w.FavoritesManager.toggleLike(playingAlbum, uid, !isLiked);
+      w.FavoritesManager.toggleLike(playingAlbum, uid, !isLiked, { source: 'mini' });
     } else {
       // В режиме __favorites__ лайк относится к исходному альбому трека
       const srcAlbum = String(track?.sourceAlbum || '').trim();
       if (!srcAlbum) return;
 
       const isLiked = !!w.FavoritesManager.isFavorite(srcAlbum, uid);
-      w.FavoritesManager.toggleLike(srcAlbum, uid, !isLiked);
+      w.FavoritesManager.toggleLike(srcAlbum, uid, !isLiked, { source: 'mini' });
     }
 
     updateMiniHeader();
