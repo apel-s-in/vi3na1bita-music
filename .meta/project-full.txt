@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-37d537dc2ff164aab631da0ec49c18c7b5f7123a.idx
-│   │       ├── pack-37d537dc2ff164aab631da0ec49c18c7b5f7123a.pack
-│   │       └── pack-37d537dc2ff164aab631da0ec49c18c7b5f7123a.rev
+│   │       ├── pack-2bb68bbcd42a6c265d534ec17f20a489a43e29f6.idx
+│   │       ├── pack-2bb68bbcd42a6c265d534ec17f20a489a43e29f6.pack
+│   │       └── pack-2bb68bbcd42a6c265d534ec17f20a489a43e29f6.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -283,7 +283,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-25 18:32:44 UTC
+Сгенерировано: 2025-12-25 18:34:09 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8273,65 +8273,6 @@ class FavoritesManager {
     } catch {}
   }
 }
-function removeUidFromAllFavoritesRefs(uid) {
-  const key = 'favoritesAlbumRefsByUid:v1';
-  const raw = localStorage.getItem(key);
-  if (!raw) return { changed: false, removedFromAlbumKeys: [] };
-
-  let model;
-  try { model = JSON.parse(raw) || {}; } catch { return { changed: false, removedFromAlbumKeys: [] }; }
-
-  let changed = false;
-  const removedFromAlbumKeys = [];
-
-  for (const albumKey of Object.keys(model)) {
-    const ref = model[albumKey];
-    if (!ref) continue;
-
-    // 1) убрать из inactiveUids
-    if (Array.isArray(ref.inactiveUids)) {
-      const before = ref.inactiveUids.length;
-      ref.inactiveUids = ref.inactiveUids.filter(x => x !== uid);
-      if (ref.inactiveUids.length !== before) changed = true;
-    }
-
-    // 2) убрать из trackUids (или другой структуры, если у тебя иначе)
-    if (Array.isArray(ref.trackUids)) {
-      const before = ref.trackUids.length;
-      ref.trackUids = ref.trackUids.filter(x => x !== uid);
-      if (ref.trackUids.length !== before) changed = true;
-    }
-
-    // 3) если у тебя refs хранятся как объект { [uid]: ... } — на всякий
-    if (ref.tracksByUid && typeof ref.tracksByUid === 'object') {
-      if (uid in ref.tracksByUid) {
-        delete ref.tracksByUid[uid];
-        changed = true;
-      }
-    }
-
-    // 4) если ref пустой — удаляем целиком
-    const trackCount =
-      (Array.isArray(ref.trackUids) ? ref.trackUids.length : 0) +
-      (ref.tracksByUid && typeof ref.tracksByUid === 'object' ? Object.keys(ref.tracksByUid).length : 0);
-
-    const inactiveCount = Array.isArray(ref.inactiveUids) ? ref.inactiveUids.length : 0;
-
-    // IMPORTANT: inactiveCount не должен удерживать запись, если трека уже нет.
-    // Поэтому критерий пустоты — отсутствие trackUids/tracksByUid.
-    if (trackCount === 0) {
-      delete model[albumKey];
-      removedFromAlbumKeys.push(albumKey);
-      changed = true;
-    } else {
-      model[albumKey] = ref;
-    }
-  }
-
-  if (changed) localStorage.setItem(key, JSON.stringify(model));
-  return { changed, removedFromAlbumKeys };
-}
-
 // ✅ Глобальный экземпляр (критично: его ждёт scripts/app.js)
 window.FavoritesManager = new FavoritesManager();
 
