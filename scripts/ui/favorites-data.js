@@ -410,7 +410,7 @@
           // Делегирование в FavoritesManager
           let success = false;
           if (w.FavoritesManager && typeof w.FavoritesManager.removeRef === 'function') {
-              success = w.FavoritesManager.removeRef(params.albumKey, params.uid);
+              success = w.FavoritesManager.removeRef(params.albumKey, params.uid, { source: 'favoritesModal' });
           } else {
               // Fallback на старую логику
               success = removeFavoritesRef(params.albumKey, params.uid);
