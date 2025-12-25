@@ -305,7 +305,7 @@ class AlbumsManager {
 
   async loadFavoritesAlbum() {
     this.renderAlbumTitle('⭐⭐⭐ ИЗБРАННОЕ ⭐⭐⭐', 'fav');
-    
+
     const coverWrap = document.getElementById('cover-wrap');
     if (coverWrap) coverWrap.style.display = 'none';
 
@@ -313,9 +313,8 @@ class AlbumsManager {
       await window.buildFavoritesRefsModel();
     }
 
-    const model = window.favoritesRefsModel || [];
+    const model = Array.isArray(window.favoritesRefsModel) ? window.favoritesRefsModel : [];
     const container = document.getElementById('track-list');
-    
     if (!container) return;
 
     if (model.length === 0) {
@@ -328,54 +327,64 @@ class AlbumsManager {
       return;
     }
 
-    // ✅ Новая логика: нет "удалить недоступные" как массовой чистки.
-    // Удаление — только через модалку при клике по серой строке.
-    container.innerHTML = '';
+    // ✅ Делегирование событий: один обработчик на весь список.
+    // И один обработчик favorites:changed для точечного обновления строки.
+    if (!this.__favoritesDelegationBound) {
+      this.__favoritesDelegationBound = true;
 
-    model.forEach((item, index) => {
-      const trackEl = document.createElement('div');
-      trackEl.className = 'track' + (item.__active ? '' : ' inactive');
-      trackEl.id = `fav_${item.__a}_${item.__uid}`;
-      trackEl.dataset.index = index;
-      trackEl.dataset.album = item.__a;
-      trackEl.dataset.uid = item.__uid;
+      container.addEventListener('click', async (e) => {
+        // Обрабатываем только когда открыт экран «ИЗБРАННОЕ»
+        if (this.currentAlbum !== window.SPECIAL_FAVORITES_KEY) return;
 
-      const displayNum = String(index + 1).padStart(2, '0');
-      const isActive = item.__active;
+        const target = e.target;
+        const row = target?.closest?.('.track');
+        if (!row || !container.contains(row)) return;
 
-      const albumTitle = item.__album || 'Альбом';
-      const trackTitle = item.title || 'Трек';
+        const idx = Number.parseInt(String(row.dataset.index || ''), 10);
+        if (!Number.isFinite(idx) || idx < 0) return;
 
-      trackEl.innerHTML = `
-        <div class="tnum">${displayNum}.</div>
-        <div class="track-title" title="${trackTitle} - ${albumTitle}">
-          <span class="fav-track-name">${trackTitle}</span>
-          <span class="fav-album-name"> — ${albumTitle}</span>
-        </div>
-        <img src="${isActive ? 'img/star.png' : 'img/star2.png'}"
-             class="like-star"
-             alt="звезда"
-             data-album="${item.__a}"
-             data-uid="${item.__uid}">
-      `;
+        const m = Array.isArray(window.favoritesRefsModel) ? window.favoritesRefsModel : [];
+        const item = m[idx];
+        if (!item) return;
 
-      trackEl.addEventListener('click', async (e) => {
-          if (e.target.classList.contains('like-star')) return;
-           if (item.__active && item.audio) {
-              await this.ensureFavoritesPlayback(index);
-               return;
+        // Клик по звезде
+        if (target && target.classList && target.classList.contains('like-star')) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          const uid = String(item.__uid || '').trim();
+          const albumKey = String(item.__a || '').trim();
+          if (!uid || !albumKey) return;
+
+          if (window.FavoritesManager && typeof window.FavoritesManager.toggleLike === 'function') {
+            window.FavoritesManager.toggleLike(
+              albumKey,
+              uid,
+              !item.__active,
+              { source: 'favorites' }
+            );
           }
+          return;
+        }
 
-        // ✅ Как в старом: модалка для неактивного трека (добавить в ⭐ / удалить)
+        // Клик по строке
+        if (item.__active && item.audio) {
+          await this.ensureFavoritesPlayback(idx);
+          return;
+        }
+
+        // Неактивная строка: модалка "вернуть/удалить"
         if (window.FavoritesData && typeof window.FavoritesData.showFavoritesInactiveModal === 'function') {
           window.FavoritesData.showFavoritesInactiveModal({
             albumKey: item.__a,
             uid: item.__uid,
             title: item.title || 'Трек',
             onDeleted: async () => {
-              if (window.PlayerUI?.updateAvailableTracksForPlayback) {
-                window.PlayerUI.updateAvailableTracksForPlayback();
+              // Если удалили ref, пересоберём экран «ИЗБРАННОЕ» целиком (редкое действие)
+              if (this.currentAlbum === window.SPECIAL_FAVORITES_KEY) {
+                await this.loadFavoritesAlbum();
               }
+              window.PlayerUI?.updateAvailableTracksForPlayback?.();
             }
           });
           return;
@@ -384,28 +393,67 @@ class AlbumsManager {
         window.NotificationSystem?.warning('Трек недоступен.');
       });
 
-      const star = trackEl.querySelector('.like-star');
-      star?.addEventListener('click', (e) => {
-           e.stopPropagation();
-          // Клик по звезде на строке "Избранного" — мгновенное переключение лайка
-          const uid = String(item.__uid || '').trim();
-           const albumKey = item.__a;
-           if (!uid || !albumKey) return;
+      // ✅ Realtime точечное обновление DOM строки (и только когда открыт «ИЗБРАННОЕ»)
+      window.addEventListener('favorites:changed', (ev) => {
+        if (this.currentAlbum !== window.SPECIAL_FAVORITES_KEY) return;
 
-          if (window.FavoritesManager && typeof window.FavoritesManager.toggleLike === 'function') {
-               // Это вызовет событие favorites:changed, которое обновит UI
-              window.FavoritesManager.toggleLike(
-                albumKey,
-                uid,
-                !item.__active,
-                { source: 'favorites' }
-              );
-          }
-          // Логика обновления UI будет в обработчике события favorites:changed
+        const d = ev?.detail || {};
+        const albumKey = String(d.albumKey || '').trim();
+        const uid = String(d.uid || '').trim();
+        const liked = !!d.liked;
+
+        if (!albumKey || !uid) return;
+
+        const id = `fav_${albumKey}_${uid}`;
+        const row = document.getElementById(id);
+        if (!row) return;
+
+        // Обновим модель (если доступно) — чтобы item.__active соответствовал UI
+        try {
+          window.FavoritesData?.updateFavoritesRefsModelActiveFlag?.(albumKey, uid, liked);
+        } catch {}
+
+        // UI: active/inactive
+        row.classList.toggle('inactive', !liked);
+
+        // UI: картинка звезды
+        const star = row.querySelector('.like-star');
+        if (star) {
+          star.src = liked ? 'img/star.png' : 'img/star2.png';
+        }
+
+        // Плеер/очередь не трогаем (базовое правило соблюдаем)
       });
+    }
 
-      container.appendChild(trackEl);
-    });
+    // ✅ Рендер списка одной строкой (быстрее и короче)
+    const esc = (s) => (window.Utils?.escapeHtml ? window.Utils.escapeHtml(String(s || '')) : String(s || ''));
+    container.innerHTML = model.map((item, index) => {
+      const displayNum = String(index + 1).padStart(2, '0');
+      const isActive = !!item.__active;
+      const albumTitle = item.__album || 'Альбом';
+      const trackTitle = item.title || 'Трек';
+      const a = String(item.__a || '');
+      const u = String(item.__uid || '');
+      return `
+        <div class="track${isActive ? '' : ' inactive'}"
+             id="fav_${esc(a)}_${esc(u)}"
+             data-index="${index}"
+             data-album="${esc(a)}"
+             data-uid="${esc(u)}">
+          <div class="tnum">${displayNum}.</div>
+          <div class="track-title" title="${esc(trackTitle)} - ${esc(albumTitle)}">
+            <span class="fav-track-name">${esc(trackTitle)}</span>
+            <span class="fav-album-name"> — ${esc(albumTitle)}</span>
+          </div>
+          <img src="${isActive ? 'img/star.png' : 'img/star2.png'}"
+               class="like-star"
+               alt="звезда"
+               data-album="${esc(a)}"
+               data-uid="${esc(u)}">
+        </div>
+      `;
+    }).join('');
   }
   // cleanupUnavailableFavorites удалён по дизайну:
   // удаление из "ИЗБРАННОЕ" выполняется только через модалку на неактивной строке.
