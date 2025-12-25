@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8df950b49d08f97fac80a06901c891ca1082294f.idx
-│   │       ├── pack-8df950b49d08f97fac80a06901c891ca1082294f.pack
-│   │       └── pack-8df950b49d08f97fac80a06901c891ca1082294f.rev
+│   │       ├── pack-2c9b885bb64ee8c3d12a9d50a5a1d93fd06a220c.idx
+│   │       ├── pack-2c9b885bb64ee8c3d12a9d50a5a1d93fd06a220c.pack
+│   │       └── pack-2c9b885bb64ee8c3d12a9d50a5a1d93fd06a220c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -283,7 +283,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-25 18:29:09 UTC
+Сгенерировано: 2025-12-25 18:30:11 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7902,7 +7902,7 @@ Object.assign(window, {
           // Делегирование в FavoritesManager
           let success = false;
           if (w.FavoritesManager && typeof w.FavoritesManager.removeRef === 'function') {
-              success = w.FavoritesManager.removeRef(params.albumKey, params.uid);
+              success = w.FavoritesManager.removeRef(params.albumKey, params.uid, { source: 'favoritesModal' });
           } else {
               // Fallback на старую логику
               success = removeFavoritesRef(params.albumKey, params.uid);
