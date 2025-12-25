@@ -57,11 +57,25 @@ class ServiceWorkerManager {
     });
   }
 
+  handleVersionMessage({ swVer, appVer } = {}) {
+    // ✅ Единая точка входа для update UI из AppModule (и e2e).
+    // Никаких confirm() — только единый UI (toast + кнопка).
+    const s = String(swVer || '').trim();
+    const a = String(appVer || '').trim();
+    if (!s) return;
+    if (a && s === a) return;
+
+    this.availableVersion = s;
+    this.showUpdateNotification();
+  }
+
   showUpdateNotification() {
-    window.NotificationSystem?.info(
-      'Доступна новая версия приложения. Обновить?',
-      10000
-    );
+    const ver = String(this.availableVersion || '').trim();
+    const msg = ver
+      ? `Доступна новая версия приложения (${ver}).`
+      : 'Доступна новая версия приложения.';
+
+    window.NotificationSystem?.info(msg, 10000);
 
     // Показать кнопку обновления
     this.showUpdateButton();
