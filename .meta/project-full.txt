@@ -56,9 +56,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-09e6d64d5f98530999fc5898dacb20f601658ffa.idx
-│   │       ├── pack-09e6d64d5f98530999fc5898dacb20f601658ffa.pack
-│   │       └── pack-09e6d64d5f98530999fc5898dacb20f601658ffa.rev
+│   │       ├── pack-18d7cb249de332e195f2cbd2f2e2f3581470a9c0.idx
+│   │       ├── pack-18d7cb249de332e195f2cbd2f2e2f3581470a9c0.pack
+│   │       └── pack-18d7cb249de332e195f2cbd2f2e2f3581470a9c0.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -283,7 +283,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-25 16:05:14 UTC
+Сгенерировано: 2025-12-25 16:07:20 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2292,7 +2292,12 @@ class AlbumsManager {
 
           if (window.FavoritesManager && typeof window.FavoritesManager.toggleLike === 'function') {
                // Это вызовет событие favorites:changed, которое обновит UI
-              window.FavoritesManager.toggleLike(albumKey, uid, !item.__active);
+              window.FavoritesManager.toggleLike(
+                albumKey,
+                uid,
+                !item.__active,
+                { source: 'favorites' }
+              );
           }
           // Логика обновления UI будет в обработчике события favorites:changed
       });
@@ -2651,7 +2656,12 @@ class AlbumsManager {
           // Делегирование в FavoritesManager
            if (window.FavoritesManager && typeof window.FavoritesManager.toggleLike === 'function') {
                // Это вызовет событие favorites:changed, которое обновит UI
-               window.FavoritesManager.toggleLike(albumKey, trackUid, !window.FavoritesManager.isFavorite(albumKey, trackUid));
+               window.FavoritesManager.toggleLike(
+                 albumKey,
+                 trackUid,
+                 !window.FavoritesManager.isFavorite(albumKey, trackUid),
+                 { source: 'album' }
+               );
            }
            // Логика обновления UI будет в обработчике события favorites:changed
       });
