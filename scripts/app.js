@@ -150,6 +150,19 @@
       }
     }
 
+    async initializePlayerUI() {
+      const ok = await this._waitForReady(() =>
+        !!(w.PlayerUI && typeof w.PlayerUI.initialize === 'function')
+      );
+
+      if (ok) {
+        w.PlayerUI.initialize();
+        console.log('✅ PlayerUI initialized');
+      } else {
+        console.warn('⚠️ PlayerUI not ready');
+      }
+    }
+
     // initializePlayerUI / initializeGallery должны быть объявлены только один раз.
     // Инициализацию выполняем через единый _waitForReady, без дублей.
 
