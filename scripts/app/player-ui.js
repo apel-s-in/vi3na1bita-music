@@ -2009,49 +2009,11 @@
     console.log(`✅ Settings restored: lyrics=${lyricsViewMode}, animation=${animationEnabled}`);
   }
 
-  function updateFavoriteClasses(likedUids) {
-    const albumKey = w.AlbumsManager?.getCurrentAlbum?.();
-    const albumData = w.AlbumsManager?.getAlbumData?.(albumKey);
-    if (!albumData || !Array.isArray(albumData.tracks)) return;
+  // updateFavoriteClasses удалён: класс is-favorite сейчас не используется как источник логики,
+  // звёзды и состояния синхронизируются через favorites:changed и прямые обновления DOM.
 
-    document.querySelectorAll('.track').forEach(el => {
-      const idx = parseInt(el.dataset.index, 10);
-      if (!Number.isFinite(idx)) return;
-
-      const track = albumData.tracks[idx];
-      const uid = String(track?.uid || '').trim();
-
-      if (uid && Array.isArray(likedUids) && likedUids.includes(uid)) {
-        el.classList.add('is-favorite');
-      } else {
-        el.classList.remove('is-favorite');
-      }
-    });
-  }
-
-  function updateFavoriteClassesFavorites() {
-    const model = w.favoritesRefsModel || [];
-
-    document.querySelectorAll('.track').forEach(el => {
-      const id = String(el.id || '');
-      const match = id.match(/^fav_(.+)_(.+)$/);
-
-      if (!match) return;
-
-      const albumKey = match[1];
-      const uid = match[2];
-
-      const item = Array.isArray(model)
-        ? model.find(x => x && x.__a === albumKey && String(x.__uid || '').trim() === String(uid || '').trim())
-        : null;
-
-      if (item && item.__active) {
-        el.classList.add('is-favorite');
-      } else {
-        el.classList.remove('is-favorite');
-      }
-    });
-  }
+  // updateFavoriteClassesFavorites удалён: is-favorite не используется,
+  // favorites-строки управляются классом .inactive и звёздами (realtime).
 
   function updateAvailableTracksForPlayback() {
     const playingAlbum = w.AlbumsManager?.getPlayingAlbum?.();
