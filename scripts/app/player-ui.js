@@ -112,11 +112,13 @@
 
     ensurePlayerBlock(index);
 
-    // ✅ Сразу (до fetch) выставляем корректную доступность по hasLyrics/lyrics url
-    // чтобы на первом треке не было “мига” активных кнопок.
+    // ✅ Сразу (до fetch) выставляем корректную доступность.
+    // Требование: если файл лирики отсутствует (или уже известно, что отсутствует) — кнопки Т/А должны быть disabled без "мигания".
     try {
       const has = checkTrackHasLyrics(track);
-      if (!has) {
+      const knownMissing = (!track?.lyrics) ? true : isLyricsKnownMissingFast(track.lyrics);
+
+      if (!has || knownMissing) {
         hasTimedLyricsForCurrentTrack = false;
         setLyricsAvailability(false);
       }
@@ -1484,6 +1486,28 @@
   function isLyrics404Cached(url) {
     const cache = getLyrics404Cache();
     return !!cache[url];
+  }
+
+  function isLyricsKnownMissingFast(lyricsUrl) {
+    const url = String(lyricsUrl || '').trim();
+    if (!url) return true;
+
+    // 1) 404 cache
+    if (isLyrics404Cached(url)) return true;
+
+    // 2) sessionStorage cache marker
+    try {
+      const cacheKey = `lyrics_cache_${url}`;
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed === null || parsed === '__NO_LYRICS__') return true;
+      }
+    } catch {
+      // игнорируем ошибки парсинга
+    }
+
+    return false;
   }
 
   /**
