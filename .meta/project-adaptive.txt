@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2b38130d0706ecfe177b0940fa4014aebac19baf.idx
-│   │       ├── pack-2b38130d0706ecfe177b0940fa4014aebac19baf.pack
-│   │       └── pack-2b38130d0706ecfe177b0940fa4014aebac19baf.rev
+│   │       ├── pack-3fdcdc9d49e4185dc36bb2a3f1eed840e16d1c88.idx
+│   │       ├── pack-3fdcdc9d49e4185dc36bb2a3f1eed840e16d1c88.pack
+│   │       └── pack-3fdcdc9d49e4185dc36bb2a3f1eed840e16d1c88.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-26 08:13:06 UTC
+Сгенерировано: 2025-12-26 08:24:59 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2671,16 +2671,7 @@ class AlbumsManager {
     }
   }
 
-  renderCover(albumInfo, albumData) {
-    const coverSlot = document.getElementById('cover-slot');
-    if (!coverSlot) return;
-
-    const coverUrl = albumData.cover 
-      ? `${albumInfo.base}${albumData.cover}` 
-      : `${albumInfo.base}cover.jpg`;
-    
-    coverSlot.innerHTML = `<img src="${coverUrl}" alt="${albumInfo.title}" draggable="false" loading="lazy">`;
-  }
+  // renderCover удалён: источник обложек — центральная галерея (GalleryManager).
 
   renderSocials(links) {
     const container = document.getElementById('social-links');
