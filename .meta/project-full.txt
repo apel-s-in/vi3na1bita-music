@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-184fad0208d4845ac07c068c6a35fad42a114854.idx
-│   │       ├── pack-184fad0208d4845ac07c068c6a35fad42a114854.pack
-│   │       └── pack-184fad0208d4845ac07c068c6a35fad42a114854.rev
+│   │       ├── pack-5dfc43a71358ac068b7386a9c48b0b4673d64390.idx
+│   │       ├── pack-5dfc43a71358ac068b7386a9c48b0b4673d64390.pack
+│   │       └── pack-5dfc43a71358ac068b7386a9c48b0b4673d64390.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-26 09:04:48 UTC
+Сгенерировано: 2025-12-26 09:06:11 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4295,11 +4295,13 @@ export default NavigationManager;
 
     ensurePlayerBlock(index);
 
-    // ✅ Сразу (до fetch) выставляем корректную доступность по hasLyrics/lyrics url
-    // чтобы на первом треке не было “мига” активных кнопок.
+    // ✅ Сразу (до fetch) выставляем корректную доступность.
+    // Требование: если файл лирики отсутствует (или уже известно, что отсутствует) — кнопки Т/А должны быть disabled без "мигания".
     try {
       const has = checkTrackHasLyrics(track);
-      if (!has) {
+      const knownMissing = (!track?.lyrics) ? true : isLyricsKnownMissingFast(track.lyrics);
+
+      if (!has || knownMissing) {
         hasTimedLyricsForCurrentTrack = false;
         setLyricsAvailability(false);
       }
@@ -5667,6 +5669,28 @@ export default NavigationManager;
   function isLyrics404Cached(url) {
     const cache = getLyrics404Cache();
     return !!cache[url];
+  }
+
+  function isLyricsKnownMissingFast(lyricsUrl) {
+    const url = String(lyricsUrl || '').trim();
+    if (!url) return true;
+
+    // 1) 404 cache
+    if (isLyrics404Cached(url)) return true;
+
+    // 2) sessionStorage cache marker
+    try {
+      const cacheKey = `lyrics_cache_${url}`;
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed === null || parsed === '__NO_LYRICS__') return true;
+      }
+    } catch {
+      // игнорируем ошибки парсинга
+    }
+
+    return false;
   }
 
   /**
