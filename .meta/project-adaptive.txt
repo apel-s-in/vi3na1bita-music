@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a7fddd355a4e7c392630416688a6ba8c2c19c5e2.idx
-│   │       ├── pack-a7fddd355a4e7c392630416688a6ba8c2c19c5e2.pack
-│   │       └── pack-a7fddd355a4e7c392630416688a6ba8c2c19c5e2.rev
+│   │       ├── pack-350298297b08431df3d271b27d2a76bb282dc6e1.idx
+│   │       ├── pack-350298297b08431df3d271b27d2a76bb282dc6e1.pack
+│   │       └── pack-350298297b08431df3d271b27d2a76bb282dc6e1.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-26 09:08:06 UTC
+Сгенерировано: 2025-12-26 09:16:07 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5669,6 +5669,28 @@ export default NavigationManager;
   function isLyrics404Cached(url) {
     const cache = getLyrics404Cache();
     return !!cache[url];
+  }
+
+  function isLyricsKnownMissingFast(lyricsUrl) {
+    const url = String(lyricsUrl || '').trim();
+    if (!url) return true;
+
+    // 1) 404 cache
+    if (isLyrics404Cached(url)) return true;
+
+    // 2) sessionStorage cache marker
+    try {
+      const cacheKey = `lyrics_cache_${url}`;
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed === null || parsed === '__NO_LYRICS__') return true;
+      }
+    } catch {
+      // игнорируем ошибки парсинга
+    }
+
+    return false;
   }
 
   function isLyricsKnownMissingFast(lyricsUrl) {
