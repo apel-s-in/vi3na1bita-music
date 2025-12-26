@@ -720,44 +720,6 @@
       }
     }
 
-    rebuildCurrentSound(options = {}) {
-      // ✅ Техническая пересборка Howl под другой backend (html5/webAudio),
-      // НЕ должна прерывать музыку "стопом".
-      try {
-        const track = this.getCurrentTrack();
-        if (!track) return false;
-
-        const preferWebAudio = !!options.preferWebAudio;
-
-        // preferWebAudio=true => html5:false
-        const targetHtml5 = !preferWebAudio;
-
-        const wasPlaying = this.isPlaying();
-        const pos = this.getPosition();
-        const idx = this.currentIndex;
-
-        // Если уже есть sound и его режим совпадает — ничего не делаем
-        const curHtml5 = !!(this.sound && this.sound._html5);
-        if (this.sound && curHtml5 === targetHtml5) {
-          return true;
-        }
-
-        // Смена backend — пересоздаём sound "тихо"
-        this._silentUnloadCurrentSound();
-
-        this.load(idx, {
-          autoPlay: wasPlaying,
-          resumePosition: pos,
-          html5: targetHtml5
-        });
-
-        return true;
-      } catch (e) {
-        console.warn('rebuildCurrentSound failed:', e);
-        return false;
-      }
-    }
-
     getAudioElement() {
       // Howler использует Web Audio API, но может предоставить HTML5 audio
       if (this.sound && this.sound._sounds && this.sound._sounds[0]) {
