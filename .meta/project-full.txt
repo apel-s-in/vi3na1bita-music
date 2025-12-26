@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6d34b0cd7629316382dc1779cebde573e4d5f60f.idx
-│   │       ├── pack-6d34b0cd7629316382dc1779cebde573e4d5f60f.pack
-│   │       └── pack-6d34b0cd7629316382dc1779cebde573e4d5f60f.rev
+│   │       ├── pack-2b38130d0706ecfe177b0940fa4014aebac19baf.idx
+│   │       ├── pack-2b38130d0706ecfe177b0940fa4014aebac19baf.pack
+│   │       └── pack-2b38130d0706ecfe177b0940fa4014aebac19baf.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-26 08:12:20 UTC
+Сгенерировано: 2025-12-26 08:13:06 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5448,10 +5448,55 @@ export default NavigationManager;
   function toggleFavoritesOnly() {
     const btn = document.getElementById('favorites-btn');
     const icon = document.getElementById('favorites-btn-icon');
-
     if (!btn || !icon) return;
 
-    favoritesOnlyMode = !favoritesOnlyMode;
+    const playingAlbum = w.AlbumsManager?.getPlayingAlbum?.() || null;
+
+    // Текущее состояние (единый источник — localStorage)
+    const currentlyOn = (localStorage.getItem('favoritesOnlyMode') === '1');
+    const nextOn = !currentlyOn;
+
+    // === ВКЛЮЧЕНИЕ (OFF -> ON): проверяем доступность по ТЗ ===
+    if (nextOn) {
+      // Контекст: playing = __favorites__
+      if (playingAlbum === w.SPECIAL_FAVORITES_KEY) {
+        const model = Array.isArray(w.favoritesRefsModel) ? w.favoritesRefsModel : [];
+        const hasActive = model.some(it => it && it.__active && it.audio);
+
+        if (!hasActive) {
+          // По ТЗ: если нет active — уведомление и F остаётся OFF
+          w.NotificationSystem?.info('Отметьте понравившийся трек ⭐');
+          btn.classList.remove('favorites-active');
+          icon.src = 'img/star2.png';
+          try { localStorage.setItem('favoritesOnlyMode', '0'); } catch {}
+          favoritesOnlyMode = false;
+          return;
+        }
+        // Есть active — можно включать (хотя набор и так active-only)
+      } else if (playingAlbum && !String(playingAlbum).startsWith('__')) {
+        // Контекст: playing = обычный альбом
+        const liked = w.FavoritesManager?.getLikedUidsForAlbum?.(playingAlbum) || [];
+        if (!Array.isArray(liked) || liked.length === 0) {
+          w.NotificationSystem?.info('Отметьте понравившийся трек ⭐');
+          btn.classList.remove('favorites-active');
+          icon.src = 'img/star2.png';
+          try { localStorage.setItem('favoritesOnlyMode', '0'); } catch {}
+          favoritesOnlyMode = false;
+          return;
+        }
+      } else {
+        // Спец-разделы (__reliz__ и др.) — включать бессмысленно, но по ТЗ это “нет доступных”
+        w.NotificationSystem?.info('Отметьте понравившийся трек ⭐');
+        btn.classList.remove('favorites-active');
+        icon.src = 'img/star2.png';
+        try { localStorage.setItem('favoritesOnlyMode', '0'); } catch {}
+        favoritesOnlyMode = false;
+        return;
+      }
+    }
+
+    // === Применяем состояние ===
+    favoritesOnlyMode = nextOn;
 
     if (favoritesOnlyMode) {
       btn.classList.add('favorites-active');
@@ -5467,8 +5512,10 @@ export default NavigationManager;
       localStorage.setItem('favoritesOnlyMode', favoritesOnlyMode ? '1' : '0');
     } catch {}
 
+    // Обновляем доступность (legacy fallback)
     updateAvailableTracksForPlayback();
 
+    // Единая политика: перестройка playing-плейлиста под F+shuffle без STOP
     if (w.PlaybackPolicy && typeof w.PlaybackPolicy.apply === 'function') {
       w.PlaybackPolicy.apply({ reason: 'toggle' });
     }
