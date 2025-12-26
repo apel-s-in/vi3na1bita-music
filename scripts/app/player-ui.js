@@ -1261,10 +1261,55 @@
   function toggleFavoritesOnly() {
     const btn = document.getElementById('favorites-btn');
     const icon = document.getElementById('favorites-btn-icon');
-
     if (!btn || !icon) return;
 
-    favoritesOnlyMode = !favoritesOnlyMode;
+    const playingAlbum = w.AlbumsManager?.getPlayingAlbum?.() || null;
+
+    // Текущее состояние (единый источник — localStorage)
+    const currentlyOn = (localStorage.getItem('favoritesOnlyMode') === '1');
+    const nextOn = !currentlyOn;
+
+    // === ВКЛЮЧЕНИЕ (OFF -> ON): проверяем доступность по ТЗ ===
+    if (nextOn) {
+      // Контекст: playing = __favorites__
+      if (playingAlbum === w.SPECIAL_FAVORITES_KEY) {
+        const model = Array.isArray(w.favoritesRefsModel) ? w.favoritesRefsModel : [];
+        const hasActive = model.some(it => it && it.__active && it.audio);
+
+        if (!hasActive) {
+          // По ТЗ: если нет active — уведомление и F остаётся OFF
+          w.NotificationSystem?.info('Отметьте понравившийся трек ⭐');
+          btn.classList.remove('favorites-active');
+          icon.src = 'img/star2.png';
+          try { localStorage.setItem('favoritesOnlyMode', '0'); } catch {}
+          favoritesOnlyMode = false;
+          return;
+        }
+        // Есть active — можно включать (хотя набор и так active-only)
+      } else if (playingAlbum && !String(playingAlbum).startsWith('__')) {
+        // Контекст: playing = обычный альбом
+        const liked = w.FavoritesManager?.getLikedUidsForAlbum?.(playingAlbum) || [];
+        if (!Array.isArray(liked) || liked.length === 0) {
+          w.NotificationSystem?.info('Отметьте понравившийся трек ⭐');
+          btn.classList.remove('favorites-active');
+          icon.src = 'img/star2.png';
+          try { localStorage.setItem('favoritesOnlyMode', '0'); } catch {}
+          favoritesOnlyMode = false;
+          return;
+        }
+      } else {
+        // Спец-разделы (__reliz__ и др.) — включать бессмысленно, но по ТЗ это “нет доступных”
+        w.NotificationSystem?.info('Отметьте понравившийся трек ⭐');
+        btn.classList.remove('favorites-active');
+        icon.src = 'img/star2.png';
+        try { localStorage.setItem('favoritesOnlyMode', '0'); } catch {}
+        favoritesOnlyMode = false;
+        return;
+      }
+    }
+
+    // === Применяем состояние ===
+    favoritesOnlyMode = nextOn;
 
     if (favoritesOnlyMode) {
       btn.classList.add('favorites-active');
@@ -1280,8 +1325,10 @@
       localStorage.setItem('favoritesOnlyMode', favoritesOnlyMode ? '1' : '0');
     } catch {}
 
+    // Обновляем доступность (legacy fallback)
     updateAvailableTracksForPlayback();
 
+    // Единая политика: перестройка playing-плейлиста под F+shuffle без STOP
     if (w.PlaybackPolicy && typeof w.PlaybackPolicy.apply === 'function') {
       w.PlaybackPolicy.apply({ reason: 'toggle' });
     }
