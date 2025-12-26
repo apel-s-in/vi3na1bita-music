@@ -699,16 +699,7 @@ class AlbumsManager {
     }
   }
 
-  renderCover(albumInfo, albumData) {
-    const coverSlot = document.getElementById('cover-slot');
-    if (!coverSlot) return;
-
-    const coverUrl = albumData.cover 
-      ? `${albumInfo.base}${albumData.cover}` 
-      : `${albumInfo.base}cover.jpg`;
-    
-    coverSlot.innerHTML = `<img src="${coverUrl}" alt="${albumInfo.title}" draggable="false" loading="lazy">`;
-  }
+  // renderCover удалён: источник обложек — центральная галерея (GalleryManager).
 
   renderSocials(links) {
     const container = document.getElementById('social-links');
