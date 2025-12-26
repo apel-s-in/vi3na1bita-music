@@ -69,23 +69,24 @@
   }
 
   function showModal(track, text) {
-    const modal = document.createElement('div');
-    modal.className = 'modal-bg active';
-    
-    modal.innerHTML = `
+    const esc = w.Utils?.escapeHtml
+      ? (s) => w.Utils.escapeHtml(String(s || ''))
+      : (s) => String(s || '');
+
+    const html = `
       <div class="modal-feedback lyrics-modal" style="max-width: 520px; max-height: 80vh;">
-        <button class="bigclose" title="Закрыть">
+        <button class="bigclose" title="Закрыть" aria-label="Закрыть">
           <svg viewBox="0 0 48 48">
             <line x1="12" y1="12" x2="36" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
             <line x1="36" y1="12" x2="12" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
           </svg>
         </button>
-        
-        <h2 style="margin-bottom: 8px;">${escapeHtml(track.title)}</h2>
+
+        <h2 style="margin-bottom: 8px;">${esc(track.title)}</h2>
         <div style="color: #8ab8fd; margin-bottom: 20px; font-size: 14px;">
-          ${escapeHtml(track.artist || 'Витрина Разбита')} · ${escapeHtml(track.album || '')}
+          ${esc(track.artist || 'Витрина Разбита')} · ${esc(track.album || '')}
         </div>
-        
+
         <div class="lyrics-fulltext" style="
           max-height: 50vh;
           overflow-y: auto;
@@ -98,34 +99,24 @@
           scrollbar-width: thin;
           scrollbar-color: rgba(77,170,255,0.3) transparent;
         ">
-          ${escapeHtml(text)}
+          ${esc(text)}
         </div>
-        
+
         <div style="display: flex; gap: 10px; margin-top: 20px; justify-content: center;">
-          <button class="modal-action-btn" id="copy-lyrics-btn">
-            📋 Копировать
-          </button>
-          <button class="modal-action-btn" id="share-lyrics-btn">
-            📤 Поделиться
-          </button>
+          <button class="modal-action-btn" id="copy-lyrics-btn">📋 Копировать</button>
+          <button class="modal-action-btn" id="share-lyrics-btn">📤 Поделиться</button>
         </div>
       </div>
     `;
 
-    const closeBtn = modal.querySelector('.bigclose');
-    closeBtn?.addEventListener('click', () => modal.remove());
+    const modal = (w.Utils && typeof w.Utils.createModal === 'function')
+      ? w.Utils.createModal(html)
+      : null;
 
-    const copyBtn = modal.querySelector('#copy-lyrics-btn');
-    copyBtn?.addEventListener('click', () => copyLyrics(text, modal));
+    if (!modal) return;
 
-    const shareBtn = modal.querySelector('#share-lyrics-btn');
-    shareBtn?.addEventListener('click', () => shareLyrics(track, text));
-
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) modal.remove();
-    });
-
-    document.body.appendChild(modal);
+    modal.querySelector('#copy-lyrics-btn')?.addEventListener('click', () => copyLyrics(text, modal));
+    modal.querySelector('#share-lyrics-btn')?.addEventListener('click', () => shareLyrics(track, text));
   }
 
   async function copyLyrics(text, modal) {
@@ -173,11 +164,7 @@
     }
   }
 
-  function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str || '';
-    return div.innerHTML;
-  }
+  // escapeHtml: используем window.Utils.escapeHtml (единый источник)
 
   // Публичный API
   w.LyricsModal = {
