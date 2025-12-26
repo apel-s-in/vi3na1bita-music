@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-81fa67493024d846c48db02855ba4b700c182e32.idx
-│   │       ├── pack-81fa67493024d846c48db02855ba4b700c182e32.pack
-│   │       └── pack-81fa67493024d846c48db02855ba4b700c182e32.rev
+│   │       ├── pack-6d34b0cd7629316382dc1779cebde573e4d5f60f.idx
+│   │       ├── pack-6d34b0cd7629316382dc1779cebde573e4d5f60f.pack
+│   │       └── pack-6d34b0cd7629316382dc1779cebde573e4d5f60f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2025-12-26 08:00:31 UTC
+Сгенерировано: 2025-12-26 08:12:20 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -10875,44 +10875,6 @@ try { main(); } catch (e) { console.error("❌", e); process.exit(1); }
         this._silentUnloadCurrentSound();
 
         // load с нужным html5 и автоплеем
-        this.load(idx, {
-          autoPlay: wasPlaying,
-          resumePosition: pos,
-          html5: targetHtml5
-        });
-
-        return true;
-      } catch (e) {
-        console.warn('rebuildCurrentSound failed:', e);
-        return false;
-      }
-    }
-
-    rebuildCurrentSound(options = {}) {
-      // ✅ Техническая пересборка Howl под другой backend (html5/webAudio),
-      // НЕ должна прерывать музыку "стопом".
-      try {
-        const track = this.getCurrentTrack();
-        if (!track) return false;
-
-        const preferWebAudio = !!options.preferWebAudio;
-
-        // preferWebAudio=true => html5:false
-        const targetHtml5 = !preferWebAudio;
-
-        const wasPlaying = this.isPlaying();
-        const pos = this.getPosition();
-        const idx = this.currentIndex;
-
-        // Если уже есть sound и его режим совпадает — ничего не делаем
-        const curHtml5 = !!(this.sound && this.sound._html5);
-        if (this.sound && curHtml5 === targetHtml5) {
-          return true;
-        }
-
-        // Смена backend — пересоздаём sound "тихо"
-        this._silentUnloadCurrentSound();
-
         this.load(idx, {
           autoPlay: wasPlaying,
           resumePosition: pos,
