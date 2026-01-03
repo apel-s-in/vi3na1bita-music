@@ -47,9 +47,10 @@
     });
   }
 
-  function findTrackIndexBySrc(list, src) {
-    if (!Array.isArray(list) || !src) return -1;
-    return list.findIndex(t => t && t.src === src);
+  function findTrackIndexByUid(list, uid) {
+    const u = String(uid || '').trim();
+    if (!Array.isArray(list) || !u) return -1;
+    return list.findIndex(t => String(t?.uid || '').trim() === u);
   }
 
   function setFavoritesOnlyModeUI(enabled) {
@@ -123,7 +124,7 @@
     const current = getCurrentSnapshot();
 
     const currentTrack = pc.getCurrentTrack?.();
-    const currentSrc = currentTrack?.src || null;
+    const currentUid = String(currentTrack?.uid || '').trim() || null;
 
     const targetFavoritesPlaylist = buildFavoritesOnlyPlaylistFromOriginal(original, likedUids);
 
@@ -176,9 +177,9 @@
     // ✅ 6.3: если repeat включён — игнорируем фильтр и продолжаем повторять.
     const repeat = !!pc.isRepeat?.();
 
-    if (!repeat && opts?.reason === 'favoritesChanged' && currentSrc) {
+    if (!repeat && opts?.reason === 'favoritesChanged' && currentUid) {
       const d = opts?.changed || {};
-      const changedAlbum = String(d.albumKey || '').trim();
+ const changedAlbum = String(d.albumKey || '').trim();
       const changedUid = String(d.uid || '').trim();
       const liked = !!d.liked;
 
@@ -186,8 +187,7 @@
         const stillLiked = likedUids.includes(changedUid);
         if (!stillLiked) {
           // Если текущий трек именно тот, который разлайкали — next().
-          const curUid = String(currentTrack?.uid || '').trim();
-          if (curUid && curUid === changedUid) {
+          if (changedUid === currentUid) {
             // Перед next() убедимся, что наш плейлист актуален и текущий трек исключён.
             // Мы НЕ стопаем — просто “переключаемся”.
             const filtered = targetFavoritesPlaylist.filter(t => String(t?.uid || '').trim() !== changedUid);
@@ -217,8 +217,8 @@
     // Базовый случай: привести текущий плейлист к favorites-only (из original).
     // Старт: если текущий трек есть в target — продолжаем с него, иначе с 0.
     let startIndex = 0;
-    if (currentSrc) {
-      const idx = findTrackIndexBySrc(targetFavoritesPlaylist, currentSrc);
+    if (currentUid) {
+      const idx = findTrackIndexByUid(targetFavoritesPlaylist, currentUid);
       startIndex = idx >= 0 ? idx : 0;
     }
 
