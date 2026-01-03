@@ -1507,6 +1507,32 @@ header {
   line-height: 1;
   user-select: none;
 }
+.track-item .offline-indicator {
+  display: inline-block;
+  width: 1.2em;
+  height: 1.2em;
+  margin-right: 0.5em;
+  font-size: 1.1em;
+  cursor: pointer;
+  user-select: none;
+}
+
+.track-item .offline-indicator.lock {
+  content: '🔒';
+}
+
+.track-item .offline-indicator.cloud {
+  content: '☁';
+}
+
+.track-item .offline-indicator.inactive {
+  opacity: 0.5;
+  color: var(--text-secondary); /* Серый для не pinned/cloud */
+}
+
+.track-item .offline-indicator.active {
+  color: var(--accent-color); /* Активный цвет для pinned/cloud */
+}
 
 /* ===== Platform-specific ===== */
 
