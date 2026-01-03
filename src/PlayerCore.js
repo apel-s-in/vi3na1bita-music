@@ -833,7 +833,7 @@
       if (!srcToCheck) return false;
 
       const played = Array.isArray(this.shuffleHistory)
-        ? this.shuffleHistory.some(h => h && h.src === srcToCheck)
+        ? this.shuffleHistory.some(h => h && String(h.uid || '').trim() === uid)
         : false;
 
       if (played) return false;
