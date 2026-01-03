@@ -50,7 +50,6 @@ const STATIC_ASSETS = [
   './scripts/app/player-ui.js',
   './scripts/app/albums.js',
   './scripts/app/navigation.js',
-  './scripts/app/downloads.js',
   './scripts/app.js',
   './src/PlayerCore.js',
 
