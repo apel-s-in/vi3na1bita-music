@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d76131a9fbb5f3abaf2fb763e9032c2857d45a52.idx
-│   │       ├── pack-d76131a9fbb5f3abaf2fb763e9032c2857d45a52.pack
-│   │       └── pack-d76131a9fbb5f3abaf2fb763e9032c2857d45a52.rev
+│   │       ├── pack-c66cc8e70035febe7cba04dc907449a6aecf5c86.idx
+│   │       ├── pack-c66cc8e70035febe7cba04dc907449a6aecf5c86.pack
+│   │       └── pack-c66cc8e70035febe7cba04dc907449a6aecf5c86.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -360,7 +360,8 @@ vi3na1bita-music/
 │   ├── offline/
 │   │   ├── cache-db.js
 │   │   ├── playback-cache.js
-│   │   └── queue-manager.js
+│   │   ├── queue-manager.js
+│   │   └── track-resolver.js
 │   ├── ui/
 │   │   ├── favorites-const.js
 │   │   ├── favorites-data.js
@@ -387,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-03 21:32:43 UTC
+Сгенерировано: 2026-01-03 21:33:09 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7874,6 +7875,58 @@ export class QueueManager {
 }
 
 export { PRIORITY };
+
+//=================================================
+// FILE: /scripts/offline/track-resolver.js
+// scripts/offline/track-resolver.js
+
+import { getAudioBlob, bytesByQuality, getMeta } from './cache-db.js';
+
+// track: { uid, urlHi, urlLo, sizeHi, sizeLo }
+// pq: 'hi'|'lo'
+// Возвращает: { src, via:'local'|'network', quality:'hi'|'lo', local:{quality, bytes, complete:boolean} }
+export async function resolveForPlayback(track, pq) {
+  const { uid, urlHi, urlLo, sizeHi, sizeLo } = track;
+  const hi = await getAudioBlob(uid, 'hi');
+  const lo = await getAudioBlob(uid, 'lo');
+
+  const localHas = {
+    hi: !!hi,
+    lo: !!lo,
+  };
+
+  // 1) локально качество >= PQ
+  if (pq === 'hi' && localHas.hi) {
+    const complete = (hi.bytes || 0) >= (sizeHi || 0) && (sizeHi || 0) > 0;
+    return { src: URL.createObjectURL(hi.blob), via: 'local', quality: 'hi', local: { quality: 'hi', bytes: hi.bytes, complete } };
+  }
+  if (pq === 'lo' && (localHas.hi || localHas.lo)) {
+    // можно улучшить из Hi
+    if (localHas.hi) {
+      const complete = (hi.bytes || 0) >= (sizeHi || 0) && (sizeHi || 0) > 0;
+      return { src: URL.createObjectURL(hi.blob), via: 'local', quality: 'hi', local: { quality: 'hi', bytes: hi.bytes, complete } };
+    }
+    const complete = (lo.bytes || 0) >= (sizeLo || 0) && (sizeLo || 0) > 0;
+    return { src: URL.createObjectURL(lo.blob), via: 'local', quality: 'lo', local: { quality: 'lo', bytes: lo.bytes, complete } };
+  }
+
+  // 2) сеть = PQ (если есть URL и политика позволит — проверит QueueManager)
+  if (pq === 'hi' && urlHi) {
+    return { src: urlHi, via: 'network', quality: 'hi', local: null };
+  }
+  if (pq === 'lo' && urlLo) {
+    return { src: urlLo, via: 'network', quality: 'lo', local: null };
+  }
+
+  // 3) локально < PQ — только как fallback
+  if (pq === 'hi' && localHas.lo) {
+    const complete = (lo.bytes || 0) >= (sizeLo || 0) && (sizeLo || 0) > 0;
+    return { src: URL.createObjectURL(lo.blob), via: 'local', quality: 'lo', local: { quality: 'lo', bytes: lo.bytes, complete } };
+  }
+
+  // 4) иначе — недоступно
+  return { src: null, via: 'none', quality: pq, local: null };
+}
 
 //=================================================
 // FILE: /scripts/ui/favorites-const.js
