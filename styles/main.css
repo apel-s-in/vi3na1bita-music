@@ -1595,6 +1595,31 @@ body.ios #mute-btn { display: none !important; }
 @media (prefers-color-scheme: dark) {
   body { background: #0d0d0d; }
 }
+/* Прогресс кэша (ТЗ 16: второй слой) */
+.player-progress-cache-fill {
+  position: absolute;
+  height: 100%;
+  background: rgba(77,170,255,0.4); /* Отдельный цвет */
+  width: 0%;
+  border-radius: 3px;
+}
+
+/* Индикаторы 🔒/☁ в трек-листе (ТЗ 3) */
+.track .offline-indicator {
+  font-size: 1.2em;
+  margin-right: 8px;
+  cursor: pointer;
+}
+.track .offline-indicator.grey { opacity: 0.5; } /* Не pinned/cloud */
+.track .offline-indicator.active { color: var(--secondary-color); }
+
+/* ! на кнопке OFFLINE */
+#offline-btn.alert::after {
+  content: "!";
+  color: var(--primary-color);
+  font-weight: 900;
+  margin-left: 6px;
+}
 
 /* ===== Accessibility ===== */
 
