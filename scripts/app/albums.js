@@ -219,9 +219,10 @@ class AlbumsManager {
       const data = raw || {};
 
       const tracks = Array.isArray(data.tracks) ? data.tracks : [];
-        const normTracks = tracks.map((t, idx) => {
-        const file = t.audio ? new URL(t.audio, base).toString() : null;
-        
+      const normTracks = tracks.map((t, idx) => {
+        const fileHi = t.audio ? new URL(t.audio, base).toString() : null;
+        const fileLo = t.audio_low ? new URL(t.audio_low, base).toString() : null;
+
         // ✅ Автоопределение URL лирики: поддержка .lrc и .json
         let lyrics = null;
         if (t.lyrics) {
@@ -230,7 +231,7 @@ class AlbumsManager {
           // ✅ Поддержка поля lrc напрямую
           lyrics = new URL(t.lrc, base).toString();
         }
-        
+
         const fulltext = t.fulltext ? new URL(t.fulltext, base).toString() : null;
 
         const uid = (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null;
@@ -238,7 +239,8 @@ class AlbumsManager {
         // num оставляем только для UI-отображения
         const num = idx + 1;
 
-        const sizeMB = typeof t.size === 'number' ? t.size : null;
+        const sizeHiMB = typeof t.size === 'number' ? t.size : null;
+        const sizeLoMB = typeof t.size_low === 'number' ? t.size_low : null;
 
         // ✅ Флаг hasLyrics для оптимизации (без HEAD-запросов)
         // Если явно указан — используем, иначе определяем по наличию URL
@@ -249,14 +251,31 @@ class AlbumsManager {
           hasLyrics = !!(lyrics || t.lyrics || t.lrc);
         }
 
+        // ✅ sources для PlayerCore (качество Hi/Lo)
+        const sources = (fileHi || fileLo) ? {
+          audio: {
+            hi: fileHi,
+            lo: fileLo
+          }
+        } : null;
+
         return {
           num,
           title: t.title || `Трек ${idx + 1}`,
-          file,
+
+          // ✅ Back-compat: file остаётся как "основной" (Hi) для старых частей кода
+          file: fileHi,
+
+          // ✅ Новые поля качества
+          fileHi,
+          fileLo,
+          sizeHi: sizeHiMB,
+          sizeLo: sizeLoMB,
+          sources,
+
           lyrics,
           fulltext,
           uid,
-          size: sizeMB,
           hasLyrics // ✅ Новое поле
         };
       });
@@ -805,9 +824,12 @@ class AlbumsManager {
         const coverUrl = this.albumCoverUrlCache.get(albumKey) || 'img/logo.png';
 
         const tracksForCore = albumData.tracks
-          .filter(t => !!t.file)
+          .filter(t => !!t && (!!t.fileHi || !!t.file || !!t.fileLo))
           .map((t) => ({
-            src: t.file,
+            // legacy fallback: если sources нет, src возьмём из Hi (или из file)
+            src: t.fileHi || t.file || t.fileLo,
+            sources: t.sources || null,
+
             title: t.title,
             artist: albumData.artist || 'Витрина Разбита',
             album: albumKey,
