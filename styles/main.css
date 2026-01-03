@@ -1060,8 +1060,7 @@ header {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-#install-pwa-btn,
-#download-album-main {
+#install-pwa-btn {
   color: #fff;
   background: var(--secondary-color);
   border: none;
@@ -1077,22 +1076,13 @@ header {
   transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
 }
 
-#download-album-main {
-  background: var(--primary-color);
-  font-size: 1.09em;
-}
-
-#install-pwa-btn:hover,
-#download-album-main:hover {
+#install-pwa-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+  background: #3275c2;
 }
 
-#install-pwa-btn:active,
-#download-album-main:active { transform: translateY(0); }
-
-#install-pwa-btn:hover { background: #3275c2; }
-#download-album-main:hover { background: #c60000; }
+#install-pwa-btn:active { transform: translateY(0); }
 
 .feedback-link,
 .support-link,
