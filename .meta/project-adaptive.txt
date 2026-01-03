@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-503c936e9ff57e057ae92aec600ebcdcbf2207e9.idx
-│   │       ├── pack-503c936e9ff57e057ae92aec600ebcdcbf2207e9.pack
-│   │       └── pack-503c936e9ff57e057ae92aec600ebcdcbf2207e9.rev
+│   │       ├── pack-499df8256354bae7175c958d08d1ece6dab3c481.idx
+│   │       ├── pack-499df8256354bae7175c958d08d1ece6dab3c481.pack
+│   │       └── pack-499df8256354bae7175c958d08d1ece6dab3c481.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -395,7 +395,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-03 21:51:07 UTC
+Сгенерировано: 2026-01-03 21:53:34 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1000,6 +1000,7 @@ jobs:
     
     console.log(`🎵 Витрина Разбита v${VERSION} (${BUILD_DATE})`);
   </script>
+<script type="module" src="./scripts/app/offline-ui-bootstrap.js"></script>
 </body>
 </html>
 
