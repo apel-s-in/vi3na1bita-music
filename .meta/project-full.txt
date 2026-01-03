@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4e120827d5f543c1c0933368ebc11e68c0155160.idx
-│   │       ├── pack-4e120827d5f543c1c0933368ebc11e68c0155160.pack
-│   │       └── pack-4e120827d5f543c1c0933368ebc11e68c0155160.rev
+│   │       ├── pack-b6f565d3297e7f5be4d2064c0f95c5f7030ef068.idx
+│   │       ├── pack-b6f565d3297e7f5be4d2064c0f95c5f7030ef068.pack
+│   │       └── pack-b6f565d3297e7f5be4d2064c0f95c5f7030ef068.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-03 16:06:25 UTC
+Сгенерировано: 2026-01-03 20:33:04 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -11017,7 +11017,7 @@ try { main(); } catch (e) { console.error("❌", e); process.exit(1); }
       if (!srcToCheck) return false;
 
       const played = Array.isArray(this.shuffleHistory)
-        ? this.shuffleHistory.some(h => h && h.src === srcToCheck)
+        ? this.shuffleHistory.some(h => h && String(h.uid || '').trim() === uid)
         : false;
 
       if (played) return false;
