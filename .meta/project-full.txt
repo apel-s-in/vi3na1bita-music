@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c99d0c367e063ee1e4fd7720187b5686a0d73fb1.idx
-│   │       ├── pack-c99d0c367e063ee1e4fd7720187b5686a0d73fb1.pack
-│   │       └── pack-c99d0c367e063ee1e4fd7720187b5686a0d73fb1.rev
+│   │       ├── pack-06d164d1b33ef6c81f3b573d85f78967eeee9341.idx
+│   │       ├── pack-06d164d1b33ef6c81f3b573d85f78967eeee9341.pack
+│   │       └── pack-06d164d1b33ef6c81f3b573d85f78967eeee9341.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -344,7 +344,8 @@ vi3na1bita-music/
 │   │   ├── gallery.js
 │   │   ├── navigation.js
 │   │   ├── playback-policy.js
-│   │   └── player-ui.js
+│   │   ├── player-ui.js
+│   │   └── track-registry.js
 │   ├── ci/
 │   │   ├── lint-sw.mjs
 │   │   ├── validate-content.mjs
@@ -393,7 +394,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-03 21:49:42 UTC
+Сгенерировано: 2026-01-03 21:50:39 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6059,6 +6060,41 @@ export default NavigationManager;
   }
 
 })();
+
+//=================================================
+// FILE: /scripts/app/track-registry.js
+// scripts/app/track-registry.js
+// Глобально-лёгкий реестр треков по uid, без побочных эффектов.
+
+const REG = new Map();
+// shape: { uid, title, urlHi, urlLo, sizeHi, sizeLo, lyrics, fulltext, sourceAlbum? }
+
+export function registerTrack(meta) {
+  if (!meta || !meta.uid) return;
+  const rec = {
+    uid: meta.uid,
+    title: meta.title || '',
+    urlHi: meta.audio || meta.urlHi || null,
+    urlLo: meta.audio_low || meta.urlLo || null,
+    sizeHi: Number(meta.size || meta.sizeHi || 0),
+    sizeLo: Number(meta.size_low || meta.sizeLo || 0),
+    lyrics: meta.lyrics || null,
+    fulltext: meta.fulltext || null,
+    sourceAlbum: meta.sourceAlbum || null,
+  };
+  REG.set(rec.uid, rec);
+}
+
+export function getTrackByUid(uid) {
+  return REG.get(uid) || null;
+}
+
+export function getAllUids() {
+  return Array.from(REG.keys());
+}
+
+// Для отладки/диагностики
+export const TrackRegistry = { registerTrack, getTrackByUid, getAllUids };
 
 //=================================================
 // FILE: /scripts/ci/lint-sw.mjs
