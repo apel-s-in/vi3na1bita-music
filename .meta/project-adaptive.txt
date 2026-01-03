@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a2b8f557f41c092b5d3516e3de41cd2def3c9b22.idx
-│   │       ├── pack-a2b8f557f41c092b5d3516e3de41cd2def3c9b22.pack
-│   │       └── pack-a2b8f557f41c092b5d3516e3de41cd2def3c9b22.rev
+│   │       ├── pack-c7eefaf556d993f47db1e825dc23cf182709417b.idx
+│   │       ├── pack-c7eefaf556d993f47db1e825dc23cf182709417b.pack
+│   │       └── pack-c7eefaf556d993f47db1e825dc23cf182709417b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-03 20:34:32 UTC
+Сгенерировано: 2026-01-03 20:35:08 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1592,7 +1592,6 @@ self.addEventListener('message', (event) => {
       maybeInit(w.SleepTimer, 'SleepTimer');
       maybeInit(w.LyricsModal, 'LyricsModal');
       maybeInit(w.SystemInfoManager, 'SystemInfoManager');
-      maybeInit(w.DownloadsManager, 'DownloadsManager');
       maybeInit(w.BackgroundAudioManager, 'BackgroundAudioManager');
     }
 
