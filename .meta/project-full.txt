@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-382df1230a7cd2532fa963c6af638b0b7dd792c9.idx
-│   │       ├── pack-382df1230a7cd2532fa963c6af638b0b7dd792c9.pack
-│   │       └── pack-382df1230a7cd2532fa963c6af638b0b7dd792c9.rev
+│   │       ├── pack-5eebd72ff8f6839b08437111e33e56fb73c40212.idx
+│   │       ├── pack-5eebd72ff8f6839b08437111e33e56fb73c40212.pack
+│   │       └── pack-5eebd72ff8f6839b08437111e33e56fb73c40212.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -383,7 +383,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-03 20:49:08 UTC
+Сгенерировано: 2026-01-03 20:49:59 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1903,14 +1903,24 @@ self.addEventListener('message', (event) => {
         if (!albumData || !albumInfo) return;
 
         const base = albumInfo.base || '';
+        const coverUrl = (() => {
+          try {
+            return window.AlbumsManager?.albumCoverUrlCache?.get?.(albumKey) || 'img/logo.png';
+          } catch {
+            return 'img/logo.png';
+          }
+        })();
+
         const tracksForCore = albumData.tracks
-          .filter(t => !!t.file)
+          .filter(t => !!t && (!!t.fileHi || !!t.file || !!t.fileLo))
           .map((t) => ({
-            src: t.file,
+            src: t.fileHi || t.file || t.fileLo,
+            sources: t.sources || null,
+
             title: t.title,
             artist: albumData.artist || 'Витрина Разбита',
             album: albumKey,
-            cover: 'img/logo.png',
+            cover: coverUrl,
             lyrics: t.lyrics || null,
             fulltext: t.fulltext || null,
             uid: (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null,
