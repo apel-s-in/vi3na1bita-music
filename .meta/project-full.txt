@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-928f4cc18520331a3968b27cddf038fb768ba24c.idx
-│   │       ├── pack-928f4cc18520331a3968b27cddf038fb768ba24c.pack
-│   │       └── pack-928f4cc18520331a3968b27cddf038fb768ba24c.rev
+│   │       ├── pack-808dbe98ce7b9b060a32c4562072e74cfeae9e24.idx
+│   │       ├── pack-808dbe98ce7b9b060a32c4562072e74cfeae9e24.pack
+│   │       └── pack-808dbe98ce7b9b060a32c4562072e74cfeae9e24.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -400,7 +400,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-03 23:14:19 UTC
+Сгенерировано: 2026-01-03 23:16:15 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1005,6 +1005,7 @@ jobs:
     
     console.log(`🎵 Витрина Разбита v${VERSION} (${BUILD_DATE})`);
   </script>
+<script type="module" src="scripts/ui/offline-modal.js"></script>
 <script type="module" src="./scripts/app/offline-ui-bootstrap.js"></script>
 <script type="module">
   import { attachOfflineIndicators } from './scripts/ui/offline-indicators.js';
