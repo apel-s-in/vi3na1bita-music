@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d58717934c09ec41145df464d433fbf88f767905.idx
-│   │       ├── pack-d58717934c09ec41145df464d433fbf88f767905.pack
-│   │       └── pack-d58717934c09ec41145df464d433fbf88f767905.rev
+│   │       ├── pack-d0a26e6c8327fd7890e3a0839d40657b7f9f1485.idx
+│   │       ├── pack-d0a26e6c8327fd7890e3a0839d40657b7f9f1485.pack
+│   │       └── pack-d0a26e6c8327fd7890e3a0839d40657b7f9f1485.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -366,6 +366,7 @@ vi3na1bita-music/
 │   │   ├── track-resolver.js
 │   │   └── updater.js
 │   ├── ui/
+│   │   ├── cloud-menu.js
 │   │   ├── favorites-const.js
 │   │   ├── favorites-data.js
 │   │   ├── favorites-view.js
@@ -391,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-03 21:34:52 UTC
+Сгенерировано: 2026-01-03 21:35:19 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8215,6 +8216,40 @@ export class Updater {
   }
 
   hasPending() { return this._pending.size > 0; }
+}
+
+//=================================================
+// FILE: /scripts/ui/cloud-menu.js
+// scripts/ui/cloud-menu.js
+
+export function attachCloudMenu({ root, onAddLock, onRemoveCache }) {
+  // root — элемент кнопки ☁
+  root.addEventListener('click', (e) => {
+    e.preventDefault();
+    const menu = document.createElement('div');
+    menu.className = 'cloud-menu';
+    menu.innerHTML = `
+      <button data-action="add-lock">Добавить замочек 🔒</button>
+      <button data-action="remove-cache">Удалить из кэша (статистика будет сброшена)</button>
+    `;
+    document.body.appendChild(menu);
+    const onClick = (ev) => {
+      const act = ev.target?.getAttribute?.('data-action');
+      if (act === 'add-lock') onAddLock?.();
+      if (act === 'remove-cache') onRemoveCache?.();
+      cleanup();
+    };
+    const onDoc = (ev) => {
+      if (!menu.contains(ev.target)) cleanup();
+    };
+    function cleanup() {
+      menu.remove();
+      document.removeEventListener('click', onDoc, true);
+      menu.removeEventListener('click', onClick);
+    }
+    menu.addEventListener('click', onClick);
+    setTimeout(() => document.addEventListener('click', onDoc, true));
+  });
 }
 
 //=================================================
