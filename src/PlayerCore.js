@@ -15,7 +15,8 @@
       this.shuffleMode = false;
       this.originalPlaylist = [];
 
-      // ✅ Shuffle history (как Spotify): стек реально проигранных треков (по src)
+      // ✅ Shuffle history (как Spotify): стек реально проигранных треков (по uid)
+      // Критично: при переключении качества src меняется, uid — нет.
       this.shuffleHistory = [];
       this.historyMax = 200;
 
@@ -43,6 +44,15 @@
       // Таймер сна
       this.sleepTimerTarget = 0;   // timestamp (ms) когда нужно остановить воспроизведение
       this.sleepTimerId = null;    // id setTimeout для таймера сна
+
+      // ✅ Глобальное качество (по умолчанию Hi)
+      // Источник: localStorage (qualityMode:v1). Lo включает только пользователь.
+      this.qualityStorageKey = 'qualityMode:v1';
+      this.qualityMode = this._readQualityMode();
+
+      // ✅ Активный тип источника (в будущем: 'audio' | 'minus' | 'stem')
+      // Пока всегда 'audio' — это важно, чтобы потом добавить кнопку MINUS без переписывания ядра.
+      this.sourceKey = 'audio';
     }
 
     initialize() {
@@ -66,18 +76,41 @@
         resetHistory = true
       } = options || {};
 
-      this.playlist = (Array.isArray(tracks) ? tracks : []).map(t => ({
-        src: t.src,
-        title: t.title || 'Без названия',
-        artist: t.artist || 'Витрина Разбита',
-        album: t.album || '',
-        cover: t.cover || '',
-        lyrics: t.lyrics || null,
-        fulltext: t.fulltext || null,
-        uid: (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null,
-        hasLyrics: (typeof t.hasLyrics === 'boolean') ? t.hasLyrics : null,
-        sourceAlbum: t.sourceAlbum || null
-      }));
+      this.playlist = (Array.isArray(tracks) ? tracks : []).map(t => {
+        const uid = (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null;
+
+        // ✅ sources: расширяемая структура под future minus/stem/clip
+        // Поддержка текущего формата:
+        // - legacy: t.src (один источник)
+        // - новый: t.sources?.audio?.hi/lo
+        const sources = (t && typeof t === 'object' && t.sources && typeof t.sources === 'object')
+          ? t.sources
+          : null;
+
+        const src = this._selectSrc({
+          uid,
+          legacySrc: t.src,
+          sources,
+          sourceKey: this.sourceKey,
+          qualityMode: this.qualityMode
+        });
+
+        return {
+          src,
+          title: t.title || 'Без названия',
+          artist: t.artist || 'Витрина Разбита',
+          album: t.album || '',
+          cover: t.cover || '',
+          lyrics: t.lyrics || null,
+          fulltext: t.fulltext || null,
+          uid,
+          hasLyrics: (typeof t.hasLyrics === 'boolean') ? t.hasLyrics : null,
+          sourceAlbum: t.sourceAlbum || null,
+
+          // ✅ сохраняем sources, чтобы можно было переключать качество/источник без пересборки плейлиста снаружи
+          sources
+        };
+      });
 
       if (!preserveOriginalPlaylist) {
         this.originalPlaylist = [...this.playlist];
@@ -378,14 +411,150 @@
       this.playlist = shuffled;
       
       if (currentTrack) {
-        this.currentIndex = this.playlist.findIndex(t => t.src === currentTrack.src);
+        const curUid = String(currentTrack.uid || '').trim();
+        if (curUid) {
+          const byUid = this.playlist.findIndex(t => String(t?.uid || '').trim() === curUid);
+          this.currentIndex = byUid >= 0 ? byUid : this.playlist.findIndex(t => t.src === currentTrack.src);
+        } else {
+          this.currentIndex = this.playlist.findIndex(t => t.src === currentTrack.src);
+        }
       }
     }
 
     // ========== КАЧЕСТВО ЗВУКА ==========
 
+    _readQualityMode() {
+      try {
+        const raw = localStorage.getItem(this.qualityStorageKey);
+        const v = String(raw || '').toLowerCase().trim();
+        if (v === 'lo' || v === 'hi') return v;
+      } catch {}
+      return 'hi';
+    }
+
+    _writeQualityMode(mode) {
+      const m = (String(mode || '').toLowerCase().trim() === 'lo') ? 'lo' : 'hi';
+      try { localStorage.setItem(this.qualityStorageKey, m); } catch {}
+      return m;
+    }
+
+    getQualityMode() {
+      return this.qualityMode || 'hi';
+    }
+
+    setQualityMode(mode) {
+      const m = this._writeQualityMode(mode);
+      this.qualityMode = m;
+      return m;
+    }
+
+    /**
+     * Выбор src по (sourceKey + qualityMode) с fallbacks:
+     * - если quality=lo и lo отсутствует -> hi
+     * - если quality=hi и hi отсутствует -> lo
+     * - если sources нет -> legacySrc
+     */
+    _selectSrc({ legacySrc, sources, sourceKey, qualityMode }) {
+      const key = String(sourceKey || 'audio');
+      const q = (String(qualityMode || 'hi') === 'lo') ? 'lo' : 'hi';
+
+      const srcLegacy = (typeof legacySrc === 'string' && legacySrc.trim()) ? legacySrc.trim() : null;
+      const srcHi = String(sources?.[key]?.hi || '').trim() || null;
+      const srcLo = String(sources?.[key]?.lo || '').trim() || null;
+
+      if (q === 'lo') return srcLo || srcHi || srcLegacy;
+      return srcHi || srcLo || srcLegacy;
+    }
+
+    /**
+     * Можно ли пользователю переключить качество на lo прямо сейчас (для текущего трека)
+     * По твоему ТЗ: если нет audio_low у текущего трека — кнопка disabled.
+     */
+    canToggleQualityForCurrentTrack() {
+      const track = this.getCurrentTrack();
+      if (!track) return false;
+
+      const key = this.sourceKey || 'audio';
+      const lo = String(track?.sources?.[key]?.lo || '').trim();
+      // Кнопка должна быть активна, только если есть альтернативный вариант
+      return !!lo;
+    }
+
+    /**
+     * Переключить качество глобально и (если возможно) переключить текущий трек “на лету”
+     * с сохранением позиции и состояния play/pause.
+     * НЕ вызывает stop() => базовое правило соблюдено.
+     */
+    switchQuality(mode) {
+      const nextMode = this.setQualityMode(mode);
+
+      const track = this.getCurrentTrack();
+      if (!track) return { ok: true, mode: nextMode, changed: false };
+
+      const canToggle = this.canToggleQualityForCurrentTrack();
+
+      // По ТЗ: если нет lo — кнопка неактивна и переключение не производится.
+      // Но если режим уже поменяли через внешний код — трек всё равно должен играть доступный источник (fallback).
+      if (!canToggle) {
+        // Нормализуем текущий src к текущему режиму через fallback (без пересборки, если совпадает)
+        const desired = this._selectSrc({
+          legacySrc: track.src,
+          sources: track.sources,
+          sourceKey: this.sourceKey,
+          qualityMode: nextMode
+        });
+
+        if (desired && desired !== track.src) {
+          // Здесь можно было бы перестроить звук, но по UX лучше не дергать, если кнопка disabled.
+          // Оставляем как есть — трек уже играет доступное качество.
+        }
+
+        return { ok: true, mode: nextMode, changed: false, disabled: true };
+      }
+
+      const desiredSrc = this._selectSrc({
+        legacySrc: track.src,
+        sources: track.sources,
+        sourceKey: this.sourceKey,
+        qualityMode: nextMode
+      });
+
+      if (!desiredSrc || desiredSrc === track.src) {
+        return { ok: true, mode: nextMode, changed: false };
+      }
+
+      const wasPlaying = this.isPlaying();
+      const pos = this.getPosition();
+      const idx = this.currentIndex;
+
+      // Обновим src в моделях, чтобы скачивание/metadata брались из актуального src
+      this.playlist[idx].src = desiredSrc;
+      if (Array.isArray(this.originalPlaylist) && this.originalPlaylist.length) {
+        const u = String(track.uid || '').trim();
+        if (u) {
+          const oi = this.originalPlaylist.findIndex(t => String(t?.uid || '').trim() === u);
+          if (oi >= 0) this.originalPlaylist[oi].src = desiredSrc;
+        }
+      }
+
+      // “Тихая” пересборка Howl
+      this._silentUnloadCurrentSound();
+      this.load(idx, { autoPlay: wasPlaying, resumePosition: pos });
+
+      return { ok: true, mode: nextMode, changed: true };
+    }
+
+    // Back-compat: старый API eco-btn может дергать setQuality('low'|'high')
     setQuality(quality) {
-      // Заглушка для будущей реализации
+      const q = String(quality || '').toLowerCase();
+      if (q === 'low' || q === 'lo') {
+        this.switchQuality('lo');
+        return;
+      }
+      if (q === 'high' || q === 'hi') {
+        this.switchQuality('hi');
+        return;
+      }
       console.log(`🎵 Quality set to: ${quality}`);
     }
 
@@ -575,14 +744,15 @@
       // Важный момент: это не должно влиять на воспроизведение.
       try {
         const track = this.getCurrentTrack();
-        if (!track || !track.src) return;
+        if (!track) return;
 
-        const src = track.src;
+        const uid = String(track.uid || '').trim();
+        if (!uid) return;
 
         const last = this.shuffleHistory.length ? this.shuffleHistory[this.shuffleHistory.length - 1] : null;
-        if (last && last.src === src) return;
+        if (last && last.uid === uid) return;
 
-        this.shuffleHistory.push({ src });
+        this.shuffleHistory.push({ uid });
 
         if (this.shuffleHistory.length > this.historyMax) {
           this.shuffleHistory.splice(0, this.shuffleHistory.length - this.historyMax);
@@ -596,13 +766,13 @@
         if (!Array.isArray(this.shuffleHistory) || this.shuffleHistory.length === 0) return -1;
 
         // pop текущую “точку”, затем берём предыдущую
-        const popped = this.shuffleHistory.pop();
+        this.shuffleHistory.pop();
         const prev = this.shuffleHistory.length ? this.shuffleHistory[this.shuffleHistory.length - 1] : null;
 
-        const src = prev?.src || null;
-        if (!src) return -1;
+        const uid = String(prev?.uid || '').trim();
+        if (!uid) return -1;
 
-        const idx = this.playlist.findIndex(t => t && t.src === src);
+        const idx = this.playlist.findIndex(t => String(t?.uid || '').trim() === uid);
         return idx >= 0 ? idx : -1;
       } catch {
         return -1;
