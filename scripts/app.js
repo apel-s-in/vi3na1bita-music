@@ -183,7 +183,6 @@
       maybeInit(w.SleepTimer, 'SleepTimer');
       maybeInit(w.LyricsModal, 'LyricsModal');
       maybeInit(w.SystemInfoManager, 'SystemInfoManager');
-      maybeInit(w.DownloadsManager, 'DownloadsManager');
       maybeInit(w.BackgroundAudioManager, 'BackgroundAudioManager');
     }
 
