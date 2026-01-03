@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9f9b57587aac64950dce1079d08005f75d1431ce.idx
-│   │       ├── pack-9f9b57587aac64950dce1079d08005f75d1431ce.pack
-│   │       └── pack-9f9b57587aac64950dce1079d08005f75d1431ce.rev
+│   │       ├── pack-d9815e7ecc2adaa682c31148f83918ddd175191b.idx
+│   │       ├── pack-d9815e7ecc2adaa682c31148f83918ddd175191b.pack
+│   │       └── pack-d9815e7ecc2adaa682c31148f83918ddd175191b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -400,7 +400,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-03 23:18:18 UTC
+Сгенерировано: 2026-01-03 23:21:22 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -14288,6 +14288,32 @@ header {
   place-items: center;
   line-height: 1;
   user-select: none;
+}
+.track-item .offline-indicator {
+  display: inline-block;
+  width: 1.2em;
+  height: 1.2em;
+  margin-right: 0.5em;
+  font-size: 1.1em;
+  cursor: pointer;
+  user-select: none;
+}
+
+.track-item .offline-indicator.lock {
+  content: '🔒';
+}
+
+.track-item .offline-indicator.cloud {
+  content: '☁';
+}
+
+.track-item .offline-indicator.inactive {
+  opacity: 0.5;
+  color: var(--text-secondary); /* Серый для не pinned/cloud */
+}
+
+.track-item .offline-indicator.active {
+  color: var(--accent-color); /* Активный цвет для pinned/cloud */
 }
 
 /* ===== Platform-specific ===== */
