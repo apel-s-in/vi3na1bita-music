@@ -71,24 +71,25 @@ export class QueueManager {
     }
   }
 
-  async _isNetworkAllowed() {
-    const offlineMode = await getSetting('offlinePolicy:v1', 'off'); // 'on'|'off'
-    // Offline mode — политика, не “рубильник”: разрешает/запрещает скачивания
-    const allowWifi = await getSetting('net:wifi:v1', true);
-    const allowMobile = await getSetting('net:mobile:v1', true);
-    // определим тип сети
-    const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-    let type = 'unknown';
-    if (conn && typeof conn.type === 'string') {
-      type = conn.type; // 'wifi'|'cellular'|...
-    }
-    if (offlineMode !== 'on') return false; // политику выключили — не качаем
-    if (type === 'wifi') return !!allowWifi;
-    if (type === 'cellular') return !!allowMobile;
-    // unknown → спросит подтверждение вне очереди (UI слой), тут — уважаем предыдущий выбор сессии
-    const remembered = sessionStorage.getItem('net:unknown:confirm') === 'true';
-    return remembered;
+async _isNetworkAllowed() {
+  // Offline mode — это политика приложения, но пины/обновления не должны стопориться самим фактом 'off'.
+  // Здесь уважаем только политику сети и согласие для Unknown.
+  const allowWifi = await getSetting('net:wifi:v1', true);
+  const allowMobile = await getSetting('net:mobile:v1', true);
+
+  const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  let type = 'unknown';
+  if (conn && typeof conn.type === 'string') {
+    type = conn.type; // 'wifi'|'cellular'|...
   }
+
+  if (type === 'wifi') return !!allowWifi;
+  if (type === 'cellular') return !!allowMobile;
+
+  // Unknown: положиться на явное согласие, запомненное на сессию
+  const remembered = sessionStorage.getItem('net:unknown:confirm') === 'true';
+  return remembered;
+}
 
   cancelAll() {
     this._q = [];
