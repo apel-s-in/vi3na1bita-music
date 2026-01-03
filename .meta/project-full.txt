@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c745b2189ff56264b2cab978cc701ab281b3a170.idx
-│   │       ├── pack-c745b2189ff56264b2cab978cc701ab281b3a170.pack
-│   │       └── pack-c745b2189ff56264b2cab978cc701ab281b3a170.rev
+│   │       ├── pack-bb914729dbb9f5296160b8224641bcd7f1080d86.idx
+│   │       ├── pack-bb914729dbb9f5296160b8224641bcd7f1080d86.pack
+│   │       └── pack-bb914729dbb9f5296160b8224641bcd7f1080d86.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -396,7 +396,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-03 22:17:46 UTC
+Сгенерировано: 2026-01-03 22:26:24 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8286,24 +8286,25 @@ export class QueueManager {
     }
   }
 
-  async _isNetworkAllowed() {
-    const offlineMode = await getSetting('offlinePolicy:v1', 'off'); // 'on'|'off'
-    // Offline mode — политика, не “рубильник”: разрешает/запрещает скачивания
-    const allowWifi = await getSetting('net:wifi:v1', true);
-    const allowMobile = await getSetting('net:mobile:v1', true);
-    // определим тип сети
-    const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-    let type = 'unknown';
-    if (conn && typeof conn.type === 'string') {
-      type = conn.type; // 'wifi'|'cellular'|...
-    }
-    if (offlineMode !== 'on') return false; // политику выключили — не качаем
-    if (type === 'wifi') return !!allowWifi;
-    if (type === 'cellular') return !!allowMobile;
-    // unknown → спросит подтверждение вне очереди (UI слой), тут — уважаем предыдущий выбор сессии
-    const remembered = sessionStorage.getItem('net:unknown:confirm') === 'true';
-    return remembered;
+async _isNetworkAllowed() {
+  // Offline mode — это политика приложения, но пины/обновления не должны стопориться самим фактом 'off'.
+  // Здесь уважаем только политику сети и согласие для Unknown.
+  const allowWifi = await getSetting('net:wifi:v1', true);
+  const allowMobile = await getSetting('net:mobile:v1', true);
+
+  const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  let type = 'unknown';
+  if (conn && typeof conn.type === 'string') {
+    type = conn.type; // 'wifi'|'cellular'|...
   }
+
+  if (type === 'wifi') return !!allowWifi;
+  if (type === 'cellular') return !!allowMobile;
+
+  // Unknown: положиться на явное согласие, запомненное на сессию
+  const remembered = sessionStorage.getItem('net:unknown:confirm') === 'true';
+  return remembered;
+}
 
   cancelAll() {
     this._q = [];
