@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e5eb432849c654b1ed682b85052a4b7dd0f61788.idx
-│   │       ├── pack-e5eb432849c654b1ed682b85052a4b7dd0f61788.pack
-│   │       └── pack-e5eb432849c654b1ed682b85052a4b7dd0f61788.rev
+│   │       ├── pack-382df1230a7cd2532fa963c6af638b0b7dd792c9.idx
+│   │       ├── pack-382df1230a7cd2532fa963c6af638b0b7dd792c9.pack
+│   │       └── pack-382df1230a7cd2532fa963c6af638b0b7dd792c9.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -383,7 +383,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-03 20:38:20 UTC
+Сгенерировано: 2026-01-03 20:49:08 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2188,9 +2188,10 @@ class AlbumsManager {
       const data = raw || {};
 
       const tracks = Array.isArray(data.tracks) ? data.tracks : [];
-        const normTracks = tracks.map((t, idx) => {
-        const file = t.audio ? new URL(t.audio, base).toString() : null;
-        
+      const normTracks = tracks.map((t, idx) => {
+        const fileHi = t.audio ? new URL(t.audio, base).toString() : null;
+        const fileLo = t.audio_low ? new URL(t.audio_low, base).toString() : null;
+
         // ✅ Автоопределение URL лирики: поддержка .lrc и .json
         let lyrics = null;
         if (t.lyrics) {
@@ -2199,7 +2200,7 @@ class AlbumsManager {
           // ✅ Поддержка поля lrc напрямую
           lyrics = new URL(t.lrc, base).toString();
         }
-        
+
         const fulltext = t.fulltext ? new URL(t.fulltext, base).toString() : null;
 
         const uid = (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null;
@@ -2207,7 +2208,8 @@ class AlbumsManager {
         // num оставляем только для UI-отображения
         const num = idx + 1;
 
-        const sizeMB = typeof t.size === 'number' ? t.size : null;
+        const sizeHiMB = typeof t.size === 'number' ? t.size : null;
+        const sizeLoMB = typeof t.size_low === 'number' ? t.size_low : null;
 
         // ✅ Флаг hasLyrics для оптимизации (без HEAD-запросов)
         // Если явно указан — используем, иначе определяем по наличию URL
@@ -2218,14 +2220,31 @@ class AlbumsManager {
           hasLyrics = !!(lyrics || t.lyrics || t.lrc);
         }
 
+        // ✅ sources для PlayerCore (качество Hi/Lo)
+        const sources = (fileHi || fileLo) ? {
+          audio: {
+            hi: fileHi,
+            lo: fileLo
+          }
+        } : null;
+
         return {
           num,
           title: t.title || `Трек ${idx + 1}`,
-          file,
+
+          // ✅ Back-compat: file остаётся как "основной" (Hi) для старых частей кода
+          file: fileHi,
+
+          // ✅ Новые поля качества
+          fileHi,
+          fileLo,
+          sizeHi: sizeHiMB,
+          sizeLo: sizeLoMB,
+          sources,
+
           lyrics,
           fulltext,
           uid,
-          size: sizeMB,
           hasLyrics // ✅ Новое поле
         };
       });
@@ -2774,9 +2793,12 @@ class AlbumsManager {
         const coverUrl = this.albumCoverUrlCache.get(albumKey) || 'img/logo.png';
 
         const tracksForCore = albumData.tracks
-          .filter(t => !!t.file)
+          .filter(t => !!t && (!!t.fileHi || !!t.file || !!t.fileLo))
           .map((t) => ({
-            src: t.file,
+            // legacy fallback: если sources нет, src возьмём из Hi (или из file)
+            src: t.fileHi || t.file || t.fileLo,
+            sources: t.sources || null,
+
             title: t.title,
             artist: albumData.artist || 'Витрина Разбита',
             album: albumKey,
