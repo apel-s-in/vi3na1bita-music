@@ -157,9 +157,30 @@
         : null;
 
       if (albumData && Array.isArray(albumData.tracks)) {
-        const byNum = albumData.tracks.find(t => t.file === track.src || t.title === track.title);
-        if (byNum && typeof byNum.size === 'number') {
-          sizeHint = ` (~${byNum.size.toFixed(2)} МБ)`;
+        const uid = String(track?.uid || '').trim();
+        const byUid = uid
+          ? albumData.tracks.find(t => t && String(t.uid || '').trim() === uid)
+          : null;
+
+        const size = (() => {
+          // При Lo/Hi отображаем просто "размер трека" по текущему src:
+          // - если src совпал с fileLo -> sizeLo
+          // - иначе -> sizeHi
+          if (!byUid) return null;
+
+          const curSrc = String(track?.src || '').trim();
+          const loSrc = String(byUid.fileLo || '').trim();
+          if (curSrc && loSrc && curSrc === loSrc) {
+            return (typeof byUid.sizeLo === 'number') ? byUid.sizeLo : null;
+          }
+
+          return (typeof byUid.sizeHi === 'number')
+            ? byUid.sizeHi
+            : (typeof byUid.size === 'number' ? byUid.size : null);
+        })();
+
+        if (typeof size === 'number') {
+          sizeHint = ` (~${size.toFixed(2)} МБ)`;
         }
       }
 
