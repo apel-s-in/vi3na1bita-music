@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5eebd72ff8f6839b08437111e33e56fb73c40212.idx
-│   │       ├── pack-5eebd72ff8f6839b08437111e33e56fb73c40212.pack
-│   │       └── pack-5eebd72ff8f6839b08437111e33e56fb73c40212.rev
+│   │       ├── pack-5276cdedf793b6abcaff62cf14f5102d1c8b3555.idx
+│   │       ├── pack-5276cdedf793b6abcaff62cf14f5102d1c8b3555.pack
+│   │       └── pack-5276cdedf793b6abcaff62cf14f5102d1c8b3555.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -383,7 +383,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-03 20:49:59 UTC
+Сгенерировано: 2026-01-03 20:51:25 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4189,9 +4189,30 @@ export default NavigationManager;
         : null;
 
       if (albumData && Array.isArray(albumData.tracks)) {
-        const byNum = albumData.tracks.find(t => t.file === track.src || t.title === track.title);
-        if (byNum && typeof byNum.size === 'number') {
-          sizeHint = ` (~${byNum.size.toFixed(2)} МБ)`;
+        const uid = String(track?.uid || '').trim();
+        const byUid = uid
+          ? albumData.tracks.find(t => t && String(t.uid || '').trim() === uid)
+          : null;
+
+        const size = (() => {
+          // При Lo/Hi отображаем просто "размер трека" по текущему src:
+          // - если src совпал с fileLo -> sizeLo
+          // - иначе -> sizeHi
+          if (!byUid) return null;
+
+          const curSrc = String(track?.src || '').trim();
+          const loSrc = String(byUid.fileLo || '').trim();
+          if (curSrc && loSrc && curSrc === loSrc) {
+            return (typeof byUid.sizeLo === 'number') ? byUid.sizeLo : null;
+          }
+
+          return (typeof byUid.sizeHi === 'number')
+            ? byUid.sizeHi
+            : (typeof byUid.size === 'number' ? byUid.size : null);
+        })();
+
+        if (typeof size === 'number') {
+          sizeHint = ` (~${size.toFixed(2)} МБ)`;
         }
       }
 
