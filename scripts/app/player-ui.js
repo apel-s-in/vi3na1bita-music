@@ -1510,28 +1510,6 @@
     return false;
   }
 
-  function isLyricsKnownMissingFast(lyricsUrl) {
-    const url = String(lyricsUrl || '').trim();
-    if (!url) return true;
-
-    // 1) 404 cache
-    if (isLyrics404Cached(url)) return true;
-
-    // 2) sessionStorage cache marker
-    try {
-      const cacheKey = `lyrics_cache_${url}`;
-      const cached = sessionStorage.getItem(cacheKey);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (parsed === null || parsed === '__NO_LYRICS__') return true;
-      }
-    } catch {
-      // игнорируем ошибки парсинга
-    }
-
-    return false;
-  }
-
   /**
    * ✅ Проверяет, есть ли лирика у трека БЕЗ HEAD-запроса
    * Использует поле hasLyrics из config.json (если есть)
