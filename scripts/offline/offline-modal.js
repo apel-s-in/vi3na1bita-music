@@ -45,4 +45,52 @@ export class OfflineModal {
         </section>
         <section>
           <h3>Кэш</h3>
-          <
+          <div>pinned: ${Math.round(breakdown.pinned/1024/1024)} MB</div>
+          <div>cloud: ${Math.round(breakdown.cloud/1024/1024)} MB</div>
+          <div>transient: ${Math.round(breakdown.transient/1024/1024)} MB</div>
+          <div>other: ${Math.round(breakdown.other/1024/1024)} MB</div>
+          <button id="btn-clear">Очистить…</button>
+        </section>
+        <section>
+          <h3>Обновления</h3>
+          <button id="btn-update-all">Обновить все файлы</button>
+        </section>
+        <section>
+          <h3>100% OFFLINE</h3>
+          <button id="btn-100">Начать…</button>
+        </section>
+      </div>
+    `;
+    this._el = this._utils.createModal(html, { closeOnOverlay: true });
+    this._bind();
+  }
+
+  _bind() {
+    const $ = (sel) => this._el.querySelector(sel);
+    $('#om-offline')?.addEventListener('change', async (e) => {
+      await this._om.setOfflineMode(e.target.checked ? 'on' : 'off');
+    });
+    this._el.querySelectorAll('input[name="cq"]').forEach(r => {
+      r.addEventListener('change', async (e) => {
+        await this._om.setCacheQuality(e.target.value);
+      });
+    });
+    $('#cloudN')?.addEventListener('change', async (e) => {
+      await this._om.setCloudSettings({ threshold: Number(e.target.value), ttlDays: Number($('#cloudD').value) });
+    });
+    $('#cloudD')?.addEventListener('change', async (e) => {
+      await this._om.setCloudSettings({ threshold: Number($('#cloudN').value), ttlDays: Number(e.target.value) });
+    });
+    $('#net-wifi')?.addEventListener('change', async (e) => {
+      await this._om.setNetworkPolicy({ wifi: e.target.checked, mobile: !!$('#net-mobile')?.checked });
+    });
+    $('#net-mobile')?.addEventListener('change', async (e) => {
+      await this._om.setNetworkPolicy({ wifi: !!$('#net-wifi')?.checked, mobile: e.target.checked });
+    });
+    $('#btn-update-all')?.addEventListener('click', () => {
+      // триггерим внешнюю логику updater-а (он сформирует очередь)
+      // здесь только UI-клей, детальную реализацию дадим при интеграции
+      alert('Будут обновлены файлы. Рекомендуется Wi‑Fi.');
+    });
+  }
+}
