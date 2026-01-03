@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-042d870696e92fcf998b4ab9597878eb8806fa40.idx
-│   │       ├── pack-042d870696e92fcf998b4ab9597878eb8806fa40.pack
-│   │       └── pack-042d870696e92fcf998b4ab9597878eb8806fa40.rev
+│   │       ├── pack-a2b8f557f41c092b5d3516e3de41cd2def3c9b22.idx
+│   │       ├── pack-a2b8f557f41c092b5d3516e3de41cd2def3c9b22.pack
+│   │       └── pack-a2b8f557f41c092b5d3516e3de41cd2def3c9b22.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-03 20:34:01 UTC
+Сгенерировано: 2026-01-03 20:34:32 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1179,7 +1179,6 @@ const STATIC_ASSETS = [
   './scripts/app/player-ui.js',
   './scripts/app/albums.js',
   './scripts/app/navigation.js',
-  './scripts/app/downloads.js',
   './scripts/app.js',
   './src/PlayerCore.js',
 
