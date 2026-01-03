@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b6f565d3297e7f5be4d2064c0f95c5f7030ef068.idx
-│   │       ├── pack-b6f565d3297e7f5be4d2064c0f95c5f7030ef068.pack
-│   │       └── pack-b6f565d3297e7f5be4d2064c0f95c5f7030ef068.rev
+│   │       ├── pack-042d870696e92fcf998b4ab9597878eb8806fa40.idx
+│   │       ├── pack-042d870696e92fcf998b4ab9597878eb8806fa40.pack
+│   │       └── pack-042d870696e92fcf998b4ab9597878eb8806fa40.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-03 20:33:04 UTC
+Сгенерировано: 2026-01-03 20:34:01 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -770,7 +770,6 @@ jobs:
   <script src="./scripts/app/gallery.js" type="module"></script>
   <script src="./scripts/app/albums.js" type="module"></script>
   <script src="./scripts/app/navigation.js" type="module"></script>
-  <script src="./scripts/app/downloads.js" type="module"></script>
   
   <!-- Main App -->
   <script src="./scripts/app.js" type="module"></script>
@@ -832,10 +831,6 @@ jobs:
       
       <button id="install-pwa-btn" style="display: none;">
         УСТАНОВИТЬ КАК ПРИЛОЖЕНИЕ
-      </button>
-      
-      <button id="download-album-main">
-        СКАЧАТЬ ВЕСЬ АЛЬБОМ
       </button>
       
       <button class="hotkeys-btn" id="hotkeys-btn" style="display:none;">
