@@ -1370,6 +1370,21 @@ header {
 .sleep-btn-secondary { background: rgba(255,255,255,0.1); color: var(--text-color); }
 .sleep-btn:hover { opacity: 0.8; }
 
+.offline-modal-content .offline-section {
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--border-color);
+}
+.offline-modal-content .desc {
+  font-size: 0.85em;
+  color: var(--text-secondary);
+}
+#offline-btn.alert::after {
+  content: "!";
+  margin-left: 4px;
+  color: var(--accent-color);
+}
+
 /* ===== Hotkeys modal ===== */
 
 .hotkeys-modal { max-width: 600px; max-height: 80vh; overflow-y: auto; }
