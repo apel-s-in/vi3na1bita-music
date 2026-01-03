@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f971b6f3a4279a65ffe0ea56f60a7d637a4cc5c3.idx
-│   │       ├── pack-f971b6f3a4279a65ffe0ea56f60a7d637a4cc5c3.pack
-│   │       └── pack-f971b6f3a4279a65ffe0ea56f60a7d637a4cc5c3.rev
+│   │       ├── pack-8c614bc863b171be01190e96120802d93e8f4af2.idx
+│   │       ├── pack-8c614bc863b171be01190e96120802d93e8f4af2.pack
+│   │       └── pack-8c614bc863b171be01190e96120802d93e8f4af2.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-03 22:26:50 UTC
+Сгенерировано: 2026-01-03 22:28:12 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1003,9 +1003,11 @@ jobs:
     console.log(`🎵 Витрина Разбита v${VERSION} (${BUILD_DATE})`);
   </script>
 <script type="module" src="./scripts/app/offline-ui-bootstrap.js"></script>
-<script type=“module”>
-import { attachOfflineIndicators } from ‘./scripts/ui/offline-indicators.js’;
-attachOfflineIndicators();
+<script type="module">
+  import { attachOfflineIndicators } from './scripts/ui/offline-indicators.js';
+  import { attachCacheProgressOverlay } from './scripts/ui/cache-progress-overlay.js';
+  attachOfflineIndicators();
+  attachCacheProgressOverlay();
 </script>
 </body>
 </html>
