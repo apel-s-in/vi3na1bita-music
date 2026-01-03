@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e8791d3b59c90e479bac0e66f2317de7b99d3cee.idx
-│   │       ├── pack-e8791d3b59c90e479bac0e66f2317de7b99d3cee.pack
-│   │       └── pack-e8791d3b59c90e479bac0e66f2317de7b99d3cee.rev
+│   │       ├── pack-2522e70e763c7449d2d84f240b5ce15249e80e89.idx
+│   │       ├── pack-2522e70e763c7449d2d84f240b5ce15249e80e89.pack
+│   │       └── pack-2522e70e763c7449d2d84f240b5ce15249e80e89.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-03 20:36:09 UTC
+Сгенерировано: 2026-01-03 20:37:42 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -12149,8 +12149,7 @@ header {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-#install-pwa-btn,
-#download-album-main {
+#install-pwa-btn {
   color: #fff;
   background: var(--secondary-color);
   border: none;
@@ -12166,22 +12165,13 @@ header {
   transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
 }
 
-#download-album-main {
-  background: var(--primary-color);
-  font-size: 1.09em;
-}
-
-#install-pwa-btn:hover,
-#download-album-main:hover {
+#install-pwa-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+  background: #3275c2;
 }
 
-#install-pwa-btn:active,
-#download-album-main:active { transform: translateY(0); }
-
-#install-pwa-btn:hover { background: #3275c2; }
-#download-album-main:hover { background: #c60000; }
+#install-pwa-btn:active { transform: translateY(0); }
 
 .feedback-link,
 .support-link,
