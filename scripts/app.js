@@ -495,14 +495,24 @@
         if (!albumData || !albumInfo) return;
 
         const base = albumInfo.base || '';
+        const coverUrl = (() => {
+          try {
+            return window.AlbumsManager?.albumCoverUrlCache?.get?.(albumKey) || 'img/logo.png';
+          } catch {
+            return 'img/logo.png';
+          }
+        })();
+
         const tracksForCore = albumData.tracks
-          .filter(t => !!t.file)
+          .filter(t => !!t && (!!t.fileHi || !!t.file || !!t.fileLo))
           .map((t) => ({
-            src: t.file,
+            src: t.fileHi || t.file || t.fileLo,
+            sources: t.sources || null,
+
             title: t.title,
             artist: albumData.artist || 'Витрина Разбита',
             album: albumKey,
-            cover: 'img/logo.png',
+            cover: coverUrl,
             lyrics: t.lyrics || null,
             fulltext: t.fulltext || null,
             uid: (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null,
