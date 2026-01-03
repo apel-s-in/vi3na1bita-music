@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c7eefaf556d993f47db1e825dc23cf182709417b.idx
-│   │       ├── pack-c7eefaf556d993f47db1e825dc23cf182709417b.pack
-│   │       └── pack-c7eefaf556d993f47db1e825dc23cf182709417b.rev
+│   │       ├── pack-e8791d3b59c90e479bac0e66f2317de7b99d3cee.idx
+│   │       ├── pack-e8791d3b59c90e479bac0e66f2317de7b99d3cee.pack
+│   │       └── pack-e8791d3b59c90e479bac0e66f2317de7b99d3cee.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-03 20:35:08 UTC
+Сгенерировано: 2026-01-03 20:36:09 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3797,11 +3797,6 @@ class NavigationManager {
       supportLink.href = window.APP_CONFIG?.SUPPORT_URL || 'https://example.com/support';
     }
 
-    const downloadBtn = document.getElementById('download-album-main');
-    downloadBtn?.addEventListener('click', () => {
-      this.downloadCurrentAlbum();
-    });
-
     const hotkeysBtn = document.getElementById('hotkeys-btn');
     hotkeysBtn?.addEventListener('click', () => {
       this.showHotkeysModal();
@@ -3857,25 +3852,6 @@ class NavigationManager {
         <div class="hotkey-item"><span class="hotkey-combo">T</span><span class="hotkey-desc">Таймер сна</span></div>
       </div>
     `);
-  }
-
-  async downloadCurrentAlbum() {
-    const currentAlbum = window.AlbumsManager?.getCurrentAlbum?.();
-    if (!currentAlbum) {
-      window.NotificationSystem?.error('Не выбран альбом');
-      return;
-    }
-
-    if (String(currentAlbum).startsWith('__')) {
-      window.NotificationSystem?.info('Этот раздел нельзя скачать целиком');
-      return;
-    }
-
-    if (window.DownloadsManager) {
-      window.DownloadsManager.downloadAlbum(currentAlbum);
-    } else {
-      window.NotificationSystem?.info('Функция скачивания временно недоступна');
-    }
   }
 
   showModal(contentHtml) {
