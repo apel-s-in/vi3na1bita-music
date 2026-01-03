@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-808dbe98ce7b9b060a32c4562072e74cfeae9e24.idx
-│   │       ├── pack-808dbe98ce7b9b060a32c4562072e74cfeae9e24.pack
-│   │       └── pack-808dbe98ce7b9b060a32c4562072e74cfeae9e24.rev
+│   │       ├── pack-9f9b57587aac64950dce1079d08005f75d1431ce.idx
+│   │       ├── pack-9f9b57587aac64950dce1079d08005f75d1431ce.pack
+│   │       └── pack-9f9b57587aac64950dce1079d08005f75d1431ce.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -400,7 +400,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-03 23:16:15 UTC
+Сгенерировано: 2026-01-03 23:18:18 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -14151,6 +14151,21 @@ header {
 .sleep-btn-primary { background: var(--primary-color); color: #fff; }
 .sleep-btn-secondary { background: rgba(255,255,255,0.1); color: var(--text-color); }
 .sleep-btn:hover { opacity: 0.8; }
+
+.offline-modal-content .offline-section {
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--border-color);
+}
+.offline-modal-content .desc {
+  font-size: 0.85em;
+  color: var(--text-secondary);
+}
+#offline-btn.alert::after {
+  content: "!";
+  margin-left: 4px;
+  color: var(--accent-color);
+}
 
 /* ===== Hotkeys modal ===== */
 
