@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a2c70c60a7c8fa00133f67220f3a8b25392c154e.idx
-│   │       ├── pack-a2c70c60a7c8fa00133f67220f3a8b25392c154e.pack
-│   │       └── pack-a2c70c60a7c8fa00133f67220f3a8b25392c154e.rev
+│   │       ├── pack-d58717934c09ec41145df464d433fbf88f767905.idx
+│   │       ├── pack-d58717934c09ec41145df464d433fbf88f767905.pack
+│   │       └── pack-d58717934c09ec41145df464d433fbf88f767905.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -362,6 +362,7 @@ vi3na1bita-music/
 │   │   ├── offline-manager.js
 │   │   ├── playback-cache.js
 │   │   ├── queue-manager.js
+│   │   ├── stats-manager.js
 │   │   ├── track-resolver.js
 │   │   └── updater.js
 │   ├── ui/
@@ -390,7 +391,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-03 21:34:09 UTC
+Сгенерировано: 2026-01-03 21:34:52 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8084,6 +8085,38 @@ export class QueueManager {
 }
 
 export { PRIORITY };
+
+//=================================================
+// FILE: /scripts/offline/stats-manager.js
+// scripts/offline/stats-manager.js
+
+import { getGlobalStats } from './cache-db.js';
+
+export async function getPopularTracks({ allUids, minFullListens = 3, getTitleByUid }) {
+  const out = [];
+  for (const uid of allUids()) {
+    const s = await getGlobalStats(uid);
+    if ((s.totalFullListens || 0) >= minFullListens) {
+      out.push({
+        uid,
+        title: getTitleByUid(uid),
+        fullListens: s.totalFullListens || 0,
+        totalPlayMs: s.totalPlayMs || 0,
+      });
+    }
+  }
+  // сортировка по убыванию fullListens
+  out.sort((a, b) => (b.fullListens - a.fullListens) || (b.totalPlayMs - a.totalPlayMs));
+  return out;
+}
+
+export function formatTotalTime(ms) {
+  const sec = Math.floor(ms / 1000);
+  const d = Math.floor(sec / 86400);
+  const h = Math.floor((sec % 86400) / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  return { days: d, hours: h, minutes: m };
+}
 
 //=================================================
 // FILE: /scripts/offline/track-resolver.js
