@@ -1,0 +1,86 @@
+// scripts/ui/cache-progress-overlay.js
+// AC12: независимый слой прогресса кэша (CQ) поверх основного прогресс-бара.
+// Не трогаем PlayerCore и основной прогресс/seek. Инварианты I1/I2 соблюдены.
+
+import { OfflineUI } from '../app/offline-ui-bootstrap.js';
+import { bytesByQuality } from '../offline/cache-db.js';
+import { getTrackByUid } from '../app/track-registry.js';
+
+const CSS_TEXT = `
+  #player-progress-bar { position: relative; }
+  #player-cache-fill {
+    position: absolute;
+    inset: 0;
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.15) 100%);
+    border-radius: 3px;
+    pointer-events: none;
+    z-index: 0; /* под основным fill */
+  }
+  #player-progress-fill { position: relative; z-index: 1; } /* основной слой сверху */
+`;
+
+function injectCssOnce() {
+  if (document.getElementById('cache-progress-css')) return;
+  const s = document.createElement('style');
+  s.id = 'cache-progress-css';
+  s.textContent = CSS_TEXT;
+  document.head.appendChild(s);
+}
+
+function ensureOverlay() {
+  const bar = document.getElementById('player-progress-bar');
+  if (!bar) return null;
+  let ov = document.getElementById('player-cache-fill');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'player-cache-fill';
+    bar.prepend(ov); // кладём под основной fill
+  }
+  return ov;
+}
+
+async function computePercentForCurrent() {
+  const pc = window.playerCore;
+  if (!pc || typeof pc.getCurrentTrack !== 'function') return 0;
+
+  const track = pc.getCurrentTrack();
+  if (!track) return 0;
+
+  const uid = String(track.uid || '').trim();
+  if (!uid) return 0;
+
+  const cq = await OfflineUI.offlineManager.getCacheQuality();
+  const meta = getTrackByUid(uid) || {};
+  const need = cq === 'hi' ? Number(meta.sizeHi || meta.size || 0) : Number(meta.sizeLo || meta.size_low || 0);
+  if (!need) return 0;
+
+  const { hi, lo } = await bytesByQuality(uid);
+  const have = cq === 'hi' ? hi : lo;
+  const pct = Math.max(0, Math.min(100, (have / need) * 100));
+  return pct;
+}
+
+async function updateOverlay() {
+  const ov = ensureOverlay();
+  if (!ov) return;
+  try {
+    const pct = await computePercentForCurrent();
+    ov.style.width = `${pct.toFixed(2)}%`;
+  } catch {}
+}
+
+export function attachCacheProgressOverlay() {
+  injectCssOnce();
+  ensureOverlay();
+  updateOverlay();
+
+  // Обновления при изменениях кэш-загрузок (быстро и дёшево)
+  OfflineUI.offlineManager.on('progress', () => {
+    updateOverlay();
+  });
+
+  // Лёгкий поллинг, чтобы поймать смены трека/качества, если UI не повесил событие
+  setInterval(updateOverlay, 1000);
+}
