@@ -26,11 +26,6 @@ class NavigationManager {
       supportLink.href = window.APP_CONFIG?.SUPPORT_URL || 'https://example.com/support';
     }
 
-    const downloadBtn = document.getElementById('download-album-main');
-    downloadBtn?.addEventListener('click', () => {
-      this.downloadCurrentAlbum();
-    });
-
     const hotkeysBtn = document.getElementById('hotkeys-btn');
     hotkeysBtn?.addEventListener('click', () => {
       this.showHotkeysModal();
@@ -86,25 +81,6 @@ class NavigationManager {
         <div class="hotkey-item"><span class="hotkey-combo">T</span><span class="hotkey-desc">Таймер сна</span></div>
       </div>
     `);
-  }
-
-  async downloadCurrentAlbum() {
-    const currentAlbum = window.AlbumsManager?.getCurrentAlbum?.();
-    if (!currentAlbum) {
-      window.NotificationSystem?.error('Не выбран альбом');
-      return;
-    }
-
-    if (String(currentAlbum).startsWith('__')) {
-      window.NotificationSystem?.info('Этот раздел нельзя скачать целиком');
-      return;
-    }
-
-    if (window.DownloadsManager) {
-      window.DownloadsManager.downloadAlbum(currentAlbum);
-    } else {
-      window.NotificationSystem?.info('Функция скачивания временно недоступна');
-    }
   }
 
   showModal(contentHtml) {
