@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d0a26e6c8327fd7890e3a0839d40657b7f9f1485.idx
-│   │       ├── pack-d0a26e6c8327fd7890e3a0839d40657b7f9f1485.pack
-│   │       └── pack-d0a26e6c8327fd7890e3a0839d40657b7f9f1485.rev
+│   │       ├── pack-781f9e776341865e17e3155e5dd9018ee3a62f12.idx
+│   │       ├── pack-781f9e776341865e17e3155e5dd9018ee3a62f12.pack
+│   │       └── pack-781f9e776341865e17e3155e5dd9018ee3a62f12.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -360,6 +360,7 @@ vi3na1bita-music/
 │   ├── offline/
 │   │   ├── cache-db.js
 │   │   ├── offline-manager.js
+│   │   ├── offline-modal.js
 │   │   ├── playback-cache.js
 │   │   ├── queue-manager.js
 │   │   ├── stats-manager.js
@@ -392,7 +393,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-03 21:35:19 UTC
+Сгенерировано: 2026-01-03 21:35:47 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7921,6 +7922,57 @@ export class OfflineManager {
     this._emit('progress', { ...ev, completed: true });
   }
 }
+
+//=================================================
+// FILE: /scripts/offline/offline-modal.js
+// scripts/offline/offline-modal.js
+
+import { getSetting, setSetting } from './cache-db.js';
+
+export class OfflineModal {
+  constructor({ utils, offlineManager, updater, getBreakdown }) {
+    // utils: { createModal(html, options) }
+    this._utils = utils;
+    this._om = offlineManager;
+    this._updater = updater;
+    this._getBreakdown = getBreakdown || (async () => ({ pinned:0, cloud:0, transient:0, other:0 }));
+    this._el = null;
+  }
+
+  async open() {
+    const cq = await getSetting('cacheQuality:v1', 'hi');
+    const offlineMode = await getSetting('offlinePolicy:v1', 'off');
+    const wifi = await getSetting('net:wifi:v1', true);
+    const mobile = await getSetting('net:mobile:v1', true);
+    const threshold = await getSetting('cloud:threshold', 5);
+    const ttlDays = await getSetting('cloud:ttlDays', 31);
+    const breakdown = await this._getBreakdown();
+
+    const html = `
+      <div class="offline-modal">
+        <h2>OFFLINE</h2>
+        <section>
+          <h3>Offline mode</h3>
+          <label><input type="checkbox" id="om-offline" ${offlineMode==='on'?'checked':''}/> Включить политику OFFLINE</label>
+        </section>
+        <section>
+          <h3>Cache quality</h3>
+          <label><input type="radio" name="cq" value="hi" ${cq==='hi'?'checked':''}/> Hi</label>
+          <label><input type="radio" name="cq" value="lo" ${cq==='lo'?'checked':''}/> Lo</label>
+        </section>
+        <section>
+          <h3>Cloud</h3>
+          <label>N (порог): <input id="cloudN" type="number" min="1" value="${threshold}"/></label>
+          <label>D (дней): <input id="cloudD" type="number" min="1" value="${ttlDays}"/></label>
+        </section>
+        <section>
+          <h3>Сеть</h3>
+          <label><input type="checkbox" id="net-wifi" ${wifi?'checked':''}/> Разрешить Wi‑Fi</label>
+          <label><input type="checkbox" id="net-mobile" ${mobile?'checked':''}/> Разрешить мобильную</label>
+        </section>
+        <section>
+          <h3>Кэш</h3>
+          <
 
 //=================================================
 // FILE: /scripts/offline/playback-cache.js
