@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6df1de1aa1d26a7d7d86ad08496b76bf6c527581.idx
-│   │       ├── pack-6df1de1aa1d26a7d7d86ad08496b76bf6c527581.pack
-│   │       └── pack-6df1de1aa1d26a7d7d86ad08496b76bf6c527581.rev
+│   │       ├── pack-b1e45a98a191976f36ea515dc644105f38703e55.idx
+│   │       ├── pack-b1e45a98a191976f36ea515dc644105f38703e55.pack
+│   │       └── pack-b1e45a98a191976f36ea515dc644105f38703e55.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -398,7 +398,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-03 22:52:33 UTC
+Сгенерировано: 2026-01-03 22:53:33 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1007,8 +1007,10 @@ jobs:
 <script type="module">
   import { attachOfflineIndicators } from './scripts/ui/offline-indicators.js';
   import { attachCacheProgressOverlay } from './scripts/ui/cache-progress-overlay.js';
+  import { attachPlaybackCache } from './scripts/app/playback-cache-bootstrap.js';
   attachOfflineIndicators();
   attachCacheProgressOverlay();
+  attachPlaybackCache();
 </script>
 </body>
 </html>
