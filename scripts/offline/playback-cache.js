@@ -31,42 +31,54 @@ export class PlaybackCacheManager {
     if (curIdx < 0) return;
 
     const q = normPq(pq);
+    const dir = String(ctx?.direction || 'forward') === 'backward' ? 'backward' : 'forward';
 
-    // Окно: prev/cur/next
-    const ids = [];
-    for (const di of [-1, 0, 1]) {
-      const idx = (curIdx + di + list.length) % list.length;
-      const uid = uidOfTrack(list[idx]);
-      if (uid) ids.push(uid);
-    }
+    const prevIdx = (curIdx - 1 + list.length) % list.length;
+    const nextIdx = (curIdx + 1) % list.length;
 
-    for (const uid of ids) {
+    const prevUid = uidOfTrack(list[prevIdx]);
+    const nextUid = uidOfTrack(list[nextIdx]);
+
+    const enqueue = (uid, priority) => {
+      if (!uid) return;
+      if (!this.queue || typeof this.queue.add !== 'function') return;
+
+      const key = `pc:${q}:${uid}`;
+
+      // ✅ Не ставим дубликаты (в очереди или running)
+      if (typeof this.queue.hasTask === 'function' && this.queue.hasTask(key)) return;
+
       const meta = (typeof trackProvider === 'function') ? trackProvider(uid) : null;
-      if (!meta) continue;
+      if (!meta) return;
 
-      // ✅ Реальное кэширование окна через downloader (OfflineManager.cacheTrackAudio)
-      if (this.queue && typeof this.queue.add === 'function') {
-        const pr = (uid === curUid) ? 30 : (uid === ids[2] ? 20 : 10); // CUR > NEXT > PREV (порядок ids: prev,cur,next)
-        const key = `pc:${q}:${uid}`;
+      this.queue.add({
+        key,
+        uid,
+        priority,
+        run: async () => {
+          try {
+            if (typeof this.downloader === 'function') {
+              await this.downloader(uid, q);
+              return;
+            }
+            if (typeof this.resolver === 'function') {
+              await this.resolver(meta, q);
+            }
+          } catch {}
+        }
+      });
+    };
 
-        this.queue.add({
-          key,
-          uid,
-          priority: pr,
-          run: async () => {
-            try {
-              if (typeof this.downloader === 'function') {
-                await this.downloader(uid, q);
-                return;
-              }
-              // fallback: если downloader не передан — просто дергаем resolver (no-op)
-              if (typeof this.resolver === 'function') {
-                await this.resolver(meta, q);
-              }
-            } catch {}
-          }
-        });
-      }
+    // ✅ ТЗ 7.7: CUR всегда первый и должен быть “самый приоритетный”
+    enqueue(curUid, 30);
+
+    // ✅ ТЗ 7.7: затем только один сосед по направлению
+    if (dir === 'backward') {
+      enqueue(prevUid, 20);
+    } else {
+      enqueue(nextUid, 20);
     }
+
+    // PREV/NEXT второй стороны НЕ докачиваем (строго по ТЗ 7.7).
   }
 }
