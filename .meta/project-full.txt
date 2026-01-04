@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-bcaa5982886419cb9387e07deecf6282049a04af.idx
-│   │       ├── pack-bcaa5982886419cb9387e07deecf6282049a04af.pack
-│   │       └── pack-bcaa5982886419cb9387e07deecf6282049a04af.rev
+│   │       ├── pack-1e922b636b135bc16a17dcf9f2bbaecd41c9dc58.idx
+│   │       ├── pack-1e922b636b135bc16a17dcf9f2bbaecd41c9dc58.pack
+│   │       └── pack-1e922b636b135bc16a17dcf9f2bbaecd41c9dc58.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -361,6 +361,7 @@ vi3na1bita-music/
 │   │   ├── player.spec.js
 │   │   └── utils.js
 │   ├── offline/
+│   │   ├── cache-db.js
 │   │   └── offline-manager.js
 │   ├── ui/
 │   │   ├── cache-progress-overlay.js
@@ -391,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 12:27:13 UTC
+Сгенерировано: 2026-01-04 12:27:39 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7681,6 +7682,155 @@ export async function seedPlayerStateV2FromCurrent(page, opts = {}) {
 
     localStorage.setItem('playerStateV2', JSON.stringify(st));
   }, { position, wasPlaying });
+}
+
+//=================================================
+// FILE: /scripts/offline/cache-db.js
+// scripts/offline/cache-db.js
+// IndexedDB слой (CQ bytes) — MVP.
+// Нужен для cache-progress-overlay.js (bytesByQuality).
+// НЕ хранит blobs "по-настоящему" в этом коммите — только bytes (счётчики).
+
+const DB_NAME = 'vitrina-offline-db';
+const DB_VERSION = 1;
+
+const STORE_META = 'meta'; // key -> value
+const STORE_BYTES = 'bytes'; // uid -> { hi:number, lo:number }
+
+const META_CQ_KEY = 'cacheQuality';
+
+let dbPromise = null;
+
+function openDb() {
+  if (dbPromise) return dbPromise;
+
+  dbPromise = new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+
+    req.onupgradeneeded = () => {
+      const db = req.result;
+
+      if (!db.objectStoreNames.contains(STORE_META)) {
+        db.createObjectStore(STORE_META);
+      }
+      if (!db.objectStoreNames.contains(STORE_BYTES)) {
+        db.createObjectStore(STORE_BYTES);
+      }
+    };
+
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error || new Error('IndexedDB open failed'));
+  });
+
+  return dbPromise;
+}
+
+function txp(db, store, mode, fn) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, mode);
+    const st = tx.objectStore(store);
+
+    let res;
+    try { res = fn(st); } catch (e) { reject(e); return; }
+
+    tx.oncomplete = () => resolve(res);
+    tx.onerror = () => reject(tx.error || new Error('IndexedDB tx failed'));
+    tx.onabort = () => reject(tx.error || new Error('IndexedDB tx aborted'));
+  });
+}
+
+export async function ensureDbReady() {
+  await openDb();
+}
+
+export async function getCacheQuality() {
+  try {
+    const db = await openDb();
+    const v = await txp(db, STORE_META, 'readonly', (st) => {
+      return new Promise((resolve, reject) => {
+        const r = st.get(META_CQ_KEY);
+        r.onsuccess = () => resolve(r.result);
+        r.onerror = () => reject(r.error);
+      });
+    });
+
+    const s = String(v || '').toLowerCase();
+    return (s === 'lo') ? 'lo' : 'hi';
+  } catch {
+    return 'hi';
+  }
+}
+
+export async function setCacheQuality(v) {
+  const cq = (String(v || '').toLowerCase() === 'lo') ? 'lo' : 'hi';
+  try {
+    const db = await openDb();
+    await txp(db, STORE_META, 'readwrite', (st) => {
+      st.put(cq, META_CQ_KEY);
+    });
+  } catch {}
+  return cq;
+}
+
+export async function bytesByQuality(uid) {
+  const u = String(uid || '').trim();
+  if (!u) return { hi: 0, lo: 0 };
+
+  try {
+    const db = await openDb();
+    const row = await txp(db, STORE_BYTES, 'readonly', (st) => {
+      return new Promise((resolve, reject) => {
+        const r = st.get(u);
+        r.onsuccess = () => resolve(r.result || null);
+        r.onerror = () => reject(r.error);
+      });
+    });
+
+    const hi = Number(row?.hi || 0);
+    const lo = Number(row?.lo || 0);
+
+    return {
+      hi: Number.isFinite(hi) && hi > 0 ? hi : 0,
+      lo: Number.isFinite(lo) && lo > 0 ? lo : 0
+    };
+  } catch {
+    return { hi: 0, lo: 0 };
+  }
+}
+
+export async function setBytes(uid, quality, bytes) {
+  const u = String(uid || '').trim();
+  if (!u) return;
+
+  const q = (String(quality || '').toLowerCase() === 'lo') ? 'lo' : 'hi';
+  const b = Number(bytes || 0);
+  const safe = Number.isFinite(b) && b > 0 ? b : 0;
+
+  try {
+    const db = await openDb();
+    await txp(db, STORE_BYTES, 'readwrite', (st) => {
+      const getReq = st.get(u);
+
+      getReq.onsuccess = () => {
+        const cur = getReq.result || { hi: 0, lo: 0 };
+        const next = { hi: Number(cur.hi || 0), lo: Number(cur.lo || 0) };
+        next[q] = safe;
+        st.put(next, u);
+      };
+    });
+  } catch {}
+}
+
+export async function deleteTrackCache(uid) {
+  const u = String(uid || '').trim();
+  if (!u) return;
+
+  try {
+    const db = await openDb();
+    await txp(db, STORE_BYTES, 'readwrite', (st) => {
+      st.delete(u);
+    });
+  } catch {}
 }
 
 //=================================================
