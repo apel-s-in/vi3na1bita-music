@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6c20babc56098442d439522e8f9a2da6248953a1.idx
-│   │       ├── pack-6c20babc56098442d439522e8f9a2da6248953a1.pack
-│   │       └── pack-6c20babc56098442d439522e8f9a2da6248953a1.rev
+│   │       ├── pack-f6093ceae26e197455cef712edde8effd28c4d92.idx
+│   │       ├── pack-f6093ceae26e197455cef712edde8effd28c4d92.pack
+│   │       └── pack-f6093ceae26e197455cef712edde8effd28c4d92.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 19:19:17 UTC
+Сгенерировано: 2026-01-04 19:30:07 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9196,16 +9196,22 @@ export async function resolvePlaybackSource(params) {
 
   const uid = String(track?.uid || '').trim() || null;
 
-  // network urls from current track.sources
+  // network urls from track meta (support both new and legacy shapes)
   const sources = track?.sources || null;
-  const key = 'audio';
 
-  const urlHi = String(sources?.[key]?.hi || '').trim() || null;
-  const urlLo = String(sources?.[key]?.lo || '').trim() || null;
+  const urlHi =
+    String(sources?.audio?.hi || '').trim() ||
+    String(track?.audio || track?.src || '').trim() ||
+    null;
+
+  const urlLo =
+    String(sources?.audio?.lo || '').trim() ||
+    String(track?.audio_low || '').trim() ||
+    null;
 
   const pickNetworkUrl = (q) => {
-    if (q === 'lo') return urlLo || urlHi || String(track?.src || '').trim() || null;
-    return urlHi || urlLo || String(track?.src || '').trim() || null;
+    if (q === 'lo') return urlLo || urlHi || null;
+    return urlHi || urlLo || null;
   };
 
   // Локальная доступность (MVP по bytes):
