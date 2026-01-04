@@ -20,6 +20,7 @@ import {
 
 import { resolvePlaybackSource } from './track-resolver.js';
 import { getTrackByUid } from '../app/track-registry.js';
+import { getNetPolicy, isAllowedByNetPolicy, shouldConfirmByPolicy } from './net-policy.js';
 
 const OFFLINE_MODE_KEY = 'offlineMode:v1';
 const CQ_KEY = 'offline:cacheQuality:v1';
@@ -466,8 +467,7 @@ export class OfflineManager {
 
     if (!online) return { ok: false, reason: 'offlineNoNetwork' };
 
-    // ✅ Enforce network policy (wifi/cellular/unknown/ask)
-    const policy = getNetPolicy();
+    // ✅ Enforce network policy (единый модуль net-policy.js)
     const st = (() => {
       try {
         if (window.NetworkManager && typeof window.NetworkManager.getStatus === 'function') {
@@ -477,14 +477,19 @@ export class OfflineManager {
       return { online: navigator.onLine !== false, kind: 'unknown', raw: null, saveData: false };
     })();
 
-    if (policy !== 'ask' && !canDownloadByPolicy(policy, st)) {
+    const policy = getNetPolicy();
+
+    // ask: confirm только для userInitiated; для auto-задач пропускаем
+    const userInitiated = !!options?.userInitiated;
+    const isAuto = !userInitiated;
+
+    if (policy !== 'ask' && !isAllowedByNetPolicy(policy, st)) {
       return { ok: false, reason: `netPolicyBlocked:${policy}:${st.kind || 'unknown'}` };
     }
 
-    if (policy === 'ask') {
-      // Для авто-задач (playback cache/фон) — не показываем confirm, просто пропускаем
-      if (!userInitiated) {
-        // Сигналим в UI "!" через offline alert
+    if (shouldConfirmByPolicy(policy, st, { isMass: false, isAuto }) && policy === 'ask') {
+      if (isAuto) {
+        // Авто-задачи (PlaybackCache/фон): не показываем confirm, ставим alert "!"
         try {
           localStorage.setItem('offline:alert:v1', JSON.stringify({
             on: true,
@@ -496,13 +501,11 @@ export class OfflineManager {
         return { ok: false, reason: 'netPolicyAsk:autoTaskSkipped' };
       }
 
-      // Для действий пользователя — спрашиваем
       const ok = window.confirm('Разрешить загрузку трека по текущей сети?');
       if (!ok) return { ok: false, reason: 'netPolicyAsk:userDenied' };
     }
 
     this._em.emit('progress', { uid: u, phase: 'downloadStart', quality: q });
-
     try {
       const r = await fetch(url, { cache: 'no-cache' });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
