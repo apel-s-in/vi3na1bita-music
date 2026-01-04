@@ -86,6 +86,8 @@
 
       // ✅ Смена плейлиста: сбрасываем кэш наличия офлайн complete
       this._hasAnyOfflineCacheComplete = null;
+
+      this.playlist = (tracks || []).map((t) => {
         const uid = (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null;
 
         // ✅ sources: расширяемая структура под future minus/stem/clip
@@ -97,7 +99,6 @@
           : null;
 
         const src = this._selectSrc({
-          uid,
           legacySrc: t.src,
           sources,
           sourceKey: this.sourceKey,
