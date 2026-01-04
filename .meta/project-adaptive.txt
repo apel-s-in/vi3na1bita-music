@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-40e5ec959a5562b7dfcb743f6586fd611708f6ed.idx
-│   │       ├── pack-40e5ec959a5562b7dfcb743f6586fd611708f6ed.pack
-│   │       └── pack-40e5ec959a5562b7dfcb743f6586fd611708f6ed.rev
+│   │       ├── pack-e1f54757cf4ec9f97d6b2475201265e0afda581d.idx
+│   │       ├── pack-e1f54757cf4ec9f97d6b2475201265e0afda581d.pack
+│   │       └── pack-e1f54757cf4ec9f97d6b2475201265e0afda581d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 21:22:17 UTC
+Сгенерировано: 2026-01-04 21:23:54 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1465,6 +1465,24 @@ self.addEventListener('message', (event) => {
       try {
         // 1. Загрузка индекса альбомов
         await this.loadAlbumsIndex();
+
+        // ✅ OFFLINE: автопредзагрузка TrackRegistry всеми треками (1 раз)
+        // Нужно, чтобы pinned/cloud/offline-all работали сразу, даже без открытия всех альбомов.
+        try {
+          const key = 'offline:preloadAllTracksOnce:v1';
+          const done = localStorage.getItem(key) === '1';
+
+          if (!done) {
+            const mod = await import('./ui/offline-modal.js');
+            if (mod && typeof mod.preloadAllAlbumsTrackIndex === 'function') {
+              // Не блокируем UI полностью: но дождёмся, чтобы индикаторы могли работать уверенно.
+              await mod.preloadAllAlbumsTrackIndex();
+              localStorage.setItem(key, '1');
+            }
+          }
+        } catch (e) {
+          console.warn('OFFLINE preloadAllAlbumsTrackIndex failed:', e);
+        }
 
         // 2. Ожидаем, что PlayerCore уже инициализировался (src/PlayerCore.js делает это сам)
         // 3. Инициализация избранного
