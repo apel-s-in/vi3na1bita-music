@@ -135,17 +135,28 @@ async function renderModal() {
         </div>
       </div>
 
-      <!-- C: Pinned / actions (MVP) -->
+      <!-- C: Pinned / actions -->
       <div style="border-top:1px solid rgba(255,255,255,0.08); padding-top: 12px; margin-top: 12px;">
         <div style="font-weight: 900; color:#eaf2ff; margin-bottom: 8px;">C) Pinned / Cache</div>
+
+        <div style="color:#9db7dd; line-height:1.45; margin-bottom: 10px;">
+          <div><strong>Кэш (примерно):</strong> <span id="offline-cache-size">...</span></div>
+          <div><strong>Pinned:</strong> <span id="offline-pinned-count">...</span></div>
+        </div>
+
         <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+          <button class="offline-btn online" id="offline-modal-download-pinned" style="min-width: 220px;">
+            Скачать всё pinned 🔒
+          </button>
+          <button class="offline-btn" id="offline-modal-clear-cache" style="min-width: 220px;">
+            Очистить кэш
+          </button>
           <button class="offline-btn" id="offline-modal-clear-alert" style="min-width: 220px;">
             Сбросить "!" (прочитано)
           </button>
         </div>
-        <div style="margin-top:8px; font-size: 12px; color:#9db7dd; text-align:center;">
-          Полная очистка/100% OFFLINE будет добавлена следующим шагом (после downloader + blobs).
-        </div>
+
+        <div id="offline-pinned-list" style="margin-top:10px; font-size:12px; color:#9db7dd; text-align:left;"></div>
       </div>
 
       <!-- D: Network policy -->
@@ -188,11 +199,53 @@ function bindModalHandlers(modal) {
   const om = OfflineUI.offlineManager;
   if (!modal || !om) return;
 
+  const fmtBytes = (b) => {
+    const n = Number(b || 0);
+    if (!Number.isFinite(n) || n <= 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.min(sizes.length - 1, Math.floor(Math.log(n) / Math.log(k)));
+    const val = n / Math.pow(k, i);
+    return `${val.toFixed(i === 0 ? 0 : 2)} ${sizes[i]}`;
+  };
+
+  const fillStats = async () => {
+    try {
+      const bytes = await om.getCacheSizeBytes();
+      const pinned = om.getPinnedUids();
+
+      const sizeEl = modal.querySelector('#offline-cache-size');
+      const pcEl = modal.querySelector('#offline-pinned-count');
+      const listEl = modal.querySelector('#offline-pinned-list');
+
+      if (sizeEl) sizeEl.textContent = fmtBytes(bytes);
+      if (pcEl) pcEl.textContent = String(pinned.length);
+
+      if (listEl) {
+        if (!pinned.length) {
+          listEl.textContent = 'Pinned список пуст.';
+        } else {
+          listEl.innerHTML = `
+            <div style="opacity:.9; margin-bottom:6px;">UID pinned:</div>
+            <div style="display:flex; flex-wrap:wrap; gap:6px;">
+              ${pinned.map(u => `<span style="padding:3px 8px; border:1px solid rgba(255,255,255,.12); border-radius:999px;">${String(u)}</span>`).join('')}
+            </div>
+          `;
+        }
+      }
+    } catch {
+      // no-op
+    }
+  };
+
   const rerender = async () => {
     try { modal.remove(); } catch {}
     const next = await renderModal();
     bindModalHandlers(next);
   };
+
+  // Заполним статистику после рендера
+  fillStats();
 
   modal.querySelector('#offline-modal-toggle')?.addEventListener('click', async () => {
     const next = !om.isOfflineMode();
@@ -227,6 +280,33 @@ function bindModalHandlers(modal) {
     await om.setCacheQuality('lo');
     window.NotificationSystem?.success('CQ: Lo');
     await rerender();
+  });
+
+  modal.querySelector('#offline-modal-download-pinned')?.addEventListener('click', async () => {
+    try {
+      om.enqueuePinnedDownloadAll();
+      window.NotificationSystem?.success('Очередь pinned поставлена');
+    } catch {
+      window.NotificationSystem?.error('Не удалось поставить pinned в очередь');
+    } finally {
+      await rerender();
+    }
+  });
+
+  modal.querySelector('#offline-modal-clear-cache')?.addEventListener('click', async () => {
+    const ok = window.confirm('Очистить кэш? Это удалит blobs/bytes и сбросит cloud-статистику. Воспроизведение не остановится.');
+    if (!ok) return;
+
+    try {
+      const done = await om.clearAllCache();
+      if (done) window.NotificationSystem?.success('Кэш очищен');
+      else window.NotificationSystem?.error('Не удалось очистить кэш');
+    } catch {
+      window.NotificationSystem?.error('Не удалось очистить кэш');
+    } finally {
+      try { window.dispatchEvent(new CustomEvent('offline:uiChanged')); } catch {}
+      await rerender();
+    }
   });
 
   modal.querySelector('#offline-modal-clear-alert')?.addEventListener('click', async () => {
