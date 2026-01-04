@@ -12,6 +12,7 @@ import {
 } from './cache-db.js';
 
 import { resolvePlaybackSource } from './track-resolver.js';
+import { getTrackByUid } from '../app/track-registry.js';
 
 const OFFLINE_MODE_KEY = 'offlineMode:v1';
 const CQ_KEY = 'offline:cacheQuality:v1';
@@ -143,6 +144,45 @@ export class OfflineManager {
     try { localStorage.setItem(CQ_KEY, v); } catch {}
     await setCacheQuality(v);
     this._em.emit('progress', { uid: null, phase: 'cqChanged' });
+  }
+
+  async isTrackComplete(uid, quality) {
+    const u = String(uid || '').trim();
+    if (!u) return false;
+
+    const q = (String(quality || '').toLowerCase() === 'lo') ? 'lo' : 'hi';
+    const meta = getTrackByUid(u);
+    if (!meta) return false;
+
+    const need = q === 'hi'
+      ? Number(meta.sizeHi || meta.size || 0)
+      : Number(meta.sizeLo || meta.size_low || 0);
+
+    if (!(need > 0)) return false;
+
+    const have = await bytesByQuality(u);
+    const got = q === 'hi' ? Number(have.hi || 0) : Number(have.lo || 0);
+
+    return got >= need;
+  }
+
+  async hasAnyComplete(uids) {
+    const list = Array.isArray(uids) ? uids : [];
+    if (list.length === 0) return false;
+
+    // Проверяем сначала CQ, потом второй уровень (чтобы считать "есть офлайн вообще")
+    const cq = await this.getCacheQuality();
+    const alt = cq === 'hi' ? 'lo' : 'hi';
+
+    for (const uid of list) {
+      // eslint-disable-next-line no-await-in-loop
+      if (await this.isTrackComplete(uid, cq)) return true;
+    }
+    for (const uid of list) {
+      // eslint-disable-next-line no-await-in-loop
+      if (await this.isTrackComplete(uid, alt)) return true;
+    }
+    return false;
   }
 
   _getPinnedSet() {
