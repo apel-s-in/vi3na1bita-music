@@ -354,6 +354,50 @@ export async function deleteTrackCache(uid) {
   } catch {}
 }
 
+export async function clearAllStores({ keepCacheQuality = true } = {}) {
+  // Полная очистка bytes + blobs + cloud meta.
+  // По умолчанию cacheQuality сохраняем (чтобы CQ не “сбрасывался” неожиданно).
+  try {
+    const db = await openDb();
+
+    // 1) bytes — clear
+    await txp(db, STORE_BYTES, 'readwrite', (st) => {
+      st.clear();
+    });
+
+    // 2) blobs — clear
+    await txp(db, STORE_BLOBS, 'readwrite', (st) => {
+      st.clear();
+    });
+
+    // 3) meta — удаляем cloud:* и cloudCandidate:* (и при желании cacheQuality)
+    await txp(db, STORE_META, 'readwrite', (st) => {
+      return new Promise((resolve, reject) => {
+        const req = st.openCursor();
+        req.onsuccess = () => {
+          const cursor = req.result;
+          if (!cursor) {
+            resolve(true);
+            return;
+          }
+          const k = String(cursor.key || '');
+          const isCloud = k.startsWith('cloud:') || k.startsWith('cloudCandidate:');
+          const isCQ = k === 'cacheQuality';
+          if (isCloud || (!keepCacheQuality && isCQ)) {
+            try { cursor.delete(); } catch {}
+          }
+          cursor.continue();
+        };
+        req.onerror = () => reject(req.error);
+      });
+    });
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function getAudioBlob(uid, quality) {
   const u = String(uid || '').trim();
   if (!u) return null;
