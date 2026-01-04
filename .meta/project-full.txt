@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-fe9367f1caf7f226ce82c3f67df49fb8d1ca5dd4.idx
-│   │       ├── pack-fe9367f1caf7f226ce82c3f67df49fb8d1ca5dd4.pack
-│   │       └── pack-fe9367f1caf7f226ce82c3f67df49fb8d1ca5dd4.rev
+│   │       ├── pack-0b58f71b0ada74770768332aa4e41ecb8898a50d.idx
+│   │       ├── pack-0b58f71b0ada74770768332aa4e41ecb8898a50d.pack
+│   │       └── pack-0b58f71b0ada74770768332aa4e41ecb8898a50d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 20:08:12 UTC
+Сгенерировано: 2026-01-04 20:17:22 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9119,7 +9119,7 @@ export class PlaybackCacheManager {
 
       const key = `pc:${q}:${uid}`;
 
-      // ✅ Не ставим дубликаты (в очереди или running)
+      // ✅ Дедуп: не ставим задачу если она уже в очереди или выполняется
       if (typeof this.queue.hasTask === 'function' && this.queue.hasTask(key)) return;
 
       const meta = (typeof trackProvider === 'function') ? trackProvider(uid) : null;
@@ -9143,7 +9143,7 @@ export class PlaybackCacheManager {
       });
     };
 
-    // ✅ ТЗ 7.7: CUR всегда первый и должен быть “самый приоритетный”
+    // ✅ ТЗ 7.7: всегда сначала CUR до 100%
     enqueue(curUid, 30);
 
     // ✅ ТЗ 7.7: затем только один сосед по направлению
@@ -9152,10 +9152,7 @@ export class PlaybackCacheManager {
     } else {
       enqueue(nextUid, 20);
     }
-
-    // PREV/NEXT второй стороны НЕ докачиваем (строго по ТЗ 7.7).
   }
-}
 
 //=================================================
 // FILE: /scripts/offline/track-resolver.js
