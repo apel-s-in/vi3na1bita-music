@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e9e03ccb8b186ea865e3db8007e8c4c5f17d5c86.idx
-│   │       ├── pack-e9e03ccb8b186ea865e3db8007e8c4c5f17d5c86.pack
-│   │       └── pack-e9e03ccb8b186ea865e3db8007e8c4c5f17d5c86.rev
+│   │       ├── pack-2e157db8f7ffa2e864c39a3347efab571307cfe6.idx
+│   │       ├── pack-2e157db8f7ffa2e864c39a3347efab571307cfe6.pack
+│   │       └── pack-2e157db8f7ffa2e864c39a3347efab571307cfe6.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -396,7 +396,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 15:25:58 UTC
+Сгенерировано: 2026-01-04 15:29:09 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8232,7 +8232,17 @@ class SimpleQueue {
 
   add(task) {
     if (!task) return;
-    this._items.push(task);
+
+    const pr = Number(task?.priority || 0);
+    const safePr = Number.isFinite(pr) ? pr : 0;
+
+    const item = { ...task, priority: safePr, __enqTs: Date.now() };
+
+    // ✅ Приоритетная вставка: higher priority first, FIFO внутри одинакового priority.
+    const idx = this._items.findIndex(t => (Number(t?.priority || 0) < safePr));
+    if (idx === -1) this._items.push(item);
+    else this._items.splice(idx, 0, item);
+
     this._tick();
   }
 
@@ -8500,11 +8510,33 @@ export class OfflineManager {
     }
   }
 
-  async cacheTrackAudio(uid, quality) {
+  async cacheTrackAudio(uid, quality, options = {}) {
     const u = String(uid || '').trim();
     if (!u) return { ok: false, reason: 'noUid' };
 
     const q = (String(quality || '').toLowerCase() === 'lo') ? 'lo' : 'hi';
+
+    const userInitiated = !!options?.userInitiated;
+
+    const getNetPolicy = () => {
+      const v = String(localStorage.getItem('offline:netPolicy:v1') || 'ask').toLowerCase().trim();
+      if (v === 'wifi') return 'wifi';
+      if (v === 'cellular') return 'cellular';
+      if (v === 'unknown') return 'unknown';
+      return 'ask';
+    };
+
+    const canDownloadByPolicy = (policy, st) => {
+      const kind = String(st?.kind || 'unknown');
+      // wifi: только wifi
+      if (policy === 'wifi') return kind === 'wifi';
+      // cellular: wifi или cellular
+      if (policy === 'cellular') return kind === 'wifi' || kind === 'cellular';
+      // unknown: разрешаем всё, включая unknown
+      if (policy === 'unknown') return true;
+      // ask: решим ниже
+      return true;
+    };
 
     // Уже есть blob — ничего не делаем
     const existing = await getAudioBlob(u, q);
@@ -8529,6 +8561,41 @@ export class OfflineManager {
     })();
 
     if (!online) return { ok: false, reason: 'offlineNoNetwork' };
+
+    // ✅ Enforce network policy (wifi/cellular/unknown/ask)
+    const policy = getNetPolicy();
+    const st = (() => {
+      try {
+        if (window.NetworkManager && typeof window.NetworkManager.getStatus === 'function') {
+          return window.NetworkManager.getStatus();
+        }
+      } catch {}
+      return { online: navigator.onLine !== false, kind: 'unknown', raw: null, saveData: false };
+    })();
+
+    if (policy !== 'ask' && !canDownloadByPolicy(policy, st)) {
+      return { ok: false, reason: `netPolicyBlocked:${policy}:${st.kind || 'unknown'}` };
+    }
+
+    if (policy === 'ask') {
+      // Для авто-задач (playback cache/фон) — не показываем confirm, просто пропускаем
+      if (!userInitiated) {
+        // Сигналим в UI "!" через offline alert
+        try {
+          localStorage.setItem('offline:alert:v1', JSON.stringify({
+            on: true,
+            ts: Date.now(),
+            reason: 'Загрузки требуют подтверждения (Network Policy = ask)'
+          }));
+          window.dispatchEvent(new CustomEvent('offline:uiChanged'));
+        } catch {}
+        return { ok: false, reason: 'netPolicyAsk:autoTaskSkipped' };
+      }
+
+      // Для действий пользователя — спрашиваем
+      const ok = window.confirm('Разрешить загрузку трека по текущей сети?');
+      if (!ok) return { ok: false, reason: 'netPolicyAsk:userDenied' };
+    }
 
     this._em.emit('progress', { uid: u, phase: 'downloadStart', quality: q });
 
