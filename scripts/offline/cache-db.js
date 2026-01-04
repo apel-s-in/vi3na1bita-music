@@ -199,50 +199,6 @@ function cloudCandidateKey(uid) {
   const u = String(uid || '').trim();
   return u ? `cloudCandidate:${u}` : '';
 }
-  const key = cloudKey(uid);
-  if (!key) return false;
-
-  const listens = Number(stats?.listens || 0);
-  const firstListenAt = Number(stats?.firstListenAt || 0);
-  const lastListenAt = Number(stats?.lastListenAt || 0);
-
-  const payload = {
-    listens: (Number.isFinite(listens) && listens > 0) ? Math.floor(listens) : 0,
-    firstListenAt: (Number.isFinite(firstListenAt) && firstListenAt > 0) ? Math.floor(firstListenAt) : 0,
-    lastListenAt: (Number.isFinite(lastListenAt) && lastListenAt > 0) ? Math.floor(lastListenAt) : 0
-  };
-
-  try {
-    const db = await openDb();
-    await txp(db, STORE_META, 'readwrite', (st) => {
-      st.put(payload, key);
-    });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export async function clearCloudStats(uid) {
-  const key = cloudKey(uid);
-  if (!key) return false;
-
-  try {
-    const db = await openDb();
-    await txp(db, STORE_META, 'readwrite', (st) => {
-      st.delete(key);
-    });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-// meta key format: cloudCandidate:{uid} -> boolean
-function cloudCandidateKey(uid) {
-  const u = String(uid || '').trim();
-  return u ? `cloudCandidate:${u}` : '';
-}
 
 export async function getCloudCandidate(uid) {
   const key = cloudCandidateKey(uid);
