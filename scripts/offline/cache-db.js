@@ -9,6 +9,9 @@ const DB_VERSION = 1;
 const STORE_META = 'meta'; // key -> value
 const STORE_BYTES = 'bytes'; // uid -> { hi:number, lo:number }
 
+// ✅ Реальное офлайн-хранилище аудио (Blob) по ключу `${uid}:${quality}`
+const STORE_BLOBS = 'blobs';
+
 const META_CQ_KEY = 'cacheQuality';
 
 let dbPromise = null;
@@ -27,6 +30,9 @@ function openDb() {
       }
       if (!db.objectStoreNames.contains(STORE_BYTES)) {
         db.createObjectStore(STORE_BYTES);
+      }
+      if (!db.objectStoreNames.contains(STORE_BLOBS)) {
+        db.createObjectStore(STORE_BLOBS);
       }
     };
 
@@ -141,6 +147,74 @@ export async function deleteTrackCache(uid) {
     const db = await openDb();
     await txp(db, STORE_BYTES, 'readwrite', (st) => {
       st.delete(u);
+    });
+  } catch {}
+
+  // ✅ Также удаляем blobs (если есть)
+  try {
+    const db = await openDb();
+    await txp(db, STORE_BLOBS, 'readwrite', (st) => {
+      st.delete(`${u}:hi`);
+      st.delete(`${u}:lo`);
+    });
+  } catch {}
+}
+
+export async function getAudioBlob(uid, quality) {
+  const u = String(uid || '').trim();
+  if (!u) return null;
+
+  const q = (String(quality || '').toLowerCase() === 'lo') ? 'lo' : 'hi';
+  const key = `${u}:${q}`;
+
+  try {
+    const db = await openDb();
+    const blob = await txp(db, STORE_BLOBS, 'readonly', (st) => {
+      return new Promise((resolve, reject) => {
+        const r = st.get(key);
+        r.onsuccess = () => resolve(r.result || null);
+        r.onerror = () => reject(r.error);
+      });
+    });
+    return blob || null;
+  } catch {
+    return null;
+  }
+}
+
+export async function setAudioBlob(uid, quality, blob) {
+  const u = String(uid || '').trim();
+  if (!u) return false;
+
+  const q = (String(quality || '').toLowerCase() === 'lo') ? 'lo' : 'hi';
+  const key = `${u}:${q}`;
+
+  if (!(blob instanceof Blob)) return false;
+
+  try {
+    const db = await openDb();
+    await txp(db, STORE_BLOBS, 'readwrite', (st) => {
+      st.put(blob, key);
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function deleteAudioBlob(uid, quality) {
+  const u = String(uid || '').trim();
+  if (!u) return;
+
+  const qRaw = String(quality || '').toLowerCase().trim();
+  const keys = (qRaw === 'hi' || qRaw === 'lo')
+    ? [`${u}:${qRaw}`]
+    : [`${u}:hi`, `${u}:lo`];
+
+  try {
+    const db = await openDb();
+    await txp(db, STORE_BLOBS, 'readwrite', (st) => {
+      keys.forEach(k => st.delete(k));
     });
   } catch {}
 }
