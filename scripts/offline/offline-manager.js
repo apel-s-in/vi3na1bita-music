@@ -18,7 +18,8 @@ import {
   getCloudCandidate,
   setCloudCandidate,
   clearCloudCandidate,
-  totalCachedBytes
+  totalCachedBytes,
+  clearAllStores
 } from './cache-db.js';
 
 import { resolvePlaybackSource } from './track-resolver.js';
@@ -143,6 +144,15 @@ export class OfflineManager {
   constructor() {
     this._em = new Emitter();
 
+    this.mass = {
+      active: false,
+      total: 0,
+      done: 0,
+      error: 0,
+      skipped: 0,
+      startedAt: 0
+    };
+
     this.queue = new SimpleQueue({
       onProgress: (ev) => this._em.emit('progress', ev)
     });
@@ -262,37 +272,80 @@ export class OfflineManager {
   }
 
   async clearAllCache() {
-    // ✅ Полная очистка: bytes+blobs+cloudStats, pinned очищаем.
+    // ✅ Полная очистка: bytes + blobs + cloud meta (cursor).
     // Воспроизведение НЕ трогаем.
     try {
-      const uids = new Set();
-      try {
-        // Лучше всего чистить по списку известных uid (TrackRegistry)
-        // но TrackRegistry ESM не импортируем сюда; берём из pinned + текущего плейлиста.
-        this.getPinnedUids().forEach(u => uids.add(u));
-        const pc = window.playerCore;
-        const snap = pc?.getPlaylistSnapshot?.() || [];
-        snap.forEach(t => {
-          const uid = String(t?.uid || '').trim();
-          if (uid) uids.add(uid);
-        });
-      } catch {}
-
-      for (const uid of Array.from(uids)) {
-        // eslint-disable-next-line no-await-in-loop
-        await deleteTrackCache(uid);
-        // eslint-disable-next-line no-await-in-loop
-        await clearCloudStats(uid);
-      }
+      const ok = await clearAllStores({ keepCacheQuality: true });
 
       // pinned set -> empty
       try { this._setPinnedSet(new Set()); } catch {}
 
       this._em.emit('progress', { uid: null, phase: 'allCacheCleared' });
-      return true;
+      return !!ok;
     } catch {
       return false;
     }
+  }
+
+  getMassStatus() {
+    return { ...this.mass };
+  }
+
+  enqueueOfflineAll(uids) {
+    const list = Array.isArray(uids) ? uids : [];
+    const uniq = Array.from(new Set(list.map(x => String(x || '').trim()).filter(Boolean)));
+    if (!uniq.length) {
+      this.mass = { active: false, total: 0, done: 0, error: 0, skipped: 0, startedAt: 0 };
+      this._em.emit('progress', { uid: null, phase: 'offlineAllEmpty' });
+      return { ok: false, reason: 'empty' };
+    }
+
+    // Массовая сессия
+    this.mass = {
+      active: true,
+      total: uniq.length,
+      done: 0,
+      error: 0,
+      skipped: 0,
+      startedAt: Date.now()
+    };
+
+    this._em.emit('progress', { uid: null, phase: 'offlineAllStart', total: uniq.length });
+
+    uniq.forEach((uid) => {
+      const taskKey = `offlineAll:${uid}`;
+      if (this.queue?.hasTask?.(taskKey)) return;
+
+      this.queue.add({
+        key: taskKey,
+        uid,
+        priority: 5,
+        run: async () => {
+          const cq = await this.getCacheQuality();
+
+          const r = await this.cacheTrackAudio(uid, cq, { userInitiated: false });
+
+          if (r && r.ok) {
+            this.mass.done += 1;
+          } else if (String(r?.reason || '').startsWith('netPolicyAsk:autoTaskSkipped')) {
+            this.mass.skipped += 1;
+          } else {
+            this.mass.error += 1;
+          }
+
+          // Завершение
+          const finished = (this.mass.done + this.mass.error + this.mass.skipped) >= this.mass.total;
+          if (finished) {
+            this.mass.active = false;
+            this._em.emit('progress', { uid: null, phase: 'offlineAllDone', ...this.getMassStatus() });
+          } else {
+            this._em.emit('progress', { uid: null, phase: 'offlineAllTick', ...this.getMassStatus() });
+          }
+        }
+      });
+    });
+
+    return { ok: true, total: uniq.length };
   }
 
   enqueuePinnedDownloadAll() {
