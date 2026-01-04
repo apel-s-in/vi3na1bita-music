@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-100eb685cf78b0eaa5a207adb266185e4bac7f64.idx
-│   │       ├── pack-100eb685cf78b0eaa5a207adb266185e4bac7f64.pack
-│   │       └── pack-100eb685cf78b0eaa5a207adb266185e4bac7f64.rev
+│   │       ├── pack-0a2e53c3c7f98c5fe51b7ef30049c04329302817.idx
+│   │       ├── pack-0a2e53c3c7f98c5fe51b7ef30049c04329302817.pack
+│   │       └── pack-0a2e53c3c7f98c5fe51b7ef30049c04329302817.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -343,6 +343,7 @@ vi3na1bita-music/
 │   │   ├── background-events.js
 │   │   ├── gallery.js
 │   │   ├── navigation.js
+│   │   ├── network-manager.js
 │   │   ├── offline-ui-bootstrap.js
 │   │   ├── playback-cache-bootstrap.js
 │   │   ├── playback-policy.js
@@ -393,7 +394,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 12:48:02 UTC
+Сгенерировано: 2026-01-04 12:50:18 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3725,6 +3726,80 @@ if (document.readyState === 'loading') {
 }
 
 export default NavigationManager;
+
+//=================================================
+// FILE: /scripts/app/network-manager.js
+// scripts/app/network-manager.js
+(function () {
+  function safeGetConnection() {
+    return navigator.connection || navigator.mozConnection || navigator.webkitConnection || null;
+  }
+
+  function normalizeType(connection) {
+    // Network Information API:
+    // - effectiveType: 'slow-2g'|'2g'|'3g'|'4g'
+    // - type: 'wifi'|'cellular'|...
+    if (!connection) return { kind: 'unknown', raw: null };
+
+    const type = connection.type;
+    const effectiveType = connection.effectiveType;
+
+    if (type === 'wifi') return { kind: 'wifi', raw: { type, effectiveType } };
+    if (type === 'cellular') return { kind: 'cellular', raw: { type, effectiveType } };
+
+    // iOS Safari чаще всего не даёт connection — будет unknown
+    // На некоторых Android/Chromium type может быть undefined, но effectiveType есть
+    if (effectiveType) {
+      // считаем это "cellular-ish" (потому что effectiveType обычно даёт радио-оценку)
+      return { kind: 'cellular', raw: { type, effectiveType } };
+    }
+
+    return { kind: 'unknown', raw: { type, effectiveType } };
+  }
+
+  function getStatus() {
+    const online = navigator.onLine !== false; // если undefined — считаем online (iOS quirks)
+    const conn = safeGetConnection();
+    const net = normalizeType(conn);
+    return {
+      online,
+      kind: net.kind, // 'wifi'|'cellular'|'unknown'
+      raw: net.raw,
+      saveData: !!(conn && conn.saveData),
+    };
+  }
+
+  const listeners = new Set();
+
+  function emit() {
+    const st = getStatus();
+    listeners.forEach((fn) => {
+      try { fn(st); } catch (_) {}
+    });
+  }
+
+  function subscribe(fn) {
+    listeners.add(fn);
+    // instant fire
+    try { fn(getStatus()); } catch (_) {}
+    return () => listeners.delete(fn);
+  }
+
+  window.addEventListener('online', emit);
+  window.addEventListener('offline', emit);
+
+  const conn = safeGetConnection();
+  if (conn && typeof conn.addEventListener === 'function') {
+    conn.addEventListener('change', emit);
+  } else if (conn && ('onchange' in conn)) {
+    conn.onchange = emit;
+  }
+
+  window.NetworkManager = {
+    getStatus,
+    subscribe,
+  };
+})();
 
 //=================================================
 // FILE: /scripts/app/offline-ui-bootstrap.js
