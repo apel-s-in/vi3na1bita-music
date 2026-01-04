@@ -737,8 +737,7 @@ header {
 .animation-btn,
 .pulse-btn,
 .karaoke-btn,
-.player-download-btn,
-.eco-btn {
+.player-download-btn {
   width: var(--btn-size);
   min-width: var(--btn-size);
   max-width: var(--btn-size);
@@ -858,26 +857,7 @@ header {
   box-shadow: 0 4px 12px rgba(77,170,255,0.2);
 }
 
-/* Eco ⚡ */
-.eco-btn {
-  background: linear-gradient(135deg, #1a7a4a, #0a4a2a);
-  border: 1px solid rgba(39,179,76,0.3);
-  color: #27b34c;
-}
-
-.eco-btn:hover {
-  background: linear-gradient(135deg, #2a8a5a, #1a5a3a);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(39,179,76,0.2);
-}
-
-.eco-btn svg { width: 16px; height: 16px; }
-
-.eco-btn.active {
-  background: rgba(232, 1, 0, 0.12);
-  border-color: rgba(232, 1, 0, 0.25);
-  color: var(--primary-color);
-}
+/* eco-btn удалён по ТЗ_Нью (PQ Hi/Lo отдельная кнопка) */
 
 /* Disabled for lyrics-related buttons */
 .lyrics-toggle-btn.disabled,
@@ -1569,8 +1549,7 @@ body.ios #mute-btn { display: none !important; }
   .animation-btn,
   .pulse-btn,
   .karaoke-btn,
-  .player-download-btn,
-  .eco-btn {
+  .player-download-btn {
     width: calc(33.333% - 4px);
     min-width: unset;
     max-width: unset;
