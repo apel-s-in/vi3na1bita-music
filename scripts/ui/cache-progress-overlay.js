@@ -53,12 +53,21 @@ async function computePercentForCurrent() {
 
   const cq = await OfflineUI.offlineManager.getCacheQuality();
   const meta = getTrackByUid(uid) || {};
-  const need = cq === 'hi' ? Number(meta.sizeHi || meta.size || 0) : Number(meta.sizeLo || meta.size_low || 0);
-  if (!need) return 0;
+
+  const needMb = cq === 'hi'
+    ? Number(meta.sizeHi || meta.size || 0)
+    : Number(meta.sizeLo || meta.size_low || 0);
+
+  if (!(Number.isFinite(needMb) && needMb > 0)) return 0;
+
+  const needBytes = Math.floor(needMb * 1024 * 1024);
 
   const { hi, lo } = await bytesByQuality(uid);
-  const have = cq === 'hi' ? hi : lo;
-  const pct = Math.max(0, Math.min(100, (have / need) * 100));
+  const haveBytes = cq === 'hi' ? Number(hi || 0) : Number(lo || 0);
+
+  if (!(Number.isFinite(haveBytes) && haveBytes > 0)) return 0;
+
+  const pct = Math.max(0, Math.min(100, (haveBytes / needBytes) * 100));
   return pct;
 }
 
