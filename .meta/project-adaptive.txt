@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-457bf58ff9a5703bbc19d08c8cf37d3282fd3735.idx
-│   │       ├── pack-457bf58ff9a5703bbc19d08c8cf37d3282fd3735.pack
-│   │       └── pack-457bf58ff9a5703bbc19d08c8cf37d3282fd3735.rev
+│   │       ├── pack-564591fbb528c95bf81ac2d73f5c5810b93090c8.idx
+│   │       ├── pack-564591fbb528c95bf81ac2d73f5c5810b93090c8.pack
+│   │       └── pack-564591fbb528c95bf81ac2d73f5c5810b93090c8.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 19:40:45 UTC
+Сгенерировано: 2026-01-04 19:42:19 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -10706,9 +10706,17 @@ async function refreshRow(row) {
   renderIndicator(row, ind, uid);
 }
 
+let __refreshAllTimer = null;
+
 function refreshAll() {
-  const list = document.querySelectorAll('#track-list .track');
-  list.forEach((row) => refreshRow(row));
+  // ✅ Debounce: на пачку DOM-мутаций/событий делаем один проход
+  if (__refreshAllTimer) return;
+
+  __refreshAllTimer = setTimeout(() => {
+    __refreshAllTimer = null;
+    const list = document.querySelectorAll('#track-list .track');
+    list.forEach((row) => refreshRow(row));
+  }, 50);
 }
 
 function bindLiveUpdates() {
@@ -10725,8 +10733,8 @@ function bindLiveUpdates() {
   });
 
   // При любых точечных апдейтах списка (например, favorites:changed) — безопасный рефреш
-  window.addEventListener('favorites:changed', () => setTimeout(refreshAll, 0));
-  window.addEventListener('favorites:refsChanged', () => setTimeout(refreshAll, 0));
+  window.addEventListener('favorites:changed', () => refreshAll());
+  window.addEventListener('favorites:refsChanged', () => refreshAll());
 }
 
 export function attachOfflineIndicators() {
