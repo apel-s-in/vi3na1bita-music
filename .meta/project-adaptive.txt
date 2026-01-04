@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-efa3c19014827fe71ff6ddc8e238ac5b3eea19cb.idx
-│   │       ├── pack-efa3c19014827fe71ff6ddc8e238ac5b3eea19cb.pack
-│   │       └── pack-efa3c19014827fe71ff6ddc8e238ac5b3eea19cb.rev
+│   │       ├── pack-316329518a17dd728dbd1ea67edb9625514f6782.idx
+│   │       ├── pack-316329518a17dd728dbd1ea67edb9625514f6782.pack
+│   │       └── pack-316329518a17dd728dbd1ea67edb9625514f6782.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -395,7 +395,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 13:05:20 UTC
+Сгенерировано: 2026-01-04 13:11:12 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -13705,11 +13705,7 @@ header {
 .sleep-btn-secondary { background: rgba(255,255,255,0.1); color: var(--text-color); }
 .sleep-btn:hover { opacity: 0.8; }
 
-#offline-btn.alert::after {
-  content: "!";
-  margin-left: 4px;
-  color: var(--primary-color);
-}
+/* (removed duplicate offline alert badge rule; keep the final definition below) */
 
 /* ===== Hotkeys modal ===== */
 
