@@ -246,6 +246,38 @@ export async function setBytes(uid, quality, bytes) {
   } catch {}
 }
 
+export async function totalCachedBytes() {
+  try {
+    const db = await openDb();
+    const sum = await txp(db, STORE_BYTES, 'readonly', (st) => {
+      return new Promise((resolve, reject) => {
+        let total = 0;
+        const req = st.openCursor();
+
+        req.onsuccess = () => {
+          const cursor = req.result;
+          if (!cursor) {
+            resolve(total);
+            return;
+          }
+          const v = cursor.value || {};
+          const hi = Number(v.hi || 0);
+          const lo = Number(v.lo || 0);
+          if (Number.isFinite(hi) && hi > 0) total += hi;
+          if (Number.isFinite(lo) && lo > 0) total += lo;
+          cursor.continue();
+        };
+
+        req.onerror = () => reject(req.error);
+      });
+    });
+
+    return Number.isFinite(sum) && sum > 0 ? Math.floor(sum) : 0;
+  } catch {
+    return 0;
+  }
+}
+
 export async function deleteTrackCache(uid) {
   const u = String(uid || '').trim();
   if (!u) return;
