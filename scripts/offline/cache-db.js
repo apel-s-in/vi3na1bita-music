@@ -165,6 +165,61 @@ export async function clearCloudStats(uid) {
   }
 }
 
+// meta key format: cloudCandidate:{uid} -> boolean
+function cloudCandidateKey(uid) {
+  const u = String(uid || '').trim();
+  return u ? `cloudCandidate:${u}` : '';
+}
+
+export async function getCloudCandidate(uid) {
+  const key = cloudCandidateKey(uid);
+  if (!key) return false;
+
+  try {
+    const db = await openDb();
+    const v = await txp(db, STORE_META, 'readonly', (st) => {
+      return new Promise((resolve, reject) => {
+        const r = st.get(key);
+        r.onsuccess = () => resolve(r.result);
+        r.onerror = () => reject(r.error);
+      });
+    });
+    return v === true;
+  } catch {
+    return false;
+  }
+}
+
+export async function setCloudCandidate(uid, flag) {
+  const key = cloudCandidateKey(uid);
+  if (!key) return false;
+
+  try {
+    const db = await openDb();
+    await txp(db, STORE_META, 'readwrite', (st) => {
+      st.put(!!flag, key);
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function clearCloudCandidate(uid) {
+  const key = cloudCandidateKey(uid);
+  if (!key) return false;
+
+  try {
+    const db = await openDb();
+    await txp(db, STORE_META, 'readwrite', (st) => {
+      st.delete(key);
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function bytesByQuality(uid) {
   const u = String(uid || '').trim();
   if (!u) return { hi: 0, lo: 0 };
