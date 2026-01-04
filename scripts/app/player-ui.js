@@ -88,6 +88,8 @@
     w.playerCore.on({
       onTrackChange: (track, index) => {
         onTrackChange(track, index);
+        // PQ availability зависит от текущего трека
+        try { updatePQButton(); } catch {}
       },
       onPlay: () => {
         updatePlayPauseIcon();
@@ -446,6 +448,10 @@
         </div>
         
         <div class="player-controls-row">
+          <button class="player-control-btn" id="pq-btn" title="Качество (Hi/Lo)">
+            <span class="pq-btn-label" id="pq-btn-label">Hi</span>
+          </button>
+
           <button class="player-control-btn" id="mute-btn" title="Без звука (M)">
             <svg viewBox="0 0 24 24" fill="currentColor">
               <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
@@ -701,6 +707,12 @@
           toggleShuffle();
           return;
 
+        case 'pq-btn':
+          e.preventDefault();
+          e.stopPropagation();
+          togglePQ();
+          return;
+
         case 'mute-btn':
           toggleMute();
           return;
@@ -942,6 +954,49 @@
     });
 
     try { localStorage.setItem('playerVolume', String(v)); } catch {}
+  }
+
+  function updatePQButton() {
+    const btn = document.getElementById('pq-btn');
+    const label = document.getElementById('pq-btn-label');
+    if (!btn || !label) return;
+
+    const mode = String(localStorage.getItem('qualityMode:v1') || w.playerCore?.getQualityMode?.() || 'hi')
+      .toLowerCase() === 'lo'
+      ? 'lo'
+      : 'hi';
+
+    const canToggle = !!w.playerCore?.canToggleQualityForCurrentTrack?.();
+
+    btn.classList.toggle('pq-hi', mode === 'hi');
+    btn.classList.toggle('pq-lo', mode === 'lo');
+    btn.classList.toggle('disabled', !canToggle);
+
+    btn.setAttribute('aria-disabled', canToggle ? 'false' : 'true');
+    btn.style.pointerEvents = canToggle ? '' : 'none';
+
+    label.textContent = mode === 'lo' ? 'Lo' : 'Hi';
+  }
+
+  function togglePQ() {
+    if (!w.playerCore) return;
+
+    const canToggle = !!w.playerCore.canToggleQualityForCurrentTrack?.();
+    if (!canToggle) {
+      w.NotificationSystem?.info('Для этого трека Lo недоступно');
+      updatePQButton();
+      return;
+    }
+
+    const cur = String(localStorage.getItem('qualityMode:v1') || w.playerCore.getQualityMode?.() || 'hi')
+      .toLowerCase() === 'lo'
+      ? 'lo'
+      : 'hi';
+
+    const next = cur === 'hi' ? 'lo' : 'hi';
+    w.playerCore.switchQuality(next);
+
+    updatePQButton();
   }
 
   function toggleMute() {
@@ -2028,6 +2083,9 @@
         });
       }
     } catch {}
+
+    // PQ кнопка: синхронизируем состояние при старте (до первого onTrackChange)
+    try { updatePQButton(); } catch {}
 
     console.log(`✅ Settings restored: lyrics=${lyricsViewMode}, animation=${animationEnabled}`);
   }
