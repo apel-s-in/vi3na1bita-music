@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-0a2e53c3c7f98c5fe51b7ef30049c04329302817.idx
-│   │       ├── pack-0a2e53c3c7f98c5fe51b7ef30049c04329302817.pack
-│   │       └── pack-0a2e53c3c7f98c5fe51b7ef30049c04329302817.rev
+│   │       ├── pack-1c9fb6e2f0dce3abf6d078523b72ca16440485b3.idx
+│   │       ├── pack-1c9fb6e2f0dce3abf6d078523b72ca16440485b3.pack
+│   │       └── pack-1c9fb6e2f0dce3abf6d078523b72ca16440485b3.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -394,7 +394,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 12:50:18 UTC
+Сгенерировано: 2026-01-04 12:56:31 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -775,6 +775,10 @@ jobs:
   <!-- App Modules -->
   <script src="./scripts/app/background-audio.js" defer></script>
   <script src="./scripts/app/background-events.js" defer></script>
+
+  <!-- Network (needed for PQ rules + future network policy) -->
+  <script src="./scripts/app/network-manager.js" defer></script>
+
   <script src="./scripts/app/playback-policy.js" defer></script>
   <script src="./scripts/app/player-ui.js" defer></script>
   <script src="./scripts/app/gallery.js" type="module"></script>
