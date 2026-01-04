@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f0d46408a0474292baabecc01d637101b340d64b.idx
-│   │       ├── pack-f0d46408a0474292baabecc01d637101b340d64b.pack
-│   │       └── pack-f0d46408a0474292baabecc01d637101b340d64b.rev
+│   │       ├── pack-93d116b3bd3d673f98a97904af353c186fa482e5.idx
+│   │       ├── pack-93d116b3bd3d673f98a97904af353c186fa482e5.pack
+│   │       └── pack-93d116b3bd3d673f98a97904af353c186fa482e5.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 10:49:02 UTC
+Сгенерировано: 2026-01-04 12:14:14 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4143,6 +4143,8 @@ export function attachPlaybackCache() {
     w.playerCore.on({
       onTrackChange: (track, index) => {
         onTrackChange(track, index);
+        // PQ availability зависит от текущего трека
+        try { updatePQButton(); } catch {}
       },
       onPlay: () => {
         updatePlayPauseIcon();
@@ -4501,6 +4503,10 @@ export function attachPlaybackCache() {
         </div>
         
         <div class="player-controls-row">
+          <button class="player-control-btn" id="pq-btn" title="Качество (Hi/Lo)">
+            <span class="pq-btn-label" id="pq-btn-label">Hi</span>
+          </button>
+
           <button class="player-control-btn" id="mute-btn" title="Без звука (M)">
             <svg viewBox="0 0 24 24" fill="currentColor">
               <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
@@ -4756,6 +4762,12 @@ export function attachPlaybackCache() {
           toggleShuffle();
           return;
 
+        case 'pq-btn':
+          e.preventDefault();
+          e.stopPropagation();
+          togglePQ();
+          return;
+
         case 'mute-btn':
           toggleMute();
           return;
@@ -4997,6 +5009,49 @@ export function attachPlaybackCache() {
     });
 
     try { localStorage.setItem('playerVolume', String(v)); } catch {}
+  }
+
+  function updatePQButton() {
+    const btn = document.getElementById('pq-btn');
+    const label = document.getElementById('pq-btn-label');
+    if (!btn || !label) return;
+
+    const mode = String(localStorage.getItem('qualityMode:v1') || w.playerCore?.getQualityMode?.() || 'hi')
+      .toLowerCase() === 'lo'
+      ? 'lo'
+      : 'hi';
+
+    const canToggle = !!w.playerCore?.canToggleQualityForCurrentTrack?.();
+
+    btn.classList.toggle('pq-hi', mode === 'hi');
+    btn.classList.toggle('pq-lo', mode === 'lo');
+    btn.classList.toggle('disabled', !canToggle);
+
+    btn.setAttribute('aria-disabled', canToggle ? 'false' : 'true');
+    btn.style.pointerEvents = canToggle ? '' : 'none';
+
+    label.textContent = mode === 'lo' ? 'Lo' : 'Hi';
+  }
+
+  function togglePQ() {
+    if (!w.playerCore) return;
+
+    const canToggle = !!w.playerCore.canToggleQualityForCurrentTrack?.();
+    if (!canToggle) {
+      w.NotificationSystem?.info('Для этого трека Lo недоступно');
+      updatePQButton();
+      return;
+    }
+
+    const cur = String(localStorage.getItem('qualityMode:v1') || w.playerCore.getQualityMode?.() || 'hi')
+      .toLowerCase() === 'lo'
+      ? 'lo'
+      : 'hi';
+
+    const next = cur === 'hi' ? 'lo' : 'hi';
+    w.playerCore.switchQuality(next);
+
+    updatePQButton();
   }
 
   function toggleMute() {
@@ -6083,6 +6138,9 @@ export function attachPlaybackCache() {
         });
       }
     } catch {}
+
+    // PQ кнопка: синхронизируем состояние при старте (до первого onTrackChange)
+    try { updatePQButton(); } catch {}
 
     console.log(`✅ Settings restored: lyrics=${lyricsViewMode}, animation=${animationEnabled}`);
   }
