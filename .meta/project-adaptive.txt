@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3a8fde24fa51fac97a1cd225ac87e98f32ad072d.idx
-│   │       ├── pack-3a8fde24fa51fac97a1cd225ac87e98f32ad072d.pack
-│   │       └── pack-3a8fde24fa51fac97a1cd225ac87e98f32ad072d.rev
+│   │       ├── pack-f2efe3552b3ed332c47faa5424438fe1965b8ded.idx
+│   │       ├── pack-f2efe3552b3ed332c47faa5424438fe1965b8ded.pack
+│   │       └── pack-f2efe3552b3ed332c47faa5424438fe1965b8ded.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 20:39:23 UTC
+Сгенерировано: 2026-01-04 20:40:06 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3925,15 +3925,9 @@ export function attachPlaybackCache() {
     };
   };
 
-  const resolver = async (track, pq) => {
-    // Делегируем OfflineManager-у выбор источника (локально≥PQ / сеть=PQ / локально<PQ)
-    return OfflineUI.offlineManager.resolveForPlayback(track, pq);
-  };
-
   const queue = OfflineUI.offlineManager.queue;
   const pcm = new PlaybackCacheManager({
     queue,
-    resolver,
     getPlaylistCtx
   });
 
