@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d835cce4e625b48de586bbf7497642b94a8ac917.idx
-│   │       ├── pack-d835cce4e625b48de586bbf7497642b94a8ac917.pack
-│   │       └── pack-d835cce4e625b48de586bbf7497642b94a8ac917.rev
+│   │       ├── pack-8e9947fab939cb837580fc743c108b1bb21c0f06.idx
+│   │       ├── pack-8e9947fab939cb837580fc743c108b1bb21c0f06.pack
+│   │       └── pack-8e9947fab939cb837580fc743c108b1bb21c0f06.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 21:09:09 UTC
+Сгенерировано: 2026-01-04 21:15:41 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8013,50 +8013,6 @@ export async function setCloudStats(uid, stats) {
     cloudAddedAt: (Number.isFinite(added) && added > 0) ? Math.floor(added) : 0,
     cloudExpiresAt: (Number.isFinite(exp) && exp > 0) ? Math.floor(exp) : 0,
     cloud
-  };
-
-  try {
-    const db = await openDb();
-    await txp(db, STORE_META, 'readwrite', (st) => {
-      st.put(payload, key);
-    });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export async function clearCloudStats(uid) {
-  const key = cloudKey(uid);
-  if (!key) return false;
-
-  try {
-    const db = await openDb();
-    await txp(db, STORE_META, 'readwrite', (st) => {
-      st.delete(key);
-    });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-// meta key format: cloudCandidate:{uid} -> boolean
-function cloudCandidateKey(uid) {
-  const u = String(uid || '').trim();
-  return u ? `cloudCandidate:${u}` : '';
-}
-  const key = cloudKey(uid);
-  if (!key) return false;
-
-  const listens = Number(stats?.listens || 0);
-  const firstListenAt = Number(stats?.firstListenAt || 0);
-  const lastListenAt = Number(stats?.lastListenAt || 0);
-
-  const payload = {
-    listens: (Number.isFinite(listens) && listens > 0) ? Math.floor(listens) : 0,
-    firstListenAt: (Number.isFinite(firstListenAt) && firstListenAt > 0) ? Math.floor(firstListenAt) : 0,
-    lastListenAt: (Number.isFinite(lastListenAt) && lastListenAt > 0) ? Math.floor(lastListenAt) : 0
   };
 
   try {
