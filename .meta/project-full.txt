@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4d5391aa16642d6318b91b60d9b9f46aad239106.idx
-│   │       ├── pack-4d5391aa16642d6318b91b60d9b9f46aad239106.pack
-│   │       └── pack-4d5391aa16642d6318b91b60d9b9f46aad239106.rev
+│   │       ├── pack-cab82e23ed5c0d329bb5c7646e1b9d565ac17f7e.idx
+│   │       ├── pack-cab82e23ed5c0d329bb5c7646e1b9d565ac17f7e.pack
+│   │       └── pack-cab82e23ed5c0d329bb5c7646e1b9d565ac17f7e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 20:40:37 UTC
+Сгенерировано: 2026-01-04 20:51:23 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7937,8 +7937,15 @@ export async function setCacheQuality(v) {
   return cq;
 }
 
-// ===== Cloud stats (N/D) =====
-// meta key format: cloud:{uid} -> { listens:number, firstListenAt:number, lastListenAt:number }
+// ===== Cloud state (N/D + TTL) =====
+// meta key format: cloud:{uid} ->
+// {
+//   cloudFullListenCount:number,
+//   lastFullListenAt:number,
+//   cloudAddedAt:number,
+//   cloudExpiresAt:number,
+//   cloud:boolean
+// }
 function cloudKey(uid) {
   const u = String(uid || '').trim();
   return u ? `cloud:${u}` : '';
@@ -7946,7 +7953,93 @@ function cloudKey(uid) {
 
 export async function getCloudStats(uid) {
   const key = cloudKey(uid);
-  if (!key) return { listens: 0, firstListenAt: 0, lastListenAt: 0 };
+  if (!key) {
+    return {
+      cloudFullListenCount: 0,
+      lastFullListenAt: 0,
+      cloudAddedAt: 0,
+      cloudExpiresAt: 0,
+      cloud: false
+    };
+  }
+
+  try {
+    const db = await openDb();
+    const v = await txp(db, STORE_META, 'readonly', (st) => {
+      return new Promise((resolve, reject) => {
+        const r = st.get(key);
+        r.onsuccess = () => resolve(r.result || null);
+        r.onerror = () => reject(r.error);
+      });
+    });
+
+    const c = Number(v?.cloudFullListenCount || 0);
+    const last = Number(v?.lastFullListenAt || 0);
+    const added = Number(v?.cloudAddedAt || 0);
+    const exp = Number(v?.cloudExpiresAt || 0);
+    const cloud = v?.cloud === true;
+
+    return {
+      cloudFullListenCount: (Number.isFinite(c) && c > 0) ? Math.floor(c) : 0,
+      lastFullListenAt: (Number.isFinite(last) && last > 0) ? Math.floor(last) : 0,
+      cloudAddedAt: (Number.isFinite(added) && added > 0) ? Math.floor(added) : 0,
+      cloudExpiresAt: (Number.isFinite(exp) && exp > 0) ? Math.floor(exp) : 0,
+      cloud
+    };
+  } catch {
+    return {
+      cloudFullListenCount: 0,
+      lastFullListenAt: 0,
+      cloudAddedAt: 0,
+      cloudExpiresAt: 0,
+      cloud: false
+    };
+  }
+}
+
+export async function setCloudStats(uid, stats) {
+  const key = cloudKey(uid);
+  if (!key) return false;
+
+  const c = Number(stats?.cloudFullListenCount || 0);
+  const last = Number(stats?.lastFullListenAt || 0);
+  const added = Number(stats?.cloudAddedAt || 0);
+  const exp = Number(stats?.cloudExpiresAt || 0);
+  const cloud = stats?.cloud === true;
+
+  const payload = {
+    cloudFullListenCount: (Number.isFinite(c) && c > 0) ? Math.floor(c) : 0,
+    lastFullListenAt: (Number.isFinite(last) && last > 0) ? Math.floor(last) : 0,
+    cloudAddedAt: (Number.isFinite(added) && added > 0) ? Math.floor(added) : 0,
+    cloudExpiresAt: (Number.isFinite(exp) && exp > 0) ? Math.floor(exp) : 0,
+    cloud
+  };
+
+  try {
+    const db = await openDb();
+    await txp(db, STORE_META, 'readwrite', (st) => {
+      st.put(payload, key);
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function clearCloudStats(uid) {
+  const key = cloudKey(uid);
+  if (!key) return false;
+
+  try {
+    const db = await openDb();
+    await txp(db, STORE_META, 'readwrite', (st) => {
+      st.delete(key);
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
   try {
     const db = await openDb();
