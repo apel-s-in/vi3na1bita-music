@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-813dbb53e70f2a37a9161abeeb713dc9b08c3f3e.idx
-│   │       ├── pack-813dbb53e70f2a37a9161abeeb713dc9b08c3f3e.pack
-│   │       └── pack-813dbb53e70f2a37a9161abeeb713dc9b08c3f3e.rev
+│   │       ├── pack-4ed28411e712374874d0395580d1d251a6db7554.idx
+│   │       ├── pack-4ed28411e712374874d0395580d1d251a6db7554.pack
+│   │       └── pack-4ed28411e712374874d0395580d1d251a6db7554.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -396,7 +396,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 13:15:22 UTC
+Сгенерировано: 2026-01-04 13:19:43 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -11688,22 +11688,64 @@ try { main(); } catch (e) { console.error("❌", e); process.exit(1); }
     getPlaylistSnapshot() {
       return [...this.playlist];
     }
+    async _resolvePlaybackUrlForTrack(track) {
+      // ✅ Мост к OfflineManager/TrackResolver (без ESM-импорта сюда).
+      // Возвращаем { url, effectiveQuality, reason } или { url:null } если недоступно.
+      try {
+        const om = window.OfflineUI?.offlineManager;
+        if (!om || typeof om.resolveForPlayback !== 'function') {
+          return { url: String(track?.src || '').trim() || null, effectiveQuality: this.qualityMode || 'hi', reason: 'noOfflineManager' };
+        }
+
+        const pq = this.getQualityMode();
+        const r = await om.resolveForPlayback(track, pq);
+        return {
+          url: String(r?.url || '').trim() || null,
+          effectiveQuality: String(r?.effectiveQuality || pq || 'hi').toLowerCase() === 'lo' ? 'lo' : 'hi',
+          reason: String(r?.reason || '')
+        };
+      } catch (e) {
+        return { url: String(track?.src || '').trim() || null, effectiveQuality: this.qualityMode || 'hi', reason: 'resolverError' };
+      }
+    }
+
+    async _findNextPlayableIndex(direction) {
+      // direction: 'forward' | 'backward'
+      const dir = (direction === 'backward') ? -1 : 1;
+      const len = this.playlist.length;
+      if (!len) return -1;
+
+      // Защита от бесконечного цикла: максимум len попыток
+      for (let step = 1; step <= len; step++) {
+        const idx = (this.currentIndex + (dir * step) + len) % len;
+        const t = this.playlist[idx];
+        if (!t) continue;
+
+        // Быстрая проверка: если сеть есть — playable (url будет)
+        // Если сети нет — resolver вернёт null для отсутствующего локального url.
+        // eslint-disable-next-line no-await-in-loop
+        const r = await this._resolvePlaybackUrlForTrack(t);
+        if (r.url) return idx;
+      }
+      return -1;
+    }
 
     // ========== ВОСПРОИЗВЕДЕНИЕ ==========
 
-    play(index = null) {
+    async play(index = null) {
       if (index !== null && index >= 0 && index < this.playlist.length) {
-        this.load(index);
+        await this.load(index);
       }
 
       // ✅ History: фиксируем факт перехода на новый трек (если он реально сменился)
       this._pushHistoryForCurrent();
-      
+
       if (!this.sound) {
+        // Это может случиться, если resolver вернул url=null и мы инициировали fallback.
         console.warn('⚠️ No sound loaded');
         return;
       }
-      
+
       // Howler вызовет onplay → там мы запускаем тик и триггерим onPlay.
       this.sound.play();
       this.updateMediaSession();
@@ -11739,7 +11781,7 @@ try { main(); } catch (e) { console.error("❌", e); process.exit(1); }
       this.stopTick();
     }
 
-    load(index, options = {}) {
+    async load(index, options = {}) {
       // ✅ Дополнительная защита от некорректного индекса
       if (typeof index !== 'number' || !Number.isFinite(index) || index < 0 || index >= this.playlist.length) {
         console.warn('⚠️ PlayerCore.load called with invalid index:', index);
@@ -11756,8 +11798,25 @@ try { main(); } catch (e) { console.error("❌", e); process.exit(1); }
 
       const track = this.playlist[index];
 
+      // ✅ Resolve source via OfflineManager/TrackResolver
+      const resolved = await this._resolvePlaybackUrlForTrack(track);
+
+      if (!resolved.url) {
+        // OFFLINE+нет сети и нет локального URL: пропускаем трек без STOP
+        const fallbackIdx = await this._findNextPlayableIndex('forward');
+        if (fallbackIdx >= 0 && fallbackIdx !== index) {
+          this.currentIndex = fallbackIdx;
+          this.play(fallbackIdx);
+        }
+        return;
+      }
+
+      // Обновим src текущего трека на реально выбранный URL (network сейчас).
+      // Это не STOP и не меняет uid/логику истории.
+      this.playlist[index].src = resolved.url;
+
       this.sound = new Howl({
-        src: [track.src],
+        src: [resolved.url],
         html5,
         preload: true,
         volume: this.getVolume() / 100,
