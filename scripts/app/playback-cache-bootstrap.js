@@ -61,9 +61,29 @@ export function attachPlaybackCache() {
 
   function updateDirectionByIndex(newIndex) {
     const len = lastLen || ((pc.getPlaylistSnapshot?.() || []).length);
-    if (!len || newIndex < 0 || lastIndex < 0) { direction = 'forward'; return; }
+    if (!len || newIndex < 0 || lastIndex < 0) {
+      direction = 'forward';
+      lastIndex = newIndex;
+      return;
+    }
+
     const prev = (lastIndex - 1 + len) % len;
-    direction = (newIndex === prev) ? 'backward' : 'forward';
+    const next = (lastIndex + 1) % len;
+
+    // 1) Чёткие случаи
+    if (newIndex === prev) {
+      direction = 'backward';
+      lastIndex = newIndex;
+      return;
+    }
+    if (newIndex === next) {
+      direction = 'forward';
+      lastIndex = newIndex;
+      return;
+    }
+
+    // 2) “Телепорт” (ручной выбор из списка или резкий jump из логики) — по ТЗ 7.8 считаем forward
+    direction = 'forward';
     lastIndex = newIndex;
   }
 
