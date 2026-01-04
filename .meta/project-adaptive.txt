@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2bec80ce33ede7e3c467830a888dedaf7eac2356.idx
-│   │       ├── pack-2bec80ce33ede7e3c467830a888dedaf7eac2356.pack
-│   │       └── pack-2bec80ce33ede7e3c467830a888dedaf7eac2356.rev
+│   │       ├── pack-c3b09f06620e294929b4f62ec6168c5571d41c34.idx
+│   │       ├── pack-c3b09f06620e294929b4f62ec6168c5571d41c34.pack
+│   │       └── pack-c3b09f06620e294929b4f62ec6168c5571d41c34.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 22:06:47 UTC
+Сгенерировано: 2026-01-04 22:07:24 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1474,6 +1474,29 @@ self.addEventListener('message', (event) => {
       try {
         // 1. Загрузка индекса альбомов
         await this.loadAlbumsIndex();
+
+        // ✅ OFFLINE: гарантированная инициализация ESM офлайн‑платформы и индикаторов
+        // Важно: делаем здесь, чтобы не зависеть от inline-кода index.html.
+        try {
+          const [
+            offlineBoot,
+            indicatorsMod,
+            overlayMod,
+            pcBoot
+          ] = await Promise.all([
+            import('./app/offline-ui-bootstrap.js'),
+            import('./ui/offline-indicators.js'),
+            import('./ui/cache-progress-overlay.js'),
+            import('./app/playback-cache-bootstrap.js')
+          ]);
+
+          try { offlineBoot.attachOfflineUI(); } catch (e) { console.warn('attachOfflineUI failed:', e); }
+          try { indicatorsMod.attachOfflineIndicators(); } catch (e) { console.warn('attachOfflineIndicators failed:', e); }
+          try { overlayMod.attachCacheProgressOverlay(); } catch (e) { console.warn('attachCacheProgressOverlay failed:', e); }
+          try { pcBoot.attachPlaybackCache(); } catch (e) { console.warn('attachPlaybackCache failed:', e); }
+        } catch (e) {
+          console.warn('OFFLINE init imports failed:', e);
+        }
 
         // ✅ OFFLINE: автопредзагрузка TrackRegistry всеми треками (1 раз)
         // Нужно, чтобы pinned/cloud/offline-all работали сразу, даже без открытия всех альбомов.
