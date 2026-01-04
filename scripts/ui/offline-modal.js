@@ -267,12 +267,7 @@ export async function openOfflineModal() {
 
   bindModalHandlers(modal);
 
-  // Если есть alert — по ТЗ можно подсветить событием/тостом при открытии (второй “тип” тоста)
-  const alert = getAlert();
-  if (alert.on) {
-    window.NotificationSystem?.warning(alert.reason || 'Требуется внимание в OFFLINE настройках');
-    window.NotificationSystem?.info('Откройте секции A–D и проверьте настройки');
-  }
+  // По уточнению: тосты показываем только при включении OFFLINE, не при открытии модалки.
 }
 
 export const OfflineModal = { open: openOfflineModal };
