@@ -62,3 +62,4 @@ export class PlaybackCacheManager {
     enqueue(curUid, 30);
     enqueue(dir === 'backward' ? prevUid : nextUid, 20);
   }
+}
