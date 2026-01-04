@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-53281c9fc371f411e8ed34d891dc6379b4c0f084.idx
-│   │       ├── pack-53281c9fc371f411e8ed34d891dc6379b4c0f084.pack
-│   │       └── pack-53281c9fc371f411e8ed34d891dc6379b4c0f084.rev
+│   │       ├── pack-ebc53268b6c99e65febe1dbf7a344389323a8545.idx
+│   │       ├── pack-ebc53268b6c99e65febe1dbf7a344389323a8545.pack
+│   │       └── pack-ebc53268b6c99e65febe1dbf7a344389323a8545.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -396,7 +396,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 14:34:37 UTC
+Сгенерировано: 2026-01-04 14:35:45 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8243,16 +8243,20 @@ export class OfflineManager {
     const meta = getTrackByUid(u);
     if (!meta) return false;
 
-    const need = q === 'hi'
+    const needMb = q === 'hi'
       ? Number(meta.sizeHi || meta.size || 0)
       : Number(meta.sizeLo || meta.size_low || 0);
 
-    if (!(need > 0)) return false;
+    if (!(Number.isFinite(needMb) && needMb > 0)) return false;
+
+    const needBytes = Math.floor(needMb * 1024 * 1024);
 
     const have = await bytesByQuality(u);
-    const got = q === 'hi' ? Number(have.hi || 0) : Number(have.lo || 0);
+    const gotBytes = q === 'hi' ? Number(have.hi || 0) : Number(have.lo || 0);
 
-    return got >= need;
+    if (!(Number.isFinite(gotBytes) && gotBytes > 0)) return false;
+
+    return gotBytes >= Math.floor(needBytes * 0.92);
   }
 
   async hasAnyComplete(uids) {
