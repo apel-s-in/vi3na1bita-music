@@ -214,27 +214,8 @@
       if (promocodeBlock) promocodeBlock.classList.add('hidden');
       if (mainBlock) mainBlock.classList.remove('hidden');
 
-      // ✅ 1) Инициализируем OFFLINE/UI только после unlock (чтобы DOM и стили уже были “в бою”)
-      try {
-        const [
-          offlineBoot,
-          indicatorsMod,
-          overlayMod,
-          pcBoot
-        ] = await Promise.all([
-          import('./scripts/app/offline-ui-bootstrap.js'),
-          import('./scripts/ui/offline-indicators.js'),
-          import('./scripts/ui/cache-progress-overlay.js'),
-          import('./scripts/app/playback-cache-bootstrap.js')
-        ]);
-
-        try { offlineBoot.attachOfflineUI(); } catch (e) { console.warn('attachOfflineUI failed:', e); }
-        try { indicatorsMod.attachOfflineIndicators(); } catch (e) { console.warn('attachOfflineIndicators failed:', e); }
-        try { overlayMod.attachCacheProgressOverlay(); } catch (e) { console.warn('attachCacheProgressOverlay failed:', e); }
-        try { pcBoot.attachPlaybackCache(); } catch (e) { console.warn('attachPlaybackCache failed:', e); }
-      } catch (e) {
-        console.warn('OFFLINE modules import failed:', e);
-      }
+      // OFFLINE инициализируется внутри window.app.initialize()
+      // (scripts/app.js), чтобы избежать гонок и дублей.
 
       // ✅ 2) Ждём window.app и запускаем приложение один раз
       const waitForApp = setInterval(() => {
