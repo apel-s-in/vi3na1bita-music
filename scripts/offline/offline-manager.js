@@ -297,6 +297,48 @@ export class OfflineManager {
     return { ...this.mass };
   }
 
+  enqueueAudioDownload(params = {}) {
+    const uid = String(params?.uid || '').trim();
+    if (!uid) return { ok: false, reason: 'noUid' };
+
+    const quality = (String(params?.quality || '').toLowerCase() === 'lo') ? 'lo' : 'hi';
+
+    const kind = String(params?.kind || '').trim() || 'generic';
+    const userInitiated = !!params?.userInitiated;
+    const isMass = !!params?.isMass;
+
+    const priorityRaw = Number(params?.priority || 0);
+    const priority = Number.isFinite(priorityRaw) ? priorityRaw : 0;
+
+    const keyRaw = String(params?.key || '').trim();
+    const key = keyRaw || `${kind}:${quality}:${uid}`;
+
+    const onResult = (typeof params?.onResult === 'function') ? params.onResult : null;
+
+    if (!this.queue || typeof this.queue.add !== 'function') {
+      return { ok: false, reason: 'noQueue' };
+    }
+
+    // ✅ Дедуп: очередь + running
+    if (typeof this.queue.hasTask === 'function' && this.queue.hasTask(key)) {
+      return { ok: true, enqueued: false, dedup: true, key };
+    }
+
+    this.queue.add({
+      key,
+      uid,
+      priority,
+      run: async () => {
+        const r = await this.cacheTrackAudio(uid, quality, { userInitiated, isMass });
+        if (onResult) {
+          try { onResult(r); } catch {}
+        }
+      }
+    });
+
+    return { ok: true, enqueued: true, key };
+  }
+
   enqueueOfflineAll(uids) {
     const list = Array.isArray(uids) ? uids : [];
     const uniq = Array.from(new Set(list.map(x => String(x || '').trim()).filter(Boolean)));
@@ -319,36 +361,40 @@ export class OfflineManager {
     this._em.emit('progress', { uid: null, phase: 'offlineAllStart', total: uniq.length });
 
     uniq.forEach((uid) => {
-      const taskKey = `offlineAll:${uid}`;
-      if (this.queue?.hasTask?.(taskKey)) return;
+      const u = String(uid || '').trim();
+      if (!u) return;
 
-      this.queue.add({
-        key: taskKey,
-        uid,
-        priority: 5,
-        run: async () => {
-          const cq = await this.getCacheQuality();
+      this.getCacheQuality().then((cq) => {
+        const taskKey = `offlineAll:${cq}:${u}`;
 
-          const r = await this.cacheTrackAudio(uid, cq, { userInitiated: false, isMass: true });
+        this.enqueueAudioDownload({
+          uid: u,
+          quality: cq,
+          key: taskKey,
+          priority: 5,
+          userInitiated: false,
+          isMass: true,
+          kind: 'offlineAll',
+          onResult: (r) => {
+            if (r && r.ok) {
+              this.mass.done += 1;
+            } else if (String(r?.reason || '').startsWith('netPolicyAsk:autoTaskSkipped')) {
+              this.mass.skipped += 1;
+            } else {
+              this.mass.error += 1;
+            }
 
-          if (r && r.ok) {
-            this.mass.done += 1;
-          } else if (String(r?.reason || '').startsWith('netPolicyAsk:autoTaskSkipped')) {
-            this.mass.skipped += 1;
-          } else {
-            this.mass.error += 1;
+            // Завершение
+            const finished = (this.mass.done + this.mass.error + this.mass.skipped) >= this.mass.total;
+            if (finished) {
+              this.mass.active = false;
+              this._em.emit('progress', { uid: null, phase: 'offlineAllDone', ...this.getMassStatus() });
+            } else {
+              this._em.emit('progress', { uid: null, phase: 'offlineAllTick', ...this.getMassStatus() });
+            }
           }
-
-          // Завершение
-          const finished = (this.mass.done + this.mass.error + this.mass.skipped) >= this.mass.total;
-          if (finished) {
-            this.mass.active = false;
-            this._em.emit('progress', { uid: null, phase: 'offlineAllDone', ...this.getMassStatus() });
-          } else {
-            this._em.emit('progress', { uid: null, phase: 'offlineAllTick', ...this.getMassStatus() });
-          }
-        }
-      });
+        });
+      }).catch(() => {});
     });
 
     return { ok: true, total: uniq.length };
@@ -410,18 +456,15 @@ export class OfflineManager {
     // Ставим задачу докачки до CQ (без повышения listens)
     try {
       const cq = await this.getCacheQuality();
-      const taskKey = `cloudCandidate:${cq}:${u}`;
-
-      if (!this.queue?.hasTask?.(taskKey)) {
-        this.queue.add({
-          key: taskKey,
-          uid: u,
-          priority: 15,
-          run: async () => {
-            await this.cacheTrackAudio(u, cq, { userInitiated: false });
-          }
-        });
-      }
+      this.enqueueAudioDownload({
+        uid: u,
+        quality: cq,
+        key: `cloudCandidate:${cq}:${u}`,
+        priority: 15,
+        userInitiated: false,
+        isMass: false,
+        kind: 'cloudCandidate'
+      });
     } catch {}
 
     this._em.emit('progress', { uid: u, phase: 'unpinned' });
@@ -629,25 +672,20 @@ async cacheTrackAudio(uid, quality, options = {}) {
     const u = String(uid || '').trim();
     if (!u) return;
 
-    const userInitiated = Boolean(opts?.userInitiated);
+    const userInitiated = !!opts?.userInitiated;
 
-    const taskKey = `pinned:${u}`;
-
-    // Не ставим дубликаты
-    if (this.queue && typeof this.queue.hasTask === 'function' && this.queue.hasTask(taskKey)) {
-      return;
-    }
-
-    if (!this.queue || typeof this.queue.add !== 'function') return;
-
-    this.queue.add({
-      key: taskKey,
-      uid: u,
-      run: async () => {
-        const cq = await this.getCacheQuality();
-        await this.cacheTrackAudio(u, cq, { userInitiated, isMass: false });
-      }
-    });
+    // pinned всегда качаем в CQ
+    this.getCacheQuality().then((cq) => {
+      this.enqueueAudioDownload({
+        uid: u,
+        quality: cq,
+        key: `pinned:${cq}:${u}`,
+        priority: 25,
+        userInitiated,
+        isMass: false,
+        kind: 'pinned'
+      });
+    }).catch(() => {});
   }
 
   async resolveForPlayback(track, pq) {
