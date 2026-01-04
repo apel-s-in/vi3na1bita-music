@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8e8205756d06b4334b2efc0c61e9fbf0e1618751.idx
-│   │       ├── pack-8e8205756d06b4334b2efc0c61e9fbf0e1618751.pack
-│   │       └── pack-8e8205756d06b4334b2efc0c61e9fbf0e1618751.rev
+│   │       ├── pack-7c8fea63c01e508fa100c08bfdb604b7ec900c98.idx
+│   │       ├── pack-7c8fea63c01e508fa100c08bfdb604b7ec900c98.pack
+│   │       └── pack-7c8fea63c01e508fa100c08bfdb604b7ec900c98.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -396,7 +396,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 15:31:14 UTC
+Сгенерировано: 2026-01-04 15:31:39 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8214,7 +8214,8 @@ import {
   setBytes,
   getCloudStats,
   setCloudStats,
-  clearCloudStats
+  clearCloudStats,
+  totalCachedBytes
 } from './cache-db.js';
 
 import { resolvePlaybackSource } from './track-resolver.js';
