@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8e9947fab939cb837580fc743c108b1bb21c0f06.idx
-│   │       ├── pack-8e9947fab939cb837580fc743c108b1bb21c0f06.pack
-│   │       └── pack-8e9947fab939cb837580fc743c108b1bb21c0f06.rev
+│   │       ├── pack-e00811feaaaa6229e1ed52578b5622229333b7f3.idx
+│   │       ├── pack-e00811feaaaa6229e1ed52578b5622229333b7f3.pack
+│   │       └── pack-e00811feaaaa6229e1ed52578b5622229333b7f3.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 21:15:40 UTC
+Сгенерировано: 2026-01-04 21:20:36 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9084,8 +9084,111 @@ export class OfflineManager {
     }
   }
 
-async cacheTrackAudio(uid, quality, options = {}) {
-  const u = String(uid || '').trim();
+  async cacheTrackAudio(uid, quality, options = {}) {
+    const u = String(uid || '').trim();
+    if (!u) return { ok: false, reason: 'noUid' };
+
+    const q = (String(quality || '').toLowerCase() === 'lo') ? 'lo' : 'hi';
+
+    // 1) Метаданные трека
+    const track = getTrackByUid(u);
+    if (!track) return { ok: false, reason: 'noTrackMeta' };
+
+    // 2) Определяем URL (через единый резолвер, чтобы не дублировать логику путей)
+    //    offlineMode=false, чтобы получить сетевой URL (если он существует)
+    let url = null;
+    try {
+      const r = await resolvePlaybackSource({
+        track,
+        pq: q,          // для скачивания берём качество как "желаемое"
+        cq: q,
+        offlineMode: false,
+        network: { online: true, kind: 'unknown', raw: null, saveData: false }
+      });
+      url = r?.url || null;
+    } catch {
+      url = null;
+    }
+    if (!url) return { ok: false, reason: 'noUrlResolved' };
+
+    // 3) Статус сети
+    const st = (() => {
+      try {
+        if (window.NetworkManager && typeof window.NetworkManager.getStatus === 'function') {
+          return window.NetworkManager.getStatus();
+        }
+      } catch {}
+      return { online: navigator.onLine !== false, kind: 'unknown', raw: null, saveData: false };
+    })();
+
+    // Если реально оффлайн — не пытаемся качать
+    if (st.online === false) {
+      return { ok: false, reason: 'offline:network' };
+    }
+
+    // 4) Политика сети (wifi/cellular/ask/unknown)
+    const policy = getNetPolicy();
+
+    const userInitiated = Boolean(options?.userInitiated);
+    const isAuto = !userInitiated;
+    const isMass = Boolean(options?.isMass);
+
+    // 5) Enforce policy: если policy не ask — блокируем без confirm
+    if (policy !== 'ask' && !isAllowedByNetPolicy(policy, st)) {
+      return { ok: false, reason: `netPolicyBlocked:${policy}:${st.kind || 'unknown'}` };
+    }
+
+    // 6) ask: confirm (только для userInitiated; авто-задачи пропускаем с alert)
+    if (policy === 'ask' && shouldConfirmByPolicy(policy, st, { isMass, isAuto })) {
+      if (isAuto) {
+        try {
+          localStorage.setItem('offline:alert:v1', JSON.stringify({
+            on: true,
+            ts: Date.now(),
+            reason: 'Загрузки требуют подтверждения (Network Policy = ask)'
+          }));
+          window.dispatchEvent(new CustomEvent('offline:uiChanged'));
+        } catch {}
+        return { ok: false, reason: 'netPolicyAsk:autoTaskSkipped' };
+      }
+
+      const ok = window.confirm('Разрешить загрузку трека по текущей сети?');
+      if (!ok) return { ok: false, reason: 'netPolicyAsk:userDenied' };
+    }
+
+    this._em.emit('progress', { uid: u, phase: 'downloadStart', quality: q });
+
+    try {
+      const r = await fetch(url, { cache: 'no-cache' });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+
+      const blob = await r.blob();
+
+      const wrote = await setAudioBlob(u, q, blob);
+      if (!wrote) throw new Error('IndexedDB write failed');
+
+      const bytes = (blob && typeof blob.size === 'number' && Number.isFinite(blob.size) && blob.size > 0)
+        ? Math.floor(blob.size)
+        : 0;
+
+      await setBytes(u, q, bytes);
+
+      this._em.emit('progress', { uid: u, phase: 'downloadDone', quality: q, bytes });
+
+      // ✅ Cloud: включаем cloud=true только ПОСЛЕ 100% докачки В CQ (ТЗ 9.3/9.4)
+      try {
+        const cq = await this.getCacheQuality();
+        if (q === cq) {
+          await this._maybeActivateCloudAfterCqComplete(u);
+        }
+      } catch {}
+
+      return { ok: true, cached: true, reason: 'downloaded', bytes };
+    } catch (e) {
+      this._em.emit('progress', { uid: u, phase: 'downloadError', quality: q, error: String(e?.message || e) });
+      return { ok: false, reason: 'downloadError' };
+    }
+  }
   if (!u) return { ok: false, reason: 'noUid' };
 
   const q = (String(quality || '').toLowerCase() === 'lo') ? 'lo' : 'hi';
