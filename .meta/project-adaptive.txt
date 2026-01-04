@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5186f3024a988c4a79ac146ec82610f1f37c28af.idx
-│   │       ├── pack-5186f3024a988c4a79ac146ec82610f1f37c28af.pack
-│   │       └── pack-5186f3024a988c4a79ac146ec82610f1f37c28af.rev
+│   │       ├── pack-7c0d230c0e5451bcdf289f97c42eb846ae026a88.idx
+│   │       ├── pack-7c0d230c0e5451bcdf289f97c42eb846ae026a88.pack
+│   │       └── pack-7c0d230c0e5451bcdf289f97c42eb846ae026a88.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -400,7 +400,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-03 23:31:17 UTC
+Сгенерировано: 2026-01-04 10:36:38 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -786,7 +786,6 @@ jobs:
   <script src="./scripts/app/gallery.js" type="module"></script>
   <script src="./scripts/app/albums.js" type="module"></script>
   <script src="./scripts/app/navigation.js" type="module"></script>
-  <script type="module" src="scripts/ui/offline-modal.js"></script>
   
   <!-- Main App -->
   <script src="./scripts/app.js" type="module"></script>
@@ -1006,12 +1005,17 @@ jobs:
     
     console.log(`🎵 Витрина Разбита v${VERSION} (${BUILD_DATE})`);
   </script>
-<script type="module" src="scripts/ui/offline-modal.js"></script>
 <script type="module" src="./scripts/app/offline-ui-bootstrap.js"></script>
 <script type="module">
+  import { attachOfflineUI } from './scripts/app/offline-ui-bootstrap.js';
   import { attachOfflineIndicators } from './scripts/ui/offline-indicators.js';
   import { attachCacheProgressOverlay } from './scripts/ui/cache-progress-overlay.js';
   import { attachPlaybackCache } from './scripts/app/playback-cache-bootstrap.js';
+
+  // ✅ Единая offline-платформа (ESM)
+  attachOfflineUI();
+
+  // UI/индикаторы
   attachOfflineIndicators();
   attachCacheProgressOverlay();
   attachPlaybackCache();
