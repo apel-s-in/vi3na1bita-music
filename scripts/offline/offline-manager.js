@@ -163,16 +163,20 @@ export class OfflineManager {
     const meta = getTrackByUid(u);
     if (!meta) return false;
 
-    const need = q === 'hi'
+    const needMb = q === 'hi'
       ? Number(meta.sizeHi || meta.size || 0)
       : Number(meta.sizeLo || meta.size_low || 0);
 
-    if (!(need > 0)) return false;
+    if (!(Number.isFinite(needMb) && needMb > 0)) return false;
+
+    const needBytes = Math.floor(needMb * 1024 * 1024);
 
     const have = await bytesByQuality(u);
-    const got = q === 'hi' ? Number(have.hi || 0) : Number(have.lo || 0);
+    const gotBytes = q === 'hi' ? Number(have.hi || 0) : Number(have.lo || 0);
 
-    return got >= need;
+    if (!(Number.isFinite(gotBytes) && gotBytes > 0)) return false;
+
+    return gotBytes >= Math.floor(needBytes * 0.92);
   }
 
   async hasAnyComplete(uids) {
