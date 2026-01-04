@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-99953a1816bcf1bc68d3567cfb680f079b603135.idx
-│   │       ├── pack-99953a1816bcf1bc68d3567cfb680f079b603135.pack
-│   │       └── pack-99953a1816bcf1bc68d3567cfb680f079b603135.rev
+│   │       ├── pack-fb2fc8a8c2b665686d1a0e07424e57f306f07d2d.idx
+│   │       ├── pack-fb2fc8a8c2b665686d1a0e07424e57f306f07d2d.pack
+│   │       └── pack-fb2fc8a8c2b665686d1a0e07424e57f306f07d2d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 18:31:02 UTC
+Сгенерировано: 2026-01-04 18:40:43 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8191,6 +8191,50 @@ export async function deleteTrackCache(uid) {
       st.delete(`${u}:lo`);
     });
   } catch {}
+}
+
+export async function clearAllStores({ keepCacheQuality = true } = {}) {
+  // Полная очистка bytes + blobs + cloud meta.
+  // По умолчанию cacheQuality сохраняем (чтобы CQ не “сбрасывался” неожиданно).
+  try {
+    const db = await openDb();
+
+    // 1) bytes — clear
+    await txp(db, STORE_BYTES, 'readwrite', (st) => {
+      st.clear();
+    });
+
+    // 2) blobs — clear
+    await txp(db, STORE_BLOBS, 'readwrite', (st) => {
+      st.clear();
+    });
+
+    // 3) meta — удаляем cloud:* и cloudCandidate:* (и при желании cacheQuality)
+    await txp(db, STORE_META, 'readwrite', (st) => {
+      return new Promise((resolve, reject) => {
+        const req = st.openCursor();
+        req.onsuccess = () => {
+          const cursor = req.result;
+          if (!cursor) {
+            resolve(true);
+            return;
+          }
+          const k = String(cursor.key || '');
+          const isCloud = k.startsWith('cloud:') || k.startsWith('cloudCandidate:');
+          const isCQ = k === 'cacheQuality';
+          if (isCloud || (!keepCacheQuality && isCQ)) {
+            try { cursor.delete(); } catch {}
+          }
+          cursor.continue();
+        };
+        req.onerror = () => reject(req.error);
+      });
+    });
+
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function getAudioBlob(uid, quality) {
