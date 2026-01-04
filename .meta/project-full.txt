@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-637c501f589e606e9f94cbf02600ce31a4d5b6f7.idx
-│   │       ├── pack-637c501f589e606e9f94cbf02600ce31a4d5b6f7.pack
-│   │       └── pack-637c501f589e606e9f94cbf02600ce31a4d5b6f7.rev
+│   │       ├── pack-e24ea865a2c0f185638c92bc946075f5dd281f34.idx
+│   │       ├── pack-e24ea865a2c0f185638c92bc946075f5dd281f34.pack
+│   │       └── pack-e24ea865a2c0f185638c92bc946075f5dd281f34.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -396,7 +396,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 14:06:27 UTC
+Сгенерировано: 2026-01-04 14:07:07 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -11080,7 +11080,8 @@ if (document.readyState === 'loading') {
   window.ServiceWorkerManager.init();
 }
 
-export default ServiceWorkerManager;
+// export default удалён: файл используется как browser script через window.ServiceWorkerManager
+
 
 //=================================================
 // FILE: /albums/gallery/news/news-01-baner.html
