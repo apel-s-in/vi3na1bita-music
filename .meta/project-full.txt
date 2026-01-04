@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2c65e8adb8f0546a13d49ab6cdd7a3a39df1c29e.idx
-│   │       ├── pack-2c65e8adb8f0546a13d49ab6cdd7a3a39df1c29e.pack
-│   │       └── pack-2c65e8adb8f0546a13d49ab6cdd7a3a39df1c29e.rev
+│   │       ├── pack-a3f25ff80cd00bd0924db4119a1170917e167eed.idx
+│   │       ├── pack-a3f25ff80cd00bd0924db4119a1170917e167eed.pack
+│   │       └── pack-a3f25ff80cd00bd0924db4119a1170917e167eed.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -396,7 +396,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 14:31:28 UTC
+Сгенерировано: 2026-01-04 14:32:26 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8353,14 +8353,12 @@ export class OfflineManager {
 
       if (!ok) throw new Error('IndexedDB write failed');
 
-      // ✅ Обновляем “bytes” (у тебя сейчас это MB-hint из TrackRegistry.size*)
-      const needMb = q === 'hi'
-        ? Number(meta?.sizeHi || meta?.size || 0)
-        : Number(meta?.sizeLo || meta?.size_low || 0);
+      // ✅ Обновляем bytes реальными байтами скачанного blob (не MB-hint).
+      const bytes = (blob && typeof blob.size === 'number' && Number.isFinite(blob.size) && blob.size > 0)
+        ? Math.floor(blob.size)
+        : 0;
 
-      if (needMb > 0) {
-        await setBytes(u, q, needMb);
-      }
+      await setBytes(u, q, bytes);
 
       this._em.emit('progress', { uid: u, phase: 'downloadDone', quality: q });
       return { ok: true, cached: true, reason: 'downloaded' };
