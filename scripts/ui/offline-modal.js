@@ -4,6 +4,7 @@
 
 import { OfflineUI } from '../app/offline-ui-bootstrap.js';
 import { getNetPolicy, setNetPolicy, shouldConfirmByPolicy } from '../offline/net-policy.js';
+import { getAllUids } from '../app/track-registry.js';
 
 const ALERT_KEY = 'offline:alert:v1';
 
@@ -160,14 +161,21 @@ async function renderModal() {
           <button class="offline-btn online" id="offline-modal-download-pinned" style="min-width: 220px;">
             Скачать всё pinned 🔒
           </button>
+
+          <button class="offline-btn online" id="offline-modal-offline-all" style="min-width: 220px;">
+            100% OFFLINE (всё)
+          </button>
+
           <button class="offline-btn" id="offline-modal-clear-cache" style="min-width: 220px;">
             Очистить кэш
           </button>
+
           <button class="offline-btn" id="offline-modal-clear-alert" style="min-width: 220px;">
             Сбросить "!" (прочитано)
           </button>
         </div>
 
+        <div id="offline-mass-status" style="margin-top:10px; font-size:12px; color:#9db7dd; text-align:left;"></div>
         <div id="offline-pinned-list" style="margin-top:10px; font-size:12px; color:#9db7dd; text-align:left;"></div>
       </div>
 
@@ -232,6 +240,25 @@ function bindModalHandlers(modal) {
 
       if (sizeEl) sizeEl.textContent = fmtBytes(bytes);
       if (pcEl) pcEl.textContent = String(pinned.length);
+
+      // Mass status (100% OFFLINE)
+      try {
+        const ms = om.getMassStatus?.() || null;
+        const msEl = modal.querySelector('#offline-mass-status');
+
+        if (msEl) {
+          if (!ms || !ms.total) {
+            msEl.textContent = '100% OFFLINE: не запущено.';
+          } else {
+            const done = Number(ms.done || 0);
+            const err = Number(ms.error || 0);
+            const sk = Number(ms.skipped || 0);
+            const total = Number(ms.total || 0);
+            const active = !!ms.active;
+            msEl.textContent = `100% OFFLINE: ${done}/${total} (ошибки: ${err}, пропущено: ${sk}) ${active ? '— выполняется…' : '— готово'}`;
+          }
+        }
+      } catch {}
 
       // Cloud N/D
       try {
@@ -323,6 +350,38 @@ function bindModalHandlers(modal) {
     }
   });
 
+  modal.querySelector('#offline-modal-offline-all')?.addEventListener('click', async () => {
+    try {
+      const policy = getNetPolicy();
+      const st = getNetworkStatus();
+
+      // ✅ 100% OFFLINE — массовая операция: confirm обязателен для unknown (и для ask)
+      if (shouldConfirmByPolicy(policy, st, { isMass: true, isAuto: false })) {
+        const ok = window.confirm('100% OFFLINE: скачать все известные треки до CQ? Это может занять время и трафик.');
+        if (!ok) return;
+      }
+
+      const uids = getAllUids();
+      const total = Array.isArray(uids) ? uids.length : 0;
+
+      if (!total) {
+        window.NotificationSystem?.warning('Нет известных треков (откройте альбомы, чтобы загрузить список)');
+        return;
+      }
+
+      const res = om.enqueueOfflineAll?.(uids);
+      if (res?.ok) {
+        window.NotificationSystem?.success(`100% OFFLINE поставлено в очередь: ${res.total}`);
+      } else {
+        window.NotificationSystem?.error('Не удалось запустить 100% OFFLINE');
+      }
+    } catch {
+      window.NotificationSystem?.error('Не удалось запустить 100% OFFLINE');
+    } finally {
+      await rerender();
+    }
+  });
+
   modal.querySelector('#offline-modal-clear-cache')?.addEventListener('click', async () => {
     const ok = window.confirm('Очистить кэш? Это удалит blobs/bytes и сбросит cloud-статистику. Воспроизведение не остановится.');
     if (!ok) return;
@@ -364,20 +423,8 @@ function bindModalHandlers(modal) {
       const v = String(inp.value || 'ask');
       const next = setNetPolicy(v);
 
-      // Подтверждение для cellular/unknown — сразу (по ТЗ “confirm”)
-      if (next === 'cellular') {
-        const ok = window.confirm('Разрешить загрузки по мобильной сети? Это может расходовать трафик.');
-        if (!ok) {
-          setNetPolicy('ask');
-        }
-      }
-      if (next === 'unknown') {
-        const ok = window.confirm('Сеть определяется как Unknown. Разрешить загрузки в этом режиме?');
-        if (!ok) {
-          setNetPolicy('ask');
-        }
-      }
-
+      // ✅ Confirm больше не показываем при выборе настройки.
+      // По ТЗ confirm должен быть на старте массовых операций (100% OFFLINE / download all pinned / updates).
       window.NotificationSystem?.info('Политика сети сохранена');
       try { window.dispatchEvent(new CustomEvent('offline:uiChanged')); } catch {}
     });
