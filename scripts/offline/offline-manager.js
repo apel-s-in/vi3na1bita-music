@@ -635,6 +635,52 @@ export class OfflineManager {
       return;
     }
   }
+  async _maybeActivateCloudAfterCqComplete(uid) {
+    const u = String(uid || '').trim();
+    if (!u) return false;
+
+    // pinned всегда сильнее cloud
+    if (this._getPinnedSet().has(u)) return false;
+
+    try {
+      const cq = await this.getCacheQuality();
+      const cachedComplete = await this.isTrackComplete(u, cq);
+      if (!cachedComplete) return false;
+
+      const { n, d } = this.getCloudSettings();
+      const ttlMs = d * 24 * 60 * 60 * 1000;
+      const now = Date.now();
+
+      const st = await getCloudStats(u);
+      if (st?.cloud === true) return true;
+
+      const candidate = await getCloudCandidate(u);
+
+      const count = Number(st?.cloudFullListenCount || 0);
+      const cloudByAuto = Number.isFinite(count) && count >= n;
+
+      // Включаем cloud после 100% CQ, если:
+      // - manual (cloudCandidate), или
+      // - auto (count>=N)
+      if (!candidate && !cloudByAuto) return false;
+
+      await setCloudStats(u, {
+        cloudFullListenCount: Number.isFinite(count) && count > 0 ? Math.floor(count) : 0,
+        lastFullListenAt: Number(st?.lastFullListenAt || 0) > 0 ? Math.floor(st.lastFullListenAt) : 0,
+        cloudAddedAt: now,
+        cloudExpiresAt: now + ttlMs,
+        cloud: true
+      });
+
+      // candidate больше не нужен
+      try { await clearCloudCandidate(u); } catch {}
+
+      this._em.emit('progress', { uid: u, phase: 'cloudActivated' });
+      return true;
+    } catch {
+      return false;
+    }
+  }
 
 async cacheTrackAudio(uid, quality, options = {}) {
   const u = String(uid || '').trim();
@@ -726,6 +772,15 @@ async cacheTrackAudio(uid, quality, options = {}) {
     await setBytes(u, q, bytes);
 
     this._em.emit('progress', { uid: u, phase: 'downloadDone', quality: q, bytes });
+
+    // ✅ Cloud: включаем cloud=true только ПОСЛЕ 100% докачки В CQ (ТЗ 9.3/9.4)
+    try {
+      const cq = await this.getCacheQuality();
+      if (q === cq) {
+        await this._maybeActivateCloudAfterCqComplete(u);
+      }
+    } catch {}
+
     return { ok: true, cached: true, reason: 'downloaded', bytes };
   } catch (e) {
     this._em.emit('progress', { uid: u, phase: 'downloadError', quality: q, error: String(e?.message || e) });
