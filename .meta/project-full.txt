@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-38480297b1064b9af05ce0d5801bc2e5f7d5c5ab.idx
-│   │       ├── pack-38480297b1064b9af05ce0d5801bc2e5f7d5c5ab.pack
-│   │       └── pack-38480297b1064b9af05ce0d5801bc2e5f7d5c5ab.rev
+│   │       ├── pack-9a7e81c738a405631ae7c83e8f2df3068cc5d77a.idx
+│   │       ├── pack-9a7e81c738a405631ae7c83e8f2df3068cc5d77a.pack
+│   │       └── pack-9a7e81c738a405631ae7c83e8f2df3068cc5d77a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 22:29:09 UTC
+Сгенерировано: 2026-01-04 22:29:42 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -10835,7 +10835,17 @@ console.log('✅ Notification system initialized');
 //=================================================
 // FILE: /scripts/ui/offline-indicators.js
 // scripts/ui/offline-indicators.js
-import { OfflineUI } from '../app/offline-ui-bootstrap.js';
+import { OfflineUI as OfflineUIExport } from '../app/offline-ui-bootstrap.js';
+
+// ✅ Runtime-источник: window.OfflineUI (единый)
+const OfflineUI = (() => {
+  try {
+    return window.OfflineUI || OfflineUIExport;
+  } catch {
+    return OfflineUIExport;
+  }
+})();
+
 import { attachCloudMenu } from './cloud-menu.js';
 
 const ICON_CSS = `
