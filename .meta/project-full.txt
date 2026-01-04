@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-081929270ff7667415de9b1f945dd844df540f06.idx
-│   │       ├── pack-081929270ff7667415de9b1f945dd844df540f06.pack
-│   │       └── pack-081929270ff7667415de9b1f945dd844df540f06.rev
+│   │       ├── pack-7979be687073cbae269e7649848b7100f00f9fe0.idx
+│   │       ├── pack-7979be687073cbae269e7649848b7100f00f9fe0.pack
+│   │       └── pack-7979be687073cbae269e7649848b7100f00f9fe0.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -400,7 +400,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 10:38:48 UTC
+Сгенерировано: 2026-01-04 10:40:05 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2016,6 +2016,8 @@ self.addEventListener('message', (event) => {
 // ВАЖНО: config.js публикует window.APP_CONFIG. Используем глобальный конфиг для устойчивости на GitHub Pages/SW.
 const APP_CONFIG = window.APP_CONFIG;
 
+import { registerTrack } from './track-registry.js';
+
 class AlbumsManager {
   constructor() {
     this.currentAlbum = null;
@@ -2290,6 +2292,24 @@ class AlbumsManager {
           hasLyrics // ✅ Новое поле
         };
       });
+
+      // ✅ Регистрируем треки в TrackRegistry (uid -> urls/sizes) для OFFLINE/Updater/PlaybackCache
+      try {
+        for (const t of normTracks) {
+          if (!t || !t.uid) continue;
+          registerTrack({
+            uid: t.uid,
+            title: t.title,
+            audio: t.fileHi || t.file || null,
+            audio_low: t.fileLo || null,
+            size: t.sizeHi || null,
+            size_low: t.sizeLo || null,
+            lyrics: t.lyrics || null,
+            fulltext: t.fulltext || null,
+            sourceAlbum: albumKey
+          });
+        }
+      } catch {}
 
       const coverPath = data.cover || 'cover.jpg';
 
