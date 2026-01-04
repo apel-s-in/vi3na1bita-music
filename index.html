@@ -207,14 +207,36 @@
       // Chrome: подсказка про Memory Saver удалена по дизайну
     });
     
-    function unlockAppDirectly() {
+    async function unlockAppDirectly() {
       const promocodeBlock = document.getElementById('promocode-block');
       const mainBlock = document.getElementById('main-block');
-      
+
       if (promocodeBlock) promocodeBlock.classList.add('hidden');
       if (mainBlock) mainBlock.classList.remove('hidden');
-      
-      // Ждём загрузки window.app
+
+      // ✅ 1) Инициализируем OFFLINE/UI только после unlock (чтобы DOM и стили уже были “в бою”)
+      try {
+        const [
+          offlineBoot,
+          indicatorsMod,
+          overlayMod,
+          pcBoot
+        ] = await Promise.all([
+          import('./scripts/app/offline-ui-bootstrap.js'),
+          import('./scripts/ui/offline-indicators.js'),
+          import('./scripts/ui/cache-progress-overlay.js'),
+          import('./scripts/app/playback-cache-bootstrap.js')
+        ]);
+
+        try { offlineBoot.attachOfflineUI(); } catch (e) { console.warn('attachOfflineUI failed:', e); }
+        try { indicatorsMod.attachOfflineIndicators(); } catch (e) { console.warn('attachOfflineIndicators failed:', e); }
+        try { overlayMod.attachCacheProgressOverlay(); } catch (e) { console.warn('attachCacheProgressOverlay failed:', e); }
+        try { pcBoot.attachPlaybackCache(); } catch (e) { console.warn('attachPlaybackCache failed:', e); }
+      } catch (e) {
+        console.warn('OFFLINE modules import failed:', e);
+      }
+
+      // ✅ 2) Ждём window.app и запускаем приложение один раз
       const waitForApp = setInterval(() => {
         if (window.app && typeof window.app.initialize === 'function') {
           clearInterval(waitForApp);
@@ -278,20 +300,9 @@
     window.BUILD_DATE = BUILD_DATE;
     
     console.log(`🎵 Витрина Разбита v${VERSION} (${BUILD_DATE})`);
-  </script>
-<script type="module">
-  import { attachOfflineUI } from './scripts/app/offline-ui-bootstrap.js';
-  import { attachOfflineIndicators } from './scripts/ui/offline-indicators.js';
-  import { attachCacheProgressOverlay } from './scripts/ui/cache-progress-overlay.js';
-  import { attachPlaybackCache } from './scripts/app/playback-cache-bootstrap.js';
-
-  // ✅ Единая offline-платформа (ESM)
-  attachOfflineUI();
-
-  // UI/индикаторы
-  attachOfflineIndicators();
-  attachCacheProgressOverlay();
-  attachPlaybackCache();
+<script>
+  // OFFLINE/Cache UI инициализируем ПОСЛЕ unlock (см. unlockAppDirectly()).
+  // Это устраняет гонки и “ранний старт” до появления UI.
 </script>
 </body>
 </html>
