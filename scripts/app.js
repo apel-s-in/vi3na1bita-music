@@ -380,19 +380,9 @@
   // Создание глобального экземпляра
   w.app = new Application();
 
-  // Автоматический запуск если промокод уже введён (единый источник: APP_CONFIG.PROMOCODE)
-  try {
-    const promo = String(w.APP_CONFIG?.PROMOCODE || '').trim();
-    const saved = String(localStorage.getItem('promocode') || '').trim();
-
-    if (promo && saved === promo) {
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => w.app.initialize());
-      } else {
-        w.app.initialize();
-      }
-    }
-  } catch {}
+  // Автозапуск initialize() выполняется в index.html (unlockAppDirectly),
+  // чтобы избежать гонок двойного старта и несогласованной инициализации модулей.
+  // Здесь сознательно НЕ запускаем initialize() автоматически.
 
 })(); // end of AppModule IIFE
 
