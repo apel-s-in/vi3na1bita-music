@@ -187,6 +187,30 @@
         return { url: String(track?.src || '').trim() || null, effectiveQuality: this.qualityMode || 'hi', reason: 'resolverError' };
       }
     }
+    async _getHasAnyOfflineCompleteCached() {
+      if (this._hasAnyOfflineCacheComplete === true) return true;
+      if (this._hasAnyOfflineCacheComplete === false) return false;
+
+      try {
+        const om = window.OfflineUI?.offlineManager;
+        if (!om || typeof om.hasAnyComplete !== 'function') {
+          // Если OfflineManager не готов — считаем, что офлайн кэша нет (консервативно).
+          this._hasAnyOfflineCacheComplete = false;
+          return false;
+        }
+
+        const uids = this.playlist
+          .map(t => String(t?.uid || '').trim())
+          .filter(Boolean);
+
+        const yes = await om.hasAnyComplete(uids);
+        this._hasAnyOfflineCacheComplete = !!yes;
+        return !!yes;
+      } catch {
+        this._hasAnyOfflineCacheComplete = false;
+        return false;
+      }
+    }
 
     async _findNextPlayableIndex(direction) {
       // direction: 'forward' | 'backward'
@@ -281,7 +305,19 @@
       const resolved = await this._resolvePlaybackUrlForTrack(track);
 
       if (!resolved.url) {
-        // OFFLINE+нет сети и нет локального URL: пропускаем трек без STOP
+        // OFFLINE+нет сети:
+        // 1) если нет офлайн-кэша вообще — тост 1 раз и выходим (без stop/pause)
+        // 2) если офлайн-кэш есть — ищем следующий playable и переключаемся без STOP
+        const hasAny = await this._getHasAnyOfflineCompleteCached();
+
+        if (!hasAny) {
+          if (!this._offlineNoCacheToastShown) {
+            this._offlineNoCacheToastShown = true;
+            window.NotificationSystem?.warning('Нет сети и нет офлайн-кэша');
+          }
+          return;
+        }
+
         const fallbackIdx = await this._findNextPlayableIndex('forward');
         if (fallbackIdx >= 0 && fallbackIdx !== index) {
           this.currentIndex = fallbackIdx;
