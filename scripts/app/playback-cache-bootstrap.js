@@ -70,19 +70,19 @@ export function attachPlaybackCache() {
     const prev = (lastIndex - 1 + len) % len;
     const next = (lastIndex + 1) % len;
 
-    // 1) Чёткие случаи
     if (newIndex === prev) {
       direction = 'backward';
       lastIndex = newIndex;
       return;
     }
+
     if (newIndex === next) {
       direction = 'forward';
       lastIndex = newIndex;
       return;
     }
 
-    // 2) “Телепорт” (ручной выбор из списка или резкий jump из логики) — по ТЗ 7.8 считаем forward
+    // “ручной выбор трека” / jump => по ТЗ 7.8 direction = forward
     direction = 'forward';
     lastIndex = newIndex;
   }
