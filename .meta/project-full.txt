@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2e0780259e3b7cb21494bf8b32b706ec56869a8e.idx
-│   │       ├── pack-2e0780259e3b7cb21494bf8b32b706ec56869a8e.pack
-│   │       └── pack-2e0780259e3b7cb21494bf8b32b706ec56869a8e.rev
+│   │       ├── pack-9f4d9b31cf5d169ca279243c022e0f05a3406519.idx
+│   │       ├── pack-9f4d9b31cf5d169ca279243c022e0f05a3406519.pack
+│   │       └── pack-9f4d9b31cf5d169ca279243c022e0f05a3406519.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -396,7 +396,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 13:40:12 UTC
+Сгенерировано: 2026-01-04 13:43:07 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -11934,6 +11934,7 @@ try { main(); } catch (e) { console.error("❌", e); process.exit(1); }
         return {
           url: String(r?.url || '').trim() || null,
           effectiveQuality: String(r?.effectiveQuality || pq || 'hi').toLowerCase() === 'lo' ? 'lo' : 'hi',
+          isLocal: !!r?.isLocal,
           reason: String(r?.reason || '')
         };
       } catch (e) {
@@ -12045,7 +12046,7 @@ try { main(); } catch (e) { console.error("❌", e); process.exit(1); }
       }
 
       const { autoPlay = false, resumePosition = null } = options || {};
-      const html5 = (typeof options.html5 === 'boolean') ? options.html5 : true;
+      let html5 = (typeof options.html5 === 'boolean') ? options.html5 : true;
 
       // ✅ НЕЛЬЗЯ stop(): это нарушит базовое правило.
       this._silentUnloadCurrentSound();
@@ -12056,6 +12057,10 @@ try { main(); } catch (e) { console.error("❌", e); process.exit(1); }
 
       // ✅ Resolve source via OfflineManager/TrackResolver
       const resolved = await this._resolvePlaybackUrlForTrack(track);
+      // ✅ Локальный источник (blob/objectURL) — играем через WebAudio (html5:false) по ТЗ
+      if (resolved && resolved.isLocal) {
+        html5 = false;
+      }
 
       if (!resolved.url) {
         // OFFLINE+нет сети:
