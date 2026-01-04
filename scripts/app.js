@@ -26,6 +26,24 @@
         // 1. Загрузка индекса альбомов
         await this.loadAlbumsIndex();
 
+        // ✅ OFFLINE: автопредзагрузка TrackRegistry всеми треками (1 раз)
+        // Нужно, чтобы pinned/cloud/offline-all работали сразу, даже без открытия всех альбомов.
+        try {
+          const key = 'offline:preloadAllTracksOnce:v1';
+          const done = localStorage.getItem(key) === '1';
+
+          if (!done) {
+            const mod = await import('./ui/offline-modal.js');
+            if (mod && typeof mod.preloadAllAlbumsTrackIndex === 'function') {
+              // Не блокируем UI полностью: но дождёмся, чтобы индикаторы могли работать уверенно.
+              await mod.preloadAllAlbumsTrackIndex();
+              localStorage.setItem(key, '1');
+            }
+          }
+        } catch (e) {
+          console.warn('OFFLINE preloadAllAlbumsTrackIndex failed:', e);
+        }
+
         // 2. Ожидаем, что PlayerCore уже инициализировался (src/PlayerCore.js делает это сам)
         // 3. Инициализация избранного
         await this.initializeFavorites();
