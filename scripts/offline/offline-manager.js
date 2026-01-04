@@ -8,7 +8,10 @@ import {
   deleteTrackCache,
   getCacheQuality,
   setCacheQuality,
-  ensureDbReady
+  ensureDbReady,
+  getAudioBlob,
+  setAudioBlob,
+  setBytes
 } from './cache-db.js';
 
 import { resolvePlaybackSource } from './track-resolver.js';
@@ -253,6 +256,64 @@ export class OfflineManager {
       await deleteTrackCache(u);
       this._em.emit('progress', { uid: u, phase: 'cacheRemoved' });
       return;
+    }
+  }
+
+  async cacheTrackAudio(uid, quality) {
+    const u = String(uid || '').trim();
+    if (!u) return { ok: false, reason: 'noUid' };
+
+    const q = (String(quality || '').toLowerCase() === 'lo') ? 'lo' : 'hi';
+
+    // Уже есть blob — ничего не делаем
+    const existing = await getAudioBlob(u, q);
+    if (existing) {
+      return { ok: true, cached: true, reason: 'alreadyCached' };
+    }
+
+    const meta = getTrackByUid(u);
+    const url = q === 'lo' ? String(meta?.urlLo || '').trim() : String(meta?.urlHi || '').trim();
+
+    if (!url) return { ok: false, reason: 'noUrlForQuality' };
+
+    // Network policy здесь пока не enforced полностью (будет следующий шаг),
+    // но мы не начинаем скачивание если сети нет.
+    const online = (() => {
+      try {
+        if (window.NetworkManager && typeof window.NetworkManager.getStatus === 'function') {
+          return !!window.NetworkManager.getStatus().online;
+        }
+      } catch {}
+      return navigator.onLine !== false;
+    })();
+
+    if (!online) return { ok: false, reason: 'offlineNoNetwork' };
+
+    this._em.emit('progress', { uid: u, phase: 'downloadStart', quality: q });
+
+    try {
+      const r = await fetch(url, { cache: 'no-cache' });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+
+      const blob = await r.blob();
+      const ok = await setAudioBlob(u, q, blob);
+
+      if (!ok) throw new Error('IndexedDB write failed');
+
+      // ✅ Обновляем “bytes” (у тебя сейчас это MB-hint из TrackRegistry.size*)
+      const needMb = q === 'hi'
+        ? Number(meta?.sizeHi || meta?.size || 0)
+        : Number(meta?.sizeLo || meta?.size_low || 0);
+
+      if (needMb > 0) {
+        await setBytes(u, q, needMb);
+      }
+
+      this._em.emit('progress', { uid: u, phase: 'downloadDone', quality: q });
+      return { ok: true, cached: true, reason: 'downloaded' };
+    } catch (e) {
+      this._em.emit('progress', { uid: u, phase: 'downloadError', quality: q, error: String(e?.message || e) });
+      return { ok: false, reason: 'downloadError' };
     }
   }
 
