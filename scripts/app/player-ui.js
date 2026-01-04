@@ -76,6 +76,19 @@
       });
     }
 
+    // ✅ Network-aware PQ: обновляем кнопку при смене сети/типа соединения
+    try {
+      if (w.NetworkManager && typeof w.NetworkManager.subscribe === 'function') {
+        w.NetworkManager.subscribe(() => {
+          try { updatePQButton(); } catch {}
+        });
+      } else {
+        // Fallback: online/offline события
+        window.addEventListener('online', () => { try { updatePQButton(); } catch {} });
+        window.addEventListener('offline', () => { try { updatePQButton(); } catch {} });
+      }
+    } catch {}
+
     console.log('✅ PlayerUI initialized');
   }
 
@@ -956,6 +969,15 @@
     try { localStorage.setItem('playerVolume', String(v)); } catch {}
   }
 
+  function _isNetworkAvailable() {
+    try {
+      if (w.NetworkManager && typeof w.NetworkManager.getStatus === 'function') {
+        return !!w.NetworkManager.getStatus().online;
+      }
+    } catch {}
+    return navigator.onLine !== false;
+  }
+
   function updatePQButton() {
     const btn = document.getElementById('pq-btn');
     const label = document.getElementById('pq-btn-label');
@@ -966,7 +988,11 @@
       ? 'lo'
       : 'hi';
 
-    const canToggle = !!w.playerCore?.canToggleQualityForCurrentTrack?.();
+    const canToggleByTrack = !!w.playerCore?.canToggleQualityForCurrentTrack?.();
+    const netOk = _isNetworkAvailable();
+
+    // По ТЗ: если сеть недоступна — PQ disabled (даже если у трека есть Lo)
+    const canToggle = canToggleByTrack && netOk;
 
     btn.classList.toggle('pq-hi', mode === 'hi');
     btn.classList.toggle('pq-lo', mode === 'lo');
@@ -980,6 +1006,13 @@
 
   function togglePQ() {
     if (!w.playerCore) return;
+
+    // По ТЗ: если сеть недоступна — не переключаем и показываем toast
+    if (!_isNetworkAvailable()) {
+      w.NotificationSystem?.warning('Нет доступа к сети');
+      updatePQButton();
+      return;
+    }
 
     const canToggle = !!w.playerCore.canToggleQualityForCurrentTrack?.();
     if (!canToggle) {
