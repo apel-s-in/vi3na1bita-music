@@ -1,5 +1,15 @@
 // scripts/ui/offline-indicators.js
-import { OfflineUI } from '../app/offline-ui-bootstrap.js';
+import { OfflineUI as OfflineUIExport } from '../app/offline-ui-bootstrap.js';
+
+// ✅ Runtime-источник: window.OfflineUI (единый)
+const OfflineUI = (() => {
+  try {
+    return window.OfflineUI || OfflineUIExport;
+  } catch {
+    return OfflineUIExport;
+  }
+})();
+
 import { attachCloudMenu } from './cloud-menu.js';
 
 const ICON_CSS = `
