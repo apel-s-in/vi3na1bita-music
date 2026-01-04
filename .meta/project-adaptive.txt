@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-94b5df7eae784ada83d7a1b36ebcfbbaedea2b99.idx
-│   │       ├── pack-94b5df7eae784ada83d7a1b36ebcfbbaedea2b99.pack
-│   │       └── pack-94b5df7eae784ada83d7a1b36ebcfbbaedea2b99.rev
+│   │       ├── pack-081929270ff7667415de9b1f945dd844df540f06.idx
+│   │       ├── pack-081929270ff7667415de9b1f945dd844df540f06.pack
+│   │       └── pack-081929270ff7667415de9b1f945dd844df540f06.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -400,7 +400,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 10:38:28 UTC
+Сгенерировано: 2026-01-04 10:38:48 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8661,42 +8661,86 @@ export function attachCacheProgressOverlay() {
 //=================================================
 // FILE: /scripts/ui/cloud-menu.js
 // scripts/ui/cloud-menu.js
-// Меню для ☁ (ТЗ 9.6: “Добавить 🔒” / “Удалить из кэша” + сброс статистики)
+// Меню для ☁ (ТЗ: “Добавить 🔒” / “Удалить из кэша” + сброс cloud-статистики)
+// Реализация под текущий проект: Utils.createModal(html), OfflineUI.offlineManager
 
-import offlineManager from '../utils/offline-manager.js';
-import { showToast } from './notify.js';
+import { OfflineUI } from '../app/offline-ui-bootstrap.js';
 
-function showCloudMenu(uid, anchorElement) {
-  const menu = Utils.createModal({
-    title: 'Cloud ☁ для трека',
-    content: `
-      <button id="add-pinned">Добавить замочек 🔒</button>
-      <button id="delete-cloud" class="danger">Удалить из кэша (статистика будет сброшена)</button>
-    `,
-    small: true,
-    positionNear: anchorElement // Если Utils поддерживает, иначе центр
+export function attachCloudMenu({ root, onAddLock, onRemoveCache } = {}) {
+  const el = root;
+  if (!el) return;
+
+  const esc = window.Utils?.escapeHtml
+    ? (s) => window.Utils.escapeHtml(String(s || ''))
+    : (s) => String(s || '');
+
+  const html = `
+    <div class="modal-feedback" style="max-width: 420px;">
+      <button class="bigclose" title="Закрыть" aria-label="Закрыть">
+        <svg viewBox="0 0 48 48">
+          <line x1="12" y1="12" x2="36" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+          <line x1="36" y1="12" x2="12" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+        </svg>
+      </button>
+
+      <div style="font-size: 1.08em; font-weight: 900; color: #eaf2ff; margin-bottom: 10px;">
+        Cloud ☁
+      </div>
+
+      <div style="color:#9db7dd; line-height:1.45; margin-bottom: 14px;">
+        <div style="opacity:.9;">
+          Управление облачным кэшем трека.
+        </div>
+      </div>
+
+      <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+        <button class="offline-btn online" data-act="add" style="min-width: 170px;">Добавить замочек 🔒</button>
+        <button class="offline-btn" data-act="remove" style="min-width: 170px;">Удалить из кэша</button>
+      </div>
+    </div>
+  `;
+
+  const modal = (window.Utils && typeof window.Utils.createModal === 'function')
+    ? window.Utils.createModal(html)
+    : null;
+
+  if (!modal) return;
+
+  modal.querySelector('[data-act="add"]')?.addEventListener('click', async () => {
+    try {
+      if (typeof onAddLock === 'function') {
+        await onAddLock();
+      }
+      window.NotificationSystem?.success('Трек добавлен в pinned 🔒');
+    } catch (e) {
+      window.NotificationSystem?.error('Не удалось добавить в pinned');
+    } finally {
+      try { modal.remove(); } catch {}
+    }
   });
 
-  menu.show();
+  modal.querySelector('[data-act="remove"]')?.addEventListener('click', async () => {
+    const ok = window.confirm('Удалить из кэша? Cloud‑статистика будет сброшена.');
+    if (!ok) return;
 
-  menu.querySelector('#add-pinned').onclick = async () => {
-    await offlineManager.setPinned(uid, true); // pinned=true, не сбрасывает статистику
-    showToast('Трек добавлен в pinned 🔒');
-    menu.close();
-    // TODO: перерендер трек-листа
-  };
-
-  menu.querySelector('#delete-cloud').onclick = async () => {
-    if (confirm('Удалить из кэша? Статистика cloud будет сброшена.')) {
-      await offlineManager.setCloud(uid, false); // Сброс cloudStats (ТЗ 9.6 + уточнение)
-      showToast('Трек удалён из cloud. Статистика сброшена.');
-      menu.close();
-      // TODO: перерендер трек-листа, не прерывать если CUR играет (ТЗ 9.6)
+    try {
+      if (typeof onRemoveCache === 'function') {
+        await onRemoveCache();
+      } else {
+        // fallback: если коллбеки не передали — используем стандартный метод
+        const uid = String(el.dataset?.uid || '').trim();
+        if (uid) {
+          await OfflineUI.offlineManager.cloudMenu(uid, 'remove-cache');
+        }
+      }
+      window.NotificationSystem?.success('Трек удалён из cloud');
+    } catch (e) {
+      window.NotificationSystem?.error('Не удалось удалить из cloud');
+    } finally {
+      try { modal.remove(); } catch {}
     }
-  };
+  });
 }
-
-export { showCloudMenu };
 
 //=================================================
 // FILE: /scripts/ui/favorites-const.js
