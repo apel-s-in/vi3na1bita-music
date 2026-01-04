@@ -14,10 +14,9 @@ function uidOfTrack(t) {
 }
 
 export class PlaybackCacheManager {
-  constructor({ queue, resolver, downloader, getPlaylistCtx } = {}) {
+  constructor({ queue, resolver, getPlaylistCtx } = {}) {
     this.queue = queue;
     this.resolver = resolver;     // legacy: can be used for decisions
-    this.downloader = downloader; // new: performs caching tasks
     this.getPlaylistCtx = getPlaylistCtx;
   }
 
@@ -39,43 +38,27 @@ export class PlaybackCacheManager {
     const prevUid = uidOfTrack(list[prevIdx]);
     const nextUid = uidOfTrack(list[nextIdx]);
 
+    const om = window.OfflineUI?.offlineManager;
+    if (!om || typeof om.enqueueAudioDownload !== 'function') return;
+
     const enqueue = (uid, priority) => {
       if (!uid) return;
-      if (!this.queue || typeof this.queue.add !== 'function') return;
-
-      const key = `pc:${q}:${uid}`;
-
-      // ✅ Дедуп: не ставим задачу если она уже в очереди или выполняется
-      if (typeof this.queue.hasTask === 'function' && this.queue.hasTask(key)) return;
 
       const meta = (typeof trackProvider === 'function') ? trackProvider(uid) : null;
       if (!meta) return;
 
-      this.queue.add({
-        key,
+      om.enqueueAudioDownload({
         uid,
+        quality: q, // ✅ PlaybackCache качает в PQ (ТЗ 7.4/7.7)
+        key: `pc:${q}:${uid}`,
         priority,
-        run: async () => {
-          try {
-            if (typeof this.downloader === 'function') {
-              await this.downloader(uid, q);
-              return;
-            }
-            if (typeof this.resolver === 'function') {
-              await this.resolver(meta, q);
-            }
-          } catch {}
-        }
+        userInitiated: false,
+        isMass: false,
+        kind: 'playbackCache'
       });
     };
 
-    // ✅ ТЗ 7.7: всегда сначала CUR до 100%
+    // ✅ ТЗ 7.7: CUR, потом один сосед по направлению
     enqueue(curUid, 30);
-
-    // ✅ ТЗ 7.7: затем только один сосед по направлению
-    if (dir === 'backward') {
-      enqueue(prevUid, 20);
-    } else {
-      enqueue(nextUid, 20);
-    }
+    enqueue(dir === 'backward' ? prevUid : nextUid, 20);
   }
