@@ -14,9 +14,8 @@ function uidOfTrack(t) {
 }
 
 export class PlaybackCacheManager {
-  constructor({ queue, resolver, getPlaylistCtx } = {}) {
+  constructor({ queue, getPlaylistCtx } = {}) {
     this.queue = queue;
-    this.resolver = resolver;     // legacy: can be used for decisions
     this.getPlaylistCtx = getPlaylistCtx;
   }
 
