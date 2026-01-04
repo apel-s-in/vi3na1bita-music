@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-17b2030b94fd89044afdec5fb3b920b0419192c7.idx
-│   │       ├── pack-17b2030b94fd89044afdec5fb3b920b0419192c7.pack
-│   │       └── pack-17b2030b94fd89044afdec5fb3b920b0419192c7.rev
+│   │       ├── pack-100eb685cf78b0eaa5a207adb266185e4bac7f64.idx
+│   │       ├── pack-100eb685cf78b0eaa5a207adb266185e4bac7f64.pack
+│   │       └── pack-100eb685cf78b0eaa5a207adb266185e4bac7f64.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -393,7 +393,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 12:33:20 UTC
+Сгенерировано: 2026-01-04 12:48:02 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7850,7 +7850,7 @@ import {
 } from './cache-db.js';
 
 const OFFLINE_MODE_KEY = 'offlineMode:v1';
-const CQ_KEY = 'cacheQuality:v1';
+const CQ_KEY = 'offline:cacheQuality:v1';
 const PINNED_KEY = 'pinnedUids:v1';
 
 function readJson(key, fallback) {
