@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-cb078115e5b234e7cc6442b2e33d6139cfb216be.idx
-│   │       ├── pack-cb078115e5b234e7cc6442b2e33d6139cfb216be.pack
-│   │       └── pack-cb078115e5b234e7cc6442b2e33d6139cfb216be.rev
+│   │       ├── pack-75de79c39a2ab19100fcb36164ec06202696b566.idx
+│   │       ├── pack-75de79c39a2ab19100fcb36164ec06202696b566.pack
+│   │       └── pack-75de79c39a2ab19100fcb36164ec06202696b566.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 19:55:15 UTC
+Сгенерировано: 2026-01-04 20:05:15 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8448,6 +8448,7 @@ class SimpleQueue {
   constructor({ onProgress } = {}) {
     this._items = [];
     this._running = false;
+    this._runningKey = null;
     this._onProgress = typeof onProgress === 'function' ? onProgress : null;
   }
 
@@ -8470,6 +8471,9 @@ class SimpleQueue {
   hasTask(key) {
     const k = String(key || '').trim();
     if (!k) return false;
+
+    if (this._runningKey && this._runningKey === k) return true;
+
     return this._items.some(t => String(t?.key || '').trim() === k);
   }
 
@@ -8483,6 +8487,7 @@ class SimpleQueue {
 
     this._running = true;
     const task = this._items.shift();
+    this._runningKey = task && task.key ? String(task.key) : null;
 
     try {
       if (this._onProgress) {
@@ -8500,6 +8505,7 @@ class SimpleQueue {
       }
     } finally {
       this._running = false;
+      this._runningKey = null;
       this._tick();
     }
   }
