@@ -352,6 +352,18 @@
         onend: () => {
           this.stopTick();
           this.trigger('onEnd', track, index);
+
+          // ✅ Cloud N/D: фиксируем “полное прослушивание” (без влияния на playback).
+          try {
+            const uid = String(track?.uid || '').trim();
+            if (uid) {
+              const om = window.OfflineUI?.offlineManager;
+              if (om && typeof om.recordFullListen === 'function') {
+                om.recordFullListen(uid);
+              }
+            }
+          } catch {}
+
           this.handleTrackEnd();
         },
         onload: () => {
