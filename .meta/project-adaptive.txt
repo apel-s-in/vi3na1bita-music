@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-cab82e23ed5c0d329bb5c7646e1b9d565ac17f7e.idx
-│   │       ├── pack-cab82e23ed5c0d329bb5c7646e1b9d565ac17f7e.pack
-│   │       └── pack-cab82e23ed5c0d329bb5c7646e1b9d565ac17f7e.rev
+│   │       ├── pack-64a1dc126705e9a344f23275b4998ed82858fcd1.idx
+│   │       ├── pack-64a1dc126705e9a344f23275b4998ed82858fcd1.pack
+│   │       └── pack-64a1dc126705e9a344f23275b4998ed82858fcd1.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 20:51:24 UTC
+Сгенерировано: 2026-01-04 20:53:56 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8916,10 +8916,14 @@ export class OfflineManager {
       this._setPinnedSet(set);
     }
 
-    // ✅ ТЗ 8.3: unpin -> cloudCandidate=true и докачать до 100% CQ
+    // ✅ ТЗ 8.3: снятие pinned → cloudCandidate присваивается немедленно
+    // и докачка до 100% в CQ. fullListenCount НЕ накручиваем.
     try { await setCloudCandidate(u, true); } catch {}
 
-    // Ставим задачу докачки до CQ (без повышения listens)
+    // ✅ UX toast по ТЗ 20 (короткий)
+    window.NotificationSystem?.info('Офлайн‑закрепление снято. Трек станет Cloud‑кандидатом.', 3500);
+
+    // Докачка CQ (можно без userInitiated — это не массовое)
     try {
       const cq = await this.getCacheQuality();
       this.enqueueAudioDownload({
@@ -8936,27 +8940,64 @@ export class OfflineManager {
     this._em.emit('progress', { uid: u, phase: 'unpinned' });
   }
 
-  async recordFullListen(uid) {
+  /**
+   * Cloud full listen (ТЗ 9.2):
+   * - засчитываем только если duration валидна и прогресс > 90%
+   * - repeat: повторное full listen продлевает TTL
+   *
+   * Важно: снятие pinned -> cloudCandidate НЕ накручивает fullListenCount (ТЗ 8.3),
+   * поэтому этот метод должен вызываться ТОЛЬКО из Playback/Player событий, а не из UI кликов.
+   */
+  async recordFullListen(uid, ctx = {}) {
     const u = String(uid || '').trim();
-    if (!u) return false;
+    if (!u) return { ok: false, reason: 'noUid' };
+
+    const duration = Number(ctx?.duration || 0);
+    const progress = Number(ctx?.progress || 0);
+
+    if (!(Number.isFinite(duration) && duration > 0)) return { ok: false, reason: 'invalidDuration' };
+    if (!(Number.isFinite(progress) && progress > 0.9)) return { ok: false, reason: 'progressLt90' };
 
     const now = Date.now();
+    const { n, d } = this.getCloudSettings();
+    const ttlMs = d * 24 * 60 * 60 * 1000;
 
     try {
       const prev = await getCloudStats(u);
-      const listens = (Number(prev?.listens || 0) || 0) + 1;
+
+      const prevCount = Number(prev?.cloudFullListenCount || 0);
+      const nextCount = (Number.isFinite(prevCount) && prevCount > 0) ? (prevCount + 1) : 1;
+
+      // A) Авто-cloud: если достигли N — делаем cloud=true (но ☁ в UI только после 100% CQ)
+      const becameCloud = nextCount >= n;
+
+      const nextCloud = becameCloud ? true : (prev?.cloud === true);
+
+      // TTL стартует при cloud=true (ТЗ 9.4). Продление — при каждом full listen, но только если cloud=true.
+      const cloudAddedAt = nextCloud
+        ? (Number(prev?.cloudAddedAt || 0) > 0 ? Number(prev.cloudAddedAt) : now)
+        : 0;
+
+      const cloudExpiresAt = nextCloud
+        ? (now + ttlMs)
+        : 0;
 
       const next = {
-        listens,
-        firstListenAt: prev?.firstListenAt > 0 ? prev.firstListenAt : now,
-        lastListenAt: now
+        cloudFullListenCount: nextCount,
+        lastFullListenAt: now,
+        cloudAddedAt,
+        cloudExpiresAt,
+        cloud: nextCloud
       };
 
       await setCloudStats(u, next);
-      this._em.emit('progress', { uid: u, phase: 'cloudStats', listens: next.listens });
-      return true;
+
+      // если авто-cloud сработал — candidate не нужен, но пусть остаётся как есть (не критично)
+      this._em.emit('progress', { uid: u, phase: 'cloudStats', cloudFullListenCount: next.cloudFullListenCount, cloud: next.cloud });
+
+      return { ok: true, cloud: next.cloud, cloudFullListenCount: next.cloudFullListenCount };
     } catch {
-      return false;
+      return { ok: false, reason: 'dbError' };
     }
   }
 
@@ -8965,21 +9006,39 @@ export class OfflineManager {
     if (!u) return false;
 
     try {
-      // 8.3: cloudCandidate должен быть true (после unpin)
-      const candidate = await getCloudCandidate(u);
-      if (!candidate) return false;
+      const pinned = this._getPinnedSet().has(u);
+      if (pinned) return false;
+
+      const { n } = this.getCloudSettings();
+      const now = Date.now();
 
       const st = await getCloudStats(u);
-      const listens = Number(st?.listens || 0);
-      const last = Number(st?.lastListenAt || 0);
 
-      const { n, d } = this.getCloudSettings();
+      // B) Ручной cloud: cloudCandidate=true (ТЗ 9.3.B)
+      const candidate = await getCloudCandidate(u);
 
-      if (!(Number.isFinite(listens) && listens >= n)) return false;
-      if (!(Number.isFinite(last) && last > 0)) return false;
+      const count = Number(st?.cloudFullListenCount || 0);
+      const cloudByAuto = Number.isFinite(count) && count >= n;
 
-      const ttlMs = d * 24 * 60 * 60 * 1000;
-      return (Date.now() - last) <= ttlMs;
+      // Cloud “условно доступен”, если:
+      // - cloud=true и ttl не истёк
+      // - или кандидат (manual), даже если fullListenCount<N (ТЗ 8.3 / 9.3.B)
+      // Но отображать ☁ будем только при cachedComplete=100% CQ (делает getIndicators)
+      const cloudFlag = (st?.cloud === true);
+
+      // Если cloud=true — проверяем TTL
+      if (cloudFlag) {
+        const exp = Number(st?.cloudExpiresAt || 0);
+        if (Number.isFinite(exp) && exp > 0 && exp >= now) return true;
+        // TTL истёк: cloud недействителен
+        return false;
+      }
+
+      // Если ещё cloud=false, но кандидат или авто-порог выполнен — считаем eligible (станет cloud после 100% докачки CQ)
+      if (candidate) return true;
+      if (cloudByAuto) return true;
+
+      return false;
     } catch {
       return false;
     }
@@ -8993,16 +9052,18 @@ export class OfflineManager {
 
     const cq = await this.getCacheQuality();
 
-    // ✅ cachedComplete: 100% в CQ
+    // ✅ cachedComplete: 100% в CQ (как в ТЗ 9.3/10.1)
     const cachedComplete = await this.isTrackComplete(u, cq);
 
-    // ✅ Cloud N/D:
-    // ☁ показываем только если:
-    // - не pinned
-    // - 100% cachedComplete
-    // - набрано N полных прослушиваний и не истёк TTL D дней
+    // ✅ Cloud показываем в UI только если cachedComplete=100% (CQ)
+    // Cloud eligible включает:
+    // - auto: count>=N
+    // - manual: cloudCandidate=true
+    // - TTL проверяем только когда cloud=true
     const eligible = await this.isCloudEligible(u);
-    const cloud = !pinned && !!cachedComplete && !!eligible;
+
+    // Если pinned — всегда 🔒, облако не показываем
+    const cloud = (!pinned) && (!!cachedComplete) && (!!eligible);
 
     return {
       pinned,
@@ -9017,22 +9078,26 @@ export class OfflineManager {
     if (!u || !act) return;
 
     if (act === 'remove-cache') {
+      // ✅ ТЗ 9.5: “Удалить из кэша”:
+      // - удалить локальную cloud-копию (в нашем хранилище это bytes+blobs)
+      // - сбросить cloud-статистику (cloudFullListenCount, lastFullListenAt, cloudAddedAt, cloudExpiresAt, cloud=true)
+      // - НЕ трогать global user stats (в проекте их пока нет)
       await deleteTrackCache(u);
 
-      // ✅ По ТЗ: удаление из кэша сбрасывает cloud-статистику и cloudCandidate
       try { await clearCloudStats(u); } catch {}
       try { await clearCloudCandidate(u); } catch {}
 
-      // ✅ Если кэш удалён — pinned не должен оставаться “висеть”.
-      try {
-        const set = this._getPinnedSet();
-        if (set.has(u)) {
-          set.delete(u);
-          this._setPinnedSet(set);
-        }
-      } catch {}
+      // pinned при этом НЕ обязателен к сбросу по ТЗ,
+      // но UI-логика: “Удалить из кэша” из cloud-меню предполагает cloud-копию.
+      // Если трек pinned — пользователь должен сначала снять pinned.
+      // Поэтому pinned здесь НЕ трогаем.
 
       this._em.emit('progress', { uid: u, phase: 'cacheRemoved' });
+      return;
+    }
+
+    if (act === 'add-lock') {
+      await this.pin(u);
       return;
     }
   }
