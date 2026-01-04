@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-316329518a17dd728dbd1ea67edb9625514f6782.idx
-│   │       ├── pack-316329518a17dd728dbd1ea67edb9625514f6782.pack
-│   │       └── pack-316329518a17dd728dbd1ea67edb9625514f6782.rev
+│   │       ├── pack-eadfe641401cc92e075d092640b0b1621ff159a1.idx
+│   │       ├── pack-eadfe641401cc92e075d092640b0b1621ff159a1.pack
+│   │       └── pack-eadfe641401cc92e075d092640b0b1621ff159a1.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -395,7 +395,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 13:11:12 UTC
+Сгенерировано: 2026-01-04 13:13:51 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9956,12 +9956,7 @@ export async function openOfflineModal() {
 
   bindModalHandlers(modal);
 
-  // Если есть alert — по ТЗ можно подсветить событием/тостом при открытии (второй “тип” тоста)
-  const alert = getAlert();
-  if (alert.on) {
-    window.NotificationSystem?.warning(alert.reason || 'Требуется внимание в OFFLINE настройках');
-    window.NotificationSystem?.info('Откройте секции A–D и проверьте настройки');
-  }
+  // По уточнению: тосты показываем только при включении OFFLINE, не при открытии модалки.
 }
 
 export const OfflineModal = { open: openOfflineModal };
