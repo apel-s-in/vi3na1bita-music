@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-69fc96a4e3fa1e753de2863a27264da65b69c2f7.idx
-│   │       ├── pack-69fc96a4e3fa1e753de2863a27264da65b69c2f7.pack
-│   │       └── pack-69fc96a4e3fa1e753de2863a27264da65b69c2f7.rev
+│   │       ├── pack-3562a2102f768dd260f9b7a46fd9e0883730b1ac.idx
+│   │       ├── pack-3562a2102f768dd260f9b7a46fd9e0883730b1ac.pack
+│   │       └── pack-3562a2102f768dd260f9b7a46fd9e0883730b1ac.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -396,7 +396,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 14:33:27 UTC
+Сгенерировано: 2026-01-04 14:33:55 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8568,19 +8568,24 @@ async function hasCachedEnough(uid, q) {
   const u = String(uid || '').trim();
   if (!u) return false;
 
+  const MB = 1024 * 1024;
+
   const meta = getTrackByUid(u);
   const needMb = q === 'hi'
     ? Number(meta?.sizeHi || meta?.size || 0)
     : Number(meta?.sizeLo || meta?.size_low || 0);
 
-  if (!(needMb > 0)) return false;
+  if (!(Number.isFinite(needMb) && needMb > 0)) return false;
+
+  const needBytes = Math.floor(needMb * MB);
 
   const b = await bytesByQuality(u);
-  const haveMb = q === 'hi' ? Number(b.hi || 0) : Number(b.lo || 0);
+  const haveBytes = q === 'hi' ? Number(b.hi || 0) : Number(b.lo || 0);
 
-  // MVP: bytesByQuality у нас хранит "условные MB" (как size из config),
-  // поэтому сравниваем как MB. Позже при реальных байтах переведём в bytes.
-  return haveMb >= needMb;
+  if (!(Number.isFinite(haveBytes) && haveBytes > 0)) return false;
+
+  // ✅ Допуск 92% (как в ТЗ): считаем complete, если близко к ожидаемому размеру.
+  return haveBytes >= Math.floor(needBytes * 0.92);
 }
 
 /**
