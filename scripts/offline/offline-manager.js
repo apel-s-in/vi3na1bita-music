@@ -14,7 +14,8 @@ import {
   setBytes,
   getCloudStats,
   setCloudStats,
-  clearCloudStats
+  clearCloudStats,
+  totalCachedBytes
 } from './cache-db.js';
 
 import { resolvePlaybackSource } from './track-resolver.js';
