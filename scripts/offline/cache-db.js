@@ -94,6 +94,21 @@ export async function bytesByQuality(uid) {
   const u = String(uid || '').trim();
   if (!u) return { hi: 0, lo: 0 };
 
+  const MB = 1024 * 1024;
+
+  const normalize = (v) => {
+    const n = Number(v || 0);
+    if (!Number.isFinite(n) || n <= 0) return 0;
+
+    // ✅ Миграция legacy: если раньше сюда писали "MB" (например 8.5),
+    // то значение будет < 1MB. Конвертируем MB → bytes.
+    if (n > 0 && n < MB) {
+      return Math.floor(n * MB);
+    }
+
+    return Math.floor(n);
+  };
+
   try {
     const db = await openDb();
     const row = await txp(db, STORE_BYTES, 'readonly', (st) => {
@@ -104,13 +119,20 @@ export async function bytesByQuality(uid) {
       });
     });
 
-    const hi = Number(row?.hi || 0);
-    const lo = Number(row?.lo || 0);
+    const hi = normalize(row?.hi);
+    const lo = normalize(row?.lo);
 
-    return {
-      hi: Number.isFinite(hi) && hi > 0 ? hi : 0,
-      lo: Number.isFinite(lo) && lo > 0 ? lo : 0
-    };
+    // ✅ Если была миграция MB→bytes — перезапишем ряд, чтобы дальше не пересчитывать.
+    if (row && ((hi && hi !== row.hi) || (lo && lo !== row.lo))) {
+      try {
+        const db2 = await openDb();
+        await txp(db2, STORE_BYTES, 'readwrite', (st) => {
+          st.put({ hi, lo }, u);
+        });
+      } catch {}
+    }
+
+    return { hi, lo };
   } catch {
     return { hi: 0, lo: 0 };
   }
@@ -121,20 +143,30 @@ export async function setBytes(uid, quality, bytes) {
   if (!u) return;
 
   const q = (String(quality || '').toLowerCase() === 'lo') ? 'lo' : 'hi';
-  const b = Number(bytes || 0);
-  const safe = Number.isFinite(b) && b > 0 ? b : 0;
+  const b = Number(bytes);
+  const safe = (Number.isFinite(b) && b > 0) ? Math.floor(b) : 0;
 
   try {
     const db = await openDb();
     await txp(db, STORE_BYTES, 'readwrite', (st) => {
-      const getReq = st.get(u);
+      return new Promise((resolve, reject) => {
+        const getReq = st.get(u);
 
-      getReq.onsuccess = () => {
-        const cur = getReq.result || { hi: 0, lo: 0 };
-        const next = { hi: Number(cur.hi || 0), lo: Number(cur.lo || 0) };
-        next[q] = safe;
-        st.put(next, u);
-      };
+        getReq.onsuccess = () => {
+          try {
+            const cur = getReq.result || { hi: 0, lo: 0 };
+            const next = { hi: Number(cur.hi || 0), lo: Number(cur.lo || 0) };
+            next[q] = safe;
+            const putReq = st.put(next, u);
+            putReq.onsuccess = () => resolve(true);
+            putReq.onerror = () => reject(putReq.error);
+          } catch (e) {
+            reject(e);
+          }
+        };
+
+        getReq.onerror = () => reject(getReq.error);
+      });
     });
   } catch {}
 }
