@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6353419612e0bf689d8ef0fe9cb2a044e6c3fd55.idx
-│   │       ├── pack-6353419612e0bf689d8ef0fe9cb2a044e6c3fd55.pack
-│   │       └── pack-6353419612e0bf689d8ef0fe9cb2a044e6c3fd55.rev
+│   │       ├── pack-02c255601770c687c319f5f2530dc7e95fc651a6.idx
+│   │       ├── pack-02c255601770c687c319f5f2530dc7e95fc651a6.pack
+│   │       └── pack-02c255601770c687c319f5f2530dc7e95fc651a6.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 18:15:24 UTC
+Сгенерировано: 2026-01-04 18:22:56 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7991,6 +7991,61 @@ export async function setCloudStats(uid, stats) {
 
 export async function clearCloudStats(uid) {
   const key = cloudKey(uid);
+  if (!key) return false;
+
+  try {
+    const db = await openDb();
+    await txp(db, STORE_META, 'readwrite', (st) => {
+      st.delete(key);
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// meta key format: cloudCandidate:{uid} -> boolean
+function cloudCandidateKey(uid) {
+  const u = String(uid || '').trim();
+  return u ? `cloudCandidate:${u}` : '';
+}
+
+export async function getCloudCandidate(uid) {
+  const key = cloudCandidateKey(uid);
+  if (!key) return false;
+
+  try {
+    const db = await openDb();
+    const v = await txp(db, STORE_META, 'readonly', (st) => {
+      return new Promise((resolve, reject) => {
+        const r = st.get(key);
+        r.onsuccess = () => resolve(r.result);
+        r.onerror = () => reject(r.error);
+      });
+    });
+    return v === true;
+  } catch {
+    return false;
+  }
+}
+
+export async function setCloudCandidate(uid, flag) {
+  const key = cloudCandidateKey(uid);
+  if (!key) return false;
+
+  try {
+    const db = await openDb();
+    await txp(db, STORE_META, 'readwrite', (st) => {
+      st.put(!!flag, key);
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function clearCloudCandidate(uid) {
+  const key = cloudCandidateKey(uid);
   if (!key) return false;
 
   try {
