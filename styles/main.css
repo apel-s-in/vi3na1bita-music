@@ -1375,11 +1375,7 @@ header {
 .sleep-btn-secondary { background: rgba(255,255,255,0.1); color: var(--text-color); }
 .sleep-btn:hover { opacity: 0.8; }
 
-#offline-btn.alert::after {
-  content: "!";
-  margin-left: 4px;
-  color: var(--primary-color);
-}
+/* (removed duplicate offline alert badge rule; keep the final definition below) */
 
 /* ===== Hotkeys modal ===== */
 
