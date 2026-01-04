@@ -33,7 +33,7 @@ function getNetworkStatus() {
 }
 
 // ✅ Remote preload: загрузить config.json всех альбомов из albums.json и зарегистрировать треки в TrackRegistry.
-async function loadAllAlbumsTrackIndex() {
+export async function preloadAllAlbumsTrackIndex() {
   const albums = Array.isArray(window.albumsIndex) ? window.albumsIndex : [];
   if (!albums.length) {
     return { ok: false, reason: 'noAlbumsIndex', totalAlbums: 0, totalTracks: 0, uids: [] };
@@ -435,7 +435,7 @@ function bindModalHandlers(modal) {
 
       window.NotificationSystem?.info('Загружаю список треков всех альбомов…', 3500);
 
-      const res = await loadAllAlbumsTrackIndex();
+      const res = await preloadAllAlbumsTrackIndex();
       if (!res.ok) {
         window.NotificationSystem?.error('Не удалось загрузить список треков');
         return;
@@ -463,7 +463,7 @@ function bindModalHandlers(modal) {
       // ✅ Если треки ещё не загружены в реестр — подгружаем remote configs автоматически
       let uids = getAllUids();
       if (!Array.isArray(uids) || uids.length === 0) {
-        const preload = await loadAllAlbumsTrackIndex();
+        const preload = await preloadAllAlbumsTrackIndex();
         uids = preload?.uids || [];
       }
 
