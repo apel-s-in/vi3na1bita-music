@@ -156,9 +156,47 @@ export async function resolvePlaybackSource(params) {
     };
   }
 
-  // Сеть есть: всегда можем играть по сети.
-  // При этом effectiveQuality может быть hi даже при PQ=lo (если CQ=hi и локально было бы hi).
-  // Но пока url локальный не реализован, всё равно играем по сети в effectiveQuality.
+  // ✅ Сеть есть:
+  // По ТЗ локальная копия качества ≥ PQ имеет приоритет над сетью.
+  // Поэтому сначала пробуем local blob (effectiveQuality), затем fallback на сеть.
+  if (uid) {
+    const want = effectiveQuality;
+    const alt = want === 'hi' ? 'lo' : 'hi';
+
+    const tryLocal = async (q) => {
+      const key = `${uid}:${q}`;
+      const cached = getCachedObjectUrl(key);
+      if (cached) return cached;
+
+      const blob = await getAudioBlob(uid, q);
+      if (!blob) return null;
+
+      const objUrl = URL.createObjectURL(blob);
+      return setCachedObjectUrl(key, objUrl);
+    };
+
+    // 1) пробуем желаемое качество
+    const localUrl = await tryLocal(want);
+
+    // 2) если pq=hi, а hi нет локально — по ТЗ fallback на lo допускается только если сеть недоступна.
+    // При наличии сети fallback на lo НЕ нужен, поэтому alt используем только когда want='lo' (pq lo)
+    // и вдруг lo нет, но есть hi локально (улучшение).
+    const localUrl2 = (!localUrl && want === 'lo') ? await tryLocal('hi') : null;
+
+    const chosenLocal = localUrl || localUrl2;
+
+    if (chosenLocal) {
+      return {
+        url: chosenLocal,
+        effectiveQuality: want,
+        isLocal: true,
+        localQuality,
+        reason: 'localBlob'
+      };
+    }
+  }
+
+  // Сеть есть — играем по сети в effectiveQuality
   const url = pickNetworkUrl(effectiveQuality);
 
   return {
