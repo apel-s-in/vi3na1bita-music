@@ -10,6 +10,12 @@ export const OfflineUI = {
   offlineManager: null
 };
 
+// ✅ Глобальная публикация для legacy/bridge-кода (PlayerCore, playback-cache-bootstrap, overlay)
+// Без этого window.OfflineUI будет undefined и офлайн-цепочка “молча” не работает.
+try {
+  window.OfflineUI = OfflineUI;
+} catch {}
+
 const ALERT_KEY = 'offline:alert:v1';
 
 function readAlert() {
