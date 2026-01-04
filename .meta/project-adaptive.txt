@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8e0c5b73180c9fbd533ada7d00a0b849bdff1e64.idx
-│   │       ├── pack-8e0c5b73180c9fbd533ada7d00a0b849bdff1e64.pack
-│   │       └── pack-8e0c5b73180c9fbd533ada7d00a0b849bdff1e64.rev
+│   │       ├── pack-38480297b1064b9af05ce0d5801bc2e5f7d5c5ab.idx
+│   │       ├── pack-38480297b1064b9af05ce0d5801bc2e5f7d5c5ab.pack
+│   │       └── pack-38480297b1064b9af05ce0d5801bc2e5f7d5c5ab.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 22:28:41 UTC
+Сгенерировано: 2026-01-04 22:29:10 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -11032,7 +11032,17 @@ export function attachOfflineIndicators() {
 // OFFLINE Modal (A–D) — MVP по ТЗ_Нью.
 // Важно: НЕ управляет воспроизведением, только настройками OfflineManager и UI.
 
-import { OfflineUI } from '../app/offline-ui-bootstrap.js';
+import { OfflineUI as OfflineUIExport } from '../app/offline-ui-bootstrap.js';
+
+// ✅ Всегда используем window.OfflineUI как runtime-источник (избегаем рассинхрона ESM-графов)
+const OfflineUI = (() => {
+  try {
+    return window.OfflineUI || OfflineUIExport;
+  } catch {
+    return OfflineUIExport;
+  }
+})();
+
 import { getNetPolicy, setNetPolicy, shouldConfirmByPolicy } from '../offline/net-policy.js';
 import { getAllUids, registerTrack } from '../app/track-registry.js';
 
