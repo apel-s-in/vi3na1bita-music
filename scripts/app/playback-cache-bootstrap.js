@@ -34,15 +34,9 @@ export function attachPlaybackCache() {
     };
   };
 
-  const resolver = async (track, pq) => {
-    // Делегируем OfflineManager-у выбор источника (локально≥PQ / сеть=PQ / локально<PQ)
-    return OfflineUI.offlineManager.resolveForPlayback(track, pq);
-  };
-
   const queue = OfflineUI.offlineManager.queue;
   const pcm = new PlaybackCacheManager({
     queue,
-    resolver,
     getPlaylistCtx
   });
 
