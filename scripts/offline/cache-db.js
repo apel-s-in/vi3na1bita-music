@@ -90,6 +90,81 @@ export async function setCacheQuality(v) {
   return cq;
 }
 
+// ===== Cloud stats (N/D) =====
+// meta key format: cloud:{uid} -> { listens:number, firstListenAt:number, lastListenAt:number }
+function cloudKey(uid) {
+  const u = String(uid || '').trim();
+  return u ? `cloud:${u}` : '';
+}
+
+export async function getCloudStats(uid) {
+  const key = cloudKey(uid);
+  if (!key) return { listens: 0, firstListenAt: 0, lastListenAt: 0 };
+
+  try {
+    const db = await openDb();
+    const v = await txp(db, STORE_META, 'readonly', (st) => {
+      return new Promise((resolve, reject) => {
+        const r = st.get(key);
+        r.onsuccess = () => resolve(r.result || null);
+        r.onerror = () => reject(r.error);
+      });
+    });
+
+    const listens = Number(v?.listens || 0);
+    const firstListenAt = Number(v?.firstListenAt || 0);
+    const lastListenAt = Number(v?.lastListenAt || 0);
+
+    return {
+      listens: (Number.isFinite(listens) && listens > 0) ? Math.floor(listens) : 0,
+      firstListenAt: (Number.isFinite(firstListenAt) && firstListenAt > 0) ? Math.floor(firstListenAt) : 0,
+      lastListenAt: (Number.isFinite(lastListenAt) && lastListenAt > 0) ? Math.floor(lastListenAt) : 0
+    };
+  } catch {
+    return { listens: 0, firstListenAt: 0, lastListenAt: 0 };
+  }
+}
+
+export async function setCloudStats(uid, stats) {
+  const key = cloudKey(uid);
+  if (!key) return false;
+
+  const listens = Number(stats?.listens || 0);
+  const firstListenAt = Number(stats?.firstListenAt || 0);
+  const lastListenAt = Number(stats?.lastListenAt || 0);
+
+  const payload = {
+    listens: (Number.isFinite(listens) && listens > 0) ? Math.floor(listens) : 0,
+    firstListenAt: (Number.isFinite(firstListenAt) && firstListenAt > 0) ? Math.floor(firstListenAt) : 0,
+    lastListenAt: (Number.isFinite(lastListenAt) && lastListenAt > 0) ? Math.floor(lastListenAt) : 0
+  };
+
+  try {
+    const db = await openDb();
+    await txp(db, STORE_META, 'readwrite', (st) => {
+      st.put(payload, key);
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function clearCloudStats(uid) {
+  const key = cloudKey(uid);
+  if (!key) return false;
+
+  try {
+    const db = await openDb();
+    await txp(db, STORE_META, 'readwrite', (st) => {
+      st.delete(key);
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function bytesByQuality(uid) {
   const u = String(uid || '').trim();
   if (!u) return { hi: 0, lo: 0 };
