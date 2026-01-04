@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e21152586150e3f784cc3f9677447e23116e57e3.idx
-│   │       ├── pack-e21152586150e3f784cc3f9677447e23116e57e3.pack
-│   │       └── pack-e21152586150e3f784cc3f9677447e23116e57e3.rev
+│   │       ├── pack-c5cc4a250d607a9dc5a46ef90c5796e3f38ae032.idx
+│   │       ├── pack-c5cc4a250d607a9dc5a46ef90c5796e3f38ae032.pack
+│   │       └── pack-c5cc4a250d607a9dc5a46ef90c5796e3f38ae032.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -363,6 +363,7 @@ vi3na1bita-music/
 │   │   └── utils.js
 │   ├── offline/
 │   │   ├── cache-db.js
+│   │   ├── net-policy.js
 │   │   ├── offline-manager.js
 │   │   ├── playback-cache.js
 │   │   └── track-resolver.js
@@ -396,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 15:33:54 UTC
+Сгенерировано: 2026-01-04 18:03:43 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8194,6 +8195,71 @@ export async function deleteAudioBlob(uid, quality) {
       keys.forEach(k => st.delete(k));
     });
   } catch {}
+}
+
+//=================================================
+// FILE: /scripts/offline/net-policy.js
+// scripts/offline/net-policy.js
+// Единая политика сети для OFFLINE (ТЗ_НЬЮ).
+// Хранилище: localStorage['offline:netPolicy:v1']
+// Значения: 'wifi' | 'cellular' | 'unknown' | 'ask'
+//
+// Важно:
+// - Unknown сеть: confirm обязателен для массовых операций (и для авто-задач, если так настроено).
+// - OfflineManager использует этот модуль, чтобы решать: можно ли качать сейчас.
+
+export const NETPOLICY_KEY = 'offline:netPolicy:v1';
+
+export function getNetPolicy() {
+  const v = String(localStorage.getItem(NETPOLICY_KEY) || 'ask').toLowerCase().trim();
+  if (v === 'wifi') return 'wifi';
+  if (v === 'cellular') return 'cellular';
+  if (v === 'unknown') return 'unknown';
+  return 'ask';
+}
+
+export function setNetPolicy(v) {
+  const s = String(v || '').toLowerCase().trim();
+  const next =
+    (s === 'wifi' || s === 'cellular' || s === 'unknown' || s === 'ask') ? s : 'ask';
+  try { localStorage.setItem(NETPOLICY_KEY, next); } catch {}
+  return next;
+}
+
+export function isAllowedByNetPolicy(policy, networkStatus) {
+  const p = String(policy || 'ask');
+  const kind = String(networkStatus?.kind || 'unknown');
+
+  if (p === 'wifi') return kind === 'wifi';
+  if (p === 'cellular') return kind === 'wifi' || kind === 'cellular';
+  if (p === 'unknown') return true;
+  // ask — решение внешнее (confirm/skip)
+  return true;
+}
+
+/**
+ * shouldConfirmByPolicy
+ * Возвращает true если по текущей политике нужно показать confirm перед загрузкой.
+ *
+ * ТЗ:
+ * - Unknown сеть: confirm обязателен для массовых операций.
+ * - Ask: всегда confirm.
+ *
+ * opts:
+ * - isMass: boolean (массовая операция: “скачать всё”, 100% offline, updates, и т.п.)
+ * - isAuto: boolean (авто-задача очереди, playback cache)
+ */
+export function shouldConfirmByPolicy(policy, networkStatus, opts = {}) {
+  const p = String(policy || 'ask');
+  const kind = String(networkStatus?.kind || 'unknown');
+  const isMass = !!opts?.isMass;
+
+  if (p === 'ask') return true;
+
+  // Unknown сеть: confirm для массовых операций
+  if (kind === 'unknown' && isMass) return true;
+
+  return false;
 }
 
 //=================================================
