@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f6093ceae26e197455cef712edde8effd28c4d92.idx
-│   │       ├── pack-f6093ceae26e197455cef712edde8effd28c4d92.pack
-│   │       └── pack-f6093ceae26e197455cef712edde8effd28c4d92.rev
+│   │       ├── pack-3383eb17ac2cbcbd6391e2fa9ad67ffd8a60e97b.idx
+│   │       ├── pack-3383eb17ac2cbcbd6391e2fa9ad67ffd8a60e97b.pack
+│   │       └── pack-3383eb17ac2cbcbd6391e2fa9ad67ffd8a60e97b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 19:30:07 UTC
+Сгенерировано: 2026-01-04 19:39:25 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -10754,7 +10754,7 @@ export function attachOfflineIndicators() {
 
 import { OfflineUI } from '../app/offline-ui-bootstrap.js';
 import { getNetPolicy, setNetPolicy, shouldConfirmByPolicy } from '../offline/net-policy.js';
-import { getAllUids } from '../app/track-registry.js';
+import { getAllUids, registerTrack } from '../app/track-registry.js';
 
 const ALERT_KEY = 'offline:alert:v1';
 
@@ -10780,6 +10780,74 @@ function getNetworkStatus() {
     }
   } catch {}
   return { online: navigator.onLine !== false, kind: 'unknown', raw: null, saveData: false };
+}
+
+// ✅ Remote preload: загрузить config.json всех альбомов из albums.json и зарегистрировать треки в TrackRegistry.
+async function loadAllAlbumsTrackIndex() {
+  const albums = Array.isArray(window.albumsIndex) ? window.albumsIndex : [];
+  if (!albums.length) {
+    return { ok: false, reason: 'noAlbumsIndex', totalAlbums: 0, totalTracks: 0, uids: [] };
+  }
+
+  const uids = new Set();
+  let totalTracks = 0;
+  let okAlbums = 0;
+  let failAlbums = 0;
+
+  for (const a of albums) {
+    const baseRaw = String(a?.base || '').trim();
+    if (!baseRaw) { failAlbums += 1; continue; }
+
+    const base = baseRaw.endsWith('/') ? baseRaw : `${baseRaw}/`;
+    const url = `${base}config.json`;
+
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      const r = await fetch(url, { cache: 'no-cache' });
+      if (!r.ok) { failAlbums += 1; continue; }
+
+      // eslint-disable-next-line no-await-in-loop
+      const cfg = await r.json();
+      const tracks = Array.isArray(cfg?.tracks) ? cfg.tracks : [];
+      okAlbums += 1;
+
+      for (const t of tracks) {
+        const uid = String(t?.uid || '').trim();
+        if (!uid) continue;
+
+        totalTracks += 1;
+        uids.add(uid);
+
+        // ✅ Регистрируем в TrackRegistry (минимальный meta для offline/download)
+        // Важно: audio/audio_low в config.json относительные → делаем абсолютными от base.
+        const audio = t?.audio ? new URL(String(t.audio), base).toString() : null;
+        const audio_low = t?.audio_low ? new URL(String(t.audio_low), base).toString() : null;
+
+        registerTrack({
+          uid,
+          title: t?.title || '',
+          audio,
+          audio_low,
+          size: (typeof t?.size === 'number') ? t.size : null,
+          size_low: (typeof t?.size_low === 'number') ? t.size_low : null,
+          lyrics: t?.lyrics ? new URL(String(t.lyrics), base).toString() : null,
+          fulltext: t?.fulltext ? new URL(String(t.fulltext), base).toString() : null,
+          sourceAlbum: String(a?.key || '').trim() || null
+        });
+      }
+    } catch {
+      failAlbums += 1;
+    }
+  }
+
+  return {
+    ok: okAlbums > 0,
+    totalAlbums: albums.length,
+    okAlbums,
+    failAlbums,
+    totalTracks,
+    uids: Array.from(uids)
+  };
 }
 
 function setAlert(flag, reason) {
@@ -10910,6 +10978,10 @@ async function renderModal() {
         <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
           <button class="offline-btn online" id="offline-modal-download-pinned" style="min-width: 220px;">
             Скачать всё pinned 🔒
+          </button>
+
+          <button class="offline-btn online" id="offline-modal-load-all-tracks" style="min-width: 220px;">
+            Загрузить список треков всех альбомов
           </button>
 
           <button class="offline-btn online" id="offline-modal-offline-all" style="min-width: 220px;">
@@ -11100,6 +11172,33 @@ function bindModalHandlers(modal) {
     }
   });
 
+  modal.querySelector('#offline-modal-load-all-tracks')?.addEventListener('click', async () => {
+    try {
+      const policy = getNetPolicy();
+      const st = getNetworkStatus();
+
+      // ✅ Это массовая операция (remote fetch + подготовка), confirm обязателен для unknown (и для ask)
+      if (shouldConfirmByPolicy(policy, st, { isMass: true, isAuto: false })) {
+        const ok = window.confirm('Загрузить список треков всех альбомов? Будут сделаны запросы к config.json каждого альбома.');
+        if (!ok) return;
+      }
+
+      window.NotificationSystem?.info('Загружаю список треков всех альбомов…', 3500);
+
+      const res = await loadAllAlbumsTrackIndex();
+      if (!res.ok) {
+        window.NotificationSystem?.error('Не удалось загрузить список треков');
+        return;
+      }
+
+      window.NotificationSystem?.success(`Готово: альбомов OK ${res.okAlbums}/${res.totalAlbums}, треков: ${res.uids.length}`);
+    } catch {
+      window.NotificationSystem?.error('Не удалось загрузить список треков');
+    } finally {
+      await rerender();
+    }
+  });
+
   modal.querySelector('#offline-modal-offline-all')?.addEventListener('click', async () => {
     try {
       const policy = getNetPolicy();
@@ -11107,15 +11206,20 @@ function bindModalHandlers(modal) {
 
       // ✅ 100% OFFLINE — массовая операция: confirm обязателен для unknown (и для ask)
       if (shouldConfirmByPolicy(policy, st, { isMass: true, isAuto: false })) {
-        const ok = window.confirm('100% OFFLINE: скачать все известные треки до CQ? Это может занять время и трафик.');
+        const ok = window.confirm('100% OFFLINE: скачать все треки до CQ? Это может занять время и трафик.');
         if (!ok) return;
       }
 
-      const uids = getAllUids();
-      const total = Array.isArray(uids) ? uids.length : 0;
+      // ✅ Если треки ещё не загружены в реестр — подгружаем remote configs автоматически
+      let uids = getAllUids();
+      if (!Array.isArray(uids) || uids.length === 0) {
+        const preload = await loadAllAlbumsTrackIndex();
+        uids = preload?.uids || [];
+      }
 
+      const total = Array.isArray(uids) ? uids.length : 0;
       if (!total) {
-        window.NotificationSystem?.warning('Нет известных треков (откройте альбомы, чтобы загрузить список)');
+        window.NotificationSystem?.warning('Нет треков для 100% OFFLINE');
         return;
       }
 
