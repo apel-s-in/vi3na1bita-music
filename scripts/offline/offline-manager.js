@@ -15,6 +15,9 @@ import {
   getCloudStats,
   setCloudStats,
   clearCloudStats,
+  getCloudCandidate,
+  setCloudCandidate,
+  clearCloudCandidate,
   totalCachedBytes
 } from './cache-db.js';
 
@@ -26,9 +29,21 @@ const OFFLINE_MODE_KEY = 'offlineMode:v1';
 const CQ_KEY = 'offline:cacheQuality:v1';
 const PINNED_KEY = 'pinnedUids:v1';
 
-// Cloud N/D (MVP значения; позже можно вынести в OFFLINE modal как настройки)
-const CLOUD_N_FULL_LISTENS = 2;     // N: сколько полных прослушиваний нужно
-const CLOUD_D_TTL_DAYS = 7;         // D: сколько дней “держится” облако после последнего полного
+// Cloud N/D (ТЗ_НЬЮ): настраивается в OFFLINE modal (секция C)
+const CLOUD_N_KEY = 'offline:cloudN:v1';
+const CLOUD_D_KEY = 'offline:cloudD:v1';
+
+function readCloudN() {
+  const raw = Number(localStorage.getItem(CLOUD_N_KEY) || 5);
+  const n = Number.isFinite(raw) ? Math.floor(raw) : 5;
+  return Math.max(1, Math.min(50, n));
+}
+
+function readCloudD() {
+  const raw = Number(localStorage.getItem(CLOUD_D_KEY) || 31);
+  const d = Number.isFinite(raw) ? Math.floor(raw) : 31;
+  return Math.max(1, Math.min(365, d));
+}
 
 function readJson(key, fallback) {
   try {
@@ -174,6 +189,27 @@ export class OfflineManager {
     this._em.emit('progress', { uid: null, phase: 'cqChanged' });
   }
 
+  getCloudSettings() {
+    return { n: readCloudN(), d: readCloudD() };
+  }
+
+  setCloudSettings(next = {}) {
+    const nRaw = Number(next?.n);
+    const dRaw = Number(next?.d);
+
+    const n = Number.isFinite(nRaw) ? Math.floor(nRaw) : readCloudN();
+    const d = Number.isFinite(dRaw) ? Math.floor(dRaw) : readCloudD();
+
+    const safeN = Math.max(1, Math.min(50, n));
+    const safeD = Math.max(1, Math.min(365, d));
+
+    try { localStorage.setItem(CLOUD_N_KEY, String(safeN)); } catch {}
+    try { localStorage.setItem(CLOUD_D_KEY, String(safeD)); } catch {}
+
+    this._em.emit('progress', { uid: null, phase: 'cloudSettingsChanged', n: safeN, d: safeD });
+    return { n: safeN, d: safeD };
+  }
+
   async isTrackComplete(uid, quality) {
     const u = String(uid || '').trim();
     if (!u) return false;
@@ -302,6 +338,9 @@ export class OfflineManager {
       this._setPinnedSet(set);
     }
 
+    // ✅ pinned=true отменяет cloudCandidate
+    try { await setCloudCandidate(u, false); } catch {}
+
     // ✅ По ТЗ 8.1: pinned=true + ставим задачу скачать до 100% в CQ
     this.enqueuePinnedDownload(u);
 
@@ -317,6 +356,26 @@ export class OfflineManager {
       set.delete(u);
       this._setPinnedSet(set);
     }
+
+    // ✅ ТЗ 8.3: unpin -> cloudCandidate=true и докачать до 100% CQ
+    try { await setCloudCandidate(u, true); } catch {}
+
+    // Ставим задачу докачки до CQ (без повышения listens)
+    try {
+      const cq = await this.getCacheQuality();
+      const taskKey = `cloudCandidate:${cq}:${u}`;
+
+      if (!this.queue?.hasTask?.(taskKey)) {
+        this.queue.add({
+          key: taskKey,
+          uid: u,
+          priority: 15,
+          run: async () => {
+            await this.cacheTrackAudio(u, cq, { userInitiated: false });
+          }
+        });
+      }
+    } catch {}
 
     this._em.emit('progress', { uid: u, phase: 'unpinned' });
   }
@@ -350,14 +409,20 @@ export class OfflineManager {
     if (!u) return false;
 
     try {
+      // 8.3: cloudCandidate должен быть true (после unpin)
+      const candidate = await getCloudCandidate(u);
+      if (!candidate) return false;
+
       const st = await getCloudStats(u);
       const listens = Number(st?.listens || 0);
       const last = Number(st?.lastListenAt || 0);
 
-      if (!(Number.isFinite(listens) && listens >= CLOUD_N_FULL_LISTENS)) return false;
+      const { n, d } = this.getCloudSettings();
+
+      if (!(Number.isFinite(listens) && listens >= n)) return false;
       if (!(Number.isFinite(last) && last > 0)) return false;
 
-      const ttlMs = CLOUD_D_TTL_DAYS * 24 * 60 * 60 * 1000;
+      const ttlMs = d * 24 * 60 * 60 * 1000;
       return (Date.now() - last) <= ttlMs;
     } catch {
       return false;
@@ -398,8 +463,9 @@ export class OfflineManager {
     if (act === 'remove-cache') {
       await deleteTrackCache(u);
 
-      // ✅ По ТЗ: удаление из кэша сбрасывает cloud-статистику
+      // ✅ По ТЗ: удаление из кэша сбрасывает cloud-статистику и cloudCandidate
       try { await clearCloudStats(u); } catch {}
+      try { await clearCloudCandidate(u); } catch {}
 
       // ✅ Если кэш удалён — pinned не должен оставаться “висеть”.
       try {
