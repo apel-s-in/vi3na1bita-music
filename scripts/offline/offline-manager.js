@@ -83,6 +83,7 @@ class SimpleQueue {
   constructor({ onProgress } = {}) {
     this._items = [];
     this._running = false;
+    this._runningKey = null;
     this._onProgress = typeof onProgress === 'function' ? onProgress : null;
   }
 
@@ -105,6 +106,9 @@ class SimpleQueue {
   hasTask(key) {
     const k = String(key || '').trim();
     if (!k) return false;
+
+    if (this._runningKey && this._runningKey === k) return true;
+
     return this._items.some(t => String(t?.key || '').trim() === k);
   }
 
@@ -118,6 +122,7 @@ class SimpleQueue {
 
     this._running = true;
     const task = this._items.shift();
+    this._runningKey = task && task.key ? String(task.key) : null;
 
     try {
       if (this._onProgress) {
@@ -135,6 +140,7 @@ class SimpleQueue {
       }
     } finally {
       this._running = false;
+      this._runningKey = null;
       this._tick();
     }
   }
