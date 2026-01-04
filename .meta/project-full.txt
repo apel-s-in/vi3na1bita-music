@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-341a6bdec8e67e27ddca88d9a0db0232c7bf7eea.idx
-│   │       ├── pack-341a6bdec8e67e27ddca88d9a0db0232c7bf7eea.pack
-│   │       └── pack-341a6bdec8e67e27ddca88d9a0db0232c7bf7eea.rev
+│   │       ├── pack-0129cb33530100266400eae4727c0e22d2fce867.idx
+│   │       ├── pack-0129cb33530100266400eae4727c0e22d2fce867.pack
+│   │       └── pack-0129cb33530100266400eae4727c0e22d2fce867.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 19:03:07 UTC
+Сгенерировано: 2026-01-04 19:13:36 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8888,66 +8888,7 @@ export class OfflineManager {
 
     const q = (String(quality || '').toLowerCase() === 'lo') ? 'lo' : 'hi';
 
-    const userInitiated = !!options?.userInitiated;
-
-    const getNetPolicy = () => {
-      const v = String(localStorage.getItem('offline:netPolicy:v1') || 'ask').toLowerCase().trim();
-      if (v === 'wifi') return 'wifi';
-      if (v === 'cellular') return 'cellular';
-      if (v === 'unknown') return 'unknown';
-      return 'ask';
-    };
-
-    const canDownloadByPolicy = (policy, st) => {
-      const kind = String(st?.kind || 'unknown');
-      // wifi: только wifi
-      if (policy === 'wifi') return kind === 'wifi';
-      // cellular: wifi или cellular
-      if (policy === 'cellular') return kind === 'wifi' || kind === 'cellular';
-      // unknown: разрешаем всё, включая unknown
-      if (policy === 'unknown') return true;
-      // ask: решим ниже
-      return true;
-    };
-
-    // Уже есть blob — ничего не делаем
-    const existing = await getAudioBlob(u, q);
-    if (existing) {
-      return { ok: true, cached: true, reason: 'alreadyCached' };
-    }
-
-    const meta = getTrackByUid(u);
-    const url = q === 'lo' ? String(meta?.urlLo || '').trim() : String(meta?.urlHi || '').trim();
-
-    if (!url) return { ok: false, reason: 'noUrlForQuality' };
-
-    // Network policy здесь пока не enforced полностью (будет следующий шаг),
-    // но мы не начинаем скачивание если сети нет.
-    const online = (() => {
-      try {
-        if (window.NetworkManager && typeof window.NetworkManager.getStatus === 'function') {
-          return !!window.NetworkManager.getStatus().online;
-        }
-      } catch {}
-      return navigator.onLine !== false;
-    })();
-
-    if (!online) return { ok: false, reason: 'offlineNoNetwork' };
-
-    // ✅ Enforce network policy (единый модуль net-policy.js)
-    const st = (() => {
-      try {
-        if (window.NetworkManager && typeof window.NetworkManager.getStatus === 'function') {
-          return window.NetworkManager.getStatus();
-        }
-      } catch {}
-      return { online: navigator.onLine !== false, kind: 'unknown', raw: null, saveData: false };
-    })();
-
-    const policy = getNetPolicy();
-
-    // ask: confirm только для userInitiated; для auto-задач пропускаем
-    const userInitiated = !!options?.userInitiated;
+    const userInitiated = Boolean(options?.userInitiated);
     const isAuto = !userInitiated;
 
     if (policy !== 'ask' && !isAllowedByNetPolicy(policy, st)) {
