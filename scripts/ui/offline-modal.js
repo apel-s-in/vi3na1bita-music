@@ -3,8 +3,8 @@
 // Важно: НЕ управляет воспроизведением, только настройками OfflineManager и UI.
 
 import { OfflineUI } from '../app/offline-ui-bootstrap.js';
+import { getNetPolicy, setNetPolicy } from '../offline/net-policy.js';
 
-const NETPOLICY_KEY = 'offline:netPolicy:v1';
 const ALERT_KEY = 'offline:alert:v1';
 
 function readJson(key, fallback) {
@@ -20,22 +20,6 @@ function readJson(key, fallback) {
 
 function writeJson(key, value) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
-}
-
-function getNetPolicy() {
-  const v = String(localStorage.getItem(NETPOLICY_KEY) || 'ask').toLowerCase().trim();
-  if (v === 'wifi') return 'wifi';
-  if (v === 'cellular') return 'cellular';
-  if (v === 'unknown') return 'unknown';
-  return 'ask'; // спросить
-}
-
-function setNetPolicy(v) {
-  const s = String(v || '').toLowerCase().trim();
-  const next =
-    (s === 'wifi' || s === 'cellular' || s === 'unknown' || s === 'ask') ? s : 'ask';
-  try { localStorage.setItem(NETPOLICY_KEY, next); } catch {}
-  return next;
 }
 
 function getNetworkStatus() {
