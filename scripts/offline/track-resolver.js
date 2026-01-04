@@ -42,19 +42,24 @@ async function hasCachedEnough(uid, q) {
   const u = String(uid || '').trim();
   if (!u) return false;
 
+  const MB = 1024 * 1024;
+
   const meta = getTrackByUid(u);
   const needMb = q === 'hi'
     ? Number(meta?.sizeHi || meta?.size || 0)
     : Number(meta?.sizeLo || meta?.size_low || 0);
 
-  if (!(needMb > 0)) return false;
+  if (!(Number.isFinite(needMb) && needMb > 0)) return false;
+
+  const needBytes = Math.floor(needMb * MB);
 
   const b = await bytesByQuality(u);
-  const haveMb = q === 'hi' ? Number(b.hi || 0) : Number(b.lo || 0);
+  const haveBytes = q === 'hi' ? Number(b.hi || 0) : Number(b.lo || 0);
 
-  // MVP: bytesByQuality у нас хранит "условные MB" (как size из config),
-  // поэтому сравниваем как MB. Позже при реальных байтах переведём в bytes.
-  return haveMb >= needMb;
+  if (!(Number.isFinite(haveBytes) && haveBytes > 0)) return false;
+
+  // ✅ Допуск 92% (как в ТЗ): считаем complete, если близко к ожидаемому размеру.
+  return haveBytes >= Math.floor(needBytes * 0.92);
 }
 
 /**
