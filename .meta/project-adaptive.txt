@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-dee195764670fd2d86dac77561cc7dff1a0b3a9f.idx
-│   │       ├── pack-dee195764670fd2d86dac77561cc7dff1a0b3a9f.pack
-│   │       └── pack-dee195764670fd2d86dac77561cc7dff1a0b3a9f.rev
+│   │       ├── pack-e9e03ccb8b186ea865e3db8007e8c4c5f17d5c86.idx
+│   │       ├── pack-e9e03ccb8b186ea865e3db8007e8c4c5f17d5c86.pack
+│   │       └── pack-e9e03ccb8b186ea865e3db8007e8c4c5f17d5c86.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -396,7 +396,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 15:24:51 UTC
+Сгенерировано: 2026-01-04 15:25:58 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -12363,6 +12363,18 @@ try { main(); } catch (e) { console.error("❌", e); process.exit(1); }
         onend: () => {
           this.stopTick();
           this.trigger('onEnd', track, index);
+
+          // ✅ Cloud N/D: фиксируем “полное прослушивание” (без влияния на playback).
+          try {
+            const uid = String(track?.uid || '').trim();
+            if (uid) {
+              const om = window.OfflineUI?.offlineManager;
+              if (om && typeof om.recordFullListen === 'function') {
+                om.recordFullListen(uid);
+              }
+            }
+          } catch {}
+
           this.handleTrackEnd();
         },
         onload: () => {
