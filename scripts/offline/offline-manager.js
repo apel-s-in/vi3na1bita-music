@@ -350,7 +350,11 @@ export class OfflineManager {
 
   enqueuePinnedDownloadAll() {
     const list = this.getPinnedUids();
-    list.forEach((uid) => this.enqueuePinnedDownload(uid));
+
+    // ✅ Массовая pinned-загрузка — это НЕ "auto-task": пользователь нажал кнопку в модалке.
+    // Чтобы policy=ask не скипал молча, считаем userInitiated=true.
+    list.forEach((uid) => this.enqueuePinnedDownload(uid, { userInitiated: true }));
+
     this._em.emit('progress', { uid: null, phase: 'pinnedQueueEnqueued', count: list.length });
   }
 
