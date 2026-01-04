@@ -6,15 +6,22 @@
 import { OfflineManager } from '../offline/offline-manager.js';
 import { openOfflineModal } from '../ui/offline-modal.js';
 
-export const OfflineUI = {
-  offlineManager: null
-};
-
-// ✅ Глобальная публикация для legacy/bridge-кода (PlayerCore, playback-cache-bootstrap, overlay)
-// Без этого window.OfflineUI будет undefined и офлайн-цепочка “молча” не работает.
-try {
-  window.OfflineUI = OfflineUI;
-} catch {}
+// ✅ Единый источник истины — window.OfflineUI.
+// ESM-export OfflineUI будет ссылкой на window.OfflineUI (а не отдельным объектом),
+// чтобы не было рассинхрона между импортами и глобалкой.
+export const OfflineUI = (() => {
+  try {
+    if (!window.OfflineUI || typeof window.OfflineUI !== 'object') {
+      window.OfflineUI = { offlineManager: null };
+    } else if (!('offlineManager' in window.OfflineUI)) {
+      window.OfflineUI.offlineManager = null;
+    }
+    return window.OfflineUI;
+  } catch {
+    // fallback (на случай очень странных окружений)
+    return { offlineManager: null };
+  }
+})();
 
 const ALERT_KEY = 'offline:alert:v1';
 
