@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8186a8f2f6e81af2a624db78fbb8b0a5c9b5cba1.idx
-│   │       ├── pack-8186a8f2f6e81af2a624db78fbb8b0a5c9b5cba1.pack
-│   │       └── pack-8186a8f2f6e81af2a624db78fbb8b0a5c9b5cba1.rev
+│   │       ├── pack-341a6bdec8e67e27ddca88d9a0db0232c7bf7eea.idx
+│   │       ├── pack-341a6bdec8e67e27ddca88d9a0db0232c7bf7eea.pack
+│   │       └── pack-341a6bdec8e67e27ddca88d9a0db0232c7bf7eea.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 18:47:45 UTC
+Сгенерировано: 2026-01-04 19:03:07 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8720,27 +8720,10 @@ export class OfflineManager {
   }
 
   _getPinnedSet() {
-
-    // Проверяем сначала CQ, потом второй уровень (чтобы считать "есть офлайн вообще")
-    const cq = await this.getCacheQuality();
-    const alt = cq === 'hi' ? 'lo' : 'hi';
-
-    for (const uid of list) {
-      // eslint-disable-next-line no-await-in-loop
-      if (await this.isTrackComplete(uid, cq)) return true;
-    }
-    for (const uid of list) {
-      // eslint-disable-next-line no-await-in-loop
-      if (await this.isTrackComplete(uid, alt)) return true;
-    }
-    return false;
-  }
-
-  _getPinnedSet() {
-    const arr = readJson(PINNED_KEY, []);
-    const uids = Array.isArray(arr) ? arr.map(x => String(x || '').trim()).filter(Boolean) : [];
-    return new Set(uids);
-  }
+     const arr = readJson(PINNED_KEY, []);
+     const uids = Array.isArray(arr) ? arr.map(x => String(x || '').trim()).filter(Boolean) : [];
+     return new Set(uids);
+   }
 
   _setPinnedSet(set) {
     writeJson(PINNED_KEY, Array.from(set));
