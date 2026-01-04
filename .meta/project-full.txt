@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b093a187d2be5f2df7965661a7ab7fdfe3bb6039.idx
-│   │       ├── pack-b093a187d2be5f2df7965661a7ab7fdfe3bb6039.pack
-│   │       └── pack-b093a187d2be5f2df7965661a7ab7fdfe3bb6039.rev
+│   │       ├── pack-f2a8d3840183dc2c2665f94f969d1ad0a851efc4.idx
+│   │       ├── pack-f2a8d3840183dc2c2665f94f969d1ad0a851efc4.pack
+│   │       └── pack-f2a8d3840183dc2c2665f94f969d1ad0a851efc4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -343,6 +343,7 @@ vi3na1bita-music/
 │   │   ├── background-events.js
 │   │   ├── gallery.js
 │   │   ├── navigation.js
+│   │   ├── offline-ui-bootstrap.js
 │   │   ├── playback-cache-bootstrap.js
 │   │   ├── playback-policy.js
 │   │   ├── player-ui.js
@@ -388,7 +389,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 12:16:48 UTC
+Сгенерировано: 2026-01-04 12:26:54 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3720,6 +3721,56 @@ if (document.readyState === 'loading') {
 }
 
 export default NavigationManager;
+
+//=================================================
+// FILE: /scripts/app/offline-ui-bootstrap.js
+// scripts/app/offline-ui-bootstrap.js
+// Единая offline-платформа (ESM).
+// MVP: чтобы UI-индикаторы/overlay/PlaybackCache не падали.
+// НЕ трогаем воспроизведение (инвариант I1).
+
+import { OfflineManager } from '../offline/offline-manager.js';
+
+export const OfflineUI = {
+  offlineManager: null
+};
+
+function setOfflineBtnUI(isOffline) {
+  const btn = document.getElementById('offline-btn');
+  if (!btn) return;
+
+  btn.classList.toggle('offline', !!isOffline);
+  btn.classList.toggle('online', !isOffline);
+  btn.textContent = isOffline ? 'OFFLINE' : 'ONLINE';
+}
+
+export function attachOfflineUI() {
+  if (OfflineUI.offlineManager) return;
+
+  OfflineUI.offlineManager = new OfflineManager();
+  OfflineUI.offlineManager.initialize();
+
+  const btn = document.getElementById('offline-btn');
+  if (btn && !btn.__offlineBound) {
+    btn.__offlineBound = true;
+
+    btn.addEventListener('click', async () => {
+      const next = !OfflineUI.offlineManager.isOfflineMode();
+      OfflineUI.offlineManager.setOfflineMode(next);
+
+      setOfflineBtnUI(next);
+
+      if (next) {
+        window.NotificationSystem?.offline('OFFLINE режим включён');
+      } else {
+        window.NotificationSystem?.success('ONLINE режим включён');
+      }
+    });
+  }
+
+  // Начальная синхронизация UI
+  setOfflineBtnUI(OfflineUI.offlineManager.isOfflineMode());
+}
 
 //=================================================
 // FILE: /scripts/app/playback-cache-bootstrap.js
