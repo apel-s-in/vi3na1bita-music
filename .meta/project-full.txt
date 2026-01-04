@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2e157db8f7ffa2e864c39a3347efab571307cfe6.idx
-│   │       ├── pack-2e157db8f7ffa2e864c39a3347efab571307cfe6.pack
-│   │       └── pack-2e157db8f7ffa2e864c39a3347efab571307cfe6.rev
+│   │       ├── pack-355a5ede54ffb6b2b71b085f5a499b992c7e8d60.idx
+│   │       ├── pack-355a5ede54ffb6b2b71b085f5a499b992c7e8d60.pack
+│   │       └── pack-355a5ede54ffb6b2b71b085f5a499b992c7e8d60.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -396,7 +396,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 15:29:08 UTC
+Сгенерировано: 2026-01-04 15:29:56 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8698,9 +8698,10 @@ function uidOfTrack(t) {
 }
 
 export class PlaybackCacheManager {
-  constructor({ queue, resolver, getPlaylistCtx } = {}) {
+  constructor({ queue, resolver, downloader, getPlaylistCtx } = {}) {
     this.queue = queue;
-    this.resolver = resolver;
+    this.resolver = resolver;     // legacy: can be used for decisions
+    this.downloader = downloader; // new: performs caching tasks
     this.getPlaylistCtx = getPlaylistCtx;
   }
 
@@ -8727,13 +8728,22 @@ export class PlaybackCacheManager {
       const meta = (typeof trackProvider === 'function') ? trackProvider(uid) : null;
       if (!meta) continue;
 
-      // Планирование через queue: "виртуальная" задача.
+      // ✅ Реальное кэширование окна через downloader (OfflineManager.cacheTrackAudio)
       if (this.queue && typeof this.queue.add === 'function') {
+        const pr = (uid === curUid) ? 30 : (uid === ids[2] ? 20 : 10); // CUR > NEXT > PREV (порядок ids: prev,cur,next)
+        const key = `pc:${q}:${uid}`;
+
         this.queue.add({
+          key,
           uid,
+          priority: pr,
           run: async () => {
-            // resolver нужен, чтобы в будущем выбрать local/network и качество.
             try {
+              if (typeof this.downloader === 'function') {
+                await this.downloader(uid, q);
+                return;
+              }
+              // fallback: если downloader не передан — просто дергаем resolver (no-op)
               if (typeof this.resolver === 'function') {
                 await this.resolver(meta, q);
               }
