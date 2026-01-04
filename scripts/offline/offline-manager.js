@@ -67,6 +67,12 @@ class SimpleQueue {
     this._tick();
   }
 
+  hasTask(key) {
+    const k = String(key || '').trim();
+    if (!k) return false;
+    return this._items.some(t => String(t?.key || '').trim() === k);
+  }
+
   size() {
     return this._items.length;
   }
@@ -208,7 +214,9 @@ export class OfflineManager {
       this._setPinnedSet(set);
     }
 
-    // В MVP мы не стартуем скачивание автоматически (это будет слой 100% offline / P2).
+    // ✅ По ТЗ 8.1: pinned=true + ставим задачу скачать до 100% в CQ
+    this.enqueuePinnedDownload(u);
+
     this._em.emit('progress', { uid: u, phase: 'pinned' });
   }
 
@@ -315,6 +323,28 @@ export class OfflineManager {
       this._em.emit('progress', { uid: u, phase: 'downloadError', quality: q, error: String(e?.message || e) });
       return { ok: false, reason: 'downloadError' };
     }
+  }
+  enqueuePinnedDownload(uid) {
+    const u = String(uid || '').trim();
+    if (!u) return;
+
+    const taskKey = `pinned:${u}`;
+
+    // Не ставим дубликаты
+    if (this.queue && typeof this.queue.hasTask === 'function' && this.queue.hasTask(taskKey)) {
+      return;
+    }
+
+    if (!this.queue || typeof this.queue.add !== 'function') return;
+
+    this.queue.add({
+      key: taskKey,
+      uid: u,
+      run: async () => {
+        const cq = await this.getCacheQuality();
+        await this.cacheTrackAudio(u, cq);
+      }
+    });
   }
 
   async resolveForPlayback(track, pq) {
