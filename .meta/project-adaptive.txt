@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4cb5994206cb806a09feb135ba66140fd8b14d14.idx
-│   │       ├── pack-4cb5994206cb806a09feb135ba66140fd8b14d14.pack
-│   │       └── pack-4cb5994206cb806a09feb135ba66140fd8b14d14.rev
+│   │       ├── pack-08189875b8b27dbd4a74aadfb333fc507bf1de8f.idx
+│   │       ├── pack-08189875b8b27dbd4a74aadfb333fc507bf1de8f.pack
+│   │       └── pack-08189875b8b27dbd4a74aadfb333fc507bf1de8f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -396,7 +396,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 15:12:38 UTC
+Сгенерировано: 2026-01-04 15:14:03 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8330,15 +8330,18 @@ export class OfflineManager {
 
     const pinned = this._getPinnedSet().has(u);
 
-    // MVP: cloud отсутствует как механизм синхронизации, но cachedComplete можно показывать по bytes.
     const cq = await this.getCacheQuality();
 
     // ✅ По ТЗ: cachedComplete означает 100% в CQ (а не "что-то есть")
     const cachedComplete = await this.isTrackComplete(u, cq);
 
+    // ✅ MVP cloud-логика (без сервера):
+    // “облако” показываем, если трек 100% в CQ, но не pinned.
+    const cloud = !pinned && !!cachedComplete;
+
     return {
       pinned,
-      cloud: false,
+      cloud,
       cachedComplete
     };
   }
@@ -8350,6 +8353,16 @@ export class OfflineManager {
 
     if (act === 'remove-cache') {
       await deleteTrackCache(u);
+
+      // ✅ Важно: если кэш удалён — pinned не должен оставаться “висеть”.
+      try {
+        const set = this._getPinnedSet();
+        if (set.has(u)) {
+          set.delete(u);
+          this._setPinnedSet(set);
+        }
+      } catch {}
+
       this._em.emit('progress', { uid: u, phase: 'cacheRemoved' });
       return;
     }
