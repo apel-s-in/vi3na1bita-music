@@ -45,7 +45,7 @@ export class PlaybackCacheManager {
 
       const key = `pc:${q}:${uid}`;
 
-      // ✅ Не ставим дубликаты (в очереди или running)
+      // ✅ Дедуп: не ставим задачу если она уже в очереди или выполняется
       if (typeof this.queue.hasTask === 'function' && this.queue.hasTask(key)) return;
 
       const meta = (typeof trackProvider === 'function') ? trackProvider(uid) : null;
@@ -69,7 +69,7 @@ export class PlaybackCacheManager {
       });
     };
 
-    // ✅ ТЗ 7.7: CUR всегда первый и должен быть “самый приоритетный”
+    // ✅ ТЗ 7.7: всегда сначала CUR до 100%
     enqueue(curUid, 30);
 
     // ✅ ТЗ 7.7: затем только один сосед по направлению
@@ -78,7 +78,4 @@ export class PlaybackCacheManager {
     } else {
       enqueue(nextUid, 20);
     }
-
-    // PREV/NEXT второй стороны НЕ докачиваем (строго по ТЗ 7.7).
   }
-}
