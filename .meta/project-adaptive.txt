@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-7979be687073cbae269e7649848b7100f00f9fe0.idx
-│   │       ├── pack-7979be687073cbae269e7649848b7100f00f9fe0.pack
-│   │       └── pack-7979be687073cbae269e7649848b7100f00f9fe0.rev
+│   │       ├── pack-6b17a78b4d4cb7558fc7a96dddd89b1088db785d.idx
+│   │       ├── pack-6b17a78b4d4cb7558fc7a96dddd89b1088db785d.pack
+│   │       └── pack-6b17a78b4d4cb7558fc7a96dddd89b1088db785d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -400,7 +400,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 10:40:05 UTC
+Сгенерировано: 2026-01-04 10:41:46 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4763,11 +4763,6 @@ export function attachPlaybackCache() {
           
           <a class="player-download-btn" href="#" id="track-download-btn" download title="Скачать трек">💾</a>
           
-          <button id="eco-btn" class="eco-btn" title="Эконом режим">
-            <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
-              <path d="M13 3L4 14h6l-1 7 9-11h-6l1-7z"/>
-            </svg>
-          </button>
         </div>
       </div>
     `;
@@ -4990,10 +4985,6 @@ export function attachPlaybackCache() {
 
         case 'lyrics-text-btn':
           w.LyricsModal?.show?.();
-          return;
-
-        case 'eco-btn':
-          toggleEcoMode();
           return;
 
         case 'track-download-btn': {
@@ -5637,20 +5628,7 @@ export function attachPlaybackCache() {
     updateMiniHeader();
   }
 
-  function toggleEcoMode() {
-    const btn = document.getElementById('eco-btn');
-    const isActive = btn?.classList.contains('active');
-
-    if (isActive) {
-      btn?.classList.remove('active');
-      w.playerCore?.setQuality('high');
-      w.NotificationSystem?.success('Эконом режим выключен');
-    } else {
-      btn?.classList.add('active');
-      w.playerCore?.setQuality('low');
-      w.NotificationSystem?.success('Эконом режим включён (низкое качество)');
-    }
-  }
+  // eco-btn удалён по ТЗ_Нью: PQ управляется отдельной кнопкой Hi/Lo.
 
   function setLyricsAvailability(enabled) {
     const playerBlock = document.getElementById('lyricsplayerblock');
