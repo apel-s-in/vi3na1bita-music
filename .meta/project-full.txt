@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-08189875b8b27dbd4a74aadfb333fc507bf1de8f.idx
-│   │       ├── pack-08189875b8b27dbd4a74aadfb333fc507bf1de8f.pack
-│   │       └── pack-08189875b8b27dbd4a74aadfb333fc507bf1de8f.rev
+│   │       ├── pack-67238531d7fa82f3ef5219279a4a0626bfdd774a.idx
+│   │       ├── pack-67238531d7fa82f3ef5219279a4a0626bfdd774a.pack
+│   │       └── pack-67238531d7fa82f3ef5219279a4a0626bfdd774a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -396,7 +396,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 15:14:03 UTC
+Сгенерировано: 2026-01-04 15:22:30 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7920,6 +7920,81 @@ export async function setCacheQuality(v) {
     });
   } catch {}
   return cq;
+}
+
+// ===== Cloud stats (N/D) =====
+// meta key format: cloud:{uid} -> { listens:number, firstListenAt:number, lastListenAt:number }
+function cloudKey(uid) {
+  const u = String(uid || '').trim();
+  return u ? `cloud:${u}` : '';
+}
+
+export async function getCloudStats(uid) {
+  const key = cloudKey(uid);
+  if (!key) return { listens: 0, firstListenAt: 0, lastListenAt: 0 };
+
+  try {
+    const db = await openDb();
+    const v = await txp(db, STORE_META, 'readonly', (st) => {
+      return new Promise((resolve, reject) => {
+        const r = st.get(key);
+        r.onsuccess = () => resolve(r.result || null);
+        r.onerror = () => reject(r.error);
+      });
+    });
+
+    const listens = Number(v?.listens || 0);
+    const firstListenAt = Number(v?.firstListenAt || 0);
+    const lastListenAt = Number(v?.lastListenAt || 0);
+
+    return {
+      listens: (Number.isFinite(listens) && listens > 0) ? Math.floor(listens) : 0,
+      firstListenAt: (Number.isFinite(firstListenAt) && firstListenAt > 0) ? Math.floor(firstListenAt) : 0,
+      lastListenAt: (Number.isFinite(lastListenAt) && lastListenAt > 0) ? Math.floor(lastListenAt) : 0
+    };
+  } catch {
+    return { listens: 0, firstListenAt: 0, lastListenAt: 0 };
+  }
+}
+
+export async function setCloudStats(uid, stats) {
+  const key = cloudKey(uid);
+  if (!key) return false;
+
+  const listens = Number(stats?.listens || 0);
+  const firstListenAt = Number(stats?.firstListenAt || 0);
+  const lastListenAt = Number(stats?.lastListenAt || 0);
+
+  const payload = {
+    listens: (Number.isFinite(listens) && listens > 0) ? Math.floor(listens) : 0,
+    firstListenAt: (Number.isFinite(firstListenAt) && firstListenAt > 0) ? Math.floor(firstListenAt) : 0,
+    lastListenAt: (Number.isFinite(lastListenAt) && lastListenAt > 0) ? Math.floor(lastListenAt) : 0
+  };
+
+  try {
+    const db = await openDb();
+    await txp(db, STORE_META, 'readwrite', (st) => {
+      st.put(payload, key);
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function clearCloudStats(uid) {
+  const key = cloudKey(uid);
+  if (!key) return false;
+
+  try {
+    const db = await openDb();
+    await txp(db, STORE_META, 'readwrite', (st) => {
+      st.delete(key);
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function bytesByQuality(uid) {
