@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-564591fbb528c95bf81ac2d73f5c5810b93090c8.idx
-│   │       ├── pack-564591fbb528c95bf81ac2d73f5c5810b93090c8.pack
-│   │       └── pack-564591fbb528c95bf81ac2d73f5c5810b93090c8.rev
+│   │       ├── pack-6ac4f4fc5d35637fcda66c499593fe927ef1b89f.idx
+│   │       ├── pack-6ac4f4fc5d35637fcda66c499593fe927ef1b89f.pack
+│   │       └── pack-6ac4f4fc5d35637fcda66c499593fe927ef1b89f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 19:42:19 UTC
+Сгенерировано: 2026-01-04 19:53:34 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8715,7 +8715,11 @@ export class OfflineManager {
 
   enqueuePinnedDownloadAll() {
     const list = this.getPinnedUids();
-    list.forEach((uid) => this.enqueuePinnedDownload(uid));
+
+    // ✅ Массовая pinned-загрузка — это НЕ "auto-task": пользователь нажал кнопку в модалке.
+    // Чтобы policy=ask не скипал молча, считаем userInitiated=true.
+    list.forEach((uid) => this.enqueuePinnedDownload(uid, { userInitiated: true }));
+
     this._em.emit('progress', { uid: null, phase: 'pinnedQueueEnqueued', count: list.length });
   }
 
