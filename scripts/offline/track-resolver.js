@@ -4,7 +4,7 @@
 // поэтому "local" пока означает "локально закэширован кандидат", но url вернём network URL,
 // либо null если сети нет и локального URL нет.
 
-import { bytesByQuality } from './cache-db.js';
+import { bytesByQuality, getAudioBlob } from './cache-db.js';
 import { getTrackByUid } from '../app/track-registry.js';
 
 function normQ(v) {
@@ -18,6 +18,24 @@ function getNetworkStatus() {
     }
   } catch {}
   return { online: navigator.onLine !== false, kind: 'unknown', raw: null, saveData: false };
+}
+const objectUrlCache = new Map(); // key -> { url, ts }
+const OBJECT_URL_TTL_MS = 30 * 60 * 1000;
+
+function getCachedObjectUrl(key) {
+  const rec = objectUrlCache.get(key);
+  if (!rec) return null;
+  if ((Date.now() - rec.ts) > OBJECT_URL_TTL_MS) {
+    try { URL.revokeObjectURL(rec.url); } catch {}
+    objectUrlCache.delete(key);
+    return null;
+  }
+  return rec.url;
+}
+
+function setCachedObjectUrl(key, url) {
+  objectUrlCache.set(key, { url, ts: Date.now() });
+  return url;
 }
 
 async function hasCachedEnough(uid, q) {
@@ -87,13 +105,43 @@ export async function resolvePlaybackSource(params) {
   // - если у нас есть реальный локальный URL -> можем играть локально (пока нет реализации)
   // - иначе url=null (нужно пропустить трек)
   if (!st?.online) {
-    // пока локального objectURL нет
+    // ✅ Сеть недоступна: пробуем локальный blob в effectiveQuality,
+    // затем fallback на другой уровень (если есть).
+    if (uid) {
+      const want = effectiveQuality;
+      const alt = want === 'hi' ? 'lo' : 'hi';
+
+      const tryLocal = async (q) => {
+        const key = `${uid}:${q}`;
+        const cached = getCachedObjectUrl(key);
+        if (cached) return cached;
+
+        const blob = await getAudioBlob(uid, q);
+        if (!blob) return null;
+
+        const url = URL.createObjectURL(blob);
+        return setCachedObjectUrl(key, url);
+      };
+
+      const localUrl = await tryLocal(want) || await tryLocal(alt);
+
+      if (localUrl) {
+        return {
+          url: localUrl,
+          effectiveQuality: want,
+          isLocal: true,
+          localQuality,
+          reason: 'localBlob'
+        };
+      }
+    }
+
     return {
       url: null,
       effectiveQuality,
       isLocal: false,
       localQuality,
-      reason: offlineMode ? 'offlineMode:noNetwork:noLocalUrl' : 'noNetwork:noLocalUrl'
+      reason: offlineMode ? 'offlineMode:noNetwork:noLocalBlob' : 'noNetwork:noLocalBlob'
     };
   }
 
