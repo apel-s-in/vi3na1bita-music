@@ -26,6 +26,29 @@
         // 1. Загрузка индекса альбомов
         await this.loadAlbumsIndex();
 
+        // ✅ OFFLINE: гарантированная инициализация ESM офлайн‑платформы и индикаторов
+        // Важно: делаем здесь, чтобы не зависеть от inline-кода index.html.
+        try {
+          const [
+            offlineBoot,
+            indicatorsMod,
+            overlayMod,
+            pcBoot
+          ] = await Promise.all([
+            import('./app/offline-ui-bootstrap.js'),
+            import('./ui/offline-indicators.js'),
+            import('./ui/cache-progress-overlay.js'),
+            import('./app/playback-cache-bootstrap.js')
+          ]);
+
+          try { offlineBoot.attachOfflineUI(); } catch (e) { console.warn('attachOfflineUI failed:', e); }
+          try { indicatorsMod.attachOfflineIndicators(); } catch (e) { console.warn('attachOfflineIndicators failed:', e); }
+          try { overlayMod.attachCacheProgressOverlay(); } catch (e) { console.warn('attachCacheProgressOverlay failed:', e); }
+          try { pcBoot.attachPlaybackCache(); } catch (e) { console.warn('attachPlaybackCache failed:', e); }
+        } catch (e) {
+          console.warn('OFFLINE init imports failed:', e);
+        }
+
         // ✅ OFFLINE: автопредзагрузка TrackRegistry всеми треками (1 раз)
         // Нужно, чтобы pinned/cloud/offline-all работали сразу, даже без открытия всех альбомов.
         try {
