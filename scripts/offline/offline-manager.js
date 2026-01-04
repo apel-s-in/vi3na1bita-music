@@ -12,7 +12,7 @@ import {
 } from './cache-db.js';
 
 const OFFLINE_MODE_KEY = 'offlineMode:v1';
-const CQ_KEY = 'cacheQuality:v1';
+const CQ_KEY = 'offline:cacheQuality:v1';
 const PINNED_KEY = 'pinnedUids:v1';
 
 function readJson(key, fallback) {
