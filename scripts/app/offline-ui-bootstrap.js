@@ -1,21 +1,43 @@
 // scripts/app/offline-ui-bootstrap.js
 // Единая offline-платформа (ESM).
-// MVP: чтобы UI-индикаторы/overlay/PlaybackCache не падали.
+// По ТЗ_Нью: кнопка OFFLINE всегда открывает модалку, toggle убран.
 // НЕ трогаем воспроизведение (инвариант I1).
 
 import { OfflineManager } from '../offline/offline-manager.js';
+import { openOfflineModal } from '../ui/offline-modal.js';
 
 export const OfflineUI = {
   offlineManager: null
 };
 
-function setOfflineBtnUI(isOffline) {
+const ALERT_KEY = 'offline:alert:v1';
+
+function readAlert() {
+  try {
+    const raw = localStorage.getItem(ALERT_KEY);
+    const j = raw ? JSON.parse(raw) : null;
+    return !!j?.on;
+  } catch {
+    return false;
+  }
+}
+
+function setOfflineBtnUI() {
   const btn = document.getElementById('offline-btn');
   if (!btn) return;
 
-  btn.classList.toggle('offline', !!isOffline);
+  const isOffline = !!OfflineUI.offlineManager?.isOfflineMode?.();
+
+  // По ТЗ: кнопка не должна быть текстом ONLINE/OFFLINE.
+  // Оставляем стабильный текст OFFLINE, а состояние показываем внутри модалки.
+  btn.textContent = 'OFFLINE';
+
+  // Классы оставим как стилизацию “режима” (не текст)
+  btn.classList.toggle('offline', isOffline);
   btn.classList.toggle('online', !isOffline);
-  btn.textContent = isOffline ? 'OFFLINE' : 'ONLINE';
+
+  // Badge "!" по сигналу alert
+  btn.classList.toggle('alert', readAlert());
 }
 
 export function attachOfflineUI() {
@@ -29,19 +51,20 @@ export function attachOfflineUI() {
     btn.__offlineBound = true;
 
     btn.addEventListener('click', async () => {
-      const next = !OfflineUI.offlineManager.isOfflineMode();
-      OfflineUI.offlineManager.setOfflineMode(next);
-
-      setOfflineBtnUI(next);
-
-      if (next) {
-        window.NotificationSystem?.offline('OFFLINE режим включён');
-      } else {
-        window.NotificationSystem?.success('ONLINE режим включён');
+      // Всегда открываем модалку (по ТЗ)
+      try {
+        await openOfflineModal();
+      } catch (e) {
+        window.NotificationSystem?.error('Не удалось открыть OFFLINE настройки');
+      } finally {
+        setOfflineBtnUI();
       }
     });
   }
 
+  // Обновление UI по внутренним событиям
+  window.addEventListener('offline:uiChanged', () => setOfflineBtnUI());
+
   // Начальная синхронизация UI
-  setOfflineBtnUI(OfflineUI.offlineManager.isOfflineMode());
+  setOfflineBtnUI();
 }
