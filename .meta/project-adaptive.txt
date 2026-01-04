@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-93d116b3bd3d673f98a97904af353c186fa482e5.idx
-│   │       ├── pack-93d116b3bd3d673f98a97904af353c186fa482e5.pack
-│   │       └── pack-93d116b3bd3d673f98a97904af353c186fa482e5.rev
+│   │       ├── pack-b093a187d2be5f2df7965661a7ab7fdfe3bb6039.idx
+│   │       ├── pack-b093a187d2be5f2df7965661a7ab7fdfe3bb6039.pack
+│   │       └── pack-b093a187d2be5f2df7965661a7ab7fdfe3bb6039.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 12:14:14 UTC
+Сгенерировано: 2026-01-04 12:16:48 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -12004,6 +12004,31 @@ header {
 #favorites-btn.favorites-active { background: rgba(77,170,255,0.2); border-color: var(--secondary-color); }
 #favorites-btn.favorites-active #favorites-btn-icon { transform: scale(1.2); }
 
+/* PQ (Hi/Lo) button */
+#pq-btn { position: relative; }
+#pq-btn .pq-btn-label { font-weight: 900; font-size: 14px; letter-spacing: 0.02em; }
+
+#pq-btn.pq-hi {
+  background: rgba(39,179,76,0.16);
+  border-color: rgba(39,179,76,0.35);
+  color: #b8ffd0;
+}
+
+#pq-btn.pq-lo {
+  background: rgba(255,152,0,0.16);
+  border-color: rgba(255,152,0,0.35);
+  color: #ffe0b2;
+}
+
+#pq-btn.disabled {
+  background: rgba(30,30,30,0.6) !important;
+  border-color: rgba(255,255,255,0.06) !important;
+  color: rgba(255,255,255,0.25) !important;
+  box-shadow: none !important;
+  cursor: not-allowed !important;
+  opacity: 0.6;
+}
+
 /* Sleep badge + menu */
 .sleep-timer-btn { position: relative; }
 
@@ -12930,6 +12955,7 @@ header {
 
 body.ios .volume-control-wrapper { display: none !important; }
 body.ios #mute-btn { display: none !important; }
+/* PQ на iOS должен быть виден (занимает место mute по смыслу) */
 
 /* ===== Responsive ===== */
 
