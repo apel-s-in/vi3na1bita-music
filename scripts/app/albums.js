@@ -5,6 +5,8 @@
 // ВАЖНО: config.js публикует window.APP_CONFIG. Используем глобальный конфиг для устойчивости на GitHub Pages/SW.
 const APP_CONFIG = window.APP_CONFIG;
 
+import { registerTrack } from './track-registry.js';
+
 class AlbumsManager {
   constructor() {
     this.currentAlbum = null;
@@ -279,6 +281,24 @@ class AlbumsManager {
           hasLyrics // ✅ Новое поле
         };
       });
+
+      // ✅ Регистрируем треки в TrackRegistry (uid -> urls/sizes) для OFFLINE/Updater/PlaybackCache
+      try {
+        for (const t of normTracks) {
+          if (!t || !t.uid) continue;
+          registerTrack({
+            uid: t.uid,
+            title: t.title,
+            audio: t.fileHi || t.file || null,
+            audio_low: t.fileLo || null,
+            size: t.sizeHi || null,
+            size_low: t.sizeLo || null,
+            lyrics: t.lyrics || null,
+            fulltext: t.fulltext || null,
+            sourceAlbum: albumKey
+          });
+        }
+      } catch {}
 
       const coverPath = data.cover || 'cover.jpg';
 
