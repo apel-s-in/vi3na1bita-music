@@ -14,9 +14,10 @@ function uidOfTrack(t) {
 }
 
 export class PlaybackCacheManager {
-  constructor({ queue, resolver, getPlaylistCtx } = {}) {
+  constructor({ queue, resolver, downloader, getPlaylistCtx } = {}) {
     this.queue = queue;
-    this.resolver = resolver;
+    this.resolver = resolver;     // legacy: can be used for decisions
+    this.downloader = downloader; // new: performs caching tasks
     this.getPlaylistCtx = getPlaylistCtx;
   }
 
@@ -43,13 +44,22 @@ export class PlaybackCacheManager {
       const meta = (typeof trackProvider === 'function') ? trackProvider(uid) : null;
       if (!meta) continue;
 
-      // Планирование через queue: "виртуальная" задача.
+      // ✅ Реальное кэширование окна через downloader (OfflineManager.cacheTrackAudio)
       if (this.queue && typeof this.queue.add === 'function') {
+        const pr = (uid === curUid) ? 30 : (uid === ids[2] ? 20 : 10); // CUR > NEXT > PREV (порядок ids: prev,cur,next)
+        const key = `pc:${q}:${uid}`;
+
         this.queue.add({
+          key,
           uid,
+          priority: pr,
           run: async () => {
-            // resolver нужен, чтобы в будущем выбрать local/network и качество.
             try {
+              if (typeof this.downloader === 'function') {
+                await this.downloader(uid, q);
+                return;
+              }
+              // fallback: если downloader не передан — просто дергаем resolver (no-op)
               if (typeof this.resolver === 'function') {
                 await this.resolver(meta, q);
               }
