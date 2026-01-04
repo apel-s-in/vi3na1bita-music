@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4233cf9abc0b55b4a89a74f3c7c6eae2855bd2b7.idx
-│   │       ├── pack-4233cf9abc0b55b4a89a74f3c7c6eae2855bd2b7.pack
-│   │       └── pack-4233cf9abc0b55b4a89a74f3c7c6eae2855bd2b7.rev
+│   │       ├── pack-813dbb53e70f2a37a9161abeeb713dc9b08c3f3e.idx
+│   │       ├── pack-813dbb53e70f2a37a9161abeeb713dc9b08c3f3e.pack
+│   │       └── pack-813dbb53e70f2a37a9161abeeb713dc9b08c3f3e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -396,7 +396,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 13:14:12 UTC
+Сгенерировано: 2026-01-04 13:15:22 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7986,6 +7986,8 @@ import {
   ensureDbReady
 } from './cache-db.js';
 
+import { resolvePlaybackSource } from './track-resolver.js';
+
 const OFFLINE_MODE_KEY = 'offlineMode:v1';
 const CQ_KEY = 'offline:cacheQuality:v1';
 const PINNED_KEY = 'pinnedUids:v1';
@@ -8190,15 +8192,36 @@ export class OfflineManager {
   }
 
   async resolveForPlayback(track, pq) {
-    // TrackResolver слой будет позже.
-    // MVP: возвращаем сеть (track.src) как есть.
-    // Важное: не делаем stop/pause.
-    const src = String(track?.src || '').trim();
+    // ✅ Единый TrackResolver: PQ↔CQ + сеть/офлайн.
+    // Важно: НЕ делаем stop/pause.
+    const cq = await this.getCacheQuality();
+    const offlineMode = this.isOfflineMode();
+
+    const network = (() => {
+      try {
+        if (window.NetworkManager && typeof window.NetworkManager.getStatus === 'function') {
+          return window.NetworkManager.getStatus();
+        }
+      } catch {}
+      return { online: navigator.onLine !== false, kind: 'unknown', raw: null, saveData: false };
+    })();
+
+    const r = await resolvePlaybackSource({
+      track,
+      pq,
+      cq,
+      offlineMode,
+      network
+    });
+
     return {
-      url: src || null,
+      url: r.url || null,
       pq: (String(pq || '').toLowerCase() === 'lo') ? 'lo' : 'hi',
-      cq: await this.getCacheQuality(),
-      isLocal: false
+      cq,
+      effectiveQuality: r.effectiveQuality,
+      isLocal: !!r.isLocal,
+      localQuality: r.localQuality || null,
+      reason: r.reason || ''
     };
   }
 }
