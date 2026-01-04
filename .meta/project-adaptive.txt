@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9287011e5cc1c5f1b574473650dae92a83ad6352.idx
-│   │       ├── pack-9287011e5cc1c5f1b574473650dae92a83ad6352.pack
-│   │       └── pack-9287011e5cc1c5f1b574473650dae92a83ad6352.rev
+│   │       ├── pack-8e0c5b73180c9fbd533ada7d00a0b849bdff1e64.idx
+│   │       ├── pack-8e0c5b73180c9fbd533ada7d00a0b849bdff1e64.pack
+│   │       └── pack-8e0c5b73180c9fbd533ada7d00a0b849bdff1e64.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 22:08:18 UTC
+Сгенерировано: 2026-01-04 22:28:41 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3845,15 +3845,22 @@ export default NavigationManager;
 import { OfflineManager } from '../offline/offline-manager.js';
 import { openOfflineModal } from '../ui/offline-modal.js';
 
-export const OfflineUI = {
-  offlineManager: null
-};
-
-// ✅ Глобальная публикация для legacy/bridge-кода (PlayerCore, playback-cache-bootstrap, overlay)
-// Без этого window.OfflineUI будет undefined и офлайн-цепочка “молча” не работает.
-try {
-  window.OfflineUI = OfflineUI;
-} catch {}
+// ✅ Единый источник истины — window.OfflineUI.
+// ESM-export OfflineUI будет ссылкой на window.OfflineUI (а не отдельным объектом),
+// чтобы не было рассинхрона между импортами и глобалкой.
+export const OfflineUI = (() => {
+  try {
+    if (!window.OfflineUI || typeof window.OfflineUI !== 'object') {
+      window.OfflineUI = { offlineManager: null };
+    } else if (!('offlineManager' in window.OfflineUI)) {
+      window.OfflineUI.offlineManager = null;
+    }
+    return window.OfflineUI;
+  } catch {
+    // fallback (на случай очень странных окружений)
+    return { offlineManager: null };
+  }
+})();
 
 const ALERT_KEY = 'offline:alert:v1';
 
