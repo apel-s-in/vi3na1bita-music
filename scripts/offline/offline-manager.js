@@ -11,6 +11,8 @@ import {
   ensureDbReady
 } from './cache-db.js';
 
+import { resolvePlaybackSource } from './track-resolver.js';
+
 const OFFLINE_MODE_KEY = 'offlineMode:v1';
 const CQ_KEY = 'offline:cacheQuality:v1';
 const PINNED_KEY = 'pinnedUids:v1';
@@ -215,15 +217,36 @@ export class OfflineManager {
   }
 
   async resolveForPlayback(track, pq) {
-    // TrackResolver слой будет позже.
-    // MVP: возвращаем сеть (track.src) как есть.
-    // Важное: не делаем stop/pause.
-    const src = String(track?.src || '').trim();
+    // ✅ Единый TrackResolver: PQ↔CQ + сеть/офлайн.
+    // Важно: НЕ делаем stop/pause.
+    const cq = await this.getCacheQuality();
+    const offlineMode = this.isOfflineMode();
+
+    const network = (() => {
+      try {
+        if (window.NetworkManager && typeof window.NetworkManager.getStatus === 'function') {
+          return window.NetworkManager.getStatus();
+        }
+      } catch {}
+      return { online: navigator.onLine !== false, kind: 'unknown', raw: null, saveData: false };
+    })();
+
+    const r = await resolvePlaybackSource({
+      track,
+      pq,
+      cq,
+      offlineMode,
+      network
+    });
+
     return {
-      url: src || null,
+      url: r.url || null,
       pq: (String(pq || '').toLowerCase() === 'lo') ? 'lo' : 'hi',
-      cq: await this.getCacheQuality(),
-      isLocal: false
+      cq,
+      effectiveQuality: r.effectiveQuality,
+      isLocal: !!r.isLocal,
+      localQuality: r.localQuality || null,
+      reason: r.reason || ''
     };
   }
 }
