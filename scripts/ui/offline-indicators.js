@@ -97,7 +97,14 @@ function renderIndicator(row, state, uid) {
   el.dataset.active = 'false';
   el.addEventListener('click', async (e) => {
     e.stopPropagation();
-    try { await OfflineUI.offlineManager.pin(uid); } catch {}
+    try {
+      await OfflineUI.offlineManager.pin(uid);
+
+      // ✅ ТЗ 20: UX сообщение о старте
+      window.NotificationSystem?.info('Трек будет доступен офлайн. Начинаю скачивание…', 3500);
+    } catch {
+      window.NotificationSystem?.error('Не удалось закрепить офлайн');
+    }
     refreshRow(row);
   });
   slot.appendChild(el);
