@@ -139,9 +139,17 @@ async function refreshRow(row) {
   renderIndicator(row, ind, uid);
 }
 
+let __refreshAllTimer = null;
+
 function refreshAll() {
-  const list = document.querySelectorAll('#track-list .track');
-  list.forEach((row) => refreshRow(row));
+  // ✅ Debounce: на пачку DOM-мутаций/событий делаем один проход
+  if (__refreshAllTimer) return;
+
+  __refreshAllTimer = setTimeout(() => {
+    __refreshAllTimer = null;
+    const list = document.querySelectorAll('#track-list .track');
+    list.forEach((row) => refreshRow(row));
+  }, 50);
 }
 
 function bindLiveUpdates() {
@@ -158,8 +166,8 @@ function bindLiveUpdates() {
   });
 
   // При любых точечных апдейтах списка (например, favorites:changed) — безопасный рефреш
-  window.addEventListener('favorites:changed', () => setTimeout(refreshAll, 0));
-  window.addEventListener('favorites:refsChanged', () => setTimeout(refreshAll, 0));
+  window.addEventListener('favorites:changed', () => refreshAll());
+  window.addEventListener('favorites:refsChanged', () => refreshAll());
 }
 
 export function attachOfflineIndicators() {
