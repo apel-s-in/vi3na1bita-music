@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5d49820b52560c427bd8616a77ef055091cfd356.idx
-│   │       ├── pack-5d49820b52560c427bd8616a77ef055091cfd356.pack
-│   │       └── pack-5d49820b52560c427bd8616a77ef055091cfd356.rev
+│   │       ├── pack-53cabb646f23d23d9955f98d33beca73d42ab364.idx
+│   │       ├── pack-53cabb646f23d23d9955f98d33beca73d42ab364.pack
+│   │       └── pack-53cabb646f23d23d9955f98d33beca73d42ab364.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -396,7 +396,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 13:49:19 UTC
+Сгенерировано: 2026-01-04 13:51:56 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -10025,7 +10025,14 @@ function renderIndicator(row, state, uid) {
   el.dataset.active = 'false';
   el.addEventListener('click', async (e) => {
     e.stopPropagation();
-    try { await OfflineUI.offlineManager.pin(uid); } catch {}
+    try {
+      await OfflineUI.offlineManager.pin(uid);
+
+      // ✅ ТЗ 20: UX сообщение о старте
+      window.NotificationSystem?.info('Трек будет доступен офлайн. Начинаю скачивание…', 3500);
+    } catch {
+      window.NotificationSystem?.error('Не удалось закрепить офлайн');
+    }
     refreshRow(row);
   });
   slot.appendChild(el);
