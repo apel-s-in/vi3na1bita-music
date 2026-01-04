@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a1534d695d4949e6f1612f3c97aebcec0f0faadd.idx
-│   │       ├── pack-a1534d695d4949e6f1612f3c97aebcec0f0faadd.pack
-│   │       └── pack-a1534d695d4949e6f1612f3c97aebcec0f0faadd.rev
+│   │       ├── pack-3a8fde24fa51fac97a1cd225ac87e98f32ad072d.idx
+│   │       ├── pack-3a8fde24fa51fac97a1cd225ac87e98f32ad072d.pack
+│   │       └── pack-3a8fde24fa51fac97a1cd225ac87e98f32ad072d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 20:34:26 UTC
+Сгенерировано: 2026-01-04 20:39:23 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9168,6 +9168,7 @@ export class PlaybackCacheManager {
     enqueue(curUid, 30);
     enqueue(dir === 'backward' ? prevUid : nextUid, 20);
   }
+}
 
 //=================================================
 // FILE: /scripts/offline/track-resolver.js
