@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e00811feaaaa6229e1ed52578b5622229333b7f3.idx
-│   │       ├── pack-e00811feaaaa6229e1ed52578b5622229333b7f3.pack
-│   │       └── pack-e00811feaaaa6229e1ed52578b5622229333b7f3.rev
+│   │       ├── pack-40e5ec959a5562b7dfcb743f6586fd611708f6ed.idx
+│   │       ├── pack-40e5ec959a5562b7dfcb743f6586fd611708f6ed.pack
+│   │       └── pack-40e5ec959a5562b7dfcb743f6586fd611708f6ed.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 21:20:36 UTC
+Сгенерировано: 2026-01-04 21:22:17 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -11133,7 +11133,7 @@ function getNetworkStatus() {
 }
 
 // ✅ Remote preload: загрузить config.json всех альбомов из albums.json и зарегистрировать треки в TrackRegistry.
-async function loadAllAlbumsTrackIndex() {
+export async function preloadAllAlbumsTrackIndex() {
   const albums = Array.isArray(window.albumsIndex) ? window.albumsIndex : [];
   if (!albums.length) {
     return { ok: false, reason: 'noAlbumsIndex', totalAlbums: 0, totalTracks: 0, uids: [] };
@@ -11535,7 +11535,7 @@ function bindModalHandlers(modal) {
 
       window.NotificationSystem?.info('Загружаю список треков всех альбомов…', 3500);
 
-      const res = await loadAllAlbumsTrackIndex();
+      const res = await preloadAllAlbumsTrackIndex();
       if (!res.ok) {
         window.NotificationSystem?.error('Не удалось загрузить список треков');
         return;
@@ -11563,7 +11563,7 @@ function bindModalHandlers(modal) {
       // ✅ Если треки ещё не загружены в реестр — подгружаем remote configs автоматически
       let uids = getAllUids();
       if (!Array.isArray(uids) || uids.length === 0) {
-        const preload = await loadAllAlbumsTrackIndex();
+        const preload = await preloadAllAlbumsTrackIndex();
         uids = preload?.uids || [];
       }
 
