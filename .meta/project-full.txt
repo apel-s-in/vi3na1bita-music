@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1c9fb6e2f0dce3abf6d078523b72ca16440485b3.idx
-│   │       ├── pack-1c9fb6e2f0dce3abf6d078523b72ca16440485b3.pack
-│   │       └── pack-1c9fb6e2f0dce3abf6d078523b72ca16440485b3.rev
+│   │       ├── pack-923f9af0d102d6c85d2105490125f50c006d20b7.idx
+│   │       ├── pack-923f9af0d102d6c85d2105490125f50c006d20b7.pack
+│   │       └── pack-923f9af0d102d6c85d2105490125f50c006d20b7.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -394,7 +394,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 12:56:31 UTC
+Сгенерировано: 2026-01-04 12:58:31 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4265,6 +4265,19 @@ export function attachPlaybackCache() {
       });
     }
 
+    // ✅ Network-aware PQ: обновляем кнопку при смене сети/типа соединения
+    try {
+      if (w.NetworkManager && typeof w.NetworkManager.subscribe === 'function') {
+        w.NetworkManager.subscribe(() => {
+          try { updatePQButton(); } catch {}
+        });
+      } else {
+        // Fallback: online/offline события
+        window.addEventListener('online', () => { try { updatePQButton(); } catch {} });
+        window.addEventListener('offline', () => { try { updatePQButton(); } catch {} });
+      }
+    } catch {}
+
     console.log('✅ PlayerUI initialized');
   }
 
@@ -5145,6 +5158,15 @@ export function attachPlaybackCache() {
     try { localStorage.setItem('playerVolume', String(v)); } catch {}
   }
 
+  function _isNetworkAvailable() {
+    try {
+      if (w.NetworkManager && typeof w.NetworkManager.getStatus === 'function') {
+        return !!w.NetworkManager.getStatus().online;
+      }
+    } catch {}
+    return navigator.onLine !== false;
+  }
+
   function updatePQButton() {
     const btn = document.getElementById('pq-btn');
     const label = document.getElementById('pq-btn-label');
@@ -5155,7 +5177,11 @@ export function attachPlaybackCache() {
       ? 'lo'
       : 'hi';
 
-    const canToggle = !!w.playerCore?.canToggleQualityForCurrentTrack?.();
+    const canToggleByTrack = !!w.playerCore?.canToggleQualityForCurrentTrack?.();
+    const netOk = _isNetworkAvailable();
+
+    // По ТЗ: если сеть недоступна — PQ disabled (даже если у трека есть Lo)
+    const canToggle = canToggleByTrack && netOk;
 
     btn.classList.toggle('pq-hi', mode === 'hi');
     btn.classList.toggle('pq-lo', mode === 'lo');
@@ -5169,6 +5195,13 @@ export function attachPlaybackCache() {
 
   function togglePQ() {
     if (!w.playerCore) return;
+
+    // По ТЗ: если сеть недоступна — не переключаем и показываем toast
+    if (!_isNetworkAvailable()) {
+      w.NotificationSystem?.warning('Нет доступа к сети');
+      updatePQButton();
+      return;
+    }
 
     const canToggle = !!w.playerCore.canToggleQualityForCurrentTrack?.();
     if (!canToggle) {
