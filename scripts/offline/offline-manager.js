@@ -11,7 +11,10 @@ import {
   ensureDbReady,
   getAudioBlob,
   setAudioBlob,
-  setBytes
+  setBytes,
+  getCloudStats,
+  setCloudStats,
+  clearCloudStats
 } from './cache-db.js';
 
 import { resolvePlaybackSource } from './track-resolver.js';
@@ -20,6 +23,10 @@ import { getTrackByUid } from '../app/track-registry.js';
 const OFFLINE_MODE_KEY = 'offlineMode:v1';
 const CQ_KEY = 'offline:cacheQuality:v1';
 const PINNED_KEY = 'pinnedUids:v1';
+
+// Cloud N/D (MVP значения; позже можно вынести в OFFLINE modal как настройки)
+const CLOUD_N_FULL_LISTENS = 2;     // N: сколько полных прослушиваний нужно
+const CLOUD_D_TTL_DAYS = 7;         // D: сколько дней “держится” облако после последнего полного
 
 function readJson(key, fallback) {
   try {
@@ -237,6 +244,49 @@ export class OfflineManager {
     this._em.emit('progress', { uid: u, phase: 'unpinned' });
   }
 
+  async recordFullListen(uid) {
+    const u = String(uid || '').trim();
+    if (!u) return false;
+
+    const now = Date.now();
+
+    try {
+      const prev = await getCloudStats(u);
+      const listens = (Number(prev?.listens || 0) || 0) + 1;
+
+      const next = {
+        listens,
+        firstListenAt: prev?.firstListenAt > 0 ? prev.firstListenAt : now,
+        lastListenAt: now
+      };
+
+      await setCloudStats(u, next);
+      this._em.emit('progress', { uid: u, phase: 'cloudStats', listens: next.listens });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async isCloudEligible(uid) {
+    const u = String(uid || '').trim();
+    if (!u) return false;
+
+    try {
+      const st = await getCloudStats(u);
+      const listens = Number(st?.listens || 0);
+      const last = Number(st?.lastListenAt || 0);
+
+      if (!(Number.isFinite(listens) && listens >= CLOUD_N_FULL_LISTENS)) return false;
+      if (!(Number.isFinite(last) && last > 0)) return false;
+
+      const ttlMs = CLOUD_D_TTL_DAYS * 24 * 60 * 60 * 1000;
+      return (Date.now() - last) <= ttlMs;
+    } catch {
+      return false;
+    }
+  }
+
   async getIndicators(uid) {
     const u = String(uid || '').trim();
     if (!u) return { pinned: false, cloud: false, cachedComplete: false };
@@ -245,12 +295,16 @@ export class OfflineManager {
 
     const cq = await this.getCacheQuality();
 
-    // ✅ По ТЗ: cachedComplete означает 100% в CQ (а не "что-то есть")
+    // ✅ cachedComplete: 100% в CQ
     const cachedComplete = await this.isTrackComplete(u, cq);
 
-    // ✅ MVP cloud-логика (без сервера):
-    // “облако” показываем, если трек 100% в CQ, но не pinned.
-    const cloud = !pinned && !!cachedComplete;
+    // ✅ Cloud N/D:
+    // ☁ показываем только если:
+    // - не pinned
+    // - 100% cachedComplete
+    // - набрано N полных прослушиваний и не истёк TTL D дней
+    const eligible = await this.isCloudEligible(u);
+    const cloud = !pinned && !!cachedComplete && !!eligible;
 
     return {
       pinned,
@@ -267,7 +321,10 @@ export class OfflineManager {
     if (act === 'remove-cache') {
       await deleteTrackCache(u);
 
-      // ✅ Важно: если кэш удалён — pinned не должен оставаться “висеть”.
+      // ✅ По ТЗ: удаление из кэша сбрасывает cloud-статистику
+      try { await clearCloudStats(u); } catch {}
+
+      // ✅ Если кэш удалён — pinned не должен оставаться “висеть”.
       try {
         const set = this._getPinnedSet();
         if (set.has(u)) {
