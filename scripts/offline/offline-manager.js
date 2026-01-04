@@ -243,15 +243,18 @@ export class OfflineManager {
 
     const pinned = this._getPinnedSet().has(u);
 
-    // MVP: cloud отсутствует как механизм синхронизации, но cachedComplete можно показывать по bytes.
     const cq = await this.getCacheQuality();
 
     // ✅ По ТЗ: cachedComplete означает 100% в CQ (а не "что-то есть")
     const cachedComplete = await this.isTrackComplete(u, cq);
 
+    // ✅ MVP cloud-логика (без сервера):
+    // “облако” показываем, если трек 100% в CQ, но не pinned.
+    const cloud = !pinned && !!cachedComplete;
+
     return {
       pinned,
-      cloud: false,
+      cloud,
       cachedComplete
     };
   }
@@ -263,6 +266,16 @@ export class OfflineManager {
 
     if (act === 'remove-cache') {
       await deleteTrackCache(u);
+
+      // ✅ Важно: если кэш удалён — pinned не должен оставаться “висеть”.
+      try {
+        const set = this._getPinnedSet();
+        if (set.has(u)) {
+          set.delete(u);
+          this._setPinnedSet(set);
+        }
+      } catch {}
+
       this._em.emit('progress', { uid: u, phase: 'cacheRemoved' });
       return;
     }
