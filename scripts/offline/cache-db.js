@@ -194,31 +194,11 @@ export async function clearCloudStats(uid) {
   }
 }
 
-  try {
-    const db = await openDb();
-    const v = await txp(db, STORE_META, 'readonly', (st) => {
-      return new Promise((resolve, reject) => {
-        const r = st.get(key);
-        r.onsuccess = () => resolve(r.result || null);
-        r.onerror = () => reject(r.error);
-      });
-    });
-
-    const listens = Number(v?.listens || 0);
-    const firstListenAt = Number(v?.firstListenAt || 0);
-    const lastListenAt = Number(v?.lastListenAt || 0);
-
-    return {
-      listens: (Number.isFinite(listens) && listens > 0) ? Math.floor(listens) : 0,
-      firstListenAt: (Number.isFinite(firstListenAt) && firstListenAt > 0) ? Math.floor(firstListenAt) : 0,
-      lastListenAt: (Number.isFinite(lastListenAt) && lastListenAt > 0) ? Math.floor(lastListenAt) : 0
-    };
-  } catch {
-    return { listens: 0, firstListenAt: 0, lastListenAt: 0 };
-  }
+// meta key format: cloudCandidate:{uid} -> boolean
+function cloudCandidateKey(uid) {
+  const u = String(uid || '').trim();
+  return u ? `cloudCandidate:${u}` : '';
 }
-
-export async function setCloudStats(uid, stats) {
   const key = cloudKey(uid);
   if (!key) return false;
 
