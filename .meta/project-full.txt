@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ed29cebf0322d9936a4f0331bd8cb75377c3a107.idx
-│   │       ├── pack-ed29cebf0322d9936a4f0331bd8cb75377c3a107.pack
-│   │       └── pack-ed29cebf0322d9936a4f0331bd8cb75377c3a107.rev
+│   │       ├── pack-cb078115e5b234e7cc6442b2e33d6139cfb216be.idx
+│   │       ├── pack-cb078115e5b234e7cc6442b2e33d6139cfb216be.pack
+│   │       └── pack-cb078115e5b234e7cc6442b2e33d6139cfb216be.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 19:54:11 UTC
+Сгенерировано: 2026-01-04 19:55:15 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -864,7 +864,7 @@ jobs:
         ПОДДЕРЖАТЬ
       </a>
       
-      <button class="offline-btn online" id="offline-btn">ONLINE</button>
+      <button class="offline-btn" id="offline-btn">OFFLINE</button>
     </div>
   </div>
 
