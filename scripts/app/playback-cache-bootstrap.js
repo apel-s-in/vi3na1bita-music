@@ -39,10 +39,16 @@ export function attachPlaybackCache() {
     return OfflineUI.offlineManager.resolveForPlayback(track, pq);
   };
 
+  const downloader = async (uid, quality) => {
+    // PlaybackCache — авто-задача: userInitiated=false (без confirm)
+    return OfflineUI.offlineManager.cacheTrackAudio(uid, quality, { userInitiated: false });
+  };
+
   const queue = OfflineUI.offlineManager.queue;
   const pcm = new PlaybackCacheManager({
     queue,
     resolver,
+    downloader,
     getPlaylistCtx
   });
 
