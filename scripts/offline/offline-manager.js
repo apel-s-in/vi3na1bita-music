@@ -241,12 +241,9 @@ export class OfflineManager {
 
     // MVP: cloud отсутствует как механизм синхронизации, но cachedComplete можно показывать по bytes.
     const cq = await this.getCacheQuality();
-    const bytes = await bytesByQuality(u);
-    const have = cq === 'hi' ? bytes.hi : bytes.lo;
 
-    // cachedComplete: в MVP считаем "есть хоть что-то" как прогресс, но complete=false.
-    // Полноценный complete = (have >= needBytes) появится после TrackRegistry+size и CQ политики.
-    const cachedComplete = have > 0;
+    // ✅ По ТЗ: cachedComplete означает 100% в CQ (а не "что-то есть")
+    const cachedComplete = await this.isTrackComplete(u, cq);
 
     return {
       pinned,
