@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-283400c059fbc64ca97b75343b8cb2fafd65ede7.idx
-│   │       ├── pack-283400c059fbc64ca97b75343b8cb2fafd65ede7.pack
-│   │       └── pack-283400c059fbc64ca97b75343b8cb2fafd65ede7.rev
+│   │       ├── pack-99953a1816bcf1bc68d3567cfb680f079b603135.idx
+│   │       ├── pack-99953a1816bcf1bc68d3567cfb680f079b603135.pack
+│   │       └── pack-99953a1816bcf1bc68d3567cfb680f079b603135.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 18:27:11 UTC
+Сгенерировано: 2026-01-04 18:31:02 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -10684,7 +10684,7 @@ export function attachOfflineIndicators() {
 // Важно: НЕ управляет воспроизведением, только настройками OfflineManager и UI.
 
 import { OfflineUI } from '../app/offline-ui-bootstrap.js';
-import { getNetPolicy, setNetPolicy } from '../offline/net-policy.js';
+import { getNetPolicy, setNetPolicy, shouldConfirmByPolicy } from '../offline/net-policy.js';
 
 const ALERT_KEY = 'offline:alert:v1';
 
@@ -10800,9 +10800,37 @@ async function renderModal() {
         </div>
       </div>
 
-      <!-- C: Pinned / actions -->
+      <!-- C: Cloud settings + Pinned / actions -->
       <div style="border-top:1px solid rgba(255,255,255,0.08); padding-top: 12px; margin-top: 12px;">
-        <div style="font-weight: 900; color:#eaf2ff; margin-bottom: 8px;">C) Pinned / Cache</div>
+        <div style="font-weight: 900; color:#eaf2ff; margin-bottom: 8px;">C) Cloud settings</div>
+
+        <div style="color:#9db7dd; line-height:1.45; margin-bottom: 10px;">
+          <div style="opacity:.9;">
+            ☁ появляется, когда трек является cloudCandidate, 100% в CQ, и выполнены N/D условия.
+          </div>
+        </div>
+
+        <div style="display:grid; gap:10px; margin-bottom: 12px;">
+          <label style="display:flex; gap:10px; align-items:center; justify-content:space-between;">
+            <span style="color:#cfe3ff;">N (полных прослушиваний)</span>
+            <input id="offline-cloud-n" type="number" min="1" max="50" step="1"
+                   style="width:110px; padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,.12); background: rgba(0,0,0,.2); color:#eaf2ff;">
+          </label>
+
+          <label style="display:flex; gap:10px; align-items:center; justify-content:space-between;">
+            <span style="color:#cfe3ff;">D (TTL дней)</span>
+            <input id="offline-cloud-d" type="number" min="1" max="365" step="1"
+                   style="width:110px; padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,.12); background: rgba(0,0,0,.2); color:#eaf2ff;">
+          </label>
+
+          <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+            <button class="offline-btn online" id="offline-cloud-save" style="min-width: 220px;">
+              Сохранить Cloud N/D
+            </button>
+          </div>
+        </div>
+
+        <div style="font-weight: 900; color:#eaf2ff; margin: 6px 0 8px;">Pinned / Cache</div>
 
         <div style="color:#9db7dd; line-height:1.45; margin-bottom: 10px;">
           <div><strong>Кэш (примерно):</strong> <span id="offline-cache-size">...</span></div>
@@ -10886,6 +10914,15 @@ function bindModalHandlers(modal) {
       if (sizeEl) sizeEl.textContent = fmtBytes(bytes);
       if (pcEl) pcEl.textContent = String(pinned.length);
 
+      // Cloud N/D
+      try {
+        const { n, d } = om.getCloudSettings();
+        const nInp = modal.querySelector('#offline-cloud-n');
+        const dInp = modal.querySelector('#offline-cloud-d');
+        if (nInp) nInp.value = String(n);
+        if (dInp) dInp.value = String(d);
+      } catch {}
+
       if (listEl) {
         if (!pinned.length) {
           listEl.textContent = 'Pinned список пуст.';
@@ -10949,6 +10986,15 @@ function bindModalHandlers(modal) {
 
   modal.querySelector('#offline-modal-download-pinned')?.addEventListener('click', async () => {
     try {
+      const policy = getNetPolicy();
+      const st = getNetworkStatus();
+
+      // ✅ Массовая операция: confirm обязателен для unknown (и для ask)
+      if (shouldConfirmByPolicy(policy, st, { isMass: true, isAuto: false })) {
+        const ok = window.confirm('Это массовая загрузка (все pinned). Продолжить по текущей сети?');
+        if (!ok) return;
+      }
+
       om.enqueuePinnedDownloadAll();
       window.NotificationSystem?.success('Очередь pinned поставлена');
     } catch {
@@ -10972,6 +11018,19 @@ function bindModalHandlers(modal) {
       try { window.dispatchEvent(new CustomEvent('offline:uiChanged')); } catch {}
       await rerender();
     }
+  });
+
+  modal.querySelector('#offline-cloud-save')?.addEventListener('click', async () => {
+    const nInp = modal.querySelector('#offline-cloud-n');
+    const dInp = modal.querySelector('#offline-cloud-d');
+
+    const n = Number(nInp?.value);
+    const d = Number(dInp?.value);
+
+    const next = om.setCloudSettings({ n, d });
+
+    window.NotificationSystem?.success(`Cloud: N=${next.n}, D=${next.d}`);
+    await rerender();
   });
 
   modal.querySelector('#offline-modal-clear-alert')?.addEventListener('click', async () => {
