@@ -18,14 +18,19 @@ function injectCss() {
 }
 
 function findUidForRow(row) {
-  // __favorites__: id="fav_{albumKey}_{uid}"
-  const id = String(row.id || '');
-  const m = id.match(/^fav_(.+)_(.+)$/);
-  if (m) return m[2];
+  // 0) Самый надёжный источник — data-uid на строке (ставим в scripts/app/albums.js и в favorites render)
+  const rowUid = String(row?.dataset?.uid || '').trim();
+  if (rowUid) return rowUid;
 
-  // Альбомы: у звезды есть data-uid
-  const star = row.querySelector('.like-star[data-uid]');
-  if (star && star.dataset && star.dataset.uid) return String(star.dataset.uid);
+  // 1) __favorites__: id="fav_{albumKey}_{uid}"
+  const id = String(row?.id || '');
+  const m = id.match(/^fav_(.+)_(.+)$/);
+  if (m && m[2]) return String(m[2]).trim() || null;
+
+  // 2) Fallback: у звезды есть data-uid
+  const star = row?.querySelector?.('.like-star[data-uid]');
+  const starUid = String(star?.dataset?.uid || '').trim();
+  if (starUid) return starUid;
 
   return null;
 }
@@ -51,8 +56,10 @@ function renderIndicator(row, state, uid) {
   const slot = ensureSlot(row);
   slot.innerHTML = '';
 
+  const isUnknown = !!state?.unknown;
+
   // Приоритет отображения: pinned 🔒 → ☁ (cloud&&100%) → серый 🔒
-  if (state.pinned) {
+  if (!isUnknown && state.pinned) {
     const el = document.createElement('span');
     el.className = 'offline-ico lock';
     el.textContent = '🔒';
@@ -68,7 +75,7 @@ function renderIndicator(row, state, uid) {
     return;
   }
 
-  if (state.cloud && state.cachedComplete) {
+  if (!isUnknown && state.cloud && state.cachedComplete) {
     const el = document.createElement('span');
     el.className = 'offline-ico cloud';
     el.textContent = '☁';
@@ -88,18 +95,26 @@ function renderIndicator(row, state, uid) {
     return;
   }
 
-  // серый 🔒
+  // серый 🔒 (если unknown — не кликается)
   const el = document.createElement('span');
   el.className = 'offline-ico lock gray';
   el.textContent = '🔒';
-  el.title = 'Закрепить офлайн';
-  el.dataset.uid = uid;
+  el.dataset.uid = uid || '';
   el.dataset.active = 'false';
+
+  if (isUnknown) {
+    el.title = 'OFFLINE: UID ещё не готов';
+    el.style.pointerEvents = 'none';
+    el.style.opacity = '0.25';
+    slot.appendChild(el);
+    return;
+  }
+
+  el.title = 'Закрепить офлайн';
   el.addEventListener('click', async (e) => {
     e.stopPropagation();
     try {
       await OfflineUI.offlineManager.pin(uid);
-
       // ✅ ТЗ 20: UX сообщение о старте
       window.NotificationSystem?.info('Трек будет доступен офлайн. Начинаю скачивание…', 3500);
     } catch {
@@ -107,12 +122,19 @@ function renderIndicator(row, state, uid) {
     }
     refreshRow(row);
   });
+
   slot.appendChild(el);
 }
 
 async function refreshRow(row) {
   const uid = findUidForRow(row);
-  if (!uid) return;
+
+  // ✅ Даже если uid пока неизвестен — показываем серый 🔒 как “не готово”.
+  if (!uid) {
+    renderIndicator(row, { pinned: false, cloud: false, cachedComplete: false, unknown: true }, '');
+    return;
+  }
+
   const ind = await OfflineUI.offlineManager.getIndicators(uid);
   renderIndicator(row, ind, uid);
 }
@@ -125,12 +147,14 @@ function refreshAll() {
 function bindLiveUpdates() {
   // Обновляем индикатор при прогрессе загрузок/завершении
   OfflineUI.offlineManager.on('progress', (ev) => {
-    if (!ev?.uid) return;
-    const nodes = document.querySelectorAll(`#track-list .track[id^="fav_"], #track-list .track .like-star[data-uid="${CSS.escape(ev.uid)}"]`);
-    nodes.forEach((n) => {
-      const row = n.classList?.contains('track') ? n : n.closest('.track');
-      if (row) refreshRow(row);
-    });
+    const uid = String(ev?.uid || '').trim();
+    if (!uid) return;
+
+    // ✅ Точечно обновляем только строки с этим uid:
+    // - в __favorites__ uid хранится в data-uid на строке
+    // - в обычных альбомах uid теперь тоже на строке (scripts/app/albums.js)
+    const rows = document.querySelectorAll(`#track-list .track[data-uid="${CSS.escape(uid)}"]`);
+    rows.forEach((row) => refreshRow(row));
   });
 
   // При любых точечных апдейтах списка (например, favorites:changed) — безопасный рефреш
