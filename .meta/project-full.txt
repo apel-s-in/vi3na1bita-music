@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-02ae8203ec03bdbf329d359dce933ea6ced040e9.idx
-│   │       ├── pack-02ae8203ec03bdbf329d359dce933ea6ced040e9.pack
-│   │       └── pack-02ae8203ec03bdbf329d359dce933ea6ced040e9.rev
+│   │       ├── pack-17b2030b94fd89044afdec5fb3b920b0419192c7.idx
+│   │       ├── pack-17b2030b94fd89044afdec5fb3b920b0419192c7.pack
+│   │       └── pack-17b2030b94fd89044afdec5fb3b920b0419192c7.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -393,7 +393,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 12:29:13 UTC
+Сгенерировано: 2026-01-04 12:33:20 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -13288,19 +13288,10 @@ header {
 .sleep-btn-secondary { background: rgba(255,255,255,0.1); color: var(--text-color); }
 .sleep-btn:hover { opacity: 0.8; }
 
-.offline-modal-content .offline-section {
-  margin-bottom: 20px;
-  padding-bottom: 15px;
-  border-bottom: 1px solid var(--border-color);
-}
-.offline-modal-content .desc {
-  font-size: 0.85em;
-  color: var(--text-secondary);
-}
 #offline-btn.alert::after {
   content: "!";
   margin-left: 4px;
-  color: var(--accent-color);
+  color: var(--primary-color);
 }
 
 /* ===== Hotkeys modal ===== */
@@ -13425,32 +13416,6 @@ header {
   line-height: 1;
   user-select: none;
 }
-.track-item .offline-indicator {
-  display: inline-block;
-  width: 1.2em;
-  height: 1.2em;
-  margin-right: 0.5em;
-  font-size: 1.1em;
-  cursor: pointer;
-  user-select: none;
-}
-
-.track-item .offline-indicator.lock {
-  content: '🔒';
-}
-
-.track-item .offline-indicator.cloud {
-  content: '☁';
-}
-
-.track-item .offline-indicator.inactive {
-  opacity: 0.5;
-  color: var(--text-secondary); /* Серый для не pinned/cloud */
-}
-
-.track-item .offline-indicator.active {
-  color: var(--accent-color); /* Активный цвет для pinned/cloud */
-}
 
 /* ===== Platform-specific ===== */
 
@@ -13513,24 +13478,6 @@ body.ios #mute-btn { display: none !important; }
 @media (prefers-color-scheme: dark) {
   body { background: #0d0d0d; }
 }
-/* Прогресс кэша (ТЗ 16: второй слой) */
-.player-progress-cache-fill {
-  position: absolute;
-  height: 100%;
-  background: rgba(77,170,255,0.4); /* Отдельный цвет */
-  width: 0%;
-  border-radius: 3px;
-}
-
-/* Индикаторы 🔒/☁ в трек-листе (ТЗ 3) */
-.track .offline-indicator {
-  font-size: 1.2em;
-  margin-right: 8px;
-  cursor: pointer;
-}
-.track .offline-indicator.grey { opacity: 0.5; } /* Не pinned/cloud */
-.track .offline-indicator.active { color: var(--secondary-color); }
-
 /* ! на кнопке OFFLINE */
 #offline-btn.alert::after {
   content: "!";
