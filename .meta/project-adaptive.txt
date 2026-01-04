@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9f4d9b31cf5d169ca279243c022e0f05a3406519.idx
-│   │       ├── pack-9f4d9b31cf5d169ca279243c022e0f05a3406519.pack
-│   │       └── pack-9f4d9b31cf5d169ca279243c022e0f05a3406519.rev
+│   │       ├── pack-5d49820b52560c427bd8616a77ef055091cfd356.idx
+│   │       ├── pack-5d49820b52560c427bd8616a77ef055091cfd356.pack
+│   │       └── pack-5d49820b52560c427bd8616a77ef055091cfd356.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -396,7 +396,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 13:43:07 UTC
+Сгенерировано: 2026-01-04 13:49:19 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8116,6 +8116,12 @@ class SimpleQueue {
     this._tick();
   }
 
+  hasTask(key) {
+    const k = String(key || '').trim();
+    if (!k) return false;
+    return this._items.some(t => String(t?.key || '').trim() === k);
+  }
+
   size() {
     return this._items.length;
   }
@@ -8257,7 +8263,9 @@ export class OfflineManager {
       this._setPinnedSet(set);
     }
 
-    // В MVP мы не стартуем скачивание автоматически (это будет слой 100% offline / P2).
+    // ✅ По ТЗ 8.1: pinned=true + ставим задачу скачать до 100% в CQ
+    this.enqueuePinnedDownload(u);
+
     this._em.emit('progress', { uid: u, phase: 'pinned' });
   }
 
@@ -8364,6 +8372,28 @@ export class OfflineManager {
       this._em.emit('progress', { uid: u, phase: 'downloadError', quality: q, error: String(e?.message || e) });
       return { ok: false, reason: 'downloadError' };
     }
+  }
+  enqueuePinnedDownload(uid) {
+    const u = String(uid || '').trim();
+    if (!u) return;
+
+    const taskKey = `pinned:${u}`;
+
+    // Не ставим дубликаты
+    if (this.queue && typeof this.queue.hasTask === 'function' && this.queue.hasTask(taskKey)) {
+      return;
+    }
+
+    if (!this.queue || typeof this.queue.add !== 'function') return;
+
+    this.queue.add({
+      key: taskKey,
+      uid: u,
+      run: async () => {
+        const cq = await this.getCacheQuality();
+        await this.cacheTrackAudio(u, cq);
+      }
+    });
   }
 
   async resolveForPlayback(track, pq) {
