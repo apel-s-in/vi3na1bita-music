@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3f7c7abfbbc385ffd931a7563e950db654a0ec83.idx
-│   │       ├── pack-3f7c7abfbbc385ffd931a7563e950db654a0ec83.pack
-│   │       └── pack-3f7c7abfbbc385ffd931a7563e950db654a0ec83.rev
+│   │       ├── pack-f3a4bb79423867476a71273e508b891f099cdb73.idx
+│   │       ├── pack-f3a4bb79423867476a71273e508b891f099cdb73.pack
+│   │       └── pack-f3a4bb79423867476a71273e508b891f099cdb73.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 21:52:12 UTC
+Сгенерировано: 2026-01-04 21:59:39 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1027,12 +1027,10 @@ jobs:
     window.BUILD_DATE = BUILD_DATE;
     
     console.log(`🎵 Витрина Разбита v${VERSION} (${BUILD_DATE})`);
-<script>
-  // OFFLINE/Cache UI инициализируем ПОСЛЕ unlock (см. unlockAppDirectly()).
-  // Это устраняет гонки и “ранний старт” до появления UI.
-</script>
+  </script>
 </body>
 </html>
+
 
 //=================================================
 // FILE: /manifest.json
