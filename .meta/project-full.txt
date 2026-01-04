@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3562a2102f768dd260f9b7a46fd9e0883730b1ac.idx
-│   │       ├── pack-3562a2102f768dd260f9b7a46fd9e0883730b1ac.pack
-│   │       └── pack-3562a2102f768dd260f9b7a46fd9e0883730b1ac.rev
+│   │       ├── pack-53281c9fc371f411e8ed34d891dc6379b4c0f084.idx
+│   │       ├── pack-53281c9fc371f411e8ed34d891dc6379b4c0f084.pack
+│   │       └── pack-53281c9fc371f411e8ed34d891dc6379b4c0f084.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -396,7 +396,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 14:33:55 UTC
+Сгенерировано: 2026-01-04 14:34:37 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8749,12 +8749,21 @@ async function computePercentForCurrent() {
 
   const cq = await OfflineUI.offlineManager.getCacheQuality();
   const meta = getTrackByUid(uid) || {};
-  const need = cq === 'hi' ? Number(meta.sizeHi || meta.size || 0) : Number(meta.sizeLo || meta.size_low || 0);
-  if (!need) return 0;
+
+  const needMb = cq === 'hi'
+    ? Number(meta.sizeHi || meta.size || 0)
+    : Number(meta.sizeLo || meta.size_low || 0);
+
+  if (!(Number.isFinite(needMb) && needMb > 0)) return 0;
+
+  const needBytes = Math.floor(needMb * 1024 * 1024);
 
   const { hi, lo } = await bytesByQuality(uid);
-  const have = cq === 'hi' ? hi : lo;
-  const pct = Math.max(0, Math.min(100, (have / need) * 100));
+  const haveBytes = cq === 'hi' ? Number(hi || 0) : Number(lo || 0);
+
+  if (!(Number.isFinite(haveBytes) && haveBytes > 0)) return 0;
+
+  const pct = Math.max(0, Math.min(100, (haveBytes / needBytes) * 100));
   return pct;
 }
 
