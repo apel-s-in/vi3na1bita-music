@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-932e68cd5be9bae2ab5b6ffc877789be1564f7a0.idx
-│   │       ├── pack-932e68cd5be9bae2ab5b6ffc877789be1564f7a0.pack
-│   │       └── pack-932e68cd5be9bae2ab5b6ffc877789be1564f7a0.rev
+│   │       ├── pack-121afbca9057aed7557f72c6ea5d70bce6ae7c3c.idx
+│   │       ├── pack-121afbca9057aed7557f72c6ea5d70bce6ae7c3c.pack
+│   │       └── pack-121afbca9057aed7557f72c6ea5d70bce6ae7c3c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 20:18:32 UTC
+Сгенерировано: 2026-01-04 20:19:48 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9315,46 +9315,47 @@ export async function resolvePlaybackSource(params) {
   }
 
   // ✅ Сеть есть:
-  // По ТЗ локальная копия качества ≥ PQ имеет приоритет над сетью.
-  // Поэтому сначала пробуем local blob (effectiveQuality), затем fallback на сеть.
-  if (uid) {
-    const want = effectiveQuality;
-    const alt = want === 'hi' ? 'lo' : 'hi';
+  // ТЗ 11.2.A: если OFFLINE mode выключен — Playback Cache работает “исключительно через сеть”.
+  // Поэтому при offlineMode=false НЕ используем локальные blob, даже если они есть.
+  // Исключение: при отсутствии сети (см. выше) local blob разрешён как единственный вариант.
+  if (offlineMode) {
+    // По ТЗ 6/7: локальная копия качества ≥ PQ имеет приоритет над сетью (минимизация GitHub).
+    if (uid) {
+      const want = effectiveQuality;
 
-    const tryLocal = async (q) => {
-      const key = `${uid}:${q}`;
-      const cached = getCachedObjectUrl(key);
-      if (cached) return cached;
+      const tryLocal = async (q) => {
+        const key = `${uid}:${q}`;
+        const cached = getCachedObjectUrl(key);
+        if (cached) return cached;
 
-      const blob = await getAudioBlob(uid, q);
-      if (!blob) return null;
+        const blob = await getAudioBlob(uid, q);
+        if (!blob) return null;
 
-      const objUrl = URL.createObjectURL(blob);
-      return setCachedObjectUrl(key, objUrl);
-    };
-
-    // 1) пробуем желаемое качество
-    const localUrl = await tryLocal(want);
-
-    // 2) если pq=hi, а hi нет локально — по ТЗ fallback на lo допускается только если сеть недоступна.
-    // При наличии сети fallback на lo НЕ нужен, поэтому alt используем только когда want='lo' (pq lo)
-    // и вдруг lo нет, но есть hi локально (улучшение).
-    const localUrl2 = (!localUrl && want === 'lo') ? await tryLocal('hi') : null;
-
-    const chosenLocal = localUrl || localUrl2;
-
-    if (chosenLocal) {
-      return {
-        url: chosenLocal,
-        effectiveQuality: want,
-        isLocal: true,
-        localQuality,
-        reason: 'localBlob'
+        const objUrl = URL.createObjectURL(blob);
+        return setCachedObjectUrl(key, objUrl);
       };
+
+      // 1) пробуем желаемое качество (effectiveQuality)
+      const localUrl = await tryLocal(want);
+
+      // 2) PQ=Lo: если Lo нет локально, но есть Hi — можем улучшить (ТЗ 6.2)
+      const localUrl2 = (!localUrl && want === 'lo') ? await tryLocal('hi') : null;
+
+      const chosenLocal = localUrl || localUrl2;
+
+      if (chosenLocal) {
+        return {
+          url: chosenLocal,
+          effectiveQuality: want,
+          isLocal: true,
+          localQuality,
+          reason: 'localBlob'
+        };
+      }
     }
   }
 
-  // Сеть есть — играем по сети в effectiveQuality
+  // OFFLINE mode OFF (или OFFLINE ON, но локали нет) — играем по сети в effectiveQuality
   const url = pickNetworkUrl(effectiveQuality);
 
   return {
