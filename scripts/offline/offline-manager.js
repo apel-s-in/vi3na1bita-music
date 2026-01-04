@@ -523,66 +523,7 @@ export class OfflineManager {
 
     const q = (String(quality || '').toLowerCase() === 'lo') ? 'lo' : 'hi';
 
-    const userInitiated = !!options?.userInitiated;
-
-    const getNetPolicy = () => {
-      const v = String(localStorage.getItem('offline:netPolicy:v1') || 'ask').toLowerCase().trim();
-      if (v === 'wifi') return 'wifi';
-      if (v === 'cellular') return 'cellular';
-      if (v === 'unknown') return 'unknown';
-      return 'ask';
-    };
-
-    const canDownloadByPolicy = (policy, st) => {
-      const kind = String(st?.kind || 'unknown');
-      // wifi: только wifi
-      if (policy === 'wifi') return kind === 'wifi';
-      // cellular: wifi или cellular
-      if (policy === 'cellular') return kind === 'wifi' || kind === 'cellular';
-      // unknown: разрешаем всё, включая unknown
-      if (policy === 'unknown') return true;
-      // ask: решим ниже
-      return true;
-    };
-
-    // Уже есть blob — ничего не делаем
-    const existing = await getAudioBlob(u, q);
-    if (existing) {
-      return { ok: true, cached: true, reason: 'alreadyCached' };
-    }
-
-    const meta = getTrackByUid(u);
-    const url = q === 'lo' ? String(meta?.urlLo || '').trim() : String(meta?.urlHi || '').trim();
-
-    if (!url) return { ok: false, reason: 'noUrlForQuality' };
-
-    // Network policy здесь пока не enforced полностью (будет следующий шаг),
-    // но мы не начинаем скачивание если сети нет.
-    const online = (() => {
-      try {
-        if (window.NetworkManager && typeof window.NetworkManager.getStatus === 'function') {
-          return !!window.NetworkManager.getStatus().online;
-        }
-      } catch {}
-      return navigator.onLine !== false;
-    })();
-
-    if (!online) return { ok: false, reason: 'offlineNoNetwork' };
-
-    // ✅ Enforce network policy (единый модуль net-policy.js)
-    const st = (() => {
-      try {
-        if (window.NetworkManager && typeof window.NetworkManager.getStatus === 'function') {
-          return window.NetworkManager.getStatus();
-        }
-      } catch {}
-      return { online: navigator.onLine !== false, kind: 'unknown', raw: null, saveData: false };
-    })();
-
-    const policy = getNetPolicy();
-
-    // ask: confirm только для userInitiated; для auto-задач пропускаем
-    const userInitiated = !!options?.userInitiated;
+    const userInitiated = Boolean(options?.userInitiated);
     const isAuto = !userInitiated;
 
     if (policy !== 'ask' && !isAllowedByNetPolicy(policy, st)) {
