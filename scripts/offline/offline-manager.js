@@ -305,14 +305,12 @@ export class OfflineManager {
 
       if (!ok) throw new Error('IndexedDB write failed');
 
-      // ✅ Обновляем “bytes” (у тебя сейчас это MB-hint из TrackRegistry.size*)
-      const needMb = q === 'hi'
-        ? Number(meta?.sizeHi || meta?.size || 0)
-        : Number(meta?.sizeLo || meta?.size_low || 0);
+      // ✅ Обновляем bytes реальными байтами скачанного blob (не MB-hint).
+      const bytes = (blob && typeof blob.size === 'number' && Number.isFinite(blob.size) && blob.size > 0)
+        ? Math.floor(blob.size)
+        : 0;
 
-      if (needMb > 0) {
-        await setBytes(u, q, needMb);
-      }
+      await setBytes(u, q, bytes);
 
       this._em.emit('progress', { uid: u, phase: 'downloadDone', quality: q });
       return { ok: true, cached: true, reason: 'downloaded' };
