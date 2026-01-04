@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c3b09f06620e294929b4f62ec6168c5571d41c34.idx
-│   │       ├── pack-c3b09f06620e294929b4f62ec6168c5571d41c34.pack
-│   │       └── pack-c3b09f06620e294929b4f62ec6168c5571d41c34.rev
+│   │       ├── pack-9287011e5cc1c5f1b574473650dae92a83ad6352.idx
+│   │       ├── pack-9287011e5cc1c5f1b574473650dae92a83ad6352.pack
+│   │       └── pack-9287011e5cc1c5f1b574473650dae92a83ad6352.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 22:07:24 UTC
+Сгенерировано: 2026-01-04 22:08:18 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -941,27 +941,8 @@ jobs:
       if (promocodeBlock) promocodeBlock.classList.add('hidden');
       if (mainBlock) mainBlock.classList.remove('hidden');
 
-      // ✅ 1) Инициализируем OFFLINE/UI только после unlock (чтобы DOM и стили уже были “в бою”)
-      try {
-        const [
-          offlineBoot,
-          indicatorsMod,
-          overlayMod,
-          pcBoot
-        ] = await Promise.all([
-          import('./scripts/app/offline-ui-bootstrap.js'),
-          import('./scripts/ui/offline-indicators.js'),
-          import('./scripts/ui/cache-progress-overlay.js'),
-          import('./scripts/app/playback-cache-bootstrap.js')
-        ]);
-
-        try { offlineBoot.attachOfflineUI(); } catch (e) { console.warn('attachOfflineUI failed:', e); }
-        try { indicatorsMod.attachOfflineIndicators(); } catch (e) { console.warn('attachOfflineIndicators failed:', e); }
-        try { overlayMod.attachCacheProgressOverlay(); } catch (e) { console.warn('attachCacheProgressOverlay failed:', e); }
-        try { pcBoot.attachPlaybackCache(); } catch (e) { console.warn('attachPlaybackCache failed:', e); }
-      } catch (e) {
-        console.warn('OFFLINE modules import failed:', e);
-      }
+      // OFFLINE инициализируется внутри window.app.initialize()
+      // (scripts/app.js), чтобы избежать гонок и дублей.
 
       // ✅ 2) Ждём window.app и запускаем приложение один раз
       const waitForApp = setInterval(() => {
