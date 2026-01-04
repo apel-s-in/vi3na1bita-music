@@ -378,7 +378,8 @@ export class OfflineManager {
     try { await setCloudCandidate(u, false); } catch {}
 
     // ✅ По ТЗ 8.1: pinned=true + ставим задачу скачать до 100% в CQ
-    this.enqueuePinnedDownload(u);
+    // ✅ Это действие пользователя (клик по 🔒) => разрешаем confirm при policy=ask
+    this.enqueuePinnedDownload(u, { userInitiated: true });
 
     this._em.emit('progress', { uid: u, phase: 'pinned' });
   }
@@ -614,9 +615,11 @@ async cacheTrackAudio(uid, quality, options = {}) {
   }
 }
 
-  enqueuePinnedDownload(uid) {
+  enqueuePinnedDownload(uid, opts = {}) {
     const u = String(uid || '').trim();
     if (!u) return;
+
+    const userInitiated = Boolean(opts?.userInitiated);
 
     const taskKey = `pinned:${u}`;
 
@@ -632,7 +635,7 @@ async cacheTrackAudio(uid, quality, options = {}) {
       uid: u,
       run: async () => {
         const cq = await this.getCacheQuality();
-        await this.cacheTrackAudio(u, cq, { userInitiated: false, isMass: false });
+        await this.cacheTrackAudio(u, cq, { userInitiated, isMass: false });
       }
     });
   }
