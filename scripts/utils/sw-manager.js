@@ -201,4 +201,5 @@ if (document.readyState === 'loading') {
   window.ServiceWorkerManager.init();
 }
 
-export default ServiceWorkerManager;
+// export default удалён: файл используется как browser script через window.ServiceWorkerManager
+
