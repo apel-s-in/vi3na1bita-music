@@ -80,16 +80,22 @@ export async function resolvePlaybackSource(params) {
 
   const uid = String(track?.uid || '').trim() || null;
 
-  // network urls from current track.sources
+  // network urls from track meta (support both new and legacy shapes)
   const sources = track?.sources || null;
-  const key = 'audio';
 
-  const urlHi = String(sources?.[key]?.hi || '').trim() || null;
-  const urlLo = String(sources?.[key]?.lo || '').trim() || null;
+  const urlHi =
+    String(sources?.audio?.hi || '').trim() ||
+    String(track?.audio || track?.src || '').trim() ||
+    null;
+
+  const urlLo =
+    String(sources?.audio?.lo || '').trim() ||
+    String(track?.audio_low || '').trim() ||
+    null;
 
   const pickNetworkUrl = (q) => {
-    if (q === 'lo') return urlLo || urlHi || String(track?.src || '').trim() || null;
-    return urlHi || urlLo || String(track?.src || '').trim() || null;
+    if (q === 'lo') return urlLo || urlHi || null;
+    return urlHi || urlLo || null;
   };
 
   // Локальная доступность (MVP по bytes):
