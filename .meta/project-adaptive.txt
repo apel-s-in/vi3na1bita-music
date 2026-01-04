@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a2f57b3269ceb3a3db617f31bd7620b804f069c0.idx
-│   │       ├── pack-a2f57b3269ceb3a3db617f31bd7620b804f069c0.pack
-│   │       └── pack-a2f57b3269ceb3a3db617f31bd7620b804f069c0.rev
+│   │       ├── pack-3f7c7abfbbc385ffd931a7563e950db654a0ec83.idx
+│   │       ├── pack-3f7c7abfbbc385ffd931a7563e950db654a0ec83.pack
+│   │       └── pack-3f7c7abfbbc385ffd931a7563e950db654a0ec83.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 21:46:42 UTC
+Сгенерировано: 2026-01-04 21:52:12 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1831,19 +1831,9 @@ self.addEventListener('message', (event) => {
   // Создание глобального экземпляра
   w.app = new Application();
 
-  // Автоматический запуск если промокод уже введён (единый источник: APP_CONFIG.PROMOCODE)
-  try {
-    const promo = String(w.APP_CONFIG?.PROMOCODE || '').trim();
-    const saved = String(localStorage.getItem('promocode') || '').trim();
-
-    if (promo && saved === promo) {
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => w.app.initialize());
-      } else {
-        w.app.initialize();
-      }
-    }
-  } catch {}
+  // Автозапуск initialize() выполняется в index.html (unlockAppDirectly),
+  // чтобы избежать гонок двойного старта и несогласованной инициализации модулей.
+  // Здесь сознательно НЕ запускаем initialize() автоматически.
 
 })(); // end of AppModule IIFE
 
