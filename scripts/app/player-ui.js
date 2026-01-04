@@ -507,11 +507,6 @@
           
           <a class="player-download-btn" href="#" id="track-download-btn" download title="Скачать трек">💾</a>
           
-          <button id="eco-btn" class="eco-btn" title="Эконом режим">
-            <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
-              <path d="M13 3L4 14h6l-1 7 9-11h-6l1-7z"/>
-            </svg>
-          </button>
         </div>
       </div>
     `;
@@ -734,10 +729,6 @@
 
         case 'lyrics-text-btn':
           w.LyricsModal?.show?.();
-          return;
-
-        case 'eco-btn':
-          toggleEcoMode();
           return;
 
         case 'track-download-btn': {
@@ -1381,20 +1372,7 @@
     updateMiniHeader();
   }
 
-  function toggleEcoMode() {
-    const btn = document.getElementById('eco-btn');
-    const isActive = btn?.classList.contains('active');
-
-    if (isActive) {
-      btn?.classList.remove('active');
-      w.playerCore?.setQuality('high');
-      w.NotificationSystem?.success('Эконом режим выключен');
-    } else {
-      btn?.classList.add('active');
-      w.playerCore?.setQuality('low');
-      w.NotificationSystem?.success('Эконом режим включён (низкое качество)');
-    }
-  }
+  // eco-btn удалён по ТЗ_Нью: PQ управляется отдельной кнопкой Hi/Lo.
 
   function setLyricsAvailability(enabled) {
     const playerBlock = document.getElementById('lyricsplayerblock');
