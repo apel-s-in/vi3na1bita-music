@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-22219e8690ad280b12fbc0070f5d425c4975dd96.idx
-│   │       ├── pack-22219e8690ad280b12fbc0070f5d425c4975dd96.pack
-│   │       └── pack-22219e8690ad280b12fbc0070f5d425c4975dd96.rev
+│   │       ├── pack-0f0e716ab373a9fefdb5c02d6e9b062b2d8efa34.idx
+│   │       ├── pack-0f0e716ab373a9fefdb5c02d6e9b062b2d8efa34.pack
+│   │       └── pack-0f0e716ab373a9fefdb5c02d6e9b062b2d8efa34.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -396,7 +396,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 13:27:06 UTC
+Сгенерировано: 2026-01-04 13:28:50 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -11757,6 +11757,30 @@ try { main(); } catch (e) { console.error("❌", e); process.exit(1); }
         return { url: String(track?.src || '').trim() || null, effectiveQuality: this.qualityMode || 'hi', reason: 'resolverError' };
       }
     }
+    async _getHasAnyOfflineCompleteCached() {
+      if (this._hasAnyOfflineCacheComplete === true) return true;
+      if (this._hasAnyOfflineCacheComplete === false) return false;
+
+      try {
+        const om = window.OfflineUI?.offlineManager;
+        if (!om || typeof om.hasAnyComplete !== 'function') {
+          // Если OfflineManager не готов — считаем, что офлайн кэша нет (консервативно).
+          this._hasAnyOfflineCacheComplete = false;
+          return false;
+        }
+
+        const uids = this.playlist
+          .map(t => String(t?.uid || '').trim())
+          .filter(Boolean);
+
+        const yes = await om.hasAnyComplete(uids);
+        this._hasAnyOfflineCacheComplete = !!yes;
+        return !!yes;
+      } catch {
+        this._hasAnyOfflineCacheComplete = false;
+        return false;
+      }
+    }
 
     async _findNextPlayableIndex(direction) {
       // direction: 'forward' | 'backward'
@@ -11851,7 +11875,19 @@ try { main(); } catch (e) { console.error("❌", e); process.exit(1); }
       const resolved = await this._resolvePlaybackUrlForTrack(track);
 
       if (!resolved.url) {
-        // OFFLINE+нет сети и нет локального URL: пропускаем трек без STOP
+        // OFFLINE+нет сети:
+        // 1) если нет офлайн-кэша вообще — тост 1 раз и выходим (без stop/pause)
+        // 2) если офлайн-кэш есть — ищем следующий playable и переключаемся без STOP
+        const hasAny = await this._getHasAnyOfflineCompleteCached();
+
+        if (!hasAny) {
+          if (!this._offlineNoCacheToastShown) {
+            this._offlineNoCacheToastShown = true;
+            window.NotificationSystem?.warning('Нет сети и нет офлайн-кэша');
+          }
+          return;
+        }
+
         const fallbackIdx = await this._findNextPlayableIndex('forward');
         if (fallbackIdx >= 0 && fallbackIdx !== index) {
           this.currentIndex = fallbackIdx;
