@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ebc53268b6c99e65febe1dbf7a344389323a8545.idx
-│   │       ├── pack-ebc53268b6c99e65febe1dbf7a344389323a8545.pack
-│   │       └── pack-ebc53268b6c99e65febe1dbf7a344389323a8545.rev
+│   │       ├── pack-054e579bf9cdc00614a17425ef63042eafc95bf3.idx
+│   │       ├── pack-054e579bf9cdc00614a17425ef63042eafc95bf3.pack
+│   │       └── pack-054e579bf9cdc00614a17425ef63042eafc95bf3.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -396,7 +396,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 14:35:45 UTC
+Сгенерировано: 2026-01-04 15:09:55 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2793,6 +2793,13 @@ class AlbumsManager {
     trackEl.id = `trk${index}`;
     trackEl.dataset.index = index;
     trackEl.dataset.album = albumKey;
+
+    // ✅ Важно для OFFLINE индикаторов: uid должен быть на строке, а не только на звезде.
+    if (track && typeof track.uid === 'string' && track.uid.trim()) {
+      trackEl.dataset.uid = track.uid.trim();
+    } else {
+      trackEl.dataset.uid = '';
+    }
 
     // ✅ Индекс воспроизведения внутри playlist (после фильтрации по file).
     // Это защищает от рассинхрона, если в альбоме появятся треки без audio/file.
