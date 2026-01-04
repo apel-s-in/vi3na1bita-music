@@ -38,7 +38,7 @@ function ensureSlot(row) {
   slot.className = 'offline-ico-slot';
 
   // Попробуем вставить перед “номером”; если его нет — в начало строки
-  const num = row.querySelector('.track-num');
+  const num = row.querySelector('.tnum');
   if (num && num.parentNode === row) {
     row.insertBefore(slot, num);
   } else {
