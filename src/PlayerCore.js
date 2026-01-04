@@ -53,6 +53,14 @@
       // ✅ Активный тип источника (в будущем: 'audio' | 'minus' | 'stem')
       // Пока всегда 'audio' — это важно, чтобы потом добавить кнопку MINUS без переписывания ядра.
       this.sourceKey = 'audio';
+
+      // ✅ OFFLINE guard (только UI-уведомление, без stop/pause)
+      // Один раз за сессию, чтобы не спамить тостами.
+      this._offlineNoCacheToastShown = false;
+
+      // Кэш результата "есть ли хоть один complete локальный трек" для текущего плейлиста.
+      // Сбрасываем при setPlaylist().
+      this._hasAnyOfflineCacheComplete = null;
     }
 
     initialize() {
@@ -76,7 +84,8 @@
         resetHistory = true
       } = options || {};
 
-      this.playlist = (Array.isArray(tracks) ? tracks : []).map(t => {
+      // ✅ Смена плейлиста: сбрасываем кэш наличия офлайн complete
+      this._hasAnyOfflineCacheComplete = null;
         const uid = (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null;
 
         // ✅ sources: расширяемая структура под future minus/stem/clip
