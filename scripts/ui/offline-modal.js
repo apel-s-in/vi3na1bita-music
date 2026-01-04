@@ -2,7 +2,17 @@
 // OFFLINE Modal (A–D) — MVP по ТЗ_Нью.
 // Важно: НЕ управляет воспроизведением, только настройками OfflineManager и UI.
 
-import { OfflineUI } from '../app/offline-ui-bootstrap.js';
+import { OfflineUI as OfflineUIExport } from '../app/offline-ui-bootstrap.js';
+
+// ✅ Всегда используем window.OfflineUI как runtime-источник (избегаем рассинхрона ESM-графов)
+const OfflineUI = (() => {
+  try {
+    return window.OfflineUI || OfflineUIExport;
+  } catch {
+    return OfflineUIExport;
+  }
+})();
+
 import { getNetPolicy, setNetPolicy, shouldConfirmByPolicy } from '../offline/net-policy.js';
 import { getAllUids, registerTrack } from '../app/track-registry.js';
 
