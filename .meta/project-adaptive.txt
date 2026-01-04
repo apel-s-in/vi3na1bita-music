@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f2efe3552b3ed332c47faa5424438fe1965b8ded.idx
-│   │       ├── pack-f2efe3552b3ed332c47faa5424438fe1965b8ded.pack
-│   │       └── pack-f2efe3552b3ed332c47faa5424438fe1965b8ded.rev
+│   │       ├── pack-4d5391aa16642d6318b91b60d9b9f46aad239106.idx
+│   │       ├── pack-4d5391aa16642d6318b91b60d9b9f46aad239106.pack
+│   │       └── pack-4d5391aa16642d6318b91b60d9b9f46aad239106.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 20:40:06 UTC
+Сгенерировано: 2026-01-04 20:40:37 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9114,9 +9114,8 @@ function uidOfTrack(t) {
 }
 
 export class PlaybackCacheManager {
-  constructor({ queue, resolver, getPlaylistCtx } = {}) {
+  constructor({ queue, getPlaylistCtx } = {}) {
     this.queue = queue;
-    this.resolver = resolver;     // legacy: can be used for decisions
     this.getPlaylistCtx = getPlaylistCtx;
   }
 
