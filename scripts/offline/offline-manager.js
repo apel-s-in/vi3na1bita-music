@@ -355,27 +355,10 @@ export class OfflineManager {
   }
 
   _getPinnedSet() {
-
-    // Проверяем сначала CQ, потом второй уровень (чтобы считать "есть офлайн вообще")
-    const cq = await this.getCacheQuality();
-    const alt = cq === 'hi' ? 'lo' : 'hi';
-
-    for (const uid of list) {
-      // eslint-disable-next-line no-await-in-loop
-      if (await this.isTrackComplete(uid, cq)) return true;
-    }
-    for (const uid of list) {
-      // eslint-disable-next-line no-await-in-loop
-      if (await this.isTrackComplete(uid, alt)) return true;
-    }
-    return false;
-  }
-
-  _getPinnedSet() {
-    const arr = readJson(PINNED_KEY, []);
-    const uids = Array.isArray(arr) ? arr.map(x => String(x || '').trim()).filter(Boolean) : [];
-    return new Set(uids);
-  }
+     const arr = readJson(PINNED_KEY, []);
+     const uids = Array.isArray(arr) ? arr.map(x => String(x || '').trim()).filter(Boolean) : [];
+     return new Set(uids);
+   }
 
   _setPinnedSet(set) {
     writeJson(PINNED_KEY, Array.from(set));
