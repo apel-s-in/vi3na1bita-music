@@ -353,13 +353,17 @@
           this.stopTick();
           this.trigger('onEnd', track, index);
 
-          // ✅ Cloud N/D: фиксируем “полное прослушивание” (без влияния на playback).
+          // ✅ Cloud N/D (ТЗ 9.2): full listen только если duration валидна и прогресс > 90%
           try {
             const uid = String(track?.uid || '').trim();
             if (uid) {
               const om = window.OfflineUI?.offlineManager;
+              const dur = this.getDuration();
+              const pos = this.getPosition();
+              const progress = (dur > 0) ? (pos / dur) : 0;
+
               if (om && typeof om.recordFullListen === 'function') {
-                om.recordFullListen(uid);
+                om.recordFullListen(uid, { duration: dur, progress });
               }
             }
           } catch {}
