@@ -181,6 +181,7 @@
         return {
           url: String(r?.url || '').trim() || null,
           effectiveQuality: String(r?.effectiveQuality || pq || 'hi').toLowerCase() === 'lo' ? 'lo' : 'hi',
+          isLocal: !!r?.isLocal,
           reason: String(r?.reason || '')
         };
       } catch (e) {
@@ -292,7 +293,7 @@
       }
 
       const { autoPlay = false, resumePosition = null } = options || {};
-      const html5 = (typeof options.html5 === 'boolean') ? options.html5 : true;
+      let html5 = (typeof options.html5 === 'boolean') ? options.html5 : true;
 
       // ✅ НЕЛЬЗЯ stop(): это нарушит базовое правило.
       this._silentUnloadCurrentSound();
@@ -303,6 +304,10 @@
 
       // ✅ Resolve source via OfflineManager/TrackResolver
       const resolved = await this._resolvePlaybackUrlForTrack(track);
+      // ✅ Локальный источник (blob/objectURL) — играем через WebAudio (html5:false) по ТЗ
+      if (resolved && resolved.isLocal) {
+        html5 = false;
+      }
 
       if (!resolved.url) {
         // OFFLINE+нет сети:
