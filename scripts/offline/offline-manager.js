@@ -216,6 +216,71 @@ export class OfflineManager {
     return false;
   }
 
+  getPinnedUids() {
+    return Array.from(this._getPinnedSet());
+  }
+
+  async getCacheSizeBytes() {
+    return totalCachedBytes();
+  }
+
+  async clearAllCache() {
+    // ✅ Полная очистка: bytes+blobs+cloudStats, pinned очищаем.
+    // Воспроизведение НЕ трогаем.
+    try {
+      const uids = new Set();
+      try {
+        // Лучше всего чистить по списку известных uid (TrackRegistry)
+        // но TrackRegistry ESM не импортируем сюда; берём из pinned + текущего плейлиста.
+        this.getPinnedUids().forEach(u => uids.add(u));
+        const pc = window.playerCore;
+        const snap = pc?.getPlaylistSnapshot?.() || [];
+        snap.forEach(t => {
+          const uid = String(t?.uid || '').trim();
+          if (uid) uids.add(uid);
+        });
+      } catch {}
+
+      for (const uid of Array.from(uids)) {
+        // eslint-disable-next-line no-await-in-loop
+        await deleteTrackCache(uid);
+        // eslint-disable-next-line no-await-in-loop
+        await clearCloudStats(uid);
+      }
+
+      // pinned set -> empty
+      try { this._setPinnedSet(new Set()); } catch {}
+
+      this._em.emit('progress', { uid: null, phase: 'allCacheCleared' });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  enqueuePinnedDownloadAll() {
+    const list = this.getPinnedUids();
+    list.forEach((uid) => this.enqueuePinnedDownload(uid));
+    this._em.emit('progress', { uid: null, phase: 'pinnedQueueEnqueued', count: list.length });
+  }
+
+  _getPinnedSet() {
+
+    // Проверяем сначала CQ, потом второй уровень (чтобы считать "есть офлайн вообще")
+    const cq = await this.getCacheQuality();
+    const alt = cq === 'hi' ? 'lo' : 'hi';
+
+    for (const uid of list) {
+      // eslint-disable-next-line no-await-in-loop
+      if (await this.isTrackComplete(uid, cq)) return true;
+    }
+    for (const uid of list) {
+      // eslint-disable-next-line no-await-in-loop
+      if (await this.isTrackComplete(uid, alt)) return true;
+    }
+    return false;
+  }
+
   _getPinnedSet() {
     const arr = readJson(PINNED_KEY, []);
     const uids = Array.isArray(arr) ? arr.map(x => String(x || '').trim()).filter(Boolean) : [];
