@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c5cc4a250d607a9dc5a46ef90c5796e3f38ae032.idx
-│   │       ├── pack-c5cc4a250d607a9dc5a46ef90c5796e3f38ae032.pack
-│   │       └── pack-c5cc4a250d607a9dc5a46ef90c5796e3f38ae032.rev
+│   │       ├── pack-56cb59c589160e0d998f242f4e1e406592b26c85.idx
+│   │       ├── pack-56cb59c589160e0d998f242f4e1e406592b26c85.pack
+│   │       └── pack-56cb59c589160e0d998f242f4e1e406592b26c85.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-04 18:03:43 UTC
+Сгенерировано: 2026-01-04 18:05:58 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -10560,8 +10560,8 @@ export function attachOfflineIndicators() {
 // Важно: НЕ управляет воспроизведением, только настройками OfflineManager и UI.
 
 import { OfflineUI } from '../app/offline-ui-bootstrap.js';
+import { getNetPolicy, setNetPolicy } from '../offline/net-policy.js';
 
-const NETPOLICY_KEY = 'offline:netPolicy:v1';
 const ALERT_KEY = 'offline:alert:v1';
 
 function readJson(key, fallback) {
@@ -10577,22 +10577,6 @@ function readJson(key, fallback) {
 
 function writeJson(key, value) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
-}
-
-function getNetPolicy() {
-  const v = String(localStorage.getItem(NETPOLICY_KEY) || 'ask').toLowerCase().trim();
-  if (v === 'wifi') return 'wifi';
-  if (v === 'cellular') return 'cellular';
-  if (v === 'unknown') return 'unknown';
-  return 'ask'; // спросить
-}
-
-function setNetPolicy(v) {
-  const s = String(v || '').toLowerCase().trim();
-  const next =
-    (s === 'wifi' || s === 'cellular' || s === 'unknown' || s === 'ask') ? s : 'ask';
-  try { localStorage.setItem(NETPOLICY_KEY, next); } catch {}
-  return next;
 }
 
 function getNetworkStatus() {
