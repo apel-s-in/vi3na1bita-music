@@ -784,6 +784,13 @@ class AlbumsManager {
     trackEl.dataset.index = index;
     trackEl.dataset.album = albumKey;
 
+    // ✅ Важно для OFFLINE индикаторов: uid должен быть на строке, а не только на звезде.
+    if (track && typeof track.uid === 'string' && track.uid.trim()) {
+      trackEl.dataset.uid = track.uid.trim();
+    } else {
+      trackEl.dataset.uid = '';
+    }
+
     // ✅ Индекс воспроизведения внутри playlist (после фильтрации по file).
     // Это защищает от рассинхрона, если в альбоме появятся треки без audio/file.
     const albumDataForIndex = this.albumsData.get(albumKey);
