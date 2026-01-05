@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-897294fab5226b1d7464fc55731ce4c909580d94.idx
-│   │       ├── pack-897294fab5226b1d7464fc55731ce4c909580d94.pack
-│   │       └── pack-897294fab5226b1d7464fc55731ce4c909580d94.rev
+│   │       ├── pack-f61a59f4c5bad1941b4f52af03b08a5fcae1ccc1.idx
+│   │       ├── pack-f61a59f4c5bad1941b4f52af03b08a5fcae1ccc1.pack
+│   │       └── pack-f61a59f4c5bad1941b4f52af03b08a5fcae1ccc1.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -398,7 +398,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-05 13:03:18 UTC
+Сгенерировано: 2026-01-05 13:07:39 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1431,6 +1431,7 @@ self.addEventListener('message', (event) => {
 
 //=================================================
 // FILE: /scripts/app.js
+import './ui/statistics-modal.js';
 // scripts/app.js
 // Главная точка входа приложения
 
