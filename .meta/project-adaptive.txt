@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4d30ac301654a7f1d0c1e6f9bc18b0ba25922e42.idx
-│   │       ├── pack-4d30ac301654a7f1d0c1e6f9bc18b0ba25922e42.pack
-│   │       └── pack-4d30ac301654a7f1d0c1e6f9bc18b0ba25922e42.rev
+│   │       ├── pack-aef4ed4aca3fe63852d944bf2715a79c9ce57daa.idx
+│   │       ├── pack-aef4ed4aca3fe63852d944bf2715a79c9ce57daa.pack
+│   │       └── pack-aef4ed4aca3fe63852d944bf2715a79c9ce57daa.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-05 11:22:22 UTC
+Сгенерировано: 2026-01-05 11:23:07 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -10977,14 +10977,24 @@ function renderIndicator(row, state, uid) {
 async function refreshRow(row) {
   const uid = findUidForRow(row);
 
+  // ✅ Защита: если OfflineManager ещё не инициализирован — выходим, не ломая интерфейс.
+  // Индикаторы обновятся позже по событию offline:ready или progress.
+  if (!OfflineUI.offlineManager) {
+    return; 
+  }
+
   // ✅ Даже если uid пока неизвестен — показываем серый 🔒 как “не готово”.
   if (!uid) {
     renderIndicator(row, { pinned: false, cloud: false, cachedComplete: false, unknown: true }, '');
     return;
   }
 
-  const ind = await OfflineUI.offlineManager.getIndicators(uid);
-  renderIndicator(row, ind, uid);
+  try {
+    const ind = await OfflineUI.offlineManager.getIndicators(uid);
+    renderIndicator(row, ind, uid);
+  } catch (e) {
+    console.warn('Error getting indicators:', e);
+  }
 }
 
 let __refreshAllTimer = null;
