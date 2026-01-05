@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1b7330d0f48b99c12b813c09488ceeddd0b0e5c4.idx
-│   │       ├── pack-1b7330d0f48b99c12b813c09488ceeddd0b0e5c4.pack
-│   │       └── pack-1b7330d0f48b99c12b813c09488ceeddd0b0e5c4.rev
+│   │       ├── pack-c3fe8fd8746bd8dc4071b3c759239d95e9c82e23.idx
+│   │       ├── pack-c3fe8fd8746bd8dc4071b3c759239d95e9c82e23.pack
+│   │       └── pack-c3fe8fd8746bd8dc4071b3c759239d95e9c82e23.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-05 11:38:34 UTC
+Сгенерировано: 2026-01-05 11:39:43 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9690,7 +9690,7 @@ export function attachCacheProgressOverlay() {
 // Меню для ☁ (ТЗ: “Добавить 🔒” / “Удалить из кэша” + сброс cloud-статистики)
 // Реализация под текущий проект: Utils.createModal(html), OfflineUI.offlineManager
 
-import { OfflineUI } from '../app/offline-ui-bootstrap.js';
+// Import OfflineUI removed to avoid circular dependency
 
 export function attachCloudMenu({ root, onAddLock, onRemoveCache } = {}) {
   const el = root;
@@ -9756,7 +9756,8 @@ export function attachCloudMenu({ root, onAddLock, onRemoveCache } = {}) {
         // fallback: если коллбеки не передали — используем стандартный метод
         const uid = String(el.dataset?.uid || '').trim();
         if (uid) {
-          await OfflineUI.offlineManager.cloudMenu(uid, 'remove-cache');
+          const mgr = window.OfflineUI?.offlineManager;
+          if (mgr) await mgr.cloudMenu(uid, 'remove-cache');
         }
       }
       window.NotificationSystem?.success('Трек удалён из cloud');
