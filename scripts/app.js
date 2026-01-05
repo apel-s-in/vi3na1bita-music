@@ -243,6 +243,7 @@
       maybeInit(w.SleepTimer, 'SleepTimer');
       maybeInit(w.LyricsModal, 'LyricsModal');
       maybeInit(w.SystemInfoManager, 'SystemInfoManager');
+      // StatisticsModal does not need init, exposes .show()
       maybeInit(w.BackgroundAudioManager, 'BackgroundAudioManager');
     }
 
