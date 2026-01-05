@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-002dca226662f0e0f46af619b89ef2450e2d38c0.idx
-│   │       ├── pack-002dca226662f0e0f46af619b89ef2450e2d38c0.pack
-│   │       └── pack-002dca226662f0e0f46af619b89ef2450e2d38c0.rev
+│   │       ├── pack-9c33662427aed5d9d99d5e9d5c8442d6868ac4a5.idx
+│   │       ├── pack-9c33662427aed5d9d99d5e9d5c8442d6868ac4a5.pack
+│   │       └── pack-9c33662427aed5d9d99d5e9d5c8442d6868ac4a5.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-05 11:24:04 UTC
+Сгенерировано: 2026-01-05 11:25:30 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3914,10 +3914,23 @@ function setOfflineBtnUI() {
 }
 
 export function attachOfflineUI() {
-  if (OfflineUI.offlineManager) return;
+  // Идемпотентность: если уже инициализировано, не делаем заново
+  if (window.OfflineUI && window.OfflineUI.offlineManager) {
+    // Просто обновим UI кнопки, если DOM перерисовался
+    setOfflineBtnUI();
+    return;
+  }
 
-  OfflineUI.offlineManager = new OfflineManager();
-  OfflineUI.offlineManager.initialize();
+  // Создаем менеджер
+  const mgr = new OfflineManager();
+  mgr.initialize();
+  
+  // Сохраняем в глобальный объект (источник правды для индикаторов)
+  if (!window.OfflineUI) window.OfflineUI = {};
+  window.OfflineUI.offlineManager = mgr;
+  
+  // Обновляем локальную ссылку экспорта
+  OfflineUI.offlineManager = mgr;
 
   const btn = document.getElementById('offline-btn');
   if (btn && !btn.__offlineBound) {
