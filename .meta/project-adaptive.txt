@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4cf2be1da7cb2d0bafc89353350cb635d00ab82c.idx
-│   │       ├── pack-4cf2be1da7cb2d0bafc89353350cb635d00ab82c.pack
-│   │       └── pack-4cf2be1da7cb2d0bafc89353350cb635d00ab82c.rev
+│   │       ├── pack-897294fab5226b1d7464fc55731ce4c909580d94.idx
+│   │       ├── pack-897294fab5226b1d7464fc55731ce4c909580d94.pack
+│   │       └── pack-897294fab5226b1d7464fc55731ce4c909580d94.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -398,7 +398,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-05 13:01:04 UTC
+Сгенерировано: 2026-01-05 13:03:18 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -13629,11 +13629,9 @@ try { main(); } catch (e) { console.error("❌", e); process.exit(1); }
               const pos = this.getPosition();
               const progress = (dur > 0) ? (pos / dur) : 0;
 
-              if (om && typeof om.recordFullListen === 'function') {
               if (om && typeof om.recordListenStats === 'function') {
                 // isFullListen = true
                 om.recordListenStats(uid, { deltaSec: 0, isFullListen: progress > 0.9 });
-              }
               }
             }
           } catch {}
