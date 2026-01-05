@@ -116,29 +116,11 @@
       onTick: (position, duration) => {
         updateProgress(position, duration);
         renderLyricsEnhanced(position);
-
-        // --- СТАТИСТИКА: Считаем секунды ---
-        const om = w.OfflineUI?.offlineManager;
-        if (om && typeof om.recordListenStats === 'function') {
-          const sec = Math.floor(position);
-          // Отправляем апдейт только при смене секунды
-          if (sec > (w.__lastStatsSec || -1)) {
-            w.__lastStatsSec = sec;
-            const track = w.playerCore?.getCurrentTrack();
-            if (track && track.uid) {
-               om.recordListenStats(track.uid, { deltaSec: 1, isFullListen: false });
-            }
-          }
-        }
+        // ✅ Статистика считается в src/PlayerCore.js (единая точка для секунд и full listen).
+        // PlayerUI не должен дублировать, иначе будет двойной учёт.
       },
       onEnd: () => {
-        // --- СТАТИСТИКА: Полное прослушивание ---
-        const om = w.OfflineUI?.offlineManager;
-        const track = w.playerCore?.getCurrentTrack();
-        if (track && track.uid && om && typeof om.recordListenStats === 'function') {
-          // Считаем полным, если дослушал до конца (событие onEnd)
-          om.recordListenStats(track.uid, { deltaSec: 0, isFullListen: true });
-        }
+        // ✅ Full listen также считается в src/PlayerCore.js с правилом progress>0.9.
         updatePlayPauseIcon();
       }
     });
@@ -1032,7 +1014,9 @@
     btn.classList.toggle('disabled', !canToggle);
 
     btn.setAttribute('aria-disabled', canToggle ? 'false' : 'true');
-    btn.style.pointerEvents = canToggle ? '' : 'none';
+    // ✅ По ТЗ 7.5.1: кнопка выглядит disabled, но по нажатию должен быть toast “Нет доступа к сети”.
+    // Поэтому pointer-events НЕ отключаем. Логику “не переключать” держим в togglePQ().
+    btn.style.pointerEvents = '';
 
     label.textContent = mode === 'lo' ? 'Lo' : 'Hi';
   }
