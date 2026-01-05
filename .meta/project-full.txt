@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-84e653b93cd2fedf8c72ec9d99ece670483c96db.idx
-│   │       ├── pack-84e653b93cd2fedf8c72ec9d99ece670483c96db.pack
-│   │       └── pack-84e653b93cd2fedf8c72ec9d99ece670483c96db.rev
+│   │       ├── pack-b10d6b95b087dc470ed3be5d40c12cbc258b7d17.idx
+│   │       ├── pack-b10d6b95b087dc470ed3be5d40c12cbc258b7d17.pack
+│   │       └── pack-b10d6b95b087dc470ed3be5d40c12cbc258b7d17.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -400,7 +400,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-05 20:00:39 UTC
+Сгенерировано: 2026-01-05 20:13:09 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4805,7 +4805,7 @@ export function attachPlaybackCache() {
       
       <div class="player-buttons-wrapper">
         <div class="player-extra-buttons-row">
-          <button class="lyrics-toggle-btn lyrics-${lyricsViewMode}" id="lyrics-toggle-btn" title="Режим лирики (Y)">
+          <button class="lyrics-toggle-btn lyrics-${ls.lyricsViewMode}" id="lyrics-toggle-btn" title="Режим лирики (Y)">
             <span class="lyrics-toggle-btn-visual">Т</span>
           </button>
           
@@ -6393,7 +6393,7 @@ export function attachPlaybackCache() {
     const heart = document.getElementById('pulse-heart');
     if (heart) heart.textContent = bitEnabled ? '❤️' : '🤍';
 
-    renderLyricsViewMode();
+    // renderLyricsViewMode() больше не вызываем: этим управляет LyricsController
 
     // ✅ Применяем политику очереди на старте, если включён favoritesOnlyMode.
     // Важно: НЕ останавливаем воспроизведение (PlaybackPolicy + PlayerCore.setPlaylist работают “мягко”).
