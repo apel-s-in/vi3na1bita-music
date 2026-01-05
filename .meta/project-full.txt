@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c3fe8fd8746bd8dc4071b3c759239d95e9c82e23.idx
-│   │       ├── pack-c3fe8fd8746bd8dc4071b3c759239d95e9c82e23.pack
-│   │       └── pack-c3fe8fd8746bd8dc4071b3c759239d95e9c82e23.rev
+│   │       ├── pack-15ddb494e68381a592d3196c81cf1a18b1675b6f.idx
+│   │       ├── pack-15ddb494e68381a592d3196c81cf1a18b1675b6f.pack
+│   │       └── pack-15ddb494e68381a592d3196c81cf1a18b1675b6f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-05 11:39:43 UTC
+Сгенерировано: 2026-01-05 11:41:14 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9592,8 +9592,8 @@ export const TrackResolver = { resolvePlaybackSource };
 // AC12: независимый слой прогресса кэша (CQ) поверх основного прогресс-бара.
 // Не трогаем PlayerCore и основной прогресс/seek. Инварианты I1/I2 соблюдены.
 
-import { OfflineUI } from '../app/offline-ui-bootstrap.js';
 import { bytesByQuality } from '../offline/cache-db.js';
+// OfflineUI берем из window
 import { getTrackByUid } from '../app/track-registry.js';
 
 const CSS_TEXT = `
@@ -9641,7 +9641,10 @@ async function computePercentForCurrent() {
   const uid = String(track.uid || '').trim();
   if (!uid) return 0;
 
-  const cq = await OfflineUI.offlineManager.getCacheQuality();
+  const mgr = window.OfflineUI?.offlineManager;
+  if (!mgr) return 0;
+
+  const cq = await mgr.getCacheQuality();
   const meta = getTrackByUid(uid) || {};
 
   const needMb = cq === 'hi'
@@ -9676,9 +9679,12 @@ export function attachCacheProgressOverlay() {
   updateOverlay();
 
   // Обновления при изменениях кэш-загрузок (быстро и дёшево)
-  OfflineUI.offlineManager.on('progress', () => {
-    updateOverlay();
-  });
+  const mgr = window.OfflineUI?.offlineManager;
+  if (mgr) {
+    mgr.on('progress', () => {
+      updateOverlay();
+    });
+  }
 
   // Лёгкий поллинг, чтобы поймать смены трека/качества, если UI не повесил событие
   setInterval(updateOverlay, 1000);
