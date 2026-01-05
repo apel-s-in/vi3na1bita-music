@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-7776edf33feea5b7ab6f802d1fb8b551f8e70063.idx
-│   │       ├── pack-7776edf33feea5b7ab6f802d1fb8b551f8e70063.pack
-│   │       └── pack-7776edf33feea5b7ab6f802d1fb8b551f8e70063.rev
+│   │       ├── pack-4d30ac301654a7f1d0c1e6f9bc18b0ba25922e42.idx
+│   │       ├── pack-4d30ac301654a7f1d0c1e6f9bc18b0ba25922e42.pack
+│   │       └── pack-4d30ac301654a7f1d0c1e6f9bc18b0ba25922e42.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-05 11:01:51 UTC
+Сгенерировано: 2026-01-05 11:22:22 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -791,24 +791,7 @@ jobs:
   <!-- Main App -->
   <script src="./scripts/app.js" type="module"></script>
 
-  <!-- OFFLINE platform bootstrap (must be ESM to allow module imports) -->
-  <script type="module">
-    try {
-      const m = await import('./scripts/app/offline-ui-bootstrap.js');
-      if (m && typeof m.attachOfflineUI === 'function') m.attachOfflineUI();
-
-      const ind = await import('./scripts/ui/offline-indicators.js');
-      if (ind && typeof ind.attachOfflineIndicators === 'function') ind.attachOfflineIndicators();
-
-      const ov = await import('./scripts/ui/cache-progress-overlay.js');
-      if (ov && typeof ov.attachCacheProgressOverlay === 'function') ov.attachCacheProgressOverlay();
-
-      const pc = await import('./scripts/app/playback-cache-bootstrap.js');
-      if (pc && typeof pc.attachPlaybackCache === 'function') pc.attachPlaybackCache();
-    } catch (e) {
-      console.warn('OFFLINE bootstrap failed:', e);
-    }
-  </script>
+  <!-- OFFLINE platform bootstrap: управляется через scripts/app.js -->
   
   <!-- Performance Monitoring -->
   <script src="./performance/rum.js" defer></script>
