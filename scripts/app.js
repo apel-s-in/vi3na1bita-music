@@ -26,27 +26,46 @@
         // 1. Загрузка индекса альбомов
         await this.loadAlbumsIndex();
 
-        // ✅ OFFLINE: гарантированная инициализация ESM офлайн‑платформы и индикаторов
-        // Важно: делаем здесь, чтобы не зависеть от inline-кода index.html.
+        // ✅ OFFLINE: Строгая последовательная инициализация
+        // 1. Сначала загружаем и запускаем Offline Manager (Bootstrap)
         try {
-          const [
-            offlineBoot,
-            indicatorsMod,
-            overlayMod,
-            pcBoot
-          ] = await Promise.all([
-            import('./app/offline-ui-bootstrap.js'),
+          const offlineBoot = await import('./app/offline-ui-bootstrap.js');
+          if (offlineBoot && typeof offlineBoot.attachOfflineUI === 'function') {
+            offlineBoot.attachOfflineUI();
+          }
+        } catch (e) {
+          console.error('❌ Critical: Offline Bootstrap failed:', e);
+        }
+
+        // 2. Только после старта менеджера подключаем UI и логику кэша
+        // Делаем небольшую паузу, чтобы IndexedDB успела открыться
+        await new Promise(r => setTimeout(r, 50));
+
+        try {
+          const [indicatorsMod, overlayMod, pcBoot] = await Promise.all([
             import('./ui/offline-indicators.js'),
             import('./ui/cache-progress-overlay.js'),
             import('./app/playback-cache-bootstrap.js')
           ]);
 
-          try { offlineBoot.attachOfflineUI(); } catch (e) { console.warn('attachOfflineUI failed:', e); }
-          try { indicatorsMod.attachOfflineIndicators(); } catch (e) { console.warn('attachOfflineIndicators failed:', e); }
-          try { overlayMod.attachCacheProgressOverlay(); } catch (e) { console.warn('attachCacheProgressOverlay failed:', e); }
-          try { pcBoot.attachPlaybackCache(); } catch (e) { console.warn('attachPlaybackCache failed:', e); }
+          // Индикаторы (замки/облака)
+          if (indicatorsMod && typeof indicatorsMod.attachOfflineIndicators === 'function') {
+            indicatorsMod.attachOfflineIndicators();
+          }
+          
+          // Оверлей прогресса загрузки
+          if (overlayMod && typeof overlayMod.attachCacheProgressOverlay === 'function') {
+            overlayMod.attachCacheProgressOverlay();
+          }
+
+          // Логика Playback Cache (PREV/CUR/NEXT)
+          if (pcBoot && typeof pcBoot.attachPlaybackCache === 'function') {
+            pcBoot.attachPlaybackCache();
+          }
+          
+          console.log('✅ Offline subsystems attached');
         } catch (e) {
-          console.warn('OFFLINE init imports failed:', e);
+          console.warn('⚠️ Offline UI subsystems partial failure:', e);
         }
 
         // ✅ OFFLINE: автопредзагрузка TrackRegistry всеми треками (1 раз)
