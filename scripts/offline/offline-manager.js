@@ -19,7 +19,10 @@ import {
   setCloudCandidate,
   clearCloudCandidate,
   totalCachedBytes,
-  clearAllStores
+  clearAllStores,
+  updateGlobalStats,
+  getGlobalStatsAndTotal,
+  getEvictionCandidates
 } from './cache-db.js';
 
 import { resolvePlaybackSource } from './track-resolver.js';
@@ -339,16 +342,21 @@ export class OfflineManager {
     return { ok: true, enqueued: true, key };
   }
 
-  enqueueOfflineAll(uids) {
+  // 100% OFFLINE: скачать выбранные альбомы или Favorites (ТЗ 11.2.I)
+  // uids - массив UID для скачивания
+  async startFullOffline(uids) {
     const list = Array.isArray(uids) ? uids : [];
     const uniq = Array.from(new Set(list.map(x => String(x || '').trim()).filter(Boolean)));
+    
     if (!uniq.length) {
-      this.mass = { active: false, total: 0, done: 0, error: 0, skipped: 0, startedAt: 0 };
-      this._em.emit('progress', { uid: null, phase: 'offlineAllEmpty' });
       return { ok: false, reason: 'empty' };
     }
 
-    // Массовая сессия
+    // Проверяем политику перед стартом
+    const policy = getNetPolicy();
+    // Эвикция перед стартом, чтобы освободить место
+    await this.checkEviction(); 
+
     this.mass = {
       active: true,
       total: uniq.length,
@@ -360,45 +368,41 @@ export class OfflineManager {
 
     this._em.emit('progress', { uid: null, phase: 'offlineAllStart', total: uniq.length });
 
+    // Ставим в очередь с низким приоритетом (P3/P4), но выше чем cloud fill
+    // Pinned имеет P2. Playback P0.
+    const cq = await this.getCacheQuality();
+
     uniq.forEach((uid) => {
       const u = String(uid || '').trim();
-      if (!u) return;
-
-      this.getCacheQuality().then((cq) => {
-        const taskKey = `offlineAll:${cq}:${u}`;
-
-        this.enqueueAudioDownload({
-          uid: u,
-          quality: cq,
-          key: taskKey,
-          priority: 5,
-          userInitiated: false,
-          isMass: true,
-          kind: 'offlineAll',
-          onResult: (r) => {
-            if (r && r.ok) {
-              this.mass.done += 1;
-            } else if (String(r?.reason || '').startsWith('netPolicyAsk:autoTaskSkipped')) {
-              this.mass.skipped += 1;
-            } else {
-              this.mass.error += 1;
-            }
-
-            // Завершение
-            const finished = (this.mass.done + this.mass.error + this.mass.skipped) >= this.mass.total;
-            if (finished) {
-              this.mass.active = false;
-              this._em.emit('progress', { uid: null, phase: 'offlineAllDone', ...this.getMassStatus() });
-            } else {
-              this._em.emit('progress', { uid: null, phase: 'offlineAllTick', ...this.getMassStatus() });
-            }
+      const taskKey = `offlineAll:${cq}:${u}`;
+      
+      this.enqueueAudioDownload({
+        uid: u,
+        quality: cq,
+        key: taskKey,
+        priority: 10, 
+        userInitiated: false, // это "фоновая" задача после старта
+        isMass: true,
+        kind: 'offlineAll',
+        onResult: (r) => {
+          if (r && r.ok) this.mass.done++;
+          else if (String(r?.reason).includes('Skipped')) this.mass.skipped++;
+          else this.mass.error++;
+          
+          if (this.mass.done + this.mass.error + this.mass.skipped >= this.mass.total) {
+            this.mass.active = false;
+            this._em.emit('progress', { uid: null, phase: 'offlineAllDone', ...this.mass });
+            window.NotificationSystem?.success('Загрузка 100% OFFLINE завершена');
           }
-        });
-      }).catch(() => {});
+        }
+      });
     });
 
     return { ok: true, total: uniq.length };
   }
+  
+  // Старый метод для совместимости (если где-то остался вызов)
+  enqueueOfflineAll(uids) { return this.startFullOffline(uids); }
 
   enqueuePinnedDownloadAll() {
     const list = this.getPinnedUids();
@@ -482,38 +486,47 @@ export class OfflineManager {
    * Важно: снятие pinned -> cloudCandidate НЕ накручивает fullListenCount (ТЗ 8.3),
    * поэтому этот метод должен вызываться ТОЛЬКО из Playback/Player событий, а не из UI кликов.
    */
-  async recordFullListen(uid, ctx = {}) {
+  // Обновление статистики (вызывается из PlayerCore.onEnd или периодически для секунд)
+  // ТЗ 9.2, 17.2, 17.3
+  async recordListenStats(uid, ctx = {}) {
     const u = String(uid || '').trim();
-    if (!u) return { ok: false, reason: 'noUid' };
+    if (!u) return;
 
-    const duration = Number(ctx?.duration || 0);
-    const progress = Number(ctx?.progress || 0);
+    const deltaSec = Number(ctx?.deltaSec || 0);
+    const isFullListen = !!ctx?.isFullListen;
 
-    if (!(Number.isFinite(duration) && duration > 0)) return { ok: false, reason: 'invalidDuration' };
-    if (!(Number.isFinite(progress) && progress > 0.9)) return { ok: false, reason: 'progressLt90' };
+    // 1. Global Stats (никогда не сбрасывается)
+    if (deltaSec > 0 || isFullListen) {
+      await updateGlobalStats(u, deltaSec, isFullListen ? 1 : 0);
+    }
 
+    // 2. Cloud Stats (сбрасывается, управляет облачком)
+    // Только если полный прослушивания
+    if (isFullListen) {
+      return this._updateCloudStats(u);
+    }
+  }
+
+  // Внутренний метод для Cloud логики (бывший recordFullListen)
+  async _updateCloudStats(u) {
     const now = Date.now();
     const { n, d } = this.getCloudSettings();
     const ttlMs = d * 24 * 60 * 60 * 1000;
 
     try {
       const prev = await getCloudStats(u);
-
       const prevCount = Number(prev?.cloudFullListenCount || 0);
       const nextCount = (Number.isFinite(prevCount) && prevCount > 0) ? (prevCount + 1) : 1;
 
-      // A) Авто-cloud: если достигли N — делаем cloud=true (но ☁ в UI только после 100% CQ)
+      // A) Авто-cloud: если достигли N
       const becameCloud = nextCount >= n;
-
       const nextCloud = becameCloud ? true : (prev?.cloud === true);
 
-      // TTL стартует при cloud=true (ТЗ 9.4). Продление — при каждом full listen, но только если cloud=true.
+      // TTL продлевается при каждом full listen, если уже cloud
+      const cloudExpiresAt = nextCloud ? (now + ttlMs) : 0;
+      
       const cloudAddedAt = nextCloud
         ? (Number(prev?.cloudAddedAt || 0) > 0 ? Number(prev.cloudAddedAt) : now)
-        : 0;
-
-      const cloudExpiresAt = nextCloud
-        ? (now + ttlMs)
         : 0;
 
       const next = {
@@ -525,13 +538,50 @@ export class OfflineManager {
       };
 
       await setCloudStats(u, next);
-
-      // если авто-cloud сработал — candidate не нужен, но пусть остаётся как есть (не критично)
-      this._em.emit('progress', { uid: u, phase: 'cloudStats', cloudFullListenCount: next.cloudFullListenCount, cloud: next.cloud });
-
-      return { ok: true, cloud: next.cloud, cloudFullListenCount: next.cloudFullListenCount };
+      this._em.emit('progress', { uid: u, phase: 'cloudStats', cloud: next.cloud });
+      return { ok: true, cloud: next.cloud };
     } catch {
-      return { ok: false, reason: 'dbError' };
+      return { ok: false };
+    }
+  }
+
+  // Метод для получения данных модалки статистики
+  async getGlobalStatistics() {
+    return getGlobalStatsAndTotal();
+  }
+
+  // Проверка и очистка места (Eviction)
+  // ТЗ 22: Blob storage limit.
+  // Удаляем: transient (Playback Cache / Extra) -> Cloud -> Pinned (никогда)
+  // В MVP упрощение: удаляем всё, что не Pinned, начиная с самых давно прослушанных.
+  async checkEviction(limitMB = 500) {
+    const total = await this.getCacheSizeBytes();
+    const limitBytes = limitMB * 1024 * 1024;
+    
+    if (total <= limitBytes) return;
+
+    const pinnedSet = this._getPinnedSet();
+    const candidates = await getEvictionCandidates(pinnedSet); // LRU sorted
+
+    // Удаляем пока не влезем в лимит
+    let freed = 0;
+    for (const uid of candidates) {
+      if ((total - freed) <= limitBytes) break;
+      
+      const sizes = await bytesByQuality(uid); // {hi, lo}
+      const trackBytes = (sizes.hi || 0) + (sizes.lo || 0);
+      
+      // Удаляем физически
+      await deleteTrackCache(uid);
+      freed += trackBytes;
+      
+      // Сбрасываем cloud stats (так как файла нет, cloud слетает, если это не pinned)
+      await clearCloudStats(uid);
+    }
+    
+    if (freed > 0) {
+      window.NotificationSystem?.info(`Очищено ${Math.round(freed/1024/1024)} МБ старого кэша`);
+      this._em.emit('progress', { uid: null, phase: 'eviction', freed });
     }
   }
 
