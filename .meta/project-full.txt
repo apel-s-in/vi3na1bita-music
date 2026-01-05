@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9044b9201c7c41ac8f7f29142f6280a7f16bdc37.idx
-│   │       ├── pack-9044b9201c7c41ac8f7f29142f6280a7f16bdc37.pack
-│   │       └── pack-9044b9201c7c41ac8f7f29142f6280a7f16bdc37.rev
+│   │       ├── pack-813068d87cdf0314fbeccfbf905b9193bade8502.idx
+│   │       ├── pack-813068d87cdf0314fbeccfbf905b9193bade8502.pack
+│   │       └── pack-813068d87cdf0314fbeccfbf905b9193bade8502.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -242,34 +242,6 @@ vi3na1bita-music/
 │   │       ├── news-cover-02.avif
 │   │       ├── news-cover-02.png
 │   │       └── news-cover-02.webp
-│   └── .gitkeep
-├── assets/
-│   ├── emoji/
-│   │   └── noto/
-│   │       ├── animated/
-│   │       │   ├── cross_mark.json
-│   │       │   ├── loudspeaker.json
-│   │       │   ├── satellite_antenna.json
-│   │       │   ├── sparkles.json
-│   │       │   ├── trophy.json
-│   │       │   ├── warning.json
-│   │       │   └── white_check_mark.json
-│   │       ├── fallback/
-│   │       │   ├── cross_mark.webp
-│   │       │   ├── loudspeaker.webp
-│   │       │   ├── satellite_antenna.webp
-│   │       │   ├── sparkles.webp
-│   │       │   ├── trophy.webp
-│   │       │   ├── warning.webp
-│   │       │   └── white_check_mark.webp
-│   │       └── static/
-│   │           ├── cross_mark.png
-│   │           ├── loudspeaker.png
-│   │           ├── satellite_antenna.png
-│   │           ├── sparkles.png
-│   │           ├── trophy.png
-│   │           ├── warning.png
-│   │           └── white_check_mark.png
 │   └── .gitkeep
 ├── icons/
 │   ├── .gitkeep
@@ -403,7 +375,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-05 21:09:38 UTC
+Сгенерировано: 2026-01-05 21:18:10 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
