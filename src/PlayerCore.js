@@ -363,7 +363,10 @@
               const progress = (dur > 0) ? (pos / dur) : 0;
 
               if (om && typeof om.recordFullListen === 'function') {
-                om.recordFullListen(uid, { duration: dur, progress });
+              if (om && typeof om.recordListenStats === 'function') {
+                // isFullListen = true
+                om.recordListenStats(uid, { deltaSec: 0, isFullListen: progress > 0.9 });
+              }
               }
             }
           } catch {}
@@ -743,6 +746,20 @@
         const position = this.getPosition();
         const duration = this.getDuration();
         this.trigger('onTick', position, duration);
+        
+        // Global Stats: накапливаем секунды
+        // Делаем это раз в секунду (tickRate=100ms, значит каждый 10-й тик, или просто по delta)
+        // Для простоты: OfflineManager сам может агрегировать, но лучше слать 1 раз в сек.
+        if (Math.floor(position) > Math.floor(this._lastPos || 0)) {
+           const track = this.getCurrentTrack();
+           if (track && track.uid) {
+             const om = window.OfflineUI?.offlineManager;
+             if (om && typeof om.recordListenStats === 'function') {
+               om.recordListenStats(track.uid, { deltaSec: 1, isFullListen: false });
+             }
+           }
+        }
+        this._lastPos = position;
       }, this.tickRate);
     }
 
