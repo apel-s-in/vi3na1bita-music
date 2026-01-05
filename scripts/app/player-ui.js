@@ -116,12 +116,39 @@
       onTick: (position, duration) => {
         updateProgress(position, duration);
         renderLyricsEnhanced(position);
+
+        // --- СТАТИСТИКА: Считаем секунды ---
+        const om = w.OfflineUI?.offlineManager;
+        if (om && typeof om.recordListenStats === 'function') {
+          const sec = Math.floor(position);
+          // Отправляем апдейт только при смене секунды
+          if (sec > (w.__lastStatsSec || -1)) {
+            w.__lastStatsSec = sec;
+            const track = w.playerCore?.getCurrentTrack();
+            if (track && track.uid) {
+               om.recordListenStats(track.uid, { deltaSec: 1, isFullListen: false });
+            }
+          }
+        }
+      },
+      onEnd: () => {
+        // --- СТАТИСТИКА: Полное прослушивание ---
+        const om = w.OfflineUI?.offlineManager;
+        const track = w.playerCore?.getCurrentTrack();
+        if (track && track.uid && om && typeof om.recordListenStats === 'function') {
+          // Считаем полным, если дослушал до конца (событие onEnd)
+          om.recordListenStats(track.uid, { deltaSec: 0, isFullListen: true });
+        }
+        updatePlayPauseIcon();
       }
     });
   }
 
   function onTrackChange(track, index) {
     if (!track) return;
+    
+    // Сброс счетчика статистики для нового трека
+    w.__lastStatsSec = -1;
 
     w.AlbumsManager?.highlightCurrentTrack?.(index);
 
@@ -519,6 +546,8 @@
           <button class="animation-btn" id="animation-btn" title="Анимация лирики (A)">A</button>
           
           <button class="karaoke-btn" id="lyrics-text-btn" title="Полный текст песни">📝</button>
+
+          <button class="stats-btn" id="stats-btn" title="Статистика" style="background:none; border:none; cursor:pointer; font-size:18px; opacity:0.8; padding:0 8px;">📊</button>
           
           <button class="pulse-btn" id="pulse-btn" title="Пульсация логотипа">
             <span id="pulse-heart">🤍</span>
@@ -754,6 +783,10 @@
 
         case 'lyrics-text-btn':
           w.LyricsModal?.show?.();
+          return;
+
+        case 'stats-btn':
+          w.StatisticsModal?.show?.();
           return;
 
         case 'track-download-btn': {
