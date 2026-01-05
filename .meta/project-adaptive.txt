@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9c33662427aed5d9d99d5e9d5c8442d6868ac4a5.idx
-│   │       ├── pack-9c33662427aed5d9d99d5e9d5c8442d6868ac4a5.pack
-│   │       └── pack-9c33662427aed5d9d99d5e9d5c8442d6868ac4a5.rev
+│   │       ├── pack-f132f2fafc51d630d57e3ced3fb1a401299ec09b.idx
+│   │       ├── pack-f132f2fafc51d630d57e3ced3fb1a401299ec09b.pack
+│   │       └── pack-f132f2fafc51d630d57e3ced3fb1a401299ec09b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-05 11:25:30 UTC
+Сгенерировано: 2026-01-05 11:36:06 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -10869,17 +10869,6 @@ console.log('✅ Notification system initialized');
 //=================================================
 // FILE: /scripts/ui/offline-indicators.js
 // scripts/ui/offline-indicators.js
-import { OfflineUI as OfflineUIExport } from '../app/offline-ui-bootstrap.js';
-
-// ✅ Runtime-источник: window.OfflineUI (единый)
-const OfflineUI = (() => {
-  try {
-    return window.OfflineUI || OfflineUIExport;
-  } catch {
-    return OfflineUIExport;
-  }
-})();
-
 import { attachCloudMenu } from './cloud-menu.js';
 
 const ICON_CSS = `
@@ -10939,6 +10928,9 @@ function renderIndicator(row, state, uid) {
   const isUnknown = !!state?.unknown;
 
   // Приоритет отображения: pinned 🔒 → ☁ (cloud&&100%) → серый 🔒
+  // Получаем менеджер безопасно
+  const mgr = window.OfflineUI?.offlineManager;
+
   if (!isUnknown && state.pinned) {
     const el = document.createElement('span');
     el.className = 'offline-ico lock';
@@ -10948,7 +10940,7 @@ function renderIndicator(row, state, uid) {
     el.dataset.active = 'true';
     el.addEventListener('click', async (e) => {
       e.stopPropagation();
-      try { await OfflineUI.offlineManager.unpin(uid); } catch {}
+      try { if (mgr) await mgr.unpin(uid); } catch {}
       refreshRow(row);
     });
     slot.appendChild(el);
@@ -10966,8 +10958,8 @@ function renderIndicator(row, state, uid) {
       e.stopPropagation();
       attachCloudMenu({
         root: el,
-        onAddLock: async () => { await OfflineUI.offlineManager.pin(uid); refreshRow(row); },
-        onRemoveCache: async () => { await OfflineUI.offlineManager.cloudMenu(uid, 'remove-cache'); refreshRow(row); }
+        onAddLock: async () => { if (mgr) await mgr.pin(uid); refreshRow(row); },
+        onRemoveCache: async () => { if (mgr) await mgr.cloudMenu(uid, 'remove-cache'); refreshRow(row); }
       });
     });
 
@@ -10994,9 +10986,11 @@ function renderIndicator(row, state, uid) {
   el.addEventListener('click', async (e) => {
     e.stopPropagation();
     try {
-      await OfflineUI.offlineManager.pin(uid);
-      // ✅ ТЗ 20: UX сообщение о старте
-      window.NotificationSystem?.info('Трек будет доступен офлайн. Начинаю скачивание…', 3500);
+      if (mgr) {
+        await mgr.pin(uid);
+        // ✅ ТЗ 20: UX сообщение о старте
+        window.NotificationSystem?.info('Трек будет доступен офлайн. Начинаю скачивание…', 3500);
+      }
     } catch {
       window.NotificationSystem?.error('Не удалось закрепить офлайн');
     }
@@ -11009,9 +11003,11 @@ function renderIndicator(row, state, uid) {
 async function refreshRow(row) {
   const uid = findUidForRow(row);
 
-  // ✅ Защита: если OfflineManager ещё не инициализирован — выходим, не ломая интерфейс.
-  // Индикаторы обновятся позже по событию offline:ready или progress.
-  if (!OfflineUI.offlineManager) {
+  // ✅ Получаем ссылку через window
+  const mgr = window.OfflineUI?.offlineManager;
+
+  // ✅ Защита: если OfflineManager ещё не инициализирован — выходим.
+  if (!mgr) {
     return; 
   }
 
@@ -11022,7 +11018,7 @@ async function refreshRow(row) {
   }
 
   try {
-    const ind = await OfflineUI.offlineManager.getIndicators(uid);
+    const ind = await mgr.getIndicators(uid);
     renderIndicator(row, ind, uid);
   } catch (e) {
     console.warn('Error getting indicators:', e);
@@ -11043,8 +11039,11 @@ function refreshAll() {
 }
 
 function bindLiveUpdates() {
+  const mgr = window.OfflineUI?.offlineManager;
+  if (!mgr) return;
+
   // Обновляем индикатор при прогрессе загрузок/завершении
-  OfflineUI.offlineManager.on('progress', (ev) => {
+  mgr.on('progress', (ev) => {
     const uid = String(ev?.uid || '').trim();
     if (!uid) return;
 
