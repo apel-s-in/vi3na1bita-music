@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-88179313a87c4b2094a58afb265b6ed5a6bea664.idx
-│   │       ├── pack-88179313a87c4b2094a58afb265b6ed5a6bea664.pack
-│   │       └── pack-88179313a87c4b2094a58afb265b6ed5a6bea664.rev
+│   │       ├── pack-29e9ce1ff84d41c2b5ca1257c555154e930b9f7e.idx
+│   │       ├── pack-29e9ce1ff84d41c2b5ca1257c555154e930b9f7e.pack
+│   │       └── pack-29e9ce1ff84d41c2b5ca1257c555154e930b9f7e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -398,7 +398,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-05 13:09:42 UTC
+Сгенерировано: 2026-01-05 19:44:41 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4414,29 +4414,11 @@ export function attachPlaybackCache() {
       onTick: (position, duration) => {
         updateProgress(position, duration);
         renderLyricsEnhanced(position);
-
-        // --- СТАТИСТИКА: Считаем секунды ---
-        const om = w.OfflineUI?.offlineManager;
-        if (om && typeof om.recordListenStats === 'function') {
-          const sec = Math.floor(position);
-          // Отправляем апдейт только при смене секунды
-          if (sec > (w.__lastStatsSec || -1)) {
-            w.__lastStatsSec = sec;
-            const track = w.playerCore?.getCurrentTrack();
-            if (track && track.uid) {
-               om.recordListenStats(track.uid, { deltaSec: 1, isFullListen: false });
-            }
-          }
-        }
+        // ✅ Статистика считается в src/PlayerCore.js (единая точка для секунд и full listen).
+        // PlayerUI не должен дублировать, иначе будет двойной учёт.
       },
       onEnd: () => {
-        // --- СТАТИСТИКА: Полное прослушивание ---
-        const om = w.OfflineUI?.offlineManager;
-        const track = w.playerCore?.getCurrentTrack();
-        if (track && track.uid && om && typeof om.recordListenStats === 'function') {
-          // Считаем полным, если дослушал до конца (событие onEnd)
-          om.recordListenStats(track.uid, { deltaSec: 0, isFullListen: true });
-        }
+        // ✅ Full listen также считается в src/PlayerCore.js с правилом progress>0.9.
         updatePlayPauseIcon();
       }
     });
@@ -5330,7 +5312,9 @@ export function attachPlaybackCache() {
     btn.classList.toggle('disabled', !canToggle);
 
     btn.setAttribute('aria-disabled', canToggle ? 'false' : 'true');
-    btn.style.pointerEvents = canToggle ? '' : 'none';
+    // ✅ По ТЗ 7.5.1: кнопка выглядит disabled, но по нажатию должен быть toast “Нет доступа к сети”.
+    // Поэтому pointer-events НЕ отключаем. Логику “не переключать” держим в togglePQ().
+    btn.style.pointerEvents = '';
 
     label.textContent = mode === 'lo' ? 'Lo' : 'Hi';
   }
