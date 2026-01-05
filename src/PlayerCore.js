@@ -1,7 +1,7 @@
 // src/PlayerCore.js
-// Ядро плеера на базе Howler.js
-// ТЗ_НЬЮ: инвариант — никакие новые функции не имеют права вызывать stop()/форсить play()/сбрасывать pos/volume
-// Исключения STOP: только кнопка Stop, таймер сна (pause), и спец-сценарий в Избранном (реализован в FavoritesManager).
+// Ядро плеера на базе Howler.js (ESM)
+// ТЗ_НЬЮ: никаких stop()/форсить play()/сбрасывать pos/volume из-за оффлайн/кэша.
+// STOP разрешён только: кнопка Stop, и спец-сценарий избранного (в FavoritesManager), и т.п.
 
 import { ensureMediaSession } from './player-core/media-session.js';
 import { createListenStatsTracker } from './player-core/stats-tracker.js';
@@ -11,11 +11,9 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
   const W = window;
 
-  function clamp(n, a, b) {
-    return Math.max(a, Math.min(b, n));
-  }
+  const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 
-  function normQuality(v) {
+  function normQ(v) {
     return String(v || '').toLowerCase().trim() === 'lo' ? 'lo' : 'hi';
   }
 
@@ -41,15 +39,12 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       this.repeatMode = false;
       this.shuffleMode = false;
 
-      // Shuffle history (как Spotify): стек uid реально проигранных треков
       this.shuffleHistory = [];
       this.historyMax = 200;
 
-      // Tick
       this.tickInterval = null;
       this.tickRate = 100;
 
-      // callbacks
       this.callbacks = {
         onTrackChange: [],
         onPlay: [],
@@ -67,24 +62,18 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         cover: '',
       };
 
-      // Sleep timer
       this.sleepTimerTarget = 0;
       this.sleepTimerId = null;
 
-      // PQ (Playback Quality)
       this.qualityStorageKey = 'qualityMode:v1';
       this.qualityMode = this._readQualityMode();
 
-      // SourceKey (v1.0: audio)
+      // v1.0
       this.sourceKey = 'audio';
 
-      // OFFLINE UX guard (не спамить тостами)
       this._offlineNoCacheToastShown = false;
-
-      // cache: есть ли хоть один complete офлайн трек в этом плейлисте
       this._hasAnyOfflineCacheComplete = null;
 
-      // MediaSession (handlers ставим 1 раз)
       this._mediaSession = ensureMediaSession({
         onPlay: () => this.play(),
         onPause: () => this.pause(),
@@ -104,7 +93,6 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         }),
       });
 
-      // Stats (единообразный троттлинг секунд + full listen)
       this._stats = createListenStatsTracker({
         getUid: () => safeUid(this.getCurrentTrack()?.uid),
         getPos: () => this.getPosition(),
@@ -125,9 +113,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     // =========================
     // Playlist
     // =========================
-
     setPlaylist(tracks, startIndex = 0, metadata = {}, options = {}) {
-      // setPlaylist НЕ имеет права делать stop() по инварианту.
       const wasPlaying = this.isPlaying();
       const prev = this.getCurrentTrack();
       const prevUid = safeUid(prev?.uid);
@@ -178,22 +164,17 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
       this.metadata = { ...this.metadata, ...(metadata || {}) };
 
-      if (resetHistory) {
-        this.shuffleHistory = [];
-      }
+      if (resetHistory) this.shuffleHistory = [];
 
       if (this.shuffleMode && !preserveShuffleMode) {
-        // shuffleMode уже true — пересобираем порядок
         this.shufflePlaylist();
       } else if (!this.shuffleMode && !preserveShuffleMode) {
-        // ничего
+        // no-op
       }
 
-      // выбрать индекс: сохранить по uid если возможно
       let nextIndex = -1;
-      if (prevUid) {
-        nextIndex = this.playlist.findIndex(t => safeUid(t?.uid) === prevUid);
-      }
+      if (prevUid) nextIndex = this.playlist.findIndex(t => safeUid(t?.uid) === prevUid);
+
       if (nextIndex < 0) {
         const len = this.playlist.length;
         nextIndex = len ? clamp(startIndex, 0, len - 1) : -1;
@@ -201,7 +182,6 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
       this.currentIndex = nextIndex;
 
-      // Если играло — продолжаем без stop: делаем тихую пересборку + seek(pos) + autoPlay
       if (wasPlaying && this.currentIndex >= 0) {
         this.load(this.currentIndex, { autoPlay: true, resumePosition: prevPos });
       } else {
@@ -218,11 +198,9 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     }
 
     // =========================
-    // Playback: resolve + load
+    // Playback resolving
     // =========================
-
     async _resolvePlaybackUrlForTrack(track) {
-      // Единый мост к OfflineManager.resolveForPlayback
       try {
         const om = W.OfflineUI?.offlineManager;
         if (!om || typeof om.resolveForPlayback !== 'function') {
@@ -230,24 +208,25 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
             url: safeUrl(track?.src),
             effectiveQuality: this.getQualityMode(),
             isLocal: false,
-            reason: 'noOfflineManager',
+            reason: 'noOfflineManager'
           };
         }
 
         const pq = this.getQualityMode();
         const r = await om.resolveForPlayback(track, pq);
+
         return {
           url: safeUrl(r?.url),
-          effectiveQuality: normQuality(r?.effectiveQuality || pq),
+          effectiveQuality: normQ(r?.effectiveQuality || pq),
           isLocal: !!r?.isLocal,
-          reason: String(r?.reason || ''),
+          reason: String(r?.reason || '')
         };
       } catch {
         return {
           url: safeUrl(track?.src),
           effectiveQuality: this.getQualityMode(),
           isLocal: false,
-          reason: 'resolverError',
+          reason: 'resolverError'
         };
       }
     }
@@ -284,6 +263,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         const idx = (base + (dir * step) + len) % len;
         const t = this.playlist[idx];
         if (!t) continue;
+
         // eslint-disable-next-line no-await-in-loop
         const r = await this._resolvePlaybackUrlForTrack(t);
         if (r.url) return idx;
@@ -291,12 +271,14 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       return -1;
     }
 
+    // =========================
+    // Public controls
+    // =========================
     async play(index = null) {
       if (index !== null && Number.isFinite(index) && index >= 0 && index < this.playlist.length) {
         await this.load(index);
       }
 
-      // история: фиксируем факт “дошли до текущего”
       this._pushHistoryForCurrent();
 
       if (!this.sound) return;
@@ -310,8 +292,6 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
       this.sound.pause();
       this.stopTick();
-
-      // статистика: при паузе фиксируем последние секунды (если надо)
       this._stats.onPauseOrStop();
 
       this.trigger('onPause', this.getCurrentTrack(), this.currentIndex);
@@ -319,7 +299,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     }
 
     stop() {
-      // Разрешённый stop (кнопка Stop или спец-случаи извне)
+      // Разрешённый stop: по кнопке Stop или спец-случаи извне.
       if (this.sound) {
         try { this.sound.stop(); } catch {}
         try { this.sound.unload(); } catch {}
@@ -334,7 +314,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     }
 
     _silentUnloadCurrentSound() {
-      // Технический unload: НЕ триггерим onStop (инвариант)
+      // Технический unload: НЕ trigger onStop (инвариант).
       if (this.sound) {
         try { this.sound.stop(); } catch {}
         try { this.sound.unload(); } catch {}
@@ -345,14 +325,12 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     }
 
     async load(index, options = {}) {
-      if (!Number.isFinite(index) || index < 0 || index >= this.playlist.length) {
-        return;
-      }
+      if (!Number.isFinite(index) || index < 0 || index >= this.playlist.length) return;
 
       const { autoPlay = false, resumePosition = null } = options || {};
       let html5 = (typeof options.html5 === 'boolean') ? options.html5 : true;
 
-      // НЕЛЬЗЯ stop() => только тихо выгружаем текущий sound
+      // Нельзя stop() => тихий unload
       this._silentUnloadCurrentSound();
 
       this.currentIndex = index;
@@ -361,14 +339,12 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
       const resolved = await this._resolvePlaybackUrlForTrack(track);
 
-      // локальные blob/objectURL по ТЗ играем WebAudio (html5:false)
+      // ТЗ 16.1: offline playback через WebAudio + blobs/objectURL
       if (resolved.isLocal) html5 = false;
 
       if (!resolved.url) {
-        // сеть недоступна + нет local blob для этого трека
         const hasAny = await this._getHasAnyOfflineCompleteCached();
 
-        // (1) если вообще нет complete локального — toast один раз и просто выходим (без stop/pause)
         if (!hasAny) {
           if (!this._offlineNoCacheToastShown) {
             this._offlineNoCacheToastShown = true;
@@ -377,7 +353,6 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
           return;
         }
 
-        // (2) если локальные есть — тихо перескакиваем на следующий playable
         const fallbackIdx = await this._findNextPlayableIndex('forward');
         if (fallbackIdx >= 0 && fallbackIdx !== index) {
           this.currentIndex = fallbackIdx;
@@ -386,7 +361,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         return;
       }
 
-      // фиксируем реально выбранный URL для текущего трека (это не меняет uid/логику)
+      // фиксируем URL (может быть blob)
       this.playlist[index].src = resolved.url;
 
       const initialVolume = this.getVolume() / 100;
@@ -412,8 +387,6 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
         onend: () => {
           this.stopTick();
-
-          // статистика: full listen решаем стабильно (duration валидна + >90%)
           this._stats.onEnded();
 
           this.trigger('onEnd', track, index);
@@ -456,7 +429,6 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       const len = this.playlist.length;
       if (!len) return;
 
-      // запоминаем текущий трек в истории (для prev “как Spotify”)
       this._pushHistoryForCurrent();
 
       const cur = this.currentIndex >= 0 ? this.currentIndex : 0;
@@ -468,13 +440,11 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       const len = this.playlist.length;
       if (!len) return;
 
-      // если проиграно >3 сек — перематываем в начало
       if (this.getPosition() > 3) {
         this.seek(0);
         return;
       }
 
-      // shuffle history: вернуться к реально проигранному (только когда shuffle ON)
       const histIdx = this._popHistoryPrevIndex();
       if (Number.isFinite(histIdx) && histIdx >= 0) {
         this.play(histIdx);
@@ -489,7 +459,6 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     // =========================
     // Seek / Position
     // =========================
-
     seek(seconds) {
       if (!this.sound) return;
       const t = Number(seconds);
@@ -510,7 +479,6 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     // =========================
     // Volume / Mute
     // =========================
-
     setVolume(percent) {
       const p = clamp(Number(percent) || 0, 0, 100);
       const v = p / 100;
@@ -535,9 +503,8 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     }
 
     // =========================
-    // Modes
+    // Repeat / Shuffle
     // =========================
-
     toggleRepeat() {
       this.repeatMode = !this.repeatMode;
     }
@@ -552,11 +519,8 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
       this.shuffleMode = next;
 
-      if (this.shuffleMode) {
-        this.shufflePlaylist();
-      } else {
-        this.playlist = this.originalPlaylist.slice();
-      }
+      if (this.shuffleMode) this.shufflePlaylist();
+      else this.playlist = this.originalPlaylist.slice();
     }
 
     toggleShuffle() {
@@ -571,7 +535,6 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       const currentTrack = this.getCurrentTrack();
       const curUid = safeUid(currentTrack?.uid);
 
-      // При reshuffle сбрасываем историю, чтобы prev не лез в старые индексы
       this.shuffleHistory = [];
 
       const shuffled = this.playlist.slice();
@@ -585,7 +548,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
       if (curUid) {
         const byUid = this.playlist.findIndex(t => safeUid(t?.uid) === curUid);
-        this.currentIndex = byUid >= 0 ? byUid : this.currentIndex;
+        if (byUid >= 0) this.currentIndex = byUid;
       } else {
         const src = safeUrl(currentTrack?.src);
         const bySrc = src ? this.playlist.findIndex(t => safeUrl(t?.src) === src) : -1;
@@ -594,26 +557,20 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     }
 
     // =========================
-    // PQ Quality Hi/Lo
+    // PQ Hi/Lo (Playback Quality)
     // =========================
-
     _readQualityMode() {
-      try {
-        const v = normQuality(localStorage.getItem(this.qualityStorageKey));
-        return v;
-      } catch {
-        return 'hi';
-      }
+      try { return normQ(localStorage.getItem(this.qualityStorageKey)); } catch { return 'hi'; }
     }
 
     _writeQualityMode(mode) {
-      const m = normQuality(mode);
+      const m = normQ(mode);
       try { localStorage.setItem(this.qualityStorageKey, m); } catch {}
       return m;
     }
 
     getQualityMode() {
-      return normQuality(this.qualityMode);
+      return normQ(this.qualityMode);
     }
 
     setQualityMode(mode) {
@@ -624,7 +581,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
     _selectSrc({ legacySrc, sources, sourceKey, qualityMode }) {
       const key = String(sourceKey || 'audio');
-      const q = normQuality(qualityMode);
+      const q = normQ(qualityMode);
 
       const srcLegacy = safeUrl(legacySrc);
       const srcHi = safeUrl(sources?.[key]?.hi);
@@ -636,20 +593,19 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     canToggleQualityForCurrentTrack() {
       const track = this.getCurrentTrack();
       if (!track) return false;
-
       const key = this.sourceKey || 'audio';
       const lo = safeUrl(track?.sources?.[key]?.lo);
       return !!lo;
     }
 
     switchQuality(mode) {
+      // ТЗ 4.2: сохранить pos + wasPlaying, пересобрать источник без stop.
       const nextMode = this.setQualityMode(mode);
 
       const track = this.getCurrentTrack();
       if (!track) return { ok: true, mode: nextMode, changed: false };
 
-      const canToggle = this.canToggleQualityForCurrentTrack();
-      if (!canToggle) {
+      if (!this.canToggleQualityForCurrentTrack()) {
         return { ok: true, mode: nextMode, changed: false, disabled: true };
       }
 
@@ -668,7 +624,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       const pos = this.getPosition();
       const idx = this.currentIndex;
 
-      // обновим src в playlist/originalPlaylist по uid
+      // обновим src по uid (и playlist, и originalPlaylist)
       const uid = safeUid(track.uid);
       if (uid) {
         const pi = this.playlist.findIndex(t => safeUid(t?.uid) === uid);
@@ -676,11 +632,10 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
         const oi = this.originalPlaylist.findIndex(t => safeUid(t?.uid) === uid);
         if (oi >= 0) this.originalPlaylist[oi].src = desiredSrc;
-      } else {
+      } else if (this.playlist[idx]) {
         this.playlist[idx].src = desiredSrc;
       }
 
-      // тихая пересборка
       this._silentUnloadCurrentSound();
       this.load(idx, { autoPlay: wasPlaying, resumePosition: pos });
 
@@ -695,17 +650,14 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     }
 
     // =========================
-    // Getters / State
+    // State getters
     // =========================
-
     getCurrentTrack() {
       if (this.currentIndex < 0 || this.currentIndex >= this.playlist.length) return null;
       return this.playlist[this.currentIndex] || null;
     }
 
-    getIndex() {
-      return this.currentIndex;
-    }
+    getIndex() { return this.currentIndex; }
 
     getNextIndex() {
       const len = this.playlist.length;
@@ -720,7 +672,6 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     // =========================
     // Events
     // =========================
-
     on(events) {
       Object.keys(events || {}).forEach((event) => {
         if (this.callbacks[event]) this.callbacks[event].push(events[event]);
@@ -736,19 +687,14 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     }
 
     // =========================
-    // Tick (progress + stats)
+    // Tick: progress + stats
     // =========================
-
     startTick() {
       this.stopTick();
-
       this.tickInterval = setInterval(() => {
         const pos = this.getPosition();
         const dur = this.getDuration();
-
         this.trigger('onTick', pos, dur);
-
-        // stats: секунды троттлим аккуратно
         this._stats.onTick();
       }, this.tickRate);
     }
@@ -762,7 +708,6 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     // =========================
     // Sleep timer
     // =========================
-
     setSleepTimer(ms) {
       const delay = Number(ms) || 0;
       if (delay <= 0) {
@@ -785,7 +730,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
         this.trigger('onSleepTriggered', { targetAt: target });
 
-        // по текущему коду проекта таймер делает pause (это разрешено правилами)
+        // проектная логика: таймер делает pause (разрешено)
         if (this.isPlaying()) {
           try { this.pause(); } catch {}
         }
@@ -807,7 +752,6 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     // =========================
     // MediaSession
     // =========================
-
     _updateMedia(track) {
       if (!this._mediaSession) return;
       this._mediaSession.updateMetadata({
@@ -821,19 +765,15 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     }
 
     // =========================
-    // History (shuffle)
+    // Shuffle history
     // =========================
-
     _pushHistoryForCurrent() {
       try {
         const t = this.getCurrentTrack();
         const uid = safeUid(t?.uid);
         if (!uid) return;
 
-        const last = this.shuffleHistory.length
-          ? this.shuffleHistory[this.shuffleHistory.length - 1]
-          : null;
-
+        const last = this.shuffleHistory.length ? this.shuffleHistory[this.shuffleHistory.length - 1] : null;
         if (last && last.uid === uid) return;
 
         this.shuffleHistory.push({ uid });
@@ -849,12 +789,8 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         if (!this.shuffleMode) return -1;
         if (!Array.isArray(this.shuffleHistory) || this.shuffleHistory.length === 0) return -1;
 
-        // pop “текущую точку”, затем берем предыдущую
         this.shuffleHistory.pop();
-        const prev = this.shuffleHistory.length
-          ? this.shuffleHistory[this.shuffleHistory.length - 1]
-          : null;
-
+        const prev = this.shuffleHistory.length ? this.shuffleHistory[this.shuffleHistory.length - 1] : null;
         const uid = safeUid(prev?.uid);
         if (!uid) return -1;
 
@@ -868,7 +804,6 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     // =========================
     // Helpers for PlaybackPolicy
     // =========================
-
     appendToPlaylistTail(tracks) {
       const list = Array.isArray(tracks) ? tracks : [];
       if (!list.length) return;
@@ -923,9 +858,8 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     }
 
     // =========================
-    // Backend rebuild (bit effect)
+    // Backend rebuild (pulse)
     // =========================
-
     rebuildCurrentSound(options = {}) {
       try {
         const track = this.getCurrentTrack();
