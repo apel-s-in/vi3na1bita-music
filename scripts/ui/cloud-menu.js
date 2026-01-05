@@ -2,7 +2,7 @@
 // Меню для ☁ (ТЗ: “Добавить 🔒” / “Удалить из кэша” + сброс cloud-статистики)
 // Реализация под текущий проект: Utils.createModal(html), OfflineUI.offlineManager
 
-import { OfflineUI } from '../app/offline-ui-bootstrap.js';
+// Import OfflineUI removed to avoid circular dependency
 
 export function attachCloudMenu({ root, onAddLock, onRemoveCache } = {}) {
   const el = root;
@@ -68,7 +68,8 @@ export function attachCloudMenu({ root, onAddLock, onRemoveCache } = {}) {
         // fallback: если коллбеки не передали — используем стандартный метод
         const uid = String(el.dataset?.uid || '').trim();
         if (uid) {
-          await OfflineUI.offlineManager.cloudMenu(uid, 'remove-cache');
+          const mgr = window.OfflineUI?.offlineManager;
+          if (mgr) await mgr.cloudMenu(uid, 'remove-cache');
         }
       }
       window.NotificationSystem?.success('Трек удалён из cloud');
