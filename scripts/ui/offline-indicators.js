@@ -139,14 +139,24 @@ function renderIndicator(row, state, uid) {
 async function refreshRow(row) {
   const uid = findUidForRow(row);
 
+  // ✅ Защита: если OfflineManager ещё не инициализирован — выходим, не ломая интерфейс.
+  // Индикаторы обновятся позже по событию offline:ready или progress.
+  if (!OfflineUI.offlineManager) {
+    return; 
+  }
+
   // ✅ Даже если uid пока неизвестен — показываем серый 🔒 как “не готово”.
   if (!uid) {
     renderIndicator(row, { pinned: false, cloud: false, cachedComplete: false, unknown: true }, '');
     return;
   }
 
-  const ind = await OfflineUI.offlineManager.getIndicators(uid);
-  renderIndicator(row, ind, uid);
+  try {
+    const ind = await OfflineUI.offlineManager.getIndicators(uid);
+    renderIndicator(row, ind, uid);
+  } catch (e) {
+    console.warn('Error getting indicators:', e);
+  }
 }
 
 let __refreshAllTimer = null;
