@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f132f2fafc51d630d57e3ced3fb1a401299ec09b.idx
-│   │       ├── pack-f132f2fafc51d630d57e3ced3fb1a401299ec09b.pack
-│   │       └── pack-f132f2fafc51d630d57e3ced3fb1a401299ec09b.rev
+│   │       ├── pack-05fe1193c0b081bedec8c6e2b062eb6c5d770e19.idx
+│   │       ├── pack-05fe1193c0b081bedec8c6e2b062eb6c5d770e19.pack
+│   │       └── pack-05fe1193c0b081bedec8c6e2b062eb6c5d770e19.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-05 11:36:06 UTC
+Сгенерировано: 2026-01-05 11:37:29 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -11085,16 +11085,7 @@ export function attachOfflineIndicators() {
 // OFFLINE Modal (A–D) — MVP по ТЗ_Нью.
 // Важно: НЕ управляет воспроизведением, только настройками OfflineManager и UI.
 
-import { OfflineUI as OfflineUIExport } from '../app/offline-ui-bootstrap.js';
-
-// ✅ Всегда используем window.OfflineUI как runtime-источник (избегаем рассинхрона ESM-графов)
-const OfflineUI = (() => {
-  try {
-    return window.OfflineUI || OfflineUIExport;
-  } catch {
-    return OfflineUIExport;
-  }
-})();
+// Импорт удален для устранения циклической зависимости
 
 import { getNetPolicy, setNetPolicy, shouldConfirmByPolicy } from '../offline/net-policy.js';
 import { getAllUids, registerTrack } from '../app/track-registry.js';
@@ -11224,7 +11215,7 @@ function ensureModal(html) {
 }
 
 async function renderModal() {
-  const om = OfflineUI?.offlineManager;
+  const om = window.OfflineUI?.offlineManager;
   if (!om) return null;
 
   const isOffline = om.isOfflineMode();
@@ -11381,7 +11372,7 @@ async function renderModal() {
 }
 
 function bindModalHandlers(modal) {
-  const om = OfflineUI.offlineManager;
+  const om = window.OfflineUI?.offlineManager;
   if (!modal || !om) return;
 
   const fmtBytes = (b) => {
