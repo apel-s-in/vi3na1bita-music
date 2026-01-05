@@ -7,21 +7,12 @@ import { OfflineManager } from '../offline/offline-manager.js';
 import { openOfflineModal } from '../ui/offline-modal.js';
 
 // ✅ Единый источник истины — window.OfflineUI.
-// ESM-export OfflineUI будет ссылкой на window.OfflineUI (а не отдельным объектом),
-// чтобы не было рассинхрона между импортами и глобалкой.
-export const OfflineUI = (() => {
-  try {
-    if (!window.OfflineUI || typeof window.OfflineUI !== 'object') {
-      window.OfflineUI = { offlineManager: null };
-    } else if (!('offlineManager' in window.OfflineUI)) {
-      window.OfflineUI.offlineManager = null;
-    }
-    return window.OfflineUI;
-  } catch {
-    // fallback (на случай очень странных окружений)
-    return { offlineManager: null };
-  }
-})();
+if (!window.OfflineUI || typeof window.OfflineUI !== 'object') {
+  window.OfflineUI = { offlineManager: null };
+}
+
+// Экспортируем ссылку на глобальный объект
+export const OfflineUI = window.OfflineUI;
 
 const ALERT_KEY = 'offline:alert:v1';
 
@@ -39,7 +30,8 @@ function setOfflineBtnUI() {
   const btn = document.getElementById('offline-btn');
   if (!btn) return;
 
-  const isOffline = !!OfflineUI.offlineManager?.isOfflineMode?.();
+  const mgr = window.OfflineUI?.offlineManager;
+  const isOffline = !!mgr?.isOfflineMode?.();
 
   // По ТЗ: кнопка не должна быть текстом ONLINE/OFFLINE.
   // Оставляем стабильный текст OFFLINE, а состояние показываем внутри модалки.
