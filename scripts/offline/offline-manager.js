@@ -401,7 +401,61 @@ export class OfflineManager {
     return { ok: true, total: uniq.length };
   }
   
-  // Старый метод для совместимости (если где-то остался вызов)
+  // 100% OFFLINE: скачать выбранные альбомы или Favorites (ТЗ 11.2.I)
+  async startFullOffline(uids) {
+    const list = Array.isArray(uids) ? uids : [];
+    const uniq = Array.from(new Set(list.map(x => String(x || '').trim()).filter(Boolean)));
+    
+    if (!uniq.length) {
+      return { ok: false, reason: 'empty' };
+    }
+
+    const policy = getNetPolicy();
+    await this.checkEviction(); 
+
+    this.mass = {
+      active: true,
+      total: uniq.length,
+      done: 0,
+      error: 0,
+      skipped: 0,
+      startedAt: Date.now()
+    };
+
+    this._em.emit('progress', { uid: null, phase: 'offlineAllStart', total: uniq.length });
+
+    const cq = await this.getCacheQuality();
+
+    uniq.forEach((uid) => {
+      const u = String(uid || '').trim();
+      const taskKey = `offlineAll:${cq}:${u}`;
+      
+      this.enqueueAudioDownload({
+        uid: u,
+        quality: cq,
+        key: taskKey,
+        priority: 10, 
+        userInitiated: false,
+        isMass: true,
+        kind: 'offlineAll',
+        onResult: (r) => {
+          if (r && r.ok) this.mass.done++;
+          else if (String(r?.reason).includes('Skipped')) this.mass.skipped++;
+          else this.mass.error++;
+          
+          if (this.mass.done + this.mass.error + this.mass.skipped >= this.mass.total) {
+            this.mass.active = false;
+            this._em.emit('progress', { uid: null, phase: 'offlineAllDone', ...this.mass });
+            window.NotificationSystem?.success('Загрузка 100% OFFLINE завершена');
+          }
+        }
+      });
+    });
+
+    return { ok: true, total: uniq.length };
+  }
+
+  // Старый метод для совместимости
   enqueueOfflineAll(uids) { return this.startFullOffline(uids); }
 
   enqueuePinnedDownloadAll() {
@@ -553,7 +607,6 @@ export class OfflineManager {
   // Проверка и очистка места (Eviction)
   // ТЗ 22: Blob storage limit.
   // Удаляем: transient (Playback Cache / Extra) -> Cloud -> Pinned (никогда)
-  // В MVP упрощение: удаляем всё, что не Pinned, начиная с самых давно прослушанных.
   async checkEviction(limitMB = 500) {
     const total = await this.getCacheSizeBytes();
     const limitBytes = limitMB * 1024 * 1024;
@@ -568,14 +621,14 @@ export class OfflineManager {
     for (const uid of candidates) {
       if ((total - freed) <= limitBytes) break;
       
-      const sizes = await bytesByQuality(uid); // {hi, lo}
+      const sizes = await bytesByQuality(uid); 
       const trackBytes = (sizes.hi || 0) + (sizes.lo || 0);
       
       // Удаляем физически
       await deleteTrackCache(uid);
       freed += trackBytes;
       
-      // Сбрасываем cloud stats (так как файла нет, cloud слетает, если это не pinned)
+      // Сбрасываем cloud stats
       await clearCloudStats(uid);
     }
     
