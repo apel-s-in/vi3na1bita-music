@@ -2,8 +2,8 @@
 // AC12: независимый слой прогресса кэша (CQ) поверх основного прогресс-бара.
 // Не трогаем PlayerCore и основной прогресс/seek. Инварианты I1/I2 соблюдены.
 
-import { OfflineUI } from '../app/offline-ui-bootstrap.js';
 import { bytesByQuality } from '../offline/cache-db.js';
+// OfflineUI берем из window
 import { getTrackByUid } from '../app/track-registry.js';
 
 const CSS_TEXT = `
@@ -51,7 +51,10 @@ async function computePercentForCurrent() {
   const uid = String(track.uid || '').trim();
   if (!uid) return 0;
 
-  const cq = await OfflineUI.offlineManager.getCacheQuality();
+  const mgr = window.OfflineUI?.offlineManager;
+  if (!mgr) return 0;
+
+  const cq = await mgr.getCacheQuality();
   const meta = getTrackByUid(uid) || {};
 
   const needMb = cq === 'hi'
@@ -86,9 +89,12 @@ export function attachCacheProgressOverlay() {
   updateOverlay();
 
   // Обновления при изменениях кэш-загрузок (быстро и дёшево)
-  OfflineUI.offlineManager.on('progress', () => {
-    updateOverlay();
-  });
+  const mgr = window.OfflineUI?.offlineManager;
+  if (mgr) {
+    mgr.on('progress', () => {
+      updateOverlay();
+    });
+  }
 
   // Лёгкий поллинг, чтобы поймать смены трека/качества, если UI не повесил событие
   setInterval(updateOverlay, 1000);
