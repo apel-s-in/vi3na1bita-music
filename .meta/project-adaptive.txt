@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-abfa8040bbcd477de07856b53ba7817965d0dd19.idx
-│   │       ├── pack-abfa8040bbcd477de07856b53ba7817965d0dd19.pack
-│   │       └── pack-abfa8040bbcd477de07856b53ba7817965d0dd19.rev
+│   │       ├── pack-84e653b93cd2fedf8c72ec9d99ece670483c96db.idx
+│   │       ├── pack-84e653b93cd2fedf8c72ec9d99ece670483c96db.pack
+│   │       └── pack-84e653b93cd2fedf8c72ec9d99ece670483c96db.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -400,7 +400,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-05 19:55:00 UTC
+Сгенерировано: 2026-01-05 20:00:39 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4307,12 +4307,9 @@ export function attachPlaybackCache() {
 
   const w = window;
 
-  let currentLyrics = [];
-  let lyricsViewMode = 'normal';
-  let hasTimedLyricsForCurrentTrack = false;
+  // ✅ Lyrics вынесены в scripts/app/player-ui/lyrics.js (window.LyricsController)
   let isSeekingProgress = false;
   let isMuted = false;
-  let animationEnabled = false;
   let bitEnabled = false;
   let bitIntensity = 100;
 
@@ -4323,13 +4320,8 @@ export function attachPlaybackCache() {
   let analyser = null;
   let animationFrame = null;
 
-  const LYRICS_MIN_INTERVAL = 250;
-  let lyricsLastIdx = -1;
-  let lyricsLastTs = 0;
-
   let isInContextMiniMode = false;
-  let savedLyricsViewModeForMini = null;
-  let savedAnimationForMini = null;
+  let savedLyricsStateForMini = null;
 
   // Jump-to-playing (кнопка-стрелка в родном альбоме)
   let jumpBtnWrap = null;
@@ -4416,7 +4408,7 @@ export function attachPlaybackCache() {
       },
       onTick: (position, duration) => {
         updateProgress(position, duration);
-        renderLyricsEnhanced(position);
+        w.LyricsController?.onTick?.(position, { inMiniMode: isInContextMiniMode });
         // ✅ Статистика считается в src/PlayerCore.js (единая точка для секунд и full listen).
         // PlayerUI не должен дублировать, иначе будет двойной учёт.
       },
@@ -4437,25 +4429,10 @@ export function attachPlaybackCache() {
 
     ensurePlayerBlock(index);
 
-    // ✅ Сразу (до fetch) выставляем корректную доступность.
-    // Требование: если файл лирики отсутствует (или уже известно, что отсутствует) — кнопки Т/А должны быть disabled без "мигания".
+    // ✅ Lyrics вынесены в window.LyricsController
     try {
-      const has = checkTrackHasLyrics(track);
-      const knownMissing = (!track?.lyrics) ? true : isLyricsKnownMissingFast(track.lyrics);
-
-      if (!has || knownMissing) {
-        hasTimedLyricsForCurrentTrack = false;
-        setLyricsAvailability(false);
-      }
+      w.LyricsController?.onTrackChange?.(track);
     } catch {}
-
-    // ✅ Загрузка лирики (тихо обрабатывает отсутствие файла)
-    loadLyrics(track.lyrics).then(() => {
-      // Рендерим лирику только если она есть и режим не hidden
-      if (hasTimedLyricsForCurrentTrack && lyricsViewMode !== 'hidden') {
-        renderLyrics(0);
-      }
-    });
 
     // ✅ Обновляем доступность кнопки "📝" (полный текст) в зависимости от fulltext
     const karaokeBtn = document.getElementById('lyrics-text-btn');
@@ -4640,7 +4617,10 @@ export function attachPlaybackCache() {
         nowPlaying.appendChild(createNextUpElement());
       }
 
-      applyMiniLyricsState();
+      if (!isInContextMiniMode) {
+        savedLyricsStateForMini = w.LyricsController?.getMiniSaveState?.() || null;
+      }
+      w.LyricsController?.applyMiniMode?.();
 
       const miniHeaderEl = document.getElementById('mini-now');
       const nextUpEl = document.getElementById('next-up');
@@ -4698,7 +4678,8 @@ export function attachPlaybackCache() {
         }, 50);
       }
 
-      restoreLyricsStateIfNeeded();
+      w.LyricsController?.restoreFromMiniMode?.(savedLyricsStateForMini);
+      savedLyricsStateForMini = null;
 
       const miniHeaderEl = document.getElementById('mini-now');
       const nextUpEl = document.getElementById('next-up');
@@ -4723,9 +4704,11 @@ export function attachPlaybackCache() {
     block.className = 'lyrics-player-block';
     block.id = 'lyricsplayerblock';
 
+    const ls = w.LyricsController?.getState?.() || { lyricsViewMode: 'normal', animationEnabled: false };
+
     block.innerHTML = `
-      <div id="lyrics-window" class="lyrics-${lyricsViewMode}">
-        <div class="lyrics-animated-bg${animationEnabled ? ' active' : ''}"></div>
+      <div id="lyrics-window" class="lyrics-${ls.lyricsViewMode}">
+        <div class="lyrics-animated-bg${ls.animationEnabled ? ' active' : ''}"></div>
         <div class="lyrics-scroll" id="lyrics">
           <div class="lyrics-placeholder lyrics-spinner"></div>
         </div>
@@ -5043,11 +5026,11 @@ export function attachPlaybackCache() {
           return;
 
         case 'lyrics-toggle-btn':
-          toggleLyricsView();
+          w.LyricsController?.toggleLyricsView?.();
           return;
 
         case 'animation-btn':
-          toggleAnimation();
+          w.LyricsController?.toggleAnimation?.();
           return;
 
         case 'pulse-btn':
@@ -6397,15 +6380,8 @@ export function attachPlaybackCache() {
     if (volumeSlider) volumeSlider.value = String(volume);
     renderVolumeUI(volume);
 
-    const savedLyricsMode = localStorage.getItem('lyricsViewMode');
-    if (savedLyricsMode && ['normal', 'hidden', 'expanded'].includes(savedLyricsMode)) {
-      lyricsViewMode = savedLyricsMode;
-    } else {
-      lyricsViewMode = 'normal';
-    }
-
-    const savedAnimation = localStorage.getItem('lyricsAnimationEnabled');
-    animationEnabled = savedAnimation === '1';
+    // ✅ Lyrics state/DOM восстановление делает LyricsController
+    try { w.LyricsController?.restoreSettingsIntoDom?.(); } catch {}
 
     const savedBit = localStorage.getItem('bitEnabled');
     bitEnabled = savedBit === '1';
@@ -6438,7 +6414,7 @@ export function attachPlaybackCache() {
     // PQ кнопка: синхронизируем состояние при старте (до первого onTrackChange)
     try { updatePQButton(); } catch {}
 
-    console.log(`✅ Settings restored: lyrics=${lyricsViewMode}, animation=${animationEnabled}`);
+    console.log('✅ Settings restored');
   }
 
   // updateFavoriteClasses удалён: класс is-favorite сейчас не используется как источник логики,
@@ -6492,12 +6468,10 @@ export function attachPlaybackCache() {
     toggleFavoritesOnly,
     updateAvailableTracksForPlayback,
     get currentLyrics() {
-      return currentLyrics;
+      return w.LyricsController?.getCurrentLyrics?.() || [];
     },
     get currentLyricsLines() {
-      return Array.isArray(currentLyrics)
-        ? currentLyrics.map(l => ({ line: l.text }))
-        : [];
+      return w.LyricsController?.getCurrentLyricsLines?.() || [];
     }
   };
 
