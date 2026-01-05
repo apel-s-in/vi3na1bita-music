@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6847b3301035519afaed47a1a0d4dd112c8a4445.idx
-│   │       ├── pack-6847b3301035519afaed47a1a0d4dd112c8a4445.pack
-│   │       └── pack-6847b3301035519afaed47a1a0d4dd112c8a4445.rev
+│   │       ├── pack-67ac1053aba759612454ef6fe6a6ab704d478a89.idx
+│   │       ├── pack-67ac1053aba759612454ef6fe6a6ab704d478a89.pack
+│   │       └── pack-67ac1053aba759612454ef6fe6a6ab704d478a89.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -398,7 +398,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-05 12:18:41 UTC
+Сгенерировано: 2026-01-05 12:40:21 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -13788,7 +13788,10 @@ try { main(); } catch (e) { console.error("❌", e); process.exit(1); }
               const progress = (dur > 0) ? (pos / dur) : 0;
 
               if (om && typeof om.recordFullListen === 'function') {
-                om.recordFullListen(uid, { duration: dur, progress });
+              if (om && typeof om.recordListenStats === 'function') {
+                // isFullListen = true
+                om.recordListenStats(uid, { deltaSec: 0, isFullListen: progress > 0.9 });
+              }
               }
             }
           } catch {}
@@ -14168,6 +14171,20 @@ try { main(); } catch (e) { console.error("❌", e); process.exit(1); }
         const position = this.getPosition();
         const duration = this.getDuration();
         this.trigger('onTick', position, duration);
+        
+        // Global Stats: накапливаем секунды
+        // Делаем это раз в секунду (tickRate=100ms, значит каждый 10-й тик, или просто по delta)
+        // Для простоты: OfflineManager сам может агрегировать, но лучше слать 1 раз в сек.
+        if (Math.floor(position) > Math.floor(this._lastPos || 0)) {
+           const track = this.getCurrentTrack();
+           if (track && track.uid) {
+             const om = window.OfflineUI?.offlineManager;
+             if (om && typeof om.recordListenStats === 'function') {
+               om.recordListenStats(track.uid, { deltaSec: 1, isFullListen: false });
+             }
+           }
+        }
+        this._lastPos = position;
       }, this.tickRate);
     }
 
