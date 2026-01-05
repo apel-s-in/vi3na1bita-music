@@ -62,7 +62,27 @@
   <script src="./scripts/app/navigation.js" type="module"></script>
   
   <!-- Main App -->
+  <!-- Main App -->
   <script src="./scripts/app.js" type="module"></script>
+
+  <!-- OFFLINE platform bootstrap (must be ESM to allow module imports) -->
+  <script type="module">
+    try {
+      const m = await import('./scripts/app/offline-ui-bootstrap.js');
+      if (m && typeof m.attachOfflineUI === 'function') m.attachOfflineUI();
+
+      const ind = await import('./scripts/ui/offline-indicators.js');
+      if (ind && typeof ind.attachOfflineIndicators === 'function') ind.attachOfflineIndicators();
+
+      const ov = await import('./scripts/ui/cache-progress-overlay.js');
+      if (ov && typeof ov.attachCacheProgressOverlay === 'function') ov.attachCacheProgressOverlay();
+
+      const pc = await import('./scripts/app/playback-cache-bootstrap.js');
+      if (pc && typeof pc.attachPlaybackCache === 'function') pc.attachPlaybackCache();
+    } catch (e) {
+      console.warn('OFFLINE bootstrap failed:', e);
+    }
+  </script>
   
   <!-- Performance Monitoring -->
   <script src="./performance/rum.js" defer></script>
