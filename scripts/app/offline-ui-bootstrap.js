@@ -54,10 +54,23 @@ function setOfflineBtnUI() {
 }
 
 export function attachOfflineUI() {
-  if (OfflineUI.offlineManager) return;
+  // Идемпотентность: если уже инициализировано, не делаем заново
+  if (window.OfflineUI && window.OfflineUI.offlineManager) {
+    // Просто обновим UI кнопки, если DOM перерисовался
+    setOfflineBtnUI();
+    return;
+  }
 
-  OfflineUI.offlineManager = new OfflineManager();
-  OfflineUI.offlineManager.initialize();
+  // Создаем менеджер
+  const mgr = new OfflineManager();
+  mgr.initialize();
+  
+  // Сохраняем в глобальный объект (источник правды для индикаторов)
+  if (!window.OfflineUI) window.OfflineUI = {};
+  window.OfflineUI.offlineManager = mgr;
+  
+  // Обновляем локальную ссылку экспорта
+  OfflineUI.offlineManager = mgr;
 
   const btn = document.getElementById('offline-btn');
   if (btn && !btn.__offlineBound) {
