@@ -1,28 +1,55 @@
 // src/PlayerCore.js
 // Ядро плеера на базе Howler.js
+// ТЗ_НЬЮ: инвариант — никакие новые функции не имеют права вызывать stop()/форсить play()/сбрасывать pos/volume
+// Исключения STOP: только кнопка Stop, таймер сна (pause), и спец-сценарий в Избранном (реализован в FavoritesManager).
+
+import { ensureMediaSession } from './player-core/media-session.js';
+import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
 (function PlayerCoreModule() {
   'use strict';
 
+  const W = window;
+
+  function clamp(n, a, b) {
+    return Math.max(a, Math.min(b, n));
+  }
+
+  function normQuality(v) {
+    return String(v || '').toLowerCase().trim() === 'lo' ? 'lo' : 'hi';
+  }
+
+  function safeUid(v) {
+    const s = String(v || '').trim();
+    return s ? s : null;
+  }
+
+  function safeUrl(v) {
+    const s = String(v || '').trim();
+    return s ? s : null;
+  }
+
   class PlayerCore {
     constructor() {
       this.playlist = [];
+      this.originalPlaylist = [];
       this.currentIndex = -1;
+
       this.sound = null;
       this.isReady = false;
 
       this.repeatMode = false;
       this.shuffleMode = false;
-      this.originalPlaylist = [];
 
-      // ✅ Shuffle history (как Spotify): стек реально проигранных треков (по uid)
-      // Критично: при переключении качества src меняется, uid — нет.
+      // Shuffle history (как Spotify): стек uid реально проигранных треков
       this.shuffleHistory = [];
       this.historyMax = 200;
 
+      // Tick
       this.tickInterval = null;
-      this.tickRate = 100; // мс
+      this.tickRate = 100;
 
+      // callbacks
       this.callbacks = {
         onTrackChange: [],
         onPlay: [],
@@ -31,180 +58,212 @@
         onEnd: [],
         onTick: [],
         onError: [],
-        // Пользовательские события
-        onSleepTriggered: []
+        onSleepTriggered: [],
       };
 
       this.metadata = {
         artist: 'Витрина Разбита',
         album: '',
-        cover: ''
+        cover: '',
       };
 
-      // Таймер сна
-      this.sleepTimerTarget = 0;   // timestamp (ms) когда нужно остановить воспроизведение
-      this.sleepTimerId = null;    // id setTimeout для таймера сна
+      // Sleep timer
+      this.sleepTimerTarget = 0;
+      this.sleepTimerId = null;
 
-      // ✅ Глобальное качество (по умолчанию Hi)
-      // Источник: localStorage (qualityMode:v1). Lo включает только пользователь.
+      // PQ (Playback Quality)
       this.qualityStorageKey = 'qualityMode:v1';
       this.qualityMode = this._readQualityMode();
 
-      // ✅ Активный тип источника (в будущем: 'audio' | 'minus' | 'stem')
-      // Пока всегда 'audio' — это важно, чтобы потом добавить кнопку MINUS без переписывания ядра.
+      // SourceKey (v1.0: audio)
       this.sourceKey = 'audio';
 
-      // ✅ OFFLINE guard (только UI-уведомление, без stop/pause)
-      // Один раз за сессию, чтобы не спамить тостами.
+      // OFFLINE UX guard (не спамить тостами)
       this._offlineNoCacheToastShown = false;
 
-      // Кэш результата "есть ли хоть один complete локальный трек" для текущего плейлиста.
-      // Сбрасываем при setPlaylist().
+      // cache: есть ли хоть один complete офлайн трек в этом плейлисте
       this._hasAnyOfflineCacheComplete = null;
+
+      // MediaSession (handlers ставим 1 раз)
+      this._mediaSession = ensureMediaSession({
+        onPlay: () => this.play(),
+        onPause: () => this.pause(),
+        onStop: () => this.stop(),
+        onPrev: () => this.prev(),
+        onNext: () => this.next(),
+        onSeekTo: (t) => this.seek(t),
+        onSeekBy: (delta) => {
+          const pos = this.getPosition();
+          const dur = this.getDuration();
+          this.seek(clamp(pos + delta, 0, dur || 0));
+        },
+        getPositionState: () => ({
+          duration: this.getDuration(),
+          position: this.getPosition(),
+          playbackRate: 1.0,
+        }),
+      });
+
+      // Stats (единообразный троттлинг секунд + full listen)
+      this._stats = createListenStatsTracker({
+        getUid: () => safeUid(this.getCurrentTrack()?.uid),
+        getPos: () => this.getPosition(),
+        getDur: () => this.getDuration(),
+        record: (uid, payload) => {
+          const om = W.OfflineUI?.offlineManager;
+          if (om && typeof om.recordListenStats === 'function') {
+            om.recordListenStats(uid, payload);
+          }
+        },
+      });
     }
 
     initialize() {
-      console.log('🎵 PlayerCore initializing...');
       this.isReady = true;
-      console.log('✅ PlayerCore ready');
     }
 
-    // ========== УПРАВЛЕНИЕ ПЛЕЙЛИСТОМ ==========
+    // =========================
+    // Playlist
+    // =========================
 
     setPlaylist(tracks, startIndex = 0, metadata = {}, options = {}) {
-      // ✅ БАЗОВОЕ ПРАВИЛО: setPlaylist НЕ останавливает воспроизведение.
+      // setPlaylist НЕ имеет права делать stop() по инварианту.
       const wasPlaying = this.isPlaying();
       const prev = this.getCurrentTrack();
-      const prevUid = prev?.uid || null;
+      const prevUid = safeUid(prev?.uid);
       const prevPos = this.getPosition();
 
       const {
         preserveOriginalPlaylist = false,
         preserveShuffleMode = false,
-        resetHistory = true
+        resetHistory = true,
       } = options || {};
 
-      // ✅ Смена плейлиста: сбрасываем кэш наличия офлайн complete
       this._hasAnyOfflineCacheComplete = null;
 
-      this.playlist = (tracks || []).map((t) => {
-        const uid = (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null;
+      this.playlist = (Array.isArray(tracks) ? tracks : []).map((t) => {
+        const uid = safeUid(t?.uid);
 
-        // ✅ sources: расширяемая структура под future minus/stem/clip
-        // Поддержка текущего формата:
-        // - legacy: t.src (один источник)
-        // - новый: t.sources?.audio?.hi/lo
         const sources = (t && typeof t === 'object' && t.sources && typeof t.sources === 'object')
           ? t.sources
           : null;
 
         const src = this._selectSrc({
-          legacySrc: t.src,
+          legacySrc: t?.src,
           sources,
           sourceKey: this.sourceKey,
-          qualityMode: this.qualityMode
+          qualityMode: this.qualityMode,
         });
 
         return {
-          src,
-          title: t.title || 'Без названия',
-          artist: t.artist || 'Витрина Разбита',
-          album: t.album || '',
-          cover: t.cover || '',
-          lyrics: t.lyrics || null,
-          fulltext: t.fulltext || null,
-          uid,
-          hasLyrics: (typeof t.hasLyrics === 'boolean') ? t.hasLyrics : null,
-          sourceAlbum: t.sourceAlbum || null,
+          src: safeUrl(src),
+          sources,
 
-          // ✅ сохраняем sources, чтобы можно было переключать качество/источник без пересборки плейлиста снаружи
-          sources
+          title: t?.title || 'Без названия',
+          artist: t?.artist || 'Витрина Разбита',
+          album: t?.album || '',
+          cover: t?.cover || '',
+
+          lyrics: t?.lyrics || null,
+          fulltext: t?.fulltext || null,
+          uid,
+          hasLyrics: (typeof t?.hasLyrics === 'boolean') ? t.hasLyrics : null,
+          sourceAlbum: t?.sourceAlbum || null,
         };
       });
 
       if (!preserveOriginalPlaylist) {
-        this.originalPlaylist = [...this.playlist];
+        this.originalPlaylist = this.playlist.slice();
       }
-      this.metadata = { ...this.metadata, ...metadata };
+
+      this.metadata = { ...this.metadata, ...(metadata || {}) };
 
       if (resetHistory) {
         this.shuffleHistory = [];
       }
 
-      // Если попросили сохранить shuffleMode — не трогаем флаг.
-      // Иначе он действует как текущий.
-      if (!preserveShuffleMode) {
+      if (this.shuffleMode && !preserveShuffleMode) {
+        // shuffleMode уже true — пересобираем порядок
+        this.shufflePlaylist();
+      } else if (!this.shuffleMode && !preserveShuffleMode) {
         // ничего
       }
 
-      if (this.shuffleMode) {
-        this.shufflePlaylist();
-      }
-
-      // Сохраняем текущий трек по uid, иначе — startIndex
+      // выбрать индекс: сохранить по uid если возможно
       let nextIndex = -1;
       if (prevUid) {
-        nextIndex = this.playlist.findIndex(t => t.uid && t.uid === prevUid);
+        nextIndex = this.playlist.findIndex(t => safeUid(t?.uid) === prevUid);
       }
-      if (nextIndex === -1) {
-        nextIndex = Math.max(0, Math.min(startIndex, this.playlist.length - 1));
+      if (nextIndex < 0) {
+        const len = this.playlist.length;
+        nextIndex = len ? clamp(startIndex, 0, len - 1) : -1;
       }
+
       this.currentIndex = nextIndex;
 
-      console.log(`✅ Playlist set: ${this.playlist.length} tracks`);
-
-      // Если играло — продолжаем играть без onStop (тихая смена Howl делается через load)
-      if (wasPlaying && this.playlist.length > 0) {
+      // Если играло — продолжаем без stop: делаем тихую пересборку + seek(pos) + autoPlay
+      if (wasPlaying && this.currentIndex >= 0) {
         this.load(this.currentIndex, { autoPlay: true, resumePosition: prevPos });
       } else {
         const cur = this.getCurrentTrack();
         if (cur) {
           this.trigger('onTrackChange', cur, this.currentIndex);
-          this.updateMediaSession();
+          this._updateMedia(cur);
         }
       }
     }
 
     getPlaylistSnapshot() {
-      return [...this.playlist];
+      return this.playlist.slice();
     }
+
+    // =========================
+    // Playback: resolve + load
+    // =========================
+
     async _resolvePlaybackUrlForTrack(track) {
-      // ✅ Мост к OfflineManager/TrackResolver (без ESM-импорта сюда).
-      // Возвращаем { url, effectiveQuality, reason } или { url:null } если недоступно.
+      // Единый мост к OfflineManager.resolveForPlayback
       try {
-        const om = window.OfflineUI?.offlineManager;
+        const om = W.OfflineUI?.offlineManager;
         if (!om || typeof om.resolveForPlayback !== 'function') {
-          return { url: String(track?.src || '').trim() || null, effectiveQuality: this.qualityMode || 'hi', reason: 'noOfflineManager' };
+          return {
+            url: safeUrl(track?.src),
+            effectiveQuality: this.getQualityMode(),
+            isLocal: false,
+            reason: 'noOfflineManager',
+          };
         }
 
         const pq = this.getQualityMode();
         const r = await om.resolveForPlayback(track, pq);
         return {
-          url: String(r?.url || '').trim() || null,
-          effectiveQuality: String(r?.effectiveQuality || pq || 'hi').toLowerCase() === 'lo' ? 'lo' : 'hi',
+          url: safeUrl(r?.url),
+          effectiveQuality: normQuality(r?.effectiveQuality || pq),
           isLocal: !!r?.isLocal,
-          reason: String(r?.reason || '')
+          reason: String(r?.reason || ''),
         };
-      } catch (e) {
-        return { url: String(track?.src || '').trim() || null, effectiveQuality: this.qualityMode || 'hi', reason: 'resolverError' };
+      } catch {
+        return {
+          url: safeUrl(track?.src),
+          effectiveQuality: this.getQualityMode(),
+          isLocal: false,
+          reason: 'resolverError',
+        };
       }
     }
+
     async _getHasAnyOfflineCompleteCached() {
       if (this._hasAnyOfflineCacheComplete === true) return true;
       if (this._hasAnyOfflineCacheComplete === false) return false;
 
       try {
-        const om = window.OfflineUI?.offlineManager;
+        const om = W.OfflineUI?.offlineManager;
         if (!om || typeof om.hasAnyComplete !== 'function') {
-          // Если OfflineManager не готов — считаем, что офлайн кэша нет (консервативно).
           this._hasAnyOfflineCacheComplete = false;
           return false;
         }
 
-        const uids = this.playlist
-          .map(t => String(t?.uid || '').trim())
-          .filter(Boolean);
-
+        const uids = this.playlist.map(t => safeUid(t?.uid)).filter(Boolean);
         const yes = await om.hasAnyComplete(uids);
         this._hasAnyOfflineCacheComplete = !!yes;
         return !!yes;
@@ -215,19 +274,16 @@
     }
 
     async _findNextPlayableIndex(direction) {
-      // direction: 'forward' | 'backward'
-      const dir = (direction === 'backward') ? -1 : 1;
       const len = this.playlist.length;
       if (!len) return -1;
 
-      // Защита от бесконечного цикла: максимум len попыток
+      const dir = (direction === 'backward') ? -1 : 1;
+      const base = this.currentIndex >= 0 ? this.currentIndex : 0;
+
       for (let step = 1; step <= len; step++) {
-        const idx = (this.currentIndex + (dir * step) + len) % len;
+        const idx = (base + (dir * step) + len) % len;
         const t = this.playlist[idx];
         if (!t) continue;
-
-        // Быстрая проверка: если сеть есть — playable (url будет)
-        // Если сети нет — resolver вернёт null для отсутствующего локального url.
         // eslint-disable-next-line no-await-in-loop
         const r = await this._resolvePlaybackUrlForTrack(t);
         if (r.url) return idx;
@@ -235,37 +291,35 @@
       return -1;
     }
 
-    // ========== ВОСПРОИЗВЕДЕНИЕ ==========
-
     async play(index = null) {
-      if (index !== null && index >= 0 && index < this.playlist.length) {
+      if (index !== null && Number.isFinite(index) && index >= 0 && index < this.playlist.length) {
         await this.load(index);
       }
 
-      // ✅ History: фиксируем факт перехода на новый трек (если он реально сменился)
+      // история: фиксируем факт “дошли до текущего”
       this._pushHistoryForCurrent();
 
-      if (!this.sound) {
-        // Это может случиться, если resolver вернул url=null и мы инициировали fallback.
-        console.warn('⚠️ No sound loaded');
-        return;
-      }
+      if (!this.sound) return;
 
-      // Howler вызовет onplay → там мы запускаем тик и триггерим onPlay.
       this.sound.play();
-      this.updateMediaSession();
+      this._updateMedia(this.getCurrentTrack());
     }
 
     pause() {
       if (!this.sound) return;
-      
+
       this.sound.pause();
       this.stopTick();
+
+      // статистика: при паузе фиксируем последние секунды (если надо)
+      this._stats.onPauseOrStop();
+
       this.trigger('onPause', this.getCurrentTrack(), this.currentIndex);
+      this._updateMedia(this.getCurrentTrack());
     }
 
     stop() {
-      // ✅ Единственная “жёсткая остановка”, разрешённая правилами (кнопка Stop).
+      // Разрешённый stop (кнопка Stop или спец-случаи извне)
       if (this.sound) {
         try { this.sound.stop(); } catch {}
         try { this.sound.unload(); } catch {}
@@ -273,57 +327,57 @@
       }
 
       this.stopTick();
+      this._stats.onPauseOrStop();
+
       this.trigger('onStop', this.getCurrentTrack(), this.currentIndex);
+      this._updateMedia(this.getCurrentTrack());
     }
 
     _silentUnloadCurrentSound() {
-      // ✅ Техническая смена трека/плейлиста: НЕ триггерим onStop.
+      // Технический unload: НЕ триггерим onStop (инвариант)
       if (this.sound) {
         try { this.sound.stop(); } catch {}
         try { this.sound.unload(); } catch {}
         this.sound = null;
       }
       this.stopTick();
+      this._stats.onPauseOrStop();
     }
 
     async load(index, options = {}) {
-      // ✅ Дополнительная защита от некорректного индекса
-      if (typeof index !== 'number' || !Number.isFinite(index) || index < 0 || index >= this.playlist.length) {
-        console.warn('⚠️ PlayerCore.load called with invalid index:', index);
+      if (!Number.isFinite(index) || index < 0 || index >= this.playlist.length) {
         return;
       }
 
       const { autoPlay = false, resumePosition = null } = options || {};
       let html5 = (typeof options.html5 === 'boolean') ? options.html5 : true;
 
-      // ✅ НЕЛЬЗЯ stop(): это нарушит базовое правило.
+      // НЕЛЬЗЯ stop() => только тихо выгружаем текущий sound
       this._silentUnloadCurrentSound();
 
       this.currentIndex = index;
-
       const track = this.playlist[index];
+      if (!track) return;
 
-      // ✅ Resolve source via OfflineManager/TrackResolver
       const resolved = await this._resolvePlaybackUrlForTrack(track);
-      // ✅ Локальный источник (blob/objectURL) — играем через WebAudio (html5:false) по ТЗ
-      if (resolved && resolved.isLocal) {
-        html5 = false;
-      }
+
+      // локальные blob/objectURL по ТЗ играем WebAudio (html5:false)
+      if (resolved.isLocal) html5 = false;
 
       if (!resolved.url) {
-        // OFFLINE+нет сети:
-        // 1) если нет офлайн-кэша вообще — тост 1 раз и выходим (без stop/pause)
-        // 2) если офлайн-кэш есть — ищем следующий playable и переключаемся без STOP
+        // сеть недоступна + нет local blob для этого трека
         const hasAny = await this._getHasAnyOfflineCompleteCached();
 
+        // (1) если вообще нет complete локального — toast один раз и просто выходим (без stop/pause)
         if (!hasAny) {
           if (!this._offlineNoCacheToastShown) {
             this._offlineNoCacheToastShown = true;
-            window.NotificationSystem?.warning('Нет сети и нет офлайн-кэша');
+            W.NotificationSystem?.warning('Нет сети и нет офлайн-кэша');
           }
           return;
         }
 
+        // (2) если локальные есть — тихо перескакиваем на следующий playable
         const fallbackIdx = await this._findNextPlayableIndex('forward');
         if (fallbackIdx >= 0 && fallbackIdx !== index) {
           this.currentIndex = fallbackIdx;
@@ -332,45 +386,41 @@
         return;
       }
 
-      // Обновим src текущего трека на реально выбранный URL (network сейчас).
-      // Это не STOP и не меняет uid/логику истории.
+      // фиксируем реально выбранный URL для текущего трека (это не меняет uid/логику)
       this.playlist[index].src = resolved.url;
+
+      const initialVolume = this.getVolume() / 100;
 
       this.sound = new Howl({
         src: [resolved.url],
         html5,
         preload: true,
-        volume: this.getVolume() / 100,
+        volume: initialVolume,
+
         onplay: () => {
           this.startTick();
           this.trigger('onPlay', track, index);
+          this._updateMedia(this.getCurrentTrack());
         },
+
         onpause: () => {
           this.stopTick();
+          this._stats.onPauseOrStop();
           this.trigger('onPause', track, index);
+          this._updateMedia(this.getCurrentTrack());
         },
+
         onend: () => {
           this.stopTick();
+
+          // статистика: full listen решаем стабильно (duration валидна + >90%)
+          this._stats.onEnded();
+
           this.trigger('onEnd', track, index);
-
-          // ✅ Cloud N/D (ТЗ 9.2): full listen только если duration валидна и прогресс > 90%
-          try {
-            const uid = String(track?.uid || '').trim();
-            if (uid) {
-              const om = window.OfflineUI?.offlineManager;
-              const dur = this.getDuration();
-              const pos = this.getPosition();
-              const progress = (dur > 0) ? (pos / dur) : 0;
-
-              if (om && typeof om.recordListenStats === 'function') {
-                // isFullListen = true
-                om.recordListenStats(uid, { deltaSec: 0, isFullListen: progress > 0.9 });
-              }
-            }
-          } catch {}
-
+          this._updateMedia(this.getCurrentTrack());
           this.handleTrackEnd();
         },
+
         onload: () => {
           if (typeof resumePosition === 'number' && Number.isFinite(resumePosition) && resumePosition > 0) {
             try { this.seek(resumePosition); } catch {}
@@ -378,122 +428,118 @@
           if (autoPlay) {
             try { this.play(); } catch {}
           }
+          this._updateMedia(this.getCurrentTrack());
         },
+
         onloaderror: (id, error) => {
-          console.error('❌ Load error:', error);
           this.trigger('onError', { type: 'load', error, track, index });
         },
+
         onplayerror: (id, error) => {
-          console.error('❌ Play error:', error);
           this.trigger('onError', { type: 'play', error, track, index });
-        }
+        },
       });
 
       this.trigger('onTrackChange', track, index);
-      this.updateMediaSession();
+      this._updateMedia(track);
     }
 
     handleTrackEnd() {
       if (this.repeatMode) {
         this.play(this.currentIndex);
-      } else {
-        this.next();
+        return;
       }
+      this.next();
     }
 
     next() {
-      if (this.playlist.length === 0) return;
+      const len = this.playlist.length;
+      if (!len) return;
 
-      // ✅ При next() мы должны запомнить текущий трек в истории, чтобы prev мог вернуться “как Spotify”.
+      // запоминаем текущий трек в истории (для prev “как Spotify”)
       this._pushHistoryForCurrent();
 
-      // Следующий трек по текущему эффективному плейлисту
-      let nextIndex = this.currentIndex + 1;
-
-      if (nextIndex >= this.playlist.length) {
-        nextIndex = 0;
-      }
-
+      const cur = this.currentIndex >= 0 ? this.currentIndex : 0;
+      const nextIndex = (cur + 1) % len;
       this.play(nextIndex);
     }
 
     prev() {
-      if (this.playlist.length === 0) return;
+      const len = this.playlist.length;
+      if (!len) return;
 
-      // Если играем больше 3 секунд, перематываем на начало
+      // если проиграно >3 сек — перематываем в начало
       if (this.getPosition() > 3) {
         this.seek(0);
         return;
       }
 
-      // ✅ Shuffle history (как Spotify): если есть история — возвращаемся к реально проигранному
+      // shuffle history: вернуться к реально проигранному (только когда shuffle ON)
       const histIdx = this._popHistoryPrevIndex();
-      if (typeof histIdx === 'number' && histIdx >= 0) {
+      if (Number.isFinite(histIdx) && histIdx >= 0) {
         this.play(histIdx);
         return;
       }
 
-      // ✅ Fallback: предыдущий по текущему эффективному плейлисту
-      let prevIndex = this.currentIndex - 1;
-
-      if (prevIndex < 0) {
-        prevIndex = this.playlist.length - 1;
-      }
-
+      const cur = this.currentIndex >= 0 ? this.currentIndex : 0;
+      const prevIndex = (cur - 1 + len) % len;
       this.play(prevIndex);
     }
 
-    // ========== ПЕРЕМОТКА И ПОЗИЦИЯ ==========
+    // =========================
+    // Seek / Position
+    // =========================
 
     seek(seconds) {
       if (!this.sound) return;
-      this.sound.seek(seconds);
+      const t = Number(seconds);
+      if (!Number.isFinite(t)) return;
+      this.sound.seek(t);
     }
 
     getPosition() {
       if (!this.sound) return 0;
-      return this.sound.seek() || 0;
+      return Number(this.sound.seek() || 0) || 0;
     }
 
     getDuration() {
       if (!this.sound) return 0;
-      return this.sound.duration() || 0;
+      return Number(this.sound.duration() || 0) || 0;
     }
 
-    // ========== ГРОМКОСТЬ ==========
+    // =========================
+    // Volume / Mute
+    // =========================
 
     setVolume(percent) {
-      const volume = Math.max(0, Math.min(100, percent)) / 100;
-      
+      const p = clamp(Number(percent) || 0, 0, 100);
+      const v = p / 100;
+
       if (this.sound) {
-        this.sound.volume(volume);
+        try { this.sound.volume(v); } catch {}
       }
-      
-      Howler.volume(volume);
-      try {
-        localStorage.setItem('playerVolume', String(Math.round(percent)));
-      } catch {}
+      try { Howler.volume(v); } catch {}
+
+      try { localStorage.setItem('playerVolume', String(Math.round(p))); } catch {}
     }
 
     getVolume() {
       const saved = localStorage.getItem('playerVolume');
-      return saved !== null ? parseInt(saved, 10) : 100;
+      const n = Number.parseInt(String(saved ?? ''), 10);
+      return Number.isFinite(n) ? clamp(n, 0, 100) : 100;
     }
 
     setMuted(muted) {
-      // ✅ Глобальный mute: должен сохраняться между треками (как обычный плеер).
-      // Не влияет на play/pause/stop — только на громкость.
       try { Howler.mute(!!muted); } catch {}
-
-      // Дополнительно применим к текущему sound (не обязательно, но безопасно)
       try { this.sound?.mute?.(!!muted); } catch {}
     }
 
-    // ========== РЕЖИМЫ ВОСПРОИЗВЕДЕНИЯ ==========
+    // =========================
+    // Modes
+    // =========================
 
     toggleRepeat() {
       this.repeatMode = !this.repeatMode;
-      console.log(`🔁 Repeat: ${this.repeatMode}`);
     }
 
     isRepeat() {
@@ -509,10 +555,8 @@
       if (this.shuffleMode) {
         this.shufflePlaylist();
       } else {
-        this.playlist = [...this.originalPlaylist];
+        this.playlist = this.originalPlaylist.slice();
       }
-
-      console.log(`🔀 Shuffle: ${this.shuffleMode}`);
     }
 
     toggleShuffle() {
@@ -524,49 +568,52 @@
     }
 
     shufflePlaylist() {
-      const currentTrack = this.playlist[this.currentIndex];
+      const currentTrack = this.getCurrentTrack();
+      const curUid = safeUid(currentTrack?.uid);
 
-      // ✅ При reshuffle сбрасываем history, чтобы prev не прыгал в “старые” индексы другого порядка
+      // При reshuffle сбрасываем историю, чтобы prev не лез в старые индексы
       this.shuffleHistory = [];
-      
-      const shuffled = [...this.playlist];
+
+      const shuffled = this.playlist.slice();
       for (let i = shuffled.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
       }
-      
       this.playlist = shuffled;
-      
-      if (currentTrack) {
-        const curUid = String(currentTrack.uid || '').trim();
-        if (curUid) {
-          const byUid = this.playlist.findIndex(t => String(t?.uid || '').trim() === curUid);
-          this.currentIndex = byUid >= 0 ? byUid : this.playlist.findIndex(t => t.src === currentTrack.src);
-        } else {
-          this.currentIndex = this.playlist.findIndex(t => t.src === currentTrack.src);
-        }
+
+      if (!currentTrack) return;
+
+      if (curUid) {
+        const byUid = this.playlist.findIndex(t => safeUid(t?.uid) === curUid);
+        this.currentIndex = byUid >= 0 ? byUid : this.currentIndex;
+      } else {
+        const src = safeUrl(currentTrack?.src);
+        const bySrc = src ? this.playlist.findIndex(t => safeUrl(t?.src) === src) : -1;
+        if (bySrc >= 0) this.currentIndex = bySrc;
       }
     }
 
-    // ========== КАЧЕСТВО ЗВУКА ==========
+    // =========================
+    // PQ Quality Hi/Lo
+    // =========================
 
     _readQualityMode() {
       try {
-        const raw = localStorage.getItem(this.qualityStorageKey);
-        const v = String(raw || '').toLowerCase().trim();
-        if (v === 'lo' || v === 'hi') return v;
-      } catch {}
-      return 'hi';
+        const v = normQuality(localStorage.getItem(this.qualityStorageKey));
+        return v;
+      } catch {
+        return 'hi';
+      }
     }
 
     _writeQualityMode(mode) {
-      const m = (String(mode || '').toLowerCase().trim() === 'lo') ? 'lo' : 'hi';
+      const m = normQuality(mode);
       try { localStorage.setItem(this.qualityStorageKey, m); } catch {}
       return m;
     }
 
     getQualityMode() {
-      return this.qualityMode || 'hi';
+      return normQuality(this.qualityMode);
     }
 
     setQualityMode(mode) {
@@ -575,43 +622,26 @@
       return m;
     }
 
-    /**
-     * Выбор src по (sourceKey + qualityMode) с fallbacks:
-     * - если quality=lo и lo отсутствует -> hi
-     * - если quality=hi и hi отсутствует -> lo
-     * - если sources нет -> legacySrc
-     */
     _selectSrc({ legacySrc, sources, sourceKey, qualityMode }) {
       const key = String(sourceKey || 'audio');
-      const q = (String(qualityMode || 'hi') === 'lo') ? 'lo' : 'hi';
+      const q = normQuality(qualityMode);
 
-      const srcLegacy = (typeof legacySrc === 'string' && legacySrc.trim()) ? legacySrc.trim() : null;
-      const srcHi = String(sources?.[key]?.hi || '').trim() || null;
-      const srcLo = String(sources?.[key]?.lo || '').trim() || null;
+      const srcLegacy = safeUrl(legacySrc);
+      const srcHi = safeUrl(sources?.[key]?.hi);
+      const srcLo = safeUrl(sources?.[key]?.lo);
 
-      if (q === 'lo') return srcLo || srcHi || srcLegacy;
-      return srcHi || srcLo || srcLegacy;
+      return (q === 'lo') ? (srcLo || srcHi || srcLegacy) : (srcHi || srcLo || srcLegacy);
     }
 
-    /**
-     * Можно ли пользователю переключить качество на lo прямо сейчас (для текущего трека)
-     * По твоему ТЗ: если нет audio_low у текущего трека — кнопка disabled.
-     */
     canToggleQualityForCurrentTrack() {
       const track = this.getCurrentTrack();
       if (!track) return false;
 
       const key = this.sourceKey || 'audio';
-      const lo = String(track?.sources?.[key]?.lo || '').trim();
-      // Кнопка должна быть активна, только если есть альтернативный вариант
+      const lo = safeUrl(track?.sources?.[key]?.lo);
       return !!lo;
     }
 
-    /**
-     * Переключить качество глобально и (если возможно) переключить текущий трек “на лету”
-     * с сохранением позиции и состояния play/pause.
-     * НЕ вызывает stop() => базовое правило соблюдено.
-     */
     switchQuality(mode) {
       const nextMode = this.setQualityMode(mode);
 
@@ -619,23 +649,7 @@
       if (!track) return { ok: true, mode: nextMode, changed: false };
 
       const canToggle = this.canToggleQualityForCurrentTrack();
-
-      // По ТЗ: если нет lo — кнопка неактивна и переключение не производится.
-      // Но если режим уже поменяли через внешний код — трек всё равно должен играть доступный источник (fallback).
       if (!canToggle) {
-        // Нормализуем текущий src к текущему режиму через fallback (без пересборки, если совпадает)
-        const desired = this._selectSrc({
-          legacySrc: track.src,
-          sources: track.sources,
-          sourceKey: this.sourceKey,
-          qualityMode: nextMode
-        });
-
-        if (desired && desired !== track.src) {
-          // Здесь можно было бы перестроить звук, но по UX лучше не дергать, если кнопка disabled.
-          // Оставляем как есть — трек уже играет доступное качество.
-        }
-
         return { ok: true, mode: nextMode, changed: false, disabled: true };
       }
 
@@ -643,7 +657,7 @@
         legacySrc: track.src,
         sources: track.sources,
         sourceKey: this.sourceKey,
-        qualityMode: nextMode
+        qualityMode: nextMode,
       });
 
       if (!desiredSrc || desiredSrc === track.src) {
@@ -654,44 +668,39 @@
       const pos = this.getPosition();
       const idx = this.currentIndex;
 
-      // Обновим src в моделях, чтобы скачивание/metadata брались из актуального src
-      this.playlist[idx].src = desiredSrc;
-      if (Array.isArray(this.originalPlaylist) && this.originalPlaylist.length) {
-        const u = String(track.uid || '').trim();
-        if (u) {
-          const oi = this.originalPlaylist.findIndex(t => String(t?.uid || '').trim() === u);
-          if (oi >= 0) this.originalPlaylist[oi].src = desiredSrc;
-        }
+      // обновим src в playlist/originalPlaylist по uid
+      const uid = safeUid(track.uid);
+      if (uid) {
+        const pi = this.playlist.findIndex(t => safeUid(t?.uid) === uid);
+        if (pi >= 0) this.playlist[pi].src = desiredSrc;
+
+        const oi = this.originalPlaylist.findIndex(t => safeUid(t?.uid) === uid);
+        if (oi >= 0) this.originalPlaylist[oi].src = desiredSrc;
+      } else {
+        this.playlist[idx].src = desiredSrc;
       }
 
-      // “Тихая” пересборка Howl
+      // тихая пересборка
       this._silentUnloadCurrentSound();
       this.load(idx, { autoPlay: wasPlaying, resumePosition: pos });
 
       return { ok: true, mode: nextMode, changed: true };
     }
 
-    // Back-compat: старый API eco-btn может дергать setQuality('low'|'high')
+    // Back-compat
     setQuality(quality) {
       const q = String(quality || '').toLowerCase();
-      if (q === 'low' || q === 'lo') {
-        this.switchQuality('lo');
-        return;
-      }
-      if (q === 'high' || q === 'hi') {
-        this.switchQuality('hi');
-        return;
-      }
-      console.log(`🎵 Quality set to: ${quality}`);
+      if (q === 'low' || q === 'lo') this.switchQuality('lo');
+      else if (q === 'high' || q === 'hi') this.switchQuality('hi');
     }
 
-    // ========== ПОЛУЧЕНИЕ ДАННЫХ ==========
+    // =========================
+    // Getters / State
+    // =========================
 
     getCurrentTrack() {
-      if (this.currentIndex < 0 || this.currentIndex >= this.playlist.length) {
-        return null;
-      }
-      return this.playlist[this.currentIndex];
+      if (this.currentIndex < 0 || this.currentIndex >= this.playlist.length) return null;
+      return this.playlist[this.currentIndex] || null;
     }
 
     getIndex() {
@@ -699,83 +708,61 @@
     }
 
     getNextIndex() {
-      if (this.playlist.length === 0) return -1;
-      
-      let nextIndex = this.currentIndex + 1;
-      if (nextIndex >= this.playlist.length) {
-        nextIndex = 0;
-      }
-      
-      return nextIndex;
+      const len = this.playlist.length;
+      if (!len || this.currentIndex < 0) return -1;
+      return (this.currentIndex + 1) % len;
     }
 
     isPlaying() {
-      return this.sound ? this.sound.playing() : false;
+      return !!(this.sound && this.sound.playing && this.sound.playing());
     }
 
-    // ========== СОБЫТИЯ ==========
+    // =========================
+    // Events
+    // =========================
 
     on(events) {
-      Object.keys(events).forEach(event => {
-        if (this.callbacks[event]) {
-          this.callbacks[event].push(events[event]);
-        }
+      Object.keys(events || {}).forEach((event) => {
+        if (this.callbacks[event]) this.callbacks[event].push(events[event]);
       });
     }
 
     trigger(event, ...args) {
-      if (this.callbacks[event]) {
-        this.callbacks[event].forEach(callback => {
-          try {
-            callback(...args);
-          } catch (error) {
-            console.error(`Error in ${event} callback:`, error);
-          }
-        });
+      const arr = this.callbacks[event];
+      if (!arr) return;
+      for (const fn of arr) {
+        try { fn(...args); } catch {}
       }
     }
 
-    // ========== ТИК (ОБНОВЛЕНИЕ ПРОГРЕССА) ==========
+    // =========================
+    // Tick (progress + stats)
+    // =========================
 
     startTick() {
       this.stopTick();
-      
+
       this.tickInterval = setInterval(() => {
-        const position = this.getPosition();
-        const duration = this.getDuration();
-        this.trigger('onTick', position, duration);
-        
-        // Global Stats: накапливаем секунды
-        // Делаем это раз в секунду (tickRate=100ms, значит каждый 10-й тик, или просто по delta)
-        // Для простоты: OfflineManager сам может агрегировать, но лучше слать 1 раз в сек.
-        if (Math.floor(position) > Math.floor(this._lastPos || 0)) {
-           const track = this.getCurrentTrack();
-           if (track && track.uid) {
-             const om = window.OfflineUI?.offlineManager;
-             if (om && typeof om.recordListenStats === 'function') {
-               om.recordListenStats(track.uid, { deltaSec: 1, isFullListen: false });
-             }
-           }
-        }
-        this._lastPos = position;
+        const pos = this.getPosition();
+        const dur = this.getDuration();
+
+        this.trigger('onTick', pos, dur);
+
+        // stats: секунды троттлим аккуратно
+        this._stats.onTick();
       }, this.tickRate);
     }
 
     stopTick() {
-      if (this.tickInterval) {
-        clearInterval(this.tickInterval);
-        this.tickInterval = null;
-      }
+      if (!this.tickInterval) return;
+      clearInterval(this.tickInterval);
+      this.tickInterval = null;
     }
 
-    // ========== ТАЙМЕР СНА ==========
+    // =========================
+    // Sleep timer
+    // =========================
 
-    /**
-     * Устанавливает таймер сна на указанное количество миллисекунд.
-     * По срабатыванию НЕ останавливает плеер жёстко, а:
-     *  - генерирует событие onSleepTriggered,
-     *  - приложение (SleepTimerModule) решает, что делать (по ТЗ: именно таймер может инициировать стоп/паузу).
-     */
     setSleepTimer(ms) {
       const delay = Number(ms) || 0;
       if (delay <= 0) {
@@ -783,8 +770,7 @@
         return;
       }
 
-      const now = Date.now();
-      this.sleepTimerTarget = now + delay;
+      this.sleepTimerTarget = Date.now() + delay;
 
       if (this.sleepTimerId) {
         clearTimeout(this.sleepTimerId);
@@ -793,28 +779,19 @@
 
       this.sleepTimerId = setTimeout(() => {
         this.sleepTimerId = null;
+
         const target = this.sleepTimerTarget;
         this.sleepTimerTarget = 0;
 
-        // Генерируем событие — UI/модули решают, что делать (стоп/пауза и т.п.)
         this.trigger('onSleepTriggered', { targetAt: target });
 
-        // По базовому правилу: именно таймер сна имеет право инициировать остановку,
-        // но делаем это мягко: если кто-то в onSleepTriggered уже остановил плеер,
-        // вторично не трогаем.
+        // по текущему коду проекта таймер делает pause (это разрешено правилами)
         if (this.isPlaying()) {
-          try {
-            this.pause();
-          } catch (e) {
-            console.warn('Sleep timer pause failed:', e);
-          }
+          try { this.pause(); } catch {}
         }
       }, delay);
     }
 
-    /**
-     * Сбрасывает таймер сна.
-     */
     clearSleepTimer() {
       if (this.sleepTimerId) {
         clearTimeout(this.sleepTimerId);
@@ -823,74 +800,40 @@
       this.sleepTimerTarget = 0;
     }
 
-    /**
-     * Возвращает absolute timestamp (ms) срабатывания таймера сна, либо 0, если таймер не установлен.
-     */
     getSleepTimerTarget() {
       return this.sleepTimerTarget || 0;
     }
 
-    updateMediaSession() {
-      if (!('mediaSession' in navigator)) return;
+    // =========================
+    // MediaSession
+    // =========================
 
-      const track = this.getCurrentTrack();
-      if (!track) return;
-
-      const artworkUrl = track.cover || this.metadata.cover || 'icons/icon-512.png';
-      const artwork = artworkUrl ? [
-        { src: artworkUrl, sizes: '96x96', type: 'image/png' },
-        { src: artworkUrl, sizes: '128x128', type: 'image/png' },
-        { src: artworkUrl, sizes: '192x192', type: 'image/png' },
-        { src: artworkUrl, sizes: '256x256', type: 'image/png' },
-        { src: artworkUrl, sizes: '384x384', type: 'image/png' },
-        { src: artworkUrl, sizes: '512x512', type: 'image/png' }
-      ] : [];
-
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: track.title || 'Без названия',
-        artist: track.artist || this.metadata.artist,
-        album: track.album || this.metadata.album,
-        artwork
+    _updateMedia(track) {
+      if (!this._mediaSession) return;
+      this._mediaSession.updateMetadata({
+        title: track?.title || 'Без названия',
+        artist: track?.artist || this.metadata.artist,
+        album: track?.album || this.metadata.album,
+        artworkUrl: track?.cover || this.metadata.cover || 'icons/icon-512.png',
+        playing: this.isPlaying(),
       });
-
-      // action handlers — единый источник правды
-      navigator.mediaSession.setActionHandler('play', () => this.play());
-      navigator.mediaSession.setActionHandler('pause', () => this.pause());
-      navigator.mediaSession.setActionHandler('stop', () => this.stop());
-      navigator.mediaSession.setActionHandler('previoustrack', () => this.prev());
-      navigator.mediaSession.setActionHandler('nexttrack', () => this.next());
-
-      navigator.mediaSession.setActionHandler('seekbackward', (details) => {
-        const skipTime = details?.seekOffset || 10;
-        this.seek(Math.max(0, this.getPosition() - skipTime));
-      });
-
-      navigator.mediaSession.setActionHandler('seekforward', (details) => {
-        const skipTime = details?.seekOffset || 10;
-        this.seek(Math.min(this.getDuration(), this.getPosition() + skipTime));
-      });
-
-      navigator.mediaSession.setActionHandler('seekto', (details) => {
-        const t = details?.seekTime;
-        if (typeof t !== 'number') return;
-        // Howler не даёт fastSeek стабильно на Howl; используем seek.
-        this.seek(t);
-      });
+      this._mediaSession.updatePositionState();
     }
 
-    // ========== УТИЛИТЫ ==========
+    // =========================
+    // History (shuffle)
+    // =========================
 
     _pushHistoryForCurrent() {
-      // История нужна в основном для shuffle, но мы не запрещаем писать её и без shuffle.
-      // Важный момент: это не должно влиять на воспроизведение.
       try {
-        const track = this.getCurrentTrack();
-        if (!track) return;
-
-        const uid = String(track.uid || '').trim();
+        const t = this.getCurrentTrack();
+        const uid = safeUid(t?.uid);
         if (!uid) return;
 
-        const last = this.shuffleHistory.length ? this.shuffleHistory[this.shuffleHistory.length - 1] : null;
+        const last = this.shuffleHistory.length
+          ? this.shuffleHistory[this.shuffleHistory.length - 1]
+          : null;
+
         if (last && last.uid === uid) return;
 
         this.shuffleHistory.push({ uid });
@@ -906,83 +849,72 @@
         if (!this.shuffleMode) return -1;
         if (!Array.isArray(this.shuffleHistory) || this.shuffleHistory.length === 0) return -1;
 
-        // pop текущую “точку”, затем берём предыдущую
+        // pop “текущую точку”, затем берем предыдущую
         this.shuffleHistory.pop();
-        const prev = this.shuffleHistory.length ? this.shuffleHistory[this.shuffleHistory.length - 1] : null;
+        const prev = this.shuffleHistory.length
+          ? this.shuffleHistory[this.shuffleHistory.length - 1]
+          : null;
 
-        const uid = String(prev?.uid || '').trim();
+        const uid = safeUid(prev?.uid);
         if (!uid) return -1;
 
-        const idx = this.playlist.findIndex(t => String(t?.uid || '').trim() === uid);
+        const idx = this.playlist.findIndex(t => safeUid(t?.uid) === uid);
         return idx >= 0 ? idx : -1;
       } catch {
         return -1;
       }
     }
 
+    // =========================
+    // Helpers for PlaybackPolicy
+    // =========================
+
     appendToPlaylistTail(tracks) {
-      // ✅ Добавление в конец очереди без остановки (используется PlaybackPolicy 6.2)
       const list = Array.isArray(tracks) ? tracks : [];
-      if (list.length === 0) return;
+      if (!list.length) return;
 
-      const existing = new Set(this.playlist.map(t => String(t?.src || '').trim()).filter(Boolean));
+      const existingUid = new Set(this.playlist.map(t => safeUid(t?.uid)).filter(Boolean));
+
       const toAdd = [];
-
       for (const t of list) {
-        const src = String(t?.src || '').trim();
-        if (!src) continue;
-        if (existing.has(src)) continue;
-        existing.add(src);
+        const uid = safeUid(t?.uid);
+        if (!uid || existingUid.has(uid)) continue;
+        existingUid.add(uid);
+
         toAdd.push({
-          src,
-          title: t.title || 'Без названия',
-          artist: t.artist || 'Витрина Разбита',
-          album: t.album || '',
-          cover: t.cover || '',
-          lyrics: t.lyrics || null,
-          fulltext: t.fulltext || null,
-          uid: (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null,
-          sourceAlbum: t.sourceAlbum || null
+          src: safeUrl(t?.src),
+          sources: t?.sources || null,
+          title: t?.title || 'Без названия',
+          artist: t?.artist || 'Витрина Разбита',
+          album: t?.album || '',
+          cover: t?.cover || '',
+          lyrics: t?.lyrics || null,
+          fulltext: t?.fulltext || null,
+          uid,
+          sourceAlbum: t?.sourceAlbum || null,
         });
       }
 
-      if (toAdd.length === 0) return;
-
-      // ВАЖНО: originalPlaylist сохраняем как есть — это “источник правды”.
-      // В текущем shuffled/favorites-only плейлисте добавляем в хвост.
+      if (!toAdd.length) return;
       this.playlist = this.playlist.concat(toAdd);
     }
 
     removeFromPlaylistTailIfNotPlayed(params = {}) {
-      // ✅ “Умный Spotify”: убрать трек из очереди, если:
-      // - он не текущий
-      // - он ещё не встречался в shuffleHistory
-      // - он есть в плейлисте (обычно ближе к хвосту)
-      const uid = String(params?.uid || '').trim();
+      const uid = safeUid(params?.uid);
       if (!uid) return false;
 
-      const current = this.getCurrentTrack();
-      const currentUid = String(current?.uid || '').trim();
-      if (currentUid && currentUid === uid) return false;
-
-      // Уже проигрывался?
-      const srcToCheck = (() => {
-        const t = this.playlist.find(x => String(x?.uid || '').trim() === uid) || null;
-        return t?.src || null;
-      })();
-
-      if (!srcToCheck) return false;
+      const curUid = safeUid(this.getCurrentTrack()?.uid);
+      if (curUid && curUid === uid) return false;
 
       const played = Array.isArray(this.shuffleHistory)
-        ? this.shuffleHistory.some(h => h && String(h.uid || '').trim() === uid)
+        ? this.shuffleHistory.some(h => safeUid(h?.uid) === uid)
         : false;
 
       if (played) return false;
 
       const beforeLen = this.playlist.length;
-      this.playlist = this.playlist.filter(t => String(t?.uid || '').trim() !== uid);
+      this.playlist = this.playlist.filter(t => safeUid(t?.uid) !== uid);
 
-      // Корректировка currentIndex если удалили элемент “до” текущего
       if (this.currentIndex >= this.playlist.length) {
         this.currentIndex = this.playlist.length - 1;
       }
@@ -990,52 +922,39 @@
       return this.playlist.length !== beforeLen;
     }
 
+    // =========================
+    // Backend rebuild (bit effect)
+    // =========================
+
     rebuildCurrentSound(options = {}) {
-      // ✅ Техническая пересборка Howl под другой backend (html5/webAudio),
-      // НЕ должна прерывать музыку "стопом".
       try {
         const track = this.getCurrentTrack();
         if (!track) return false;
 
         const preferWebAudio = !!options.preferWebAudio;
-
-        // Какой backend хотим:
-        // - preferWebAudio=true => html5:false
-        // - иначе => html5:true
         const targetHtml5 = !preferWebAudio;
 
         const wasPlaying = this.isPlaying();
         const pos = this.getPosition();
         const idx = this.currentIndex;
 
-        // Если уже есть sound и его режим совпадает — ничего не делаем
         const curHtml5 = !!(this.sound && this.sound._html5);
-        if (this.sound && curHtml5 === targetHtml5) {
-          return true;
-        }
+        if (this.sound && curHtml5 === targetHtml5) return true;
 
-        // Смена backend — пересоздаём sound "тихо"
         this._silentUnloadCurrentSound();
-
-        // load с нужным html5 и автоплеем
-        this.load(idx, {
-          autoPlay: wasPlaying,
-          resumePosition: pos,
-          html5: targetHtml5
-        });
-
+        this.load(idx, { autoPlay: wasPlaying, resumePosition: pos, html5: targetHtml5 });
         return true;
-      } catch (e) {
-        console.warn('rebuildCurrentSound failed:', e);
+      } catch {
         return false;
       }
     }
 
     getAudioElement() {
-      // Howler использует Web Audio API, но может предоставить HTML5 audio
-      if (this.sound && this.sound._sounds && this.sound._sounds[0]) {
-        return this.sound._sounds[0]._node;
-      }
+      try {
+        if (this.sound && this.sound._sounds && this.sound._sounds[0]) {
+          return this.sound._sounds[0]._node;
+        }
+      } catch {}
       return null;
     }
 
@@ -1044,6 +963,7 @@
       this.playlist = [];
       this.originalPlaylist = [];
       this.currentIndex = -1;
+
       this.callbacks = {
         onTrackChange: [],
         onPlay: [],
@@ -1051,24 +971,17 @@
         onStop: [],
         onEnd: [],
         onTick: [],
-        onError: []
+        onError: [],
+        onSleepTriggered: [],
       };
-      console.log('🗑️ PlayerCore destroyed');
     }
   }
 
-  // Создаём глобальный экземпляр
-  window.playerCore = new PlayerCore();
+  W.playerCore = new PlayerCore();
 
-  // Автоинициализация
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      window.playerCore.initialize();
-    });
+    document.addEventListener('DOMContentLoaded', () => W.playerCore.initialize());
   } else {
-    window.playerCore.initialize();
+    W.playerCore.initialize();
   }
-
-  console.log('✅ PlayerCore module loaded');
-
 })();
