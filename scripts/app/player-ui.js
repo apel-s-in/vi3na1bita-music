@@ -504,7 +504,7 @@
       
       <div class="player-buttons-wrapper">
         <div class="player-extra-buttons-row">
-          <button class="lyrics-toggle-btn lyrics-${lyricsViewMode}" id="lyrics-toggle-btn" title="Режим лирики (Y)">
+          <button class="lyrics-toggle-btn lyrics-${ls.lyricsViewMode}" id="lyrics-toggle-btn" title="Режим лирики (Y)">
             <span class="lyrics-toggle-btn-visual">Т</span>
           </button>
           
@@ -2092,7 +2092,7 @@
     const heart = document.getElementById('pulse-heart');
     if (heart) heart.textContent = bitEnabled ? '❤️' : '🤍';
 
-    renderLyricsViewMode();
+    // renderLyricsViewMode() больше не вызываем: этим управляет LyricsController
 
     // ✅ Применяем политику очереди на старте, если включён favoritesOnlyMode.
     // Важно: НЕ останавливаем воспроизведение (PlaybackPolicy + PlayerCore.setPlaylist работают “мягко”).
