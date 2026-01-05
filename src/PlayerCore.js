@@ -362,11 +362,9 @@
               const pos = this.getPosition();
               const progress = (dur > 0) ? (pos / dur) : 0;
 
-              if (om && typeof om.recordFullListen === 'function') {
               if (om && typeof om.recordListenStats === 'function') {
                 // isFullListen = true
                 om.recordListenStats(uid, { deltaSec: 0, isFullListen: progress > 0.9 });
-              }
               }
             }
           } catch {}
