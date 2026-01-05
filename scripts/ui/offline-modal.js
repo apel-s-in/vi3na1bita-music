@@ -451,7 +451,108 @@ function bindModalHandlers(modal) {
   });
 
   modal.querySelector('#offline-modal-offline-all')?.addEventListener('click', async () => {
-    try {
+    // 1. Показать выбор: "Всё" или "Выбрать альбомы"
+    try { modal.remove(); } catch {}
+    
+    // Подгрузим список треков, чтобы знать размеры
+    const preload = await preloadAllAlbumsTrackIndex();
+    if (!preload.ok) {
+      window.NotificationSystem?.error('Ошибка загрузки данных об альбомах');
+      return;
+    }
+
+    const albums = window.albumsIndex || [];
+    
+    const html = `
+      <div class="modal-feedback" style="max-width: 400px;">
+        <h3 style="color:#eaf2ff; margin-top:0;">100% OFFLINE</h3>
+        <p style="color:#9db7dd; font-size:14px;">Выберите, что скачать:</p>
+        
+        <div style="max-height:40vh; overflow-y:auto; margin-bottom:15px; border:1px solid #333; padding:10px; border-radius:8px;">
+          <label style="display:flex; gap:10px; padding:8px 0; border-bottom:1px solid #333;">
+            <input type="checkbox" id="off-all-check" checked> 
+            <strong style="color:#fff;">Все альбомы</strong>
+          </label>
+          ${albums.map(a => `
+            <label style="display:flex; gap:10px; padding:8px 0; margin-left:20px;">
+              <input type="checkbox" class="off-album-check" value="${a.key}" checked>
+              <span style="color:#ccc;">${a.title}</span>
+            </label>
+          `).join('')}
+          <label style="display:flex; gap:10px; padding:8px 0; border-top:1px solid #333; margin-top:5px;">
+            <input type="checkbox" id="off-fav-check" checked>
+            <span style="color:#ffd166;">Только ИЗБРАННОЕ</span>
+          </label>
+        </div>
+
+        <div style="display:flex; gap:10px; justify-content:center;">
+          <button class="offline-btn online" id="off-start-btn">Начать</button>
+          <button class="offline-btn" onclick="this.closest('.modal-bg').remove()">Отмена</button>
+        </div>
+      </div>
+    `;
+    
+    const selModal = window.Utils.createModal(html);
+    
+    // Логика чекбоксов
+    const allCheck = selModal.querySelector('#off-all-check');
+    const albumChecks = selModal.querySelectorAll('.off-album-check');
+    
+    allCheck.addEventListener('change', () => {
+      albumChecks.forEach(c => c.checked = allCheck.checked);
+    });
+
+    selModal.querySelector('#off-start-btn').addEventListener('click', async () => {
+      const selectedKeys = Array.from(albumChecks).filter(c => c.checked).map(c => c.value);
+      const includeFav = selModal.querySelector('#off-fav-check').checked;
+      
+      // Сбор UID
+      const uidsToDownload = new Set();
+      
+      // Из альбомов
+      const tr = window.TrackRegistry; // нужен доступ к реестру
+      // Мы не экспортируем реестр напрямую, но можем итерироваться по preload.uids
+      // preload.uids - это список всех UID. Нам нужно отфильтровать по альбому.
+      // TrackRegistry.getTrackByUid(uid).sourceAlbum
+      
+      if (tr) {
+        preload.uids.forEach(uid => {
+          const meta = tr.getTrackByUid(uid);
+          if (meta && selectedKeys.includes(meta.sourceAlbum)) {
+            uidsToDownload.add(uid);
+          }
+        });
+      }
+
+      // Из избранного
+      if (includeFav && window.FavoritesManager) {
+        const favMap = window.FavoritesManager.getLikedUidMap(); // { album: [uids] }
+        Object.values(favMap).flat().forEach(u => uidsToDownload.add(u));
+      }
+
+      const finalList = Array.from(uidsToDownload);
+      selModal.remove();
+
+      if (finalList.length === 0) {
+        window.NotificationSystem?.warning('Ничего не выбрано');
+        return;
+      }
+
+      // Политика
+      const policy = getNetPolicy();
+      const st = getNetworkStatus();
+      if (shouldConfirmByPolicy(policy, st, { isMass: true })) {
+        const ok = window.confirm(`Скачать ${finalList.length} треков? Трафик может быть большим.`);
+        if (!ok) return;
+      }
+
+      om.startFullOffline(finalList);
+      window.NotificationSystem?.success(`Запущена загрузка: ${finalList.length} треков`);
+      await rerender(); // обновить статус в главной модалке
+    });
+
+  } catch (e) { console.error(e); }
+  }); // End of replacing listener
       const policy = getNetPolicy();
       const st = getNetworkStatus();
 
