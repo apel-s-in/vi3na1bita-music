@@ -11,6 +11,7 @@ const STORE_BYTES = 'bytes'; // uid -> { hi:number, lo:number }
 
 // ✅ Реальное офлайн-хранилище аудио (Blob) по ключу `${uid}:${quality}`
 const STORE_BLOBS = 'blobs';
+const STORE_STATS_GLOBAL = 'stats_global'; // uid -> { seconds, fullListens, lastListenAt }
 
 const META_CQ_KEY = 'cacheQuality';
 
@@ -33,6 +34,9 @@ function openDb() {
       }
       if (!db.objectStoreNames.contains(STORE_BLOBS)) {
         db.createObjectStore(STORE_BLOBS);
+      }
+      if (!db.objectStoreNames.contains(STORE_STATS_GLOBAL)) {
+        db.createObjectStore(STORE_STATS_GLOBAL);
       }
     };
 
@@ -467,6 +471,115 @@ export async function setAudioBlob(uid, quality, blob) {
   } catch {
     return false;
   }
+}
+
+// ===== Global Stats (Permanent) =====
+export async function updateGlobalStats(uid, deltaSeconds, addFullListen = 0) {
+  const u = String(uid || '').trim();
+  if (!u) return;
+  const now = Date.now();
+
+  try {
+    const db = await openDb();
+    await txp(db, STORE_STATS_GLOBAL, 'readwrite', (st) => {
+      const getReq = st.get(u);
+      getReq.onsuccess = () => {
+        const cur = getReq.result || { seconds: 0, fullListens: 0, lastListenAt: 0 };
+        const next = {
+          seconds: (cur.seconds || 0) + deltaSeconds,
+          fullListens: (cur.fullListens || 0) + addFullListen,
+          lastListenAt: now
+        };
+        st.put(next, u);
+      };
+    });
+  } catch {}
+}
+
+export async function getGlobalStatsAndTotal() {
+  try {
+    const db = await openDb();
+    let totalSeconds = 0;
+    const tracks = [];
+
+    await txp(db, STORE_STATS_GLOBAL, 'readonly', (st) => {
+      return new Promise((resolve, reject) => {
+        const req = st.openCursor();
+        req.onsuccess = () => {
+          const cursor = req.result;
+          if (!cursor) {
+            resolve();
+            return;
+          }
+          const val = cursor.value;
+          const uid = cursor.key;
+          totalSeconds += (val.seconds || 0);
+          if (val.fullListens > 0 || val.seconds > 0) {
+            tracks.push({ uid, ...val });
+          }
+          cursor.continue();
+        };
+        req.onerror = () => reject(req.error);
+      });
+    });
+    return { totalSeconds, tracks };
+  } catch {
+    return { totalSeconds: 0, tracks: [] };
+  }
+}
+
+// ===== Eviction Helpers =====
+// Получить список всех UID, у которых есть bytes (кэш), кроме pinned
+export async function getEvictionCandidates(pinnedSet) {
+  try {
+    const db = await openDb();
+    const candidates = []; // { uid, lastListenAt }
+    
+    // 1. Собираем всех, у кого есть байты
+    await txp(db, STORE_BYTES, 'readonly', (st) => {
+      return new Promise((resolve) => {
+        const req = st.openCursor();
+        req.onsuccess = () => {
+          const cursor = req.result;
+          if (!cursor) { resolve(); return; }
+          const uid = String(cursor.key);
+          // Если не pinned - кандидат на удаление
+          if (!pinnedSet.has(uid)) {
+             candidates.push(uid);
+          }
+          cursor.continue();
+        };
+      });
+    });
+
+    // 2. Обогащаем датой последнего прослушивания (Global Stats) для сортировки LRU
+    const enriched = [];
+    for (const uid of candidates) {
+      // Это не атомарно, но для эвикции приемлемо
+      const g = await getGlobalStats(uid); // helper below
+      enriched.push({ uid, ts: g?.lastListenAt || 0 });
+    }
+    
+    // Сортируем: старые (маленький ts) в начале
+    enriched.sort((a, b) => a.ts - b.ts);
+    return enriched.map(x => x.uid);
+  } catch {
+    return [];
+  }
+}
+
+async function getGlobalStats(uid) {
+  try {
+    const db = await openDb();
+    const v = await txp(db, STORE_STATS_GLOBAL, 'readonly', (st) => {
+      return new Promise((resolve) => {
+        const r = st.get(uid);
+        r.onsuccess = () => resolve(r.result);
+        r.onerror = () => resolve(null);
+      });
+    });
+    return v;
+  } catch { return null; }
 }
 
 export async function deleteAudioBlob(uid, quality) {
