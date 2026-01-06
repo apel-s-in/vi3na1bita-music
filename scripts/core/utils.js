@@ -34,7 +34,42 @@
         await new Promise(r => setTimeout(r, step));
         t += step;
       }
-      return fn();
+      return !!fn();
+    },
+
+    onceEvent(target, eventName, opts = {}) {
+      const timeoutMs = (opts && Number.isFinite(opts.timeoutMs)) ? opts.timeoutMs : null;
+      return new Promise((resolve, reject) => {
+        let tm = null;
+        const onEv = (ev) => {
+          cleanup();
+          resolve(ev);
+        };
+        const cleanup = () => {
+          try { target.removeEventListener(eventName, onEv); } catch {}
+          if (tm) clearTimeout(tm);
+        };
+        try { target.addEventListener(eventName, onEv, { once: true }); } catch { /* noop */ }
+        if (timeoutMs != null) {
+          tm = setTimeout(() => {
+            cleanup();
+            reject(new Error(`Timeout waiting for event "${eventName}"`));
+          }, timeoutMs);
+        }
+      });
+    },
+
+    debounceFrame(fn) {
+      let raf = 0;
+      let lastArgs = null;
+      return function (...args) {
+        lastArgs = args;
+        if (raf) return;
+        raf = requestAnimationFrame(() => {
+          raf = 0;
+          fn.apply(this, lastArgs);
+        });
+      };
     },
     
     // createModal удалён: проект использует единый механизм window.Modals.open (scripts/ui/modal-templates.js)
