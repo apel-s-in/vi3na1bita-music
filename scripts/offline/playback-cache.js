@@ -4,6 +4,7 @@
 
 import { getTrackByUid } from '../app/track-registry.js';
 import { isAllowedByNetPolicy, getNetPolicy } from './net-policy.js';
+import { markLocalTransient } from './cache-db.js';
 
 // ТЗ 7.3: окно всегда ровно 3 элемента PREV/CUR/NEXT
 const WINDOW_PREV = 1;
@@ -162,7 +163,13 @@ export class PlaybackCacheManager {
         priority: task.priority,
         userInitiated: false,
         isMass: false,
-        kind: 'playbackCache'
+        kind: 'playbackCache',
+        onResult: async (r) => {
+          // ТЗ 7.6/1.3: файлы окна считаем transient(window)
+          if (r && r.ok) {
+            try { await markLocalTransient(u, 'window'); } catch {}
+          }
+        }
       });
     }
   }
