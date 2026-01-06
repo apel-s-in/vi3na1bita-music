@@ -1,71 +1,69 @@
 // scripts/app/network-manager.js
-(function () {
-  function safeGetConnection() {
-    return navigator.connection || navigator.mozConnection || navigator.webkitConnection || null;
+// Определение состояния сети (ТЗ 11.1)
+
+function detectKind() {
+  try {
+    const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (!conn) return 'unknown';
+
+    const type = String(conn.type || '').toLowerCase();
+    const eff = String(conn.effectiveType || '').toLowerCase();
+
+    if (type === 'wifi') return 'wifi';
+    if (type === 'cellular') return 'cellular';
+    if (type === 'ethernet') return 'wifi';
+    if (type === 'none') return 'none';
+
+    if (eff === '4g') return '4g';
+    if (eff === '3g') return '3g';
+    if (eff === '2g') return '2g';
+    if (eff === 'slow-2g') return '2g';
+
+    return type || 'unknown';
+  } catch {
+    return 'unknown';
   }
+}
 
-  function normalizeType(connection) {
-    // Network Information API:
-    // - effectiveType: 'slow-2g'|'2g'|'3g'|'4g'
-    // - type: 'wifi'|'cellular'|...
-    if (!connection) return { kind: 'unknown', raw: null };
+function detectSaveData() {
+  try {
+    const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    return !!(conn && conn.saveData);
+  } catch {
+    return false;
+  }
+}
 
-    const type = connection.type;
-    const effectiveType = connection.effectiveType;
+function getStatus() {
+  const online = navigator.onLine !== false;
+  const kind = detectKind();
+  const saveData = detectSaveData();
 
-    if (type === 'wifi') return { kind: 'wifi', raw: { type, effectiveType } };
-    if (type === 'cellular') return { kind: 'cellular', raw: { type, effectiveType } };
+  return { online, kind, saveData };
+}
 
-    // iOS Safari чаще всего не даёт connection — будет unknown
-    // На некоторых Android/Chromium type может быть undefined, но effectiveType есть
-    if (effectiveType) {
-      // считаем это "cellular-ish" (потому что effectiveType обычно даёт радио-оценку)
-      return { kind: 'cellular', raw: { type, effectiveType } };
+function init() {
+  window.addEventListener('online', () => {
+    window.dispatchEvent(new CustomEvent('network:changed', { detail: getStatus() }));
+  });
+
+  window.addEventListener('offline', () => {
+    window.dispatchEvent(new CustomEvent('network:changed', { detail: getStatus() }));
+  });
+
+  try {
+    const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (conn) {
+      conn.addEventListener('change', () => {
+        window.dispatchEvent(new CustomEvent('network:changed', { detail: getStatus() }));
+      });
     }
+  } catch {}
+}
 
-    return { kind: 'unknown', raw: { type, effectiveType } };
-  }
+export const NetworkManager = {
+  getStatus,
+  init
+};
 
-  function getStatus() {
-    const online = navigator.onLine !== false; // если undefined — считаем online (iOS quirks)
-    const conn = safeGetConnection();
-    const net = normalizeType(conn);
-    return {
-      online,
-      kind: net.kind, // 'wifi'|'cellular'|'unknown'
-      raw: net.raw,
-      saveData: !!(conn && conn.saveData),
-    };
-  }
-
-  const listeners = new Set();
-
-  function emit() {
-    const st = getStatus();
-    listeners.forEach((fn) => {
-      try { fn(st); } catch (_) {}
-    });
-  }
-
-  function subscribe(fn) {
-    listeners.add(fn);
-    // instant fire
-    try { fn(getStatus()); } catch (_) {}
-    return () => listeners.delete(fn);
-  }
-
-  window.addEventListener('online', emit);
-  window.addEventListener('offline', emit);
-
-  const conn = safeGetConnection();
-  if (conn && typeof conn.addEventListener === 'function') {
-    conn.addEventListener('change', emit);
-  } else if (conn && ('onchange' in conn)) {
-    conn.onchange = emit;
-  }
-
-  window.NetworkManager = {
-    getStatus,
-    subscribe,
-  };
-})();
+window.NetworkManager = NetworkManager;
