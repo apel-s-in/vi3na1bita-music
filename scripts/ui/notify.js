@@ -92,10 +92,12 @@ class NotificationSystem {
   
   escapeHtml(text) {
     const fn = window.Utils?.escapeHtml;
-    if (typeof fn === 'function') return fn(String(text || ''));
-    const div = document.createElement('div');
-    div.textContent = String(text || '');
-    return div.innerHTML;
+    const s = String(text || '');
+    if (typeof fn === 'function') return fn(s);
+    // fallback без DOM-аллоцирования
+    return s.replace(/[<>&'"]/g, (m) => ({
+      '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&#39;', '"': '&quot;'
+    }[m]));
   }
   
   // Публичные методы
