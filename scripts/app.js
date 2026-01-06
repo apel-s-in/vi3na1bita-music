@@ -125,44 +125,37 @@
     }
 
     async loadAlbumsIndex() {
-      // Индекс альбомов загружается в scripts/core/bootstrap.js из ./albums.json
-      // и публикуется в window.albumsIndex. Здесь дожидаемся, чтобы не стартовать раньше bootstrap.
-      const maxWaitMs = 2000;
-      const stepMs = 50;
-      let waited = 0;
-
-      // Если уже есть валидный индекс — просто используем его
+      // Индекс альбомов загружается в scripts/core/bootstrap.js и публикуется в window.albumsIndex.
       if (Array.isArray(w.albumsIndex) && w.albumsIndex.length > 0) {
         console.log(`✅ Albums index already loaded: ${w.albumsIndex.length} albums`);
         return;
       }
 
-      // Подождём, пока bootstrap поднимет albumsIndex
-      while ((!Array.isArray(w.albumsIndex) || w.albumsIndex.length === 0) && waited < maxWaitMs) {
-        await new Promise(r => setTimeout(r, stepMs));
-        waited += stepMs;
-      }
+      // ✅ Убираем polling: ждём событие готовности
+      try {
+        if (w.Utils?.onceEvent) {
+          await w.Utils.onceEvent(window, 'albumsIndex:ready', { timeoutMs: 8000 });
+        } else {
+          // fallback (очень короткий)
+          await new Promise(r => setTimeout(r, 200));
+        }
+      } catch {}
 
       if (Array.isArray(w.albumsIndex) && w.albumsIndex.length > 0) {
-        console.log(`✅ Albums index loaded after bootstrap wait: ${w.albumsIndex.length} albums`);
+        console.log(`✅ Albums index loaded: ${w.albumsIndex.length} albums`);
         return;
       }
 
-      console.warn(
-        '⚠️ albumsIndex is empty in Application.loadAlbumsIndex() даже после ожидания. ' +
-        'Проверьте загрузку ./albums.json в scripts/core/bootstrap.js'
-      );
+      console.warn('⚠️ albumsIndex is empty after wait. Check scripts/core/bootstrap.js');
       w.albumsIndex = w.albumsIndex || [];
     }
 
     async _waitForReady(checkFn, maxMs = 2000) {
-      // ✅ Единый механизм ожидания: используем Utils.waitFor если доступно,
-      // иначе делаем минимальный fallback.
+      // ✅ Сжато: используем Utils.waitFor (уже есть в core/utils.js)
       const waitFor = w.Utils?.waitFor;
-      if (typeof waitFor === 'function') {
-        return waitFor(checkFn, maxMs, 50);
-      }
+      if (typeof waitFor === 'function') return waitFor(checkFn, maxMs, 50);
 
+      // fallback
       const started = Date.now();
       while (!checkFn() && (Date.now() - started) < maxMs) {
         // eslint-disable-next-line no-await-in-loop
