@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a91d83aa13b560a1feeff276922848271cfdae20.idx
-│   │       ├── pack-a91d83aa13b560a1feeff276922848271cfdae20.pack
-│   │       └── pack-a91d83aa13b560a1feeff276922848271cfdae20.rev
+│   │       ├── pack-1258efc236f55e5be09b87ea96bb607943afb6e8.idx
+│   │       ├── pack-1258efc236f55e5be09b87ea96bb607943afb6e8.pack
+│   │       └── pack-1258efc236f55e5be09b87ea96bb607943afb6e8.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -375,7 +375,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 20:08:00 UTC
+Сгенерировано: 2026-01-06 20:13:25 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -16071,60 +16071,7 @@ header {
 .bigclose:active { transform: scale(0.95); }
 .bigclose svg { width: 22px; height: 22px; }
 
-/* Secondary modal system (.modal-overlay) удалена: проект использует единый механизм .modal-bg (window.Modals.*) */
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0,0,0,0.85);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 10000;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.modal-overlay.show { display: flex; opacity: 1; }
-
-.modal-content {
-  background: #1e1e1e;
-  border-radius: 12px;
-  padding: 30px;
-  max-width: 90%;
-  max-height: 80%;
-  overflow-y: auto;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-  transform: scale(0.9);
-  transition: transform 0.3s ease;
-}
-
-.modal-overlay.show .modal-content { transform: scale(1); }
-
-.modal-content h2 {
-  color: var(--secondary-color);
-  margin-bottom: 20px;
-  text-align: center;
-}
-
-.modal-close-btn {
-  background: var(--secondary-color);
-  color: #fff;
-  border: none;
-  padding: 12px 30px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 16px;
-  margin-top: 20px;
-  display: block;
-  margin-left: auto;
-  margin-right: auto;
-  transition: background 0.3s, transform 0.1s;
-}
-
-.modal-close-btn:hover { background: #357ac9; transform: translateY(-1px); }
-.modal-close-btn:active { transform: translateY(0); }
+/* Secondary modal system (.modal-overlay) полностью удалена: проект использует единый механизм .modal-bg (window.Modals.*) */
 
 /* Lyrics modal scrollbar + action buttons */
 .lyrics-modal .lyrics-fulltext::-webkit-scrollbar { width: 8px; }
