@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3ce637ac5037a7fcbfeae54077d2400ce9b7f6ae.idx
-│   │       ├── pack-3ce637ac5037a7fcbfeae54077d2400ce9b7f6ae.pack
-│   │       └── pack-3ce637ac5037a7fcbfeae54077d2400ce9b7f6ae.rev
+│   │       ├── pack-8f25e149239a8ba3864ec01c83e60cc08723000d.idx
+│   │       ├── pack-8f25e149239a8ba3864ec01c83e60cc08723000d.pack
+│   │       └── pack-8f25e149239a8ba3864ec01c83e60cc08723000d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -373,7 +373,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 20:45:35 UTC
+Сгенерировано: 2026-01-06 20:53:46 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6616,6 +6616,9 @@ console.log('Manifest validation OK');
 
         // ⭐ Публикуем в глобальную область
         window.albumsIndex = data.albums;
+
+        // ✅ Событие готовности индекса (убираем polling в app/albums)
+        try { window.dispatchEvent(new Event('albumsIndex:ready')); } catch {}
 
         console.log(`✅ Albums index loaded: ${data.albums.length} albums`);
       } catch (error) {
