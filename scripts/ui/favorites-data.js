@@ -300,54 +300,38 @@
 
   // removeFavoritesRef реализован выше как removeFavoritesRef(albumKey, uid)
 
-  function showFavoritesInactiveModal(params) {
+  async function showFavoritesInactiveModal(params) {
     const albumKey = String(params?.albumKey || '').trim();
     const uid = String(params?.uid || '').trim();
     const title = String(params?.title || 'Трек');
+
     if (!albumKey || !uid) return;
+
+    const { openModal, actionRow } = await import('./modal-templates.js');
 
     const esc = w.Utils?.escapeHtml
       ? (s) => w.Utils.escapeHtml(String(s || ''))
       : (s) => String(s || '');
 
-    const html = `
-      <div class="modal-feedback" style="max-width: 420px;">
-        <button class="bigclose" title="Закрыть" aria-label="Закрыть">
-          <svg viewBox="0 0 48 48">
-            <line x1="12" y1="12" x2="36" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
-            <line x1="36" y1="12" x2="12" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
-          </svg>
-        </button>
-
-        <div style="font-size: 1.08em; font-weight: 900; color: #eaf2ff; margin-bottom: 10px;">
-          Трек неактивен
-        </div>
-
+    const modal = openModal({
+      title: 'Трек неактивен',
+      maxWidth: 420,
+      bodyHtml: `
         <div style="color:#9db7dd; line-height:1.45; margin-bottom: 14px;">
           <div style="margin-bottom: 8px;"><strong>Трек:</strong> ${esc(title)}</div>
-          <div style="opacity:.9;">
-            Вы можете вернуть трек в ⭐ или удалить его из списка «ИЗБРАННОЕ».
-          </div>
+          <div style="opacity:.9;">Вы можете вернуть трек в ⭐ или удалить его из списка «ИЗБРАННОЕ».</div>
         </div>
+        ${actionRow([
+          { act: 'add', text: 'Добавить в ⭐', className: 'online', style: 'min-width: 160px;' },
+          { act: 'remove', text: 'Удалить', className: '', style: 'min-width: 160px;' }
+        ])}
+      `
+    });
 
-        <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
-          <button class="offline-btn online" data-act="add" style="min-width: 160px;">Добавить в ⭐</button>
-          <button class="offline-btn" data-act="remove" style="min-width: 160px;">Удалить</button>
-        </div>
-      </div>
-    `;
-
-    const modal = (w.Utils && typeof w.Utils.createModal === 'function')
-      ? w.Utils.createModal(html)
-      : null;
-
-    // Fallback (если Utils ещё не готов) — не падаем
     if (!modal) return;
 
     modal.querySelector('[data-act="add"]')?.addEventListener('click', () => {
-      if (w.FavoritesManager && typeof w.FavoritesManager.toggleLike === 'function') {
-        w.FavoritesManager.toggleLike(albumKey, uid, true);
-      }
+      w.FavoritesManager?.toggleLike?.(albumKey, uid, true);
       try { modal.remove(); } catch {}
     });
 
@@ -357,46 +341,32 @@
     });
   }
 
-  function showFavoritesDeleteConfirm(params) {
+  async function showFavoritesDeleteConfirm(params) {
     const albumKey = String(params?.albumKey || '').trim();
     const uid = String(params?.uid || '').trim();
     const title = String(params?.title || 'Трек');
     if (!albumKey || !uid) return;
 
+    const { openModal, actionRow } = await import('./modal-templates.js');
+
     const esc = w.Utils?.escapeHtml
       ? (s) => w.Utils.escapeHtml(String(s || ''))
       : (s) => String(s || '');
 
-    const html = `
-      <div class="modal-feedback" style="max-width: 420px;">
-        <button class="bigclose" title="Закрыть" aria-label="Закрыть">
-          <svg viewBox="0 0 48 48">
-            <line x1="12" y1="12" x2="36" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
-            <line x1="36" y1="12" x2="12" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
-          </svg>
-        </button>
-
-        <div style="font-size: 1.08em; font-weight: 900; color: #eaf2ff; margin-bottom: 10px;">
-          Удалить из «ИЗБРАННОГО»?
-        </div>
-
+    const modal = openModal({
+      title: 'Удалить из «ИЗБРАННОГО»?',
+      maxWidth: 420,
+      bodyHtml: `
         <div style="color:#9db7dd; line-height:1.45; margin-bottom: 14px;">
           <div style="margin-bottom: 8px;"><strong>Трек:</strong> ${esc(title)}</div>
-          <div style="opacity:.9;">
-            Трек исчезнет из списка «ИЗБРАННОЕ». Лайк (⭐) можно оставить/снять отдельно.
-          </div>
+          <div style="opacity:.9;">Трек исчезнет из списка «ИЗБРАННОЕ». В родном альбоме ⭐ уже снята.</div>
         </div>
-
-        <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
-          <button class="offline-btn" data-act="cancel" style="min-width: 130px;">Отмена</button>
-          <button class="offline-btn online" data-act="delete" style="min-width: 130px;">Удалить</button>
-        </div>
-      </div>
-    `;
-
-    const modal = (w.Utils && typeof w.Utils.createModal === 'function')
-      ? w.Utils.createModal(html)
-      : null;
+        ${actionRow([
+          { act: 'cancel', text: 'Отмена', className: '', style: 'min-width: 130px;' },
+          { act: 'delete', text: 'Удалить', className: 'online', style: 'min-width: 130px;' }
+        ])}
+      `
+    });
 
     if (!modal) return;
 
@@ -405,19 +375,15 @@
     });
 
     modal.querySelector('[data-act="delete"]')?.addEventListener('click', () => {
-      let success = false;
-
-      if (w.FavoritesManager && typeof w.FavoritesManager.removeRef === 'function') {
-        success = w.FavoritesManager.removeRef(albumKey, uid, { source: 'favoritesModal' });
-      } else {
-        success = removeFavoritesRef(albumKey, uid);
-      }
+      const ok = w.FavoritesManager?.removeRef
+        ? w.FavoritesManager.removeRef(albumKey, uid, { source: 'favoritesModal' })
+        : removeFavoritesRef(albumKey, uid);
 
       try { modal.remove(); } catch {}
 
-      if (success) {
+      if (ok) {
         w.NotificationSystem?.success('Удалено из «ИЗБРАННОГО»');
-        if (typeof params?.onDeleted === 'function') params.onDeleted();
+        try { params?.onDeleted?.(); } catch {}
       } else {
         w.NotificationSystem?.error('Не удалось удалить');
       }
