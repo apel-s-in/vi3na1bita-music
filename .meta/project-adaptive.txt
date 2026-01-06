@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4f6fa2762535d4e0fb4306221391268e5f1be797.idx
-│   │       ├── pack-4f6fa2762535d4e0fb4306221391268e5f1be797.pack
-│   │       └── pack-4f6fa2762535d4e0fb4306221391268e5f1be797.rev
+│   │       ├── pack-6e64a69c1ee703ac1c9f3d940f8f1ed1c921f393.idx
+│   │       ├── pack-6e64a69c1ee703ac1c9f3d940f8f1ed1c921f393.pack
+│   │       └── pack-6e64a69c1ee703ac1c9f3d940f8f1ed1c921f393.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -373,7 +373,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 21:15:06 UTC
+Сгенерировано: 2026-01-06 21:18:09 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -11320,21 +11320,10 @@ export function attachOfflineIndicators() {
 // Важно: модалка не трогает воспроизведение (no stop/play/seek/volume).
 
 import { setNetPolicy, getNetPolicy } from '../offline/net-policy.js';
+import { esc, formatBytes, getNetworkStatusSafe } from './ui-utils.js';
 
 const LS_LIMIT_MODE = 'offline:cacheLimitMode:v1'; // 'auto'|'manual'
 const LS_LIMIT_MB = 'offline:cacheLimitMB:v1';
-
-function esc(s) {
-  return window.Utils?.escapeHtml ? window.Utils.escapeHtml(String(s || '')) : String(s || '');
-}
-
-function formatBytes(n) {
-  const b = Number(n) || 0;
-  if (b < 1024) return `${Math.floor(b)} B`;
-  if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
-  if (b < 1024 * 1024 * 1024) return `${(b / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(b / (1024 * 1024 * 1024)).toFixed(2)} GB`;
-}
 
 function formatDuration(sec) {
   const s = Math.max(0, Number(sec) || 0);
@@ -11342,13 +11331,6 @@ function formatDuration(sec) {
   const m = Math.floor((s % 3600) / 60);
   if (h > 0) return `${h}ч ${m}м`;
   return `${m}м`;
-}
-
-function getNetworkStatusSafe() {
-  try {
-    if (window.NetworkManager?.getStatus) return window.NetworkManager.getStatus();
-  } catch {}
-  return { online: navigator.onLine !== false, kind: 'unknown', saveData: false };
 }
 
 async function swWarmOfflineShell(urls) {
@@ -11520,32 +11502,40 @@ export function openOfflineModal() {
     ? window.Utils.debounceFrame(() => { update().catch(() => {}); })
     : (() => { update().catch(() => {}); });
 
-  // Кэш needs* считаем редко (каждые 5с максимум), чтобы не делать await-loop на каждый progress
-  let needsCache = { ts: 0, upd: 0, rec: 0 };
-  async function computeNeedsCountsThrottled() {
-    const now = Date.now();
-    if (now - needsCache.ts < 5000) return { needsUpdateCount: needsCache.upd, needsReCacheCount: needsCache.rec };
-    needsCache.ts = now;
-
-    let needsUpdateCount = 0;
-    let needsReCacheCount = 0;
-
+  // ✅ needs* считаем внутри OfflineManager (агрегаты), здесь только подтягиваем/обновляем (без await-loop)
+  async function getNeedsCounts() {
     try {
-      const all = window.TrackRegistry?.getAllTracks?.() || [];
-      for (const t of all) {
-        const uid = String(t?.uid || '').trim();
-        if (!uid) continue;
-        // eslint-disable-next-line no-await-in-loop
-        const st = await mgr.getTrackOfflineState?.(uid);
-        if (st?.needsUpdate) needsUpdateCount++;
-        if (st?.needsReCache) needsReCacheCount++;
+      if (typeof mgr.refreshNeedsAggregates === 'function') {
+        // best-effort, с троттлингом внутри
+        await mgr.refreshNeedsAggregates({ force: false });
       }
     } catch {}
 
-    needsCache.upd = needsUpdateCount;
-    needsCache.rec = needsReCacheCount;
-    return { needsUpdateCount, needsReCacheCount };
+    const a = (typeof mgr.getNeedsAggregates === 'function') ? mgr.getNeedsAggregates() : null;
+    return {
+      needsUpdateCount: Number(a?.needsUpdate || 0) || 0,
+      needsReCacheCount: Number(a?.needsReCache || 0) || 0
+    };
   }
+
+  // ✅ Начальные значения для первого render (иначе net/cq не определены)
+  const net = getNetworkStatusSafe();
+  const isOff = !!mgr.isOfflineMode?.();
+  const cq = (typeof mgr.getCacheQuality === 'function') ? await mgr.getCacheQuality() : 'hi';
+  const cloud = (typeof mgr.getCloudSettings === 'function') ? mgr.getCloudSettings() : { n: 5, d: 31 };
+  const policy = getNetPolicy();
+  const limit = readLimitSettings();
+  const breakdown = await mgr.getCacheBreakdown?.();
+  const cacheSizeBytes = await mgr.getCacheSizeBytes();
+  const swSize = await swGetCacheSize();
+  const qst = mgr.getQueueStatus?.() || { downloadingKey: null, queued: 0, paused: false };
+  const g = await mgr.getGlobalStatistics();
+  const totalSec = Number((typeof g?.totalSeconds === 'number' ? g.totalSeconds : g?.totalListenSec) || 0) || 0;
+
+  // ✅ needs* теперь из OfflineManager агрегатов (без await-loop)
+  const needsAgg = (typeof mgr.getNeedsAggregates === 'function') ? mgr.getNeedsAggregates() : null;
+  const needsUpdateCount = Number(needsAgg?.needsUpdate || 0) || 0;
+  const needsReCacheCount = Number(needsAgg?.needsReCache || 0) || 0;
 
   const albums = (Array.isArray(window.albumsIndex) ? window.albumsIndex : [])
     .filter(a => a && a.key && !String(a.key).startsWith('__'))
@@ -11777,7 +11767,7 @@ export function openOfflineModal() {
       const g = await mgr.getGlobalStatistics();
       const totalSec = Number((typeof g?.totalSeconds === 'number' ? g.totalSeconds : g?.totalListenSec) || 0) || 0;
 
-      const needs = await computeNeedsCountsThrottled();
+      const needs = await getNeedsCounts();
 
       // обновляем только динамические куски (селекторы должны существовать в HTML ниже)
       setText('#om-net-label', `${net.online ? 'online' : 'offline'} (${net.kind || 'unknown'})`);
@@ -11870,6 +11860,8 @@ export function openOfflineModal() {
       const r = await mgr.enqueueUpdateAll?.();
       if (r?.ok) window.NotificationSystem?.info(`Updates: поставлено ${r.count} задач`);
       else window.NotificationSystem?.error('Не удалось запустить updates');
+
+      try { await mgr.refreshNeedsAggregates?.({ force: true }); } catch {}
       render();
     });
 
@@ -11877,6 +11869,8 @@ export function openOfflineModal() {
       const r = await mgr.enqueueReCacheAllByCQ?.({ userInitiated: true });
       if (r?.ok) window.NotificationSystem?.info(`Re-cache: поставлено ${r.count} задач`);
       else window.NotificationSystem?.error('Не удалось запустить re-cache');
+
+      try { await mgr.refreshNeedsAggregates?.({ force: true }); } catch {}
       render();
     });
 
