@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f04a69b31684abad140583f6b4c159934566e66a.idx
-│   │       ├── pack-f04a69b31684abad140583f6b4c159934566e66a.pack
-│   │       └── pack-f04a69b31684abad140583f6b4c159934566e66a.rev
+│   │       ├── pack-ad9801609027c00a3e17394cf53f96443e76a217.idx
+│   │       ├── pack-ad9801609027c00a3e17394cf53f96443e76a217.pack
+│   │       └── pack-ad9801609027c00a3e17394cf53f96443e76a217.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -314,7 +314,6 @@ vi3na1bita-music/
 │   │   │   └── lyrics.js
 │   │   ├── albums.js
 │   │   ├── background-audio.js
-│   │   ├── background-events.js
 │   │   ├── gallery.js
 │   │   ├── navigation.js
 │   │   ├── offline-ui-bootstrap.js
@@ -374,7 +373,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 20:32:09 UTC
+Сгенерировано: 2026-01-06 20:32:41 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3178,41 +3177,6 @@ if (document.readyState === 'loading') {
 } else {
   window.BackgroundAudioManager = new BackgroundAudioManager();
 }
-
-//=================================================
-// FILE: /scripts/app/background-events.js
-// scripts/app/background-events.js
-// ESM. События сети/видимости без изменения UI.
-// Использование: import { onAppEvent } from './background-events.js';
-
-const subs = new Map();
-// типы: 'net:online' | 'net:offline' | 'app:visible' | 'app:hidden'
-function emit(type, payload) {
-  (subs.get(type) || []).forEach(fn => { try { fn(payload); } catch {} });
-}
-
-export function onAppEvent(type, cb) {
-  const arr = subs.get(type) || [];
-  arr.push(cb);
-  subs.set(type, arr);
-  return () => {
-    const a = subs.get(type) || [];
-    subs.set(type, a.filter(f => f !== cb));
-  };
-}
-
-// network
-window.addEventListener('online', () => emit('net:online'));
-window.addEventListener('offline', () => emit('net:offline'));
-
-// visibility
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') emit('app:visible');
-  else emit('app:hidden');
-});
-
-// экспорт для единообразия
-export const BackgroundEvents = { on: onAppEvent };
 
 //=================================================
 // FILE: /scripts/app/gallery.js
