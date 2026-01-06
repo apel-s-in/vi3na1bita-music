@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f05293b3feb48a6ac404ca269616864b9f70fd6f.idx
-│   │       ├── pack-f05293b3feb48a6ac404ca269616864b9f70fd6f.pack
-│   │       └── pack-f05293b3feb48a6ac404ca269616864b9f70fd6f.rev
+│   │       ├── pack-012b788c05f9a35fb61beb8da2dd8881ea09ece0.idx
+│   │       ├── pack-012b788c05f9a35fb61beb8da2dd8881ea09ece0.pack
+│   │       └── pack-012b788c05f9a35fb61beb8da2dd8881ea09ece0.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -344,7 +344,6 @@ vi3na1bita-music/
 │   │   ├── cloud-menu.js
 │   │   ├── favorites-const.js
 │   │   ├── favorites-data.js
-│   │   ├── favorites-view.js
 │   │   ├── favorites.js
 │   │   ├── lyrics-modal.js
 │   │   ├── modal-templates.js
@@ -373,7 +372,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 21:01:48 UTC
+Сгенерировано: 2026-01-06 21:02:20 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -10260,29 +10259,6 @@ Object.assign(window, {
 
   w.buildFavoritesRefsModel = buildFavoritesRefsModel;
   w.updateFavoritesRefsModelActiveFlag = updateFavoritesRefsModelActiveFlag;
-})();
-
-//=================================================
-// FILE: /scripts/ui/favorites-view.js
-// scripts/ui/favorites-view.js
-// Функционал для представления "Избранное"
-
-(function FavoritesViewModule() {
-  'use strict';
-
-  const w = window;
-
-  async function openFavoritesView() {
-    // Делегируем в AlbumsManager
-    if (w.AlbumsManager) {
-      await w.AlbumsManager.loadAlbum('__favorites__');
-    }
-  }
-
-  // Экспорт
-  w.openFavoritesView = openFavoritesView;
-
-  console.log('✅ Favorites view module loaded');
 })();
 
 //=================================================
