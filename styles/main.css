@@ -1136,8 +1136,10 @@ header {
 .offline-indicator.cloud { color: #8ab8fd; opacity: 0.8; }
 .offline-indicator.gray { color: #555; }
 
-/* Кнопка PQ */
-#pq-btn.disabled { pointer-events: none; opacity: 0.5; }
+/* Кнопка PQ
+   Важно (ТЗ 7.5.1): при offline кнопка disabled, но по клику должен быть toast,
+   поэтому pointer-events НЕ отключаем. */
+#pq-btn.disabled { opacity: 0.6; }
 
 /* Кнопка OFFLINE с ! */
 #offline-btn.alert::after { content: "!"; color: var(--primary-color); margin-left: 6px; font-weight: 900; }
