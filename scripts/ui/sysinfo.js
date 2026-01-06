@@ -7,9 +7,9 @@
   // ✅ единый форматтер (без дублей)
   // sysinfo.js не ESM, поэтому импорт не используем
   const formatBytes = (n) => {
-    if (window.Utils?.formatBytes) return window.Utils.formatBytes(n);
-    if (window.UIUtils?.formatBytes) return window.UIUtils.formatBytes(n);
-    // fallback (минимальный)
+    const fn = window.Utils?.formatBytes;
+    if (typeof fn === 'function') return fn(n);
+    // fallback (минимальный; если utils.js не успел загрузиться)
     const b = Number(n) || 0;
     if (b < 1024) return `${Math.floor(b)} B`;
     if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
