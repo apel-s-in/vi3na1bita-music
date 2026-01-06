@@ -86,16 +86,27 @@ async function updateOverlay() {
 export function attachCacheProgressOverlay() {
   injectCssOnce();
   ensureOverlay();
-  updateOverlay();
 
-  // Обновления при изменениях кэш-загрузок (быстро и дёшево)
+  const schedule = (window.Utils?.debounceFrame)
+    ? window.Utils.debounceFrame(() => { updateOverlay(); })
+    : (() => updateOverlay());
+
+  // Обновления по событиям OfflineManager
   const mgr = window.OfflineUI?.offlineManager;
-  if (mgr) {
-    mgr.on('progress', () => {
-      updateOverlay();
+  if (mgr?.on) {
+    mgr.on('progress', schedule);
+  }
+
+  // Обновления по событиям PlayerCore (смена трека/тик/seek)
+  const pc = window.playerCore;
+  if (pc?.on) {
+    pc.on({
+      onTrackChange: schedule,
+      onTick: () => schedule(),
+      onPause: schedule,
+      onPlay: schedule,
     });
   }
 
-  // Лёгкий поллинг, чтобы поймать смены трека/качества, если UI не повесил событие
-  setInterval(updateOverlay, 1000);
+  schedule();
 }
