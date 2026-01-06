@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e58f2a15fe19544682b15874e0adc12c53ca08ad.idx
-│   │       ├── pack-e58f2a15fe19544682b15874e0adc12c53ca08ad.pack
-│   │       └── pack-e58f2a15fe19544682b15874e0adc12c53ca08ad.rev
+│   │       ├── pack-ae9d74698960974f0bc57484c150929145612236.idx
+│   │       ├── pack-ae9d74698960974f0bc57484c150929145612236.pack
+│   │       └── pack-ae9d74698960974f0bc57484c150929145612236.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,7 +377,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 15:24:47 UTC
+Сгенерировано: 2026-01-06 15:25:18 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9213,27 +9213,26 @@ export class PlaybackCacheManager {
 //=================================================
 // FILE: /scripts/offline/track-resolver.js
 // scripts/offline/track-resolver.js
-// TrackResolver (ESM) — выбор источника воспроизведения по PQ↔CQ и доступности.
-// Важно: в этом коммите локальный URL (blob/objectURL) ещё не реализован,
-// поэтому "local" пока означает "локально закэширован кандидат", но url вернём network URL,
-// либо null если сети нет и локального URL нет.
+// TrackResolver (ESM) — выбор источника воспроизведения по PQ↔CQ (ТЗ 6.1)
+// Ключевое правило: CQ влияет на воспроизведение ТОЛЬКО если CQ выше PQ
 
 import { bytesByQuality, getAudioBlob } from './cache-db.js';
 import { getTrackByUid } from '../app/track-registry.js';
+
+const MB = 1024 * 1024;
+const COMPLETE_THRESHOLD = 0.92; // 92% считаем complete
 
 function normQ(v) {
   return String(v || '').toLowerCase() === 'lo' ? 'lo' : 'hi';
 }
 
-function getNetworkStatus() {
-  try {
-    if (window.NetworkManager && typeof window.NetworkManager.getStatus === 'function') {
-      return window.NetworkManager.getStatus();
-    }
-  } catch {}
-  return { online: navigator.onLine !== false, kind: 'unknown', raw: null, saveData: false };
+function safeUrl(v) {
+  const s = String(v || '').trim();
+  return s || null;
 }
-const objectUrlCache = new Map(); // key -> { url, ts }
+
+// Object URL cache with TTL
+const objectUrlCache = new Map();
 const OBJECT_URL_TTL_MS = 30 * 60 * 1000;
 
 function getCachedObjectUrl(key) {
@@ -9252,175 +9251,200 @@ function setCachedObjectUrl(key, url) {
   return url;
 }
 
-async function hasCachedEnough(uid, q) {
+async function getLocalBlobUrl(uid, quality) {
+  const u = String(uid || '').trim();
+  if (!u) return null;
+
+  const q = normQ(quality);
+  const key = `${u}:${q}`;
+
+  // Check cache first
+  const cached = getCachedObjectUrl(key);
+  if (cached) return cached;
+
+  // Get blob from IndexedDB
+  const blob = await getAudioBlob(u, q);
+  if (!blob) return null;
+
+  const url = URL.createObjectURL(blob);
+  return setCachedObjectUrl(key, url);
+}
+
+async function isLocalComplete(uid, quality) {
   const u = String(uid || '').trim();
   if (!u) return false;
 
-  const MB = 1024 * 1024;
-
+  const q = normQ(quality);
   const meta = getTrackByUid(u);
+  if (!meta) return false;
+
   const needMb = q === 'hi'
-    ? Number(meta?.sizeHi || meta?.size || 0)
-    : Number(meta?.sizeLo || meta?.size_low || 0);
+    ? Number(meta.sizeHi || meta.size || 0)
+    : Number(meta.sizeLo || meta.size_low || 0);
 
   if (!(Number.isFinite(needMb) && needMb > 0)) return false;
 
   const needBytes = Math.floor(needMb * MB);
+  const have = await bytesByQuality(u);
+  const gotBytes = q === 'hi' ? Number(have.hi || 0) : Number(have.lo || 0);
 
-  const b = await bytesByQuality(u);
-  const haveBytes = q === 'hi' ? Number(b.hi || 0) : Number(b.lo || 0);
+  if (!(Number.isFinite(gotBytes) && gotBytes > 0)) return false;
 
-  if (!(Number.isFinite(haveBytes) && haveBytes > 0)) return false;
+  return gotBytes >= Math.floor(needBytes * COMPLETE_THRESHOLD);
+}
 
-  // ✅ Допуск 92% (как в ТЗ): считаем complete, если близко к ожидаемому размеру.
-  return haveBytes >= Math.floor(needBytes * 0.92);
+function getNetworkStatus() {
+  try {
+    if (window.NetworkManager?.getStatus) {
+      return window.NetworkManager.getStatus();
+    }
+  } catch {}
+  return { online: navigator.onLine !== false, kind: 'unknown' };
 }
 
 /**
- * resolvePlaybackSource
- * Возвращает:
- * - url: string|null
- * - effectiveQuality: 'hi'|'lo' (какое качество реально выбираем)
- * - isLocal: boolean (можем ли играть локально прямо сейчас)
- * - localQuality: 'hi'|'lo'|null (какой локальный уровень доступен)
- * - reason: string (debug)
+ * resolvePlaybackSource — главная функция выбора источника (ТЗ 6.1, 7.4)
+ * 
+ * Порядок выбора (ТЗ 7.4.2):
+ * 1. Локальная копия качества ≥ PQ
+ * 2. Сетевой источник качества = PQ (если сеть доступна)
+ * 3. Локальная копия качества < PQ (fallback)
+ * 4. null (недоступно офлайн)
+ * 
+ * Правило PQ↔CQ (ТЗ 6.1):
+ * - CQ влияет на playback ТОЛЬКО если CQ > PQ
+ * - PQ=Hi, CQ=Lo → играем Hi (не ухудшаем!)
+ * - PQ=Lo, CQ=Hi, локально есть Hi → играем Hi (улучшение)
  */
 export async function resolvePlaybackSource(params) {
   const track = params?.track || null;
   const pq = normQ(params?.pq);
   const cq = normQ(params?.cq);
   const offlineMode = !!params?.offlineMode;
-  const st = params?.network || getNetworkStatus();
+  const network = params?.network || getNetworkStatus();
 
   const uid = String(track?.uid || '').trim() || null;
+  const netOnline = !!network?.online;
 
-  // network urls from track meta (support both new and legacy shapes)
+  // Extract URLs from track
   const sources = track?.sources || null;
-
-  const urlHi =
-    String(sources?.audio?.hi || '').trim() ||
-    String(track?.audio || track?.src || '').trim() ||
-    null;
-
-  const urlLo =
-    String(sources?.audio?.lo || '').trim() ||
-    String(track?.audio_low || '').trim() ||
-    null;
+  const urlHi = safeUrl(sources?.audio?.hi || track?.audio || track?.src);
+  const urlLo = safeUrl(sources?.audio?.lo || track?.audio_low);
 
   const pickNetworkUrl = (q) => {
-    if (q === 'lo') return urlLo || urlHi || null;
-    return urlHi || urlLo || null;
+    if (q === 'lo') return urlLo || urlHi;
+    return urlHi || urlLo;
   };
 
-  // Локальная доступность (MVP по bytes):
-  const localHi = uid ? await hasCachedEnough(uid, 'hi') : false;
-  const localLo = uid ? await hasCachedEnough(uid, 'lo') : false;
+  // Check local availability
+  const localHiComplete = uid ? await isLocalComplete(uid, 'hi') : false;
+  const localLoComplete = uid ? await isLocalComplete(uid, 'lo') : false;
 
-  const localQuality = localHi ? 'hi' : (localLo ? 'lo' : null);
+  const localQuality = localHiComplete ? 'hi' : (localLoComplete ? 'lo' : null);
 
-  // PQ↔CQ правило:
-  // если CQ выше PQ и локально есть hi — выбираем hi (effectiveQuality='hi')
-  // иначе выбираем PQ (с fallback по url наличию)
-  const effectiveQuality = (() => {
-    if (pq === 'lo' && cq === 'hi' && localHi) return 'hi';
-    return pq;
-  })();
+  // ТЗ 6.1: Определяем effective quality
+  // CQ > PQ: можем улучшить воспроизведение локальным файлом
+  // CQ < PQ: НЕ ухудшаем воспроизведение из-за кэша
+  const cqHigherThanPq = (cq === 'hi' && pq === 'lo');
+  
+  let effectiveQuality = pq;
+  if (cqHigherThanPq && localHiComplete) {
+    // PQ=Lo, CQ=Hi, есть Hi локально → улучшаем до Hi
+    effectiveQuality = 'hi';
+  }
 
-  // Если сети нет:
-  // - если у нас есть реальный локальный URL -> можем играть локально (пока нет реализации)
-  // - иначе url=null (нужно пропустить трек)
-  if (!st?.online) {
-    // ✅ Сеть недоступна: пробуем локальный blob в effectiveQuality,
-    // затем fallback на другой уровень (если есть).
-    if (uid) {
-      const want = effectiveQuality;
-      const alt = want === 'hi' ? 'lo' : 'hi';
-
-      const tryLocal = async (q) => {
-        const key = `${uid}:${q}`;
-        const cached = getCachedObjectUrl(key);
-        if (cached) return cached;
-
-        const blob = await getAudioBlob(uid, q);
-        if (!blob) return null;
-
-        const url = URL.createObjectURL(blob);
-        return setCachedObjectUrl(key, url);
-      };
-
-      const localUrl = await tryLocal(want) || await tryLocal(alt);
-
-      if (localUrl) {
-        return {
-          url: localUrl,
-          effectiveQuality: want,
-          isLocal: true,
-          localQuality,
-          reason: 'localBlob'
-        };
+  // ===== СЕТЬ НЕДОСТУПНА =====
+  if (!netOnline) {
+    // Приоритет 1: локальная копия ≥ effectiveQuality
+    if (effectiveQuality === 'hi' && localHiComplete) {
+      const url = await getLocalBlobUrl(uid, 'hi');
+      if (url) {
+        return { url, effectiveQuality: 'hi', isLocal: true, localQuality, reason: 'offline:localHi' };
+      }
+    }
+    
+    if (effectiveQuality === 'lo' && (localLoComplete || localHiComplete)) {
+      // Lo запрошен: подойдёт Lo или Hi (Hi — улучшение)
+      const prefQ = localHiComplete ? 'hi' : 'lo';
+      const url = await getLocalBlobUrl(uid, prefQ);
+      if (url) {
+        return { url, effectiveQuality: prefQ, isLocal: true, localQuality, reason: `offline:local${prefQ.charAt(0).toUpperCase() + prefQ.slice(1)}` };
       }
     }
 
-    return {
-      url: null,
-      effectiveQuality,
-      isLocal: false,
-      localQuality,
-      reason: offlineMode ? 'offlineMode:noNetwork:noLocalBlob' : 'noNetwork:noLocalBlob'
-    };
+    // Приоритет 3: любая локальная копия (fallback)
+    if (localHiComplete) {
+      const url = await getLocalBlobUrl(uid, 'hi');
+      if (url) {
+        return { url, effectiveQuality: 'hi', isLocal: true, localQuality, reason: 'offline:fallbackHi' };
+      }
+    }
+    if (localLoComplete) {
+      const url = await getLocalBlobUrl(uid, 'lo');
+      if (url) {
+        return { url, effectiveQuality: 'lo', isLocal: true, localQuality, reason: 'offline:fallbackLo' };
+      }
+    }
+
+    // Ничего нет
+    return { url: null, effectiveQuality, isLocal: false, localQuality: null, reason: 'offline:noLocal' };
   }
 
-  // ✅ Сеть есть:
-  // ТЗ 11.2.A: если OFFLINE mode выключен — Playback Cache работает “исключительно через сеть”.
-  // Поэтому при offlineMode=false НЕ используем локальные blob, даже если они есть.
-  // Исключение: при отсутствии сети (см. выше) local blob разрешён как единственный вариант.
-  if (offlineMode) {
-    // По ТЗ 6/7: локальная копия качества ≥ PQ имеет приоритет над сетью (минимизация GitHub).
-    if (uid) {
-      const want = effectiveQuality;
+  // ===== СЕТЬ ДОСТУПНА =====
+  
+  // ТЗ 11.2.A: если OFFLINE mode OFF — только сеть (Playback Cache через сеть)
+  if (!offlineMode) {
+    const url = pickNetworkUrl(effectiveQuality);
+    return { url, effectiveQuality, isLocal: false, localQuality, reason: 'online:streamOnly' };
+  }
 
-      const tryLocal = async (q) => {
-        const key = `${uid}:${q}`;
-        const cached = getCachedObjectUrl(key);
-        if (cached) return cached;
+  // OFFLINE mode ON: локальные файлы имеют приоритет для минимизации трафика
+  
+  // Приоритет 1: локальная копия ≥ effectiveQuality
+  if (effectiveQuality === 'hi' && localHiComplete) {
+    const url = await getLocalBlobUrl(uid, 'hi');
+    if (url) {
+      return { url, effectiveQuality: 'hi', isLocal: true, localQuality, reason: 'offlineMode:localHi' };
+    }
+  }
 
-        const blob = await getAudioBlob(uid, q);
-        if (!blob) return null;
-
-        const objUrl = URL.createObjectURL(blob);
-        return setCachedObjectUrl(key, objUrl);
-      };
-
-      // 1) пробуем желаемое качество (effectiveQuality)
-      const localUrl = await tryLocal(want);
-
-      // 2) PQ=Lo: если Lo нет локально, но есть Hi — можем улучшить (ТЗ 6.2)
-      const localUrl2 = (!localUrl && want === 'lo') ? await tryLocal('hi') : null;
-
-      const chosenLocal = localUrl || localUrl2;
-
-      if (chosenLocal) {
-        return {
-          url: chosenLocal,
-          effectiveQuality: want,
-          isLocal: true,
-          localQuality,
-          reason: 'localBlob'
-        };
+  if (effectiveQuality === 'lo') {
+    // Lo запрошен: Hi подходит (≥), Lo подходит
+    if (localHiComplete) {
+      const url = await getLocalBlobUrl(uid, 'hi');
+      if (url) {
+        return { url, effectiveQuality: 'hi', isLocal: true, localQuality, reason: 'offlineMode:localHiForLo' };
+      }
+    }
+    if (localLoComplete) {
+      const url = await getLocalBlobUrl(uid, 'lo');
+      if (url) {
+        return { url, effectiveQuality: 'lo', isLocal: true, localQuality, reason: 'offlineMode:localLo' };
       }
     }
   }
 
-  // OFFLINE mode OFF (или OFFLINE ON, но локали нет) — играем по сети в effectiveQuality
-  const url = pickNetworkUrl(effectiveQuality);
+  // Приоритет 2: сетевой источник = effectiveQuality
+  const netUrl = pickNetworkUrl(effectiveQuality);
+  if (netUrl) {
+    return { url: netUrl, effectiveQuality, isLocal: false, localQuality, reason: 'offlineMode:network' };
+  }
 
-  return {
-    url: url || null,
-    effectiveQuality,
-    isLocal: false,
-    localQuality,
-    reason: 'network'
-  };
+  // Приоритет 3: fallback на любую локальную копию
+  if (localHiComplete) {
+    const url = await getLocalBlobUrl(uid, 'hi');
+    if (url) {
+      return { url, effectiveQuality: 'hi', isLocal: true, localQuality, reason: 'offlineMode:fallbackHi' };
+    }
+  }
+  if (localLoComplete) {
+    const url = await getLocalBlobUrl(uid, 'lo');
+    if (url) {
+      return { url, effectiveQuality: 'lo', isLocal: true, localQuality, reason: 'offlineMode:fallbackLo' };
+    }
+  }
+
+  return { url: null, effectiveQuality, isLocal: false, localQuality: null, reason: 'offlineMode:noSource' };
 }
 
 export const TrackResolver = { resolvePlaybackSource };
