@@ -73,7 +73,12 @@
         status.textContent = 'Не удалось загрузить новости';
       }
     }
-    function esc(s) { return String(s || '').replace(/[<>&'"]/g, m => ({'<':'&lt;','>':'&gt;','&':'&amp;',"'":'&#39;','"':'&quot;'}[m])); }
+    function esc(s) {
+      // единый esc без дублей в проекте (здесь standalone, поэтому оставляем компактно)
+      return String(s || '').replace(/[<>&'"]/g, (m) => ({
+        '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&#39;', '"': '&quot;'
+      })[m]);
+    }
     function renderCard(it) {
       const title = esc(it.title || 'Новость');
       const date = esc(it.date || '');
