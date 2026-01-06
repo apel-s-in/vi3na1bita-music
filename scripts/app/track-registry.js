@@ -1,32 +1,41 @@
 // scripts/app/track-registry.js
-// Глобально-лёгкий реестр треков по uid, без побочных эффектов.
+// Реестр метаданных треков (ТЗ 7.1)
 
-const REG = new Map();
-// shape: { uid, title, urlHi, urlLo, sizeHi, sizeLo, lyrics, fulltext, sourceAlbum? }
+const registry = new Map();
 
-export function registerTrack(meta) {
-  if (!meta || !meta.uid) return;
-  const rec = {
-    uid: meta.uid,
-    title: meta.title || '',
-    urlHi: meta.audio || meta.urlHi || null,
-    urlLo: meta.audio_low || meta.urlLo || null,
-    sizeHi: Number(meta.size || meta.sizeHi || 0),
-    sizeLo: Number(meta.size_low || meta.sizeLo || 0),
-    lyrics: meta.lyrics || null,
-    fulltext: meta.fulltext || null,
-    sourceAlbum: meta.sourceAlbum || null,
-  };
-  REG.set(rec.uid, rec);
+export function registerTrack(track) {
+  if (!track) return;
+  const uid = String(track.uid || '').trim();
+  if (!uid) return;
+
+  const existing = registry.get(uid);
+  const merged = existing ? { ...existing, ...track } : { ...track };
+
+  merged.uid = uid;
+
+  if (track.sources?.audio?.hi) merged.urlHi = track.sources.audio.hi;
+  if (track.sources?.audio?.lo) merged.urlLo = track.sources.audio.lo;
+  if (track.audio) merged.urlHi = merged.urlHi || track.audio;
+  if (track.audio_low) merged.urlLo = merged.urlLo || track.audio_low;
+
+  registry.set(uid, merged);
+}
+
+export function registerTracks(tracks) {
+  if (!Array.isArray(tracks)) return;
+  tracks.forEach(t => registerTrack(t));
 }
 
 export function getTrackByUid(uid) {
-  return REG.get(uid) || null;
+  const u = String(uid || '').trim();
+  if (!u) return null;
+  return registry.get(u) || null;
 }
 
-export function getAllUids() {
-  return Array.from(REG.keys());
+export function getAllTracks() {
+  return Array.from(registry.values());
 }
 
-// Для отладки/диагностики
-export const TrackRegistry = { registerTrack, getTrackByUid, getAllUids };
+export function clearRegistry() {
+  registry.clear();
+}
