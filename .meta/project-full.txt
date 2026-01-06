@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-63ab53be41fa5228a1dd2151b3fd0663aa58692a.idx
-│   │       ├── pack-63ab53be41fa5228a1dd2151b3fd0663aa58692a.pack
-│   │       └── pack-63ab53be41fa5228a1dd2151b3fd0663aa58692a.rev
+│   │       ├── pack-81ba642e3e0ad13ff61c4d2af2f2ec46c9899003.idx
+│   │       ├── pack-81ba642e3e0ad13ff61c4d2af2f2ec46c9899003.pack
+│   │       └── pack-81ba642e3e0ad13ff61c4d2af2f2ec46c9899003.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -375,7 +375,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 20:04:46 UTC
+Сгенерировано: 2026-01-06 20:05:54 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7005,9 +7005,22 @@ if (typeof window !== 'undefined') {
     },
     
     createModal(html, onClose) {
+      // Back-compat: старый API, но теперь реальная реализация — через window.Modals.open.
+      // Важно: html ожидается как "bodyHtml" (без modal-bg), но если туда передали целую модалку —
+      // она всё равно будет показана как контент.
+      if (window.Modals?.open) {
+        return window.Modals.open({
+          title: '',
+          maxWidth: 560,
+          bodyHtml: String(html || ''),
+          onClose
+        });
+      }
+
+      // Fallback (если Modals ещё не загружен)
       const bg = document.createElement('div');
       bg.className = 'modal-bg active';
-      bg.innerHTML = html;
+      bg.innerHTML = String(html || '');
 
       const close = () => {
         bg.remove();
@@ -7019,14 +7032,9 @@ if (typeof window !== 'undefined') {
       });
 
       const closeBtn = bg.querySelector('.bigclose');
-      if (closeBtn) {
-        closeBtn.addEventListener('click', close);
-      }
+      if (closeBtn) closeBtn.addEventListener('click', close);
 
-      // ✅ Единый контейнер для модалок (если есть), иначе fallback в body.
-      const host = document.getElementById('modals-container') || document.body;
-      host.appendChild(bg);
-
+      (document.getElementById('modals-container') || document.body).appendChild(bg);
       return bg;
     },
     
