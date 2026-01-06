@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-aaaf7fe4aa40a6263119896eb32442c29b783d30.idx
-│   │       ├── pack-aaaf7fe4aa40a6263119896eb32442c29b783d30.pack
-│   │       └── pack-aaaf7fe4aa40a6263119896eb32442c29b783d30.rev
+│   │       ├── pack-e68d23673ec893954f723c4f38cb7aa041949d24.idx
+│   │       ├── pack-e68d23673ec893954f723c4f38cb7aa041949d24.pack
+│   │       └── pack-e68d23673ec893954f723c4f38cb7aa041949d24.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -372,7 +372,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 21:03:21 UTC
+Сгенерировано: 2026-01-06 21:03:56 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1106,7 +1106,12 @@ jobs:
         status.textContent = 'Не удалось загрузить новости';
       }
     }
-    function esc(s) { return String(s || '').replace(/[<>&'"]/g, m => ({'<':'&lt;','>':'&gt;','&':'&amp;',"'":'&#39;','"':'&quot;'}[m])); }
+    function esc(s) {
+      // единый esc без дублей в проекте (здесь standalone, поэтому оставляем компактно)
+      return String(s || '').replace(/[<>&'"]/g, (m) => ({
+        '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&#39;', '"': '&quot;'
+      })[m]);
+    }
     function renderCard(it) {
       const title = esc(it.title || 'Новость');
       const date = esc(it.date || '');
