@@ -41,7 +41,7 @@ const STATIC_ASSETS = [
   './scripts/ui/favorites-const.js',
   './scripts/ui/favorites-data.js',
   './scripts/ui/favorites.js',
-  './scripts/ui/favorites-view.js',
+  // './scripts/ui/favorites-view.js', // удалено: модуль лишний
   './scripts/ui/sleep.js',
   './scripts/ui/lyrics-modal.js',
   './scripts/ui/sysinfo.js',
