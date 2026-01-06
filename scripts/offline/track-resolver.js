@@ -2,7 +2,7 @@
 // TrackResolver (ESM) — выбор источника воспроизведения по PQ↔CQ (ТЗ 6.1)
 // Ключевое правило: CQ влияет на воспроизведение ТОЛЬКО если CQ выше PQ
 
-import { bytesByQuality, getAudioBlob } from './cache-db.js';
+import { bytesByQuality, getAudioBlob, touchLocalAccess, getLocalMeta } from './cache-db.js';
 import { getTrackByUid } from '../app/track-registry.js';
 
 const MB = 1024 * 1024;
@@ -136,7 +136,10 @@ export async function resolvePlaybackSource(params) {
     if (effectiveQuality === 'hi' && localHiComplete) {
       const url = await getLocalBlobUrl(uid, 'hi');
       if (url) {
-        return { url, effectiveQuality: 'hi', isLocal: true, localQuality, reason: 'offline:localHi' };
+        try { await touchLocalAccess(uid); } catch {}
+        const lm = await getLocalMeta(uid);
+        const localKind = (lm?.kind === 'cloud' || lm?.kind === 'transient') ? lm.kind : 'transient';
+        return { url, effectiveQuality: 'hi', isLocal: true, localQuality, localKind, reason: 'offline:localHi' };
       }
     }
     
@@ -144,20 +147,29 @@ export async function resolvePlaybackSource(params) {
       const prefQ = localHiComplete ? 'hi' : 'lo';
       const url = await getLocalBlobUrl(uid, prefQ);
       if (url) {
-        return { url, effectiveQuality: prefQ, isLocal: true, localQuality, reason: `offline:local${prefQ.charAt(0).toUpperCase() + prefQ.slice(1)}` };
+        try { await touchLocalAccess(uid); } catch {}
+        const lm = await getLocalMeta(uid);
+        const localKind = (lm?.kind === 'cloud' || lm?.kind === 'transient') ? lm.kind : 'transient';
+        return { url, effectiveQuality: prefQ, isLocal: true, localQuality, localKind, reason: `offline:local${prefQ.charAt(0).toUpperCase() + prefQ.slice(1)}` };
       }
     }
 
     if (localHiComplete) {
       const url = await getLocalBlobUrl(uid, 'hi');
       if (url) {
-        return { url, effectiveQuality: 'hi', isLocal: true, localQuality, reason: 'offline:fallbackHi' };
+        try { await touchLocalAccess(uid); } catch {}
+        const lm = await getLocalMeta(uid);
+        const localKind = (lm?.kind === 'cloud' || lm?.kind === 'transient') ? lm.kind : 'transient';
+        return { url, effectiveQuality: 'hi', isLocal: true, localQuality, localKind, reason: 'offline:fallbackHi' };
       }
     }
     if (localLoComplete) {
       const url = await getLocalBlobUrl(uid, 'lo');
       if (url) {
-        return { url, effectiveQuality: 'lo', isLocal: true, localQuality, reason: 'offline:fallbackLo' };
+        try { await touchLocalAccess(uid); } catch {}
+        const lm = await getLocalMeta(uid);
+        const localKind = (lm?.kind === 'cloud' || lm?.kind === 'transient') ? lm.kind : 'transient';
+        return { url, effectiveQuality: 'lo', isLocal: true, localQuality, localKind, reason: 'offline:fallbackLo' };
       }
     }
 
@@ -177,7 +189,10 @@ export async function resolvePlaybackSource(params) {
   if (effectiveQuality === 'hi' && localHiComplete) {
     const url = await getLocalBlobUrl(uid, 'hi');
     if (url) {
-      return { url, effectiveQuality: 'hi', isLocal: true, localQuality, reason: 'offlineMode:localHi' };
+      try { await touchLocalAccess(uid); } catch {}
+      const lm = await getLocalMeta(uid);
+      const localKind = (lm?.kind === 'cloud' || lm?.kind === 'transient') ? lm.kind : 'transient';
+      return { url, effectiveQuality: 'hi', isLocal: true, localQuality, localKind, reason: 'offlineMode:localHi' };
     }
   }
 
@@ -185,13 +200,19 @@ export async function resolvePlaybackSource(params) {
     if (localHiComplete) {
       const url = await getLocalBlobUrl(uid, 'hi');
       if (url) {
-        return { url, effectiveQuality: 'hi', isLocal: true, localQuality, reason: 'offlineMode:localHiForLo' };
+        try { await touchLocalAccess(uid); } catch {}
+        const lm = await getLocalMeta(uid);
+        const localKind = (lm?.kind === 'cloud' || lm?.kind === 'transient') ? lm.kind : 'transient';
+        return { url, effectiveQuality: 'hi', isLocal: true, localQuality, localKind, reason: 'offlineMode:localHiForLo' };
       }
     }
     if (localLoComplete) {
       const url = await getLocalBlobUrl(uid, 'lo');
       if (url) {
-        return { url, effectiveQuality: 'lo', isLocal: true, localQuality, reason: 'offlineMode:localLo' };
+        try { await touchLocalAccess(uid); } catch {}
+        const lm = await getLocalMeta(uid);
+        const localKind = (lm?.kind === 'cloud' || lm?.kind === 'transient') ? lm.kind : 'transient';
+        return { url, effectiveQuality: 'lo', isLocal: true, localQuality, localKind, reason: 'offlineMode:localLo' };
       }
     }
   }
