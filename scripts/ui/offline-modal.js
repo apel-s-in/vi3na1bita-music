@@ -193,32 +193,26 @@ export function openOfflineModal() {
     return;
   }
 
+  // ✅ render-once + update-fields: меньше строк и быстрее
   if (modalEl) {
     try { modalEl.remove(); } catch {}
     modalEl = null;
   }
 
-  const render = async () => {
-    const isOff = !!mgr.isOfflineMode?.();
-    const cq = await mgr.getCacheQuality();
-    const cloud = mgr.getCloudSettings();
-    const net = getNetworkStatusSafe();
+  const schedule = (window.Utils?.debounceFrame)
+    ? window.Utils.debounceFrame(() => { update().catch(() => {}); })
+    : (() => { update().catch(() => {}); });
 
-    // E breakdown
-    const breakdown = await mgr.getCacheBreakdown?.();
-    const cacheSizeBytes = await mgr.getCacheSizeBytes();
-    const swSize = await swGetCacheSize();
+  // Кэш needs* считаем редко (каждые 5с максимум), чтобы не делать await-loop на каждый progress
+  let needsCache = { ts: 0, upd: 0, rec: 0 };
+  async function computeNeedsCountsThrottled() {
+    const now = Date.now();
+    if (now - needsCache.ts < 5000) return { needsUpdateCount: needsCache.upd, needsReCacheCount: needsCache.rec };
+    needsCache.ts = now;
 
-    // F queue
-    const qst = mgr.getQueueStatus?.() || { downloadingKey: null, queued: 0, paused: false };
-
-    // stats
-    const g = await mgr.getGlobalStatistics();
-    const totalSec = Number((typeof g?.totalSeconds === 'number' ? g.totalSeconds : g?.totalListenSec) || 0) || 0;
-
-    // Needs flags (best effort): pinned + cloud candidates from registry
     let needsUpdateCount = 0;
     let needsReCacheCount = 0;
+
     try {
       const all = window.TrackRegistry?.getAllTracks?.() || [];
       for (const t of all) {
@@ -231,19 +225,19 @@ export function openOfflineModal() {
       }
     } catch {}
 
-    const limit = readLimitSettings();
+    needsCache.upd = needsUpdateCount;
+    needsCache.rec = needsReCacheCount;
+    return { needsUpdateCount, needsReCacheCount };
+  }
 
-    const policy = getNetPolicy();
+  const albums = (Array.isArray(window.albumsIndex) ? window.albumsIndex : [])
+    .filter(a => a && a.key && !String(a.key).startsWith('__'))
+    .map(a => ({ key: String(a.key), title: String(a.title || a.key) }));
 
-    // albums list for I
-    const albums = (Array.isArray(window.albumsIndex) ? window.albumsIndex : [])
-      .filter(a => a && a.key && !String(a.key).startsWith('__'))
-      .map(a => ({ key: String(a.key), title: String(a.title || a.key) }));
-
-    const bodyHtml = `
+  const bodyHtml = `
       <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px;">
-        <div style="font-weight:900; color:#8ab8fd;">Сеть: ${esc(net.online ? 'online' : 'offline')} (${esc(net.kind || 'unknown')})</div>
-        <div style="font-size:12px; color:#9db7dd;">CQ=${esc(cq)}</div>
+        <div style="font-weight:900; color:#8ab8fd;">Сеть: <span id="om-net-label">${esc(net.online ? 'online' : 'offline')} (${esc(net.kind || 'unknown')})</span></div>
+        <div style="font-size:12px; color:#9db7dd;">CQ=<span id="om-cq-label">${esc(cq)}</span></div>
       </div>
 
       <div style="display:flex; flex-direction:column; gap:12px;">
@@ -334,15 +328,15 @@ export function openOfflineModal() {
           </div>
 
           <div style="font-size:12px; color:#9db7dd; margin-top:10px; line-height:1.5;">
-            <div>audio total: <b>${formatBytes(cacheSizeBytes)}</b></div>
+            <div>audio total: <b id="om-e-audio-total">${formatBytes(cacheSizeBytes)}</b></div>
             ${breakdown ? `
-              <div>pinned: <b>${formatBytes(breakdown.pinnedBytes)}</b></div>
-              <div>cloud: <b>${formatBytes(breakdown.cloudBytes)}</b></div>
-              <div>transient window: <b>${formatBytes(breakdown.transientWindowBytes)}</b></div>
-              <div>transient extra: <b>${formatBytes(breakdown.transientExtraBytes)}</b></div>
-              <div>transient unknown: <b>${formatBytes(breakdown.transientUnknownBytes)}</b></div>
+              <div>pinned: <b id="om-e-pinned">${formatBytes(breakdown.pinnedBytes)}</b></div>
+              <div>cloud: <b id="om-e-cloud">${formatBytes(breakdown.cloudBytes)}</b></div>
+              <div>transient window: <b id="om-e-tw">${formatBytes(breakdown.transientWindowBytes)}</b></div>
+              <div>transient extra: <b id="om-e-te">${formatBytes(breakdown.transientExtraBytes)}</b></div>
+              <div>transient unknown: <b id="om-e-tu">${formatBytes(breakdown.transientUnknownBytes)}</b></div>
             ` : `<div>breakdown: <i>недоступен</i></div>`}
-            <div>other (SW cache): <b>${formatBytes(swSize.size || 0)}</b> ${swSize.approx ? '(approx)' : ''}</div>
+            <div>other (SW cache): <b id="om-e-sw-total">${formatBytes(swSize.size || 0)}</b> ${swSize.approx ? '(approx)' : ''}</div>
           </div>
         </div>
 
@@ -350,8 +344,8 @@ export function openOfflineModal() {
         <div style="padding:12px; border:1px solid rgba(255,255,255,0.10); border-radius:12px;">
           <div style="font-weight:900; color:#8ab8fd; margin-bottom:8px;">F) Загрузки</div>
           <div style="font-size:12px; color:#9db7dd; line-height:1.5;">
-            <div>Скачивается сейчас: <b>${esc(qst.downloadingKey || '—')}</b></div>
-            <div>В очереди: <b>${Number(qst.queued || 0)}</b></div>
+            <div>Скачивается сейчас: <b id="om-f-downloading">${esc(qst.downloadingKey || '—')}</b></div>
+            <div>В очереди: <b id="om-f-queued">${Number(qst.queued || 0)}</b></div>
           </div>
           <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:8px;">
             <button class="offline-btn" id="om-queue-toggle">${qst.paused ? 'Возобновить' : 'Пауза'}</button>
@@ -362,8 +356,8 @@ export function openOfflineModal() {
         <div style="padding:12px; border:1px solid rgba(255,255,255,0.10); border-radius:12px;">
           <div style="font-weight:900; color:#8ab8fd; margin-bottom:8px;">G) Обновления</div>
           <div style="font-size:12px; color:#9db7dd; line-height:1.5;">
-            <div>needsUpdate: <b>${needsUpdateCount}</b></div>
-            <div>needsReCache (CQ mismatch): <b>${needsReCacheCount}</b></div>
+            <div>needsUpdate: <b id="om-g-needsUpdate">${needsUpdateCount}</b></div>
+            <div>needsReCache (CQ mismatch): <b id="om-g-needsReCache">${needsReCacheCount}</b></div>
           </div>
           <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:8px;">
             <button class="offline-btn" id="om-upd-all">Обновить все файлы</button>
@@ -418,7 +412,7 @@ export function openOfflineModal() {
         <div style="padding:12px; border:1px solid rgba(255,255,255,0.10); border-radius:12px;">
           <div style="font-weight:900; color:#8ab8fd; margin-bottom:8px;">Статистика</div>
           <div style="font-size:12px; color:#9db7dd; line-height:1.5;">
-            <div>globalTotalListenSeconds: <b>${formatDuration(totalSec)}</b></div>
+            <div>globalTotalListenSeconds: <b id="om-stats-total">${formatDuration(totalSec)}</b></div>
           </div>
         </div>
 
@@ -434,10 +428,65 @@ export function openOfflineModal() {
       title: 'OFFLINE',
       maxWidth: 560,
       bodyHtml,
-      onClose: () => { modalEl = null; }
+      onClose: () => { modalEl = null; try { openOfflineModal.__unsub?.(); } catch {} }
     });
 
     const $ = (sel) => modalEl?.querySelector(sel);
+
+    // ✅ маленькие хелперы обновления текста без полного re-render
+    const setText = (sel, txt) => {
+      const el = $(sel);
+      if (!el) return;
+      const next = String(txt ?? '');
+      if (el.textContent !== next) el.textContent = next;
+    };
+
+    async function update() {
+      if (!modalEl) return;
+
+      const isOff = !!mgr.isOfflineMode?.();
+      const cq = await mgr.getCacheQuality();
+      const net = getNetworkStatusSafe();
+
+      // E breakdown + sizes
+      const breakdown = await mgr.getCacheBreakdown?.();
+      const cacheSizeBytes = await mgr.getCacheSizeBytes();
+      const swSize = await swGetCacheSize();
+
+      // F queue
+      const qst = mgr.getQueueStatus?.() || { downloadingKey: null, queued: 0, paused: false };
+
+      // stats
+      const g = await mgr.getGlobalStatistics();
+      const totalSec = Number((typeof g?.totalSeconds === 'number' ? g.totalSeconds : g?.totalListenSec) || 0) || 0;
+
+      const needs = await computeNeedsCountsThrottled();
+
+      // обновляем только динамические куски (селекторы должны существовать в HTML ниже)
+      setText('#om-net-label', `${net.online ? 'online' : 'offline'} (${net.kind || 'unknown'})`);
+      setText('#om-cq-label', String(cq));
+
+      setText('#om-e-audio-total', formatBytes(cacheSizeBytes));
+      setText('#om-e-sw-total', formatBytes(swSize.size || 0));
+      setText('#om-f-downloading', String(qst.downloadingKey || '—'));
+      setText('#om-f-queued', String(Number(qst.queued || 0)));
+      setText('#om-g-needsUpdate', String(needs.needsUpdateCount));
+      setText('#om-g-needsReCache', String(needs.needsReCacheCount));
+      setText('#om-stats-total', formatDuration(totalSec));
+
+      // чекбокс A (не триггерим change)
+      const cb = $('#om-offline-mode');
+      if (cb) cb.checked = !!isOff;
+
+      // breakdown поля (если есть)
+      if (breakdown) {
+        setText('#om-e-pinned', formatBytes(breakdown.pinnedBytes));
+        setText('#om-e-cloud', formatBytes(breakdown.cloudBytes));
+        setText('#om-e-tw', formatBytes(breakdown.transientWindowBytes));
+        setText('#om-e-te', formatBytes(breakdown.transientExtraBytes));
+        setText('#om-e-tu', formatBytes(breakdown.transientUnknownBytes));
+      }
+    }
 
     // A
     $('#om-offline-mode')?.addEventListener('change', (e) => {
@@ -648,15 +697,17 @@ export function openOfflineModal() {
 
     // Live refresh on manager progress
     const unsub = mgr.on?.('progress', () => {
-      clearTimeout(openOfflineModal.__t);
-      openOfflineModal.__t = setTimeout(() => {
-        if (modalEl) render();
-      }, 300);
+      // ✅ без полного render: только update с debounce
+      schedule();
     });
 
     openOfflineModal.__unsub = unsub;
+
+    // первый апдейт после открытия
+    schedule();
   };
 
+  // первичный рендер HTML (1 раз), затем update()
   render().catch((e) => {
     window.NotificationSystem?.error('OFFLINE modal ошибка');
     console.warn('OFFLINE modal render failed:', e);
