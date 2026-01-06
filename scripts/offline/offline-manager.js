@@ -24,7 +24,9 @@ import {
   getEvictionCandidates,
   getExpiredCloudUids,
   getDownloadMeta,
-  setDownloadMeta
+  setDownloadMeta,
+  markLocalCloud,
+  markLocalTransient
 } from './cache-db.js';
 
 import { resolvePlaybackSource, isTrackAvailableOffline } from './track-resolver.js';
@@ -431,6 +433,17 @@ export class OfflineManager {
     return totalCachedBytes();
   }
 
+  async getCacheBreakdown() {
+    try {
+      const pinnedSet = this._getPinnedSet();
+      // computeCacheBreakdown экспортирован из cache-db.js
+      const { computeCacheBreakdown } = await import('./cache-db.js');
+      return computeCacheBreakdown(pinnedSet);
+    } catch {
+      return null;
+    }
+  }
+
   async clearAllCache() {
     try {
       const ok = await clearAllStores({ keepCacheQuality: true });
@@ -466,7 +479,7 @@ export class OfflineManager {
       uid: u,
       priority,
       run: async () => {
-        const r = await this.cacheTrackAudio(u, q, { userInitiated, isMass });
+        const r = await this.cacheTrackAudio(u, q, { userInitiated, isMass, kind });
         try { onResult?.(r); } catch {}
       }
     });
@@ -794,6 +807,9 @@ export class OfflineManager {
 
     try { await clearCloudCandidate(u); } catch {}
 
+    // local kind: cloud (для breakdown/eviction)
+    try { await markLocalCloud(u); } catch {}
+
     window.NotificationSystem?.info('Трек добавлен в офлайн на ' + d + ' дней.');
     this._em.emit('progress', { uid: u, phase: 'cloudActivated' });
     return true;
@@ -864,6 +880,10 @@ export class OfflineManager {
       cloudExpiresAt,
       cloud: nextCloud
     });
+
+    if (nextCloud) {
+      try { await markLocalCloud(u); } catch {}
+    }
 
     this._em.emit('progress', { uid: u, phase: 'cloudStats', cloud: nextCloud, count: nextCount });
   }
@@ -981,6 +1001,19 @@ export class OfflineManager {
           expectedMB: Number.isFinite(expectedMB) ? expectedMB : 0,
           expectedField
         });
+      } catch {}
+
+      // Local meta for breakdown/eviction:
+      // - playbackCache => transient(window)
+      // - cloudCandidate/offlineAll/update/pinned => transient(window) на этапе скачивания,
+      //   cloud станет cloud только после cloud=true (в _maybeActivateCloudAfterCqComplete / fullListen)
+      try {
+        const k = String(options?.kind || '');
+        if (k === 'playbackCache') {
+          await markLocalTransient(u, 'window');
+        } else {
+          await markLocalTransient(u, 'window');
+        }
       } catch {}
 
       this._em.emit('progress', { uid: u, phase: 'downloaded', quality: q, bytes });
