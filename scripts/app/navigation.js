@@ -84,28 +84,30 @@ class NavigationManager {
   showModal(title, bodyHtml) {
     this.closeModal();
 
-    // ✅ Единый шаблон модалок
-    // (поддерживает тот же modal-bg, bigclose, контейнер modals-container).
-    import('../ui/modal-templates.js').then((m) => {
-      const modal = m.openModal({ title, bodyHtml, maxWidth: 520 });
-      this.activeModal = modal || null;
-    }).catch(() => {
-      // fallback: старый путь через Utils.createModal, если import не удался
-      if (window.Utils && typeof window.Utils.createModal === 'function') {
-        const html = `
-          <div class="modal-feedback" style="max-width: 520px;">
-            <button class="bigclose" title="Закрыть" aria-label="Закрыть">
-              <svg viewBox="0 0 48 48">
-                <line x1="12" y1="12" x2="36" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
-                <line x1="36" y1="12" x2="12" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
-              </svg>
-            </button>
-            ${bodyHtml || ''}
-          </div>
-        `;
-        this.activeModal = window.Utils.createModal(html);
-      }
-    });
+    const modal = window.Modals?.open
+      ? window.Modals.open({ title, bodyHtml, maxWidth: 520 })
+      : null;
+
+    if (modal) {
+      this.activeModal = modal;
+      return;
+    }
+
+    // fallback: если Modals ещё не загрузился
+    if (window.Utils && typeof window.Utils.createModal === 'function') {
+      const html = `
+        <div class="modal-feedback" style="max-width: 520px;">
+          <button class="bigclose" title="Закрыть" aria-label="Закрыть">
+            <svg viewBox="0 0 48 48">
+              <line x1="12" y1="12" x2="36" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+              <line x1="36" y1="12" x2="12" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+            </svg>
+          </button>
+          ${bodyHtml || ''}
+        </div>
+      `;
+      this.activeModal = window.Utils.createModal(html);
+    }
   }
 
   closeModal() {
