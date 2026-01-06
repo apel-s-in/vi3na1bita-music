@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-df2015fb479a456efc03e96667de581781d0c80d.idx
-│   │       ├── pack-df2015fb479a456efc03e96667de581781d0c80d.pack
-│   │       └── pack-df2015fb479a456efc03e96667de581781d0c80d.rev
+│   │       ├── pack-740993c7f7e65379bbebae34d691568277eeb8cb.idx
+│   │       ├── pack-740993c7f7e65379bbebae34d691568277eeb8cb.pack
+│   │       └── pack-740993c7f7e65379bbebae34d691568277eeb8cb.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -359,6 +359,7 @@ vi3na1bita-music/
 │   ├── utils/
 │   │   └── sw-manager.js
 │   ├── app.js
+│   ├── download-queue.js
 │   └── stats-manager.js
 ├── src/
 │   ├── player-core/
@@ -378,7 +379,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 09:59:09 UTC
+Сгенерировано: 2026-01-06 09:59:35 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6979,6 +6980,45 @@ if (typeof window !== 'undefined') {
   
   console.log('✅ Utils loaded');
 })();
+
+//=================================================
+// FILE: /scripts/download-queue.js
+//=================================================
+// FILE: scripts/download-queue.js
+// Единая очередь (1 активная аудио-загрузка, приоритеты P0–P5 по ТЗ)
+class DownloadQueue {
+  constructor() {
+    this.queue = []; // { uid, variant, priority, task(), resolve, reject }
+    this.active = null;
+    this.paused = false;
+  }
+
+  enqueue(taskObj) {
+    this.queue.push(taskObj);
+    this.queue.sort((a, b) => a.priority - b.priority);
+    this.process();
+  }
+
+  pause() { this.paused = true; if (this.active) this.active.abort(); }
+  resume() { this.paused = false; this.process(); }
+
+  process() {
+    if (this.paused || this.active || !this.queue.length) return;
+
+    const task = this.queue.shift();
+    this.active = task;
+
+    task.task()
+      .then(task.resolve)
+      .catch(task.reject)
+      .finally(() => {
+        this.active = null;
+        this.process();
+      });
+  }
+}
+
+window.downloadQueue = new DownloadQueue();
 
 //=================================================
 // FILE: /scripts/e2e/favorites.spec.js
