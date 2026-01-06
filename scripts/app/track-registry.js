@@ -39,3 +39,16 @@ export function getAllTracks() {
 export function clearRegistry() {
   registry.clear();
 }
+
+// ✅ Публикуем реестр в window для OFFLINE модалки/updates/re-cache (v1.0).
+// Это не добавляет зависимостей, только упрощает доступ из UI/IIFE к ESM данным.
+try {
+  window.TrackRegistry = {
+    registerTrack,
+    registerTracks,
+    getTrackByUid,
+    getAllTracks,
+    clearRegistry
+  };
+} catch {}
+
