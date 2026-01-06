@@ -11,8 +11,8 @@
       return;
     }
 
-    const data = await om.getGlobalStatistics(); // { totalSeconds, tracks: [] }
-    const tracks = data.tracks || [];
+    const data = await om.getGlobalStatistics(); // { totalSeconds?, totalListenSec?, tracks: [] }
+    const tracks = Array.isArray(data?.tracks) ? data.tracks : [];
     
     // Сортировка: по полным прослушиваниям, затем по времени
     tracks.sort((a, b) => {
@@ -24,8 +24,12 @@
     const topTracks = tracks.filter(t => t.fullListens >= 3);
 
     // Форматирование общего времени
-    const totalHours = (data.totalSeconds / 3600).toFixed(1);
-    const totalDays = (data.totalSeconds / 86400).toFixed(1);
+    const totalSec = Number(
+      (typeof data?.totalSeconds === 'number' ? data.totalSeconds : data?.totalListenSec)
+    ) || 0;
+
+    const totalHours = (totalSec / 3600).toFixed(1);
+    const totalDays = (totalSec / 86400).toFixed(1);
     
     // Рендер строк
     const rowsHtml = topTracks.map((t, idx) => {
