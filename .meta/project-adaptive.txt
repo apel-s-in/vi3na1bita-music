@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-68c3318388486e991fd809b52d891a87acb726ec.idx
-│   │       ├── pack-68c3318388486e991fd809b52d891a87acb726ec.pack
-│   │       └── pack-68c3318388486e991fd809b52d891a87acb726ec.rev
+│   │       ├── pack-bd98d1ebe9f913b5a461432f26262b496a4e3b67.idx
+│   │       ├── pack-bd98d1ebe9f913b5a461432f26262b496a4e3b67.pack
+│   │       └── pack-bd98d1ebe9f913b5a461432f26262b496a4e3b67.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -376,7 +376,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 09:16:05 UTC
+Сгенерировано: 2026-01-06 09:19:19 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9962,13 +9962,14 @@ Object.assign(window, {
 
     if (!albumKey || !uid) return;
 
-    const { openModal, actionRow } = await import('./modal-templates.js');
+    const openModal = window.Modals?.open;
+    const actionRow = window.Modals?.actionRow;
 
     const esc = w.Utils?.escapeHtml
       ? (s) => w.Utils.escapeHtml(String(s || ''))
       : (s) => String(s || '');
 
-    const modal = openModal({
+    const modal = (typeof openModal === 'function') ? openModal({
       title: 'Трек неактивен',
       maxWidth: 420,
       bodyHtml: `
@@ -9982,6 +9983,8 @@ Object.assign(window, {
         ])}
       `
     });
+
+    }) : null;
 
     if (!modal) return;
 
@@ -10002,13 +10005,14 @@ Object.assign(window, {
     const title = String(params?.title || 'Трек');
     if (!albumKey || !uid) return;
 
-    const { openModal, actionRow } = await import('./modal-templates.js');
+    const openModal = window.Modals?.open;
+    const actionRow = window.Modals?.actionRow;
 
     const esc = w.Utils?.escapeHtml
       ? (s) => w.Utils.escapeHtml(String(s || ''))
       : (s) => String(s || '');
 
-    const modal = openModal({
+    const modal = (typeof openModal === 'function') ? openModal({
       title: 'Удалить из «ИЗБРАННОГО»?',
       maxWidth: 420,
       bodyHtml: `
@@ -10022,6 +10026,8 @@ Object.assign(window, {
         ])}
       `
     });
+
+    }) : null;
 
     if (!modal) return;
 
