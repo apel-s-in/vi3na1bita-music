@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c1872ddac465dec0ea8d736911fc099a01d52d01.idx
-│   │       ├── pack-c1872ddac465dec0ea8d736911fc099a01d52d01.pack
-│   │       └── pack-c1872ddac465dec0ea8d736911fc099a01d52d01.rev
+│   │       ├── pack-48af4d05bbdc7cf5c337e365e5b53bd8a80b23a5.idx
+│   │       ├── pack-48af4d05bbdc7cf5c337e365e5b53bd8a80b23a5.pack
+│   │       └── pack-48af4d05bbdc7cf5c337e365e5b53bd8a80b23a5.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -374,7 +374,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 21:27:23 UTC
+Сгенерировано: 2026-01-06 21:28:17 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -12779,6 +12779,11 @@ class ServiceWorkerManager {
   }
 
   formatCacheSize(bytes) {
+    // ✅ единая логика, без дубля
+    if (window.Utils?.formatBytes) return window.Utils.formatBytes(bytes);
+    if (window.UIUtils?.formatBytes) return window.UIUtils.formatBytes(bytes);
+
+    // fallback
     if (bytes === 0) return '0 B';
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB'];
