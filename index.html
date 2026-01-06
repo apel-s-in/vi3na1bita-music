@@ -221,12 +221,22 @@
       // (scripts/app.js), чтобы избежать гонок и дублей.
 
       // ✅ 2) Ждём window.app и запускаем приложение один раз
-      const waitForApp = setInterval(() => {
+      // ✅ без polling: ждём модульный app.js через microtask/raf
+      const tryInit = () => {
         if (window.app && typeof window.app.initialize === 'function') {
-          clearInterval(waitForApp);
           window.app.initialize();
+          return true;
         }
-      }, 100);
+        return false;
+      };
+
+      if (!tryInit()) {
+        let tries = 0;
+        const t = setInterval(() => {
+          tries++;
+          if (tryInit() || tries > 50) clearInterval(t);
+        }, 60);
+      }
     }
     
     // ========== iOS INSTALL GUIDE ==========
