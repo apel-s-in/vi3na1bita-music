@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a36e2d32bb11aa89a7d297c366caf00177538e82.idx
-│   │       ├── pack-a36e2d32bb11aa89a7d297c366caf00177538e82.pack
-│   │       └── pack-a36e2d32bb11aa89a7d297c366caf00177538e82.rev
+│   │       ├── pack-d337f7f25d03b754c0a007936a262aca43b92cb5.idx
+│   │       ├── pack-d337f7f25d03b754c0a007936a262aca43b92cb5.pack
+│   │       └── pack-d337f7f25d03b754c0a007936a262aca43b92cb5.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 10:13:11 UTC
+Сгенерировано: 2026-01-06 10:15:01 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8060,7 +8060,28 @@ class OfflineManager {
       el.className = meta.pinned ? 'pinned' : meta.cloud ? 'cloud' : 'gray';
     });
   }
+  async deleteLocal(uid) {
+    const variants = ['hi', 'lo'];
+    for (const v of variants) {
+      const key = `${uid}:${v}`;
+      const tx = this.db.transaction(this.storeName, 'readwrite');
+      await tx.objectStore(this.storeName).delete(key);
+    }
+    localStorage.removeItem(`meta:${uid}`);
+  }
 
+  async computeSizeEstimate(selection) {
+    const cq = localStorage.getItem('offline:cacheQuality:v1') || 'hi';
+    let total = 0;
+    const tracks = selection === 'favorites' 
+      ? W.config.tracks.filter(t => t.favorite)
+      : W.config.tracks; // для альбомов расширь
+    for (const t of tracks) {
+      total += parseInt(t[`size${cq === 'hi' ? '' : '_low'}`] || 0);
+    }
+    return { totalMB: total };
+  }
+}
   // 100% OFFLINE — упрощённо
   async startFullOffline(selection) {
     const cq = localStorage.getItem('offline:cacheQuality:v1') || 'hi';
