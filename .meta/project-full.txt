@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a1c7881b61e48901f1c8c6d4944b5ef212a647e7.idx
-│   │       ├── pack-a1c7881b61e48901f1c8c6d4944b5ef212a647e7.pack
-│   │       └── pack-a1c7881b61e48901f1c8c6d4944b5ef212a647e7.rev
+│   │       ├── pack-904af8c8cc68dbc9db22f99992fd87d7797fda49.idx
+│   │       ├── pack-904af8c8cc68dbc9db22f99992fd87d7797fda49.pack
+│   │       └── pack-904af8c8cc68dbc9db22f99992fd87d7797fda49.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -379,7 +379,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 18:46:07 UTC
+Сгенерировано: 2026-01-06 18:47:05 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -11980,8 +11980,8 @@ export function closeOfflineModal() {
       return;
     }
 
-    const data = await om.getGlobalStatistics(); // { totalSeconds, tracks: [] }
-    const tracks = data.tracks || [];
+    const data = await om.getGlobalStatistics(); // { totalSeconds?, totalListenSec?, tracks: [] }
+    const tracks = Array.isArray(data?.tracks) ? data.tracks : [];
     
     // Сортировка: по полным прослушиваниям, затем по времени
     tracks.sort((a, b) => {
@@ -11993,8 +11993,12 @@ export function closeOfflineModal() {
     const topTracks = tracks.filter(t => t.fullListens >= 3);
 
     // Форматирование общего времени
-    const totalHours = (data.totalSeconds / 3600).toFixed(1);
-    const totalDays = (data.totalSeconds / 86400).toFixed(1);
+    const totalSec = Number(
+      (typeof data?.totalSeconds === 'number' ? data.totalSeconds : data?.totalListenSec)
+    ) || 0;
+
+    const totalHours = (totalSec / 3600).toFixed(1);
+    const totalDays = (totalSec / 86400).toFixed(1);
     
     // Рендер строк
     const rowsHtml = topTracks.map((t, idx) => {
