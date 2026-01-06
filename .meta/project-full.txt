@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b3efd8d8c1b1b0c860868f0d6b813866aa8ad6a2.idx
-│   │       ├── pack-b3efd8d8c1b1b0c860868f0d6b813866aa8ad6a2.pack
-│   │       └── pack-b3efd8d8c1b1b0c860868f0d6b813866aa8ad6a2.rev
+│   │       ├── pack-e69c530eb0a682e2ca80023ced4c1f4884119b4f.idx
+│   │       ├── pack-e69c530eb0a682e2ca80023ced4c1f4884119b4f.pack
+│   │       └── pack-e69c530eb0a682e2ca80023ced4c1f4884119b4f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,7 +377,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 15:02:07 UTC
+Сгенерировано: 2026-01-06 15:08:00 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -14148,8 +14148,9 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
 //=================================================
 // FILE: /styles/main.css
-FILE: styles/main.css
-Оптимизированная версия — убраны дубли, мёртвые правила, сокращено ~20% */
+/* styles/main.css
+ * Оптимизированная версия — убраны дубли, мёртвые правила, сокращено ~20%
+ */
 :root {
   --primary-bg: #181818;
   --primary-color: #E80100;
