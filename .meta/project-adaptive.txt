@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-386d28d0bfc65ba8ab5f0cbb674260ce561a2010.idx
-│   │       ├── pack-386d28d0bfc65ba8ab5f0cbb674260ce561a2010.pack
-│   │       └── pack-386d28d0bfc65ba8ab5f0cbb674260ce561a2010.rev
+│   │       ├── pack-b963b8c9bb99d9a96bd8df52706d000dafa92810.idx
+│   │       ├── pack-b963b8c9bb99d9a96bd8df52706d000dafa92810.pack
+│   │       └── pack-b963b8c9bb99d9a96bd8df52706d000dafa92810.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -336,7 +336,8 @@ vi3na1bita-music/
 │   │   ├── player.spec.js
 │   │   └── utils.js
 │   ├── modals/
-│   │   └── offline-modal.js
+│   │   ├── offline-modal.js
+│   │   └── statistics-modal.js
 │   ├── offline/
 │   │   ├── cache-db.js
 │   │   ├── net-policy.js
@@ -385,7 +386,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 10:12:18 UTC
+Сгенерировано: 2026-01-06 10:12:46 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7910,6 +7911,39 @@ function createInput(storageKey, label, type = 'number', def) {
   div.innerHTML = `<span>${label}</span><input type="${type}" value="${localStorage.getItem(storageKey) || def}">`;
   div.querySelector('input').onchange = (e) => localStorage.setItem(storageKey, e.target.value);
   return div;
+}
+
+//=================================================
+// FILE: /scripts/modals/statistics-modal.js
+//=================================================
+// FILE: scripts/modals/statistics-modal.js
+function openStatisticsModal() {
+  const data = statsManager.getAllGlobal();
+
+  const content = document.createElement('div');
+  content.innerHTML = `<p>Общее время прослушивания: ${formatSeconds(data.totalSeconds)}</p>`;
+
+  const list = document.createElement('div');
+  data.tracks.forEach(t => {
+    const item = document.createElement('div');
+    item.className = 'vr-modal__row';
+    item.innerHTML = `<span>${W.config.tracks.find(tr => tr.uid === t.uid)?.title || t.uid}</span>
+                      <span>${t.fullCount} full • ${formatSeconds(t.seconds)}</span>`;
+    list.appendChild(item);
+  });
+  content.appendChild(list);
+
+  Modal.open({
+    title: 'Статистика',
+    content,
+    buttons: [{ text: 'Закрыть' }]
+  });
+}
+
+function formatSeconds(sec) {
+  const days = Math.floor(sec / 86400);
+  const hours = Math.floor((sec % 86400) / 3600);
+  return `${days ? days + ' дн ' : ''}${hours} ч`;
 }
 
 //=================================================
