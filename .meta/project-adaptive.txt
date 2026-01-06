@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-673031a6cec344922bc2eef678505d545b9e4298.idx
-│   │       ├── pack-673031a6cec344922bc2eef678505d545b9e4298.pack
-│   │       └── pack-673031a6cec344922bc2eef678505d545b9e4298.rev
+│   │       ├── pack-a5a8967baa3dea2266a4b3dd26f31358251256fc.idx
+│   │       ├── pack-a5a8967baa3dea2266a4b3dd26f31358251256fc.pack
+│   │       └── pack-a5a8967baa3dea2266a4b3dd26f31358251256fc.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -375,7 +375,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 19:37:53 UTC
+Сгенерировано: 2026-01-06 19:42:30 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -731,7 +731,6 @@ jobs:
   
   <!-- Styles -->
   <link rel="stylesheet" href="styles/main.css">
-  <link rel="stylesheet" href="styles/modals.css">
   
   <!-- КРИТИЧНО: Howler.js должен загрузиться ПЕРВЫМ -->
   <script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js"></script>
