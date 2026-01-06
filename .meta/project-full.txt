@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b963b8c9bb99d9a96bd8df52706d000dafa92810.idx
-│   │       ├── pack-b963b8c9bb99d9a96bd8df52706d000dafa92810.pack
-│   │       └── pack-b963b8c9bb99d9a96bd8df52706d000dafa92810.rev
+│   │       ├── pack-a36e2d32bb11aa89a7d297c366caf00177538e82.idx
+│   │       ├── pack-a36e2d32bb11aa89a7d297c366caf00177538e82.pack
+│   │       └── pack-a36e2d32bb11aa89a7d297c366caf00177538e82.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -336,6 +336,7 @@ vi3na1bita-music/
 │   │   ├── player.spec.js
 │   │   └── utils.js
 │   ├── modals/
+│   │   ├── cloud-menu.js
 │   │   ├── offline-modal.js
 │   │   └── statistics-modal.js
 │   ├── offline/
@@ -386,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 10:12:45 UTC
+Сгенерировано: 2026-01-06 10:13:11 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7754,6 +7755,40 @@ export async function seedPlayerStateV2FromCurrent(page, opts = {}) {
 
     localStorage.setItem('playerStateV2', JSON.stringify(st));
   }, { position, wasPlaying });
+}
+
+//=================================================
+// FILE: /scripts/modals/cloud-menu.js
+//=================================================
+// FILE: scripts/modals/cloud-menu.js
+function openCloudMenu(uid) {
+  const track = W.config.tracks.find(t => t.uid === uid);
+
+  Modal.open({
+    title: `☁ ${track.title}`,
+    content: 'Выберите действие',
+    buttons: [
+      {
+        text: 'Добавить 🔒',
+        action: async () => {
+          await offlineManager.togglePinned(uid, true);
+          toast('Трек закреплён', 'success');
+        }
+      },
+      {
+        text: 'Удалить из кэша',
+        danger: true,
+        action: () => {
+          if (confirm('Удалить из кэша (статистика облачка будет сброшена)?')) {
+            offlineManager.deleteLocal(uid);
+            statsManager.resetCloud(uid);
+            toast('Трек удалён из кэша', 'info');
+            offlineManager.updateTrackIndicators(uid);
+          }
+        }
+      }
+    ]
+  });
 }
 
 //=================================================
