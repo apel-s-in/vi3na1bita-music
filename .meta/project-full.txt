@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6708d7b9f83fd0cbcc10c1a529c66761a310da04.idx
-│   │       ├── pack-6708d7b9f83fd0cbcc10c1a529c66761a310da04.pack
-│   │       └── pack-6708d7b9f83fd0cbcc10c1a529c66761a310da04.rev
+│   │       ├── pack-ab47ed053c13a8fa07e1ab89ca6c7798ffa9777f.idx
+│   │       ├── pack-ab47ed053c13a8fa07e1ab89ca6c7798ffa9777f.pack
+│   │       └── pack-ab47ed053c13a8fa07e1ab89ca6c7798ffa9777f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -379,7 +379,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 18:43:30 UTC
+Сгенерировано: 2026-01-06 18:45:15 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4237,7 +4237,7 @@ export function attachPlaybackCache() {
 
     if (!repeat && opts?.reason === 'favoritesChanged' && currentUid) {
       const d = opts?.changed || {};
- const changedAlbum = String(d.albumKey || '').trim();
+      const changedAlbum = String(d.albumKey || '').trim();
       const changedUid = String(d.uid || '').trim();
       const liked = !!d.liked;
 
