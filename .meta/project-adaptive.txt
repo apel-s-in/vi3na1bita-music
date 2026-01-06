@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c86f6a5887855a1f3c31ec3870d38e4d68a0fbe4.idx
-│   │       ├── pack-c86f6a5887855a1f3c31ec3870d38e4d68a0fbe4.pack
-│   │       └── pack-c86f6a5887855a1f3c31ec3870d38e4d68a0fbe4.rev
+│   │       ├── pack-3ec3c82c0903dd5a2d5fb5263d9d4153e8b2de76.idx
+│   │       ├── pack-3ec3c82c0903dd5a2d5fb5263d9d4153e8b2de76.pack
+│   │       └── pack-3ec3c82c0903dd5a2d5fb5263d9d4153e8b2de76.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,7 +377,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 12:27:39 UTC
+Сгенерировано: 2026-01-06 12:28:16 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -15755,8 +15755,5 @@ input:focus-visible {
 
 //=================================================
 // FILE: /styles/modals.css
-/*=================================================
-FILE: styles/modals.css
-Теперь почти пустой — всё в modal-templates.js + vr-modal классы из твоего старого modals.css */
-.vr-modal { /* твои стили из старого modals.css */ }
+/* styles/modals.css - пустой, все стили в main.css */
 
