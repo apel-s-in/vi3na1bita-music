@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e40d951fbee873a45b659e9297b34b64f36c5573.idx
-│   │       ├── pack-e40d951fbee873a45b659e9297b34b64f36c5573.pack
-│   │       └── pack-e40d951fbee873a45b659e9297b34b64f36c5573.rev
+│   │       ├── pack-3c9cf6f9ec54914248999c85a0eff5b6d751a7aa.idx
+│   │       ├── pack-3c9cf6f9ec54914248999c85a0eff5b6d751a7aa.pack
+│   │       └── pack-3c9cf6f9ec54914248999c85a0eff5b6d751a7aa.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 16:07:11 UTC
+Сгенерировано: 2026-01-06 16:07:45 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7699,20 +7699,17 @@ export async function seedPlayerStateV2FromCurrent(page, opts = {}) {
 //=================================================
 // FILE: /scripts/offline/cache-db.js
 // scripts/offline/cache-db.js
-// IndexedDB слой для OFFLINE системы (ТЗ_НЬЮ)
-// Хранит: bytes счётчики, blobs аудио, cloud stats, global stats
+// IndexedDB wrapper для offline-кэша (ТЗ_Нью)
 
-const DB_NAME = 'vitrina-offline-db';
-const DB_VERSION = 2;
+const DB_NAME = 'OfflineCacheDB';
+const DB_VERSION = 3;
 
-const STORE_META = 'meta';
-const STORE_BYTES = 'bytes';
-const STORE_BLOBS = 'blobs';
-const STORE_STATS_GLOBAL = 'stats_global';
-const STORE_CLOUD_STATS = 'cloud_stats';
-
-const META_CQ_KEY = 'cacheQuality';
-const MB = 1024 * 1024;
+const STORE_AUDIO = 'audioBlobs';
+const STORE_BYTES = 'trackBytes';
+const STORE_META = 'cacheMeta';
+const STORE_CLOUD_STATS = 'cloudStats';
+const STORE_CLOUD_CANDIDATE = 'cloudCandidate';
+const STORE_GLOBAL_STATS = 'globalStats';
 
 let dbPromise = null;
 
@@ -7722,575 +7719,252 @@ function openDb() {
   dbPromise = new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
 
-    req.onupgradeneeded = (event) => {
-      const db = req.result;
-      const oldVersion = event.oldVersion;
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
 
-      if (!db.objectStoreNames.contains(STORE_META)) {
-        db.createObjectStore(STORE_META);
+      if (!db.objectStoreNames.contains(STORE_AUDIO)) {
+        db.createObjectStore(STORE_AUDIO);
       }
       if (!db.objectStoreNames.contains(STORE_BYTES)) {
         db.createObjectStore(STORE_BYTES);
       }
-      if (!db.objectStoreNames.contains(STORE_BLOBS)) {
-        db.createObjectStore(STORE_BLOBS);
-      }
-      if (!db.objectStoreNames.contains(STORE_STATS_GLOBAL)) {
-        db.createObjectStore(STORE_STATS_GLOBAL);
+      if (!db.objectStoreNames.contains(STORE_META)) {
+        db.createObjectStore(STORE_META);
       }
       if (!db.objectStoreNames.contains(STORE_CLOUD_STATS)) {
         db.createObjectStore(STORE_CLOUD_STATS);
       }
+      if (!db.objectStoreNames.contains(STORE_CLOUD_CANDIDATE)) {
+        db.createObjectStore(STORE_CLOUD_CANDIDATE);
+      }
+      if (!db.objectStoreNames.contains(STORE_GLOBAL_STATS)) {
+        db.createObjectStore(STORE_GLOBAL_STATS);
+      }
     };
 
     req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error || new Error('IndexedDB open failed'));
+    req.onerror = () => reject(req.error);
   });
 
   return dbPromise;
-}
-
-function txp(db, store, mode, fn) {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(store, mode);
-    const st = tx.objectStore(store);
-
-    let res;
-    try { res = fn(st); } catch (e) { reject(e); return; }
-
-    if (res instanceof Promise) {
-      res.then(r => {
-        tx.oncomplete = () => resolve(r);
-      }).catch(reject);
-    } else {
-      tx.oncomplete = () => resolve(res);
-    }
-    
-    tx.onerror = () => reject(tx.error || new Error('IndexedDB tx failed'));
-    tx.onabort = () => reject(tx.error || new Error('IndexedDB tx aborted'));
-  });
 }
 
 export async function ensureDbReady() {
   await openDb();
 }
 
-// ===== Cache Quality =====
-export async function getCacheQuality() {
-  try {
-    const db = await openDb();
-    return new Promise((resolve) => {
-      const tx = db.transaction(STORE_META, 'readonly');
-      const st = tx.objectStore(STORE_META);
-      const r = st.get(META_CQ_KEY);
-      r.onsuccess = () => {
-        const s = String(r.result || '').toLowerCase();
-        resolve((s === 'lo') ? 'lo' : 'hi');
-      };
-      r.onerror = () => resolve('hi');
-    });
-  } catch {
-    return 'hi';
-  }
+async function getStore(name, mode = 'readonly') {
+  const db = await openDb();
+  const tx = db.transaction(name, mode);
+  return tx.objectStore(name);
 }
 
-export async function setCacheQuality(v) {
-  const cq = (String(v || '').toLowerCase() === 'lo') ? 'lo' : 'hi';
-  try {
-    const db = await openDb();
-    const tx = db.transaction(STORE_META, 'readwrite');
-    tx.objectStore(STORE_META).put(cq, META_CQ_KEY);
-  } catch {}
-  return cq;
+function promisifyReq(req) {
+  return new Promise((resolve, reject) => {
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
 }
 
-// ===== Bytes tracking =====
-export async function bytesByQuality(uid) {
-  const u = String(uid || '').trim();
-  if (!u) return { hi: 0, lo: 0 };
-
-  try {
-    const db = await openDb();
-    return new Promise((resolve) => {
-      const tx = db.transaction(STORE_BYTES, 'readonly');
-      const r = tx.objectStore(STORE_BYTES).get(u);
-      r.onsuccess = () => {
-        const row = r.result || {};
-        const hi = Number(row.hi || 0);
-        const lo = Number(row.lo || 0);
-        resolve({
-          hi: Number.isFinite(hi) && hi > 0 ? Math.floor(hi) : 0,
-          lo: Number.isFinite(lo) && lo > 0 ? Math.floor(lo) : 0
-        });
-      };
-      r.onerror = () => resolve({ hi: 0, lo: 0 });
-    });
-  } catch {
-    return { hi: 0, lo: 0 };
-  }
-}
-
-export async function setBytes(uid, quality, bytes) {
-  const u = String(uid || '').trim();
-  if (!u) return;
-
-  const q = (String(quality || '').toLowerCase() === 'lo') ? 'lo' : 'hi';
-  const b = Number(bytes);
-  const safe = (Number.isFinite(b) && b > 0) ? Math.floor(b) : 0;
-
-  try {
-    const db = await openDb();
-    const tx = db.transaction(STORE_BYTES, 'readwrite');
-    const st = tx.objectStore(STORE_BYTES);
-    
-    const getReq = st.get(u);
-    getReq.onsuccess = () => {
-      const cur = getReq.result || { hi: 0, lo: 0 };
-      const next = { 
-        hi: Number(cur.hi || 0), 
-        lo: Number(cur.lo || 0),
-        updatedAt: Date.now()
-      };
-      next[q] = safe;
-      st.put(next, u);
-    };
-  } catch {}
-}
-
-export async function totalCachedBytes() {
-  try {
-    const db = await openDb();
-    return new Promise((resolve) => {
-      let total = 0;
-      const tx = db.transaction(STORE_BYTES, 'readonly');
-      const req = tx.objectStore(STORE_BYTES).openCursor();
-
-      req.onsuccess = () => {
-        const cursor = req.result;
-        if (!cursor) {
-          resolve(total);
-          return;
-        }
-        const v = cursor.value || {};
-        const hi = Number(v.hi || 0);
-        const lo = Number(v.lo || 0);
-        if (Number.isFinite(hi) && hi > 0) total += hi;
-        if (Number.isFinite(lo) && lo > 0) total += lo;
-        cursor.continue();
-      };
-
-      req.onerror = () => resolve(0);
-    });
-  } catch {
-    return 0;
-  }
-}
-
-export async function deleteTrackCache(uid) {
-  const u = String(uid || '').trim();
-  if (!u) return;
-
-  try {
-    const db = await openDb();
-    const tx = db.transaction([STORE_BYTES, STORE_BLOBS], 'readwrite');
-    tx.objectStore(STORE_BYTES).delete(u);
-    tx.objectStore(STORE_BLOBS).delete(`${u}:hi`);
-    tx.objectStore(STORE_BLOBS).delete(`${u}:lo`);
-  } catch {}
-}
-
-// ===== Blob storage =====
+// Audio blobs
 export async function getAudioBlob(uid, quality) {
-  const u = String(uid || '').trim();
-  if (!u) return null;
-
-  const q = (String(quality || '').toLowerCase() === 'lo') ? 'lo' : 'hi';
-  const key = `${u}:${q}`;
-
-  try {
-    const db = await openDb();
-    return new Promise((resolve) => {
-      const tx = db.transaction(STORE_BLOBS, 'readonly');
-      const r = tx.objectStore(STORE_BLOBS).get(key);
-      r.onsuccess = () => resolve(r.result || null);
-      r.onerror = () => resolve(null);
-    });
-  } catch {
-    return null;
-  }
+  const key = `${uid}:${quality}`;
+  const store = await getStore(STORE_AUDIO);
+  return promisifyReq(store.get(key));
 }
 
 export async function setAudioBlob(uid, quality, blob) {
-  const u = String(uid || '').trim();
-  if (!u || !(blob instanceof Blob)) return false;
-
-  const q = (String(quality || '').toLowerCase() === 'lo') ? 'lo' : 'hi';
-  const key = `${u}:${q}`;
-
-  try {
-    const db = await openDb();
-    const tx = db.transaction(STORE_BLOBS, 'readwrite');
-    tx.objectStore(STORE_BLOBS).put(blob, key);
-    return true;
-  } catch {
-    return false;
-  }
+  const key = `${uid}:${quality}`;
+  const store = await getStore(STORE_AUDIO, 'readwrite');
+  return promisifyReq(store.put(blob, key));
 }
 
 export async function deleteAudioBlob(uid, quality) {
-  const u = String(uid || '').trim();
-  if (!u) return;
-
-  const qRaw = String(quality || '').toLowerCase().trim();
-  const keys = (qRaw === 'hi' || qRaw === 'lo')
-    ? [`${u}:${qRaw}`]
-    : [`${u}:hi`, `${u}:lo`];
-
-  try {
-    const db = await openDb();
-    const tx = db.transaction(STORE_BLOBS, 'readwrite');
-    const st = tx.objectStore(STORE_BLOBS);
-    keys.forEach(k => st.delete(k));
-  } catch {}
+  const key = `${uid}:${quality}`;
+  const store = await getStore(STORE_AUDIO, 'readwrite');
+  return promisifyReq(store.delete(key));
 }
 
-// ===== Cloud Stats (ТЗ 7.11.1 - сбрасываемая) =====
+// Bytes tracking
+export async function getBytes(uid, quality) {
+  const key = `${uid}:${quality}`;
+  const store = await getStore(STORE_BYTES);
+  const val = await promisifyReq(store.get(key));
+  return Number(val) || 0;
+}
+
+export async function setBytes(uid, quality, bytes) {
+  const key = `${uid}:${quality}`;
+  const store = await getStore(STORE_BYTES, 'readwrite');
+  return promisifyReq(store.put(Number(bytes) || 0, key));
+}
+
+export async function bytesByQuality(uid) {
+  const hi = await getBytes(uid, 'hi');
+  const lo = await getBytes(uid, 'lo');
+  return { hi, lo };
+}
+
+export async function totalCachedBytes() {
+  const store = await getStore(STORE_BYTES);
+  const keys = await promisifyReq(store.getAllKeys());
+  let total = 0;
+  for (const k of keys) {
+    const v = await promisifyReq(store.get(k));
+    total += Number(v) || 0;
+  }
+  return total;
+}
+
+// Cache Quality meta
+export async function getCacheQuality() {
+  const store = await getStore(STORE_META);
+  const val = await promisifyReq(store.get('cacheQuality'));
+  return (val === 'lo') ? 'lo' : 'hi';
+}
+
+export async function setCacheQuality(q) {
+  const store = await getStore(STORE_META, 'readwrite');
+  return promisifyReq(store.put(q === 'lo' ? 'lo' : 'hi', 'cacheQuality'));
+}
+
+// Cloud stats per track
 export async function getCloudStats(uid) {
-  const u = String(uid || '').trim();
-  const defaults = {
-    cloudFullListenCount: 0,
-    lastFullListenAt: 0,
-    cloudAddedAt: 0,
-    cloudExpiresAt: 0,
-    cloud: false
-  };
-  
-  if (!u) return defaults;
-
-  try {
-    const db = await openDb();
-    return new Promise((resolve) => {
-      const tx = db.transaction(STORE_CLOUD_STATS, 'readonly');
-      const r = tx.objectStore(STORE_CLOUD_STATS).get(u);
-      r.onsuccess = () => {
-        const v = r.result;
-        if (!v) { resolve(defaults); return; }
-        resolve({
-          cloudFullListenCount: Math.floor(Number(v.cloudFullListenCount || 0)),
-          lastFullListenAt: Math.floor(Number(v.lastFullListenAt || 0)),
-          cloudAddedAt: Math.floor(Number(v.cloudAddedAt || 0)),
-          cloudExpiresAt: Math.floor(Number(v.cloudExpiresAt || 0)),
-          cloud: v.cloud === true
-        });
-      };
-      r.onerror = () => resolve(defaults);
-    });
-  } catch {
-    return defaults;
-  }
+  const store = await getStore(STORE_CLOUD_STATS);
+  return promisifyReq(store.get(uid));
 }
 
-export async function setCloudStats(uid, stats) {
-  const u = String(uid || '').trim();
-  if (!u) return false;
-
-  const payload = {
-    cloudFullListenCount: Math.floor(Number(stats?.cloudFullListenCount || 0)),
-    lastFullListenAt: Math.floor(Number(stats?.lastFullListenAt || 0)),
-    cloudAddedAt: Math.floor(Number(stats?.cloudAddedAt || 0)),
-    cloudExpiresAt: Math.floor(Number(stats?.cloudExpiresAt || 0)),
-    cloud: stats?.cloud === true
-  };
-
-  try {
-    const db = await openDb();
-    const tx = db.transaction(STORE_CLOUD_STATS, 'readwrite');
-    tx.objectStore(STORE_CLOUD_STATS).put(payload, u);
-    return true;
-  } catch {
-    return false;
-  }
+export async function setCloudStats(uid, data) {
+  const store = await getStore(STORE_CLOUD_STATS, 'readwrite');
+  return promisifyReq(store.put(data, uid));
 }
 
 export async function clearCloudStats(uid) {
-  const u = String(uid || '').trim();
-  if (!u) return false;
-
-  try {
-    const db = await openDb();
-    const tx = db.transaction(STORE_CLOUD_STATS, 'readwrite');
-    tx.objectStore(STORE_CLOUD_STATS).delete(u);
-    return true;
-  } catch {
-    return false;
-  }
+  const store = await getStore(STORE_CLOUD_STATS, 'readwrite');
+  return promisifyReq(store.delete(uid));
 }
 
-// ===== Cloud Candidate (meta) =====
-function cloudCandidateKey(uid) {
-  const u = String(uid || '').trim();
-  return u ? `cloudCandidate:${u}` : '';
-}
-
+// Cloud candidate flag
 export async function getCloudCandidate(uid) {
-  const key = cloudCandidateKey(uid);
-  if (!key) return false;
-
-  try {
-    const db = await openDb();
-    return new Promise((resolve) => {
-      const tx = db.transaction(STORE_META, 'readonly');
-      const r = tx.objectStore(STORE_META).get(key);
-      r.onsuccess = () => resolve(r.result === true);
-      r.onerror = () => resolve(false);
-    });
-  } catch {
-    return false;
-  }
+  const store = await getStore(STORE_CLOUD_CANDIDATE);
+  const val = await promisifyReq(store.get(uid));
+  return !!val;
 }
 
-export async function setCloudCandidate(uid, flag) {
-  const key = cloudCandidateKey(uid);
-  if (!key) return false;
-
-  try {
-    const db = await openDb();
-    const tx = db.transaction(STORE_META, 'readwrite');
-    tx.objectStore(STORE_META).put(!!flag, key);
-    return true;
-  } catch {
-    return false;
-  }
+export async function setCloudCandidate(uid, val) {
+  const store = await getStore(STORE_CLOUD_CANDIDATE, 'readwrite');
+  return promisifyReq(store.put(!!val, uid));
 }
 
 export async function clearCloudCandidate(uid) {
-  const key = cloudCandidateKey(uid);
-  if (!key) return false;
-
-  try {
-    const db = await openDb();
-    const tx = db.transaction(STORE_META, 'readwrite');
-    tx.objectStore(STORE_META).delete(key);
-    return true;
-  } catch {
-    return false;
-  }
+  const store = await getStore(STORE_CLOUD_CANDIDATE, 'readwrite');
+  return promisifyReq(store.delete(uid));
 }
 
-// ===== Global Stats (ТЗ 7.11.2 - никогда не сбрасывается) =====
-export async function getGlobalStats(uid) {
-  const u = String(uid || '').trim();
-  if (!u) return { seconds: 0, fullListens: 0, lastListenAt: 0 };
+// Global statistics
+export async function updateGlobalStats(uid, deltaSec, deltaFullListens) {
+  const store = await getStore(STORE_GLOBAL_STATS, 'readwrite');
+  const prev = (await promisifyReq(store.get('global'))) || { totalListenSec: 0, totalFullListens: 0 };
 
-  try {
-    const db = await openDb();
-    return new Promise((resolve) => {
-      const tx = db.transaction(STORE_STATS_GLOBAL, 'readonly');
-      const r = tx.objectStore(STORE_STATS_GLOBAL).get(u);
-      r.onsuccess = () => {
-        const v = r.result || {};
-        resolve({
-          seconds: Number(v.seconds || 0),
-          fullListens: Number(v.fullListens || 0),
-          lastListenAt: Number(v.lastListenAt || 0)
-        });
-      };
-      r.onerror = () => resolve({ seconds: 0, fullListens: 0, lastListenAt: 0 });
-    });
-  } catch {
-    return { seconds: 0, fullListens: 0, lastListenAt: 0 };
-  }
-}
+  prev.totalListenSec = (Number(prev.totalListenSec) || 0) + (Number(deltaSec) || 0);
+  prev.totalFullListens = (Number(prev.totalFullListens) || 0) + (Number(deltaFullListens) || 0);
 
-export async function updateGlobalStats(uid, deltaSeconds, addFullListen = 0) {
-  const u = String(uid || '').trim();
-  if (!u) return;
-
-  const now = Date.now();
-  const delta = Number(deltaSeconds) || 0;
-  const full = Number(addFullListen) || 0;
-
-  try {
-    const db = await openDb();
-    const tx = db.transaction(STORE_STATS_GLOBAL, 'readwrite');
-    const st = tx.objectStore(STORE_STATS_GLOBAL);
-    
-    const getReq = st.get(u);
-    getReq.onsuccess = () => {
-      const cur = getReq.result || { seconds: 0, fullListens: 0, lastListenAt: 0 };
-      const next = {
-        seconds: (Number(cur.seconds) || 0) + delta,
-        fullListens: (Number(cur.fullListens) || 0) + full,
-        lastListenAt: now
-      };
-      st.put(next, u);
-    };
-  } catch {}
+  return promisifyReq(store.put(prev, 'global'));
 }
 
 export async function getGlobalStatsAndTotal() {
-  try {
-    const db = await openDb();
-    let totalSeconds = 0;
-    const tracks = [];
-
-    return new Promise((resolve) => {
-      const tx = db.transaction(STORE_STATS_GLOBAL, 'readonly');
-      const req = tx.objectStore(STORE_STATS_GLOBAL).openCursor();
-      
-      req.onsuccess = () => {
-        const cursor = req.result;
-        if (!cursor) {
-          resolve({ totalSeconds, tracks });
-          return;
-        }
-        const val = cursor.value;
-        const uid = cursor.key;
-        totalSeconds += (Number(val.seconds) || 0);
-        if ((val.fullListens || 0) > 0 || (val.seconds || 0) > 0) {
-          tracks.push({ uid, ...val });
-        }
-        cursor.continue();
-      };
-      
-      req.onerror = () => resolve({ totalSeconds: 0, tracks: [] });
-    });
-  } catch {
-    return { totalSeconds: 0, tracks: [] };
-  }
+  const store = await getStore(STORE_GLOBAL_STATS);
+  const g = (await promisifyReq(store.get('global'))) || { totalListenSec: 0, totalFullListens: 0 };
+  const totalBytes = await totalCachedBytes();
+  return { ...g, totalBytes };
 }
 
-// ===== Eviction helpers =====
-export async function getEvictionCandidates(pinnedSet) {
-  try {
-    const db = await openDb();
-    const candidates = [];
+// Delete track cache
+export async function deleteTrackCache(uid) {
+  await deleteAudioBlob(uid, 'hi');
+  await deleteAudioBlob(uid, 'lo');
 
-    await new Promise((resolve) => {
-      const tx = db.transaction(STORE_BYTES, 'readonly');
-      const req = tx.objectStore(STORE_BYTES).openCursor();
-      
-      req.onsuccess = () => {
-        const cursor = req.result;
-        if (!cursor) { resolve(); return; }
-        const uid = String(cursor.key);
-        if (!pinnedSet.has(uid)) {
-          const v = cursor.value || {};
-          candidates.push({ 
-            uid, 
-            updatedAt: v.updatedAt || 0,
-            bytes: (Number(v.hi) || 0) + (Number(v.lo) || 0)
-          });
-        }
-        cursor.continue();
-      };
-      
-      req.onerror = () => resolve();
-    });
-
-    // Enrich with lastListenAt for LRU sorting
-    for (const c of candidates) {
-      const g = await getGlobalStats(c.uid);
-      c.lastListenAt = g?.lastListenAt || 0;
-    }
-
-    // Sort: oldest first (LRU)
-    candidates.sort((a, b) => (a.lastListenAt || 0) - (b.lastListenAt || 0));
-    
-    return candidates;
-  } catch {
-    return [];
-  }
+  const storeBytes = await getStore(STORE_BYTES, 'readwrite');
+  await promisifyReq(storeBytes.delete(`${uid}:hi`));
+  await promisifyReq(storeBytes.delete(`${uid}:lo`));
 }
 
-// ===== Cloud TTL expiration check =====
+// Clear all
+export async function clearAllStores(opts = {}) {
+  const keepCacheQuality = !!opts?.keepCacheQuality;
+  const cq = keepCacheQuality ? await getCacheQuality() : null;
+
+  const db = await openDb();
+  const storeNames = [STORE_AUDIO, STORE_BYTES, STORE_CLOUD_STATS, STORE_CLOUD_CANDIDATE];
+
+  for (const name of storeNames) {
+    const tx = db.transaction(name, 'readwrite');
+    const store = tx.objectStore(name);
+    await promisifyReq(store.clear());
+  }
+
+  if (keepCacheQuality && cq) {
+    await setCacheQuality(cq);
+  }
+
+  return true;
+}
+
+// Eviction candidates
+export async function getEvictionCandidates(pinnedSet = new Set()) {
+  const storeStats = await getStore(STORE_CLOUD_STATS);
+  const storeBytes = await getStore(STORE_BYTES);
+
+  const allStats = await promisifyReq(storeStats.getAll());
+  const allStatsKeys = await promisifyReq(storeStats.getAllKeys());
+
+  const bytesKeys = await promisifyReq(storeBytes.getAllKeys());
+  const uidSet = new Set();
+
+  for (const k of bytesKeys) {
+    const uid = String(k).split(':')[0];
+    if (uid && !pinnedSet.has(uid)) uidSet.add(uid);
+  }
+
+  const candidates = [];
+  for (const uid of uidSet) {
+    const idx = allStatsKeys.indexOf(uid);
+    const st = idx >= 0 ? allStats[idx] : null;
+    const lastAccess = Number(st?.lastFullListenAt || 0) || 0;
+
+    const hiB = await getBytes(uid, 'hi');
+    const loB = await getBytes(uid, 'lo');
+    const bytes = hiB + loB;
+
+    candidates.push({ uid, lastAccess, bytes });
+  }
+
+  candidates.sort((a, b) => a.lastAccess - b.lastAccess);
+  return candidates;
+}
+
+// Expired cloud
 export async function getExpiredCloudUids() {
+  const store = await getStore(STORE_CLOUD_STATS);
+  const allStats = await promisifyReq(store.getAll());
+  const allKeys = await promisifyReq(store.getAllKeys());
+
   const now = Date.now();
   const expired = [];
 
-  try {
-    const db = await openDb();
-    return new Promise((resolve) => {
-      const tx = db.transaction(STORE_CLOUD_STATS, 'readonly');
-      const req = tx.objectStore(STORE_CLOUD_STATS).openCursor();
-      
-      req.onsuccess = () => {
-        const cursor = req.result;
-        if (!cursor) {
-          resolve(expired);
-          return;
-        }
-        const v = cursor.value;
-        if (v && v.cloud === true && v.cloudExpiresAt > 0 && v.cloudExpiresAt < now) {
-          expired.push(String(cursor.key));
-        }
-        cursor.continue();
-      };
-      
-      req.onerror = () => resolve([]);
-    });
-  } catch {
-    return [];
-  }
-}
+  for (let i = 0; i < allKeys.length; i++) {
+    const uid = allKeys[i];
+    const st = allStats[i];
 
-// ===== Clear all stores =====
-export async function clearAllStores({ keepCacheQuality = true } = {}) {
-  try {
-    const db = await openDb();
-
-    // Clear bytes
-    await new Promise((resolve) => {
-      const tx = db.transaction(STORE_BYTES, 'readwrite');
-      tx.objectStore(STORE_BYTES).clear();
-      tx.oncomplete = resolve;
-      tx.onerror = resolve;
-    });
-
-    // Clear blobs
-    await new Promise((resolve) => {
-      const tx = db.transaction(STORE_BLOBS, 'readwrite');
-      tx.objectStore(STORE_BLOBS).clear();
-      tx.oncomplete = resolve;
-      tx.onerror = resolve;
-    });
-
-    // Clear cloud stats
-    await new Promise((resolve) => {
-      const tx = db.transaction(STORE_CLOUD_STATS, 'readwrite');
-      tx.objectStore(STORE_CLOUD_STATS).clear();
-      tx.oncomplete = resolve;
-      tx.onerror = resolve;
-    });
-
-    // Clear meta (except CQ if keepCacheQuality)
-    await new Promise((resolve) => {
-      const tx = db.transaction(STORE_META, 'readwrite');
-      const st = tx.objectStore(STORE_META);
-      
-      if (keepCacheQuality) {
-        const req = st.openCursor();
-        req.onsuccess = () => {
-          const cursor = req.result;
-          if (!cursor) { resolve(); return; }
-          const k = String(cursor.key || '');
-          if (k !== META_CQ_KEY) {
-            cursor.delete();
-          }
-          cursor.continue();
-        };
-        req.onerror = () => resolve();
-      } else {
-        st.clear();
-        tx.oncomplete = resolve;
-        tx.onerror = resolve;
+    if (st?.cloud === true) {
+      const exp = Number(st?.cloudExpiresAt || 0);
+      if (exp > 0 && exp < now) {
+        expired.push(uid);
       }
-    });
-
-    return true;
-  } catch {
-    return false;
+    }
   }
+
+  return expired;
 }
 
 //=================================================
