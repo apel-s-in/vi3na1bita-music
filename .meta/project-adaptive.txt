@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e68d23673ec893954f723c4f38cb7aa041949d24.idx
-│   │       ├── pack-e68d23673ec893954f723c4f38cb7aa041949d24.pack
-│   │       └── pack-e68d23673ec893954f723c4f38cb7aa041949d24.rev
+│   │       ├── pack-91de68a411a90dfabf81f052e526d3cfa9c796ff.idx
+│   │       ├── pack-91de68a411a90dfabf81f052e526d3cfa9c796ff.pack
+│   │       └── pack-91de68a411a90dfabf81f052e526d3cfa9c796ff.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -372,7 +372,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 21:03:56 UTC
+Сгенерировано: 2026-01-06 21:04:39 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6794,7 +6794,42 @@ if (typeof window !== 'undefined') {
         await new Promise(r => setTimeout(r, step));
         t += step;
       }
-      return fn();
+      return !!fn();
+    },
+
+    onceEvent(target, eventName, opts = {}) {
+      const timeoutMs = (opts && Number.isFinite(opts.timeoutMs)) ? opts.timeoutMs : null;
+      return new Promise((resolve, reject) => {
+        let tm = null;
+        const onEv = (ev) => {
+          cleanup();
+          resolve(ev);
+        };
+        const cleanup = () => {
+          try { target.removeEventListener(eventName, onEv); } catch {}
+          if (tm) clearTimeout(tm);
+        };
+        try { target.addEventListener(eventName, onEv, { once: true }); } catch { /* noop */ }
+        if (timeoutMs != null) {
+          tm = setTimeout(() => {
+            cleanup();
+            reject(new Error(`Timeout waiting for event "${eventName}"`));
+          }, timeoutMs);
+        }
+      });
+    },
+
+    debounceFrame(fn) {
+      let raf = 0;
+      let lastArgs = null;
+      return function (...args) {
+        lastArgs = args;
+        if (raf) return;
+        raf = requestAnimationFrame(() => {
+          raf = 0;
+          fn.apply(this, lastArgs);
+        });
+      };
     },
     
     // createModal удалён: проект использует единый механизм window.Modals.open (scripts/ui/modal-templates.js)
