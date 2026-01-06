@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8b787ce73c704c50470303bf1036a517ae29d564.idx
-│   │       ├── pack-8b787ce73c704c50470303bf1036a517ae29d564.pack
-│   │       └── pack-8b787ce73c704c50470303bf1036a517ae29d564.rev
+│   │       ├── pack-0140c2e1f82c92b910ac4bd9f11654041e9bd103.idx
+│   │       ├── pack-0140c2e1f82c92b910ac4bd9f11654041e9bd103.pack
+│   │       └── pack-0140c2e1f82c92b910ac4bd9f11654041e9bd103.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -373,7 +373,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 20:55:36 UTC
+Сгенерировано: 2026-01-06 20:56:20 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9784,18 +9784,29 @@ async function updateOverlay() {
 export function attachCacheProgressOverlay() {
   injectCssOnce();
   ensureOverlay();
-  updateOverlay();
 
-  // Обновления при изменениях кэш-загрузок (быстро и дёшево)
+  const schedule = (window.Utils?.debounceFrame)
+    ? window.Utils.debounceFrame(() => { updateOverlay(); })
+    : (() => updateOverlay());
+
+  // Обновления по событиям OfflineManager
   const mgr = window.OfflineUI?.offlineManager;
-  if (mgr) {
-    mgr.on('progress', () => {
-      updateOverlay();
+  if (mgr?.on) {
+    mgr.on('progress', schedule);
+  }
+
+  // Обновления по событиям PlayerCore (смена трека/тик/seek)
+  const pc = window.playerCore;
+  if (pc?.on) {
+    pc.on({
+      onTrackChange: schedule,
+      onTick: () => schedule(),
+      onPause: schedule,
+      onPlay: schedule,
     });
   }
 
-  // Лёгкий поллинг, чтобы поймать смены трека/качества, если UI не повесил событие
-  setInterval(updateOverlay, 1000);
+  schedule();
 }
 
 //=================================================
