@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-dc133952808f68df458dea61aaa9a666840a12fb.idx
-│   │       ├── pack-dc133952808f68df458dea61aaa9a666840a12fb.pack
-│   │       └── pack-dc133952808f68df458dea61aaa9a666840a12fb.rev
+│   │       ├── pack-72cc5342ed8331361f69c4d4a1545b407851fb54.idx
+│   │       ├── pack-72cc5342ed8331361f69c4d4a1545b407851fb54.pack
+│   │       └── pack-72cc5342ed8331361f69c4d4a1545b407851fb54.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -375,7 +375,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 19:48:01 UTC
+Сгенерировано: 2026-01-06 19:48:35 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6384,6 +6384,19 @@ export function getAllTracks() {
 export function clearRegistry() {
   registry.clear();
 }
+
+// ✅ Публикуем реестр в window для OFFLINE модалки/updates/re-cache (v1.0).
+// Это не добавляет зависимостей, только упрощает доступ из UI/IIFE к ESM данным.
+try {
+  window.TrackRegistry = {
+    registerTrack,
+    registerTracks,
+    getTrackByUid,
+    getAllTracks,
+    clearRegistry
+  };
+} catch {}
+
 
 //=================================================
 // FILE: /scripts/ci/lint-sw.mjs
