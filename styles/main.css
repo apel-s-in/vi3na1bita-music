@@ -1,5 +1,3 @@
-// FILE: /styles/main.css
-/*=================================================
 FILE: styles/main.css
 Оптимизированная версия — убраны дубли, мёртвые правила, сокращено ~20% */
 :root {
@@ -1598,19 +1596,6 @@ input:focus-visible {
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
-}
-/* Fix: toast-container must not wash the whole UI to white */
-#toast-container {
-  background: transparent !important;
-  pointer-events: none !important;
-  z-index: 10000 !important;
-}
-
-/* Если внутри тостов есть блоки — им можно вернуть кликабельность */
-#toast-container .toast,
-#toast-container [role="status"],
-#toast-container [role="alert"] {
-  pointer-events: auto !important;
 }
 
 .animate-in { animation: fadeInUp 0.4s ease-out; }
