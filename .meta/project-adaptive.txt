@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-26f9358efdc158f7c9fce69b5fbc0bf7f96442fc.idx
-│   │       ├── pack-26f9358efdc158f7c9fce69b5fbc0bf7f96442fc.pack
-│   │       └── pack-26f9358efdc158f7c9fce69b5fbc0bf7f96442fc.rev
+│   │       ├── pack-c1872ddac465dec0ea8d736911fc099a01d52d01.idx
+│   │       ├── pack-c1872ddac465dec0ea8d736911fc099a01d52d01.pack
+│   │       └── pack-c1872ddac465dec0ea8d736911fc099a01d52d01.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -374,7 +374,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 21:20:06 UTC
+Сгенерировано: 2026-01-06 21:27:23 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -12342,6 +12342,19 @@ export function closeOfflineModal() {
 (function() {
   'use strict';
 
+  // ✅ единый форматтер (без дублей)
+  // sysinfo.js не ESM, поэтому импорт не используем
+  const formatBytes = (n) => {
+    if (window.Utils?.formatBytes) return window.Utils.formatBytes(n);
+    if (window.UIUtils?.formatBytes) return window.UIUtils.formatBytes(n);
+    // fallback (минимальный)
+    const b = Number(n) || 0;
+    if (b < 1024) return `${Math.floor(b)} B`;
+    if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
+    if (b < 1024 * 1024 * 1024) return `${(b / (1024 * 1024)).toFixed(1)} MB`;
+    return `${(b / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  };
+
   class SystemInfoManager {
     constructor() {
       this.modal = null;
@@ -12487,8 +12500,8 @@ export function closeOfflineModal() {
     getMemoryInfo() {
       if (performance.memory) {
         return {
-          used: this.formatBytes(performance.memory.usedJSHeapSize),
-          limit: this.formatBytes(performance.memory.jsHeapSizeLimit)
+          used: formatBytes(performance.memory.usedJSHeapSize),
+          limit: formatBytes(performance.memory.jsHeapSizeLimit)
         };
       }
       return {
@@ -12529,13 +12542,6 @@ export function closeOfflineModal() {
       } catch {
         return 'N/A';
       }
-    }
-    formatBytes(bytes) {
-      if (bytes === 0) return '0 B';
-      const k = 1024;
-      const sizes = ['B', 'KB', 'MB', 'GB'];
-      const i = Math.floor(Math.log(bytes) / Math.log(k));
-      return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
     }
 
     hide() {
