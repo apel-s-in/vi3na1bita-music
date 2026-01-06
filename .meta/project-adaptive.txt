@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1dc0925181e63901ad927cc0c7c3133292ef8d20.idx
-│   │       ├── pack-1dc0925181e63901ad927cc0c7c3133292ef8d20.pack
-│   │       └── pack-1dc0925181e63901ad927cc0c7c3133292ef8d20.rev
+│   │       ├── pack-93ec5b7dae0910ec0c38384fd4ba9e05dc973277.idx
+│   │       ├── pack-93ec5b7dae0910ec0c38384fd4ba9e05dc973277.pack
+│   │       └── pack-93ec5b7dae0910ec0c38384fd4ba9e05dc973277.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -316,6 +316,7 @@ vi3na1bita-music/
 │   │   ├── background-audio.js
 │   │   ├── background-events.js
 │   │   ├── gallery.js
+│   │   ├── main-bootstrap.js
 │   │   ├── navigation.js
 │   │   ├── network-manager.js
 │   │   ├── offline-ui-bootstrap.js
@@ -381,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 16:09:16 UTC
+Сгенерировано: 2026-01-06 16:09:56 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3632,6 +3633,44 @@ class GalleryManager {
 window.GalleryManager = new GalleryManager();
 
 export default GalleryManager;
+
+//=================================================
+// FILE: /scripts/app/main-bootstrap.js
+// scripts/app/main-bootstrap.js
+// Точка входа для инициализации offline-системы
+
+import { attachOfflineUI } from './offline-ui-bootstrap.js';
+import { attachOfflineIndicators } from '../ui/offline-indicators.js';
+import { attachPlaybackCache } from './playback-cache-bootstrap.js';
+import { NetworkManager } from './network-manager.js';
+import { registerTracks } from './track-registry.js';
+
+export function initOfflineSystem() {
+  NetworkManager.init();
+
+  attachOfflineUI();
+
+  setTimeout(() => {
+    attachOfflineIndicators();
+  }, 100);
+
+  setTimeout(() => {
+    attachPlaybackCache();
+  }, 300);
+}
+
+export function registerTracksForOffline(tracks) {
+  registerTracks(tracks);
+}
+
+// Auto-init if DOM ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(initOfflineSystem, 50);
+  });
+} else {
+  setTimeout(initOfflineSystem, 50);
+}
 
 //=================================================
 // FILE: /scripts/app/navigation.js
