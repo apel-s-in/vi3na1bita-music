@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8364c46bb6ee74179bf83b5119ca8501ca994429.idx
-│   │       ├── pack-8364c46bb6ee74179bf83b5119ca8501ca994429.pack
-│   │       └── pack-8364c46bb6ee74179bf83b5119ca8501ca994429.rev
+│   │       ├── pack-6dd0395c38c9a9f9289414b5d3e332c2625873e6.idx
+│   │       ├── pack-6dd0395c38c9a9f9289414b5d3e332c2625873e6.pack
+│   │       └── pack-6dd0395c38c9a9f9289414b5d3e332c2625873e6.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -375,7 +375,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 20:15:51 UTC
+Сгенерировано: 2026-01-06 20:17:03 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7004,39 +7004,7 @@ if (typeof window !== 'undefined') {
       return fn();
     },
     
-    createModal(html, onClose) {
-      // Back-compat: старый API, но теперь реальная реализация — через window.Modals.open.
-      // Важно: html ожидается как "bodyHtml" (без modal-bg), но если туда передали целую модалку —
-      // она всё равно будет показана как контент.
-      if (window.Modals?.open) {
-        return window.Modals.open({
-          title: '',
-          maxWidth: 560,
-          bodyHtml: String(html || ''),
-          onClose
-        });
-      }
-
-      // Fallback (если Modals ещё не загружен)
-      const bg = document.createElement('div');
-      bg.className = 'modal-bg active';
-      bg.innerHTML = String(html || '');
-
-      const close = () => {
-        bg.remove();
-        if (onClose) onClose();
-      };
-
-      bg.addEventListener('click', (e) => {
-        if (e.target === bg) close();
-      });
-
-      const closeBtn = bg.querySelector('.bigclose');
-      if (closeBtn) closeBtn.addEventListener('click', close);
-
-      (document.getElementById('modals-container') || document.body).appendChild(bg);
-      return bg;
-    },
+    // createModal удалён: проект использует единый механизм window.Modals.open (scripts/ui/modal-templates.js)
     
     isMobile() {
       return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
