@@ -1,18 +1,30 @@
-FILE: styles/main.css
-Оптимизированная версия — убраны дубли, мёртвые правила, сокращено ~20% */
+// FILE: /styles/main.css
+/* styles/main.css - cleaned: no duplicates, no dead scroll-mini, stable selectors */
+
 :root {
   --primary-bg: #181818;
   --primary-color: #E80100;
   --secondary-color: #4daaff;
   --text-color: #f2f2f2;
+
   --modal-bg: #252d39;
   --border-color: #394866;
+
+  --panel-0: rgba(15,18,24,0.98);
+  --panel-1: rgba(30,34,45,0.95);
+  --panel-2: rgba(25,28,36,0.8);
+
   --btn-size: 44px;
   --btn-radius: 8px;
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; background: var(--primary-bg); color: var(--text-color); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; flex-direction: column; }
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body { height: 100%; }
 
 body {
   min-height: 100vh;
@@ -1126,20 +1138,7 @@ header {
 
 .offline-btn.online { background: var(--primary-color); color: #fff; }
 .offline-btn.offline { background: #27b34c; color: #fff; }
-/* Индикаторы оффлайн в треках */
-.track .offline-indicator {
-  margin-right: 8px;
-  font-size: 18px;
-}
-.offline-indicator.pinned { color: #ffd166; }
-.offline-indicator.cloud { color: #8ab8fd; opacity: 0.8; }
-.offline-indicator.gray { color: #555; }
 
-/* Кнопка PQ */
-#pq-btn.disabled { pointer-events: none; opacity: 0.5; }
-
-/* Кнопка OFFLINE с ! */
-#offline-btn.alert::after { content: "!"; color: var(--primary-color); margin-left: 6px; font-weight: 900; }
 /* ===== Toasts ===== */
 
 #toast-container {
