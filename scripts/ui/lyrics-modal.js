@@ -73,17 +73,10 @@
       ? (s) => w.Utils.escapeHtml(String(s || ''))
       : (s) => String(s || '');
 
-    const html = `
-      <div class="modal-feedback lyrics-modal" style="max-width: 520px; max-height: 80vh;">
-        <button class="bigclose" title="Закрыть" aria-label="Закрыть">
-          <svg viewBox="0 0 48 48">
-            <line x1="12" y1="12" x2="36" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
-            <line x1="36" y1="12" x2="12" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
-          </svg>
-        </button>
-
-        <h2 style="margin-bottom: 8px;">${esc(track.title)}</h2>
-        <div style="color: #8ab8fd; margin-bottom: 20px; font-size: 14px;">
+    const bodyHtml = `
+      <div class="lyrics-modal" style="max-height: 80vh;">
+        <h2 style="margin: 0 0 8px 0;">${esc(track.title)}</h2>
+        <div style="color: #8ab8fd; margin-bottom: 16px; font-size: 14px;">
           ${esc(track.artist || 'Витрина Разбита')} · ${esc(track.album || '')}
         </div>
 
@@ -98,22 +91,25 @@
           font-size: 15px;
           scrollbar-width: thin;
           scrollbar-color: rgba(77,170,255,0.3) transparent;
-        ">
-          ${esc(text)}
-        </div>
+        ">${esc(text)}</div>
 
-        <div style="display: flex; gap: 10px; margin-top: 20px; justify-content: center;">
+        <div style="display:flex; gap:10px; margin-top:16px; justify-content:center; flex-wrap:wrap;">
           <button class="modal-action-btn" id="copy-lyrics-btn">📋 Копировать</button>
           <button class="modal-action-btn" id="share-lyrics-btn">📤 Поделиться</button>
         </div>
       </div>
     `;
 
-    const modal = (w.Utils && typeof w.Utils.createModal === 'function')
-      ? w.Utils.createModal(html)
-      : null;
+    if (!w.Modals?.open) {
+      w.NotificationSystem?.error('Modals helper не загружен');
+      return;
+    }
 
-    if (!modal) return;
+    const modal = w.Modals.open({
+      title: 'Текст песни',
+      maxWidth: 560,
+      bodyHtml
+    });
 
     modal.querySelector('#copy-lyrics-btn')?.addEventListener('click', () => copyLyrics(text, modal));
     modal.querySelector('#share-lyrics-btn')?.addEventListener('click', () => shareLyrics(track, text));
