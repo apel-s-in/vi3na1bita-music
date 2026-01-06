@@ -8,6 +8,7 @@ const ICON_CSS = `
   .offline-ico.lock{width:1em}
   .offline-ico.cloud{width:1em}
 `;
+
 function injectCss() {
   if (document.getElementById('offline-ico-css')) return;
   const s = document.createElement('style');
@@ -17,16 +18,13 @@ function injectCss() {
 }
 
 function findUidForRow(row) {
-  // 0) Самый надёжный источник — data-uid на строке (ставим в scripts/app/albums.js и в favorites render)
   const rowUid = String(row?.dataset?.uid || '').trim();
   if (rowUid) return rowUid;
 
-  // 1) __favorites__: id="fav_{albumKey}_{uid}"
   const id = String(row?.id || '');
   const m = id.match(/^fav_(.+)_(.+)$/);
   if (m && m[2]) return String(m[2]).trim() || null;
 
-  // 2) Fallback: у звезды есть data-uid
   const star = row?.querySelector?.('.like-star[data-uid]');
   const starUid = String(star?.dataset?.uid || '').trim();
   if (starUid) return starUid;
@@ -41,7 +39,6 @@ function ensureSlot(row) {
   slot = document.createElement('span');
   slot.className = 'offline-ico-slot';
 
-  // Попробуем вставить перед “номером”; если его нет — в начало строки
   const num = row.querySelector('.tnum');
   if (num && num.parentNode === row) {
     row.insertBefore(slot, num);
@@ -56,9 +53,6 @@ function renderIndicator(row, state, uid) {
   slot.innerHTML = '';
 
   const isUnknown = !!state?.unknown;
-
-  // Приоритет отображения: pinned 🔒 → ☁ (cloud&&100%) → серый 🔒
-  // Получаем менеджер безопасно
   const mgr = window.OfflineUI?.offlineManager;
 
   if (!isUnknown && state.pinned) {
@@ -97,7 +91,6 @@ function renderIndicator(row, state, uid) {
     return;
   }
 
-  // серый 🔒 (если unknown — не кликается)
   const el = document.createElement('span');
   el.className = 'offline-ico lock gray';
   el.textContent = '🔒';
@@ -118,7 +111,6 @@ function renderIndicator(row, state, uid) {
     try {
       if (mgr) {
         await mgr.pin(uid);
-        // ✅ ТЗ 20: UX сообщение о старте
         window.NotificationSystem?.info('Трек будет доступен офлайн. Начинаю скачивание…', 3500);
       }
     } catch {
@@ -132,16 +124,12 @@ function renderIndicator(row, state, uid) {
 
 async function refreshRow(row) {
   const uid = findUidForRow(row);
-
-  // ✅ Получаем ссылку через window
   const mgr = window.OfflineUI?.offlineManager;
 
-  // ✅ Защита: если OfflineManager ещё не инициализирован — выходим.
   if (!mgr) {
     return; 
   }
 
-  // ✅ Даже если uid пока неизвестен — показываем серый 🔒 как “не готово”.
   if (!uid) {
     renderIndicator(row, { pinned: false, cloud: false, cachedComplete: false, unknown: true }, '');
     return;
@@ -158,7 +146,6 @@ async function refreshRow(row) {
 let __refreshAllTimer = null;
 
 function refreshAll() {
-  // ✅ Debounce: на пачку DOM-мутаций/событий делаем один проход
   if (__refreshAllTimer) return;
 
   __refreshAllTimer = setTimeout(() => {
@@ -172,29 +159,22 @@ function bindLiveUpdates() {
   const mgr = window.OfflineUI?.offlineManager;
   if (!mgr) return;
 
-  // Обновляем индикатор при прогрессе загрузок/завершении
   mgr.on('progress', (ev) => {
     const uid = String(ev?.uid || '').trim();
     if (!uid) return;
 
-    // ✅ Точечно обновляем только строки с этим uid:
-    // - в __favorites__ uid хранится в data-uid на строке
-    // - в обычных альбомах uid теперь тоже на строке (scripts/app/albums.js)
     const rows = document.querySelectorAll(`#track-list .track[data-uid="${CSS.escape(uid)}"]`);
     rows.forEach((row) => refreshRow(row));
   });
 
-  // При любых точечных апдейтах списка (например, favorites:changed) — безопасный рефреш
   window.addEventListener('favorites:changed', () => refreshAll());
   window.addEventListener('favorites:refsChanged', () => refreshAll());
 }
 
 export function attachOfflineIndicators() {
   injectCss();
-  // Стартовый проход
   refreshAll();
 
-  // Наблюдатель за перестроением списков
   const root = document.getElementById('track-list') || document.body;
   const mo = new MutationObserver((muts) => {
     let need = false;
