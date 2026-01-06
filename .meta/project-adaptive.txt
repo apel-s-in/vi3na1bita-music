@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b556f10c98167f211f0f3b357ca9fb9003457424.idx
-│   │       ├── pack-b556f10c98167f211f0f3b357ca9fb9003457424.pack
-│   │       └── pack-b556f10c98167f211f0f3b357ca9fb9003457424.rev
+│   │       ├── pack-aaaf7fe4aa40a6263119896eb32442c29b783d30.idx
+│   │       ├── pack-aaaf7fe4aa40a6263119896eb32442c29b783d30.pack
+│   │       └── pack-aaaf7fe4aa40a6263119896eb32442c29b783d30.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -372,7 +372,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 21:02:47 UTC
+Сгенерировано: 2026-01-06 21:03:21 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -923,12 +923,22 @@ jobs:
       // (scripts/app.js), чтобы избежать гонок и дублей.
 
       // ✅ 2) Ждём window.app и запускаем приложение один раз
-      const waitForApp = setInterval(() => {
+      // ✅ без polling: ждём модульный app.js через microtask/raf
+      const tryInit = () => {
         if (window.app && typeof window.app.initialize === 'function') {
-          clearInterval(waitForApp);
           window.app.initialize();
+          return true;
         }
-      }, 100);
+        return false;
+      };
+
+      if (!tryInit()) {
+        let tries = 0;
+        const t = setInterval(() => {
+          tries++;
+          if (tryInit() || tries > 50) clearInterval(t);
+        }, 60);
+      }
     }
     
     // ========== iOS INSTALL GUIDE ==========
