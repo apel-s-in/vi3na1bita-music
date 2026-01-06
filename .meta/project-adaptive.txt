@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ab47ed053c13a8fa07e1ab89ca6c7798ffa9777f.idx
-│   │       ├── pack-ab47ed053c13a8fa07e1ab89ca6c7798ffa9777f.pack
-│   │       └── pack-ab47ed053c13a8fa07e1ab89ca6c7798ffa9777f.rev
+│   │       ├── pack-a1c7881b61e48901f1c8c6d4944b5ef212a647e7.idx
+│   │       ├── pack-a1c7881b61e48901f1c8c6d4944b5ef212a647e7.pack
+│   │       └── pack-a1c7881b61e48901f1c8c6d4944b5ef212a647e7.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -379,7 +379,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 18:45:15 UTC
+Сгенерировано: 2026-01-06 18:46:07 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7904,22 +7904,91 @@ export async function clearCloudCandidate(uid) {
   return promisifyReq(store.delete(uid));
 }
 
-// Global statistics
+// Global statistics (ТЗ 7.11 / 17)
+// Хранение:
+// - per-track: key `t:${uid}` => { seconds, fullListens, lastListenAt }
+// - totals: key `total` => { totalSeconds }
+// Back-compat:
+// - key `global` => { totalListenSec, totalFullListens } (оставляем, чтобы старые UI не падали)
+
+function safeUid(v) {
+  const s = String(v || '').trim();
+  return s || null;
+}
+
 export async function updateGlobalStats(uid, deltaSec, deltaFullListens) {
+  const u = safeUid(uid);
+  if (!u) return false;
+
+  const dSec = Math.max(0, Number(deltaSec) || 0);
+  const dFull = Math.max(0, Number(deltaFullListens) || 0);
+
   const store = await getStore(STORE_GLOBAL_STATS, 'readwrite');
-  const prev = (await promisifyReq(store.get('global'))) || { totalListenSec: 0, totalFullListens: 0 };
 
-  prev.totalListenSec = (Number(prev.totalListenSec) || 0) + (Number(deltaSec) || 0);
-  prev.totalFullListens = (Number(prev.totalFullListens) || 0) + (Number(deltaFullListens) || 0);
+  // per-track
+  const tKey = `t:${u}`;
+  const prevT = (await promisifyReq(store.get(tKey))) || { seconds: 0, fullListens: 0, lastListenAt: 0 };
+  const nextT = {
+    seconds: (Number(prevT.seconds) || 0) + dSec,
+    fullListens: (Number(prevT.fullListens) || 0) + dFull,
+    lastListenAt: Date.now()
+  };
+  await promisifyReq(store.put(nextT, tKey));
 
-  return promisifyReq(store.put(prev, 'global'));
+  // totals
+  const totalKey = 'total';
+  const prevTotal = (await promisifyReq(store.get(totalKey))) || { totalSeconds: 0 };
+  const nextTotal = { totalSeconds: (Number(prevTotal.totalSeconds) || 0) + dSec };
+  await promisifyReq(store.put(nextTotal, totalKey));
+
+  // Back-compat aggregate (старый формат)
+  const prevLegacy = (await promisifyReq(store.get('global'))) || { totalListenSec: 0, totalFullListens: 0 };
+  const nextLegacy = {
+    totalListenSec: (Number(prevLegacy.totalListenSec) || 0) + dSec,
+    totalFullListens: (Number(prevLegacy.totalFullListens) || 0) + dFull
+  };
+  await promisifyReq(store.put(nextLegacy, 'global'));
+
+  return true;
 }
 
 export async function getGlobalStatsAndTotal() {
   const store = await getStore(STORE_GLOBAL_STATS);
-  const g = (await promisifyReq(store.get('global'))) || { totalListenSec: 0, totalFullListens: 0 };
+
+  const legacy = (await promisifyReq(store.get('global'))) || { totalListenSec: 0, totalFullListens: 0 };
+  const total = (await promisifyReq(store.get('total'))) || { totalSeconds: 0 };
+
+  // Собираем per-track список
+  const keys = await promisifyReq(store.getAllKeys());
+  const tracks = [];
+  for (const k of keys) {
+    if (typeof k === 'string' && k.startsWith('t:')) {
+      const uid = k.slice(2);
+      // eslint-disable-next-line no-await-in-loop
+      const rec = await promisifyReq(store.get(k));
+      tracks.push({
+        uid,
+        seconds: Number(rec?.seconds) || 0,
+        fullListens: Number(rec?.fullListens) || 0,
+        lastListenAt: Number(rec?.lastListenAt) || 0
+      });
+    }
+  }
+
   const totalBytes = await totalCachedBytes();
-  return { ...g, totalBytes };
+
+  // Возвращаем и новый, и legacy формат
+  return {
+    totalBytes,
+
+    // legacy (использует текущий offline-modal.js)
+    totalListenSec: Number(legacy.totalListenSec) || 0,
+    totalFullListens: Number(legacy.totalFullListens) || 0,
+
+    // новый (ТЗ 17)
+    totalSeconds: Number(total.totalSeconds) || 0,
+    tracks
+  };
 }
 
 // Delete track cache
