@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9aa4b35081f76e4b3e0085c4d7968c54ed10a80d.idx
-│   │       ├── pack-9aa4b35081f76e4b3e0085c4d7968c54ed10a80d.pack
-│   │       └── pack-9aa4b35081f76e4b3e0085c4d7968c54ed10a80d.rev
+│   │       ├── pack-0510780257c6e882014b196e5fba27b32696be63.idx
+│   │       ├── pack-0510780257c6e882014b196e5fba27b32696be63.pack
+│   │       └── pack-0510780257c6e882014b196e5fba27b32696be63.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -364,7 +364,6 @@ vi3na1bita-music/
 │   │   └── sw-manager.js
 │   ├── app.js
 │   ├── download-queue.js
-│   ├── offline-manager.js
 │   ├── stats-manager.js
 │   └── ui-handlers.js
 ├── src/
@@ -385,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 10:20:12 UTC
+Сгенерировано: 2026-01-06 10:20:22 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7978,122 +7977,6 @@ function formatSeconds(sec) {
   const hours = Math.floor((sec % 86400) / 3600);
   return `${days ? days + ' дн ' : ''}${hours} ч`;
 }
-
-//=================================================
-// FILE: /scripts/offline-manager.js
-//=================================================
-// FILE: scripts/offline-manager.js
-// Pinned, Cloud, eviction, 100% OFFLINE, индикаторы
-class OfflineManager {
-  constructor() {
-    this.dbName = 'vr-audio-cache';
-    this.storeName = 'blobs';
-    this.initDB();
-  }
-
-  async initDB() {
-    // простая обёртка над IndexedDB (без внешней библиотеки)
-    this.db = await new Promise((resolve, reject) => {
-      const req = indexedDB.open(this.dbName, 1);
-      req.onupgradeneeded = () => req.result.createObjectStore(this.storeName);
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
-  }
-
-  async hasLocal(uid, variant) {
-    const tx = this.db.transaction(this.storeName);
-    const store = tx.objectStore(this.storeName);
-    const key = `${uid}:${variant}`;
-    const val = await store.get(key);
-    return !!val;
-  }
-
-  async getBlobUrl(uid, variant) {
-    const tx = this.db.transaction(this.storeName);
-    const store = tx.objectStore(this.storeName);
-    const key = `${uid}:${variant}`;
-    const blob = await store.get(key);
-    return blob ? URL.createObjectURL(blob) : null;
-  }
-
-  async downloadAndStore(uid, variant, kind = 'pinned') {
-    const track = W.config.tracks.find(t => t.uid === uid);
-    const url = variant === 'hi' ? track.audio : track.audio_low;
-    if (!url) return;
-
-    const resp = await fetch(url);
-    const blob = await resp.blob();
-
-    const tx = this.db.transaction(this.storeName, 'readwrite');
-    const store = tx.objectStore(this.storeName);
-    await store.put(blob, `${uid}:${variant}`);
-
-    // метаданные для индикаторов и eviction
-    const metaKey = `meta:${uid}`;
-    let meta = JSON.parse(localStorage.getItem(metaKey) || '{}');
-    meta[`cached${variant === 'hi' ? 'Hi' : 'Lo'}Complete`] = true;
-    meta.kind = kind; // pinned | cloud | transient
-    localStorage.setItem(metaKey, JSON.stringify(meta));
-  }
-
-  async togglePinned(uid, on) {
-    if (on) {
-      const cq = localStorage.getItem('offline:cacheQuality:v1') || 'hi';
-      await this.downloadAndStore(uid, cq, 'pinned');
-    } else {
-      // становится cloud-кандидатом
-      statsManager.setCloudActive(uid, true);
-    }
-    this.updateTrackIndicators(uid);
-  }
-
-  updateTrackIndicators(uid) {
-    // вызывать после изменений — обновит все .track с data-uid
-    document.querySelectorAll(`.track[data-uid="${uid}"] .offline-indicator`).forEach(el => {
-      const meta = JSON.parse(localStorage.getItem(`meta:${uid}`) || '{}');
-      if (meta.pinned) el.textContent = '🔒';
-      else if (meta.cloud && meta.cachedHiComplete || meta.cachedLoComplete) el.textContent = '☁';
-      else el.textContent = '🔒'; // серый по умолчанию
-      el.className = meta.pinned ? 'pinned' : meta.cloud ? 'cloud' : 'gray';
-    });
-  }
-  async deleteLocal(uid) {
-    const variants = ['hi', 'lo'];
-    for (const v of variants) {
-      const key = `${uid}:${v}`;
-      const tx = this.db.transaction(this.storeName, 'readwrite');
-      await tx.objectStore(this.storeName).delete(key);
-    }
-    localStorage.removeItem(`meta:${uid}`);
-  }
-
-  async computeSizeEstimate(selection) {
-    const cq = localStorage.getItem('offline:cacheQuality:v1') || 'hi';
-    let total = 0;
-    const tracks = selection === 'favorites' 
-      ? W.config.tracks.filter(t => t.favorite)
-      : W.config.tracks; // для альбомов расширь
-    for (const t of tracks) {
-      total += parseInt(t[`size${cq === 'hi' ? '' : '_low'}`] || 0);
-    }
-    return { totalMB: total };
-  }
-}
-  // 100% OFFLINE — упрощённо
-  async startFullOffline(selection) {
-    const cq = localStorage.getItem('offline:cacheQuality:v1') || 'hi';
-    const tracks = selection === 'favorites' 
-      ? W.config.tracks.filter(t => t.favorite)
-      : W.config.tracks.filter(t => selection.albums.includes(t.album));
-
-    for (const t of tracks) {
-      await this.downloadAndStore(t.uid, cq, 'full-offline');
-    }
-  }
-}
-
-window.offlineManager = new OfflineManager();
 
 //=================================================
 // FILE: /scripts/offline/cache-db.js
