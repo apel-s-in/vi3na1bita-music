@@ -227,8 +227,18 @@ export class OfflineManager {
     const v = normQ(cq);
     try { localStorage.setItem(LS.CQ, v); } catch {}
     try { await setCacheQuality(v); } catch {}
+
     this._em.emit('progress', { uid: null, phase: 'cqChanged', cq: v });
-    setAlert(true, 'Изменено качество кэша. Рекомендуется обновить файлы.');
+
+    // ТЗ 5.2: смена CQ помечает pinned/cloud как needsReCache и выполняет тихую замену "по одному".
+    // Мы не удаляем старое до готовности нового: blob заменится только после полного скачивания.
+    setAlert(true, 'Изменено качество кэша. Запущен re-cache pinned/cloud.');
+
+    try {
+      // Не блокируем UI: ставим задачи в очередь и выходим.
+      this.enqueueReCacheAllByCQ({ userInitiated: false });
+    } catch {}
+
     return v;
   }
 
@@ -388,6 +398,68 @@ export class OfflineManager {
     setAlert(true, 'Запущены обновления файлов.');
     this._em.emit('progress', { uid: null, phase: 'updatesEnqueued', count: plan.length });
     return { ok: true, count: plan.length };
+  }
+
+  // ТЗ 5.2: "Интеллектуальная замена" при смене CQ.
+  // В v1.0 делаем строго: re-cache только pinned + cloud (eligible), приоритет P3.
+  // Старые копии не удаляем до готовности новых: overwrite происходит только после полного скачивания blob.
+  async enqueueReCacheAllByCQ(opts = {}) {
+    const cq = await this.getCacheQuality();
+    const userInitiated = !!opts.userInitiated;
+
+    const pinned = this.getPinnedUids();
+
+    // cloud: по текущему реестру TrackRegistry (в идеале должен быть preloaded)
+    const all = (typeof window.TrackRegistry?.getAllTracks === 'function')
+      ? window.TrackRegistry.getAllTracks()
+      : [];
+
+    const cloudUids = [];
+    for (const t of all) {
+      const uid = normUid(t?.uid);
+      if (!uid) continue;
+      if (this._getPinnedSet().has(uid)) continue;
+      // eslint-disable-next-line no-await-in-loop
+      const eligible = await this.isCloudEligible(uid);
+      if (eligible) cloudUids.push(uid);
+    }
+
+    const uniqPinned = Array.from(new Set(pinned));
+    const uniqCloud = Array.from(new Set(cloudUids));
+
+    // Порядок по ТЗ 5.2: pinned -> cloud -> extra transient
+    const plan = uniqPinned.concat(uniqCloud);
+
+    let count = 0;
+
+    for (const uid of plan) {
+      const u = normUid(uid);
+      if (!u) continue;
+
+      // Если уже в CQ полная копия — не ставим задачу.
+      // eslint-disable-next-line no-await-in-loop
+      const cqComplete = await this.isTrackComplete(u, cq);
+      if (cqComplete) continue;
+
+      this.enqueueAudioDownload({
+        uid: u,
+        quality: cq,
+        key: `recache:${cq}:${u}`,
+        priority: 18, // P3
+        userInitiated,
+        isMass: true,
+        kind: 'recache'
+      });
+
+      count++;
+    }
+
+    if (count > 0) {
+      this._em.emit('progress', { uid: null, phase: 'recacheEnqueued', count, cq });
+      setAlert(true, 'Есть треки для обновления');
+    }
+
+    return { ok: true, count, cq };
   }
 
   // Track cache state
