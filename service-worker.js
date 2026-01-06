@@ -220,6 +220,31 @@ self.addEventListener('message', (event) => {
     return;
   }
 
+  if (type === 'WARM_OFFLINE_SHELL') {
+    const port = ports && ports[0];
+    const urls = (data.payload && Array.isArray(data.payload.urls)) ? data.payload.urls : [];
+
+    event.waitUntil((async () => {
+      try {
+        const cache = await caches.open(OFFLINE_CACHE);
+
+        // Кладём ядро + переданные URL (covers/lyrics/json/news/etc.)
+        // addAll может упасть из-за одного плохого ресурса, поэтому делаем best-effort.
+        const all = STATIC_ASSETS.concat(urls);
+
+        for (const u of all) {
+          try { await cache.add(u); } catch {}
+        }
+
+        if (port) port.postMessage({ ok: true, cached: urls.length });
+      } catch (e) {
+        if (port) port.postMessage({ ok: false, error: String(e?.message || e) });
+      }
+    })());
+
+    return;
+  }
+
   if (type === 'GET_CACHE_SIZE') {
     const port = ports && ports[0];
     if (!port) return;
