@@ -481,6 +481,131 @@ export class OfflineManager {
 
   getMassStatus() { return { ...this.mass }; }
 
+  // Queue control (ТЗ 11.2.F)
+  pauseQueue() { try { this.queue?.pause?.(); } catch {} }
+  resumeQueue() { try { this.queue?.resume?.(); } catch {} }
+
+  getQueueStatus() {
+    return {
+      downloadingKey: this.queue?._runningKey || null,
+      downloading: this.queue?.isRunning?.() || false,
+      paused: this.queue?.isPaused?.() || false,
+      queued: this.queue?.size?.() || 0
+    };
+  }
+
+  // ===== 100% OFFLINE helpers (ТЗ 11.2.I) =====
+  // selection: { mode: 'favorites'|'albums', albumKeys?: string[] }
+  async computeSizeEstimate(selection = {}) {
+    const cq = await this.getCacheQuality();
+
+    const toMb = (v) => {
+      const n = Number(v);
+      return (Number.isFinite(n) && n > 0) ? n : 0;
+    };
+
+    const uniq = (arr) => Array.from(new Set((Array.isArray(arr) ? arr : []).map(x => String(x || '').trim()).filter(Boolean)));
+
+    // Собираем uid-ы набора
+    let uids = [];
+    if (selection.mode === 'favorites') {
+      const playing = window.SPECIAL_FAVORITES_KEY || '__favorites__';
+      // Любые ⭐ в любом альбоме — это "избранное" пользователя
+      // но "только ИЗБРАННОЕ" в ТЗ = активные в favorites view (⭐ true).
+      // Значит: берём все liked uid по всем альбомам.
+      const map = window.FavoritesManager?.getLikedUidMap?.() || {};
+      const all = [];
+      Object.keys(map || {}).forEach((a) => {
+        const arr = Array.isArray(map[a]) ? map[a] : [];
+        arr.forEach(u => all.push(String(u || '').trim()));
+      });
+      uids = uniq(all);
+      // special key playing переменная не используется, оставлено для ясности
+      void playing;
+    } else if (selection.mode === 'albums') {
+      const keys = uniq(selection.albumKeys);
+      const allTracks = (typeof window.TrackRegistry?.getAllTracks === 'function')
+        ? window.TrackRegistry.getAllTracks()
+        : (typeof window.getAllTracks === 'function' ? window.getAllTracks() : []);
+      // В твоём проекте getAllTracks экспортирован из scripts/app/track-registry.js, но в window он не публикуется.
+      // Поэтому используем реестр через Offline preload (preloadAllAlbumsTrackIndex) и getTrackByUid.
+      // Здесь оцениваем только по uid, найденным в TrackRegistry Map через window.OfflineUI preload.
+      uids = uniq(allTracks
+        .filter(t => keys.includes(String(t?.sourceAlbum || t?.albumKey || t?.album || '').trim()))
+        .map(t => String(t?.uid || '').trim()));
+    } else {
+      return { ok: false, reason: 'badSelection', tracksMB: 0, coversMB: 0, lyricsMB: 0, totalMB: 0, count: 0 };
+    }
+
+    // Оценка по size/size_low из TrackRegistry
+    let tracksMB = 0;
+    for (const uid of uids) {
+      const meta = getTrackByUid(uid);
+      if (!meta) continue;
+      const mb = (cq === 'lo')
+        ? (toMb(meta.sizeLo || meta.size_low) || toMb(meta.sizeHi || meta.size))
+        : (toMb(meta.sizeHi || meta.size) || toMb(meta.sizeLo || meta.size_low));
+      tracksMB += mb;
+    }
+
+    // assets (covers/lyrics/fulltext) — в v1.0 считаем 0 в мегабайтах, но реально прогреем SW shell/urls.
+    const coversMB = 0;
+    const lyricsMB = 0;
+    const totalMB = tracksMB + coversMB + lyricsMB;
+
+    return { ok: true, cq, tracksMB, coversMB, lyricsMB, totalMB, count: uids.length, uids };
+  }
+
+  async _canGuaranteeStorageForMB(totalMB) {
+    const needBytes = Math.floor((Number(totalMB) || 0) * MB);
+
+    // iOS и вообще: если API недоступен — считаем "нельзя гарантировать"
+    try {
+      if (navigator.storage && typeof navigator.storage.estimate === 'function') {
+        const est = await navigator.storage.estimate();
+        const quota = Number(est?.quota || 0);
+        const usage = Number(est?.usage || 0);
+        if (quota > 0) {
+          const free = Math.max(0, quota - usage);
+          // запас 10%
+          const ok = free >= needBytes * 1.1;
+          return { ok, quota, usage, free };
+        }
+      }
+    } catch {}
+
+    return { ok: false, unknown: true };
+  }
+
+  async startFullOfflineSelection(selection = {}) {
+    // Confirm Unknown network (ТЗ 11.2.D + 11.2.I)
+    const policy = getNetPolicy();
+    const net = getNetworkStatusSafe();
+
+    if (!net.online) return { ok: false, reason: 'offline' };
+
+    // Unknown type confirm (минимально: kind === 'unknown' => confirm для mass)
+    const kind = String(net.kind || '').toLowerCase();
+    const needConfirm = (kind === 'unknown');
+
+    if (needConfirm) {
+      return { ok: false, reason: 'needsConfirm', policy, net };
+    }
+
+    const est = await this.computeSizeEstimate(selection);
+    if (!est.ok) return est;
+
+    const guarantee = await this._canGuaranteeStorageForMB(est.totalMB);
+    if (!guarantee.ok) {
+      return { ok: false, reason: 'cannotGuaranteeStorage', estimate: est, guarantee };
+    }
+
+    // Запускаем аудио-часть через существующий startFullOffline(uids)
+    const res = await this.startFullOffline(est.uids);
+
+    return { ...res, estimate: est, guarantee };
+  }
+
   // Cloud logic (ТЗ 9)
   async isCloudEligible(uid) {
     const u = normUid(uid);
