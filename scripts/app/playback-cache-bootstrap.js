@@ -3,7 +3,6 @@
 // Без вмешательства в воспроизведение: только планирование загрузок через очередь.
 
 import { PlaybackCacheManager } from '../offline/playback-cache.js';
-import { OfflineUI } from './offline-ui-bootstrap.js';
 import { getTrackByUid } from './track-registry.js';
 
 function getPQ() {
@@ -13,9 +12,28 @@ function getPQ() {
   } catch { return 'hi'; }
 }
 
+function getFavoritesInactiveSet() {
+  try {
+    const model = Array.isArray(window.favoritesRefsModel) ? window.favoritesRefsModel : [];
+    const inactive = new Set();
+    model.forEach(it => {
+      if (it && !it.__active) {
+        const uid = String(it.__uid || '').trim();
+        if (uid) inactive.add(uid);
+      }
+    });
+    return inactive;
+  } catch {
+    return new Set();
+  }
+}
+
 export function attachPlaybackCache() {
   const pc = window.playerCore;
-  if (!pc) return;
+  if (!pc) {
+    setTimeout(attachPlaybackCache, 200);
+    return;
+  }
 
   let lastIndex = typeof pc.getIndex === 'function' ? pc.getIndex() : -1;
   let lastLen = 0;
@@ -24,17 +42,25 @@ export function attachPlaybackCache() {
   const getPlaylistCtx = () => {
     const list = (typeof pc.getPlaylistSnapshot === 'function') ? (pc.getPlaylistSnapshot() || []) : [];
     const cur = pc.getCurrentTrack?.() || null;
-    const curUid = cur?.uid ? String(cur.uid) : null;
+    const curUid = cur?.uid ? String(cur.uid).trim() : null;
     lastLen = Array.isArray(list) ? list.length : 0;
+    
+    const playingAlbum = window.AlbumsManager?.getPlayingAlbum?.() || null;
+    const favoritesInactive = (playingAlbum === window.SPECIAL_FAVORITES_KEY)
+      ? getFavoritesInactiveSet()
+      : new Set();
+
     return {
       list,
       curUid,
-      favoritesInactive: new Set(), // v1.0: без исключений; позже подключим реальный inactive из __favorites__
+      favoritesInactive,
       direction
     };
   };
 
-  const queue = OfflineUI.offlineManager.queue;
+  const mgr = window.OfflineUI?.offlineManager;
+  const queue = mgr?.queue || null;
+
   const pcm = new PlaybackCacheManager({
     queue,
     getPlaylistCtx
@@ -44,7 +70,11 @@ export function attachPlaybackCache() {
 
   async function planWindow() {
     const pq = getPQ();
-    try { await pcm.ensureWindowFullyCached(pq, trackProvider); } catch {}
+    try { 
+      await pcm.ensureWindowFullyCached(pq, trackProvider); 
+    } catch (e) {
+      console.warn('[PlaybackCache] planWindow error:', e);
+    }
   }
 
   function updateDirectionByIndex(newIndex) {
@@ -70,12 +100,10 @@ export function attachPlaybackCache() {
       return;
     }
 
-    // “ручной выбор трека” / jump => по ТЗ 7.8 direction = forward
     direction = 'forward';
     lastIndex = newIndex;
   }
 
-  // Подписка на события PlayerCore
   if (typeof pc.on === 'function') {
     pc.on({
       onTrackChange: () => {
@@ -86,15 +114,13 @@ export function attachPlaybackCache() {
     });
   }
 
-  // Фоллбек на кнопки управления (если события не прилетают)
   const btnNext = document.getElementById('next-btn');
   const btnPrev = document.getElementById('prev-btn');
   btnNext?.addEventListener('click', () => { direction = 'forward'; setTimeout(planWindow, 0); });
   btnPrev?.addEventListener('click', () => { direction = 'backward'; setTimeout(planWindow, 0); });
 
-  // Первичная инициализация (на текущем треке)
   setTimeout(() => {
     lastIndex = typeof pc.getIndex === 'function' ? pc.getIndex() : -1;
     planWindow();
-  }, 0);
+  }, 100);
 }
