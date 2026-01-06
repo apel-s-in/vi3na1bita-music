@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e4e39efb09e597730f5ca4d4a8cb95b4da89380a.idx
-│   │       ├── pack-e4e39efb09e597730f5ca4d4a8cb95b4da89380a.pack
-│   │       └── pack-e4e39efb09e597730f5ca4d4a8cb95b4da89380a.rev
+│   │       ├── pack-68c3318388486e991fd809b52d891a87acb726ec.idx
+│   │       ├── pack-68c3318388486e991fd809b52d891a87acb726ec.pack
+│   │       └── pack-68c3318388486e991fd809b52d891a87acb726ec.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -376,7 +376,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 09:13:55 UTC
+Сгенерировано: 2026-01-06 09:16:05 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9569,7 +9569,7 @@ export function attachCacheProgressOverlay() {
 // scripts/ui/cloud-menu.js
 // Меню для ☁ (ТЗ: “Добавить 🔒” / “Удалить из кэша” + сброс cloud-статистики)
 
-import { openModal, actionRow, confirmModal } from './modal-templates.js';
+// modal-templates подключается как IIFE и доступен через window.Modals
 
 export function attachCloudMenu({ root, onAddLock, onRemoveCache } = {}) {
   const el = root;
@@ -9577,17 +9577,16 @@ export function attachCloudMenu({ root, onAddLock, onRemoveCache } = {}) {
 
   const mgr = window.OfflineUI?.offlineManager;
 
-  const modal = openModal({
+  const modal = window.Modals?.open ? window.Modals.open({
     title: 'Cloud ☁',
     maxWidth: 420,
     bodyHtml: `
       <div style="color:#9db7dd; line-height:1.45; margin-bottom: 14px;">
         Управление облачным кэшем трека.
       </div>
-      ${actionRow([
+      ${(window.Modals?.actionRow ? window.Modals.actionRow([
         { act: 'add', text: 'Добавить замочек 🔒', className: 'online', style: 'min-width: 170px;' },
-        { act: 'remove', text: 'Удалить из кэша', className: '', style: 'min-width: 170px;' }
-      ])}
+      ]) : '')}
     `
   });
 
@@ -9607,7 +9606,8 @@ export function attachCloudMenu({ root, onAddLock, onRemoveCache } = {}) {
   modal.querySelector('[data-act="remove"]')?.addEventListener('click', async () => {
     try { modal.remove(); } catch {}
 
-    confirmModal({
+    if (!window.Modals?.confirm) return;
+    window.Modals.confirm({
       title: 'Удалить из кэша?',
       textHtml: 'Cloud‑статистика будет сброшена.',
       confirmText: 'Удалить',
