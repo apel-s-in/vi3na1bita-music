@@ -35,8 +35,7 @@ class NavigationManager {
   }
 
   showFeedbackModal() {
-    this.showModal(`
-      <h2>Обратная связь</h2>
+    this.showModal('Обратная связь', `
       <div style="padding: 20px; text-align: center;">
         <p style="margin-bottom: 20px; color: #8ab8fd;">
           Есть предложения или нашли ошибку?<br>
@@ -65,8 +64,7 @@ class NavigationManager {
       this.modalsContainer = document.getElementById('modals-container');
     }
 
-    this.showModal(`
-      <h2>Горячие клавиши</h2>
+    this.showModal('Горячие клавиши', `
       <div class="hotkeys-section">
         <h3>Воспроизведение</h3>
         <div class="hotkey-item"><span class="hotkey-combo">K / Пробел</span><span class="hotkey-desc">Воспроизведение/Пауза</span></div>
@@ -83,37 +81,31 @@ class NavigationManager {
     `);
   }
 
-  showModal(contentHtml) {
-    // ✅ Унификация: используем modal-bg (как sysinfo/lyrics/favorites-data)
-    // и единый хелпер Utils.createModal.
+  showModal(title, bodyHtml) {
     this.closeModal();
 
-    const html = `
-      <div class="modal-feedback" style="max-width: 520px;">
-        <button class="bigclose" title="Закрыть" aria-label="Закрыть">
-          <svg viewBox="0 0 48 48">
-            <line x1="12" y1="12" x2="36" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
-            <line x1="36" y1="12" x2="12" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
-          </svg>
-        </button>
-
-        ${contentHtml}
-      </div>
-    `;
-
-    if (window.Utils && typeof window.Utils.createModal === 'function') {
-      this.activeModal = window.Utils.createModal(html);
-      return;
-    }
-
-    // Fallback (если Utils ещё не готов)
-    const bg = document.createElement('div');
-    bg.className = 'modal-bg active';
-    bg.innerHTML = html;
-    bg.addEventListener('click', (e) => { if (e.target === bg) bg.remove(); });
-
-    (document.getElementById('modals-container') || document.body).appendChild(bg);
-    this.activeModal = bg;
+    // ✅ Единый шаблон модалок
+    // (поддерживает тот же modal-bg, bigclose, контейнер modals-container).
+    import('../ui/modal-templates.js').then((m) => {
+      const modal = m.openModal({ title, bodyHtml, maxWidth: 520 });
+      this.activeModal = modal || null;
+    }).catch(() => {
+      // fallback: старый путь через Utils.createModal, если import не удался
+      if (window.Utils && typeof window.Utils.createModal === 'function') {
+        const html = `
+          <div class="modal-feedback" style="max-width: 520px;">
+            <button class="bigclose" title="Закрыть" aria-label="Закрыть">
+              <svg viewBox="0 0 48 48">
+                <line x1="12" y1="12" x2="36" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+                <line x1="36" y1="12" x2="12" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+              </svg>
+            </button>
+            ${bodyHtml || ''}
+          </div>
+        `;
+        this.activeModal = window.Utils.createModal(html);
+      }
+    });
   }
 
   closeModal() {
