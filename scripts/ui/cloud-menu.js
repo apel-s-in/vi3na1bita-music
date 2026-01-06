@@ -1,7 +1,7 @@
 // scripts/ui/cloud-menu.js
 // Меню для ☁ (ТЗ: “Добавить 🔒” / “Удалить из кэша” + сброс cloud-статистики)
 
-import { openModal, actionRow, confirmModal } from './modal-templates.js';
+// modal-templates подключается как IIFE и доступен через window.Modals
 
 export function attachCloudMenu({ root, onAddLock, onRemoveCache } = {}) {
   const el = root;
@@ -9,17 +9,16 @@ export function attachCloudMenu({ root, onAddLock, onRemoveCache } = {}) {
 
   const mgr = window.OfflineUI?.offlineManager;
 
-  const modal = openModal({
+  const modal = window.Modals?.open ? window.Modals.open({
     title: 'Cloud ☁',
     maxWidth: 420,
     bodyHtml: `
       <div style="color:#9db7dd; line-height:1.45; margin-bottom: 14px;">
         Управление облачным кэшем трека.
       </div>
-      ${actionRow([
+      ${(window.Modals?.actionRow ? window.Modals.actionRow([
         { act: 'add', text: 'Добавить замочек 🔒', className: 'online', style: 'min-width: 170px;' },
-        { act: 'remove', text: 'Удалить из кэша', className: '', style: 'min-width: 170px;' }
-      ])}
+      ]) : '')}
     `
   });
 
@@ -39,7 +38,8 @@ export function attachCloudMenu({ root, onAddLock, onRemoveCache } = {}) {
   modal.querySelector('[data-act="remove"]')?.addEventListener('click', async () => {
     try { modal.remove(); } catch {}
 
-    confirmModal({
+    if (!window.Modals?.confirm) return;
+    window.Modals.confirm({
       title: 'Удалить из кэша?',
       textHtml: 'Cloud‑статистика будет сброшена.',
       confirmText: 'Удалить',
