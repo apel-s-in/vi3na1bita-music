@@ -1,63 +1,105 @@
 // scripts/ui/cloud-menu.js
-// Меню для ☁ (ТЗ: “Добавить 🔒” / “Удалить из кэша” + сброс cloud-статистики)
+// Контекстное меню для Cloud-трека (ТЗ 10)
 
-// modal-templates подключается как IIFE и доступен через window.Modals
+const MENU_CSS = `
+.cloud-ctx-menu {
+  position: absolute;
+  z-index: 9999;
+  background: #222;
+  border: 1px solid #444;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.4);
+  min-width: 160px;
+  padding: 6px 0;
+  font-size: 14px;
+  color: #eee;
+}
+.cloud-ctx-menu-item {
+  padding: 8px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cloud-ctx-menu-item:hover {
+  background: #333;
+}
+`;
 
-export function attachCloudMenu({ root, onAddLock, onRemoveCache } = {}) {
-  const el = root;
-  if (!el) return;
+function injectCss() {
+  if (document.getElementById('cloud-ctx-menu-css')) return;
+  const s = document.createElement('style');
+  s.id = 'cloud-ctx-menu-css';
+  s.textContent = MENU_CSS;
+  document.head.appendChild(s);
+}
 
-  const mgr = window.OfflineUI?.offlineManager;
+let activeMenu = null;
 
-  const modal = window.Modals?.open ? window.Modals.open({
-    title: 'Cloud ☁',
-    maxWidth: 420,
-    bodyHtml: `
-      <div style="color:#9db7dd; line-height:1.45; margin-bottom: 14px;">
-        Управление облачным кэшем трека.
-      </div>
-      ${(window.Modals?.actionRow ? window.Modals.actionRow([
-        { act: 'add', text: 'Добавить замочек 🔒', className: 'online', style: 'min-width: 170px;' },
-      ]) : '')}
-    `
-  });
+function closeActiveMenu() {
+  if (activeMenu) {
+    activeMenu.remove();
+    activeMenu = null;
+  }
+  document.removeEventListener('click', onDocClick, true);
+}
 
-  if (!modal) return;
+function onDocClick(e) {
+  if (activeMenu && !activeMenu.contains(e.target)) {
+    closeActiveMenu();
+  }
+}
 
-  modal.querySelector('[data-act="add"]')?.addEventListener('click', async () => {
-    try {
-      if (typeof onAddLock === 'function') await onAddLock();
-      window.NotificationSystem?.success('Трек добавлен в pinned 🔒');
-    } catch {
-      window.NotificationSystem?.error('Не удалось добавить в pinned');
-    } finally {
-      try { modal.remove(); } catch {}
-    }
-  });
+export function attachCloudMenu(opts = {}) {
+  const root = opts.root;
+  const onAddLock = opts.onAddLock;
+  const onRemoveCache = opts.onRemoveCache;
 
-  modal.querySelector('[data-act="remove"]')?.addEventListener('click', async () => {
-    try { modal.remove(); } catch {}
+  if (!root) return;
 
-    if (!window.Modals?.confirm) return;
-    window.Modals.confirm({
-      title: 'Удалить из кэша?',
-      textHtml: 'Cloud‑статистика будет сброшена.',
-      confirmText: 'Удалить',
-      cancelText: 'Отмена',
-      danger: true,
-      onConfirm: async () => {
-        try {
-          if (typeof onRemoveCache === 'function') {
-            await onRemoveCache();
-          } else {
-            const uid = String(el.dataset?.uid || '').trim();
-            if (uid && mgr) await mgr.cloudMenu(uid, 'remove-cache');
-          }
-          window.NotificationSystem?.success('Трек удалён из cloud');
-        } catch {
-          window.NotificationSystem?.error('Не удалось удалить из cloud');
-        }
-      }
-    });
-  });
+  injectCss();
+  closeActiveMenu();
+
+  const menu = document.createElement('div');
+  menu.className = 'cloud-ctx-menu';
+
+  const lockItem = document.createElement('div');
+  lockItem.className = 'cloud-ctx-menu-item';
+  lockItem.textContent = '🔒 Закрепить офлайн';
+  lockItem.onclick = (e) => {
+    e.stopPropagation();
+    closeActiveMenu();
+    if (typeof onAddLock === 'function') onAddLock();
+  };
+  menu.appendChild(lockItem);
+
+  const removeItem = document.createElement('div');
+  removeItem.className = 'cloud-ctx-menu-item';
+  removeItem.textContent = '🗑 Удалить из кэша';
+  removeItem.onclick = (e) => {
+    e.stopPropagation();
+    closeActiveMenu();
+    if (typeof onRemoveCache === 'function') onRemoveCache();
+  };
+  menu.appendChild(removeItem);
+
+  document.body.appendChild(menu);
+
+  const rect = root.getBoundingClientRect();
+  let top = rect.bottom + 4;
+  let left = rect.left;
+
+  if (left + menu.offsetWidth > window.innerWidth) {
+    left = window.innerWidth - menu.offsetWidth - 8;
+  }
+  if (top + menu.offsetHeight > window.innerHeight) {
+    top = rect.top - menu.offsetHeight - 4;
+  }
+
+  menu.style.top = top + 'px';
+  menu.style.left = left + 'px';
+
+  activeMenu = menu;
+
+  setTimeout(() => {
+    document.addEventListener('click', onDocClick, true);
+  }, 0);
 }
