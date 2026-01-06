@@ -1264,8 +1264,7 @@ header {
 .bigclose:active { transform: scale(0.95); }
 .bigclose svg { width: 22px; height: 22px; }
 
-/* Secondary modal system used by NavigationManager (.modal-overlay) */
-.modal-overlay {
+/* Secondary modal system (.modal-overlay) удалена: проект использует единый механизм .modal-bg (window.Modals.*) */
   position: fixed;
   top: 0;
   left: 0;
