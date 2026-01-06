@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-7c8963d4149a413c6164405efb8cde8b4e184ccc.idx
-│   │       ├── pack-7c8963d4149a413c6164405efb8cde8b4e184ccc.pack
-│   │       └── pack-7c8963d4149a413c6164405efb8cde8b4e184ccc.rev
+│   │       ├── pack-67300b6d72ce327096ba4e7124694216b8f2a527.idx
+│   │       ├── pack-67300b6d72ce327096ba4e7124694216b8f2a527.pack
+│   │       └── pack-67300b6d72ce327096ba4e7124694216b8f2a527.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -374,7 +374,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 21:32:04 UTC
+Сгенерировано: 2026-01-06 21:32:52 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9322,10 +9322,10 @@ function normQ(v) {
 }
 
 function getNetworkStatusSafe() {
+  // ✅ единый core helper
+  if (window.Utils?.getNetworkStatusSafe) return window.Utils.getNetworkStatusSafe();
   try {
-    if (window.NetworkManager?.getStatus) {
-      return window.NetworkManager.getStatus();
-    }
+    if (window.NetworkManager?.getStatus) return window.NetworkManager.getStatus();
   } catch {}
   return { online: navigator.onLine !== false, kind: 'unknown', saveData: false };
 }
