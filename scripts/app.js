@@ -1,4 +1,3 @@
-import './ui/statistics-modal.js';
 // scripts/app.js
 // Главная точка входа приложения
 
