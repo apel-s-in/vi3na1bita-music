@@ -307,13 +307,14 @@
 
     if (!albumKey || !uid) return;
 
-    const { openModal, actionRow } = await import('./modal-templates.js');
+    const openModal = window.Modals?.open;
+    const actionRow = window.Modals?.actionRow;
 
     const esc = w.Utils?.escapeHtml
       ? (s) => w.Utils.escapeHtml(String(s || ''))
       : (s) => String(s || '');
 
-    const modal = openModal({
+    const modal = (typeof openModal === 'function') ? openModal({
       title: 'Трек неактивен',
       maxWidth: 420,
       bodyHtml: `
@@ -327,6 +328,8 @@
         ])}
       `
     });
+
+    }) : null;
 
     if (!modal) return;
 
@@ -347,13 +350,14 @@
     const title = String(params?.title || 'Трек');
     if (!albumKey || !uid) return;
 
-    const { openModal, actionRow } = await import('./modal-templates.js');
+    const openModal = window.Modals?.open;
+    const actionRow = window.Modals?.actionRow;
 
     const esc = w.Utils?.escapeHtml
       ? (s) => w.Utils.escapeHtml(String(s || ''))
       : (s) => String(s || '');
 
-    const modal = openModal({
+    const modal = (typeof openModal === 'function') ? openModal({
       title: 'Удалить из «ИЗБРАННОГО»?',
       maxWidth: 420,
       bodyHtml: `
@@ -367,6 +371,8 @@
         ])}
       `
     });
+
+    }) : null;
 
     if (!modal) return;
 
