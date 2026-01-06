@@ -268,15 +268,43 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         const r = await this._resolvePlaybackUrlForTrack(t);
         if (r.url) return idx;
       }
+
       return -1;
+    }
+
+    _isNetworkOnline() {
+      try {
+        if (W.NetworkManager?.getStatus) return !!W.NetworkManager.getStatus().online;
+      } catch {}
+      return navigator.onLine !== false;
+    }
+
+    async _skipUnavailableAndPlay(direction) {
+      const dir = (direction === 'backward') ? 'backward' : 'forward';
+
+      // Если есть локальный доступный трек — перепрыгиваем на него.
+      const idx = await this._findNextPlayableIndex(dir);
+      if (idx >= 0) {
+        this.currentIndex = idx;
+        await this.play(idx);
+        return true;
+      }
+
+      // Ничего нет локально/доступного: покажем предупреждение один раз.
+      if (!this._offlineNoCacheToastShown) {
+        this._offlineNoCacheToastShown = true;
+        W.NotificationSystem?.warning('Нет сети и нет офлайн-кэша');
+      }
+
+      return false;
     }
 
     // =========================
     // Public controls
     // =========================
-    async play(index = null) {
+    async play(index = null, options = {}) {
       if (index !== null && Number.isFinite(index) && index >= 0 && index < this.playlist.length) {
-        await this.load(index);
+        await this.load(index, options);
       }
 
       this._pushHistoryForCurrent();
@@ -343,6 +371,18 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       if (resolved.isLocal) html5 = false;
 
       if (!resolved.url) {
+        // ✅ ТЗ 7.5.2: если сети нет — тихо пропускаем недоступные треки.
+        // Не стопаем плеер, не ломаем плейлист, просто прыгаем к следующему доступному.
+        const netOnline = this._isNetworkOnline();
+
+        if (!netOnline) {
+          // направление: если вызвали load() из next/auto — будет forward по умолчанию
+          const dir = (options && options.direction === 'backward') ? 'backward' : 'forward';
+          await this._skipUnavailableAndPlay(dir);
+          return;
+        }
+
+        // Сеть есть, но resolve не дал URL (редкий случай) — старое поведение: fallback вперёд, если что-то доступно
         const hasAny = await this._getHasAnyOfflineCompleteCached();
 
         if (!hasAny) {
@@ -433,7 +473,9 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
       const cur = this.currentIndex >= 0 ? this.currentIndex : 0;
       const nextIndex = (cur + 1) % len;
-      this.play(nextIndex);
+
+      // ✅ передаём direction, чтобы при offline skip корректно строился поиск
+      this.play(nextIndex, { direction: 'forward' });
     }
 
     prev() {
@@ -447,13 +489,14 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
       const histIdx = this._popHistoryPrevIndex();
       if (Number.isFinite(histIdx) && histIdx >= 0) {
-        this.play(histIdx);
+        this.play(histIdx, { direction: 'backward' });
         return;
       }
 
       const cur = this.currentIndex >= 0 ? this.currentIndex : 0;
       const prevIndex = (cur - 1 + len) % len;
-      this.play(prevIndex);
+
+      this.play(prevIndex, { direction: 'backward' });
     }
 
     // =========================
