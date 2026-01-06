@@ -6,9 +6,8 @@
   'use strict';
 
   const esc = (s) => {
-    const d = document.createElement('div');
-    d.textContent = s || '';
-    return d.innerHTML;
+    const fn = window.Utils?.escapeHtml;
+    return (typeof fn === 'function') ? fn(String(s || '')) : String(s || '');
   };
 
   function getContainer() {
@@ -137,11 +136,29 @@
     return `<div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-top:16px;">${btns}</div>`;
   }
 
+  function bindActions(modalEl, actions = {}) {
+    if (!modalEl || !actions || typeof actions !== 'object') return;
+
+    Object.keys(actions).forEach((act) => {
+      const fn = actions[act];
+      if (typeof fn !== 'function') return;
+
+      modalEl.querySelectorAll(`[data-act="${CSS.escape(act)}"]`).forEach((el) => {
+        el.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          try { fn(e); } catch {}
+        });
+      });
+    });
+  }
+
   // Публичный API
   window.Modals = {
     open,
     confirm,
-    actionRow
+    actionRow,
+    bindActions
   };
 
   console.log('✅ Modals helper loaded');
