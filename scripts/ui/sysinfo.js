@@ -28,98 +28,74 @@
     }
 
     show() {
+      if (!window.Modals?.open) return;
+
       if (this.modal) {
-        this.modal.classList.add('active');
-        return;
+        try { this.modal.remove(); } catch {}
+        this.modal = null;
       }
 
-      this.createModal();
-    }
-
-    createModal() {
-      const modalBg = document.createElement('div');
-      modalBg.className = 'modal-bg sysinfo-modal';
-      
       const info = this.collectSystemInfo();
+      const esc = window.Utils?.escapeHtml
+        ? (s) => window.Utils.escapeHtml(String(s || ''))
+        : (s) => String(s || '');
 
-      modalBg.innerHTML = `
-        <div class="modal-feedback" style="max-width: 500px; max-height: 80vh; overflow-y: auto;">
-          <button class="bigclose" aria-label="Закрыть">
-            <svg width="31" height="31" viewBox="0 0 31 31">
-              <line x1="8" y1="8" x2="23" y2="23" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-              <line x1="23" y1="8" x2="8" y2="23" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-            </svg>
-          </button>
-          
-          <h2 style="margin-top: 0; color: #4daaff;">О системе</h2>
-          
+      this.modal = window.Modals.open({
+        title: 'О системе',
+        maxWidth: 500,
+        bodyHtml: `
           <div style="font-size: 14px; line-height: 1.6;">
-            <h3 style="color: #8ab8fd; margin-top: 20px;">Приложение</h3>
-            <div><strong>Версия:</strong> ${info.app.version}</div>
-            <div><strong>Дата сборки:</strong> ${info.app.buildDate}</div>
+            <h3 style="color: #8ab8fd; margin-top: 0;">Приложение</h3>
+            <div><strong>Версия:</strong> ${esc(info.app.version)}</div>
+            <div><strong>Дата сборки:</strong> ${esc(info.app.buildDate)}</div>
             <div><strong>PWA:</strong> ${info.app.isPWA ? '✅ Да' : '❌ Нет'}</div>
             <div id="sw-version-placeholder"><strong>SW версия:</strong> ...</div>
-            
+
             <h3 style="color: #8ab8fd; margin-top: 20px;">Браузер</h3>
-            <div><strong>User Agent:</strong> ${info.browser.userAgent}</div>
-            <div><strong>Язык:</strong> ${info.browser.language}</div>
+            <div><strong>User Agent:</strong> ${esc(info.browser.userAgent)}</div>
+            <div><strong>Язык:</strong> ${esc(info.browser.language)}</div>
             <div><strong>Online:</strong> ${info.browser.online ? '✅' : '❌'}</div>
-            
+
             <h3 style="color: #8ab8fd; margin-top: 20px;">Устройство</h3>
-            <div><strong>Разрешение:</strong> ${info.device.resolution}</div>
-            <div><strong>DPR:</strong> ${info.device.dpr}</div>
+            <div><strong>Разрешение:</strong> ${esc(info.device.resolution)}</div>
+            <div><strong>DPR:</strong> ${esc(info.device.dpr)}</div>
             <div><strong>Touch:</strong> ${info.device.touch ? '✅' : '❌'}</div>
-            <div><strong>Platform:</strong> ${info.device.platform}</div>
-            
+            <div><strong>Platform:</strong> ${esc(info.device.platform)}</div>
+
             <h3 style="color: #8ab8fd; margin-top: 20px;">Плеер</h3>
-            <div><strong>Ядро:</strong> ${info.player.core}</div>
-            <div><strong>Версия Howler:</strong> ${info.player.howlerVersion}</div>
+            <div><strong>Ядро:</strong> ${esc(info.player.core)}</div>
+            <div><strong>Версия Howler:</strong> ${esc(info.player.howlerVersion)}</div>
             <div><strong>Поддержка Web Audio:</strong> ${info.player.webAudio ? '✅' : '❌'}</div>
             <div><strong>Поддержка HTML5:</strong> ${info.player.html5 ? '✅' : '❌'}</div>
-            
+
             <h3 style="color: #8ab8fd; margin-top: 20px;">Хранилище</h3>
             <div><strong>LocalStorage:</strong> ${info.storage.localStorage ? '✅' : '❌'}</div>
             <div><strong>IndexedDB:</strong> ${info.storage.indexedDB ? '✅' : '❌'}</div>
             <div><strong>Cache API:</strong> ${info.storage.cacheAPI ? '✅' : '❌'}</div>
             <div><strong>Service Worker:</strong> ${info.storage.serviceWorker ? '✅' : '❌'}</div>
-            
+
             <h3 style="color: #8ab8fd; margin-top: 20px;">Память</h3>
-            <div><strong>Используется:</strong> ${info.memory.used}</div>
-            <div><strong>Лимит:</strong> ${info.memory.limit}</div>
-            
+            <div><strong>Используется:</strong> ${esc(info.memory.used)}</div>
+            <div><strong>Лимит:</strong> ${esc(info.memory.limit)}</div>
+
             <h3 style="color: #8ab8fd; margin-top: 20px;">Производительность</h3>
-            <div><strong>Время загрузки:</strong> ${info.performance.loadTime}</div>
-            <div><strong>DOM загружен:</strong> ${info.performance.domContentLoaded}</div>
-          </div>
-          
-          <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #394866; text-align: center; font-size: 12px; color: #999;">
-            Витрина Разбита © 2025
-          </div>
-        </div>
-      `;
+            <div><strong>Время загрузки:</strong> ${esc(info.performance.loadTime)}</div>
+            <div><strong>DOM загружен:</strong> ${esc(info.performance.domContentLoaded)}</div>
 
-      // Закрытие
-      const closeBtn = modalBg.querySelector('.bigclose');
-      closeBtn?.addEventListener('click', () => this.hide());
-
-      modalBg.addEventListener('click', (e) => {
-        if (e.target === modalBg) {
-          this.hide();
-        }
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #394866; text-align: center; font-size: 12px; color: #999;">
+              Витрина Разбита © 2025
+            </div>
+          </div>
+        `,
+        onClose: () => { this.modal = null; }
       });
 
-      document.getElementById('modals-container')?.appendChild(modalBg);
       // Асинхронная загрузка версии SW
-      this.getSWVersion().then(ver => {
-        const placeholder = modalBg.querySelector('#sw-version-placeholder');
+      this.getSWVersion().then((ver) => {
+        const placeholder = this.modal?.querySelector?.('#sw-version-placeholder');
         if (placeholder) {
-          placeholder.innerHTML = `<strong>SW версия:</strong> ${ver}`;
+          placeholder.innerHTML = `<strong>SW версия:</strong> ${esc(ver)}`;
         }
-      });
-      this.modal = modalBg;
-
-      requestAnimationFrame(() => {
-        modalBg.classList.add('active');
       });
     }
 
