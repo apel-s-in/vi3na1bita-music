@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-0510780257c6e882014b196e5fba27b32696be63.idx
-│   │       ├── pack-0510780257c6e882014b196e5fba27b32696be63.pack
-│   │       └── pack-0510780257c6e882014b196e5fba27b32696be63.rev
+│   │       ├── pack-6abca771b4abeda59f7734847954aaa9542e0490.idx
+│   │       ├── pack-6abca771b4abeda59f7734847954aaa9542e0490.pack
+│   │       └── pack-6abca771b4abeda59f7734847954aaa9542e0490.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -364,7 +364,6 @@ vi3na1bita-music/
 │   │   └── sw-manager.js
 │   ├── app.js
 │   ├── download-queue.js
-│   ├── stats-manager.js
 │   └── ui-handlers.js
 ├── src/
 │   ├── player-core/
@@ -384,7 +383,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 10:20:22 UTC
+Сгенерировано: 2026-01-06 10:20:37 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9732,101 +9731,6 @@ export async function resolvePlaybackSource(params) {
 }
 
 export const TrackResolver = { resolvePlaybackSource };
-
-//=================================================
-// FILE: /scripts/stats-manager.js
-//=================================================
-// FILE: scripts/stats-manager.js
-// Две независимые статистики по ТЗ
-class StatsManager {
-  constructor() {
-    this.cloudKey = (uid) => `cloud:${uid}`;
-    this.globalKey = (uid) => `global:${uid}`;
-    this.totalKey = 'global:totalSeconds';
-  }
-
-  // Cloud stats (сбрасываемая)
-  getCloud(uid) {
-    const data = localStorage.getItem(this.cloudKey(uid));
-    return data ? JSON.parse(data) : {
-      fullListenCount: 0,
-      lastFullListenAt: 0,
-      addedAt: 0,
-      expiresAt: 0,
-      active: false
-    };
-  }
-
-  incrementCloudListen(uid, durationValid, progressPercent) {
-    if (!durationValid || progressPercent < 90) return;
-    const stats = this.getCloud(uid);
-    stats.fullListenCount += 1;
-    stats.lastFullListenAt = Date.now();
-    if (stats.active) {
-      const D = parseInt(localStorage.getItem('offline:cloudTTL') || '31') * 86400000;
-      stats.expiresAt = Date.now() + D;
-    }
-    localStorage.setItem(this.cloudKey(uid), JSON.stringify(stats));
-  }
-
-  resetCloud(uid) {
-    localStorage.removeItem(this.cloudKey(uid));
-  }
-
-  setCloudActive(uid, active) {
-    const stats = this.getCloud(uid);
-    stats.active = active;
-    if (active) {
-      stats.addedAt = Date.now();
-      const D = parseInt(localStorage.getItem('offline:cloudTTL') || '31') * 86400000;
-      stats.expiresAt = Date.now() + D;
-    }
-    localStorage.setItem(this.cloudKey(uid), JSON.stringify(stats));
-  }
-
-  // Global stats (никогда не сбрасывается)
-  addSeconds(uid, seconds) {
-    const key = this.globalKey(uid);
-    let data = localStorage.getItem(key);
-    data = data ? JSON.parse(data) : { fullCount: 0, seconds: 0 };
-    data.seconds += seconds;
-    localStorage.setItem(key, JSON.stringify(data));
-
-    let total = parseInt(localStorage.getItem(this.totalKey) || '0');
-    total += seconds;
-    localStorage.setItem(this.totalKey, total.toString());
-  }
-
-  incrementGlobalFull(uid, durationValid, progressPercent) {
-    if (!durationValid || progressPercent < 90) return;
-    const key = this.globalKey(uid);
-    let data = localStorage.getItem(key);
-    data = data ? JSON.parse(data) : { fullCount: 0, seconds: 0 };
-    data.fullCount += 1;
-    localStorage.setItem(key, JSON.stringify(data));
-  }
-
-  getAllGlobal() {
-    const result = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key.startsWith('global:') && !key.includes('total')) {
-        const uid = key.slice(7);
-        const data = JSON.parse(localStorage.getItem(key));
-        if (data.fullCount >= 3) {
-          result.push({ uid, ...data });
-        }
-      }
-    }
-    result.sort((a, b) => b.fullCount - a.fullCount);
-    return {
-      tracks: result,
-      totalSeconds: parseInt(localStorage.getItem(this.totalKey) || '0')
-    };
-  }
-}
-
-window.statsManager = new StatsManager();
 
 //=================================================
 // FILE: /scripts/ui-handlers.js
