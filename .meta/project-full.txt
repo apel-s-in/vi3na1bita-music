@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3a978a8b30f6b9c7478d65d1fd108423c54432ce.idx
-│   │       ├── pack-3a978a8b30f6b9c7478d65d1fd108423c54432ce.pack
-│   │       └── pack-3a978a8b30f6b9c7478d65d1fd108423c54432ce.rev
+│   │       ├── pack-d08a6d8e4e31750d8ee2bec4c388e405099a78d7.idx
+│   │       ├── pack-d08a6d8e4e31750d8ee2bec4c388e405099a78d7.pack
+│   │       └── pack-d08a6d8e4e31750d8ee2bec4c388e405099a78d7.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,7 +377,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 19:16:46 UTC
+Сгенерировано: 2026-01-06 19:24:40 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -15443,8 +15443,10 @@ header {
 .offline-indicator.cloud { color: #8ab8fd; opacity: 0.8; }
 .offline-indicator.gray { color: #555; }
 
-/* Кнопка PQ */
-#pq-btn.disabled { pointer-events: none; opacity: 0.5; }
+/* Кнопка PQ
+   Важно (ТЗ 7.5.1): при offline кнопка disabled, но по клику должен быть toast,
+   поэтому pointer-events НЕ отключаем. */
+#pq-btn.disabled { opacity: 0.6; }
 
 /* Кнопка OFFLINE с ! */
 #offline-btn.alert::after { content: "!"; color: var(--primary-color); margin-left: 6px; font-weight: 900; }
