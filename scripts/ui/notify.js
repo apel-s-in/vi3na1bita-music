@@ -91,8 +91,10 @@ class NotificationSystem {
   }
   
   escapeHtml(text) {
+    const fn = window.Utils?.escapeHtml;
+    if (typeof fn === 'function') return fn(String(text || ''));
     const div = document.createElement('div');
-    div.textContent = text;
+    div.textContent = String(text || '');
     return div.innerHTML;
   }
   
