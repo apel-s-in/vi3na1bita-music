@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1258efc236f55e5be09b87ea96bb607943afb6e8.idx
-│   │       ├── pack-1258efc236f55e5be09b87ea96bb607943afb6e8.pack
-│   │       └── pack-1258efc236f55e5be09b87ea96bb607943afb6e8.rev
+│   │       ├── pack-73d917f92cccb7c5f141d5a005c5425f383b438d.idx
+│   │       ├── pack-73d917f92cccb7c5f141d5a005c5425f383b438d.pack
+│   │       └── pack-73d917f92cccb7c5f141d5a005c5425f383b438d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -375,7 +375,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 20:13:25 UTC
+Сгенерировано: 2026-01-06 20:14:41 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -11111,9 +11111,8 @@ window.FavoritesManager = new FavoritesManager();
   'use strict';
 
   const esc = (s) => {
-    const d = document.createElement('div');
-    d.textContent = s || '';
-    return d.innerHTML;
+    const fn = window.Utils?.escapeHtml;
+    return (typeof fn === 'function') ? fn(String(s || '')) : String(s || '');
   };
 
   function getContainer() {
@@ -11242,11 +11241,29 @@ window.FavoritesManager = new FavoritesManager();
     return `<div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-top:16px;">${btns}</div>`;
   }
 
+  function bindActions(modalEl, actions = {}) {
+    if (!modalEl || !actions || typeof actions !== 'object') return;
+
+    Object.keys(actions).forEach((act) => {
+      const fn = actions[act];
+      if (typeof fn !== 'function') return;
+
+      modalEl.querySelectorAll(`[data-act="${CSS.escape(act)}"]`).forEach((el) => {
+        el.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          try { fn(e); } catch {}
+        });
+      });
+    });
+  }
+
   // Публичный API
   window.Modals = {
     open,
     confirm,
-    actionRow
+    actionRow,
+    bindActions
   };
 
   console.log('✅ Modals helper loaded');
