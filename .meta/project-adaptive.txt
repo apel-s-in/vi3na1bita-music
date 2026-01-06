@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c399b54a7d96299454d20699c0b877e356ee2936.idx
-│   │       ├── pack-c399b54a7d96299454d20699c0b877e356ee2936.pack
-│   │       └── pack-c399b54a7d96299454d20699c0b877e356ee2936.rev
+│   │       ├── pack-c75df59a95c11aabc913fbbb660166eb5d56bb0b.idx
+│   │       ├── pack-c75df59a95c11aabc913fbbb660166eb5d56bb0b.pack
+│   │       └── pack-c75df59a95c11aabc913fbbb660166eb5d56bb0b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 15:29:22 UTC
+Сгенерировано: 2026-01-06 15:53:15 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9867,10 +9867,9 @@ export const OfflineUI = {
 //=================================================
 // FILE: /scripts/offline/playback-cache.js
 // scripts/offline/playback-cache.js
-// PlaybackCache (ESM) — кэширование окна PREV/CUR/NEXT (ТЗ 11)
-// Скачивает РЕАЛЬНЫЕ треки для playback (в качестве PQ), а не только планирует
+// PlaybackCache (ESM) — кэширование окна PREV/CUR/NEXT (ТЗ 7)
+// Скачивает РЕАЛЬНЫЕ треки для playback, управляет окном воспроизведения
 
-import { getOfflineManager } from './offline-manager.js';
 import { getTrackByUid } from '../app/track-registry.js';
 import { isAllowedByNetPolicy, getNetPolicy } from './net-policy.js';
 
@@ -9894,60 +9893,35 @@ function getNetworkStatusSafe() {
       return window.NetworkManager.getStatus();
     }
   } catch {}
-  return { online: navigator.onLine !== false, kind: 'unknown' };
+  return { online: navigator.onLine !== false, kind: 'unknown', saveData: false };
 }
 
-class PlaybackCacheManager {
-  constructor() {
+export class PlaybackCacheManager {
+  constructor(opts = {}) {
+    this._queue = opts.queue || null;
+    this._getPlaylistCtx = opts.getPlaylistCtx || (() => ({ list: [], curUid: null, favoritesInactive: new Set(), direction: 'forward' }));
     this._currentIdx = -1;
     this._playlist = [];
     this._pq = 'hi';
     this._scheduled = new Set();
     this._lastWindow = { prev: [], cur: null, next: [] };
+    this._direction = 'forward';
   }
 
-  /**
-   * setPlaylist — устанавливает текущий плейлист
-   * @param {Array} uids — массив uid треков
-   */
-  setPlaylist(uids) {
-    this._playlist = Array.isArray(uids)
-      ? uids.map(x => String(x || '').trim()).filter(Boolean)
-      : [];
-    this._currentIdx = -1;
-    this._scheduled.clear();
-    this._lastWindow = { prev: [], cur: null, next: [] };
+  setQueue(queue) {
+    this._queue = queue;
   }
 
-  /**
-   * getPlaylist — возвращает текущий плейлист
-   */
-  getPlaylist() {
-    return [...this._playlist];
-  }
-
-  /**
-   * setPlaybackQuality — устанавливает PQ для playback cache
-   * @param {string} pq — 'hi' или 'lo'
-   */
   setPlaybackQuality(pq) {
     this._pq = normQ(pq);
   }
 
-  /**
-   * getPlaybackQuality — возвращает текущее PQ
-   */
   getPlaybackQuality() {
     return this._pq;
   }
 
-  /**
-   * getWindow — вычисляет окно PREV/CUR/NEXT
-   * @param {number} idx — индекс текущего трека
-   * @returns {{ prev: string[], cur: string|null, next: string[] }}
-   */
-  getWindow(idx) {
-    const pl = this._playlist;
+  getWindow(idx, playlist) {
+    const pl = playlist || this._playlist;
     const len = pl.length;
 
     if (len === 0 || idx < 0 || idx >= len) {
@@ -9955,45 +9929,49 @@ class PlaybackCacheManager {
     }
 
     const cur = pl[idx] || null;
+    const curUid = normUid(cur?.uid);
     const prev = [];
     const next = [];
 
-    // Collect PREV (up to WINDOW_PREV)
     for (let i = 1; i <= WINDOW_PREV && (idx - i) >= 0; i++) {
-      prev.unshift(pl[idx - i]);
+      const t = pl[idx - i];
+      if (t) prev.unshift(normUid(t.uid));
     }
 
-    // Collect NEXT (up to WINDOW_NEXT)
     for (let i = 1; i <= WINDOW_NEXT && (idx + i) < len; i++) {
-      next.push(pl[idx + i]);
+      const t = pl[idx + i];
+      if (t) next.push(normUid(t.uid));
     }
 
-    return { prev, cur, next };
+    return { prev: prev.filter(Boolean), cur: curUid, next: next.filter(Boolean) };
   }
 
-  /**
-   * onTrackChange — вызывается при смене трека (ТЗ 11.2)
-   * Планирует и ВЫПОЛНЯЕТ скачивание треков в окне
-   * @param {number} idx — индекс нового текущего трека
-   * @param {Object} options — { force?: boolean }
-   */
-  async onTrackChange(idx, options = {}) {
-    const force = !!options?.force;
-    const safeIdx = Math.max(0, Math.min(Number(idx) || 0, this._playlist.length - 1));
+  async ensureWindowFullyCached(pq, trackProvider) {
+    const ctx = this._getPlaylistCtx();
+    const list = ctx.list || [];
+    const curUid = ctx.curUid || null;
+    const inactive = ctx.favoritesInactive || new Set();
+    const direction = ctx.direction || 'forward';
 
-    if (!force && safeIdx === this._currentIdx) return;
+    this._direction = direction;
 
-    this._currentIdx = safeIdx;
-    const window = this.getWindow(safeIdx);
+    if (!list.length || !curUid) return;
+
+    const idx = list.findIndex(t => normUid(t?.uid) === curUid);
+    if (idx < 0) return;
+
+    this._currentIdx = idx;
+    this._playlist = list;
+
+    const window = this.getWindow(idx, list);
     this._lastWindow = window;
 
-    // ТЗ 11.2.A: Playback Cache работает только при OFFLINE mode ON
-    const mgr = getOfflineManager();
-    if (!mgr.isOfflineMode()) {
-      return;
-    }
+    const mgr = window.OfflineUI?.offlineManager;
+    if (!mgr) return;
 
-    // Net policy check
+    const offlineMode = mgr.isOfflineMode?.();
+    if (!offlineMode) return;
+
     const policy = getNetPolicy();
     const net = getNetworkStatusSafe();
 
@@ -10002,46 +9980,54 @@ class PlaybackCacheManager {
     const allowed = isAllowedByNetPolicy({
       policy,
       net,
-      quality: this._pq,
+      quality: pq || this._pq,
       kind: 'playbackCache',
       userInitiated: false
     });
 
     if (!allowed) return;
 
-    // Schedule downloads: CUR with highest priority, then NEXT, then PREV
     const tasks = [];
 
-    if (window.cur) {
+    if (window.cur && !inactive.has(window.cur)) {
       tasks.push({ uid: window.cur, priority: PRIORITY_CURRENT });
     }
 
-    window.next.forEach((uid, i) => {
-      tasks.push({ uid, priority: PRIORITY_ADJACENT - i });
+    const adjacentList = direction === 'backward' ? window.prev : window.next;
+    const otherList = direction === 'backward' ? window.next : window.prev;
+
+    adjacentList.forEach((uid, i) => {
+      if (!inactive.has(uid)) {
+        tasks.push({ uid, priority: PRIORITY_ADJACENT - i });
+      }
     });
 
-    window.prev.forEach((uid, i) => {
-      tasks.push({ uid, priority: PRIORITY_ADJACENT - WINDOW_NEXT - i });
+    otherList.forEach((uid, i) => {
+      if (!inactive.has(uid)) {
+        tasks.push({ uid, priority: PRIORITY_ADJACENT - adjacentList.length - i });
+      }
     });
+
+    const quality = normQ(pq || this._pq);
 
     for (const task of tasks) {
       const u = normUid(task.uid);
       if (!u) continue;
 
-      const key = `playbackCache:${this._pq}:${u}`;
+      const key = `playbackCache:${quality}:${u}`;
 
-      // Skip if already scheduled in this session
       if (this._scheduled.has(key)) continue;
       this._scheduled.add(key);
 
-      // Check if already complete
-      const complete = await mgr.isTrackComplete(u, this._pq);
+      const complete = await mgr.isTrackComplete(u, quality);
       if (complete) continue;
 
-      // Enqueue actual download
+      const trackMeta = typeof trackProvider === 'function' ? trackProvider(u) : getTrackByUid(u);
+      if (!trackMeta) continue;
+
       mgr.enqueueAudioDownload({
         uid: u,
-        quality: this._pq,
+        quality,
         key,
         priority: task.priority,
         userInitiated: false,
@@ -10051,80 +10037,19 @@ class PlaybackCacheManager {
     }
   }
 
-  /**
-   * prefetchNext — явный вызов для предзагрузки следующих треков
-   * @param {number} count — количество треков для предзагрузки
-   */
-  async prefetchNext(count = WINDOW_NEXT) {
-    const idx = this._currentIdx;
-    if (idx < 0 || !this._playlist.length) return;
-
-    const mgr = getOfflineManager();
-    if (!mgr.isOfflineMode()) return;
-
-    const net = getNetworkStatusSafe();
-    if (!net.online) return;
-
-    const policy = getNetPolicy();
-    const allowed = isAllowedByNetPolicy({
-      policy,
-      net,
-      quality: this._pq,
-      kind: 'playbackCache',
-      userInitiated: false
-    });
-
-    if (!allowed) return;
-
-    const start = idx + 1;
-    const end = Math.min(start + count, this._playlist.length);
-
-    for (let i = start; i < end; i++) {
-      const u = normUid(this._playlist[i]);
-      if (!u) continue;
-
-      const key = `playbackCache:${this._pq}:${u}`;
-      if (this._scheduled.has(key)) continue;
-      this._scheduled.add(key);
-
-      const complete = await mgr.isTrackComplete(u, this._pq);
-      if (complete) continue;
-
-      mgr.enqueueAudioDownload({
-        uid: u,
-        quality: this._pq,
-        key,
-        priority: PRIORITY_ADJACENT - (i - start),
-        userInitiated: false,
-        isMass: false,
-        kind: 'playbackCache'
-      });
-    }
-  }
-
-  /**
-   * clearScheduled — очищает историю запланированных задач
-   */
   clearScheduled() {
     this._scheduled.clear();
   }
 
-  /**
-   * getLastWindow — возвращает последнее вычисленное окно
-   */
   getLastWindow() {
     return { ...this._lastWindow };
   }
 
-  /**
-   * getCurrentIndex — возвращает текущий индекс
-   */
   getCurrentIndex() {
     return this._currentIdx;
   }
 }
 
-// Singleton
 let _instance = null;
 
 export function getPlaybackCache() {
@@ -10135,13 +10060,10 @@ export function getPlaybackCache() {
 }
 
 export const PlaybackCache = {
-  setPlaylist: (uids) => getPlaybackCache().setPlaylist(uids),
-  getPlaylist: () => getPlaybackCache().getPlaylist(),
   setPlaybackQuality: (pq) => getPlaybackCache().setPlaybackQuality(pq),
   getPlaybackQuality: () => getPlaybackCache().getPlaybackQuality(),
-  getWindow: (idx) => getPlaybackCache().getWindow(idx),
-  onTrackChange: (idx, opts) => getPlaybackCache().onTrackChange(idx, opts),
-  prefetchNext: (count) => getPlaybackCache().prefetchNext(count),
+  getWindow: (idx, pl) => getPlaybackCache().getWindow(idx, pl),
+  ensureWindowFullyCached: (pq, tp) => getPlaybackCache().ensureWindowFullyCached(pq, tp),
   clearScheduled: () => getPlaybackCache().clearScheduled(),
   getLastWindow: () => getPlaybackCache().getLastWindow(),
   getCurrentIndex: () => getPlaybackCache().getCurrentIndex()
