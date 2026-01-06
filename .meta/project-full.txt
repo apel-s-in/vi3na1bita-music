@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e69c530eb0a682e2ca80023ced4c1f4884119b4f.idx
-│   │       ├── pack-e69c530eb0a682e2ca80023ced4c1f4884119b4f.pack
-│   │       └── pack-e69c530eb0a682e2ca80023ced4c1f4884119b4f.rev
+│   │       ├── pack-e58f2a15fe19544682b15874e0adc12c53ca08ad.idx
+│   │       ├── pack-e58f2a15fe19544682b15874e0adc12c53ca08ad.pack
+│   │       └── pack-e58f2a15fe19544682b15874e0adc12c53ca08ad.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,7 +377,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 15:08:00 UTC
+Сгенерировано: 2026-01-06 15:24:47 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7679,21 +7679,20 @@ export async function seedPlayerStateV2FromCurrent(page, opts = {}) {
 //=================================================
 // FILE: /scripts/offline/cache-db.js
 // scripts/offline/cache-db.js
-// IndexedDB слой (CQ bytes) — MVP.
-// Нужен для cache-progress-overlay.js (bytesByQuality).
-// НЕ хранит blobs "по-настоящему" в этом коммите — только bytes (счётчики).
+// IndexedDB слой для OFFLINE системы (ТЗ_НЬЮ)
+// Хранит: bytes счётчики, blobs аудио, cloud stats, global stats
 
 const DB_NAME = 'vitrina-offline-db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
-const STORE_META = 'meta'; // key -> value
-const STORE_BYTES = 'bytes'; // uid -> { hi:number, lo:number }
-
-// ✅ Реальное офлайн-хранилище аудио (Blob) по ключу `${uid}:${quality}`
+const STORE_META = 'meta';
+const STORE_BYTES = 'bytes';
 const STORE_BLOBS = 'blobs';
-const STORE_STATS_GLOBAL = 'stats_global'; // uid -> { seconds, fullListens, lastListenAt }
+const STORE_STATS_GLOBAL = 'stats_global';
+const STORE_CLOUD_STATS = 'cloud_stats';
 
 const META_CQ_KEY = 'cacheQuality';
+const MB = 1024 * 1024;
 
 let dbPromise = null;
 
@@ -7703,8 +7702,9 @@ function openDb() {
   dbPromise = new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
 
-    req.onupgradeneeded = () => {
+    req.onupgradeneeded = (event) => {
       const db = req.result;
+      const oldVersion = event.oldVersion;
 
       if (!db.objectStoreNames.contains(STORE_META)) {
         db.createObjectStore(STORE_META);
@@ -7717,6 +7717,9 @@ function openDb() {
       }
       if (!db.objectStoreNames.contains(STORE_STATS_GLOBAL)) {
         db.createObjectStore(STORE_STATS_GLOBAL);
+      }
+      if (!db.objectStoreNames.contains(STORE_CLOUD_STATS)) {
+        db.createObjectStore(STORE_CLOUD_STATS);
       }
     };
 
@@ -7735,7 +7738,14 @@ function txp(db, store, mode, fn) {
     let res;
     try { res = fn(st); } catch (e) { reject(e); return; }
 
-    tx.oncomplete = () => resolve(res);
+    if (res instanceof Promise) {
+      res.then(r => {
+        tx.oncomplete = () => resolve(r);
+      }).catch(reject);
+    } else {
+      tx.oncomplete = () => resolve(res);
+    }
+    
     tx.onerror = () => reject(tx.error || new Error('IndexedDB tx failed'));
     tx.onabort = () => reject(tx.error || new Error('IndexedDB tx aborted'));
   });
@@ -7745,19 +7755,20 @@ export async function ensureDbReady() {
   await openDb();
 }
 
+// ===== Cache Quality =====
 export async function getCacheQuality() {
   try {
     const db = await openDb();
-    const v = await txp(db, STORE_META, 'readonly', (st) => {
-      return new Promise((resolve, reject) => {
-        const r = st.get(META_CQ_KEY);
-        r.onsuccess = () => resolve(r.result);
-        r.onerror = () => reject(r.error);
-      });
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_META, 'readonly');
+      const st = tx.objectStore(STORE_META);
+      const r = st.get(META_CQ_KEY);
+      r.onsuccess = () => {
+        const s = String(r.result || '').toLowerCase();
+        resolve((s === 'lo') ? 'lo' : 'hi');
+      };
+      r.onerror = () => resolve('hi');
     });
-
-    const s = String(v || '').toLowerCase();
-    return (s === 'lo') ? 'lo' : 'hi';
   } catch {
     return 'hi';
   }
@@ -7767,215 +7778,33 @@ export async function setCacheQuality(v) {
   const cq = (String(v || '').toLowerCase() === 'lo') ? 'lo' : 'hi';
   try {
     const db = await openDb();
-    await txp(db, STORE_META, 'readwrite', (st) => {
-      st.put(cq, META_CQ_KEY);
-    });
+    const tx = db.transaction(STORE_META, 'readwrite');
+    tx.objectStore(STORE_META).put(cq, META_CQ_KEY);
   } catch {}
   return cq;
 }
 
-// ===== Cloud state (N/D + TTL) =====
-// meta key format: cloud:{uid} ->
-// {
-//   cloudFullListenCount:number,
-//   lastFullListenAt:number,
-//   cloudAddedAt:number,
-//   cloudExpiresAt:number,
-//   cloud:boolean
-// }
-function cloudKey(uid) {
-  const u = String(uid || '').trim();
-  return u ? `cloud:${u}` : '';
-}
-
-export async function getCloudStats(uid) {
-  const key = cloudKey(uid);
-  if (!key) {
-    return {
-      cloudFullListenCount: 0,
-      lastFullListenAt: 0,
-      cloudAddedAt: 0,
-      cloudExpiresAt: 0,
-      cloud: false
-    };
-  }
-
-  try {
-    const db = await openDb();
-    const v = await txp(db, STORE_META, 'readonly', (st) => {
-      return new Promise((resolve, reject) => {
-        const r = st.get(key);
-        r.onsuccess = () => resolve(r.result || null);
-        r.onerror = () => reject(r.error);
-      });
-    });
-
-    const c = Number(v?.cloudFullListenCount || 0);
-    const last = Number(v?.lastFullListenAt || 0);
-    const added = Number(v?.cloudAddedAt || 0);
-    const exp = Number(v?.cloudExpiresAt || 0);
-    const cloud = v?.cloud === true;
-
-    return {
-      cloudFullListenCount: (Number.isFinite(c) && c > 0) ? Math.floor(c) : 0,
-      lastFullListenAt: (Number.isFinite(last) && last > 0) ? Math.floor(last) : 0,
-      cloudAddedAt: (Number.isFinite(added) && added > 0) ? Math.floor(added) : 0,
-      cloudExpiresAt: (Number.isFinite(exp) && exp > 0) ? Math.floor(exp) : 0,
-      cloud
-    };
-  } catch {
-    return {
-      cloudFullListenCount: 0,
-      lastFullListenAt: 0,
-      cloudAddedAt: 0,
-      cloudExpiresAt: 0,
-      cloud: false
-    };
-  }
-}
-
-export async function setCloudStats(uid, stats) {
-  const key = cloudKey(uid);
-  if (!key) return false;
-
-  const c = Number(stats?.cloudFullListenCount || 0);
-  const last = Number(stats?.lastFullListenAt || 0);
-  const added = Number(stats?.cloudAddedAt || 0);
-  const exp = Number(stats?.cloudExpiresAt || 0);
-  const cloud = stats?.cloud === true;
-
-  const payload = {
-    cloudFullListenCount: (Number.isFinite(c) && c > 0) ? Math.floor(c) : 0,
-    lastFullListenAt: (Number.isFinite(last) && last > 0) ? Math.floor(last) : 0,
-    cloudAddedAt: (Number.isFinite(added) && added > 0) ? Math.floor(added) : 0,
-    cloudExpiresAt: (Number.isFinite(exp) && exp > 0) ? Math.floor(exp) : 0,
-    cloud
-  };
-
-  try {
-    const db = await openDb();
-    await txp(db, STORE_META, 'readwrite', (st) => {
-      st.put(payload, key);
-    });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export async function clearCloudStats(uid) {
-  const key = cloudKey(uid);
-  if (!key) return false;
-
-  try {
-    const db = await openDb();
-    await txp(db, STORE_META, 'readwrite', (st) => {
-      st.delete(key);
-    });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-// meta key format: cloudCandidate:{uid} -> boolean
-function cloudCandidateKey(uid) {
-  const u = String(uid || '').trim();
-  return u ? `cloudCandidate:${u}` : '';
-}
-
-export async function getCloudCandidate(uid) {
-  const key = cloudCandidateKey(uid);
-  if (!key) return false;
-
-  try {
-    const db = await openDb();
-    const v = await txp(db, STORE_META, 'readonly', (st) => {
-      return new Promise((resolve, reject) => {
-        const r = st.get(key);
-        r.onsuccess = () => resolve(r.result);
-        r.onerror = () => reject(r.error);
-      });
-    });
-    return v === true;
-  } catch {
-    return false;
-  }
-}
-
-export async function setCloudCandidate(uid, flag) {
-  const key = cloudCandidateKey(uid);
-  if (!key) return false;
-
-  try {
-    const db = await openDb();
-    await txp(db, STORE_META, 'readwrite', (st) => {
-      st.put(!!flag, key);
-    });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export async function clearCloudCandidate(uid) {
-  const key = cloudCandidateKey(uid);
-  if (!key) return false;
-
-  try {
-    const db = await openDb();
-    await txp(db, STORE_META, 'readwrite', (st) => {
-      st.delete(key);
-    });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
+// ===== Bytes tracking =====
 export async function bytesByQuality(uid) {
   const u = String(uid || '').trim();
   if (!u) return { hi: 0, lo: 0 };
 
-  const MB = 1024 * 1024;
-
-  const normalize = (v) => {
-    const n = Number(v || 0);
-    if (!Number.isFinite(n) || n <= 0) return 0;
-
-    // ✅ Миграция legacy: если раньше сюда писали "MB" (например 8.5),
-    // то значение будет < 1MB. Конвертируем MB → bytes.
-    if (n > 0 && n < MB) {
-      return Math.floor(n * MB);
-    }
-
-    return Math.floor(n);
-  };
-
   try {
     const db = await openDb();
-    const row = await txp(db, STORE_BYTES, 'readonly', (st) => {
-      return new Promise((resolve, reject) => {
-        const r = st.get(u);
-        r.onsuccess = () => resolve(r.result || null);
-        r.onerror = () => reject(r.error);
-      });
-    });
-
-    const hi = normalize(row?.hi);
-    const lo = normalize(row?.lo);
-
-    // ✅ Если была миграция MB→bytes — перезапишем ряд, чтобы дальше не пересчитывать.
-    if (row && ((hi && hi !== row.hi) || (lo && lo !== row.lo))) {
-      try {
-        const db2 = await openDb();
-        await txp(db2, STORE_BYTES, 'readwrite', (st) => {
-          st.put({ hi, lo }, u);
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_BYTES, 'readonly');
+      const r = tx.objectStore(STORE_BYTES).get(u);
+      r.onsuccess = () => {
+        const row = r.result || {};
+        const hi = Number(row.hi || 0);
+        const lo = Number(row.lo || 0);
+        resolve({
+          hi: Number.isFinite(hi) && hi > 0 ? Math.floor(hi) : 0,
+          lo: Number.isFinite(lo) && lo > 0 ? Math.floor(lo) : 0
         });
-      } catch {}
-    }
-
-    return { hi, lo };
+      };
+      r.onerror = () => resolve({ hi: 0, lo: 0 });
+    });
   } catch {
     return { hi: 0, lo: 0 };
   }
@@ -7991,56 +7820,47 @@ export async function setBytes(uid, quality, bytes) {
 
   try {
     const db = await openDb();
-    await txp(db, STORE_BYTES, 'readwrite', (st) => {
-      return new Promise((resolve, reject) => {
-        const getReq = st.get(u);
-
-        getReq.onsuccess = () => {
-          try {
-            const cur = getReq.result || { hi: 0, lo: 0 };
-            const next = { hi: Number(cur.hi || 0), lo: Number(cur.lo || 0) };
-            next[q] = safe;
-            const putReq = st.put(next, u);
-            putReq.onsuccess = () => resolve(true);
-            putReq.onerror = () => reject(putReq.error);
-          } catch (e) {
-            reject(e);
-          }
-        };
-
-        getReq.onerror = () => reject(getReq.error);
-      });
-    });
+    const tx = db.transaction(STORE_BYTES, 'readwrite');
+    const st = tx.objectStore(STORE_BYTES);
+    
+    const getReq = st.get(u);
+    getReq.onsuccess = () => {
+      const cur = getReq.result || { hi: 0, lo: 0 };
+      const next = { 
+        hi: Number(cur.hi || 0), 
+        lo: Number(cur.lo || 0),
+        updatedAt: Date.now()
+      };
+      next[q] = safe;
+      st.put(next, u);
+    };
   } catch {}
 }
 
 export async function totalCachedBytes() {
   try {
     const db = await openDb();
-    const sum = await txp(db, STORE_BYTES, 'readonly', (st) => {
-      return new Promise((resolve, reject) => {
-        let total = 0;
-        const req = st.openCursor();
+    return new Promise((resolve) => {
+      let total = 0;
+      const tx = db.transaction(STORE_BYTES, 'readonly');
+      const req = tx.objectStore(STORE_BYTES).openCursor();
 
-        req.onsuccess = () => {
-          const cursor = req.result;
-          if (!cursor) {
-            resolve(total);
-            return;
-          }
-          const v = cursor.value || {};
-          const hi = Number(v.hi || 0);
-          const lo = Number(v.lo || 0);
-          if (Number.isFinite(hi) && hi > 0) total += hi;
-          if (Number.isFinite(lo) && lo > 0) total += lo;
-          cursor.continue();
-        };
+      req.onsuccess = () => {
+        const cursor = req.result;
+        if (!cursor) {
+          resolve(total);
+          return;
+        }
+        const v = cursor.value || {};
+        const hi = Number(v.hi || 0);
+        const lo = Number(v.lo || 0);
+        if (Number.isFinite(hi) && hi > 0) total += hi;
+        if (Number.isFinite(lo) && lo > 0) total += lo;
+        cursor.continue();
+      };
 
-        req.onerror = () => reject(req.error);
-      });
+      req.onerror = () => resolve(0);
     });
-
-    return Number.isFinite(sum) && sum > 0 ? Math.floor(sum) : 0;
   } catch {
     return 0;
   }
@@ -8052,65 +7872,14 @@ export async function deleteTrackCache(uid) {
 
   try {
     const db = await openDb();
-    await txp(db, STORE_BYTES, 'readwrite', (st) => {
-      st.delete(u);
-    });
-  } catch {}
-
-  // ✅ Также удаляем blobs (если есть)
-  try {
-    const db = await openDb();
-    await txp(db, STORE_BLOBS, 'readwrite', (st) => {
-      st.delete(`${u}:hi`);
-      st.delete(`${u}:lo`);
-    });
+    const tx = db.transaction([STORE_BYTES, STORE_BLOBS], 'readwrite');
+    tx.objectStore(STORE_BYTES).delete(u);
+    tx.objectStore(STORE_BLOBS).delete(`${u}:hi`);
+    tx.objectStore(STORE_BLOBS).delete(`${u}:lo`);
   } catch {}
 }
 
-export async function clearAllStores({ keepCacheQuality = true } = {}) {
-  // Полная очистка bytes + blobs + cloud meta.
-  // По умолчанию cacheQuality сохраняем (чтобы CQ не “сбрасывался” неожиданно).
-  try {
-    const db = await openDb();
-
-    // 1) bytes — clear
-    await txp(db, STORE_BYTES, 'readwrite', (st) => {
-      st.clear();
-    });
-
-    // 2) blobs — clear
-    await txp(db, STORE_BLOBS, 'readwrite', (st) => {
-      st.clear();
-    });
-
-    // 3) meta — удаляем cloud:* и cloudCandidate:* (и при желании cacheQuality)
-    await txp(db, STORE_META, 'readwrite', (st) => {
-      return new Promise((resolve, reject) => {
-        const req = st.openCursor();
-        req.onsuccess = () => {
-          const cursor = req.result;
-          if (!cursor) {
-            resolve(true);
-            return;
-          }
-          const k = String(cursor.key || '');
-          const isCloud = k.startsWith('cloud:') || k.startsWith('cloudCandidate:');
-          const isCQ = k === 'cacheQuality';
-          if (isCloud || (!keepCacheQuality && isCQ)) {
-            try { cursor.delete(); } catch {}
-          }
-          cursor.continue();
-        };
-        req.onerror = () => reject(req.error);
-      });
-    });
-
-    return true;
-  } catch {
-    return false;
-  }
-}
-
+// ===== Blob storage =====
 export async function getAudioBlob(uid, quality) {
   const u = String(uid || '').trim();
   if (!u) return null;
@@ -8120,14 +7889,12 @@ export async function getAudioBlob(uid, quality) {
 
   try {
     const db = await openDb();
-    const blob = await txp(db, STORE_BLOBS, 'readonly', (st) => {
-      return new Promise((resolve, reject) => {
-        const r = st.get(key);
-        r.onsuccess = () => resolve(r.result || null);
-        r.onerror = () => reject(r.error);
-      });
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_BLOBS, 'readonly');
+      const r = tx.objectStore(STORE_BLOBS).get(key);
+      r.onsuccess = () => resolve(r.result || null);
+      r.onerror = () => resolve(null);
     });
-    return blob || null;
   } catch {
     return null;
   }
@@ -8135,131 +7902,19 @@ export async function getAudioBlob(uid, quality) {
 
 export async function setAudioBlob(uid, quality, blob) {
   const u = String(uid || '').trim();
-  if (!u) return false;
+  if (!u || !(blob instanceof Blob)) return false;
 
   const q = (String(quality || '').toLowerCase() === 'lo') ? 'lo' : 'hi';
   const key = `${u}:${q}`;
 
-  if (!(blob instanceof Blob)) return false;
-
   try {
     const db = await openDb();
-    await txp(db, STORE_BLOBS, 'readwrite', (st) => {
-      st.put(blob, key);
-    });
+    const tx = db.transaction(STORE_BLOBS, 'readwrite');
+    tx.objectStore(STORE_BLOBS).put(blob, key);
     return true;
   } catch {
     return false;
   }
-}
-
-// ===== Global Stats (Permanent) =====
-export async function updateGlobalStats(uid, deltaSeconds, addFullListen = 0) {
-  const u = String(uid || '').trim();
-  if (!u) return;
-  const now = Date.now();
-
-  try {
-    const db = await openDb();
-    await txp(db, STORE_STATS_GLOBAL, 'readwrite', (st) => {
-      const getReq = st.get(u);
-      getReq.onsuccess = () => {
-        const cur = getReq.result || { seconds: 0, fullListens: 0, lastListenAt: 0 };
-        const next = {
-          seconds: (cur.seconds || 0) + deltaSeconds,
-          fullListens: (cur.fullListens || 0) + addFullListen,
-          lastListenAt: now
-        };
-        st.put(next, u);
-      };
-    });
-  } catch {}
-}
-
-export async function getGlobalStatsAndTotal() {
-  try {
-    const db = await openDb();
-    let totalSeconds = 0;
-    const tracks = [];
-
-    await txp(db, STORE_STATS_GLOBAL, 'readonly', (st) => {
-      return new Promise((resolve, reject) => {
-        const req = st.openCursor();
-        req.onsuccess = () => {
-          const cursor = req.result;
-          if (!cursor) {
-            resolve();
-            return;
-          }
-          const val = cursor.value;
-          const uid = cursor.key;
-          totalSeconds += (val.seconds || 0);
-          if (val.fullListens > 0 || val.seconds > 0) {
-            tracks.push({ uid, ...val });
-          }
-          cursor.continue();
-        };
-        req.onerror = () => reject(req.error);
-      });
-    });
-    return { totalSeconds, tracks };
-  } catch {
-    return { totalSeconds: 0, tracks: [] };
-  }
-}
-
-// ===== Eviction Helpers =====
-// Получить список всех UID, у которых есть bytes (кэш), кроме pinned
-export async function getEvictionCandidates(pinnedSet) {
-  try {
-    const db = await openDb();
-    const candidates = []; // { uid, lastListenAt }
-    
-    // 1. Собираем всех, у кого есть байты
-    await txp(db, STORE_BYTES, 'readonly', (st) => {
-      return new Promise((resolve) => {
-        const req = st.openCursor();
-        req.onsuccess = () => {
-          const cursor = req.result;
-          if (!cursor) { resolve(); return; }
-          const uid = String(cursor.key);
-          // Если не pinned - кандидат на удаление
-          if (!pinnedSet.has(uid)) {
-             candidates.push(uid);
-          }
-          cursor.continue();
-        };
-      });
-    });
-
-    // 2. Обогащаем датой последнего прослушивания (Global Stats) для сортировки LRU
-    const enriched = [];
-    for (const uid of candidates) {
-      // Это не атомарно, но для эвикции приемлемо
-      const g = await getGlobalStats(uid); // helper below
-      enriched.push({ uid, ts: g?.lastListenAt || 0 });
-    }
-    
-    // Сортируем: старые (маленький ts) в начале
-    enriched.sort((a, b) => a.ts - b.ts);
-    return enriched.map(x => x.uid);
-  } catch {
-    return [];
-  }
-}
-
-async function getGlobalStats(uid) {
-  try {
-    const db = await openDb();
-    const v = await txp(db, STORE_STATS_GLOBAL, 'readonly', (st) => {
-      return new Promise((resolve) => {
-        const r = st.get(uid);
-        r.onsuccess = () => resolve(r.result);
-        r.onerror = () => resolve(null);
-      });
-    });
-    return v;
-  } catch { return null; }
 }
 
 export async function deleteAudioBlob(uid, quality) {
@@ -8273,10 +7928,349 @@ export async function deleteAudioBlob(uid, quality) {
 
   try {
     const db = await openDb();
-    await txp(db, STORE_BLOBS, 'readwrite', (st) => {
-      keys.forEach(k => st.delete(k));
-    });
+    const tx = db.transaction(STORE_BLOBS, 'readwrite');
+    const st = tx.objectStore(STORE_BLOBS);
+    keys.forEach(k => st.delete(k));
   } catch {}
+}
+
+// ===== Cloud Stats (ТЗ 7.11.1 - сбрасываемая) =====
+export async function getCloudStats(uid) {
+  const u = String(uid || '').trim();
+  const defaults = {
+    cloudFullListenCount: 0,
+    lastFullListenAt: 0,
+    cloudAddedAt: 0,
+    cloudExpiresAt: 0,
+    cloud: false
+  };
+  
+  if (!u) return defaults;
+
+  try {
+    const db = await openDb();
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_CLOUD_STATS, 'readonly');
+      const r = tx.objectStore(STORE_CLOUD_STATS).get(u);
+      r.onsuccess = () => {
+        const v = r.result;
+        if (!v) { resolve(defaults); return; }
+        resolve({
+          cloudFullListenCount: Math.floor(Number(v.cloudFullListenCount || 0)),
+          lastFullListenAt: Math.floor(Number(v.lastFullListenAt || 0)),
+          cloudAddedAt: Math.floor(Number(v.cloudAddedAt || 0)),
+          cloudExpiresAt: Math.floor(Number(v.cloudExpiresAt || 0)),
+          cloud: v.cloud === true
+        });
+      };
+      r.onerror = () => resolve(defaults);
+    });
+  } catch {
+    return defaults;
+  }
+}
+
+export async function setCloudStats(uid, stats) {
+  const u = String(uid || '').trim();
+  if (!u) return false;
+
+  const payload = {
+    cloudFullListenCount: Math.floor(Number(stats?.cloudFullListenCount || 0)),
+    lastFullListenAt: Math.floor(Number(stats?.lastFullListenAt || 0)),
+    cloudAddedAt: Math.floor(Number(stats?.cloudAddedAt || 0)),
+    cloudExpiresAt: Math.floor(Number(stats?.cloudExpiresAt || 0)),
+    cloud: stats?.cloud === true
+  };
+
+  try {
+    const db = await openDb();
+    const tx = db.transaction(STORE_CLOUD_STATS, 'readwrite');
+    tx.objectStore(STORE_CLOUD_STATS).put(payload, u);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function clearCloudStats(uid) {
+  const u = String(uid || '').trim();
+  if (!u) return false;
+
+  try {
+    const db = await openDb();
+    const tx = db.transaction(STORE_CLOUD_STATS, 'readwrite');
+    tx.objectStore(STORE_CLOUD_STATS).delete(u);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// ===== Cloud Candidate (meta) =====
+function cloudCandidateKey(uid) {
+  const u = String(uid || '').trim();
+  return u ? `cloudCandidate:${u}` : '';
+}
+
+export async function getCloudCandidate(uid) {
+  const key = cloudCandidateKey(uid);
+  if (!key) return false;
+
+  try {
+    const db = await openDb();
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_META, 'readonly');
+      const r = tx.objectStore(STORE_META).get(key);
+      r.onsuccess = () => resolve(r.result === true);
+      r.onerror = () => resolve(false);
+    });
+  } catch {
+    return false;
+  }
+}
+
+export async function setCloudCandidate(uid, flag) {
+  const key = cloudCandidateKey(uid);
+  if (!key) return false;
+
+  try {
+    const db = await openDb();
+    const tx = db.transaction(STORE_META, 'readwrite');
+    tx.objectStore(STORE_META).put(!!flag, key);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function clearCloudCandidate(uid) {
+  const key = cloudCandidateKey(uid);
+  if (!key) return false;
+
+  try {
+    const db = await openDb();
+    const tx = db.transaction(STORE_META, 'readwrite');
+    tx.objectStore(STORE_META).delete(key);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// ===== Global Stats (ТЗ 7.11.2 - никогда не сбрасывается) =====
+export async function getGlobalStats(uid) {
+  const u = String(uid || '').trim();
+  if (!u) return { seconds: 0, fullListens: 0, lastListenAt: 0 };
+
+  try {
+    const db = await openDb();
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_STATS_GLOBAL, 'readonly');
+      const r = tx.objectStore(STORE_STATS_GLOBAL).get(u);
+      r.onsuccess = () => {
+        const v = r.result || {};
+        resolve({
+          seconds: Number(v.seconds || 0),
+          fullListens: Number(v.fullListens || 0),
+          lastListenAt: Number(v.lastListenAt || 0)
+        });
+      };
+      r.onerror = () => resolve({ seconds: 0, fullListens: 0, lastListenAt: 0 });
+    });
+  } catch {
+    return { seconds: 0, fullListens: 0, lastListenAt: 0 };
+  }
+}
+
+export async function updateGlobalStats(uid, deltaSeconds, addFullListen = 0) {
+  const u = String(uid || '').trim();
+  if (!u) return;
+
+  const now = Date.now();
+  const delta = Number(deltaSeconds) || 0;
+  const full = Number(addFullListen) || 0;
+
+  try {
+    const db = await openDb();
+    const tx = db.transaction(STORE_STATS_GLOBAL, 'readwrite');
+    const st = tx.objectStore(STORE_STATS_GLOBAL);
+    
+    const getReq = st.get(u);
+    getReq.onsuccess = () => {
+      const cur = getReq.result || { seconds: 0, fullListens: 0, lastListenAt: 0 };
+      const next = {
+        seconds: (Number(cur.seconds) || 0) + delta,
+        fullListens: (Number(cur.fullListens) || 0) + full,
+        lastListenAt: now
+      };
+      st.put(next, u);
+    };
+  } catch {}
+}
+
+export async function getGlobalStatsAndTotal() {
+  try {
+    const db = await openDb();
+    let totalSeconds = 0;
+    const tracks = [];
+
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_STATS_GLOBAL, 'readonly');
+      const req = tx.objectStore(STORE_STATS_GLOBAL).openCursor();
+      
+      req.onsuccess = () => {
+        const cursor = req.result;
+        if (!cursor) {
+          resolve({ totalSeconds, tracks });
+          return;
+        }
+        const val = cursor.value;
+        const uid = cursor.key;
+        totalSeconds += (Number(val.seconds) || 0);
+        if ((val.fullListens || 0) > 0 || (val.seconds || 0) > 0) {
+          tracks.push({ uid, ...val });
+        }
+        cursor.continue();
+      };
+      
+      req.onerror = () => resolve({ totalSeconds: 0, tracks: [] });
+    });
+  } catch {
+    return { totalSeconds: 0, tracks: [] };
+  }
+}
+
+// ===== Eviction helpers =====
+export async function getEvictionCandidates(pinnedSet) {
+  try {
+    const db = await openDb();
+    const candidates = [];
+
+    await new Promise((resolve) => {
+      const tx = db.transaction(STORE_BYTES, 'readonly');
+      const req = tx.objectStore(STORE_BYTES).openCursor();
+      
+      req.onsuccess = () => {
+        const cursor = req.result;
+        if (!cursor) { resolve(); return; }
+        const uid = String(cursor.key);
+        if (!pinnedSet.has(uid)) {
+          const v = cursor.value || {};
+          candidates.push({ 
+            uid, 
+            updatedAt: v.updatedAt || 0,
+            bytes: (Number(v.hi) || 0) + (Number(v.lo) || 0)
+          });
+        }
+        cursor.continue();
+      };
+      
+      req.onerror = () => resolve();
+    });
+
+    // Enrich with lastListenAt for LRU sorting
+    for (const c of candidates) {
+      const g = await getGlobalStats(c.uid);
+      c.lastListenAt = g?.lastListenAt || 0;
+    }
+
+    // Sort: oldest first (LRU)
+    candidates.sort((a, b) => (a.lastListenAt || 0) - (b.lastListenAt || 0));
+    
+    return candidates;
+  } catch {
+    return [];
+  }
+}
+
+// ===== Cloud TTL expiration check =====
+export async function getExpiredCloudUids() {
+  const now = Date.now();
+  const expired = [];
+
+  try {
+    const db = await openDb();
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_CLOUD_STATS, 'readonly');
+      const req = tx.objectStore(STORE_CLOUD_STATS).openCursor();
+      
+      req.onsuccess = () => {
+        const cursor = req.result;
+        if (!cursor) {
+          resolve(expired);
+          return;
+        }
+        const v = cursor.value;
+        if (v && v.cloud === true && v.cloudExpiresAt > 0 && v.cloudExpiresAt < now) {
+          expired.push(String(cursor.key));
+        }
+        cursor.continue();
+      };
+      
+      req.onerror = () => resolve([]);
+    });
+  } catch {
+    return [];
+  }
+}
+
+// ===== Clear all stores =====
+export async function clearAllStores({ keepCacheQuality = true } = {}) {
+  try {
+    const db = await openDb();
+
+    // Clear bytes
+    await new Promise((resolve) => {
+      const tx = db.transaction(STORE_BYTES, 'readwrite');
+      tx.objectStore(STORE_BYTES).clear();
+      tx.oncomplete = resolve;
+      tx.onerror = resolve;
+    });
+
+    // Clear blobs
+    await new Promise((resolve) => {
+      const tx = db.transaction(STORE_BLOBS, 'readwrite');
+      tx.objectStore(STORE_BLOBS).clear();
+      tx.oncomplete = resolve;
+      tx.onerror = resolve;
+    });
+
+    // Clear cloud stats
+    await new Promise((resolve) => {
+      const tx = db.transaction(STORE_CLOUD_STATS, 'readwrite');
+      tx.objectStore(STORE_CLOUD_STATS).clear();
+      tx.oncomplete = resolve;
+      tx.onerror = resolve;
+    });
+
+    // Clear meta (except CQ if keepCacheQuality)
+    await new Promise((resolve) => {
+      const tx = db.transaction(STORE_META, 'readwrite');
+      const st = tx.objectStore(STORE_META);
+      
+      if (keepCacheQuality) {
+        const req = st.openCursor();
+        req.onsuccess = () => {
+          const cursor = req.result;
+          if (!cursor) { resolve(); return; }
+          const k = String(cursor.key || '');
+          if (k !== META_CQ_KEY) {
+            cursor.delete();
+          }
+          cursor.continue();
+        };
+        req.onerror = () => resolve();
+      } else {
+        st.clear();
+        tx.oncomplete = resolve;
+        tx.onerror = resolve;
+      }
+    });
+
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 //=================================================
