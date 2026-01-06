@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-904af8c8cc68dbc9db22f99992fd87d7797fda49.idx
-│   │       ├── pack-904af8c8cc68dbc9db22f99992fd87d7797fda49.pack
-│   │       └── pack-904af8c8cc68dbc9db22f99992fd87d7797fda49.rev
+│   │       ├── pack-fe2ef181249254a7b098798811a7d657b1d8e13c.idx
+│   │       ├── pack-fe2ef181249254a7b098798811a7d657b1d8e13c.pack
+│   │       └── pack-fe2ef181249254a7b098798811a7d657b1d8e13c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -379,7 +379,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 18:47:05 UTC
+Сгенерировано: 2026-01-06 18:48:05 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8820,7 +8820,8 @@ export class OfflineManager {
       if ((total - freed) <= limitBytes) break;
 
       await deleteTrackCache(c.uid);
-      await clearCloudStats(c.uid);
+      // ВАЖНО (ТЗ): cloud-статистика сбрасывается только при явном действии пользователя
+      // "☁ → Удалить из кэша". Eviction этого делать не должен.
 
       freed += c.bytes;
       evictedUids.push(c.uid);
