@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1084db18298eaa17932a11347728886ebdac663b.idx
-│   │       ├── pack-1084db18298eaa17932a11347728886ebdac663b.pack
-│   │       └── pack-1084db18298eaa17932a11347728886ebdac663b.rev
+│   │       ├── pack-b3efd8d8c1b1b0c860868f0d6b813866aa8ad6a2.idx
+│   │       ├── pack-b3efd8d8c1b1b0c860868f0d6b813866aa8ad6a2.pack
+│   │       └── pack-b3efd8d8c1b1b0c860868f0d6b813866aa8ad6a2.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,7 +377,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 15:00:17 UTC
+Сгенерировано: 2026-01-06 15:02:07 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -14148,8 +14148,6 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
 //=================================================
 // FILE: /styles/main.css
-// FILE: /styles/main.css
-/*=================================================
 FILE: styles/main.css
 Оптимизированная версия — убраны дубли, мёртвые правила, сокращено ~20% */
 :root {
@@ -15748,19 +15746,6 @@ input:focus-visible {
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
-}
-/* Fix: toast-container must not wash the whole UI to white */
-#toast-container {
-  background: transparent !important;
-  pointer-events: none !important;
-  z-index: 10000 !important;
-}
-
-/* Если внутри тостов есть блоки — им можно вернуть кликабельность */
-#toast-container .toast,
-#toast-container [role="status"],
-#toast-container [role="alert"] {
-  pointer-events: auto !important;
 }
 
 .animate-in { animation: fadeInUp 0.4s ease-out; }
