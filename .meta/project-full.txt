@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-109839a82dd1fd4975be138d2cda1b7da47de721.idx
-│   │       ├── pack-109839a82dd1fd4975be138d2cda1b7da47de721.pack
-│   │       └── pack-109839a82dd1fd4975be138d2cda1b7da47de721.rev
+│   │       ├── pack-3ce637ac5037a7fcbfeae54077d2400ce9b7f6ae.idx
+│   │       ├── pack-3ce637ac5037a7fcbfeae54077d2400ce9b7f6ae.pack
+│   │       └── pack-3ce637ac5037a7fcbfeae54077d2400ce9b7f6ae.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -373,7 +373,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 20:36:11 UTC
+Сгенерировано: 2026-01-06 20:45:35 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -11084,8 +11084,10 @@ class NotificationSystem {
   }
   
   escapeHtml(text) {
+    const fn = window.Utils?.escapeHtml;
+    if (typeof fn === 'function') return fn(String(text || ''));
     const div = document.createElement('div');
-    div.textContent = text;
+    div.textContent = String(text || '');
     return div.innerHTML;
   }
   
