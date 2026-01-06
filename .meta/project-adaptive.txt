@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-49d7216030c5861d73a264291c2bb70dc4add69f.idx
-│   │       ├── pack-49d7216030c5861d73a264291c2bb70dc4add69f.pack
-│   │       └── pack-49d7216030c5861d73a264291c2bb70dc4add69f.rev
+│   │       ├── pack-62638a51218c817dde7924d2da2123e82e513056.idx
+│   │       ├── pack-62638a51218c817dde7924d2da2123e82e513056.pack
+│   │       └── pack-62638a51218c817dde7924d2da2123e82e513056.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -374,7 +374,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 22:03:58 UTC
+Сгенерировано: 2026-01-06 22:04:44 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -12401,9 +12401,9 @@ export function closeOfflineModal() {
   // ✅ единый форматтер (без дублей)
   // sysinfo.js не ESM, поэтому импорт не используем
   const formatBytes = (n) => {
-    if (window.Utils?.formatBytes) return window.Utils.formatBytes(n);
-    if (window.UIUtils?.formatBytes) return window.UIUtils.formatBytes(n);
-    // fallback (минимальный)
+    const fn = window.Utils?.formatBytes;
+    if (typeof fn === 'function') return fn(n);
+    // fallback (минимальный; если utils.js не успел загрузиться)
     const b = Number(n) || 0;
     if (b < 1024) return `${Math.floor(b)} B`;
     if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
