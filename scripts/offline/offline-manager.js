@@ -70,6 +70,8 @@ function writeJson(key, value) {
 }
 
 function getNetworkStatusSafe() {
+  // ✅ единый core helper
+  if (window.Utils?.getNetworkStatusSafe) return window.Utils.getNetworkStatusSafe();
   try {
     if (window.NetworkManager && typeof window.NetworkManager.getStatus === 'function') {
       return window.NetworkManager.getStatus();
