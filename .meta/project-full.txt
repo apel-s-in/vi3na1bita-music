@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-bd7191e7246e7e76a50144e7c3e4b92d7a89baa8.idx
-│   │       ├── pack-bd7191e7246e7e76a50144e7c3e4b92d7a89baa8.pack
-│   │       └── pack-bd7191e7246e7e76a50144e7c3e4b92d7a89baa8.rev
+│   │       ├── pack-6ee15f0ffc06ae30371009a30e59f04f3da717be.idx
+│   │       ├── pack-6ee15f0ffc06ae30371009a30e59f04f3da717be.pack
+│   │       └── pack-6ee15f0ffc06ae30371009a30e59f04f3da717be.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -379,7 +379,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 18:57:01 UTC
+Сгенерировано: 2026-01-06 18:57:34 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1356,6 +1356,31 @@ self.addEventListener('message', (event) => {
   if (type === 'CACHE_AUDIO') {
     // В упрощённой версии ничего не делаем, только не падаем.
     // Можно будет реализовать позже.
+    return;
+  }
+
+  if (type === 'WARM_OFFLINE_SHELL') {
+    const port = ports && ports[0];
+    const urls = (data.payload && Array.isArray(data.payload.urls)) ? data.payload.urls : [];
+
+    event.waitUntil((async () => {
+      try {
+        const cache = await caches.open(OFFLINE_CACHE);
+
+        // Кладём ядро + переданные URL (covers/lyrics/json/news/etc.)
+        // addAll может упасть из-за одного плохого ресурса, поэтому делаем best-effort.
+        const all = STATIC_ASSETS.concat(urls);
+
+        for (const u of all) {
+          try { await cache.add(u); } catch {}
+        }
+
+        if (port) port.postMessage({ ok: true, cached: urls.length });
+      } catch (e) {
+        if (port) port.postMessage({ ok: false, error: String(e?.message || e) });
+      }
+    })());
+
     return;
   }
 
