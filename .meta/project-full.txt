@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6742fd639aba8de0700c7ce504c210bcf9206a0a.idx
-│   │       ├── pack-6742fd639aba8de0700c7ce504c210bcf9206a0a.pack
-│   │       └── pack-6742fd639aba8de0700c7ce504c210bcf9206a0a.rev
+│   │       ├── pack-e4e39efb09e597730f5ca4d4a8cb95b4da89380a.idx
+│   │       ├── pack-e4e39efb09e597730f5ca4d4a8cb95b4da89380a.pack
+│   │       └── pack-e4e39efb09e597730f5ca4d4a8cb95b4da89380a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -376,7 +376,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 09:13:02 UTC
+Сгенерировано: 2026-01-06 09:13:55 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3716,28 +3716,30 @@ class NavigationManager {
   showModal(title, bodyHtml) {
     this.closeModal();
 
-    // ✅ Единый шаблон модалок
-    // (поддерживает тот же modal-bg, bigclose, контейнер modals-container).
-    import('../ui/modal-templates.js').then((m) => {
-      const modal = m.openModal({ title, bodyHtml, maxWidth: 520 });
-      this.activeModal = modal || null;
-    }).catch(() => {
-      // fallback: старый путь через Utils.createModal, если import не удался
-      if (window.Utils && typeof window.Utils.createModal === 'function') {
-        const html = `
-          <div class="modal-feedback" style="max-width: 520px;">
-            <button class="bigclose" title="Закрыть" aria-label="Закрыть">
-              <svg viewBox="0 0 48 48">
-                <line x1="12" y1="12" x2="36" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
-                <line x1="36" y1="12" x2="12" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
-              </svg>
-            </button>
-            ${bodyHtml || ''}
-          </div>
-        `;
-        this.activeModal = window.Utils.createModal(html);
-      }
-    });
+    const modal = window.Modals?.open
+      ? window.Modals.open({ title, bodyHtml, maxWidth: 520 })
+      : null;
+
+    if (modal) {
+      this.activeModal = modal;
+      return;
+    }
+
+    // fallback: если Modals ещё не загрузился
+    if (window.Utils && typeof window.Utils.createModal === 'function') {
+      const html = `
+        <div class="modal-feedback" style="max-width: 520px;">
+          <button class="bigclose" title="Закрыть" aria-label="Закрыть">
+            <svg viewBox="0 0 48 48">
+              <line x1="12" y1="12" x2="36" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+              <line x1="36" y1="12" x2="12" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+            </svg>
+          </button>
+          ${bodyHtml || ''}
+        </div>
+      `;
+      this.activeModal = window.Utils.createModal(html);
+    }
   }
 
   closeModal() {
