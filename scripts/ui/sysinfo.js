@@ -4,6 +4,19 @@
 (function() {
   'use strict';
 
+  // ✅ единый форматтер (без дублей)
+  // sysinfo.js не ESM, поэтому импорт не используем
+  const formatBytes = (n) => {
+    if (window.Utils?.formatBytes) return window.Utils.formatBytes(n);
+    if (window.UIUtils?.formatBytes) return window.UIUtils.formatBytes(n);
+    // fallback (минимальный)
+    const b = Number(n) || 0;
+    if (b < 1024) return `${Math.floor(b)} B`;
+    if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
+    if (b < 1024 * 1024 * 1024) return `${(b / (1024 * 1024)).toFixed(1)} MB`;
+    return `${(b / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  };
+
   class SystemInfoManager {
     constructor() {
       this.modal = null;
@@ -149,8 +162,8 @@
     getMemoryInfo() {
       if (performance.memory) {
         return {
-          used: this.formatBytes(performance.memory.usedJSHeapSize),
-          limit: this.formatBytes(performance.memory.jsHeapSizeLimit)
+          used: formatBytes(performance.memory.usedJSHeapSize),
+          limit: formatBytes(performance.memory.jsHeapSizeLimit)
         };
       }
       return {
@@ -191,13 +204,6 @@
       } catch {
         return 'N/A';
       }
-    }
-    formatBytes(bytes) {
-      if (bytes === 0) return '0 B';
-      const k = 1024;
-      const sizes = ['B', 'KB', 'MB', 'GB'];
-      const i = Math.floor(Math.log(bytes) / Math.log(k));
-      return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
     }
 
     hide() {
