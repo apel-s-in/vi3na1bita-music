@@ -1,12 +1,24 @@
 // scripts/ui/ui-utils.js
 // Общие UI-утилиты (без влияния на playback)
+// ВАЖНО: не дублируем core utils. Здесь только тонкий фасад (back-compat для старых модулей).
+
+function _escFallback(s) {
+  const v = String(s ?? '');
+  // минимальный escape без DOM-аллоцирования (fallback, если Utils не загружен)
+  return v.replace(/[<>&'"]/g, (m) => ({
+    '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&#39;', '"': '&quot;'
+  }[m]));
+}
 
 export function esc(s) {
   const fn = window.Utils?.escapeHtml;
-  return (typeof fn === 'function') ? fn(String(s ?? '')) : String(s ?? '');
+  return (typeof fn === 'function') ? fn(String(s ?? '')) : _escFallback(s);
 }
 
 export function formatBytes(n) {
+  const fn = window.Utils?.formatBytes;
+  if (typeof fn === 'function') return fn(n);
+  // fallback (очень короткий)
   const b = Number(n) || 0;
   if (b < 1024) return `${Math.floor(b)} B`;
   if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
@@ -15,11 +27,8 @@ export function formatBytes(n) {
 }
 
 export function getNetworkStatusSafe() {
-  // ✅ сеть — core helper (offline слой тоже использует)
-  if (window.Utils?.getNetworkStatusSafe) return window.Utils.getNetworkStatusSafe();
-  try {
-    if (window.NetworkManager?.getStatus) return window.NetworkManager.getStatus();
-  } catch {}
+  const fn = window.Utils?.getNetworkStatusSafe;
+  if (typeof fn === 'function') return fn();
   return { online: navigator.onLine !== false, kind: 'unknown', saveData: false };
 }
 
