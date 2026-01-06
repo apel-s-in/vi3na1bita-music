@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-444a73858d354b9f253597774b0296617b38834d.idx
-│   │       ├── pack-444a73858d354b9f253597774b0296617b38834d.pack
-│   │       └── pack-444a73858d354b9f253597774b0296617b38834d.rev
+│   │       ├── pack-d373dbbbd239b83c670eeac8a74e6c9a4093dcb6.idx
+│   │       ├── pack-d373dbbbd239b83c670eeac8a74e6c9a4093dcb6.pack
+│   │       └── pack-d373dbbbd239b83c670eeac8a74e6c9a4093dcb6.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -373,7 +373,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 20:59:53 UTC
+Сгенерировано: 2026-01-06 21:00:15 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3027,140 +3027,42 @@ export default AlbumsManager;
 //=================================================
 // FILE: /scripts/app/background-audio.js
 // scripts/app/background-audio.js
-// Поддержка фонового воспроизведения
-class BackgroundAudioManager {
-  constructor() {
-    this.isSupported = 'mediaSession' in navigator;
-    this.audioContext = null;
-    this.init();
-  }
-  
-  init() {
-    if (!this.isSupported) {
-      console.warn('Media Session API not supported');
-      return;
-    }
-    
-    // Управление mediaSession (action handlers) делает только PlayerCore.updateMediaSession.
-    // Здесь подписываемся только на события плеера и обновляем метаданные/позицию.
-    this.attachPlayerEvents();
-    console.log('✅ Background audio initialized');
-    
-    // iOS специфика
-    this.setupIOSBackgroundAudio();
-  }
-  
-  attachPlayerEvents() {
-    if (!window.playerCore) {
-      setTimeout(() => this.attachPlayerEvents(), 500);
-      return;
-    }
-    
-    // Здесь — только позиция (setPositionState). Метаданные и action handlers — в src/PlayerCore.js.
-    window.playerCore.on({
-      onTick: (position, duration) => {
-        this.updatePositionState({ position, duration });
-      }
-    });
-  }
-  
-  updatePositionState(data) {
-    if (!this.isSupported) return;
-    
-    try {
-      if ('setPositionState' in navigator.mediaSession) {
-        navigator.mediaSession.setPositionState({
-          duration: data.duration || 0,
-          playbackRate: 1.0,
-          position: data.position || 0
-        });
-      }
-    } catch (error) {
-      console.error('Failed to update position state:', error);
-    }
-  }
-  
-  setupIOSBackgroundAudio() {
-    // Для iOS в Standalone режиме
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-  
-    if (!isIOS) return;
-  
-    console.log('📱 iOS detected - enabling background audio support');
-  
-    // Создаем AudioContext для фонового воспроизведения
-    try {
-      this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      console.log('✅ AudioContext created for iOS background audio');
-    
-      // Обработчик для разблокировки аудио контекста
-      const unlockAudio = () => {
-        if (this.audioContext.state === 'suspended') {
-          this.audioContext.resume().then(() => {
-            console.log('🔊 iOS Audio Context resumed');
-          });
-        }
-        document.removeEventListener('touchstart', unlockAudio);
-        document.removeEventListener('touchend', unlockAudio);
-      };
-    
-      document.addEventListener('touchstart', unlockAudio);
-      document.addEventListener('touchend', unlockAudio);
-    
-    } catch (error) {
-      console.warn('Failed to create AudioContext:', error);
-    }
-  
-    // Обработчик для восстановления воспроизведения после блокировки экрана
-    document.addEventListener('visibilitychange', () => {
-      if (!document.hidden && this.audioContext) {
-        console.log('📱 iOS page visible - checking audio state');
-        try {
-          if (this.audioContext.state === 'suspended') {
-            this.audioContext.resume().catch(e => console.warn('Resume failed:', e));
-          }
-        
-          // Проверяем состояние Howler
-          if (window.Howler && window.Howler.ctx && window.Howler.ctx.state === 'suspended') {
-            window.Howler.ctx.resume().catch(e => console.warn('Howler resume failed:', e));
-          }
-        
-          // Если плеер должен играть - возобновляем
-          if (window.playerCore && window.playerCore.isPlaying && window.playerCore.isPlaying()) {
-            const currentTrack = window.playerCore.getCurrentTrack();
-            if (currentTrack) {
-              console.log('📱 Resuming playback:', currentTrack.title);
-            }
-          }
-        } catch (error) {
-          console.error('Failed to resume after iOS background:', error);
-        }
-      }
-    });
-  
-    // Обработчик для webkitendfullscreen (старые iOS)
-    document.addEventListener('webkitendfullscreen', () => {
-      console.log('📱 iOS webkitendfullscreen event');
-      if (this.audioContext && this.audioContext.state === 'suspended') {
-        this.audioContext.resume();
-      }
-    });
-  }
-  
-  getAudioContext() {
-    return this.audioContext;
-  }
-}
+// Минимальная поддержка background для Media Session.
+// ВАЖНО: action handlers и metadata/position обновляет PlayerCore (src/PlayerCore.js + src/player-core/media-session.js).
+// Здесь ничего не должно влиять на stop/play/seek/volume.
 
-// Инициализация
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    window.BackgroundAudioManager = new BackgroundAudioManager();
-  });
-} else {
+(function BackgroundAudioModule() {
+  'use strict';
+
+  class BackgroundAudioManager {
+    constructor() {
+      this.isSupported = ('mediaSession' in navigator);
+      this._bound = false;
+      this.init();
+    }
+
+    init() {
+      if (!this.isSupported) return;
+      this.attachPlayerEvents();
+    }
+
+    attachPlayerEvents() {
+      if (this._bound) return;
+      const pc = window.playerCore;
+      if (!pc || typeof pc.on !== 'function') {
+        setTimeout(() => this.attachPlayerEvents(), 200);
+        return;
+      }
+
+      this._bound = true;
+
+      // Ничего не делаем: PlayerCore сам обновляет mediaSession (metadata + positionState).
+      // Оставлено как “якорь” модуля для совместимости.
+    }
+  }
+
   window.BackgroundAudioManager = new BackgroundAudioManager();
-}
+})();
 
 //=================================================
 // FILE: /scripts/app/gallery.js
