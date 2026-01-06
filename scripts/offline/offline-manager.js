@@ -655,10 +655,13 @@ export class OfflineManager {
     }
 
     if (act === 'remove-cache') {
+      const ok = confirm('Удалить из кэша (статистика облачка будет сброшена)?');
+      if (!ok) return false;
+
       await deleteTrackCache(u);
       try { await clearCloudStats(u); } catch {}
       try { await clearCloudCandidate(u); } catch {}
-      
+
       window.NotificationSystem?.success('Трек удалён из кэша');
       this._em.emit('progress', { uid: u, phase: 'cacheRemoved' });
       return true;
