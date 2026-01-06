@@ -2,7 +2,7 @@
 // IndexedDB wrapper для offline-кэша (ТЗ_Нью)
 
 const DB_NAME = 'OfflineCacheDB';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 const STORE_AUDIO = 'audioBlobs';
 const STORE_BYTES = 'trackBytes';
@@ -10,6 +10,9 @@ const STORE_META = 'cacheMeta';
 const STORE_CLOUD_STATS = 'cloudStats';
 const STORE_CLOUD_CANDIDATE = 'cloudCandidate';
 const STORE_GLOBAL_STATS = 'globalStats';
+
+// Meta per (uid:quality) for updates/re-cache (ТЗ 13)
+const STORE_DL_META = 'downloadMeta';
 
 let dbPromise = null;
 
@@ -39,6 +42,10 @@ function openDb() {
       }
       if (!db.objectStoreNames.contains(STORE_GLOBAL_STATS)) {
         db.createObjectStore(STORE_GLOBAL_STATS);
+      }
+
+      if (!db.objectStoreNames.contains(STORE_DL_META)) {
+        db.createObjectStore(STORE_DL_META);
       }
     };
 
@@ -247,6 +254,32 @@ export async function getGlobalStatsAndTotal() {
     tracks
   };
 }
+// Download meta for updates (ТЗ 13)
+function dlMetaKey(uid, quality) {
+  return `${String(uid || '').trim()}:${String(quality || '').toLowerCase() === 'lo' ? 'lo' : 'hi'}`;
+}
+
+/**
+ * meta shape example:
+ * { downloadedAt, bytes, expectedMB, expectedField } where expectedField='size'|'size_low'
+ */
+export async function getDownloadMeta(uid, quality) {
+  const key = dlMetaKey(uid, quality);
+  const store = await getStore(STORE_DL_META);
+  return promisifyReq(store.get(key));
+}
+
+export async function setDownloadMeta(uid, quality, meta) {
+  const key = dlMetaKey(uid, quality);
+  const store = await getStore(STORE_DL_META, 'readwrite');
+  return promisifyReq(store.put(meta || null, key));
+}
+
+export async function deleteDownloadMeta(uid, quality) {
+  const key = dlMetaKey(uid, quality);
+  const store = await getStore(STORE_DL_META, 'readwrite');
+  return promisifyReq(store.delete(key));
+}
 
 // Delete track cache
 export async function deleteTrackCache(uid) {
@@ -256,6 +289,10 @@ export async function deleteTrackCache(uid) {
   const storeBytes = await getStore(STORE_BYTES, 'readwrite');
   await promisifyReq(storeBytes.delete(`${uid}:hi`));
   await promisifyReq(storeBytes.delete(`${uid}:lo`));
+
+  // meta for updates
+  try { await deleteDownloadMeta(uid, 'hi'); } catch {}
+  try { await deleteDownloadMeta(uid, 'lo'); } catch {}
 }
 
 // Clear all
@@ -264,7 +301,7 @@ export async function clearAllStores(opts = {}) {
   const cq = keepCacheQuality ? await getCacheQuality() : null;
 
   const db = await openDb();
-  const storeNames = [STORE_AUDIO, STORE_BYTES, STORE_CLOUD_STATS, STORE_CLOUD_CANDIDATE];
+  const storeNames = [STORE_AUDIO, STORE_BYTES, STORE_CLOUD_STATS, STORE_CLOUD_CANDIDATE, STORE_DL_META];
 
   for (const name of storeNames) {
     const tx = db.transaction(name, 'readwrite');
