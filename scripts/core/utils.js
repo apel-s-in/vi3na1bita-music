@@ -84,6 +84,23 @@
     
     isStandalone() {
       return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    },
+
+    // ✅ Core helper: единый safe network status (используют offline/player/ui)
+    getNetworkStatusSafe() {
+      try {
+        if (window.NetworkManager?.getStatus) return window.NetworkManager.getStatus();
+      } catch {}
+      return { online: navigator.onLine !== false, kind: 'unknown', saveData: false };
+    },
+
+    // ✅ Core helper: единый bytes formatter (чтобы sysinfo/sw-manager могли брать без ESM импорта)
+    formatBytes(n) {
+      const b = Number(n) || 0;
+      if (b < 1024) return `${Math.floor(b)} B`;
+      if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
+      if (b < 1024 * 1024 * 1024) return `${(b / (1024 * 1024)).toFixed(1)} MB`;
+      return `${(b / (1024 * 1024 * 1024)).toFixed(2)} GB`;
     }
   };
 
