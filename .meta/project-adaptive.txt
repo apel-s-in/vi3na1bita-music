@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-81ba642e3e0ad13ff61c4d2af2f2ec46c9899003.idx
-│   │       ├── pack-81ba642e3e0ad13ff61c4d2af2f2ec46c9899003.pack
-│   │       └── pack-81ba642e3e0ad13ff61c4d2af2f2ec46c9899003.rev
+│   │       ├── pack-a91d83aa13b560a1feeff276922848271cfdae20.idx
+│   │       ├── pack-a91d83aa13b560a1feeff276922848271cfdae20.pack
+│   │       └── pack-a91d83aa13b560a1feeff276922848271cfdae20.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -375,7 +375,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 20:05:55 UTC
+Сгенерировано: 2026-01-06 20:08:00 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -16071,8 +16071,7 @@ header {
 .bigclose:active { transform: scale(0.95); }
 .bigclose svg { width: 22px; height: 22px; }
 
-/* Secondary modal system used by NavigationManager (.modal-overlay) */
-.modal-overlay {
+/* Secondary modal system (.modal-overlay) удалена: проект использует единый механизм .modal-bg (window.Modals.*) */
   position: fixed;
   top: 0;
   left: 0;
