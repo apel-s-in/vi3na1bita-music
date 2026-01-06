@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9ee38c519fa9088f058275b1e231bde41f68b108.idx
-│   │       ├── pack-9ee38c519fa9088f058275b1e231bde41f68b108.pack
-│   │       └── pack-9ee38c519fa9088f058275b1e231bde41f68b108.rev
+│   │       ├── pack-b876b2f33fd786b3adc2a4d6ebb57624ee581233.idx
+│   │       ├── pack-b876b2f33fd786b3adc2a4d6ebb57624ee581233.pack
+│   │       └── pack-b876b2f33fd786b3adc2a4d6ebb57624ee581233.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -335,10 +335,6 @@ vi3na1bita-music/
 │   │   ├── favorites.spec.js
 │   │   ├── player.spec.js
 │   │   └── utils.js
-│   ├── modals/
-│   │   ├── cloud-menu.js
-│   │   ├── offline-modal.js
-│   │   └── statistics-modal.js
 │   ├── offline/
 │   │   ├── cache-db.js
 │   │   ├── net-policy.js
@@ -382,7 +378,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 10:21:48 UTC
+Сгенерировано: 2026-01-06 10:22:36 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7750,230 +7746,6 @@ export async function seedPlayerStateV2FromCurrent(page, opts = {}) {
 
     localStorage.setItem('playerStateV2', JSON.stringify(st));
   }, { position, wasPlaying });
-}
-
-//=================================================
-// FILE: /scripts/modals/cloud-menu.js
-//=================================================
-// FILE: scripts/modals/cloud-menu.js
-function openCloudMenu(uid) {
-  const track = W.config.tracks.find(t => t.uid === uid);
-
-  Modal.open({
-    title: `☁ ${track.title}`,
-    content: 'Выберите действие',
-    buttons: [
-      {
-        text: 'Добавить 🔒',
-        action: async () => {
-          await offlineManager.togglePinned(uid, true);
-          toast('Трек закреплён', 'success');
-        }
-      },
-      {
-        text: 'Удалить из кэша',
-        danger: true,
-        action: () => {
-          if (confirm('Удалить из кэша (статистика облачка будет сброшена)?')) {
-            offlineManager.deleteLocal(uid);
-            statsManager.resetCloud(uid);
-            toast('Трек удалён из кэша', 'info');
-            offlineManager.updateTrackIndicators(uid);
-          }
-        }
-      }
-    ]
-  });
-}
-
-//=================================================
-// FILE: /scripts/modals/offline-modal.js
-//=================================================
-// FILE: scripts/modals/offline-modal.js
-// Полная OFFLINE modal по секциям A–I + 100% OFFLINE
-function openOfflineModal() {
-  const content = document.createElement('div');
-
-  // A) Offline mode ON/OFF
-  const secA = createSection('Offline mode');
-  const offlineSwitch = createSwitch('offline:mode:v1', 'ON', 'OFF', true);
-  secA.appendChild(offlineSwitch);
-  content.appendChild(secA);
-
-  // B) Cache quality (CQ)
-  const secB = createSection('Cache quality');
-  const cqRow = document.createElement('div');
-  cqRow.className = 'vr-modal__row';
-  ['hi', 'lo'].forEach(q => {
-    const btn = document.createElement('button');
-    btn.className = 'offline-btn';
-    btn.textContent = q.toUpperCase();
-    btn.style.background = localStorage.getItem('offline:cacheQuality:v1') === q ? '#E80100' : '#333';
-    btn.onclick = () => {
-      localStorage.setItem('offline:cacheQuality:v1', q);
-      toast(`Cache Quality изменён на ${q.toUpperCase()}`, 'info');
-      // Помечаем needsReCache
-      markAllNeedsReCache();
-    };
-    cqRow.appendChild(btn);
-  });
-  secB.appendChild(cqRow);
-  content.appendChild(secB);
-
-  // C) Cloud settings (N, D)
-  const secC = createSection('Cloud settings');
-  secC.appendChild(createInput('offline:cloudN', 'N (full listens)', 'number', 5));
-  secC.appendChild(createInput('offline:cloudTTL', 'D (дней)', 'number', 31));
-  content.appendChild(secC);
-
-  // D) Network policy
-  const secD = createSection('Network policy');
-  ['wifi', 'mobile'].forEach(type => {
-    const sw = createSwitch(`offline:policy:${type}`, type.toUpperCase(), 'OFF');
-    secD.appendChild(sw);
-  });
-  content.appendChild(secD);
-
-  // E) Cache limit + breakdown (упрощённо)
-  const secE = createSection('Cache limit');
-  secE.innerHTML += '<p>Auto limit: 2 GB (реализация eviction в offline-manager)</p>';
-  content.appendChild(secE);
-
-  // F) Загрузки
-  const secF = createSection('Загрузки');
-  secF.innerHTML += '<p>Скачивается сейчас: <span id="current-dl">—</span></p>';
-  secF.innerHTML += '<p>В очереди: <span id="queue-len">0</span></p>';
-  content.appendChild(secF);
-
-  // G) Обновления
-  const secG = createSection('Обновления');
-  const updateBtn = document.createElement('button');
-  updateBtn.className = 'offline-btn';
-  updateBtn.textContent = 'Обновить все файлы';
-  updateBtn.onclick = () => enqueueAllUpdates();
-  secG.appendChild(updateBtn);
-  content.appendChild(secG);
-
-  // H) Очистка кэша
-  const secH = createSection('Очистка кэша');
-  const clearAll = document.createElement('button');
-  clearAll.className = 'offline-btn';
-  clearAll.style.background = '#ff3333';
-  clearAll.textContent = 'Очистить всё (двойной confirm)';
-  clearAll.onclick = () => {
-    if (confirm('Очистить весь кэш?') && confirm('Точно?')) {
-      indexedDB.deleteDatabase('vr-audio-cache');
-      localStorage.clear();
-      toast('Кэш очищен', 'success');
-    }
-  };
-  secH.appendChild(clearAll);
-  content.appendChild(secH);
-
-  // I) 100% OFFLINE
-  const secI = createSection('100% OFFLINE');
-  const modeSelect = document.createElement('select');
-  ['favorites', 'selected-albums'].forEach(m => {
-    const opt = document.createElement('option');
-    opt.value = m;
-    opt.textContent = m === 'favorites' ? 'только ИЗБРАННОЕ' : 'выбранные альбомы';
-    modeSelect.appendChild(opt);
-  });
-  secI.appendChild(modeSelect);
-
-  const startBtn = document.createElement('button');
-  startBtn.className = 'offline-btn';
-  startBtn.textContent = 'Начать 100% OFFLINE';
-  startBtn.onclick = async () => {
-    const selection = modeSelect.value === 'favorites' ? 'favorites' : { albums: [] }; // для альбомов добавь чекбоксы
-    const estimate = await offlineManager.computeSizeEstimate(selection);
-    if (estimate.totalMB > availableSpace()) {
-      toast('Недостаточно места', 'error');
-      return;
-    }
-    if (navigator.connection?.effectiveType === 'unknown' && !confirm('Тип сети неизвестен. Продолжить?')) return;
-    await offlineManager.startFullOffline(selection);
-    toast('100% OFFLINE начат', 'success');
-  };
-  secI.appendChild(startBtn);
-  content.appendChild(secI);
-
-  Modal.open({
-    title: 'OFFLINE',
-    content,
-    buttons: [{ text: 'Закрыть', noClose: false }]
-  });
-}
-
-// Вспомогательные функции
-function createSection(title) {
-  const sec = document.createElement('div');
-  sec.className = 'vr-modal__section';
-  const h = document.createElement('h3');
-  h.className = 'vr-modal__sectionTitle';
-  h.textContent = title;
-  sec.appendChild(h);
-  return sec;
-}
-
-function createSwitch(storageKey, onText, offText, defaultOn = false) {
-  const div = document.createElement('div');
-  div.className = 'vr-modal__field';
-  const label = document.createElement('span');
-  label.textContent = storageKey.split(':').pop();
-  div.appendChild(label);
-  const sw = document.createElement('button');
-  sw.className = 'offline-btn';
-  const val = localStorage.getItem(storageKey) !== 'false';
-  sw.textContent = val ? onText : offText;
-  sw.onclick = () => {
-    const newVal = !val;
-    localStorage.setItem(storageKey, newVal);
-    sw.textContent = newVal ? onText : offText;
-  };
-  div.appendChild(sw);
-  return div;
-}
-
-function createInput(storageKey, label, type = 'number', def) {
-  const div = document.createElement('div');
-  div.className = 'vr-modal__field';
-  div.innerHTML = `<span>${label}</span><input type="${type}" value="${localStorage.getItem(storageKey) || def}">`;
-  div.querySelector('input').onchange = (e) => localStorage.setItem(storageKey, e.target.value);
-  return div;
-}
-
-//=================================================
-// FILE: /scripts/modals/statistics-modal.js
-//=================================================
-// FILE: scripts/modals/statistics-modal.js
-function openStatisticsModal() {
-  const data = statsManager.getAllGlobal();
-
-  const content = document.createElement('div');
-  content.innerHTML = `<p>Общее время прослушивания: ${formatSeconds(data.totalSeconds)}</p>`;
-
-  const list = document.createElement('div');
-  data.tracks.forEach(t => {
-    const item = document.createElement('div');
-    item.className = 'vr-modal__row';
-    item.innerHTML = `<span>${W.config.tracks.find(tr => tr.uid === t.uid)?.title || t.uid}</span>
-                      <span>${t.fullCount} full • ${formatSeconds(t.seconds)}</span>`;
-    list.appendChild(item);
-  });
-  content.appendChild(list);
-
-  Modal.open({
-    title: 'Статистика',
-    content,
-    buttons: [{ text: 'Закрыть' }]
-  });
-}
-
-function formatSeconds(sec) {
-  const days = Math.floor(sec / 86400);
-  const hours = Math.floor((sec % 86400) / 3600);
-  return `${days ? days + ' дн ' : ''}${hours} ч`;
 }
 
 //=================================================
