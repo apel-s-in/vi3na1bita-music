@@ -50,6 +50,54 @@
       `;
     }).join('');
 
+    const bodyHtml = `
+
+        <div style="font-size: 1.2em; font-weight: 900; color: #eaf2ff; margin-bottom: 4px; display:flex; align-items:center; gap:8px;">
+          <span>📊 Статистика</span>
+        </div>
+        <div style="font-size:13px; color:#9db7dd; margin-bottom:20px;">Глобальная статистика (не сбрасывается)</div>
+
+        <div style="background: rgba(77,170,255,0.1); border: 1px solid rgba(77,170,255,0.2); border-radius:12px; padding:16px; text-align:center; margin-bottom:20px;">
+          <div style="font-size:12px; color:#8ab8fd; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;">Всего слушали</div>
+          <div style="font-size:2em; font-weight:900; color:#fff;">
+            ${totalHours} <span style="font-size:0.5em; font-weight:normal; opacity:0.7;">часов</span>
+          </div>
+          <div style="font-size:12px; color:#9db7dd; margin-top:2px;">(${totalDays} дней)</div>
+        </div>
+
+        <div style="font-weight:900; color:#eaf2ff; margin-bottom:10px; font-size:14px;">Топ треков (3+ прослушивания)</div>
+        
+        <div style="max-height: 40vh; overflow-y:auto; padding-right:4px;">
+          ${rowsHtml || '<div style="padding:20px; text-align:center; color:#666;">Пока недостаточно данных</div>'}
+        </div>
+    `;
+
+    if (window.Modals?.open) {
+      window.Modals.open({
+        title: '📊 Статистика',
+        maxWidth: 480,
+        bodyHtml: `
+          <div style="font-size:13px; color:#9db7dd; margin-bottom:20px;">Глобальная статистика (не сбрасывается)</div>
+
+          <div style="background: rgba(77,170,255,0.1); border: 1px solid rgba(77,170,255,0.2); border-radius:12px; padding:16px; text-align:center; margin-bottom:20px;">
+            <div style="font-size:12px; color:#8ab8fd; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;">Всего слушали</div>
+            <div style="font-size:2em; font-weight:900; color:#fff;">
+              ${totalHours} <span style="font-size:0.5em; font-weight:normal; opacity:0.7;">часов</span>
+            </div>
+            <div style="font-size:12px; color:#9db7dd; margin-top:2px;">(${totalDays} дней)</div>
+          </div>
+
+          <div style="font-weight:900; color:#eaf2ff; margin-bottom:10px; font-size:14px;">Топ треков (3+ прослушивания)</div>
+
+          <div style="max-height: 40vh; overflow-y:auto; padding-right:4px;">
+            ${rowsHtml || '<div style="padding:20px; text-align:center; color:#666;">Пока недостаточно данных</div>'}
+          </div>
+        `
+      });
+      return;
+    }
+
+    // fallback
     const html = `
       <div class="modal-feedback" style="max-width: 480px; max-height: 80vh;">
         <button class="bigclose" title="Закрыть" aria-label="Закрыть">
@@ -73,14 +121,14 @@
         </div>
 
         <div style="font-weight:900; color:#eaf2ff; margin-bottom:10px; font-size:14px;">Топ треков (3+ прослушивания)</div>
-        
+
         <div style="max-height: 40vh; overflow-y:auto; padding-right:4px;">
           ${rowsHtml || '<div style="padding:20px; text-align:center; color:#666;">Пока недостаточно данных</div>'}
         </div>
       </div>
     `;
 
-    window.Utils.createModal(html);
+    window.Utils?.createModal?.(html);
   }
 
   function formatSeconds(sec) {
