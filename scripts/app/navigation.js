@@ -84,16 +84,17 @@ class NavigationManager {
   showModal(title, bodyHtml) {
     this.closeModal();
 
-    const modal = window.Modals?.open
-      ? window.Modals.open({ title, bodyHtml, maxWidth: 520 })
-      : null;
-
-    if (modal) {
-      this.activeModal = modal;
+    // Единый механизм модалок
+    if (window.Modals?.open) {
+      this.activeModal = window.Modals.open({
+        title,
+        bodyHtml,
+        maxWidth: 520
+      });
       return;
     }
 
-    // fallback: если Modals ещё не загрузился
+    // Fallback: если Modals ещё не загрузился (очень ранняя стадия)
     if (window.Utils && typeof window.Utils.createModal === 'function') {
       const html = `
         <div class="modal-feedback" style="max-width: 520px;">
