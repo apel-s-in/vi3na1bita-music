@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5c97f5a0bfebf570abbed44f0a50b693f5f403ca.idx
-│   │       ├── pack-5c97f5a0bfebf570abbed44f0a50b693f5f403ca.pack
-│   │       └── pack-5c97f5a0bfebf570abbed44f0a50b693f5f403ca.rev
+│   │       ├── pack-8b787ce73c704c50470303bf1036a517ae29d564.idx
+│   │       ├── pack-8b787ce73c704c50470303bf1036a517ae29d564.pack
+│   │       └── pack-8b787ce73c704c50470303bf1036a517ae29d564.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -373,7 +373,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 20:54:59 UTC
+Сгенерировано: 2026-01-06 20:55:36 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2070,17 +2070,12 @@ class AlbumsManager {
   }
 
   async initialize() {
-    const maxWaitMs = 2000;
-    const stepMs = 50;
-    let waited = 0;
-
-    while ((!window.albumsIndex || window.albumsIndex.length === 0) && waited < maxWaitMs) {
-      await new Promise(r => setTimeout(r, stepMs));
-      waited += stepMs;
+    if ((!Array.isArray(window.albumsIndex) || window.albumsIndex.length === 0) && window.Utils?.onceEvent) {
+      try { await window.Utils.onceEvent(window, 'albumsIndex:ready', { timeoutMs: 8000 }); } catch {}
     }
 
     if (!Array.isArray(window.albumsIndex) || window.albumsIndex.length === 0) {
-      console.error('❌ No albums found (albumsIndex is empty after wait)');
+      console.error('❌ No albums found (albumsIndex is empty)');
       return;
     }
 
