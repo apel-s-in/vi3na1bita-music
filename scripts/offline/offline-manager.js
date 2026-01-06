@@ -25,7 +25,7 @@ import {
   getExpiredCloudUids
 } from './cache-db.js';
 
-import { resolvePlaybackSource } from './track-resolver.js';
+import { resolvePlaybackSource, isTrackAvailableOffline } from './track-resolver.js';
 import { getTrackByUid } from '../app/track-registry.js';
 import { getNetPolicy, isAllowedByNetPolicy, shouldConfirmByPolicy } from './net-policy.js';
 
@@ -67,7 +67,7 @@ function writeJson(key, value) {
 
 function getNetworkStatusSafe() {
   try {
-    if (window.NetworkManager?.getStatus) {
+    if (window.NetworkManager && typeof window.NetworkManager.getStatus === 'function') {
       return window.NetworkManager.getStatus();
     }
   } catch {}
@@ -136,7 +136,6 @@ class DownloadQueue {
     const pr = Number(task.priority || 0);
     const item = { ...task, priority: Number.isFinite(pr) ? pr : 0, __ts: Date.now() };
 
-    // Higher priority first, FIFO within same priority
     const idx = this._items.findIndex(t => Number(t?.priority || 0) < item.priority);
     if (idx === -1) this._items.push(item);
     else this._items.splice(idx, 0, item);
@@ -195,18 +194,13 @@ export class OfflineManager {
 
     try { await ensureDbReady(); } catch {}
 
-    // Check for expired cloud items on startup
     this._checkExpiredCloud();
-
-    // Periodic TTL check
-    setInterval(() => this._checkExpiredCloud(), 60 * 60 * 1000); // every hour
+    setInterval(() => this._checkExpiredCloud(), 60 * 60 * 1000);
   }
 
   on(type, cb) { return this._em.on(type, cb); }
 
-  // =========================
   // Offline mode
-  // =========================
   isOfflineMode() {
     try { return localStorage.getItem(LS.OFFLINE_MODE) === '1'; } catch { return false; }
   }
@@ -216,9 +210,7 @@ export class OfflineManager {
     try { window.dispatchEvent(new CustomEvent('offline:uiChanged')); } catch {}
   }
 
-  // =========================
   // Cache Quality (CQ)
-  // =========================
   async getCacheQuality() {
     try {
       const cq = String(localStorage.getItem(LS.CQ) || '').toLowerCase();
@@ -236,9 +228,7 @@ export class OfflineManager {
     return v;
   }
 
-  // =========================
   // Cloud settings
-  // =========================
   getCloudSettings() {
     return { n: readCloudN(), d: readCloudD() };
   }
@@ -260,9 +250,7 @@ export class OfflineManager {
     return { n: safeN, d: safeD };
   }
 
-  // =========================
   // Pinned
-  // =========================
   _getPinnedSet() {
     const arr = readJson(LS.PINNED, []);
     const uids = Array.isArray(arr) ? arr.map(x => String(x || '').trim()).filter(Boolean) : [];
@@ -291,10 +279,8 @@ export class OfflineManager {
       this._setPinnedSet(set);
     }
 
-    // pinned=true отменяет cloudCandidate
     try { await setCloudCandidate(u, false); } catch {}
 
-    // ТЗ 8.1: ставим задачу скачать трек до 100% в CQ
     this.enqueuePinnedDownload(u, { userInitiated: true });
 
     window.NotificationSystem?.info('Трек будет доступен офлайн. Начинаю скачивание…', 3500);
@@ -312,12 +298,10 @@ export class OfflineManager {
       this._setPinnedSet(set);
     }
 
-    // ТЗ 8.3: снятие pinned → cloudCandidate сразу
     try { await setCloudCandidate(u, true); } catch {}
 
     window.NotificationSystem?.info('Офлайн-закрепление снято. Трек может стать Cloud ☁', 3500);
 
-    // Докачка в CQ (cloudCandidate)
     const cq = await this.getCacheQuality();
     this.enqueueAudioDownload({
       uid: u,
@@ -343,7 +327,7 @@ export class OfflineManager {
         uid: u,
         quality: cq,
         key: `pinned:${cq}:${u}`,
-        priority: 25, // P2
+        priority: 25,
         userInitiated,
         isMass: false,
         kind: 'pinned'
@@ -357,9 +341,7 @@ export class OfflineManager {
     this._em.emit('progress', { uid: null, phase: 'pinnedQueueEnqueued', count: list.length });
   }
 
-  // =========================
   // Track cache state
-  // =========================
   async isTrackComplete(uid, quality) {
     const u = normUid(uid);
     if (!u) return false;
@@ -414,9 +396,7 @@ export class OfflineManager {
     }
   }
 
-  // =========================
   // Queue API
-  // =========================
   enqueueAudioDownload(params = {}) {
     const u = normUid(params?.uid);
     if (!u) return { ok: false, reason: 'noUid' };
@@ -447,9 +427,7 @@ export class OfflineManager {
     return { ok: true, enqueued: true, key };
   }
 
-  // =========================
   // 100% OFFLINE
-  // =========================
   async startFullOffline(uids) {
     const uniq = Array.from(new Set((Array.isArray(uids) ? uids : [])
       .map(x => String(x || '').trim())
@@ -503,9 +481,7 @@ export class OfflineManager {
 
   getMassStatus() { return { ...this.mass }; }
 
-  // =========================
   // Cloud logic (ТЗ 9)
-  // =========================
   async isCloudEligible(uid) {
     const u = normUid(uid);
     if (!u) return false;
@@ -538,7 +514,6 @@ export class OfflineManager {
     const cachedComplete = await this.isTrackComplete(u, cq);
     const eligible = await this.isCloudEligible(u);
 
-    // ТЗ 10.1/9.3: ☁ только если cloud eligible и 100% в CQ
     const cloud = (!pinned) && (!!cachedComplete) && (!!eligible);
 
     return { pinned, cloud, cachedComplete };
@@ -555,8 +530,6 @@ export class OfflineManager {
     }
 
     if (act === 'remove-cache') {
-      // ТЗ 9.5: удалить локальную cloud-копию + сбросить cloud-статистику
-      // НЕ трогать global stats!
       await deleteTrackCache(u);
       try { await clearCloudStats(u); } catch {}
       try { await clearCloudCandidate(u); } catch {}
@@ -612,7 +585,6 @@ export class OfflineManager {
       const expired = await getExpiredCloudUids();
       
       for (const uid of expired) {
-        // Не удаляем pinned
         if (this._getPinnedSet().has(uid)) continue;
 
         await deleteTrackCache(uid);
@@ -628,9 +600,7 @@ export class OfflineManager {
     } catch {}
   }
 
-  // =========================
   // Stats (ТЗ 7.11)
-  // =========================
   async recordListenStats(uid, ctx = {}) {
     const u = normUid(uid);
     if (!u) return;
@@ -638,12 +608,10 @@ export class OfflineManager {
     const deltaSec = Number(ctx?.deltaSec || 0);
     const isFullListen = !!ctx?.isFullListen;
 
-    // Global stats never reset (ТЗ 7.11.2)
     if (deltaSec > 0 || isFullListen) {
       await updateGlobalStats(u, deltaSec, isFullListen ? 1 : 0);
     }
 
-    // Cloud stats only on full listen (ТЗ 9.2 / 7.11.1)
     if (isFullListen) {
       await this._updateCloudStatsOnFullListen(u);
     }
@@ -685,9 +653,7 @@ export class OfflineManager {
     return getGlobalStatsAndTotal();
   }
 
-  // =========================
   // Eviction (ТЗ 13)
-  // =========================
   async checkEviction(limitMB = DEFAULT_CACHE_LIMIT_MB) {
     const total = await this.getCacheSizeBytes();
     const limitBytes = Math.floor(Number(limitMB || 0) * MB);
@@ -715,9 +681,7 @@ export class OfflineManager {
     }
   }
 
-  // =========================
   // Download implementation
-  // =========================
   async cacheTrackAudio(uid, quality, options = {}) {
     const u = normUid(uid);
     if (!u) return { ok: false, reason: 'noUid' };
@@ -729,23 +693,18 @@ export class OfflineManager {
     const track = getTrackByUid(u);
     if (!track) return { ok: false, reason: 'noTrackMeta' };
 
-    // Check if already complete
     const alreadyComplete = await this.isTrackComplete(u, q);
     if (alreadyComplete) {
-      // Still try to activate cloud if applicable
       await this._maybeActivateCloudAfterCqComplete(u);
       return { ok: true, skipped: true, reason: 'Skipped: already complete' };
     }
 
-    // Get URL
-    const sources = track?.sources || null;
-    const urlHi = sources?.audio?.hi || track?.audio || track?.src || null;
-    const urlLo = sources?.audio?.lo || track?.audio_low || null;
+    const urlHi = track?.urlHi || track?.audio || null;
+    const urlLo = track?.urlLo || track?.audio_low || null;
     const url = (q === 'lo') ? (urlLo || urlHi) : (urlHi || urlLo);
 
     if (!url) return { ok: false, reason: 'noUrl' };
 
-    // Net policy check
     const policy = getNetPolicy();
     const net = getNetworkStatusSafe();
 
@@ -763,16 +722,13 @@ export class OfflineManager {
 
     if (!allowed) {
       if (userInitiated && shouldConfirmByPolicy({ policy, net })) {
-        // Skip with reason — UI should handle confirm dialog
         return { ok: false, reason: 'needsConfirm', policy, net };
       }
       return { ok: false, reason: 'policyBlocked' };
     }
 
-    // Eviction check before download
     await this.checkEviction();
 
-    // Actual download
     try {
       this._em.emit('progress', { uid: u, phase: 'downloading', quality: q });
 
@@ -788,13 +744,11 @@ export class OfflineManager {
         return { ok: false, reason: 'tooSmall' };
       }
 
-      // Save to IndexedDB
       await setAudioBlob(u, q, blob);
       await setBytes(u, q, bytes);
 
       this._em.emit('progress', { uid: u, phase: 'downloaded', quality: q, bytes });
 
-      // Check cloud activation after download
       await this._maybeActivateCloudAfterCqComplete(u);
 
       return { ok: true, bytes, quality: q };
@@ -803,26 +757,27 @@ export class OfflineManager {
     }
   }
 
-  // =========================
-  // Resolve playback (delegate to TrackResolver)
-  // =========================
-  async resolvePlayback(params) {
-    const pq = normQ(params?.pq);
+  // Resolve playback (ТЗ 6.1, 7.4)
+  async resolveForPlayback(track, pq) {
     const cq = await this.getCacheQuality();
     const offlineMode = this.isOfflineMode();
     const net = getNetworkStatusSafe();
 
     return resolvePlaybackSource({
-      track: params?.track || null,
-      pq,
+      track,
+      pq: normQ(pq),
       cq,
       offlineMode,
       network: net
     });
   }
+
+  // Check track availability offline
+  async isTrackAvailableOffline(uid) {
+    return isTrackAvailableOffline(uid);
+  }
 }
 
-// Singleton
 let _instance = null;
 
 export function getOfflineManager() {
