@@ -70,6 +70,9 @@
         // ⭐ Публикуем в глобальную область
         window.albumsIndex = data.albums;
 
+        // ✅ Событие готовности индекса (убираем polling в app/albums)
+        try { window.dispatchEvent(new Event('albumsIndex:ready')); } catch {}
+
         console.log(`✅ Albums index loaded: ${data.albums.length} albums`);
       } catch (error) {
         console.error('❌ Failed to load albums.json:', error);
