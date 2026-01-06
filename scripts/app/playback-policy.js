@@ -179,7 +179,7 @@
 
     if (!repeat && opts?.reason === 'favoritesChanged' && currentUid) {
       const d = opts?.changed || {};
- const changedAlbum = String(d.albumKey || '').trim();
+      const changedAlbum = String(d.albumKey || '').trim();
       const changedUid = String(d.uid || '').trim();
       const liked = !!d.liked;
 
