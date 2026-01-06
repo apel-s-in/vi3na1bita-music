@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-62638a51218c817dde7924d2da2123e82e513056.idx
-│   │       ├── pack-62638a51218c817dde7924d2da2123e82e513056.pack
-│   │       └── pack-62638a51218c817dde7924d2da2123e82e513056.rev
+│   │       ├── pack-1ef9612fe738927ac58cd0a82978f1675e9fb2c5.idx
+│   │       ├── pack-1ef9612fe738927ac58cd0a82978f1675e9fb2c5.pack
+│   │       └── pack-1ef9612fe738927ac58cd0a82978f1675e9fb2c5.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -374,7 +374,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 22:04:44 UTC
+Сгенерировано: 2026-01-06 22:05:04 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -11308,10 +11308,12 @@ class NotificationSystem {
   
   escapeHtml(text) {
     const fn = window.Utils?.escapeHtml;
-    if (typeof fn === 'function') return fn(String(text || ''));
-    const div = document.createElement('div');
-    div.textContent = String(text || '');
-    return div.innerHTML;
+    const s = String(text || '');
+    if (typeof fn === 'function') return fn(s);
+    // fallback без DOM-аллоцирования
+    return s.replace(/[<>&'"]/g, (m) => ({
+      '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&#39;', '"': '&quot;'
+    }[m]));
   }
   
   // Публичные методы
