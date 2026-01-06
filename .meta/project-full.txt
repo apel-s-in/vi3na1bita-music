@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-35b4e8b0a66676865d81a880fab9903094f2109a.idx
-│   │       ├── pack-35b4e8b0a66676865d81a880fab9903094f2109a.pack
-│   │       └── pack-35b4e8b0a66676865d81a880fab9903094f2109a.rev
+│   │       ├── pack-b9db025574e619b924cd212c281393d4ae6bfed3.idx
+│   │       ├── pack-b9db025574e619b924cd212c281393d4ae6bfed3.pack
+│   │       └── pack-b9db025574e619b924cd212c281393d4ae6bfed3.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -376,7 +376,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 09:31:50 UTC
+Сгенерировано: 2026-01-06 09:41:02 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3716,16 +3716,17 @@ class NavigationManager {
   showModal(title, bodyHtml) {
     this.closeModal();
 
-    const modal = window.Modals?.open
-      ? window.Modals.open({ title, bodyHtml, maxWidth: 520 })
-      : null;
-
-    if (modal) {
-      this.activeModal = modal;
+    // Единый механизм модалок
+    if (window.Modals?.open) {
+      this.activeModal = window.Modals.open({
+        title,
+        bodyHtml,
+        maxWidth: 520
+      });
       return;
     }
 
-    // fallback: если Modals ещё не загрузился
+    // Fallback: если Modals ещё не загрузился (очень ранняя стадия)
     if (window.Utils && typeof window.Utils.createModal === 'function') {
       const html = `
         <div class="modal-feedback" style="max-width: 520px;">
