@@ -669,7 +669,8 @@ export class OfflineManager {
       if ((total - freed) <= limitBytes) break;
 
       await deleteTrackCache(c.uid);
-      await clearCloudStats(c.uid);
+      // ВАЖНО (ТЗ): cloud-статистика сбрасывается только при явном действии пользователя
+      // "☁ → Удалить из кэша". Eviction этого делать не должен.
 
       freed += c.bytes;
       evictedUids.push(c.uid);
