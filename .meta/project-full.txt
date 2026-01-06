@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-bbe54b788617a7fbf4123d95f03d6518f320e910.idx
-│   │       ├── pack-bbe54b788617a7fbf4123d95f03d6518f320e910.pack
-│   │       └── pack-bbe54b788617a7fbf4123d95f03d6518f320e910.rev
+│   │       ├── pack-90921ce9ae1873ff09b71565215c47ca20b9b0ba.idx
+│   │       ├── pack-90921ce9ae1873ff09b71565215c47ca20b9b0ba.pack
+│   │       └── pack-90921ce9ae1873ff09b71565215c47ca20b9b0ba.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -374,7 +374,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 21:38:47 UTC
+Сгенерировано: 2026-01-06 22:02:38 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -855,61 +855,21 @@ jobs:
   <!-- Inline Scripts -->
   <script>
     // ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
-    
+    // ВАЖНО: без дублей unlockAppDirectly/promocode логики (она в scripts/app/promocode.js).
+    // Здесь оставляем только глобальные константы и флаги совместимости.
+
     const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.0.4');
     const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2025-12-07');
-    
-    // Флаги и состояние
+
+    // Флаги и состояние (legacy/back-compat; не трогаем playback)
     window.autoNextDisabled = false;
     window.sleepTimerTarget = null;
     window.sleepTimerInterval = null;
-    
-    // ========== ПРОМОКОД/IOS PROMPT ==========
-    // ✅ Вынесено в scripts/app/promocode.js
-    
-    async function unlockAppDirectly() {
-      const promocodeBlock = document.getElementById('promocode-block');
-      const mainBlock = document.getElementById('main-block');
-
-      if (promocodeBlock) promocodeBlock.classList.add('hidden');
-      if (mainBlock) mainBlock.classList.remove('hidden');
-
-      // OFFLINE инициализируется внутри window.app.initialize()
-      // (scripts/app.js), чтобы избежать гонок и дублей.
-
-      // ✅ 2) Ждём window.app и запускаем приложение один раз
-      // ✅ без polling: ждём модульный app.js через microtask/raf
-      const tryInit = () => {
-        if (window.app && typeof window.app.initialize === 'function') {
-          window.app.initialize();
-          return true;
-        }
-        return false;
-      };
-
-      if (!tryInit()) {
-        let tries = 0;
-        const t = setInterval(() => {
-          tries++;
-          if (tryInit() || tries > 50) clearInterval(t);
-        }, 60);
-      }
-    }
-    
-    // ========== iOS INSTALL GUIDE ==========
-    // ✅ Вынесено в scripts/app/promocode.js
-    
-    // ========== УТИЛИТЫ ==========
-    // ✅ Утилиты вынесены в scripts/core/utils.js (window.Utils.*)
-    // Back-compat: если где-то в legacy-коде ещё вызываются window.formatTime/escapeHtml.
-    window.formatTime = window.Utils?.formatTime;
-    window.escapeHtml = window.Utils?.escapeHtml;
 
     // ========== ЭКСПОРТ ГЛОБАЛЬНЫХ ПЕРЕМЕННЫХ ==========
-    
     window.VERSION = VERSION;
     window.BUILD_DATE = BUILD_DATE;
-    
+
     console.log(`🎵 Витрина Разбита v${VERSION} (${BUILD_DATE})`);
   </script>
 </body>
