@@ -5,10 +5,13 @@
 import { getTrackByUid } from '../app/track-registry.js';
 import { isAllowedByNetPolicy, getNetPolicy } from './net-policy.js';
 
+// ТЗ 7.3: окно всегда ровно 3 элемента PREV/CUR/NEXT
 const WINDOW_PREV = 1;
-const WINDOW_NEXT = 2;
-const PRIORITY_CURRENT = 30;
-const PRIORITY_ADJACENT = 20;
+const WINDOW_NEXT = 1;
+
+// ТЗ 14.2: P0 (CUR) выше P1 (сосед)
+const PRIORITY_CURRENT = 30;   // P0
+const PRIORITY_ADJACENT = 20;  // P1
 
 function normUid(v) {
   const s = String(v || '').trim();
@@ -119,26 +122,21 @@ export class PlaybackCacheManager {
 
     if (!allowed) return;
 
+    // ТЗ 7.7: строго CUR -> сосед по направлению.
     const tasks = [];
 
     if (window.cur && !inactive.has(window.cur)) {
       tasks.push({ uid: window.cur, priority: PRIORITY_CURRENT });
     }
 
-    const adjacentList = direction === 'backward' ? window.prev : window.next;
-    const otherList = direction === 'backward' ? window.next : window.prev;
+    // сосед по направлению = один uid (так как окно 3-трековое)
+    const neighbor = (direction === 'backward')
+      ? (window.prev && window.prev.length ? window.prev[window.prev.length - 1] : null)
+      : (window.next && window.next.length ? window.next[0] : null);
 
-    adjacentList.forEach((uid, i) => {
-      if (!inactive.has(uid)) {
-        tasks.push({ uid, priority: PRIORITY_ADJACENT - i });
-      }
-    });
-
-    otherList.forEach((uid, i) => {
-      if (!inactive.has(uid)) {
-        tasks.push({ uid, priority: PRIORITY_ADJACENT - adjacentList.length - i });
-      }
-    });
+    if (neighbor && !inactive.has(neighbor)) {
+      tasks.push({ uid: neighbor, priority: PRIORITY_ADJACENT });
+    }
 
     const quality = normQ(pq || this._pq);
 
