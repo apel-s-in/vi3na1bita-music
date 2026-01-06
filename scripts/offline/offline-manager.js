@@ -190,6 +190,15 @@ export class OfflineManager {
     this.queue = new DownloadQueue({
       onProgress: (ev) => this._em.emit('progress', ev)
     });
+
+    // ✅ Агрегаты для OFFLINE modal (чтобы не делать await-loop по всем трекам)
+    this._needs = {
+      ready: false,
+      totalTracked: 0,
+      needsUpdate: 0,
+      needsReCache: 0,
+      lastComputedAt: 0
+    };
   }
 
   async initialize() {
@@ -200,6 +209,9 @@ export class OfflineManager {
 
     this._checkExpiredCloud();
     setInterval(() => this._checkExpiredCloud(), 60 * 60 * 1000);
+
+    // ✅ Фоновый пересчёт агрегатов (best-effort; не блокируем initialize)
+    try { this.refreshNeedsAggregates({ force: true }); } catch {}
   }
 
   on(type, cb) { return this._em.on(type, cb); }
@@ -1116,6 +1128,59 @@ export class OfflineManager {
   // Check track availability offline
   async isTrackAvailableOffline(uid) {
     return isTrackAvailableOffline(uid);
+  }
+
+  // ===== Aggregates: needsUpdate / needsReCache =====
+  getNeedsAggregates() {
+    return { ...this._needs };
+  }
+
+  async refreshNeedsAggregates(opts = {}) {
+    const force = !!opts.force;
+    const now = Date.now();
+
+    if (!force && this._needs.lastComputedAt && (now - this._needs.lastComputedAt) < 5000) {
+      return this.getNeedsAggregates();
+    }
+
+    const all = (typeof window.TrackRegistry?.getAllTracks === 'function')
+      ? window.TrackRegistry.getAllTracks()
+      : [];
+
+    let needsUpdate = 0;
+    let needsReCache = 0;
+    let totalTracked = 0;
+
+    try {
+      for (const t of all) {
+        const uid = normUid(t?.uid);
+        if (!uid) continue;
+        totalTracked++;
+
+        // eslint-disable-next-line no-await-in-loop
+        const st = await this.getTrackOfflineState(uid);
+        if (st?.needsUpdate) needsUpdate++;
+        if (st?.needsReCache) needsReCache++;
+      }
+    } catch {
+      // best-effort
+    }
+
+    this._needs = {
+      ready: true,
+      totalTracked,
+      needsUpdate,
+      needsReCache,
+      lastComputedAt: now
+    };
+
+    // UI badge "!" и прочее
+    if (needsUpdate > 0 || needsReCache > 0) setAlert(true, 'Есть треки для обновления');
+    else setAlert(false, '');
+
+    this._em.emit('progress', { uid: null, phase: 'needsAggregatesChanged', ...this._needs });
+
+    return this.getNeedsAggregates();
   }
 }
 
