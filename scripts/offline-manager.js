@@ -75,7 +75,28 @@ class OfflineManager {
       el.className = meta.pinned ? 'pinned' : meta.cloud ? 'cloud' : 'gray';
     });
   }
+  async deleteLocal(uid) {
+    const variants = ['hi', 'lo'];
+    for (const v of variants) {
+      const key = `${uid}:${v}`;
+      const tx = this.db.transaction(this.storeName, 'readwrite');
+      await tx.objectStore(this.storeName).delete(key);
+    }
+    localStorage.removeItem(`meta:${uid}`);
+  }
 
+  async computeSizeEstimate(selection) {
+    const cq = localStorage.getItem('offline:cacheQuality:v1') || 'hi';
+    let total = 0;
+    const tracks = selection === 'favorites' 
+      ? W.config.tracks.filter(t => t.favorite)
+      : W.config.tracks; // для альбомов расширь
+    for (const t of tracks) {
+      total += parseInt(t[`size${cq === 'hi' ? '' : '_low'}`] || 0);
+    }
+    return { totalMB: total };
+  }
+}
   // 100% OFFLINE — упрощённо
   async startFullOffline(selection) {
     const cq = localStorage.getItem('offline:cacheQuality:v1') || 'hi';
