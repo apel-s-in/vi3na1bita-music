@@ -243,6 +243,60 @@ export function openOfflineModal() {
     cloudSec.appendChild(saveCloudBtn);
     inner.appendChild(cloudSec);
 
+    // Cache breakdown + downloads + updates (минимальная версия секций E/F/G)
+    try {
+      const breakdown = await mgr.getCacheBreakdown?.();
+      const qst = mgr.getQueueStatus?.() || { downloadingKey: null, queued: 0, paused: false };
+
+      const bfSec = document.createElement('section');
+      bfSec.innerHTML = '<b>Кэш (breakdown) + загрузки</b>';
+
+      if (breakdown) {
+        bfSec.innerHTML += `
+          <div style="margin-top:8px; font-size:12px; color:#aaa; line-height:1.4;">
+            <div>pinned: <b>${formatBytes(breakdown.pinnedBytes)}</b></div>
+            <div>cloud: <b>${formatBytes(breakdown.cloudBytes)}</b></div>
+            <div>transient window: <b>${formatBytes(breakdown.transientWindowBytes)}</b></div>
+            <div>transient extra: <b>${formatBytes(breakdown.transientExtraBytes)}</b></div>
+            <div>transient unknown: <b>${formatBytes(breakdown.transientUnknownBytes)}</b></div>
+            <div>audio total: <b>${formatBytes(breakdown.audioTotalBytes)}</b></div>
+          </div>
+        `;
+      } else {
+        bfSec.innerHTML += `<div class="stats">Breakdown пока недоступен</div>`;
+      }
+
+      bfSec.innerHTML += `
+        <div style="margin-top:10px; font-size:12px; color:#aaa;">
+          <div>Скачивается сейчас: <b>${qst.downloadingKey ? String(qst.downloadingKey) : '—'}</b></div>
+          <div>В очереди: <b>${qst.queued || 0}</b></div>
+        </div>
+      `;
+
+      const pauseBtn = document.createElement('button');
+      pauseBtn.className = 'secondary';
+      pauseBtn.textContent = qst.paused ? 'Возобновить очередь' : 'Пауза очереди';
+      pauseBtn.onclick = () => {
+        if (qst.paused) mgr.resumeQueue?.();
+        else mgr.pauseQueue?.();
+        renderContent();
+      };
+      bfSec.appendChild(pauseBtn);
+
+      const updBtn = document.createElement('button');
+      updBtn.className = 'secondary';
+      updBtn.textContent = 'Обновить все файлы (pinned/cloud)';
+      updBtn.onclick = async () => {
+        const res = await mgr.enqueueUpdateAll?.();
+        if (res?.ok) window.NotificationSystem?.info(`Updates: поставлено ${res.count} задач`);
+        else window.NotificationSystem?.error('Не удалось запустить updates');
+        renderContent();
+      };
+      bfSec.appendChild(updBtn);
+
+      inner.appendChild(bfSec);
+    } catch {}
+
     // 100% OFFLINE
     const offAllSec = document.createElement('section');
     offAllSec.innerHTML = '<b>100% OFFLINE</b><br><small>Скачать все треки текущего плейлиста</small>';
