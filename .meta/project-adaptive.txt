@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-fc16bc2aa0d7986f5f6d8c2127b91247c2e7c1a5.idx
-│   │       ├── pack-fc16bc2aa0d7986f5f6d8c2127b91247c2e7c1a5.pack
-│   │       └── pack-fc16bc2aa0d7986f5f6d8c2127b91247c2e7c1a5.rev
+│   │       ├── pack-43540cba60943f87ba0682252c0683ea199e98ed.idx
+│   │       ├── pack-43540cba60943f87ba0682252c0683ea199e98ed.pack
+│   │       └── pack-43540cba60943f87ba0682252c0683ea199e98ed.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -376,7 +376,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 09:01:21 UTC
+Сгенерировано: 2026-01-06 09:12:40 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -752,6 +752,10 @@ jobs:
   <script src="./scripts/ui/favorites-view.js" defer></script>
   <script src="./scripts/ui/sleep.js" defer></script>
   <script src="./scripts/ui/lyrics-modal.js" defer></script>
+
+  <!-- Shared modal templates (IIFE -> window.Modals) -->
+  <script src="./scripts/ui/modal-templates.js" defer></script>
+
   <script src="./scripts/ui/sysinfo.js" defer></script>
   
   <!-- App Modules -->
