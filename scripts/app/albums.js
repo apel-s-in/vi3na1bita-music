@@ -22,17 +22,12 @@ class AlbumsManager {
   }
 
   async initialize() {
-    const maxWaitMs = 2000;
-    const stepMs = 50;
-    let waited = 0;
-
-    while ((!window.albumsIndex || window.albumsIndex.length === 0) && waited < maxWaitMs) {
-      await new Promise(r => setTimeout(r, stepMs));
-      waited += stepMs;
+    if ((!Array.isArray(window.albumsIndex) || window.albumsIndex.length === 0) && window.Utils?.onceEvent) {
+      try { await window.Utils.onceEvent(window, 'albumsIndex:ready', { timeoutMs: 8000 }); } catch {}
     }
 
     if (!Array.isArray(window.albumsIndex) || window.albumsIndex.length === 0) {
-      console.error('❌ No albums found (albumsIndex is empty after wait)');
+      console.error('❌ No albums found (albumsIndex is empty)');
       return;
     }
 
