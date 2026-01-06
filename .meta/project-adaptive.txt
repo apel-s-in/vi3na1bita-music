@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-137ee699ee633883b5c33201228b9df85f8d3b20.idx
-│   │       ├── pack-137ee699ee633883b5c33201228b9df85f8d3b20.pack
-│   │       └── pack-137ee699ee633883b5c33201228b9df85f8d3b20.rev
+│   │       ├── pack-35b4e8b0a66676865d81a880fab9903094f2109a.idx
+│   │       ├── pack-35b4e8b0a66676865d81a880fab9903094f2109a.pack
+│   │       └── pack-35b4e8b0a66676865d81a880fab9903094f2109a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -376,7 +376,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 09:21:04 UTC
+Сгенерировано: 2026-01-06 09:31:50 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -10564,6 +10564,11 @@ window.FavoritesManager = new FavoritesManager();
 // scripts/ui/modal-templates.js
 // Единые шаблоны модалок (IIFE). Источник истины: window.Modals.
 // Использует window.Utils.createModal (modal-bg + bigclose).
+//
+// Цели:
+// - убрать копипасту bigclose/обёрток/рядов кнопок;
+// - дать маленькие building blocks для OFFLINE/Feedback/Hotkeys/Cloud/Favorites*;
+// - НЕ менять внешний вид (используем существующие классы .modal-feedback/.bigclose/.offline-btn).
 
 (function ModalTemplatesModule() {
   'use strict';
@@ -10574,13 +10579,18 @@ window.FavoritesManager = new FavoritesManager();
     return w.Utils?.escapeHtml ? w.Utils.escapeHtml(String(s ?? '')) : String(s ?? '');
   }
 
+  function cssText(s) {
+    // минимально безопасно для inline-style
+    return String(s ?? '').replace(/"/g, '&quot;');
+  }
+
   function createShell({ title, bodyHtml, maxWidth, className } = {}) {
     const t = String(title || '').trim();
     const cls = String(className || '').trim();
     const mw = Number.isFinite(Number(maxWidth)) ? Number(maxWidth) : 520;
 
     return `
-      <div class="modal-feedback${cls ? ` ${cls}` : ''}" style="max-width: ${mw}px;">
+      <div class="modal-feedback${cls ? ` ${cls}` : ''}" style="max-width:${mw}px;">
         <button class="bigclose" title="Закрыть" aria-label="Закрыть">
           <svg viewBox="0 0 48 48">
             <line x1="12" y1="12" x2="36" y2="36" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
@@ -10588,7 +10598,7 @@ window.FavoritesManager = new FavoritesManager();
           </svg>
         </button>
 
-        ${t ? `<div style="font-size: 1.1em; font-weight: 900; color: #eaf2ff; margin-bottom: 10px;">${esc(t)}</div>` : ''}
+        ${t ? `<div style="font-size:1.1em;font-weight:900;color:#eaf2ff;margin-bottom:10px;">${esc(t)}</div>` : ''}
 
         ${bodyHtml || ''}
       </div>
@@ -10601,18 +10611,54 @@ window.FavoritesManager = new FavoritesManager();
     return w.Utils.createModal(html, onClose);
   }
 
+  // ===== UI blocks (small) =====
+  function section(title, innerHtml, opts = {}) {
+    const t = String(title || '').trim();
+    const padTop = opts.padTop === false ? '' : 'padding-top:12px;';
+    const mt = opts.marginTop === false ? '' : 'margin-top:12px;';
+    const border = opts.border === false ? '' : 'border-top:1px solid rgba(255,255,255,0.08);';
+    return `
+      <div style="${border}${padTop}${mt}">
+        ${t ? `<div style="font-weight:900;color:#eaf2ff;margin-bottom:8px;">${esc(t)}</div>` : ''}
+        ${innerHtml || ''}
+      </div>
+    `;
+  }
+
+  function note(html, opts = {}) {
+    const mb = opts.marginBottom === false ? '' : 'margin-bottom:14px;';
+    return `<div style="color:#9db7dd;line-height:1.45;${mb}">${html || ''}</div>`;
+  }
+
+  function row(html, opts = {}) {
+    const gap = Number.isFinite(opts.gap) ? opts.gap : 10;
+    const justify = opts.justify || 'center';
+    const wrap = opts.wrap === false ? 'nowrap' : 'wrap';
+    return `<div style="display:flex;gap:${gap}px;justify-content:${cssText(justify)};flex-wrap:${wrap};align-items:center;">${html || ''}</div>`;
+  }
+
   function actionRow(buttons = []) {
     const items = Array.isArray(buttons) ? buttons : [];
     const html = items.map((b) => {
-      const id = b.id ? ` id="${String(b.id)}"` : '';
-      const act = b.act ? ` data-act="${String(b.act)}"` : '';
-      const cls = b.className ? ` ${String(b.className)}` : '';
-      const style = b.style ? ` style="${String(b.style)}"` : '';
+      const id = b.id ? ` id="${esc(String(b.id))}"` : '';
+      const act = b.act ? ` data-act="${esc(String(b.act))}"` : '';
+      const cls = b.className ? ` ${esc(String(b.className))}` : '';
+      const style = b.style ? ` style="${cssText(String(b.style))}"` : '';
       const text = String(b.text || '');
-      return `<button class="offline-btn${cls}"${id}${act}${style}>${esc(text)}</button>`;
+      const disabled = b.disabled ? ' disabled aria-disabled="true"' : '';
+      return `<button class="offline-btn${cls}"${id}${act}${style}${disabled}>${esc(text)}</button>`;
     }).join('');
 
-    return `<div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">${html}</div>`;
+    return row(html);
+  }
+
+  function fieldRow({ label, inputHtml } = {}) {
+    return `
+      <label style="display:flex;gap:10px;align-items:center;justify-content:space-between;">
+        <span style="color:#cfe3ff;">${esc(label || '')}</span>
+        ${inputHtml || ''}
+      </label>
+    `;
   }
 
   function confirm({
@@ -10621,6 +10667,7 @@ window.FavoritesManager = new FavoritesManager();
     confirmText = 'ОК',
     cancelText = 'Отмена',
     maxWidth = 420,
+    danger = false,
     onConfirm,
     onCancel
   } = {}) {
@@ -10628,12 +10675,10 @@ window.FavoritesManager = new FavoritesManager();
       title,
       maxWidth,
       bodyHtml: `
-        <div style="color:#9db7dd; line-height:1.45; margin-bottom: 14px;">
-          ${textHtml || ''}
-        </div>
+        ${note(textHtml, { marginBottom: true })}
         ${actionRow([
           { act: 'cancel', text: cancelText, className: '' },
-          { act: 'confirm', text: confirmText, className: 'online' }
+          { act: 'confirm', text: confirmText, className: danger ? '' : 'online' }
         ])}
       `
     });
@@ -10656,8 +10701,13 @@ window.FavoritesManager = new FavoritesManager();
   w.Modals = {
     open,
     confirm,
-    actionRow,
-    esc
+    // blocks
+    esc,
+    section,
+    note,
+    row,
+    fieldRow,
+    actionRow
   };
 })();
 
