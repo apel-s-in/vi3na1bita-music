@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b876b2f33fd786b3adc2a4d6ebb57624ee581233.idx
-│   │       ├── pack-b876b2f33fd786b3adc2a4d6ebb57624ee581233.pack
-│   │       └── pack-b876b2f33fd786b3adc2a4d6ebb57624ee581233.rev
+│   │       ├── pack-b9923f3f621225727744cfc993294fa25636a29c.idx
+│   │       ├── pack-b9923f3f621225727744cfc993294fa25636a29c.pack
+│   │       └── pack-b9923f3f621225727744cfc993294fa25636a29c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -358,8 +358,7 @@ vi3na1bita-music/
 │   │   └── sysinfo.js
 │   ├── utils/
 │   │   └── sw-manager.js
-│   ├── app.js
-│   └── download-queue.js
+│   └── app.js
 ├── src/
 │   ├── player-core/
 │   │   ├── media-session.js
@@ -378,7 +377,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 10:22:36 UTC
+Сгенерировано: 2026-01-06 10:22:48 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6979,45 +6978,6 @@ if (typeof window !== 'undefined') {
   
   console.log('✅ Utils loaded');
 })();
-
-//=================================================
-// FILE: /scripts/download-queue.js
-//=================================================
-// FILE: scripts/download-queue.js
-// Единая очередь (1 активная аудио-загрузка, приоритеты P0–P5 по ТЗ)
-class DownloadQueue {
-  constructor() {
-    this.queue = []; // { uid, variant, priority, task(), resolve, reject }
-    this.active = null;
-    this.paused = false;
-  }
-
-  enqueue(taskObj) {
-    this.queue.push(taskObj);
-    this.queue.sort((a, b) => a.priority - b.priority);
-    this.process();
-  }
-
-  pause() { this.paused = true; if (this.active) this.active.abort(); }
-  resume() { this.paused = false; this.process(); }
-
-  process() {
-    if (this.paused || this.active || !this.queue.length) return;
-
-    const task = this.queue.shift();
-    this.active = task;
-
-    task.task()
-      .then(task.resolve)
-      .catch(task.reject)
-      .finally(() => {
-        this.active = null;
-        this.process();
-      });
-  }
-}
-
-window.downloadQueue = new DownloadQueue();
 
 //=================================================
 // FILE: /scripts/e2e/favorites.spec.js
