@@ -38,9 +38,22 @@
     },
     
     createModal(html, onClose) {
+      // Back-compat: старый API, но теперь реальная реализация — через window.Modals.open.
+      // Важно: html ожидается как "bodyHtml" (без modal-bg), но если туда передали целую модалку —
+      // она всё равно будет показана как контент.
+      if (window.Modals?.open) {
+        return window.Modals.open({
+          title: '',
+          maxWidth: 560,
+          bodyHtml: String(html || ''),
+          onClose
+        });
+      }
+
+      // Fallback (если Modals ещё не загружен)
       const bg = document.createElement('div');
       bg.className = 'modal-bg active';
-      bg.innerHTML = html;
+      bg.innerHTML = String(html || '');
 
       const close = () => {
         bg.remove();
@@ -52,14 +65,9 @@
       });
 
       const closeBtn = bg.querySelector('.bigclose');
-      if (closeBtn) {
-        closeBtn.addEventListener('click', close);
-      }
+      if (closeBtn) closeBtn.addEventListener('click', close);
 
-      // ✅ Единый контейнер для модалок (если есть), иначе fallback в body.
-      const host = document.getElementById('modals-container') || document.body;
-      host.appendChild(bg);
-
+      (document.getElementById('modals-container') || document.body).appendChild(bg);
       return bg;
     },
     
