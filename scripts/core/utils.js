@@ -37,39 +37,7 @@
       return fn();
     },
     
-    createModal(html, onClose) {
-      // Back-compat: старый API, но теперь реальная реализация — через window.Modals.open.
-      // Важно: html ожидается как "bodyHtml" (без modal-bg), но если туда передали целую модалку —
-      // она всё равно будет показана как контент.
-      if (window.Modals?.open) {
-        return window.Modals.open({
-          title: '',
-          maxWidth: 560,
-          bodyHtml: String(html || ''),
-          onClose
-        });
-      }
-
-      // Fallback (если Modals ещё не загружен)
-      const bg = document.createElement('div');
-      bg.className = 'modal-bg active';
-      bg.innerHTML = String(html || '');
-
-      const close = () => {
-        bg.remove();
-        if (onClose) onClose();
-      };
-
-      bg.addEventListener('click', (e) => {
-        if (e.target === bg) close();
-      });
-
-      const closeBtn = bg.querySelector('.bigclose');
-      if (closeBtn) closeBtn.addEventListener('click', close);
-
-      (document.getElementById('modals-container') || document.body).appendChild(bg);
-      return bg;
-    },
+    // createModal удалён: проект использует единый механизм window.Modals.open (scripts/ui/modal-templates.js)
     
     isMobile() {
       return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
