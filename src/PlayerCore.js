@@ -956,6 +956,30 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
   W.playerCore = new PlayerCore();
 
+  // ✅ iOS Safari: ждём готовности Howler.js перед инициализацией
+  const initWhenReady = async () => {
+    // Ждём Howler.js (загружается из CDN)
+    let attempts = 0;
+    while (typeof Howl === 'undefined' && attempts < 50) {
+      await new Promise(r => setTimeout(r, 100));
+      attempts++;
+    }
+    
+    if (typeof Howl === 'undefined') {
+      console.error('❌ PlayerCore: Howler.js not loaded');
+      return;
+    }
+    
+    W.playerCore.initialize();
+    console.log('✅ PlayerCore ready');
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initWhenReady);
+  } else {
+    initWhenReady();
+  }
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => W.playerCore.initialize());
   } else {
