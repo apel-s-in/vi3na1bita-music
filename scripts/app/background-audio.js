@@ -27,7 +27,7 @@ async function unlockWebAudioOnce() {
   }
 }
 
-export function installIOSAudioUnlock() {
+function installIOSAudioUnlock() {
   const handler = () => { unlockWebAudioOnce(); };
 
   // pointerdown is the most reliable gesture on iOS Safari/PWA
@@ -35,3 +35,6 @@ export function installIOSAudioUnlock() {
   window.addEventListener('touchend', handler, { passive: true });
   window.addEventListener('click', handler, { passive: true });
 }
+
+// Make function available globally
+window.installIOSAudioUnlock = installIOSAudioUnlock;
