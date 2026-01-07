@@ -105,7 +105,15 @@ class AlbumsManager {
       iconEl.innerHTML = `<img src="${path1x}" srcset="${path2x} 2x" alt="${title}" draggable="false" loading="lazy" width="60" height="60">`;
 
       // ✅ КРИТИЧНО: Обработка кликов с проверкой активности
-      iconEl.addEventListener('click', () => this.handleAlbumIconClick(key));
+      // iOS Safari fix: используем pointerup для надёжности на touch-устройствах
+      const handleIconActivation = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.handleAlbumIconClick(key);
+      };
+      
+      iconEl.addEventListener('click', handleIconActivation);
+      iconEl.addEventListener('pointerup', handleIconActivation, { passive: false });
       
       container.appendChild(iconEl);
     });
@@ -818,7 +826,8 @@ class AlbumsManager {
            data-uid="${track.uid || ''}">
     `;
 
-    trackEl.addEventListener('click', (e) => {
+    // iOS Safari fix: обработка через pointerup + click
+    const handleTrackActivation = (e) => {
       if (e.target.classList.contains('like-star')) return;
 
       const albumData = this.albumsData.get(albumKey);
@@ -878,10 +887,19 @@ class AlbumsManager {
 
       // ensurePlayerBlock должен получать индекс текущей строки UI (чтобы вставить блок под неё)
       window.PlayerUI?.ensurePlayerBlock(index, { userInitiated: true });
-    });
+    };
+
+    trackEl.addEventListener('click', handleTrackActivation);
+    // iOS Safari: pointerup более надёжен на touch-устройствах
+    trackEl.addEventListener('pointerup', (e) => {
+      // Игнорируем если это был drag/scroll
+      if (e.pointerType === 'touch') {
+        handleTrackActivation(e);
+      }
+    }, { passive: true });
 
     const star = trackEl.querySelector('.like-star');
-    star?.addEventListener('click', (e) => {
+    const handleStarActivation = (e) => {
       e.preventDefault();
       e.stopPropagation();
 
@@ -910,7 +928,10 @@ class AlbumsManager {
         nextLiked,
         { source: 'album' }
       );
-    });
+    };
+
+    star?.addEventListener('click', handleStarActivation);
+    star?.addEventListener('pointerup', handleStarActivation, { passive: false });
 
     return trackEl;
   }
