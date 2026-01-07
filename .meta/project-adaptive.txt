@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-971690ce88a1a09fa6e5a7aea123671dd40735ac.idx
-│   │       ├── pack-971690ce88a1a09fa6e5a7aea123671dd40735ac.pack
-│   │       └── pack-971690ce88a1a09fa6e5a7aea123671dd40735ac.rev
+│   │       ├── pack-4581faa18188be18eada9f8f9b5fe47bd8225939.idx
+│   │       ├── pack-4581faa18188be18eada9f8f9b5fe47bd8225939.pack
+│   │       └── pack-4581faa18188be18eada9f8f9b5fe47bd8225939.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -374,7 +374,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-07 17:12:29 UTC
+Сгенерировано: 2026-01-07 17:13:12 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6702,20 +6702,30 @@ console.log('Manifest validation OK');
     }
 
     preventDefaultBehaviors() {
+      // ✅ iOS: предотвращаем pinch-zoom без блокировки обычных touch событий
       document.body.addEventListener('touchstart', (e) => {
         if (e.touches.length > 1) {
           e.preventDefault();
         }
       }, { passive: false });
 
+      // ✅ iOS: отключаем double-tap zoom, но НЕ блокируем одиночные тапы
       let lastTouchEnd = 0;
       document.addEventListener('touchend', (e) => {
         const now = Date.now();
-        if (now - lastTouchEnd <= 300) {
-          e.preventDefault();
+        // Только блокируем быстрый double-tap (не single tap)
+        if (now - lastTouchEnd <= 300 && now - lastTouchEnd > 0) {
+          // Проверяем что это НЕ интерактивный элемент
+          const tag = e.target.tagName;
+          const isInteractive = ['A', 'BUTTON', 'INPUT', 'SELECT', 'TEXTAREA'].includes(tag) ||
+            e.target.closest('.track, .album-icon, .like-star, .player-control-btn, .offline-btn');
+          
+          if (!isInteractive) {
+            e.preventDefault();
+          }
         }
         lastTouchEnd = now;
-      }, false);
+      }, { passive: false });
 
       document.addEventListener('contextmenu', (e) => {
         if (e.target.tagName === 'IMG' || e.target.closest('#cover-slot')) {
