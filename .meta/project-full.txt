@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4581faa18188be18eada9f8f9b5fe47bd8225939.idx
-│   │       ├── pack-4581faa18188be18eada9f8f9b5fe47bd8225939.pack
-│   │       └── pack-4581faa18188be18eada9f8f9b5fe47bd8225939.rev
+│   │       ├── pack-157056538f44a822d40ea13562f01f63c4d8863e.idx
+│   │       ├── pack-157056538f44a822d40ea13562f01f63c4d8863e.pack
+│   │       └── pack-157056538f44a822d40ea13562f01f63c4d8863e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -374,7 +374,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-07 17:13:12 UTC
+Сгенерировано: 2026-01-07 17:14:20 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4633,8 +4633,8 @@ export function attachPlaybackCache() {
     if (!block || block.__eventsBound) return;
     block.__eventsBound = true;
 
-    // Delegated clicks
-    on(block, 'click', (e) => {
+    // ✅ iOS Safari fix: используем и click, и pointerup для надёжности
+    const handleBlockAction = (e) => {
       const el = e.target?.closest?.('button, a');
       if (!el || !block.contains(el)) return;
 
@@ -4679,7 +4679,11 @@ export function attachPlaybackCache() {
           return;
         }
       }
-    });
+    };
+
+    on(block, 'click', handleBlockAction);
+    // iOS Safari: pointerup срабатывает надёжнее на touch
+    on(block, 'pointerup', handleBlockAction, { passive: false });
 
     // Volume slider (input)
     const volumeSlider = block.querySelector('#volume-slider');
