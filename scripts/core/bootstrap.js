@@ -206,20 +206,30 @@
     }
 
     preventDefaultBehaviors() {
+      // ✅ iOS: предотвращаем pinch-zoom без блокировки обычных touch событий
       document.body.addEventListener('touchstart', (e) => {
         if (e.touches.length > 1) {
           e.preventDefault();
         }
       }, { passive: false });
 
+      // ✅ iOS: отключаем double-tap zoom, но НЕ блокируем одиночные тапы
       let lastTouchEnd = 0;
       document.addEventListener('touchend', (e) => {
         const now = Date.now();
-        if (now - lastTouchEnd <= 300) {
-          e.preventDefault();
+        // Только блокируем быстрый double-tap (не single tap)
+        if (now - lastTouchEnd <= 300 && now - lastTouchEnd > 0) {
+          // Проверяем что это НЕ интерактивный элемент
+          const tag = e.target.tagName;
+          const isInteractive = ['A', 'BUTTON', 'INPUT', 'SELECT', 'TEXTAREA'].includes(tag) ||
+            e.target.closest('.track, .album-icon, .like-star, .player-control-btn, .offline-btn');
+          
+          if (!isInteractive) {
+            e.preventDefault();
+          }
         }
         lastTouchEnd = now;
-      }, false);
+      }, { passive: false });
 
       document.addEventListener('contextmenu', (e) => {
         if (e.target.tagName === 'IMG' || e.target.closest('#cover-slot')) {
