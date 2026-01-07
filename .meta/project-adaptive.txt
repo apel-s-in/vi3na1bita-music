@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1ef9612fe738927ac58cd0a82978f1675e9fb2c5.idx
-│   │       ├── pack-1ef9612fe738927ac58cd0a82978f1675e9fb2c5.pack
-│   │       └── pack-1ef9612fe738927ac58cd0a82978f1675e9fb2c5.rev
+│   │       ├── pack-69f6b44eb5e476122e7abe909f70edadadd6dbb5.idx
+│   │       ├── pack-69f6b44eb5e476122e7abe909f70edadadd6dbb5.pack
+│   │       └── pack-69f6b44eb5e476122e7abe909f70edadadd6dbb5.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -374,7 +374,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-06 22:05:04 UTC
+Сгенерировано: 2026-01-07 16:30:45 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6149,6 +6149,23 @@ export function registerTrack(track) {
   if (track.sources?.audio?.lo) merged.urlLo = track.sources.audio.lo;
   if (track.audio) merged.urlHi = merged.urlHi || track.audio;
   if (track.audio_low) merged.urlLo = merged.urlLo || track.audio_low;
+
+  // ✅ Sizes normalization (critical for offline completeness detection)
+  // Support both legacy fields (size/size_low) and normalized fields (sizeHi/sizeLo).
+  const sizeHi =
+    (typeof track.sizeHi === 'number' ? track.sizeHi : null) ??
+    (typeof track.size === 'number' ? track.size : null);
+
+  const sizeLo =
+    (typeof track.sizeLo === 'number' ? track.sizeLo : null) ??
+    (typeof track.size_low === 'number' ? track.size_low : null);
+
+  if (typeof sizeHi === 'number') merged.sizeHi = sizeHi;
+  if (typeof sizeLo === 'number') merged.sizeLo = sizeLo;
+
+  // Keep legacy keys too (some code paths still read them)
+  if (typeof track.size === 'number') merged.size = track.size;
+  if (typeof track.size_low === 'number') merged.size_low = track.size_low;
 
   registry.set(uid, merged);
 }
