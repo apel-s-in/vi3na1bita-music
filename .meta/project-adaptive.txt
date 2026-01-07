@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5c710c44c6a85c425a5786831810467dc122e854.idx
-│   │       ├── pack-5c710c44c6a85c425a5786831810467dc122e854.pack
-│   │       └── pack-5c710c44c6a85c425a5786831810467dc122e854.rev
+│   │       ├── pack-f13ff566f8cf2c30f8c26cb20cadeae701b07f48.idx
+│   │       ├── pack-f13ff566f8cf2c30f8c26cb20cadeae701b07f48.pack
+│   │       └── pack-f13ff566f8cf2c30f8c26cb20cadeae701b07f48.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -374,7 +374,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-07 16:56:01 UTC
+Сгенерировано: 2026-01-07 17:09:01 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -14972,6 +14972,23 @@ header {
 }
 
 .album-icon:active { transform: translateY(0) scale(0.95); }
+
+/* iOS touch fix */
+.album-icon,
+.track,
+.like-star,
+.player-control-btn,
+.sleep-timer-btn,
+.offline-btn,
+.lyrics-toggle-btn,
+.animation-btn,
+.pulse-btn,
+.karaoke-btn,
+.player-download-btn {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+}
 
 /* ===== Cover / gallery ===== */
 
