@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-69f6b44eb5e476122e7abe909f70edadadd6dbb5.idx
-│   │       ├── pack-69f6b44eb5e476122e7abe909f70edadadd6dbb5.pack
-│   │       └── pack-69f6b44eb5e476122e7abe909f70edadadd6dbb5.rev
+│   │       ├── pack-d4a7607ba736cf0ff45098e3f21ede2c0f3f6ebb.idx
+│   │       ├── pack-d4a7607ba736cf0ff45098e3f21ede2c0f3f6ebb.pack
+│   │       └── pack-d4a7607ba736cf0ff45098e3f21ede2c0f3f6ebb.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -374,7 +374,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-07 16:30:45 UTC
+Сгенерировано: 2026-01-07 16:36:06 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9344,13 +9344,16 @@ export class PlaybackCacheManager {
     const prev = [];
     const next = [];
 
-    for (let i = 1; i <= WINDOW_PREV && (idx - i) >= 0; i++) {
-      const t = pl[idx - i];
+    // ✅ TЗ 7.3: цикличность окна (wrap-around)
+    for (let i = 1; i <= WINDOW_PREV; i++) {
+      const pi = (idx - i + len) % len;
+      const t = pl[pi];
       if (t) prev.unshift(normUid(t.uid));
     }
 
-    for (let i = 1; i <= WINDOW_NEXT && (idx + i) < len; i++) {
-      const t = pl[idx + i];
+    for (let i = 1; i <= WINDOW_NEXT; i++) {
+      const ni = (idx + i) % len;
+      const t = pl[ni];
       if (t) next.push(normUid(t.uid));
     }
 
