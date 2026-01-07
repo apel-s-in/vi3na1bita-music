@@ -18,6 +18,23 @@ export function registerTrack(track) {
   if (track.audio) merged.urlHi = merged.urlHi || track.audio;
   if (track.audio_low) merged.urlLo = merged.urlLo || track.audio_low;
 
+  // ✅ Sizes normalization (critical for offline completeness detection)
+  // Support both legacy fields (size/size_low) and normalized fields (sizeHi/sizeLo).
+  const sizeHi =
+    (typeof track.sizeHi === 'number' ? track.sizeHi : null) ??
+    (typeof track.size === 'number' ? track.size : null);
+
+  const sizeLo =
+    (typeof track.sizeLo === 'number' ? track.sizeLo : null) ??
+    (typeof track.size_low === 'number' ? track.size_low : null);
+
+  if (typeof sizeHi === 'number') merged.sizeHi = sizeHi;
+  if (typeof sizeLo === 'number') merged.sizeLo = sizeLo;
+
+  // Keep legacy keys too (some code paths still read them)
+  if (typeof track.size === 'number') merged.size = track.size;
+  if (typeof track.size_low === 'number') merged.size_low = track.size_low;
+
   registry.set(uid, merged);
 }
 
