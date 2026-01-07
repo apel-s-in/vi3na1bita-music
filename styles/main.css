@@ -1529,6 +1529,45 @@ body.ios #mute-btn { display: none !important; }
 @media (prefers-color-scheme: dark) {
   body { background: #0d0d0d; }
 }
+
+/* ===== iOS Safari touch fixes ===== */
+
+/* Убираем 300ms задержку на всех интерактивных элементах */
+button,
+a,
+input,
+select,
+textarea,
+[role="button"],
+.track,
+.album-icon,
+.like-star,
+.player-control-btn,
+.sleep-timer-btn,
+.offline-btn {
+  touch-action: manipulation;
+}
+
+/* Убираем highlight при тапе на iOS */
+* {
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+}
+
+/* Исправляем проблему с pointer-events на iOS */
+.track,
+.album-icon {
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Гарантируем кликабельность звёздочек */
+.like-star {
+  cursor: pointer;
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 10;
+}
 /* ! на кнопке OFFLINE */
 #offline-btn.alert::after {
   content: "!";
