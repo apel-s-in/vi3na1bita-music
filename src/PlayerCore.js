@@ -303,6 +303,11 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     // Public controls
     // =========================
     async play(index = null, options = {}) {
+      // iOS Safari requires user gesture to resume audio context before playing
+      if (this._isIOS()) {
+        await this._resumeAudioContext();
+      }
+      
       if (index !== null && Number.isFinite(index) && index >= 0 && index < this.playlist.length) {
         await this.load(index, options);
       }
@@ -311,7 +316,25 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
       if (!this.sound) return;
 
-      this.sound.play();
+      // Try to play, and if it fails due to iOS restrictions, attempt to resume and retry
+      try {
+        this.sound.play();
+      } catch (e) {
+        if (this._isIOS()) {
+          await this._resumeAudioContext();
+          // Retry play after resuming audio context
+          setTimeout(() => {
+            try {
+              this.sound?.play();
+            } catch (retryErr) {
+              console.warn('Retry play failed:', retryErr);
+            }
+          }, 10);
+        } else {
+          throw e;
+        }
+      }
+      
       this._updateMedia(this.getCurrentTrack());
     }
 
@@ -404,6 +427,11 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       // фиксируем URL (может быть blob)
       this.playlist[index].src = resolved.url;
 
+      // iOS Safari: ensure audio context is resumed before creating Howl object
+      if (this._isIOS()) {
+        await this._resumeAudioContext();
+      }
+
       const initialVolume = this.getVolume() / 100;
 
       this.sound = new Howl({
@@ -439,7 +467,14 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
             try { this.seek(resumePosition); } catch {}
           }
           if (autoPlay) {
-            try { this.play(); } catch {}
+            // For iOS, we need to make sure audio context is unlocked before attempting to play
+            if (this._isIOS()) {
+              this._resumeAudioContext().then(() => {
+                try { this.play(); } catch {}
+              });
+            } else {
+              try { this.play(); } catch {}
+            }
           }
           this._updateMedia(this.getCurrentTrack());
         },
@@ -933,6 +968,25 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         }
       } catch {}
       return null;
+    }
+
+    // Helper method to detect iOS devices
+    _isIOS() {
+      return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    }
+
+    // Helper method to resume audio context on iOS
+    async _resumeAudioContext() {
+      try {
+        if (window.Howler && window.Howler.ctx && window.Howler.ctx.state === 'suspended') {
+          await window.Howler.ctx.resume();
+          console.log('✅ AudioContext resumed for iOS');
+          return true;
+        }
+      } catch (err) {
+        console.warn('⚠️ Could not resume AudioContext:', err);
+      }
+      return false;
     }
 
     destroy() {

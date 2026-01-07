@@ -882,7 +882,15 @@ class AlbumsManager {
 
       this.highlightCurrentTrack(index);
 
-      window.playerCore.play(playIndex);
+      // On iOS, ensure audio context is unlocked before attempting to play
+      if (window.playerCore?._isIOS && window.playerCore._isIOS()) {
+        window.playerCore._resumeAudioContext().then(() => {
+          window.playerCore.play(playIndex);
+        });
+      } else {
+        window.playerCore.play(playIndex);
+      }
+      
       this.setPlayingAlbum(albumKey);
 
       // ensurePlayerBlock должен получать индекс текущей строки UI (чтобы вставить блок под неё)
