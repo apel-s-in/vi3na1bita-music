@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-907b9b564c14070509a1493915cbbcd45db54a07.idx
-│   │       ├── pack-907b9b564c14070509a1493915cbbcd45db54a07.pack
-│   │       └── pack-907b9b564c14070509a1493915cbbcd45db54a07.rev
+│   │       ├── pack-971690ce88a1a09fa6e5a7aea123671dd40735ac.idx
+│   │       ├── pack-971690ce88a1a09fa6e5a7aea123671dd40735ac.pack
+│   │       └── pack-971690ce88a1a09fa6e5a7aea123671dd40735ac.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -374,7 +374,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-07 17:11:54 UTC
+Сгенерировано: 2026-01-07 17:12:29 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -14751,6 +14751,30 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
   }
 
   W.playerCore = new PlayerCore();
+
+  // ✅ iOS Safari: ждём готовности Howler.js перед инициализацией
+  const initWhenReady = async () => {
+    // Ждём Howler.js (загружается из CDN)
+    let attempts = 0;
+    while (typeof Howl === 'undefined' && attempts < 50) {
+      await new Promise(r => setTimeout(r, 100));
+      attempts++;
+    }
+    
+    if (typeof Howl === 'undefined') {
+      console.error('❌ PlayerCore: Howler.js not loaded');
+      return;
+    }
+    
+    W.playerCore.initialize();
+    console.log('✅ PlayerCore ready');
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initWhenReady);
+  } else {
+    initWhenReady();
+  }
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => W.playerCore.initialize());
