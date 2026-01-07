@@ -102,6 +102,16 @@
         // 6. Инициализация дополнительных модулей
         this.initializeModules();
 
+        // ✅ iOS: audio unlock on first gesture (best-effort, no impact on playback)
+        try {
+          const ba = await import('./app/background-audio.js');
+          if (ba && typeof ba.installIOSAudioUnlock === 'function') {
+            ba.installIOSAudioUnlock();
+          }
+        } catch (e) {
+          console.warn('iOS audio unlock helper failed:', e);
+        }
+
         // 7. Восстановление состояния плеера (если есть сохранённый PlayerState)
         if (w.PlayerState && typeof w.PlayerState.apply === 'function') {
           await w.PlayerState.apply();
