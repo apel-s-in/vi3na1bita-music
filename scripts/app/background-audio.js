@@ -1,4 +1,5 @@
-import { Howler } from '../../vendor/howler.min.js';
+// scripts/app/background-audio.js
+// iOS audio unlock helper (no imports; Howler is loaded from CDN in index.html)
 
 let unlocked = false;
 
@@ -6,23 +7,22 @@ function isIOS() {
   return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 }
 
-// Best-effort: iOS PWA often needs an explicit resume from a user gesture.
+// Best-effort: iOS needs explicit resume from a user gesture.
 async function unlockWebAudioOnce() {
   if (unlocked) return;
   if (!isIOS()) return;
 
   try {
+    const Howler = window.Howler;
     const ctx = Howler && Howler.ctx;
+
     if (ctx && ctx.state === 'suspended') {
       await ctx.resume();
     }
 
-    // Some iOS versions also need a short silent play attempt to fully unlock.
-    // Howler has internal unlock, but we ensure resume at least.
     unlocked = true;
   } catch (e) {
-    // Do not throw. Never stop/play here (TЗ инвариант).
-    // Just mark as not unlocked so we can retry on next gesture.
+    // Never throw. Never stop/play here (player invariant).
     unlocked = false;
   }
 }
@@ -30,7 +30,7 @@ async function unlockWebAudioOnce() {
 export function installIOSAudioUnlock() {
   const handler = () => { unlockWebAudioOnce(); };
 
-  // pointerdown is the most reliable "gesture" signal across iOS Safari/PWA.
+  // pointerdown is the most reliable gesture on iOS Safari/PWA
   window.addEventListener('pointerdown', handler, { passive: true });
   window.addEventListener('touchend', handler, { passive: true });
   window.addEventListener('click', handler, { passive: true });
