@@ -154,21 +154,23 @@ vi3na1bita-music/
 │   │   │   └── remotes/
 │   │   │       └── origin/
 │   │   │           ├── main
-│   │   │           └── qwen-code-c0a6e5d8-7ce2-4015-b9e8-16c1eb5626f1
+│   │   │           ├── qwen-code-c0a6e5d8-7ce2-4015-b9e8-16c1eb5626f1
+│   │   │           └── qwen-code-c670b9c3-90a8-4bf4-a12a-b54705b66530
 │   │   └── HEAD
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-965948832c958c52dd34f751d7b445aada883e68.idx
-│   │       ├── pack-965948832c958c52dd34f751d7b445aada883e68.pack
-│   │       └── pack-965948832c958c52dd34f751d7b445aada883e68.rev
+│   │       ├── pack-f2e2ea903afb1f467b44eaa62005c1bcb8e198c9.idx
+│   │       ├── pack-f2e2ea903afb1f467b44eaa62005c1bcb8e198c9.pack
+│   │       └── pack-f2e2ea903afb1f467b44eaa62005c1bcb8e198c9.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
 │   │   ├── remotes/
 │   │   │   └── origin/
 │   │   │       ├── main
-│   │   │       └── qwen-code-c0a6e5d8-7ce2-4015-b9e8-16c1eb5626f1
+│   │   │       ├── qwen-code-c0a6e5d8-7ce2-4015-b9e8-16c1eb5626f1
+│   │   │       └── qwen-code-c670b9c3-90a8-4bf4-a12a-b54705b66530
 │   │   └── tags/
 │   ├── config
 │   ├── config.worktree
@@ -378,7 +380,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-07 18:26:29 UTC
+Сгенерировано: 2026-01-07 18:43:35 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3015,7 +3017,7 @@ async function unlockWebAudioOnce() {
   }
 }
 
-export function installIOSAudioUnlock() {
+function installIOSAudioUnlock() {
   const handler = () => { unlockWebAudioOnce(); };
 
   // pointerdown is the most reliable gesture on iOS Safari/PWA
@@ -3023,6 +3025,9 @@ export function installIOSAudioUnlock() {
   window.addEventListener('touchend', handler, { passive: true });
   window.addEventListener('click', handler, { passive: true });
 }
+
+// Make function available globally
+window.installIOSAudioUnlock = installIOSAudioUnlock;
 
 //=================================================
 // FILE: /scripts/app/gallery.js
