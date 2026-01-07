@@ -1,37 +1,37 @@
-// scripts/app/background-audio.js
-// Минимальная поддержка background для Media Session.
-// ВАЖНО: action handlers и metadata/position обновляет PlayerCore (src/PlayerCore.js + src/player-core/media-session.js).
-// Здесь ничего не должно влиять на stop/play/seek/volume.
+import { Howler } from '../../vendor/howler.min.js';
 
-(function BackgroundAudioModule() {
-  'use strict';
+let unlocked = false;
 
-  class BackgroundAudioManager {
-    constructor() {
-      this.isSupported = ('mediaSession' in navigator);
-      this._bound = false;
-      this.init();
+function isIOS() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+}
+
+// Best-effort: iOS PWA often needs an explicit resume from a user gesture.
+async function unlockWebAudioOnce() {
+  if (unlocked) return;
+  if (!isIOS()) return;
+
+  try {
+    const ctx = Howler && Howler.ctx;
+    if (ctx && ctx.state === 'suspended') {
+      await ctx.resume();
     }
 
-    init() {
-      if (!this.isSupported) return;
-      this.attachPlayerEvents();
-    }
-
-    attachPlayerEvents() {
-      if (this._bound) return;
-      const pc = window.playerCore;
-      if (!pc || typeof pc.on !== 'function') {
-        setTimeout(() => this.attachPlayerEvents(), 200);
-        return;
-      }
-
-      this._bound = true;
-
-      // Ничего не делаем: PlayerCore сам обновляет mediaSession (metadata + positionState).
-      // Оставлено как “якорь” модуля для совместимости.
-    }
+    // Some iOS versions also need a short silent play attempt to fully unlock.
+    // Howler has internal unlock, but we ensure resume at least.
+    unlocked = true;
+  } catch (e) {
+    // Do not throw. Never stop/play here (TЗ инвариант).
+    // Just mark as not unlocked so we can retry on next gesture.
+    unlocked = false;
   }
+}
 
-  window.BackgroundAudioManager = new BackgroundAudioManager();
-})();
+export function installIOSAudioUnlock() {
+  const handler = () => { unlockWebAudioOnce(); };
+
+  // pointerdown is the most reliable "gesture" signal across iOS Safari/PWA.
+  window.addEventListener('pointerdown', handler, { passive: true });
+  window.addEventListener('touchend', handler, { passive: true });
+  window.addEventListener('click', handler, { passive: true });
+}
