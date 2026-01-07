@@ -69,13 +69,16 @@ export class PlaybackCacheManager {
     const prev = [];
     const next = [];
 
-    for (let i = 1; i <= WINDOW_PREV && (idx - i) >= 0; i++) {
-      const t = pl[idx - i];
+    // ✅ TЗ 7.3: цикличность окна (wrap-around)
+    for (let i = 1; i <= WINDOW_PREV; i++) {
+      const pi = (idx - i + len) % len;
+      const t = pl[pi];
       if (t) prev.unshift(normUid(t.uid));
     }
 
-    for (let i = 1; i <= WINDOW_NEXT && (idx + i) < len; i++) {
-      const t = pl[idx + i];
+    for (let i = 1; i <= WINDOW_NEXT; i++) {
+      const ni = (idx + i) % len;
+      const t = pl[ni];
       if (t) next.push(normUid(t.uid));
     }
 
