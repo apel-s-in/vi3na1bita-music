@@ -612,8 +612,8 @@
     if (!block || block.__eventsBound) return;
     block.__eventsBound = true;
 
-    // Delegated clicks
-    on(block, 'click', (e) => {
+    // ✅ iOS Safari fix: используем и click, и pointerup для надёжности
+    const handleBlockAction = (e) => {
       const el = e.target?.closest?.('button, a');
       if (!el || !block.contains(el)) return;
 
@@ -658,7 +658,11 @@
           return;
         }
       }
-    });
+    };
+
+    on(block, 'click', handleBlockAction);
+    // iOS Safari: pointerup срабатывает надёжнее на touch
+    on(block, 'pointerup', handleBlockAction, { passive: false });
 
     // Volume slider (input)
     const volumeSlider = block.querySelector('#volume-slider');
