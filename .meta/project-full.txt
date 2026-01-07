@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-157056538f44a822d40ea13562f01f63c4d8863e.idx
-│   │       ├── pack-157056538f44a822d40ea13562f01f63c4d8863e.pack
-│   │       └── pack-157056538f44a822d40ea13562f01f63c4d8863e.rev
+│   │       ├── pack-f7536a7ea7f705d4fe13a244599c6e119b069647.idx
+│   │       ├── pack-f7536a7ea7f705d4fe13a244599c6e119b069647.pack
+│   │       └── pack-f7536a7ea7f705d4fe13a244599c6e119b069647.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -374,7 +374,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-07 17:14:20 UTC
+Сгенерировано: 2026-01-07 17:15:46 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -733,6 +733,31 @@ jobs:
   
   <!-- КРИТИЧНО: Howler.js должен загрузиться ПЕРВЫМ -->
   <script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js"></script>
+  
+  <!-- iOS audio unlock: необходим для воспроизведения на iOS -->
+  <script>
+    // iOS Safari требует user gesture для запуска AudioContext
+    (function() {
+      var unlocked = false;
+      function unlock() {
+        if (unlocked) return;
+        try {
+          var ctx = window.Howler && window.Howler.ctx;
+          if (ctx && ctx.state === 'suspended') {
+            ctx.resume().then(function() {
+              unlocked = true;
+              console.log('✅ iOS AudioContext unlocked');
+            });
+          } else {
+            unlocked = true;
+          }
+        } catch(e) {}
+      }
+      ['touchstart', 'touchend', 'pointerdown', 'click'].forEach(function(ev) {
+        document.addEventListener(ev, unlock, { passive: true, once: false });
+      });
+    })();
+  </script>
   
   <!-- Core -->
   <script src="./scripts/core/bootstrap.js"></script>
