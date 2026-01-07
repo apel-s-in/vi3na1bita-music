@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f13ff566f8cf2c30f8c26cb20cadeae701b07f48.idx
-│   │       ├── pack-f13ff566f8cf2c30f8c26cb20cadeae701b07f48.pack
-│   │       └── pack-f13ff566f8cf2c30f8c26cb20cadeae701b07f48.rev
+│   │       ├── pack-907b9b564c14070509a1493915cbbcd45db54a07.idx
+│   │       ├── pack-907b9b564c14070509a1493915cbbcd45db54a07.pack
+│   │       └── pack-907b9b564c14070509a1493915cbbcd45db54a07.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -374,7 +374,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-07 17:09:01 UTC
+Сгенерировано: 2026-01-07 17:11:54 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2052,7 +2052,15 @@ class AlbumsManager {
       iconEl.innerHTML = `<img src="${path1x}" srcset="${path2x} 2x" alt="${title}" draggable="false" loading="lazy" width="60" height="60">`;
 
       // ✅ КРИТИЧНО: Обработка кликов с проверкой активности
-      iconEl.addEventListener('click', () => this.handleAlbumIconClick(key));
+      // iOS Safari fix: используем pointerup для надёжности на touch-устройствах
+      const handleIconActivation = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.handleAlbumIconClick(key);
+      };
+      
+      iconEl.addEventListener('click', handleIconActivation);
+      iconEl.addEventListener('pointerup', handleIconActivation, { passive: false });
       
       container.appendChild(iconEl);
     });
@@ -2765,7 +2773,8 @@ class AlbumsManager {
            data-uid="${track.uid || ''}">
     `;
 
-    trackEl.addEventListener('click', (e) => {
+    // iOS Safari fix: обработка через pointerup + click
+    const handleTrackActivation = (e) => {
       if (e.target.classList.contains('like-star')) return;
 
       const albumData = this.albumsData.get(albumKey);
@@ -2825,10 +2834,19 @@ class AlbumsManager {
 
       // ensurePlayerBlock должен получать индекс текущей строки UI (чтобы вставить блок под неё)
       window.PlayerUI?.ensurePlayerBlock(index, { userInitiated: true });
-    });
+    };
+
+    trackEl.addEventListener('click', handleTrackActivation);
+    // iOS Safari: pointerup более надёжен на touch-устройствах
+    trackEl.addEventListener('pointerup', (e) => {
+      // Игнорируем если это был drag/scroll
+      if (e.pointerType === 'touch') {
+        handleTrackActivation(e);
+      }
+    }, { passive: true });
 
     const star = trackEl.querySelector('.like-star');
-    star?.addEventListener('click', (e) => {
+    const handleStarActivation = (e) => {
       e.preventDefault();
       e.stopPropagation();
 
@@ -2857,7 +2875,10 @@ class AlbumsManager {
         nextLiked,
         { source: 'album' }
       );
-    });
+    };
+
+    star?.addEventListener('click', handleStarActivation);
+    star?.addEventListener('pointerup', handleStarActivation, { passive: false });
 
     return trackEl;
   }
