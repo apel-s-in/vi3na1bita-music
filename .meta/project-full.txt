@@ -158,9 +158,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f35261e4c0664723f5561618dc5872be376700d9.idx
-│   │       ├── pack-f35261e4c0664723f5561618dc5872be376700d9.pack
-│   │       └── pack-f35261e4c0664723f5561618dc5872be376700d9.rev
+│   │       ├── pack-5c710c44c6a85c425a5786831810467dc122e854.idx
+│   │       ├── pack-5c710c44c6a85c425a5786831810467dc122e854.pack
+│   │       └── pack-5c710c44c6a85c425a5786831810467dc122e854.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -374,7 +374,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-07 16:54:37 UTC
+Сгенерировано: 2026-01-07 16:56:00 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1423,6 +1423,16 @@ self.addEventListener('message', (event) => {
 
         // 6. Инициализация дополнительных модулей
         this.initializeModules();
+
+        // ✅ iOS: audio unlock on first gesture (best-effort, no impact on playback)
+        try {
+          const ba = await import('./app/background-audio.js');
+          if (ba && typeof ba.installIOSAudioUnlock === 'function') {
+            ba.installIOSAudioUnlock();
+          }
+        } catch (e) {
+          console.warn('iOS audio unlock helper failed:', e);
+        }
 
         // 7. Восстановление состояния плеера (если есть сохранённый PlayerState)
         if (w.PlayerState && typeof w.PlayerState.apply === 'function') {
