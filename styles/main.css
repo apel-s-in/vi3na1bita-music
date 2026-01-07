@@ -231,6 +231,23 @@ header {
 
 .album-icon:active { transform: translateY(0) scale(0.95); }
 
+/* iOS touch fix */
+.album-icon,
+.track,
+.like-star,
+.player-control-btn,
+.sleep-timer-btn,
+.offline-btn,
+.lyrics-toggle-btn,
+.animation-btn,
+.pulse-btn,
+.karaoke-btn,
+.player-download-btn {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+}
+
 /* ===== Cover / gallery ===== */
 
 #cover-wrap {
