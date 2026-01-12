@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8172e5e486a92ca3ac8ba7723c53bc87c7192fe4.idx
-│   │       ├── pack-8172e5e486a92ca3ac8ba7723c53bc87c7192fe4.pack
-│   │       └── pack-8172e5e486a92ca3ac8ba7723c53bc87c7192fe4.rev
+│   │       ├── pack-a2433f5fd8de65f8323a7f41c8920bde8ae5ef92.idx
+│   │       ├── pack-a2433f5fd8de65f8323a7f41c8920bde8ae5ef92.pack
+│   │       └── pack-a2433f5fd8de65f8323a7f41c8920bde8ae5ef92.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-12 18:35:08 UTC
+Сгенерировано: 2026-01-12 18:35:39 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -10869,10 +10869,18 @@ window.FavoritesManager = new FavoritesManager();
 (function ModalsModule() {
   'use strict';
 
+  const U = window.Utils;
+
   const esc = (s) => {
     const fn = window.Utils?.escapeHtml;
     return (typeof fn === 'function') ? fn(String(s || '')) : String(s || '');
   };
+
+  const on = (el, ev, fn, opts) => (U?.dom?.on ? U.dom.on(el, ev, fn, opts) : (function() {
+    if (!el) return () => {};
+    el.addEventListener(ev, fn, opts);
+    return () => { try { el.removeEventListener(ev, fn, opts); } catch {} };
+  })());
 
   function getContainer() {
     return document.getElementById('modals-container') || document.body;
@@ -10916,12 +10924,12 @@ window.FavoritesManager = new FavoritesManager();
       if (typeof onClose === 'function') onClose();
     };
 
-    bg.addEventListener('click', (e) => {
+    on(bg, 'click', (e) => {
       if (e.target === bg) close();
     });
 
     const closeBtn = bg.querySelector('.bigclose');
-    if (closeBtn) closeBtn.addEventListener('click', close);
+    on(closeBtn, 'click', close);
 
     getContainer().appendChild(bg);
     return bg;
@@ -10968,12 +10976,12 @@ window.FavoritesManager = new FavoritesManager();
       onClose: onCancel
     });
 
-    modal.querySelector('[data-act="cancel"]')?.addEventListener('click', () => {
+    on(modal.querySelector('[data-act="cancel"]'), 'click', () => {
       try { modal.remove(); } catch {}
       if (typeof onCancel === 'function') onCancel();
     });
 
-    modal.querySelector('[data-act="confirm"]')?.addEventListener('click', () => {
+    on(modal.querySelector('[data-act="confirm"]'), 'click', () => {
       try { modal.remove(); } catch {}
       if (typeof onConfirm === 'function') onConfirm();
     });
@@ -11000,21 +11008,32 @@ window.FavoritesManager = new FavoritesManager();
     return `<div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-top:16px;">${btns}</div>`;
   }
 
+  /**
+   * Привязка действий к data-act кнопкам.
+   * Возвращает unbind-функцию (на будущее: централизованно чистить обработчики).
+   */
   function bindActions(modalEl, actions = {}) {
-    if (!modalEl || !actions || typeof actions !== 'object') return;
+    if (!modalEl || !actions || typeof actions !== 'object') return () => {};
+
+    const unsubs = [];
 
     Object.keys(actions).forEach((act) => {
       const fn = actions[act];
       if (typeof fn !== 'function') return;
 
       modalEl.querySelectorAll(`[data-act="${CSS.escape(act)}"]`).forEach((el) => {
-        el.addEventListener('click', (e) => {
+        const off = on(el, 'click', (e) => {
           e.preventDefault();
           e.stopPropagation();
           try { fn(e); } catch {}
         });
+        unsubs.push(off);
       });
     });
+
+    return () => {
+      unsubs.forEach((off) => { try { off(); } catch {} });
+    };
   }
 
   function offlineBody(state = {}) {
@@ -11226,14 +11245,11 @@ window.FavoritesManager = new FavoritesManager();
     `;
   }
 
-  // Публичный API
   window.Modals = {
     open,
     confirm,
     actionRow,
     bindActions,
-
-    // ✅ templates
     offlineBody
   };
 
