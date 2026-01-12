@@ -25,6 +25,12 @@ const MENU_CSS = `
 `;
 
 function injectCss() {
+  const U = window.Utils;
+  if (U?.dom?.createStyleOnce) {
+    U.dom.createStyleOnce('cloud-ctx-menu-css', MENU_CSS);
+    return;
+  }
+
   if (document.getElementById('cloud-ctx-menu-css')) return;
   const s = document.createElement('style');
   s.id = 'cloud-ctx-menu-css';
@@ -33,13 +39,17 @@ function injectCss() {
 }
 
 let activeMenu = null;
+let offDocClick = null;
 
 function closeActiveMenu() {
   if (activeMenu) {
-    activeMenu.remove();
+    try { activeMenu.remove(); } catch {}
     activeMenu = null;
   }
-  document.removeEventListener('click', onDocClick, true);
+  if (offDocClick) {
+    try { offDocClick(); } catch {}
+    offDocClick = null;
+  }
 }
 
 function onDocClick(e) {
@@ -49,6 +59,15 @@ function onDocClick(e) {
 }
 
 export function attachCloudMenu(opts = {}) {
+  const U = window.Utils;
+  const on = U?.dom?.on ? U.dom.on.bind(U.dom) : (el, ev, fn, o) => {
+    if (!el) return () => {};
+    el.addEventListener(ev, fn, o);
+    return () => el.removeEventListener(ev, fn, o);
+  };
+
+  const defer = U?.dom?.defer ? U.dom.defer.bind(U.dom) : (fn) => setTimeout(fn, 0);
+
   const root = opts.root;
   const onAddLock = opts.onAddLock;
   const onRemoveCache = opts.onRemoveCache;
@@ -64,21 +83,21 @@ export function attachCloudMenu(opts = {}) {
   const lockItem = document.createElement('div');
   lockItem.className = 'cloud-ctx-menu-item';
   lockItem.textContent = '🔒 Закрепить офлайн';
-  lockItem.onclick = (e) => {
+  on(lockItem, 'click', (e) => {
     e.stopPropagation();
     closeActiveMenu();
     if (typeof onAddLock === 'function') onAddLock();
-  };
+  });
   menu.appendChild(lockItem);
 
   const removeItem = document.createElement('div');
   removeItem.className = 'cloud-ctx-menu-item';
   removeItem.textContent = '🗑 Удалить из кэша';
-  removeItem.onclick = (e) => {
+  on(removeItem, 'click', (e) => {
     e.stopPropagation();
     closeActiveMenu();
     if (typeof onRemoveCache === 'function') onRemoveCache();
-  };
+  });
   menu.appendChild(removeItem);
 
   document.body.appendChild(menu);
@@ -94,12 +113,13 @@ export function attachCloudMenu(opts = {}) {
     top = rect.top - menu.offsetHeight - 4;
   }
 
-  menu.style.top = top + 'px';
-  menu.style.left = left + 'px';
+  menu.style.top = `${top}px`;
+  menu.style.left = `${left}px`;
 
   activeMenu = menu;
 
-  setTimeout(() => {
-    document.addEventListener('click', onDocClick, true);
-  }, 0);
+  defer(() => {
+    // capture=true чтобы закрываться раньше других обработчиков при клике вне меню
+    offDocClick = on(document, 'click', onDocClick, true);
+  });
 }
