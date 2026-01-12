@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-75ff2e2dd5dbd0c7252acd94bbce970479e161ec.idx
-│   │       ├── pack-75ff2e2dd5dbd0c7252acd94bbce970479e161ec.pack
-│   │       └── pack-75ff2e2dd5dbd0c7252acd94bbce970479e161ec.rev
+│   │       ├── pack-48b7535e430b86aaa80510ca1054aac3b604b9cc.idx
+│   │       ├── pack-48b7535e430b86aaa80510ca1054aac3b604b9cc.pack
+│   │       └── pack-48b7535e430b86aaa80510ca1054aac3b604b9cc.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-12 16:53:41 UTC
+Сгенерировано: 2026-01-12 16:54:42 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -11147,6 +11147,11 @@ class NotificationSystem {
     this.queue = [];
     this.isShowing = false;
     this.currentToast = null;
+
+    this.U = window.Utils;
+    this.on = (el, ev, fn, opts) => this.U.dom.on(el, ev, fn, opts);
+    this.raf = (fn) => this.U.dom.raf(fn);
+
     this.init();
   }
   
@@ -11196,8 +11201,7 @@ class NotificationSystem {
     this.container.appendChild(toastEl);
     this.currentToast = toastEl;
     
-    // Анимация появления
-    requestAnimationFrame(() => {
+    this.raf(() => {
       toastEl.classList.add('show');
     });
     
