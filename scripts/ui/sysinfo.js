@@ -4,18 +4,10 @@
 (function() {
   'use strict';
 
-  // ✅ единый форматтер (без дублей)
-  // sysinfo.js не ESM, поэтому импорт не используем
-  const formatBytes = (n) => {
-    const fn = window.Utils?.formatBytes;
-    if (typeof fn === 'function') return fn(n);
-    // fallback (минимальный; если utils.js не успел загрузиться)
-    const b = Number(n) || 0;
-    if (b < 1024) return `${Math.floor(b)} B`;
-    if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
-    if (b < 1024 * 1024 * 1024) return `${(b / (1024 * 1024)).toFixed(1)} MB`;
-    return `${(b / (1024 * 1024 * 1024)).toFixed(2)} GB`;
-  };
+  const U = window.Utils;
+  const $ = (id) => U.dom.byId(id);
+  const on = (el, ev, fn, opts) => U.dom.on(el, ev, fn, opts);
+  const formatBytes = (n) => U.formatBytes(n);
 
   class SystemInfoManager {
     constructor() {
@@ -25,14 +17,14 @@
 
     init() {
       // Кнопка открытия
-      const button = document.getElementById('sysinfo-btn');
+      const button = $('sysinfo-btn');
       if (button) {
         button.style.display = '';
-        button.addEventListener('click', () => this.show());
+        on(button, 'click', () => this.show());
       }
 
       // Горячая клавиша Ctrl+I
-      document.addEventListener('keydown', (e) => {
+      on(document, 'keydown', (e) => {
         if ((e.ctrlKey || e.metaKey) && e.key === 'i') {
           e.preventDefault();
           this.show();
