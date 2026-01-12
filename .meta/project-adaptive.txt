@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-0c14b6d7170a62c225f290ebb90c11fcc83b86b1.idx
-│   │       ├── pack-0c14b6d7170a62c225f290ebb90c11fcc83b86b1.pack
-│   │       └── pack-0c14b6d7170a62c225f290ebb90c11fcc83b86b1.rev
+│   │       ├── pack-113addb5ab76200b1934526357baace0526091be.idx
+│   │       ├── pack-113addb5ab76200b1934526357baace0526091be.pack
+│   │       └── pack-113addb5ab76200b1934526357baace0526091be.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-12 14:15:25 UTC
+Сгенерировано: 2026-01-12 14:23:45 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -889,6 +889,23 @@ jobs:
   <div id="modals-container"></div>
 
   <!-- Player template: разметка блока плеера вынесена из scripts/app/player-ui.js -->
+  <!-- Mini-player header template (now-playing) -->
+  <template id="mini-header-template">
+    <div class="mini-now" id="mini-now">
+      <span class="tnum" id="mini-now-num">--.</span>
+      <span class="track-title" id="mini-now-title">—</span>
+      <img src="img/star2.png" class="like-star" id="mini-now-star" alt="звезда">
+    </div>
+  </template>
+
+  <!-- Next-up template (now-playing) -->
+  <template id="next-up-template">
+    <div class="next-up" id="next-up">
+      <span class="label">Далее:</span>
+      <span class="title" title="">—</span>
+    </div>
+  </template>
+
   <template id="player-template">
     <div class="lyrics-player-block" id="lyricsplayerblock">
       <div id="lyrics-window" class="lyrics-normal">
