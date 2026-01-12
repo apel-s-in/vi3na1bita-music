@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-dc301361b91f35975c38a41a7a4f578a3f01e724.idx
-│   │       ├── pack-dc301361b91f35975c38a41a7a4f578a3f01e724.pack
-│   │       └── pack-dc301361b91f35975c38a41a7a4f578a3f01e724.rev
+│   │       ├── pack-60b7046e01fe602e3b6c06dfe7840a787e230c13.idx
+│   │       ├── pack-60b7046e01fe602e3b6c06dfe7840a787e230c13.pack
+│   │       └── pack-60b7046e01fe602e3b6c06dfe7840a787e230c13.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -380,7 +380,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-12 11:22:04 UTC
+Сгенерировано: 2026-01-12 13:07:34 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2878,14 +2878,9 @@ class AlbumsManager {
       window.PlayerUI?.ensurePlayerBlock(index, { userInitiated: true });
     };
 
+    // ✅ Один источник клика: click.
+    // pointerup+click часто дают двойное срабатывание (звезда/плей/двойной звук).
     trackEl.addEventListener('click', handleTrackActivation);
-    // iOS Safari: pointerup более надёжен на touch-устройствах
-    trackEl.addEventListener('pointerup', (e) => {
-      // Игнорируем если это был drag/scroll
-      if (e.pointerType === 'touch') {
-        handleTrackActivation(e);
-      }
-    }, { passive: true });
 
     const star = trackEl.querySelector('.like-star');
     const handleStarActivation = (e) => {
@@ -2919,8 +2914,8 @@ class AlbumsManager {
       );
     };
 
+    // ✅ Один источник клика: click (иначе на touch будет toggle дважды).
     star?.addEventListener('click', handleStarActivation);
-    star?.addEventListener('pointerup', handleStarActivation, { passive: false });
 
     return trackEl;
   }
