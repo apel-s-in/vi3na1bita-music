@@ -6,6 +6,11 @@ class NotificationSystem {
     this.queue = [];
     this.isShowing = false;
     this.currentToast = null;
+
+    this.U = window.Utils;
+    this.on = (el, ev, fn, opts) => this.U.dom.on(el, ev, fn, opts);
+    this.raf = (fn) => this.U.dom.raf(fn);
+
     this.init();
   }
   
@@ -55,8 +60,7 @@ class NotificationSystem {
     this.container.appendChild(toastEl);
     this.currentToast = toastEl;
     
-    // Анимация появления
-    requestAnimationFrame(() => {
+    this.raf(() => {
       toastEl.classList.add('show');
     });
     
