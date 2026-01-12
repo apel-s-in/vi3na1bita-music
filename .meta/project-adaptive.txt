@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-113addb5ab76200b1934526357baace0526091be.idx
-│   │       ├── pack-113addb5ab76200b1934526357baace0526091be.pack
-│   │       └── pack-113addb5ab76200b1934526357baace0526091be.rev
+│   │       ├── pack-c71a0ef91e126999da1ac699dc24191b711e964a.idx
+│   │       ├── pack-c71a0ef91e126999da1ac699dc24191b711e964a.pack
+│   │       └── pack-c71a0ef91e126999da1ac699dc24191b711e964a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-12 14:23:45 UTC
+Сгенерировано: 2026-01-12 14:24:54 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4398,15 +4398,26 @@ export function attachPlaybackCache() {
   }
 
   function createMiniHeader() {
-    const header = document.createElement('div');
-    header.className = 'mini-now';
-    header.id = 'mini-now';
+    const tpl = document.getElementById('mini-header-template');
 
-    header.innerHTML = `
-      <span class="tnum" id="mini-now-num">--.</span>
-      <span class="track-title" id="mini-now-title">—</span>
-      <img src="img/star2.png" class="like-star" id="mini-now-star" alt="звезда">
-    `;
+    let header = null;
+
+    if (tpl && 'content' in tpl) {
+      const node = tpl.content.cloneNode(true);
+      header = node.querySelector('#mini-now');
+    }
+
+    if (!header) {
+      // fallback (best-effort): не падаем
+      header = document.createElement('div');
+      header.className = 'mini-now';
+      header.id = 'mini-now';
+      header.innerHTML = `
+        <span class="tnum" id="mini-now-num">--.</span>
+        <span class="track-title" id="mini-now-title">—</span>
+        <img src="img/star2.png" class="like-star" id="mini-now-star" alt="звезда">
+      `;
+    }
 
     on(header, 'click', (e) => {
       if (e.target && e.target.id === 'mini-now-star') return;
@@ -4424,16 +4435,27 @@ export function attachPlaybackCache() {
   }
 
   function createNextUpElement() {
-    const nextUp = document.createElement('div');
-    nextUp.className = 'next-up';
-    nextUp.id = 'next-up';
+    const tpl = document.getElementById('next-up-template');
 
-    nextUp.innerHTML = `
-      <span class="label">Далее:</span>
-      <span class="title" title="">—</span>
-    `;
+    let el = null;
 
-    return nextUp;
+    if (tpl && 'content' in tpl) {
+      const node = tpl.content.cloneNode(true);
+      el = node.querySelector('#next-up');
+    }
+
+    if (!el) {
+      // fallback (best-effort)
+      el = document.createElement('div');
+      el.className = 'next-up';
+      el.id = 'next-up';
+      el.innerHTML = `
+        <span class="label">Далее:</span>
+        <span class="title" title="">—</span>
+      `;
+    }
+
+    return el;
   }
 
   // =========================
