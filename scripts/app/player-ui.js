@@ -391,15 +391,26 @@
   }
 
   function createMiniHeader() {
-    const header = document.createElement('div');
-    header.className = 'mini-now';
-    header.id = 'mini-now';
+    const tpl = document.getElementById('mini-header-template');
 
-    header.innerHTML = `
-      <span class="tnum" id="mini-now-num">--.</span>
-      <span class="track-title" id="mini-now-title">—</span>
-      <img src="img/star2.png" class="like-star" id="mini-now-star" alt="звезда">
-    `;
+    let header = null;
+
+    if (tpl && 'content' in tpl) {
+      const node = tpl.content.cloneNode(true);
+      header = node.querySelector('#mini-now');
+    }
+
+    if (!header) {
+      // fallback (best-effort): не падаем
+      header = document.createElement('div');
+      header.className = 'mini-now';
+      header.id = 'mini-now';
+      header.innerHTML = `
+        <span class="tnum" id="mini-now-num">--.</span>
+        <span class="track-title" id="mini-now-title">—</span>
+        <img src="img/star2.png" class="like-star" id="mini-now-star" alt="звезда">
+      `;
+    }
 
     on(header, 'click', (e) => {
       if (e.target && e.target.id === 'mini-now-star') return;
@@ -417,16 +428,27 @@
   }
 
   function createNextUpElement() {
-    const nextUp = document.createElement('div');
-    nextUp.className = 'next-up';
-    nextUp.id = 'next-up';
+    const tpl = document.getElementById('next-up-template');
 
-    nextUp.innerHTML = `
-      <span class="label">Далее:</span>
-      <span class="title" title="">—</span>
-    `;
+    let el = null;
 
-    return nextUp;
+    if (tpl && 'content' in tpl) {
+      const node = tpl.content.cloneNode(true);
+      el = node.querySelector('#next-up');
+    }
+
+    if (!el) {
+      // fallback (best-effort)
+      el = document.createElement('div');
+      el.className = 'next-up';
+      el.id = 'next-up';
+      el.innerHTML = `
+        <span class="label">Далее:</span>
+        <span class="title" title="">—</span>
+      `;
+    }
+
+    return el;
   }
 
   // =========================
