@@ -4,6 +4,9 @@
 class NavigationManager {
   constructor() {
     this.activeModal = null;
+    this.U = window.Utils;
+    this.$ = (id) => this.U.dom.byId(id);
+    this.on = (el, ev, fn, opts) => this.U.dom.on(el, ev, fn, opts);
   }
 
   initialize() {
@@ -12,21 +15,26 @@ class NavigationManager {
   }
 
   setupEventListeners() {
-    const feedbackLink = document.getElementById('feedback-link');
-    feedbackLink?.addEventListener('click', () => this.showFeedbackModal());
+    const feedbackLink = this.$('feedback-link');
+    this.on(feedbackLink, 'click', (e) => {
+      e.preventDefault();
+      this.showFeedbackModal();
+    });
 
-    const supportLink = document.getElementById('support-link');
+    const supportLink = this.$('support-link');
     if (supportLink) {
       supportLink.href = window.APP_CONFIG?.SUPPORT_URL || 'https://example.com/support';
     }
 
-    const hotkeysBtn = document.getElementById('hotkeys-btn');
-    hotkeysBtn?.addEventListener('click', () => this.showHotkeysModal());
+    const hotkeysBtn = this.$('hotkeys-btn');
+    this.on(hotkeysBtn, 'click', (e) => {
+      e.preventDefault();
+      this.showHotkeysModal();
+    });
   }
 
   showFeedbackModal() {
     this.closeModal();
-
     if (!window.Modals?.open) return;
 
     this.activeModal = window.Modals.open({
@@ -56,7 +64,6 @@ class NavigationManager {
 
   showHotkeysModal() {
     this.closeModal();
-
     if (!window.Modals?.open) return;
 
     this.activeModal = window.Modals.open({
