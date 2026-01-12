@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d563ec0f7391e94bb8fd63f58833e1d1cc5e3e0a.idx
-│   │       ├── pack-d563ec0f7391e94bb8fd63f58833e1d1cc5e3e0a.pack
-│   │       └── pack-d563ec0f7391e94bb8fd63f58833e1d1cc5e3e0a.rev
+│   │       ├── pack-9e6b1e3b223be59137b9131d9b430707c0603e77.idx
+│   │       ├── pack-9e6b1e3b223be59137b9131d9b430707c0603e77.pack
+│   │       └── pack-9e6b1e3b223be59137b9131d9b430707c0603e77.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-12 19:54:46 UTC
+Сгенерировано: 2026-01-12 19:55:07 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2813,45 +2813,8 @@ export default AlbumsManager;
 //=================================================
 // FILE: /scripts/app/background-audio.js
 // scripts/app/background-audio.js
-// iOS audio unlock helper (no imports; Howler is loaded from CDN in index.html)
-
-let unlocked = false;
-
-function isIOS() {
-  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-}
-
-// Best-effort: iOS needs explicit resume from a user gesture.
-async function unlockWebAudioOnce() {
-  if (unlocked) return;
-  if (!isIOS()) return;
-
-  try {
-    const Howler = window.Howler;
-    const ctx = Howler && Howler.ctx;
-
-    if (ctx && ctx.state === 'suspended') {
-      await ctx.resume();
-    }
-
-    unlocked = true;
-  } catch (e) {
-    // Never throw. Never stop/play here (player invariant).
-    unlocked = false;
-  }
-}
-
-function installIOSAudioUnlock() {
-  const handler = () => { unlockWebAudioOnce(); };
-
-  // pointerdown is the most reliable gesture on iOS Safari/PWA
-  window.addEventListener('pointerdown', handler, { passive: true });
-  window.addEventListener('touchend', handler, { passive: true });
-  window.addEventListener('click', handler, { passive: true });
-}
-
-// Make function available globally
-window.installIOSAudioUnlock = installIOSAudioUnlock;
+// Deprecated: iOS audio unlock is handled ONLY inside src/PlayerCore.js
+(function () { 'use strict'; })();
 
 //=================================================
 // FILE: /scripts/app/gallery.js
