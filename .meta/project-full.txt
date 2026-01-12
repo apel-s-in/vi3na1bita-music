@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-cc38c7b32ec6ab9a41b1b0b61a84e022be586fd6.idx
-│   │       ├── pack-cc38c7b32ec6ab9a41b1b0b61a84e022be586fd6.pack
-│   │       └── pack-cc38c7b32ec6ab9a41b1b0b61a84e022be586fd6.rev
+│   │       ├── pack-562ebc5230274d08e81fd9278e7d655ec4fedef4.idx
+│   │       ├── pack-562ebc5230274d08e81fd9278e7d655ec4fedef4.pack
+│   │       └── pack-562ebc5230274d08e81fd9278e7d655ec4fedef4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-12 16:51:34 UTC
+Сгенерировано: 2026-01-12 16:52:42 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -12070,8 +12070,9 @@ export function closeOfflineModal() {
   const w = window;
   const U = w.Utils;
 
-  const $ = (id) => (U?.dom?.byId ? U.dom.byId(id) : document.getElementById(id));
-  const on = (el, ev, fn, opts) => { if (el) el.addEventListener(ev, fn, opts); };
+  // Единый DOM helpers слой
+  const $ = (id) => U.dom.byId(id);
+  const on = (el, ev, fn, opts) => U.dom.on(el, ev, fn, opts);
 
   const LS_KEY = 'sleepTimerTarget'; // back-compat: уже используется текущим проектом (epoch ms)
 
@@ -12082,17 +12083,13 @@ export function closeOfflineModal() {
   let coreBound = false;
 
   function lsGetTarget() {
-    try {
-      const v = localStorage.getItem(LS_KEY);
-      const n = parseInt(String(v ?? ''), 10);
-      return Number.isFinite(n) ? n : 0;
-    } catch {
-      return 0;
-    }
+    const v = U.lsGet(LS_KEY, '0');
+    const n = parseInt(String(v ?? ''), 10);
+    return Number.isFinite(n) ? n : 0;
   }
 
   function lsSetTarget(ts) {
-    try { localStorage.setItem(LS_KEY, String(ts)); } catch {}
+    U.lsSet(LS_KEY, String(ts));
   }
 
   function lsClearTarget() {
