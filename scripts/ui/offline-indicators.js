@@ -9,7 +9,19 @@ const ICON_CSS = `
   .offline-ico.cloud{width:1em}
 `;
 
+const st = {
+  attached: false,
+  mo: null,
+  unsubs: []
+};
+
 function injectCss() {
+  const U = window.Utils;
+  if (U?.dom?.createStyleOnce) {
+    U.dom.createStyleOnce('offline-ico-css', ICON_CSS);
+    return;
+  }
+
   if (document.getElementById('offline-ico-css')) return;
   const s = document.createElement('style');
   s.id = 'offline-ico-css';
@@ -49,6 +61,13 @@ function ensureSlot(row) {
 }
 
 function renderIndicator(row, state, uid) {
+  const U = window.Utils;
+  const on = U?.dom?.on ? U.dom.on.bind(U.dom) : (el, ev, fn, opts) => {
+    if (!el) return () => {};
+    el.addEventListener(ev, fn, opts);
+    return () => el.removeEventListener(ev, fn, opts);
+  };
+
   const slot = ensureSlot(row);
   slot.innerHTML = '';
 
@@ -62,11 +81,13 @@ function renderIndicator(row, state, uid) {
     el.title = 'Закреплено офлайн';
     el.dataset.uid = uid;
     el.dataset.active = 'true';
-    el.addEventListener('click', async (e) => {
+
+    on(el, 'click', async (e) => {
       e.stopPropagation();
       try { if (mgr) await mgr.unpin(uid); } catch {}
       refreshRow(row);
     });
+
     slot.appendChild(el);
     return;
   }
@@ -78,7 +99,7 @@ function renderIndicator(row, state, uid) {
     el.title = 'Доступно офлайн по облаку';
     el.dataset.uid = uid;
 
-    el.addEventListener('click', (e) => {
+    on(el, 'click', (e) => {
       e.stopPropagation();
       attachCloudMenu({
         root: el,
@@ -106,7 +127,7 @@ function renderIndicator(row, state, uid) {
   }
 
   el.title = 'Закрепить офлайн';
-  el.addEventListener('click', async (e) => {
+  on(el, 'click', async (e) => {
     e.stopPropagation();
     try {
       if (mgr) {
@@ -126,9 +147,7 @@ async function refreshRow(row) {
   const uid = findUidForRow(row);
   const mgr = window.OfflineUI?.offlineManager;
 
-  if (!mgr) {
-    return; 
-  }
+  if (!mgr) return;
 
   if (!uid) {
     renderIndicator(row, { pinned: false, cloud: false, cachedComplete: false, unknown: true }, '');
@@ -155,36 +174,64 @@ function refreshAll() {
   }, 50);
 }
 
-function bindLiveUpdates() {
+function bindLiveUpdatesOnce() {
+  const U = window.Utils;
   const mgr = window.OfflineUI?.offlineManager;
   if (!mgr) return;
 
-  mgr.on('progress', (ev) => {
-    const uid = String(ev?.uid || '').trim();
-    if (!uid) return;
+  const onWin = (ev, fn) => (U?.dom?.on ? U.dom.on(window, ev, fn) : (function() {
+    window.addEventListener(ev, fn);
+    return () => window.removeEventListener(ev, fn);
+  })());
 
-    const rows = document.querySelectorAll(`#track-list .track[data-uid="${CSS.escape(uid)}"]`);
-    rows.forEach((row) => refreshRow(row));
-  });
+  // progress subscription (OfflineManager.on returns unsubscribe)
+  try {
+    const off = mgr.on('progress', (ev) => {
+      const uid = String(ev?.uid || '').trim();
+      if (!uid) return;
 
-  window.addEventListener('favorites:changed', () => refreshAll());
-  window.addEventListener('favorites:refsChanged', () => refreshAll());
+      const rows = document.querySelectorAll(`#track-list .track[data-uid="${CSS.escape(uid)}"]`);
+      rows.forEach((row) => refreshRow(row));
+    });
+    if (typeof off === 'function') st.unsubs.push(off);
+  } catch {}
+
+  st.unsubs.push(onWin('favorites:changed', () => refreshAll()));
+  st.unsubs.push(onWin('favorites:refsChanged', () => refreshAll()));
 }
 
-export function attachOfflineIndicators() {
-  injectCss();
-  refreshAll();
+function attachMutationObserverOnce() {
+  if (st.mo) return;
 
   const root = document.getElementById('track-list') || document.body;
-  const mo = new MutationObserver((muts) => {
+
+  st.mo = new MutationObserver((muts) => {
     let need = false;
     for (const m of muts) {
-      if (m.addedNodes && m.addedNodes.length) need = true;
-      if (m.type === 'childList') need = true;
+      if (m.type === 'childList') {
+        if ((m.addedNodes && m.addedNodes.length) || (m.removedNodes && m.removedNodes.length)) {
+          need = true;
+          break;
+        }
+      }
     }
     if (need) refreshAll();
   });
-  mo.observe(root, { childList: true, subtree: true });
 
-  bindLiveUpdates();
+  st.mo.observe(root, { childList: true, subtree: true });
+}
+
+export function attachOfflineIndicators() {
+  // ✅ singleton: повторный вызов не плодит observers/listeners
+  if (st.attached) {
+    refreshAll();
+    return;
+  }
+  st.attached = true;
+
+  injectCss();
+  refreshAll();
+
+  attachMutationObserverOnce();
+  bindLiveUpdatesOnce();
 }
