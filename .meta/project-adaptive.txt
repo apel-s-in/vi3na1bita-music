@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-562ebc5230274d08e81fd9278e7d655ec4fedef4.idx
-│   │       ├── pack-562ebc5230274d08e81fd9278e7d655ec4fedef4.pack
-│   │       └── pack-562ebc5230274d08e81fd9278e7d655ec4fedef4.rev
+│   │       ├── pack-75ff2e2dd5dbd0c7252acd94bbce970479e161ec.idx
+│   │       ├── pack-75ff2e2dd5dbd0c7252acd94bbce970479e161ec.pack
+│   │       └── pack-75ff2e2dd5dbd0c7252acd94bbce970479e161ec.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-12 16:52:42 UTC
+Сгенерировано: 2026-01-12 16:53:41 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -12442,18 +12442,10 @@ export function closeOfflineModal() {
 (function() {
   'use strict';
 
-  // ✅ единый форматтер (без дублей)
-  // sysinfo.js не ESM, поэтому импорт не используем
-  const formatBytes = (n) => {
-    const fn = window.Utils?.formatBytes;
-    if (typeof fn === 'function') return fn(n);
-    // fallback (минимальный; если utils.js не успел загрузиться)
-    const b = Number(n) || 0;
-    if (b < 1024) return `${Math.floor(b)} B`;
-    if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
-    if (b < 1024 * 1024 * 1024) return `${(b / (1024 * 1024)).toFixed(1)} MB`;
-    return `${(b / (1024 * 1024 * 1024)).toFixed(2)} GB`;
-  };
+  const U = window.Utils;
+  const $ = (id) => U.dom.byId(id);
+  const on = (el, ev, fn, opts) => U.dom.on(el, ev, fn, opts);
+  const formatBytes = (n) => U.formatBytes(n);
 
   class SystemInfoManager {
     constructor() {
@@ -12463,14 +12455,14 @@ export function closeOfflineModal() {
 
     init() {
       // Кнопка открытия
-      const button = document.getElementById('sysinfo-btn');
+      const button = $('sysinfo-btn');
       if (button) {
         button.style.display = '';
-        button.addEventListener('click', () => this.show());
+        on(button, 'click', () => this.show());
       }
 
       // Горячая клавиша Ctrl+I
-      document.addEventListener('keydown', (e) => {
+      on(document, 'keydown', (e) => {
         if ((e.ctrlKey || e.metaKey) && e.key === 'i') {
           e.preventDefault();
           this.show();
