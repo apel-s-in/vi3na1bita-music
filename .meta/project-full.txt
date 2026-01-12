@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-314c26b92917581bb9007bd1561df26a5b2b4892.idx
-│   │       ├── pack-314c26b92917581bb9007bd1561df26a5b2b4892.pack
-│   │       └── pack-314c26b92917581bb9007bd1561df26a5b2b4892.rev
+│   │       ├── pack-8172e5e486a92ca3ac8ba7723c53bc87c7192fe4.idx
+│   │       ├── pack-8172e5e486a92ca3ac8ba7723c53bc87c7192fe4.pack
+│   │       └── pack-8172e5e486a92ca3ac8ba7723c53bc87c7192fe4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-12 18:34:41 UTC
+Сгенерировано: 2026-01-12 18:35:07 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3532,99 +3532,109 @@ if (!window.OfflineUI || typeof window.OfflineUI !== 'object') {
 export const OfflineUI = window.OfflineUI;
 
 const ALERT_KEY = 'offline:alert:v1';
+
+function readAlertFlag() {
+  // { on, ts, reason } or null
+  const j = window.Utils?.lsGetJson ? window.Utils.lsGetJson(ALERT_KEY, null) : null;
+  return !!j?.on;
+}
+
+function ensureAlertBadge(btn) {
+  if (!btn) return null;
+
+  let badge = document.getElementById('offline-alert-badge');
+  if (badge) return badge;
+
+  badge = document.createElement('span');
+  badge.id = 'offline-alert-badge';
+  badge.textContent = '!';
+  badge.style.display = 'none';
+  badge.style.marginRight = '8px';
+  badge.style.fontWeight = '900';
+  badge.style.color = '#ffcc00';
+  badge.style.cursor = 'pointer';
+  badge.title = 'Есть треки для обновления';
+
+  btn.parentNode.insertBefore(badge, btn);
+
+  const on = window.Utils?.dom?.on || ((el, ev, fn, opts) => {
+    if (!el) return () => {};
+    el.addEventListener(ev, fn, opts);
+    return () => el.removeEventListener(ev, fn, opts);
+  });
+
+  on(badge, 'click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    window.NotificationSystem?.info('Есть треки для обновления', 6000); // x2 длительности
+  });
+
+  return badge;
+}
+
 function attachOfflineAlertIndicator() {
-  const btn = document.getElementById('offline-btn');
+  const U = window.Utils;
+  const btn = U?.dom?.byId ? U.dom.byId('offline-btn') : document.getElementById('offline-btn');
   if (!btn) return;
 
-  // Вставляем "!" слева от кнопки
-  let badge = document.getElementById('offline-alert-badge');
-  if (!badge) {
-    badge = document.createElement('span');
-    badge.id = 'offline-alert-badge';
-    badge.textContent = '!';
-    badge.style.display = 'none';
-    badge.style.marginRight = '8px';
-    badge.style.fontWeight = '900';
-    badge.style.color = '#ffcc00';
-    badge.style.cursor = 'pointer';
-    badge.title = 'Есть треки для обновления';
-
-    btn.parentNode.insertBefore(badge, btn);
-
-    badge.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      window.NotificationSystem?.info('Есть треки для обновления', 6000); // x2 длительности
-    });
-  }
-
-  const readAlert = () => {
-    try {
-      const raw = localStorage.getItem('offline:alert:v1');
-      if (!raw) return { on: false };
-      return JSON.parse(raw) || { on: false };
-    } catch {
-      return { on: false };
-    }
-  };
+  const badge = ensureAlertBadge(btn);
+  if (!badge) return;
 
   const render = () => {
-    const a = readAlert();
-    badge.style.display = a?.on ? '' : 'none';
+    badge.style.display = readAlertFlag() ? '' : 'none';
   };
 
   window.addEventListener('offline:uiChanged', render);
   render();
 }
 
-function readAlert() {
-  try {
-    const raw = localStorage.getItem(ALERT_KEY);
-    const j = raw ? JSON.parse(raw) : null;
-    return !!j?.on;
-  } catch {
-    return false;
-  }
-}
-
 function setOfflineBtnUI() {
-  const btn = document.getElementById('offline-btn');
+  const U = window.Utils;
+  const btn = U?.dom?.byId ? U.dom.byId('offline-btn') : document.getElementById('offline-btn');
   if (!btn) return;
 
   const mgr = window.OfflineUI?.offlineManager;
   const isOffline = !!mgr?.isOfflineMode?.();
 
   btn.textContent = 'OFFLINE';
-
   btn.classList.toggle('offline', isOffline);
   btn.classList.toggle('online', !isOffline);
-
-  btn.classList.toggle('alert', readAlert());
+  btn.classList.toggle('alert', readAlertFlag());
 }
 
 export function attachOfflineUI() {
+  const U = window.Utils;
+
   if (window.OfflineUI && window.OfflineUI.offlineManager) {
+    attachOfflineAlertIndicator();
     setOfflineBtnUI();
     return;
   }
 
   const mgr = new OfflineManager();
   mgr.initialize();
-  
+
   if (!window.OfflineUI) window.OfflineUI = {};
   window.OfflineUI.offlineManager = mgr;
-  
   OfflineUI.offlineManager = mgr;
 
-  const btn = document.getElementById('offline-btn');
+  const btn = U?.dom?.byId ? U.dom.byId('offline-btn') : document.getElementById('offline-btn');
+
   if (btn) {
-    btn.addEventListener('click', (e) => {
+    const on = U?.dom?.on || ((el, ev, fn, opts) => {
+      if (!el) return () => {};
+      el.addEventListener(ev, fn, opts);
+      return () => el.removeEventListener(ev, fn, opts);
+    });
+
+    on(btn, 'click', (e) => {
       e.preventDefault();
       e.stopPropagation();
       openOfflineModal();
     });
   }
 
+  attachOfflineAlertIndicator();
   setOfflineBtnUI();
 
   window.addEventListener('offline:uiChanged', () => setOfflineBtnUI());
