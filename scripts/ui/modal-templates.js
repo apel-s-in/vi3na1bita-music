@@ -5,10 +5,18 @@
 (function ModalsModule() {
   'use strict';
 
+  const U = window.Utils;
+
   const esc = (s) => {
     const fn = window.Utils?.escapeHtml;
     return (typeof fn === 'function') ? fn(String(s || '')) : String(s || '');
   };
+
+  const on = (el, ev, fn, opts) => (U?.dom?.on ? U.dom.on(el, ev, fn, opts) : (function() {
+    if (!el) return () => {};
+    el.addEventListener(ev, fn, opts);
+    return () => { try { el.removeEventListener(ev, fn, opts); } catch {} };
+  })());
 
   function getContainer() {
     return document.getElementById('modals-container') || document.body;
@@ -52,12 +60,12 @@
       if (typeof onClose === 'function') onClose();
     };
 
-    bg.addEventListener('click', (e) => {
+    on(bg, 'click', (e) => {
       if (e.target === bg) close();
     });
 
     const closeBtn = bg.querySelector('.bigclose');
-    if (closeBtn) closeBtn.addEventListener('click', close);
+    on(closeBtn, 'click', close);
 
     getContainer().appendChild(bg);
     return bg;
@@ -104,12 +112,12 @@
       onClose: onCancel
     });
 
-    modal.querySelector('[data-act="cancel"]')?.addEventListener('click', () => {
+    on(modal.querySelector('[data-act="cancel"]'), 'click', () => {
       try { modal.remove(); } catch {}
       if (typeof onCancel === 'function') onCancel();
     });
 
-    modal.querySelector('[data-act="confirm"]')?.addEventListener('click', () => {
+    on(modal.querySelector('[data-act="confirm"]'), 'click', () => {
       try { modal.remove(); } catch {}
       if (typeof onConfirm === 'function') onConfirm();
     });
@@ -136,21 +144,32 @@
     return `<div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-top:16px;">${btns}</div>`;
   }
 
+  /**
+   * Привязка действий к data-act кнопкам.
+   * Возвращает unbind-функцию (на будущее: централизованно чистить обработчики).
+   */
   function bindActions(modalEl, actions = {}) {
-    if (!modalEl || !actions || typeof actions !== 'object') return;
+    if (!modalEl || !actions || typeof actions !== 'object') return () => {};
+
+    const unsubs = [];
 
     Object.keys(actions).forEach((act) => {
       const fn = actions[act];
       if (typeof fn !== 'function') return;
 
       modalEl.querySelectorAll(`[data-act="${CSS.escape(act)}"]`).forEach((el) => {
-        el.addEventListener('click', (e) => {
+        const off = on(el, 'click', (e) => {
           e.preventDefault();
           e.stopPropagation();
           try { fn(e); } catch {}
         });
+        unsubs.push(off);
       });
     });
+
+    return () => {
+      unsubs.forEach((off) => { try { off(); } catch {} });
+    };
   }
 
   function offlineBody(state = {}) {
@@ -362,14 +381,11 @@
     `;
   }
 
-  // Публичный API
   window.Modals = {
     open,
     confirm,
     actionRow,
     bindActions,
-
-    // ✅ templates
     offlineBody
   };
 
