@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e00e4ed73698ed21c6ffdbe98625844c5c09f9f5.idx
-│   │       ├── pack-e00e4ed73698ed21c6ffdbe98625844c5c09f9f5.pack
-│   │       └── pack-e00e4ed73698ed21c6ffdbe98625844c5c09f9f5.rev
+│   │       ├── pack-cc10db4d300472403b869c29f9bc4d9f0a98ed79.idx
+│   │       ├── pack-cc10db4d300472403b869c29f9bc4d9f0a98ed79.pack
+│   │       └── pack-cc10db4d300472403b869c29f9bc4d9f0a98ed79.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -380,7 +380,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-12 13:08:33 UTC
+Сгенерировано: 2026-01-12 13:09:39 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4838,9 +4838,8 @@ export function attachPlaybackCache() {
       }
     };
 
+    // ✅ Один источник кликов: click (pointerup + click даёт дубль на touch).
     on(block, 'click', handleBlockAction);
-    // iOS Safari: pointerup срабатывает надёжнее на touch
-    on(block, 'pointerup', handleBlockAction, { passive: false });
 
     // Volume slider (input)
     const volumeSlider = block.querySelector('#volume-slider');
