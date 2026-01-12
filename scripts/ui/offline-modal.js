@@ -8,8 +8,6 @@ import { formatBytes, getNetworkStatusSafe } from './ui-utils.js';
 const LS_LIMIT_MODE = 'offline:cacheLimitMode:v1'; // 'auto'|'manual'
 const LS_LIMIT_MB = 'offline:cacheLimitMB:v1';
 
-const MB = 1024 * 1024;
-
 const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 const toInt = (v, d = 0) => {
   const n = parseInt(String(v ?? ''), 10);
@@ -19,8 +17,8 @@ const q = (v) => (String(v || '').toLowerCase() === 'lo' ? 'lo' : 'hi');
 
 const fmtListen = (sec) => {
   const s = Math.max(0, Number(sec) || 0);
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
+  const h = (s / 3600) | 0;
+  const m = ((s % 3600) / 60) | 0;
   return h > 0 ? `${h}ч ${m}м` : `${m}м`;
 };
 
@@ -44,7 +42,7 @@ const writeLimit = (mode, mb) => {
   return { mode: m, mb: v };
 };
 
-async function swAsk(type, payload, timeoutMs) {
+const swAsk = async (type, payload, timeoutMs = 1200) => {
   try {
     if (!('serviceWorker' in navigator)) return null;
     const reg = await navigator.serviceWorker.getRegistration();
@@ -52,40 +50,35 @@ async function swAsk(type, payload, timeoutMs) {
 
     return await new Promise((resolve) => {
       const ch = new MessageChannel();
-      const t = setTimeout(() => resolve(null), timeoutMs || 1200);
+      const t = setTimeout(() => resolve(null), timeoutMs);
       ch.port1.onmessage = (ev) => { clearTimeout(t); resolve(ev.data || null); };
       reg.active.postMessage({ type, payload }, [ch.port2]);
     });
   } catch {
     return null;
   }
-}
+};
 
-async function swGetCacheSize() {
+const swGetCacheSize = async () => {
   const r = await swAsk('GET_CACHE_SIZE', null, 1200);
-  return {
-    ok: !!r,
-    size: Number(r?.size || 0) || 0,
-    entries: Number(r?.entries || 0) || 0,
-    approx: !!r?.approx
-  };
-}
+  return { ok: !!r, size: Number(r?.size || 0) || 0, entries: Number(r?.entries || 0) || 0, approx: !!r?.approx };
+};
 
-async function swWarmOfflineShell(urls) {
+const swWarmOfflineShell = async (urls) => {
   const r = await swAsk('WARM_OFFLINE_SHELL', { urls: Array.isArray(urls) ? urls : [] }, 5000);
   return r || { ok: false };
-}
+};
 
 // ===== preload all tracks into TrackRegistry (used by scripts/app.js and 100% offline) =====
 async function fetchAlbumConfigByKey(albumKey) {
-  const a = String(albumKey || '').trim();
-  if (!a) return null;
+  const key = String(albumKey || '').trim();
+  if (!key) return null;
 
   const idx = Array.isArray(window.albumsIndex) ? window.albumsIndex : [];
-  const meta = idx.find(x => x && x.key === a) || null;
+  const meta = idx.find(x => x && x.key === key) || null;
   if (!meta?.base) return null;
 
-  const cacheKey = `offline:albumConfigCache:v1:${a}`;
+  const cacheKey = `offline:albumConfigCache:v1:${key}`;
   try {
     const raw = sessionStorage.getItem(cacheKey);
     if (raw) {
@@ -125,10 +118,8 @@ export async function preloadAllAlbumsTrackIndex() {
     if (!tracks.length) continue;
 
     const base = String(a.base || '');
-    const join = (rel) => {
-      try { return new URL(String(rel || ''), base.endsWith('/') ? base : `${base}/`).toString(); }
-      catch { return null; }
-    };
+    const baseUrl = base.endsWith('/') ? base : `${base}/`;
+    const join = (rel) => { try { return new URL(String(rel || ''), baseUrl).toString(); } catch { return null; } };
 
     for (const t of tracks) {
       const uid = String(t?.uid || '').trim();
@@ -159,39 +150,30 @@ let unsubProgress = null;
 let bound = false;
 
 const qs = (sel) => (modalEl ? modalEl.querySelector(sel) : null);
-const setTxt = (sel, v) => {
+const txt = (sel, v) => {
   const el = qs(sel);
   if (!el) return;
   const s = String(v ?? '');
   if (el.textContent !== s) el.textContent = s;
 };
-const setChk = (sel, v) => {
+const chk = (sel, v) => {
   const el = qs(sel);
   if (el) el.checked = !!v;
 };
-const setDis = (sel, v) => {
+const dis = (sel, v) => {
   const el = qs(sel);
   if (el) el.disabled = !!v;
 };
 
-function getNeedsCounts(mgr) {
+const getNeedsCounts = (mgr) => {
   const a = mgr?.getNeedsAggregates?.();
-  return {
-    needsUpdateCount: Number(a?.needsUpdate || 0) || 0,
-    needsReCacheCount: Number(a?.needsReCache || 0) || 0
-  };
-}
+  return { u: Number(a?.needsUpdate || 0) || 0, r: Number(a?.needsReCache || 0) || 0 };
+};
 
 async function collectState(mgr) {
   const net = getNetworkStatusSafe();
 
-  const [
-    cq,
-    breakdown,
-    cacheSizeBytes,
-    swSize,
-    g,
-  ] = await Promise.all([
+  const [cq, breakdown, cacheSizeBytes, swSize, g] = await Promise.all([
     mgr.getCacheQuality?.().catch(() => 'hi'),
     mgr.getCacheBreakdown?.().catch(() => null),
     mgr.getCacheSizeBytes?.().catch(() => 0),
@@ -205,7 +187,6 @@ async function collectState(mgr) {
   const limit = readLimit();
   const qst = mgr.getQueueStatus?.() || { downloadingKey: null, queued: 0, paused: false };
 
-  // best-effort needs aggregates (не блокируем UI)
   try { await mgr.refreshNeedsAggregates?.({ force: false }); } catch {}
   const needs = getNeedsCounts(mgr);
 
@@ -226,8 +207,8 @@ async function collectState(mgr) {
     cacheSizeBytes: Number(cacheSizeBytes || 0) || 0,
     swSize: swSize || { size: 0, approx: false },
     qst,
-    needsUpdateCount: needs.needsUpdateCount,
-    needsReCacheCount: needs.needsReCacheCount,
+    needsUpdateCount: needs.u,
+    needsReCacheCount: needs.r,
     albums,
     statsTotalLabel: fmtListen(totalSec),
   };
@@ -236,60 +217,51 @@ async function collectState(mgr) {
 function updateFields(s) {
   if (!modalEl || !s) return;
 
-  setTxt('#om-net-label', `${s.net.online ? 'online' : 'offline'} (${s.net.kind || 'unknown'})`);
-  setTxt('#om-cq-label', s.cq);
+  txt('#om-net-label', `${s.net.online ? 'online' : 'offline'} (${s.net.kind || 'unknown'})`);
+  txt('#om-cq-label', s.cq);
 
-  // A
-  setChk('#om-offline-mode', s.isOff);
+  chk('#om-offline-mode', s.isOff);
 
-  // B
   const cqSel = qs('#om-cq');
   if (cqSel && cqSel.value !== s.cq) cqSel.value = s.cq;
 
-  // C
   const nEl = qs('#om-cloud-n');
   const dEl = qs('#om-cloud-d');
   if (nEl) nEl.value = String(Number(s.cloud?.n || 5));
   if (dEl) dEl.value = String(Number(s.cloud?.d || 31));
 
-  // D
-  setChk('#om-pol-wifiOnly', !!s.policy.wifiOnly);
-  setChk('#om-pol-allowMobile', !!s.policy.allowMobile);
-  setChk('#om-pol-confirmOnMobile', !!s.policy.confirmOnMobile);
-  setChk('#om-pol-saveDataBlock', !!s.policy.saveDataBlock);
+  chk('#om-pol-wifiOnly', !!s.policy.wifiOnly);
+  chk('#om-pol-allowMobile', !!s.policy.allowMobile);
+  chk('#om-pol-confirmOnMobile', !!s.policy.confirmOnMobile);
+  chk('#om-pol-saveDataBlock', !!s.policy.saveDataBlock);
 
-  // E
   const lm = qs('#om-limit-mode');
   const lmb = qs('#om-limit-mb');
   if (lm && lm.value !== s.limit.mode) lm.value = s.limit.mode;
   if (lmb) lmb.value = String(s.limit.mb);
-  setDis('#om-limit-mb', s.limit.mode !== 'manual');
+  dis('#om-limit-mb', s.limit.mode !== 'manual');
 
-  setTxt('#om-e-audio-total', formatBytes(s.cacheSizeBytes));
-  setTxt('#om-e-sw-total', formatBytes(s.swSize.size || 0));
+  txt('#om-e-audio-total', formatBytes(s.cacheSizeBytes));
+  txt('#om-e-sw-total', formatBytes(s.swSize.size || 0));
 
   if (s.breakdown) {
-    setTxt('#om-e-pinned', formatBytes(s.breakdown.pinnedBytes));
-    setTxt('#om-e-cloud', formatBytes(s.breakdown.cloudBytes));
-    setTxt('#om-e-tw', formatBytes(s.breakdown.transientWindowBytes));
-    setTxt('#om-e-te', formatBytes(s.breakdown.transientExtraBytes));
-    setTxt('#om-e-tu', formatBytes(s.breakdown.transientUnknownBytes));
+    txt('#om-e-pinned', formatBytes(s.breakdown.pinnedBytes));
+    txt('#om-e-cloud', formatBytes(s.breakdown.cloudBytes));
+    txt('#om-e-tw', formatBytes(s.breakdown.transientWindowBytes));
+    txt('#om-e-te', formatBytes(s.breakdown.transientExtraBytes));
+    txt('#om-e-tu', formatBytes(s.breakdown.transientUnknownBytes));
   }
 
-  // F
-  setTxt('#om-f-downloading', String(s.qst.downloadingKey || '—'));
-  setTxt('#om-f-queued', String(Number(s.qst.queued || 0)));
+  txt('#om-f-downloading', String(s.qst.downloadingKey || '—'));
+  txt('#om-f-queued', String(Number(s.qst.queued || 0)));
   const qBtn = qs('#om-queue-toggle');
   if (qBtn) qBtn.textContent = s.qst.paused ? 'Возобновить' : 'Пауза';
 
-  // G
-  setTxt('#om-g-needsUpdate', String(s.needsUpdateCount));
-  setTxt('#om-g-needsReCache', String(s.needsReCacheCount));
+  txt('#om-g-needsUpdate', String(s.needsUpdateCount));
+  txt('#om-g-needsReCache', String(s.needsReCacheCount));
 
-  // stats
-  setTxt('#om-stats-total', s.statsTotalLabel || '—');
+  txt('#om-stats-total', s.statsTotalLabel || '—');
 
-  // I albums box
   const modeSel = qs('#om-full-mode');
   const albBox = qs('#om-albums-box');
   if (modeSel && albBox) albBox.style.display = (String(modeSel.value || 'favorites') === 'albums') ? '' : 'none';
@@ -299,171 +271,154 @@ function bindHandlers(mgr) {
   if (!modalEl || bound) return;
   bound = true;
 
-  // A
-  qs('#om-offline-mode')?.addEventListener('change', (e) => {
-    mgr.setOfflineMode?.(!!e?.target?.checked);
-  });
+  const ns = window.NotificationSystem;
+  const ok = (m) => ns?.success?.(m);
+  const info = (m, t) => ns?.info?.(m, t);
+  const warn = (m) => ns?.warning?.(m);
+  const err = (m) => ns?.error?.(m);
 
-  // B
-  qs('#om-cq-save')?.addEventListener('click', async () => {
-    await mgr.setCacheQuality?.(String(qs('#om-cq')?.value || 'hi'));
-    window.NotificationSystem?.success('CQ сохранено');
-  });
+  const on = (sel, ev, fn) => { const el = qs(sel); if (el) el.addEventListener(ev, fn); };
 
-  // C
-  qs('#om-cloud-save')?.addEventListener('click', () => {
-    const n = clamp(toInt(qs('#om-cloud-n')?.value, 5), 1, 50);
-    const d = clamp(toInt(qs('#om-cloud-d')?.value, 31), 1, 365);
-    mgr.setCloudSettings?.({ n, d });
-    window.NotificationSystem?.success('Cloud настройки сохранены');
-  });
+  // Делегация для кликов (меньше обработчиков)
+  modalEl.addEventListener('click', async (e) => {
+    const id = e?.target?.id;
+    if (!id) return;
 
-  // D
-  qs('#om-pol-save')?.addEventListener('click', () => {
-    setNetPolicy({
-      wifiOnly: !!qs('#om-pol-wifiOnly')?.checked,
-      allowMobile: !!qs('#om-pol-allowMobile')?.checked,
-      confirmOnMobile: !!qs('#om-pol-confirmOnMobile')?.checked,
-      saveDataBlock: !!qs('#om-pol-saveDataBlock')?.checked,
-    });
-    window.NotificationSystem?.success('Network policy сохранена');
-  });
-
-  // E limit
-  qs('#om-limit-mode')?.addEventListener('change', () => {
-    setDis('#om-limit-mb', String(qs('#om-limit-mode')?.value || 'auto') !== 'manual');
-  });
-
-  qs('#om-limit-save')?.addEventListener('click', () => {
-    writeLimit(String(qs('#om-limit-mode')?.value || 'auto'), Number(qs('#om-limit-mb')?.value || 500));
-    window.NotificationSystem?.success('Лимит сохранён');
-  });
-
-  // F queue
-  qs('#om-queue-toggle')?.addEventListener('click', () => {
-    const st = mgr.getQueueStatus?.() || { paused: false };
-    if (st.paused) mgr.resumeQueue?.();
-    else mgr.pauseQueue?.();
-  });
-
-  // G updates / recache
-  qs('#om-upd-all')?.addEventListener('click', async () => {
-    const r = await mgr.enqueueUpdateAll?.();
-    if (r?.ok) window.NotificationSystem?.info(`Updates: поставлено ${r.count} задач`);
-    else window.NotificationSystem?.error('Не удалось запустить updates');
-    try { await mgr.refreshNeedsAggregates?.({ force: true }); } catch {}
-  });
-
-  qs('#om-recache-all')?.addEventListener('click', async () => {
-    const r = await mgr.enqueueReCacheAllByCQ?.({ userInitiated: true });
-    if (r?.ok) window.NotificationSystem?.info(`Re-cache: поставлено ${r.count} задач`);
-    else window.NotificationSystem?.error('Не удалось запустить re-cache');
-    try { await mgr.refreshNeedsAggregates?.({ force: true }); } catch {}
-  });
-
-  // H clear all
-  qs('#om-clear-all')?.addEventListener('click', async () => {
-    if (!confirm('Очистить весь кэш аудио?')) return;
-    if (!confirm('Подтверди ещё раз: удалить кэш полностью?')) return;
-    await mgr.clearAllCache?.();
-    window.NotificationSystem?.success('Кэш очищен');
-  });
-
-  // I 100% OFFLINE
-  qs('#om-full-mode')?.addEventListener('change', () => {
-    const albBox = qs('#om-albums-box');
-    if (albBox) albBox.style.display = (String(qs('#om-full-mode')?.value || 'favorites') === 'albums') ? '' : 'none';
-  });
-
-  const getSelection = () => {
-    const v = String(qs('#om-full-mode')?.value || 'favorites');
-    if (v === 'albums') {
-      const keys = Array.from(modalEl.querySelectorAll('.om-alb:checked'))
-        .map(x => String(x.dataset.k || '').trim())
-        .filter(Boolean);
-      return { mode: 'albums', albumKeys: keys };
-    }
-    return { mode: 'favorites' };
-  };
-
-  const setOut = (t) => setTxt('#om-full-out', t || 'Оценка: —');
-
-  qs('#om-full-est')?.addEventListener('click', async () => {
-    setOut('Оценка: ...');
-
-    await preloadAllAlbumsTrackIndex();
-
-    const est = await mgr.computeSizeEstimate?.(getSelection());
-    if (!est?.ok) return setOut(`Оценка: ошибка (${String(est?.reason || 'unknown')})`);
-
-    setOut(`Оценка: ${Number(est.totalMB || 0).toFixed(1)} MB · треков: ${est.count || 0} · CQ=${est.cq}`);
-  });
-
-  qs('#om-full-start')?.addEventListener('click', async () => {
-    const net = getNetworkStatusSafe();
-    if (!net.online) return void window.NotificationSystem?.warning('Нет сети');
-
-    if (String(net.kind || '').toLowerCase() === 'unknown') {
-      if (!confirm('Тип сети неизвестен. Продолжить?')) return;
-    }
-
-    await preloadAllAlbumsTrackIndex();
-
-    const est = await mgr.computeSizeEstimate?.(getSelection());
-    if (!est?.ok) return void window.NotificationSystem?.error('Не удалось оценить набор');
-    if (!Array.isArray(est.uids) || est.uids.length === 0) return void window.NotificationSystem?.info('Набор пуст');
-
-    // строгая проверка "можем ли гарантировать" (iOS риск)
-    const guarantee = await mgr._canGuaranteeStorageForMB?.(est.totalMB);
-    if (!guarantee?.ok) {
-      window.NotificationSystem?.error('Нельзя гарантировать место в хранилище. 100% OFFLINE не запущен.');
+    if (id === 'om-cq-save') {
+      await mgr.setCacheQuality?.(String(qs('#om-cq')?.value || 'hi'));
+      ok('CQ сохранено');
       return;
     }
 
-    // shell + нужные json/галереи/иконки/lyrics/fulltext
-    const urls = new Set([
-      './',
-      './index.html',
-      './news.html',
-      './manifest.json',
-      './albums.json',
-      './news/news.json',
-      './styles/main.css',
-      './scripts/core/bootstrap.js',
-      './scripts/core/utils.js',
-      './scripts/core/config.js',
-      './scripts/app.js',
-      './src/PlayerCore.js',
-      './img/logo.png',
-      './img/star.png',
-      './img/star2.png',
-      './icons/icon-192.png',
-      './icons/icon-512.png',
-      './icons/apple-touch-icon.png',
-      './albums/gallery/00/index.json',
-      './albums/gallery/01/index.json',
-      './albums/gallery/02/index.json',
-      './albums/gallery/03/index.json',
-      './albums/gallery/news/index.json',
-    ]);
+    if (id === 'om-cloud-save') {
+      const n = clamp(toInt(qs('#om-cloud-n')?.value, 5), 1, 50);
+      const d = clamp(toInt(qs('#om-cloud-d')?.value, 31), 1, 365);
+      mgr.setCloudSettings?.({ n, d });
+      ok('Cloud настройки сохранены');
+      return;
+    }
 
-    try {
-      for (const uid of est.uids) {
-        const meta = window.TrackRegistry?.getTrackByUid?.(uid) || null;
-        const l = String(meta?.lyrics || '').trim();
-        const f = String(meta?.fulltext || '').trim();
-        if (l) urls.add(l);
-        if (f) urls.add(f);
-      }
-    } catch {}
+    if (id === 'om-pol-save') {
+      setNetPolicy({
+        wifiOnly: !!qs('#om-pol-wifiOnly')?.checked,
+        allowMobile: !!qs('#om-pol-allowMobile')?.checked,
+        confirmOnMobile: !!qs('#om-pol-confirmOnMobile')?.checked,
+        saveDataBlock: !!qs('#om-pol-saveDataBlock')?.checked,
+      });
+      ok('Network policy сохранена');
+      return;
+    }
 
-    const warm = await swWarmOfflineShell(Array.from(urls));
-    if (!warm.ok) window.NotificationSystem?.warning('Shell/ассеты: не удалось прогреть SW');
+    if (id === 'om-limit-save') {
+      writeLimit(String(qs('#om-limit-mode')?.value || 'auto'), Number(qs('#om-limit-mb')?.value || 500));
+      ok('Лимит сохранён');
+      return;
+    }
 
-    const r = await mgr.startFullOffline?.(est.uids);
-    if (r?.ok) window.NotificationSystem?.info(`100% OFFLINE: поставлено ${r.total} треков`, 3500);
-    else window.NotificationSystem?.error(`Не удалось запустить 100% OFFLINE: ${String(r?.reason || '')}`);
+    if (id === 'om-queue-toggle') {
+      const st = mgr.getQueueStatus?.() || { paused: false };
+      if (st.paused) mgr.resumeQueue?.();
+      else mgr.pauseQueue?.();
+      return;
+    }
+
+    if (id === 'om-upd-all') {
+      const r = await mgr.enqueueUpdateAll?.();
+      if (r?.ok) info(`Updates: поставлено ${r.count} задач`);
+      else err('Не удалось запустить updates');
+      try { await mgr.refreshNeedsAggregates?.({ force: true }); } catch {}
+      return;
+    }
+
+    if (id === 'om-recache-all') {
+      const r = await mgr.enqueueReCacheAllByCQ?.({ userInitiated: true });
+      if (r?.ok) info(`Re-cache: поставлено ${r.count} задач`);
+      else err('Не удалось запустить re-cache');
+      try { await mgr.refreshNeedsAggregates?.({ force: true }); } catch {}
+      return;
+    }
+
+    if (id === 'om-clear-all') {
+      if (!confirm('Очистить весь кэш аудио?')) return;
+      if (!confirm('Подтверди ещё раз: удалить кэш полностью?')) return;
+      await mgr.clearAllCache?.();
+      ok('Кэш очищен');
+      return;
+    }
+
+    if (id === 'om-full-est') {
+      txt('#om-full-out', 'Оценка: ...');
+      await preloadAllAlbumsTrackIndex();
+      const est = await mgr.computeSizeEstimate?.(getSelection());
+      if (!est?.ok) return void txt('#om-full-out', `Оценка: ошибка (${String(est?.reason || 'unknown')})`);
+      txt('#om-full-out', `Оценка: ${Number(est.totalMB || 0).toFixed(1)} MB · треков: ${est.count || 0} · CQ=${est.cq}`);
+      return;
+    }
+
+    if (id === 'om-full-start') {
+      const net = getNetworkStatusSafe();
+      if (!net.online) return void warn('Нет сети');
+      if (String(net.kind || '').toLowerCase() === 'unknown' && !confirm('Тип сети неизвестен. Продолжить?')) return;
+
+      await preloadAllAlbumsTrackIndex();
+
+      const est = await mgr.computeSizeEstimate?.(getSelection());
+      if (!est?.ok) return void err('Не удалось оценить набор');
+      if (!Array.isArray(est.uids) || est.uids.length === 0) return void info('Набор пуст');
+
+      const guarantee = await mgr._canGuaranteeStorageForMB?.(est.totalMB);
+      if (!guarantee?.ok) return void err('Нельзя гарантировать место в хранилище. 100% OFFLINE не запущен.');
+
+      const urls = new Set([
+        './','./index.html','./news.html','./manifest.json','./albums.json','./news/news.json',
+        './styles/main.css','./scripts/core/bootstrap.js','./scripts/core/utils.js','./scripts/core/config.js',
+        './scripts/app.js','./src/PlayerCore.js','./img/logo.png','./img/star.png','./img/star2.png',
+        './icons/icon-192.png','./icons/icon-512.png','./icons/apple-touch-icon.png',
+        './albums/gallery/00/index.json','./albums/gallery/01/index.json','./albums/gallery/02/index.json',
+        './albums/gallery/03/index.json','./albums/gallery/news/index.json',
+      ]);
+
+      try {
+        for (const uid of est.uids) {
+          const meta = window.TrackRegistry?.getTrackByUid?.(uid) || null;
+          const l = String(meta?.lyrics || '').trim();
+          const f = String(meta?.fulltext || '').trim();
+          if (l) urls.add(l);
+          if (f) urls.add(f);
+        }
+      } catch {}
+
+      const warm = await swWarmOfflineShell(Array.from(urls));
+      if (!warm.ok) warn('Shell/ассеты: не удалось прогреть SW');
+
+      const r = await mgr.startFullOffline?.(est.uids);
+      if (r?.ok) info(`100% OFFLINE: поставлено ${r.total} треков`, 3500);
+      else err(`Не удалось запустить 100% OFFLINE: ${String(r?.reason || '')}`);
+    }
   });
+
+  // change handlers (точечно)
+  on('#om-offline-mode', 'change', (e) => mgr.setOfflineMode?.(!!e?.target?.checked));
+
+  on('#om-limit-mode', 'change', () => {
+    dis('#om-limit-mb', String(qs('#om-limit-mode')?.value || 'auto') !== 'manual');
+  });
+
+  on('#om-full-mode', 'change', () => {
+    const box = qs('#om-albums-box');
+    if (box) box.style.display = (String(qs('#om-full-mode')?.value || 'favorites') === 'albums') ? '' : 'none';
+  });
+}
+
+function getSelection() {
+  const v = String(qs('#om-full-mode')?.value || 'favorites');
+  if (v === 'albums') {
+    const keys = Array.from(modalEl?.querySelectorAll('.om-alb:checked') || [])
+      .map(x => String(x.dataset.k || '').trim())
+      .filter(Boolean);
+    return { mode: 'albums', albumKeys: keys };
+  }
+  return { mode: 'favorites' };
 }
 
 export async function openOfflineModal() {
@@ -478,7 +433,7 @@ export async function openOfflineModal() {
   modalEl = window.Modals.open({
     title: 'OFFLINE',
     maxWidth: 560,
-    bodyHtml: window.Modals?.offlineBody ? window.Modals.offlineBody(state) : '<div style="color:#9db7dd;">offlineBody template missing</div>',
+    bodyHtml: window.Modals?.offlineBody ? window.Modals.offlineBody(state) : '<div class="om__note">offlineBody template missing</div>',
     onClose: () => closeOfflineModal()
   });
 
@@ -487,14 +442,10 @@ export async function openOfflineModal() {
   updateFields(state);
 
   const schedule = window.Utils?.debounceFrame
-    ? window.Utils.debounceFrame(async () => {
-        try { updateFields(await collectState(mgr)); } catch {}
-      })
+    ? window.Utils.debounceFrame(async () => { try { updateFields(await collectState(mgr)); } catch {} })
     : (async () => { try { updateFields(await collectState(mgr)); } catch {} });
 
   unsubProgress = mgr.on?.('progress', () => { schedule(); }) || null;
-
-  // лёгкое первичное обновление (queue/needy могут измениться сразу)
   schedule();
 }
 
