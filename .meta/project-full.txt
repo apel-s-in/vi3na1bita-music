@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-488de4faa65b6b35b25dcf1beebaae7469b1373b.idx
-│   │       ├── pack-488de4faa65b6b35b25dcf1beebaae7469b1373b.pack
-│   │       └── pack-488de4faa65b6b35b25dcf1beebaae7469b1373b.rev
+│   │       ├── pack-68372a4a5c239afe862bf36c6d724c92ad6d98bc.idx
+│   │       ├── pack-68372a4a5c239afe862bf36c6d724c92ad6d98bc.pack
+│   │       └── pack-68372a4a5c239afe862bf36c6d724c92ad6d98bc.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-12 20:18:17 UTC
+Сгенерировано: 2026-01-12 20:21:17 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -740,9 +740,10 @@ jobs:
   <script src="./scripts/app/ios-audio-fix.js" defer></script>
 
   <!-- Core -->
-  <script src="./scripts/core/bootstrap.js"></script>
   <script src="./scripts/core/utils.js"></script>
+  <script src="./scripts/core/bootstrap.js"></script>
   <script src="./scripts/core/config.js" type="module"></script>
+  <script src="./scripts/utils/sw-manager.js" defer></script>
 
   <!-- Player Core -->
   <script src="./src/PlayerCore.js" type="module"></script>
