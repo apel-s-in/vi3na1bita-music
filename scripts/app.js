@@ -1,11 +1,7 @@
 // scripts/app.js
-// Главная точка входа приложения
-
-// import { APP_CONFIG } from './core/config.js';
-// ВАЖНО: config.js уже подключён в index.html как type="module" и экспортирует window.APP_CONFIG.
-// Чтобы не ломаться из-за путей/кэша/SW на GitHub Pages — используем глобальный window.APP_CONFIG.
-
-(function AppModule() {
+// Главная точка входа приложения (clean + без дублей)
+// ВАЖНО: iOS unlock НЕ тут, а в PlayerCore.
+(function () {
   'use strict';
 
   const w = window;
@@ -13,71 +9,45 @@
   class Application {
     constructor() {
       this.initialized = false;
-      this.serviceWorkerRegistered = false;
+      this.__swMsgBound = false;
     }
 
     async initialize() {
       if (this.initialized) return;
       this.initialized = true;
 
-      console.log(`🎵 Initializing app v${w.VERSION}`);
-
       try {
-        // 1. Загрузка индекса альбомов
         await this.loadAlbumsIndex();
 
-        // ✅ OFFLINE: Строгая последовательная инициализация
-        // 1. Сначала загружаем и запускаем Offline Manager (Bootstrap)
+        // OFFLINE: строгая последовательность
         try {
           const offlineBoot = await import('./app/offline-ui-bootstrap.js');
-          if (offlineBoot && typeof offlineBoot.attachOfflineUI === 'function') {
-            offlineBoot.attachOfflineUI();
-          }
+          offlineBoot?.attachOfflineUI?.();
         } catch (e) {
           console.error('❌ Critical: Offline Bootstrap failed:', e);
         }
 
-        // 2. Только после старта менеджера подключаем UI и логику кэша
-        // Делаем небольшую паузу, чтобы IndexedDB успела открыться
         await new Promise(r => setTimeout(r, 50));
 
         try {
           const [indicatorsMod, overlayMod, pcBoot] = await Promise.all([
             import('./ui/offline-indicators.js'),
             import('./ui/cache-progress-overlay.js'),
-            import('./app/playback-cache-bootstrap.js')
+            import('./app/playback-cache-bootstrap.js'),
           ]);
-
-          // Индикаторы (замки/облака)
-          if (indicatorsMod && typeof indicatorsMod.attachOfflineIndicators === 'function') {
-            indicatorsMod.attachOfflineIndicators();
-          }
-          
-          // Оверлей прогресса загрузки
-          if (overlayMod && typeof overlayMod.attachCacheProgressOverlay === 'function') {
-            overlayMod.attachCacheProgressOverlay();
-          }
-
-          // Логика Playback Cache (PREV/CUR/NEXT)
-          if (pcBoot && typeof pcBoot.attachPlaybackCache === 'function') {
-            pcBoot.attachPlaybackCache();
-          }
-          
-          console.log('✅ Offline subsystems attached');
+          indicatorsMod?.attachOfflineIndicators?.();
+          overlayMod?.attachCacheProgressOverlay?.();
+          pcBoot?.attachPlaybackCache?.();
         } catch (e) {
           console.warn('⚠️ Offline UI subsystems partial failure:', e);
         }
 
-        // ✅ OFFLINE: автопредзагрузка TrackRegistry всеми треками (1 раз)
-        // Нужно, чтобы pinned/cloud/offline-all работали сразу, даже без открытия всех альбомов.
+        // OFFLINE: preload TrackRegistry once
         try {
           const key = 'offline:preloadAllTracksOnce:v1';
-          const done = localStorage.getItem(key) === '1';
-
-          if (!done) {
+          if (localStorage.getItem(key) !== '1') {
             const mod = await import('./ui/offline-modal.js');
-            if (mod && typeof mod.preloadAllAlbumsTrackIndex === 'function') {
-              // Не блокируем UI полностью: но дождёмся, чтобы индикаторы могли работать уверенно.
+            if (mod?.preloadAllAlbumsTrackIndex) {
               await mod.preloadAllAlbumsTrackIndex();
               localStorage.setItem(key, '1');
             }
@@ -86,219 +56,104 @@
           console.warn('OFFLINE preloadAllAlbumsTrackIndex failed:', e);
         }
 
-        // 2. Ожидаем, что PlayerCore уже инициализировался (src/PlayerCore.js делает это сам)
-        // 3. Инициализация избранного
         await this.initializeFavorites();
-
-        // 4. Инициализация галереи
         await this.initializeGallery();
-
-        // 5. Инициализация менеджера альбомов
         await this.initializeAlbums();
-
-        // 6. Инициализация UI плеера
         await this.initializePlayerUI();
 
-        // 6. Инициализация дополнительных модулей
         this.initializeModules();
 
-        // ✅ iOS: audio unlock on first gesture (best-effort, no impact on playback)
-        try {
-          const ba = await import('./app/background-audio.js');
-          if (ba && typeof ba.installIOSAudioUnlock === 'function') {
-            ba.installIOSAudioUnlock();
-          }
-        } catch (e) {
-          console.warn('iOS audio unlock helper failed:', e);
-        }
+        if (w.PlayerState?.apply) await w.PlayerState.apply();
 
-        // 7. Восстановление состояния плеера (если есть сохранённый PlayerState)
-        if (w.PlayerState && typeof w.PlayerState.apply === 'function') {
-          await w.PlayerState.apply();
-        }
-
-        // 8. Настройка горячих клавиш
         this.setupHotkeys();
-
-        // 9. Обработка PWA установки
         this.setupPWAInstall();
-
-        // 10. Обработка сообщений от Service Worker (update flow)
         this.setupServiceWorkerMessaging();
-
-        console.log('✅ Application initialized successfully');
-
       } catch (error) {
         console.error('❌ Failed to initialize app:', error);
-        w.NotificationSystem?.error('Ошибка инициализации приложения');
+        w.NotificationSystem?.error?.('Ошибка инициализации приложения');
       }
     }
 
     async loadAlbumsIndex() {
-      // Индекс альбомов загружается в scripts/core/bootstrap.js и публикуется в window.albumsIndex.
-      if (Array.isArray(w.albumsIndex) && w.albumsIndex.length > 0) {
-        console.log(`✅ Albums index already loaded: ${w.albumsIndex.length} albums`);
-        return;
-      }
+      if (Array.isArray(w.albumsIndex) && w.albumsIndex.length) return;
 
-      // ✅ Убираем polling: ждём событие готовности
       try {
-        if (w.Utils?.onceEvent) {
-          await w.Utils.onceEvent(window, 'albumsIndex:ready', { timeoutMs: 8000 });
-        } else {
-          // fallback (очень короткий)
-          await new Promise(r => setTimeout(r, 200));
-        }
+        if (w.Utils?.onceEvent) await w.Utils.onceEvent(window, 'albumsIndex:ready', { timeoutMs: 8000 });
+        else await new Promise(r => setTimeout(r, 200));
       } catch {}
 
-      if (Array.isArray(w.albumsIndex) && w.albumsIndex.length > 0) {
-        console.log(`✅ Albums index loaded: ${w.albumsIndex.length} albums`);
-        return;
-      }
-
-      console.warn('⚠️ albumsIndex is empty after wait. Check scripts/core/bootstrap.js');
-      w.albumsIndex = w.albumsIndex || [];
+      w.albumsIndex = Array.isArray(w.albumsIndex) ? w.albumsIndex : [];
     }
 
     async _waitForReady(checkFn, maxMs = 2000) {
-      // ✅ Сжато: используем Utils.waitFor (уже есть в core/utils.js)
       const waitFor = w.Utils?.waitFor;
       if (typeof waitFor === 'function') return waitFor(checkFn, maxMs, 50);
 
-      // fallback
       const started = Date.now();
-      while (!checkFn() && (Date.now() - started) < maxMs) {
-        // eslint-disable-next-line no-await-in-loop
+      while (!checkFn() && (Date.now() - started) < maxMs) { // eslint-disable-next-line no-await-in-loop
         await new Promise(r => setTimeout(r, 50));
       }
       return checkFn();
     }
 
     async initializeFavorites() {
-      const ok = await this._waitForReady(() =>
-        !!(w.FavoritesManager && typeof w.FavoritesManager.initialize === 'function')
-      );
-
-      if (ok) {
+      if (await this._waitForReady(() => !!w.FavoritesManager?.initialize)) {
         w.FavoritesManager.initialize();
-        console.log('✅ Favorites initialized');
-      } else {
-        console.warn('⚠️ FavoritesManager not ready');
       }
     }
 
     async initializeGallery() {
-      const ok = await this._waitForReady(() =>
-        !!(w.GalleryManager && typeof w.GalleryManager.initialize === 'function')
-      );
-
-      if (ok) {
+      if (await this._waitForReady(() => !!w.GalleryManager?.initialize)) {
         w.GalleryManager.initialize();
-        console.log('✅ Gallery initialized');
-      } else {
-        console.warn('⚠️ GalleryManager not ready');
       }
     }
 
     async initializeAlbums() {
-      const ok = await this._waitForReady(() =>
-        !!(w.AlbumsManager && typeof w.AlbumsManager.initialize === 'function')
-      );
-
-      if (ok) {
+      if (await this._waitForReady(() => !!w.AlbumsManager?.initialize)) {
         w.AlbumsManager.initialize();
-        console.log('✅ Albums initialized');
-      } else {
-        console.warn('⚠️ AlbumsManager not ready');
       }
     }
 
     async initializePlayerUI() {
-      const ok = await this._waitForReady(() =>
-        !!(w.PlayerUI && typeof w.PlayerUI.initialize === 'function')
-      );
-
-      if (ok) {
+      if (await this._waitForReady(() => !!w.PlayerUI?.initialize)) {
         w.PlayerUI.initialize();
-        console.log('✅ PlayerUI initialized');
-      } else {
-        console.warn('⚠️ PlayerUI not ready');
       }
     }
 
-    // initializePlayerUI / initializeGallery должны быть объявлены только один раз.
-    // Инициализацию выполняем через единый _waitForReady, без дублей.
-
     initializeModules() {
-      // Большинство модулей в проекте самоинициализируются при загрузке скрипта.
-      // Здесь оставляем только безопасные no-op вызовы на случай появления initialize() в будущем.
-      const maybeInit = (obj, name) => {
-        try {
-          if (obj && typeof obj.initialize === 'function') {
-            obj.initialize();
-            console.log(`✅ ${name} initialized`);
-          }
-        } catch (e) {
-          console.warn(`${name}.initialize failed:`, e);
-        }
-      };
-
-      maybeInit(w.SleepTimer, 'SleepTimer');
-      maybeInit(w.LyricsModal, 'LyricsModal');
-      maybeInit(w.SystemInfoManager, 'SystemInfoManager');
-      // StatisticsModal does not need init, exposes .show()
-      maybeInit(w.BackgroundAudioManager, 'BackgroundAudioManager');
+      const maybeInit = (obj) => { try { obj?.initialize?.(); } catch {} };
+      maybeInit(w.SleepTimer);
+      maybeInit(w.LyricsModal);
+      maybeInit(w.SystemInfoManager);
+      maybeInit(w.BackgroundAudioManager);
     }
 
     setupServiceWorkerMessaging() {
-      // ✅ Реальный update flow через сообщения от SW.
-      // Это нужно для:
-      // - предложения обновления,
-      // - сохранения позиции/трека перед reload,
-      // - корректного восстановления через PlayerState после reload.
-      if (!('serviceWorker' in navigator)) return;
-
-      // Защита от повторной установки обработчика
-      if (this.__swMsgBound) return;
+      if (!('serviceWorker' in navigator) || this.__swMsgBound) return;
       this.__swMsgBound = true;
 
-      const handle = async (event) => {
+      const handle = (event) => {
         const msg = event?.data || {};
         if (!msg || typeof msg !== 'object') return;
 
-        // Сообщение о версии SW (может присылать SW или тест)
         if (msg.type === 'SW_VERSION') {
           const swVer = String(msg.version || '').trim();
           const appVer = String(w.VERSION || '').trim();
-          if (!swVer) return;
-          if (appVer && swVer === appVer) return;
-
-          // ✅ ЕДИНЫЙ источник UI-логики обновления — ServiceWorkerManager.
-          // Здесь только маршрутизируем событие (и поддерживаем e2e-симуляцию).
-          try {
-            if (w.ServiceWorkerManager && typeof w.ServiceWorkerManager.handleVersionMessage === 'function') {
-              w.ServiceWorkerManager.handleVersionMessage({ swVer, appVer });
-            }
-          } catch (e) {
-            console.warn('ServiceWorkerManager.handleVersionMessage failed:', e);
-          }
+          if (!swVer || (appVer && swVer === appVer)) return;
+          try { w.ServiceWorkerManager?.handleVersionMessage?.({ swVer, appVer }); } catch {}
         }
       };
 
-      // Реальные сообщения от SW
       navigator.serviceWorker.addEventListener('message', handle);
-
-      // ✅ Для e2e (и для безопасного fallback): позволяем симулировать сообщение через window.dispatchEvent(...)
-      // Никаких побочных эффектов без confirm().
       window.addEventListener('message', handle);
     }
 
     setupHotkeys() {
       document.addEventListener('keydown', (e) => {
-        // Игнорируем если фокус в input/textarea
-        if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+        if (['INPUT', 'TEXTAREA'].includes(e.target?.tagName)) return;
 
-        const key = e.key.toLowerCase();
+        const key = String(e.key || '').toLowerCase();
+        const pc = w.playerCore;
 
         switch (key) {
           case 'k':
@@ -307,86 +162,36 @@
             w.PlayerUI?.togglePlayPause?.();
             break;
 
-          case 'n':
-            e.preventDefault();
-            w.playerCore?.next();
-            break;
+          case 'n': e.preventDefault(); pc?.next?.(); break;
+          case 'p': e.preventDefault(); pc?.prev?.(); break;
+          case 'x': e.preventDefault(); pc?.stop?.(); break;
 
-          case 'p':
-            e.preventDefault();
-            w.playerCore?.prev();
-            break;
+          case 'm': e.preventDefault(); document.getElementById('mute-btn')?.click(); break;
+          case 'r': e.preventDefault(); document.getElementById('repeat-btn')?.click(); break;
+          case 'u': e.preventDefault(); document.getElementById('shuffle-btn')?.click(); break;
+          case 'a': e.preventDefault(); document.getElementById('animation-btn')?.click(); break;
+          case 'b': e.preventDefault(); document.getElementById('pulse-btn')?.click(); break;
+          case 'f': e.preventDefault(); document.getElementById('favorites-btn')?.click(); break;
+          case 't': e.preventDefault(); w.SleepTimer?.show?.(); break;
+          case 'y': e.preventDefault(); document.getElementById('lyrics-toggle-btn')?.click(); break;
 
-          case 'x':
-            e.preventDefault();
-            w.playerCore?.stop();
-            break;
+          case 'arrowleft': e.preventDefault(); pc?.seek?.(Math.max(0, (pc.getPosition?.() || 0) - 5)); break;
+          case 'arrowright': e.preventDefault(); pc?.seek?.(Math.min(pc.getDuration?.() || 0, (pc.getPosition?.() || 0) + 5)); break;
 
-          case 'm':
+          case 'arrowup': {
             e.preventDefault();
-            document.getElementById('mute-btn')?.click();
+            const v = pc?.getVolume?.() ?? 100;
+            pc?.setVolume?.(Math.min(100, v + 5));
             break;
-
-          case 'r':
+          }
+          case 'arrowdown': {
             e.preventDefault();
-            document.getElementById('repeat-btn')?.click();
+            const v = pc?.getVolume?.() ?? 100;
+            pc?.setVolume?.(Math.max(0, v - 5));
             break;
-
-          case 'u':
-            e.preventDefault();
-            document.getElementById('shuffle-btn')?.click();
-            break;
-
-          case 'a':
-            e.preventDefault();
-            document.getElementById('animation-btn')?.click();
-            break;
-
-          case 'b':
-            e.preventDefault();
-            document.getElementById('pulse-btn')?.click();
-            break;
-
-          case 'f':
-            e.preventDefault();
-            document.getElementById('favorites-btn')?.click();
-            break;
-
-          case 't':
-            e.preventDefault();
-            w.SleepTimer?.show?.();
-            break;
-
-          case 'y':
-            e.preventDefault();
-            document.getElementById('lyrics-toggle-btn')?.click();
-            break;
-
-          case 'arrowleft':
-            e.preventDefault();
-            w.playerCore?.seek(Math.max(0, w.playerCore.getPosition() - 5));
-            break;
-
-          case 'arrowright':
-            e.preventDefault();
-            w.playerCore?.seek(Math.min(w.playerCore.getDuration(), w.playerCore.getPosition() + 5));
-            break;
-
-          case 'arrowup':
-            e.preventDefault();
-            const currentVol = w.playerCore?.getVolume() || 100;
-            w.playerCore?.setVolume(Math.min(100, currentVol + 5));
-            break;
-
-          case 'arrowdown':
-            e.preventDefault();
-            const vol = w.playerCore?.getVolume() || 100;
-            w.playerCore?.setVolume(Math.max(0, vol - 5));
-            break;
+          }
         }
       });
-
-      console.log('✅ Hotkeys enabled');
     }
 
     setupPWAInstall() {
@@ -397,226 +202,29 @@
         deferredPrompt = e;
 
         const btn = document.getElementById('install-pwa-btn');
-        if (btn) {
-          btn.style.display = 'block';
-          btn.onclick = async () => {
-            if (!deferredPrompt) return;
+        if (!btn) return;
 
-            deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
+        btn.style.display = 'block';
+        btn.onclick = async () => {
+          if (!deferredPrompt) return;
 
-            if (outcome === 'accepted') {
-              w.NotificationSystem?.success('Приложение установлено!');
-            }
+          deferredPrompt.prompt();
+          const { outcome } = await deferredPrompt.userChoice;
 
-            deferredPrompt = null;
-            btn.style.display = 'none';
-          };
-        }
+          if (outcome === 'accepted') w.NotificationSystem?.success?.('Приложение установлено!');
+
+          deferredPrompt = null;
+          btn.style.display = 'none';
+        };
       });
 
       window.addEventListener('appinstalled', () => {
-        w.NotificationSystem?.success('Приложение успешно установлено!');
+        w.NotificationSystem?.success?.('Приложение успешно установлено!');
         const btn = document.getElementById('install-pwa-btn');
         if (btn) btn.style.display = 'none';
       });
     }
   }
 
-  // Создание глобального экземпляра
   w.app = new Application();
-
-  // Автозапуск initialize() выполняется в index.html (unlockAppDirectly),
-  // чтобы избежать гонок двойного старта и несогласованной инициализации модулей.
-  // Здесь сознательно НЕ запускаем initialize() автоматически.
-
-})(); // end of AppModule IIFE
-
-// ========== PlayerState (сохранение/восстановление состояния плеера) ==========
-(function PlayerStateModule() {
-  'use strict';
-
-  const STORAGE_KEY_V2 = 'playerStateV2';
-  const SESSION_RESUME_KEY_V2 = 'resumeAfterReloadV2';
-
-  function save(options = {}) {
-    try {
-      if (!window.playerCore) return;
-
-      const track = window.playerCore.getCurrentTrack();
-      const index = window.playerCore.getIndex();
-      const position = window.playerCore.getPosition();
-      const volume = window.playerCore.getVolume();
-      const wasPlaying = window.playerCore.isPlaying();
-
-      const playingAlbum = window.AlbumsManager?.getPlayingAlbum?.() || null;
-      const currentAlbum = window.AlbumsManager?.getCurrentAlbum?.() || null;
-
-      // ✅ Сохраняем режим отображения и состояние анимации
-      const lyricsViewMode = localStorage.getItem('lyricsViewMode') || 'normal';
-      const animationEnabled = localStorage.getItem('lyricsAnimationEnabled') === '1';
-
-      const trackUid = String(track?.uid || '').trim() || null;
-      const sourceAlbum = String(track?.sourceAlbum || '').trim() || null;
-
-      const state = {
-        album: playingAlbum,
-        currentAlbum: currentAlbum, // ✅ Добавляем текущий просматриваемый альбом
-
-        // ✅ Новый источник правды для восстановления: uid
-        trackUid,
-        sourceAlbum,
-
-        // legacy fallback (если uid нет)
-        trackIndex: typeof index === 'number' ? index : 0,
-
-        position: Math.floor(position || 0),
-        volume: typeof volume === 'number' ? volume : 100,
-        wasPlaying: !!wasPlaying,
-        // ✅ Сохраняем UI состояние
-        lyricsViewMode: lyricsViewMode,
-        animationEnabled: animationEnabled,
-        // ✅ Сохраняем режим мини-плеера
-        isMiniMode: !!(playingAlbum && currentAlbum && playingAlbum !== currentAlbum)
-      };
-
-      localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(state));
-
-      if (options.forReload) {
-        // Краткоживущий стейт для SW‑обновления (одна перезагрузка)
-        sessionStorage.setItem(SESSION_RESUME_KEY_V2, '1');
-      }
-
-      // Не трогаем воспроизведение: только фиксируем снимок.
-    } catch (e) {
-      console.warn('PlayerState.save failed:', e);
-    }
-  }
-
-  async function apply() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY_V2);
-      if (!raw) return;
-
-      const state = JSON.parse(raw);
-      if (!state || typeof state !== 'object') return;
-
-      const albumKey = state.album;
-      const currentAlbum = state.currentAlbum || albumKey; // ✅ Восстанавливаем просматриваемый альбом
-      const trackUid = String(state.trackUid || '').trim();
-      const sourceAlbum = String(state.sourceAlbum || '').trim();
-      const trackIndex = Number.isFinite(state.trackIndex) ? state.trackIndex : 0;
-      const position = Number.isFinite(state.position) ? state.position : 0;
-      const volume = Number.isFinite(state.volume) ? state.volume : 100;
-      const wasPlaying = !!state.wasPlaying;
-
-      // ✅ Восстанавливаем UI состояние
-      if (state.lyricsViewMode) {
-        localStorage.setItem('lyricsViewMode', state.lyricsViewMode);
-      }
-      if (typeof state.animationEnabled === 'boolean') {
-        localStorage.setItem('lyricsAnimationEnabled', state.animationEnabled ? '1' : '0');
-      }
-
-      if (!albumKey || !window.AlbumsManager || !window.playerCore) return;
-
-      // 1. ✅ Сначала загружаем ПРОСМАТРИВАЕМЫЙ альбом (для корректного UI)
-      if (currentAlbum && currentAlbum !== albumKey) {
-        await window.AlbumsManager.loadAlbum(currentAlbum);
-      }
-
-      // 2. Формируем плейлист так же, как при обычном клике по треку
-      if (albumKey === window.SPECIAL_FAVORITES_KEY) {
-        // Виртуальный плейлист избранного
-        // ✅ Восстановление по uid: найдём индекс строки в favoritesRefsModel
-        let idxToPlay = trackIndex;
-
-        if (trackUid) {
-          const model = Array.isArray(window.favoritesRefsModel) ? window.favoritesRefsModel : [];
-          const found = model.findIndex(it =>
-            it &&
-            String(it.__uid || '').trim() === trackUid &&
-            (!sourceAlbum || String(it.__a || '').trim() === sourceAlbum)
-          );
-          if (found >= 0) idxToPlay = found;
-        }
-
-        await window.AlbumsManager.ensureFavoritesPlayback(idxToPlay);
-      } else {
-        // Обычный альбом
-        const albumData = window.AlbumsManager.getAlbumData(albumKey);
-        const albumInfo = (window.albumsIndex || []).find(a => a.key === albumKey);
-        if (!albumData || !albumInfo) return;
-
-        const base = albumInfo.base || '';
-        const coverUrl = (() => {
-          try {
-            return window.AlbumsManager?.albumCoverUrlCache?.get?.(albumKey) || 'img/logo.png';
-          } catch {
-            return 'img/logo.png';
-          }
-        })();
-
-        const tracksForCore = albumData.tracks
-          .filter(t => !!t && (!!t.fileHi || !!t.file || !!t.fileLo))
-          .map((t) => ({
-            src: t.fileHi || t.file || t.fileLo,
-            sources: t.sources || null,
-
-            title: t.title,
-            artist: albumData.artist || 'Витрина Разбита',
-            album: albumKey,
-            cover: coverUrl,
-            lyrics: t.lyrics || null,
-            fulltext: t.fulltext || null,
-            uid: (typeof t.uid === 'string' && t.uid.trim()) ? t.uid.trim() : null,
-            hasLyrics: (typeof t.hasLyrics === 'boolean') ? t.hasLyrics : null
-          }));
-
-        if (tracksForCore.length > 0) {
-          // ✅ Восстановление по uid (если есть), иначе — trackIndex
-          let startIndex = trackIndex;
-
-          if (trackUid) {
-            const found = tracksForCore.findIndex(t => String(t?.uid || '').trim() === trackUid);
-            if (found >= 0) startIndex = found;
-          }
-
-          window.playerCore.setPlaylist(tracksForCore, startIndex, {
-            artist: albumData.artist || 'Витрина Разбита',
-            album: albumData.title || albumInfo.title || '',
-            cover: 'img/logo.png'
-          });
-          window.AlbumsManager.setPlayingAlbum(albumKey);
-          window.playerCore.play(startIndex);
-        }
-      }
-
-      // 3. Громкость и позиция
-      window.playerCore.setVolume(volume);
-      if (position > 0) {
-        try { window.playerCore.seek(position); } catch {}
-      }
-
-      // 4. Если до этого играло — продолжаем; если нет — ставим на паузу в нужном месте
-      if (!wasPlaying && window.playerCore.isPlaying()) {
-        window.playerCore.pause();
-      }
-
-      // Правило «ничто не останавливает» соблюдено: мы либо продолжаем играть,
-      // либо мягко ставим на паузу только если до этого была пауза.
-    } catch (e) {
-      console.warn('PlayerState.apply failed:', e);
-    } finally {
-      try {
-        // После удачного применения сбрасываем одноразовый флаг SW‑реюма
-        sessionStorage.removeItem(SESSION_RESUME_KEY_V2);
-      } catch {}
-    }
-  }
-
-  window.PlayerState = {
-    save,
-    apply
-  };
 })();
