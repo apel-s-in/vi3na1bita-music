@@ -12,8 +12,9 @@
   const w = window;
   const U = w.Utils;
 
-  const $ = (id) => (U?.dom?.byId ? U.dom.byId(id) : document.getElementById(id));
-  const on = (el, ev, fn, opts) => { if (el) el.addEventListener(ev, fn, opts); };
+  // Единый DOM helpers слой
+  const $ = (id) => U.dom.byId(id);
+  const on = (el, ev, fn, opts) => U.dom.on(el, ev, fn, opts);
 
   const LS_KEY = 'sleepTimerTarget'; // back-compat: уже используется текущим проектом (epoch ms)
 
@@ -24,17 +25,13 @@
   let coreBound = false;
 
   function lsGetTarget() {
-    try {
-      const v = localStorage.getItem(LS_KEY);
-      const n = parseInt(String(v ?? ''), 10);
-      return Number.isFinite(n) ? n : 0;
-    } catch {
-      return 0;
-    }
+    const v = U.lsGet(LS_KEY, '0');
+    const n = parseInt(String(v ?? ''), 10);
+    return Number.isFinite(n) ? n : 0;
   }
 
   function lsSetTarget(ts) {
-    try { localStorage.setItem(LS_KEY, String(ts)); } catch {}
+    U.lsSet(LS_KEY, String(ts));
   }
 
   function lsClearTarget() {
