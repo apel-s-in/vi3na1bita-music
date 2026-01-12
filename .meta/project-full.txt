@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-52bb4d61d00b4584c7cb522d666f0d87b4352764.idx
-│   │       ├── pack-52bb4d61d00b4584c7cb522d666f0d87b4352764.pack
-│   │       └── pack-52bb4d61d00b4584c7cb522d666f0d87b4352764.rev
+│   │       ├── pack-d9d29e19d244417275a63193876672f6fd69f86f.idx
+│   │       ├── pack-d9d29e19d244417275a63193876672f6fd69f86f.pack
+│   │       └── pack-d9d29e19d244417275a63193876672f6fd69f86f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -316,6 +316,8 @@ vi3na1bita-music/
 │   ├── app/
 │   │   ├── player-ui/
 │   │   │   └── lyrics.js
+│   │   ├── utils/
+│   │   │   └── app-utils.js
 │   │   ├── albums.js
 │   │   ├── background-audio.js
 │   │   ├── gallery.js
@@ -380,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-12 13:40:58 UTC
+Сгенерировано: 2026-01-12 13:41:23 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6081,6 +6083,20 @@ try {
   };
 } catch {}
 
+
+//=================================================
+// FILE: /scripts/app/utils/app-utils.js
+// scripts/app/utils/app-utils.js
+
+export const $ = (id) => document.getElementById(id);
+
+export const toStr = (v) => (v == null ? '' : String(v));
+
+export const isMobileUA = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+const ESC = { '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&#39;', '"': '&quot;' };
+export const escHtml = (s) =>
+  window.Utils?.escapeHtml ? window.Utils.escapeHtml(toStr(s)) : toStr(s).replace(/[<>&'"]/g, (m) => ESC[m]);
 
 //=================================================
 // FILE: /scripts/ci/lint-sw.mjs
