@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e63cd9c1f8e3de953e3961ae46d2338f8f9affe5.idx
-│   │       ├── pack-e63cd9c1f8e3de953e3961ae46d2338f8f9affe5.pack
-│   │       └── pack-e63cd9c1f8e3de953e3961ae46d2338f8f9affe5.rev
+│   │       ├── pack-dd666e3fa86dfd156866e0fdc4b13b3bfd128d5d.idx
+│   │       ├── pack-dd666e3fa86dfd156866e0fdc4b13b3bfd128d5d.pack
+│   │       └── pack-dd666e3fa86dfd156866e0fdc4b13b3bfd128d5d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-12 16:26:00 UTC
+Сгенерировано: 2026-01-12 16:42:13 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -12055,264 +12055,384 @@ export function closeOfflineModal() {
 //=================================================
 // FILE: /scripts/ui/sleep.js
 // scripts/ui/sleep.js
-// Таймер сна с визуальным обратным отсчётом
+// Таймер сна: остановка музыки по срабатыванию (через pause в PlayerCore).
+// Режимы:
+// - через фиксированное время: 15/30/60 минут
+// - к конкретному часу: HH:MM (например, 01:30)
+// UI: кнопка в панели плеера открывает меню.
+// Инварианты: не вызывать stop/play/seek/volume — только playerCore.setSleepTimer/clearSleepTimer.
 
 (function SleepTimerModule() {
   'use strict';
 
   const w = window;
-  
-  let sleepMenu = null;
-  let updateInterval = null;
+  const U = w.Utils;
 
-  const PRESETS = [
-    { label: '5 минут', minutes: 5 },
-    { label: '10 минут', minutes: 10 },
-    { label: '15 минут', minutes: 15 },
-    { label: '30 минут', minutes: 30 },
-    { label: '1 час', minutes: 60 },
-    { label: '2 часа', minutes: 120 }
-  ];
+  const $ = (id) => (U?.dom?.byId ? U.dom.byId(id) : document.getElementById(id));
+  const on = (el, ev, fn, opts) => { if (el) el.addEventListener(ev, fn, opts); };
 
-  function initSleepTimer() {
-    const btn = document.getElementById('sleep-timer-btn');
-    if (!btn) {
-      setTimeout(initSleepTimer, 100);
+  const LS_KEY = 'sleepTimerTarget'; // back-compat: уже используется текущим проектом (epoch ms)
+
+  const PRESETS_MIN = [15, 30, 60];
+
+  let menuEl = null;
+  let tickId = null;
+  let coreBound = false;
+
+  function lsGetTarget() {
+    try {
+      const v = localStorage.getItem(LS_KEY);
+      const n = parseInt(String(v ?? ''), 10);
+      return Number.isFinite(n) ? n : 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  function lsSetTarget(ts) {
+    try { localStorage.setItem(LS_KEY, String(ts)); } catch {}
+  }
+
+  function lsClearTarget() {
+    try { localStorage.removeItem(LS_KEY); } catch {}
+  }
+
+  function clampInt(v, min, max, def) {
+    const n = parseInt(String(v ?? ''), 10);
+    const x = Number.isFinite(n) ? n : def;
+    return Math.max(min, Math.min(max, x));
+  }
+
+  function formatHHMM(ts) {
+    const d = new Date(ts);
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  }
+
+  function formatRemainingCompact(targetTs) {
+    const ms = targetTs - Date.now();
+    if (ms <= 0) return '0м';
+    const totalMin = Math.ceil(ms / 60000);
+    if (totalMin < 60) return `${totalMin}м`;
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    return m ? `${h}ч ${m}м` : `${h}ч`;
+  }
+
+  function computeTargetFromMinutes(minutes) {
+    const m = clampInt(minutes, 1, 24 * 60, 15);
+    return Date.now() + m * 60 * 1000;
+  }
+
+  function computeTargetToClock(h, m) {
+    const hh = clampInt(h, 0, 23, 0);
+    const mm = clampInt(m, 0, 59, 0);
+
+    const now = new Date();
+    const target = new Date(now);
+    target.setHours(hh, mm, 0, 0);
+    if (target.getTime() <= now.getTime()) target.setDate(target.getDate() + 1);
+    return target.getTime();
+  }
+
+  function getTargetTs() {
+    // Источник правды: playerCore, fallback — localStorage (чтобы переживать reload)
+    const pc = w.playerCore;
+    const fromCore = pc?.getSleepTimerTarget?.();
+    if (Number.isFinite(fromCore) && fromCore > 0) return fromCore;
+    return lsGetTarget();
+  }
+
+  function applyTargetTs(targetTs) {
+    const pc = w.playerCore;
+    if (!pc) return false;
+
+    const ts = Number(targetTs) || 0;
+    const ms = ts - Date.now();
+    if (ms <= 0) return false;
+
+    pc.setSleepTimer?.(ms);
+    lsSetTarget(ts);
+    startTicking();
+    updateBadge();
+    return true;
+  }
+
+  function clearTimer() {
+    w.playerCore?.clearSleepTimer?.();
+    lsClearTarget();
+    stopTicking();
+    updateBadge();
+  }
+
+  function restoreTimer() {
+    const saved = lsGetTarget();
+    if (!saved) return;
+
+    const remaining = saved - Date.now();
+    if (remaining > 0) {
+      w.playerCore?.setSleepTimer?.(remaining);
+      startTicking();
+      updateBadge();
       return;
     }
 
-    btn.addEventListener('click', toggleSleepMenu);
+    lsClearTarget();
+    updateBadge();
+  }
 
-    // Подписка на событие таймера от PlayerCore
-    if (w.playerCore) {
-      w.playerCore.on({
-        onSleepTriggered: () => {
-          w.NotificationSystem?.info('⏰ Таймер сна сработал');
-          clearSleepTimer();
-        }
-      });
+  function updateBadge() {
+    const badge = $('sleep-timer-badge');
+    if (!badge) return;
+
+    const targetTs = getTargetTs();
+    if (!targetTs || targetTs <= Date.now()) {
+      badge.style.display = 'none';
+      badge.textContent = '';
+      return;
     }
 
-    // Восстановление таймера после перезагрузки
-    restoreSleepTimer();
+    const min = Math.ceil((targetTs - Date.now()) / 60000);
+    if (min <= 0) {
+      badge.style.display = 'none';
+      badge.textContent = '';
+      return;
+    }
+
+    badge.textContent = String(min);
+    badge.style.display = '';
+  }
+
+  function startTicking() {
+    stopTicking();
+    updateBadge();
+
+    tickId = setInterval(() => {
+      updateBadge();
+      const t = getTargetTs();
+      if (t && t <= Date.now()) {
+        // подстраховка после сна вкладки
+        clearTimer();
+      }
+    }, 10000);
+  }
+
+  function stopTicking() {
+    if (!tickId) return;
+    clearInterval(tickId);
+    tickId = null;
+  }
+
+  function bindCoreOnce() {
+    if (coreBound) return;
+    const pc = w.playerCore;
+    if (!pc?.on) return;
+
+    coreBound = true;
+    pc.on({
+      onSleepTriggered: () => {
+        // PlayerCore сам делает pause() — это и есть требуемая “остановка музыки”.
+        w.NotificationSystem?.info?.('⏰ Таймер сна сработал');
+        clearTimer();
+      }
+    });
+  }
+
+  // --------------------------
+  // Menu UI
+  // --------------------------
+  function openMenu(anchor) {
+    if (menuEl || !anchor) return;
+
+    const targetTs = getTargetTs();
+    const active = targetTs && targetTs > Date.now();
+
+    const el = document.createElement('div');
+    el.className = 'sleep-menu';
+
+    const rect = anchor.getBoundingClientRect();
+    el.style.position = 'fixed';
+    el.style.right = `${Math.max(8, window.innerWidth - rect.right)}px`;
+    el.style.bottom = `${Math.max(8, window.innerHeight - rect.top)}px`;
+
+    const head = active
+      ? `
+        <div class="sleep-menu-item active" data-act="noop">
+          ✅ Активен: ${formatRemainingCompact(targetTs)} (до ${formatHHMM(targetTs)})
+        </div>
+      `
+      : '';
+
+    const off = `<div class="sleep-menu-item" data-act="off">Выключить</div>`;
+    const sep = `<div style="height: 1px; background: rgba(255,255,255,0.1); margin: 6px 0;"></div>`;
+
+    const presets = PRESETS_MIN
+      .map(m => `<div class="sleep-menu-item" data-act="min" data-min="${m}">${m}</div>`)
+      .join('');
+
+    const toTime = `<div class="sleep-menu-item" data-act="totime">К времени…</div>`;
+
+    el.innerHTML = `${head}${off}${sep}${presets}${sep}${toTime}`;
+
+    on(el, 'click', (e) => {
+      const item = e.target?.closest?.('.sleep-menu-item');
+      if (!item || !el.contains(item)) return;
+      e.stopPropagation();
+
+      const act = String(item.dataset.act || '');
+
+      if (act === 'off') {
+        clearTimer();
+        closeMenu();
+        w.NotificationSystem?.info?.('⏰ Таймер сна выключен');
+        return;
+      }
+
+      if (act === 'min') {
+        const m = clampInt(item.dataset.min, 1, 24 * 60, 15);
+        const ts = computeTargetFromMinutes(m);
+        applyTargetTs(ts);
+        closeMenu();
+        w.NotificationSystem?.success?.(`⏰ Таймер: ${m} мин`);
+        return;
+      }
+
+      if (act === 'totime') {
+        closeMenu();
+        openTimeDialog();
+      }
+    });
+
+    // close outside
+    setTimeout(() => document.addEventListener('click', onDocClickClose), 0);
+    document.addEventListener('keydown', onEscOnce, { once: true });
+
+    document.body.appendChild(el);
+    menuEl = el;
+  }
+
+  function closeMenu() {
+    if (!menuEl) return;
+    try { menuEl.remove(); } catch {}
+    menuEl = null;
+    document.removeEventListener('click', onDocClickClose);
+  }
+
+  function onDocClickClose(e) {
+    if (menuEl && !menuEl.contains(e.target)) closeMenu();
+  }
+
+  function onEscOnce(e) {
+    if (e.key === 'Escape') closeMenu();
+    else document.addEventListener('keydown', onEscOnce, { once: true });
+  }
+
+  function toggleMenu(anchor) {
+    if (menuEl) closeMenu();
+    else openMenu(anchor);
+  }
+
+  // --------------------------
+  // Time dialog (HH:MM)
+  // --------------------------
+  function openTimeDialog() {
+    const wrap = document.createElement('div');
+    wrap.className = 'sleep-time-modal-backdrop';
+    wrap.innerHTML = `
+      <div class="sleep-time-modal" role="dialog" aria-modal="true" aria-label="Таймер сна к времени">
+        <div class="sleep-time-title">Таймер сна к времени</div>
+        <div class="sleep-time-row">
+          <input id="sleep-time-hh" inputmode="numeric" maxlength="2" placeholder="HH" class="sleep-time-input">
+          <span class="sleep-time-sep">:</span>
+          <input id="sleep-time-mm" inputmode="numeric" maxlength="2" placeholder="MM" class="sleep-time-input">
+        </div>
+        <div class="sleep-time-actions">
+          <button type="button" class="sleep-time-btn" data-act="cancel">Отмена</button>
+          <button type="button" class="sleep-time-btn primary" data-act="ok">Ок</button>
+        </div>
+      </div>
+    `;
+
+    const hhEl = wrap.querySelector('#sleep-time-hh');
+    const mmEl = wrap.querySelector('#sleep-time-mm');
+
+    // Prefill: +30 минут
+    const pre = new Date(Date.now() + 30 * 60000);
+    if (hhEl) hhEl.value = String(pre.getHours()).padStart(2, '0');
+    if (mmEl) mmEl.value = String(pre.getMinutes()).padStart(2, '0');
+
+    const close = () => {
+      document.removeEventListener('keydown', onKey);
+      try { wrap.remove(); } catch {}
+    };
+
+    const ok = () => {
+      const hh = clampInt(hhEl?.value, 0, 23, 0);
+      const mm = clampInt(mmEl?.value, 0, 59, 0);
+      const ts = computeTargetToClock(hh, mm);
+
+      if (applyTargetTs(ts)) {
+        w.NotificationSystem?.success?.(`⏰ Таймер до ${formatHHMM(ts)}`);
+      }
+      close();
+    };
+
+    const onKey = (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); close(); }
+      if (e.key === 'Enter') { e.preventDefault(); ok(); }
+    };
+
+    on(wrap, 'click', (e) => {
+      if (e.target === wrap) return close();
+
+      const btn = e.target?.closest?.('button[data-act]');
+      if (!btn) return;
+
+      const act = String(btn.dataset.act || '');
+      if (act === 'cancel') close();
+      if (act === 'ok') ok();
+    });
+
+    document.addEventListener('keydown', onKey);
+    document.body.appendChild(wrap);
+    setTimeout(() => hhEl?.focus?.(), 0);
+  }
+
+  // --------------------------
+  // Public API
+  // --------------------------
+  function init() {
+    const btn = $('sleep-timer-btn');
+    if (!btn) {
+      setTimeout(init, 100);
+      return;
+    }
+
+    on(btn, 'click', (e) => toggleMenu(e.currentTarget));
+
+    bindCoreOnce();
+    restoreTimer();
+    updateBadge();
 
     console.log('✅ Sleep timer initialized');
   }
 
-  function toggleSleepMenu(e) {
-    if (sleepMenu) {
-      closeSleepMenu();
-      return;
-    }
-
-    openSleepMenu(e.currentTarget);
-  }
-
-  function openSleepMenu(anchor) {
-    sleepMenu = document.createElement('div');
-    sleepMenu.className = 'sleep-menu';
-
-    // ✅ Портал в body, чтобы меню не обрезалось overflow'ами плеера
-    // и всегда помещалось на экране.
-    const rect = anchor.getBoundingClientRect();
-    sleepMenu.style.position = 'fixed';
-    sleepMenu.style.right = `${Math.max(8, window.innerWidth - rect.right)}px`;
-    sleepMenu.style.bottom = `${Math.max(8, window.innerHeight - rect.top)}px`;
-
-    const items = [];
-
-    // Текущий таймер
-    const targetTs = w.playerCore?.getSleepTimerTarget?.() || 0;
-    if (targetTs > 0) {
-      items.push(`
-        <div class="sleep-menu-item active" data-action="cancel">
-          ✅ Активен: ${formatRemainingTime(targetTs)}
-        </div>
-        <div class="sleep-menu-item" data-action="clear">
-          🚫 Выключить
-        </div>
-        <div style="height: 1px; background: rgba(255,255,255,0.1); margin: 6px 0;"></div>
-      `);
-    }
-
-    // Пресеты
-    PRESETS.forEach(preset => {
-      items.push(`
-        <div class="sleep-menu-item" data-minutes="${preset.minutes}">
-          ${preset.label}
-        </div>
-      `);
-    });
-
-    sleepMenu.innerHTML = items.join('');
-    document.body.appendChild(sleepMenu);
-
-    // Обработчики
-    sleepMenu.querySelectorAll('.sleep-menu-item').forEach(item => {
-      item.addEventListener('click', (e) => {
-        e.stopPropagation();
-        handleSleepMenuClick(item);
-      });
-    });
-
-    // Закрытие при клике вне меню
-    setTimeout(() => {
-      document.addEventListener('click', closeSleepMenuOutside);
-    }, 10);
-  }
-
-  function closeSleepMenu() {
-    if (sleepMenu && sleepMenu.parentNode) {
-      sleepMenu.parentNode.removeChild(sleepMenu);
-    }
-    sleepMenu = null;
-    document.removeEventListener('click', closeSleepMenuOutside);
-  }
-
-  function closeSleepMenuOutside(e) {
-    if (sleepMenu && !sleepMenu.contains(e.target)) {
-      closeSleepMenu();
-    }
-  }
-
-  function handleSleepMenuClick(item) {
-    const action = item.dataset.action;
-    const minutes = parseInt(item.dataset.minutes);
-
-    if (action === 'clear') {
-      clearSleepTimer();
-      closeSleepMenu();
-      w.NotificationSystem?.info('⏰ Таймер сна выключен');
-      return;
-    }
-
-    if (Number.isFinite(minutes) && minutes > 0) {
-      setSleepTimer(minutes);
-      closeSleepMenu();
-      w.NotificationSystem?.success(`⏰ Таймер: ${minutes} мин`);
-    }
-  }
-
-  function setSleepTimer(minutes) {
-    if (!w.playerCore) return;
-
-    const ms = minutes * 60 * 1000;
-    w.playerCore.setSleepTimer(ms);
-
-    // Сохранить в localStorage для восстановления
-    try {
-      localStorage.setItem('sleepTimerTarget', String(Date.now() + ms));
-    } catch {}
-
-    updateBadge();
-    startUpdateInterval();
-  }
-
-  function clearSleepTimer() {
-    if (w.playerCore) {
-      w.playerCore.clearSleepTimer();
-    }
-
-    try {
-      localStorage.removeItem('sleepTimerTarget');
-    } catch {}
-
-    stopUpdateInterval();
-    updateBadge();
-  }
-
-  function restoreSleepTimer() {
-    try {
-      const saved = localStorage.getItem('sleepTimerTarget');
-      if (!saved) return;
-
-      const targetTs = parseInt(saved);
-      const remaining = targetTs - Date.now();
-
-      if (remaining > 0) {
-        w.playerCore?.setSleepTimer(remaining);
-        updateBadge();
-        startUpdateInterval();
-        console.log(`⏰ Sleep timer restored: ${Math.round(remaining / 60000)} min`);
-      } else {
-        localStorage.removeItem('sleepTimerTarget');
-      }
-    } catch {}
-  }
-
-  function updateBadge() {
-    const badge = document.getElementById('sleep-timer-badge');
-    if (!badge) return;
-
-    const targetTs = w.playerCore?.getSleepTimerTarget?.() || 0;
-
-    if (targetTs > 0) {
-      const remaining = targetTs - Date.now();
-      const minutes = Math.ceil(remaining / 60000);
-      
-      badge.textContent = minutes > 0 ? minutes : '';
-      badge.style.display = minutes > 0 ? '' : 'none';
-    } else {
-      badge.style.display = 'none';
-    }
-  }
-
-  function startUpdateInterval() {
-    stopUpdateInterval();
-    
-    updateInterval = setInterval(() => {
-      updateBadge();
-      
-      // Проверка истечения таймера
-      const targetTs = w.playerCore?.getSleepTimerTarget?.() || 0;
-      if (targetTs > 0 && targetTs <= Date.now()) {
-        clearSleepTimer();
-      }
-    }, 10000); // Обновление каждые 10 секунд
-  }
-
-  function stopUpdateInterval() {
-    if (updateInterval) {
-      clearInterval(updateInterval);
-      updateInterval = null;
-    }
-  }
-
-  function formatRemainingTime(targetTs) {
-    const remaining = targetTs - Date.now();
-    const minutes = Math.ceil(remaining / 60000);
-    
-    if (minutes >= 60) {
-      const hours = Math.floor(minutes / 60);
-      const mins = minutes % 60;
-      return mins > 0 ? `${hours}ч ${mins}м` : `${hours}ч`;
-    }
-    
-    return `${minutes}м`;
-  }
-
-  // Публичный API
   w.SleepTimer = {
-    setSleepTimer,
-    clearSleepTimer,
+    // back-compat: старый API принимал minutes
+    setSleepTimer(minutes) {
+      const ts = computeTargetFromMinutes(minutes);
+      applyTargetTs(ts);
+    },
+    clearSleepTimer: clearTimer,
     updateBadge,
-    // Показать меню таймера сна (используется горячей клавишей T и кнопкой в PlayerUI)
     show() {
-      const btn = document.getElementById('sleep-timer-btn');
+      const btn = $('sleep-timer-btn');
       if (!btn) return;
-      // Если меню уже открыто – просто закрыть/открыть по toggleSleepMenu
-      toggleSleepMenu({ currentTarget: btn });
+      toggleMenu(btn);
     }
   };
 
-  // Автоинициализация
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initSleepTimer);
-  } else {
-    initSleepTimer();
-  }
-
-  console.log('✅ Sleep timer module loaded');
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
 })();
 
 //=================================================
