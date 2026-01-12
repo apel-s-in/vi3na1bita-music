@@ -630,11 +630,8 @@ class AlbumsManager {
 
       this.highlightCurrentTrack(index);
 
-      if (window.playerCore?._isIOS && window.playerCore._isIOS()) {
-        window.playerCore._resumeAudioContext().then(() => window.playerCore.play(playIndex));
-      } else {
-        window.playerCore.play(playIndex);
-      }
+      // iOS unlock — только внутри PlayerCore.play()
+      window.playerCore.play(playIndex);
 
       this.setPlayingAlbum(albumKey);
       window.PlayerUI?.ensurePlayerBlock?.(index, { userInitiated: true });
