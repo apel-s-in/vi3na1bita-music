@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-25e0d1b2288ae567950e0f2ed7a268a388a9915e.idx
-│   │       ├── pack-25e0d1b2288ae567950e0f2ed7a268a388a9915e.pack
-│   │       └── pack-25e0d1b2288ae567950e0f2ed7a268a388a9915e.rev
+│   │       ├── pack-88d2b40eec749386b22ebc4d001312d5427dc861.idx
+│   │       ├── pack-88d2b40eec749386b22ebc4d001312d5427dc861.pack
+│   │       └── pack-88d2b40eec749386b22ebc4d001312d5427dc861.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-12 20:09:46 UTC
+Сгенерировано: 2026-01-12 20:17:56 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2296,11 +2296,8 @@ class AlbumsManager {
 
       this.highlightCurrentTrack(index);
 
-      if (window.playerCore?._isIOS && window.playerCore._isIOS()) {
-        window.playerCore._resumeAudioContext().then(() => window.playerCore.play(playIndex));
-      } else {
-        window.playerCore.play(playIndex);
-      }
+      // iOS unlock — только внутри PlayerCore.play()
+      window.playerCore.play(playIndex);
 
       this.setPlayingAlbum(albumKey);
       window.PlayerUI?.ensurePlayerBlock?.(index, { userInitiated: true });
