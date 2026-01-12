@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-53ecaf184c711e294eed2413c756811d0a49fd82.idx
-│   │       ├── pack-53ecaf184c711e294eed2413c756811d0a49fd82.pack
-│   │       └── pack-53ecaf184c711e294eed2413c756811d0a49fd82.rev
+│   │       ├── pack-aafd30a339dd4e886388ce5abc302979305c2957.idx
+│   │       ├── pack-aafd30a339dd4e886388ce5abc302979305c2957.pack
+│   │       └── pack-aafd30a339dd4e886388ce5abc302979305c2957.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-12 19:55:23 UTC
+Сгенерировано: 2026-01-12 19:55:54 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -717,98 +717,58 @@ jobs:
   <title>Витрина Разбита</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="description" content="Официальные альбомы группы Витрина Разбита. Слушайте онлайн и офлайн.">
-  
-  <!-- PWA -->
+
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#181818" />
-  
-  <!-- iOS & PWA -->
+
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Витрина Разбита">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  
-  <!-- Favicons -->
+
   <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
   <link rel="icon" href="icons/favicon-16.png" sizes="16x16" type="image/png">
-  
-  <!-- Preload -->
+
   <link rel="preload" href="img/logo.png" as="image">
-  
-  <!-- Styles -->
   <link rel="stylesheet" href="styles/main.css">
-  
-  <!-- КРИТИЧНО: Howler.js должен загрузиться ПЕРВЫМ -->
+
+  <!-- Howler first -->
   <script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js"></script>
-  
-  <!-- iOS audio unlock: необходим для воспроизведения на iOS -->
-  <script>
-    // iOS Safari требует user gesture для запуска AudioContext
-    (function() {
-      var unlocked = false;
-      function unlock() {
-        if (unlocked) return;
-        try {
-          var ctx = window.Howler && window.Howler.ctx;
-          if (ctx && ctx.state === 'suspended') {
-            ctx.resume().then(function() {
-              unlocked = true;
-              console.log('✅ iOS AudioContext unlocked');
-            });
-          } else {
-            unlocked = true;
-          }
-        } catch(e) {}
-      }
-      ['touchstart', 'touchend', 'pointerdown', 'click'].forEach(function(ev) {
-        document.addEventListener(ev, unlock, { passive: true, once: false });
-      });
-    })();
-  </script>
-  
-  <!-- Enhanced iOS audio unlock fix -->
+
+  <!-- Deprecated (kept only to avoid breaking script includes) -->
   <script src="./scripts/app/ios-audio-fix.js" defer></script>
-  
+
   <!-- Core -->
   <script src="./scripts/core/bootstrap.js"></script>
   <script src="./scripts/core/utils.js"></script>
   <script src="./scripts/core/config.js" type="module"></script>
-  
-  <!-- Player Core (новая платформа) -->
+
+  <!-- Player Core -->
   <script src="./src/PlayerCore.js" type="module"></script>
-  
+
   <!-- UI Modules -->
   <script src="./scripts/ui/notify.js" defer></script>
   <script src="./scripts/ui/favorites-const.js" defer></script>
   <script src="./scripts/ui/favorites-data.js" defer></script>
   <script src="./scripts/ui/favorites.js" defer></script>
-  <!-- favorites-view.js удалён: лишний слой -->
   <script src="./scripts/ui/sleep.js" defer></script>
   <script src="./scripts/ui/lyrics-modal.js" defer></script>
-
-  <!-- Shared modal templates (IIFE -> window.Modals) -->
   <script src="./scripts/ui/modal-templates.js" defer></script>
-
   <script src="./scripts/ui/sysinfo.js" defer></script>
-  
+
   <!-- App Modules -->
   <script src="./scripts/app/background-audio.js" defer></script>
   <script src="./scripts/app/promocode.js" defer></script>
-
   <script src="./scripts/app/playback-policy.js" defer></script>
   <script src="./scripts/app/player-ui/lyrics.js" defer></script>
   <script src="./scripts/app/player-ui.js" defer></script>
   <script src="./scripts/app/gallery.js" type="module"></script>
   <script src="./scripts/app/albums.js" type="module"></script>
   <script src="./scripts/app/navigation.js" type="module"></script>
-  
-  <!-- Main App -->
+
   <script src="./scripts/app.js" type="module"></script>
 
-  <!-- OFFLINE platform bootstrap: управляется через scripts/app.js -->
-  
-  <!-- Performance Monitoring -->
   <script src="./performance/rum.js" defer></script>
 </head>
 <body>
@@ -828,24 +788,24 @@ jobs:
     <header>
       <div id="active-album-title" class="active-album-title">—</div>
       <div id="album-icons" class="album-icons" aria-label="Альбомы"></div>
-      
+
       <div id="cover-wrap">
-        <button class="cover-gallery-arrow" id="cover-gallery-arrow-left" 
+        <button class="cover-gallery-arrow" id="cover-gallery-arrow-left"
                 title="Назад" aria-label="Предыдущая обложка">
           <svg width="34" height="34" viewBox="0 0 34 34">
             <circle cx="17" cy="17" r="16" fill="#23252e" opacity="0.65"/>
-            <polyline points="20,10 13,17 20,24" fill="none" stroke="#fff" 
+            <polyline points="20,10 13,17 20,24" fill="none" stroke="#fff"
                       stroke-width="2.9" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
-        
+
         <div id="cover-slot" aria-label="Обложка альбома"></div>
-        
-        <button class="cover-gallery-arrow" id="cover-gallery-arrow-right" 
+
+        <button class="cover-gallery-arrow" id="cover-gallery-arrow-right"
                 title="Вперёд" aria-label="Следующая обложка">
           <svg width="34" height="34" viewBox="0 0 34 34">
             <circle cx="17" cy="17" r="16" fill="#23252e" opacity="0.65"/>
-            <polyline points="14,10 21,17 14,24" fill="none" stroke="#fff" 
+            <polyline points="14,10 21,17 14,24" fill="none" stroke="#fff"
                       stroke-width="2.9" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
@@ -854,42 +814,26 @@ jobs:
       <div id="social-links" class="socials-under-cover"></div>
     </header>
 
-    <!-- Мини-плеер (показывается ТОЛЬКО при просмотре другого альбома) -->
     <div id="now-playing" style="width:100%; max-width:395px; margin:8px auto 0 auto;"></div>
-    
     <div class="track-list" id="track-list"></div>
 
     <div class="bottom-controls-center">
-
       <img class="logo-bottom" id="logo-bottom" src="img/logo.png" alt="Логотип"/>
-      
-      <button id="install-pwa-btn" style="display: none;">
-        УСТАНОВИТЬ КАК ПРИЛОЖЕНИЕ
-      </button>
-      
-      <button class="hotkeys-btn" id="hotkeys-btn" style="display:none;">
-        ГОРЯЧИЕ КЛАВИШИ
-      </button>
-      
-      <button id="sysinfo-btn" style="display:none;">
-        О СИСТЕМЕ
-      </button>
-      
+
+      <button id="install-pwa-btn" style="display: none;">УСТАНОВИТЬ КАК ПРИЛОЖЕНИЕ</button>
+      <button class="hotkeys-btn" id="hotkeys-btn" style="display:none;">ГОРЯЧИЕ КЛАВИШИ</button>
+      <button id="sysinfo-btn" style="display:none;">О СИСТЕМЕ</button>
+
       <span class="feedback-link" id="feedback-link">ОБРАТНАЯ СВЯЗЬ</span>
-      
-      <a class="support-link" id="support-link" href="#" target="_blank">
-        ПОДДЕРЖАТЬ
-      </a>
-      
+
+      <a class="support-link" id="support-link" href="#" target="_blank">ПОДДЕРЖАТЬ</a>
+
       <button class="offline-btn" id="offline-btn">OFFLINE</button>
     </div>
   </div>
 
-  <!-- Modals Container -->
   <div id="modals-container"></div>
 
-  <!-- Player template: разметка блока плеера вынесена из scripts/app/player-ui.js -->
-  <!-- Mini-player header template (now-playing) -->
   <template id="mini-header-template">
     <div class="mini-now" id="mini-now">
       <span class="tnum" id="mini-now-num">--.</span>
@@ -898,7 +842,6 @@ jobs:
     </div>
   </template>
 
-  <!-- Next-up template (now-playing) -->
   <template id="next-up-template">
     <div class="next-up" id="next-up">
       <span class="label">Далее:</span>
@@ -907,6 +850,7 @@ jobs:
   </template>
 
   <template id="player-template">
+    <!-- (разметка без изменений) -->
     <div class="lyrics-player-block" id="lyricsplayerblock">
       <div id="lyrics-window" class="lyrics-normal">
         <div class="lyrics-animated-bg"></div>
@@ -1026,21 +970,14 @@ jobs:
     </div>
   </template>
 
-  <!-- Inline Scripts -->
   <script>
-    // ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
-    // ВАЖНО: без дублей unlockAppDirectly/promocode логики (она в scripts/app/promocode.js).
-    // Здесь оставляем только глобальные константы и флаги совместимости.
-
     const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.0.4');
     const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2025-12-07');
 
-    // Флаги и состояние (legacy/back-compat; не трогаем playback)
     window.autoNextDisabled = false;
     window.sleepTimerTarget = null;
     window.sleepTimerInterval = null;
 
-    // ========== ЭКСПОРТ ГЛОБАЛЬНЫХ ПЕРЕМЕННЫХ ==========
     window.VERSION = VERSION;
     window.BUILD_DATE = BUILD_DATE;
 
