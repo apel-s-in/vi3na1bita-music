@@ -1,13 +1,9 @@
 // scripts/core/utils.js — Общие утилиты
 (function() {
   'use strict';
-  
+
   const Utils = {
     // ===== DOM =====
-    $(id) {
-      return document.getElementById(id);
-    },
-
     dom: (() => {
       // Микро‑кэш по id. Безопасность:
       // - если узел удалили из DOM => кэш сбросится при следующем запросе
@@ -30,16 +26,102 @@
 
       const byId = cacheById();
 
+      function on(el, ev, fn, opts) {
+        if (!el) return () => {};
+        el.addEventListener(ev, fn, opts);
+        return () => {
+          try { el.removeEventListener(ev, fn, opts); } catch {}
+        };
+      }
+
+      function raf(fn) {
+        return requestAnimationFrame(fn);
+      }
+
+      function defer(fn) {
+        // microtask > macrotask, чтобы UI был отзывчивее
+        if (typeof queueMicrotask === 'function') {
+          queueMicrotask(fn);
+          return;
+        }
+        Promise.resolve().then(fn).catch(() => {});
+      }
+
+      function qs(sel, root = document) {
+        return root.querySelector(sel);
+      }
+
+      function qsa(sel, root = document) {
+        return root.querySelectorAll(sel);
+      }
+
+      function createStyleOnce(id, cssText) {
+        const key = String(id || '').trim();
+        if (!key) return null;
+
+        const existing = document.getElementById(key);
+        if (existing) return existing;
+
+        const s = document.createElement('style');
+        s.id = key;
+        s.textContent = String(cssText || '');
+        document.head.appendChild(s);
+        return s;
+      }
+
+      function onDocClickOutside(targetEl, handler, opts = {}) {
+        const capture = opts.capture !== false;
+        const doc = opts.doc || document;
+
+        const fn = (e) => {
+          try {
+            if (!targetEl) return;
+            if (targetEl.contains(e.target)) return;
+            handler && handler(e);
+          } catch {}
+        };
+
+        doc.addEventListener('click', fn, capture);
+        return () => {
+          try { doc.removeEventListener('click', fn, capture); } catch {}
+        };
+      }
+
+      function onEscape(handler, opts = {}) {
+        const doc = opts.doc || document;
+
+        const fn = (e) => {
+          if (e && e.key === 'Escape') {
+            try { handler && handler(e); } catch {}
+          }
+        };
+
+        doc.addEventListener('keydown', fn, { passive: true });
+        return () => {
+          try { doc.removeEventListener('keydown', fn, { passive: true }); } catch {}
+        };
+      }
+
       return {
         cacheById,
         byId,
-        on(el, ev, fn, opts) { if (el) el.addEventListener(ev, fn, opts); },
-        raf(fn) { return requestAnimationFrame(fn); },
-        qs(sel, root = document) { return root.querySelector(sel); }
+        on,
+        raf,
+        defer,
+        qs,
+        qsa,
+        createStyleOnce,
+        onDocClickOutside,
+        onEscape
       };
     })(),
 
-    // ✅ Общие простые утилиты (убираем дубли из player-ui.js и других модулей)
+    // Back-compat helpers (thin)
+    $(id) { return Utils.dom.byId(id); },
+    $q(sel, root) { return Utils.dom.qs(sel, root); },
+    $qa(sel, root) { return Utils.dom.qsa(sel, root); },
+
+    // ===== Common utils =====
     clamp(n, a, b) {
       const nn = Number(n);
       const aa = Number(a);
@@ -52,31 +134,25 @@
       const n = parseInt(String(v ?? ''), 10);
       return Number.isFinite(n) ? n : d;
     },
-    
-    $q(sel) {
-      return document.querySelector(sel);
-    },
-    
-    $qa(sel) {
-      return document.querySelectorAll(sel);
-    },
-    
+
     escapeHtml(s) {
       const d = document.createElement('div');
-      d.textContent = s || '';
+      d.textContent = String(s || '');
       return d.innerHTML;
     },
-    
+
     formatTime(s) {
-      if (isNaN(s) || s < 0) return '--:--';
-      const m = Math.floor(s / 60);
-      const sec = Math.floor(s % 60);
+      const n = Number(s);
+      if (!Number.isFinite(n) || n < 0) return '--:--';
+      const m = Math.floor(n / 60);
+      const sec = Math.floor(n % 60);
       return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
     },
-    
+
     async waitFor(fn, maxMs = 2000, step = 50) {
       let t = 0;
       while (!fn() && t < maxMs) {
+        // eslint-disable-next-line no-await-in-loop
         await new Promise(r => setTimeout(r, step));
         t += step;
       }
@@ -106,33 +182,31 @@
     },
 
     debounceFrame(fn) {
-      let raf = 0;
+      let rafId = 0;
       let lastArgs = null;
       return function (...args) {
         lastArgs = args;
-        if (raf) return;
-        raf = requestAnimationFrame(() => {
-          raf = 0;
+        if (rafId) return;
+        rafId = requestAnimationFrame(() => {
+          rafId = 0;
           fn.apply(this, lastArgs);
         });
       };
     },
-    
-    // createModal удалён: проект использует единый механизм window.Modals.open (scripts/ui/modal-templates.js)
-    
+
     isMobile() {
       return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     },
-    
+
     isIOS() {
       return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     },
-    
+
     isStandalone() {
       return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
     },
 
-    // ✅ Core helper: единый safe network status (используют offline/player/ui)
+    // ===== Network =====
     getNetworkStatusSafe() {
       try {
         if (window.NetworkManager?.getStatus) return window.NetworkManager.getStatus();
@@ -140,7 +214,14 @@
       return { online: navigator.onLine !== false, kind: 'unknown', saveData: false };
     },
 
-    // ✅ Core helper: единый bytes formatter (чтобы sysinfo/sw-manager могли брать без ESM импорта)
+    isOnline() {
+      try {
+        if (window.NetworkManager?.getStatus) return !!window.NetworkManager.getStatus().online;
+      } catch {}
+      return navigator.onLine !== false;
+    },
+
+    // ===== Bytes =====
     formatBytes(n) {
       const b = Number(n) || 0;
       if (b < 1024) return `${Math.floor(b)} B`;
@@ -163,6 +244,10 @@
       try { localStorage.setItem(String(key || ''), String(value)); return true; } catch { return false; }
     },
 
+    lsRemove(key) {
+      try { localStorage.removeItem(String(key || '')); return true; } catch { return false; }
+    },
+
     lsGetBool01(key, fallback = false) {
       const v = Utils.lsGet(key, fallback ? '1' : '0');
       return v === '1';
@@ -170,6 +255,21 @@
 
     lsSetBool01(key, on) {
       return Utils.lsSet(key, on ? '1' : '0');
+    },
+
+    lsGetJson(key, fallback = null) {
+      try {
+        const raw = localStorage.getItem(String(key || ''));
+        if (!raw) return fallback;
+        const j = JSON.parse(raw);
+        return (j === null || j === undefined) ? fallback : j;
+      } catch {
+        return fallback;
+      }
+    },
+
+    lsSetJson(key, value) {
+      try { localStorage.setItem(String(key || ''), JSON.stringify(value)); return true; } catch { return false; }
     },
 
     // ===== UI helpers =====
@@ -193,17 +293,8 @@
       return playing !== current;
     },
 
-    isOnline() {
-      try {
-        if (window.NetworkManager?.getStatus) return !!window.NetworkManager.getStatus().online;
-      } catch {}
-      return navigator.onLine !== false;
-    },
-
     // ===== Favorites helpers (mini header like status) =====
     fav: {
-      // Возвращает true/false: лайкнут ли track.uid в контексте playingAlbum
-      // Поддерживает __favorites__: лайк хранится в sourceAlbum
       isTrackLikedInContext({ playingAlbum, track } = {}) {
         const fm = window.FavoritesManager;
         const pa = String(playingAlbum || '').trim();
@@ -217,7 +308,6 @@
         const srcAlbum = String(track?.sourceAlbum || '').trim();
         if (srcAlbum) return !!fm.isFavorite?.(srcAlbum, uid);
 
-        // fallback: пытаемся найти source album по favoritesRefsModel
         const ref = Array.isArray(window.favoritesRefsModel)
           ? window.favoritesRefsModel.find(it => String(it?.__uid || '').trim() === uid)
           : null;
@@ -227,7 +317,7 @@
       }
     },
 
-    // ===== PQ helpers (pq-state + toggle) =====
+    // ===== PQ helpers =====
     pq: {
       key: 'qualityMode:v1',
 
@@ -242,7 +332,6 @@
         const canToggleByTrack = !!pc?.canToggleQualityForCurrentTrack?.();
         const netOk = Utils.isOnline();
         const canToggle = canToggleByTrack && netOk;
-
         return { mode, canToggle, canToggleByTrack, netOk };
       },
 
@@ -260,9 +349,8 @@
       }
     },
 
-    // ===== Download helpers (size hint + apply) =====
+    // ===== Download helpers =====
     download: {
-      // best-effort: вернуть "(~X.XX МБ)" или "".
       getSizeHintMB({ albumData, track } = {}) {
         try {
           const uid = String(track?.uid || '').trim();
@@ -306,8 +394,6 @@
     }
   };
 
-  // Глобальный экспорт
   window.Utils = Utils;
-  
   console.log('✅ Utils loaded');
 })();
