@@ -1,138 +1,89 @@
-// scripts/core/utils.js — Общие утилиты
-(function() {
+// scripts/core/utils.js — Общие утилиты (clean + меньше дублей)
+(function () {
   'use strict';
+
+  const W = window;
 
   const Utils = {
     // ===== DOM =====
     dom: (() => {
-      // Микро‑кэш по id. Безопасность:
-      // - если узел удалили из DOM => кэш сбросится при следующем запросе
-      // - не держим "мертвые" ссылки
-      function cacheById() {
-        const m = new Map();
-        return function byId(id) {
-          const key = String(id || '');
-          if (!key) return null;
+      const m = new Map();
+      const byId = (id) => {
+        const key = String(id || '');
+        if (!key) return null;
+        const cached = m.get(key);
+        if (cached && cached.isConnected) return cached;
+        const el = document.getElementById(key);
+        if (el) m.set(key, el);
+        else m.delete(key);
+        return el || null;
+      };
 
-          const cached = m.get(key);
-          if (cached && cached.isConnected) return cached;
-
-          const el = document.getElementById(key);
-          if (el) m.set(key, el);
-          else m.delete(key);
-          return el || null;
-        };
-      }
-
-      const byId = cacheById();
-
-      function on(el, ev, fn, opts) {
+      const on = (el, ev, fn, opts) => {
         if (!el) return () => {};
         el.addEventListener(ev, fn, opts);
-        return () => {
-          try { el.removeEventListener(ev, fn, opts); } catch {}
-        };
-      }
+        return () => { try { el.removeEventListener(ev, fn, opts); } catch {} };
+      };
 
-      function raf(fn) {
-        return requestAnimationFrame(fn);
-      }
+      const raf = (fn) => requestAnimationFrame(fn);
 
-      function defer(fn) {
-        // microtask > macrotask, чтобы UI был отзывчивее
-        if (typeof queueMicrotask === 'function') {
-          queueMicrotask(fn);
-          return;
-        }
-        Promise.resolve().then(fn).catch(() => {});
-      }
+      const qs = (sel, root = document) => root.querySelector(sel);
+      const qsa = (sel, root = document) => root.querySelectorAll(sel);
 
-      function qs(sel, root = document) {
-        return root.querySelector(sel);
-      }
-
-      function qsa(sel, root = document) {
-        return root.querySelectorAll(sel);
-      }
-
-      function createStyleOnce(id, cssText) {
+      const createStyleOnce = (id, cssText) => {
         const key = String(id || '').trim();
         if (!key) return null;
-
         const existing = document.getElementById(key);
         if (existing) return existing;
-
         const s = document.createElement('style');
         s.id = key;
         s.textContent = String(cssText || '');
         document.head.appendChild(s);
         return s;
-      }
+      };
 
-      function onDocClickOutside(targetEl, handler, opts = {}) {
+      const onDocClickOutside = (targetEl, handler, opts = {}) => {
         const capture = opts.capture !== false;
         const doc = opts.doc || document;
-
         const fn = (e) => {
           try {
-            if (!targetEl) return;
-            if (targetEl.contains(e.target)) return;
+            if (!targetEl || targetEl.contains(e.target)) return;
             handler && handler(e);
           } catch {}
         };
-
         doc.addEventListener('click', fn, capture);
-        return () => {
-          try { doc.removeEventListener('click', fn, capture); } catch {}
-        };
-      }
-
-      function onEscape(handler, opts = {}) {
-        const doc = opts.doc || document;
-
-        const fn = (e) => {
-          if (e && e.key === 'Escape') {
-            try { handler && handler(e); } catch {}
-          }
-        };
-
-        doc.addEventListener('keydown', fn, { passive: true });
-        return () => {
-          try { doc.removeEventListener('keydown', fn, { passive: true }); } catch {}
-        };
-      }
-
-      return {
-        cacheById,
-        byId,
-        on,
-        raf,
-        defer,
-        qs,
-        qsa,
-        createStyleOnce,
-        onDocClickOutside,
-        onEscape
+        return () => { try { doc.removeEventListener('click', fn, capture); } catch {} };
       };
+
+      const onEscape = (handler, opts = {}) => {
+        const doc = opts.doc || document;
+        const fn = (e) => { if (e?.key === 'Escape') { try { handler && handler(e); } catch {} } };
+        doc.addEventListener('keydown', fn, { passive: true });
+        return () => { try { doc.removeEventListener('keydown', fn, { passive: true }); } catch {} };
+      };
+
+      return { byId, on, raf, qs, qsa, createStyleOnce, onDocClickOutside, onEscape };
     })(),
 
-    // Back-compat helpers (thin)
+    // Back-compat
     $(id) { return Utils.dom.byId(id); },
     $q(sel, root) { return Utils.dom.qs(sel, root); },
     $qa(sel, root) { return Utils.dom.qsa(sel, root); },
 
-    // ===== Common utils =====
+    // ===== Common =====
     clamp(n, a, b) {
-      const nn = Number(n);
-      const aa = Number(a);
-      const bb = Number(b);
-      if (!Number.isFinite(nn) || !Number.isFinite(aa) || !Number.isFinite(bb)) return aa;
-      return Math.max(aa, Math.min(bb, nn));
+      n = Number(n); a = Number(a); b = Number(b);
+      return Number.isFinite(n) && Number.isFinite(a) && Number.isFinite(b) ? Math.max(a, Math.min(b, n)) : a;
     },
 
     toInt(v, d = 0) {
       const n = parseInt(String(v ?? ''), 10);
       return Number.isFinite(n) ? n : d;
+    },
+
+    trimStr(v) {
+      const s = String(v ?? '').trim();
+      return s || null;
     },
 
     escapeHtml(s) {
@@ -151,8 +102,7 @@
 
     async waitFor(fn, maxMs = 2000, step = 50) {
       let t = 0;
-      while (!fn() && t < maxMs) {
-        // eslint-disable-next-line no-await-in-loop
+      while (!fn() && t < maxMs) { // eslint-disable-next-line no-await-in-loop
         await new Promise(r => setTimeout(r, step));
         t += step;
       }
@@ -163,61 +113,39 @@
       const timeoutMs = (opts && Number.isFinite(opts.timeoutMs)) ? opts.timeoutMs : null;
       return new Promise((resolve, reject) => {
         let tm = null;
-        const onEv = (ev) => {
-          cleanup();
-          resolve(ev);
-        };
+        const onEv = (ev) => { cleanup(); resolve(ev); };
         const cleanup = () => {
           try { target.removeEventListener(eventName, onEv); } catch {}
           if (tm) clearTimeout(tm);
         };
-        try { target.addEventListener(eventName, onEv, { once: true }); } catch { /* noop */ }
+        try { target.addEventListener(eventName, onEv, { once: true }); } catch {}
         if (timeoutMs != null) {
-          tm = setTimeout(() => {
-            cleanup();
-            reject(new Error(`Timeout waiting for event "${eventName}"`));
-          }, timeoutMs);
+          tm = setTimeout(() => { cleanup(); reject(new Error(`Timeout waiting for event "${eventName}"`)); }, timeoutMs);
         }
       });
     },
 
     debounceFrame(fn) {
-      let rafId = 0;
-      let lastArgs = null;
+      let rafId = 0, lastArgs = null;
       return function (...args) {
         lastArgs = args;
         if (rafId) return;
-        rafId = requestAnimationFrame(() => {
-          rafId = 0;
-          fn.apply(this, lastArgs);
-        });
+        rafId = requestAnimationFrame(() => { rafId = 0; fn.apply(this, lastArgs); });
       };
     },
 
-    isMobile() {
-      return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    },
-
-    isIOS() {
-      return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    },
-
-    isStandalone() {
-      return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-    },
+    isMobile() { return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent); },
+    isIOS() { return /iPad|iPhone|iPod/.test(navigator.userAgent) && !W.MSStream; },
+    isStandalone() { return W.matchMedia('(display-mode: standalone)').matches || W.navigator.standalone; },
 
     // ===== Network =====
     getNetworkStatusSafe() {
-      try {
-        if (window.NetworkManager?.getStatus) return window.NetworkManager.getStatus();
-      } catch {}
+      try { if (W.NetworkManager?.getStatus) return W.NetworkManager.getStatus(); } catch {}
       return { online: navigator.onLine !== false, kind: 'unknown', saveData: false };
     },
 
     isOnline() {
-      try {
-        if (window.NetworkManager?.getStatus) return !!window.NetworkManager.getStatus().online;
-      } catch {}
+      try { if (W.NetworkManager?.getStatus) return !!W.NetworkManager.getStatus().online; } catch {}
       return navigator.onLine !== false;
     },
 
@@ -230,14 +158,12 @@
       return `${(b / (1024 * 1024 * 1024)).toFixed(2)} GB`;
     },
 
-    // ===== LocalStorage =====
+    // ===== Storage =====
     lsGet(key, fallback = null) {
       try {
         const v = localStorage.getItem(String(key || ''));
         return v === null ? fallback : v;
-      } catch {
-        return fallback;
-      }
+      } catch { return fallback; }
     },
 
     lsSet(key, value) {
@@ -249,8 +175,7 @@
     },
 
     lsGetBool01(key, fallback = false) {
-      const v = Utils.lsGet(key, fallback ? '1' : '0');
-      return v === '1';
+      return Utils.lsGet(key, fallback ? '1' : '0') === '1';
     },
 
     lsSetBool01(key, on) {
@@ -263,9 +188,7 @@
         if (!raw) return fallback;
         const j = JSON.parse(raw);
         return (j === null || j === undefined) ? fallback : j;
-      } catch {
-        return fallback;
-      }
+      } catch { return fallback; }
     },
 
     lsSetJson(key, value) {
@@ -284,32 +207,35 @@
       el.setAttribute('aria-disabled', disabled ? 'true' : 'false');
     },
 
-    // ===== App helpers (thin) =====
+    // ===== App helpers =====
+    isSpecialAlbumKey(key) {
+      const k = String(key || '');
+      return !!k && k.startsWith('__');
+    },
+
     isBrowsingOtherAlbum() {
-      const playing = window.AlbumsManager?.getPlayingAlbum?.();
-      const current = window.AlbumsManager?.getCurrentAlbum?.();
+      const playing = W.AlbumsManager?.getPlayingAlbum?.();
+      const current = W.AlbumsManager?.getCurrentAlbum?.();
       if (!playing) return false;
-      if (playing === window.SPECIAL_FAVORITES_KEY && current === window.SPECIAL_FAVORITES_KEY) return false;
+      if (playing === W.SPECIAL_FAVORITES_KEY && current === W.SPECIAL_FAVORITES_KEY) return false;
       return playing !== current;
     },
 
-    // ===== Favorites helpers (mini header like status) =====
+    // ===== Favorites helpers =====
     fav: {
       isTrackLikedInContext({ playingAlbum, track } = {}) {
-        const fm = window.FavoritesManager;
+        const fm = W.FavoritesManager;
         const pa = String(playingAlbum || '').trim();
         const uid = String(track?.uid || '').trim();
         if (!fm || !pa || !uid) return false;
 
-        if (pa !== window.SPECIAL_FAVORITES_KEY) {
-          return !!fm.isFavorite?.(pa, uid);
-        }
+        if (pa !== W.SPECIAL_FAVORITES_KEY) return !!fm.isFavorite?.(pa, uid);
 
         const srcAlbum = String(track?.sourceAlbum || '').trim();
         if (srcAlbum) return !!fm.isFavorite?.(srcAlbum, uid);
 
-        const ref = Array.isArray(window.favoritesRefsModel)
-          ? window.favoritesRefsModel.find(it => String(it?.__uid || '').trim() === uid)
+        const ref = Array.isArray(W.favoritesRefsModel)
+          ? W.favoritesRefsModel.find(it => String(it?.__uid || '').trim() === uid)
           : null;
 
         const a = String(ref?.__a || '').trim();
@@ -322,27 +248,24 @@
       key: 'qualityMode:v1',
 
       getMode() {
-        const raw = String(Utils.lsGet(Utils.pq.key, window.playerCore?.getQualityMode?.() || 'hi')).toLowerCase();
+        const raw = String(Utils.lsGet(Utils.pq.key, W.playerCore?.getQualityMode?.() || 'hi')).toLowerCase();
         return raw === 'lo' ? 'lo' : 'hi';
       },
 
       getState() {
-        const pc = window.playerCore;
+        const pc = W.playerCore;
         const mode = Utils.pq.getMode();
         const canToggleByTrack = !!pc?.canToggleQualityForCurrentTrack?.();
         const netOk = Utils.isOnline();
-        const canToggle = canToggleByTrack && netOk;
-        return { mode, canToggle, canToggleByTrack, netOk };
+        return { mode, canToggle: canToggleByTrack && netOk, canToggleByTrack, netOk };
       },
 
       toggle() {
-        const pc = window.playerCore;
+        const pc = W.playerCore;
         if (!pc) return { ok: false, reason: 'noPlayerCore' };
-
         const st = Utils.pq.getState();
         if (!st.netOk) return { ok: false, reason: 'offline' };
         if (!st.canToggleByTrack) return { ok: false, reason: 'trackNoLo' };
-
         const next = st.mode === 'hi' ? 'lo' : 'hi';
         pc.switchQuality?.(next);
         return { ok: true, next };
@@ -367,15 +290,13 @@
             : (typeof byUid.sizeHi === 'number' ? byUid.sizeHi : (typeof byUid.size === 'number' ? byUid.size : null));
 
           return (typeof size === 'number') ? ` (~${size.toFixed(2)} МБ)` : '';
-        } catch {
-          return '';
-        }
+        } catch { return ''; }
       },
 
       applyDownloadLink(anchorEl, track) {
         if (!anchorEl) return;
 
-        if (!track || !track.src) {
+        if (!track?.src) {
           anchorEl.href = '#';
           anchorEl.removeAttribute('download');
           anchorEl.title = 'Скачать трек';
@@ -385,15 +306,13 @@
         anchorEl.href = track.src;
         anchorEl.download = `${track.title}.mp3`;
 
-        const playingAlbumKey = window.AlbumsManager?.getPlayingAlbum?.();
-        const albumData = playingAlbumKey ? window.AlbumsManager?.getAlbumData?.(playingAlbumKey) : null;
-
+        const playingAlbumKey = W.AlbumsManager?.getPlayingAlbum?.();
+        const albumData = playingAlbumKey ? W.AlbumsManager?.getAlbumData?.(playingAlbumKey) : null;
         const hint = Utils.download.getSizeHintMB({ albumData, track });
         anchorEl.title = hint ? `Скачать трек${hint}` : 'Скачать трек';
       }
     }
   };
 
-  window.Utils = Utils;
-  console.log('✅ Utils loaded');
+  W.Utils = Utils;
 })();
