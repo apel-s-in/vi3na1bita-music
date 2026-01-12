@@ -1033,10 +1033,4 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
   } else {
     initWhenReady();
   }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => W.playerCore.initialize());
-  } else {
-    W.playerCore.initialize();
-  }
 })();
