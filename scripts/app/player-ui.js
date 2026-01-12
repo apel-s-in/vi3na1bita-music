@@ -8,9 +8,11 @@
 
   const w = window;
   const U = w.Utils;
-  const $ = (id) => U?.dom?.byId ? U.dom.byId(id) : (U?.$ ? U.$(id) : document.getElementById(id));
-  const on = (el, ev, fn, opts) => (U?.dom?.on ? U.dom.on(el, ev, fn, opts) : (el && el.addEventListener(ev, fn, opts)));
-  const raf = (fn) => (U?.dom?.raf ? U.dom.raf(fn) : requestAnimationFrame(fn));
+
+  // Единый DOM helpers слой (без fallback'ов): Utils грузится раньше всех UI-скриптов.
+  const $ = (id) => U.dom.byId(id);
+  const on = (el, ev, fn, opts) => U.dom.on(el, ev, fn, opts);
+  const raf = (fn) => U.dom.raf(fn);
 
   const STAR_ON = 'img/star.png';
   const STAR_OFF = 'img/star2.png';
