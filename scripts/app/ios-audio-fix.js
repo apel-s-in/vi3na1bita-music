@@ -108,42 +108,7 @@
     setTimeout(unlockIOSAudio, 200);
   }
 
-  // Also hook into the player play functionality to ensure unlock before playback
-  const originalPlay = function(index, options) {
-    if (isIOS() && w.Howler && w.Howler.ctx && w.Howler.ctx.state === 'suspended') {
-      w.Howler.ctx.resume().catch(err => {
-        console.warn('Attempt to unlock during play failed:', err);
-      });
-    }
-    
-    // Proceed with normal play logic
-    if (w.playerCore) {
-      w.playerCore._pushHistoryForCurrent();
-      
-      if (!w.playerCore.sound) return;
-      
-      w.playerCore.sound.play();
-      w.playerCore._updateMedia(w.playerCore.getCurrentTrack());
-    }
-  };
-
-  // Enhance the playerCore play method to handle iOS unlock
-  if (w.playerCore) {
-    const originalPlayerPlay = w.playerCore.play.bind(w.playerCore);
-    w.playerCore.play = async function(index, options = {}) {
-      if (isIOS()) {
-        // Try to unlock audio context before playing
-        if (w.Howler && w.Howler.ctx && w.Howler.ctx.state === 'suspended') {
-          try {
-            await w.Howler.ctx.resume();
-            console.log('✅ AudioContext unlocked via play attempt');
-          } catch (err) {
-            console.warn('⚠️ Could not unlock AudioContext during play:', err);
-          }
-        }
-      }
-      return originalPlayerPlay(index, options);
-    };
-  }
-
+  // ✅ Важно: НЕ патчим playerCore.play и НЕ дергаем sound.play() напрямую.
+  // Этот файл должен только "разлочить" AudioContext, не вмешиваясь в логику проигрывания,
+  // иначе возможны двойные play() и "второй звук".
 })();
