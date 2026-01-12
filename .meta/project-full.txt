@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f2e2ea903afb1f467b44eaa62005c1bcb8e198c9.idx
-│   │       ├── pack-f2e2ea903afb1f467b44eaa62005c1bcb8e198c9.pack
-│   │       └── pack-f2e2ea903afb1f467b44eaa62005c1bcb8e198c9.rev
+│   │       ├── pack-933aae66c69391f68a2ead2616774a73531e377d.idx
+│   │       ├── pack-933aae66c69391f68a2ead2616774a73531e377d.pack
+│   │       └── pack-933aae66c69391f68a2ead2616774a73531e377d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -380,7 +380,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-07 18:43:35 UTC
+Сгенерировано: 2026-01-12 09:08:42 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -15038,12 +15038,6 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     document.addEventListener('DOMContentLoaded', initWhenReady);
   } else {
     initWhenReady();
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => W.playerCore.initialize());
-  } else {
-    W.playerCore.initialize();
   }
 })();
 
