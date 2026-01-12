@@ -660,9 +660,8 @@
       }
     };
 
+    // ✅ Один источник кликов: click (pointerup + click даёт дубль на touch).
     on(block, 'click', handleBlockAction);
-    // iOS Safari: pointerup срабатывает надёжнее на touch
-    on(block, 'pointerup', handleBlockAction, { passive: false });
 
     // Volume slider (input)
     const volumeSlider = block.querySelector('#volume-slider');
