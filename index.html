@@ -177,6 +177,23 @@
   <div id="modals-container"></div>
 
   <!-- Player template: разметка блока плеера вынесена из scripts/app/player-ui.js -->
+  <!-- Mini-player header template (now-playing) -->
+  <template id="mini-header-template">
+    <div class="mini-now" id="mini-now">
+      <span class="tnum" id="mini-now-num">--.</span>
+      <span class="track-title" id="mini-now-title">—</span>
+      <img src="img/star2.png" class="like-star" id="mini-now-star" alt="звезда">
+    </div>
+  </template>
+
+  <!-- Next-up template (now-playing) -->
+  <template id="next-up-template">
+    <div class="next-up" id="next-up">
+      <span class="label">Далее:</span>
+      <span class="title" title="">—</span>
+    </div>
+  </template>
+
   <template id="player-template">
     <div class="lyrics-player-block" id="lyricsplayerblock">
       <div id="lyrics-window" class="lyrics-normal">
