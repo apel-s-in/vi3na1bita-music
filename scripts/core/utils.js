@@ -6,6 +6,20 @@
     $(id) {
       return document.getElementById(id);
     },
+
+    // ✅ Общие простые утилиты (убираем дубли из player-ui.js и других модулей)
+    clamp(n, a, b) {
+      const nn = Number(n);
+      const aa = Number(a);
+      const bb = Number(b);
+      if (!Number.isFinite(nn) || !Number.isFinite(aa) || !Number.isFinite(bb)) return aa;
+      return Math.max(aa, Math.min(bb, nn));
+    },
+
+    toInt(v, d = 0) {
+      const n = parseInt(String(v ?? ''), 10);
+      return Number.isFinite(n) ? n : d;
+    },
     
     $q(sel) {
       return document.querySelector(sel);
