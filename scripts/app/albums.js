@@ -897,14 +897,9 @@ class AlbumsManager {
       window.PlayerUI?.ensurePlayerBlock(index, { userInitiated: true });
     };
 
+    // ✅ Один источник клика: click.
+    // pointerup+click часто дают двойное срабатывание (звезда/плей/двойной звук).
     trackEl.addEventListener('click', handleTrackActivation);
-    // iOS Safari: pointerup более надёжен на touch-устройствах
-    trackEl.addEventListener('pointerup', (e) => {
-      // Игнорируем если это был drag/scroll
-      if (e.pointerType === 'touch') {
-        handleTrackActivation(e);
-      }
-    }, { passive: true });
 
     const star = trackEl.querySelector('.like-star');
     const handleStarActivation = (e) => {
@@ -938,8 +933,8 @@ class AlbumsManager {
       );
     };
 
+    // ✅ Один источник клика: click (иначе на touch будет toggle дважды).
     star?.addEventListener('click', handleStarActivation);
-    star?.addEventListener('pointerup', handleStarActivation, { passive: false });
 
     return trackEl;
   }
