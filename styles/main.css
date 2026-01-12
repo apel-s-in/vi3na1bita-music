@@ -130,6 +130,69 @@ header{width:100%;text-align:center;margin:0 auto}
 .sleep-menu-item:hover{background:rgba(77,170,255,.15)}
 .sleep-menu-item.active{background:rgba(77,170,255,.2);color:var(--secondary-color)}
 
+/* Sleep timer: time dialog (HH:MM) */
+.sleep-time-modal-backdrop{
+  position:fixed;
+  inset:0;
+  z-index:10000;
+  background:rgba(0,0,0,.65);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:14px;
+}
+.sleep-time-modal{
+  width:min(360px, 100%);
+  background:var(--modal-bg);
+  border:1px solid var(--border-color);
+  border-radius:14px;
+  padding:14px;
+  box-shadow:0 8px 40px rgba(0,0,0,.6);
+}
+.sleep-time-title{
+  color:var(--secondary-color);
+  font-weight:900;
+  margin:0 0 12px 0;
+  text-align:center;
+}
+.sleep-time-row{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  justify-content:center;
+  margin-bottom:12px;
+}
+.sleep-time-input{
+  width:72px;
+  text-align:center;
+  padding:10px 8px;
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.06);
+  color:var(--text-color);
+  outline:none;
+}
+.sleep-time-sep{opacity:.75}
+.sleep-time-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+}
+.sleep-time-btn{
+  padding:9px 12px;
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.06);
+  color:var(--text-color);
+  cursor:pointer;
+  font-weight:800;
+}
+.sleep-time-btn.primary{
+  background:rgba(77,170,255,.25);
+  border-color:rgba(77,170,255,.35);
+  color:var(--secondary-color);
+}
+
 /* Volume */
 .volume-control-wrapper{position:relative;padding:16px 20px 12px;background:rgba(15,18,24,.5);border-top:1px solid rgba(255,255,255,.05)}
 .volume-track{position:relative;height:6px;background:rgba(255,255,255,.08);border-radius:3px}
