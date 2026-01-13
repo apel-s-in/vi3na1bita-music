@@ -144,14 +144,16 @@ class AlbumsManager {
     if (this._favSyncBound) return;
     this._favSyncBound = true;
 
-    // Обновление звёзд в обычных альбомах
-    window.addEventListener('favorites:changed', (ev) => {
-      const d = ev?.detail || {};
-      const a = toStr(d.albumKey).trim();
-      const u = toStr(d.uid).trim();
+    // Обновление звёзд в обычных альбомах (без DOM events)
+    const pc = window.playerCore;
+    if (!pc?.onFavoritesChanged) return;
+
+    pc.onFavoritesChanged((d) => {
+      const a = toStr(d?.albumKey).trim();
+      const u = toStr(d?.uid).trim();
       if (!a || !u) return;
 
-      const liked = !!d.liked;
+      const liked = !!d?.liked;
       const sel = `.like-star[data-album="${CSS.escape(a)}"][data-uid="${CSS.escape(u)}"]`;
       document.querySelectorAll(sel).forEach((img) => setStar(img, liked));
     });
