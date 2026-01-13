@@ -224,22 +224,22 @@
     // ===== Favorites helpers =====
     fav: {
       isTrackLikedInContext({ playingAlbum, track } = {}) {
-        const fm = W.FavoritesManager;
+        const pc = W.playerCore;
         const pa = String(playingAlbum || '').trim();
         const uid = String(track?.uid || '').trim();
         if (!fm || !pa || !uid) return false;
 
-        if (pa !== W.SPECIAL_FAVORITES_KEY) return !!fm.isFavorite?.(pa, uid);
+        if (pa !== W.SPECIAL_FAVORITES_KEY) return !!pc?.isFavorite?.(uid);
 
         const srcAlbum = String(track?.sourceAlbum || '').trim();
-        if (srcAlbum) return !!fm.isFavorite?.(srcAlbum, uid);
+        if (srcAlbum) return !!pc?.isFavorite?.(uid);
 
         const ref = Array.isArray(W.favoritesRefsModel)
           ? W.favoritesRefsModel.find(it => String(it?.__uid || '').trim() === uid)
           : null;
 
         const a = String(ref?.__a || '').trim();
-        return a ? !!fm.isFavorite?.(a, uid) : false;
+        return a ? !!pc?.isFavorite?.(uid) : false;
       }
     },
 
