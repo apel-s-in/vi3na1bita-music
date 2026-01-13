@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-7129d0d05bbcefb9737ef0d0fc6eb127016c93cf.idx
-│   │       ├── pack-7129d0d05bbcefb9737ef0d0fc6eb127016c93cf.pack
-│   │       └── pack-7129d0d05bbcefb9737ef0d0fc6eb127016c93cf.rev
+│   │       ├── pack-b7c636c173fc5a5bf3f33c50b0bc4f6af715f765.idx
+│   │       ├── pack-b7c636c173fc5a5bf3f33c50b0bc4f6af715f765.pack
+│   │       └── pack-b7c636c173fc5a5bf3f33c50b0bc4f6af715f765.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-13 21:13:58 UTC
+Сгенерировано: 2026-01-13 21:14:28 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9855,8 +9855,14 @@ function bindLiveUpdatesOnce() {
     if (typeof off === 'function') st.unsubs.push(off);
   } catch {}
 
-  st.unsubs.push(onWin('favorites:changed', () => refreshAll()));
-  st.unsubs.push(onWin('favorites:refsChanged', () => refreshAll()));
+  // favorites changes without DOM events
+  try {
+    const pc = window.playerCore;
+    if (pc?.onFavoritesChanged) {
+      const off = pc.onFavoritesChanged(() => refreshAll());
+      if (typeof off === 'function') st.unsubs.push(off);
+    }
+  } catch {}
 }
 
 function attachMutationObserverOnce() {
