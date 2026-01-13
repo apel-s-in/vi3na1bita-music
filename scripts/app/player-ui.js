@@ -91,14 +91,21 @@
     if (w.__favoritesChangedBound) return;
     w.__favoritesChangedBound = true;
 
-    window.addEventListener('favorites:changed', (e) => {
+    const pc = w.playerCore;
+    if (!pc?.onFavoritesChanged) {
+      // если PlayerCore ещё не готов — попробуем позже
+      w.__favoritesChangedBound = false;
+      return void setTimeout(attachFavoritesRealtimeSync, 100);
+    }
+
+    pc.onFavoritesChanged((changed) => {
       try {
         updateMiniHeader();
         updateNextUpLabel();
-        w.PlaybackPolicy?.apply?.({ reason: 'favoritesChanged', changed: e?.detail || {} });
+        w.PlaybackPolicy?.apply?.({ reason: 'favoritesChanged', changed: changed || {} });
         updateAvailableTracksForPlayback();
       } catch (err) {
-        console.warn('favorites:changed handler failed:', err);
+        console.warn('onFavoritesChanged handler failed:', err);
       }
     });
   }
