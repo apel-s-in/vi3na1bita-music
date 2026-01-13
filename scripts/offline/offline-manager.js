@@ -655,19 +655,22 @@ export class OfflineManager {
     // Собираем uid-ы набора
     let uids = [];
     if (selection.mode === 'favorites') {
-      const playing = window.SPECIAL_FAVORITES_KEY || '__favorites__';
-      // Любые ⭐ в любом альбоме — это "избранное" пользователя
-      // но "только ИЗБРАННОЕ" в ТЗ = активные в favorites view (⭐ true).
-      // Значит: берём все liked uid по всем альбомам.
-      const map = window.FavoritesManager?.getLikedUidMap?.() || {};
+      // "только ИЗБРАННОЕ" = все ⭐ (liked) из обычных альбомов (по storage likedTrackUids:v1).
+      // Берём по каждому альбому (кроме special) и объединяем uid.
+      const pc = window.playerCore;
+      const idx = Array.isArray(window.albumsIndex) ? window.albumsIndex : [];
       const all = [];
-      Object.keys(map || {}).forEach((a) => {
-        const arr = Array.isArray(map[a]) ? map[a] : [];
-        arr.forEach(u => all.push(String(u || '').trim()));
-      });
+
+      if (pc?.getLikedUidsForAlbum) {
+        for (const a of idx) {
+          const key = String(a?.key || '').trim();
+          if (!key || key.startsWith('__')) continue;
+          const arr = pc.getLikedUidsForAlbum(key) || [];
+          if (Array.isArray(arr) && arr.length) all.push(...arr.map(x => String(x || '').trim()));
+        }
+      }
+
       uids = uniq(all);
-      // special key playing переменная не используется, оставлено для ясности
-      void playing;
     } else if (selection.mode === 'albums') {
       const keys = uniq(selection.albumKeys);
       const allTracks = (typeof window.TrackRegistry?.getAllTracks === 'function')
