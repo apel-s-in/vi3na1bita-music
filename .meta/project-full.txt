@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6e19a88886584af58e493a2934a3b2ba1a9e3ade.idx
-│   │       ├── pack-6e19a88886584af58e493a2934a3b2ba1a9e3ade.pack
-│   │       └── pack-6e19a88886584af58e493a2934a3b2ba1a9e3ade.rev
+│   │       ├── pack-7129d0d05bbcefb9737ef0d0fc6eb127016c93cf.idx
+│   │       ├── pack-7129d0d05bbcefb9737ef0d0fc6eb127016c93cf.pack
+│   │       └── pack-7129d0d05bbcefb9737ef0d0fc6eb127016c93cf.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-13 21:12:43 UTC
+Сгенерировано: 2026-01-13 21:13:58 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8994,15 +8994,23 @@ export function attachCloudMenu(opts = {}) {
     } catch {}
   }
 
-  // Rebuild model when favorites change (best-effort)
+  // Rebuild model when favorites change (best-effort) — без DOM events
   if (!w.__favoritesUIBound) {
     w.__favoritesUIBound = true;
-    w.addEventListener('favorites:changed', () => {
-      // только модель; рендер в albums.js делает свой render()
-      if (w.AlbumsManager?.getCurrentAlbum?.() === FAV) {
-        buildFavoritesRefsModel().catch(() => {});
-      }
-    });
+
+    const bind = () => {
+      const pc = w.playerCore;
+      if (!pc?.onFavoritesChanged) return void setTimeout(bind, 100);
+
+      pc.onFavoritesChanged(() => {
+        // только модель; рендер в albums.js делает свой render()
+        if (w.AlbumsManager?.getCurrentAlbum?.() === FAV) {
+          buildFavoritesRefsModel().catch(() => {});
+        }
+      });
+    };
+
+    bind();
   }
 
   w.FavoritesUI = {
