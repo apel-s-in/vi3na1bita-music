@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-97fd11473d3ef328aef7bf04765d38755b8030cd.idx
-│   │       ├── pack-97fd11473d3ef328aef7bf04765d38755b8030cd.pack
-│   │       └── pack-97fd11473d3ef328aef7bf04765d38755b8030cd.rev
+│   │       ├── pack-cb97b1c063cf335c70b88f6e137297322bc34207.idx
+│   │       ├── pack-cb97b1c063cf335c70b88f6e137297322bc34207.pack
+│   │       └── pack-cb97b1c063cf335c70b88f6e137297322bc34207.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-13 20:56:46 UTC
+Сгенерировано: 2026-01-13 20:57:23 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4027,23 +4027,12 @@ export function attachPlaybackCache() {
   }
 
   function toggleLikePlaying() {
-    const playingAlbum = w.AlbumsManager?.getPlayingAlbum?.();
     const track = w.playerCore?.getCurrentTrack?.();
-    if (!playingAlbum || !track || !w.FavoritesManager) return;
-
     const uid = String(track?.uid || '').trim();
     if (!uid) return;
 
-    if (playingAlbum !== w.SPECIAL_FAVORITES_KEY) {
-      const isLiked = !!w.FavoritesManager.isFavorite?.(playingAlbum, uid);
-      w.FavoritesManager.toggleLike?.(playingAlbum, uid, !isLiked, { source: 'mini' });
-    } else {
-      const srcAlbum = String(track?.sourceAlbum || '').trim();
-      if (!srcAlbum) return;
-      const isLiked = !!w.FavoritesManager.isFavorite?.(srcAlbum, uid);
-      w.FavoritesManager.toggleLike?.(srcAlbum, uid, !isLiked, { source: 'mini' });
-    }
-
+    // mini — это НЕ favorites view, значит поведение "как из альбома"
+    w.playerCore?.toggleFavorite?.(uid, true);
     updateMiniHeader();
   }
 
