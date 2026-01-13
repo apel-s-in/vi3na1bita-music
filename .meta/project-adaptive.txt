@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9fbbbe6bd5216508f18dcca40abe4c1c3e2af76d.idx
-│   │       ├── pack-9fbbbe6bd5216508f18dcca40abe4c1c3e2af76d.pack
-│   │       └── pack-9fbbbe6bd5216508f18dcca40abe4c1c3e2af76d.rev
+│   │       ├── pack-e88ff95be1d563a68151b1661c69bc8a46bf1787.idx
+│   │       ├── pack-e88ff95be1d563a68151b1661c69bc8a46bf1787.pack
+│   │       └── pack-e88ff95be1d563a68151b1661c69bc8a46bf1787.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-13 21:25:21 UTC
+Сгенерировано: 2026-01-13 21:26:06 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1526,9 +1526,9 @@ self.addEventListener('message', (event) => {
     }
 
     async initializeFavorites() {
-      if (await this._waitForReady(() => !!w.FavoritesManager?.initialize)) {
-        w.FavoritesManager.initialize();
-      }
+      // Favorites теперь полностью в PlayerCore + FavoritesUI.
+      // Старый FavoritesManager не инициализируем (избавляемся от дублей и возможных DOM событий).
+      return;
     }
 
     async initializeGallery() {
