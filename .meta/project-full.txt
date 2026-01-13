@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-98c0c86e3874200563e2d68207ebeb01fa9485b3.idx
-│   │       ├── pack-98c0c86e3874200563e2d68207ebeb01fa9485b3.pack
-│   │       └── pack-98c0c86e3874200563e2d68207ebeb01fa9485b3.rev
+│   │       ├── pack-c901b9589175dce9b6e81779f8ae01898d99e0a7.idx
+│   │       ├── pack-c901b9589175dce9b6e81779f8ae01898d99e0a7.pack
+│   │       └── pack-c901b9589175dce9b6e81779f8ae01898d99e0a7.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-13 21:11:42 UTC
+Сгенерировано: 2026-01-13 21:12:11 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3406,14 +3406,21 @@ export function attachPlaybackCache() {
     if (w.__favoritesChangedBound) return;
     w.__favoritesChangedBound = true;
 
-    window.addEventListener('favorites:changed', (e) => {
+    const pc = w.playerCore;
+    if (!pc?.onFavoritesChanged) {
+      // если PlayerCore ещё не готов — попробуем позже
+      w.__favoritesChangedBound = false;
+      return void setTimeout(attachFavoritesRealtimeSync, 100);
+    }
+
+    pc.onFavoritesChanged((changed) => {
       try {
         updateMiniHeader();
         updateNextUpLabel();
-        w.PlaybackPolicy?.apply?.({ reason: 'favoritesChanged', changed: e?.detail || {} });
+        w.PlaybackPolicy?.apply?.({ reason: 'favoritesChanged', changed: changed || {} });
         updateAvailableTracksForPlayback();
       } catch (err) {
-        console.warn('favorites:changed handler failed:', err);
+        console.warn('onFavoritesChanged handler failed:', err);
       }
     });
   }
