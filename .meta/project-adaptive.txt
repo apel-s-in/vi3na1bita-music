@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8acaf6359c8ca4a5dc9eaf95f3b620882b8653d3.idx
-│   │       ├── pack-8acaf6359c8ca4a5dc9eaf95f3b620882b8653d3.pack
-│   │       └── pack-8acaf6359c8ca4a5dc9eaf95f3b620882b8653d3.rev
+│   │       ├── pack-2042f449f9f143da49ad826489d46691974e479e.idx
+│   │       ├── pack-2042f449f9f143da49ad826489d46691974e479e.pack
+│   │       └── pack-2042f449f9f143da49ad826489d46691974e479e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-13 21:28:19 UTC
+Сгенерировано: 2026-01-13 21:35:41 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6168,7 +6168,7 @@ test('favoritesOnly + shuffle: liking another track adds it to tail of queue', a
     return {
       len: snap.length,
       tailUid: String(tail?.uid || '').trim(),
-      likedUids: window.FavoritesManager?.getLikedUidsForAlbum?.(window.AlbumsManager?.getPlayingAlbum?.() || '') || []
+      likedUids: window.playerCore?.getLikedUidsForAlbum?.(window.AlbumsManager?.getPlayingAlbum?.() || '') || []
     };
   });
 
