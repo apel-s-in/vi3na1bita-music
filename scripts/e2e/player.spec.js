@@ -147,7 +147,7 @@ test('favoritesOnly + shuffle: liking another track adds it to tail of queue', a
     return {
       len: snap.length,
       tailUid: String(tail?.uid || '').trim(),
-      likedUids: window.FavoritesManager?.getLikedUidsForAlbum?.(window.AlbumsManager?.getPlayingAlbum?.() || '') || []
+      likedUids: window.playerCore?.getLikedUidsForAlbum?.(window.AlbumsManager?.getPlayingAlbum?.() || '') || []
     };
   });
 
