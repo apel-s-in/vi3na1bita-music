@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-836d4c507f7bb35e18a5f4143032561932fb3e6c.idx
-│   │       ├── pack-836d4c507f7bb35e18a5f4143032561932fb3e6c.pack
-│   │       └── pack-836d4c507f7bb35e18a5f4143032561932fb3e6c.rev
+│   │       ├── pack-dacd5a12a347c9453baf1d6d9398069e3a772b56.idx
+│   │       ├── pack-dacd5a12a347c9453baf1d6d9398069e3a772b56.pack
+│   │       └── pack-dacd5a12a347c9453baf1d6d9398069e3a772b56.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-13 21:01:22 UTC
+Сгенерировано: 2026-01-13 21:08:30 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5615,7 +5615,7 @@ if (typeof window !== 'undefined') {
         const pc = W.playerCore;
         const pa = String(playingAlbum || '').trim();
         const uid = String(track?.uid || '').trim();
-        if (!fm || !pa || !uid) return false;
+        if (!pc || !pa || !uid) return false;
 
         if (pa !== W.SPECIAL_FAVORITES_KEY) return !!pc?.isFavorite?.(uid);
 
