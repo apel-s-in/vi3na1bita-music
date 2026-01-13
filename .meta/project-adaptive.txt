@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c901b9589175dce9b6e81779f8ae01898d99e0a7.idx
-│   │       ├── pack-c901b9589175dce9b6e81779f8ae01898d99e0a7.pack
-│   │       └── pack-c901b9589175dce9b6e81779f8ae01898d99e0a7.rev
+│   │       ├── pack-6e19a88886584af58e493a2934a3b2ba1a9e3ade.idx
+│   │       ├── pack-6e19a88886584af58e493a2934a3b2ba1a9e3ade.pack
+│   │       └── pack-6e19a88886584af58e493a2934a3b2ba1a9e3ade.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-13 21:12:12 UTC
+Сгенерировано: 2026-01-13 21:12:43 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2028,12 +2028,15 @@ class AlbumsManager {
         });
       });
 
-      window.addEventListener('favorites:changed', () => {
-        // В избранном проще и надёжнее: полная перерисовка модели
-        if (this.currentAlbum !== FAV) return;
-        render();
-        window.PlayerUI?.updateAvailableTracksForPlayback?.();
-      });
+      const pc = window.playerCore;
+      if (pc?.onFavoritesChanged) {
+        pc.onFavoritesChanged(() => {
+          // В избранном проще и надёжнее: полная перерисовка модели
+          if (this.currentAlbum !== FAV) return;
+          render();
+          window.PlayerUI?.updateAvailableTracksForPlayback?.();
+        });
+      }
     }
 
     render();
