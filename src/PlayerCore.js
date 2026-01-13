@@ -80,6 +80,9 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         }
       };
 
+      // Refs index cache: uid -> Set(albumKey)
+      this._favRefsIndex = { built: false, map: new Map() };
+
       this._offlineNoCacheToastShown = false;
       this._hasAnyOfflineCacheComplete = null;
 
@@ -675,6 +678,29 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       }
     }
 
+    _favEnsureRefsIndex() {
+      if (this._favRefsIndex?.built) return;
+
+      const refs = this._favReadRefs();
+      const m = new Map();
+
+      for (const r of refs) {
+        const a = safeStr(r?.a);
+        const u = safeStr(r?.uid);
+        if (!a || !u) continue;
+        if (!m.has(u)) m.set(u, new Set());
+        m.get(u).add(a);
+      }
+
+      this._favRefsIndex = { built: true, map: m };
+    }
+
+    _favInvalidateRefsIndex() {
+      if (!this._favRefsIndex) this._favRefsIndex = { built: false, map: new Map() };
+      this._favRefsIndex.built = false;
+      this._favRefsIndex.map = new Map();
+    }
+
     _favReadRefs() {
       try {
         const raw = localStorage.getItem(this._fav.refsKey);
@@ -688,6 +714,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     _favWriteRefs(arr) {
       try {
         localStorage.setItem(this._fav.refsKey, JSON.stringify(Array.isArray(arr) ? arr : []));
+        this._favInvalidateRefsIndex();
         return true;
       } catch {
         return false;
@@ -864,16 +891,33 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       const u = safeStr(uid);
       if (!u) return { ok: false, reason: 'noUid' };
 
-      // Удаляем ref(ы) с этим uid (обычно 1, но безопасно)
+      this._favEnsureRefsIndex();
+
+      const set = this._favRefsIndex.map.get(u);
+      if (!set || set.size === 0) {
+        // нечего удалять
+        try { this._favEmitter.emit({ uid: u, liked: false, removed: true }); } catch {}
+        return { ok: true, removed: 0 };
+      }
+
       const refs = this._favReadRefs();
-      const next = refs.filter(r => String(r?.uid || '').trim() !== u);
+
+      // точечно убираем все пары (a, uid) для этого uid
+      const next = refs.filter(r => {
+        const ru = String(r?.uid || '').trim();
+        if (ru !== u) return true;
+        const ra = String(r?.a || '').trim();
+        return !set.has(ra);
+      });
+
+      const removed = refs.length - next.length;
       this._favWriteRefs(next);
 
       try {
         this._favEmitter.emit({ uid: u, liked: false, removed: true });
       } catch {}
 
-      return { ok: true };
+      return { ok: true, removed };
     }
 
     restoreInactive(uid) {
