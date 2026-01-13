@@ -295,7 +295,7 @@ class AlbumsManager {
     const coverWrap = $('cover-wrap');
     if (coverWrap) coverWrap.style.display = 'none';
 
-    await window.buildFavoritesRefsModel?.();
+    await window.FavoritesUI?.buildFavoritesRefsModel?.();
 
     const container = $('track-list');
     if (!container) return;
@@ -350,47 +350,25 @@ class AlbumsManager {
           e.preventDefault();
           e.stopPropagation();
           const uid = toStr(item.__uid).trim();
-          const albumKey = toStr(item.__a).trim();
-          if (uid && albumKey) window.FavoritesManager?.toggleLike?.(albumKey, uid, !item.__active, { source: 'favorites' });
+          if (uid) window.playerCore?.toggleFavorite?.(uid, false);
           return;
         }
 
         if (item.__active && item.audio) return void (await this.ensureFavoritesPlayback(idx));
 
-        window.FavoritesData?.showFavoritesInactiveModal?.({
-          albumKey: item.__a,
-          uid: item.__uid,
+        // inactive row click (не по звезде) → модалка (в PlayerCore)
+        window.playerCore?.showInactiveFavoriteModal?.({
+          uid: toStr(item.__uid).trim(),
           title: item.title || 'Трек',
           onDeleted: async () => window.PlayerUI?.updateAvailableTracksForPlayback?.(),
         });
       });
 
-      window.addEventListener('favorites:changed', (ev) => {
+      window.addEventListener('favorites:changed', () => {
+        // В избранном проще и надёжнее: полная перерисовка модели
         if (this.currentAlbum !== FAV) return;
-        const d = ev?.detail || {};
-        const a = toStr(d.albumKey).trim();
-        const u = toStr(d.uid).trim();
-        if (!a || !u) return;
-
-        const liked = !!d.liked;
-        const row = document.getElementById(`fav_${a}_${u}`);
-        if (!row) return;
-
-        try { window.FavoritesData?.updateFavoritesRefsModelActiveFlag?.(a, u, liked); } catch {}
-
-        row.classList.toggle('inactive', !liked);
-        setStar(row.querySelector('.like-star'), liked);
-      });
-
-      window.addEventListener('favorites:refsChanged', (ev) => {
-        if (this.currentAlbum !== FAV) return;
-        const d = ev?.detail || {};
-        const a = toStr(d.albumKey).trim();
-        const u = toStr(d.uid).trim();
-        if (toStr(d.action).trim() !== 'refRemoved' || !a || !u) return;
-
-        document.getElementById(`fav_${a}_${u}`)?.remove();
-        if (!container.querySelector('.track')) container.innerHTML = emptyFavoritesHTML;
+        render();
+        window.PlayerUI?.updateAvailableTracksForPlayback?.();
       });
     }
 
@@ -572,7 +550,7 @@ class AlbumsManager {
       el.dataset.playIndex = String(index);
     }
 
-    const liked = window.FavoritesManager?.isFavorite?.(albumKey, track?.uid) || false;
+    const liked = window.playerCore?.isFavorite?.(track?.uid) || false;
     const numText = `${String(track?.num || index + 1).padStart(2, '0')}.`;
 
     el.innerHTML = `
@@ -647,14 +625,16 @@ class AlbumsManager {
 
       const trackUid = toStr(star.dataset.uid).trim();
       if (!trackUid) return void window.NotificationSystem?.warning('UID трека не найден в config.json');
-      if (!window.FavoritesManager?.toggleLike) return void window.NotificationSystem?.error('FavoritesManager недоступен');
+      if (!window.playerCore?.toggleFavorite) return void window.NotificationSystem?.error('PlayerCore недоступен');
 
-      const next = !window.FavoritesManager.isFavorite(albumKey, trackUid);
+      // UI оптимистично как раньше
+      const isLiked = !!window.playerCore?.isFavorite?.(trackUid);
+      const next = !isLiked;
       setStar(star, next);
       star.classList.add('animating');
       setTimeout(() => star.classList.remove('animating'), 320);
 
-      window.FavoritesManager.toggleLike(albumKey, trackUid, next, { source: 'album' });
+      window.playerCore.toggleFavorite(trackUid, true);
     });
 
     return el;
