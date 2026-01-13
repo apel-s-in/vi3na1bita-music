@@ -227,7 +227,7 @@
         const pc = W.playerCore;
         const pa = String(playingAlbum || '').trim();
         const uid = String(track?.uid || '').trim();
-        if (!fm || !pa || !uid) return false;
+        if (!pc || !pa || !uid) return false;
 
         if (pa !== W.SPECIAL_FAVORITES_KEY) return !!pc?.isFavorite?.(uid);
 
