@@ -696,7 +696,7 @@
           return;
         }
       } else if (playingAlbum && !U.isSpecialAlbumKey(playingAlbum)) {
-        const liked = w.FavoritesManager?.getLikedUidsForAlbum?.(playingAlbum) || [];
+        const liked = w.playerCore?.getLikedUidsForAlbum?.(playingAlbum) || [];
         if (!Array.isArray(liked) || !liked.length) {
           w.NotificationSystem?.info?.('Отметьте понравившийся трек ⭐');
           U.lsSetBool01(LS.FAV_ONLY, false);
@@ -742,7 +742,7 @@
 
     if (!U.lsGetBool01(LS.FAV_ONLY, false)) return void (w.availableFavoriteIndices = null);
 
-    const likedUids = w.FavoritesManager?.getLikedUidsForAlbum?.(playingAlbum) || [];
+    const likedUids = w.playerCore?.getLikedUidsForAlbum?.(playingAlbum) || [];
     if (!likedUids.length) return void (w.availableFavoriteIndices = null);
 
     const set = new Set(likedUids.map(x => String(x || '').trim()).filter(Boolean));
