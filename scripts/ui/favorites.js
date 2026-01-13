@@ -168,15 +168,23 @@
     } catch {}
   }
 
-  // Rebuild model when favorites change (best-effort)
+  // Rebuild model when favorites change (best-effort) — без DOM events
   if (!w.__favoritesUIBound) {
     w.__favoritesUIBound = true;
-    w.addEventListener('favorites:changed', () => {
-      // только модель; рендер в albums.js делает свой render()
-      if (w.AlbumsManager?.getCurrentAlbum?.() === FAV) {
-        buildFavoritesRefsModel().catch(() => {});
-      }
-    });
+
+    const bind = () => {
+      const pc = w.playerCore;
+      if (!pc?.onFavoritesChanged) return void setTimeout(bind, 100);
+
+      pc.onFavoritesChanged(() => {
+        // только модель; рендер в albums.js делает свой render()
+        if (w.AlbumsManager?.getCurrentAlbum?.() === FAV) {
+          buildFavoritesRefsModel().catch(() => {});
+        }
+      });
+    };
+
+    bind();
   }
 
   w.FavoritesUI = {
