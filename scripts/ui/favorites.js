@@ -67,6 +67,16 @@
           if (t.fulltext) t.fulltext = absJoin(base, t.fulltext);
         });
 
+        // ✅ быстрый доступ uid -> track (ускорение buildFavoritesRefsModel)
+        try {
+          const m = new Map();
+          for (const t of tracks) {
+            const uid = trim(t?.uid);
+            if (uid && !m.has(uid)) m.set(uid, t);
+          }
+          cfg.__uidMap = m;
+        } catch {}
+
         configCache.set(a, { ts: Date.now(), cfg });
         return cfg;
       } catch {
@@ -142,8 +152,9 @@
       // track meta from album config
       // eslint-disable-next-line no-await-in-loop
       const cfg = await getAlbumConfigByKey(a);
-      const tracks = Array.isArray(cfg?.tracks) ? cfg.tracks : [];
-      const tr = tracks.find(t => trim(t?.uid) === uid) || null;
+      const tr = (cfg && cfg.__uidMap && typeof cfg.__uidMap.get === 'function')
+        ? (cfg.__uidMap.get(uid) || null)
+        : ((Array.isArray(cfg?.tracks) ? cfg.tracks : []).find(t => trim(t?.uid) === uid) || null);
 
       // eslint-disable-next-line no-await-in-loop
       const cover = await getAlbumCoverUrl(a);
