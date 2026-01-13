@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a7042f223f1dcb5e193624bdaec190569587ea64.idx
-│   │       ├── pack-a7042f223f1dcb5e193624bdaec190569587ea64.pack
-│   │       └── pack-a7042f223f1dcb5e193624bdaec190569587ea64.rev
+│   │       ├── pack-55377ffe9846b5b84950c9677d145e0d41e1fddc.idx
+│   │       ├── pack-55377ffe9846b5b84950c9677d145e0d41e1fddc.pack
+│   │       └── pack-55377ffe9846b5b84950c9677d145e0d41e1fddc.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-13 21:17:47 UTC
+Сгенерировано: 2026-01-13 21:24:06 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4014,7 +4014,7 @@ export function attachPlaybackCache() {
           return;
         }
       } else if (playingAlbum && !U.isSpecialAlbumKey(playingAlbum)) {
-        const liked = w.FavoritesManager?.getLikedUidsForAlbum?.(playingAlbum) || [];
+        const liked = w.playerCore?.getLikedUidsForAlbum?.(playingAlbum) || [];
         if (!Array.isArray(liked) || !liked.length) {
           w.NotificationSystem?.info?.('Отметьте понравившийся трек ⭐');
           U.lsSetBool01(LS.FAV_ONLY, false);
@@ -4060,7 +4060,7 @@ export function attachPlaybackCache() {
 
     if (!U.lsGetBool01(LS.FAV_ONLY, false)) return void (w.availableFavoriteIndices = null);
 
-    const likedUids = w.FavoritesManager?.getLikedUidsForAlbum?.(playingAlbum) || [];
+    const likedUids = w.playerCore?.getLikedUidsForAlbum?.(playingAlbum) || [];
     if (!likedUids.length) return void (w.availableFavoriteIndices = null);
 
     const set = new Set(likedUids.map(x => String(x || '').trim()).filter(Boolean));
