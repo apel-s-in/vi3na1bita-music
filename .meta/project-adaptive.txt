@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-02bed3ba3f118ab707d7509f92b69498a68163e1.idx
-│   │       ├── pack-02bed3ba3f118ab707d7509f92b69498a68163e1.pack
-│   │       └── pack-02bed3ba3f118ab707d7509f92b69498a68163e1.rev
+│   │       ├── pack-d87ad81e95029564fc72a46eeb76f0b3f38fc463.idx
+│   │       ├── pack-d87ad81e95029564fc72a46eeb76f0b3f38fc463.pack
+│   │       └── pack-d87ad81e95029564fc72a46eeb76f0b3f38fc463.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-13 20:52:17 UTC
+Сгенерировано: 2026-01-13 20:52:59 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -749,8 +749,6 @@ jobs:
 
   <!-- UI Modules -->
   <script src="./scripts/ui/notify.js" defer></script>
-  <script src="./scripts/ui/favorites-const.js" defer></script>
-  <script src="./scripts/ui/favorites-data.js" defer></script>
   <script src="./scripts/ui/favorites.js" defer></script>
   <script src="./scripts/ui/sleep.js" defer></script>
   <script src="./scripts/ui/lyrics-modal.js" defer></script>
