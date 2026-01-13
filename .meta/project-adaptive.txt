@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d898bdcb2ca49fcdd0a0370bac8770c096e6bc6f.idx
-│   │       ├── pack-d898bdcb2ca49fcdd0a0370bac8770c096e6bc6f.pack
-│   │       └── pack-d898bdcb2ca49fcdd0a0370bac8770c096e6bc6f.rev
+│   │       ├── pack-98c0c86e3874200563e2d68207ebeb01fa9485b3.idx
+│   │       ├── pack-98c0c86e3874200563e2d68207ebeb01fa9485b3.pack
+│   │       └── pack-98c0c86e3874200563e2d68207ebeb01fa9485b3.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-13 21:10:59 UTC
+Сгенерировано: 2026-01-13 21:11:42 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1806,14 +1806,16 @@ class AlbumsManager {
     if (this._favSyncBound) return;
     this._favSyncBound = true;
 
-    // Обновление звёзд в обычных альбомах
-    window.addEventListener('favorites:changed', (ev) => {
-      const d = ev?.detail || {};
-      const a = toStr(d.albumKey).trim();
-      const u = toStr(d.uid).trim();
+    // Обновление звёзд в обычных альбомах (без DOM events)
+    const pc = window.playerCore;
+    if (!pc?.onFavoritesChanged) return;
+
+    pc.onFavoritesChanged((d) => {
+      const a = toStr(d?.albumKey).trim();
+      const u = toStr(d?.uid).trim();
       if (!a || !u) return;
 
-      const liked = !!d.liked;
+      const liked = !!d?.liked;
       const sel = `.like-star[data-album="${CSS.escape(a)}"][data-uid="${CSS.escape(u)}"]`;
       document.querySelectorAll(sel).forEach((img) => setStar(img, liked));
     });
