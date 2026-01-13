@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-cb97b1c063cf335c70b88f6e137297322bc34207.idx
-│   │       ├── pack-cb97b1c063cf335c70b88f6e137297322bc34207.pack
-│   │       └── pack-cb97b1c063cf335c70b88f6e137297322bc34207.rev
+│   │       ├── pack-c1f6af415709502858d8d657e54ce117fa37fa7e.idx
+│   │       ├── pack-c1f6af415709502858d8d657e54ce117fa37fa7e.pack
+│   │       └── pack-c1f6af415709502858d8d657e54ce117fa37fa7e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-13 20:57:22 UTC
+Сгенерировано: 2026-01-13 20:59:31 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3170,7 +3170,7 @@ export function attachPlaybackCache() {
   const likedUidsForPlayingAlbum = () => {
     const a = playingAlbumKey();
     if (!a || a === w.SPECIAL_FAVORITES_KEY || isSpecial(a)) return [];
-    const uids = w.FavoritesManager?.getLikedUidsForAlbum?.(a) || [];
+    const uids = w.playerCore?.getLikedUidsForAlbum?.(a) || [];
     return Array.isArray(uids) ? uids.map(trim).filter(Boolean) : [];
   };
 
