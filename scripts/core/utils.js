@@ -8,18 +8,14 @@
     // ===== DOM =====
     dom: (() => {
       const m = new Map();
-
       const byId = (id) => {
         const key = String(id || '');
         if (!key) return null;
-
         const cached = m.get(key);
         if (cached && cached.isConnected) return cached;
-
         const el = document.getElementById(key);
         if (el) m.set(key, el);
         else m.delete(key);
-
         return el || null;
       };
 
@@ -39,7 +35,6 @@
         if (!key) return null;
         const existing = document.getElementById(key);
         if (existing) return existing;
-
         const s = document.createElement('style');
         s.id = key;
         s.textContent = String(cssText || '');
@@ -50,27 +45,19 @@
       const onDocClickOutside = (targetEl, handler, opts = {}) => {
         const capture = opts.capture !== false;
         const doc = opts.doc || document;
-
         const fn = (e) => {
           try {
             if (!targetEl || targetEl.contains(e.target)) return;
             handler && handler(e);
           } catch {}
         };
-
         doc.addEventListener('click', fn, capture);
         return () => { try { doc.removeEventListener('click', fn, capture); } catch {} };
       };
 
       const onEscape = (handler, opts = {}) => {
         const doc = opts.doc || document;
-
-        const fn = (e) => {
-          if (e?.key === 'Escape') {
-            try { handler && handler(e); } catch {}
-          }
-        };
-
+        const fn = (e) => { if (e?.key === 'Escape') { try { handler && handler(e); } catch {} } };
         doc.addEventListener('keydown', fn, { passive: true });
         return () => { try { doc.removeEventListener('keydown', fn, { passive: true }); } catch {} };
       };
@@ -124,39 +111,26 @@
 
     onceEvent(target, eventName, opts = {}) {
       const timeoutMs = (opts && Number.isFinite(opts.timeoutMs)) ? opts.timeoutMs : null;
-
       return new Promise((resolve, reject) => {
         let tm = null;
-
         const onEv = (ev) => { cleanup(); resolve(ev); };
-
         const cleanup = () => {
           try { target.removeEventListener(eventName, onEv); } catch {}
           if (tm) clearTimeout(tm);
         };
-
         try { target.addEventListener(eventName, onEv, { once: true }); } catch {}
-
         if (timeoutMs != null) {
-          tm = setTimeout(() => {
-            cleanup();
-            reject(new Error(`Timeout waiting for event "${eventName}"`));
-          }, timeoutMs);
+          tm = setTimeout(() => { cleanup(); reject(new Error(`Timeout waiting for event "${eventName}"`)); }, timeoutMs);
         }
       });
     },
 
     debounceFrame(fn) {
-      let rafId = 0;
-      let lastArgs = null;
-
+      let rafId = 0, lastArgs = null;
       return function (...args) {
         lastArgs = args;
         if (rafId) return;
-        rafId = requestAnimationFrame(() => {
-          rafId = 0;
-          fn.apply(this, lastArgs);
-        });
+        rafId = requestAnimationFrame(() => { rafId = 0; fn.apply(this, lastArgs); });
       };
     },
 
@@ -189,9 +163,7 @@
       try {
         const v = localStorage.getItem(String(key || ''));
         return v === null ? fallback : v;
-      } catch {
-        return fallback;
-      }
+      } catch { return fallback; }
     },
 
     lsSet(key, value) {
@@ -216,9 +188,7 @@
         if (!raw) return fallback;
         const j = JSON.parse(raw);
         return (j === null || j === undefined) ? fallback : j;
-      } catch {
-        return fallback;
-      }
+      } catch { return fallback; }
     },
 
     lsSetJson(key, value) {
@@ -249,18 +219,6 @@
       if (!playing) return false;
       if (playing === W.SPECIAL_FAVORITES_KEY && current === W.SPECIAL_FAVORITES_KEY) return false;
       return playing !== current;
-    },
-
-    safeUrlJoin(base, rel) {
-      const r = Utils.trimStr(rel);
-      if (!r) return null;
-      try { return new URL(r, String(base || '')).toString(); } catch { return r; }
-    },
-
-    normalizeSocials(raw) {
-      if (Array.isArray(raw?.social_links)) return raw.social_links;
-      if (Array.isArray(raw?.socials)) return raw.socials.map((s) => ({ label: s?.title, url: s?.url }));
-      return [];
     },
 
     // ===== Favorites helpers =====
@@ -332,26 +290,26 @@
             : (typeof byUid.sizeHi === 'number' ? byUid.sizeHi : (typeof byUid.size === 'number' ? byUid.size : null));
 
           return (typeof size === 'number') ? ` (~${size.toFixed(2)} МБ)` : '';
-        } catch {
-          return '';
-        }
+        } catch { return ''; }
       },
 
-      applyDownloadLink(aEl, track) {
-        try {
-          if (!aEl || !track) return;
-          const href = String(track?.src || '').trim();
-          if (!href) return;
+      applyDownloadLink(anchorEl, track) {
+        if (!anchorEl) return;
 
-          aEl.href = href;
-          aEl.setAttribute('download', '');
+        if (!track?.src) {
+          anchorEl.href = '#';
+          anchorEl.removeAttribute('download');
+          anchorEl.title = 'Скачать трек';
+          return;
+        }
 
-          const albumKey = W.AlbumsManager?.getPlayingAlbum?.() || '';
-          const albumData = W.AlbumsManager?.getAlbumData?.(albumKey);
-          const hint = Utils.download.getSizeHintMB({ albumData, track });
+        anchorEl.href = track.src;
+        anchorEl.download = `${track.title}.mp3`;
 
-          aEl.title = `Скачать трек${hint}`;
-        } catch {}
+        const playingAlbumKey = W.AlbumsManager?.getPlayingAlbum?.();
+        const albumData = playingAlbumKey ? W.AlbumsManager?.getAlbumData?.(playingAlbumKey) : null;
+        const hint = Utils.download.getSizeHintMB({ albumData, track });
+        anchorEl.title = hint ? `Скачать трек${hint}` : 'Скачать трек';
       }
     }
   };
