@@ -14,7 +14,7 @@
   const likedUidsForPlayingAlbum = () => {
     const a = playingAlbumKey();
     if (!a || a === w.SPECIAL_FAVORITES_KEY || isSpecial(a)) return [];
-    const uids = w.FavoritesManager?.getLikedUidsForAlbum?.(a) || [];
+    const uids = w.playerCore?.getLikedUidsForAlbum?.(a) || [];
     return Array.isArray(uids) ? uids.map(trim).filter(Boolean) : [];
   };
 
