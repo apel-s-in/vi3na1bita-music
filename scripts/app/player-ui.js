@@ -714,23 +714,12 @@
   }
 
   function toggleLikePlaying() {
-    const playingAlbum = w.AlbumsManager?.getPlayingAlbum?.();
     const track = w.playerCore?.getCurrentTrack?.();
-    if (!playingAlbum || !track || !w.FavoritesManager) return;
-
     const uid = String(track?.uid || '').trim();
     if (!uid) return;
 
-    if (playingAlbum !== w.SPECIAL_FAVORITES_KEY) {
-      const isLiked = !!w.FavoritesManager.isFavorite?.(playingAlbum, uid);
-      w.FavoritesManager.toggleLike?.(playingAlbum, uid, !isLiked, { source: 'mini' });
-    } else {
-      const srcAlbum = String(track?.sourceAlbum || '').trim();
-      if (!srcAlbum) return;
-      const isLiked = !!w.FavoritesManager.isFavorite?.(srcAlbum, uid);
-      w.FavoritesManager.toggleLike?.(srcAlbum, uid, !isLiked, { source: 'mini' });
-    }
-
+    // mini — это НЕ favorites view, значит поведение "как из альбома"
+    w.playerCore?.toggleFavorite?.(uid, true);
     updateMiniHeader();
   }
 
