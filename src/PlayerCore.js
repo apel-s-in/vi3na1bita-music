@@ -70,6 +70,16 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         refsKey: 'favoritesAlbumRefsByUid:v1',
       };
 
+      // Favorites internal emitter (замена DOM CustomEvent 'favorites:changed')
+      this._favEmitter = {
+        subs: new Set(),
+        emit: (payload) => {
+          for (const fn of this._favEmitter.subs) {
+            try { fn(payload); } catch {}
+          }
+        }
+      };
+
       this._offlineNoCacheToastShown = false;
       this._hasAnyOfflineCacheComplete = null;
 
@@ -641,6 +651,11 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     // =========================
     // Favorites API (PlayerCore)
     // =========================
+    onFavoritesChanged(cb) {
+      if (typeof cb !== 'function') return () => {};
+      this._favEmitter?.subs?.add(cb);
+      return () => { try { this._favEmitter?.subs?.delete(cb); } catch {} };
+    }
     _favReadLikedMap() {
       try {
         const raw = localStorage.getItem(this._fav.likedKey);
@@ -790,11 +805,9 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         }
       }
 
-      // UI broadcast (минимально оставляем одно событие)
+      // notify subscribers (без DOM events)
       try {
-        W.dispatchEvent(new CustomEvent('favorites:changed', {
-          detail: { albumKey: albumKey || '', uid: u, liked: nextLiked, fromAlbum: !!fromAlbum, currentAlbum }
-        }));
+        this._favEmitter.emit({ albumKey: albumKey || '', uid: u, liked: nextLiked, fromAlbum: !!fromAlbum, currentAlbum });
       } catch {}
 
       // спец-правило STOP/next только при снятии лайка в favorites view
@@ -857,7 +870,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       this._favWriteRefs(next);
 
       try {
-        W.dispatchEvent(new CustomEvent('favorites:changed', { detail: { uid: u, liked: false, removed: true } }));
+        this._favEmitter.emit({ uid: u, liked: false, removed: true });
       } catch {}
 
       return { ok: true };
@@ -886,7 +899,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       if (a) this._favAddRefIfMissing(a, u);
 
       try {
-        W.dispatchEvent(new CustomEvent('favorites:changed', { detail: { albumKey: a || '', uid: u, liked: true } }));
+        this._favEmitter.emit({ albumKey: a || '', uid: u, liked: true });
       } catch {}
 
       return { ok: true };
