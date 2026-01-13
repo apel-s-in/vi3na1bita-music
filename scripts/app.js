@@ -97,9 +97,9 @@
     }
 
     async initializeFavorites() {
-      if (await this._waitForReady(() => !!w.FavoritesManager?.initialize)) {
-        w.FavoritesManager.initialize();
-      }
+      // Favorites теперь полностью в PlayerCore + FavoritesUI.
+      // Старый FavoritesManager не инициализируем (избавляемся от дублей и возможных DOM событий).
+      return;
     }
 
     async initializeGallery() {
