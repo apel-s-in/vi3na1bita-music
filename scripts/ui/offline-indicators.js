@@ -196,8 +196,14 @@ function bindLiveUpdatesOnce() {
     if (typeof off === 'function') st.unsubs.push(off);
   } catch {}
 
-  st.unsubs.push(onWin('favorites:changed', () => refreshAll()));
-  st.unsubs.push(onWin('favorites:refsChanged', () => refreshAll()));
+  // favorites changes without DOM events
+  try {
+    const pc = window.playerCore;
+    if (pc?.onFavoritesChanged) {
+      const off = pc.onFavoritesChanged(() => refreshAll());
+      if (typeof off === 'function') st.unsubs.push(off);
+    }
+  } catch {}
 }
 
 function attachMutationObserverOnce() {
