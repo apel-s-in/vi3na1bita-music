@@ -17,6 +17,9 @@
   const COVER_TTL_MS = 12 * 60 * 60 * 1000;
   const albumCoverCache = Object.create(null);
 
+  const CONFIG_TTL_MS = 10 * 60 * 1000; // 10 минут достаточно, config.json редко меняется
+  const configCache = new Map(); // albumKey -> { ts, cfg } | { ts, p: Promise }
+
   const absJoin = (base, rel) => {
     try { return new URL(String(rel || ''), String(base || '').endsWith('/') ? String(base || '') : (String(base || '') + '/')).toString(); }
     catch { return null; }
@@ -29,39 +32,53 @@
     const a = trim(albumKey);
     if (!a) return null;
 
-    // reuse existing cache if present
-    const cache = w.albumConfigCache || (w.albumConfigCache = {});
-    if (cache[a]?.config) return cache[a].config;
+    const now = Date.now();
+    const cached = configCache.get(a);
+
+    if (cached && cached.cfg && (now - cached.ts) < CONFIG_TTL_MS) {
+      return cached.cfg;
+    }
+
+    if (cached && cached.p && (now - cached.ts) < CONFIG_TTL_MS) {
+      try { return await cached.p; } catch { /* fallthrough */ }
+    }
 
     const idx = Array.isArray(w.albumsIndex) ? w.albumsIndex : [];
     const meta = idx.find(x => x && x.key === a) || null;
     if (!meta?.base) return null;
 
-    try {
-      const url = absJoin(meta.base, 'config.json');
-      const r = await fetch(url, { cache: 'no-cache' });
-      if (!r.ok) return null;
+    const p = (async () => {
+      try {
+        const url = absJoin(meta.base, 'config.json');
+        const r = await fetch(url, { cache: 'no-cache' });
+        if (!r.ok) return null;
 
-      const cfg = await r.json();
+        const cfg = await r.json();
 
-      // normalize urls
-      const base = String(meta.base || '');
-      const tracks = Array.isArray(cfg?.tracks) ? cfg.tracks : [];
-      tracks.forEach((t) => {
-        if (!t || typeof t !== 'object') return;
-        if (t.audio) t.audio = absJoin(base, t.audio);
-        if (t.audio_low) t.audio_low = absJoin(base, t.audio_low);
-        if (t.lyrics) t.lyrics = absJoin(base, t.lyrics);
-        if (t.lrc) t.lrc = absJoin(base, t.lrc);
-        if (t.fulltext) t.fulltext = absJoin(base, t.fulltext);
-      });
+        // normalize urls
+        const base = String(meta.base || '');
+        const tracks = Array.isArray(cfg?.tracks) ? cfg.tracks : [];
+        tracks.forEach((t) => {
+          if (!t || typeof t !== 'object') return;
+          if (t.audio) t.audio = absJoin(base, t.audio);
+          if (t.audio_low) t.audio_low = absJoin(base, t.audio_low);
+          if (t.lyrics) t.lyrics = absJoin(base, t.lyrics);
+          if (t.lrc) t.lrc = absJoin(base, t.lrc);
+          if (t.fulltext) t.fulltext = absJoin(base, t.fulltext);
+        });
 
-      cache[a] = { base: meta.base, config: cfg };
-      w.albumConfigCache = cache;
-      return cfg;
-    } catch {
-      return null;
-    }
+        configCache.set(a, { ts: Date.now(), cfg });
+        return cfg;
+      } catch {
+        configCache.delete(a);
+        return null;
+      }
+    })();
+
+    // dedupe inflight
+    configCache.set(a, { ts: now, p });
+
+    return await p;
   }
 
   async function getAlbumCoverUrl(albumKey) {
