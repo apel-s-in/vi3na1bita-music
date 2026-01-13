@@ -366,12 +366,15 @@ class AlbumsManager {
         });
       });
 
-      window.addEventListener('favorites:changed', () => {
-        // В избранном проще и надёжнее: полная перерисовка модели
-        if (this.currentAlbum !== FAV) return;
-        render();
-        window.PlayerUI?.updateAvailableTracksForPlayback?.();
-      });
+      const pc = window.playerCore;
+      if (pc?.onFavoritesChanged) {
+        pc.onFavoritesChanged(() => {
+          // В избранном проще и надёжнее: полная перерисовка модели
+          if (this.currentAlbum !== FAV) return;
+          render();
+          window.PlayerUI?.updateAvailableTracksForPlayback?.();
+        });
+      }
     }
 
     render();
