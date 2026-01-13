@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c1f6af415709502858d8d657e54ce117fa37fa7e.idx
-│   │       ├── pack-c1f6af415709502858d8d657e54ce117fa37fa7e.pack
-│   │       └── pack-c1f6af415709502858d8d657e54ce117fa37fa7e.rev
+│   │       ├── pack-836d4c507f7bb35e18a5f4143032561932fb3e6c.idx
+│   │       ├── pack-836d4c507f7bb35e18a5f4143032561932fb3e6c.pack
+│   │       └── pack-836d4c507f7bb35e18a5f4143032561932fb3e6c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-13 20:59:31 UTC
+Сгенерировано: 2026-01-13 21:01:22 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5612,22 +5612,22 @@ if (typeof window !== 'undefined') {
     // ===== Favorites helpers =====
     fav: {
       isTrackLikedInContext({ playingAlbum, track } = {}) {
-        const fm = W.FavoritesManager;
+        const pc = W.playerCore;
         const pa = String(playingAlbum || '').trim();
         const uid = String(track?.uid || '').trim();
         if (!fm || !pa || !uid) return false;
 
-        if (pa !== W.SPECIAL_FAVORITES_KEY) return !!fm.isFavorite?.(pa, uid);
+        if (pa !== W.SPECIAL_FAVORITES_KEY) return !!pc?.isFavorite?.(uid);
 
         const srcAlbum = String(track?.sourceAlbum || '').trim();
-        if (srcAlbum) return !!fm.isFavorite?.(srcAlbum, uid);
+        if (srcAlbum) return !!pc?.isFavorite?.(uid);
 
         const ref = Array.isArray(W.favoritesRefsModel)
           ? W.favoritesRefsModel.find(it => String(it?.__uid || '').trim() === uid)
           : null;
 
         const a = String(ref?.__a || '').trim();
-        return a ? !!fm.isFavorite?.(a, uid) : false;
+        return a ? !!pc?.isFavorite?.(uid) : false;
       }
     },
 
