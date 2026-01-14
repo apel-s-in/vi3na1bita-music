@@ -769,11 +769,81 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     }
 
     /**
-     * toggleFavorite(uid, fromAlbum?)
-     * fromAlbum=true  => действие из "родного альбома"/mini: unlike => ref удаляется полностью
-     * fromAlbum=false => действие из "Избранного": unlike => inactive (ref остаётся)
+     * toggleFavorite(uid, opts?)
+     * opts:
+     * - fromAlbum: boolean (true = действие из родного альбома/мини; false = из Избранного)
+     * - albumKey: string | null  (ЯВНОЕ указание родного альбома для uid; главный фикс)
+     *
+     * Правила:
+     * - fromAlbum=true: unlike => ref удаляется полностью (без следа)
+     * - fromAlbum=false: unlike => ref остаётся (inactive), удаление только через модалку
      */
-    toggleFavorite(uid, fromAlbum = true) {
+    toggleFavorite(uid, opts = true) {
+      const u = safeStr(uid);
+      if (!u) return { ok: false, reason: 'noUid' };
+
+      const fromAlbum = (typeof opts === 'boolean') ? opts : !!opts?.fromAlbum;
+      const explicitAlbumKey = (typeof opts === 'object' && opts) ? safeStr(opts.albumKey) : null;
+
+      const map = this._favReadLikedMap();
+
+      const findAlbumContainingUid = () => {
+        for (const a of Object.keys(map)) {
+          const arr = Array.isArray(map[a]) ? map[a] : [];
+          if (arr.includes(u)) return a;
+        }
+        return null;
+      };
+
+      // ✅ Ключевой фикс: если UI знает albumKey (а он знает) — используем ТОЛЬКО его.
+      // Никаких guessing по playingAlbum/currentTrack.
+      const albumKey = explicitAlbumKey || findAlbumContainingUid() || null;
+
+      const prevLiked = (albumKey && !String(albumKey).startsWith('__'))
+        ? this.getLikedUidsForAlbum(albumKey).includes(u)
+        : this.isFavorite(u);
+
+      const nextLiked = !prevLiked;
+
+      // liked map update (только если есть albumKey и он не special)
+      if (albumKey && !String(albumKey).startsWith('__')) {
+        const prevArr = Array.isArray(map[albumKey]) ? map[albumKey] : [];
+        const arr = Array.from(new Set(prevArr.map(x => String(x || '').trim()).filter(Boolean)));
+
+        let nextArr = arr.slice();
+        if (nextLiked && !nextArr.includes(u)) nextArr.push(u);
+        if (!nextLiked && nextArr.includes(u)) nextArr = nextArr.filter(x => x !== u);
+
+        if (nextArr.length === 0) delete map[albumKey];
+        else map[albumKey] = nextArr;
+
+        this._favWriteLikedMap(map);
+      }
+
+      // refs rules
+      if (nextLiked) {
+        if (albumKey) this._favAddRefIfMissing(albumKey, u);
+      } else {
+        if (fromAlbum) {
+          // "без следа": удалить ref полностью
+          if (albumKey) this._favRemoveRef(albumKey, u);
+        } else {
+          // favorites view: ref остаётся (inactive)
+        }
+      }
+
+      // notify subscribers (без DOM events)
+      try {
+        this._favEmitter.emit({ albumKey: albumKey || '', uid: u, liked: nextLiked, fromAlbum: !!fromAlbum });
+      } catch {}
+
+      // спец-правило STOP/next только при снятии лайка в favorites view
+      if (!nextLiked && !fromAlbum) {
+        this._handleFavoritesPlaylistUnlikeCurrent(u);
+      }
+
+      return { ok: true, uid: u, albumKey, liked: nextLiked };
+    }
       const u = safeStr(uid);
       if (!u) return { ok: false, reason: 'noUid' };
 
