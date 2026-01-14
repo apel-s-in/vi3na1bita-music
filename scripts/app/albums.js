@@ -352,7 +352,8 @@ class AlbumsManager {
           e.preventDefault();
           e.stopPropagation();
           const uid = toStr(item.__uid).trim();
-          if (uid) window.playerCore?.toggleFavorite?.(uid, false);
+          const a = toStr(item.__a).trim();
+          if (uid && a) window.playerCore?.toggleFavorite?.(uid, { fromAlbum: false, albumKey: a });
           return;
         }
 
@@ -414,7 +415,11 @@ class AlbumsManager {
       window.playerCore.play(startIndex);
 
       this.setPlayingAlbum(FAV);
-      this.highlightCurrentTrack(index);
+
+      const cu = toStr(clicked?.__uid).trim();
+      const ca = toStr(clicked?.__a).trim();
+      this.highlightCurrentTrack(index, { uid: cu, albumKey: ca });
+
       window.PlayerUI?.ensurePlayerBlock?.(index, { userInitiated: true });
       window.PlayerUI?.updateAvailableTracksForPlayback?.();
     }
@@ -639,14 +644,25 @@ class AlbumsManager {
       star.classList.add('animating');
       setTimeout(() => star.classList.remove('animating'), 320);
 
-      window.playerCore.toggleFavorite(trackUid, true);
+      window.playerCore.toggleFavorite(trackUid, { fromAlbum: true, albumKey });
     });
 
     return el;
   }
 
-  highlightCurrentTrack(index) {
+  highlightCurrentTrack(index, opts = {}) {
     document.querySelectorAll('.track.current').forEach((n) => n.classList.remove('current'));
+
+    const uid = toStr(opts?.uid).trim();
+    const albumKey = toStr(opts?.albumKey).trim();
+
+    // ✅ Для Избранного подсвечиваем по (albumKey, uid), а не по data-index
+    if (this.currentAlbum === FAV && uid && albumKey) {
+      const sel = `.track[data-album="${CSS.escape(albumKey)}"][data-uid="${CSS.escape(uid)}"]`;
+      document.querySelector(sel)?.classList.add('current');
+      return;
+    }
+
     if (!Number.isFinite(index) || index < 0) return;
     document.querySelector(`.track[data-index="${index}"]`)?.classList.add('current');
   }
