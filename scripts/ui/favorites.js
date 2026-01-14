@@ -159,7 +159,9 @@
       // eslint-disable-next-line no-await-in-loop
       const cover = await getAlbumCoverUrl(a);
 
-      const isActive = !!pc.isFavorite?.(uid);
+      const isActive = (a && typeof pc.getLikedUidsForAlbum === 'function')
+        ? pc.getLikedUidsForAlbum(a).includes(uid)
+        : !!pc.isFavorite?.(uid);
 
       out.push({
         title: tr?.title || 'Трек',
