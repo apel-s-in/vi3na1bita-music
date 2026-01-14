@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b2d6c0f917c235a283a2b9a401929e92203c04ac.idx
-│   │       ├── pack-b2d6c0f917c235a283a2b9a401929e92203c04ac.pack
-│   │       └── pack-b2d6c0f917c235a283a2b9a401929e92203c04ac.rev
+│   │       ├── pack-a5197c6012a83fe352c000fbb461de2ad0ad1d77.idx
+│   │       ├── pack-a5197c6012a83fe352c000fbb461de2ad0ad1d77.pack
+│   │       └── pack-a5197c6012a83fe352c000fbb461de2ad0ad1d77.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-14 10:24:16 UTC
+Сгенерировано: 2026-01-14 10:25:05 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8988,7 +8988,9 @@ export function attachCloudMenu(opts = {}) {
       // eslint-disable-next-line no-await-in-loop
       const cover = await getAlbumCoverUrl(a);
 
-      const isActive = !!pc.isFavorite?.(uid);
+      const isActive = (a && typeof pc.getLikedUidsForAlbum === 'function')
+        ? pc.getLikedUidsForAlbum(a).includes(uid)
+        : !!pc.isFavorite?.(uid);
 
       out.push({
         title: tr?.title || 'Трек',
