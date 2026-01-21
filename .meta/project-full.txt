@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-77a77564ffe24e1be3e34abe66270c4cb8749483.idx
-│   │       ├── pack-77a77564ffe24e1be3e34abe66270c4cb8749483.pack
-│   │       └── pack-77a77564ffe24e1be3e34abe66270c4cb8749483.rev
+│   │       ├── pack-235ef1b0c8b97b96701e0b27f2527805630c2a2f.idx
+│   │       ├── pack-235ef1b0c8b97b96701e0b27f2527805630c2a2f.pack
+│   │       └── pack-235ef1b0c8b97b96701e0b27f2527805630c2a2f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-14 10:27:10 UTC
+Сгенерировано: 2026-01-21 18:13:09 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -12974,76 +12974,6 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       // notify subscribers (без DOM events)
       try {
         this._favEmitter.emit({ albumKey: albumKey || '', uid: u, liked: nextLiked, fromAlbum: !!fromAlbum });
-      } catch {}
-
-      // спец-правило STOP/next только при снятии лайка в favorites view
-      if (!nextLiked && !fromAlbum) {
-        this._handleFavoritesPlaylistUnlikeCurrent(u);
-      }
-
-      return { ok: true, uid: u, albumKey, liked: nextLiked };
-    }
-      const u = safeStr(uid);
-      if (!u) return { ok: false, reason: 'noUid' };
-
-      const playingAlbum = W.AlbumsManager?.getPlayingAlbum?.() || null;
-      const currentAlbum = W.AlbumsManager?.getCurrentAlbum?.() || null;
-
-      // Определяем albumKey источника для likedTrackUids:v1:
-      // - если играем __favorites__, то sourceAlbum лежит в track.sourceAlbum
-      // - иначе используем playingAlbum (обычный альбом)
-      const cur = this.getCurrentTrack();
-      const sourceAlbum = (playingAlbum === W.SPECIAL_FAVORITES_KEY)
-        ? safeStr(cur?.sourceAlbum)
-        : safeStr(playingAlbum);
-
-      // Если это special/нет sourceAlbum — всё равно позволяем "toggle" как UI-state, но без записи map
-      const map = this._favReadLikedMap();
-
-      const findAlbumContainingUid = () => {
-        for (const a of Object.keys(map)) {
-          const arr = Array.isArray(map[a]) ? map[a] : [];
-          if (arr.includes(u)) return a;
-        }
-        return null;
-      };
-
-      const albumKey = sourceAlbum || findAlbumContainingUid() || null;
-      const prevLiked = albumKey ? this.getLikedUidsForAlbum(albumKey).includes(u) : this.isFavorite(u);
-      const nextLiked = !prevLiked;
-
-      // liked map update (только если есть albumKey и он не special)
-      if (albumKey && !String(albumKey).startsWith('__')) {
-        const prevArr = Array.isArray(map[albumKey]) ? map[albumKey] : [];
-        const arr = Array.from(new Set(prevArr.map(x => String(x || '').trim()).filter(Boolean)));
-
-        let nextArr = arr.slice();
-        if (nextLiked && !nextArr.includes(u)) nextArr.push(u);
-        if (!nextLiked && nextArr.includes(u)) nextArr = nextArr.filter(x => x !== u);
-
-        if (nextArr.length === 0) delete map[albumKey];
-        else map[albumKey] = nextArr;
-
-        this._favWriteLikedMap(map);
-      }
-
-      // refs rules
-      if (nextLiked) {
-        if (albumKey) this._favAddRefIfMissing(albumKey, u);
-      } else {
-        // unlike
-        if (fromAlbum) {
-          // "без следа": удалить ref полностью
-          if (albumKey) this._favRemoveRef(albumKey, u);
-        } else {
-          // favorites view: ref остаётся (inactive)
-          // ничего не делаем
-        }
-      }
-
-      // notify subscribers (без DOM events)
-      try {
-        this._favEmitter.emit({ albumKey: albumKey || '', uid: u, liked: nextLiked, fromAlbum: !!fromAlbum, currentAlbum });
       } catch {}
 
       // спец-правило STOP/next только при снятии лайка в favorites view
