@@ -138,7 +138,7 @@
       if (!s) continue;
 
       // метаданные [ar:], [ti:], etc.
-      if (/^$$[a-z]{2}:(.*)$$$/i.test(s)) continue;
+      if (/^$$[a-z]{2,8}:(.*)$$\s*$/i.test(s)) continue;
 
       // [mm:ss.xx]text OR [mm:ss]text
       const m = s.match(/^$$(\d{1,2}):(\d{2})(?:[.:](\d{1,3}))?$$(.*)$/);
