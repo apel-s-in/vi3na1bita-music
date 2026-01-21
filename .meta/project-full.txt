@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-631fa9f7c1abfe4b9522b02b160d2d7523c58d81.idx
-│   │       ├── pack-631fa9f7c1abfe4b9522b02b160d2d7523c58d81.pack
-│   │       └── pack-631fa9f7c1abfe4b9522b02b160d2d7523c58d81.rev
+│   │       ├── pack-ba0daa6bda8a0d46d253b283a9c0d9f38f34f8ba.idx
+│   │       ├── pack-ba0daa6bda8a0d46d253b283a9c0d9f38f34f8ba.pack
+│   │       └── pack-ba0daa6bda8a0d46d253b283a9c0d9f38f34f8ba.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-21 20:14:28 UTC
+Сгенерировано: 2026-01-21 20:16:18 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2048,9 +2048,8 @@ class AlbumsManager {
         pc.onFavoritesChanged(() => {
           if (this.currentAlbum !== FAV) return;
 
-          // ✅ ВАЖНО: model (favoritesRefsModel) строится асинхронно (fetch config/cover).
-          // Если сделать render() сразу — будет "смещение" (виден результат предыдущего клика).
-          // Поэтому: сначала rebuild model, потом render. Плюс коалесим быстрые изменения.
+          // ✅ buildFavoritesRefsModel асинхронный. Если render() сделать сразу — получаем "сдвиг" по кликам.
+          // Плюс: после render() DOM мог удалить #lyricsplayerblock — сразу восстанавливаем.
           if (pending) {
             rerun = true;
             return;
@@ -2063,19 +2062,22 @@ class AlbumsManager {
               await window.FavoritesUI?.buildFavoritesRefsModel?.();
               render();
               window.PlayerUI?.updateAvailableTracksForPlayback?.();
-            } catch (e) {
-              // если что-то упало — хотя бы перерисуем тем, что есть
+
+              // ✅ ВАЖНО: не даём UI плеера исчезнуть при полной перерисовке списка
+              window.PlayerUI?.ensurePlayerBlock?.(-1);
+            } catch {
               render();
+              window.PlayerUI?.updateAvailableTracksForPlayback?.();
+              window.PlayerUI?.ensurePlayerBlock?.(-1);
             } finally {
               pending = false;
+
               if (rerun) {
                 rerun = false;
-                // повторим один раз, чтобы не потерять последнюю правку
-                try {
-                  await window.FavoritesUI?.buildFavoritesRefsModel?.();
-                } catch {}
+                try { await window.FavoritesUI?.buildFavoritesRefsModel?.(); } catch {}
                 render();
                 window.PlayerUI?.updateAvailableTracksForPlayback?.();
+                window.PlayerUI?.ensurePlayerBlock?.(-1);
               }
             }
           })();
