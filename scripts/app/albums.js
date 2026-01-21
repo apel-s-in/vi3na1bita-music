@@ -341,11 +341,14 @@ class AlbumsManager {
         const row = target?.closest?.('.track');
         if (!row || !container.contains(row)) return;
 
-        const idx = Number.parseInt(toStr(row.dataset.index), 10);
-        if (!Number.isFinite(idx) || idx < 0) return;
+        const rowUid = toStr(row.dataset.uid).trim();
+        const rowAlbum = toStr(row.dataset.album).trim();
+        if (!rowUid || !rowAlbum) return;
 
         const model = Array.isArray(window.favoritesRefsModel) ? window.favoritesRefsModel : [];
-        const item = model[idx];
+        const item = model.find((it) =>
+          toStr(it?.__uid).trim() === rowUid && toStr(it?.__a).trim() === rowAlbum
+        );
         if (!item) return;
 
         if (target?.classList?.contains('like-star')) {
@@ -357,7 +360,14 @@ class AlbumsManager {
           return;
         }
 
-        if (item.__active && item.audio) return void (await this.ensureFavoritesPlayback(idx));
+        if (item.__active && item.audio) {
+          const activeIndex = model
+            .filter((it) => it && it.__active && it.audio)
+            .findIndex((it) => toStr(it?.__uid).trim() === rowUid && toStr(it?.__a).trim() === rowAlbum);
+
+          if (activeIndex >= 0) return void (await this.ensureFavoritesPlayback(activeIndex));
+          return;
+        }
 
         // inactive row click (не по звезде) → модалка (в PlayerCore)
         window.playerCore?.showInactiveFavoriteModal?.({
