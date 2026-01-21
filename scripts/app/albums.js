@@ -652,11 +652,19 @@ class AlbumsManager {
           }));
 
         if (tracksForCore.length) {
-          window.playerCore.setPlaylist(tracksForCore, playIndex, {
-            artist: albumData.artist || 'Витрина Разбита',
-            album: albumData.title || '',
-            cover: coverUrl,
-          });
+          window.playerCore.setPlaylist(
+            tracksForCore,
+            playIndex,
+            {
+              artist: albumData.artist || 'Витрина Разбита',
+              album: albumData.title || '',
+              cover: coverUrl,
+            },
+            {
+              // ✅ Прямой выбор трека пользователем: всегда старт с 0:00
+              preservePosition: false
+            }
+          );
         }
       }
 
