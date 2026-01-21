@@ -122,6 +122,9 @@
         updateNextUpLabel();
         w.PlaybackPolicy?.apply?.({ reason: 'favoritesChanged', changed: changed || {} });
         updateAvailableTracksForPlayback();
+
+        // ✅ если лайк/анлайк изменил набор ⭐ — обновляем визуальный фильтр
+        try { applyFavoritesOnlyListFilter(); } catch {}
       } catch (err) {
         console.warn('onFavoritesChanged handler failed:', err);
       }
@@ -270,6 +273,9 @@
       $('mini-now') && ($('mini-now').style.display = 'none');
       $('next-up') && ($('next-up').style.display = 'none');
     }
+
+    // ✅ поддерживаем фильтр в актуальном состоянии (например, при смене трека/альбома)
+    try { applyFavoritesOnlyListFilter(); } catch {}
 
     updateMiniHeader();
     updateNextUpLabel();
@@ -763,6 +769,9 @@
 
     updateAvailableTracksForPlayback();
     w.PlaybackPolicy?.apply?.({ reason: 'toggle' });
+
+    // ✅ UI-only фильтрация списка (не влияет на воспроизведение)
+    try { applyFavoritesOnlyListFilter(); } catch {}
   }
 
   function toggleLikePlaying() {
@@ -804,6 +813,49 @@
     snap.forEach((t, idx) => {
       const uid = String(t?.uid || '').trim();
       if (uid && set.has(uid)) w.availableFavoriteIndices.push(idx);
+    });
+  }
+
+  // --------------------------
+  // Favorites-only: UI list filter (visual)
+  // --------------------------
+  function applyFavoritesOnlyListFilter() {
+    const list = $('track-list');
+    if (!list) return;
+
+    const enabled = U.lsGetBool01(LS.FAV_ONLY, false);
+    const currentAlbum = w.AlbumsManager?.getCurrentAlbum?.() || null;
+    const playingAlbum = w.AlbumsManager?.getPlayingAlbum?.() || null;
+
+    // Фильтрация применяется только когда мы смотрим ТОТ ЖЕ обычный альбом, который играет.
+    // В "Избранном" и в special-альбомах не фильтруем (там свои правила active/inactive).
+    const isRegular =
+      currentAlbum &&
+      playingAlbum &&
+      currentAlbum === playingAlbum &&
+      !U.isSpecialAlbumKey(currentAlbum);
+
+    list.classList.toggle('favonly-filtered', !!(enabled && isRegular));
+
+    if (!(enabled && isRegular)) return;
+
+    const liked = w.playerCore?.getLikedUidsForAlbum?.(currentAlbum) || [];
+    const set = new Set((Array.isArray(liked) ? liked : []).map(x => String(x || '').trim()).filter(Boolean));
+
+    // Скрываем строки без ⭐, но:
+    // - строки без uid не трогаем (пускай остаются видимыми, чтобы не “сломать” список)
+    // - текущий playing трек не принуждаем (он и так лайкнут при favoritesOnly)
+    const rows = list.querySelectorAll('.track');
+    rows.forEach((row) => {
+      const uid = String(row?.dataset?.uid || '').trim();
+      if (!uid) {
+        row.removeAttribute('data-hidden-by-favonly');
+        return;
+      }
+
+      const shouldShow = set.has(uid);
+      if (shouldShow) row.removeAttribute('data-hidden-by-favonly');
+      else row.setAttribute('data-hidden-by-favonly', '1');
     });
   }
 
