@@ -186,6 +186,11 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         preserveOriginalPlaylist = false,
         preserveShuffleMode = false,
         resetHistory = true,
+
+        // ✅ ВАЖНО: по умолчанию PlayerCore сохраняет позицию при перестройке плейлиста,
+        // чтобы не рвать playback (favoritesOnly/shuffle/like/unlike и т.п.).
+        // Но при прямом выборе трека пользователем нужно ВСЕГДА стартовать с 0:00.
+        preservePosition = true,
       } = options || {};
 
       this._hasAnyOfflineCacheComplete = null;
@@ -232,7 +237,12 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
       this.currentIndex = nextIndex;
 
-      if (wasPlaying && this.currentIndex >= 0) this.load(this.currentIndex, { autoPlay: true, resumePosition: prevPos });
+      if (wasPlaying && this.currentIndex >= 0) {
+        this.load(this.currentIndex, {
+          autoPlay: true,
+          resumePosition: preservePosition ? prevPos : null
+        });
+      }
       else {
         const cur = this.getCurrentTrack();
         if (cur) {
