@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-907b24a764a0b48d5d21153d9b761c478d47c8e3.idx
-│   │       ├── pack-907b24a764a0b48d5d21153d9b761c478d47c8e3.pack
-│   │       └── pack-907b24a764a0b48d5d21153d9b761c478d47c8e3.rev
+│   │       ├── pack-487d6fdcb337572c4d5cf892ba8cf60f913fa9c9.idx
+│   │       ├── pack-487d6fdcb337572c4d5cf892ba8cf60f913fa9c9.pack
+│   │       └── pack-487d6fdcb337572c4d5cf892ba8cf60f913fa9c9.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-21 19:52:09 UTC
+Сгенерировано: 2026-01-21 20:06:37 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2042,11 +2042,43 @@ class AlbumsManager {
 
       const pc = window.playerCore;
       if (pc?.onFavoritesChanged) {
+        let pending = false;
+        let rerun = false;
+
         pc.onFavoritesChanged(() => {
-          // В избранном проще и надёжнее: полная перерисовка модели
           if (this.currentAlbum !== FAV) return;
-          render();
-          window.PlayerUI?.updateAvailableTracksForPlayback?.();
+
+          // ✅ ВАЖНО: model (favoritesRefsModel) строится асинхронно (fetch config/cover).
+          // Если сделать render() сразу — будет "смещение" (виден результат предыдущего клика).
+          // Поэтому: сначала rebuild model, потом render. Плюс коалесим быстрые изменения.
+          if (pending) {
+            rerun = true;
+            return;
+          }
+
+          pending = true;
+
+          (async () => {
+            try {
+              await window.FavoritesUI?.buildFavoritesRefsModel?.();
+              render();
+              window.PlayerUI?.updateAvailableTracksForPlayback?.();
+            } catch (e) {
+              // если что-то упало — хотя бы перерисуем тем, что есть
+              render();
+            } finally {
+              pending = false;
+              if (rerun) {
+                rerun = false;
+                // повторим один раз, чтобы не потерять последнюю правку
+                try {
+                  await window.FavoritesUI?.buildFavoritesRefsModel?.();
+                } catch {}
+                render();
+                window.PlayerUI?.updateAvailableTracksForPlayback?.();
+              }
+            }
+          })();
         });
       }
     }
