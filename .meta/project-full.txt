@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6290ddf0584abfb71e1a38e97e762a6983ff8716.idx
-│   │       ├── pack-6290ddf0584abfb71e1a38e97e762a6983ff8716.pack
-│   │       └── pack-6290ddf0584abfb71e1a38e97e762a6983ff8716.rev
+│   │       ├── pack-5dcbc2725ab763922b4c923473720e0e78a1fa7f.idx
+│   │       ├── pack-5dcbc2725ab763922b4c923473720e0e78a1fa7f.pack
+│   │       └── pack-5dcbc2725ab763922b4c923473720e0e78a1fa7f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-21 20:27:49 UTC
+Сгенерировано: 2026-01-21 20:28:16 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2315,11 +2315,19 @@ class AlbumsManager {
           }));
 
         if (tracksForCore.length) {
-          window.playerCore.setPlaylist(tracksForCore, playIndex, {
-            artist: albumData.artist || 'Витрина Разбита',
-            album: albumData.title || '',
-            cover: coverUrl,
-          });
+          window.playerCore.setPlaylist(
+            tracksForCore,
+            playIndex,
+            {
+              artist: albumData.artist || 'Витрина Разбита',
+              album: albumData.title || '',
+              cover: coverUrl,
+            },
+            {
+              // ✅ Прямой выбор трека пользователем: всегда старт с 0:00
+              preservePosition: false
+            }
+          );
         }
       }
 
