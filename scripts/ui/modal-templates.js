@@ -29,7 +29,7 @@ export const ModalTemplates = {
         <div class="om__head">
           <div class="om__headL">
             <span class="om__muted">Сеть:</span>
-            <b id="om-net-label">${esc(s.netLabel ?? '—')}</b>
+            <b id="om-net-label">—</b>
           </div>
           <div class="om__headR">CQ=<b id="om-cq-label">${esc(cq)}</b></div>
         </div>
@@ -163,3 +163,8 @@ export const ModalTemplates = {
     `;
   }
 };
+
+// ✅ КРИТИЧЕСКИ ВАЖНО: пробрасываем шаблоны в window, потому что modals.js берёт offlineBody через window.ModalTemplates
+try {
+  window.ModalTemplates = ModalTemplates;
+} catch {}
