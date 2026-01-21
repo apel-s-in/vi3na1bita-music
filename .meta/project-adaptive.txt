@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-931379811e1762c87061bc009c7b3dbfeb32ed86.idx
-│   │       ├── pack-931379811e1762c87061bc009c7b3dbfeb32ed86.pack
-│   │       └── pack-931379811e1762c87061bc009c7b3dbfeb32ed86.rev
+│   │       ├── pack-cca136d3475c997a6f0a9b2d7617e4b67b1ff56d.idx
+│   │       ├── pack-cca136d3475c997a6f0a9b2d7617e4b67b1ff56d.pack
+│   │       └── pack-cca136d3475c997a6f0a9b2d7617e4b67b1ff56d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-21 18:41:05 UTC
+Сгенерировано: 2026-01-21 19:00:58 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3540,7 +3540,34 @@ export function attachPlaybackCache() {
       const list = $('track-list');
       if (!list) return;
 
-      const row = list.querySelector(`.track[data-index="${trackIndex}"]`);
+      // ✅ ВАЖНО: index из PlayerCore = индекс в текущем playing-плейлисте.
+      // Когда включён FavoritesOnly (F), плейлист перестраивается, и этот index
+      // больше НЕ совпадает с data-index строки в DOM.
+      // Поэтому якоримся по uid текущего трека (единственный стабильный ключ).
+      const cur = w.playerCore?.getCurrentTrack?.() || null;
+      const curUid = String(cur?.uid || '').trim();
+
+      let row = null;
+
+      if (curUid) {
+        // 1) Обычные альбомы: строки имеют data-uid
+        row = list.querySelector(`.track[data-uid="${CSS.escape(curUid)}"]`);
+
+        // 2) Избранное: строки тоже имеют data-uid, но uid может повторяться между альбомами
+        // (теоретически), поэтому дополнительно пытаемся уточнить по sourceAlbum.
+        if (!row) {
+          const sa = String(cur?.sourceAlbum || '').trim();
+          if (sa) {
+            row = list.querySelector(`.track[data-uid="${CSS.escape(curUid)}"][data-album="${CSS.escape(sa)}"]`);
+          }
+        }
+      }
+
+      // fallback (если uid отсутствует / строка не найдена): старое поведение по data-index
+      if (!row && Number.isFinite(trackIndex) && trackIndex >= 0) {
+        row = list.querySelector(`.track[data-index="${trackIndex}"]`);
+      }
+
       st.lastNativeRow = row || null;
 
       if (!row) {
