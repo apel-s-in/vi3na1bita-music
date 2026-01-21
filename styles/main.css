@@ -182,6 +182,9 @@ header{width:100%;text-align:center;margin:0 auto}
 .track.current{background:#232b38;border-left:3px solid var(--secondary-color)}
 .track:active{transform:scale(.98);background:rgba(255,255,255,.08)!important}
 .track.inactive{opacity:.45;filter:grayscale(.6)}
+
+/* FavoritesOnly: UI-only фильтрация списка по ⭐ (не влияет на playback) */
+.track-list.favonly-filtered .track[data-hidden-by-favonly="1"]{display:none!important}
 .track.is-favorite{background:rgba(77,170,255,.06)}
 .tnum{min-width:30px;color:var(--c-blue);font-weight:500}
 .track-title{margin-left:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
