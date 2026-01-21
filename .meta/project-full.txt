@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-cb9d23c7cf40d40d3eee050cdb02780ccd2151fc.idx
-│   │       ├── pack-cb9d23c7cf40d40d3eee050cdb02780ccd2151fc.pack
-│   │       └── pack-cb9d23c7cf40d40d3eee050cdb02780ccd2151fc.rev
+│   │       ├── pack-09305b5e58905a545ebd2c210895fe811bb92500.idx
+│   │       ├── pack-09305b5e58905a545ebd2c210895fe811bb92500.pack
+│   │       └── pack-09305b5e58905a545ebd2c210895fe811bb92500.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-21 19:13:15 UTC
+Сгенерировано: 2026-01-21 19:14:05 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -13695,6 +13695,9 @@ header{width:100%;text-align:center;margin:0 auto}
 .track.current{background:#232b38;border-left:3px solid var(--secondary-color)}
 .track:active{transform:scale(.98);background:rgba(255,255,255,.08)!important}
 .track.inactive{opacity:.45;filter:grayscale(.6)}
+
+/* FavoritesOnly: UI-only фильтрация списка по ⭐ (не влияет на playback) */
+.track-list.favonly-filtered .track[data-hidden-by-favonly="1"]{display:none!important}
 .track.is-favorite{background:rgba(77,170,255,.06)}
 .tnum{min-width:30px;color:var(--c-blue);font-weight:500}
 .track-title{margin-left:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
