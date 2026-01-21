@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ba0daa6bda8a0d46d253b283a9c0d9f38f34f8ba.idx
-│   │       ├── pack-ba0daa6bda8a0d46d253b283a9c0d9f38f34f8ba.pack
-│   │       └── pack-ba0daa6bda8a0d46d253b283a9c0d9f38f34f8ba.rev
+│   │       ├── pack-6290ddf0584abfb71e1a38e97e762a6983ff8716.idx
+│   │       ├── pack-6290ddf0584abfb71e1a38e97e762a6983ff8716.pack
+│   │       └── pack-6290ddf0584abfb71e1a38e97e762a6983ff8716.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-21 20:16:18 UTC
+Сгенерировано: 2026-01-21 20:27:49 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -12524,6 +12524,11 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         preserveOriginalPlaylist = false,
         preserveShuffleMode = false,
         resetHistory = true,
+
+        // ✅ ВАЖНО: по умолчанию PlayerCore сохраняет позицию при перестройке плейлиста,
+        // чтобы не рвать playback (favoritesOnly/shuffle/like/unlike и т.п.).
+        // Но при прямом выборе трека пользователем нужно ВСЕГДА стартовать с 0:00.
+        preservePosition = true,
       } = options || {};
 
       this._hasAnyOfflineCacheComplete = null;
@@ -12570,7 +12575,12 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
       this.currentIndex = nextIndex;
 
-      if (wasPlaying && this.currentIndex >= 0) this.load(this.currentIndex, { autoPlay: true, resumePosition: prevPos });
+      if (wasPlaying && this.currentIndex >= 0) {
+        this.load(this.currentIndex, {
+          autoPlay: true,
+          resumePosition: preservePosition ? prevPos : null
+        });
+      }
       else {
         const cur = this.getCurrentTrack();
         if (cur) {
