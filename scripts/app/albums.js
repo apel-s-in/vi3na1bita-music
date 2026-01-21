@@ -379,11 +379,43 @@ class AlbumsManager {
 
       const pc = window.playerCore;
       if (pc?.onFavoritesChanged) {
+        let pending = false;
+        let rerun = false;
+
         pc.onFavoritesChanged(() => {
-          // В избранном проще и надёжнее: полная перерисовка модели
           if (this.currentAlbum !== FAV) return;
-          render();
-          window.PlayerUI?.updateAvailableTracksForPlayback?.();
+
+          // ✅ ВАЖНО: model (favoritesRefsModel) строится асинхронно (fetch config/cover).
+          // Если сделать render() сразу — будет "смещение" (виден результат предыдущего клика).
+          // Поэтому: сначала rebuild model, потом render. Плюс коалесим быстрые изменения.
+          if (pending) {
+            rerun = true;
+            return;
+          }
+
+          pending = true;
+
+          (async () => {
+            try {
+              await window.FavoritesUI?.buildFavoritesRefsModel?.();
+              render();
+              window.PlayerUI?.updateAvailableTracksForPlayback?.();
+            } catch (e) {
+              // если что-то упало — хотя бы перерисуем тем, что есть
+              render();
+            } finally {
+              pending = false;
+              if (rerun) {
+                rerun = false;
+                // повторим один раз, чтобы не потерять последнюю правку
+                try {
+                  await window.FavoritesUI?.buildFavoritesRefsModel?.();
+                } catch {}
+                render();
+                window.PlayerUI?.updateAvailableTracksForPlayback?.();
+              }
+            }
+          })();
         });
       }
     }
