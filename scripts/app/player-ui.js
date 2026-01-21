@@ -208,7 +208,34 @@
       const list = $('track-list');
       if (!list) return;
 
-      const row = list.querySelector(`.track[data-index="${trackIndex}"]`);
+      // ✅ ВАЖНО: index из PlayerCore = индекс в текущем playing-плейлисте.
+      // Когда включён FavoritesOnly (F), плейлист перестраивается, и этот index
+      // больше НЕ совпадает с data-index строки в DOM.
+      // Поэтому якоримся по uid текущего трека (единственный стабильный ключ).
+      const cur = w.playerCore?.getCurrentTrack?.() || null;
+      const curUid = String(cur?.uid || '').trim();
+
+      let row = null;
+
+      if (curUid) {
+        // 1) Обычные альбомы: строки имеют data-uid
+        row = list.querySelector(`.track[data-uid="${CSS.escape(curUid)}"]`);
+
+        // 2) Избранное: строки тоже имеют data-uid, но uid может повторяться между альбомами
+        // (теоретически), поэтому дополнительно пытаемся уточнить по sourceAlbum.
+        if (!row) {
+          const sa = String(cur?.sourceAlbum || '').trim();
+          if (sa) {
+            row = list.querySelector(`.track[data-uid="${CSS.escape(curUid)}"][data-album="${CSS.escape(sa)}"]`);
+          }
+        }
+      }
+
+      // fallback (если uid отсутствует / строка не найдена): старое поведение по data-index
+      if (!row && Number.isFinite(trackIndex) && trackIndex >= 0) {
+        row = list.querySelector(`.track[data-index="${trackIndex}"]`);
+      }
+
       st.lastNativeRow = row || null;
 
       if (!row) {
