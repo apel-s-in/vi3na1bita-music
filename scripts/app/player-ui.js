@@ -59,7 +59,25 @@
 
         w.__lastStatsSec = -1;
 
-        try { w.AlbumsManager?.highlightCurrentTrack?.(index); } catch {}
+        // ✅ Подсветка должна идти по uid, потому что index при favoritesOnly
+        // относится к текущему playing-плейлисту и не совпадает с DOM data-index.
+        try {
+          const cur = w.playerCore?.getCurrentTrack?.() || track || null;
+          const curUid = String(cur?.uid || '').trim();
+          const playingAlbum = w.AlbumsManager?.getPlayingAlbum?.() || null;
+
+          // Для favorites плейлиста уточняем sourceAlbum, иначе подсветка может не найти строку.
+          if (curUid && playingAlbum === w.SPECIAL_FAVORITES_KEY) {
+            const sa = String(cur?.sourceAlbum || '').trim();
+            w.AlbumsManager?.highlightCurrentTrack?.(-1, { uid: curUid, albumKey: sa });
+          } else if (curUid) {
+            w.AlbumsManager?.highlightCurrentTrack?.(-1, { uid: curUid });
+          } else {
+            // fallback: только если uid отсутствует
+            w.AlbumsManager?.highlightCurrentTrack?.(index);
+          }
+        } catch {}
+
         ensurePlayerBlock(index);
         try { w.LyricsController?.onTrackChange?.(track); } catch {}
 
