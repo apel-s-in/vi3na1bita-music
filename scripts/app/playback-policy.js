@@ -137,7 +137,14 @@
           return void ensureAvailable();
         }
 
+        const shuffleOn = !!pc.isShuffle?.();
+
         pc.setPlaylist(filtered, 0, {}, { preserveOriginalPlaylist: true, preserveShuffleMode: true, resetHistory: false });
+
+        if (shuffleOn) {
+          pc.shufflePlaylist?.();
+        }
+
         pc.next();
         ensureAvailable();
         return;
@@ -146,7 +153,28 @@
 
     // Base: rebuild playlist to favorites-only, keep current uid if present
     const startIndex = curUid ? Math.max(0, findIndexByUid(target, curUid)) : 0;
-    pc.setPlaylist(target, startIndex, {}, { preserveOriginalPlaylist: true, preserveShuffleMode: true, resetHistory: false });
+
+    // ✅ ВАЖНО: если shuffle включён, при изменении состава очереди (favoritesOnly / like/unlike)
+    // нужно пересобрать shuffle-порядок именно по НОВОМУ набору target.
+    // preserveShuffleMode=true оставляет флаг shuffle включённым, но НЕ гарантирует корректный порядок.
+    const shuffleOn = !!pc.isShuffle?.();
+
+    pc.setPlaylist(
+      target,
+      startIndex,
+      {},
+      {
+        preserveOriginalPlaylist: true,
+        preserveShuffleMode: true,
+        resetHistory: false
+      }
+    );
+
+    if (shuffleOn) {
+      // перестроить порядок и оставить текущий трек текущим
+      pc.shufflePlaylist?.();
+    }
+
     ensureAvailable();
   }
 
