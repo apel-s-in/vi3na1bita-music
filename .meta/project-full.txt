@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5dcbc2725ab763922b4c923473720e0e78a1fa7f.idx
-│   │       ├── pack-5dcbc2725ab763922b4c923473720e0e78a1fa7f.pack
-│   │       └── pack-5dcbc2725ab763922b4c923473720e0e78a1fa7f.rev
+│   │       ├── pack-cc41885118516dd8629e5b004c2e456520965fd9.idx
+│   │       ├── pack-cc41885118516dd8629e5b004c2e456520965fd9.pack
+│   │       └── pack-cc41885118516dd8629e5b004c2e456520965fd9.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-21 20:28:16 UTC
+Сгенерировано: 2026-01-21 20:29:18 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2118,7 +2118,12 @@ class AlbumsManager {
     if (!tracks.length) return void window.NotificationSystem?.warning('Нет доступных треков');
 
     if (window.playerCore) {
-      window.playerCore.setPlaylist(tracks, startIndex, { artist: 'Витрина Разбита', album: 'Избранное', cover: LOGO });
+      window.playerCore.setPlaylist(
+        tracks,
+        startIndex,
+        { artist: 'Витрина Разбита', album: 'Избранное', cover: LOGO },
+        { preservePosition: false } // ✅ клик пользователя в списке избранного
+      );
       window.playerCore.play(startIndex);
 
       this.setPlayingAlbum(FAV);
