@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-cca136d3475c997a6f0a9b2d7617e4b67b1ff56d.idx
-│   │       ├── pack-cca136d3475c997a6f0a9b2d7617e4b67b1ff56d.pack
-│   │       └── pack-cca136d3475c997a6f0a9b2d7617e4b67b1ff56d.rev
+│   │       ├── pack-06e7ef1d26d1f9d4870507076e171d469c355eed.idx
+│   │       ├── pack-06e7ef1d26d1f9d4870507076e171d469c355eed.pack
+│   │       └── pack-06e7ef1d26d1f9d4870507076e171d469c355eed.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-21 19:00:58 UTC
+Сгенерировано: 2026-01-21 19:08:51 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2323,6 +2323,13 @@ class AlbumsManager {
       return;
     }
 
+    // ✅ Для обычных альбомов тоже можно подсвечивать по uid (важно при favoritesOnly)
+    if (uid) {
+      const sel = `.track[data-uid="${CSS.escape(uid)}"]`;
+      document.querySelector(sel)?.classList.add('current');
+      return;
+    }
+
     if (!Number.isFinite(index) || index < 0) return;
     document.querySelector(`.track[data-index="${index}"]`)?.classList.add('current');
   }
@@ -3391,7 +3398,25 @@ export function attachPlaybackCache() {
 
         w.__lastStatsSec = -1;
 
-        try { w.AlbumsManager?.highlightCurrentTrack?.(index); } catch {}
+        // ✅ Подсветка должна идти по uid, потому что index при favoritesOnly
+        // относится к текущему playing-плейлисту и не совпадает с DOM data-index.
+        try {
+          const cur = w.playerCore?.getCurrentTrack?.() || track || null;
+          const curUid = String(cur?.uid || '').trim();
+          const playingAlbum = w.AlbumsManager?.getPlayingAlbum?.() || null;
+
+          // Для favorites плейлиста уточняем sourceAlbum, иначе подсветка может не найти строку.
+          if (curUid && playingAlbum === w.SPECIAL_FAVORITES_KEY) {
+            const sa = String(cur?.sourceAlbum || '').trim();
+            w.AlbumsManager?.highlightCurrentTrack?.(-1, { uid: curUid, albumKey: sa });
+          } else if (curUid) {
+            w.AlbumsManager?.highlightCurrentTrack?.(-1, { uid: curUid });
+          } else {
+            // fallback: только если uid отсутствует
+            w.AlbumsManager?.highlightCurrentTrack?.(index);
+          }
+        } catch {}
+
         ensurePlayerBlock(index);
         try { w.LyricsController?.onTrackChange?.(track); } catch {}
 
