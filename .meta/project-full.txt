@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-7db117a8851fef302f3a141af0724726e8d31854.idx
-│   │       ├── pack-7db117a8851fef302f3a141af0724726e8d31854.pack
-│   │       └── pack-7db117a8851fef302f3a141af0724726e8d31854.rev
+│   │       ├── pack-4fd4dedc219bfcd81a52c901457f01c501023a85.idx
+│   │       ├── pack-4fd4dedc219bfcd81a52c901457f01c501023a85.pack
+│   │       └── pack-4fd4dedc219bfcd81a52c901457f01c501023a85.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-21 18:17:05 UTC
+Сгенерировано: 2026-01-21 18:28:42 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9283,7 +9283,7 @@ export const ModalTemplates = {
         <div class="om__head">
           <div class="om__headL">
             <span class="om__muted">Сеть:</span>
-            <b id="om-net-label">${esc(s.netLabel ?? '—')}</b>
+            <b id="om-net-label">—</b>
           </div>
           <div class="om__headR">CQ=<b id="om-cq-label">${esc(cq)}</b></div>
         </div>
@@ -9417,6 +9417,11 @@ export const ModalTemplates = {
     `;
   }
 };
+
+// ✅ КРИТИЧЕСКИ ВАЖНО: пробрасываем шаблоны в window, потому что modals.js берёт offlineBody через window.ModalTemplates
+try {
+  window.ModalTemplates = ModalTemplates;
+} catch {}
 
 //=================================================
 // FILE: /scripts/ui/modals.js
