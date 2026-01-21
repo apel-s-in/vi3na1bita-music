@@ -660,6 +660,13 @@ class AlbumsManager {
       return;
     }
 
+    // ✅ Для обычных альбомов тоже можно подсвечивать по uid (важно при favoritesOnly)
+    if (uid) {
+      const sel = `.track[data-uid="${CSS.escape(uid)}"]`;
+      document.querySelector(sel)?.classList.add('current');
+      return;
+    }
+
     if (!Number.isFinite(index) || index < 0) return;
     document.querySelector(`.track[data-index="${index}"]`)?.classList.add('current');
   }
