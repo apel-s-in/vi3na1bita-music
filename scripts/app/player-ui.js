@@ -721,12 +721,21 @@
   }
 
   function toggleLikePlaying() {
-    const track = w.playerCore?.getCurrentTrack?.();
+    const pc = w.playerCore;
+    const track = pc?.getCurrentTrack?.();
     const uid = String(track?.uid || '').trim();
     if (!uid) return;
 
-    // mini — это НЕ favorites view, значит поведение "как из альбома"
-    w.playerCore?.toggleFavorite?.(uid, true);
+    // mini — это НЕ favorites view, значит поведение "как из родного альбома"
+    // ВАЖНО: передаём albumKey, иначе PlayerCore может не обновить likedTrackUids:v1 корректно.
+    const sourceAlbum = String(track?.sourceAlbum || '').trim();
+    const playingAlbum = String(w.AlbumsManager?.getPlayingAlbum?.() || '').trim();
+
+    const albumKey =
+      sourceAlbum ||
+      (!U.isSpecialAlbumKey(playingAlbum) ? playingAlbum : '');
+
+    pc?.toggleFavorite?.(uid, { fromAlbum: true, albumKey: albumKey || null });
     updateMiniHeader();
   }
 
