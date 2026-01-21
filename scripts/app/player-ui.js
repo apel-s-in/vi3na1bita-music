@@ -91,6 +91,9 @@
 
         try { U.download.applyDownloadLink($('track-download-btn'), track); } catch {}
         updatePQButton();
+
+        // ✅ Страховка: если UI где-то пересоздался/обновился, возвращаем подсветку F
+        try { setFavoritesOnlyUI(U.lsGetBool01(LS.FAV_ONLY, false)); } catch {}
       },
 
       onPlay: updatePlayPauseIcon,
@@ -273,6 +276,11 @@
       $('mini-now') && ($('mini-now').style.display = 'none');
       $('next-up') && ($('next-up').style.display = 'none');
     }
+
+    // ✅ Всегда синхронизируем состояние кнопки F с хранилищем.
+    // В мини-режиме блок может быть перевставлен, и без этого "звезда" визуально сбрасывается,
+    // хотя режим реально продолжает работать.
+    try { setFavoritesOnlyUI(U.lsGetBool01(LS.FAV_ONLY, false)); } catch {}
 
     // ✅ поддерживаем фильтр в актуальном состоянии (например, при смене трека/альбома)
     try { applyFavoritesOnlyListFilter(); } catch {}
