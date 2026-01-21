@@ -385,9 +385,8 @@ class AlbumsManager {
         pc.onFavoritesChanged(() => {
           if (this.currentAlbum !== FAV) return;
 
-          // ✅ ВАЖНО: model (favoritesRefsModel) строится асинхронно (fetch config/cover).
-          // Если сделать render() сразу — будет "смещение" (виден результат предыдущего клика).
-          // Поэтому: сначала rebuild model, потом render. Плюс коалесим быстрые изменения.
+          // ✅ buildFavoritesRefsModel асинхронный. Если render() сделать сразу — получаем "сдвиг" по кликам.
+          // Плюс: после render() DOM мог удалить #lyricsplayerblock — сразу восстанавливаем.
           if (pending) {
             rerun = true;
             return;
@@ -400,19 +399,22 @@ class AlbumsManager {
               await window.FavoritesUI?.buildFavoritesRefsModel?.();
               render();
               window.PlayerUI?.updateAvailableTracksForPlayback?.();
-            } catch (e) {
-              // если что-то упало — хотя бы перерисуем тем, что есть
+
+              // ✅ ВАЖНО: не даём UI плеера исчезнуть при полной перерисовке списка
+              window.PlayerUI?.ensurePlayerBlock?.(-1);
+            } catch {
               render();
+              window.PlayerUI?.updateAvailableTracksForPlayback?.();
+              window.PlayerUI?.ensurePlayerBlock?.(-1);
             } finally {
               pending = false;
+
               if (rerun) {
                 rerun = false;
-                // повторим один раз, чтобы не потерять последнюю правку
-                try {
-                  await window.FavoritesUI?.buildFavoritesRefsModel?.();
-                } catch {}
+                try { await window.FavoritesUI?.buildFavoritesRefsModel?.(); } catch {}
                 render();
                 window.PlayerUI?.updateAvailableTracksForPlayback?.();
+                window.PlayerUI?.ensurePlayerBlock?.(-1);
               }
             }
           })();
