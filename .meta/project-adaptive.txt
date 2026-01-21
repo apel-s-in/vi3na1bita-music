@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b4660a4ffd5ec01ded7cab83b711a90e4071ff5b.idx
-│   │       ├── pack-b4660a4ffd5ec01ded7cab83b711a90e4071ff5b.pack
-│   │       └── pack-b4660a4ffd5ec01ded7cab83b711a90e4071ff5b.rev
+│   │       ├── pack-2c4b515f8888a8e43b5dcc561e668edf91d60a09.idx
+│   │       ├── pack-2c4b515f8888a8e43b5dcc561e668edf91d60a09.pack
+│   │       └── pack-2c4b515f8888a8e43b5dcc561e668edf91d60a09.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-21 18:29:22 UTC
+Сгенерировано: 2026-01-21 18:40:04 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4053,12 +4053,21 @@ export function attachPlaybackCache() {
   }
 
   function toggleLikePlaying() {
-    const track = w.playerCore?.getCurrentTrack?.();
+    const pc = w.playerCore;
+    const track = pc?.getCurrentTrack?.();
     const uid = String(track?.uid || '').trim();
     if (!uid) return;
 
-    // mini — это НЕ favorites view, значит поведение "как из альбома"
-    w.playerCore?.toggleFavorite?.(uid, true);
+    // mini — это НЕ favorites view, значит поведение "как из родного альбома"
+    // ВАЖНО: передаём albumKey, иначе PlayerCore может не обновить likedTrackUids:v1 корректно.
+    const sourceAlbum = String(track?.sourceAlbum || '').trim();
+    const playingAlbum = String(w.AlbumsManager?.getPlayingAlbum?.() || '').trim();
+
+    const albumKey =
+      sourceAlbum ||
+      (!U.isSpecialAlbumKey(playingAlbum) ? playingAlbum : '');
+
+    pc?.toggleFavorite?.(uid, { fromAlbum: true, albumKey: albumKey || null });
     updateMiniHeader();
   }
 
