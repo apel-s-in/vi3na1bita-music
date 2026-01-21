@@ -196,12 +196,15 @@
   // Player block placement
   // --------------------------
   function ensurePlayerBlock(trackIndex, options = {}) {
-    if (!Number.isFinite(trackIndex) || trackIndex < 0) return;
+    // ✅ ВАЖНО: при перерисовке списков (например, Избранное) DOM-узел #lyricsplayerblock
+    // может быть уничтожен. В этом случае index может быть неизвестен, но текущий трек есть.
+    // doEnsurePlayerBlock умеет якориться по uid текущего трека, поэтому не выходим ранним return.
+    const safeIndex = (Number.isFinite(trackIndex) && trackIndex >= 0) ? trackIndex : -1;
 
     if (st.ensureTimer) clearTimeout(st.ensureTimer);
     st.ensureTimer = setTimeout(() => {
       st.ensureTimer = null;
-      doEnsurePlayerBlock(trackIndex, options && typeof options === 'object' ? options : {});
+      doEnsurePlayerBlock(safeIndex, options && typeof options === 'object' ? options : {});
     }, 50);
   }
 
