@@ -455,7 +455,12 @@ class AlbumsManager {
     if (!tracks.length) return void window.NotificationSystem?.warning('Нет доступных треков');
 
     if (window.playerCore) {
-      window.playerCore.setPlaylist(tracks, startIndex, { artist: 'Витрина Разбита', album: 'Избранное', cover: LOGO });
+      window.playerCore.setPlaylist(
+        tracks,
+        startIndex,
+        { artist: 'Витрина Разбита', album: 'Избранное', cover: LOGO },
+        { preservePosition: false } // ✅ клик пользователя в списке избранного
+      );
       window.playerCore.play(startIndex);
 
       this.setPlayingAlbum(FAV);
