@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-487d6fdcb337572c4d5cf892ba8cf60f913fa9c9.idx
-│   │       ├── pack-487d6fdcb337572c4d5cf892ba8cf60f913fa9c9.pack
-│   │       └── pack-487d6fdcb337572c4d5cf892ba8cf60f913fa9c9.rev
+│   │       ├── pack-631fa9f7c1abfe4b9522b02b160d2d7523c58d81.idx
+│   │       ├── pack-631fa9f7c1abfe4b9522b02b160d2d7523c58d81.pack
+│   │       └── pack-631fa9f7c1abfe4b9522b02b160d2d7523c58d81.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-21 20:06:37 UTC
+Сгенерировано: 2026-01-21 20:14:28 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3605,12 +3605,15 @@ export function attachPlaybackCache() {
   // Player block placement
   // --------------------------
   function ensurePlayerBlock(trackIndex, options = {}) {
-    if (!Number.isFinite(trackIndex) || trackIndex < 0) return;
+    // ✅ ВАЖНО: при перерисовке списков (например, Избранное) DOM-узел #lyricsplayerblock
+    // может быть уничтожен. В этом случае index может быть неизвестен, но текущий трек есть.
+    // doEnsurePlayerBlock умеет якориться по uid текущего трека, поэтому не выходим ранним return.
+    const safeIndex = (Number.isFinite(trackIndex) && trackIndex >= 0) ? trackIndex : -1;
 
     if (st.ensureTimer) clearTimeout(st.ensureTimer);
     st.ensureTimer = setTimeout(() => {
       st.ensureTimer = null;
-      doEnsurePlayerBlock(trackIndex, options && typeof options === 'object' ? options : {});
+      doEnsurePlayerBlock(safeIndex, options && typeof options === 'object' ? options : {});
     }, 50);
   }
 
