@@ -376,6 +376,7 @@ class AlbumsManager {
 
           const uid = toStr(item.__uid).trim();
           const a = toStr(item.__a).trim();
+          // ✅ ВАЖНО: в окне «ИЗБРАННОЕ» снятие ⭐ НЕ удаляет ref, а переводит в inactive (буфер).
           if (uid && a) window.playerCore?.toggleFavorite?.(uid, { fromAlbum: false, albumKey: a });
           return;
         }
