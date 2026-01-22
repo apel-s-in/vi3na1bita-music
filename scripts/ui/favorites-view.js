@@ -8,7 +8,6 @@
 import { buildFavoritesModel } from './favorites.js';
 
 function esc(s) {
-  // Utils загружается раньше всех UI-скриптов (см. index.html), поэтому fallback не нужен.
   return window.Utils.escapeHtml(String(s ?? ''));
 }
 
