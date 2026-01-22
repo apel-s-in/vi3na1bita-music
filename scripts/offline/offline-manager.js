@@ -658,22 +658,17 @@ export class OfflineManager {
     // Собираем uid-ы набора
     let uids = [];
     if (selection.mode === 'favorites') {
-      // "только ИЗБРАННОЕ" = все ⭐ (liked) из обычных альбомов (по storage likedTrackUids:v1).
-      // Берём по каждому альбому (кроме special) и объединяем uid.
-      const pc = window.playerCore;
-      const idx = Array.isArray(window.albumsIndex) ? window.albumsIndex : [];
-      const all = [];
-
-      if (pc?.getLikedUidsForAlbum) {
-        for (const a of idx) {
-          const key = String(a?.key || '').trim();
-          if (!key || key.startsWith('__')) continue;
-          const arr = pc.getLikedUidsForAlbum(key) || [];
-          if (Array.isArray(arr) && arr.length) all.push(...arr.map(x => String(x || '').trim()));
-        }
+      // ✅ v2: "только ИЗБРАННОЕ" = global liked set (UID-only).
+      // НЕ завязано на albumKey и не требует likedTrackUids:v1.
+      try {
+        const mod = await import('../core/favorites-v2.js');
+        const FavoritesV2 = mod?.default || mod?.FavoritesV2;
+        FavoritesV2?.ensureMigrated?.();
+        const set = FavoritesV2?.readLikedSet?.();
+        uids = uniq(Array.from(set || []));
+      } catch {
+        uids = [];
       }
-
-      uids = uniq(all);
     } else if (selection.mode === 'albums') {
       const keys = uniq(selection.albumKeys);
       const allTracks = (typeof window.TrackRegistry?.getAllTracks === 'function')
