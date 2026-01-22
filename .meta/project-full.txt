@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ecd958549a391a6851e7d58ef2efd46a44be160a.idx
-│   │       ├── pack-ecd958549a391a6851e7d58ef2efd46a44be160a.pack
-│   │       └── pack-ecd958549a391a6851e7d58ef2efd46a44be160a.rev
+│   │       ├── pack-d1700fae28c5afcbd5de0554e1d7b36213253b66.idx
+│   │       ├── pack-d1700fae28c5afcbd5de0554e1d7b36213253b66.pack
+│   │       └── pack-d1700fae28c5afcbd5de0554e1d7b36213253b66.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -383,7 +383,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 20:52:03 UTC
+Сгенерировано: 2026-01-22 20:54:07 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9927,39 +9927,7 @@ try {
 // Рендер новостей внутри основного приложения (альбом __reliz__).
 // Только UI/fetch, не трогает воспроизведение.
 
-const esc = (s) => {
-  const fn = window.Utils?.escapeHtml;
-  return typeof fn === 'function' ? fn(String(s ?? '')) : String(s ?? '');
-};
-
-function renderCard(it) {
-  const title = esc(it?.title || 'Новость');
-  const date = esc(it?.date || '');
-  const text = esc(it?.text || '');
-  const tags = Array.isArray(it?.tags) ? it.tags : [];
-
-  const media = it?.embedUrl
-    ? `<div class="news-inline__media"><iframe loading="lazy" src="${esc(it.embedUrl)}" allowfullscreen></iframe></div>`
-    : it?.image
-      ? `<div class="news-inline__media"><img loading="lazy" src="${esc(it.image)}" alt=""></div>`
-      : it?.video
-        ? `<div class="news-inline__media"><video controls preload="metadata" src="${esc(it.video)}"></video></div>`
-        : '';
-
-  const tagHtml = tags.length
-    ? `<div class="news-inline__tags">${tags.map((t) => `<span class="news-inline__tag">#${esc(t)}</span>`).join('')}</div>`
-    : '';
-
-  return `
-    <article class="news-inline__card">
-      <div class="news-inline__title">${title}</div>
-      ${date ? `<div class="news-inline__date">${date}</div>` : ''}
-      ${media}
-      ${text ? `<div class="news-inline__text">${text}</div>` : ''}
-      ${tagHtml}
-    </article>
-  `;
-}
+import { renderNewsCard } from './news-renderer.js';
 
 export function renderNewsInlineSkeleton(container) {
   if (!container) return;
@@ -9999,7 +9967,7 @@ export async function loadAndRenderNewsInline(container) {
     }
 
     if (status) status.style.display = 'none';
-    list.innerHTML = items.map(renderCard).join('');
+    list.innerHTML = items.map(renderNewsCard).join('');
   } catch {
     if (status) {
       status.textContent = 'Не удалось загрузить новости';
