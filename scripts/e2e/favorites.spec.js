@@ -91,6 +91,63 @@ test('favorites view: add to favorites, play and verify mini-mode when browsing 
   await expect(page.locator('#mini-now')).toBeVisible();
 });
 
+test('unlike in native album removes ref from favorites "without trace" (v2)', async ({ page }) => {
+  await loginByPromo(page);
+
+  await page.waitForSelector('#track-list .track', { timeout: 10000 });
+  const firstRow = page.locator('#track-list .track').first();
+
+  // Лайкнем в родном альбоме
+  await firstRow.hover();
+  await firstRow.locator('.like-star').click();
+
+  // Вытащим uid из dataset
+  const uid = await firstRow.getAttribute('data-uid');
+  expect(String(uid || '').trim()).toBeTruthy();
+
+  // Проверим что ref появился
+  const hasRefAfterLike = await page.evaluate((u) => {
+    const refsRaw = localStorage.getItem('favoritesRefsByUid:v2');
+    const refs = refsRaw ? JSON.parse(refsRaw) : {};
+    return !!refs?.[String(u || '').trim()];
+  }, uid);
+  expect(hasRefAfterLike).toBeTruthy();
+
+  // Снимем лайк в родном альбоме => ref должен исчезнуть полностью
+  await firstRow.locator('.like-star').click();
+
+  const st = await page.evaluate((u) => {
+    const uid = String(u || '').trim();
+    const likedRaw = localStorage.getItem('likedTrackUids:v2');
+    const refsRaw = localStorage.getItem('favoritesRefsByUid:v2');
+    const liked = likedRaw ? JSON.parse(likedRaw) : [];
+    const refs = refsRaw ? JSON.parse(refsRaw) : {};
+    return {
+      likedHas: Array.isArray(liked) && liked.includes(uid),
+      refExists: !!refs?.[uid]
+    };
+  }, uid);
+
+  expect(st.likedHas).toBeFalsy();
+  expect(st.refExists).toBeFalsy();
+});
+  await loginByPromo(page);
+
+  await likeFirstTrack(page);
+  await openFavorites(page);
+
+  await page.locator('#track-list .track').first().click();
+  await expect(page.locator('#lyricsplayerblock')).toBeVisible();
+
+  const otherIcon = page
+    .locator('.album-icon')
+    .filter({ hasNot: page.locator('[data-akey="__favorites__"]') })
+    .nth(1);
+  await otherIcon.click();
+
+  await expect(page.locator('#mini-now')).toBeVisible();
+});
+
 // Доп. тест: восстановление после перезагрузки (PlayerState.applyState)
 test('reload restores state via PlayerState.applyState', async ({ page }) => {
   await loginByPromo(page);
