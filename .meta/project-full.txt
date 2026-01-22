@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3921a124467308a2a460d20ca6f9e9d4b56dfb58.idx
-│   │       ├── pack-3921a124467308a2a460d20ca6f9e9d4b56dfb58.pack
-│   │       └── pack-3921a124467308a2a460d20ca6f9e9d4b56dfb58.rev
+│   │       ├── pack-7e416174cc926d40c691829d4134c5a9a1359858.idx
+│   │       ├── pack-7e416174cc926d40c691829d4134c5a9a1359858.pack
+│   │       └── pack-7e416174cc926d40c691829d4134c5a9a1359858.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 10:49:24 UTC
+Сгенерировано: 2026-01-22 11:06:31 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2292,11 +2292,16 @@ class AlbumsManager {
       }
 
       const snapshot = window.playerCore.getPlaylistSnapshot?.() || [];
+
+      const playableTracks = Array.isArray(albumData.tracks)
+        ? albumData.tracks.filter((t) => t && (t.fileHi || t.file || t.fileLo))
+        : [];
+
       const needsNew =
-        snapshot.length !== albumData.tracks.length ||
+        snapshot.length !== playableTracks.length ||
         snapshot.some((t, i) => {
-          const src = albumData.tracks[i]?.file;
-          return !src || t.src !== src;
+          const src = playableTracks[i]?.fileHi || playableTracks[i]?.file || playableTracks[i]?.fileLo;
+          return !src || t?.src !== src;
         });
 
       const piRaw = Number.parseInt(toStr(el.dataset.playIndex), 10);
