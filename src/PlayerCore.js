@@ -867,20 +867,17 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
       const title = String(params?.title || 'Трек');
       if (!u) return;
 
-      const esc = W.Utils?.escapeHtml
-        ? (s) => W.Utils.escapeHtml(String(s || ''))
-        : (s) => String(s || '');
-
       if (!W.Modals?.open) return;
+
+      const body = W.ModalTemplates?.inactiveFavoriteBody
+        ? W.ModalTemplates.inactiveFavoriteBody({ title })
+        : '';
 
       const modal = W.Modals.open({
         title: 'Трек неактивен',
         maxWidth: 420,
         bodyHtml: `
-          <div style="color:#9db7dd; line-height:1.45; margin-bottom:14px;">
-            <div style="margin-bottom:8px;"><strong>Трек:</strong> ${esc(title)}</div>
-            <div style="opacity:.9;">Вы можете вернуть трек в ⭐ или удалить его из списка «ИЗБРАННОЕ».</div>
-          </div>
+          ${body}
           ${W.Modals?.actionRow ? W.Modals.actionRow([
             { act: 'add', text: 'Добавить в ⭐', className: 'online', style: 'min-width:160px;' },
             { act: 'remove', text: 'Удалить', className: '', style: 'min-width:160px;' }
