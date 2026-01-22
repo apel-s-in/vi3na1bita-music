@@ -20,6 +20,23 @@ function safeUrl(v) {
 const objectUrlCache = new Map();
 const OBJECT_URL_TTL_MS = 30 * 60 * 1000;
 
+function revokeObjectUrlByKey(key) {
+  const rec = objectUrlCache.get(key);
+  if (!rec) return false;
+  try { URL.revokeObjectURL(rec.url); } catch {}
+  objectUrlCache.delete(key);
+  return true;
+}
+
+export function revokeObjectUrlsForUid(uid) {
+  const u = String(uid || '').trim();
+  if (!u) return 0;
+  let n = 0;
+  if (revokeObjectUrlByKey(`${u}:hi`)) n++;
+  if (revokeObjectUrlByKey(`${u}:lo`)) n++;
+  return n;
+}
+
 function getCachedObjectUrl(key) {
   const rec = objectUrlCache.get(key);
   if (!rec) return null;
