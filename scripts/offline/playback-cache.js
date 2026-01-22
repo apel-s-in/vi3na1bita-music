@@ -10,9 +10,9 @@ import { markLocalTransient } from './cache-db.js';
 const WINDOW_PREV = 1;
 const WINDOW_NEXT = 1;
 
-// ТЗ 14.2: P0 (CUR) выше P1 (сосед)
-const PRIORITY_CURRENT = 30;   // P0
-const PRIORITY_ADJACENT = 20;  // P1
+// ТЗ 14.2: приоритеты очереди (гарантируем: P0 > P1 > P2 > P3 > P4 > P5)
+const PRIORITY_CURRENT = 100;   // P0: CUR до 100%
+const PRIORITY_ADJACENT = 90;   // P1: сосед (NEXT/PREV) до 100%
 
 function normUid(v) {
   const s = String(v || '').trim();
