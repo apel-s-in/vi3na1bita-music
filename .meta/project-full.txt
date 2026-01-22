@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c3ec169ee4f877021ee406521cd7f5722e5c4ca2.idx
-│   │       ├── pack-c3ec169ee4f877021ee406521cd7f5722e5c4ca2.pack
-│   │       └── pack-c3ec169ee4f877021ee406521cd7f5722e5c4ca2.rev
+│   │       ├── pack-81dda8f9b8ae50abaaac535329c11ee8782ccb3c.idx
+│   │       ├── pack-81dda8f9b8ae50abaaac535329c11ee8782ccb3c.pack
+│   │       └── pack-81dda8f9b8ae50abaaac535329c11ee8782ccb3c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 20:49:12 UTC
+Сгенерировано: 2026-01-22 20:49:39 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9127,7 +9127,6 @@ export function attachCloudMenu(opts = {}) {
 import { buildFavoritesModel } from './favorites.js';
 
 function esc(s) {
-  // Utils загружается раньше всех UI-скриптов (см. index.html), поэтому fallback не нужен.
   return window.Utils.escapeHtml(String(s ?? ''));
 }
 
