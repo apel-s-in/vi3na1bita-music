@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-df75c16133b7109fd6cbd80d44d747e7d6add6f3.idx
-│   │       ├── pack-df75c16133b7109fd6cbd80d44d747e7d6add6f3.pack
-│   │       └── pack-df75c16133b7109fd6cbd80d44d747e7d6add6f3.rev
+│   │       ├── pack-eb76bbb77ecf09540bd9b080b53dd1faee97d1a6.idx
+│   │       ├── pack-eb76bbb77ecf09540bd9b080b53dd1faee97d1a6.pack
+│   │       └── pack-eb76bbb77ecf09540bd9b080b53dd1faee97d1a6.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -319,7 +319,6 @@ vi3na1bita-music/
 │   │   ├── utils/
 │   │   │   └── app-utils.js
 │   │   ├── albums.js
-│   │   ├── background-audio.js
 │   │   ├── gallery.js
 │   │   ├── ios-audio-fix.js
 │   │   ├── navigation.js
@@ -383,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 15:15:51 UTC
+Сгенерировано: 2026-01-22 15:21:05 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2302,12 +2301,6 @@ class AlbumsManager {
 
 window.AlbumsManager = new AlbumsManager();
 export default AlbumsManager;
-
-//=================================================
-// FILE: /scripts/app/background-audio.js
-// scripts/app/background-audio.js
-// Deprecated: iOS audio unlock is handled ONLY inside src/PlayerCore.js
-(function () { 'use strict'; })();
 
 //=================================================
 // FILE: /scripts/app/gallery.js
