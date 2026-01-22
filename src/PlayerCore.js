@@ -844,9 +844,33 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         return null;
       };
 
-      // ✅ Ключевой фикс: если UI знает albumKey (а он знает) — используем ТОЛЬКО его.
-      // Никаких guessing по playingAlbum/currentTrack.
-      const albumKey = explicitAlbumKey || findAlbumContainingUid() || null;
+      // ✅ Если UI передал albumKey — используем его.
+      // Иначе: для fromAlbum=true обязаны попытаться восстановить albumKey, чтобы refs работали стабильно.
+      const guessAlbumKeyFromContext = () => {
+        try {
+          const a1 = W.AlbumsManager?.getCurrentAlbum?.();
+          if (a1 && !String(a1).startsWith('__')) return safeStr(a1);
+        } catch {}
+
+        try {
+          const cur = this.getCurrentTrack?.();
+          const a2 = safeStr(cur?.sourceAlbum);
+          if (a2 && !String(a2).startsWith('__')) return a2;
+        } catch {}
+
+        try {
+          const a3 = W.AlbumsManager?.getPlayingAlbum?.();
+          if (a3 && !String(a3).startsWith('__')) return safeStr(a3);
+        } catch {}
+
+        return null;
+      };
+
+      const albumKey =
+        explicitAlbumKey ||
+        findAlbumContainingUid() ||
+        (fromAlbum ? guessAlbumKeyFromContext() : null) ||
+        null;
 
       const prevLiked = (albumKey && !String(albumKey).startsWith('__'))
         ? this.getLikedUidsForAlbum(albumKey).includes(u)
