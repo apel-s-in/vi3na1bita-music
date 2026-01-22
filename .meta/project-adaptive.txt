@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1004d4a9cce211fe8def1c39d8012d90494ce1cd.idx
-│   │       ├── pack-1004d4a9cce211fe8def1c39d8012d90494ce1cd.pack
-│   │       └── pack-1004d4a9cce211fe8def1c39d8012d90494ce1cd.rev
+│   │       ├── pack-e41464e8014712f0aa90a9038a35f9c546d82a2d.idx
+│   │       ├── pack-e41464e8014712f0aa90a9038a35f9c546d82a2d.pack
+│   │       └── pack-e41464e8014712f0aa90a9038a35f9c546d82a2d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 15:21:21 UTC
+Сгенерировано: 2026-01-22 15:22:15 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -735,9 +735,6 @@ jobs:
   <!-- Howler first -->
   <script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js"></script>
 
-  <!-- Deprecated (kept only to avoid breaking script includes) -->
-  <script src="./scripts/app/ios-audio-fix.js" defer></script>
-
   <!-- Core -->
   <script src="./scripts/core/utils.js"></script>
   <script src="./scripts/core/bootstrap.js"></script>
@@ -757,7 +754,6 @@ jobs:
   <script src="./scripts/ui/sysinfo.js" defer></script>
 
   <!-- App Modules -->
-  <script src="./scripts/app/background-audio.js" defer></script>
   <script src="./scripts/app/promocode.js" defer></script>
   <script src="./scripts/app/playback-policy.js" defer></script>
   <script src="./scripts/app/player-ui/lyrics.js" defer></script>
