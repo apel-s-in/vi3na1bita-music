@@ -302,9 +302,20 @@ class AlbumsManager {
     const container = $('track-list');
     if (!container) return;
 
+    const getModel = () => {
+      // Единственный источник истины для UI списка избранного
+      const m = window.FavoritesUI?.getModel?.();
+      return Array.isArray(m) ? m : [];
+    };
+
+    const getActiveModel = (model) => model.filter((it) => it && it.__active && it.audio);
+
     const render = () => {
-      const model = Array.isArray(window.favoritesRefsModel) ? window.favoritesRefsModel : [];
-      if (!model.length) return (container.innerHTML = emptyFavoritesHTML);
+      const model = getModel();
+      if (!model.length) {
+        container.innerHTML = emptyFavoritesHTML;
+        return;
+      }
 
       container.innerHTML = model
         .map((it, i) => {
@@ -331,6 +342,9 @@ class AlbumsManager {
         .join('');
     };
 
+    const findItemInModel = (model, rowAlbum, rowUid) =>
+      model.find((it) => toStr(it?.__uid).trim() === rowUid && toStr(it?.__a).trim() === rowAlbum);
+
     if (!this._favDelegationBound) {
       this._favDelegationBound = true;
 
@@ -345,31 +359,34 @@ class AlbumsManager {
         const rowAlbum = toStr(row.dataset.album).trim();
         if (!rowUid || !rowAlbum) return;
 
-        const model = Array.isArray(window.favoritesRefsModel) ? window.favoritesRefsModel : [];
-        const item = model.find((it) =>
-          toStr(it?.__uid).trim() === rowUid && toStr(it?.__a).trim() === rowAlbum
-        );
+        const model = getModel();
+        const item = findItemInModel(model, rowAlbum, rowUid);
         if (!item) return;
 
+        // ⭐ клик по звезде — переключаем active/inactive (НЕ удаляем refs)
         if (target?.classList?.contains('like-star')) {
           e.preventDefault();
           e.stopPropagation();
+
           const uid = toStr(item.__uid).trim();
           const a = toStr(item.__a).trim();
           if (uid && a) window.playerCore?.toggleFavorite?.(uid, { fromAlbum: false, albumKey: a });
           return;
         }
 
+        // ✅ active row click → play favorites playlist (только active)
         if (item.__active && item.audio) {
-          const activeIndex = model
-            .filter((it) => it && it.__active && it.audio)
-            .findIndex((it) => toStr(it?.__uid).trim() === rowUid && toStr(it?.__a).trim() === rowAlbum);
-
-          if (activeIndex >= 0) return void (await this.ensureFavoritesPlayback(activeIndex));
+          const active = getActiveModel(model);
+          const activeIndex = active.findIndex(
+            (it) => toStr(it?.__uid).trim() === rowUid && toStr(it?.__a).trim() === rowAlbum
+          );
+          if (activeIndex >= 0) {
+            await this.ensureFavoritesPlayback(activeIndex);
+          }
           return;
         }
 
-        // inactive row click (не по звезде) → модалка (в PlayerCore)
+        // ✅ inactive row click (не по звезде) → модалка (в PlayerCore)
         window.playerCore?.showInactiveFavoriteModal?.({
           uid: toStr(item.__uid).trim(),
           title: item.title || 'Трек',
@@ -385,24 +402,18 @@ class AlbumsManager {
         pc.onFavoritesChanged(() => {
           if (this.currentAlbum !== FAV) return;
 
-          // ✅ buildFavoritesRefsModel асинхронный. Если render() сделать сразу — получаем "сдвиг" по кликам.
-          // Плюс: после render() DOM мог удалить #lyricsplayerblock — сразу восстанавливаем.
           if (pending) {
             rerun = true;
             return;
           }
-
           pending = true;
 
           (async () => {
             try {
               await window.FavoritesUI?.buildFavoritesRefsModel?.();
-              render();
-              window.PlayerUI?.updateAvailableTracksForPlayback?.();
+            } catch {}
 
-              // ✅ ВАЖНО: не даём UI плеера исчезнуть при полной перерисовке списка
-              window.PlayerUI?.ensurePlayerBlock?.(-1);
-            } catch {
+            try {
               render();
               window.PlayerUI?.updateAvailableTracksForPlayback?.();
               window.PlayerUI?.ensurePlayerBlock?.(-1);
@@ -425,24 +436,20 @@ class AlbumsManager {
     render();
   }
 
-  async ensureFavoritesPlayback(index) {
-    const model = Array.isArray(window.favoritesRefsModel) ? window.favoritesRefsModel : [];
-    if (!model.length) return void window.NotificationSystem?.warning('Нет избранных треков');
+  async ensureFavoritesPlayback(activeIndex) {
+    const model = window.FavoritesUI?.getModel?.();
+    const list = Array.isArray(model) ? model : [];
+    if (!list.length) return void window.NotificationSystem?.warning('Нет избранных треков');
 
-    const active = model.filter((it) => it && it.__active && it.audio);
+    const active = list.filter((it) => it && it.__active && it.audio);
     if (!active.length) return void window.NotificationSystem?.warning('Нет доступных треков');
 
-    const clicked = model[index];
-    let startIndex = 0;
-    if (clicked?.__active && clicked.audio) {
-      const uid = toStr(clicked.__uid).trim();
-      const a = toStr(clicked.__a).trim();
-      const k = active.findIndex((it) => toStr(it.__uid).trim() === uid && toStr(it.__a).trim() === a);
-      startIndex = k >= 0 ? k : 0;
-    }
+    const startIndex = Number.isFinite(activeIndex) && activeIndex >= 0 ? activeIndex : 0;
+    const clicked = active[startIndex] || active[0];
 
     const tracks = active.map((it) => ({
       src: it.audio,
+      sources: it.sources || null, // если FavoritesUI умеет прокидывать sources — PlayerCore/Resolver это использует
       title: it.title,
       artist: it.__artist || 'Витрина Разбита',
       album: FAV,
@@ -451,7 +458,9 @@ class AlbumsManager {
       fulltext: it.fulltext || null,
       uid: typeof it.__uid === 'string' && it.__uid.trim() ? it.__uid.trim() : null,
       sourceAlbum: it.__a,
+      hasLyrics: it.hasLyrics,
     }));
+
     if (!tracks.length) return void window.NotificationSystem?.warning('Нет доступных треков');
 
     if (window.playerCore) {
@@ -459,7 +468,7 @@ class AlbumsManager {
         tracks,
         startIndex,
         { artist: 'Витрина Разбита', album: 'Избранное', cover: LOGO },
-        { preservePosition: false } // ✅ клик пользователя в списке избранного
+        { preservePosition: false } // ✅ клик пользователя
       );
       window.playerCore.play(startIndex);
 
@@ -467,9 +476,11 @@ class AlbumsManager {
 
       const cu = toStr(clicked?.__uid).trim();
       const ca = toStr(clicked?.__a).trim();
-      this.highlightCurrentTrack(index, { uid: cu, albumKey: ca });
 
-      window.PlayerUI?.ensurePlayerBlock?.(index, { userInitiated: true });
+      // Подсветка в избранном должна быть по (albumKey, uid), но список сейчас в DOM с data-album=data-uid
+      this.highlightCurrentTrack(-1, { uid: cu, albumKey: ca });
+
+      window.PlayerUI?.ensurePlayerBlock?.(startIndex, { userInitiated: true });
       window.PlayerUI?.updateAvailableTracksForPlayback?.();
     }
   }
