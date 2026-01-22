@@ -1082,21 +1082,26 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
         const cur = this.getCurrentTrack();
         const curUid = safeStr(cur?.uid);
-        if (!curUid || curUid !== safeStr(unlikedUid)) return;
+        const u = safeStr(unlikedUid);
 
-        // Строим список активных через refs+map (без favoritesRefsModel)
+        if (!curUid || !u || curUid !== u) return;
+
+        // Активные треки = только те, у кого ⭐ сейчас стоит (по likedTrackUids:v1 через getFavoritesState()).
         const state = this.getFavoritesState();
         const active = Array.isArray(state?.active) ? state.active : [];
 
+        // Единственный разрешённый STOP от избранного:
+        // в favorites view сняли ⭐ с единственного активного (после снятия active=0).
         if (active.length === 0) {
-          // единственный разрешённый STOP от избранного
           this.stop?.();
           return;
         }
 
-        // переключаемся на следующий активный: через AlbumsManager.ensureFavoritesPlayback (уже существующая логика сборки плейлиста)
-        // Здесь мы не знаем индекс в UI-модели, поэтому просим UI пересобрать модель и стартовать первый активный.
-        try { W.FavoritesUI?.playFirstActiveFavorite?.(); } catch {}
+        // ВАЖНО: не вызываем FavoritesUI.playFirstActiveFavorite() и не делаем setPlaylist+play() из UI,
+        // иначе получаем двойной запуск/скачки.
+        // Переходим к следующему треку в ТЕКУЩЕМ playing-плейлисте.
+        // (Дальше AlbumsManager/FavoritesUI/PlaybackPolicy уже обновят доступность/подсветку).
+        this.next?.();
       } catch (e) {
         console.warn('_handleFavoritesPlaylistUnlikeCurrent failed:', e);
       }
