@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b7e0bd24d4420b0486f1899a74fbda15690b0ca2.idx
-│   │       ├── pack-b7e0bd24d4420b0486f1899a74fbda15690b0ca2.pack
-│   │       └── pack-b7e0bd24d4420b0486f1899a74fbda15690b0ca2.rev
+│   │       ├── pack-97768fb1877269ad5ea03799da9c83af5c580199.idx
+│   │       ├── pack-97768fb1877269ad5ea03799da9c83af5c580199.pack
+│   │       └── pack-97768fb1877269ad5ea03799da9c83af5c580199.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 18:17:23 UTC
+Сгенерировано: 2026-01-22 18:20:55 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -12469,8 +12469,9 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       // - toggle in favorites view (fromAlbum=false): unlike => inactive (ref stays)
       // - In favorites playlist playing: unlike current active => next; if last active => STOP (единственный разрешённый STOP от избранного)
       this._fav = {
-        likedKey: 'likedTrackUids:v1',
-        refsKey: 'favoritesAlbumRefsByUid:v1',
+        likedKey: 'likedTrackUids:v1',          // legacy by-album map
+        likedKeyV2: 'likedTrackUids:v2',        // ✅ global uid-only set (array in LS)
+        refsKey: 'favoritesAlbumRefsByUid:v1',  // refs пока legacy, миграцию сделаем отдельно
       };
 
       // Favorites internal emitter (замена DOM CustomEvent 'favorites:changed')
@@ -13202,10 +13203,36 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       return Array.from(new Set(arr.map(x => String(x || '').trim()).filter(Boolean)));
     }
 
+    _favReadLikedSetV2() {
+      try {
+        const raw = localStorage.getItem(this._fav.likedKeyV2);
+        const arr = raw ? JSON.parse(raw) : [];
+        const list = Array.isArray(arr) ? arr : [];
+        return new Set(list.map(x => String(x || '').trim()).filter(Boolean));
+      } catch {
+        return new Set();
+      }
+    }
+
+    _favWriteLikedSetV2(set) {
+      try {
+        const arr = Array.from(set || []);
+        localStorage.setItem(this._fav.likedKeyV2, JSON.stringify(arr));
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
     isFavorite(uid) {
       const u = safeStr(uid);
       if (!u) return false;
 
+      // ✅ Fast path: v2 (UID-only)
+      const v2 = this._favReadLikedSetV2();
+      if (v2.has(u)) return true;
+
+      // Fallback: legacy v1 by-album
       const map = this._favReadLikedMap();
       for (const k of Object.keys(map)) {
         const arr = Array.isArray(map[k]) ? map[k] : [];
@@ -13228,8 +13255,18 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       const u = safeStr(uid);
       if (!u) return { ok: false, reason: 'noUid' };
 
-      const fromAlbum = (typeof opts === 'boolean') ? opts : !!opts?.fromAlbum;
+      let fromAlbum = (typeof opts === 'boolean') ? opts : !!opts?.fromAlbum;
       const explicitAlbumKey = (typeof opts === 'object' && opts) ? safeStr(opts.albumKey) : null;
+
+      // ✅ Страховка по ТЗ:
+      // Если действие произошло в окне "__favorites__", то это НИКОГДА не "fromAlbum",
+      // даже если кто-то ошибочно передал fromAlbum=true (или boolean opts=true).
+      try {
+        const curAlbum = W.AlbumsManager?.getCurrentAlbum?.();
+        if (String(curAlbum || '').trim() === W.SPECIAL_FAVORITES_KEY) {
+          fromAlbum = false;
+        }
+      } catch {}
 
       const map = this._favReadLikedMap();
 
@@ -13289,6 +13326,14 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
         this._favWriteLikedMap(map);
       }
+
+      // ✅ v2 global uid-only set update
+      try {
+        const set = this._favReadLikedSetV2();
+        if (nextLiked) set.add(u);
+        else set.delete(u);
+        this._favWriteLikedSetV2(set);
+      } catch {}
 
       // refs rules
       if (nextLiked) {
