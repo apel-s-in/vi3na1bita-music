@@ -109,16 +109,29 @@
       coverByAlbum.set(a, await getAlbumCoverUrl(a));
     }));
 
-    // Active определяется по likedTrackUids:v1 для этого альбома (или fallback isFavorite)
+    // Active определяется по likedTrackUids:v1 для этого альбома.
+    // Оптимизация: строим Set один раз на каждый albumKey, а не includes() на массиве для каждого ref.
+    const likedSetByAlbum = new Map(); // albumKey -> Set(uid)
+
+    const getLikedSet = (albumKey) => {
+      const a = trim(albumKey);
+      if (!a) return new Set();
+      const cached = likedSetByAlbum.get(a);
+      if (cached) return cached;
+
+      const arr = (typeof pc.getLikedUidsForAlbum === 'function') ? (pc.getLikedUidsForAlbum(a) || []) : [];
+      const set = new Set((Array.isArray(arr) ? arr : []).map(trim).filter(Boolean));
+      likedSetByAlbum.set(a, set);
+      return set;
+    };
+
     const out = refs.map((ref) => {
       const a = ref.a;
       const uid = ref.uid;
 
       const meta = getTrackMeta(uid);
 
-      const isActive = (a && typeof pc.getLikedUidsForAlbum === 'function')
-        ? pc.getLikedUidsForAlbum(a).includes(uid)
-        : !!pc.isFavorite?.(uid);
+      const isActive = a ? getLikedSet(a).has(uid) : !!pc.isFavorite?.(uid);
 
       const cover = coverByAlbum.get(a) || LOGO;
 
