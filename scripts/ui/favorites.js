@@ -5,26 +5,13 @@ function safeStr(x) {
   return String(x ?? "").trim();
 }
 
-function getAllTracksFromIndex() {
-  // В твоём проекте есть TrackRegistry или albumsIndex.
-  // Поддержим 2 варианта:
-  const reg = window.TrackRegistry;
-  if (reg?.getAllTracks) return reg.getAllTracks();
-
-  // fallback: пробуем текущий альбом
-  const cfg = window.__albumConfig;
-  return Array.isArray(cfg?.tracks) ? cfg.tracks : [];
-}
-
-function buildTrackByUidMap() {
-  const all = getAllTracksFromIndex();
-  const map = new Map();
-  for (const t of all) {
-    const uid = safeStr(t?.uid);
-    if (!uid) continue;
-    map.set(uid, t);
+function getTrack(uid) {
+  try {
+    const tr = window.TrackRegistry?.getTrackByUid?.(uid) || null;
+    return tr || null;
+  } catch {
+    return null;
   }
-  return map;
 }
 
 export function buildFavoritesModel() {
@@ -32,22 +19,36 @@ export function buildFavoritesModel() {
 
   const liked = FavoritesV2.readLikedSet();
   const refs = FavoritesV2.readRefsByUid();
-  const byUid = buildTrackByUidMap();
-
   const items = Object.values(refs)
     .filter((r) => r && r.uid)
     .sort((a, b) => (Number(b.addedAt) || 0) - (Number(a.addedAt) || 0))
     .map((ref) => {
       const uid = safeStr(ref.uid);
-      const base = byUid.get(uid);
-      if (!base) return null;
+      const tr = getTrack(uid);
+      if (!tr) return null;
 
       const active = liked.has(uid);
+
       return {
-        ...base,
         uid,
+        sourceAlbum: safeStr(tr.sourceAlbum),
+
         __active: active,
         __inactive: !active,
+
+        // best-effort fields (used by favorites-view/albums/offline/policy)
+        title: tr.title || '',
+        audio: tr.audio || tr.urlHi || null,
+        audio_low: tr.audio_low || tr.urlLo || null,
+        sources: tr.sources || (tr.urlHi || tr.urlLo ? { audio: { hi: tr.urlHi || null, lo: tr.urlLo || null } } : null),
+
+        lyrics: tr.lyrics || null,
+        fulltext: tr.fulltext || null,
+
+        size: (typeof tr.sizeHi === 'number' ? tr.sizeHi : (typeof tr.size === 'number' ? tr.size : null)),
+        size_low: (typeof tr.sizeLo === 'number' ? tr.sizeLo : (typeof tr.size_low === 'number' ? tr.size_low : null)),
+
+        hasLyrics: (typeof tr.hasLyrics === 'boolean') ? tr.hasLyrics : !!tr.lyrics,
       };
     })
     .filter(Boolean);
