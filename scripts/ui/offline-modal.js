@@ -366,7 +366,7 @@ function bindHandlers(mgr) {
       if (!est?.ok) return void err('Не удалось оценить набор');
       if (!Array.isArray(est.uids) || est.uids.length === 0) return void info('Набор пуст');
 
-      const guarantee = await mgr._canGuaranteeStorageForMB?.(est.totalMB);
+      const guarantee = await mgr.canGuaranteeStorageForMB?.(est.totalMB);
       if (!guarantee?.ok) return void err('Нельзя гарантировать место в хранилище. 100% OFFLINE не запущен.');
 
       const urls = new Set([
