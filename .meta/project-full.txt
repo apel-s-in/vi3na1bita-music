@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8db796967e2dac0dc04afd74b53a974f644f8eb6.idx
-│   │       ├── pack-8db796967e2dac0dc04afd74b53a974f644f8eb6.pack
-│   │       └── pack-8db796967e2dac0dc04afd74b53a974f644f8eb6.rev
+│   │       ├── pack-29ebfa84408a774ad3396b48598402c87bb0b7aa.idx
+│   │       ├── pack-29ebfa84408a774ad3396b48598402c87bb0b7aa.pack
+│   │       └── pack-29ebfa84408a774ad3396b48598402c87bb0b7aa.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 12:18:01 UTC
+Сгенерировано: 2026-01-22 12:18:44 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5200,9 +5200,17 @@ export const toStr = (v) => (v == null ? '' : String(v));
 
 export const isMobileUA = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-const ESC = { '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&#39;', '"': '&quot;' };
-export const escHtml = (s) =>
-  window.Utils?.escapeHtml ? window.Utils.escapeHtml(toStr(s)) : toStr(s).replace(/[<>&'"]/g, (m) => ESC[m]);
+function _escFallback(s) {
+  const v = toStr(s);
+  return v.replace(/[<>&'"]/g, (m) => ({
+    '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&#39;', '"': '&quot;'
+  }[m]));
+}
+
+export const escHtml = (s) => {
+  const fn = window.Utils?.escapeHtml;
+  return (typeof fn === 'function') ? fn(toStr(s)) : _escFallback(s);
+};
 
 //=================================================
 // FILE: /scripts/ci/lint-sw.mjs
