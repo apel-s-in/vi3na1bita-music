@@ -6,6 +6,14 @@ export const toStr = (v) => (v == null ? '' : String(v));
 
 export const isMobileUA = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-const ESC = { '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&#39;', '"': '&quot;' };
-export const escHtml = (s) =>
-  window.Utils?.escapeHtml ? window.Utils.escapeHtml(toStr(s)) : toStr(s).replace(/[<>&'"]/g, (m) => ESC[m]);
+function _escFallback(s) {
+  const v = toStr(s);
+  return v.replace(/[<>&'"]/g, (m) => ({
+    '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&#39;', '"': '&quot;'
+  }[m]));
+}
+
+export const escHtml = (s) => {
+  const fn = window.Utils?.escapeHtml;
+  return (typeof fn === 'function') ? fn(toStr(s)) : _escFallback(s);
+};
