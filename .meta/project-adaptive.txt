@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-7c02f5387969c9367cfc48a42d42a429d188eb6c.idx
-│   │       ├── pack-7c02f5387969c9367cfc48a42d42a429d188eb6c.pack
-│   │       └── pack-7c02f5387969c9367cfc48a42d42a429d188eb6c.rev
+│   │       ├── pack-90624f6ded058596c396db56d7434811f1eb19e4.idx
+│   │       ├── pack-90624f6ded058596c396db56d7434811f1eb19e4.pack
+│   │       └── pack-90624f6ded058596c396db56d7434811f1eb19e4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 20:39:42 UTC
+Сгенерировано: 2026-01-22 20:40:23 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5877,17 +5877,10 @@ export default FavoritesV2;
         const uid = String(track?.uid || '').trim();
         if (!pc || !pa || !uid) return false;
 
-        if (pa !== W.SPECIAL_FAVORITES_KEY) return !!pc?.isFavorite?.(uid);
-
-        const srcAlbum = String(track?.sourceAlbum || '').trim();
-        if (srcAlbum) return !!pc?.isFavorite?.(uid);
-
-        const ref = Array.isArray(W.favoritesRefsModel)
-          ? W.favoritesRefsModel.find(it => String(it?.__uid || '').trim() === uid)
-          : null;
-
-        const a = String(ref?.__a || '').trim();
-        return a ? !!pc?.isFavorite?.(uid) : false;
+        // ✅ v2: likedTrackUids:v2 — единый источник лайка, не зависит от контекста.
+        // В "Избранном" inactive никогда не участвует в playback, поэтому в playing-плейлисте
+        // нет смысла вычислять лайк через какие-то refs-модели.
+        return !!pc?.isFavorite?.(uid);
       }
     },
 
