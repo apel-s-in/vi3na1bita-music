@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-832b7e49a85eebeb97b2af6088dfb8fa1dbfbe00.idx
-│   │       ├── pack-832b7e49a85eebeb97b2af6088dfb8fa1dbfbe00.pack
-│   │       └── pack-832b7e49a85eebeb97b2af6088dfb8fa1dbfbe00.rev
+│   │       ├── pack-327bfe78b33cbd181ebc7786b7ed6f73f83a001d.idx
+│   │       ├── pack-327bfe78b33cbd181ebc7786b7ed6f73f83a001d.pack
+│   │       └── pack-327bfe78b33cbd181ebc7786b7ed6f73f83a001d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -383,7 +383,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 21:24:32 UTC
+Сгенерировано: 2026-01-22 21:27:05 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6002,20 +6002,7 @@ test('toggle star in favorites updates row state and localStorage (uid-based)', 
   expect(v2.refExists).toBeTruthy();
   expect(v2.inactiveAt).toBeGreaterThan(0);
 
-  // Проверим localStorage: likedTrackUids:v1 больше не содержит этот uid в массиве строк
-  const { albumKey, uid, present } = await page.evaluate((id) => {
-    const m = String(id || '').match(/^fav_(.+)_(.+)$/);
-    const a = m ? m[1] : '';
-    const u = m ? m[2] : '';
-    const raw = localStorage.getItem('likedTrackUids:v1');
-    const map = raw ? JSON.parse(raw) : {};
-    const arr = Array.isArray(map[a]) ? map[a] : [];
-    return { albumKey: a, uid: u, present: arr.includes(u) };
-  }, favId);
-
-  expect(albumKey).toBeTruthy();
-  expect(uid).toBeTruthy();
-  expect(present).toBeFalsy();
+  // ✅ v1 удалён: дополнительных проверок v1 больше нет.
 });
 
 test('favorites view: add to favorites, play and verify mini-mode when browsing other album', async ({ page }) => {
@@ -6075,22 +6062,6 @@ test('unlike in native album removes ref from favorites "without trace" (v2)', a
 
   expect(st.likedHas).toBeFalsy();
   expect(st.refExists).toBeFalsy();
-});
-  await loginByPromo(page);
-
-  await likeFirstTrack(page);
-  await openFavorites(page);
-
-  await page.locator('#track-list .track').first().click();
-  await expect(page.locator('#lyricsplayerblock')).toBeVisible();
-
-  const otherIcon = page
-    .locator('.album-icon')
-    .filter({ hasNot: page.locator('[data-akey="__favorites__"]') })
-    .nth(1);
-  await otherIcon.click();
-
-  await expect(page.locator('#mini-now')).toBeVisible();
 });
 
 // Доп. тест: восстановление после перезагрузки (PlayerState.applyState)
@@ -6291,28 +6262,28 @@ test('mini-player star toggles favorite in __favorites__ and syncs with list (ui
   await miniStar.click();
   await page.waitForTimeout(200);
 
-  // 5. Проверим, что состояние в favorites-списке и likedTrackUids:v1 синхронно обновилось
+  // 5. Проверим, что состояние в favorites-списке и likedTrackUids:v2 синхронно обновилось
   await page.click('.album-icon[data-akey="__favorites__"]');
   await page.waitForSelector('#track-list .track', { timeout: 10000 });
 
   const favRowAfter = page.locator(`#${favId}`);
   const starAfter = favRowAfter.locator('.like-star');
 
-  const { albumKey, uid, present } = await page.evaluate((favRowId) => {
+  const v2 = await page.evaluate((favRowId) => {
     const m = String(favRowId || '').match(/^fav_(.+)_(.+)$/);
-    const a = m ? m[1] : '';
-    const u = m ? m[2] : '';
-    const raw = localStorage.getItem('likedTrackUids:v1');
-    const map = raw ? JSON.parse(raw) : {};
-    const arr = Array.isArray(map[a]) ? map[a] : [];
-    return { albumKey: a, uid: u, present: arr.includes(u) };
+    const uid = m ? m[2] : '';
+    const likedRaw = localStorage.getItem('likedTrackUids:v2');
+    const liked = likedRaw ? JSON.parse(likedRaw) : [];
+    return {
+      uid,
+      likedHas: Array.isArray(liked) && liked.includes(uid)
+    };
   }, favId);
 
-  expect(albumKey).toBeTruthy();
-  expect(uid).toBeTruthy();
+  expect(v2.uid).toBeTruthy();
 
   await expect(starAfter).toBeVisible();
-  if (present) {
+  if (v2.likedHas) {
     await expect(favRowAfter).not.toHaveClass(/inactive/);
   } else {
     await expect(favRowAfter).toHaveClass(/inactive/);
