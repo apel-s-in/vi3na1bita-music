@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2d09d9feb8456612fb9138803e1e9f6f5564dfdc.idx
-│   │       ├── pack-2d09d9feb8456612fb9138803e1e9f6f5564dfdc.pack
-│   │       └── pack-2d09d9feb8456612fb9138803e1e9f6f5564dfdc.rev
+│   │       ├── pack-947eaccb32e8a3f39ec90ece519c178bd7b4eb9e.idx
+│   │       ├── pack-947eaccb32e8a3f39ec90ece519c178bd7b4eb9e.pack
+│   │       └── pack-947eaccb32e8a3f39ec90ece519c178bd7b4eb9e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -383,7 +383,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 21:08:02 UTC
+Сгенерировано: 2026-01-22 21:08:48 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9623,6 +9623,51 @@ export const ModalTemplates = {
   wrap: ({ title = '', body = '' } = {}) => `
     ${title ? `<h2>${esc(title)}</h2>` : ''}
     <div class="modal-body">${body}</div>
+  `,
+
+  inactiveFavoriteBody: ({ title = '' } = {}) => `
+    <div style="color:#9db7dd; line-height:1.45; margin-bottom:14px;">
+      <div style="margin-bottom:8px;"><strong>Трек:</strong> ${esc(title || 'Трек')}</div>
+      <div style="opacity:.9;">
+        Трек неактивен в «ИЗБРАННОЕ». Вы можете вернуть его в ⭐ или удалить строку окончательно.
+      </div>
+    </div>
+  `,
+
+  feedbackBody: ({ supportEmail = '', githubUrl = '' } = {}) => `
+    <p style="margin-bottom:20px; color:#8ab8fd; text-align:center;">
+      Есть предложения или нашли ошибку?<br>Напишите нам!
+    </p>
+    <div style="display:flex; flex-direction:column; gap:15px; max-width:300px; margin:0 auto;">
+      <a href="https://t.me/vitrina_razbita" target="_blank" rel="noopener noreferrer"
+         style="background:#0088cc; color:#fff; padding:15px; border-radius:8px; text-decoration:none; text-align:center;">
+        Telegram
+      </a>
+      <a href="mailto:${esc(supportEmail || 'support@vitrina-razbita.ru')}" target="_blank" rel="noopener noreferrer"
+         style="background:#4daaff; color:#fff; padding:15px; border-radius:8px; text-decoration:none; text-align:center;">
+        Email
+      </a>
+      <a href="${esc(githubUrl || 'https://github.com/apel-s-in/vi3na1bita-music')}" target="_blank" rel="noopener noreferrer"
+         style="background:#333; color:#fff; padding:15px; border-radius:8px; text-decoration:none; text-align:center;">
+        GitHub
+      </a>
+    </div>
+  `,
+
+  hotkeysBody: () => `
+    <div class="hotkeys-section">
+      <h3 style="color:#8ab8fd; margin-bottom:12px;">Воспроизведение</h3>
+      <div class="hotkey-item"><span class="hotkey-combo">K / Пробел</span><span class="hotkey-desc">Воспроизведение/Пауза</span></div>
+      <div class="hotkey-item"><span class="hotkey-combo">X</span><span class="hotkey-desc">Стоп</span></div>
+      <div class="hotkey-item"><span class="hotkey-combo">N / P</span><span class="hotkey-desc">Следующий/Предыдущий</span></div>
+    </div>
+    <div class="hotkeys-section">
+      <h3 style="color:#8ab8fd; margin-bottom:12px;">Режимы</h3>
+      <div class="hotkey-item"><span class="hotkey-combo">R</span><span class="hotkey-desc">Повтор</span></div>
+      <div class="hotkey-item"><span class="hotkey-combo">U</span><span class="hotkey-desc">Случайный порядок</span></div>
+      <div class="hotkey-item"><span class="hotkey-combo">F</span><span class="hotkey-desc">Только избранные</span></div>
+      <div class="hotkey-item"><span class="hotkey-combo">T</span><span class="hotkey-desc">Таймер сна</span></div>
+    </div>
   `,
 
   offlineBody: (s = {}) => {
