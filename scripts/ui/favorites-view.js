@@ -8,11 +8,8 @@
 import { buildFavoritesModel } from './favorites.js';
 
 function esc(s) {
-  const fn = window.Utils?.escapeHtml;
-  const v = String(s ?? '');
-  return (typeof fn === 'function')
-    ? fn(v)
-    : v.replace(/[<>&'"]/g, (m) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&#39;', '"': '&quot;' }[m]));
+  // Utils загружается раньше всех UI-скриптов (см. index.html), поэтому fallback не нужен.
+  return window.Utils.escapeHtml(String(s ?? ''));
 }
 
 function safeStr(x) {
