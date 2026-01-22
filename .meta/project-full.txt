@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-13ecbe8af1c7d6bb05c9448184dc2814850a6518.idx
-│   │       ├── pack-13ecbe8af1c7d6bb05c9448184dc2814850a6518.pack
-│   │       └── pack-13ecbe8af1c7d6bb05c9448184dc2814850a6518.rev
+│   │       ├── pack-f7b8b390c347cc0cc954d8c192a035db0564f898.idx
+│   │       ├── pack-f7b8b390c347cc0cc954d8c192a035db0564f898.pack
+│   │       └── pack-f7b8b390c347cc0cc954d8c192a035db0564f898.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 12:35:47 UTC
+Сгенерировано: 2026-01-22 12:38:27 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -13272,9 +13272,33 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         return null;
       };
 
-      // ✅ Ключевой фикс: если UI знает albumKey (а он знает) — используем ТОЛЬКО его.
-      // Никаких guessing по playingAlbum/currentTrack.
-      const albumKey = explicitAlbumKey || findAlbumContainingUid() || null;
+      // ✅ Если UI передал albumKey — используем его.
+      // Иначе: для fromAlbum=true обязаны попытаться восстановить albumKey, чтобы refs работали стабильно.
+      const guessAlbumKeyFromContext = () => {
+        try {
+          const a1 = W.AlbumsManager?.getCurrentAlbum?.();
+          if (a1 && !String(a1).startsWith('__')) return safeStr(a1);
+        } catch {}
+
+        try {
+          const cur = this.getCurrentTrack?.();
+          const a2 = safeStr(cur?.sourceAlbum);
+          if (a2 && !String(a2).startsWith('__')) return a2;
+        } catch {}
+
+        try {
+          const a3 = W.AlbumsManager?.getPlayingAlbum?.();
+          if (a3 && !String(a3).startsWith('__')) return safeStr(a3);
+        } catch {}
+
+        return null;
+      };
+
+      const albumKey =
+        explicitAlbumKey ||
+        findAlbumContainingUid() ||
+        (fromAlbum ? guessAlbumKeyFromContext() : null) ||
+        null;
 
       const prevLiked = (albumKey && !String(albumKey).startsWith('__'))
         ? this.getLikedUidsForAlbum(albumKey).includes(u)
