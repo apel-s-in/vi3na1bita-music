@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f7b8b390c347cc0cc954d8c192a035db0564f898.idx
-│   │       ├── pack-f7b8b390c347cc0cc954d8c192a035db0564f898.pack
-│   │       └── pack-f7b8b390c347cc0cc954d8c192a035db0564f898.rev
+│   │       ├── pack-de0dc5455a33057087011d9d9e1b3f7cb3a1782d.idx
+│   │       ├── pack-de0dc5455a33057087011d9d9e1b3f7cb3a1782d.pack
+│   │       └── pack-de0dc5455a33057087011d9d9e1b3f7cb3a1782d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 12:38:27 UTC
+Сгенерировано: 2026-01-22 12:39:40 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9344,11 +9344,14 @@ export function attachCloudMenu(opts = {}) {
 
     bind();
   }
+  function getModel() {
+    const m = w.favoritesRefsModel;
+    return Array.isArray(m) ? m : [];
+  }
 
   w.FavoritesUI = {
     buildFavoritesRefsModel,
     getModel,
-    getActiveModel,
     getAlbumCoverUrl,
     playFirstActiveFavorite
   };
