@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-327bfe78b33cbd181ebc7786b7ed6f73f83a001d.idx
-│   │       ├── pack-327bfe78b33cbd181ebc7786b7ed6f73f83a001d.pack
-│   │       └── pack-327bfe78b33cbd181ebc7786b7ed6f73f83a001d.rev
+│   │       ├── pack-ffe83e487733bc44bd87b9e2452d86f51b10f185.idx
+│   │       ├── pack-ffe83e487733bc44bd87b9e2452d86f51b10f185.pack
+│   │       └── pack-ffe83e487733bc44bd87b9e2452d86f51b10f185.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -383,7 +383,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 21:27:05 UTC
+Сгенерировано: 2026-01-22 21:28:10 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6438,15 +6438,18 @@ test('favoritesOnly + shuffle: liking another track adds it to tail of queue', a
   const after = await page.evaluate(() => {
     const snap = window.playerCore?.getPlaylistSnapshot?.() || [];
     const tail = snap.length ? snap[snap.length - 1] : null;
+    const tailUid = String(tail?.uid || '').trim();
+
     return {
       len: snap.length,
-      tailUid: String(tail?.uid || '').trim(),
-      likedUids: window.playerCore?.getLikedUidsForAlbum?.(window.AlbumsManager?.getPlayingAlbum?.() || '') || []
+      tailUid,
+      tailIsLiked: tailUid ? !!window.playerCore?.isFavorite?.(tailUid) : false
     };
   });
 
   expect(after.len).toBeGreaterThanOrEqual(beforeLen);
-  expect(after.likedUids.includes(after.tailUid)).toBeTruthy();
+  expect(after.tailUid).toBeTruthy();
+  expect(after.tailIsLiked).toBeTruthy();
 });
 
 test('shuffle history: next-next-prev returns to previously played track', async ({ page }) => {
