@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d1700fae28c5afcbd5de0554e1d7b36213253b66.idx
-│   │       ├── pack-d1700fae28c5afcbd5de0554e1d7b36213253b66.pack
-│   │       └── pack-d1700fae28c5afcbd5de0554e1d7b36213253b66.rev
+│   │       ├── pack-73203b3cc92250999aa3581dd63ef229ff5396e4.idx
+│   │       ├── pack-73203b3cc92250999aa3581dd63ef229ff5396e4.pack
+│   │       └── pack-73203b3cc92250999aa3581dd63ef229ff5396e4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -383,7 +383,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 20:54:07 UTC
+Сгенерировано: 2026-01-22 21:07:47 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2116,6 +2116,10 @@ class AlbumsManager {
 
   async loadFavoritesAlbum() {
     this.renderAlbumTitle('⭐⭐⭐ ИЗБРАННОЕ ⭐⭐⭐', 'fav');
+
+    // ✅ ВАЖНО: TrackRegistry должен быть готов ДО активного использования Favorites (buildFavoritesModel).
+    // Это жесткое правило проекта.
+    try { await window.ensureTrackRegistryReadyForFavorites?.(); } catch {}
 
     const coverWrap = $('cover-wrap');
     if (coverWrap) coverWrap.style.display = 'none';
