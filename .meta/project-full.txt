@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a4781f90ccf27bd14b44f9f7c2c19dbf31a7f854.idx
-│   │       ├── pack-a4781f90ccf27bd14b44f9f7c2c19dbf31a7f854.pack
-│   │       └── pack-a4781f90ccf27bd14b44f9f7c2c19dbf31a7f854.rev
+│   │       ├── pack-ff7c15891dd8ff18e07fb51171d83cd95f3b8803.idx
+│   │       ├── pack-ff7c15891dd8ff18e07fb51171d83cd95f3b8803.pack
+│   │       └── pack-ff7c15891dd8ff18e07fb51171d83cd95f3b8803.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -350,6 +350,7 @@ vi3na1bita-music/
 │   ├── ui/
 │   │   ├── cache-progress-overlay.js
 │   │   ├── cloud-menu.js
+│   │   ├── favorites-view.js
 │   │   ├── favorites.js
 │   │   ├── lyrics-modal.js
 │   │   ├── modal-templates.js
@@ -381,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 14:40:43 UTC
+Сгенерировано: 2026-01-22 15:10:42 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2039,6 +2040,7 @@ class AlbumsManager {
 
           const uid = toStr(item.__uid).trim();
           const a = toStr(item.__a).trim();
+          // ✅ ВАЖНО: в окне «ИЗБРАННОЕ» снятие ⭐ НЕ удаляет ref, а переводит в inactive (буфер).
           if (uid && a) window.playerCore?.toggleFavorite?.(uid, { fromAlbum: false, albumKey: a });
           return;
         }
@@ -9114,6 +9116,123 @@ export function attachCloudMenu(opts = {}) {
   defer(() => {
     // capture=true чтобы закрываться раньше других обработчиков при клике вне меню
     offDocClick = on(document, 'click', onDocClick, true);
+  });
+}
+
+//=================================================
+// FILE: /scripts/ui/favorites-view.js
+// scripts/ui/favorites-view.js
+// FavoritesView: чистый рендер + делегирование кликов для окна «Избранное».
+// Не управляет воспроизведением напрямую (инвариант).
+
+const STAR_ON = 'img/star.png';
+const STAR_OFF = 'img/star2.png';
+
+const esc = (s) => {
+  const fn = window.Utils?.escapeHtml;
+  return typeof fn === 'function' ? fn(String(s ?? '')) : String(s ?? '');
+};
+
+function rowIdFromItem(it) {
+  // back-compat: e2e ожидает формат fav_{albumKey}_{uid}
+  const a = String(it?.__a || '').trim();
+  const u = String(it?.__uid || '').trim();
+  return `fav_${a}_${u}`;
+}
+
+export function renderFavoritesEmpty(container) {
+  if (!container) return;
+  container.innerHTML = `
+    <div class="fav-empty">
+      <h3>Избранные треки</h3>
+      <p>Отметьте треки звёздочкой ⭐</p>
+    </div>
+  `;
+}
+
+export function renderFavoritesList(container, model) {
+  if (!container) return;
+
+  const list = Array.isArray(model) ? model : [];
+  if (!list.length) return renderFavoritesEmpty(container);
+
+  container.innerHTML = list.map((it, i) => {
+    const a = String(it?.__a || '').trim();
+    const u = String(it?.__uid || '').trim();
+    const active = !!it?.__active;
+
+    const albumTitle = String(it?.__album || 'Альбом');
+    const trackTitle = String(it?.title || 'Трек');
+
+    const id = rowIdFromItem(it);
+
+    return `
+      <div class="track${active ? '' : ' inactive'}"
+           id="${esc(id)}"
+           data-index="${i}"
+           data-album="${esc(a)}"
+           data-uid="${esc(u)}">
+        <div class="tnum">${String(i + 1).padStart(2, '0')}.</div>
+        <div class="track-title" title="${esc(trackTitle)} - ${esc(albumTitle)}">
+          <span class="fav-track-name">${esc(trackTitle)}</span>
+          <span class="fav-album-name"> — ${esc(albumTitle)}</span>
+        </div>
+        <img src="${active ? STAR_ON : STAR_OFF}"
+             class="like-star"
+             alt="звезда"
+             data-album="${esc(a)}"
+             data-uid="${esc(u)}">
+      </div>
+    `;
+  }).join('');
+}
+
+/**
+ * bindFavoritesList(container, handlers)
+ * handlers:
+ * - getModel(): any[]
+ * - onStarClick({ uid, albumKey }): void
+ * - onActiveRowClick({ uid, albumKey }): void
+ * - onInactiveRowClick({ uid, title }): void
+ */
+export function bindFavoritesList(container, handlers) {
+  if (!container || container.__favBound) return;
+  container.__favBound = true;
+
+  const getModel = typeof handlers?.getModel === 'function' ? handlers.getModel : () => [];
+  const onStarClick = typeof handlers?.onStarClick === 'function' ? handlers.onStarClick : () => {};
+  const onActiveRowClick = typeof handlers?.onActiveRowClick === 'function' ? handlers.onActiveRowClick : () => {};
+  const onInactiveRowClick = typeof handlers?.onInactiveRowClick === 'function' ? handlers.onInactiveRowClick : () => {};
+
+  container.addEventListener('click', (e) => {
+    const target = e.target;
+    const row = target?.closest?.('.track');
+    if (!row || !container.contains(row)) return;
+
+    const uid = String(row.dataset.uid || '').trim();
+    const albumKey = String(row.dataset.album || '').trim();
+    if (!uid || !albumKey) return;
+
+    const model = getModel();
+    const item = Array.isArray(model)
+      ? model.find((it) => String(it?.__uid || '').trim() === uid && String(it?.__a || '').trim() === albumKey)
+      : null;
+
+    if (!item) return;
+
+    if (target?.classList?.contains('like-star')) {
+      e.preventDefault();
+      e.stopPropagation();
+      onStarClick({ uid, albumKey });
+      return;
+    }
+
+    if (item.__active && item.audio) {
+      onActiveRowClick({ uid, albumKey });
+      return;
+    }
+
+    onInactiveRowClick({ uid, title: String(item?.title || 'Трек') });
   });
 }
 
