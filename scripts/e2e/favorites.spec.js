@@ -36,6 +36,27 @@ test('toggle star in favorites updates row state and localStorage (uid-based)', 
   await favRow.locator('.like-star').click();
   await expect(favRow).toHaveClass(/inactive/);
 
+  // ✅ v2: unlike в favorites view НЕ удаляет ref, а ставит inactiveAt
+  const v2 = await page.evaluate((id) => {
+    const m = String(id || '').match(/^fav_(.+)_(.+)$/);
+    const uid = m ? m[2] : '';
+    const likedRaw = localStorage.getItem('likedTrackUids:v2');
+    const refsRaw = localStorage.getItem('favoritesRefsByUid:v2');
+    const liked = likedRaw ? JSON.parse(likedRaw) : [];
+    const refs = refsRaw ? JSON.parse(refsRaw) : {};
+    return {
+      uid,
+      likedHas: Array.isArray(liked) && liked.includes(uid),
+      refExists: !!refs?.[uid],
+      inactiveAt: Number(refs?.[uid]?.inactiveAt || 0) || 0
+    };
+  }, favId);
+
+  expect(v2.uid).toBeTruthy();
+  expect(v2.likedHas).toBeFalsy();
+  expect(v2.refExists).toBeTruthy();
+  expect(v2.inactiveAt).toBeGreaterThan(0);
+
   // Проверим localStorage: likedTrackUids:v1 больше не содержит этот uid в массиве строк
   const { albumKey, uid, present } = await page.evaluate((id) => {
     const m = String(id || '').match(/^fav_(.+)_(.+)$/);
