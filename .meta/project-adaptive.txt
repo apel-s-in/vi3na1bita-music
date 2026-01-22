@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-cb45ead40c72de7c19d30113e31877bf744dac18.idx
-│   │       ├── pack-cb45ead40c72de7c19d30113e31877bf744dac18.pack
-│   │       └── pack-cb45ead40c72de7c19d30113e31877bf744dac18.rev
+│   │       ├── pack-bc946d7609af43dad888235c26e0d49d800d0289.idx
+│   │       ├── pack-bc946d7609af43dad888235c26e0d49d800d0289.pack
+│   │       └── pack-bc946d7609af43dad888235c26e0d49d800d0289.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 18:01:52 UTC
+Сгенерировано: 2026-01-22 18:02:51 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -13456,21 +13456,26 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
         const cur = this.getCurrentTrack();
         const curUid = safeStr(cur?.uid);
-        if (!curUid || curUid !== safeStr(unlikedUid)) return;
+        const u = safeStr(unlikedUid);
 
-        // Строим список активных через refs+map (без favoritesRefsModel)
+        if (!curUid || !u || curUid !== u) return;
+
+        // Активные треки = только те, у кого ⭐ сейчас стоит (по likedTrackUids:v1 через getFavoritesState()).
         const state = this.getFavoritesState();
         const active = Array.isArray(state?.active) ? state.active : [];
 
+        // Единственный разрешённый STOP от избранного:
+        // в favorites view сняли ⭐ с единственного активного (после снятия active=0).
         if (active.length === 0) {
-          // единственный разрешённый STOP от избранного
           this.stop?.();
           return;
         }
 
-        // переключаемся на следующий активный: через AlbumsManager.ensureFavoritesPlayback (уже существующая логика сборки плейлиста)
-        // Здесь мы не знаем индекс в UI-модели, поэтому просим UI пересобрать модель и стартовать первый активный.
-        try { W.FavoritesUI?.playFirstActiveFavorite?.(); } catch {}
+        // ВАЖНО: не вызываем FavoritesUI.playFirstActiveFavorite() и не делаем setPlaylist+play() из UI,
+        // иначе получаем двойной запуск/скачки.
+        // Переходим к следующему треку в ТЕКУЩЕМ playing-плейлисте.
+        // (Дальше AlbumsManager/FavoritesUI/PlaybackPolicy уже обновят доступность/подсветку).
+        this.next?.();
       } catch (e) {
         console.warn('_handleFavoritesPlaylistUnlikeCurrent failed:', e);
       }
