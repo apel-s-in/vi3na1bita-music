@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-83b1fd54197174d58e789082bbf18fa60505cf5c.idx
-│   │       ├── pack-83b1fd54197174d58e789082bbf18fa60505cf5c.pack
-│   │       └── pack-83b1fd54197174d58e789082bbf18fa60505cf5c.rev
+│   │       ├── pack-d5910e42458e1dfc51c3e6a11d2d2744cdb9ef8c.idx
+│   │       ├── pack-d5910e42458e1dfc51c3e6a11d2d2744cdb9ef8c.pack
+│   │       └── pack-d5910e42458e1dfc51c3e6a11d2d2744cdb9ef8c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 11:51:40 UTC
+Сгенерировано: 2026-01-22 11:52:25 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -10529,7 +10529,7 @@ function bindHandlers(mgr) {
       if (!est?.ok) return void err('Не удалось оценить набор');
       if (!Array.isArray(est.uids) || est.uids.length === 0) return void info('Набор пуст');
 
-      const guarantee = await mgr._canGuaranteeStorageForMB?.(est.totalMB);
+      const guarantee = await mgr.canGuaranteeStorageForMB?.(est.totalMB);
       if (!guarantee?.ok) return void err('Нельзя гарантировать место в хранилище. 100% OFFLINE не запущен.');
 
       const urls = new Set([
