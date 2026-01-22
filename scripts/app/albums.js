@@ -282,8 +282,9 @@ class AlbumsManager {
         this.handleAlbumIconClick(key);
       };
 
+      // ВАЖНО: не вешаем одновременно click + pointerup (на мобильных это часто даёт двойной вызов).
+      // CSS уже содержит touch-action: manipulation, этого достаточно.
       el.addEventListener('click', onActivate);
-      el.addEventListener('pointerup', onActivate, { passive: false });
 
       container.appendChild(el);
     }
