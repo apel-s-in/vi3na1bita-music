@@ -1,213 +1,72 @@
 // scripts/ui/favorites.js
-// FavoritesUI: UI-модель «Избранного» поверх PlayerCore.
-// Источник истины: src/PlayerCore.js.
-// Ускорение: метаданные треков берём из window.TrackRegistry (preload на старте допустим).
-// Инварианты:
-// - не трогает воспроизведение напрямую (кроме helper playFirstActiveFavorite через AlbumsManager, как и раньше)
-// - inactive — чисто UI-буфер, не попадает в воспроизведение
+import FavoritesV2 from "../core/favorites-v2.js";
 
-(function FavoritesUIModule() {
-  'use strict';
+function safeStr(x) {
+  return String(x ?? "").trim();
+}
 
-  const w = window;
-  const FAV = w.SPECIAL_FAVORITES_KEY || '__favorites__';
-  const LOGO = 'img/logo.png';
-  const COVER_TTL_MS = 12 * 60 * 60 * 1000;
+function getAllTracksFromIndex() {
+  // В твоём проекте есть TrackRegistry или albumsIndex.
+  // Поддержим 2 варианта:
+  const reg = window.TrackRegistry;
+  if (reg?.getAllTracks) return reg.getAllTracks();
 
-  const trim = (v) => {
-    const s = String(v ?? '').trim();
-    return s || null;
-  };
+  // fallback: пробуем текущий альбом
+  const cfg = window.__albumConfig;
+  return Array.isArray(cfg?.tracks) ? cfg.tracks : [];
+}
 
-  const albumCoverCache = new Map(); // albumKey -> { ts, url }
-
-  function getAlbumTitleFromIndex(albumKey) {
-    const a = trim(albumKey);
-    const idx = Array.isArray(w.albumsIndex) ? w.albumsIndex : [];
-    return (idx.find(x => x && x.key === a)?.title) || 'Альбом';
+function buildTrackByUidMap() {
+  const all = getAllTracksFromIndex();
+  const map = new Map();
+  for (const t of all) {
+    const uid = safeStr(t?.uid);
+    if (!uid) continue;
+    map.set(uid, t);
   }
+  return map;
+}
 
-  async function getAlbumCoverUrl(albumKey) {
-    const a = trim(albumKey);
-    if (!a) return LOGO;
+export function buildFavoritesModel() {
+  FavoritesV2.ensureMigrated();
 
-    const now = Date.now();
+  const liked = FavoritesV2.readLikedSet();
+  const refs = FavoritesV2.readRefsByUid();
+  const byUid = buildTrackByUidMap();
 
-    // sessionStorage cache (быстрый)
-    try {
-      const sKey = `favCoverCache:v1:${a}`;
-      const raw = sessionStorage.getItem(sKey);
-      if (raw) {
-        const obj = JSON.parse(raw);
-        if (obj && obj.url && obj.ts && (now - obj.ts) < COVER_TTL_MS) {
-          albumCoverCache.set(a, { ts: obj.ts, url: obj.url });
-          return obj.url;
-        }
-      }
-    } catch {}
+  const items = Object.values(refs)
+    .filter((r) => r && r.uid)
+    .sort((a, b) => (Number(b.addedAt) || 0) - (Number(a.addedAt) || 0))
+    .map((ref) => {
+      const uid = safeStr(ref.uid);
+      const base = byUid.get(uid);
+      if (!base) return null;
 
-    const cached = albumCoverCache.get(a);
-    if (cached && (now - cached.ts) < COVER_TTL_MS) return cached.url;
-
-    try {
-      const url = await w.GalleryManager?.getFirstCoverUrl?.(a);
-      const safe = (url && typeof url === 'string') ? url : LOGO;
-      albumCoverCache.set(a, { ts: now, url: safe });
-      try { sessionStorage.setItem(`favCoverCache:v1:${a}`, JSON.stringify({ url: safe, ts: now })); } catch {}
-      return safe;
-    } catch {
-      albumCoverCache.set(a, { ts: now, url: LOGO });
-      return LOGO;
-    }
-  }
-
-  function getTrackMeta(uid) {
-    const u = trim(uid);
-    if (!u) return null;
-
-    const reg = w.TrackRegistry;
-    if (!reg || typeof reg.getTrackByUid !== 'function') return null;
-
-    return reg.getTrackByUid(u) || null;
-  }
-
-  function getAudioUrl(meta) {
-    // TrackRegistry нормализует urlHi/urlLo + может хранить audio/audio_low
-    const hi = trim(meta?.urlHi || meta?.audio);
-    const lo = trim(meta?.urlLo || meta?.audio_low);
-    return hi || lo || null;
-  }
-
-  function getLyricsUrl(meta) { return trim(meta?.lyrics); }
-
-  function getFulltextUrl(meta) { return trim(meta?.fulltext); }
-
-  async function buildFavoritesRefsModel() {
-    const pc = w.playerCore;
-    if (!pc?.getFavoritesState) {
-      w.favoritesRefsModel = [];
-      return [];
-    }
-
-    const state = pc.getFavoritesState();
-
-    // state.active/inactive: { uid, sourceAlbum }
-    const refs = []
-      .concat((Array.isArray(state?.active) ? state.active : []).map(t => ({ uid: trim(t?.uid), a: trim(t?.sourceAlbum) })))
-      .concat((Array.isArray(state?.inactive) ? state.inactive : []).map(t => ({ uid: trim(t?.uid), a: trim(t?.sourceAlbum) })))
-      .filter(x => x && x.uid && x.a);
-
-    if (!refs.length) {
-      w.favoritesRefsModel = [];
-      return [];
-    }
-
-    // Обложки получаем 1 раз на альбом (параллельно)
-    const albumKeys = Array.from(new Set(refs.map(r => r.a).filter(Boolean)));
-    const coverByAlbum = new Map();
-    await Promise.all(albumKeys.map(async (a) => {
-      coverByAlbum.set(a, await getAlbumCoverUrl(a));
-    }));
-
-    // Active определяется по likedTrackUids:v1 для этого альбома.
-    // Оптимизация: строим Set один раз на каждый albumKey, а не includes() на массиве для каждого ref.
-    const likedSetByAlbum = new Map(); // albumKey -> Set(uid)
-
-    const getLikedSet = (albumKey) => {
-      const a = trim(albumKey);
-      if (!a) return new Set();
-      const cached = likedSetByAlbum.get(a);
-      if (cached) return cached;
-
-      const arr = (typeof pc.getLikedUidsForAlbum === 'function') ? (pc.getLikedUidsForAlbum(a) || []) : [];
-      const set = new Set((Array.isArray(arr) ? arr : []).map(trim).filter(Boolean));
-      likedSetByAlbum.set(a, set);
-      return set;
-    };
-
-    const out = refs.map((ref) => {
-      const a = ref.a;
-      const uid = ref.uid;
-
-      const meta = getTrackMeta(uid);
-
-      const isActive = a ? getLikedSet(a).has(uid) : !!pc.isFavorite?.(uid);
-
-      const cover = coverByAlbum.get(a) || LOGO;
-
-      // ВАЖНО: inactive никогда не получает audio/lyrics/fulltext
-      const audio = (isActive && meta) ? getAudioUrl(meta) : null;
-      const lyrics = (isActive && meta) ? getLyricsUrl(meta) : null;
-      const fulltext = (isActive && meta) ? getFulltextUrl(meta) : null;
-
+      const active = liked.has(uid);
       return {
-        title: meta?.title || 'Трек',
+        ...base,
         uid,
-
-        audio,
-        lyrics,
-        fulltext,
-
-        __a: a,
-        __uid: uid,
-        __artist: 'Витрина Разбита',
-        __album: getAlbumTitleFromIndex(a),
-        __active: isActive,
-        __cover: cover
+        __active: active,
+        __inactive: !active,
       };
-    });
+    })
+    .filter(Boolean);
 
-    w.favoritesRefsModel = out;
-    return out;
-  }
+  // active first, then inactive
+  items.sort((a, b) => Number(!!b.__active) - Number(!!a.__active));
 
-  function getModel() {
-    const m = w.favoritesRefsModel;
-    return Array.isArray(m) ? m : [];
-  }
+  return items;
+}
 
-  function getActiveModel(model) {
-    const list = Array.isArray(model) ? model : getModel();
-    return list.filter(it => it && it.__active && it.audio);
-  }
+/**
+ * Important: no autoplay here. Ever.
+ */
+export function rebuildFavoritesView() {
+  const model = buildFavoritesModel();
+  window.FavoritesUI?.renderFavoritesList?.(model);
+}
 
-  async function playFirstActiveFavorite() {
-    // ВАЖНО:
-    // Автозапуск из FavoritesUI запрещён.
-    // Воспроизведение должно запускаться только:
-    // - по клику пользователя по строке (AlbumsManager.ensureFavoritesPlayback),
-    // - по Next/Prev/автопереходу в PlayerCore,
-    // - либо по разрешённому исключению (STOP в одном сценарии).
-    // Эта функция оставлена для back-compat, но не должна инициировать playback.
-    try { await buildFavoritesRefsModel(); } catch {}
-  }
-
-  // Авто-пересборка модели только когда открыт favorites view
-  if (!w.__favoritesUIBound) {
-    w.__favoritesUIBound = true;
-
-    const bind = () => {
-      const pc = w.playerCore;
-      if (!pc?.onFavoritesChanged) return void setTimeout(bind, 100);
-
-      pc.onFavoritesChanged(() => {
-        if (w.AlbumsManager?.getCurrentAlbum?.() === FAV) {
-          buildFavoritesRefsModel().catch(() => {});
-        }
-      });
-    };
-
-    bind();
-  }
-
-  w.FavoritesUI = {
-    buildFavoritesRefsModel,
-    getModel,
-    getActiveModel,
-    getAlbumCoverUrl,
-    playFirstActiveFavorite
-  };
-
-  // Back-compat alias
-  w.buildFavoritesRefsModel = buildFavoritesRefsModel;
-})();
+export default {
+  buildFavoritesModel,
+  rebuildFavoritesView,
+};
