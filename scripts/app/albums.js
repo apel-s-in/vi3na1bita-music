@@ -115,6 +115,9 @@ class AlbumsManager {
     this._favSyncBound = false;
     this._favoritesViewBound = false;
 
+    // Anti-double-play guard: предотвращает двойной запуск Howler при гонках UI (особенно в Избранном).
+    this._favPlayGuard = { ts: 0 };
+
     // ✅ Один обработчик на треклист обычных альбомов (ускорение)
     this._trackListBound = false;
   }
@@ -486,6 +489,12 @@ class AlbumsManager {
   }
 
   async ensureFavoritesPlayback(activeIndex) {
+    // Anti-double-play guard: если ensureFavoritesPlayback вызван дважды почти одновременно,
+    // второй вызов игнорируем. Это убирает "кашу" из нескольких Howl.play().
+    const now = Date.now();
+    if (this._favPlayGuard && (now - (this._favPlayGuard.ts || 0)) < 250) return;
+    if (this._favPlayGuard) this._favPlayGuard.ts = now;
+
     let model = null;
     try { model = window.FavoritesUI?.getModel?.(); } catch {}
     if (!Array.isArray(model)) model = window.favoritesRefsModel;
