@@ -4,6 +4,7 @@ const APP_CONFIG = window.APP_CONFIG;
 import { registerTrack } from './track-registry.js';
 import { $, toStr, escHtml, isMobileUA } from './utils/app-utils.js';
 import { renderFavoritesList, renderFavoritesEmpty, bindFavoritesList } from '../ui/favorites-view.js';
+import { buildFavoritesModel } from '../ui/favorites.js';
 import { loadAndRenderNewsInline } from '../ui/news-inline.js';
 
 const FAV = window.SPECIAL_FAVORITES_KEY || '__favorites__';
@@ -434,13 +435,15 @@ class AlbumsManager {
     if (!container) return;
 
     const getModel = () => {
-      const m = window.FavoritesUI?.getModel?.();
-      if (Array.isArray(m)) return m;
-      return Array.isArray(window.favoritesRefsModel) ? window.favoritesRefsModel : [];
+      try {
+        const m = buildFavoritesModel();
+        return Array.isArray(m) ? m : [];
+      } catch {
+        return [];
+      }
     };
 
     const rebuild = async () => {
-      try { await window.FavoritesUI?.buildFavoritesRefsModel?.(); } catch {}
       const model = getModel();
       if (!model.length) renderFavoritesEmpty(container);
       else renderFavoritesList(container, model);
@@ -480,7 +483,6 @@ class AlbumsManager {
           if (this.currentAlbum !== FAV) return;
           await rebuild();
           window.PlayerUI?.updateAvailableTracksForPlayback?.();
-          window.PlayerUI?.ensurePlayerBlock?.(-1);
         });
       }
     }
