@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-81dda8f9b8ae50abaaac535329c11ee8782ccb3c.idx
-│   │       ├── pack-81dda8f9b8ae50abaaac535329c11ee8782ccb3c.pack
-│   │       └── pack-81dda8f9b8ae50abaaac535329c11ee8782ccb3c.rev
+│   │       ├── pack-406faa398ed4263b0c234d4110c39a53e86b15b9.idx
+│   │       ├── pack-406faa398ed4263b0c234d4110c39a53e86b15b9.pack
+│   │       └── pack-406faa398ed4263b0c234d4110c39a53e86b15b9.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 20:49:39 UTC
+Сгенерировано: 2026-01-22 20:50:37 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2180,6 +2180,10 @@ class AlbumsManager {
   }
 
   async ensureFavoritesPlayback(activeIndex) {
+    // ✅ На случай, если favorites открыли до завершения preload (гонки при старте/медленной сети).
+    // Важно: НЕ трогаем playback, только гарантируем TrackRegistry для сборки модели/urls.
+    try { await window.ensureTrackRegistryReadyForFavorites?.(); } catch {}
+
     // Anti-double-play guard: если ensureFavoritesPlayback вызван дважды почти одновременно,
     // второй вызов игнорируем. Это убирает "кашу" из нескольких Howl.play().
     const now = Date.now();
