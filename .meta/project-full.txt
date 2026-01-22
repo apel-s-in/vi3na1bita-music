@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-0d2f3a60667a51e56a3e25f3fd2a23a614e8914d.idx
-│   │       ├── pack-0d2f3a60667a51e56a3e25f3fd2a23a614e8914d.pack
-│   │       └── pack-0d2f3a60667a51e56a3e25f3fd2a23a614e8914d.rev
+│   │       ├── pack-a387c34a0f713bbab23dca95b4d15adcd967a78a.idx
+│   │       ├── pack-a387c34a0f713bbab23dca95b4d15adcd967a78a.pack
+│   │       └── pack-a387c34a0f713bbab23dca95b4d15adcd967a78a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 20:22:08 UTC
+Сгенерировано: 2026-01-22 20:23:14 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1469,15 +1469,43 @@ self.addEventListener('message', (event) => {
           console.warn('⚠️ Offline UI subsystems partial failure:', e);
         }
 
-        // OFFLINE: preload TrackRegistry once
+        // OFFLINE/FAVORITES: preload TrackRegistry once
+        // ВАЖНО: избранное (v2) строится через TrackRegistry.getTrackByUid(uid),
+        // поэтому preload должен быть ДО любого активного использования Favorites.
         try {
           const key = 'offline:preloadAllTracksOnce:v1';
-          if (localStorage.getItem(key) !== '1') {
+
+          // eslint-disable-next-line no-inner-declarations
+          async function ensurePreload() {
             const mod = await import('./ui/offline-modal.js');
             if (mod?.preloadAllAlbumsTrackIndex) {
               await mod.preloadAllAlbumsTrackIndex();
-              localStorage.setItem(key, '1');
+              try { localStorage.setItem(key, '1'); } catch {}
+              return true;
             }
+            return false;
+          }
+
+          // Публичный best-effort helper для UI: можно вызывать сколько угодно раз.
+          // Он НЕ трогает playback.
+          window.ensureTrackRegistryReadyForFavorites = async function ensureTrackRegistryReadyForFavorites() {
+            try {
+              if (window.TrackRegistry?.getAllTracks?.()?.length) return true;
+            } catch {}
+
+            try {
+              if (localStorage.getItem(key) === '1') return true;
+            } catch {}
+
+            try {
+              return await ensurePreload();
+            } catch {
+              return false;
+            }
+          };
+
+          if (localStorage.getItem(key) !== '1') {
+            await ensurePreload();
           }
         } catch (e) {
           console.warn('OFFLINE preloadAllAlbumsTrackIndex failed:', e);
