@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-fd951aa011ed3d362ba2957d160b91e118ebaf4c.idx
-│   │       ├── pack-fd951aa011ed3d362ba2957d160b91e118ebaf4c.pack
-│   │       └── pack-fd951aa011ed3d362ba2957d160b91e118ebaf4c.rev
+│   │       ├── pack-2fa9081919db43f9611b0ed796d695709dde9f1c.idx
+│   │       ├── pack-2fa9081919db43f9611b0ed796d695709dde9f1c.pack
+│   │       └── pack-2fa9081919db43f9611b0ed796d695709dde9f1c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 15:36:54 UTC
+Сгенерировано: 2026-01-22 15:37:48 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1551,7 +1551,6 @@ self.addEventListener('message', (event) => {
       maybeInit(w.SleepTimer);
       maybeInit(w.LyricsModal);
       maybeInit(w.SystemInfoManager);
-      maybeInit(w.BackgroundAudioManager);
     }
 
     setupServiceWorkerMessaging() {
