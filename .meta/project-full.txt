@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-82a6c096039167c6a113e0a3cd444dca3aa1ad14.idx
-│   │       ├── pack-82a6c096039167c6a113e0a3cd444dca3aa1ad14.pack
-│   │       └── pack-82a6c096039167c6a113e0a3cd444dca3aa1ad14.rev
+│   │       ├── pack-0d2f3a60667a51e56a3e25f3fd2a23a614e8914d.idx
+│   │       ├── pack-0d2f3a60667a51e56a3e25f3fd2a23a614e8914d.pack
+│   │       └── pack-0d2f3a60667a51e56a3e25f3fd2a23a614e8914d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 20:21:23 UTC
+Сгенерировано: 2026-01-22 20:22:08 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2123,7 +2123,7 @@ class AlbumsManager {
           const active = model.filter((it) => it && it.__active && it.audio);
 
           // ✅ uid глобально уникален => ищем только по uid
-          const activeIndex = active.findIndex((it) => String(it?.__uid || '').trim() === uid);
+          const activeIndex = active.findIndex((it) => String(it?.uid || '').trim() === uid);
           if (activeIndex >= 0) await this.ensureFavoritesPlayback(activeIndex);
         },
 
