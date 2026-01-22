@@ -12,9 +12,16 @@ test('play track, toggle favorites-only and sleep timer UI', async ({ page }) =>
   await loginByPromo(page);
   await expect(page.locator('#main-block')).toBeVisible();
 
-  // Дождаться списка альбомов и клик по первой строке треклиста
+  // Дождаться списка альбомов
   await page.waitForSelector('#track-list .track', { timeout: 10000 });
+
+  // ✅ По ТЗ: F можно включить только если есть хотя бы один ⭐ трек.
+  // Поэтому заранее лайкаем первый трек.
   const firstTrack = page.locator('#track-list .track').first();
+  await firstTrack.hover();
+  await firstTrack.locator('.like-star').click();
+
+  // Запускаем воспроизведение первого трека
   await firstTrack.click();
 
   // Появился блок плеера и кнопка Play/Pause есть
