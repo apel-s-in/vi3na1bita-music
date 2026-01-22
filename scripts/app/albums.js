@@ -629,11 +629,16 @@ class AlbumsManager {
       }
 
       const snapshot = window.playerCore.getPlaylistSnapshot?.() || [];
+
+      const playableTracks = Array.isArray(albumData.tracks)
+        ? albumData.tracks.filter((t) => t && (t.fileHi || t.file || t.fileLo))
+        : [];
+
       const needsNew =
-        snapshot.length !== albumData.tracks.length ||
+        snapshot.length !== playableTracks.length ||
         snapshot.some((t, i) => {
-          const src = albumData.tracks[i]?.file;
-          return !src || t.src !== src;
+          const src = playableTracks[i]?.fileHi || playableTracks[i]?.file || playableTracks[i]?.fileLo;
+          return !src || t?.src !== src;
         });
 
       const piRaw = Number.parseInt(toStr(el.dataset.playIndex), 10);
