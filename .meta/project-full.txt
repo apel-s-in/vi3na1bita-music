@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a387c34a0f713bbab23dca95b4d15adcd967a78a.idx
-│   │       ├── pack-a387c34a0f713bbab23dca95b4d15adcd967a78a.pack
-│   │       └── pack-a387c34a0f713bbab23dca95b4d15adcd967a78a.rev
+│   │       ├── pack-dddcdc846eeedcd94d513ff9f731a06e788bbf7c.idx
+│   │       ├── pack-dddcdc846eeedcd94d513ff9f731a06e788bbf7c.pack
+│   │       └── pack-dddcdc846eeedcd94d513ff9f731a06e788bbf7c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 20:23:14 UTC
+Сгенерировано: 2026-01-22 20:24:36 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1893,6 +1893,7 @@ class AlbumsManager {
         target.classList.add('animating');
         setTimeout(() => target.classList.remove('animating'), 320);
 
+        try { await window.ensureTrackRegistryReadyForFavorites?.(); } catch {}
         window.playerCore.toggleFavorite(uid, { fromAlbum: true, albumKey });
         return;
       }
@@ -2142,7 +2143,8 @@ class AlbumsManager {
       bindFavoritesList(container, {
         getModel,
 
-        onStarClick: ({ uid, albumKey }) => {
+        onStarClick: async ({ uid, albumKey }) => {
+          try { await window.ensureTrackRegistryReadyForFavorites?.(); } catch {}
           window.playerCore?.toggleFavorite?.(uid, { fromAlbum: false, albumKey });
         },
 
