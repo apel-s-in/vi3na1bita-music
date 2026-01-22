@@ -17,14 +17,15 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     return s ? s : null;
   };
 
-class PlayerCore {
-  constructor() {
-    this.playlist = [];
-    this.originalPlaylist = [];
-    this.currentIndex = -1;
+  class PlayerCore {
+    constructor() {
+      this.playlist = [];
+      this.originalPlaylist = [];
+      this.currentIndex = -1;
 
-    // ✅ Guard against races: old Howl events must not affect new playback.
-    this._loadToken = 0;
+      // ✅ Guard against races: old Howl events must not affect new playback
+      // (fixes rare double-play / wrong end/next cascades)
+      this._loadToken = 0;
       this.originalPlaylist = [];
       this.currentIndex = -1;
 
@@ -483,7 +484,7 @@ class PlayerCore {
           }
 
           // ✅ CRITICAL: do NOT call this.play() here (it can re-enter load/play pipeline).
-          // Only start current Howl, preserving PlayerCore state stability.
+          // Only start current Howl instance.
           if (autoPlay) {
             try { this.sound?.play?.(); } catch {}
           }
