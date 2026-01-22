@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-90624f6ded058596c396db56d7434811f1eb19e4.idx
-│   │       ├── pack-90624f6ded058596c396db56d7434811f1eb19e4.pack
-│   │       └── pack-90624f6ded058596c396db56d7434811f1eb19e4.rev
+│   │       ├── pack-33e91f32a7bff70aac45f38b29bd5b6ca371a8ce.idx
+│   │       ├── pack-33e91f32a7bff70aac45f38b29bd5b6ca371a8ce.pack
+│   │       └── pack-33e91f32a7bff70aac45f38b29bd5b6ca371a8ce.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 20:40:23 UTC
+Сгенерировано: 2026-01-22 20:41:16 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -13289,7 +13289,12 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
       } catch {}
 
       if (!nextLiked && !fromAlbum) {
-        this._handleFavoritesPlaylistUnlikeCurrent(u);
+        // ✅ STOP-исключение разрешено ТОЛЬКО при снятии ⭐ в favorites view
+        // (когда пользователь реально находится в __favorites__ на экране).
+        const curAlbum = String(W.AlbumsManager?.getCurrentAlbum?.() || '').trim();
+        if (curAlbum === W.SPECIAL_FAVORITES_KEY) {
+          this._handleFavoritesPlaylistUnlikeCurrent(u);
+        }
       }
 
       return { ok: true, uid: u, albumKey: albumKey || null, liked: nextLiked, fromAlbum: !!fromAlbum };
@@ -13317,7 +13322,15 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
       const active = activeUids.map((x) => ({ uid: x }));
       const inactive = inactiveUids.map((x) => ({ uid: x }));
 
-      return { activeUids, inactiveUids, active, inactive };
+            return {
+        activeUids,
+        inactiveUids,
+        active,
+        inactive,
+        activeCount: activeUids.length,
+        inactiveCount: inactiveUids.length,
+        likedCount: activeUids.length
+      };
     }
 
     removeInactivePermanently(uid) {
