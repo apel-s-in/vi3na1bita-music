@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d371099ac274254081ca970126c919dda78aec96.idx
-│   │       ├── pack-d371099ac274254081ca970126c919dda78aec96.pack
-│   │       └── pack-d371099ac274254081ca970126c919dda78aec96.rev
+│   │       ├── pack-d59e1f40a8f425ca71ab25c96067b373cc45d0d6.idx
+│   │       ├── pack-d59e1f40a8f425ca71ab25c96067b373cc45d0d6.pack
+│   │       └── pack-d59e1f40a8f425ca71ab25c96067b373cc45d0d6.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 12:30:11 UTC
+Сгенерировано: 2026-01-22 12:35:06 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9135,6 +9135,33 @@ export function attachCloudMenu(opts = {}) {
   };
 
   const albumCoverCache = new Map(); // albumKey -> { ts, url }
+  const LS_FAV_REFS = 'favoritesAlbumRefsByUid:v1';
+
+  function readFavoritesRefsFromLS() {
+    // Формат: { [uid]: [{ a: albumKey, ts }, ...] } или совместимые варианты
+    try {
+      const raw = localStorage.getItem(LS_FAV_REFS);
+      if (!raw) return [];
+      const obj = JSON.parse(raw);
+      if (!obj || typeof obj !== 'object') return [];
+
+      const out = [];
+      for (const [uid, arr] of Object.entries(obj)) {
+        const u = trim(uid);
+        if (!u) continue;
+
+        const list = Array.isArray(arr) ? arr : [];
+        for (const it of list) {
+          const a = trim(it?.a || it?.albumKey || it?.album);
+          if (!a) continue;
+          out.push({ uid: u, a });
+        }
+      }
+      return out;
+    } catch {
+      return [];
+    }
+  }
 
   function getAlbumTitleFromIndex(albumKey) {
     const a = trim(albumKey);
@@ -9203,17 +9230,23 @@ export function attachCloudMenu(opts = {}) {
 
   async function buildFavoritesRefsModel() {
     const pc = w.playerCore;
-    if (!pc?.getFavoritesState) {
-      w.favoritesRefsModel = [];
-      return [];
+
+    // ✅ Источник истины для "что вообще когда-либо было добавлено в избранное" — refs в LS.
+    // Это сохраняет логику inactive: refs остаются, даже если звезда снята.
+    const refs0 = readFavoritesRefsFromLS();
+
+    // Убираем дубли (uid+a)
+    const seen = new Set();
+    const refs = [];
+    for (const r of refs0) {
+      const uid = trim(r?.uid);
+      const a = trim(r?.a);
+      if (!uid || !a) continue;
+      const k = `${a}::${uid}`;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      refs.push({ uid, a });
     }
-
-    const state = pc.getFavoritesState();
-
-    const refs = []
-      .concat((Array.isArray(state?.active) ? state.active : []).map(t => ({ uid: trim(t?.uid), a: trim(t?.sourceAlbum), active: true })))
-      .concat((Array.isArray(state?.inactive) ? state.inactive : []).map(t => ({ uid: trim(t?.uid), a: trim(t?.sourceAlbum), active: false })))
-      .filter(x => x && x.uid && x.a);
 
     if (!refs.length) {
       w.favoritesRefsModel = [];
@@ -9227,20 +9260,20 @@ export function attachCloudMenu(opts = {}) {
       coverByAlbum.set(a, await getAlbumCoverUrl(a));
     }));
 
-    // Состояние "active" определяем по likedTrackUids:v1 (точно по альбому)
     const out = refs.map((ref) => {
       const a = ref.a;
       const uid = ref.uid;
 
       const meta = getTrackMeta(uid);
 
-      const isActive = (a && typeof pc.getLikedUidsForAlbum === 'function')
+      // ✅ Active определяется строго по likedTrackUids:v1 для этого альбома.
+      const isActive = (a && pc && typeof pc.getLikedUidsForAlbum === 'function')
         ? pc.getLikedUidsForAlbum(a).includes(uid)
-        : !!pc.isFavorite?.(uid);
+        : !!pc?.isFavorite?.(uid);
 
       const cover = coverByAlbum.get(a) || LOGO;
 
-      // ВАЖНО: inactive никогда не получает audio/lyrics/fulltext
+      // ✅ ВАЖНО: inactive никогда не получает audio/lyrics/fulltext
       const audio = (isActive && meta) ? getAudioUrl(meta) : null;
       const lyrics = (isActive && meta) ? getLyricsUrl(meta) : null;
       const fulltext = (isActive && meta) ? getFulltextUrl(meta) : null;
