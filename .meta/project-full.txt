@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-47c0a6ac9a546124e989abaff54944024f464928.idx
-│   │       ├── pack-47c0a6ac9a546124e989abaff54944024f464928.pack
-│   │       └── pack-47c0a6ac9a546124e989abaff54944024f464928.rev
+│   │       ├── pack-83b1fd54197174d58e789082bbf18fa60505cf5c.idx
+│   │       ├── pack-83b1fd54197174d58e789082bbf18fa60505cf5c.pack
+│   │       └── pack-83b1fd54197174d58e789082bbf18fa60505cf5c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 11:50:32 UTC
+Сгенерировано: 2026-01-22 11:51:40 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7845,7 +7845,7 @@ export class OfflineManager {
     return { ok: true, cq, tracksMB, coversMB, lyricsMB, totalMB, count: uids.length, uids };
   }
 
-  async _canGuaranteeStorageForMB(totalMB) {
+  async canGuaranteeStorageForMB(totalMB) {
     const needBytes = Math.floor((Number(totalMB) || 0) * MB);
 
     // iOS и вообще: если API недоступен — считаем "нельзя гарантировать"
@@ -7864,6 +7864,11 @@ export class OfflineManager {
     } catch {}
 
     return { ok: false, unknown: true };
+  }
+
+  // back-compat (чтобы не ломать старый UI в истории)
+  async _canGuaranteeStorageForMB(totalMB) {
+    return this.canGuaranteeStorageForMB(totalMB);
   }
 
   async startFullOfflineSelection(selection = {}) {
