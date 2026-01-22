@@ -144,15 +144,18 @@ test('favoritesOnly + shuffle: liking another track adds it to tail of queue', a
   const after = await page.evaluate(() => {
     const snap = window.playerCore?.getPlaylistSnapshot?.() || [];
     const tail = snap.length ? snap[snap.length - 1] : null;
+    const tailUid = String(tail?.uid || '').trim();
+
     return {
       len: snap.length,
-      tailUid: String(tail?.uid || '').trim(),
-      likedUids: window.playerCore?.getLikedUidsForAlbum?.(window.AlbumsManager?.getPlayingAlbum?.() || '') || []
+      tailUid,
+      tailIsLiked: tailUid ? !!window.playerCore?.isFavorite?.(tailUid) : false
     };
   });
 
   expect(after.len).toBeGreaterThanOrEqual(beforeLen);
-  expect(after.likedUids.includes(after.tailUid)).toBeTruthy();
+  expect(after.tailUid).toBeTruthy();
+  expect(after.tailIsLiked).toBeTruthy();
 });
 
 test('shuffle history: next-next-prev returns to previously played track', async ({ page }) => {
