@@ -229,9 +229,7 @@
         const uid = String(track?.uid || '').trim();
         if (!pc || !pa || !uid) return false;
 
-        // ✅ v2: likedTrackUids:v2 — единый источник лайка, не зависит от контекста.
-        // В "Избранном" inactive никогда не участвует в playback, поэтому в playing-плейлисте
-        // нет смысла вычислять лайк через какие-то refs-модели.
+        // ✅ v2: liked по uid — единый источник истины
         return !!pc?.isFavorite?.(uid);
       }
     },
