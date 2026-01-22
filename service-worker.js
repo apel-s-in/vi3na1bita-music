@@ -39,7 +39,7 @@ const STATIC_ASSETS = [
   './scripts/app/gallery.js',
   './scripts/ui/notify.js',
   './scripts/ui/favorites.js',
-  // './scripts/ui/favorites-view.js', // удалено: модуль лишний
+  // './scripts/ui/favorites-view.js', // ESM: грузится по требованию через imports (не precache)
   './scripts/ui/sleep.js',
   './scripts/ui/lyrics-modal.js',
   './scripts/ui/sysinfo.js',
