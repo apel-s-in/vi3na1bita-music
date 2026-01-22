@@ -132,7 +132,7 @@ export async function preloadAllAlbumsTrackIndex() {
         audio_low: t.audio_low ? join(t.audio_low) : null,
         size: (typeof t.size === 'number') ? t.size : null,
         size_low: (typeof t.size_low === 'number') ? t.size_low : null,
-        lyrics: t.lyrics ? join(t.lyrics) : (t.lrc ? join(t.lrc) : null),
+        lyrics: t.lyrics ? join(t.lyrics) : null,
         fulltext: t.fulltext ? join(t.fulltext) : null,
         sourceAlbum: key
       });
