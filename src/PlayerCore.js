@@ -89,8 +89,7 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
         }
       };
 
-      // Refs index cache: uid -> Set(albumKey)
-      this._favRefsIndex = { built: false, map: new Map() };
+      // v1 refs index удалён: v2 refsByUid является единственным источником истины.
 
       this._offlineNoCacheToastShown = false;
       this._hasAnyOfflineCacheComplete = null;
@@ -897,9 +896,7 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
       FavoritesV2.ensureMigrated();
 
       // Восстановление = liked=true, ref активируется (inactiveAt=null)
-      FavoritesV2.toggle(u, { source: 'favorites' }); // если уже liked, toggle снимет; поэтому делаем безопасно:
-
-      // safer: force liked=true without relying on toggle polarity
+      // ВАЖНО: не используем toggle(), т.к. он зависит от предыдущего состояния и может "перещёлкнуть".
       const liked = FavoritesV2.readLikedSet();
       const refs = FavoritesV2.readRefsByUid();
 
@@ -1001,14 +998,238 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
         console.warn('_handleFavoritesPlaylistUnlikeCurrent failed:', e);
       }
     }
-    _favReadLikedMap() {
-      try {
-        const raw = localStorage.getItem(this._fav.likedKey);
-        const j = raw ? JSON.parse(raw) : {};
-        return (j && typeof j === 'object') ? j : {};
-      } catch {
-        return {};
+    // =========================
+    // State getters
+    // =========================
+    getCurrentTrack() {
+      return (this.currentIndex < 0 || this.currentIndex >= this.playlist.length)
+        ? null
+        : (this.playlist[this.currentIndex] || null);
+    }
+
+    getIndex() { return this.currentIndex; }
+
+    getNextIndex() {
+      const len = this.playlist.length;
+      if (!len || this.currentIndex < 0) return -1;
+      return (this.currentIndex + 1) % len;
+    }
+
+    isPlaying() {
+      return !!(this.sound?.playing && this.sound.playing());
+    }
+
+    // =========================
+    // Events
+    // =========================
+    on(events) {
+      for (const k of Object.keys(events || {})) {
+        if (this.callbacks[k]) this.callbacks[k].push(events[k]);
       }
+    }
+
+    trigger(event, ...args) {
+      const arr = this.callbacks[event];
+      if (!arr) return;
+      for (const fn of arr) {
+        try { fn(...args); } catch {}
+      }
+    }
+
+    // =========================
+    // Tick
+    // =========================
+    startTick() {
+      this.stopTick();
+      this.tickInterval = setInterval(() => {
+        this.trigger('onTick', this.getPosition(), this.getDuration());
+        this._stats.onTick();
+      }, this.tickRate);
+    }
+
+    stopTick() {
+      if (!this.tickInterval) return;
+      clearInterval(this.tickInterval);
+      this.tickInterval = null;
+    }
+
+    // =========================
+    // Sleep timer
+    // =========================
+    setSleepTimer(ms) {
+      const delay = Number(ms) || 0;
+      if (delay <= 0) return void this.clearSleepTimer();
+
+      this.sleepTimerTarget = Date.now() + delay;
+      if (this.sleepTimerId) clearTimeout(this.sleepTimerId);
+
+      this.sleepTimerId = setTimeout(() => {
+        this.sleepTimerId = null;
+        const target = this.sleepTimerTarget;
+        this.sleepTimerTarget = 0;
+        this.trigger('onSleepTriggered', { targetAt: target });
+        if (this.isPlaying()) {
+          try { this.pause(); } catch {}
+        }
+      }, delay);
+    }
+
+    clearSleepTimer() {
+      if (this.sleepTimerId) clearTimeout(this.sleepTimerId);
+      this.sleepTimerId = null;
+      this.sleepTimerTarget = 0;
+    }
+
+    getSleepTimerTarget() {
+      return this.sleepTimerTarget || 0;
+    }
+
+    // =========================
+    // MediaSession
+    // =========================
+    _updateMedia(track) {
+      if (!this._mediaSession) return;
+      this._mediaSession.updateMetadata({
+        title: track?.title || 'Без названия',
+        artist: track?.artist || this.metadata.artist,
+        album: track?.album || this.metadata.album,
+        artworkUrl: track?.cover || this.metadata.cover || 'icons/icon-512.png',
+        playing: this.isPlaying(),
+      });
+      this._mediaSession.updatePositionState();
+    }
+
+    // =========================
+    // Shuffle history
+    // =========================
+    _pushHistoryForCurrent() {
+      try {
+        const uid = safeStr(this.getCurrentTrack()?.uid);
+        if (!uid) return;
+
+        const last = this.shuffleHistory.length ? this.shuffleHistory[this.shuffleHistory.length - 1] : null;
+        if (last?.uid === uid) return;
+
+        this.shuffleHistory.push({ uid });
+        if (this.shuffleHistory.length > this.historyMax) {
+          this.shuffleHistory.splice(0, this.shuffleHistory.length - this.historyMax);
+        }
+      } catch {}
+    }
+
+    _popHistoryPrevIndex() {
+      try {
+        if (!this.shuffleMode || !this.shuffleHistory?.length) return -1;
+        this.shuffleHistory.pop();
+        const uid = safeStr(this.shuffleHistory.length ? this.shuffleHistory[this.shuffleHistory.length - 1]?.uid : null);
+        if (!uid) return -1;
+        const idx = this.playlist.findIndex(t => safeStr(t?.uid) === uid);
+        return idx >= 0 ? idx : -1;
+      } catch {
+        return -1;
+      }
+    }
+
+    // =========================
+    // Helpers for PlaybackPolicy
+    // =========================
+    appendToPlaylistTail(tracks) {
+      const list = Array.isArray(tracks) ? tracks : [];
+      if (!list.length) return;
+
+      const existingUid = new Set(this.playlist.map(t => safeStr(t?.uid)).filter(Boolean));
+      const toAdd = [];
+
+      for (const t of list) {
+        const uid = safeStr(t?.uid);
+        if (!uid || existingUid.has(uid)) continue;
+        existingUid.add(uid);
+
+        toAdd.push({
+          src: safeStr(t?.src),
+          sources: t?.sources || null,
+          title: t?.title || 'Без названия',
+          artist: t?.artist || 'Витрина Разбита',
+          album: t?.album || '',
+          cover: t?.cover || '',
+          lyrics: t?.lyrics || null,
+          fulltext: t?.fulltext || null,
+          uid,
+          sourceAlbum: t?.sourceAlbum || null,
+        });
+      }
+
+      if (toAdd.length) this.playlist = this.playlist.concat(toAdd);
+    }
+
+    removeFromPlaylistTailIfNotPlayed(params = {}) {
+      const uid = safeStr(params?.uid);
+      if (!uid) return false;
+
+      const curUid = safeStr(this.getCurrentTrack()?.uid);
+      if (curUid === uid) return false;
+
+      const played = Array.isArray(this.shuffleHistory)
+        ? this.shuffleHistory.some(h => safeStr(h?.uid) === uid)
+        : false;
+
+      if (played) return false;
+
+      const beforeLen = this.playlist.length;
+      this.playlist = this.playlist.filter(t => safeStr(t?.uid) !== uid);
+      if (this.currentIndex >= this.playlist.length) this.currentIndex = this.playlist.length - 1;
+      return this.playlist.length !== beforeLen;
+    }
+
+    // =========================
+    // Backend rebuild (pulse)
+    // =========================
+    rebuildCurrentSound(options = {}) {
+      try {
+        const track = this.getCurrentTrack();
+        if (!track) return false;
+
+        const targetHtml5 = !options.preferWebAudio;
+        const wasPlaying = this.isPlaying();
+        const pos = this.getPosition();
+        const idx = this.currentIndex;
+
+        const curHtml5 = !!(this.sound && this.sound._html5);
+        if (this.sound && curHtml5 === targetHtml5) return true;
+
+        this._silentUnloadCurrentSound();
+        this.load(idx, { autoPlay: wasPlaying, resumePosition: pos, html5: targetHtml5 });
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    getAudioElement() {
+      try { return this.sound?._sounds?.[0]?._node || null; } catch { return null; }
+    }
+
+    destroy() {
+      this.stop();
+      this.playlist = [];
+      this.originalPlaylist = [];
+      this.currentIndex = -1;
+
+      for (const off of this._ios.unsubs) {
+        try { off(); } catch {}
+      }
+      this._ios.unsubs.length = 0;
+
+      this.callbacks = {
+        onTrackChange: [],
+        onPlay: [],
+        onPause: [],
+        onStop: [],
+        onEnd: [],
+        onTick: [],
+        onError: [],
+        onSleepTriggered: [],
+      };
     }
 
     _favWriteLikedMap(map) {
