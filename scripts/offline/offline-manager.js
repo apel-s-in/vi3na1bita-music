@@ -705,7 +705,7 @@ export class OfflineManager {
     return { ok: true, cq, tracksMB, coversMB, lyricsMB, totalMB, count: uids.length, uids };
   }
 
-  async _canGuaranteeStorageForMB(totalMB) {
+  async canGuaranteeStorageForMB(totalMB) {
     const needBytes = Math.floor((Number(totalMB) || 0) * MB);
 
     // iOS и вообще: если API недоступен — считаем "нельзя гарантировать"
@@ -724,6 +724,11 @@ export class OfflineManager {
     } catch {}
 
     return { ok: false, unknown: true };
+  }
+
+  // back-compat (чтобы не ломать старый UI в истории)
+  async _canGuaranteeStorageForMB(totalMB) {
+    return this.canGuaranteeStorageForMB(totalMB);
   }
 
   async startFullOfflineSelection(selection = {}) {
