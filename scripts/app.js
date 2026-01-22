@@ -42,15 +42,43 @@
           console.warn('⚠️ Offline UI subsystems partial failure:', e);
         }
 
-        // OFFLINE: preload TrackRegistry once
+        // OFFLINE/FAVORITES: preload TrackRegistry once
+        // ВАЖНО: избранное (v2) строится через TrackRegistry.getTrackByUid(uid),
+        // поэтому preload должен быть ДО любого активного использования Favorites.
         try {
           const key = 'offline:preloadAllTracksOnce:v1';
-          if (localStorage.getItem(key) !== '1') {
+
+          // eslint-disable-next-line no-inner-declarations
+          async function ensurePreload() {
             const mod = await import('./ui/offline-modal.js');
             if (mod?.preloadAllAlbumsTrackIndex) {
               await mod.preloadAllAlbumsTrackIndex();
-              localStorage.setItem(key, '1');
+              try { localStorage.setItem(key, '1'); } catch {}
+              return true;
             }
+            return false;
+          }
+
+          // Публичный best-effort helper для UI: можно вызывать сколько угодно раз.
+          // Он НЕ трогает playback.
+          window.ensureTrackRegistryReadyForFavorites = async function ensureTrackRegistryReadyForFavorites() {
+            try {
+              if (window.TrackRegistry?.getAllTracks?.()?.length) return true;
+            } catch {}
+
+            try {
+              if (localStorage.getItem(key) === '1') return true;
+            } catch {}
+
+            try {
+              return await ensurePreload();
+            } catch {
+              return false;
+            }
+          };
+
+          if (localStorage.getItem(key) !== '1') {
+            await ensurePreload();
           }
         } catch (e) {
           console.warn('OFFLINE preloadAllAlbumsTrackIndex failed:', e);
