@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-bc946d7609af43dad888235c26e0d49d800d0289.idx
-│   │       ├── pack-bc946d7609af43dad888235c26e0d49d800d0289.pack
-│   │       └── pack-bc946d7609af43dad888235c26e0d49d800d0289.rev
+│   │       ├── pack-8b67e75b6cca732a452b4b7909f3d27ebe815638.idx
+│   │       ├── pack-8b67e75b6cca732a452b4b7909f3d27ebe815638.pack
+│   │       └── pack-8b67e75b6cca732a452b4b7909f3d27ebe815638.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 18:02:51 UTC
+Сгенерировано: 2026-01-22 18:03:45 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9105,16 +9105,29 @@ export function bindFavoritesList(container, handlers) {
       coverByAlbum.set(a, await getAlbumCoverUrl(a));
     }));
 
-    // Active определяется по likedTrackUids:v1 для этого альбома (или fallback isFavorite)
+    // Active определяется по likedTrackUids:v1 для этого альбома.
+    // Оптимизация: строим Set один раз на каждый albumKey, а не includes() на массиве для каждого ref.
+    const likedSetByAlbum = new Map(); // albumKey -> Set(uid)
+
+    const getLikedSet = (albumKey) => {
+      const a = trim(albumKey);
+      if (!a) return new Set();
+      const cached = likedSetByAlbum.get(a);
+      if (cached) return cached;
+
+      const arr = (typeof pc.getLikedUidsForAlbum === 'function') ? (pc.getLikedUidsForAlbum(a) || []) : [];
+      const set = new Set((Array.isArray(arr) ? arr : []).map(trim).filter(Boolean));
+      likedSetByAlbum.set(a, set);
+      return set;
+    };
+
     const out = refs.map((ref) => {
       const a = ref.a;
       const uid = ref.uid;
 
       const meta = getTrackMeta(uid);
 
-      const isActive = (a && typeof pc.getLikedUidsForAlbum === 'function')
-        ? pc.getLikedUidsForAlbum(a).includes(uid)
-        : !!pc.isFavorite?.(uid);
+      const isActive = a ? getLikedSet(a).has(uid) : !!pc.isFavorite?.(uid);
 
       const cover = coverByAlbum.get(a) || LOGO;
 
