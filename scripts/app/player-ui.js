@@ -761,8 +761,15 @@
           return;
         }
       } else if (playingAlbum && !U.isSpecialAlbumKey(playingAlbum)) {
-        const liked = w.playerCore?.getLikedUidsForAlbum?.(playingAlbum) || [];
-        if (!Array.isArray(liked) || !liked.length) {
+        // ✅ v2: проверяем наличие ⭐ в текущем playing-альбоме через originalPlaylist (или playlist snapshot)
+        const pc = w.playerCore;
+        const orig = Array.isArray(pc?.originalPlaylist) ? pc.originalPlaylist : (pc?.getPlaylistSnapshot?.() || []);
+        const hasAnyLiked = Array.isArray(orig) && orig.some((t) => {
+          const uid = String(t?.uid || '').trim();
+          return uid && !!pc?.isFavorite?.(uid);
+        });
+
+        if (!hasAnyLiked) {
           w.NotificationSystem?.info?.('Отметьте понравившийся трек ⭐');
           U.lsSetBool01(LS.FAV_ONLY, false);
           setFavoritesOnlyUI(false);
@@ -819,15 +826,16 @@
 
     if (!U.lsGetBool01(LS.FAV_ONLY, false)) return void (w.availableFavoriteIndices = null);
 
-    const likedUids = w.playerCore?.getLikedUidsForAlbum?.(playingAlbum) || [];
-    if (!likedUids.length) return void (w.availableFavoriteIndices = null);
+    const pc = w.playerCore;
+    if (!pc?.isFavorite) return void (w.availableFavoriteIndices = null);
 
-    const set = new Set(likedUids.map(x => String(x || '').trim()).filter(Boolean));
     w.availableFavoriteIndices = [];
     snap.forEach((t, idx) => {
       const uid = String(t?.uid || '').trim();
-      if (uid && set.has(uid)) w.availableFavoriteIndices.push(idx);
+      if (uid && pc.isFavorite(uid)) w.availableFavoriteIndices.push(idx);
     });
+
+    if (!w.availableFavoriteIndices.length) w.availableFavoriteIndices = null;
   }
 
   // --------------------------
@@ -853,12 +861,11 @@
 
     if (!(enabled && isRegular)) return;
 
-    const liked = w.playerCore?.getLikedUidsForAlbum?.(currentAlbum) || [];
-    const set = new Set((Array.isArray(liked) ? liked : []).map(x => String(x || '').trim()).filter(Boolean));
+    const pc = w.playerCore;
+    if (!pc?.isFavorite) return;
 
     // Скрываем строки без ⭐, но:
     // - строки без uid не трогаем (пускай остаются видимыми, чтобы не “сломать” список)
-    // - текущий playing трек не принуждаем (он и так лайкнут при favoritesOnly)
     const rows = list.querySelectorAll('.track');
     rows.forEach((row) => {
       const uid = String(row?.dataset?.uid || '').trim();
@@ -867,7 +874,7 @@
         return;
       }
 
-      const shouldShow = set.has(uid);
+      const shouldShow = !!pc.isFavorite(uid);
       if (shouldShow) row.removeAttribute('data-hidden-by-favonly');
       else row.setAttribute('data-hidden-by-favonly', '1');
     });
