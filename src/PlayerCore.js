@@ -17,9 +17,14 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     return s ? s : null;
   };
 
-  class PlayerCore {
-    constructor() {
-      this.playlist = [];
+class PlayerCore {
+  constructor() {
+    this.playlist = [];
+    this.originalPlaylist = [];
+    this.currentIndex = -1;
+
+    // ✅ Guard against races: old Howl events must not affect new playback.
+    this._loadToken = 0;
       this.originalPlaylist = [];
       this.currentIndex = -1;
 
@@ -397,6 +402,9 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       const { autoPlay = false, resumePosition = null } = options || {};
       let html5 = (typeof options.html5 === 'boolean') ? options.html5 : true;
 
+      // ✅ Increment token BEFORE unloading/creating, so any late events from previous Howl are ignored.
+      const token = ++this._loadToken;
+
       this._silentUnloadCurrentSound();
 
       this.currentIndex = index;
@@ -444,12 +452,14 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         volume: initialVolume,
 
         onplay: () => {
+          if (token !== this._loadToken) return;
           this.startTick();
           this.trigger('onPlay', track, index);
           this._updateMedia(this.getCurrentTrack());
         },
 
         onpause: () => {
+          if (token !== this._loadToken) return;
           this.stopTick();
           this._stats.onPauseOrStop();
           this.trigger('onPause', track, index);
@@ -457,6 +467,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         },
 
         onend: () => {
+          if (token !== this._loadToken) return;
           this.stopTick();
           this._stats.onEnded();
           this.trigger('onEnd', track, index);
@@ -465,18 +476,30 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         },
 
         onload: () => {
+          if (token !== this._loadToken) return;
+
           if (typeof resumePosition === 'number' && Number.isFinite(resumePosition) && resumePosition > 0) {
             try { this.seek(resumePosition); } catch {}
           }
+
+          // ✅ CRITICAL: do NOT call this.play() here (it can re-enter load/play pipeline).
+          // Only start current Howl, preserving PlayerCore state stability.
           if (autoPlay) {
-            // autoPlay: play() сам вызовет ensureAudioUnlocked()
-            try { this.play(); } catch {}
+            try { this.sound?.play?.(); } catch {}
           }
+
           this._updateMedia(this.getCurrentTrack());
         },
 
-        onloaderror: (id, error) => { this.trigger('onError', { type: 'load', error, track, index }); },
-        onplayerror: (id, error) => { this.trigger('onError', { type: 'play', error, track, index }); },
+        onloaderror: (id, error) => {
+          if (token !== this._loadToken) return;
+          this.trigger('onError', { type: 'load', error, track, index });
+        },
+
+        onplayerror: (id, error) => {
+          if (token !== this._loadToken) return;
+          this.trigger('onError', { type: 'play', error, track, index });
+        },
       });
 
       this.trigger('onTrackChange', track, index);
