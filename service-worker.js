@@ -43,7 +43,7 @@ const STATIC_ASSETS = [
   './scripts/ui/sleep.js',
   './scripts/ui/lyrics-modal.js',
   './scripts/ui/sysinfo.js',
-  './scripts/app/background-audio.js',
+  // './scripts/app/background-audio.js', // отсутствует: удалено из precache
   // './scripts/app/background-events.js', // отсутствует в репозитории: удалено из precache
   './scripts/app/player-ui.js',
   './scripts/app/albums.js',
