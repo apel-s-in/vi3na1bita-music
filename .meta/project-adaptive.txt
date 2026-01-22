@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-0a7d9fc5b5defa976174c350342e6888e8690247.idx
-│   │       ├── pack-0a7d9fc5b5defa976174c350342e6888e8690247.pack
-│   │       └── pack-0a7d9fc5b5defa976174c350342e6888e8690247.rev
+│   │       ├── pack-d371099ac274254081ca970126c919dda78aec96.idx
+│   │       ├── pack-d371099ac274254081ca970126c919dda78aec96.pack
+│   │       └── pack-d371099ac274254081ca970126c919dda78aec96.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 12:25:45 UTC
+Сгенерировано: 2026-01-22 12:30:11 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9266,12 +9266,30 @@ export function attachCloudMenu(opts = {}) {
     return out;
   }
 
+  function getModel() {
+    // ✅ безопасно, без перестроения: вернуть текущую модель
+    const m = w.favoritesRefsModel;
+    return Array.isArray(m) ? m : [];
+  }
+
+  function getActiveModel(model) {
+    const list = Array.isArray(model) ? model : getModel();
+    return list.filter(it => it && it.__active && it.audio);
+  }
+
   async function playFirstActiveFavorite() {
     try {
       await buildFavoritesRefsModel();
-      const model = Array.isArray(w.favoritesRefsModel) ? w.favoritesRefsModel : [];
-      const idx = model.findIndex(it => it && it.__active && it.audio);
+      const model = getModel();
+      const active = getActiveModel(model);
+      if (!active.length) return;
+
+      // ensureFavoritesPlayback ожидает индекс в favoritesRefsModel (как сейчас в проекте),
+      // поэтому находим индекс первого active в исходной модели.
+      const first = active[0];
+      const idx = model.findIndex(it => it && it.__uid === first.__uid && it.__a === first.__a);
       if (idx < 0) return;
+
       await w.AlbumsManager?.ensureFavoritesPlayback?.(idx);
     } catch {}
   }
@@ -9296,6 +9314,8 @@ export function attachCloudMenu(opts = {}) {
 
   w.FavoritesUI = {
     buildFavoritesRefsModel,
+    getModel,
+    getActiveModel,
     getAlbumCoverUrl,
     playFirstActiveFavorite
   };
