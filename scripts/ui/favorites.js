@@ -20,33 +20,6 @@
   };
 
   const albumCoverCache = new Map(); // albumKey -> { ts, url }
-  const LS_FAV_REFS = 'favoritesAlbumRefsByUid:v1';
-
-  function readFavoritesRefsFromLS() {
-    // Формат: { [uid]: [{ a: albumKey, ts }, ...] } или совместимые варианты
-    try {
-      const raw = localStorage.getItem(LS_FAV_REFS);
-      if (!raw) return [];
-      const obj = JSON.parse(raw);
-      if (!obj || typeof obj !== 'object') return [];
-
-      const out = [];
-      for (const [uid, arr] of Object.entries(obj)) {
-        const u = trim(uid);
-        if (!u) continue;
-
-        const list = Array.isArray(arr) ? arr : [];
-        for (const it of list) {
-          const a = trim(it?.a || it?.albumKey || it?.album);
-          if (!a) continue;
-          out.push({ uid: u, a });
-        }
-      }
-      return out;
-    } catch {
-      return [];
-    }
-  }
 
   function getAlbumTitleFromIndex(albumKey) {
     const a = trim(albumKey);
@@ -115,10 +88,68 @@
 
   async function buildFavoritesRefsModel() {
     const pc = w.playerCore;
+    if (!pc?.getFavoritesState) {
+      w.favoritesRefsModel = [];
+      return [];
+    }
 
-    // ✅ Источник истины для "что вообще когда-либо было добавлено в избранное" — refs в LS.
-    // Это сохраняет логику inactive: refs остаются, даже если звезда снята.
-    const refs0 = readFavoritesRefsFromLS();
+    const state = pc.getFavoritesState();
+
+    const refs = []
+      .concat((Array.isArray(state?.active) ? state.active : []).map(t => ({ uid: trim(t?.uid), a: trim(t?.sourceAlbum), active: true })))
+      .concat((Array.isArray(state?.inactive) ? state.inactive : []).map(t => ({ uid: trim(t?.uid), a: trim(t?.sourceAlbum), active: false })))
+      .filter(x => x && x.uid && x.a);
+
+    if (!refs.length) {
+      w.favoritesRefsModel = [];
+      return [];
+    }
+
+    // Обложки получаем 1 раз на альбом (параллельно)
+    const albumKeys = Array.from(new Set(refs.map(r => r.a).filter(Boolean)));
+    const coverByAlbum = new Map();
+    await Promise.all(albumKeys.map(async (a) => {
+      coverByAlbum.set(a, await getAlbumCoverUrl(a));
+    }));
+
+    // Состояние "active" определяем по likedTrackUids:v1 (точно по альбому)
+    const out = refs.map((ref) => {
+      const a = ref.a;
+      const uid = ref.uid;
+
+      const meta = getTrackMeta(uid);
+
+      const isActive = (a && typeof pc.getLikedUidsForAlbum === 'function')
+        ? pc.getLikedUidsForAlbum(a).includes(uid)
+        : !!pc.isFavorite?.(uid);
+
+      const cover = coverByAlbum.get(a) || LOGO;
+
+      // ВАЖНО: inactive никогда не получает audio/lyrics/fulltext
+      const audio = (isActive && meta) ? getAudioUrl(meta) : null;
+      const lyrics = (isActive && meta) ? getLyricsUrl(meta) : null;
+      const fulltext = (isActive && meta) ? getFulltextUrl(meta) : null;
+
+      return {
+        title: meta?.title || 'Трек',
+        uid,
+
+        audio,
+        lyrics,
+        fulltext,
+
+        __a: a,
+        __uid: uid,
+        __artist: 'Витрина Разбита',
+        __album: getAlbumTitleFromIndex(a),
+        __active: isActive,
+        __cover: cover
+      };
+    });
+
+    w.favoritesRefsModel = out;
+    return out;
+  }
 
     // Убираем дубли (uid+a)
     const seen = new Set();
@@ -227,6 +258,7 @@
       });
     };
 
+    bind();
     bind();
   }
   function getModel() {
