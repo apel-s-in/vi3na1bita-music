@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6b43b9dcef9a96b2780cd0e3e5143af8b6ec63db.idx
-│   │       ├── pack-6b43b9dcef9a96b2780cd0e3e5143af8b6ec63db.pack
-│   │       └── pack-6b43b9dcef9a96b2780cd0e3e5143af8b6ec63db.rev
+│   │       ├── pack-063b5a33584091cc47b3245559c089d753fd1558.idx
+│   │       ├── pack-063b5a33584091cc47b3245559c089d753fd1558.pack
+│   │       └── pack-063b5a33584091cc47b3245559c089d753fd1558.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 15:39:44 UTC
+Сгенерировано: 2026-01-22 15:40:20 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4240,7 +4240,7 @@ export function attachPlaybackCache() {
 //=================================================
 // FILE: /scripts/app/player-ui/lyrics.js
 // scripts/app/player-ui/lyrics.js
-// LyricsController — единый модуль лирики для PlayerUI.
+// LyricsController — JSON-only timed lyrics.
 // Инварианты: не трогает воспроизведение (no stop/play/seek), только UI и fetch/cache.
 
 (function LyricsControllerModule() {
@@ -4248,85 +4248,100 @@ export function attachPlaybackCache() {
 
   const w = window;
 
-  const LYRICS_404_CACHE_KEY = 'lyrics_404_cache:v1';
+  const LS_VIEW = 'lyricsViewMode';
+  const LS_ANIM = 'lyricsAnimationEnabled';
+
+  const SS_404 = 'lyrics_404_cache:v1';
+  const SS_CACHE_PREFIX = 'lyrics_cache_';
+
   const LYRICS_MIN_INTERVAL = 250;
 
   let currentLyrics = [];
   let hasTimedLyricsForCurrentTrack = false;
 
-  let lyricsViewMode = 'normal'; // 'normal' | 'hidden' | 'expanded'
-  let animationEnabled = false;
+  let lyricsViewMode = readLyricsViewMode();
+  let animationEnabled = readAnimationEnabled();
 
-  let lyricsLastIdx = -1;
-  let lyricsLastTs = 0;
+  let lastIdx = -1;
+  let lastTs = 0;
 
-  let prefetchedLyrics = null;
-  let prefetchedLyricsUrl = null;
+  let prefetched = null;
+  let prefetchedUrl = null;
 
   const esc = (s) => (w.Utils?.escapeHtml ? w.Utils.escapeHtml(String(s || '')) : String(s || ''));
 
   function readLyricsViewMode() {
-    const saved = localStorage.getItem('lyricsViewMode');
+    const saved = String(localStorage.getItem(LS_VIEW) || '');
     return (saved === 'normal' || saved === 'hidden' || saved === 'expanded') ? saved : 'normal';
   }
 
   function readAnimationEnabled() {
-    return localStorage.getItem('lyricsAnimationEnabled') === '1';
+    return localStorage.getItem(LS_ANIM) === '1';
   }
 
   function writeLyricsViewMode(mode) {
     const m = (mode === 'hidden' || mode === 'expanded') ? mode : 'normal';
-    try { localStorage.setItem('lyricsViewMode', m); } catch {}
+    try { localStorage.setItem(LS_VIEW, m); } catch {}
     return m;
   }
 
   function writeAnimationEnabled(on) {
-    try { localStorage.setItem('lyricsAnimationEnabled', on ? '1' : '0'); } catch {}
+    try { localStorage.setItem(LS_ANIM, on ? '1' : '0'); } catch {}
     return !!on;
   }
 
-  function getLyrics404Cache() {
+  function get404Map() {
     try {
-      const raw = sessionStorage.getItem(LYRICS_404_CACHE_KEY);
+      const raw = sessionStorage.getItem(SS_404);
       const j = raw ? JSON.parse(raw) : {};
-      return j && typeof j === 'object' ? j : {};
+      return (j && typeof j === 'object') ? j : {};
     } catch {
       return {};
     }
   }
 
-  function setLyrics404Cache(url) {
+  function mark404(url) {
+    const u = String(url || '').trim();
+    if (!u) return;
     try {
-      const cache = getLyrics404Cache();
-      cache[url] = Date.now();
+      const m = get404Map();
+      m[u] = Date.now();
 
-      const keys = Object.keys(cache);
+      const keys = Object.keys(m);
       if (keys.length > 100) {
-        keys.sort((a, b) => cache[a] - cache[b]).slice(0, 50).forEach((k) => { delete cache[k]; });
+        keys.sort((a, b) => m[a] - m[b]).slice(0, 50).forEach((k) => { delete m[k]; });
       }
 
-      sessionStorage.setItem(LYRICS_404_CACHE_KEY, JSON.stringify(cache));
+      sessionStorage.setItem(SS_404, JSON.stringify(m));
     } catch {}
   }
 
-  function isLyrics404Cached(url) {
-    return !!getLyrics404Cache()[String(url || '').trim()];
+  function is404(url) {
+    const u = String(url || '').trim();
+    if (!u) return true;
+    try { return !!get404Map()[u]; } catch { return false; }
   }
 
-  function isLyricsKnownMissingFast(lyricsUrl) {
-    const url = String(lyricsUrl || '').trim();
-    if (!url) return true;
-    if (isLyrics404Cached(url)) return true;
+  function cacheKey(url) {
+    return `${SS_CACHE_PREFIX}${String(url || '').trim()}`;
+  }
 
+  function readSessionJson(url) {
+    const key = cacheKey(url);
     try {
-      const cacheKey = `lyrics_cache_${url}`;
-      const cached = sessionStorage.getItem(cacheKey);
-      if (!cached) return false;
-      const parsed = JSON.parse(cached);
-      return (parsed === null || parsed === '__NO_LYRICS__');
+      const raw = sessionStorage.getItem(key);
+      if (!raw) return { ok: false };
+      const parsed = JSON.parse(raw);
+      return { ok: true, value: parsed };
     } catch {
-      return false;
+      try { sessionStorage.removeItem(key); } catch {}
+      return { ok: false };
     }
+  }
+
+  function writeSessionJson(url, value) {
+    const key = cacheKey(url);
+    try { sessionStorage.setItem(key, JSON.stringify(value)); } catch {}
   }
 
   function checkTrackHasLyrics(track) {
@@ -4336,78 +4351,32 @@ export function attachPlaybackCache() {
     return !!track.lyrics;
   }
 
-  function detectLyricsFormat(url, content) {
-    const u = String(url || '').toLowerCase();
-    if (u.endsWith('.lrc')) return 'lrc';
-    if (u.endsWith('.json')) return 'json';
-    if (u.endsWith('.txt')) return 'lrc';
+  function isLyricsKnownMissingFast(lyricsUrl) {
+    const url = String(lyricsUrl || '').trim();
+    if (!url) return true;
+    if (is404(url)) return true;
 
-    const trimmed = String(content || '').trim();
-    if (!trimmed) return 'unknown';
-
-    if (trimmed[0] === '[' || trimmed[0] === '{') {
-      try { JSON.parse(trimmed); return 'json'; } catch {}
-    }
-
-    // есть таймкоды [mm:ss] или [mm:ss.xx]
-    if (/$$\d{1,2}:\d{2}(?:[.:]\d{1,3})?$$/.test(trimmed)) return 'lrc';
-
-    return 'unknown';
+    const cached = readSessionJson(url);
+    if (!cached.ok) return false;
+    return cached.value === null || cached.value === '__NO_LYRICS__';
   }
 
-  function parseLyricsInto(source, out) {
-    out.length = 0;
+  function parseJsonLyrics(arr) {
+    const out = [];
+    const list = Array.isArray(arr) ? arr : [];
 
-    if (Array.isArray(source)) {
-      for (const item of source) {
-        if (!item) continue;
-        const time = Number(item.time);
-        if (!Number.isFinite(time)) continue;
-        const text = String(item.line || item.text || '').trim();
-        if (!text) continue;
-        out.push({ time, text });
-      }
-      out.sort((a, b) => a.time - b.time);
-      return;
-    }
-
-    const text = String(source || '');
-    const lines = text.split('\n');
-
-    for (const line of lines) {
-      const s = line.trim();
-      if (!s) continue;
-
-      // метаданные [ar:], [ti:], etc.
-      if (/^$$[a-z]{2,8}:(.*)$$\s*$/i.test(s)) continue;
-
-      // [mm:ss.xx]text OR [mm:ss]text
-      const m = s.match(/^$$(\d{1,2}):(\d{2})(?:[.:](\d{1,3}))?$$(.*)$/);
-      if (!m) continue;
-
-      const mm = parseInt(m[1], 10);
-      const ss = parseInt(m[2], 10);
-      const fracRaw = m[3];
-      const tail = String(m[4] || '').trim();
-
-      if (!Number.isFinite(mm) || !Number.isFinite(ss) || !tail) continue;
-
-      let t = mm * 60 + ss;
-      if (fracRaw) {
-        const fracNum = parseInt(fracRaw, 10);
-        if (Number.isFinite(fracNum)) t += (fracRaw.length === 3) ? (fracNum / 1000) : (fracNum / 100);
-      }
-
-      out.push({ time: t, text: tail });
+    for (const it of list) {
+      if (!it) continue;
+      const time = Number(it.time);
+      if (!Number.isFinite(time)) continue;
+      const text = String(it.line || it.text || '').trim();
+      if (!text) continue;
+      out.push({ time, text });
     }
 
     out.sort((a, b) => a.time - b.time);
-  }
-
-  function parseLyrics(source) {
-    const out = [];
-    parseLyricsInto(source, out);
     currentLyrics = out;
+    hasTimedLyricsForCurrentTrack = out.length > 0;
   }
 
   function setLyricsAvailability(enabled) {
@@ -4446,11 +4415,11 @@ export function attachPlaybackCache() {
     }
 
     if (!enabled) {
-      animationEnabled = false;
+      animationEnabled = writeAnimationEnabled(false);
       if (bg) bg.classList.remove('active');
       if (animBtn) animBtn.classList.remove('active');
 
-      lyricsViewMode = 'hidden';
+      lyricsViewMode = writeLyricsViewMode('hidden');
       if (container) container.innerHTML = '';
     } else {
       lyricsViewMode = readLyricsViewMode();
@@ -4509,8 +4478,7 @@ export function attachPlaybackCache() {
       const remaining = firstLineTime - position;
       const secondsLeft = Math.ceil(remaining);
       if (remaining < 1) {
-        container.innerHTML =
-          `<div class="lyrics-countdown fade-out" style="opacity:${remaining.toFixed(2)};">${secondsLeft}</div>`;
+        container.innerHTML = `<div class="lyrics-countdown fade-out" style="opacity:${remaining.toFixed(2)};">${secondsLeft}</div>`;
         return;
       }
       container.innerHTML = `<div class="lyrics-countdown">${secondsLeft}</div>`;
@@ -4550,17 +4518,53 @@ export function attachPlaybackCache() {
     }
 
     const now = Date.now();
-    if (activeIdx === lyricsLastIdx && (now - lyricsLastTs) < LYRICS_MIN_INTERVAL) return;
+    if (activeIdx === lastIdx && (now - lastTs) < LYRICS_MIN_INTERVAL) return;
 
-    lyricsLastIdx = activeIdx;
-    lyricsLastTs = now;
+    lastIdx = activeIdx;
+    lastTs = now;
 
     renderLyrics(position);
   }
 
+  async function fetchLyricsJson(url) {
+    const u = String(url || '').trim();
+    if (!u) return { ok: false, reason: 'noUrl' };
+    if (is404(u)) return { ok: false, reason: '404cached' };
+
+    // session cache
+    const cached = readSessionJson(u);
+    if (cached.ok) {
+      if (cached.value === '__NO_LYRICS__' || cached.value === null) return { ok: false, reason: 'noLyricsCached' };
+      if (Array.isArray(cached.value)) return { ok: true, data: cached.value, source: 'session' };
+      // если структура сломана — сбросим
+      writeSessionJson(u, '__NO_LYRICS__');
+      return { ok: false, reason: 'badCache' };
+    }
+
+    try {
+      const r = await fetch(u, { cache: 'force-cache', headers: { Accept: 'application/json' } });
+      if (!r.ok) {
+        if (r.status === 404) mark404(u);
+        writeSessionJson(u, '__NO_LYRICS__');
+        return { ok: false, reason: `http:${r.status}` };
+      }
+
+      const j = await r.json();
+      if (!Array.isArray(j)) {
+        writeSessionJson(u, '__NO_LYRICS__');
+        return { ok: false, reason: 'notArray' };
+      }
+
+      writeSessionJson(u, j);
+      return { ok: true, data: j, source: 'network' };
+    } catch (e) {
+      return { ok: false, reason: String(e?.message || e) };
+    }
+  }
+
   async function prefetchNextTrackLyrics() {
-    prefetchedLyrics = null;
-    prefetchedLyricsUrl = null;
+    prefetched = null;
+    prefetchedUrl = null;
 
     const pc = w.playerCore;
     if (!pc) return;
@@ -4570,173 +4574,56 @@ export function attachPlaybackCache() {
 
     const playlist = pc.getPlaylistSnapshot?.() || [];
     const nextTrack = playlist[nextIndex];
-    if (!nextTrack?.lyrics) return;
+    const url = String(nextTrack?.lyrics || '').trim();
 
-    const lyricsUrl = String(nextTrack.lyrics || '').trim();
-    if (!lyricsUrl || isLyrics404Cached(lyricsUrl)) return;
+    if (!url) return;
+    if (isLyricsKnownMissingFast(url)) return;
 
-    const cacheKey = `lyrics_cache_${lyricsUrl}`;
-    const cached = sessionStorage.getItem(cacheKey);
-
-    if (cached) {
-      try {
-        const parsed = JSON.parse(cached);
-        if (parsed && parsed !== '__NO_LYRICS__') {
-          const temp = [];
-          parseLyricsInto(parsed, temp);
-          if (temp.length > 0) {
-            prefetchedLyrics = temp;
-            prefetchedLyricsUrl = lyricsUrl;
-          }
-        }
-      } catch {}
-      return;
+    const r = await fetchLyricsJson(url);
+    if (r.ok && Array.isArray(r.data)) {
+      prefetched = r.data;
+      prefetchedUrl = url;
     }
-
-    try {
-      const response = await fetch(lyricsUrl, { cache: 'force-cache', headers: { Accept: 'application/json, text/plain, */*' } });
-      if (!response.ok) {
-        if (response.status === 404) setLyrics404Cache(lyricsUrl);
-        return;
-      }
-
-      const bodyText = await response.text();
-      const format = detectLyricsFormat(lyricsUrl, bodyText);
-
-      let dataToCache = bodyText;
-      const tempLyrics = [];
-
-      if (format === 'json') {
-        try {
-          const asJson = JSON.parse(bodyText);
-          if (Array.isArray(asJson)) {
-            dataToCache = asJson;
-            parseLyricsInto(asJson, tempLyrics);
-          }
-        } catch {}
-      } else {
-        parseLyricsInto(bodyText, tempLyrics);
-      }
-
-      try { sessionStorage.setItem(cacheKey, JSON.stringify(dataToCache)); } catch {}
-
-      if (tempLyrics.length > 0) {
-        prefetchedLyrics = tempLyrics;
-        prefetchedLyricsUrl = lyricsUrl;
-      }
-    } catch {}
   }
 
-  async function loadLyrics(lyricsUrl) {
+  async function loadLyrics(url) {
     currentLyrics = [];
-    lyricsLastIdx = -1;
     hasTimedLyricsForCurrentTrack = false;
+    lastIdx = -1;
+    lastTs = 0;
 
     const container = document.getElementById('lyrics');
     if (!container) return;
 
-    const url = String(lyricsUrl || '').trim();
-    if (!url) return void setLyricsAvailability(false);
+    const u = String(url || '').trim();
+    if (!u) return void setLyricsAvailability(false);
+    if (is404(u)) return void setLyricsAvailability(false);
 
-    if (isLyrics404Cached(url)) return void setLyricsAvailability(false);
+    // prefetched fast path
+    if (prefetchedUrl === u && Array.isArray(prefetched)) {
+      parseJsonLyrics(prefetched);
+      prefetched = null;
+      prefetchedUrl = null;
 
-    // prefetched
-    if (prefetchedLyricsUrl === url && prefetchedLyrics) {
-      currentLyrics = prefetchedLyrics;
-      prefetchedLyrics = null;
-      prefetchedLyricsUrl = null;
-
-      hasTimedLyricsForCurrentTrack = currentLyrics.length > 0;
       setLyricsAvailability(hasTimedLyricsForCurrentTrack);
       renderLyricsViewMode();
-
       prefetchNextTrackLyrics();
       return;
     }
 
-    // session cache
-    const cacheKey = `lyrics_cache_${url}`;
-    const cached = sessionStorage.getItem(cacheKey);
-
-    if (cached) {
-      try {
-        const parsed = JSON.parse(cached);
-        if (parsed === null || parsed === '__NO_LYRICS__') {
-          setLyricsAvailability(false);
-          prefetchNextTrackLyrics();
-          return;
-        }
-
-        parseLyrics(parsed);
-
-        if (!currentLyrics.length) {
-          setLyricsAvailability(false);
-          prefetchNextTrackLyrics();
-          return;
-        }
-
-        hasTimedLyricsForCurrentTrack = true;
-        setLyricsAvailability(true);
-        renderLyricsViewMode();
-        prefetchNextTrackLyrics();
-        return;
-      } catch {
-        try { sessionStorage.removeItem(cacheKey); } catch {}
-      }
-    }
-
     container.innerHTML = '<div class="lyrics-spinner"></div>';
 
-    try {
-      const response = await fetch(url, { cache: 'force-cache', headers: { Accept: 'application/json, text/plain, */*' } });
-
-      if (!response.ok) {
-        if (response.status === 404) setLyrics404Cache(url);
-        setLyricsAvailability(false);
-        prefetchNextTrackLyrics();
-        return;
-      }
-
-      const contentType = response.headers.get('content-type') || '';
-      const bodyText = await response.text();
-      const format = detectLyricsFormat(url, bodyText);
-
-      if (format === 'json' || contentType.includes('application/json')) {
-        try {
-          const asJson = JSON.parse(bodyText);
-          if (!Array.isArray(asJson)) {
-            try { sessionStorage.setItem(cacheKey, JSON.stringify('__NO_LYRICS__')); } catch {}
-            setLyricsAvailability(false);
-            prefetchNextTrackLyrics();
-            return;
-          }
-          try { sessionStorage.setItem(cacheKey, JSON.stringify(asJson)); } catch {}
-          parseLyrics(asJson);
-        } catch {
-          try { sessionStorage.setItem(cacheKey, JSON.stringify('__NO_LYRICS__')); } catch {}
-          setLyricsAvailability(false);
-          prefetchNextTrackLyrics();
-          return;
-        }
-      } else {
-        try { sessionStorage.setItem(cacheKey, JSON.stringify(bodyText)); } catch {}
-        parseLyrics(bodyText);
-      }
-
-      if (!currentLyrics.length) {
-        setLyricsAvailability(false);
-        prefetchNextTrackLyrics();
-        return;
-      }
-
-      hasTimedLyricsForCurrentTrack = true;
-      setLyricsAvailability(true);
-      renderLyricsViewMode();
-      prefetchNextTrackLyrics();
-    } catch {
+    const r = await fetchLyricsJson(u);
+    if (!r.ok || !Array.isArray(r.data)) {
       setLyricsAvailability(false);
       prefetchNextTrackLyrics();
+      return;
     }
+
+    parseJsonLyrics(r.data);
+    setLyricsAvailability(hasTimedLyricsForCurrentTrack);
+    renderLyricsViewMode();
+    prefetchNextTrackLyrics();
   }
 
   function onTrackChange(track) {
@@ -4745,6 +4632,7 @@ export function attachPlaybackCache() {
       const knownMissing = (!track?.lyrics) ? true : isLyricsKnownMissingFast(track.lyrics);
       if (!has || knownMissing) {
         hasTimedLyricsForCurrentTrack = false;
+        currentLyrics = [];
         setLyricsAvailability(false);
         return;
       }
@@ -4761,7 +4649,11 @@ export function attachPlaybackCache() {
     lyricsViewMode = writeLyricsViewMode(modes[(i === -1 ? 0 : (i + 1) % modes.length)]);
     renderLyricsViewMode();
 
-    const msgMap = { normal: '📝 Обычный вид лирики', hidden: '🚫 Лирика скрыта', expanded: '📖 Расширенный вид лирики' };
+    const msgMap = {
+      normal: '📝 Обычный вид лирики',
+      hidden: '🚫 Лирика скрыта',
+      expanded: '📖 Расширенный вид лирики'
+    };
     w.NotificationSystem?.info?.(msgMap[lyricsViewMode] || '');
   }
 
@@ -4791,9 +4683,10 @@ export function attachPlaybackCache() {
       setTimeout(() => { if (lyricsWindow) lyricsWindow.style.transition = ''; }, 50);
     }
 
-    playerBlock.querySelector('.lyrics-toggle-btn')?.style && (playerBlock.querySelector('.lyrics-toggle-btn').style.display = 'none');
+    const toggleBtn = playerBlock.querySelector('.lyrics-toggle-btn');
+    if (toggleBtn && toggleBtn.style) toggleBtn.style.display = 'none';
 
-    animationEnabled = false;
+    animationEnabled = writeAnimationEnabled(false);
     playerBlock.querySelector('.lyrics-animated-bg')?.classList.remove('active');
     document.getElementById('animation-btn')?.classList.remove('active');
   }
@@ -4845,7 +4738,10 @@ export function attachPlaybackCache() {
   }
 
   function getMiniSaveState() {
-    return { viewMode: (lyricsViewMode !== 'hidden') ? lyricsViewMode : 'normal', animationEnabled: !!animationEnabled };
+    return {
+      viewMode: (lyricsViewMode !== 'hidden') ? lyricsViewMode : 'normal',
+      animationEnabled: !!animationEnabled
+    };
   }
 
   w.LyricsController = {
