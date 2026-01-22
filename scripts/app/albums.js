@@ -303,9 +303,15 @@ class AlbumsManager {
     if (!container) return;
 
     const getModel = () => {
-      // Единственный источник истины для UI списка избранного
-      const m = window.FavoritesUI?.getModel?.();
-      return Array.isArray(m) ? m : [];
+      // ✅ Совместимость: в текущем проекте FavoritesUI строит window.favoritesRefsModel,
+      // а getModel() может отсутствовать.
+      try {
+        const m1 = window.FavoritesUI?.getModel?.();
+        if (Array.isArray(m1)) return m1;
+      } catch {}
+
+      const m2 = window.favoritesRefsModel;
+      return Array.isArray(m2) ? m2 : [];
     };
 
     const getActiveModel = (model) => model.filter((it) => it && it.__active && it.audio);
@@ -437,7 +443,9 @@ class AlbumsManager {
   }
 
   async ensureFavoritesPlayback(activeIndex) {
-    const model = window.FavoritesUI?.getModel?.();
+    let model = null;
+    try { model = window.FavoritesUI?.getModel?.(); } catch {}
+    if (!Array.isArray(model)) model = window.favoritesRefsModel;
     const list = Array.isArray(model) ? model : [];
     if (!list.length) return void window.NotificationSystem?.warning('Нет избранных треков');
 
