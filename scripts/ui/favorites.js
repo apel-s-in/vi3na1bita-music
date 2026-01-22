@@ -151,12 +151,30 @@
     return out;
   }
 
+  function getModel() {
+    // ✅ безопасно, без перестроения: вернуть текущую модель
+    const m = w.favoritesRefsModel;
+    return Array.isArray(m) ? m : [];
+  }
+
+  function getActiveModel(model) {
+    const list = Array.isArray(model) ? model : getModel();
+    return list.filter(it => it && it.__active && it.audio);
+  }
+
   async function playFirstActiveFavorite() {
     try {
       await buildFavoritesRefsModel();
-      const model = Array.isArray(w.favoritesRefsModel) ? w.favoritesRefsModel : [];
-      const idx = model.findIndex(it => it && it.__active && it.audio);
+      const model = getModel();
+      const active = getActiveModel(model);
+      if (!active.length) return;
+
+      // ensureFavoritesPlayback ожидает индекс в favoritesRefsModel (как сейчас в проекте),
+      // поэтому находим индекс первого active в исходной модели.
+      const first = active[0];
+      const idx = model.findIndex(it => it && it.__uid === first.__uid && it.__a === first.__a);
       if (idx < 0) return;
+
       await w.AlbumsManager?.ensureFavoritesPlayback?.(idx);
     } catch {}
   }
@@ -181,6 +199,8 @@
 
   w.FavoritesUI = {
     buildFavoritesRefsModel,
+    getModel,
+    getActiveModel,
     getAlbumCoverUrl,
     playFirstActiveFavorite
   };
