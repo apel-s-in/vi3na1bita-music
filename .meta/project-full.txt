@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1a08167991c5cba54f057406bef96d2230fe8990.idx
-│   │       ├── pack-1a08167991c5cba54f057406bef96d2230fe8990.pack
-│   │       └── pack-1a08167991c5cba54f057406bef96d2230fe8990.rev
+│   │       ├── pack-a39ff2ddd21bda6774e859266a877049d7221f5d.idx
+│   │       ├── pack-a39ff2ddd21bda6774e859266a877049d7221f5d.pack
+│   │       └── pack-a39ff2ddd21bda6774e859266a877049d7221f5d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 19:09:37 UTC
+Сгенерировано: 2026-01-22 19:18:39 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -12723,7 +12723,20 @@ export class PlayerCore {
   }
 }
 
+// Авто-инициализация экземпляра (как было в старой архитектуре):
+// UI/AlbumsManager/PlaybackPolicy ожидают window.playerCore сразу после загрузки /src/PlayerCore.js
+try {
+  if (!window.playerCore) {
+    // howler adapter: in this project Howl is global (CDN)
+    const howler = { Howl: window.Howl };
+    window.playerCore = new PlayerCore({ howler });
+  }
+} catch (e) {
+  console.error('❌ PlayerCore init failed:', e);
+}
+
 export default PlayerCore;
+
 
 //=================================================
 // FILE: /styles/main.css
