@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e41464e8014712f0aa90a9038a35f9c546d82a2d.idx
-│   │       ├── pack-e41464e8014712f0aa90a9038a35f9c546d82a2d.pack
-│   │       └── pack-e41464e8014712f0aa90a9038a35f9c546d82a2d.rev
+│   │       ├── pack-fd951aa011ed3d362ba2957d160b91e118ebaf4c.idx
+│   │       ├── pack-fd951aa011ed3d362ba2957d160b91e118ebaf4c.pack
+│   │       └── pack-fd951aa011ed3d362ba2957d160b91e118ebaf4c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 15:22:15 UTC
+Сгенерировано: 2026-01-22 15:36:54 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1166,7 +1166,7 @@ const STATIC_ASSETS = [
   './scripts/ui/sleep.js',
   './scripts/ui/lyrics-modal.js',
   './scripts/ui/sysinfo.js',
-  './scripts/app/background-audio.js',
+  // './scripts/app/background-audio.js', // отсутствует: удалено из precache
   // './scripts/app/background-events.js', // отсутствует в репозитории: удалено из precache
   './scripts/app/player-ui.js',
   './scripts/app/albums.js',
