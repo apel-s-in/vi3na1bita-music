@@ -290,21 +290,30 @@ export async function deleteDownloadMeta(uid, quality) {
 
 // Delete track cache
 export async function deleteTrackCache(uid) {
-  await deleteAudioBlob(uid, 'hi');
-  await deleteAudioBlob(uid, 'lo');
+  const u = String(uid || '').trim();
+  if (!u) return;
+
+  // Сначала освободим objectURL (если трек когда-либо проигрывался как blob)
+  try {
+    const mod = await import('./track-resolver.js');
+    if (typeof mod.revokeObjectUrlsForUid === 'function') mod.revokeObjectUrlsForUid(u);
+  } catch {}
+
+  await deleteAudioBlob(u, 'hi');
+  await deleteAudioBlob(u, 'lo');
 
   const storeBytes = await getStore(STORE_BYTES, 'readwrite');
-  await promisifyReq(storeBytes.delete(`${uid}:hi`));
-  await promisifyReq(storeBytes.delete(`${uid}:lo`));
+  await promisifyReq(storeBytes.delete(`${u}:hi`));
+  await promisifyReq(storeBytes.delete(`${u}:lo`));
 
   // meta for updates
-  try { await deleteDownloadMeta(uid, 'hi'); } catch {}
-  try { await deleteDownloadMeta(uid, 'lo'); } catch {}
+  try { await deleteDownloadMeta(u, 'hi'); } catch {}
+  try { await deleteDownloadMeta(u, 'lo'); } catch {}
 
   // local meta
   try {
     const storeLocal = await getStore(STORE_LOCAL_META, 'readwrite');
-    await promisifyReq(storeLocal.delete(String(uid || '').trim()));
+    await promisifyReq(storeLocal.delete(u));
   } catch {}
 }
 
