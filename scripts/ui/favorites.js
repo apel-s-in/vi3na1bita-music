@@ -229,11 +229,14 @@
 
     bind();
   }
+  function getModel() {
+    const m = w.favoritesRefsModel;
+    return Array.isArray(m) ? m : [];
+  }
 
   w.FavoritesUI = {
     buildFavoritesRefsModel,
     getModel,
-    getActiveModel,
     getAlbumCoverUrl,
     playFirstActiveFavorite
   };
