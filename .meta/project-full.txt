@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-837527320bf15b659ed94a3ad879c3ef882f63a7.idx
-│   │       ├── pack-837527320bf15b659ed94a3ad879c3ef882f63a7.pack
-│   │       └── pack-837527320bf15b659ed94a3ad879c3ef882f63a7.rev
+│   │       ├── pack-c7684f2bbe9dec7657bc99202dd55f76c5a49e1a.idx
+│   │       ├── pack-c7684f2bbe9dec7657bc99202dd55f76c5a49e1a.pack
+│   │       └── pack-c7684f2bbe9dec7657bc99202dd55f76c5a49e1a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 20:03:54 UTC
+Сгенерировано: 2026-01-22 20:06:05 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5970,6 +5970,27 @@ test('toggle star in favorites updates row state and localStorage (uid-based)', 
   // Снимем звезду — строка станет .inactive и uid пропадёт из likedTrackUids:v1
   await favRow.locator('.like-star').click();
   await expect(favRow).toHaveClass(/inactive/);
+
+  // ✅ v2: unlike в favorites view НЕ удаляет ref, а ставит inactiveAt
+  const v2 = await page.evaluate((id) => {
+    const m = String(id || '').match(/^fav_(.+)_(.+)$/);
+    const uid = m ? m[2] : '';
+    const likedRaw = localStorage.getItem('likedTrackUids:v2');
+    const refsRaw = localStorage.getItem('favoritesRefsByUid:v2');
+    const liked = likedRaw ? JSON.parse(likedRaw) : [];
+    const refs = refsRaw ? JSON.parse(refsRaw) : {};
+    return {
+      uid,
+      likedHas: Array.isArray(liked) && liked.includes(uid),
+      refExists: !!refs?.[uid],
+      inactiveAt: Number(refs?.[uid]?.inactiveAt || 0) || 0
+    };
+  }, favId);
+
+  expect(v2.uid).toBeTruthy();
+  expect(v2.likedHas).toBeFalsy();
+  expect(v2.refExists).toBeTruthy();
+  expect(v2.inactiveAt).toBeGreaterThan(0);
 
   // Проверим localStorage: likedTrackUids:v1 больше не содержит этот uid в массиве строк
   const { albumKey, uid, present } = await page.evaluate((id) => {
