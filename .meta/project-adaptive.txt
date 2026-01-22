@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6b9c3c2955903b139c5b20bb539006176ea7b385.idx
-│   │       ├── pack-6b9c3c2955903b139c5b20bb539006176ea7b385.pack
-│   │       └── pack-6b9c3c2955903b139c5b20bb539006176ea7b385.rev
+│   │       ├── pack-a4781f90ccf27bd14b44f9f7c2c19dbf31a7f854.idx
+│   │       ├── pack-a4781f90ccf27bd14b44f9f7c2c19dbf31a7f854.pack
+│   │       └── pack-a4781f90ccf27bd14b44f9f7c2c19dbf31a7f854.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 14:36:51 UTC
+Сгенерировано: 2026-01-22 14:40:43 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3147,16 +3147,22 @@ function getPQ() {
 }
 
 function getFavoritesInactiveSet() {
+  // ✅ Источник истины для inactive — PlayerCore.getFavoritesState().
+  // Это не зависит от того, построен ли window.favoritesRefsModel.
   try {
-    const model = Array.isArray(window.favoritesRefsModel) ? window.favoritesRefsModel : [];
-    const inactive = new Set();
-    model.forEach(it => {
-      if (it && !it.__active) {
-        const uid = String(it.__uid || '').trim();
-        if (uid) inactive.add(uid);
-      }
+    const pc = window.playerCore;
+    if (!pc?.getFavoritesState) return new Set();
+
+    const st = pc.getFavoritesState();
+    const inactive = Array.isArray(st?.inactive) ? st.inactive : [];
+
+    const set = new Set();
+    inactive.forEach((t) => {
+      const uid = String(t?.uid || '').trim();
+      if (uid) set.add(uid);
     });
-    return inactive;
+
+    return set;
   } catch {
     return new Set();
   }
