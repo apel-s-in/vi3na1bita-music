@@ -429,6 +429,10 @@ class AlbumsManager {
   async loadFavoritesAlbum() {
     this.renderAlbumTitle('⭐⭐⭐ ИЗБРАННОЕ ⭐⭐⭐', 'fav');
 
+    // ✅ ВАЖНО: TrackRegistry должен быть готов ДО активного использования Favorites (buildFavoritesModel).
+    // Это жесткое правило проекта.
+    try { await window.ensureTrackRegistryReadyForFavorites?.(); } catch {}
+
     const coverWrap = $('cover-wrap');
     if (coverWrap) coverWrap.style.display = 'none';
 
