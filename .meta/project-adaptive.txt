@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ffe83e487733bc44bd87b9e2452d86f51b10f185.idx
-│   │       ├── pack-ffe83e487733bc44bd87b9e2452d86f51b10f185.pack
-│   │       └── pack-ffe83e487733bc44bd87b9e2452d86f51b10f185.rev
+│   │       ├── pack-b749488bc5860df09b52cefb56ab7216e8a1a4b4.idx
+│   │       ├── pack-b749488bc5860df09b52cefb56ab7216e8a1a4b4.pack
+│   │       └── pack-b749488bc5860df09b52cefb56ab7216e8a1a4b4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -383,7 +383,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 21:28:10 UTC
+Сгенерировано: 2026-01-22 21:32:55 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5945,7 +5945,7 @@ export default FavoritesV2;
 // FILE: /scripts/e2e/favorites.spec.js
 // @ts-check
 import { test, expect } from '@playwright/test';
-import { loginByPromo, likeFirstTrack, openFavorites, playFirstTrack } from './utils.js';
+import { BASE, loginByPromo, likeFirstTrack, openFavorites, playFirstTrack } from './utils.js';
 
 test('favorites UI builds and plays from favorites list', async ({ page }) => {
   await loginByPromo(page);
