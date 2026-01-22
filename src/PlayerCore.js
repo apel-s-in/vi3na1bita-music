@@ -262,4 +262,17 @@ export class PlayerCore {
   }
 }
 
+// Авто-инициализация экземпляра (как было в старой архитектуре):
+// UI/AlbumsManager/PlaybackPolicy ожидают window.playerCore сразу после загрузки /src/PlayerCore.js
+try {
+  if (!window.playerCore) {
+    // howler adapter: in this project Howl is global (CDN)
+    const howler = { Howl: window.Howl };
+    window.playerCore = new PlayerCore({ howler });
+  }
+} catch (e) {
+  console.error('❌ PlayerCore init failed:', e);
+}
+
 export default PlayerCore;
+
