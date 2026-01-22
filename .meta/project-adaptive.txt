@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-406faa398ed4263b0c234d4110c39a53e86b15b9.idx
-│   │       ├── pack-406faa398ed4263b0c234d4110c39a53e86b15b9.pack
-│   │       └── pack-406faa398ed4263b0c234d4110c39a53e86b15b9.rev
+│   │       ├── pack-8073a1465eb954a79ee600f61a89f431d6589262.idx
+│   │       ├── pack-8073a1465eb954a79ee600f61a89f431d6589262.pack
+│   │       └── pack-8073a1465eb954a79ee600f61a89f431d6589262.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 20:50:37 UTC
+Сгенерировано: 2026-01-22 20:51:23 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6037,6 +6037,63 @@ test('toggle star in favorites updates row state and localStorage (uid-based)', 
 });
 
 test('favorites view: add to favorites, play and verify mini-mode when browsing other album', async ({ page }) => {
+  await loginByPromo(page);
+
+  await likeFirstTrack(page);
+  await openFavorites(page);
+
+  await page.locator('#track-list .track').first().click();
+  await expect(page.locator('#lyricsplayerblock')).toBeVisible();
+
+  const otherIcon = page
+    .locator('.album-icon')
+    .filter({ hasNot: page.locator('[data-akey="__favorites__"]') })
+    .nth(1);
+  await otherIcon.click();
+
+  await expect(page.locator('#mini-now')).toBeVisible();
+});
+
+test('unlike in native album removes ref from favorites "without trace" (v2)', async ({ page }) => {
+  await loginByPromo(page);
+
+  await page.waitForSelector('#track-list .track', { timeout: 10000 });
+  const firstRow = page.locator('#track-list .track').first();
+
+  // Лайкнем в родном альбоме
+  await firstRow.hover();
+  await firstRow.locator('.like-star').click();
+
+  // Вытащим uid из dataset
+  const uid = await firstRow.getAttribute('data-uid');
+  expect(String(uid || '').trim()).toBeTruthy();
+
+  // Проверим что ref появился
+  const hasRefAfterLike = await page.evaluate((u) => {
+    const refsRaw = localStorage.getItem('favoritesRefsByUid:v2');
+    const refs = refsRaw ? JSON.parse(refsRaw) : {};
+    return !!refs?.[String(u || '').trim()];
+  }, uid);
+  expect(hasRefAfterLike).toBeTruthy();
+
+  // Снимем лайк в родном альбоме => ref должен исчезнуть полностью
+  await firstRow.locator('.like-star').click();
+
+  const st = await page.evaluate((u) => {
+    const uid = String(u || '').trim();
+    const likedRaw = localStorage.getItem('likedTrackUids:v2');
+    const refsRaw = localStorage.getItem('favoritesRefsByUid:v2');
+    const liked = likedRaw ? JSON.parse(likedRaw) : [];
+    const refs = refsRaw ? JSON.parse(refsRaw) : {};
+    return {
+      likedHas: Array.isArray(liked) && liked.includes(uid),
+      refExists: !!refs?.[uid]
+    };
+  }, uid);
+
+  expect(st.likedHas).toBeFalsy();
+  expect(st.refExists).toBeFalsy();
+});
   await loginByPromo(page);
 
   await likeFirstTrack(page);
