@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-063b5a33584091cc47b3245559c089d753fd1558.idx
-│   │       ├── pack-063b5a33584091cc47b3245559c089d753fd1558.pack
-│   │       └── pack-063b5a33584091cc47b3245559c089d753fd1558.rev
+│   │       ├── pack-cb45ead40c72de7c19d30113e31877bf744dac18.idx
+│   │       ├── pack-cb45ead40c72de7c19d30113e31877bf744dac18.pack
+│   │       └── pack-cb45ead40c72de7c19d30113e31877bf744dac18.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 15:40:20 UTC
+Сгенерировано: 2026-01-22 18:01:52 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1940,8 +1940,9 @@ class AlbumsManager {
         this.handleAlbumIconClick(key);
       };
 
+      // ВАЖНО: не вешаем одновременно click + pointerup (на мобильных это часто даёт двойной вызов).
+      // CSS уже содержит touch-action: manipulation, этого достаточно.
       el.addEventListener('click', onActivate);
-      el.addEventListener('pointerup', onActivate, { passive: false });
 
       container.appendChild(el);
     }
