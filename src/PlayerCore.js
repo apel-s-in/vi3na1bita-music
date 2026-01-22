@@ -780,8 +780,7 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
       } catch {}
 
       if (!nextLiked && !fromAlbum) {
-        // ✅ STOP-исключение разрешено ТОЛЬКО при снятии ⭐ в favorites view
-        // (когда пользователь реально находится в __favorites__ на экране).
+        // ✅ STOP-исключение разрешено только при снятии ⭐ в favorites view
         const curAlbum = String(W.AlbumsManager?.getCurrentAlbum?.() || '').trim();
         if (curAlbum === W.SPECIAL_FAVORITES_KEY) {
           this._handleFavoritesPlaylistUnlikeCurrent(u);
@@ -813,7 +812,7 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
       const active = activeUids.map((x) => ({ uid: x }));
       const inactive = inactiveUids.map((x) => ({ uid: x }));
 
-            return {
+      return {
         activeUids,
         inactiveUids,
         active,
