@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b32c1a4c2bf46d6f79f71c8242e2dd2c0f91e299.idx
-│   │       ├── pack-b32c1a4c2bf46d6f79f71c8242e2dd2c0f91e299.pack
-│   │       └── pack-b32c1a4c2bf46d6f79f71c8242e2dd2c0f91e299.rev
+│   │       ├── pack-1a08167991c5cba54f057406bef96d2230fe8990.idx
+│   │       ├── pack-1a08167991c5cba54f057406bef96d2230fe8990.pack
+│   │       └── pack-1a08167991c5cba54f057406bef96d2230fe8990.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 19:07:33 UTC
+Сгенерировано: 2026-01-22 19:09:37 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1663,6 +1663,7 @@ const APP_CONFIG = window.APP_CONFIG;
 import { registerTrack } from './track-registry.js';
 import { $, toStr, escHtml, isMobileUA } from './utils/app-utils.js';
 import { renderFavoritesList, renderFavoritesEmpty, bindFavoritesList } from '../ui/favorites-view.js';
+import { buildFavoritesModel } from '../ui/favorites.js';
 import { loadAndRenderNewsInline } from '../ui/news-inline.js';
 
 const FAV = window.SPECIAL_FAVORITES_KEY || '__favorites__';
@@ -2093,13 +2094,15 @@ class AlbumsManager {
     if (!container) return;
 
     const getModel = () => {
-      const m = window.FavoritesUI?.getModel?.();
-      if (Array.isArray(m)) return m;
-      return Array.isArray(window.favoritesRefsModel) ? window.favoritesRefsModel : [];
+      try {
+        const m = buildFavoritesModel();
+        return Array.isArray(m) ? m : [];
+      } catch {
+        return [];
+      }
     };
 
     const rebuild = async () => {
-      try { await window.FavoritesUI?.buildFavoritesRefsModel?.(); } catch {}
       const model = getModel();
       if (!model.length) renderFavoritesEmpty(container);
       else renderFavoritesList(container, model);
@@ -2139,7 +2142,6 @@ class AlbumsManager {
           if (this.currentAlbum !== FAV) return;
           await rebuild();
           window.PlayerUI?.updateAvailableTracksForPlayback?.();
-          window.PlayerUI?.ensurePlayerBlock?.(-1);
         });
       }
     }
