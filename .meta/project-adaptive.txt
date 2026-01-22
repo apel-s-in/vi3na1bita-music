@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-7e416174cc926d40c691829d4134c5a9a1359858.idx
-│   │       ├── pack-7e416174cc926d40c691829d4134c5a9a1359858.pack
-│   │       └── pack-7e416174cc926d40c691829d4134c5a9a1359858.rev
+│   │       ├── pack-0e061c9b3c334f4e2bc3d9d47f7df0f054f76b92.idx
+│   │       ├── pack-0e061c9b3c334f4e2bc3d9d47f7df0f054f76b92.pack
+│   │       └── pack-0e061c9b3c334f4e2bc3d9d47f7df0f054f76b92.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 11:06:31 UTC
+Сгенерировано: 2026-01-22 11:09:12 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -12373,14 +12373,15 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     return s ? s : null;
   };
 
-class PlayerCore {
-  constructor() {
-    this.playlist = [];
-    this.originalPlaylist = [];
-    this.currentIndex = -1;
+  class PlayerCore {
+    constructor() {
+      this.playlist = [];
+      this.originalPlaylist = [];
+      this.currentIndex = -1;
 
-    // ✅ Guard against races: old Howl events must not affect new playback.
-    this._loadToken = 0;
+      // ✅ Guard against races: old Howl events must not affect new playback
+      // (fixes rare double-play / wrong end/next cascades)
+      this._loadToken = 0;
       this.originalPlaylist = [];
       this.currentIndex = -1;
 
@@ -12839,7 +12840,7 @@ class PlayerCore {
           }
 
           // ✅ CRITICAL: do NOT call this.play() here (it can re-enter load/play pipeline).
-          // Only start current Howl, preserving PlayerCore state stability.
+          // Only start current Howl instance.
           if (autoPlay) {
             try { this.sound?.play?.(); } catch {}
           }
