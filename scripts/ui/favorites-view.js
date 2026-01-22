@@ -1,96 +1,132 @@
 // scripts/ui/favorites-view.js
-import { buildFavoritesModel } from "./favorites.js";
+// Favorites view renderer/binder for special album "__favorites__" inside #track-list
+// Exports (back-compat for scripts/app/albums.js):
+// - renderFavoritesList(container, model)
+// - renderFavoritesEmpty(container)
+// - bindFavoritesList(container, handlers)
 
-function qs(sel, root = document) { return root.querySelector(sel); }
-function safeStr(x) { return String(x ?? "").trim(); }
+import { buildFavoritesModel } from './favorites.js';
 
-const PlayGuard = { ts: 0 };
-
-function showInactiveFavoriteModal({ uid, title }) {
-  if (window.ModalTemplates?.show) {
-    window.ModalTemplates.show("inactiveFavorite", { uid, title });
-    return;
-  }
-  const ok = confirm(`Трек неактивен: "${title || uid}".\n\nУдалить из избранного?`);
-  if (ok) window.playerCore?.removeFavoriteRef?.(uid);
+function esc(s) {
+  const fn = window.Utils?.escapeHtml;
+  const v = String(s ?? '');
+  return (typeof fn === 'function')
+    ? fn(v)
+    : v.replace(/[<>&'"]/g, (m) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&#39;', '"': '&quot;' }[m]));
 }
 
-function renderRow(track) {
-  const inactive = !!track.__inactive;
+function safeStr(x) {
+  return String(x ?? '').trim();
+}
+
+function rowIdFor(uid) {
+  // Для совместимости с тестами/индикаторами: fav_{sourceAlbum}_{uid}
+  // sourceAlbum для v2 можно брать из TrackRegistry meta (если есть).
+  const meta = window.TrackRegistry?.getTrackByUid?.(uid) || null;
+  const a = safeStr(meta?.sourceAlbum || meta?.album || meta?.albumKey || 'unknown');
+  return `fav_${a}_${uid}`;
+}
+
+function renderRow(it) {
+  const uid = safeStr(it?.uid);
+  const title = esc(it?.title || '');
+  const inactive = !!it?.__inactive;
+  const star = inactive ? 'img/star2.png' : 'img/star.png';
+
+  // IMPORTANT:
+  // class "track" — как в обычном списке, чтобы существующие стили/подсветка работали.
+  // class "inactive" — чтобы серить строку.
   return `
-    <div class="fav-row ${inactive ? "inactive" : ""}" data-uid="${track.uid}">
-      <button class="like-star ${inactive ? "" : "liked"}" type="button">${inactive ? "☆" : "★"}</button>
-      <div class="fav-title">${track.title || ""}</div>
+    <div class="track ${inactive ? 'inactive' : ''}"
+         id="${esc(rowIdFor(uid))}"
+         data-index="-1"
+         data-uid="${esc(uid)}"
+         data-album="${esc(safeStr(window.TrackRegistry?.getTrackByUid?.(uid)?.sourceAlbum || ''))}">
+      <div class="tnum">★</div>
+      <div class="track-title">${title}</div>
+      <img src="${esc(star)}"
+           class="like-star"
+           alt="звезда"
+           data-uid="${esc(uid)}">
     </div>
   `;
 }
 
-function ensureRoot() {
-  let panel = qs("#favorites-panel");
-  if (!panel) {
-    panel = document.createElement("section");
-    panel.id = "favorites-panel";
-    panel.innerHTML = `<h2>Избранное</h2><div id="favorites-list"></div>`;
-    const root = qs("#content") || document.body;
-    root.prepend(panel);
-  }
-  return panel;
+export function renderFavoritesEmpty(container) {
+  if (!container) return;
+  container.innerHTML = `
+    <div class="fav-empty">
+      <h3>Избранное пусто</h3>
+      <p>Поставьте ⭐ у трека в альбоме, чтобы он появился здесь.</p>
+    </div>
+  `;
 }
 
-function bind(panel) {
-  if (panel.__bound) return;
-  panel.__bound = true;
+export function renderFavoritesList(container, model) {
+  if (!container) return;
+  const list = Array.isArray(model) ? model : [];
 
-  panel.addEventListener("click", async (e) => {
-    const row = e.target.closest?.(".fav-row");
-    if (!row) return;
-    const uid = safeStr(row.getAttribute("data-uid"));
+  // ВАЖНО: model у нас v2: элементы имеют uid, title, __active/__inactive
+  container.innerHTML = list.map(renderRow).join('');
+}
+
+/**
+ * bindFavoritesList(container, handlers)
+ * handlers:
+ * - getModel(): returns current favorites model (array)
+ * - onStarClick({ uid, albumKey })
+ * - onActiveRowClick({ uid })
+ * - onInactiveRowClick({ uid, title })
+ */
+export function bindFavoritesList(container, handlers = {}) {
+  if (!container || container.__favoritesBound) return;
+  container.__favoritesBound = true;
+
+  const getModel = typeof handlers.getModel === 'function'
+    ? handlers.getModel
+    : () => buildFavoritesModel();
+
+  container.addEventListener('click', async (e) => {
+    const row = e.target?.closest?.('.track');
+    if (!row || !container.contains(row)) return;
+
+    const uid = safeStr(row.dataset.uid);
     if (!uid) return;
 
-    const pc = window.playerCore;
-    if (!pc) return;
+    const model = getModel();
+    const item = Array.isArray(model) ? model.find((x) => safeStr(x?.uid) === uid) : null;
+    const inactive = !!item?.__inactive;
 
-    // star click
-    if (e.target.closest?.(".like-star")) {
+    // ⭐ click
+    if (e.target?.classList?.contains('like-star')) {
       e.preventDefault();
       e.stopPropagation();
-      pc.toggleFavorite(uid, { source: "favorites" });
-      FavoritesUI.renderFavoritesList(buildFavoritesModel());
+
+      // albumKey нужен только для legacy синхронизации/подсветки.
+      // Для UID-only v2 он необязателен, но albums.js передаёт.
+      const meta = window.TrackRegistry?.getTrackByUid?.(uid) || null;
+      const albumKey = safeStr(meta?.sourceAlbum || '');
+
+      try {
+        await handlers.onStarClick?.({ uid, albumKey });
+      } catch {}
+
       return;
     }
 
-    // row click -> play if active
-    if (!pc.isFavorite(uid)) {
-      const model = buildFavoritesModel();
-      const t = model.find((x) => x.uid === uid);
-      showInactiveFavoriteModal({ uid, title: t?.title });
+    // Row click
+    if (inactive) {
+      e.preventDefault();
+      e.stopPropagation();
+      try {
+        handlers.onInactiveRowClick?.({ uid, title: item?.title || '' });
+      } catch {}
       return;
     }
 
-    // anti-double-play
-    const now = Date.now();
-    if ((now - PlayGuard.ts) < 250) return;
-    PlayGuard.ts = now;
-
-    // find active index in active-only list
-    const model = buildFavoritesModel();
-    const active = model.filter((x) => x.__active);
-    const idx = active.findIndex((x) => x.uid === uid);
-    if (idx < 0) return;
-
-    await window.AlbumsManager?.ensureFavoritesPlayback?.(idx);
+    // active row => play
+    try {
+      await handlers.onActiveRowClick?.({ uid });
+    } catch {}
   });
 }
-
-export const FavoritesUI = {
-  renderFavoritesList(model) {
-    const panel = ensureRoot();
-    const list = qs("#favorites-list", panel);
-    const html = (model || []).map(renderRow).join("");
-    list.innerHTML = html || `<div class="muted">Нет треков в избранном</div>`;
-    bind(panel);
-  },
-};
-
-window.FavoritesUI = FavoritesUI;
-export default FavoritesUI;
