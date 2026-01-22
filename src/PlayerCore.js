@@ -780,7 +780,12 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
       } catch {}
 
       if (!nextLiked && !fromAlbum) {
-        this._handleFavoritesPlaylistUnlikeCurrent(u);
+        // ✅ STOP-исключение разрешено ТОЛЬКО при снятии ⭐ в favorites view
+        // (когда пользователь реально находится в __favorites__ на экране).
+        const curAlbum = String(W.AlbumsManager?.getCurrentAlbum?.() || '').trim();
+        if (curAlbum === W.SPECIAL_FAVORITES_KEY) {
+          this._handleFavoritesPlaylistUnlikeCurrent(u);
+        }
       }
 
       return { ok: true, uid: u, albumKey: albumKey || null, liked: nextLiked, fromAlbum: !!fromAlbum };
@@ -808,7 +813,15 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
       const active = activeUids.map((x) => ({ uid: x }));
       const inactive = inactiveUids.map((x) => ({ uid: x }));
 
-      return { activeUids, inactiveUids, active, inactive };
+            return {
+        activeUids,
+        inactiveUids,
+        active,
+        inactive,
+        activeCount: activeUids.length,
+        inactiveCount: inactiveUids.length,
+        likedCount: activeUids.length
+      };
     }
 
     removeInactivePermanently(uid) {
