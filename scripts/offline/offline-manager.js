@@ -44,6 +44,14 @@ const LS = {
 
 const MB = 1024 * 1024;
 const DEFAULT_CACHE_LIMIT_MB = 500;
+// ТЗ 14.2: приоритеты очереди (1 активная аудио-загрузка)
+// Важно: playback-cache (P0/P1) задаётся в playback-cache.js ещё выше (100/90).
+const DL_PRIORITY = {
+  P2_PINNED: 80,
+  P3_UPDATES: 70,     // updates / re-cache
+  P4_CLOUD_FILL: 60,  // cloud fill / cloud-candidate
+  P5_OFFLINE_ALL: 50  // 100% OFFLINE (массовая загрузка)
+};
 
 function normUid(v) {
   const s = String(v || '').trim();
@@ -70,14 +78,9 @@ function writeJson(key, value) {
 }
 
 function getNetworkStatusSafe() {
-  // ✅ единый core helper
-  if (window.Utils?.getNetworkStatusSafe) return window.Utils.getNetworkStatusSafe();
-  try {
-    if (window.NetworkManager && typeof window.NetworkManager.getStatus === 'function') {
-      return window.NetworkManager.getStatus();
-    }
-  } catch {}
-  return { online: navigator.onLine !== false, kind: 'unknown', raw: null, saveData: false };
+  const fn = window.Utils?.getNetworkStatusSafe;
+  if (typeof fn === 'function') return fn();
+  return { online: navigator.onLine !== false, kind: 'unknown', saveData: false };
 }
 
 function readCloudN() {
@@ -335,7 +338,7 @@ export class OfflineManager {
       uid: u,
       quality: cq,
       key: `cloudCandidate:${cq}:${u}`,
-      priority: 15,
+      priority: DL_PRIORITY.P4_CLOUD_FILL,
       userInitiated: false,
       isMass: false,
       kind: 'cloudCandidate'
@@ -355,7 +358,7 @@ export class OfflineManager {
         uid: u,
         quality: cq,
         key: `pinned:${cq}:${u}`,
-        priority: 25,
+        priority: DL_PRIORITY.P2_PINNED,
         userInitiated,
         isMass: false,
         kind: 'pinned'
@@ -402,7 +405,7 @@ export class OfflineManager {
         uid,
         quality: cq,
         key: `update:${cq}:${uid}`,
-        priority: 18, // P3
+        priority: DL_PRIORITY.P3_UPDATES, // P3
         userInitiated: false,
         isMass: true,
         kind: 'update'
@@ -459,7 +462,7 @@ export class OfflineManager {
         uid: u,
         quality: cq,
         key: `recache:${cq}:${u}`,
-        priority: 18, // P3
+        priority: DL_PRIORITY.P3_UPDATES, // P3
         userInitiated,
         isMass: true,
         kind: 'recache'
@@ -604,7 +607,7 @@ export class OfflineManager {
         uid: u,
         quality: cq,
         key: taskKey,
-        priority: 10,
+        priority: DL_PRIORITY.P5_OFFLINE_ALL,
         userInitiated: false,
         isMass: true,
         kind: 'offlineAll',
