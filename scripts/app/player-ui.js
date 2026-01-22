@@ -750,8 +750,12 @@
 
     if (nextOn) {
       if (playingAlbum === w.SPECIAL_FAVORITES_KEY) {
-        const model = Array.isArray(w.favoritesRefsModel) ? w.favoritesRefsModel : [];
-        if (!model.some(it => it && it.__active && it.audio)) {
+        // ✅ Важно: в "Избранном" доступность определяется только активными (liked) в v2.
+        // Никаких window.favoritesRefsModel (его может не быть).
+        const stFav = w.playerCore?.getFavoritesState?.();
+        const activeCount = Number(stFav?.activeUids?.length || 0) || 0;
+
+        if (activeCount <= 0) {
           w.NotificationSystem?.info?.('Отметьте понравившийся трек ⭐');
           U.lsSetBool01(LS.FAV_ONLY, false);
           setFavoritesOnlyUI(false);
