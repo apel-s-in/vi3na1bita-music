@@ -24,11 +24,8 @@ function normQ(v) {
 }
 
 function getNetworkStatusSafe() {
-  // ✅ единый core helper
-  if (window.Utils?.getNetworkStatusSafe) return window.Utils.getNetworkStatusSafe();
-  try {
-    if (window.NetworkManager?.getStatus) return window.NetworkManager.getStatus();
-  } catch {}
+  const fn = window.Utils?.getNetworkStatusSafe;
+  if (typeof fn === 'function') return fn();
   return { online: navigator.onLine !== false, kind: 'unknown', saveData: false };
 }
 
