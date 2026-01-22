@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a9f8980eab6257f7711ed81e28c9548808fbbe74.idx
-│   │       ├── pack-a9f8980eab6257f7711ed81e28c9548808fbbe74.pack
-│   │       └── pack-a9f8980eab6257f7711ed81e28c9548808fbbe74.rev
+│   │       ├── pack-832b7e49a85eebeb97b2af6088dfb8fa1dbfbe00.idx
+│   │       ├── pack-832b7e49a85eebeb97b2af6088dfb8fa1dbfbe00.pack
+│   │       └── pack-832b7e49a85eebeb97b2af6088dfb8fa1dbfbe00.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -383,7 +383,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 21:23:04 UTC
+Сгенерировано: 2026-01-22 21:24:32 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5532,6 +5532,11 @@ export const FavoritesV2 = {
     // If only one existed, still ensure both exist
     if (!hasLikedV2) writeJson(LS.LIKED_UIDS_V2, Array.from(likedSet));
     if (!hasRefsV2) writeJson(LS.REFS_BY_UID_V2, refsByUid);
+
+    // ✅ Финальная чистка: v1 больше не держим "вживую".
+    // Удаляем legacy ключи ПОСЛЕ успешной записи v2 (best-effort).
+    try { localStorage.removeItem(LS.LIKED_BY_ALBUM_V1); } catch {}
+    try { localStorage.removeItem(LS.REFS_V1); } catch {}
   },
 
   readLikedSet() {
