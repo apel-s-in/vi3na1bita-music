@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b1bda626ca6e22e54a9a38f8f1a8a796d0e7ec26.idx
-│   │       ├── pack-b1bda626ca6e22e54a9a38f8f1a8a796d0e7ec26.pack
-│   │       └── pack-b1bda626ca6e22e54a9a38f8f1a8a796d0e7ec26.rev
+│   │       ├── pack-3e0b64a7ea3590a0eae22e2b158ce0d3b5bcab9d.idx
+│   │       ├── pack-3e0b64a7ea3590a0eae22e2b158ce0d3b5bcab9d.pack
+│   │       └── pack-3e0b64a7ea3590a0eae22e2b158ce0d3b5bcab9d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 18:50:47 UTC
+Сгенерировано: 2026-01-22 18:51:09 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9072,119 +9072,101 @@ export function attachCloudMenu(opts = {}) {
 //=================================================
 // FILE: /scripts/ui/favorites-view.js
 // scripts/ui/favorites-view.js
-// FavoritesView: чистый рендер + делегирование кликов для окна «Избранное».
-// Не управляет воспроизведением напрямую (инвариант).
+import { buildFavoritesModel } from "./favorites.js";
 
-const STAR_ON = 'img/star.png';
-const STAR_OFF = 'img/star2.png';
+function qs(sel, root = document) { return root.querySelector(sel); }
+function safeStr(x) { return String(x ?? "").trim(); }
 
-const esc = (s) => {
-  const fn = window.Utils?.escapeHtml;
-  return typeof fn === 'function' ? fn(String(s ?? '')) : String(s ?? '');
-};
+const PlayGuard = { ts: 0 };
 
-function rowIdFromItem(it) {
-  // back-compat: e2e ожидает формат fav_{albumKey}_{uid}
-  const a = String(it?.__a || '').trim();
-  const u = String(it?.__uid || '').trim();
-  return `fav_${a}_${u}`;
+function showInactiveFavoriteModal({ uid, title }) {
+  if (window.ModalTemplates?.show) {
+    window.ModalTemplates.show("inactiveFavorite", { uid, title });
+    return;
+  }
+  const ok = confirm(`Трек неактивен: "${title || uid}".\n\nУдалить из избранного?`);
+  if (ok) window.playerCore?.removeFavoriteRef?.(uid);
 }
 
-export function renderFavoritesEmpty(container) {
-  if (!container) return;
-  container.innerHTML = `
-    <div class="fav-empty">
-      <h3>Избранные треки</h3>
-      <p>Отметьте треки звёздочкой ⭐</p>
+function renderRow(track) {
+  const inactive = !!track.__inactive;
+  return `
+    <div class="fav-row ${inactive ? "inactive" : ""}" data-uid="${track.uid}">
+      <button class="like-star ${inactive ? "" : "liked"}" type="button">${inactive ? "☆" : "★"}</button>
+      <div class="fav-title">${track.title || ""}</div>
     </div>
   `;
 }
 
-export function renderFavoritesList(container, model) {
-  if (!container) return;
-
-  const list = Array.isArray(model) ? model : [];
-  if (!list.length) return renderFavoritesEmpty(container);
-
-  container.innerHTML = list.map((it, i) => {
-    const a = String(it?.__a || '').trim();
-    const u = String(it?.__uid || '').trim();
-    const active = !!it?.__active;
-
-    const albumTitle = String(it?.__album || 'Альбом');
-    const trackTitle = String(it?.title || 'Трек');
-
-    const id = rowIdFromItem(it);
-
-    return `
-      <div class="track${active ? '' : ' inactive'}"
-           id="${esc(id)}"
-           data-index="${i}"
-           data-album="${esc(a)}"
-           data-uid="${esc(u)}">
-        <div class="tnum">${String(i + 1).padStart(2, '0')}.</div>
-        <div class="track-title" title="${esc(trackTitle)} - ${esc(albumTitle)}">
-          <span class="fav-track-name">${esc(trackTitle)}</span>
-          <span class="fav-album-name"> — ${esc(albumTitle)}</span>
-        </div>
-        <img src="${active ? STAR_ON : STAR_OFF}"
-             class="like-star"
-             alt="звезда"
-             data-album="${esc(a)}"
-             data-uid="${esc(u)}">
-      </div>
-    `;
-  }).join('');
+function ensureRoot() {
+  let panel = qs("#favorites-panel");
+  if (!panel) {
+    panel = document.createElement("section");
+    panel.id = "favorites-panel";
+    panel.innerHTML = `<h2>Избранное</h2><div id="favorites-list"></div>`;
+    const root = qs("#content") || document.body;
+    root.prepend(panel);
+  }
+  return panel;
 }
 
-/**
- * bindFavoritesList(container, handlers)
- * handlers:
- * - getModel(): any[]
- * - onStarClick({ uid, albumKey }): void
- * - onActiveRowClick({ uid, albumKey }): void
- * - onInactiveRowClick({ uid, title }): void
- */
-export function bindFavoritesList(container, handlers) {
-  if (!container || container.__favBound) return;
-  container.__favBound = true;
+function bind(panel) {
+  if (panel.__bound) return;
+  panel.__bound = true;
 
-  const getModel = typeof handlers?.getModel === 'function' ? handlers.getModel : () => [];
-  const onStarClick = typeof handlers?.onStarClick === 'function' ? handlers.onStarClick : () => {};
-  const onActiveRowClick = typeof handlers?.onActiveRowClick === 'function' ? handlers.onActiveRowClick : () => {};
-  const onInactiveRowClick = typeof handlers?.onInactiveRowClick === 'function' ? handlers.onInactiveRowClick : () => {};
+  panel.addEventListener("click", async (e) => {
+    const row = e.target.closest?.(".fav-row");
+    if (!row) return;
+    const uid = safeStr(row.getAttribute("data-uid"));
+    if (!uid) return;
 
-  container.addEventListener('click', (e) => {
-    const target = e.target;
-    const row = target?.closest?.('.track');
-    if (!row || !container.contains(row)) return;
+    const pc = window.playerCore;
+    if (!pc) return;
 
-    const uid = String(row.dataset.uid || '').trim();
-    const albumKey = String(row.dataset.album || '').trim();
-    if (!uid || !albumKey) return;
-
-    const model = getModel();
-    const item = Array.isArray(model)
-      ? model.find((it) => String(it?.__uid || '').trim() === uid && String(it?.__a || '').trim() === albumKey)
-      : null;
-
-    if (!item) return;
-
-    if (target?.classList?.contains('like-star')) {
+    // star click
+    if (e.target.closest?.(".like-star")) {
       e.preventDefault();
       e.stopPropagation();
-      onStarClick({ uid, albumKey });
+      pc.toggleFavorite(uid, { source: "favorites" });
+      FavoritesUI.renderFavoritesList(buildFavoritesModel());
       return;
     }
 
-    if (item.__active && item.audio) {
-      onActiveRowClick({ uid, albumKey });
+    // row click -> play if active
+    if (!pc.isFavorite(uid)) {
+      const model = buildFavoritesModel();
+      const t = model.find((x) => x.uid === uid);
+      showInactiveFavoriteModal({ uid, title: t?.title });
       return;
     }
 
-    onInactiveRowClick({ uid, title: String(item?.title || 'Трек') });
+    // anti-double-play
+    const now = Date.now();
+    if ((now - PlayGuard.ts) < 250) return;
+    PlayGuard.ts = now;
+
+    // find active index in active-only list
+    const model = buildFavoritesModel();
+    const active = model.filter((x) => x.__active);
+    const idx = active.findIndex((x) => x.uid === uid);
+    if (idx < 0) return;
+
+    await window.AlbumsManager?.ensureFavoritesPlayback?.(idx);
   });
 }
+
+export const FavoritesUI = {
+  renderFavoritesList(model) {
+    const panel = ensureRoot();
+    const list = qs("#favorites-list", panel);
+    const html = (model || []).map(renderRow).join("");
+    list.innerHTML = html || `<div class="muted">Нет треков в избранном</div>`;
+    bind(panel);
+  },
+};
+
+window.FavoritesUI = FavoritesUI;
+export default FavoritesUI;
 
 //=================================================
 // FILE: /scripts/ui/favorites.js
