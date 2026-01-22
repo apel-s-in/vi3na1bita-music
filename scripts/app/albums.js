@@ -376,7 +376,7 @@ class AlbumsManager {
 
           const uid = toStr(item.__uid).trim();
           const a = toStr(item.__a).trim();
-          if (uid && a) window.playerCore?.toggleFavorite?.(uid, { fromAlbum: false, albumKey: a });
+          if (uid && a) window.playerCore?.toggleFavorite?.(uid, { fromAlbum: true, albumKey: a });
           return;
         }
 
