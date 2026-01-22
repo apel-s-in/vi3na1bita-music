@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-eb76bbb77ecf09540bd9b080b53dd1faee97d1a6.idx
-│   │       ├── pack-eb76bbb77ecf09540bd9b080b53dd1faee97d1a6.pack
-│   │       └── pack-eb76bbb77ecf09540bd9b080b53dd1faee97d1a6.rev
+│   │       ├── pack-1004d4a9cce211fe8def1c39d8012d90494ce1cd.idx
+│   │       ├── pack-1004d4a9cce211fe8def1c39d8012d90494ce1cd.pack
+│   │       └── pack-1004d4a9cce211fe8def1c39d8012d90494ce1cd.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -320,7 +320,6 @@ vi3na1bita-music/
 │   │   │   └── app-utils.js
 │   │   ├── albums.js
 │   │   ├── gallery.js
-│   │   ├── ios-audio-fix.js
 │   │   ├── navigation.js
 │   │   ├── offline-ui-bootstrap.js
 │   │   ├── playback-cache-bootstrap.js
@@ -382,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 15:21:05 UTC
+Сгенерировано: 2026-01-22 15:21:21 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2736,12 +2735,6 @@ class GalleryManager {
 window.GalleryManager = new GalleryManager();
 
 export default GalleryManager;
-
-//=================================================
-// FILE: /scripts/app/ios-audio-fix.js
-// scripts/app/ios-audio-fix.js
-// Deprecated: iOS audio unlock is handled ONLY inside src/PlayerCore.js
-(function () { 'use strict'; })();
 
 //=================================================
 // FILE: /scripts/app/navigation.js
