@@ -229,17 +229,10 @@
         const uid = String(track?.uid || '').trim();
         if (!pc || !pa || !uid) return false;
 
-        if (pa !== W.SPECIAL_FAVORITES_KEY) return !!pc?.isFavorite?.(uid);
-
-        const srcAlbum = String(track?.sourceAlbum || '').trim();
-        if (srcAlbum) return !!pc?.isFavorite?.(uid);
-
-        const ref = Array.isArray(W.favoritesRefsModel)
-          ? W.favoritesRefsModel.find(it => String(it?.__uid || '').trim() === uid)
-          : null;
-
-        const a = String(ref?.__a || '').trim();
-        return a ? !!pc?.isFavorite?.(uid) : false;
+        // ✅ v2: likedTrackUids:v2 — единый источник лайка, не зависит от контекста.
+        // В "Избранном" inactive никогда не участвует в playback, поэтому в playing-плейлисте
+        // нет смысла вычислять лайк через какие-то refs-модели.
+        return !!pc?.isFavorite?.(uid);
       }
     },
 
