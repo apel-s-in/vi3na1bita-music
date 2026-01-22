@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b749488bc5860df09b52cefb56ab7216e8a1a4b4.idx
-│   │       ├── pack-b749488bc5860df09b52cefb56ab7216e8a1a4b4.pack
-│   │       └── pack-b749488bc5860df09b52cefb56ab7216e8a1a4b4.rev
+│   │       ├── pack-d577ac783bc75c9d87ceb92491586e394aefa03e.idx
+│   │       ├── pack-d577ac783bc75c9d87ceb92491586e394aefa03e.pack
+│   │       └── pack-d577ac783bc75c9d87ceb92491586e394aefa03e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -383,7 +383,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 21:32:55 UTC
+Сгенерировано: 2026-01-22 21:33:30 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6306,9 +6306,16 @@ test('play track, toggle favorites-only and sleep timer UI', async ({ page }) =>
   await loginByPromo(page);
   await expect(page.locator('#main-block')).toBeVisible();
 
-  // Дождаться списка альбомов и клик по первой строке треклиста
+  // Дождаться списка альбомов
   await page.waitForSelector('#track-list .track', { timeout: 10000 });
+
+  // ✅ По ТЗ: F можно включить только если есть хотя бы один ⭐ трек.
+  // Поэтому заранее лайкаем первый трек.
   const firstTrack = page.locator('#track-list .track').first();
+  await firstTrack.hover();
+  await firstTrack.locator('.like-star').click();
+
+  // Запускаем воспроизведение первого трека
   await firstTrack.click();
 
   // Появился блок плеера и кнопка Play/Pause есть
