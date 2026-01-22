@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5616cd5c983a6087a923485ac6d0004e90aa0f14.idx
-│   │       ├── pack-5616cd5c983a6087a923485ac6d0004e90aa0f14.pack
-│   │       └── pack-5616cd5c983a6087a923485ac6d0004e90aa0f14.rev
+│   │       ├── pack-55ca095b5e591109340f56488b62ea7eb778bc21.idx
+│   │       ├── pack-55ca095b5e591109340f56488b62ea7eb778bc21.pack
+│   │       └── pack-55ca095b5e591109340f56488b62ea7eb778bc21.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 14:28:34 UTC
+Сгенерировано: 2026-01-22 14:30:18 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2039,7 +2039,7 @@ class AlbumsManager {
 
           const uid = toStr(item.__uid).trim();
           const a = toStr(item.__a).trim();
-          if (uid && a) window.playerCore?.toggleFavorite?.(uid, { fromAlbum: true, albumKey: a });
+          if (uid && a) window.playerCore?.toggleFavorite?.(uid, { fromAlbum: false, albumKey: a });
           return;
         }
 
