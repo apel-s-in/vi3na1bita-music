@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5b3f7d3a3b4f2b695743122c21921204774b3a0f.idx
-│   │       ├── pack-5b3f7d3a3b4f2b695743122c21921204774b3a0f.pack
-│   │       └── pack-5b3f7d3a3b4f2b695743122c21921204774b3a0f.rev
+│   │       ├── pack-6739531864d8140ecbe5b228e23e34227e087aa6.idx
+│   │       ├── pack-6739531864d8140ecbe5b228e23e34227e087aa6.pack
+│   │       └── pack-6739531864d8140ecbe5b228e23e34227e087aa6.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -383,7 +383,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 15:12:36 UTC
+Сгенерировано: 2026-01-22 15:13:34 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1668,6 +1668,8 @@ const APP_CONFIG = window.APP_CONFIG;
 
 import { registerTrack } from './track-registry.js';
 import { $, toStr, escHtml, isMobileUA } from './utils/app-utils.js';
+import { renderFavoritesList, renderFavoritesEmpty, bindFavoritesList } from '../ui/favorites-view.js';
+import { loadAndRenderNewsInline } from '../ui/news-inline.js';
 
 const FAV = window.SPECIAL_FAVORITES_KEY || '__favorites__';
 const NEWS = window.SPECIAL_RELIZ_KEY || '__reliz__';
@@ -1675,13 +1677,6 @@ const NEWS = window.SPECIAL_RELIZ_KEY || '__reliz__';
 const STAR_ON = 'img/star.png';
 const STAR_OFF = 'img/star2.png';
 const LOGO = 'img/logo.png';
-
-const emptyFavoritesHTML = `
-  <div style="padding: 20px; text-align: center; color: #8ab8fd;">
-    <h3>Избранные треки</h3>
-    <p>Отметьте треки звёздочкой ⭐</p>
-  </div>
-`;
 
 function setStar(img, liked) {
   if (!img) return;
@@ -1708,8 +1703,10 @@ function buildAlbumIconSrc(baseIcon, isMobile) {
 
 function normalizeTracks(tracks, base, albumKey) {
   const out = [];
+
   for (let i = 0; i < tracks.length; i++) {
     const t = tracks[i] || {};
+
     const fileHi = firstUrl(base, t.audio);
     const fileLo = firstUrl(base, t.audio_low);
 
@@ -1742,9 +1739,9 @@ function normalizeTracks(tracks, base, albumKey) {
       uid,
       hasLyrics,
     };
+
     out.push(tr);
 
-    // Регистрация трека (как было), но без лишней обвязки
     if (uid) {
       try {
         registerTrack({
@@ -1761,6 +1758,7 @@ function normalizeTracks(tracks, base, albumKey) {
       } catch {}
     }
   }
+
   return out;
 }
 
@@ -1768,14 +1766,19 @@ class AlbumsManager {
   constructor() {
     this.currentAlbum = null;
     this.playingAlbum = null;
+
     this.albumsData = new Map();
     this.albumCoverUrlCache = new Map();
+
+    // cache для стабильных вычислений на кликах
+    // albumKey -> { tracksForCore, uidToIndex }
+    this._corePlaylistCache = new Map();
 
     this.isLoading = false;
     this.isGalleryVisible = true;
 
     this._favSyncBound = false;
-    this._favDelegationBound = false;
+    this._favoritesViewBound = false;
   }
 
   async initialize() {
@@ -1801,15 +1804,16 @@ class AlbumsManager {
   _pickDefaultAlbumKey() {
     const order = Array.isArray(APP_CONFIG?.ICON_ALBUMS_ORDER) ? APP_CONFIG.ICON_ALBUMS_ORDER : [];
     const keys = order.map((x) => x?.key).filter(Boolean);
-    const firstRegular = keys.find((k) => !toStr(k).startsWith('__') && window.albumsIndex?.some((a) => a.key === k));
-    return firstRegular || window.albumsIndex?.[0]?.key || null;
+    const idx = Array.isArray(window.albumsIndex) ? window.albumsIndex : [];
+
+    const firstRegular = keys.find((k) => !toStr(k).startsWith('__') && idx.some((a) => a.key === k));
+    return firstRegular || idx?.[0]?.key || null;
   }
 
   _bindFavoritesAlbumSync() {
     if (this._favSyncBound) return;
     this._favSyncBound = true;
 
-    // Обновление звёзд в обычных альбомах (без DOM events)
     const pc = window.playerCore;
     if (!pc?.onFavoritesChanged) return;
 
@@ -1827,6 +1831,7 @@ class AlbumsManager {
   renderAlbumIcons() {
     const container = $('album-icons');
     if (!container) return;
+
     container.innerHTML = '';
 
     const isMobile = isMobileUA();
@@ -1854,6 +1859,7 @@ class AlbumsManager {
         e.stopPropagation();
         this.handleAlbumIconClick(key);
       };
+
       el.addEventListener('click', onActivate);
       el.addEventListener('pointerup', onActivate, { passive: false });
 
@@ -1862,7 +1868,10 @@ class AlbumsManager {
   }
 
   async handleAlbumIconClick(albumKey) {
-    if (this.currentAlbum === albumKey && !toStr(albumKey).startsWith('__')) return void this.toggleGalleryVisibility();
+    if (this.currentAlbum === albumKey && !toStr(albumKey).startsWith('__')) {
+      this.toggleGalleryVisibility();
+      return;
+    }
     await this.loadAlbum(albumKey);
   }
 
@@ -1922,12 +1931,13 @@ class AlbumsManager {
         social_links: normalizeSocials(raw),
         tracks: normalizeTracks(tracksRaw, base, albumKey),
       };
+
       this.albumsData.set(albumKey, albumData);
+      this._corePlaylistCache.delete(albumKey);
     }
 
     await this.loadGallery(albumKey);
 
-    // Обложка для PlayerCore
     try {
       const url = await window.GalleryManager?.getFirstCoverUrl?.(albumKey);
       this.albumCoverUrlCache.set(albumKey, url || LOGO);
@@ -1935,10 +1945,12 @@ class AlbumsManager {
       this.albumCoverUrlCache.set(albumKey, LOGO);
     }
 
-    // Если галерея пустая — показываем logo в слоте (как было)
     try {
       const count = window.GalleryManager?.getItemsCount?.() || 0;
-      if (count <= 0) $('cover-slot') && ($('cover-slot').innerHTML = `<img src="${LOGO}" alt="Обложка" draggable="false" loading="lazy">`);
+      if (count <= 0) {
+        const slot = $('cover-slot');
+        if (slot) slot.innerHTML = `<img src="${LOGO}" alt="Обложка" draggable="false" loading="lazy">`;
+      }
     } catch {}
 
     this.renderAlbumTitle(albumData.title || albumInfo.title);
@@ -1956,162 +1968,107 @@ class AlbumsManager {
     await window.GalleryManager?.loadGallery?.(albumKey);
   }
 
+  _getTracksForCore(albumKey, albumData) {
+    const cached = this._corePlaylistCache.get(albumKey);
+    if (cached?.tracksForCore?.length && cached?.uidToIndex) return cached;
+
+    const coverUrl = this.albumCoverUrlCache.get(albumKey) || LOGO;
+
+    const tracksForCore = (Array.isArray(albumData?.tracks) ? albumData.tracks : [])
+      .filter((t) => t && (t.fileHi || t.file || t.fileLo))
+      .map((t) => ({
+        src: t.fileHi || t.file || t.fileLo,
+        sources: t.sources || null,
+        title: t.title,
+        artist: albumData.artist || 'Витрина Разбита',
+        album: albumKey,
+        cover: coverUrl,
+        lyrics: t.lyrics || null,
+        fulltext: t.fulltext || null,
+        uid: typeof t.uid === 'string' && t.uid.trim() ? t.uid.trim() : null,
+        hasLyrics: t.hasLyrics,
+      }))
+      .filter((t) => !!t.uid && !!t.src);
+
+    const uidToIndex = new Map();
+    tracksForCore.forEach((t, i) => uidToIndex.set(String(t.uid), i));
+
+    const pack = { tracksForCore, uidToIndex };
+    this._corePlaylistCache.set(albumKey, pack);
+    return pack;
+  }
+
   async loadFavoritesAlbum() {
     this.renderAlbumTitle('⭐⭐⭐ ИЗБРАННОЕ ⭐⭐⭐', 'fav');
 
     const coverWrap = $('cover-wrap');
     if (coverWrap) coverWrap.style.display = 'none';
 
-    await window.FavoritesUI?.buildFavoritesRefsModel?.();
-
     const container = $('track-list');
     if (!container) return;
 
     const getModel = () => {
-      // ✅ Совместимость: в текущем проекте FavoritesUI строит window.favoritesRefsModel,
-      // а getModel() может отсутствовать.
-      try {
-        const m1 = window.FavoritesUI?.getModel?.();
-        if (Array.isArray(m1)) return m1;
-      } catch {}
-
-      const m2 = window.favoritesRefsModel;
-      return Array.isArray(m2) ? m2 : [];
+      const m = window.FavoritesUI?.getModel?.();
+      if (Array.isArray(m)) return m;
+      return Array.isArray(window.favoritesRefsModel) ? window.favoritesRefsModel : [];
     };
 
-    const getActiveModel = (model) => model.filter((it) => it && it.__active && it.audio);
-
-    const render = () => {
+    const rebuild = async () => {
+      try { await window.FavoritesUI?.buildFavoritesRefsModel?.(); } catch {}
       const model = getModel();
-      if (!model.length) {
-        container.innerHTML = emptyFavoritesHTML;
-        return;
-      }
-
-      container.innerHTML = model
-        .map((it, i) => {
-          const a = toStr(it?.__a);
-          const u = toStr(it?.__uid);
-          const active = !!it?.__active;
-          const albumTitle = it?.__album || 'Альбом';
-          const trackTitle = it?.title || 'Трек';
-          return `
-            <div class="track${active ? '' : ' inactive'}"
-                 id="fav_${escHtml(a)}_${escHtml(u)}"
-                 data-index="${i}"
-                 data-album="${escHtml(a)}"
-                 data-uid="${escHtml(u)}">
-              <div class="tnum">${String(i + 1).padStart(2, '0')}.</div>
-              <div class="track-title" title="${escHtml(trackTitle)} - ${escHtml(albumTitle)}">
-                <span class="fav-track-name">${escHtml(trackTitle)}</span>
-                <span class="fav-album-name"> — ${escHtml(albumTitle)}</span>
-              </div>
-              <img src="${active ? STAR_ON : STAR_OFF}" class="like-star" alt="звезда"
-                   data-album="${escHtml(a)}" data-uid="${escHtml(u)}">
-            </div>`;
-        })
-        .join('');
+      if (!model.length) renderFavoritesEmpty(container);
+      else renderFavoritesList(container, model);
     };
 
-    const findItemInModel = (model, rowAlbum, rowUid) =>
-      model.find((it) => toStr(it?.__uid).trim() === rowUid && toStr(it?.__a).trim() === rowAlbum);
+    if (!this._favoritesViewBound) {
+      this._favoritesViewBound = true;
 
-    if (!this._favDelegationBound) {
-      this._favDelegationBound = true;
+      bindFavoritesList(container, {
+        getModel,
 
-      container.addEventListener('click', async (e) => {
-        if (this.currentAlbum !== FAV) return;
+        onStarClick: ({ uid, albumKey }) => {
+          window.playerCore?.toggleFavorite?.(uid, { fromAlbum: false, albumKey });
+        },
 
-        const target = e.target;
-        const row = target?.closest?.('.track');
-        if (!row || !container.contains(row)) return;
+        onActiveRowClick: async ({ uid, albumKey }) => {
+          const model = getModel();
+          const active = model.filter((it) => it && it.__active && it.audio);
 
-        const rowUid = toStr(row.dataset.uid).trim();
-        const rowAlbum = toStr(row.dataset.album).trim();
-        if (!rowUid || !rowAlbum) return;
-
-        const model = getModel();
-        const item = findItemInModel(model, rowAlbum, rowUid);
-        if (!item) return;
-
-        // ⭐ клик по звезде — переключаем active/inactive (НЕ удаляем refs)
-        if (target?.classList?.contains('like-star')) {
-          e.preventDefault();
-          e.stopPropagation();
-
-          const uid = toStr(item.__uid).trim();
-          const a = toStr(item.__a).trim();
-          // ✅ ВАЖНО: в окне «ИЗБРАННОЕ» снятие ⭐ НЕ удаляет ref, а переводит в inactive (буфер).
-          if (uid && a) window.playerCore?.toggleFavorite?.(uid, { fromAlbum: false, albumKey: a });
-          return;
-        }
-
-        // ✅ active row click → play favorites playlist (только active)
-        if (item.__active && item.audio) {
-          const active = getActiveModel(model);
           const activeIndex = active.findIndex(
-            (it) => toStr(it?.__uid).trim() === rowUid && toStr(it?.__a).trim() === rowAlbum
+            (it) => String(it?.__uid || '').trim() === uid && String(it?.__a || '').trim() === albumKey
           );
-          if (activeIndex >= 0) {
-            await this.ensureFavoritesPlayback(activeIndex);
-          }
-          return;
-        }
 
-        // ✅ inactive row click (не по звезде) → модалка (в PlayerCore)
-        window.playerCore?.showInactiveFavoriteModal?.({
-          uid: toStr(item.__uid).trim(),
-          title: item.title || 'Трек',
-          onDeleted: async () => window.PlayerUI?.updateAvailableTracksForPlayback?.(),
-        });
+          if (activeIndex >= 0) await this.ensureFavoritesPlayback(activeIndex);
+        },
+
+        onInactiveRowClick: ({ uid, title }) => {
+          window.playerCore?.showInactiveFavoriteModal?.({
+            uid,
+            title,
+            onDeleted: async () => window.PlayerUI?.updateAvailableTracksForPlayback?.(),
+          });
+        },
       });
 
       const pc = window.playerCore;
       if (pc?.onFavoritesChanged) {
-        let pending = false;
-        let rerun = false;
-
-        pc.onFavoritesChanged(() => {
+        pc.onFavoritesChanged(async () => {
           if (this.currentAlbum !== FAV) return;
-
-          if (pending) {
-            rerun = true;
-            return;
-          }
-          pending = true;
-
-          (async () => {
-            try {
-              await window.FavoritesUI?.buildFavoritesRefsModel?.();
-            } catch {}
-
-            try {
-              render();
-              window.PlayerUI?.updateAvailableTracksForPlayback?.();
-              window.PlayerUI?.ensurePlayerBlock?.(-1);
-            } finally {
-              pending = false;
-
-              if (rerun) {
-                rerun = false;
-                try { await window.FavoritesUI?.buildFavoritesRefsModel?.(); } catch {}
-                render();
-                window.PlayerUI?.updateAvailableTracksForPlayback?.();
-                window.PlayerUI?.ensurePlayerBlock?.(-1);
-              }
-            }
-          })();
+          await rebuild();
+          window.PlayerUI?.updateAvailableTracksForPlayback?.();
+          window.PlayerUI?.ensurePlayerBlock?.(-1);
         });
       }
     }
 
-    render();
+    await rebuild();
   }
 
   async ensureFavoritesPlayback(activeIndex) {
     let model = null;
     try { model = window.FavoritesUI?.getModel?.(); } catch {}
     if (!Array.isArray(model)) model = window.favoritesRefsModel;
+
     const list = Array.isArray(model) ? model : [];
     if (!list.length) return void window.NotificationSystem?.warning('Нет избранных треков');
 
@@ -2123,7 +2080,7 @@ class AlbumsManager {
 
     const tracks = active.map((it) => ({
       src: it.audio,
-      sources: it.sources || null, // если FavoritesUI умеет прокидывать sources — PlayerCore/Resolver это использует
+      sources: it.sources || null,
       title: it.title,
       artist: it.__artist || 'Витрина Разбита',
       album: FAV,
@@ -2133,30 +2090,27 @@ class AlbumsManager {
       uid: typeof it.__uid === 'string' && it.__uid.trim() ? it.__uid.trim() : null,
       sourceAlbum: it.__a,
       hasLyrics: it.hasLyrics,
-    }));
+    })).filter((t) => !!t.uid && !!t.src);
 
     if (!tracks.length) return void window.NotificationSystem?.warning('Нет доступных треков');
 
-    if (window.playerCore) {
-      window.playerCore.setPlaylist(
-        tracks,
-        startIndex,
-        { artist: 'Витрина Разбита', album: 'Избранное', cover: LOGO },
-        { preservePosition: false } // ✅ клик пользователя
-      );
-      window.playerCore.play(startIndex);
+    window.playerCore.setPlaylist(
+      tracks,
+      startIndex,
+      { artist: 'Витрина Разбита', album: 'Избранное', cover: LOGO },
+      { preservePosition: false }
+    );
 
-      this.setPlayingAlbum(FAV);
+    window.playerCore.play(startIndex);
 
-      const cu = toStr(clicked?.__uid).trim();
-      const ca = toStr(clicked?.__a).trim();
+    this.setPlayingAlbum(FAV);
 
-      // Подсветка в избранном должна быть по (albumKey, uid), но список сейчас в DOM с data-album=data-uid
-      this.highlightCurrentTrack(-1, { uid: cu, albumKey: ca });
+    const cu = toStr(clicked?.__uid).trim();
+    const ca = toStr(clicked?.__a).trim();
+    this.highlightCurrentTrack(-1, { uid: cu, albumKey: ca });
 
-      window.PlayerUI?.ensurePlayerBlock?.(startIndex, { userInitiated: true });
-      window.PlayerUI?.updateAvailableTracksForPlayback?.();
-    }
+    window.PlayerUI?.ensurePlayerBlock?.(startIndex, { userInitiated: true });
+    window.PlayerUI?.updateAvailableTracksForPlayback?.();
   }
 
   async loadNewsAlbum() {
@@ -2169,72 +2123,7 @@ class AlbumsManager {
     const container = $('track-list');
     if (!container) return;
 
-    container.innerHTML = `
-      <div style="padding: 14px 10px; text-align: center; color: #8ab8fd;">
-        <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom: 12px;">
-          <a href="https://t.me/vitrina_razbita" target="_blank" style="color: #4daaff; text-decoration: underline;">Telegram канал</a>
-          <span style="opacity:.6;">·</span>
-          <a href="./news.html" target="_blank" style="color: #4daaff; text-decoration: underline;">Страница новостей</a>
-        </div>
-        <div id="news-inline-status" style="opacity:.85;">Загрузка...</div>
-      </div>
-      <div id="news-inline-list" style="display:grid; gap:12px; padding: 0 0 10px 0;"></div>
-    `;
-
-    const status = $('news-inline-status');
-    const list = $('news-inline-list');
-    if (!list) return;
-
-    try {
-      const r = await fetch('./news/news.json', { cache: 'no-cache' });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const j = await r.json();
-      const items = Array.isArray(j?.items) ? j.items : [];
-
-      if (!items.length) {
-        if (status) status.textContent = 'Пока новостей нет';
-        return;
-      }
-      if (status) status.style.display = 'none';
-
-      list.innerHTML = items
-        .map((it) => {
-          const title = escHtml(it?.title || 'Новость');
-          const date = escHtml(it?.date || '');
-          const text = escHtml(it?.text || '');
-          const tags = Array.isArray(it?.tags) ? it.tags : [];
-
-          const media = it?.embedUrl
-            ? `<div style="margin:10px 0;"><iframe loading="lazy" style="width:100%;border:0;border-radius:10px;min-height:220px;background:#0b0e15;" src="${escHtml(it.embedUrl)}" allowfullscreen></iframe></div>`
-            : it?.image
-              ? `<div style="margin:10px 0;"><img loading="lazy" style="width:100%;border:0;border-radius:10px;background:#0b0e15;" src="${escHtml(it.image)}" alt=""></div>`
-              : it?.video
-                ? `<div style="margin:10px 0;"><video controls preload="metadata" style="width:100%;border:0;border-radius:10px;min-height:220px;background:#0b0e15;" src="${escHtml(it.video)}"></video></div>`
-                : '';
-
-          const tagHtml = tags.length
-            ? `<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
-                 ${tags
-                   .map((t) => `<span style="font-size:12px;color:#4daaff;background:rgba(77,170,255,.12);border:1px solid rgba(77,170,255,.25);padding:4px 8px;border-radius:999px;">#${escHtml(t)}</span>`)
-                   .join('')}
-               </div>`
-            : '';
-
-          return `<article style="background:#131a26;border:1px solid #23324a;border-radius:12px;padding:12px;box-shadow:0 4px 16px rgba(0,0,0,.25);">
-            <div style="font-weight:900;font-size:16px;color:#eaf2ff;">${title}</div>
-            ${date ? `<div style="color:#9db7dd;font-size:13px;margin-top:6px;">${date}</div>` : ''}
-            ${media}
-            ${text ? `<div style="margin-top:8px;line-height:1.45;color:#eaf2ff;">${text}</div>` : ''}
-            ${tagHtml}
-          </article>`;
-        })
-        .join('');
-    } catch {
-      if (status) {
-        status.textContent = 'Не удалось загрузить новости';
-        status.style.color = '#ff6b6b';
-      }
-    }
+    await loadAndRenderNewsInline(container);
   }
 
   renderAlbumTitle(title, modifier = '') {
@@ -2252,9 +2141,7 @@ class AlbumsManager {
     container.innerHTML = '';
 
     const normalized = Array.isArray(links)
-      ? links
-          .map((l) => ({ label: l?.label || l?.title || 'Ссылка', url: l?.url }))
-          .filter((l) => !!l.url)
+      ? links.map((l) => ({ label: l?.label || l?.title || 'Ссылка', url: l?.url })).filter((l) => !!l.url)
       : [];
 
     for (const link of normalized) {
@@ -2271,7 +2158,10 @@ class AlbumsManager {
     const container = $('track-list');
     if (!container) return;
     container.innerHTML = '';
-    for (let i = 0; i < tracks.length; i++) container.appendChild(this.createTrackElement(tracks[i], albumInfo.key, i));
+
+    for (let i = 0; i < tracks.length; i++) {
+      container.appendChild(this.createTrackElement(tracks[i], albumInfo.key, i));
+    }
   }
 
   createTrackElement(track, albumKey, index) {
@@ -2284,23 +2174,17 @@ class AlbumsManager {
     const uid = typeof track?.uid === 'string' && track.uid.trim() ? track.uid.trim() : '';
     el.dataset.uid = uid;
 
-    // playIndex: как в исходнике — индекс среди playable по file
-    const ad = this.albumsData.get(albumKey);
-    if (ad?.tracks?.length) {
-      const playable = ad.tracks.filter((t) => !!t?.file);
-      const k = playable.findIndex((t) => t?.uid && uid && toStr(t.uid) === uid);
-      el.dataset.playIndex = String(k >= 0 ? k : index);
-    } else {
-      el.dataset.playIndex = String(index);
-    }
-
-    const liked = window.playerCore?.isFavorite?.(track?.uid) || false;
+    const liked = window.playerCore?.isFavorite?.(uid) || false;
     const numText = `${String(track?.num || index + 1).padStart(2, '0')}.`;
 
     el.innerHTML = `
       <div class="tnum">${numText}</div>
       <div class="track-title">${toStr(track?.title || '')}</div>
-      <img src="${liked ? STAR_ON : STAR_OFF}" class="like-star" alt="звезда" data-album="${albumKey}" data-uid="${uid}">
+      <img src="${liked ? STAR_ON : STAR_OFF}"
+           class="like-star"
+           alt="звезда"
+           data-album="${albumKey}"
+           data-uid="${uid}">
     `;
 
     el.addEventListener('click', (e) => {
@@ -2313,59 +2197,35 @@ class AlbumsManager {
         return;
       }
 
+      const { tracksForCore, uidToIndex } = this._getTracksForCore(albumKey, albumData);
+      const playIndex = uidToIndex.get(uid);
+
+      if (!Number.isFinite(playIndex)) {
+        window.NotificationSystem?.warning('Трек недоступен для воспроизведения');
+        return;
+      }
+
       const snapshot = window.playerCore.getPlaylistSnapshot?.() || [];
-
-      const playableTracks = Array.isArray(albumData.tracks)
-        ? albumData.tracks.filter((t) => t && (t.fileHi || t.file || t.fileLo))
-        : [];
-
       const needsNew =
-        snapshot.length !== playableTracks.length ||
-        snapshot.some((t, i) => {
-          const src = playableTracks[i]?.fileHi || playableTracks[i]?.file || playableTracks[i]?.fileLo;
-          return !src || t?.src !== src;
-        });
-
-      const piRaw = Number.parseInt(toStr(el.dataset.playIndex), 10);
-      const playIndex = Number.isFinite(piRaw) && piRaw >= 0 ? piRaw : index;
+        snapshot.length !== tracksForCore.length ||
+        snapshot.some((t, i) => String(t?.uid || '').trim() !== String(tracksForCore[i]?.uid || '').trim());
 
       if (needsNew) {
         const coverUrl = this.albumCoverUrlCache.get(albumKey) || LOGO;
-        const tracksForCore = albumData.tracks
-          .filter((t) => t && (t.fileHi || t.file || t.fileLo))
-          .map((t) => ({
-            src: t.fileHi || t.file || t.fileLo,
-            sources: t.sources || null,
-            title: t.title,
-            artist: albumData.artist || 'Витрина Разбита',
-            album: albumKey,
-            cover: coverUrl,
-            lyrics: t.lyrics || null,
-            fulltext: t.fulltext || null,
-            uid: typeof t.uid === 'string' && t.uid.trim() ? t.uid.trim() : null,
-            hasLyrics: t.hasLyrics,
-          }));
 
-        if (tracksForCore.length) {
-          window.playerCore.setPlaylist(
-            tracksForCore,
-            playIndex,
-            {
-              artist: albumData.artist || 'Витрина Разбита',
-              album: albumData.title || '',
-              cover: coverUrl,
-            },
-            {
-              // ✅ Прямой выбор трека пользователем: всегда старт с 0:00
-              preservePosition: false
-            }
-          );
-        }
+        window.playerCore.setPlaylist(
+          tracksForCore,
+          playIndex,
+          {
+            artist: albumData.artist || 'Витрина Разбита',
+            album: albumData.title || '',
+            cover: coverUrl,
+          },
+          { preservePosition: false }
+        );
       }
 
       this.highlightCurrentTrack(index);
-
-      // iOS unlock делает сам PlayerCore (единственный источник правды)
       window.playerCore.play(playIndex);
 
       this.setPlayingAlbum(albumKey);
@@ -2381,9 +2241,9 @@ class AlbumsManager {
       if (!trackUid) return void window.NotificationSystem?.warning('UID трека не найден в config.json');
       if (!window.playerCore?.toggleFavorite) return void window.NotificationSystem?.error('PlayerCore недоступен');
 
-      // UI оптимистично как раньше
       const isLiked = !!window.playerCore?.isFavorite?.(trackUid);
       const next = !isLiked;
+
       setStar(star, next);
       star.classList.add('animating');
       setTimeout(() => star.classList.remove('animating'), 320);
@@ -2400,14 +2260,12 @@ class AlbumsManager {
     const uid = toStr(opts?.uid).trim();
     const albumKey = toStr(opts?.albumKey).trim();
 
-    // ✅ Для Избранного подсвечиваем по (albumKey, uid), а не по data-index
     if (this.currentAlbum === FAV && uid && albumKey) {
       const sel = `.track[data-album="${CSS.escape(albumKey)}"][data-uid="${CSS.escape(uid)}"]`;
       document.querySelector(sel)?.classList.add('current');
       return;
     }
 
-    // ✅ Для обычных альбомов тоже можно подсвечивать по uid (важно при favoritesOnly)
     if (uid) {
       const sel = `.track[data-uid="${CSS.escape(uid)}"]`;
       document.querySelector(sel)?.classList.add('current');
@@ -2419,7 +2277,9 @@ class AlbumsManager {
   }
 
   updateActiveIcon(albumKey) {
-    document.querySelectorAll('.album-icon').forEach((icon) => icon.classList.toggle('active', icon.dataset.album === albumKey));
+    document.querySelectorAll('.album-icon').forEach((icon) => {
+      icon.classList.toggle('active', icon.dataset.album === albumKey);
+    });
   }
 
   clearUI() {
@@ -2433,8 +2293,10 @@ class AlbumsManager {
   getCurrentAlbum() { return this.currentAlbum; }
   getPlayingAlbum() { return this.playingAlbum; }
   setPlayingAlbum(albumKey) { this.playingAlbum = albumKey || null; }
+
   getAlbumData(albumKey) { return this.albumsData.get(albumKey); }
   getAlbumConfigByKey(albumKey) { return this.albumsData.get(albumKey); }
+
   getTrackUid(_albumKey, trackUid) { return toStr(trackUid).trim() || null; }
 }
 
