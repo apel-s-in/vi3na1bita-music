@@ -464,7 +464,7 @@ class AlbumsManager {
           const active = model.filter((it) => it && it.__active && it.audio);
 
           // ✅ uid глобально уникален => ищем только по uid
-          const activeIndex = active.findIndex((it) => String(it?.__uid || '').trim() === uid);
+          const activeIndex = active.findIndex((it) => String(it?.uid || '').trim() === uid);
           if (activeIndex >= 0) await this.ensureFavoritesPlayback(activeIndex);
         },
 
