@@ -125,7 +125,6 @@
       maybeInit(w.SleepTimer);
       maybeInit(w.LyricsModal);
       maybeInit(w.SystemInfoManager);
-      maybeInit(w.BackgroundAudioManager);
     }
 
     setupServiceWorkerMessaging() {
