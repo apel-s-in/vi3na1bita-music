@@ -750,8 +750,7 @@
 
     if (nextOn) {
       if (playingAlbum === w.SPECIAL_FAVORITES_KEY) {
-        // ✅ Важно: в "Избранном" доступность определяется только активными (liked) в v2.
-        // Никаких window.favoritesRefsModel (его может не быть).
+        // ✅ В "Избранном" доступность определяем через v2 состояние PlayerCore.
         const stFav = w.playerCore?.getFavoritesState?.();
         const activeCount = Number(stFav?.activeUids?.length || 0) || 0;
 
