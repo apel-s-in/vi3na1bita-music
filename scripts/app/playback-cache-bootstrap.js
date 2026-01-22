@@ -13,16 +13,22 @@ function getPQ() {
 }
 
 function getFavoritesInactiveSet() {
+  // ✅ Источник истины для inactive — PlayerCore.getFavoritesState().
+  // Это не зависит от того, построен ли window.favoritesRefsModel.
   try {
-    const model = Array.isArray(window.favoritesRefsModel) ? window.favoritesRefsModel : [];
-    const inactive = new Set();
-    model.forEach(it => {
-      if (it && !it.__active) {
-        const uid = String(it.__uid || '').trim();
-        if (uid) inactive.add(uid);
-      }
+    const pc = window.playerCore;
+    if (!pc?.getFavoritesState) return new Set();
+
+    const st = pc.getFavoritesState();
+    const inactive = Array.isArray(st?.inactive) ? st.inactive : [];
+
+    const set = new Set();
+    inactive.forEach((t) => {
+      const uid = String(t?.uid || '').trim();
+      if (uid) set.add(uid);
     });
-    return inactive;
+
+    return set;
   } catch {
     return new Set();
   }
