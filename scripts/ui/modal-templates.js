@@ -1,170 +1,212 @@
 // scripts/ui/modal-templates.js
 'use strict';
 
+// Важно: этот файл — ESM, подключается в index.html как type="module".
+// Задача: держать шаблоны компактными и структурированными.
+
 const esc = (s) => {
   const f = window.Utils?.escapeHtml;
   return typeof f === 'function' ? f(String(s ?? '')) : String(s ?? '');
 };
 
+function section(title, body) {
+  return `
+    <section class="om-card">
+      <div class="om-card__title">${esc(title)}</div>
+      ${body}
+    </section>
+  `;
+}
+
+function rowCheck({ id, label, checked }) {
+  return `
+    <label class="om-row">
+      <input class="om-check" type="checkbox" id="${esc(id)}" ${checked ? 'checked' : ''}>
+      <span>${esc(label)}</span>
+    </label>
+  `;
+}
+
+function btn({ id, text, className = '' }) {
+  return `<button class="offline-btn ${esc(className)}" id="${esc(id)}">${esc(text)}</button>`;
+}
+
+function select({ id, options, value }) {
+  const v = String(value ?? '');
+  return `
+    <select class="om-select" id="${esc(id)}">
+      ${options.map((o) => {
+        const ov = String(o.value);
+        const ot = String(o.text);
+        return `<option value="${esc(ov)}" ${ov === v ? 'selected' : ''}>${esc(ot)}</option>`;
+      }).join('')}
+    </select>
+  `;
+}
+
+function inputNumber({ id, min, max, value, disabled }) {
+  return `
+    <input class="om-input"
+           type="number"
+           id="${esc(id)}"
+           min="${esc(min)}"
+           max="${esc(max)}"
+           value="${esc(value)}"
+           ${disabled ? 'disabled' : ''}>
+  `;
+}
+
 export const ModalTemplates = {
-  // Универсальная обёртка (если у вас где-то создаются модалки из шаблонов)
   wrap: ({ title = '', body = '' } = {}) => `
     ${title ? `<h2>${esc(title)}</h2>` : ''}
     <div class="modal-body">${body}</div>
   `,
 
-  // Offline modal body: только структура + id/атрибуты-анкеры для offline-modal.js
-  // Важно: id подобраны так, чтобы их легко биндить. Если у вас уже есть свои id — скажи, я подгоню 1:1.
   offlineBody: (s = {}) => {
     const cq = String(s.cq ?? 'hi');
     const isOff = !!s.isOff;
+
     const cloudN = Number(s.cloud?.n ?? 5) || 5;
     const cloudD = Number(s.cloud?.d ?? 31) || 31;
+
     const pol = s.policy || {};
     const limit = s.limit || { mode: 'auto', mb: 500 };
+
     const albums = Array.isArray(s.albums) ? s.albums : [];
 
-    return `
-      <div class="om">
-        <div class="om-head">
-          <div class="om-head__left">
-            <span class="om-head__title">Сеть:</span>
-            <b id="om-net-label" class="om-head__value">—</b>
-          </div>
-          <div class="om-head__right">CQ=<b id="om-cq-label">${esc(cq)}</b></div>
+    const head = `
+      <div class="om-head">
+        <div class="om-head__left">
+          <span class="om-head__title">Сеть:</span>
+          <b id="om-net-label" class="om-head__value">—</b>
         </div>
-
-        <section class="om-card">
-          <div class="om-card__title">A) Offline mode</div>
-          <label class="om-row">
-            <input class="om-check" type="checkbox" id="om-offline-mode" ${isOff ? 'checked' : ''}>
-            <span>Включить OFFLINE mode</span>
-          </label>
-          <div class="om-note">OFFLINE=OFF: стриминг. Кэш не удаляется автоматически.</div>
-        </section>
-
-        <section class="om-card">
-          <div class="om-card__title">B) Cache quality (CQ)</div>
-          <div class="om-inline">
-            <select class="om-select" id="om-cq">
-              <option value="hi" ${cq === 'hi' ? 'selected' : ''}>Hi</option>
-              <option value="lo" ${cq === 'lo' ? 'selected' : ''}>Lo</option>
-            </select>
-            <button class="offline-btn om-btn-primary" id="om-cq-save">Сохранить</button>
-          </div>
-          <div class="om-note">Смена CQ запускает тихий re-cache pinned/cloud.</div>
-        </section>
-
-        <section class="om-card">
-          <div class="om-card__title">C) Cloud settings</div>
-          <div class="om-inline">
-            <label class="om-field"><span class="om-field__lbl">N</span>
-              <input class="om-input" type="number" id="om-cloud-n" min="1" max="50" value="${cloudN}">
-            </label>
-            <label class="om-field"><span class="om-field__lbl">D</span>
-              <input class="om-input" type="number" id="om-cloud-d" min="1" max="365" value="${cloudD}">
-            </label>
-            <button class="offline-btn" id="om-cloud-save">Сохранить</button>
-          </div>
-        </section>
-
-        <section class="om-card">
-          <div class="om-card__title">D) Network policy</div>
-          <label class="om-row"><input class="om-check" type="checkbox" id="om-pol-wifiOnly" ${pol.wifiOnly ? 'checked' : ''}><span>Wi‑Fi only</span></label>
-          <label class="om-row"><input class="om-check" type="checkbox" id="om-pol-allowMobile" ${pol.allowMobile ? 'checked' : ''}><span>Разрешить mobile</span></label>
-          <label class="om-row"><input class="om-check" type="checkbox" id="om-pol-confirmOnMobile" ${pol.confirmOnMobile ? 'checked' : ''}><span>Confirm на mobile</span></label>
-          <label class="om-row"><input class="om-check" type="checkbox" id="om-pol-saveDataBlock" ${pol.saveDataBlock ? 'checked' : ''}><span>Блокировать при Save‑Data</span></label>
-          <button class="offline-btn" id="om-pol-save">Сохранить policy</button>
-        </section>
-
-        <section class="om-card">
-          <div class="om-card__title">E) Cache limit + breakdown</div>
-          <div class="om-inline">
-            <select class="om-select" id="om-limit-mode">
-              <option value="auto" ${limit.mode === 'auto' ? 'selected' : ''}>auto</option>
-              <option value="manual" ${limit.mode === 'manual' ? 'selected' : ''}>manual (MB)</option>
-            </select>
-            <input class="om-input" type="number" id="om-limit-mb" min="50" max="5000"
-              value="${Number(limit.mb ?? 500) || 500}" ${limit.mode === 'manual' ? '' : 'disabled'}>
-            <button class="offline-btn" id="om-limit-save">Сохранить</button>
-          </div>
-
-          <div class="om-kv">
-            <div>audio total: <b id="om-e-audio-total">—</b></div>
-            <div>pinned: <b id="om-e-pinned">—</b></div>
-            <div>cloud: <b id="om-e-cloud">—</b></div>
-            <div>transient window: <b id="om-e-tw">—</b></div>
-            <div>transient extra: <b id="om-e-te">—</b></div>
-            <div>transient unknown: <b id="om-e-tu">—</b></div>
-            <div>other (SW cache): <b id="om-e-sw-total">—</b></div>
-          </div>
-        </section>
-
-        <section class="om-card">
-          <div class="om-card__title">F) Загрузки</div>
-          <div class="om-kv">
-            <div>Скачивается сейчас: <b id="om-f-downloading">—</b></div>
-            <div>В очереди: <b id="om-f-queued">0</b></div>
-          </div>
-          <div class="om-actions om-actions--left">
-            <button class="offline-btn" id="om-queue-toggle">Пауза/Возобновить</button>
-          </div>
-        </section>
-
-        <section class="om-card">
-          <div class="om-card__title">G) Обновления</div>
-          <div class="om-kv">
-            <div>needsUpdate: <b id="om-g-needsUpdate">0</b></div>
-            <div>needsReCache: <b id="om-g-needsReCache">0</b></div>
-          </div>
-          <div class="om-actions om-actions--left">
-            <button class="offline-btn" id="om-upd-all">Обновить все файлы</button>
-            <button class="offline-btn" id="om-recache-all">Re-cache по CQ</button>
-          </div>
-        </section>
-
-        <section class="om-card">
-          <div class="om-card__title">H) Очистка кэша</div>
-          <div class="om-actions om-actions--left">
-            <button class="offline-btn om-btn-danger" id="om-clear-all">Очистить всё</button>
-          </div>
-        </section>
-
-        <section class="om-card">
-          <div class="om-card__title">I) 100% OFFLINE</div>
-          <div class="om-inline">
-            <select class="om-select" id="om-full-mode">
-              <option value="favorites">только ИЗБРАННОЕ</option>
-              <option value="albums">выбранные альбомы</option>
-            </select>
-            <button class="offline-btn" id="om-full-est">Оценить</button>
-            <button class="offline-btn om-btn-success" id="om-full-start">Старт</button>
-          </div>
-
-          <div id="om-albums-box" class="om-albums">
-            ${albums.map(a => `
-              <label class="om-row om-row--tight">
-                <input class="om-check om-alb" type="checkbox" data-k="${esc(a.key)}">
-                <span>${esc(a.title)}</span>
-              </label>
-            `).join('')}
-          </div>
-
-          <div id="om-full-out" class="om-note">Оценка: —</div>
-        </section>
-
-        <section class="om-card">
-          <div class="om-card__title">Статистика</div>
-          <div class="om-kv">
-            <div>globalTotalListenSeconds: <b id="om-stats-total">—</b></div>
-          </div>
-        </section>
+        <div class="om-head__right">CQ=<b id="om-cq-label">${esc(cq)}</b></div>
       </div>
     `;
+
+    const secA = section('A) Offline mode', `
+      ${rowCheck({ id: 'om-offline-mode', label: 'Включить OFFLINE mode', checked: isOff })}
+      <div class="om-note">OFFLINE=OFF: стриминг. Кэш не удаляется автоматически.</div>
+    `);
+
+    const secB = section('B) Cache quality (CQ)', `
+      <div class="om-inline">
+        ${select({
+          id: 'om-cq',
+          value: cq,
+          options: [{ value: 'hi', text: 'Hi' }, { value: 'lo', text: 'Lo' }]
+        })}
+        ${btn({ id: 'om-cq-save', text: 'Сохранить', className: 'om-btn-primary' })}
+      </div>
+      <div class="om-note">Смена CQ запускает тихий re-cache pinned/cloud.</div>
+    `);
+
+    const secC = section('C) Cloud settings', `
+      <div class="om-inline">
+        <label class="om-field"><span class="om-field__lbl">N</span>${inputNumber({ id: 'om-cloud-n', min: 1, max: 50, value: cloudN })}</label>
+        <label class="om-field"><span class="om-field__lbl">D</span>${inputNumber({ id: 'om-cloud-d', min: 1, max: 365, value: cloudD })}</label>
+        ${btn({ id: 'om-cloud-save', text: 'Сохранить' })}
+      </div>
+    `);
+
+    const secD = section('D) Network policy', `
+      ${rowCheck({ id: 'om-pol-wifiOnly', label: 'Wi‑Fi only', checked: !!pol.wifiOnly })}
+      ${rowCheck({ id: 'om-pol-allowMobile', label: 'Разрешить mobile', checked: !!pol.allowMobile })}
+      ${rowCheck({ id: 'om-pol-confirmOnMobile', label: 'Confirm на mobile', checked: !!pol.confirmOnMobile })}
+      ${rowCheck({ id: 'om-pol-saveDataBlock', label: 'Блокировать при Save‑Data', checked: !!pol.saveDataBlock })}
+      ${btn({ id: 'om-pol-save', text: 'Сохранить policy' })}
+    `);
+
+    const secE = section('E) Cache limit + breakdown', `
+      <div class="om-inline">
+        ${select({
+          id: 'om-limit-mode',
+          value: limit.mode,
+          options: [
+            { value: 'auto', text: 'auto' },
+            { value: 'manual', text: 'manual (MB)' }
+          ]
+        })}
+        ${inputNumber({ id: 'om-limit-mb', min: 50, max: 5000, value: Number(limit.mb ?? 500) || 500, disabled: limit.mode !== 'manual' })}
+        ${btn({ id: 'om-limit-save', text: 'Сохранить' })}
+      </div>
+
+      <div class="om-kv">
+        <div>audio total: <b id="om-e-audio-total">—</b></div>
+        <div>pinned: <b id="om-e-pinned">—</b></div>
+        <div>cloud: <b id="om-e-cloud">—</b></div>
+        <div>transient window: <b id="om-e-tw">—</b></div>
+        <div>transient extra: <b id="om-e-te">—</b></div>
+        <div>transient unknown: <b id="om-e-tu">—</b></div>
+        <div>other (SW cache): <b id="om-e-sw-total">—</b></div>
+      </div>
+    `);
+
+    const secF = section('F) Загрузки', `
+      <div class="om-kv">
+        <div>Скачивается сейчас: <b id="om-f-downloading">—</b></div>
+        <div>В очереди: <b id="om-f-queued">0</b></div>
+      </div>
+      <div class="om-actions om-actions--left">
+        ${btn({ id: 'om-queue-toggle', text: 'Пауза/Возобновить' })}
+      </div>
+    `);
+
+    const secG = section('G) Обновления', `
+      <div class="om-kv">
+        <div>needsUpdate: <b id="om-g-needsUpdate">0</b></div>
+        <div>needsReCache: <b id="om-g-needsReCache">0</b></div>
+      </div>
+      <div class="om-actions om-actions--left">
+        ${btn({ id: 'om-upd-all', text: 'Обновить все файлы' })}
+        ${btn({ id: 'om-recache-all', text: 'Re-cache по CQ' })}
+      </div>
+    `);
+
+    const secH = section('H) Очистка кэша', `
+      <div class="om-actions om-actions--left">
+        ${btn({ id: 'om-clear-all', text: 'Очистить всё', className: 'om-btn-danger' })}
+      </div>
+    `);
+
+    const albumsBox = `
+      <div id="om-albums-box" class="om-albums">
+        ${albums.map((a) => `
+          <label class="om-row om-row--tight">
+            <input class="om-check om-alb" type="checkbox" data-k="${esc(a.key)}">
+            <span>${esc(a.title)}</span>
+          </label>
+        `).join('')}
+      </div>
+    `;
+
+    const secI = section('I) 100% OFFLINE', `
+      <div class="om-inline">
+        ${select({
+          id: 'om-full-mode',
+          value: 'favorites',
+          options: [
+            { value: 'favorites', text: 'только ИЗБРАННОЕ' },
+            { value: 'albums', text: 'выбранные альбомы' }
+          ]
+        })}
+        ${btn({ id: 'om-full-est', text: 'Оценить' })}
+        ${btn({ id: 'om-full-start', text: 'Старт', className: 'om-btn-success' })}
+      </div>
+      ${albumsBox}
+      <div id="om-full-out" class="om-note">Оценка: —</div>
+    `);
+
+    const secStats = section('Статистика', `
+      <div class="om-kv">
+        <div>globalTotalListenSeconds: <b id="om-stats-total">—</b></div>
+      </div>
+    `);
+
+    return `<div class="om">${head}${secA}${secB}${secC}${secD}${secE}${secF}${secG}${secH}${secI}${secStats}</div>`;
   }
 };
 
-// ✅ КРИТИЧЕСКИ ВАЖНО: пробрасываем шаблоны в window, потому что modals.js берёт offlineBody через window.ModalTemplates
 try {
   window.ModalTemplates = ModalTemplates;
 } catch {}
