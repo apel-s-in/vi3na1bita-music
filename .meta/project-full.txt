@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-26a484cafdd95b1254e8528d67f8c7f283d5b6ce.idx
-│   │       ├── pack-26a484cafdd95b1254e8528d67f8c7f283d5b6ce.pack
-│   │       └── pack-26a484cafdd95b1254e8528d67f8c7f283d5b6ce.rev
+│   │       ├── pack-d63c4165dedc718b88d5a9d4bf1cecd20fc636b3.idx
+│   │       ├── pack-d63c4165dedc718b88d5a9d4bf1cecd20fc636b3.pack
+│   │       └── pack-d63c4165dedc718b88d5a9d4bf1cecd20fc636b3.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 19:26:52 UTC
+Сгенерировано: 2026-01-22 20:00:56 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -12462,6 +12462,7 @@ export function createListenStatsTracker({ getUid, getPos, getDur, record } = {}
 // src/PlayerCore.js
 import { ensureMediaSession } from './player-core/media-session.js';
 import { createListenStatsTracker } from './player-core/stats-tracker.js';
+import FavoritesV2 from '../scripts/core/favorites-v2.js';
 
 (function () {
   'use strict';
@@ -12524,18 +12525,19 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       this.sourceKey = 'audio';
 
       // =========================
-      // Favorites (единственный источник истины)
-      // Storage:
-      // - likedTrackUids:v1 => { [albumKey]: string[] }  (для favoritesOnly в альбомах, back-compat e2e)
-      // - favoritesAlbumRefsByUid:v1 => [{ a: albumKey, uid: string }]
-      // Business rules:
-      // - toggle in album (fromAlbum=true): unlike => remove ref "без следа"
-      // - toggle in favorites view (fromAlbum=false): unlike => inactive (ref stays)
-      // - In favorites playlist playing: unlike current active => next; if last active => STOP (единственный разрешённый STOP от избранного)
+      // Favorites (v2 UID-only source of truth)
+      //
+      // ✅ Sources of truth:
+      // - likedTrackUids:v2 (global uid set) => ⭐ стоит/не стоит
+      // - favoritesRefsByUid:v2 (uid->ref)   => строка существует (active/inactive)
+      //
+      // ✅ Temporary back-compat (until PlaybackPolicy + e2e migrated):
+      // - likedTrackUids:v1 (albumKey -> uid[]) is maintained in parallel.
+      //
+      // ❌ Legacy refs favoritesAlbumRefsByUid:v1 are NOT used by PlayerCore logic anymore.
+      // They must exist only for FavoritesV2.ensureMigrated().
       this._fav = {
-        likedKey: 'likedTrackUids:v1',          // legacy by-album map
-        likedKeyV2: 'likedTrackUids:v2',        // ✅ global uid-only set (array in LS)
-        refsKey: 'favoritesAlbumRefsByUid:v1',  // refs пока legacy, миграцию сделаем отдельно
+        likedKeyV1: 'likedTrackUids:v1',   // legacy by-album map (temporary)
       };
 
       // Favorites internal emitter (замена DOM CustomEvent 'favorites:changed')
@@ -13165,10 +13167,300 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     // =========================
     // Favorites API (PlayerCore)
     // =========================
+    // =========================
+    // Favorites API (v2 source of truth + v1 liked back-compat)
+    // =========================
     onFavoritesChanged(cb) {
       if (typeof cb !== 'function') return () => {};
       this._favEmitter?.subs?.add(cb);
       return () => { try { this._favEmitter?.subs?.delete(cb); } catch {} };
+    }
+
+    _favReadLikedMapV1() {
+      try {
+        const raw = localStorage.getItem(this._fav.likedKeyV1);
+        const j = raw ? JSON.parse(raw) : {};
+        return (j && typeof j === 'object') ? j : {};
+      } catch {
+        return {};
+      }
+    }
+
+    _favWriteLikedMapV1(map) {
+      try {
+        localStorage.setItem(this._fav.likedKeyV1, JSON.stringify(map && typeof map === 'object' ? map : {}));
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    _favSyncLikedV1ForAlbumUid(albumKey, uid, liked) {
+      const a = safeStr(albumKey);
+      const u = safeStr(uid);
+      if (!a || !u || String(a).startsWith('__')) return;
+
+      const map = this._favReadLikedMapV1();
+      const prevArr = Array.isArray(map[a]) ? map[a] : [];
+      const arr = Array.from(new Set(prevArr.map(x => String(x || '').trim()).filter(Boolean)));
+
+      let nextArr = arr.slice();
+      if (liked) {
+        if (!nextArr.includes(u)) nextArr.push(u);
+      } else {
+        if (nextArr.includes(u)) nextArr = nextArr.filter(x => x !== u);
+      }
+
+      if (nextArr.length === 0) delete map[a];
+      else map[a] = nextArr;
+
+      this._favWriteLikedMapV1(map);
+    }
+
+    // Back-compat for PlaybackPolicy (still v1-based for now)
+    getLikedUidsForAlbum(albumKey) {
+      const a = safeStr(albumKey);
+      if (!a) return [];
+      const map = this._favReadLikedMapV1();
+      const arr = Array.isArray(map[a]) ? map[a] : [];
+      return Array.from(new Set(arr.map(x => String(x || '').trim()).filter(Boolean)));
+    }
+
+    isFavorite(uid) {
+      const u = safeStr(uid);
+      if (!u) return false;
+      try {
+        FavoritesV2.ensureMigrated();
+        return FavoritesV2.readLikedSet().has(u);
+      } catch {
+        return false;
+      }
+    }
+
+    /**
+     * toggleFavorite(uid, { fromAlbum, albumKey })
+     *
+     * Rules (strict):
+     * - fromAlbum=true:
+     *   like  => ensure ref exists + liked=true
+     *   unlike => remove ref полностью "без следа" + liked=false
+     *
+     * - fromAlbum=false (favorites view):
+     *   like  => liked=true (ref stays/activates)
+     *   unlike => liked=false BUT ref stays and becomes inactiveAt (inactive row)
+     *
+     * STOP разрешён только в одном сценарии:
+     * playingAlbum == __favorites__ AND unlike сделан из favorites view по текущему uid:
+     *   - если после unlike активных liked==0 => stop()
+     *   - иначе => next()
+     */
+    toggleFavorite(uid, opts = {}) {
+      const u = safeStr(uid);
+      if (!u) return { ok: false, reason: 'noUid' };
+
+      const currentAlbum = String(W.AlbumsManager?.getCurrentAlbum?.() || '').trim();
+      const inFavoritesView = currentAlbum === W.SPECIAL_FAVORITES_KEY;
+
+      // fromAlbum: true только если действие НЕ из favorites view
+      let fromAlbum = !!opts?.fromAlbum;
+      if (inFavoritesView) fromAlbum = false;
+
+      const albumKey = safeStr(opts?.albumKey);
+
+      FavoritesV2.ensureMigrated();
+
+      const prevLiked = this.isFavorite(u);
+      const nextLiked = !prevLiked;
+
+      // ✅ v2 toggle with strict source
+      const source = fromAlbum ? 'album' : 'favorites';
+      FavoritesV2.toggle(u, { source });
+
+      // ✅ v1 liked map maintained temporarily (only if albumKey is known & regular)
+      if (albumKey && !String(albumKey).startsWith('__')) {
+        this._favSyncLikedV1ForAlbumUid(albumKey, u, nextLiked);
+      } else {
+        // best-effort: if we are in favorites view and track currently playing has sourceAlbum,
+        // keep v1 in sync too (important for mini-player + e2e expectations).
+        try {
+          const cur = this.getCurrentTrack?.() || null;
+          const curUid = safeStr(cur?.uid);
+          const sa = safeStr(cur?.sourceAlbum);
+          if (curUid === u && sa && !String(sa).startsWith('__')) {
+            this._favSyncLikedV1ForAlbumUid(sa, u, nextLiked);
+          }
+        } catch {}
+      }
+
+      // Notify subscribers (UI/policy/offline indicators must not auto-play)
+      try {
+        this._favEmitter.emit({ albumKey: albumKey || '', uid: u, liked: nextLiked, fromAlbum: !!fromAlbum });
+      } catch {}
+
+      // ✅ STOP/next rule (ONLY for favorites playlist, ONLY when unlike from favorites view)
+      if (!nextLiked && !fromAlbum) {
+        this._handleFavoritesPlaylistUnlikeCurrent(u);
+      }
+
+      return { ok: true, uid: u, albumKey: albumKey || null, liked: nextLiked, fromAlbum: !!fromAlbum };
+    }
+
+    /**
+     * v2-only favorites state
+     * Returns:
+     * - { activeUids, inactiveUids }
+     * + back-compat aliases { active, inactive } (arrays of {uid})
+     */
+    getFavoritesState() {
+      FavoritesV2.ensureMigrated();
+
+      const liked = FavoritesV2.readLikedSet();
+      const refs = FavoritesV2.readRefsByUid();
+
+      const activeUids = [];
+      const inactiveUids = [];
+
+      for (const uid of Object.keys(refs || {})) {
+        const u = safeStr(uid);
+        if (!u) continue;
+        if (liked.has(u)) activeUids.push(u);
+        else inactiveUids.push(u);
+      }
+
+      // deterministic order: active first in UI usually, но тут только состояние
+      activeUids.sort();
+      inactiveUids.sort();
+
+      // back-compat shape used in some places (offline/playback-cache bootstrap)
+      const active = activeUids.map((x) => ({ uid: x }));
+      const inactive = inactiveUids.map((x) => ({ uid: x }));
+
+      return { activeUids, inactiveUids, active, inactive };
+    }
+
+    removeInactivePermanently(uid) {
+      const u = safeStr(uid);
+      if (!u) return { ok: false, reason: 'noUid' };
+
+      FavoritesV2.ensureMigrated();
+
+      // remove ref полностью (liked уже должен быть снят)
+      const removed = FavoritesV2.removeRef(u);
+
+      try { this._favEmitter.emit({ uid: u, liked: false, removed: true }); } catch {}
+      return { ok: true, removed: removed ? 1 : 0 };
+    }
+
+    restoreInactive(uid) {
+      const u = safeStr(uid);
+      if (!u) return { ok: false, reason: 'noUid' };
+
+      FavoritesV2.ensureMigrated();
+
+      // Восстановление = liked=true, ref активируется (inactiveAt=null)
+      FavoritesV2.toggle(u, { source: 'favorites' }); // если уже liked, toggle снимет; поэтому делаем безопасно:
+
+      // safer: force liked=true without relying on toggle polarity
+      const liked = FavoritesV2.readLikedSet();
+      const refs = FavoritesV2.readRefsByUid();
+
+      liked.add(u);
+      const ref = refs[u] || { uid: u, addedAt: Date.now(), inactiveAt: null };
+      if (!ref.addedAt) ref.addedAt = Date.now();
+      ref.inactiveAt = null;
+      refs[u] = ref;
+
+      FavoritesV2.writeLikedSet(liked);
+      FavoritesV2.writeRefsByUid(refs);
+
+      // v1 sync best-effort (if we can infer sourceAlbum from TrackRegistry/current track)
+      try {
+        const meta = W.TrackRegistry?.getTrackByUid?.(u) || null;
+        const a = safeStr(meta?.sourceAlbum);
+        if (a && !String(a).startsWith('__')) this._favSyncLikedV1ForAlbumUid(a, u, true);
+      } catch {}
+
+      try { this._favEmitter.emit({ uid: u, liked: true, fromAlbum: false }); } catch {}
+      return { ok: true };
+    }
+
+    showInactiveFavoriteModal(params = {}) {
+      const u = safeStr(params?.uid);
+      const title = String(params?.title || 'Трек');
+      if (!u) return;
+
+      const esc = W.Utils?.escapeHtml ? (s) => W.Utils.escapeHtml(String(s || '')) : (s) => String(s || '');
+
+      if (!W.Modals?.open) return;
+
+      const modal = W.Modals.open({
+        title: 'Трек неактивен',
+        maxWidth: 420,
+        bodyHtml: `
+          <div style="color:#9db7dd; line-height:1.45; margin-bottom:14px;">
+            <div style="margin-bottom:8px;"><strong>Трек:</strong> ${esc(title)}</div>
+            <div style="opacity:.9;">Вы можете вернуть трек в ⭐ или удалить его из списка «ИЗБРАННОЕ».</div>
+          </div>
+          ${W.Modals?.actionRow ? W.Modals.actionRow([
+            { act: 'add', text: 'Добавить в ⭐', className: 'online', style: 'min-width:160px;' },
+            { act: 'remove', text: 'Удалить', className: '', style: 'min-width:160px;' }
+          ]) : ''}
+        `
+      });
+
+      modal.querySelector('[data-act="add"]')?.addEventListener('click', () => {
+        try { modal.remove(); } catch {}
+        this.restoreInactive(u);
+      });
+
+      modal.querySelector('[data-act="remove"]')?.addEventListener('click', () => {
+        try { modal.remove(); } catch {}
+        if (W.Modals?.confirm) {
+          W.Modals.confirm({
+            title: 'Удалить из «ИЗБРАННОГО»?',
+            textHtml: `
+              <div style="margin-bottom:8px;"><strong>Трек:</strong> ${esc(title)}</div>
+              <div style="opacity:.9;">Трек исчезнет из списка «ИЗБРАННОЕ». В родном альбоме ⭐ снята.</div>
+            `,
+            confirmText: 'Удалить',
+            cancelText: 'Отмена',
+            onConfirm: () => {
+              this.removeInactivePermanently(u);
+              try { params?.onDeleted?.(); } catch {}
+            }
+          });
+        } else {
+          this.removeInactivePermanently(u);
+          try { params?.onDeleted?.(); } catch {}
+        }
+      });
+    }
+
+    _handleFavoritesPlaylistUnlikeCurrent(unlikedUid) {
+      try {
+        const playingAlbum = W.AlbumsManager?.getPlayingAlbum?.();
+        if (playingAlbum !== W.SPECIAL_FAVORITES_KEY) return;
+
+        const cur = this.getCurrentTrack();
+        const curUid = safeStr(cur?.uid);
+        const u = safeStr(unlikedUid);
+        if (!curUid || !u || curUid !== u) return;
+
+        // ✅ STRICT v2 rule:
+        const st = this.getFavoritesState();
+        const activeCount = Array.isArray(st?.activeUids) ? st.activeUids.length : 0;
+
+        if (activeCount === 0) {
+          // Единственный разрешённый STOP от Избранного
+          this.stop?.();
+          return;
+        }
+
+        // иначе всегда next()
+        this.next?.();
+      } catch (e) {
+        console.warn('_handleFavoritesPlaylistUnlikeCurrent failed:', e);
+      }
     }
     _favReadLikedMap() {
       try {
