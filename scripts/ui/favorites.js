@@ -172,13 +172,14 @@
   }
 
   async function playFirstActiveFavorite() {
-    try {
-      await buildFavoritesRefsModel();
-      const model = getModel();
-      const idx = model.findIndex(it => it && it.__active && it.audio);
-      if (idx < 0) return;
-      await w.AlbumsManager?.ensureFavoritesPlayback?.(idx);
-    } catch {}
+    // ВАЖНО:
+    // Автозапуск из FavoritesUI запрещён.
+    // Воспроизведение должно запускаться только:
+    // - по клику пользователя по строке (AlbumsManager.ensureFavoritesPlayback),
+    // - по Next/Prev/автопереходу в PlayerCore,
+    // - либо по разрешённому исключению (STOP в одном сценарии).
+    // Эта функция оставлена для back-compat, но не должна инициировать playback.
+    try { await buildFavoritesRefsModel(); } catch {}
   }
 
   // Авто-пересборка модели только когда открыт favorites view
