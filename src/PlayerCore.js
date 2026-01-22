@@ -64,7 +64,7 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
       // Favorites (v2 UID-only source of truth)
       // =========================
       this._fav = {
-        likedKeyV1: 'likedTrackUids:v1', // legacy by-album map (temporary)
+        // v2 only: liked/ref state lives in FavoritesV2 storages
       };
 
       this._favEmitter = {
@@ -682,55 +682,6 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
       return () => { try { this._favEmitter?.subs?.delete(cb); } catch {} };
     }
 
-    _favReadLikedMapV1() {
-      try {
-        const raw = localStorage.getItem(this._fav.likedKeyV1);
-        const j = raw ? JSON.parse(raw) : {};
-        return (j && typeof j === 'object') ? j : {};
-      } catch {
-        return {};
-      }
-    }
-
-    _favWriteLikedMapV1(map) {
-      try {
-        localStorage.setItem(this._fav.likedKeyV1, JSON.stringify(map && typeof map === 'object' ? map : {}));
-        return true;
-      } catch {
-        return false;
-      }
-    }
-
-    _favSyncLikedV1ForAlbumUid(albumKey, uid, liked) {
-      const a = safeStr(albumKey);
-      const u = safeStr(uid);
-      if (!a || !u || String(a).startsWith('__')) return;
-
-      const map = this._favReadLikedMapV1();
-      const prevArr = Array.isArray(map[a]) ? map[a] : [];
-      const arr = Array.from(new Set(prevArr.map(x => String(x || '').trim()).filter(Boolean)));
-
-      let nextArr = arr.slice();
-      if (liked) {
-        if (!nextArr.includes(u)) nextArr.push(u);
-      } else {
-        if (nextArr.includes(u)) nextArr = nextArr.filter(x => x !== u);
-      }
-
-      if (nextArr.length === 0) delete map[a];
-      else map[a] = nextArr;
-
-      this._favWriteLikedMapV1(map);
-    }
-
-    getLikedUidsForAlbum(albumKey) {
-      const a = safeStr(albumKey);
-      if (!a) return [];
-      const map = this._favReadLikedMapV1();
-      const arr = Array.isArray(map[a]) ? map[a] : [];
-      return Array.from(new Set(arr.map(x => String(x || '').trim()).filter(Boolean)));
-    }
-
     isFavorite(uid) {
       const u = safeStr(uid);
       if (!u) return false;
@@ -762,18 +713,7 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
       const source = fromAlbum ? 'album' : 'favorites';
       FavoritesV2.toggle(u, { source });
 
-      if (albumKey && !String(albumKey).startsWith('__')) {
-        this._favSyncLikedV1ForAlbumUid(albumKey, u, nextLiked);
-      } else {
-        try {
-          const cur = this.getCurrentTrack?.() || null;
-          const curUid = safeStr(cur?.uid);
-          const sa = safeStr(cur?.sourceAlbum);
-          if (curUid === u && sa && !String(sa).startsWith('__')) {
-            this._favSyncLikedV1ForAlbumUid(sa, u, nextLiked);
-          }
-        } catch {}
-      }
+      // v1 likedTrackUids:v1 удалён. Никакой синхронизации по albumKey больше нет.
 
       try {
         this._favEmitter.emit({ albumKey: albumKey || '', uid: u, liked: nextLiked, fromAlbum: !!fromAlbum });
@@ -852,11 +792,7 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
       FavoritesV2.writeLikedSet(liked);
       FavoritesV2.writeRefsByUid(refs);
 
-      try {
-        const meta = W.TrackRegistry?.getTrackByUid?.(u) || null;
-        const a = safeStr(meta?.sourceAlbum);
-        if (a && !String(a).startsWith('__')) this._favSyncLikedV1ForAlbumUid(a, u, true);
-      } catch {}
+      // v1 likedTrackUids:v1 удалён. Восстановление inactive влияет только на v2.
 
       try { this._favEmitter.emit({ uid: u, liked: true, fromAlbum: false }); } catch {}
       return { ok: true };
