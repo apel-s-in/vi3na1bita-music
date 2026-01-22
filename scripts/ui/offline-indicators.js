@@ -52,11 +52,9 @@ function ensureSlot(row) {
   slot.className = 'offline-ico-slot';
 
   const num = row.querySelector('.tnum');
-  if (num && num.parentNode === row) {
-    row.insertBefore(slot, num);
-  } else {
-    row.insertBefore(slot, row.firstChild);
-  }
+  if (num && num.parentNode === row) row.insertBefore(slot, num);
+  else row.insertBefore(slot, row.firstChild);
+
   return slot;
 }
 
@@ -146,7 +144,6 @@ function renderIndicator(row, state, uid) {
 async function refreshRow(row) {
   const uid = findUidForRow(row);
   const mgr = window.OfflineUI?.offlineManager;
-
   if (!mgr) return;
 
   if (!uid) {
@@ -169,34 +166,23 @@ function refreshAll() {
 
   __refreshAllTimer = setTimeout(() => {
     __refreshAllTimer = null;
-    const list = document.querySelectorAll('#track-list .track');
-    list.forEach((row) => refreshRow(row));
+    document.querySelectorAll('#track-list .track').forEach((row) => refreshRow(row));
   }, 50);
 }
 
 function bindLiveUpdatesOnce() {
-  const U = window.Utils;
   const mgr = window.OfflineUI?.offlineManager;
   if (!mgr) return;
 
-  const onWin = (ev, fn) => (U?.dom?.on ? U.dom.on(window, ev, fn) : (function() {
-    window.addEventListener(ev, fn);
-    return () => window.removeEventListener(ev, fn);
-  })());
-
-  // progress subscription (OfflineManager.on returns unsubscribe)
   try {
     const off = mgr.on('progress', (ev) => {
       const uid = String(ev?.uid || '').trim();
       if (!uid) return;
-
-      const rows = document.querySelectorAll(`#track-list .track[data-uid="${CSS.escape(uid)}"]`);
-      rows.forEach((row) => refreshRow(row));
+      document.querySelectorAll(`#track-list .track[data-uid="${CSS.escape(uid)}"]`).forEach((row) => refreshRow(row));
     });
     if (typeof off === 'function') st.unsubs.push(off);
   } catch {}
 
-  // favorites changes without DOM events
   try {
     const pc = window.playerCore;
     if (pc?.onFavoritesChanged) {
@@ -212,23 +198,18 @@ function attachMutationObserverOnce() {
   const root = document.getElementById('track-list') || document.body;
 
   st.mo = new MutationObserver((muts) => {
-    let need = false;
     for (const m of muts) {
-      if (m.type === 'childList') {
-        if ((m.addedNodes && m.addedNodes.length) || (m.removedNodes && m.removedNodes.length)) {
-          need = true;
-          break;
-        }
+      if (m.type === 'childList' && ((m.addedNodes && m.addedNodes.length) || (m.removedNodes && m.removedNodes.length))) {
+        refreshAll();
+        break;
       }
     }
-    if (need) refreshAll();
   });
 
   st.mo.observe(root, { childList: true, subtree: true });
 }
 
 export function attachOfflineIndicators() {
-  // ✅ singleton: повторный вызов не плодит observers/listeners
   if (st.attached) {
     refreshAll();
     return;
@@ -237,7 +218,6 @@ export function attachOfflineIndicators() {
 
   injectCss();
   refreshAll();
-
   attachMutationObserverOnce();
   bindLiveUpdatesOnce();
 }
