@@ -497,10 +497,9 @@ class AlbumsManager {
     if (this._favPlayGuard && (now - (this._favPlayGuard.ts || 0)) < 250) return;
     if (this._favPlayGuard) this._favPlayGuard.ts = now;
 
+    // ✅ Единственный источник модели избранного в UI — buildFavoritesModel() (v2 refs+liked).
     let model = null;
-    try { model = window.FavoritesUI?.getModel?.(); } catch {}
-    if (!Array.isArray(model)) model = window.favoritesRefsModel;
-
+    try { model = buildFavoritesModel(); } catch {}
     const list = Array.isArray(model) ? model : [];
     if (!list.length) return void window.NotificationSystem?.warning('Нет избранных треков');
 
@@ -514,13 +513,13 @@ class AlbumsManager {
       src: it.audio,
       sources: it.sources || null,
       title: it.title,
-      artist: it.__artist || 'Витрина Разбита',
+      artist: 'Витрина Разбита',
       album: FAV,
-      cover: it.__cover || LOGO,
+      cover: LOGO,
       lyrics: it.lyrics || null,
       fulltext: it.fulltext || null,
-      uid: typeof it.__uid === 'string' && it.__uid.trim() ? it.__uid.trim() : null,
-      sourceAlbum: it.__a,
+      uid: typeof it.uid === 'string' && it.uid.trim() ? it.uid.trim() : null,
+      sourceAlbum: it.sourceAlbum || null,
       hasLyrics: it.hasLyrics,
     })).filter((t) => !!t.uid && !!t.src);
 
@@ -537,8 +536,8 @@ class AlbumsManager {
 
     this.setPlayingAlbum(FAV);
 
-    const cu = toStr(clicked?.__uid).trim();
-    const ca = toStr(clicked?.__a).trim();
+    const cu = toStr(clicked?.uid).trim();
+    const ca = toStr(clicked?.sourceAlbum).trim();
     this.highlightCurrentTrack(-1, { uid: cu, albumKey: ca });
 
     window.PlayerUI?.ensurePlayerBlock?.(startIndex, { userInitiated: true });
