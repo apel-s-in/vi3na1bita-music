@@ -88,6 +88,11 @@ export const FavoritesV2 = {
     // If only one existed, still ensure both exist
     if (!hasLikedV2) writeJson(LS.LIKED_UIDS_V2, Array.from(likedSet));
     if (!hasRefsV2) writeJson(LS.REFS_BY_UID_V2, refsByUid);
+
+    // ✅ Финальная чистка: v1 больше не держим "вживую".
+    // Удаляем legacy ключи ПОСЛЕ успешной записи v2 (best-effort).
+    try { localStorage.removeItem(LS.LIKED_BY_ALBUM_V1); } catch {}
+    try { localStorage.removeItem(LS.REFS_V1); } catch {}
   },
 
   readLikedSet() {
