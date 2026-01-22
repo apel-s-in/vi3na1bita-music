@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5418baf399b278611514896a369fe5dd76032ed3.idx
-│   │       ├── pack-5418baf399b278611514896a369fe5dd76032ed3.pack
-│   │       └── pack-5418baf399b278611514896a369fe5dd76032ed3.rev
+│   │       ├── pack-eb2e9e18baab24b400667a54479b058336ca8476.idx
+│   │       ├── pack-eb2e9e18baab24b400667a54479b058336ca8476.pack
+│   │       └── pack-eb2e9e18baab24b400667a54479b058336ca8476.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 18:04:32 UTC
+Сгенерировано: 2026-01-22 18:15:53 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9168,13 +9168,14 @@ export function bindFavoritesList(container, handlers) {
   }
 
   async function playFirstActiveFavorite() {
-    try {
-      await buildFavoritesRefsModel();
-      const model = getModel();
-      const idx = model.findIndex(it => it && it.__active && it.audio);
-      if (idx < 0) return;
-      await w.AlbumsManager?.ensureFavoritesPlayback?.(idx);
-    } catch {}
+    // ВАЖНО:
+    // Автозапуск из FavoritesUI запрещён.
+    // Воспроизведение должно запускаться только:
+    // - по клику пользователя по строке (AlbumsManager.ensureFavoritesPlayback),
+    // - по Next/Prev/автопереходу в PlayerCore,
+    // - либо по разрешённому исключению (STOP в одном сценарии).
+    // Эта функция оставлена для back-compat, но не должна инициировать playback.
+    try { await buildFavoritesRefsModel(); } catch {}
   }
 
   // Авто-пересборка модели только когда открыт favorites view
