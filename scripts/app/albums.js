@@ -493,6 +493,10 @@ class AlbumsManager {
   }
 
   async ensureFavoritesPlayback(activeIndex) {
+    // ✅ На случай, если favorites открыли до завершения preload (гонки при старте/медленной сети).
+    // Важно: НЕ трогаем playback, только гарантируем TrackRegistry для сборки модели/urls.
+    try { await window.ensureTrackRegistryReadyForFavorites?.(); } catch {}
+
     // Anti-double-play guard: если ensureFavoritesPlayback вызван дважды почти одновременно,
     // второй вызов игнорируем. Это убирает "кашу" из нескольких Howl.play().
     const now = Date.now();
