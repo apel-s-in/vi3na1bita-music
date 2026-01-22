@@ -376,6 +376,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     }
 
     stop() {
+      // ЕДИНСТВЕННЫЙ настоящий STOP: по кнопке стоп (или разрешённое исключение избранного).
       if (this.sound) {
         try { this.sound.stop(); } catch {}
         try { this.sound.unload(); } catch {}
@@ -388,8 +389,14 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     }
 
     _silentUnloadCurrentSound() {
+      // ВАЖНО: этот метод используется внутренне при смене трека/качества.
+      // Он НЕ должен считаться "STOP" с точки зрения UX-инвариантов.
+      // Поэтому:
+      // - не эмитим onStop
+      // - не вызываем публичный stop()
+      // - останавливаем тик и выгружаем Howl максимально тихо
       if (this.sound) {
-        try { this.sound.stop(); } catch {}
+        try { this.sound.pause(); } catch {}
         try { this.sound.unload(); } catch {}
         this.sound = null;
       }
@@ -648,7 +655,10 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       const track = this.getCurrentTrack();
       if (!track) return { ok: true, mode: nextMode, changed: false };
 
-      if (!this.canToggleQualityForCurrentTrack()) return { ok: true, mode: nextMode, changed: false, disabled: true };
+      // UI всегда может показывать выбранный PQ, но переключать реально можно только если есть lo
+      if (!this.canToggleQualityForCurrentTrack()) {
+        return { ok: true, mode: nextMode, changed: false, disabled: true };
+      }
 
       const desiredSrc = this._selectSrc({
         legacySrc: track.src,
@@ -663,6 +673,8 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       const pos = this.getPosition();
       const idx = this.currentIndex;
 
+      // ВАЖНО: обновляем src только для текущего uid в playlist/originalPlaylist,
+      // но не считаем это "перестройкой плейлиста".
       const uid = safeStr(track.uid);
       if (uid) {
         const pi = this.playlist.findIndex(t => safeStr(t?.uid) === uid);
@@ -674,7 +686,10 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         this.playlist[idx].src = desiredSrc;
       }
 
+      // ТИХАЯ пересборка: не вызываем stop(), не эмитим onStop.
       this._silentUnloadCurrentSound();
+
+      // После load: seek(pos), и если wasPlaying=true — продолжаем, иначе остаёмся paused.
       this.load(idx, { autoPlay: wasPlaying, resumePosition: pos });
 
       return { ok: true, mode: nextMode, changed: true };
