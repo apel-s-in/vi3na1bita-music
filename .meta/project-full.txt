@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-0e71ad4012708cd05eb148fdc66de8754dff63ca.idx
-│   │       ├── pack-0e71ad4012708cd05eb148fdc66de8754dff63ca.pack
-│   │       └── pack-0e71ad4012708cd05eb148fdc66de8754dff63ca.rev
+│   │       ├── pack-6b43b9dcef9a96b2780cd0e3e5143af8b6ec63db.idx
+│   │       ├── pack-6b43b9dcef9a96b2780cd0e3e5143af8b6ec63db.pack
+│   │       └── pack-6b43b9dcef9a96b2780cd0e3e5143af8b6ec63db.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 15:38:14 UTC
+Сгенерировано: 2026-01-22 15:39:44 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -10424,7 +10424,7 @@ export async function preloadAllAlbumsTrackIndex() {
         audio_low: t.audio_low ? join(t.audio_low) : null,
         size: (typeof t.size === 'number') ? t.size : null,
         size_low: (typeof t.size_low === 'number') ? t.size_low : null,
-        lyrics: t.lyrics ? join(t.lyrics) : (t.lrc ? join(t.lrc) : null),
+        lyrics: t.lyrics ? join(t.lyrics) : null,
         fulltext: t.fulltext ? join(t.fulltext) : null,
         sourceAlbum: key
       });
