@@ -1,6 +1,6 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
-import { loginByPromo, likeFirstTrack, openFavorites, playFirstTrack } from './utils.js';
+import { BASE, loginByPromo, likeFirstTrack, openFavorites, playFirstTrack } from './utils.js';
 
 test('favorites UI builds and plays from favorites list', async ({ page }) => {
   await loginByPromo(page);
