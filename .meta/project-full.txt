@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-bf45ed288b2c148932b67fa861fe6cddbca4ac8b.idx
-│   │       ├── pack-bf45ed288b2c148932b67fa861fe6cddbca4ac8b.pack
-│   │       └── pack-bf45ed288b2c148932b67fa861fe6cddbca4ac8b.rev
+│   │       ├── pack-7c02f5387969c9367cfc48a42d42a429d188eb6c.idx
+│   │       ├── pack-7c02f5387969c9367cfc48a42d42a429d188eb6c.pack
+│   │       └── pack-7c02f5387969c9367cfc48a42d42a429d188eb6c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-22 20:29:38 UTC
+Сгенерировано: 2026-01-22 20:39:42 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4107,8 +4107,12 @@ export function attachPlaybackCache() {
 
     if (nextOn) {
       if (playingAlbum === w.SPECIAL_FAVORITES_KEY) {
-        const model = Array.isArray(w.favoritesRefsModel) ? w.favoritesRefsModel : [];
-        if (!model.some(it => it && it.__active && it.audio)) {
+        // ✅ Важно: в "Избранном" доступность определяется только активными (liked) в v2.
+        // Никаких window.favoritesRefsModel (его может не быть).
+        const stFav = w.playerCore?.getFavoritesState?.();
+        const activeCount = Number(stFav?.activeUids?.length || 0) || 0;
+
+        if (activeCount <= 0) {
           w.NotificationSystem?.info?.('Отметьте понравившийся трек ⭐');
           U.lsSetBool01(LS.FAV_ONLY, false);
           setFavoritesOnlyUI(false);
