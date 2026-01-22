@@ -206,6 +206,7 @@ class AlbumsManager {
         target.classList.add('animating');
         setTimeout(() => target.classList.remove('animating'), 320);
 
+        try { await window.ensureTrackRegistryReadyForFavorites?.(); } catch {}
         window.playerCore.toggleFavorite(uid, { fromAlbum: true, albumKey });
         return;
       }
@@ -455,7 +456,8 @@ class AlbumsManager {
       bindFavoritesList(container, {
         getModel,
 
-        onStarClick: ({ uid, albumKey }) => {
+        onStarClick: async ({ uid, albumKey }) => {
+          try { await window.ensureTrackRegistryReadyForFavorites?.(); } catch {}
           window.playerCore?.toggleFavorite?.(uid, { fromAlbum: false, albumKey });
         },
 
