@@ -2,9 +2,13 @@
 const APP_CONFIG = window.APP_CONFIG;
 
 import { $, toStr, escHtml, isMobileUA } from './utils/app-utils.js';
-import { renderFavoritesList, renderFavoritesEmpty, bindFavoritesList } from '../ui/favorites-view.js';
-import { buildFavoritesModel } from '../ui/favorites.js';
 import { normalizeTracks, normalizeSocials } from './albums/loaders.js';
+import {
+  renderAlbumIcons as renderAlbumIconsUI,
+  renderAlbumTitle as renderAlbumTitleUI,
+  renderSocials as renderSocialsUI,
+  renderTrackList as renderTrackListUI
+} from './albums/render.js';
 import { loadFavoritesAlbum, ensureFavoritesPlayback, loadNewsAlbum } from './albums/specials.js';
 
 const FAV = window.SPECIAL_FAVORITES_KEY || '__favorites__';
@@ -184,14 +188,11 @@ class AlbumsManager {
   }
 
   renderAlbumIcons() {
-    const container = $('album-icons');
-    if (!container) return;
-
-    container.innerHTML = '';
-
     const isMobile = isMobileUA();
     const order = Array.isArray(APP_CONFIG?.ICON_ALBUMS_ORDER) ? APP_CONFIG.ICON_ALBUMS_ORDER : [];
     const idx = Array.isArray(window.albumsIndex) ? window.albumsIndex : [];
+
+    const items = [];
 
     for (const it of order) {
       const key = it?.key;
@@ -202,25 +203,16 @@ class AlbumsManager {
       const baseIcon = it?.icon || LOGO;
       const { p1, p2 } = buildAlbumIconSrc(baseIcon, isMobile);
 
-      const el = document.createElement('div');
-      el.className = 'album-icon';
-      el.dataset.album = key;
-      el.dataset.akey = key;
-      el.title = title;
-      el.innerHTML = `<img src="${p1}" srcset="${p2} 2x" alt="${escHtml(title)}" draggable="false" loading="lazy" width="60" height="60">`;
-
-      const onActivate = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        this.handleAlbumIconClick(key);
-      };
-
-      // ВАЖНО: не вешаем одновременно click + pointerup (на мобильных это часто даёт двойной вызов).
-      // CSS уже содержит touch-action: manipulation, этого достаточно.
-      el.addEventListener('click', onActivate);
-
-      container.appendChild(el);
+      items.push({
+        key,
+        title,
+        icon: { p1, p2 },
+      });
     }
+
+    renderAlbumIconsUI(items, {
+      onClick: (albumKey) => this.handleAlbumIconClick(albumKey),
+    });
   }
 
   async handleAlbumIconClick(albumKey) {
@@ -367,40 +359,20 @@ class AlbumsManager {
   }
 
   renderAlbumTitle(title, modifier = '') {
-    const el = $('active-album-title');
-    if (!el) return;
-    el.textContent = title;
-    el.className = 'active-album-title';
-    if (modifier) el.classList.add(modifier);
+    renderAlbumTitleUI(title, modifier);
   }
 
   renderSocials(links) {
-    const container = $('social-links');
-    if (!container) return;
-
-    container.innerHTML = '';
-
     const normalized = Array.isArray(links)
       ? links.map((l) => ({ label: l?.label || l?.title || 'Ссылка', url: l?.url })).filter((l) => !!l.url)
       : [];
-
-    for (const link of normalized) {
-      const a = document.createElement('a');
-      a.href = link.url;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-      a.textContent = link.label;
-      container.appendChild(a);
-    }
+    renderSocialsUI(normalized);
   }
 
   renderTrackList(tracks, albumKey) {
-    const container = $('track-list');
-    if (!container) return;
-
-    // ✅ Быстрый рендер без навешивания обработчиков на каждую строку
     const list = Array.isArray(tracks) ? tracks : [];
-    container.innerHTML = list.map((t, i) => {
+
+    const rowTemplate = (t, i) => {
       const uid = typeof t?.uid === 'string' && t.uid.trim() ? t.uid.trim() : '';
       const liked = uid ? !!window.playerCore?.isFavorite?.(uid) : false;
       const numText = `${String(t?.num || i + 1).padStart(2, '0')}.`;
@@ -421,7 +393,9 @@ class AlbumsManager {
                data-uid="${escHtml(uid)}">
         </div>
       `;
-    }).join('');
+    };
+
+    renderTrackListUI(list, { rowTemplate });
   }
 
   highlightCurrentTrack(index, opts = {}) {
