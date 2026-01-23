@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3dadc8b2c5f3dcdd6358c435a1521254680c3781.idx
-│   │       ├── pack-3dadc8b2c5f3dcdd6358c435a1521254680c3781.pack
-│   │       └── pack-3dadc8b2c5f3dcdd6358c435a1521254680c3781.rev
+│   │       ├── pack-a06fd47f3517865f299539454697b812cd2c3300.idx
+│   │       ├── pack-a06fd47f3517865f299539454697b812cd2c3300.pack
+│   │       └── pack-a06fd47f3517865f299539454697b812cd2c3300.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-23 10:16:03 UTC
+Сгенерировано: 2026-01-23 10:16:44 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -10226,13 +10226,9 @@ class NotificationSystem {
   }
   
   escapeHtml(text) {
-    const fn = window.Utils?.escapeHtml;
-    const s = String(text || '');
-    if (typeof fn === 'function') return fn(s);
-    // fallback без DOM-аллоцирования
-    return s.replace(/[<>&'"]/g, (m) => ({
-      '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&#39;', '"': '&quot;'
-    }[m]));
+    // В проекте scripts/core/utils.js загружается раньше notify.js (см. index.html),
+    // поэтому держим один источник истины.
+    return window.Utils.escapeHtml(String(text || ''));
   }
   
   // Публичные методы
