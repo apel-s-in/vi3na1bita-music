@@ -4,7 +4,6 @@ const APP_CONFIG = window.APP_CONFIG;
 import { $, toStr, escHtml, isMobileUA } from './utils/app-utils.js';
 import { renderFavoritesList, renderFavoritesEmpty, bindFavoritesList } from '../ui/favorites-view.js';
 import { buildFavoritesModel } from '../ui/favorites.js';
-import { loadAndRenderNewsInline } from '../ui/news-inline.js';
 import { normalizeTracks, normalizeSocials } from './albums/loaders.js';
 import { loadFavoritesAlbum, ensureFavoritesPlayback, loadNewsAlbum } from './albums/specials.js';
 
