@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f0976d60f8f9823be472c3d5aff1aeb53eafb5b7.idx
-│   │       ├── pack-f0976d60f8f9823be472c3d5aff1aeb53eafb5b7.pack
-│   │       └── pack-f0976d60f8f9823be472c3d5aff1aeb53eafb5b7.rev
+│   │       ├── pack-992549b458a69bc8e0f9399e68e9395ad45bdbc8.idx
+│   │       ├── pack-992549b458a69bc8e0f9399e68e9395ad45bdbc8.pack
+│   │       └── pack-992549b458a69bc8e0f9399e68e9395ad45bdbc8.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-23 10:14:20 UTC
+Сгенерировано: 2026-01-23 10:15:07 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2328,7 +2328,7 @@ export function renderAlbumIcons(items = [], opts = {}) {
 // Спец-альбомы: __favorites__ и __reliz__ (news)
 // Важно: никаких автоплеев из onFavoritesChanged, только UI refresh.
 
-import { $, toStr } from '../utils/app-utils.js';
+import { $ } from '../utils/app-utils.js';
 import { renderFavoritesList, renderFavoritesEmpty, bindFavoritesList } from '../../ui/favorites-view.js';
 import { buildFavoritesModel } from '../../ui/favorites.js';
 import { loadAndRenderNewsInline } from '../../ui/news-inline.js';
