@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-992549b458a69bc8e0f9399e68e9395ad45bdbc8.idx
-│   │       ├── pack-992549b458a69bc8e0f9399e68e9395ad45bdbc8.pack
-│   │       └── pack-992549b458a69bc8e0f9399e68e9395ad45bdbc8.rev
+│   │       ├── pack-3dadc8b2c5f3dcdd6358c435a1521254680c3781.idx
+│   │       ├── pack-3dadc8b2c5f3dcdd6358c435a1521254680c3781.pack
+│   │       └── pack-3dadc8b2c5f3dcdd6358c435a1521254680c3781.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-23 10:15:07 UTC
+Сгенерировано: 2026-01-23 10:16:03 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4250,7 +4250,7 @@ export function attachPlaybackCache() {
     if (!uid) return;
 
     // mini — это НЕ favorites view, значит поведение "как из родного альбома"
-    // ВАЖНО: передаём albumKey, иначе PlayerCore может не обновить likedTrackUids:v1 корректно.
+    // albumKey передаём как best-effort контекст (для UI/подсветки/совместимости), а не для хранения liked.
     const sourceAlbum = String(track?.sourceAlbum || '').trim();
     const playingAlbum = String(w.AlbumsManager?.getPlayingAlbum?.() || '').trim();
 
@@ -4374,7 +4374,7 @@ export function attachPlaybackCache() {
     get currentLyricsLines() { return w.LyricsController?.getCurrentLyricsLines?.() || []; },
   };
 
-  w.toggleFavoritesOnly = toggleFavoritesOnly;
+  // legacy global alias removed (use window.PlayerUI.toggleFavoritesOnly)
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initialize);
   else initialize();
