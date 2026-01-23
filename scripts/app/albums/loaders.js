@@ -1,4 +1,6 @@
 // scripts/app/albums/loaders.js
+// Загрузка/нормализация данных альбома (tracks/socials) + регистрация треков в TrackRegistry.
+
 import { registerTrack } from '../track-registry.js';
 
 export function firstUrl(base, rel) {
@@ -13,9 +15,10 @@ export function normalizeSocials(raw) {
 
 export function normalizeTracks(tracks, base, albumKey) {
   const out = [];
+  const list = Array.isArray(tracks) ? tracks : [];
 
-  for (let i = 0; i < tracks.length; i++) {
-    const t = tracks[i] || {};
+  for (let i = 0; i < list.length; i++) {
+    const t = list[i] || {};
 
     const fileHi = firstUrl(base, t.audio);
     const fileLo = firstUrl(base, t.audio_low);
@@ -29,17 +32,16 @@ export function normalizeTracks(tracks, base, albumKey) {
     const sizeLo = typeof t.size_low === 'number' ? t.size_low : null;
 
     const hasLyrics = typeof t.hasLyrics === 'boolean' ? t.hasLyrics : !!lyrics;
-    const sources = fileHi || fileLo ? { audio: { hi: fileHi, lo: fileLo } } : null;
 
     const tr = {
       num: i + 1,
       title: t.title || `Трек ${i + 1}`,
-      file: fileHi, // back-compat
+      file: fileHi, // back-compat (часть кода может использовать t.file)
       fileHi,
       fileLo,
       sizeHi,
       sizeLo,
-      sources,
+      sources: (fileHi || fileLo) ? { audio: { hi: fileHi, lo: fileLo } } : null,
       lyrics,
       fulltext,
       uid,
@@ -48,6 +50,7 @@ export function normalizeTracks(tracks, base, albumKey) {
 
     out.push(tr);
 
+    // Регистрация в TrackRegistry (UID-only)
     if (uid) {
       try {
         registerTrack({
@@ -57,6 +60,7 @@ export function normalizeTracks(tracks, base, albumKey) {
           audio_low: tr.fileLo || null,
           size: tr.sizeHi || null,
           size_low: tr.sizeLo || null,
+          sources: tr.sources || null,
           lyrics: tr.lyrics || null,
           fulltext: tr.fulltext || null,
           sourceAlbum: albumKey,
