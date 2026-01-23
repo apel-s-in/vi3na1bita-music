@@ -802,7 +802,7 @@
     if (!uid) return;
 
     // mini — это НЕ favorites view, значит поведение "как из родного альбома"
-    // ВАЖНО: передаём albumKey, иначе PlayerCore может не обновить likedTrackUids:v1 корректно.
+    // albumKey передаём как best-effort контекст (для UI/подсветки/совместимости), а не для хранения liked.
     const sourceAlbum = String(track?.sourceAlbum || '').trim();
     const playingAlbum = String(w.AlbumsManager?.getPlayingAlbum?.() || '').trim();
 
@@ -926,7 +926,7 @@
     get currentLyricsLines() { return w.LyricsController?.getCurrentLyricsLines?.() || []; },
   };
 
-  w.toggleFavoritesOnly = toggleFavoritesOnly;
+  // legacy global alias removed (use window.PlayerUI.toggleFavoritesOnly)
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initialize);
   else initialize();
