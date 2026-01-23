@@ -2,7 +2,7 @@
 // Спец-альбомы: __favorites__ и __reliz__ (news)
 // Важно: никаких автоплеев из onFavoritesChanged, только UI refresh.
 
-import { $, toStr } from '../utils/app-utils.js';
+import { $ } from '../utils/app-utils.js';
 import { renderFavoritesList, renderFavoritesEmpty, bindFavoritesList } from '../../ui/favorites-view.js';
 import { buildFavoritesModel } from '../../ui/favorites.js';
 import { loadAndRenderNewsInline } from '../../ui/news-inline.js';
