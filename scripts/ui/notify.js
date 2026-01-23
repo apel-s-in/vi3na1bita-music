@@ -95,13 +95,9 @@ class NotificationSystem {
   }
   
   escapeHtml(text) {
-    const fn = window.Utils?.escapeHtml;
-    const s = String(text || '');
-    if (typeof fn === 'function') return fn(s);
-    // fallback без DOM-аллоцирования
-    return s.replace(/[<>&'"]/g, (m) => ({
-      '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&#39;', '"': '&quot;'
-    }[m]));
+    // В проекте scripts/core/utils.js загружается раньше notify.js (см. index.html),
+    // поэтому держим один источник истины.
+    return window.Utils.escapeHtml(String(text || ''));
   }
   
   // Публичные методы
