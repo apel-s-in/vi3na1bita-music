@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c5c89e6caab56d42079699f563051a04152123d7.idx
-│   │       ├── pack-c5c89e6caab56d42079699f563051a04152123d7.pack
-│   │       └── pack-c5c89e6caab56d42079699f563051a04152123d7.rev
+│   │       ├── pack-5b4652a6e64321d889348edbb9d38569d538244a.idx
+│   │       ├── pack-5b4652a6e64321d889348edbb9d38569d538244a.pack
+│   │       └── pack-5b4652a6e64321d889348edbb9d38569d538244a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-24 08:30:25 UTC
+Сгенерировано: 2026-01-24 08:31:29 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2306,7 +2306,8 @@ export function renderAlbumIcons(items = [], opts = {}) {
     el.dataset.akey = key;
     el.title = title;
 
-    el.innerHTML = `<img src="${esc(p1)}" srcset="${esc(p2)} 2x" alt="${esc(title)}" draggable="false" loading="lazy" width="60" height="60">`;
+    const srcset = p2 ? ` srcset="${esc(p2)} 2x"` : '';
+    el.innerHTML = `<img src="${esc(p1)}"${srcset} alt="${esc(title)}" draggable="false" loading="lazy" width="60" height="60">`;
 
     if (onClick) {
       el.addEventListener('click', (e) => {
