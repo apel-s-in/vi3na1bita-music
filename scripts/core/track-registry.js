@@ -6,12 +6,17 @@ export const TrackRegistry = {
         tracksMap.clear();
         albumsMap.clear();
         albumsConfig.forEach(album => {
-            albumsMap.set(album.id, album);
+            // ВАЖНО: Используем key как id, если id нет
+            const id = album.id || album.key; 
+            
+            // Сохраняем альбом с правильным ID
+            albumsMap.set(id, { ...album, id });
+
             if (album.tracks) {
                 album.tracks.forEach(track => {
                     tracksMap.set(track.uid, {
                         ...track,
-                        albumId: album.id,
+                        albumId: id,
                         cover: album.cover,
                         artist: track.artist || album.artist || "Витрина Разбита",
                         albumTitle: album.title
@@ -19,7 +24,7 @@ export const TrackRegistry = {
                 });
             }
         });
-        console.log(`[Registry] Indexed ${tracksMap.size} tracks.`);
+        console.log(`[Registry] Indexed ${tracksMap.size} tracks from ${albumsMap.size} albums.`);
     },
     getTrack(uid) { return tracksMap.get(uid); },
     getAlbum(id) { return albumsMap.get(id); },
@@ -30,8 +35,6 @@ export const TrackRegistry = {
     getAllTracks() { return Array.from(tracksMap.values()); }
 };
 
-// Экспорты для совместимости
 export const getTrackByUid = (uid) => TrackRegistry.getTrack(uid);
 export const getAllTracks = () => TrackRegistry.getAllTracks();
-
 window.TrackRegistry = TrackRegistry;
