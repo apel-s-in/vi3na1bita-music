@@ -6,7 +6,7 @@ import { AppController } from './app/app-controller.js';
 import { initOfflineManager } from './offline/offline-manager.js';
 import { Toast, Modal } from './core/ui-kit.js';
 
-// Глобальные хелперы для совместимости с offline/legacy
+// Глобальные хелперы для совместимости
 window.Utils = { formatBytes: (n) => (n/1024/1024).toFixed(1)+' MB' };
 window.NotificationSystem = Toast; 
 window.Modals = Modal;
@@ -40,13 +40,15 @@ async function startApp() {
         console.log('🚀 App Start');
         $('#main-block').classList.remove('hidden');
 
-        const res = await fetch('config/config.json');
+        // В корневом файле albums.json лежит структура { albums: [...] }
+        const res = await fetch('albums.json'); 
         const data = await res.json();
         
         TrackRegistry.init(data.albums);
         FavoritesStore.init();
         PlayerCore.init();
         initOfflineManager().then(()=>console.log('Offline Ready'));
+        
         AppController.init(data.albums);
 
         $('#reload-btn').onclick = () => window.location.reload();
