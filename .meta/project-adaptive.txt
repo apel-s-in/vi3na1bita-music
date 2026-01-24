@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-12ce4821ad00ae95f124abfb418b4dd32d961398.idx
-│   │       ├── pack-12ce4821ad00ae95f124abfb418b4dd32d961398.pack
-│   │       └── pack-12ce4821ad00ae95f124abfb418b4dd32d961398.rev
+│   │       ├── pack-ef78fb5070a676435a19ef588cab24e460827617.idx
+│   │       ├── pack-ef78fb5070a676435a19ef588cab24e460827617.pack
+│   │       └── pack-ef78fb5070a676435a19ef588cab24e460827617.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-23 10:18:18 UTC
+Сгенерировано: 2026-01-24 08:19:57 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2454,8 +2454,8 @@ export async function ensureFavoritesPlayback(ctx, activeIndex) {
 
   ctx.setPlayingAlbum(FAV);
 
-  const cu = toStr(clicked?.uid).trim();
-  const ca = toStr(clicked?.sourceAlbum).trim();
+  const cu = String(clicked?.uid || '').trim();
+  const ca = String(clicked?.sourceAlbum || '').trim();
   ctx.highlightCurrentTrack(-1, { uid: cu, albumKey: ca });
 
   window.PlayerUI?.ensurePlayerBlock?.(startIndex, { userInitiated: true });
