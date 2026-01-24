@@ -4,7 +4,7 @@
 
 import { bytesByQuality } from '../offline/cache-db.js';
 // OfflineUI берем из window
-import { getTrackByUid } from '../app/track-registry.js';
+import { getTrackByUid } from '../core/track-registry.js';
 
 const CSS_TEXT = `
   #player-progress-bar { position: relative; }
