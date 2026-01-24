@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9e67a728a08ecaf586e0ee61f33a90bebe68bcaf.idx
-│   │       ├── pack-9e67a728a08ecaf586e0ee61f33a90bebe68bcaf.pack
-│   │       └── pack-9e67a728a08ecaf586e0ee61f33a90bebe68bcaf.rev
+│   │       ├── pack-1089a4fd58f0d1134002bbf34f478685ec6c5c5a.idx
+│   │       ├── pack-1089a4fd58f0d1134002bbf34f478685ec6c5c5a.pack
+│   │       └── pack-1089a4fd58f0d1134002bbf34f478685ec6c5c5a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -356,7 +356,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-24 10:48:55 UTC
+Сгенерировано: 2026-01-24 10:49:35 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4613,11 +4613,10 @@ export async function initOfflineManager() {
 // PlaybackCache (ESM) — кэширование окна PREV/CUR/NEXT (ТЗ 7)
 // Скачивает РЕАЛЬНЫЕ треки для playback, управляет окном воспроизведения
 
-import { getTrackByUid } from '../app/track-registry.js';
+import { getTrackByUid } from '../core/track-registry.js';
 import { isAllowedByNetPolicy, getNetPolicy } from './net-policy.js';
 import { markLocalTransient } from './cache-db.js';
 
-// ТЗ 7.3: окно всегда ровно 3 элемента PREV/CUR/NEXT
 const WINDOW_PREV = 1;
 const WINDOW_NEXT = 1;
 
