@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2c63e8ebb659561a8d01a7e68102acfe39e9b2ee.idx
-│   │       ├── pack-2c63e8ebb659561a8d01a7e68102acfe39e9b2ee.pack
-│   │       └── pack-2c63e8ebb659561a8d01a7e68102acfe39e9b2ee.rev
+│   │       ├── pack-c5c89e6caab56d42079699f563051a04152123d7.idx
+│   │       ├── pack-c5c89e6caab56d42079699f563051a04152123d7.pack
+│   │       └── pack-c5c89e6caab56d42079699f563051a04152123d7.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-24 08:24:28 UTC
+Сгенерировано: 2026-01-24 08:30:25 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1935,7 +1935,7 @@ class AlbumsManager {
       this.updateActiveIcon(albumKey);
       localStorage.setItem('currentAlbum', albumKey);
 
-      $('track-list')?.classList.remove('filtered');
+      // filtered (legacy) больше не используем; favonly-filtered управляется PlayerUI
 
       window.PlayerUI?.switchAlbumInstantly?.(albumKey);
       window.PlayerState?.save?.();
