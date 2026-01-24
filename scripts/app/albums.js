@@ -203,11 +203,7 @@ class AlbumsManager {
       const baseIcon = it?.icon || LOGO;
       const { p1, p2 } = buildAlbumIconSrc(baseIcon, isMobile);
 
-      items.push({
-        key,
-        title,
-        icon: { p1, p2 },
-      });
+      items.push({ key, title, icon: { p1, p2 } });
     }
 
     renderAlbumIconsUI(items, {
