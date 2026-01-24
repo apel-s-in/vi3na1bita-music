@@ -19,17 +19,12 @@ const MENU_CSS = `
   cursor: pointer;
   white-space: nowrap;
 }
-.cloud-ctx-menu-item:hover {
-  background: #333;
-}
+.cloud-ctx-menu-item:hover { background: #333; }
 `;
 
 function injectCss() {
   const U = window.Utils;
-  if (U?.dom?.createStyleOnce) {
-    U.dom.createStyleOnce('cloud-ctx-menu-css', MENU_CSS);
-    return;
-  }
+  if (U?.dom?.createStyleOnce) return void U.dom.createStyleOnce('cloud-ctx-menu-css', MENU_CSS);
 
   if (document.getElementById('cloud-ctx-menu-css')) return;
   const s = document.createElement('style');
@@ -39,40 +34,31 @@ function injectCss() {
 }
 
 let activeMenu = null;
-let offDocClick = null;
+let offDoc = null;
 
 function closeActiveMenu() {
   if (activeMenu) {
     try { activeMenu.remove(); } catch {}
     activeMenu = null;
   }
-  if (offDocClick) {
-    try { offDocClick(); } catch {}
-    offDocClick = null;
-  }
-}
-
-function onDocClick(e) {
-  if (activeMenu && !activeMenu.contains(e.target)) {
-    closeActiveMenu();
+  if (offDoc) {
+    try { offDoc(); } catch {}
+    offDoc = null;
   }
 }
 
 export function attachCloudMenu(opts = {}) {
-  const U = window.Utils;
-  const on = U?.dom?.on ? U.dom.on.bind(U.dom) : (el, ev, fn, o) => {
-    if (!el) return () => {};
-    el.addEventListener(ev, fn, o);
-    return () => el.removeEventListener(ev, fn, o);
-  };
-
-  const defer = U?.dom?.defer ? U.dom.defer.bind(U.dom) : (fn) => setTimeout(fn, 0);
-
   const root = opts.root;
-  const onAddLock = opts.onAddLock;
-  const onRemoveCache = opts.onRemoveCache;
-
   if (!root) return;
+
+  const U = window.Utils;
+  const on = U?.dom?.on
+    ? U.dom.on.bind(U.dom)
+    : (el, ev, fn, o) => {
+        if (!el) return () => {};
+        el.addEventListener(ev, fn, o);
+        return () => el.removeEventListener(ev, fn, o);
+      };
 
   injectCss();
   closeActiveMenu();
@@ -80,25 +66,20 @@ export function attachCloudMenu(opts = {}) {
   const menu = document.createElement('div');
   menu.className = 'cloud-ctx-menu';
 
-  const lockItem = document.createElement('div');
-  lockItem.className = 'cloud-ctx-menu-item';
-  lockItem.textContent = '🔒 Закрепить офлайн';
-  on(lockItem, 'click', (e) => {
-    e.stopPropagation();
-    closeActiveMenu();
-    if (typeof onAddLock === 'function') onAddLock();
-  });
-  menu.appendChild(lockItem);
+  const mkItem = (text, handler) => {
+    const el = document.createElement('div');
+    el.className = 'cloud-ctx-menu-item';
+    el.textContent = text;
+    on(el, 'click', (e) => {
+      e.stopPropagation();
+      closeActiveMenu();
+      try { handler?.(); } catch {}
+    });
+    return el;
+  };
 
-  const removeItem = document.createElement('div');
-  removeItem.className = 'cloud-ctx-menu-item';
-  removeItem.textContent = '🗑 Удалить из кэша';
-  on(removeItem, 'click', (e) => {
-    e.stopPropagation();
-    closeActiveMenu();
-    if (typeof onRemoveCache === 'function') onRemoveCache();
-  });
-  menu.appendChild(removeItem);
+  menu.appendChild(mkItem('🔒 Закрепить офлайн', opts.onAddLock));
+  menu.appendChild(mkItem('🗑 Удалить из кэша', opts.onRemoveCache));
 
   document.body.appendChild(menu);
 
@@ -106,20 +87,18 @@ export function attachCloudMenu(opts = {}) {
   let top = rect.bottom + 4;
   let left = rect.left;
 
-  if (left + menu.offsetWidth > window.innerWidth) {
-    left = window.innerWidth - menu.offsetWidth - 8;
-  }
-  if (top + menu.offsetHeight > window.innerHeight) {
-    top = rect.top - menu.offsetHeight - 4;
-  }
+  if (left + menu.offsetWidth > window.innerWidth) left = window.innerWidth - menu.offsetWidth - 8;
+  if (top + menu.offsetHeight > window.innerHeight) top = rect.top - menu.offsetHeight - 4;
 
   menu.style.top = `${top}px`;
   menu.style.left = `${left}px`;
 
   activeMenu = menu;
 
-  defer(() => {
-    // capture=true чтобы закрываться раньше других обработчиков при клике вне меню
-    offDocClick = on(document, 'click', onDocClick, true);
-  });
+  // capture=true чтобы закрываться раньше других обработчиков при клике вне меню
+  setTimeout(() => {
+    offDoc = on(document, 'click', (e) => {
+      if (activeMenu && !activeMenu.contains(e.target)) closeActiveMenu();
+    }, true);
+  }, 0);
 }
