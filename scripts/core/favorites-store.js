@@ -26,21 +26,78 @@ export const FavoritesStore = {
         return item && !!item.inactiveAt;
     },
 
-    toggle(uid) {
-        const idx = data.findIndex(i => i.uid === uid);
+    like(uid) {
+        const u = String(uid || '').trim();
+        if (!u) return false;
+
+        const idx = data.findIndex(i => i.uid === u);
         if (idx === -1) {
-            data.push({ uid, addedAt: Date.now(), inactiveAt: null });
+            data.push({ uid: u, addedAt: Date.now(), inactiveAt: null });
         } else {
-            // Если был inactive -> восстанавливаем. Если был active -> удаляем (soft delete)
-            if (data[idx].inactiveAt) {
-                data[idx].inactiveAt = null;
-                data[idx].addedAt = Date.now(); // Поднимаем вверх
-            } else {
-                data[idx].inactiveAt = Date.now();
-            }
+            data[idx].inactiveAt = null;
+            data[idx].addedAt = Date.now();
         }
         save();
-        return this.isLiked(uid);
+        return true;
+    },
+
+    /**
+     * ТЗ: unlike в родном альбоме = "без следа" (полностью убрать из избранного).
+     */
+    unlikeInAlbum(uid) {
+        const u = String(uid || '').trim();
+        if (!u) return false;
+
+        const before = data.length;
+        data = data.filter(i => i.uid !== u);
+        if (data.length !== before) save();
+        return true;
+    },
+
+    /**
+     * ТЗ: unlike в окне "Избранное" = перевести в inactive (буфер).
+     */
+    unlikeInFavorites(uid) {
+        const u = String(uid || '').trim();
+        if (!u) return false;
+
+        const idx = data.findIndex(i => i.uid === u);
+        if (idx === -1) {
+            // если вдруг записи не было (редкий случай) — создаём как inactive
+            data.push({ uid: u, addedAt: Date.now(), inactiveAt: Date.now() });
+        } else {
+            data[idx].inactiveAt = Date.now();
+        }
+        save();
+        return true;
+    },
+
+    restore(uid) {
+        const u = String(uid || '').trim();
+        if (!u) return false;
+
+        const idx = data.findIndex(i => i.uid === u);
+        if (idx === -1) {
+            data.push({ uid: u, addedAt: Date.now(), inactiveAt: null });
+        } else {
+            data[idx].inactiveAt = null;
+            data[idx].addedAt = Date.now();
+        }
+        save();
+        return true;
+    },
+
+    /**
+     * Окончательное удаление строки из избранного (разрешено только из favorites view через модалку).
+     */
+    removeRef(uid) {
+        const u = String(uid || '').trim();
+        if (!u) return false;
+
+        const before = data.length;
+        data = data.filter(i => i.uid !== u);
+        if (data.length !== before) save();
+        return true;
     },
 
     // Для плеера: только активные
@@ -51,18 +108,21 @@ export const FavoritesStore = {
             .map(i => i.uid);
     },
 
-    // Для списка "Избранное": все (и активные, и зачеркнутые)
+    // Для списка "Избранное": все (и активные, и inactive)
     getAllForUI() {
         return data
             .filter(i => TrackRegistry.getTrack(i.uid))
             .sort((a, b) => b.addedAt - a.addedAt)
             .map(i => i.uid);
     },
-    
-    // Очистка мусора (вызывать при старте)
+
+    /**
+     * purge НЕ должен удалять inactive: по ТЗ это "буфер" в избранном.
+     * purge может чистить только битые uid (которых нет в TrackRegistry).
+     */
     purge() {
-        const len = data.length;
-        data = data.filter(i => !i.inactiveAt);
-        if (data.length !== len) save();
+        const before = data.length;
+        data = data.filter(i => TrackRegistry.getTrack(i.uid));
+        if (data.length !== before) save();
     }
 };
