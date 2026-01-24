@@ -127,8 +127,8 @@ export async function ensureFavoritesPlayback(ctx, activeIndex) {
 
   ctx.setPlayingAlbum(FAV);
 
-  const cu = toStr(clicked?.uid).trim();
-  const ca = toStr(clicked?.sourceAlbum).trim();
+  const cu = String(clicked?.uid || '').trim();
+  const ca = String(clicked?.sourceAlbum || '').trim();
   ctx.highlightCurrentTrack(-1, { uid: cu, albumKey: ca });
 
   window.PlayerUI?.ensurePlayerBlock?.(startIndex, { userInitiated: true });
