@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-eae806e99e8253d85659f3b9c77cfa81c418d9ae.idx
-│   │       ├── pack-eae806e99e8253d85659f3b9c77cfa81c418d9ae.pack
-│   │       └── pack-eae806e99e8253d85659f3b9c77cfa81c418d9ae.rev
+│   │       ├── pack-bf2bf32ee224feccdf7ad851227d0250425e2a0a.idx
+│   │       ├── pack-bf2bf32ee224feccdf7ad851227d0250425e2a0a.pack
+│   │       └── pack-bf2bf32ee224feccdf7ad851227d0250425e2a0a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -356,7 +356,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-24 11:11:17 UTC
+Сгенерировано: 2026-01-24 11:16:02 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -895,96 +895,49 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-// service-worker.js
-// Единый Service Worker для PWA "Витрина Разбита"
-
-const SW_VERSION = '8.1.0';
-
-// Основные кэши (ожидаются lint-sw.mjs)
+const SW_VERSION = '9.0.0'; // Обновил версию, чтобы сбросить старый кэш
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
 const RUNTIME_CACHE = `vitrina-runtime-v${SW_VERSION}`;
-const MEDIA_CACHE = `vitrina-media-v${SW_VERSION}`;
 const OFFLINE_CACHE = `vitrina-offline-v${SW_VERSION}`;
-const META_CACHE = `vitrina-meta-v${SW_VERSION}`;
 
-// Конфиг по умолчанию (ожидается lint-sw.mjs)
-const DEFAULT_SW_CONFIG = {
-  mediaMaxCacheMB: 150,
-  nonRangeMaxStoreMB: 25,
-  nonRangeMaxStoreMBSlow: 10,
-  allowUnknownSize: false,
-  revalidateDays: 7
-};
-
-// Статический список ресурсов «ядра»
+// Только существующие файлы!
 const STATIC_ASSETS = [
   './',
   './index.html',
-  './news.html',
   './manifest.json',
   './styles/main.css',
+  './albums.json', // Конфиг теперь здесь
+  
+  // Изображения
   './img/logo.png',
   './img/star.png',
-  './img/star2.png',
   './icons/favicon-32.png',
-  './icons/favicon-16.png',
   './icons/apple-touch-icon.png',
 
-  // Скрипты ядра и UI
-  './scripts/core/bootstrap.js',
-  './scripts/core/config.js',
-  './scripts/app/gallery.js',
-  './scripts/ui/notify.js',
-  './scripts/ui/favorites.js',
-  // './scripts/ui/favorites-view.js', // ESM: грузится по требованию через imports (не precache)
-  './scripts/ui/sleep.js',
-  './scripts/ui/lyrics-modal.js',
-  './scripts/ui/sysinfo.js',
-  // './scripts/app/background-audio.js', // отсутствует: удалено из precache
-  // './scripts/app/background-events.js', // отсутствует в репозитории: удалено из precache
-  './scripts/app/player-ui.js',
-  './scripts/app/albums.js',
-  './scripts/app/albums/render.js',
-  './scripts/app/navigation.js',
-  './scripts/app.js',
-  './src/PlayerCore.js',
-
-  // Howler.js (CDN)
-  // ВАЖНО: не precache на install, чтобы не ронять установку SW из-за opaque/CORS/CDN-ошибок.
-  // CDN будет загружаться по сети; при необходимости закэшируется через runtime-стратегию.
+  // Новые скрипты (Ядро)
+  './scripts/main.js',
+  './scripts/core/utils.js',
+  './scripts/core/track-registry.js',
+  './scripts/core/favorites-store.js',
+  './scripts/core/player-core.js',
+  './scripts/core/ui-kit.js',
+  
+  // Приложение
+  './scripts/app/app-controller.js',
+  './scripts/app/lyrics-engine.js',
+  
+  // UI
+  './scripts/ui/track-list-renderer.js',
+  './scripts/ui/offline-modal.js',
+  
+  // Offline (сложная часть)
+  './scripts/offline/offline-manager.js',
+  './scripts/offline/cache-db.js',
+  './scripts/offline/net-policy.js',
+  './scripts/offline/playback-cache.js',
+  './scripts/offline/track-resolver.js'
 ];
 
-// ✅ Точный static-match: нормализуем пути в абсолютные URL внутри scope и сравниваем строго.
-// Это устраняет ложные совпадения из-за endsWith и стабильнее при querystring/hash.
-const normalizeUrlForMatch = (href) => {
-  try {
-    const u = new URL(href);
-    u.hash = '';
-    u.search = '';
-    // Нормализуем "/" как "/index.html" для cache-сопоставления
-    if (u.pathname.endsWith('/')) u.pathname += 'index.html';
-    return u.href;
-  } catch {
-    return String(href || '');
-  }
-};
-
-const STATIC_URLS = (() => {
-  const scope = (self.registration && self.registration.scope) ? self.registration.scope : self.location.origin + '/';
-  const set = new Set();
-
-  for (const asset of STATIC_ASSETS) {
-    // Только локальные пути (http(s) можно оставить, но у тебя их нет)
-    try {
-      const abs = new URL(asset, scope).href;
-      set.add(normalizeUrlForMatch(abs));
-    } catch {}
-  }
-
-  return set;
-})();
-
-// ========== INSTALL ==========
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CORE_CACHE)
@@ -993,197 +946,45 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// ========== ACTIVATE ==========
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((names) =>
       Promise.all(
         names.map((name) => {
-          if (
-            name !== CORE_CACHE &&
-            name !== RUNTIME_CACHE &&
-            name !== MEDIA_CACHE &&
-            name !== OFFLINE_CACHE &&
-            name !== META_CACHE
-          ) {
+          if (name !== CORE_CACHE && name !== RUNTIME_CACHE && name !== OFFLINE_CACHE) {
             return caches.delete(name);
           }
-          return undefined;
         })
       )
     ).then(() => self.clients.claim())
   );
 });
 
-// ========== FETCH ==========
 self.addEventListener('fetch', (event) => {
-  const { request } = event;
+  if (event.request.method !== 'GET') return;
 
-  // Игнорируем не-GET запросы
-  if (request.method !== 'GET') {
-    return;
+  const url = new URL(event.request.url);
+
+  // Аудио стримим (Range requests), не кэшируем в Core
+  if (/\.(mp3|ogg|m4a)$/i.test(url.pathname)) {
+    return; 
   }
 
-  const url = new URL(request.url);
-
-  // Аудио-файлы — прямой запрос (без кэша, чтобы не ломать стриминг)
-  if (/\.(mp3|ogg|m4a|flac)$/i.test(url.pathname)) {
-    event.respondWith(fetch(request));
-    return;
-  }
-
-  // Статика: cache-first из CORE/RUNTIME (точное сравнение)
-  const isStatic = STATIC_URLS.has(normalizeUrlForMatch(url.href));
-
-  if (isStatic) {
-    event.respondWith(
-      caches.match(request).then((cached) => {
-        if (cached) return cached;
-        return fetch(request).then((resp) => {
-          return caches.open(RUNTIME_CACHE).then((cache) => {
-            cache.put(request, resp.clone());
-            return resp;
-          });
-        });
-      })
-    );
-    return;
-  }
-
-  // Остальное: network-first с fallback в RUNTIME_CACHE
   event.respondWith(
-    fetch(request)
-      .then((resp) => {
-        const copy = resp.clone();
-        caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, copy));
-        return resp;
-      })
-      .catch(() => caches.match(request))
-  );
-});
-
-// ========== MESSAGE API (для sysinfo.js и ServiceWorkerManager) ==========
-self.addEventListener('message', (event) => {
-  const { data, ports } = event;
-  if (!data || typeof data !== 'object') return;
-
-  const type = data.type;
-
-  // Ответ версии SW для sysinfo.js
-  if (type === 'GET_SW_VERSION') {
-    const port = ports && ports[0];
-    if (port) {
-      port.postMessage({ version: SW_VERSION });
-    }
-    return;
-  }
-
-  // Управление жизненным циклом
-  if (type === 'SKIP_WAITING') {
-    self.skipWaiting();
-    return;
-  }
-
-  // Заглушки под API ServiceWorkerManager — чтобы не падать
-  if (type === 'CLEAR_CACHE') {
-    const cacheType = data.payload && data.payload.cacheType;
-    let targetNames = [CORE_CACHE, RUNTIME_CACHE, MEDIA_CACHE, OFFLINE_CACHE, META_CACHE];
-
-    if (cacheType === 'media') {
-      targetNames = [MEDIA_CACHE];
-    } else if (cacheType === 'offline') {
-      targetNames = [OFFLINE_CACHE];
-    }
-
-    event.waitUntil(
-      caches.keys().then((names) =>
-        Promise.all(
-          names.map((name) => {
-            if (targetNames.includes(name)) {
-              return caches.delete(name);
-            }
-            return undefined;
-          })
-        )
-      )
-    );
-    return;
-  }
-
-  if (type === 'CACHE_AUDIO') {
-    // В упрощённой версии ничего не делаем, только не падаем.
-    // Можно будет реализовать позже.
-    return;
-  }
-
-  if (type === 'WARM_OFFLINE_SHELL') {
-    const port = ports && ports[0];
-    const urls = (data.payload && Array.isArray(data.payload.urls)) ? data.payload.urls : [];
-
-    event.waitUntil((async () => {
-      try {
-        const cache = await caches.open(OFFLINE_CACHE);
-
-        // Кладём ядро + переданные URL (covers/lyrics/json/news/etc.)
-        // addAll может упасть из-за одного плохого ресурса, поэтому делаем best-effort.
-        const all = STATIC_ASSETS.concat(urls);
-
-        for (const u of all) {
-          try { await cache.add(u); } catch {}
-        }
-
-        if (port) port.postMessage({ ok: true, cached: urls.length });
-      } catch (e) {
-        if (port) port.postMessage({ ok: false, error: String(e?.message || e) });
-      }
-    })());
-
-    return;
-  }
-
-  if (type === 'GET_CACHE_SIZE') {
-    const port = ports && ports[0];
-    if (!port) return;
-
-    // ✅ Облегчённый расчёт:
-    // - НЕ читаем body (arrayBuffer), чтобы не фризить устройства.
-    // - Считаем количество записей и суммарный Content-Length (если доступен).
-    event.waitUntil(
-      (async () => {
-        let totalBytes = 0;
-        let totalEntries = 0;
-
-        try {
-          const names = await caches.keys();
-          for (const name of names) {
-            const cache = await caches.open(name);
-            const reqs = await cache.keys();
-            totalEntries += reqs.length;
-
-            for (const req of reqs) {
-              const resp = await cache.match(req);
-              if (!resp) continue;
-
-              const len = resp.headers.get('content-length');
-              if (len) {
-                const n = Number(len);
-                if (Number.isFinite(n) && n > 0) totalBytes += n;
-              }
-            }
-          }
-        } catch (e) {
-          // игнорируем ошибки
-        }
-
-        port.postMessage({
-          size: totalBytes,
-          entries: totalEntries,
-          approx: true
+    caches.match(event.request).then((cached) => {
+      if (cached) return cached;
+      
+      return fetch(event.request).then((resp) => {
+        // Кэшируем новые ресурсы в Runtime
+        if (!resp || resp.status !== 200 || resp.type !== 'basic') return resp;
+        const responseToCache = resp.clone();
+        caches.open(RUNTIME_CACHE).then((cache) => {
+          cache.put(event.request, responseToCache);
         });
-      })()
-    );
-    return;
-  }
+        return resp;
+      });
+    })
+  );
 });
 
 //=================================================
