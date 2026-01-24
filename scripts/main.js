@@ -4,32 +4,28 @@ import { FavoritesStore } from './core/favorites-store.js';
 import { PlayerCore } from './core/player-core.js';
 import { AppController } from './app/app-controller.js';
 import { initOfflineManager } from './offline/offline-manager.js';
+import { Toast, Modal } from './core/ui-kit.js';
+
+// Глобальные хелперы для совместимости с offline/legacy
+window.Utils = { formatBytes: (n) => (n/1024/1024).toFixed(1)+' MB' };
+window.NotificationSystem = Toast; 
+window.Modals = Modal;
 
 const PROMOCODE = "VITRINA2025";
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // 1. Service Worker
-    if ('serviceWorker' in navigator) {
-        try {
-            await navigator.serviceWorker.register('./service-worker.js');
-            console.log('SW registered');
-        } catch (e) { console.error('SW fail', e); }
-    }
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('./service-worker.js').catch(()=>{});
 
-    // 2. Промокод
     const saved = localStorage.getItem('promocode');
     if (saved !== PROMOCODE) {
         const block = $('#promocode-block');
-        const inp = $('#promo-inp');
-        const err = $('#promo-error');
-        
         $('#promo-btn').onclick = () => {
-            if (inp.value.trim() === PROMOCODE) {
+            if ($('#promo-inp').value.trim() === PROMOCODE) {
                 localStorage.setItem('promocode', PROMOCODE);
                 block.classList.add('hidden');
                 startApp();
             } else {
-                err.textContent = "Неверный код";
+                $('#promo-error').textContent = "Неверный код";
             }
         };
         return; 
@@ -41,29 +37,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function startApp() {
     try {
-        console.log('🚀 Starting...');
+        console.log('🚀 App Start');
         $('#main-block').classList.remove('hidden');
 
-        // Данные
         const res = await fetch('config/config.json');
         const data = await res.json();
         
-        // Ядро
         TrackRegistry.init(data.albums);
         FavoritesStore.init();
         PlayerCore.init();
-        
-        // Оффлайн (фоновый старт)
-        initOfflineManager().then(() => console.log('Offline Mgr ready'));
-
-        // UI
+        initOfflineManager().then(()=>console.log('Offline Ready'));
         AppController.init(data.albums);
 
-        // Кнопка перезагрузки (полезно для PWA)
         $('#reload-btn').onclick = () => window.location.reload();
 
     } catch (e) {
-        alert('Critical Error: ' + e.message);
         console.error(e);
+        Toast.error('Ошибка загрузки: ' + e.message);
     }
 }
