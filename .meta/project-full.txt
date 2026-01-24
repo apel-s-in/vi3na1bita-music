@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6d4d8115078aa7431ef18bda15c86bdde5b67bfd.idx
-│   │       ├── pack-6d4d8115078aa7431ef18bda15c86bdde5b67bfd.pack
-│   │       └── pack-6d4d8115078aa7431ef18bda15c86bdde5b67bfd.rev
+│   │       ├── pack-237447a4d3986472cc371dc0f9d9b026615ff479.idx
+│   │       ├── pack-237447a4d3986472cc371dc0f9d9b026615ff479.pack
+│   │       └── pack-237447a4d3986472cc371dc0f9d9b026615ff479.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -356,7 +356,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-24 10:51:31 UTC
+Сгенерировано: 2026-01-24 10:57:16 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1932,6 +1932,7 @@ export const TrackRegistry = {
                 });
             }
         });
+        console.log(`[Registry] Indexed ${tracksMap.size} tracks.`);
     },
     getTrack(uid) { return tracksMap.get(uid); },
     getAlbum(id) { return albumsMap.get(id); },
@@ -1941,8 +1942,13 @@ export const TrackRegistry = {
     },
     getAllTracks() { return Array.from(tracksMap.values()); }
 };
-// Для совместимости с offline-manager
-window.TrackRegistry = TrackRegistry; 
+
+// 👇 ВАЖНО: Добавляем эти экспорты для совместимости с offline-менеджером
+export const getTrackByUid = (uid) => TrackRegistry.getTrack(uid);
+export const getAllTracks = () => TrackRegistry.getAllTracks();
+
+// Публикуем в window для старых скриптов (на всякий случай)
+window.TrackRegistry = TrackRegistry;
 
 //=================================================
 // FILE: /scripts/core/ui-kit.js
