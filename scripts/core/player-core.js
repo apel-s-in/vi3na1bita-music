@@ -3,13 +3,13 @@ import { shuffleArray } from './utils.js';
 
 export const PlayerCore = {
     audio: new Audio(),
-    playlist: [],         // UIDs
-    originalPlaylist: [], // UIDs (для unshuffle)
+    playlist: [],         
+    originalPlaylist: [], 
     currentIndex: -1,
     currentUid: null,
     
     isShuffle: false,
-    isRepeat: false, // false | 'all' | 'one'
+    isRepeat: false, 
     isPlaying: false,
 
     init() {
@@ -28,18 +28,15 @@ export const PlayerCore = {
 
         this.audio.addEventListener('play', () => this._state(true));
         this.audio.addEventListener('pause', () => this._state(false));
-        this.audio.addEventListener('error', (e) => {
-            console.warn('Audio err', e);
+        this.audio.addEventListener('error', () => {
             if(this.playlist.length > 1) this.next();
         });
     },
 
     setPlaylist(uids, startUid) {
-        // Уникализируем, чтобы не было дублей в плейлисте (если это не задумано)
         this.originalPlaylist = [...uids];
         this.playlist = this.isShuffle ? shuffleArray([...uids]) : [...uids];
         
-        // Если шаффл, убедимся что стартовый трек первый
         if (this.isShuffle && startUid) {
             this.playlist = this.playlist.filter(u => u !== startUid);
             this.playlist.unshift(startUid);
@@ -50,7 +47,6 @@ export const PlayerCore = {
 
     play(uid) {
         if (!uid) return;
-        // Resume если тот же трек
         if (this.currentUid === uid && this.audio.src) {
             this.audio.play().catch(()=>{});
             return;
@@ -62,15 +58,19 @@ export const PlayerCore = {
         this.currentUid = uid;
         this.currentIndex = this.playlist.indexOf(uid);
         
-        // Если трека нет в текущем списке (например поиск), играем его отдельно
         if (this.currentIndex === -1) {
             this.playlist = [uid];
             this.currentIndex = 0;
         }
 
-        this.audio.src = track.url || track.audio;
-        this.audio.play().catch(e => console.warn('Autoplay prevented', e));
-
+        // Проверяем Offline
+        const mgr = window.OfflineUI?.offlineManager;
+        // Здесь можно было бы добавить сложную логику резолва url, но для старта берем базовый
+        // Если есть оффлайн-менеджер, он подменит URL в blob
+        
+        this.audio.src = track.url || track.audio; // (или track.src из старого конфига)
+        
+        this.audio.play().catch(console.warn);
         window.dispatchEvent(new CustomEvent('player:track-change', { detail: { uid } }));
     },
 
@@ -92,11 +92,11 @@ export const PlayerCore = {
         this.play(this.playlist[idx]);
     },
 
-    next(auto = false) {
+    next() {
         let idx = this.currentIndex + 1;
         if (idx >= this.playlist.length) {
-            if (this.isRepeat === 'all' || this.isRepeat === true) idx = 0;
-            else return this._state(false); // Стоп в конце
+            if (this.isRepeat) idx = 0;
+            else return this._state(false); 
         }
         this.play(this.playlist[idx]);
     },
@@ -105,7 +105,6 @@ export const PlayerCore = {
         this.isShuffle = !this.isShuffle;
         if (this.isShuffle) {
             this.playlist = shuffleArray([...this.originalPlaylist]);
-            // Текущий трек ставим первым, чтобы не прерывать
             if (this.currentUid) {
                 this.playlist = this.playlist.filter(u => u !== this.currentUid);
                 this.playlist.unshift(this.currentUid);
