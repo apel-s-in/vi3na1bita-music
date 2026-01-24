@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3f902a402a3e3f8eb15bae400a20adcf3ed418e6.idx
-│   │       ├── pack-3f902a402a3e3f8eb15bae400a20adcf3ed418e6.pack
-│   │       └── pack-3f902a402a3e3f8eb15bae400a20adcf3ed418e6.rev
+│   │       ├── pack-a39aac2ab6fa42ceb223157363e505e0bc5d0d68.idx
+│   │       ├── pack-a39aac2ab6fa42ceb223157363e505e0bc5d0d68.pack
+│   │       └── pack-a39aac2ab6fa42ceb223157363e505e0bc5d0d68.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-24 09:02:49 UTC
+Сгенерировано: 2026-01-24 09:03:22 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5077,11 +5077,11 @@ try {
 // Тонкий фасад над window.Utils (без дублей логики).
 // Важно: не трогаем воспроизведение, только утилиты.
 
-export const $ = (id) => document.getElementById(id);
+export const $ = (id) => document.getElementById(String(id || ''));
 
 export const toStr = (v) => (v == null ? '' : String(v));
 
-export const isMobileUA = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+export const isMobileUA = () => !!window.Utils?.isMobile?.() || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
 export const escHtml = (s) => {
   const fn = window.Utils?.escapeHtml;
