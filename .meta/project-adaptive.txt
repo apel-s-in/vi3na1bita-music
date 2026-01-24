@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-58d9dc53ab5bb3e23ceadcdf5c999e1a79e774fa.idx
-│   │       ├── pack-58d9dc53ab5bb3e23ceadcdf5c999e1a79e774fa.pack
-│   │       └── pack-58d9dc53ab5bb3e23ceadcdf5c999e1a79e774fa.rev
+│   │       ├── pack-2c63e8ebb659561a8d01a7e68102acfe39e9b2ee.idx
+│   │       ├── pack-2c63e8ebb659561a8d01a7e68102acfe39e9b2ee.pack
+│   │       └── pack-2c63e8ebb659561a8d01a7e68102acfe39e9b2ee.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-24 08:22:14 UTC
+Сгенерировано: 2026-01-24 08:24:28 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1896,11 +1896,7 @@ class AlbumsManager {
       const baseIcon = it?.icon || LOGO;
       const { p1, p2 } = buildAlbumIconSrc(baseIcon, isMobile);
 
-      items.push({
-        key,
-        title,
-        icon: { p1, p2 },
-      });
+      items.push({ key, title, icon: { p1, p2 } });
     }
 
     renderAlbumIconsUI(items, {
