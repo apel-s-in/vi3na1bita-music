@@ -1,194 +1,223 @@
-import { $, on, debounce } from '../core/utils.js';
+import { $, on, isIOS } from '../core/utils.js';
 import { TrackRegistry } from '../core/track-registry.js';
 import { FavoritesStore } from '../core/favorites-store.js';
-import { TrackListRenderer } from '../ui/track-list-renderer.js';
 import { PlayerCore } from '../core/player-core.js';
+import { TrackListRenderer } from '../ui/track-list-renderer.js';
 
 export const AppController = {
-    // UI Elements
-    container: $('#track-list-container'), // Основной контейнер списка
-    headerTitle: $('#playlist-title'),
-    headerCover: $('#playlist-cover'),
-    
-    // State
-    currentContext: 'album', // 'album' | 'favorites' | 'search'
-    currentListUIDs: [],
-    
-    init() {
-        this.bindEvents();
-        // При старте можно загрузить последний альбом или дефолтный экран
+    albums: [],
+    currentAlbumId: null,
+    favOnlyMode: false,
+
+    init(albumsData) {
+        this.albums = albumsData;
+        this.renderIcons();
+        this.renderPlayer();
+        
+        // По умолчанию открываем первый альбом
+        if (this.albums.length) this.openAlbum(this.albums[0].id);
+
+        this.bindGlobalEvents();
     },
 
-    bindEvents() {
-        // --- ГЛАВНЫЙ ФИКС: Делегирование событий ---
-        // Вешаем ОДИН обработчик на весь список треков.
-        // Это устраняет проблему "Plays many songs".
+    renderIcons() {
+        const cont = $('#album-icons');
+        // Добавляем иконку Избранного
+        let html = `<div class="album-icon" data-id="__favorites__"><img src="img/star.png" alt="Fav"></div>`;
+        // Добавляем альбомы
+        html += this.albums.map(a => 
+            `<div class="album-icon" data-id="${a.id}"><img src="${a.cover}" alt=""></div>`
+        ).join('');
+        cont.innerHTML = html;
+    },
+
+    renderPlayer() {
+        // Вставляем плеер из шаблона
+        const tpl = $('#player-controls-template');
+        if (tpl) $('#track-list-container').after(tpl.content.cloneNode(true));
         
-        on(this.container, 'click', (e) => {
+        // Биндим кнопки плеера
+        $('#btn-play').onclick = () => PlayerCore.toggle();
+        $('#btn-prev').onclick = () => PlayerCore.prev();
+        $('#btn-next').onclick = () => PlayerCore.next();
+        
+        $('#btn-shuffle').onclick = function() {
+            const s = PlayerCore.toggleShuffle();
+            this.classList.toggle('active', s);
+        };
+        
+        $('#btn-repeat').onclick = function() {
+            const r = PlayerCore.toggleRepeat();
+            this.classList.toggle('active', !!r);
+        };
+
+        // Логика кнопки "F" (Только избранное)
+        $('#btn-fav-only').onclick = () => this.toggleFavOnlyMode();
+    },
+
+    bindGlobalEvents() {
+        // Клик по альбомам
+        on($('#album-icons'), 'click', (e) => {
+            const el = e.target.closest('.album-icon');
+            if (el) this.openAlbum(el.dataset.id);
+        });
+
+        // Клик по трекам (Делегирование)
+        on($('#track-list-container'), 'click', (e) => {
             const row = e.target.closest('.track-row');
             const btnFav = e.target.closest('.btn-fav');
-            
             if (!row) return;
+            
             const uid = row.dataset.uid;
 
-            // 1. Клик по лайку
             if (btnFav) {
-                e.stopPropagation(); // Не запускать трек
-                this.handleFavoriteClick(uid, btnFav, row);
+                e.stopPropagation();
+                this.handleFavClick(uid, btnFav, row);
+            } else {
+                this.handleTrackClick(uid);
+            }
+        });
+
+        // Слушаем плеер
+        window.addEventListener('player:track-change', (e) => this.updateUI(e.detail.uid));
+        window.addEventListener('player:state-change', (e) => {
+            $('#btn-play').textContent = e.detail.isPlaying ? '⏸' : '▶';
+        });
+        window.addEventListener('player:timeupdate', (e) => {
+            const { currentTime, duration } = e.detail;
+            const pct = duration ? (currentTime / duration) * 100 : 0;
+            const fill = $('#progress-fill');
+            if(fill) fill.style.width = pct + '%';
+        });
+    },
+
+    openAlbum(id) {
+        this.currentAlbumId = id;
+        const cont = $('#track-list-container');
+        const title = $('#playlist-title');
+        const cover = $('#cover-slot img');
+
+        let uids = [];
+
+        if (id === '__favorites__') {
+            // Избранное
+            const items = FavoritesStore.getAllForUI();
+            uids = items.map(i => i.uid);
+            title.textContent = "ИЗБРАННОЕ";
+            if(cover) cover.src = "img/star.png";
+            this.favOnlyMode = false; // В избранном этот режим не имеет смысла
+        } else {
+            // Обычный альбом
+            const alb = this.albums.find(a => a.id === id);
+            if (alb) {
+                uids = TrackRegistry.getAlbumTracks(id);
+                title.textContent = alb.title;
+                if(cover) cover.src = alb.cover;
+            }
+        }
+
+        // Сохраняем текущий список для контекста
+        this.currentListUIDs = uids;
+        this.renderList();
+    },
+
+    renderList() {
+        TrackListRenderer.renderList(
+            $('#track-list-container'), 
+            this.currentListUIDs, 
+            PlayerCore.currentUid, 
+            false,
+            this.currentAlbumId === '__favorites__' ? 'favorites' : 'album'
+        );
+    },
+
+    toggleFavOnlyMode() {
+        this.favOnlyMode = !this.favOnlyMode;
+        $('#btn-fav-only').classList.toggle('active', this.favOnlyMode);
+        
+        if (this.favOnlyMode) {
+            // Фильтруем текущий плейлист в плеере
+            const uids = PlayerCore.originalPlaylist.filter(uid => FavoritesStore.isLiked(uid));
+            if (uids.length === 0) {
+                alert("Нет избранных треков в этом альбоме");
+                this.toggleFavOnlyMode(); // Откат
                 return;
             }
-
-            // 2. Клик по строке (воспроизведение)
-            this.handleTrackClick(uid);
-        });
-
-        // Слушаем обновления плеера для подсветки активного трека
-        window.addEventListener('player:track-change', (e) => {
-            this.highlightTrack(e.detail.uid);
-            this.updateMiniPlayerUI(e.detail.uid);
-        });
-
-        window.addEventListener('player:state-change', (e) => {
-            this.updatePlayIcons(e.detail.isPlaying);
-        });
-        
-        // Слушаем глобальное обновление избранного (если оно изменено из другого места)
-        window.addEventListener('favorites:updated', () => {
-           // Если мы в избранном, можно перерисовать, но аккуратно
-           // Пока оставим ручное управление DOM для плавности
-        });
-    },
-
-    // Логика открытия Альбома
-    openAlbum(albumId) {
-        const uids = TrackRegistry.getAlbumTracks(albumId);
-        if (!uids.length) return;
-        
-        const albumInfo = TrackRegistry.getTrack(uids[0]); // Берем инфу из первого трека (там есть album data)
-        
-        this.currentContext = 'album';
-        this.currentListUIDs = uids;
-        
-        // Обновляем заголовок
-        if (this.headerTitle) this.headerTitle.textContent = albumInfo.albumTitle;
-        if (this.headerCover) this.headerCover.src = albumInfo.cover;
-
-        // Рендерим
-        TrackListRenderer.renderList(
-            this.container, 
-            uids, 
-            PlayerCore.currentUid, 
-            !PlayerCore.isPlaying, 
-            'album'
-        );
-    },
-
-    // Логика открытия Избранного
-    openFavorites() {
-        // ВАЖНО: Получаем полный список для UI (включая неактивные/удаленные)
-        const items = FavoritesStore.getAllForUI(); 
-        const uids = items.map(i => i.uid);
-
-        this.currentContext = 'favorites';
-        this.currentListUIDs = uids;
-
-        if (this.headerTitle) this.headerTitle.textContent = "Избранное";
-        if (this.headerCover) this.headerCover.src = "assets/img/fav-cover.jpg"; // Заглушка
-
-        TrackListRenderer.renderList(
-            this.container, 
-            uids, 
-            PlayerCore.currentUid, 
-            !PlayerCore.isPlaying, 
-            'favorites'
-        );
+            PlayerCore.setPlaylist(uids, PlayerCore.currentUid); // Сохраняем текущий, если он в списке
+        } else {
+            // Возвращаем полный список альбома
+            if (this.currentAlbumId && this.currentAlbumId !== '__favorites__') {
+                const uids = TrackRegistry.getAlbumTracks(this.currentAlbumId);
+                PlayerCore.setPlaylist(uids, PlayerCore.currentUid);
+            }
+        }
     },
 
     handleTrackClick(uid) {
-        // Если кликнули в контексте Избранного, плеер должен получить только избранные треки
-        let playlistToSet = [];
+        // Если мы в режиме "Только избранное", но кликнули по треку которого нет в избранном (в списке),
+        // то надо сбросить режим или играть только его? 
+        // Упростим: при клике загружаем контекст альбома.
         
-        if (this.currentContext === 'favorites') {
-            // Для плеера берем только реально активные треки
-            playlistToSet = FavoritesStore.getPlayableUIDs();
-        } else {
-            // Для альбома берем все треки альбома
-            playlistToSet = this.currentListUIDs;
+        let listToPlay = this.currentListUIDs;
+        
+        if (this.currentAlbumId === '__favorites__') {
+            // В избранном играем только активные
+            listToPlay = FavoritesStore.getPlayableUIDs();
+        } else if (this.favOnlyMode) {
+             // Если включен фильтр, играем только избранные из альбома
+             listToPlay = this.currentListUIDs.filter(u => FavoritesStore.isLiked(u));
         }
 
-        // Если этот плейлист еще не загружен в плеер или отличается
-        // (Простая проверка по длине и первому элементу для оптимизации, можно улучшить)
-        const isNewPlaylist = JSON.stringify(playlistToSet) !== JSON.stringify(PlayerCore.originalPlaylist);
-        
-        if (isNewPlaylist) {
-            PlayerCore.setPlaylist(playlistToSet, uid);
-        } else {
-            PlayerCore.play(uid);
-        }
+        PlayerCore.setPlaylist(listToPlay, uid);
     },
 
-    handleFavoriteClick(uid, btn, row) {
-        const isLikedNow = FavoritesStore.toggle(uid);
+    handleFavClick(uid, btn, row) {
+        const isLiked = FavoritesStore.toggle(uid);
         
-        // Обновляем иконку
-        if (isLikedNow) {
+        // Визуальное обновление кнопки
+        if (isLiked) {
             btn.classList.add('liked');
-            btn.title = "Убрать из избранного";
+            btn.textContent = '★';
         } else {
             btn.classList.remove('liked');
-            btn.title = "В избранное";
+            // btn.textContent = '☆'; // или пустая звезда
         }
 
-        // СПЕЦИАЛЬНАЯ ЛОГИКА ДЛЯ ЭКРАНА ИЗБРАННОГО
-        // Исправляет "пропадание инактивной строки"
-        if (this.currentContext === 'favorites') {
-            if (!isLikedNow) {
-                row.classList.add('inactive'); // Становится прозрачным
+        // Логика ИЗБРАННОГО (ТЗ: неактивная строка)
+        if (this.currentAlbumId === '__favorites__') {
+            if (!isLiked) {
+                row.classList.add('inactive');
+                // Если играл этот трек и он стал единственным активным - стоп (реализовано в PlayerCore check?)
+                // Тут можно проверить и переключить
+                if (PlayerCore.currentUid === uid) {
+                    PlayerCore.next();
+                }
             } else {
-                row.classList.remove('inactive'); // Возвращается
+                row.classList.remove('inactive');
             }
         }
-    },
-
-    highlightTrack(uid) {
-        // Снимаем активный класс со всех
-        const prev = this.container.querySelector('.track-row.active');
-        if (prev) prev.classList.remove('active');
-
-        // Ставим новому (если он есть в текущем списке)
-        const curr = this.container.querySelector(`.track-row[data-uid="${uid}"]`);
-        if (curr) curr.classList.add('active');
-    },
-    
-    updatePlayIcons(isPlaying) {
-        // Меняем иконки play/pause в списке
-        const activeRow = this.container.querySelector('.track-row.active .idx-num');
-        if (activeRow) {
-            activeRow.textContent = isPlaying ? '⏸' : '▶'; // Лучше использовать SVG
+        
+        // Если включен режим FavOnly в альбоме и сняли лайк -> удаляем из плейлиста плеера на лету?
+        // Для простоты: PlayerCore сам разберется при следующем next(), если мы обновим плейлист.
+        if (this.favOnlyMode && !isLiked) {
+             const newList = PlayerCore.playlist.filter(u => u !== uid);
+             PlayerCore.setPlaylist(newList); // без сброса текущего
         }
     },
 
-    updateMiniPlayerUI(uid) {
+    updateUI(uid) {
+        // Подсветка трека
+        const rows = document.querySelectorAll('.track-row');
+        rows.forEach(r => r.classList.remove('active'));
+        
+        const curr = document.querySelector(`.track-row[data-uid="${uid}"]`);
+        if (curr) curr.classList.add('active');
+
+        // Обновление инфо в плеере
         const track = TrackRegistry.getTrack(uid);
-        if (!track) return;
-        
-        // Обновление глобального плеера (снизу)
-        const pTitle = $('#player-track-title');
-        const pArtist = $('#player-track-artist');
-        const pCover = $('#player-cover');
-        
-        if (pTitle) pTitle.textContent = track.title;
-        if (pArtist) pArtist.textContent = track.artist;
-        if (pCover) pCover.src = track.cover;
-        
-        // Обновление MediaSession (для шторки уведомлений Android/iOS)
-        if ('mediaSession' in navigator) {
-            navigator.mediaSession.metadata = new MediaMetadata({
-                title: track.title,
-                artist: track.artist,
-                album: track.albumTitle,
-                artwork: [{ src: track.cover, sizes: '512x512', type: 'image/jpeg' }]
-            });
+        if (track) {
+            $('#player-track-title').textContent = track.title;
+            $('#player-track-artist').textContent = track.artist;
         }
     }
 };
