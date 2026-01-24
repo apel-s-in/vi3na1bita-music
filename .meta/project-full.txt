@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6ce73f6161c625a673502330f3971e34be749bac.idx
-│   │       ├── pack-6ce73f6161c625a673502330f3971e34be749bac.pack
-│   │       └── pack-6ce73f6161c625a673502330f3971e34be749bac.rev
+│   │       ├── pack-9e67a728a08ecaf586e0ee61f33a90bebe68bcaf.idx
+│   │       ├── pack-9e67a728a08ecaf586e0ee61f33a90bebe68bcaf.pack
+│   │       └── pack-9e67a728a08ecaf586e0ee61f33a90bebe68bcaf.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -356,7 +356,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-24 10:40:05 UTC
+Сгенерировано: 2026-01-24 10:48:55 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3429,7 +3429,8 @@ import {
 } from './cache-db.js';
 
 import { resolvePlaybackSource, isTrackAvailableOffline } from './track-resolver.js';
-import { getTrackByUid } from '../app/track-registry.js';
+// 👇 ИСПРАВЛЕННЫЙ ИМПОРТ
+import { getTrackByUid } from '../core/track-registry.js';
 import { getNetPolicy, isAllowedByNetPolicy, shouldConfirmByPolicy } from './net-policy.js';
 
 const LS = {
