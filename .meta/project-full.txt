@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ef78fb5070a676435a19ef588cab24e460827617.idx
-│   │       ├── pack-ef78fb5070a676435a19ef588cab24e460827617.pack
-│   │       └── pack-ef78fb5070a676435a19ef588cab24e460827617.rev
+│   │       ├── pack-397b733790acdf7c65b9d2c97ad0747f292eb8b9.idx
+│   │       ├── pack-397b733790acdf7c65b9d2c97ad0747f292eb8b9.pack
+│   │       └── pack-397b733790acdf7c65b9d2c97ad0747f292eb8b9.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-24 08:19:57 UTC
+Сгенерировано: 2026-01-24 08:21:46 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -10227,8 +10227,7 @@ class NotificationSystem {
   }
   
   escapeHtml(text) {
-    // В проекте scripts/core/utils.js загружается раньше notify.js (см. index.html),
-    // поэтому держим один источник истины.
+    // scripts/core/utils.js загружается раньше notify.js (см. index.html)
     return window.Utils.escapeHtml(String(text || ''));
   }
   
