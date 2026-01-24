@@ -62,19 +62,27 @@
           // Публичный best-effort helper для UI: можно вызывать сколько угодно раз.
           // Он НЕ трогает playback.
           window.ensureTrackRegistryReadyForFavorites = async function ensureTrackRegistryReadyForFavorites() {
+            // Единственный критерий "готово": реестр реально заполнен.
             try {
-              if (window.TrackRegistry?.getAllTracks?.()?.length) return true;
+              const n = window.TrackRegistry?.getAllTracks?.()?.length || 0;
+              if (n > 0) return true;
+            } catch {}
+
+            // Если есть флаг — это только подсказка, но не гарантия.
+            // Всё равно пытаемся прогреть, чтобы исключить "пустой реестр при key=1".
+            try {
+              await ensurePreload();
             } catch {}
 
             try {
-              if (localStorage.getItem(key) === '1') return true;
+              const n2 = window.TrackRegistry?.getAllTracks?.()?.length || 0;
+              if (n2 > 0) {
+                try { localStorage.setItem(key, '1'); } catch {}
+                return true;
+              }
             } catch {}
 
-            try {
-              return await ensurePreload();
-            } catch {
-              return false;
-            }
+            return false;
           };
 
           if (localStorage.getItem(key) !== '1') {
