@@ -2,13 +2,14 @@
 // Общие UI-утилиты (без влияния на playback)
 // ВАЖНО: не дублируем core utils. Здесь только тонкий фасад (back-compat для старых модулей).
 
-const _escFallback = (s) => String(s ?? '').replace(/[<>&'"]/g, (m) => ({
-  '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&#39;', '"': '&quot;'
-}[m]));
-
 export function esc(s) {
+  // По index.html scripts/core/utils.js загружается раньше.
   const fn = window.Utils?.escapeHtml;
-  return typeof fn === 'function' ? fn(String(s ?? '')) : _escFallback(s);
+  if (typeof fn === 'function') return fn(String(s ?? ''));
+  // Минимальный fallback (на случай ручного использования файла отдельно).
+  return String(s ?? '').replace(/[<>&'"]/g, (m) => ({
+    '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&#39;', '"': '&quot;'
+  })[m]);
 }
 
 export function formatBytes(n) {
