@@ -3,7 +3,7 @@
 // Ключевое правило: CQ влияет на воспроизведение ТОЛЬКО если CQ выше PQ
 
 import { bytesByQuality, getAudioBlob, touchLocalAccess, getLocalMeta } from './cache-db.js';
-import { getTrackByUid } from '../app/track-registry.js';
+import { getTrackByUid } from '../core/track-registry.js';
 
 const MB = 1024 * 1024;
 const COMPLETE_THRESHOLD = 0.92;
