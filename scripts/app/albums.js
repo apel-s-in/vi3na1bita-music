@@ -242,7 +242,7 @@ class AlbumsManager {
       this.updateActiveIcon(albumKey);
       localStorage.setItem('currentAlbum', albumKey);
 
-      $('track-list')?.classList.remove('filtered');
+      // filtered (legacy) больше не используем; favonly-filtered управляется PlayerUI
 
       window.PlayerUI?.switchAlbumInstantly?.(albumKey);
       window.PlayerState?.save?.();
