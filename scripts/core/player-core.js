@@ -1,104 +1,82 @@
 import { TrackRegistry } from './track-registry.js';
-import { shuffleArray, isIOS } from './utils.js';
+import { shuffleArray } from './utils.js';
 
 export const PlayerCore = {
     audio: new Audio(),
-    playlist: [],          // Массив UID (текущий порядок)
-    originalPlaylist: [],  // Массив UID (оригинальный порядок для unshuffle)
+    playlist: [],         // UIDs
+    originalPlaylist: [], // UIDs (для unshuffle)
     currentIndex: -1,
     currentUid: null,
     
-    // Состояние
-    isPlaying: false,
     isShuffle: false,
     isRepeat: false, // false | 'all' | 'one'
+    isPlaying: false,
 
     init() {
         this.audio.preload = 'auto';
         
-        // Автопереключение
         this.audio.addEventListener('ended', () => {
-            if (this.isRepeat === 'one') {
-                this.play(this.currentUid);
-            } else {
-                this.next(true); // true = auto play
-            }
+            if (this.isRepeat === 'one') this.play(this.currentUid);
+            else this.next(true);
         });
 
-        // Прокидываем события аудио наружу для UI
         this.audio.addEventListener('timeupdate', () => {
             window.dispatchEvent(new CustomEvent('player:timeupdate', { 
-                detail: { currentTime: this.audio.currentTime, duration: this.audio.duration } 
+                detail: { ct: this.audio.currentTime, dur: this.audio.duration } 
             }));
         });
 
-        this.audio.addEventListener('play', () => this._updateState(true));
-        this.audio.addEventListener('pause', () => this._updateState(false));
-        
-        // Error handling
+        this.audio.addEventListener('play', () => this._state(true));
+        this.audio.addEventListener('pause', () => this._state(false));
         this.audio.addEventListener('error', (e) => {
-            console.error('Audio Error:', e);
-            this.next(); // Пытаемся играть следующий, если этот сломан
+            console.warn('Audio err', e);
+            if(this.playlist.length > 1) this.next();
         });
     },
 
-    /**
-     * Устанавливает новый плейлист
-     * @param {Array} uids - массив UID
-     * @param {boolean} startImmediately - играть сразу?
-     */
-    setPlaylist(uids, startUid = null) {
+    setPlaylist(uids, startUid) {
+        // Уникализируем, чтобы не было дублей в плейлисте (если это не задумано)
         this.originalPlaylist = [...uids];
+        this.playlist = this.isShuffle ? shuffleArray([...uids]) : [...uids];
         
-        if (this.isShuffle) {
-            this.playlist = shuffleArray([...uids]);
-            // Если указан стартовый трек, ставим его первым
-            if (startUid) {
-                this.playlist = this.playlist.filter(id => id !== startUid);
-                this.playlist.unshift(startUid);
-            }
-        } else {
-            this.playlist = [...uids];
+        // Если шаффл, убедимся что стартовый трек первый
+        if (this.isShuffle && startUid) {
+            this.playlist = this.playlist.filter(u => u !== startUid);
+            this.playlist.unshift(startUid);
         }
 
-        if (startUid) {
-            this.play(startUid);
-        }
+        if (startUid) this.play(startUid);
     },
 
     play(uid) {
         if (!uid) return;
-
-        // Если это тот же трек и он на паузе -> resume
+        // Resume если тот же трек
         if (this.currentUid === uid && this.audio.src) {
-            this.audio.play().catch(e => console.warn('Play interrupted', e));
+            this.audio.play().catch(()=>{});
             return;
         }
 
         const track = TrackRegistry.getTrack(uid);
-        if (!track) return console.error('Track not found:', uid);
+        if (!track) return;
 
         this.currentUid = uid;
         this.currentIndex = this.playlist.indexOf(uid);
         
-        // Если трека нет в текущем плейлисте (например, запуск из поиска), добавляем временно
+        // Если трека нет в текущем списке (например поиск), играем его отдельно
         if (this.currentIndex === -1) {
-            this.playlist.unshift(uid);
+            this.playlist = [uid];
             this.currentIndex = 0;
         }
 
-        this.audio.src = track.url; // url берется из registry
-        this.audio.play().catch(err => {
-            console.warn('Auto-play blocked or error:', err);
-        });
+        this.audio.src = track.url || track.audio;
+        this.audio.play().catch(e => console.warn('Autoplay prevented', e));
 
-        // Событие смены трека (для обновления заголовка, обложки плеера)
         window.dispatchEvent(new CustomEvent('player:track-change', { detail: { uid } }));
     },
 
     toggle() {
         if (this.audio.paused) {
-            this.currentUid ? this.play(this.currentUid) : this.play(this.playlist[0]);
+            this.currentUid ? this.audio.play() : this.play(this.playlist[0]);
         } else {
             this.audio.pause();
         }
@@ -109,50 +87,33 @@ export const PlayerCore = {
             this.audio.currentTime = 0;
             return;
         }
-        let newIndex = this.currentIndex - 1;
-        if (newIndex < 0) newIndex = this.playlist.length - 1;
-        this.play(this.playlist[newIndex]);
+        let idx = this.currentIndex - 1;
+        if (idx < 0) idx = this.playlist.length - 1;
+        this.play(this.playlist[idx]);
     },
 
     next(auto = false) {
-        let newIndex = this.currentIndex + 1;
-        
-        // Конец плейлиста
-        if (newIndex >= this.playlist.length) {
-            if (this.isRepeat === 'all') {
-                newIndex = 0;
-            } else {
-                // Останавливаемся
-                this._updateState(false);
-                return;
-            }
+        let idx = this.currentIndex + 1;
+        if (idx >= this.playlist.length) {
+            if (this.isRepeat === 'all' || this.isRepeat === true) idx = 0;
+            else return this._state(false); // Стоп в конце
         }
-        this.play(this.playlist[newIndex]);
-    },
-
-    seek(percent) {
-        if (this.audio.duration) {
-            this.audio.currentTime = this.audio.duration * percent;
-        }
+        this.play(this.playlist[idx]);
     },
 
     toggleShuffle() {
         this.isShuffle = !this.isShuffle;
-        const currentUid = this.currentUid;
-        
         if (this.isShuffle) {
             this.playlist = shuffleArray([...this.originalPlaylist]);
-            // Перемещаем текущий трек в начало, чтобы не прерывать
-            if (currentUid) {
-                this.playlist = this.playlist.filter(id => id !== currentUid);
-                this.playlist.unshift(currentUid);
+            // Текущий трек ставим первым, чтобы не прерывать
+            if (this.currentUid) {
+                this.playlist = this.playlist.filter(u => u !== this.currentUid);
+                this.playlist.unshift(this.currentUid);
                 this.currentIndex = 0;
             }
         } else {
             this.playlist = [...this.originalPlaylist];
-            if (currentUid) {
-                this.currentIndex = this.playlist.indexOf(currentUid);
-            }
+            this.currentIndex = this.playlist.indexOf(this.currentUid);
         }
         return this.isShuffle;
     },
@@ -164,10 +125,12 @@ export const PlayerCore = {
         return this.isRepeat;
     },
 
-    _updateState(playing) {
+    seek(pct) {
+        if (this.audio.duration) this.audio.currentTime = this.audio.duration * pct;
+    },
+
+    _state(playing) {
         this.isPlaying = playing;
-        window.dispatchEvent(new CustomEvent('player:state-change', { 
-            detail: { isPlaying: playing, uid: this.currentUid } 
-        }));
+        window.dispatchEvent(new CustomEvent('player:state', { detail: { isPlaying: playing } }));
     }
 };
