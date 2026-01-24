@@ -7,7 +7,6 @@ export const on = (el, event, handler, options = false) => {
     return () => el.removeEventListener(event, handler, options);
 };
 
-// ВОТ ЭТА ФУНКЦИЯ БЫЛА ПРОПУЩЕНА, ИЗ-ЗА НЕЁ ОШИБКА
 export const dom = (tag, classes = '', html = '') => {
     const el = document.createElement(tag);
     if (classes) el.className = classes;
@@ -33,13 +32,4 @@ export const shuffleArray = (arr) => {
         [a[i], a[j]] = [a[j], a[i]];
     }
     return a;
-};
-
-// Простой debounce (нужен для некоторых UI событий)
-export const debounce = (func, wait) => {
-    let timeout;
-    return function(...args) {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => func.apply(this, args), wait);
-    };
 };
