@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-51c0b3c7affedbfcaee3585c8f0f5c3c50bde3bc.idx
-│   │       ├── pack-51c0b3c7affedbfcaee3585c8f0f5c3c50bde3bc.pack
-│   │       └── pack-51c0b3c7affedbfcaee3585c8f0f5c3c50bde3bc.rev
+│   │       ├── pack-6ce73f6161c625a673502330f3971e34be749bac.idx
+│   │       ├── pack-6ce73f6161c625a673502330f3971e34be749bac.pack
+│   │       └── pack-6ce73f6161c625a673502330f3971e34be749bac.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -344,11 +344,6 @@ vi3na1bita-music/
 │   │   ├── offline-modal.js
 │   │   └── track-list-renderer.js
 │   └── main.js
-├── src/
-│   ├── player-core/
-│   │   ├── media-session.js
-│   │   └── stats-tracker.js
-│   └── .gitkeep
 ├── styles/
 │   └── main.css
 ├── .gitignore
@@ -361,7 +356,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-24 10:39:43 UTC
+Сгенерировано: 2026-01-24 10:40:05 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6393,162 +6388,6 @@ try { main(); } catch (e) { console.error("❌", e); process.exit(1); }
       "tags": ["концерты"]
     }
   ]
-}
-
-//=================================================
-// FILE: /src/player-core/media-session.js
-// src/player-core/media-session.js
-// MediaSession: handlers ставим один раз, metadata/position обновляем по мере надобности.
-
-export function ensureMediaSession(handlers) {
-  if (!('mediaSession' in navigator)) return null;
-
-  const ms = navigator.mediaSession;
-
-  // guard: ставим handlers 1 раз
-  if (!ms.__vitrinaHandlersBound) {
-    ms.__vitrinaHandlersBound = true;
-
-    const h = handlers || {};
-
-    const safe = (fn) => () => { try { fn && fn(); } catch {} };
-
-    ms.setActionHandler('play', safe(h.onPlay));
-    ms.setActionHandler('pause', safe(h.onPause));
-    ms.setActionHandler('stop', safe(h.onStop));
-    ms.setActionHandler('previoustrack', safe(h.onPrev));
-    ms.setActionHandler('nexttrack', safe(h.onNext));
-
-    ms.setActionHandler('seekbackward', (details) => {
-      const off = Number(details?.seekOffset || 10);
-      try { h.onSeekBy && h.onSeekBy(-off); } catch {}
-    });
-
-    ms.setActionHandler('seekforward', (details) => {
-      const off = Number(details?.seekOffset || 10);
-      try { h.onSeekBy && h.onSeekBy(off); } catch {}
-    });
-
-    ms.setActionHandler('seekto', (details) => {
-      const t = Number(details?.seekTime);
-      if (!Number.isFinite(t)) return;
-      try { h.onSeekTo && h.onSeekTo(t); } catch {}
-    });
-  }
-
-  const buildArtwork = (artworkUrl) => {
-    const src = String(artworkUrl || '').trim();
-    if (!src) return [];
-    return [
-      { src, sizes: '96x96', type: 'image/png' },
-      { src, sizes: '128x128', type: 'image/png' },
-      { src, sizes: '192x192', type: 'image/png' },
-      { src, sizes: '256x256', type: 'image/png' },
-      { src, sizes: '384x384', type: 'image/png' },
-      { src, sizes: '512x512', type: 'image/png' },
-    ];
-  };
-
-  function updateMetadata({ title, artist, album, artworkUrl, playing } = {}) {
-    try {
-      ms.metadata = new MediaMetadata({
-        title: String(title || 'Без названия'),
-        artist: String(artist || ''),
-        album: String(album || ''),
-        artwork: buildArtwork(artworkUrl),
-      });
-    } catch {}
-
-    try { ms.playbackState = playing ? 'playing' : 'paused'; } catch {}
-  }
-
-  function updatePositionState() {
-    try {
-      if (typeof ms.setPositionState !== 'function') return;
-      const st = handlers?.getPositionState ? handlers.getPositionState() : null;
-      if (!st) return;
-
-      ms.setPositionState({
-        duration: Number(st.duration || 0) || 0,
-        playbackRate: Number(st.playbackRate || 1.0) || 1.0,
-        position: Number(st.position || 0) || 0,
-      });
-    } catch {}
-  }
-
-  return { updateMetadata, updatePositionState };
-}
-
-//=================================================
-// FILE: /src/player-core/stats-tracker.js
-// src/player-core/stats-tracker.js
-// Единый трекер статистики:
-// - секунды: lastSecondReported (устойчиво, без "Math.floor(pos) > Math.floor(lastPos)" разброса)
-// - full listen: duration валидна и (pos/dur > 0.9) на момент ended
-// - никаких stop/play/seek внутри
-
-function safeUid(v) {
-  const s = String(v || '').trim();
-  return s ? s : null;
-}
-
-export function createListenStatsTracker({ getUid, getPos, getDur, record } = {}) {
-  const state = {
-    lastSecondReported: -1,
-    activeUid: null,
-  };
-
-  function resetForUid(uid) {
-    state.activeUid = uid;
-    state.lastSecondReported = -1;
-  }
-
-  function onTick() {
-    const uid = safeUid(getUid && getUid());
-    if (!uid) return;
-
-    if (uid !== state.activeUid) resetForUid(uid);
-
-    const pos = Number(getPos && getPos()) || 0;
-    const sec = Math.floor(pos);
-
-    if (!Number.isFinite(sec) || sec < 0) return;
-    if (sec <= state.lastSecondReported) return;
-
-    state.lastSecondReported = sec;
-
-    try {
-      record && record(uid, { deltaSec: 1, isFullListen: false });
-    } catch {}
-  }
-
-  function onPauseOrStop() {
-    // сейчас секунды учитываются через onTick; здесь просто не даём переносить lastSecond между треками
-    const uid = safeUid(getUid && getUid());
-    if (!uid) return;
-    if (uid !== state.activeUid) resetForUid(uid);
-  }
-
-  function onEnded() {
-    const uid = safeUid(getUid && getUid());
-    if (!uid) return;
-
-    if (uid !== state.activeUid) resetForUid(uid);
-
-    const dur = Number(getDur && getDur()) || 0;
-    const pos = Number(getPos && getPos()) || 0;
-
-    const durationValid = Number.isFinite(dur) && dur > 0;
-    const progress = durationValid ? (pos / dur) : 0;
-
-    const isFullListen = !!(durationValid && progress > 0.9);
-
-    try {
-      record && record(uid, { deltaSec: 0, isFullListen });
-    } catch {}
-  }
-
-  return { onTick, onPauseOrStop, onEnded };
 }
 
 //=================================================
