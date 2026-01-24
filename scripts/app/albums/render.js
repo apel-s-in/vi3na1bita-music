@@ -40,7 +40,8 @@ export function renderSocials(links = []) {
  * renderTrackList(tracks, { rowTemplate })
  * rowTemplate(track, index) => string (HTML одного .track)
  *
- * ВАЖНО: rowTemplate должен сохранять текущую разметку 1:1 (для e2e/подсветки/индикаторов).
+ * ВАЖНО: rowTemplate должен сохранять текущую разметку 1:1
+ * (e2e/подсветка/индикаторы/звёзды).
  */
 export function renderTrackList(tracks = [], opts = {}) {
   const container = document.getElementById('track-list');
