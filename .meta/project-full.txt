@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-830772819f7cf591cd63b7ad1e442768fa51eb47.idx
-│   │       ├── pack-830772819f7cf591cd63b7ad1e442768fa51eb47.pack
-│   │       └── pack-830772819f7cf591cd63b7ad1e442768fa51eb47.rev
+│   │       ├── pack-e53fd5eb060c2ad57f9bc67afc29aac525465970.idx
+│   │       ├── pack-e53fd5eb060c2ad57f9bc67afc29aac525465970.pack
+│   │       └── pack-e53fd5eb060c2ad57f9bc67afc29aac525465970.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -370,7 +370,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-24 10:25:23 UTC
+Сгенерировано: 2026-01-24 10:35:56 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2956,9 +2956,18 @@ export const Modal = {
 export const $ = (sel, p = document) => p.querySelector(sel);
 export const $$ = (sel, p = document) => [...p.querySelectorAll(sel)];
 
-export const on = (el, event, handler) => {
+export const on = (el, event, handler, options = false) => {
     if (!el) return;
-    el.addEventListener(event, handler);
+    el.addEventListener(event, handler, options);
+    return () => el.removeEventListener(event, handler, options);
+};
+
+// ВОТ ЭТА ФУНКЦИЯ БЫЛА ПРОПУЩЕНА, ИЗ-ЗА НЕЁ ОШИБКА
+export const dom = (tag, classes = '', html = '') => {
+    const el = document.createElement(tag);
+    if (classes) el.className = classes;
+    if (html) el.innerHTML = html;
+    return el;
 };
 
 export const formatTime = (s) => {
@@ -2979,6 +2988,15 @@ export const shuffleArray = (arr) => {
         [a[i], a[j]] = [a[j], a[i]];
     }
     return a;
+};
+
+// Простой debounce (нужен для некоторых UI событий)
+export const debounce = (func, wait) => {
+    let timeout;
+    return function(...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), wait);
+    };
 };
 
 //=================================================
