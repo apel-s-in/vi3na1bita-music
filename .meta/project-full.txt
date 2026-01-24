@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-397b733790acdf7c65b9d2c97ad0747f292eb8b9.idx
-│   │       ├── pack-397b733790acdf7c65b9d2c97ad0747f292eb8b9.pack
-│   │       └── pack-397b733790acdf7c65b9d2c97ad0747f292eb8b9.rev
+│   │       ├── pack-58d9dc53ab5bb3e23ceadcdf5c999e1a79e774fa.idx
+│   │       ├── pack-58d9dc53ab5bb3e23ceadcdf5c999e1a79e774fa.pack
+│   │       └── pack-58d9dc53ab5bb3e23ceadcdf5c999e1a79e774fa.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-24 08:21:46 UTC
+Сгенерировано: 2026-01-24 08:22:14 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2260,7 +2260,8 @@ export function renderSocials(links = []) {
  * renderTrackList(tracks, { rowTemplate })
  * rowTemplate(track, index) => string (HTML одного .track)
  *
- * ВАЖНО: rowTemplate должен сохранять текущую разметку 1:1 (для e2e/подсветки/индикаторов).
+ * ВАЖНО: rowTemplate должен сохранять текущую разметку 1:1
+ * (e2e/подсветка/индикаторы/звёзды).
  */
 export function renderTrackList(tracks = [], opts = {}) {
   const container = document.getElementById('track-list');
