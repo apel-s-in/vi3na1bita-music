@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-17ddac665d3229b8cfdf4259cc781d2aa3363b85.idx
-│   │       ├── pack-17ddac665d3229b8cfdf4259cc781d2aa3363b85.pack
-│   │       └── pack-17ddac665d3229b8cfdf4259cc781d2aa3363b85.rev
+│   │       ├── pack-fd6794da3d1c0daf39abaacaa65b77024a3787f9.idx
+│   │       ├── pack-fd6794da3d1c0daf39abaacaa65b77024a3787f9.pack
+│   │       └── pack-fd6794da3d1c0daf39abaacaa65b77024a3787f9.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -356,7 +356,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-24 11:09:49 UTC
+Сгенерировано: 2026-01-24 11:10:23 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2751,7 +2751,7 @@ import { AppController } from './app/app-controller.js';
 import { initOfflineManager } from './offline/offline-manager.js';
 import { Toast, Modal } from './core/ui-kit.js';
 
-// Глобальные хелперы для совместимости с offline/legacy
+// Глобальные хелперы для совместимости
 window.Utils = { formatBytes: (n) => (n/1024/1024).toFixed(1)+' MB' };
 window.NotificationSystem = Toast; 
 window.Modals = Modal;
@@ -2785,13 +2785,15 @@ async function startApp() {
         console.log('🚀 App Start');
         $('#main-block').classList.remove('hidden');
 
-        const res = await fetch('config/config.json');
+        // В корневом файле albums.json лежит структура { albums: [...] }
+        const res = await fetch('albums.json'); 
         const data = await res.json();
         
         TrackRegistry.init(data.albums);
         FavoritesStore.init();
         PlayerCore.init();
         initOfflineManager().then(()=>console.log('Offline Ready'));
+        
         AppController.init(data.albums);
 
         $('#reload-btn').onclick = () => window.location.reload();
