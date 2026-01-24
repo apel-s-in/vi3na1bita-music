@@ -127,29 +127,95 @@ export const AppController = {
             if (el) this.openAlbum(el.dataset.id);
         });
 
-        on($('#track-list-container'), 'click', e => {
+        on($('#track-list-container'), 'click', (e) => {
             const row = e.target.closest('.track');
             if (!row) return;
-            const uid = row.dataset.uid;
 
-            if (e.target.classList.contains('like-star')) {
+            const uid = String(row.dataset.uid || '').trim();
+            if (!uid) return;
+
+            const isStar = e.target.classList.contains('like-star');
+
+            // ⭐ логика зависит от контекста (ТЗ избранного)
+            if (isStar) {
                 e.stopPropagation();
-                FavoritesStore.toggle(uid);
-                this.renderList(); 
-                return;
-            }
 
-            if (this.currentContext === 'favorites' && FavoritesStore.isInactive(uid)) {
-                if(confirm("Вернуть трек в избранное?")) {
-                    FavoritesStore.toggle(uid);
-                    this.renderList();
+                if (this.currentContext === 'favorites') {
+                    // В избранном: active -> inactive, inactive -> restore
+                    if (FavoritesStore.isInactive(uid)) {
+                        FavoritesStore.restore(uid);
+                    } else {
+                        FavoritesStore.unlikeInFavorites(uid);
+
+                        // Особое правило: если текущий трек стал inactive в favorites во время проигрывания
+                        if (PlayerCore.currentUid === uid) {
+                            const playable = FavoritesStore.getPlayableUIDs();
+
+                            // Единственный сценарий, когда "Избранное" имеет право STOP:
+                            // был единственный active, сняли его в favorites view.
+                            if (playable.length === 0) {
+                                PlayerCore.stop?.();
+                            } else {
+                                PlayerCore.setPlaylist(playable, playable[0]);
+                            }
+                        }
+                    }
+                } else {
+                    // В родном альбоме: like/unlike "без следа"
+                    if (FavoritesStore.isLiked(uid) || FavoritesStore.isInactive(uid)) {
+                        FavoritesStore.unlikeInAlbum(uid);
+                    } else {
+                        FavoritesStore.like(uid);
+                    }
                 }
+
+                this.renderList();
                 return;
             }
 
-            let playlist = this.currentContext === 'favorites' ? FavoritesStore.getPlayableUIDs() : 
-                           (this.favOnlyMode ? this.currentList.filter(u => FavoritesStore.isLiked(u)) : this.currentList);
-            
+            // Клик по inactive строке в избранном (НЕ по ⭐) => модалка: restore / delete
+            if (this.currentContext === 'favorites' && FavoritesStore.isInactive(uid)) {
+                Modal.open({
+                    title: 'Избранное',
+                    bodyHtml: `
+                      <div style="display:flex;flex-direction:column;gap:10px;">
+                        <button class="modal-action-btn" data-action="restore">Вернуть в избранное</button>
+                        <button class="modal-action-btn" data-action="delete">Удалить</button>
+                      </div>
+                    `,
+                    onClose: null
+                });
+
+                const overlay = document.querySelector('#modals-container .modal-bg:last-child');
+                const restoreBtn = overlay?.querySelector('[data-action="restore"]');
+                const deleteBtn = overlay?.querySelector('[data-action="delete"]');
+
+                if (restoreBtn) {
+                    restoreBtn.onclick = () => {
+                        FavoritesStore.restore(uid);
+                        overlay?.remove();
+                        this.renderList();
+                    };
+                }
+
+                if (deleteBtn) {
+                    deleteBtn.onclick = () => {
+                        FavoritesStore.removeRef(uid);
+                        overlay?.remove();
+                        this.renderList();
+                    };
+                }
+
+                return;
+            }
+
+            // Обычный запуск трека
+            const playlist = this.currentContext === 'favorites'
+                ? FavoritesStore.getPlayableUIDs()
+                : (this.favOnlyMode
+                    ? this.currentList.filter(u => FavoritesStore.isLiked(u))
+                    : this.currentList);
+
             PlayerCore.setPlaylist(playlist, uid);
         });
 
