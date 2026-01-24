@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ad4d562a29090f2ddc34430389b0f2e957a34d14.idx
-│   │       ├── pack-ad4d562a29090f2ddc34430389b0f2e957a34d14.pack
-│   │       └── pack-ad4d562a29090f2ddc34430389b0f2e957a34d14.rev
+│   │       ├── pack-4eaa0b109f629d3eb3d1f3ae67d602b2a385ba34.idx
+│   │       ├── pack-4eaa0b109f629d3eb3d1f3ae67d602b2a385ba34.pack
+│   │       └── pack-4eaa0b109f629d3eb3d1f3ae67d602b2a385ba34.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -349,8 +349,7 @@ vi3na1bita-music/
 │   │   ├── news-renderer.js
 │   │   ├── offline-indicators.js
 │   │   ├── offline-modal.js
-│   │   ├── track-list-renderer.js
-│   │   └── ui-utils.js
+│   │   └── track-list-renderer.js
 │   └── main.js
 ├── src/
 │   ├── player-core/
@@ -369,7 +368,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-24 10:22:27 UTC
+Сгенерировано: 2026-01-24 10:22:42 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6880,37 +6879,6 @@ export const TrackListRenderer = {
         container.innerHTML = html;
     }
 };
-
-//=================================================
-// FILE: /scripts/ui/ui-utils.js
-// scripts/ui/ui-utils.js
-// Общие UI-утилиты (без влияния на playback)
-// ВАЖНО: это фасад над window.Utils для старых модулей.
-
-export function esc(s) {
-  const fn = window.Utils?.escapeHtml;
-  return (typeof fn === 'function') ? fn(String(s ?? '')) : String(s ?? '');
-}
-
-export function formatBytes(n) {
-  const fn = window.Utils?.formatBytes;
-  return (typeof fn === 'function') ? fn(n) : `${Number(n) || 0} B`;
-}
-
-export function getNetworkStatusSafe() {
-  const fn = window.Utils?.getNetworkStatusSafe;
-  return (typeof fn === 'function')
-    ? fn()
-    : { online: navigator.onLine !== false, kind: 'unknown', saveData: false };
-}
-
-// ✅ Non-ESM доступ (sysinfo.js / sw-manager.js / прочие IIFE)
-try {
-  window.UIUtils = window.UIUtils || {};
-  window.UIUtils.esc = esc;
-  window.UIUtils.formatBytes = formatBytes;
-  window.UIUtils.getNetworkStatusSafe = getNetworkStatusSafe;
-} catch {}
 
 //=================================================
 // FILE: /albums/gallery/news/news-01-baner.html
