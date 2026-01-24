@@ -30,7 +30,8 @@ import {
 } from './cache-db.js';
 
 import { resolvePlaybackSource, isTrackAvailableOffline } from './track-resolver.js';
-import { getTrackByUid } from '../app/track-registry.js';
+// 👇 ИСПРАВЛЕННЫЙ ИМПОРТ
+import { getTrackByUid } from '../core/track-registry.js';
 import { getNetPolicy, isAllowedByNetPolicy, shouldConfirmByPolicy } from './net-policy.js';
 
 const LS = {
