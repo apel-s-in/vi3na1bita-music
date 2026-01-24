@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-cae5262d0a280c8c6ff8e6c3d9f8d62bc8ac74df.idx
-│   │       ├── pack-cae5262d0a280c8c6ff8e6c3d9f8d62bc8ac74df.pack
-│   │       └── pack-cae5262d0a280c8c6ff8e6c3d9f8d62bc8ac74df.rev
+│   │       ├── pack-07c7a499b0e661649bf3f75d406b136ad22e37f3.idx
+│   │       ├── pack-07c7a499b0e661649bf3f75d406b136ad22e37f3.pack
+│   │       └── pack-07c7a499b0e661649bf3f75d406b136ad22e37f3.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-24 08:37:06 UTC
+Сгенерировано: 2026-01-24 08:38:24 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -11573,13 +11573,14 @@ export function closeOfflineModal() {
 // Общие UI-утилиты (без влияния на playback)
 // ВАЖНО: не дублируем core utils. Здесь только тонкий фасад (back-compat для старых модулей).
 
-const _escFallback = (s) => String(s ?? '').replace(/[<>&'"]/g, (m) => ({
-  '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&#39;', '"': '&quot;'
-}[m]));
-
 export function esc(s) {
+  // По index.html scripts/core/utils.js загружается раньше.
   const fn = window.Utils?.escapeHtml;
-  return typeof fn === 'function' ? fn(String(s ?? '')) : _escFallback(s);
+  if (typeof fn === 'function') return fn(String(s ?? ''));
+  // Минимальный fallback (на случай ручного использования файла отдельно).
+  return String(s ?? '').replace(/[<>&'"]/g, (m) => ({
+    '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&#39;', '"': '&quot;'
+  })[m]);
 }
 
 export function formatBytes(n) {
