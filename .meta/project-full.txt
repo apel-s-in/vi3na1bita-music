@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8af70fc06fe48bf221789f693317a28dcdf957f4.idx
-│   │       ├── pack-8af70fc06fe48bf221789f693317a28dcdf957f4.pack
-│   │       └── pack-8af70fc06fe48bf221789f693317a28dcdf957f4.rev
+│   │       ├── pack-6d4d8115078aa7431ef18bda15c86bdde5b67bfd.idx
+│   │       ├── pack-6d4d8115078aa7431ef18bda15c86bdde5b67bfd.pack
+│   │       └── pack-6d4d8115078aa7431ef18bda15c86bdde5b67bfd.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -356,7 +356,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-24 10:50:16 UTC
+Сгенерировано: 2026-01-24 10:51:31 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5103,7 +5103,7 @@ export const TrackResolver = {
 
 import { bytesByQuality } from '../offline/cache-db.js';
 // OfflineUI берем из window
-import { getTrackByUid } from '../app/track-registry.js';
+import { getTrackByUid } from '../core/track-registry.js';
 
 const CSS_TEXT = `
   #player-progress-bar { position: relative; }
