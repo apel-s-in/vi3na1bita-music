@@ -6,7 +6,7 @@ import { AppController } from './app/app-controller.js';
 import { initOfflineManager } from './offline/offline-manager.js';
 import { Toast, Modal } from './core/ui-kit.js';
 
-// Глобальные хелперы для совместимости
+// Глобальные хелперы
 window.Utils = { formatBytes: (n) => (n/1024/1024).toFixed(1)+' MB' };
 window.NotificationSystem = Toast; 
 window.Modals = Modal;
@@ -14,7 +14,22 @@ window.Modals = Modal;
 const PROMOCODE = "VITRINA2025";
 
 document.addEventListener('DOMContentLoaded', async () => {
-    if ('serviceWorker' in navigator) navigator.serviceWorker.register('./service-worker.js').catch(()=>{});
+    // Регистрируем новый SW
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./service-worker.js')
+            .then(reg => {
+                // Если есть обновление, уведомляем
+                reg.onupdatefound = () => {
+                    const installingWorker = reg.installing;
+                    installingWorker.onstatechange = () => {
+                        if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            Toast.info('Доступна новая версия. Перезагрузите страницу.');
+                        }
+                    };
+                };
+            })
+            .catch(console.error);
+    }
 
     const saved = localStorage.getItem('promocode');
     if (saved !== PROMOCODE) {
@@ -40,21 +55,28 @@ async function startApp() {
         console.log('🚀 App Start');
         $('#main-block').classList.remove('hidden');
 
-        // В корневом файле albums.json лежит структура { albums: [...] }
-        const res = await fetch('albums.json'); 
-        const data = await res.json();
+        // 👇 ИСПРАВЛЕНИЕ: Был config/config.json, стал albums.json
+        const res = await fetch('albums.json');
+        if (!res.ok) throw new Error(`Config not found (${res.status})`);
         
-        TrackRegistry.init(data.albums);
+        const data = await res.json();
+        // В albums.json структура { albums: [...] }
+        const albums = data.albums || []; 
+        
+        TrackRegistry.init(albums);
         FavoritesStore.init();
         PlayerCore.init();
-        initOfflineManager().then(()=>console.log('Offline Ready'));
         
-        AppController.init(data.albums);
+        initOfflineManager().then(() => console.log('Offline Ready'));
+        
+        AppController.init(albums);
 
         $('#reload-btn').onclick = () => window.location.reload();
 
     } catch (e) {
         console.error(e);
-        Toast.error('Ошибка загрузки: ' + e.message);
+        // Если Toast еще не готов (ошибка в core), используем alert
+        if (Toast) Toast.error('Ошибка: ' + e.message);
+        else alert('Ошибка: ' + e.message);
     }
 }
