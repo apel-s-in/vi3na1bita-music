@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-07c7a499b0e661649bf3f75d406b136ad22e37f3.idx
-│   │       ├── pack-07c7a499b0e661649bf3f75d406b136ad22e37f3.pack
-│   │       └── pack-07c7a499b0e661649bf3f75d406b136ad22e37f3.rev
+│   │       ├── pack-53631c8bf27e82c4df63cc53786b061cf0ab93ee.idx
+│   │       ├── pack-53631c8bf27e82c4df63cc53786b061cf0ab93ee.pack
+│   │       └── pack-53631c8bf27e82c4df63cc53786b061cf0ab93ee.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-24 08:38:24 UTC
+Сгенерировано: 2026-01-24 08:47:23 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3454,11 +3454,13 @@ export function attachPlaybackCache() {
 //=================================================
 // FILE: /scripts/app/player-ui.js
 // scripts/app/player-ui.js
-// UI плеера на PlayerCore (clean + без дублей)
+// UI плеера поверх PlayerCore
 (function () {
   'use strict';
 
-  const w = window, U = w.Utils;
+  const w = window;
+  const U = w.Utils;
+
   const $ = (id) => U.dom.byId(id);
   const on = (el, ev, fn, opts) => U.dom.on(el, ev, fn, opts);
   const raf = (fn) => U.dom.raf(fn);
@@ -3466,7 +3468,11 @@ export function attachPlaybackCache() {
   const STAR_ON = 'img/star.png';
   const STAR_OFF = 'img/star2.png';
 
-  const LS = { FAV_ONLY: 'favoritesOnlyMode', VOL: 'playerVolume', BIT: 'bitEnabled' };
+  const LS = {
+    FAV_ONLY: 'favoritesOnlyMode',
+    VOL: 'playerVolume',
+    BIT: 'bitEnabled',
+  };
 
   const st = {
     seeking: false,
@@ -3476,7 +3482,6 @@ export function attachPlaybackCache() {
     savedLyricsMini: null,
 
     ensureTimer: null,
-
     jumpObserver: null,
     lastNativeRow: null,
 
@@ -3489,10 +3494,14 @@ export function attachPlaybackCache() {
     seekAbort: null,
   };
 
+  // --------------------------
+  // Init / wiring
+  // --------------------------
   function initialize() {
     if (w.__playerUIInitialized) return;
     w.__playerUIInitialized = true;
 
+    // Ждём пока прогрузится albumsIndex (нужно для корректной работы приложения)
     if (!Array.isArray(w.albumsIndex) || !w.albumsIndex.length) {
       w.__playerUIInitialized = false;
       setTimeout(initialize, 100);
@@ -3514,26 +3523,25 @@ export function attachPlaybackCache() {
 
         w.__lastStatsSec = -1;
 
-        // ✅ Подсветка должна идти по uid, потому что index при favoritesOnly
-        // относится к текущему playing-плейлисту и не совпадает с DOM data-index.
+        // Подсветка строки: всегда по uid (index зависит от текущего playing-плейлиста).
         try {
           const cur = w.playerCore?.getCurrentTrack?.() || track || null;
-          const curUid = String(cur?.uid || '').trim();
+          const uid = String(cur?.uid || '').trim();
           const playingAlbum = w.AlbumsManager?.getPlayingAlbum?.() || null;
 
-          // Для favorites плейлиста уточняем sourceAlbum, иначе подсветка может не найти строку.
-          if (curUid && playingAlbum === w.SPECIAL_FAVORITES_KEY) {
+          if (uid && playingAlbum === w.SPECIAL_FAVORITES_KEY) {
+            // В избранном уточняем sourceAlbum для точного попадания в строку.
             const sa = String(cur?.sourceAlbum || '').trim();
-            w.AlbumsManager?.highlightCurrentTrack?.(-1, { uid: curUid, albumKey: sa });
-          } else if (curUid) {
-            w.AlbumsManager?.highlightCurrentTrack?.(-1, { uid: curUid });
+            w.AlbumsManager?.highlightCurrentTrack?.(-1, { uid, albumKey: sa });
+          } else if (uid) {
+            w.AlbumsManager?.highlightCurrentTrack?.(-1, { uid });
           } else {
-            // fallback: только если uid отсутствует
             w.AlbumsManager?.highlightCurrentTrack?.(index);
           }
         } catch {}
 
         ensurePlayerBlock(index);
+
         try { w.LyricsController?.onTrackChange?.(track); } catch {}
 
         const fulltextBtn = $('lyrics-text-btn');
@@ -3547,7 +3555,7 @@ export function attachPlaybackCache() {
         try { U.download.applyDownloadLink($('track-download-btn'), track); } catch {}
         updatePQButton();
 
-        // ✅ Страховка: если UI где-то пересоздался/обновился, возвращаем подсветку F
+        // Синхронизация UI режима F после возможных перерисовок.
         try { setFavoritesOnlyUI(U.lsGetBool01(LS.FAV_ONLY, false)); } catch {}
       },
 
@@ -3569,7 +3577,6 @@ export function attachPlaybackCache() {
 
     const pc = w.playerCore;
     if (!pc?.onFavoritesChanged) {
-      // если PlayerCore ещё не готов — попробуем позже
       w.__favoritesChangedBound = false;
       return void setTimeout(attachFavoritesRealtimeSync, 100);
     }
@@ -3578,10 +3585,11 @@ export function attachPlaybackCache() {
       try {
         updateMiniHeader();
         updateNextUpLabel();
-        w.PlaybackPolicy?.apply?.({ reason: 'favoritesChanged', changed: changed || {} });
-        updateAvailableTracksForPlayback();
 
-        // ✅ если лайк/анлайк изменил набор ⭐ — обновляем визуальный фильтр
+        // Только политика + UI. Никакого play/stop здесь быть не должно.
+        w.PlaybackPolicy?.apply?.({ reason: 'favoritesChanged', changed: changed || {} });
+
+        // Обновляем визуальный фильтр в списке (не влияет на воспроизведение).
         try { applyFavoritesOnlyListFilter(); } catch {}
       } catch (err) {
         console.warn('onFavoritesChanged handler failed:', err);
@@ -3591,8 +3599,9 @@ export function attachPlaybackCache() {
 
   function attachNetworkPQSync() {
     try {
-      if (w.NetworkManager?.subscribe) w.NetworkManager.subscribe(() => { try { updatePQButton(); } catch {} });
-      else {
+      if (w.NetworkManager?.subscribe) {
+        w.NetworkManager.subscribe(() => { try { updatePQButton(); } catch {} });
+      } else {
         window.addEventListener('online', () => { try { updatePQButton(); } catch {} });
         window.addEventListener('offline', () => { try { updatePQButton(); } catch {} });
       }
@@ -3615,7 +3624,9 @@ export function attachPlaybackCache() {
       e.stopPropagation();
       const block = $('lyricsplayerblock');
       const target = st.lastNativeRow || block;
-      if (target) { try { target.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch {} }
+      if (target) {
+        try { target.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch {}
+      }
     });
 
     document.body.appendChild(wrap);
@@ -3651,9 +3662,7 @@ export function attachPlaybackCache() {
   // Player block placement
   // --------------------------
   function ensurePlayerBlock(trackIndex, options = {}) {
-    // ✅ ВАЖНО: при перерисовке списков (например, Избранное) DOM-узел #lyricsplayerblock
-    // может быть уничтожен. В этом случае index может быть неизвестен, но текущий трек есть.
-    // doEnsurePlayerBlock умеет якориться по uid текущего трека, поэтому не выходим ранним return.
+    // DOM блока может быть пересоздан при перерисовках; якоримся по uid, index — только fallback.
     const safeIndex = (Number.isFinite(trackIndex) && trackIndex >= 0) ? trackIndex : -1;
 
     if (st.ensureTimer) clearTimeout(st.ensureTimer);
@@ -3690,30 +3699,20 @@ export function attachPlaybackCache() {
       const list = $('track-list');
       if (!list) return;
 
-      // ✅ ВАЖНО: index из PlayerCore = индекс в текущем playing-плейлисте.
-      // Когда включён FavoritesOnly (F), плейлист перестраивается, и этот index
-      // больше НЕ совпадает с data-index строки в DOM.
-      // Поэтому якоримся по uid текущего трека (единственный стабильный ключ).
       const cur = w.playerCore?.getCurrentTrack?.() || null;
-      const curUid = String(cur?.uid || '').trim();
+      const uid = String(cur?.uid || '').trim();
 
       let row = null;
 
-      if (curUid) {
-        // 1) Обычные альбомы: строки имеют data-uid
-        row = list.querySelector(`.track[data-uid="${CSS.escape(curUid)}"]`);
+      if (uid) {
+        row = list.querySelector(`.track[data-uid="${CSS.escape(uid)}"]`);
 
-        // 2) Избранное: строки тоже имеют data-uid, но uid может повторяться между альбомами
-        // (теоретически), поэтому дополнительно пытаемся уточнить по sourceAlbum.
         if (!row) {
           const sa = String(cur?.sourceAlbum || '').trim();
-          if (sa) {
-            row = list.querySelector(`.track[data-uid="${CSS.escape(curUid)}"][data-album="${CSS.escape(sa)}"]`);
-          }
+          if (sa) row = list.querySelector(`.track[data-uid="${CSS.escape(uid)}"][data-album="${CSS.escape(sa)}"]`);
         }
       }
 
-      // fallback (если uid отсутствует / строка не найдена): старое поведение по data-index
       if (!row && Number.isFinite(trackIndex) && trackIndex >= 0) {
         row = list.querySelector(`.track[data-index="${trackIndex}"]`);
       }
@@ -3726,7 +3725,9 @@ export function attachPlaybackCache() {
         row.nextSibling ? row.parentNode.insertBefore(block, row.nextSibling) : row.parentNode.appendChild(block);
       }
 
-      if (row && options.userInitiated) setTimeout(() => { try { row.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch {} }, 50);
+      if (row && options.userInitiated) {
+        setTimeout(() => { try { row.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch {} }, 50);
+      }
 
       try { w.LyricsController?.restoreFromMiniMode?.(st.savedLyricsMini); } catch {}
       st.savedLyricsMini = null;
@@ -3735,12 +3736,7 @@ export function attachPlaybackCache() {
       $('next-up') && ($('next-up').style.display = 'none');
     }
 
-    // ✅ Всегда синхронизируем состояние кнопки F с хранилищем.
-    // В мини-режиме блок может быть перевставлен, и без этого "звезда" визуально сбрасывается,
-    // хотя режим реально продолжает работать.
     try { setFavoritesOnlyUI(U.lsGetBool01(LS.FAV_ONLY, false)); } catch {}
-
-    // ✅ поддерживаем фильтр в актуальном состоянии (например, при смене трека/альбома)
     try { applyFavoritesOnlyListFilter(); } catch {}
 
     updateMiniHeader();
@@ -3838,8 +3834,11 @@ export function attachPlaybackCache() {
 
     header.style.display = 'flex';
 
-    header.querySelector('#mini-now-num') && (header.querySelector('#mini-now-num').textContent = `${String(index + 1).padStart(2, '0')}.`);
-    header.querySelector('#mini-now-title') && (header.querySelector('#mini-now-title').textContent = track.title || '—');
+    const num = header.querySelector('#mini-now-num');
+    if (num) num.textContent = `${String(index + 1).padStart(2, '0')}.`;
+
+    const title = header.querySelector('#mini-now-title');
+    if (title) title.textContent = track.title || '—';
 
     const star = header.querySelector('#mini-now-star');
     if (star) {
@@ -3915,7 +3914,10 @@ export function attachPlaybackCache() {
 
         case 'track-download-btn': {
           const track = w.playerCore?.getCurrentTrack?.();
-          if (!track?.src) { e.preventDefault(); w.NotificationSystem?.error?.('Трек недоступен для скачивания'); }
+          if (!track?.src) {
+            e.preventDefault();
+            w.NotificationSystem?.error?.('Трек недоступен для скачивания');
+          }
           return;
         }
       }
@@ -3962,7 +3964,10 @@ export function attachPlaybackCache() {
     const ctrl = new AbortController();
     st.seekAbort = ctrl;
 
-    const end = () => { st.seeking = false; detachSeekDocListeners(); };
+    const end = () => {
+      st.seeking = false;
+      detachSeekDocListeners();
+    };
 
     const opts = { signal: ctrl.signal, passive: false };
     document.addEventListener('pointermove', handleSeeking, opts);
@@ -3989,6 +3994,7 @@ export function attachPlaybackCache() {
   function updatePlayPauseIcon() {
     const icon = $('play-pause-icon');
     if (!icon || !w.playerCore) return;
+
     icon.innerHTML = w.playerCore.isPlaying?.()
       ? '<path d="M6 4h4v16H6zM14 4h4v16h-4z"/>'
       : '<path d="M8 5v14l11-7z"/>';
@@ -4069,20 +4075,21 @@ export function attachPlaybackCache() {
     btn.classList.toggle('pq-lo', mode === 'lo');
     U.setAriaDisabled(btn, !stt.canToggle);
 
-    btn.style.pointerEvents = ''; // оставляем тосты по клику
+    btn.style.pointerEvents = '';
     label.textContent = mode === 'lo' ? 'Lo' : 'Hi';
   }
 
   function togglePQ() {
     if (!w.playerCore) return;
-    const r = U.pq.toggle();
 
+    const r = U.pq.toggle();
     if (!r.ok) {
       if (r.reason === 'offline') w.NotificationSystem?.warning?.('Нет доступа к сети');
       else if (r.reason === 'trackNoLo') w.NotificationSystem?.info?.('Для этого трека Lo недоступно');
       updatePQButton();
       return;
     }
+
     updatePQButton();
   }
 
@@ -4107,7 +4114,6 @@ export function attachPlaybackCache() {
     w.playerCore.toggleShuffle?.();
     U.setBtnActive('shuffle-btn', !!w.playerCore.isShuffle?.());
     w.PlaybackPolicy?.apply?.({ reason: 'toggle' });
-    updateAvailableTracksForPlayback();
   }
 
   // --------------------------
@@ -4147,7 +4153,7 @@ export function attachPlaybackCache() {
       $('pulse-btn')?.classList.remove('active');
       const heart = $('pulse-heart');
       if (heart) heart.textContent = '🤍';
-      w.NotificationSystem?.warning?.('Пульсация недоступна: браузер/режим не даёт Web Audio анализ');
+      w.NotificationSystem?.warning?.('Пульсация недоступна: нет Web Audio анализатора');
       return;
     }
 
@@ -4185,11 +4191,12 @@ export function attachPlaybackCache() {
       logo.style.transform = 'scale(1)';
       setTimeout(() => { if (logo) logo.style.transition = ''; }, 300);
     }
+
     st.analyser = null;
   }
 
   // --------------------------
-  // Favorites-only
+  // Favorites-only (F)
   // --------------------------
   function setFavoritesOnlyUI(onOff) {
     const btn = $('favorites-btn');
@@ -4205,49 +4212,38 @@ export function attachPlaybackCache() {
 
     if (nextOn) {
       if (playingAlbum === w.SPECIAL_FAVORITES_KEY) {
-        // ✅ В "Избранном" доступность определяем через v2 состояние PlayerCore.
-        const stFav = w.playerCore?.getFavoritesState?.();
-        const activeCount = Number(stFav?.activeUids?.length || 0) || 0;
-
-        if (activeCount <= 0) {
-          w.NotificationSystem?.info?.('Отметьте понравившийся трек ⭐');
-          U.lsSetBool01(LS.FAV_ONLY, false);
-          setFavoritesOnlyUI(false);
-          return;
-        }
+        const favState = w.playerCore?.getFavoritesState?.();
+        const activeCount = Number(favState?.activeUids?.length || 0) || 0;
+        if (activeCount <= 0) return void refuseFavOnly();
       } else if (playingAlbum && !U.isSpecialAlbumKey(playingAlbum)) {
-        // ✅ v2: проверяем наличие ⭐ в текущем playing-альбоме через originalPlaylist (или playlist snapshot)
         const pc = w.playerCore;
-        const orig = Array.isArray(pc?.originalPlaylist) ? pc.originalPlaylist : (pc?.getPlaylistSnapshot?.() || []);
-        const hasAnyLiked = Array.isArray(orig) && orig.some((t) => {
+        const base = Array.isArray(pc?.originalPlaylist) ? pc.originalPlaylist : (pc?.getPlaylistSnapshot?.() || []);
+        const hasAnyLiked = Array.isArray(base) && base.some((t) => {
           const uid = String(t?.uid || '').trim();
           return uid && !!pc?.isFavorite?.(uid);
         });
-
-        if (!hasAnyLiked) {
-          w.NotificationSystem?.info?.('Отметьте понравившийся трек ⭐');
-          U.lsSetBool01(LS.FAV_ONLY, false);
-          setFavoritesOnlyUI(false);
-          return;
-        }
+        if (!hasAnyLiked) return void refuseFavOnly();
       } else {
-        w.NotificationSystem?.info?.('Отметьте понравившийся трек ⭐');
-        U.lsSetBool01(LS.FAV_ONLY, false);
-        setFavoritesOnlyUI(false);
-        return;
+        return void refuseFavOnly();
       }
     }
 
     U.lsSetBool01(LS.FAV_ONLY, nextOn);
     setFavoritesOnlyUI(nextOn);
 
-    nextOn ? w.NotificationSystem?.success?.('⭐ Только избранные треки') : w.NotificationSystem?.info?.('Играют все треки');
+    nextOn
+      ? w.NotificationSystem?.success?.('⭐ Только избранные треки')
+      : w.NotificationSystem?.info?.('Играют все треки');
 
-    updateAvailableTracksForPlayback();
     w.PlaybackPolicy?.apply?.({ reason: 'toggle' });
 
-    // ✅ UI-only фильтрация списка (не влияет на воспроизведение)
     try { applyFavoritesOnlyListFilter(); } catch {}
+  }
+
+  function refuseFavOnly() {
+    w.NotificationSystem?.info?.('Отметьте понравившийся трек ⭐');
+    U.lsSetBool01(LS.FAV_ONLY, false);
+    setFavoritesOnlyUI(false);
   }
 
   function toggleLikePlaying() {
@@ -4256,45 +4252,16 @@ export function attachPlaybackCache() {
     const uid = String(track?.uid || '').trim();
     if (!uid) return;
 
-    // mini — это НЕ favorites view, значит поведение "как из родного альбома"
-    // albumKey передаём как best-effort контекст (для UI/подсветки/совместимости), а не для хранения liked.
     const sourceAlbum = String(track?.sourceAlbum || '').trim();
     const playingAlbum = String(w.AlbumsManager?.getPlayingAlbum?.() || '').trim();
-
-    const albumKey =
-      sourceAlbum ||
-      (!U.isSpecialAlbumKey(playingAlbum) ? playingAlbum : '');
+    const albumKey = sourceAlbum || (!U.isSpecialAlbumKey(playingAlbum) ? playingAlbum : '');
 
     pc?.toggleFavorite?.(uid, { fromAlbum: true, albumKey: albumKey || null });
     updateMiniHeader();
   }
 
   // --------------------------
-  // Legacy availableFavoriteIndices
-  // --------------------------
-  function updateAvailableTracksForPlayback() {
-    const playingAlbum = w.AlbumsManager?.getPlayingAlbum?.();
-    const snap = w.playerCore?.getPlaylistSnapshot?.() || [];
-    if (!playingAlbum || !snap.length) return;
-
-    if (playingAlbum === w.SPECIAL_FAVORITES_KEY) return void (w.availableFavoriteIndices = null);
-
-    if (!U.lsGetBool01(LS.FAV_ONLY, false)) return void (w.availableFavoriteIndices = null);
-
-    const pc = w.playerCore;
-    if (!pc?.isFavorite) return void (w.availableFavoriteIndices = null);
-
-    w.availableFavoriteIndices = [];
-    snap.forEach((t, idx) => {
-      const uid = String(t?.uid || '').trim();
-      if (uid && pc.isFavorite(uid)) w.availableFavoriteIndices.push(idx);
-    });
-
-    if (!w.availableFavoriteIndices.length) w.availableFavoriteIndices = null;
-  }
-
-  // --------------------------
-  // Favorites-only: UI list filter (visual)
+  // Favorites-only: visual filter
   // --------------------------
   function applyFavoritesOnlyListFilter() {
     const list = $('track-list');
@@ -4304,8 +4271,6 @@ export function attachPlaybackCache() {
     const currentAlbum = w.AlbumsManager?.getCurrentAlbum?.() || null;
     const playingAlbum = w.AlbumsManager?.getPlayingAlbum?.() || null;
 
-    // Фильтрация применяется только когда мы смотрим ТОТ ЖЕ обычный альбом, который играет.
-    // В "Избранном" и в special-альбомах не фильтруем (там свои правила active/inactive).
     const isRegular =
       currentAlbum &&
       playingAlbum &&
@@ -4313,14 +4278,11 @@ export function attachPlaybackCache() {
       !U.isSpecialAlbumKey(currentAlbum);
 
     list.classList.toggle('favonly-filtered', !!(enabled && isRegular));
-
     if (!(enabled && isRegular)) return;
 
     const pc = w.playerCore;
     if (!pc?.isFavorite) return;
 
-    // Скрываем строки без ⭐, но:
-    // - строки без uid не трогаем (пускай остаются видимыми, чтобы не “сломать” список)
     const rows = list.querySelectorAll('.track');
     rows.forEach((row) => {
       const uid = String(row?.dataset?.uid || '').trim();
@@ -4329,9 +4291,9 @@ export function attachPlaybackCache() {
         return;
       }
 
-      const shouldShow = !!pc.isFavorite(uid);
-      if (shouldShow) row.removeAttribute('data-hidden-by-favonly');
-      else row.setAttribute('data-hidden-by-favonly', '1');
+      pc.isFavorite(uid)
+        ? row.removeAttribute('data-hidden-by-favonly')
+        : row.setAttribute('data-hidden-by-favonly', '1');
     });
   }
 
@@ -4347,17 +4309,18 @@ export function attachPlaybackCache() {
     else U.lsSet(LS.VOL, volume);
 
     w.playerCore?.setVolume?.(volume);
-    $('volume-slider') && ($('volume-slider').value = String(volume));
+    if ($('volume-slider')) $('volume-slider').value = String(volume);
     renderVolumeUI(volume);
 
     try { w.LyricsController?.restoreSettingsIntoDom?.(); } catch {}
 
     st.bitEnabled = U.lsGetBool01(LS.BIT, false);
-    $('pulse-heart') && ($('pulse-heart').textContent = st.bitEnabled ? '❤️' : '🤍');
+    if ($('pulse-heart')) $('pulse-heart').textContent = st.bitEnabled ? '❤️' : '🤍';
     if (st.bitEnabled) setTimeout(startBitEffect, 1000);
 
     if (U.lsGetBool01(LS.FAV_ONLY, false) && U.waitFor) {
-      U.waitFor(() => !!w.playerCore, 2000, 50).then(() => { try { w.PlaybackPolicy?.apply?.({ reason: 'init' }); } catch {} });
+      U.waitFor(() => !!w.playerCore, 2000, 50)
+        .then(() => { try { w.PlaybackPolicy?.apply?.({ reason: 'init' }); } catch {} });
     }
 
     try { updatePQButton(); } catch {}
@@ -4375,13 +4338,10 @@ export function attachPlaybackCache() {
     toggleLikePlaying,
     switchAlbumInstantly,
     toggleFavoritesOnly,
-    updateAvailableTracksForPlayback,
 
     get currentLyrics() { return w.LyricsController?.getCurrentLyrics?.() || []; },
     get currentLyricsLines() { return w.LyricsController?.getCurrentLyricsLines?.() || []; },
   };
-
-  // legacy global alias removed (use window.PlayerUI.toggleFavoritesOnly)
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initialize);
   else initialize();
