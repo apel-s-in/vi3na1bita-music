@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-13e3440d6ca6511ca5675dfade2edafb59790cea.idx
-│   │       ├── pack-13e3440d6ca6511ca5675dfade2edafb59790cea.pack
-│   │       └── pack-13e3440d6ca6511ca5675dfade2edafb59790cea.rev
+│   │       ├── pack-7dfebaae5c7ed301a26be10530c4d7503178889d.idx
+│   │       ├── pack-7dfebaae5c7ed301a26be10530c4d7503178889d.pack
+│   │       └── pack-7dfebaae5c7ed301a26be10530c4d7503178889d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -390,7 +390,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-24 09:40:29 UTC
+Сгенерировано: 2026-01-24 09:46:23 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -724,269 +724,86 @@ jobs:
   <meta charset="UTF-8" />
   <title>Витрина Разбита</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="description" content="Официальные альбомы группы Витрина Разбита. Слушайте онлайн и офлайн.">
-
-  <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#181818" />
-
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Витрина Разбита">
-  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-
+  <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
-  <link rel="icon" href="icons/favicon-16.png" sizes="16x16" type="image/png">
-
-  <link rel="preload" href="img/logo.png" as="image">
   <link rel="stylesheet" href="styles/main.css">
 
-  <!-- Howler first -->
+  <!-- Audio Engine -->
   <script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js"></script>
 
-  <!-- Core -->
-  <script src="./scripts/core/utils.js"></script>
-  <script src="./scripts/core/bootstrap.js"></script>
-  <script src="./scripts/core/config.js" type="module"></script>
-  <script src="./scripts/utils/sw-manager.js" defer></script>
-
-  <!-- Player Core -->
-  <script src="./src/PlayerCore.js" type="module"></script>
-
-  <!-- UI Modules -->
-  <script src="./scripts/ui/notify.js" defer></script>
-  <script src="./scripts/ui/modals.js" defer></script>
-  <script src="./scripts/ui/favorites.js" type="module"></script>
-  <script src="./scripts/ui/sleep.js" defer></script>
-  <script src="./scripts/ui/lyrics-modal.js" defer></script>
-  <script src="./scripts/ui/modal-templates.js" type="module"></script>
-  <script src="./scripts/ui/sysinfo.js" defer></script>
-
-  <!-- App Modules -->
-  <script src="./scripts/app/promocode.js" defer></script>
-  <script src="./scripts/app/playback-policy.js" defer></script>
-  <script src="./scripts/app/player-ui/lyrics.js" defer></script>
-  <script src="./scripts/app/player-ui.js" defer></script>
-  <script src="./scripts/app/gallery.js" type="module"></script>
-  <script src="./scripts/app/albums.js" type="module"></script>
-  <script src="./scripts/app/navigation.js" type="module"></script>
-
-  <script src="./scripts/app.js" type="module"></script>
-
-  <script src="./performance/rum.js" defer></script>
+  <!-- New Architecture Entry Point -->
+  <script type="module" src="./scripts/main.js"></script>
 </head>
 <body>
   <!-- Promocode Screen -->
   <div id="promocode-block">
     <div class="promo-inner">
-      <img class="promo-cover" id="promo-cover" src="img/logo.png" alt="Обложка" draggable="false"/>
+      <img class="promo-cover" src="img/logo.png" alt="" draggable="false"/>
       <h2>Вход по промокоду</h2>
-      <input id="promo-inp" type="text" placeholder="Введите промокод" autocomplete="off" autofocus />
+      <input id="promo-inp" type="text" placeholder="Введите промокод" autocomplete="off" />
       <button id="promo-btn">Войти</button>
       <div id="promo-error"></div>
     </div>
   </div>
 
-  <!-- Main Application -->
+  <!-- Main App -->
   <div id="main-block" class="hidden">
     <header>
-      <div id="active-album-title" class="active-album-title">—</div>
-      <div id="album-icons" class="album-icons" aria-label="Альбомы"></div>
-
+      <div id="playlist-title" class="active-album-title">—</div>
+      <div id="album-icons" class="album-icons"></div>
+      
       <div id="cover-wrap">
-        <button class="cover-gallery-arrow" id="cover-gallery-arrow-left"
-                title="Назад" aria-label="Предыдущая обложка">
-          <svg width="34" height="34" viewBox="0 0 34 34">
-            <circle cx="17" cy="17" r="16" fill="#23252e" opacity="0.65"/>
-            <polyline points="20,10 13,17 20,24" fill="none" stroke="#fff"
-                      stroke-width="2.9" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
-
-        <div id="cover-slot" aria-label="Обложка альбома"></div>
-
-        <button class="cover-gallery-arrow" id="cover-gallery-arrow-right"
-                title="Вперёд" aria-label="Следующая обложка">
-          <svg width="34" height="34" viewBox="0 0 34 34">
-            <circle cx="17" cy="17" r="16" fill="#23252e" opacity="0.65"/>
-            <polyline points="14,10 21,17 14,24" fill="none" stroke="#fff"
-                      stroke-width="2.9" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
+        <div id="cover-slot"><img src="img/logo.png" alt=""></div>
       </div>
-
-      <div id="social-links" class="socials-under-cover"></div>
     </header>
 
-    <div id="now-playing" style="width:100%; max-width:395px; margin:8px auto 0 auto;"></div>
-    <div class="track-list" id="track-list"></div>
+    <!-- Mini Player Info -->
+    <div id="mini-player-info" class="mini-now" style="display:none;">
+      <span class="tnum" id="mini-track-num">--.</span>
+      <span class="track-title" id="mini-track-title">—</span>
+    </div>
 
+    <!-- Track List -->
+    <div class="track-list" id="track-list-container"></div>
+
+    <!-- Bottom Controls -->
     <div class="bottom-controls-center">
-      <img class="logo-bottom" id="logo-bottom" src="img/logo.png" alt="Логотип"/>
-
-      <button id="install-pwa-btn" style="display: none;">УСТАНОВИТЬ КАК ПРИЛОЖЕНИЕ</button>
-      <button class="hotkeys-btn" id="hotkeys-btn" style="display:none;">ГОРЯЧИЕ КЛАВИШИ</button>
-      <button id="sysinfo-btn" style="display:none;">О СИСТЕМЕ</button>
-
-      <span class="feedback-link" id="feedback-link">ОБРАТНАЯ СВЯЗЬ</span>
-
-      <a class="support-link" id="support-link" href="#" target="_blank">ПОДДЕРЖАТЬ</a>
-
-      <button class="offline-btn" id="offline-btn">OFFLINE</button>
+        <img class="logo-bottom" id="logo-bottom" src="img/logo.png" alt=""/>
+        <button class="offline-btn" id="offline-btn">OFFLINE</button>
     </div>
   </div>
 
-  <div id="modals-container"></div>
-
-  <template id="mini-header-template">
-    <div class="mini-now" id="mini-now">
-      <span class="tnum" id="mini-now-num">--.</span>
-      <span class="track-title" id="mini-now-title">—</span>
-      <img src="img/star2.png" class="like-star" id="mini-now-star" alt="звезда">
-    </div>
-  </template>
-
-  <template id="next-up-template">
-    <div class="next-up" id="next-up">
-      <span class="label">Далее:</span>
-      <span class="title" title="">—</span>
-    </div>
-  </template>
-
-  <template id="player-template">
-    <!-- (разметка без изменений) -->
-    <div class="lyrics-player-block" id="lyricsplayerblock">
-      <div id="lyrics-window" class="lyrics-normal">
-        <div class="lyrics-animated-bg"></div>
-        <div class="lyrics-scroll" id="lyrics">
-          <div class="lyrics-placeholder lyrics-spinner"></div>
-        </div>
-      </div>
-
+  <!-- Templates (Moved from JS to HTML to save code) -->
+  <template id="player-controls-template">
+    <div class="lyrics-player-block" id="player-controls">
       <div class="player-progress-wrapper">
-        <div class="player-progress-bar" id="player-progress-bar">
-          <div class="player-progress-fill" id="player-progress-fill">
-            <div class="player-progress-handle"></div>
-          </div>
+        <div class="player-progress-bar" id="progress-bar">
+          <div class="player-progress-fill" id="progress-fill"></div>
         </div>
       </div>
-
       <div class="player-controls">
         <div class="player-controls-row">
-          <span class="time-in-controls" id="time-elapsed">00:00</span>
-
-          <button class="player-control-btn" id="prev-btn" title="Предыдущий трек (P)">
-            <svg viewBox="0 0 24 24" fill="currentColor">
-              <path d="M11 5L4 12l7 7V5zm9 0v14l-7-7 7-7z"/>
-            </svg>
-          </button>
-
-          <button class="player-control-btn main" id="play-pause-btn" title="Воспроизведение/Пауза (K)">
-            <svg id="play-pause-icon" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M8 5v14l11-7z"/>
-            </svg>
-          </button>
-
-          <button class="player-control-btn" id="stop-btn" title="Стоп (X)">
-            <svg viewBox="0 0 24 24" fill="currentColor">
-              <rect x="6" y="6" width="12" height="12"/>
-            </svg>
-          </button>
-
-          <button class="player-control-btn" id="next-btn" title="Следующий трек (N)">
-            <svg viewBox="0 0 24 24" fill="currentColor">
-              <path d="M13 5l7 7-7 7V5zM4 5v14l7-7-7-7z"/>
-            </svg>
-          </button>
-
-          <span class="time-in-controls" id="time-remaining">--:--</span>
+          <span class="time-in-controls" id="time-current">0:00</span>
+          <button class="player-control-btn" id="btn-prev">⏮</button>
+          <button class="player-control-btn main" id="btn-play">▶</button>
+          <button class="player-control-btn" id="btn-next">⏭</button>
+          <span class="time-in-controls" id="time-duration">0:00</span>
         </div>
-
         <div class="player-controls-row">
-          <button class="player-control-btn" id="pq-btn" title="Качество (Hi/Lo)">
-            <span class="pq-btn-label" id="pq-btn-label">Hi</span>
-          </button>
-
-          <button class="player-control-btn" id="mute-btn" title="Без звука (M)">
-            <svg viewBox="0 0 24 24" fill="currentColor">
-              <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
-            </svg>
-          </button>
-
-          <button class="player-control-btn" id="shuffle-btn" title="Случайный порядок (U)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M3 17h2.735a4 4 0 003.43-1.942l3.67-6.116A4 4 0 0116.265 7H21m0 0l-3-3m3 3l-3 3"/>
-              <path d="M3 7h2.735a4 4 0 013.43 1.942l3.67 6.116A4 4 0 0016.265 17H21m0 0l-3 3m3-3l-3-3"/>
-            </svg>
-          </button>
-
-          <button class="player-control-btn" id="repeat-btn" title="Повтор трека (R)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M17 2l4 4-4 4"/>
-              <path d="M3 11V9a4 4 0 014-4h14"/>
-              <path d="M7 22l-4-4 4-4"/>
-              <path d="M21 13v2a4 4 0 01-4 4H3"/>
-              <circle cx="12" cy="12" r="1" fill="currentColor"/>
-            </svg>
-          </button>
-
-          <button class="sleep-timer-btn" id="sleep-timer-btn" title="Таймер сна (T)">
-            <svg viewBox="0 0 24 24" width="24" height="24">
-              <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"></circle>
-              <path d="M12 7v5l3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-            </svg>
-            <span class="sleep-timer-badge" id="sleep-timer-badge" style="display:none;">0</span>
-          </button>
-
-          <button class="player-control-btn" id="favorites-btn" title="Только избранные (F)">
-            <img src="img/star2.png" alt="★" id="favorites-btn-icon"/>
-          </button>
+            <button class="player-control-btn" id="btn-shuffle" title="Shuffle">🔀</button>
+            <button class="player-control-btn" id="btn-repeat" title="Repeat">🔁</button>
+            <button class="player-control-btn" id="btn-fav-only" title="Favorites Only">★</button>
         </div>
       </div>
-
-      <div class="volume-control-wrapper">
-        <div class="volume-track" id="volume-track">
-          <div class="volume-fill" id="volume-fill"></div>
-          <div class="volume-handle" id="volume-handle"></div>
-        </div>
-        <input type="range" class="volume-slider" id="volume-slider" min="0" max="100" value="100" aria-label="Громкость">
-      </div>
-
-      <div class="player-buttons-wrapper">
-        <div class="player-extra-buttons-row">
-          <button class="lyrics-toggle-btn lyrics-normal" id="lyrics-toggle-btn" title="Режим лирики (Y)">
-            <span class="lyrics-toggle-btn-visual">Т</span>
-          </button>
-
-          <button class="animation-btn" id="animation-btn" title="Анимация лирики (A)">A</button>
-
-          <button class="karaoke-btn" id="lyrics-text-btn" title="Полный текст песни">📝</button>
-
-          <button class="stats-btn" id="stats-btn" title="Статистика" style="background:none; border:none; cursor:pointer; font-size:18px; opacity:0.8; padding:0 8px;">📊</button>
-
-          <button class="pulse-btn" id="pulse-btn" title="Пульсация логотипа">
-            <span id="pulse-heart">🤍</span>
-          </button>
-
-          <a class="player-download-btn" href="#" id="track-download-btn" download title="Скачать трек">💾</a>
-        </div>
+      <div id="player-track-info" style="text-align:center; padding:10px; color:#888; font-size:12px;">
+          <span id="player-track-artist"></span> - <span id="player-track-title"></span>
       </div>
     </div>
   </template>
 
-  <script>
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.0.4');
-    const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2025-12-07');
-
-    window.autoNextDisabled = false;
-    window.sleepTimerTarget = null;
-    window.sleepTimerInterval = null;
-
-    window.VERSION = VERSION;
-    window.BUILD_DATE = BUILD_DATE;
-
-    console.log(`🎵 Витрина Разбита v${VERSION} (${BUILD_DATE})`);
-  </script>
+  <!-- Modals Container -->
+  <div id="modals-container"></div>
 </body>
 </html>
 
