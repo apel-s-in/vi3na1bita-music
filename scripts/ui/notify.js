@@ -95,8 +95,7 @@ class NotificationSystem {
   }
   
   escapeHtml(text) {
-    // В проекте scripts/core/utils.js загружается раньше notify.js (см. index.html),
-    // поэтому держим один источник истины.
+    // scripts/core/utils.js загружается раньше notify.js (см. index.html)
     return window.Utils.escapeHtml(String(text || ''));
   }
   
