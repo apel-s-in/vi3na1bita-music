@@ -8,15 +8,11 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
   <link rel="stylesheet" href="styles/main.css">
-
-  <!-- Audio Engine -->
   <script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js"></script>
-
-  <!-- New Architecture Entry Point -->
   <script type="module" src="./scripts/main.js"></script>
 </head>
 <body>
-  <!-- Promocode Screen -->
+  <!-- Вход -->
   <div id="promocode-block">
     <div class="promo-inner">
       <img class="promo-cover" src="img/logo.png" alt="" draggable="false"/>
@@ -27,35 +23,18 @@
     </div>
   </div>
 
-  <!-- Main App -->
+  <!-- Приложение -->
   <div id="main-block" class="hidden">
     <header>
       <div id="playlist-title" class="active-album-title">—</div>
       <div id="album-icons" class="album-icons"></div>
-      
-      <div id="cover-wrap">
-        <div id="cover-slot"><img src="img/logo.png" alt=""></div>
-      </div>
+      <div id="cover-wrap"><div id="cover-slot"><img src="img/logo.png" alt=""></div></div>
     </header>
 
-    <!-- Mini Player Info -->
-    <div id="mini-player-info" class="mini-now" style="display:none;">
-      <span class="tnum" id="mini-track-num">--.</span>
-      <span class="track-title" id="mini-track-title">—</span>
-    </div>
-
-    <!-- Track List -->
+    <!-- Список треков -->
     <div class="track-list" id="track-list-container"></div>
 
-    <!-- Bottom Controls -->
-    <div class="bottom-controls-center">
-        <img class="logo-bottom" id="logo-bottom" src="img/logo.png" alt=""/>
-        <button class="offline-btn" id="offline-btn">OFFLINE</button>
-    </div>
-  </div>
-
-  <!-- Templates (Moved from JS to HTML to save code) -->
-  <template id="player-controls-template">
+    <!-- Плеер -->
     <div class="lyrics-player-block" id="player-controls">
       <div class="player-progress-wrapper">
         <div class="player-progress-bar" id="progress-bar">
@@ -73,16 +52,22 @@
         <div class="player-controls-row">
             <button class="player-control-btn" id="btn-shuffle" title="Shuffle">🔀</button>
             <button class="player-control-btn" id="btn-repeat" title="Repeat">🔁</button>
-            <button class="player-control-btn" id="btn-fav-only" title="Favorites Only">★</button>
+            <button class="player-control-btn" id="btn-fav-only" title="Только избранное">F</button>
         </div>
       </div>
       <div id="player-track-info" style="text-align:center; padding:10px; color:#888; font-size:12px;">
           <span id="player-track-artist"></span> - <span id="player-track-title"></span>
       </div>
     </div>
-  </template>
 
-  <!-- Modals Container -->
+    <!-- Низ -->
+    <div class="bottom-controls-center">
+        <img class="logo-bottom" id="logo-bottom" src="img/logo.png" alt=""/>
+        <button class="offline-btn" id="offline-btn">OFFLINE</button>
+        <button class="feedback-link" id="reload-btn" style="margin-top:10px; font-size:12px; opacity:0.6">Перезагрузить приложение</button>
+    </div>
+  </div>
+
   <div id="modals-container"></div>
 </body>
 </html>
