@@ -93,11 +93,20 @@ export const PlayerCore = {
     },
 
     next() {
+        if (!this.playlist.length) return;
+
         let idx = this.currentIndex + 1;
+
         if (idx >= this.playlist.length) {
-            if (this.isRepeat) idx = 0;
-            else return this._state(false); 
+            if (this.isRepeat) {
+                idx = 0;
+            } else {
+                // По базовому правилу: ничего не должно "само останавливать" плеер.
+                // Остаёмся на текущем треке без изменения state.
+                return;
+            }
         }
+
         this.play(this.playlist[idx]);
     },
 
@@ -126,6 +135,19 @@ export const PlayerCore = {
 
     seek(pct) {
         if (this.audio.duration) this.audio.currentTime = this.audio.duration * pct;
+    },
+
+    stop() {
+        // STOP: допускается только по кнопкам/таймеру/особому сценарию избранного.
+        try { this.audio.pause(); } catch {}
+        try { this.audio.currentTime = 0; } catch {}
+        this.audio.src = '';
+        this.currentUid = null;
+        this.currentIndex = -1;
+        this.playlist = [];
+        this.originalPlaylist = [];
+        this._state(false);
+        window.dispatchEvent(new CustomEvent('player:track-change', { detail: { uid: null } }));
     },
 
     _state(playing) {
