@@ -19,6 +19,7 @@ export const TrackRegistry = {
                 });
             }
         });
+        console.log(`[Registry] Indexed ${tracksMap.size} tracks.`);
     },
     getTrack(uid) { return tracksMap.get(uid); },
     getAlbum(id) { return albumsMap.get(id); },
@@ -28,5 +29,10 @@ export const TrackRegistry = {
     },
     getAllTracks() { return Array.from(tracksMap.values()); }
 };
-// Для совместимости с offline-manager
-window.TrackRegistry = TrackRegistry; 
+
+// 👇 ВАЖНО: Добавляем эти экспорты для совместимости с offline-менеджером
+export const getTrackByUid = (uid) => TrackRegistry.getTrack(uid);
+export const getAllTracks = () => TrackRegistry.getAllTracks();
+
+// Публикуем в window для старых скриптов (на всякий случай)
+window.TrackRegistry = TrackRegistry;
