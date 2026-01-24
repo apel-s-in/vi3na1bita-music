@@ -2,17 +2,13 @@
 // Общие UI-утилиты (без влияния на playback)
 // ВАЖНО: не дублируем core utils. Здесь только тонкий фасад (back-compat для старых модулей).
 
-function _escFallback(s) {
-  const v = String(s ?? '');
-  // минимальный escape без DOM-аллоцирования (fallback, если Utils не загружен)
-  return v.replace(/[<>&'"]/g, (m) => ({
-    '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&#39;', '"': '&quot;'
-  }[m]));
-}
+const _escFallback = (s) => String(s ?? '').replace(/[<>&'"]/g, (m) => ({
+  '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&#39;', '"': '&quot;'
+}[m]));
 
 export function esc(s) {
   const fn = window.Utils?.escapeHtml;
-  return (typeof fn === 'function') ? fn(String(s ?? '')) : _escFallback(s);
+  return typeof fn === 'function' ? fn(String(s ?? '')) : _escFallback(s);
 }
 
 export function formatBytes(n) {
