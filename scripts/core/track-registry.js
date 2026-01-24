@@ -30,9 +30,8 @@ export const TrackRegistry = {
     getAllTracks() { return Array.from(tracksMap.values()); }
 };
 
-// 👇 ВАЖНО: Добавляем эти экспорты для совместимости с offline-менеджером
+// Экспорты для совместимости
 export const getTrackByUid = (uid) => TrackRegistry.getTrack(uid);
 export const getAllTracks = () => TrackRegistry.getAllTracks();
 
-// Публикуем в window для старых скриптов (на всякий случай)
 window.TrackRegistry = TrackRegistry;
