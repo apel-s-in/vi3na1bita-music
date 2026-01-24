@@ -3,58 +3,67 @@ import { TrackRegistry } from './core/track-registry.js';
 import { FavoritesStore } from './core/favorites-store.js';
 import { PlayerCore } from './core/player-core.js';
 import { AppController } from './app/app-controller.js';
+import { initOfflineManager } from './offline/offline-manager.js';
 
-// Конфиг
 const PROMOCODE = "VITRINA2025";
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // 1. Промокод (Простая логика без лишних файлов)
+    // 1. Service Worker
+    if ('serviceWorker' in navigator) {
+        try {
+            await navigator.serviceWorker.register('./service-worker.js');
+            console.log('SW registered');
+        } catch (e) { console.error('SW fail', e); }
+    }
+
+    // 2. Промокод
     const saved = localStorage.getItem('promocode');
     if (saved !== PROMOCODE) {
         const block = $('#promocode-block');
         const inp = $('#promo-inp');
-        const btn = $('#promo-btn');
         const err = $('#promo-error');
-
-        btn.onclick = () => {
+        
+        $('#promo-btn').onclick = () => {
             if (inp.value.trim() === PROMOCODE) {
                 localStorage.setItem('promocode', PROMOCODE);
                 block.classList.add('hidden');
-                initApp();
+                startApp();
             } else {
                 err.textContent = "Неверный код";
             }
         };
-        return; // Ждем ввода
+        return; 
     }
     
     $('#promocode-block').classList.add('hidden');
-    initApp();
+    startApp();
 });
 
-async function initApp() {
+async function startApp() {
     try {
-        console.log('🚀 Init App...');
+        console.log('🚀 Starting...');
         $('#main-block').classList.remove('hidden');
 
-        // 2. Загрузка данных
-        const res = await fetch('config/config.json'); // Или albums.json если переименовали
+        // Данные
+        const res = await fetch('config/config.json');
         const data = await res.json();
-        const albums = data.albums || [];
-
-        // 3. Инициализация Ядра
-        TrackRegistry.init(albums);
+        
+        // Ядро
+        TrackRegistry.init(data.albums);
         FavoritesStore.init();
         PlayerCore.init();
         
-        // 4. Инициализация UI
-        AppController.init(albums);
+        // Оффлайн (фоновый старт)
+        initOfflineManager().then(() => console.log('Offline Mgr ready'));
 
-        // 5. Offline (Заглушка для совместимости, можно расширить позже)
-        $('#offline-btn').onclick = () => alert('Offline режим в разработке');
+        // UI
+        AppController.init(data.albums);
+
+        // Кнопка перезагрузки (полезно для PWA)
+        $('#reload-btn').onclick = () => window.location.reload();
 
     } catch (e) {
-        console.error('Init failed', e);
-        alert('Ошибка запуска: ' + e.message);
+        alert('Critical Error: ' + e.message);
+        console.error(e);
     }
 }
