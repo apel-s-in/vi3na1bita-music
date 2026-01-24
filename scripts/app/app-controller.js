@@ -14,16 +14,20 @@ export const AppController = {
     init(albums) {
         this.renderIcons(albums);
         this.bindEvents();
-        if (albums.length) this.openAlbum(albums[0].id);
+        // Берем id или key
+        if (albums.length) this.openAlbum(albums[0].id || albums[0].key);
         FavoritesStore.purge();
     },
 
     renderIcons(albums) {
         const wrap = $('#album-icons');
         let html = `<div class="album-icon" data-id="__favorites__"><img src="img/star.png"></div>`;
-        html += albums.map(a => 
-            `<div class="album-icon" data-id="${a.id}"><img src="${a.cover}"></div>`
-        ).join('');
+        html += albums.map(a => {
+            const id = a.id || a.key;
+            // Убедимся, что cover существует, иначе заглушка
+            const cover = a.cover || 'img/logo.png'; 
+            return `<div class="album-icon" data-id="${id}"><img src="${cover}"></div>`;
+        }).join('');
         wrap.innerHTML = html;
     },
 
@@ -40,15 +44,18 @@ export const AppController = {
             this.favOnlyMode = false;
         } else {
             const album = TrackRegistry.getAlbum(id);
-            if (!album) return;
+            if (!album) {
+                console.error('Album not found:', id);
+                return;
+            }
             title.textContent = album.title;
             title.className = "active-album-title";
-            cover.src = album.cover;
+            cover.src = album.cover || 'img/logo.png';
             this.currentList = TrackRegistry.getAlbumTracks(id);
         }
         this.renderList();
     },
-
+    // ... (остальные методы renderList и bindEvents без изменений из прошлого ответа) ...
     renderList() {
         const cont = $('#track-list-container');
         const playingUid = PlayerCore.currentUid;
@@ -121,7 +128,6 @@ export const AppController = {
             PlayerCore.setPlaylist(playlist, uid);
         });
 
-        // Player Controls
         on($('#btn-play'), 'click', () => PlayerCore.toggle());
         on($('#btn-next'), 'click', () => PlayerCore.next());
         on($('#btn-prev'), 'click', () => PlayerCore.prev());
@@ -136,14 +142,13 @@ export const AppController = {
 
         on($('#offline-btn'), 'click', () => openOfflineModal());
 
-        // Core Events
         window.addEventListener('player:track-change', e => {
             this.renderList(); 
             const t = TrackRegistry.getTrack(e.detail.uid);
             if (t) {
                 $('#player-track-title').textContent = t.title;
                 $('#player-track-artist').textContent = t.artist;
-                LyricsEngine.load(t.lyrics); // Грузим текст
+                LyricsEngine.load(t.lyrics);
             }
         });
 
@@ -156,7 +161,7 @@ export const AppController = {
             $('#progress-fill').style.width = (dur ? (ct/dur)*100 : 0) + '%';
             $('#time-current').textContent = formatTime(ct);
             $('#time-duration').textContent = formatTime(dur);
-            LyricsEngine.sync(ct); // Синхронизируем текст
+            LyricsEngine.sync(ct);
         });
         
         on($('#progress-bar'), 'click', e => {
