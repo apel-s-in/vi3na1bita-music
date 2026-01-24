@@ -1,89 +1,68 @@
 import { TrackRegistry } from './track-registry.js';
 
-const STORAGE_KEY = 'app_favorites_v2';
-let favoritesData = []; // Array of objects: { uid, addedAt, inactiveAt }
-
-// Загрузка из LocalStorage
-const load = () => {
-    try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        favoritesData = raw ? JSON.parse(raw) : [];
-    } catch (e) {
-        console.error('Fav load error', e);
-        favoritesData = [];
-    }
-};
+const KEY = 'app_favorites_v2';
+let data = [];
 
 const save = () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(favoritesData));
-    // Диспатчим событие для обновления UI в реальном времени
+    localStorage.setItem(KEY, JSON.stringify(data));
     window.dispatchEvent(new CustomEvent('favorites:updated'));
 };
 
 export const FavoritesStore = {
     init() {
-        load();
+        try {
+            data = JSON.parse(localStorage.getItem(KEY) || '[]');
+        } catch { data = []; }
     },
 
     isLiked(uid) {
-        const item = favoritesData.find(i => i.uid === uid);
-        // Считается лайкнутым, если есть в списке и НЕ помечен как inactiveAt (или inactiveAt в будущем, если нужно)
-        // По ТЗ: "при снятии звезды сразу удаляется трек" - это баг.
-        // Исправление: Если inactiveAt существует, значит юзер снял лайк, но трек визуально еще в списке (до перезагрузки).
+        const item = data.find(i => i.uid === uid);
         return item && !item.inactiveAt;
     },
 
-    // Возвращает true если трек в списке избранного, но помечен "удаленным" (полупрозрачный)
+    // Для UI: если трек в списке, но снята звезда (полупрозрачный)
     isInactive(uid) {
-        const item = favoritesData.find(i => i.uid === uid);
+        const item = data.find(i => i.uid === uid);
         return item && !!item.inactiveAt;
     },
 
     toggle(uid) {
-        const index = favoritesData.findIndex(i => i.uid === uid);
-        
-        if (index === -1) {
-            // Добавляем новый
-            favoritesData.push({ uid, addedAt: Date.now(), inactiveAt: null });
+        const idx = data.findIndex(i => i.uid === uid);
+        if (idx === -1) {
+            data.push({ uid, addedAt: Date.now(), inactiveAt: null });
         } else {
-            const item = favoritesData[index];
-            if (item.inactiveAt) {
-                // Восстанавливаем (снова лайк)
-                item.inactiveAt = null;
-                item.addedAt = Date.now(); // Обновляем дату, чтобы поднялся вверх
+            // Если был inactive -> восстанавливаем. Если был active -> удаляем (soft delete)
+            if (data[idx].inactiveAt) {
+                data[idx].inactiveAt = null;
+                data[idx].addedAt = Date.now(); // Поднимаем вверх
             } else {
-                // Мягкое удаление
-                item.inactiveAt = Date.now();
+                data[idx].inactiveAt = Date.now();
             }
         }
         save();
         return this.isLiked(uid);
     },
 
-    // Получить список UID для воспроизведения (только активные)
+    // Для плеера: только активные
     getPlayableUIDs() {
-        return favoritesData
-            .filter(item => !item.inactiveAt && TrackRegistry.getTrack(item.uid)) // Проверяем существование трека
-            .sort((a, b) => b.addedAt - a.addedAt) // Новые сверху
-            .map(item => item.uid);
+        return data
+            .filter(i => !i.inactiveAt && TrackRegistry.getTrack(i.uid))
+            .sort((a, b) => b.addedAt - a.addedAt)
+            .map(i => i.uid);
     },
 
-    // Получить полный список для отображения в UI (включая inactive)
+    // Для списка "Избранное": все (и активные, и зачеркнутые)
     getAllForUI() {
-        return favoritesData
-            .filter(item => TrackRegistry.getTrack(item.uid))
+        return data
+            .filter(i => TrackRegistry.getTrack(i.uid))
             .sort((a, b) => b.addedAt - a.addedAt)
-            .map(item => ({
-                uid: item.uid,
-                isLiked: !item.inactiveAt,
-                isInactive: !!item.inactiveAt
-            }));
+            .map(i => i.uid);
     },
     
-    // Реальная очистка (можно вызывать при старте приложения)
-    purgeInactive() {
-        const initialLen = favoritesData.length;
-        favoritesData = favoritesData.filter(item => !item.inactiveAt);
-        if (favoritesData.length !== initialLen) save();
+    // Очистка мусора (вызывать при старте)
+    purge() {
+        const len = data.length;
+        data = data.filter(i => !i.inactiveAt);
+        if (data.length !== len) save();
     }
 };
