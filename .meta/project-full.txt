@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1089a4fd58f0d1134002bbf34f478685ec6c5c5a.idx
-│   │       ├── pack-1089a4fd58f0d1134002bbf34f478685ec6c5c5a.pack
-│   │       └── pack-1089a4fd58f0d1134002bbf34f478685ec6c5c5a.rev
+│   │       ├── pack-8af70fc06fe48bf221789f693317a28dcdf957f4.idx
+│   │       ├── pack-8af70fc06fe48bf221789f693317a28dcdf957f4.pack
+│   │       └── pack-8af70fc06fe48bf221789f693317a28dcdf957f4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -356,7 +356,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-24 10:49:35 UTC
+Сгенерировано: 2026-01-24 10:50:16 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4823,7 +4823,7 @@ export const PlaybackCache = {
 // Ключевое правило: CQ влияет на воспроизведение ТОЛЬКО если CQ выше PQ
 
 import { bytesByQuality, getAudioBlob, touchLocalAccess, getLocalMeta } from './cache-db.js';
-import { getTrackByUid } from '../app/track-registry.js';
+import { getTrackByUid } from '../core/track-registry.js';
 
 const MB = 1024 * 1024;
 const COMPLETE_THRESHOLD = 0.92;
