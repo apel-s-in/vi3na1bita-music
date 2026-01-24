@@ -90,7 +90,8 @@ export function renderAlbumIcons(items = [], opts = {}) {
     el.dataset.akey = key;
     el.title = title;
 
-    el.innerHTML = `<img src="${esc(p1)}" srcset="${esc(p2)} 2x" alt="${esc(title)}" draggable="false" loading="lazy" width="60" height="60">`;
+    const srcset = p2 ? ` srcset="${esc(p2)} 2x"` : '';
+    el.innerHTML = `<img src="${esc(p1)}"${srcset} alt="${esc(title)}" draggable="false" loading="lazy" width="60" height="60">`;
 
     if (onClick) {
       el.addEventListener('click', (e) => {
