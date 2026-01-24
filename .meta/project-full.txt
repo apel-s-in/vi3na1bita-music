@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-43f92665be5343b44501326ea4ecd3187d02fcf3.idx
-│   │       ├── pack-43f92665be5343b44501326ea4ecd3187d02fcf3.pack
-│   │       └── pack-43f92665be5343b44501326ea4ecd3187d02fcf3.rev
+│   │       ├── pack-95c14f25d63763cf24a19f193c7cc6d4a6381e65.idx
+│   │       ├── pack-95c14f25d63763cf24a19f193c7cc6d4a6381e65.pack
+│   │       └── pack-95c14f25d63763cf24a19f193c7cc6d4a6381e65.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -322,6 +322,7 @@ vi3na1bita-music/
 │   │   ├── utils/
 │   │   │   └── app-utils.js
 │   │   ├── app-controller.js
+│   │   ├── lyrics-engine.js
 │   │   └── track-registry.js
 │   ├── ci/
 │   │   ├── lint-sw.mjs
@@ -369,7 +370,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-24 10:23:14 UTC
+Сгенерировано: 2026-01-24 10:24:06 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1664,6 +1665,76 @@ export const AppController = {
             const pct = (e.clientX - rect.left) / rect.width;
             PlayerCore.seek(pct);
         });
+    }
+};
+
+//=================================================
+// FILE: /scripts/app/lyrics-engine.js
+import { $ } from '../core/utils.js';
+
+let currentLyrics = []; // [{time: 0, text: "..."}]
+let activeIndex = -1;
+
+export const LyricsEngine = {
+    async load(url) {
+        currentLyrics = [];
+        activeIndex = -1;
+        $('#lyrics').innerHTML = '<div class="lyrics-placeholder">Загрузка...</div>';
+        
+        if (!url) {
+            $('#lyrics').innerHTML = '<div class="lyrics-placeholder">Текст отсутствует</div>';
+            return;
+        }
+
+        try {
+            const res = await fetch(url);
+            if (!res.ok) throw new Error('No lyrics');
+            const data = await res.json();
+            
+            // Нормализация формата
+            if (Array.isArray(data)) {
+                currentLyrics = data.map(l => ({
+                    time: Number(l.time || 0),
+                    text: l.text || l.line || ''
+                })).sort((a, b) => a.time - b.time);
+            }
+            this.render();
+        } catch (e) {
+            $('#lyrics').innerHTML = '<div class="lyrics-placeholder">Текст не найден</div>';
+        }
+    },
+
+    render() {
+        const container = $('#lyrics');
+        if (!currentLyrics.length) return;
+        
+        const html = currentLyrics.map((line, i) => 
+            `<div class="lyrics-line" data-idx="${i}">${line.text}</div>`
+        ).join('');
+        container.innerHTML = `<div class="lyrics-scroll">${html}</div>`;
+    },
+
+    sync(currentTime) {
+        if (!currentLyrics.length) return;
+
+        // Находим текущую строку
+        let idx = -1;
+        for (let i = 0; i < currentLyrics.length; i++) {
+            if (currentTime >= currentLyrics[i].time) idx = i;
+            else break;
+        }
+
+        if (idx !== activeIndex) {
+            activeIndex = idx;
+            const all = document.querySelectorAll('.lyrics-line');
+            all.forEach(el => el.classList.remove('active'));
+            
+            if (idx !== -1 && all[idx]) {
+                const el = all[idx];
+                el.classList.add('active');
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
     }
 };
 
