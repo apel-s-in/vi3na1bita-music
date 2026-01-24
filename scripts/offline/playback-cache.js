@@ -2,11 +2,10 @@
 // PlaybackCache (ESM) — кэширование окна PREV/CUR/NEXT (ТЗ 7)
 // Скачивает РЕАЛЬНЫЕ треки для playback, управляет окном воспроизведения
 
-import { getTrackByUid } from '../app/track-registry.js';
+import { getTrackByUid } from '../core/track-registry.js';
 import { isAllowedByNetPolicy, getNetPolicy } from './net-policy.js';
 import { markLocalTransient } from './cache-db.js';
 
-// ТЗ 7.3: окно всегда ровно 3 элемента PREV/CUR/NEXT
 const WINDOW_PREV = 1;
 const WINDOW_NEXT = 1;
 
