@@ -18,7 +18,6 @@ const STATIC_ASSETS = [
   './icons/apple-touch-icon.png',
 
   // Новые скрипты (Ядро)
-  './scripts/main.js',
   './scripts/core/utils.js',
   './scripts/core/track-registry.js',
   './scripts/core/favorites-store.js',
