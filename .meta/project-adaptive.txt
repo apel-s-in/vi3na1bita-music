@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2d2e9bf4d22371ff3fe2795032004228e2249252.idx
-│   │       ├── pack-2d2e9bf4d22371ff3fe2795032004228e2249252.pack
-│   │       └── pack-2d2e9bf4d22371ff3fe2795032004228e2249252.rev
+│   │       ├── pack-b958d4ad9e3155fc960dce7c99c3a1ad9289982a.idx
+│   │       ├── pack-b958d4ad9e3155fc960dce7c99c3a1ad9289982a.pack
+│   │       └── pack-b958d4ad9e3155fc960dce7c99c3a1ad9289982a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -317,6 +317,7 @@ vi3na1bita-music/
 │   │   ├── app-controller.js
 │   │   ├── lyrics-engine.js
 │   │   ├── player-ui.js
+│   │   ├── promocode.js
 │   │   └── track-registry.js
 │   ├── ci/
 │   │   ├── lint-sw.mjs
@@ -359,7 +360,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-25 09:34:35 UTC
+Сгенерировано: 2026-01-25 09:35:11 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1728,6 +1729,41 @@ export const LyricsEngine = {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
 
+})();
+
+//=================================================
+// FILE: /scripts/app/promocode.js
+(function () {
+  const PROMO = "VITRINA2025";
+
+  function check() {
+      const saved = localStorage.getItem('promocode');
+      if (saved === PROMO) {
+          unlock();
+          return;
+      }
+
+      const btn = document.getElementById('promo-btn');
+      const inp = document.getElementById('promo-inp');
+      const err = document.getElementById('promo-error');
+
+      if(btn) btn.onclick = () => {
+          if (inp.value.trim() === PROMO) {
+              localStorage.setItem('promocode', PROMO);
+              unlock();
+          } else {
+              err.textContent = 'Неверный код';
+          }
+      };
+  }
+
+  function unlock() {
+      const p = document.getElementById('promocode-block');
+      if (p) p.classList.add('hidden');
+      if (window.startApp) window.startApp();
+  }
+
+  window.addEventListener('load', check);
 })();
 
 //=================================================
