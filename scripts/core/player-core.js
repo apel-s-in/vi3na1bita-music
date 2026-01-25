@@ -2,7 +2,7 @@ import { TrackRegistry } from './track-registry.js';
 import { shuffleArray } from './utils.js';
 
 export const PlayerCore = {
-    audio: new Audio(),
+    sound: null,
     playlist: [],         
     originalPlaylist: [], 
     currentIndex: -1,
@@ -11,26 +11,10 @@ export const PlayerCore = {
     isShuffle: false,
     isRepeat: false, 
     isPlaying: false,
+    volume: 1.0,
 
     init() {
-        this.audio.preload = 'auto';
-        
-        this.audio.addEventListener('ended', () => {
-            if (this.isRepeat === 'one') this.play(this.currentUid);
-            else this.next(true);
-        });
-
-        this.audio.addEventListener('timeupdate', () => {
-            window.dispatchEvent(new CustomEvent('player:timeupdate', { 
-                detail: { ct: this.audio.currentTime, dur: this.audio.duration } 
-            }));
-        });
-
-        this.audio.addEventListener('play', () => this._state(true));
-        this.audio.addEventListener('pause', () => this._state(false));
-        this.audio.addEventListener('error', () => {
-            if(this.playlist.length > 1) this.next();
-        });
+        // Howler инициализируется сам
     },
 
     setPlaylist(uids, startUid) {
@@ -47,13 +31,20 @@ export const PlayerCore = {
 
     play(uid) {
         if (!uid) return;
-        if (this.currentUid === uid && this.audio.src) {
-            this.audio.play().catch(()=>{});
+
+        // Если играет тот же трек - ничего не делаем (или resume если пауза)
+        if (this.currentUid === uid && this.sound) {
+            if (!this.sound.playing()) this.sound.play();
             return;
         }
 
         const track = TrackRegistry.getTrack(uid);
         if (!track) return;
+
+        // Остановка предыдущего
+        if (this.sound) {
+            this.sound.unload();
+        }
 
         this.currentUid = uid;
         this.currentIndex = this.playlist.indexOf(uid);
@@ -63,28 +54,57 @@ export const PlayerCore = {
             this.currentIndex = 0;
         }
 
-        // Проверяем Offline
-        const mgr = window.OfflineUI?.offlineManager;
-        // Здесь можно было бы добавить сложную логику резолва url, но для старта берем базовый
-        // Если есть оффлайн-менеджер, он подменит URL в blob
-        
-        this.audio.src = track.url || track.audio; // (или track.src из старого конфига)
-        
-        this.audio.play().catch(console.warn);
+        // Howler Setup
+        this.sound = new Howl({
+            src: [track.url || track.audio],
+            html5: true, // Важно для больших файлов и стриминга
+            volume: this.volume,
+            onplay: () => {
+                this._state(true);
+                this._startTick();
+            },
+            onpause: () => {
+                this._state(false);
+                this._stopTick();
+            },
+            onend: () => {
+                this._stopTick();
+                if (this.isRepeat === 'one') {
+                    this.play(this.currentUid);
+                } else {
+                    this.next(true);
+                }
+            },
+            onstop: () => {
+                this._stopTick();
+                this._state(false);
+            },
+            onloaderror: (id, err) => console.error('Load Error', err),
+            onplayerror: (id, err) => {
+                console.error('Play Error', err);
+                this.sound.once('unlock', () => {
+                    this.sound.play();
+                });
+            }
+        });
+
+        this.sound.play();
         window.dispatchEvent(new CustomEvent('player:track-change', { detail: { uid } }));
     },
 
     toggle() {
-        if (this.audio.paused) {
-            this.currentUid ? this.audio.play() : this.play(this.playlist[0]);
-        } else {
-            this.audio.pause();
+        if (this.sound && this.sound.playing()) {
+            this.sound.pause();
+        } else if (this.sound) {
+            this.sound.play();
+        } else if (this.playlist.length > 0) {
+            this.play(this.playlist[0]);
         }
     },
 
     prev() {
-        if (this.audio.currentTime > 3) {
-            this.audio.currentTime = 0;
+        if (this.sound && this.sound.seek() > 3) {
+            this.sound.seek(0);
             return;
         }
         let idx = this.currentIndex - 1;
@@ -92,22 +112,24 @@ export const PlayerCore = {
         this.play(this.playlist[idx]);
     },
 
-    next() {
-        if (!this.playlist.length) return;
-
+    next(auto = false) {
         let idx = this.currentIndex + 1;
-
         if (idx >= this.playlist.length) {
-            if (this.isRepeat) {
-                idx = 0;
-            } else {
-                // По базовому правилу: ничего не должно "само останавливать" плеер.
-                // Остаёмся на текущем треке без изменения state.
-                return;
-            }
+            if (this.isRepeat === 'all' || this.isRepeat === true) idx = 0;
+            else return this._state(false); 
         }
-
         this.play(this.playlist[idx]);
+    },
+
+    seek(pct) {
+        if (this.sound && this.sound.duration()) {
+            this.sound.seek(this.sound.duration() * pct);
+        }
+    },
+    
+    setVolume(val) {
+        this.volume = val;
+        if(this.sound) this.sound.volume(val);
     },
 
     toggleShuffle() {
@@ -133,25 +155,25 @@ export const PlayerCore = {
         return this.isRepeat;
     },
 
-    seek(pct) {
-        if (this.audio.duration) this.audio.currentTime = this.audio.duration * pct;
-    },
-
-    stop() {
-        // STOP: допускается только по кнопкам/таймеру/особому сценарию избранного.
-        try { this.audio.pause(); } catch {}
-        try { this.audio.currentTime = 0; } catch {}
-        this.audio.src = '';
-        this.currentUid = null;
-        this.currentIndex = -1;
-        this.playlist = [];
-        this.originalPlaylist = [];
-        this._state(false);
-        window.dispatchEvent(new CustomEvent('player:track-change', { detail: { uid: null } }));
-    },
-
     _state(playing) {
         this.isPlaying = playing;
         window.dispatchEvent(new CustomEvent('player:state', { detail: { isPlaying: playing } }));
+    },
+
+    _tickInterval: null,
+    _startTick() {
+        this._stopTick();
+        this._tickInterval = setInterval(() => {
+            if (this.sound && this.sound.playing()) {
+                const seek = this.sound.seek();
+                const duration = this.sound.duration();
+                window.dispatchEvent(new CustomEvent('player:timeupdate', { 
+                    detail: { ct: seek, dur: duration } 
+                }));
+            }
+        }, 300); // Обновляем раз в 300мс
+    },
+    _stopTick() {
+        clearInterval(this._tickInterval);
     }
 };
