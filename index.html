@@ -9,7 +9,9 @@
   <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
   <link rel="stylesheet" href="styles/main.css">
   
-  <!-- Убрали Howler, он больше не нужен -->
+  <!-- ВЕРНУЛИ HOWLER -->
+  <script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js"></script>
+  
   <script type="module" src="./scripts/main.js"></script>
 </head>
 <body>
@@ -32,6 +34,7 @@
 
     <div class="track-list" id="track-list-container"></div>
 
+    <!-- Восстановлена полная структура плеера для CSS -->
     <div class="lyrics-player-block" id="player-controls">
       <div id="lyrics-container" class="lyrics-scroll"></div>
       
@@ -40,6 +43,7 @@
           <div class="player-progress-fill" id="progress-fill"></div>
         </div>
       </div>
+      
       <div class="player-controls">
         <div class="player-controls-row">
           <span class="time-in-controls" id="time-current">0:00</span>
@@ -54,12 +58,29 @@
             <button class="player-control-btn" id="btn-fav-only" title="Favorites Only">★</button>
         </div>
       </div>
+
+      <!-- Вернули громкость и доп кнопки -->
+      <div class="volume-control-wrapper">
+        <div class="volume-track">
+          <div class="volume-fill" id="vol-fill" style="width: 100%;"></div>
+        </div>
+        <input type="range" class="volume-slider" id="vol-slider" min="0" max="100" value="100">
+      </div>
+
+      <div class="player-buttons-wrapper">
+         <div class="player-extra-buttons-row">
+            <button class="lyrics-toggle-btn" id="btn-lyrics-toggle">Т</button>
+            <button class="pulse-btn" id="btn-pulse" title="Пульсация">🤍</button>
+         </div>
+      </div>
+
       <div id="player-track-info" style="text-align:center; padding:10px; color:#888; font-size:12px;">
           <span id="player-track-artist"></span> - <span id="player-track-title"></span>
       </div>
     </div>
 
     <div class="bottom-controls-center">
+        <!-- Логотип для пульсации -->
         <img class="logo-bottom" id="logo-bottom" src="img/logo.png" alt=""/>
         <button class="offline-btn" id="offline-btn">OFFLINE</button>
         <button class="feedback-link" id="reload-btn" style="margin-top:10px; font-size:12px; opacity:0.6">Перезагрузить</button>
