@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-35beaf3fcb696fe6c43f929e8e2b208d8d42cde2.idx
-│   │       ├── pack-35beaf3fcb696fe6c43f929e8e2b208d8d42cde2.pack
-│   │       └── pack-35beaf3fcb696fe6c43f929e8e2b208d8d42cde2.rev
+│   │       ├── pack-4dcfda037f6dabaf3589e60b78a50ed28af4306b.idx
+│   │       ├── pack-4dcfda037f6dabaf3589e60b78a50ed28af4306b.pack
+│   │       └── pack-4dcfda037f6dabaf3589e60b78a50ed28af4306b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -351,7 +351,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-25 10:25:33 UTC
+Сгенерировано: 2026-01-25 10:26:32 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -941,7 +941,6 @@ const STATIC_ASSETS = [
   './icons/apple-touch-icon.png',
 
   // Новые скрипты (Ядро)
-  './scripts/main.js',
   './scripts/core/utils.js',
   './scripts/core/track-registry.js',
   './scripts/core/favorites-store.js',
