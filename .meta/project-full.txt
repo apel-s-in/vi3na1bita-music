@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-fd910d20e84f298641f07afc341f5b7a539e9474.idx
-│   │       ├── pack-fd910d20e84f298641f07afc341f5b7a539e9474.pack
-│   │       └── pack-fd910d20e84f298641f07afc341f5b7a539e9474.rev
+│   │       ├── pack-1ac4566531dec1899b5bdc0ad62bb46ade6724a0.idx
+│   │       ├── pack-1ac4566531dec1899b5bdc0ad62bb46ade6724a0.pack
+│   │       └── pack-1ac4566531dec1899b5bdc0ad62bb46ade6724a0.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -316,7 +316,8 @@ vi3na1bita-music/
 │   ├── app/
 │   │   ├── app-controller.js
 │   │   ├── lyrics-engine.js
-│   │   └── player-ui.js
+│   │   ├── player-ui.js
+│   │   └── track-registry.js
 │   ├── ci/
 │   │   ├── lint-sw.mjs
 │   │   ├── validate-content.mjs
@@ -359,7 +360,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-01-25 09:21:10 UTC
+Сгенерировано: 2026-01-25 09:21:35 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1740,6 +1741,22 @@ export const LyricsEngine = {
   else init();
 
 })();
+
+//=================================================
+// FILE: /scripts/app/track-registry.js
+// Этот файл - фасад для обратной совместимости.
+// Он перенаправляет всё в core реестр.
+
+import { TrackRegistry } from '../core/track-registry.js';
+
+export const registerTrack = (t) => TrackRegistry.registerTrack(t);
+export const registerTracks = (t) => TrackRegistry.registerTracks(t);
+export const getTrackByUid = (uid) => TrackRegistry.getTrack(uid);
+export const getAllTracks = () => TrackRegistry.getAllTracks();
+export const clearRegistry = () => TrackRegistry.clearRegistry();
+
+// Дефолтный экспорт, если кто-то импортирует через default
+export default TrackRegistry;
 
 //=================================================
 // FILE: /scripts/ci/lint-sw.mjs
