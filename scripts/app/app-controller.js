@@ -23,9 +23,13 @@ export const AppController = {
         
         // Восстановление громкости
         const vol = localStorage.getItem('playerVolume') || 1;
-        $('#vol-slider').value = vol * 100;
+        const slider = $('#vol-slider');
+        if (slider) slider.value = vol * 100;
         PlayerCore.setVolume(vol);
         this.updateVolumeUI(vol * 100);
+
+        // Инициализация событий плеера (один раз)
+        this.bindPlayerControls();
     },
 
     renderIcons(albums) {
@@ -58,7 +62,11 @@ export const AppController = {
             cover.src = album.cover || 'img/logo.png';
             this.currentList = TrackRegistry.getAlbumTracks(id);
         }
+        
         this.renderList();
+        
+        // При смене альбома нужно проверить, какой плеер показывать (большой или мини)
+        this.updatePlayerVisibility();
     },
 
     renderList() {
@@ -66,10 +74,6 @@ export const AppController = {
         const playingUid = PlayerCore.currentUid;
         
         let listToRender = this.currentList;
-        // Если включен фильтр "Только избранное", фильтруем данные перед рендером
-        // НО: лучше скрывать CSS-ом, чтобы не пересоздавать DOM. 
-        // Для простоты перерендерим при переключении режима F.
-        
         if (this.favOnlyMode && this.currentContext !== 'favorites') {
             listToRender = listToRender.filter(uid => FavoritesStore.isLiked(uid));
         }
@@ -89,7 +93,6 @@ export const AppController = {
             const inactiveClass = isInactive ? 'inactive' : '';
             const favClass = isLiked ? 'liked' : '';
             
-            // Восстановил структуру HTML как в старом
             return `
                 <div class="track ${activeClass} ${inactiveClass}" data-uid="${uid}">
                     <div class="tnum">${idx + 1}</div>
@@ -101,10 +104,10 @@ export const AppController = {
         }).join('');
         
         cont.innerHTML = html;
+        this.updatePlayerVisibility();
     },
 
     highlightTrack(uid) {
-        // Точечное обновление без перерендера
         const all = document.querySelectorAll('.track');
         all.forEach(el => el.classList.remove('current'));
         
@@ -115,28 +118,91 @@ export const AppController = {
         }
     },
 
+    // Логика переключения Большой / Мини плеер
+    updatePlayerVisibility() {
+        const playerBlock = $('#player-controls');
+        // В старом дизайне мини-плеер создавался динамически
+        let miniHeader = $('#mini-player-info'); 
+        
+        if (!miniHeader) {
+            // Создаем мини-хедер, если нет
+            miniHeader = document.createElement('div');
+            miniHeader.id = 'mini-player-info';
+            miniHeader.className = 'mini-now';
+            miniHeader.style.display = 'none';
+            miniHeader.innerHTML = `
+                <span class="tnum" id="mini-track-num">--.</span>
+                <span class="track-title" id="mini-track-title">—</span>
+            `;
+            // Вставляем ПЕРЕД списком
+            const header = $('header');
+            header.after(miniHeader);
+            
+            // Клик по мини-плееру возвращает в играющий альбом
+            miniHeader.onclick = () => {
+                const track = TrackRegistry.getTrack(PlayerCore.currentUid);
+                if(track) this.openAlbum(track.albumId);
+            };
+        }
+
+        const playingUid = PlayerCore.currentUid;
+        if (!playingUid) {
+            // Ничего не играет - скрываем всё
+            playerBlock.style.display = 'none';
+            miniHeader.style.display = 'none';
+            return;
+        }
+
+        // Проверяем, есть ли играющий трек в ТЕКУЩЕМ списке
+        const isPlayingFromCurrentList = this.currentList.includes(playingUid);
+
+        if (isPlayingFromCurrentList) {
+            // Мы в "родном" альбоме -> Большой плеер
+            playerBlock.style.display = 'block';
+            miniHeader.style.display = 'none';
+            
+            // Перемещаем плеер ПОД трек (как в старом дизайне)
+            const currentTrackRow = document.querySelector(`.track[data-uid="${playingUid}"]`);
+            if (currentTrackRow) {
+                currentTrackRow.after(playerBlock);
+            } else {
+                // Если строка скрыта фильтром, кидаем в конец списка
+                $('#track-list-container').after(playerBlock);
+            }
+        } else {
+            // Мы в другом альбоме -> Мини-плеер сверху
+            playerBlock.style.display = 'none';
+            miniHeader.style.display = 'flex';
+            
+            const t = TrackRegistry.getTrack(playingUid);
+            if(t) {
+                $('#mini-track-title').textContent = t.title;
+                // Номер берем из оригинального альбома
+                const originalTracks = TrackRegistry.getAlbumTracks(t.albumId);
+                const idx = originalTracks.indexOf(playingUid);
+                $('#mini-track-num').textContent = (idx + 1) + '.';
+            }
+        }
+    },
+
     bindEvents() {
         on($('#album-icons'), 'click', e => {
             const el = e.target.closest('.album-icon');
             if (el) this.openAlbum(el.dataset.id);
         });
 
-        // Делегирование на список
         on($('#track-list-container'), 'click', e => {
             const row = e.target.closest('.track');
             if (!row) return;
             const uid = row.dataset.uid;
 
-            // Клик по звезде
             if (e.target.classList.contains('like-star')) {
                 e.stopPropagation();
                 FavoritesStore.toggle(uid);
                 
-                // Обновляем иконку точечно
                 const isLiked = FavoritesStore.isLiked(uid);
                 e.target.src = isLiked ? 'img/star.png' : 'img/star2.png';
                 
-                // Если мы в "Избранном", строка может стать inactive
                 if (this.currentContext === 'favorites') {
                     if (!isLiked) row.classList.add('inactive');
                     else row.classList.remove('inactive');
@@ -147,19 +213,23 @@ export const AppController = {
             if (this.currentContext === 'favorites' && FavoritesStore.isInactive(uid)) {
                 if(confirm("Вернуть трек в избранное?")) {
                     FavoritesStore.toggle(uid);
-                    this.renderList(); // Тут нужен ререндер чтобы убрать inactive
+                    this.renderList();
                 }
                 return;
             }
 
-            // Логика плейлиста
             let playlist = this.currentContext === 'favorites' ? FavoritesStore.getPlayableUIDs() : 
                            (this.favOnlyMode ? this.currentList.filter(u => FavoritesStore.isLiked(u)) : this.currentList);
             
             PlayerCore.setPlaylist(playlist, uid);
         });
 
-        // Контролы
+        // Offline modal
+        on($('#offline-btn'), 'click', () => openOfflineModal());
+    },
+
+    bindPlayerControls() {
+        // Контролы (только один раз при старте)
         on($('#btn-play'), 'click', () => PlayerCore.toggle());
         on($('#btn-next'), 'click', () => PlayerCore.next());
         on($('#btn-prev'), 'click', () => PlayerCore.prev());
@@ -178,10 +248,10 @@ export const AppController = {
             if (this.currentContext === 'favorites') return;
             this.favOnlyMode = !this.favOnlyMode;
             $('#btn-fav-only').classList.toggle('active', this.favOnlyMode);
-            this.renderList(); // Тут нужен ререндер для фильтрации
+            this.renderList();
+            if(Toast) Toast.info(this.favOnlyMode ? "Только избранное" : "Все треки");
         });
 
-        // Громкость
         on($('#vol-slider'), 'input', (e) => {
             const val = e.target.value;
             PlayerCore.setVolume(val / 100);
@@ -189,7 +259,6 @@ export const AppController = {
             localStorage.setItem('playerVolume', val / 100);
         });
 
-        // Пульсация
         on($('#btn-pulse'), 'click', () => {
             this.pulseEnabled = !this.pulseEnabled;
             $('#btn-pulse').classList.toggle('active', this.pulseEnabled);
@@ -197,7 +266,6 @@ export const AppController = {
             this.togglePulseAnim();
         });
 
-        // Лирика
         on($('#btn-lyrics-toggle'), 'click', () => {
             const cont = $('#lyrics-container');
             if(cont.style.height === '0px' || cont.style.display === 'none') {
@@ -208,11 +276,17 @@ export const AppController = {
             }
         });
 
-        on($('#offline-btn'), 'click', () => openOfflineModal());
+        on($('#progress-bar'), 'click', e => {
+            const rect = e.target.getBoundingClientRect();
+            const pct = (e.clientX - rect.left) / rect.width;
+            PlayerCore.seek(pct);
+        });
 
-        // --- EVENTS ---
+        // Global Audio Events
         window.addEventListener('player:track-change', e => {
             this.highlightTrack(e.detail.uid);
+            this.updatePlayerVisibility(); // Показать плеер под треком
+            
             const t = TrackRegistry.getTrack(e.detail.uid);
             if (t) {
                 $('#player-track-title').textContent = t.title;
@@ -229,7 +303,7 @@ export const AppController = {
 
         window.addEventListener('player:state', e => {
             $('#btn-play').textContent = e.detail.isPlaying ? '⏸' : '▶';
-            this.togglePulseAnim(); // Включаем/выключаем анимацию
+            this.togglePulseAnim();
         });
 
         window.addEventListener('player:timeupdate', e => {
@@ -240,19 +314,13 @@ export const AppController = {
             $('#time-duration').textContent = formatTime(dur);
             LyricsEngine.sync(ct);
         });
-        
-        on($('#progress-bar'), 'click', e => {
-            const rect = e.target.getBoundingClientRect();
-            const pct = (e.clientX - rect.left) / rect.width;
-            PlayerCore.seek(pct);
-        });
     },
 
     updateVolumeUI(val) {
-        $('#vol-fill').style.width = val + '%';
+        const fill = $('#vol-fill');
+        if(fill) fill.style.width = val + '%';
     },
 
-    // Эмуляция визуализатора CSS-ом (так как настоящий AudioContext сложен)
     togglePulseAnim() {
         const logo = $('#logo-bottom');
         if (this.pulseEnabled && PlayerCore.isPlaying) {
