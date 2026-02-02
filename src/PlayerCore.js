@@ -1,7 +1,6 @@
 // src/PlayerCore.js
 import { ensureMediaSession } from './player-core/media-session.js';
 import { createListenStatsTracker } from './player-core/stats-tracker.js';
-import FavoritesV2 from '../scripts/core/favorites-v2.js';
 
 (function () {
   'use strict';
@@ -25,7 +24,10 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
       this.currentIndex = -1;
 
       // ✅ Guard against races: old Howl events must not affect new playback
+      // (fixes rare double-play / wrong end/next cascades)
       this._loadToken = 0;
+      this.originalPlaylist = [];
+      this.currentIndex = -1;
 
       this.sound = null;
       this.isReady = false;
@@ -61,12 +63,21 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
       this.sourceKey = 'audio';
 
       // =========================
-      // Favorites (v2 UID-only source of truth)
-      // =========================
+      // Favorites (единственный источник истины)
+      // Storage:
+      // - likedTrackUids:v1 => { [albumKey]: string[] }  (для favoritesOnly в альбомах, back-compat e2e)
+      // - favoritesAlbumRefsByUid:v1 => [{ a: albumKey, uid: string }]
+      // Business rules:
+      // - toggle in album (fromAlbum=true): unlike => remove ref "без следа"
+      // - toggle in favorites view (fromAlbum=false): unlike => inactive (ref stays)
+      // - In favorites playlist playing: unlike current active => next; if last active => STOP (единственный разрешённый STOP от избранного)
       this._fav = {
-        // v2 only: liked/ref state lives in FavoritesV2 storages
+        likedKey: 'likedTrackUids:v1',          // legacy by-album map
+        likedKeyV2: 'likedTrackUids:v2',        // ✅ global uid-only set (array in LS)
+        refsKey: 'favoritesAlbumRefsByUid:v1',  // refs пока legacy, миграцию сделаем отдельно
       };
 
+      // Favorites internal emitter (замена DOM CustomEvent 'favorites:changed')
       this._favEmitter = {
         subs: new Set(),
         emit: (payload) => {
@@ -75,6 +86,9 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
           }
         }
       };
+
+      // Refs index cache: uid -> Set(albumKey)
+      this._favRefsIndex = { built: false, map: new Map() };
 
       this._offlineNoCacheToastShown = false;
       this._hasAnyOfflineCacheComplete = null;
@@ -122,7 +136,7 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
     }
 
     // =========================
-    // iOS unlock
+    // iOS unlock (единственный источник правды)
     // =========================
     _armIOSUnlock() {
       if (this._ios.armed || !isIOS()) return;
@@ -130,29 +144,30 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
 
       const handler = () => { this._ensureAudioUnlocked(); };
 
+      // максимально совместимо по iOS: touchend/click + pointerdown
       const add = (t, ev) => {
         t.addEventListener(ev, handler, { passive: true });
-        this._ios.unsubs.push(() => {
-          try { t.removeEventListener(ev, handler, { passive: true }); } catch {}
-        });
+        this._ios.unsubs.push(() => { try { t.removeEventListener(ev, handler, { passive: true }); } catch {} });
       };
 
       add(document, 'touchend');
       add(document, 'touchstart');
       add(document, 'click');
       add(window, 'pointerdown');
-      add(window, 'pageshow');
-      add(document, 'visibilitychange');
+      add(window, 'pageshow'); // возврат из BFCache
+      add(document, 'visibilitychange'); // возвращение из фона
     }
 
     async _ensureAudioUnlocked() {
       if (this._ios.unlocked || !isIOS()) return true;
 
+      // Лучшее что можно: возобновить контекст Howler
       try {
         const ctx = W.Howler?.ctx;
         if (ctx && ctx.state === 'suspended') await ctx.resume();
         this._ios.unlocked = true;
 
+        // после успешного unlock можно снять часть слушателей (экономия)
         if (this._ios.unsubs.length) {
           const unsubs = this._ios.unsubs.slice();
           this._ios.unsubs.length = 0;
@@ -178,6 +193,10 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
         preserveOriginalPlaylist = false,
         preserveShuffleMode = false,
         resetHistory = true,
+
+        // ✅ ВАЖНО: по умолчанию PlayerCore сохраняет позицию при перестройке плейлиста,
+        // чтобы не рвать playback (favoritesOnly/shuffle/like/unlike и т.п.).
+        // Но при прямом выборе трека пользователем нужно ВСЕГДА стартовать с 0:00.
         preservePosition = true,
       } = options || {};
 
@@ -230,7 +249,8 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
           autoPlay: true,
           resumePosition: preservePosition ? prevPos : null
         });
-      } else {
+      }
+      else {
         const cur = this.getCurrentTrack();
         if (cur) {
           this.trigger('onTrackChange', cur, this.currentIndex);
@@ -239,9 +259,7 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
       }
     }
 
-    getPlaylistSnapshot() {
-      return this.playlist.slice();
-    }
+    getPlaylistSnapshot() { return this.playlist.slice(); }
 
     // =========================
     // Playback resolving
@@ -341,6 +359,7 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
       try {
         this.sound.play();
       } catch {
+        // iOS иногда кидает sync-ошибку — пробуем ещё раз после unlock
         await this._ensureAudioUnlocked();
         try { this.sound?.play(); } catch {}
       }
@@ -371,6 +390,12 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
     }
 
     _silentUnloadCurrentSound() {
+      // ВАЖНО: этот метод используется внутренне при смене трека/качества.
+      // Он НЕ должен считаться "STOP" с точки зрения UX-инвариантов.
+      // Поэтому:
+      // - не эмитим onStop
+      // - не вызываем публичный stop()
+      // - останавливаем тик и выгружаем Howl максимально тихо
       if (this.sound) {
         try { this.sound.pause(); } catch {}
         try { this.sound.unload(); } catch {}
@@ -386,6 +411,7 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
       const { autoPlay = false, resumePosition = null } = options || {};
       let html5 = (typeof options.html5 === 'boolean') ? options.html5 : true;
 
+      // ✅ Increment token BEFORE unloading/creating, so any late events from previous Howl are ignored.
       const token = ++this._loadToken;
 
       this._silentUnloadCurrentSound();
@@ -465,6 +491,8 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
             try { this.seek(resumePosition); } catch {}
           }
 
+          // ✅ CRITICAL: do NOT call this.play() here (it can re-enter load/play pipeline).
+          // Only start current Howl instance.
           if (autoPlay) {
             try { this.sound?.play?.(); } catch {}
           }
@@ -522,13 +550,8 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
       if (Number.isFinite(t)) this.sound.seek(t);
     }
 
-    getPosition() {
-      return this.sound ? (Number(this.sound.seek() || 0) || 0) : 0;
-    }
-
-    getDuration() {
-      return this.sound ? (Number(this.sound.duration() || 0) || 0) : 0;
-    }
+    getPosition() { return this.sound ? (Number(this.sound.seek() || 0) || 0) : 0; }
+    getDuration() { return this.sound ? (Number(this.sound.duration() || 0) || 0) : 0; }
 
     // =========================
     // Volume / Mute
@@ -633,6 +656,7 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
       const track = this.getCurrentTrack();
       if (!track) return { ok: true, mode: nextMode, changed: false };
 
+      // UI всегда может показывать выбранный PQ, но переключать реально можно только если есть lo
       if (!this.canToggleQualityForCurrentTrack()) {
         return { ok: true, mode: nextMode, changed: false, disabled: true };
       }
@@ -650,6 +674,8 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
       const pos = this.getPosition();
       const idx = this.currentIndex;
 
+      // ВАЖНО: обновляем src только для текущего uid в playlist/originalPlaylist,
+      // но не считаем это "перестройкой плейлиста".
       const uid = safeStr(track.uid);
       if (uid) {
         const pi = this.playlist.findIndex(t => safeStr(t?.uid) === uid);
@@ -661,7 +687,10 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
         this.playlist[idx].src = desiredSrc;
       }
 
+      // ТИХАЯ пересборка: не вызываем stop(), не эмитим onStop.
       this._silentUnloadCurrentSound();
+
+      // После load: seek(pos), и если wasPlaying=true — продолжаем, иначе остаёмся paused.
       this.load(idx, { autoPlay: wasPlaying, resumePosition: pos });
 
       return { ok: true, mode: nextMode, changed: true };
@@ -672,129 +701,369 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
       if (q === 'low' || q === 'lo') this.switchQuality('lo');
       else if (q === 'high' || q === 'hi') this.switchQuality('hi');
     }
-
     // =========================
-    // Favorites API (v2 + temporary v1 liked)
+    // Favorites API (PlayerCore)
     // =========================
     onFavoritesChanged(cb) {
       if (typeof cb !== 'function') return () => {};
       this._favEmitter?.subs?.add(cb);
       return () => { try { this._favEmitter?.subs?.delete(cb); } catch {} };
     }
-
-    isFavorite(uid) {
-      const u = safeStr(uid);
-      if (!u) return false;
+    _favReadLikedMap() {
       try {
-        FavoritesV2.ensureMigrated();
-        return FavoritesV2.readLikedSet().has(u);
+        const raw = localStorage.getItem(this._fav.likedKey);
+        const j = raw ? JSON.parse(raw) : {};
+        return (j && typeof j === 'object') ? j : {};
+      } catch {
+        return {};
+      }
+    }
+
+    _favWriteLikedMap(map) {
+      try {
+        localStorage.setItem(this._fav.likedKey, JSON.stringify(map && typeof map === 'object' ? map : {}));
+        return true;
       } catch {
         return false;
       }
     }
 
-    toggleFavorite(uid, opts = {}) {
+    _favEnsureRefsIndex() {
+      if (this._favRefsIndex?.built) return;
+
+      const refs = this._favReadRefs();
+      const m = new Map();
+
+      for (const r of refs) {
+        const a = safeStr(r?.a);
+        const u = safeStr(r?.uid);
+        if (!a || !u) continue;
+        if (!m.has(u)) m.set(u, new Set());
+        m.get(u).add(a);
+      }
+
+      this._favRefsIndex = { built: true, map: m };
+    }
+
+    _favInvalidateRefsIndex() {
+      if (!this._favRefsIndex) this._favRefsIndex = { built: false, map: new Map() };
+      this._favRefsIndex.built = false;
+      this._favRefsIndex.map = new Map();
+    }
+
+    _favReadRefs() {
+      try {
+        const raw = localStorage.getItem(this._fav.refsKey);
+        const j = raw ? JSON.parse(raw) : [];
+        return Array.isArray(j) ? j : [];
+      } catch {
+        return [];
+      }
+    }
+
+    _favWriteRefs(arr) {
+      try {
+        localStorage.setItem(this._fav.refsKey, JSON.stringify(Array.isArray(arr) ? arr : []));
+        this._favInvalidateRefsIndex();
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    _favAddRefIfMissing(albumKey, uid) {
+      const a = safeStr(albumKey);
+      const u = safeStr(uid);
+      if (!a || !u) return false;
+
+      const refs = this._favReadRefs();
+      const exists = refs.some(r => r && String(r.a || '').trim() === a && String(r.uid || '').trim() === u);
+      if (exists) return false;
+
+      refs.push({ a, uid: u });
+      this._favWriteRefs(refs);
+      return true;
+    }
+
+    _favRemoveRef(albumKey, uid) {
+      const a = safeStr(albumKey);
+      const u = safeStr(uid);
+      if (!a || !u) return false;
+
+      const refs = this._favReadRefs();
+      const next = refs.filter(r => !(r && String(r.a || '').trim() === a && String(r.uid || '').trim() === u));
+      if (next.length === refs.length) return false;
+
+      this._favWriteRefs(next);
+      return true;
+    }
+
+    getLikedUidsForAlbum(albumKey) {
+      const a = safeStr(albumKey);
+      if (!a) return [];
+      const map = this._favReadLikedMap();
+      const arr = Array.isArray(map[a]) ? map[a] : [];
+      return Array.from(new Set(arr.map(x => String(x || '').trim()).filter(Boolean)));
+    }
+
+    _favReadLikedSetV2() {
+      try {
+        const raw = localStorage.getItem(this._fav.likedKeyV2);
+        const arr = raw ? JSON.parse(raw) : [];
+        const list = Array.isArray(arr) ? arr : [];
+        return new Set(list.map(x => String(x || '').trim()).filter(Boolean));
+      } catch {
+        return new Set();
+      }
+    }
+
+    _favWriteLikedSetV2(set) {
+      try {
+        const arr = Array.from(set || []);
+        localStorage.setItem(this._fav.likedKeyV2, JSON.stringify(arr));
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    isFavorite(uid) {
+      const u = safeStr(uid);
+      if (!u) return false;
+
+      // ✅ Fast path: v2 (UID-only)
+      const v2 = this._favReadLikedSetV2();
+      if (v2.has(u)) return true;
+
+      // Fallback: legacy v1 by-album
+      const map = this._favReadLikedMap();
+      for (const k of Object.keys(map)) {
+        const arr = Array.isArray(map[k]) ? map[k] : [];
+        if (arr.includes(u)) return true;
+      }
+      return false;
+    }
+
+    /**
+     * toggleFavorite(uid, opts?)
+     * opts:
+     * - fromAlbum: boolean (true = действие из родного альбома/мини; false = из Избранного)
+     * - albumKey: string | null  (ЯВНОЕ указание родного альбома для uid; главный фикс)
+     *
+     * Правила:
+     * - fromAlbum=true: unlike => ref удаляется полностью (без следа)
+     * - fromAlbum=false: unlike => ref остаётся (inactive), удаление только через модалку
+     */
+    toggleFavorite(uid, opts = true) {
       const u = safeStr(uid);
       if (!u) return { ok: false, reason: 'noUid' };
 
-      const currentAlbum = String(W.AlbumsManager?.getCurrentAlbum?.() || '').trim();
-      const inFavoritesView = currentAlbum === W.SPECIAL_FAVORITES_KEY;
+      let fromAlbum = (typeof opts === 'boolean') ? opts : !!opts?.fromAlbum;
+      const explicitAlbumKey = (typeof opts === 'object' && opts) ? safeStr(opts.albumKey) : null;
 
-      let fromAlbum = !!opts?.fromAlbum;
-      if (inFavoritesView) fromAlbum = false;
+      // ✅ Страховка по ТЗ:
+      // Если действие произошло в окне "__favorites__", то это НИКОГДА не "fromAlbum",
+      // даже если кто-то ошибочно передал fromAlbum=true (или boolean opts=true).
+      try {
+        const curAlbum = W.AlbumsManager?.getCurrentAlbum?.();
+        if (String(curAlbum || '').trim() === W.SPECIAL_FAVORITES_KEY) {
+          fromAlbum = false;
+        }
+      } catch {}
 
-      const albumKey = safeStr(opts?.albumKey);
+      const map = this._favReadLikedMap();
 
-      FavoritesV2.ensureMigrated();
+      const findAlbumContainingUid = () => {
+        for (const a of Object.keys(map)) {
+          const arr = Array.isArray(map[a]) ? map[a] : [];
+          if (arr.includes(u)) return a;
+        }
+        return null;
+      };
 
-      const prevLiked = this.isFavorite(u);
+      // ✅ Если UI передал albumKey — используем его.
+      // Иначе: для fromAlbum=true обязаны попытаться восстановить albumKey, чтобы refs работали стабильно.
+      const guessAlbumKeyFromContext = () => {
+        try {
+          const a1 = W.AlbumsManager?.getCurrentAlbum?.();
+          if (a1 && !String(a1).startsWith('__')) return safeStr(a1);
+        } catch {}
+
+        try {
+          const cur = this.getCurrentTrack?.();
+          const a2 = safeStr(cur?.sourceAlbum);
+          if (a2 && !String(a2).startsWith('__')) return a2;
+        } catch {}
+
+        try {
+          const a3 = W.AlbumsManager?.getPlayingAlbum?.();
+          if (a3 && !String(a3).startsWith('__')) return safeStr(a3);
+        } catch {}
+
+        return null;
+      };
+
+      const albumKey =
+        explicitAlbumKey ||
+        findAlbumContainingUid() ||
+        (fromAlbum ? guessAlbumKeyFromContext() : null) ||
+        null;
+
+      const prevLiked = (albumKey && !String(albumKey).startsWith('__'))
+        ? this.getLikedUidsForAlbum(albumKey).includes(u)
+        : this.isFavorite(u);
+
       const nextLiked = !prevLiked;
 
-      const source = fromAlbum ? 'album' : 'favorites';
-      FavoritesV2.toggle(u, { source });
+      // liked map update (только если есть albumKey и он не special)
+      if (albumKey && !String(albumKey).startsWith('__')) {
+        const prevArr = Array.isArray(map[albumKey]) ? map[albumKey] : [];
+        const arr = Array.from(new Set(prevArr.map(x => String(x || '').trim()).filter(Boolean)));
 
-      // v1 likedTrackUids:v1 удалён. Никакой синхронизации по albumKey больше нет.
+        let nextArr = arr.slice();
+        if (nextLiked && !nextArr.includes(u)) nextArr.push(u);
+        if (!nextLiked && nextArr.includes(u)) nextArr = nextArr.filter(x => x !== u);
 
+        if (nextArr.length === 0) delete map[albumKey];
+        else map[albumKey] = nextArr;
+
+        this._favWriteLikedMap(map);
+      }
+
+      // ✅ v2 global uid-only set update
+      try {
+        const set = this._favReadLikedSetV2();
+        if (nextLiked) set.add(u);
+        else set.delete(u);
+        this._favWriteLikedSetV2(set);
+      } catch {}
+
+      // refs rules
+      if (nextLiked) {
+        if (albumKey) this._favAddRefIfMissing(albumKey, u);
+      } else {
+        if (fromAlbum) {
+          // "без следа": удалить ref полностью
+          if (albumKey) this._favRemoveRef(albumKey, u);
+        } else {
+          // favorites view: ref остаётся (inactive)
+        }
+      }
+
+      // notify subscribers (без DOM events)
       try {
         this._favEmitter.emit({ albumKey: albumKey || '', uid: u, liked: nextLiked, fromAlbum: !!fromAlbum });
       } catch {}
 
+      // спец-правило STOP/next только при снятии лайка в favorites view
       if (!nextLiked && !fromAlbum) {
-        // ✅ STOP-исключение разрешено только при снятии ⭐ в favorites view
-        const curAlbum = String(W.AlbumsManager?.getCurrentAlbum?.() || '').trim();
-        if (curAlbum === W.SPECIAL_FAVORITES_KEY) {
-          this._handleFavoritesPlaylistUnlikeCurrent(u);
-        }
+        this._handleFavoritesPlaylistUnlikeCurrent(u);
       }
 
-      return { ok: true, uid: u, albumKey: albumKey || null, liked: nextLiked, fromAlbum: !!fromAlbum };
+      return { ok: true, uid: u, albumKey, liked: nextLiked };
     }
 
     getFavoritesState() {
-      FavoritesV2.ensureMigrated();
+      const refs = this._favReadRefs();
 
-      const liked = FavoritesV2.readLikedSet();
-      const refs = FavoritesV2.readRefsByUid();
+      // порядок альбомов как в иконках
+      const order = Array.isArray(W.ICON_ALBUMS_ORDER) ? W.ICON_ALBUMS_ORDER.map(x => String(x?.key || '')).filter(Boolean) : [];
+      const orderMap = new Map(order.map((k, i) => [k, i]));
 
-      const activeUids = [];
-      const inactiveUids = [];
+      const sorted = refs.slice().filter(r => r && safeStr(r.uid) && safeStr(r.a))
+        .sort((r1, r2) => {
+          const a1 = String(r1.a || '').trim();
+          const a2 = String(r2.a || '').trim();
+          const o1 = orderMap.has(a1) ? orderMap.get(a1) : 999;
+          const o2 = orderMap.has(a2) ? orderMap.get(a2) : 999;
+          if (o1 !== o2) return o1 - o2;
+          return String(r1.uid || '').localeCompare(String(r2.uid || ''));
+        });
 
-      for (const uid of Object.keys(refs || {})) {
-        const u = safeStr(uid);
-        if (!u) continue;
-        if (liked.has(u)) activeUids.push(u);
-        else inactiveUids.push(u);
+      const map = this._favReadLikedMap();
+
+      const isActive = (a, uid) => {
+        const arr = Array.isArray(map[a]) ? map[a] : [];
+        return arr.includes(uid);
+      };
+
+      const active = [];
+      const inactive = [];
+
+      for (const r of sorted) {
+        const a = String(r.a || '').trim();
+        const u = String(r.uid || '').trim();
+        if (!a || !u) continue;
+
+        // Track объект (минимальный), UI достроит поля через fetch config.json как и раньше
+        const t = { uid: u, sourceAlbum: a };
+
+        if (isActive(a, u)) active.push(t);
+        else inactive.push(t);
       }
 
-      activeUids.sort();
-      inactiveUids.sort();
-
-      const active = activeUids.map((x) => ({ uid: x }));
-      const inactive = inactiveUids.map((x) => ({ uid: x }));
-
-      return {
-        activeUids,
-        inactiveUids,
-        active,
-        inactive,
-        activeCount: activeUids.length,
-        inactiveCount: inactiveUids.length,
-        likedCount: activeUids.length
-      };
+      return { active, inactive };
     }
 
     removeInactivePermanently(uid) {
       const u = safeStr(uid);
       if (!u) return { ok: false, reason: 'noUid' };
 
-      FavoritesV2.ensureMigrated();
-      const removed = FavoritesV2.removeRef(u);
+      this._favEnsureRefsIndex();
 
-      try { this._favEmitter.emit({ uid: u, liked: false, removed: true }); } catch {}
-      return { ok: true, removed: removed ? 1 : 0 };
+      const set = this._favRefsIndex.map.get(u);
+      if (!set || set.size === 0) {
+        // нечего удалять
+        try { this._favEmitter.emit({ uid: u, liked: false, removed: true }); } catch {}
+        return { ok: true, removed: 0 };
+      }
+
+      const refs = this._favReadRefs();
+
+      // точечно убираем все пары (a, uid) для этого uid
+      const next = refs.filter(r => {
+        const ru = String(r?.uid || '').trim();
+        if (ru !== u) return true;
+        const ra = String(r?.a || '').trim();
+        return !set.has(ra);
+      });
+
+      const removed = refs.length - next.length;
+      this._favWriteRefs(next);
+
+      try {
+        this._favEmitter.emit({ uid: u, liked: false, removed: true });
+      } catch {}
+
+      return { ok: true, removed };
     }
 
     restoreInactive(uid) {
+      // восстановление = просто поставить ⭐ (активировать)
+      // albumKey берём как: если трек сейчас проигрывается в __favorites__, используем sourceAlbum, иначе ищем ref
       const u = safeStr(uid);
       if (!u) return { ok: false, reason: 'noUid' };
 
-      FavoritesV2.ensureMigrated();
+      const refs = this._favReadRefs();
+      const ref = refs.find(r => String(r?.uid || '').trim() === u) || null;
+      const a = safeStr(ref?.a);
 
-      const liked = FavoritesV2.readLikedSet();
-      const refs = FavoritesV2.readRefsByUid();
+      if (a && !String(a).startsWith('__')) {
+        const map = this._favReadLikedMap();
+        const arr = Array.isArray(map[a]) ? map[a] : [];
+        if (!arr.includes(u)) {
+          map[a] = Array.from(new Set(arr.concat([u])));
+          this._favWriteLikedMap(map);
+        }
+      }
 
-      liked.add(u);
-      const ref = refs[u] || { uid: u, addedAt: Date.now(), inactiveAt: null };
-      if (!ref.addedAt) ref.addedAt = Date.now();
-      ref.inactiveAt = null;
-      refs[u] = ref;
+      // ref должен существовать, но на всякий
+      if (a) this._favAddRefIfMissing(a, u);
 
-      FavoritesV2.writeLikedSet(liked);
-      FavoritesV2.writeRefsByUid(refs);
+      try {
+        this._favEmitter.emit({ albumKey: a || '', uid: u, liked: true });
+      } catch {}
 
-      // v1 likedTrackUids:v1 удалён. Восстановление inactive влияет только на v2.
-
-      try { this._favEmitter.emit({ uid: u, liked: true, fromAlbum: false }); } catch {}
       return { ok: true };
     }
 
@@ -803,17 +1072,18 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
       const title = String(params?.title || 'Трек');
       if (!u) return;
 
-      if (!W.Modals?.open) return;
+      const esc = W.Utils?.escapeHtml ? (s) => W.Utils.escapeHtml(String(s || '')) : (s) => String(s || '');
 
-      const body = W.ModalTemplates?.inactiveFavoriteBody
-        ? W.ModalTemplates.inactiveFavoriteBody({ title })
-        : '';
+      if (!W.Modals?.open) return;
 
       const modal = W.Modals.open({
         title: 'Трек неактивен',
         maxWidth: 420,
         bodyHtml: `
-          ${body}
+          <div style="color:#9db7dd; line-height:1.45; margin-bottom:14px;">
+            <div style="margin-bottom:8px;"><strong>Трек:</strong> ${esc(title)}</div>
+            <div style="opacity:.9;">Вы можете вернуть трек в ⭐ или удалить его из списка «ИЗБРАННОЕ».</div>
+          </div>
           ${W.Modals?.actionRow ? W.Modals.actionRow([
             { act: 'add', text: 'Добавить в ⭐', className: 'online', style: 'min-width:160px;' },
             { act: 'remove', text: 'Удалить', className: '', style: 'min-width:160px;' }
@@ -833,7 +1103,7 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
             title: 'Удалить из «ИЗБРАННОГО»?',
             textHtml: `
               <div style="margin-bottom:8px;"><strong>Трек:</strong> ${esc(title)}</div>
-              <div style="opacity:.9;">Трек исчезнет из списка «ИЗБРАННОЕ». В родном альбоме ⭐ снята.</div>
+              <div style="opacity:.9;">Трек исчезнет из списка «ИЗБРАННОЕ». В родном альбоме ⭐ уже снята.</div>
             `,
             confirmText: 'Удалить',
             cancelText: 'Отмена',
@@ -843,6 +1113,7 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
             }
           });
         } else {
+          // fallback: без confirm helper просто удаляем
           this.removeInactivePermanently(u);
           try { params?.onDeleted?.(); } catch {}
         }
@@ -857,17 +1128,24 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
         const cur = this.getCurrentTrack();
         const curUid = safeStr(cur?.uid);
         const u = safeStr(unlikedUid);
+
         if (!curUid || !u || curUid !== u) return;
 
-        const st = this.getFavoritesState();
-        const activeCount = Array.isArray(st?.activeUids) ? st.activeUids.length : 0;
+        // Активные треки = только те, у кого ⭐ сейчас стоит (по likedTrackUids:v1 через getFavoritesState()).
+        const state = this.getFavoritesState();
+        const active = Array.isArray(state?.active) ? state.active : [];
 
-        if (activeCount === 0) {
-          // Единственный разрешённый STOP от Избранного
+        // Единственный разрешённый STOP от избранного:
+        // в favorites view сняли ⭐ с единственного активного (после снятия active=0).
+        if (active.length === 0) {
           this.stop?.();
           return;
         }
 
+        // ВАЖНО: не вызываем FavoritesUI.playFirstActiveFavorite() и не делаем setPlaylist+play() из UI,
+        // иначе получаем двойной запуск/скачки.
+        // Переходим к следующему треку в ТЕКУЩЕМ playing-плейлисте.
+        // (Дальше AlbumsManager/FavoritesUI/PlaybackPolicy уже обновят доступность/подсветку).
         this.next?.();
       } catch (e) {
         console.warn('_handleFavoritesPlaylistUnlikeCurrent failed:', e);
@@ -878,9 +1156,7 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
     // State getters
     // =========================
     getCurrentTrack() {
-      return (this.currentIndex < 0 || this.currentIndex >= this.playlist.length)
-        ? null
-        : (this.playlist[this.currentIndex] || null);
+      return (this.currentIndex < 0 || this.currentIndex >= this.playlist.length) ? null : (this.playlist[this.currentIndex] || null);
     }
 
     getIndex() { return this.currentIndex; }
@@ -891,9 +1167,7 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
       return (this.currentIndex + 1) % len;
     }
 
-    isPlaying() {
-      return !!(this.sound?.playing && this.sound.playing());
-    }
+    isPlaying() { return !!(this.sound?.playing && this.sound.playing()); }
 
     // =========================
     // Events
@@ -952,9 +1226,7 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
       this.sleepTimerTarget = 0;
     }
 
-    getSleepTimerTarget() {
-      return this.sleepTimerTarget || 0;
-    }
+    getSleepTimerTarget() { return this.sleepTimerTarget || 0; }
 
     // =========================
     // MediaSession
@@ -983,9 +1255,7 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
         if (last?.uid === uid) return;
 
         this.shuffleHistory.push({ uid });
-        if (this.shuffleHistory.length > this.historyMax) {
-          this.shuffleHistory.splice(0, this.shuffleHistory.length - this.historyMax);
-        }
+        if (this.shuffleHistory.length > this.historyMax) this.shuffleHistory.splice(0, this.shuffleHistory.length - this.historyMax);
       } catch {}
     }
 
@@ -1041,10 +1311,7 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
       const curUid = safeStr(this.getCurrentTrack()?.uid);
       if (curUid === uid) return false;
 
-      const played = Array.isArray(this.shuffleHistory)
-        ? this.shuffleHistory.some(h => safeStr(h?.uid) === uid)
-        : false;
-
+      const played = Array.isArray(this.shuffleHistory) ? this.shuffleHistory.some(h => safeStr(h?.uid) === uid) : false;
       if (played) return false;
 
       const beforeLen = this.playlist.length;
@@ -1086,10 +1353,8 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
       this.playlist = [];
       this.originalPlaylist = [];
       this.currentIndex = -1;
-
       for (const off of this._ios.unsubs) { try { off(); } catch {} }
       this._ios.unsubs.length = 0;
-
       this.callbacks = {
         onTrackChange: [],
         onPlay: [],
@@ -1105,6 +1370,7 @@ import FavoritesV2 from '../scripts/core/favorites-v2.js';
 
   W.playerCore = new PlayerCore();
 
+  // init without duplicate Howler-wait (bootstrap already waits)
   const init = () => { try { W.playerCore.initialize(); } catch {} };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
