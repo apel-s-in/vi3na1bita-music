@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-81c0c1137b9ed0a9aa2a4b7bd088bf79ee25c6a9.idx
-│   │       ├── pack-81c0c1137b9ed0a9aa2a4b7bd088bf79ee25c6a9.pack
-│   │       └── pack-81c0c1137b9ed0a9aa2a4b7bd088bf79ee25c6a9.rev
+│   │       ├── pack-97fca5e09946a9a5f44ba949241ceffa8589b081.idx
+│   │       ├── pack-97fca5e09946a9a5f44ba949241ceffa8589b081.pack
+│   │       └── pack-97fca5e09946a9a5f44ba949241ceffa8589b081.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -353,7 +353,8 @@ vi3na1bita-music/
 │   │   ├── favorites.js
 │   │   ├── lyrics-modal.js
 │   │   ├── modal-templates.js
-│   │   └── modals.js
+│   │   ├── modals.js
+│   │   └── news-inline.js
 │   ├── utils/
 │   │   └── app-utils.js
 │   └── app.js
@@ -369,7 +370,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-02 09:44:44 UTC
+Сгенерировано: 2026-02-02 09:45:02 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9932,6 +9933,61 @@ try {
     }
   });
 })();
+
+//=================================================
+// FILE: /scripts/ui/news-inline.js
+// scripts/ui/news-inline.js
+// Рендер новостей внутри основного приложения (альбом __reliz__).
+// Только UI/fetch, не трогает воспроизведение.
+
+import { renderNewsCard } from './news-renderer.js';
+
+export function renderNewsInlineSkeleton(container) {
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="news-inline__head">
+      <div class="news-inline__links">
+        <a href="https://t.me/vitrina_razbita" target="_blank" rel="noopener noreferrer">Telegram канал</a>
+        <span class="news-inline__dot">·</span>
+        <a href="./news.html" target="_blank" rel="noopener noreferrer">Страница новостей</a>
+      </div>
+      <div id="news-inline-status" class="news-inline__status">Загрузка...</div>
+    </div>
+    <div id="news-inline-list" class="news-inline__list"></div>
+  `;
+}
+
+export async function loadAndRenderNewsInline(container) {
+  if (!container) return;
+
+  renderNewsInlineSkeleton(container);
+
+  const status = container.querySelector('#news-inline-status');
+  const list = container.querySelector('#news-inline-list');
+  if (!list) return;
+
+  try {
+    const r = await fetch('./news/news.json', { cache: 'no-cache' });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+
+    const j = await r.json();
+    const items = Array.isArray(j?.items) ? j.items : [];
+
+    if (!items.length) {
+      if (status) status.textContent = 'Пока новостей нет';
+      return;
+    }
+
+    if (status) status.style.display = 'none';
+    list.innerHTML = items.map(renderNewsCard).join('');
+  } catch {
+    if (status) {
+      status.textContent = 'Не удалось загрузить новости';
+      status.classList.add('news-inline__status--error');
+    }
+  }
+}
 
 //=================================================
 // FILE: /scripts/utils/app-utils.js
