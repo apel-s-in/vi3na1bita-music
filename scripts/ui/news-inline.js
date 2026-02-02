@@ -2,7 +2,39 @@
 // Рендер новостей внутри основного приложения (альбом __reliz__).
 // Только UI/fetch, не трогает воспроизведение.
 
-import { renderNewsCard } from './news-renderer.js';
+const esc = (s) => {
+  const fn = window.Utils?.escapeHtml;
+  return typeof fn === 'function' ? fn(String(s ?? '')) : String(s ?? '');
+};
+
+function renderCard(it) {
+  const title = esc(it?.title || 'Новость');
+  const date = esc(it?.date || '');
+  const text = esc(it?.text || '');
+  const tags = Array.isArray(it?.tags) ? it.tags : [];
+
+  const media = it?.embedUrl
+    ? `<div class="news-inline__media"><iframe loading="lazy" src="${esc(it.embedUrl)}" allowfullscreen></iframe></div>`
+    : it?.image
+      ? `<div class="news-inline__media"><img loading="lazy" src="${esc(it.image)}" alt=""></div>`
+      : it?.video
+        ? `<div class="news-inline__media"><video controls preload="metadata" src="${esc(it.video)}"></video></div>`
+        : '';
+
+  const tagHtml = tags.length
+    ? `<div class="news-inline__tags">${tags.map((t) => `<span class="news-inline__tag">#${esc(t)}</span>`).join('')}</div>`
+    : '';
+
+  return `
+    <article class="news-inline__card">
+      <div class="news-inline__title">${title}</div>
+      ${date ? `<div class="news-inline__date">${date}</div>` : ''}
+      ${media}
+      ${text ? `<div class="news-inline__text">${text}</div>` : ''}
+      ${tagHtml}
+    </article>
+  `;
+}
 
 export function renderNewsInlineSkeleton(container) {
   if (!container) return;
@@ -42,7 +74,7 @@ export async function loadAndRenderNewsInline(container) {
     }
 
     if (status) status.style.display = 'none';
-    list.innerHTML = items.map(renderNewsCard).join('');
+    list.innerHTML = items.map(renderCard).join('');
   } catch {
     if (status) {
       status.textContent = 'Не удалось загрузить новости';
