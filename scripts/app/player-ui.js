@@ -593,12 +593,17 @@
   }
 
   function onVolumeChange(e) {
-    const v = U.clamp(U.toInt(e?.target?.value, 0), 0, 100);
-    w.playerCore?.setVolume?.(v);
-    raf(() => renderVolumeUI(v));
-    U.lsSet(LS.VOL, v);
-  }
-
+      const v = U.clamp(U.toInt(e?.target?.value, 0), 0, 100);
+      w.playerCore?.setVolume?.(v);
+      U.lsSet(LS.VOL, v);
+      // UI обновляем через requestAnimationFrame
+      if (window.Utils?.debounceFrame) {
+        window.Utils.debounceFrame(() => renderVolumeUI(v))();
+      } else {
+        raf(() => renderVolumeUI(v));
+      }
+    }
+  
   // --------------------------
   // PQ (Hi/Lo)
   // --------------------------
