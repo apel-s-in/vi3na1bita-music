@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-980f0dfc24af9bf529f34f5352bf54a60d485006.idx
-│   │       ├── pack-980f0dfc24af9bf529f34f5352bf54a60d485006.pack
-│   │       └── pack-980f0dfc24af9bf529f34f5352bf54a60d485006.rev
+│   │       ├── pack-f2ec98946bf39ebc90462d4f17db2d73ed788bf7.idx
+│   │       ├── pack-f2ec98946bf39ebc90462d4f17db2d73ed788bf7.pack
+│   │       └── pack-f2ec98946bf39ebc90462d4f17db2d73ed788bf7.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -350,6 +350,8 @@ vi3na1bita-music/
 │   │   ├── offline-indicators.js
 │   │   ├── offline-modal.js
 │   │   └── track-list-renderer.js
+│   ├── utils/
+│   │   └── app-utils.js
 │   └── app.js
 ├── styles/
 │   └── main.css
@@ -363,7 +365,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-02 09:31:08 UTC
+Сгенерировано: 2026-02-02 09:31:57 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8955,6 +8957,23 @@ export const TrackListRenderer = {
 
         container.innerHTML = html;
     }
+};
+
+//=================================================
+// FILE: /scripts/utils/app-utils.js
+// scripts/app/utils/app-utils.js
+// Тонкий фасад над window.Utils (без дублей логики).
+// Важно: не трогаем воспроизведение, только утилиты.
+
+export const $ = (id) => document.getElementById(String(id || ''));
+
+export const toStr = (v) => (v == null ? '' : String(v));
+
+export const isMobileUA = () => !!window.Utils?.isMobile?.() || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+export const escHtml = (s) => {
+  const fn = window.Utils?.escapeHtml;
+  return (typeof fn === 'function') ? fn(toStr(s)) : toStr(s);
 };
 
 //=================================================
