@@ -185,7 +185,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
           this.repeatMode ? this.play(this.currentIndex) : this.next();
         },
         onloaderror: (id, e) => this._emit('onError', { msg: 'Load error', e }),
-        onplayerror: () => this.sound.once('unlock', () => this.sound.play())
+        onplayerror: () => this.sound?.once('unlock', () => this.sound?.play())
       });
 
       this._emit('onTrackChange', track, index);
