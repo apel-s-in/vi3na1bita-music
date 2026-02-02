@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-376482a0f019489a29d92e1b4991e1726788ae92.idx
-│   │       ├── pack-376482a0f019489a29d92e1b4991e1726788ae92.pack
-│   │       └── pack-376482a0f019489a29d92e1b4991e1726788ae92.rev
+│   │       ├── pack-153a51e23230219cfe09546d8b7a9abcc91d0004.idx
+│   │       ├── pack-153a51e23230219cfe09546d8b7a9abcc91d0004.pack
+│   │       └── pack-153a51e23230219cfe09546d8b7a9abcc91d0004.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -383,7 +383,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-02 10:11:24 UTC
+Сгенерировано: 2026-02-02 10:12:40 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1687,7 +1687,7 @@ self.addEventListener('message', (event) => {
 // scripts/app/albums.js
 const APP_CONFIG = window.APP_CONFIG;
 
-import { $, toStr, escHtml, isMobileUA } from './utils/app-utils.js';
+import { $, toStr, escHtml, isMobileUA } from '../utils/app-utils.js';
 import { normalizeTracks, normalizeSocials } from './albums/loaders.js';
 import {
   renderAlbumIcons as renderAlbumIconsUI,
