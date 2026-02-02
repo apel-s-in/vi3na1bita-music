@@ -1,22 +1,35 @@
 // scripts/ui/ui-utils.js
 // Общие UI-утилиты (без влияния на playback)
-// ВАЖНО: это фасад над window.Utils для старых модулей.
+// ВАЖНО: не дублируем core utils. Здесь только тонкий фасад (back-compat для старых модулей).
+
+function _escFallback(s) {
+  const v = String(s ?? '');
+  // минимальный escape без DOM-аллоцирования (fallback, если Utils не загружен)
+  return v.replace(/[<>&'"]/g, (m) => ({
+    '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&#39;', '"': '&quot;'
+  }[m]));
+}
 
 export function esc(s) {
   const fn = window.Utils?.escapeHtml;
-  return (typeof fn === 'function') ? fn(String(s ?? '')) : String(s ?? '');
+  return (typeof fn === 'function') ? fn(String(s ?? '')) : _escFallback(s);
 }
 
 export function formatBytes(n) {
   const fn = window.Utils?.formatBytes;
-  return (typeof fn === 'function') ? fn(n) : `${Number(n) || 0} B`;
+  if (typeof fn === 'function') return fn(n);
+  // fallback (очень короткий)
+  const b = Number(n) || 0;
+  if (b < 1024) return `${Math.floor(b)} B`;
+  if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
+  if (b < 1024 * 1024 * 1024) return `${(b / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(b / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
 
 export function getNetworkStatusSafe() {
   const fn = window.Utils?.getNetworkStatusSafe;
-  return (typeof fn === 'function')
-    ? fn()
-    : { online: navigator.onLine !== false, kind: 'unknown', saveData: false };
+  if (typeof fn === 'function') return fn();
+  return { online: navigator.onLine !== false, kind: 'unknown', saveData: false };
 }
 
 // ✅ Non-ESM доступ (sysinfo.js / sw-manager.js / прочие IIFE)
