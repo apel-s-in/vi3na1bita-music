@@ -1,7 +1,7 @@
 // scripts/app/albums.js
 const APP_CONFIG = window.APP_CONFIG;
 
-import { $, toStr, escHtml, isMobileUA } from './utils/app-utils.js';
+import { $, toStr, escHtml, isMobileUA } from '../utils/app-utils.js';
 import { normalizeTracks, normalizeSocials } from './albums/loaders.js';
 import {
   renderAlbumIcons as renderAlbumIconsUI,
