@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3f5558b02cec95e431c192b33289b602dd92d974.idx
-│   │       ├── pack-3f5558b02cec95e431c192b33289b602dd92d974.pack
-│   │       └── pack-3f5558b02cec95e431c192b33289b602dd92d974.rev
+│   │       ├── pack-904cde50418bb1eba0ef3bc691f6d84c1169bdc7.idx
+│   │       ├── pack-904cde50418bb1eba0ef3bc691f6d84c1169bdc7.pack
+│   │       └── pack-904cde50418bb1eba0ef3bc691f6d84c1169bdc7.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-02 16:22:05 UTC
+Сгенерировано: 2026-02-02 16:28:01 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -12100,7 +12100,7 @@ export function createListenStatsTracker({ getUid, getPos, getDur, record } = {}
 //=================================================
 // FILE: /src/PlayerCore.js
 // src/PlayerCore.js
-// Optimized v1.1: Fixes Favorites empty state by resolving sourceAlbum via Registry.
+// Optimized v1.2: Correctly handles Favorites removal logic (inactive vs delete).
 // Implements T3 requirements: seamless PQ switch, offline playback, stats.
 
 import { getOfflineManager } from '../scripts/offline/offline-manager.js';
@@ -12371,16 +12371,96 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
     toggleFavorite(uid, opts = {}) {
       const u = safeStr(uid);
-      const res = FavoritesV2.toggle(u, { source: opts.fromAlbum ? 'album' : 'favorites' });
+      
+      // T3: Determine context correctly.
+      // If we are currently browsing the SPECIAL_FAVORITES_KEY album, 
+      // then any toggle is effectively "from favorites view" (source='favorites'),
+      // regardless of what the caller passed (unless it's an explicit override).
+      
+      let source = opts.fromAlbum ? 'album' : 'favorites';
+      
+      const currentViewAlbum = W.AlbumsManager?.getCurrentAlbum?.();
+      if (currentViewAlbum === W.SPECIAL_FAVORITES_KEY) {
+        source = 'favorites';
+      }
+
+      const res = FavoritesV2.toggle(u, { source });
       
       this._emitFavChanged({ uid: u, liked: res.liked, albumKey: opts.albumKey });
       
-      // T3 Special Rule: If in Favorites view and unlike active -> next
-      if (!res.liked && !opts.fromAlbum && W.AlbumsManager?.getPlayingAlbum?.() === W.SPECIAL_FAVORITES_KEY) {
+      // T3 Special Rule: If in Favorites playing playlist and unlike active -> next
+      if (!res.liked && source === 'favorites' && W.AlbumsManager?.getPlayingAlbum?.() === W.SPECIAL_FAVORITES_KEY) {
          const cur = this.getCurrentTrack();
          if (cur && safeStr(cur.uid) === u) this.next();
       }
       return res;
+    }
+
+    // Proxy to FavoritesV2 for removal (used by inactive row modal)
+    removeInactivePermanently(uid) {
+      const u = safeStr(uid);
+      const ok = FavoritesV2.removeRef(u);
+      if (ok) {
+        this._emitFavChanged({ uid: u, liked: false, removed: true });
+      }
+      return { ok };
+    }
+    
+    // Proxy to restore inactive (used by inactive row modal)
+    restoreInactive(uid) {
+      // Just toggle it back to liked (source='favorites' or 'album' doesn't matter for liking, it adds back)
+      return this.toggleFavorite(uid, { fromAlbum: false });
+    }
+
+    showInactiveFavoriteModal(params = {}) {
+      const u = safeStr(params?.uid);
+      const title = String(params?.title || 'Трек');
+      
+      if (!W.Modals?.open) return;
+
+      const esc = W.Utils?.escapeHtml ? (s) => W.Utils.escapeHtml(String(s || '')) : (s) => String(s || '');
+
+      const modal = W.Modals.open({
+        title: 'Трек неактивен',
+        maxWidth: 420,
+        bodyHtml: `
+          <div style="color:#9db7dd; line-height:1.45; margin-bottom:14px;">
+            <div style="margin-bottom:8px;"><strong>Трек:</strong> ${esc(title)}</div>
+            <div style="opacity:.9;">Вы можете вернуть трек в ⭐ или удалить его из списка «ИЗБРАННОЕ».</div>
+          </div>
+          ${W.Modals?.actionRow ? W.Modals.actionRow([
+            { act: 'add', text: 'Добавить в ⭐', className: 'online', style: 'min-width:160px;' },
+            { act: 'remove', text: 'Удалить', className: '', style: 'min-width:160px;' }
+          ]) : ''}
+        `
+      });
+
+      modal.querySelector('[data-act="add"]')?.addEventListener('click', () => {
+        try { modal.remove(); } catch {}
+        this.restoreInactive(u);
+      });
+
+      modal.querySelector('[data-act="remove"]')?.addEventListener('click', () => {
+        try { modal.remove(); } catch {}
+        if (W.Modals?.confirm) {
+          W.Modals.confirm({
+            title: 'Удалить из «ИЗБРАННОГО»?',
+            textHtml: `
+              <div style="margin-bottom:8px;"><strong>Трек:</strong> ${esc(title)}</div>
+              <div style="opacity:.9;">Трек исчезнет из списка «ИЗБРАННОЕ». В родном альбоме ⭐ уже снята.</div>
+            `,
+            confirmText: 'Удалить',
+            cancelText: 'Отмена',
+            onConfirm: () => {
+              this.removeInactivePermanently(u);
+              try { params?.onDeleted?.(); } catch {}
+            }
+          });
+        } else {
+          this.removeInactivePermanently(u);
+          try { params?.onDeleted?.(); } catch {}
+        }
+      });
     }
 
     getFavoritesState() {
@@ -12394,16 +12474,26 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         const u = safeStr(r.uid);
         if (!u) return;
 
+        // Skip if marked as inactive (inactiveAt is set) BUT user is looking for "Active" playlist
+        // Actually, UI needs both lists to render gray rows.
+        
         let sourceAlbum = safeStr(r.sourceAlbum);
         if (!sourceAlbum) {
-          // Fallback: look up in registry
           const meta = getTrackByUid(u);
           if (meta) sourceAlbum = safeStr(meta.sourceAlbum);
         }
 
         const item = { uid: u, sourceAlbum };
-        if (liked.has(u)) active.push(item);
-        else inactive.push(item);
+        
+        // V2 Logic: 
+        // Active = is in likedSet
+        // Inactive = NOT in likedSet BUT has ref (inactiveAt != null)
+        
+        if (liked.has(u)) {
+          active.push(item);
+        } else if (r.inactiveAt) {
+          inactive.push(item);
+        }
       });
 
       return { active, inactive };
@@ -12416,7 +12506,6 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       const likedSet = FavoritesV2.readLikedSet();
       const result = [];
       
-      // Iterate liked set and check registry to match album
       for (const uid of likedSet) {
         const t = getTrackByUid(uid);
         if (t && safeStr(t.sourceAlbum) === key) {
