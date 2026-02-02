@@ -95,8 +95,13 @@ class NotificationSystem {
   }
   
   escapeHtml(text) {
-    // scripts/core/utils.js загружается раньше notify.js (см. index.html)
-    return window.Utils.escapeHtml(String(text || ''));
+    const fn = window.Utils?.escapeHtml;
+    const s = String(text || '');
+    if (typeof fn === 'function') return fn(s);
+    // fallback без DOM-аллоцирования
+    return s.replace(/[<>&'"]/g, (m) => ({
+      '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&#39;', '"': '&quot;'
+    }[m]));
   }
   
   // Публичные методы
