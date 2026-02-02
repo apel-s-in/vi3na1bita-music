@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-bbab75ba65730b684d978950c926270cae07dfa8.idx
-│   │       ├── pack-bbab75ba65730b684d978950c926270cae07dfa8.pack
-│   │       └── pack-bbab75ba65730b684d978950c926270cae07dfa8.rev
+│   │       ├── pack-db17e45320cf1f2607a987b4dcf5d16efe8dbce4.idx
+│   │       ├── pack-db17e45320cf1f2607a987b4dcf5d16efe8dbce4.pack
+│   │       └── pack-db17e45320cf1f2607a987b4dcf5d16efe8dbce4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-02 11:03:46 UTC
+Сгенерировано: 2026-02-02 11:06:00 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4240,12 +4240,17 @@ export function attachPlaybackCache() {
   }
 
   function onVolumeChange(e) {
-    const v = U.clamp(U.toInt(e?.target?.value, 0), 0, 100);
-    w.playerCore?.setVolume?.(v);
-    raf(() => renderVolumeUI(v));
-    U.lsSet(LS.VOL, v);
-  }
-
+      const v = U.clamp(U.toInt(e?.target?.value, 0), 0, 100);
+      w.playerCore?.setVolume?.(v);
+      U.lsSet(LS.VOL, v);
+      // UI обновляем через requestAnimationFrame
+      if (window.Utils?.debounceFrame) {
+        window.Utils.debounceFrame(() => renderVolumeUI(v))();
+      } else {
+        raf(() => renderVolumeUI(v));
+      }
+    }
+  
   // --------------------------
   // PQ (Hi/Lo)
   // --------------------------
