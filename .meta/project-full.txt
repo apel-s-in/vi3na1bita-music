@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4b237ec56141c7e52e1e87c8cf93354cffefe827.idx
-│   │       ├── pack-4b237ec56141c7e52e1e87c8cf93354cffefe827.pack
-│   │       └── pack-4b237ec56141c7e52e1e87c8cf93354cffefe827.rev
+│   │       ├── pack-2573000b6b58a1f75f2cd97fa38a213ae5a062da.idx
+│   │       ├── pack-2573000b6b58a1f75f2cd97fa38a213ae5a062da.pack
+│   │       └── pack-2573000b6b58a1f75f2cd97fa38a213ae5a062da.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-02 11:01:09 UTC
+Сгенерировано: 2026-02-02 11:01:48 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -11860,24 +11860,11 @@ try {
 //=================================================
 // FILE: /scripts/utils/app-utils.js
 // scripts/app/utils/app-utils.js
-
+// Фасад над window.Utils и DOM
 export const $ = (id) => document.getElementById(id);
-
 export const toStr = (v) => (v == null ? '' : String(v));
-
-export const isMobileUA = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-function _escFallback(s) {
-  const v = toStr(s);
-  return v.replace(/[<>&'"]/g, (m) => ({
-    '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&#39;', '"': '&quot;'
-  }[m]));
-}
-
-export const escHtml = (s) => {
-  const fn = window.Utils?.escapeHtml;
-  return (typeof fn === 'function') ? fn(toStr(s)) : _escFallback(s);
-};
+export const isMobileUA = () => !!window.Utils?.isMobile?.();
+export const escHtml = (s) => window.Utils?.escapeHtml ? window.Utils.escapeHtml(toStr(s)) : toStr(s);
 
 //=================================================
 // FILE: /scripts/utils/sw-manager.js
