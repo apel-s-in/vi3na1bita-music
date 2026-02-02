@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b13e6305185f46ec58692be6b0b5b16a75cb4fec.idx
-│   │       ├── pack-b13e6305185f46ec58692be6b0b5b16a75cb4fec.pack
-│   │       └── pack-b13e6305185f46ec58692be6b0b5b16a75cb4fec.rev
+│   │       ├── pack-cde0eab9a16ddf40243aff052b38d3179dc547e4.idx
+│   │       ├── pack-cde0eab9a16ddf40243aff052b38d3179dc547e4.pack
+│   │       └── pack-cde0eab9a16ddf40243aff052b38d3179dc547e4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-02 18:41:29 UTC
+Сгенерировано: 2026-02-02 18:49:05 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1655,6 +1655,7 @@ const STAR_OFF = 'img/star2.png';
 const LOGO = 'img/logo.png';
 
 // --- Helpers ---
+const setStar = (img, liked) => { if(img) img.src = liked ? STAR_ON : STAR_OFF; };
 const toUrl = (b, r) => r ? new URL(r, b).toString() : null;
 const getUid = (el) => toStr(el?.dataset?.uid).trim();
 const getAlb = (el) => toStr(el?.dataset?.album).trim();
