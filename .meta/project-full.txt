@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-620e222260dd762fc9edd66828480bc69e638f4e.idx
-│   │       ├── pack-620e222260dd762fc9edd66828480bc69e638f4e.pack
-│   │       └── pack-620e222260dd762fc9edd66828480bc69e638f4e.rev
+│   │       ├── pack-083cf0eedcc18c0db95f56c6d0d7ee388d04ac6f.idx
+│   │       ├── pack-083cf0eedcc18c0db95f56c6d0d7ee388d04ac6f.pack
+│   │       └── pack-083cf0eedcc18c0db95f56c6d0d7ee388d04ac6f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -360,7 +360,8 @@ vi3na1bita-music/
 │   │   ├── offline-indicators.js
 │   │   ├── offline-modal.js
 │   │   ├── sleep.js
-│   │   └── sysinfo.js
+│   │   ├── sysinfo.js
+│   │   └── ui-utils.js
 │   ├── utils/
 │   │   └── app-utils.js
 │   └── app.js
@@ -376,7 +377,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-02 09:48:00 UTC
+Сгенерировано: 2026-02-02 09:48:23 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -11464,6 +11465,37 @@ export function closeOfflineModal() {
 
   console.log('✅ System info manager initialized');
 })();
+
+//=================================================
+// FILE: /scripts/ui/ui-utils.js
+// scripts/ui/ui-utils.js
+// Общие UI-утилиты (без влияния на playback)
+// ВАЖНО: это фасад над window.Utils для старых модулей.
+
+export function esc(s) {
+  const fn = window.Utils?.escapeHtml;
+  return (typeof fn === 'function') ? fn(String(s ?? '')) : String(s ?? '');
+}
+
+export function formatBytes(n) {
+  const fn = window.Utils?.formatBytes;
+  return (typeof fn === 'function') ? fn(n) : `${Number(n) || 0} B`;
+}
+
+export function getNetworkStatusSafe() {
+  const fn = window.Utils?.getNetworkStatusSafe;
+  return (typeof fn === 'function')
+    ? fn()
+    : { online: navigator.onLine !== false, kind: 'unknown', saveData: false };
+}
+
+// ✅ Non-ESM доступ (sysinfo.js / sw-manager.js / прочие IIFE)
+try {
+  window.UIUtils = window.UIUtils || {};
+  window.UIUtils.esc = esc;
+  window.UIUtils.formatBytes = formatBytes;
+  window.UIUtils.getNetworkStatusSafe = getNetworkStatusSafe;
+} catch {}
 
 //=================================================
 // FILE: /scripts/utils/app-utils.js
