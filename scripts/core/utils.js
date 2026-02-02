@@ -229,8 +229,17 @@
         const uid = String(track?.uid || '').trim();
         if (!pc || !pa || !uid) return false;
 
-        // ✅ v2: liked по uid — единый источник истины
-        return !!pc?.isFavorite?.(uid);
+        if (pa !== W.SPECIAL_FAVORITES_KEY) return !!pc?.isFavorite?.(uid);
+
+        const srcAlbum = String(track?.sourceAlbum || '').trim();
+        if (srcAlbum) return !!pc?.isFavorite?.(uid);
+
+        const ref = Array.isArray(W.favoritesRefsModel)
+          ? W.favoritesRefsModel.find(it => String(it?.__uid || '').trim() === uid)
+          : null;
+
+        const a = String(ref?.__a || '').trim();
+        return a ? !!pc?.isFavorite?.(uid) : false;
       }
     },
 
