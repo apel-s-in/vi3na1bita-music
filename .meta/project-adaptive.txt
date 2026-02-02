@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6888464b9ea2b485b789efd0dbdf3c14c32b6c87.idx
-│   │       ├── pack-6888464b9ea2b485b789efd0dbdf3c14c32b6c87.pack
-│   │       └── pack-6888464b9ea2b485b789efd0dbdf3c14c32b6c87.rev
+│   │       ├── pack-ee66ec5e53f6fc7e641b4a2e4bd9d2114ccad4bb.idx
+│   │       ├── pack-ee66ec5e53f6fc7e641b4a2e4bd9d2114ccad4bb.pack
+│   │       └── pack-ee66ec5e53f6fc7e641b4a2e4bd9d2114ccad4bb.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-02 17:07:05 UTC
+Сгенерировано: 2026-02-02 17:14:41 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3646,27 +3646,36 @@ export function attachPlaybackCache() {
 //=================================================
 // FILE: /scripts/app/player-ui.js
 // scripts/app/player-ui.js
-// Optimized v3.0: Concise, efficient DOM updates, Event delegation
+// Optimized v3.1: Robust DOM Referencing for Mini Player
 (function () {
   'use strict';
 
   const W = window, D = document, U = W.Utils;
   const LS = { VOL: 'playerVolume', BIT: 'bitEnabled', FAV: 'favoritesOnlyMode' };
   
-  // State & DOM Cache
+  // State
   const S = {
     mini: false,
     seeking: false,
     bit: false,
     analyser: null,
-    animId: 0,
-    dom: {} // Cached elements: block, playIcon, bar, fill, time, vol, etc.
+    animId: 0
+  };
+
+  // DOM Refs Cache (Persistent)
+  const R = {
+    block: null,
+    fill: null, bar: null, time: null, rem: null, 
+    vFill: null, vHand: null, playIcon: null, vSlider: null,
+    // Mini Player Specific
+    miniNow: null, miniNum: null, miniTitle: null, miniStar: null,
+    nextUp: null, nextUpTitle: null
   };
 
   const PC = () => W.playerCore;
   const $ = (id) => D.getElementById(id);
 
-  // --- Actions Map (Event Delegation) ---
+  // --- Actions ---
   const ACTIONS = {
     'play-pause-btn': () => PC().isPlaying() ? PC().pause() : PC().play(),
     'prev-btn': () => PC().prev(),
@@ -3682,22 +3691,22 @@ export function attachPlaybackCache() {
     'lyrics-text-btn': () => W.LyricsModal?.show(),
     'pulse-btn': () => toggleBit(),
     'sleep-timer-btn': () => W.SleepTimer?.show(),
-    'stats-btn': () => W.SystemInfoManager?.show?.() || W.StatisticsModal?.show?.(), // Fallback if StatisticsModal not ready
+    'stats-btn': () => W.SystemInfoManager?.show?.() || W.StatisticsModal?.show?.(),
+    'track-download-btn': (e) => { if(!e.target.href) { e.preventDefault(); W.NotificationSystem?.error('Недоступно'); } },
+    // Mini specific
     'mini-now': () => { const k = W.AlbumsManager?.getPlayingAlbum(); if(k) W.AlbumsManager.loadAlbum(k); },
     'mini-now-star': (e) => { e.stopPropagation(); toggleLike(); }
   };
 
-  // --- Initialization ---
+  // --- Init ---
   function init() {
     if (!W.albumsIndex?.length) return setTimeout(init, 100);
-    
-    // Core Bindings
     const pc = PC();
     if (!pc) return setTimeout(init, 100);
 
     pc.on({
       onTrackChange: (t, i) => { 
-        W.__lastStatsSec = -1; // Stats reset
+        W.__lastStatsSec = -1;
         W.AlbumsManager?.highlightCurrentTrack(i, { uid: t?.uid, albumKey: t?.sourceAlbum });
         render(i);
         W.LyricsController?.onTrackChange?.(t);
@@ -3711,7 +3720,6 @@ export function attachPlaybackCache() {
       }
     });
 
-    // Subscriptions
     pc.onFavoritesChanged?.(() => { 
       updateMeta(pc.getCurrentTrack()); 
       W.PlaybackPolicy?.apply?.({reason:'favoritesChanged'});
@@ -3725,57 +3733,97 @@ export function attachPlaybackCache() {
     restore();
   }
 
-  // --- Rendering & Layout ---
+  // --- Rendering ---
   function render(idx, force) {
     const isMini = U.isBrowsingOtherAlbum();
-    if (!force && S.dom.block && S.mini === isMini && document.contains(S.dom.block)) return;
+    // Re-render if mode changed OR forced OR block missing
+    if (!force && R.block && S.mini === isMini && D.contains(R.block)) return;
 
     S.mini = isMini;
     
-    // Get/Create Block
-    let blk = $('lyricsplayerblock');
-    if (!blk) {
+    // 1. Ensure Main Block Exists
+    if (!R.block) {
       const tpl = $('player-template');
       if (!tpl) return;
-      blk = tpl.content.cloneNode(true).querySelector('#lyricsplayerblock');
+      const blk = tpl.content.cloneNode(true).querySelector('#lyricsplayerblock');
       bindBlock(blk);
+      // Cache main refs once
+      R.block = blk;
+      R.fill = blk.querySelector('#player-progress-fill');
+      R.bar = blk.querySelector('#player-progress-bar');
+      R.time = blk.querySelector('#time-elapsed');
+      R.rem = blk.querySelector('#time-remaining');
+      R.vFill = blk.querySelector('#volume-fill');
+      R.vHand = blk.querySelector('#volume-handle');
+      R.vSlider = blk.querySelector('#volume-slider');
+      R.playIcon = blk.querySelector('#play-pause-icon');
     }
 
-    // Place Block
+    // 2. Position Block & Mini Elements
     if (isMini) {
       const slot = $('now-playing');
       if (slot) {
-        slot.innerHTML = ''; 
-        slot.append(getMiniHead(), blk, getNextUp());
+        slot.innerHTML = '';
+        // Create & Cache Mini Header
+        const mh = getMiniHead();
+        slot.appendChild(mh);
+        
+        // Append Main Block
+        slot.appendChild(R.block);
+        
+        // Create & Cache Next Up
+        const nu = getNextUp();
+        slot.appendChild(nu);
       }
       W.LyricsController?.applyMiniMode?.();
       toggleEl('mini-now', true); toggleEl('next-up', true);
     } else {
+      // Full Mode
       const row = findRow(idx);
-      if (row) row.after(blk);
-      else $('track-list')?.appendChild(blk);
+      const parent = $('track-list');
+      if (parent) {
+        if (row) row.after(R.block);
+        else parent.appendChild(R.block);
+      }
       
       W.LyricsController?.restoreFromMiniMode?.();
       toggleEl('mini-now', false); toggleEl('next-up', false);
+      
+      // Clear mini refs to avoid stale updates
+      R.miniNow = R.miniNum = R.miniTitle = R.miniStar = R.nextUp = R.nextUpTitle = null;
     }
-
-    // Cache Refs
-    S.dom = {
-      block: blk,
-      fill: blk.querySelector('#player-progress-fill'),
-      bar: blk.querySelector('#player-progress-bar'),
-      time: blk.querySelector('#time-elapsed'),
-      rem: blk.querySelector('#time-remaining'),
-      vFill: blk.querySelector('#volume-fill'),
-      vHand: blk.querySelector('#volume-handle'),
-      playIcon: blk.querySelector('#play-pause-icon')
-    };
 
     updatePlayBtn();
     updatePQ();
     syncFavUI();
     filterList();
     checkJump();
+  }
+
+  function getMiniHead() {
+    const tpl = $('mini-header-template');
+    const el = tpl ? tpl.content.cloneNode(true).querySelector('#mini-now') : D.createElement('div');
+    
+    // Bind Events
+    el.onclick = ACTIONS['mini-now'];
+    const star = el.querySelector('#mini-now-star');
+    if (star) star.onclick = ACTIONS['mini-now-star'];
+
+    // Cache Refs
+    R.miniNow = el;
+    R.miniNum = el.querySelector('#mini-now-num');
+    R.miniTitle = el.querySelector('#mini-now-title');
+    R.miniStar = star;
+    
+    return el;
+  }
+
+  function getNextUp() {
+    const tpl = $('next-up-template');
+    const el = tpl ? tpl.content.cloneNode(true).querySelector('#next-up') : D.createElement('div');
+    R.nextUp = el;
+    R.nextUpTitle = el.querySelector('.title');
+    return el;
   }
 
   function findRow(idx) {
@@ -3789,28 +3837,13 @@ export function attachPlaybackCache() {
       : list.querySelector(`.track[data-index="${idx}"]`);
   }
 
-  function getMiniHead() {
-    const tpl = $('mini-header-template');
-    const el = tpl ? tpl.content.cloneNode(true).querySelector('#mini-now') : D.createElement('div');
-    el.id = 'mini-now';
-    el.onclick = ACTIONS['mini-now'];
-    el.querySelector('#mini-now-star').onclick = ACTIONS['mini-now-star'];
-    return el;
-  }
-
-  function getNextUp() {
-    const tpl = $('next-up-template');
-    return tpl ? tpl.content.cloneNode(true).querySelector('#next-up') : D.createElement('div');
-  }
-
   function bindBlock(blk) {
     blk.addEventListener('click', (e) => {
       const t = e.target.closest('button, a');
       if (t && ACTIONS[t.id]) ACTIONS[t.id](e);
     });
 
-    const vSl = blk.querySelector('#volume-slider');
-    U.dom.on(vSl, 'input', (e) => {
+    U.dom.on(blk.querySelector('#volume-slider'), 'input', (e) => {
       const v = U.toInt(e.target.value);
       PC()?.setVolume(v);
       U.lsSet(LS.VOL, v);
@@ -3832,22 +3865,23 @@ export function attachPlaybackCache() {
 
   // --- Updates ---
   function updateProgress(pos, dur) {
-    if (!S.dom.fill) return;
+    if (!R.fill) return;
     const p = dur ? (pos / dur) * 100 : 0;
-    S.dom.fill.style.width = `${p}%`;
-    if (S.dom.time) S.dom.time.textContent = U.formatTime(pos);
-    if (S.dom.rem) S.dom.rem.textContent = `-${U.formatTime(dur - pos)}`;
+    R.fill.style.width = `${p}%`;
+    if (R.time) R.time.textContent = U.formatTime(pos);
+    if (R.rem) R.rem.textContent = `-${U.formatTime(dur - pos)}`;
   }
 
   function updateVol(v) {
-    if (!S.dom.vFill) return;
-    S.dom.vFill.style.width = `${v}%`;
-    const w = S.dom.vFill.parentElement?.clientWidth || 100;
-    if (S.dom.vHand) S.dom.vHand.style.left = `${U.clamp(w * (v/100), 7, w-7)}px`;
+    if (!R.vFill) return;
+    R.vFill.style.width = `${v}%`;
+    const w = R.vFill.parentElement?.clientWidth || 100;
+    if (R.vHand) R.vHand.style.left = `${U.clamp(w * (v/100), 7, w-7)}px`;
+    if (R.vSlider) R.vSlider.value = v;
   }
 
   function updatePlayBtn() {
-    if (S.dom.playIcon) S.dom.playIcon.innerHTML = PC()?.isPlaying() ? '<path d="M6 4h4v16H6zM14 4h4v16h-4z"/>' : '<path d="M8 5v14l11-7z"/>';
+    if (R.playIcon) R.playIcon.innerHTML = PC()?.isPlaying() ? '<path d="M6 4h4v16H6zM14 4h4v16h-4z"/>' : '<path d="M8 5v14l11-7z"/>';
   }
 
   function updateMeta(t) {
@@ -3855,20 +3889,22 @@ export function attachPlaybackCache() {
     U.download.applyDownloadLink($('track-download-btn'), t);
     
     if (S.mini) {
-      const num = String((PC()?.getIndex()||0) + 1).padStart(2,'0');
-      const pa = W.AlbumsManager?.getPlayingAlbum();
-      const liked = U.fav.isTrackLikedInContext({ playingAlbum: pa, track: t });
+      // Use cached refs!
+      if (R.miniNum) R.miniNum.textContent = `${String((PC()?.getIndex()||0) + 1).padStart(2,'0')}.`;
+      if (R.miniTitle) R.miniTitle.textContent = t?.title || '—';
       
-      const setTxt = (id, txt) => { const el = $(id); if(el) el.textContent = txt; };
-      setTxt('mini-now-num', `${num}.`);
-      setTxt('mini-now-title', t?.title || '—');
-      const star = $('mini-now-star');
-      if (star) star.src = liked ? 'img/star.png' : 'img/star2.png';
+      if (R.miniStar) {
+        const pa = W.AlbumsManager?.getPlayingAlbum();
+        const liked = U.fav.isTrackLikedInContext({ playingAlbum: pa, track: t });
+        R.miniStar.src = liked ? 'img/star.png' : 'img/star2.png';
+      }
 
       const nt = PC()?.getPlaylistSnapshot()?.[PC().getNextIndex()];
-      const nextTitle = nt?.title || '—';
-      const nu = $('next-up');
-      if (nu) nu.querySelector('.title').textContent = nextTitle;
+      if (R.nextUpTitle) {
+        const txt = nt?.title || '—';
+        R.nextUpTitle.textContent = txt;
+        R.nextUpTitle.title = txt;
+      }
     }
   }
 
@@ -3880,7 +3916,7 @@ export function attachPlaybackCache() {
     const lbl = $('pq-btn-label'); if(lbl) lbl.textContent = s.mode==='lo'?'Lo':'Hi';
   }
 
-  // --- Favorites & Filtering ---
+  // --- Logic ---
   function toggleLike() {
     const t = PC()?.getCurrentTrack(), pa = W.AlbumsManager?.getPlayingAlbum();
     if (t?.uid) PC().toggleFavorite(t.uid, { fromAlbum: true, albumKey: (!U.isSpecialAlbumKey(pa) ? pa : null) });
@@ -3927,7 +3963,7 @@ export function attachPlaybackCache() {
     W.availableFavoriteIndices = PC().getPlaylistSnapshot().reduce((a,t,i) => (t.uid && liked.has(t.uid) ? [...a, i] : a), []);
   }
 
-  // --- Visuals (Bit) ---
+  // --- Visuals ---
   function toggleBit() {
     S.bit = !S.bit;
     U.lsSetBool01(LS.BIT, S.bit);
@@ -3986,7 +4022,7 @@ export function attachPlaybackCache() {
   // --- Export ---
   W.PlayerUI = {
     initialize: init,
-    ensurePlayerBlock: (i, o) => render(i, true), // force render
+    ensurePlayerBlock: (i, o) => render(i, true),
     updateMiniHeader: () => updateMeta(),
     updateNextUpLabel: () => updateMeta(),
     togglePlayPause: ACTIONS['play-pause-btn'],
