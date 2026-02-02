@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8fb94fa2aefb8c478f04cc3aac7f1d09294c5d23.idx
-│   │       ├── pack-8fb94fa2aefb8c478f04cc3aac7f1d09294c5d23.pack
-│   │       └── pack-8fb94fa2aefb8c478f04cc3aac7f1d09294c5d23.rev
+│   │       ├── pack-3f5558b02cec95e431c192b33289b602dd92d974.idx
+│   │       ├── pack-3f5558b02cec95e431c192b33289b602dd92d974.pack
+│   │       └── pack-3f5558b02cec95e431c192b33289b602dd92d974.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-02 11:47:05 UTC
+Сгенерировано: 2026-02-02 16:22:05 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -12100,7 +12100,7 @@ export function createListenStatsTracker({ getUid, getPos, getDur, record } = {}
 //=================================================
 // FILE: /src/PlayerCore.js
 // src/PlayerCore.js
-// Optimized v1.0: Delegates logic to OfflineManager, TrackResolver, FavoritesV2.
+// Optimized v1.1: Fixes Favorites empty state by resolving sourceAlbum via Registry.
 // Implements T3 requirements: seamless PQ switch, offline playback, stats.
 
 import { getOfflineManager } from '../scripts/offline/offline-manager.js';
@@ -12155,6 +12155,8 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
     initialize() {
       this.isReady = true;
+      // Ensure V1 favorites are migrated to V2 on startup
+      try { FavoritesV2.ensureMigrated(); } catch (e) { console.warn('Fav migration failed', e); }
     }
 
     // --- Playlist Management ---
@@ -12355,7 +12357,6 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       const track = this.getCurrentTrack();
       if (track && this.isPlaying()) {
         const pos = this.getPosition();
-        // Seamless switch: reload same index, autoPlay, resume pos
         this.load(this.currentIndex, { autoPlay: true, resumePosition: pos });
       }
       return { ok: true, mode: next };
@@ -12370,14 +12371,12 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
     toggleFavorite(uid, opts = {}) {
       const u = safeStr(uid);
-      // T3: fromAlbum vs favoritesView logic handled by FavoritesV2
       const res = FavoritesV2.toggle(u, { source: opts.fromAlbum ? 'album' : 'favorites' });
       
       this._emitFavChanged({ uid: u, liked: res.liked, albumKey: opts.albumKey });
       
       // T3 Special Rule: If in Favorites view and unlike active -> next
       if (!res.liked && !opts.fromAlbum && W.AlbumsManager?.getPlayingAlbum?.() === W.SPECIAL_FAVORITES_KEY) {
-         // Logic to skip if current track became inactive
          const cur = this.getCurrentTrack();
          if (cur && safeStr(cur.uid) === u) this.next();
       }
@@ -12385,23 +12384,46 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     }
 
     getFavoritesState() {
-      // Build active/inactive lists for UI based on V2 data
+      // 1. Get raw V2 data
       const refs = FavoritesV2.readRefsByUid();
-      const active = [], inactive = [];
       const liked = FavoritesV2.readLikedSet();
+      const active = [], inactive = [];
       
+      // 2. Resolve missing data (especially sourceAlbum) from TrackRegistry
       Object.values(refs).forEach(r => {
-        const item = { uid: r.uid, sourceAlbum: r.sourceAlbum }; // V2 should store sourceAlbum if possible, or we fetch from Registry
-        if (liked.has(r.uid)) active.push(item);
+        const u = safeStr(r.uid);
+        if (!u) return;
+
+        let sourceAlbum = safeStr(r.sourceAlbum);
+        if (!sourceAlbum) {
+          // Fallback: look up in registry
+          const meta = getTrackByUid(u);
+          if (meta) sourceAlbum = safeStr(meta.sourceAlbum);
+        }
+
+        const item = { uid: u, sourceAlbum };
+        if (liked.has(u)) active.push(item);
         else inactive.push(item);
       });
+
       return { active, inactive };
     }
 
     getLikedUidsForAlbum(albumKey) {
-      // Adapter for UI to get likes for specific album
-      const all = FavoritesV2.readLikedSet();
-      return Array.from(all); 
+      const key = safeStr(albumKey);
+      if (!key) return [];
+      
+      const likedSet = FavoritesV2.readLikedSet();
+      const result = [];
+      
+      // Iterate liked set and check registry to match album
+      for (const uid of likedSet) {
+        const t = getTrackByUid(uid);
+        if (t && safeStr(t.sourceAlbum) === key) {
+          result.push(uid);
+        }
+      }
+      return result;
     }
 
     onFavoritesChanged(cb) { this._favSubs.add(cb); return () => this._favSubs.delete(cb); }
@@ -12416,21 +12438,15 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
     _reshuffle() {
       if (this.shuffleMode) {
-        // Simple Fisher-Yates on a copy of playlist indices would be better, 
-        // but to keep it simple we just flag it. 
-        // Real shuffling logic:
         const cur = this.getCurrentTrack();
         this.playlist = [...this.playlist].sort(() => Math.random() - 0.5);
-        // Keep current playing as current
         if (cur) {
           this.playlist = [cur, ...this.playlist.filter(t => t !== cur)];
           this.currentIndex = 0;
         }
       } else {
-        // Restore order (assuming we had originalPlaylist, or just sort by index if stored)
         this.playlist = [...this.originalPlaylist];
-        const cur = this.getCurrentTrack(); // This object reference might be lost if we cloned. 
-        // Better: find by UID
+        const cur = this.getCurrentTrack(); 
         if (cur) this.currentIndex = this.playlist.findIndex(t => t.uid === cur.uid);
       }
     }
