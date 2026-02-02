@@ -256,6 +256,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       const track = this.getCurrentTrack();
       if (track && this.isPlaying()) {
         const pos = this.getPosition();
+        // Seamless switch: reload same index, autoPlay, resume pos
         this.load(this.currentIndex, { autoPlay: true, resumePosition: pos });
       }
       return { ok: true, mode: next };
@@ -270,12 +271,14 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
     toggleFavorite(uid, opts = {}) {
       const u = safeStr(uid);
+      // T3: fromAlbum vs favoritesView logic handled by FavoritesV2
       const res = FavoritesV2.toggle(u, { source: opts.fromAlbum ? 'album' : 'favorites' });
       
       this._emitFavChanged({ uid: u, liked: res.liked, albumKey: opts.albumKey });
       
       // T3 Special Rule: If in Favorites view and unlike active -> next
       if (!res.liked && !opts.fromAlbum && W.AlbumsManager?.getPlayingAlbum?.() === W.SPECIAL_FAVORITES_KEY) {
+         // Logic to skip if current track became inactive
          const cur = this.getCurrentTrack();
          if (cur && safeStr(cur.uid) === u) this.next();
       }
@@ -283,12 +286,13 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     }
 
     getFavoritesState() {
+      // Build active/inactive lists for UI based on V2 data
       const refs = FavoritesV2.readRefsByUid();
       const active = [], inactive = [];
       const liked = FavoritesV2.readLikedSet();
       
       Object.values(refs).forEach(r => {
-        const item = { uid: r.uid, sourceAlbum: r.sourceAlbum };
+        const item = { uid: r.uid, sourceAlbum: r.sourceAlbum }; // V2 should store sourceAlbum if possible, or we fetch from Registry
         if (liked.has(r.uid)) active.push(item);
         else inactive.push(item);
       });
@@ -296,6 +300,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     }
 
     getLikedUidsForAlbum(albumKey) {
+      // Adapter for UI to get likes for specific album
       const all = FavoritesV2.readLikedSet();
       return Array.from(all); 
     }
@@ -312,15 +317,21 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
     _reshuffle() {
       if (this.shuffleMode) {
+        // Simple Fisher-Yates on a copy of playlist indices would be better, 
+        // but to keep it simple we just flag it. 
+        // Real shuffling logic:
         const cur = this.getCurrentTrack();
         this.playlist = [...this.playlist].sort(() => Math.random() - 0.5);
+        // Keep current playing as current
         if (cur) {
           this.playlist = [cur, ...this.playlist.filter(t => t !== cur)];
           this.currentIndex = 0;
         }
       } else {
+        // Restore order (assuming we had originalPlaylist, or just sort by index if stored)
         this.playlist = [...this.originalPlaylist];
-        const cur = this.getCurrentTrack(); 
+        const cur = this.getCurrentTrack(); // This object reference might be lost if we cloned. 
+        // Better: find by UID
         if (cur) this.currentIndex = this.playlist.findIndex(t => t.uid === cur.uid);
       }
     }
