@@ -1,115 +1,72 @@
+//=================================================
+// FILE: /scripts/core/bootstrap.js
 // scripts/core/bootstrap.js
+// Легковесный загрузчик: проверка env, загрузка config, init.
+
 (function () {
   'use strict';
 
-  class AppBootstrap {
-    async init() {
-      if (!this._compat()) return;
+  const W = window;
+  const D = document;
 
-      if (!(await this._waitForHowler())) return;
+  const fail = (msg) => {
+    D.body.innerHTML = `<div style="position:fixed;inset:0;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;font-family:sans-serif"><h2 style="color:#e80100">Ошибка запуска</h2><p>${msg}</p></div>`;
+    throw new Error(msg);
+  };
 
-      this._markEnv();
-      this._preventWeirdIOSZoom();
-      this._errors();
-      await this._loadAlbumsIndex();
+  const checkEnv = () => {
+    if (!W.fetch || !W.Promise || !W.localStorage) return 'Ваш браузер устарел. Обновите его.';
+    try { localStorage.setItem('_t', '1'); localStorage.removeItem('_t'); } catch { return 'Включите Cookies/Storage.'; }
+    return null;
+  };
+
+  const preventZoom = () => {
+    // iOS zoom fix
+    D.addEventListener('touchstart', (e) => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+    let last = 0;
+    D.addEventListener('touchend', (e) => {
+      const now = Date.now();
+      if (now - last < 300) e.preventDefault();
+      last = now;
+    }, { passive: false });
+  };
+
+  const loadIndex = async () => {
+    try {
+      const res = await fetch('./albums.json');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      W.albumsIndex = (await res.json())?.albums || [];
+      W.dispatchEvent(new Event('albumsIndex:ready'));
+    } catch (e) {
+      console.error(e);
+      W.albumsIndex = []; // Не роняем, даём запуститься пустым (для offline кэша)
     }
+  };
 
-    _compat() {
-      const missing = [];
-      if (!this._hasLS()) missing.push('LocalStorage');
-      if (typeof fetch === 'undefined') missing.push('Fetch API');
-      if (typeof Promise === 'undefined') missing.push('Promises');
-      if (!document.addEventListener) missing.push('Event Listeners');
-      if (missing.length) return this._compatFail(missing), false;
-      return true;
+  const waitForHowler = async () => {
+    for (let i = 0; i < 50; i++) { // 5 sec max
+      if (W.Howler) return true;
+      await new Promise(r => setTimeout(r, 100));
     }
+    return false;
+  };
 
-    _hasLS() {
-      try { localStorage.setItem('__t', '1'); localStorage.removeItem('__t'); return true; } catch { return false; }
-    }
+  const init = async () => {
+    const err = checkEnv();
+    if (err) return fail(err);
 
-    _compatFail(missing) {
-      // сохраняем поведение (оверлей), но без огромного HTML-шаблона
-      document.body.innerHTML =
-        '<div style="position:fixed;inset:0;background:#181818;color:#fff;display:flex;align-items:center;justify-content:center;font-family:sans-serif;padding:20px;text-align:center;z-index:99999">' +
-          '<div>' +
-            '<h1 style="color:#E80100;margin:0 0 16px">Браузер не поддерживается</h1>' +
-            '<p style="margin:0 0 12px">Для работы требуются:</p>' +
-            '<div style="color:#bbb">' + missing.map(s => '• ' + s).join('<br>') + '</div>' +
-          '</div>' +
-        '</div>';
-    }
+    preventZoom();
+    
+    // Mark env
+    if (/iPad|iPhone|iPod/.test(navigator.userAgent) && !W.MSStream) D.body.classList.add('ios');
+    if (matchMedia('(display-mode: standalone)').matches) D.body.classList.add('standalone');
 
-    async _waitForHowler() {
-      const ok = await (window.Utils?.waitFor
-        ? window.Utils.waitFor(() => typeof Howl !== 'undefined', 5000, 100)
-        : this._poll(() => typeof Howl !== 'undefined', 5000, 100));
+    if (!(await waitForHowler())) return fail('Ошибка загрузки аудио-движка (Howler).');
 
-      if (ok) return true;
+    await loadIndex();
+  };
 
-      window.NotificationSystem?.error?.('Не удалось загрузить аудио-библиотеку. Перезагрузите страницу.');
-      return false;
-    }
+  if (D.readyState === 'loading') D.addEventListener('DOMContentLoaded', init);
+  else init();
 
-    async _poll(fn, maxMs, step) {
-      let t = 0;
-      while (!fn() && t < maxMs) { // eslint-disable-next-line no-await-in-loop
-        await new Promise(r => setTimeout(r, step));
-        t += step;
-      }
-      return !!fn();
-    }
-
-    _markEnv() {
-      try { if (window.Utils?.isIOS?.()) document.body.classList.add('ios'); } catch {}
-      try { if (window.Utils?.isStandalone?.()) document.body.classList.add('standalone'); } catch {}
-    }
-
-    _preventWeirdIOSZoom() {
-      // оставляем твою логику, но компактнее
-      document.body.addEventListener('touchstart', (e) => {
-        if (e.touches && e.touches.length > 1) e.preventDefault();
-      }, { passive: false });
-
-      let last = 0;
-      document.addEventListener('touchend', (e) => {
-        const now = Date.now();
-        if (now - last <= 300 && now - last > 0) {
-          const tag = e.target?.tagName;
-          const interactive = ['A', 'BUTTON', 'INPUT', 'SELECT', 'TEXTAREA'].includes(tag) ||
-            e.target?.closest?.('.track, .album-icon, .like-star, .player-control-btn, .offline-btn');
-          if (!interactive) e.preventDefault();
-        }
-        last = now;
-      }, { passive: false });
-
-      document.addEventListener('contextmenu', (e) => {
-        if (e.target?.tagName === 'IMG' || e.target?.closest?.('#cover-slot')) e.preventDefault();
-      });
-    }
-
-    _errors() {
-      window.addEventListener('error', (e) => { console.error('Global error:', e.error || e.message); });
-      window.addEventListener('unhandledrejection', (e) => { console.error('Unhandled rejection:', e.reason); });
-    }
-
-    async _loadAlbumsIndex() {
-      try {
-        const r = await fetch('./albums.json', { cache: 'no-cache', headers: { Accept: 'application/json' } });
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        const data = await r.json();
-        window.albumsIndex = Array.isArray(data?.albums) ? data.albums : [];
-      } catch (e) {
-        console.error('Failed to load albums.json:', e);
-        window.albumsIndex = [];
-        window.NotificationSystem?.error?.('Не удалось загрузить список альбомов');
-      } finally {
-        try { window.dispatchEvent(new Event('albumsIndex:ready')); } catch {}
-      }
-    }
-  }
-
-  const run = () => new AppBootstrap().init();
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
-  else run();
 })();
