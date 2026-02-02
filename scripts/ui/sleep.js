@@ -1,8 +1,7 @@
 //=================================================
 // FILE: /scripts/ui/sleep.js
-// scripts/ui/sleep.js
-// Таймер сна: Оптимизированная версия.
-// Логика: пауза через PlayerCore. Режимы: 15/30/60 мин или HH:MM.
+// Таймер сна: Версия с делегированием событий (Fix dynamic UI)
+// Логика: пауза через PlayerCore. UI: 15/30/60 мин или HH:MM.
 (function () {
   'use strict';
 
@@ -14,7 +13,7 @@
   // State
   let menu = null, tickId = null;
 
-  // Helpers
+  // --- Helpers ---
   const getTs = () => {
     const pc = W.playerCore?.getSleepTimerTarget?.();
     return (pc && pc > 0) ? pc : parseInt(U.lsGet(LS, '0') || '0', 10);
@@ -38,7 +37,7 @@
       el.style.display = 'none';
       el.textContent = '';
       if (tickId) { clearInterval(tickId); tickId = null; }
-      if (ts > 0 && ms <= 0) stop(true); // Auto-clear if expired
+      if (ts > 0 && ms <= 0) stop(true); // Auto-clear
     }
   };
 
@@ -56,7 +55,7 @@
     if (!silent) W.NotificationSystem?.info?.('⏰ Таймер сна выключен');
   };
 
-  // UI: Menu
+  // --- UI: Menu ---
   const toggleMenu = (btn) => {
     if (menu) { menu.remove(); menu = null; return; }
     
@@ -65,19 +64,32 @@
     
     menu = document.createElement('div');
     menu.className = 'sleep-menu';
-    Object.assign(menu.style, { position: 'fixed', right: `${Math.max(8, W.innerWidth - rect.right)}px`, bottom: `${Math.max(8, W.innerHeight - rect.top)}px` });
+    // Позиционирование с защитой от вылета за экран
+    Object.assign(menu.style, { 
+      position: 'fixed', 
+      right: `${Math.max(8, W.innerWidth - rect.right)}px`, 
+      bottom: `${Math.max(8, W.innerHeight - rect.top)}px`,
+      zIndex: '10000'
+    });
     
     menu.innerHTML = `
       ${act ? `<div class="sleep-menu-item active" data-a="noop">✅ Активен: ${fmtRem(ts - now())} (до ${fmtTime(ts)})</div>` : ''}
       <div class="sleep-menu-item" data-a="off">Выключить</div>
       <div style="height:1px;background:rgba(255,255,255,.1);margin:6px 0"></div>
-      ${[15, 30, 60].map(m => `<div class="sleep-menu-item" data-a="m" data-v="${m}">${m} мин</div>`).join('')}
+      ${[15, 30, 45, 60].map(m => `<div class="sleep-menu-item" data-a="m" data-v="${m}">${m} мин</div>`).join('')}
       <div style="height:1px;background:rgba(255,255,255,.1);margin:6px 0"></div>
       <div class="sleep-menu-item" data-a="time">К времени…</div>
     `;
 
-    const close = () => { if (menu) { menu.remove(); menu = null; document.removeEventListener('click', outClick); } };
-    const outClick = (e) => { if (menu && !menu.contains(e.target) && !btn.contains(e.target)) close(); };
+    // Global click to close
+    setTimeout(() => {
+        const outClick = (e) => { 
+            if (menu && !menu.contains(e.target) && !btn.contains(e.target)) {
+                menu.remove(); menu = null; document.removeEventListener('click', outClick); 
+            }
+        };
+        document.addEventListener('click', outClick);
+    }, 0);
 
     menu.addEventListener('click', (e) => {
       const t = e.target.closest('[data-a]');
@@ -93,18 +105,16 @@
       } else if (a === 'time') {
         openTimeModal();
       }
-      if (a !== 'noop') close();
+      if (a !== 'noop') { menu.remove(); menu = null; }
     });
 
     document.body.appendChild(menu);
-    setTimeout(() => document.addEventListener('click', outClick), 0);
   };
 
-  // UI: Time Modal (HH:MM)
+  // --- UI: Time Modal (HH:MM) ---
   const openTimeModal = () => {
     const wrap = document.createElement('div');
     wrap.className = 'sleep-time-modal-backdrop';
-    // Default +30 min
     const def = new Date(now() + 30 * 60000), h = pad(def.getHours()), m = pad(def.getMinutes());
     
     wrap.innerHTML = `
@@ -123,15 +133,23 @@
 
     const close = () => { wrap.remove(); document.removeEventListener('keydown', onKey); };
     const apply = () => {
-      const hh = Math.min(23, parseInt(wrap.querySelector('#sh').value || '0')), mm = Math.min(59, parseInt(wrap.querySelector('#sm').value || '0'));
+      let hh = parseInt(wrap.querySelector('#sh').value || '0');
+      let mm = parseInt(wrap.querySelector('#sm').value || '0');
+      // Simple validation
+      if(isNaN(hh)) hh=0; if(isNaN(mm)) mm=0;
+      hh = Math.min(23, Math.max(0, hh));
+      mm = Math.min(59, Math.max(0, mm));
+
       const d = new Date(); d.setHours(hh, mm, 0, 0);
-      if (d.getTime() <= now()) d.setDate(d.getDate() + 1);
+      if (d.getTime() <= now()) d.setDate(d.getDate() + 1); // If time passed, set for tomorrow
+      
       set(d.getTime());
       W.NotificationSystem?.success?.(`⏰ Таймер до ${pad(hh)}:${pad(mm)}`);
       close();
     };
 
     const onKey = (e) => { if(e.key==='Enter') apply(); if(e.key==='Escape') close(); };
+    
     wrap.addEventListener('click', (e) => {
       if (e.target === wrap || e.target.dataset.a === 'c') close();
       if (e.target.dataset.a === 'ok') apply();
@@ -139,31 +157,43 @@
 
     document.body.appendChild(wrap);
     document.addEventListener('keydown', onKey);
-    wrap.querySelector('#sh').focus();
+    setTimeout(() => wrap.querySelector('#sh').focus(), 50);
   };
 
-  // Init
+  // --- Init & Delegation ---
   const init = () => {
-    const btn = $('sleep-timer-btn');
-    if (!btn) return setTimeout(init, 200);
-    
-    // Bind UI
-    U.dom.on(btn, 'click', (e) => { e.stopPropagation(); toggleMenu(btn); });
-    
-    // Bind Core
-    const bind = () => {
+    // 1. Делегирование события клика (решает проблему перерисовки кнопки)
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('#sleep-timer-btn');
+        if (btn) {
+            e.stopPropagation();
+            toggleMenu(btn);
+        }
+    });
+
+    // 2. Связь с PlayerCore (для восстановления состояния при перезагрузке)
+    const bindCore = () => {
       if (W.playerCore?.on) {
-        W.playerCore.on({ onSleepTriggered: () => stop() }); // Auto-stop handled by core logic
+        W.playerCore.on({ onSleepTriggered: () => stop() });
         const saved = parseInt(localStorage.getItem(LS)||'0');
         if (saved > now()) W.playerCore.setSleepTimer(saved - now());
-        else if (saved) stop(true); // Expired while closed
+        else if (saved) stop(true); // Expired while app was closed
         updateBadge();
-      } else setTimeout(bind, 100);
+      } else {
+        setTimeout(bindCore, 200);
+      }
     };
-    bind();
-    console.log('✅ SleepTimer optimized');
+    bindCore();
+
+    console.log('✅ SleepTimer optimized (delegation fix)');
   };
 
-  W.SleepTimer = { show: () => $('sleep-timer-btn')?.click(), updateBadge, clearSleepTimer: () => stop(true) };
+  // Public API
+  W.SleepTimer = { 
+    show: () => $('sleep-timer-btn')?.click(), 
+    updateBadge, 
+    clearSleepTimer: () => stop(true) 
+  };
+
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
