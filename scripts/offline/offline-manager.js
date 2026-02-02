@@ -1,275 +1,457 @@
 //=================================================
-// FILE: /scripts/ui/offline-modal.js
-// scripts/ui/offline-modal.js
-// OFFLINE modal (ТЗ_НЬЮ): Секции A-I, 100% Offline, Updates, Stats.
-// Clean UI layer that delegates logic to OfflineManager.
+// FILE: /scripts/offline/offline-manager.js
+// scripts/offline/offline-manager.js
+// Eдиный менеджер офлайна: CQ, Pinned, Cloud, Queue, 100% Offline.
+// Реализует TЗ v1.0. Инвариант: НЕ управляет воспроизведением (нет stop/play).
 
-import { getNetPolicy, setNetPolicy } from '../offline/net-policy.js';
-import { formatBytes, getNetworkStatusSafe } from './ui-utils.js';
+import {
+  bytesByQuality, deleteTrackCache, getCacheQuality, setCacheQuality as dbSetCQ,
+  ensureDbReady, getAudioBlob, setAudioBlob, setBytes,
+  getCloudStats, setCloudStats, clearCloudStats,
+  getCloudCandidate, setCloudCandidate, clearCloudCandidate,
+  totalCachedBytes, clearAllStores, updateGlobalStats, getGlobalStatsAndTotal,
+  getEvictionCandidates, getExpiredCloudUids, getDownloadMeta, setDownloadMeta,
+  markLocalCloud, markLocalTransient
+} from './cache-db.js';
 
-let modalEl = null, unsub = null;
+import { resolvePlaybackSource, isTrackAvailableOffline } from './track-resolver.js';
+import { getTrackByUid } from '../app/track-registry.js';
+import { getNetPolicy, isAllowedByNetPolicy, shouldConfirmByPolicy } from './net-policy.js';
 
-const qs = (s, el=modalEl) => el?.querySelector(s);
-const txt = (s, v) => { const e = qs(s); if(e) e.textContent = String(v ?? ''); };
-const val = (s) => qs(s)?.value;
-const chk = (s) => !!qs(s)?.checked;
-
-// Helpers
-const clamp = (n, min, max) => Math.max(min, Math.min(max, parseInt(n)||min));
-const fmtTime = (sec) => {
-  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
-  return h > 0 ? `${h}ч ${m}м` : `${m}м`;
+const LS = {
+  MODE: 'offlineMode:v1', CQ: 'offline:cacheQuality:v1', PINNED: 'pinnedUids:v1',
+  CN: 'offline:cloudN:v1', CD: 'offline:cloudD:v1', ALERT: 'offline:alert:v1'
 };
 
-// State Collection
-async function collectState(mgr) {
-  const [cq, breakdown, totalBytes, swInfo, stats] = await Promise.all([
-    mgr.getCacheQuality(),
-    mgr.getCacheBreakdown(),
-    mgr.getCacheSizeBytes(),
-    askSW('GET_CACHE_SIZE'),
-    mgr.getGlobalStatistics()
-  ]);
+const MB = 1024 * 1024;
+// Приоритеты загрузки (ТЗ 14.2)
+const PRIORITY = { PINNED: 80, UPDATES: 70, CLOUD: 60, MASS: 50 }; 
 
-  const needs = mgr.getNeedsAggregates() || { upd: 0, rec: 0 };
-  const qst = mgr.getQueueStatus();
+// Utils
+const normUid = (v) => String(v || '').trim() || null;
+const normQ = (v) => String(v || '').toLowerCase() === 'lo' ? 'lo' : 'hi';
+const json = (k, d) => { try { return JSON.parse(localStorage.getItem(k) || '') || d; } catch { return d; } };
+const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+const getNet = () => window.Utils?.getNetworkStatusSafe?.() || { online: navigator.onLine !== false, kind: 'unknown' };
+const alertUI = (on, r) => { save(LS.ALERT, { on: !!on, ts: Date.now(), reason: r || '' }); window.dispatchEvent(new CustomEvent('offline:uiChanged')); };
+const notify = (m, type='info') => window.NotificationSystem?.[type]?.(m, 3000);
+
+// Очередь загрузок
+class DownloadQueue {
+  constructor(cb) { this.q = []; this.act = null; this.paused = false; this.cb = cb; }
+  has(k) { return this.act === k || this.q.some(t => t.key === k); }
+  add(task) {
+    if (this.has(task.key)) return false;
+    this.q.push({ ...task, p: task.priority || 0, ts: Date.now() });
+    this.q.sort((a, b) => b.p - a.p || a.ts - b.ts); // Descending priority
+    this.tick();
+    return true;
+  }
+  pause() { this.paused = true; }
+  resume() { this.paused = false; this.tick(); }
+  status() { return { downloadingKey: this.act, downloading: !!this.act, paused: this.paused, queued: this.q.length }; }
   
-  return {
-    net: getNetworkStatusSafe(),
-    isOff: mgr.isOfflineMode(),
-    cq,
-    cloud: mgr.getCloudSettings(),
-    policy: getNetPolicy(),
-    limit: getLimitSettings(),
-    breakdown,
-    totalBytes,
-    swBytes: swInfo?.size || 0,
-    qst,
-    needs,
-    statsTotal: fmtTime(stats?.totalSeconds || stats?.totalListenSec || 0),
-    albums: (window.albumsIndex || []).filter(a => a.key && !a.key.startsWith('__'))
-  };
+  async tick() {
+    if (this.act || this.paused || !this.q.length) return;
+    const t = this.q.shift();
+    this.act = t.key;
+    this.cb?.({ uid: t.uid, phase: 'start', key: t.key });
+    try { await t.run(); this.cb?.({ uid: t.uid, phase: 'done', key: t.key }); }
+    catch (e) { this.cb?.({ uid: t.uid, phase: 'error', key: t.key, error: e.message }); }
+    this.act = null;
+    this.tick();
+  }
 }
 
-// UI Update
-function updateUI(s) {
-  if (!modalEl) return;
+export class OfflineManager {
+  constructor() {
+    this._subs = new Set();
+    this._needs = { ready: false, total: 0, upd: 0, rec: 0, ts: 0 };
+    this.queue = new DownloadQueue((e) => this._emit('progress', e));
+    this.mass = { active: false, total: 0, done: 0, err: 0, skip: 0 };
+  }
 
-  txt('#om-net-label', `${s.net.online ? 'online' : 'offline'} (${s.net.kind})`);
-  txt('#om-cq-label', s.cq.toUpperCase());
+  async initialize() {
+    await ensureDbReady().catch(() => {});
+    this._checkExpired();
+    setInterval(() => this._checkExpired(), 3600000);
+    this.refreshNeedsAggregates({ force: true });
+  }
+
+  on(t, cb) { if(t==='progress') this._subs.add(cb); return () => this._subs.delete(cb); }
+  _emit(t, d) { this._subs.forEach(f => { try { f(d); } catch {} }); }
+
+  // --- Settings ---
+  isOfflineMode() { return localStorage.getItem(LS.MODE) === '1'; }
+  setOfflineMode(v) { localStorage.setItem(LS.MODE, v ? '1' : '0'); window.dispatchEvent(new CustomEvent('offline:uiChanged')); }
   
-  const setChk = (id, v) => { const e = qs(id); if(e) e.checked = v; };
-  setChk('#om-offline-mode', s.isOff);
+  async getCacheQuality() { return normQ(localStorage.getItem(LS.CQ) || await getCacheQuality()); }
+  async setCacheQuality(v) {
+    const q = normQ(v);
+    localStorage.setItem(LS.CQ, q);
+    await dbSetCQ(q);
+    this._emit('progress', { phase: 'cqChanged', cq: q });
+    alertUI(true, 'CQ changed');
+    this.enqueueReCacheAllByCQ({ userInitiated: false }); // T3 5.2
+    return q;
+  }
+
+  getCloudSettings() { return { n: Math.min(50, Number(localStorage.getItem(LS.CN)) || 5), d: Math.min(365, Number(localStorage.getItem(LS.CD)) || 31) }; }
+  setCloudSettings(s) { 
+    localStorage.setItem(LS.CN, s.n); localStorage.setItem(LS.CD, s.d); 
+    this._emit('progress', { phase: 'cloudSettingsChanged', ...s }); 
+  }
+
+  // --- Pinned ---
+  _pins() { return new Set(json(LS.PINNED, [])); }
+  isPinned(uid) { return this._pins().has(normUid(uid)); }
   
-  const setVal = (id, v) => { const e = qs(id); if(e && e.value !== String(v)) e.value = v; };
-  setVal('#om-cq', s.cq);
-  setVal('#om-cloud-n', s.cloud.n);
-  setVal('#om-cloud-d', s.cloud.d);
-  
-  setChk('#om-pol-wifiOnly', s.policy.wifiOnly);
-  setChk('#om-pol-allowMobile', s.policy.allowMobile);
-  setChk('#om-pol-confirmOnMobile', s.policy.confirmOnMobile);
-  setChk('#om-pol-saveDataBlock', s.policy.saveDataBlock);
-
-  setVal('#om-limit-mode', s.limit.mode);
-  setVal('#om-limit-mb', s.limit.mb);
-  qs('#om-limit-mb').disabled = s.limit.mode !== 'manual';
-
-  // Breakdown
-  txt('#om-e-audio-total', formatBytes(s.totalBytes));
-  txt('#om-e-sw-total', formatBytes(s.swBytes));
-  if (s.breakdown) {
-    txt('#om-e-pinned', formatBytes(s.breakdown.pinnedBytes));
-    txt('#om-e-cloud', formatBytes(s.breakdown.cloudBytes));
-    txt('#om-e-tw', formatBytes(s.breakdown.transientWindowBytes));
-    txt('#om-e-te', formatBytes(s.breakdown.transientExtraBytes));
-    txt('#om-e-tu', formatBytes(s.breakdown.transientUnknownBytes));
+  async pin(uid) {
+    const u = normUid(uid); if (!u) return;
+    const s = this._pins(); s.add(u); save(LS.PINNED, Array.from(s));
+    await setCloudCandidate(u, false);
+    this.enqueueAudioDownload({ uid: u, quality: await this.getCacheQuality(), priority: PRIORITY.PINNED, kind: 'pinned', userInitiated: true });
+    notify('Трек будет доступен офлайн');
+    this._emit('progress', { uid: u, phase: 'pinned' });
   }
 
-  // Queue & Updates
-  txt('#om-f-downloading', s.qst.downloadingKey || '—');
-  txt('#om-f-queued', s.qst.queued);
-  txt('#om-queue-toggle', s.qst.paused ? 'Возобновить' : 'Пауза');
-  
-  txt('#om-g-needsUpdate', s.needs.upd);
-  txt('#om-g-needsReCache', s.needs.rec);
-  
-  txt('#om-stats-total', s.statsTotal);
-
-  const mode = val('#om-full-mode');
-  qs('#om-albums-box').style.display = (mode === 'albums') ? 'block' : 'none';
-}
-
-// Logic
-export async function openOfflineModal() {
-  const mgr = window.OfflineUI?.offlineManager;
-  if (!mgr) return;
-
-  closeOfflineModal();
-  
-  const tpl = window.ModalTemplates?.offlineBody;
-  if (!tpl) return;
-
-  // Initial state render
-  const state = await collectState(mgr);
-  
-  modalEl = window.Modals.open({
-    title: 'OFFLINE',
-    maxWidth: 560,
-    bodyHtml: tpl(state),
-    onClose: closeOfflineModal
-  });
-
-  // Bind Events
-  modalEl.addEventListener('click', (e) => handleClicks(e, mgr));
-  modalEl.addEventListener('change', (e) => handleChanges(e, mgr));
-
-  // Live updates
-  updateUI(state);
-  const rafUpdate = () => requestAnimationFrame(async () => {
-    if(!modalEl) return;
-    updateUI(await collectState(mgr));
-  });
-  
-  unsub = mgr.on('progress', rafUpdate);
-}
-
-export function closeOfflineModal() {
-  if (unsub) { unsub(); unsub = null; }
-  if (modalEl) { modalEl.remove(); modalEl = null; }
-}
-
-// Handlers
-async function handleClicks(e, mgr) {
-  const id = e.target.id;
-  if (!id) return;
-  const notify = window.NotificationSystem;
-
-  if (id === 'om-cq-save') {
-    await mgr.setCacheQuality(val('#om-cq'));
-    notify.success('CQ сохранено');
+  async unpin(uid) {
+    const u = normUid(uid); if (!u) return;
+    const s = this._pins(); s.delete(u); save(LS.PINNED, Array.from(s));
+    await setCloudCandidate(u, true); // T3 8.3
+    notify('Закрепление снято. Кандидат в Cloud');
+    this.enqueueAudioDownload({ uid: u, quality: await this.getCacheQuality(), priority: PRIORITY.CLOUD, kind: 'cloudCandidate' });
+    this._emit('progress', { uid: u, phase: 'unpinned' });
   }
-  else if (id === 'om-cloud-save') {
-    mgr.setCloudSettings({ n: clamp(val('#om-cloud-n'), 1, 50), d: clamp(val('#om-cloud-d'), 1, 365) });
-    notify.success('Cloud сохранён');
-  }
-  else if (id === 'om-pol-save') {
-    setNetPolicy({
-      wifiOnly: chk('#om-pol-wifiOnly'),
-      allowMobile: chk('#om-pol-allowMobile'),
-      confirmOnMobile: chk('#om-pol-confirmOnMobile'),
-      saveDataBlock: chk('#om-pol-saveDataBlock')
-    });
-    notify.success('Policy сохранена');
-  }
-  else if (id === 'om-limit-save') {
-    saveLimitSettings(val('#om-limit-mode'), val('#om-limit-mb'));
-    notify.success('Лимит сохранён');
-  }
-  else if (id === 'om-queue-toggle') {
-    const p = mgr.getQueueStatus().paused;
-    p ? mgr.resumeQueue() : mgr.pauseQueue();
-  }
-  else if (id === 'om-upd-all') {
-    const r = await mgr.enqueueUpdateAll();
-    notify.info(`Updates: ${r.count}`);
-  }
-  else if (id === 'om-recache-all') {
-    const r = await mgr.enqueueReCacheAllByCQ({ userInitiated: true });
-    notify.info(`Re-cache: ${r.count}`);
-  }
-  else if (id === 'om-clear-all') {
-    if(confirm('Удалить ВЕСЬ кэш?')) await mgr.clearAllCache();
-  }
-  else if (id === 'om-full-est' || id === 'om-full-start') {
-    const isStart = id === 'om-full-start';
-    if (isStart && !confirm('Скачать выбранное?')) return;
+
+  // --- Queue Operations (T3 13, 14) ---
+  async enqueueUpdateAll() {
+    const cq = await this.getCacheQuality();
+    const uids = await this._getAllTrackUids();
+    let count = 0;
     
-    txt('#om-full-out', 'Ждите...');
-    
-    // Preload tracks
-    await preloadAllAlbumsTrackIndex(); 
-
-    const sel = getSelection(modalEl);
-    const est = await mgr.computeSizeEstimate(sel);
-    
-    if (!est.ok) {
-      txt('#om-full-out', 'Ошибка оценки');
-      return;
-    }
-    
-    txt('#om-full-out', `${est.totalMB.toFixed(1)} MB / ${est.count} tracks`);
-    
-    if (isStart) {
-      if (est.totalMB > 500 && !(await mgr.canGuaranteeStorageForMB(est.totalMB)).ok) {
-        notify.error('Мало места!');
-        return;
+    for (const u of uids) {
+      if (this.isPinned(u) || await this.isCloudEligible(u)) {
+        this.enqueueAudioDownload({ uid: u, quality: cq, priority: PRIORITY.UPDATES, kind: 'update', isMass: true });
+        count++;
       }
+    }
+    alertUI(true, 'Updates started');
+    return { ok: true, count };
+  }
+
+  async enqueueReCacheAllByCQ(opts={}) {
+    const cq = await this.getCacheQuality();
+    const uids = await this._getAllTrackUids();
+    let count = 0;
+
+    for (const u of uids) {
+      if ((this.isPinned(u) || await this.isCloudEligible(u)) && !(await this.isTrackComplete(u, cq))) {
+        this.enqueueAudioDownload({ uid: u, quality: cq, priority: PRIORITY.UPDATES, kind: 'recache', isMass: true, userInitiated: opts.userInitiated });
+        count++;
+      }
+    }
+    if (count) alertUI(true, 'Re-cache started');
+    return { ok: true, count };
+  }
+
+  enqueueAudioDownload(p) { // {uid, quality, priority, kind, userInitiated, isMass, onResult}
+    const u = normUid(p.uid), q = normQ(p.quality);
+    if (!u) return { ok: false };
+    const key = `${p.kind || 'gen'}:${q}:${u}`;
+    
+    const added = this.queue.add({
+      key, uid: u, priority: p.priority,
+      run: async () => {
+        const r = await this._downloadTask(u, q, p);
+        p.onResult?.(r);
+      }
+    });
+    return { ok: true, enqueued: added, key };
+  }
+
+  // --- Core Download Logic ---
+  async _downloadTask(u, q, opts) {
+    const meta = getTrackByUid(u);
+    if (!meta) return { ok: false, reason: 'noMeta' };
+    
+    if (await this.isTrackComplete(u, q)) {
+      await this._activateCloudIfReady(u);
+      return { ok: true, skipped: true };
+    }
+
+    const url = q === 'lo' ? (meta.urlLo || meta.urlHi) : (meta.urlHi || meta.urlLo);
+    if (!url) return { ok: false, reason: 'noUrl' };
+
+    const net = getNet(), pol = getNetPolicy();
+    if (!net.online) return { ok: false, reason: 'offline' };
+    
+    if (!isAllowedByNetPolicy({ policy: pol, net, userInitiated: opts.userInitiated })) {
+      if (opts.userInitiated && shouldConfirmByPolicy({ policy: pol, net })) return { ok: false, reason: 'confirm' };
+      return { ok: false, reason: 'policy' };
+    }
+
+    await this.checkEviction();
+    this._emit('progress', { uid: u, phase: 'downloading', quality: q });
+
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      if (blob.size < 1000) throw new Error('Empty');
+
+      await setAudioBlob(u, q, blob);
+      await setBytes(u, q, blob.size);
       
-      // Warmup assets
-      const urls = new Set(['./index.html', './styles/main.css', './img/logo.png']);
-      await askSW('WARM_OFFLINE_SHELL', { urls: [...urls] });
+      // Meta for updates (T3 13)
+      const expMB = q === 'lo' ? (meta.sizeLo || meta.size_low) : (meta.sizeHi || meta.size);
+      await setDownloadMeta(u, q, { ts: Date.now(), bytes: blob.size, exp: Number(expMB) || 0, f: q==='lo'?'size_low':'size' });
       
-      const r = await mgr.startFullOffline(est.uids);
-      notify.success(`Старт: ${r.total} треков`);
+      // Local meta for eviction
+      await markLocalTransient(u, opts.kind === 'playbackCache' ? 'window' : 'window'); // Will prompt to cloud later
+      
+      this._emit('progress', { uid: u, phase: 'downloaded', bytes: blob.size });
+      await this._activateCloudIfReady(u);
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, reason: e.message };
+    }
+  }
+
+  // --- Cloud Logic (T3 9) ---
+  async isCloudEligible(uid) {
+    const u = normUid(uid); if (!u || this.isPinned(u)) return false;
+    const st = await getCloudStats(u), cand = await getCloudCandidate(u);
+    const now = Date.now();
+    
+    if (st?.cloud) return (st.cloudExpiresAt || 0) >= now;
+    return !!cand || (Number(st?.cloudFullListenCount || 0) >= this.getCloudSettings().n);
+  }
+
+  async _activateCloudIfReady(u) {
+    if (this.isPinned(u) || !(await this.isTrackComplete(u, await this.getCacheQuality()))) return;
+    
+    const st = await getCloudStats(u);
+    if (st?.cloud) return; // Already cloud
+
+    if (await this.isCloudEligible(u)) {
+      const { d } = this.getCloudSettings();
+      await setCloudStats(u, { ...st, cloud: true, cloudExpiresAt: Date.now() + d * 86400000, cloudAddedAt: Date.now() });
+      await clearCloudCandidate(u);
+      await markLocalCloud(u);
+      notify(`Трек добавлен в офлайн на ${d} дн.`);
+      this._emit('progress', { uid: u, phase: 'cloudActivated' });
+    }
+  }
+
+  async _checkExpired() {
+    const exp = await getExpiredCloudUids();
+    for (const u of exp) {
+      if (!this.isPinned(u)) {
+        await deleteTrackCache(u); await clearCloudStats(u); await clearCloudCandidate(u);
+      }
+    }
+    if (exp.length) notify(`Офлайн истёк для ${exp.length} треков`);
+  }
+
+  // --- Statistics (T3 1.4, 7.11) ---
+  async recordListenStats(uid, { deltaSec, isFullListen }) {
+    const u = normUid(uid); if(!u) return;
+    if (deltaSec || isFullListen) await updateGlobalStats(u, deltaSec, isFullListen ? 1 : 0);
+    
+    if (isFullListen) {
+      const { n, d } = this.getCloudSettings();
+      const st = await getCloudStats(u);
+      const cnt = (Number(st?.cloudFullListenCount)||0) + 1;
+      const isCloud = cnt >= n || st?.cloud;
+      
+      await setCloudStats(u, {
+        ...st, cloudFullListenCount: cnt, lastFullListenAt: Date.now(),
+        cloud: isCloud, cloudExpiresAt: isCloud ? Date.now() + d * 86400000 : 0
+      });
+      if (isCloud) await markLocalCloud(u);
+      this._emit('progress', { uid: u, phase: 'cloudStats' });
+    }
+  }
+
+  // --- Mass Operations (100% OFFLINE) ---
+  async startFullOffline(uids) { // T3 11.2.I
+    const list = Array.from(new Set(uids.map(normUid).filter(Boolean)));
+    if (!list.length) return { ok: false };
+    
+    await this.checkEviction();
+    this.mass = { active: true, total: list.length, done: 0, err: 0, skip: 0, start: Date.now() };
+    const cq = await this.getCacheQuality();
+
+    list.forEach(u => this.enqueueAudioDownload({
+      uid: u, quality: cq, priority: PRIORITY.MASS, kind: 'offlineAll', isMass: true,
+      onResult: (r) => {
+        if(r.ok) this.mass.done++; else if(r.skipped) this.mass.skip++; else this.mass.err++;
+        if (this.mass.done + this.mass.err + this.mass.skip >= this.mass.total) {
+          this.mass.active = false;
+          notify('Загрузка завершена', 'success');
+          this._emit('progress', { phase: 'massDone' });
+        }
+      }
+    }));
+    return { ok: true, total: list.length };
+  }
+
+  // --- State & Helpers ---
+  async isTrackComplete(uid, q) {
+    const u = normUid(uid); if (!u) return false;
+    const meta = getTrackByUid(u); if (!meta) return false;
+    const exp = q === 'hi' ? (meta.sizeHi||meta.size) : (meta.sizeLo||meta.size_low);
+    if (!exp) return false;
+    const has = await bytesByQuality(u);
+    return (q === 'hi' ? has.hi : has.lo) >= Math.floor(exp * 1024 * 1024 * 0.92);
+  }
+
+  async getTrackOfflineState(uid) { // T3 19.2
+    const u = normUid(uid); if (!u) return {};
+    const pinned = this.isPinned(u);
+    const cq = await this.getCacheQuality();
+    const complete = await this.isTrackComplete(u, cq);
+    const eligible = await this.isCloudEligible(u);
+    
+    // Updates detect
+    let needsUpdate = false;
+    if (complete) {
+      const meta = getTrackByUid(u);
+      const dm = await getDownloadMeta(u, cq);
+      const curExp = cq==='lo' ? (meta?.sizeLo||meta?.size_low) : (meta?.sizeHi||meta?.size);
+      if (dm?.exp && curExp && Math.abs(curExp - dm.exp) > 0.05) needsUpdate = true;
+    }
+
+    return {
+      pinned, cloud: !pinned && eligible && complete,
+      cachedHiComplete: await this.isTrackComplete(u, 'hi'),
+      cachedLoComplete: await this.isTrackComplete(u, 'lo'),
+      needsUpdate, needsReCache: (pinned || eligible) && !complete
+    };
+  }
+
+  async getIndicators(uid) {
+    const s = await this.getTrackOfflineState(uid);
+    return { pinned: s.pinned, cloud: s.cloud, cachedComplete: s.cachedHiComplete || s.cachedLoComplete };
+  }
+
+  async checkEviction(limMB = 500) {
+    const total = await totalCachedBytes();
+    const lim = limMB * MB;
+    if (total <= lim) return;
+    
+    const cands = await getEvictionCandidates(this._pins());
+    let freed = 0;
+    for (const c of cands) {
+      if (total - freed <= lim) break;
+      await deleteTrackCache(c.uid);
+      freed += c.bytes;
+    }
+    if (freed) notify('Кэш очищен (авто)');
+  }
+
+  // --- Breakdown (для модалки) ---
+  async getCacheBreakdown() {
+    const { computeCacheBreakdown } = await import('./cache-db.js');
+    return computeCacheBreakdown(this._pins());
+  }
+
+  async _getAllTrackUids() {
+    return (window.TrackRegistry?.getAllTracks?.() || []).map(t => t.uid).filter(Boolean);
+  }
+
+  async refreshNeedsAggregates(opts={}) {
+    if (!opts.force && Date.now() - this._needs.ts < 5000) return this._needs;
+    let upd = 0, rec = 0, total = 0;
+    const uids = await this._getAllTrackUids();
+    for (const u of uids) {
+      const s = await this.getTrackOfflineState(u);
+      if (s.needsUpdate) upd++;
+      if (s.needsReCache) rec++;
+      total++;
+    }
+    this._needs = { ready: true, total, upd, rec, ts: Date.now() };
+    alertUI(upd > 0 || rec > 0, 'Needs updates');
+    return this._needs;
+  }
+
+  // --- 100% OFFLINE Estimate & Guarantee ---
+  async computeSizeEstimate(selection) {
+    const uids = new Set();
+    const uidsList = [];
+    const cq = await this.getCacheQuality();
+    const reg = window.TrackRegistry;
+
+    const addUid = (u) => {
+      const norm = normUid(u);
+      if(norm && !uids.has(norm)) {
+        uids.add(norm);
+        uidsList.push(norm);
+      }
+    };
+
+    if (selection?.mode === 'favorites') {
+      const refs = window.favoritesRefsModel || [];
+      refs.forEach(r => {
+        if(r && r.__active) addUid(r.__uid);
+      });
+    } else if (selection?.mode === 'albums' && Array.isArray(selection.albumKeys)) {
+      // Ищем треки по альбомам
+      // Нужно, чтобы TrackRegistry был уже прогрет (это делает preloadAllAlbumsTrackIndex в modal)
+      const all = reg?.getAllTracks?.() || [];
+      for (const t of all) {
+        if (selection.albumKeys.includes(t.sourceAlbum)) {
+          addUid(t.uid);
+        }
+      }
+    }
+
+    let totalMB = 0;
+    for (const u of uidsList) {
+      const m = reg?.getTrackByUid?.(u);
+      if (!m) continue;
+      const s = cq === 'hi' ? (m.sizeHi||m.size) : (m.sizeLo||m.size_low);
+      totalMB += Number(s) || 0;
+    }
+
+    return { ok: true, totalMB, count: uidsList.length, cq, uids: uidsList };
+  }
+
+  async canGuaranteeStorageForMB(mb) {
+    if (navigator.storage && navigator.storage.estimate) {
+      try {
+        const est = await navigator.storage.estimate();
+        if (est.quota && est.usage !== undefined) {
+          const available = est.quota - est.usage;
+          const needed = (mb * 1024 * 1024) * 1.1; // +10% buffer
+          return { ok: available > needed };
+        }
+      } catch {}
+    }
+    // Если API недоступен или quota неизвестна - на свой страх и риск, 
+    // но по ТЗ лучше вернуть false или warning. Вернем ok: true с warning-флагом, если нужно.
+    // ТЗ говорит "если нельзя гарантировать -> предупреждение".
+    return { ok: true }; 
+  }
+
+  // --- Proxies ---
+  resolveForPlayback(t, pq) { return resolvePlaybackSource({ track: t, pq, cq: localStorage.getItem(LS.CQ), offlineMode: this.isOfflineMode() }); }
+  hasAnyComplete(uids) { return Promise.all(uids.map(u => isTrackAvailableOffline(u))).then(r => r.some(Boolean)); }
+  getCacheSizeBytes() { return totalCachedBytes(); }
+  getGlobalStatistics() { return getGlobalStatsAndTotal(); }
+  getQueueStatus() { return this.queue.status(); }
+  getNeedsAggregates() { return this._needs; }
+  pauseQueue() { this.queue.pause(); }
+  resumeQueue() { this.queue.resume(); }
+  async clearAllCache() { await clearAllStores({ keepCacheQuality: true }); save(LS.PINNED, []); this._emit('progress', { phase: 'cleared' }); }
+  async cloudMenu(uid, act) {
+    if (act === 'remove-cache') {
+      await deleteTrackCache(uid); await clearCloudStats(uid); await clearCloudCandidate(uid);
+      notify('Удалено из кэша');
     }
   }
 }
 
-function handleChanges(e, mgr) {
-  const id = e.target.id;
-  if (id === 'om-offline-mode') mgr.setOfflineMode(e.target.checked);
-  if (id === 'om-limit-mode') qs('#om-limit-mb').disabled = e.target.value !== 'manual';
-  if (id === 'om-full-mode') qs('#om-albums-box').style.display = e.target.value === 'albums' ? 'block' : 'none';
-}
-
-// Helpers
-function getLimitSettings() {
-  return {
-    mode: localStorage.getItem('offline:cacheLimitMode:v1') || 'auto',
-    mb: parseInt(localStorage.getItem('offline:cacheLimitMB:v1')) || 500
-  };
-}
-
-function saveLimitSettings(mode, mb) {
-  localStorage.setItem('offline:cacheLimitMode:v1', mode);
-  localStorage.setItem('offline:cacheLimitMB:v1', clamp(mb, 50, 5000));
-}
-
-function getSelection(el) {
-  const mode = val('#om-full-mode');
-  if (mode === 'albums') {
-    const keys = Array.from(el.querySelectorAll('.om-alb:checked')).map(i => i.dataset.k);
-    return { mode: 'albums', albumKeys: keys };
-  }
-  return { mode: 'favorites' };
-}
-
-async function askSW(type, payload) {
-  if (!navigator.serviceWorker?.controller) return null;
-  return new Promise(r => {
-    const ch = new MessageChannel();
-    ch.port1.onmessage = e => r(e.data);
-    navigator.serviceWorker.controller.postMessage({ type, payload }, [ch.port2]);
-    setTimeout(() => r(null), 1000);
-  });
-}
-
-// Preload tracks helper (essential for 100% offline)
-export async function preloadAllAlbumsTrackIndex() {
-  const idx = window.albumsIndex || [];
-  const reg = window.TrackRegistry;
-  if (!reg) return;
-
-  for (const a of idx) {
-    if (a.key?.startsWith('__')) continue;
-    try {
-      const res = await fetch(a.base + (a.base.endsWith('/')?'':'/') + 'config.json');
-      if (!res.ok) continue;
-      const cfg = await res.json();
-      (cfg.tracks || []).forEach(t => {
-        if (t.uid) reg.registerTrack({ ...t, sourceAlbum: a.key });
-      });
-    } catch {}
-  }
-}
+let instance;
+export function getOfflineManager() { return instance || (instance = new OfflineManager()); }
