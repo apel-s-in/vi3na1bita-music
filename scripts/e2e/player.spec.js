@@ -12,16 +12,9 @@ test('play track, toggle favorites-only and sleep timer UI', async ({ page }) =>
   await loginByPromo(page);
   await expect(page.locator('#main-block')).toBeVisible();
 
-  // Дождаться списка альбомов
+  // Дождаться списка альбомов и клик по первой строке треклиста
   await page.waitForSelector('#track-list .track', { timeout: 10000 });
-
-  // ✅ По ТЗ: F можно включить только если есть хотя бы один ⭐ трек.
-  // Поэтому заранее лайкаем первый трек.
   const firstTrack = page.locator('#track-list .track').first();
-  await firstTrack.hover();
-  await firstTrack.locator('.like-star').click();
-
-  // Запускаем воспроизведение первого трека
   await firstTrack.click();
 
   // Появился блок плеера и кнопка Play/Pause есть
@@ -151,18 +144,15 @@ test('favoritesOnly + shuffle: liking another track adds it to tail of queue', a
   const after = await page.evaluate(() => {
     const snap = window.playerCore?.getPlaylistSnapshot?.() || [];
     const tail = snap.length ? snap[snap.length - 1] : null;
-    const tailUid = String(tail?.uid || '').trim();
-
     return {
       len: snap.length,
-      tailUid,
-      tailIsLiked: tailUid ? !!window.playerCore?.isFavorite?.(tailUid) : false
+      tailUid: String(tail?.uid || '').trim(),
+      likedUids: window.playerCore?.getLikedUidsForAlbum?.(window.AlbumsManager?.getPlayingAlbum?.() || '') || []
     };
   });
 
   expect(after.len).toBeGreaterThanOrEqual(beforeLen);
-  expect(after.tailUid).toBeTruthy();
-  expect(after.tailIsLiked).toBeTruthy();
+  expect(after.likedUids.includes(after.tailUid)).toBeTruthy();
 });
 
 test('shuffle history: next-next-prev returns to previously played track', async ({ page }) => {
