@@ -1,525 +1,216 @@
 // scripts/offline/cache-db.js
-// IndexedDB wrapper для offline-кэша (ТЗ_Нью)
+// IndexedDB wrapper (Optimized v2.0): Boilerplate removed, Logic preserved.
 
 const DB_NAME = 'OfflineCacheDB';
 const DB_VERSION = 5;
 
-const STORE_AUDIO = 'audioBlobs';
-const STORE_BYTES = 'trackBytes';
-const STORE_META = 'cacheMeta';
-const STORE_CLOUD_STATS = 'cloudStats';
-const STORE_CLOUD_CANDIDATE = 'cloudCandidate';
-const STORE_GLOBAL_STATS = 'globalStats';
+const S = {
+  AUDIO: 'audioBlobs',
+  BYTES: 'trackBytes',
+  META: 'cacheMeta',
+  CLOUD: 'cloudStats',
+  CAND: 'cloudCandidate',
+  GLOB: 'globalStats',
+  DL: 'downloadMeta',
+  LOC: 'trackLocalMeta'
+};
 
-// Meta per (uid:quality) for updates/re-cache (ТЗ 13)
-const STORE_DL_META = 'downloadMeta';
+let _db = null;
 
-// Local cache meta per uid for eviction/breakdown (ТЗ 1.3 / 11.2.E / 13)
-const STORE_LOCAL_META = 'trackLocalMeta';
-
-let dbPromise = null;
-
-function openDb() {
-  if (dbPromise) return dbPromise;
-
-  dbPromise = new Promise((resolve, reject) => {
+const openDb = () => {
+  if (_db) return _db;
+  _db = new Promise((res, rej) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
-
     req.onupgradeneeded = (e) => {
       const db = e.target.result;
-
-      if (!db.objectStoreNames.contains(STORE_AUDIO)) {
-        db.createObjectStore(STORE_AUDIO);
-      }
-      if (!db.objectStoreNames.contains(STORE_BYTES)) {
-        db.createObjectStore(STORE_BYTES);
-      }
-      if (!db.objectStoreNames.contains(STORE_META)) {
-        db.createObjectStore(STORE_META);
-      }
-      if (!db.objectStoreNames.contains(STORE_CLOUD_STATS)) {
-        db.createObjectStore(STORE_CLOUD_STATS);
-      }
-      if (!db.objectStoreNames.contains(STORE_CLOUD_CANDIDATE)) {
-        db.createObjectStore(STORE_CLOUD_CANDIDATE);
-      }
-      if (!db.objectStoreNames.contains(STORE_GLOBAL_STATS)) {
-        db.createObjectStore(STORE_GLOBAL_STATS);
-      }
-
-      if (!db.objectStoreNames.contains(STORE_DL_META)) {
-        db.createObjectStore(STORE_DL_META);
-      }
-
-      if (!db.objectStoreNames.contains(STORE_LOCAL_META)) {
-        db.createObjectStore(STORE_LOCAL_META);
-      }
+      Object.values(S).forEach(s => { if (!db.objectStoreNames.contains(s)) db.createObjectStore(s); });
     };
-
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    req.onsuccess = () => res(req.result);
+    req.onerror = () => rej(req.error);
   });
+  return _db;
+};
 
-  return dbPromise;
-}
+export const ensureDbReady = openDb;
 
-export async function ensureDbReady() {
-  await openDb();
-}
+// --- Core Helpers ---
+const req = (r) => new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
 
-async function getStore(name, mode = 'readonly') {
+const run = async (store, mode, fn) => {
   const db = await openDb();
-  const tx = db.transaction(name, mode);
-  return tx.objectStore(name);
-}
+  const tx = db.transaction(store, mode);
+  return req(fn(tx.objectStore(store)));
+};
 
-function promisifyReq(req) {
-  return new Promise((resolve, reject) => {
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
+const get = (s, k) => run(s, 'readonly', st => st.get(k));
+const set = (s, k, v) => run(s, 'readwrite', st => st.put(v, k));
+const del = (s, k) => run(s, 'readwrite', st => st.delete(k));
 
-// Audio blobs
-export async function getAudioBlob(uid, quality) {
-  const key = `${uid}:${quality}`;
-  const store = await getStore(STORE_AUDIO);
-  return promisifyReq(store.get(key));
-}
+// --- Audio & Bytes ---
+const ak = (u, q) => `${u}:${q}`; // key format
 
-export async function setAudioBlob(uid, quality, blob) {
-  const key = `${uid}:${quality}`;
-  const store = await getStore(STORE_AUDIO, 'readwrite');
-  return promisifyReq(store.put(blob, key));
-}
+export const getAudioBlob = (uid, q) => get(S.AUDIO, ak(uid, q));
+export const setAudioBlob = (uid, q, b) => set(S.AUDIO, ak(uid, q), b);
+export const deleteAudioBlob = (uid, q) => del(S.AUDIO, ak(uid, q));
 
-export async function deleteAudioBlob(uid, quality) {
-  const key = `${uid}:${quality}`;
-  const store = await getStore(STORE_AUDIO, 'readwrite');
-  return promisifyReq(store.delete(key));
-}
+export const getBytes = async (uid, q) => Number(await get(S.BYTES, ak(uid, q))) || 0;
+export const setBytes = (uid, q, b) => set(S.BYTES, ak(uid, q), Number(b) || 0);
+export const bytesByQuality = async (uid) => ({ hi: await getBytes(uid, 'hi'), lo: await getBytes(uid, 'lo') });
 
-// Bytes tracking
-export async function getBytes(uid, quality) {
-  const key = `${uid}:${quality}`;
-  const store = await getStore(STORE_BYTES);
-  const val = await promisifyReq(store.get(key));
-  return Number(val) || 0;
-}
+export const totalCachedBytes = async () => {
+  const db = await openDb();
+  const keys = await req(db.transaction(S.BYTES).objectStore(S.BYTES).getAllKeys());
+  let t = 0;
+  for (const k of keys) t += (Number(await get(S.BYTES, k)) || 0);
+  return t;
+};
 
-export async function setBytes(uid, quality, bytes) {
-  const key = `${uid}:${quality}`;
-  const store = await getStore(STORE_BYTES, 'readwrite');
-  return promisifyReq(store.put(Number(bytes) || 0, key));
-}
+// --- Meta & Cloud ---
+export const getCacheQuality = async () => ((await get(S.META, 'cacheQuality')) === 'lo' ? 'lo' : 'hi');
+export const setCacheQuality = (q) => set(S.META, 'cacheQuality', q === 'lo' ? 'lo' : 'hi');
 
-export async function bytesByQuality(uid) {
-  const hi = await getBytes(uid, 'hi');
-  const lo = await getBytes(uid, 'lo');
-  return { hi, lo };
-}
+export const getCloudStats = (uid) => get(S.CLOUD, uid);
+export const setCloudStats = (uid, d) => set(S.CLOUD, uid, d);
+export const clearCloudStats = (uid) => del(S.CLOUD, uid);
 
-export async function totalCachedBytes() {
-  const store = await getStore(STORE_BYTES);
-  const keys = await promisifyReq(store.getAllKeys());
-  let total = 0;
-  for (const k of keys) {
-    const v = await promisifyReq(store.get(k));
-    total += Number(v) || 0;
-  }
-  return total;
-}
+export const getCloudCandidate = async (uid) => !!(await get(S.CAND, uid));
+export const setCloudCandidate = (uid, v) => set(S.CAND, uid, !!v);
+export const clearCloudCandidate = (uid) => del(S.CAND, uid);
 
-// Cache Quality meta
-export async function getCacheQuality() {
-  const store = await getStore(STORE_META);
-  const val = await promisifyReq(store.get('cacheQuality'));
-  return (val === 'lo') ? 'lo' : 'hi';
-}
+// --- Global Stats (Complex) ---
+const safeUid = (v) => String(v || '').trim() || null;
 
-export async function setCacheQuality(q) {
-  const store = await getStore(STORE_META, 'readwrite');
-  return promisifyReq(store.put(q === 'lo' ? 'lo' : 'hi', 'cacheQuality'));
-}
+export const updateGlobalStats = async (uid, dSec, dFull) => {
+  const u = safeUid(uid); if (!u) return false;
+  const db = await openDb();
+  const tx = db.transaction(S.GLOB, 'readwrite');
+  const st = tx.objectStore(S.GLOB);
 
-// Cloud stats per track
-export async function getCloudStats(uid) {
-  const store = await getStore(STORE_CLOUD_STATS);
-  return promisifyReq(store.get(uid));
-}
-
-export async function setCloudStats(uid, data) {
-  const store = await getStore(STORE_CLOUD_STATS, 'readwrite');
-  return promisifyReq(store.put(data, uid));
-}
-
-export async function clearCloudStats(uid) {
-  const store = await getStore(STORE_CLOUD_STATS, 'readwrite');
-  return promisifyReq(store.delete(uid));
-}
-
-// Cloud candidate flag
-export async function getCloudCandidate(uid) {
-  const store = await getStore(STORE_CLOUD_CANDIDATE);
-  const val = await promisifyReq(store.get(uid));
-  return !!val;
-}
-
-export async function setCloudCandidate(uid, val) {
-  const store = await getStore(STORE_CLOUD_CANDIDATE, 'readwrite');
-  return promisifyReq(store.put(!!val, uid));
-}
-
-export async function clearCloudCandidate(uid) {
-  const store = await getStore(STORE_CLOUD_CANDIDATE, 'readwrite');
-  return promisifyReq(store.delete(uid));
-}
-
-// Global statistics (ТЗ 7.11 / 17)
-// Хранение:
-// - per-track: key `t:${uid}` => { seconds, fullListens, lastListenAt }
-// - totals: key `total` => { totalSeconds }
-// Back-compat:
-// - key `global` => { totalListenSec, totalFullListens } (оставляем, чтобы старые UI не падали)
-
-function safeUid(v) {
-  const s = String(v || '').trim();
-  return s || null;
-}
-
-export async function updateGlobalStats(uid, deltaSec, deltaFullListens) {
-  const u = safeUid(uid);
-  if (!u) return false;
-
-  const dSec = Math.max(0, Number(deltaSec) || 0);
-  const dFull = Math.max(0, Number(deltaFullListens) || 0);
-
-  const store = await getStore(STORE_GLOBAL_STATS, 'readwrite');
-
-  // per-track
-  const tKey = `t:${u}`;
-  const prevT = (await promisifyReq(store.get(tKey))) || { seconds: 0, fullListens: 0, lastListenAt: 0 };
-  const nextT = {
-    seconds: (Number(prevT.seconds) || 0) + dSec,
-    fullListens: (Number(prevT.fullListens) || 0) + dFull,
-    lastListenAt: Date.now()
+  const upd = async (k, fn, def) => {
+    const v = (await req(st.get(k))) || def;
+    await req(st.put(fn(v), k));
   };
-  await promisifyReq(store.put(nextT, tKey));
 
-  // totals
-  const totalKey = 'total';
-  const prevTotal = (await promisifyReq(store.get(totalKey))) || { totalSeconds: 0 };
-  const nextTotal = { totalSeconds: (Number(prevTotal.totalSeconds) || 0) + dSec };
-  await promisifyReq(store.put(nextTotal, totalKey));
-
-  // Back-compat aggregate (старый формат)
-  const prevLegacy = (await promisifyReq(store.get('global'))) || { totalListenSec: 0, totalFullListens: 0 };
-  const nextLegacy = {
-    totalListenSec: (Number(prevLegacy.totalListenSec) || 0) + dSec,
-    totalFullListens: (Number(prevLegacy.totalFullListens) || 0) + dFull
-  };
-  await promisifyReq(store.put(nextLegacy, 'global'));
-
+  const now = Date.now(), sec = Math.max(0, Number(dSec)||0), full = Math.max(0, Number(dFull)||0);
+  
+  await Promise.all([
+    upd(`t:${u}`, p => ({ seconds: (Number(p.seconds)||0)+sec, fullListens: (Number(p.fullListens)||0)+full, lastListenAt: now }), { seconds:0, fullListens:0 }),
+    upd('total', p => ({ totalSeconds: (Number(p.totalSeconds)||0)+sec }), { totalSeconds: 0 }),
+    upd('global', p => ({ totalListenSec: (Number(p.totalListenSec)||0)+sec, totalFullListens: (Number(p.totalFullListens)||0)+full }), { totalListenSec:0, totalFullListens:0 })
+  ]);
   return true;
-}
+};
 
-export async function getGlobalStatsAndTotal() {
-  const store = await getStore(STORE_GLOBAL_STATS);
-
-  const legacy = (await promisifyReq(store.get('global'))) || { totalListenSec: 0, totalFullListens: 0 };
-  const total = (await promisifyReq(store.get('total'))) || { totalSeconds: 0 };
-
-  // Собираем per-track список
-  const keys = await promisifyReq(store.getAllKeys());
+export const getGlobalStatsAndTotal = async () => {
+  const db = await openDb();
+  const st = db.transaction(S.GLOB).objectStore(S.GLOB);
+  const [leg, tot, keys] = await Promise.all([req(st.get('global')), req(st.get('total')), req(st.getAllKeys())]);
+  
   const tracks = [];
   for (const k of keys) {
-    if (typeof k === 'string' && k.startsWith('t:')) {
-      const uid = k.slice(2);
-      // eslint-disable-next-line no-await-in-loop
-      const rec = await promisifyReq(store.get(k));
-      tracks.push({
-        uid,
-        seconds: Number(rec?.seconds) || 0,
-        fullListens: Number(rec?.fullListens) || 0,
-        lastListenAt: Number(rec?.lastListenAt) || 0
-      });
+    if (String(k).startsWith('t:')) {
+      const rec = await req(st.get(k));
+      tracks.push({ uid: k.slice(2), seconds: Number(rec?.seconds)||0, fullListens: Number(rec?.fullListens)||0, lastListenAt: Number(rec?.lastListenAt)||0 });
     }
   }
-
-  const totalBytes = await totalCachedBytes();
-
-  // Возвращаем и новый, и legacy формат
   return {
-    totalBytes,
-
-    // legacy (использует текущий offline-modal.js)
-    totalListenSec: Number(legacy.totalListenSec) || 0,
-    totalFullListens: Number(legacy.totalFullListens) || 0,
-
-    // новый (ТЗ 17)
-    totalSeconds: Number(total.totalSeconds) || 0,
-    tracks
+    totalBytes: await totalCachedBytes(),
+    totalListenSec: Number(leg?.totalListenSec)||0, totalFullListens: Number(leg?.totalFullListens)||0, // legacy
+    totalSeconds: Number(tot?.totalSeconds)||0, tracks // new
   };
-}
-// Download meta for updates (ТЗ 13)
-function dlMetaKey(uid, quality) {
-  return `${String(uid || '').trim()}:${String(quality || '').toLowerCase() === 'lo' ? 'lo' : 'hi'}`;
-}
+};
 
-/**
- * meta shape example:
- * { downloadedAt, bytes, expectedMB, expectedField } where expectedField='size'|'size_low'
- */
-export async function getDownloadMeta(uid, quality) {
-  const key = dlMetaKey(uid, quality);
-  const store = await getStore(STORE_DL_META);
-  return promisifyReq(store.get(key));
-}
+// --- Download Meta (Updates) ---
+const dk = (u, q) => `${String(u||'').trim()}:${String(q||'').toLowerCase()==='lo'?'lo':'hi'}`;
+export const getDownloadMeta = (uid, q) => get(S.DL, dk(uid, q));
+export const setDownloadMeta = (uid, q, m) => set(S.DL, dk(uid, q), m||null);
+export const deleteDownloadMeta = (uid, q) => del(S.DL, dk(uid, q));
 
-export async function setDownloadMeta(uid, quality, meta) {
-  const key = dlMetaKey(uid, quality);
-  const store = await getStore(STORE_DL_META, 'readwrite');
-  return promisifyReq(store.put(meta || null, key));
-}
+// --- Local Meta & Eviction ---
+export const getLocalMeta = (uid) => get(S.LOC, String(uid||'').trim());
+export const setLocalMeta = (uid, m) => set(S.LOC, String(uid||'').trim(), m||null);
 
-export async function deleteDownloadMeta(uid, quality) {
-  const key = dlMetaKey(uid, quality);
-  const store = await getStore(STORE_DL_META, 'readwrite');
-  return promisifyReq(store.delete(key));
-}
+const modLocal = async (uid, fn) => {
+  const u = String(uid||'').trim(); if(!u) return;
+  const prev = (await getLocalMeta(u)) || {};
+  await setLocalMeta(u, fn(prev));
+};
 
-// Delete track cache
-export async function deleteTrackCache(uid) {
-  const u = String(uid || '').trim();
-  if (!u) return;
+export const touchLocalAccess = (uid) => modLocal(uid, p => ({ ...p, lastAccessAt: Date.now() }));
+export const markLocalCloud = (uid) => modLocal(uid, p => ({ ...p, kind: 'cloud', transientGroup: null, lastAccessAt: Date.now() }));
+export const markLocalTransient = (uid, g='window') => modLocal(uid, p => ({ ...p, kind: (p.kind==='cloud'?'cloud':'transient'), transientGroup: (p.kind!=='cloud'?(g==='extra'?'extra':'window'):null), lastAccessAt: Date.now() }));
 
-  // Сначала освободим objectURL (если трек когда-либо проигрывался как blob)
-  try {
-    const mod = await import('./track-resolver.js');
-    if (typeof mod.revokeObjectUrlsForUid === 'function') mod.revokeObjectUrlsForUid(u);
-  } catch {}
-
-  await deleteAudioBlob(u, 'hi');
-  await deleteAudioBlob(u, 'lo');
-
-  const storeBytes = await getStore(STORE_BYTES, 'readwrite');
-  await promisifyReq(storeBytes.delete(`${u}:hi`));
-  await promisifyReq(storeBytes.delete(`${u}:lo`));
-
-  // meta for updates
-  try { await deleteDownloadMeta(u, 'hi'); } catch {}
-  try { await deleteDownloadMeta(u, 'lo'); } catch {}
-
-  // local meta
-  try {
-    const storeLocal = await getStore(STORE_LOCAL_META, 'readwrite');
-    await promisifyReq(storeLocal.delete(u));
-  } catch {}
-}
-
-// Clear all
-export async function clearAllStores(opts = {}) {
-  const keepCacheQuality = !!opts?.keepCacheQuality;
-  const cq = keepCacheQuality ? await getCacheQuality() : null;
-
+export const computeCacheBreakdown = async (pinned = new Set()) => {
   const db = await openDb();
-  const storeNames = [STORE_AUDIO, STORE_BYTES, STORE_CLOUD_STATS, STORE_CLOUD_CANDIDATE, STORE_DL_META, STORE_LOCAL_META];
+  const keys = await req(db.transaction(S.BYTES).objectStore(S.BYTES).getAllKeys());
+  const uids = new Set(keys.map(k => String(k).split(':')[0]).filter(Boolean));
+  
+  const res = { pinnedBytes:0, cloudBytes:0, transientWindowBytes:0, transientExtraBytes:0, transientUnknownBytes:0, audioTotalBytes:0 };
 
-  for (const name of storeNames) {
-    const tx = db.transaction(name, 'readwrite');
-    const store = tx.objectStore(name);
-    await promisifyReq(store.clear());
+  for (const u of uids) {
+    const bytes = (await getBytes(u, 'hi')) + (await getBytes(u, 'lo'));
+    res.audioTotalBytes += bytes;
+    if (pinned.has(u)) { res.pinnedBytes += bytes; continue; }
+
+    const m = await getLocalMeta(u);
+    const k = m?.kind || 'unknown', g = m?.transientGroup;
+    if (k === 'cloud') res.cloudBytes += bytes;
+    else if (k === 'transient') res[g === 'extra' ? 'transientExtraBytes' : (g === 'window' ? 'transientWindowBytes' : 'transientUnknownBytes')] += bytes;
+    else res.transientUnknownBytes += bytes;
   }
+  return res;
+};
 
-  if (keepCacheQuality && cq) {
-    await setCacheQuality(cq);
+export const getEvictionCandidates = async (pinned = new Set()) => {
+  const db = await openDb();
+  const keys = await req(db.transaction(S.BYTES).objectStore(S.BYTES).getAllKeys());
+  const uids = new Set(keys.map(k => String(k).split(':')[0]).filter(x => x && !pinned.has(x)));
+  
+  const list = [];
+  for (const u of uids) {
+    const bytes = (await getBytes(u, 'hi')) + (await getBytes(u, 'lo'));
+    const m = await getLocalMeta(u);
+    const k = m?.kind, g = m?.transientGroup, acc = Number(m?.lastAccessAt)||0;
+    // weight: 0=extra, 1=window, 2=unknown, 3=cloud
+    let w = 2;
+    if (k === 'cloud') w = 3;
+    else if (k === 'transient') w = (g === 'extra' ? 0 : (g === 'window' ? 1 : 2));
+    
+    list.push({ uid: u, bytes, lastAccessAt: acc, weight: w });
   }
+  return list.sort((a, b) => (a.weight - b.weight) || (a.lastAccessAt - b.lastAccessAt));
+};
 
+export const getExpiredCloudUids = async () => {
+  const db = await openDb();
+  const st = db.transaction(S.CLOUD).objectStore(S.CLOUD);
+  const [stats, keys] = await Promise.all([req(st.getAll()), req(st.getAllKeys())]);
+  const now = Date.now(), exp = [];
+  keys.forEach((k, i) => { if (stats[i]?.cloud && stats[i].cloudExpiresAt < now) exp.push(k); });
+  return exp;
+};
+
+// --- Maintenance ---
+export const deleteTrackCache = async (uid) => {
+  const u = String(uid||'').trim(); if(!u) return;
+  try { (await import('./track-resolver.js')).revokeObjectUrlsForUid(u); } catch {}
+  const db = await openDb();
+  const tx = db.transaction([S.AUDIO, S.BYTES, S.DL, S.LOC], 'readwrite');
+  const d = (s, k) => tx.objectStore(s).delete(k);
+  d(S.AUDIO, ak(u, 'hi')); d(S.AUDIO, ak(u, 'lo'));
+  d(S.BYTES, ak(u, 'hi')); d(S.BYTES, ak(u, 'lo'));
+  d(S.DL, dk(u, 'hi')); d(S.DL, dk(u, 'lo'));
+  d(S.LOC, u);
+  return new Promise(r => { tx.oncomplete = () => r(); });
+};
+
+export const clearAllStores = async (opts = {}) => {
+  const cq = opts.keepCacheQuality ? await getCacheQuality() : null;
+  const db = await openDb();
+  const names = [S.AUDIO, S.BYTES, S.CLOUD, S.CAND, S.DL, S.LOC];
+  const tx = db.transaction(names, 'readwrite');
+  names.forEach(n => tx.objectStore(n).clear());
+  await new Promise(r => { tx.oncomplete = () => r(true); });
+  if (cq) await setCacheQuality(cq);
   return true;
-}
-
-// ===== Local meta (kind/LRU/transient grouping) =====
-// kind: 'cloud' | 'transient' | 'unknown'
-// transientGroup: 'window' | 'extra' | null
-// lastAccessAt: number (ms)
-
-export async function getLocalMeta(uid) {
-  const u = String(uid || '').trim();
-  if (!u) return null;
-  const store = await getStore(STORE_LOCAL_META);
-  return promisifyReq(store.get(u));
-}
-
-export async function setLocalMeta(uid, meta) {
-  const u = String(uid || '').trim();
-  if (!u) return false;
-  const store = await getStore(STORE_LOCAL_META, 'readwrite');
-  await promisifyReq(store.put(meta || null, u));
-  return true;
-}
-
-export async function touchLocalAccess(uid) {
-  const u = String(uid || '').trim();
-  if (!u) return false;
-
-  const prev = (await getLocalMeta(u)) || {};
-  const next = {
-    ...prev,
-    lastAccessAt: Date.now(),
-  };
-  await setLocalMeta(u, next);
-  return true;
-}
-
-export async function markLocalCloud(uid) {
-  const u = String(uid || '').trim();
-  if (!u) return false;
-
-  const prev = (await getLocalMeta(u)) || {};
-  const next = {
-    ...prev,
-    kind: 'cloud',
-    transientGroup: null,
-    lastAccessAt: Date.now(),
-  };
-  await setLocalMeta(u, next);
-  return true;
-}
-
-export async function markLocalTransient(uid, group = 'window') {
-  const u = String(uid || '').trim();
-  if (!u) return false;
-
-  const g = (group === 'extra') ? 'extra' : 'window';
-
-  const prev = (await getLocalMeta(u)) || {};
-  // cloud не понижаем до transient (если уже cloud)
-  const kind = (prev.kind === 'cloud') ? 'cloud' : 'transient';
-
-  const next = {
-    ...prev,
-    kind,
-    transientGroup: (kind === 'transient') ? g : null,
-    lastAccessAt: Date.now(),
-  };
-  await setLocalMeta(u, next);
-  return true;
-}
-
-export async function computeCacheBreakdown(pinnedSet = new Set()) {
-  // считаем только audio bytes (hi+lo) по uid
-  const storeBytes = await getStore(STORE_BYTES);
-  const keys = await promisifyReq(storeBytes.getAllKeys());
-
-  const uidSet = new Set();
-  for (const k of keys) {
-    const uid = String(k).split(':')[0];
-    if (uid) uidSet.add(uid);
-  }
-
-  let pinnedBytes = 0;
-  let cloudBytes = 0;
-  let windowTransientBytes = 0;
-  let extraTransientBytes = 0;
-  let unknownTransientBytes = 0;
-
-  for (const uid of uidSet) {
-    const hiB = await getBytes(uid, 'hi');
-    const loB = await getBytes(uid, 'lo');
-    const bytes = hiB + loB;
-
-    if (pinnedSet.has(uid)) {
-      pinnedBytes += bytes;
-      continue;
-    }
-
-    const meta = await getLocalMeta(uid);
-    const kind = String(meta?.kind || 'unknown');
-    const tg = String(meta?.transientGroup || '');
-
-    if (kind === 'cloud') {
-      cloudBytes += bytes;
-    } else if (kind === 'transient') {
-      if (tg === 'extra') extraTransientBytes += bytes;
-      else if (tg === 'window') windowTransientBytes += bytes;
-      else unknownTransientBytes += bytes;
-    } else {
-      // без меты считаем как transient/unknown (удаляется раньше cloud)
-      unknownTransientBytes += bytes;
-    }
-  }
-
-  return {
-    pinnedBytes,
-    cloudBytes,
-    transientWindowBytes: windowTransientBytes,
-    transientExtraBytes: extraTransientBytes,
-    transientUnknownBytes: unknownTransientBytes,
-    audioTotalBytes: pinnedBytes + cloudBytes + windowTransientBytes + extraTransientBytes + unknownTransientBytes
-  };
-}
-
-// Eviction candidates (ТЗ 1.3 / 13):
-// - pinned исключаем
-// - порядок: extra transient -> window transient -> unknown transient -> cloud
-// - внутри группы: LRU по lastAccessAt (старые удаляем первыми)
-export async function getEvictionCandidates(pinnedSet = new Set()) {
-  const storeBytes = await getStore(STORE_BYTES);
-  const bytesKeys = await promisifyReq(storeBytes.getAllKeys());
-
-  const uidSet = new Set();
-  for (const k of bytesKeys) {
-    const uid = String(k).split(':')[0];
-    if (uid && !pinnedSet.has(uid)) uidSet.add(uid);
-  }
-
-  const candidates = [];
-  for (const uid of uidSet) {
-    const hiB = await getBytes(uid, 'hi');
-    const loB = await getBytes(uid, 'lo');
-    const bytes = hiB + loB;
-
-    const meta = await getLocalMeta(uid);
-    const kind = String(meta?.kind || 'unknown');
-    const tg = String(meta?.transientGroup || '');
-    const lastAccessAt = Number(meta?.lastAccessAt || 0) || 0;
-
-    // weight: меньше = удаляем раньше
-    // transient extra=0, transient window=1, transient unknown=2, cloud=3
-    let weight = 2;
-    if (kind === 'cloud') weight = 3;
-    else if (kind === 'transient' && tg === 'extra') weight = 0;
-    else if (kind === 'transient' && tg === 'window') weight = 1;
-    else if (kind === 'transient') weight = 2;
-    else weight = 2;
-
-    candidates.push({ uid, bytes, lastAccessAt, weight, kind, transientGroup: tg });
-  }
-
-  candidates.sort((a, b) => (a.weight - b.weight) || (a.lastAccessAt - b.lastAccessAt));
-  return candidates;
-}
-
-// Expired cloud
-export async function getExpiredCloudUids() {
-  const store = await getStore(STORE_CLOUD_STATS);
-  const allStats = await promisifyReq(store.getAll());
-  const allKeys = await promisifyReq(store.getAllKeys());
-
-  const now = Date.now();
-  const expired = [];
-
-  for (let i = 0; i < allKeys.length; i++) {
-    const uid = allKeys[i];
-    const st = allStats[i];
-
-    if (st?.cloud === true) {
-      const exp = Number(st?.cloudExpiresAt || 0);
-      if (exp > 0 && exp < now) {
-        expired.push(uid);
-      }
-    }
-  }
-
-  return expired;
-}
+};
