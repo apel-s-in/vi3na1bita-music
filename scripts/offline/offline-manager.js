@@ -1,6 +1,7 @@
 /**
  * scripts/offline/offline-manager.js
  * ТЗ v1.0: Интеллектуальный кэш, Очередь (P0-P5), Cloud, Statistics.
+ * FIXED: Добавлены экспорты для совместимости с PlayerCore и UI.
  *
  * ОТВЕТСТВЕННОСТЬ:
  * - Управление очередью загрузок (строго одна активная).
@@ -12,7 +13,7 @@
 
 import {
   ensureDbReady,
-  getAudioBlob, setAudioBlob, setBytes,
+  setAudioBlob, setBytes,
   bytesByQuality, totalCachedBytes, deleteTrackCache,
   getCacheQuality as dbGetCQ, setCacheQuality as dbSetCQ,
   getCloudStats, setCloudStats, clearCloudStats,
@@ -39,7 +40,7 @@ const LS = {
 };
 
 const MB = 1024 * 1024;
-// ТЗ 9.2: Считаем трек скачанным и засчитываем Full Listen, если есть >90% (тут 92% для надежности)
+// ТЗ 9.2: Считаем трек скачанным и засчитываем Full Listen, если есть >92%
 const COMPLETE_THRESHOLD = 0.92;
 
 // --- ПРИОРИТЕТЫ ОЧЕРЕДИ (ТЗ 14.2) ---
@@ -64,11 +65,10 @@ const notify = (msg, type = 'info') => window.NotificationSystem?.[type]?.(msg, 
 // Единый механизм для всех загрузок. 1 активный поток.
 // ====================================================================================
 class DownloadQueue {
-  constructor(processor) {
-    this.q = []; // { key, uid, priority, taskFn, abortController }
+  constructor() {
+    this.q = []; // { key, uid, priority, taskFn, ts }
     this.active = null;
     this.paused = false;
-    this.processor = processor; // function(item) -> Promise
     this._listeners = new Set();
   }
 
@@ -122,8 +122,8 @@ class DownloadQueue {
       await item.taskFn(); // Выполняем задачу
       this._emit('done', { uid: item.uid, key: item.key });
     } catch (err) {
-      console.warn(`[Queue] Failed ${item.key}:`, err);
-      // Если ошибка сети - можно вернуть в очередь с backoff (упрощено для v1.0: просто emit error)
+      // console.warn(`[Queue] Failed ${item.key}:`, err);
+      // Если ошибка сети - просто emit error, PlaybackCache сам решит
       this._emit('error', { uid: item.uid, error: err.message });
     } finally {
       this.active = null;
@@ -141,7 +141,7 @@ export class OfflineManager {
     this._pinnedCache = null; // Set<uid>
     
     // Очередь загрузок
-    this.queue = new DownloadQueue(null); // Processor встроен в замыкания
+    this.queue = new DownloadQueue();
 
     // Состояние для UI ("!")
     this._needsState = { update: 0, recache: 0, ts: 0 };
@@ -232,6 +232,17 @@ export class OfflineManager {
   }
 
   isPinned(uid) { return this._getPinnedSet().has(normUid(uid)); }
+
+  // API для UI: pin() и unpin() для offline-indicators.js
+  async pin(uid) {
+    const u = normUid(uid);
+    if (u && !this.isPinned(u)) await this.togglePinned(u);
+  }
+
+  async unpin(uid) {
+    const u = normUid(uid);
+    if (u && this.isPinned(u)) await this.togglePinned(u);
+  }
 
   async togglePinned(uid) {
     const u = normUid(uid); if (!u) return;
@@ -362,6 +373,11 @@ export class OfflineManager {
   }
 
   // ТЗ 9.5: Меню Cloud
+  // Alias for cloudMenuAction used by UI
+  async cloudMenu(uid, action) {
+    return this.cloudMenuAction(uid, action);
+  }
+
   async cloudMenuAction(uid, action) {
     const u = normUid(uid);
     if (action === 'remove-cache') {
@@ -563,7 +579,13 @@ export class OfflineManager {
       // В v1.0 берем из глобальной модели (предполагаем доступность) или фильтруем all
       // Для надежности фильтруем all по Pinned (как пример) или передаем uids явно
       // Здесь предположим что selection.keys - это массив UIDs для favorites
-      selection.keys.forEach(u => uids.add(u));
+      if (Array.isArray(selection.keys)) {
+        selection.keys.forEach(u => uids.add(u));
+      } else {
+        // Fallback: взять все pinned, если список не передан (хотя offline-modal должен передать)
+        const pinned = this._getPinnedSet();
+        pinned.forEach(u => uids.add(u));
+      }
     } else {
       all.forEach(t => {
         if (selection.keys.includes(t.sourceAlbum)) uids.add(t.uid);
@@ -654,6 +676,17 @@ export class OfflineManager {
     };
   }
 
+  async getIndicators(uid) {
+    // Облегченная версия для списков (offline-indicators.js)
+    const s = await this.getTrackOfflineState(uid);
+    return {
+      pinned: s.pinned,
+      cloud: s.cloud,
+      cachedComplete: s.cachedHiComplete || s.cachedLoComplete, // Любое качество считается
+      unknown: false
+    };
+  }
+
   async isTrackComplete(uid, quality) {
     const u = normUid(uid);
     const q = normQ(quality);
@@ -691,4 +724,10 @@ export class OfflineManager {
 
 // Singleton export
 export const OfflineManagerInstance = new OfflineManager();
+
+// FIX: Экспорт функции для PlayerCore.js (согласно ошибке в консоли)
+export function getOfflineManager() {
+  return OfflineManagerInstance;
+}
+
 export default OfflineManagerInstance;
