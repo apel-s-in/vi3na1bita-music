@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-86f01791682a7bfc8ca187174605ae9bc58e360c.idx
-│   │       ├── pack-86f01791682a7bfc8ca187174605ae9bc58e360c.pack
-│   │       └── pack-86f01791682a7bfc8ca187174605ae9bc58e360c.rev
+│   │       ├── pack-123b02695468f10c05375a132e7a2931d47abc48.idx
+│   │       ├── pack-123b02695468f10c05375a132e7a2931d47abc48.pack
+│   │       └── pack-123b02695468f10c05375a132e7a2931d47abc48.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-02 16:52:59 UTC
+Сгенерировано: 2026-02-02 16:57:36 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -11842,12 +11842,6 @@ export function createListenStatsTracker({ getUid, getPos, getDur, record } = {}
 
 //=================================================
 // FILE: /src/PlayerCore.js
-//=================================================
-// FILE: /src/PlayerCore.js
-// src/PlayerCore.js
-// Optimized v1.2: Correctly handles Favorites removal logic (inactive vs delete).
-// Implements T3 requirements: seamless PQ switch, offline playback, stats.
-
 import { getOfflineManager } from '../scripts/offline/offline-manager.js';
 import { resolvePlaybackSource } from '../scripts/offline/track-resolver.js';
 import { getTrackByUid } from '../scripts/app/track-registry.js';
@@ -11859,35 +11853,35 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
   'use strict';
 
   const W = window;
-  const U = W.Utils;
-  const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+  const LS_VOL = 'playerVolume';
+  const LS_PQ = 'qualityMode:v1';
+  
   const normQ = (v) => (String(v || '').toLowerCase() === 'lo' ? 'lo' : 'hi');
   const safeStr = (v) => (v ? String(v).trim() : null);
+  const clamp = (n, min, max) => Math.min(Math.max(n, min), max);
 
   class PlayerCore {
     constructor() {
-      // Playlist State
       this.playlist = [];
-      this.originalPlaylist = []; // For shuffle
+      this.originalPlaylist = [];
       this.currentIndex = -1;
       this.shuffleMode = false;
       this.repeatMode = false;
       this.shuffleHistory = [];
-
-      // Audio State
       this.sound = null;
-      this.qualityMode = localStorage.getItem('qualityMode:v1') === 'lo' ? 'lo' : 'hi';
-      this._loadToken = 0; // Race condition guard
+      this.qualityMode = normQ(localStorage.getItem(LS_PQ));
+      this._loadToken = 0;
+      this._ev = new Map();
+      this._favSubs = new Set();
+      this._sleepTimer = null;
+      this._sleepTarget = 0;
 
-      // Event Bus
-      this.callbacks = {
-        onTrackChange: [], onPlay: [], onPause: [], onStop: [], 
-        onEnd: [], onTick: [], onError: [], onSleepTriggered: []
-      };
-      this._favSubs = new Set(); // Favorites specific emitter
+      this._ms = ensureMediaSession({
+        onPlay: () => this.play(), onPause: () => this.pause(),
+        onStop: () => this.stop(), onPrev: () => this.prev(), onNext: () => this.next(),
+        onSeekTo: (t) => this.seek(t)
+      });
 
-      // Modules
-      this._mediaSession = ensureMediaSession(this._getMediaHandlers());
       this._stats = createListenStatsTracker({
         getUid: () => safeStr(this.getCurrentTrack()?.uid),
         getPos: () => this.getPosition(),
@@ -11895,43 +11889,36 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         record: (uid, p) => getOfflineManager().recordListenStats(uid, p)
       });
 
-      this._setupIOSUnlock();
+      // iOS Unlock
+      const unlock = () => { if (W.Howler?.ctx?.state === 'suspended') W.Howler.ctx.resume(); };
+      ['touchend', 'click'].forEach(e => document.addEventListener(e, unlock, { once: true }));
     }
 
-    initialize() {
-      this.isReady = true;
-      // Ensure V1 favorites are migrated to V2 on startup
-      try { FavoritesV2.ensureMigrated(); } catch (e) { console.warn('Fav migration failed', e); }
-    }
+    initialize() { FavoritesV2.ensureMigrated(); }
 
-    // --- Playlist Management ---
-
-    setPlaylist(tracks, startIndex = 0, metadata = {}, options = {}) {
-      const { preserveOriginalPlaylist, preserveShuffleMode, preservePosition } = options;
+    // --- Playlist ---
+    setPlaylist(tracks, startIdx = 0, meta, opts = {}) {
       const prevPos = this.getPosition();
       const wasPlaying = this.isPlaying();
 
       this.playlist = (tracks || []).map(t => ({
-        ...t,
-        uid: safeStr(t.uid),
-        title: t.title || 'Без названия',
-        artist: t.artist || 'Витрина Разбита'
+        ...t, uid: safeStr(t.uid), title: t.title || 'Без названия', artist: t.artist || 'Витрина Разбита'
       }));
 
-      if (!preserveOriginalPlaylist) this.originalPlaylist = [...this.playlist];
-      if (this.shuffleMode && !preserveShuffleMode) this.shufflePlaylist();
-      else if (!this.shuffleMode) this.shuffleHistory = [];
+      if (!opts.preserveOriginalPlaylist) this.originalPlaylist = [...this.playlist];
+      
+      if (this.shuffleMode && !opts.preserveShuffleMode) {
+        this.shufflePlaylist();
+      } else if (!this.shuffleMode) {
+        this.shuffleHistory = [];
+      }
 
-      this.currentIndex = clamp(startIndex, 0, this.playlist.length - 1);
+      this.currentIndex = clamp(startIdx, 0, this.playlist.length - 1);
 
-      if (wasPlaying) {
-        this.load(this.currentIndex, { autoPlay: true, resumePosition: preservePosition ? prevPos : 0 });
-      } else {
-        const cur = this.getCurrentTrack();
-        if (cur) {
-          this._trigger('onTrackChange', cur, this.currentIndex);
-          this._updateMedia();
-        }
+      if (wasPlaying) this.load(this.currentIndex, { autoPlay: true, resumePosition: opts.preservePosition ? prevPos : 0 });
+      else {
+        this._emit('onTrackChange', this.getCurrentTrack(), this.currentIndex);
+        this._updMedia();
       }
     }
 
@@ -11940,420 +11927,257 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     getIndex() { return this.currentIndex; }
     getNextIndex() { return (this.currentIndex + 1) % this.playlist.length; }
 
-    // --- Playback Controls ---
+    // --- Controls ---
+    isPlaying() { return !!(this.sound && this.sound.playing()); }
 
-    isPlaying() {
-      return !!(this.sound && this.sound.playing());
+    play(idx, opts = {}) {
+      if (idx != null && idx !== this.currentIndex) return this.load(idx, opts);
+      if (this.sound) this.sound.play();
+      else if (this.currentIndex >= 0) this.load(this.currentIndex, { autoPlay: true });
     }
 
-    async play(index, options = {}) {
-      if (index !== undefined && index !== null && index !== this.currentIndex) {
-        return this.load(index, options);
-      }
-      if (this.sound) {
-        this.sound.play();
-      } else if (this.currentIndex >= 0) {
-        this.load(this.currentIndex, { autoPlay: true });
-      }
-    }
-
-    pause() {
-      this.sound?.pause();
-    }
-
+    pause() { this.sound?.pause(); }
+    
     stop() {
       this._unload();
-      this._trigger('onStop');
-      this._updateMedia();
+      this._emit('onStop');
+      this._updMedia();
     }
 
     next() {
       if (!this.playlist.length) return;
-      this._addToShuffleHistory();
-      this.play((this.currentIndex + 1) % this.playlist.length, { direction: 'forward' });
+      if (this.shuffleMode) {
+        this.shuffleHistory.push(this.currentIndex);
+        if (this.shuffleHistory.length > 50) this.shuffleHistory.shift();
+      }
+      this.play((this.currentIndex + 1) % this.playlist.length, { dir: 1 });
     }
 
     prev() {
       if (!this.playlist.length) return;
-      if (this.getPosition() > 3) return this.seek(0); // Restart if played > 3s
+      if (this.getPosition() > 3) return this.seek(0);
       
-      const histIdx = this._popShuffleHistory();
-      if (histIdx >= 0) return this.play(histIdx, { direction: 'backward' });
-
-      const prevIdx = (this.currentIndex - 1 + this.playlist.length) % this.playlist.length;
-      this.play(prevIdx, { direction: 'backward' });
+      if (this.shuffleMode && this.shuffleHistory.length) {
+        return this.play(this.shuffleHistory.pop(), { dir: -1 });
+      }
+      this.play((this.currentIndex - 1 + this.playlist.length) % this.playlist.length, { dir: -1 });
     }
 
-    seek(sec) { this.sound?.seek(sec); }
+    seek(sec) { return this.sound?.seek(sec) || 0; }
     
-    setVolume(val) { 
-      const v = clamp(val / 100, 0, 1);
-      Howler.volume(v);
-      localStorage.setItem('playerVolume', Math.round(v * 100));
+    setVolume(v) { 
+      const vol = clamp(v / 100, 0, 1);
+      Howler.volume(vol);
+      localStorage.setItem(LS_VOL, Math.round(vol * 100));
     }
-    
-    getVolume() { return (Number(localStorage.getItem('playerVolume')) || 100); }
+    getVolume() { return Number(localStorage.getItem(LS_VOL)) || 100; }
     getPosition() { return this.sound?.seek() || 0; }
     getDuration() { return this.sound?.duration() || 0; }
 
-    // --- Core Loading Logic (Source Resolution) ---
-
+    // --- Core Logic ---
     async load(index, opts = {}) {
       const track = this.playlist[index];
       if (!track) return;
 
       const token = ++this._loadToken;
-      this._unload(true); // silent unload
+      this._unload(true);
       this.currentIndex = index;
 
-      // 1. Resolve Source (Network vs Offline)
+      const om = getOfflineManager();
       const src = await resolvePlaybackSource({
-        track, 
-        pq: this.qualityMode, 
-        cq: await getOfflineManager().getCacheQuality(),
-        offlineMode: getOfflineManager().isOfflineMode()
+        track, pq: this.qualityMode, cq: await om.getCacheQuality(), offlineMode: om.isOfflineMode()
       });
 
-      if (token !== this._loadToken) return; // Race check
+      if (token !== this._loadToken) return;
 
       if (!src.url) {
-        // T3 7.5: Offline handling (Skip)
         W.NotificationSystem?.warning('Нет доступа к треку (офлайн)');
-        // Try next
-        const dir = opts.direction === 'backward' ? -1 : 1;
-        const nextIdx = (index + dir + this.playlist.length) % this.playlist.length;
+        // Auto-skip logic
+        const nextIdx = (index + (opts.dir || 1) + this.playlist.length) % this.playlist.length;
         if (nextIdx !== index) this.load(nextIdx, opts);
         return;
       }
 
-      // 2. Init Howler
       this.sound = new Howl({
         src: [src.url],
-        html5: !src.isLocal, // Blob URLs require WebAudio (html5:false)
+        html5: !src.isLocal,
         volume: this.getVolume() / 100,
         format: ['mp3'],
         onload: () => {
           if (token !== this._loadToken) return;
           if (opts.resumePosition) this.seek(opts.resumePosition);
           if (opts.autoPlay) this.sound.play();
-          this._updateMedia();
+          this._updMedia();
         },
         onplay: () => {
           if (token !== this._loadToken) return;
           this._startTick();
-          this._trigger('onPlay', track, index);
-          this._updateMedia();
+          this._emit('onPlay', track, index);
+          this._updMedia();
         },
         onpause: () => {
           if (token !== this._loadToken) return;
           this._stopTick();
           this._stats.onPauseOrStop();
-          this._trigger('onPause');
-          this._updateMedia();
+          this._emit('onPause');
+          this._updMedia();
         },
         onend: () => {
           if (token !== this._loadToken) return;
           this._stats.onEnded();
-          this._trigger('onEnd');
-          if (this.repeatMode) this.play(this.currentIndex);
-          else this.next();
+          this._emit('onEnd');
+          this.repeatMode ? this.play(this.currentIndex) : this.next();
         },
-        onloaderror: (id, e) => this._trigger('onError', { msg: 'Load error', e }),
-        onplayerror: (id, e) => {
-           this.sound.once('unlock', () => this.sound.play()); 
-        }
+        onloaderror: (id, e) => this._emit('onError', { msg: 'Load error', e }),
+        onplayerror: () => this.sound.once('unlock', () => this.sound.play())
       });
 
-      this._trigger('onTrackChange', track, index);
-      
-      // 3. Notify OfflineManager to update "Window" (PREV/CUR/NEXT cache)
-      getOfflineManager().enqueueAudioDownload({
-        uid: track.uid, quality: this.qualityMode, priority: 100, kind: 'playbackCache'
-      });
+      this._emit('onTrackChange', track, index);
+      om.enqueueAudioDownload({ uid: track.uid, quality: this.qualityMode, priority: 100, kind: 'playbackCache' });
     }
 
-    _unload(silent = false) {
-      if (this.sound) {
-        this.sound.unload();
-        this.sound = null;
-      }
+    _unload(silent) {
+      if (this.sound) { this.sound.unload(); this.sound = null; }
       this._stopTick();
       this._stats.onPauseOrStop();
-      if (!silent) this._trigger('onStop');
+      if (!silent) this._emit('onStop');
     }
 
-    // --- Quality (PQ) ---
-
+    // --- Quality ---
     getQualityMode() { return this.qualityMode; }
     
     canToggleQualityForCurrentTrack() {
       const t = this.getCurrentTrack();
-      const meta = t ? getTrackByUid(t.uid) : null;
-      return !!(meta?.audio_low || meta?.urlLo || t?.sources?.audio?.lo);
+      const m = t ? getTrackByUid(t.uid) : null;
+      return !!(m?.audio_low || m?.urlLo || t?.sources?.audio?.lo);
     }
 
-    async switchQuality(mode) {
+    switchQuality(mode) {
       const next = normQ(mode);
       if (this.qualityMode === next) return;
-      
       this.qualityMode = next;
-      localStorage.setItem('qualityMode:v1', next);
-
-      const track = this.getCurrentTrack();
-      if (track && this.isPlaying()) {
-        const pos = this.getPosition();
-        this.load(this.currentIndex, { autoPlay: true, resumePosition: pos });
-      }
-      return { ok: true, mode: next };
+      localStorage.setItem(LS_PQ, next);
+      if (this.isPlaying()) this.load(this.currentIndex, { autoPlay: true, resumePosition: this.getPosition() });
     }
 
-    // --- Favorites (Delegated to FavoritesV2) ---
-
-    isFavorite(uid) {
-      const likedSet = FavoritesV2.readLikedSet();
-      return likedSet.has(safeStr(uid));
-    }
+    // --- Favorites ---
+    isFavorite(uid) { return FavoritesV2.readLikedSet().has(safeStr(uid)); }
 
     toggleFavorite(uid, opts = {}) {
       const u = safeStr(uid);
+      const isFavAlbum = W.AlbumsManager?.getCurrentAlbum?.() === W.SPECIAL_FAVORITES_KEY;
+      const source = (isFavAlbum && !opts.fromAlbum) ? 'favorites' : 'album';
       
-      // T3: Determine context correctly.
-      // If we are currently browsing the SPECIAL_FAVORITES_KEY album, 
-      // then any toggle is effectively "from favorites view" (source='favorites'),
-      // regardless of what the caller passed (unless it's an explicit override).
-      
-      let source = opts.fromAlbum ? 'album' : 'favorites';
-      
-      const currentViewAlbum = W.AlbumsManager?.getCurrentAlbum?.();
-      if (currentViewAlbum === W.SPECIAL_FAVORITES_KEY) {
-        source = 'favorites';
-      }
-
       const res = FavoritesV2.toggle(u, { source });
-      
-      this._emitFavChanged({ uid: u, liked: res.liked, albumKey: opts.albumKey });
-      
-      // T3 Special Rule: If in Favorites playing playlist and unlike active -> next
+      this._emitFav(u, res.liked, opts.albumKey);
+
+      // Rule: Inactive in favorites view -> next track
       if (!res.liked && source === 'favorites' && W.AlbumsManager?.getPlayingAlbum?.() === W.SPECIAL_FAVORITES_KEY) {
-         const cur = this.getCurrentTrack();
-         if (cur && safeStr(cur.uid) === u) this.next();
+         if (safeStr(this.getCurrentTrack()?.uid) === u) this.next();
       }
       return res;
     }
 
-    // Proxy to FavoritesV2 for removal (used by inactive row modal)
     removeInactivePermanently(uid) {
       const u = safeStr(uid);
-      const ok = FavoritesV2.removeRef(u);
-      if (ok) {
-        this._emitFavChanged({ uid: u, liked: false, removed: true });
-      }
-      return { ok };
+      if (FavoritesV2.removeRef(u)) this._emitFav(u, false, null, true);
     }
     
-    // Proxy to restore inactive (used by inactive row modal)
-    restoreInactive(uid) {
-      // Just toggle it back to liked (source='favorites' or 'album' doesn't matter for liking, it adds back)
-      return this.toggleFavorite(uid, { fromAlbum: false });
-    }
+    restoreInactive(uid) { return this.toggleFavorite(uid, { fromAlbum: false }); }
 
-    showInactiveFavoriteModal(params = {}) {
-      const u = safeStr(params?.uid);
-      const title = String(params?.title || 'Трек');
-      
+    showInactiveFavoriteModal(p = {}) {
       if (!W.Modals?.open) return;
-
-      const esc = W.Utils?.escapeHtml ? (s) => W.Utils.escapeHtml(String(s || '')) : (s) => String(s || '');
-
+      const u = safeStr(p.uid);
+      const esc = W.Utils?.escapeHtml || (s => s);
       const modal = W.Modals.open({
-        title: 'Трек неактивен',
-        maxWidth: 420,
+        title: 'Трек неактивен', maxWidth: 420,
         bodyHtml: `
-          <div style="color:#9db7dd; line-height:1.45; margin-bottom:14px;">
-            <div style="margin-bottom:8px;"><strong>Трек:</strong> ${esc(title)}</div>
-            <div style="opacity:.9;">Вы можете вернуть трек в ⭐ или удалить его из списка «ИЗБРАННОЕ».</div>
+          <div style="color:#9db7dd;margin-bottom:14px">
+            <div style="margin-bottom:8px"><strong>${esc(p.title||'Трек')}</strong></div>
+            <div style="opacity:.9">Вернуть в ⭐ или удалить из списка?</div>
           </div>
-          ${W.Modals?.actionRow ? W.Modals.actionRow([
-            { act: 'add', text: 'Добавить в ⭐', className: 'online', style: 'min-width:160px;' },
-            { act: 'remove', text: 'Удалить', className: '', style: 'min-width:160px;' }
-          ]) : ''}
+          ${W.Modals.actionRow([{act:'add',text:'Вернуть',className:'online'},{act:'remove',text:'Удалить'}])}
         `
       });
-
-      modal.querySelector('[data-act="add"]')?.addEventListener('click', () => {
-        try { modal.remove(); } catch {}
-        this.restoreInactive(u);
-      });
-
+      modal.querySelector('[data-act="add"]')?.addEventListener('click', () => { modal.remove(); this.restoreInactive(u); });
       modal.querySelector('[data-act="remove"]')?.addEventListener('click', () => {
-        try { modal.remove(); } catch {}
-        if (W.Modals?.confirm) {
-          W.Modals.confirm({
-            title: 'Удалить из «ИЗБРАННОГО»?',
-            textHtml: `
-              <div style="margin-bottom:8px;"><strong>Трек:</strong> ${esc(title)}</div>
-              <div style="opacity:.9;">Трек исчезнет из списка «ИЗБРАННОЕ». В родном альбоме ⭐ уже снята.</div>
-            `,
-            confirmText: 'Удалить',
-            cancelText: 'Отмена',
-            onConfirm: () => {
-              this.removeInactivePermanently(u);
-              try { params?.onDeleted?.(); } catch {}
-            }
-          });
-        } else {
-          this.removeInactivePermanently(u);
-          try { params?.onDeleted?.(); } catch {}
-        }
+        modal.remove();
+        this.removeInactivePermanently(u);
+        p.onDeleted?.();
       });
     }
 
     getFavoritesState() {
-      // 1. Get raw V2 data
-      const refs = FavoritesV2.readRefsByUid();
-      const liked = FavoritesV2.readLikedSet();
+      const refs = FavoritesV2.readRefsByUid(), liked = FavoritesV2.readLikedSet();
       const active = [], inactive = [];
-      
-      // 2. Resolve missing data (especially sourceAlbum) from TrackRegistry
       Object.values(refs).forEach(r => {
         const u = safeStr(r.uid);
-        if (!u) return;
-
-        // Skip if marked as inactive (inactiveAt is set) BUT user is looking for "Active" playlist
-        // Actually, UI needs both lists to render gray rows.
-        
-        let sourceAlbum = safeStr(r.sourceAlbum);
-        if (!sourceAlbum) {
-          const meta = getTrackByUid(u);
-          if (meta) sourceAlbum = safeStr(meta.sourceAlbum);
-        }
-
-        const item = { uid: u, sourceAlbum };
-        
-        // V2 Logic: 
-        // Active = is in likedSet
-        // Inactive = NOT in likedSet BUT has ref (inactiveAt != null)
-        
-        if (liked.has(u)) {
-          active.push(item);
-        } else if (r.inactiveAt) {
-          inactive.push(item);
-        }
+        if(!u) return;
+        const sa = safeStr(r.sourceAlbum || getTrackByUid(u)?.sourceAlbum);
+        (liked.has(u) ? active : (r.inactiveAt ? inactive : [])).push({ uid: u, sourceAlbum: sa });
       });
-
       return { active, inactive };
     }
 
-    getLikedUidsForAlbum(albumKey) {
-      const key = safeStr(albumKey);
-      if (!key) return [];
-      
-      const likedSet = FavoritesV2.readLikedSet();
-      const result = [];
-      
-      for (const uid of likedSet) {
-        const t = getTrackByUid(uid);
-        if (t && safeStr(t.sourceAlbum) === key) {
-          result.push(uid);
-        }
-      }
-      return result;
+    getLikedUidsForAlbum(key) {
+      const k = safeStr(key);
+      if (!k) return [];
+      return Array.from(FavoritesV2.readLikedSet()).filter(u => safeStr(getTrackByUid(u)?.sourceAlbum) === k);
     }
 
     onFavoritesChanged(cb) { this._favSubs.add(cb); return () => this._favSubs.delete(cb); }
-    _emitFavChanged(d) { this._favSubs.forEach(f => f(d)); }
+    _emitFav(uid, liked, albumKey, removed = false) { this._favSubs.forEach(f => f({ uid, liked, albumKey, removed })); }
 
-    // --- Shuffle / Repeat ---
-
-    toggleShuffle() { this.shuffleMode = !this.shuffleMode; this._reshuffle(); }
-    isShuffle() { return this.shuffleMode; }
-    toggleRepeat() { this.repeatMode = !this.repeatMode; }
-    isRepeat() { return this.repeatMode; }
-
-    _reshuffle() {
+    // --- Shuffle/Repeat ---
+    toggleShuffle() {
+      this.shuffleMode = !this.shuffleMode;
       if (this.shuffleMode) {
         const cur = this.getCurrentTrack();
-        this.playlist = [...this.playlist].sort(() => Math.random() - 0.5);
+        this.playlist.sort(() => Math.random() - 0.5);
         if (cur) {
           this.playlist = [cur, ...this.playlist.filter(t => t !== cur)];
           this.currentIndex = 0;
         }
       } else {
+        const uid = this.getCurrentTrack()?.uid;
         this.playlist = [...this.originalPlaylist];
-        const cur = this.getCurrentTrack(); 
-        if (cur) this.currentIndex = this.playlist.findIndex(t => t.uid === cur.uid);
+        if (uid) this.currentIndex = this.playlist.findIndex(t => t.uid === uid);
       }
     }
+    isShuffle() { return this.shuffleMode; }
+    toggleRepeat() { this.repeatMode = !this.repeatMode; }
+    isRepeat() { return this.repeatMode; }
 
-    _addToShuffleHistory() {
-      if (!this.shuffleMode) return;
-      this.shuffleHistory.push(this.currentIndex);
-      if (this.shuffleHistory.length > 50) this.shuffleHistory.shift();
-    }
-
-    _popShuffleHistory() {
-      if (!this.shuffleMode || !this.shuffleHistory.length) return -1;
-      return this.shuffleHistory.pop();
-    }
-
-    // --- Internals & Events ---
-
-    on(events) { Object.keys(events).forEach(k => this.callbacks[k]?.push(events[k])); }
-    _trigger(name, ...args) { this.callbacks[name]?.forEach(fn => fn(...args)); }
+    // --- Internal ---
+    on(evs) { Object.entries(evs).forEach(([k, fn]) => { if(!this._ev.has(k)) this._ev.set(k, new Set()); this._ev.get(k).add(fn); }); }
+    _emit(name, ...args) { this._ev.get(name)?.forEach(fn => fn(...args)); }
 
     _startTick() {
       this._stopTick();
-      this._tickInterval = setInterval(() => {
-        this._trigger('onTick', this.getPosition(), this.getDuration());
+      this._tickInt = setInterval(() => {
+        this._emit('onTick', this.getPosition(), this.getDuration());
         this._stats.onTick();
       }, 250);
     }
-    _stopTick() { clearInterval(this._tickInterval); }
+    _stopTick() { clearInterval(this._tickInt); }
 
-    _updateMedia() {
+    _updMedia() {
       const t = this.getCurrentTrack();
-      this._mediaSession.updateMetadata({
-        title: t?.title, artist: t?.artist, album: t?.album, artworkUrl: t?.cover, playing: this.isPlaying()
-      });
+      this._ms.updateMetadata({ title: t?.title, artist: t?.artist, album: t?.album, artworkUrl: t?.cover, playing: this.isPlaying() });
     }
 
-    _getMediaHandlers() {
-      return {
-        onPlay: () => this.play(), onPause: () => this.pause(),
-        onStop: () => this.stop(), onPrev: () => this.prev(), onNext: () => this.next(),
-        onSeekTo: (t) => this.seek(t)
-      };
-    }
-
-    _setupIOSUnlock() {
-      const unlock = () => {
-        if (W.Howler?.ctx?.state === 'suspended') W.Howler.ctx.resume();
-      };
-      ['touchend', 'click'].forEach(e => document.addEventListener(e, unlock, { once: true }));
-    }
-    
-    // --- Sleep Timer ---
     setSleepTimer(ms) {
       clearTimeout(this._sleepTimer);
-      if (ms > 0) {
-        this._sleepTimer = setTimeout(() => {
-          this.pause();
-          this._trigger('onSleepTriggered');
-        }, ms);
-        this._sleepTarget = Date.now() + ms;
-      } else {
-        this._sleepTarget = 0;
-      }
+      this._sleepTarget = ms > 0 ? Date.now() + ms : 0;
+      if (ms > 0) this._sleepTimer = setTimeout(() => { this.pause(); this._emit('onSleepTriggered'); }, ms);
     }
-    getSleepTimerTarget() { return this._sleepTarget || 0; }
+    getSleepTimerTarget() { return this._sleepTarget; }
     clearSleepTimer() { this.setSleepTimer(0); }
   }
 
-  // Export singleton
   W.playerCore = new PlayerCore();
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => W.playerCore.initialize());
-  else W.playerCore.initialize();
-
+  const boot = () => W.playerCore.initialize();
+  document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', boot) : boot();
 })();
 
 //=================================================
