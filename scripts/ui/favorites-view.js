@@ -1,128 +1,114 @@
 // scripts/ui/favorites-view.js
-// Favorites view renderer/binder for special album "__favorites__" inside #track-list
-// Exports (back-compat for scripts/app/albums.js):
-// - renderFavoritesList(container, model)
-// - renderFavoritesEmpty(container)
-// - bindFavoritesList(container, handlers)
+// FavoritesView: чистый рендер + делегирование кликов для окна «Избранное».
+// Не управляет воспроизведением напрямую (инвариант).
 
-import { buildFavoritesModel } from './favorites.js';
+const STAR_ON = 'img/star.png';
+const STAR_OFF = 'img/star2.png';
 
-function esc(s) {
-  return window.Utils.escapeHtml(String(s ?? ''));
-}
+const esc = (s) => {
+  const fn = window.Utils?.escapeHtml;
+  return typeof fn === 'function' ? fn(String(s ?? '')) : String(s ?? '');
+};
 
-function safeStr(x) {
-  return String(x ?? '').trim();
-}
-
-function rowIdFor(uid) {
-  // Для совместимости с тестами/индикаторами: fav_{sourceAlbum}_{uid}
-  // sourceAlbum для v2 можно брать из TrackRegistry meta (если есть).
-  const meta = window.TrackRegistry?.getTrackByUid?.(uid) || null;
-  const a = safeStr(meta?.sourceAlbum || meta?.album || meta?.albumKey || 'unknown');
-  return `fav_${a}_${uid}`;
-}
-
-function renderRow(it) {
-  const uid = safeStr(it?.uid);
-  const title = esc(it?.title || '');
-  const inactive = !!it?.__inactive;
-  const star = inactive ? 'img/star2.png' : 'img/star.png';
-
-  // IMPORTANT:
-  // class "track" — как в обычном списке, чтобы существующие стили/подсветка работали.
-  // class "inactive" — чтобы серить строку.
-  return `
-    <div class="track ${inactive ? 'inactive' : ''}"
-         id="${esc(rowIdFor(uid))}"
-         data-index="-1"
-         data-uid="${esc(uid)}"
-         data-album="${esc(safeStr(window.TrackRegistry?.getTrackByUid?.(uid)?.sourceAlbum || ''))}">
-      <div class="tnum">★</div>
-      <div class="track-title">${title}</div>
-      <img src="${esc(star)}"
-           class="like-star"
-           alt="звезда"
-           data-uid="${esc(uid)}">
-    </div>
-  `;
+function rowIdFromItem(it) {
+  // back-compat: e2e ожидает формат fav_{albumKey}_{uid}
+  const a = String(it?.__a || '').trim();
+  const u = String(it?.__uid || '').trim();
+  return `fav_${a}_${u}`;
 }
 
 export function renderFavoritesEmpty(container) {
   if (!container) return;
   container.innerHTML = `
     <div class="fav-empty">
-      <h3>Избранное пусто</h3>
-      <p>Поставьте ⭐ у трека в альбоме, чтобы он появился здесь.</p>
+      <h3>Избранные треки</h3>
+      <p>Отметьте треки звёздочкой ⭐</p>
     </div>
   `;
 }
 
 export function renderFavoritesList(container, model) {
   if (!container) return;
-  const list = Array.isArray(model) ? model : [];
 
-  // ВАЖНО: model у нас v2: элементы имеют uid, title, __active/__inactive
-  container.innerHTML = list.map(renderRow).join('');
+  const list = Array.isArray(model) ? model : [];
+  if (!list.length) return renderFavoritesEmpty(container);
+
+  container.innerHTML = list.map((it, i) => {
+    const a = String(it?.__a || '').trim();
+    const u = String(it?.__uid || '').trim();
+    const active = !!it?.__active;
+
+    const albumTitle = String(it?.__album || 'Альбом');
+    const trackTitle = String(it?.title || 'Трек');
+
+    const id = rowIdFromItem(it);
+
+    return `
+      <div class="track${active ? '' : ' inactive'}"
+           id="${esc(id)}"
+           data-index="${i}"
+           data-album="${esc(a)}"
+           data-uid="${esc(u)}">
+        <div class="tnum">${String(i + 1).padStart(2, '0')}.</div>
+        <div class="track-title" title="${esc(trackTitle)} - ${esc(albumTitle)}">
+          <span class="fav-track-name">${esc(trackTitle)}</span>
+          <span class="fav-album-name"> — ${esc(albumTitle)}</span>
+        </div>
+        <img src="${active ? STAR_ON : STAR_OFF}"
+             class="like-star"
+             alt="звезда"
+             data-album="${esc(a)}"
+             data-uid="${esc(u)}">
+      </div>
+    `;
+  }).join('');
 }
 
 /**
  * bindFavoritesList(container, handlers)
  * handlers:
- * - getModel(): returns current favorites model (array)
- * - onStarClick({ uid, albumKey })
- * - onActiveRowClick({ uid })
- * - onInactiveRowClick({ uid, title })
+ * - getModel(): any[]
+ * - onStarClick({ uid, albumKey }): void
+ * - onActiveRowClick({ uid, albumKey }): void
+ * - onInactiveRowClick({ uid, title }): void
  */
-export function bindFavoritesList(container, handlers = {}) {
-  if (!container || container.__favoritesBound) return;
-  container.__favoritesBound = true;
+export function bindFavoritesList(container, handlers) {
+  if (!container || container.__favBound) return;
+  container.__favBound = true;
 
-  const getModel = typeof handlers.getModel === 'function'
-    ? handlers.getModel
-    : () => buildFavoritesModel();
+  const getModel = typeof handlers?.getModel === 'function' ? handlers.getModel : () => [];
+  const onStarClick = typeof handlers?.onStarClick === 'function' ? handlers.onStarClick : () => {};
+  const onActiveRowClick = typeof handlers?.onActiveRowClick === 'function' ? handlers.onActiveRowClick : () => {};
+  const onInactiveRowClick = typeof handlers?.onInactiveRowClick === 'function' ? handlers.onInactiveRowClick : () => {};
 
-  container.addEventListener('click', async (e) => {
-    const row = e.target?.closest?.('.track');
+  container.addEventListener('click', (e) => {
+    const target = e.target;
+    const row = target?.closest?.('.track');
     if (!row || !container.contains(row)) return;
 
-    const uid = safeStr(row.dataset.uid);
-    if (!uid) return;
+    const uid = String(row.dataset.uid || '').trim();
+    const albumKey = String(row.dataset.album || '').trim();
+    if (!uid || !albumKey) return;
 
     const model = getModel();
-    const item = Array.isArray(model) ? model.find((x) => safeStr(x?.uid) === uid) : null;
-    const inactive = !!item?.__inactive;
+    const item = Array.isArray(model)
+      ? model.find((it) => String(it?.__uid || '').trim() === uid && String(it?.__a || '').trim() === albumKey)
+      : null;
 
-    // ⭐ click
-    if (e.target?.classList?.contains('like-star')) {
+    if (!item) return;
+
+    if (target?.classList?.contains('like-star')) {
       e.preventDefault();
       e.stopPropagation();
-
-      // albumKey нужен только для legacy синхронизации/подсветки.
-      // Для UID-only v2 он необязателен, но albums.js передаёт.
-      const meta = window.TrackRegistry?.getTrackByUid?.(uid) || null;
-      const albumKey = safeStr(meta?.sourceAlbum || '');
-
-      try {
-        await handlers.onStarClick?.({ uid, albumKey });
-      } catch {}
-
+      onStarClick({ uid, albumKey });
       return;
     }
 
-    // Row click
-    if (inactive) {
-      e.preventDefault();
-      e.stopPropagation();
-      try {
-        handlers.onInactiveRowClick?.({ uid, title: item?.title || '' });
-      } catch {}
+    if (item.__active && item.audio) {
+      onActiveRowClick({ uid, albumKey });
       return;
     }
 
-    // active row => play
-    try {
-      await handlers.onActiveRowClick?.({ uid });
-    } catch {}
+    onInactiveRowClick({ uid, title: String(item?.title || 'Трек') });
   });
 }
