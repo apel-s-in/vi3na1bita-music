@@ -1,432 +1,204 @@
 // scripts/app/gallery.js
-// Управление галереей обложек
+// Optimized GalleryManager v2.0
+
+const W = window, D = document;
+const CACHE_404 = 'gallery_404_cache:v1';
+const MAP = { 
+  'krevetochka': '00', 'mezhdu-zlom-i-dobrom': '01', 
+  'golos-dushi': '02', 'odnazhdy-v-skazke': '03', '__reliz__': 'news' 
+};
+const BASE = './albums/gallery/';
+const LOGO = 'img/logo.png';
+
+const $ = (id) => D.getElementById(id);
+const ss = (k, v) => { 
+  try { 
+    if(v===undefined) return JSON.parse(sessionStorage.getItem(k)||'{}'); 
+    sessionStorage.setItem(k, JSON.stringify(v)); 
+  } catch(e){ return {}; } 
+};
 
 class GalleryManager {
   constructor() {
-    this.items = [];
-    this.currentIndex = 0;
-    this.autoplayInterval = null;
-    this.isAutoplayEnabled = false;
-    this.transitionLock = false;
-    
-    this.prefetchedUrls = new Set();
-    this.imageLoader = null;
-    
-    this.ALBUM_GALLERY_MAP = {
-      'krevetochka': '00',
-      'mezhdu-zlom-i-dobrom': '01',
-      'golos-dushi': '02',
-      'odnazhdy-v-skazke': '03',
-      '__reliz__': 'news'
-    };
-    
-    this.ALLOWED_IDS = new Set(['00', '01', '02', '03', 'news']);
-    this.GALLERY_BASE = './albums/gallery/';
+    this.it = [];   // items
+    this.idx = 0;   // currentIndex
+    this.tm = null; // timer
+    this.lck = false; // lock
+    this.pre = new Set(); // prefetched
+    this.ldr = null; // current image loader
   }
 
   initialize() {
-    this.setupNavigation();
-    this.setupSwipeGestures();
-    this.setupVisibilityHandler();
-    console.log('✅ GalleryManager initialized');
+    // Navigation
+    const go = (d) => this.it.length > 1 && (this.show((this.idx + d + this.it.length) % this.it.length), this.play());
+    $('cover-gallery-arrow-left')?.addEventListener('click', () => go(-1));
+    $('cover-gallery-arrow-right')?.addEventListener('click', () => go(1));
+
+    // Swipe
+    const w = $('cover-wrap');
+    if (w) {
+      let x = 0;
+      w.addEventListener('touchstart', e => x = e.touches[0].clientX, {passive:true});
+      w.addEventListener('touchend', e => {
+        if (x === null) return;
+        const d = e.changedTouches[0].clientX - x;
+        if (Math.abs(d) > 50) go(d > 0 ? -1 : 1);
+        x = null;
+      }, {passive:true});
+    }
+
+    // Visibility
+    D.addEventListener('visibilitychange', () => D.hidden ? this.stop() : (this.it.length > 1 && this.play()));
+    console.log('✅ GalleryManager optimized');
   }
 
-  getCentralId(albumKey) {
-    if (!albumKey || albumKey === '__favorites__') return null;
-    const id = this.ALBUM_GALLERY_MAP[albumKey];
-    return (id && this.ALLOWED_IDS.has(id)) ? id : null;
-  }
+  _id(k) { return (k && k !== '__favorites__' && MAP[k]) || null; }
 
-  async loadGallery(albumKey) {
-    const id = this.getCentralId(albumKey);
+  async loadGallery(key) {
+    this.stop();
+    this.it = [];
+    this.idx = 0;
     
-    if (!id) {
-      this.items = [];
-      this.currentIndex = 0;
-      this.updateNavigationState();
-      
-      const slot = document.getElementById('cover-slot');
-      if (slot) {
-        slot.innerHTML = `<img src="img/logo.png" alt="Обложка" draggable="false" loading="lazy">`;
-      }
-      return;
-    }
+    const id = this._id(key);
+    const slot = $('cover-slot');
+    const setLogo = () => { if(slot) slot.innerHTML = `<img src="${LOGO}" alt="Cover" draggable="false">`; this._nav(); };
 
-    // ✅ Кэшируем 404 для галерей чтобы не делать повторные запросы
-    const gallery404Key = `gallery_404_cache:v1`;
-    let gallery404Cache = {};
-    try {
-      const raw = sessionStorage.getItem(gallery404Key);
-      gallery404Cache = raw ? JSON.parse(raw) : {};
-    } catch {}
-
-    if (gallery404Cache[id]) {
-      this.items = [];
-      this.currentIndex = 0;
-      this.updateNavigationState();
-      
-      const slot = document.getElementById('cover-slot');
-      if (slot) {
-        slot.innerHTML = `<img src="img/logo.png" alt="Обложка" draggable="false" loading="lazy">`;
-      }
-      return;
-    }
+    if (!id || ss(CACHE_404)[id]) return setLogo();
 
     try {
-      const baseDir = `${this.GALLERY_BASE}${id}/`;
-      const response = await fetch(`${baseDir}index.json`, { cache: 'force-cache' });
-      
-      if (!response.ok) {
-        // ✅ Кэшируем 404
-        if (response.status === 404) {
-          gallery404Cache[id] = Date.now();
-          try { sessionStorage.setItem(gallery404Key, JSON.stringify(gallery404Cache)); } catch {}
-        }
-        throw new Error(`HTTP ${response.status}`);
+      const dir = `${BASE}${id}/`;
+      const r = await fetch(`${dir}index.json`, { cache: 'force-cache' });
+      if (!r.ok) {
+        if (r.status === 404) ss(CACHE_404, { ...ss(CACHE_404), [id]: 1 });
+        throw 0;
       }
-
-      const data = await response.json();
-      const rawItems = Array.isArray(data.items) ? data.items : (Array.isArray(data) ? data : []);
-
-      this.items = rawItems
-        .map(item => this.normalizeItem(item, baseDir))
-        .filter(Boolean);
-
-      this.currentIndex = 0;
       
-      if (this.items.length > 0) {
-        this.renderItem(0);
-        this.updateNavigationState();
-        this.startAutoplay();
-      }
+      const d = await r.json();
+      this.it = (Array.isArray(d.items) ? d.items : (Array.isArray(d) ? d : []))
+        .map(i => this._norm(i, dir)).filter(Boolean);
 
-      console.log(`✅ Gallery loaded: ${this.items.length} items`);
-    } catch (error) {
-      // ✅ Тихо обрабатываем ошибку загрузки галереи (не засоряем консоль)
-      this.items = [];
-      this.currentIndex = 0;
-      this.updateNavigationState();
-      
-      // ✅ Показываем logo.png как fallback
-      const slot = document.getElementById('cover-slot');
-      if (slot) {
-        slot.innerHTML = `<img src="img/logo.png" alt="Обложка" draggable="false" loading="lazy">`;
-      }
-    }
+      if (this.it.length) {
+        this.show(0);
+        this.play();
+      } else setLogo();
+    } catch { setLogo(); }
+    
+    this._nav();
   }
 
-  normalizeItem(raw, baseDir) {
-    if (!raw) return null;
-
-    const toAbs = (p) => {
+  _norm(i, dir) {
+    if (!i) return null;
+    const abs = (p) => {
       if (!p) return null;
-      const s = String(p).replace(/^\.?\//, '');
-      if (/^https?:\/\//i.test(s)) return s;
-      if (/^(albums|img|icons|assets)\//i.test(s)) return `./${s}`;
-      return baseDir + s;
+      return /^(https?:)?\/\//.test(p) ? p : (/^(albums|img|icons)\//.test(p) ? './'+p : dir + p);
     };
-
-    if (typeof raw === 'string') {
-      const isHtml = /\.html(\?|#|$)/i.test(raw);
-      return {
-        type: isHtml ? 'html' : 'img',
-        src: toAbs(raw),
-        formats: null
-      };
-    }
-
-    const type = String(raw.type || '').toLowerCase() === 'html' ? 'html' : 'img';
-
-    if (type === 'html') {
-      return {
-        type: 'html',
-        src: toAbs(raw.src || ''),
-        formats: null
-      };
-    }
-
-    const formats = {
-      webp: toAbs(raw.formats?.webp || null),
-      full: toAbs(raw.formats?.full || raw.src || null),
-      thumb: toAbs(raw.formats?.thumb || null)
-    };
-
-    return {
-      type: 'img',
-      src: formats.full || toAbs(raw.src || ''),
-      formats
-    };
+    
+    if (typeof i === 'string') return /\.html([?#]|$)/i.test(i) ? { t: 'html', s: abs(i) } : { t: 'img', s: abs(i) };
+    const t = (i.type||'').toLowerCase() === 'html' ? 'html' : 'img';
+    if (t === 'html') return { t, s: abs(i.src) };
+    
+    const f = i.formats || {};
+    return { t, s: abs(f.full||i.src), w: abs(f.webp), f: { w: abs(f.webp), f: abs(f.full||i.src) } };
   }
 
-  renderItem(index) {
-    if (this.transitionLock) return;
-    if (!this.items.length) return;
-
-    this.transitionLock = true;
-    this.currentIndex = (index + this.items.length) % this.items.length;
-
-    const item = this.items[this.currentIndex];
-    const slot = document.getElementById('cover-slot');
+  show(i) {
+    if (this.lck || !this.it.length) return;
+    this.lck = true;
+    this.idx = i;
     
-    if (!slot || !item) {
-      this.transitionLock = false;
-      return;
-    }
+    const it = this.it[i];
+    const slot = $('cover-slot');
+    if (!slot || !it) return (this.lck = false);
 
-    if (this.imageLoader) {
-      this.imageLoader.onload = null;
-      this.imageLoader.onerror = null;
-      this.imageLoader = null;
-    }
+    if (this.ldr) { this.ldr.onload = this.ldr.onerror = null; this.ldr = null; }
 
-    if (item.type === 'html') {
-      this.renderHtml(slot, item.src);
+    const finish = () => { setTimeout(() => { this._pre(); this.lck = false; }, 200); };
+
+    // Clear content
+    while(slot.firstChild) slot.removeChild(slot.firstChild);
+
+    if (it.t === 'html') {
+      const f = D.createElement('iframe');
+      f.sandbox = 'allow-scripts allow-popups allow-forms';
+      f.referrerPolicy = 'no-referrer';
+      f.loading = 'lazy';
+      f.src = it.s;
+      slot.appendChild(f);
+      finish();
     } else {
-      this.renderImage(slot, item);
-    }
-
-    setTimeout(() => {
-      this.prefetchNext();
-      this.transitionLock = false;
-    }, 200);
-  }
-
-  renderHtml(slot, src) {
-    const iframe = document.createElement('iframe');
-    
-    // ✅ Локальные html-баннеры (albums/gallery/...) доверенные.
-    // Для корректной работы вложенных виджетов (например, Яндекс.Музыка) нужен allow-same-origin.
-    // ✅ Минимизируем security-ошибки от сторонних виджетов внутри баннера:
-    // не даём outer-iframe same-origin.
-    iframe.setAttribute('sandbox', 'allow-scripts allow-popups allow-forms');
-    iframe.setAttribute('referrerpolicy', 'no-referrer');
-    iframe.loading = 'lazy';
-    iframe.src = src;
-
-    this.clearSlot(slot);
-    slot.appendChild(iframe);
-  }
-
-  renderImage(slot, item) {
-    const img = new Image();
-    this.imageLoader = img;
-
-    img.decoding = 'async';
-    img.referrerPolicy = 'no-referrer';
-
-    const src = item.formats?.webp || item.formats?.full || item.src;
-
-    img.onload = () => {
-      if (this.imageLoader !== img) return;
-
-      const picture = document.createElement('picture');
-
-      if (item.formats?.webp) {
-        const source = document.createElement('source');
-        source.type = 'image/webp';
-        source.srcset = item.formats.webp;
-        picture.appendChild(source);
-      }
-
-      const displayImg = document.createElement('img');
-      displayImg.src = src;
-      displayImg.alt = 'Обложка альбома';
-      displayImg.decoding = 'async';
-      displayImg.referrerPolicy = 'no-referrer';
-      displayImg.style.cssText = 'opacity: 0; transition: opacity .15s ease-out';
-
-      picture.appendChild(displayImg);
-
-      this.clearSlot(slot);
-      slot.appendChild(picture);
-
-      requestAnimationFrame(() => {
-        displayImg.style.opacity = '1';
-      });
-    };
-
-    img.onerror = () => console.warn('Failed to load image:', src);
-    img.src = src;
-  }
-
-  clearSlot(slot) {
-    while (slot.firstChild) {
-      if (slot.firstChild.tagName === 'IFRAME') {
-        slot.firstChild.src = 'about:blank';
-      }
-      slot.removeChild(slot.firstChild);
-    }
-  }
-
-  prefetchNext() {
-    if (this.items.length < 2) return;
-
-    const nextIndex = (this.currentIndex + 1) % this.items.length;
-    const item = this.items[nextIndex];
-
-    if (!item || item.type !== 'img') return;
-
-    const webp = item.formats?.webp || null;
-
-    if (this.prefetchedUrls.size > 20) this.prefetchedUrls.clear();
-
-    if (webp && !this.prefetchedUrls.has(webp)) {
       const img = new Image();
-      img.src = webp;
-      this.prefetchedUrls.add(webp);
+      this.ldr = img;
+      img.decoding = 'async';
+      img.referrerPolicy = 'no-referrer';
+      img.src = it.w || it.s;
+      
+      img.onload = () => {
+        if (this.ldr !== img) return;
+        const p = D.createElement('picture');
+        if (it.w) { const s = D.createElement('source'); s.type = 'image/webp'; s.srcset = it.w; p.appendChild(s); }
+        const el = D.createElement('img');
+        el.src = it.s;
+        el.alt = 'Cover';
+        el.decoding = 'async';
+        el.referrerPolicy = 'no-referrer';
+        el.style.cssText = 'opacity:0;transition:opacity .15s ease-out';
+        p.appendChild(el);
+        slot.appendChild(p);
+        requestAnimationFrame(() => el.style.opacity = '1');
+        finish();
+      };
+      img.onerror = finish;
     }
   }
 
-  setupNavigation() {
-    const leftBtn = document.getElementById('cover-gallery-arrow-left');
-    const rightBtn = document.getElementById('cover-gallery-arrow-right');
-
-    leftBtn?.addEventListener('click', () => {
-      if (!this.items.length) return;
-      this.renderItem(this.currentIndex - 1);
-      this.restartAutoplay();
-    });
-
-    rightBtn?.addEventListener('click', () => {
-      if (!this.items.length) return;
-      this.renderItem(this.currentIndex + 1);
-      this.restartAutoplay();
-    });
-  }
-
-  setupSwipeGestures() {
-    const wrap = document.getElementById('cover-wrap');
-    if (!wrap) return;
-
-    let startX = null;
-
-    wrap.addEventListener('touchstart', (e) => {
-      startX = e.touches[0].clientX;
-    }, { passive: true });
-
-    wrap.addEventListener('touchend', (e) => {
-      if (startX === null) return;
-
-      const dx = e.changedTouches[0].clientX - startX;
-
-      if (Math.abs(dx) > 50) {
-        if (dx > 0) {
-          this.renderItem(this.currentIndex - 1);
-        } else {
-          this.renderItem(this.currentIndex + 1);
-        }
-        this.restartAutoplay();
-      }
-
-      startX = null;
-    }, { passive: true });
-  }
-
-  setupVisibilityHandler() {
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden) {
-        // ✅ Останавливаем только галерею (плеер не трогаем)
-        this.stopAutoplay();
-      } else {
-        // Возобновляем, только если есть что крутить
-        if (this.items.length > 1) {
-          this.startAutoplay();
-        }
-      }
-    });
-  }
-
-  updateNavigationState() {
-    const wrap = document.getElementById('cover-wrap');
-    if (!wrap) return;
-
-    if (this.items.length > 1) {
-      wrap.classList.add('gallery-nav-ready');
-    } else {
-      wrap.classList.remove('gallery-nav-ready');
+  _pre() {
+    if (this.it.length < 2) return;
+    const n = this.it[(this.idx + 1) % this.it.length];
+    if (n?.t === 'img' && n.w && !this.pre.has(n.w)) {
+      if (this.pre.size > 20) this.pre.clear();
+      (new Image()).src = n.w;
+      this.pre.add(n.w);
     }
   }
 
-  startAutoplay() {
-    if (this.items.length <= 1) return;
-    if (this.autoplayInterval) return;
-
-    this.autoplayInterval = setInterval(() => {
-      this.renderItem(this.currentIndex + 1);
-    }, 5000);
-
-    this.isAutoplayEnabled = true;
+  _nav() {
+    $('cover-wrap')?.classList.toggle('gallery-nav-ready', this.it.length > 1);
   }
 
-  stopAutoplay() {
-    if (this.autoplayInterval) {
-      clearInterval(this.autoplayInterval);
-      this.autoplayInterval = null;
-    }
-    this.isAutoplayEnabled = false;
+  play() {
+    this.stop();
+    if (this.it.length > 1) this.tm = setInterval(() => this.show((this.idx + 1) % this.it.length), 5000);
   }
 
-  restartAutoplay() {
-    this.stopAutoplay();
-    this.startAutoplay();
-  }
+  stop() { if (this.tm) clearInterval(this.tm); this.tm = null; }
 
   clear() {
-    this.stopAutoplay();
-    this.items = [];
-    this.currentIndex = 0;
-    this.prefetchedUrls.clear();
-    
-    if (this.imageLoader) {
-      this.imageLoader.onload = null;
-      this.imageLoader.onerror = null;
-      this.imageLoader = null;
-    }
-
-    const slot = document.getElementById('cover-slot');
-    if (slot) this.clearSlot(slot);
-
-    this.updateNavigationState();
+    this.stop();
+    this.it = [];
+    this.pre.clear();
+    this.ldr = null;
+    if ($('cover-slot')) $('cover-slot').innerHTML = '';
+    this._nav();
   }
 
-  getItemsCount() {
-    return this.items.length;
-  }
+  getItemsCount() { return this.it.length; }
+  getCurrentIndex() { return this.idx; }
 
-  getCurrentIndex() {
-    return this.currentIndex;
-  }
-
-  /**
-   * ✅ Возвращает URL первой обложки из центральной галереи для albumKey
-   * (webp приоритетнее), либо img/logo.png.
-   * НЕ трогает воспроизведение.
-   */
-  async getFirstCoverUrl(albumKey) {
-    const id = this.getCentralId(albumKey);
-    if (!id) return 'img/logo.png';
-
-    const baseDir = `${this.GALLERY_BASE}${id}/`;
-
+  async getFirstCoverUrl(key) {
+    const id = this._id(key);
+    if (!id) return LOGO;
     try {
-      const response = await fetch(`${baseDir}index.json`, { cache: 'force-cache' });
-      if (!response.ok) return 'img/logo.png';
-
-      const data = await response.json();
-      const rawItems = Array.isArray(data.items) ? data.items : (Array.isArray(data) ? data : []);
-      const first = rawItems && rawItems.length ? rawItems[0] : null;
-      if (!first) return 'img/logo.png';
-
-      const norm = this.normalizeItem(first, baseDir);
-      if (!norm || norm.type !== 'img') return 'img/logo.png';
-
-      return norm.formats?.webp || norm.formats?.full || norm.src || 'img/logo.png';
-    } catch {
-      return 'img/logo.png';
-    }
+      const dir = `${BASE}${id}/`;
+      const r = await fetch(`${dir}index.json`, { cache: 'force-cache' });
+      if (!r.ok) return LOGO;
+      const d = await r.json();
+      const i = (d.items||d||[])[0];
+      if (!i) return LOGO;
+      const n = this._norm(i, dir);
+      return (n.t === 'img' ? (n.w || n.s) : LOGO);
+    } catch { return LOGO; }
   }
 }
 
-window.GalleryManager = new GalleryManager();
-
-export default GalleryManager;
+W.GalleryManager = new GalleryManager();
+export default W.GalleryManager;
