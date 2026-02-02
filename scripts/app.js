@@ -42,51 +42,15 @@
           console.warn('⚠️ Offline UI subsystems partial failure:', e);
         }
 
-        // OFFLINE/FAVORITES: preload TrackRegistry once
-        // ВАЖНО: избранное (v2) строится через TrackRegistry.getTrackByUid(uid),
-        // поэтому preload должен быть ДО любого активного использования Favorites.
+        // OFFLINE: preload TrackRegistry once
         try {
           const key = 'offline:preloadAllTracksOnce:v1';
-
-          // eslint-disable-next-line no-inner-declarations
-          async function ensurePreload() {
+          if (localStorage.getItem(key) !== '1') {
             const mod = await import('./ui/offline-modal.js');
             if (mod?.preloadAllAlbumsTrackIndex) {
               await mod.preloadAllAlbumsTrackIndex();
-              try { localStorage.setItem(key, '1'); } catch {}
-              return true;
+              localStorage.setItem(key, '1');
             }
-            return false;
-          }
-
-          // Публичный best-effort helper для UI: можно вызывать сколько угодно раз.
-          // Он НЕ трогает playback.
-          window.ensureTrackRegistryReadyForFavorites = async function ensureTrackRegistryReadyForFavorites() {
-            // Единственный критерий "готово": реестр реально заполнен.
-            try {
-              const n = window.TrackRegistry?.getAllTracks?.()?.length || 0;
-              if (n > 0) return true;
-            } catch {}
-
-            // Если есть флаг — это только подсказка, но не гарантия.
-            // Всё равно пытаемся прогреть, чтобы исключить "пустой реестр при key=1".
-            try {
-              await ensurePreload();
-            } catch {}
-
-            try {
-              const n2 = window.TrackRegistry?.getAllTracks?.()?.length || 0;
-              if (n2 > 0) {
-                try { localStorage.setItem(key, '1'); } catch {}
-                return true;
-              }
-            } catch {}
-
-            return false;
-          };
-
-          if (localStorage.getItem(key) !== '1') {
-            await ensurePreload();
           }
         } catch (e) {
           console.warn('OFFLINE preloadAllAlbumsTrackIndex failed:', e);
