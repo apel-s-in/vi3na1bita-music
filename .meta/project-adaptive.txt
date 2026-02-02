@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ac711aba283645965ba66515f1377fe7d48778bc.idx
-│   │       ├── pack-ac711aba283645965ba66515f1377fe7d48778bc.pack
-│   │       └── pack-ac711aba283645965ba66515f1377fe7d48778bc.rev
+│   │       ├── pack-9f76f5b9cf532fa77e874c68889773951a725349.idx
+│   │       ├── pack-9f76f5b9cf532fa77e874c68889773951a725349.pack
+│   │       └── pack-9f76f5b9cf532fa77e874c68889773951a725349.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-02 10:32:04 UTC
+Сгенерировано: 2026-02-02 10:34:11 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6182,8 +6182,17 @@ export default FavoritesV2;
         const uid = String(track?.uid || '').trim();
         if (!pc || !pa || !uid) return false;
 
-        // ✅ v2: liked по uid — единый источник истины
-        return !!pc?.isFavorite?.(uid);
+        if (pa !== W.SPECIAL_FAVORITES_KEY) return !!pc?.isFavorite?.(uid);
+
+        const srcAlbum = String(track?.sourceAlbum || '').trim();
+        if (srcAlbum) return !!pc?.isFavorite?.(uid);
+
+        const ref = Array.isArray(W.favoritesRefsModel)
+          ? W.favoritesRefsModel.find(it => String(it?.__uid || '').trim() === uid)
+          : null;
+
+        const a = String(ref?.__a || '').trim();
+        return a ? !!pc?.isFavorite?.(uid) : false;
       }
     },
 
