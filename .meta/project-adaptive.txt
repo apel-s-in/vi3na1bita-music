@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9f76f5b9cf532fa77e874c68889773951a725349.idx
-│   │       ├── pack-9f76f5b9cf532fa77e874c68889773951a725349.pack
-│   │       └── pack-9f76f5b9cf532fa77e874c68889773951a725349.rev
+│   │       ├── pack-d51475b948aebb5e538b23373498cb25b036755d.idx
+│   │       ├── pack-d51475b948aebb5e538b23373498cb25b036755d.pack
+│   │       └── pack-d51475b948aebb5e538b23373498cb25b036755d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-02 10:34:11 UTC
+Сгенерировано: 2026-02-02 10:34:54 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6274,7 +6274,7 @@ export default FavoritesV2;
 // FILE: /scripts/e2e/favorites.spec.js
 // @ts-check
 import { test, expect } from '@playwright/test';
-import { BASE, loginByPromo, likeFirstTrack, openFavorites, playFirstTrack } from './utils.js';
+import { loginByPromo, likeFirstTrack, openFavorites, playFirstTrack } from './utils.js';
 
 test('favorites UI builds and plays from favorites list', async ({ page }) => {
   await loginByPromo(page);
@@ -6310,28 +6310,20 @@ test('toggle star in favorites updates row state and localStorage (uid-based)', 
   await favRow.locator('.like-star').click();
   await expect(favRow).toHaveClass(/inactive/);
 
-  // ✅ v2: unlike в favorites view НЕ удаляет ref, а ставит inactiveAt
-  const v2 = await page.evaluate((id) => {
+  // Проверим localStorage: likedTrackUids:v1 больше не содержит этот uid в массиве строк
+  const { albumKey, uid, present } = await page.evaluate((id) => {
     const m = String(id || '').match(/^fav_(.+)_(.+)$/);
-    const uid = m ? m[2] : '';
-    const likedRaw = localStorage.getItem('likedTrackUids:v2');
-    const refsRaw = localStorage.getItem('favoritesRefsByUid:v2');
-    const liked = likedRaw ? JSON.parse(likedRaw) : [];
-    const refs = refsRaw ? JSON.parse(refsRaw) : {};
-    return {
-      uid,
-      likedHas: Array.isArray(liked) && liked.includes(uid),
-      refExists: !!refs?.[uid],
-      inactiveAt: Number(refs?.[uid]?.inactiveAt || 0) || 0
-    };
+    const a = m ? m[1] : '';
+    const u = m ? m[2] : '';
+    const raw = localStorage.getItem('likedTrackUids:v1');
+    const map = raw ? JSON.parse(raw) : {};
+    const arr = Array.isArray(map[a]) ? map[a] : [];
+    return { albumKey: a, uid: u, present: arr.includes(u) };
   }, favId);
 
-  expect(v2.uid).toBeTruthy();
-  expect(v2.likedHas).toBeFalsy();
-  expect(v2.refExists).toBeTruthy();
-  expect(v2.inactiveAt).toBeGreaterThan(0);
-
-  // ✅ v1 удалён: дополнительных проверок v1 больше нет.
+  expect(albumKey).toBeTruthy();
+  expect(uid).toBeTruthy();
+  expect(present).toBeFalsy();
 });
 
 test('favorites view: add to favorites, play and verify mini-mode when browsing other album', async ({ page }) => {
@@ -6350,47 +6342,6 @@ test('favorites view: add to favorites, play and verify mini-mode when browsing 
   await otherIcon.click();
 
   await expect(page.locator('#mini-now')).toBeVisible();
-});
-
-test('unlike in native album removes ref from favorites "without trace" (v2)', async ({ page }) => {
-  await loginByPromo(page);
-
-  await page.waitForSelector('#track-list .track', { timeout: 10000 });
-  const firstRow = page.locator('#track-list .track').first();
-
-  // Лайкнем в родном альбоме
-  await firstRow.hover();
-  await firstRow.locator('.like-star').click();
-
-  // Вытащим uid из dataset
-  const uid = await firstRow.getAttribute('data-uid');
-  expect(String(uid || '').trim()).toBeTruthy();
-
-  // Проверим что ref появился
-  const hasRefAfterLike = await page.evaluate((u) => {
-    const refsRaw = localStorage.getItem('favoritesRefsByUid:v2');
-    const refs = refsRaw ? JSON.parse(refsRaw) : {};
-    return !!refs?.[String(u || '').trim()];
-  }, uid);
-  expect(hasRefAfterLike).toBeTruthy();
-
-  // Снимем лайк в родном альбоме => ref должен исчезнуть полностью
-  await firstRow.locator('.like-star').click();
-
-  const st = await page.evaluate((u) => {
-    const uid = String(u || '').trim();
-    const likedRaw = localStorage.getItem('likedTrackUids:v2');
-    const refsRaw = localStorage.getItem('favoritesRefsByUid:v2');
-    const liked = likedRaw ? JSON.parse(likedRaw) : [];
-    const refs = refsRaw ? JSON.parse(refsRaw) : {};
-    return {
-      likedHas: Array.isArray(liked) && liked.includes(uid),
-      refExists: !!refs?.[uid]
-    };
-  }, uid);
-
-  expect(st.likedHas).toBeFalsy();
-  expect(st.refExists).toBeFalsy();
 });
 
 // Доп. тест: восстановление после перезагрузки (PlayerState.applyState)
@@ -6591,28 +6542,28 @@ test('mini-player star toggles favorite in __favorites__ and syncs with list (ui
   await miniStar.click();
   await page.waitForTimeout(200);
 
-  // 5. Проверим, что состояние в favorites-списке и likedTrackUids:v2 синхронно обновилось
+  // 5. Проверим, что состояние в favorites-списке и likedTrackUids:v1 синхронно обновилось
   await page.click('.album-icon[data-akey="__favorites__"]');
   await page.waitForSelector('#track-list .track', { timeout: 10000 });
 
   const favRowAfter = page.locator(`#${favId}`);
   const starAfter = favRowAfter.locator('.like-star');
 
-  const v2 = await page.evaluate((favRowId) => {
+  const { albumKey, uid, present } = await page.evaluate((favRowId) => {
     const m = String(favRowId || '').match(/^fav_(.+)_(.+)$/);
-    const uid = m ? m[2] : '';
-    const likedRaw = localStorage.getItem('likedTrackUids:v2');
-    const liked = likedRaw ? JSON.parse(likedRaw) : [];
-    return {
-      uid,
-      likedHas: Array.isArray(liked) && liked.includes(uid)
-    };
+    const a = m ? m[1] : '';
+    const u = m ? m[2] : '';
+    const raw = localStorage.getItem('likedTrackUids:v1');
+    const map = raw ? JSON.parse(raw) : {};
+    const arr = Array.isArray(map[a]) ? map[a] : [];
+    return { albumKey: a, uid: u, present: arr.includes(u) };
   }, favId);
 
-  expect(v2.uid).toBeTruthy();
+  expect(albumKey).toBeTruthy();
+  expect(uid).toBeTruthy();
 
   await expect(starAfter).toBeVisible();
-  if (v2.likedHas) {
+  if (present) {
     await expect(favRowAfter).not.toHaveClass(/inactive/);
   } else {
     await expect(favRowAfter).toHaveClass(/inactive/);
