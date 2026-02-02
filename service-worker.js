@@ -186,37 +186,16 @@ self.addEventListener('message', (event) => {
     return;
   }
 
-  // Заглушки под API ServiceWorkerManager — чтобы не падать
-  if (type === 'CLEAR_CACHE') {
-    const cacheType = data.payload && data.payload.cacheType;
-    let targetNames = [CORE_CACHE, RUNTIME_CACHE, MEDIA_CACHE, OFFLINE_CACHE, META_CACHE];
-
-    if (cacheType === 'media') {
-      targetNames = [MEDIA_CACHE];
-    } else if (cacheType === 'offline') {
-      targetNames = [OFFLINE_CACHE];
+  // API для ServiceWorkerManager
+    // CACHE_AUDIO удалён: аудио теперь хранится в IndexedDB (CacheDB)
+  
+    if (type === 'CLEAR_CACHE') {
+      // Очистка только системных кэшей SW (не трогаем IDB аудио)
+      event.waitUntil(
+        caches.keys().then((names) => Promise.all(names.map((name) => caches.delete(name))))
+      );
+      return;
     }
-
-    event.waitUntil(
-      caches.keys().then((names) =>
-        Promise.all(
-          names.map((name) => {
-            if (targetNames.includes(name)) {
-              return caches.delete(name);
-            }
-            return undefined;
-          })
-        )
-      )
-    );
-    return;
-  }
-
-  if (type === 'CACHE_AUDIO') {
-    // В упрощённой версии ничего не делаем, только не падаем.
-    // Можно будет реализовать позже.
-    return;
-  }
 
   if (type === 'WARM_OFFLINE_SHELL') {
     const port = ports && ports[0];
