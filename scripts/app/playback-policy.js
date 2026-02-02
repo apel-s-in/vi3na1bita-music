@@ -1,8 +1,5 @@
 // scripts/app/playback-policy.js
 // Политика формирования очереди (favoritesOnly + shuffle) без остановки плеера.
-// ✅ v2 UID-only: источник истины для ⭐ = playerCore.isFavorite(uid)
-// ⚠️ Никаких stop()/play() здесь, только setPlaylist()/append/remove + next() в разрешённых правилах.
-
 (function () {
   'use strict';
 
@@ -14,6 +11,13 @@
 
   const playingAlbumKey = () => w.AlbumsManager?.getPlayingAlbum?.() || null;
 
+  const likedUidsForPlayingAlbum = () => {
+    const a = playingAlbumKey();
+    if (!a || a === w.SPECIAL_FAVORITES_KEY || isSpecial(a)) return [];
+    const uids = w.playerCore?.getLikedUidsForAlbum?.(a) || [];
+    return Array.isArray(uids) ? uids.map(trim).filter(Boolean) : [];
+  };
+
   const originalSnapshot = () => {
     const o = w.playerCore?.originalPlaylist || [];
     return Array.isArray(o) ? o.slice() : [];
@@ -24,17 +28,12 @@
     return Array.isArray(s) ? s.slice() : [];
   };
 
-  const isLikedUid = (uid) => {
-    const u = trim(uid);
-    if (!u) return false;
-    return !!w.playerCore?.isFavorite?.(u);
-  };
-
-  const buildFavOnlyFromOriginal = (original) => {
-    if (!original?.length) return [];
-    return original.filter((t) => {
+  const buildFavOnlyFromOriginal = (original, likedUids) => {
+    if (!original?.length || !likedUids?.length) return [];
+    const set = new Set(likedUids);
+    return original.filter(t => {
       const uid = trim(t?.uid);
-      return uid && isLikedUid(uid);
+      return uid && set.has(uid);
     });
   };
 
@@ -69,11 +68,17 @@
     const album = playingAlbumKey();
     if (!album) return;
 
-    // В special альбомах policy не применяется (Избранное живёт по своим правилам).
     if (album === w.SPECIAL_FAVORITES_KEY || isSpecial(album)) return void ensureAvailable();
 
     const favOnlyEnabled = U?.lsGetBool01 ? U.lsGetBool01(LS_FAV_ONLY, false) : (localStorage.getItem(LS_FAV_ONLY) === '1');
     if (!favOnlyEnabled) return void ensureAvailable();
+
+    const likedUids = likedUidsForPlayingAlbum();
+    if (!likedUids.length) {
+      setFavOnlyModeUI(false);
+      w.NotificationSystem?.info?.('Отметьте понравившийся трек ⭐');
+      return void ensureAvailable();
+    }
 
     const original = originalSnapshot();
     const current = currentSnapshot();
@@ -81,7 +86,7 @@
     const curTrack = pc.getCurrentTrack?.();
     const curUid = trim(curTrack?.uid);
 
-    const target = buildFavOnlyFromOriginal(original);
+    const target = buildFavOnlyFromOriginal(original, likedUids);
     if (!target.length) {
       setFavOnlyModeUI(false);
       w.NotificationSystem?.info?.('Отметьте понравившийся трек ⭐');
@@ -93,13 +98,12 @@
     // Shuffle fast-path for favoritesChanged
     if (!!pc.isShuffle?.() && opts?.reason === 'favoritesChanged') {
       const d = opts?.changed || {};
+      const changedAlbum = trim(d.albumKey);
       const changedUid = trim(d.uid);
       const liked = !!d.liked;
 
-      // Если лайкнули трек текущего playing альбома => добавим в хвост (если его там нет)
-      if (changedUid && liked) {
-        const inOriginal = original.some(t => trim(t?.uid) === changedUid);
-        if (inOriginal) {
+      if (changedAlbum === album && changedUid) {
+        if (liked) {
           const inCurrent = current.some(t => trim(t?.uid) === changedUid);
           if (!inCurrent) {
             const add = target.find(t => trim(t?.uid) === changedUid) || null;
@@ -109,26 +113,23 @@
               return;
             }
           }
-        }
-      }
-
-      // Если анлайкнули НЕ текущий и repeat off => можно убрать из хвоста если ещё не проигран
-      if (changedUid && !liked && !repeat) {
-        const removed = pc.removeFromPlaylistTailIfNotPlayed?.({ uid: changedUid });
-        if (removed) {
-          ensureAvailable();
-          return;
+        } else if (!repeat) {
+          if (pc.removeFromPlaylistTailIfNotPlayed?.({ uid: changedUid })) {
+            ensureAvailable();
+            return;
+          }
         }
       }
     }
 
-    // Unlike current handling: если сняли ⭐ с текущего, и repeat off => next()
+    // Unlike current handling (6.1), ignore if repeat on (6.3)
     if (!repeat && opts?.reason === 'favoritesChanged' && curUid) {
       const d = opts?.changed || {};
+      const changedAlbum = trim(d.albumKey);
       const changedUid = trim(d.uid);
       const liked = !!d.liked;
 
-      if (changedUid === curUid && !liked) {
+      if (!liked && changedAlbum === album && changedUid === curUid && !likedUids.includes(changedUid)) {
         const filtered = target.filter(t => trim(t?.uid) !== changedUid);
         if (!filtered.length) {
           setFavOnlyModeUI(false);
@@ -140,7 +141,9 @@
 
         pc.setPlaylist(filtered, 0, {}, { preserveOriginalPlaylist: true, preserveShuffleMode: true, resetHistory: false });
 
-        if (shuffleOn) pc.shufflePlaylist?.();
+        if (shuffleOn) {
+          pc.shufflePlaylist?.();
+        }
 
         pc.next();
         ensureAvailable();
@@ -151,6 +154,9 @@
     // Base: rebuild playlist to favorites-only, keep current uid if present
     const startIndex = curUid ? Math.max(0, findIndexByUid(target, curUid)) : 0;
 
+    // ✅ ВАЖНО: если shuffle включён, при изменении состава очереди (favoritesOnly / like/unlike)
+    // нужно пересобрать shuffle-порядок именно по НОВОМУ набору target.
+    // preserveShuffleMode=true оставляет флаг shuffle включённым, но НЕ гарантирует корректный порядок.
     const shuffleOn = !!pc.isShuffle?.();
 
     pc.setPlaylist(
@@ -164,7 +170,10 @@
       }
     );
 
-    if (shuffleOn) pc.shufflePlaylist?.();
+    if (shuffleOn) {
+      // перестроить порядок и оставить текущий трек текущим
+      pc.shufflePlaylist?.();
+    }
 
     ensureAvailable();
   }
