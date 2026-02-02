@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-cde0eab9a16ddf40243aff052b38d3179dc547e4.idx
-│   │       ├── pack-cde0eab9a16ddf40243aff052b38d3179dc547e4.pack
-│   │       └── pack-cde0eab9a16ddf40243aff052b38d3179dc547e4.rev
+│   │       ├── pack-ea6777311a9072801f0058aaf9f23e5574ff607b.idx
+│   │       ├── pack-ea6777311a9072801f0058aaf9f23e5574ff607b.pack
+│   │       └── pack-ea6777311a9072801f0058aaf9f23e5574ff607b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-02 18:49:05 UTC
+Сгенерировано: 2026-02-02 18:56:44 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -12004,7 +12004,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
           this.repeatMode ? this.play(this.currentIndex) : this.next();
         },
         onloaderror: (id, e) => this._emit('onError', { msg: 'Load error', e }),
-        onplayerror: () => this.sound.once('unlock', () => this.sound.play())
+        onplayerror: () => this.sound?.once('unlock', () => this.sound?.play())
       });
 
       this._emit('onTrackChange', track, index);
