@@ -12,6 +12,7 @@ const STAR_OFF = 'img/star2.png';
 const LOGO = 'img/logo.png';
 
 // --- Helpers ---
+const setStar = (img, liked) => { if(img) img.src = liked ? STAR_ON : STAR_OFF; };
 const toUrl = (b, r) => r ? new URL(r, b).toString() : null;
 const getUid = (el) => toStr(el?.dataset?.uid).trim();
 const getAlb = (el) => toStr(el?.dataset?.album).trim();
