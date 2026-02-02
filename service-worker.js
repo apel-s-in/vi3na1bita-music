@@ -47,7 +47,6 @@ const STATIC_ASSETS = [
   // './scripts/app/background-events.js', // отсутствует в репозитории: удалено из precache
   './scripts/app/player-ui.js',
   './scripts/app/albums.js',
-  './scripts/app/albums/render.js',
   './scripts/app/navigation.js',
   './scripts/app.js',
   './src/PlayerCore.js',
