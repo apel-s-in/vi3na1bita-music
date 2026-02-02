@@ -56,4 +56,3 @@ if (errors.length) {
   process.exit(2);
 }
 console.log('Service Worker lint OK');
-
