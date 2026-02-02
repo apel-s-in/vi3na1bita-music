@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-50b65a83816fa868b57830e777ea1d949a932334.idx
-│   │       ├── pack-50b65a83816fa868b57830e777ea1d949a932334.pack
-│   │       └── pack-50b65a83816fa868b57830e777ea1d949a932334.rev
+│   │       ├── pack-89405e81ab837bc1f13cedbfb4871face6f5d939.idx
+│   │       ├── pack-89405e81ab837bc1f13cedbfb4871face6f5d939.pack
+│   │       └── pack-89405e81ab837bc1f13cedbfb4871face6f5d939.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -317,7 +317,8 @@ vi3na1bita-music/
 │   │   │   ├── render.js
 │   │   │   └── specials.js
 │   │   ├── albums.js
-│   │   └── gallery.js
+│   │   ├── gallery.js
+│   │   └── navigation.js
 │   ├── ci/
 │   │   ├── lint-sw.mjs
 │   │   ├── validate-content.mjs
@@ -354,7 +355,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-02 09:24:23 UTC
+Сгенерировано: 2026-02-02 09:25:48 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2871,6 +2872,95 @@ class GalleryManager {
 window.GalleryManager = new GalleryManager();
 
 export default GalleryManager;
+
+//=================================================
+// FILE: /scripts/app/navigation.js
+// scripts/app/navigation.js
+// Навигация и управление интерфейсом
+
+class NavigationManager {
+  constructor() {
+    this.activeModal = null;
+    this.U = window.Utils;
+    this.$ = (id) => this.U.dom.byId(id);
+    this.on = (el, ev, fn, opts) => this.U.dom.on(el, ev, fn, opts);
+  }
+
+  initialize() {
+    this.setupEventListeners();
+    console.log('✅ NavigationManager initialized');
+  }
+
+  setupEventListeners() {
+    const feedbackLink = this.$('feedback-link');
+    this.on(feedbackLink, 'click', (e) => {
+      e.preventDefault();
+      this.showFeedbackModal();
+    });
+
+    const supportLink = this.$('support-link');
+    if (supportLink) {
+      supportLink.href = window.APP_CONFIG?.SUPPORT_URL || 'https://example.com/support';
+    }
+
+    const hotkeysBtn = this.$('hotkeys-btn');
+    this.on(hotkeysBtn, 'click', (e) => {
+      e.preventDefault();
+      this.showHotkeysModal();
+    });
+  }
+
+  showFeedbackModal() {
+    this.closeModal();
+    if (!window.Modals?.open) return;
+
+    const body = window.ModalTemplates?.feedbackBody
+      ? window.ModalTemplates.feedbackBody({
+          supportEmail: window.APP_CONFIG?.SUPPORT_EMAIL,
+          githubUrl: window.APP_CONFIG?.GITHUB_URL
+        })
+      : '';
+
+    this.activeModal = window.Modals.open({
+      title: 'Обратная связь',
+      maxWidth: 420,
+      bodyHtml: body
+    });
+  }
+
+  showHotkeysModal() {
+    this.closeModal();
+    if (!window.Modals?.open) return;
+
+    const body = window.ModalTemplates?.hotkeysBody
+      ? window.ModalTemplates.hotkeysBody()
+      : '';
+
+    this.activeModal = window.Modals.open({
+      title: 'Горячие клавиши',
+      maxWidth: 520,
+      bodyHtml: body
+    });
+  }
+
+  closeModal() {
+    if (!this.activeModal) return;
+    try { this.activeModal.remove(); } catch {}
+    this.activeModal = null;
+  }
+}
+
+window.NavigationManager = new NavigationManager();
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    try { window.NavigationManager.initialize(); } catch (e) { console.warn('NavigationManager init failed:', e); }
+  });
+} else {
+  try { window.NavigationManager.initialize(); } catch (e) { console.warn('NavigationManager init failed:', e); }
+}
+
+export default NavigationManager;
 
 //=================================================
 // FILE: /scripts/ci/lint-sw.mjs
