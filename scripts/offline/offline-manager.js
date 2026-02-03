@@ -55,7 +55,10 @@ export class OfflineManager {
     await ensureDbReady();
     this._checkExpiredCloud();
     setInterval(() => this._checkExpiredCloud(), 3600000); // 1h
-    setTimeout(() => this.refreshNeedsAggregates({ force: true }), 3000);
+    setTimeout(() => {
+      this._enforceEvictionLimit(); // Чистим старый кэш при старте
+      this.refreshNeedsAggregates({ force: true });
+    }, 3000);
   }
   on(event, cb) {
     if (event === 'progress') { this._subs.add(cb); this.queue.subscribe((e) => cb({ phase: 'queue_' + e.event, ...e.data })); }
