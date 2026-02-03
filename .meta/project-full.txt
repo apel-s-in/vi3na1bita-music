@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-97f9401deabdffcc970446d6f82032e5c86a78dc.idx
-│   │       ├── pack-97f9401deabdffcc970446d6f82032e5c86a78dc.pack
-│   │       └── pack-97f9401deabdffcc970446d6f82032e5c86a78dc.rev
+│   │       ├── pack-f732a4227eaff4bf47ead17b21d1a7b0450ac9c7.idx
+│   │       ├── pack-f732a4227eaff4bf47ead17b21d1a7b0450ac9c7.pack
+│   │       └── pack-f732a4227eaff4bf47ead17b21d1a7b0450ac9c7.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 11:49:50 UTC
+Сгенерировано: 2026-02-03 11:51:28 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1733,6 +1733,10 @@ class AlbumsManager {
     
     const ctr = $('track-list');
     ctr.addEventListener('click', (e) => {
+      // Глобальный Debounce для списка треков (300мс) - защита от случайного "двойного тапа"
+      if (Date.now() - this._clickGuard < 300) return;
+      this._clickGuard = Date.now();
+
       const trk = e.target.closest('.track');
       if (!trk || !ctr.contains(trk)) return;
 
