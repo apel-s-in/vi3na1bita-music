@@ -1,5 +1,6 @@
 // scripts/offline/net-policy.js
 // Политика сети для offline-загрузок (ТЗ 11)
+// Использует централизованный Utils.getNet()
 
 const LS_KEY = 'offline:netPolicy:v1';
 
@@ -37,17 +38,21 @@ export function isAllowedByNetPolicy(params = {}) {
 
   if (!net.online) return false;
 
+  // 1. Save Data Block
   if (policy.saveDataBlock && net.saveData) {
     return userInitiated;
   }
 
   const kind = String(net.kind || '').toLowerCase();
 
+  // 2. WiFi Only
   if (policy.wifiOnly && kind !== 'wifi') {
+    // Если требуется WiFi, а у нас cellular или unknown - блокируем фоновые
     return userInitiated;
   }
 
-  if (!policy.allowMobile && (kind === 'cellular' || kind === '4g' || kind === '3g' || kind === '2g')) {
+  // 3. Block Mobile
+  if (!policy.allowMobile && kind === 'cellular') {
     return userInitiated;
   }
 
@@ -59,7 +64,11 @@ export function shouldConfirmByPolicy(params = {}) {
   const net = params.net || { online: true, kind: 'unknown' };
 
   const kind = String(net.kind || '').toLowerCase();
-  const isMobile = (kind === 'cellular' || kind === '4g' || kind === '3g' || kind === '2g');
+  
+  // Если политика требует подтверждения на мобильных и мы на мобильной сети
+  if (policy.confirmOnMobile && kind === 'cellular') return true;
 
-  return !!(policy.confirmOnMobile && isMobile);
+  // Если тип сети неизвестен (Desktop/Privacy browsers), и включен строгий режим - можно тоже спросить
+  // Но по умолчанию считаем unknown за wifi в Utils, так что тут оставляем только явный cellular
+  return false;
 }
