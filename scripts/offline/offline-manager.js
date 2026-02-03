@@ -235,8 +235,9 @@ export class OfflineManager {
     if (!net.online) return { ok: false, reason: 'offline' };
     if (!allowed) return { ok: false, reason: 'policy_restricted' };
     
-    // Лимит очистки (для 100% offline и cloud) - PlaybackCache теперь чистится через updatePlaybackWindow
-    await this._enforceEvictionLimit(); 
+    // PlaybackCache чистится через updatePlaybackWindow.
+    // Вызываем очистку по лимиту только если это массовая загрузка (не плейбэк), чтобы освободить место.
+    if (kind !== 'playbackCache') await this._enforceEvictionLimit();
 
     try {
       const url = quality === 'lo' ? (meta.urlLo || meta.urlHi) : (meta.urlHi || meta.urlLo);
