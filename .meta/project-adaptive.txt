@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e5a438519cede21cc59ab7aaa7603afaa666a04d.idx
-│   │       ├── pack-e5a438519cede21cc59ab7aaa7603afaa666a04d.pack
-│   │       └── pack-e5a438519cede21cc59ab7aaa7603afaa666a04d.rev
+│   │       ├── pack-c877118e8fe54886c3f8035b6bd70edff9aac1dc.idx
+│   │       ├── pack-c877118e8fe54886c3f8035b6bd70edff9aac1dc.pack
+│   │       └── pack-c877118e8fe54886c3f8035b6bd70edff9aac1dc.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 09:55:02 UTC
+Сгенерировано: 2026-02-03 09:55:45 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7599,18 +7599,26 @@ export function closeOfflineModal() {
 //=================================================
 // FILE: /scripts/ui/ui-utils.js
 // scripts/ui/ui-utils.js
-// Facade over core/utils.js to maintain backward compatibility
+// Facade over core/utils.js to maintain backward compatibility for imports
 import { Utils } from '../core/utils.js';
 
 export const esc = (s) => Utils.ui.escapeHtml(s);
+export const escapeHtml = (s) => Utils.ui.escapeHtml(s);
 export const formatBytes = (n) => Utils.fmt.bytes(n);
+export const formatTime = (s) => Utils.fmt.time(s);
 export const getNetworkStatusSafe = () => Utils.getNet();
+export const isMobile = () => Utils.isMobile();
+export const setBtnActive = (id, a) => Utils.setBtnActive(id, a);
+export const setAriaDisabled = (el, d) => Utils.setAriaDisabled(el, d);
+export const waitFor = (fn, t) => Utils.waitFor(fn, t);
 
+// Для кода, который использует window.UIUtils
 try {
   window.UIUtils = window.UIUtils || {};
-  window.UIUtils.esc = esc;
-  window.UIUtils.formatBytes = formatBytes;
-  window.UIUtils.getNetworkStatusSafe = getNetworkStatusSafe;
+  Object.assign(window.UIUtils, {
+    esc, escapeHtml, formatBytes, formatTime, 
+    getNetworkStatusSafe, isMobile, setBtnActive, setAriaDisabled, waitFor
+  });
 } catch {}
 
 //=================================================
