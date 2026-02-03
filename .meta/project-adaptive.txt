@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-25f8e00460f738c9df02339441efca724489b1c1.idx
-│   │       ├── pack-25f8e00460f738c9df02339441efca724489b1c1.pack
-│   │       └── pack-25f8e00460f738c9df02339441efca724489b1c1.rev
+│   │       ├── pack-3b658550901f32e8465423192dededdb87ee56fb.idx
+│   │       ├── pack-3b658550901f32e8465423192dededdb87ee56fb.pack
+│   │       └── pack-3b658550901f32e8465423192dededdb87ee56fb.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -389,7 +389,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 18:58:56 UTC
+Сгенерировано: 2026-02-03 18:59:47 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2572,13 +2572,9 @@ export function attachPlaybackCache() {
 
         // Если отфильтрованный список пуст
         if (!target.length && !isFavAlbum) {
-          // Не сбрасываем флаг тихо, просто уведомляем и не меняем плейлист
-          W.NotificationSystem?.info('Нет избранных треков для фильтрации');
-          // Возвращаемся к полному списку, но флаг в UI можно оставить или выключить явно
-          // В данном случае безопаснее ничего не делать с плеером, 
-          // либо выключить режим F без рекурсии:
-          localStorage.setItem(LS_KEY, '0');
-          W.PlayerUI?.updateFavoritesBtn?.();
+          W.NotificationSystem?.info('Нет избранных треков. Играем всё.');
+          // FIX: Не меняем localStorage и не трогаем кнопку F автоматически.
+          // Просто не применяем фильтр к плейлисту в этот раз.
           return; 
         }
       }
