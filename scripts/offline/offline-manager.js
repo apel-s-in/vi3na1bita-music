@@ -1,5 +1,5 @@
-//=================================================
-// FILE: /scripts/offline/offline-manager.js
+// scripts/offline/offline-manager.js
+// OfflineManager v2.1 (Optimized Queue + Robust Error Handling)
 import {
   ensureDbReady, setAudioBlob, setBytes, bytesByQuality, totalCachedBytes, deleteTrackCache,
   getCacheQuality as dbGetCQ, setCacheQuality as dbSetCQ, getCloudStats, setCloudStats, clearCloudStats,
@@ -14,9 +14,9 @@ const U = window.Utils;
 const LS = { MODE: 'offlineMode:v1', CQ: 'offline:cacheQuality:v1', PINNED: 'pinnedUids:v1', CLOUD_N: 'offline:cloudN:v1', CLOUD_D: 'offline:cloudD:v1', LIMIT: 'offline:cacheLimitMB:v1', ALERT: 'offline:alert:v1' };
 const MB = 1024 * 1024;
 const COMPLETE_THRESHOLD = 0.92;
-const PRIORITY = { P0_CUR: 100, P1_NEXT: 90, P2_PINNED: 80, P3_UPDATES: 70, P4_CLOUD: 60, P5_ASSETS: 50 };
+const PRIORITY = { P0_CUR: 100, P1_NEXT: 90, P2_PINNED: 80, P3_UPDATES: 70, P4_CLOUD: 60 };
 
-const normUid = (v) => U.trimStr(v);
+const normUid = (v) => U.obj.trim(v);
 const normQ = (v) => (String(v || '').toLowerCase() === 'lo' ? 'lo' : 'hi');
 const getNet = () => U.getNetworkStatusSafe();
 const notify = (msg, type = 'info') => U.ui.toast(msg, type);
@@ -42,7 +42,11 @@ class DownloadQueue {
     const item = this.q.shift();
     this.active = item;
     this._emit('start', { uid: item.uid, key: item.key });
-    try { await item.taskFn(); this._emit('done', { uid: item.uid, key: item.key }); }
+    try { 
+      // Safe execution (equivalent to Promise.allSettled for the queue)
+      await item.taskFn(); 
+      this._emit('done', { uid: item.uid, key: item.key }); 
+    }
     catch (err) { this._emit('error', { uid: item.uid, error: err.message }); }
     finally { this.active = null; this._processNext(); }
   }
@@ -58,7 +62,7 @@ export class OfflineManager {
   async initialize() {
     await ensureDbReady();
     this._checkExpiredCloud();
-    setInterval(() => this._checkExpiredCloud(), 60 * 60 * 1000);
+    setInterval(() => this._checkExpiredCloud(), 3600000); // 1h
     setTimeout(() => this.refreshNeedsAggregates({ force: true }), 3000);
   }
   on(event, cb) {
@@ -170,7 +174,7 @@ export class OfflineManager {
   }
   async _finalizeCloudStatus(uid) { if (this.isPinned(uid)) return; await markLocalCloud(uid); }
   async _enforceEvictionLimit() {
-    const limitMB = parseInt(localStorage.getItem(LS.LIMIT) || '500', 10), limitBytes = limitMB * MB;
+    const limitBytes = parseInt(localStorage.getItem(LS.LIMIT) || '500', 10) * MB;
     const current = await totalCachedBytes();
     if (current < limitBytes) return;
     const candidates = await getEvictionCandidates(this._getPinnedSet());
@@ -242,7 +246,7 @@ export class OfflineManager {
     }
     let canGuarantee = true;
     if (navigator.storage?.estimate) {
-      try { const est = await navigator.storage.estimate(); if ((est.quota || 0) - (est.usage || 0) < totalMB * MB * 1.2) canGuarantee = false; } catch (e) { canGuarantee = false; }
+      try { const est = await navigator.storage.estimate(); if ((est.quota || 0) - (est.usage || 0) < totalMB * MB * 1.2) canGuarantee = false; } catch { canGuarantee = false; }
     }
     return { ok: true, totalMB, count: uids.size, canGuarantee, uids: [...uids], cq };
   }
@@ -295,7 +299,7 @@ export class OfflineManager {
   getNeedsAggregates() { return this._needsState; }
   async canGuaranteeStorageForMB(mb) {
     if (navigator.storage?.estimate) {
-      try { const est = await navigator.storage.estimate(); return { ok: (est.quota - est.usage) > (mb * 1024 * 1024 * 1.2) }; } catch(e) { return { ok: true }; }
+      try { const est = await navigator.storage.estimate(); return { ok: (est.quota - est.usage) > (mb * 1024 * 1024 * 1.2) }; } catch { return { ok: true }; }
     } return { ok: true };
   }
 }
