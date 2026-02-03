@@ -187,67 +187,10 @@ class AlbumsManager {
   }
 
   async _loadFav() {
-    this.renderAlbumTitle('⭐⭐⭐ ИЗБРАННОЕ ⭐⭐⭐', 'fav');
-    $('cover-wrap').style.display = 'none';
-    
-    const ctr = $('track-list');
-    const getModel = () => window.FavoritesUI?.getModel?.() || window.favoritesRefsModel || [];
-    
-    const rebuild = async () => {
-      try { await window.FavoritesUI?.buildFavoritesRefsModel?.(); } catch {}
-      const m = getModel();
-      m.length ? renderFavoritesList(ctr, m) : renderFavoritesEmpty(ctr);
-    };
-
-    if (!this._bound.favView) {
-      this._bound.favView = true;
-      bindFavoritesList(ctr, {
-        getModel,
-        onStarClick: ({ uid, albumKey }) => window.playerCore?.toggleFavorite?.(uid, { fromAlbum: false, albumKey }),
-        onActiveRowClick: ({ uid }) => {
-          const list = getModel().filter(x => x?.__active && x.audio);
-          const idx = list.findIndex(x => toStr(x?.__uid) === uid);
-          if (idx >= 0) this._playFav(list, idx);
-        },
-        onInactiveRowClick: ({ uid, title }) => window.playerCore?.showInactiveFavoriteModal?.({
-          uid, title, onDeleted: () => window.PlayerUI?.updateAvailableTracksForPlayback?.()
-        })
-      });
-      
-      window.playerCore?.onFavoritesChanged(async () => {
-        if (this.curr === FAV) { await rebuild(); window.PlayerUI?.updateAvailableTracksForPlayback?.(); }
-      });
-    }
-    await rebuild();
-  }
-
-  async _playFav(list, idx) {
-    // Debounce для избранного
-    if (Date.now() - this._clickGuard < 300) return;
-    this._clickGuard = Date.now();
-
-    if (!list?.length) return window.NotificationSystem?.warning('Нет треков');
-    
-    // Исправление: явно пробрасываем audio/audio_low из sources для резолвера
-    const tracks = list.map(it => ({
-      src: it.audio, 
-      audio: it.sources?.audio?.hi || it.audio,
-      audio_low: it.sources?.audio?.lo,
-      sources: it.sources || null,
-      title: it.title, artist: 'Витрина Разбита',
-      album: FAV, cover: LOGO,
-      uid: it.__uid, sourceAlbum: it.__a,
-      lyrics: it.lyrics, fulltext: it.fulltext, hasLyrics: it.hasLyrics
-    })).filter(t => t.uid && t.src);
-
-    if (!tracks.length) return window.NotificationSystem?.warning('Нет доступных треков');
-
-    window.playerCore.setPlaylist(tracks, idx, { cover: LOGO }, { preservePosition: false });
-    window.playerCore.play(idx);
-    this.playing = FAV;
-    this.highlightCurrentTrack(-1, { uid: list[idx].__uid, albumKey: list[idx].__a });
-    window.PlayerUI?.ensurePlayerBlock?.(idx, { userInitiated: true });
-    window.PlayerUI?.updateAvailableTracksForPlayback?.();
+    // Делегируем специализированному модулю (удаление дублирования логики)
+    // Весь код перенесен в scripts/app/albums/specials.js
+    const { loadFavoritesAlbum } = await import('./albums/specials.js');
+    await loadFavoritesAlbum(this);
   }
 
   async _loadNews() {
