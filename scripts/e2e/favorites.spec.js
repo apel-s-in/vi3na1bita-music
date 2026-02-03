@@ -37,13 +37,14 @@ test('toggle star in favorites updates row state and localStorage (uid-based)', 
   await favRow.locator('.like-star').click();
   await expect(favRow).toHaveClass(/inactive/);
 
-  // Check V2 Storage (likedTrackUids:v2)
+  // Check V2 Storage (__favorites_v2__)
   const isLiked = await page.evaluate((id) => {
     const m = String(id || '').match(/^fav_(.+)_(.+)$/);
     const u = m ? m[2] : '';
-    const raw = localStorage.getItem('likedTrackUids:v2');
-    const arr = raw ? JSON.parse(raw) : [];
-    return arr.includes(u);
+    const raw = localStorage.getItem('__favorites_v2__');
+    const items = raw ? JSON.parse(raw) : [];
+    // В V2 хранятся объекты, ищем активный (без inactiveAt)
+    return items.some(i => i.uid === u && !i.inactiveAt);
   }, favId);
 
   expect(isLiked).toBeFalsy();
