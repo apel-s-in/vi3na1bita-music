@@ -1,8 +1,10 @@
 /**
- * FAVORITES MANAGER V2 (CLEAN)
+ * FAVORITES MANAGER V2 (LOGIC FIX)
  * Хранилище: localStorage['__favorites_v2__']
- * Структура: JSON Array of Objects [{ uid, addedAt, albumKey }, ...]
- * Runtime: Map<uid, Object> для быстрого доступа O(1)
+ * Логика:
+ * - readLikedSet: возвращает только АКТИВНЫЕ (для плеера/звездочек)
+ * - getEntries: возвращает ВСЕ (активные + неактивные для списка)
+ * - toggle: при source='favorites' делает soft delete (inactiveAt)
  */
 
 const STORAGE_KEY = '__favorites_v2__';
@@ -16,14 +18,12 @@ export class FavoritesManagerV2 {
 
   init() {
     if (this.initialized) return;
-    this.ensureMigrated(); // Загрузка данных
+    this.ensureMigrated();
     this.initialized = true;
   }
 
-  // Метод переименован в ensureMigrated для совместимости с PlayerCore, 
-  // но по факту он просто грузит данные.
   ensureMigrated() {
-    if (this._map.size > 0) return; // Уже загружено
+    if (this._map.size > 0) return; 
 
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -42,19 +42,40 @@ export class FavoritesManagerV2 {
     }
   }
 
+  /**
+   * Возвращает Set только с ID активных (лайкнутых) треков.
+   * Неактивные (серые) сюда НЕ попадают.
+   */
   readLikedSet() {
     this.ensureMigrated();
-    return new Set(this._map.keys());
+    const set = new Set();
+    for (const [uid, item] of this._map) {
+      if (!item.inactiveAt) {
+        set.add(uid);
+      }
+    }
+    return set;
   }
 
+  /**
+   * Возвращает полную карту данных (для построения списка UI).
+   */
   readRefsByUid() {
     this.ensureMigrated();
     return Object.fromEntries(this._map);
   }
 
-  has(uid) {
+  /**
+   * Возвращает список всех записей (активных и неактивных)
+   */
+  getEntries() {
     this.ensureMigrated();
-    return this._map.has(String(uid).trim());
+    return Array.from(this._map.values()).sort((a, b) => b.addedAt - a.addedAt);
+  }
+
+  has(uid) {
+    // Проверка "лайкнут ли трек" (активен ли)
+    return this.readLikedSet().has(String(uid).trim());
   }
 
   toggle(uid, meta = {}) {
@@ -62,34 +83,36 @@ export class FavoritesManagerV2 {
     if (!uid) return { liked: false };
     
     const key = String(uid).trim();
-    const exists = this._map.has(key);
-    const source = meta.source || 'album'; // 'album' (hard delete) или 'favorites' (soft delete)
+    const item = this._map.get(key);
+    const isCurrentlyActive = item && !item.inactiveAt;
+    
+    const source = meta.source || 'album'; // 'album' (hard) или 'favorites' (soft)
 
     let isLiked = false;
 
-    if (exists) {
+    if (isCurrentlyActive) {
+      // Снимаем лайк
       if (source === 'favorites') {
-        // Soft delete: оставляем, но помечаем как неактивный
-        const item = this._map.get(key);
+        // Soft delete: оставляем в базе, но ставим inactiveAt
         this._map.set(key, { ...item, inactiveAt: Date.now() });
-        isLiked = false; 
       } else {
-        // Hard delete: удаляем полностью
+        // Hard delete: удаляем полностью (из альбома)
         this._map.delete(key);
-        isLiked = false;
       }
+      isLiked = false;
     } else {
-      // Добавляем или восстанавливаем
+      // Ставим лайк (или восстанавливаем)
       this._map.set(key, {
         uid: key,
-        addedAt: Date.now(),
-        albumKey: meta.albumKey || null,
-        inactiveAt: null // Сбрасываем флаг неактивности
+        addedAt: item?.addedAt || Date.now(),
+        albumKey: meta.albumKey || item?.albumKey || null,
+        inactiveAt: null // Сбрасываем флаг неактивности (восстановление)
       });
       isLiked = true;
     }
 
     this._save();
+    this._notify();
     return { liked: isLiked };
   }
 
@@ -99,6 +122,7 @@ export class FavoritesManagerV2 {
     if (this._map.has(key)) {
       this._map.delete(key);
       this._save();
+      this._notify();
       return true;
     }
     return false;
@@ -112,9 +136,19 @@ export class FavoritesManagerV2 {
       console.error('FavoritesV2: Save failed', e);
     }
   }
+
+  onChange(cb) {
+    this._listeners.add(cb);
+    return () => this._listeners.delete(cb);
+  }
+
+  _notify() {
+    this._listeners.forEach((cb) => { try { cb(); } catch (e) { console.error(e); } });
+    if (window.playerCore?.triggerFavoritesUpdate) window.playerCore.triggerFavoritesUpdate();
+  }
 }
 
-// Singleton export as default object matching expected interface
+// Singleton
 const instance = new FavoritesManagerV2();
 instance.init();
 
