@@ -165,6 +165,11 @@ class AlbumsManager {
     const hi = toUrl(base, t.audio), lo = toUrl(base, t.audio_low);
     const uid = toStr(t.uid).trim() || null;
     
+    // Получаем закэшированные данные альбома, чтобы достать название
+    const albumData = this.cache.get(key);
+    const albumTitle = albumData?.title || 'Альбом';
+    const albumArtist = albumData?.artist || 'Витрина Разбита';
+
     // Register for Offline/PWA
     if (uid) registerTrack({
       uid, title: t.title,
@@ -172,7 +177,7 @@ class AlbumsManager {
       size: t.size, size_low: t.size_low,
       lyrics: toUrl(base, t.lyrics), fulltext: toUrl(base, t.fulltext),
       sourceAlbum: key
-    });
+    }, { title: albumTitle, artist: albumArtist }); // <-- Передаем название альбома
 
     return {
       num: i + 1,
