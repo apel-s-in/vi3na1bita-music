@@ -87,7 +87,21 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     isPlaying() { return !!(this.sound && this.sound.playing()); }
 
     play(idx, opts = {}) {
-      if (idx != null && idx !== this.currentIndex) return this.load(idx, opts);
+      // Пытаемся разбудить контекст в любом случае (фикс для Auto-next на iOS)
+      if (W.Howler?.ctx?.state === 'suspended') W.Howler.ctx.resume();
+
+      if (idx != null) {
+          // 1. Если это другой трек -> полная загрузка
+          if (idx !== this.currentIndex) return this.load(idx, opts);
+          
+          // 2. Если это ТЕКУЩИЙ трек -> рестарт с начала (ТЗ: каждый клик запускает сначала)
+          // Не делаем load(), чтобы не качать заново. Используем seek(0).
+          this.seek(0);
+          if (!this.isPlaying() && this.sound) this.sound.play();
+          return;
+      }
+      
+      // Без аргументов (кнопка Play/Pause в интерфейсе или пробел)
       if (this.sound) this.sound.play();
       else if (this.currentIndex >= 0) this.load(this.currentIndex, { autoPlay: true });
     }
