@@ -1,4 +1,3 @@
-// scripts/app/playback-policy.js
 (function(W){
   'use strict';
   
@@ -11,7 +10,7 @@
   const Policy = {
     /**
      * Применяет политику воспроизведения (Favorites Only + Shuffle).
-     * Вызывается при нажатии кнопки F или изменении лайков.
+     * Работает строго на сравнении UID.
      */
     apply: () => {
       const core = pc();
@@ -20,74 +19,90 @@
       const alb = W.AlbumsManager?.getPlayingAlbum();
       if (!alb) return;
 
-      // 1. Определяем, нужно ли фильтровать список
-      // В альбоме __favorites__ всегда фильтруем (inactive треки не играют).
-      // В обычных альбомах фильтруем, если включен режим F (favoritesOnly).
+      // 1. Логика фильтрации
       const isFavAlbum = alb === FAV_KEY;
       const needFilter = isFavAlbum || ls();
 
-      // 2. Исходный список (полный альбом)
+      // 2. Исходный список (Snaphost оригинала)
       const source = core.originalPlaylist || [];
       if (!source.length) return;
 
       let target = source;
 
-      // 3. Фильтрация
+      // 3. Применение фильтра
       if (needFilter) {
-        // Для __favorites__ берем только активные (есть в likedUids)
-        // Для обычного альбома в режиме F - тоже только лайкнутые
-        const liked = new Set(core.getLikedUidsForAlbum(alb));
-        target = source.filter(t => t.uid && liked.has(t.uid));
+        // Получаем UID-ы лайкнутых треков для этого альбома
+        // Для спец. альбома __favorites__ лайки проверяются глобально, 
+        // но здесь мы полагаемся на то, что в originalPlaylist уже лежат правильные треки,
+        // и нам нужно отфильтровать только inactive.
+        
+        if (isFavAlbum) {
+           // В альбоме "Избранное" оригинальный плейлист уже состоит из избранных, 
+           // но некоторые могут стать inactive в процессе.
+           // Проверяем актуальный статус лайка через ядро.
+           target = source.filter(t => t.uid && core.isFavorite(t.uid));
+        } else {
+           // Обычный альбом + режим F
+           const likedUids = new Set(core.getLikedUidsForAlbum(alb));
+           target = source.filter(t => t.uid && likedUids.has(t.uid));
+        }
 
-        // Если в режиме F (в обычном альбоме) не осталось треков -> сброс
+        // Если пусто
         if (!target.length && !isFavAlbum) {
           localStorage.setItem(LS_KEY, '0');
           W.NotificationSystem?.info('Отметьте трек ⭐');
           W.PlayerUI?.updateFavoritesBtn?.();
-          return Policy.apply(); // Рестарт как OFF
+          return Policy.apply(); // Рестарт без фильтра
         }
       }
 
-      // 4. Обработка текущего трека (чтобы не сбросить позицию)
+      // 4. Сохранение текущего трека
       const cur = core.getCurrentTrack();
       const curUid = cur?.uid;
       
-      // Ищем, где текущий трек в новом списке
       let newIdx = target.findIndex(t => t.uid === curUid);
       const trackLost = newIdx === -1;
 
-      // Если трек пропал (сняли лайк в режиме F), переходим к следующему доступному
+      // Если текущий трек выпал из списка (сняли лайк), ищем ближайший
       if (trackLost) {
-        newIdx = Math.min(core.getIndex(), target.length - 1);
+        // Пытаемся найти трек, который был после текущего в оригинальном списке
+        const origIdx = source.findIndex(t => t.uid === curUid);
+        if (origIdx >= 0) {
+            // Ищем первый доступный трек после выпавшего
+            for(let i = origIdx + 1; i < source.length; i++) {
+                const nextUid = source[i].uid;
+                newIdx = target.findIndex(t => t.uid === nextUid);
+                if (newIdx !== -1) break;
+            }
+        }
+        // Если все еще -1, берем 0
+        if (newIdx === -1) newIdx = 0;
       }
 
       // 5. Применение в ядро
-      // preserveOriginalPlaylist: true гарантирует, что мы не потеряем полный альбом при выключении F
       const shuffle = core.isShuffle();
       
       core.setPlaylist(target, Math.max(0, newIdx), {}, {
         preserveOriginalPlaylist: true,
         preserveShuffleMode: true,
-        // Если трек тот же — сохраняем позицию, иначе (trackLost) — позиция 0 (новый трек)
         preservePosition: !trackLost
       });
 
-      // 6. Пересборка Shuffle (ТЗ: "shuffle-порядок пересобирается по active")
+      // 6. Shuffle если был включен
       if (shuffle) {
         core.shufflePlaylist(); 
       }
 
-      // 7. Обновление UI доступности (Next/Prev)
+      // 7. Обновление UI
       W.PlayerUI?.updateAvailableTracksForPlayback?.();
       W.PlayerUI?.updatePlaylistFiltering?.();
     }
   };
 
-  // Авто-подписка на изменения лайков для мгновенной перестройки очереди
   const bind = () => {
     if (pc()) {
       pc().onFavoritesChanged(() => {
-        // Перестраиваем только если активен режим F или играем Избранное
+        // Автоматическая перестройка очереди при лайке/дизлайке
         if (ls() || W.AlbumsManager?.getPlayingAlbum() === FAV_KEY) {
           Policy.apply();
         }
