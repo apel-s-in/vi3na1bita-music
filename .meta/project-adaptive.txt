@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9f0c51a2a186b93f0252e90914f4cf893312dc31.idx
-│   │       ├── pack-9f0c51a2a186b93f0252e90914f4cf893312dc31.pack
-│   │       └── pack-9f0c51a2a186b93f0252e90914f4cf893312dc31.rev
+│   │       ├── pack-3c8630c69f0e4c6e1c160ace759af88b8e4767cb.idx
+│   │       ├── pack-3c8630c69f0e4c6e1c160ace759af88b8e4767cb.pack
+│   │       └── pack-3c8630c69f0e4c6e1c160ace759af88b8e4767cb.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -389,7 +389,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 18:42:23 UTC
+Сгенерировано: 2026-02-03 18:43:16 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1366,6 +1366,7 @@ self.addEventListener('message', (e) => {
 
     // 4. Minor Modules
     ['SleepTimer', 'LyricsModal', 'SystemInfoManager'].forEach(m => W[m]?.initialize?.());
+    await import('./ui/statistics-modal.js'); // Загрузка статистики
 
     // 5. Restore State
     W.PlayerState?.apply?.();
