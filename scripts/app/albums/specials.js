@@ -4,7 +4,7 @@ import { loadAndRenderNewsInline } from '../../ui/news-inline.js';
 
 const FAV = window.SPECIAL_FAVORITES_KEY || '__favorites__';
 const NEWS = window.SPECIAL_RELIZ_KEY || '__reliz__';
-const FAV_COVER = 'img/Fav_logo.png'; // ✅ Исправлено: Своя иконка для Избранного
+const FAV_COVER = 'img/Fav_logo.png';
 
 // --- Favorites Logic ---
 
@@ -36,13 +36,17 @@ export async function loadFavoritesAlbum(ctx) {
       getModel: getUiModel,
 
       onStarClick: async ({ uid, albumKey }) => {
-        // Soft delete в контексте Favorites View
+        // ✅ ВАЖНО: Если мы не в Избранном, этот обработчик не должен работать
+        if (ctx.getCurrentAlbum() !== FAV) return;
+        
         window.playerCore?.toggleFavorite?.(uid, { source: 'favorites', albumKey });
       },
 
       onActiveRowClick: async ({ uid }) => {
+        // ✅ ВАЖНО: Блокируем перехват клика, если открыт другой альбом
+        if (ctx.getCurrentAlbum() !== FAV) return;
+
         const model = getUiModel();
-        // Играем только активные (зеленые)
         const activeList = model.filter((it) => it && it.__active && !it.isGhost);
         const idx = activeList.findIndex((it) => String(it?.__uid || '').trim() === String(uid || '').trim());
         
@@ -50,6 +54,8 @@ export async function loadFavoritesAlbum(ctx) {
       },
 
       onInactiveRowClick: ({ uid, title }) => {
+        if (ctx.getCurrentAlbum() !== FAV) return;
+
         window.playerCore?.showInactiveFavoriteModal?.({
           uid, title,
           onDeleted: async () => {
@@ -60,7 +66,6 @@ export async function loadFavoritesAlbum(ctx) {
       },
     });
 
-    // Реакция на изменение лайков (удаление/возврат) -> перерисовка списка
     window.playerCore?.onFavoritesChanged(async () => {
       if (ctx.getCurrentAlbum() === FAV) {
         await rebuild();
@@ -75,20 +80,16 @@ export async function loadFavoritesAlbum(ctx) {
 export async function ensureFavoritesPlayback(ctx, activeList, activeIndex) {
   if (!activeList?.length) return window.NotificationSystem?.warning('Нет доступных треков');
 
-  // 1. ✅ ЖЕСТКАЯ ИЗОЛЯЦИЯ: Устанавливаем контекст "Избранное"
-  // Это гарантирует, что isBrowsingOtherAlbum вернет false, и плеер встанет ПОД трек.
+  // Устанавливаем контекст Избранного
   ctx.setPlayingAlbum(FAV);
 
-  // 2. Формируем изолированный плейлист
-  // Подменяем album на "Избранное" и cover на Fav_logo.png
   const tracks = activeList.map((it) => ({
     ...it, 
-    album: 'Избранное', // Визуальное название альбома в плеере
-    cover: FAV_COVER,   // ✅ Иконка Избранного
-    sourceAlbum: it.sourceAlbum || it.__a // Сохраняем ссылку на реальный альбом для логики
+    album: 'Избранное', 
+    cover: FAV_COVER,
+    sourceAlbum: it.sourceAlbum || it.__a 
   }));
 
-  // 3. Загружаем в ядро
   window.playerCore.setPlaylist(
     tracks,
     activeIndex,
@@ -98,7 +99,6 @@ export async function ensureFavoritesPlayback(ctx, activeList, activeIndex) {
 
   window.playerCore.play(activeIndex);
   
-  // Подсветка и скролл
   const clicked = activeList[activeIndex];
   ctx.highlightCurrentTrack(-1, { uid: String(clicked?.uid).trim(), albumKey: String(clicked?.sourceAlbum).trim() });
 
