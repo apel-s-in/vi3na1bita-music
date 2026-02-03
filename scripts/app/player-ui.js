@@ -214,7 +214,7 @@
         'lyrics-text-btn': () => W.LyricsModal?.show(),
         'pulse-btn': () => actions.togglePulse(),
         'sleep-timer-btn': () => W.SleepTimer?.show(),
-        'stats-btn': () => W.StatisticsModal?.show(),
+        'stats-btn': () => window.StatisticsModal?.show(),
         'track-download-btn': (b) => { if (!b.getAttribute('href')) U.ui.toast('Скачивание недоступно', 'error'); }
     };
 
