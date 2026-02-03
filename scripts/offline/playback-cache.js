@@ -4,9 +4,10 @@ import { markLocalTransient } from './cache-db.js';
 
 const Utils = window.Utils;
 
-// ТЗ 14.2: Приоритеты (P0 > P1)
+// Priorities
 const P_CUR = 100;
-const P_ADJ = 90;
+const P_NEXT = 95; // Next is almost as important as current
+const P_PREV = 80;
 
 export class PlaybackCacheManager {
   constructor(opts = {}) {
@@ -20,7 +21,6 @@ export class PlaybackCacheManager {
   setPlaybackQuality(pq) { this._pq = Utils.obj.normQuality(pq); }
   getPlaybackQuality() { return this._pq; }
   
-  // ТЗ 7.3: Цикличное окно
   getWindow(idx, list) {
     const len = list?.length || 0;
     if (!len || idx < 0) return { prev: [], cur: null, next: [] };
@@ -37,7 +37,7 @@ export class PlaybackCacheManager {
   clearScheduled() { this._sched.clear(); }
 
   async ensureWindowFullyCached(pqArg, trackProvider) {
-    const { list, curUid, favoritesInactive: bad, direction } = this._getCtx();
+    const { list, curUid, favoritesInactive: bad } = this._getCtx();
     const pq = Utils.obj.normQuality(pqArg || this._pq);
     
     if (!list.length || !curUid) return;
@@ -56,12 +56,14 @@ export class PlaybackCacheManager {
 
     const tasks = [];
     
-    // P0: Текущий трек
+    // P0: CUR
     if (win.cur && !bad.has(win.cur)) tasks.push({ u: win.cur, p: P_CUR });
 
-    // P1: Сосед по направлению (forward -> NEXT, backward -> PREV)
-    const neighbor = (direction === 'backward') ? win.prev[0] : win.next[0];
-    if (neighbor && !bad.has(neighbor)) tasks.push({ u: neighbor, p: P_ADJ });
+    // P1: NEXT (Always prioritized)
+    if (win.next[0] && !bad.has(win.next[0])) tasks.push({ u: win.next[0], p: P_NEXT });
+
+    // P2: PREV
+    if (win.prev[0] && !bad.has(win.prev[0])) tasks.push({ u: win.prev[0], p: P_PREV });
 
     for (const { u, p } of tasks) {
       const key = `pbc:${pq}:${u}`;
@@ -74,6 +76,7 @@ export class PlaybackCacheManager {
 
       this._sched.add(key);
 
+      // Enqueue download
       mgr.enqueueAudioDownload({
         uid: u,
         quality: pq,
