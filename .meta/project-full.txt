@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1f2dc39e981bc1e3a44bf551d0a42a9cc91e805c.idx
-│   │       ├── pack-1f2dc39e981bc1e3a44bf551d0a42a9cc91e805c.pack
-│   │       └── pack-1f2dc39e981bc1e3a44bf551d0a42a9cc91e805c.rev
+│   │       ├── pack-28efb4aa9872d903547fdd891db0b8f472967006.idx
+│   │       ├── pack-28efb4aa9872d903547fdd891db0b8f472967006.pack
+│   │       └── pack-28efb4aa9872d903547fdd891db0b8f472967006.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 14:18:09 UTC
+Сгенерировано: 2026-02-03 14:39:08 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3642,65 +3642,74 @@ const resolveUrl = (base, url) => {
 
 /**
  * ГЛАВНЫЙ МЕТОД РЕГИСТРАЦИИ
- * Превращает сырой JSON из конфига в "Идеальный Трек" для всего приложения.
  */
 export function registerTrack(raw, albumMeta = {}) {
   if (!raw || !raw.uid) return;
 
   const uid = safeStr(raw.uid);
   
-  // Если уже есть, обновляем данные (на случай перезагрузки конфига)
-  // но лучше просто игнорировать, чтобы не тратить ресурсы, если данные статичны.
-  if (_byUid.has(uid)) return _byUid.get(uid);
+  // Метаданные из вызова (приоритетные)
+  const metaTitle = albumMeta.title || albumMeta.albumName;
+  const metaArtist = albumMeta.artist;
+  const metaKey = albumMeta.key || albumMeta.id;
 
-  // Определяем базовый путь (если передан в meta)
+  // --- ЛОГИКА ОБНОВЛЕНИЯ СУЩЕСТВУЮЩЕГО ---
+  if (_byUid.has(uid)) {
+    const existing = _byUid.get(uid);
+    
+    // Если у нас есть нормальное название альбома, а в реестре заглушка - обновляем
+    if (metaTitle && (existing.album === 'Альбом' || !existing.album)) {
+      existing.album = metaTitle;
+    }
+    
+    // Если в реестре нет ключа альбома, а мы его знаем - обновляем
+    if (!existing.sourceAlbum && metaKey) {
+      existing.sourceAlbum = metaKey;
+    }
+
+    // Если в реестре нет ссылки на обложку - обновляем
+    if ((!existing.cover || existing.cover.includes('logo.png')) && albumMeta.cover) {
+       existing.cover = resolveUrl(albumMeta.base, albumMeta.cover);
+    }
+    
+    return existing;
+  }
+  // ------------------------------------------
+
+  // Базовый путь для ссылок
   const baseUrl = albumMeta.base || '';
 
-  // 1. Формируем ссылки
-  const urlHi = resolveUrl(baseUrl, raw.audio || raw.urlHi); // audio - из нового конфига
+  // Формируем ссылки
+  const urlHi = resolveUrl(baseUrl, raw.audio || raw.urlHi);
   const urlLo = resolveUrl(baseUrl, raw.audio_low || raw.urlLo);
   const lyricsUrl = resolveUrl(baseUrl, raw.lyrics);
   const fulltextUrl = resolveUrl(baseUrl, raw.fulltext);
 
-  // 2. Метаданные альбома (фоллбеки)
-  const albumTitle = raw.album || albumMeta.title || albumMeta.albumName || 'Альбом';
-  const artistName = raw.artist || albumMeta.artist || 'Витрина Разбита';
+  // Определяем название
+  // 1. Из raw.album (внутри трека в config.json)
+  // 2. Из metaTitle (передано аргументом, например из заголовка config.json)
+  // 3. Фоллбек
+  const albumTitle = raw.album || metaTitle || 'Альбом';
+  const artistName = raw.artist || metaArtist || 'Витрина Разбита';
   const coverUrl = resolveUrl(baseUrl, raw.cover || albumMeta.cover || albumMeta.background || 'img/logo.png');
-  const sourceAlbumKey = safeStr(raw.sourceAlbum || albumMeta.key || albumMeta.id);
+  const sourceAlbumKey = safeStr(raw.sourceAlbum || metaKey);
 
-  // 3. Собираем Идеальный Трек
   const track = {
-    // Идентификаторы
     uid: uid,
-    sourceAlbum: sourceAlbumKey, // Ключ родного альбома (важно для навигации)
-
-    // Отображение
+    sourceAlbum: sourceAlbumKey,
     title: safeStr(raw.title || 'Без названия'),
     artist: artistName,
     album: albumTitle,
     cover: coverUrl,
-    
-    // Воспроизведение (PlayerCore)
-    src: urlHi, // По умолчанию играем Hi
-    audio: urlHi, // Алиас для совместимости
-    audio_low: urlLo, // Алиас для совместимости
-    
-    // Офлайн и Резолвер (OfflineManager)
-    sources: {
-      audio: {
-        hi: urlHi,
-        lo: urlLo
-      }
-    },
+    src: urlHi, 
+    audio: urlHi,
+    audio_low: urlLo,
+    sources: { audio: { hi: urlHi, lo: urlLo } },
     sizeHi: Number(raw.size || raw.sizeHi || 0),
     sizeLo: Number(raw.size_low || raw.sizeLo || 0),
-
-    // Лирика
     lyrics: lyricsUrl,
     fulltext: fulltextUrl,
     hasLyrics: !!(lyricsUrl || raw.hasLyrics),
-
-    // Техническое поле
     _registeredAt: Date.now()
   };
 
@@ -3710,9 +3719,6 @@ export function registerTrack(raw, albumMeta = {}) {
   return track;
 }
 
-/**
- * Массовая регистрация из конфига альбома
- */
 export function registerTracks(trackList, albumMeta) {
   if (!Array.isArray(trackList)) return;
   trackList.forEach(t => registerTrack(t, albumMeta));
@@ -3722,7 +3728,6 @@ export function getAllTracks() { return [..._tracks]; }
 export function getTrackByUid(uid) { return _byUid.get(safeStr(uid)); }
 export function findTrack(predicate) { return _tracks.find(predicate); }
 
-// Экспорт API
 const API = { registerTrack, registerTracks, getAllTracks, getTrackByUid, findTrack };
 export const TrackRegistry = API;
 window.TrackRegistry = API;
@@ -6195,49 +6200,59 @@ export function bindFavoritesList(container, handlers) {
   const U = W.Utils;
   const trim = (v) => U.obj.trim(v);
 
-  /**
-   * Строит модель для отображения списка Избранного.
-   * Объединяет данные из FavoritesV2 (статус) и TrackRegistry (данные трека).
-   */
+  // Хелпер для поиска красивого названия альбома в глобальном индексе
+  const getGlobalAlbumTitle = (key) => {
+    if (!key || !W.albumsIndex) return null;
+    const found = W.albumsIndex.find(a => a.key === key);
+    return found ? found.title : null;
+  };
+
   const buildFavoritesRefsModel = async () => {
     const pc = W.playerCore;
-    // Используем PlayerCore как источник истины о состоянии (active/inactive)
     if (!pc?.getFavoritesState) return (W.favoritesRefsModel = []);
 
     const st = pc.getFavoritesState();
-    // Объединяем активные и неактивные (неактивные нужны для UI восстановления)
+    // Берем и активные (лайкнутые), и неактивные (удаленные, но еще в списке)
     const rawItems = [...(st.active || []), ...(st.inactive || [])];
 
     W.favoritesRefsModel = rawItems.map((item) => {
       const uid = trim(item.uid);
-      const meta = W.TrackRegistry?.getTrackByUid(uid); // Берём из реестра
-      
-      // Определяем, активен ли трек (лайкнут) прямо сейчас
+      const meta = W.TrackRegistry?.getTrackByUid(uid);
       const isActive = pc.isFavorite(uid);
+      
+      // Ключ альбома берем откуда только можно (реестр -> избранное)
+      const albumKey = trim(meta?.sourceAlbum || item.sourceAlbum);
 
       if (!meta) {
-        // Если данных нет в реестре (не загружен альбом), возвращаем заглушку
         return {
           __uid: uid,
           title: 'Загрузка...',
           __active: false,
-          isGhost: true // Флаг для UI, что данные отсутствуют
+          isGhost: true
         };
       }
 
-      // Возвращаем объект, совместимый с favorites-view.js
+      // --- ЛОГИКА НАЗВАНИЯ АЛЬБОМА ---
+      // 1. Берем из метаданных трека
+      let albumTitle = meta.album;
+      
+      // 2. Если там заглушка "Альбом", пробуем найти в глобальном индексе (albums.json)
+      if (!albumTitle || albumTitle === 'Альбом') {
+         const globalTitle = getGlobalAlbumTitle(albumKey);
+         if (globalTitle) albumTitle = globalTitle;
+         else albumTitle = 'Альбом';
+      }
+      // -------------------------------
+
       return {
-        // Данные трека (проксируем из registry)
         ...meta, 
         
-        // Специфичные поля для списка
         __uid: uid,
-        __a: meta.sourceAlbum || item.sourceAlbum, // Album Key
-        __album: meta.album, // Название альбома
+        __a: albumKey,
+        __album: albumTitle, // Используем вычисленное красивое имя
         __active: isActive,
         __cover: meta.cover || LOGO,
         
-        // Для плеера (хотя PlayerCore возьмет из реестра, тут для view)
         audio: isActive ? meta.src : null 
       };
     });
@@ -6248,12 +6263,9 @@ export function bindFavoritesList(container, handlers) {
   const init = () => {
     if (W.__favoritesUIBound) return;
     W.__favoritesUIBound = true;
-    
-    // Реактивность: перестраиваем модель при изменении лайков
     const bind = () => {
       if (W.playerCore?.onFavoritesChanged) {
         W.playerCore.onFavoritesChanged(() => {
-          // Обновляем модель только если мы визуально в Избранном
           if (W.AlbumsManager?.getCurrentAlbum?.() === FAV) {
             buildFavoritesRefsModel().catch(console.error);
           }
@@ -6271,9 +6283,7 @@ export function bindFavoritesList(container, handlers) {
     getActiveModel: (m) => (m || W.FavoritesUI.getModel()).filter(it => it && it.__active && !it.isGhost),
   };
   
-  // Alias
   W.buildFavoritesRefsModel = buildFavoritesRefsModel;
-  
   init();
 })(window);
 
