@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8c47417b5a06dfd2f5658a79945bf7b3e0528c73.idx
-│   │       ├── pack-8c47417b5a06dfd2f5658a79945bf7b3e0528c73.pack
-│   │       └── pack-8c47417b5a06dfd2f5658a79945bf7b3e0528c73.rev
+│   │       ├── pack-06dae1c3843ecf392b3408bdbe518782acae4db1.idx
+│   │       ├── pack-06dae1c3843ecf392b3408bdbe518782acae4db1.pack
+│   │       └── pack-06dae1c3843ecf392b3408bdbe518782acae4db1.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 16:03:09 UTC
+Сгенерировано: 2026-02-03 16:15:18 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1444,7 +1444,7 @@ const STAR_ON = 'img/star.png';
 const STAR_OFF = 'img/star2.png';
 const LOGO = 'img/logo.png';
 
-// ✅ Восстановлена функция помощник
+// ✅ Функция восстановлена
 const toUrl = (b, r) => r ? new URL(r, b).toString() : null;
 
 class AlbumsManager {
@@ -1484,12 +1484,12 @@ class AlbumsManager {
         const base = it.icon || LOGO;
         let p1, p2;
 
-        // ✅ Исправлено: применяем логику @1x/@2x только к стандартным иконкам альбомов
-        if (base.includes('icon_album')) {
+        // ✅ Исправлено: обрабатываем только стандартные иконки альбомов через @1x/@2x
+        if (base.includes('icon_album') && !base.includes('Fav_logo')) {
           p1 = isMob ? base.replace(/icon_album\/(.+)\.png$/, 'icon_album/mobile/$1@1x.jpg') : base.replace(/\.png$/, '@1x.png');
           p2 = isMob ? p1.replace(/@1x\.jpg$/, '@2x.jpg') : p1.replace(/@1x\.png$/, '@2x.png');
         } else {
-          // Для Fav_logo.png и других нестандартных иконок оставляем путь как есть
+          // Для Fav_logo.png и других путь оставляем как есть
           p1 = base;
           p2 = base;
         }
@@ -1501,7 +1501,6 @@ class AlbumsManager {
   }
 
   _bindEvents() {
-    // 1. Icons Click
     $('album-icons')?.addEventListener('click', (e) => {
       const el = e.target.closest('.album-icon');
       if (!el) return;
@@ -1517,7 +1516,6 @@ class AlbumsManager {
       }
     });
 
-    // 2. Track List Click (Native Albums Only)
     $('track-list')?.addEventListener('click', (e) => {
       const trk = e.target.closest('.track');
       if (!trk) return;
@@ -1525,10 +1523,9 @@ class AlbumsManager {
       const aKey = toStr(trk.dataset.album).trim();
       const uid = toStr(trk.dataset.uid).trim();
       
-      // Игнорируем спец. альбомы (у них свои обработчики в specials.js или news)
+      // ✅ Игнорируем спец. альбомы (у них свои обработчики, например в specials.js)
       if (!aKey || aKey.startsWith('__')) return;
 
-      // Лайк (без смены трека)
       if (e.target.classList.contains('like-star')) {
         e.preventDefault(); e.stopPropagation();
         if (uid && window.playerCore) {
@@ -1541,7 +1538,6 @@ class AlbumsManager {
         return;
       }
 
-      // Play
       const data = this.cache.get(aKey);
       if (!data) return;
 
@@ -1568,7 +1564,6 @@ class AlbumsManager {
       window.PlayerUI?.ensurePlayerBlock?.(pIdx, { userInitiated: true });
     });
 
-    // 3. Fav Sync
     window.playerCore?.onFavoritesChanged((d) => {
       const s = d?.liked ? STAR_ON : STAR_OFF;
       document.querySelectorAll(`.like-star[data-album="${CSS.escape(d?.albumKey)}"][data-uid="${CSS.escape(d?.uid)}"]`).forEach(el => el.src = s);
@@ -1684,7 +1679,6 @@ class AlbumsManager {
   getPlayingAlbum() { return this.playing; }
   setPlayingAlbum(k) { this.playing = k; }
   
-  // Back-compat helpers (чтобы избежать других ошибок)
   renderAlbumTitle(t, mod) {
     const el = $('active-album-title');
     if(el) { el.textContent = t; el.className = `active-album-title ${mod||''}`; }
@@ -1887,7 +1881,7 @@ import { loadAndRenderNewsInline } from '../../ui/news-inline.js';
 
 const FAV = window.SPECIAL_FAVORITES_KEY || '__favorites__';
 const NEWS = window.SPECIAL_RELIZ_KEY || '__reliz__';
-const FAV_COVER = 'img/Fav_logo.png'; // ✅ Исправлено: Своя иконка для Избранного
+const FAV_COVER = 'img/Fav_logo.png';
 
 // --- Favorites Logic ---
 
@@ -1919,13 +1913,17 @@ export async function loadFavoritesAlbum(ctx) {
       getModel: getUiModel,
 
       onStarClick: async ({ uid, albumKey }) => {
-        // Soft delete в контексте Favorites View
+        // ✅ ВАЖНО: Если мы не в Избранном, этот обработчик не должен работать
+        if (ctx.getCurrentAlbum() !== FAV) return;
+        
         window.playerCore?.toggleFavorite?.(uid, { source: 'favorites', albumKey });
       },
 
       onActiveRowClick: async ({ uid }) => {
+        // ✅ ВАЖНО: Блокируем перехват клика, если открыт другой альбом
+        if (ctx.getCurrentAlbum() !== FAV) return;
+
         const model = getUiModel();
-        // Играем только активные (зеленые)
         const activeList = model.filter((it) => it && it.__active && !it.isGhost);
         const idx = activeList.findIndex((it) => String(it?.__uid || '').trim() === String(uid || '').trim());
         
@@ -1933,6 +1931,8 @@ export async function loadFavoritesAlbum(ctx) {
       },
 
       onInactiveRowClick: ({ uid, title }) => {
+        if (ctx.getCurrentAlbum() !== FAV) return;
+
         window.playerCore?.showInactiveFavoriteModal?.({
           uid, title,
           onDeleted: async () => {
@@ -1943,7 +1943,6 @@ export async function loadFavoritesAlbum(ctx) {
       },
     });
 
-    // Реакция на изменение лайков (удаление/возврат) -> перерисовка списка
     window.playerCore?.onFavoritesChanged(async () => {
       if (ctx.getCurrentAlbum() === FAV) {
         await rebuild();
@@ -1958,20 +1957,16 @@ export async function loadFavoritesAlbum(ctx) {
 export async function ensureFavoritesPlayback(ctx, activeList, activeIndex) {
   if (!activeList?.length) return window.NotificationSystem?.warning('Нет доступных треков');
 
-  // 1. ✅ ЖЕСТКАЯ ИЗОЛЯЦИЯ: Устанавливаем контекст "Избранное"
-  // Это гарантирует, что isBrowsingOtherAlbum вернет false, и плеер встанет ПОД трек.
+  // Устанавливаем контекст Избранного
   ctx.setPlayingAlbum(FAV);
 
-  // 2. Формируем изолированный плейлист
-  // Подменяем album на "Избранное" и cover на Fav_logo.png
   const tracks = activeList.map((it) => ({
     ...it, 
-    album: 'Избранное', // Визуальное название альбома в плеере
-    cover: FAV_COVER,   // ✅ Иконка Избранного
-    sourceAlbum: it.sourceAlbum || it.__a // Сохраняем ссылку на реальный альбом для логики
+    album: 'Избранное', 
+    cover: FAV_COVER,
+    sourceAlbum: it.sourceAlbum || it.__a 
   }));
 
-  // 3. Загружаем в ядро
   window.playerCore.setPlaylist(
     tracks,
     activeIndex,
@@ -1981,7 +1976,6 @@ export async function ensureFavoritesPlayback(ctx, activeList, activeIndex) {
 
   window.playerCore.play(activeIndex);
   
-  // Подсветка и скролл
   const clicked = activeList[activeIndex];
   ctx.highlightCurrentTrack(-1, { uid: String(clicked?.uid).trim(), albumKey: String(clicked?.sourceAlbum).trim() });
 
