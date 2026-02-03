@@ -1,12 +1,10 @@
-//=================================================
-// FILE: /scripts/ui/ui-utils.js
 // scripts/ui/ui-utils.js
-// Facade over window.Utils to maintain module compatibility.
-// All logic moved to scripts/core/utils.js
+// Facade over core/utils.js to maintain backward compatibility
+import { Utils } from '../core/utils.js';
 
-export const esc = (s) => window.Utils?.ui?.escapeHtml(s) ?? String(s || '');
-export const formatBytes = (n) => window.Utils?.fmt?.bytes(n) ?? '0 B';
-export const getNetworkStatusSafe = () => window.Utils?.getNetworkStatusSafe?.() ?? { online: true, kind: 'unknown' };
+export const esc = (s) => Utils.ui.escapeHtml(s);
+export const formatBytes = (n) => Utils.fmt.bytes(n);
+export const getNetworkStatusSafe = () => Utils.getNet();
 
 try {
   window.UIUtils = window.UIUtils || {};
