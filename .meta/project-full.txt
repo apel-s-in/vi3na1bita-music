@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f69c37bed30f89bbd8d92cb959df9a6363644993.idx
-│   │       ├── pack-f69c37bed30f89bbd8d92cb959df9a6363644993.pack
-│   │       └── pack-f69c37bed30f89bbd8d92cb959df9a6363644993.rev
+│   │       ├── pack-7eeefa2f466d9057f6af4502278585d01cd31448.idx
+│   │       ├── pack-7eeefa2f466d9057f6af4502278585d01cd31448.pack
+│   │       └── pack-7eeefa2f466d9057f6af4502278585d01cd31448.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 08:54:00 UTC
+Сгенерировано: 2026-02-03 09:01:59 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4573,22 +4573,17 @@ export default FavoritesV2;
 
 //=================================================
 // FILE: /scripts/core/utils.js
-//=================================================
-// FILE: /scripts/core/utils.js
+// scripts/core/utils.js
+// Centralized Utilities for Vitrina PWA v2.1
 (function(W, D) {
   'use strict';
 
-  const LS = localStorage, J = JSON;
-  const pc = () => W.playerCore;
-  
   // Internal Blob Registry for iOS memory safety
-  const _blobReg = new Map(); // key -> url
+  const _blobReg = new Map(); 
 
   const U = {
     // --- 1. DOM Helpers ---
     $: (id) => D.getElementById(id),
-    $q: (s, r = D) => r.querySelector(s),
-    $qa: (s, r = D) => r.querySelectorAll(s),
     
     dom: {
       byId: (id) => D.getElementById(id),
@@ -4610,14 +4605,16 @@ export default FavoritesV2;
     fmt: {
       time: (s) => {
         const n = Number(s);
-        if (!Number.isFinite(n) || n < 0) return '--:--';
-        const m = (n / 60) | 0, sec = (n % 60) | 0;
-        return `${m < 10 ? '0' + m : m}:${sec < 10 ? '0' + sec : sec}`;
+        if (!Number.isFinite(n) || n < 0) return '00:00';
+        const h = (n / 3600) | 0;
+        const m = ((n % 3600) / 60) | 0;
+        const sec = (n % 60) | 0;
+        const mmss = `${m.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`;
+        return h > 0 ? `${h}:${mmss}` : mmss;
       },
       bytes: (n) => {
         const b = Number(n);
-        if (!Number.isFinite(b) || b < 0) return '0 B';
-        if (b === 0) return '0 B';
+        if (!Number.isFinite(b) || b <= 0) return '0 B';
         const k = 1024, sizes = ['B', 'KB', 'MB', 'GB'];
         const i = Math.floor(Math.log(b) / Math.log(k));
         return parseFloat((b / Math.pow(k, i)).toFixed(2)) + ' ' + (sizes[i] || 'TB');
@@ -4634,7 +4631,7 @@ export default FavoritesV2;
       toInt: (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; }
     },
 
-    // --- 3. Functional (Throttle/Debounce) ---
+    // --- 3. Functional ---
     func: {
       debounce: (fn, ms = 100) => {
         let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
@@ -4645,32 +4642,21 @@ export default FavoritesV2;
       throttle: (fn, limit) => {
         let inThrottle;
         return function() {
-          const args = arguments, context = this;
-          if (!inThrottle) {
-            fn.apply(context, args);
-            inThrottle = true;
-            setTimeout(() => inThrottle = false, limit);
-          }
+          if (inThrottle) return;
+          fn.apply(this, arguments);
+          inThrottle = true;
+          setTimeout(() => inThrottle = false, limit);
         };
       }
     },
 
     // --- 4. Object & Data ---
     obj: {
-      safeJson: (k, d = null) => { try { const r = LS.getItem(k); return r ? J.parse(r) : d; } catch { return d; } },
-      isEqual: (a, b) => {
-        if (a === b) return true;
-        if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false;
-        const kA = Object.keys(a), kB = Object.keys(b);
-        if (kA.length !== kB.length) return false;
-        for (const k of kA) {
-          if (!kB.includes(k) || !U.obj.isEqual(a[k], b[k])) return false;
-        }
-        return true;
-      }
+      safeJson: (k, d = null) => { try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : d; } catch { return d; } },
+      trim: (v) => String(v || '').trim() || null
     },
 
-    // --- 5. Blob Management (iOS Critical) ---
+    // --- 5. Blob Management (iOS) ---
     blob: {
       createUrl: (key, blob) => {
         if (_blobReg.has(key)) URL.revokeObjectURL(_blobReg.get(key));
@@ -4685,30 +4671,33 @@ export default FavoritesV2;
           return true;
         }
         return false;
-      },
-      revokeAll: () => {
-        _blobReg.forEach(url => URL.revokeObjectURL(url));
-        _blobReg.clear();
       }
     },
 
-    // --- 6. UI Utils (Toast/Confirm) ---
+    // --- 6. UI Utils ---
     ui: {
-      toast: (msg, type = 'info', duration) => W.NotificationSystem?.[type]?.(msg, duration),
-      confirm: (msg) => W.confirm(msg), // Wrapper allows for future custom modal replacement
+      toast: (msg, type, duration) => W.NotificationSystem?.show(msg, type, duration),
       escapeHtml: (s) => String(s || '').replace(/[<>&'"]/g, m => ({'<':'&lt;','>':'&gt;','&':'&amp;',"'":'&#39;','"':'&quot;'}[m]))
     },
 
     // --- 7. Network & Env ---
     isMobile: () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent),
     isOnline: () => (W.NetworkManager?.getStatus ? W.NetworkManager.getStatus().online : navigator.onLine) !== false,
-    getNetworkStatusSafe: () => (W.NetworkManager?.getStatus?.() || { online: navigator.onLine !== false, kind: 'unknown', saveData: false }),
+    getNetworkStatusSafe: () => {
+      // Поддержка NetworkInformation API
+      const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      return { 
+        online: navigator.onLine, 
+        kind: conn ? conn.effectiveType : 'unknown', 
+        saveData: conn ? conn.saveData : false 
+      };
+    },
 
     // --- 8. Storage Helpers ---
-    lsGet: (k, d = null) => LS.getItem(k) ?? d,
-    lsSet: (k, v) => { try { LS.setItem(k, v); return true; } catch { return false; } },
-    lsGetBool01: (k, d = false) => (LS.getItem(k) ?? (d ? '1' : '0')) === '1',
-    lsSetBool01: (k, v) => { try { LS.setItem(k, v ? '1' : '0'); } catch {} },
+    lsGet: (k, d = null) => localStorage.getItem(k) ?? d,
+    lsSet: (k, v) => { try { localStorage.setItem(k, v); return true; } catch { return false; } },
+    lsGetBool01: (k, d = false) => (localStorage.getItem(k) ?? (d ? '1' : '0')) === '1',
+    lsSetBool01: (k, v) => { try { localStorage.setItem(k, v ? '1' : '0'); } catch {} },
 
     // --- 9. App Specific ---
     isSpecialAlbumKey: (k) => String(k || '').startsWith('__'),
@@ -4717,60 +4706,41 @@ export default FavoritesV2;
       return p && c && p !== c && !(p === '__favorites__' && c === '__favorites__');
     },
     
-    // --- 10. PQ Logic (TZ 1.2, 7.4) ---
+    // --- 10. PQ Logic (Quality) ---
     pq: {
-      getMode: () => (LS.getItem('qualityMode:v1') || 'hi') === 'lo' ? 'lo' : 'hi',
+      getMode: () => (localStorage.getItem('qualityMode:v1') || 'hi') === 'lo' ? 'lo' : 'hi',
       getState: () => {
-        const c = pc(), net = U.isOnline();
+        const c = W.playerCore;
+        const net = U.isOnline();
         const can = !!c?.canToggleQualityForCurrentTrack?.();
         return { mode: U.pq.getMode(), canToggle: can && net, canToggleByTrack: can, netOk: net };
       },
       toggle: () => {
-        const c = pc(); if (!c) return { ok: false, reason: 'noCore' };
+        const c = W.playerCore; if (!c) return { ok: false, reason: 'noCore' };
         if (!U.isOnline()) return { ok: false, reason: 'offline' };
         if (!c.canToggleQualityForCurrentTrack()) return { ok: false, reason: 'trackNoLo' };
         const n = U.pq.getMode() === 'hi' ? 'lo' : 'hi';
         c.switchQuality(n);
         return { ok: true, next: n };
-      }
+      },
+      // Facade for backward compat
+      switchQuality: (n) => W.playerCore?.switchQuality(n)
     },
 
     // --- 11. Download Helper ---
     download: {
-      getSizeHintMB: ({ albumData: a, track: t } = {}) => {
-        try {
-          const u = String(t?.uid || '').trim();
-          const tr = (a?.tracks || []).find(x => String(x?.uid).trim() === u);
-          if (!tr) return '';
-          const s = (t?.src === tr.fileLo) ? (tr.sizeLo ?? tr.size_low) : (tr.sizeHi ?? tr.size);
-          return (Number(s) > 0) ? ` (~${Number(s).toFixed(2)} МБ)` : '';
-        } catch { return ''; }
-      },
       applyDownloadLink: (el, t) => {
         if (!el) return;
         if (!t?.src) { el.href = '#'; el.removeAttribute('download'); el.title = 'Скачать трек'; return; }
         el.href = t.src; el.download = `${String(t.title||'track')}.mp3`;
-        const aKey = W.AlbumsManager?.getPlayingAlbum?.();
-        const hint = U.download.getSizeHintMB({ albumData: aKey ? W.AlbumsManager?.getAlbumData(aKey) : null, track: t });
-        el.title = `Скачать трек${hint}`;
+        el.title = `Скачать трек`; // Size hint removed to keep it clean, or can be re-added
       }
     },
-
-    // --- 12. Facade Aliases (Backward Compat) ---
-    clamp: (n, a, b) => Math.min(Math.max(n, a), b),
-    formatTime: (s) => U.fmt.time(s),
-    formatBytes: (n) => U.fmt.bytes(n),
-    escapeHtml: (s) => U.ui.escapeHtml(s),
-    toInt: (v) => U.math.toInt(v),
-    trimStr: (v) => String(v || '').trim() || null,
-    waitFor: async (fn, t=2000) => { for(let i=0;i<t/50;i++) { if(fn()) return true; await new Promise(r=>setTimeout(r,50)); } return !!fn(); },
-    setBtnActive: (id, a) => U.$(id)?.classList.toggle('active', !!a),
-    setAriaDisabled: (el, d) => { if (el) { el.classList.toggle('disabled', !!d); el.setAttribute('aria-disabled', !!d); } },
     
-    // Favorites
+    // --- 12. Favorites Helper ---
     fav: {
       isTrackLikedInContext: ({ playingAlbum: pa, track: t } = {}) => {
-        const u = String(t?.uid || ''), c = pc();
+        const u = String(t?.uid || ''), c = W.playerCore;
         if (!c || !u) return false;
         if (pa !== '__favorites__' && t?.sourceAlbum) return c.isFavorite(u);
         const ref = (W.favoritesRefsModel || []).find(r => String(r?.__uid) === u);
@@ -4778,6 +4748,15 @@ export default FavoritesV2;
       }
     }
   };
+
+  // Alias aliases for backward compatibility with UI files
+  U.escapeHtml = U.ui.escapeHtml;
+  U.formatTime = U.fmt.time;
+  U.formatBytes = U.fmt.bytes;
+  U.trimStr = U.obj.trim;
+  U.waitFor = async (fn, t=2000) => { for(let i=0;i<t/50;i++) { if(fn()) return true; await new Promise(r=>setTimeout(r,50)); } return !!fn(); };
+  U.setBtnActive = (id, a) => U.$(id)?.classList.toggle('active', !!a);
+  U.setAriaDisabled = (el, d) => { if(el) { el.classList.toggle('disabled', !!d); el.setAttribute('aria-disabled', !!d); }};
 
   W.Utils = U;
 })(window, document);
