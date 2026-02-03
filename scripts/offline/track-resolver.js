@@ -1,5 +1,4 @@
-//=================================================
-// FILE: /scripts/offline/track-resolver.js
+// scripts/offline/track-resolver.js
 import { getAudioBlob, bytesByQuality, touchLocalAccess, getLocalMeta } from './cache-db.js';
 import { getTrackByUid } from '../app/track-registry.js';
 
@@ -70,7 +69,11 @@ export async function resolvePlaybackSource({ track, pq, cq, offlineMode }) {
     const src = track?.sources?.audio;
     const url = (pQual === 'lo') ? (src?.lo || track?.audio_low) : (src?.hi || track?.audio);
     const alt = (pQual === 'lo') ? (src?.hi || track?.audio) : (src?.lo || track?.audio_low);
-    if (url || alt) attempts.push({ type: 'net', url: sUrl(url || alt) });
+    
+    // Fallback на track.src, если специфичные поля пусты
+    const finalUrl = url || alt || track?.src;
+    
+    if (finalUrl) attempts.push({ type: 'net', url: sUrl(finalUrl) });
   }
 
   // C. Local Fallback
