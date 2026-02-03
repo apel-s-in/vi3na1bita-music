@@ -2,13 +2,14 @@
 // Конфигурация приложения
 export const APP_CONFIG = {
   // Версия приложения
-  APP_VERSION: '8.0.4',
-  BUILD_DATE: '2025-11-08',
+  APP_VERSION: '8.0.5',
+  BUILD_DATE: '2025-12-08',
   // ✅ ПРОМОКОД ДЛЯ ВХОДА
   PROMOCODE: 'VITRINA2025',
   // Порядок отображения иконок альбомов
   ICON_ALBUMS_ORDER: [
-    { key: '__favorites__', title: '⭐⭐⭐ИЗБРАННОЕ⭐⭐⭐', icon: 'img/icon_album/icon-album-00.png' },
+    // Исправлена иконка Избранного
+    { key: '__favorites__', title: '⭐⭐⭐ИЗБРАННОЕ⭐⭐⭐', icon: 'img/Fav_logo.png' },
     { key: 'odnazhdy-v-skazke', title: 'Однажды в Сказке', icon: 'img/icon_album/icon-album-03.png' },
     { key: 'golos-dushi', title: 'Голос Души', icon: 'img/icon_album/icon-album-02.png' },
     { key: 'mezhdu-zlom-i-dobrom', title: 'Между Злом и Добром', icon: 'img/icon_album/icon-album-01.png' },
