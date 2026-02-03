@@ -253,15 +253,15 @@ class AlbumsManager {
     
     const ctr = $('track-list');
     ctr.addEventListener('click', (e) => {
-      // Глобальный Debounce для списка треков (300мс) - защита от случайного "двойного тапа"
+      // Глобальный Debounce
       if (Date.now() - this._clickGuard < 300) return;
       this._clickGuard = Date.now();
 
       const trk = e.target.closest('.track');
       if (!trk || !ctr.contains(trk)) return;
 
-      const aKey = getAlb(trk), uid = getUid(trk), idx = Number(trk.dataset.index);
-      if (!aKey || aKey.startsWith('__')) return; // specials handled elsewhere
+      const aKey = getAlb(trk), uid = getUid(trk);
+      if (!aKey || aKey.startsWith('__')) return; // спец. альбомы обрабатываются отдельно
 
       // Star click
       if (e.target.classList.contains('like-star')) {
@@ -272,6 +272,7 @@ class AlbumsManager {
         setStar(e.target, next);
         e.target.classList.add('animating');
         setTimeout(() => e.target.classList.remove('animating'), 320);
+        // В родном альбоме source не указываем, по умолчанию будет 'album' (Hard Delete)
         window.playerCore.toggleFavorite(uid, { fromAlbum: true, albumKey: aKey });
         return;
       }
@@ -282,6 +283,7 @@ class AlbumsManager {
 
       let core = this.coreCache.get(aKey);
       if (!core) {
+        // Формируем кэш для плеера
         const tracks = data.tracks.filter(t => t.src).map(t => ({
           src: t.src, sources: t.sources, title: t.title, artist: data.artist,
           album: aKey, cover: this.covers.get(aKey) || LOGO,
@@ -295,8 +297,12 @@ class AlbumsManager {
       const pIdx = core.map.get(uid);
       if (pIdx === undefined) return window.NotificationSystem?.warning('Трек недоступен');
 
-      // Check if playlist needs update
+      // 1. СНАЧАЛА устанавливаем контекст (Исправление бага с мини-плеером)
+      this.playing = aKey; 
+
+      // 2. Проверяем плейлист
       const curSnap = window.playerCore.getPlaylistSnapshot() || [];
+      // Сравниваем не только длину, но и контекст альбома первого трека
       if (curSnap.length !== core.tracks.length || curSnap[0]?.album !== aKey) {
         window.playerCore.setPlaylist(core.tracks, pIdx, {
           artist: data.artist, album: data.title, cover: this.covers.get(aKey) || LOGO
@@ -304,8 +310,10 @@ class AlbumsManager {
       }
 
       this.highlightCurrentTrack(pIdx);
+      
+      // 3. ЗАПУСКАЕМ (Интерфейс уже знает, что playing == aKey)
       window.playerCore.play(pIdx);
-      this.playing = aKey;
+      
       window.PlayerUI?.ensurePlayerBlock?.(pIdx, { userInitiated: true });
     });
   }
