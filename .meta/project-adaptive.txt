@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3d8d3a92cede4ac8d1a94e91fc32be44eaf8ef04.idx
-│   │       ├── pack-3d8d3a92cede4ac8d1a94e91fc32be44eaf8ef04.pack
-│   │       └── pack-3d8d3a92cede4ac8d1a94e91fc32be44eaf8ef04.rev
+│   │       ├── pack-1f2dc39e981bc1e3a44bf551d0a42a9cc91e805c.idx
+│   │       ├── pack-1f2dc39e981bc1e3a44bf551d0a42a9cc91e805c.pack
+│   │       └── pack-1f2dc39e981bc1e3a44bf551d0a42a9cc91e805c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 14:17:21 UTC
+Сгенерировано: 2026-02-03 14:18:09 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1599,6 +1599,11 @@ class AlbumsManager {
     const hi = toUrl(base, t.audio), lo = toUrl(base, t.audio_low);
     const uid = toStr(t.uid).trim() || null;
     
+    // Получаем закэшированные данные альбома, чтобы достать название
+    const albumData = this.cache.get(key);
+    const albumTitle = albumData?.title || 'Альбом';
+    const albumArtist = albumData?.artist || 'Витрина Разбита';
+
     // Register for Offline/PWA
     if (uid) registerTrack({
       uid, title: t.title,
@@ -1606,7 +1611,7 @@ class AlbumsManager {
       size: t.size, size_low: t.size_low,
       lyrics: toUrl(base, t.lyrics), fulltext: toUrl(base, t.fulltext),
       sourceAlbum: key
-    });
+    }, { title: albumTitle, artist: albumArtist }); // <-- Передаем название альбома
 
     return {
       num: i + 1,
