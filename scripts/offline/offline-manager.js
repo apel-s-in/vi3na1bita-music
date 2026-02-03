@@ -1,5 +1,3 @@
-// scripts/offline/offline-manager.js
-// OfflineManager v2.1 (Optimized Queue + Robust Error Handling)
 import {
   ensureDbReady, setAudioBlob, setBytes, bytesByQuality, totalCachedBytes, deleteTrackCache,
   getCacheQuality as dbGetCQ, setCacheQuality as dbSetCQ, getCloudStats, setCloudStats, clearCloudStats,
@@ -9,17 +7,12 @@ import {
 } from './cache-db.js';
 import { getTrackByUid, getAllTracks } from '../app/track-registry.js';
 import { getNetPolicy, isAllowedByNetPolicy } from './net-policy.js';
+import { Utils } from '../core/utils.js';
 
-const U = window.Utils;
 const LS = { MODE: 'offlineMode:v1', CQ: 'offline:cacheQuality:v1', PINNED: 'pinnedUids:v1', CLOUD_N: 'offline:cloudN:v1', CLOUD_D: 'offline:cloudD:v1', LIMIT: 'offline:cacheLimitMB:v1', ALERT: 'offline:alert:v1' };
 const MB = 1024 * 1024;
 const COMPLETE_THRESHOLD = 0.92;
 const PRIORITY = { P0_CUR: 100, P1_NEXT: 90, P2_PINNED: 80, P3_UPDATES: 70, P4_CLOUD: 60 };
-
-const normUid = (v) => U.obj.trim(v);
-const normQ = (v) => (String(v || '').toLowerCase() === 'lo' ? 'lo' : 'hi');
-const getNet = () => U.getNetworkStatusSafe();
-const notify = (msg, type = 'info') => U.ui.toast(msg, type);
 
 class DownloadQueue {
   constructor() { this.q = []; this.active = null; this.paused = false; this._listeners = new Set(); }
@@ -43,7 +36,6 @@ class DownloadQueue {
     this.active = item;
     this._emit('start', { uid: item.uid, key: item.key });
     try { 
-      // Safe execution (equivalent to Promise.allSettled for the queue)
       await item.taskFn(); 
       this._emit('done', { uid: item.uid, key: item.key }); 
     }
@@ -72,9 +64,9 @@ export class OfflineManager {
   _emit(data) { this._subs.forEach(cb => { try { cb(data); } catch {} }); }
   isOfflineMode() { return localStorage.getItem(LS.MODE) === '1'; }
   setOfflineMode(v) { localStorage.setItem(LS.MODE, v ? '1' : '0'); window.dispatchEvent(new CustomEvent('offline:uiChanged')); }
-  async getCacheQuality() { const local = localStorage.getItem(LS.CQ); if (local) return normQ(local); return await dbGetCQ() || 'hi'; }
+  async getCacheQuality() { const local = localStorage.getItem(LS.CQ); if (local) return Utils.obj.normQuality(local); return await dbGetCQ() || 'hi'; }
   async setCacheQuality(val) {
-    const q = normQ(val);
+    const q = Utils.obj.normQuality(val);
     localStorage.setItem(LS.CQ, q);
     await dbSetCQ(q);
     this._emit({ phase: 'cqChanged', cq: q });
@@ -88,26 +80,26 @@ export class OfflineManager {
     return this._pinnedCache;
   }
   _savePinned() { if (this._pinnedCache) localStorage.setItem(LS.PINNED, JSON.stringify([...this._pinnedCache])); }
-  isPinned(uid) { return this._getPinnedSet().has(normUid(uid)); }
-  async pin(uid) { const u = normUid(uid); if (u && !this.isPinned(u)) await this.togglePinned(u); }
-  async unpin(uid) { const u = normUid(uid); if (u && this.isPinned(u)) await this.togglePinned(u); }
+  isPinned(uid) { return this._getPinnedSet().has(Utils.obj.trim(uid)); }
+  async pin(uid) { const u = Utils.obj.trim(uid); if (u && !this.isPinned(u)) await this.togglePinned(u); }
+  async unpin(uid) { const u = Utils.obj.trim(uid); if (u && this.isPinned(u)) await this.togglePinned(u); }
   async togglePinned(uid) {
-    const u = normUid(uid); if (!u) return;
+    const u = Utils.obj.trim(uid); if (!u) return;
     if (this.isPinned(u)) {
       this._getPinnedSet().delete(u); this._savePinned(); await setCloudCandidate(u, true);
-      notify('Офлайн-закрепление снято. Кандидат в Cloud.');
+      Utils.ui.toast('Офлайн-закрепление снято. Кандидат в Cloud.');
       this._emit({ phase: 'unpinned', uid: u });
     } else {
       this._getPinnedSet().add(u); this._savePinned(); await setCloudCandidate(u, false);
       const cq = await this.getCacheQuality();
       this.enqueueAudioDownload({ uid: u, quality: cq, priority: PRIORITY.P2_PINNED, kind: 'pinned', userInitiated: true });
-      notify('Трек закреплён офлайн');
+      Utils.ui.toast('Трек закреплён офлайн');
       this._emit({ phase: 'pinned', uid: u });
     }
     window.dispatchEvent(new CustomEvent('offline:uiChanged'));
   }
   async isCloudEligible(uid) {
-    const u = normUid(uid); if (!u || this.isPinned(u)) return false;
+    const u = Utils.obj.trim(uid); if (!u || this.isPinned(u)) return false;
     const stats = await getCloudStats(u), candidate = await getCloudCandidate(u), { n } = this.getCloudSettings();
     if (candidate) return true;
     if ((Number(stats?.cloudFullListenCount) || 0) >= n) return true;
@@ -116,7 +108,7 @@ export class OfflineManager {
   }
   async shouldShowCloudIcon(uid, cq) { if (this.isPinned(uid)) return false; if (!await this.isCloudEligible(uid)) return false; return await this.isTrackComplete(uid, cq); }
   async recordListenStats(uid, { deltaSec, isFullListen }) {
-    const u = normUid(uid); if (!u) return;
+    const u = Utils.obj.trim(uid); if (!u) return;
     if (deltaSec > 0 || isFullListen) await updateGlobalStats(u, deltaSec, isFullListen ? 1 : 0);
     if (isFullListen) {
       const stats = await getCloudStats(u), newCount = (Number(stats?.cloudFullListenCount) || 0) + 1;
@@ -134,15 +126,15 @@ export class OfflineManager {
   async _checkExpiredCloud() {
     const expired = await getExpiredCloudUids(); let cleaned = 0;
     for (const u of expired) { if (!this.isPinned(u)) { await deleteTrackCache(u); await clearCloudStats(u); await clearCloudCandidate(u); cleaned++; } }
-    if (cleaned > 0) notify(`Срок действия истёк у ${cleaned} треков`);
+    if (cleaned > 0) Utils.ui.toast(`Срок действия истёк у ${cleaned} треков`);
   }
   async cloudMenu(uid, action) { return this.cloudMenuAction(uid, action); }
   async cloudMenuAction(uid, action) {
-    const u = normUid(uid);
-    if (action === 'remove-cache') { await deleteTrackCache(u); await clearCloudStats(u); await clearCloudCandidate(u); notify('Удалено из кэша'); this._emit({ phase: 'cloudRemoved', uid: u }); }
+    const u = Utils.obj.trim(uid);
+    if (action === 'remove-cache') { await deleteTrackCache(u); await clearCloudStats(u); await clearCloudCandidate(u); Utils.ui.toast('Удалено из кэша'); this._emit({ phase: 'cloudRemoved', uid: u }); }
   }
   enqueueAudioDownload({ uid, quality, priority, kind, userInitiated, onResult }) {
-    const u = normUid(uid), q = normQ(quality); if (!u) return;
+    const u = Utils.obj.trim(uid), q = Utils.obj.normQuality(quality); if (!u) return;
     const key = `${kind}:${q}:${u}`;
     this.queue.add({ uid: u, key, priority: priority || 0, taskFn: async () => { const res = await this._performDownload(u, q, kind, userInitiated); if (onResult) onResult(res); } });
   }
@@ -152,7 +144,7 @@ export class OfflineManager {
       if (kind === 'cloudAuto' || kind === 'pinned') { const stats = await getCloudStats(uid); if (stats?.cloud || kind === 'pinned') await this._finalizeCloudStatus(uid); }
       return { ok: true, skipped: true };
     }
-    const net = getNet(), policy = getNetPolicy(), allowed = isAllowedByNetPolicy({ policy, net, userInitiated });
+    const net = Utils.getNet(), policy = getNetPolicy(), allowed = isAllowedByNetPolicy({ policy, net, userInitiated });
     if (!net.online) return { ok: false, reason: 'offline' };
     if (!allowed) return { ok: false, reason: 'policy_restricted' };
     await this._enforceEvictionLimit();
@@ -183,7 +175,7 @@ export class OfflineManager {
       if (current - freed <= limitBytes) break;
       await deleteTrackCache(c.uid); freed += c.bytes;
     }
-    if (freed > 0) notify(`Очищено ${Math.round(freed/MB)} MB кэша`);
+    if (freed > 0) Utils.ui.toast(`Очищено ${Math.round(freed/MB)} MB кэша`);
   }
   async refreshNeedsAggregates(opts = {}) {
     const NOW = Date.now();
@@ -252,12 +244,12 @@ export class OfflineManager {
   }
   async startFullOffline(uids) {
     const cq = await this.getCacheQuality();
-    notify(`Старт загрузки ${uids.length} треков`);
+    Utils.ui.toast(`Старт загрузки ${uids.length} треков`);
     uids.forEach(uid => { this.enqueueAudioDownload({ uid, quality: cq, priority: PRIORITY.P4_CLOUD, kind: 'fullOffline', userInitiated: true }); });
     return { ok: true, total: uids.length };
   }
   async getTrackOfflineState(uid) {
-    const u = normUid(uid); if (!u) return {};
+    const u = Utils.obj.trim(uid); if (!u) return {};
     const pinned = this.isPinned(u), cq = await this.getCacheQuality(), cloudEligible = await this.isCloudEligible(u);
     const cachedCQ = await this.isTrackComplete(u, cq);
     const cachedHi = await this.isTrackComplete(u, 'hi'), cachedLo = await this.isTrackComplete(u, 'lo');
@@ -275,7 +267,7 @@ export class OfflineManager {
     return { pinned: s.pinned, cloud: s.cloud, cachedComplete: s.cachedHiComplete || s.cachedLoComplete, unknown: false };
   }
   async isTrackComplete(uid, quality) {
-    const u = normUid(uid), q = normQ(quality), meta = getTrackByUid(u);
+    const u = Utils.obj.trim(uid), q = Utils.obj.normQuality(quality), meta = getTrackByUid(u);
     if (!meta) return false;
     const expMB = q === 'lo' ? (meta.sizeLo || meta.size_low) : (meta.sizeHi || meta.size);
     if (!expMB) return false;
@@ -287,7 +279,7 @@ export class OfflineManager {
     this._pinnedCache = new Set(); this._savePinned();
     localStorage.removeItem(LS.ALERT);
     window.dispatchEvent(new CustomEvent('offline:uiChanged'));
-    notify('Кэш полностью очищен', 'success');
+    Utils.ui.toast('Кэш полностью очищен', 'success');
   }
   getGlobalStats() { return getGlobalStatsAndTotal(); }
   async getCacheBreakdown() { return computeCacheBreakdown(this._getPinnedSet()); }
