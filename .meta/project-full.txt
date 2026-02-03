@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-0446c8bd77e1e2ddd1fc5241fecfd756c6a470ef.idx
-│   │       ├── pack-0446c8bd77e1e2ddd1fc5241fecfd756c6a470ef.pack
-│   │       └── pack-0446c8bd77e1e2ddd1fc5241fecfd756c6a470ef.rev
+│   │       ├── pack-0f64123b18cf5e2caf2f7f1372a7f9b62ac57ad3.idx
+│   │       ├── pack-0f64123b18cf5e2caf2f7f1372a7f9b62ac57ad3.pack
+│   │       └── pack-0f64123b18cf5e2caf2f7f1372a7f9b62ac57ad3.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 07:25:52 UTC
+Сгенерировано: 2026-02-03 07:26:30 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9205,13 +9205,16 @@ export function closeOfflineModal() {
 
 //=================================================
 // FILE: /scripts/ui/ui-utils.js
+//=================================================
+// FILE: /scripts/ui/ui-utils.js
 // scripts/ui/ui-utils.js
-// Фасад над window.Utils для совместимости импортов
-export const esc = (s) => window.Utils?.escapeHtml ? window.Utils.escapeHtml(s) : String(s || '');
-export const formatBytes = (n) => window.Utils?.formatBytes ? window.Utils.formatBytes(n) : '0 B';
-export const getNetworkStatusSafe = () => window.Utils?.getNetworkStatusSafe ? window.Utils.getNetworkStatusSafe() : { online: true, kind: 'unknown' };
+// Facade over window.Utils to maintain module compatibility.
+// All logic moved to scripts/core/utils.js
 
-// Legacy global exposure check
+export const esc = (s) => window.Utils?.ui?.escapeHtml(s) ?? String(s || '');
+export const formatBytes = (n) => window.Utils?.fmt?.bytes(n) ?? '0 B';
+export const getNetworkStatusSafe = () => window.Utils?.getNetworkStatusSafe?.() ?? { online: true, kind: 'unknown' };
+
 try {
   window.UIUtils = window.UIUtils || {};
   window.UIUtils.esc = esc;
