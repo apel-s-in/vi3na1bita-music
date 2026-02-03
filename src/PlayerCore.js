@@ -32,7 +32,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       this._sleepTimer = null;
       this._sleepTarget = 0;
 
-      // Инициализация MediaSession
+      // MediaSession
       this._ms = ensureMediaSession({
         onPlay: () => this.play(), 
         onPause: () => this.pause(),
@@ -42,6 +42,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         onSeekTo: (t) => this.seek(t)
       });
 
+      // Stats
       this._stats = createListenStatsTracker({
         getUid: () => safeStr(this.getCurrentTrack()?.uid),
         getPos: () => this.getPosition(),
@@ -49,21 +50,31 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         record: (uid, p) => getOfflineManager().recordListenStats(uid, p)
       });
 
-      // Глобальный анлок аудио для iOS при первом касании
-      const unlock = () => { this.prepareContext(); };
+      // iOS Audio Unlocker (Silent Buffer)
+      const unlock = () => {
+        if (W.Howler?.ctx && W.Howler.ctx.state === 'suspended') {
+          W.Howler.ctx.resume().catch(() => {});
+        }
+        // Создаем пустой буфер и играем его, чтобы iOS "поверил", что мы играем аудио
+        // Это позволяет в дальнейшем менять треки в фоне.
+        if (!this._unlocked) {
+          this._unlocked = true;
+          const silent = new Howl({ src: ['data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIWFhYW5uYWFuYW5uYW5uYW5uYW5uYW5uYW5uYW5uYW5uYW5uYW5u//OEAAAAAAAAAAAAAAAAAAAAAAAAMGluZ2QAAAAcAAAABAAAASFycnJyc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nz//OEAAAAAAAAAAAAAAAAAAAAAAAATGF2YzU4Ljc2AAAAAAAAAAAAAAAAJAAAAAAAAAAAASCCOzuJAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAJAAAAAAAAAAAASCCOzuJAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'], html5: true, volume: 0 });
+          silent.play();
+        }
+      };
       ['touchend', 'click', 'keydown'].forEach(e => document.addEventListener(e, unlock, { once: true, capture: true }));
     }
 
     initialize() { FavoritesV2.ensureMigrated(); }
 
-    // Метод для "прогрева" AudioContext строго в обработчике клика
     prepareContext() {
       if (W.Howler?.ctx?.state === 'suspended') {
         W.Howler.ctx.resume().catch(() => {});
       }
     }
 
-    // --- Playlist ---
+    // --- Playlist Management ---
     setPlaylist(tracks, startIdx = 0, meta, opts = {}) {
       const prevPos = this.getPosition();
       const wasPlaying = this.isPlaying();
@@ -82,9 +93,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
       this.currentIndex = clamp(startIdx, 0, this.playlist.length - 1);
 
-      // Если мы уже играли этот трек, просто обновляем метаданные, не прерывая звук
-      // (если вызов setPlaylist был из-за смены лайка или сортировки)
-      if (wasPlaying && opts.preservePosition) {
+      if (wasPlaying && opts.preservePosition && this.playlist[this.currentIndex]?.uid === this.getCurrentTrack()?.uid) {
          this._emit('onTrackChange', this.getCurrentTrack(), this.currentIndex);
          this._updMedia();
          return; 
@@ -106,19 +115,17 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     isPlaying() { return !!(this.sound && this.sound.playing()); }
 
     play(idx, opts = {}) {
-      this.prepareContext(); // Всегда пытаемся разбудить контекст
+      this.prepareContext();
 
       if (idx != null) {
-          // Если индекс отличается, грузим новый
           if (idx !== this.currentIndex) return this.load(idx, opts);
-          
-          // Если индекс тот же, но звук остановлен или закончился - рестарт
+          // Restart current
           this.seek(0);
           if (!this.isPlaying() && this.sound) this.sound.play();
           return;
       }
       
-      // play() без аргументов (Resume)
+      // Resume
       if (this.sound) {
         if (!this.isPlaying()) this.sound.play();
       } else if (this.currentIndex >= 0) {
@@ -140,7 +147,6 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         this.shuffleHistory.push(this.currentIndex);
         if (this.shuffleHistory.length > 50) this.shuffleHistory.shift();
       }
-      // Принудительный переход на следующий
       const nextIdx = (this.currentIndex + 1) % this.playlist.length;
       this.load(nextIdx, { autoPlay: true, dir: 1 });
     }
@@ -167,42 +173,43 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     getPosition() { return this.sound?.seek() || 0; }
     getDuration() { return this.sound?.duration() || 0; }
 
-    // --- Core Logic ---
+    // --- Core Loading Logic ---
     async load(index, opts = {}) {
       const track = this.playlist[index];
       if (!track) return;
 
-      // 1. Токен загрузки для предотвращения гонок
       const token = ++this._loadToken;
       this.currentIndex = index;
+      
+      // Notify UI immediately about track change (even before audio loads)
+      this._emit('onTrackChange', track, index);
 
       const om = getOfflineManager();
       
-      // 2. Resolve источника (Blob или URL)
-      // ВАЖНО: Это может занять время, но play() уже вызвал prepareContext()
+      // Resolve source
       const src = await resolvePlaybackSource({
         track, pq: this.qualityMode, cq: await om.getCacheQuality(), offlineMode: om.isOfflineMode()
       });
 
       if (token !== this._loadToken) return;
 
-      // 3. Выгружаем старое ТОЛЬКО перед созданием нового
-      this._unload(true);
+      this._unload(true); // Stop previous
 
       if (!src.url) {
-        W.NotificationSystem?.warning('Нет доступа к треку (офлайн)');
-        // Auto-skip (рекурсия с защитой через token)
-        const nextIdx = (index + (opts.dir || 1) + this.playlist.length) % this.playlist.length;
-        if (nextIdx !== index) this.load(nextIdx, opts);
+        W.NotificationSystem?.warning('Нет доступа к треку');
+        // Auto-skip logic with delay to prevent CPU spin
+        setTimeout(() => {
+           if (token === this._loadToken) {
+             const nextIdx = (index + (opts.dir || 1) + this.playlist.length) % this.playlist.length;
+             if (nextIdx !== index) this.load(nextIdx, opts);
+           }
+        }, 1000);
         return;
       }
 
-      // 4. Создаем Howl
-      // ВАЖНО: html5: true ОБЯЗАТЕЛЕН для работы в фоне iOS и при выключенном экране.
-      // Howler умеет играть Blob Url через html5 audio.
       this.sound = new Howl({
         src: [src.url],
-        html5: true, // КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: всегда true для стриминга и больших файлов
+        html5: true, // ✅ ALWAYS TRUE for iOS background audio
         volume: this.getVolume() / 100,
         format: ['mp3'],
         autoplay: !!opts.autoPlay,
@@ -228,31 +235,27 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
           if (token !== this._loadToken) return;
           this._stats.onEnded();
           this._emit('onEnd');
-          // Автопереход
+          // Auto-next
           this.repeatMode ? this.play(this.currentIndex) : this.next();
         },
         onloaderror: (id, e) => {
            console.error('Load Error', e);
            this._emit('onError', { msg: 'Load error', e });
-           // Попытка пропустить битый трек
            if (token === this._loadToken) setTimeout(() => this.next(), 1000);
         },
         onplayerror: (id, e) => {
-           console.warn('Play Error (Autoplay blocked?)', e);
-           this.sound?.once('unlock', () => {
-             this.sound?.play();
-           });
+           console.warn('Play Error', e);
+           this.sound?.once('unlock', () => this.sound?.play());
         }
       });
 
-      this._emit('onTrackChange', track, index);
-      // Предзагрузка следующего через Service Worker / Cache (не влияет на воспроизведение)
+      // Trigger prefetch for next track
       om.enqueueAudioDownload({ uid: track.uid, quality: this.qualityMode, priority: 100, kind: 'playbackCache' });
     }
 
     _unload(silent) {
       if (this.sound) { 
-        this.sound.stop(); // stop() лучше чем unload() для HTML5 Audio пулов
+        this.sound.stop(); 
         this.sound.unload(); 
         this.sound = null; 
       }
@@ -292,7 +295,6 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       const res = FavoritesV2.toggle(u, { source });
       this._emitFav(u, res.liked, opts.albumKey);
 
-      // Правило: Если в Favorites View сняли лайк с ТЕКУЩЕГО трека -> next()
       if (!res.liked && source === 'favorites' && W.AlbumsManager?.getPlayingAlbum?.() === W.SPECIAL_FAVORITES_KEY) {
          if (safeStr(this.getCurrentTrack()?.uid) === u) this.next();
       }
@@ -349,7 +351,6 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     onFavoritesChanged(cb) { this._favSubs.add(cb); return () => this._favSubs.delete(cb); }
     _emitFav(uid, liked, albumKey, removed = false) { this._favSubs.forEach(f => f({ uid, liked, albumKey, removed })); }
 
-    // --- Shuffle/Repeat ---
     toggleShuffle() {
       this.shuffleMode = !this.shuffleMode;
       if (this.shuffleMode) {
@@ -369,7 +370,6 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     toggleRepeat() { this.repeatMode = !this.repeatMode; }
     isRepeat() { return this.repeatMode; }
 
-    // --- Internal ---
     on(evs) { Object.entries(evs).forEach(([k, fn]) => { if(!this._ev.has(k)) this._ev.set(k, new Set()); this._ev.get(k).add(fn); }); }
     _emit(name, ...args) { this._ev.get(name)?.forEach(fn => fn(...args)); }
 
