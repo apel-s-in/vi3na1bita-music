@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d5df182861d4486c2a6c052eed3b4a405b9b25e2.idx
-│   │       ├── pack-d5df182861d4486c2a6c052eed3b4a405b9b25e2.pack
-│   │       └── pack-d5df182861d4486c2a6c052eed3b4a405b9b25e2.rev
+│   │       ├── pack-35be0c7a38294b08ce1e365d761bb7fcc38b3653.idx
+│   │       ├── pack-35be0c7a38294b08ce1e365d761bb7fcc38b3653.pack
+│   │       └── pack-35be0c7a38294b08ce1e365d761bb7fcc38b3653.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -389,7 +389,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 19:00:57 UTC
+Сгенерировано: 2026-02-03 19:01:50 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3541,9 +3541,10 @@ export function registerTrack(raw, albumMeta = {}) {
       existing.album = metaTitle;
     }
     
-    // Если в реестре нет ключа альбома, а мы его знаем - обновляем
-    if (!existing.sourceAlbum && metaKey) {
-      existing.sourceAlbum = metaKey;
+    // FIX: Берем ключ из меты ИЛИ из сырых данных, если в реестре пусто
+    const newKey = metaKey || raw.sourceAlbum;
+    if (!existing.sourceAlbum && newKey) {
+      existing.sourceAlbum = newKey;
     }
 
     // Если в реестре нет ссылки на обложку - обновляем
