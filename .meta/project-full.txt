@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3efaf02bcf31eab34b3b9d275ca35f66f0056412.idx
-│   │       ├── pack-3efaf02bcf31eab34b3b9d275ca35f66f0056412.pack
-│   │       └── pack-3efaf02bcf31eab34b3b9d275ca35f66f0056412.rev
+│   │       ├── pack-825388de7d5019b7cebc9288a605cdb6a9db9596.idx
+│   │       ├── pack-825388de7d5019b7cebc9288a605cdb6a9db9596.pack
+│   │       └── pack-825388de7d5019b7cebc9288a605cdb6a9db9596.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 18:11:42 UTC
+Сгенерировано: 2026-02-03 18:12:08 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5502,9 +5502,9 @@ import { markLocalTransient } from './cache-db.js';
 
 const Utils = window.Utils;
 
-// Priorities
+// Priorities (ТЗ 14.2)
 const P_CUR = 100;
-const P_NEXT = 95; // Next is almost as important as current
+const P_NEXT = 95; 
 const P_PREV = 80;
 
 export class PlaybackCacheManager {
@@ -5512,18 +5512,26 @@ export class PlaybackCacheManager {
     this._q = opts.queue || null;
     this._getCtx = opts.getPlaylistCtx || (() => ({ list: [], curUid: null, favoritesInactive: new Set(), direction: 'forward' }));
     this._pq = 'hi';
-    this._sched = new Set();
+    this._sched = new Set(); // Set of scheduled task keys to prevent duplicates
     this._last = { prev: [], cur: null, next: [] };
   }
 
   setPlaybackQuality(pq) { this._pq = Utils.obj.normQuality(pq); }
   getPlaybackQuality() { return this._pq; }
   
+  /**
+   * Вычисляет окно PREV/CUR/NEXT на основе индекса и списка
+   */
   getWindow(idx, list) {
     const len = list?.length || 0;
     if (!len || idx < 0) return { prev: [], cur: null, next: [] };
 
-    const get = (i) => Utils.obj.trim(list[(idx + i + len) % len]?.uid);
+    const get = (i) => {
+      // Циклический индекс с поддержкой отрицательных значений
+      const t = list[(idx + i + len) % len];
+      return Utils.obj.trim(t?.uid);
+    };
+
     return {
       prev: [get(-1)].filter(Boolean),
       cur: get(0),
@@ -5534,6 +5542,9 @@ export class PlaybackCacheManager {
   getLastWindow() { return { ...this._last }; }
   clearScheduled() { this._sched.clear(); }
 
+  /**
+   * Основной метод: планирует загрузку окна
+   */
   async ensureWindowFullyCached(pqArg, trackProvider) {
     const { list, curUid, favoritesInactive: bad } = this._getCtx();
     const pq = Utils.obj.normQuality(pqArg || this._pq);
@@ -5543,46 +5554,55 @@ export class PlaybackCacheManager {
     const idx = list.findIndex(t => Utils.obj.trim(t?.uid) === curUid);
     if (idx < 0) return;
 
+    // 1. Вычисляем окно
     const win = this.getWindow(idx, list);
-    this._last = win;
+    this._last = win; // Сохраняем для OfflineManager (чтобы не удалил их при очистке)
 
     const mgr = window.OfflineUI?.offlineManager;
-    if (!mgr || mgr.isOfflineMode()) return;
+    if (!mgr || mgr.isOfflineMode()) return; // В Offline режиме не качаем
     
+    // Проверка политики сети (ТЗ 7.6)
     const net = Utils.getNet();
     if (!net.online || !isAllowedByNetPolicy({ policy: getNetPolicy(), net, quality: pq, kind: 'playbackCache' })) return;
 
     const tasks = [];
     
-    // P0: CUR
+    // Формируем задачи с приоритетами (ТЗ 7.7)
+    // 1. CUR (P0)
     if (win.cur && !bad.has(win.cur)) tasks.push({ u: win.cur, p: P_CUR });
 
-    // P1: NEXT (Always prioritized)
+    // 2. Сосед по направлению (обычно NEXT) (P1)
     if (win.next[0] && !bad.has(win.next[0])) tasks.push({ u: win.next[0], p: P_NEXT });
 
-    // P2: PREV
+    // 3. PREV (P2)
     if (win.prev[0] && !bad.has(win.prev[0])) tasks.push({ u: win.prev[0], p: P_PREV });
 
     for (const { u, p } of tasks) {
       const key = `pbc:${pq}:${u}`;
+      
+      // Если уже запланировано в этой сессии - пропускаем
       if (this._sched.has(key)) continue;
 
+      // Если уже скачано (ТЗ 7.9) - пропускаем
       if (await mgr.isTrackComplete(u, pq)) continue;
 
+      // Проверяем наличие метаданных
       const meta = (typeof trackProvider === 'function' ? trackProvider(u) : getTrackByUid(u));
       if (!meta) continue;
 
       this._sched.add(key);
 
-      // Enqueue download
+      // Ставим в очередь OfflineManager
       mgr.enqueueAudioDownload({
         uid: u,
         quality: pq,
-        key,
         priority: p,
-        kind: 'playbackCache',
+        kind: 'playbackCache', // Важно: помечается как transient 'window'
         onResult: (res) => {
-          if (res?.ok) markLocalTransient(u, 'window').catch(() => {});
+          if (res?.ok) {
+             // Явно помечаем как transient window после скачивания
+             markLocalTransient(u, 'window').catch(() => {});
+          }
         }
       });
     }
