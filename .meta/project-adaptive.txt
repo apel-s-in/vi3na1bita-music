@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d561f64006eb30e4c94f8646309b2dcda5a5a0b5.idx
-│   │       ├── pack-d561f64006eb30e4c94f8646309b2dcda5a5a0b5.pack
-│   │       └── pack-d561f64006eb30e4c94f8646309b2dcda5a5a0b5.rev
+│   │       ├── pack-4c05084f511556b8785d6ab949aab3bf4c03489e.idx
+│   │       ├── pack-4c05084f511556b8785d6ab949aab3bf4c03489e.pack
+│   │       └── pack-4c05084f511556b8785d6ab949aab3bf4c03489e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 09:36:34 UTC
+Сгенерировано: 2026-02-03 09:37:19 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5249,6 +5249,7 @@ export const clearAllStores = async (opts = {}) => {
 // FILE: /scripts/offline/net-policy.js
 // scripts/offline/net-policy.js
 // Политика сети для offline-загрузок (ТЗ 11)
+// Использует централизованный Utils.getNet()
 
 const LS_KEY = 'offline:netPolicy:v1';
 
@@ -5286,17 +5287,21 @@ export function isAllowedByNetPolicy(params = {}) {
 
   if (!net.online) return false;
 
+  // 1. Save Data Block
   if (policy.saveDataBlock && net.saveData) {
     return userInitiated;
   }
 
   const kind = String(net.kind || '').toLowerCase();
 
+  // 2. WiFi Only
   if (policy.wifiOnly && kind !== 'wifi') {
+    // Если требуется WiFi, а у нас cellular или unknown - блокируем фоновые
     return userInitiated;
   }
 
-  if (!policy.allowMobile && (kind === 'cellular' || kind === '4g' || kind === '3g' || kind === '2g')) {
+  // 3. Block Mobile
+  if (!policy.allowMobile && kind === 'cellular') {
     return userInitiated;
   }
 
@@ -5308,9 +5313,13 @@ export function shouldConfirmByPolicy(params = {}) {
   const net = params.net || { online: true, kind: 'unknown' };
 
   const kind = String(net.kind || '').toLowerCase();
-  const isMobile = (kind === 'cellular' || kind === '4g' || kind === '3g' || kind === '2g');
+  
+  // Если политика требует подтверждения на мобильных и мы на мобильной сети
+  if (policy.confirmOnMobile && kind === 'cellular') return true;
 
-  return !!(policy.confirmOnMobile && isMobile);
+  // Если тип сети неизвестен (Desktop/Privacy browsers), и включен строгий режим - можно тоже спросить
+  // Но по умолчанию считаем unknown за wifi в Utils, так что тут оставляем только явный cellular
+  return false;
 }
 
 //=================================================
