@@ -31,6 +31,9 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       this._favSubs = new Set();
       this._sleepTimer = null;
       this._sleepTarget = 0;
+      
+      // Защита от бесконечного цикла пропуска треков
+      this._skipSession = { token: 0, count: 0, max: 0 };
 
       // MediaSession
       this._ms = ensureMediaSession({
@@ -50,16 +53,14 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         record: (uid, p) => getOfflineManager().recordListenStats(uid, p)
       });
 
-      // iOS Audio Unlocker (Silent Buffer)
+      // iOS Audio Unlocker
       const unlock = () => {
         if (W.Howler?.ctx && W.Howler.ctx.state === 'suspended') {
           W.Howler.ctx.resume().catch(() => {});
         }
-        // Создаем пустой буфер и играем его, чтобы iOS "поверил", что мы играем аудио
-        // Это позволяет в дальнейшем менять треки в фоне.
         if (!this._unlocked) {
           this._unlocked = true;
-          const silent = new Howl({ src: ['data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIWFhYW5uYWFuYW5uYW5uYW5uYW5uYW5uYW5uYW5uYW5uYW5uYW5u//OEAAAAAAAAAAAAAAAAAAAAAAAAMGluZ2QAAAAcAAAABAAAASFycnJyc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nz//OEAAAAAAAAAAAAAAAAAAAAAAAATGF2YzU4Ljc2AAAAAAAAAAAAAAAAJAAAAAAAAAAAASCCOzuJAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAJAAAAAAAAAAAASCCOzuJAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'], html5: true, volume: 0 });
+          const silent = new Howl({ src: ['data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIWFhYW5uYWFuYW5uYW5uYW5uYW5uYW5uYW5uYW5uYW5uYW5u//OEAAAAAAAAAAAAAAAAAAAAAAAAMGluZ2QAAAAcAAAABAAAASFycnJyc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nz//OEAAAAAAAAAAAAAAAAAAAAAAAATGF2YzU4Ljc2AAAAAAAAAAAAAAAAJAAAAAAAAAAAASCCOzuJAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAJAAAAAAAAAAAASCCOzuJAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'], html5: true, volume: 0 });
           silent.play();
         }
       };
@@ -69,9 +70,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     initialize() { FavoritesV2.ensureMigrated(); }
 
     prepareContext() {
-      if (W.Howler?.ctx?.state === 'suspended') {
-        W.Howler.ctx.resume().catch(() => {});
-      }
+      if (W.Howler?.ctx?.state === 'suspended') W.Howler.ctx.resume().catch(() => {});
     }
 
     // --- Playlist Management ---
@@ -92,6 +91,9 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       }
 
       this.currentIndex = clamp(startIdx, 0, this.playlist.length - 1);
+
+      // Сброс счетчика ошибок при смене плейлиста
+      this._skipSession = { token: 0, count: 0, max: this.playlist.length };
 
       if (wasPlaying && opts.preservePosition && this.playlist[this.currentIndex]?.uid === this.getCurrentTrack()?.uid) {
          this._emit('onTrackChange', this.getCurrentTrack(), this.currentIndex);
@@ -116,16 +118,12 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
     play(idx, opts = {}) {
       this.prepareContext();
-
       if (idx != null) {
           if (idx !== this.currentIndex) return this.load(idx, opts);
-          // Restart current
           this.seek(0);
           if (!this.isPlaying() && this.sound) this.sound.play();
           return;
       }
-      
-      // Resume
       if (this.sound) {
         if (!this.isPlaying()) this.sound.play();
       } else if (this.currentIndex >= 0) {
@@ -154,7 +152,6 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     prev() {
       if (!this.playlist.length) return;
       if (this.getPosition() > 3) return this.seek(0);
-      
       if (this.shuffleMode && this.shuffleHistory.length) {
         return this.load(this.shuffleHistory.pop(), { autoPlay: true, dir: -1 });
       }
@@ -181,35 +178,47 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       const token = ++this._loadToken;
       this.currentIndex = index;
       
-      // Notify UI immediately about track change (even before audio loads)
+      // Сброс счетчика ошибок если это ручной выбор или новый трек успешный
+      if (!opts.isAutoSkip) this._skipSession = { token, count: 0, max: this.playlist.length };
+
       this._emit('onTrackChange', track, index);
 
       const om = getOfflineManager();
-      
-      // Resolve source
       const src = await resolvePlaybackSource({
         track, pq: this.qualityMode, cq: await om.getCacheQuality(), offlineMode: om.isOfflineMode()
       });
 
       if (token !== this._loadToken) return;
 
-      this._unload(true); // Stop previous
+      this._unload(true);
 
+      // Если нет источника (ни сети, ни кэша)
       if (!src.url) {
-        W.NotificationSystem?.warning('Нет доступа к треку');
-        // Auto-skip logic with delay to prevent CPU spin
+        // Проверка на бесконечный цикл
+        if (this._skipSession.count >= this._skipSession.max) {
+           W.NotificationSystem?.error('Нет доступных треков для воспроизведения');
+           this.stop(); // Единственный выход из цикла
+           return;
+        }
+
+        W.NotificationSystem?.warning('Нет доступа к треку, пропускаем...');
+        
         setTimeout(() => {
            if (token === this._loadToken) {
+             this._skipSession.count++;
              const nextIdx = (index + (opts.dir || 1) + this.playlist.length) % this.playlist.length;
-             if (nextIdx !== index) this.load(nextIdx, opts);
+             if (nextIdx !== index) this.load(nextIdx, { ...opts, isAutoSkip: true });
            }
-        }, 1000);
+        }, 500); // Быстрый пропуск
         return;
       }
 
+      // Успешная загрузка - сбрасываем счетчик
+      this._skipSession.count = 0;
+
       this.sound = new Howl({
         src: [src.url],
-        html5: true, // ✅ ALWAYS TRUE for iOS background audio
+        html5: true,
         volume: this.getVolume() / 100,
         format: ['mp3'],
         autoplay: !!opts.autoPlay,
@@ -235,22 +244,32 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
           if (token !== this._loadToken) return;
           this._stats.onEnded();
           this._emit('onEnd');
-          // Auto-next
           this.repeatMode ? this.play(this.currentIndex) : this.next();
         },
         onloaderror: (id, e) => {
            console.error('Load Error', e);
-           this._emit('onError', { msg: 'Load error', e });
-           if (token === this._loadToken) setTimeout(() => this.next(), 1000);
+           // Fallback при ошибке декодирования
+           if (token === this._loadToken) {
+             setTimeout(() => {
+                this._skipSession.count++;
+                this.next();
+             }, 1000);
+           }
         },
         onplayerror: (id, e) => {
-           console.warn('Play Error', e);
            this.sound?.once('unlock', () => this.sound?.play());
         }
       });
 
-      // Trigger prefetch for next track
-      om.enqueueAudioDownload({ uid: track.uid, quality: this.qualityMode, priority: 100, kind: 'playbackCache' });
+      // Ставим в очередь Playback Cache (3-трековое окно)
+      if (track.uid) {
+        om.enqueueAudioDownload({ 
+          uid: track.uid, 
+          quality: this.qualityMode, 
+          priority: 100, 
+          kind: 'playbackCache' 
+        });
+      }
     }
 
     _unload(silent) {
@@ -264,7 +283,6 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       if (!silent) this._emit('onStop');
     }
 
-    // --- Quality ---
     getQualityMode() { return this.qualityMode; }
     
     canToggleQualityForCurrentTrack() {
@@ -281,22 +299,35 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       if (this.isPlaying()) this.load(this.currentIndex, { autoPlay: true, resumePosition: this.getPosition() });
     }
 
-    // --- Favorites ---
     isFavorite(uid) { return FavoritesV2.readLikedSet().has(safeStr(uid)); }
 
     toggleFavorite(uid, opts = {}) {
       const u = safeStr(uid);
       let source = opts.source;
+      
+      // Определение контекста: если мы внутри альбома Избранное, то source = favorites
       if (!source) {
-         const isFavView = W.AlbumsManager?.getCurrentAlbum?.() === W.SPECIAL_FAVORITES_KEY;
+         const isFavView = W.AlbumsManager?.getPlayingAlbum?.() === W.SPECIAL_FAVORITES_KEY;
          source = isFavView ? 'favorites' : 'album';
       }
       
-      const res = FavoritesV2.toggle(u, { source });
+      const res = FavoritesV2.toggle(u, { source, albumKey: opts.albumKey });
       this._emitFav(u, res.liked, opts.albumKey);
 
+      // Правило STOP для Избранного:
+      // Если мы в режиме Избранного, сняли лайк с текущего трека, и это был ПОСЛЕДНИЙ активный трек -> STOP.
+      // Иначе -> NEXT.
       if (!res.liked && source === 'favorites' && W.AlbumsManager?.getPlayingAlbum?.() === W.SPECIAL_FAVORITES_KEY) {
-         if (safeStr(this.getCurrentTrack()?.uid) === u) this.next();
+         if (safeStr(this.getCurrentTrack()?.uid) === u) {
+            const state = this.getFavoritesState();
+            if (state.active.length === 0) {
+               this.stop(); // Единственный разрешенный STOP сценарий
+            } else {
+               // Переход на следующий АКТИВНЫЙ трек
+               // Так как текущий стал inactive, next() должен найти следующий доступный через PlaybackCache/Logic
+               this.next();
+            }
+         }
       }
       return res;
     }
@@ -336,7 +367,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       Object.values(refs).forEach(r => {
         const u = safeStr(r.uid);
         if(!u) return;
-        const sa = safeStr(r.sourceAlbum || getTrackByUid(u)?.sourceAlbum);
+        const sa = safeStr(r.sourceAlbum || r.albumKey || getTrackByUid(u)?.sourceAlbum);
         (liked.has(u) ? active : (r.inactiveAt ? inactive : [])).push({ uid: u, sourceAlbum: sa });
       });
       return { active, inactive };
