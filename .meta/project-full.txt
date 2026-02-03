@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-de6db9d6c1d0497278c71e24343d839c32f54399.idx
-│   │       ├── pack-de6db9d6c1d0497278c71e24343d839c32f54399.pack
-│   │       └── pack-de6db9d6c1d0497278c71e24343d839c32f54399.rev
+│   │       ├── pack-111a66585928551b7768278833428ea43f090764.idx
+│   │       ├── pack-111a66585928551b7768278833428ea43f090764.pack
+│   │       └── pack-111a66585928551b7768278833428ea43f090764.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 12:07:34 UTC
+Сгенерировано: 2026-02-03 12:08:29 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5624,8 +5624,7 @@ export const getPlaybackCache = () => PlaybackCache;
 
 //=================================================
 // FILE: /scripts/offline/track-resolver.js
-//=================================================
-// FILE: /scripts/offline/track-resolver.js
+// scripts/offline/track-resolver.js
 import { getAudioBlob, bytesByQuality, touchLocalAccess, getLocalMeta } from './cache-db.js';
 import { getTrackByUid } from '../app/track-registry.js';
 
@@ -5696,7 +5695,11 @@ export async function resolvePlaybackSource({ track, pq, cq, offlineMode }) {
     const src = track?.sources?.audio;
     const url = (pQual === 'lo') ? (src?.lo || track?.audio_low) : (src?.hi || track?.audio);
     const alt = (pQual === 'lo') ? (src?.hi || track?.audio) : (src?.lo || track?.audio_low);
-    if (url || alt) attempts.push({ type: 'net', url: sUrl(url || alt) });
+    
+    // Fallback на track.src, если специфичные поля пусты
+    const finalUrl = url || alt || track?.src;
+    
+    if (finalUrl) attempts.push({ type: 'net', url: sUrl(finalUrl) });
   }
 
   // C. Local Fallback
