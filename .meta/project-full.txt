@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2f93a86597d40998698c78b42e1b874b0f41bda7.idx
-│   │       ├── pack-2f93a86597d40998698c78b42e1b874b0f41bda7.pack
-│   │       └── pack-2f93a86597d40998698c78b42e1b874b0f41bda7.rev
+│   │       ├── pack-a522c24e6c63b653ed591ae11f2a82c15125ef92.idx
+│   │       ├── pack-a522c24e6c63b653ed591ae11f2a82c15125ef92.pack
+│   │       └── pack-a522c24e6c63b653ed591ae11f2a82c15125ef92.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 09:56:24 UTC
+Сгенерировано: 2026-02-03 10:03:48 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4261,191 +4261,73 @@ if (typeof window !== 'undefined') {
 //=================================================
 // FILE: /scripts/core/favorites-v2.js
 // scripts/core/favorites-v2.js
-const W = window;
+// Optimized Favorites Core v2.2
+const LS = localStorage, J = JSON;
+const K_L = "likedTrackUids:v2", K_R = "favoritesRefsByUid:v2";
 
-const LS = Object.freeze({
-  // v2
-  LIKED_UIDS_V2: "likedTrackUids:v2", // string[]
-  REFS_BY_UID_V2: "favoritesRefsByUid:v2", // { [uid]: { uid, addedAt, inactiveAt|null } }
+const sStr = (v) => String(v || '').trim();
+const get = (k, d) => { try { return J.parse(LS.getItem(k)) || d } catch { return d } };
+const set = (k, v) => LS.setItem(k, J.stringify(v));
+const now = Date.now;
 
-  // legacy v1
-  LIKED_BY_ALBUM_V1: "likedTrackUids:v1", // { [albumKey]: uid[] }
-  REFS_V1: "favoritesAlbumRefsByUid:v1", // Array<{a, uid}>
-});
-
-function safeStr(x) {
-  return String(x ?? "").trim();
-}
-
-function readJson(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return fallback;
-    return JSON.parse(raw);
-  } catch {
-    return fallback;
-  }
-}
-
-function writeJson(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
-}
-
-function nowTs() {
-  return Date.now();
-}
-
-function uniqStrings(arr) {
-  const out = [];
-  const seen = new Set();
-  for (const x of arr || []) {
-    const s = safeStr(x);
-    if (!s || seen.has(s)) continue;
-    seen.add(s);
-    out.push(s);
-  }
-  return out;
-}
-
-export const FavoritesV2 = {
-  keys: LS,
+const F2 = {
+  keys: { LIKED_UIDS_V2: K_L, REFS_BY_UID_V2: K_R },
 
   ensureMigrated() {
-    const hasLikedV2 = !!localStorage.getItem(LS.LIKED_UIDS_V2);
-    const hasRefsV2 = !!localStorage.getItem(LS.REFS_BY_UID_V2);
-    if (hasLikedV2 && hasRefsV2) return;
-
-    // liked v1 -> global liked set
-    const likedByAlbum = readJson(LS.LIKED_BY_ALBUM_V1, {});
-    const likedSet = new Set();
-    if (likedByAlbum && typeof likedByAlbum === "object") {
-      for (const uids of Object.values(likedByAlbum)) {
-        for (const uid of Array.isArray(uids) ? uids : []) {
-          const u = safeStr(uid);
-          if (u) likedSet.add(u);
-        }
-      }
-    }
-
-    // refs v1 -> refsByUid v2
-    const refsV1 = readJson(LS.REFS_V1, []);
-    const refsByUid = {};
-    if (Array.isArray(refsV1)) {
-      for (const it of refsV1) {
-        const u = safeStr(it?.uid);
-        if (!u) continue;
-        if (!refsByUid[u]) refsByUid[u] = { uid: u, addedAt: nowTs(), inactiveAt: null };
-      }
-    }
-
-    // ensure every liked has a ref
-    for (const u of likedSet) {
-      if (!refsByUid[u]) refsByUid[u] = { uid: u, addedAt: nowTs(), inactiveAt: null };
-      refsByUid[u].inactiveAt = null;
-    }
-
-    writeJson(LS.LIKED_UIDS_V2, Array.from(likedSet));
-    writeJson(LS.REFS_BY_UID_V2, refsByUid);
-
-    // If only one existed, still ensure both exist
-    if (!hasLikedV2) writeJson(LS.LIKED_UIDS_V2, Array.from(likedSet));
-    if (!hasRefsV2) writeJson(LS.REFS_BY_UID_V2, refsByUid);
-
-    // ✅ Финальная чистка: v1 больше не держим "вживую".
-    // Удаляем legacy ключи ПОСЛЕ успешной записи v2 (best-effort).
-    try { localStorage.removeItem(LS.LIKED_BY_ALBUM_V1); } catch {}
-    try { localStorage.removeItem(LS.REFS_V1); } catch {}
+    if (LS.getItem(K_L)) return; // Fast check
+    try {
+      const l = new Set(), r = {};
+      const add = (u) => { if(u=sStr(u)) { l.add(u); if(!r[u]) r[u] = { uid:u, addedAt:now(), inactiveAt:null }; } };
+      
+      // One-time migration v1 -> v2
+      const v1L = get("likedTrackUids:v1", {}), v1R = get("favoritesAlbumRefsByUid:v1", []);
+      Object.values(v1L).flat().forEach(add);
+      v1R.forEach(x => add(x?.uid));
+      
+      set(K_L, [...l]); set(K_R, r);
+      LS.removeItem("likedTrackUids:v1"); LS.removeItem("favoritesAlbumRefsByUid:v1");
+    } catch (e) { console.warn('Mig err', e); }
   },
 
-  readLikedSet() {
-    const arr = readJson(LS.LIKED_UIDS_V2, []);
-    return new Set(uniqStrings(Array.isArray(arr) ? arr : []));
-  },
+  readLikedSet: () => new Set(get(K_L, [])),
+  readRefsByUid: () => get(K_R, {}),
+  writeLikedSet: (s) => set(K_L, [...s]), // Compat
+  writeRefsByUid: (o) => set(K_R, o),     // Compat
 
-  writeLikedSet(set) {
-    writeJson(LS.LIKED_UIDS_V2, Array.from(set || []));
-  },
-
-  readRefsByUid() {
-    const obj = readJson(LS.REFS_BY_UID_V2, {});
-    const out = {};
-    if (obj && typeof obj === "object") {
-      for (const [uid, ref] of Object.entries(obj)) {
-        const u = safeStr(uid);
-        if (!u) continue;
-        out[u] = {
-          uid: u,
-          addedAt: Number(ref?.addedAt) || 0,
-          inactiveAt: ref?.inactiveAt ? Number(ref.inactiveAt) : null,
-        };
-      }
-    }
-    return out;
-  },
-
-  writeRefsByUid(refsByUid) {
-    writeJson(LS.REFS_BY_UID_V2, refsByUid || {});
-  },
-
-  /**
-   * Toggle like with TZ rules:
-   * - source='album': unlike removes ref (no inactive row)
-   * - source='favorites': unlike keeps ref and marks inactiveAt
-   */
   toggle(uid, { source = "album" } = {}) {
-    const u = safeStr(uid);
-    if (!u) return { liked: false };
-
     this.ensureMigrated();
+    const u = sStr(uid); if (!u) return { liked: false };
+    
+    const l = this.readLikedSet(), r = this.readRefsByUid();
+    const next = !l.has(u);
 
-    const liked = this.readLikedSet();
-    const refs = this.readRefsByUid();
-
-    const isLiked = liked.has(u);
-    const nextLiked = !isLiked;
-
-    if (nextLiked) {
-      liked.add(u);
-      const ref = refs[u] || { uid: u, addedAt: nowTs(), inactiveAt: null };
-      if (!ref.addedAt) ref.addedAt = nowTs();
-      ref.inactiveAt = null;
-      refs[u] = ref;
+    if (next) {
+      l.add(u);
+      r[u] = { uid: u, addedAt: r[u]?.addedAt || now(), inactiveAt: null };
     } else {
-      liked.delete(u);
-
-      if (source === "favorites") {
-        const ref = refs[u] || { uid: u, addedAt: nowTs(), inactiveAt: null };
-        if (!ref.addedAt) ref.addedAt = nowTs();
-        ref.inactiveAt = nowTs();
-        refs[u] = ref;
-      } else {
-        // album
-        delete refs[u];
-      }
+      l.delete(u);
+      // ТЗ: В окне избранного (source='favorites') только помечаем как inactive (soft delete).
+      // В альбоме (source='album') удаляем полностью (hard delete).
+      if (source === "favorites") r[u] = { ...r[u], uid: u, inactiveAt: now() };
+      else delete r[u];
     }
 
-    this.writeLikedSet(liked);
-    this.writeRefsByUid(refs);
-
-    return { liked: nextLiked };
+    set(K_L, [...l]); set(K_R, r);
+    return { liked: next };
   },
 
   removeRef(uid) {
-    const u = safeStr(uid);
-    if (!u) return false;
-
     this.ensureMigrated();
-
-    const refs = this.readRefsByUid();
-    if (!refs[u]) return false;
-
-    delete refs[u];
-    this.writeRefsByUid(refs);
+    const u = sStr(uid), r = this.readRefsByUid();
+    if (!r[u]) return false;
+    delete r[u];
+    set(K_R, r);
     return true;
-  },
+  }
 };
 
-export default FavoritesV2;
+export const FavoritesV2 = F2;
+export default F2;
 
 //=================================================
 // FILE: /scripts/core/utils.js
