@@ -299,6 +299,10 @@ class AlbumsManager {
     
     const ctr = $('track-list');
     ctr.addEventListener('click', (e) => {
+      // Глобальный Debounce для списка треков (300мс) - защита от случайного "двойного тапа"
+      if (Date.now() - this._clickGuard < 300) return;
+      this._clickGuard = Date.now();
+
       const trk = e.target.closest('.track');
       if (!trk || !ctr.contains(trk)) return;
 
