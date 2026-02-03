@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-153564c183598980d43bfe8093ef368573990dc3.idx
-│   │       ├── pack-153564c183598980d43bfe8093ef368573990dc3.pack
-│   │       └── pack-153564c183598980d43bfe8093ef368573990dc3.rev
+│   │       ├── pack-97e4439c11362603266ec4308f58189735d9e073.idx
+│   │       ├── pack-97e4439c11362603266ec4308f58189735d9e073.pack
+│   │       └── pack-97e4439c11362603266ec4308f58189735d9e073.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 10:18:09 UTC
+Сгенерировано: 2026-02-03 10:28:07 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2452,138 +2452,68 @@ export default NavigationManager;
 
 //=================================================
 // FILE: /scripts/app/offline-ui-bootstrap.js
-// scripts/app/offline-ui-bootstrap.js
-// Единая offline-платформа (ESM).
-// По ТЗ_Нью: кнопка OFFLINE всегда открывает модалку, toggle убран.
-// НЕ трогаем воспроизведение (инвариант I1).
-
 import { OfflineManager } from '../offline/offline-manager.js';
 import { openOfflineModal } from '../ui/offline-modal.js';
 
-if (!window.OfflineUI || typeof window.OfflineUI !== 'object') {
-  window.OfflineUI = { offlineManager: null };
-}
+// Singleton instance holder
+const UI = window.OfflineUI = window.OfflineUI || { offlineManager: new OfflineManager() };
+const KEY_ALERT = 'offline:alert:v1';
 
-export const OfflineUI = window.OfflineUI;
-
-const ALERT_KEY = 'offline:alert:v1';
-
-function readAlertFlag() {
-  // { on, ts, reason } or null
-  const j = window.Utils?.lsGetJson ? window.Utils.lsGetJson(ALERT_KEY, null) : null;
-  return !!j?.on;
-}
-
-function ensureAlertBadge(btn) {
-  if (!btn) return null;
-
-  let badge = document.getElementById('offline-alert-badge');
-  if (badge) return badge;
-
-  badge = document.createElement('span');
-  badge.id = 'offline-alert-badge';
-  badge.textContent = '!';
-  badge.style.display = 'none';
-  badge.style.marginRight = '8px';
-  badge.style.fontWeight = '900';
-  badge.style.color = '#ffcc00';
-  badge.style.cursor = 'pointer';
-  badge.title = 'Есть треки для обновления';
-
-  btn.parentNode.insertBefore(badge, btn);
-
-  const on = window.Utils?.dom?.on || ((el, ev, fn, opts) => {
-    if (!el) return () => {};
-    el.addEventListener(ev, fn, opts);
-    return () => el.removeEventListener(ev, fn, opts);
-  });
-
-  on(badge, 'click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    window.NotificationSystem?.info('Есть треки для обновления', 6000); // x2 длительности
-  });
-
-  return badge;
-}
-
-function attachOfflineAlertIndicator() {
-  const U = window.Utils;
-  const btn = U?.dom?.byId ? U.dom.byId('offline-btn') : document.getElementById('offline-btn');
-  if (!btn) return;
-
-  const badge = ensureAlertBadge(btn);
-  if (!badge) return;
-
-  const render = () => {
-    badge.style.display = readAlertFlag() ? '' : 'none';
-  };
-
-  window.addEventListener('offline:uiChanged', render);
-  render();
-}
-
-function setOfflineBtnUI() {
-  const U = window.Utils;
-  const btn = U?.dom?.byId ? U.dom.byId('offline-btn') : document.getElementById('offline-btn');
-  if (!btn) return;
-
-  const mgr = window.OfflineUI?.offlineManager;
-  const isOffline = !!mgr?.isOfflineMode?.();
-
-  btn.textContent = 'OFFLINE';
-  btn.classList.toggle('offline', isOffline);
-  btn.classList.toggle('online', !isOffline);
-  btn.classList.toggle('alert', readAlertFlag());
-}
+// Helpers
+const $ = (id) => document.getElementById(id);
+const getAlert = () => { try { return JSON.parse(localStorage.getItem(KEY_ALERT)); } catch { return null; } };
 
 export function attachOfflineUI() {
-  const U = window.Utils;
+  const btn = $('offline-btn');
+  if (!btn) return;
 
-  if (window.OfflineUI && window.OfflineUI.offlineManager) {
-    attachOfflineAlertIndicator();
-    setOfflineBtnUI();
-    return;
+  // 1. Badge Injection (Lazy & Fast)
+  // ТЗ: Индикатор “!” рисуется рядом с кнопкой (слева).
+  if (!$('offline-alert-badge')) {
+    btn.insertAdjacentHTML('beforebegin', 
+      `<span id="offline-alert-badge" style="display:none;margin-right:8px;font-weight:900;color:#ffcc00;cursor:pointer;font-size:18px;line-height:1" title="Есть треки для обновления">!</span>`
+    );
+  }
+  const badge = $('offline-alert-badge');
+  if (badge) {
+    badge.onclick = (e) => { 
+      e.stopPropagation(); 
+      // ТЗ: toast x2 длительности
+      window.NotificationSystem?.info('Есть треки для обновления', 6000); 
+    };
   }
 
-  const mgr = new OfflineManager();
-  mgr.initialize();
+  // 2. Unified State Sync
+  const update = () => {
+    const mgr = UI.offlineManager;
+    const isOff = mgr.isOfflineMode();
+    const hasAlert = !!getAlert()?.on;
 
-  if (!window.OfflineUI) window.OfflineUI = {};
-  window.OfflineUI.offlineManager = mgr;
-  OfflineUI.offlineManager = mgr;
+    btn.textContent = 'OFFLINE';
+    // Управление классами для CSS (styles/main.css: .offline-btn.offline / .online)
+    btn.className = `offline-btn ${isOff ? 'offline' : 'online'} ${hasAlert ? 'alert' : ''}`;
+    
+    if (badge) badge.style.display = hasAlert ? 'inline-block' : 'none';
+  };
 
-  const btn = U?.dom?.byId ? U.dom.byId('offline-btn') : document.getElementById('offline-btn');
-
-  if (btn) {
-    const on = U?.dom?.on || ((el, ev, fn, opts) => {
-      if (!el) return () => {};
-      el.addEventListener(ev, fn, opts);
-      return () => el.removeEventListener(ev, fn, opts);
-    });
-
-    on(btn, 'click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      openOfflineModal();
-    });
-  }
-
-  attachOfflineAlertIndicator();
-  setOfflineBtnUI();
-
-  window.addEventListener('offline:uiChanged', () => setOfflineBtnUI());
-
-  mgr.on('progress', (ev) => {
-    if (ev?.phase === 'cqChanged' || ev?.phase === 'cloudSettingsChanged') {
-      setOfflineBtnUI();
-    }
+  // 3. Bindings
+  btn.onclick = (e) => { e.preventDefault(); e.stopPropagation(); openOfflineModal(); };
+  
+  // React to global UI changes and specific manager progress
+  const refresh = () => requestAnimationFrame(update);
+  window.addEventListener('offline:uiChanged', refresh);
+  
+  const mgr = UI.offlineManager;
+  mgr.on('progress', (e) => { 
+    if (e?.phase === 'cqChanged' || e?.phase === 'cloudSettingsChanged') refresh(); 
   });
+
+  // 4. Boot
+  mgr.initialize().then(refresh);
+  refresh();
 }
 
-export function getOfflineManager() {
-  return window.OfflineUI?.offlineManager || null;
-}
+export const getOfflineManager = () => UI.offlineManager;
 
 //=================================================
 // FILE: /scripts/app/playback-cache-bootstrap.js
