@@ -47,10 +47,21 @@ const STATIC_SET = new Set(STATIC_ASSETS.map(norm));
 
 // --- Lifecycle ---
 
+// Optimized Install: Best-effort caching
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CORE_CACHE)
-    .then(c => c.addAll(STATIC_ASSETS))
-    .then(() => self.skipWaiting()));
+  e.waitUntil(
+    caches.open(CORE_CACHE).then(async (cache) => {
+      // Пытаемся кэшировать всё, но не падаем если один файл 404
+      const promises = STATIC_ASSETS.map(url => 
+        fetch(url).then(res => {
+          if (res.ok) return cache.put(url, res);
+          console.warn('SW: Failed to cache', url);
+        }).catch(err => console.warn('SW: Fetch error', url, err))
+      );
+      await Promise.all(promises);
+      return self.skipWaiting();
+    })
+  );
 });
 
 self.addEventListener('activate', (e) => {
