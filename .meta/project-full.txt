@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a95b68f52f5a17d8e504211e7f1890f6fad2505a.idx
-│   │       ├── pack-a95b68f52f5a17d8e504211e7f1890f6fad2505a.pack
-│   │       └── pack-a95b68f52f5a17d8e504211e7f1890f6fad2505a.rev
+│   │       ├── pack-74898f7227e5b36656fda6d8fdb79c88a100ac6c.idx
+│   │       ├── pack-74898f7227e5b36656fda6d8fdb79c88a100ac6c.pack
+│   │       └── pack-74898f7227e5b36656fda6d8fdb79c88a100ac6c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 11:05:28 UTC
+Сгенерировано: 2026-02-03 11:21:58 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8527,16 +8527,22 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       const track = this.playlist[index];
       if (!track) return;
 
+      // 1. Фиксируем токен, но НЕ выгружаем предыдущий звук сразу (чтобы не терять AudioContext)
       const token = ++this._loadToken;
-      this._unload(true);
       this.currentIndex = index;
 
       const om = getOfflineManager();
+      
+      // 2. Асинхронно ищем источник. Предыдущий трек может доигрывать хвост или быть на паузе.
       const src = await resolvePlaybackSource({
         track, pq: this.qualityMode, cq: await om.getCacheQuality(), offlineMode: om.isOfflineMode()
       });
 
+      // 3. Проверка: не сменили ли трек, пока мы искали
       if (token !== this._loadToken) return;
+
+      // 4. Только теперь выгружаем старый инстанс
+      this._unload(true);
 
       if (!src.url) {
         W.NotificationSystem?.warning('Нет доступа к треку (офлайн)');
