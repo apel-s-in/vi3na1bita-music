@@ -1,5 +1,4 @@
-import { cleanUpOrphanedCache } from '../offline/cache-db.js';
-
+// cleanUpOrphanedCache удален, так как очисткой теперь занимается OfflineManager
 let _tracks = [];
 let _byUid = new Map();
 let _fuse = null; // Если используешь поиск fuse.js, иначе можно убрать
