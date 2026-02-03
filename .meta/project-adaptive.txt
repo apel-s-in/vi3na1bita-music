@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-985869a10ad57eadb02fbda341d6efd2da6bf9be.idx
-│   │       ├── pack-985869a10ad57eadb02fbda341d6efd2da6bf9be.pack
-│   │       └── pack-985869a10ad57eadb02fbda341d6efd2da6bf9be.rev
+│   │       ├── pack-b23fb4bc4aa7618ffd2e9358fc55ebc196c260c6.idx
+│   │       ├── pack-b23fb4bc4aa7618ffd2e9358fc55ebc196c260c6.pack
+│   │       └── pack-b23fb4bc4aa7618ffd2e9358fc55ebc196c260c6.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 10:38:22 UTC
+Сгенерировано: 2026-02-03 10:39:36 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5126,7 +5126,10 @@ export class OfflineManager {
     await ensureDbReady();
     this._checkExpiredCloud();
     setInterval(() => this._checkExpiredCloud(), 3600000); // 1h
-    setTimeout(() => this.refreshNeedsAggregates({ force: true }), 3000);
+    setTimeout(() => {
+      this._enforceEvictionLimit(); // Чистим старый кэш при старте
+      this.refreshNeedsAggregates({ force: true });
+    }, 3000);
   }
   on(event, cb) {
     if (event === 'progress') { this._subs.add(cb); this.queue.subscribe((e) => cb({ phase: 'queue_' + e.event, ...e.data })); }
