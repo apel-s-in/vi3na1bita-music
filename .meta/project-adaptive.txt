@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a8668a167663800f4d4f87b600528233c6111dc4.idx
-│   │       ├── pack-a8668a167663800f4d4f87b600528233c6111dc4.pack
-│   │       └── pack-a8668a167663800f4d4f87b600528233c6111dc4.rev
+│   │       ├── pack-c49ff8a24c434b53d6b290215f5c6324113a41ca.idx
+│   │       ├── pack-c49ff8a24c434b53d6b290215f5c6324113a41ca.pack
+│   │       └── pack-c49ff8a24c434b53d6b290215f5c6324113a41ca.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 18:39:04 UTC
+Сгенерировано: 2026-02-03 18:39:40 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2534,10 +2534,6 @@ export function attachPlaybackCache() {
   const ls = () => localStorage.getItem(LS_KEY) === '1';
 
   const Policy = {
-    /**
-     * Применяет политику воспроизведения (Favorites Only + Shuffle).
-     * Работает строго на сравнении UID.
-     */
     apply: () => {
       const core = pc();
       if (!core) return;
@@ -2545,67 +2541,53 @@ export function attachPlaybackCache() {
       const alb = W.AlbumsManager?.getPlayingAlbum();
       if (!alb) return;
 
-      // 1. Логика фильтрации
       const isFavAlbum = alb === FAV_KEY;
       const needFilter = isFavAlbum || ls();
 
-      // 2. Исходный список (Snaphost оригинала)
       const source = core.originalPlaylist || [];
       if (!source.length) return;
 
       let target = source;
 
-      // 3. Применение фильтра
       if (needFilter) {
-        // Получаем UID-ы лайкнутых треков для этого альбома
-        // Для спец. альбома __favorites__ лайки проверяются глобально, 
-        // но здесь мы полагаемся на то, что в originalPlaylist уже лежат правильные треки,
-        // и нам нужно отфильтровать только inactive.
-        
         if (isFavAlbum) {
-           // В альбоме "Избранное" оригинальный плейлист уже состоит из избранных, 
-           // но некоторые могут стать inactive в процессе.
-           // Проверяем актуальный статус лайка через ядро.
            target = source.filter(t => t.uid && core.isFavorite(t.uid));
         } else {
-           // Обычный альбом + режим F
            const likedUids = new Set(core.getLikedUidsForAlbum(alb));
            target = source.filter(t => t.uid && likedUids.has(t.uid));
         }
 
-        // Если пусто
+        // Если отфильтрованный список пуст
         if (!target.length && !isFavAlbum) {
+          // Не сбрасываем флаг тихо, просто уведомляем и не меняем плейлист
+          W.NotificationSystem?.info('Нет избранных треков для фильтрации');
+          // Возвращаемся к полному списку, но флаг в UI можно оставить или выключить явно
+          // В данном случае безопаснее ничего не делать с плеером, 
+          // либо выключить режим F без рекурсии:
           localStorage.setItem(LS_KEY, '0');
-          W.NotificationSystem?.info('Отметьте трек ⭐');
           W.PlayerUI?.updateFavoritesBtn?.();
-          return Policy.apply(); // Рестарт без фильтра
+          return; 
         }
       }
 
-      // 4. Сохранение текущего трека
       const cur = core.getCurrentTrack();
       const curUid = cur?.uid;
       
       let newIdx = target.findIndex(t => t.uid === curUid);
       const trackLost = newIdx === -1;
 
-      // Если текущий трек выпал из списка (сняли лайк), ищем ближайший
       if (trackLost) {
-        // Пытаемся найти трек, который был после текущего в оригинальном списке
         const origIdx = source.findIndex(t => t.uid === curUid);
         if (origIdx >= 0) {
-            // Ищем первый доступный трек после выпавшего
             for(let i = origIdx + 1; i < source.length; i++) {
                 const nextUid = source[i].uid;
                 newIdx = target.findIndex(t => t.uid === nextUid);
                 if (newIdx !== -1) break;
             }
         }
-        // Если все еще -1, берем 0
         if (newIdx === -1) newIdx = 0;
       }
 
-      // 5. Применение в ядро
       const shuffle = core.isShuffle();
       
       core.setPlaylist(target, Math.max(0, newIdx), {}, {
@@ -2614,12 +2596,8 @@ export function attachPlaybackCache() {
         preservePosition: !trackLost
       });
 
-      // 6. Shuffle если был включен
-      if (shuffle) {
-        core.shufflePlaylist(); 
-      }
+      if (shuffle) core.shufflePlaylist(); 
 
-      // 7. Обновление UI
       W.PlayerUI?.updateAvailableTracksForPlayback?.();
       W.PlayerUI?.updatePlaylistFiltering?.();
     }
@@ -2628,7 +2606,6 @@ export function attachPlaybackCache() {
   const bind = () => {
     if (pc()) {
       pc().onFavoritesChanged(() => {
-        // Автоматическая перестройка очереди при лайке/дизлайке
         if (ls() || W.AlbumsManager?.getPlayingAlbum() === FAV_KEY) {
           Policy.apply();
         }
