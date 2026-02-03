@@ -7,7 +7,9 @@ import {
 } from './cache-db.js';
 import { getTrackByUid, getAllTracks } from '../app/track-registry.js';
 import { getNetPolicy, isAllowedByNetPolicy } from './net-policy.js';
-import { Utils } from '../core/utils.js';
+
+// Utils берем из глобальной области, так как core/utils.js не является модулем
+const Utils = window.Utils; 
 
 const LS = { MODE: 'offlineMode:v1', CQ: 'offline:cacheQuality:v1', PINNED: 'pinnedUids:v1', CLOUD_N: 'offline:cloudN:v1', CLOUD_D: 'offline:cloudD:v1', LIMIT: 'offline:cacheLimitMB:v1', ALERT: 'offline:alert:v1' };
 const MB = 1024 * 1024;
