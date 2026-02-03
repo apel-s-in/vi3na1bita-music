@@ -1,5 +1,5 @@
 // scripts/ui/favorites.js
-// FavoritesUI: UI Model provider (Optimized v2.1)
+// FavoritesUI: UI Model provider (Optimized v2.2)
 (function (W) {
   'use strict';
 
@@ -67,10 +67,15 @@
       const meta = W.TrackRegistry?.getTrackByUid(uid);
       const active = isLiked(uid, a);
       
+      // Подготовка sources для резолвера
+      const hi = (active && meta) ? trim(meta.urlHi || meta.audio) : null;
+      const lo = (active && meta) ? trim(meta.urlLo || meta.audio_low) : null;
+
       return {
         title: meta?.title || 'Трек',
         uid,
-        audio: (active && meta) ? (trim(meta.urlHi || meta.audio) || trim(meta.urlLo || meta.audio_low)) : null,
+        audio: hi || lo,
+        sources: (hi || lo) ? { audio: { hi, lo } } : null,
         lyrics: (active && meta) ? trim(meta.lyrics) : null,
         fulltext: (active && meta) ? trim(meta.fulltext) : null,
         // UI Props
