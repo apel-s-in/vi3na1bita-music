@@ -1,7 +1,8 @@
 import { getTrackByUid } from '../app/track-registry.js';
 import { isAllowedByNetPolicy, getNetPolicy } from './net-policy.js';
 import { markLocalTransient } from './cache-db.js';
-import { Utils } from '../core/utils.js';
+
+const Utils = window.Utils;
 
 // ТЗ 14.2: Приоритеты (P0 > P1)
 const P_CUR = 100;
