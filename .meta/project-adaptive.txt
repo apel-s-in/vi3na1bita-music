@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8bebabef3e301a13074baa6e2b4fcfdea147afe0.idx
-│   │       ├── pack-8bebabef3e301a13074baa6e2b4fcfdea147afe0.pack
-│   │       └── pack-8bebabef3e301a13074baa6e2b4fcfdea147afe0.rev
+│   │       ├── pack-80a9d179276933c3fd10acc276a8742c87965b99.idx
+│   │       ├── pack-80a9d179276933c3fd10acc276a8742c87965b99.pack
+│   │       └── pack-80a9d179276933c3fd10acc276a8742c87965b99.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 12:47:51 UTC
+Сгенерировано: 2026-02-03 12:48:47 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8638,11 +8638,16 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
     toggleFavorite(uid, opts = {}) {
       const u = safeStr(uid);
-      const isFavView = W.AlbumsManager?.getCurrentAlbum?.() === W.SPECIAL_FAVORITES_KEY;
       
-      // FIX: Если мы визуально в Избранном, всегда используем 'favorites' (soft remove),
-      // игнорируя флаг fromAlbum от общего обработчика. В остальных случаях (обычный альбом) - 'album' (hard remove).
-      const source = isFavView ? 'favorites' : 'album';
+      // Определяем контекст удаления:
+      // 1. Если явно передано opts.source - используем его.
+      // 2. Если визуально открыт альбом "Избранное" - используем 'favorites' (Soft Delete).
+      // 3. Иначе (обычный альбом) - используем 'album' (Hard Delete).
+      let source = opts.source;
+      if (!source) {
+         const isFavView = W.AlbumsManager?.getCurrentAlbum?.() === W.SPECIAL_FAVORITES_KEY;
+         source = isFavView ? 'favorites' : 'album';
+      }
       
       const res = FavoritesV2.toggle(u, { source });
       this._emitFav(u, res.liked, opts.albumKey);
