@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d1fb3cca9695746f760cb6ed7441ad3a7b7ecaaf.idx
-│   │       ├── pack-d1fb3cca9695746f760cb6ed7441ad3a7b7ecaaf.pack
-│   │       └── pack-d1fb3cca9695746f760cb6ed7441ad3a7b7ecaaf.rev
+│   │       ├── pack-8bebabef3e301a13074baa6e2b4fcfdea147afe0.idx
+│   │       ├── pack-8bebabef3e301a13074baa6e2b4fcfdea147afe0.pack
+│   │       └── pack-8bebabef3e301a13074baa6e2b4fcfdea147afe0.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 12:47:30 UTC
+Сгенерировано: 2026-02-03 12:47:51 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1936,10 +1936,6 @@ export function renderAlbumIcons(items = [], opts = {}) {
 
 //=================================================
 // FILE: /scripts/app/albums/specials.js
-// scripts/app/albums/specials.js
-// Спец-альбомы: __favorites__ и __reliz__ (news)
-// Важно: никаких автоплеев из onFavoritesChanged, только UI refresh.
-
 import { $ } from '../utils/app-utils.js';
 import { renderFavoritesList, renderFavoritesEmpty, bindFavoritesList } from '../../ui/favorites-view.js';
 import { buildFavoritesModel } from '../../ui/favorites.js';
@@ -1949,10 +1945,12 @@ const FAV = window.SPECIAL_FAVORITES_KEY || '__favorites__';
 const NEWS = window.SPECIAL_RELIZ_KEY || '__reliz__';
 const LOGO = 'img/logo.png';
 
+// --- Favorites Logic ---
+
 export async function loadFavoritesAlbum(ctx) {
   ctx.renderAlbumTitle('⭐⭐⭐ ИЗБРАННОЕ ⭐⭐⭐', 'fav');
 
-  // ✅ Жёсткое правило проекта
+  // Гарантируем готовность реестра треков (UID lookup)
   try { await window.ensureTrackRegistryReadyForFavorites?.(); } catch {}
 
   const coverWrap = $('cover-wrap');
@@ -1961,56 +1959,63 @@ export async function loadFavoritesAlbum(ctx) {
   const container = $('track-list');
   if (!container) return;
 
+  // Функция получения модели данных
   const getModel = () => {
-    try {
-      const m = buildFavoritesModel();
-      return Array.isArray(m) ? m : [];
-    } catch {
-      return [];
-    }
+    try { return buildFavoritesModel() || []; } catch { return []; }
   };
 
+  // Функция перерисовки
   const rebuild = async () => {
     const model = getModel();
     if (!model.length) renderFavoritesEmpty(container);
     else renderFavoritesList(container, model);
   };
 
+  // Биндинг событий (один раз)
   if (!ctx._favoritesViewBound) {
     ctx._favoritesViewBound = true;
 
     bindFavoritesList(container, {
       getModel,
 
+      // Клик по звезде ВНУТРИ избранного -> source='favorites' (Soft Delete / Inactive)
       onStarClick: async ({ uid, albumKey }) => {
-        try { await window.ensureTrackRegistryReadyForFavorites?.(); } catch {}
-        window.playerCore?.toggleFavorite?.(uid, { fromAlbum: false, albumKey });
+        window.playerCore?.toggleFavorite?.(uid, { source: 'favorites', albumKey });
       },
 
+      // Клик по активному треку -> Воспроизведение
       onActiveRowClick: async ({ uid }) => {
         const model = getModel();
-        const active = model.filter((it) => it && it.__active && it.audio);
-
-        const activeIndex = active.findIndex((it) => String(it?.uid || '').trim() === String(uid || '').trim());
-        if (activeIndex >= 0) await ctx.ensureFavoritesPlayback(activeIndex);
+        // Фильтруем только активные для плейлиста
+        const activeList = model.filter((it) => it && it.__active && it.audio);
+        const idx = activeList.findIndex((it) => String(it?.__uid || '').trim() === String(uid || '').trim());
+        
+        if (idx >= 0) await ensureFavoritesPlayback(ctx, activeList, idx);
       },
 
+      // Клик по неактивному (серому) треку -> Модалка восстановления/удаления
       onInactiveRowClick: ({ uid, title }) => {
         window.playerCore?.showInactiveFavoriteModal?.({
           uid,
           title,
-          onDeleted: async () => window.PlayerUI?.updateAvailableTracksForPlayback?.(),
+          onDeleted: async () => {
+            // После удаления обновляем UI и доступность треков
+            await rebuild();
+            window.PlayerUI?.updateAvailableTracksForPlayback?.();
+          },
         });
       },
     });
 
+    // Реакция на изменения (из любой части приложения)
     const pc = window.playerCore;
     if (pc?.onFavoritesChanged) {
       pc.onFavoritesChanged(async () => {
-        if (ctx.currentAlbum !== FAV) return;
-        await rebuild();
-        window.PlayerUI?.updateAvailableTracksForPlayback?.();
-        // ⚠️ ВАЖНО: никаких play/stop здесь.
+        // Обновляем список, только если мы визуально находимся в Избранном
+        if (ctx.getCurrentAlbum() === FAV) {
+          await rebuild();
+          window.PlayerUI?.updateAvailableTracksForPlayback?.();
+        }
       });
     }
   }
@@ -2018,60 +2023,62 @@ export async function loadFavoritesAlbum(ctx) {
   await rebuild();
 }
 
-export async function ensureFavoritesPlayback(ctx, activeIndex) {
-  // ✅ На случай гонок: гарантируем TrackRegistry ДО сборки модели (urls/metadata)
-  try { await window.ensureTrackRegistryReadyForFavorites?.(); } catch {}
-
+// Логика запуска воспроизведения из Избранного
+export async function ensureFavoritesPlayback(ctx, activeList, activeIndex) {
   // Anti-double-play guard
   const now = Date.now();
-  if (ctx._favPlayGuard && (now - (ctx._favPlayGuard.ts || 0)) < 250) return;
-  if (ctx._favPlayGuard) ctx._favPlayGuard.ts = now;
+  if (ctx._favPlayGuard && (now - (ctx._favPlayGuard.ts || 0)) < 300) return;
+  ctx._favPlayGuard = { ts: now };
 
-  let model = null;
-  try { model = buildFavoritesModel(); } catch {}
-  const list = Array.isArray(model) ? model : [];
-  if (!list.length) return void window.NotificationSystem?.warning('Нет избранных треков');
+  if (!activeList?.length) return void window.NotificationSystem?.warning('Нет доступных треков');
 
-  const active = list.filter((it) => it && it.__active && it.audio);
-  if (!active.length) return void window.NotificationSystem?.warning('Нет доступных треков');
+  const clicked = activeList[activeIndex] || activeList[0];
 
-  const startIndex = Number.isFinite(activeIndex) && activeIndex >= 0 ? activeIndex : 0;
-  const clicked = active[startIndex] || active[0];
-
-  const tracks = active.map((it) => ({
-    src: it.audio,
-    sources: it.sources || null,
+  // Формируем плейлист для ядра (PlayerCore)
+  const tracks = activeList.map((it) => ({
+    uid: typeof it.uid === 'string' ? it.uid.trim() : null,
+    src: it.audio, // Resolved URL (Local or Network)
+    // Важно: передаем оригинальные source ссылки для Resolver'а в PlayerCore
+    sources: it.sources || null, 
+    audio: it.sources?.audio?.hi || it.audio,
+    audio_low: it.sources?.audio?.lo,
+    
     title: it.title,
     artist: 'Витрина Разбита',
     album: FAV,
     cover: LOGO,
     lyrics: it.lyrics || null,
     fulltext: it.fulltext || null,
-    uid: typeof it.uid === 'string' && it.uid.trim() ? it.uid.trim() : null,
     sourceAlbum: it.sourceAlbum || null,
     hasLyrics: it.hasLyrics,
   })).filter((t) => !!t.uid && !!t.src);
 
   if (!tracks.length) return void window.NotificationSystem?.warning('Нет доступных треков');
 
+  // Загружаем в плеер
   window.playerCore.setPlaylist(
     tracks,
-    startIndex,
+    activeIndex,
     { artist: 'Витрина Разбита', album: 'Избранное', cover: LOGO },
     { preservePosition: false }
   );
 
-  window.playerCore.play(startIndex);
+  window.playerCore.play(activeIndex);
 
+  // Обновляем состояние менеджера
   ctx.setPlayingAlbum(FAV);
-
+  
+  // Подсветка
   const cu = String(clicked?.uid || '').trim();
   const ca = String(clicked?.sourceAlbum || '').trim();
   ctx.highlightCurrentTrack(-1, { uid: cu, albumKey: ca });
 
-  window.PlayerUI?.ensurePlayerBlock?.(startIndex, { userInitiated: true });
+  // UI
+  window.PlayerUI?.ensurePlayerBlock?.(activeIndex, { userInitiated: true });
   window.PlayerUI?.updateAvailableTracksForPlayback?.();
 }
+
+// --- News Logic ---
 
 export async function loadNewsAlbum(ctx) {
   ctx.renderAlbumTitle('📰 НОВОСТИ 📰', 'news');
