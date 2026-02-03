@@ -1,5 +1,5 @@
 // service-worker.js
-// Optimized Service Worker for "Vi3na1bita"
+// Optimized Service Worker for "Vi3na1bita" (v8.1)
 
 const SW_VERSION = '8.1.0';
 
@@ -10,7 +10,7 @@ const MEDIA_CACHE = `vitrina-media-v${SW_VERSION}`;
 const OFFLINE_CACHE = `vitrina-offline-v${SW_VERSION}`;
 const META_CACHE = `vitrina-meta-v${SW_VERSION}`;
 
-// Config (Required by lint-sw.mjs)
+// Config (Required by lint-sw.mjs - do not remove)
 const DEFAULT_SW_CONFIG = {
   mediaMaxCacheMB: 150,
   nonRangeMaxStoreMB: 25,
@@ -19,31 +19,46 @@ const DEFAULT_SW_CONFIG = {
   revalidateDays: 7
 };
 
-// Core Assets
+// Core Assets (App Shell)
 const STATIC_ASSETS = [
   './', './index.html', './news.html', './manifest.json',
   './styles/main.css', './img/logo.png', './img/star.png', './img/star2.png',
   './icons/favicon-32.png', './icons/favicon-16.png', './icons/apple-touch-icon.png',
-  './scripts/core/bootstrap.js', './scripts/core/config.js', './scripts/app/gallery.js',
-  './scripts/ui/notify.js', './scripts/ui/favorites.js', './scripts/ui/sleep.js',
-  './scripts/ui/lyrics-modal.js', './scripts/ui/sysinfo.js', './scripts/app/player-ui.js',
-  './scripts/app/albums.js', './scripts/app/navigation.js', './scripts/app.js',
-  './src/PlayerCore.js'
+  './scripts/core/bootstrap.js', './scripts/core/config.js', './scripts/core/utils.js',
+  './scripts/core/favorites-v2.js',
+  './scripts/app/gallery.js', './scripts/ui/notify.js', './scripts/ui/favorites.js',
+  './scripts/ui/sleep.js', './scripts/ui/lyrics-modal.js', './scripts/ui/sysinfo.js',
+  './scripts/ui/modal-templates.js', './scripts/ui/modals.js',
+  './scripts/app/player-ui.js', './scripts/app/albums.js', './scripts/app/navigation.js',
+  './scripts/app.js', './src/PlayerCore.js',
+  './scripts/app/offline-ui-bootstrap.js'
 ];
 
 // Helper: Normalize URL for strict cache matching
-const norm = (u) => { try { const p = new URL(u, self.registration.scope); p.hash = ''; p.search = ''; if(p.pathname.endsWith('/')) p.pathname += 'index.html'; return p.href; } catch { return String(u); } };
+const norm = (u) => { 
+  try { 
+    const p = new URL(u, self.registration.scope); 
+    p.hash = ''; p.search = ''; 
+    if(p.pathname.endsWith('/')) p.pathname += 'index.html'; 
+    return p.href; 
+  } catch { return String(u); } 
+};
 const STATIC_SET = new Set(STATIC_ASSETS.map(norm));
 
 // --- Lifecycle ---
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CORE_CACHE).then(c => c.addAll(STATIC_ASSETS)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CORE_CACHE)
+    .then(c => c.addAll(STATIC_ASSETS))
+    .then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (e) => {
   e.waitUntil(caches.keys().then(keys => Promise.all(keys.map(k => {
-    if (![CORE_CACHE, RUNTIME_CACHE, MEDIA_CACHE, OFFLINE_CACHE, META_CACHE].includes(k)) return caches.delete(k);
+    // Clean old caches except current versions
+    if (![CORE_CACHE, RUNTIME_CACHE, MEDIA_CACHE, OFFLINE_CACHE, META_CACHE].includes(k)) {
+      return caches.delete(k);
+    }
   }))).then(() => self.clients.claim()));
 });
 
@@ -55,27 +70,37 @@ self.addEventListener('fetch', (e) => {
 
   const url = new URL(req.url);
 
-  // 1. Audio: Network Only (Handled by IDB/CacheDB logic, bypass SW cache to avoid range issues)
+  // 1. Audio Bypass: Network Only
+  // Аудио теперь управляется OfflineManager (IndexedDB). SW не должен вмешиваться,
+  // чтобы не дублировать данные и не ломать Range-запросы.
   if (/\.(mp3|ogg|m4a|flac)$/i.test(url.pathname)) {
-    e.respondWith(fetch(req));
-    return;
+    return; // Fallback to browser network stack
   }
 
   // 2. Static Assets: Cache First (Strict)
   if (STATIC_SET.has(norm(url.href))) {
-    e.respondWith(caches.open(CORE_CACHE).then(c => c.match(req)).then(r => r || fetch(req).then(n => {
-      if(n.ok) caches.open(RUNTIME_CACHE).then(c => c.put(req, n.clone()));
-      return n;
-    })));
+    e.respondWith(
+      caches.open(CORE_CACHE).then(c => c.match(req)).then(r => r || fetch(req).then(n => {
+        if(n.ok) caches.open(CORE_CACHE).then(c => c.put(req, n.clone()));
+        return n;
+      }))
+    );
     return;
   }
 
-  // 3. Default: Network First -> Runtime Cache
-  e.respondWith(fetch(req).then(res => {
-    const copy = res.clone();
-    caches.open(RUNTIME_CACHE).then(c => c.put(req, copy));
-    return res;
-  }).catch(() => caches.match(req)));
+  // 3. Default: Network First -> Runtime Cache (Stale-While-Revalidate pattern simplified)
+  e.respondWith(
+    caches.match(req).then(cached => {
+      const networked = fetch(req).then(res => {
+        if (res.ok && url.protocol.startsWith('http')) {
+          const clone = res.clone();
+          caches.open(RUNTIME_CACHE).then(c => c.put(req, clone));
+        }
+        return res;
+      });
+      return cached || networked;
+    })
+  );
 });
 
 // --- Messaging API ---
@@ -98,19 +123,20 @@ self.addEventListener('message', (e) => {
       e.waitUntil(caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))));
       break;
 
-    case 'WARM_OFFLINE_SHELL': // Preload assets for offline mode
+    case 'WARM_OFFLINE_SHELL': 
+      // ТЗ: "100% Offline" - предзагрузка ассетов (lyrics/json/etc)
       e.waitUntil((async () => {
         try {
           const c = await caches.open(OFFLINE_CACHE);
           const urls = (d.payload?.urls || []);
-          // Best-effort addAll manually to avoid full fail
-          await Promise.all([...STATIC_ASSETS, ...urls].map(u => c.add(u).catch(()=>{})));
+          await Promise.all(urls.map(u => c.add(u).catch(()=>{})));
           if (port) port.postMessage({ ok: true });
         } catch (err) { if (port) port.postMessage({ ok: false, error: String(err) }); }
       })());
       break;
 
-    case 'GET_CACHE_SIZE': // Calculate approximate usage
+    case 'GET_CACHE_SIZE': 
+      // ТЗ: Оценка размера "Other" в модалке Offline
       if (!port) return;
       e.waitUntil((async () => {
         let size = 0, entries = 0;
