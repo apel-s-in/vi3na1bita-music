@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8d871a10b51b19f6107277c531b99e7ec0fc4de9.idx
-│   │       ├── pack-8d871a10b51b19f6107277c531b99e7ec0fc4de9.pack
-│   │       └── pack-8d871a10b51b19f6107277c531b99e7ec0fc4de9.rev
+│   │       ├── pack-9f0c51a2a186b93f0252e90914f4cf893312dc31.idx
+│   │       ├── pack-9f0c51a2a186b93f0252e90914f4cf893312dc31.pack
+│   │       └── pack-9f0c51a2a186b93f0252e90914f4cf893312dc31.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -389,7 +389,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 18:40:23 UTC
+Сгенерировано: 2026-02-03 18:42:23 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1178,10 +1178,21 @@ const STATIC_SET = new Set(STATIC_ASSETS.map(norm));
 
 // --- Lifecycle ---
 
+// Optimized Install: Best-effort caching
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CORE_CACHE)
-    .then(c => c.addAll(STATIC_ASSETS))
-    .then(() => self.skipWaiting()));
+  e.waitUntil(
+    caches.open(CORE_CACHE).then(async (cache) => {
+      // Пытаемся кэшировать всё, но не падаем если один файл 404
+      const promises = STATIC_ASSETS.map(url => 
+        fetch(url).then(res => {
+          if (res.ok) return cache.put(url, res);
+          console.warn('SW: Failed to cache', url);
+        }).catch(err => console.warn('SW: Fetch error', url, err))
+      );
+      await Promise.all(promises);
+      return self.skipWaiting();
+    })
+  );
 });
 
 self.addEventListener('activate', (e) => {
