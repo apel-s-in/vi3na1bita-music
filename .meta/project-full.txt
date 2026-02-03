@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-97e4439c11362603266ec4308f58189735d9e073.idx
-│   │       ├── pack-97e4439c11362603266ec4308f58189735d9e073.pack
-│   │       └── pack-97e4439c11362603266ec4308f58189735d9e073.rev
+│   │       ├── pack-985869a10ad57eadb02fbda341d6efd2da6bf9be.idx
+│   │       ├── pack-985869a10ad57eadb02fbda341d6efd2da6bf9be.pack
+│   │       └── pack-985869a10ad57eadb02fbda341d6efd2da6bf9be.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 10:28:07 UTC
+Сгенерировано: 2026-02-03 10:38:21 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4270,10 +4270,22 @@ export default F2;
       normQuality: (q) => (String(q || '').toLowerCase().trim() === 'lo') ? 'lo' : 'hi'
     },
 
-    // --- 5. Blob Management ---
+    // --- 5. Blob Management (Optimized LRU) ---
     blob: {
       createUrl: (key, blob) => {
-        if (_blobReg.has(key)) URL.revokeObjectURL(_blobReg.get(key));
+        // Очистка старых ссылок, если их больше 5 (запас для кроссфейда/прелоада)
+        if (_blobReg.size > 5) {
+          const oldest = _blobReg.keys().next().value;
+          URL.revokeObjectURL(_blobReg.get(oldest));
+          _blobReg.delete(oldest);
+        }
+        
+        // Если ключ уже есть, пересоздаем (обновляем "свежесть" в Map порядка вставок)
+        if (_blobReg.has(key)) {
+          URL.revokeObjectURL(_blobReg.get(key));
+          _blobReg.delete(key);
+        }
+        
         const url = URL.createObjectURL(blob);
         _blobReg.set(key, url);
         return url;
