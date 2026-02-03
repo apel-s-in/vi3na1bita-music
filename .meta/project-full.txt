@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-74898f7227e5b36656fda6d8fdb79c88a100ac6c.idx
-│   │       ├── pack-74898f7227e5b36656fda6d8fdb79c88a100ac6c.pack
-│   │       └── pack-74898f7227e5b36656fda6d8fdb79c88a100ac6c.rev
+│   │       ├── pack-cc91c6685c200b5bd5692cd8bd24d6bb6de741f4.idx
+│   │       ├── pack-cc91c6685c200b5bd5692cd8bd24d6bb6de741f4.pack
+│   │       └── pack-cc91c6685c200b5bd5692cd8bd24d6bb6de741f4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 11:21:58 UTC
+Сгенерировано: 2026-02-03 11:23:00 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2596,7 +2596,20 @@ export function attachPlaybackCache() {
   async function planWindow() {
     const pq = getPQ();
     try { 
+      // 1. Формируем список UID текущего окна
+      const w = pcm.getLastWindow(); // Берем из кэша, который обновится внутри ensure
+      // (или вычисляем вручную, но лучше положиться на PCM после его работы)
+      
       await pcm.ensureWindowFullyCached(pq, trackProvider); 
+      
+      // 2. Сообщаем менеджеру: "Оставь только эти, остальной мусор удали"
+      const currentWindow = pcm.getLastWindow(); 
+      const uids = [currentWindow.cur, ...currentWindow.prev, ...currentWindow.next].filter(Boolean);
+      
+      const mgr = window.OfflineUI?.offlineManager;
+      if (mgr?.updatePlaybackWindow) {
+        mgr.updatePlaybackWindow(uids);
+      }
     } catch (e) {
       console.warn('[PlaybackCache] planWindow error:', e);
     }
