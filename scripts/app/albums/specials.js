@@ -21,15 +21,20 @@ export async function loadFavoritesAlbum(ctx) {
   const container = $('track-list');
   if (!container) return;
 
-  // Функция получения модели данных
-  const getModel = () => {
-    // Используем глобальный метод из window.FavoritesUI
-    try { return window.FavoritesUI?.buildFavoritesRefsModel() || []; } catch { return []; }
+  // 1. Функция обновления данных (Асинхронная)
+  const refreshData = async () => {
+     try { await window.FavoritesUI?.buildFavoritesRefsModel(); } catch {}
   };
 
-  // Функция перерисовки
+  // 2. Функция получения данных для UI (Синхронная, берет из кэша FavoritesUI)
+  const getUiModel = () => {
+     return window.FavoritesUI?.getModel() || [];
+  };
+
+  // 3. Функция перерисовки
   const rebuild = async () => {
-    const model = getModel();
+    await refreshData(); // Сначала обновляем данные
+    const model = getUiModel(); // Потом берем готовый массив
     if (!model.length) renderFavoritesEmpty(container);
     else renderFavoritesList(container, model);
   };
@@ -39,7 +44,22 @@ export async function loadFavoritesAlbum(ctx) {
     ctx._favoritesViewBound = true;
 
     bindFavoritesList(container, {
-      getModel,
+      getModel: getUiModel, // Передаем синхронный геттер для обработки кликов
+
+      // Клик по звезде ВНУТРИ избранного -> source='favorites' (Soft Delete / Inactive)
+      onStarClick: async ({ uid, albumKey }) => {
+        window.playerCore?.toggleFavorite?.(uid, { source: 'favorites', albumKey });
+      },
+
+      // Клик по активному треку -> Воспроизведение
+      onActiveRowClick: async ({ uid }) => {
+        const model = getUiModel();
+        // Фильтруем только активные для плейлиста
+        const activeList = model.filter((it) => it && it.__active && it.audio);
+        const idx = activeList.findIndex((it) => String(it?.__uid || '').trim() === String(uid || '').trim());
+        
+        if (idx >= 0) await ensureFavoritesPlayback(ctx, activeList, idx);
+      },
 
       // Клик по звезде ВНУТРИ избранного -> source='favorites' (Soft Delete / Inactive)
       onStarClick: async ({ uid, albumKey }) => {
