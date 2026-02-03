@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8552a0085c8bc0eb3ce47d91be440959bd4379a7.idx
-│   │       ├── pack-8552a0085c8bc0eb3ce47d91be440959bd4379a7.pack
-│   │       └── pack-8552a0085c8bc0eb3ce47d91be440959bd4379a7.rev
+│   │       ├── pack-5f73d4393a2709cf885889897a475b9e7d432ef6.idx
+│   │       ├── pack-5f73d4393a2709cf885889897a475b9e7d432ef6.pack
+│   │       └── pack-5f73d4393a2709cf885889897a475b9e7d432ef6.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 06:45:07 UTC
+Сгенерировано: 2026-02-03 06:49:41 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3029,290 +3029,702 @@ export function attachPlaybackCache() {
 // FILE: /scripts/app/player-ui.js
 //=================================================
 // FILE: /scripts/app/player-ui.js
-// scripts/app/player-ui.js
-// Hyper-Optimized PlayerUI v3.0 (TЗ Compliant: PQ, Stats, Offline-Ready)
-(function (W, D) {
-  'use strict';
+// v4.0 - Fixed Mini Player Regression + Full TZ Compliance (PQ, Stats, Offline, CacheBar)
+//=================================================
+(function (window, document) {
+    'use strict';
 
-  const U = W.Utils;
-  const LS = { FAV: 'favoritesOnlyMode', VOL: 'playerVolume', BIT: 'bitEnabled' };
-  const $ = (id) => D.getElementById(id);
-  const pc = () => W.playerCore; // Lazy getter
-
-  // State & DOM Cache
-  const st = { 
-    mini: false, 
-    seeking: false, 
-    bit: false, 
-    anl: null, 
-    raf: null,
-    miniSaved: null
-  };
-  
-  const el = {}; // DOM cache
-  const get = (k, sel, root = D) => (el[k] = el[k] || root.querySelector(sel));
-  const refs = (blk) => {
-    el.blk = blk; el.fill = get('fill', '#player-progress-fill', blk); el.bar = get('bar', '#player-progress-bar', blk);
-    el.tm = get('tm', '#time-elapsed', blk); el.rem = get('rem', '#time-remaining', blk);
-    el.vf = get('vf', '#volume-fill', blk); el.vh = get('vh', '#volume-handle', blk); el.vs = get('vs', '#volume-slider', blk);
-    el.ico = get('ico', '#play-pause-icon', blk); el.pq = get('pq', '#pq-btn', blk); el.pql = get('pql', '#pq-btn-label', blk);
-    el.fav = get('fav', '#favorites-btn', blk); el.favi = get('favi', '#favorites-btn-icon', blk);
-    el.pl = get('pl', '#pulse-btn', blk); el.plh = get('plh', '#pulse-heart', blk);
-  };
-
-  // --- Core Integration ---
-  function init() {
-    if (!W.albumsIndex?.length) return setTimeout(init, 100);
-    const core = pc();
-    if (!core) return setTimeout(init, 100);
-
-    // Bind Events
-    core.on({
-      onTrackChange: (t, i) => { 
-        W.__lastStatsSec = -1;
-        W.AlbumsManager?.highlightCurrentTrack(t?.uid ? -1 : i, t?.uid ? { uid: t.uid, albumKey: t.sourceAlbum } : {});
-        render(i);
-        W.LyricsController?.onTrackChange?.(t);
-        updPQ();
-      },
-      onPlay: updIcon, onPause: updIcon, onStop: updIcon, onEnd: updIcon,
-      onTick: (p, d) => { if(!st.seeking) updBar(p, d); W.LyricsController?.onTick?.(p, { inMiniMode: st.mini }); }
-    });
-
-    core.onFavoritesChanged(() => { 
-      updMini(); W.PlaybackPolicy?.apply?.({ reason: 'favoritesChanged' }); updFav(); filter(); 
-    });
-
-    W.NetworkManager?.subscribe ? W.NetworkManager.subscribe(updPQ) : W.addEventListener('online', updPQ) || W.addEventListener('offline', updPQ);
-
-    // Restore
-    const v = U.toInt(U.lsGet(LS.VOL), 100);
-    core.setVolume(v);
+    const PlayerUI = {};
+    const Utils = window.Utils;
     
-    st.bit = U.lsGetBool01(LS.BIT);
-    if(st.bit) setTimeout(bitStart, 1000); // Lazy viz start
-    
-    W.LyricsController?.restoreSettingsIntoDom?.();
-    updFav();
-  }
-
-  // --- UI Rendering ---
-  function render(idx, opts) {
-    let blk = $('lyricsplayerblock');
-    if (!blk) {
-      const t = $('player-template');
-      if (!t) return;
-      blk = t.content.cloneNode(true).querySelector('#lyricsplayerblock');
-      bind(blk);
-    }
-
-    st.mini = U.isBrowsingOtherAlbum();
-    const list = $('track-list');
-    const slot = $('now-playing');
-
-    if (st.mini) {
-      // Mini Mode
-      if (slot && !slot.contains(blk)) {
-        slot.innerHTML = '';
-        slot.append(mkMiniHead(), blk, mkNext());
-      }
-      if (st.miniSaved === null) st.miniSaved = W.LyricsController?.getMiniSaveState?.();
-      W.LyricsController?.applyMiniMode?.();
-      toggle('mini-now', 1); toggle('next-up', 1);
-    } else {
-      // Full Mode
-      if (list) {
-        const c = pc().getCurrentTrack(), u = c?.uid ? String(c.uid).trim() : null;
-        const row = u ? list.querySelector(`.track[data-uid="${CSS.escape(u)}"]`) : list.querySelector(`.track[data-index="${idx}"]`);
-        if (row?.nextSibling !== blk) row ? row.after(blk) : list.appendChild(blk);
-        if (row && opts?.userInitiated) setTimeout(() => row.scrollIntoView({ behavior:'smooth', block:'center' }), 50);
-      }
-      W.LyricsController?.restoreFromMiniMode?.(st.miniSaved);
-      st.miniSaved = null;
-      toggle('mini-now', 0); toggle('next-up', 0);
-    }
-
-    el.blk = null; // Flush cache to re-bind
-    refs(blk);
-    updFav(); filter(); updMini(); updPQ(); updVol(pc().getVolume()); updIcon(); updDl();
-    
-    // Jump Button Logic
-    if(!el.jump) {
-      el.jump = D.createElement('div'); el.jump.className='jump-to-playing'; 
-      el.jump.innerHTML='<button>↑</button>'; el.jump.onclick=()=>$('lyricsplayerblock')?.scrollIntoView({behavior:'smooth',block:'center'});
-      D.body.appendChild(el.jump);
-    }
-    if('IntersectionObserver' in W) (new IntersectionObserver(([e])=>el.jump.style.display=(!e.isIntersecting && !st.mini)?'flex':'none')).observe(blk);
-  }
-
-  // --- Sub-Components ---
-  const toggle = (id, s) => { const e=$(id); if(e) e.style.display=s?'flex':'none'; };
-  const mkMiniHead = () => {
-    let n = el.mh; if(n && D.contains(n)) return n;
-    n = $('mini-header-template').content.cloneNode(true).querySelector('#mini-now');
-    U.dom.on(n, 'click', (e) => {
-      if(e.target.id!=='mini-now-star') W.AlbumsManager?.loadAlbum(W.AlbumsManager.getPlayingAlbum());
-    });
-    $('mini-now-star', n).onclick = (e) => { e.stopPropagation(); actLike(); };
-    return (el.mh = n);
-  };
-  const mkNext = () => (el.nu && D.contains(el.nu)) ? el.nu : (el.nu = $('next-up-template').content.cloneNode(true).querySelector('#next-up'));
-
-  // --- Interactions ---
-  const acts = {
-    'play-pause-btn': () => pc().isPlaying() ? pc().pause() : pc().play(),
-    'prev-btn': () => pc().prev(), 'next-btn': () => pc().next(), 'stop-btn': () => pc().stop(),
-    'shuffle-btn': (t) => { pc().toggleShuffle(); U.setBtnActive(t.id, pc().isShuffle()); updQ(); },
-    'repeat-btn': (t) => { pc().toggleRepeat(); U.setBtnActive(t.id, pc().isRepeat()); },
-    'mute-btn': (t) => { const m = !t.classList.contains('active'); pc().setMuted?.(m); U.setBtnActive(t.id, m); },
-    'pq-btn': () => {
-      const r = U.pq.toggle();
-      if(!r.ok) W.NotificationSystem?.[r.reason==='trackNoLo'?'info':'warning'](r.reason==='offline'?'Нет сети':'Lo недоступно');
-      updPQ();
-    },
-    'favorites-btn': () => actFav(),
-    'lyrics-toggle-btn': () => W.LyricsController?.toggleLyricsView(),
-    'animation-btn': () => W.LyricsController?.toggleAnimation(),
-    'lyrics-text-btn': () => W.LyricsModal?.show(),
-    'pulse-btn': () => actPulse(),
-    'sleep-timer-btn': () => W.SleepTimer?.show(),
-    'stats-btn': () => W.StatisticsModal?.show?.(),
-    'track-download-btn': (t) => { if(!t.getAttribute('href')) { t.preventDefault(); W.NotificationSystem?.error('Недоступно'); } }
-  };
-
-  function bind(b) {
-    b.onclick = (e) => { const t = e.target.closest('button,a'); if(t && acts[t.id]) acts[t.id](t); };
-    b.querySelector('#volume-slider').oninput = (e) => {
-      const v = U.toInt(e.target.value); pc().setVolume(v); U.lsSet(LS.VOL, v); requestAnimationFrame(()=>updVol(v));
+    // DOM Cache
+    let dom = {
+        playerBlock: null,
+        fill: null,
+        cacheFill: null, // Point 15
+        bar: null,
+        timeElapsed: null,
+        timeRemaining: null,
+        volFill: null,
+        volHandle: null,
+        volSlider: null,
+        icon: null,
+        pqBtn: null,     // Point 4
+        pqLabel: null,
+        favBtn: null,
+        favIcon: null,
+        miniHeader: null,
+        nextUp: null,
+        nowPlayingSlot: null,
+        jumpBtn: null
     };
-    // Seek
-    const bar = b.querySelector('#player-progress-bar');
-    const mv = (e) => { const r=bar.getBoundingClientRect(), x=(e.touches?e.touches[0].clientX:e.clientX); pc().seek(pc().getDuration()*U.clamp((x-r.left)/r.width,0,1)); };
-    const up = () => { st.seeking=0; D.removeEventListener('pointermove',mv); D.removeEventListener('pointerup',up); };
-    bar.onpointerdown = (e) => { st.seeking=1; mv(e); D.addEventListener('pointermove',mv); D.addEventListener('pointerup',up); };
-  }
 
-  // --- Updaters ---
-  function updBar(p, d) {
-    if(el.fill) el.fill.style.width = `${(d>0?p/d:0)*100}%`;
-    if(el.tm) el.tm.textContent = U.formatTime(p);
-    if(el.rem) el.rem.textContent = `-${U.formatTime((d||0)-p)}`;
-  }
-  function updIcon() { if(el.ico) el.ico.innerHTML = pc()?.isPlaying() ? '<path d="M6 4h4v16H6zM14 4h4v16h-4z"/>' : '<path d="M8 5v14l11-7z"/>'; }
-  function updVol(v) {
-    if(el.vf) el.vf.style.width = `${v}%`;
-    if(el.vh) el.vh.style.left = `${U.clamp(v, 2, 98)}%`; // approximate handle pos
-    if(el.vs) el.vs.value = v;
-  }
-  function updMini() {
-    if (!st.mini) return;
-    const t = pc()?.getCurrentTrack();
-    const mn = $('mini-now'); if(mn) {
-      $('mini-now-num', mn).textContent = `${String((pc()?.getIndex()||0)+1).padStart(2,'0')}.`;
-      $('mini-now-title', mn).textContent = t?.title || '—';
-      $('mini-now-star', mn).src = U.fav.isTrackLikedInContext({playingAlbum:W.AlbumsManager?.getPlayingAlbum(), track:t}) ? 'img/star.png' : 'img/star2.png';
-    }
-    const nu = $('next-up'); if(nu) {
-      const nt = pc()?.getPlaylistSnapshot()?.[pc()?.getNextIndex()];
-      $('.title', nu).textContent = nt?.title || '—';
-    }
-  }
-  function updPQ() {
-    if(!el.pq) return;
-    const s = U.pq.getState();
-    el.pq.className = `player-control-btn pq-${s.mode}`;
-    U.setAriaDisabled(el.pq, !s.canToggle);
-    if(el.pql) el.pql.textContent = s.mode==='lo'?'Lo':'Hi';
-  }
-  function updFav() {
-    const on = U.lsGetBool01(LS.FAV);
-    if(el.fav) el.fav.className = `player-control-btn ${on?'favorites-active':''}`;
-    if(el.favi) el.favi.src = on ? 'img/star.png' : 'img/star2.png';
-  }
-  function updDl() { U.download.applyDownloadLink($('track-download-btn'), pc()?.getCurrentTrack()); }
-  function filter() {
-    const lst = $('track-list'); if(!lst) return;
-    const on = U.lsGetBool01(LS.FAV), cur = W.AlbumsManager?.getCurrentAlbum(), play = W.AlbumsManager?.getPlayingAlbum();
-    const f = on && cur===play && !U.isSpecialAlbumKey(cur);
-    lst.classList.toggle('favonly-filtered', f);
-    if(f) {
-      const lk = new Set(pc().getLikedUidsForAlbum(cur)||[]);
-      lst.querySelectorAll('.track').forEach(r => {
-        const u = r.dataset.uid;
-        if(u && !lk.has(u)) r.setAttribute('data-hidden-by-favonly','1'); else r.removeAttribute('data-hidden-by-favonly');
-      });
-    }
-  }
+    // State
+    let state = {
+        isMiniMode: false,
+        isSeeking: false,
+        isBitEnabled: false,
+        miniSavedState: null,
+        analyzer: null,
+        rafId: null
+    };
 
-  // --- Logic Actions ---
-  function actLike() {
-    const t = pc()?.getCurrentTrack(); if(!t?.uid) return;
-    const k = t.sourceAlbum || (!U.isSpecialAlbumKey(W.AlbumsManager?.getPlayingAlbum()) ? W.AlbumsManager.getPlayingAlbum() : null);
-    pc().toggleFavorite(t.uid, { fromAlbum: true, albumKey: k });
-    updMini();
-  }
-  function actFav() {
-    const next = !U.lsGetBool01(LS.FAV), pa = W.AlbumsManager?.getPlayingAlbum();
-    if(next && pa !== W.SPECIAL_FAVORITES_KEY && !pc()?.getLikedUidsForAlbum(pa)?.length) return W.NotificationSystem?.info('Отметьте понравившийся трек ⭐');
-    U.lsSetBool01(LS.FAV, next);
-    updFav(); updQ(); filter();
-    W.NotificationSystem?.[next?'success':'info'](next ? '⭐ Только избранные' : 'Играют все треки');
-  }
-  function updQ() { W.PlaybackPolicy?.apply?.({ reason: 'toggle' }); W.PlayerUI.updateAvailableTracksForPlayback(); }
-  function actPulse() {
-    st.bit = !st.bit; U.lsSetBool01(LS.BIT, st.bit);
-    if(el.pl) el.pl.classList.toggle('active', st.bit);
-    if(el.plh) el.plh.textContent = st.bit ? '❤️' : '🤍';
-    st.bit ? bitStart() : bitStop();
-  }
+    // --- Initialization ---
+    function init() {
+        if (!window.playerCore || !window.albumsIndex) {
+            return setTimeout(init, 100);
+        }
 
-  // --- Visualizer (Bit) ---
-  function bitStart() {
-    try { pc()?.rebuildCurrentSound?.({preferWebAudio:1}); } catch{}
-    if(W.Howler?.ctx && !st.anl) {
-      const ctx = W.Howler.ctx; if(ctx.state==='suspended') ctx.resume();
-      try { st.anl = ctx.createAnalyser(); st.anl.fftSize=256; W.Howler.masterGain.connect(st.anl); } catch{ st.anl=null; }
+        // Subscribe to Core Events
+        window.playerCore.on({
+            onTrackChange: handleTrackChange,
+            onPlay: updatePlayPauseIcon,
+            onPause: updatePlayPauseIcon,
+            onStop: updatePlayPauseIcon,
+            onEnd: updatePlayPauseIcon,
+            onTick: handleTick,
+            onLoadProgress: updateCacheProgress // Point 15
+        });
+
+        // Favorites Changed Event
+        window.playerCore.onFavoritesChanged(() => {
+            updateFavoritesBtn();
+            updateMiniHeader();
+            updatePlaylistFiltering();
+        });
+
+        // Network Status for PQ Button (Point 7.5.1)
+        if (window.NetworkManager && window.NetworkManager.subscribe) {
+            window.NetworkManager.subscribe(updatePQButtonState);
+        } else {
+            window.addEventListener('online', updatePQButtonState);
+            window.addEventListener('offline', updatePQButtonState);
+        }
+
+        // Global Click Delegation (Optimization)
+        document.addEventListener('click', handleGlobalClick);
+
+        // Restore Volume & Settings
+        const savedVol = Utils.toInt(Utils.lsGet('playerVolume'), 100);
+        window.playerCore.setVolume(savedVol);
+        
+        state.isBitEnabled = Utils.lsGetBool01('bitEnabled');
+        if (state.isBitEnabled) startVisualizer();
+
+        // Initial UI Setup
+        updateFavoritesBtn();
     }
-    if(!st.anl) { st.bit=0; U.lsSetBool01(LS.BIT,0); return W.NotificationSystem?.warning('Визуализация недоступна'); }
-    bitLoop();
-  }
-  function bitLoop() {
-    if(!st.bit) return;
-    if(st.anl) {
-      const d = new Uint8Array(st.anl.frequencyBinCount); st.anl.getByteFrequencyData(d);
-      let s = 0, l = Math.floor(d.length*0.3); for(let i=0;i<l;i++) s+=d[i];
-      const lg = $('logo-bottom'); if(lg) lg.style.transform = `scale(${1 + ((s/l)/255)*0.2})`;
+
+    // --- Rendering Logic (Crucial for Mini Player stability) ---
+    function ensurePlayerBlock(index, options) {
+        // 1. Get or Create the Player Block
+        if (!dom.playerBlock) {
+            const template = document.getElementById('player-template');
+            if (!template) return;
+            const clone = template.content.cloneNode(true);
+            dom.playerBlock = clone.querySelector('#lyricsplayerblock');
+            cacheDomElements(dom.playerBlock);
+            bindPlayerEvents(dom.playerBlock);
+        }
+
+        const trackList = document.getElementById('track-list');
+        dom.nowPlayingSlot = document.getElementById('now-playing');
+        
+        // Determine Mode
+        const newMiniMode = Utils.isBrowsingOtherAlbum();
+        const modeChanged = state.isMiniMode !== newMiniMode;
+        state.isMiniMode = newMiniMode;
+
+        if (state.isMiniMode) {
+            // --- MINI MODE ---
+            // Move block to bottom slot if not already there
+            if (dom.nowPlayingSlot && (!dom.nowPlayingSlot.contains(dom.playerBlock) || modeChanged)) {
+                dom.nowPlayingSlot.innerHTML = ''; // Safe clear
+                
+                // Construct Mini Layout: Header + Player + NextUp
+                const header = getMiniHeader();
+                const nextUp = getNextUp();
+                
+                dom.nowPlayingSlot.appendChild(header);
+                dom.nowPlayingSlot.appendChild(dom.playerBlock);
+                dom.nowPlayingSlot.appendChild(nextUp);
+            }
+            
+            // Logic integration
+            if (window.LyricsController) {
+                if (state.miniSavedState === null) state.miniSavedState = window.LyricsController.getMiniSaveState();
+                window.LyricsController.applyMiniMode();
+            }
+            
+            // Show/Hide specific mini elements
+            if(dom.miniHeader) dom.miniHeader.style.display = 'flex';
+            if(dom.nextUp) dom.nextUp.style.display = 'flex';
+
+        } else {
+            // --- FULL MODE ---
+            // Insert into Track List
+            if (trackList) {
+                const currentTrack = window.playerCore.getCurrentTrack();
+                let targetRow;
+                
+                if (currentTrack && currentTrack.uid) {
+                    targetRow = trackList.querySelector(`.track[data-uid="${CSS.escape(currentTrack.uid)}"]`);
+                } else {
+                    targetRow = trackList.querySelector(`.track[data-index="${index}"]`);
+                }
+
+                // Move physically to list
+                if (targetRow) {
+                    if (targetRow.nextSibling !== dom.playerBlock) {
+                        targetRow.after(dom.playerBlock);
+                    }
+                    if (options && options.userInitiated) {
+                        setTimeout(() => targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+                    }
+                } else {
+                    // Fallback if row not found
+                    trackList.appendChild(dom.playerBlock);
+                }
+            }
+
+            // Restore from Mini Logic
+            if (window.LyricsController) {
+                window.LyricsController.restoreFromMiniMode(state.miniSavedState);
+                state.miniSavedState = null;
+            }
+
+            // Clear bottom slot
+            if (dom.nowPlayingSlot) dom.nowPlayingSlot.innerHTML = '';
+            
+            // Hide mini elements (they are detached anyway, but for safety)
+            if(dom.miniHeader) dom.miniHeader.style.display = 'none';
+            if(dom.nextUp) dom.nextUp.style.display = 'none';
+        }
+
+        // Jump Button Logic
+        manageJumpButton();
+
+        // Update UI States
+        updatePQButtonState();
+        updateFavoritesBtn();
+        updatePlaylistFiltering();
+        updateMiniHeader();
+        updatePlayPauseIcon();
+        updateDownloadState();
     }
-    st.raf = requestAnimationFrame(bitLoop);
-  }
-  function bitStop() {
-    cancelAnimationFrame(st.raf);
-    const lg = $('logo-bottom'); if(lg) { lg.style.transform='scale(1)'; setTimeout(()=>lg.style.transition='',300); }
-    st.anl = null;
-  }
 
-  // --- Exports ---
-  W.PlayerUI = {
-    initialize: init,
-    ensurePlayerBlock: render,
-    updateMiniHeader: updMini,
-    updateNextUpLabel: updMini,
-    togglePlayPause: acts['play-pause-btn'],
-    toggleLikePlaying: actLike,
-    switchAlbumInstantly: (k) => { if(pc()?.getIndex()>=0) render(pc().getIndex()); updMini(); },
-    toggleFavoritesOnly: actFav,
-    updateAvailableTracksForPlayback: () => {
-      const pa = W.AlbumsManager?.getPlayingAlbum(), on = U.lsGetBool01(LS.FAV);
-      W.availableFavoriteIndices = (pa!==W.SPECIAL_FAVORITES_KEY && on) 
-        ? pc().getPlaylistSnapshot().reduce((a,t,i) => (pc().isFavorite(t.uid) ? [...a,i] : a), []) 
-        : null;
-    },
-    get currentLyrics() { return W.LyricsController?.getCurrentLyrics() || []; },
-    get currentLyricsLines() { return W.LyricsController?.getCurrentLyricsLines() || []; }
-  };
-  W.toggleFavoritesOnly = actFav;
+    function cacheDomElements(block) {
+        dom.fill = block.querySelector('#player-progress-fill');
+        // Point 15: Cache Progress Bar (Create if missing)
+        dom.cacheFill = block.querySelector('#player-cache-fill'); 
+        if (!dom.cacheFill && dom.fill) {
+            dom.cacheFill = document.createElement('div');
+            dom.cacheFill.id = 'player-cache-fill';
+            dom.fill.parentElement.insertBefore(dom.cacheFill, dom.fill);
+        }
 
-  if (D.readyState === 'loading') D.addEventListener('DOMContentLoaded', init); else init();
+        dom.bar = block.querySelector('#player-progress-bar');
+        dom.timeElapsed = block.querySelector('#time-elapsed');
+        dom.timeRemaining = block.querySelector('#time-remaining');
+        dom.volFill = block.querySelector('#volume-fill');
+        dom.volHandle = block.querySelector('#volume-handle');
+        dom.volSlider = block.querySelector('#volume-slider');
+        dom.icon = block.querySelector('#play-pause-icon');
+        dom.pqBtn = block.querySelector('#pq-btn'); // Point 4
+        dom.pqLabel = block.querySelector('#pq-btn-label');
+        dom.favBtn = block.querySelector('#favorites-btn');
+        dom.favIcon = block.querySelector('#favorites-btn-icon');
+    }
+
+    // --- Sub-Components (Mini) ---
+    function getMiniHeader() {
+        if (dom.miniHeader) return dom.miniHeader;
+        const tpl = document.getElementById('mini-header-template');
+        dom.miniHeader = tpl.content.cloneNode(true).querySelector('#mini-now');
+        
+        // Mini Header Events
+        dom.miniHeader.addEventListener('click', (e) => {
+            if (e.target.id !== 'mini-now-star') {
+                if (window.AlbumsManager) window.AlbumsManager.loadAlbum(window.AlbumsManager.getPlayingAlbum());
+            }
+        });
+        dom.miniHeader.querySelector('#mini-now-star').addEventListener('click', (e) => {
+            e.stopPropagation();
+            actions.toggleLike();
+        });
+        
+        return dom.miniHeader;
+    }
+
+    function getNextUp() {
+        if (dom.nextUp) return dom.nextUp;
+        const tpl = document.getElementById('next-up-template');
+        dom.nextUp = tpl.content.cloneNode(true).querySelector('#next-up');
+        return dom.nextUp;
+    }
+
+    // --- Event Handling ---
+    function bindPlayerEvents(block) {
+        // Volume Slider
+        if (dom.volSlider) {
+            dom.volSlider.addEventListener('input', (e) => {
+                const val = Utils.toInt(e.target.value);
+                window.playerCore.setVolume(val);
+                Utils.lsSet('playerVolume', val);
+                updateVolumeUI(val);
+            });
+        }
+
+        // Seek Bar (Pointer Events for stability)
+        if (dom.bar) {
+            const handleSeekMove = (e) => {
+                const rect = dom.bar.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const percent = Utils.clamp((clientX - rect.left) / rect.width, 0, 1);
+                const duration = window.playerCore.getDuration();
+                if (duration) window.playerCore.seek(duration * percent);
+            };
+
+            const onPointerUp = () => {
+                state.isSeeking = false;
+                document.removeEventListener('pointermove', handleSeekMove);
+                document.removeEventListener('pointerup', onPointerUp);
+            };
+
+            dom.bar.addEventListener('pointerdown', (e) => {
+                state.isSeeking = true;
+                handleSeekMove(e); // Seek immediately on click
+                document.addEventListener('pointermove', handleSeekMove);
+                document.addEventListener('pointerup', onPointerUp);
+            });
+        }
+    }
+
+    function handleGlobalClick(e) {
+        // Delegate clicks from any part of the UI (buttons, etc.)
+        const btn = e.target.closest('button, a, .clickable-icon');
+        if (!btn || !btn.id) return;
+
+        if (actions[btn.id]) {
+            e.preventDefault(); // Prevent default for links acting as buttons
+            actions[btn.id](btn);
+        }
+    }
+
+    // --- Actions Map ---
+    const actions = {
+        'play-pause-btn': () => window.playerCore.isPlaying() ? window.playerCore.pause() : window.playerCore.play(),
+        'prev-btn': () => window.playerCore.prev(),
+        'next-btn': () => window.playerCore.next(),
+        'stop-btn': () => window.playerCore.stop(),
+        'shuffle-btn': (btn) => {
+            window.playerCore.toggleShuffle();
+            Utils.setBtnActive(btn.id, window.playerCore.isShuffle());
+            // Need to update next up in mini mode
+            updateMiniHeader(); 
+        },
+        'repeat-btn': (btn) => {
+            window.playerCore.toggleRepeat();
+            Utils.setBtnActive(btn.id, window.playerCore.isRepeat());
+        },
+        'mute-btn': (btn) => {
+            const isMuted = !btn.classList.contains('active');
+            if (window.playerCore.setMuted) window.playerCore.setMuted(isMuted);
+            Utils.setBtnActive(btn.id, isMuted);
+        },
+        // Point 4: PQ Button Logic
+        'pq-btn': () => {
+            // Point 7.5.1: Check network availability
+            const isOffline = window.NetworkManager && !window.NetworkManager.isNetworkAvailable();
+            if (isOffline) {
+                if (window.NotificationSystem) window.NotificationSystem.info('Нет доступа к сети');
+                return;
+            }
+
+            const result = Utils.pq.toggle(); // Toggles LocalStorage & Logic
+            if (!result.ok) {
+                const msg = result.reason === 'trackNoLo' ? 'Низкое качество недоступно' : 
+                            result.reason === 'offline' ? 'Нет сети' : 'Невозможно переключить';
+                if (window.NotificationSystem) window.NotificationSystem.warning(msg);
+            }
+            updatePQButtonState();
+        },
+        'favorites-btn': () => actions.toggleFavoritesOnly(),
+        'lyrics-toggle-btn': () => window.LyricsController && window.LyricsController.toggleLyricsView(),
+        'animation-btn': () => window.LyricsController && window.LyricsController.toggleAnimation(),
+        'lyrics-text-btn': () => window.LyricsModal && window.LyricsModal.show(),
+        'pulse-btn': () => actions.togglePulse(),
+        'sleep-timer-btn': () => window.SleepTimer && window.SleepTimer.show(),
+        // Point 17: Statistics Button
+        'stats-btn': () => window.StatisticsModal && window.StatisticsModal.show(),
+        'track-download-btn': (btn) => {
+             // Handled by default link if href exists, else:
+             if (!btn.getAttribute('href')) {
+                 if(window.NotificationSystem) window.NotificationSystem.error('Скачивание недоступно');
+             }
+        }
+    };
+
+    // --- Update Logic ---
+
+    function handleTrackChange(track, index) {
+        // Reset Stats Timer
+        window.__lastStatsSec = -1;
+        
+        // Highlight in Album
+        if (window.AlbumsManager) {
+            window.AlbumsManager.highlightCurrentTrack(
+                track && track.uid ? -1 : index, 
+                track && track.uid ? { uid: track.uid, albumKey: track.sourceAlbum } : {}
+            );
+        }
+
+        ensurePlayerBlock(index);
+        
+        if (window.LyricsController) window.LyricsController.onTrackChange(track);
+        
+        updatePQButtonState();
+        updateDownloadState();
+    }
+
+    function handleTick(pos, duration) {
+        if (!state.isSeeking) {
+            const pct = duration > 0 ? (pos / duration) * 100 : 0;
+            if (dom.fill) dom.fill.style.width = `${pct}%`;
+            if (dom.timeElapsed) dom.timeElapsed.textContent = Utils.formatTime(pos);
+            if (dom.timeRemaining) dom.timeRemaining.textContent = `-${Utils.formatTime((duration || 0) - pos)}`;
+        }
+        
+        if (window.LyricsController) {
+            window.LyricsController.onTick(pos, { inMiniMode: state.isMiniMode });
+        }
+    }
+
+    // Point 15: Cache Progress Bar Layer
+    function updateCacheProgress(percent) {
+        if (dom.cacheFill) {
+            dom.cacheFill.style.width = `${percent}%`;
+        }
+    }
+
+    function updatePlayPauseIcon() {
+        if (dom.icon) {
+            const isPlaying = window.playerCore && window.playerCore.isPlaying();
+            dom.icon.innerHTML = isPlaying 
+                ? '<path d="M6 4h4v16H6zM14 4h4v16h-4z"/>' // Pause
+                : '<path d="M8 5v14l11-7z"/>';           // Play
+        }
+    }
+
+    function updateVolumeUI(vol) {
+        if (dom.volFill) dom.volFill.style.width = `${vol}%`;
+        if (dom.volHandle) dom.volHandle.style.left = `${Utils.clamp(vol, 2, 98)}%`;
+        if (dom.volSlider) dom.volSlider.value = vol;
+    }
+
+    // Point 4 & 7.5.1: Update PQ Button Appearance
+    function updatePQButtonState() {
+        if (!dom.pqBtn) return;
+
+        const isNetwork = window.NetworkManager ? window.NetworkManager.isNetworkAvailable() : navigator.onLine;
+        const pqState = Utils.pq.getState(); // Expected: { mode: 'hi'|'lo', canToggle: bool }
+
+        // Class logic
+        let cls = 'player-control-btn ';
+        
+        if (!isNetwork) {
+            cls += 'disabled'; // Point 7.5.1
+            dom.pqBtn.setAttribute('aria-disabled', 'true');
+        } else {
+            cls += `pq-${pqState.mode}`; // pq-hi (green) or pq-lo (orange) via CSS
+            dom.pqBtn.setAttribute('aria-disabled', !pqState.canToggle);
+            if (!pqState.canToggle) cls += ' disabled-soft';
+        }
+
+        dom.pqBtn.className = cls;
+        if (dom.pqLabel) dom.pqLabel.textContent = pqState.mode === 'lo' ? 'Lo' : 'Hi';
+    }
+
+    function updateFavoritesBtn() {
+        const isFavOnly = Utils.lsGetBool01('favoritesOnlyMode');
+        if (dom.favBtn) {
+            dom.favBtn.className = `player-control-btn ${isFavOnly ? 'favorites-active' : ''}`;
+        }
+        if (dom.favIcon) {
+            dom.favIcon.src = isFavOnly ? 'img/star.png' : 'img/star2.png';
+        }
+    }
+
+    function updateMiniHeader() {
+        if (!state.isMiniMode) return;
+
+        const track = window.playerCore.getCurrentTrack();
+        const plSnapshot = window.playerCore.getPlaylistSnapshot();
+        const nextIdx = window.playerCore.getNextIndex();
+
+        // Update Current Mini Track
+        if (dom.miniHeader) {
+            const numEl = dom.miniHeader.querySelector('#mini-now-num');
+            const titleEl = dom.miniHeader.querySelector('#mini-now-title');
+            const starEl = dom.miniHeader.querySelector('#mini-now-star');
+            
+            if (numEl) numEl.textContent = `${String((window.playerCore.getIndex() || 0) + 1).padStart(2, '0')}.`;
+            if (titleEl) titleEl.textContent = track ? track.title : '—';
+            
+            // Star Logic
+            const isLiked = Utils.fav.isTrackLikedInContext({
+                playingAlbum: window.AlbumsManager ? window.AlbumsManager.getPlayingAlbum() : null,
+                track: track
+            });
+            if (starEl) starEl.src = isLiked ? 'img/star.png' : 'img/star2.png';
+        }
+
+        // Update Next Up
+        if (dom.nextUp) {
+            const titleEl = dom.nextUp.querySelector('.title');
+            if (titleEl) {
+                const nextTrack = plSnapshot && plSnapshot[nextIdx];
+                titleEl.textContent = nextTrack ? nextTrack.title : '—';
+            }
+        }
+    }
+
+    function updatePlaylistFiltering() {
+        const trackList = document.getElementById('track-list');
+        if (!trackList) return;
+
+        const isFavOnly = Utils.lsGetBool01('favoritesOnlyMode');
+        const curAlbum = window.AlbumsManager ? window.AlbumsManager.getCurrentAlbum() : null;
+        const playAlbum = window.AlbumsManager ? window.AlbumsManager.getPlayingAlbum() : null;
+
+        // Apply visual filter only if current view matches playing album
+        const shouldFilter = isFavOnly && curAlbum === playAlbum && !Utils.isSpecialAlbumKey(curAlbum);
+        
+        trackList.classList.toggle('favonly-filtered', shouldFilter);
+
+        if (shouldFilter) {
+            const likedUids = new Set(window.playerCore.getLikedUidsForAlbum(curAlbum) || []);
+            const rows = trackList.querySelectorAll('.track');
+            rows.forEach(row => {
+                const uid = row.getAttribute('data-uid');
+                if (uid && !likedUids.has(uid)) {
+                    row.setAttribute('data-hidden-by-favonly', '1');
+                } else {
+                    row.removeAttribute('data-hidden-by-favonly');
+                }
+            });
+        }
+    }
+
+    function updateDownloadState() {
+        // Point 16.1 & 19: Only "Download Track" remains.
+        // Update href of the download button if needed
+        const btn = document.getElementById('track-download-btn');
+        if (btn) {
+            Utils.download.applyDownloadLink(btn, window.playerCore.getCurrentTrack());
+        }
+    }
+
+    // --- Complex Actions ---
+    actions.toggleFavoritesOnly = function() {
+        const currentMode = Utils.lsGetBool01('favoritesOnlyMode');
+        const nextMode = !currentMode;
+        
+        const playingAlbum = window.AlbumsManager ? window.AlbumsManager.getPlayingAlbum() : null;
+
+        // Validation: Don't enable if no favorites in current album
+        if (nextMode && playingAlbum !== window.SPECIAL_FAVORITES_KEY) {
+            const liked = window.playerCore.getLikedUidsForAlbum(playingAlbum);
+            if (!liked || liked.length === 0) {
+                if(window.NotificationSystem) window.NotificationSystem.info('Отметьте понравившийся трек ⭐');
+                return;
+            }
+        }
+
+        Utils.lsSetBool01('favoritesOnlyMode', nextMode);
+        updateFavoritesBtn();
+        
+        // Notify Core Policy
+        if (window.PlaybackPolicy && window.PlaybackPolicy.apply) {
+            window.PlaybackPolicy.apply({ reason: 'toggle' });
+        }
+        
+        // Refresh available tracks list for core
+        PlayerUI.updateAvailableTracksForPlayback();
+
+        // Update UI
+        updatePlaylistFiltering();
+        
+        const msg = nextMode ? '⭐ Только избранные' : 'Играют все треки';
+        if(window.NotificationSystem) window.NotificationSystem[nextMode ? 'success' : 'info'](msg);
+    };
+
+    actions.toggleLike = function() {
+        const track = window.playerCore.getCurrentTrack();
+        if (!track || !track.uid) return;
+
+        const playingAlbum = window.AlbumsManager ? window.AlbumsManager.getPlayingAlbum() : null;
+        const isSpecial = Utils.isSpecialAlbumKey(playingAlbum);
+        const albumKey = track.sourceAlbum || (isSpecial ? null : playingAlbum);
+
+        window.playerCore.toggleFavorite(track.uid, { fromAlbum: true, albumKey: albumKey });
+        updateMiniHeader();
+    };
+
+    actions.togglePulse = function() {
+        state.isBitEnabled = !state.isBitEnabled;
+        Utils.lsSetBool01('bitEnabled', state.isBitEnabled);
+
+        const btn = document.getElementById('pulse-btn');
+        const heart = document.getElementById('pulse-heart');
+        
+        if (btn) btn.classList.toggle('active', state.isBitEnabled);
+        if (heart) heart.textContent = state.isBitEnabled ? '❤️' : '🤍';
+
+        state.isBitEnabled ? startVisualizer() : stopVisualizer();
+    };
+
+    // --- Visualizer (Logo Pulse) ---
+    function startVisualizer() {
+        // Only works if WebAudio is active
+        try { 
+            window.playerCore.rebuildCurrentSound({ preferWebAudio: true }); 
+        } catch(e) {}
+
+        if (window.Howler && window.Howler.ctx && !state.analyzer) {
+            const ctx = window.Howler.ctx;
+            if (ctx.state === 'suspended') ctx.resume();
+
+            try {
+                state.analyzer = ctx.createAnalyser();
+                state.analyzer.fftSize = 256;
+                // Connect to master gain to catch all sound
+                window.Howler.masterGain.connect(state.analyzer);
+            } catch (e) {
+                state.analyzer = null;
+            }
+        }
+
+        if (!state.analyzer) {
+            state.isBitEnabled = false;
+            Utils.lsSetBool01('bitEnabled', 0);
+            return;
+        }
+
+        visualizerLoop();
+    }
+
+    function visualizerLoop() {
+        if (!state.isBitEnabled) return;
+
+        if (state.analyzer) {
+            const bufferLength = state.analyzer.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            state.analyzer.getByteFrequencyData(dataArray);
+
+            // Simple Bass/Beat detection
+            let sum = 0;
+            const limit = Math.floor(bufferLength * 0.3); // Low freq only
+            for (let i = 0; i < limit; i++) {
+                sum += dataArray[i];
+            }
+            const avg = sum / limit;
+            const scale = 1 + (avg / 255) * 0.2; // Max scale 1.2
+
+            const logo = document.getElementById('logo-bottom');
+            if (logo) logo.style.transform = `scale(${scale})`;
+        }
+        state.rafId = requestAnimationFrame(visualizerLoop);
+    }
+
+    function stopVisualizer() {
+        if (state.rafId) cancelAnimationFrame(state.rafId);
+        const logo = document.getElementById('logo-bottom');
+        if (logo) {
+            logo.style.transform = 'scale(1)';
+            setTimeout(() => logo.style.transition = '', 300);
+        }
+        state.analyzer = null;
+    }
+
+    function manageJumpButton() {
+        if (!dom.jumpBtn) {
+            dom.jumpBtn = document.createElement('div');
+            dom.jumpBtn.className = 'jump-to-playing';
+            dom.jumpBtn.innerHTML = '<button>↑</button>';
+            dom.jumpBtn.onclick = () => {
+                if(dom.playerBlock) dom.playerBlock.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            };
+            document.body.appendChild(dom.jumpBtn);
+        }
+
+        // Observer for visibility
+        if ('IntersectionObserver' in window && dom.playerBlock) {
+            if (window.playerBlockObserver) window.playerBlockObserver.disconnect();
+            
+            window.playerBlockObserver = new IntersectionObserver(([entry]) => {
+                // Show jump button if player is out of view AND NOT in mini mode
+                dom.jumpBtn.style.display = (!entry.isIntersecting && !state.isMiniMode) ? 'flex' : 'none';
+            }, { threshold: 0.1 });
+            
+            window.playerBlockObserver.observe(dom.playerBlock);
+        }
+    }
+
+    // --- Public API ---
+    PlayerUI.initialize = init;
+    PlayerUI.ensurePlayerBlock = ensurePlayerBlock;
+    PlayerUI.updateMiniHeader = updateMiniHeader;
+    PlayerUI.updateNextUpLabel = updateMiniHeader;
+    PlayerUI.togglePlayPause = actions['play-pause-btn'];
+    PlayerUI.toggleLikePlaying = actions.toggleLike;
+    PlayerUI.toggleFavoritesOnly = actions.toggleFavoritesOnly;
+    
+    PlayerUI.switchAlbumInstantly = (albumKey) => {
+        // Helper for UI immediate response
+        if (window.playerCore.getIndex() >= 0) {
+            ensurePlayerBlock(window.playerCore.getIndex());
+            updateMiniHeader();
+        }
+    };
+
+    // Helper for Core to know what tracks are valid for playback in current mode
+    PlayerUI.updateAvailableTracksForPlayback = () => {
+        const playingAlbum = window.AlbumsManager ? window.AlbumsManager.getPlayingAlbum() : null;
+        const isFavOnly = Utils.lsGetBool01('favoritesOnlyMode');
+        
+        if (playingAlbum !== window.SPECIAL_FAVORITES_KEY && isFavOnly) {
+            // Filter indices based on Fav status
+            const snapshot = window.playerCore.getPlaylistSnapshot();
+            window.availableFavoriteIndices = snapshot.reduce((acc, track, idx) => {
+                if (window.playerCore.isFavorite(track.uid)) {
+                    acc.push(idx);
+                }
+                return acc;
+            }, []);
+        } else {
+            window.availableFavoriteIndices = null; // All tracks available
+        }
+    };
+
+    // Accessors for Lyrics
+    Object.defineProperty(PlayerUI, 'currentLyrics', {
+        get: () => window.LyricsController ? window.LyricsController.getCurrentLyrics() : []
+    });
+    Object.defineProperty(PlayerUI, 'currentLyricsLines', {
+        get: () => window.LyricsController ? window.LyricsController.getCurrentLyricsLines() : []
+    });
+
+    // Expose
+    window.PlayerUI = PlayerUI;
+    window.toggleFavoritesOnly = actions.toggleFavoritesOnly; // Legacy ref
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+
 })(window, document);
 
 //=================================================
