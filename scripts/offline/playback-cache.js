@@ -1,23 +1,19 @@
 import { getTrackByUid } from '../app/track-registry.js';
 import { isAllowedByNetPolicy, getNetPolicy } from './net-policy.js';
 import { markLocalTransient } from './cache-db.js';
+import { Utils } from '../core/utils.js';
 
 // ТЗ 14.2: Приоритеты (P0 > P1)
 const P_CUR = 100;
 const P_ADJ = 90;
 
-// Утилиты
-const norm = (v) => (String(v || '').toLowerCase() === 'lo' ? 'lo' : 'hi');
-const sUid = (v) => (v ? String(v).trim() : null);
-const getNet = () => window.Utils?.getNetworkStatusSafe?.() || { online: true };
-
 /**
- * PlaybackCacheManager v2.0
+ * PlaybackCacheManager v2.0 (Optimized)
  * Реализует "Интеллектуальный кэш" (ТЗ п.7)
- * - Окно: PREV / CUR / NEXT (3 трека)
+ * - Окно: PREV / CUR / NEXT
  * - Приоритет: CUR (100%) -> Сосед по направлению (90%)
- * - Тип: Transient (удаляется при eviction первым)
- * - Качество: Playback Quality (PQ), не зависит от CQ
+ * - Логика: Полностью отвязана от UI (работает через getPlaylistCtx)
+ * - Сеть: Использует централизованный Utils.getNet()
  */
 export class PlaybackCacheManager {
   constructor(opts = {}) {
@@ -28,15 +24,15 @@ export class PlaybackCacheManager {
     this._last = { prev: [], cur: null, next: [] };
   }
 
-  setPlaybackQuality(pq) { this._pq = norm(pq); }
+  setPlaybackQuality(pq) { this._pq = Utils.obj.normQuality(pq); }
   getPlaybackQuality() { return this._pq; }
   
-  // ТЗ 7.3: Цикличное окно
+  // ТЗ 7.3: Цикличное окно на основе данных плейлиста
   getWindow(idx, list) {
     const len = list?.length || 0;
     if (!len || idx < 0) return { prev: [], cur: null, next: [] };
 
-    const get = (i) => sUid(list[(idx + i + len) % len]?.uid);
+    const get = (i) => Utils.obj.trim(list[(idx + i + len) % len]?.uid);
     return {
       prev: [get(-1)].filter(Boolean),
       cur: get(0),
@@ -50,11 +46,11 @@ export class PlaybackCacheManager {
   // ТЗ 7.6, 7.7: Планирование загрузок окна
   async ensureWindowFullyCached(pqArg, trackProvider) {
     const { list, curUid, favoritesInactive: bad, direction } = this._getCtx();
-    const pq = norm(pqArg || this._pq);
+    const pq = Utils.obj.normQuality(pqArg || this._pq);
     
     if (!list.length || !curUid) return;
 
-    const idx = list.findIndex(t => sUid(t?.uid) === curUid);
+    const idx = list.findIndex(t => Utils.obj.trim(t?.uid) === curUid);
     if (idx < 0) return;
 
     // 1. Вычисляем окно
@@ -65,7 +61,7 @@ export class PlaybackCacheManager {
     const mgr = window.OfflineUI?.offlineManager;
     if (!mgr || mgr.isOfflineMode()) return; // В офлайн-режиме не качаем
     
-    const net = getNet();
+    const net = Utils.getNet();
     if (!net.online || !isAllowedByNetPolicy({ policy: getNetPolicy(), net, quality: pq, kind: 'playbackCache' })) return;
 
     // 3. Формирование очереди (Строго: CUR -> Сосед)
@@ -82,7 +78,7 @@ export class PlaybackCacheManager {
     // 4. Постановка задач
     for (const { u, p } of tasks) {
       const key = `pbc:${pq}:${u}`;
-      if (this._sched.has(key)) continue; // Уже планировали
+      if (this._sched.has(key)) continue; // Уже планировали эту задачу в этой сессии
 
       // Если уже есть локально в нужном качестве — пропускаем
       if (await mgr.isTrackComplete(u, pq)) continue;
