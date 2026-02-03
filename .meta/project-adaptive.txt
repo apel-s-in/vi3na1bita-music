@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a905f06015951fa5fe41191f7a961ef32aeaed6b.idx
-│   │       ├── pack-a905f06015951fa5fe41191f7a961ef32aeaed6b.pack
-│   │       └── pack-a905f06015951fa5fe41191f7a961ef32aeaed6b.rev
+│   │       ├── pack-97f9401deabdffcc970446d6f82032e5c86a78dc.idx
+│   │       ├── pack-97f9401deabdffcc970446d6f82032e5c86a78dc.pack
+│   │       └── pack-97f9401deabdffcc970446d6f82032e5c86a78dc.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 11:36:14 UTC
+Сгенерировано: 2026-02-03 11:49:50 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8513,7 +8513,21 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     isPlaying() { return !!(this.sound && this.sound.playing()); }
 
     play(idx, opts = {}) {
-      if (idx != null && idx !== this.currentIndex) return this.load(idx, opts);
+      // Пытаемся разбудить контекст в любом случае (фикс для Auto-next на iOS)
+      if (W.Howler?.ctx?.state === 'suspended') W.Howler.ctx.resume();
+
+      if (idx != null) {
+          // 1. Если это другой трек -> полная загрузка
+          if (idx !== this.currentIndex) return this.load(idx, opts);
+          
+          // 2. Если это ТЕКУЩИЙ трек -> рестарт с начала (ТЗ: каждый клик запускает сначала)
+          // Не делаем load(), чтобы не качать заново. Используем seek(0).
+          this.seek(0);
+          if (!this.isPlaying() && this.sound) this.sound.play();
+          return;
+      }
+      
+      // Без аргументов (кнопка Play/Pause в интерфейсе или пробел)
       if (this.sound) this.sound.play();
       else if (this.currentIndex >= 0) this.load(this.currentIndex, { autoPlay: true });
     }
