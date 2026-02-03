@@ -49,12 +49,10 @@ class AlbumsManager {
         const base = it.icon || LOGO;
         let p1, p2;
 
-        // ✅ Исправлено: обрабатываем только стандартные иконки альбомов через @1x/@2x
         if (base.includes('icon_album') && !base.includes('Fav_logo')) {
           p1 = isMob ? base.replace(/icon_album\/(.+)\.png$/, 'icon_album/mobile/$1@1x.jpg') : base.replace(/\.png$/, '@1x.png');
           p2 = isMob ? p1.replace(/@1x\.jpg$/, '@2x.jpg') : p1.replace(/@1x\.png$/, '@2x.png');
         } else {
-          // Для Fav_logo.png и других путь оставляем как есть
           p1 = base;
           p2 = base;
         }
@@ -82,13 +80,15 @@ class AlbumsManager {
     });
 
     $('track-list')?.addEventListener('click', (e) => {
+      // ✅ КРИТИЧНО: Сразу же готовим аудио-контекст по клику (User Gesture)
+      if (window.playerCore?.prepareContext) window.playerCore.prepareContext();
+
       const trk = e.target.closest('.track');
       if (!trk) return;
 
       const aKey = toStr(trk.dataset.album).trim();
       const uid = toStr(trk.dataset.uid).trim();
       
-      // ✅ Игнорируем спец. альбомы (у них свои обработчики, например в specials.js)
       if (!aKey || aKey.startsWith('__')) return;
 
       if (e.target.classList.contains('like-star')) {
