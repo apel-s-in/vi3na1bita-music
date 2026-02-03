@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c877118e8fe54886c3f8035b6bd70edff9aac1dc.idx
-│   │       ├── pack-c877118e8fe54886c3f8035b6bd70edff9aac1dc.pack
-│   │       └── pack-c877118e8fe54886c3f8035b6bd70edff9aac1dc.rev
+│   │       ├── pack-b7d6e8724b67a41cd13f60c25857c15be5e9bf24.idx
+│   │       ├── pack-b7d6e8724b67a41cd13f60c25857c15be5e9bf24.pack
+│   │       └── pack-b7d6e8724b67a41cd13f60c25857c15be5e9bf24.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 09:55:45 UTC
+Сгенерировано: 2026-02-03 09:56:05 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5678,27 +5678,19 @@ import { Utils } from '../core/utils.js';
 const P_CUR = 100;
 const P_ADJ = 90;
 
-/**
- * PlaybackCacheManager v2.0 (Optimized)
- * Реализует "Интеллектуальный кэш" (ТЗ п.7)
- * - Окно: PREV / CUR / NEXT
- * - Приоритет: CUR (100%) -> Сосед по направлению (90%)
- * - Логика: Полностью отвязана от UI (работает через getPlaylistCtx)
- * - Сеть: Использует централизованный Utils.getNet()
- */
 export class PlaybackCacheManager {
   constructor(opts = {}) {
     this._q = opts.queue || null;
     this._getCtx = opts.getPlaylistCtx || (() => ({ list: [], curUid: null, favoritesInactive: new Set(), direction: 'forward' }));
     this._pq = 'hi';
-    this._sched = new Set(); // Дедупликация задач в рамках сессии
+    this._sched = new Set();
     this._last = { prev: [], cur: null, next: [] };
   }
 
   setPlaybackQuality(pq) { this._pq = Utils.obj.normQuality(pq); }
   getPlaybackQuality() { return this._pq; }
   
-  // ТЗ 7.3: Цикличное окно на основе данных плейлиста
+  // ТЗ 7.3: Цикличное окно
   getWindow(idx, list) {
     const len = list?.length || 0;
     if (!len || idx < 0) return { prev: [], cur: null, next: [] };
@@ -5714,7 +5706,6 @@ export class PlaybackCacheManager {
   getLastWindow() { return { ...this._last }; }
   clearScheduled() { this._sched.clear(); }
 
-  // ТЗ 7.6, 7.7: Планирование загрузок окна
   async ensureWindowFullyCached(pqArg, trackProvider) {
     const { list, curUid, favoritesInactive: bad, direction } = this._getCtx();
     const pq = Utils.obj.normQuality(pqArg || this._pq);
@@ -5724,37 +5715,30 @@ export class PlaybackCacheManager {
     const idx = list.findIndex(t => Utils.obj.trim(t?.uid) === curUid);
     if (idx < 0) return;
 
-    // 1. Вычисляем окно
     const win = this.getWindow(idx, list);
     this._last = win;
 
-    // 2. Проверка прав (Network Policy)
     const mgr = window.OfflineUI?.offlineManager;
-    if (!mgr || mgr.isOfflineMode()) return; // В офлайн-режиме не качаем
+    if (!mgr || mgr.isOfflineMode()) return;
     
     const net = Utils.getNet();
     if (!net.online || !isAllowedByNetPolicy({ policy: getNetPolicy(), net, quality: pq, kind: 'playbackCache' })) return;
 
-    // 3. Формирование очереди (Строго: CUR -> Сосед)
     const tasks = [];
     
     // P0: Текущий трек
     if (win.cur && !bad.has(win.cur)) tasks.push({ u: win.cur, p: P_CUR });
 
-    // P1: Сосед по направлению (ТЗ 7.8)
-    // forward -> качаем NEXT, backward -> качаем PREV
+    // P1: Сосед по направлению (forward -> NEXT, backward -> PREV)
     const neighbor = (direction === 'backward') ? win.prev[0] : win.next[0];
     if (neighbor && !bad.has(neighbor)) tasks.push({ u: neighbor, p: P_ADJ });
 
-    // 4. Постановка задач
     for (const { u, p } of tasks) {
       const key = `pbc:${pq}:${u}`;
-      if (this._sched.has(key)) continue; // Уже планировали эту задачу в этой сессии
+      if (this._sched.has(key)) continue;
 
-      // Если уже есть локально в нужном качестве — пропускаем
       if (await mgr.isTrackComplete(u, pq)) continue;
 
-      // Проверка наличия метаданных
       const meta = (typeof trackProvider === 'function' ? trackProvider(u) : getTrackByUid(u));
       if (!meta) continue;
 
@@ -5765,9 +5749,8 @@ export class PlaybackCacheManager {
         quality: pq,
         key,
         priority: p,
-        kind: 'playbackCache', // ТЗ 7.6
+        kind: 'playbackCache',
         onResult: (res) => {
-          // После скачивания помечаем как transient window (удаляется последним из transient)
           if (res?.ok) markLocalTransient(u, 'window').catch(() => {});
         }
       });
@@ -5775,7 +5758,6 @@ export class PlaybackCacheManager {
   }
 }
 
-// Singleton export
 export const PlaybackCache = new PlaybackCacheManager();
 export const getPlaybackCache = () => PlaybackCache;
 
