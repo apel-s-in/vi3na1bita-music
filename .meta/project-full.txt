@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-06c8881cb7ebdaa9852f58945a1c7d9d5628b508.idx
-│   │       ├── pack-06c8881cb7ebdaa9852f58945a1c7d9d5628b508.pack
-│   │       └── pack-06c8881cb7ebdaa9852f58945a1c7d9d5628b508.rev
+│   │       ├── pack-7bc3bb33f0ae4480001f4edbf623f109e1c5f478.idx
+│   │       ├── pack-7bc3bb33f0ae4480001f4edbf623f109e1c5f478.pack
+│   │       └── pack-7bc3bb33f0ae4480001f4edbf623f109e1c5f478.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 12:49:19 UTC
+Сгенерировано: 2026-02-03 12:55:28 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4397,8 +4397,7 @@ export default F2;
   W.Utils = U;
   if (typeof exports !== 'undefined') exports.Utils = U;
 })(window, document);
-
-export const Utils = window.Utils;
+// export const Utils удален, так как этот файл загружается через <script> без type="module"
 
 //=================================================
 // FILE: /scripts/e2e/favorites.spec.js
