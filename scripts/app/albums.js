@@ -1,4 +1,3 @@
-// scripts/app/albums.js
 import { registerTrack } from './track-registry.js';
 import { $, toStr, escHtml, isMobileUA } from './utils/app-utils.js';
 import { renderFavoritesList, renderFavoritesEmpty, bindFavoritesList } from '../ui/favorites-view.js';
@@ -11,7 +10,6 @@ const STAR_ON = 'img/star.png';
 const STAR_OFF = 'img/star2.png';
 const LOGO = 'img/logo.png';
 
-// --- Helpers ---
 const setStar = (img, liked) => { if(img) img.src = liked ? STAR_ON : STAR_OFF; };
 const toUrl = (b, r) => r ? new URL(r, b).toString() : null;
 const getUid = (el) => toStr(el?.dataset?.uid).trim();
@@ -19,17 +17,17 @@ const getAlb = (el) => toStr(el?.dataset?.album).trim();
 
 class AlbumsManager {
   constructor() {
-    this.curr = null;   // Visually open album
-    this.playing = null; // Currently playing album context
-    this.cache = new Map(); // Data cache
-    this.covers = new Map(); // Cover URL cache
-    this.coreCache = new Map(); // Playlist snapshots
+    this.curr = null;
+    this.playing = null;
+    this.cache = new Map();
+    this.covers = new Map();
+    this.coreCache = new Map();
     
     this.loading = false;
     this.galVis = true;
     
     this._bound = { fav: false, track: false, favView: false };
-    this._clickGuard = 0; // Для защиты от дребезга кликов
+    this._clickGuard = 0;
   }
 
   async initialize() {
@@ -47,7 +45,6 @@ class AlbumsManager {
     if (key) await this.loadAlbum(key);
   }
 
-  // --- Rendering ---
   _renderIcons() {
     const box = $('album-icons');
     if (!box) return;
@@ -94,7 +91,6 @@ class AlbumsManager {
     if (el) { el.textContent = t; el.className = `active-album-title ${mod}`; }
   }
 
-  // --- Logic ---
   async loadAlbum(key) {
     if (this.loading) return;
     this.loading = true;
@@ -165,19 +161,17 @@ class AlbumsManager {
     const hi = toUrl(base, t.audio), lo = toUrl(base, t.audio_low);
     const uid = toStr(t.uid).trim() || null;
     
-    // Получаем закэшированные данные альбома, чтобы достать название
     const albumData = this.cache.get(key);
     const albumTitle = albumData?.title || 'Альбом';
     const albumArtist = albumData?.artist || 'Витрина Разбита';
 
-    // Register for Offline/PWA
     if (uid) registerTrack({
       uid, title: t.title,
       audio: hi, audio_low: lo,
       size: t.size, size_low: t.size_low,
       lyrics: toUrl(base, t.lyrics), fulltext: toUrl(base, t.fulltext),
       sourceAlbum: key
-    }, { title: albumTitle, artist: albumArtist }); // <-- Передаем название альбома
+    }, { title: albumTitle, artist: albumArtist });
 
     return {
       num: i + 1,
@@ -192,8 +186,6 @@ class AlbumsManager {
   }
 
   async _loadFav() {
-    // Делегируем специализированному модулю (удаление дублирования логики)
-    // Весь код перенесен в scripts/app/albums/specials.js
     const { loadFavoritesAlbum } = await import('./albums/specials.js');
     await loadFavoritesAlbum(this);
   }
@@ -205,7 +197,6 @@ class AlbumsManager {
     await loadAndRenderNewsInline($('track-list'));
   }
 
-  // --- Rendering Helpers ---
   _renderSocials(links) {
     const box = $('social-links');
     if (!box) return;
@@ -237,7 +228,6 @@ class AlbumsManager {
     if (sel) document.querySelector(sel)?.classList.add('current');
   }
 
-  // --- Events ---
   _bindFavSync() {
     if (this._bound.fav) return;
     this._bound.fav = true;
@@ -253,7 +243,6 @@ class AlbumsManager {
     
     const ctr = $('track-list');
     ctr.addEventListener('click', (e) => {
-      // Глобальный Debounce
       if (Date.now() - this._clickGuard < 300) return;
       this._clickGuard = Date.now();
 
@@ -261,9 +250,8 @@ class AlbumsManager {
       if (!trk || !ctr.contains(trk)) return;
 
       const aKey = getAlb(trk), uid = getUid(trk);
-      if (!aKey || aKey.startsWith('__')) return; // спец. альбомы обрабатываются отдельно
+      if (!aKey || aKey.startsWith('__')) return;
 
-      // Star click
       if (e.target.classList.contains('like-star')) {
         e.preventDefault(); e.stopPropagation();
         if (!uid || !window.playerCore) return;
@@ -272,18 +260,15 @@ class AlbumsManager {
         setStar(e.target, next);
         e.target.classList.add('animating');
         setTimeout(() => e.target.classList.remove('animating'), 320);
-        // В родном альбоме source не указываем, по умолчанию будет 'album' (Hard Delete)
         window.playerCore.toggleFavorite(uid, { fromAlbum: true, albumKey: aKey });
         return;
       }
 
-      // Play click
       const data = this.cache.get(aKey);
       if (!data) return window.NotificationSystem?.error('Данные альбома не готовы');
 
       let core = this.coreCache.get(aKey);
       if (!core) {
-        // Формируем кэш для плеера
         const tracks = data.tracks.filter(t => t.src).map(t => ({
           src: t.src, sources: t.sources, title: t.title, artist: data.artist,
           album: aKey, cover: this.covers.get(aKey) || LOGO,
@@ -297,12 +282,11 @@ class AlbumsManager {
       const pIdx = core.map.get(uid);
       if (pIdx === undefined) return window.NotificationSystem?.warning('Трек недоступен');
 
-      // 1. СНАЧАЛА устанавливаем контекст (Исправление бага с мини-плеером)
+      // 1. Сначала меняем контекст "Играющего альбома" (Strict Context)
       this.playing = aKey; 
 
-      // 2. Проверяем плейлист
+      // 2. Затем загружаем плейлист (если отличается)
       const curSnap = window.playerCore.getPlaylistSnapshot() || [];
-      // Сравниваем не только длину, но и контекст альбома первого трека
       if (curSnap.length !== core.tracks.length || curSnap[0]?.album !== aKey) {
         window.playerCore.setPlaylist(core.tracks, pIdx, {
           artist: data.artist, album: data.title, cover: this.covers.get(aKey) || LOGO
@@ -311,14 +295,14 @@ class AlbumsManager {
 
       this.highlightCurrentTrack(pIdx);
       
-      // 3. ЗАПУСКАЕМ (Интерфейс уже знает, что playing == aKey)
+      // 3. Запускаем
       window.playerCore.play(pIdx);
       
+      // 4. Обновляем UI (принудительно перерисовываем, если нужно)
       window.PlayerUI?.ensurePlayerBlock?.(pIdx, { userInitiated: true });
     });
   }
 
-  // --- API ---
   getCurrentAlbum() { return this.curr; }
   getPlayingAlbum() { return this.playing; }
   setPlayingAlbum(k) { this.playing = k; }
