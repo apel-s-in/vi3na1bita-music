@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-0cd861ca4ed5f0a262fe57254ff0b9d41a07005a.idx
-│   │       ├── pack-0cd861ca4ed5f0a262fe57254ff0b9d41a07005a.pack
-│   │       └── pack-0cd861ca4ed5f0a262fe57254ff0b9d41a07005a.rev
+│   │       ├── pack-de6db9d6c1d0497278c71e24343d839c32f54399.idx
+│   │       ├── pack-de6db9d6c1d0497278c71e24343d839c32f54399.pack
+│   │       └── pack-de6db9d6c1d0497278c71e24343d839c32f54399.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 12:07:06 UTC
+Сгенерировано: 2026-02-03 12:07:34 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1463,7 +1463,7 @@ class AlbumsManager {
     this.galVis = true;
     
     this._bound = { fav: false, track: false, favView: false };
-    this._guard = 0;
+    this._clickGuard = 0; // Для защиты от дребезга кликов
   }
 
   async initialize() {
@@ -1656,12 +1656,18 @@ class AlbumsManager {
   }
 
   async _playFav(list, idx) {
-    if (Date.now() - this._guard < 250) return;
-    this._guard = Date.now();
+    // Debounce для избранного
+    if (Date.now() - this._clickGuard < 300) return;
+    this._clickGuard = Date.now();
 
     if (!list?.length) return window.NotificationSystem?.warning('Нет треков');
+    
+    // Исправление: явно пробрасываем audio/audio_low из sources для резолвера
     const tracks = list.map(it => ({
-      src: it.audio, sources: it.sources || null,
+      src: it.audio, 
+      audio: it.sources?.audio?.hi || it.audio,
+      audio_low: it.sources?.audio?.lo,
+      sources: it.sources || null,
       title: it.title, artist: 'Витрина Разбита',
       album: FAV, cover: LOGO,
       uid: it.__uid, sourceAlbum: it.__a,
