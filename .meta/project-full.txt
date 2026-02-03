@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-38f088d345bdb6b5f5fe7baf8a19e678d5ece6dd.idx
-│   │       ├── pack-38f088d345bdb6b5f5fe7baf8a19e678d5ece6dd.pack
-│   │       └── pack-38f088d345bdb6b5f5fe7baf8a19e678d5ece6dd.rev
+│   │       ├── pack-7d72baa75c8412f6bcac6726506599e7d65970d4.idx
+│   │       ├── pack-7d72baa75c8412f6bcac6726506599e7d65970d4.pack
+│   │       └── pack-7d72baa75c8412f6bcac6726506599e7d65970d4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-02 19:22:26 UTC
+Сгенерировано: 2026-02-03 06:09:21 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2345,437 +2345,209 @@ export async function loadNewsAlbum(ctx) {
 //=================================================
 // FILE: /scripts/app/gallery.js
 // scripts/app/gallery.js
-// Управление галереей обложек
+// Optimized GalleryManager v2.0
+
+const W = window, D = document;
+const CACHE_404 = 'gallery_404_cache:v1';
+const MAP = { 
+  'krevetochka': '00', 'mezhdu-zlom-i-dobrom': '01', 
+  'golos-dushi': '02', 'odnazhdy-v-skazke': '03', '__reliz__': 'news' 
+};
+const BASE = './albums/gallery/';
+const LOGO = 'img/logo.png';
+
+const $ = (id) => D.getElementById(id);
+const ss = (k, v) => { 
+  try { 
+    if(v===undefined) return JSON.parse(sessionStorage.getItem(k)||'{}'); 
+    sessionStorage.setItem(k, JSON.stringify(v)); 
+  } catch(e){ return {}; } 
+};
 
 class GalleryManager {
   constructor() {
-    this.items = [];
-    this.currentIndex = 0;
-    this.autoplayInterval = null;
-    this.isAutoplayEnabled = false;
-    this.transitionLock = false;
-    
-    this.prefetchedUrls = new Set();
-    this.imageLoader = null;
-    
-    this.ALBUM_GALLERY_MAP = {
-      'krevetochka': '00',
-      'mezhdu-zlom-i-dobrom': '01',
-      'golos-dushi': '02',
-      'odnazhdy-v-skazke': '03',
-      '__reliz__': 'news'
-    };
-    
-    this.ALLOWED_IDS = new Set(['00', '01', '02', '03', 'news']);
-    this.GALLERY_BASE = './albums/gallery/';
+    this.it = [];   // items
+    this.idx = 0;   // currentIndex
+    this.tm = null; // timer
+    this.lck = false; // lock
+    this.pre = new Set(); // prefetched
+    this.ldr = null; // current image loader
   }
 
   initialize() {
-    this.setupNavigation();
-    this.setupSwipeGestures();
-    this.setupVisibilityHandler();
-    console.log('✅ GalleryManager initialized');
+    // Navigation
+    const go = (d) => this.it.length > 1 && (this.show((this.idx + d + this.it.length) % this.it.length), this.play());
+    $('cover-gallery-arrow-left')?.addEventListener('click', () => go(-1));
+    $('cover-gallery-arrow-right')?.addEventListener('click', () => go(1));
+
+    // Swipe
+    const w = $('cover-wrap');
+    if (w) {
+      let x = 0;
+      w.addEventListener('touchstart', e => x = e.touches[0].clientX, {passive:true});
+      w.addEventListener('touchend', e => {
+        if (x === null) return;
+        const d = e.changedTouches[0].clientX - x;
+        if (Math.abs(d) > 50) go(d > 0 ? -1 : 1);
+        x = null;
+      }, {passive:true});
+    }
+
+    // Visibility
+    D.addEventListener('visibilitychange', () => D.hidden ? this.stop() : (this.it.length > 1 && this.play()));
+    console.log('✅ GalleryManager optimized');
   }
 
-  getCentralId(albumKey) {
-    if (!albumKey || albumKey === '__favorites__') return null;
-    const id = this.ALBUM_GALLERY_MAP[albumKey];
-    return (id && this.ALLOWED_IDS.has(id)) ? id : null;
-  }
+  _id(k) { return (k && k !== '__favorites__' && MAP[k]) || null; }
 
-  async loadGallery(albumKey) {
-    const id = this.getCentralId(albumKey);
+  async loadGallery(key) {
+    this.stop();
+    this.it = [];
+    this.idx = 0;
     
-    if (!id) {
-      this.items = [];
-      this.currentIndex = 0;
-      this.updateNavigationState();
-      
-      const slot = document.getElementById('cover-slot');
-      if (slot) {
-        slot.innerHTML = `<img src="img/logo.png" alt="Обложка" draggable="false" loading="lazy">`;
-      }
-      return;
-    }
+    const id = this._id(key);
+    const slot = $('cover-slot');
+    const setLogo = () => { if(slot) slot.innerHTML = `<img src="${LOGO}" alt="Cover" draggable="false">`; this._nav(); };
 
-    // ✅ Кэшируем 404 для галерей чтобы не делать повторные запросы
-    const gallery404Key = `gallery_404_cache:v1`;
-    let gallery404Cache = {};
-    try {
-      const raw = sessionStorage.getItem(gallery404Key);
-      gallery404Cache = raw ? JSON.parse(raw) : {};
-    } catch {}
-
-    if (gallery404Cache[id]) {
-      this.items = [];
-      this.currentIndex = 0;
-      this.updateNavigationState();
-      
-      const slot = document.getElementById('cover-slot');
-      if (slot) {
-        slot.innerHTML = `<img src="img/logo.png" alt="Обложка" draggable="false" loading="lazy">`;
-      }
-      return;
-    }
+    if (!id || ss(CACHE_404)[id]) return setLogo();
 
     try {
-      const baseDir = `${this.GALLERY_BASE}${id}/`;
-      const response = await fetch(`${baseDir}index.json`, { cache: 'force-cache' });
-      
-      if (!response.ok) {
-        // ✅ Кэшируем 404
-        if (response.status === 404) {
-          gallery404Cache[id] = Date.now();
-          try { sessionStorage.setItem(gallery404Key, JSON.stringify(gallery404Cache)); } catch {}
-        }
-        throw new Error(`HTTP ${response.status}`);
+      const dir = `${BASE}${id}/`;
+      const r = await fetch(`${dir}index.json`, { cache: 'force-cache' });
+      if (!r.ok) {
+        if (r.status === 404) ss(CACHE_404, { ...ss(CACHE_404), [id]: 1 });
+        throw 0;
       }
-
-      const data = await response.json();
-      const rawItems = Array.isArray(data.items) ? data.items : (Array.isArray(data) ? data : []);
-
-      this.items = rawItems
-        .map(item => this.normalizeItem(item, baseDir))
-        .filter(Boolean);
-
-      this.currentIndex = 0;
       
-      if (this.items.length > 0) {
-        this.renderItem(0);
-        this.updateNavigationState();
-        this.startAutoplay();
-      }
+      const d = await r.json();
+      this.it = (Array.isArray(d.items) ? d.items : (Array.isArray(d) ? d : []))
+        .map(i => this._norm(i, dir)).filter(Boolean);
 
-      console.log(`✅ Gallery loaded: ${this.items.length} items`);
-    } catch (error) {
-      // ✅ Тихо обрабатываем ошибку загрузки галереи (не засоряем консоль)
-      this.items = [];
-      this.currentIndex = 0;
-      this.updateNavigationState();
-      
-      // ✅ Показываем logo.png как fallback
-      const slot = document.getElementById('cover-slot');
-      if (slot) {
-        slot.innerHTML = `<img src="img/logo.png" alt="Обложка" draggable="false" loading="lazy">`;
-      }
-    }
+      if (this.it.length) {
+        this.show(0);
+        this.play();
+      } else setLogo();
+    } catch { setLogo(); }
+    
+    this._nav();
   }
 
-  normalizeItem(raw, baseDir) {
-    if (!raw) return null;
-
-    const toAbs = (p) => {
+  _norm(i, dir) {
+    if (!i) return null;
+    const abs = (p) => {
       if (!p) return null;
-      const s = String(p).replace(/^\.?\//, '');
-      if (/^https?:\/\//i.test(s)) return s;
-      if (/^(albums|img|icons|assets)\//i.test(s)) return `./${s}`;
-      return baseDir + s;
+      return /^(https?:)?\/\//.test(p) ? p : (/^(albums|img|icons)\//.test(p) ? './'+p : dir + p);
     };
-
-    if (typeof raw === 'string') {
-      const isHtml = /\.html(\?|#|$)/i.test(raw);
-      return {
-        type: isHtml ? 'html' : 'img',
-        src: toAbs(raw),
-        formats: null
-      };
-    }
-
-    const type = String(raw.type || '').toLowerCase() === 'html' ? 'html' : 'img';
-
-    if (type === 'html') {
-      return {
-        type: 'html',
-        src: toAbs(raw.src || ''),
-        formats: null
-      };
-    }
-
-    const formats = {
-      webp: toAbs(raw.formats?.webp || null),
-      full: toAbs(raw.formats?.full || raw.src || null),
-      thumb: toAbs(raw.formats?.thumb || null)
-    };
-
-    return {
-      type: 'img',
-      src: formats.full || toAbs(raw.src || ''),
-      formats
-    };
+    
+    if (typeof i === 'string') return /\.html([?#]|$)/i.test(i) ? { t: 'html', s: abs(i) } : { t: 'img', s: abs(i) };
+    const t = (i.type||'').toLowerCase() === 'html' ? 'html' : 'img';
+    if (t === 'html') return { t, s: abs(i.src) };
+    
+    const f = i.formats || {};
+    return { t, s: abs(f.full||i.src), w: abs(f.webp), f: { w: abs(f.webp), f: abs(f.full||i.src) } };
   }
 
-  renderItem(index) {
-    if (this.transitionLock) return;
-    if (!this.items.length) return;
-
-    this.transitionLock = true;
-    this.currentIndex = (index + this.items.length) % this.items.length;
-
-    const item = this.items[this.currentIndex];
-    const slot = document.getElementById('cover-slot');
+  show(i) {
+    if (this.lck || !this.it.length) return;
+    this.lck = true;
+    this.idx = i;
     
-    if (!slot || !item) {
-      this.transitionLock = false;
-      return;
-    }
+    const it = this.it[i];
+    const slot = $('cover-slot');
+    if (!slot || !it) return (this.lck = false);
 
-    if (this.imageLoader) {
-      this.imageLoader.onload = null;
-      this.imageLoader.onerror = null;
-      this.imageLoader = null;
-    }
+    if (this.ldr) { this.ldr.onload = this.ldr.onerror = null; this.ldr = null; }
 
-    if (item.type === 'html') {
-      this.renderHtml(slot, item.src);
+    const finish = () => { setTimeout(() => { this._pre(); this.lck = false; }, 200); };
+
+    // Clear content
+    while(slot.firstChild) slot.removeChild(slot.firstChild);
+
+    if (it.t === 'html') {
+      const f = D.createElement('iframe');
+      f.sandbox = 'allow-scripts allow-popups allow-forms';
+      f.referrerPolicy = 'no-referrer';
+      f.loading = 'lazy';
+      f.src = it.s;
+      slot.appendChild(f);
+      finish();
     } else {
-      this.renderImage(slot, item);
-    }
-
-    setTimeout(() => {
-      this.prefetchNext();
-      this.transitionLock = false;
-    }, 200);
-  }
-
-  renderHtml(slot, src) {
-    const iframe = document.createElement('iframe');
-    
-    // ✅ Локальные html-баннеры (albums/gallery/...) доверенные.
-    // Для корректной работы вложенных виджетов (например, Яндекс.Музыка) нужен allow-same-origin.
-    // ✅ Минимизируем security-ошибки от сторонних виджетов внутри баннера:
-    // не даём outer-iframe same-origin.
-    iframe.setAttribute('sandbox', 'allow-scripts allow-popups allow-forms');
-    iframe.setAttribute('referrerpolicy', 'no-referrer');
-    iframe.loading = 'lazy';
-    iframe.src = src;
-
-    this.clearSlot(slot);
-    slot.appendChild(iframe);
-  }
-
-  renderImage(slot, item) {
-    const img = new Image();
-    this.imageLoader = img;
-
-    img.decoding = 'async';
-    img.referrerPolicy = 'no-referrer';
-
-    const src = item.formats?.webp || item.formats?.full || item.src;
-
-    img.onload = () => {
-      if (this.imageLoader !== img) return;
-
-      const picture = document.createElement('picture');
-
-      if (item.formats?.webp) {
-        const source = document.createElement('source');
-        source.type = 'image/webp';
-        source.srcset = item.formats.webp;
-        picture.appendChild(source);
-      }
-
-      const displayImg = document.createElement('img');
-      displayImg.src = src;
-      displayImg.alt = 'Обложка альбома';
-      displayImg.decoding = 'async';
-      displayImg.referrerPolicy = 'no-referrer';
-      displayImg.style.cssText = 'opacity: 0; transition: opacity .15s ease-out';
-
-      picture.appendChild(displayImg);
-
-      this.clearSlot(slot);
-      slot.appendChild(picture);
-
-      requestAnimationFrame(() => {
-        displayImg.style.opacity = '1';
-      });
-    };
-
-    img.onerror = () => console.warn('Failed to load image:', src);
-    img.src = src;
-  }
-
-  clearSlot(slot) {
-    while (slot.firstChild) {
-      if (slot.firstChild.tagName === 'IFRAME') {
-        slot.firstChild.src = 'about:blank';
-      }
-      slot.removeChild(slot.firstChild);
-    }
-  }
-
-  prefetchNext() {
-    if (this.items.length < 2) return;
-
-    const nextIndex = (this.currentIndex + 1) % this.items.length;
-    const item = this.items[nextIndex];
-
-    if (!item || item.type !== 'img') return;
-
-    const webp = item.formats?.webp || null;
-
-    if (this.prefetchedUrls.size > 20) this.prefetchedUrls.clear();
-
-    if (webp && !this.prefetchedUrls.has(webp)) {
       const img = new Image();
-      img.src = webp;
-      this.prefetchedUrls.add(webp);
+      this.ldr = img;
+      img.decoding = 'async';
+      img.referrerPolicy = 'no-referrer';
+      img.src = it.w || it.s;
+      
+      img.onload = () => {
+        if (this.ldr !== img) return;
+        const p = D.createElement('picture');
+        if (it.w) { const s = D.createElement('source'); s.type = 'image/webp'; s.srcset = it.w; p.appendChild(s); }
+        const el = D.createElement('img');
+        el.src = it.s;
+        el.alt = 'Cover';
+        el.decoding = 'async';
+        el.referrerPolicy = 'no-referrer';
+        el.style.cssText = 'opacity:0;transition:opacity .15s ease-out';
+        p.appendChild(el);
+        slot.appendChild(p);
+        requestAnimationFrame(() => el.style.opacity = '1');
+        finish();
+      };
+      img.onerror = finish;
     }
   }
 
-  setupNavigation() {
-    const leftBtn = document.getElementById('cover-gallery-arrow-left');
-    const rightBtn = document.getElementById('cover-gallery-arrow-right');
-
-    leftBtn?.addEventListener('click', () => {
-      if (!this.items.length) return;
-      this.renderItem(this.currentIndex - 1);
-      this.restartAutoplay();
-    });
-
-    rightBtn?.addEventListener('click', () => {
-      if (!this.items.length) return;
-      this.renderItem(this.currentIndex + 1);
-      this.restartAutoplay();
-    });
-  }
-
-  setupSwipeGestures() {
-    const wrap = document.getElementById('cover-wrap');
-    if (!wrap) return;
-
-    let startX = null;
-
-    wrap.addEventListener('touchstart', (e) => {
-      startX = e.touches[0].clientX;
-    }, { passive: true });
-
-    wrap.addEventListener('touchend', (e) => {
-      if (startX === null) return;
-
-      const dx = e.changedTouches[0].clientX - startX;
-
-      if (Math.abs(dx) > 50) {
-        if (dx > 0) {
-          this.renderItem(this.currentIndex - 1);
-        } else {
-          this.renderItem(this.currentIndex + 1);
-        }
-        this.restartAutoplay();
-      }
-
-      startX = null;
-    }, { passive: true });
-  }
-
-  setupVisibilityHandler() {
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden) {
-        // ✅ Останавливаем только галерею (плеер не трогаем)
-        this.stopAutoplay();
-      } else {
-        // Возобновляем, только если есть что крутить
-        if (this.items.length > 1) {
-          this.startAutoplay();
-        }
-      }
-    });
-  }
-
-  updateNavigationState() {
-    const wrap = document.getElementById('cover-wrap');
-    if (!wrap) return;
-
-    if (this.items.length > 1) {
-      wrap.classList.add('gallery-nav-ready');
-    } else {
-      wrap.classList.remove('gallery-nav-ready');
+  _pre() {
+    if (this.it.length < 2) return;
+    const n = this.it[(this.idx + 1) % this.it.length];
+    if (n?.t === 'img' && n.w && !this.pre.has(n.w)) {
+      if (this.pre.size > 20) this.pre.clear();
+      (new Image()).src = n.w;
+      this.pre.add(n.w);
     }
   }
 
-  startAutoplay() {
-    if (this.items.length <= 1) return;
-    if (this.autoplayInterval) return;
-
-    this.autoplayInterval = setInterval(() => {
-      this.renderItem(this.currentIndex + 1);
-    }, 5000);
-
-    this.isAutoplayEnabled = true;
+  _nav() {
+    $('cover-wrap')?.classList.toggle('gallery-nav-ready', this.it.length > 1);
   }
 
-  stopAutoplay() {
-    if (this.autoplayInterval) {
-      clearInterval(this.autoplayInterval);
-      this.autoplayInterval = null;
-    }
-    this.isAutoplayEnabled = false;
+  play() {
+    this.stop();
+    if (this.it.length > 1) this.tm = setInterval(() => this.show((this.idx + 1) % this.it.length), 5000);
   }
 
-  restartAutoplay() {
-    this.stopAutoplay();
-    this.startAutoplay();
-  }
+  stop() { if (this.tm) clearInterval(this.tm); this.tm = null; }
 
   clear() {
-    this.stopAutoplay();
-    this.items = [];
-    this.currentIndex = 0;
-    this.prefetchedUrls.clear();
-    
-    if (this.imageLoader) {
-      this.imageLoader.onload = null;
-      this.imageLoader.onerror = null;
-      this.imageLoader = null;
-    }
-
-    const slot = document.getElementById('cover-slot');
-    if (slot) this.clearSlot(slot);
-
-    this.updateNavigationState();
+    this.stop();
+    this.it = [];
+    this.pre.clear();
+    this.ldr = null;
+    if ($('cover-slot')) $('cover-slot').innerHTML = '';
+    this._nav();
   }
 
-  getItemsCount() {
-    return this.items.length;
-  }
+  getItemsCount() { return this.it.length; }
+  getCurrentIndex() { return this.idx; }
 
-  getCurrentIndex() {
-    return this.currentIndex;
-  }
-
-  /**
-   * ✅ Возвращает URL первой обложки из центральной галереи для albumKey
-   * (webp приоритетнее), либо img/logo.png.
-   * НЕ трогает воспроизведение.
-   */
-  async getFirstCoverUrl(albumKey) {
-    const id = this.getCentralId(albumKey);
-    if (!id) return 'img/logo.png';
-
-    const baseDir = `${this.GALLERY_BASE}${id}/`;
-
+  async getFirstCoverUrl(key) {
+    const id = this._id(key);
+    if (!id) return LOGO;
     try {
-      const response = await fetch(`${baseDir}index.json`, { cache: 'force-cache' });
-      if (!response.ok) return 'img/logo.png';
-
-      const data = await response.json();
-      const rawItems = Array.isArray(data.items) ? data.items : (Array.isArray(data) ? data : []);
-      const first = rawItems && rawItems.length ? rawItems[0] : null;
-      if (!first) return 'img/logo.png';
-
-      const norm = this.normalizeItem(first, baseDir);
-      if (!norm || norm.type !== 'img') return 'img/logo.png';
-
-      return norm.formats?.webp || norm.formats?.full || norm.src || 'img/logo.png';
-    } catch {
-      return 'img/logo.png';
-    }
+      const dir = `${BASE}${id}/`;
+      const r = await fetch(`${dir}index.json`, { cache: 'force-cache' });
+      if (!r.ok) return LOGO;
+      const d = await r.json();
+      const i = (d.items||d||[])[0];
+      if (!i) return LOGO;
+      const n = this._norm(i, dir);
+      return (n.t === 'img' ? (n.w || n.s) : LOGO);
+    } catch { return LOGO; }
   }
 }
 
-window.GalleryManager = new GalleryManager();
-
-export default GalleryManager;
+W.GalleryManager = new GalleryManager();
+export default W.GalleryManager;
 
 //=================================================
 // FILE: /scripts/app/navigation.js
@@ -7228,282 +7000,126 @@ export const PlaybackCache = {
 
 //=================================================
 // FILE: /scripts/offline/track-resolver.js
-// scripts/offline/track-resolver.js
-// TrackResolver (ESM) — выбор источника воспроизведения по PQ↔CQ (ТЗ 6.1)
-// Ключевое правило: CQ влияет на воспроизведение ТОЛЬКО если CQ выше PQ
-
-import { bytesByQuality, getAudioBlob, touchLocalAccess, getLocalMeta } from './cache-db.js';
+import { getAudioBlob, bytesByQuality, touchLocalAccess, getLocalMeta } from './cache-db.js';
 import { getTrackByUid } from '../app/track-registry.js';
 
-const MB = 1024 * 1024;
-const COMPLETE_THRESHOLD = 0.92;
+const BLOB_TTL = 30 * 60 * 1000; // 30 min cache for blob URLs
+const cache = new Map(); // key(uid:q) -> { url, ts }
 
-function normQ(v) {
-  return String(v || '').toLowerCase() === 'lo' ? 'lo' : 'hi';
+// --- Helpers ---
+const norm = (v) => (String(v || '').toLowerCase() === 'lo' ? 'lo' : 'hi');
+const sUrl = (v) => (v ? String(v).trim() : null);
+
+function getCachedUrl(key) {
+  const r = cache.get(key);
+  if (!r) return null;
+  if (Date.now() - r.ts > BLOB_TTL) { revoke(key); return null; }
+  return r.url;
 }
 
-function safeUrl(v) {
-  const s = String(v || '').trim();
-  return s || null;
+function revoke(key) {
+  const r = cache.get(key);
+  if (r) { try { URL.revokeObjectURL(r.url); } catch {} cache.delete(key); return true; }
+  return false;
 }
 
-const objectUrlCache = new Map();
-const OBJECT_URL_TTL_MS = 30 * 60 * 1000;
-
-function revokeObjectUrlByKey(key) {
-  const rec = objectUrlCache.get(key);
-  if (!rec) return false;
-  try { URL.revokeObjectURL(rec.url); } catch {}
-  objectUrlCache.delete(key);
-  return true;
-}
-
+// API: Очистка ресурсов при удалении трека
 export function revokeObjectUrlsForUid(uid) {
-  const u = String(uid || '').trim();
-  if (!u) return 0;
-  let n = 0;
-  if (revokeObjectUrlByKey(`${u}:hi`)) n++;
-  if (revokeObjectUrlByKey(`${u}:lo`)) n++;
-  return n;
+  return (revoke(`${uid}:hi`) ? 1 : 0) + (revoke(`${uid}:lo`) ? 1 : 0);
 }
 
-function getCachedObjectUrl(key) {
-  const rec = objectUrlCache.get(key);
-  if (!rec) return null;
-  if ((Date.now() - rec.ts) > OBJECT_URL_TTL_MS) {
-    try { URL.revokeObjectURL(rec.url); } catch {}
-    objectUrlCache.delete(key);
-    return null;
-  }
-  return rec.url;
+// API: Проверка целостности файла (ТЗ 9.2)
+export async function isLocalComplete(uid, q) {
+  const u = sUrl(uid); if (!u) return false;
+  const m = getTrackByUid(u); if (!m) return false;
+  
+  const qual = norm(q);
+  const sz = qual === 'lo' ? (m.sizeLo || m.size_low) : (m.sizeHi || m.size);
+  if (!sz) return false;
+
+  const stored = await bytesByQuality(u);
+  const has = qual === 'hi' ? stored.hi : stored.lo;
+  return has >= (sz * 1024 * 1024 * 0.92); // >92% threshold
 }
 
-function setCachedObjectUrl(key, url) {
-  objectUrlCache.set(key, { url, ts: Date.now() });
+async function getLocalUrl(uid, q) {
+  const key = `${uid}:${q}`;
+  let url = getCachedUrl(key);
+  if (url) return url;
+
+  const blob = await getAudioBlob(uid, q);
+  if (!blob) return null;
+
+  url = URL.createObjectURL(blob);
+  cache.set(key, { url, ts: Date.now() });
+  try { await touchLocalAccess(uid); } catch {}
   return url;
 }
 
-async function getLocalBlobUrl(uid, quality) {
-  const u = String(uid || '').trim();
-  if (!u) return null;
+// API: Главный метод выбора источника (ТЗ 6.1, 7.4, 11.2)
+export async function resolvePlaybackSource({ track, pq, cq, offlineMode }) {
+  const u = sUrl(track?.uid);
+  const net = window.Utils?.isOnline ? window.Utils.isOnline() : navigator.onLine;
+  const pQual = norm(pq);
+  const cQual = norm(cq);
 
-  const q = normQ(quality);
-  const key = `${u}:${q}`;
+  // 1. Анализ доступности локальных файлов
+  const [hasHi, hasLo] = u ? await Promise.all([isLocalComplete(u, 'hi'), isLocalComplete(u, 'lo')]) : [false, false];
 
-  const cached = getCachedObjectUrl(key);
-  if (cached) return cached;
+  // 2. Правило ТЗ 6.1: CQ влияет только если он выше PQ (улучшение)
+  let effQ = pQual;
+  if (pQual === 'lo' && cQual === 'hi' && hasHi) effQ = 'hi';
 
-  const blob = await getAudioBlob(u, q);
-  if (!blob) return null;
+  // 3. Формирование кандидатов (ТЗ 7.4.2)
+  const attempts = [];
 
-  const url = URL.createObjectURL(blob);
-  return setCachedObjectUrl(key, url);
+  // A. Локальный идеальный (Local >= PQ)
+  // Пытаемся взять из кэша то качество, которое нужно (или лучшее доступное для Lo)
+  if (effQ === 'hi' && hasHi) attempts.push({ type: 'local', q: 'hi' });
+  else if (effQ === 'lo') {
+    if (hasLo) attempts.push({ type: 'local', q: 'lo' });
+    else if (hasHi) attempts.push({ type: 'local', q: 'hi' }); // Fallback to Hi for Lo requests is fine
+  }
+
+  // B. Сеть (Network = PQ) - если разрешено
+  // Если offlineMode=ON, сеть исключаем (кроме случаев, когда локально нет вообще ничего - но ТЗ требует строгости)
+  if (net && !offlineMode) {
+    const src = track?.sources?.audio;
+    const url = (pQual === 'lo') ? (src?.lo || track?.audio_low) : (src?.hi || track?.audio);
+    const alt = (pQual === 'lo') ? (src?.hi || track?.audio) : (src?.lo || track?.audio_low);
+    if (url || alt) attempts.push({ type: 'net', url: sUrl(url || alt) });
+  }
+
+  // C. Локальный Fallback (Local < PQ) - играем что есть
+  if (!hasHi && hasLo && pQual === 'hi') attempts.push({ type: 'local', q: 'lo' });
+  if (hasHi && !hasLo && pQual === 'lo') attempts.push({ type: 'local', q: 'hi' }); // Already covered but safe to double check
+
+  // 4. Выбор первого доступного
+  for (const c of attempts) {
+    if (c.type === 'local') {
+      const url = await getLocalUrl(u, c.q);
+      if (url) {
+        const m = await getLocalMeta(u);
+        return { 
+          url, effectiveQuality: c.q, isLocal: true, 
+          localKind: (m?.kind === 'cloud' || m?.kind === 'transient') ? m.kind : 'transient'
+        };
+      }
+    } else if (c.type === 'net' && c.url) {
+      return { url: c.url, effectiveQuality: pQual, isLocal: false, localKind: null };
+    }
+  }
+
+  return { url: null, reason: 'offline:noSource' };
 }
 
-async function isLocalComplete(uid, quality) {
-  const u = String(uid || '').trim();
-  if (!u) return false;
-
-  const q = normQ(quality);
-  const meta = getTrackByUid(u);
-  if (!meta) return false;
-
-  const needMb = q === 'hi'
-    ? Number(meta.sizeHi || meta.size || 0)
-    : Number(meta.sizeLo || meta.size_low || 0);
-
-  if (!(Number.isFinite(needMb) && needMb > 0)) return false;
-
-  const needBytes = Math.floor(needMb * MB);
-  const have = await bytesByQuality(u);
-  const gotBytes = q === 'hi' ? Number(have.hi || 0) : Number(have.lo || 0);
-
-  if (!(Number.isFinite(gotBytes) && gotBytes > 0)) return false;
-
-  return gotBytes >= Math.floor(needBytes * COMPLETE_THRESHOLD);
-}
-
-function getNetworkStatus() {
-  try {
-    if (window.NetworkManager?.getStatus) {
-      return window.NetworkManager.getStatus();
-    }
-  } catch {}
-  return { online: navigator.onLine !== false, kind: 'unknown' };
-}
-
-/**
- * resolvePlaybackSource — главная функция выбора источника (ТЗ 6.1, 7.4)
- * 
- * Порядок выбора (ТЗ 7.4.2):
- * 1. Локальная копия качества ≥ PQ
- * 2. Сетевой источник качества = PQ (если сеть доступна)
- * 3. Локальная копия качества < PQ (fallback)
- * 4. null (недоступно офлайн)
- * 
- * Правило PQ↔CQ (ТЗ 6.1):
- * - CQ влияет на playback ТОЛЬКО если CQ > PQ
- * - PQ=Hi, CQ=Lo → играем Hi (не ухудшаем!)
- * - PQ=Lo, CQ=Hi, локально есть Hi → играем Hi (улучшение)
- */
-export async function resolvePlaybackSource(params) {
-  const track = params?.track || null;
-  const pq = normQ(params?.pq);
-  const cq = normQ(params?.cq);
-  const offlineMode = !!params?.offlineMode;
-  const network = params?.network || getNetworkStatus();
-
-  const uid = String(track?.uid || '').trim() || null;
-  const netOnline = !!network?.online;
-
-  const sources = track?.sources || null;
-  const urlHi = safeUrl(sources?.audio?.hi || track?.audio || track?.src);
-  const urlLo = safeUrl(sources?.audio?.lo || track?.audio_low);
-
-  const pickNetworkUrl = (q) => {
-    if (q === 'lo') return urlLo || urlHi;
-    return urlHi || urlLo;
-  };
-
-  const localHiComplete = uid ? await isLocalComplete(uid, 'hi') : false;
-  const localLoComplete = uid ? await isLocalComplete(uid, 'lo') : false;
-
-  const localQuality = localHiComplete ? 'hi' : (localLoComplete ? 'lo' : null);
-
-  // ТЗ 6.1: CQ > PQ: можем улучшить воспроизведение локальным файлом
-  const cqHigherThanPq = (cq === 'hi' && pq === 'lo');
-  
-  let effectiveQuality = pq;
-  if (cqHigherThanPq && localHiComplete) {
-    effectiveQuality = 'hi';
-  }
-
-  // СЕТЬ НЕДОСТУПНА
-  if (!netOnline) {
-    if (effectiveQuality === 'hi' && localHiComplete) {
-      const url = await getLocalBlobUrl(uid, 'hi');
-      if (url) {
-        try { await touchLocalAccess(uid); } catch {}
-        const lm = await getLocalMeta(uid);
-        const localKind = (lm?.kind === 'cloud' || lm?.kind === 'transient') ? lm.kind : 'transient';
-        return { url, effectiveQuality: 'hi', isLocal: true, localQuality, localKind, reason: 'offline:localHi' };
-      }
-    }
-    
-    if (effectiveQuality === 'lo' && (localLoComplete || localHiComplete)) {
-      const prefQ = localHiComplete ? 'hi' : 'lo';
-      const url = await getLocalBlobUrl(uid, prefQ);
-      if (url) {
-        try { await touchLocalAccess(uid); } catch {}
-        const lm = await getLocalMeta(uid);
-        const localKind = (lm?.kind === 'cloud' || lm?.kind === 'transient') ? lm.kind : 'transient';
-        return { url, effectiveQuality: prefQ, isLocal: true, localQuality, localKind, reason: `offline:local${prefQ.charAt(0).toUpperCase() + prefQ.slice(1)}` };
-      }
-    }
-
-    if (localHiComplete) {
-      const url = await getLocalBlobUrl(uid, 'hi');
-      if (url) {
-        try { await touchLocalAccess(uid); } catch {}
-        const lm = await getLocalMeta(uid);
-        const localKind = (lm?.kind === 'cloud' || lm?.kind === 'transient') ? lm.kind : 'transient';
-        return { url, effectiveQuality: 'hi', isLocal: true, localQuality, localKind, reason: 'offline:fallbackHi' };
-      }
-    }
-    if (localLoComplete) {
-      const url = await getLocalBlobUrl(uid, 'lo');
-      if (url) {
-        try { await touchLocalAccess(uid); } catch {}
-        const lm = await getLocalMeta(uid);
-        const localKind = (lm?.kind === 'cloud' || lm?.kind === 'transient') ? lm.kind : 'transient';
-        return { url, effectiveQuality: 'lo', isLocal: true, localQuality, localKind, reason: 'offline:fallbackLo' };
-      }
-    }
-
-    return { url: null, effectiveQuality, isLocal: false, localQuality: null, reason: 'offline:noLocal' };
-  }
-
-  // СЕТЬ ДОСТУПНА
-  
-  // ТЗ 11.2.A: если OFFLINE mode OFF — только сеть
-  if (!offlineMode) {
-    const url = pickNetworkUrl(effectiveQuality);
-    return { url, effectiveQuality, isLocal: false, localQuality, reason: 'online:streamOnly' };
-  }
-
-  // OFFLINE mode ON: локальные файлы имеют приоритет
-  
-  if (effectiveQuality === 'hi' && localHiComplete) {
-    const url = await getLocalBlobUrl(uid, 'hi');
-    if (url) {
-      try { await touchLocalAccess(uid); } catch {}
-      const lm = await getLocalMeta(uid);
-      const localKind = (lm?.kind === 'cloud' || lm?.kind === 'transient') ? lm.kind : 'transient';
-      return { url, effectiveQuality: 'hi', isLocal: true, localQuality, localKind, reason: 'offlineMode:localHi' };
-    }
-  }
-
-  if (effectiveQuality === 'lo') {
-    if (localHiComplete) {
-      const url = await getLocalBlobUrl(uid, 'hi');
-      if (url) {
-        try { await touchLocalAccess(uid); } catch {}
-        const lm = await getLocalMeta(uid);
-        const localKind = (lm?.kind === 'cloud' || lm?.kind === 'transient') ? lm.kind : 'transient';
-        return { url, effectiveQuality: 'hi', isLocal: true, localQuality, localKind, reason: 'offlineMode:localHiForLo' };
-      }
-    }
-    if (localLoComplete) {
-      const url = await getLocalBlobUrl(uid, 'lo');
-      if (url) {
-        try { await touchLocalAccess(uid); } catch {}
-        const lm = await getLocalMeta(uid);
-        const localKind = (lm?.kind === 'cloud' || lm?.kind === 'transient') ? lm.kind : 'transient';
-        return { url, effectiveQuality: 'lo', isLocal: true, localQuality, localKind, reason: 'offlineMode:localLo' };
-      }
-    }
-  }
-
-  const netUrl = pickNetworkUrl(effectiveQuality);
-  if (netUrl) {
-    return { url: netUrl, effectiveQuality, isLocal: false, localQuality, reason: 'offlineMode:network' };
-  }
-
-  if (localHiComplete) {
-    const url = await getLocalBlobUrl(uid, 'hi');
-    if (url) {
-      return { url, effectiveQuality: 'hi', isLocal: true, localQuality, reason: 'offlineMode:fallbackHi' };
-    }
-  }
-  if (localLoComplete) {
-    const url = await getLocalBlobUrl(uid, 'lo');
-    if (url) {
-      return { url, effectiveQuality: 'lo', isLocal: true, localQuality, reason: 'offlineMode:fallbackLo' };
-    }
-  }
-
-  return { url: null, effectiveQuality, isLocal: false, localQuality: null, reason: 'offlineMode:noSource' };
-}
-
-/**
- * isTrackAvailableOffline — проверка доступности трека офлайн
- */
+// API: Проверка доступности (для UI)
 export async function isTrackAvailableOffline(uid) {
-  const u = String(uid || '').trim();
-  if (!u) return false;
-  
-  const hiComplete = await isLocalComplete(u, 'hi');
-  if (hiComplete) return true;
-  
-  const loComplete = await isLocalComplete(u, 'lo');
-  return loComplete;
+  const u = sUrl(uid);
+  return u ? ((await isLocalComplete(u, 'hi')) || (await isLocalComplete(u, 'lo'))) : false;
 }
 
-export const TrackResolver = { 
-  resolvePlaybackSource,
-  isTrackAvailableOffline,
-  isLocalComplete
-};
+export const TrackResolver = { resolvePlaybackSource, isTrackAvailableOffline, isLocalComplete };
 
 //=================================================
 // FILE: /scripts/ui/cache-progress-overlay.js
@@ -9343,382 +8959,204 @@ export function closeOfflineModal() {
 
 //=================================================
 // FILE: /scripts/ui/sleep.js
-// scripts/ui/sleep.js
-// Таймер сна: остановка музыки по срабатыванию (через pause в PlayerCore).
-// Режимы:
-// - через фиксированное время: 15/30/60 минут
-// - к конкретному часу: HH:MM (например, 01:30)
-// UI: кнопка в панели плеера открывает меню.
-// Инварианты: не вызывать stop/play/seek/volume — только playerCore.setSleepTimer/clearSleepTimer.
-
-(function SleepTimerModule() {
+//=================================================
+// FILE: /scripts/ui/sleep.js
+// Таймер сна: Версия с делегированием событий (Fix dynamic UI)
+// Логика: пауза через PlayerCore. UI: 15/30/60 мин или HH:MM.
+(function () {
   'use strict';
 
-  const w = window;
-  const U = w.Utils;
-
-  // Единый DOM helpers слой
-  const $ = (id) => U.dom.byId(id);
-  const on = (el, ev, fn, opts) => U.dom.on(el, ev, fn, opts);
-
-  const LS_KEY = 'sleepTimerTarget'; // back-compat: уже используется текущим проектом (epoch ms)
-
-  const PRESETS_MIN = [15, 30, 60];
-
-  let menuEl = null;
-  let tickId = null;
-  let coreBound = false;
-
-  function lsGetTarget() {
-    const v = U.lsGet(LS_KEY, '0');
-    const n = parseInt(String(v ?? ''), 10);
-    return Number.isFinite(n) ? n : 0;
-  }
-
-  function lsSetTarget(ts) {
-    U.lsSet(LS_KEY, String(ts));
-  }
-
-  function lsClearTarget() {
-    try { localStorage.removeItem(LS_KEY); } catch {}
-  }
-
-  function clampInt(v, min, max, def) {
-    const n = parseInt(String(v ?? ''), 10);
-    const x = Number.isFinite(n) ? n : def;
-    return Math.max(min, Math.min(max, x));
-  }
-
-  function formatHHMM(ts) {
-    const d = new Date(ts);
-    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-  }
-
-  function formatRemainingCompact(targetTs) {
-    const ms = targetTs - Date.now();
-    if (ms <= 0) return '0м';
-    const totalMin = Math.ceil(ms / 60000);
-    if (totalMin < 60) return `${totalMin}м`;
-    const h = Math.floor(totalMin / 60);
-    const m = totalMin % 60;
-    return m ? `${h}ч ${m}м` : `${h}ч`;
-  }
-
-  function computeTargetFromMinutes(minutes) {
-    const m = clampInt(minutes, 1, 24 * 60, 15);
-    return Date.now() + m * 60 * 1000;
-  }
-
-  function computeTargetToClock(h, m) {
-    const hh = clampInt(h, 0, 23, 0);
-    const mm = clampInt(m, 0, 59, 0);
-
-    const now = new Date();
-    const target = new Date(now);
-    target.setHours(hh, mm, 0, 0);
-    if (target.getTime() <= now.getTime()) target.setDate(target.getDate() + 1);
-    return target.getTime();
-  }
-
-  function getTargetTs() {
-    // Источник правды: playerCore, fallback — localStorage (чтобы переживать reload)
-    const pc = w.playerCore;
-    const fromCore = pc?.getSleepTimerTarget?.();
-    if (Number.isFinite(fromCore) && fromCore > 0) return fromCore;
-    return lsGetTarget();
-  }
-
-  function applyTargetTs(targetTs) {
-    const pc = w.playerCore;
-    if (!pc) return false;
-
-    const ts = Number(targetTs) || 0;
-    const ms = ts - Date.now();
-    if (ms <= 0) return false;
-
-    pc.setSleepTimer?.(ms);
-    lsSetTarget(ts);
-    startTicking();
-    updateBadge();
-    return true;
-  }
-
-  function clearTimer() {
-    w.playerCore?.clearSleepTimer?.();
-    lsClearTarget();
-    stopTicking();
-    updateBadge();
-  }
-
-  function restoreTimer() {
-    const saved = lsGetTarget();
-    if (!saved) return;
-
-    const remaining = saved - Date.now();
-    if (remaining > 0) {
-      w.playerCore?.setSleepTimer?.(remaining);
-      startTicking();
-      updateBadge();
-      return;
-    }
-
-    lsClearTarget();
-    updateBadge();
-  }
-
-  function updateBadge() {
-    const badge = $('sleep-timer-badge');
-    if (!badge) return;
-
-    const targetTs = getTargetTs();
-    if (!targetTs || targetTs <= Date.now()) {
-      badge.style.display = 'none';
-      badge.textContent = '';
-      return;
-    }
-
-    const min = Math.ceil((targetTs - Date.now()) / 60000);
-    if (min <= 0) {
-      badge.style.display = 'none';
-      badge.textContent = '';
-      return;
-    }
-
-    badge.textContent = String(min);
-    badge.style.display = '';
-  }
-
-  function startTicking() {
-    stopTicking();
-    updateBadge();
-
-    tickId = setInterval(() => {
-      updateBadge();
-      const t = getTargetTs();
-      if (t && t <= Date.now()) {
-        // подстраховка после сна вкладки
-        clearTimer();
-      }
-    }, 10000);
-  }
-
-  function stopTicking() {
-    if (!tickId) return;
-    clearInterval(tickId);
-    tickId = null;
-  }
-
-  function bindCoreOnce() {
-    if (coreBound) return;
-    const pc = w.playerCore;
-    if (!pc?.on) return;
-
-    coreBound = true;
-    pc.on({
-      onSleepTriggered: () => {
-        // PlayerCore сам делает pause() — это и есть требуемая “остановка музыки”.
-        w.NotificationSystem?.info?.('⏰ Таймер сна сработал');
-        clearTimer();
-      }
-    });
-  }
-
-  // --------------------------
-  // Menu UI
-  // --------------------------
-  function openMenu(anchor) {
-    if (menuEl || !anchor) return;
-
-    const targetTs = getTargetTs();
-    const active = targetTs && targetTs > Date.now();
-
-    const el = document.createElement('div');
-    el.className = 'sleep-menu';
-
-    const rect = anchor.getBoundingClientRect();
-    el.style.position = 'fixed';
-    el.style.right = `${Math.max(8, window.innerWidth - rect.right)}px`;
-    el.style.bottom = `${Math.max(8, window.innerHeight - rect.top)}px`;
-
-    const head = active
-      ? `
-        <div class="sleep-menu-item active" data-act="noop">
-          ✅ Активен: ${formatRemainingCompact(targetTs)} (до ${formatHHMM(targetTs)})
-        </div>
-      `
-      : '';
-
-    const off = `<div class="sleep-menu-item" data-act="off">Выключить</div>`;
-    const sep = `<div style="height: 1px; background: rgba(255,255,255,0.1); margin: 6px 0;"></div>`;
-
-    const presets = PRESETS_MIN
-      .map(m => `<div class="sleep-menu-item" data-act="min" data-min="${m}">${m}</div>`)
-      .join('');
-
-    const toTime = `<div class="sleep-menu-item" data-act="totime">К времени…</div>`;
-
-    el.innerHTML = `${head}${off}${sep}${presets}${sep}${toTime}`;
-
-    on(el, 'click', (e) => {
-      const item = e.target?.closest?.('.sleep-menu-item');
-      if (!item || !el.contains(item)) return;
-      e.stopPropagation();
-
-      const act = String(item.dataset.act || '');
-
-      if (act === 'off') {
-        clearTimer();
-        closeMenu();
-        w.NotificationSystem?.info?.('⏰ Таймер сна выключен');
-        return;
-      }
-
-      if (act === 'min') {
-        const m = clampInt(item.dataset.min, 1, 24 * 60, 15);
-        const ts = computeTargetFromMinutes(m);
-        applyTargetTs(ts);
-        closeMenu();
-        w.NotificationSystem?.success?.(`⏰ Таймер: ${m} мин`);
-        return;
-      }
-
-      if (act === 'totime') {
-        closeMenu();
-        openTimeDialog();
-      }
-    });
-
-    // close outside
-    setTimeout(() => document.addEventListener('click', onDocClickClose), 0);
-    document.addEventListener('keydown', onEscOnce, { once: true });
-
-    document.body.appendChild(el);
-    menuEl = el;
-  }
-
-  function closeMenu() {
-    if (!menuEl) return;
-    try { menuEl.remove(); } catch {}
-    menuEl = null;
-    document.removeEventListener('click', onDocClickClose);
-  }
-
-  function onDocClickClose(e) {
-    if (menuEl && !menuEl.contains(e.target)) closeMenu();
-  }
-
-  function onEscOnce(e) {
-    if (e.key === 'Escape') closeMenu();
-    else document.addEventListener('keydown', onEscOnce, { once: true });
-  }
-
-  function toggleMenu(anchor) {
-    if (menuEl) closeMenu();
-    else openMenu(anchor);
-  }
-
-  // --------------------------
-  // Time dialog (HH:MM)
-  // --------------------------
-  function openTimeDialog() {
-    const wrap = document.createElement('div');
-    wrap.className = 'sleep-time-modal-backdrop';
-    wrap.innerHTML = `
-      <div class="sleep-time-modal" role="dialog" aria-modal="true" aria-label="Таймер сна к времени">
-        <div class="sleep-time-title">Таймер сна к времени</div>
-        <div class="sleep-time-row">
-          <input id="sleep-time-hh" inputmode="numeric" maxlength="2" placeholder="HH" class="sleep-time-input">
-          <span class="sleep-time-sep">:</span>
-          <input id="sleep-time-mm" inputmode="numeric" maxlength="2" placeholder="MM" class="sleep-time-input">
-        </div>
-        <div class="sleep-time-actions">
-          <button type="button" class="sleep-time-btn" data-act="cancel">Отмена</button>
-          <button type="button" class="sleep-time-btn primary" data-act="ok">Ок</button>
-        </div>
-      </div>
-    `;
-
-    const hhEl = wrap.querySelector('#sleep-time-hh');
-    const mmEl = wrap.querySelector('#sleep-time-mm');
-
-    // Prefill: +30 минут
-    const pre = new Date(Date.now() + 30 * 60000);
-    if (hhEl) hhEl.value = String(pre.getHours()).padStart(2, '0');
-    if (mmEl) mmEl.value = String(pre.getMinutes()).padStart(2, '0');
-
-    const close = () => {
-      document.removeEventListener('keydown', onKey);
-      try { wrap.remove(); } catch {}
-    };
-
-    const ok = () => {
-      const hh = clampInt(hhEl?.value, 0, 23, 0);
-      const mm = clampInt(mmEl?.value, 0, 59, 0);
-      const ts = computeTargetToClock(hh, mm);
-
-      if (applyTargetTs(ts)) {
-        w.NotificationSystem?.success?.(`⏰ Таймер до ${formatHHMM(ts)}`);
-      }
-      close();
-    };
-
-    const onKey = (e) => {
-      if (e.key === 'Escape') { e.preventDefault(); close(); }
-      if (e.key === 'Enter') { e.preventDefault(); ok(); }
-    };
-
-    on(wrap, 'click', (e) => {
-      if (e.target === wrap) return close();
-
-      const btn = e.target?.closest?.('button[data-act]');
-      if (!btn) return;
-
-      const act = String(btn.dataset.act || '');
-      if (act === 'cancel') close();
-      if (act === 'ok') ok();
-    });
-
-    document.addEventListener('keydown', onKey);
-    document.body.appendChild(wrap);
-    setTimeout(() => hhEl?.focus?.(), 0);
-  }
-
-  // --------------------------
-  // Public API
-  // --------------------------
-  function init() {
-    const btn = $('sleep-timer-btn');
-    if (!btn) {
-      setTimeout(init, 100);
-      return;
-    }
-
-    on(btn, 'click', (e) => toggleMenu(e.currentTarget));
-
-    bindCoreOnce();
-    restoreTimer();
-    updateBadge();
-
-    console.log('✅ Sleep timer initialized');
-  }
-
-  w.SleepTimer = {
-    // back-compat: старый API принимал minutes
-    setSleepTimer(minutes) {
-      const ts = computeTargetFromMinutes(minutes);
-      applyTargetTs(ts);
-    },
-    clearSleepTimer: clearTimer,
-    updateBadge,
-    show() {
-      const btn = $('sleep-timer-btn');
-      if (!btn) return;
-      toggleMenu(btn);
+  const W = window, U = W.Utils, LS = 'sleepTimerTarget';
+  const $ = (id) => document.getElementById(id);
+  const now = () => Date.now();
+  const pad = (n) => String(n).padStart(2, '0');
+  
+  // State
+  let menu = null, tickId = null;
+
+  // --- Helpers ---
+  const getTs = () => {
+    const pc = W.playerCore?.getSleepTimerTarget?.();
+    return (pc && pc > 0) ? pc : parseInt(U.lsGet(LS, '0') || '0', 10);
+  };
+
+  const fmtRem = (ms) => {
+    const m = Math.ceil(ms / 60000);
+    return m < 60 ? `${m}м` : `${Math.floor(m / 60)}ч ${m % 60}м`;
+  };
+
+  const fmtTime = (ts) => { const d = new Date(ts); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+
+  const updateBadge = () => {
+    const el = $('sleep-timer-badge'), ts = getTs(), ms = ts - now();
+    if (!el) return;
+    if (ts > 0 && ms > 0) {
+      el.style.display = '';
+      el.textContent = Math.ceil(ms / 60000);
+      if (!tickId) tickId = setInterval(updateBadge, 10000);
+    } else {
+      el.style.display = 'none';
+      el.textContent = '';
+      if (tickId) { clearInterval(tickId); tickId = null; }
+      if (ts > 0 && ms <= 0) stop(true); // Auto-clear
     }
   };
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-  else init();
+  const set = (ts) => {
+    if (!ts || ts <= now()) return;
+    W.playerCore?.setSleepTimer?.(ts - now());
+    U.lsSet(LS, ts);
+    updateBadge();
+  };
+
+  const stop = (silent) => {
+    W.playerCore?.clearSleepTimer?.();
+    localStorage.removeItem(LS);
+    updateBadge();
+    if (!silent) W.NotificationSystem?.info?.('⏰ Таймер сна выключен');
+  };
+
+  // --- UI: Menu ---
+  const toggleMenu = (btn) => {
+    if (menu) { menu.remove(); menu = null; return; }
+    
+    const ts = getTs(), act = ts > now();
+    const rect = btn.getBoundingClientRect();
+    
+    menu = document.createElement('div');
+    menu.className = 'sleep-menu';
+    // Позиционирование с защитой от вылета за экран
+    Object.assign(menu.style, { 
+      position: 'fixed', 
+      right: `${Math.max(8, W.innerWidth - rect.right)}px`, 
+      bottom: `${Math.max(8, W.innerHeight - rect.top)}px`,
+      zIndex: '10000'
+    });
+    
+    menu.innerHTML = `
+      ${act ? `<div class="sleep-menu-item active" data-a="noop">✅ Активен: ${fmtRem(ts - now())} (до ${fmtTime(ts)})</div>` : ''}
+      <div class="sleep-menu-item" data-a="off">Выключить</div>
+      <div style="height:1px;background:rgba(255,255,255,.1);margin:6px 0"></div>
+      ${[15, 30, 45, 60].map(m => `<div class="sleep-menu-item" data-a="m" data-v="${m}">${m} мин</div>`).join('')}
+      <div style="height:1px;background:rgba(255,255,255,.1);margin:6px 0"></div>
+      <div class="sleep-menu-item" data-a="time">К времени…</div>
+    `;
+
+    // Global click to close
+    setTimeout(() => {
+        const outClick = (e) => { 
+            if (menu && !menu.contains(e.target) && !btn.contains(e.target)) {
+                menu.remove(); menu = null; document.removeEventListener('click', outClick); 
+            }
+        };
+        document.addEventListener('click', outClick);
+    }, 0);
+
+    menu.addEventListener('click', (e) => {
+      const t = e.target.closest('[data-a]');
+      if (!t) return;
+      e.stopPropagation();
+      const a = t.dataset.a;
+      
+      if (a === 'off') stop();
+      else if (a === 'm') {
+        const m = parseInt(t.dataset.v);
+        set(now() + m * 60000);
+        W.NotificationSystem?.success?.(`⏰ Таймер: ${m} мин`);
+      } else if (a === 'time') {
+        openTimeModal();
+      }
+      if (a !== 'noop') { menu.remove(); menu = null; }
+    });
+
+    document.body.appendChild(menu);
+  };
+
+  // --- UI: Time Modal (HH:MM) ---
+  const openTimeModal = () => {
+    const wrap = document.createElement('div');
+    wrap.className = 'sleep-time-modal-backdrop';
+    const def = new Date(now() + 30 * 60000), h = pad(def.getHours()), m = pad(def.getMinutes());
+    
+    wrap.innerHTML = `
+      <div class="sleep-time-modal">
+        <div class="sleep-time-title">Таймер к времени</div>
+        <div class="sleep-time-row">
+          <input id="sh" type="tel" maxlength="2" placeholder="HH" class="sleep-time-input" value="${h}">
+          <span class="sleep-time-sep">:</span>
+          <input id="sm" type="tel" maxlength="2" placeholder="MM" class="sleep-time-input" value="${m}">
+        </div>
+        <div class="sleep-time-actions">
+          <button class="sleep-time-btn" data-a="c">Отмена</button>
+          <button class="sleep-time-btn primary" data-a="ok">Ок</button>
+        </div>
+      </div>`;
+
+    const close = () => { wrap.remove(); document.removeEventListener('keydown', onKey); };
+    const apply = () => {
+      let hh = parseInt(wrap.querySelector('#sh').value || '0');
+      let mm = parseInt(wrap.querySelector('#sm').value || '0');
+      // Simple validation
+      if(isNaN(hh)) hh=0; if(isNaN(mm)) mm=0;
+      hh = Math.min(23, Math.max(0, hh));
+      mm = Math.min(59, Math.max(0, mm));
+
+      const d = new Date(); d.setHours(hh, mm, 0, 0);
+      if (d.getTime() <= now()) d.setDate(d.getDate() + 1); // If time passed, set for tomorrow
+      
+      set(d.getTime());
+      W.NotificationSystem?.success?.(`⏰ Таймер до ${pad(hh)}:${pad(mm)}`);
+      close();
+    };
+
+    const onKey = (e) => { if(e.key==='Enter') apply(); if(e.key==='Escape') close(); };
+    
+    wrap.addEventListener('click', (e) => {
+      if (e.target === wrap || e.target.dataset.a === 'c') close();
+      if (e.target.dataset.a === 'ok') apply();
+    });
+
+    document.body.appendChild(wrap);
+    document.addEventListener('keydown', onKey);
+    setTimeout(() => wrap.querySelector('#sh').focus(), 50);
+  };
+
+  // --- Init & Delegation ---
+  const init = () => {
+    // 1. Делегирование события клика (решает проблему перерисовки кнопки)
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('#sleep-timer-btn');
+        if (btn) {
+            e.stopPropagation();
+            toggleMenu(btn);
+        }
+    });
+
+    // 2. Связь с PlayerCore (для восстановления состояния при перезагрузке)
+    const bindCore = () => {
+      if (W.playerCore?.on) {
+        W.playerCore.on({ onSleepTriggered: () => stop() });
+        const saved = parseInt(localStorage.getItem(LS)||'0');
+        if (saved > now()) W.playerCore.setSleepTimer(saved - now());
+        else if (saved) stop(true); // Expired while app was closed
+        updateBadge();
+      } else {
+        setTimeout(bindCore, 200);
+      }
+    };
+    bindCore();
+
+    console.log('✅ SleepTimer optimized (delegation fix)');
+  };
+
+  // Public API
+  W.SleepTimer = { 
+    show: () => $('sleep-timer-btn')?.click(), 
+    updateBadge, 
+    clearSleepTimer: () => stop(true) 
+  };
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
 
 //=================================================
