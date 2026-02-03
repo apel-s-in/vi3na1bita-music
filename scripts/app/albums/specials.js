@@ -11,8 +11,12 @@ const LOGO = 'img/logo.png';
 export async function loadFavoritesAlbum(ctx) {
   ctx.renderAlbumTitle('⭐⭐⭐ ИЗБРАННОЕ ⭐⭐⭐', 'fav');
 
-  // Гарантируем готовность реестра треков
-  try { await window.ensureTrackRegistryReadyForFavorites?.(); } catch {}
+  // 1. Пытаемся подгрузить реестр треков (важно для offline/favorites, если альбом не открывали)
+  if (window.OfflineUI && window.OfflineUI.preloadAllAlbumsTrackIndex) {
+     // Эта функция парсит все config.json и наполняет реестр
+     // Мы не ждем await, если это долго, но надеемся что кэш быстрый
+     await window.OfflineUI.preloadAllAlbumsTrackIndex(); 
+  }
 
   const coverWrap = $('cover-wrap');
   if (coverWrap) coverWrap.style.display = 'none';
@@ -20,15 +24,15 @@ export async function loadFavoritesAlbum(ctx) {
   const container = $('track-list');
   if (!container) return;
 
-  // 1. Обновление данных (UI Model строит favorites.js)
+  // 2. Функция обновления данных
   const refreshData = async () => {
      try { await window.FavoritesUI?.buildFavoritesRefsModel(); } catch {}
   };
 
-  // 2. Геттер текущей модели (синхронный)
+  // 3. Геттер модели (исправлено имя функции!)
   const getUiModel = () => window.FavoritesUI?.getModel() || [];
 
-  // 3. Перерисовка
+  // 4. Функция перерисовки
   const rebuild = async () => {
     await refreshData();
     const model = getUiModel();
@@ -36,35 +40,36 @@ export async function loadFavoritesAlbum(ctx) {
     else renderFavoritesList(container, model);
   };
 
-  // Биндинг событий (один раз на альбом)
+  // 5. Биндинг событий (один раз)
   if (!ctx._favoritesViewBound) {
     ctx._favoritesViewBound = true;
 
     bindFavoritesList(container, {
-      getModel: getUiModel,
+      getModel: getUiModel, // Передаем корректную функцию
 
-      // Клик по звезде ВНУТРИ избранного -> source='favorites' (Soft Delete / Inactive)
+      // Клик по звезде -> Soft Delete
       onStarClick: async ({ uid, albumKey }) => {
         window.playerCore?.toggleFavorite?.(uid, { source: 'favorites', albumKey });
       },
 
-      // Клик по активному треку -> Воспроизведение
+      // Клик по треку -> Play
       onActiveRowClick: async ({ uid }) => {
         const model = getUiModel();
-        // Фильтруем только активные для плейлиста
-        const activeList = model.filter((it) => it && it.__active && it.audio);
+        // Фильтруем список: только активные и не "призраки"
+        const activeList = model.filter((it) => it && it.__active && !it.isGhost);
+        
+        // Ищем индекс кликнутого в АКТИВНОМ списке
         const idx = activeList.findIndex((it) => String(it?.__uid || '').trim() === String(uid || '').trim());
         
         if (idx >= 0) await ensureFavoritesPlayback(ctx, activeList, idx);
       },
 
-      // Клик по неактивному (серому) треку -> Модалка восстановления/удаления
+      // Клик по серому треку -> Модалка
       onInactiveRowClick: ({ uid, title }) => {
         window.playerCore?.showInactiveFavoriteModal?.({
           uid,
           title,
           onDeleted: async () => {
-            // После удаления обновляем UI и доступность треков
             await rebuild();
             window.PlayerUI?.updateAvailableTracksForPlayback?.();
           },
@@ -72,11 +77,10 @@ export async function loadFavoritesAlbum(ctx) {
       },
     });
 
-    // Реакция на внешние изменения (лайк в другом альбоме / плеере)
+    // Авто-обновление при изменениях извне (плеер, мини-плеер)
     const pc = window.playerCore;
     if (pc?.onFavoritesChanged) {
       pc.onFavoritesChanged(async () => {
-        // Обновляем список, только если мы визуально находимся в Избранном
         if (ctx.getCurrentAlbum() === FAV) {
           await rebuild();
           window.PlayerUI?.updateAvailableTracksForPlayback?.();
@@ -88,32 +92,30 @@ export async function loadFavoritesAlbum(ctx) {
   await rebuild();
 }
 
-// Логика запуска воспроизведения из Избранного
+/**
+ * Запуск воспроизведения
+ * Теперь используем объекты из TrackRegistry, минимально их модифицируя.
+ */
 export async function ensureFavoritesPlayback(ctx, activeList, activeIndex) {
-  // Anti-double-play guard
+  // Защита от дребезга
   const now = Date.now();
   if (ctx._favPlayGuard && (now - (ctx._favPlayGuard.ts || 0)) < 300) return;
   ctx._favPlayGuard = { ts: now };
 
   if (!activeList?.length) return void window.NotificationSystem?.warning('Нет доступных треков');
 
-  // Формируем плейлист для ядра (PlayerCore)
+  // Формируем плейлист для ядра
+  // activeList уже содержит данные из registry, но нам нужно гарантировать поля для плеера
   const tracks = activeList.map((it) => ({
-    uid: typeof it.uid === 'string' ? it.uid.trim() : null,
-    src: it.audio, 
-    sources: it.sources || null, // Важно для Offline Resolver
-    audio: it.sources?.audio?.hi || it.audio,
-    audio_low: it.sources?.audio?.lo,
+    ...it, // Берем все поля (uid, src, lyrics, sources и т.д.)
     
-    title: it.title,
-    artist: 'Витрина Разбита',
-    album: FAV,
+    // Переопределяем контекст альбома для плеера
+    album: FAV, // Чтобы плеер знал, что играет "Избранное"
     cover: LOGO,
-    lyrics: it.lyrics || null,
-    fulltext: it.fulltext || null,
-    sourceAlbum: it.sourceAlbum || it.__a || null, // Сохраняем ссылку на родной альбом
-    hasLyrics: it.hasLyrics,
-  })).filter((t) => !!t.uid && !!t.src);
+    
+    // Сохраняем ссылку на исходный альбом (важно для переходов)
+    sourceAlbum: it.sourceAlbum || it.__a 
+  }));
 
   if (!tracks.length) return void window.NotificationSystem?.warning('Нет доступных треков');
 
@@ -127,16 +129,14 @@ export async function ensureFavoritesPlayback(ctx, activeList, activeIndex) {
 
   window.playerCore.play(activeIndex);
 
-  // Обновляем состояние менеджера
   ctx.setPlayingAlbum(FAV);
   
-  // Подсветка (используем исходный UID и AlbumKey)
+  // Подсветка
   const clicked = activeList[activeIndex];
   const cu = String(clicked?.uid || '').trim();
   const ca = String(clicked?.sourceAlbum || clicked?.__a || '').trim();
   ctx.highlightCurrentTrack(-1, { uid: cu, albumKey: ca });
 
-  // UI
   window.PlayerUI?.ensurePlayerBlock?.(activeIndex, { userInitiated: true });
   window.PlayerUI?.updateAvailableTracksForPlayback?.();
 }
