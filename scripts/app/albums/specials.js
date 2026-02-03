@@ -1,6 +1,6 @@
 import { $ } from '../utils/app-utils.js';
 import { renderFavoritesList, renderFavoritesEmpty, bindFavoritesList } from '../../ui/favorites-view.js';
-import { buildFavoritesModel } from '../../ui/favorites.js';
+// Удален import { buildFavoritesModel } ... так как favorites.js загружен глобально
 import { loadAndRenderNewsInline } from '../../ui/news-inline.js';
 
 const FAV = window.SPECIAL_FAVORITES_KEY || '__favorites__';
@@ -23,7 +23,8 @@ export async function loadFavoritesAlbum(ctx) {
 
   // Функция получения модели данных
   const getModel = () => {
-    try { return buildFavoritesModel() || []; } catch { return []; }
+    // Используем глобальный метод из window.FavoritesUI
+    try { return window.FavoritesUI?.buildFavoritesRefsModel() || []; } catch { return []; }
   };
 
   // Функция перерисовки
