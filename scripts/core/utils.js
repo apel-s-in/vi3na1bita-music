@@ -89,10 +89,22 @@
       normQuality: (q) => (String(q || '').toLowerCase().trim() === 'lo') ? 'lo' : 'hi'
     },
 
-    // --- 5. Blob Management ---
+    // --- 5. Blob Management (Optimized LRU) ---
     blob: {
       createUrl: (key, blob) => {
-        if (_blobReg.has(key)) URL.revokeObjectURL(_blobReg.get(key));
+        // Очистка старых ссылок, если их больше 5 (запас для кроссфейда/прелоада)
+        if (_blobReg.size > 5) {
+          const oldest = _blobReg.keys().next().value;
+          URL.revokeObjectURL(_blobReg.get(oldest));
+          _blobReg.delete(oldest);
+        }
+        
+        // Если ключ уже есть, пересоздаем (обновляем "свежесть" в Map порядка вставок)
+        if (_blobReg.has(key)) {
+          URL.revokeObjectURL(_blobReg.get(key));
+          _blobReg.delete(key);
+        }
+        
         const url = URL.createObjectURL(blob);
         _blobReg.set(key, url);
         return url;
