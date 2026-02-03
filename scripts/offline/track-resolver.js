@@ -1,32 +1,22 @@
+//=================================================
+// FILE: /scripts/offline/track-resolver.js
 import { getAudioBlob, bytesByQuality, touchLocalAccess, getLocalMeta } from './cache-db.js';
 import { getTrackByUid } from '../app/track-registry.js';
 
-const BLOB_TTL = 30 * 60 * 1000; // 30 min cache for blob URLs
-const cache = new Map(); // key(uid:q) -> { url, ts }
+// Utils.blob handles registry and revocation now
+const U = window.Utils;
 
 // --- Helpers ---
 const norm = (v) => (String(v || '').toLowerCase() === 'lo' ? 'lo' : 'hi');
 const sUrl = (v) => (v ? String(v).trim() : null);
 
-function getCachedUrl(key) {
-  const r = cache.get(key);
-  if (!r) return null;
-  if (Date.now() - r.ts > BLOB_TTL) { revoke(key); return null; }
-  return r.url;
-}
-
-function revoke(key) {
-  const r = cache.get(key);
-  if (r) { try { URL.revokeObjectURL(r.url); } catch {} cache.delete(key); return true; }
-  return false;
-}
-
-// API: Очистка ресурсов при удалении трека
+// API: Revoke specific track blobs (e.g. on deletion)
 export function revokeObjectUrlsForUid(uid) {
-  return (revoke(`${uid}:hi`) ? 1 : 0) + (revoke(`${uid}:lo`) ? 1 : 0);
+  if (!U?.blob) return 0;
+  return (U.blob.revokeUrl(`${uid}:hi`) ? 1 : 0) + (U.blob.revokeUrl(`${uid}:lo`) ? 1 : 0);
 }
 
-// API: Проверка целостности файла (ТЗ 9.2)
+// API: Check integrity (TZ 9.2)
 export async function isLocalComplete(uid, q) {
   const u = sUrl(uid); if (!u) return false;
   const m = getTrackByUid(u); if (!m) return false;
@@ -41,46 +31,41 @@ export async function isLocalComplete(uid, q) {
 }
 
 async function getLocalUrl(uid, q) {
+  if (!U?.blob) return null;
   const key = `${uid}:${q}`;
-  let url = getCachedUrl(key);
-  if (url) return url;
-
+  
+  // 1. Try create new from DB (Utils.blob handles dups)
   const blob = await getAudioBlob(uid, q);
   if (!blob) return null;
 
-  url = URL.createObjectURL(blob);
-  cache.set(key, { url, ts: Date.now() });
+  const url = U.blob.createUrl(key, blob);
   try { await touchLocalAccess(uid); } catch {}
   return url;
 }
 
-// API: Главный метод выбора источника (ТЗ 6.1, 7.4, 11.2)
+// API: Main Source Resolution (TZ 6.1, 7.4)
 export async function resolvePlaybackSource({ track, pq, cq, offlineMode }) {
   const u = sUrl(track?.uid);
-  const net = window.Utils?.isOnline ? window.Utils.isOnline() : navigator.onLine;
+  const net = U?.isOnline ? U.isOnline() : navigator.onLine;
   const pQual = norm(pq);
   const cQual = norm(cq);
 
-  // 1. Анализ доступности локальных файлов
   const [hasHi, hasLo] = u ? await Promise.all([isLocalComplete(u, 'hi'), isLocalComplete(u, 'lo')]) : [false, false];
 
-  // 2. Правило ТЗ 6.1: CQ влияет только если он выше PQ (улучшение)
+  // TZ 6.1: CQ upgrades PQ if available locally
   let effQ = pQual;
   if (pQual === 'lo' && cQual === 'hi' && hasHi) effQ = 'hi';
 
-  // 3. Формирование кандидатов (ТЗ 7.4.2)
   const attempts = [];
 
-  // A. Локальный идеальный (Local >= PQ)
-  // Пытаемся взять из кэша то качество, которое нужно (или лучшее доступное для Lo)
+  // A. Local Optimal
   if (effQ === 'hi' && hasHi) attempts.push({ type: 'local', q: 'hi' });
   else if (effQ === 'lo') {
     if (hasLo) attempts.push({ type: 'local', q: 'lo' });
-    else if (hasHi) attempts.push({ type: 'local', q: 'hi' }); // Fallback to Hi for Lo requests is fine
+    else if (hasHi) attempts.push({ type: 'local', q: 'hi' }); 
   }
 
-  // B. Сеть (Network = PQ) - если разрешено
-  // Если offlineMode=ON, сеть исключаем (кроме случаев, когда локально нет вообще ничего - но ТЗ требует строгости)
+  // B. Network (if allowed)
   if (net && !offlineMode) {
     const src = track?.sources?.audio;
     const url = (pQual === 'lo') ? (src?.lo || track?.audio_low) : (src?.hi || track?.audio);
@@ -88,11 +73,10 @@ export async function resolvePlaybackSource({ track, pq, cq, offlineMode }) {
     if (url || alt) attempts.push({ type: 'net', url: sUrl(url || alt) });
   }
 
-  // C. Локальный Fallback (Local < PQ) - играем что есть
+  // C. Local Fallback
   if (!hasHi && hasLo && pQual === 'hi') attempts.push({ type: 'local', q: 'lo' });
-  if (hasHi && !hasLo && pQual === 'lo') attempts.push({ type: 'local', q: 'hi' }); // Already covered but safe to double check
+  if (hasHi && !hasLo && pQual === 'lo') attempts.push({ type: 'local', q: 'hi' });
 
-  // 4. Выбор первого доступного
   for (const c of attempts) {
     if (c.type === 'local') {
       const url = await getLocalUrl(u, c.q);
@@ -111,7 +95,6 @@ export async function resolvePlaybackSource({ track, pq, cq, offlineMode }) {
   return { url: null, reason: 'offline:noSource' };
 }
 
-// API: Проверка доступности (для UI)
 export async function isTrackAvailableOffline(uid) {
   const u = sUrl(uid);
   return u ? ((await isLocalComplete(u, 'hi')) || (await isLocalComplete(u, 'lo'))) : false;
