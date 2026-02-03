@@ -197,7 +197,10 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         // Проверка на бесконечный цикл
         if (this._skipSession.count >= this._skipSession.max) {
            W.NotificationSystem?.error('Нет доступных треков для воспроизведения');
-           this.stop(); // Единственный выход из цикла
+           // FIX: Не вызываем stop(), так как это нарушает инвариант плеера.
+           // Просто выгружаем ресурсы и обновляем UI, оставаясь на треке.
+           this._unload(true);
+           this._updMedia(); 
            return;
         }
 
@@ -305,9 +308,10 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       const u = safeStr(uid);
       let source = opts.source;
       
-      // Определение контекста: если мы внутри альбома Избранное, то source = favorites
+      // Определение контекста: если мы внутри альбома Избранное (смотрим его), то source = favorites.
+      // FIX: Используем getCurrentAlbum (UI), а не getPlayingAlbum (Audio), чтобы не ломать логику при навигации.
       if (!source) {
-         const isFavView = W.AlbumsManager?.getPlayingAlbum?.() === W.SPECIAL_FAVORITES_KEY;
+         const isFavView = W.AlbumsManager?.getCurrentAlbum?.() === W.SPECIAL_FAVORITES_KEY;
          source = isFavView ? 'favorites' : 'album';
       }
       
@@ -323,9 +327,11 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
             if (state.active.length === 0) {
                this.stop(); // Единственный разрешенный STOP сценарий
             } else {
-               // Переход на следующий АКТИВНЫЙ трек
-               // Так как текущий стал inactive, next() должен найти следующий доступный через PlaybackCache/Logic
-               this.next();
+               // FIX: Repeat имеет приоритет. Если включен повтор, мы остаемся на треке (даже если он стал inactive),
+               // пока пользователь сам не переключит.
+               if (!this.repeatMode) {
+                   this.next();
+               }
             }
          }
       }
