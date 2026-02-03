@@ -1,6 +1,7 @@
 /**
  * scripts/core/utils.js
- * Centralized Utilities for Vitrina PWA v3.0
+ * Centralized Utilities for Vitrina PWA v3.1
+ * Provides legacy support and new namespaces for PlayerUI/Offline.
  */
 (function(W, D) {
   'use strict';
@@ -29,19 +30,14 @@
       }
     },
 
-    // --- 2. Network & Env (CRITICAL) ---
+    // --- 2. Network & Env ---
     getNet: () => {
       const nav = navigator;
-      // Basic check
       if (nav.onLine === false) return { online: false, kind: 'offline', saveData: false };
-      
-      // Advanced API
       const conn = nav.connection || nav.mozConnection || nav.webkitConnection;
-      if (!conn) return { online: true, kind: 'wifi', saveData: false }; // Desktop/Old assumes WiFi
-
+      if (!conn) return { online: true, kind: 'wifi', saveData: false };
       const kind = conn.type || conn.effectiveType || 'unknown';
       const isCellular = /cellular|2g|3g|4g/i.test(kind);
-      
       return {
         online: true,
         kind: isCellular ? 'cellular' : (kind === 'unknown' ? 'unknown' : 'wifi'),
@@ -53,10 +49,10 @@
       const ua = navigator.userAgent || '';
       const isIOS = /iPad|iPhone|iPod/.test(ua) && !W.MSStream;
       const isPWA = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-      return { isIOS, isPWA, isDesktop: !/Mobi|Android/i.test(ua) };
+      return { isIOS, isPWA, isDesktop: !/Mobi|Android/i.test(ua), isAndroid: /Android/.test(ua) };
     },
 
-    // --- 3. Format & Math ---
+    // --- 3. Format & Math (Required by PlayerUI) ---
     fmt: {
       time: (s) => {
         const n = Number(s);
@@ -93,7 +89,7 @@
       normQuality: (q) => (String(q || '').toLowerCase().trim() === 'lo') ? 'lo' : 'hi'
     },
 
-    // --- 5. Blob Management (iOS Memory Safety) ---
+    // --- 5. Blob Management ---
     blob: {
       createUrl: (key, blob) => {
         if (_blobReg.has(key)) URL.revokeObjectURL(_blobReg.get(key));
@@ -117,14 +113,9 @@
       escapeHtml: (s) => String(s || '').replace(/[<>&'"]/g, m => ({'<':'&lt;','>':'&gt;','&':'&amp;',"'":'&#39;','"':'&quot;'}[m]))
     },
 
-    // --- 7. App Helpers ---
-    isSpecialAlbumKey: (k) => String(k || '').startsWith('__'),
-    isBrowsingOtherAlbum: () => {
-      const p = W.AlbumsManager?.getPlayingAlbum?.(), c = W.AlbumsManager?.getCurrentAlbum?.();
-      return p && c && p !== c && !(p === '__favorites__' && c === '__favorites__');
-    },
-
-    // --- 8. PQ (Playback Quality) Facade ---
+    // --- 7. Functions required by PlayerUI (Facades) ---
+    
+    // Playback Quality (PQ)
     pq: {
       getMode: () => (localStorage.getItem('qualityMode:v1') || 'hi') === 'lo' ? 'lo' : 'hi',
       getState: () => {
@@ -143,7 +134,7 @@
       }
     },
 
-    // --- 9. Favorites Helper ---
+    // Favorites Helper
     fav: {
       isTrackLikedInContext: ({ playingAlbum: pa, track: t } = {}) => {
         const u = String(t?.uid || ''), c = W.playerCore;
@@ -152,23 +143,74 @@
         const ref = (W.favoritesRefsModel || []).find(r => String(r?.__uid) === u);
         return ref?.__a ? c.isFavorite(u) : false;
       }
-    }
+    },
+
+    // Download Helper (Fixes PlayerUI crash)
+    download: {
+      applyDownloadLink: (btn, track) => {
+        if (!btn) return;
+        if (!track || !track.src) {
+          btn.removeAttribute('href');
+          btn.removeAttribute('download');
+          btn.classList.add('disabled');
+          return;
+        }
+        btn.href = track.src;
+        btn.download = (track.artist && track.title) 
+          ? `${track.artist} - ${track.title}.mp3` 
+          : `track.mp3`;
+        btn.classList.remove('disabled');
+      }
+    },
+
+    // Function Helpers
+    func: {
+      debounceFrame: (fn) => {
+        let frame;
+        return (...args) => {
+          if (frame) cancelAnimationFrame(frame);
+          frame = requestAnimationFrame(() => { frame = null; fn(...args); });
+        };
+      },
+      throttle: (fn, wait) => {
+        let last = 0;
+        return (...args) => {
+          const now = Date.now();
+          if (now - last >= wait) { last = now; fn(...args); }
+        };
+      }
+    },
+
+    // --- 8. Legacy / Root Aliases (Backward Compatibility) ---
+    isSpecialAlbumKey: (k) => String(k || '').startsWith('__'),
+    isBrowsingOtherAlbum: () => {
+      const p = W.AlbumsManager?.getPlayingAlbum?.(), c = W.AlbumsManager?.getCurrentAlbum?.();
+      return p && c && p !== c && !(p === '__favorites__' && c === '__favorites__');
+    },
+    setBtnActive: (id, a) => { const el = D.getElementById(id); if(el) el.classList.toggle('active', !!a); },
+    setAriaDisabled: (el, d) => { if(el) { el.classList.toggle('disabled', !!d); el.setAttribute('aria-disabled', !!d); }},
+    lsGet: (k, d) => localStorage.getItem(k) || d,
+    lsSet: (k, v) => localStorage.setItem(k, v),
+    lsGetBool01: (k, d=false) => { const v=localStorage.getItem(k); return v===null ? d : v==='1'; },
+    lsSetBool01: (k, v) => localStorage.setItem(k, v?'1':'0'),
+    lsGetJson: (k, d=null) => { try { const r=localStorage.getItem(k); return r?JSON.parse(r):d; } catch { return d; } }
   };
 
-  // Aliases for legacy code compatibility
+  // Direct Aliases
   U.escapeHtml = U.ui.escapeHtml;
   U.formatTime = U.fmt.time;
   U.formatBytes = U.fmt.bytes;
+  U.getNetworkStatusSafe = U.getNet;
+  U.isMobile = () => { const p = U.getPlatform(); return p.isIOS || p.isAndroid; };
   U.trimStr = U.obj.trim;
-  U.getNetworkStatusSafe = U.getNet; // Legacy alias
-  U.isMobile = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   U.waitFor = async (fn, t=2000) => { for(let i=0;i<t/50;i++) { if(fn()) return true; await new Promise(r=>setTimeout(r,50)); } return !!fn(); };
-  U.setBtnActive = (id, a) => U.$(id)?.classList.toggle('active', !!a);
-  U.setAriaDisabled = (el, d) => { if(el) { el.classList.toggle('disabled', !!d); el.setAttribute('aria-disabled', !!d); }};
+  U.onceEvent = (el, ev, { timeoutMs }={}) => new Promise(r => {
+    const h = () => { el.removeEventListener(ev, h); r(); };
+    el.addEventListener(ev, h, {once:true});
+    if(timeoutMs) setTimeout(h, timeoutMs);
+  });
 
   W.Utils = U;
-  
-  // ESM Export if needed (module support)
   if (typeof exports !== 'undefined') exports.Utils = U;
 })(window, document);
 
