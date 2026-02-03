@@ -135,16 +135,22 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       const track = this.playlist[index];
       if (!track) return;
 
+      // 1. Фиксируем токен, но НЕ выгружаем предыдущий звук сразу (чтобы не терять AudioContext)
       const token = ++this._loadToken;
-      this._unload(true);
       this.currentIndex = index;
 
       const om = getOfflineManager();
+      
+      // 2. Асинхронно ищем источник. Предыдущий трек может доигрывать хвост или быть на паузе.
       const src = await resolvePlaybackSource({
         track, pq: this.qualityMode, cq: await om.getCacheQuality(), offlineMode: om.isOfflineMode()
       });
 
+      // 3. Проверка: не сменили ли трек, пока мы искали
       if (token !== this._loadToken) return;
+
+      // 4. Только теперь выгружаем старый инстанс
+      this._unload(true);
 
       if (!src.url) {
         W.NotificationSystem?.warning('Нет доступа к треку (офлайн)');
