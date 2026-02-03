@@ -3,69 +3,99 @@
 let _tracks = [];
 let _byUid = new Map();
 
-// Очистка UID и гарантия строки
-const safeUid = (val) => (val ? String(val).trim() : null);
+const safeStr = (v) => (v ? String(v).trim() : null);
 
 /**
- * Регистрация одного трека (используется в albums.js и loaders.js)
+ * Нормализация URL относительно базы
+ */
+const resolveUrl = (base, url) => {
+  if (!url || !base) return url;
+  try { return new URL(url, base).toString(); } catch { return url; }
+};
+
+/**
+ * ГЛАВНЫЙ МЕТОД РЕГИСТРАЦИИ
+ * Превращает сырой JSON из конфига в "Идеальный Трек" для всего приложения.
  */
 export function registerTrack(raw, albumMeta = {}) {
-  if (!raw) return;
+  if (!raw || !raw.uid) return;
 
-  // 1. Берем UID строго
-  let uid = safeUid(raw.uid);
+  const uid = safeStr(raw.uid);
+  
+  // Если уже есть, обновляем данные (на случай перезагрузки конфига)
+  // но лучше просто игнорировать, чтобы не тратить ресурсы, если данные статичны.
+  if (_byUid.has(uid)) return _byUid.get(uid);
 
-  // FALLBACK: Если UID нет
-  if (!uid) {
-     const key = `${albumMeta.artist || raw.artist || 'Unknown'}-${raw.title || 'Untitled'}`;
-     uid = key.replace(/\s+/g, '-').toLowerCase(); 
-     console.warn(`⚠️ Track without UID. Generated: ${uid}`);
-  }
+  // Определяем базовый путь (если передан в meta)
+  const baseUrl = albumMeta.base || '';
 
-  // Проверка на дубликаты (игнорируем, если уже есть)
-  if (_byUid.has(uid)) return;
+  // 1. Формируем ссылки
+  const urlHi = resolveUrl(baseUrl, raw.audio || raw.urlHi); // audio - из нового конфига
+  const urlLo = resolveUrl(baseUrl, raw.audio_low || raw.urlLo);
+  const lyricsUrl = resolveUrl(baseUrl, raw.lyrics);
+  const fulltextUrl = resolveUrl(baseUrl, raw.fulltext);
 
-  // Нормализация
+  // 2. Метаданные альбома (фоллбеки)
+  const albumTitle = raw.album || albumMeta.title || albumMeta.albumName || 'Альбом';
+  const artistName = raw.artist || albumMeta.artist || 'Витрина Разбита';
+  const coverUrl = resolveUrl(baseUrl, raw.cover || albumMeta.cover || albumMeta.background || 'img/logo.png');
+  const sourceAlbumKey = safeStr(raw.sourceAlbum || albumMeta.key || albumMeta.id);
+
+  // 3. Собираем Идеальный Трек
   const track = {
-    ...raw,
+    // Идентификаторы
     uid: uid,
-    // Поля для резолвера (адаптация под разные форматы входящих данных)
-    audio: raw.audio || raw.urlHi,
-    audio_low: raw.audio_low || raw.urlLo,
-    sizeHi: raw.size || raw.sizeHi,
-    sizeLo: raw.size_low || raw.sizeLo,
+    sourceAlbum: sourceAlbumKey, // Ключ родного альбома (важно для навигации)
+
+    // Отображение
+    title: safeStr(raw.title || 'Без названия'),
+    artist: artistName,
+    album: albumTitle,
+    cover: coverUrl,
     
-    // Метаданные (с фоллбеками)
-    album: raw.album || albumMeta.albumName,
-    artist: raw.artist || albumMeta.artist,
-    cover: raw.cover || albumMeta.cover || albumMeta.background,
-    sourceAlbum: raw.sourceAlbum || albumMeta.id || albumMeta.albumName, 
+    // Воспроизведение (PlayerCore)
+    src: urlHi, // По умолчанию играем Hi
+    audio: urlHi, // Алиас для совместимости
+    audio_low: urlLo, // Алиас для совместимости
     
-    _registered: true
+    // Офлайн и Резолвер (OfflineManager)
+    sources: {
+      audio: {
+        hi: urlHi,
+        lo: urlLo
+      }
+    },
+    sizeHi: Number(raw.size || raw.sizeHi || 0),
+    sizeLo: Number(raw.size_low || raw.sizeLo || 0),
+
+    // Лирика
+    lyrics: lyricsUrl,
+    fulltext: fulltextUrl,
+    hasLyrics: !!(lyricsUrl || raw.hasLyrics),
+
+    // Техническое поле
+    _registeredAt: Date.now()
   };
 
   _tracks.push(track);
   _byUid.set(uid, track);
+  
+  return track;
 }
 
 /**
- * Регистрация массива треков (для совместимости)
+ * Массовая регистрация из конфига альбома
  */
-export function registerTracks(albumTracks, albumMeta) {
-  if (Array.isArray(albumTracks)) {
-    albumTracks.forEach(t => registerTrack(t, albumMeta));
-  }
+export function registerTracks(trackList, albumMeta) {
+  if (!Array.isArray(trackList)) return;
+  trackList.forEach(t => registerTrack(t, albumMeta));
 }
 
 export function getAllTracks() { return [..._tracks]; }
-export function getTrackByUid(uid) { return _byUid.get(safeUid(uid)); }
+export function getTrackByUid(uid) { return _byUid.get(safeStr(uid)); }
 export function findTrack(predicate) { return _tracks.find(predicate); }
 
-// Формируем объект API
+// Экспорт API
 const API = { registerTrack, registerTracks, getAllTracks, getTrackByUid, findTrack };
-
-// Экспортируем как default и как именованную константу
 export const TrackRegistry = API;
-
-// ВАЖНО: Делаем доступным глобально для модулей, которые не используют import (offline-modal, favorites)
 window.TrackRegistry = API;
