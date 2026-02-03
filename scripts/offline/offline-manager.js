@@ -58,10 +58,32 @@ export class OfflineManager {
     this._checkExpiredCloud();
     setInterval(() => this._checkExpiredCloud(), 3600000); // 1h
     
-    // Очистка мусора при старте (всё, что было transient с прошлой сессии, удаляем)
+    // При старте window пустое -> значит удалится весь старый transient мусор
     this.updatePlaybackWindow([]); 
     
     setTimeout(() => this.refreshNeedsAggregates({ force: true }), 3000);
+  }
+
+  // --- STRICT WINDOW LOGIC ---
+  async updatePlaybackWindow(uids) {
+    this._lastWindow = uids.map(u => Utils.obj.trim(u)).filter(Boolean);
+    const keepSet = new Set(this._lastWindow);
+    
+    // Получаем кандидатов (всё, что не Pinned)
+    const candidates = await getEvictionCandidates(this._getPinnedSet());
+    
+    for (const c of candidates) {
+      // Получаем мету, чтобы узнать тип файла
+      const meta = await getLocalMeta(c.uid);
+      
+      // Cloud не трогаем (он удаляется по таймеру или вручную)
+      if (meta?.kind === 'cloud') continue;
+      
+      // Если это transient (временный) и его НЕТ в текущем окне -> УДАЛЯЕМ
+      if ((!meta?.kind || meta.kind === 'transient') && !keepSet.has(c.uid)) {
+        await deleteTrackCache(c.uid);
+      }
+    }
   }
 
   on(event, cb) {
@@ -230,14 +252,12 @@ export class OfflineManager {
       
       // Mark Type
       if (kind === 'pinned') {
-         // Pinned не удаляется
-         // (Статус pinned хранится в localStorage, здесь в DB мы просто не ставим transient)
-         await markLocalCloud(uid); // Используем 'cloud' как маркер "не transient" в базе для простоты, или можно добавить 'pinned' в DB
-         // Но так как pinned список в LS, достаточно убедиться, что он не transient
+         // Pinned хранится в LS, но в базе помечаем как cloud (не transient), чтобы eviction не трогал
+         await markLocalCloud(uid); 
       } else if (kind === 'cloudAuto') {
          await markLocalCloud(uid);
       } else {
-         // Playback Cache = Transient
+         // Всё остальное (Playback Cache) - это transient, жестко привязанный к окну
          await markLocalTransient(uid, 'window');
       }
 
