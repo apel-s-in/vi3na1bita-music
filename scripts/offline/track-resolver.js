@@ -1,39 +1,36 @@
-// scripts/offline/track-resolver.js
 import { getAudioBlob, bytesByQuality, touchLocalAccess, getLocalMeta } from './cache-db.js';
 import { getTrackByUid } from '../app/track-registry.js';
 
-// Utils.blob handles registry and revocation now
 const U = window.Utils;
 
-// --- Helpers ---
 const norm = (v) => (String(v || '').toLowerCase() === 'lo' ? 'lo' : 'hi');
 const sUrl = (v) => (v ? String(v).trim() : null);
 
-// API: Revoke specific track blobs (e.g. on deletion)
 export function revokeObjectUrlsForUid(uid) {
   if (!U?.blob) return 0;
   return (U.blob.revokeUrl(`${uid}:hi`) ? 1 : 0) + (U.blob.revokeUrl(`${uid}:lo`) ? 1 : 0);
 }
 
-// API: Check integrity (TZ 9.2)
 export async function isLocalComplete(uid, q) {
   const u = sUrl(uid); if (!u) return false;
   const m = getTrackByUid(u); if (!m) return false;
   
   const qual = norm(q);
   const sz = qual === 'lo' ? (m.sizeLo || m.size_low) : (m.sizeHi || m.size);
-  if (!sz) return false;
+  if (!sz) return false; // Unknown size -> not complete
 
   const stored = await bytesByQuality(u);
   const has = qual === 'hi' ? stored.hi : stored.lo;
-  return has >= (sz * 1024 * 1024 * 0.92); // >92% threshold
+  
+  // 92% threshold to be safe
+  return has >= (sz * 1024 * 1024 * 0.92); 
 }
 
 async function getLocalUrl(uid, q) {
   if (!U?.blob) return null;
   const key = `${uid}:${q}`;
   
-  // 1. Try create new from DB (Utils.blob handles dups)
+  // Try creation
   const blob = await getAudioBlob(uid, q);
   if (!blob) return null;
 
@@ -42,57 +39,49 @@ async function getLocalUrl(uid, q) {
   return url;
 }
 
-// API: Main Source Resolution (TZ 6.1, 7.4)
 export async function resolvePlaybackSource({ track, pq, cq, offlineMode }) {
   const u = sUrl(track?.uid);
-  const net = U?.isOnline ? U.isOnline() : navigator.onLine;
+  const net = U?.getNetworkStatusSafe ? U.getNetworkStatusSafe() : { online: navigator.onLine };
   const pQual = norm(pq);
   const cQual = norm(cq);
 
+  // 1. Check Local Availability
   const [hasHi, hasLo] = u ? await Promise.all([isLocalComplete(u, 'hi'), isLocalComplete(u, 'lo')]) : [false, false];
 
-  // TZ 6.1: CQ upgrades PQ if available locally
-  let effQ = pQual;
-  if (pQual === 'lo' && cQual === 'hi' && hasHi) effQ = 'hi';
-
-  const attempts = [];
-
-  // A. Local Optimal
-  if (effQ === 'hi' && hasHi) attempts.push({ type: 'local', q: 'hi' });
-  else if (effQ === 'lo') {
-    if (hasLo) attempts.push({ type: 'local', q: 'lo' });
-    else if (hasHi) attempts.push({ type: 'local', q: 'hi' }); 
+  // 2. Determine Effective Quality based on New Rules
+  // Rule: Play Local if Quality >= PQ.
+  // Rule: If Local < PQ, play Network (if allowed).
+  
+  // A. Try Local Optimal (Matches PQ or Better)
+  if (pQual === 'hi' && hasHi) {
+     const url = await getLocalUrl(u, 'hi');
+     if (url) return { url, effectiveQuality: 'hi', isLocal: true };
+  }
+  if (pQual === 'lo') {
+     if (hasLo) {
+        const url = await getLocalUrl(u, 'lo');
+        if (url) return { url, effectiveQuality: 'lo', isLocal: true };
+     } else if (hasHi) {
+        // Upgrade to Hi if local
+        const url = await getLocalUrl(u, 'hi');
+        if (url) return { url, effectiveQuality: 'hi', isLocal: true };
+     }
   }
 
-  // B. Network (if allowed)
-  if (net && !offlineMode) {
+  // B. Try Network (If online and not forced offline)
+  if (net.online && !offlineMode) {
     const src = track?.sources?.audio;
-    const url = (pQual === 'lo') ? (src?.lo || track?.audio_low) : (src?.hi || track?.audio);
-    const alt = (pQual === 'lo') ? (src?.hi || track?.audio) : (src?.lo || track?.audio_low);
+    const netUrl = (pQual === 'lo') ? (src?.lo || track?.audio_low) : (src?.hi || track?.audio);
+    // Fallback to whatever URL is available if specific quality is missing
+    const finalUrl = netUrl || track?.src || track?.audio;
     
-    // Fallback на track.src, если специфичные поля пусты
-    const finalUrl = url || alt || track?.src;
-    
-    if (finalUrl) attempts.push({ type: 'net', url: sUrl(finalUrl) });
+    if (finalUrl) return { url: sUrl(finalUrl), effectiveQuality: pQual, isLocal: false };
   }
 
-  // C. Local Fallback
-  if (!hasHi && hasLo && pQual === 'hi') attempts.push({ type: 'local', q: 'lo' });
-  if (hasHi && !hasLo && pQual === 'lo') attempts.push({ type: 'local', q: 'hi' });
-
-  for (const c of attempts) {
-    if (c.type === 'local') {
-      const url = await getLocalUrl(u, c.q);
-      if (url) {
-        const m = await getLocalMeta(u);
-        return { 
-          url, effectiveQuality: c.q, isLocal: true, 
-          localKind: (m?.kind === 'cloud' || m?.kind === 'transient') ? m.kind : 'transient'
-        };
-      }
-    } else if (c.type === 'net' && c.url) {
-      return { url: c.url, effectiveQuality: pQual, isLocal: false, localKind: null };
-    }
+  // C. Fallback Local (Lower quality than requested, but better than nothing)
+  if (pQual === 'hi' && !hasHi && hasLo) {
+     const url = await getLocalUrl(u, 'lo');
+     if (url) return { url, effectiveQuality: 'lo', isLocal: true };
   }
 
   return { url: null, reason: 'offline:noSource' };
