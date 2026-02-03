@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-939e5fa52ec07a151673c4bb69f7dd68a26a9da2.idx
-│   │       ├── pack-939e5fa52ec07a151673c4bb69f7dd68a26a9da2.pack
-│   │       └── pack-939e5fa52ec07a151673c4bb69f7dd68a26a9da2.rev
+│   │       ├── pack-3469dde2bd0c364886977cbcd4d4a57cef343918.idx
+│   │       ├── pack-3469dde2bd0c364886977cbcd4d4a57cef343918.pack
+│   │       └── pack-3469dde2bd0c364886977cbcd4d4a57cef343918.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 07:28:55 UTC
+Сгенерировано: 2026-02-03 07:29:45 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7613,144 +7613,51 @@ export function renderNewsCard(it) {
 
 //=================================================
 // FILE: /scripts/ui/notify.js
-// scripts/ui/notify.js
-// Система уведомлений
+//=================================================
+// FILE: /scripts/ui/notify.js
 class NotificationSystem {
   constructor() {
     this.container = null;
     this.queue = [];
     this.isShowing = false;
-    this.currentToast = null;
-
     this.U = window.Utils;
-    this.on = (el, ev, fn, opts) => this.U.dom.on(el, ev, fn, opts);
-    this.raf = (fn) => this.U.dom.raf(fn);
-
     this.init();
   }
-  
   init() {
-    // Создаем контейнер для уведомлений
     this.container = document.createElement('div');
     this.container.id = 'toast-container';
-    this.container.style.cssText = `
-      position: fixed;
-      bottom: 80px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 10000;
-      pointer-events: none;
-    `;
+    this.container.style.cssText = `position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:10000;pointer-events:none`;
     document.body.appendChild(this.container);
   }
-  
   show(message, type = 'info', duration = 3000) {
-    const toast = {
-      message,
-      type,
-      duration,
-      id: Date.now() + Math.random()
-    };
-    this.queue.push(toast);
+    this.queue.push({ message, type, duration, id: Date.now() });
     this.processQueue();
   }
-  
   processQueue() {
     if (this.isShowing || this.queue.length === 0) return;
     this.isShowing = true;
-    const toast = this.queue.shift();
-    this.displayToast(toast);
+    this.displayToast(this.queue.shift());
   }
-  
   displayToast(toast) {
-    const toastEl = document.createElement('div');
-    toastEl.className = `toast toast-${toast.type}`;
-    const emoji = this.getEmoji(toast.type);
-    toastEl.innerHTML = `
-      <div class="toast-content">
-        <span class="toast-emoji">${emoji}</span>
-        <span class="toast-message">${this.escapeHtml(toast.message)}</span>
-      </div>
-    `;
-    this.container.appendChild(toastEl);
-    this.currentToast = toastEl;
-    
-    this.raf(() => {
-      toastEl.classList.add('show');
-    });
-    
-    // Автоматическое скрытие
+    const el = document.createElement('div');
+    el.className = `toast toast-${toast.type}`;
+    el.innerHTML = `<div class="toast-content"><span class="toast-emoji">${this.getEmoji(toast.type)}</span><span class="toast-message">${this.U.ui.escapeHtml(toast.message)}</span></div>`;
+    this.container.appendChild(el);
+    this.U.dom.raf(() => el.classList.add('show'));
     setTimeout(() => {
-      this.hideToast(toastEl);
+      el.classList.remove('show');
+      setTimeout(() => { if(el.parentNode) el.parentNode.removeChild(el); this.isShowing = false; this.processQueue(); }, 300);
     }, toast.duration);
   }
-  
-  hideToast(toastEl) {
-    if (!toastEl) return;
-    toastEl.classList.remove('show');
-    setTimeout(() => {
-      if (toastEl.parentNode) {
-        toastEl.parentNode.removeChild(toastEl);
-      }
-      this.isShowing = false;
-      this.currentToast = null;
-      this.processQueue();
-    }, 300);
-  }
-  
-  getEmoji(type) {
-    const emojis = {
-      info: 'ℹ️',
-      success: '✅',
-      error: '❌',
-      warning: '⚠️',
-      offline: '📴'
-    };
-    return emojis[type] || 'ℹ️';
-  }
-  
-  escapeHtml(text) {
-    const fn = window.Utils?.escapeHtml;
-    const s = String(text || '');
-    if (typeof fn === 'function') return fn(s);
-    // fallback без DOM-аллоцирования
-    return s.replace(/[<>&'"]/g, (m) => ({
-      '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&#39;', '"': '&quot;'
-    }[m]));
-  }
-  
-  // Публичные методы
-  info(message, duration) {
-    this.show(message, 'info', duration || 2000);
-  }
-  
-  success(message, duration) {
-    this.show(message, 'success', duration || 2500);
-  }
-  
-  error(message, duration) {
-    this.show(message, 'error', duration || 4000);
-  }
-  
-  warning(message, duration) {
-    this.show(message, 'warning', duration || 3000);
-  }
-  
-  offline(message, duration) {
-    this.show(message, 'offline', duration || 3000);
-  }
-  
-  clear() {
-    this.queue = [];
-    if (this.currentToast) {
-      this.hideToast(this.currentToast);
-    }
-  }
+  getEmoji(type) { return { info: 'ℹ️', success: '✅', error: '❌', warning: '⚠️', offline: '📴' }[type] || 'ℹ️'; }
+  // Aliases
+  info(m, d) { this.show(m, 'info', d); }
+  success(m, d) { this.show(m, 'success', d); }
+  error(m, d) { this.show(m, 'error', d); }
+  warning(m, d) { this.show(m, 'warning', d); }
+  offline(m, d) { this.show(m, 'offline', d); }
 }
-
-// Глобальный экземпляр
 window.NotificationSystem = new NotificationSystem();
-console.log('✅ Notification system initialized');
 
 //=================================================
 // FILE: /scripts/ui/offline-indicators.js
