@@ -1,112 +1,68 @@
-/**
- * FAVORITES MANAGER V2 (PURE)
- * Хранилище: localStorage['__favorites_v2__']
- * Структура: JSON Array of Objects [{ uid, addedAt, albumKey }, ...]
- * Runtime: Map<uid, Object> для быстрого доступа O(1)
- */
+// scripts/core/favorites-v2.js
+// Optimized Favorites Core v2.2
+const LS = localStorage, J = JSON;
+const K_L = "likedTrackUids:v2", K_R = "favoritesRefsByUid:v2";
 
-const STORAGE_KEY = '__favorites_v2__';
+const sStr = (v) => String(v || '').trim();
+const get = (k, d) => { try { return J.parse(LS.getItem(k)) || d } catch { return d } };
+const set = (k, v) => LS.setItem(k, J.stringify(v));
+const now = Date.now;
 
-export class FavoritesManagerV2 {
-  constructor() {
-    this._map = new Map();
-    this._listeners = new Set();
-    this.initialized = false;
-  }
+const F2 = {
+  keys: { LIKED_UIDS_V2: K_L, REFS_BY_UID_V2: K_R },
 
-  init() {
-    if (this.initialized) return;
-    
+  ensureMigrated() {
+    if (LS.getItem(K_L)) return; // Fast check
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          parsed.forEach((item) => {
-            if (item && item.uid) {
-              this._map.set(String(item.uid).trim(), item);
-            }
-          });
-        }
-      }
-    } catch (e) {
-      console.error('FavoritesV2: Load failed', e);
-      // В случае сбоя начинаем с пустого списка, не ломая приложение
-      this._map.clear();
-    }
+      const l = new Set(), r = {};
+      const add = (u) => { if(u=sStr(u)) { l.add(u); if(!r[u]) r[u] = { uid:u, addedAt:now(), inactiveAt:null }; } };
+      
+      // One-time migration v1 -> v2
+      const v1L = get("likedTrackUids:v1", {}), v1R = get("favoritesAlbumRefsByUid:v1", []);
+      Object.values(v1L).flat().forEach(add);
+      v1R.forEach(x => add(x?.uid));
+      
+      set(K_L, [...l]); set(K_R, r);
+      LS.removeItem("likedTrackUids:v1"); LS.removeItem("favoritesAlbumRefsByUid:v1");
+    } catch (e) { console.warn('Mig err', e); }
+  },
 
-    this.initialized = true;
-    console.log(`FavoritesV2: Loaded ${this._map.size} tracks.`);
-  }
+  readLikedSet: () => new Set(get(K_L, [])),
+  readRefsByUid: () => get(K_R, {}),
+  writeLikedSet: (s) => set(K_L, [...s]), // Compat
+  writeRefsByUid: (o) => set(K_R, o),     // Compat
 
-  /**
-   * Проверка наличия в избранном
-   * @param {string} uid 
-   */
-  has(uid) {
-    if (!uid) return false;
-    return this._map.has(String(uid).trim());
-  }
+  toggle(uid, { source = "album" } = {}) {
+    this.ensureMigrated();
+    const u = sStr(uid); if (!u) return { liked: false };
+    
+    const l = this.readLikedSet(), r = this.readRefsByUid();
+    const next = !l.has(u);
 
-  /**
-   * Добавить / Удалить
-   * @param {string} uid 
-   * @param {object} meta - дополнительные данные (albumKey, title и т.д. для кеша)
-   */
-  toggle(uid, meta = {}) {
-    if (!uid) return false;
-    const key = String(uid).trim();
-    const exists = this._map.has(key);
-
-    if (exists) {
-      this._map.delete(key);
+    if (next) {
+      l.add(u);
+      r[u] = { uid: u, addedAt: r[u]?.addedAt || now(), inactiveAt: null };
     } else {
-      this._map.set(key, {
-        uid: key,
-        addedAt: Date.now(),
-        albumKey: meta.albumKey || null
-      });
+      l.delete(u);
+      // ТЗ: В окне избранного (source='favorites') только помечаем как inactive (soft delete).
+      // В альбоме (source='album') удаляем полностью (hard delete).
+      if (source === "favorites") r[u] = { ...r[u], uid: u, inactiveAt: now() };
+      else delete r[u];
     }
 
-    this._save();
-    this._notify();
-    
-    return !exists; // Возвращает true, если лайкнули, false если убрали
+    set(K_L, [...l]); set(K_R, r);
+    return { liked: next };
+  },
+
+  removeRef(uid) {
+    this.ensureMigrated();
+    const u = sStr(uid), r = this.readRefsByUid();
+    if (!r[u]) return false;
+    delete r[u];
+    set(K_R, r);
+    return true;
   }
+};
 
-  getEntries() {
-    // Сортировка: Новые сверху (по addedAt desc)
-    return Array.from(this._map.values()).sort((a, b) => b.addedAt - a.addedAt);
-  }
-
-  _save() {
-    try {
-      const arr = Array.from(this._map.values());
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
-    } catch (e) {
-      console.error('FavoritesV2: Save failed', e);
-    }
-  }
-
-  // --- Event Bus для реактивности ---
-
-  onChange(cb) {
-    this._listeners.add(cb);
-    return () => this._listeners.delete(cb);
-  }
-
-  _notify() {
-    this._listeners.forEach((cb) => {
-      try { cb(); } catch (e) { console.error(e); }
-    });
-    
-    // Уведомляем глобальное ядро плеера, если нужно обновить иконки
-    if (window.playerCore && typeof window.playerCore.triggerFavoritesUpdate === 'function') {
-      window.playerCore.triggerFavoritesUpdate();
-    }
-  }
-}
-
-// Singleton
-window.FavoritesManager = new FavoritesManagerV2();
-window.FavoritesManager.init();
+export const FavoritesV2 = F2;
+export default F2;
