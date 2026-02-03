@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-46995b04680ccd53d9f5d261bc43cf2fd60eabca.idx
-│   │       ├── pack-46995b04680ccd53d9f5d261bc43cf2fd60eabca.pack
-│   │       └── pack-46995b04680ccd53d9f5d261bc43cf2fd60eabca.rev
+│   │       ├── pack-9363491a6415ea11e870ea431ab335884eff9332.idx
+│   │       ├── pack-9363491a6415ea11e870ea431ab335884eff9332.pack
+│   │       └── pack-9363491a6415ea11e870ea431ab335884eff9332.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 11:24:41 UTC
+Сгенерировано: 2026-02-03 11:26:03 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5319,8 +5319,9 @@ export class OfflineManager {
     if (!net.online) return { ok: false, reason: 'offline' };
     if (!allowed) return { ok: false, reason: 'policy_restricted' };
     
-    // Лимит очистки (для 100% offline и cloud) - PlaybackCache теперь чистится через updatePlaybackWindow
-    await this._enforceEvictionLimit(); 
+    // PlaybackCache чистится через updatePlaybackWindow.
+    // Вызываем очистку по лимиту только если это массовая загрузка (не плейбэк), чтобы освободить место.
+    if (kind !== 'playbackCache') await this._enforceEvictionLimit();
 
     try {
       const url = quality === 'lo' ? (meta.urlLo || meta.urlHi) : (meta.urlHi || meta.urlLo);
