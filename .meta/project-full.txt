@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2a7600a8dfc04c35181119a9c7cb7d9dd9a46cfb.idx
-│   │       ├── pack-2a7600a8dfc04c35181119a9c7cb7d9dd9a46cfb.pack
-│   │       └── pack-2a7600a8dfc04c35181119a9c7cb7d9dd9a46cfb.rev
+│   │       ├── pack-d7c09fa99e171ff5270e88f1b44d88848da9d8ec.idx
+│   │       ├── pack-d7c09fa99e171ff5270e88f1b44d88848da9d8ec.pack
+│   │       └── pack-d7c09fa99e171ff5270e88f1b44d88848da9d8ec.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 08:24:36 UTC
+Сгенерировано: 2026-02-03 08:31:36 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3866,90 +3866,146 @@ export function attachPlaybackCache() {
 (function(W, D) {
   'use strict';
 
-  const LS = localStorage, CL = 'classList';
-  const KEY_PROMO = 'promocode', KEY_IOS = 'iosInstallDismissed';
+  // --- Helpers & Optimization ---
+  const LS = localStorage;
+  const CL = 'classList';
+  const KEY_PROMO = 'promocode';
+  const KEY_IOS = 'iosInstallDismissed';
+  
+  // Safe DOM selector
   const $ = (id) => D.getElementById(id);
+  
+  // Safe Event Listener (Fixes keyboard issues)
+  const on = (el, event, handler) => {
+    if (el) el.addEventListener(event, handler);
+  };
 
-  // Helpers
+  // Device detection
   const isIOS = () => /iPhone|iPad|iPod/i.test(navigator.userAgent) && !W.MSStream;
   const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone;
 
-  // Unlock App Flow
+  // --- Logic: Unlock Application ---
   const unlock = () => {
-    const p = $('promocode-block'), m = $('main-block');
+    const p = $('promocode-block');
+    const m = $('main-block');
+    
+    // Switch Views
     if (p) p[CL].add('hidden');
     if (m) m[CL].remove('hidden');
 
-    // Try init app or wait for it (defer script support)
-    const run = () => W.app?.initialize && (W.app.initialize(), true);
+    // Initialize App (Safely handle race conditions)
+    const run = () => {
+      if (W.app && typeof W.app.initialize === 'function') {
+        W.app.initialize();
+        return true;
+      }
+      return false;
+    };
+
     if (!run()) {
-      let i = 0, t = setInterval(() => (run() || ++i > 50) && clearInterval(t), 60);
+      let attempts = 0;
+      const t = setInterval(() => {
+        if (run() || ++attempts > 50) clearInterval(t);
+      }, 50);
     }
   };
 
-  // iOS Install Prompt Logic
+  // --- Logic: iOS Install Prompt ---
   const showIOS = () => {
+    // Strict check to ensure it never shows on Windows/Android
     if (!isIOS() || isStandalone() || LS.getItem(KEY_IOS)) return;
 
     setTimeout(() => {
       const el = D.createElement('div');
       el.className = 'ios-install-prompt';
+      // Condensed HTML structure
       el.innerHTML = 
-        `<button class="ios-prompt-close" type="button">×</button>` +
-        `<div class="ios-prompt-content">` +
-          `<img class="ios-prompt-icon" src="icons/apple-touch-icon.png">` +
-          `<div style="font-weight:800;font-size:18px;margin-bottom:8px">Установить приложение</div>` +
-          `<div style="opacity:.85;margin-bottom:14px">Нажмите <strong>Поделиться</strong> ↗️<br>и выберите <strong>«На экран «Домой»»</strong></div>` +
-          `<button class="ios-prompt-button" type="button">Понятно</button>` +
-        `</div>`;
+        '<button class="ios-prompt-close" type="button">×</button>' +
+        '<div class="ios-prompt-content">' +
+          '<img class="ios-prompt-icon" src="icons/apple-touch-icon.png">' +
+          '<div style="font-weight:800;font-size:18px;margin-bottom:8px">Установить приложение</div>' +
+          '<div style="opacity:.85;margin-bottom:14px">Нажмите <strong>Поделиться</strong> ↗️<br>и выберите <strong>«На экран «Домой»»</strong></div>' +
+          '<button class="ios-prompt-button" type="button">Понятно</button>' +
+        '</div>';
 
       const close = () => {
         el[CL].remove('show');
-        try { LS.setItem(KEY_IOS, '1'); } catch {}
+        try { LS.setItem(KEY_IOS, '1'); } catch (e) {}
         setTimeout(() => el.remove(), 350);
       };
 
-      // Single listener for close/confirm
-      el.onclick = (e) => (e.target.closest('button') || e.target.closest('.ios-prompt-close')) && close();
+      // Delegated event for performance
+      el.onclick = (e) => {
+        if (e.target.closest('button') || e.target.closest('.ios-prompt-close')) close();
+      };
       
       D.body.appendChild(el);
+      // Animation frame for smooth transition
       requestAnimationFrame(() => el[CL].add('show'));
-    }, 3000);
+    }, 2500);
   };
 
-  // Main Gate Logic
+  // --- Main Execution ---
   W.addEventListener('load', () => {
+    // iOS specific styling
     if (isIOS()) D.body[CL].add('ios');
 
-    const CFG_CODE = String(W.APP_CONFIG?.PROMOCODE || '').trim();
-    const SAVED = LS.getItem(KEY_PROMO);
+    // Safe Config Reading (No optional chaining for max compatibility)
+    const cfg = W.APP_CONFIG || {};
+    const cfgCode = (cfg.PROMOCODE || '').toString().trim();
+    const savedCode = LS.getItem(KEY_PROMO);
 
-    // Auto-login if code matches or no code required
-    if (!CFG_CODE || (SAVED === CFG_CODE)) {
+    // 1. Check if already authorized or no code needed
+    if (!cfgCode || (savedCode === cfgCode)) {
       unlock();
       showIOS();
       return;
     }
 
-    const inp = $('promo-inp'), btn = $('promo-btn'), err = $('promo-error');
-    
+    // 2. Setup Login UI
+    const inp = $('promo-inp');
+    const btn = $('promo-btn');
+    const err = $('promo-error');
+
+    // Validation Logic
     const check = () => {
-      const val = inp.value.trim();
-      if (val === CFG_CODE) {
-        LS.setItem(KEY_PROMO, val);
+      const val = inp ? inp.value.trim() : '';
+      
+      if (val === cfgCode) {
+        try { LS.setItem(KEY_PROMO, val); } catch (e) {}
         unlock();
+        // Hide keyboard on mobile
+        if (inp) inp.blur(); 
       } else {
         if (err) err.textContent = '❌ Неверный промокод';
-        inp[CL].add('error');
-        setTimeout(() => { 
-          if (err) err.textContent = ''; 
-          inp[CL].remove('error'); 
-        }, 2000);
+        if (inp) {
+          inp[CL].add('error');
+          // Shake/Error animation reset
+          setTimeout(() => {
+            if (err) err.textContent = '';
+            inp[CL].remove('error');
+          }, 2000);
+        }
       }
     };
 
-    if (btn) btn.onclick = check;
-    if (inp) inp.onkeypress = (e) => e.key === 'Enter' && check();
+    // 3. Attach Listeners (using addEventListener via 'on' helper)
+    on(btn, 'click', check);
+    
+    on(inp, 'keydown', (e) => {
+      // Support both modern 'Enter' and legacy keyCode 13
+      if (e.key === 'Enter' || e.keyCode === 13) {
+        e.preventDefault(); // Prevent form submission quirks
+        check();
+      }
+    });
+
+    // 4. Final UX Polish
+    if (inp) {
+      inp.disabled = false; // Ensure input is enabled
+      // Auto-focus logic (timeout to ensure UI is rendered)
+      setTimeout(() => inp.focus(), 100); 
+    }
 
     showIOS();
   });
