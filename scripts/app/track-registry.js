@@ -35,9 +35,10 @@ export function registerTrack(raw, albumMeta = {}) {
       existing.album = metaTitle;
     }
     
-    // Если в реестре нет ключа альбома, а мы его знаем - обновляем
-    if (!existing.sourceAlbum && metaKey) {
-      existing.sourceAlbum = metaKey;
+    // FIX: Берем ключ из меты ИЛИ из сырых данных, если в реестре пусто
+    const newKey = metaKey || raw.sourceAlbum;
+    if (!existing.sourceAlbum && newKey) {
+      existing.sourceAlbum = newKey;
     }
 
     // Если в реестре нет ссылки на обложку - обновляем
