@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b8be49c208b591c44d6ad576a70b84c3d2493f3a.idx
-│   │       ├── pack-b8be49c208b591c44d6ad576a70b84c3d2493f3a.pack
-│   │       └── pack-b8be49c208b591c44d6ad576a70b84c3d2493f3a.rev
+│   │       ├── pack-0446c8bd77e1e2ddd1fc5241fecfd756c6a470ef.idx
+│   │       ├── pack-0446c8bd77e1e2ddd1fc5241fecfd756c6a470ef.pack
+│   │       └── pack-0446c8bd77e1e2ddd1fc5241fecfd756c6a470ef.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 07:08:54 UTC
+Сгенерировано: 2026-02-03 07:25:52 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4821,134 +4821,145 @@ export default FavoritesV2;
   const LS = localStorage, J = JSON;
   const pc = () => W.playerCore;
   
-  // --- Core Helpers ---
-  const str = (v) => String(v || '').trim();
-  const num = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
-  const esc = (s) => str(s).replace(/[<>&'"]/g, m => ({'<':'&lt;','>':'&gt;','&':'&amp;',"'":'&#39;','"':'&quot;'}[m]));
+  // Internal Blob Registry for iOS memory safety
+  const _blobReg = new Map(); // key -> url
 
-  // --- Utils Implementation ---
   const U = {
-    // DOM
+    // --- 1. DOM Helpers ---
     $: (id) => D.getElementById(id),
     $q: (s, r = D) => r.querySelector(s),
     $qa: (s, r = D) => r.querySelectorAll(s),
     
     dom: {
       byId: (id) => D.getElementById(id),
-      qs: (s, r = D) => r.querySelector(s),
-      qsa: (s, r = D) => r.querySelectorAll(s),
-      raf: (fn) => requestAnimationFrame(fn),
-      
       on: (el, ev, fn, opts) => {
         if (!el) return () => {};
         el.addEventListener(ev, fn, opts);
         return () => { try { el.removeEventListener(ev, fn, opts); } catch {} };
       },
-
+      raf: (fn) => requestAnimationFrame(fn),
       createStyleOnce: (id, css) => {
         if (D.getElementById(id)) return;
         const s = D.createElement('style');
         s.id = id; s.textContent = css;
         D.head.appendChild(s);
-      },
-
-      onDocClickOutside: (el, fn) => {
-        const h = (e) => { if (el && !el.contains(e.target)) fn(e); };
-        setTimeout(() => D.addEventListener('click', h), 0);
-        return () => D.removeEventListener('click', h);
-      },
-      
-      onEscape: (fn) => {
-        const h = (e) => e.key === 'Escape' && fn(e);
-        D.addEventListener('keydown', h, { passive: true });
-        return () => D.removeEventListener('keydown', h);
       }
     },
 
-    // Math & Format
-    clamp: (n, a, b) => Math.max(a, Math.min(b, num(n))),
-    toInt: num,
-    trimStr: (v) => str(v) || null,
-    escapeHtml: esc,
+    // --- 2. Format & Math ---
+    fmt: {
+      time: (s) => {
+        const n = Number(s);
+        if (!Number.isFinite(n) || n < 0) return '--:--';
+        const m = (n / 60) | 0, sec = (n % 60) | 0;
+        return `${m < 10 ? '0' + m : m}:${sec < 10 ? '0' + sec : sec}`;
+      },
+      bytes: (n) => {
+        const b = Number(n);
+        if (!Number.isFinite(b) || b < 0) return '0 B';
+        if (b === 0) return '0 B';
+        const k = 1024, sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(b) / Math.log(k));
+        return parseFloat((b / Math.pow(k, i)).toFixed(2)) + ' ' + (sizes[i] || 'TB');
+      },
+      durationHuman: (sec) => {
+        if (!sec) return '0м';
+        const h = (sec / 3600) | 0, m = ((sec % 3600) / 60) | 0;
+        return h > 0 ? `${h}ч ${m}м` : `${m}м`;
+      }
+    },
     
-    formatTime: (s) => {
-      const n = num(s);
-      if (n < 0) return '--:--';
-      const m = (n / 60) | 0, sec = (n % 60) | 0;
-      return `${m < 10 ? '0' + m : m}:${sec < 10 ? '0' + sec : sec}`;
+    math: {
+      clamp: (n, min, max) => Math.min(Math.max(Number(n) || 0, min), max),
+      toInt: (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; }
     },
 
-    formatBytes: (n) => {
-      const b = num(n);
-      if (b < 1024) return b + ' B';
-      const k = 1024, sizes = ['KB', 'MB', 'GB'];
-      const i = Math.floor(Math.log(b) / Math.log(k));
-      return parseFloat((b / Math.pow(k, i + 1)).toFixed(2)) + ' ' + sizes[i];
-    },
-
-    // Async
-    waitFor: async (fn, max = 2000, step = 50) => {
-      for (let t = 0; t < max; t += step) {
-        if (fn()) return true;
-        await new Promise(r => setTimeout(r, step));
+    // --- 3. Functional (Throttle/Debounce) ---
+    func: {
+      debounce: (fn, ms = 100) => {
+        let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+      },
+      debounceFrame: (fn) => {
+        let f; return (...a) => { if (f) return; f = requestAnimationFrame(() => { f = 0; fn(...a); }); };
+      },
+      throttle: (fn, limit) => {
+        let inThrottle;
+        return function() {
+          const args = arguments, context = this;
+          if (!inThrottle) {
+            fn.apply(context, args);
+            inThrottle = true;
+            setTimeout(() => inThrottle = false, limit);
+          }
+        };
       }
-      return !!fn();
     },
 
-    onceEvent: (tgt, ev, opts = {}) => new Promise((res, rej) => {
-      const tm = opts.timeoutMs ? setTimeout(() => { clean(); rej(new Error('Timeout')); }, opts.timeoutMs) : null;
-      const clean = () => { tgt.removeEventListener(ev, h); if (tm) clearTimeout(tm); };
-      const h = (e) => { clean(); res(e); };
-      tgt.addEventListener(ev, h, { once: true });
-    }),
-
-    debounceFrame: (fn) => {
-      let f; return (...a) => { if (f) return; f = requestAnimationFrame(() => { f = 0; fn(...a); }); };
+    // --- 4. Object & Data ---
+    obj: {
+      safeJson: (k, d = null) => { try { const r = LS.getItem(k); return r ? J.parse(r) : d; } catch { return d; } },
+      isEqual: (a, b) => {
+        if (a === b) return true;
+        if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false;
+        const kA = Object.keys(a), kB = Object.keys(b);
+        if (kA.length !== kB.length) return false;
+        for (const k of kA) {
+          if (!kB.includes(k) || !U.obj.isEqual(a[k], b[k])) return false;
+        }
+        return true;
+      }
     },
 
-    // Environment
+    // --- 5. Blob Management (iOS Critical) ---
+    blob: {
+      createUrl: (key, blob) => {
+        if (_blobReg.has(key)) URL.revokeObjectURL(_blobReg.get(key));
+        const url = URL.createObjectURL(blob);
+        _blobReg.set(key, url);
+        return url;
+      },
+      revokeUrl: (key) => {
+        if (_blobReg.has(key)) {
+          URL.revokeObjectURL(_blobReg.get(key));
+          _blobReg.delete(key);
+          return true;
+        }
+        return false;
+      },
+      revokeAll: () => {
+        _blobReg.forEach(url => URL.revokeObjectURL(url));
+        _blobReg.clear();
+      }
+    },
+
+    // --- 6. UI Utils (Toast/Confirm) ---
+    ui: {
+      toast: (msg, type = 'info', duration) => W.NotificationSystem?.[type]?.(msg, duration),
+      confirm: (msg) => W.confirm(msg), // Wrapper allows for future custom modal replacement
+      escapeHtml: (s) => String(s || '').replace(/[<>&'"]/g, m => ({'<':'&lt;','>':'&gt;','&':'&amp;',"'":'&#39;','"':'&quot;'}[m]))
+    },
+
+    // --- 7. Network & Env ---
     isMobile: () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent),
-    isIOS: () => /iPad|iPhone|iPod/.test(navigator.userAgent) && !W.MSStream,
-    isStandalone: () => W.matchMedia('(display-mode: standalone)').matches,
-    
-    // Network (TZ 7.5)
     isOnline: () => (W.NetworkManager?.getStatus ? W.NetworkManager.getStatus().online : navigator.onLine) !== false,
     getNetworkStatusSafe: () => (W.NetworkManager?.getStatus?.() || { online: navigator.onLine !== false, kind: 'unknown', saveData: false }),
 
-    // Storage
-    lsGet: (k, d = null) => { try { return LS.getItem(k) ?? d; } catch { return d; } },
+    // --- 8. Storage Helpers ---
+    lsGet: (k, d = null) => LS.getItem(k) ?? d,
     lsSet: (k, v) => { try { LS.setItem(k, v); return true; } catch { return false; } },
-    lsRemove: (k) => { try { LS.removeItem(k); } catch {} },
     lsGetBool01: (k, d = false) => (LS.getItem(k) ?? (d ? '1' : '0')) === '1',
     lsSetBool01: (k, v) => { try { LS.setItem(k, v ? '1' : '0'); } catch {} },
-    lsGetJson: (k, d = null) => { try { const r = LS.getItem(k); return r ? J.parse(r) : d; } catch { return d; } },
-    lsSetJson: (k, v) => { try { LS.setItem(k, J.stringify(v)); return true; } catch { return false; } },
 
-    // App Logic
-    isSpecialAlbumKey: (k) => str(k).startsWith('__'),
+    // --- 9. App Specific ---
+    isSpecialAlbumKey: (k) => String(k || '').startsWith('__'),
     isBrowsingOtherAlbum: () => {
       const p = W.AlbumsManager?.getPlayingAlbum?.(), c = W.AlbumsManager?.getCurrentAlbum?.();
       return p && c && p !== c && !(p === '__favorites__' && c === '__favorites__');
     },
-
-    setBtnActive: (id, a) => U.$(id)?.classList.toggle('active', !!a),
-    setAriaDisabled: (el, d) => { if (el) { el.classList.toggle('disabled', !!d); el.setAttribute('aria-disabled', !!d); } },
-
-    // Favorites Helper
-    fav: {
-      isTrackLikedInContext: ({ playingAlbum: pa, track: t } = {}) => {
-        const u = str(t?.uid), c = pc();
-        if (!c || !u) return false;
-        if (pa !== '__favorites__' && str(t?.sourceAlbum)) return c.isFavorite(u);
-        const ref = (W.favoritesRefsModel || []).find(r => str(r?.__uid) === u);
-        return ref?.__a ? c.isFavorite(u) : false;
-      }
-    },
-
-    // PQ Helper (Updated for TZ v1.0)
+    
+    // --- 10. PQ Logic (TZ 1.2, 7.4) ---
     pq: {
-      key: 'qualityMode:v1',
-      getMode: () => str(LS.getItem('qualityMode:v1') || pc()?.getQualityMode() || 'hi').toLowerCase() === 'lo' ? 'lo' : 'hi',
+      getMode: () => (LS.getItem('qualityMode:v1') || 'hi') === 'lo' ? 'lo' : 'hi',
       getState: () => {
         const c = pc(), net = U.isOnline();
         const can = !!c?.canToggleQualityForCurrentTrack?.();
@@ -4956,7 +4967,7 @@ export default FavoritesV2;
       },
       toggle: () => {
         const c = pc(); if (!c) return { ok: false, reason: 'noCore' };
-        if (!U.isOnline()) return { ok: false, reason: 'offline' }; // TZ 7.5.1
+        if (!U.isOnline()) return { ok: false, reason: 'offline' };
         if (!c.canToggleQualityForCurrentTrack()) return { ok: false, reason: 'trackNoLo' };
         const n = U.pq.getMode() === 'hi' ? 'lo' : 'hi';
         c.switchQuality(n);
@@ -4964,24 +4975,46 @@ export default FavoritesV2;
       }
     },
 
-    // Download Helper (TZ 16.1 - 100% Blob/Offline ready)
+    // --- 11. Download Helper ---
     download: {
       getSizeHintMB: ({ albumData: a, track: t } = {}) => {
         try {
-          const u = str(t?.uid);
-          const tr = (a?.tracks || []).find(x => str(x?.uid) === u);
+          const u = String(t?.uid || '').trim();
+          const tr = (a?.tracks || []).find(x => String(x?.uid).trim() === u);
           if (!tr) return '';
           const s = (t?.src === tr.fileLo) ? (tr.sizeLo ?? tr.size_low) : (tr.sizeHi ?? tr.size);
-          return num(s) > 0 ? ` (~${num(s).toFixed(2)} МБ)` : '';
+          return (Number(s) > 0) ? ` (~${Number(s).toFixed(2)} МБ)` : '';
         } catch { return ''; }
       },
       applyDownloadLink: (el, t) => {
         if (!el) return;
         if (!t?.src) { el.href = '#'; el.removeAttribute('download'); el.title = 'Скачать трек'; return; }
-        el.href = t.src; el.download = `${str(t.title)}.mp3`;
+        el.href = t.src; el.download = `${String(t.title||'track')}.mp3`;
         const aKey = W.AlbumsManager?.getPlayingAlbum?.();
         const hint = U.download.getSizeHintMB({ albumData: aKey ? W.AlbumsManager?.getAlbumData(aKey) : null, track: t });
         el.title = `Скачать трек${hint}`;
+      }
+    },
+
+    // --- 12. Facade Aliases (Backward Compat) ---
+    clamp: (n, a, b) => Math.min(Math.max(n, a), b),
+    formatTime: (s) => U.fmt.time(s),
+    formatBytes: (n) => U.fmt.bytes(n),
+    escapeHtml: (s) => U.ui.escapeHtml(s),
+    toInt: (v) => U.math.toInt(v),
+    trimStr: (v) => String(v || '').trim() || null,
+    waitFor: async (fn, t=2000) => { for(let i=0;i<t/50;i++) { if(fn()) return true; await new Promise(r=>setTimeout(r,50)); } return !!fn(); },
+    setBtnActive: (id, a) => U.$(id)?.classList.toggle('active', !!a),
+    setAriaDisabled: (el, d) => { if (el) { el.classList.toggle('disabled', !!d); el.setAttribute('aria-disabled', !!d); } },
+    
+    // Favorites
+    fav: {
+      isTrackLikedInContext: ({ playingAlbum: pa, track: t } = {}) => {
+        const u = String(t?.uid || ''), c = pc();
+        if (!c || !u) return false;
+        if (pa !== '__favorites__' && t?.sourceAlbum) return c.isFavorite(u);
+        const ref = (W.favoritesRefsModel || []).find(r => String(r?.__uid) === u);
+        return ref?.__a ? c.isFavorite(u) : false;
       }
     }
   };
