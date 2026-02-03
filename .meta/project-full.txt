@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1dcf5de4910bfdd0bdd857ae8e309fb2a9b3ee0b.idx
-│   │       ├── pack-1dcf5de4910bfdd0bdd857ae8e309fb2a9b3ee0b.pack
-│   │       └── pack-1dcf5de4910bfdd0bdd857ae8e309fb2a9b3ee0b.rev
+│   │       ├── pack-4face9e798f909f2509a5c051ff4509f481efd51.idx
+│   │       ├── pack-4face9e798f909f2509a5c051ff4509f481efd51.pack
+│   │       └── pack-4face9e798f909f2509a5c051ff4509f481efd51.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 18:37:44 UTC
+Сгенерировано: 2026-02-03 18:38:19 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5059,59 +5059,41 @@ export function shouldConfirmByPolicy(params = {}) {
 import {
   ensureDbReady, setAudioBlob, setBytes, totalCachedBytes, deleteTrackCache,
   getCacheQuality as dbGetCQ, setCacheQuality as dbSetCQ, getCloudStats, setCloudStats, clearCloudStats,
-  setCloudCandidate, clearCloudCandidate, updateGlobalStats, getGlobalStatsAndTotal,
+  setCloudCandidate, getCloudCandidate, clearCloudCandidate, updateGlobalStats, getGlobalStatsAndTotal,
   getEvictionCandidates, getExpiredCloudUids, setDownloadMeta, markLocalCloud, markLocalTransient
 } from './cache-db.js';
 import { getTrackByUid, getAllTracks } from '../app/track-registry.js';
 import { getNetPolicy, isAllowedByNetPolicy } from './net-policy.js';
 
-// Utils берем из глобальной области
 const Utils = window.Utils; 
 
 const LS = { MODE: 'offlineMode:v1', CQ: 'offline:cacheQuality:v1', PINNED: 'pinnedUids:v1', CLOUD_N: 'offline:cloudN:v1', CLOUD_D: 'offline:cloudD:v1', LIMIT: 'offline:cacheLimitMB:v1', ALERT: 'offline:alert:v1' };
 const MB = 1024 * 1024;
 const COMPLETE_THRESHOLD = 0.92;
 
-// Приоритеты (ТЗ 14.2)
 const PRIORITY = { P0_CUR: 100, P1_NEXT: 95, P2_PINNED: 80, P3_UPDATES: 70, P4_CLOUD: 60 };
 
 class DownloadQueue {
   constructor() { this.q = []; this.active = null; this.paused = false; this._listeners = new Set(); }
   
   add({ uid, key, priority, taskFn }) {
-    // Если такая задача уже выполняется, не добавляем
     if (this.active?.key === key) return;
-    
     const idx = this.q.findIndex(i => i.key === key);
     if (idx >= 0) { 
-        // Если уже в очереди, обновляем приоритет на более высокий
-        if (priority > this.q[idx].priority) { 
-            this.q[idx].priority = priority; 
-            this._sort(); 
-        } 
+        if (priority > this.q[idx].priority) { this.q[idx].priority = priority; this._sort(); } 
         return; 
     }
-    
     this.q.push({ uid, key, priority, taskFn, ts: Date.now() });
     this._sort();
     this._processNext();
   }
 
-  _sort() { 
-      // Сортировка: Сначала высокий приоритет, потом старые задачи (FIFO внутри приоритета)
-      this.q.sort((a, b) => (b.priority - a.priority) || (a.ts - b.ts)); 
-  }
-
+  _sort() { this.q.sort((a, b) => (b.priority - a.priority) || (a.ts - b.ts)); }
   pause() { this.paused = true; }
   resume() { this.paused = false; this._processNext(); }
   
   getStatus() { 
-      return { 
-          activeUid: this.active?.uid || null, 
-          downloadingKey: this.active?.key || null, 
-          queued: this.q.length, 
-          isPaused: this.paused 
-      }; 
+      return { activeUid: this.active?.uid || null, downloadingKey: this.active?.key || null, queued: this.q.length, isPaused: this.paused }; 
   }
   
   subscribe(cb) { this._listeners.add(cb); return () => this._listeners.delete(cb); }
@@ -5119,21 +5101,16 @@ class DownloadQueue {
 
   async _processNext() {
     if (this.active || this.paused || this.q.length === 0) return;
-    
     const item = this.q.shift();
     this.active = item;
-    
     this._emit('start', { uid: item.uid, key: item.key });
     try { 
       await item.taskFn(); 
       this._emit('done', { uid: item.uid, key: item.key }); 
-    }
-    catch (err) { 
+    } catch (err) { 
         this._emit('error', { uid: item.uid, error: err.message }); 
-    }
-    finally { 
-        this.active = null; 
-        this._processNext(); 
+    } finally { 
+        this.active = null; this._processNext(); 
     }
   }
 }
@@ -5144,39 +5121,25 @@ export class OfflineManager {
     this.queue = new DownloadQueue();
     this._needsState = { update: 0, recache: 0, ts: 0 };
     this._subs = new Set();
-    this._lastWindow = []; // Текущее окно воспроизведения
+    this._lastWindow = [];
   }
   
   async initialize() {
     await ensureDbReady();
     this._checkExpiredCloud();
-    setInterval(() => this._checkExpiredCloud(), 3600000); // 1h
-    
+    setInterval(() => this._checkExpiredCloud(), 3600000);
     this.updatePlaybackWindow([]); 
     setTimeout(() => this.refreshNeedsAggregates({ force: true }), 3000);
   }
 
-  // --- STRICT WINDOW LOGIC ---
-  /**
-   * Обновляет список "защищенных" от удаления transient-файлов.
-   * Удаляет transient файлы, которые выпали из окна.
-   */
   async updatePlaybackWindow(uids) {
     this._lastWindow = uids.map(u => Utils.obj.trim(u)).filter(Boolean);
     const keepSet = new Set(this._lastWindow);
-    
-    // Получаем кандидатов на удаление (все, что не Pinned)
     const candidates = await getEvictionCandidates(this._getPinnedSet());
-    
     for (const c of candidates) {
-      // Pinned отфильтрованы внутри getEvictionCandidates, но проверим Cloud
-      // Получаем мету через cache-db
-      const { getLocalMeta } = await import('./cache-db.js'); // Lazy import loop fix
+      const { getLocalMeta } = await import('./cache-db.js');
       const meta = await getLocalMeta(c.uid);
-      
-      if (meta?.kind === 'cloud') continue; // Cloud не удаляем здесь
-      
-      // Если transient и нет в окне -> удаляем
+      if (meta?.kind === 'cloud') continue; 
       if ((!meta?.kind || meta.kind === 'transient') && !keepSet.has(c.uid)) {
         await deleteTrackCache(c.uid);
       }
@@ -5213,7 +5176,6 @@ export class OfflineManager {
   
   isPinned(uid) { return this._getPinnedSet().has(Utils.obj.trim(uid)); }
 
-  // --- Pinning ---
   async pin(uid) { const u = Utils.obj.trim(uid); if (u && !this.isPinned(u)) await this.togglePinned(u); }
   async unpin(uid) { const u = Utils.obj.trim(uid); if (u && this.isPinned(u)) await this.togglePinned(u); }
   
@@ -5235,9 +5197,13 @@ export class OfflineManager {
 
   async isCloudEligible(uid) {
     const u = Utils.obj.trim(uid); if (!u || this.isPinned(u)) return false;
-    const stats = await getCloudStats(u), candidate = await setCloudCandidate(u), { n } = this.getCloudSettings(); // fix: getCloudCandidate was imported as setCloudCandidate by mistake in previous logic? No, getCloudCandidate is correct.
-    const cand = await import('./cache-db.js').then(m => m.getCloudCandidate(u));
+    // Исправлено: просто читаем кандидата, не устанавливаем
+    const cand = await getCloudCandidate(u);
     if (cand) return true;
+    
+    const stats = await getCloudStats(u);
+    const { n } = this.getCloudSettings();
+    
     if ((Number(stats?.cloudFullListenCount) || 0) >= n) return true;
     if (stats?.cloud && (stats.cloudExpiresAt || 0) > Date.now()) return true;
     return false;
@@ -5283,15 +5249,9 @@ export class OfflineManager {
 
   enqueueAudioDownload({ uid, quality, priority, kind, userInitiated, onResult }) {
     const u = Utils.obj.trim(uid), q = Utils.obj.normQuality(quality); if (!u) return;
-    
-    // Уникальный ключ для очереди: kind + quality + uid
-    // kind важен, чтобы отличать pinned от playbackCache
     const key = `${kind}:${q}:${u}`;
-    
     this.queue.add({ 
-        uid: u, 
-        key, 
-        priority: priority || 0, 
+        uid: u, key, priority: priority || 0, 
         taskFn: async () => { 
             const res = await this._performDownload(u, q, kind, userInitiated); 
             if (onResult) onResult(res); 
@@ -5302,7 +5262,6 @@ export class OfflineManager {
   async _performDownload(uid, quality, kind, userInitiated) {
     const meta = getTrackByUid(uid); if (!meta) return { ok: false, reason: 'no_meta' };
     
-    // Check complete
     if (await this.isTrackComplete(uid, quality)) {
       if (kind === 'cloudAuto' || kind === 'pinned') { 
          const stats = await getCloudStats(uid); 
@@ -5315,11 +5274,13 @@ export class OfflineManager {
     if (!net.online) return { ok: false, reason: 'offline' };
     if (!allowed) return { ok: false, reason: 'policy_restricted' };
     
-    // Eviction только для массовых
     if (kind !== 'playbackCache') await this._enforceEvictionLimit();
 
     try {
-      const url = quality === 'lo' ? (meta.urlLo || meta.urlHi || meta.audio_low) : (meta.urlHi || meta.urlLo || meta.audio);
+      // Исправлено: использование правильных имен свойств из TrackRegistry
+      const src = meta.sources?.audio || {};
+      const url = quality === 'lo' ? (src.lo || meta.audio_low || meta.urlLo) : (src.hi || meta.audio || meta.urlHi);
+      
       if (!url) throw new Error('No URL');
       
       const resp = await fetch(url);
@@ -5333,14 +5294,8 @@ export class OfflineManager {
       const expSize = quality === 'lo' ? (meta.sizeLo || meta.size_low) : (meta.sizeHi || meta.size);
       await setDownloadMeta(uid, quality, { ts: Date.now(), bytes: blob.size, exp: Number(expSize) || 0 });
       
-      // Mark Type strictly
-      if (kind === 'pinned') {
-         await markLocalCloud(uid); 
-      } else if (kind === 'cloudAuto') {
-         await markLocalCloud(uid);
-      } else {
-         await markLocalTransient(uid, 'window');
-      }
+      if (kind === 'pinned' || kind === 'cloudAuto') await markLocalCloud(uid); 
+      else await markLocalTransient(uid, 'window');
 
       return { ok: true };
     } catch (e) { return { ok: false, reason: e.message }; }
@@ -5352,7 +5307,6 @@ export class OfflineManager {
     const limitBytes = parseInt(localStorage.getItem(LS.LIMIT) || '500', 10) * MB;
     const current = await totalCachedBytes();
     if (current < limitBytes) return;
-    
     const candidates = await getEvictionCandidates(this._getPinnedSet());
     let freed = 0;
     for (const c of candidates) {
@@ -5413,7 +5367,6 @@ export class OfflineManager {
   }
 
   async computeSizeEstimate(selection) {
-      // (Implementation same as provided in prompt, ensuring safe defaults)
       const uids = new Set(), all = getAllTracks();
       if (selection.mode === 'favorites') {
         if (Array.isArray(selection.keys)) selection.keys.forEach(u => uids.add(u));
@@ -5446,39 +5399,30 @@ export class OfflineManager {
   async getTrackOfflineState(uid) {
     const u = Utils.obj.trim(uid); if (!u) return {};
     const pinned = this.isPinned(u), cq = await this.getCacheQuality(), cloudEligible = await this.isCloudEligible(u);
-    
     const cachedCQ = await this.isTrackComplete(u, cq);
     const cachedHi = await this.isTrackComplete(u, 'hi'), cachedLo = await this.isTrackComplete(u, 'lo');
-    
     const isCloud = !pinned && cloudEligible && cachedCQ;
-    
     let needsUpdate = false;
     if (cachedCQ) {
       const { getDownloadMeta } = await import('./cache-db.js');
       const meta = getTrackByUid(u), dm = await getDownloadMeta(u, cq), cfgSize = cq === 'lo' ? (meta?.sizeLo || meta?.size_low) : (meta?.sizeHi || meta?.size);
       if (dm?.bytes && cfgSize && Math.abs(dm.bytes - (cfgSize * MB)) > 0.05 * (cfgSize * MB)) needsUpdate = true;
     }
-    
     const needsReCache = (pinned || cloudEligible) && !cachedCQ;
-    
     return { pinned, cloud: isCloud, cachedHiComplete: cachedHi, cachedLoComplete: cachedLo, needsUpdate, needsReCache };
   }
 
   async getIndicators(uid) {
     const s = await this.getTrackOfflineState(uid);
-    // Cloud показываем только если есть файл в CQ
     return { pinned: s.pinned, cloud: s.cloud, cachedComplete: s.cachedHiComplete || s.cachedLoComplete, unknown: false };
   }
 
   async isTrackComplete(uid, quality) {
     const u = Utils.obj.trim(uid), q = Utils.obj.normQuality(quality), meta = getTrackByUid(u);
     if (!meta) return false;
-    
     const { bytesByQuality } = await import('./cache-db.js');
-    
     const expMB = q === 'lo' ? (meta.sizeLo || meta.size_low) : (meta.sizeHi || meta.size);
     if (!expMB) return false;
-    
     const stored = await bytesByQuality(u), has = q === 'hi' ? stored.hi : stored.lo;
     return has >= (expMB * MB * COMPLETE_THRESHOLD);
   }
