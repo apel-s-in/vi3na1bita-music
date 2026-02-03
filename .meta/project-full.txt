@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-55d303800233dc74756aac2d9dfb14481f85887d.idx
-│   │       ├── pack-55d303800233dc74756aac2d9dfb14481f85887d.pack
-│   │       └── pack-55d303800233dc74756aac2d9dfb14481f85887d.rev
+│   │       ├── pack-4996741d5154443369cbf12938aa19b8d56a8b45.idx
+│   │       ├── pack-4996741d5154443369cbf12938aa19b8d56a8b45.pack
+│   │       └── pack-4996741d5154443369cbf12938aa19b8d56a8b45.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 14:04:34 UTC
+Сгенерировано: 2026-02-03 14:04:57 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6147,93 +6147,59 @@ export function bindFavoritesList(container, handlers) {
 //=================================================
 // FILE: /scripts/ui/favorites.js
 // scripts/ui/favorites.js
-// FavoritesUI: UI Model provider (Optimized v2.2)
 (function (W) {
   'use strict';
 
   const FAV = W.SPECIAL_FAVORITES_KEY || '__favorites__';
   const LOGO = 'img/logo.png';
-  const TTL = 12 * 3600 * 1000;
-  const coverCache = new Map(); 
   
   const U = W.Utils;
   const trim = (v) => U.obj.trim(v);
-  const getTitle = (k) => (Array.isArray(W.albumsIndex) && W.albumsIndex.find(x => x.key === k)?.title) || 'Альбом';
 
-  const getAlbumCoverUrl = async (key) => {
-    const a = trim(key);
-    if (!a) return LOGO;
-    
-    const now = Date.now();
-    const sk = `favCoverCache:v1:${a}`;
-
-    // Session / Memory check
-    try {
-      const stored = U.obj.safeJson(sk);
-      if (stored?.url && (now - stored.ts < TTL)) { coverCache.set(a, stored); return stored.url; }
-    } catch {}
-    
-    const mem = coverCache.get(a);
-    if (mem && (now - mem.ts < TTL)) return mem.url;
-
-    // Fetch
-    try {
-      const url = (await W.GalleryManager?.getFirstCoverUrl?.(a)) || LOGO;
-      const rec = { ts: now, url };
-      coverCache.set(a, rec);
-      try { sessionStorage.setItem(sk, JSON.stringify(rec)); } catch {}
-      return url;
-    } catch { return LOGO; }
-  };
-
+  /**
+   * Строит модель для отображения списка Избранного.
+   * Объединяет данные из FavoritesV2 (статус) и TrackRegistry (данные трека).
+   */
   const buildFavoritesRefsModel = async () => {
     const pc = W.playerCore;
+    // Используем PlayerCore как источник истины о состоянии (active/inactive)
     if (!pc?.getFavoritesState) return (W.favoritesRefsModel = []);
 
     const st = pc.getFavoritesState();
-    const raw = [
-      ...(st.active || []), ...(st.inactive || [])
-    ].map(t => ({ uid: trim(t?.uid), a: trim(t?.sourceAlbum) })).filter(x => x.uid);
+    // Объединяем активные и неактивные (неактивные нужны для UI восстановления)
+    const rawItems = [...(st.active || []), ...(st.inactive || [])];
 
-    if (!raw.length) return (W.favoritesRefsModel = []);
-
-    // Parallel covers
-    const albums = [...new Set(raw.map(x => x.a).filter(Boolean))];
-    const covers = new Map(await Promise.all(albums.map(async a => [a, await getAlbumCoverUrl(a)])));
-
-    const likedCache = new Map();
-    const isLiked = (uid, alb) => {
-      if (!alb) return !!pc.isFavorite?.(uid);
-      if (!likedCache.has(alb)) {
-        const uids = pc.getLikedUidsForAlbum?.(alb) || [];
-        likedCache.set(alb, new Set(uids.map(trim).filter(Boolean)));
-      }
-      return likedCache.get(alb).has(uid);
-    };
-
-    W.favoritesRefsModel = raw.map(({ uid, a }) => {
-      const meta = W.TrackRegistry?.getTrackByUid(uid);
-      const active = isLiked(uid, a);
+    W.favoritesRefsModel = rawItems.map((item) => {
+      const uid = trim(item.uid);
+      const meta = W.TrackRegistry?.getTrackByUid(uid); // Берём из реестра
       
-      // Подготовка sources для резолвера
-      const hi = (active && meta) ? trim(meta.urlHi || meta.audio) : null;
-      const lo = (active && meta) ? trim(meta.urlLo || meta.audio_low) : null;
+      // Определяем, активен ли трек (лайкнут) прямо сейчас
+      const isActive = pc.isFavorite(uid);
 
+      if (!meta) {
+        // Если данных нет в реестре (не загружен альбом), возвращаем заглушку
+        return {
+          __uid: uid,
+          title: 'Загрузка...',
+          __active: false,
+          isGhost: true // Флаг для UI, что данные отсутствуют
+        };
+      }
+
+      // Возвращаем объект, совместимый с favorites-view.js
       return {
-        title: meta?.title || 'Трек',
-        uid,
-        audio: hi || lo,
-        sources: (hi || lo) ? { audio: { hi, lo } } : null,
-        lyrics: (active && meta) ? trim(meta.lyrics) : null,
-        fulltext: (active && meta) ? trim(meta.fulltext) : null,
-        // UI Props
-        __a: a,
+        // Данные трека (проксируем из registry)
+        ...meta, 
+        
+        // Специфичные поля для списка
         __uid: uid,
-        __artist: 'Витрина Разбита',
-        __album: getTitle(a),
-        __active: active,
-        __cover: covers.get(a) || LOGO,
-        hasLyrics: !!(meta?.lyrics)
+        __a: meta.sourceAlbum || item.sourceAlbum, // Album Key
+        __album: meta.album, // Название альбома
+        __active: isActive,
+        __cover: meta.cover || LOGO,
+        
+        // Для плеера (хотя PlayerCore возьмет из реестра, тут для view)
+        audio: isActive ? meta.src : null 
       };
     });
     
@@ -6243,12 +6209,19 @@ export function bindFavoritesList(container, handlers) {
   const init = () => {
     if (W.__favoritesUIBound) return;
     W.__favoritesUIBound = true;
+    
+    // Реактивность: перестраиваем модель при изменении лайков
     const bind = () => {
       if (W.playerCore?.onFavoritesChanged) {
         W.playerCore.onFavoritesChanged(() => {
-          if (W.AlbumsManager?.getCurrentAlbum?.() === FAV) buildFavoritesRefsModel().catch(() => {});
+          // Обновляем модель только если мы визуально в Избранном
+          if (W.AlbumsManager?.getCurrentAlbum?.() === FAV) {
+            buildFavoritesRefsModel().catch(console.error);
+          }
         });
-      } else setTimeout(bind, 100);
+      } else {
+        setTimeout(bind, 100);
+      }
     };
     bind();
   };
@@ -6256,12 +6229,12 @@ export function bindFavoritesList(container, handlers) {
   W.FavoritesUI = {
     buildFavoritesRefsModel,
     getModel: () => W.favoritesRefsModel || [],
-    getActiveModel: (m) => (m || W.FavoritesUI.getModel()).filter(it => it && it.__active && it.audio),
-    getAlbumCoverUrl
+    getActiveModel: (m) => (m || W.FavoritesUI.getModel()).filter(it => it && it.__active && !it.isGhost),
   };
   
-  // Back-compat alias
+  // Alias
   W.buildFavoritesRefsModel = buildFavoritesRefsModel;
+  
   init();
 })(window);
 
