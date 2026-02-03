@@ -77,7 +77,20 @@ export function attachPlaybackCache() {
   async function planWindow() {
     const pq = getPQ();
     try { 
+      // 1. Формируем список UID текущего окна
+      const w = pcm.getLastWindow(); // Берем из кэша, который обновится внутри ensure
+      // (или вычисляем вручную, но лучше положиться на PCM после его работы)
+      
       await pcm.ensureWindowFullyCached(pq, trackProvider); 
+      
+      // 2. Сообщаем менеджеру: "Оставь только эти, остальной мусор удали"
+      const currentWindow = pcm.getLastWindow(); 
+      const uids = [currentWindow.cur, ...currentWindow.prev, ...currentWindow.next].filter(Boolean);
+      
+      const mgr = window.OfflineUI?.offlineManager;
+      if (mgr?.updatePlaybackWindow) {
+        mgr.updatePlaybackWindow(uids);
+      }
     } catch (e) {
       console.warn('[PlaybackCache] planWindow error:', e);
     }
