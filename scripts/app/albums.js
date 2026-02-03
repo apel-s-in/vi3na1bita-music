@@ -29,7 +29,7 @@ class AlbumsManager {
     this.galVis = true;
     
     this._bound = { fav: false, track: false, favView: false };
-    this._guard = 0;
+    this._clickGuard = 0; // Для защиты от дребезга кликов
   }
 
   async initialize() {
@@ -222,12 +222,18 @@ class AlbumsManager {
   }
 
   async _playFav(list, idx) {
-    if (Date.now() - this._guard < 250) return;
-    this._guard = Date.now();
+    // Debounce для избранного
+    if (Date.now() - this._clickGuard < 300) return;
+    this._clickGuard = Date.now();
 
     if (!list?.length) return window.NotificationSystem?.warning('Нет треков');
+    
+    // Исправление: явно пробрасываем audio/audio_low из sources для резолвера
     const tracks = list.map(it => ({
-      src: it.audio, sources: it.sources || null,
+      src: it.audio, 
+      audio: it.sources?.audio?.hi || it.audio,
+      audio_low: it.sources?.audio?.lo,
+      sources: it.sources || null,
       title: it.title, artist: 'Витрина Разбита',
       album: FAV, cover: LOGO,
       uid: it.__uid, sourceAlbum: it.__a,
