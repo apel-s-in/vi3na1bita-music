@@ -22,7 +22,8 @@ import {
   getEvictionCandidates, getExpiredCloudUids,
   getDownloadMeta, setDownloadMeta,
   markLocalCloud, markLocalTransient,
-  clearAllStores
+  clearAllStores,
+  computeCacheBreakdown // NEW IMPORT
 } from './cache-db.js';
 
 import { getTrackByUid, getAllTracks } from '../app/track-registry.js';
@@ -102,7 +103,8 @@ class DownloadQueue {
   getStatus() {
     return {
       activeUid: this.active?.uid || null,
-      queuedCount: this.q.length,
+      downloadingKey: this.active?.key || null, // UI expects downloadingKey
+      queued: this.q.length, // UI expects queued
       isPaused: this.paused
     };
   }
@@ -396,13 +398,6 @@ export class OfflineManager {
 
   /**
    * Добавить задачу на скачивание аудио
-   * @param {Object} p
-   * @param {string} p.uid
-   * @param {string} p.quality - 'hi' | 'lo'
-   * @param {number} p.priority - use PRIORITY const
-   * @param {string} p.kind - 'playbackCache' | 'pinned' | 'cloud' | 'update' | 'fullOffline'
-   * @param {boolean} p.userInitiated - для политики сети
-   * @param {Function} p.onResult - callback
    */
   enqueueAudioDownload({ uid, quality, priority, kind, userInitiated, onResult }) {
     const u = normUid(uid);
@@ -443,8 +438,6 @@ export class OfflineManager {
     
     if (!net.online) return { ok: false, reason: 'offline' };
     if (!allowed) {
-      // ТЗ: задача ждёт. В v1.0 просто отклоняем, вызывающая сторона может ретраить
-      // Для PlaybackCache это означает пропуск докачки.
       return { ok: false, reason: 'policy_restricted' };
     }
 
@@ -522,7 +515,7 @@ export class OfflineManager {
     if (!opts.force && (NOW - this._needsState.ts < 10000)) return this._needsState;
 
     const uids = getAllTracks().map(t => t.uid);
-    const cq = await this.getCacheQuality();
+    // const cq = await this.getCacheQuality(); // unused in this simplistic check, but kept structure
     
     let update = 0;
     let recache = 0;
@@ -549,11 +542,13 @@ export class OfflineManager {
   async enqueueReCacheAllByCQ({ userInitiated } = {}) {
     const uids = getAllTracks().map(t => t.uid);
     const cq = await this.getCacheQuality();
+    let count = 0;
     
     uids.forEach(async (uid) => {
       // Докачиваем (Re-cache) только то, что должно быть офлайн (Pinned/Cloud), но не имеет CQ
       if (this.isPinned(uid) || await this.isCloudEligible(uid)) {
         if (!(await this.isTrackComplete(uid, cq))) {
+          count++;
           this.enqueueAudioDownload({
             uid,
             quality: cq,
@@ -564,6 +559,33 @@ export class OfflineManager {
         }
       }
     });
+    return { ok: true, count };
+  }
+
+  // ----------------------------------------------------------------------
+  // 5.1 Enqueue Update All (Missing in V1)
+  // ----------------------------------------------------------------------
+  async enqueueUpdateAll() {
+    const uids = getAllTracks().map(t => t.uid);
+    const cq = await this.getCacheQuality();
+    let count = 0;
+
+    for (const uid of uids) {
+        if (this.isPinned(uid) || (await this.isCloudEligible(uid))) {
+            const s = await this.getTrackOfflineState(uid);
+            if (s.needsUpdate) {
+                count++;
+                this.enqueueAudioDownload({
+                    uid,
+                    quality: cq,
+                    priority: PRIORITY.P3_UPDATES,
+                    kind: 'update',
+                    userInitiated: true
+                });
+            }
+        }
+    }
+    return { ok: true, count };
   }
 
   // ----------------------------------------------------------------------
@@ -571,24 +593,19 @@ export class OfflineManager {
   // ----------------------------------------------------------------------
 
   async computeSizeEstimate(selection) {
-    // selection: { mode: 'favorites'|'albums', keys: [] }
     const uids = new Set();
     const all = getAllTracks();
     
     if (selection.mode === 'favorites') {
-      // В v1.0 берем из глобальной модели (предполагаем доступность) или фильтруем all
-      // Для надежности фильтруем all по Pinned (как пример) или передаем uids явно
-      // Здесь предположим что selection.keys - это массив UIDs для favorites
       if (Array.isArray(selection.keys)) {
         selection.keys.forEach(u => uids.add(u));
       } else {
-        // Fallback: взять все pinned, если список не передан (хотя offline-modal должен передать)
         const pinned = this._getPinnedSet();
         pinned.forEach(u => uids.add(u));
       }
     } else {
       all.forEach(t => {
-        if (selection.keys.includes(t.sourceAlbum)) uids.add(t.uid);
+        if (selection.albumKeys && selection.albumKeys.includes(t.sourceAlbum)) uids.add(t.uid);
       });
     }
 
@@ -613,7 +630,7 @@ export class OfflineManager {
       } catch (e) { canGuarantee = false; }
     }
 
-    return { totalMB, count: uids.size, canGuarantee, uids: [...uids] };
+    return { ok: true, totalMB, count: uids.size, canGuarantee, uids: [...uids], cq };
   }
 
   async startFullOffline(uids) {
@@ -629,10 +646,11 @@ export class OfflineManager {
         userInitiated: true // Разрешает загрузку по сети (если включено в policy)
       });
     });
+    return { ok: true, total: uids.length };
   }
 
   // ----------------------------------------------------------------------
-  // 7. Helpers & API Definitions (ТЗ 19.2)
+  // 7. Helpers & API Definitions (ТЗ 19.2) - UI Facade
   // ----------------------------------------------------------------------
 
   async getTrackOfflineState(uid) {
@@ -719,6 +737,49 @@ export class OfflineManager {
 
   getGlobalStats() {
     return getGlobalStatsAndTotal();
+  }
+
+  // --- UI Facade Implementations (for OfflineModal) ---
+  
+  async getCacheBreakdown() {
+      return computeCacheBreakdown(this._getPinnedSet());
+  }
+
+  async getCacheSizeBytes() {
+      return totalCachedBytes();
+  }
+
+  async getGlobalStatistics() {
+      // Alias for consistency with modal expectations
+      return getGlobalStatsAndTotal();
+  }
+
+  getQueueStatus() {
+      return this.queue.getStatus();
+  }
+
+  pauseQueue() {
+      this.queue.pause();
+  }
+
+  resumeQueue() {
+      this.queue.resume();
+  }
+
+  getNeedsAggregates() {
+      return this._needsState;
+  }
+
+  async canGuaranteeStorageForMB(mb) {
+      if (navigator.storage?.estimate) {
+          try {
+              const est = await navigator.storage.estimate();
+              const available = (est.quota || 0) - (est.usage || 0);
+              const ok = available > (mb * 1024 * 1024 * 1.2);
+              return { ok };
+          } catch(e) { return { ok: true }; } // assume ok if unknown
+      }
+      return { ok: true };
   }
 }
 
