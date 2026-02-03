@@ -9,6 +9,9 @@ const STAR_ON = 'img/star.png';
 const STAR_OFF = 'img/star2.png';
 const LOGO = 'img/logo.png';
 
+// ✅ Восстановлена функция помощник
+const toUrl = (b, r) => r ? new URL(r, b).toString() : null;
+
 class AlbumsManager {
   constructor() {
     this.curr = null;
@@ -44,8 +47,17 @@ class AlbumsManager {
       .filter(it => it.key && (it.key.startsWith('__') || index.some(a => a.key === it.key)))
       .map(it => {
         const base = it.icon || LOGO;
-        const p1 = isMob ? base.replace(/icon_album\/(.+)\.png$/, 'icon_album/mobile/$1@1x.jpg') : base.replace(/\.png$/, '@1x.png');
-        const p2 = isMob ? p1.replace(/@1x\.jpg$/, '@2x.jpg') : p1.replace(/@1x\.png$/, '@2x.png');
+        let p1, p2;
+
+        // ✅ Исправлено: применяем логику @1x/@2x только к стандартным иконкам альбомов
+        if (base.includes('icon_album')) {
+          p1 = isMob ? base.replace(/icon_album\/(.+)\.png$/, 'icon_album/mobile/$1@1x.jpg') : base.replace(/\.png$/, '@1x.png');
+          p2 = isMob ? p1.replace(/@1x\.jpg$/, '@2x.jpg') : p1.replace(/@1x\.png$/, '@2x.png');
+        } else {
+          // Для Fav_logo.png и других нестандартных иконок оставляем путь как есть
+          p1 = base;
+          p2 = base;
+        }
         
         return `<div class="album-icon" data-album="${it.key}" title="${escHtml(it.title)}">
           <img src="${p1}" srcset="${p2} 2x" alt="${escHtml(it.title)}" draggable="false" loading="lazy" width="60" height="60">
@@ -98,23 +110,19 @@ class AlbumsManager {
       const data = this.cache.get(aKey);
       if (!data) return;
 
-      // ✅ 1. Мгновенная смена контекста: теперь мы в "Родном альбоме"
       this.playing = aKey; 
 
-      // 2. Подготовка плейлиста "на лету" (без тяжелого кэша)
       const tracks = data.tracks.filter(t => t.src).map(t => ({
         src: t.src, sources: t.sources, title: t.title, artist: data.artist,
         album: data.title, cover: this.covers.get(aKey) || LOGO,
         uid: t.uid, lyrics: t.lyrics, fulltext: t.fulltext, hasLyrics: t.hasLyrics,
-        sourceAlbum: aKey // Важно для сверки
+        sourceAlbum: aKey 
       }));
       
       const pIdx = tracks.findIndex(t => t.uid === uid);
       if (pIdx === -1) return;
 
-      // 3. Загрузка в плеер (сначала setPlaylist, потом play)
       const curSnap = window.playerCore.getPlaylistSnapshot() || [];
-      // Перезагружаем плейлист только если он отличается (оптимизация)
       if (curSnap.length !== tracks.length || curSnap[0]?.sourceAlbum !== aKey) {
         window.playerCore.setPlaylist(tracks, pIdx, null, { preservePosition: false });
       }
@@ -122,7 +130,6 @@ class AlbumsManager {
       this.highlightCurrentTrack(pIdx);
       window.playerCore.play(pIdx);
       
-      // 4. UI: Принудительный рендер (PlayerUI увидит this.playing === this.curr и отрисует снизу)
       window.PlayerUI?.ensurePlayerBlock?.(pIdx, { userInitiated: true });
     });
 
@@ -153,7 +160,6 @@ class AlbumsManager {
       document.querySelectorAll('.album-icon').forEach(el => el.classList.toggle('active', el.dataset.album === key));
       $('track-list')?.classList.remove('filtered');
       
-      // Если перешли в альбом, который сейчас играет, плеер должен встать на место (под трек)
       window.PlayerUI?.switchAlbumInstantly?.(key);
       window.PlayerState?.save?.();
     } catch (e) {
@@ -194,7 +200,6 @@ class AlbumsManager {
     this.renderAlbumTitle(data.title);
     this._renderSocials(data.links);
     
-    // Fast render
     $('track-list').innerHTML = data.tracks.map((t, i) => {
       const liked = t.uid && window.playerCore?.isFavorite?.(t.uid);
       return `<div class="track" id="trk${i}" data-index="${i}" data-album="${escHtml(key)}" data-uid="${escHtml(t.uid)}">
@@ -243,6 +248,12 @@ class AlbumsManager {
   getCurrentAlbum() { return this.curr; }
   getPlayingAlbum() { return this.playing; }
   setPlayingAlbum(k) { this.playing = k; }
+  
+  // Back-compat helpers (чтобы избежать других ошибок)
+  renderAlbumTitle(t, mod) {
+    const el = $('active-album-title');
+    if(el) { el.textContent = t; el.className = `active-album-title ${mod||''}`; }
+  }
 }
 
 window.AlbumsManager = new AlbumsManager();
