@@ -1,8 +1,8 @@
 // scripts/ui/ui-utils.js
-// Facade over core/utils.js to maintain backward compatibility for imports
-import { Utils } from '../core/utils.js';
+// Facade over core/utils.js (Global Access)
+const Utils = window.Utils;
 
-export const esc = (s) => Utils.ui.escapeHtml(s);
+export const esc = (s) => Utils?.ui?.escapeHtml(s);
 export const escapeHtml = (s) => Utils.ui.escapeHtml(s);
 export const formatBytes = (n) => Utils.fmt.bytes(n);
 export const formatTime = (s) => Utils.fmt.time(s);
