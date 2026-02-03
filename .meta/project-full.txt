@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a7fcc762efdc22f8312ddc69ede24ea124998c9f.idx
-│   │       ├── pack-a7fcc762efdc22f8312ddc69ede24ea124998c9f.pack
-│   │       └── pack-a7fcc762efdc22f8312ddc69ede24ea124998c9f.rev
+│   │       ├── pack-9d622e9e95f1c1f0a0d13fb4ab542c7d3f3a3f39.idx
+│   │       ├── pack-9d622e9e95f1c1f0a0d13fb4ab542c7d3f3a3f39.pack
+│   │       └── pack-9d622e9e95f1c1f0a0d13fb4ab542c7d3f3a3f39.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 13:00:11 UTC
+Сгенерировано: 2026-02-03 13:06:44 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3619,78 +3619,77 @@ export function attachPlaybackCache() {
 
 //=================================================
 // FILE: /scripts/app/track-registry.js
-// cleanUpOrphanedCache удален, так как очисткой теперь занимается OfflineManager
+// scripts/app/track-registry.js
+
 let _tracks = [];
 let _byUid = new Map();
-let _fuse = null; // Если используешь поиск fuse.js, иначе можно убрать
 
 // Очистка UID и гарантия строки
 const safeUid = (val) => (val ? String(val).trim() : null);
 
 /**
- * Главная функция регистрации треков из конфигов
+ * Регистрация одного трека (используется в albums.js и loaders.js)
+ */
+export function registerTrack(raw, albumMeta = {}) {
+  if (!raw) return;
+
+  // 1. Берем UID строго
+  let uid = safeUid(raw.uid);
+
+  // FALLBACK: Если UID нет
+  if (!uid) {
+     const key = `${albumMeta.artist || raw.artist || 'Unknown'}-${raw.title || 'Untitled'}`;
+     uid = key.replace(/\s+/g, '-').toLowerCase(); 
+     console.warn(`⚠️ Track without UID. Generated: ${uid}`);
+  }
+
+  // Проверка на дубликаты (игнорируем, если уже есть)
+  if (_byUid.has(uid)) return;
+
+  // Нормализация
+  const track = {
+    ...raw,
+    uid: uid,
+    // Поля для резолвера (адаптация под разные форматы входящих данных)
+    audio: raw.audio || raw.urlHi,
+    audio_low: raw.audio_low || raw.urlLo,
+    sizeHi: raw.size || raw.sizeHi,
+    sizeLo: raw.size_low || raw.sizeLo,
+    
+    // Метаданные (с фоллбеками)
+    album: raw.album || albumMeta.albumName,
+    artist: raw.artist || albumMeta.artist,
+    cover: raw.cover || albumMeta.cover || albumMeta.background,
+    sourceAlbum: raw.sourceAlbum || albumMeta.id || albumMeta.albumName, 
+    
+    _registered: true
+  };
+
+  _tracks.push(track);
+  _byUid.set(uid, track);
+}
+
+/**
+ * Регистрация массива треков (для совместимости)
  */
 export function registerTracks(albumTracks, albumMeta) {
-  if (!Array.isArray(albumTracks)) return;
-
-  albumTracks.forEach(raw => {
-    // 1. Берем UID строго из конфига
-    let uid = safeUid(raw.uid);
-
-    // FALLBACK: Если UID забыли в конфиге, генерируем из Артист+Название (стабильно)
-    // НЕ ИСПОЛЬЗУЕМ URL, так как он меняется!
-    if (!uid) {
-       const key = `${albumMeta.artist || 'Unknown'}-${raw.title || 'Untitled'}`;
-       // Простой хэш или строка, главное чтобы не зависело от http://...
-       uid = key.replace(/\s+/g, '-').toLowerCase(); 
-       console.warn(`⚠️ Track without UID in ${albumMeta.albumName}. Generated: ${uid}`);
-    }
-
-    // Проверка на дубликаты (Критично для мульти-альбомности)
-    if (_byUid.has(uid)) {
-       const existing = _byUid.get(uid);
-       // Если это тот же трек (перезагрузка) - ок. Если разные - ошибка.
-       if (existing.title !== raw.title) {
-         console.error(`🔥 UID COLLISION: ${uid} is used by "${existing.title}" and "${raw.title}"`);
-       }
-       return; 
-    }
-
-    // Нормализация объекта трека под единый стандарт приложения
-    const track = {
-      ...raw,
-      uid: uid,
-      // Сохраняем поля для резолвера (ТЗ 7.4.2)
-      audio: raw.audio,          // Hi URL
-      audio_low: raw.audio_low,  // Lo URL
-      sizeHi: raw.size,          // Размер Hi (MB)
-      sizeLo: raw.size_low,      // Размер Lo (MB)
-      
-      // Метаданные
-      album: albumMeta.albumName,
-      artist: albumMeta.artist || raw.artist,
-      cover: raw.cover || albumMeta.cover || albumMeta.background, // Фоллбек обложки
-      sourceAlbum: albumMeta.id || albumMeta.albumName, // Для группировки
-      
-      // Флаг, что данные полные
-      _registered: true
-    };
-
-    _tracks.push(track);
-    _byUid.set(uid, track);
-  });
-
-  // Обновляем поисковый индекс, если нужно
-  // updateSearchIndex(); 
+  if (Array.isArray(albumTracks)) {
+    albumTracks.forEach(t => registerTrack(t, albumMeta));
+  }
 }
 
 export function getAllTracks() { return [..._tracks]; }
 export function getTrackByUid(uid) { return _byUid.get(safeUid(uid)); }
-
-// Поиск (если нужен простой фильтр)
 export function findTrack(predicate) { return _tracks.find(predicate); }
 
-export const TrackRegistry = { registerTracks, getAllTracks, getTrackByUid };
+// Формируем объект API
+const API = { registerTrack, registerTracks, getAllTracks, getTrackByUid, findTrack };
+
+// Экспортируем как default и как именованную константу
+export const TrackRegistry = API;
+
+// ВАЖНО: Делаем доступным глобально для модулей, которые не используют import (offline-modal, favorites)
+window.TrackRegistry = API;
 
 //=================================================
 // FILE: /scripts/app/utils/app-utils.js
