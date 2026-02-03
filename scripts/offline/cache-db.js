@@ -25,8 +25,17 @@ const openDb = () => {
       const db = e.target.result;
       Object.values(S).forEach(s => { if (!db.objectStoreNames.contains(s)) db.createObjectStore(s); });
     };
-    req.onsuccess = () => res(req.result);
-    req.onerror = () => rej(req.error);
+    req.onsuccess = () => {
+      const db = req.result;
+      // Сброс кэша соединения при закрытии, чтобы следующий вызов открыл новое
+      db.onclose = () => { _db = null; };
+      db.onversionchange = () => { db.close(); _db = null; };
+      res(db);
+    };
+    req.onerror = () => {
+      _db = null; 
+      rej(req.error);
+    };
   });
   return _db;
 };
