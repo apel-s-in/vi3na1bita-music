@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8f8b3e6f86e80b8ed9e26f30930a91128c38b85d.idx
-│   │       ├── pack-8f8b3e6f86e80b8ed9e26f30930a91128c38b85d.pack
-│   │       └── pack-8f8b3e6f86e80b8ed9e26f30930a91128c38b85d.rev
+│   │       ├── pack-3d8d3a92cede4ac8d1a94e91fc32be44eaf8ef04.idx
+│   │       ├── pack-3d8d3a92cede4ac8d1a94e91fc32be44eaf8ef04.pack
+│   │       └── pack-3d8d3a92cede4ac8d1a94e91fc32be44eaf8ef04.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 14:14:37 UTC
+Сгенерировано: 2026-02-03 14:17:21 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7035,25 +7035,44 @@ const getLimits = (w, m, v) => {
 export async function preloadAllAlbumsTrackIndex() {
   const idx = window.albumsIndex || [], reg = window.TrackRegistry;
   if (!idx.length || !reg?.registerTrack) return false;
+  
   await Promise.all(idx.filter(a => a.key && !a.key.startsWith('__')).map(async (a) => {
     try {
       const base = a.base.replace(/\/$/, '') + '/';
       const cKey = `offline:cfg:v1:${a.key}`;
       let cfg = JSON.parse(sessionStorage.getItem(cKey) || 'null');
+      
       if (!cfg) {
         const r = await fetch(base + 'config.json', { cache: 'no-cache' });
-        if (r.ok) { cfg = await r.json(); try { sessionStorage.setItem(cKey, JSON.stringify(cfg)); } catch {} }
+        if (r.ok) { 
+          cfg = await r.json(); 
+          try { sessionStorage.setItem(cKey, JSON.stringify(cfg)); } catch {} 
+        }
       }
+      
       const join = (u) => u ? new URL(u, base).toString() : null;
+      // ВАЖНО: передаем второй аргумент с названием альбома (a.title или из конфига)
+      const albumMeta = { 
+        title: cfg?.albumName || a.title,
+        artist: cfg?.artist || 'Витрина Разбита',
+        cover: join(cfg?.cover || 'img/logo.png'),
+        key: a.key
+      };
+
       (cfg?.tracks || []).forEach(t => {
         if(t.uid) reg.registerTrack({
-          uid: String(t.uid).trim(), title: t.title, sourceAlbum: a.key,
-          audio: join(t.audio), audio_low: join(t.audio_low),
+          uid: String(t.uid).trim(), 
+          title: t.title, 
+          sourceAlbum: a.key,
+          audio: join(t.audio || t.urlHi), // поддержка старых и новых конфигов
+          audio_low: join(t.audio_low || t.urlLo),
           size: t.size, size_low: t.size_low,
           lyrics: join(t.lyrics), fulltext: join(t.fulltext)
-        });
+        }, albumMeta); // <-- Передаем мету сюда!
       });
-    } catch {}
+    } catch (e) {
+      console.warn('Preload err', a.key, e);
+    }
   }));
   return true;
 }
