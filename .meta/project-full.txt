@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-fd43a1f05ef9e97e1481a4dbf7348692d6ba5424.idx
-│   │       ├── pack-fd43a1f05ef9e97e1481a4dbf7348692d6ba5424.pack
-│   │       └── pack-fd43a1f05ef9e97e1481a4dbf7348692d6ba5424.rev
+│   │       ├── pack-a7fcc762efdc22f8312ddc69ede24ea124998c9f.idx
+│   │       ├── pack-a7fcc762efdc22f8312ddc69ede24ea124998c9f.pack
+│   │       └── pack-a7fcc762efdc22f8312ddc69ede24ea124998c9f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 12:59:34 UTC
+Сгенерировано: 2026-02-03 13:00:11 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7403,10 +7403,10 @@ export function closeOfflineModal() {
 //=================================================
 // FILE: /scripts/ui/ui-utils.js
 // scripts/ui/ui-utils.js
-// Facade over core/utils.js to maintain backward compatibility for imports
-import { Utils } from '../core/utils.js';
+// Facade over core/utils.js (Global Access)
+const Utils = window.Utils;
 
-export const esc = (s) => Utils.ui.escapeHtml(s);
+export const esc = (s) => Utils?.ui?.escapeHtml(s);
 export const escapeHtml = (s) => Utils.ui.escapeHtml(s);
 export const formatBytes = (n) => Utils.fmt.bytes(n);
 export const formatTime = (s) => Utils.fmt.time(s);
