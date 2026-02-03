@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-7bc3bb33f0ae4480001f4edbf623f109e1c5f478.idx
-│   │       ├── pack-7bc3bb33f0ae4480001f4edbf623f109e1c5f478.pack
-│   │       └── pack-7bc3bb33f0ae4480001f4edbf623f109e1c5f478.rev
+│   │       ├── pack-5f246404e5537a26abd105b76253fa1fc9fb8532.idx
+│   │       ├── pack-5f246404e5537a26abd105b76253fa1fc9fb8532.pack
+│   │       └── pack-5f246404e5537a26abd105b76253fa1fc9fb8532.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 12:55:28 UTC
+Сгенерировано: 2026-02-03 12:56:02 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3619,8 +3619,7 @@ export function attachPlaybackCache() {
 
 //=================================================
 // FILE: /scripts/app/track-registry.js
-import { cleanUpOrphanedCache } from '../offline/cache-db.js';
-
+// cleanUpOrphanedCache удален, так как очисткой теперь занимается OfflineManager
 let _tracks = [];
 let _byUid = new Map();
 let _fuse = null; // Если используешь поиск fuse.js, иначе можно убрать
