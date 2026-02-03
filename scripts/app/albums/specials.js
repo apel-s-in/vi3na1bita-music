@@ -11,7 +11,6 @@ const LOGO = 'img/logo.png';
 export async function loadFavoritesAlbum(ctx) {
   ctx.renderAlbumTitle('⭐⭐⭐ ИЗБРАННОЕ ⭐⭐⭐', 'fav');
 
-  // Предзагрузка реестра (важно для метаданных)
   if (window.OfflineUI?.preloadAllAlbumsTrackIndex) {
      await window.OfflineUI.preloadAllAlbumsTrackIndex(); 
   }
@@ -38,23 +37,19 @@ export async function loadFavoritesAlbum(ctx) {
     bindFavoritesList(container, {
       getModel: getUiModel,
 
-      // Клик по звезде -> Soft Delete (inactive)
       onStarClick: async ({ uid, albumKey }) => {
-        // Явно указываем source: 'favorites', чтобы сработал Soft Delete
         window.playerCore?.toggleFavorite?.(uid, { source: 'favorites', albumKey });
       },
 
-      // Клик по треку -> Play
       onActiveRowClick: async ({ uid }) => {
         const model = getUiModel();
-        // Фильтруем только активные и существующие
+        // Фильтруем только активные (зеленые) треки
         const activeList = model.filter((it) => it && it.__active && !it.isGhost);
         const idx = activeList.findIndex((it) => String(it?.__uid || '').trim() === String(uid || '').trim());
         
         if (idx >= 0) await ensureFavoritesPlayback(ctx, activeList, idx);
       },
 
-      // Клик по серому -> Модалка
       onInactiveRowClick: ({ uid, title }) => {
         window.playerCore?.showInactiveFavoriteModal?.({
           uid,
@@ -88,15 +83,15 @@ export async function ensureFavoritesPlayback(ctx, activeList, activeIndex) {
 
   if (!activeList?.length) return void window.NotificationSystem?.warning('Нет доступных треков');
 
-  // 1. СНАЧАЛА устанавливаем контекст (Fix Race Condition)
+  // 1. Сначала меняем контекст (Strict Context)
   ctx.setPlayingAlbum(FAV);
 
   // Формируем плейлист
   const tracks = activeList.map((it) => ({
-    ...it, // Копируем все свойства из реестра (включая src, sources, lyrics)
-    album: FAV, // Подменяем контекст альбома для плеера
+    ...it, 
+    album: FAV, // Плеер теперь знает, что это Избранное
     cover: LOGO,
-    sourceAlbum: it.sourceAlbum || it.__a // Ссылка на родной альбом
+    sourceAlbum: it.sourceAlbum || it.__a 
   }));
 
   if (!tracks.length) return void window.NotificationSystem?.warning('Нет доступных треков');
@@ -111,7 +106,6 @@ export async function ensureFavoritesPlayback(ctx, activeList, activeIndex) {
 
   window.playerCore.play(activeIndex);
   
-  // Подсветка
   const clicked = activeList[activeIndex];
   const cu = String(clicked?.uid || '').trim();
   const ca = String(clicked?.sourceAlbum || clicked?.__a || '').trim();
