@@ -241,11 +241,16 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
     toggleFavorite(uid, opts = {}) {
       const u = safeStr(uid);
-      const isFavView = W.AlbumsManager?.getCurrentAlbum?.() === W.SPECIAL_FAVORITES_KEY;
       
-      // FIX: Если мы визуально в Избранном, всегда используем 'favorites' (soft remove),
-      // игнорируя флаг fromAlbum от общего обработчика. В остальных случаях (обычный альбом) - 'album' (hard remove).
-      const source = isFavView ? 'favorites' : 'album';
+      // Определяем контекст удаления:
+      // 1. Если явно передано opts.source - используем его.
+      // 2. Если визуально открыт альбом "Избранное" - используем 'favorites' (Soft Delete).
+      // 3. Иначе (обычный альбом) - используем 'album' (Hard Delete).
+      let source = opts.source;
+      if (!source) {
+         const isFavView = W.AlbumsManager?.getCurrentAlbum?.() === W.SPECIAL_FAVORITES_KEY;
+         source = isFavView ? 'favorites' : 'album';
+      }
       
       const res = FavoritesV2.toggle(u, { source });
       this._emitFav(u, res.liked, opts.albumKey);
