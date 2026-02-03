@@ -4,7 +4,7 @@ import { loadAndRenderNewsInline } from '../../ui/news-inline.js';
 
 const FAV = window.SPECIAL_FAVORITES_KEY || '__favorites__';
 const NEWS = window.SPECIAL_RELIZ_KEY || '__reliz__';
-const LOGO = 'img/logo.png';
+const FAV_COVER = 'img/Fav_logo.png'; // ✅ Исправлено: Своя иконка для Избранного
 
 // --- Favorites Logic ---
 
@@ -15,9 +15,7 @@ export async function loadFavoritesAlbum(ctx) {
      await window.OfflineUI.preloadAllAlbumsTrackIndex(); 
   }
 
-  const coverWrap = $('cover-wrap');
-  if (coverWrap) coverWrap.style.display = 'none';
-
+  $('cover-wrap').style.display = 'none';
   const container = $('track-list');
   if (!container) return;
 
@@ -38,12 +36,13 @@ export async function loadFavoritesAlbum(ctx) {
       getModel: getUiModel,
 
       onStarClick: async ({ uid, albumKey }) => {
+        // Soft delete в контексте Favorites View
         window.playerCore?.toggleFavorite?.(uid, { source: 'favorites', albumKey });
       },
 
       onActiveRowClick: async ({ uid }) => {
         const model = getUiModel();
-        // Фильтруем только активные (зеленые) треки
+        // Играем только активные (зеленые)
         const activeList = model.filter((it) => it && it.__active && !it.isGhost);
         const idx = activeList.findIndex((it) => String(it?.__uid || '').trim() === String(uid || '').trim());
         
@@ -52,8 +51,7 @@ export async function loadFavoritesAlbum(ctx) {
 
       onInactiveRowClick: ({ uid, title }) => {
         window.playerCore?.showInactiveFavoriteModal?.({
-          uid,
-          title,
+          uid, title,
           onDeleted: async () => {
             await rebuild();
             window.PlayerUI?.updateAvailableTracksForPlayback?.();
@@ -62,54 +60,47 @@ export async function loadFavoritesAlbum(ctx) {
       },
     });
 
-    const pc = window.playerCore;
-    if (pc?.onFavoritesChanged) {
-      pc.onFavoritesChanged(async () => {
-        if (ctx.getCurrentAlbum() === FAV) {
-          await rebuild();
-          window.PlayerUI?.updateAvailableTracksForPlayback?.();
-        }
-      });
-    }
+    // Реакция на изменение лайков (удаление/возврат) -> перерисовка списка
+    window.playerCore?.onFavoritesChanged(async () => {
+      if (ctx.getCurrentAlbum() === FAV) {
+        await rebuild();
+        window.PlayerUI?.updateAvailableTracksForPlayback?.();
+      }
+    });
   }
 
   await rebuild();
 }
 
 export async function ensureFavoritesPlayback(ctx, activeList, activeIndex) {
-  const now = Date.now();
-  if (ctx._favPlayGuard && (now - (ctx._favPlayGuard.ts || 0)) < 300) return;
-  ctx._favPlayGuard = { ts: now };
+  if (!activeList?.length) return window.NotificationSystem?.warning('Нет доступных треков');
 
-  if (!activeList?.length) return void window.NotificationSystem?.warning('Нет доступных треков');
-
-  // 1. Сначала меняем контекст (Strict Context)
+  // 1. ✅ ЖЕСТКАЯ ИЗОЛЯЦИЯ: Устанавливаем контекст "Избранное"
+  // Это гарантирует, что isBrowsingOtherAlbum вернет false, и плеер встанет ПОД трек.
   ctx.setPlayingAlbum(FAV);
 
-  // Формируем плейлист
+  // 2. Формируем изолированный плейлист
+  // Подменяем album на "Избранное" и cover на Fav_logo.png
   const tracks = activeList.map((it) => ({
     ...it, 
-    album: FAV, // Плеер теперь знает, что это Избранное
-    cover: LOGO,
-    sourceAlbum: it.sourceAlbum || it.__a 
+    album: 'Избранное', // Визуальное название альбома в плеере
+    cover: FAV_COVER,   // ✅ Иконка Избранного
+    sourceAlbum: it.sourceAlbum || it.__a // Сохраняем ссылку на реальный альбом для логики
   }));
 
-  if (!tracks.length) return void window.NotificationSystem?.warning('Нет доступных треков');
-
-  // 2. Загружаем и играем
+  // 3. Загружаем в ядро
   window.playerCore.setPlaylist(
     tracks,
     activeIndex,
-    { artist: 'Витрина Разбита', album: 'Избранное', cover: LOGO },
+    { artist: 'Витрина Разбита', album: 'Избранное', cover: FAV_COVER },
     { preservePosition: false }
   );
 
   window.playerCore.play(activeIndex);
   
+  // Подсветка и скролл
   const clicked = activeList[activeIndex];
-  const cu = String(clicked?.uid || '').trim();
-  const ca = String(clicked?.sourceAlbum || clicked?.__a || '').trim();
-  ctx.highlightCurrentTrack(-1, { uid: cu, albumKey: ca });
+  ctx.highlightCurrentTrack(-1, { uid: String(clicked?.uid).trim(), albumKey: String(clicked?.sourceAlbum).trim() });
 
   window.PlayerUI?.ensurePlayerBlock?.(activeIndex, { userInitiated: true });
   window.PlayerUI?.updateAvailableTracksForPlayback?.();
@@ -119,9 +110,7 @@ export async function ensureFavoritesPlayback(ctx, activeList, activeIndex) {
 export async function loadNewsAlbum(ctx) {
   ctx.renderAlbumTitle('📰 НОВОСТИ 📰', 'news');
   await ctx.loadGallery(NEWS);
-  const coverWrap = $('cover-wrap');
-  if (coverWrap) coverWrap.style.display = '';
+  $('cover-wrap').style.display = '';
   const container = $('track-list');
-  if (!container) return;
-  await loadAndRenderNewsInline(container);
+  if (container) await loadAndRenderNewsInline(container);
 }
