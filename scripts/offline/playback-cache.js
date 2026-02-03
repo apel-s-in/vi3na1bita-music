@@ -1,207 +1,113 @@
-// scripts/offline/playback-cache.js
-// PlaybackCache (ESM) — кэширование окна PREV/CUR/NEXT (ТЗ 7)
-// Скачивает РЕАЛЬНЫЕ треки для playback, управляет окном воспроизведения
-
 import { getTrackByUid } from '../app/track-registry.js';
 import { isAllowedByNetPolicy, getNetPolicy } from './net-policy.js';
 import { markLocalTransient } from './cache-db.js';
 
-// ТЗ 7.3: окно всегда ровно 3 элемента PREV/CUR/NEXT
-const WINDOW_PREV = 1;
-const WINDOW_NEXT = 1;
+// ТЗ 14.2: Приоритеты (P0 > P1)
+const P_CUR = 100;
+const P_ADJ = 90;
 
-// ТЗ 14.2: приоритеты очереди (гарантируем: P0 > P1 > P2 > P3 > P4 > P5)
-const PRIORITY_CURRENT = 100;   // P0: CUR до 100%
-const PRIORITY_ADJACENT = 90;   // P1: сосед (NEXT/PREV) до 100%
+// Утилиты
+const norm = (v) => (String(v || '').toLowerCase() === 'lo' ? 'lo' : 'hi');
+const sUid = (v) => (v ? String(v).trim() : null);
+const getNet = () => window.Utils?.getNetworkStatusSafe?.() || { online: true };
 
-function normUid(v) {
-  const s = String(v || '').trim();
-  return s || null;
-}
-
-function normQ(v) {
-  return String(v || '').toLowerCase() === 'lo' ? 'lo' : 'hi';
-}
-
-function getNetworkStatusSafe() {
-  const fn = window.Utils?.getNetworkStatusSafe;
-  if (typeof fn === 'function') return fn();
-  return { online: navigator.onLine !== false, kind: 'unknown', saveData: false };
-}
-
+/**
+ * PlaybackCacheManager v2.0
+ * Реализует "Интеллектуальный кэш" (ТЗ п.7)
+ * - Окно: PREV / CUR / NEXT (3 трека)
+ * - Приоритет: CUR (100%) -> Сосед по направлению (90%)
+ * - Тип: Transient (удаляется при eviction первым)
+ * - Качество: Playback Quality (PQ), не зависит от CQ
+ */
 export class PlaybackCacheManager {
   constructor(opts = {}) {
-    this._queue = opts.queue || null;
-    this._getPlaylistCtx = opts.getPlaylistCtx || (() => ({ list: [], curUid: null, favoritesInactive: new Set(), direction: 'forward' }));
-    this._currentIdx = -1;
-    this._playlist = [];
+    this._q = opts.queue || null;
+    this._getCtx = opts.getPlaylistCtx || (() => ({ list: [], curUid: null, favoritesInactive: new Set(), direction: 'forward' }));
     this._pq = 'hi';
-    this._scheduled = new Set();
-    this._lastWindow = { prev: [], cur: null, next: [] };
-    this._direction = 'forward';
+    this._sched = new Set(); // Дедупликация задач в рамках сессии
+    this._last = { prev: [], cur: null, next: [] };
   }
 
-  setQueue(queue) {
-    this._queue = queue;
+  setPlaybackQuality(pq) { this._pq = norm(pq); }
+  getPlaybackQuality() { return this._pq; }
+  
+  // ТЗ 7.3: Цикличное окно
+  getWindow(idx, list) {
+    const len = list?.length || 0;
+    if (!len || idx < 0) return { prev: [], cur: null, next: [] };
+
+    const get = (i) => sUid(list[(idx + i + len) % len]?.uid);
+    return {
+      prev: [get(-1)].filter(Boolean),
+      cur: get(0),
+      next: [get(1)].filter(Boolean)
+    };
   }
 
-  setPlaybackQuality(pq) {
-    this._pq = normQ(pq);
-  }
+  getLastWindow() { return { ...this._last }; }
+  clearScheduled() { this._sched.clear(); }
 
-  getPlaybackQuality() {
-    return this._pq;
-  }
-
-  getWindow(idx, playlist) {
-    const pl = playlist || this._playlist;
-    const len = pl.length;
-
-    if (len === 0 || idx < 0 || idx >= len) {
-      return { prev: [], cur: null, next: [] };
-    }
-
-    const cur = pl[idx] || null;
-    const curUid = normUid(cur?.uid);
-    const prev = [];
-    const next = [];
-
-    // ✅ TЗ 7.3: цикличность окна (wrap-around)
-    for (let i = 1; i <= WINDOW_PREV; i++) {
-      const pi = (idx - i + len) % len;
-      const t = pl[pi];
-      if (t) prev.unshift(normUid(t.uid));
-    }
-
-    for (let i = 1; i <= WINDOW_NEXT; i++) {
-      const ni = (idx + i) % len;
-      const t = pl[ni];
-      if (t) next.push(normUid(t.uid));
-    }
-
-    return { prev: prev.filter(Boolean), cur: curUid, next: next.filter(Boolean) };
-  }
-
-  async ensureWindowFullyCached(pq, trackProvider) {
-    const ctx = this._getPlaylistCtx();
-    const list = ctx.list || [];
-    const curUid = ctx.curUid || null;
-    const inactive = ctx.favoritesInactive || new Set();
-    const direction = ctx.direction || 'forward';
-
-    this._direction = direction;
-
+  // ТЗ 7.6, 7.7: Планирование загрузок окна
+  async ensureWindowFullyCached(pqArg, trackProvider) {
+    const { list, curUid, favoritesInactive: bad, direction } = this._getCtx();
+    const pq = norm(pqArg || this._pq);
+    
     if (!list.length || !curUid) return;
 
-    const idx = list.findIndex(t => normUid(t?.uid) === curUid);
+    const idx = list.findIndex(t => sUid(t?.uid) === curUid);
     if (idx < 0) return;
 
-    this._currentIdx = idx;
-    this._playlist = list;
+    // 1. Вычисляем окно
+    const win = this.getWindow(idx, list);
+    this._last = win;
 
-    const window = this.getWindow(idx, list);
-    this._lastWindow = window;
-
+    // 2. Проверка прав (Network Policy)
     const mgr = window.OfflineUI?.offlineManager;
-    if (!mgr) return;
+    if (!mgr || mgr.isOfflineMode()) return; // В офлайн-режиме не качаем
+    
+    const net = getNet();
+    if (!net.online || !isAllowedByNetPolicy({ policy: getNetPolicy(), net, quality: pq, kind: 'playbackCache' })) return;
 
-    const offlineMode = mgr.isOfflineMode?.();
-    if (!offlineMode) return;
-
-    const policy = getNetPolicy();
-    const net = getNetworkStatusSafe();
-
-    if (!net.online) return;
-
-    const allowed = isAllowedByNetPolicy({
-      policy,
-      net,
-      quality: pq || this._pq,
-      kind: 'playbackCache',
-      userInitiated: false
-    });
-
-    if (!allowed) return;
-
-    // ТЗ 7.7: строго CUR -> сосед по направлению.
+    // 3. Формирование очереди (Строго: CUR -> Сосед)
     const tasks = [];
+    
+    // P0: Текущий трек
+    if (win.cur && !bad.has(win.cur)) tasks.push({ u: win.cur, p: P_CUR });
 
-    if (window.cur && !inactive.has(window.cur)) {
-      tasks.push({ uid: window.cur, priority: PRIORITY_CURRENT });
-    }
+    // P1: Сосед по направлению (ТЗ 7.8)
+    // forward -> качаем NEXT, backward -> качаем PREV
+    const neighbor = (direction === 'backward') ? win.prev[0] : win.next[0];
+    if (neighbor && !bad.has(neighbor)) tasks.push({ u: neighbor, p: P_ADJ });
 
-    // сосед по направлению = один uid (так как окно 3-трековое)
-    const neighbor = (direction === 'backward')
-      ? (window.prev && window.prev.length ? window.prev[window.prev.length - 1] : null)
-      : (window.next && window.next.length ? window.next[0] : null);
+    // 4. Постановка задач
+    for (const { u, p } of tasks) {
+      const key = `pbc:${pq}:${u}`;
+      if (this._sched.has(key)) continue; // Уже планировали
 
-    if (neighbor && !inactive.has(neighbor)) {
-      tasks.push({ uid: neighbor, priority: PRIORITY_ADJACENT });
-    }
+      // Если уже есть локально в нужном качестве — пропускаем
+      if (await mgr.isTrackComplete(u, pq)) continue;
 
-    const quality = normQ(pq || this._pq);
+      // Проверка наличия метаданных
+      const meta = (typeof trackProvider === 'function' ? trackProvider(u) : getTrackByUid(u));
+      if (!meta) continue;
 
-    for (const task of tasks) {
-      const u = normUid(task.uid);
-      if (!u) continue;
-
-      const key = `playbackCache:${quality}:${u}`;
-
-      if (this._scheduled.has(key)) continue;
-      this._scheduled.add(key);
-
-      const complete = await mgr.isTrackComplete(u, quality);
-      if (complete) continue;
-
-      const trackMeta = typeof trackProvider === 'function' ? trackProvider(u) : getTrackByUid(u);
-      if (!trackMeta) continue;
+      this._sched.add(key);
 
       mgr.enqueueAudioDownload({
         uid: u,
-        quality,
+        quality: pq,
         key,
-        priority: task.priority,
-        userInitiated: false,
-        isMass: false,
-        kind: 'playbackCache',
-        onResult: async (r) => {
-          // ТЗ 7.6/1.3: файлы окна считаем transient(window)
-          if (r && r.ok) {
-            try { await markLocalTransient(u, 'window'); } catch {}
-          }
+        priority: p,
+        kind: 'playbackCache', // ТЗ 7.6
+        onResult: (res) => {
+          // После скачивания помечаем как transient window (удаляется последним из transient)
+          if (res?.ok) markLocalTransient(u, 'window').catch(() => {});
         }
       });
     }
   }
-
-  clearScheduled() {
-    this._scheduled.clear();
-  }
-
-  getLastWindow() {
-    return { ...this._lastWindow };
-  }
-
-  getCurrentIndex() {
-    return this._currentIdx;
-  }
 }
 
-let _instance = null;
-
-export function getPlaybackCache() {
-  if (!_instance) {
-    _instance = new PlaybackCacheManager();
-  }
-  return _instance;
-}
-
-export const PlaybackCache = {
-  setPlaybackQuality: (pq) => getPlaybackCache().setPlaybackQuality(pq),
-  getPlaybackQuality: () => getPlaybackCache().getPlaybackQuality(),
-  getWindow: (idx, pl) => getPlaybackCache().getWindow(idx, pl),
-  ensureWindowFullyCached: (pq, tp) => getPlaybackCache().ensureWindowFullyCached(pq, tp),
-  clearScheduled: () => getPlaybackCache().clearScheduled(),
-  getLastWindow: () => getPlaybackCache().getLastWindow(),
-  getCurrentIndex: () => getPlaybackCache().getCurrentIndex()
-};
+// Singleton export
+export const PlaybackCache = new PlaybackCacheManager();
+export const getPlaybackCache = () => PlaybackCache;
