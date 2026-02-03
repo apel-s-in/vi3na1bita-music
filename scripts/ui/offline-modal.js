@@ -29,25 +29,44 @@ const getLimits = (w, m, v) => {
 export async function preloadAllAlbumsTrackIndex() {
   const idx = window.albumsIndex || [], reg = window.TrackRegistry;
   if (!idx.length || !reg?.registerTrack) return false;
+  
   await Promise.all(idx.filter(a => a.key && !a.key.startsWith('__')).map(async (a) => {
     try {
       const base = a.base.replace(/\/$/, '') + '/';
       const cKey = `offline:cfg:v1:${a.key}`;
       let cfg = JSON.parse(sessionStorage.getItem(cKey) || 'null');
+      
       if (!cfg) {
         const r = await fetch(base + 'config.json', { cache: 'no-cache' });
-        if (r.ok) { cfg = await r.json(); try { sessionStorage.setItem(cKey, JSON.stringify(cfg)); } catch {} }
+        if (r.ok) { 
+          cfg = await r.json(); 
+          try { sessionStorage.setItem(cKey, JSON.stringify(cfg)); } catch {} 
+        }
       }
+      
       const join = (u) => u ? new URL(u, base).toString() : null;
+      // ВАЖНО: передаем второй аргумент с названием альбома (a.title или из конфига)
+      const albumMeta = { 
+        title: cfg?.albumName || a.title,
+        artist: cfg?.artist || 'Витрина Разбита',
+        cover: join(cfg?.cover || 'img/logo.png'),
+        key: a.key
+      };
+
       (cfg?.tracks || []).forEach(t => {
         if(t.uid) reg.registerTrack({
-          uid: String(t.uid).trim(), title: t.title, sourceAlbum: a.key,
-          audio: join(t.audio), audio_low: join(t.audio_low),
+          uid: String(t.uid).trim(), 
+          title: t.title, 
+          sourceAlbum: a.key,
+          audio: join(t.audio || t.urlHi), // поддержка старых и новых конфигов
+          audio_low: join(t.audio_low || t.urlLo),
           size: t.size, size_low: t.size_low,
           lyrics: join(t.lyrics), fulltext: join(t.fulltext)
-        });
+        }, albumMeta); // <-- Передаем мету сюда!
       });
-    } catch {}
+    } catch (e) {
+      console.warn('Preload err', a.key, e);
+    }
   }));
   return true;
 }
