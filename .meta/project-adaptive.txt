@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f3710855b22398d3604f9c12072e3033a96a9d19.idx
-│   │       ├── pack-f3710855b22398d3604f9c12072e3033a96a9d19.pack
-│   │       └── pack-f3710855b22398d3604f9c12072e3033a96a9d19.rev
+│   │       ├── pack-2a3b2ef0f444bd5fd04df2b32e09200d3b9208a2.idx
+│   │       ├── pack-2a3b2ef0f444bd5fd04df2b32e09200d3b9208a2.pack
+│   │       └── pack-2a3b2ef0f444bd5fd04df2b32e09200d3b9208a2.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 06:25:46 UTC
+Сгенерировано: 2026-02-03 06:34:50 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5705,8 +5705,17 @@ const openDb = () => {
       const db = e.target.result;
       Object.values(S).forEach(s => { if (!db.objectStoreNames.contains(s)) db.createObjectStore(s); });
     };
-    req.onsuccess = () => res(req.result);
-    req.onerror = () => rej(req.error);
+    req.onsuccess = () => {
+      const db = req.result;
+      // Сброс кэша соединения при закрытии, чтобы следующий вызов открыл новое
+      db.onclose = () => { _db = null; };
+      db.onversionchange = () => { db.close(); _db = null; };
+      res(db);
+    };
+    req.onerror = () => {
+      _db = null; 
+      rej(req.error);
+    };
   });
   return _db;
 };
