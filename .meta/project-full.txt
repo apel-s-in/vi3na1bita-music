@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3469dde2bd0c364886977cbcd4d4a57cef343918.idx
-│   │       ├── pack-3469dde2bd0c364886977cbcd4d4a57cef343918.pack
-│   │       └── pack-3469dde2bd0c364886977cbcd4d4a57cef343918.rev
+│   │       ├── pack-4e70a5ad33bd7958775fd00a9ce67958f0fccb39.idx
+│   │       ├── pack-4e70a5ad33bd7958775fd00a9ce67958f0fccb39.pack
+│   │       └── pack-4e70a5ad33bd7958775fd00a9ce67958f0fccb39.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 07:29:45 UTC
+Сгенерировано: 2026-02-03 07:47:54 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8198,229 +8198,92 @@ export function closeOfflineModal() {
 //=================================================
 // FILE: /scripts/ui/sysinfo.js
 // scripts/ui/sysinfo.js
-// Модальное окно с информацией о системе и приложении
-
-(function() {
+// Optimized System Info Modal v2.0 (Direct Render)
+(function(W, N) {
   'use strict';
 
-  const U = window.Utils;
-  const $ = (id) => U.dom.byId(id);
-  const on = (el, ev, fn, opts) => U.dom.on(el, ev, fn, opts);
-  const formatBytes = (n) => U.formatBytes(n);
+  const U = W.Utils;
+  const esc = (v) => U.escapeHtml(String(v ?? ''));
+  const yn = (v) => v ? '✅' : '❌';
+  const row = (l, v) => `<div><strong>${l}:</strong> ${v}</div>`;
 
-  class SystemInfoManager {
-    constructor() {
-      this.modal = null;
-      this.init();
-    }
-
-    init() {
-      // Кнопка открытия
-      const button = $('sysinfo-btn');
-      if (button) {
-        button.style.display = '';
-        on(button, 'click', () => this.show());
-      }
-
-      // Горячая клавиша Ctrl+I
-      on(document, 'keydown', (e) => {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'i') {
-          e.preventDefault();
-          this.show();
-        }
-      });
-    }
-
-    show() {
-      if (!window.Modals?.open) return;
-
-      if (this.modal) {
-        try { this.modal.remove(); } catch {}
-        this.modal = null;
-      }
-
-      const info = this.collectSystemInfo();
-      const esc = window.Utils?.escapeHtml
-        ? (s) => window.Utils.escapeHtml(String(s || ''))
-        : (s) => String(s || '');
-
-      this.modal = window.Modals.open({
-        title: 'О системе',
-        maxWidth: 500,
-        bodyHtml: `
-          <div style="font-size: 14px; line-height: 1.6;">
-            <h3 style="color: #8ab8fd; margin-top: 0;">Приложение</h3>
-            <div><strong>Версия:</strong> ${esc(info.app.version)}</div>
-            <div><strong>Дата сборки:</strong> ${esc(info.app.buildDate)}</div>
-            <div><strong>PWA:</strong> ${info.app.isPWA ? '✅ Да' : '❌ Нет'}</div>
-            <div id="sw-version-placeholder"><strong>SW версия:</strong> ...</div>
-
-            <h3 style="color: #8ab8fd; margin-top: 20px;">Браузер</h3>
-            <div><strong>User Agent:</strong> ${esc(info.browser.userAgent)}</div>
-            <div><strong>Язык:</strong> ${esc(info.browser.language)}</div>
-            <div><strong>Online:</strong> ${info.browser.online ? '✅' : '❌'}</div>
-
-            <h3 style="color: #8ab8fd; margin-top: 20px;">Устройство</h3>
-            <div><strong>Разрешение:</strong> ${esc(info.device.resolution)}</div>
-            <div><strong>DPR:</strong> ${esc(info.device.dpr)}</div>
-            <div><strong>Touch:</strong> ${info.device.touch ? '✅' : '❌'}</div>
-            <div><strong>Platform:</strong> ${esc(info.device.platform)}</div>
-
-            <h3 style="color: #8ab8fd; margin-top: 20px;">Плеер</h3>
-            <div><strong>Ядро:</strong> ${esc(info.player.core)}</div>
-            <div><strong>Версия Howler:</strong> ${esc(info.player.howlerVersion)}</div>
-            <div><strong>Поддержка Web Audio:</strong> ${info.player.webAudio ? '✅' : '❌'}</div>
-            <div><strong>Поддержка HTML5:</strong> ${info.player.html5 ? '✅' : '❌'}</div>
-
-            <h3 style="color: #8ab8fd; margin-top: 20px;">Хранилище</h3>
-            <div><strong>LocalStorage:</strong> ${info.storage.localStorage ? '✅' : '❌'}</div>
-            <div><strong>IndexedDB:</strong> ${info.storage.indexedDB ? '✅' : '❌'}</div>
-            <div><strong>Cache API:</strong> ${info.storage.cacheAPI ? '✅' : '❌'}</div>
-            <div><strong>Service Worker:</strong> ${info.storage.serviceWorker ? '✅' : '❌'}</div>
-
-            <h3 style="color: #8ab8fd; margin-top: 20px;">Память</h3>
-            <div><strong>Используется:</strong> ${esc(info.memory.used)}</div>
-            <div><strong>Лимит:</strong> ${esc(info.memory.limit)}</div>
-
-            <h3 style="color: #8ab8fd; margin-top: 20px;">Производительность</h3>
-            <div><strong>Время загрузки:</strong> ${esc(info.performance.loadTime)}</div>
-            <div><strong>DOM загружен:</strong> ${esc(info.performance.domContentLoaded)}</div>
-
-            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #394866; text-align: center; font-size: 12px; color: #999;">
-              Витрина Разбита © 2025
-            </div>
-          </div>
-        `,
-        onClose: () => { this.modal = null; }
-      });
-
-      // Асинхронная загрузка версии SW
-      this.getSWVersion().then((ver) => {
-        const placeholder = this.modal?.querySelector?.('#sw-version-placeholder');
-        if (placeholder) {
-          placeholder.innerHTML = `<strong>SW версия:</strong> ${esc(ver)}`;
-        }
-      });
-    }
-
-    collectSystemInfo() {
-      const APP_CONFIG = window.APP_CONFIG || {};
+  const Sys = {
+    initialize: () => {
+      const btn = U.dom.byId('sysinfo-btn');
+      if (btn) { btn.style.display = ''; btn.onclick = Sys.show; }
       
-      return {
-        app: {
-          version: APP_CONFIG.APP_VERSION || window.VERSION || 'unknown',
-          buildDate: APP_CONFIG.BUILD_DATE || window.BUILD_DATE || 'unknown',
-          isPWA: window.matchMedia('(display-mode: standalone)').matches
-        },
-        browser: {
-          userAgent: navigator.userAgent,
-          language: navigator.language,
-          online: navigator.onLine
-        },
-        device: {
-          resolution: `${window.screen.width}×${window.screen.height}`,
-          dpr: window.devicePixelRatio || 1,
-          touch: 'ontouchstart' in window,
-          platform: navigator.platform
-        },
-        player: {
-          core: window.playerCore ? 'PlayerCore (Howler.js)' : 'Не загружен',
-          howlerVersion: window.Howler ? Howler.version : 'N/A',
-          webAudio: window.Howler ? Howler.usingWebAudio : false,
-          html5: window.Howler ? !Howler.usingWebAudio : false
-        },
-        storage: {
-          localStorage: this.checkLocalStorage(),
-          indexedDB: 'indexedDB' in window,
-          cacheAPI: 'caches' in window,
-          serviceWorker: 'serviceWorker' in navigator
-        },
-        memory: this.getMemoryInfo(),
-        performance: this.getPerformanceInfo()
+      document.addEventListener('keydown', e => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'i') { e.preventDefault(); Sys.show(); }
+      });
+      console.log('✅ SysInfo optimized');
+    },
+
+    show: async () => {
+      if (!W.Modals?.open) return;
+
+      // 1. Collect Data directly
+      const C = W.APP_CONFIG || {};
+      const P = performance, T = P.timing || {}, M = P.memory;
+      const SC = W.screen;
+      
+      // 2. Get SW Version (Async)
+      let swVer = '...';
+      const getSW = async () => {
+        try {
+          const reg = await N.serviceWorker?.getRegistration();
+          if (!reg?.active) return 'N/A';
+          return new Promise(r => {
+            const ch = new MessageChannel(), t = setTimeout(() => r('timeout'), 800);
+            ch.port1.onmessage = e => { clearTimeout(t); r(e.data.version || 'N/A'); };
+            reg.active.postMessage({ type: 'GET_SW_VERSION' }, [ch.port2]);
+          });
+        } catch { return 'Err'; }
       };
+
+      // 3. Render HTML
+      const render = (ver) => `
+        <div style="font-size:13px;line-height:1.6;color:#eaf2ff">
+          <h3 style="color:#8ab8fd;margin:0 0 6px">Приложение</h3>
+          ${row('Версия', `${esc(C.APP_VERSION||W.VERSION)} (${esc(C.BUILD_DATE||W.BUILD_DATE)})`)}
+          ${row('PWA', yn(matchMedia('(display-mode: standalone)').matches))}
+          <div id="sw-ver-row"><strong>SW версия:</strong> ${esc(ver)}</div>
+
+          <h3 style="color:#8ab8fd;margin:12px 0 6px">Среда</h3>
+          ${row('UA', esc(N.userAgent).substring(0, 45) + '...')}
+          ${row('Экран', `${SC.width}×${SC.height} (x${W.devicePixelRatio})`)}
+          ${row('Touch', yn('ontouchstart' in W))}
+          ${row('Online', yn(N.onLine))}
+
+          <h3 style="color:#8ab8fd;margin:12px 0 6px">Система</h3>
+          ${row('Audio', W.Howler ? `Howler ${Howler.version} (${Howler.usingWebAudio?'WebAudio':'HTML5'})` : 'Off')}
+          ${row('Storage', `LS:${yn(localStorage)} IDB:${yn(W.indexedDB)} Cache:${yn(W.caches)}`)}
+          ${row('RAM', M ? `${U.fmt.bytes(M.usedJSHeapSize)} / ${U.fmt.bytes(M.jsHeapSizeLimit)}` : 'N/A')}
+          ${row('Load', `${Math.max(0, T.loadEventEnd - T.navigationStart)}ms (DOM: ${Math.max(0, T.domContentLoadedEventEnd - T.navigationStart)}ms)`)}
+
+          <div style="margin-top:16px;padding-top:10px;border-top:1px solid #394866;text-align:center;color:#666;font-size:11px">
+            Vi3na1bita © 2025
+          </div>
+        </div>`;
+
+      // 4. Open Modal
+      const modal = W.Modals.open({
+        title: 'О системе', maxWidth: 420,
+        bodyHtml: render(swVer)
+      });
+
+      // 5. Update SW Ver after promise resolves
+      getSW().then(v => {
+        const el = modal.querySelector('#sw-ver-row');
+        if (el) el.innerHTML = `<strong>SW версия:</strong> ${esc(v)}`;
+      });
     }
+  };
 
-    checkLocalStorage() {
-      try {
-        localStorage.setItem('test', '1');
-        localStorage.removeItem('test');
-        return true;
-      } catch (e) {
-        return false;
-      }
-    }
+  W.SystemInfoManager = Sys;
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', Sys.initialize);
+  else Sys.initialize();
 
-    getMemoryInfo() {
-      if (performance.memory) {
-        return {
-          used: formatBytes(performance.memory.usedJSHeapSize),
-          limit: formatBytes(performance.memory.jsHeapSizeLimit)
-        };
-      }
-      return {
-        used: 'N/A',
-        limit: 'N/A'
-      };
-    }
-
-    getPerformanceInfo() {
-      const perf = performance.timing;
-      const loadTime = perf.loadEventEnd - perf.navigationStart;
-      const domTime = perf.domContentLoadedEventEnd - perf.navigationStart;
-
-      return {
-        loadTime: loadTime > 0 ? `${loadTime}ms` : 'N/A',
-        domContentLoaded: domTime > 0 ? `${domTime}ms` : 'N/A'
-      };
-    }
-    async getSWVersion() {
-      try {
-        const registration = await navigator.serviceWorker.getRegistration();
-        if (!registration || !registration.active) return 'N/A';
-
-        return new Promise((resolve) => {
-          const messageChannel = new MessageChannel();
-          
-          messageChannel.port1.onmessage = (event) => {
-            resolve(event.data.version || 'N/A');
-          };
-
-          registration.active.postMessage(
-            { type: 'GET_SW_VERSION' },
-            [messageChannel.port2]
-          );
-
-          setTimeout(() => resolve('N/A'), 1000);
-        });
-      } catch {
-        return 'N/A';
-      }
-    }
-
-    hide() {
-      if (this.modal) {
-        this.modal.classList.remove('active');
-        setTimeout(() => {
-          if (this.modal && this.modal.parentNode) {
-            this.modal.parentNode.removeChild(this.modal);
-          }
-          this.modal = null;
-        }, 300);
-      }
-    }
-  }
-
-  // Инициализация при загрузке DOM
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      window.SystemInfoManager = new SystemInfoManager();
-    });
-  } else {
-    window.SystemInfoManager = new SystemInfoManager();
-  }
-
-  console.log('✅ System info manager initialized');
-})();
+})(window, navigator);
 
 //=================================================
 // FILE: /scripts/ui/ui-utils.js
