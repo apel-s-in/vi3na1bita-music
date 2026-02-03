@@ -49,6 +49,7 @@
 
     // 4. Minor Modules
     ['SleepTimer', 'LyricsModal', 'SystemInfoManager'].forEach(m => W[m]?.initialize?.());
+    await import('./ui/statistics-modal.js'); // Загрузка статистики
 
     // 5. Restore State
     W.PlayerState?.apply?.();
