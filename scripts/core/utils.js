@@ -225,5 +225,4 @@
   W.Utils = U;
   if (typeof exports !== 'undefined') exports.Utils = U;
 })(window, document);
-
-export const Utils = window.Utils;
+// export const Utils удален, так как этот файл загружается через <script> без type="module"
