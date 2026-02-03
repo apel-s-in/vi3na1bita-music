@@ -8,49 +8,59 @@
   const U = W.Utils;
   const trim = (v) => U.obj.trim(v);
 
-  /**
-   * Строит модель для отображения списка Избранного.
-   * Объединяет данные из FavoritesV2 (статус) и TrackRegistry (данные трека).
-   */
+  // Хелпер для поиска красивого названия альбома в глобальном индексе
+  const getGlobalAlbumTitle = (key) => {
+    if (!key || !W.albumsIndex) return null;
+    const found = W.albumsIndex.find(a => a.key === key);
+    return found ? found.title : null;
+  };
+
   const buildFavoritesRefsModel = async () => {
     const pc = W.playerCore;
-    // Используем PlayerCore как источник истины о состоянии (active/inactive)
     if (!pc?.getFavoritesState) return (W.favoritesRefsModel = []);
 
     const st = pc.getFavoritesState();
-    // Объединяем активные и неактивные (неактивные нужны для UI восстановления)
+    // Берем и активные (лайкнутые), и неактивные (удаленные, но еще в списке)
     const rawItems = [...(st.active || []), ...(st.inactive || [])];
 
     W.favoritesRefsModel = rawItems.map((item) => {
       const uid = trim(item.uid);
-      const meta = W.TrackRegistry?.getTrackByUid(uid); // Берём из реестра
-      
-      // Определяем, активен ли трек (лайкнут) прямо сейчас
+      const meta = W.TrackRegistry?.getTrackByUid(uid);
       const isActive = pc.isFavorite(uid);
+      
+      // Ключ альбома берем откуда только можно (реестр -> избранное)
+      const albumKey = trim(meta?.sourceAlbum || item.sourceAlbum);
 
       if (!meta) {
-        // Если данных нет в реестре (не загружен альбом), возвращаем заглушку
         return {
           __uid: uid,
           title: 'Загрузка...',
           __active: false,
-          isGhost: true // Флаг для UI, что данные отсутствуют
+          isGhost: true
         };
       }
 
-      // Возвращаем объект, совместимый с favorites-view.js
+      // --- ЛОГИКА НАЗВАНИЯ АЛЬБОМА ---
+      // 1. Берем из метаданных трека
+      let albumTitle = meta.album;
+      
+      // 2. Если там заглушка "Альбом", пробуем найти в глобальном индексе (albums.json)
+      if (!albumTitle || albumTitle === 'Альбом') {
+         const globalTitle = getGlobalAlbumTitle(albumKey);
+         if (globalTitle) albumTitle = globalTitle;
+         else albumTitle = 'Альбом';
+      }
+      // -------------------------------
+
       return {
-        // Данные трека (проксируем из registry)
         ...meta, 
         
-        // Специфичные поля для списка
         __uid: uid,
-        __a: meta.sourceAlbum || item.sourceAlbum, // Album Key
-        __album: meta.album, // Название альбома
+        __a: albumKey,
+        __album: albumTitle, // Используем вычисленное красивое имя
         __active: isActive,
         __cover: meta.cover || LOGO,
         
-        // Для плеера (хотя PlayerCore возьмет из реестра, тут для view)
         audio: isActive ? meta.src : null 
       };
     });
@@ -61,12 +71,9 @@
   const init = () => {
     if (W.__favoritesUIBound) return;
     W.__favoritesUIBound = true;
-    
-    // Реактивность: перестраиваем модель при изменении лайков
     const bind = () => {
       if (W.playerCore?.onFavoritesChanged) {
         W.playerCore.onFavoritesChanged(() => {
-          // Обновляем модель только если мы визуально в Избранном
           if (W.AlbumsManager?.getCurrentAlbum?.() === FAV) {
             buildFavoritesRefsModel().catch(console.error);
           }
@@ -84,8 +91,6 @@
     getActiveModel: (m) => (m || W.FavoritesUI.getModel()).filter(it => it && it.__active && !it.isGhost),
   };
   
-  // Alias
   W.buildFavoritesRefsModel = buildFavoritesRefsModel;
-  
   init();
 })(window);
