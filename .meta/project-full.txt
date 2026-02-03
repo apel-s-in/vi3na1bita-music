@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a89dc2790fde0143e0275ac976113181ec6f41a7.idx
-│   │       ├── pack-a89dc2790fde0143e0275ac976113181ec6f41a7.pack
-│   │       └── pack-a89dc2790fde0143e0275ac976113181ec6f41a7.rev
+│   │       ├── pack-d3c7bb739a587c2f9f7fd070fe862c50ac031047.idx
+│   │       ├── pack-d3c7bb739a587c2f9f7fd070fe862c50ac031047.pack
+│   │       └── pack-d3c7bb739a587c2f9f7fd070fe862c50ac031047.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 09:04:03 UTC
+Сгенерировано: 2026-02-03 09:04:32 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1303,19 +1303,17 @@ self.addEventListener('message', (e) => {
 //=================================================
 // FILE: /scripts/app.js
 // scripts/app.js
-// Optimized Application Entry Point v2.0
+// Optimized Application Entry Point v2.1
 (function (W, D) {
   'use strict';
 
-  // --- Helpers ---
   const $ = (id) => D.getElementById(id);
   const click = (id) => $(id)?.click();
   
-  // Ленивое ожидание готовности глобальных менеджеров (loaded via defer)
-  const waitObj = async (name, t = 3000) => {
+  // Wait helper using new Utils
+  const waitObj = async (name) => {
     const U = W.Utils;
-    if (U?.waitFor) return U.waitFor(() => !!W[name]?.initialize, t);
-    // Fallback если Utils еще нет
+    if (U?.waitFor) return U.waitFor(() => !!W[name]?.initialize, 3000);
     let i = 0; while(!W[name]?.initialize && i++ < 30) await new Promise(r => setTimeout(r, 100));
     return !!W[name];
   };
@@ -1323,16 +1321,15 @@ self.addEventListener('message', (e) => {
   const initModules = async () => {
     // 1. Albums Index
     if (!Array.isArray(W.albumsIndex) || !W.albumsIndex.length) {
-      try { await W.Utils?.onceEvent(W, 'albumsIndex:ready', { timeoutMs: 5000 }); } catch {}
+      try { await W.Utils?.onceEvent?.(W, 'albumsIndex:ready', { timeoutMs: 5000 }); } catch {}
     }
     W.albumsIndex = Array.isArray(W.albumsIndex) ? W.albumsIndex : [];
 
-    // 2. Offline System (Critical Path - Sequential)
+    // 2. Offline System
     try {
       const boot = await import('./app/offline-ui-bootstrap.js');
       boot?.attachOfflineUI?.();
       
-      // Parallel loading of secondary offline UI & logic
       Promise.all([
         import('./ui/offline-indicators.js'),
         import('./ui/cache-progress-overlay.js'),
@@ -1342,14 +1339,13 @@ self.addEventListener('message', (e) => {
         ind?.attachOfflineIndicators?.();
         ov?.attachCacheProgressOverlay?.();
         pb?.attachPlaybackCache?.();
-        // Preload track registry once for Offline Modal 100% feature
         if (localStorage.getItem('offline:preloadAllTracksOnce:v1') !== '1' && mod?.preloadAllAlbumsTrackIndex) {
           mod.preloadAllAlbumsTrackIndex().then(() => localStorage.setItem('offline:preloadAllTracksOnce:v1', '1'));
         }
       });
     } catch (e) { console.error('Offline boot err:', e); }
 
-    // 3. Core UI Managers (Wait for defer scripts)
+    // 3. UI Managers
     const run = (n) => W[n]?.initialize();
     if (await waitObj('GalleryManager')) run('GalleryManager');
     if (await waitObj('AlbumsManager')) run('AlbumsManager');
@@ -1362,36 +1358,35 @@ self.addEventListener('message', (e) => {
     W.PlayerState?.apply?.();
   };
 
-  // --- Hotkeys ---
   const setupHotkeys = () => {
-    const keyMap = {
+    const pc = W.playerCore;
+    const map = {
       'k': () => W.PlayerUI?.togglePlayPause(),
-      ' ': (e) => { e.preventDefault(); W.PlayerUI?.togglePlayPause(); }, // Prevent scroll
-      'n': () => W.playerCore?.next(),
-      'p': () => W.playerCore?.prev(),
-      'x': () => W.playerCore?.stop(),
+      ' ': (e) => { e.preventDefault(); W.PlayerUI?.togglePlayPause(); },
+      'n': () => pc?.next(),
+      'p': () => pc?.prev(),
+      'x': () => pc?.stop(),
       'm': () => click('mute-btn'),
       'r': () => click('repeat-btn'),
       'u': () => click('shuffle-btn'),
       'a': () => click('animation-btn'),
       'b': () => click('pulse-btn'),
-      'f': () => click('favorites-btn'), // Favorites Only
+      'f': () => click('favorites-btn'),
       't': () => W.SleepTimer?.show?.(),
       'y': () => click('lyrics-toggle-btn'),
-      'arrowleft': () => W.playerCore?.seek(Math.max(0, (W.playerCore.getPosition() || 0) - 5)),
-      'arrowright': () => W.playerCore?.seek(Math.min(W.playerCore.getDuration() || 0, (W.playerCore.getPosition() || 0) + 5)),
-      'arrowup': (e) => { e.preventDefault(); W.playerCore?.setVolume(Math.min(100, W.playerCore.getVolume() + 5)); },
-      'arrowdown': (e) => { e.preventDefault(); W.playerCore?.setVolume(Math.max(0, W.playerCore.getVolume() - 5)); }
+      'arrowleft': () => pc?.seek(Math.max(0, (pc.getPosition() || 0) - 5)),
+      'arrowright': () => pc?.seek(Math.min(pc.getDuration() || 0, (pc.getPosition() || 0) + 5)),
+      'arrowup': (e) => { e.preventDefault(); pc?.setVolume(Math.min(100, pc.getVolume() + 5)); },
+      'arrowdown': (e) => { e.preventDefault(); pc?.setVolume(Math.max(0, pc.getVolume() - 5)); }
     };
 
     D.addEventListener('keydown', (e) => {
       if (['INPUT', 'TEXTAREA'].includes(e.target?.tagName)) return;
-      const h = keyMap[e.key.toLowerCase()];
+      const h = map[e.key.toLowerCase()];
       if (h) h(e);
     });
   };
 
-  // --- PWA & SW ---
   const setupPWA = () => {
     W.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
@@ -1421,24 +1416,16 @@ self.addEventListener('message', (e) => {
       }
     };
     navigator.serviceWorker.addEventListener('message', h);
-    W.addEventListener('message', h); // Backup channel
+    W.addEventListener('message', h);
   };
 
-  // --- Main Export ---
   let _init = false;
   W.app = {
     initialize: async () => {
       if (_init) return;
       _init = true;
-      try {
-        await initModules();
-        setupHotkeys();
-        setupPWA();
-        setupSW();
-      } catch (e) {
-        console.error('App init failed:', e);
-        W.NotificationSystem?.error('Ошибка инициализации');
-      }
+      try { await initModules(); setupHotkeys(); setupPWA(); setupSW(); }
+      catch (e) { console.error('App init failed:', e); W.NotificationSystem?.error('Ошибка инициализации'); }
     }
   };
 })(window, document);
