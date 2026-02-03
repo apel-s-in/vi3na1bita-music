@@ -1,16 +1,16 @@
 // service-worker.js
-// Единый Service Worker для PWA "Витрина Разбита"
+// Optimized Service Worker for "Vi3na1bita"
 
 const SW_VERSION = '8.1.0';
 
-// Основные кэши (ожидаются lint-sw.mjs)
+// Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
 const RUNTIME_CACHE = `vitrina-runtime-v${SW_VERSION}`;
 const MEDIA_CACHE = `vitrina-media-v${SW_VERSION}`;
 const OFFLINE_CACHE = `vitrina-offline-v${SW_VERSION}`;
 const META_CACHE = `vitrina-meta-v${SW_VERSION}`;
 
-// Конфиг по умолчанию (ожидается lint-sw.mjs)
+// Config (Required by lint-sw.mjs)
 const DEFAULT_SW_CONFIG = {
   mediaMaxCacheMB: 150,
   nonRangeMaxStoreMB: 25,
@@ -19,250 +19,117 @@ const DEFAULT_SW_CONFIG = {
   revalidateDays: 7
 };
 
-// Статический список ресурсов «ядра»
+// Core Assets
 const STATIC_ASSETS = [
-  './',
-  './index.html',
-  './news.html',
-  './manifest.json',
-  './styles/main.css',
-  './img/logo.png',
-  './img/star.png',
-  './img/star2.png',
-  './icons/favicon-32.png',
-  './icons/favicon-16.png',
-  './icons/apple-touch-icon.png',
-
-  // Скрипты ядра и UI
-  './scripts/core/bootstrap.js',
-  './scripts/core/config.js',
-  './scripts/app/gallery.js',
-  './scripts/ui/notify.js',
-  './scripts/ui/favorites.js',
-  // './scripts/ui/favorites-view.js', // ESM: грузится по требованию через imports (не precache)
-  './scripts/ui/sleep.js',
-  './scripts/ui/lyrics-modal.js',
-  './scripts/ui/sysinfo.js',
-  // './scripts/app/background-audio.js', // отсутствует: удалено из precache
-  // './scripts/app/background-events.js', // отсутствует в репозитории: удалено из precache
-  './scripts/app/player-ui.js',
-  './scripts/app/albums.js',
-  './scripts/app/navigation.js',
-  './scripts/app.js',
-  './src/PlayerCore.js',
-
-  // Howler.js (CDN)
-  // ВАЖНО: не precache на install, чтобы не ронять установку SW из-за opaque/CORS/CDN-ошибок.
-  // CDN будет загружаться по сети; при необходимости закэшируется через runtime-стратегию.
+  './', './index.html', './news.html', './manifest.json',
+  './styles/main.css', './img/logo.png', './img/star.png', './img/star2.png',
+  './icons/favicon-32.png', './icons/favicon-16.png', './icons/apple-touch-icon.png',
+  './scripts/core/bootstrap.js', './scripts/core/config.js', './scripts/app/gallery.js',
+  './scripts/ui/notify.js', './scripts/ui/favorites.js', './scripts/ui/sleep.js',
+  './scripts/ui/lyrics-modal.js', './scripts/ui/sysinfo.js', './scripts/app/player-ui.js',
+  './scripts/app/albums.js', './scripts/app/navigation.js', './scripts/app.js',
+  './src/PlayerCore.js'
 ];
 
-// ✅ Точный static-match: нормализуем пути в абсолютные URL внутри scope и сравниваем строго.
-// Это устраняет ложные совпадения из-за endsWith и стабильнее при querystring/hash.
-const normalizeUrlForMatch = (href) => {
-  try {
-    const u = new URL(href);
-    u.hash = '';
-    u.search = '';
-    // Нормализуем "/" как "/index.html" для cache-сопоставления
-    if (u.pathname.endsWith('/')) u.pathname += 'index.html';
-    return u.href;
-  } catch {
-    return String(href || '');
-  }
-};
+// Helper: Normalize URL for strict cache matching
+const norm = (u) => { try { const p = new URL(u, self.registration.scope); p.hash = ''; p.search = ''; if(p.pathname.endsWith('/')) p.pathname += 'index.html'; return p.href; } catch { return String(u); } };
+const STATIC_SET = new Set(STATIC_ASSETS.map(norm));
 
-const STATIC_URLS = (() => {
-  const scope = (self.registration && self.registration.scope) ? self.registration.scope : self.location.origin + '/';
-  const set = new Set();
+// --- Lifecycle ---
 
-  for (const asset of STATIC_ASSETS) {
-    // Только локальные пути (http(s) можно оставить, но у тебя их нет)
-    try {
-      const abs = new URL(asset, scope).href;
-      set.add(normalizeUrlForMatch(abs));
-    } catch {}
-  }
-
-  return set;
-})();
-
-// ========== INSTALL ==========
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CORE_CACHE)
-      .then((cache) => cache.addAll(STATIC_ASSETS))
-      .then(() => self.skipWaiting())
-  );
+self.addEventListener('install', (e) => {
+  e.waitUntil(caches.open(CORE_CACHE).then(c => c.addAll(STATIC_ASSETS)).then(() => self.skipWaiting()));
 });
 
-// ========== ACTIVATE ==========
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((names) =>
-      Promise.all(
-        names.map((name) => {
-          if (
-            name !== CORE_CACHE &&
-            name !== RUNTIME_CACHE &&
-            name !== MEDIA_CACHE &&
-            name !== OFFLINE_CACHE &&
-            name !== META_CACHE
-          ) {
-            return caches.delete(name);
-          }
-          return undefined;
-        })
-      )
-    ).then(() => self.clients.claim())
-  );
+self.addEventListener('activate', (e) => {
+  e.waitUntil(caches.keys().then(keys => Promise.all(keys.map(k => {
+    if (![CORE_CACHE, RUNTIME_CACHE, MEDIA_CACHE, OFFLINE_CACHE, META_CACHE].includes(k)) return caches.delete(k);
+  }))).then(() => self.clients.claim()));
 });
 
-// ========== FETCH ==========
-self.addEventListener('fetch', (event) => {
-  const { request } = event;
+// --- Fetch Strategy ---
 
-  // Игнорируем не-GET запросы
-  if (request.method !== 'GET') {
-    return;
-  }
+self.addEventListener('fetch', (e) => {
+  const req = e.request;
+  if (req.method !== 'GET') return;
 
-  const url = new URL(request.url);
+  const url = new URL(req.url);
 
-  // Аудио-файлы — прямой запрос (без кэша, чтобы не ломать стриминг)
+  // 1. Audio: Network Only (Handled by IDB/CacheDB logic, bypass SW cache to avoid range issues)
   if (/\.(mp3|ogg|m4a|flac)$/i.test(url.pathname)) {
-    event.respondWith(fetch(request));
+    e.respondWith(fetch(req));
     return;
   }
 
-  // Статика: cache-first из CORE/RUNTIME (точное сравнение)
-  const isStatic = STATIC_URLS.has(normalizeUrlForMatch(url.href));
-
-  if (isStatic) {
-    event.respondWith(
-      caches.match(request).then((cached) => {
-        if (cached) return cached;
-        return fetch(request).then((resp) => {
-          return caches.open(RUNTIME_CACHE).then((cache) => {
-            cache.put(request, resp.clone());
-            return resp;
-          });
-        });
-      })
-    );
+  // 2. Static Assets: Cache First (Strict)
+  if (STATIC_SET.has(norm(url.href))) {
+    e.respondWith(caches.open(CORE_CACHE).then(c => c.match(req)).then(r => r || fetch(req).then(n => {
+      if(n.ok) caches.open(RUNTIME_CACHE).then(c => c.put(req, n.clone()));
+      return n;
+    })));
     return;
   }
 
-  // Остальное: network-first с fallback в RUNTIME_CACHE
-  event.respondWith(
-    fetch(request)
-      .then((resp) => {
-        const copy = resp.clone();
-        caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, copy));
-        return resp;
-      })
-      .catch(() => caches.match(request))
-  );
+  // 3. Default: Network First -> Runtime Cache
+  e.respondWith(fetch(req).then(res => {
+    const copy = res.clone();
+    caches.open(RUNTIME_CACHE).then(c => c.put(req, copy));
+    return res;
+  }).catch(() => caches.match(req)));
 });
 
-// ========== MESSAGE API (для sysinfo.js и ServiceWorkerManager) ==========
-self.addEventListener('message', (event) => {
-  const { data, ports } = event;
-  if (!data || typeof data !== 'object') return;
+// --- Messaging API ---
 
-  const type = data.type;
+self.addEventListener('message', (e) => {
+  const d = e.data;
+  if (!d || typeof d !== 'object') return;
+  const port = e.ports[0];
 
-  // Ответ версии SW для sysinfo.js
-  if (type === 'GET_SW_VERSION') {
-    const port = ports && ports[0];
-    if (port) {
-      port.postMessage({ version: SW_VERSION });
-    }
-    return;
-  }
+  switch (d.type) {
+    case 'GET_SW_VERSION':
+      if (port) port.postMessage({ version: SW_VERSION });
+      break;
 
-  // Управление жизненным циклом
-  if (type === 'SKIP_WAITING') {
-    self.skipWaiting();
-    return;
-  }
+    case 'SKIP_WAITING':
+      self.skipWaiting();
+      break;
 
-  // API для ServiceWorkerManager
-    // CACHE_AUDIO удалён: аудио теперь хранится в IndexedDB (CacheDB)
-  
-    if (type === 'CLEAR_CACHE') {
-      // Очистка только системных кэшей SW (не трогаем IDB аудио)
-      event.waitUntil(
-        caches.keys().then((names) => Promise.all(names.map((name) => caches.delete(name))))
-      );
-      return;
-    }
+    case 'CLEAR_CACHE':
+      e.waitUntil(caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))));
+      break;
 
-  if (type === 'WARM_OFFLINE_SHELL') {
-    const port = ports && ports[0];
-    const urls = (data.payload && Array.isArray(data.payload.urls)) ? data.payload.urls : [];
-
-    event.waitUntil((async () => {
-      try {
-        const cache = await caches.open(OFFLINE_CACHE);
-
-        // Кладём ядро + переданные URL (covers/lyrics/json/news/etc.)
-        // addAll может упасть из-за одного плохого ресурса, поэтому делаем best-effort.
-        const all = STATIC_ASSETS.concat(urls);
-
-        for (const u of all) {
-          try { await cache.add(u); } catch {}
-        }
-
-        if (port) port.postMessage({ ok: true, cached: urls.length });
-      } catch (e) {
-        if (port) port.postMessage({ ok: false, error: String(e?.message || e) });
-      }
-    })());
-
-    return;
-  }
-
-  if (type === 'GET_CACHE_SIZE') {
-    const port = ports && ports[0];
-    if (!port) return;
-
-    // ✅ Облегчённый расчёт:
-    // - НЕ читаем body (arrayBuffer), чтобы не фризить устройства.
-    // - Считаем количество записей и суммарный Content-Length (если доступен).
-    event.waitUntil(
-      (async () => {
-        let totalBytes = 0;
-        let totalEntries = 0;
-
+    case 'WARM_OFFLINE_SHELL': // Preload assets for offline mode
+      e.waitUntil((async () => {
         try {
-          const names = await caches.keys();
-          for (const name of names) {
-            const cache = await caches.open(name);
-            const reqs = await cache.keys();
-            totalEntries += reqs.length;
+          const c = await caches.open(OFFLINE_CACHE);
+          const urls = (d.payload?.urls || []);
+          // Best-effort addAll manually to avoid full fail
+          await Promise.all([...STATIC_ASSETS, ...urls].map(u => c.add(u).catch(()=>{})));
+          if (port) port.postMessage({ ok: true });
+        } catch (err) { if (port) port.postMessage({ ok: false, error: String(err) }); }
+      })());
+      break;
 
-            for (const req of reqs) {
-              const resp = await cache.match(req);
-              if (!resp) continue;
-
-              const len = resp.headers.get('content-length');
-              if (len) {
-                const n = Number(len);
-                if (Number.isFinite(n) && n > 0) totalBytes += n;
+    case 'GET_CACHE_SIZE': // Calculate approximate usage
+      if (!port) return;
+      e.waitUntil((async () => {
+        let size = 0, entries = 0;
+        try {
+          for (const name of await caches.keys()) {
+            const c = await caches.open(name);
+            const keys = await c.keys();
+            entries += keys.length;
+            for (const k of keys) {
+              const r = await c.match(k);
+              if (r) {
+                const len = r.headers.get('content-length');
+                if (len) size += parseInt(len, 10) || 0;
               }
             }
           }
-        } catch (e) {
-          // игнорируем ошибки
-        }
-
-        port.postMessage({
-          size: totalBytes,
-          entries: totalEntries,
-          approx: true
-        });
-      })()
-    );
-    return;
+        } catch {}
+        port.postMessage({ size, entries, approx: true });
+      })());
+      break;
   }
 });
