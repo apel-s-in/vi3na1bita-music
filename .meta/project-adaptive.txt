@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-751807e7fc490408992ed600bdfda7ec25a54195.idx
-│   │       ├── pack-751807e7fc490408992ed600bdfda7ec25a54195.pack
-│   │       └── pack-751807e7fc490408992ed600bdfda7ec25a54195.rev
+│   │       ├── pack-a95b68f52f5a17d8e504211e7f1890f6fad2505a.idx
+│   │       ├── pack-a95b68f52f5a17d8e504211e7f1890f6fad2505a.pack
+│   │       └── pack-a95b68f52f5a17d8e504211e7f1890f6fad2505a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 10:40:45 UTC
+Сгенерировано: 2026-02-03 11:05:29 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5074,7 +5074,7 @@ import {
   getCacheQuality as dbGetCQ, setCacheQuality as dbSetCQ, getCloudStats, setCloudStats, clearCloudStats,
   getCloudCandidate, setCloudCandidate, clearCloudCandidate, updateGlobalStats, getGlobalStatsAndTotal,
   getEvictionCandidates, getExpiredCloudUids, getDownloadMeta, setDownloadMeta, markLocalCloud, markLocalTransient,
-  clearAllStores, computeCacheBreakdown
+  clearAllStores, computeCacheBreakdown, getLocalMeta
 } from './cache-db.js';
 import { getTrackByUid, getAllTracks } from '../app/track-registry.js';
 import { getNetPolicy, isAllowedByNetPolicy } from './net-policy.js';
@@ -5121,42 +5121,82 @@ export class OfflineManager {
     this.queue = new DownloadQueue();
     this._needsState = { update: 0, recache: 0, ts: 0 };
     this._subs = new Set();
+    this._lastWindow = [];
   }
+  
   async initialize() {
     await ensureDbReady();
     this._checkExpiredCloud();
     setInterval(() => this._checkExpiredCloud(), 3600000); // 1h
-    setTimeout(() => {
-      this._enforceEvictionLimit(); // Чистим старый кэш при старте
-      this.refreshNeedsAggregates({ force: true });
-    }, 3000);
+    
+    // Очистка мусора при старте (всё, что было transient с прошлой сессии, удаляем)
+    this.updatePlaybackWindow([]); 
+    
+    setTimeout(() => this.refreshNeedsAggregates({ force: true }), 3000);
   }
+
   on(event, cb) {
     if (event === 'progress') { this._subs.add(cb); this.queue.subscribe((e) => cb({ phase: 'queue_' + e.event, ...e.data })); }
     return () => this._subs.delete(cb);
   }
   _emit(data) { this._subs.forEach(cb => { try { cb(data); } catch {} }); }
+
   isOfflineMode() { return localStorage.getItem(LS.MODE) === '1'; }
   setOfflineMode(v) { localStorage.setItem(LS.MODE, v ? '1' : '0'); window.dispatchEvent(new CustomEvent('offline:uiChanged')); }
+
   async getCacheQuality() { const local = localStorage.getItem(LS.CQ); if (local) return Utils.obj.normQuality(local); return await dbGetCQ() || 'hi'; }
   async setCacheQuality(val) {
     const q = Utils.obj.normQuality(val);
     localStorage.setItem(LS.CQ, q);
     await dbSetCQ(q);
     this._emit({ phase: 'cqChanged', cq: q });
+    // При смене CQ запускаем перекэширование закрепленных
     this.enqueueReCacheAllByCQ({ userInitiated: false });
     return q;
   }
+
   getCloudSettings() { return { n: parseInt(localStorage.getItem(LS.CLOUD_N) || '5', 10), d: parseInt(localStorage.getItem(LS.CLOUD_D) || '31', 10) }; }
   setCloudSettings({ n, d }) { localStorage.setItem(LS.CLOUD_N, n); localStorage.setItem(LS.CLOUD_D, d); }
+
   _getPinnedSet() {
     if (!this._pinnedCache) { try { this._pinnedCache = new Set(JSON.parse(localStorage.getItem(LS.PINNED) || '[]')); } catch { this._pinnedCache = new Set(); } }
     return this._pinnedCache;
   }
   _savePinned() { if (this._pinnedCache) localStorage.setItem(LS.PINNED, JSON.stringify([...this._pinnedCache])); }
+  
   isPinned(uid) { return this._getPinnedSet().has(Utils.obj.trim(uid)); }
+
+  // --- STRICT WINDOW LOGIC (New) ---
+  /**
+   * Вызывается PlaybackCache при смене трека. 
+   * Удаляет все transient файлы, которые не входят в uids.
+   */
+  async updatePlaybackWindow(uids) {
+    this._lastWindow = uids.map(u => Utils.obj.trim(u)).filter(Boolean);
+    const windowSet = new Set(this._lastWindow);
+    
+    const candidates = await getEvictionCandidates(this._getPinnedSet()); // Получаем всё, что не pinned
+    
+    for (const item of candidates) {
+      const u = item.uid;
+      // Получаем детальную мету, чтобы узнать kind
+      const meta = await getLocalMeta(u);
+      
+      // Если это Cloud - не трогаем
+      if (meta?.kind === 'cloud') continue;
+      
+      // Если это Transient и его НЕТ в новом окне - удаляем немедленно
+      if (meta?.kind === 'transient' && !windowSet.has(u)) {
+        await deleteTrackCache(u);
+        // console.log(`[OfflineManager] Evicted out-of-window track: ${u}`);
+      }
+    }
+  }
+
+  // --- Pinning ---
   async pin(uid) { const u = Utils.obj.trim(uid); if (u && !this.isPinned(u)) await this.togglePinned(u); }
   async unpin(uid) { const u = Utils.obj.trim(uid); if (u && this.isPinned(u)) await this.togglePinned(u); }
+  
   async togglePinned(uid) {
     const u = Utils.obj.trim(uid); if (!u) return;
     if (this.isPinned(u)) {
@@ -5165,13 +5205,17 @@ export class OfflineManager {
       this._emit({ phase: 'unpinned', uid: u });
     } else {
       this._getPinnedSet().add(u); this._savePinned(); await setCloudCandidate(u, false);
+      
+      // Скачиваем согласно CQ (ТЗ 6.1)
       const cq = await this.getCacheQuality();
       this.enqueueAudioDownload({ uid: u, quality: cq, priority: PRIORITY.P2_PINNED, kind: 'pinned', userInitiated: true });
+      
       Utils.ui.toast('Трек закреплён офлайн');
       this._emit({ phase: 'pinned', uid: u });
     }
     window.dispatchEvent(new CustomEvent('offline:uiChanged'));
   }
+
   async isCloudEligible(uid) {
     const u = Utils.obj.trim(uid); if (!u || this.isPinned(u)) return false;
     const stats = await getCloudStats(u), candidate = await getCloudCandidate(u), { n } = this.getCloudSettings();
@@ -5180,7 +5224,9 @@ export class OfflineManager {
     if (stats?.cloud && (stats.cloudExpiresAt || 0) > Date.now()) return true;
     return false;
   }
+
   async shouldShowCloudIcon(uid, cq) { if (this.isPinned(uid)) return false; if (!await this.isCloudEligible(uid)) return false; return await this.isTrackComplete(uid, cq); }
+
   async recordListenStats(uid, { deltaSec, isFullListen }) {
     const u = Utils.obj.trim(uid); if (!u) return;
     if (deltaSec > 0 || isFullListen) await updateGlobalStats(u, deltaSec, isFullListen ? 1 : 0);
@@ -5188,6 +5234,7 @@ export class OfflineManager {
       const stats = await getCloudStats(u), newCount = (Number(stats?.cloudFullListenCount) || 0) + 1;
       const { n, d } = this.getCloudSettings(), becameCloud = newCount >= n || stats?.cloud;
       const newStats = { ...stats, cloudFullListenCount: newCount, lastFullListenAt: Date.now() };
+      
       if (becameCloud) {
         newStats.cloud = true; newStats.cloudExpiresAt = Date.now() + (d * 24 * 60 * 60 * 1000);
         await markLocalCloud(u);
@@ -5197,31 +5244,49 @@ export class OfflineManager {
       await setCloudStats(u, newStats); this._emit({ phase: 'statsUpdated', uid: u });
     }
   }
+
   async _checkExpiredCloud() {
     const expired = await getExpiredCloudUids(); let cleaned = 0;
     for (const u of expired) { if (!this.isPinned(u)) { await deleteTrackCache(u); await clearCloudStats(u); await clearCloudCandidate(u); cleaned++; } }
     if (cleaned > 0) Utils.ui.toast(`Срок действия истёк у ${cleaned} треков`);
   }
+
   async cloudMenu(uid, action) { return this.cloudMenuAction(uid, action); }
   async cloudMenuAction(uid, action) {
     const u = Utils.obj.trim(uid);
     if (action === 'remove-cache') { await deleteTrackCache(u); await clearCloudStats(u); await clearCloudCandidate(u); Utils.ui.toast('Удалено из кэша'); this._emit({ phase: 'cloudRemoved', uid: u }); }
   }
+
   enqueueAudioDownload({ uid, quality, priority, kind, userInitiated, onResult }) {
     const u = Utils.obj.trim(uid), q = Utils.obj.normQuality(quality); if (!u) return;
+    
+    // Если трек уже Pinned или Cloud и он Complete в нужном CQ - мы его не качаем повторно для PlaybackCache
+    // Это решается внутри _performDownload через проверку isTrackComplete + статус
+    
     const key = `${kind}:${q}:${u}`;
     this.queue.add({ uid: u, key, priority: priority || 0, taskFn: async () => { const res = await this._performDownload(u, q, kind, userInitiated); if (onResult) onResult(res); } });
   }
+
   async _performDownload(uid, quality, kind, userInitiated) {
     const meta = getTrackByUid(uid); if (!meta) return { ok: false, reason: 'no_meta' };
+    
+    // Check if already complete
     if (await this.isTrackComplete(uid, quality)) {
-      if (kind === 'cloudAuto' || kind === 'pinned') { const stats = await getCloudStats(uid); if (stats?.cloud || kind === 'pinned') await this._finalizeCloudStatus(uid); }
+      // Если скачивание было инициировано как Pinned или Cloud, надо обновить мету, даже если файл есть
+      if (kind === 'cloudAuto' || kind === 'pinned') { 
+         const stats = await getCloudStats(uid); 
+         if (stats?.cloud || kind === 'pinned') await this._finalizeCloudStatus(uid); 
+      }
       return { ok: true, skipped: true };
     }
+
     const net = Utils.getNet(), policy = getNetPolicy(), allowed = isAllowedByNetPolicy({ policy, net, userInitiated });
     if (!net.online) return { ok: false, reason: 'offline' };
     if (!allowed) return { ok: false, reason: 'policy_restricted' };
-    await this._enforceEvictionLimit();
+    
+    // Лимит очистки (для 100% offline и cloud) - PlaybackCache теперь чистится через updatePlaybackWindow
+    await this._enforceEvictionLimit(); 
+
     try {
       const url = quality === 'lo' ? (meta.urlLo || meta.urlHi) : (meta.urlHi || meta.urlLo);
       if (!url) throw new Error('No URL');
@@ -5229,28 +5294,49 @@ export class OfflineManager {
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const blob = await resp.blob();
       if (blob.size < 1024) throw new Error('Blob too small');
+      
       await setAudioBlob(uid, quality, blob); await setBytes(uid, quality, blob.size);
       const expSize = quality === 'lo' ? (meta.sizeLo || meta.size_low) : (meta.sizeHi || meta.size);
       await setDownloadMeta(uid, quality, { ts: Date.now(), bytes: blob.size, exp: Number(expSize) || 0 });
-      if (kind === 'playbackCache') await markLocalTransient(uid, 'window');
-      else if (kind === 'pinned' || kind === 'cloudAuto' || kind === 'cloudCandidate') await this._finalizeCloudStatus(uid);
-      else await markLocalTransient(uid, 'extra');
+      
+      // Mark Type
+      if (kind === 'pinned') {
+         // Pinned не удаляется
+         // (Статус pinned хранится в localStorage, здесь в DB мы просто не ставим transient)
+         await markLocalCloud(uid); // Используем 'cloud' как маркер "не transient" в базе для простоты, или можно добавить 'pinned' в DB
+         // Но так как pinned список в LS, достаточно убедиться, что он не transient
+      } else if (kind === 'cloudAuto') {
+         await markLocalCloud(uid);
+      } else {
+         // Playback Cache = Transient
+         await markLocalTransient(uid, 'window');
+      }
+
       return { ok: true };
     } catch (e) { return { ok: false, reason: e.message }; }
   }
+
   async _finalizeCloudStatus(uid) { if (this.isPinned(uid)) return; await markLocalCloud(uid); }
+
+  // Очистка места только для массовых загрузок (Cloud/Pinned), т.к. Playback чистится сам
   async _enforceEvictionLimit() {
     const limitBytes = parseInt(localStorage.getItem(LS.LIMIT) || '500', 10) * MB;
     const current = await totalCachedBytes();
     if (current < limitBytes) return;
+    
+    // Удаляем всё что не pinned, но начинаем с самых старых
     const candidates = await getEvictionCandidates(this._getPinnedSet());
     let freed = 0;
     for (const c of candidates) {
       if (current - freed <= limitBytes) break;
+      // Не удаляем активное окно воспроизведения!
+      if (this._lastWindow.includes(c.uid)) continue; 
+      
       await deleteTrackCache(c.uid); freed += c.bytes;
     }
     if (freed > 0) Utils.ui.toast(`Очищено ${Math.round(freed/MB)} MB кэша`);
   }
+
   async refreshNeedsAggregates(opts = {}) {
     const NOW = Date.now();
     if (!opts.force && (NOW - this._needsState.ts < 10000)) return this._needsState;
@@ -5269,6 +5355,7 @@ export class OfflineManager {
     window.dispatchEvent(new CustomEvent('offline:uiChanged'));
     return this._needsState;
   }
+
   async enqueueReCacheAllByCQ({ userInitiated } = {}) {
     const uids = getAllTracks().map(t => t.uid), cq = await this.getCacheQuality();
     let count = 0;
@@ -5276,12 +5363,15 @@ export class OfflineManager {
       if (this.isPinned(uid) || await this.isCloudEligible(uid)) {
         if (!(await this.isTrackComplete(uid, cq))) {
           count++;
-          this.enqueueAudioDownload({ uid, quality: cq, priority: PRIORITY.P3_UPDATES, kind: 'recache', userInitiated });
+          // Re-cache тоже идет как pinned/cloud тип, чтобы не удалилось
+          const kind = this.isPinned(uid) ? 'pinned' : 'cloudAuto';
+          this.enqueueAudioDownload({ uid, quality: cq, priority: PRIORITY.P3_UPDATES, kind, userInitiated });
         }
       }
     });
     return { ok: true, count };
   }
+
   async enqueueUpdateAll() {
     const uids = getAllTracks().map(t => t.uid), cq = await this.getCacheQuality();
     let count = 0;
@@ -5290,12 +5380,14 @@ export class OfflineManager {
         const s = await this.getTrackOfflineState(uid);
         if (s.needsUpdate) {
           count++;
-          this.enqueueAudioDownload({ uid, quality: cq, priority: PRIORITY.P3_UPDATES, kind: 'update', userInitiated: true });
+          const kind = this.isPinned(uid) ? 'pinned' : 'cloudAuto';
+          this.enqueueAudioDownload({ uid, quality: cq, priority: PRIORITY.P3_UPDATES, kind, userInitiated: true });
         }
       }
     }
     return { ok: true, count };
   }
+
   async computeSizeEstimate(selection) {
     const uids = new Set(), all = getAllTracks();
     if (selection.mode === 'favorites') {
@@ -5316,30 +5408,45 @@ export class OfflineManager {
     }
     return { ok: true, totalMB, count: uids.size, canGuarantee, uids: [...uids], cq };
   }
+
   async startFullOffline(uids) {
     const cq = await this.getCacheQuality();
     Utils.ui.toast(`Старт загрузки ${uids.length} треков`);
-    uids.forEach(uid => { this.enqueueAudioDownload({ uid, quality: cq, priority: PRIORITY.P4_CLOUD, kind: 'fullOffline', userInitiated: true }); });
+    uids.forEach(uid => { 
+        // 100% Offline = Pinned behavior but maybe distinct kind
+        this.enqueueAudioDownload({ uid, quality: cq, priority: PRIORITY.P4_CLOUD, kind: 'pinned', userInitiated: true }); 
+    });
     return { ok: true, total: uids.length };
   }
+
   async getTrackOfflineState(uid) {
     const u = Utils.obj.trim(uid); if (!u) return {};
     const pinned = this.isPinned(u), cq = await this.getCacheQuality(), cloudEligible = await this.isCloudEligible(u);
+    
+    // Проверка наличия именно CQ
     const cachedCQ = await this.isTrackComplete(u, cq);
     const cachedHi = await this.isTrackComplete(u, 'hi'), cachedLo = await this.isTrackComplete(u, 'lo');
+    
     const isCloud = !pinned && cloudEligible && cachedCQ;
+    
     let needsUpdate = false;
     if (cachedCQ) {
       const meta = getTrackByUid(u), dm = await getDownloadMeta(u, cq), cfgSize = cq === 'lo' ? (meta?.sizeLo || meta?.size_low) : (meta?.sizeHi || meta?.size);
       if (dm?.bytes && cfgSize && Math.abs(dm.bytes - (cfgSize * MB)) > 0.05 * (cfgSize * MB)) needsUpdate = true;
     }
+    
+    // Если pinned/cloud, но нет нужного качества (CQ), нужен re-cache
     const needsReCache = (pinned || cloudEligible) && !cachedCQ;
+    
     return { pinned, cloud: isCloud, cachedHiComplete: cachedHi, cachedLoComplete: cachedLo, needsUpdate, needsReCache };
   }
+
   async getIndicators(uid) {
     const s = await this.getTrackOfflineState(uid);
+    // Cloud показываем только если есть файл в CQ
     return { pinned: s.pinned, cloud: s.cloud, cachedComplete: s.cachedHiComplete || s.cachedLoComplete, unknown: false };
   }
+
   async isTrackComplete(uid, quality) {
     const u = Utils.obj.trim(uid), q = Utils.obj.normQuality(quality), meta = getTrackByUid(u);
     if (!meta) return false;
@@ -5348,6 +5455,7 @@ export class OfflineManager {
     const stored = await bytesByQuality(u), has = q === 'hi' ? stored.hi : stored.lo;
     return has >= (expMB * MB * COMPLETE_THRESHOLD);
   }
+
   async clearAllCache() {
     await clearAllStores({ keepCacheQuality: true });
     this._pinnedCache = new Set(); this._savePinned();
@@ -5355,6 +5463,7 @@ export class OfflineManager {
     window.dispatchEvent(new CustomEvent('offline:uiChanged'));
     Utils.ui.toast('Кэш полностью очищен', 'success');
   }
+
   getGlobalStats() { return getGlobalStatsAndTotal(); }
   async getCacheBreakdown() { return computeCacheBreakdown(this._getPinnedSet()); }
   async getCacheSizeBytes() { return totalCachedBytes(); }
@@ -5363,12 +5472,14 @@ export class OfflineManager {
   pauseQueue() { this.queue.pause(); }
   resumeQueue() { this.queue.resume(); }
   getNeedsAggregates() { return this._needsState; }
+  
   async canGuaranteeStorageForMB(mb) {
     if (navigator.storage?.estimate) {
       try { const est = await navigator.storage.estimate(); return { ok: (est.quota - est.usage) > (mb * 1024 * 1024 * 1.2) }; } catch { return { ok: true }; }
     } return { ok: true };
   }
 }
+
 export const OfflineManagerInstance = new OfflineManager();
 export function getOfflineManager() { return OfflineManagerInstance; }
 export default OfflineManagerInstance;
