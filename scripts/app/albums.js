@@ -9,7 +9,7 @@ const STAR_ON = 'img/star.png';
 const STAR_OFF = 'img/star2.png';
 const LOGO = 'img/logo.png';
 
-// ✅ Восстановлена функция помощник
+// ✅ Функция восстановлена
 const toUrl = (b, r) => r ? new URL(r, b).toString() : null;
 
 class AlbumsManager {
@@ -49,12 +49,12 @@ class AlbumsManager {
         const base = it.icon || LOGO;
         let p1, p2;
 
-        // ✅ Исправлено: применяем логику @1x/@2x только к стандартным иконкам альбомов
-        if (base.includes('icon_album')) {
+        // ✅ Исправлено: обрабатываем только стандартные иконки альбомов через @1x/@2x
+        if (base.includes('icon_album') && !base.includes('Fav_logo')) {
           p1 = isMob ? base.replace(/icon_album\/(.+)\.png$/, 'icon_album/mobile/$1@1x.jpg') : base.replace(/\.png$/, '@1x.png');
           p2 = isMob ? p1.replace(/@1x\.jpg$/, '@2x.jpg') : p1.replace(/@1x\.png$/, '@2x.png');
         } else {
-          // Для Fav_logo.png и других нестандартных иконок оставляем путь как есть
+          // Для Fav_logo.png и других путь оставляем как есть
           p1 = base;
           p2 = base;
         }
@@ -66,7 +66,6 @@ class AlbumsManager {
   }
 
   _bindEvents() {
-    // 1. Icons Click
     $('album-icons')?.addEventListener('click', (e) => {
       const el = e.target.closest('.album-icon');
       if (!el) return;
@@ -82,7 +81,6 @@ class AlbumsManager {
       }
     });
 
-    // 2. Track List Click (Native Albums Only)
     $('track-list')?.addEventListener('click', (e) => {
       const trk = e.target.closest('.track');
       if (!trk) return;
@@ -90,10 +88,9 @@ class AlbumsManager {
       const aKey = toStr(trk.dataset.album).trim();
       const uid = toStr(trk.dataset.uid).trim();
       
-      // Игнорируем спец. альбомы (у них свои обработчики в specials.js или news)
+      // ✅ Игнорируем спец. альбомы (у них свои обработчики, например в specials.js)
       if (!aKey || aKey.startsWith('__')) return;
 
-      // Лайк (без смены трека)
       if (e.target.classList.contains('like-star')) {
         e.preventDefault(); e.stopPropagation();
         if (uid && window.playerCore) {
@@ -106,7 +103,6 @@ class AlbumsManager {
         return;
       }
 
-      // Play
       const data = this.cache.get(aKey);
       if (!data) return;
 
@@ -133,7 +129,6 @@ class AlbumsManager {
       window.PlayerUI?.ensurePlayerBlock?.(pIdx, { userInitiated: true });
     });
 
-    // 3. Fav Sync
     window.playerCore?.onFavoritesChanged((d) => {
       const s = d?.liked ? STAR_ON : STAR_OFF;
       document.querySelectorAll(`.like-star[data-album="${CSS.escape(d?.albumKey)}"][data-uid="${CSS.escape(d?.uid)}"]`).forEach(el => el.src = s);
@@ -249,7 +244,6 @@ class AlbumsManager {
   getPlayingAlbum() { return this.playing; }
   setPlayingAlbum(k) { this.playing = k; }
   
-  // Back-compat helpers (чтобы избежать других ошибок)
   renderAlbumTitle(t, mod) {
     const el = $('active-album-title');
     if(el) { el.textContent = t; el.className = `active-album-title ${mod||''}`; }
