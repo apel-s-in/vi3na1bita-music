@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3b658550901f32e8465423192dededdb87ee56fb.idx
-│   │       ├── pack-3b658550901f32e8465423192dededdb87ee56fb.pack
-│   │       └── pack-3b658550901f32e8465423192dededdb87ee56fb.rev
+│   │       ├── pack-d5df182861d4486c2a6c052eed3b4a405b9b25e2.idx
+│   │       ├── pack-d5df182861d4486c2a6c052eed3b4a405b9b25e2.pack
+│   │       └── pack-d5df182861d4486c2a6c052eed3b4a405b9b25e2.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -389,7 +389,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 18:59:47 UTC
+Сгенерировано: 2026-02-03 19:00:57 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4423,13 +4423,14 @@ test('toggle star in favorites updates row state and localStorage (uid-based)', 
   await favRow.locator('.like-star').click();
   await expect(favRow).toHaveClass(/inactive/);
 
-  // Check V2 Storage (likedTrackUids:v2)
+  // Check V2 Storage (__favorites_v2__)
   const isLiked = await page.evaluate((id) => {
     const m = String(id || '').match(/^fav_(.+)_(.+)$/);
     const u = m ? m[2] : '';
-    const raw = localStorage.getItem('likedTrackUids:v2');
-    const arr = raw ? JSON.parse(raw) : [];
-    return arr.includes(u);
+    const raw = localStorage.getItem('__favorites_v2__');
+    const items = raw ? JSON.parse(raw) : [];
+    // В V2 хранятся объекты, ищем активный (без inactiveAt)
+    return items.some(i => i.uid === u && !i.inactiveAt);
   }, favId);
 
   expect(isLiked).toBeFalsy();
