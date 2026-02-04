@@ -97,10 +97,18 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
       this._skipSession = { token: 0, count: 0, max: this.playlist.length };
 
-      if (wasPlaying) this.load(this.currentIndex, { autoPlay: true, resumePosition: opts.preservePosition ? prevPos : 0 });
-      else {
-        this._emit('onTrackChange', this.getCurrentTrack(), this.currentIndex);
-        this._updMedia();
+      const currentTrack = this.getCurrentTrack();
+      const sameTrack = currentTrack && this.sound && currentTrack.uid === targetUid;
+
+      if (sameTrack && wasPlaying && opts.preservePosition) {
+          this._emit('onTrackChange', currentTrack, this.currentIndex);
+          this._updMedia();
+      } else {
+          if (wasPlaying) this.load(this.currentIndex, { autoPlay: true, resumePosition: opts.preservePosition ? prevPos : 0 });
+          else {
+            this._emit('onTrackChange', this.getCurrentTrack(), this.currentIndex);
+            this._updMedia();
+          }
       }
     }
 
@@ -113,11 +121,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       if (currentUid) {
         const idx = this.playlist.findIndex(t => t.uid === currentUid);
         if (idx >= 0) {
-          const [track] = this.playlist.splice(idx, 1);
-          this.playlist.unshift(track);
-          this.currentIndex = 0;
-        }
-      } else {
+          const [track] = this.playlist.splice(idx, 1      } else {
         this.currentIndex = 0;
       }
     }
@@ -194,16 +198,17 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       if (!opts.isAutoSkip) this._skipSession = { token, count: 0, max: this.playlist.length };
 
       const om = getOfflineManager();
-      const res = await resolvePlaybackSource({ track }); // Auto-detect mode inside resolver
+      const res = await resolvePlaybackSource({ track }); 
       
       if (token !== this._loadToken) return;
 
       this._emit('onTrackChange', track, index);
 
-      // --- CRITICAL FIX 1: No stop() on missing source ---
+      // --- ТЗ 7.5.3 / 7.5.4 ---
       if (!res.url) {
+        // В R3: пауза и модалка, никаких скипов
         if (om.getMode() === 'R3') {
-            this.pause(); // Just pause, don't unload completely
+            this.pause(); 
             W.Modals?.confirm?.({
                 title: '100% OFFLINE',
                 textHtml: 'Трек не найден локально.<br>В режиме 100% Offline сеть запрещена.',
@@ -215,7 +220,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
             return;
         }
 
-        // Auto-skip logic for R0/R1/R2
+        // В R0/R1/R2: Пропускаем (упрощенный 7.5.3)
         if (this._skipSession.count >= this._skipSession.max) {
            W.NotificationSystem?.error('Нет доступных треков');
            this.pause();
@@ -224,10 +229,8 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         }
         
         console.warn(`[Player] Source missing for ${track.uid}, skipping...`);
-        // Не стопаем текущий, если он еще играет (хотя в реале мы уже перешли на новый index)
-        // Но так как URL нет, мы просто переходим дальше.
-        
         if (!opts._skipChain) opts._skipChain = 0;
+        
         setTimeout(() => {
            if (token === this._loadToken) {
              this._skipSession.count++;
@@ -238,15 +241,12 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         return;
       }
 
-      // --- CRITICAL FIX 2: Hot Swap Logic ---
+      // --- ТЗ 4.2 / Hot Swap ---
       const isHotSwap = !!opts.isHotSwap;
-      const oldSound = this.sound; // Keep reference
+      const oldSound = this.sound; 
 
-      if (!isHotSwap) {
-          this._unload(true); // Normal load: stop previous
-      }
+      if (!isHotSwap) this._unload(true); // Если не swap, сразу чистим старый
 
-      // ТЗ 16.1: WebAudio backend для офлайна (isLocal), HTML5 для стриминга
       const useHtml5 = !res.isLocal;
 
       const newSound = new Howl({
@@ -258,7 +258,6 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         onload: () => {
           if (token !== this._loadToken) { newSound.unload(); return; }
           
-          // Hot Swap: unload old sound only after new one is ready
           if (isHotSwap && oldSound) {
               try { oldSound.unload(); } catch(e) { console.warn('HotSwap unload err', e); }
           }
@@ -287,7 +286,6 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         },
         onloaderror: (id, e) => {
            console.error('Load Error', e);
-           // Retry only if it was network
            if (token === this._loadToken && !res.isLocal) {
               W.NotificationSystem?.warning('Ошибка сети, следующая...');
               setTimeout(() => this.next(), 1000);
@@ -297,12 +295,12 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
       this.sound = newSound;
 
-      // --- CRITICAL FIX 3: Use effectiveQuality ---
+      // --- ТЗ 7.6.1: В R0 не кэшируем ---
       const mode = om.getMode();
       if (track.uid && mode !== 'R0' && mode !== 'R3') {
          om.enqueueAudioDownload({ 
              uid: track.uid, 
-             quality: res.effectiveQuality, // Correct field
+             quality: res.effectiveQuality, // Важно: качаем именно то, что решили играть
              priority: 100, 
              kind: 'playbackCache' 
          });
@@ -334,11 +332,10 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       localStorage.setItem(LS_PQ, next);
       window.dispatchEvent(new CustomEvent('offline:uiChanged'));
       
-      // Quiet Switch
+      // Quiet Switch (ТЗ 4.2)
       if (this.currentIndex >= 0 && this.sound) {
           const wasPlaying = this.isPlaying();
           const pos = this.getPosition();
-          // Pass isHotSwap flag
           this.load(this.currentIndex, { 
               autoPlay: wasPlaying, 
               resumePosition: pos, 
