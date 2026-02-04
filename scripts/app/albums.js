@@ -157,7 +157,6 @@ class AlbumsManager {
       $('track-list')?.classList.remove('filtered');
       
       window.PlayerUI?.switchAlbumInstantly?.(key);
-      // window.PlayerState?.save?.(); // Removed: not implemented
     } catch (e) {
       console.error(e);
       window.NotificationSystem?.error('Ошибка загрузки');
