@@ -60,7 +60,7 @@ class DownloadQueue {
 
   async _processNext() {
     if (this.active || this.paused || this.q.length === 0) {
-        this._emit('idle', {}); // Signal idle state
+        this._emit('idle', {}); 
         return;
     }
     const item = this.q.shift();
@@ -85,11 +85,10 @@ export class OfflineManager {
     this._lastWindow = []; 
     this._isFullOfflineSyncing = false;
 
-    // Listen for queue finish
+    // Listen for queue finish for R3 Two-phase activation
     this.queue.subscribe((e) => {
         if (e.event === 'idle' && this._isFullOfflineSyncing) {
             this._isFullOfflineSyncing = false;
-            // Emit event to UI to show confirmation modal
             window.dispatchEvent(new CustomEvent('offline:fullOfflineReady'));
         }
     });
@@ -106,7 +105,7 @@ export class OfflineManager {
   }
 
   getMode() { return localStorage.getItem(LS.MODE) || 'R0'; }
-  isOfflineMode() { return this.getMode() === 'R3'; } 
+  isOfflineMode() { return this.getMode() === 'R3'; }
 
   async setMode(mode) {
     if (!['R0', 'R1', 'R2', 'R3'].includes(mode)) return;
@@ -147,6 +146,7 @@ export class OfflineManager {
       if (this.getMode() === 'R3') localStorage.setItem(LS.CQ, val);
   }
 
+  // --- Helpers for UI ---
   async computeCacheBreakdown() { return computeCacheBreakdown(this._getPinnedSet()); }
   async isSpaceOk() { return this._checkSpaceGuarantee(); }
   getCloudSettings() {
@@ -160,6 +160,7 @@ export class OfflineManager {
     return true;
   }
 
+  // --- Pinned/Cloud ---
   _getPinnedSet() {
     if (!this._pinnedCache) { try { this._pinnedCache = new Set(JSON.parse(localStorage.getItem(LS.PINNED) || '[]')); } catch { this._pinnedCache = new Set(); } }
     return this._pinnedCache;
@@ -203,6 +204,7 @@ export class OfflineManager {
       const newCount = (Number(stats.cloudFullListenCount) || 0) + 1;
       const n = parseInt(localStorage.getItem(LS.CLOUD_N)||'5');
       const d = parseInt(localStorage.getItem(LS.CLOUD_D)||'31');
+      
       const becameCloud = newCount >= n || stats.cloud;
       const newStats = { ...stats, cloudFullListenCount: newCount, lastFullListenAt: Date.now() };
       
@@ -323,7 +325,7 @@ export class OfflineManager {
 
   updatePlaybackWindow(uids) {
       this._lastWindow = uids;
-      // CRITICAL FIX: Strictly cleanup transients not in window
+      // Strictly cleanup transients not in window
       pruneTransientWindowExcept(uids).catch(e => console.warn('Prune err', e));
   }
 
@@ -356,8 +358,6 @@ export class OfflineManager {
 
   async getGlobalStatistics() { return getGlobalStatsAndTotal(); }
   getQueueStatus() { return this.queue.getStatus(); }
-  pauseQueue() { this.queue.pause(); }
-  resumeQueue() { this.queue.resume(); }
   
   on(event, cb) { 
       if(event === 'progress') this.queue.subscribe(e => cb({phase: 'queue_'+e.event, ...e.data}));
