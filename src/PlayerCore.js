@@ -333,6 +333,10 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       if (this.qualityMode === next) return;
       this.qualityMode = next;
       localStorage.setItem(LS_PQ, next);
+      
+      // Уведомляем UI о смене качества
+      window.dispatchEvent(new CustomEvent('offline:uiChanged'));
+      
       if (this.isPlaying()) this.load(this.currentIndex, { autoPlay: true, resumePosition: this.getPosition() });
     }
 
