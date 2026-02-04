@@ -100,7 +100,6 @@
     };
 
     menu.addEventListener('click', (e) => {
-      // ... (внутри обработчиков заменяем remove() на cleanMenu())
       const t = e.target.closest('[data-a]');
       if (!t) return;
       e.stopPropagation();
@@ -112,28 +111,11 @@
         set(now() + m * 60000);
         W.NotificationSystem?.success?.(`⏰ Таймер: ${m} мин`);
       } else if (a === 'time') {
-        cleanMenu(); // Закрываем меню перед открытием модалки
+        cleanMenu(); 
         openTimeModal();
         return;
       }
       if (a !== 'noop') cleanMenu();
-    });
-
-    menu.addEventListener('click', (e) => {
-      const t = e.target.closest('[data-a]');
-      if (!t) return;
-      e.stopPropagation();
-      const a = t.dataset.a;
-      
-      if (a === 'off') stop();
-      else if (a === 'm') {
-        const m = parseInt(t.dataset.v);
-        set(now() + m * 60000);
-        W.NotificationSystem?.success?.(`⏰ Таймер: ${m} мин`);
-      } else if (a === 'time') {
-        openTimeModal();
-      }
-      if (a !== 'noop') { menu.remove(); menu = null; }
     });
 
     document.body.appendChild(menu);
