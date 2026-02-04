@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-93b7a328617d6a8d4319aad5e643b7f0faa1a87d.idx
-│   │       ├── pack-93b7a328617d6a8d4319aad5e643b7f0faa1a87d.pack
-│   │       └── pack-93b7a328617d6a8d4319aad5e643b7f0faa1a87d.rev
+│   │       ├── pack-9b27417ecd91b9545c87b1c2ee88eb85d8493de1.idx
+│   │       ├── pack-9b27417ecd91b9545c87b1c2ee88eb85d8493de1.pack
+│   │       └── pack-9b27417ecd91b9545c87b1c2ee88eb85d8493de1.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 20:42:30 UTC
+Сгенерировано: 2026-02-04 20:46:20 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5012,8 +5012,7 @@ export class OfflineManager {
        const foq = localStorage.getItem(LS.FOQ) || 'hi';
        localStorage.setItem(LS.CQ, foq);
     }
-    // this._checkExpiredCloud(); // Временно отключено, пока нет реализации в DB
-    // setInterval(() => this._checkExpiredCloud(), 3600000);
+    // this._checkExpiredCloud(); 
   }
 
   // --- Modes & Quality ---
@@ -5062,7 +5061,7 @@ export class OfflineManager {
       }
   }
 
-  // --- UI Public Helpers (Fixes for Modal) ---
+  // --- UI Public Helpers (Bridge for Modal) ---
   async computeCacheBreakdown() {
     return computeCacheBreakdown(this._getPinnedSet());
   }
@@ -5185,7 +5184,7 @@ export class OfflineManager {
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const blob = await resp.blob();
       
-      await setAudioBlob(uid, quality, blob); // No duplicates enforced inside
+      await setAudioBlob(uid, quality, blob); 
       const expSize = quality === 'lo' ? meta.sizeLo : meta.sizeHi;
       await setDownloadMeta(uid, quality, { ts: Date.now(), bytes: blob.size, exp: Number(expSize)||0 });
       
