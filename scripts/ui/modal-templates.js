@@ -1,191 +1,84 @@
 // scripts/ui/modal-templates.js
-
 const U = window.Utils;
 const esc = (s) => U?.escapeHtml ? U.escapeHtml(String(s ?? '')) : String(s ?? '');
 const attr = (k, v) => v ? ` ${k}` : '';
 
 export const ModalTemplates = {
-  /**
-   * Генерация тела модалки OFFLINE
-   * @param {Object} s - State object from OfflineManager
-   */
   offlineBody: (s = {}) => {
-    const {
-      mode = 'R0',        // R0, R1, R2, R3
-      cq = 'hi',          // Cache Quality
-      foq = 'hi',         // Full Offline Quality
-      cloud = { n: 5, d: 31 },
-      bd = {},            // Breakdown stats
-      qst = {},           // Queue stats
-      isSpaceOk = true    // >60MB free
-    } = s;
-
-    // Helper for bytes formatting if Utils not avail immediately
+    const { mode='R0', cq='hi', foq='hi', cloud={n:5,d:31}, bd={}, qst={}, isSpaceOk=true } = s;
     const fmtBytes = (b) => U?.fmt?.bytes ? U.fmt.bytes(b) : `${(b/1048576).toFixed(1)} MB`;
     const n = (v) => Number(v) || 0;
-
-    const btn = (id, txt, cls = '') => `<button class="offline-btn ${cls}" id="${id}">${esc(txt)}</button>`;
-    const section = (title, content) => `
-      <section class="om-card">
-        <div class="om-card__title">${esc(title)}</div>
-        <div class="om-card__body">${content}</div>
-      </section>`;
-    
+    const btn = (id, txt, cls='') => `<button class="offline-btn ${cls}" id="${id}">${esc(txt)}</button>`;
+    const section = (title, content) => `<section class="om-card"><div class="om-card__title">${esc(title)}</div><div class="om-card__body">${content}</div></section>`;
     const kv = (label, valId, val) => `<div class="om-kv-row"><span>${label}:</span> <b id="${valId}">${val}</b></div>`;
-
-    // Alert if space is low
-    const spaceAlert = !isSpaceOk 
-      ? `<div class="om-alert om-alert--error">⚠️ Мало места (<60MB). Режимы R1/R2/R3 недоступны.</div>` 
-      : '';
-
-    // R3 Info (if active)
     const isR3 = mode === 'R3';
+
+    // Album list for Full Offline
+    const albums = window.albumsIndex || [];
+    const albumsHtml = albums.map(a => 
+        `<label class="om-row om-row--tight"><input type="checkbox" class="om-check full-album-check" value="${a.key}"> ${esc(a.title)}</label>`
+    ).join('');
 
     return `
       <div class="om-container">
         <div class="om-header-stat">
-          <div>Текущий режим: <b class="om-mode-badge">${mode}</b></div>
+          <div>Режим: <b class="om-mode-badge">${mode}</b></div>
           <div>Очередь: <b id="om-q-val">${qst.queued || 0}</b></div>
         </div>
+        ${!isSpaceOk ? `<div class="om-alert om-alert--error">⚠️ Мало места (<60MB).</div>` : ''}
 
-        ${spaceAlert}
-
-        <!-- SECTION A: MODES -->
-        ${section('A) Режим работы', `
+        ${section('A) Режим', `
           <div class="om-modes-list">
-            <label class="om-radio-row ${isR3 ? 'disabled' : ''}">
-              <input type="radio" name="om-mode" value="R0" ${attr('checked', mode === 'R0')} ${attr('disabled', isR3)}>
-              <div class="om-radio-label">
-                <strong>R0 Streaming</strong>
-                <span>Только сеть. Без кэша (кроме 🔒).</span>
-              </div>
-            </label>
-
-            <label class="om-radio-row ${(!isSpaceOk || isR3) ? 'disabled' : ''}">
-              <input type="radio" name="om-mode" value="R1" ${attr('checked', mode === 'R1')} ${attr('disabled', !isSpaceOk || isR3)}>
-              <div class="om-radio-label">
-                <strong>R1 PlaybackCache</strong>
-                <span>Кэш только окна (3 трека).</span>
-              </div>
-            </label>
-
-            <label class="om-radio-row ${(!isSpaceOk || isR3) ? 'disabled' : ''}">
-              <input type="radio" name="om-mode" value="R2" ${attr('checked', mode === 'R2')} ${attr('disabled', !isSpaceOk || isR3)}>
-              <div class="om-radio-label">
-                <strong>R2 Dynamic</strong>
-                <span>Умный кэш частого + окно.</span>
-              </div>
-            </label>
-            
-            <div class="om-r3-info ${isR3 ? 'active' : ''}">
-              <strong>R3 100% OFFLINE</strong>
-              <span>${isR3 ? 'Включен. Сеть запрещена.' : 'Включается в секции I.'}</span>
-            </div>
+            <label class="om-radio-row ${isR3 ? 'disabled' : ''}"><input type="radio" name="om-mode" value="R0" ${attr('checked', mode==='R0')} ${attr('disabled', isR3)}> <strong>R0 Streaming</strong></label>
+            <label class="om-radio-row ${(!isSpaceOk||isR3) ? 'disabled' : ''}"><input type="radio" name="om-mode" value="R1" ${attr('checked', mode==='R1')} ${attr('disabled', !isSpaceOk||isR3)}> <strong>R1 PlaybackCache</strong></label>
+            <label class="om-radio-row ${(!isSpaceOk||isR3) ? 'disabled' : ''}"><input type="radio" name="om-mode" value="R2" ${attr('checked', mode==='R2')} ${attr('disabled', !isSpaceOk||isR3)}> <strong>R2 Dynamic</strong></label>
+            <div class="om-r3-info ${isR3 ? 'active' : ''}"><strong>R3 100% OFFLINE</strong> ${isR3 ? 'ВКЛЮЧЕН' : '(см. секцию I)'}</div>
           </div>
         `)}
 
-        <!-- SECTION B: CACHE QUALITY -->
-        ${!isR3 ? section('B) Качество кэша (CQ)', `
+        ${!isR3 ? section('B) Качество (CQ)', `
           <div class="om-inline-controls">
-            <select id="om-cq" class="om-select">
-              <option value="hi" ${attr('selected', cq === 'hi')}>High Quality</option>
-              <option value="lo" ${attr('selected', cq === 'lo')}>Low Quality</option>
-            </select>
-            ${btn('om-save-cq', 'Применить', 'om-btn-primary')}
-          </div>
-          <p class="om-hint">Для Pinned, Cloud и R2. Смена запустит перекачивание.</p>
-        `) : ''}
-
-        <!-- SECTION C: CLOUD SETTINGS -->
-        ${!isR3 ? section('C) Настройки Облачка (Cloud)', `
-          <div class="om-inline-inputs">
-            <label>N (прослушиваний): <input type="number" id="om-cloud-n" value="${n(cloud.n)}" min="1"></label>
-            <label>D (дней хранения): <input type="number" id="om-cloud-d" value="${n(cloud.d)}" min="1"></label>
-            ${btn('om-save-cloud', 'OK', 'om-btn-sm')}
+            <select id="om-cq" class="om-select"><option value="hi" ${attr('selected', cq==='hi')}>Hi</option><option value="lo" ${attr('selected', cq==='lo')}>Lo</option></select>
+            ${btn('om-save-cq', 'Применить')}
           </div>
         `) : ''}
 
-        <!-- SECTION E: LIMIT & BREAKDOWN -->
+        ${!isR3 ? section('C) Облачко', `
+          <div class="om-inline-inputs"><label>N: <input type="number" id="om-cloud-n" value="${n(cloud.n)}" style="width:50px"></label><label>D: <input type="number" id="om-cloud-d" value="${n(cloud.d)}" style="width:50px"></label>${btn('om-save-cloud', 'OK')}</div>
+        `) : ''}
+
         ${section('E) Хранилище', `
           <div class="om-breakdown">
-            ${kv('Pinned (🔒)', 'om-bd-pinned', fmtBytes(bd.pinnedBytes))}
-            ${kv('Cloud (☁)', 'om-bd-cloud', fmtBytes(bd.cloudBytes))}
-            ${kv('Dynamic (R2)', 'om-bd-dynamic', fmtBytes(bd.dynamicBytes))}
-            ${kv('Playback Window', 'om-bd-win', fmtBytes(bd.transientWindowBytes))}
+            ${kv('Pinned', 'om-bd-pinned', fmtBytes(bd.pinnedBytes))}
+            ${kv('Cloud', 'om-bd-cloud', fmtBytes(bd.cloudBytes))}
+            ${kv('Dynamic', 'om-bd-dynamic', fmtBytes(bd.dynamicBytes))}
+            ${kv('Window', 'om-bd-win', fmtBytes(bd.transientWindowBytes))}
             ${kv('100% Offline', 'om-bd-full', fmtBytes(bd.fullOfflineBytes))}
-            <div class="om-kv-total">Всего аудио: <b>${fmtBytes(bd.audioTotalBytes)}</b></div>
+            <div class="om-kv-total">Всего: <b>${fmtBytes(bd.audioTotalBytes)}</b></div>
           </div>
-          <div class="om-storage-actions">
-             ${btn('om-clear-cache', 'Очистить кэш', 'om-btn-danger')}
-          </div>
+          <div class="om-storage-actions">${btn('om-clear-cache', 'Очистить кэш', 'om-btn-danger')}</div>
         `)}
 
-        <!-- SECTION I: 100% OFFLINE (R3) -->
         ${section('I) 100% OFFLINE (R3)', `
           <div class="om-full-offline-ui">
             ${isR3 ? `
-               <div class="om-success-box">Режим активен. Сеть отключена.</div>
+               <div class="om-success-box">Режим R3 активен. Сеть отключена.</div>
                ${btn('om-stop-r3', 'Выключить R3 (Вернуться в Онлайн)', 'om-btn-warning')}
             ` : `
+               <div class="om-full-select">
+                 <label><input type="checkbox" id="om-full-fav" checked> Избранное</label>
+                 <div class="om-albums">${albumsHtml}</div>
+               </div>
                <div class="om-inline-controls">
-                 <select id="om-full-target" class="om-select">
-                   <option value="fav">Только ИЗБРАННОЕ</option>
-                   <option value="all">Все треки (Альбомы)</option>
-                 </select>
-                 <select id="om-foq" class="om-select">
-                   <option value="hi" ${attr('selected', foq === 'hi')}>Qual: Hi</option>
-                   <option value="lo" ${attr('selected', foq === 'lo')}>Qual: Lo</option>
-                 </select>
+                 <span>Качество:</span>
+                 <select id="om-foq" class="om-select"><option value="hi" ${attr('selected', foq==='hi')}>Hi</option><option value="lo" ${attr('selected', foq==='lo')}>Lo</option></select>
                </div>
-               
-               <div class="om-full-actions">
-                 ${btn('om-est-full', 'Оценить размер')}
-                 ${btn('om-start-full', 'Скачать набор', 'om-btn-success')}
-               </div>
+               <div class="om-full-actions">${btn('om-est-full', 'Оценить')} ${btn('om-start-full', 'Скачать набор', 'om-btn-success')}</div>
                <div id="om-est-result" class="om-est-result"></div>
-               
-               <p class="om-hint">
-                 Режим включится <b>только после 100% загрузки</b> выбранного набора.<br>
-                 ${!isSpaceOk ? '<span class="error">Недоступно из-за нехватки места.</span>' : ''}
-               </p>
+               <p class="om-hint">R3 включится только после 100% загрузки и вашего подтверждения.</p>
             `}
           </div>
         `)}
-      </div>
-    `;
-  },
-
-  /**
-   * Шаблон модалки статистики (Section 17)
-   */
-  statsBody: (data) => {
-    // data: { tracks: [{uid, fullListens, seconds}], totalSeconds, totalFullListens }
-    const U = window.Utils;
-    const fmtDur = (s) => {
-        const h = Math.floor(s / 3600);
-        const m = Math.floor((s % 3600) / 60);
-        return h > 0 ? `${h}ч ${m}м` : `${m} мин`;
-    };
-
-    const rows = data.tracks.map((t, i) => `
-      <div class="st-row">
-        <span class="st-num">${i + 1}.</span>
-        <span class="st-uid">${t.title || t.uid}</span>
-        <span class="st-vals">${t.fullListens} просл. / ${fmtDur(t.seconds)}</span>
-      </div>
-    `).join('');
-
-    return `
-      <div class="st-container">
-        <div class="st-total">
-          <div>Всего времени: <b>${fmtDur(data.totalSeconds)}</b></div>
-          <div>Полных прослушиваний: <b>${data.totalFullListens}</b></div>
-        </div>
-        <div class="st-list-header">Топ треков (>3 прослушиваний):</div>
-        <div class="st-list">
-          ${rows || '<div class="st-empty">Нет данных</div>'}
-        </div>
-        <div class="st-note">Эта статистика (Global) никогда не сбрасывается.</div>
       </div>
     `;
   }
