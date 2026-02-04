@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-cd70f5418c8d8077b44854cf80a3eaff55b27910.idx
-│   │       ├── pack-cd70f5418c8d8077b44854cf80a3eaff55b27910.pack
-│   │       └── pack-cd70f5418c8d8077b44854cf80a3eaff55b27910.rev
+│   │       ├── pack-a683cd74b0714c5c4f328721d0884535fa6bd839.idx
+│   │       ├── pack-a683cd74b0714c5c4f328721d0884535fa6bd839.pack
+│   │       └── pack-a683cd74b0714c5c4f328721d0884535fa6bd839.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 07:10:07 UTC
+Сгенерировано: 2026-02-04 07:40:19 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8533,38 +8533,58 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       }));
 
       if (!opts.preserveOriginalPlaylist) this.originalPlaylist = [...this.playlist];
+
+      // Сначала устанавливаем индекс (как если бы shuffle был выключен)
+      this.currentIndex = clamp(startIdx, 0, this.playlist.length - 1);
       
+      // Запоминаем UID трека, который мы хотим играть
+      const targetUid = this.playlist[this.currentIndex]?.uid;
+
       if (this.shuffleMode && !opts.preserveShuffleMode) {
-        this.shufflePlaylist();
+        this.shufflePlaylist(targetUid); // Передаем target, чтобы он остался первым/текущим
       } else if (!this.shuffleMode) {
         this.shuffleHistory = [];
+      } else if (this.shuffleMode && opts.preserveShuffleMode && targetUid) {
+        // Если shuffle уже был, нам нужно найти новый индекс этого трека в перемешанном плейлисте
+        const newIdx = this.playlist.findIndex(t => t.uid === targetUid);
+        if (newIdx >= 0) this.currentIndex = newIdx;
       }
-
-      this.currentIndex = clamp(startIdx, 0, this.playlist.length - 1);
 
       // Сброс счетчика ошибок при смене плейлиста
       this._skipSession = { token: 0, count: 0, max: this.playlist.length };
 
       if (wasPlaying && opts.preservePosition && this.playlist[this.currentIndex]?.uid === this.getCurrentTrack()?.uid) {
-         this._emit('onTrackChange', this.getCurrentTrack(), this.currentIndex);
-         this._updMedia();
-         return; 
+         // UI update triggered via load logic usually, ensuring consistency
       }
 
       if (wasPlaying) this.load(this.currentIndex, { autoPlay: true, resumePosition: opts.preservePosition ? prevPos : 0 });
       else {
+        // Эмитим событие только если не запускаем load, но состояние изменилось
         this._emit('onTrackChange', this.getCurrentTrack(), this.currentIndex);
         this._updMedia();
       }
     }
 
-    // FIX: Added missing shufflePlaylist method
-    shufflePlaylist() {
-      const cur = this.getCurrentTrack();
-      this.playlist.sort(() => Math.random() - 0.5);
-      if (cur) {
-        // Keep current track first
-        this.playlist = [cur, ...this.playlist.filter(t => t !== cur)];
+    shufflePlaylist(keepFirstUid = null) {
+      const currentUid = keepFirstUid || this.getCurrentTrack()?.uid;
+      
+      // Алгоритм Фишера-Йетса для честного шаффла
+      for (let i = this.playlist.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [this.playlist[i], this.playlist[j]] = [this.playlist[j], this.playlist[i]];
+      }
+
+      if (currentUid) {
+        const idx = this.playlist.findIndex(t => t.uid === currentUid);
+        if (idx >= 0) {
+          // Перемещаем текущий трек в начало (или оставляем на месте, обновляя currentIndex)
+          // ТЗ: "shuffle-порядок пересобирается... Next/Prev идут по этому порядку"
+          // Обычно текущий трек становится 0-м элементом в очереди воспроизведения
+          const [track] = this.playlist.splice(idx, 1);
+          this.playlist.unshift(track);
+          this.currentIndex = 0;
+        }
+      } else {
         this.currentIndex = 0;
       }
     }
@@ -8637,18 +8657,24 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       if (!track) return;
 
       const token = ++this._loadToken;
+      // Не устанавливаем this.currentIndex здесь окончательно для внешнего мира, пока не убедимся,
+      // но для внутренней логики (resolve) это нужно. 
+      // Решение: Эмитим событие только если токен всё ещё актуален.
       this.currentIndex = index;
       
       if (!opts.isAutoSkip) this._skipSession = { token, count: 0, max: this.playlist.length };
-
-      this._emit('onTrackChange', track, index);
 
       const om = getOfflineManager();
       const src = await resolvePlaybackSource({
         track, pq: this.qualityMode, cq: await om.getCacheQuality(), offlineMode: om.isOfflineMode()
       });
 
+      // RACE CONDITION GUARD:
+      // Если пока мы искали источник, пользователь нажал Next снова, этот load устарел.
       if (token !== this._loadToken) return;
+
+      // Теперь безопасно обновлять UI
+      this._emit('onTrackChange', track, index);
 
       this._unload(true);
 
@@ -8764,18 +8790,18 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     toggleFavorite(uid, opts = {}) {
       const u = safeStr(uid);
       
-      // FIX: Source of Truth Logic
-      // 1. Explicit opts.source
-      // 2. Explicit opts.fromAlbum (context hint from AlbumsManager)
-      // 3. Fallback to current view logic
+      // 1. Если явно передан source - используем его.
+      // 2. Если fromAlbum=true (клик в списке альбома) -> source='album'.
+      // 3. Иначе проверяем текущий открытый альбом.
       let source = opts.source;
+      
       if (!source) {
-         if (opts.fromAlbum) {
-             source = 'album';
-         } else {
-             const isFavView = W.AlbumsManager?.getCurrentAlbum?.() === W.SPECIAL_FAVORITES_KEY;
-             source = isFavView ? 'favorites' : 'album';
-         }
+        if (opts.fromAlbum) {
+           source = 'album'; 
+        } else {
+           const isFavView = W.AlbumsManager?.getCurrentAlbum?.() === W.SPECIAL_FAVORITES_KEY;
+           source = isFavView ? 'favorites' : 'album';
+        }
       }
       
       const res = FavoritesV2.toggle(u, { source, albumKey: opts.albumKey });
