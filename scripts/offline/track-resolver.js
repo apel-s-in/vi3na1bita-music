@@ -1,10 +1,9 @@
 // scripts/offline/track-resolver.js
-import { getAudioBlob, bytesByQuality, touchLocalAccess } from './cache-db.js';
+import { getAudioBlob, bytesByQuality, touchLocalAccess, getLocalMeta } from './cache-db.js';
 import { getOfflineManager } from './offline-manager.js';
 import { getNetPolicy, isAllowedByNetPolicy } from './net-policy.js';
 
 const U = window.Utils;
-const norm = (v) => (String(v || '').toLowerCase() === 'lo' ? 'lo' : 'hi');
 
 async function getLocalUrl(uid, q) {
   if (!U?.blob) return null;
@@ -20,38 +19,39 @@ export async function resolvePlaybackSource({ track }) {
   
   const mgr = getOfflineManager();
   const mode = mgr.getMode();
-  const targetQ = mgr.getActivePlaybackQuality(); // PQ or CQ or FOQ based on mode
+  const targetQ = mgr.getActivePlaybackQuality(); 
   const net = U.getNet();
   
-  // 1. Check Local (Primary)
-  // Logic: Try exact quality first.
   const [hasHi, hasLo] = await Promise.all([
       mgr.isTrackComplete(track.uid, 'hi'),
       mgr.isTrackComplete(track.uid, 'lo')
   ]);
   
+  const meta = await getLocalMeta(track.uid);
+  const cacheKind = meta?.kind || 'none';
+
+  // 1. Check Local (Best Effort)
   if (targetQ === 'hi') {
-      if (hasHi) return { url: await getLocalUrl(track.uid, 'hi'), isLocal: true, quality: 'hi' };
-      // Fallback to Lo if strictly necessary? (See 7.4.3: "best effort")
-      if (hasLo) return { url: await getLocalUrl(track.uid, 'lo'), isLocal: true, quality: 'lo' }; 
+      if (hasHi) return { url: await getLocalUrl(track.uid, 'hi'), isLocal: true, effectiveQuality: 'hi', cacheKind };
+      if (hasLo) return { url: await getLocalUrl(track.uid, 'lo'), isLocal: true, effectiveQuality: 'lo', cacheKind, needsReCache: true };
   } else {
-      if (hasLo) return { url: await getLocalUrl(track.uid, 'lo'), isLocal: true, quality: 'lo' };
-      if (hasHi) return { url: await getLocalUrl(track.uid, 'hi'), isLocal: true, quality: 'hi' };
+      if (hasLo) return { url: await getLocalUrl(track.uid, 'lo'), isLocal: true, effectiveQuality: 'lo', cacheKind };
+      if (hasHi) return { url: await getLocalUrl(track.uid, 'hi'), isLocal: true, effectiveQuality: 'hi', cacheKind }; 
   }
 
-  // 2. Network (Secondary) - STRICTLY FORBIDDEN IN R3
+  // 2. Network (Secondary)
   if (mode === 'R3') {
-      return { url: null, reason: 'R3_offline_block' };
+      return { url: null, reason: 'R3_offline_block', isLocal: false };
   }
   
   const policy = getNetPolicy();
-  const allowed = isAllowedByNetPolicy({ policy, net, userInitiated: true });
+  const allowed = isAllowedByNetPolicy({ policy, net, userInitiated: false }); // Playback is implied user intent but standard checks apply
   
   if (net.online && allowed) {
       const src = track.sources?.audio || {};
       const url = targetQ === 'lo' ? (src.lo || track.audio_low) : (src.hi || track.audio);
-      if (url) return { url, isLocal: false, quality: targetQ };
+      if (url) return { url, isLocal: false, effectiveQuality: targetQ, cacheKind: 'none' };
   }
 
-  return { url: null, reason: 'no_source' };
+  return { url: null, reason: 'no_source', isLocal: false };
 }
