@@ -45,7 +45,7 @@ export async function resolvePlaybackSource({ track }) {
   }
   
   const policy = getNetPolicy();
-  const allowed = isAllowedByNetPolicy({ policy, net, userInitiated: false }); // Playback is implied user intent but standard checks apply
+  const allowed = isAllowedByNetPolicy({ policy, net, userInitiated: false }); 
   
   if (net.online && allowed) {
       const src = track.sources?.audio || {};
