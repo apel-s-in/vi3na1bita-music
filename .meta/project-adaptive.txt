@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-389e17901fb2bcd0b3e31b0bfd117aea214ebd3a.idx
-│   │       ├── pack-389e17901fb2bcd0b3e31b0bfd117aea214ebd3a.pack
-│   │       └── pack-389e17901fb2bcd0b3e31b0bfd117aea214ebd3a.rev
+│   │       ├── pack-230e59e18179aca563329beb000e73b87fe1740c.idx
+│   │       ├── pack-230e59e18179aca563329beb000e73b87fe1740c.pack
+│   │       └── pack-230e59e18179aca563329beb000e73b87fe1740c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -363,8 +363,7 @@ vi3na1bita-music/
 │   │   ├── offline-modal.js
 │   │   ├── sleep.js
 │   │   ├── statistics-modal.js
-│   │   ├── sysinfo.js
-│   │   └── ui-utils.js
+│   │   └── sysinfo.js
 │   ├── utils/
 │   │   └── sw-manager.js
 │   └── app.js
@@ -385,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 08:17:06 UTC
+Сгенерировано: 2026-02-04 08:17:27 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7236,31 +7235,6 @@ import { getOfflineManager } from '../offline/offline-manager.js';
   else Sys.initialize();
 
 })(window, navigator);
-
-//=================================================
-// FILE: /scripts/ui/ui-utils.js
-// scripts/ui/ui-utils.js
-// Facade over core/utils.js (Global Access)
-const Utils = window.Utils;
-
-export const esc = (s) => Utils?.ui?.escapeHtml(s);
-export const escapeHtml = (s) => Utils.ui.escapeHtml(s);
-export const formatBytes = (n) => Utils.fmt.bytes(n);
-export const formatTime = (s) => Utils.fmt.time(s);
-export const getNetworkStatusSafe = () => Utils.getNet();
-export const isMobile = () => Utils.isMobile();
-export const setBtnActive = (id, a) => Utils.setBtnActive(id, a);
-export const setAriaDisabled = (el, d) => Utils.setAriaDisabled(el, d);
-export const waitFor = (fn, t) => Utils.waitFor(fn, t);
-
-// Для кода, который использует window.UIUtils
-try {
-  window.UIUtils = window.UIUtils || {};
-  Object.assign(window.UIUtils, {
-    esc, escapeHtml, formatBytes, formatTime, 
-    getNetworkStatusSafe, isMobile, setBtnActive, setAriaDisabled, waitFor
-  });
-} catch {}
 
 //=================================================
 // FILE: /scripts/utils/sw-manager.js
