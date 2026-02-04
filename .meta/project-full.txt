@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-711c390b90df52e7984e5085617abe2dff926bd0.idx
-│   │       ├── pack-711c390b90df52e7984e5085617abe2dff926bd0.pack
-│   │       └── pack-711c390b90df52e7984e5085617abe2dff926bd0.rev
+│   │       ├── pack-3e28c638362d9a21f51644e1f6f2b19cef87333a.idx
+│   │       ├── pack-3e28c638362d9a21f51644e1f6f2b19cef87333a.pack
+│   │       └── pack-3e28c638362d9a21f51644e1f6f2b19cef87333a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 08:55:30 UTC
+Сгенерировано: 2026-02-04 08:56:03 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2508,8 +2508,7 @@ export function attachPlaybackCache() {
             onPause: updatePlayPauseIcon,
             onStop: updatePlayPauseIcon,
             onEnd: updatePlayPauseIcon,
-            onTick: handleTick,
-            onLoadProgress: throttledCacheUpdate
+            onTick: handleTick
         });
 
         W.playerCore.onFavoritesChanged(() => {
