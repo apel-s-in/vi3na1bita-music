@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f001c17cf3fcd51b3aef7684b3d03af1a05e9710.idx
-│   │       ├── pack-f001c17cf3fcd51b3aef7684b3d03af1a05e9710.pack
-│   │       └── pack-f001c17cf3fcd51b3aef7684b3d03af1a05e9710.rev
+│   │       ├── pack-e12bb3cee0481f312a507fdb5b9bac43d595e27c.idx
+│   │       ├── pack-e12bb3cee0481f312a507fdb5b9bac43d595e27c.pack
+│   │       └── pack-e12bb3cee0481f312a507fdb5b9bac43d595e27c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 20:18:01 UTC
+Сгенерировано: 2026-02-04 20:22:20 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2728,14 +2728,31 @@ export function attachPlaybackCache() {
 
     function updatePQButtonState() {
         if (!dom.pqBtn) return;
+
+        // --- NEW: R2/R3 Mode Check ---
+        const mgr = window.OfflineUI?.offlineManager;
+        const mode = mgr ? mgr.getMode() : 'R0';
+        
+        // Hide button completely in Offline modes (R2/R3)
+        if (mode === 'R2' || mode === 'R3') {
+            dom.pqBtn.style.display = 'none';
+            return;
+        }
+        dom.pqBtn.style.display = ''; 
+        // -----------------------------
+
         const s = U.pq.getState();
         let cls = 'player-control-btn ';
-        if (!s.netOk) { cls += 'disabled'; dom.pqBtn.setAttribute('aria-disabled', 'true'); }
-        else {
+        
+        if (!s.netOk) { 
+            cls += 'disabled'; 
+            dom.pqBtn.setAttribute('aria-disabled', 'true'); 
+        } else {
             cls += `pq-${s.mode}`;
             dom.pqBtn.setAttribute('aria-disabled', !s.canToggle);
             if (!s.canToggle) cls += ' disabled-soft';
         }
+        
         dom.pqBtn.className = cls;
         if (dom.pqLabel) dom.pqLabel.textContent = s.mode === 'lo' ? 'Lo' : 'Hi';
     }
