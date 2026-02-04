@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5d77e9fdeed07a2739930d34351e23071e7b4766.idx
-│   │       ├── pack-5d77e9fdeed07a2739930d34351e23071e7b4766.pack
-│   │       └── pack-5d77e9fdeed07a2739930d34351e23071e7b4766.rev
+│   │       ├── pack-67de100857a3ba3661a5e80a2e1d89f06b97ecab.idx
+│   │       ├── pack-67de100857a3ba3661a5e80a2e1d89f06b97ecab.pack
+│   │       └── pack-67de100857a3ba3661a5e80a2e1d89f06b97ecab.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -386,7 +386,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 08:15:32 UTC
+Сгенерировано: 2026-02-04 08:16:01 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3366,7 +3366,10 @@ const resolveUrl = (base, url) => {
  * ГЛАВНЫЙ МЕТОД РЕГИСТРАЦИИ
  */
 export function registerTrack(raw, albumMeta = {}) {
-  if (!raw || !raw.uid) return;
+  if (!raw || !raw.uid) {
+    if(raw) console.warn('Skipping track without UID:', raw.title);
+    return;
+  }
 
   const uid = safeStr(raw.uid);
   
