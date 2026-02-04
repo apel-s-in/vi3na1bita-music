@@ -13,7 +13,7 @@ import { Favorites } from '../core/favorites-manager.js';
 const Utils = window.Utils; 
 
 const LS = { 
-  MODE: 'offline:mode:v1', // R0, R1, R2, R3
+  MODE: 'offline:mode:v1', 
   CQ: 'offline:cacheQuality:v1', 
   FOQ: 'offline:fullQuality:v1',
   PINNED: 'pinnedUids:v1', 
@@ -36,12 +36,11 @@ const PRIORITY = {
   P5_ASSETS: 50 
 };
 
-// --- Queue Implementation ---
 class DownloadQueue {
   constructor() { this.q = []; this.active = null; this.paused = false; this._listeners = new Set(); }
   
   add({ uid, key, priority, taskFn }) {
-    if (this.active?.key === key) return; // Already running
+    if (this.active?.key === key) return;
     const idx = this.q.findIndex(i => i.key === key);
     if (idx >= 0) { 
         if (priority > this.q[idx].priority) { this.q[idx].priority = priority; this._sort(); } 
@@ -88,15 +87,14 @@ export class OfflineManager {
     this._enforceLimitCheck();
     if (!localStorage.getItem(LS.MODE)) localStorage.setItem(LS.MODE, 'R0');
     if (this.getMode() === 'R3') {
-       const foq = localStorage.getItem(LS.FOQ) || 'hi';
+       const foq = this.getFullOfflineQuality();
        localStorage.setItem(LS.CQ, foq);
     }
-    // this._checkExpiredCloud(); 
   }
 
-  // --- Modes & Quality ---
   getMode() { return localStorage.getItem(LS.MODE) || 'R0'; }
-  
+  isOfflineMode() { return this.getMode() === 'R3'; } // ТЗ 1.5
+
   async setMode(mode) {
     if (!['R0', 'R1', 'R2', 'R3'].includes(mode)) return;
     if (mode !== 'R0' && !(await this._checkSpaceGuarantee())) {
@@ -122,7 +120,6 @@ export class OfflineManager {
   }
 
   getCacheQuality() { return Utils.obj.normQuality(localStorage.getItem(LS.CQ) || 'hi'); }
-  
   async setCacheQuality(q) {
     const val = Utils.obj.normQuality(q);
     localStorage.setItem(LS.CQ, val);
@@ -131,42 +128,27 @@ export class OfflineManager {
   }
 
   getFullOfflineQuality() { return Utils.obj.normQuality(localStorage.getItem(LS.FOQ) || 'hi'); }
-  
   setFullOfflineQuality(q) {
       const val = Utils.obj.normQuality(q);
       localStorage.setItem(LS.FOQ, val);
-      if (this.getMode() === 'R3') {
-          localStorage.setItem(LS.CQ, val); 
-      }
+      if (this.getMode() === 'R3') localStorage.setItem(LS.CQ, val);
   }
 
-  // --- UI Public Helpers (Bridge for Modal) ---
-  async computeCacheBreakdown() {
-    return computeCacheBreakdown(this._getPinnedSet());
-  }
-
+  // --- Helpers for UI ---
+  async computeCacheBreakdown() { return computeCacheBreakdown(this._getPinnedSet()); }
+  async isSpaceOk() { return this._checkSpaceGuarantee(); }
   getCloudSettings() {
     const n = parseInt(localStorage.getItem(LS.CLOUD_N) || '5', 10);
     const d = parseInt(localStorage.getItem(LS.CLOUD_D) || '31', 10);
-    return { n: Number.isFinite(n) && n > 0 ? n : 5, d: Number.isFinite(d) && d > 0 ? d : 31 };
+    return { n, d };
   }
-
-  async isSpaceOk() {
-    return this._checkSpaceGuarantee();
-  }
-
-  isOfflineMode() {
-    return this.getMode() === 'R3';
-  }
-
   async clearAllCache() {
     await clearAllStores();
     window.dispatchEvent(new CustomEvent('offline:uiChanged'));
-    this._emit({ phase: 'cacheCleared' });
     return true;
   }
 
-  // --- Pinned ---
+  // --- Pinned/Cloud ---
   _getPinnedSet() {
     if (!this._pinnedCache) { try { this._pinnedCache = new Set(JSON.parse(localStorage.getItem(LS.PINNED) || '[]')); } catch { this._pinnedCache = new Set(); } }
     return this._pinnedCache;
@@ -179,7 +161,7 @@ export class OfflineManager {
     const u = Utils.obj.trim(uid); if (!u) return;
     if (this.isPinned(u)) {
       this._getPinnedSet().delete(u); this._savePinned(); 
-      await setCloudCandidate(u, true);
+      await setCloudCandidate(u, true); // TЗ 8.2: становится Cloud-кандидатом
       Utils.ui.toast('Офлайн-закрепление снято');
     } else {
       this._getPinnedSet().add(u); this._savePinned(); 
@@ -191,7 +173,6 @@ export class OfflineManager {
     window.dispatchEvent(new CustomEvent('offline:uiChanged'));
   }
 
-  // --- Cloud & Stats ---
   async isCloudEligible(uid) {
     const u = Utils.obj.trim(uid); if (!u || this.isPinned(u)) return false;
     if (await getCloudCandidate(u)) return true;
@@ -202,6 +183,7 @@ export class OfflineManager {
     return false;
   }
 
+  // --- Stats ---
   async recordListenStats(uid, { deltaSec, isFullListen }) {
     const u = Utils.obj.trim(uid); if (!u) return;
     if (deltaSec > 0 || isFullListen) await updateGlobalStats(u, deltaSec, isFullListen ? 1 : 0);
@@ -211,6 +193,7 @@ export class OfflineManager {
       const newCount = (Number(stats.cloudFullListenCount) || 0) + 1;
       const n = parseInt(localStorage.getItem(LS.CLOUD_N)||'5');
       const d = parseInt(localStorage.getItem(LS.CLOUD_D)||'31');
+      
       const becameCloud = newCount >= n || stats.cloud;
       const newStats = { ...stats, cloudFullListenCount: newCount, lastFullListenAt: Date.now() };
       
@@ -263,7 +246,7 @@ export class OfflineManager {
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const blob = await resp.blob();
       
-      await setAudioBlob(uid, quality, blob); 
+      await setAudioBlob(uid, quality, blob);
       const expSize = quality === 'lo' ? meta.sizeLo : meta.sizeHi;
       await setDownloadMeta(uid, quality, { ts: Date.now(), bytes: blob.size, exp: Number(expSize)||0 });
       
@@ -291,7 +274,6 @@ export class OfflineManager {
         if (current - freed <= limitBytes) break;
         if (c.weight >= 99) continue; 
         if (this._lastWindow.includes(c.uid)) continue; 
-        
         await deleteTrackCache(c.uid);
         freed += c.bytes;
     }
@@ -331,18 +313,27 @@ export class OfflineManager {
     }
   }
 
-  updatePlaybackWindow(uids) { this._lastWindow = uids; }
+  updatePlaybackWindow(uids) {
+      this._lastWindow = uids;
+      // ТЗ 7.6.3: удалять из transient все, что вышло из окна
+      // Для реализации нужен метод очистки конкретных transient, пока оставим на Eviction
+  }
 
+  // --- 100% Offline (R3) ---
   async startFullOffline(uids) {
       const foq = this.getFullOfflineQuality();
       localStorage.setItem(LS.FULL_SET, JSON.stringify(uids));
+      
+      let scheduled = 0;
       uids.forEach(uid => {
           this.enqueueAudioDownload({ 
               uid, quality: foq, priority: PRIORITY.P4_CLOUD, 
               kind: 'fullOffline', userInitiated: true 
           });
+          scheduled++;
       });
-      return { ok: true, total: uids.length };
+      // TODO: Скачивание ассетов (lyrics, covers) - заглушка
+      return { ok: true, total: scheduled };
   }
 
   async _checkSpaceGuarantee() {
@@ -354,15 +345,9 @@ export class OfflineManager {
       }
       return true;
   }
-  
-  _checkExpiredCloud() {
-      // Placeholder: Implementation postponed
-  }
 
   async getGlobalStatistics() { return getGlobalStatsAndTotal(); }
   getQueueStatus() { return this.queue.getStatus(); }
-  pauseQueue() { this.queue.pause(); }
-  resumeQueue() { this.queue.resume(); }
   
   on(event, cb) { 
       if(event === 'progress') this.queue.subscribe(e => cb({phase: 'queue_'+e.event, ...e.data}));
