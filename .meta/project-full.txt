@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3a8a334c1ef4a1365fe036ee331db7a56967234c.idx
-│   │       ├── pack-3a8a334c1ef4a1365fe036ee331db7a56967234c.pack
-│   │       └── pack-3a8a334c1ef4a1365fe036ee331db7a56967234c.rev
+│   │       ├── pack-b3e94a448ec17cf8f7ef97a03bb8fa1d5a03979c.idx
+│   │       ├── pack-b3e94a448ec17cf8f7ef97a03bb8fa1d5a03979c.pack
+│   │       └── pack-b3e94a448ec17cf8f7ef97a03bb8fa1d5a03979c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 09:23:47 UTC
+Сгенерировано: 2026-02-04 09:25:06 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3433,7 +3433,7 @@ export function registerTrack(raw, albumMeta = {}) {
     audio: urlHi,
     audio_low: urlLo,
     sources: { audio: { hi: urlHi, lo: urlLo } },
-    // G1: Строгая нормализация
+    // G1: Строгая нормализация (remove legacy props from final object)
     sizeHi: Number(raw.sizeHi || raw.size || 0),
     sizeLo: Number(raw.sizeLo || raw.size_low || 0),
     lyrics: lyricsUrl,
