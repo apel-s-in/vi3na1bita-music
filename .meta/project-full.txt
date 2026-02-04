@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-35be0c7a38294b08ce1e365d761bb7fcc38b3653.idx
-│   │       ├── pack-35be0c7a38294b08ce1e365d761bb7fcc38b3653.pack
-│   │       └── pack-35be0c7a38294b08ce1e365d761bb7fcc38b3653.rev
+│   │       ├── pack-81ff81a8bcebf1d2cf07c29bad8872b522aef03c.idx
+│   │       ├── pack-81ff81a8bcebf1d2cf07c29bad8872b522aef03c.pack
+│   │       └── pack-81ff81a8bcebf1d2cf07c29bad8872b522aef03c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -389,7 +389,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-03 19:01:50 UTC
+Сгенерировано: 2026-02-04 06:33:05 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8467,7 +8467,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       this._ms = ensureMediaSession({
         onPlay: () => this.play(), 
         onPause: () => this.pause(),
-        onStop: () => this.stop(), 
+        onStop: () => this.pause(), // FIX: Stop forbidden by invariant, use Pause
         onPrev: () => this.prev(), 
         onNext: () => this.next(),
         onSeekTo: (t) => this.seek(t)
@@ -8533,6 +8533,17 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       else {
         this._emit('onTrackChange', this.getCurrentTrack(), this.currentIndex);
         this._updMedia();
+      }
+    }
+
+    // FIX: Missing method implementation
+    shufflePlaylist() {
+      const cur = this.getCurrentTrack();
+      this.playlist.sort(() => Math.random() - 0.5);
+      if (cur) {
+        // Текущий трек всегда первым
+        this.playlist = [cur, ...this.playlist.filter(t => t !== cur)];
+        this.currentIndex = 0;
       }
     }
 
@@ -8606,7 +8617,6 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       const token = ++this._loadToken;
       this.currentIndex = index;
       
-      // Сброс счетчика ошибок если это ручной выбор или новый трек успешный
       if (!opts.isAutoSkip) this._skipSession = { token, count: 0, max: this.playlist.length };
 
       this._emit('onTrackChange', track, index);
@@ -8620,19 +8630,18 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
       this._unload(true);
 
-      // Если нет источника (ни сети, ни кэша)
+      // Если нет источника
       if (!src.url) {
         // Проверка на бесконечный цикл
         if (this._skipSession.count >= this._skipSession.max) {
-           W.NotificationSystem?.error('Нет доступных треков для воспроизведения');
-           // FIX: Не вызываем stop(), так как это нарушает инвариант плеера.
-           // Просто выгружаем ресурсы и обновляем UI, оставаясь на треке.
+           W.NotificationSystem?.error('Нет доступных треков');
+           // FIX: Не вызываем stop(). Просто выгружаем.
            this._unload(true);
-           this._updMedia(); 
+           this._updMedia();
            return;
         }
 
-        W.NotificationSystem?.warning('Нет доступа к треку, пропускаем...');
+        W.NotificationSystem?.warning('Трек недоступен, пропуск...');
         
         setTimeout(() => {
            if (token === this._loadToken) {
@@ -8640,11 +8649,10 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
              const nextIdx = (index + (opts.dir || 1) + this.playlist.length) % this.playlist.length;
              if (nextIdx !== index) this.load(nextIdx, { ...opts, isAutoSkip: true });
            }
-        }, 500); // Быстрый пропуск
+        }, 500); 
         return;
       }
 
-      // Успешная загрузка - сбрасываем счетчик
       this._skipSession.count = 0;
 
       this.sound = new Howl({
@@ -8679,7 +8687,6 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         },
         onloaderror: (id, e) => {
            console.error('Load Error', e);
-           // Fallback при ошибке декодирования
            if (token === this._loadToken) {
              setTimeout(() => {
                 this._skipSession.count++;
@@ -8692,7 +8699,6 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         }
       });
 
-      // Ставим в очередь Playback Cache (3-трековое окно)
       if (track.uid) {
         om.enqueueAudioDownload({ 
           uid: track.uid, 
@@ -8714,8 +8720,6 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       if (!silent) this._emit('onStop');
     }
 
-    getQualityMode() { return this.qualityMode; }
-    
     canToggleQualityForCurrentTrack() {
       const t = this.getCurrentTrack();
       const m = t ? getTrackByUid(t.uid) : null;
@@ -8734,32 +8738,35 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
     toggleFavorite(uid, opts = {}) {
       const u = safeStr(uid);
-      let source = opts.source;
       
-      // Определение контекста: если мы внутри альбома Избранное (смотрим его), то source = favorites.
-      // FIX: Используем getCurrentAlbum (UI), а не getPlayingAlbum (Audio), чтобы не ломать логику при навигации.
+      // FIX: Source Truth Rule
+      // 1. Explicit opts.source
+      // 2. Explicit opts.fromAlbum (context hint)
+      // 3. Fallback to current view logic
+      let source = opts.source;
       if (!source) {
-         const isFavView = W.AlbumsManager?.getCurrentAlbum?.() === W.SPECIAL_FAVORITES_KEY;
-         source = isFavView ? 'favorites' : 'album';
+         if (opts.fromAlbum) {
+             // Если пришло из альбома (не из списка избранного), то это hard-mode (album)
+             source = 'album';
+         } else {
+             const isFavView = W.AlbumsManager?.getCurrentAlbum?.() === W.SPECIAL_FAVORITES_KEY;
+             source = isFavView ? 'favorites' : 'album';
+         }
       }
       
       const res = FavoritesV2.toggle(u, { source, albumKey: opts.albumKey });
       this._emitFav(u, res.liked, opts.albumKey);
 
       // Правило STOP для Избранного:
-      // Если мы в режиме Избранного, сняли лайк с текущего трека, и это был ПОСЛЕДНИЙ активный трек -> STOP.
-      // Иначе -> NEXT.
-      if (!res.liked && source === 'favorites' && W.AlbumsManager?.getPlayingAlbum?.() === W.SPECIAL_FAVORITES_KEY) {
+      if (!res.liked && source === 'favorites' && W.AlbumsManager?.getCurrentAlbum?.() === W.SPECIAL_FAVORITES_KEY) {
          if (safeStr(this.getCurrentTrack()?.uid) === u) {
             const state = this.getFavoritesState();
             if (state.active.length === 0) {
-               this.stop(); // Единственный разрешенный STOP сценарий
+               // Единственный случай STOP
+               this.stop(); 
             } else {
-               // FIX: Repeat имеет приоритет. Если включен повтор, мы остаемся на треке (даже если он стал inactive),
-               // пока пользователь сам не переключит.
-               if (!this.repeatMode) {
-                   this.next();
-               }
+               // Переход, только если не repeat
+               if (!this.repeatMode) this.next();
             }
          }
       }
@@ -8771,7 +8778,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       if (FavoritesV2.removeRef(u)) this._emitFav(u, false, null, true);
     }
     
-    restoreInactive(uid) { return this.toggleFavorite(uid, { fromAlbum: false }); }
+    restoreInactive(uid) { return this.toggleFavorite(uid, { source: 'favorites' }); } // Explicitly favorites ctx
 
     showInactiveFavoriteModal(p = {}) {
       if (!W.Modals?.open) return;
@@ -8819,12 +8826,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     toggleShuffle() {
       this.shuffleMode = !this.shuffleMode;
       if (this.shuffleMode) {
-        const cur = this.getCurrentTrack();
-        this.playlist.sort(() => Math.random() - 0.5);
-        if (cur) {
-          this.playlist = [cur, ...this.playlist.filter(t => t !== cur)];
-          this.currentIndex = 0;
-        }
+        this.shufflePlaylist();
       } else {
         const uid = this.getCurrentTrack()?.uid;
         this.playlist = [...this.originalPlaylist];
