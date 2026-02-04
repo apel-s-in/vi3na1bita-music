@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d1efd3bc67c971325f91a902f764b5314c6f47f8.idx
-│   │       ├── pack-d1efd3bc67c971325f91a902f764b5314c6f47f8.pack
-│   │       └── pack-d1efd3bc67c971325f91a902f764b5314c6f47f8.rev
+│   │       ├── pack-1c25ed341a2ec97a7b07ee486af0bb5d85de29c9.idx
+│   │       ├── pack-1c25ed341a2ec97a7b07ee486af0bb5d85de29c9.pack
+│   │       └── pack-1c25ed341a2ec97a7b07ee486af0bb5d85de29c9.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -389,7 +389,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 06:33:47 UTC
+Сгенерировано: 2026-02-04 06:35:23 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1505,7 +1505,8 @@ class AlbumsManager {
           p2 = base;
         }
         
-        return `<div class="album-icon" data-album="${it.key}" title="${escHtml(it.title)}">
+        // FIX: Add data-akey for E2E consistency
+        return `<div class="album-icon" data-album="${it.key}" data-akey="${it.key}" title="${escHtml(it.title)}">
           <img src="${p1}" srcset="${p2} 2x" alt="${escHtml(it.title)}" draggable="false" loading="lazy" width="60" height="60">
         </div>`;
       }).join('');
@@ -1604,7 +1605,7 @@ class AlbumsManager {
       $('track-list')?.classList.remove('filtered');
       
       window.PlayerUI?.switchAlbumInstantly?.(key);
-      window.PlayerState?.save?.();
+      // window.PlayerState?.save?.(); // Removed: not implemented
     } catch (e) {
       console.error(e);
       window.NotificationSystem?.error('Ошибка загрузки');
