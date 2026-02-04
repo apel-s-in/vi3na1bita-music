@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-43bf969442b95358400a5ea4f1638bc905f62f96.idx
-│   │       ├── pack-43bf969442b95358400a5ea4f1638bc905f62f96.pack
-│   │       └── pack-43bf969442b95358400a5ea4f1638bc905f62f96.rev
+│   │       ├── pack-2daf148f18be087ad8f62e773d1340b7a3e9b364.idx
+│   │       ├── pack-2daf148f18be087ad8f62e773d1340b7a3e9b364.pack
+│   │       └── pack-2daf148f18be087ad8f62e773d1340b7a3e9b364.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 21:57:29 UTC
+Сгенерировано: 2026-02-04 21:57:56 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5387,7 +5387,7 @@ export async function resolvePlaybackSource({ track }) {
   }
   
   const policy = getNetPolicy();
-  const allowed = isAllowedByNetPolicy({ policy, net, userInitiated: false }); // Playback is implied user intent but standard checks apply
+  const allowed = isAllowedByNetPolicy({ policy, net, userInitiated: false }); 
   
   if (net.online && allowed) {
       const src = track.sources?.audio || {};
