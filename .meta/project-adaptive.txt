@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-00a7f53efced684d9463541b65ffef58d100c332.idx
-│   │       ├── pack-00a7f53efced684d9463541b65ffef58d100c332.pack
-│   │       └── pack-00a7f53efced684d9463541b65ffef58d100c332.rev
+│   │       ├── pack-3a8a334c1ef4a1365fe036ee331db7a56967234c.idx
+│   │       ├── pack-3a8a334c1ef4a1365fe036ee331db7a56967234c.pack
+│   │       └── pack-3a8a334c1ef4a1365fe036ee331db7a56967234c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 09:22:47 UTC
+Сгенерировано: 2026-02-04 09:23:47 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6001,7 +6001,8 @@ export function bindFavoritesList(container, handlers) {
       return;
     }
 
-    const rawLines = (typeof c.getCurrentLyrics === 'function') ? c.getCurrentLyrics() : [];
+    // Используем метод совместимости, возвращающий объекты { line: string }
+    const rawLines = (typeof c.getCurrentLyricsLines === 'function') ? c.getCurrentLyricsLines() : [];
 
     if (!rawLines.length) {
       w.NotificationSystem?.warning('Текст песни недоступен');
@@ -6009,7 +6010,7 @@ export function bindFavoritesList(container, handlers) {
     }
 
     const lines = rawLines
-      .map(item => (typeof item.line === 'string' ? item.line : (item.text || '')))
+      .map(item => (typeof item.line === 'string' ? item.line : ''))
       .filter(Boolean);
 
     if (!lines.length) {
