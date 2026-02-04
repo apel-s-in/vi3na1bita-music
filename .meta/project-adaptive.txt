@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c3e8a51df3b8223a533d2eb575f17b401442302c.idx
-│   │       ├── pack-c3e8a51df3b8223a533d2eb575f17b401442302c.pack
-│   │       └── pack-c3e8a51df3b8223a533d2eb575f17b401442302c.rev
+│   │       ├── pack-5b66d3ccdded559735182e275c3833aeb77586f6.idx
+│   │       ├── pack-5b66d3ccdded559735182e275c3833aeb77586f6.pack
+│   │       └── pack-5b66d3ccdded559735182e275c3833aeb77586f6.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -389,7 +389,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 06:38:49 UTC
+Сгенерировано: 2026-02-04 06:40:00 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2597,9 +2597,10 @@ export function attachPlaybackCache() {
 
         // Если отфильтрованный список пуст
         if (!target.length && !isFavAlbum) {
-          W.NotificationSystem?.info('Нет избранных треков. Играем всё.');
-          // FIX: Не меняем localStorage и не трогаем кнопку F автоматически.
-          // Просто не применяем фильтр к плейлисту в этот раз.
+          W.NotificationSystem?.info('Нет избранных треков. Режим не применен.');
+          // FIX: Просто выходим, не меняя плейлист и не ломая LS. 
+          // Кнопка в UI останется нажатой (если юзер нажал), но фильтрация не пройдет.
+          // Это лучше, чем рекурсивные вызовы или скрытый сброс.
           return; 
         }
       }
