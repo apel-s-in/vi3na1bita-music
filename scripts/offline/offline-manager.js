@@ -6,7 +6,7 @@ import {
 } from './cache-db.js';
 import { getTrackByUid, getAllTracks } from '../app/track-registry.js';
 import { getNetPolicy, isAllowedByNetPolicy } from './net-policy.js';
-import FavoritesV2 from '../core/favorites-v2.js'; // FIX: Import Favorites
+import { Favorites } from '../core/favorites-manager.js';
 
 const Utils = window.Utils; 
 
@@ -316,7 +316,7 @@ export class OfflineManager {
         if (Array.isArray(selection.keys)) selection.keys.forEach(u => uids.add(u));
         else {
             // FIX: Use real favorites, not pinned
-            const favs = FavoritesV2.readLikedSet();
+            const favs = Favorites.readLikedSet();
             favs.forEach(u => uids.add(u));
         }
       } else {
