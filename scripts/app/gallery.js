@@ -127,6 +127,8 @@ class GalleryManager {
       finish();
     } else {
       const img = new Image();
+      // Очистка предыдущего загрузчика, если он был
+      if(this.ldr) { this.ldr.onload = null; this.ldr.onerror = null; this.ldr.src = ''; }
       this.ldr = img;
       img.decoding = 'async';
       img.referrerPolicy = 'no-referrer';
