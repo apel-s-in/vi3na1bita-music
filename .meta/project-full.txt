@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-eb867d8f6cf71efb49c6bd2d613f0bd23767d7a5.idx
-│   │       ├── pack-eb867d8f6cf71efb49c6bd2d613f0bd23767d7a5.pack
-│   │       └── pack-eb867d8f6cf71efb49c6bd2d613f0bd23767d7a5.rev
+│   │       ├── pack-f5c7ad173acb3abbe8727dc082ddee5a9375e4cf.idx
+│   │       ├── pack-f5c7ad173acb3abbe8727dc082ddee5a9375e4cf.pack
+│   │       └── pack-f5c7ad173acb3abbe8727dc082ddee5a9375e4cf.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 07:04:26 UTC
+Сгенерировано: 2026-02-04 07:06:24 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5155,7 +5155,6 @@ export class OfflineManager {
       const meta = await getLocalMeta(c.uid);
       if (meta?.kind === 'cloud') continue; 
       // FIX: Удаляем только если это transient и он входит в группу 'window'.
-      // 'extra' оставляем (удалит лимит кэша, если нужно).
       if (meta?.kind === 'transient' && meta.transientGroup === 'window' && !keepSet.has(c.uid)) {
         await deleteTrackCache(c.uid);
       }
