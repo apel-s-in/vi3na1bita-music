@@ -57,7 +57,8 @@ class AlbumsManager {
           p2 = base;
         }
         
-        return `<div class="album-icon" data-album="${it.key}" title="${escHtml(it.title)}">
+        // FIX: Add data-akey for E2E consistency
+        return `<div class="album-icon" data-album="${it.key}" data-akey="${it.key}" title="${escHtml(it.title)}">
           <img src="${p1}" srcset="${p2} 2x" alt="${escHtml(it.title)}" draggable="false" loading="lazy" width="60" height="60">
         </div>`;
       }).join('');
@@ -156,7 +157,7 @@ class AlbumsManager {
       $('track-list')?.classList.remove('filtered');
       
       window.PlayerUI?.switchAlbumInstantly?.(key);
-      window.PlayerState?.save?.();
+      // window.PlayerState?.save?.(); // Removed: not implemented
     } catch (e) {
       console.error(e);
       window.NotificationSystem?.error('Ошибка загрузки');
