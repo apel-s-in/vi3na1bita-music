@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c728e9d773852d4d2b221304d2cdc966e97b5ead.idx
-│   │       ├── pack-c728e9d773852d4d2b221304d2cdc966e97b5ead.pack
-│   │       └── pack-c728e9d773852d4d2b221304d2cdc966e97b5ead.rev
+│   │       ├── pack-d8e2581819625fd0578eee784203b5a758723f22.idx
+│   │       ├── pack-d8e2581819625fd0578eee784203b5a758723f22.pack
+│   │       └── pack-d8e2581819625fd0578eee784203b5a758723f22.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 08:57:12 UTC
+Сгенерировано: 2026-02-04 08:57:43 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1447,7 +1447,6 @@ self.addEventListener('message', (e) => {
 // FILE: /scripts/app/albums.js
 import { registerTrack } from './track-registry.js';
 import { $, toStr, escHtml, isMobileUA } from './utils/app-utils.js';
-import { loadAndRenderNewsInline } from '../ui/news-inline.js';
 
 const C = window.APP_CONFIG || {};
 const FAV = window.SPECIAL_FAVORITES_KEY || '__favorites__';
