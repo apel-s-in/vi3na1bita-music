@@ -33,8 +33,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       this._sleepTimer = null;
       this._sleepTarget = 0;
       
-      // Сценарий 7.5.3
-      this._recoveryTarget = null;
+      this._skipSession = { token: 0, count: 0, max: 0 };
 
       this._ms = ensureMediaSession({
         onPlay: () => this.play(), 
@@ -59,8 +58,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         }
         if (!this._unlocked) {
           this._unlocked = true;
-          // Silent unlock
-          const silent = new Howl({ src: ['data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIWFhYW5uYWFuYW5uYW5uYW5uYW5uYW5uYW5uYW5u//OEAAAAAAAAAAAAAAAAAAAAAAAAMGluZ2QAAAAcAAAABAAAASFycnJyc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nz//OEAAAAAAAAAAAAAAAAAAAAAAAATGF2YzU4Ljc2AAAAAAAAAAAAAAAAJAAAAAAAAAAAASCCOzuJAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAJAAAAAAAAAAAASCCOzuJAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'], html5: true, volume: 0 });
+          const silent = new Howl({ src: ['data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIWFhYW5uYWFuYW5uYW5uYW5uYW5uYW5uYW5uYW5uYW5u//OEAAAAAAAAAAAAAAAAAAAAAAAAMGluZ2QAAAAcAAAABAAAASFycnJyc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nz//OEAAAAAAAAAAAAAAAAAAAAAAAATGF2YzU4Ljc2AAAAAAAAAAAAAAAAJAAAAAAAAAAAASCCOzuJAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAJAAAAAAAAAAAASCCOzuJAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'], html5: true, volume: 0 });
           silent.play();
         }
       };
@@ -68,7 +66,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     }
 
     initialize() {
-      // Favorites init removed to avoid duplication
+      if (Favorites && Favorites.init) Favorites.init();
     }
 
     prepareContext() {
@@ -97,20 +95,12 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         if (newIdx >= 0) this.currentIndex = newIdx;
       }
 
-      // ТЗ: не прерывать playback при перестройке, если это тот же трек
-      const currentTrack = this.getCurrentTrack();
-      const sameTrack = currentTrack && this.sound && currentTrack.uid === targetUid;
+      this._skipSession = { token: 0, count: 0, max: this.playlist.length };
 
-      if (sameTrack && wasPlaying && opts.preservePosition) {
-          // Playback продолжается, просто обновили контекст
-          this._emit('onTrackChange', currentTrack, this.currentIndex);
-          this._updMedia();
-      } else {
-          if (wasPlaying) this.load(this.currentIndex, { autoPlay: true, resumePosition: opts.preservePosition ? prevPos : 0 });
-          else {
-            this._emit('onTrackChange', this.getCurrentTrack(), this.currentIndex);
-            this._updMedia();
-          }
+      if (wasPlaying) this.load(this.currentIndex, { autoPlay: true, resumePosition: opts.preservePosition ? prevPos : 0 });
+      else {
+        this._emit('onTrackChange', this.getCurrentTrack(), this.currentIndex);
+        this._updMedia();
       }
     }
 
@@ -201,24 +191,22 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       const token = ++this._loadToken;
       this.currentIndex = index;
       
+      if (!opts.isAutoSkip) this._skipSession = { token, count: 0, max: this.playlist.length };
+
       const om = getOfflineManager();
-      
-      // ТЗ 7.4.3: Резолвер использует ActivePlaybackQuality
-      const res = await resolvePlaybackSource({ track });
+      const res = await resolvePlaybackSource({ track }); // Auto-detect mode inside resolver
       
       if (token !== this._loadToken) return;
 
       this._emit('onTrackChange', track, index);
 
-      // --- ТЗ 7.5.3: Сценарий отсутствия сети / R3 ---
+      // --- CRITICAL FIX 1: No stop() on missing source ---
       if (!res.url) {
-        this._unload(true); // Stop current
-        
-        // В режиме R3: Модалка (7.5.4)
         if (om.getMode() === 'R3') {
+            this.pause(); // Just pause, don't unload completely
             W.Modals?.confirm?.({
                 title: '100% OFFLINE',
-                textHtml: 'Трек не найден в загруженном наборе.<br>В режиме 100% Offline сеть запрещена.',
+                textHtml: 'Трек не найден локально.<br>В режиме 100% Offline сеть запрещена.',
                 confirmText: 'Открыть настройки',
                 cancelText: 'ОК',
                 onConfirm: () => { import('../scripts/ui/offline-modal.js').then(m => m.openOfflineModal()); }
@@ -227,27 +215,38 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
             return;
         }
 
-        // В R0/R1/R2: Автоскип (упрощенная реализация 7.5.3 для v1.0)
-        // Если мы не можем играть, пробуем следующий, но не спамим toast'ами
+        // Auto-skip logic for R0/R1/R2
+        if (this._skipSession.count >= this._skipSession.max) {
+           W.NotificationSystem?.error('Нет доступных треков');
+           this.pause();
+           this._stopTick();
+           return;
+        }
+        
         console.warn(`[Player] Source missing for ${track.uid}, skipping...`);
+        // Не стопаем текущий, если он еще играет (хотя в реале мы уже перешли на новый index)
+        // Но так как URL нет, мы просто переходим дальше.
         
         if (!opts._skipChain) opts._skipChain = 0;
-        if (opts._skipChain < this.playlist.length) {
-            const nextIdx = (index + (opts.dir || 1) + this.playlist.length) % this.playlist.length;
-            setTimeout(() => this.load(nextIdx, { ...opts, autoPlay: true, _skipChain: opts._skipChain + 1 }), 100);
-        } else {
-            W.NotificationSystem?.error('Нет доступных треков для воспроизведения');
-            this._stopTick();
-        }
+        setTimeout(() => {
+           if (token === this._loadToken) {
+             this._skipSession.count++;
+             const nextIdx = (index + (opts.dir || 1) + this.playlist.length) % this.playlist.length;
+             if (nextIdx !== index) this.load(nextIdx, { ...opts, autoPlay: true, _skipChain: opts._skipChain + 1 });
+           }
+        }, 100);
         return;
       }
 
-      // --- ТЗ 4.2 / 1.1: Quiet Switch (Swap) vs Full Load ---
-      const isHotSwap = opts.isHotSwap; // Флаг тихой замены
-      if (!isHotSwap) this._unload(true); // Обычная загрузка - стопаем предыдущий
+      // --- CRITICAL FIX 2: Hot Swap Logic ---
+      const isHotSwap = !!opts.isHotSwap;
+      const oldSound = this.sound; // Keep reference
 
-      // ТЗ 16.1: WebAudio backend для офлайна (isLocal), HTML5 для стриминга (network)
-      // Если res.isLocal -> html5: false. Если сеть -> html5: true.
+      if (!isHotSwap) {
+          this._unload(true); // Normal load: stop previous
+      }
+
+      // ТЗ 16.1: WebAudio backend для офлайна (isLocal), HTML5 для стриминга
       const useHtml5 = !res.isLocal;
 
       const newSound = new Howl({
@@ -258,6 +257,12 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         autoplay: !!opts.autoPlay,
         onload: () => {
           if (token !== this._loadToken) { newSound.unload(); return; }
+          
+          // Hot Swap: unload old sound only after new one is ready
+          if (isHotSwap && oldSound) {
+              try { oldSound.unload(); } catch(e) { console.warn('HotSwap unload err', e); }
+          }
+
           if (opts.resumePosition) newSound.seek(opts.resumePosition);
           this._updMedia();
         },
@@ -282,7 +287,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         },
         onloaderror: (id, e) => {
            console.error('Load Error', e);
-           // Retry logic for network
+           // Retry only if it was network
            if (token === this._loadToken && !res.isLocal) {
               W.NotificationSystem?.warning('Ошибка сети, следующая...');
               setTimeout(() => this.next(), 1000);
@@ -292,14 +297,12 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
       this.sound = newSound;
 
-      // ТЗ 7.6.1: В R0 "никакое аудио по факту проигрывания не сохраняется"
-      // Скачиваем в playbackCache только если разрешено режимом
+      // --- CRITICAL FIX 3: Use effectiveQuality ---
       const mode = om.getMode();
       if (track.uid && mode !== 'R0' && mode !== 'R3') {
-         // Для R1/R2 используем приоритет P0
          om.enqueueAudioDownload({ 
              uid: track.uid, 
-             quality: res.quality, // Качаем то, что пытаемся играть (PQ/CQ)
+             quality: res.effectiveQuality, // Correct field
              priority: 100, 
              kind: 'playbackCache' 
          });
@@ -331,11 +334,11 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       localStorage.setItem(LS_PQ, next);
       window.dispatchEvent(new CustomEvent('offline:uiChanged'));
       
-      // ТЗ 4.2: Quiet Switch (без stop)
-      if (this.currentIndex >= 0) {
+      // Quiet Switch
+      if (this.currentIndex >= 0 && this.sound) {
           const wasPlaying = this.isPlaying();
           const pos = this.getPosition();
-          // Вызываем load с флагом isHotSwap
+          // Pass isHotSwap flag
           this.load(this.currentIndex, { 
               autoPlay: wasPlaying, 
               resumePosition: pos, 
@@ -363,8 +366,6 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       this._emitFav(u, liked, opts.albumKey);
 
       if (!liked && source === 'favorites' && W.AlbumsManager?.getCurrentAlbum?.() === W.SPECIAL_FAVORITES_KEY) {
-         // Логика "если единственный активный трек удален -> stop" (ТЗ)
-         // Здесь упрощенно: если играл текущий, переходим к следующему
          if (safeStr(this.getCurrentTrack()?.uid) === u) {
             const hasActive = Favorites.getSnapshot().some(i => !i.inactiveAt);
             if (!hasActive) this.stop();
