@@ -53,10 +53,11 @@ self.addEventListener('install', (e) => {
     caches.open(CORE_CACHE).then(async (cache) => {
       // Пытаемся кэшировать всё, но не падаем если один файл 404
       const promises = STATIC_ASSETS.map(url => {
-        const req = new Request(url); // FIX: Create Request object
+        const req = new Request(url); 
         return fetch(req).then(res => {
-          if (res.ok) return cache.put(req, res);
-          console.warn('SW: Failed to cache', url);
+          // Защита от редиректов и ошибок. res.redirected может быть undefined в старых браузерах, но res.ok=true для 200.
+          if (res.ok && !res.redirected) return cache.put(req, res);
+          console.warn('SW: Skipped caching (redirect or fail):', url);
         }).catch(err => console.warn('SW: Fetch error', url, err));
       });
       await Promise.all(promises);
