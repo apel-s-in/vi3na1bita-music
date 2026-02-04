@@ -85,11 +85,39 @@
     setTimeout(() => {
         const outClick = (e) => { 
             if (menu && !menu.contains(e.target) && !btn.contains(e.target)) {
-                menu.remove(); menu = null; document.removeEventListener('click', outClick); 
+                cleanMenu(); 
             }
         };
+        // Сохраняем ссылку для очистки
+        menu._outClick = outClick;
         document.addEventListener('click', outClick);
     }, 0);
+    
+    const cleanMenu = () => {
+        if(menu?._outClick) document.removeEventListener('click', menu._outClick);
+        if(menu) menu.remove();
+        menu = null;
+    };
+
+    menu.addEventListener('click', (e) => {
+      // ... (внутри обработчиков заменяем remove() на cleanMenu())
+      const t = e.target.closest('[data-a]');
+      if (!t) return;
+      e.stopPropagation();
+      const a = t.dataset.a;
+      
+      if (a === 'off') stop();
+      else if (a === 'm') {
+        const m = parseInt(t.dataset.v);
+        set(now() + m * 60000);
+        W.NotificationSystem?.success?.(`⏰ Таймер: ${m} мин`);
+      } else if (a === 'time') {
+        cleanMenu(); // Закрываем меню перед открытием модалки
+        openTimeModal();
+        return;
+      }
+      if (a !== 'noop') cleanMenu();
+    });
 
     menu.addEventListener('click', (e) => {
       const t = e.target.closest('[data-a]');
