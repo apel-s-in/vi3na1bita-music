@@ -82,8 +82,9 @@ export function registerTrack(raw, albumMeta = {}) {
     audio: urlHi,
     audio_low: urlLo,
     sources: { audio: { hi: urlHi, lo: urlLo } },
-    sizeHi: Number(raw.size || raw.sizeHi || 0),
-    sizeLo: Number(raw.size_low || raw.sizeLo || 0),
+    // G1: Строгая нормализация
+    sizeHi: Number(raw.sizeHi || raw.size || 0),
+    sizeLo: Number(raw.sizeLo || raw.size_low || 0),
     lyrics: lyricsUrl,
     fulltext: fulltextUrl,
     hasLyrics: !!(lyricsUrl || raw.hasLyrics),
