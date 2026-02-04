@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-230e59e18179aca563329beb000e73b87fe1740c.idx
-│   │       ├── pack-230e59e18179aca563329beb000e73b87fe1740c.pack
-│   │       └── pack-230e59e18179aca563329beb000e73b87fe1740c.rev
+│   │       ├── pack-6f5d2a544dcf59df88725986de2b47e1f38ef0ec.idx
+│   │       ├── pack-6f5d2a544dcf59df88725986de2b47e1f38ef0ec.pack
+│   │       └── pack-6f5d2a544dcf59df88725986de2b47e1f38ef0ec.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 08:17:27 UTC
+Сгенерировано: 2026-02-04 08:47:23 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2167,11 +2167,11 @@ export default NavigationManager;
 
 //=================================================
 // FILE: /scripts/app/offline-ui-bootstrap.js
-import { OfflineManager } from '../offline/offline-manager.js';
+import { getOfflineManager } from '../offline/offline-manager.js';
 import { openOfflineModal } from '../ui/offline-modal.js';
 
 // Singleton instance holder
-const UI = window.OfflineUI = window.OfflineUI || { offlineManager: new OfflineManager() };
+const UI = window.OfflineUI = window.OfflineUI || { offlineManager: getOfflineManager() };
 const KEY_ALERT = 'offline:alert:v1';
 
 // Helpers
