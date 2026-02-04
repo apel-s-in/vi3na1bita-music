@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c21154bbc43fffb88c47a19cfd793c50b66c4e75.idx
-│   │       ├── pack-c21154bbc43fffb88c47a19cfd793c50b66c4e75.pack
-│   │       └── pack-c21154bbc43fffb88c47a19cfd793c50b66c4e75.rev
+│   │       ├── pack-6d7f71af0e8e43c94059c90b44a2384cf5bf3caf.idx
+│   │       ├── pack-6d7f71af0e8e43c94059c90b44a2384cf5bf3caf.pack
+│   │       └── pack-6d7f71af0e8e43c94059c90b44a2384cf5bf3caf.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 07:42:36 UTC
+Сгенерировано: 2026-02-04 07:43:32 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2161,6 +2161,8 @@ class GalleryManager {
       finish();
     } else {
       const img = new Image();
+      // Очистка предыдущего загрузчика, если он был
+      if(this.ldr) { this.ldr.onload = null; this.ldr.onerror = null; this.ldr.src = ''; }
       this.ldr = img;
       img.decoding = 'async';
       img.referrerPolicy = 'no-referrer';
