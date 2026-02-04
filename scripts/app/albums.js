@@ -83,6 +83,10 @@ class AlbumsManager {
       // ✅ КРИТИЧНО: Сразу же готовим аудио-контекст по клику (User Gesture)
       if (window.playerCore?.prepareContext) window.playerCore.prepareContext();
 
+      // M1: В режиме Избранного клики обрабатывает bindsFavoritesList (scripts/ui/favorites-view.js)
+      // чтобы корректно поддерживать Soft Delete (серые строки) и модалки.
+      if (this.curr === FAV) return;
+
       const trk = e.target.closest('.track');
       if (!trk) return;
 
@@ -131,7 +135,11 @@ class AlbumsManager {
 
     window.playerCore?.onFavoritesChanged((d) => {
       const s = d?.liked ? STAR_ON : STAR_OFF;
-      document.querySelectorAll(`.like-star[data-album="${CSS.escape(d?.albumKey)}"][data-uid="${CSS.escape(d?.uid)}"]`).forEach(el => el.src = s);
+      // F2: Поддержка обновления звезд даже если albumKey не передан (ищем по uid)
+      const sel = d?.albumKey 
+        ? `.like-star[data-album="${CSS.escape(d.albumKey)}"][data-uid="${CSS.escape(d.uid)}"]`
+        : `.like-star[data-uid="${CSS.escape(d?.uid)}"]`;
+      document.querySelectorAll(sel).forEach(el => el.src = s);
     });
   }
 
