@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3054d9b32a952dd729cc069bd847bb818ee59c25.idx
-│   │       ├── pack-3054d9b32a952dd729cc069bd847bb818ee59c25.pack
-│   │       └── pack-3054d9b32a952dd729cc069bd847bb818ee59c25.rev
+│   │       ├── pack-00a7f53efced684d9463541b65ffef58d100c332.idx
+│   │       ├── pack-00a7f53efced684d9463541b65ffef58d100c332.pack
+│   │       └── pack-00a7f53efced684d9463541b65ffef58d100c332.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 09:20:56 UTC
+Сгенерировано: 2026-02-04 09:22:47 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2501,10 +2501,6 @@ export function attachPlaybackCache() {
         rafId: null
     };
 
-    const throttledCacheUpdate = U.func.throttle((pct) => {
-       if (dom.cacheFill) dom.cacheFill.style.width = `${pct}%`;
-    }, 200);
-
     function init() {
         if (!W.playerCore || !W.albumsIndex) return setTimeout(init, 100);
 
@@ -2599,12 +2595,7 @@ export function attachPlaybackCache() {
     function cacheDomElements(blk) {
         const q = (s) => blk.querySelector(s);
         dom.fill = q('#player-progress-fill');
-        dom.cacheFill = q('#player-cache-fill');
-        if (!dom.cacheFill && dom.fill) {
-            dom.cacheFill = D.createElement('div');
-            dom.cacheFill.id = 'player-cache-fill';
-            dom.fill.parentElement.insertBefore(dom.cacheFill, dom.fill);
-        }
+        // Cache overlay is handled by scripts/ui/cache-progress-overlay.js
         dom.bar = q('#player-progress-bar');
         dom.timeElapsed = q('#time-elapsed');
         dom.timeRemaining = q('#time-remaining');
@@ -2698,7 +2689,7 @@ export function attachPlaybackCache() {
         'animation-btn': () => W.LyricsController?.toggleAnimation(),
         'lyrics-text-btn': () => W.LyricsModal?.show(),
         'pulse-btn': () => actions.togglePulse(),
-        'sleep-timer-btn': () => W.SleepTimer?.show(),
+        // 'sleep-timer-btn': handled by scripts/ui/sleep.js delegation
         'stats-btn': () => window.StatisticsModal?.show(),
         'track-download-btn': (b) => { if (!b.getAttribute('href')) U.ui.toast('Скачивание недоступно', 'error'); }
     };
