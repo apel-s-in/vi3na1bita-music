@@ -1,7 +1,4 @@
 // scripts/app/playback-cache-bootstrap.js
-// Интеграция Playback Cache окна PREV/CUR/NEXT с PlayerCore.
-// Без вмешательства в воспроизведение: только планирование загрузок через очередь.
-
 import { PlaybackCacheManager } from '../offline/playback-cache.js';
 import { getTrackByUid } from './track-registry.js';
 
@@ -13,21 +10,16 @@ function getPQ() {
 }
 
 function getFavoritesInactiveSet() {
-  // ✅ Источник истины для inactive — PlayerCore.getFavoritesState().
-  // Это не зависит от того, построен ли window.favoritesRefsModel.
   try {
     const pc = window.playerCore;
     if (!pc?.getFavoritesState) return new Set();
-
     const st = pc.getFavoritesState();
     const inactive = Array.isArray(st?.inactive) ? st.inactive : [];
-
     const set = new Set();
     inactive.forEach((t) => {
       const uid = String(t?.uid || '').trim();
       if (uid) set.add(uid);
     });
-
     return set;
   } catch {
     return new Set();
@@ -56,37 +48,26 @@ export function attachPlaybackCache() {
       ? getFavoritesInactiveSet()
       : new Set();
 
-    return {
-      list,
-      curUid,
-      favoritesInactive,
-      direction
-    };
+    return { list, curUid, favoritesInactive, direction };
   };
 
   const mgr = window.OfflineUI?.offlineManager;
   const queue = mgr?.queue || null;
 
-  const pcm = new PlaybackCacheManager({
-    queue,
-    getPlaylistCtx
-  });
-
+  const pcm = new PlaybackCacheManager({ queue, getPlaylistCtx });
   const trackProvider = (uid) => getTrackByUid(uid);
 
   async function planWindow() {
-    const pq = getPQ();
+    // CRITICAL FIX: Use ActivePlaybackQuality (respects R2/CQ), fallback to PQ
+    const mgr = window.OfflineUI?.offlineManager;
+    const activeQ = mgr?.getActivePlaybackQuality ? mgr.getActivePlaybackQuality() : getPQ();
+
     try { 
-      // 1. Формируем список UID текущего окна
-      // (вызов getLastWindow удалён как неиспользуемый)
+      await pcm.ensureWindowFullyCached(activeQ, trackProvider); 
       
-      await pcm.ensureWindowFullyCached(pq, trackProvider); 
-      
-      // 2. Сообщаем менеджеру: "Оставь только эти, остальной мусор удали"
       const currentWindow = pcm.getLastWindow(); 
       const uids = [currentWindow.cur, ...currentWindow.prev, ...currentWindow.next].filter(Boolean);
       
-      const mgr = window.OfflineUI?.offlineManager;
       if (mgr?.updatePlaybackWindow) {
         mgr.updatePlaybackWindow(uids);
       }
@@ -102,21 +83,11 @@ export function attachPlaybackCache() {
       lastIndex = newIndex;
       return;
     }
-
     const prev = (lastIndex - 1 + len) % len;
     const next = (lastIndex + 1) % len;
 
-    if (newIndex === prev) {
-      direction = 'backward';
-      lastIndex = newIndex;
-      return;
-    }
-
-    if (newIndex === next) {
-      direction = 'forward';
-      lastIndex = newIndex;
-      return;
-    }
+    if (newIndex === prev) { direction = 'backward'; lastIndex = newIndex; return; }
+    if (newIndex === next) { direction = 'forward'; lastIndex = newIndex; return; }
 
     direction = 'forward';
     lastIndex = newIndex;
