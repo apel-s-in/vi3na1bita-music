@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1eb217c73eb1c175ac8bf94bce07f2e139b231e0.idx
-│   │       ├── pack-1eb217c73eb1c175ac8bf94bce07f2e139b231e0.pack
-│   │       └── pack-1eb217c73eb1c175ac8bf94bce07f2e139b231e0.rev
+│   │       ├── pack-cd70f5418c8d8077b44854cf80a3eaff55b27910.idx
+│   │       ├── pack-cd70f5418c8d8077b44854cf80a3eaff55b27910.pack
+│   │       └── pack-cd70f5418c8d8077b44854cf80a3eaff55b27910.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 07:08:06 UTC
+Сгенерировано: 2026-02-04 07:10:07 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7297,7 +7297,6 @@ window.preloadAllAlbumsTrackIndex = preloadAllAlbumsTrackIndex;
 // FILE: /scripts/ui/statistics-modal.js
 // scripts/ui/statistics-modal.js
 import { getOfflineManager } from '../offline/offline-manager.js';
-// getAllTracks removed (dead import)
 
 (function(W) {
   'use strict';
