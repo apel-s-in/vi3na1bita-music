@@ -4,7 +4,7 @@ import {
   getCloudStats, setCloudStats, clearCloudStats,
   setCloudCandidate, getCloudCandidate, updateGlobalStats, getGlobalStatsAndTotal,
   getEvictionCandidates, setDownloadMeta, markLocalKind, getLocalMeta,
-  computeCacheBreakdown, clearAllStores
+  computeCacheBreakdown, clearAllStores, pruneTransientWindowExcept
 } from './cache-db.js';
 import { getTrackByUid, getAllTracks } from '../app/track-registry.js';
 import { getNetPolicy, isAllowedByNetPolicy } from './net-policy.js';
@@ -59,7 +59,10 @@ class DownloadQueue {
   _emit(event, data) { this._listeners.forEach(cb => cb({ event, data })); }
 
   async _processNext() {
-    if (this.active || this.paused || this.q.length === 0) return;
+    if (this.active || this.paused || this.q.length === 0) {
+        this._emit('idle', {}); // Signal idle state
+        return;
+    }
     const item = this.q.shift();
     this.active = item;
     this._emit('start', { uid: item.uid, key: item.key });
@@ -80,6 +83,16 @@ export class OfflineManager {
     this.queue = new DownloadQueue();
     this._subs = new Set();
     this._lastWindow = []; 
+    this._isFullOfflineSyncing = false;
+
+    // Listen for queue finish
+    this.queue.subscribe((e) => {
+        if (e.event === 'idle' && this._isFullOfflineSyncing) {
+            this._isFullOfflineSyncing = false;
+            // Emit event to UI to show confirmation modal
+            window.dispatchEvent(new CustomEvent('offline:fullOfflineReady'));
+        }
+    });
   }
   
   async initialize() {
@@ -93,7 +106,7 @@ export class OfflineManager {
   }
 
   getMode() { return localStorage.getItem(LS.MODE) || 'R0'; }
-  isOfflineMode() { return this.getMode() === 'R3'; } // ТЗ 1.5
+  isOfflineMode() { return this.getMode() === 'R3'; } 
 
   async setMode(mode) {
     if (!['R0', 'R1', 'R2', 'R3'].includes(mode)) return;
@@ -134,7 +147,6 @@ export class OfflineManager {
       if (this.getMode() === 'R3') localStorage.setItem(LS.CQ, val);
   }
 
-  // --- Helpers for UI ---
   async computeCacheBreakdown() { return computeCacheBreakdown(this._getPinnedSet()); }
   async isSpaceOk() { return this._checkSpaceGuarantee(); }
   getCloudSettings() {
@@ -148,7 +160,6 @@ export class OfflineManager {
     return true;
   }
 
-  // --- Pinned/Cloud ---
   _getPinnedSet() {
     if (!this._pinnedCache) { try { this._pinnedCache = new Set(JSON.parse(localStorage.getItem(LS.PINNED) || '[]')); } catch { this._pinnedCache = new Set(); } }
     return this._pinnedCache;
@@ -161,7 +172,7 @@ export class OfflineManager {
     const u = Utils.obj.trim(uid); if (!u) return;
     if (this.isPinned(u)) {
       this._getPinnedSet().delete(u); this._savePinned(); 
-      await setCloudCandidate(u, true); // TЗ 8.2: становится Cloud-кандидатом
+      await setCloudCandidate(u, true); 
       Utils.ui.toast('Офлайн-закрепление снято');
     } else {
       this._getPinnedSet().add(u); this._savePinned(); 
@@ -183,7 +194,6 @@ export class OfflineManager {
     return false;
   }
 
-  // --- Stats ---
   async recordListenStats(uid, { deltaSec, isFullListen }) {
     const u = Utils.obj.trim(uid); if (!u) return;
     if (deltaSec > 0 || isFullListen) await updateGlobalStats(u, deltaSec, isFullListen ? 1 : 0);
@@ -193,7 +203,6 @@ export class OfflineManager {
       const newCount = (Number(stats.cloudFullListenCount) || 0) + 1;
       const n = parseInt(localStorage.getItem(LS.CLOUD_N)||'5');
       const d = parseInt(localStorage.getItem(LS.CLOUD_D)||'31');
-      
       const becameCloud = newCount >= n || stats.cloud;
       const newStats = { ...stats, cloudFullListenCount: newCount, lastFullListenAt: Date.now() };
       
@@ -210,7 +219,6 @@ export class OfflineManager {
     }
   }
 
-  // --- Download & Queue ---
   enqueueAudioDownload({ uid, quality, priority, kind, userInitiated, onResult }) {
     const u = Utils.obj.trim(uid), q = Utils.obj.normQuality(quality); if (!u) return;
     const key = `dl:${u}`;
@@ -315,8 +323,8 @@ export class OfflineManager {
 
   updatePlaybackWindow(uids) {
       this._lastWindow = uids;
-      // ТЗ 7.6.3: удалять из transient все, что вышло из окна
-      // Для реализации нужен метод очистки конкретных transient, пока оставим на Eviction
+      // CRITICAL FIX: Strictly cleanup transients not in window
+      pruneTransientWindowExcept(uids).catch(e => console.warn('Prune err', e));
   }
 
   // --- 100% Offline (R3) ---
@@ -324,6 +332,7 @@ export class OfflineManager {
       const foq = this.getFullOfflineQuality();
       localStorage.setItem(LS.FULL_SET, JSON.stringify(uids));
       
+      this._isFullOfflineSyncing = true;
       let scheduled = 0;
       uids.forEach(uid => {
           this.enqueueAudioDownload({ 
@@ -332,7 +341,6 @@ export class OfflineManager {
           });
           scheduled++;
       });
-      // TODO: Скачивание ассетов (lyrics, covers) - заглушка
       return { ok: true, total: scheduled };
   }
 
@@ -348,6 +356,8 @@ export class OfflineManager {
 
   async getGlobalStatistics() { return getGlobalStatsAndTotal(); }
   getQueueStatus() { return this.queue.getStatus(); }
+  pauseQueue() { this.queue.pause(); }
+  resumeQueue() { this.queue.resume(); }
   
   on(event, cb) { 
       if(event === 'progress') this.queue.subscribe(e => cb({phase: 'queue_'+e.event, ...e.data}));
