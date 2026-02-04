@@ -110,7 +110,12 @@ class GalleryManager {
     const slot = $('cover-slot');
     if (!slot || !it) return (this.lck = false);
 
-    if (this.ldr) { this.ldr.onload = this.ldr.onerror = null; this.ldr = null; }
+    if (this.ldr) { 
+        this.ldr.onload = null; 
+        this.ldr.onerror = null; 
+        this.ldr.src = ''; 
+        this.ldr = null; 
+    }
 
     const finish = () => { setTimeout(() => { this._pre(); this.lck = false; }, 200); };
 
