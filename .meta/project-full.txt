@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e6fc50e9f85004f8444f9a5fbf0dfefadc1bc160.idx
-│   │       ├── pack-e6fc50e9f85004f8444f9a5fbf0dfefadc1bc160.pack
-│   │       └── pack-e6fc50e9f85004f8444f9a5fbf0dfefadc1bc160.rev
+│   │       ├── pack-c21154bbc43fffb88c47a19cfd793c50b66c4e75.idx
+│   │       ├── pack-c21154bbc43fffb88c47a19cfd793c50b66c4e75.pack
+│   │       └── pack-c21154bbc43fffb88c47a19cfd793c50b66c4e75.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 07:41:55 UTC
+Сгенерировано: 2026-02-04 07:42:36 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8789,6 +8789,10 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       if (this.qualityMode === next) return;
       this.qualityMode = next;
       localStorage.setItem(LS_PQ, next);
+      
+      // Уведомляем UI о смене качества
+      window.dispatchEvent(new CustomEvent('offline:uiChanged'));
+      
       if (this.isPlaying()) this.load(this.currentIndex, { autoPlay: true, resumePosition: this.getPosition() });
     }
 
