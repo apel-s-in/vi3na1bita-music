@@ -1,7 +1,7 @@
 import { getOfflineManager } from '../scripts/offline/offline-manager.js';
 import { resolvePlaybackSource } from '../scripts/offline/track-resolver.js';
 import { getTrackByUid } from '../scripts/app/track-registry.js';
-import FavoritesV2 from '../scripts/core/favorites-v2.js';
+import { Favorites } from '../scripts/core/favorites-manager.js';
 import { ensureMediaSession } from './player-core/media-session.js';
 import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
