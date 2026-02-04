@@ -274,8 +274,8 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
     _unload(silent) {
       if (this.sound) { 
-        this.sound.stop(); 
-        this.sound.unload(); 
+        try { this.sound.stop(); } catch {}
+        try { this.sound.unload(); } catch {}
         this.sound = null; 
       }
       this._stopTick();
