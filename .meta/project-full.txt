@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8783759dcbba3b565c08684a862d5457a56d3add.idx
-│   │       ├── pack-8783759dcbba3b565c08684a862d5457a56d3add.pack
-│   │       └── pack-8783759dcbba3b565c08684a862d5457a56d3add.rev
+│   │       ├── pack-3054d9b32a952dd729cc069bd847bb818ee59c25.idx
+│   │       ├── pack-3054d9b32a952dd729cc069bd847bb818ee59c25.pack
+│   │       └── pack-3054d9b32a952dd729cc069bd847bb818ee59c25.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 09:19:24 UTC
+Сгенерировано: 2026-02-04 09:20:56 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1530,6 +1530,10 @@ class AlbumsManager {
       // ✅ КРИТИЧНО: Сразу же готовим аудио-контекст по клику (User Gesture)
       if (window.playerCore?.prepareContext) window.playerCore.prepareContext();
 
+      // M1: В режиме Избранного клики обрабатывает bindsFavoritesList (scripts/ui/favorites-view.js)
+      // чтобы корректно поддерживать Soft Delete (серые строки) и модалки.
+      if (this.curr === FAV) return;
+
       const trk = e.target.closest('.track');
       if (!trk) return;
 
@@ -1578,7 +1582,11 @@ class AlbumsManager {
 
     window.playerCore?.onFavoritesChanged((d) => {
       const s = d?.liked ? STAR_ON : STAR_OFF;
-      document.querySelectorAll(`.like-star[data-album="${CSS.escape(d?.albumKey)}"][data-uid="${CSS.escape(d?.uid)}"]`).forEach(el => el.src = s);
+      // F2: Поддержка обновления звезд даже если albumKey не передан (ищем по uid)
+      const sel = d?.albumKey 
+        ? `.like-star[data-album="${CSS.escape(d.albumKey)}"][data-uid="${CSS.escape(d.uid)}"]`
+        : `.like-star[data-uid="${CSS.escape(d?.uid)}"]`;
+      document.querySelectorAll(sel).forEach(el => el.src = s);
     });
   }
 
