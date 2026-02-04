@@ -81,5 +81,36 @@ export const ModalTemplates = {
         `)}
       </div>
     `;
+  },
+
+  statsBody: (data) => {
+    const U = window.Utils;
+    const fmtDur = (s) => {
+        const h = Math.floor(s / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        return h > 0 ? `${h}ч ${m}м` : `${m} мин`;
+    };
+
+    const rows = data.tracks.map((t, i) => `
+      <div class="st-row">
+        <span class="st-num">${i + 1}.</span>
+        <span class="st-uid">${t.title || t.uid}</span>
+        <span class="st-vals">${t.fullListens} просл. / ${fmtDur(t.seconds)}</span>
+      </div>
+    `).join('');
+
+    return `
+      <div class="st-container">
+        <div class="st-total">
+          <div>Всего времени: <b>${fmtDur(data.totalSeconds)}</b></div>
+          <div>Полных прослушиваний: <b>${data.totalFullListens}</b></div>
+        </div>
+        <div class="st-list-header">Топ треков (>3 прослушиваний):</div>
+        <div class="st-list">
+          ${rows || '<div class="st-empty">Нет данных</div>'}
+        </div>
+        <div class="st-note">Эта статистика (Global) никогда не сбрасывается.</div>
+      </div>
+    `;
   }
 };
