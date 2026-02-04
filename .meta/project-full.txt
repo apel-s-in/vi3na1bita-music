@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-df6f5a775fbebe603a3c489579ce9bbfc78e0278.idx
-│   │       ├── pack-df6f5a775fbebe603a3c489579ce9bbfc78e0278.pack
-│   │       └── pack-df6f5a775fbebe603a3c489579ce9bbfc78e0278.rev
+│   │       ├── pack-9d989cf5a5b9f6e1a4acd3b325b4cd234ef0178d.idx
+│   │       ├── pack-9d989cf5a5b9f6e1a4acd3b325b4cd234ef0178d.pack
+│   │       └── pack-9d989cf5a5b9f6e1a4acd3b325b4cd234ef0178d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -386,7 +386,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 08:12:22 UTC
+Сгенерировано: 2026-02-04 08:13:22 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4869,7 +4869,7 @@ import {
 } from './cache-db.js';
 import { getTrackByUid, getAllTracks } from '../app/track-registry.js';
 import { getNetPolicy, isAllowedByNetPolicy } from './net-policy.js';
-import FavoritesV2 from '../core/favorites-v2.js'; // FIX: Import Favorites
+import { Favorites } from '../core/favorites-manager.js';
 
 const Utils = window.Utils; 
 
@@ -5179,7 +5179,7 @@ export class OfflineManager {
         if (Array.isArray(selection.keys)) selection.keys.forEach(u => uids.add(u));
         else {
             // FIX: Use real favorites, not pinned
-            const favs = FavoritesV2.readLikedSet();
+            const favs = Favorites.readLikedSet();
             favs.forEach(u => uids.add(u));
         }
       } else {
