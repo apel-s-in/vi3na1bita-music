@@ -69,24 +69,29 @@ export class PlaybackCacheManager {
 
     const tasks = [];
     
-    // Формируем задачи с приоритетами (ТЗ 7.7)
+    // Формируем задачи с приоритетами (ТЗ 7.7, D1)
+    const { direction } = this._getCtx();
+    
     // 1. CUR (P0)
     if (win.cur && !bad.has(win.cur)) tasks.push({ u: win.cur, p: P_CUR });
 
-    // 2. Сосед по направлению (обычно NEXT) (P1)
-    if (win.next[0] && !bad.has(win.next[0])) tasks.push({ u: win.next[0], p: P_NEXT });
+    // 2. Сосед по направлению (P1)
+    const primary = direction === 'backward' ? win.prev[0] : win.next[0];
+    if (primary && !bad.has(primary)) tasks.push({ u: primary, p: P_NEXT });
 
-    // 3. PREV (P2)
-    if (win.prev[0] && !bad.has(win.prev[0])) tasks.push({ u: win.prev[0], p: P_PREV });
+    // 3. Обратный сосед (P2)
+    const secondary = direction === 'backward' ? win.next[0] : win.prev[0];
+    if (secondary && !bad.has(secondary)) tasks.push({ u: secondary, p: P_PREV });
 
     for (const { u, p } of tasks) {
       const key = `pbc:${pq}:${u}`;
-      
-      // Если уже запланировано в этой сессии - пропускаем
       if (this._sched.has(key)) continue;
 
-      // Если уже скачано (ТЗ 7.9) - пропускаем
-      if (await mgr.isTrackComplete(u, pq)) continue;
+      // D3: Если есть локально в качестве >= PQ, качать не нужно
+      const hasHi = await mgr.isTrackComplete(u, 'hi');
+      const hasLo = await mgr.isTrackComplete(u, 'lo');
+      // Если требуем Lo, а есть Hi - ок. Если требуем Hi, а есть только Lo - качаем.
+      if ((pq === 'lo' && (hasLo || hasHi)) || (pq === 'hi' && hasHi)) continue;
 
       // Проверяем наличие метаданных
       const meta = (typeof trackProvider === 'function' ? trackProvider(u) : getTrackByUid(u));
