@@ -87,8 +87,9 @@ export function attachCacheProgressOverlay() {
   injectCssOnce();
   ensureOverlay();
 
-  const schedule = (window.Utils?.debounceFrame)
-    ? window.Utils.debounceFrame(() => { updateOverlay(); })
+  // L1: Используем правильный путь к утилите
+  const schedule = (window.Utils?.func?.debounceFrame)
+    ? window.Utils.func.debounceFrame(() => { updateOverlay(); })
     : (() => updateOverlay());
 
   // Обновления по событиям OfflineManager
