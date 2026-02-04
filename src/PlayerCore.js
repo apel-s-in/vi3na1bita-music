@@ -198,14 +198,12 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       if (token !== this._loadToken) return;
 
       this._emit('onTrackChange', track, index);
-      this._unload(true);
 
       if (!src.url) {
         // A1: Не уходим в stop/unload при ошибке сети, остаемся в текущем состоянии ожидания
         // C1: Это состояние "сеть недоступна" для данного трека
         if (this._skipSession.count >= this._skipSession.max || getOfflineManager().isOfflineMode()) {
            W.NotificationSystem?.error('Трек недоступен (проверьте сеть)');
-           // Не делаем _unload(true), чтобы сохранить контекст UI
            this._stopTick(); // I2: Остановить статистику
            return;
         }
@@ -221,6 +219,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         return;
       }
 
+      this._unload(true); // Выгружаем предыдущий трек только когда новый готов к загрузке
       this._skipSession.count = 0;
 
       this.sound = new Howl({
