@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4c94d158d72b2f596b20a6d86129e1cac77962fe.idx
-│   │       ├── pack-4c94d158d72b2f596b20a6d86129e1cac77962fe.pack
-│   │       └── pack-4c94d158d72b2f596b20a6d86129e1cac77962fe.rev
+│   │       ├── pack-eb867d8f6cf71efb49c6bd2d613f0bd23767d7a5.idx
+│   │       ├── pack-eb867d8f6cf71efb49c6bd2d613f0bd23767d7a5.pack
+│   │       └── pack-eb867d8f6cf71efb49c6bd2d613f0bd23767d7a5.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 07:02:38 UTC
+Сгенерировано: 2026-02-04 07:04:26 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1605,7 +1605,6 @@ class AlbumsManager {
       $('track-list')?.classList.remove('filtered');
       
       window.PlayerUI?.switchAlbumInstantly?.(key);
-      // window.PlayerState?.save?.(); // Removed: not implemented
     } catch (e) {
       console.error(e);
       window.NotificationSystem?.error('Ошибка загрузки');
