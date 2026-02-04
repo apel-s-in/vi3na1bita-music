@@ -26,7 +26,8 @@
 
       if (needFilter) {
         if (isFavAlbum) {
-           target = source.filter(t => t.uid && core.isFavorite(t.uid));
+           // M1: В альбоме Favorites плейлист уже отфильтрован UI, не трогаем его
+           return;
         } else {
            const likedUids = new Set(core.getLikedUidsForAlbum(alb));
            target = source.filter(t => t.uid && likedUids.has(t.uid));
