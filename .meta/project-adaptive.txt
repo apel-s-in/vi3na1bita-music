@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-80cce32478303df9ef4683500817a4f71ab3820e.idx
-│   │       ├── pack-80cce32478303df9ef4683500817a4f71ab3820e.pack
-│   │       └── pack-80cce32478303df9ef4683500817a4f71ab3820e.rev
+│   │       ├── pack-218c04b609d1b6b1f87cdbf4828dbbe9d0e4aee3.idx
+│   │       ├── pack-218c04b609d1b6b1f87cdbf4828dbbe9d0e4aee3.pack
+│   │       └── pack-218c04b609d1b6b1f87cdbf4828dbbe9d0e4aee3.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -369,7 +369,6 @@ vi3na1bita-music/
 │   │   ├── sysinfo.js
 │   │   └── ui-utils.js
 │   ├── utils/
-│   │   ├── app-utils.js
 │   │   └── sw-manager.js
 │   └── app.js
 ├── src/
@@ -389,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 06:44:13 UTC
+Сгенерировано: 2026-02-04 06:44:46 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7476,15 +7475,6 @@ try {
     getNetworkStatusSafe, isMobile, setBtnActive, setAriaDisabled, waitFor
   });
 } catch {}
-
-//=================================================
-// FILE: /scripts/utils/app-utils.js
-// scripts/app/utils/app-utils.js
-// Фасад над window.Utils и DOM
-export const $ = (id) => document.getElementById(id);
-export const toStr = (v) => (v == null ? '' : String(v));
-export const isMobileUA = () => !!window.Utils?.isMobile?.();
-export const escHtml = (s) => window.Utils?.escapeHtml ? window.Utils.escapeHtml(toStr(s)) : toStr(s);
 
 //=================================================
 // FILE: /scripts/utils/sw-manager.js
