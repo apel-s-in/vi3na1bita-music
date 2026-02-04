@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-674af2cc983ea47481bf0524bbf466b459ca96c3.idx
-│   │       ├── pack-674af2cc983ea47481bf0524bbf466b459ca96c3.pack
-│   │       └── pack-674af2cc983ea47481bf0524bbf466b459ca96c3.rev
+│   │       ├── pack-4c94d158d72b2f596b20a6d86129e1cac77962fe.idx
+│   │       ├── pack-4c94d158d72b2f596b20a6d86129e1cac77962fe.pack
+│   │       └── pack-4c94d158d72b2f596b20a6d86129e1cac77962fe.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 07:02:03 UTC
+Сгенерировано: 2026-02-04 07:02:38 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1903,7 +1903,7 @@ export async function loadFavoritesAlbum(ctx) {
   ctx.renderAlbumTitle('⭐⭐⭐ ИЗБРАННОЕ ⭐⭐⭐', 'fav');
 
   // FIX: Используем глобально доступный метод или проверяем наличие
-  if (window.OfflineUI?.offlineManager && typeof window.preloadAllAlbumsTrackIndex === 'function') {
+  if (window.preloadAllAlbumsTrackIndex) {
      await window.preloadAllAlbumsTrackIndex(); 
   }
 
@@ -2020,7 +2020,7 @@ export async function ensureFavoritesPlayback(ctx, activeList, activeIndex) {
 export async function loadNewsAlbum(ctx) {
   ctx.renderAlbumTitle('📰 НОВОСТИ 📰', 'news');
   
-  // FIX: Используем window.GalleryManager напрямую, так как у ctx (AlbumsManager) нет метода loadGallery
+  // FIX: Используем window.GalleryManager напрямую
   if (window.GalleryManager?.loadGallery) {
       await window.GalleryManager.loadGallery(NEWS);
   }
