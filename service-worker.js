@@ -1,7 +1,7 @@
 // service-worker.js
 // Optimized Service Worker for "Vi3na1bita" (v8.1)
 
-const SW_VERSION = '8.1.2';
+const SW_VERSION = '8.1.3';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
@@ -52,12 +52,13 @@ self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(CORE_CACHE).then(async (cache) => {
       // Пытаемся кэшировать всё, но не падаем если один файл 404
-      const promises = STATIC_ASSETS.map(url => 
-        fetch(url).then(res => {
-          if (res.ok) return cache.put(url, res);
+      const promises = STATIC_ASSETS.map(url => {
+        const req = new Request(url); // FIX: Create Request object
+        return fetch(req).then(res => {
+          if (res.ok) return cache.put(req, res);
           console.warn('SW: Failed to cache', url);
-        }).catch(err => console.warn('SW: Fetch error', url, err))
-      );
+        }).catch(err => console.warn('SW: Fetch error', url, err));
+      });
       await Promise.all(promises);
       return self.skipWaiting();
     })
