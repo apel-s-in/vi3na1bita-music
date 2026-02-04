@@ -417,8 +417,7 @@
         } else W.availableFavoriteIndices = null;
     };
 
-    Object.defineProperty(PlayerUI, 'currentLyrics', { get: () => W.LyricsController?.getCurrentLyrics() || [] });
-    Object.defineProperty(PlayerUI, 'currentLyricsLines', { get: () => W.LyricsController?.getCurrentLyricsLines() || [] });
+    // Removed unused getters
 
     W.PlayerUI = PlayerUI;
     if (D.readyState === 'loading') D.addEventListener('DOMContentLoaded', init); else init();
