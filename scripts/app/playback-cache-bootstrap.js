@@ -78,8 +78,7 @@ export function attachPlaybackCache() {
     const pq = getPQ();
     try { 
       // 1. Формируем список UID текущего окна
-      const w = pcm.getLastWindow(); // Берем из кэша, который обновится внутри ensure
-      // (или вычисляем вручную, но лучше положиться на PCM после его работы)
+      // (вызов getLastWindow удалён как неиспользуемый)
       
       await pcm.ensureWindowFullyCached(pq, trackProvider); 
       
