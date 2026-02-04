@@ -29,8 +29,7 @@
             onPause: updatePlayPauseIcon,
             onStop: updatePlayPauseIcon,
             onEnd: updatePlayPauseIcon,
-            onTick: handleTick,
-            onLoadProgress: throttledCacheUpdate
+            onTick: handleTick
         });
 
         W.playerCore.onFavoritesChanged(() => {
