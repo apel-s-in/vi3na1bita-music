@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9a41a2fc2d3c3ccc8fd76bf4a4791f1d09af7770.idx
-│   │       ├── pack-9a41a2fc2d3c3ccc8fd76bf4a4791f1d09af7770.pack
-│   │       └── pack-9a41a2fc2d3c3ccc8fd76bf4a4791f1d09af7770.rev
+│   │       ├── pack-389e17901fb2bcd0b3e31b0bfd117aea214ebd3a.idx
+│   │       ├── pack-389e17901fb2bcd0b3e31b0bfd117aea214ebd3a.pack
+│   │       └── pack-389e17901fb2bcd0b3e31b0bfd117aea214ebd3a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -358,7 +358,6 @@ vi3na1bita-music/
 │   │   ├── modal-templates.js
 │   │   ├── modals.js
 │   │   ├── news-inline.js
-│   │   ├── news-renderer.js
 │   │   ├── notify.js
 │   │   ├── offline-indicators.js
 │   │   ├── offline-modal.js
@@ -386,7 +385,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 08:16:26 UTC
+Сгенерировано: 2026-02-04 08:17:06 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6450,43 +6449,6 @@ export async function loadAndRenderNewsInline(container) {
       status.classList.add('news-inline__status--error');
     }
   }
-}
-
-//=================================================
-// FILE: /scripts/ui/news-renderer.js
-// scripts/ui/news-renderer.js
-// Единый рендер карточек новостей для inline-страницы (app).
-// Только HTML-генерация, не трогает воспроизведение.
-
-const esc = (s) => window.Utils.escapeHtml(String(s ?? ''));
-
-export function renderNewsCard(it) {
-  const title = esc(it?.title || 'Новость');
-  const date = esc(it?.date || '');
-  const text = esc(it?.text || '');
-  const tags = Array.isArray(it?.tags) ? it.tags : [];
-
-  const media = it?.embedUrl
-    ? `<div class="news-inline__media"><iframe loading="lazy" src="${esc(it.embedUrl)}" allowfullscreen></iframe></div>`
-    : it?.image
-      ? `<div class="news-inline__media"><img loading="lazy" src="${esc(it.image)}" alt=""></div>`
-      : it?.video
-        ? `<div class="news-inline__media"><video controls preload="metadata" src="${esc(it.video)}"></video></div>`
-        : '';
-
-  const tagHtml = tags.length
-    ? `<div class="news-inline__tags">${tags.map((t) => `<span class="news-inline__tag">#${esc(t)}</span>`).join('')}</div>`
-    : '';
-
-  return `
-    <article class="news-inline__card">
-      <div class="news-inline__title">${title}</div>
-      ${date ? `<div class="news-inline__date">${date}</div>` : ''}
-      ${media}
-      ${text ? `<div class="news-inline__text">${text}</div>` : ''}
-      ${tagHtml}
-    </article>
-  `;
 }
 
 //=================================================
