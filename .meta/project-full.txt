@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5b17ba3136f6d161897117841bbb12a89f83e4e5.idx
-│   │       ├── pack-5b17ba3136f6d161897117841bbb12a89f83e4e5.pack
-│   │       └── pack-5b17ba3136f6d161897117841bbb12a89f83e4e5.rev
+│   │       ├── pack-e6fc50e9f85004f8444f9a5fbf0dfefadc1bc160.idx
+│   │       ├── pack-e6fc50e9f85004f8444f9a5fbf0dfefadc1bc160.pack
+│   │       └── pack-e6fc50e9f85004f8444f9a5fbf0dfefadc1bc160.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 07:40:52 UTC
+Сгенерировано: 2026-02-04 07:41:55 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2583,6 +2583,7 @@ export function attachPlaybackCache() {
       const needFilter = isFavAlbum || ls();
 
       const source = core.originalPlaylist || [];
+      // Если исходный плейлист пуст, фильтровать нечего
       if (!source.length) return;
 
       let target = source;
@@ -2595,9 +2596,14 @@ export function attachPlaybackCache() {
            target = source.filter(t => t.uid && likedUids.has(t.uid));
         }
 
-        // Если отфильтрованный список пуст
-        if (!target.length && !isFavAlbum) {
-          W.NotificationSystem?.info('Нет избранных треков. Режим не применен.');
+        // ВАЖНО: Если после фильтрации треков нет (и это не альбом Избранное, где пустота допустима визуально, но не для F режима)
+        if (!target.length) {
+          if (!isFavAlbum) {
+             W.NotificationSystem?.info('Нет избранных треков. Режим не применен.');
+             // Сбрасываем кнопку в UI, так как режим не применился
+             W.Utils?.lsSetBool01(LS_KEY, false);
+             W.PlayerUI?.updateFavoritesBtn?.(); // Обновить кнопку
+          }
           return; 
         }
       }
