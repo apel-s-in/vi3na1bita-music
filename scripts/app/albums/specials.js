@@ -12,7 +12,7 @@ export async function loadFavoritesAlbum(ctx) {
   ctx.renderAlbumTitle('⭐⭐⭐ ИЗБРАННОЕ ⭐⭐⭐', 'fav');
 
   // FIX: Используем глобально доступный метод или проверяем наличие
-  if (window.OfflineUI?.offlineManager && typeof window.preloadAllAlbumsTrackIndex === 'function') {
+  if (window.preloadAllAlbumsTrackIndex) {
      await window.preloadAllAlbumsTrackIndex(); 
   }
 
@@ -129,7 +129,7 @@ export async function ensureFavoritesPlayback(ctx, activeList, activeIndex) {
 export async function loadNewsAlbum(ctx) {
   ctx.renderAlbumTitle('📰 НОВОСТИ 📰', 'news');
   
-  // FIX: Используем window.GalleryManager напрямую, так как у ctx (AlbumsManager) нет метода loadGallery
+  // FIX: Используем window.GalleryManager напрямую
   if (window.GalleryManager?.loadGallery) {
       await window.GalleryManager.loadGallery(NEWS);
   }
