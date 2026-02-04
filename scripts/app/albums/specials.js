@@ -11,8 +11,9 @@ const FAV_COVER = 'img/Fav_logo.png';
 export async function loadFavoritesAlbum(ctx) {
   ctx.renderAlbumTitle('⭐⭐⭐ ИЗБРАННОЕ ⭐⭐⭐', 'fav');
 
-  if (window.OfflineUI?.preloadAllAlbumsTrackIndex) {
-     await window.OfflineUI.preloadAllAlbumsTrackIndex(); 
+  // FIX: Используем глобально доступный метод или проверяем наличие
+  if (window.OfflineUI?.offlineManager && typeof window.preloadAllAlbumsTrackIndex === 'function') {
+     await window.preloadAllAlbumsTrackIndex(); 
   }
 
   $('cover-wrap').style.display = 'none';
@@ -36,18 +37,19 @@ export async function loadFavoritesAlbum(ctx) {
       getModel: getUiModel,
 
       onStarClick: async ({ uid, albumKey }) => {
-        // ✅ ВАЖНО: Если мы не в Избранном, этот обработчик не должен работать
         if (ctx.getCurrentAlbum() !== FAV) return;
-        
+        // FIX: явно указываем source='favorites'
         window.playerCore?.toggleFavorite?.(uid, { source: 'favorites', albumKey });
       },
 
       onActiveRowClick: async ({ uid }) => {
-        // ✅ ВАЖНО: Блокируем перехват клика, если открыт другой альбом
         if (ctx.getCurrentAlbum() !== FAV) return;
 
         const model = getUiModel();
+        // Фильтруем только активные для воспроизведения
         const activeList = model.filter((it) => it && it.__active && !it.isGhost);
+        
+        // FIX: Ищем по __uid, так как модель Favorites UI использует это поле
         const idx = activeList.findIndex((it) => String(it?.__uid || '').trim() === String(uid || '').trim());
         
         if (idx >= 0) await ensureFavoritesPlayback(ctx, activeList, idx);
@@ -55,7 +57,8 @@ export async function loadFavoritesAlbum(ctx) {
 
       onInactiveRowClick: ({ uid, title }) => {
         if (ctx.getCurrentAlbum() !== FAV) return;
-
+        
+        // ВАЖНО: Никакого воспроизведения, только модалка
         window.playerCore?.showInactiveFavoriteModal?.({
           uid, title,
           onDeleted: async () => {
@@ -80,15 +83,27 @@ export async function loadFavoritesAlbum(ctx) {
 export async function ensureFavoritesPlayback(ctx, activeList, activeIndex) {
   if (!activeList?.length) return window.NotificationSystem?.warning('Нет доступных треков');
 
-  // Устанавливаем контекст Избранного
   ctx.setPlayingAlbum(FAV);
 
-  const tracks = activeList.map((it) => ({
-    ...it, 
-    album: 'Избранное', 
-    cover: FAV_COVER,
-    sourceAlbum: it.sourceAlbum || it.__a 
-  }));
+  // FIX: Не делаем spread ...it, чтобы не засорять объект трека UI-мусором (__active, __uid и т.д.)
+  // Собираем чистый объект для плеера.
+  const tracks = activeList.map((it) => {
+      const srcAlbum = it.sourceAlbum || it.__a;
+      return {
+        uid: it.__uid, // ensure uid is passed
+        title: it.title,
+        artist: it.artist || 'Витрина Разбита',
+        album: 'Избранное', // В плеере пишем "Избранное"
+        cover: FAV_COVER,   // Обложка избранного
+        src: it.audio || it.src, // Audio url
+        audio: it.audio || it.src,
+        audio_low: it.audio_low,
+        sources: it.sources,
+        lyrics: it.lyrics,
+        fulltext: it.fulltext,
+        sourceAlbum: srcAlbum
+      };
+  });
 
   window.playerCore.setPlaylist(
     tracks,
@@ -100,7 +115,11 @@ export async function ensureFavoritesPlayback(ctx, activeList, activeIndex) {
   window.playerCore.play(activeIndex);
   
   const clicked = activeList[activeIndex];
-  ctx.highlightCurrentTrack(-1, { uid: String(clicked?.uid).trim(), albumKey: String(clicked?.sourceAlbum).trim() });
+  // FIX: Используем __uid
+  ctx.highlightCurrentTrack(-1, { 
+      uid: String(clicked?.__uid).trim(), 
+      albumKey: String(clicked?.sourceAlbum || clicked?.__a).trim() 
+  });
 
   window.PlayerUI?.ensurePlayerBlock?.(activeIndex, { userInitiated: true });
   window.PlayerUI?.updateAvailableTracksForPlayback?.();
@@ -109,7 +128,12 @@ export async function ensureFavoritesPlayback(ctx, activeList, activeIndex) {
 // --- News Logic ---
 export async function loadNewsAlbum(ctx) {
   ctx.renderAlbumTitle('📰 НОВОСТИ 📰', 'news');
-  await ctx.loadGallery(NEWS);
+  
+  // FIX: Используем window.GalleryManager напрямую, так как у ctx (AlbumsManager) нет метода loadGallery
+  if (window.GalleryManager?.loadGallery) {
+      await window.GalleryManager.loadGallery(NEWS);
+  }
+  
   $('cover-wrap').style.display = '';
   const container = $('track-list');
   if (container) await loadAndRenderNewsInline(container);
