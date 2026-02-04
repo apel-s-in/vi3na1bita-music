@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c0983ebd3a8d99217bedeeac7891a714bf166f0a.idx
-│   │       ├── pack-c0983ebd3a8d99217bedeeac7891a714bf166f0a.pack
-│   │       └── pack-c0983ebd3a8d99217bedeeac7891a714bf166f0a.rev
+│   │       ├── pack-fef3b6b4b03f2bf032dac495f177aa1284243421.idx
+│   │       ├── pack-fef3b6b4b03f2bf032dac495f177aa1284243421.pack
+│   │       └── pack-fef3b6b4b03f2bf032dac495f177aa1284243421.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 08:54:02 UTC
+Сгенерировано: 2026-02-04 08:54:53 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5995,17 +5995,14 @@ export function bindFavoritesList(container, handlers) {
   }
 
   function showLyricsFromTimeline(track) {
-    // Собрать текст из таймлайна лирики, экспортированного из PlayerUI
-    if (!w.PlayerUI) {
+    // N2: Берём данные из контроллера
+    const c = w.LyricsController;
+    if (!c) {
       w.NotificationSystem?.warning('Текст песни недоступен');
       return;
     }
 
-    // Предпочитаем бэкомпат-API currentLyricsLines, если есть,
-    // иначе пробуем взять сырые currentLyrics и вытащить text.
-    const rawLines = Array.isArray(w.PlayerUI.currentLyricsLines)
-      ? w.PlayerUI.currentLyricsLines
-      : (Array.isArray(w.PlayerUI.currentLyrics) ? w.PlayerUI.currentLyrics : []);
+    const rawLines = (typeof c.getCurrentLyrics === 'function') ? c.getCurrentLyrics() : [];
 
     if (!rawLines.length) {
       w.NotificationSystem?.warning('Текст песни недоступен');
