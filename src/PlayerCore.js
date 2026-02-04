@@ -39,7 +39,8 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       this._ms = ensureMediaSession({
         onPlay: () => this.play(), 
         onPause: () => this.pause(),
-        onStop: () => this.pause(), // FIX: Stop forbidden by invariant, use Pause
+        // FIX: System Stop should not trigger global STOP logic, just pause/unload
+        onStop: () => this.pause(), 
         onPrev: () => this.prev(), 
         onNext: () => this.next(),
         onSeekTo: (t) => this.seek(t)
@@ -108,12 +109,12 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       }
     }
 
-    // FIX: Missing method implementation
+    // FIX: Added missing shufflePlaylist method
     shufflePlaylist() {
       const cur = this.getCurrentTrack();
       this.playlist.sort(() => Math.random() - 0.5);
       if (cur) {
-        // Текущий трек всегда первым
+        // Keep current track first
         this.playlist = [cur, ...this.playlist.filter(t => t !== cur)];
         this.currentIndex = 0;
       }
@@ -202,18 +203,19 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
       this._unload(true);
 
-      // Если нет источника
+      // Если нет источника (ни сети, ни кэша)
       if (!src.url) {
         // Проверка на бесконечный цикл
         if (this._skipSession.count >= this._skipSession.max) {
-           W.NotificationSystem?.error('Нет доступных треков');
-           // FIX: Не вызываем stop(). Просто выгружаем.
+           W.NotificationSystem?.error('Нет доступных треков для воспроизведения');
+           // FIX: Do not call stop() here, just unload. 
+           // Breaking the invariant "only Stop Button stops" is avoided.
            this._unload(true);
            this._updMedia();
            return;
         }
 
-        W.NotificationSystem?.warning('Трек недоступен, пропуск...');
+        W.NotificationSystem?.warning('Нет доступа к треку, пропускаем...');
         
         setTimeout(() => {
            if (token === this._loadToken) {
@@ -292,6 +294,8 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       if (!silent) this._emit('onStop');
     }
 
+    getQualityMode() { return this.qualityMode; }
+    
     canToggleQualityForCurrentTrack() {
       const t = this.getCurrentTrack();
       const m = t ? getTrackByUid(t.uid) : null;
@@ -311,14 +315,13 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     toggleFavorite(uid, opts = {}) {
       const u = safeStr(uid);
       
-      // FIX: Source Truth Rule
+      // FIX: Source of Truth Logic
       // 1. Explicit opts.source
-      // 2. Explicit opts.fromAlbum (context hint)
+      // 2. Explicit opts.fromAlbum (context hint from AlbumsManager)
       // 3. Fallback to current view logic
       let source = opts.source;
       if (!source) {
          if (opts.fromAlbum) {
-             // Если пришло из альбома (не из списка избранного), то это hard-mode (album)
              source = 'album';
          } else {
              const isFavView = W.AlbumsManager?.getCurrentAlbum?.() === W.SPECIAL_FAVORITES_KEY;
@@ -334,10 +337,9 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
          if (safeStr(this.getCurrentTrack()?.uid) === u) {
             const state = this.getFavoritesState();
             if (state.active.length === 0) {
-               // Единственный случай STOP
-               this.stop(); 
+               this.stop(); // Единственный разрешенный STOP сценарий
             } else {
-               // Переход, только если не repeat
+               // Переход на следующий АКТИВНЫЙ трек (если не Repeat)
                if (!this.repeatMode) this.next();
             }
          }
@@ -350,7 +352,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       if (FavoritesV2.removeRef(u)) this._emitFav(u, false, null, true);
     }
     
-    restoreInactive(uid) { return this.toggleFavorite(uid, { source: 'favorites' }); } // Explicitly favorites ctx
+    restoreInactive(uid) { return this.toggleFavorite(uid, { source: 'favorites' }); }
 
     showInactiveFavoriteModal(p = {}) {
       if (!W.Modals?.open) return;
