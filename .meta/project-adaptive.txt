@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-006bf0937e6a091e25ce0805fb2f7d5ee403d649.idx
-│   │       ├── pack-006bf0937e6a091e25ce0805fb2f7d5ee403d649.pack
-│   │       └── pack-006bf0937e6a091e25ce0805fb2f7d5ee403d649.rev
+│   │       ├── pack-933cad94532f515c58339c75ffc24d254f2e399e.idx
+│   │       ├── pack-933cad94532f515c58339c75ffc24d254f2e399e.pack
+│   │       └── pack-933cad94532f515c58339c75ffc24d254f2e399e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 20:07:42 UTC
+Сгенерировано: 2026-02-04 20:08:24 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5461,94 +5461,63 @@ export const getPlaybackCache = () => PlaybackCache;
 
 //=================================================
 // FILE: /scripts/offline/track-resolver.js
+// scripts/offline/track-resolver.js
 import { getAudioBlob, bytesByQuality, touchLocalAccess } from './cache-db.js';
-import { getTrackByUid } from '../app/track-registry.js';
-import { isAllowedByNetPolicy, getNetPolicy } from './net-policy.js';
+import { getOfflineManager } from './offline-manager.js';
+import { getNetPolicy, isAllowedByNetPolicy } from './net-policy.js';
 
 const U = window.Utils;
-
 const norm = (v) => (String(v || '').toLowerCase() === 'lo' ? 'lo' : 'hi');
-const sUrl = (v) => (v ? String(v).trim() : null);
-
-export function revokeObjectUrlsForUid(uid) {
-  if (!U?.blob) return 0;
-  return (U.blob.revokeUrl(`${uid}:hi`) ? 1 : 0) + (U.blob.revokeUrl(`${uid}:lo`) ? 1 : 0);
-}
-
-export async function isLocalComplete(uid, q) {
-  const u = sUrl(uid); if (!u) return false;
-  const m = getTrackByUid(u); if (!m) return false;
-  const qual = norm(q);
-  const sz = qual === 'lo' ? (m.sizeLo || m.size_low) : (m.sizeHi || m.size);
-  if (!sz) return false;
-  const stored = await bytesByQuality(u);
-  const has = qual === 'hi' ? stored.hi : stored.lo;
-  return has >= (sz * 1024 * 1024 * 0.92); 
-}
 
 async function getLocalUrl(uid, q) {
   if (!U?.blob) return null;
-  const key = `${uid}:${q}`;
   const blob = await getAudioBlob(uid, q);
   if (!blob) return null;
-  const url = U.blob.createUrl(key, blob);
-  try { await touchLocalAccess(uid); } catch {}
+  const url = U.blob.createUrl(`${uid}:${q}`, blob);
+  touchLocalAccess(uid).catch(() => {});
   return url;
 }
 
-/**
- * ГЛАВНАЯ ЛОГИКА ВЫБОРА ИСТОЧНИКА (ТЗ 7.4)
- */
-export async function resolvePlaybackSource({ track, pq, cq, offlineMode }) {
-  const u = sUrl(track?.uid);
-  if (!u) return { url: null, reason: 'no_uid' };
-
-  const net = U?.getNetworkStatusSafe ? U.getNetworkStatusSafe() : { online: navigator.onLine };
-  const pQual = norm(pq);
-  const cQual = norm(cq);
-
-  const [hasHi, hasLo] = await Promise.all([isLocalComplete(u, 'hi'), isLocalComplete(u, 'lo')]);
-
-  // 1. Попытка играть локально (приоритет)
-  // Если запрашиваем Hi - нужно Hi
-  if (pQual === 'hi') {
-      if (hasHi) return { url: await getLocalUrl(u, 'hi'), effectiveQuality: 'hi', isLocal: true };
-  } 
-  // Если запрашиваем Lo
-  else {
-      // Ищем Lo
-      if (hasLo) return { url: await getLocalUrl(u, 'lo'), effectiveQuality: 'lo', isLocal: true };
-      // Если нет Lo, но есть Hi - это УЛУЧШЕНИЕ (CQ > PQ), играем Hi
-      if (hasHi) return { url: await getLocalUrl(u, 'hi'), effectiveQuality: 'hi', isLocal: true };
+export async function resolvePlaybackSource({ track }) {
+  if (!track || !track.uid) return { url: null, reason: 'no_track' };
+  
+  const mgr = getOfflineManager();
+  const mode = mgr.getMode();
+  const targetQ = mgr.getActivePlaybackQuality(); // PQ or CQ or FOQ based on mode
+  const net = U.getNet();
+  
+  // 1. Check Local (Primary)
+  // Logic: Try exact quality first.
+  const [hasHi, hasLo] = await Promise.all([
+      mgr.isTrackComplete(track.uid, 'hi'),
+      mgr.isTrackComplete(track.uid, 'lo')
+  ]);
+  
+  if (targetQ === 'hi') {
+      if (hasHi) return { url: await getLocalUrl(track.uid, 'hi'), isLocal: true, quality: 'hi' };
+      // Fallback to Lo if strictly necessary? (See 7.4.3: "best effort")
+      if (hasLo) return { url: await getLocalUrl(track.uid, 'lo'), isLocal: true, quality: 'lo' }; 
+  } else {
+      if (hasLo) return { url: await getLocalUrl(track.uid, 'lo'), isLocal: true, quality: 'lo' };
+      if (hasHi) return { url: await getLocalUrl(track.uid, 'hi'), isLocal: true, quality: 'hi' };
   }
 
-  // 2. Сеть (GitHub), если сети нет - переходим к fallback
+  // 2. Network (Secondary) - STRICTLY FORBIDDEN IN R3
+  if (mode === 'R3') {
+      return { url: null, reason: 'R3_offline_block' };
+  }
+  
   const policy = getNetPolicy();
-  const netAllowed = isAllowedByNetPolicy({ policy, net, userInitiated: true });
-
-  if (net.online && !offlineMode && netAllowed) {
-    const src = track?.sources?.audio;
-    const netUrl = (pQual === 'lo') ? (src?.lo || track?.audio_low) : (src?.hi || track?.audio);
-    const finalUrl = netUrl || track?.src || track?.audio;
-
-    if (finalUrl) return { url: sUrl(finalUrl), effectiveQuality: pQual, isLocal: false };
+  const allowed = isAllowedByNetPolicy({ policy, net, userInitiated: true });
+  
+  if (net.online && allowed) {
+      const src = track.sources?.audio || {};
+      const url = targetQ === 'lo' ? (src.lo || track.audio_low) : (src.hi || track.audio);
+      if (url) return { url, isLocal: false, quality: targetQ };
   }
 
-  // 3. Fallback (Локальное низкое качество, когда нет выбора)
-  // Например: хотели Hi, его нет, сети нет, но есть Lo.
-  if (pQual === 'hi' && !hasHi && hasLo) {
-     return { url: await getLocalUrl(u, 'lo'), effectiveQuality: 'lo', isLocal: true };
-  }
-
-  return { url: null, reason: 'offline:noSource' };
+  return { url: null, reason: 'no_source' };
 }
-
-export async function isTrackAvailableOffline(uid) {
-  const u = sUrl(uid);
-  return u ? ((await isLocalComplete(u, 'hi')) || (await isLocalComplete(u, 'lo'))) : false;
-}
-
-export const TrackResolver = { resolvePlaybackSource, isTrackAvailableOffline, isLocalComplete };
 
 //=================================================
 // FILE: /scripts/ui/cache-progress-overlay.js
