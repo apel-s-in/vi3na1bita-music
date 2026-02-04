@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-67de100857a3ba3661a5e80a2e1d89f06b97ecab.idx
-│   │       ├── pack-67de100857a3ba3661a5e80a2e1d89f06b97ecab.pack
-│   │       └── pack-67de100857a3ba3661a5e80a2e1d89f06b97ecab.rev
+│   │       ├── pack-9a41a2fc2d3c3ccc8fd76bf4a4791f1d09af7770.idx
+│   │       ├── pack-9a41a2fc2d3c3ccc8fd76bf4a4791f1d09af7770.pack
+│   │       └── pack-9a41a2fc2d3c3ccc8fd76bf4a4791f1d09af7770.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -386,7 +386,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 08:16:01 UTC
+Сгенерировано: 2026-02-04 08:16:26 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1957,7 +1957,12 @@ class GalleryManager {
     const slot = $('cover-slot');
     if (!slot || !it) return (this.lck = false);
 
-    if (this.ldr) { this.ldr.onload = this.ldr.onerror = null; this.ldr = null; }
+    if (this.ldr) { 
+        this.ldr.onload = null; 
+        this.ldr.onerror = null; 
+        this.ldr.src = ''; 
+        this.ldr = null; 
+    }
 
     const finish = () => { setTimeout(() => { this._pre(); this.lck = false; }, 200); };
 
