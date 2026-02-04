@@ -91,8 +91,7 @@ export class OfflineManager {
        const foq = localStorage.getItem(LS.FOQ) || 'hi';
        localStorage.setItem(LS.CQ, foq);
     }
-    // this._checkExpiredCloud(); // Временно отключено, пока нет реализации в DB
-    // setInterval(() => this._checkExpiredCloud(), 3600000);
+    // this._checkExpiredCloud(); 
   }
 
   // --- Modes & Quality ---
@@ -141,7 +140,7 @@ export class OfflineManager {
       }
   }
 
-  // --- UI Public Helpers (Fixes for Modal) ---
+  // --- UI Public Helpers (Bridge for Modal) ---
   async computeCacheBreakdown() {
     return computeCacheBreakdown(this._getPinnedSet());
   }
@@ -264,7 +263,7 @@ export class OfflineManager {
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const blob = await resp.blob();
       
-      await setAudioBlob(uid, quality, blob); // No duplicates enforced inside
+      await setAudioBlob(uid, quality, blob); 
       const expSize = quality === 'lo' ? meta.sizeLo : meta.sizeHi;
       await setDownloadMeta(uid, quality, { ts: Date.now(), bytes: blob.size, exp: Number(expSize)||0 });
       
