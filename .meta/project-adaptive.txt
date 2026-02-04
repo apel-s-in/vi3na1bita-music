@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3158a2c24f8f9f399a1bded86d37081dba2514e5.idx
-│   │       ├── pack-3158a2c24f8f9f399a1bded86d37081dba2514e5.pack
-│   │       └── pack-3158a2c24f8f9f399a1bded86d37081dba2514e5.rev
+│   │       ├── pack-81eef24d53f0dec0e59a0c15d76fa0f4eb686422.idx
+│   │       ├── pack-81eef24d53f0dec0e59a0c15d76fa0f4eb686422.pack
+│   │       └── pack-81eef24d53f0dec0e59a0c15d76fa0f4eb686422.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -389,7 +389,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 06:40:49 UTC
+Сгенерировано: 2026-02-04 06:43:20 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7093,6 +7093,9 @@ export function closeOfflineModal() {
   modalEl?.remove();
   modalEl = null;
 }
+
+// FIX: Expose for Specials.js
+window.preloadAllAlbumsTrackIndex = preloadAllAlbumsTrackIndex;
 
 //=================================================
 // FILE: /scripts/ui/sleep.js
