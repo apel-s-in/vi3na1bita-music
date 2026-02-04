@@ -191,23 +191,19 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       if (!opts.isAutoSkip) this._skipSession = { token, count: 0, max: this.playlist.length };
 
       const om = getOfflineManager();
-      const src = await resolvePlaybackSource({
-        track, pq: this.qualityMode, cq: await om.getCacheQuality(), offlineMode: om.isOfflineMode()
-      });
+      // FIX: Убраны лишние аргументы, resolver сам знает режим
+      const src = await resolvePlaybackSource({ track });
 
       if (token !== this._loadToken) return;
 
       this._emit('onTrackChange', track, index);
 
       if (!src.url) {
-        // A1: Не уходим в stop/unload при ошибке сети, остаемся в текущем состоянии ожидания
-        // C1: Это состояние "сеть недоступна" для данного трека
         if (this._skipSession.count >= this._skipSession.max || getOfflineManager().isOfflineMode()) {
            W.NotificationSystem?.error('Трек недоступен (проверьте сеть)');
-           this._stopTick(); // I2: Остановить статистику
+           this._stopTick(); 
            return;
         }
-        // Мягкий автоскип только если это не явный offline режим
         W.NotificationSystem?.warning('Трек недоступен, поиск...');
         setTimeout(() => {
            if (token === this._loadToken) {
@@ -219,7 +215,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         return;
       }
 
-      this._unload(true); // Выгружаем предыдущий трек только когда новый готов к загрузке
+      this._unload(true); 
       this._skipSession.count = 0;
 
       this.sound = new Howl({
