@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-576897b58cc7730a748109d44a1db2ad23e33c3f.idx
-│   │       ├── pack-576897b58cc7730a748109d44a1db2ad23e33c3f.pack
-│   │       └── pack-576897b58cc7730a748109d44a1db2ad23e33c3f.rev
+│   │       ├── pack-806645e02a6cf332ea090d2e55d9c638f9f5344c.idx
+│   │       ├── pack-806645e02a6cf332ea090d2e55d9c638f9f5344c.pack
+│   │       └── pack-806645e02a6cf332ea090d2e55d9c638f9f5344c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -386,7 +386,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 07:58:26 UTC
+Сгенерировано: 2026-02-04 08:11:54 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3882,11 +3882,10 @@ export class FavoritesManager {
         });
       }
     } catch (e) {
-      console.error('FavManager init error', e);
+      console.error('Favorites init error:', e);
     }
   }
 
-  // Проверка: активен ли лайк (есть в базе и нет флага inactiveAt)
   isLiked(uid) {
     const u = String(uid || '').trim();
     if (!u) return false;
@@ -3894,12 +3893,19 @@ export class FavoritesManager {
     return item && !item.inactiveAt;
   }
 
-  // Получить все записи (включая неактивные/серые)
   getSnapshot() {
     return Array.from(this._map.values());
   }
 
-  // Основная логика переключения
+  // Возвращает Set активных UID (для совместимости)
+  readLikedSet() {
+    const set = new Set();
+    for (const [uid, item] of this._map) {
+      if (!item.inactiveAt) set.add(uid);
+    }
+    return set;
+  }
+
   toggle(uid, { source = 'album', albumKey } = {}) {
     const u = String(uid || '').trim();
     if (!u) return false;
@@ -3910,22 +3916,21 @@ export class FavoritesManager {
     let isNowLiked = false;
 
     if (isActive) {
-      // Если трек был активен - снимаем лайк
       if (source === 'favorites') {
-        // Soft Delete: оставляем в базе, но помечаем inactive (становится серым)
+        // Soft Delete (серый трек)
         this._map.set(u, { ...item, inactiveAt: Date.now() });
       } else {
-        // Hard Delete: удаляем полностью (из альбома)
+        // Hard Delete
         this._map.delete(u);
       }
       isNowLiked = false;
     } else {
-      // Если трека нет или он был inactive - ставим лайк
+      // Restore / Add
       this._map.set(u, {
         uid: u,
         addedAt: item?.addedAt || Date.now(),
         albumKey: albumKey || item?.albumKey || null,
-        inactiveAt: null // Сбрасываем флаг неактивности
+        inactiveAt: null
       });
       isNowLiked = true;
     }
@@ -3935,7 +3940,6 @@ export class FavoritesManager {
     return isNowLiked;
   }
 
-  // Полное удаление (через модалку "удалить из списка")
   remove(uid) {
     const u = String(uid).trim();
     if (this._map.delete(u)) {
@@ -3944,11 +3948,6 @@ export class FavoritesManager {
       return true;
     }
     return false;
-  }
-
-  // Восстановление (через модалку "вернуть")
-  restore(uid) {
-    return this.toggle(uid, { source: 'favorites' });
   }
 
   _save() {
