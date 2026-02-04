@@ -33,6 +33,26 @@ export async function openOfflineModal() {
   bindEvents(modalEl, state);
 }
 
+export async function openStatsModal() {
+  const mgr = getOfflineManager();
+  const rawData = await mgr.getGlobalStatistics();
+  
+  // Prepare track titles
+  const tracks = rawData.tracks
+    .filter(t => t.fullListens >= 3)
+    .sort((a,b) => b.fullListens - a.fullListens)
+    .map(t => {
+       const meta = window.TrackRegistry?.getTrackByUid(t.uid);
+       return { ...t, title: meta?.title || t.uid };
+    });
+
+  window.Modals.open({
+    title: 'СТАТИСТИКА',
+    maxWidth: 400,
+    bodyHtml: ModalTemplates.statsBody({ ...rawData, tracks })
+  });
+}
+
 function bindEvents(root, state) {
   const mgr = getOfflineManager();
   const $ = (sel) => root.querySelector(sel);
@@ -61,6 +81,14 @@ function bindEvents(root, state) {
     U.ui.toast('Качество кэша обновлено');
   });
 
+  $('#om-save-cloud')?.addEventListener('click', () => {
+    const n = parseInt($('#om-cloud-n').value) || 5;
+    const d = parseInt($('#om-cloud-d').value) || 31;
+    localStorage.setItem('offline:cloudN:v1', n);
+    localStorage.setItem('offline:cloudD:v1', d);
+    U.ui.toast('Настройки облачка сохранены');
+  });
+
   $('#om-clear-cache')?.addEventListener('click', async () => {
     if (!confirm('Удалить ВЕСЬ кэш?')) return;
     await mgr.clearAllCache();
@@ -72,11 +100,9 @@ function bindEvents(root, state) {
   // --- R3 Logic ---
   const getSelectedUids = () => {
     const uids = new Set();
-    // 1. Favorites
     if ($('#om-full-fav')?.checked) {
        Favorites.getSnapshot().filter(x => !x.inactiveAt).forEach(x => uids.add(x.uid));
     }
-    // 2. Albums
     $$('.full-album-check:checked').forEach(cb => {
        const key = cb.value;
        getAllTracks().filter(t => t.sourceAlbum === key).forEach(t => uids.add(t.uid));
@@ -109,9 +135,6 @@ function bindEvents(root, state) {
     
     if (res.ok) {
         U.ui.toast(`Загрузка ${list.length} треков...`);
-        // TODO: Here we should subscribe to progress and prompt when done
-        // For v1.0 MVP, we just start downloading. 
-        // The user must manually enable R3 later or we show a prompt via NotificationSystem later.
     }
   });
 }
