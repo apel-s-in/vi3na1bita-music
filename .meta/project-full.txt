@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5ebfb0170f05a740eff1f669d761e40d8e43d72b.idx
-│   │       ├── pack-5ebfb0170f05a740eff1f669d761e40d8e43d72b.pack
-│   │       └── pack-5ebfb0170f05a740eff1f669d761e40d8e43d72b.rev
+│   │       ├── pack-5d77e9fdeed07a2739930d34351e23071e7b4766.idx
+│   │       ├── pack-5d77e9fdeed07a2739930d34351e23071e7b4766.pack
+│   │       └── pack-5d77e9fdeed07a2739930d34351e23071e7b4766.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -386,7 +386,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 08:14:26 UTC
+Сгенерировано: 2026-02-04 08:15:32 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2891,8 +2891,7 @@ export function attachPlaybackCache() {
         } else W.availableFavoriteIndices = null;
     };
 
-    Object.defineProperty(PlayerUI, 'currentLyrics', { get: () => W.LyricsController?.getCurrentLyrics() || [] });
-    Object.defineProperty(PlayerUI, 'currentLyricsLines', { get: () => W.LyricsController?.getCurrentLyricsLines() || [] });
+    // Removed unused getters
 
     W.PlayerUI = PlayerUI;
     if (D.readyState === 'loading') D.addEventListener('DOMContentLoaded', init); else init();
