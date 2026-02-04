@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-33d93dbfe91ad473498eabe7334e918726a8c596.idx
-│   │       ├── pack-33d93dbfe91ad473498eabe7334e918726a8c596.pack
-│   │       └── pack-33d93dbfe91ad473498eabe7334e918726a8c596.rev
+│   │       ├── pack-c0983ebd3a8d99217bedeeac7891a714bf166f0a.idx
+│   │       ├── pack-c0983ebd3a8d99217bedeeac7891a714bf166f0a.pack
+│   │       └── pack-c0983ebd3a8d99217bedeeac7891a714bf166f0a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 08:53:00 UTC
+Сгенерировано: 2026-02-04 08:54:02 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6985,7 +6985,6 @@ window.preloadAllAlbumsTrackIndex = preloadAllAlbumsTrackIndex;
     };
 
     menu.addEventListener('click', (e) => {
-      // ... (внутри обработчиков заменяем remove() на cleanMenu())
       const t = e.target.closest('[data-a]');
       if (!t) return;
       e.stopPropagation();
@@ -6997,28 +6996,11 @@ window.preloadAllAlbumsTrackIndex = preloadAllAlbumsTrackIndex;
         set(now() + m * 60000);
         W.NotificationSystem?.success?.(`⏰ Таймер: ${m} мин`);
       } else if (a === 'time') {
-        cleanMenu(); // Закрываем меню перед открытием модалки
+        cleanMenu(); 
         openTimeModal();
         return;
       }
       if (a !== 'noop') cleanMenu();
-    });
-
-    menu.addEventListener('click', (e) => {
-      const t = e.target.closest('[data-a]');
-      if (!t) return;
-      e.stopPropagation();
-      const a = t.dataset.a;
-      
-      if (a === 'off') stop();
-      else if (a === 'm') {
-        const m = parseInt(t.dataset.v);
-        set(now() + m * 60000);
-        W.NotificationSystem?.success?.(`⏰ Таймер: ${m} мин`);
-      } else if (a === 'time') {
-        openTimeModal();
-      }
-      if (a !== 'noop') { menu.remove(); menu = null; }
     });
 
     document.body.appendChild(menu);
