@@ -82,7 +82,7 @@ export function registerTrack(raw, albumMeta = {}) {
     audio: urlHi,
     audio_low: urlLo,
     sources: { audio: { hi: urlHi, lo: urlLo } },
-    // G1: Строгая нормализация
+    // G1: Строгая нормализация (remove legacy props from final object)
     sizeHi: Number(raw.sizeHi || raw.size || 0),
     sizeLo: Number(raw.sizeLo || raw.size_low || 0),
     lyrics: lyricsUrl,
