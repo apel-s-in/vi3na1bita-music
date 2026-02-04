@@ -1,8 +1,8 @@
-import { getOfflineManager } from '../offline/offline-manager.js';
+import { getOfflineManager as _getMgr } from '../offline/offline-manager.js';
 import { openOfflineModal } from '../ui/offline-modal.js';
 
 // Singleton instance holder
-const UI = window.OfflineUI = window.OfflineUI || { offlineManager: getOfflineManager() };
+const UI = window.OfflineUI = window.OfflineUI || { offlineManager: _getMgr() };
 const KEY_ALERT = 'offline:alert:v1';
 
 // Helpers
