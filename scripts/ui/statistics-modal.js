@@ -1,6 +1,6 @@
 // scripts/ui/statistics-modal.js
 import { getOfflineManager } from '../offline/offline-manager.js';
-import { getAllTracks } from '../app/track-registry.js';
+// getAllTracks removed (dead import)
 
 (function(W) {
   'use strict';
