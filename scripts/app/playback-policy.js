@@ -19,6 +19,7 @@
       const needFilter = isFavAlbum || ls();
 
       const source = core.originalPlaylist || [];
+      // Если исходный плейлист пуст, фильтровать нечего
       if (!source.length) return;
 
       let target = source;
@@ -31,9 +32,14 @@
            target = source.filter(t => t.uid && likedUids.has(t.uid));
         }
 
-        // Если отфильтрованный список пуст
-        if (!target.length && !isFavAlbum) {
-          W.NotificationSystem?.info('Нет избранных треков. Режим не применен.');
+        // ВАЖНО: Если после фильтрации треков нет (и это не альбом Избранное, где пустота допустима визуально, но не для F режима)
+        if (!target.length) {
+          if (!isFavAlbum) {
+             W.NotificationSystem?.info('Нет избранных треков. Режим не применен.');
+             // Сбрасываем кнопку в UI, так как режим не применился
+             W.Utils?.lsSetBool01(LS_KEY, false);
+             W.PlayerUI?.updateFavoritesBtn?.(); // Обновить кнопку
+          }
           return; 
         }
       }
