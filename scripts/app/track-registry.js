@@ -17,7 +17,10 @@ const resolveUrl = (base, url) => {
  * ГЛАВНЫЙ МЕТОД РЕГИСТРАЦИИ
  */
 export function registerTrack(raw, albumMeta = {}) {
-  if (!raw || !raw.uid) return;
+  if (!raw || !raw.uid) {
+    if(raw) console.warn('Skipping track without UID:', raw.title);
+    return;
+  }
 
   const uid = safeStr(raw.uid);
   
