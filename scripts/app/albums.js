@@ -1,6 +1,5 @@
 import { registerTrack } from './track-registry.js';
 import { $, toStr, escHtml, isMobileUA } from './utils/app-utils.js';
-import { loadAndRenderNewsInline } from '../ui/news-inline.js';
 
 const C = window.APP_CONFIG || {};
 const FAV = window.SPECIAL_FAVORITES_KEY || '__favorites__';
