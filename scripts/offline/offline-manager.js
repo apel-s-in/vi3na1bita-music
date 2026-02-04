@@ -84,7 +84,6 @@ export class OfflineManager {
       const meta = await getLocalMeta(c.uid);
       if (meta?.kind === 'cloud') continue; 
       // FIX: Удаляем только если это transient и он входит в группу 'window'.
-      // 'extra' оставляем (удалит лимит кэша, если нужно).
       if (meta?.kind === 'transient' && meta.transientGroup === 'window' && !keepSet.has(c.uid)) {
         await deleteTrackCache(c.uid);
       }
