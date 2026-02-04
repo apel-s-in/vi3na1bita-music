@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a9cbc1b91430dfe372a9ab327d1da9e305544b31.idx
-│   │       ├── pack-a9cbc1b91430dfe372a9ab327d1da9e305544b31.pack
-│   │       └── pack-a9cbc1b91430dfe372a9ab327d1da9e305544b31.rev
+│   │       ├── pack-33d93dbfe91ad473498eabe7334e918726a8c596.idx
+│   │       ├── pack-33d93dbfe91ad473498eabe7334e918726a8c596.pack
+│   │       └── pack-33d93dbfe91ad473498eabe7334e918726a8c596.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 08:52:07 UTC
+Сгенерировано: 2026-02-04 08:53:00 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1155,9 +1155,11 @@ const STATIC_ASSETS = [
   './scripts/app/gallery.js', './scripts/ui/notify.js', './scripts/ui/favorites.js',
   './scripts/ui/sleep.js', './scripts/ui/lyrics-modal.js', './scripts/ui/sysinfo.js',
   './scripts/ui/modal-templates.js', './scripts/ui/modals.js',
+  './scripts/ui/offline-modal.js', './scripts/ui/offline-indicators.js',
+  './scripts/ui/cache-progress-overlay.js', './scripts/ui/statistics-modal.js',
   './scripts/app/player-ui.js', './scripts/app/albums.js', './scripts/app/navigation.js',
   './scripts/app.js', './src/PlayerCore.js',
-  './scripts/app/offline-ui-bootstrap.js'
+  './scripts/app/offline-ui-bootstrap.js', './scripts/app/playback-cache-bootstrap.js'
 ];
 
 // Helper: Normalize URL for strict cache matching
