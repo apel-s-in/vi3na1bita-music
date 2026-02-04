@@ -17,11 +17,10 @@ export class FavoritesManager {
         });
       }
     } catch (e) {
-      console.error('FavManager init error', e);
+      console.error('Favorites init error:', e);
     }
   }
 
-  // Проверка: активен ли лайк (есть в базе и нет флага inactiveAt)
   isLiked(uid) {
     const u = String(uid || '').trim();
     if (!u) return false;
@@ -29,12 +28,19 @@ export class FavoritesManager {
     return item && !item.inactiveAt;
   }
 
-  // Получить все записи (включая неактивные/серые)
   getSnapshot() {
     return Array.from(this._map.values());
   }
 
-  // Основная логика переключения
+  // Возвращает Set активных UID (для совместимости)
+  readLikedSet() {
+    const set = new Set();
+    for (const [uid, item] of this._map) {
+      if (!item.inactiveAt) set.add(uid);
+    }
+    return set;
+  }
+
   toggle(uid, { source = 'album', albumKey } = {}) {
     const u = String(uid || '').trim();
     if (!u) return false;
@@ -45,22 +51,21 @@ export class FavoritesManager {
     let isNowLiked = false;
 
     if (isActive) {
-      // Если трек был активен - снимаем лайк
       if (source === 'favorites') {
-        // Soft Delete: оставляем в базе, но помечаем inactive (становится серым)
+        // Soft Delete (серый трек)
         this._map.set(u, { ...item, inactiveAt: Date.now() });
       } else {
-        // Hard Delete: удаляем полностью (из альбома)
+        // Hard Delete
         this._map.delete(u);
       }
       isNowLiked = false;
     } else {
-      // Если трека нет или он был inactive - ставим лайк
+      // Restore / Add
       this._map.set(u, {
         uid: u,
         addedAt: item?.addedAt || Date.now(),
         albumKey: albumKey || item?.albumKey || null,
-        inactiveAt: null // Сбрасываем флаг неактивности
+        inactiveAt: null
       });
       isNowLiked = true;
     }
@@ -70,7 +75,6 @@ export class FavoritesManager {
     return isNowLiked;
   }
 
-  // Полное удаление (через модалку "удалить из списка")
   remove(uid) {
     const u = String(uid).trim();
     if (this._map.delete(u)) {
@@ -79,11 +83,6 @@ export class FavoritesManager {
       return true;
     }
     return false;
-  }
-
-  // Восстановление (через модалку "вернуть")
-  restore(uid) {
-    return this.toggle(uid, { source: 'favorites' });
   }
 
   _save() {
