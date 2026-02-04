@@ -227,3 +227,6 @@ export function closeOfflineModal() {
   modalEl?.remove();
   modalEl = null;
 }
+
+// FIX: Expose for Specials.js
+window.preloadAllAlbumsTrackIndex = preloadAllAlbumsTrackIndex;
