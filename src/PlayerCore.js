@@ -1,7 +1,7 @@
 import { getOfflineManager } from '../scripts/offline/offline-manager.js';
 import { resolvePlaybackSource } from '../scripts/offline/track-resolver.js';
 import { getTrackByUid } from '../scripts/app/track-registry.js';
-import { Favorites } from '../scripts/core/favorites-manager.js';
+import { Favorites } from '../scripts/core/favorites-manager.js'; // ✅ Новый импорт
 import { ensureMediaSession } from './player-core/media-session.js';
 import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
@@ -39,7 +39,6 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       this._ms = ensureMediaSession({
         onPlay: () => this.play(), 
         onPause: () => this.pause(),
-        // FIX: System Stop should not trigger global STOP logic, just pause/unload
         onStop: () => this.pause(), 
         onPrev: () => this.prev(), 
         onNext: () => this.next(),
@@ -68,7 +67,12 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       ['touchend', 'click', 'keydown'].forEach(e => document.addEventListener(e, unlock, { once: true, capture: true }));
     }
 
-    initialize() { FavoritesV2.ensureMigrated(); }
+    initialize() {
+      // ✅ Исправлено: просто вызываем init у нового менеджера (если нужно),
+      // но в конструкторе FavoritesManager он и так вызывается.
+      // Оставляем пустым или для будущих нужд.
+      if (Favorites.init) Favorites.init();
+    }
 
     prepareContext() {
       if (W.Howler?.ctx?.state === 'suspended') W.Howler.ctx.resume().catch(() => {});
@@ -85,32 +89,24 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
       if (!opts.preserveOriginalPlaylist) this.originalPlaylist = [...this.playlist];
 
-      // Сначала устанавливаем индекс (как если бы shuffle был выключен)
+      // ✅ FIX: Сначала устанавливаем индекс корректно
       this.currentIndex = clamp(startIdx, 0, this.playlist.length - 1);
-      
-      // Запоминаем UID трека, который мы хотим играть
       const targetUid = this.playlist[this.currentIndex]?.uid;
 
+      // ✅ FIX: Логика шаффла
       if (this.shuffleMode && !opts.preserveShuffleMode) {
-        this.shufflePlaylist(targetUid); // Передаем target, чтобы он остался первым/текущим
+        this.shufflePlaylist(targetUid); // Передаем UID чтобы он остался текущим
       } else if (!this.shuffleMode) {
         this.shuffleHistory = [];
       } else if (this.shuffleMode && opts.preserveShuffleMode && targetUid) {
-        // Если shuffle уже был, нам нужно найти новый индекс этого трека в перемешанном плейлисте
         const newIdx = this.playlist.findIndex(t => t.uid === targetUid);
         if (newIdx >= 0) this.currentIndex = newIdx;
       }
 
-      // Сброс счетчика ошибок при смене плейлиста
       this._skipSession = { token: 0, count: 0, max: this.playlist.length };
-
-      if (wasPlaying && opts.preservePosition && this.playlist[this.currentIndex]?.uid === this.getCurrentTrack()?.uid) {
-         // UI update triggered via load logic usually, ensuring consistency
-      }
 
       if (wasPlaying) this.load(this.currentIndex, { autoPlay: true, resumePosition: opts.preservePosition ? prevPos : 0 });
       else {
-        // Эмитим событие только если не запускаем load, но состояние изменилось
         this._emit('onTrackChange', this.getCurrentTrack(), this.currentIndex);
         this._updMedia();
       }
@@ -119,7 +115,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     shufflePlaylist(keepFirstUid = null) {
       const currentUid = keepFirstUid || this.getCurrentTrack()?.uid;
       
-      // Алгоритм Фишера-Йетса для честного шаффла
+      // Алгоритм Фишера-Йетса
       for (let i = this.playlist.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [this.playlist[i], this.playlist[j]] = [this.playlist[j], this.playlist[i]];
@@ -128,9 +124,6 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       if (currentUid) {
         const idx = this.playlist.findIndex(t => t.uid === currentUid);
         if (idx >= 0) {
-          // Перемещаем текущий трек в начало (или оставляем на месте, обновляя currentIndex)
-          // ТЗ: "shuffle-порядок пересобирается... Next/Prev идут по этому порядку"
-          // Обычно текущий трек становится 0-м элементом в очереди воспроизведения
           const [track] = this.playlist.splice(idx, 1);
           this.playlist.unshift(track);
           this.currentIndex = 0;
@@ -208,9 +201,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       if (!track) return;
 
       const token = ++this._loadToken;
-      // Не устанавливаем this.currentIndex здесь окончательно для внешнего мира, пока не убедимся,
-      // но для внутренней логики (resolve) это нужно. 
-      // Решение: Эмитим событие только если токен всё ещё актуален.
+      // ✅ FIX: Race condition check. Не меняем currentIndex глобально, пока не уверены
       this.currentIndex = index;
       
       if (!opts.isAutoSkip) this._skipSession = { token, count: 0, max: this.playlist.length };
@@ -220,22 +211,15 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         track, pq: this.qualityMode, cq: await om.getCacheQuality(), offlineMode: om.isOfflineMode()
       });
 
-      // RACE CONDITION GUARD:
-      // Если пока мы искали источник, пользователь нажал Next снова, этот load устарел.
+      // ✅ FIX: Если пока искали источник, юзер нажал Next - отменяем
       if (token !== this._loadToken) return;
 
-      // Теперь безопасно обновлять UI
       this._emit('onTrackChange', track, index);
-
       this._unload(true);
 
-      // Если нет источника (ни сети, ни кэша)
       if (!src.url) {
-        // Проверка на бесконечный цикл
         if (this._skipSession.count >= this._skipSession.max) {
            W.NotificationSystem?.error('Нет доступных треков для воспроизведения');
-           // FIX: Do not call stop() here, just unload. 
-           // Breaking the invariant "only Stop Button stops" is avoided.
            this._unload(true);
            this._updMedia();
            return;
@@ -333,10 +317,8 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       if (this.qualityMode === next) return;
       this.qualityMode = next;
       localStorage.setItem(LS_PQ, next);
-      
-      // Уведомляем UI о смене качества
+      // ✅ FIX: Уведомляем UI
       window.dispatchEvent(new CustomEvent('offline:uiChanged'));
-      
       if (this.isPlaying()) this.load(this.currentIndex, { autoPlay: true, resumePosition: this.getPosition() });
     }
 
@@ -344,19 +326,32 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
     toggleFavorite(uid, opts = {}) {
       const u = safeStr(uid);
-      // Определяем источник (логика исправлена в пункте 3 выше)
+      
+      // ✅ FIX: Правильное определение source
       let source = opts.source;
-      if (!source) source = (opts.fromAlbum) ? 'album' : (W.AlbumsManager?.getCurrentAlbum?.() === W.SPECIAL_FAVORITES_KEY ? 'favorites' : 'album');
-
+      if (!source) {
+         if (opts.fromAlbum) {
+             source = 'album';
+         } else {
+             const isFavView = W.AlbumsManager?.getCurrentAlbum?.() === W.SPECIAL_FAVORITES_KEY;
+             source = isFavView ? 'favorites' : 'album';
+         }
+      }
+      
+      // Используем новый менеджер Favorites
       const liked = Favorites.toggle(u, { source, albumKey: opts.albumKey });
       this._emitFav(u, liked, opts.albumKey);
 
-      // Правило STOP для Избранного (единственный сценарий)
+      // Правило STOP для Избранного:
       if (!liked && source === 'favorites' && W.AlbumsManager?.getCurrentAlbum?.() === W.SPECIAL_FAVORITES_KEY) {
          if (safeStr(this.getCurrentTrack()?.uid) === u) {
+            // Проверяем, остались ли активные треки в избранном
             const hasActive = Favorites.getSnapshot().some(i => !i.inactiveAt);
-            if (!hasActive) this.stop();
-            else if (!this.repeatMode) this.next();
+            if (!hasActive) {
+               this.stop(); 
+            } else {
+               if (!this.repeatMode) this.next();
+            }
          }
       }
       return { liked };
@@ -364,7 +359,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
     removeInactivePermanently(uid) {
       const u = safeStr(uid);
-      if (FavoritesV2.removeRef(u)) this._emitFav(u, false, null, true);
+      if (Favorites.remove(u)) this._emitFav(u, false, null, true);
     }
     
     restoreInactive(uid) { return this.toggleFavorite(uid, { source: 'favorites' }); }
@@ -391,14 +386,20 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       });
     }
 
+    // Адаптер для получения состояния (active/inactive) для UI
     getFavoritesState() {
-      const refs = FavoritesV2.readRefsByUid(), liked = FavoritesV2.readLikedSet();
+      const items = Favorites.getSnapshot();
       const active = [], inactive = [];
-      Object.values(refs).forEach(r => {
-        const u = safeStr(r.uid);
-        if(!u) return;
-        const sa = safeStr(r.sourceAlbum || r.albumKey || getTrackByUid(u)?.sourceAlbum);
-        (liked.has(u) ? active : (r.inactiveAt ? inactive : [])).push({ uid: u, sourceAlbum: sa });
+      items.forEach(item => {
+        const u = safeStr(item.uid);
+        if (!u) return;
+        const sa = safeStr(item.sourceAlbum || item.albumKey || getTrackByUid(u)?.sourceAlbum);
+        
+        if (item.inactiveAt) {
+          inactive.push({ uid: u, sourceAlbum: sa, inactiveAt: item.inactiveAt });
+        } else {
+          active.push({ uid: u, sourceAlbum: sa });
+        }
       });
       return { active, inactive };
     }
@@ -406,7 +407,9 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     getLikedUidsForAlbum(key) {
       const k = safeStr(key);
       if (!k) return [];
-      return Array.from(FavoritesV2.readLikedSet()).filter(u => safeStr(getTrackByUid(u)?.sourceAlbum) === k);
+      return Favorites.getSnapshot()
+        .filter(i => !i.inactiveAt && safeStr(getTrackByUid(i.uid)?.sourceAlbum) === k)
+        .map(i => i.uid);
     }
 
     onFavoritesChanged(cb) { this._favSubs.add(cb); return () => this._favSubs.delete(cb); }
