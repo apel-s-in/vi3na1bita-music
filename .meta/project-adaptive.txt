@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a683cd74b0714c5c4f328721d0884535fa6bd839.idx
-│   │       ├── pack-a683cd74b0714c5c4f328721d0884535fa6bd839.pack
-│   │       └── pack-a683cd74b0714c5c4f328721d0884535fa6bd839.rev
+│   │       ├── pack-5b17ba3136f6d161897117841bbb12a89f83e4e5.idx
+│   │       ├── pack-5b17ba3136f6d161897117841bbb12a89f83e4e5.pack
+│   │       └── pack-5b17ba3136f6d161897117841bbb12a89f83e4e5.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 07:40:19 UTC
+Сгенерировано: 2026-02-04 07:40:52 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1183,10 +1183,11 @@ self.addEventListener('install', (e) => {
     caches.open(CORE_CACHE).then(async (cache) => {
       // Пытаемся кэшировать всё, но не падаем если один файл 404
       const promises = STATIC_ASSETS.map(url => {
-        const req = new Request(url); // FIX: Create Request object
+        const req = new Request(url); 
         return fetch(req).then(res => {
-          if (res.ok) return cache.put(req, res);
-          console.warn('SW: Failed to cache', url);
+          // Защита от редиректов и ошибок. res.redirected может быть undefined в старых браузерах, но res.ok=true для 200.
+          if (res.ok && !res.redirected) return cache.put(req, res);
+          console.warn('SW: Skipped caching (redirect or fail):', url);
         }).catch(err => console.warn('SW: Fetch error', url, err));
       });
       await Promise.all(promises);
