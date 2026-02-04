@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9d989cf5a5b9f6e1a4acd3b325b4cd234ef0178d.idx
-│   │       ├── pack-9d989cf5a5b9f6e1a4acd3b325b4cd234ef0178d.pack
-│   │       └── pack-9d989cf5a5b9f6e1a4acd3b325b4cd234ef0178d.rev
+│   │       ├── pack-5ebfb0170f05a740eff1f669d761e40d8e43d72b.idx
+│   │       ├── pack-5ebfb0170f05a740eff1f669d761e40d8e43d72b.pack
+│   │       └── pack-5ebfb0170f05a740eff1f669d761e40d8e43d72b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -386,7 +386,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 08:13:22 UTC
+Сгенерировано: 2026-02-04 08:14:26 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1129,7 +1129,7 @@ jobs:
 // service-worker.js
 // Optimized Service Worker for "Vi3na1bita" (v8.1)
 
-const SW_VERSION = '8.1.4';
+const SW_VERSION = '8.1.5';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
@@ -1153,7 +1153,7 @@ const STATIC_ASSETS = [
   './styles/main.css', './img/logo.png', './img/star.png', './img/star2.png',
   './icons/favicon-32.png', './icons/favicon-16.png', './icons/apple-touch-icon.png',
   './scripts/core/bootstrap.js', './scripts/core/config.js', './scripts/core/utils.js',
-  './scripts/core/favorites-v2.js',
+  './scripts/core/favorites-manager.js',
   './scripts/app/gallery.js', './scripts/ui/notify.js', './scripts/ui/favorites.js',
   './scripts/ui/sleep.js', './scripts/ui/lyrics-modal.js', './scripts/ui/sysinfo.js',
   './scripts/ui/modal-templates.js', './scripts/ui/modals.js',
@@ -1183,9 +1183,9 @@ self.addEventListener('install', (e) => {
       const promises = STATIC_ASSETS.map(url => {
         const req = new Request(url); 
         return fetch(req).then(res => {
-          // Защита от редиректов и ошибок. res.redirected может быть undefined в старых браузерах, но res.ok=true для 200.
+          // Защита от редиректов (например, GitHub Pages без слеша)
           if (res.ok && !res.redirected) return cache.put(req, res);
-          console.warn('SW: Skipped caching (redirect or fail):', url);
+          console.warn('SW: Skipped (redirect/fail):', url);
         }).catch(err => console.warn('SW: Fetch error', url, err));
       });
       await Promise.all(promises);
