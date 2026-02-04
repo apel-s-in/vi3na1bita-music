@@ -1,7 +1,7 @@
 // service-worker.js
 // Optimized Service Worker for "Vi3na1bita" (v8.1)
 
-const SW_VERSION = '8.1.4';
+const SW_VERSION = '8.1.5';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
@@ -25,7 +25,7 @@ const STATIC_ASSETS = [
   './styles/main.css', './img/logo.png', './img/star.png', './img/star2.png',
   './icons/favicon-32.png', './icons/favicon-16.png', './icons/apple-touch-icon.png',
   './scripts/core/bootstrap.js', './scripts/core/config.js', './scripts/core/utils.js',
-  './scripts/core/favorites-v2.js',
+  './scripts/core/favorites-manager.js',
   './scripts/app/gallery.js', './scripts/ui/notify.js', './scripts/ui/favorites.js',
   './scripts/ui/sleep.js', './scripts/ui/lyrics-modal.js', './scripts/ui/sysinfo.js',
   './scripts/ui/modal-templates.js', './scripts/ui/modals.js',
@@ -55,9 +55,9 @@ self.addEventListener('install', (e) => {
       const promises = STATIC_ASSETS.map(url => {
         const req = new Request(url); 
         return fetch(req).then(res => {
-          // Защита от редиректов и ошибок. res.redirected может быть undefined в старых браузерах, но res.ok=true для 200.
+          // Защита от редиректов (например, GitHub Pages без слеша)
           if (res.ok && !res.redirected) return cache.put(req, res);
-          console.warn('SW: Skipped caching (redirect or fail):', url);
+          console.warn('SW: Skipped (redirect/fail):', url);
         }).catch(err => console.warn('SW: Fetch error', url, err));
       });
       await Promise.all(promises);
