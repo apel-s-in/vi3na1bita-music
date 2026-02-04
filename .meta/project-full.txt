@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3e28c638362d9a21f51644e1f6f2b19cef87333a.idx
-│   │       ├── pack-3e28c638362d9a21f51644e1f6f2b19cef87333a.pack
-│   │       └── pack-3e28c638362d9a21f51644e1f6f2b19cef87333a.rev
+│   │       ├── pack-c728e9d773852d4d2b221304d2cdc966e97b5ead.idx
+│   │       ├── pack-c728e9d773852d4d2b221304d2cdc966e97b5ead.pack
+│   │       └── pack-c728e9d773852d4d2b221304d2cdc966e97b5ead.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 08:56:03 UTC
+Сгенерировано: 2026-02-04 08:57:12 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2314,8 +2314,7 @@ export function attachPlaybackCache() {
     const pq = getPQ();
     try { 
       // 1. Формируем список UID текущего окна
-      const w = pcm.getLastWindow(); // Берем из кэша, который обновится внутри ensure
-      // (или вычисляем вручную, но лучше положиться на PCM после его работы)
+      // (вызов getLastWindow удалён как неиспользуемый)
       
       await pcm.ensureWindowFullyCached(pq, trackProvider); 
       
