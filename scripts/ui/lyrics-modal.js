@@ -38,17 +38,14 @@
   }
 
   function showLyricsFromTimeline(track) {
-    // Собрать текст из таймлайна лирики, экспортированного из PlayerUI
-    if (!w.PlayerUI) {
+    // N2: Берём данные из контроллера
+    const c = w.LyricsController;
+    if (!c) {
       w.NotificationSystem?.warning('Текст песни недоступен');
       return;
     }
 
-    // Предпочитаем бэкомпат-API currentLyricsLines, если есть,
-    // иначе пробуем взять сырые currentLyrics и вытащить text.
-    const rawLines = Array.isArray(w.PlayerUI.currentLyricsLines)
-      ? w.PlayerUI.currentLyricsLines
-      : (Array.isArray(w.PlayerUI.currentLyrics) ? w.PlayerUI.currentLyrics : []);
+    const rawLines = (typeof c.getCurrentLyrics === 'function') ? c.getCurrentLyrics() : [];
 
     if (!rawLines.length) {
       w.NotificationSystem?.warning('Текст песни недоступен');
