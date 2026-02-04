@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2daf148f18be087ad8f62e773d1340b7a3e9b364.idx
-│   │       ├── pack-2daf148f18be087ad8f62e773d1340b7a3e9b364.pack
-│   │       └── pack-2daf148f18be087ad8f62e773d1340b7a3e9b364.rev
+│   │       ├── pack-3cbbee8204f554d3ef9f1c1f53e2de78afffc505.idx
+│   │       ├── pack-3cbbee8204f554d3ef9f1c1f53e2de78afffc505.pack
+│   │       └── pack-3cbbee8204f554d3ef9f1c1f53e2de78afffc505.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 21:57:56 UTC
+Сгенерировано: 2026-02-04 21:58:35 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6098,6 +6098,37 @@ export const ModalTemplates = {
             `}
           </div>
         `)}
+      </div>
+    `;
+  },
+
+  statsBody: (data) => {
+    const U = window.Utils;
+    const fmtDur = (s) => {
+        const h = Math.floor(s / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        return h > 0 ? `${h}ч ${m}м` : `${m} мин`;
+    };
+
+    const rows = data.tracks.map((t, i) => `
+      <div class="st-row">
+        <span class="st-num">${i + 1}.</span>
+        <span class="st-uid">${t.title || t.uid}</span>
+        <span class="st-vals">${t.fullListens} просл. / ${fmtDur(t.seconds)}</span>
+      </div>
+    `).join('');
+
+    return `
+      <div class="st-container">
+        <div class="st-total">
+          <div>Всего времени: <b>${fmtDur(data.totalSeconds)}</b></div>
+          <div>Полных прослушиваний: <b>${data.totalFullListens}</b></div>
+        </div>
+        <div class="st-list-header">Топ треков (>3 прослушиваний):</div>
+        <div class="st-list">
+          ${rows || '<div class="st-empty">Нет данных</div>'}
+        </div>
+        <div class="st-note">Эта статистика (Global) никогда не сбрасывается.</div>
       </div>
     `;
   }
