@@ -45,7 +45,8 @@
       return;
     }
 
-    const rawLines = (typeof c.getCurrentLyrics === 'function') ? c.getCurrentLyrics() : [];
+    // Используем метод совместимости, возвращающий объекты { line: string }
+    const rawLines = (typeof c.getCurrentLyricsLines === 'function') ? c.getCurrentLyricsLines() : [];
 
     if (!rawLines.length) {
       w.NotificationSystem?.warning('Текст песни недоступен');
@@ -53,7 +54,7 @@
     }
 
     const lines = rawLines
-      .map(item => (typeof item.line === 'string' ? item.line : (item.text || '')))
+      .map(item => (typeof item.line === 'string' ? item.line : ''))
       .filter(Boolean);
 
     if (!lines.length) {
