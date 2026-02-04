@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2ab124749e8b4259c60de5844e4c5817033c3523.idx
-│   │       ├── pack-2ab124749e8b4259c60de5844e4c5817033c3523.pack
-│   │       └── pack-2ab124749e8b4259c60de5844e4c5817033c3523.rev
+│   │       ├── pack-72bbe8860c068c09deff6b353063cb0516b5355f.idx
+│   │       ├── pack-72bbe8860c068c09deff6b353063cb0516b5355f.pack
+│   │       └── pack-72bbe8860c068c09deff6b353063cb0516b5355f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 08:59:39 UTC
+Сгенерировано: 2026-02-04 09:00:09 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8495,8 +8495,8 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
     _unload(silent) {
       if (this.sound) { 
-        this.sound.stop(); 
-        this.sound.unload(); 
+        try { this.sound.stop(); } catch {}
+        try { this.sound.unload(); } catch {}
         this.sound = null; 
       }
       this._stopTick();
