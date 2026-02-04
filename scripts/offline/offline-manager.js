@@ -127,6 +127,11 @@ export class OfflineManager {
     const u = Utils.obj.trim(uid); if (!u) return;
     if (this.isPinned(u)) {
       this._getPinnedSet().delete(u); this._savePinned(); await setCloudCandidate(u, true);
+      // F1: Гарантируем докачку в CQ для Cloud-режима
+      const cq = await this.getCacheQuality();
+      if (!(await this.isTrackComplete(u, cq))) {
+         this.enqueueAudioDownload({ uid: u, quality: cq, priority: PRIORITY.P4_CLOUD, kind: 'cloudAuto' });
+      }
       Utils.ui.toast('Офлайн-закрепление снято');
       this._emit({ phase: 'unpinned', uid: u });
     } else {
@@ -346,18 +351,25 @@ export class OfflineManager {
 
   async getTrackOfflineState(uid) {
     const u = Utils.obj.trim(uid); if (!u) return {};
-    const pinned = this.isPinned(u), cq = await this.getCacheQuality(), cloudEligible = await this.isCloudEligible(u);
+    const pinned = this.isPinned(u), cq = await this.getCacheQuality();
     const cachedCQ = await this.isTrackComplete(u, cq);
-    const cachedHi = await this.isTrackComplete(u, 'hi'), cachedLo = await this.isTrackComplete(u, 'lo');
-    const isCloud = !pinned && cloudEligible && cachedCQ;
+    
+    // F2: Cloud статус требует eligibility И активности (TTL) И полной загрузки
+    const eligible = await this.isCloudEligible(u);
+    const stats = await getCloudStats(u);
+    const cloudActive = !!stats?.cloud && (stats.cloudExpiresAt > Date.now());
+    const isCloud = !pinned && (eligible || cloudActive) && cachedCQ;
+
     let needsUpdate = false;
     if (cachedCQ) {
       const { getDownloadMeta } = await import('./cache-db.js');
-      const meta = getTrackByUid(u), dm = await getDownloadMeta(u, cq), cfgSize = cq === 'lo' ? (meta?.sizeLo || meta?.size_low) : (meta?.sizeHi || meta?.size);
+      // G1: Стандартизация полей размера (sizeHi/sizeLo из реестра)
+      const meta = getTrackByUid(u), dm = await getDownloadMeta(u, cq);
+      const cfgSize = cq === 'lo' ? meta?.sizeLo : meta?.sizeHi;
       if (dm?.bytes && cfgSize && Math.abs(dm.bytes - (cfgSize * MB)) > 0.05 * (cfgSize * MB)) needsUpdate = true;
     }
-    const needsReCache = (pinned || cloudEligible) && !cachedCQ;
-    return { pinned, cloud: isCloud, cachedHiComplete: cachedHi, cachedLoComplete: cachedLo, needsUpdate, needsReCache };
+    const needsReCache = (pinned || eligible) && !cachedCQ;
+    return { pinned, cloud: isCloud, cachedHiComplete: await this.isTrackComplete(u, 'hi'), cachedLoComplete: await this.isTrackComplete(u, 'lo'), needsUpdate, needsReCache };
   }
 
   async getIndicators(uid) {
@@ -398,8 +410,16 @@ export class OfflineManager {
   
   async canGuaranteeStorageForMB(mb) {
     if (navigator.storage?.estimate) {
-      try { const est = await navigator.storage.estimate(); return { ok: (est.quota - est.usage) > (mb * 1024 * 1024 * 1.2) }; } catch { return { ok: true }; }
-    } return { ok: true };
+      // H2: Строгая проверка квоты
+      try { 
+        const est = await navigator.storage.estimate(); 
+        if (typeof est.quota !== 'number') throw 0;
+        return { ok: (est.quota - est.usage) > (mb * 1024 * 1024 * 1.2) }; 
+      } catch { 
+        return { ok: false, reason: 'quota_unknown' }; 
+      }
+    } 
+    return { ok: false, reason: 'api_missing' }; // H2: Запрет если API нет (iOS PWA safe logic)
   }
 }
 
