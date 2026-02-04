@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6d7f71af0e8e43c94059c90b44a2384cf5bf3caf.idx
-│   │       ├── pack-6d7f71af0e8e43c94059c90b44a2384cf5bf3caf.pack
-│   │       └── pack-6d7f71af0e8e43c94059c90b44a2384cf5bf3caf.rev
+│   │       ├── pack-c1d2a982b1979e8eda8c1fce7197d1497355289e.idx
+│   │       ├── pack-c1d2a982b1979e8eda8c1fce7197d1497355289e.pack
+│   │       └── pack-c1d2a982b1979e8eda8c1fce7197d1497355289e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -316,7 +316,6 @@ vi3na1bita-music/
 ├── scripts/
 │   ├── app/
 │   │   ├── albums/
-│   │   │   ├── loaders.js
 │   │   │   ├── render.js
 │   │   │   └── specials.js
 │   │   ├── player-ui/
@@ -388,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 07:43:32 UTC
+Сгенерировано: 2026-02-04 07:44:06 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1701,82 +1700,6 @@ class AlbumsManager {
 
 window.AlbumsManager = new AlbumsManager();
 export default window.AlbumsManager;
-
-//=================================================
-// FILE: /scripts/app/albums/loaders.js
-// scripts/app/albums/loaders.js
-// Загрузка/нормализация данных альбома (tracks/socials) + регистрация треков в TrackRegistry.
-
-import { registerTrack } from '../track-registry.js';
-
-export function firstUrl(base, rel) {
-  return rel ? new URL(rel, base).toString() : null;
-}
-
-export function normalizeSocials(raw) {
-  if (Array.isArray(raw?.social_links)) return raw.social_links;
-  if (Array.isArray(raw?.socials)) return raw.socials.map((s) => ({ label: s?.title, url: s?.url }));
-  return [];
-}
-
-export function normalizeTracks(tracks, base, albumKey) {
-  const out = [];
-  const list = Array.isArray(tracks) ? tracks : [];
-
-  for (let i = 0; i < list.length; i++) {
-    const t = list[i] || {};
-
-    const fileHi = firstUrl(base, t.audio);
-    const fileLo = firstUrl(base, t.audio_low);
-
-    const lyrics = firstUrl(base, t.lyrics);
-    const fulltext = firstUrl(base, t.fulltext);
-
-    const uid = typeof t.uid === 'string' && t.uid.trim() ? t.uid.trim() : null;
-
-    const sizeHi = typeof t.size === 'number' ? t.size : null;
-    const sizeLo = typeof t.size_low === 'number' ? t.size_low : null;
-
-    const hasLyrics = typeof t.hasLyrics === 'boolean' ? t.hasLyrics : !!lyrics;
-
-    const tr = {
-      num: i + 1,
-      title: t.title || `Трек ${i + 1}`,
-      file: fileHi, // back-compat (часть кода может использовать t.file)
-      fileHi,
-      fileLo,
-      sizeHi,
-      sizeLo,
-      sources: (fileHi || fileLo) ? { audio: { hi: fileHi, lo: fileLo } } : null,
-      lyrics,
-      fulltext,
-      uid,
-      hasLyrics,
-    };
-
-    out.push(tr);
-
-    // Регистрация в TrackRegistry (UID-only)
-    if (uid) {
-      try {
-        registerTrack({
-          uid,
-          title: tr.title,
-          audio: tr.fileHi || tr.file || null,
-          audio_low: tr.fileLo || null,
-          size: tr.sizeHi || null,
-          size_low: tr.sizeLo || null,
-          sources: tr.sources || null,
-          lyrics: tr.lyrics || null,
-          fulltext: tr.fulltext || null,
-          sourceAlbum: albumKey,
-        });
-      } catch {}
-    }
-  }
-
-  return out;
-}
 
 //=================================================
 // FILE: /scripts/app/albums/render.js
