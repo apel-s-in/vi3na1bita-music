@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-18f83ad83c27cd834f007782d54d9a797dc322a9.idx
-│   │       ├── pack-18f83ad83c27cd834f007782d54d9a797dc322a9.pack
-│   │       └── pack-18f83ad83c27cd834f007782d54d9a797dc322a9.rev
+│   │       ├── pack-109226a937b83d44956655b5e8acc37df7f99df3.idx
+│   │       ├── pack-109226a937b83d44956655b5e8acc37df7f99df3.pack
+│   │       └── pack-109226a937b83d44956655b5e8acc37df7f99df3.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 21:17:47 UTC
+Сгенерировано: 2026-02-04 21:18:09 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6558,23 +6558,6 @@ export async function openOfflineModal() {
   bindEvents(modalEl, state);
 }
 
-export async function openStatsModal() {
-  const mgr = getOfflineManager();
-  const rawData = await mgr.getGlobalStatistics();
-  const tracks = rawData.tracks
-    .filter(t => t.fullListens >= 3)
-    .sort((a,b) => b.fullListens - a.fullListens)
-    .map(t => {
-       const meta = window.TrackRegistry?.getTrackByUid(t.uid);
-       return { ...t, title: meta?.title || t.uid };
-    });
-  window.Modals.open({
-    title: 'СТАТИСТИКА',
-    maxWidth: 400,
-    bodyHtml: ModalTemplates.statsBody({ ...rawData, tracks })
-  });
-}
-
 function bindEvents(root, state) {
   const mgr = getOfflineManager();
   const $ = (sel) => root.querySelector(sel);
@@ -6588,74 +6571,73 @@ function bindEvents(root, state) {
       if (newMode !== 'R0' && !state.isSpaceOk) {
          el.checked = false;
          $(`input[value="${state.mode}"]`).checked = true;
-         U.ui.toast('Недостаточно места для офлайн режимов', 'error');
+         U.ui.toast('Недостаточно места', 'error');
          return;
       }
       await mgr.setMode(newMode);
       close();
-      U.ui.toast(`Режим изменен на ${newMode}`);
+      U.ui.toast(`Режим: ${newMode}`);
     });
   });
 
   $('#om-save-cq')?.addEventListener('click', () => {
-    const val = $('#om-cq').value;
-    mgr.setCacheQuality(val);
+    mgr.setCacheQuality($('#om-cq').value);
     close();
-    U.ui.toast(`Качество кэша: ${val.toUpperCase()}. Запущена фоновая замена.`);
-  });
-
-  $('#om-save-cloud')?.addEventListener('click', () => {
-    const n = parseInt($('#om-cloud-n').value) || 5;
-    const d = parseInt($('#om-cloud-d').value) || 31;
-    localStorage.setItem('offline:cloudN:v1', n);
-    localStorage.setItem('offline:cloudD:v1', d);
-    U.ui.toast('Настройки облачка сохранены');
+    U.ui.toast('Качество кэша обновлено');
   });
 
   $('#om-clear-cache')?.addEventListener('click', async () => {
-    if (!confirm('Вы уверены? Это удалит ВЕСЬ кэш.')) return;
-    if (!confirm('Точно удалить все?')) return;
+    if (!confirm('Удалить ВЕСЬ кэш?')) return;
     await mgr.clearAllCache();
     close();
-    U.ui.toast('Кэш полностью очищен');
+    U.ui.toast('Кэш очищен');
     setTimeout(() => window.location.reload(), 1000);
   });
 
-  const getSelection = () => {
-    const type = $('#om-full-target').value;
-    if (type === 'fav') {
-      return Favorites.getSnapshot().filter(x => !x.inactiveAt).map(x => x.uid);
-    } else {
-      return getAllTracks().map(x => x.uid);
+  // --- R3 Logic ---
+  const getSelectedUids = () => {
+    const uids = new Set();
+    // 1. Favorites
+    if ($('#om-full-fav')?.checked) {
+       Favorites.getSnapshot().filter(x => !x.inactiveAt).forEach(x => uids.add(x.uid));
     }
+    // 2. Albums
+    $$('.full-album-check:checked').forEach(cb => {
+       const key = cb.value;
+       getAllTracks().filter(t => t.sourceAlbum === key).forEach(t => uids.add(t.uid));
+    });
+    return Array.from(uids);
   };
 
   $('#om-stop-r3')?.addEventListener('click', () => {
      mgr.setMode('R0');
      close();
-     U.ui.toast('Режим R3 выключен. Вы онлайн.');
+     U.ui.toast('R3 выключен. Онлайн.');
   });
 
-  $('#om-foq')?.addEventListener('change', (e) => {
-    mgr.setFullOfflineQuality(e.target.value);
-  });
+  $('#om-foq')?.addEventListener('change', (e) => mgr.setFullOfflineQuality(e.target.value));
 
   $('#om-est-full')?.addEventListener('click', () => {
-    const uids = getSelection();
-    const q = $('#om-foq').value;
-    const sizePerTrack = q === 'hi' ? 5 : 2; 
-    const totalMB = uids.length * sizePerTrack;
-    $('#om-est-result').innerHTML = `Выбрано треков: <b>${uids.length}</b><br>Примерный размер: <b>~${totalMB} MB</b>`;
+    const list = getSelectedUids();
+    const mb = list.length * ($('#om-foq').value === 'hi' ? 6 : 2.5); // грубая оценка
+    $('#om-est-result').innerHTML = `Треков: <b>${list.length}</b><br>~${mb.toFixed(0)} MB`;
   });
 
   $('#om-start-full')?.addEventListener('click', async () => {
-    if (!state.isSpaceOk) { alert('Недостаточно места.'); return; }
-    const uids = getSelection();
-    if (uids.length === 0) { alert('Список пуст.'); return; }
-    const res = await mgr.startFullOffline(uids);
+    if (!state.isSpaceOk) { alert('Мало места!'); return; }
+    const list = getSelectedUids();
+    if (!list.length) { alert('Ничего не выбрано'); return; }
+    
+    // Start task
+    const res = await mgr.startFullOffline(list);
     close();
-    if (res.ok) U.ui.toast(`Начата загрузка ${uids.length} треков.`);
-    else U.ui.toast('Ошибка запуска загрузки', 'error');
+    
+    if (res.ok) {
+        U.ui.toast(`Загрузка ${list.length} треков...`);
+        // TODO: Here we should subscribe to progress and prompt when done
+        // For v1.0 MVP, we just start downloading. 
+        // The user must manually enable R3 later or we show a prompt via NotificationSystem later.
+    }
   });
 }
 
