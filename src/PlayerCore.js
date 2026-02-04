@@ -340,41 +340,26 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       if (this.isPlaying()) this.load(this.currentIndex, { autoPlay: true, resumePosition: this.getPosition() });
     }
 
-    isFavorite(uid) { return FavoritesV2.readLikedSet().has(safeStr(uid)); }
+    isFavorite(uid) { return Favorites.isLiked(safeStr(uid)); }
 
     toggleFavorite(uid, opts = {}) {
       const u = safeStr(uid);
-      
-      // 1. Если явно передан source - используем его.
-      // 2. Если fromAlbum=true (клик в списке альбома) -> source='album'.
-      // 3. Иначе проверяем текущий открытый альбом.
+      // Определяем источник (логика исправлена в пункте 3 выше)
       let source = opts.source;
-      
-      if (!source) {
-        if (opts.fromAlbum) {
-           source = 'album'; 
-        } else {
-           const isFavView = W.AlbumsManager?.getCurrentAlbum?.() === W.SPECIAL_FAVORITES_KEY;
-           source = isFavView ? 'favorites' : 'album';
-        }
-      }
-      
-      const res = FavoritesV2.toggle(u, { source, albumKey: opts.albumKey });
-      this._emitFav(u, res.liked, opts.albumKey);
+      if (!source) source = (opts.fromAlbum) ? 'album' : (W.AlbumsManager?.getCurrentAlbum?.() === W.SPECIAL_FAVORITES_KEY ? 'favorites' : 'album');
 
-      // Правило STOP для Избранного:
-      if (!res.liked && source === 'favorites' && W.AlbumsManager?.getCurrentAlbum?.() === W.SPECIAL_FAVORITES_KEY) {
+      const liked = Favorites.toggle(u, { source, albumKey: opts.albumKey });
+      this._emitFav(u, liked, opts.albumKey);
+
+      // Правило STOP для Избранного (единственный сценарий)
+      if (!liked && source === 'favorites' && W.AlbumsManager?.getCurrentAlbum?.() === W.SPECIAL_FAVORITES_KEY) {
          if (safeStr(this.getCurrentTrack()?.uid) === u) {
-            const state = this.getFavoritesState();
-            if (state.active.length === 0) {
-               this.stop(); // Единственный разрешенный STOP сценарий
-            } else {
-               // Переход на следующий АКТИВНЫЙ трек (если не Repeat)
-               if (!this.repeatMode) this.next();
-            }
+            const hasActive = Favorites.getSnapshot().some(i => !i.inactiveAt);
+            if (!hasActive) this.stop();
+            else if (!this.repeatMode) this.next();
          }
       }
-      return res;
+      return { liked };
     }
 
     removeInactivePermanently(uid) {
