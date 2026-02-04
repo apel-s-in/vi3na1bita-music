@@ -132,10 +132,8 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     play(idx, opts = {}) {
       this.prepareContext();
       if (idx != null) {
-          if (idx !== this.currentIndex) return this.load(idx, opts);
-          this.seek(0);
-          if (!this.isPlaying() && this.sound) this.sound.play();
-          return;
+          if (idx === this.currentIndex) return; // A2: Ничего не делать при повторном клике
+          return this.load(idx, opts);
       }
       if (this.sound) {
         if (!this.isPlaying()) this.sound.play();
@@ -203,13 +201,16 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       this._unload(true);
 
       if (!src.url) {
-        if (this._skipSession.count >= this._skipSession.max) {
-           W.NotificationSystem?.error('Нет доступных треков');
-           this._unload(true);
-           this._updMedia();
+        // A1: Не уходим в stop/unload при ошибке сети, остаемся в текущем состоянии ожидания
+        // C1: Это состояние "сеть недоступна" для данного трека
+        if (this._skipSession.count >= this._skipSession.max || getOfflineManager().isOfflineMode()) {
+           W.NotificationSystem?.error('Трек недоступен (проверьте сеть)');
+           // Не делаем _unload(true), чтобы сохранить контекст UI
+           this._stopTick(); // I2: Остановить статистику
            return;
         }
-        W.NotificationSystem?.warning('Трек недоступен, пропуск...');
+        // Мягкий автоскип только если это не явный offline режим
+        W.NotificationSystem?.warning('Трек недоступен, поиск...');
         setTimeout(() => {
            if (token === this._loadToken) {
              this._skipSession.count++;
@@ -294,7 +295,9 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       this.qualityMode = next;
       localStorage.setItem(LS_PQ, next);
       window.dispatchEvent(new CustomEvent('offline:uiChanged'));
-      if (this.isPlaying()) this.load(this.currentIndex, { autoPlay: true, resumePosition: this.getPosition() });
+      // B1: Тихое переключение без форса play
+      const wasPlaying = this.isPlaying();
+      this.load(this.currentIndex, { autoPlay: wasPlaying, resumePosition: this.getPosition() });
     }
 
     isFavorite(uid) { return Favorites.isLiked(safeStr(uid)); }
