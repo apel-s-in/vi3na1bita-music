@@ -6,6 +6,7 @@ import {
 } from './cache-db.js';
 import { getTrackByUid, getAllTracks } from '../app/track-registry.js';
 import { getNetPolicy, isAllowedByNetPolicy } from './net-policy.js';
+import FavoritesV2 from '../core/favorites-v2.js'; // FIX: Import Favorites
 
 const Utils = window.Utils; 
 
@@ -82,7 +83,9 @@ export class OfflineManager {
       const { getLocalMeta } = await import('./cache-db.js');
       const meta = await getLocalMeta(c.uid);
       if (meta?.kind === 'cloud') continue; 
-      if ((!meta?.kind || meta.kind === 'transient') && !keepSet.has(c.uid)) {
+      // FIX: Удаляем только если это transient и он входит в группу 'window'.
+      // 'extra' оставляем (удалит лимит кэша, если нужно).
+      if (meta?.kind === 'transient' && meta.transientGroup === 'window' && !keepSet.has(c.uid)) {
         await deleteTrackCache(c.uid);
       }
     }
@@ -312,7 +315,11 @@ export class OfflineManager {
       const uids = new Set(), all = getAllTracks();
       if (selection.mode === 'favorites') {
         if (Array.isArray(selection.keys)) selection.keys.forEach(u => uids.add(u));
-        else this._getPinnedSet().forEach(u => uids.add(u));
+        else {
+            // FIX: Use real favorites, not pinned
+            const favs = FavoritesV2.readLikedSet();
+            favs.forEach(u => uids.add(u));
+        }
       } else {
         all.forEach(t => { if (selection.albumKeys && selection.albumKeys.includes(t.sourceAlbum)) uids.add(t.uid); });
       }
