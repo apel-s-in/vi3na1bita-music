@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f5c7ad173acb3abbe8727dc082ddee5a9375e4cf.idx
-│   │       ├── pack-f5c7ad173acb3abbe8727dc082ddee5a9375e4cf.pack
-│   │       └── pack-f5c7ad173acb3abbe8727dc082ddee5a9375e4cf.rev
+│   │       ├── pack-6b214c28f30e75809ef2a28aed949cc1a1d8a830.idx
+│   │       ├── pack-6b214c28f30e75809ef2a28aed949cc1a1d8a830.pack
+│   │       └── pack-6b214c28f30e75809ef2a28aed949cc1a1d8a830.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 07:06:24 UTC
+Сгенерировано: 2026-02-04 07:07:10 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2597,9 +2597,6 @@ export function attachPlaybackCache() {
         // Если отфильтрованный список пуст
         if (!target.length && !isFavAlbum) {
           W.NotificationSystem?.info('Нет избранных треков. Режим не применен.');
-          // FIX: Просто выходим, не меняя плейлист и не ломая LS. 
-          // Кнопка в UI останется нажатой (если юзер нажал), но фильтрация не пройдет.
-          // Это лучше, чем рекурсивные вызовы или скрытый сброс.
           return; 
         }
       }
