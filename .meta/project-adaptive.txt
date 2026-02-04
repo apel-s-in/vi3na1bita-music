@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-fef3b6b4b03f2bf032dac495f177aa1284243421.idx
-│   │       ├── pack-fef3b6b4b03f2bf032dac495f177aa1284243421.pack
-│   │       └── pack-fef3b6b4b03f2bf032dac495f177aa1284243421.rev
+│   │       ├── pack-711c390b90df52e7984e5085617abe2dff926bd0.idx
+│   │       ├── pack-711c390b90df52e7984e5085617abe2dff926bd0.pack
+│   │       └── pack-711c390b90df52e7984e5085617abe2dff926bd0.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 08:54:53 UTC
+Сгенерировано: 2026-02-04 08:55:31 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5602,8 +5602,9 @@ export function attachCacheProgressOverlay() {
   injectCssOnce();
   ensureOverlay();
 
-  const schedule = (window.Utils?.debounceFrame)
-    ? window.Utils.debounceFrame(() => { updateOverlay(); })
+  // L1: Используем правильный путь к утилите
+  const schedule = (window.Utils?.func?.debounceFrame)
+    ? window.Utils.func.debounceFrame(() => { updateOverlay(); })
     : (() => updateOverlay());
 
   // Обновления по событиям OfflineManager
