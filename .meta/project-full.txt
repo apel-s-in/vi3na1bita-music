@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d8e2581819625fd0578eee784203b5a758723f22.idx
-│   │       ├── pack-d8e2581819625fd0578eee784203b5a758723f22.pack
-│   │       └── pack-d8e2581819625fd0578eee784203b5a758723f22.rev
+│   │       ├── pack-f11717b3b0554ab2eaf1fc9700f6a5def3799d93.idx
+│   │       ├── pack-f11717b3b0554ab2eaf1fc9700f6a5def3799d93.pack
+│   │       └── pack-f11717b3b0554ab2eaf1fc9700f6a5def3799d93.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-04 08:57:43 UTC
+Сгенерировано: 2026-02-04 08:58:25 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2408,7 +2408,8 @@ export function attachPlaybackCache() {
 
       if (needFilter) {
         if (isFavAlbum) {
-           target = source.filter(t => t.uid && core.isFavorite(t.uid));
+           // M1: В альбоме Favorites плейлист уже отфильтрован UI, не трогаем его
+           return;
         } else {
            const likedUids = new Set(core.getLikedUidsForAlbum(alb));
            target = source.filter(t => t.uid && likedUids.has(t.uid));
