@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ad1ac65d81c32c2125e6a2558b71d8263c593773.idx
-│   │       ├── pack-ad1ac65d81c32c2125e6a2558b71d8263c593773.pack
-│   │       └── pack-ad1ac65d81c32c2125e6a2558b71d8263c593773.rev
+│   │       ├── pack-5370c1752c66ec0613d2bcd6cb9c28890b0913af.idx
+│   │       ├── pack-5370c1752c66ec0613d2bcd6cb9c28890b0913af.pack
+│   │       └── pack-5370c1752c66ec0613d2bcd6cb9c28890b0913af.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -385,7 +385,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-05 07:42:23 UTC
+Сгенерировано: 2026-02-05 07:42:58 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2688,31 +2688,26 @@ export function attachPlaybackCache() {
 
     function updatePQButtonState() {
         if (!dom.pqBtn) return;
-
-        // --- NEW: R2/R3 Mode Check ---
+        
+        // CRITICAL FIX: Hide button in R2/R3 modes
         const mgr = window.OfflineUI?.offlineManager;
         const mode = mgr ? mgr.getMode() : 'R0';
         
-        // Hide button completely in Offline modes (R2/R3)
         if (mode === 'R2' || mode === 'R3') {
             dom.pqBtn.style.display = 'none';
             return;
         }
-        dom.pqBtn.style.display = ''; 
-        // -----------------------------
+        
+        dom.pqBtn.style.display = '';
 
         const s = U.pq.getState();
         let cls = 'player-control-btn ';
-        
-        if (!s.netOk) { 
-            cls += 'disabled'; 
-            dom.pqBtn.setAttribute('aria-disabled', 'true'); 
-        } else {
+        if (!s.netOk) { cls += 'disabled'; dom.pqBtn.setAttribute('aria-disabled', 'true'); }
+        else {
             cls += `pq-${s.mode}`;
             dom.pqBtn.setAttribute('aria-disabled', !s.canToggle);
             if (!s.canToggle) cls += ' disabled-soft';
         }
-        
         dom.pqBtn.className = cls;
         if (dom.pqLabel) dom.pqLabel.textContent = s.mode === 'lo' ? 'Lo' : 'Hi';
     }
