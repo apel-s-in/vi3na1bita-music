@@ -242,31 +242,26 @@
 
     function updatePQButtonState() {
         if (!dom.pqBtn) return;
-
-        // --- NEW: R2/R3 Mode Check ---
+        
+        // CRITICAL FIX: Hide button in R2/R3 modes
         const mgr = window.OfflineUI?.offlineManager;
         const mode = mgr ? mgr.getMode() : 'R0';
         
-        // Hide button completely in Offline modes (R2/R3)
         if (mode === 'R2' || mode === 'R3') {
             dom.pqBtn.style.display = 'none';
             return;
         }
-        dom.pqBtn.style.display = ''; 
-        // -----------------------------
+        
+        dom.pqBtn.style.display = '';
 
         const s = U.pq.getState();
         let cls = 'player-control-btn ';
-        
-        if (!s.netOk) { 
-            cls += 'disabled'; 
-            dom.pqBtn.setAttribute('aria-disabled', 'true'); 
-        } else {
+        if (!s.netOk) { cls += 'disabled'; dom.pqBtn.setAttribute('aria-disabled', 'true'); }
+        else {
             cls += `pq-${s.mode}`;
             dom.pqBtn.setAttribute('aria-disabled', !s.canToggle);
             if (!s.canToggle) cls += ' disabled-soft';
         }
-        
         dom.pqBtn.className = cls;
         if (dom.pqLabel) dom.pqLabel.textContent = s.mode === 'lo' ? 'Lo' : 'Hi';
     }
