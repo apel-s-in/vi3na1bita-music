@@ -121,7 +121,11 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       if (currentUid) {
         const idx = this.playlist.findIndex(t => t.uid === currentUid);
         if (idx >= 0) {
-          const [track] = this.playlist.splice(idx, 1      } else {
+          const [track] = this.playlist.splice(idx, 1);
+          this.playlist.unshift(track);
+          this.currentIndex = 0;
+        }
+      } else {
         this.currentIndex = 0;
       }
     }
@@ -204,9 +208,9 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
       this._emit('onTrackChange', track, index);
 
-      // --- ТЗ 7.5.3 / 7.5.4 ---
+      // --- ТЗ 7.5.3: Сценарий отсутствия сети / R3 ---
       if (!res.url) {
-        // В R3: пауза и модалка, никаких скипов
+        // В R3: пауза и модалка, никаких скипов (7.5.4)
         if (om.getMode() === 'R3') {
             this.pause(); 
             W.Modals?.confirm?.({
@@ -220,7 +224,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
             return;
         }
 
-        // В R0/R1/R2: Пропускаем (упрощенный 7.5.3)
+        // В R0/R1/R2: Автоскип (7.5.3)
         if (this._skipSession.count >= this._skipSession.max) {
            W.NotificationSystem?.error('Нет доступных треков');
            this.pause();
@@ -241,12 +245,13 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         return;
       }
 
-      // --- ТЗ 4.2 / Hot Swap ---
+      // --- ТЗ 4.2 / Hot Swap Logic ---
       const isHotSwap = !!opts.isHotSwap;
       const oldSound = this.sound; 
 
       if (!isHotSwap) this._unload(true); // Если не swap, сразу чистим старый
 
+      // ТЗ 16.1: WebAudio backend для офлайна (isLocal), HTML5 для стриминга
       const useHtml5 = !res.isLocal;
 
       const newSound = new Howl({
@@ -258,6 +263,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         onload: () => {
           if (token !== this._loadToken) { newSound.unload(); return; }
           
+          // Hot Swap: выгружаем старый только после готовности нового
           if (isHotSwap && oldSound) {
               try { oldSound.unload(); } catch(e) { console.warn('HotSwap unload err', e); }
           }
@@ -286,6 +292,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         },
         onloaderror: (id, e) => {
            console.error('Load Error', e);
+           // Retry only if it was network
            if (token === this._loadToken && !res.isLocal) {
               W.NotificationSystem?.warning('Ошибка сети, следующая...');
               setTimeout(() => this.next(), 1000);
@@ -295,12 +302,12 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
       this.sound = newSound;
 
-      // --- ТЗ 7.6.1: В R0 не кэшируем ---
+      // --- ТЗ 7.6.1: В R0 "никакое аудио по факту проигрывания не сохраняется" ---
       const mode = om.getMode();
       if (track.uid && mode !== 'R0' && mode !== 'R3') {
          om.enqueueAudioDownload({ 
              uid: track.uid, 
-             quality: res.effectiveQuality, // Важно: качаем именно то, что решили играть
+             quality: res.effectiveQuality, // Используем именно то качество, которое играет
              priority: 100, 
              kind: 'playbackCache' 
          });
@@ -332,7 +339,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       localStorage.setItem(LS_PQ, next);
       window.dispatchEvent(new CustomEvent('offline:uiChanged'));
       
-      // Quiet Switch (ТЗ 4.2)
+      // ТЗ 4.2: Quiet Switch (без stop)
       if (this.currentIndex >= 0 && this.sound) {
           const wasPlaying = this.isPlaying();
           const pos = this.getPosition();
