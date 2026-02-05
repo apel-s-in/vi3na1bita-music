@@ -1,6 +1,4 @@
 // scripts/app/gallery.js
-// Optimized GalleryManager v2.0
-
 const W = window, D = document;
 const CACHE_404 = 'gallery_404_cache:v1';
 const MAP = { 
@@ -20,21 +18,19 @@ const ss = (k, v) => {
 
 class GalleryManager {
   constructor() {
-    this.it = [];   // items
-    this.idx = 0;   // currentIndex
-    this.tm = null; // timer
-    this.lck = false; // lock
-    this.pre = new Set(); // prefetched
-    this.ldr = null; // current image loader
+    this.it = [];
+    this.idx = 0;
+    this.tm = null;
+    this.lck = false;
+    this.pre = new Set();
+    this.ldr = null;
   }
 
   initialize() {
-    // Navigation
     const go = (d) => this.it.length > 1 && (this.show((this.idx + d + this.it.length) % this.it.length), this.play());
     $('cover-gallery-arrow-left')?.addEventListener('click', () => go(-1));
     $('cover-gallery-arrow-right')?.addEventListener('click', () => go(1));
 
-    // Swipe
     const w = $('cover-wrap');
     if (w) {
       let x = 0;
@@ -47,9 +43,7 @@ class GalleryManager {
       }, {passive:true});
     }
 
-    // Visibility
     D.addEventListener('visibilitychange', () => D.hidden ? this.stop() : (this.it.length > 1 && this.play()));
-    console.log('✅ GalleryManager optimized');
   }
 
   _id(k) { return (k && k !== '__favorites__' && MAP[k]) || null; }
@@ -72,7 +66,6 @@ class GalleryManager {
         if (r.status === 404) ss(CACHE_404, { ...ss(CACHE_404), [id]: 1 });
         throw 0;
       }
-      
       const d = await r.json();
       this.it = (Array.isArray(d.items) ? d.items : (Array.isArray(d) ? d : []))
         .map(i => this._norm(i, dir)).filter(Boolean);
@@ -82,7 +75,6 @@ class GalleryManager {
         this.play();
       } else setLogo();
     } catch { setLogo(); }
-    
     this._nav();
   }
 
@@ -92,11 +84,9 @@ class GalleryManager {
       if (!p) return null;
       return /^(https?:)?\/\//.test(p) ? p : (/^(albums|img|icons)\//.test(p) ? './'+p : dir + p);
     };
-    
     if (typeof i === 'string') return /\.html([?#]|$)/i.test(i) ? { t: 'html', s: abs(i) } : { t: 'img', s: abs(i) };
     const t = (i.type||'').toLowerCase() === 'html' ? 'html' : 'img';
     if (t === 'html') return { t, s: abs(i.src) };
-    
     const f = i.formats || {};
     return { t, s: abs(f.full||i.src), w: abs(f.webp), f: { w: abs(f.webp), f: abs(f.full||i.src) } };
   }
@@ -110,6 +100,7 @@ class GalleryManager {
     const slot = $('cover-slot');
     if (!slot || !it) return (this.lck = false);
 
+    // FIX BUG-4: Correct cleanup
     if (this.ldr) { 
         this.ldr.onload = null; 
         this.ldr.onerror = null; 
@@ -119,7 +110,6 @@ class GalleryManager {
 
     const finish = () => { setTimeout(() => { this._pre(); this.lck = false; }, 200); };
 
-    // Clear content
     while(slot.firstChild) slot.removeChild(slot.firstChild);
 
     if (it.t === 'html') {
@@ -132,8 +122,6 @@ class GalleryManager {
       finish();
     } else {
       const img = new Image();
-      // Очистка предыдущего загрузчика, если он был
-      if(this.ldr) { this.ldr.onload = null; this.ldr.onerror = null; this.ldr.src = ''; }
       this.ldr = img;
       img.decoding = 'async';
       img.referrerPolicy = 'no-referrer';
