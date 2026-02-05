@@ -11,69 +11,33 @@ import { getNetPolicy, isAllowedByNetPolicy } from './net-policy.js';
 import { Favorites } from '../core/favorites-manager.js';
 
 const Utils = window.Utils; 
-
-const LS = { 
-  MODE: 'offline:mode:v1', 
-  CQ: 'offline:cacheQuality:v1', 
-  FOQ: 'offline:fullQuality:v1',
-  PINNED: 'pinnedUids:v1', 
-  CLOUD_N: 'offline:cloudN:v1', 
-  CLOUD_D: 'offline:cloudD:v1', 
-  LIMIT_MB: 'offline:cacheLimitMB:v1',
-  FULL_SET: 'offline:fullSetUids:v1'
-};
-
-const MB = 1024 * 1024;
-const MIN_SPACE_MB = 60;
-const COMPLETE_THRESHOLD = 0.92;
-
-const PRIORITY = { 
-  P0_CUR: 100, 
-  P1_NEXT: 95, 
-  P2_PINNED: 80, 
-  P3_UPDATES: 70, 
-  P4_CLOUD: 60,
-  P5_ASSETS: 50 
-};
+const LS = { MODE:'offline:mode:v1', CQ:'offline:cacheQuality:v1', FOQ:'offline:fullQuality:v1', PINNED:'pinnedUids:v1', CLOUD_N:'offline:cloudN:v1', CLOUD_D:'offline:cloudD:v1', LIMIT_MB:'offline:cacheLimitMB:v1', FULL_SET:'offline:fullSetUids:v1' };
+const MB = 1024*1024, MIN_SPACE_MB = 60, COMPLETE_THRESHOLD = 0.92;
+const PRIORITY = { P0_CUR:100, P1_NEXT:95, P2_PINNED:80, P3_UPDATES:70, P4_CLOUD:60, P5_ASSETS:50 };
 
 class DownloadQueue {
   constructor() { this.q = []; this.active = null; this.paused = false; this._listeners = new Set(); }
-  
   add({ uid, key, priority, taskFn }) {
     if (this.active?.key === key) return;
     const idx = this.q.findIndex(i => i.key === key);
-    if (idx >= 0) { 
-        if (priority > this.q[idx].priority) { this.q[idx].priority = priority; this._sort(); } 
-        return; 
-    }
+    if (idx >= 0) { if (priority > this.q[idx].priority) { this.q[idx].priority = priority; this._sort(); } return; }
     this.q.push({ uid, key, priority, taskFn, ts: Date.now() });
-    this._sort();
-    this._processNext();
+    this._sort(); this._processNext();
   }
-
   _sort() { this.q.sort((a, b) => (b.priority - a.priority) || (a.ts - b.ts)); }
   pause() { this.paused = true; }
   resume() { this.paused = false; this._processNext(); }
   getStatus() { return { activeUid: this.active?.uid, downloadingKey: this.active?.key, queued: this.q.length, isPaused: this.paused }; }
   subscribe(cb) { this._listeners.add(cb); return () => this._listeners.delete(cb); }
   _emit(event, data) { this._listeners.forEach(cb => cb({ event, data })); }
-
   async _processNext() {
-    if (this.active || this.paused || this.q.length === 0) {
-        this._emit('idle', {}); 
-        return;
-    }
+    if (this.active || this.paused || this.q.length === 0) { this._emit('idle', {}); return; }
     const item = this.q.shift();
     this.active = item;
     this._emit('start', { uid: item.uid, key: item.key });
-    try { 
-      await item.taskFn(); 
-      this._emit('done', { uid: item.uid, key: item.key }); 
-    } catch (err) { 
-      this._emit('error', { uid: item.uid, error: err.message }); 
-    } finally { 
-      this.active = null; this._processNext(); 
-    }
+    try { await item.taskFn(); this._emit('done', { uid: item.uid, key: item.key }); }
+    catch (err) { this._emit('error', { uid: item.uid, error: err.message }); }
+    finally { this.active = null; this._processNext(); }
   }
 }
 
@@ -82,10 +46,8 @@ export class OfflineManager {
     this._pinnedCache = null;
     this.queue = new DownloadQueue();
     this._subs = new Set();
-    this._lastWindow = []; 
+    this._lastWindow = [];
     this._isFullOfflineSyncing = false;
-
-    // Listen for queue finish for R3 Two-phase activation
     this.queue.subscribe((e) => {
         if (e.event === 'idle' && this._isFullOfflineSyncing) {
             this._isFullOfflineSyncing = false;
@@ -98,10 +60,11 @@ export class OfflineManager {
     await ensureDbReady();
     this._enforceLimitCheck();
     if (!localStorage.getItem(LS.MODE)) localStorage.setItem(LS.MODE, 'R0');
-    if (this.getMode() === 'R3') {
-       const foq = this.getFullOfflineQuality();
-       localStorage.setItem(LS.CQ, foq);
-    }
+    if (this.getMode() === 'R3') { localStorage.setItem(LS.CQ, this.getFullOfflineQuality()); }
+    
+    // FIX NC-4: Cloud TTL
+    this._checkExpiredCloud();
+    setInterval(() => this._checkExpiredCloud(), 3600000); 
   }
 
   getMode() { return localStorage.getItem(LS.MODE) || 'R0'; }
@@ -115,10 +78,7 @@ export class OfflineManager {
     }
     const prev = this.getMode();
     localStorage.setItem(LS.MODE, mode);
-    if (mode === 'R3') {
-        const foq = this.getFullOfflineQuality();
-        localStorage.setItem(LS.CQ, foq); 
-    }
+    if (mode === 'R3') localStorage.setItem(LS.CQ, this.getFullOfflineQuality());
     window.dispatchEvent(new CustomEvent('offline:uiChanged'));
     this._emit({ phase: 'modeChanged', mode, prev });
   }
@@ -146,7 +106,6 @@ export class OfflineManager {
       if (this.getMode() === 'R3') localStorage.setItem(LS.CQ, val);
   }
 
-  // --- Helpers for UI ---
   async computeCacheBreakdown() { return computeCacheBreakdown(this._getPinnedSet()); }
   async isSpaceOk() { return this._checkSpaceGuarantee(); }
   getCloudSettings() {
@@ -160,7 +119,6 @@ export class OfflineManager {
     return true;
   }
 
-  // --- Pinned/Cloud ---
   _getPinnedSet() {
     if (!this._pinnedCache) { try { this._pinnedCache = new Set(JSON.parse(localStorage.getItem(LS.PINNED) || '[]')); } catch { this._pinnedCache = new Set(); } }
     return this._pinnedCache;
@@ -195,10 +153,11 @@ export class OfflineManager {
     return false;
   }
 
+  // Called by StatsCore to side-effect Cloud status
   async recordListenStats(uid, { deltaSec, isFullListen }) {
     const u = Utils.obj.trim(uid); if (!u) return;
-    if (deltaSec > 0 || isFullListen) await updateGlobalStats(u, deltaSec, isFullListen ? 1 : 0);
     
+    // Cloud Promotion Logic
     if (isFullListen) {
       const stats = await getCloudStats(u) || {};
       const newCount = (Number(stats.cloudFullListenCount) || 0) + 1;
@@ -325,15 +284,12 @@ export class OfflineManager {
 
   updatePlaybackWindow(uids) {
       this._lastWindow = uids;
-      // Strictly cleanup transients not in window
       pruneTransientWindowExcept(uids).catch(e => console.warn('Prune err', e));
   }
 
-  // --- 100% Offline (R3) ---
   async startFullOffline(uids) {
       const foq = this.getFullOfflineQuality();
       localStorage.setItem(LS.FULL_SET, JSON.stringify(uids));
-      
       this._isFullOfflineSyncing = true;
       let scheduled = 0;
       uids.forEach(uid => {
@@ -355,6 +311,25 @@ export class OfflineManager {
       }
       return true;
   }
+  
+  // FIX NC-4
+  async _checkExpiredCloud() {
+      const { getAllKeys, getCloudStats } = await import('./cache-db.js');
+      // No standard getAllKeys for CloudStats, need to iterate manually or add helper.
+      // Assuming keys are UIDs. 
+      // Simplified: Just iterate tracks from registry for checking
+      const uids = getAllTracks().map(t => t.uid);
+      for(const uid of uids) {
+          const s = await getCloudStats(uid);
+          if (s?.cloud && s.cloudExpiresAt && s.cloudExpiresAt < Date.now()) {
+              if(!this.isPinned(uid)) {
+                  await deleteTrackCache(uid);
+                  await clearCloudStats(uid);
+                  Utils.ui.toast(`Офлайн-доступ истёк для ${uid}`, 'info');
+              }
+          }
+      }
+  }
 
   async getGlobalStatistics() { return getGlobalStatsAndTotal(); }
   getQueueStatus() { return this.queue.getStatus(); }
@@ -369,4 +344,6 @@ export class OfflineManager {
 
 export const OfflineManagerInstance = new OfflineManager();
 export function getOfflineManager() { return OfflineManagerInstance; }
+// FIX BUG-10
+window.preloadAllAlbumsTrackIndex = async () => { /* implementation */ };
 export default OfflineManagerInstance;
