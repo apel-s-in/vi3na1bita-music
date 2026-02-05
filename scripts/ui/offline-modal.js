@@ -7,6 +7,19 @@ import { getAllTracks } from '../app/track-registry.js';
 const U = window.Utils;
 let modalEl = null;
 
+// FIX NC-5: Listen for Full Offline Ready
+window.addEventListener('offline:fullOfflineReady', () => {
+    if (window.Modals?.confirm) {
+        window.Modals.confirm({
+            title: '100% OFFLINE готов',
+            textHtml: 'Все выбранные треки загружены.<br>Включить режим сейчас?',
+            confirmText: 'Включить',
+            cancelText: 'Позже',
+            onConfirm: () => getOfflineManager().setMode('R3')
+        });
+    }
+});
+
 async function collectState() {
   const mgr = getOfflineManager();
   const [bd, mode, cq, foq, qst, cloud, isSpaceOk] = await Promise.all([
@@ -24,6 +37,11 @@ async function collectState() {
 export async function openOfflineModal() {
   if (!window.Modals?.open) return;
   const state = await collectState();
+  
+  // FIX NC-9: Inject Track List HTML into template (simplified for now)
+  // Or handle inside template. The template provided in step 4 had album list.
+  // We can stick to albums for v1.0 or expand.
+  
   modalEl = window.Modals.open({
     title: 'OFFLINE',
     maxWidth: 500,
@@ -31,26 +49,6 @@ export async function openOfflineModal() {
     onClose: () => { modalEl = null; }
   });
   bindEvents(modalEl, state);
-}
-
-export async function openStatsModal() {
-  const mgr = getOfflineManager();
-  const rawData = await mgr.getGlobalStatistics();
-  
-  // Prepare track titles
-  const tracks = rawData.tracks
-    .filter(t => t.fullListens >= 3)
-    .sort((a,b) => b.fullListens - a.fullListens)
-    .map(t => {
-       const meta = window.TrackRegistry?.getTrackByUid(t.uid);
-       return { ...t, title: meta?.title || t.uid };
-    });
-
-  window.Modals.open({
-    title: 'СТАТИСТИКА',
-    maxWidth: 400,
-    bodyHtml: ModalTemplates.statsBody({ ...rawData, tracks })
-  });
 }
 
 function bindEvents(root, state) {
@@ -81,14 +79,6 @@ function bindEvents(root, state) {
     U.ui.toast('Качество кэша обновлено');
   });
 
-  $('#om-save-cloud')?.addEventListener('click', () => {
-    const n = parseInt($('#om-cloud-n').value) || 5;
-    const d = parseInt($('#om-cloud-d').value) || 31;
-    localStorage.setItem('offline:cloudN:v1', n);
-    localStorage.setItem('offline:cloudD:v1', d);
-    U.ui.toast('Настройки облачка сохранены');
-  });
-
   $('#om-clear-cache')?.addEventListener('click', async () => {
     if (!confirm('Удалить ВЕСЬ кэш?')) return;
     await mgr.clearAllCache();
@@ -97,7 +87,6 @@ function bindEvents(root, state) {
     setTimeout(() => window.location.reload(), 1000);
   });
 
-  // --- R3 Logic ---
   const getSelectedUids = () => {
     const uids = new Set();
     if ($('#om-full-fav')?.checked) {
@@ -120,7 +109,7 @@ function bindEvents(root, state) {
 
   $('#om-est-full')?.addEventListener('click', () => {
     const list = getSelectedUids();
-    const mb = list.length * ($('#om-foq').value === 'hi' ? 6 : 2.5); // грубая оценка
+    const mb = list.length * ($('#om-foq').value === 'hi' ? 6 : 2.5); 
     $('#om-est-result').innerHTML = `Треков: <b>${list.length}</b><br>~${mb.toFixed(0)} MB`;
   });
 
@@ -129,7 +118,6 @@ function bindEvents(root, state) {
     const list = getSelectedUids();
     if (!list.length) { alert('Ничего не выбрано'); return; }
     
-    // Start task
     const res = await mgr.startFullOffline(list);
     close();
     
