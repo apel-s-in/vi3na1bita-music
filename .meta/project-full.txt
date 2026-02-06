@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c509ae14a0c3155fa9f8a1c3035c9634548567f0.idx
-│   │       ├── pack-c509ae14a0c3155fa9f8a1c3035c9634548567f0.pack
-│   │       └── pack-c509ae14a0c3155fa9f8a1c3035c9634548567f0.rev
+│   │       ├── pack-aef923242d04451ce0b33d108c57951b5b1c073f.idx
+│   │       ├── pack-aef923242d04451ce0b33d108c57951b5b1c073f.pack
+│   │       └── pack-aef923242d04451ce0b33d108c57951b5b1c073f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 17:23:06 UTC
+Сгенерировано: 2026-02-06 17:24:22 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1447,7 +1447,7 @@ self.addEventListener('message', (e) => {
 // FILE: /scripts/app/albums.js
 import { registerTrack } from './track-registry.js';
 import { $, toStr, escHtml, isMobileUA } from './utils/app-utils.js';
-import { injectIndicator } from './offline/offline-indicators.js';
+import { injectIndicator } from '../ui/offline-indicators.js';
 
 const C = window.APP_CONFIG || {};
 const FAV = window.SPECIAL_FAVORITES_KEY || '__favorites__';
