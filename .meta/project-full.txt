@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-58f33f850d8cfda3b76a9403ba1540220d5d1339.idx
-│   │       ├── pack-58f33f850d8cfda3b76a9403ba1540220d5d1339.pack
-│   │       └── pack-58f33f850d8cfda3b76a9403ba1540220d5d1339.rev
+│   │       ├── pack-1d25751002759a5112afc207e501743b5251d613.idx
+│   │       ├── pack-1d25751002759a5112afc207e501743b5251d613.pack
+│   │       └── pack-1d25751002759a5112afc207e501743b5251d613.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 21:42:08 UTC
+Сгенерировано: 2026-02-06 21:42:57 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5471,9 +5471,16 @@ class OfflineManager {
     // Guard: если DB ещё не инициализирована — возвращаем безопасный дефолт
     if (!this._ready) {
       return {
-        status: 'none', icon: '🔒', color: 'grey', opacity: 0.4,
-        clickable: false, downloading: false, quality: null,
-        cloudFullListenCount: 0, cloudExpiresAt: null, needsReCache: false
+        status: 'none',
+        icon: '🔒',
+        color: 'grey',
+        opacity: 0.4,
+        clickable: true,
+        downloading: false,
+        quality: null,
+        cloudFullListenCount: 0,
+        cloudExpiresAt: null,
+        needsReCache: false
       };
     }
     const meta = await getTrackMeta(uid);
