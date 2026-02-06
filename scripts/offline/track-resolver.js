@@ -1,64 +1,55 @@
 /**
- * track-registry.js — Глобальный реестр треков по uid.
- * Позволяет любому модулю получить метаданные трека без доступа к кэшу альбомов.
+ * track-resolver.js — Резолвер URL трека (кэш → онлайн)
  */
 
-const _tracks = new Map();
-const _albums = new Map();
+import { getOfflineManager } from './offline-manager.js';
+import { getAudioBlob } from './cache-db.js';
 
-/**
- * Зарегистрировать трек.
- * @param {Object} track - { uid, title, audio, audio_low, size, size_low, lyrics, fulltext, sourceAlbum }
- * @param {Object} [albumMeta] - { title }
- */
-export function registerTrack(track, albumMeta) {
-  if (!track?.uid) return;
-  const uid = String(track.uid).trim();
-  if (!uid) return;
+export async function resolveTrackUrl(uid, originalUrl, options = {}) {
+  const mgr = getOfflineManager();
+  const mode = mgr.getMode();
 
-  _tracks.set(uid, {
-    uid,
-    title: track.title || 'Трек',
-    audio: track.audio || null,
-    audio_low: track.audio_low || null,
-    src: track.audio || null,
-    size: track.size || 0,
-    size_low: track.size_low || 0,
-    lyrics: track.lyrics || null,
-    fulltext: track.fulltext || null,
-    sourceAlbum: track.sourceAlbum || null,
-    album: albumMeta?.title || null
-  });
-
-  if (track.sourceAlbum && albumMeta?.title) {
-    _albums.set(track.sourceAlbum, albumMeta.title);
+  if (mode === 'R0') {
+    return { url: originalUrl, source: 'network', quality: 'original' };
   }
+
+  const quality = options.quality || mgr.getActivePlaybackQuality();
+  const q = quality === 'lo' ? 'low' : 'high';
+
+  try {
+    // Пробуем запрошенное качество
+    let blob = await getAudioBlob(uid, q);
+    if (blob) {
+      return { url: URL.createObjectURL(blob), source: 'cache', quality };
+    }
+
+    // Пробуем альтернативное качество
+    const altQ = q === 'high' ? 'low' : 'high';
+    blob = await getAudioBlob(uid, altQ);
+    if (blob) {
+      return { url: URL.createObjectURL(blob), source: 'cache', quality: altQ === 'high' ? 'hi' : 'lo' };
+    }
+  } catch (err) {
+    console.warn('[TrackResolver] cache read error:', err);
+  }
+
+  // R3 — только кэш, нет сети
+  if (mode === 'R3') {
+    return { url: null, source: 'none', quality: null };
+  }
+
+  // R1/R2 — фолбэк на онлайн
+  return { url: originalUrl, source: 'network', quality: 'original' };
 }
 
-/**
- * Получить трек по uid.
- */
-export function getTrackByUid(uid) {
-  const u = String(uid || '').trim();
-  return _tracks.get(u) || null;
+export async function preloadTrack(uid, url, quality) {
+  const mgr = getOfflineManager();
+  if (mgr.getMode() === 'R0') return;
+
+  const complete = await mgr.isTrackComplete(uid, quality);
+  if (complete) return;
+
+  mgr.enqueueAudioDownload({ uid, quality, priority: 30, kind: 'preload' });
 }
 
-/**
- * Получить все зарегистрированные uid.
- */
-export function getAllUids() {
-  return [..._tracks.keys()];
-}
-
-/**
- * Получить название альбома по ключу.
- */
-export function getAlbumTitle(key) {
-  return _albums.get(key) || null;
-}
-
-// Глобальный доступ
-const TrackRegistry = { registerTrack, getTrackByUid, getAllUids, getAlbumTitle };
-window.TrackRegistry = TrackRegistry;
-
-export default TrackRegistry;
+export default resolveTrackUrl;
