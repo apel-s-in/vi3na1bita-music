@@ -223,6 +223,15 @@ class OfflineManager {
     await openDB();
     await this._checkSpace();
     await this._cleanExpiredCloud();
+
+    /* Пробрасываем window-события в внутренний EventEmitter */
+    window.addEventListener('offline:trackCached', (e) => {
+      this._emit('trackCached', e.detail || {});
+    });
+    window.addEventListener('offline:downloadFailed', (e) => {
+      this._emit('downloadFailed', e.detail || {});
+    });
+
     this._ready = true;
     emit('offline:ready');
     return this;
