@@ -1,62 +1,59 @@
-import { getOfflineManager as _getMgr } from '../offline/offline-manager.js';
-import { openOfflineModal } from '../ui/offline-modal.js';
+/**
+ * offline-ui-bootstrap.js — Инициализация офлайн-UI при старте приложения.
+ *
+ * Подключается в app.js.
+ * Инициализирует OfflineManager, подписывается на события,
+ * обновляет UI-индикаторы.
+ */
 
-// Singleton instance holder
-const UI = window.OfflineUI = window.OfflineUI || { offlineManager: _getMgr() };
-const KEY_ALERT = 'offline:alert:v1';
+import { getOfflineManager } from '../offline/offline-manager.js';
 
-// Helpers
-const $ = (id) => document.getElementById(id);
-const getAlert = () => { try { return JSON.parse(localStorage.getItem(KEY_ALERT)); } catch { return null; } };
+let _booted = false;
 
-export function attachOfflineUI() {
-  const btn = $('offline-btn');
-  if (!btn) return;
+export async function bootstrapOfflineUI() {
+  if (_booted) return;
+  _booted = true;
 
-  // 1. Badge Injection (Lazy & Fast)
-  // ТЗ: Индикатор “!” рисуется рядом с кнопкой (слева).
-  if (!$('offline-alert-badge')) {
-    btn.insertAdjacentHTML('beforebegin', 
-      `<span id="offline-alert-badge" style="display:none;margin-right:8px;font-weight:900;color:#ffcc00;cursor:pointer;font-size:18px;line-height:1" title="Есть треки для обновления">!</span>`
-    );
+  try {
+    const mgr = getOfflineManager();
+    await mgr.initialize();
+
+    console.log('[OfflineUI] OfflineManager initialized. Mode:', mgr.getMode());
+
+    /* Подписка на прогресс */
+    mgr.on('progress', (data) => {
+      if (data.phase === 'reCache') {
+        console.log(`[OfflineUI] Re-cache progress: ${data.done}/${data.total}`);
+      }
+    });
+
+    /* Подгружаем индикаторы */
+    try {
+      const { initOfflineIndicators } = await import('../ui/offline-indicators.js');
+      initOfflineIndicators();
+    } catch (e) {
+      console.warn('[OfflineUI] Indicators module not loaded:', e.message);
+    }
+
+    /* Отслеживание online/offline */
+    window.addEventListener('online', () => {
+      console.log('[OfflineUI] Back online — resuming downloads.');
+      mgr.resumeDownloads();
+    });
+
+    window.addEventListener('offline', () => {
+      console.log('[OfflineUI] Gone offline — pausing downloads.');
+      mgr.pauseDownloads();
+    });
+
+    /* Если режим офлайн — показать уведомление */
+    if (mgr.isOfflineMode()) {
+      window.NotificationSystem?.info?.('Режим офлайн активен.');
+    }
+
+  } catch (err) {
+    console.error('[OfflineUI] Bootstrap failed:', err);
   }
-  const badge = $('offline-alert-badge');
-  if (badge) {
-    badge.onclick = (e) => { 
-      e.stopPropagation(); 
-      // ТЗ: toast x2 длительности
-      window.NotificationSystem?.info('Есть треки для обновления', 6000); 
-    };
-  }
-
-  // 2. Unified State Sync
-  const update = () => {
-    const mgr = UI.offlineManager;
-    const isOff = mgr.isOfflineMode();
-    const hasAlert = !!getAlert()?.on;
-
-    btn.textContent = 'OFFLINE';
-    // Управление классами для CSS (styles/main.css: .offline-btn.offline / .online)
-    btn.className = `offline-btn ${isOff ? 'offline' : 'online'} ${hasAlert ? 'alert' : ''}`;
-    
-    if (badge) badge.style.display = hasAlert ? 'inline-block' : 'none';
-  };
-
-  // 3. Bindings
-  btn.onclick = (e) => { e.preventDefault(); e.stopPropagation(); openOfflineModal(); };
-  
-  // React to global UI changes and specific manager progress
-  const refresh = () => requestAnimationFrame(update);
-  window.addEventListener('offline:uiChanged', refresh);
-  
-  const mgr = UI.offlineManager;
-  mgr.on('progress', (e) => { 
-    if (e?.phase === 'cqChanged' || e?.phase === 'cloudSettingsChanged') refresh(); 
-  });
-
-  // 4. Boot
-  mgr.initialize().then(refresh);
-  refresh();
 }
 
-export const getOfflineManager = () => UI.offlineManager;
+export default bootstrapOfflineUI;
