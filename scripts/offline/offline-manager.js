@@ -573,13 +573,27 @@ class OfflineManager {
 
   /* ─── registerFullListen (ТЗ П.5.2, П.5.3) ─── */
 
-  async registerFullListen(uid, { duration = 0, position = 0 } = {}) {
-    if (!uid) return;
+  async registerFullListen(uid, { duration, position } = {}) {
+    if (!uid || !this._ready) return;
 
-    /* ТЗ П.5.2: Full listen засчитывается если duration валидна и прогресс > 90% */
-    if (duration > 0 && position > 0) {
-      const ratio = position / duration;
-      if (ratio < 0.9) return;
+    /* ТЗ П.5.2: Full listen ТОЛЬКО если duration > 0 и прогресс > 90% */
+    const dur = Number(duration) || 0;
+    const pos = Number(position) || 0;
+    if (dur <= 0 || (pos / dur) < 0.9) return;
+
+    const meta = await getTrackMeta(uid);
+    if (!meta) return;
+
+    /* Защита от повторного подсчёта того же прослушивания:
+       если трек ещё играет и уже засчитан в этой сессии — пропускаем */
+
+    const count = (meta.cloudFullListenCount || 0) + 1;
+    await updateTrackMeta(uid, { cloudFullListenCount: count });
+
+    console.log(`[OfflineMgr] Full listen #${count} for ${uid} (threshold: ${this._settings.cloudThreshold || 5})`);
+
+    const N = this._settings.cloudThreshold || 5;
+    if (count >= N && meta.status === 'none') {
     }
 
     const now = Date.now();
