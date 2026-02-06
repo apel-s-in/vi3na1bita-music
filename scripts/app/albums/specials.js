@@ -1,6 +1,7 @@
 import { $ } from '../utils/app-utils.js';
 import { renderFavoritesList, renderFavoritesEmpty, bindFavoritesList } from '../../ui/favorites-view.js';
 import { loadAndRenderNewsInline } from '../../ui/news-inline.js';
+import { injectOfflineIndicators } from '../../ui/offline-indicators.js';
 
 const FAV = window.SPECIAL_FAVORITES_KEY || '__favorites__';
 const NEWS = window.SPECIAL_RELIZ_KEY || '__reliz__';
@@ -25,7 +26,11 @@ export async function loadFavoritesAlbum(ctx) {
     await refreshData();
     const model = getUiModel();
     if (!model.length) renderFavoritesEmpty(container);
-    else renderFavoritesList(container, model);
+    else {
+      renderFavoritesList(container, model);
+      /* ТЗ П.7.3: Инъекция 🔒/☁ индикаторов в Favorites */
+      await injectOfflineIndicators(container);
+    }
   };
 
   if (!ctx._favoritesViewBound) {
