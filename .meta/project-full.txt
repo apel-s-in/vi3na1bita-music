@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4845fdf61578aea90dcebea39bf128798df4cd82.idx
-│   │       ├── pack-4845fdf61578aea90dcebea39bf128798df4cd82.pack
-│   │       └── pack-4845fdf61578aea90dcebea39bf128798df4cd82.rev
+│   │       ├── pack-a5a3d7d0d06aeb9fa759d28672534f45eeb6c0dc.idx
+│   │       ├── pack-a5a3d7d0d06aeb9fa759d28672534f45eeb6c0dc.pack
+│   │       └── pack-a5a3d7d0d06aeb9fa759d28672534f45eeb6c0dc.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 20:11:56 UTC
+Сгенерировано: 2026-02-06 20:12:58 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -10641,8 +10641,8 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     
     setVolume(v) { 
       const vol = clamp(v / 100, 0, 1);
-      Howler.volume(vol);
       localStorage.setItem(LS_VOL, Math.round(vol * 100));
+      if (!this._muted) Howler.volume(vol);
     }
     getVolume() { return Number(localStorage.getItem(LS_VOL)) || 100; }
 
