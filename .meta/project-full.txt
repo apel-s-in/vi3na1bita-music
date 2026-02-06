@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2f20dcc8828d773e2e5cbd63049153c27685300d.idx
-│   │       ├── pack-2f20dcc8828d773e2e5cbd63049153c27685300d.pack
-│   │       └── pack-2f20dcc8828d773e2e5cbd63049153c27685300d.rev
+│   │       ├── pack-b46ee29c887ff81389ae2204b8e0dd1871e683ca.idx
+│   │       ├── pack-b46ee29c887ff81389ae2204b8e0dd1871e683ca.pack
+│   │       └── pack-b46ee29c887ff81389ae2204b8e0dd1871e683ca.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 21:08:50 UTC
+Сгенерировано: 2026-02-06 21:09:36 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2651,8 +2651,8 @@ export default { initPlaybackCache };
     function updatePQButtonState() {
         if (!dom.pqBtn) return;
         
-        // CRITICAL FIX: Hide button in R2/R3 modes
-        const mgr = window.OfflineUI?.offlineManager;
+        // CRITICAL FIX: Hide button in R2/R3 modes (ТЗ П.3.4)
+        const mgr = window._offlineManagerInstance;
         const mode = mgr ? mgr.getMode() : 'R0';
         
         if (mode === 'R2' || mode === 'R3') {
