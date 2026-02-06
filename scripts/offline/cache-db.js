@@ -206,3 +206,68 @@ export async function estimateUsage() {
   }
   return { quota: 0, usage: 0, free: 0 };
 }
+
+/* ───────── Compatibility layer (project-wide imports) ───────── */
+
+/**
+ * bytesByQuality(uid) -> { hi, lo } bytes
+ * Нужно для UI слоя прогресса (15).
+ */
+export async function bytesByQuality(uid) {
+  const u = String(uid || '').trim();
+  if (!u) return { hi: 0, lo: 0 };
+
+  const [hi, lo] = await Promise.all([
+    getAudioBlob(u, 'high'),
+    getAudioBlob(u, 'low')
+  ]);
+
+  return {
+    hi: hi ? (hi.size || 0) : 0,
+    lo: lo ? (lo.size || 0) : 0
+  };
+}
+
+/**
+ * deleteTrackCache(uid) — "Удалить из кэша" (9.5).
+ * Удаляем единственную локальную копию (у нас хранятся high/low, удаляем обе).
+ */
+export async function deleteTrackCache(uid) {
+  const u = String(uid || '').trim();
+  if (!u) return false;
+  await deleteAudio(u);
+  await deleteTrackMeta(u);
+  return true;
+}
+
+/**
+ * clearCloudStats(uid) — сбрасывает cloud-статистику, не трогая global stats (1.4, 9.5).
+ * В текущей модели cloud-статистика хранится не отдельной таблицей, поэтому делаем безопасный reset:
+ * если meta.type === 'cloud' — удаляем meta. Если pinned/dynamic — не трогаем.
+ */
+export async function clearCloudStats(uid) {
+  const u = String(uid || '').trim();
+  if (!u) return false;
+  const meta = await getTrackMeta(u);
+  if (meta && meta.type === 'cloud') {
+    await deleteTrackMeta(u);
+    return true;
+  }
+  return false;
+}
+
+/**
+ * track-resolver.js ожидает getLocalMeta/touchLocalAccess. Делаем мягкую совместимость.
+ */
+export async function getLocalMeta(uid) {
+  return getTrackMeta(String(uid || '').trim());
+}
+
+export async function touchLocalAccess(uid) {
+  const u = String(uid || '').trim();
+  if (!u) return;
+  const meta = await getTrackMeta(u);
+  if (!meta) return;
+  await setTrackMeta(u, { ...meta, lastAccessAt: Date.now() });
+}
+
