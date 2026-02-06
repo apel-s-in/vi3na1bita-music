@@ -1,16 +1,19 @@
 /**
- * cache-db.js — IndexedDB-обёртка для офлайн-кэша.
+ * cache-db.js — IndexedDB-хранилище для offline-кэша.
  *
- * Хранилища:
- *   audio   — Blob аудио-файлов   key = "uid:quality"
- *   meta    — JSON-мета треков     key = uid
- *   globals — Глобальные настройки key = string
+ * Stores:
+ *   - 'audio'     : { uid, quality, blob }          — аудио-файлы
+ *   - 'trackMeta' : { uid, type, quality, ... }     — метаданные треков
+ *   - 'global'    : { key, value }                   — глобальные настройки
+ *
+ * ТЗ: Приложение П.1–П.15
  */
 
 const DB_NAME = 'offlineCache';
 const DB_VERSION = 2;
-
 let _db = null;
+
+/* ─── openDB ─── */
 
 export async function openDB() {
   if (_db) return _db;
@@ -20,197 +23,186 @@ export async function openDB() {
 
     req.onupgradeneeded = (e) => {
       const db = e.target.result;
+
       if (!db.objectStoreNames.contains('audio')) {
-        db.createObjectStore('audio');
+        db.createObjectStore('audio', { keyPath: ['uid', 'quality'] });
       }
-      if (!db.objectStoreNames.contains('meta')) {
-        db.createObjectStore('meta');
+
+      if (!db.objectStoreNames.contains('trackMeta')) {
+        const store = db.createObjectStore('trackMeta', { keyPath: 'uid' });
+        store.createIndex('type', 'type', { unique: false });
+        store.createIndex('cloudExpiresAt', 'cloudExpiresAt', { unique: false });
       }
-      if (!db.objectStoreNames.contains('globals')) {
-        db.createObjectStore('globals');
+
+      if (!db.objectStoreNames.contains('global')) {
+        db.createObjectStore('global', { keyPath: 'key' });
       }
     };
 
-    req.onsuccess = (e) => {
-      _db = e.target.result;
+    req.onsuccess = () => {
+      _db = req.result;
       resolve(_db);
     };
 
-    req.onerror = (e) => {
-      console.error('[CacheDB] Open failed:', e.target.error);
-      reject(e.target.error);
-    };
-  });
-}
-
-/* ═══════ Generic helpers ═══════ */
-
-function tx(storeName, mode = 'readonly') {
-  const t = _db.transaction(storeName, mode);
-  return t.objectStore(storeName);
-}
-
-function reqP(req) {
-  return new Promise((resolve, reject) => {
-    req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
 }
 
-/* ═══════ Audio blobs ═══════ */
-
-function audioKey(uid, quality) {
-  return `${uid}:${quality || 'hi'}`;
+function db() {
+  if (!_db) throw new Error('cache-db not opened. Call openDB() first.');
+  return _db;
 }
 
+/* ─── Audio blob operations ─── */
+
 export async function setAudioBlob(uid, quality, blob) {
-  await openDB();
-  return reqP(tx('audio', 'readwrite').put(blob, audioKey(uid, quality)));
+  return new Promise((resolve, reject) => {
+    const tx = db().transaction('audio', 'readwrite');
+    tx.objectStore('audio').put({ uid, quality, blob });
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
 }
 
 export async function getAudioBlob(uid, quality) {
-  await openDB();
-  const b = await reqP(tx('audio', 'readonly').get(audioKey(uid, quality)));
-  return b || null;
+  return new Promise((resolve, reject) => {
+    const tx = db().transaction('audio', 'readonly');
+    const req = tx.objectStore('audio').get([uid, quality]);
+    req.onsuccess = () => resolve(req.result?.blob || null);
+    req.onerror = () => reject(req.error);
+  });
 }
 
 /**
- * Пробуем получить blob нужного качества, если нет — пробуем другое.
- * Возвращает { blob, quality } | null
+ * Получить blob в любом качестве (fallback). Возвращает { blob, quality } или null.
  */
 export async function getAudioBlobAny(uid, preferredQuality) {
-  await openDB();
   const pq = preferredQuality || 'hi';
-  const altQ = pq === 'hi' ? 'lo' : 'hi';
+  const preferred = await getAudioBlob(uid, pq);
+  if (preferred) return { blob: preferred, quality: pq };
 
-  let blob = await reqP(tx('audio', 'readonly').get(audioKey(uid, pq)));
-  if (blob) return { blob, quality: pq };
-
-  blob = await reqP(tx('audio', 'readonly').get(audioKey(uid, altQ)));
-  if (blob) return { blob, quality: altQ };
+  const other = pq === 'hi' ? 'lo' : 'hi';
+  const fallback = await getAudioBlob(uid, other);
+  if (fallback) return { blob: fallback, quality: other };
 
   return null;
 }
 
-export async function deleteAudio(uid, quality) {
-  await openDB();
-  return reqP(tx('audio', 'readwrite').delete(audioKey(uid, quality)));
+export async function deleteAudio(uid) {
+  return new Promise((resolve, reject) => {
+    const tx = db().transaction('audio', 'readwrite');
+    const store = tx.objectStore('audio');
+    store.delete([uid, 'hi']);
+    store.delete([uid, 'lo']);
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
 }
 
-export async function deleteTrackCache(uid) {
-  await openDB();
-  const store = tx('audio', 'readwrite');
-  await reqP(store.delete(audioKey(uid, 'hi')));
-  await reqP(store.delete(audioKey(uid, 'lo')));
+export async function hasAudioForUid(uid) {
+  const hi = await getAudioBlob(uid, 'hi');
+  if (hi) return true;
+  const lo = await getAudioBlob(uid, 'lo');
+  return !!lo;
 }
 
-/* ═══════ Track meta ═══════ */
+/* ─── Track meta operations ─── */
 
-export async function setTrackMeta(uid, data) {
-  await openDB();
-  return reqP(tx('meta', 'readwrite').put(data, uid));
+export async function setTrackMeta(uid, meta) {
+  return new Promise((resolve, reject) => {
+    const tx = db().transaction('trackMeta', 'readwrite');
+    tx.objectStore('trackMeta').put({ ...meta, uid });
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
 }
 
 export async function getTrackMeta(uid) {
-  await openDB();
-  return (await reqP(tx('meta', 'readonly').get(uid))) || null;
+  return new Promise((resolve, reject) => {
+    const tx = db().transaction('trackMeta', 'readonly');
+    const req = tx.objectStore('trackMeta').get(uid);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
 }
 
-/**
- * Частичное обновление меты (merge).
- * Не затирает поля, которых нет в patch.
- */
-export async function updateTrackMeta(uid, patch) {
-  await openDB();
-  const existing = (await reqP(tx('meta', 'readonly').get(uid))) || {};
-  const merged = { ...existing, ...patch, uid };
-  return reqP(tx('meta', 'readwrite').put(merged, uid));
+export async function updateTrackMeta(uid, updates) {
+  const existing = (await getTrackMeta(uid)) || { uid };
+  const merged = { ...existing, ...updates, uid };
+  return setTrackMeta(uid, merged);
 }
 
 export async function deleteTrackMeta(uid) {
-  await openDB();
-  return reqP(tx('meta', 'readwrite').delete(uid));
+  return new Promise((resolve, reject) => {
+    const tx = db().transaction('trackMeta', 'readwrite');
+    tx.objectStore('trackMeta').delete(uid);
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
 }
 
 export async function getAllTrackMetas() {
-  await openDB();
-  const store = tx('meta', 'readonly');
-  const keys = await reqP(store.getAllKeys());
-  const vals = await reqP(store.getAll());
-  return vals.map((v, i) => ({ ...v, uid: v.uid || keys[i] }));
+  return new Promise((resolve, reject) => {
+    const tx = db().transaction('trackMeta', 'readonly');
+    const req = tx.objectStore('trackMeta').getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
 }
 
-/* ═══════ Cloud stats helpers (ТЗ П.5.5) ═══════ */
+/* ─── Convenience for TTL/cleanup ─── */
 
-/**
- * Сброс cloud-статистики БЕЗ удаления всей меты.
- * Сохраняет globalFullListenCount, globalListenSeconds.
- * ТЗ П.5.5: «Сбросить cloud-статистику: cloudFullListenCount=0, 
- *   lastFullListenAt=null, cloudAddedAt=null, cloudExpiresAt=null, cloud=false»
- */
 export async function resetCloudStats(uid) {
-  await openDB();
-  const existing = (await reqP(tx('meta', 'readonly').get(uid))) || {};
-  const reset = {
-    ...existing,
-    uid,
-    type: 'none',
+  return updateTrackMeta(uid, {
     cloudFullListenCount: 0,
     lastFullListenAt: null,
     cloudAddedAt: null,
-    cloudExpiresAt: null,
-    pinnedAt: null,
-    quality: null,
-    size: 0,
-    needsReCache: false,
-    expiredPending: false
-  };
-  return reqP(tx('meta', 'readwrite').put(reset, uid));
+    cloudExpiresAt: null
+  });
 }
 
-/**
- * Пометить трек как expiredPending (ТЗ П.5.6 — R3 режим).
- */
 export async function markExpiredPending(uid) {
   return updateTrackMeta(uid, { expiredPending: true });
 }
 
-/* ═══════ Globals ═══════ */
-
-export async function setGlobal(key, val) {
-  await openDB();
-  return reqP(tx('globals', 'readwrite').put(val, key));
-}
+/* ─── Global key-value ─── */
 
 export async function getGlobal(key) {
-  await openDB();
-  return (await reqP(tx('globals', 'readonly').get(key))) ?? null;
+  return new Promise((resolve, reject) => {
+    const tx = db().transaction('global', 'readonly');
+    const req = tx.objectStore('global').get(key);
+    req.onsuccess = () => resolve(req.result?.value ?? null);
+    req.onerror = () => reject(req.error);
+  });
 }
 
-/**
- * Проверить наличие любого аудио-блоба для uid.
- */
-export async function hasAudioForUid(uid) {
-  await openDB();
-  const hi = await reqP(tx('audio', 'readonly').get(audioKey(uid, 'hi')));
-  if (hi) return true;
-  const lo = await reqP(tx('audio', 'readonly').get(audioKey(uid, 'lo')));
-  return !!lo;
+export async function setGlobal(key, value) {
+  return new Promise((resolve, reject) => {
+    const tx = db().transaction('global', 'readwrite');
+    tx.objectStore('global').put({ key, value });
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
 }
 
-/* ═══════ Storage estimate ═══════ */
+/* ─── deleteTrackCache (all data for uid) ─── */
+
+export async function deleteTrackCache(uid) {
+  await deleteAudio(uid);
+  await deleteTrackMeta(uid);
+}
+
+/* ─── Storage estimate ─── */
 
 export async function estimateUsage() {
-  try {
-    if (navigator.storage?.estimate) {
-      const est = await navigator.storage.estimate();
-      return {
-        usage: est.usage || 0,
-        used: est.usage || 0,
-        quota: est.quota || 0,
-        free: (est.quota || 0) - (est.usage || 0)
-      };
-    }
-  } catch {}
-  return { usage: 0, used: 0, quota: 0, free: 0 };
+  if (navigator.storage && navigator.storage.estimate) {
+    const est = await navigator.storage.estimate();
+    return {
+      used: est.usage || 0,
+      quota: est.quota || 0,
+      free: Math.max(0, (est.quota || 0) - (est.usage || 0))
+    };
+  }
+  /* Fallback: если API недоступен — притворяемся что места достаточно */
+  return { used: 0, quota: 500 * 1024 * 1024, free: 500 * 1024 * 1024 };
 }
