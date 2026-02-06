@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1ee5a1c629fac3500fb1844844490ec54285a7e9.idx
-│   │       ├── pack-1ee5a1c629fac3500fb1844844490ec54285a7e9.pack
-│   │       └── pack-1ee5a1c629fac3500fb1844844490ec54285a7e9.rev
+│   │       ├── pack-4b1f9b043065c73c2d52b2ab307cacfc77b5492b.idx
+│   │       ├── pack-4b1f9b043065c73c2d52b2ab307cacfc77b5492b.pack
+│   │       └── pack-4b1f9b043065c73c2d52b2ab307cacfc77b5492b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 20:03:13 UTC
+Сгенерировано: 2026-02-06 20:04:13 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4604,13 +4604,15 @@ export async function seedPlayerStateV2FromCurrent(page, opts = {}) {
 const DB_NAME = 'offlineCache';
 const DB_VERSION = 2;
 let _db = null;
+let _dbPending = null;
 
 /* ─── openDB ─── */
 
 export async function openDB() {
   if (_db) return _db;
+  if (_dbPending) return _dbPending;
 
-  return new Promise((resolve, reject) => {
+  _dbPending = new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
 
     req.onupgradeneeded = (e) => {
@@ -4633,11 +4635,17 @@ export async function openDB() {
 
     req.onsuccess = () => {
       _db = req.result;
+      _dbPending = null;
       resolve(_db);
     };
 
-    req.onerror = () => reject(req.error);
+    req.onerror = () => {
+      _dbPending = null;
+      reject(req.error);
+    };
   });
+
+  return _dbPending;
 }
 
 function db() {
