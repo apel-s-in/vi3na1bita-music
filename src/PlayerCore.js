@@ -393,6 +393,13 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       
       this.qualityMode = next;
       localStorage.setItem(LS_PQ, next);
+
+      /* ТЗ П.12.1: Синхронизация PQ↔CQ — уведомить OfflineManager */
+      const mgr = window._offlineManagerInstance;
+      if (mgr) {
+        mgr.setCacheQualitySetting(next);
+      }
+
       window.dispatchEvent(new CustomEvent('offline:uiChanged'));
       
       // ТЗ 4.2: Quiet Switch (без stop)
