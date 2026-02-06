@@ -48,7 +48,8 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         getUid: () => safeStr(this.getCurrentTrack()?.uid),
         getPos: () => this.getPosition(),
         getDur: () => this.getDuration(),
-        record: (uid, p) => getOfflineManager().recordListenStats(uid, p)
+        recordTick: (uid, p) => getOfflineManager().recordTickStats(uid, p),
+        recordEnd: (uid, p) => getOfflineManager().registerFullListen(uid, p)
       });
 
       // iOS Unlock
@@ -512,15 +513,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         this._emit('onTick', pos, dur);
         this._stats.onTick();
 
-        /* Диспатч для playback-cache-bootstrap (ТЗ П.5.2) */
-        try {
-          const uid = safeStr(this.getCurrentTrack()?.uid);
-          if (uid) {
-            window.dispatchEvent(new CustomEvent('player:timeUpdate', {
-              detail: { uid, currentTime: pos, duration: dur }
-            }));
-          }
-        } catch (e) { /* silent */ }
+        /* player:timeUpdate удалён — логика подсчёта в stats-tracker */
       }, 250);
     }
     _stopTick() { clearInterval(this._tickInt); }
