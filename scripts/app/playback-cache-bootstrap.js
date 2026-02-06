@@ -1,50 +1,51 @@
 /**
- * playback-cache-bootstrap.js — Инициализация кэша воспроизведения
- * Связывает PlayerCore с OfflineManager для кэширования при прослушивании
+ * playback-cache-bootstrap.js — Мост между PlayerCore и OfflineManager.
+ *
+ * ТЗ: П.7 (Playback Window), П.3.1 (качество)
+ *
+ * Слушает события плеера и обновляет playback-window.
  */
 
 import { getOfflineManager } from '../offline/offline-manager.js';
 
-export function initPlaybackCache() {
+let _booted = false;
+
+export async function bootstrapPlaybackCache() {
+  if (_booted) return;
+  _booted = true;
+
   const mgr = getOfflineManager();
 
-  // Слушаем события смены трека от плеера
+  /* Слушаем смену трека от плеера */
   window.addEventListener('player:trackChanged', async (e) => {
-    const { uid, quality } = e.detail || {};
+    const { uid, playlist } = e.detail || {};
     if (!uid) return;
-    if (mgr.getMode() === 'R0') return;
 
-    // Проверяем, закэширован ли уже
-    const complete = await mgr.isTrackComplete(uid, quality || mgr.getActivePlaybackQuality());
-    if (complete) return;
+    const mode = mgr.getMode();
 
-    // Ставим в очередь загрузки с приоритетом «воспроизведение»
-    mgr.enqueueAudioDownload({
-      uid,
-      quality: quality || mgr.getActivePlaybackQuality(),
-      priority: 100,
-      kind: 'playbackCache'
-    });
+    /* В R2/R3 режимах обновляем playback window (ТЗ П.7) */
+    if (mode === 'R2' || mode === 'R3') {
+      try {
+        await mgr.updatePlaybackWindow(uid, playlist || [], 2);
+      } catch (err) {
+        console.warn('[PlaybackCache] updatePlaybackWindow failed:', err.message);
+      }
+    }
   });
 
-  // Предзагрузка следующих треков из playback window
-  window.addEventListener('player:playbackWindowUpdate', (e) => {
-    const uids = e.detail?.uids || [];
-    mgr.updatePlaybackWindow(uids);
-
-    if (mgr.getMode() === 'R0') return;
-
-    uids.forEach((uid, i) => {
-      mgr.enqueueAudioDownload({
-        uid,
-        quality: mgr.getActivePlaybackQuality(),
-        priority: 50 - i,
-        kind: 'playbackCache'
-      });
-    });
+  /* Слушаем завершение прослушивания */
+  window.addEventListener('player:listenComplete', async (e) => {
+    const { uid, pct } = e.detail || {};
+    if (uid && pct >= 0.97) {
+      try {
+        await mgr.registerFullListen(uid);
+      } catch (err) {
+        console.warn('[PlaybackCache] registerFullListen failed:', err.message);
+      }
+    }
   });
 
-  console.log('[PlaybackCache] initialized');
+  console.log('[PlaybackCache] Bootstrap complete.');
 }
 
-export default initPlaybackCache;
+export default bootstrapPlaybackCache;
