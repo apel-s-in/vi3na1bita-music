@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-21fa5c3452fbcb41aac9ec6119f88a55745ea2a5.idx
-│   │       ├── pack-21fa5c3452fbcb41aac9ec6119f88a55745ea2a5.pack
-│   │       └── pack-21fa5c3452fbcb41aac9ec6119f88a55745ea2a5.rev
+│   │       ├── pack-aa15f28393ce67bd5b52d49a23fdcba942ac96e3.idx
+│   │       ├── pack-aa15f28393ce67bd5b52d49a23fdcba942ac96e3.pack
+│   │       └── pack-aa15f28393ce67bd5b52d49a23fdcba942ac96e3.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 14:13:51 UTC
+Сгенерировано: 2026-02-06 14:18:09 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3257,77 +3257,69 @@ export default initPlaybackCache;
 //=================================================
 // FILE: /scripts/app/track-registry.js
 /**
- * track-resolver.js — Резолвер URL трека (кэш → онлайн)
- * ТЗ 6.3: Приоритет кэшированного аудио над онлайн
+ * track-registry.js — Глобальный реестр треков по uid.
+ * Позволяет любому модулю получить метаданные трека без доступа к кэшу альбомов.
  */
 
-import { getOfflineManager } from './offline-manager.js';
-import { getAudioBlob } from './cache-db.js';
+const _tracks = new Map();
+const _albums = new Map();
 
 /**
- * Определяет URL для воспроизведения трека.
- * Если трек есть в кэше — возвращает blob URL.
- * Иначе — оригинальный URL.
- *
- * @param {string} uid - UID трека
- * @param {string} originalUrl - исходный URL трека
- * @param {object} [options] - { quality: 'hi'|'lo' }
- * @returns {Promise<{url: string, source: 'cache'|'network', quality: string}>}
+ * Зарегистрировать трек.
+ * @param {Object} track - { uid, title, audio, audio_low, size, size_low, lyrics, fulltext, sourceAlbum }
+ * @param {Object} [albumMeta] - { title }
  */
-export async function resolveTrackUrl(uid, originalUrl, options = {}) {
-  const mgr = getOfflineManager();
-  const mode = mgr.getMode();
+export function registerTrack(track, albumMeta) {
+  if (!track?.uid) return;
+  const uid = String(track.uid).trim();
+  if (!uid) return;
 
-  // В R0 — всегда онлайн
-  if (mode === 'R0') {
-    return { url: originalUrl, source: 'network', quality: 'original' };
+  _tracks.set(uid, {
+    uid,
+    title: track.title || 'Трек',
+    audio: track.audio || null,
+    audio_low: track.audio_low || null,
+    src: track.audio || null,
+    size: track.size || 0,
+    size_low: track.size_low || 0,
+    lyrics: track.lyrics || null,
+    fulltext: track.fulltext || null,
+    sourceAlbum: track.sourceAlbum || null,
+    album: albumMeta?.title || null
+  });
+
+  if (track.sourceAlbum && albumMeta?.title) {
+    _albums.set(track.sourceAlbum, albumMeta.title);
   }
-
-  const quality = options.quality || mgr.getActivePlaybackQuality();
-  const q = quality === 'lo' ? 'low' : 'high';
-
-  // Пробуем получить из кэша
-  try {
-    const blob = await getAudioBlob(uid, q);
-    if (blob) {
-      const blobUrl = URL.createObjectURL(blob);
-      return { url: blobUrl, source: 'cache', quality };
-    }
-
-    // Пробуем альтернативное качество
-    const altQ = q === 'high' ? 'low' : 'high';
-    const altBlob = await getAudioBlob(uid, altQ);
-    if (altBlob) {
-      const blobUrl = URL.createObjectURL(altBlob);
-      return { url: blobUrl, source: 'cache', quality: altQ === 'high' ? 'hi' : 'lo' };
-    }
-  } catch (err) {
-    console.warn('[TrackResolver] cache read error:', err);
-  }
-
-  // R3 — только кэш, нет сети
-  if (mode === 'R3') {
-    return { url: null, source: 'none', quality: null };
-  }
-
-  // R1/R2 — фолбэк на онлайн
-  return { url: originalUrl, source: 'network', quality: 'original' };
 }
 
 /**
- * Предзагрузка трека в кэш
+ * Получить трек по uid.
  */
-export async function preloadTrack(uid, url, quality) {
-  const mgr = getOfflineManager();
-  if (mgr.getMode() === 'R0') return;
-
-  const complete = await mgr.isTrackComplete(uid, quality);
-  if (complete) return;
-
-  mgr.enqueueAudioDownload({ uid, quality, priority: 30, kind: 'preload' });
+export function getTrackByUid(uid) {
+  const u = String(uid || '').trim();
+  return _tracks.get(u) || null;
 }
 
-export default resolveTrackUrl;
+/**
+ * Получить все зарегистрированные uid.
+ */
+export function getAllUids() {
+  return [..._tracks.keys()];
+}
+
+/**
+ * Получить название альбома по ключу.
+ */
+export function getAlbumTitle(key) {
+  return _albums.get(key) || null;
+}
+
+// Глобальный доступ
+const TrackRegistry = { registerTrack, getTrackByUid, getAllUids, getAlbumTitle };
+window.TrackRegistry = TrackRegistry;
+
+export default TrackRegistry;
 
 //=================================================
 // FILE: /scripts/app/utils/app-utils.js
