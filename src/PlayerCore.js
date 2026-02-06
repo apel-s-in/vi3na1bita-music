@@ -210,10 +210,15 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       
       let res;
       try {
-        const resolved = await resolveTrackUrl(track.uid, originalUrl, { quality });
+        const trackDataForResolve = {
+          audio: trackMeta?.audio || track.src || track.audio || originalUrl,
+          audio_low: trackMeta?.audio_low || track.audio_low || null,
+          src: originalUrl
+        };
+        const resolved = await resolveTrackUrl(track.uid, trackDataForResolve);
         res = {
           url: resolved.url,
-          isLocal: resolved.source === 'cache',
+          isLocal: resolved.source === 'local',
           effectiveQuality: resolved.quality === 'lo' ? 'lo' : 'hi'
         };
       } catch (e) {
@@ -224,6 +229,13 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       if (token !== this._loadToken) return;
 
       this._emit('onTrackChange', track, index);
+
+      /* Диспатч window event для playback-cache-bootstrap (ТЗ П.5.2, П.10) */
+      try {
+        window.dispatchEvent(new CustomEvent('player:trackChanged', {
+          detail: { uid: safeStr(track?.uid), trackData: track }
+        }));
+      } catch (e) { /* silent */ }
 
       // --- ТЗ 7.5.3: Сценарий отсутствия сети / R3 ---
       if (!res.url) {
@@ -477,8 +489,20 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     _startTick() {
       this._stopTick();
       this._tickInt = setInterval(() => {
-        this._emit('onTick', this.getPosition(), this.getDuration());
+        const pos = this.getPosition();
+        const dur = this.getDuration();
+        this._emit('onTick', pos, dur);
         this._stats.onTick();
+
+        /* Диспатч для playback-cache-bootstrap (ТЗ П.5.2) */
+        try {
+          const uid = safeStr(this.getCurrentTrack()?.uid);
+          if (uid) {
+            window.dispatchEvent(new CustomEvent('player:timeUpdate', {
+              detail: { uid, currentTime: pos, duration: dur }
+            }));
+          }
+        } catch (e) { /* silent */ }
       }, 250);
     }
     _stopTick() { clearInterval(this._tickInt); }
