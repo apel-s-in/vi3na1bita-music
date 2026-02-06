@@ -83,3 +83,25 @@ export async function onTrackPlayedFull(uid) {
   const mgr = getOfflineManager();
   await mgr.registerFullListen(uid);
 }
+
+/**
+ * Compat alias: PlayerCore импортирует resolveTrackUrl.
+ * Адаптер: принимает (uid, networkUrl, opts), возвращает { url, source, quality }.
+ */
+export async function resolveTrackUrl(uid, networkUrl, opts = {}) {
+  const quality = opts.quality || 'hi';
+  const trackData = window.TrackRegistry?.getTrackByUid?.(uid);
+
+  const result = await resolveTrackSource(uid, trackData);
+
+  if (result.fromCache) {
+    return { url: result.src, source: 'cache', quality: result.quality };
+  }
+
+  /* Если resolveTrackSource не нашёл в кэше — используем networkUrl */
+  return {
+    url: result.src || networkUrl || '',
+    source: result.src ? 'network' : null,
+    quality
+  };
+}
