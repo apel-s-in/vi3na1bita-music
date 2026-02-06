@@ -1,7 +1,7 @@
 // src/PlayerCore.js
 import { getOfflineManager } from '../scripts/offline/offline-manager.js';
-import { resolvePlaybackSource } from '../scripts/offline/track-resolver.js';
-import { getTrackByUid } from '../scripts/app/track-registry.js';
+import { resolveTrackUrl } from '../scripts/offline/track-resolver.js';
+import { registerTrack, getTrackByUid } from '../scripts/app/track-registry.js';
 import { Favorites } from '../scripts/core/favorites-manager.js';
 import { ensureMediaSession } from './player-core/media-session.js';
 import { createListenStatsTracker } from './player-core/stats-tracker.js';
@@ -202,7 +202,24 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       if (!opts.isAutoSkip) this._skipSession = { token, count: 0, max: this.playlist.length };
 
       const om = getOfflineManager();
-      const res = await resolvePlaybackSource({ track }); 
+      
+      // Resolve URL through offline system
+      const trackMeta = getTrackByUid(track.uid);
+      const originalUrl = track.src || track.audio || trackMeta?.audio || null;
+      const quality = this.qualityMode;
+      
+      let res;
+      try {
+        const resolved = await resolveTrackUrl(track.uid, originalUrl, { quality });
+        res = {
+          url: resolved.url,
+          isLocal: resolved.source === 'cache',
+          effectiveQuality: resolved.quality === 'lo' ? 'lo' : 'hi'
+        };
+      } catch (e) {
+        console.warn('[PlayerCore] resolveTrackUrl error:', e);
+        res = { url: originalUrl, isLocal: false, effectiveQuality: quality };
+      }
       
       if (token !== this._loadToken) return;
 
