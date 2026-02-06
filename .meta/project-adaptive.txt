@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9db3eb50d3d401993d5800da056d637e0255bb10.idx
-│   │       ├── pack-9db3eb50d3d401993d5800da056d637e0255bb10.pack
-│   │       └── pack-9db3eb50d3d401993d5800da056d637e0255bb10.rev
+│   │       ├── pack-0d0f356fd0ed19c48a96395c187979257a793740.idx
+│   │       ├── pack-0d0f356fd0ed19c48a96395c187979257a793740.pack
+│   │       └── pack-0d0f356fd0ed19c48a96395c187979257a793740.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 17:12:58 UTC
+Сгенерировано: 2026-02-06 17:13:19 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2236,55 +2236,56 @@ export default bootstrapOfflineUI;
 //=================================================
 // FILE: /scripts/app/playback-cache-bootstrap.js
 /**
- * playback-cache-bootstrap.js — Инициализация кэша воспроизведения
- * Связывает PlayerCore с OfflineManager для кэширования при прослушивании
+ * playback-cache-bootstrap.js — Мост между PlayerCore и OfflineManager.
+ *
+ * ТЗ: П.7 (Playback Window), П.3.1 (качество)
+ *
+ * Слушает события плеера и обновляет playback-window.
  */
 
 import { getOfflineManager } from '../offline/offline-manager.js';
 
-export function initPlaybackCache() {
+let _booted = false;
+
+export async function bootstrapPlaybackCache() {
+  if (_booted) return;
+  _booted = true;
+
   const mgr = getOfflineManager();
 
-  // Слушаем события смены трека от плеера
+  /* Слушаем смену трека от плеера */
   window.addEventListener('player:trackChanged', async (e) => {
-    const { uid, quality } = e.detail || {};
+    const { uid, playlist } = e.detail || {};
     if (!uid) return;
-    if (mgr.getMode() === 'R0') return;
 
-    // Проверяем, закэширован ли уже
-    const complete = await mgr.isTrackComplete(uid, quality || mgr.getActivePlaybackQuality());
-    if (complete) return;
+    const mode = mgr.getMode();
 
-    // Ставим в очередь загрузки с приоритетом «воспроизведение»
-    mgr.enqueueAudioDownload({
-      uid,
-      quality: quality || mgr.getActivePlaybackQuality(),
-      priority: 100,
-      kind: 'playbackCache'
-    });
+    /* В R2/R3 режимах обновляем playback window (ТЗ П.7) */
+    if (mode === 'R2' || mode === 'R3') {
+      try {
+        await mgr.updatePlaybackWindow(uid, playlist || [], 2);
+      } catch (err) {
+        console.warn('[PlaybackCache] updatePlaybackWindow failed:', err.message);
+      }
+    }
   });
 
-  // Предзагрузка следующих треков из playback window
-  window.addEventListener('player:playbackWindowUpdate', (e) => {
-    const uids = e.detail?.uids || [];
-    mgr.updatePlaybackWindow(uids);
-
-    if (mgr.getMode() === 'R0') return;
-
-    uids.forEach((uid, i) => {
-      mgr.enqueueAudioDownload({
-        uid,
-        quality: mgr.getActivePlaybackQuality(),
-        priority: 50 - i,
-        kind: 'playbackCache'
-      });
-    });
+  /* Слушаем завершение прослушивания */
+  window.addEventListener('player:listenComplete', async (e) => {
+    const { uid, pct } = e.detail || {};
+    if (uid && pct >= 0.97) {
+      try {
+        await mgr.registerFullListen(uid);
+      } catch (err) {
+        console.warn('[PlaybackCache] registerFullListen failed:', err.message);
+      }
+    }
   });
 
-  console.log('[PlaybackCache] initialized');
+  console.log('[PlaybackCache] Bootstrap complete.');
 }
 
-export default initPlaybackCache;
+export default bootstrapPlaybackCache;
 
 //=================================================
 // FILE: /scripts/app/playback-policy.js
