@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9f3d9aff2b68558398b1dd2184fdf5f974178dd9.idx
-│   │       ├── pack-9f3d9aff2b68558398b1dd2184fdf5f974178dd9.pack
-│   │       └── pack-9f3d9aff2b68558398b1dd2184fdf5f974178dd9.rev
+│   │       ├── pack-c1697a240b3e8282ea067eae3ee201c9846e0c56.idx
+│   │       ├── pack-c1697a240b3e8282ea067eae3ee201c9846e0c56.pack
+│   │       └── pack-c1697a240b3e8282ea067eae3ee201c9846e0c56.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 20:22:02 UTC
+Сгенерировано: 2026-02-06 20:22:40 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5089,6 +5089,15 @@ class OfflineManager {
     await openDB();
     await this._checkSpace();
     await this._cleanExpiredCloud();
+
+    /* Пробрасываем window-события в внутренний EventEmitter */
+    window.addEventListener('offline:trackCached', (e) => {
+      this._emit('trackCached', e.detail || {});
+    });
+    window.addEventListener('offline:downloadFailed', (e) => {
+      this._emit('downloadFailed', e.detail || {});
+    });
+
     this._ready = true;
     emit('offline:ready');
     return this;
