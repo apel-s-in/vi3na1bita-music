@@ -116,6 +116,17 @@ export async function getTrackMeta(uid) {
   return (await reqP(tx('meta', 'readonly').get(uid))) || null;
 }
 
+/**
+ * Частичное обновление меты (merge).
+ * Не затирает поля, которых нет в patch.
+ */
+export async function updateTrackMeta(uid, patch) {
+  await openDB();
+  const existing = (await reqP(tx('meta', 'readonly').get(uid))) || {};
+  const merged = { ...existing, ...patch, uid };
+  return reqP(tx('meta', 'readwrite').put(merged, uid));
+}
+
 export async function deleteTrackMeta(uid) {
   await openDB();
   return reqP(tx('meta', 'readwrite').delete(uid));
@@ -127,6 +138,41 @@ export async function getAllTrackMetas() {
   const keys = await reqP(store.getAllKeys());
   const vals = await reqP(store.getAll());
   return vals.map((v, i) => ({ ...v, uid: v.uid || keys[i] }));
+}
+
+/* ═══════ Cloud stats helpers (ТЗ П.5.5) ═══════ */
+
+/**
+ * Сброс cloud-статистики БЕЗ удаления всей меты.
+ * Сохраняет globalFullListenCount, globalListenSeconds.
+ * ТЗ П.5.5: «Сбросить cloud-статистику: cloudFullListenCount=0, 
+ *   lastFullListenAt=null, cloudAddedAt=null, cloudExpiresAt=null, cloud=false»
+ */
+export async function resetCloudStats(uid) {
+  await openDB();
+  const existing = (await reqP(tx('meta', 'readonly').get(uid))) || {};
+  const reset = {
+    ...existing,
+    uid,
+    type: 'none',
+    cloudFullListenCount: 0,
+    lastFullListenAt: null,
+    cloudAddedAt: null,
+    cloudExpiresAt: null,
+    pinnedAt: null,
+    quality: null,
+    size: 0,
+    needsReCache: false,
+    expiredPending: false
+  };
+  return reqP(tx('meta', 'readwrite').put(reset, uid));
+}
+
+/**
+ * Пометить трек как expiredPending (ТЗ П.5.6 — R3 режим).
+ */
+export async function markExpiredPending(uid) {
+  return updateTrackMeta(uid, { expiredPending: true });
 }
 
 /* ═══════ Globals ═══════ */
