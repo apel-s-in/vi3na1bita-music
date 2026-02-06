@@ -221,6 +221,10 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
           isLocal: resolved.source === 'local',
           effectiveQuality: resolved.quality === 'lo' ? 'lo' : 'hi'
         };
+        // Якорь B: если resolver вернул unavailable, но есть прямой URL — стримим
+        if (!res.url && originalUrl && navigator.onLine) {
+          res = { url: originalUrl, isLocal: false, effectiveQuality: quality };
+        }
       } catch (e) {
         console.warn('[PlayerCore] resolveTrackUrl error:', e);
         res = { url: originalUrl, isLocal: false, effectiveQuality: quality };
@@ -319,14 +323,15 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
           this._emit('onEnd');
           /* Диспатч window event для playback-cache-bootstrap (ТЗ П.5.2) */
           try {
+            const _endedTrack = this.getCurrentTrack();
             window.dispatchEvent(new CustomEvent('player:trackEnded', {
               detail: {
-                uid: this.currentTrack?.uid || this._currentUid || null,
-                duration: this.getDuration?.() || 0,
-                position: this.getPosition?.() || this.currentTime || 0
+                uid: safeStr(_endedTrack?.uid),
+                duration: this.getDuration() || 0,
+                position: this.getPosition() || 0
               }
             }));
-          } catch (e) { /* silent */ } 
+          } catch (e) { /* silent */ }
           this.repeatMode ? this.play(this.currentIndex) : this.next();
         },
         onloaderror: (id, e) => {
@@ -343,10 +348,11 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
       // --- ТЗ 7.6.1: В R0 "никакое аудио по факту проигрывания не сохраняется" ---
       const mode = om.getMode();
-      if (track.uid && mode !== 'R0' && mode !== 'R3') {
+      // ТЗ П.10: P0 (CUR) = priority 10, кэшируем текущий трек при стриминге
+      if (track.uid && mode !== 'R0' && mode !== 'R3' && !res.isLocal) {
          om.enqueueAudioDownload(track.uid, { 
              kind: 'playbackCache',
-             priority: 100
+             priority: 10
          });
       }
     }
