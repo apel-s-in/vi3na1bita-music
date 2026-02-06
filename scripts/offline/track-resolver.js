@@ -1,107 +1,84 @@
 /**
- * track-resolver.js — Резолвер аудио-источника.
+ * track-resolver.js — Выбор источника воспроизведения (ТЗ П.6.1).
  *
- * Порядок (ТЗ П.6.1):
- *   1. Кэш (pinned/cloud blob) нужного качества
- *   2. Кэш (pinned/cloud blob) альтернативного качества → пометить needsReCache
- *   3. Online URL
- *
- * Возвращает: { src: string|Blob, fromCache: boolean, quality: string, needsReCache: boolean }
+ * Порядок:
+ *   1. Локальная копия (🔒/☁) в текущем качестве → blob URL
+ *   2. Локальная копия в другом качестве → blob URL (needsReCache)
+ *   3. Стриминг с GitHub (если сеть + режим позволяет)
+ *   4. null → «Недоступно»
  */
 
-import { getAudioBlobAny, updateTrackMeta, getTrackMeta } from './cache-db.js';
-import { getOfflineManager } from './offline-manager.js';
+import offlineManager from './offline-manager.js';
+
+const _activeBlobs = new Map(); // uid → blobUrl (для revoke)
 
 /**
- * Получить аудио-источник для трека.
+ * Resolve track URL.
  * @param {string} uid
- * @param {Object} trackData — объект трека из TrackRegistry
- * @returns {Promise<{src: string, fromCache: boolean, quality: string, needsReCache: boolean}>}
+ * @param {object} trackData - { audio, audio_low, src }
+ * @returns {{ url: string, source: 'local'|'stream', quality: string, needsReCache: boolean } | null}
  */
-export async function resolveTrackSource(uid, trackData) {
-  const mgr = getOfflineManager();
-  const preferredQuality = mgr.getCacheQuality();
+export async function resolveTrackUrl(uid, trackData) {
+  /* Revoke предыдущий blob для этого uid */
+  _revoke(uid);
 
-  /* Шаг 1–2: Ищем blob в кэше */
-  const found = await getAudioBlobAny(uid, preferredQuality);
-
-  if (found) {
-    const src = URL.createObjectURL(found.blob);
-    const needsReCache = found.quality !== preferredQuality;
-
-    if (needsReCache) {
-      /* ТЗ П.6.1: Пометить для перекачки */
-      await updateTrackMeta(uid, { needsReCache: true });
-
-      /* Поставить в очередь на тихую перекачку */
-      mgr.enqueueAudioDownload(uid, { kind: 'reCache', priority: 1 });
-    }
-
+  /* ТЗ П.6.1 шаг 1-2: Попытка из локального кэша */
+  const local = await offlineManager.resolveLocalBlob(uid);
+  if (local) {
+    _activeBlobs.set(uid, local.blobUrl);
     return {
-      src,
-      fromCache: true,
-      quality: found.quality,
-      needsReCache
+      url: local.blobUrl,
+      source: 'local',
+      quality: local.quality,
+      needsReCache: local.needsReCache
     };
   }
 
-  /* Шаг 3: Online URL */
-  const q = preferredQuality;
-  let url = null;
+  /* ТЗ П.6.1 шаг 3: Стриминг */
+  if (!navigator.onLine) return null;
 
-  if (trackData) {
-    if (q === 'lo') {
-      url = trackData.audio_low || trackData.audio || trackData.src || null;
-    } else {
-      url = trackData.audio || trackData.src || null;
-    }
+  const mode = offlineManager.getMode();
+  if (mode === 'R3') return null; /* В R3 только локальные файлы */
+
+  const q = offlineManager.getCacheQuality();
+  let url;
+  if (q === 'lo') {
+    url = trackData?.audio_low || trackData?.audio || trackData?.src;
+  } else {
+    url = trackData?.audio || trackData?.src;
   }
 
-  if (!url) {
-    /* Fallback: попробовать через TrackRegistry */
-    const reg = window.TrackRegistry?.getTrackByUid?.(uid);
-    if (reg) {
-      url = q === 'lo'
-        ? (reg.audio_low || reg.audio || reg.src)
-        : (reg.audio || reg.src);
-    }
-  }
+  if (!url) return null;
 
   return {
-    src: url || '',
-    fromCache: false,
+    url,
+    source: 'stream',
     quality: q,
     needsReCache: false
   };
 }
 
 /**
- * После полного проигрывания трека — зарегистрировать прослушивание.
- * Вызывается из PlayerCore после завершения трека.
+ * Revoke blob URL для uid (предотвращение утечек памяти).
  */
-export async function onTrackPlayedFull(uid) {
-  const mgr = getOfflineManager();
-  await mgr.registerFullListen(uid);
+export function revokeTrackBlob(uid) {
+  _revoke(uid);
+}
+
+function _revoke(uid) {
+  const old = _activeBlobs.get(uid);
+  if (old) {
+    try { URL.revokeObjectURL(old); } catch {}
+    _activeBlobs.delete(uid);
+  }
 }
 
 /**
- * Compat alias: PlayerCore импортирует resolveTrackUrl.
- * Адаптер: принимает (uid, networkUrl, opts), возвращает { url, source, quality }.
+ * Revoke all active blobs (cleanup при уничтожении плеера).
  */
-export async function resolveTrackUrl(uid, networkUrl, opts = {}) {
-  const quality = opts.quality || 'hi';
-  const trackData = window.TrackRegistry?.getTrackByUid?.(uid);
-
-  const result = await resolveTrackSource(uid, trackData);
-
-  if (result.fromCache) {
-    return { url: result.src, source: 'cache', quality: result.quality };
+export function revokeAll() {
+  for (const [uid, url] of _activeBlobs) {
+    try { URL.revokeObjectURL(url); } catch {}
   }
-
-  /* Если resolveTrackSource не нашёл в кэше — используем networkUrl */
-  return {
-    url: result.src || networkUrl || '',
-    source: result.src ? 'network' : null,
-    quality
-  };
+  _activeBlobs.clear();
 }
