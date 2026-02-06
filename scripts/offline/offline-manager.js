@@ -698,5 +698,10 @@ function emit(name, detail = {}) {
 const instance = new OfflineManager();
 window.OfflineManager = instance;
 
+// Named export для единообразных импортов по проекту
+export function getOfflineManager() {
+  return instance;
+}
+
 export default instance;
 export { BG_PRESETS, OfflineManager };
