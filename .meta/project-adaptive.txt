@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-396c76a5777b3396e05ae915201a18ba3eb5ead8.idx
-│   │       ├── pack-396c76a5777b3396e05ae915201a18ba3eb5ead8.pack
-│   │       └── pack-396c76a5777b3396e05ae915201a18ba3eb5ead8.rev
+│   │       ├── pack-f21b590e653ad078d32640d6310a7828c78b9f5b.idx
+│   │       ├── pack-f21b590e653ad078d32640d6310a7828c78b9f5b.pack
+│   │       └── pack-f21b590e653ad078d32640d6310a7828c78b9f5b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 19:53:07 UTC
+Сгенерировано: 2026-02-06 19:59:27 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2178,9 +2178,17 @@ let _initialized = false;
 /**
  * initOfflineUI() — вызвать после DOMContentLoaded и после OfflineManager.init().
  */
-export function initOfflineUI() {
+export async function initOfflineUI() {
   if (_initialized) return;
   _initialized = true;
+
+  /* 0. Инициализация OfflineManager (открыть IndexedDB, очистить expired) */
+  try {
+    const { getOfflineManager } = await import('../offline/offline-manager.js');
+    await getOfflineManager().initialize();
+  } catch (e) {
+    console.warn('[OfflineUI] OfflineManager init failed:', e);
+  }
 
   /* 1. Индикаторы 🔒/☁ в трек-листе */
   initOfflineIndicators();
