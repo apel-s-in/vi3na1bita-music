@@ -24,7 +24,7 @@
     // 2. Offline System
     try {
       const boot = await import('./app/offline-ui-bootstrap.js');
-      boot?.initOfflineUI?.();
+      await boot?.initOfflineUI?.();
     } catch (e) { console.error('Offline boot err:', e); }
 
     // 3. UI Managers
