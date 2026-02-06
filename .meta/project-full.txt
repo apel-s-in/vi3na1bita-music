@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-60bf3057864c63f7d4d01ed83389e374207a69a3.idx
-│   │       ├── pack-60bf3057864c63f7d4d01ed83389e374207a69a3.pack
-│   │       └── pack-60bf3057864c63f7d4d01ed83389e374207a69a3.rev
+│   │       ├── pack-9f3d9aff2b68558398b1dd2184fdf5f974178dd9.idx
+│   │       ├── pack-9f3d9aff2b68558398b1dd2184fdf5f974178dd9.pack
+│   │       └── pack-9f3d9aff2b68558398b1dd2184fdf5f974178dd9.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 20:16:24 UTC
+Сгенерировано: 2026-02-06 20:22:02 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -10808,6 +10808,10 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         },
         onloaderror: (id, e) => {
            console.error('Load Error', e);
+           // Hot swap cleanup: если старый sound не был выгружен в onload
+           if (isHotSwap && oldSound) {
+              try { oldSound.unload(); } catch(ex) {}
+           }
            // Retry only if it was network
            if (token === this._loadToken && !res.isLocal) {
               W.NotificationSystem?.warning('Ошибка сети, следующая...');
