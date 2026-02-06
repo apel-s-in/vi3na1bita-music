@@ -270,4 +270,105 @@ export async function touchLocalAccess(uid) {
   if (!meta) return;
   await setTrackMeta(u, { ...meta, lastAccessAt: Date.now() });
 }
+/* === Добавить/заменить в cache-db.js === */
+
+/**
+ * setCloudStats — сохранение облачной статистики
+ */
+export async function setCloudStats(stats) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('global', 'readwrite');
+    tx.objectStore('global').put(stats, 'cloud-stats');
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+/**
+ * getCloudStats — чтение облачной статистики + проверка TTL
+ */
+export async function getCloudStats() {
+  const allMetas = await getAllTrackMetas();
+  const now = Date.now();
+  const expired = [];
+  let active = 0;
+
+  for (const meta of allMetas) {
+    if (meta.type !== 'cloud') continue;
+    if (meta.ttl && meta.ts && (now - meta.ts > meta.ttl)) {
+      expired.push(meta.uid);
+    } else {
+      active++;
+    }
+  }
+
+  return {
+    active,
+    expired: expired.length,
+    expiredUids: expired,
+    total: active + expired.length
+  };
+}
+
+/**
+ * updateGlobalStats — обновить статистику прослушивания трека
+ */
+export async function updateGlobalStats(uid, deltaSec = 0, fullPlays = 0) {
+  const key = `stats:${uid}`;
+  const existing = await getGlobal(key) || { seconds: 0, fullPlays: 0, lastPlayed: 0 };
+  existing.seconds += deltaSec;
+  existing.fullPlays += fullPlays;
+  existing.lastPlayed = Date.now();
+  await setGlobal(key, existing);
+
+  // Update total
+  const total = await getGlobal('stats:total') || { seconds: 0, fullPlays: 0 };
+  total.seconds += deltaSec;
+  total.fullPlays += fullPlays;
+  await setGlobal('stats:total', total);
+}
+
+/**
+ * getAllTrackMetas — получить все мета-данные треков
+ */
+export async function getAllTrackMetas() {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('trackMeta', 'readonly');
+    const store = tx.objectStore('trackMeta');
+    const req = store.getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+/**
+ * getAllKeys — получить все ключи аудио-хранилища
+ */
+export async function getAllKeys() {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('audio', 'readonly');
+    const store = tx.objectStore('audio');
+    const req = store.getAllKeys();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+/**
+ * estimateUsage — оценка использования хранилища
+ */
+export async function estimateUsage() {
+  if (navigator.storage && navigator.storage.estimate) {
+    const est = await navigator.storage.estimate();
+    return {
+      used: est.usage || 0,
+      quota: est.quota || 0,
+      free: (est.quota || 0) - (est.usage || 0)
+    };
+  }
+  return { used: 0, quota: 0, free: 0 };
+}
 
