@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a5a3d7d0d06aeb9fa759d28672534f45eeb6c0dc.idx
-│   │       ├── pack-a5a3d7d0d06aeb9fa759d28672534f45eeb6c0dc.pack
-│   │       └── pack-a5a3d7d0d06aeb9fa759d28672534f45eeb6c0dc.rev
+│   │       ├── pack-3afd6d35741e9e3683ccb9503266adad169cf375.idx
+│   │       ├── pack-3afd6d35741e9e3683ccb9503266adad169cf375.pack
+│   │       └── pack-3afd6d35741e9e3683ccb9503266adad169cf375.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 20:12:58 UTC
+Сгенерировано: 2026-02-06 20:14:08 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2201,6 +2201,14 @@ export async function initOfflineUI() {
 
   /* 4. Overlay прогресса загрузки */
   initCacheProgressOverlay();
+
+  /* 5. Playback Cache (prefetch соседей, регистрация full listen) */
+  try {
+    const { initPlaybackCache } = await import('./playback-cache-bootstrap.js');
+    initPlaybackCache();
+  } catch (e) {
+    console.warn('[OfflineUI] PlaybackCache init failed:', e);
+  }
 
   console.log('[OfflineUI] All components initialized');
 }
