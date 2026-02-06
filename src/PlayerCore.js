@@ -344,6 +344,10 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         },
         onloaderror: (id, e) => {
            console.error('Load Error', e);
+           // Hot swap cleanup: если старый sound не был выгружен в onload
+           if (isHotSwap && oldSound) {
+              try { oldSound.unload(); } catch(ex) {}
+           }
            // Retry only if it was network
            if (token === this._loadToken && !res.isLocal) {
               W.NotificationSystem?.warning('Ошибка сети, следующая...');
