@@ -234,12 +234,7 @@ class DownloadQueue {
       this._active.delete(uid);
 
       await setAudioBlob(uid, quality, blob);
-      await setTrackMeta(uid, {
-        type,
-        quality,
-        size: blob.size,
-        ttl: type === 'cloud' ? CLOUD_TTL_MS : null
-      });
+      await setTrackMeta(uid, { type, quality, size: blob.size, url, ttl: type === 'cloud' ? CLOUD_TTL_MS : null });
 
       emit('offline:trackCached', { uid, quality, type, size: blob.size });
       this._emitUpdate();
@@ -461,13 +456,7 @@ class OfflineManager {
       const uid = track.uid || track.id;
       if (!uid || !track.url) continue;
 
-      await setTrackMeta(uid, {
-        type: 'pinned',
-        quality,
-        albumId,
-        title: track.title || '',
-        ttl: null
-      });
+      await setTrackMeta(uid, { type: 'pinned', quality, albumId, title: track.title || '', url: track.url, ttl: null });
 
       this._queue.enqueue(uid, track.url, quality, 'pinned', 10);
     }
