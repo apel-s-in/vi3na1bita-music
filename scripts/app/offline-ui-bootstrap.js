@@ -22,7 +22,10 @@ export async function initOfflineUI() {
   /* 0. Инициализация OfflineManager (открыть IndexedDB, очистить expired) */
   try {
     const { getOfflineManager } = await import('../offline/offline-manager.js');
-    await getOfflineManager().initialize();
+    const mgr = getOfflineManager();
+    await mgr.initialize();
+    /* Глобальный мост для не-модульных скриптов (player-ui.js, playback-policy.js) */
+    window._offlineManagerInstance = mgr;
   } catch (e) {
     console.warn('[OfflineUI] OfflineManager init failed:', e);
   }
