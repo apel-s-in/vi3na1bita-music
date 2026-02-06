@@ -1,152 +1,129 @@
 /**
- * stats-core.js — StatsCore: единая точка подсчёта статистики.
+ * stats-core.js — Подсчёт прослушиваний и статистика для 🔒/☁
  *
- * Две независимые системы:
- *   Cloud stats  — для управления ☁ (сбрасывается при «Удалить из кэша»)
- *   Global stats — для модалки «Статистика» (НИКОГДА не сбрасывается)
+ * ТЗ: Приложение «Pinned и Cloud», П.5.2
  *
- * Привязка по uid — качество/источник/режим не влияют.
+ * Отвечает за:
+ * - Подсчёт cloudFullListenCount (полные прослушивания >90% длительности)
+ * - Обновление lastFullListenAt
+ * - Продление TTL при каждом full listen (П.5.6)
+ * - Автоматическое появление ☁ при достижении порога N (П.5.3)
+ * - Обновление globalFullListenCount / globalListenSeconds (не сбрасывается)
+ *
+ * Зависимости:
+ * - CacheDB (getTrackMeta, updateTrackMeta)
+ * - OfflineManager (getCloudN, getCloudD, promoteToCloud)
+ *
+ * Считается во ВСЕХ режимах: R0, R1, R2, R3
  */
 
-import { updateGlobalStats } from './cache-db.js';
-import offlineManager from './offline-manager.js';
+import { getTrackMeta, updateTrackMeta } from './cache-db.js';
+import { OfflineManager } from './offline-manager.js';
 
-class StatsCore {
-  constructor() {
-    this._current = null;   // { uid, startTime, seconds, maxProgress }
-    this._tickTimer = null;
+/* ── Константы ────────────────────────────────────────── */
+
+/** Процент прогресса для засчитывания full listen (П.5.2) */
+const FULL_LISTEN_THRESHOLD = 0.9;
+
+/* ── Публичный API ────────────────────────────────────── */
+
+/**
+ * Регистрирует факт прослушивания трека.
+ * Вызывается из PlayerCore при завершении/переключении трека.
+ *
+ * @param {string} uid — уникальный ID трека
+ * @param {number} progress — прогресс воспроизведения 0..1
+ * @param {number} duration — длительность трека в секундах
+ * @param {number} listenedSec — фактически прослушанные секунды в этой сессии
+ */
+export async function registerListenProgress(uid, progress, duration, listenedSec) {
+  if (!uid || !duration || duration <= 0) return;
+
+  let meta = await getTrackMeta(uid);
+  if (!meta) {
+    meta = _createDefaultMeta(uid);
   }
 
-  /* ─── События от плеера ─── */
+  /* Всегда обновляем global stats (П.5.5: global stats НЕ трогается при сбросе cloud) */
+  meta.globalListenSeconds = (meta.globalListenSeconds || 0) + (listenedSec || 0);
 
-  /**
-   * Трек начал воспроизведение.
-   * Вызывается при trackStart / play после паузы.
-   */
-  onTrackStart(uid) {
-    if (!uid) return;
-    const u = String(uid).trim();
+  /* Проверяем full listen (>90% длительности) */
+  const isFullListen = progress >= FULL_LISTEN_THRESHOLD;
 
-    // Если тот же трек — просто возобновляем отсчёт
-    if (this._current?.uid === u) {
-      this._current.startTime = Date.now();
-      this._startTick();
-      return;
-    }
-
-    // Новый трек — финализировать предыдущий
-    this._finalizeCurrent(false);
-
-    this._current = {
-      uid: u,
-      startTime: Date.now(),
-      seconds: 0,
-      maxProgress: 0
-    };
-    this._startTick();
-  }
-
-  /**
-   * Трек поставлен на паузу.
-   */
-  onPause() {
-    this._flushSeconds();
-    this._stopTick();
-  }
-
-  /**
-   * Секундный тик (внутренний, считает время playing).
-   */
-  _startTick() {
-    this._stopTick();
-    this._tickTimer = setInterval(() => this._flushSeconds(), 5000);
-  }
-
-  _stopTick() {
-    if (this._tickTimer) {
-      clearInterval(this._tickTimer);
-      this._tickTimer = null;
-    }
-  }
-
-  _flushSeconds() {
-    if (!this._current?.startTime) return;
+  if (isFullListen) {
     const now = Date.now();
-    const delta = Math.floor((now - this._current.startTime) / 1000);
-    if (delta > 0) {
-      this._current.seconds += delta;
-      this._current.startTime = now;
-      // Сохраняем в global stats
-      updateGlobalStats(this._current.uid, delta, 0).catch(() => {});
+
+    /* Global full listen count */
+    meta.globalFullListenCount = (meta.globalFullListenCount || 0) + 1;
+
+    /* Cloud full listen count (П.5.2) */
+    meta.cloudFullListenCount = (meta.cloudFullListenCount || 0) + 1;
+    meta.lastFullListenAt = now;
+
+    /* Продление TTL для cloud треков (П.5.6) */
+    if (meta.cloud) {
+      const D = OfflineManager.getCloudD();
+      meta.cloudExpiresAt = now + D * 24 * 60 * 60 * 1000;
+    }
+
+    /* Автоматическое появление ☁ (П.5.3) */
+    if (!meta.cloud && !meta.pinned) {
+      const N = OfflineManager.getCloudN();
+      if (meta.cloudFullListenCount >= N) {
+        /* Промоутим в cloud — OfflineManager решит скачивать или нет */
+        await updateTrackMeta(uid, meta);
+        await OfflineManager.promoteToCloud(uid);
+        return; /* promoteToCloud сам обновит мету */
+      }
     }
   }
 
-  /**
-   * Seek произошёл.
-   */
-  onSeek(uid, from, to) {
-    // Обновляем maxProgress
-    if (this._current?.uid === String(uid || '').trim()) {
-      this._current.maxProgress = Math.max(this._current.maxProgress, to);
-    }
-  }
-
-  /**
-   * Прогресс обновился (вызывается периодически из плеера).
-   */
-  onProgress(uid, progress) {
-    if (this._current?.uid === String(uid || '').trim()) {
-      this._current.maxProgress = Math.max(this._current.maxProgress, progress);
-    }
-  }
-
-  /**
-   * Трек закончился естественно (ended).
-   */
-  onEnded(uid, progress, durationValid) {
-    const u = String(uid || '').trim();
-    if (this._current?.uid !== u) return;
-    this._current.maxProgress = Math.max(this._current.maxProgress, progress);
-    this._finalizeCurrent(durationValid);
-  }
-
-  /**
-   * Трек был пропущен (skip / next / prev).
-   */
-  onSkip(uid, progress, durationValid) {
-    const u = String(uid || '').trim();
-    if (this._current?.uid !== u) return;
-    this._current.maxProgress = Math.max(this._current.maxProgress, progress);
-    this._finalizeCurrent(durationValid);
-  }
-
-  /* ─── Финализация ─── */
-
-  _finalizeCurrent(durationValid) {
-    if (!this._current) return;
-
-    this._flushSeconds();
-    this._stopTick();
-
-    const { uid, maxProgress } = this._current;
-
-    // Full listen: duration валидна И прогресс > 90%
-    const isFullListen = durationValid !== false && maxProgress > 0.9;
-
-    if (isFullListen) {
-      // Global stats: +1 full play
-      updateGlobalStats(uid, 0, 1).catch(() => {});
-      // Cloud stats: регистрация
-      offlineManager.registerFullListen(uid).catch(() => {});
-    }
-
-    this._current = null;
-  }
+  await updateTrackMeta(uid, meta);
 }
 
-/* ═══════ Singleton ═══════ */
+/**
+ * Возвращает cloud-статистику для данного uid.
+ * Используется в UI (список 🔒/☁, инфо).
+ */
+export async function getCloudStats(uid) {
+  const meta = await getTrackMeta(uid);
+  if (!meta) return _createDefaultMeta(uid);
+  return {
+    cloudFullListenCount: meta.cloudFullListenCount || 0,
+    lastFullListenAt: meta.lastFullListenAt || null,
+    cloudAddedAt: meta.cloudAddedAt || null,
+    cloudExpiresAt: meta.cloudExpiresAt || null,
+    cloud: !!meta.cloud,
+    pinned: !!meta.pinned,
+    globalFullListenCount: meta.globalFullListenCount || 0,
+    globalListenSeconds: meta.globalListenSeconds || 0,
+  };
+}
 
-const statsCore = new StatsCore();
-export default statsCore;
+/* ── Приватные ─────────────────────────────────────────── */
 
-window.statsCore = statsCore;
+/**
+ * Создаёт дефолтный объект метаданных для нового трека.
+ */
+function _createDefaultMeta(uid) {
+  return {
+    uid,
+    /* Cloud stats (П.5.2) */
+    cloudFullListenCount: 0,
+    lastFullListenAt: null,
+    cloudAddedAt: null,
+    cloudExpiresAt: null,
+    cloud: false,
+    pinned: false,
+    expiredPending: false,
+    /* Global stats (никогда не сбрасываются) */
+    globalFullListenCount: 0,
+    globalListenSeconds: 0,
+    /* Cache info */
+    cachedQuality: null,   /* 'hi' | 'lo' | null */
+    cachedComplete: 0,     /* 0..100 */
+    needsReCache: false,
+    downloading: false,
+    type: 'none',          /* 'pinned' | 'cloud' | 'transient' | 'dynamic' | 'fullOffline' | 'none' */
+  };
+}
