@@ -243,8 +243,8 @@
     function updatePQButtonState() {
         if (!dom.pqBtn) return;
         
-        // CRITICAL FIX: Hide button in R2/R3 modes
-        const mgr = window.OfflineUI?.offlineManager;
+        // CRITICAL FIX: Hide button in R2/R3 modes (ТЗ П.3.4)
+        const mgr = window._offlineManagerInstance;
         const mode = mgr ? mgr.getMode() : 'R0';
         
         if (mode === 'R2' || mode === 'R3') {
