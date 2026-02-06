@@ -204,7 +204,7 @@
         'lyrics-text-btn': () => W.LyricsModal?.show(),
         'pulse-btn': () => actions.togglePulse(),
         // 'sleep-timer-btn': handled by scripts/ui/sleep.js delegation
-        'stats-btn': () => window.StatisticsModal?.show(),
+        'stats-btn': () => window.StatisticsModal?.openStatisticsModal?.(),
         'track-download-btn': (b) => { if (!b.getAttribute('href')) U.ui.toast('Скачивание недоступно', 'error'); }
     };
 
