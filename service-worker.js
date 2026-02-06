@@ -28,7 +28,7 @@ const STATIC_ASSETS = [
   './scripts/core/favorites-manager.js',
   './scripts/app/gallery.js', './scripts/ui/notify.js', './scripts/ui/favorites.js',
   './scripts/ui/sleep.js', './scripts/ui/lyrics-modal.js', './scripts/ui/sysinfo.js',
-  './scripts/ui/modal-templates.js', './scripts/ui/modals.js',
+  './scripts/ui/modals.js',
   './scripts/ui/offline-modal.js', './scripts/ui/offline-indicators.js',
   './scripts/ui/cache-progress-overlay.js', './scripts/ui/statistics-modal.js',
   './scripts/app/player-ui.js', './scripts/app/albums.js', './scripts/app/navigation.js',
