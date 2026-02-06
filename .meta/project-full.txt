@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-323a487b6cc8b9065d7fb93b7d828222ff67dc89.idx
-│   │       ├── pack-323a487b6cc8b9065d7fb93b7d828222ff67dc89.pack
-│   │       └── pack-323a487b6cc8b9065d7fb93b7d828222ff67dc89.rev
+│   │       ├── pack-ab02cacb1cd509041411fc88b6b7d4619db425b9.idx
+│   │       ├── pack-ab02cacb1cd509041411fc88b6b7d4619db425b9.pack
+│   │       └── pack-ab02cacb1cd509041411fc88b6b7d4619db425b9.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -385,7 +385,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 19:08:05 UTC
+Сгенерировано: 2026-02-06 19:13:42 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7860,201 +7860,249 @@ function _buildNetPolicySection(mgr, stats) {
    СЕКЦИЯ 3: Pinned и Cloud (ТЗ П.8.2–П.8.6)
    ══════════════════════════════════════════════ */
 
-async function _buildPinnedCloudSection(mgr, stats) {
-  const sec = el('section', 'offline-modal__section');
-  sec.innerHTML = '<h3>🔒☁ Pinned и Cloud</h3>';
+async _renderPinnedCloudSection() {
+  const section = document.createElement('div');
+  section.className = 'offline-section offline-section--pinned-cloud';
 
-  /* ── П.8.2: Кнопка качества Hi/Lo ── */
-  const qualityRow = el('div', 'offline-modal__row');
-  qualityRow.innerHTML = '<span>Качество кэша:</span>';
-  const qBtn = btn(
-    stats.quality === 'hi' ? '🎵 Hi' : '🎵 Lo',
-    'offline-modal__btn offline-modal__btn--quality',
-    () => {
-      const newQ = mgr.getCacheQuality() === 'hi' ? 'lo' : 'hi';
-      mgr.setCacheQualitySetting(newQ);
-      qBtn.textContent = newQ === 'hi' ? '🎵 Hi' : '🎵 Lo';
-    }
-  );
-  qualityRow.appendChild(qBtn);
-  sec.appendChild(qualityRow);
+  const summary = await offlineManager.getCacheSummary();
+  const reCacheList = await offlineManager.getReCacheList();
+  const currentQ = offlineManager.getCacheQuality();
+  const cloudN = offlineManager.getCloudN();
+  const cloudD = offlineManager.getCloudD();
+  const spaceOk = offlineManager.isSpaceOk();
 
-  /* ── П.8.3: Re-cache ── */
-  const reCacheRow = el('div', 'offline-modal__row');
-  const reCacheBtn = btn('🔄 Re-cache', 'offline-modal__btn', async () => {
-    reCacheBtn.disabled = true;
-    reCacheBtn.textContent = '🔄 Запуск...';
+  section.innerHTML = `
+    <h3 class="offline-section__title">🔒 Pinned и ☁ Cloud</h3>
 
-    const progressBar = el('div', 'offline-modal__progress');
-    const progressFill = el('div', 'offline-modal__progress-fill');
-    progressBar.appendChild(progressFill);
-    reCacheRow.appendChild(progressBar);
+    ${!spaceOk ? `
+      <div class="offline-warning">
+        ⚠️ Кэш недоступен. Недостаточно места.
+      </div>
+    ` : ''}
 
-    const total = await mgr.reCacheAll(({ done, total: t }) => {
-      const pct = t > 0 ? Math.round((done / t) * 100) : 0;
-      progressFill.style.width = pct + '%';
+    <!-- П.8.2: Кнопка качества (дубль плеера) -->
+    <div class="offline-row">
+      <span class="offline-label">Качество:</span>
+      <button class="offline-btn offline-btn--quality" data-action="toggleQuality">
+        ${currentQ.toUpperCase()}
+      </button>
+    </div>
+
+    <!-- П.8.3: Re-cache -->
+    <div class="offline-row offline-row--recache" 
+         style="display: ${reCacheList.length > 0 ? 'flex' : 'none'}">
+      <button class="offline-btn offline-btn--recache" data-action="reCache"
+              ${reCacheList.length === 0 ? 'disabled' : ''}>
+        Re-cache (${reCacheList.length} файлов)
+      </button>
+      <div class="offline-progress offline-progress--recache" style="display:none">
+        <div class="offline-progress__bar"></div>
+        <span class="offline-progress__text">Перекэширование: 0/0</span>
+      </div>
+    </div>
+
+    <!-- П.8.4: Настройки N и D -->
+    <div class="offline-row">
+      <span class="offline-label">Прослушиваний для ☁:</span>
+      <input type="number" class="offline-input" data-field="cloudN" 
+             value="${cloudN}" min="1" max="100" step="1">
+    </div>
+    <div class="offline-row">
+      <span class="offline-label">Хранить ☁ дней:</span>
+      <input type="number" class="offline-input" data-field="cloudD" 
+             value="${cloudD}" min="1" max="365" step="1">
+    </div>
+    <div class="offline-row">
+      <button class="offline-btn offline-btn--apply" data-action="applyCloudSettings">
+        Применить
+      </button>
+    </div>
+
+    <!-- П.8.5–П.8.6: Список и удаление -->
+    <div class="offline-row offline-row--actions">
+      <button class="offline-btn" data-action="showCacheList">
+        Список 🔒/☁ (${summary.totalCount})
+      </button>
+      <button class="offline-btn offline-btn--danger" data-action="deleteAllCached"
+              ${summary.totalCount === 0 ? 'disabled' : ''}>
+        Удалить все 🔒/☁
+      </button>
+    </div>
+
+    <!-- Сводка -->
+    <div class="offline-summary">
+      🔒 ${summary.pinnedCount} (${summary.pinnedSizeMB} МБ) · 
+      ☁ ${summary.cloudCount} (${summary.cloudSizeMB} МБ) · 
+      Всего: ${summary.totalSizeMB} МБ
+    </div>
+  `;
+
+  /* ═══ Обработчики ═══ */
+
+  /* Качество (П.8.2) */
+  section.querySelector('[data-action="toggleQuality"]')
+    ?.addEventListener('click', () => {
+      const newQ = offlineManager.getCacheQuality() === 'hi' ? 'lo' : 'hi';
+      offlineManager.setCacheQualitySetting(newQ);
+      this._refreshSection();
     });
 
-    reCacheBtn.disabled = false;
-    reCacheBtn.textContent = `🔄 Re-cache (${total} в очереди)`;
-  });
-  reCacheRow.appendChild(reCacheBtn);
-  sec.appendChild(reCacheRow);
-
-  /* ── П.8.4: Поля N / D + «Применить» ── */
-  const ndRow = el('div', 'offline-modal__row offline-modal__nd-row');
-
-  const nLabel = el('label', '', 'N (прослушиваний): ');
-  const nInput = document.createElement('input');
-  nInput.type = 'number';
-  nInput.min = '1';
-  nInput.max = '100';
-  nInput.value = stats.cloudN;
-  nInput.className = 'offline-modal__input';
-  nLabel.appendChild(nInput);
-  ndRow.appendChild(nLabel);
-
-  const dLabel = el('label', '', 'D (дней TTL): ');
-  const dInput = document.createElement('input');
-  dInput.type = 'number';
-  dInput.min = '1';
-  dInput.max = '365';
-  dInput.value = stats.cloudD;
-  dInput.className = 'offline-modal__input';
-  dLabel.appendChild(dInput);
-  ndRow.appendChild(dLabel);
-
-  const applyBtn = btn('✅ Применить', 'offline-modal__btn offline-modal__btn--apply', async () => {
-    const newN = parseInt(nInput.value, 10) || 3;
-    const newD = parseInt(dInput.value, 10) || 30;
-
-    if (newN < 1 || newD < 1) {
-      alert('N и D должны быть ≥ 1');
-      return;
-    }
-
-    /* ТЗ П.5.7: Предупреждение перед применением */
-    const preview = await mgr.previewCloudSettings(newN, newD);
-
-    if (preview.warnings.length > 0) {
-      const msg = 'Внимание:\n\n' + preview.warnings.join('\n') +
-        '\n\nПрименить настройки?';
-      if (!confirm(msg)) return;
-    }
-
-    await mgr.confirmApplyCloudSettings({
-      toRemove: preview.toRemove,
-      newN,
-      newD
+  /* Re-cache (П.8.3) */
+  section.querySelector('[data-action="reCache"]')
+    ?.addEventListener('click', async () => {
+      const result = await offlineManager.startForcedReCache();
+      if (result.total === 0) {
+        window.NotificationSystem?.info?.('Все файлы уже в актуальном качестве.');
+        return;
+      }
+      window.NotificationSystem?.info?.(
+        `Перекэширование: ${result.total} файлов.` +
+        (result.skippedCur ? ' Текущий трек будет обновлён позже.' : '')
+      );
+      this._showReCacheProgress(section);
     });
 
-    /* Обновить отображённые значения */
-    nInput.value = newN;
-    dInput.value = newD;
-  });
-  ndRow.appendChild(applyBtn);
-  sec.appendChild(ndRow);
+  /* Применить N/D (П.8.4) */
+  section.querySelector('[data-action="applyCloudSettings"]')
+    ?.addEventListener('click', async () => {
+      const newN = parseInt(section.querySelector('[data-field="cloudN"]').value, 10) || 5;
+      const newD = parseInt(section.querySelector('[data-field="cloudD"]').value, 10) || 31;
 
-  /* ── П.8.5: Кнопка «Список 🔒/☁» ── */
-  const listBtn = btn('📋 Список 🔒/☁', 'offline-modal__btn', async () => {
-    const list = await mgr.getPinnedAndCloudList();
-    _showPinnedCloudList(list, mgr);
-  });
-  sec.appendChild(listBtn);
+      const preview = await offlineManager.previewCloudSettings(newN, newD);
 
-  /* ── П.8.6: Кнопка «Удалить все 🔒/☁» ── */
-  const deleteAllBtn = btn(
-    '🗑 Удалить все 🔒/☁',
-    'offline-modal__btn offline-modal__btn--danger',
-    async () => {
-      /* Двойной confirm (ТЗ П.8.6) */
-      if (!confirm('Удалить ВСЕ закреплённые и облачные треки?')) return;
-      if (!confirm('Вы уверены? Это действие необратимо!')) return;
+      if (preview.warnings.length > 0) {
+        const msg = preview.warnings.join('\n') + '\n\nПродолжить?';
+        if (!confirm(msg)) return;
+      }
 
-      const count = await mgr.removeAllPinnedAndCloud();
-      alert(`Удалено: ${count} трек(ов)`);
+      await offlineManager.confirmApplyCloudSettings(preview);
+      this._refreshSection();
+    });
 
-      /* Перерендерим модал */
-      closeOfflineModal();
-      showOfflineModal();
-    }
-  );
-  sec.appendChild(deleteAllBtn);
+  /* Список (П.8.5) */
+  section.querySelector('[data-action="showCacheList"]')
+    ?.addEventListener('click', () => {
+      this._showCacheListPopup();
+    });
 
-  return sec;
+  /* Удалить все (П.8.6) */
+  section.querySelector('[data-action="deleteAllCached"]')
+    ?.addEventListener('click', async () => {
+      const s = await offlineManager.getCacheSummary();
+      const msg1 = `Удалить все офлайн-треки (${s.totalCount} файлов, ${s.totalSizeMB} МБ)? Статистика облачков будет сброшена.`;
+      if (!confirm(msg1)) return;
+      if (!confirm('Вы уверены? Это действие нельзя отменить.')) return;
+
+      await offlineManager.removeAllCached();
+      this._refreshSection();
+    });
+
+  return section;
 }
 
-/* ══════════════════════════════════════════════
-   Подокно: список 🔒/☁ треков (П.8.5)
-   ══════════════════════════════════════════════ */
+/**
+ * Показать прогресс re-cache (П.8.3)
+ */
+_showReCacheProgress(section) {
+  const progressEl = section.querySelector('.offline-progress--recache');
+  if (!progressEl) return;
+  progressEl.style.display = 'block';
 
-function _showPinnedCloudList(list, mgr) {
-  const overlay = el('div', 'offline-modal-overlay offline-modal-overlay--sub');
-  const panel = el('div', 'offline-modal offline-modal--sub');
-
-  const header = el('div', 'offline-modal__header');
-  header.innerHTML = '<h3>📋 Список 🔒/☁</h3>';
-  const closeBtn = btn('✕', 'offline-modal__close', () => overlay.remove());
-  header.appendChild(closeBtn);
-  panel.appendChild(header);
-
-  const body = el('div', 'offline-modal__body');
-
-  /* Pinned */
-  if (list.pinned.length > 0) {
-    body.appendChild(el('h4', '', `🔒 Закреплённые (${list.pinned.length})`));
-    const ul = el('ul', 'offline-modal__track-list');
-    for (const t of list.pinned) {
-      const li = el('li', 'offline-modal__track-item');
-      li.innerHTML = `
-        <span class="offline-modal__track-title">${t.artist ? t.artist + ' — ' : ''}${t.title}</span>
-        <span class="offline-modal__track-meta">${t.quality || '?'} · ${fmt(t.size)}${t.needsReCache ? ' ⚠️ re-cache' : ''}</span>
-      `;
-
-      /* Кнопка удаления */
-      const rmBtn = btn('✕', 'offline-modal__btn--sm offline-modal__btn--danger', async () => {
-        if (!confirm(`Удалить «${t.title}» из кэша?`)) return;
-        await mgr.removeCached(t.uid);
-        li.remove();
-      });
-      li.appendChild(rmBtn);
-      ul.appendChild(li);
+  const handler = (e) => {
+    const { uid } = e.detail || {};
+    /* Обновить прогресс — упрощённо */
+    const status = offlineManager.getDownloadStatus();
+    const total = status.queued + status.active;
+    const bar = progressEl.querySelector('.offline-progress__bar');
+    const text = progressEl.querySelector('.offline-progress__text');
+    if (text) text.textContent = `Перекэширование: осталось ${total}`;
+    if (total === 0) {
+      progressEl.style.display = 'none';
+      window.removeEventListener('offline:trackCached', handler);
+      window.NotificationSystem?.info?.('Перекэширование завершено.');
     }
-    body.appendChild(ul);
-  }
+  };
 
-  /* Cloud */
-  if (list.cloud.length > 0) {
-    body.appendChild(el('h4', '', `☁ Облачные (${list.cloud.length})`));
-    const ul = el('ul', 'offline-modal__track-list');
-    for (const t of list.cloud) {
-      const li = el('li', 'offline-modal__track-item');
-      const expiresIn = t.cloudExpiresAt
-        ? Math.max(0, Math.round((t.cloudExpiresAt - Date.now()) / (24 * 60 * 60 * 1000)))
-        : '?';
-      li.innerHTML = `
-        <span class="offline-modal__track-title">${t.artist ? t.artist + ' — ' : ''}${t.title}</span>
-        <span class="offline-modal__track-meta">${t.quality || '?'} · ${fmt(t.size)} · 🎧${t.cloudFullListenCount} · ⏳${expiresIn}д${t.expiredPending ? ' ⚠️expired' : ''}</span>
+  window.addEventListener('offline:trackCached', handler);
+}
+
+/**
+ * Popup со списком 🔒/☁ треков (П.8.5)
+ */
+async _showCacheListPopup() {
+  const list = await offlineManager.getCachedTrackList();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'cache-list-overlay';
+  overlay.style.cssText = `
+    position: fixed; inset: 0; z-index: 10001;
+    background: rgba(0,0,0,0.6);
+    display: flex; align-items: center; justify-content: center;
+  `;
+
+  const popup = document.createElement('div');
+  popup.style.cssText = `
+    background: var(--bg-primary, #1a1a1a);
+    border-radius: 12px; padding: 20px;
+    max-width: 500px; width: 90%; max-height: 70vh;
+    overflow-y: auto; color: var(--text-primary, #eee);
+  `;
+
+  let html = '<h3>Офлайн-треки</h3>';
+
+  if (list.length === 0) {
+    html += '<p style="opacity:0.5">Нет закэшированных треков.</p>';
+  } else {
+    for (const item of list) {
+      const icon = item.type === 'pinned' ? '🔒' : '☁';
+      html += `
+        <div class="cache-list-item" data-uid="${item.uid}" data-type="${item.type}"
+             style="padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.1); cursor:pointer;">
+          <span>${icon}</span>
+          <span style="flex:1; margin:0 8px;">${item.title}</span>
+          <span style="opacity:0.6; font-size:0.85em;">
+            ${item.quality.toUpperCase()} · ${item.sizeMB} МБ · ${item.label}
+          </span>
+        </div>
       `;
-      const rmBtn = btn('✕', 'offline-modal__btn--sm offline-modal__btn--danger', async () => {
-        if (!confirm(`Удалить «${t.title}» из кэша?`)) return;
-        await mgr.removeCached(t.uid);
-        li.remove();
-      });
-      li.appendChild(rmBtn);
-      ul.appendChild(li);
     }
-    body.appendChild(ul);
   }
 
-  if (list.pinned.length === 0 && list.cloud.length === 0) {
-    body.appendChild(el('p', 'offline-modal__empty', 'Нет закреплённых или облачных треков.'));
-  }
-
-  panel.appendChild(body);
-  overlay.appendChild(panel);
+  html += '<button class="cache-list-close" style="margin-top:12px; padding:8px 20px; cursor:pointer;">Закрыть</button>';
+  popup.innerHTML = html;
+  overlay.appendChild(popup);
   document.body.appendChild(overlay);
 
+  /* Клик по треку — действия */
+  popup.querySelectorAll('.cache-list-item').forEach(el => {
+    el.addEventListener('click', async () => {
+      const uid = el.dataset.uid;
+      const type = el.dataset.type;
+
+      if (type === 'pinned') {
+        if (confirm('Снять закрепление? Трек станет ☁.')) {
+          await offlineManager.togglePinned(uid);
+          overlay.remove();
+          this._showCacheListPopup(); /* перерисовать */
+        }
+      } else {
+        const action = prompt('Выберите действие:\n1 — Закрепить 🔒\n2 — Удалить из кэша\n\nВведите 1 или 2:');
+        if (action === '1') {
+          await offlineManager.togglePinned(uid);
+        } else if (action === '2') {
+          if (confirm('Удалить трек из кэша? Статистика облачка будет сброшена.')) {
+            await offlineManager.removeCached(uid);
+          }
+        }
+        overlay.remove();
+        this._showCacheListPopup();
+      }
+    });
+  });
+
+  /* Закрыть */
+  popup.querySelector('.cache-list-close')
+    ?.addEventListener('click', () => overlay.remove());
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) overlay.remove();
   });
