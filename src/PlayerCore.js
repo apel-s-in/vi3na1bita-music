@@ -49,7 +49,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         getPos: () => this.getPosition(),
         getDur: () => this.getDuration(),
         recordTick: (uid, p) => getOfflineManager().recordTickStats(uid, p),
-        recordEnd: (uid, p) => getOfflineManager().registerFullListen(uid, p)
+        recordEnd:  (uid, p) => getOfflineManager().registerFullListen(uid, p)
       });
 
       // iOS Unlock
