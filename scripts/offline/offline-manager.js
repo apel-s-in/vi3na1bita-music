@@ -654,7 +654,7 @@ class OfflineManager {
     emit('offline:stateChanged');
   }
 
-  /** Алиас registerFullListen для совместимости. */
+  /** @deprecated Алиас registerFullListen. Используйте registerFullListen напрямую. */
   async recordListenStats(uid, params = {}) {
     return this.registerFullListen(uid, params);
   }
