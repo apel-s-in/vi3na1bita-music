@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-0d5e5f44271109d7138d60e87fd42d54c4e1666c.idx
-│   │       ├── pack-0d5e5f44271109d7138d60e87fd42d54c4e1666c.pack
-│   │       └── pack-0d5e5f44271109d7138d60e87fd42d54c4e1666c.rev
+│   │       ├── pack-56bb2e00c95a9cceb015cdc4c9030a2844ba2dcc.idx
+│   │       ├── pack-56bb2e00c95a9cceb015cdc4c9030a2844ba2dcc.pack
+│   │       └── pack-56bb2e00c95a9cceb015cdc4c9030a2844ba2dcc.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 18:23:13 UTC
+Сгенерировано: 2026-02-06 18:24:11 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7610,256 +7610,195 @@ window.NotificationSystem = new NotificationSystem();
 //=================================================
 // FILE: /scripts/ui/offline-indicators.js
 /**
- * offline-indicators.js — Индикаторы 🔒/☁ в трек-листе
+ * offline-indicators.js — Индикаторы 🔒/☁ в трек-листе.
  *
- * ТЗ: Приложение «Pinned и Cloud», П.7
- *
- * Отвечает за:
- * - Вставку элемента .offline-ind ПЕРЕД .tnum внутри .track[data-uid]
- * - Три визуальных состояния: серый 🔒, жёлтый 🔒, голубой ☁
- * - Клик-логику: серый→пиннинг, жёлтый→снятие, голубой→cloud-menu
- * - Событийное обновление (не по таймеру)
- *
- * Зависимости:
- * - OfflineManager (togglePinned, getTrackOfflineState, hasEnoughSpace)
- * - CloudMenu (showCloudMenu)
- * - showToast (UI)
+ * ТЗ П.7: 
+ *   - Класс: offline-ind
+ *   - Вставка: ПЕРЕД .tnum внутри .track[data-uid]
+ *   - Всегда показывать (серый 🔒 по умолчанию)
+ *   - Три состояния: серый 🔒 → жёлтый 🔒 → голубой ☁
+ *   - Клик: серый→pin, жёлтый→unpin, голубой→cloud-menu
  */
 
-import { OfflineManager } from '../offline/offline-manager.js';
+import { getOfflineManager } from '../offline/offline-manager.js';
 import { showCloudMenu } from './cloud-menu.js';
 
-/* ── Константы ────────────────────────────────────────── */
+/* ═══════ CSS-классы по состояниям (ТЗ П.7.2) ═══════ */
 
-const ICON_LOCK = '🔒';
-const ICON_CLOUD = '☁';
+const CLS = {
+  BASE: 'offline-ind',
+  NONE: 'offline-ind--none',
+  PINNED: 'offline-ind--pinned',
+  PINNED_LOADING: 'offline-ind--pinned-loading',
+  CLOUD: 'offline-ind--cloud'
+};
 
-/**
- * CSS-классы для визуальных состояний (П.7.2)
- * - none-has-space:   серый 🔒, opacity 0.4, кликабелен → пиннинг
- * - none-no-space:    серый 🔒, opacity 0.2, кликабелен → toast «нет места»
- * - pinned-loading:   жёлтый 🔒 мигающий, кликабелен → снять пиннинг
- * - pinned-complete:  жёлтый 🔒, кликабелен → снять пиннинг
- * - cloud-complete:   голубой ☁, кликабелен → cloud-menu
- * - cloud-loading:    серый 🔒, opacity 0.4, кликабелен → пиннинг
- * - transient:        серый 🔒, opacity 0.4, кликабелен → пиннинг
- */
-const STATE_CLASS_PREFIX = 'offline-ind--';
+const ICONS = {
+  LOCK: '🔒',
+  CLOUD: '☁'
+};
 
-/* ── Утилиты ──────────────────────────────────────────── */
-
-/** Показать toast-уведомление (используем глобальную функцию если есть) */
-function _toast(msg) {
-  if (typeof window.showToast === 'function') {
-    window.showToast(msg);
-  } else {
-    console.log('[offline-ind] toast:', msg);
-  }
-}
-
-/* ── Определение визуального состояния ────────────────── */
+/* ═══════ injectIndicator ═══════ */
 
 /**
- * Возвращает объект { stateClass, icon, clickAction } для данного uid.
- *
- * clickAction: 'pin' | 'unpin' | 'cloud-menu' | 'no-space'
- *
- * Логика по П.7.2 + П.4.2:
- * - Pinned → жёлтый 🔒 (мигает если загружается)
- * - Cloud + cachedComplete=100% → голубой ☁
- * - Cloud загружается → серый 🔒 (как "нет кэша")
- * - Transient / Dynamic → серый 🔒
- * - Нет кэша, есть место → серый 🔒
- * - Нет кэша, нет места → серый 🔒 бледный
+ * Вставляет/обновляет индикатор для одного .track[data-uid] элемента.
+ * @param {HTMLElement} trackEl — элемент .track[data-uid]
  */
-function _resolveVisualState(uid) {
-  const state = OfflineManager.getTrackOfflineState(uid);
-
-  /* state = { cacheKind, cachedComplete, downloading }
-   * cacheKind: 'pinned' | 'cloud' | 'transient' | 'dynamic' | 'fullOffline' | 'none'
-   * cachedComplete: 0..100
-   * downloading: boolean
-   */
-
-  const kind = state.cacheKind;
-  const complete = state.cachedComplete === 100;
-  const loading = state.downloading;
-
-  /* Pinned (П.4.2) */
-  if (kind === 'pinned') {
-    if (loading || !complete) {
-      return { stateClass: 'pinned-loading', icon: ICON_LOCK, clickAction: 'unpin' };
-    }
-    return { stateClass: 'pinned-complete', icon: ICON_LOCK, clickAction: 'unpin' };
-  }
-
-  /* Cloud полностью загружен (П.7.2: ☁ только при cloud=true И cachedComplete=100%) */
-  if (kind === 'cloud' && complete) {
-    return { stateClass: 'cloud-complete', icon: ICON_CLOUD, clickAction: 'cloud-menu' };
-  }
-
-  /* Cloud загружается — показываем серый 🔒 (П.7.2) */
-  if (kind === 'cloud' && !complete) {
-    return { stateClass: 'cloud-loading', icon: ICON_LOCK, clickAction: 'pin' };
-  }
-
-  /* Transient / Dynamic / FullOffline без pinned/cloud → серый 🔒 */
-  if (kind === 'transient' || kind === 'dynamic' || kind === 'fullOffline') {
-    return { stateClass: 'transient', icon: ICON_LOCK, clickAction: 'pin' };
-  }
-
-  /* Нет кэша (П.7.2) */
-  const hasSpace = OfflineManager.hasEnoughSpace();
-  if (hasSpace) {
-    return { stateClass: 'none-has-space', icon: ICON_LOCK, clickAction: 'pin' };
-  }
-  return { stateClass: 'none-no-space', icon: ICON_LOCK, clickAction: 'no-space' };
-}
-
-/* ── Создание / обновление DOM-элемента ───────────────── */
-
-/**
- * Гарантирует наличие элемента .offline-ind внутри .track[data-uid]
- * и ставит его ПЕРЕД .tnum (П.7.1).
- *
- * Возвращает span-элемент .offline-ind.
- */
-function _ensureIndicatorElement(trackEl) {
-  let ind = trackEl.querySelector('.offline-ind');
-  if (ind) return ind;
-
-  ind = document.createElement('span');
-  ind.classList.add('offline-ind');
-
-  /* Вставляем перед .tnum (П.7.1) */
-  const tnum = trackEl.querySelector('.tnum');
-  if (tnum) {
-    trackEl.insertBefore(ind, tnum);
-  } else {
-    /* Fallback: вставляем первым дочерним */
-    trackEl.insertBefore(ind, trackEl.firstChild);
-  }
-
-  return ind;
-}
-
-/**
- * Удаляет все state-классы с элемента .offline-ind.
- */
-function _clearStateClasses(ind) {
-  const toRemove = [];
-  ind.classList.forEach(cls => {
-    if (cls.startsWith(STATE_CLASS_PREFIX)) toRemove.push(cls);
-  });
-  toRemove.forEach(cls => ind.classList.remove(cls));
-}
-
-/**
- * Обновляет один индикатор для конкретного .track[data-uid] элемента.
- */
-function _updateIndicator(trackEl) {
-  const uid = trackEl.dataset.uid;
+export async function injectIndicator(trackEl) {
+  if (!trackEl) return;
+  const uid = trackEl.dataset?.uid;
   if (!uid) return;
 
-  const ind = _ensureIndicatorElement(trackEl);
-  const { stateClass, icon, clickAction } = _resolveVisualState(uid);
+  const mgr = getOfflineManager();
+  const state = await mgr.getTrackOfflineState(uid);
 
-  /* Обновляем визуал */
-  _clearStateClasses(ind);
-  ind.classList.add(STATE_CLASS_PREFIX + stateClass);
-  ind.textContent = icon;
-  ind.dataset.clickAction = clickAction;
-  ind.dataset.uid = uid;
-}
+  /* Найти или создать индикатор */
+  let badge = trackEl.querySelector(`.${CLS.BASE}`);
+  if (!badge) {
+    badge = document.createElement('span');
+    badge.className = CLS.BASE;
+    badge.dataset.uid = uid;
+    badge.setAttribute('role', 'button');
+    badge.setAttribute('tabindex', '0');
 
-/* ── Клик-обработчик (делегирование) ─────────────────── */
-
-/**
- * Единый обработчик кликов по .offline-ind (делегированный на document).
- * Логика по П.4.2–П.4.4, П.5.5.
- */
-function _handleIndicatorClick(e) {
-  const ind = e.target.closest('.offline-ind');
-  if (!ind) return;
-
-  e.stopPropagation(); /* Не прокидываем клик на .track (не запускаем воспроизведение) */
-  e.preventDefault();
-
-  const uid = ind.dataset.uid;
-  const action = ind.dataset.clickAction;
-
-  if (!uid || !action) return;
-
-  switch (action) {
-    /* Серый 🔒 → начать пиннинг (П.4.3) */
-    case 'pin':
-      OfflineManager.togglePinned(uid).then(result => {
-        if (result.success) {
-          _toast('Трек будет доступен офлайн. Начинаю скачивание…');
-          refreshIndicator(uid);
-        }
-      });
-      break;
-
-    /* Жёлтый 🔒 → снять пиннинг (П.4.4) */
-    case 'unpin': {
-      const D = OfflineManager.getCloudD();
-      OfflineManager.togglePinned(uid).then(result => {
-        if (result.success) {
-          _toast(`Офлайн-закрепление снято. Трек доступен как облачный кэш на ${D} дней.`);
-          refreshIndicator(uid);
-        }
-      });
-      break;
+    /* ТЗ П.7.1: вставить ПЕРЕД .tnum */
+    const tnum = trackEl.querySelector('.tnum');
+    if (tnum) {
+      tnum.parentNode.insertBefore(badge, tnum);
+    } else {
+      /* fallback: в начало */
+      trackEl.prepend(badge);
     }
 
-    /* Голубой ☁ → cloud-menu (П.5.5) */
-    case 'cloud-menu':
-      showCloudMenu(uid, ind);
-      break;
+    /* Навешиваем обработчик клика (один раз) */
+    badge.addEventListener('click', _onIndicatorClick);
+  }
 
-    /* Нет места (П.2) */
-    case 'no-space':
-      _toast('Недостаточно места на устройстве. Освободите память для офлайн-кэша.');
-      break;
+  /* Обновить визуальное состояние */
+  _updateBadgeVisual(badge, state);
+}
+
+/* ═══════ Обновление визуала ═══════ */
+
+function _updateBadgeVisual(badge, state) {
+  /* Снять все модификаторы */
+  badge.classList.remove(CLS.NONE, CLS.PINNED, CLS.PINNED_LOADING, CLS.CLOUD);
+
+  const { cacheKind, downloading, cachedComplete } = state;
+
+  if (cacheKind === 'pinned') {
+    if (downloading || cachedComplete < 100) {
+      badge.classList.add(CLS.PINNED_LOADING);
+      badge.textContent = ICONS.LOCK;
+      badge.title = 'Закреплён 🔒 (загружается...)';
+    } else {
+      badge.classList.add(CLS.PINNED);
+      badge.textContent = ICONS.LOCK;
+      badge.title = 'Закреплён 🔒 (клик — открепить)';
+    }
+  } else if (cacheKind === 'cloud') {
+    badge.classList.add(CLS.CLOUD);
+    badge.textContent = ICONS.CLOUD;
+    badge.title = 'В облаке ☁ (клик — меню)';
+  } else {
+    /* none — серый 🔒 (ТЗ П.7.2: всегда показываем) */
+    badge.classList.add(CLS.NONE);
+    badge.textContent = ICONS.LOCK;
+    badge.title = 'Не кэшировано (клик — закрепить)';
+  }
+
+  /* Сохраняем текущее состояние в dataset для обработчика клика */
+  badge.dataset.cacheKind = cacheKind;
+}
+
+/* ═══════ Обработчик клика (ТЗ П.4.2–П.4.4, П.5.5) ═══════ */
+
+async function _onIndicatorClick(e) {
+  e.stopPropagation();
+  e.preventDefault();
+
+  const badge = e.currentTarget;
+  const uid = badge.dataset.uid;
+  if (!uid) return;
+
+  const kind = badge.dataset.cacheKind;
+  const mgr = getOfflineManager();
+
+  if (kind === 'cloud') {
+    /* ТЗ: Голубой ☁ → cloud-menu (ЛЕВЫЙ клик!) */
+    showCloudMenu(uid, badge);
+  } else {
+    /* Серый или жёлтый → togglePinned */
+    await mgr.togglePinned(uid);
+    /* Обновить этот индикатор */
+    const trackEl = badge.closest('.track[data-uid]');
+    if (trackEl) await injectIndicator(trackEl);
   }
 }
 
-/* ── Публичный API ────────────────────────────────────── */
-
-/**
- * Обновить индикатор для одного uid во всех трек-листах (альбомы + favorites).
- * Вызывается событийно при изменении состояния трека (П.7.4).
- */
-export function refreshIndicator(uid) {
-  const trackEls = document.querySelectorAll(`.track[data-uid="${uid}"]`);
-  trackEls.forEach(el => _updateIndicator(el));
-}
+/* ═══════ refreshAllIndicators ═══════ */
 
 /**
  * Обновить все индикаторы на странице.
- * Вызывается при старте приложения и при массовых изменениях (П.7.4).
+ * Ищет .track[data-uid] (ТЗ П.7.1).
  */
-export function refreshAllIndicators() {
-  const trackEls = document.querySelectorAll('.track[data-uid]');
-  trackEls.forEach(el => _updateIndicator(el));
+export async function refreshAllIndicators() {
+  const tracks = document.querySelectorAll('.track[data-uid]');
+  const promises = [];
+  for (const el of tracks) {
+    promises.push(injectIndicator(el));
+  }
+  await Promise.all(promises);
 }
 
-/**
- * Инициализация модуля: навешиваем делегированный обработчик клика.
- * Вызывается один раз при старте приложения.
- */
-export function initOfflineIndicators() {
-  document.addEventListener('click', _handleIndicatorClick);
+/* ═══════ Событийная модель (не таймер!) ═══════ */
 
-  /* Слушаем событие изменения состояния кэша (событийная модель, не таймер) */
-  window.addEventListener('offline-state-changed', (e) => {
-    if (e.detail && e.detail.uid) {
-      refreshIndicator(e.detail.uid);
-    } else {
-      refreshAllIndicators();
+let _listening = false;
+
+export function startIndicatorListeners() {
+  if (_listening) return;
+  _listening = true;
+
+  window.addEventListener('offline:stateChanged', () => {
+    refreshAllIndicators();
+  });
+
+  /* Также обновляем при навигации/рендере треклиста */
+  window.addEventListener('tracklist:rendered', () => {
+    refreshAllIndicators();
+  });
+
+  /* MutationObserver для динамически добавленных .track */
+  const observer = new MutationObserver((mutations) => {
+    let hasNewTracks = false;
+    for (const m of mutations) {
+      for (const node of m.addedNodes) {
+        if (node.nodeType === 1) {
+          if (node.matches?.('.track[data-uid]')) {
+            injectIndicator(node);
+            hasNewTracks = true;
+          }
+          const nested = node.querySelectorAll?.('.track[data-uid]');
+          if (nested?.length) {
+            nested.forEach(el => injectIndicator(el));
+            hasNewTracks = true;
+          }
+        }
+      }
     }
   });
+
+  const container = document.querySelector('.tracklist, .album-tracks, #app, main, body');
+  if (container) {
+    observer.observe(container, { childList: true, subtree: true });
+  }
+}
+
+/* ═══════ Bootstrap ═══════ */
+
+export function initOfflineIndicators() {
+  startIndicatorListeners();
+  refreshAllIndicators();
 }
 
 //=================================================
