@@ -1,51 +1,36 @@
 /**
- * playback-cache-bootstrap.js — Мост между PlayerCore и OfflineManager.
+ * playback-cache-bootstrap.js — Инициализация кэширования при воспроизведении.
  *
- * ТЗ: П.7 (Playback Window), П.3.1 (качество)
- *
- * Слушает события плеера и обновляет playback-window.
+ * Экспортирует bootstrapPlaybackCache + alias initPlaybackCache (ТЗ: рассогласование G).
  */
 
 import { getOfflineManager } from '../offline/offline-manager.js';
 
-let _booted = false;
-
 export async function bootstrapPlaybackCache() {
-  if (_booted) return;
-  _booted = true;
+  try {
+    const mgr = getOfflineManager();
 
-  const mgr = getOfflineManager();
+    /* Слушаем событие окончания трека для registerFullListen */
+    window.addEventListener('player:trackEnded', async (e) => {
+      const uid = e.detail?.uid;
+      if (!uid) return;
 
-  /* Слушаем смену трека от плеера */
-  window.addEventListener('player:trackChanged', async (e) => {
-    const { uid, playlist } = e.detail || {};
-    if (!uid) return;
-
-    const mode = mgr.getMode();
-
-    /* В R2/R3 режимах обновляем playback window (ТЗ П.7) */
-    if (mode === 'R2' || mode === 'R3') {
-      try {
-        await mgr.updatePlaybackWindow(uid, playlist || [], 2);
-      } catch (err) {
-        console.warn('[PlaybackCache] updatePlaybackWindow failed:', err.message);
-      }
-    }
-  });
-
-  /* Слушаем завершение прослушивания */
-  window.addEventListener('player:listenComplete', async (e) => {
-    const { uid, pct } = e.detail || {};
-    if (uid && pct >= 0.97) {
-      try {
+      const fullPlay = e.detail?.fullPlay ?? false;
+      if (fullPlay) {
         await mgr.registerFullListen(uid);
-      } catch (err) {
-        console.warn('[PlaybackCache] registerFullListen failed:', err.message);
       }
-    }
-  });
+    });
 
-  console.log('[PlaybackCache] Bootstrap complete.');
+    /* Слушаем событие начала воспроизведения — обновляем индикаторы */
+    window.addEventListener('player:trackStarted', () => {
+      window.dispatchEvent(new CustomEvent('offline:stateChanged'));
+    });
+
+    console.log('[PlaybackCache] Bootstrap complete');
+  } catch (err) {
+    console.error('[PlaybackCache] Bootstrap failed:', err);
+  }
 }
 
-export default bootstrapPlaybackCache;
+/* Alias для совместимости с app.js (pb.initPlaybackCache?.()) */
+export const initPlaybackCache = bootstrapPlaybackCache;
