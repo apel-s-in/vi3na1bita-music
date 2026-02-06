@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-eb91f2da9748b89ade8fcc1245e30490f4f2aea2.idx
-│   │       ├── pack-eb91f2da9748b89ade8fcc1245e30490f4f2aea2.pack
-│   │       └── pack-eb91f2da9748b89ade8fcc1245e30490f4f2aea2.rev
+│   │       ├── pack-4a3b2bb07a6526659df5beec802cbc5b3d5ee226.idx
+│   │       ├── pack-4a3b2bb07a6526659df5beec802cbc5b3d5ee226.pack
+│   │       └── pack-4a3b2bb07a6526659df5beec802cbc5b3d5ee226.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 18:25:09 UTC
+Сгенерировано: 2026-02-06 18:25:36 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7765,521 +7765,542 @@ export function initOfflineIndicators() {
 //=================================================
 // FILE: /scripts/ui/offline-modal.js
 /**
- * offline-modal.js — Модальное окно настроек офлайн-режима.
+ * offline-modal.js — Модальное окно OFFLINE.
  *
- * ТЗ: П.8 (все секции), П.8.1–П.8.5
- *
- * Секции:
- *   1. Режим офлайн (R0–R3)
- *   2. Качество кэша (Hi/Lo) — дубль кнопки плеера
- *   3. Облачные настройки (N, D)
- *   4. Сетевая политика
- *   5. Пресет загрузки
- *   6. Статус очереди загрузок
- *   7. Хранилище и категории
- *   8. 🔒/☁ список с кнопками Re-cache, Удалить всё
+ * ТЗ П.8: Секции в порядке:
+ *   1. Хранилище
+ *   2. Сетевая политика
+ *   3. Pinned и Cloud (НОВАЯ)
+ *   4. Режимы кэширования
+ *   5. 100% OFFLINE (заглушка)
+ *   6. Загрузки
+ *   7. Обновления (заглушка)
+ *   8. Очистка кэша
  */
 
 import { getOfflineManager } from '../offline/offline-manager.js';
-
-let _modal = null;
-
-/* ═══════ Открытие ═══════ */
-
-export async function openOfflineModal() {
-  if (_modal) { closeOfflineModal(); return; }
-
-  const mgr = getOfflineManager();
-
-  /* ── Контейнер ── */
-  const overlay = document.createElement('div');
-  overlay.className = 'offline-modal-overlay';
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) closeOfflineModal();
-  });
-
-  const modal = document.createElement('div');
-  modal.className = 'offline-modal';
-
-  /* ── Заголовок ── */
-  const header = document.createElement('div');
-  header.className = 'offline-modal__header';
-  header.innerHTML = `
-    <h2>⚙️ Офлайн-режим</h2>
-    <button class="offline-modal__close" title="Закрыть">&times;</button>
-  `;
-  header.querySelector('.offline-modal__close').addEventListener('click', closeOfflineModal);
-  modal.appendChild(header);
-
-  /* ── Скролл-контейнер ── */
-  const body = document.createElement('div');
-  body.className = 'offline-modal__body';
-
-  /* ═══ Секция 1: Режим ═══ */
-  body.appendChild(_buildSection('📡 Режим офлайн', () => {
-    const currentMode = mgr.getMode();
-    const modes = [
-      { id: 'R0', label: 'R0 — Только онлайн', desc: 'Без кэширования.' },
-      { id: 'R1', label: 'R1 — Только 🔒', desc: 'Кэш только для закреплённых.' },
-      { id: 'R2', label: 'R2 — 🔒 + ☁', desc: 'Закреплённые + облачный авто-кэш.' },
-      { id: 'R3', label: 'R3 — 🔒 + ☁ + окно', desc: 'Всё + предзагрузка соседних треков.' }
-    ];
-
-    const wrap = document.createElement('div');
-    wrap.className = 'offline-modal__modes';
-
-    for (const m of modes) {
-      const label = document.createElement('label');
-      label.className = 'offline-modal__mode-option';
-      label.innerHTML = `
-        <input type="radio" name="offlineMode" value="${m.id}"
-               ${currentMode === m.id ? 'checked' : ''}>
-        <strong>${m.label}</strong>
-        <span class="desc">${m.desc}</span>
-      `;
-      label.querySelector('input').addEventListener('change', async (e) => {
-        await mgr.setMode(e.target.value);
-        _refreshStatus(body, mgr);
-      });
-      wrap.appendChild(label);
-    }
-    return wrap;
-  }));
-
-  /* ═══ Секция 2: Качество ═══ */
-  body.appendChild(_buildSection('🎵 Качество кэша', () => {
-    const q = mgr.getCacheQuality();
-    const wrap = document.createElement('div');
-    wrap.className = 'offline-modal__quality';
-    wrap.innerHTML = `
-      <p>Текущее качество: <strong>${q === 'hi' ? 'Hi (оригинал)' : 'Lo (сжатое)'}</strong></p>
-      <p class="hint">Совпадает с качеством плеера (ТЗ П.3.1)</p>
-      <div class="btn-group">
-        <button class="btn ${q === 'hi' ? 'btn--active' : ''}" data-q="hi">Hi</button>
-        <button class="btn ${q === 'lo' ? 'btn--active' : ''}" data-q="lo">Lo</button>
-      </div>
-      <p class="hint">При смене качества все кэшированные треки будут помечены для re-cache.</p>
-    `;
-    wrap.querySelectorAll('[data-q]').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        mgr.setCacheQualitySetting(btn.dataset.q);
-        wrap.querySelectorAll('[data-q]').forEach(b => b.classList.remove('btn--active'));
-        btn.classList.add('btn--active');
-        wrap.querySelector('p strong').textContent =
-          btn.dataset.q === 'hi' ? 'Hi (оригинал)' : 'Lo (сжатое)';
-      });
-    });
-    return wrap;
-  }));
-
-  /* ═══ Секция 3: Облачные настройки N и D ═══ */
-  body.appendChild(_buildSection('☁ Облачные настройки', () => {
-    const wrap = document.createElement('div');
-    wrap.className = 'offline-modal__cloud-settings';
-
-    const currentN = mgr.getCloudN();
-    const currentD = mgr.getCloudD();
-
-    wrap.innerHTML = `
-      <div class="field">
-        <label>N — порог прослушиваний для появления ☁:</label>
-        <input type="number" id="om-cloud-n" value="${currentN}" min="1" max="100" step="1">
-      </div>
-      <div class="field">
-        <label>D — срок хранения облачного кэша (дней):</label>
-        <input type="number" id="om-cloud-d" value="${currentD}" min="1" max="365" step="1">
-      </div>
-      <button class="btn btn--apply" id="om-cloud-apply">Применить N/D</button>
-      <p class="hint">
-        Трек получает ☁ после N полных прослушиваний.<br>
-        Каждое новое прослушивание продлевает TTL на D дней.
-      </p>
-    `;
-
-    wrap.querySelector('#om-cloud-apply').addEventListener('click', () => {
-      const n = parseInt(wrap.querySelector('#om-cloud-n').value) || 5;
-      const d = parseInt(wrap.querySelector('#om-cloud-d').value) || 31;
-      mgr.setCloudN(n);
-      mgr.setCloudD(d);
-      window.NotificationSystem?.info?.(`Облачные настройки обновлены: N=${n}, D=${d}`);
-    });
-
-    return wrap;
-  }));
-
-  /* ═══ Секция 4: Сетевая политика ═══ */
-  body.appendChild(_buildSection('📶 Сетевая политика', () => {
-    const policy = mgr.getNetPolicy();
-    const wrap = document.createElement('div');
-    wrap.className = 'offline-modal__net-policy';
-    wrap.innerHTML = `
-      <label><input type="checkbox" id="om-net-wifi" ${policy.wifi ? 'checked' : ''}> Скачивать по Wi-Fi</label>
-      <label><input type="checkbox" id="om-net-mobile" ${policy.mobile ? 'checked' : ''}> Скачивать по мобильной сети</label>
-    `;
-    wrap.querySelector('#om-net-wifi').addEventListener('change', (e) => {
-      mgr.setNetPolicy({ wifi: e.target.checked });
-    });
-    wrap.querySelector('#om-net-mobile').addEventListener('change', (e) => {
-      mgr.setNetPolicy({ mobile: e.target.checked });
-    });
-    return wrap;
-  }));
-
-  /* ═══ Секция 5: Пресет загрузки ═══ */
-  body.appendChild(_buildSection('⚡ Пресет загрузки', () => {
-    const preset = mgr.getPreset();
-    const wrap = document.createElement('div');
-    wrap.className = 'offline-modal__preset';
-    const presets = [
-      { name: 'conservative', label: 'Экономный' },
-      { name: 'balanced', label: 'Сбалансированный' },
-      { name: 'aggressive', label: 'Быстрый' }
-    ];
-    for (const p of presets) {
-      const btn = document.createElement('button');
-      btn.className = `btn ${preset.name === p.name ? 'btn--active' : ''}`;
-      btn.textContent = p.label;
-      btn.addEventListener('click', () => {
-        mgr.setPreset(p.name);
-        wrap.querySelectorAll('.btn').forEach(b => b.classList.remove('btn--active'));
-        btn.classList.add('btn--active');
-      });
-      wrap.appendChild(btn);
-    }
-    return wrap;
-  }));
-
-  /* ═══ Секция 6: Очередь загрузок ═══ */
-  body.appendChild(_buildSection('📥 Очередь загрузок', () => {
-    const wrap = document.createElement('div');
-    wrap.className = 'offline-modal__queue';
-    wrap.id = 'om-queue-status';
-    _renderQueueStatus(wrap, mgr);
-
-    const btnRow = document.createElement('div');
-    btnRow.className = 'btn-group';
-
-    const pauseBtn = document.createElement('button');
-    pauseBtn.className = 'btn';
-    pauseBtn.textContent = '⏸ Пауза';
-    pauseBtn.addEventListener('click', () => {
-      mgr.pauseDownloads();
-      _renderQueueStatus(wrap, mgr);
-    });
-
-    const resumeBtn = document.createElement('button');
-    resumeBtn.className = 'btn';
-    resumeBtn.textContent = '▶ Продолжить';
-    resumeBtn.addEventListener('click', () => {
-      mgr.resumeDownloads();
-      _renderQueueStatus(wrap, mgr);
-    });
-
-    btnRow.appendChild(pauseBtn);
-    btnRow.appendChild(resumeBtn);
-    wrap.appendChild(btnRow);
-
-    return wrap;
-  }));
-
-  /* ═══ Секция 7: Хранилище ═══ */
-  body.appendChild(_buildSection('💾 Хранилище', () => {
-    const wrap = document.createElement('div');
-    wrap.className = 'offline-modal__storage';
-    wrap.id = 'om-storage-status';
-    wrap.textContent = 'Загрузка…';
-    _renderStorageInfo(wrap, mgr);
-    return wrap;
-  }));
-
-  /* ═══ Секция 8: Список 🔒/☁ (ТЗ П.8.1) ═══ */
-  body.appendChild(_buildSection('🔒☁ Закреплённые и облачные треки', () => {
-    const wrap = document.createElement('div');
-    wrap.className = 'offline-modal__pinned-cloud';
-
-    /* Кнопки управления */
-    const controls = document.createElement('div');
-    controls.className = 'btn-group';
-
-    const reCacheBtn = document.createElement('button');
-    reCacheBtn.className = 'btn';
-    reCacheBtn.textContent = '🔄 Re-cache все';
-    reCacheBtn.addEventListener('click', async () => {
-      reCacheBtn.disabled = true;
-      reCacheBtn.textContent = '🔄 Re-cache…';
-      const progressBar = wrap.querySelector('.recache-progress');
-      if (progressBar) progressBar.style.display = 'block';
-
-      await mgr.reCacheAll((p) => {
-        if (progressBar) {
-          progressBar.textContent = `Re-cache: ${p.done}/${p.total} (${p.pct}%)`;
-        }
-        reCacheBtn.textContent = `🔄 Re-cache… ${p.pct}%`;
-      });
-
-      reCacheBtn.disabled = false;
-      reCacheBtn.textContent = '🔄 Re-cache все';
-      if (progressBar) progressBar.style.display = 'none';
-      _renderPinnedCloudList(listContainer, mgr);
-    });
-
-    const deleteAllBtn = document.createElement('button');
-    deleteAllBtn.className = 'btn btn--danger';
-    deleteAllBtn.textContent = '🗑 Удалить все 🔒/☁';
-    deleteAllBtn.addEventListener('click', async () => {
-      const ok = confirm(
-        'Удалить ВСЕ закреплённые и облачные треки из кэша?\n\n' +
-        'Это действие нельзя отменить. Треки останутся в каталоге,\n' +
-        'но будут воспроизводиться только онлайн.'
-      );
-      if (!ok) return;
-      const pinnedCount = await mgr.clearByCategory('pinned');
-      const cloudCount = await mgr.clearByCategory('cloud');
-      window.NotificationSystem?.info?.(`Удалено: ${pinnedCount + cloudCount} треков.`);
-      _renderPinnedCloudList(listContainer, mgr);
-    });
-
-    controls.appendChild(reCacheBtn);
-    controls.appendChild(deleteAllBtn);
-    wrap.appendChild(controls);
-
-    /* Прогресс re-cache */
-    const progressEl = document.createElement('div');
-    progressEl.className = 'recache-progress';
-    progressEl.style.display = 'none';
-    wrap.appendChild(progressEl);
-
-    /* Список треков */
-    const listContainer = document.createElement('div');
-    listContainer.className = 'offline-modal__track-list';
-    listContainer.textContent = 'Загрузка…';
-    wrap.appendChild(listContainer);
-
-    _renderPinnedCloudList(listContainer, mgr);
-
-    return wrap;
-  }));
-
-  /* ═══ Секция 9: Очистка по категориям ═══ */
-  body.appendChild(_buildSection('🧹 Очистка кэша', () => {
-    const wrap = document.createElement('div');
-    wrap.className = 'offline-modal__cleanup';
-
-    const categories = [
-      { key: 'pinned', label: '🔒 Закреплённые' },
-      { key: 'cloud', label: '☁ Облачные' },
-      { key: 'dynamic', label: '🎵 Динамические (playback window)' },
-      { key: 'all', label: '💥 Всё' }
-    ];
-
-    for (const cat of categories) {
-      const btn = document.createElement('button');
-      btn.className = `btn ${cat.key === 'all' ? 'btn--danger' : ''}`;
-      btn.textContent = `Удалить ${cat.label}`;
-      btn.addEventListener('click', async () => {
-        const ok = confirm(`Удалить все кэшированные данные категории "${cat.label}"?`);
-        if (!ok) return;
-        const count = await mgr.clearByCategory(cat.key);
-        window.NotificationSystem?.info?.(`Удалено ${count} элементов (${cat.label}).`);
-        _refreshStatus(body, mgr);
-      });
-      wrap.appendChild(btn);
-    }
-
-    return wrap;
-  }));
-
-  /* ── Собираем модал ── */
-  modal.appendChild(body);
-  overlay.appendChild(modal);
-  document.body.appendChild(overlay);
-  _modal = overlay;
-
-  /* ESC закрытие */
-  document.addEventListener('keydown', _escHandler);
-}
-
-/* ═══════ Закрытие ═══════ */
-
-export function closeOfflineModal() {
-  if (_modal) {
-    _modal.remove();
-    _modal = null;
-  }
-  document.removeEventListener('keydown', _escHandler);
-}
-
-function _escHandler(e) {
-  if (e.key === 'Escape') closeOfflineModal();
-}
+import { estimateUsage } from '../offline/cache-db.js';
 
 /* ═══════ Helpers ═══════ */
 
-function _buildSection(title, contentFn) {
-  const section = document.createElement('section');
-  section.className = 'offline-modal__section';
-
-  const h3 = document.createElement('h3');
-  h3.className = 'offline-modal__section-title';
-  h3.textContent = title;
-  section.appendChild(h3);
-
-  const content = contentFn();
-  if (content) section.appendChild(content);
-
-  return section;
+function fmt(bytes) {
+  if (!bytes || bytes < 0) return '0 MB';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
 }
 
-function _renderQueueStatus(container, mgr) {
-  const status = mgr.queue.getStatus();
-  const info = container.querySelector('.queue-info') || document.createElement('div');
-  info.className = 'queue-info';
-  info.innerHTML = `
-    <p>В очереди: <strong>${status.queued}</strong> | 
-       Активных: <strong>${status.active}</strong> | 
-       Пауза: <strong>${status.paused ? 'Да' : 'Нет'}</strong></p>
-    ${status.activeUid ? `<p>Скачивается: <code>${status.activeUid}</code></p>` : ''}
-  `;
-  if (!info.parentElement) container.prepend(info);
+function el(tag, cls, html) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (html) e.innerHTML = html;
+  return e;
 }
 
-async function _renderStorageInfo(container, mgr) {
-  try {
-    const info = await mgr.getStorageInfo();
-    const usedMB = ((info.used || 0) / (1024 * 1024)).toFixed(1);
-    const quotaMB = ((info.quota || 0) / (1024 * 1024)).toFixed(0);
-    const freeMB = ((info.free || 0) / (1024 * 1024)).toFixed(0);
-    const cats = info.categories;
+function btn(text, cls, onClick) {
+  const b = document.createElement('button');
+  b.className = cls || 'offline-modal__btn';
+  b.textContent = text;
+  if (onClick) b.addEventListener('click', onClick);
+  return b;
+}
 
-    container.innerHTML = `
-      <div class="storage-bar">
-        <div class="storage-bar__fill"
-             style="width: ${info.quota ? Math.min(100, (info.used / info.quota) * 100) : 0}%">
-        </div>
-      </div>
-      <p>Использовано: <strong>${usedMB} МБ</strong> из ${quotaMB} МБ (свободно ${freeMB} МБ)</p>
-      <table class="storage-table">
-        <tr><th>Категория</th><th>Кол-во</th><th>Размер</th></tr>
-        <tr>
-          <td>🔒 Закреплённые</td>
-          <td>${cats.counts.pinned}</td>
-          <td>${(cats.sizes.pinned / (1024 * 1024)).toFixed(1)} МБ</td>
-        </tr>
-        <tr>
-          <td>☁ Облачные</td>
-          <td>${cats.counts.cloud}</td>
-          <td>${(cats.sizes.cloud / (1024 * 1024)).toFixed(1)} МБ</td>
-        </tr>
-        <tr>
-          <td>🎵 Динамические</td>
-          <td>${cats.counts.dynamic}</td>
-          <td>${(cats.sizes.dynamic / (1024 * 1024)).toFixed(1)} МБ</td>
-        </tr>
-        <tr>
-          <td><strong>Всего</strong></td>
-          <td><strong>${cats.counts.total}</strong></td>
-          <td><strong>${(cats.sizes.total / (1024 * 1024)).toFixed(1)} МБ</strong></td>
-        </tr>
-      </table>
-    `;
-  } catch (e) {
-    container.textContent = 'Ошибка загрузки информации о хранилище.';
-    console.error('[OfflineModal] Storage info error:', e);
+function emit(name, detail = {}) {
+  window.dispatchEvent(new CustomEvent(name, { detail }));
+}
+
+/* ═══════ Main ═══════ */
+
+let _overlay = null;
+
+export async function showOfflineModal() {
+  if (_overlay) return; /* уже открыто */
+
+  const mgr = getOfflineManager();
+  const stats = await mgr.getCacheStats();
+  const est = await estimateUsage();
+
+  _overlay = el('div', 'offline-modal-overlay');
+  const modal = el('div', 'offline-modal');
+
+  /* Заголовок */
+  const header = el('div', 'offline-modal__header');
+  header.innerHTML = '<h2>⚙ OFFLINE</h2>';
+  const closeBtn = btn('✕', 'offline-modal__close', closeOfflineModal);
+  header.appendChild(closeBtn);
+  modal.appendChild(header);
+
+  const body = el('div', 'offline-modal__body');
+
+  /* ══════ СЕКЦИЯ 1: Хранилище ══════ */
+  body.appendChild(_buildStorageSection(est, stats));
+
+  /* ══════ СЕКЦИЯ 2: Сетевая политика ══════ */
+  body.appendChild(_buildNetPolicySection(mgr, stats));
+
+  /* ══════ СЕКЦИЯ 3: Pinned и Cloud ══════ */
+  body.appendChild(await _buildPinnedCloudSection(mgr, stats));
+
+  /* ══════ СЕКЦИЯ 4: Режимы кэширования ══════ */
+  body.appendChild(_buildModeSection(mgr, stats));
+
+  /* ══════ СЕКЦИЯ 5: 100% OFFLINE (заглушка) ══════ */
+  body.appendChild(_buildFullOfflineSection());
+
+  /* ══════ СЕКЦИЯ 6: Загрузки ══════ */
+  body.appendChild(_buildDownloadSection(mgr, stats));
+
+  /* ══════ СЕКЦИЯ 7: Обновления (заглушка) ══════ */
+  body.appendChild(_buildUpdatesSection());
+
+  /* ══════ СЕКЦИЯ 8: Очистка кэша ══════ */
+  body.appendChild(_buildClearSection(mgr));
+
+  modal.appendChild(body);
+  _overlay.appendChild(modal);
+  document.body.appendChild(_overlay);
+
+  /* Закрытие по клику на оверлей */
+  _overlay.addEventListener('click', (e) => {
+    if (e.target === _overlay) closeOfflineModal();
+  });
+}
+
+export function closeOfflineModal() {
+  if (_overlay) {
+    _overlay.remove();
+    _overlay = null;
   }
 }
 
-async function _renderPinnedCloudList(container, mgr) {
-  try {
-    const items = await mgr.getPinnedAndCloudList();
+/* ══════════════════════════════════════════════
+   СЕКЦИЯ 1: Хранилище
+   ══════════════════════════════════════════════ */
 
-    if (!items.length) {
-      container.innerHTML = '<p class="empty">Нет закреплённых или облачных треков.</p>';
+function _buildStorageSection(est, stats) {
+  const sec = el('section', 'offline-modal__section');
+  sec.innerHTML = `
+    <h3>💾 Хранилище</h3>
+    <div class="offline-modal__storage-bar">
+      <div class="offline-modal__storage-fill" style="width: ${est.quota ? Math.round((est.used / est.quota) * 100) : 0}%"></div>
+    </div>
+    <div class="offline-modal__storage-text">
+      Использовано: ${fmt(est.used)} / ${fmt(est.quota)}<br>
+      Свободно: ${fmt(est.free)}<br>
+      Треков: ${stats.totalTracks} (🔒 ${stats.pinnedCount} + ☁ ${stats.cloudCount}), ${fmt(stats.totalSize)}
+    </div>
+  `;
+  return sec;
+}
+
+/* ══════════════════════════════════════════════
+   СЕКЦИЯ 2: Сетевая политика
+   ══════════════════════════════════════════════ */
+
+function _buildNetPolicySection(mgr, stats) {
+  const sec = el('section', 'offline-modal__section');
+  sec.innerHTML = '<h3>🌐 Сетевая политика</h3>';
+
+  const policies = [
+    { value: 'any', label: 'Любая сеть' },
+    { value: 'wifi', label: 'Только Wi-Fi' },
+    { value: 'none', label: 'Без загрузок' }
+  ];
+
+  const group = el('div', 'offline-modal__radio-group');
+  for (const p of policies) {
+    const label = document.createElement('label');
+    label.className = 'offline-modal__radio-label';
+    const radio = document.createElement('input');
+    radio.type = 'radio';
+    radio.name = 'netPolicy';
+    radio.value = p.value;
+    radio.checked = stats.netPolicy === p.value;
+    radio.addEventListener('change', () => mgr.setNetPolicy(p.value));
+    label.appendChild(radio);
+    label.appendChild(document.createTextNode(' ' + p.label));
+    group.appendChild(label);
+  }
+  sec.appendChild(group);
+  return sec;
+}
+
+/* ══════════════════════════════════════════════
+   СЕКЦИЯ 3: Pinned и Cloud (ТЗ П.8.2–П.8.6)
+   ══════════════════════════════════════════════ */
+
+async function _buildPinnedCloudSection(mgr, stats) {
+  const sec = el('section', 'offline-modal__section');
+  sec.innerHTML = '<h3>🔒☁ Pinned и Cloud</h3>';
+
+  /* ── П.8.2: Кнопка качества Hi/Lo ── */
+  const qualityRow = el('div', 'offline-modal__row');
+  qualityRow.innerHTML = '<span>Качество кэша:</span>';
+  const qBtn = btn(
+    stats.quality === 'hi' ? '🎵 Hi' : '🎵 Lo',
+    'offline-modal__btn offline-modal__btn--quality',
+    () => {
+      const newQ = mgr.getCacheQuality() === 'hi' ? 'lo' : 'hi';
+      mgr.setCacheQualitySetting(newQ);
+      qBtn.textContent = newQ === 'hi' ? '🎵 Hi' : '🎵 Lo';
+    }
+  );
+  qualityRow.appendChild(qBtn);
+  sec.appendChild(qualityRow);
+
+  /* ── П.8.3: Re-cache ── */
+  const reCacheRow = el('div', 'offline-modal__row');
+  const reCacheBtn = btn('🔄 Re-cache', 'offline-modal__btn', async () => {
+    reCacheBtn.disabled = true;
+    reCacheBtn.textContent = '🔄 Запуск...';
+
+    const progressBar = el('div', 'offline-modal__progress');
+    const progressFill = el('div', 'offline-modal__progress-fill');
+    progressBar.appendChild(progressFill);
+    reCacheRow.appendChild(progressBar);
+
+    const total = await mgr.reCacheAll(({ done, total: t }) => {
+      const pct = t > 0 ? Math.round((done / t) * 100) : 0;
+      progressFill.style.width = pct + '%';
+    });
+
+    reCacheBtn.disabled = false;
+    reCacheBtn.textContent = `🔄 Re-cache (${total} в очереди)`;
+  });
+  reCacheRow.appendChild(reCacheBtn);
+  sec.appendChild(reCacheRow);
+
+  /* ── П.8.4: Поля N / D + «Применить» ── */
+  const ndRow = el('div', 'offline-modal__row offline-modal__nd-row');
+
+  const nLabel = el('label', '', 'N (прослушиваний): ');
+  const nInput = document.createElement('input');
+  nInput.type = 'number';
+  nInput.min = '1';
+  nInput.max = '100';
+  nInput.value = stats.cloudN;
+  nInput.className = 'offline-modal__input';
+  nLabel.appendChild(nInput);
+  ndRow.appendChild(nLabel);
+
+  const dLabel = el('label', '', 'D (дней TTL): ');
+  const dInput = document.createElement('input');
+  dInput.type = 'number';
+  dInput.min = '1';
+  dInput.max = '365';
+  dInput.value = stats.cloudD;
+  dInput.className = 'offline-modal__input';
+  dLabel.appendChild(dInput);
+  ndRow.appendChild(dLabel);
+
+  const applyBtn = btn('✅ Применить', 'offline-modal__btn offline-modal__btn--apply', async () => {
+    const newN = parseInt(nInput.value, 10) || 3;
+    const newD = parseInt(dInput.value, 10) || 30;
+
+    if (newN < 1 || newD < 1) {
+      alert('N и D должны быть ≥ 1');
       return;
     }
 
-    const table = document.createElement('table');
-    table.className = 'offline-track-table';
-    table.innerHTML = `
-      <thead>
-        <tr>
-          <th>Тип</th>
-          <th>Название</th>
-          <th>Качество</th>
-          <th>Прослуш.</th>
-          <th>Re-cache</th>
-          <th>Действия</th>
-        </tr>
-      </thead>
-    `;
+    /* ТЗ П.5.7: Предупреждение перед применением */
+    const preview = await mgr.previewCloudSettings(newN, newD);
 
-    const tbody = document.createElement('tbody');
-
-    for (const item of items) {
-      const tr = document.createElement('tr');
-      const icon = item.type === 'pinned' ? '🔒' : '☁';
-      const needsRC = item.needsReCache ? '⚠️' : '✅';
-      const expiresStr = item.cloudExpiresAt
-        ? `TTL: ${Math.ceil((item.cloudExpiresAt - Date.now()) / (24 * 60 * 60 * 1000))}д`
-        : '';
-
-      tr.innerHTML = `
-        <td>${icon}</td>
-        <td>
-          <div class="track-name">${item.title || item.uid}</div>
-          <div class="track-meta">${item.artist || ''} ${expiresStr ? `· ${expiresStr}` : ''}</div>
-        </td>
-        <td>${item.quality || '?'}</td>
-        <td>${item.cloudFullListenCount || 0}</td>
-        <td>${needsRC}</td>
-        <td class="actions"></td>
-      `;
-
-      const actionsCell = tr.querySelector('.actions');
-
-      /* Кнопка toggle pin */
-      const toggleBtn = document.createElement('button');
-      toggleBtn.className = 'btn btn--small';
-      toggleBtn.textContent = item.type === 'pinned' ? '🔓' : '🔒';
-      toggleBtn.title = item.type === 'pinned' ? 'Открепить' : 'Закрепить';
-      toggleBtn.addEventListener('click', async () => {
-        await mgr.togglePinned(item.uid);
-        _renderPinnedCloudList(container, mgr);
-      });
-      actionsCell.appendChild(toggleBtn);
-
-      /* Кнопка удалить */
-      const delBtn = document.createElement('button');
-      delBtn.className = 'btn btn--small btn--danger';
-      delBtn.textContent = '🗑';
-      delBtn.title = 'Удалить из кэша';
-      delBtn.addEventListener('click', async () => {
-        await mgr.removeCached(item.uid);
-        _renderPinnedCloudList(container, mgr);
-      });
-      actionsCell.appendChild(delBtn);
-
-      tbody.appendChild(tr);
+    if (preview.warnings.length > 0) {
+      const msg = 'Внимание:\n\n' + preview.warnings.join('\n') +
+        '\n\nПрименить настройки?';
+      if (!confirm(msg)) return;
     }
 
-    table.appendChild(tbody);
-    container.innerHTML = '';
-    container.appendChild(table);
+    await mgr.confirmApplyCloudSettings({
+      toRemove: preview.toRemove,
+      newN,
+      newD
+    });
 
-  } catch (e) {
-    container.textContent = 'Ошибка загрузки списка.';
-    console.error('[OfflineModal] Track list error:', e);
+    /* Обновить отображённые значения */
+    nInput.value = newN;
+    dInput.value = newD;
+  });
+  ndRow.appendChild(applyBtn);
+  sec.appendChild(ndRow);
+
+  /* ── П.8.5: Кнопка «Список 🔒/☁» ── */
+  const listBtn = btn('📋 Список 🔒/☁', 'offline-modal__btn', async () => {
+    const list = await mgr.getPinnedAndCloudList();
+    _showPinnedCloudList(list, mgr);
+  });
+  sec.appendChild(listBtn);
+
+  /* ── П.8.6: Кнопка «Удалить все 🔒/☁» ── */
+  const deleteAllBtn = btn(
+    '🗑 Удалить все 🔒/☁',
+    'offline-modal__btn offline-modal__btn--danger',
+    async () => {
+      /* Двойной confirm (ТЗ П.8.6) */
+      if (!confirm('Удалить ВСЕ закреплённые и облачные треки?')) return;
+      if (!confirm('Вы уверены? Это действие необратимо!')) return;
+
+      const count = await mgr.removeAllPinnedAndCloud();
+      alert(`Удалено: ${count} трек(ов)`);
+
+      /* Перерендерим модал */
+      closeOfflineModal();
+      showOfflineModal();
+    }
+  );
+  sec.appendChild(deleteAllBtn);
+
+  return sec;
+}
+
+/* ══════════════════════════════════════════════
+   Подокно: список 🔒/☁ треков (П.8.5)
+   ══════════════════════════════════════════════ */
+
+function _showPinnedCloudList(list, mgr) {
+  const overlay = el('div', 'offline-modal-overlay offline-modal-overlay--sub');
+  const panel = el('div', 'offline-modal offline-modal--sub');
+
+  const header = el('div', 'offline-modal__header');
+  header.innerHTML = '<h3>📋 Список 🔒/☁</h3>';
+  const closeBtn = btn('✕', 'offline-modal__close', () => overlay.remove());
+  header.appendChild(closeBtn);
+  panel.appendChild(header);
+
+  const body = el('div', 'offline-modal__body');
+
+  /* Pinned */
+  if (list.pinned.length > 0) {
+    body.appendChild(el('h4', '', `🔒 Закреплённые (${list.pinned.length})`));
+    const ul = el('ul', 'offline-modal__track-list');
+    for (const t of list.pinned) {
+      const li = el('li', 'offline-modal__track-item');
+      li.innerHTML = `
+        <span class="offline-modal__track-title">${t.artist ? t.artist + ' — ' : ''}${t.title}</span>
+        <span class="offline-modal__track-meta">${t.quality || '?'} · ${fmt(t.size)}${t.needsReCache ? ' ⚠️ re-cache' : ''}</span>
+      `;
+
+      /* Кнопка удаления */
+      const rmBtn = btn('✕', 'offline-modal__btn--sm offline-modal__btn--danger', async () => {
+        if (!confirm(`Удалить «${t.title}» из кэша?`)) return;
+        await mgr.removeCached(t.uid);
+        li.remove();
+      });
+      li.appendChild(rmBtn);
+      ul.appendChild(li);
+    }
+    body.appendChild(ul);
   }
+
+  /* Cloud */
+  if (list.cloud.length > 0) {
+    body.appendChild(el('h4', '', `☁ Облачные (${list.cloud.length})`));
+    const ul = el('ul', 'offline-modal__track-list');
+    for (const t of list.cloud) {
+      const li = el('li', 'offline-modal__track-item');
+      const expiresIn = t.cloudExpiresAt
+        ? Math.max(0, Math.round((t.cloudExpiresAt - Date.now()) / (24 * 60 * 60 * 1000)))
+        : '?';
+      li.innerHTML = `
+        <span class="offline-modal__track-title">${t.artist ? t.artist + ' — ' : ''}${t.title}</span>
+        <span class="offline-modal__track-meta">${t.quality || '?'} · ${fmt(t.size)} · 🎧${t.cloudFullListenCount} · ⏳${expiresIn}д${t.expiredPending ? ' ⚠️expired' : ''}</span>
+      `;
+      const rmBtn = btn('✕', 'offline-modal__btn--sm offline-modal__btn--danger', async () => {
+        if (!confirm(`Удалить «${t.title}» из кэша?`)) return;
+        await mgr.removeCached(t.uid);
+        li.remove();
+      });
+      li.appendChild(rmBtn);
+      ul.appendChild(li);
+    }
+    body.appendChild(ul);
+  }
+
+  if (list.pinned.length === 0 && list.cloud.length === 0) {
+    body.appendChild(el('p', 'offline-modal__empty', 'Нет закреплённых или облачных треков.'));
+  }
+
+  panel.appendChild(body);
+  overlay.appendChild(panel);
+  document.body.appendChild(overlay);
+
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
 }
 
-function _refreshStatus(body, mgr) {
-  const queueEl = body.querySelector('#om-queue-status');
-  if (queueEl) _renderQueueStatus(queueEl, mgr);
+/* ══════════════════════════════════════════════
+   СЕКЦИЯ 4: Режимы кэширования
+   ══════════════════════════════════════════════ */
 
-  const storageEl = body.querySelector('#om-storage-status');
-  if (storageEl) _renderStorageInfo(storageEl, mgr);
+function _buildModeSection(mgr, stats) {
+  const sec = el('section', 'offline-modal__section');
+  sec.innerHTML = '<h3>📦 Режимы кэширования</h3>';
+
+  const modes = [
+    { value: 'R0', label: 'R0 — Без кэширования', desc: 'Кэш не используется' },
+    { value: 'R1', label: 'R1 — Только pinned', desc: 'Только закреплённые 🔒 треки' },
+    { value: 'R2', label: 'R2 — Pinned + Cloud', desc: '🔒 + ☁ автоматическое облако' },
+    { value: 'R3', label: 'R3 — Агрессивный', desc: 'Как R2, но expired не удаляются' }
+  ];
+
+  const group = el('div', 'offline-modal__radio-group');
+  for (const m of modes) {
+    const label = document.createElement('label');
+    label.className = 'offline-modal__radio-label';
+
+    const radio = document.createElement('input');
+    radio.type = 'radio';
+    radio.name = 'cacheMode';
+    radio.value = m.value;
+    radio.checked = stats.mode === m.value;
+    radio.addEventListener('change', async () => {
+      await mgr.setMode(m.value);
+    });
+
+    label.appendChild(radio);
+    label.appendChild(document.createTextNode(' ' + m.label));
+
+    const desc = el('small', 'offline-modal__mode-desc', m.desc);
+    label.appendChild(desc);
+
+    group.appendChild(label);
+  }
+  sec.appendChild(group);
+  return sec;
 }
 
-export default { openOfflineModal, closeOfflineModal };
+/* ══════════════════════════════════════════════
+   СЕКЦИЯ 5: 100% OFFLINE (заглушка)
+   ══════════════════════════════════════════════ */
+
+function _buildFullOfflineSection() {
+  const sec = el('section', 'offline-modal__section');
+  sec.innerHTML = `
+    <h3>🔌 100% OFFLINE</h3>
+    <p class="offline-modal__placeholder">В разработке. Полностью автономный режим.</p>
+  `;
+  return sec;
+}
+
+/* ══════════════════════════════════════════════
+   СЕКЦИЯ 6: Загрузки
+   ══════════════════════════════════════════════ */
+
+function _buildDownloadSection(mgr, stats) {
+  const sec = el('section', 'offline-modal__section');
+  sec.innerHTML = '<h3>⬇ Загрузки</h3>';
+
+  const qs = stats.queueStatus;
+  const statusText = el('div', 'offline-modal__dl-status');
+  statusText.innerHTML = `
+    Очередь: ${qs.queued} · Активно: ${qs.active}
+    ${qs.activeUid ? ` · Скачивается: ${qs.activeUid}` : ''}
+    ${qs.paused ? ' · ⏸ Пауза' : ''}
+  `;
+  sec.appendChild(statusText);
+
+  const btnRow = el('div', 'offline-modal__row');
+  if (qs.paused) {
+    btnRow.appendChild(btn('▶ Продолжить', 'offline-modal__btn', () => {
+      mgr.queue.resume();
+      closeOfflineModal();
+      showOfflineModal();
+    }));
+  } else {
+    btnRow.appendChild(btn('⏸ Пауза', 'offline-modal__btn', () => {
+      mgr.queue.pause();
+      closeOfflineModal();
+      showOfflineModal();
+    }));
+  }
+
+  btnRow.appendChild(btn('🗑 Очистить очередь', 'offline-modal__btn offline-modal__btn--danger', () => {
+    if (!confirm('Очистить очередь загрузок?')) return;
+    mgr.queue.clear();
+    closeOfflineModal();
+    showOfflineModal();
+  }));
+
+  sec.appendChild(btnRow);
+
+  /* Список элементов в очереди */
+  if (qs.items.length > 0) {
+    const ul = el('ul', 'offline-modal__queue-list');
+    for (const item of qs.items.slice(0, 20)) {
+      const li = el('li', '', `${item.uid} (${item.kind}, ${item.quality})`);
+      ul.appendChild(li);
+    }
+    if (qs.items.length > 20) {
+      ul.appendChild(el('li', 'offline-modal__more', `... и ещё ${qs.items.length - 20}`));
+    }
+    sec.appendChild(ul);
+  }
+
+  return sec;
+}
+
+/* ══════════════════════════════════════════════
+   СЕКЦИЯ 7: Обновления (заглушка)
+   ══════════════════════════════════════════════ */
+
+function _buildUpdatesSection() {
+  const sec = el('section', 'offline-modal__section');
+  sec.innerHTML = `
+    <h3>🔄 Обновления</h3>
+    <p class="offline-modal__placeholder">Автоматическая проверка обновлений. В разработке.</p>
+  `;
+  return sec;
+}
+
+/* ══════════════════════════════════════════════
+   СЕКЦИЯ 8: Очистка кэша
+   ══════════════════════════════════════════════ */
+
+function _buildClearSection(mgr) {
+  const sec = el('section', 'offline-modal__section');
+  sec.innerHTML = '<h3>🧹 Очистка кэша</h3>';
+
+  sec.appendChild(btn(
+    '🗑 Удалить весь кэш (включая Service Worker)',
+    'offline-modal__btn offline-modal__btn--danger',
+    async () => {
+      if (!confirm('Удалить ВЕСЬ кэш?\nВключая Service Worker, все 🔒 и ☁ треки.')) return;
+      if (!confirm('Это действие полностью необратимо. Продолжить?')) return;
+
+      try {
+        /* Очистить очередь */
+        mgr.queue.clear();
+
+        /* Удалить все pinned/cloud */
+        await mgr.removeAllPinnedAndCloud();
+
+        /* Удалить SW кэши */
+        if ('caches' in window) {
+          const names = await caches.keys();
+          for (const name of names) {
+            await caches.delete(name);
+          }
+        }
+
+        /* Unregister SW */
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          for (const reg of regs) {
+            await reg.unregister();
+          }
+        }
+
+        alert('Кэш полностью очищен. Страница будет перезагружена.');
+        location.reload();
+      } catch (err) {
+        alert('Ошибка при очистке: ' + err.message);
+      }
+    }
+  ));
+
+  return sec;
+}
 
 //=================================================
 // FILE: /scripts/ui/r3-modal.js
