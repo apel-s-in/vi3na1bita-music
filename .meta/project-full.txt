@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a10db5bbbdcaa8ba7f0006cc942a0cea5d91af22.idx
-│   │       ├── pack-a10db5bbbdcaa8ba7f0006cc942a0cea5d91af22.pack
-│   │       └── pack-a10db5bbbdcaa8ba7f0006cc942a0cea5d91af22.rev
+│   │       ├── pack-5aa93687fba8d04c4b79ae522a8aa9fb583e9a52.idx
+│   │       ├── pack-5aa93687fba8d04c4b79ae522a8aa9fb583e9a52.pack
+│   │       └── pack-5aa93687fba8d04c4b79ae522a8aa9fb583e9a52.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 18:26:47 UTC
+Сгенерировано: 2026-02-06 18:27:01 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2202,56 +2202,41 @@ export const attachOfflineUI = bootstrapOfflineUI;
 //=================================================
 // FILE: /scripts/app/playback-cache-bootstrap.js
 /**
- * playback-cache-bootstrap.js — Мост между PlayerCore и OfflineManager.
+ * playback-cache-bootstrap.js — Инициализация кэширования при воспроизведении.
  *
- * ТЗ: П.7 (Playback Window), П.3.1 (качество)
- *
- * Слушает события плеера и обновляет playback-window.
+ * Экспортирует bootstrapPlaybackCache + alias initPlaybackCache (ТЗ: рассогласование G).
  */
 
 import { getOfflineManager } from '../offline/offline-manager.js';
 
-let _booted = false;
-
 export async function bootstrapPlaybackCache() {
-  if (_booted) return;
-  _booted = true;
+  try {
+    const mgr = getOfflineManager();
 
-  const mgr = getOfflineManager();
+    /* Слушаем событие окончания трека для registerFullListen */
+    window.addEventListener('player:trackEnded', async (e) => {
+      const uid = e.detail?.uid;
+      if (!uid) return;
 
-  /* Слушаем смену трека от плеера */
-  window.addEventListener('player:trackChanged', async (e) => {
-    const { uid, playlist } = e.detail || {};
-    if (!uid) return;
-
-    const mode = mgr.getMode();
-
-    /* В R2/R3 режимах обновляем playback window (ТЗ П.7) */
-    if (mode === 'R2' || mode === 'R3') {
-      try {
-        await mgr.updatePlaybackWindow(uid, playlist || [], 2);
-      } catch (err) {
-        console.warn('[PlaybackCache] updatePlaybackWindow failed:', err.message);
-      }
-    }
-  });
-
-  /* Слушаем завершение прослушивания */
-  window.addEventListener('player:listenComplete', async (e) => {
-    const { uid, pct } = e.detail || {};
-    if (uid && pct >= 0.97) {
-      try {
+      const fullPlay = e.detail?.fullPlay ?? false;
+      if (fullPlay) {
         await mgr.registerFullListen(uid);
-      } catch (err) {
-        console.warn('[PlaybackCache] registerFullListen failed:', err.message);
       }
-    }
-  });
+    });
 
-  console.log('[PlaybackCache] Bootstrap complete.');
+    /* Слушаем событие начала воспроизведения — обновляем индикаторы */
+    window.addEventListener('player:trackStarted', () => {
+      window.dispatchEvent(new CustomEvent('offline:stateChanged'));
+    });
+
+    console.log('[PlaybackCache] Bootstrap complete');
+  } catch (err) {
+    console.error('[PlaybackCache] Bootstrap failed:', err);
+  }
 }
 
-export default bootstrapPlaybackCache;
+/* Alias для совместимости с app.js (pb.initPlaybackCache?.()) */
+export const initPlaybackCache = bootstrapPlaybackCache;
 
 //=================================================
 // FILE: /scripts/app/playback-policy.js
