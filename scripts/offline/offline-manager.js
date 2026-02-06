@@ -443,6 +443,10 @@ class OfflineManager {
   /* ─── togglePinned (ТЗ П.4.2–П.4.4) ─── */
 
   async togglePinned(uid) {
+    if (!this._ready) {
+      toast('Офлайн-система загружается, подождите…');
+      return 'none';
+    }
     const meta = (await getTrackMeta(uid)) || {};
     const quality = this.getCacheQuality();
 
@@ -646,6 +650,14 @@ class OfflineManager {
   /* ─── getTrackOfflineState (для UI индикаторов, ТЗ П.7.2) ─── */
 
   async getTrackOfflineState(uid) {
+    // Guard: если DB ещё не инициализирована — возвращаем безопасный дефолт
+    if (!this._ready) {
+      return {
+        status: 'none', icon: '🔒', color: 'grey', opacity: 0.4,
+        clickable: false, downloading: false, quality: null,
+        cloudFullListenCount: 0, cloudExpiresAt: null, needsReCache: false
+      };
+    }
     const meta = await getTrackMeta(uid);
     const downloading = this.queue.isDownloading(uid);
     const spaceOk = this.isSpaceOk();
