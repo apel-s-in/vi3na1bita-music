@@ -185,8 +185,8 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     
     setVolume(v) { 
       const vol = clamp(v / 100, 0, 1);
-      Howler.volume(vol);
       localStorage.setItem(LS_VOL, Math.round(vol * 100));
+      if (!this._muted) Howler.volume(vol);
     }
     getVolume() { return Number(localStorage.getItem(LS_VOL)) || 100; }
 
