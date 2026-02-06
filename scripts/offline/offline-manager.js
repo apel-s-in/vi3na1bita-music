@@ -668,6 +668,20 @@ class OfflineManager {
   }
 
   /**
+   * Инкрементальная запись секунд прослушивания (globalListenSeconds).
+   * Вызывается из stats-tracker каждую секунду.
+   * НЕ инкрементирует cloudFullListenCount.
+   */
+  async recordTickStats(uid, { deltaSec = 1 } = {}) {
+    if (!uid || !this._ready) return;
+    const meta = await getTrackMeta(uid);
+    if (!meta) return;
+    await updateTrackMeta(uid, {
+      globalListenSeconds: (meta.globalListenSeconds || 0) + deltaSec
+    });
+  }
+
+  /**
    * Инкрементальная запись секунд прослушивания (для globalListenSeconds).
    * Вызывается из stats-tracker.onTick() каждую секунду.
    * НЕ инкрементирует cloudFullListenCount и НЕ проверяет порог N.
