@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-03e4cd710505b8a227ca460cbe1408f070590c57.idx
-│   │       ├── pack-03e4cd710505b8a227ca460cbe1408f070590c57.pack
-│   │       └── pack-03e4cd710505b8a227ca460cbe1408f070590c57.rev
+│   │       ├── pack-1eab6176e1200ade8cb0ac5d16593ba54f54f75e.idx
+│   │       ├── pack-1eab6176e1200ade8cb0ac5d16593ba54f54f75e.pack
+│   │       └── pack-1eab6176e1200ade8cb0ac5d16593ba54f54f75e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 13:32:25 UTC
+Сгенерировано: 2026-02-06 13:34:36 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2232,121 +2232,56 @@ export const getOfflineManager = () => UI.offlineManager;
 
 //=================================================
 // FILE: /scripts/app/playback-cache-bootstrap.js
-// scripts/app/playback-cache-bootstrap.js
-import { PlaybackCacheManager } from '../offline/playback-cache.js';
-import { getTrackByUid } from './track-registry.js';
+/**
+ * playback-cache-bootstrap.js — Инициализация кэша воспроизведения
+ * Связывает PlayerCore с OfflineManager для кэширования при прослушивании
+ */
 
-function getPQ() {
-  try {
-    const q = String(localStorage.getItem('qualityMode:v1') || 'hi').toLowerCase();
-    return (q === 'lo') ? 'lo' : 'hi';
-  } catch { return 'hi'; }
-}
+import { getOfflineManager } from '../offline/offline-manager.js';
 
-function getFavoritesInactiveSet() {
-  try {
-    const pc = window.playerCore;
-    if (!pc?.getFavoritesState) return new Set();
-    const st = pc.getFavoritesState();
-    const inactive = Array.isArray(st?.inactive) ? st.inactive : [];
-    const set = new Set();
-    inactive.forEach((t) => {
-      const uid = String(t?.uid || '').trim();
-      if (uid) set.add(uid);
+export function initPlaybackCache() {
+  const mgr = getOfflineManager();
+
+  // Слушаем события смены трека от плеера
+  window.addEventListener('player:trackChanged', async (e) => {
+    const { uid, quality } = e.detail || {};
+    if (!uid) return;
+    if (mgr.getMode() === 'R0') return;
+
+    // Проверяем, закэширован ли уже
+    const complete = await mgr.isTrackComplete(uid, quality || mgr.getActivePlaybackQuality());
+    if (complete) return;
+
+    // Ставим в очередь загрузки с приоритетом «воспроизведение»
+    mgr.enqueueAudioDownload({
+      uid,
+      quality: quality || mgr.getActivePlaybackQuality(),
+      priority: 100,
+      kind: 'playbackCache'
     });
-    return set;
-  } catch {
-    return new Set();
-  }
-}
+  });
 
-export function attachPlaybackCache() {
-  const pc = window.playerCore;
-  if (!pc) {
-    setTimeout(attachPlaybackCache, 200);
-    return;
-  }
+  // Предзагрузка следующих треков из playback window
+  window.addEventListener('player:playbackWindowUpdate', (e) => {
+    const uids = e.detail?.uids || [];
+    mgr.updatePlaybackWindow(uids);
 
-  let lastIndex = typeof pc.getIndex === 'function' ? pc.getIndex() : -1;
-  let lastLen = 0;
-  let direction = 'forward';
+    if (mgr.getMode() === 'R0') return;
 
-  const getPlaylistCtx = () => {
-    const list = (typeof pc.getPlaylistSnapshot === 'function') ? (pc.getPlaylistSnapshot() || []) : [];
-    const cur = pc.getCurrentTrack?.() || null;
-    const curUid = cur?.uid ? String(cur.uid).trim() : null;
-    lastLen = Array.isArray(list) ? list.length : 0;
-    
-    const playingAlbum = window.AlbumsManager?.getPlayingAlbum?.() || null;
-    const favoritesInactive = (playingAlbum === window.SPECIAL_FAVORITES_KEY)
-      ? getFavoritesInactiveSet()
-      : new Set();
-
-    return { list, curUid, favoritesInactive, direction };
-  };
-
-  const mgr = window.OfflineUI?.offlineManager;
-  const queue = mgr?.queue || null;
-
-  const pcm = new PlaybackCacheManager({ queue, getPlaylistCtx });
-  const trackProvider = (uid) => getTrackByUid(uid);
-
-  async function planWindow() {
-    // CRITICAL FIX: Use ActivePlaybackQuality (respects R2/CQ), fallback to PQ
-    const mgr = window.OfflineUI?.offlineManager;
-    const activeQ = mgr?.getActivePlaybackQuality ? mgr.getActivePlaybackQuality() : getPQ();
-
-    try { 
-      await pcm.ensureWindowFullyCached(activeQ, trackProvider); 
-      
-      const currentWindow = pcm.getLastWindow(); 
-      const uids = [currentWindow.cur, ...currentWindow.prev, ...currentWindow.next].filter(Boolean);
-      
-      if (mgr?.updatePlaybackWindow) {
-        mgr.updatePlaybackWindow(uids);
-      }
-    } catch (e) {
-      console.warn('[PlaybackCache] planWindow error:', e);
-    }
-  }
-
-  function updateDirectionByIndex(newIndex) {
-    const len = lastLen || ((pc.getPlaylistSnapshot?.() || []).length);
-    if (!len || newIndex < 0 || lastIndex < 0) {
-      direction = 'forward';
-      lastIndex = newIndex;
-      return;
-    }
-    const prev = (lastIndex - 1 + len) % len;
-    const next = (lastIndex + 1) % len;
-
-    if (newIndex === prev) { direction = 'backward'; lastIndex = newIndex; return; }
-    if (newIndex === next) { direction = 'forward'; lastIndex = newIndex; return; }
-
-    direction = 'forward';
-    lastIndex = newIndex;
-  }
-
-  if (typeof pc.on === 'function') {
-    pc.on({
-      onTrackChange: () => {
-        const idx = typeof pc.getIndex === 'function' ? pc.getIndex() : -1;
-        updateDirectionByIndex(idx);
-        planWindow();
-      }
+    uids.forEach((uid, i) => {
+      mgr.enqueueAudioDownload({
+        uid,
+        quality: mgr.getActivePlaybackQuality(),
+        priority: 50 - i,
+        kind: 'playbackCache'
+      });
     });
-  }
+  });
 
-  const btnNext = document.getElementById('next-btn');
-  const btnPrev = document.getElementById('prev-btn');
-  btnNext?.addEventListener('click', () => { direction = 'forward'; setTimeout(planWindow, 0); });
-  btnPrev?.addEventListener('click', () => { direction = 'backward'; setTimeout(planWindow, 0); });
-
-  setTimeout(() => {
-    lastIndex = typeof pc.getIndex === 'function' ? pc.getIndex() : -1;
-    planWindow();
-  }, 100);
+  console.log('[PlaybackCache] initialized');
 }
+
+export default initPlaybackCache;
 
 //=================================================
 // FILE: /scripts/app/playback-policy.js
