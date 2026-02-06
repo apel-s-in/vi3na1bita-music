@@ -89,18 +89,18 @@ function clearScenario() {
  * Если сеть вернулась — resolve(url).
  * Если нет — переход в S2.
  */
-function startS1(uid, quality, resolve, reject) {
+function startS1(uid, networkUrl, quality, resolve, reject) {
   _currentScenario = 'S1';
   emit('playback:scenario', { state: 'S1', uid });
 
   const onOnline = () => {
     cleanup();
-    resolveFromNetwork(uid, quality).then(resolve).catch(reject);
+    resolveFromNetwork(uid, quality, networkUrl).then(resolve).catch(reject);
   };
 
   const onTimeout = () => {
     cleanup();
-    startS2(uid, quality, resolve, reject);
+    startS2(uid, networkUrl, quality, resolve, reject);
   };
 
   function cleanup() {
@@ -117,7 +117,7 @@ function startS1(uid, quality, resolve, reject) {
  * S2 — Модалка выбора: «Ждать» / «Пропустить» / «Перейти к FOQ».
  * Импортирует s2-modal.js динамически.
  */
-async function startS2(uid, quality, resolve, reject) {
+async function startS2(uid, networkUrl, quality, resolve, reject) {
   _currentScenario = 'S2';
   emit('playback:scenario', { state: 'S2', uid });
 
@@ -138,7 +138,7 @@ async function startS2(uid, quality, resolve, reject) {
 
   switch (choice) {
     case 'wait':
-      startS3Wait(uid, quality, resolve, reject);
+      startS3Wait(uid, networkUrl, quality, resolve, reject);
       break;
 
     case 'skip':
@@ -159,7 +159,7 @@ async function startS2(uid, quality, resolve, reject) {
 /**
  * S3-wait — ждём сеть бесконечно, показывая спиннер.
  */
-function startS3Wait(uid, quality, resolve, reject) {
+function startS3Wait(uid, networkUrl, quality, resolve, reject) {
   _currentScenario = 'S3';
   _s3Action = 'wait';
   emit('playback:scenario', { state: 'S3', action: 'wait', uid });
@@ -168,7 +168,7 @@ function startS3Wait(uid, quality, resolve, reject) {
     _currentScenario = null;
     _s3Action = null;
     emit('playback:scenario', { state: null, uid });
-    resolveFromNetwork(uid, quality).then(resolve).catch(reject);
+    resolveFromNetwork(uid, quality, networkUrl).then(resolve).catch(reject);
   };
 
   window.addEventListener('online', onOnline, { once: true });
@@ -186,7 +186,7 @@ async function startS3FOQ(uid, resolve, reject) {
   if (mgr && typeof mgr.getRecoveryTarget === 'function') {
     const target = await mgr.getRecoveryTarget();
     if (target) {
-      emit('playback:jumpToTrack', { uid: target.uid, index: target.index });
+      emit('playback:jumpToTrack', { uid: target.uid });
       _currentScenario = null;
       resolve(null); // PlayerCore обработает jumpToTrack
       return;
@@ -231,7 +231,7 @@ export async function resolveTrackUrl(uid, networkUrl, quality) {
 
   // 3. Нет кэша и нет сети — запускаем S1
   return new Promise((resolve, reject) => {
-    startS1(uid, quality, resolve, reject);
+    startS1(uid, networkUrl, quality, resolve, reject);
   });
 }
 
@@ -337,12 +337,7 @@ export async function preloadTrack(uid, networkUrl, quality) {
 
     const blob = await resp.blob();
     await setAudioBlob(uid, quality, blob);
-    await setTrackMeta(uid, {
-      type: 'cloud',
-      quality,
-      size: blob.size,
-      ttl: CLOUD_TTL_MS
-    });
+    await setTrackMeta(uid, { type: 'cloud', quality, size: blob.size, url: networkUrl, ttl: CLOUD_TTL_MS });
 
     emit('playback:cached', { uid, quality, size: blob.size });
     return true;
