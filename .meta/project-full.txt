@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-708f2853d01cd142ffb6bd1ed2251cdf814f48c8.idx
-│   │       ├── pack-708f2853d01cd142ffb6bd1ed2251cdf814f48c8.pack
-│   │       └── pack-708f2853d01cd142ffb6bd1ed2251cdf814f48c8.rev
+│   │       ├── pack-06593885494f9ca2a670259b84d557593b58b783.idx
+│   │       ├── pack-06593885494f9ca2a670259b84d557593b58b783.pack
+│   │       └── pack-06593885494f9ca2a670259b84d557593b58b783.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 21:31:18 UTC
+Сгенерировано: 2026-02-06 21:31:57 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -10181,6 +10181,7 @@ header{width:100%;text-align:center;margin:0 auto}
 .offline-ind--pinned{opacity:1;color:#f5c842;text-shadow:0 0 4px rgba(245,200,66,.4)}
 .offline-ind--pinned-loading{opacity:1;color:#f5c842;animation:offline-ind-pulse 1.2s ease-in-out infinite}
 @keyframes offline-ind-pulse{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes offlineIndBlink{0%,100%{opacity:1}50%{opacity:.3}}
 .offline-ind--cloud{opacity:1;color:#5bc0de;text-shadow:0 0 4px rgba(91,192,222,.4)}
 .offline-ind--cloud:hover{color:#29b6f6}
 .offline-ind--cloud-loading{opacity:.4;color:#888}
