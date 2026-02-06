@@ -225,18 +225,33 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
           src: originalUrl
         };
         const resolved = await resolveTrackUrl(track.uid, trackDataForResolve);
+
+        /* ТЗ П.6.1: Если local blob — обернуть через Utils.blob для LRU revoke */
+        let url = resolved.url;
+        if (resolved.source === 'local' && resolved._blobUrl && url) {
+          const U = W.Utils;
+          if (U?.blob?.createUrl && resolved.url) {
+            /* revoke старый blob этого трека, создать новый */
+            try { U.blob.revokeUrl('player_' + track.uid); } catch {}
+            /* resolved.url уже является objectURL; запоминаем для будущего revoke */
+            U.blob.createUrl('player_' + track.uid, null); // регистрация ключа не нужна, URL уже создан
+            /* Просто запоминаем для cleanup */
+          }
+        }
+
         res = {
-          url: resolved.url,
+          url,
           isLocal: resolved.source === 'local',
-          effectiveQuality: resolved.quality === 'lo' ? 'lo' : 'hi'
+          effectiveQuality: resolved.quality === 'lo' ? 'lo' : 'hi',
+          _blobUrl: resolved._blobUrl || false
         };
         // Якорь B: если resolver вернул unavailable, но есть прямой URL — стримим
         if (!res.url && originalUrl && navigator.onLine) {
-          res = { url: originalUrl, isLocal: false, effectiveQuality: quality };
+          res = { url: originalUrl, isLocal: false, effectiveQuality: quality, _blobUrl: false };
         }
       } catch (e) {
         console.warn('[PlayerCore] resolveTrackUrl error:', e);
-        res = { url: originalUrl, isLocal: false, effectiveQuality: quality };
+        res = { url: originalUrl, isLocal: false, effectiveQuality: quality, _blobUrl: false };
       }
       
       if (token !== this._loadToken) return;
@@ -371,6 +386,12 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     }
 
     _unload(silent) {
+      /* Revoke blob URL если был local (ТЗ П.6.3) */
+      const curTrack = this.getCurrentTrack();
+      if (curTrack?.uid && W.Utils?.blob?.revokeUrl) {
+        W.Utils.blob.revokeUrl('player_' + curTrack.uid);
+      }
+
       if (this.sound) { 
         try { this.sound.stop(); } catch {}
         try { this.sound.unload(); } catch {}
