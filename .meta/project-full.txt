@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1ce1a10f2dc2105929c9270733ac2fbf5fc46160.idx
-│   │       ├── pack-1ce1a10f2dc2105929c9270733ac2fbf5fc46160.pack
-│   │       └── pack-1ce1a10f2dc2105929c9270733ac2fbf5fc46160.rev
+│   │       ├── pack-4845fdf61578aea90dcebea39bf128798df4cd82.idx
+│   │       ├── pack-4845fdf61578aea90dcebea39bf128798df4cd82.pack
+│   │       └── pack-4845fdf61578aea90dcebea39bf128798df4cd82.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 20:07:02 UTC
+Сгенерировано: 2026-02-06 20:11:56 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9419,8 +9419,10 @@ function _onEscStats(e) {
 }
 
 export function initStatisticsModal() {
+  /* Делегирование для data-атрибутов и .stats-modal-trigger,
+     но НЕ для #stats-btn — он обрабатывается в player-ui.js через actions map */
   document.addEventListener('click', (e) => {
-    const trigger = e.target.closest('[data-open-stats-modal], .stats-modal-trigger, #stats-btn');
+    const trigger = e.target.closest('[data-open-stats-modal], .stats-modal-trigger');
     if (trigger) {
       e.preventDefault();
       openStatisticsModal();
