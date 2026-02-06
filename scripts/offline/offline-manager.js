@@ -581,24 +581,9 @@ class OfflineManager {
     const pos = Number(position) || 0;
     if (dur <= 0 || (pos / dur) < 0.9) return;
 
-    const meta = await getTrackMeta(uid);
-    if (!meta) return;
-
-    /* Защита от повторного подсчёта того же прослушивания:
-       если трек ещё играет и уже засчитан в этой сессии — пропускаем */
-
-    const count = (meta.cloudFullListenCount || 0) + 1;
-    await updateTrackMeta(uid, { cloudFullListenCount: count });
-
-    console.log(`[OfflineMgr] Full listen #${count} for ${uid} (threshold: ${this._settings.cloudThreshold || 5})`);
-
-    const N = this._settings.cloudThreshold || 5;
-    if (count >= N && meta.status === 'none') {
-    }
-
     const now = Date.now();
-    const D = this.getCloudD();
-    const N = this.getCloudN();
+    const ttlDays = this.getCloudD();
+    const threshold = this.getCloudN();
     const quality = this.getCacheQuality();
 
     let meta = (await getTrackMeta(uid)) || {
@@ -619,32 +604,34 @@ class OfflineManager {
 
     /* Обновляем global stats (ТЗ П.5.5: НЕ трогать global stats при удалении cloud) */
     meta.globalFullListenCount = (meta.globalFullListenCount || 0) + 1;
-    meta.globalListenSeconds = (meta.globalListenSeconds || 0) + (duration || 0);
+    meta.globalListenSeconds = (meta.globalListenSeconds || 0) + (dur || 0);
 
     /* Обновляем cloud stats */
     meta.cloudFullListenCount = (meta.cloudFullListenCount || 0) + 1;
     meta.lastFullListenAt = now;
 
+    console.log(`[OfflineMgr] Full listen #${meta.cloudFullListenCount} for ${uid} (threshold: ${threshold})`);
+
     /* ТЗ П.5.6: Продление TTL — каждое полное прослушивание обновляет cloudExpiresAt */
     if (meta.type === 'cloud') {
-      meta.cloudExpiresAt = now + D * DAY_MS;
+      meta.cloudExpiresAt = now + ttlDays * DAY_MS;
     }
 
     /* ТЗ П.5.3: Автоматическое появление ☁ */
     if (meta.type !== 'pinned' && meta.type !== 'cloud') {
-      if (meta.cloudFullListenCount >= N) {
+      if (meta.cloudFullListenCount >= threshold) {
         const hasBlob = await hasAudioForUid(uid);
 
         if (this.getMode() === 'R3' && hasBlob) {
           /* В R3 файл уже локальный — просто присваиваем статус */
           meta.type = 'cloud';
           meta.cloudAddedAt = now;
-          meta.cloudExpiresAt = now + D * DAY_MS;
+          meta.cloudExpiresAt = now + ttlDays * DAY_MS;
           meta.quality = quality;
         } else if (await this.hasSpace()) {
           meta.type = 'cloud';
           meta.cloudAddedAt = now;
-          meta.cloudExpiresAt = now + D * DAY_MS;
+          meta.cloudExpiresAt = now + ttlDays * DAY_MS;
           meta.quality = quality;
 
           if (!hasBlob) {
