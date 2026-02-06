@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-bdfd0bf816485b379e9602384039030cb718d0f7.idx
-│   │       ├── pack-bdfd0bf816485b379e9602384039030cb718d0f7.pack
-│   │       └── pack-bdfd0bf816485b379e9602384039030cb718d0f7.rev
+│   │       ├── pack-1ee5a1c629fac3500fb1844844490ec54285a7e9.idx
+│   │       ├── pack-1ee5a1c629fac3500fb1844844490ec54285a7e9.pack
+│   │       └── pack-1ee5a1c629fac3500fb1844844490ec54285a7e9.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 20:02:13 UTC
+Сгенерировано: 2026-02-06 20:03:13 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5293,6 +5293,10 @@ class OfflineManager {
   /* ─── togglePinned (ТЗ П.4.2–П.4.4) ─── */
 
   async togglePinned(uid) {
+    if (!this._ready) {
+      toast('Офлайн-система загружается, подождите…');
+      return 'none';
+    }
     const meta = (await getTrackMeta(uid)) || {};
     const quality = this.getCacheQuality();
 
@@ -5496,6 +5500,14 @@ class OfflineManager {
   /* ─── getTrackOfflineState (для UI индикаторов, ТЗ П.7.2) ─── */
 
   async getTrackOfflineState(uid) {
+    // Guard: если DB ещё не инициализирована — возвращаем безопасный дефолт
+    if (!this._ready) {
+      return {
+        status: 'none', icon: '🔒', color: 'grey', opacity: 0.4,
+        clickable: false, downloading: false, quality: null,
+        cloudFullListenCount: 0, cloudExpiresAt: null, needsReCache: false
+      };
+    }
     const meta = await getTrackMeta(uid);
     const downloading = this.queue.isDownloading(uid);
     const spaceOk = this.isSpaceOk();
