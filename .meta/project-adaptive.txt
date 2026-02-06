@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b4666723c6e4b46b18cae1e123cdaedf29f73d6b.idx
-│   │       ├── pack-b4666723c6e4b46b18cae1e123cdaedf29f73d6b.pack
-│   │       └── pack-b4666723c6e4b46b18cae1e123cdaedf29f73d6b.rev
+│   │       ├── pack-5db881effcc4b8dd0e095360a55e19f5e9aa9e33.idx
+│   │       ├── pack-5db881effcc4b8dd0e095360a55e19f5e9aa9e33.pack
+│   │       └── pack-5db881effcc4b8dd0e095360a55e19f5e9aa9e33.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -385,7 +385,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 19:39:56 UTC
+Сгенерировано: 2026-02-06 19:40:17 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5979,89 +5979,78 @@ export default offlineManager;
 //=================================================
 // FILE: /scripts/offline/track-resolver.js
 /**
- * track-resolver.js — Выбор источника воспроизведения (ТЗ П.6.1).
+ * track-resolver.js — Выбор источника воспроизведения трека.
+ *
+ * ТЗ: Приложение П.6.1–П.6.3
  *
  * Порядок:
  *   1. Локальная копия (🔒/☁) в текущем качестве → blob URL
- *   2. Локальная копия в другом качестве → blob URL (needsReCache)
- *   3. Стриминг с GitHub (если сеть + режим позволяет)
- *   4. null → «Недоступно»
+ *   2. Локальная копия в другом качестве → blob URL + needsReCache
+ *   3. Стриминг с GitHub (если сеть и режим позволяют)
+ *   4. Недоступно
  */
 
 import offlineManager from './offline-manager.js';
 
-const _activeBlobs = new Map(); // uid → blobUrl (для revoke)
-
 /**
- * Resolve track URL.
- * @param {string} uid
- * @param {object} trackData - { audio, audio_low, src }
- * @returns {{ url: string, source: 'local'|'stream', quality: string, needsReCache: boolean } | null}
+ * resolveTrackUrl(uid, trackData)
+ *
+ * @param {string}  uid       — уникальный id трека
+ * @param {Object}  trackData — { audio, audio_low, src, ... } или строка URL
+ * @returns {Promise<{ url: string|null, source: 'local'|'stream'|'unavailable', quality: string, needsReCache: boolean }>}
  */
 export async function resolveTrackUrl(uid, trackData) {
-  /* Revoke предыдущий blob для этого uid */
-  _revoke(uid);
+  /* Нормализация: если передали строку — обернуть в объект */
+  if (typeof trackData === 'string') {
+    trackData = { audio: trackData, src: trackData };
+  }
+  if (!trackData) trackData = {};
 
-  /* ТЗ П.6.1 шаг 1-2: Попытка из локального кэша */
-  const local = await offlineManager.resolveLocalBlob(uid);
-  if (local) {
-    _activeBlobs.set(uid, local.blobUrl);
+  const result = await offlineManager.resolveTrackSource(uid, trackData);
+
+  if (result.source === 'local' && result.blob) {
+    /* Создаём Object URL из blob для <audio> */
+    const objectUrl = URL.createObjectURL(result.blob);
+
     return {
-      url: local.blobUrl,
+      url: objectUrl,
       source: 'local',
-      quality: local.quality,
-      needsReCache: local.needsReCache
+      quality: result.quality,
+      needsReCache: result.needsReCache,
+      _blobUrl: true  /* флаг: нужно revokeObjectURL после использования */
     };
   }
 
-  /* ТЗ П.6.1 шаг 3: Стриминг */
-  if (!navigator.onLine) return null;
-
-  const mode = offlineManager.getMode();
-  if (mode === 'R3') return null; /* В R3 только локальные файлы */
-
-  const q = offlineManager.getCacheQuality();
-  let url;
-  if (q === 'lo') {
-    url = trackData?.audio_low || trackData?.audio || trackData?.src;
-  } else {
-    url = trackData?.audio || trackData?.src;
+  if (result.source === 'stream' && result.url) {
+    return {
+      url: result.url,
+      source: 'stream',
+      quality: result.quality,
+      needsReCache: false,
+      _blobUrl: false
+    };
   }
 
-  if (!url) return null;
-
+  /* Недоступно */
   return {
-    url,
-    source: 'stream',
-    quality: q,
-    needsReCache: false
+    url: null,
+    source: 'unavailable',
+    quality: null,
+    needsReCache: false,
+    _blobUrl: false
   };
 }
 
 /**
- * Revoke blob URL для uid (предотвращение утечек памяти).
+ * Освободить Object URL (вызывать когда трек больше не нужен).
  */
-export function revokeTrackBlob(uid) {
-  _revoke(uid);
-}
-
-function _revoke(uid) {
-  const old = _activeBlobs.get(uid);
-  if (old) {
-    try { URL.revokeObjectURL(old); } catch {}
-    _activeBlobs.delete(uid);
+export function revokeTrackUrl(resolved) {
+  if (resolved && resolved._blobUrl && resolved.url) {
+    try { URL.revokeObjectURL(resolved.url); } catch {}
   }
 }
 
-/**
- * Revoke all active blobs (cleanup при уничтожении плеера).
- */
-export function revokeAll() {
-  for (const [uid, url] of _activeBlobs) {
-    try { URL.revokeObjectURL(url); } catch {}
-  }
-  _activeBlobs.clear();
-}
+export default { resolveTrackUrl, revokeTrackUrl };
 
 //=================================================
 // FILE: /scripts/ui/cache-progress-overlay.js
