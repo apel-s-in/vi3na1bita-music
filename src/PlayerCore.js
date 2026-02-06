@@ -305,6 +305,16 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
           if (token !== this._loadToken) return;
           this._stats.onEnded();
           this._emit('onEnd');
+          /* Диспатч window event для playback-cache-bootstrap (ТЗ П.5.2) */
+          try {
+            window.dispatchEvent(new CustomEvent('player:trackEnded', {
+              detail: {
+                uid: this.currentTrack?.uid || this._currentUid || null,
+                duration: this.getDuration?.() || 0,
+                position: this.getPosition?.() || this.currentTime || 0
+              }
+            }));
+          } catch (e) { /* silent */ } 
           this.repeatMode ? this.play(this.currentIndex) : this.next();
         },
         onloaderror: (id, e) => {
