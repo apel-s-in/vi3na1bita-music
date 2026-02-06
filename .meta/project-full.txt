@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-46f84f7052f550e96afeff7d408cfdf9fd2736b9.idx
-│   │       ├── pack-46f84f7052f550e96afeff7d408cfdf9fd2736b9.pack
-│   │       └── pack-46f84f7052f550e96afeff7d408cfdf9fd2736b9.rev
+│   │       ├── pack-d95e309813063d1dec8cdc13aef932c8edf16e6c.idx
+│   │       ├── pack-d95e309813063d1dec8cdc13aef932c8edf16e6c.pack
+│   │       └── pack-d95e309813063d1dec8cdc13aef932c8edf16e6c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 19:46:18 UTC
+Сгенерировано: 2026-02-06 19:51:26 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1340,17 +1340,7 @@ self.addEventListener('message', (e) => {
     // 2. Offline System
     try {
       const boot = await import('./app/offline-ui-bootstrap.js');
-      boot?.attachOfflineUI?.();
-      
-      Promise.all([
-        import('./ui/offline-indicators.js'),
-        import('./ui/cache-progress-overlay.js'),
-        import('./app/playback-cache-bootstrap.js')
-      ]).then(([ind, ov, pb]) => {
-        ind?.initOfflineIndicators?.();
-        ov?.initCacheProgressOverlay?.();
-        pb?.initPlaybackCache?.();
-      });
+      boot?.initOfflineUI?.();
     } catch (e) { console.error('Offline boot err:', e); }
 
     // 3. UI Managers
@@ -1363,14 +1353,7 @@ self.addEventListener('message', (e) => {
     ['SleepTimer', 'LyricsModal', 'SystemInfoManager'].forEach(m => W[m]?.initialize?.());
     await import('./ui/statistics-modal.js');
 
-    // 5. Offline Modal button
-    const offBtn = D.getElementById('offline-btn');
-    if (offBtn) {
-      offBtn.addEventListener('click', async () => {
-        const { showOfflineModal } = await import('./ui/offline-modal.js');
-        showOfflineModal();
-      });
-    }
+    // Offline Modal button — handled by initOfflineModal() delegate in offline-modal.js
 
     // 5. Restore State
     W.PlayerState?.apply?.();
