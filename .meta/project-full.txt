@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-77934a7d73194da388e285089ea0d905fa18363b.idx
-│   │       ├── pack-77934a7d73194da388e285089ea0d905fa18363b.pack
-│   │       └── pack-77934a7d73194da388e285089ea0d905fa18363b.rev
+│   │       ├── pack-fb2a3bec9eaf2059c41ea2dc91af5945616b7f22.idx
+│   │       ├── pack-fb2a3bec9eaf2059c41ea2dc91af5945616b7f22.pack
+│   │       └── pack-fb2a3bec9eaf2059c41ea2dc91af5945616b7f22.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -378,6 +378,7 @@ vi3na1bita-music/
 │   │   ├── offline-modal.js
 │   │   ├── playback-cache.js
 │   │   ├── quality-button.js
+│   │   ├── r3-modal.js
 │   │   ├── s2-modal.js
 │   │   ├── stats-core.js
 │   │   ├── stats-modal.js
@@ -398,7 +399,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 10:41:31 UTC
+Сгенерировано: 2026-02-06 10:42:00 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -11060,6 +11061,84 @@ function _hasAlternative() {
 }
 
 export { init, setCurrentTrack };
+
+//=================================================
+// FILE: /src/js/r3-modal.js
+/**
+ * R3 Modals — модалки для 100% OFFLINE режима
+ * 7.5.4: "Трек не найден в 100% OFFLINE"
+ * 11.2.I.10: "Включён 100% OFFLINE. Хотите добавить трек?"
+ */
+
+let _modal = null;
+
+function showTrackNotFound(message) {
+  _ensure();
+  _modal.innerHTML = `
+<div class="r3m-content">
+  <h3>100% OFFLINE</h3>
+  <p>${message || 'Трек не найден в 100% OFFLINE. Откройте настройки 100% OFFLINE.'}</p>
+  <div class="r3m-actions">
+    <button class="r3m-btn" data-r3="settings">Открыть настройки</button>
+    <button class="r3m-btn" data-r3="ok">ОК</button>
+  </div>
+</div>`;
+  _modal.style.display = 'flex';
+  _modal.onclick = _handleClick;
+}
+
+function showAddTrackPrompt(uid, trackTitle) {
+  _ensure();
+  _modal.innerHTML = `
+<div class="r3m-content">
+  <h3>100% OFFLINE</h3>
+  <p>Включён 100% OFFLINE. Хотите добавить трек "${trackTitle || uid}" в офлайн?</p>
+  <div class="r3m-actions">
+    <button class="r3m-btn" data-r3="dl-wifi" data-uid="${uid}">Скачать по Wi-Fi</button>
+    <button class="r3m-btn" data-r3="dl-any" data-uid="${uid}">Скачать (любая сеть)</button>
+    <button class="r3m-btn" data-r3="settings">Открыть настройки 100% OFFLINE</button>
+  </div>
+</div>`;
+  _modal.style.display = 'flex';
+  _modal.onclick = _handleClick;
+}
+
+function hide() {
+  if (_modal) _modal.style.display = 'none';
+}
+
+function _ensure() {
+  if (_modal) return;
+  _modal = document.createElement('div');
+  _modal.id = 'r3-modal';
+  _modal.className = 'r3m-overlay';
+  _modal.style.display = 'none';
+  document.body.appendChild(_modal);
+}
+
+function _handleClick(e) {
+  const act = e.target.dataset.r3;
+  if (!act) return;
+
+  if (act === 'ok') { hide(); return; }
+  if (act === 'settings') {
+    hide();
+    window.dispatchEvent(new CustomEvent('openOfflineModal'));
+    return;
+  }
+  if (act === 'dl-wifi' || act === 'dl-any') {
+    const uid = e.target.dataset.uid;
+    if (uid) {
+      window.dispatchEvent(new CustomEvent('r3AddTrack', {
+        detail: { uid, wifiOnly: act === 'dl-wifi' }
+      }));
+    }
+    hide();
+    return;
+  }
+}
+
+export { showTrackNotFound, showAddTrackPrompt, hide };
 
 //=================================================
 // FILE: /src/js/s2-modal.js
