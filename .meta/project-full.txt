@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5db881effcc4b8dd0e095360a55e19f5e9aa9e33.idx
-│   │       ├── pack-5db881effcc4b8dd0e095360a55e19f5e9aa9e33.pack
-│   │       └── pack-5db881effcc4b8dd0e095360a55e19f5e9aa9e33.rev
+│   │       ├── pack-4eec0643fdcd63fae0152a54231f79c45c32ec33.idx
+│   │       ├── pack-4eec0643fdcd63fae0152a54231f79c45c32ec33.pack
+│   │       └── pack-4eec0643fdcd63fae0152a54231f79c45c32ec33.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -385,7 +385,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 19:40:17 UTC
+Сгенерировано: 2026-02-06 19:40:45 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7458,346 +7458,413 @@ window.NotificationSystem = new NotificationSystem();
 //=================================================
 // FILE: /scripts/ui/offline-indicators.js
 /**
- * offline-indicators.js — Индикатор 🔒/☁ в трек-листе (ТЗ П.7).
+ * offline-indicators.js — 🔒/☁ иконки в трек-листе.
  *
- * Визуальные состояния (П.7.2):
- *   none (место есть)        → 🔒 серый, opacity 0.4
- *   none (нет места)         → 🔒 серый, opacity 0.2
- *   pinned_downloading       → 🔒 жёлтый мигающий
- *   pinned                   → 🔒 жёлтый
- *   cloud                    → ☁ голубой
- *   cloud_downloading        → 🔒 серый, opacity 0.4 (ТЗ: «серый 🔒»)
+ * ТЗ: Приложение П.7.1–П.7.4, П.4.2–П.4.4, П.5.5
  *
- * Событийная модель обновления (не таймер — П.7.4).
+ * Экспорт:
+ *   - initOfflineIndicators()      — подписка на события, вызвать один раз при старте
+ *   - injectOfflineIndicators(container) — вставить иконки во все .track внутри container
+ *   - injectIndicator(trackEl)     — вставить/обновить иконку в одном .track элементе
+ *   - refreshAllIndicators()       — обновить все видимые иконки
  */
 
-import offlineManager from '../offline/offline-manager.js';
+import offlineManager, { getOfflineManager } from '../offline/offline-manager.js';
 
-const ICON_LOCK = '🔒';
-const ICON_CLOUD = '☁';
-const DATA_ATTR = 'data-offline-uid';
-
-/* ═══════ CSS (инжектим один раз) ═══════ */
+/* ═══════ CSS (инжектируется один раз) ═══════ */
 
 let _cssInjected = false;
 
-function _injectCSS() {
+function injectCSS() {
   if (_cssInjected) return;
   _cssInjected = true;
 
   const style = document.createElement('style');
   style.textContent = `
+    /* ТЗ П.7.1: offline-ind перед .tnum */
     .offline-ind {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 1.4em;
-      min-width: 1.4em;
+      width: 24px;
+      min-width: 24px;
+      height: 24px;
+      font-size: 14px;
       cursor: pointer;
       user-select: none;
-      font-size: 0.85em;
-      transition: opacity 0.2s;
-      margin-right: 2px;
+      -webkit-tap-highlight-color: transparent;
+      transition: opacity 0.2s, color 0.2s;
       flex-shrink: 0;
+      margin-right: 2px;
+      position: relative;
     }
 
-    /* Состояния */
+    /* Состояние: нет кэша, место есть (ТЗ П.7.2: серый, 0.4) */
     .offline-ind--none {
+      color: #888;
       opacity: 0.4;
     }
-    .offline-ind--no-space {
+
+    /* Состояние: нет кэша, места нет (ТЗ П.7.2: серый, 0.2) */
+    .offline-ind--nospace {
+      color: #888;
       opacity: 0.2;
     }
+
+    /* Состояние: pinned, загружен (ТЗ П.7.2: жёлтый, 1.0) */
     .offline-ind--pinned {
-      opacity: 1;
-      filter: brightness(1.1);
+      color: #f5c842;
+      opacity: 1.0;
+      text-shadow: 0 0 4px rgba(245, 200, 66, 0.4);
     }
-    .offline-ind--pinned .offline-ind__icon {
-      color: #ffc107; /* жёлтый/золотой */
+
+    /* Состояние: pinned, загружается (ТЗ П.7.2: жёлтый мигающий, 1.0) */
+    .offline-ind--pinned-loading {
+      color: #f5c842;
+      opacity: 1.0;
+      animation: offlineIndBlink 1.2s ease-in-out infinite;
     }
-    .offline-ind--downloading {
-      opacity: 1;
-      animation: offlineIndBlink 1s ease-in-out infinite;
-    }
-    .offline-ind--downloading .offline-ind__icon {
-      color: #ffc107;
-    }
+
+    /* Состояние: cloud, загружен (ТЗ П.7.2: голубой, 1.0) */
     .offline-ind--cloud {
-      opacity: 1;
+      color: #5bc0de;
+      opacity: 1.0;
     }
-    .offline-ind--cloud .offline-ind__icon {
-      color: #64b5f6; /* голубой */
-    }
-    .offline-ind--cloud-downloading {
+
+    /* Состояние: cloud_loading — показываем серый замок */
+    .offline-ind--cloud-loading {
+      color: #888;
       opacity: 0.4;
     }
 
     @keyframes offlineIndBlink {
-      0%, 100% { opacity: 1; }
+      0%, 100% { opacity: 1.0; }
       50% { opacity: 0.4; }
     }
-  `;
-  document.head.appendChild(style);
-}
 
-/* ═══════ Создание/обновление одного индикатора ═══════ */
+    /* ─── Cloud menu popup (ТЗ П.5.5) ─── */
+    .cloud-menu {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      z-index: 9999;
+      background: #1a1a2e;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 8px;
+      padding: 4px 0;
+      min-width: 180px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+      font-size: 13px;
+    }
 
-function _createIndicator(uid) {
-  const el = document.createElement('span');
-  el.className = 'offline-ind offline-ind--none';
-  el.setAttribute(DATA_ATTR, uid);
-  el.innerHTML = `<span class="offline-ind__icon">${ICON_LOCK}</span>`;
-  return el;
-}
-
-async function _updateIndicator(el) {
-  const uid = el.getAttribute(DATA_ATTR);
-  if (!uid) return;
-
-  const state = await offlineManager.getTrackOfflineState(uid);
-  const iconEl = el.querySelector('.offline-ind__icon');
-  if (!iconEl) return;
-
-  /* Снять все модификаторы */
-  el.className = 'offline-ind';
-
-  switch (state.cacheKind) {
-    case 'pinned':
-      el.classList.add('offline-ind--pinned');
-      iconEl.textContent = ICON_LOCK;
-      break;
-
-    case 'pinned_downloading':
-      el.classList.add('offline-ind--downloading');
-      iconEl.textContent = ICON_LOCK;
-      break;
-
-    case 'cloud':
-      el.classList.add('offline-ind--cloud');
-      iconEl.textContent = ICON_CLOUD;
-      break;
-
-    case 'cloud_downloading':
-      /* ТЗ П.7.2: Cloud, загружается → серый 🔒 */
-      el.classList.add('offline-ind--cloud-downloading');
-      iconEl.textContent = ICON_LOCK;
-      break;
-
-    case 'none':
-    default:
-      if (state.spaceOk === false) {
-        el.classList.add('offline-ind--no-space');
-      } else {
-        el.classList.add('offline-ind--none');
-      }
-      iconEl.textContent = ICON_LOCK;
-      break;
-  }
-}
-
-/* ═══════ Клик-обработчик ═══════ */
-
-async function _onClick(e) {
-  const el = e.currentTarget;
-  const uid = el.getAttribute(DATA_ATTR);
-  if (!uid) return;
-
-  e.stopPropagation(); /* Не запускать воспроизведение трека */
-
-  const state = await offlineManager.getTrackOfflineState(uid);
-
-  switch (state.cacheKind) {
-    case 'none':
-    case 'cloud_downloading':
-      /* ТЗ П.4.3 / П.7.2: серый 🔒 → начать пиннинг */
-      if (state.spaceOk === false) {
-        /* ТЗ П.2: нет места → toast */
-        window.NotificationSystem?.warning?.(
-          'Недостаточно места на устройстве. Освободите память для офлайн-кэша.'
-        );
-        return;
-      }
-      await offlineManager.togglePinned(uid);
-      break;
-
-    case 'pinned':
-    case 'pinned_downloading':
-      /* ТЗ П.4.4: жёлтый 🔒 → снять пиннинг */
-      await offlineManager.togglePinned(uid);
-      break;
-
-    case 'cloud':
-      /* ТЗ П.5.5: голубой ☁ → cloud-menu */
-      _showCloudMenu(el, uid);
-      break;
-  }
-}
-
-/* ═══════ Cloud menu (ТЗ П.5.5) ═══════ */
-
-let _activeMenu = null;
-
-function _showCloudMenu(anchorEl, uid) {
-  _closeCloudMenu();
-
-  const menu = document.createElement('div');
-  menu.className = 'cloud-menu';
-  menu.innerHTML = `
-    <div class="cloud-menu__item cloud-menu__pin">Закрепить 🔒</div>
-    <div class="cloud-menu__item cloud-menu__delete">Удалить из кэша</div>
-  `;
-
-  /* Позиционирование рядом с иконкой */
-  const rect = anchorEl.getBoundingClientRect();
-  menu.style.cssText = `
-    position: fixed;
-    left: ${rect.right + 4}px;
-    top: ${rect.top - 4}px;
-    z-index: 10000;
-    background: var(--bg-secondary, #2a2a2a);
-    border: 1px solid var(--border-color, #444);
-    border-radius: 6px;
-    padding: 4px 0;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-    min-width: 160px;
-  `;
-
-  /* Закрепить 🔒 (ТЗ П.5.5 пункт 1) */
-  menu.querySelector('.cloud-menu__pin').addEventListener('click', async (e) => {
-    e.stopPropagation();
-    _closeCloudMenu();
-    await offlineManager.togglePinned(uid); /* cloud → pinned */
-  });
-
-  /* Удалить из кэша (ТЗ П.5.5 пункт 2) */
-  menu.querySelector('.cloud-menu__delete').addEventListener('click', async (e) => {
-    e.stopPropagation();
-    _closeCloudMenu();
-
-    const ok = confirm('Удалить трек из кэша? Статистика облачка будет сброшена.');
-    if (!ok) return;
-
-    await offlineManager.removeCached(uid);
-  });
-
-  document.body.appendChild(menu);
-  _activeMenu = menu;
-
-  /* Закрыть по клику вне меню */
-  setTimeout(() => {
-    document.addEventListener('click', _onDocClick, { once: true });
-  }, 10);
-}
-
-function _onDocClick() {
-  _closeCloudMenu();
-}
-
-function _closeCloudMenu() {
-  if (_activeMenu) {
-    _activeMenu.remove();
-    _activeMenu = null;
-  }
-}
-
-/* ═══════ Cloud menu CSS ═══════ */
-
-function _injectCloudMenuCSS() {
-  const style = document.createElement('style');
-  style.textContent = `
     .cloud-menu__item {
-      padding: 8px 16px;
+      padding: 8px 14px;
+      color: #e0e0e0;
       cursor: pointer;
-      font-size: 0.9em;
-      color: var(--text-primary, #eee);
       white-space: nowrap;
       transition: background 0.15s;
     }
     .cloud-menu__item:hover {
-      background: var(--bg-hover, rgba(255,255,255,0.1));
+      background: rgba(255,255,255,0.08);
     }
-    .cloud-menu__delete {
-      color: #ef5350;
+    .cloud-menu__item--danger {
+      color: #ff6b6b;
     }
   `;
   document.head.appendChild(style);
 }
 
-/* ═══════ Инжекция индикаторов в трек-лист ═══════ */
+/* ═══════ Создание / обновление иконки ═══════ */
 
 /**
- * Вставить индикаторы во все треки внутри контейнера.
- * Вызывается из albums.js и favorites-view.js после рендера.
- *
- * @param {HTMLElement} container — контейнер с элементами .track[data-uid]
+ * injectIndicator(trackEl) — вставить или обновить иконку для одного .track.
+ * trackEl должен иметь data-uid.
  */
-export async function injectOfflineIndicators(container) {
-  if (!container) return;
-  _injectCSS();
-  _injectCloudMenuCSS();
+export async function injectIndicator(trackEl) {
+  if (!trackEl) return;
 
-  const trackEls = container.querySelectorAll('.track[data-uid]');
+  const uid = trackEl.dataset?.uid;
+  if (!uid) return;
 
-  for (const trackEl of trackEls) {
-    const uid = trackEl.dataset.uid;
-    if (!uid) continue;
+  injectCSS();
 
-    /* Не дублировать если уже есть */
-    if (trackEl.querySelector(`.offline-ind[${DATA_ATTR}="${uid}"]`)) continue;
+  const mgr = getOfflineManager();
+  const state = await mgr.getTrackOfflineState(uid);
 
-    const ind = _createIndicator(uid);
+  let ind = trackEl.querySelector('.offline-ind');
 
-    /* ТЗ П.7.1: Вставить ПЕРЕД .tnum */
+  if (!ind) {
+    ind = document.createElement('span');
+    ind.className = 'offline-ind';
+
+    /* ТЗ П.7.1: offline-ind добавляется перед .tnum */
     const tnum = trackEl.querySelector('.tnum');
     if (tnum) {
       trackEl.insertBefore(ind, tnum);
     } else {
       trackEl.prepend(ind);
     }
+  }
 
-    /* Клик-обработчик */
-    ind.addEventListener('click', _onClick);
+  /* Обновить визуал */
+  _applyState(ind, state, uid);
 
-    /* Начальное состояние */
-    await _updateIndicator(ind);
+  /* Привязать клик (один раз) */
+  if (!ind._offlineClickBound) {
+    ind._offlineClickBound = true;
+    ind.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      _handleClick(ind, uid);
+    });
   }
 }
 
 /**
- * Обновить состояние индикатора для конкретного uid.
- * Вызывается событийно (не по таймеру — ТЗ П.7.4).
+ * Применить визуальное состояние к иконке.
  */
-export async function refreshIndicator(uid) {
-  const els = document.querySelectorAll(`.offline-ind[${DATA_ATTR}="${uid}"]`);
-  for (const el of els) {
-    await _updateIndicator(el);
+function _applyState(ind, state, uid) {
+  /* Сбросить все классы состояния */
+  ind.className = 'offline-ind';
+  ind.title = '';
+
+  const mgr = getOfflineManager();
+  const spaceOk = mgr.isSpaceOk();
+
+  switch (state.status) {
+    case 'pinned':
+      if (state.downloading) {
+        ind.classList.add('offline-ind--pinned-loading');
+        ind.textContent = '🔒';
+        ind.title = 'Закреплён (загружается…)';
+      } else {
+        ind.classList.add('offline-ind--pinned');
+        ind.textContent = '🔒';
+        ind.title = 'Закреплён офлайн';
+      }
+      break;
+
+    case 'cloud':
+      ind.classList.add('offline-ind--cloud');
+      ind.textContent = '☁';
+      ind.title = `Облачный кэш (${state.daysLeft || '?'} дн.)`;
+      break;
+
+    case 'cloud_loading':
+      ind.classList.add('offline-ind--cloud-loading');
+      ind.textContent = '🔒';
+      ind.title = 'Облачный кэш (загружается…)';
+      break;
+
+    default:
+      /* none / transient / dynamic */
+      if (spaceOk) {
+        ind.classList.add('offline-ind--none');
+      } else {
+        ind.classList.add('offline-ind--nospace');
+      }
+      ind.textContent = '🔒';
+      ind.title = spaceOk ? 'Нажмите чтобы закрепить офлайн' : 'Недостаточно места';
+      break;
+  }
+
+  /* Сохраняем текущее состояние для обработчика клика */
+  ind._offlineState = state;
+  ind._uid = uid;
+}
+
+/* ═══════ Обработка кликов ═══════ */
+
+async function _handleClick(ind, uid) {
+  const state = ind._offlineState;
+  if (!state) return;
+
+  const mgr = getOfflineManager();
+
+  switch (state.status) {
+    case 'none':
+    case 'cloud_loading':
+    case 'transient':
+    case 'dynamic': {
+      /* ТЗ П.4.3: Клик по серому 🔒 → пиннинг */
+      if (!mgr.isSpaceOk()) {
+        window.NotificationSystem?.warning?.('Недостаточно места на устройстве. Освободите память для офлайн-кэша.');
+        return;
+      }
+      await mgr.togglePinned(uid);
+      await _refreshOne(ind, uid);
+      break;
+    }
+
+    case 'pinned': {
+      /* ТЗ П.4.4: Клик по жёлтому 🔒 → снятие пиннинга */
+      await mgr.togglePinned(uid);
+      await _refreshOne(ind, uid);
+      break;
+    }
+
+    case 'cloud': {
+      /* ТЗ П.5.5: Клик по ☁ → cloud-menu */
+      _showCloudMenu(ind, uid);
+      break;
+    }
   }
 }
 
+/* ═══════ Cloud Menu (ТЗ П.5.5) ═══════ */
+
+let _activeCloudMenu = null;
+
+function _closeCloudMenu() {
+  if (_activeCloudMenu) {
+    _activeCloudMenu.remove();
+    _activeCloudMenu = null;
+  }
+  document.removeEventListener('click', _onDocClickForMenu);
+}
+
+function _onDocClickForMenu(e) {
+  if (_activeCloudMenu && !_activeCloudMenu.contains(e.target)) {
+    _closeCloudMenu();
+  }
+}
+
+function _showCloudMenu(ind, uid) {
+  _closeCloudMenu();
+
+  const menu = document.createElement('div');
+  menu.className = 'cloud-menu';
+
+  /* Пункт 1: Закрепить 🔒 */
+  const pinItem = document.createElement('div');
+  pinItem.className = 'cloud-menu__item';
+  pinItem.textContent = '🔒 Закрепить';
+  pinItem.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    _closeCloudMenu();
+    const mgr = getOfflineManager();
+    await mgr.togglePinned(uid); /* cloud → pinned */
+    await _refreshOne(ind, uid);
+  });
+  menu.appendChild(pinItem);
+
+  /* Пункт 2: Удалить из кэша */
+  const delItem = document.createElement('div');
+  delItem.className = 'cloud-menu__item cloud-menu__item--danger';
+  delItem.textContent = '🗑 Удалить из кэша';
+  delItem.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    _closeCloudMenu();
+
+    /* Confirm (ТЗ П.5.5 пункт 2) */
+    const ok = confirm('Удалить трек из кэша? Статистика облачка будет сброшена.');
+    if (!ok) return;
+
+    const mgr = getOfflineManager();
+    await mgr.removeCached(uid);
+    await _refreshOne(ind, uid);
+  });
+  menu.appendChild(delItem);
+
+  /* Позиционируем относительно ind */
+  ind.style.position = 'relative';
+  ind.appendChild(menu);
+
+  _activeCloudMenu = menu;
+
+  /* Закрытие по клику вне меню */
+  setTimeout(() => {
+    document.addEventListener('click', _onDocClickForMenu);
+  }, 10);
+}
+
+/* ═══════ Refresh helpers ═══════ */
+
+async function _refreshOne(ind, uid) {
+  const mgr = getOfflineManager();
+  const state = await mgr.getTrackOfflineState(uid);
+  _applyState(ind, state, uid);
+}
+
 /**
- * Обновить все видимые индикаторы.
+ * injectOfflineIndicators(container) — вставить иконки во все .track внутри container.
+ */
+export async function injectOfflineIndicators(container) {
+  if (!container) container = document;
+  injectCSS();
+
+  const tracks = container.querySelectorAll('.track[data-uid]');
+  const promises = [];
+  for (const el of tracks) {
+    promises.push(injectIndicator(el));
+  }
+  await Promise.all(promises);
+}
+
+/**
+ * refreshAllIndicators() — обновить все видимые индикаторы.
  */
 export async function refreshAllIndicators() {
-  const els = document.querySelectorAll(`.offline-ind[${DATA_ATTR}]`);
-  for (const el of els) {
-    await _updateIndicator(el);
+  const indicators = document.querySelectorAll('.offline-ind');
+  const promises = [];
+  for (const ind of indicators) {
+    const uid = ind._uid;
+    if (uid) promises.push(_refreshOne(ind, uid));
   }
+  await Promise.all(promises);
 }
 
-/* ═══════ Событийные подписки (ТЗ П.7.4) ═══════ */
+/**
+ * initOfflineIndicators() — инициализация: подписка на события.
+ * ТЗ П.7.4: Обновление по событиям, не по таймеру.
+ */
+export function initOfflineIndicators() {
+  injectCSS();
 
-window.addEventListener('offline:stateChanged', () => {
-  refreshAllIndicators();
-});
+  /* Подписка на события offline-manager */
+  window.addEventListener('offline:stateChanged', () => {
+    refreshAllIndicators();
+  });
 
-window.addEventListener('offline:trackCached', (e) => {
-  if (e.detail?.uid) refreshIndicator(e.detail.uid);
-});
+  window.addEventListener('offline:trackCached', (e) => {
+    const uid = e.detail?.uid;
+    if (!uid) return;
+    /* Обновить конкретный индикатор */
+    const ind = document.querySelector(`.offline-ind[data-uid="${uid}"]`) ||
+                _findIndByUid(uid);
+    if (ind) _refreshOne(ind, uid);
+    else refreshAllIndicators();
+  });
 
-window.addEventListener('offline:downloadStart', (e) => {
-  if (e.detail?.uid) refreshIndicator(e.detail.uid);
-});
+  window.addEventListener('offline:downloadStart', (e) => {
+    const uid = e.detail?.uid;
+    if (uid) {
+      const ind = _findIndByUid(uid);
+      if (ind) _refreshOne(ind, uid);
+    }
+  });
 
+  /* Начальная инъекция для текущего DOM */
+  injectOfflineIndicators(document);
+}
+
+/**
+ * Найти индикатор по uid (через _uid поле).
+ */
+function _findIndByUid(uid) {
+  const all = document.querySelectorAll('.offline-ind');
+  for (const ind of all) {
+    if (ind._uid === uid) return ind;
+  }
+  return null;
+}
+
+export default {
+  initOfflineIndicators,
+  injectOfflineIndicators,
+  injectIndicator,
+  refreshAllIndicators
+};
 
 //=================================================
 // FILE: /scripts/ui/offline-modal.js
