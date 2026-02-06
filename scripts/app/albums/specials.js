@@ -12,9 +12,7 @@ export async function loadFavoritesAlbum(ctx) {
   ctx.renderAlbumTitle('⭐⭐⭐ ИЗБРАННОЕ ⭐⭐⭐', 'fav');
 
   // FIX: Используем глобально доступный метод или проверяем наличие
-  if (window.preloadAllAlbumsTrackIndex) {
-     await window.preloadAllAlbumsTrackIndex(); 
-  }
+  // preloadAllAlbumsTrackIndex больше не используется — данные загружаются через TrackRegistry
 
   $('cover-wrap').style.display = 'none';
   const container = $('track-list');
