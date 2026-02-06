@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-eb966397e46cc37a98582182a72aa4a63f11fefd.idx
-│   │       ├── pack-eb966397e46cc37a98582182a72aa4a63f11fefd.pack
-│   │       └── pack-eb966397e46cc37a98582182a72aa4a63f11fefd.rev
+│   │       ├── pack-a8c1941acae28a8d6be08fec8ed4d7ef6be86e70.idx
+│   │       ├── pack-a8c1941acae28a8d6be08fec8ed4d7ef6be86e70.pack
+│   │       └── pack-a8c1941acae28a8d6be08fec8ed4d7ef6be86e70.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 20:58:04 UTC
+Сгенерировано: 2026-02-06 20:58:52 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9407,7 +9407,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         getPos: () => this.getPosition(),
         getDur: () => this.getDuration(),
         recordTick: (uid, p) => getOfflineManager().recordTickStats(uid, p),
-        recordEnd: (uid, p) => getOfflineManager().registerFullListen(uid, p)
+        recordEnd:  (uid, p) => getOfflineManager().registerFullListen(uid, p)
       });
 
       // iOS Unlock
