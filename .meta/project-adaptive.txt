@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1c5033510fe0ff6ed8806dede0151cd432cd5f41.idx
-│   │       ├── pack-1c5033510fe0ff6ed8806dede0151cd432cd5f41.pack
-│   │       └── pack-1c5033510fe0ff6ed8806dede0151cd432cd5f41.rev
+│   │       ├── pack-3486706e8cc3dc43e48f8323a75ddbe47898eef0.idx
+│   │       ├── pack-3486706e8cc3dc43e48f8323a75ddbe47898eef0.pack
+│   │       └── pack-3486706e8cc3dc43e48f8323a75ddbe47898eef0.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 13:36:54 UTC
+Сгенерировано: 2026-02-06 13:38:18 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1726,9 +1726,7 @@ export async function loadFavoritesAlbum(ctx) {
   ctx.renderAlbumTitle('⭐⭐⭐ ИЗБРАННОЕ ⭐⭐⭐', 'fav');
 
   // FIX: Используем глобально доступный метод или проверяем наличие
-  if (window.preloadAllAlbumsTrackIndex) {
-     await window.preloadAllAlbumsTrackIndex(); 
-  }
+  // preloadAllAlbumsTrackIndex больше не используется — данные загружаются через TrackRegistry
 
   $('cover-wrap').style.display = 'none';
   const container = $('track-list');
