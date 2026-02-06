@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8bea88dfab786a7c6e6a8fcbc198b25c13a2e1e7.idx
-│   │       ├── pack-8bea88dfab786a7c6e6a8fcbc198b25c13a2e1e7.pack
-│   │       └── pack-8bea88dfab786a7c6e6a8fcbc198b25c13a2e1e7.rev
+│   │       ├── pack-ad79b17b2a8d8fcc5eb595646ef520d9150bb96c.idx
+│   │       ├── pack-ad79b17b2a8d8fcc5eb595646ef520d9150bb96c.pack
+│   │       └── pack-ad79b17b2a8d8fcc5eb595646ef520d9150bb96c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 18:40:24 UTC
+Сгенерировано: 2026-02-06 18:41:23 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1364,7 +1364,16 @@ self.addEventListener('message', (e) => {
 
     // 4. Minor Modules
     ['SleepTimer', 'LyricsModal', 'SystemInfoManager'].forEach(m => W[m]?.initialize?.());
-    await import('./ui/statistics-modal.js'); // Загрузка статистики
+    await import('./ui/statistics-modal.js');
+
+    // 5. Offline Modal button
+    const offBtn = D.getElementById('offline-btn');
+    if (offBtn) {
+      offBtn.addEventListener('click', async () => {
+        const { showOfflineModal } = await import('./ui/offline-modal.js');
+        showOfflineModal();
+      });
+    }
 
     // 5. Restore State
     W.PlayerState?.apply?.();
