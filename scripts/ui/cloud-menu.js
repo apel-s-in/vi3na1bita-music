@@ -1,125 +1,99 @@
-// scripts/ui/cloud-menu.js
-// Контекстное меню для Cloud-трека (ТЗ 10)
+/**
+ * cloud-menu.js — Popup-меню для ☁ индикатора.
+ *
+ * Два пункта:
+ *   «Закрепить 🔒» → promoteCloudToPinned
+ *   «Удалить из кэша» → removeFromCloudCache (с confirm)
+ */
 
-const MENU_CSS = `
-.cloud-ctx-menu {
-  position: absolute;
-  z-index: 9999;
-  background: #222;
-  border: 1px solid #444;
-  border-radius: 6px;
-  box-shadow: 0 4px 16px rgba(0,0,0,.4);
-  min-width: 160px;
-  padding: 6px 0;
-  font-size: 14px;
-  color: #eee;
-}
-.cloud-ctx-menu-item {
-  padding: 8px 14px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.cloud-ctx-menu-item:hover {
-  background: #333;
-}
-`;
+import offlineManager from './offline-manager.js';
 
-function injectCss() {
-  const U = window.Utils;
-  if (U?.dom?.createStyleOnce) {
-    U.dom.createStyleOnce('cloud-ctx-menu-css', MENU_CSS);
-    return;
-  }
+let _menuEl = null;
+let _currentUid = null;
 
-  if (document.getElementById('cloud-ctx-menu-css')) return;
-  const s = document.createElement('style');
-  s.id = 'cloud-ctx-menu-css';
-  s.textContent = MENU_CSS;
-  document.head.appendChild(s);
+function getOrCreateMenu() {
+  if (_menuEl) return _menuEl;
+
+  _menuEl = document.createElement('div');
+  _menuEl.className = 'cloud-menu-popup';
+  _menuEl.innerHTML = `
+    <div class="cloud-menu-item" data-action="pin">
+      <span>\u{1F512}</span> Закрепить
+    </div>
+    <div class="cloud-menu-item cloud-menu-delete" data-action="delete">
+      <span>\u{1F5D1}</span> Удалить из кэша
+    </div>
+  `;
+
+  _menuEl.addEventListener('click', onMenuClick);
+  document.body.appendChild(_menuEl);
+
+  // Закрытие по клику вне меню
+  document.addEventListener('click', onOutsideClick);
+  document.addEventListener('scroll', hideMenu, true);
+
+  return _menuEl;
 }
 
-let activeMenu = null;
-let offDocClick = null;
+function onMenuClick(e) {
+  const item = e.target.closest('.cloud-menu-item');
+  if (!item || !_currentUid) return;
 
-function closeActiveMenu() {
-  if (activeMenu) {
-    try { activeMenu.remove(); } catch {}
-    activeMenu = null;
-  }
-  if (offDocClick) {
-    try { offDocClick(); } catch {}
-    offDocClick = null;
-  }
-}
+  e.stopPropagation();
+  const action = item.dataset.action;
 
-function onDocClick(e) {
-  if (activeMenu && !activeMenu.contains(e.target)) {
-    closeActiveMenu();
+  if (action === 'pin') {
+    offlineManager.promoteCloudToPinned(_currentUid);
+    hideMenu();
+  } else if (action === 'delete') {
+    const ok = confirm('Удалить трек из кэша?\nСтатистика облачка будет сброшена.');
+    if (ok) {
+      offlineManager.removeFromCloudCache(_currentUid);
+    }
+    hideMenu();
   }
 }
 
-export function attachCloudMenu(opts = {}) {
-  const U = window.Utils;
-  const on = U?.dom?.on ? U.dom.on.bind(U.dom) : (el, ev, fn, o) => {
-    if (!el) return () => {};
-    el.addEventListener(ev, fn, o);
-    return () => el.removeEventListener(ev, fn, o);
-  };
+function onOutsideClick(e) {
+  if (_menuEl && !_menuEl.contains(e.target)) {
+    hideMenu();
+  }
+}
 
-  const defer = U?.dom?.defer ? U.dom.defer.bind(U.dom) : (fn) => setTimeout(fn, 0);
+export function hideMenu() {
+  if (_menuEl) {
+    _menuEl.classList.remove('visible');
+    _currentUid = null;
+  }
+}
 
-  const root = opts.root;
-  const onAddLock = opts.onAddLock;
-  const onRemoveCache = opts.onRemoveCache;
+/**
+ * Показать cloud-menu рядом с элементом-якорем.
+ */
+export function showCloudMenu(uid, anchorEl) {
+  if (!uid || !anchorEl) return;
 
-  if (!root) return;
+  const menu = getOrCreateMenu();
+  _currentUid = uid;
 
-  injectCss();
-  closeActiveMenu();
-
-  const menu = document.createElement('div');
-  menu.className = 'cloud-ctx-menu';
-
-  const lockItem = document.createElement('div');
-  lockItem.className = 'cloud-ctx-menu-item';
-  lockItem.textContent = '🔒 Закрепить офлайн';
-  on(lockItem, 'click', (e) => {
-    e.stopPropagation();
-    closeActiveMenu();
-    if (typeof onAddLock === 'function') onAddLock();
-  });
-  menu.appendChild(lockItem);
-
-  const removeItem = document.createElement('div');
-  removeItem.className = 'cloud-ctx-menu-item';
-  removeItem.textContent = '🗑 Удалить из кэша';
-  on(removeItem, 'click', (e) => {
-    e.stopPropagation();
-    closeActiveMenu();
-    if (typeof onRemoveCache === 'function') onRemoveCache();
-  });
-  menu.appendChild(removeItem);
-
-  document.body.appendChild(menu);
-
-  const rect = root.getBoundingClientRect();
-  let top = rect.bottom + 4;
+  // Позиционирование
+  const rect = anchorEl.getBoundingClientRect();
+  const menuW = 180;
   let left = rect.left;
+  let top = rect.bottom + 4;
 
-  if (left + menu.offsetWidth > window.innerWidth) {
-    left = window.innerWidth - menu.offsetWidth - 8;
+  // Не вылезать за правый край
+  if (left + menuW > window.innerWidth) {
+    left = window.innerWidth - menuW - 8;
   }
-  if (top + menu.offsetHeight > window.innerHeight) {
-    top = rect.top - menu.offsetHeight - 4;
+  // Не вылезать за нижний край — показать сверху
+  if (top + 80 > window.innerHeight) {
+    top = rect.top - 80;
   }
 
-  menu.style.top = `${top}px`;
-  menu.style.left = `${left}px`;
-
-  activeMenu = menu;
-
-  defer(() => {
-    // capture=true чтобы закрываться раньше других обработчиков при клике вне меню
-    offDocClick = on(document, 'click', onDocClick, true);
-  });
+  menu.style.left = left + 'px';
+  menu.style.top = top + 'px';
+  menu.classList.add('visible');
 }
+
+export default { showCloudMenu, hideMenu };
