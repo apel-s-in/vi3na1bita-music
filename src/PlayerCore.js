@@ -28,6 +28,10 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       this.sound = null;
       this.qualityMode = normQ(localStorage.getItem(LS_PQ));
       this._loadToken = 0;
+
+      window.addEventListener('offline:uiChanged', () => {
+        this.qualityMode = normQ(localStorage.getItem(LS_PQ));
+      });
       this._ev = new Map();
       this._favSubs = new Set();
       this._sleepTimer = null;
@@ -215,6 +219,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       // Resolve URL through offline system
       const trackMeta = getTrackByUid(track.uid);
       const originalUrl = track.src || track.audio || trackMeta?.audio || null;
+      this.qualityMode = normQ(localStorage.getItem(LS_PQ));
       const quality = this.qualityMode;
       
       let res;
