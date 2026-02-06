@@ -116,6 +116,9 @@ export function initStatisticsModal() {
   });
 }
 
+// Глобальный доступ для player-ui.js
+window.StatisticsModal = { openStatisticsModal, closeStatisticsModal, initStatisticsModal };
+
 export default {
   openStatisticsModal,
   closeStatisticsModal,
