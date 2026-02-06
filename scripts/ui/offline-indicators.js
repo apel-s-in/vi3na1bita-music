@@ -246,7 +246,7 @@ function _showCloudMenu(ind, uid) {
 
   /* Закрытие по клику вне меню */
   setTimeout(() => {
-    document.addEventListener('click', _onDocClick, { once: true });
+    document.addEventListener('click', _onDocClickForMenu, { once: true });
   }, 50);
 }
 
