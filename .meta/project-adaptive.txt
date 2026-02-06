@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-cffd4c5ed185af6d4d34a2813acdb39a2ff19681.idx
-│   │       ├── pack-cffd4c5ed185af6d4d34a2813acdb39a2ff19681.pack
-│   │       └── pack-cffd4c5ed185af6d4d34a2813acdb39a2ff19681.rev
+│   │       ├── pack-ad83f8914e5d8f1847206618083a02cfc40bb142.idx
+│   │       ├── pack-ad83f8914e5d8f1847206618083a02cfc40bb142.pack
+│   │       └── pack-ad83f8914e5d8f1847206618083a02cfc40bb142.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 21:10:10 UTC
+Сгенерировано: 2026-02-06 21:10:36 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2334,8 +2334,8 @@ export default { initPlaybackCache };
       const needFilter = isFavAlbum || ls();
 
       const source = core.originalPlaylist || [];
-      // Если исходный плейлист пуст, фильтровать нечего
-      if (!source.length) return;
+      // Если исходный плейлист пуст или нет текущего трека, фильтровать нечего
+      if (!source.length || core.getIndex() < 0) return;
 
       let target = source;
 
