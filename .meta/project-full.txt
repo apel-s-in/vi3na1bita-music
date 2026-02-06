@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ffa17f9a135b59de5d739d45b1bfefaad3aac781.idx
-│   │       ├── pack-ffa17f9a135b59de5d739d45b1bfefaad3aac781.pack
-│   │       └── pack-ffa17f9a135b59de5d739d45b1bfefaad3aac781.rev
+│   │       ├── pack-3eb6bb1b942fcc70eaa5a9137c44579a17567a5c.idx
+│   │       ├── pack-3eb6bb1b942fcc70eaa5a9137c44579a17567a5c.pack
+│   │       └── pack-3eb6bb1b942fcc70eaa5a9137c44579a17567a5c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 20:39:53 UTC
+Сгенерировано: 2026-02-06 20:40:45 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5403,10 +5403,7 @@ class OfflineManager {
     emit('offline:stateChanged');
   }
 
-  /**
-   * Мост для PlayerCore / statistics-modal:
-   * Записать статистику прослушивания (алиас registerFullListen).
-   */
+  /** Алиас registerFullListen для совместимости с stats-tracker. */
   async recordListenStats(uid, params = {}) {
     return this.registerFullListen(uid, params);
   }
