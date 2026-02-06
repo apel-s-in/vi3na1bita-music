@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d826d084436cf0f4bc956244614dadeb2210852b.idx
-│   │       ├── pack-d826d084436cf0f4bc956244614dadeb2210852b.pack
-│   │       └── pack-d826d084436cf0f4bc956244614dadeb2210852b.rev
+│   │       ├── pack-3550791f9e96e3cbcacc2b7ada5ab78c8bd76a8d.idx
+│   │       ├── pack-3550791f9e96e3cbcacc2b7ada5ab78c8bd76a8d.pack
+│   │       └── pack-3550791f9e96e3cbcacc2b7ada5ab78c8bd76a8d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 18:39:07 UTC
+Сгенерировано: 2026-02-06 18:39:53 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5449,6 +5449,61 @@ class OfflineManager {
       cloudD: this.getCloudD(),
       netPolicy: this.getNetPolicy(),
       queueStatus: this.queue.getStatus()
+    };
+  }
+
+  /* ─── Compat: recordListenStats (вызывается из PlayerCore stats-tracker) ─── */
+
+  async recordListenStats(uid, { deltaSec = 0, isFullListen = false } = {}) {
+    if (!uid) return;
+    if (isFullListen) {
+      await this.registerFullListen(uid);
+    } else if (deltaSec > 0) {
+      await updateTrackMeta(uid, {
+        globalListenSeconds: ((await getTrackMeta(uid))?.globalListenSeconds || 0) + deltaSec
+      });
+    }
+  }
+
+  /* ─── Compat: getGlobalStatistics (вызывается из statistics-modal.js) ─── */
+
+  async getGlobalStatistics() {
+    const stats = await this.getCacheStats();
+    const metas = await getAllTrackMetas();
+
+    let totalListens = 0, totalSeconds = 0;
+    const items = [];
+
+    for (const m of metas) {
+      if (m.type === 'pinned' || m.type === 'cloud') {
+        totalListens += m.globalFullListenCount || 0;
+        totalSeconds += m.globalListenSeconds || 0;
+        items.push(m);
+      }
+    }
+
+    const avg = items.length > 0 ? Math.round(totalListens / items.length) : 0;
+
+    return {
+      storage: { used: stats.storageUsed, quota: stats.storageQuota },
+      counts: {
+        pinned: stats.pinnedCount,
+        cloud: stats.cloudCount,
+        dynamic: 0,
+        total: stats.totalTracks,
+        needsReCache: items.filter(m => m.needsReCache).length,
+        cloudExpiringSoon: items.filter(m => m.type === 'cloud' && m.cloudExpiresAt && m.cloudExpiresAt - Date.now() < 3 * 24 * 60 * 60 * 1000).length
+      },
+      listens: { total: totalListens, average: avg },
+      queue: stats.queueStatus,
+      settings: {
+        mode: stats.mode,
+        quality: stats.quality,
+        cloudN: stats.cloudN,
+        cloudD: stats.cloudD,
+        preset: this.getPreset()
+      },
+      items
     };
   }
 
