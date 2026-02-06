@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3d9fcd52d8d78bd88742de461d0e104681d8bd5c.idx
-│   │       ├── pack-3d9fcd52d8d78bd88742de461d0e104681d8bd5c.pack
-│   │       └── pack-3d9fcd52d8d78bd88742de461d0e104681d8bd5c.rev
+│   │       ├── pack-60bf3057864c63f7d4d01ed83389e374207a69a3.idx
+│   │       ├── pack-60bf3057864c63f7d4d01ed83389e374207a69a3.pack
+│   │       └── pack-60bf3057864c63f7d4d01ed83389e374207a69a3.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 20:14:43 UTC
+Сгенерировано: 2026-02-06 20:16:24 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1340,7 +1340,7 @@ self.addEventListener('message', (e) => {
     // 2. Offline System
     try {
       const boot = await import('./app/offline-ui-bootstrap.js');
-      boot?.initOfflineUI?.();
+      await boot?.initOfflineUI?.();
     } catch (e) { console.error('Offline boot err:', e); }
 
     // 3. UI Managers
