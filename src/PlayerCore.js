@@ -198,6 +198,8 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     getPosition() { return this.sound?.seek() || 0; }
     getDuration() { return this.sound?.duration() || 0; }
 
+    getCurrentTrackUid() { return safeStr(this.getCurrentTrack()?.uid); }
+
     async load(index, opts = {}) {
       const track = this.playlist[index];
       if (!track) return;
