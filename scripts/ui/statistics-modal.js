@@ -1,76 +1,166 @@
 /**
- * statistics-modal.js — Модалка статистики прослушивания
+ * statistics-modal.js — Модальное окно статистики офлайн-кэша.
+ *
+ * ТЗ: П.9
  */
 
 import { getOfflineManager } from '../offline/offline-manager.js';
 
+let _modal = null;
+
 export async function openStatisticsModal() {
-  if (!window.Modals?.open) return;
+  if (_modal) { closeStatisticsModal(); return; }
 
   const mgr = getOfflineManager();
 
   let stats;
   try {
     stats = await mgr.getGlobalStatistics();
-  } catch {
-    stats = { totalSeconds: 0, tracks: [] };
+  } catch (e) {
+    console.error('[StatsModal] Failed to get statistics:', e);
+    alert('Не удалось загрузить статистику.');
+    return;
   }
 
-  const totalMin = Math.floor((stats.totalSeconds || 0) / 60);
-  const totalHrs = (totalMin / 60).toFixed(1);
+  /* ── Overlay ── */
+  const overlay = document.createElement('div');
+  overlay.className = 'statistics-modal-overlay';
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeStatisticsModal();
+  });
 
-  const topTracks = (stats.tracks || [])
-    .sort((a, b) => (b.seconds || 0) - (a.seconds || 0))
-    .slice(0, 20);
+  /* ── Modal ── */
+  const modal = document.createElement('div');
+  modal.className = 'statistics-modal';
 
-  const trackListHtml = topTracks.length > 0
-    ? topTracks.map((t, i) => {
-        const mins = Math.floor((t.seconds || 0) / 60);
-        const trackInfo = window.TrackRegistry?.getTrackByUid(t.uid);
-        const name = trackInfo?.title || t.uid;
-        return `
-          <div style="display:flex; justify-content:space-between; align-items:center;
-                      padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.06); font-size:13px;">
-            <span style="opacity:0.4; width:24px;">${i + 1}.</span>
-            <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${name}</span>
-            <span style="opacity:0.5; margin-left:8px; white-space:nowrap;">${mins} мин · ${t.fullListens || 0} ×</span>
-          </div>
-        `;
-      }).join('')
-    : '<div style="text-align:center; opacity:0.4; padding:20px; font-size:13px;">Нет данных</div>';
+  const st = stats.storage;
+  const c = stats.counts;
+  const l = stats.listens;
+  const q = stats.queue;
+  const s = stats.settings;
 
-  const bodyHtml = `
-    <div style="color:#fff; font-family:sans-serif;">
-      <div style="display:flex; gap:12px; margin-bottom:20px;">
-        <div style="flex:1; background:rgba(255,255,255,0.08); border-radius:10px; padding:14px; text-align:center;">
-          <div style="font-size:24px; font-weight:700;">${totalHrs}</div>
-          <div style="font-size:11px; opacity:0.5;">часов</div>
-        </div>
-        <div style="flex:1; background:rgba(255,255,255,0.08); border-radius:10px; padding:14px; text-align:center;">
-          <div style="font-size:24px; font-weight:700;">${topTracks.length}</div>
-          <div style="font-size:11px; opacity:0.5;">треков</div>
-        </div>
-        <div style="flex:1; background:rgba(255,255,255,0.08); border-radius:10px; padding:14px; text-align:center;">
-          <div style="font-size:24px; font-weight:700;">${topTracks.reduce((s, t) => s + (t.fullListens || 0), 0)}</div>
-          <div style="font-size:11px; opacity:0.5;">полных</div>
-        </div>
-      </div>
+  const usedMB = ((st.used || 0) / (1024 * 1024)).toFixed(1);
+  const quotaMB = ((st.quota || 0) / (1024 * 1024)).toFixed(0);
 
-      <div style="font-size:14px; font-weight:600; margin-bottom:10px;">🏆 Топ треков</div>
-      <div style="max-height:300px; overflow-y:auto;">
-        ${trackListHtml}
-      </div>
+  modal.innerHTML = `
+    <div class="statistics-modal__header">
+      <h2>📊 Статистика офлайн-кэша</h2>
+      <button class="statistics-modal__close" title="Закрыть">&times;</button>
+    </div>
+    <div class="statistics-modal__body">
+
+      <section>
+        <h3>💾 Хранилище</h3>
+        <p>Использовано: <strong>${usedMB} МБ</strong> из ${quotaMB} МБ</p>
+      </section>
+
+      <section>
+        <h3>📦 Кэшированные треки</h3>
+        <table>
+          <tr><td>🔒 Закреплённые</td><td><strong>${c.pinned}</strong></td></tr>
+          <tr><td>☁ Облачные</td><td><strong>${c.cloud}</strong></td></tr>
+          <tr><td>🎵 Динамические</td><td><strong>${c.dynamic}</strong></td></tr>
+          <tr><td>Всего</td><td><strong>${c.total}</strong></td></tr>
+          <tr><td>⚠️ Нужен re-cache</td><td><strong>${c.needsReCache}</strong></td></tr>
+          <tr><td>⏰ ☁ истекает скоро</td><td><strong>${c.cloudExpiringSoon}</strong></td></tr>
+        </table>
+      </section>
+
+      <section>
+        <h3>🎧 Прослушивания</h3>
+        <table>
+          <tr><td>Всего прослушиваний</td><td><strong>${l.total}</strong></td></tr>
+          <tr><td>Среднее на трек</td><td><strong>${l.average}</strong></td></tr>
+        </table>
+      </section>
+
+      <section>
+        <h3>📥 Очередь загрузок</h3>
+        <table>
+          <tr><td>В очереди</td><td><strong>${q.queued}</strong></td></tr>
+          <tr><td>Активных</td><td><strong>${q.active}</strong></td></tr>
+          <tr><td>Пауза</td><td><strong>${q.paused ? 'Да' : 'Нет'}</strong></td></tr>
+        </table>
+      </section>
+
+      <section>
+        <h3>⚙️ Настройки</h3>
+        <table>
+          <tr><td>Режим</td><td><strong>${s.mode}</strong></td></tr>
+          <tr><td>Качество</td><td><strong>${s.quality === 'hi' ? 'Hi' : 'Lo'}</strong></td></tr>
+          <tr><td>Порог ☁ (N)</td><td><strong>${s.cloudN}</strong></td></tr>
+          <tr><td>TTL ☁ (D дней)</td><td><strong>${s.cloudD}</strong></td></tr>
+          <tr><td>Пресет</td><td><strong>${s.preset?.label || s.preset?.name || '?'}</strong></td></tr>
+        </table>
+      </section>
+
+      <section>
+        <h3>📋 Все кэшированные треки</h3>
+        <div class="statistics-modal__track-list" id="stats-track-list"></div>
+      </section>
+
     </div>
   `;
 
-  window.Modals.open({
-    title: '📊 Статистика прослушивания',
-    maxWidth: 480,
-    bodyHtml
-  });
+  modal.querySelector('.statistics-modal__close').addEventListener('click', closeStatisticsModal);
+
+  /* ── Список треков ── */
+  const trackListEl = modal.querySelector('#stats-track-list');
+  if (stats.items && stats.items.length > 0) {
+    const table = document.createElement('table');
+    table.className = 'stats-track-table';
+    table.innerHTML = `
+      <thead>
+        <tr>
+          <th>Тип</th>
+          <th>UID</th>
+          <th>Качество</th>
+          <th>Прослуш.</th>
+          <th>Размер</th>
+          <th>Статус</th>
+        </tr>
+      </thead>
+    `;
+    const tbody = document.createElement('tbody');
+    for (const item of stats.items) {
+      const icon = item.type === 'pinned' ? '🔒' : item.type === 'cloud' ? '☁' : '🎵';
+      const sizeMB = item.size ? (item.size / (1024 * 1024)).toFixed(2) : '—';
+      const status = item.needsReCache ? '⚠️ re-cache' : '✅';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${icon}</td>
+        <td title="${item.uid}">${(item.uid || '').substring(0, 20)}…</td>
+        <td>${item.quality || '?'}</td>
+        <td>${item.cloudFullListenCount || 0}</td>
+        <td>${sizeMB} МБ</td>
+        <td>${status}</td>
+      `;
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+    trackListEl.appendChild(table);
+  } else {
+    trackListEl.innerHTML = '<p class="empty">Нет кэшированных треков.</p>';
+  }
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+  _modal = overlay;
+
+  document.addEventListener('keydown', _escHandler);
 }
 
-// Глобальный доступ для кнопки stats-btn
-window.StatisticsModal = { show: openStatisticsModal };
+export function closeStatisticsModal() {
+  if (_modal) {
+    _modal.remove();
+    _modal = null;
+  }
+  document.removeEventListener('keydown', _escHandler);
+}
 
-export default openStatisticsModal;
+function _escHandler(e) {
+  if (e.key === 'Escape') closeStatisticsModal();
+}
+
+export default { openStatisticsModal, closeStatisticsModal };
+
