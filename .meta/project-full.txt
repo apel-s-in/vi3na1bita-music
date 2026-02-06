@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4d77f83bad61d492175ff2455079b7b1ab43242c.idx
-│   │       ├── pack-4d77f83bad61d492175ff2455079b7b1ab43242c.pack
-│   │       └── pack-4d77f83bad61d492175ff2455079b7b1ab43242c.rev
+│   │       ├── pack-153a0ddb2c618a19a2c87a1a5e7a4c4ee6dd9449.idx
+│   │       ├── pack-153a0ddb2c618a19a2c87a1a5e7a4c4ee6dd9449.pack
+│   │       └── pack-153a0ddb2c618a19a2c87a1a5e7a4c4ee6dd9449.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 20:36:45 UTC
+Сгенерировано: 2026-02-06 20:38:40 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6808,108 +6808,8 @@ window.NotificationSystem = new NotificationSystem();
 
 import offlineManager, { getOfflineManager } from '../offline/offline-manager.js';
 
-/* ═══════ CSS (инжектируется один раз) ═══════ */
-
-let _cssInjected = false;
-
-function injectCSS() {
-  if (_cssInjected) return;
-  _cssInjected = true;
-
-  const style = document.createElement('style');
-  style.textContent = `
-    /* ТЗ П.7.1: offline-ind перед .tnum */
-    .offline-ind {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 24px;
-      min-width: 24px;
-      height: 24px;
-      font-size: 14px;
-      cursor: pointer;
-      user-select: none;
-      -webkit-tap-highlight-color: transparent;
-      transition: opacity 0.2s, color 0.2s;
-      flex-shrink: 0;
-      margin-right: 2px;
-      position: relative;
-    }
-
-    /* Состояние: нет кэша, место есть (ТЗ П.7.2: серый, 0.4) */
-    .offline-ind--none {
-      color: #888;
-      opacity: 0.4;
-    }
-
-    /* Состояние: нет кэша, места нет (ТЗ П.7.2: серый, 0.2) */
-    .offline-ind--nospace {
-      color: #888;
-      opacity: 0.2;
-    }
-
-    /* Состояние: pinned, загружен (ТЗ П.7.2: жёлтый, 1.0) */
-    .offline-ind--pinned {
-      color: #f5c842;
-      opacity: 1.0;
-      text-shadow: 0 0 4px rgba(245, 200, 66, 0.4);
-    }
-
-    /* Состояние: pinned, загружается (ТЗ П.7.2: жёлтый мигающий, 1.0) */
-    .offline-ind--pinned-loading {
-      color: #f5c842;
-      opacity: 1.0;
-      animation: offlineIndBlink 1.2s ease-in-out infinite;
-    }
-
-    /* Состояние: cloud, загружен (ТЗ П.7.2: голубой, 1.0) */
-    .offline-ind--cloud {
-      color: #5bc0de;
-      opacity: 1.0;
-    }
-
-    /* Состояние: cloud_loading — показываем серый замок */
-    .offline-ind--cloud-loading {
-      color: #888;
-      opacity: 0.4;
-    }
-
-    @keyframes offlineIndBlink {
-      0%, 100% { opacity: 1.0; }
-      50% { opacity: 0.4; }
-    }
-
-    /* ─── Cloud menu popup (ТЗ П.5.5) ─── */
-    .cloud-menu {
-      position: absolute;
-      top: 100%;
-      left: 0;
-      z-index: 9999;
-      background: #1a1a2e;
-      border: 1px solid rgba(255,255,255,0.15);
-      border-radius: 8px;
-      padding: 4px 0;
-      min-width: 180px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
-      font-size: 13px;
-    }
-
-    .cloud-menu__item {
-      padding: 8px 14px;
-      color: #e0e0e0;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: background 0.15s;
-    }
-    .cloud-menu__item:hover {
-      background: rgba(255,255,255,0.08);
-    }
-    .cloud-menu__item--danger {
-      color: #ff6b6b;
-    }
-  `;
-  document.head.appendChild(style);
-}
+/* CSS определён в styles/main.css — инъекция не нужна */
+function injectCSS() { /* no-op: стили в main.css */ }
 
 /* ═══════ Создание / обновление иконки ═══════ */
 
@@ -6943,7 +6843,8 @@ export async function injectIndicator(trackEl) {
     }
   }
 
-  /* Обновить визуал */
+  /* Обновить визуал и data-uid для CSS-селекторов */
+  ind.dataset.uid = uid;
   _applyState(ind, state, uid);
 
   /* Привязать клик (один раз) */
@@ -7089,17 +6990,24 @@ function _showCloudMenu(ind, uid) {
   const delItem = document.createElement('div');
   delItem.className = 'cloud-menu__item cloud-menu__item--danger';
   delItem.textContent = '🗑 Удалить из кэша';
-  delItem.addEventListener('click', async (e) => {
+  delItem.addEventListener('click', (e) => {
     e.stopPropagation();
     _closeCloudMenu();
 
-    /* Confirm (ТЗ П.5.5 пункт 2) */
-    const ok = confirm('Удалить трек из кэша? Статистика облачка будет сброшена.');
-    if (!ok) return;
-
-    const mgr = getOfflineManager();
-    await mgr.removeCached(uid);
-    await _refreshOne(ind, uid);
+    /* Стилизованное подтверждение (ТЗ П.5.5 пункт 2) */
+    if (window.Modals?.confirm) {
+      window.Modals.confirm({
+        title: 'Удалить из кэша?',
+        textHtml: 'Статистика облачка будет сброшена.<br>Global-статистика останется.',
+        confirmText: 'Удалить',
+        cancelText: 'Отмена',
+        onConfirm: async () => {
+          const mgr = getOfflineManager();
+          await mgr.removeCached(uid);
+          await _refreshOne(ind, uid);
+        }
+      });
+    }
   });
   menu.appendChild(delItem);
 
