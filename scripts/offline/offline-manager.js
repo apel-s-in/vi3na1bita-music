@@ -648,9 +648,23 @@ class OfflineManager {
     emit('offline:stateChanged');
   }
 
-  /** Алиас registerFullListen для совместимости с stats-tracker. */
+  /** Алиас registerFullListen для совместимости. */
   async recordListenStats(uid, params = {}) {
     return this.registerFullListen(uid, params);
+  }
+
+  /**
+   * Инкрементальная запись секунд прослушивания (для globalListenSeconds).
+   * Вызывается из stats-tracker.onTick() каждую секунду.
+   * НЕ инкрементирует cloudFullListenCount и НЕ проверяет порог N.
+   */
+  async recordTickStats(uid, { deltaSec = 1 } = {}) {
+    if (!uid || !this._ready) return;
+    const meta = await getTrackMeta(uid);
+    if (!meta) return;
+    await updateTrackMeta(uid, {
+      globalListenSeconds: (meta.globalListenSeconds || 0) + deltaSec
+    });
   }
 
   /* ─── getTrackOfflineState (для UI индикаторов, ТЗ П.7.2) ─── */
