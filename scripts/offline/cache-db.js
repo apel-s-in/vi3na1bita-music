@@ -187,6 +187,17 @@ export async function getGlobal(key) {
   return (await reqP(tx('globals', 'readonly').get(key))) ?? null;
 }
 
+/**
+ * Проверить наличие любого аудио-блоба для uid.
+ */
+export async function hasAudioForUid(uid) {
+  await openDB();
+  const hi = await reqP(tx('audio', 'readonly').get(audioKey(uid, 'hi')));
+  if (hi) return true;
+  const lo = await reqP(tx('audio', 'readonly').get(audioKey(uid, 'lo')));
+  return !!lo;
+}
+
 /* ═══════ Storage estimate ═══════ */
 
 export async function estimateUsage() {
