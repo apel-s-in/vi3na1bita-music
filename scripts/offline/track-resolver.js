@@ -1,103 +1,85 @@
 /**
- * track-resolver.js — Резолвер URL аудио с приоритетом офлайн-кэша.
+ * track-resolver.js — Резолвер аудио-источника.
  *
- * ТЗ: П.3 (приоритет: 🔒 → ☁ → online)
+ * Порядок (ТЗ П.6.1):
+ *   1. Кэш (pinned/cloud blob) нужного качества
+ *   2. Кэш (pinned/cloud blob) альтернативного качества → пометить needsReCache
+ *   3. Online URL
  *
- * Возвращает:
- *   { url: string|blobURL, source: 'pinned'|'cloud'|'online', quality: string }
+ * Возвращает: { src: string|Blob, fromCache: boolean, quality: string, needsReCache: boolean }
  */
 
+import { getAudioBlobAny, updateTrackMeta, getTrackMeta } from './cache-db.js';
 import { getOfflineManager } from './offline-manager.js';
-import { getAudioBlobAny, getTrackMeta } from './cache-db.js';
-
-/* Хранилище выданных blobURL для освобождения */
-const _blobURLs = new Map();
 
 /**
- * resolveTrackUrl — основная функция.
- *
- * @param {string} uid — UID трека
- * @param {string} onlineUrl — URL для онлайн-воспроизведения
- * @param {object} opts — { quality?, forceOnline? }
- * @returns {Promise<{ url: string, source: string, quality: string }>}
+ * Получить аудио-источник для трека.
+ * @param {string} uid
+ * @param {Object} trackData — объект трека из TrackRegistry
+ * @returns {Promise<{src: string, fromCache: boolean, quality: string, needsReCache: boolean}>}
  */
-export async function resolveTrackUrl(uid, onlineUrl, opts = {}) {
-  const u = String(uid || '').trim();
+export async function resolveTrackSource(uid, trackData) {
   const mgr = getOfflineManager();
-  const quality = opts.quality || mgr.getCacheQuality();
+  const preferredQuality = mgr.getCacheQuality();
 
-  /* Принудительно онлайн */
-  if (opts.forceOnline) {
-    return { url: onlineUrl, source: 'online', quality };
-  }
+  /* Шаг 1–2: Ищем blob в кэше */
+  const found = await getAudioBlobAny(uid, preferredQuality);
 
-  /* Проверяем кэш */
-  try {
-    const meta = await getTrackMeta(u);
+  if (found) {
+    const src = URL.createObjectURL(found.blob);
+    const needsReCache = found.quality !== preferredQuality;
 
-    if (meta && (meta.type === 'pinned' || meta.type === 'cloud')) {
-      const found = await getAudioBlobAny(u, quality);
+    if (needsReCache) {
+      /* ТЗ П.6.1: Пометить для перекачки */
+      await updateTrackMeta(uid, { needsReCache: true });
 
-      if (found && found.blob) {
-        /* Освобождаем предыдущий blobURL для этого uid */
-        if (_blobURLs.has(u)) {
-          URL.revokeObjectURL(_blobURLs.get(u));
-        }
-        const blobUrl = URL.createObjectURL(found.blob);
-        _blobURLs.set(u, blobUrl);
-
-        return {
-          url: blobUrl,
-          source: meta.type,     // 'pinned' или 'cloud'
-          quality: found.quality
-        };
-      }
-
-      /* Мета есть, но blob нет — нужен re-cache */
-      if (meta.type === 'pinned' || meta.type === 'cloud') {
-        console.warn(`[Resolver] Meta exists but no blob for ${u}, marking needsReCache`);
-        const { setTrackMeta } = await import('./cache-db.js');
-        await setTrackMeta(u, { ...meta, needsReCache: true });
-
-        /* Ставим в очередь на докачку */
-        mgr.enqueueAudioDownload(u, quality, {
-          kind: 'reCache',
-          priority: meta.type === 'pinned' ? 9 : 6
-        });
-      }
+      /* Поставить в очередь на тихую перекачку */
+      mgr.enqueueAudioDownload(uid, { kind: 'reCache', priority: 1 });
     }
-  } catch (err) {
-    console.warn('[Resolver] Cache lookup failed:', err.message);
+
+    return {
+      src,
+      fromCache: true,
+      quality: found.quality,
+      needsReCache
+    };
   }
 
-  /* Если offline и нет кэша — проблема */
-  if (!navigator.onLine) {
-    console.error(`[Resolver] Offline and no cache for ${u}`);
-    return { url: onlineUrl, source: 'online', quality };
+  /* Шаг 3: Online URL */
+  const q = preferredQuality;
+  let url = null;
+
+  if (trackData) {
+    if (q === 'lo') {
+      url = trackData.audio_low || trackData.audio || trackData.src || null;
+    } else {
+      url = trackData.audio || trackData.src || null;
+    }
   }
 
-  /* Онлайн fallback */
-  return { url: onlineUrl, source: 'online', quality };
+  if (!url) {
+    /* Fallback: попробовать через TrackRegistry */
+    const reg = window.TrackRegistry?.getTrackByUid?.(uid);
+    if (reg) {
+      url = q === 'lo'
+        ? (reg.audio_low || reg.audio || reg.src)
+        : (reg.audio || reg.src);
+    }
+  }
+
+  return {
+    src: url || '',
+    fromCache: false,
+    quality: q,
+    needsReCache: false
+  };
 }
 
 /**
- * Освободить blobURL трека (при смене трека).
+ * После полного проигрывания трека — зарегистрировать прослушивание.
+ * Вызывается из PlayerCore после завершения трека.
  */
-export function revokeBlobUrl(uid) {
-  if (_blobURLs.has(uid)) {
-    URL.revokeObjectURL(_blobURLs.get(uid));
-    _blobURLs.delete(uid);
-  }
+export async function onTrackPlayedFull(uid) {
+  const mgr = getOfflineManager();
+  await mgr.registerFullListen(uid);
 }
-
-/**
- * Освободить все blobURL.
- */
-export function revokeAllBlobUrls() {
-  for (const [uid, url] of _blobURLs) {
-    URL.revokeObjectURL(url);
-  }
-  _blobURLs.clear();
-}
-
-export default { resolveTrackUrl, revokeBlobUrl, revokeAllBlobUrls };
