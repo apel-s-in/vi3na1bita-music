@@ -576,6 +576,9 @@ class OfflineManager {
   async registerFullListen(uid, { duration, position } = {}) {
     if (!uid || !this._ready) return;
 
+    /* Flush батч секунд перед записью full listen */
+    await this._flushTickBatch();
+
     /* ТЗ П.5.2: Full listen ТОЛЬКО если duration > 0 и прогресс > 90% */
     const dur = Number(duration) || 0;
     const pos = Number(position) || 0;
@@ -656,30 +659,45 @@ class OfflineManager {
 
   /**
    * Инкрементальная запись секунд прослушивания (globalListenSeconds).
-   * Вызывается из stats-tracker каждую секунду.
-   * НЕ инкрементирует cloudFullListenCount.
-   */
-  async recordTickStats(uid, { deltaSec = 1 } = {}) {
-    if (!uid || !this._ready) return;
-    const meta = await getTrackMeta(uid);
-    if (!meta) return;
-    await updateTrackMeta(uid, {
-      globalListenSeconds: (meta.globalListenSeconds || 0) + deltaSec
-    });
-  }
-
-  /**
-   * Инкрементальная запись секунд прослушивания (для globalListenSeconds).
-   * Вызывается из stats-tracker.onTick() каждую секунду.
+   * Батчинг: копим в памяти, flush каждые 30 сек или при смене трека.
    * НЕ инкрементирует cloudFullListenCount и НЕ проверяет порог N.
    */
   async recordTickStats(uid, { deltaSec = 1 } = {}) {
     if (!uid || !this._ready) return;
-    const meta = await getTrackMeta(uid);
-    if (!meta) return;
-    await updateTrackMeta(uid, {
-      globalListenSeconds: (meta.globalListenSeconds || 0) + deltaSec
-    });
+
+    if (!this._tickBatch) this._tickBatch = { uid: null, sec: 0, timer: null };
+    const b = this._tickBatch;
+
+    /* Если uid сменился — flush старый */
+    if (b.uid && b.uid !== uid && b.sec > 0) {
+      await this._flushTickBatch();
+    }
+
+    b.uid = uid;
+    b.sec += deltaSec;
+
+    /* Flush каждые 30 секунд */
+    if (!b.timer) {
+      b.timer = setTimeout(() => this._flushTickBatch(), 30000);
+    }
+  }
+
+  async _flushTickBatch() {
+    if (!this._tickBatch || !this._tickBatch.uid || this._tickBatch.sec <= 0) return;
+    const { uid, sec } = this._tickBatch;
+    this._tickBatch.sec = 0;
+    if (this._tickBatch.timer) { clearTimeout(this._tickBatch.timer); this._tickBatch.timer = null; }
+
+    try {
+      const meta = await getTrackMeta(uid);
+      if (meta) {
+        await updateTrackMeta(uid, {
+          globalListenSeconds: (meta.globalListenSeconds || 0) + sec
+        });
+      }
+    } catch (e) {
+      console.warn('[OfflineMgr] flushTickBatch error:', e);
+    }
   }
 
   /* ─── getTrackOfflineState (для UI индикаторов, ТЗ П.7.2) ─── */
