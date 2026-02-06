@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2a5c217c70e3341a46a792cbf4eccf187b436544.idx
-│   │       ├── pack-2a5c217c70e3341a46a792cbf4eccf187b436544.pack
-│   │       └── pack-2a5c217c70e3341a46a792cbf4eccf187b436544.rev
+│   │       ├── pack-ebc9525ee93618fe339fd59ccd3791a92808f21f.idx
+│   │       ├── pack-ebc9525ee93618fe339fd59ccd3791a92808f21f.pack
+│   │       └── pack-ebc9525ee93618fe339fd59ccd3791a92808f21f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -385,7 +385,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 18:42:59 UTC
+Сгенерировано: 2026-02-06 19:05:08 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4611,6 +4611,17 @@ export async function setGlobal(key, val) {
 export async function getGlobal(key) {
   await openDB();
   return (await reqP(tx('globals', 'readonly').get(key))) ?? null;
+}
+
+/**
+ * Проверить наличие любого аудио-блоба для uid.
+ */
+export async function hasAudioForUid(uid) {
+  await openDB();
+  const hi = await reqP(tx('audio', 'readonly').get(audioKey(uid, 'hi')));
+  if (hi) return true;
+  const lo = await reqP(tx('audio', 'readonly').get(audioKey(uid, 'lo')));
+  return !!lo;
 }
 
 /* ═══════ Storage estimate ═══════ */
