@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-936ff9b8a003e01a99708b93062dd149de61b863.idx
-│   │       ├── pack-936ff9b8a003e01a99708b93062dd149de61b863.pack
-│   │       └── pack-936ff9b8a003e01a99708b93062dd149de61b863.rev
+│   │       ├── pack-926065a9306f18af9d2b66f004b7feeadbdf07de.idx
+│   │       ├── pack-926065a9306f18af9d2b66f004b7feeadbdf07de.pack
+│   │       └── pack-926065a9306f18af9d2b66f004b7feeadbdf07de.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 17:45:32 UTC
+Сгенерировано: 2026-02-06 18:22:20 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4583,6 +4583,17 @@ export async function getTrackMeta(uid) {
   return (await reqP(tx('meta', 'readonly').get(uid))) || null;
 }
 
+/**
+ * Частичное обновление меты (merge).
+ * Не затирает поля, которых нет в patch.
+ */
+export async function updateTrackMeta(uid, patch) {
+  await openDB();
+  const existing = (await reqP(tx('meta', 'readonly').get(uid))) || {};
+  const merged = { ...existing, ...patch, uid };
+  return reqP(tx('meta', 'readwrite').put(merged, uid));
+}
+
 export async function deleteTrackMeta(uid) {
   await openDB();
   return reqP(tx('meta', 'readwrite').delete(uid));
@@ -4594,6 +4605,41 @@ export async function getAllTrackMetas() {
   const keys = await reqP(store.getAllKeys());
   const vals = await reqP(store.getAll());
   return vals.map((v, i) => ({ ...v, uid: v.uid || keys[i] }));
+}
+
+/* ═══════ Cloud stats helpers (ТЗ П.5.5) ═══════ */
+
+/**
+ * Сброс cloud-статистики БЕЗ удаления всей меты.
+ * Сохраняет globalFullListenCount, globalListenSeconds.
+ * ТЗ П.5.5: «Сбросить cloud-статистику: cloudFullListenCount=0, 
+ *   lastFullListenAt=null, cloudAddedAt=null, cloudExpiresAt=null, cloud=false»
+ */
+export async function resetCloudStats(uid) {
+  await openDB();
+  const existing = (await reqP(tx('meta', 'readonly').get(uid))) || {};
+  const reset = {
+    ...existing,
+    uid,
+    type: 'none',
+    cloudFullListenCount: 0,
+    lastFullListenAt: null,
+    cloudAddedAt: null,
+    cloudExpiresAt: null,
+    pinnedAt: null,
+    quality: null,
+    size: 0,
+    needsReCache: false,
+    expiredPending: false
+  };
+  return reqP(tx('meta', 'readwrite').put(reset, uid));
+}
+
+/**
+ * Пометить трек как expiredPending (ТЗ П.5.6 — R3 режим).
+ */
+export async function markExpiredPending(uid) {
+  return updateTrackMeta(uid, { expiredPending: true });
 }
 
 /* ═══════ Globals ═══════ */
