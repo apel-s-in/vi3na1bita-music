@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e41e00987d9d6b1ef3f448719bf3b1fc7da34e59.idx
-│   │       ├── pack-e41e00987d9d6b1ef3f448719bf3b1fc7da34e59.pack
-│   │       └── pack-e41e00987d9d6b1ef3f448719bf3b1fc7da34e59.rev
+│   │       ├── pack-e646070cb49960ca4b1f5c40697bf7fb3287e86f.idx
+│   │       ├── pack-e646070cb49960ca4b1f5c40697bf7fb3287e86f.pack
+│   │       └── pack-e646070cb49960ca4b1f5c40697bf7fb3287e86f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -383,7 +383,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 20:24:44 UTC
+Сгенерировано: 2026-02-06 20:25:10 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1152,7 +1152,7 @@ const STATIC_ASSETS = [
   './scripts/core/favorites-manager.js',
   './scripts/app/gallery.js', './scripts/ui/notify.js', './scripts/ui/favorites.js',
   './scripts/ui/sleep.js', './scripts/ui/lyrics-modal.js', './scripts/ui/sysinfo.js',
-  './scripts/ui/modal-templates.js', './scripts/ui/modals.js',
+  './scripts/ui/modals.js',
   './scripts/ui/offline-modal.js', './scripts/ui/offline-indicators.js',
   './scripts/ui/cache-progress-overlay.js', './scripts/ui/statistics-modal.js',
   './scripts/app/player-ui.js', './scripts/app/albums.js', './scripts/app/navigation.js',
