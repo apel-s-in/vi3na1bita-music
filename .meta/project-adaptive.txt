@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5aa93687fba8d04c4b79ae522a8aa9fb583e9a52.idx
-│   │       ├── pack-5aa93687fba8d04c4b79ae522a8aa9fb583e9a52.pack
-│   │       └── pack-5aa93687fba8d04c4b79ae522a8aa9fb583e9a52.rev
+│   │       ├── pack-3c9dbdd1e59f7b388d96c9a599982ac8d005a632.idx
+│   │       ├── pack-3c9dbdd1e59f7b388d96c9a599982ac8d005a632.pack
+│   │       └── pack-3c9dbdd1e59f7b388d96c9a599982ac8d005a632.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 18:27:01 UTC
+Сгенерировано: 2026-02-06 18:29:25 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1667,7 +1667,7 @@ class AlbumsManager {
     const list = $('track-list');
     if (!list) return;
     list.querySelectorAll('.track[data-uid]').forEach(el => {
-      injectIndicator(el, el.dataset.uid);
+      injectIndicator(el);
     });
   }
 
