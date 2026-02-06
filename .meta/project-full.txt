@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a025d972769950055aabb2dcf8b66770412bb026.idx
-│   │       ├── pack-a025d972769950055aabb2dcf8b66770412bb026.pack
-│   │       └── pack-a025d972769950055aabb2dcf8b66770412bb026.rev
+│   │       ├── pack-59f17827632d89998aaf6c0877a861353c651765.idx
+│   │       ├── pack-59f17827632d89998aaf6c0877a861353c651765.pack
+│   │       └── pack-59f17827632d89998aaf6c0877a861353c651765.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -385,7 +385,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 19:14:57 UTC
+Сгенерировано: 2026-02-06 19:39:12 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4826,11 +4826,11 @@ const CLOUD_N_KEY = 'offline:cloud:N';
 const CLOUD_D_KEY = 'offline:cloud:D';
 const NET_POLICY_KEY = 'offline:netPolicy:v1';
 const PRESET_KEY = 'offline:preset:v1';
-const MIN_SPACE_MB = 60;           // ТЗ П.2
+const MIN_SPACE_MB = 60;
 const MB = 1024 * 1024;
 const DAY_MS = 24 * 60 * 60 * 1000;
-const DEFAULT_N = 5;               // ТЗ П.5.1
-const DEFAULT_D = 31;              // ТЗ П.5.1
+const DEFAULT_N = 5;
+const DEFAULT_D = 31;
 
 /* ═══════ Утилиты ═══════ */
 
@@ -4869,9 +4869,9 @@ function getTrackUrl(uid, quality) {
 class DownloadQueue {
   constructor() {
     this._queue = [];
-    this._active = new Map();  // uid -> { ctrl, quality, kind }
+    this._active = new Map();
     this._paused = false;
-    this._maxParallel = 1;     // default; re-cache sets 2-3
+    this._maxParallel = 1;
   }
 
   setMaxParallel(n) { this._maxParallel = Math.max(1, Math.min(n, 4)); }
@@ -4950,7 +4950,7 @@ class DownloadQueue {
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const blob = await resp.blob();
 
-      if (!this._active.has(item.uid)) return; // cancelled
+      if (!this._active.has(item.uid)) return;
 
       await setAudioBlob(item.uid, item.quality, blob);
       await updateTrackMeta(item.uid, {
@@ -4994,7 +4994,7 @@ class OfflineManager {
     this.queue = new DownloadQueue();
     this._ready = false;
     this._listeners = new Map();
-    this._spaceOk = true;   // cached result of hasSpace
+    this._spaceOk = true;
   }
 
   /* ─── EventEmitter ─── */
@@ -5035,7 +5035,6 @@ class OfflineManager {
     const prevMode = this.getMode();
     localStorage.setItem(MODE_KEY, mode);
 
-    /* ТЗ П.5.6: При выходе из R3 — удалить expiredPending */
     if (prevMode === 'R3' && mode !== 'R3') {
       await this.cleanExpiredPending();
     }
@@ -5084,6 +5083,8 @@ class OfflineManager {
     }
     if (count > 0) {
       toast(`Качество → ${q.toUpperCase()}. ${count} файл(ов) нужно перекачать.`);
+      /* ТЗ П.3.2: Запустить тихую фоновую замену */
+      this.startSilentReCache();
     }
   }
 
@@ -5121,7 +5122,7 @@ class OfflineManager {
   }
 
   /**
-   * ТЗ П.5.7 — Пересчёт при «Применить».
+   * ТЗ П.5.7 — Preview пересчёта при «Применить».
    */
   async previewCloudSettings(newN, newD) {
     const oldN = this.getCloudN();
@@ -5132,14 +5133,12 @@ class OfflineManager {
     const toRemove = [];
 
     for (const m of cloudTracks) {
-      /* ТЗ П.5.7: cloudExpiresAt = lastFullListenAt + новый_D дней */
       const base = m.lastFullListenAt || m.cloudAddedAt || now;
       const newExpires = base + newD * DAY_MS;
 
       if (newExpires <= now) {
         toRemove.push(m.uid);
       } else if (newN > oldN && (m.cloudFullListenCount || 0) < newN) {
-        /* ТЗ П.5.7: При N↑ треки с count < newN теряют cloud-статус */
         toRemove.push(m.uid);
       }
     }
@@ -5148,7 +5147,6 @@ class OfflineManager {
       warnings.push(`${toRemove.length} облачных трек(ов) будут удалены из кэша.`);
     }
 
-    /* Промоушн: N↓ может дать новые ☁ */
     const toPromote = [];
     if (newN < oldN) {
       const nonCloud = metas.filter(m => !m.type || m.type === 'none');
@@ -5171,14 +5169,11 @@ class OfflineManager {
     const now = Date.now();
     const quality = this.getCacheQuality();
 
-    /* Удалить */
     for (const uid of (toRemove || [])) {
       await this.removeCached(uid);
     }
 
-    /* Промоушн (N↓) */
     for (const uid of (toPromote || [])) {
-      const meta = (await getTrackMeta(uid)) || {};
       await updateTrackMeta(uid, {
         type: 'cloud',
         cloudAddedAt: now,
@@ -5191,7 +5186,6 @@ class OfflineManager {
       }
     }
 
-    /* Пересчитать cloudExpiresAt для оставшихся — ТЗ: от lastFullListenAt */
     const metas = await getAllTrackMetas();
     for (const m of metas) {
       if (m.type !== 'cloud') continue;
@@ -5225,7 +5219,7 @@ class OfflineManager {
       const est = await estimateUsage();
       this._spaceOk = est.free > MIN_SPACE_MB * MB;
     } catch {
-      this._spaceOk = true; // assume ok if can't check
+      this._spaceOk = true;
     }
   }
 
@@ -5237,7 +5231,6 @@ class OfflineManager {
     } catch { return true; }
   }
 
-  /** Синхронная проверка из последнего кэша (для индикаторов) */
   isSpaceOk() { return this._spaceOk; }
 
   /* ─── togglePinned (ТЗ П.4.2–П.4.4) ─── */
@@ -5247,7 +5240,7 @@ class OfflineManager {
     const quality = this.getCacheQuality();
 
     if (meta.type === 'pinned') {
-      /* ═══ Снять пиннинг → становится ☁ cloud (ТЗ П.4.4, П.5.4) ═══ */
+      /* Снять пиннинг → ☁ cloud (ТЗ П.4.4, П.5.4) */
       const now = Date.now();
       const D = this.getCloudD();
       await updateTrackMeta(uid, {
@@ -5255,7 +5248,6 @@ class OfflineManager {
         pinnedAt: null,
         cloudAddedAt: now,
         cloudExpiresAt: now + D * DAY_MS
-        /* ТЗ П.5.4: cloudFullListenCount НЕ модифицируется — оставляем как есть */
       });
       toast('Офлайн-закрепление снято. Трек доступен как ☁ на ' + D + ' дней.');
       emit('offline:stateChanged');
@@ -5263,15 +5255,13 @@ class OfflineManager {
     }
 
     if (meta.type === 'cloud') {
-      /* ═══ Cloud → Pin (ТЗ П.5.5 пункт 1: cloud-статистика НЕ сбрасывается) ═══ */
+      /* Cloud → Pin (ТЗ П.5.5 пункт 1) */
       await updateTrackMeta(uid, {
         type: 'pinned',
         pinnedAt: Date.now(),
         expiredPending: false
-        /* НЕ трогаем: cloudFullListenCount, lastFullListenAt, cloudAddedAt, cloudExpiresAt */
       });
 
-      /* Проверим, нужно ли скачать blob в нужном качестве */
       const found = await getAudioBlobAny(uid, quality);
       if (found && found.quality === quality) {
         toast('Трек закреплён 🔒');
@@ -5291,7 +5281,7 @@ class OfflineManager {
       return 'pinned';
     }
 
-    /* ═══ Новый пиннинг (type=none или нет меты) — ТЗ П.4.3 ═══ */
+    /* Новый пиннинг — ТЗ П.4.3 */
     if (!(await this.hasSpace())) {
       toastWarn('Недостаточно места на устройстве. Освободите память для офлайн-кэша.');
       return 'none';
@@ -5313,7 +5303,6 @@ class OfflineManager {
       globalListenSeconds: meta.globalListenSeconds || 0
     });
 
-    /* Если blob уже есть (от предыдущего cloud), скачивание не нужно — ТЗ П.4.3 */
     const existingBlob = await getAudioBlobAny(uid, quality);
     if (existingBlob) {
       toast('Трек закреплён 🔒');
@@ -5348,120 +5337,230 @@ class OfflineManager {
     this.queue.enqueue({ uid, url, quality, kind: 'pinned', priority: 5 });
   }
 
+  /**
+   * Мост для PlayerCore: поставить трек в очередь на фоновое кэширование.
+   * ТЗ П.10: P4 — Cloud fill
+   */
+  async enqueueAudioDownload(uid, opts = {}) {
+    const quality = this.getCacheQuality();
+    const url = getTrackUrl(uid, quality);
+    if (!url) return;
+    if (!(await this.hasSpace())) return;
+    const priority = opts.priority || 1;
+    const kind = opts.kind || 'playbackCache';
+    this.queue.enqueue({ uid, url, quality, kind, priority });
+  }
+
   /* ─── registerFullListen (ТЗ П.5.2, П.5.3) ─── */
 
-  /**
-   * Вызывается при каждом полном прослушивании (>90% длительности).
-   * Обновляет cloud-статистику для ВСЕХ треков (не только cloud).
-   * Если порог N достигнут — автоматически присваивает ☁.
-   */
   async registerFullListen(uid, { duration = 0, position = 0 } = {}) {
     if (!uid) return;
 
-    /* ТЗ П.5.2: Full listen = прогресс > 90% и duration валидна */
-    if (duration > 0 && position > 0 && (position / duration) < 0.9) return;
+    /* ТЗ П.5.2: Full listen засчитывается если duration валидна и прогресс > 90% */
+    if (duration > 0 && position > 0) {
+      const ratio = position / duration;
+      if (ratio < 0.9) return;
+    }
 
     const now = Date.now();
-    const meta = (await getTrackMeta(uid)) || {};
     const D = this.getCloudD();
     const N = this.getCloudN();
+    const quality = this.getCacheQuality();
 
-    /* ═══ Инкремент cloud-статистики (для ВСЕХ треков — ТЗ П.5.2) ═══ */
-    const newCount = (meta.cloudFullListenCount || 0) + 1;
-    const updates = {
-      cloudFullListenCount: newCount,
-      lastFullListenAt: now,
-      /* Global stats — инкрементируем тоже */
-      globalFullListenCount: (meta.globalFullListenCount || 0) + 1,
-      globalListenSeconds: (meta.globalListenSeconds || 0) + (duration || 0)
+    let meta = (await getTrackMeta(uid)) || {
+      uid,
+      type: 'none',
+      quality: null,
+      size: 0,
+      cloudFullListenCount: 0,
+      lastFullListenAt: null,
+      cloudAddedAt: null,
+      cloudExpiresAt: null,
+      globalFullListenCount: 0,
+      globalListenSeconds: 0,
+      needsReCache: false,
+      expiredPending: false,
+      pinnedAt: null
     };
 
-    /* ═══ Продление TTL для существующих ☁ (ТЗ П.5.6) ═══ */
+    /* Обновляем global stats (ТЗ П.5.5: НЕ трогать global stats при удалении cloud) */
+    meta.globalFullListenCount = (meta.globalFullListenCount || 0) + 1;
+    meta.globalListenSeconds = (meta.globalListenSeconds || 0) + (duration || 0);
+
+    /* Обновляем cloud stats */
+    meta.cloudFullListenCount = (meta.cloudFullListenCount || 0) + 1;
+    meta.lastFullListenAt = now;
+
+    /* ТЗ П.5.6: Продление TTL — каждое полное прослушивание обновляет cloudExpiresAt */
     if (meta.type === 'cloud') {
-      updates.cloudExpiresAt = now + D * DAY_MS;
+      meta.cloudExpiresAt = now + D * DAY_MS;
     }
 
-    /* ═══ Автоматическое появление ☁ (ТЗ П.5.3) ═══ */
-    if (meta.type !== 'pinned' && meta.type !== 'cloud' && newCount >= N) {
-      const hasBlob = await hasAudioForUid(uid);
+    /* ТЗ П.5.3: Автоматическое появление ☁ */
+    if (meta.type !== 'pinned' && meta.type !== 'cloud') {
+      if (meta.cloudFullListenCount >= N) {
+        const hasBlob = await hasAudioForUid(uid);
 
-      if (this.getMode() === 'R3' && hasBlob) {
-        /* ТЗ П.5.3: В R3 файл уже локальный — просто присваиваем статус */
-        updates.type = 'cloud';
-        updates.cloudAddedAt = now;
-        updates.cloudExpiresAt = now + D * DAY_MS;
-        updates.quality = this.getCacheQuality();
-      } else if (await this.hasSpace()) {
-        /* Обычный режим: ставим cloud, запускаем скачивание */
-        updates.type = 'cloud';
-        updates.cloudAddedAt = now;
-        updates.cloudExpiresAt = now + D * DAY_MS;
-        updates.quality = this.getCacheQuality();
+        if (this.getMode() === 'R3' && hasBlob) {
+          /* В R3 файл уже локальный — просто присваиваем статус */
+          meta.type = 'cloud';
+          meta.cloudAddedAt = now;
+          meta.cloudExpiresAt = now + D * DAY_MS;
+          meta.quality = quality;
+        } else if (await this.hasSpace()) {
+          meta.type = 'cloud';
+          meta.cloudAddedAt = now;
+          meta.cloudExpiresAt = now + D * DAY_MS;
+          meta.quality = quality;
 
-        if (!hasBlob) {
-          /* Скачивание — иконка ☁ появится ПОСЛЕ 100% загрузки (ТЗ П.5.3) */
-          this.enqueueForCloud(uid);
+          if (!hasBlob) {
+            const url = getTrackUrl(uid, quality);
+            if (url) {
+              this.queue.enqueue({ uid, url, quality, kind: 'cloud', priority: 1 });
+            }
+          }
         }
+        /* Если нет места — счётчик считается, но файл не скачивается (ТЗ П.2) */
       }
-      /* Если нет места — ТЗ П.2: счётчик считается, но файл не скачивается */
     }
 
-    /* Гарантируем что мета существует */
-    if (!meta.uid) {
-      await setTrackMeta(uid, {
-        uid,
-        type: updates.type || 'none',
-        pinnedAt: null,
-        quality: updates.quality || null,
-        size: 0,
-        cloudAddedAt: updates.cloudAddedAt || null,
-        cloudExpiresAt: updates.cloudExpiresAt || null,
-        cloudFullListenCount: updates.cloudFullListenCount || newCount,
-        lastFullListenAt: now,
-        needsReCache: false,
-        expiredPending: false,
-        globalFullListenCount: updates.globalFullListenCount || 1,
-        globalListenSeconds: updates.globalListenSeconds || (duration || 0)
-      });
-    } else {
-      await updateTrackMeta(uid, updates);
-    }
-
+    await setTrackMeta(uid, meta);
     emit('offline:stateChanged');
+  }
+
+  /**
+   * Мост для PlayerCore / statistics-modal:
+   * Записать статистику прослушивания (алиас registerFullListen).
+   */
+  async recordListenStats(uid, params = {}) {
+    return this.registerFullListen(uid, params);
+  }
+
+  /* ─── getTrackOfflineState (для UI индикаторов, ТЗ П.7.2) ─── */
+
+  async getTrackOfflineState(uid) {
+    const meta = await getTrackMeta(uid);
+    const downloading = this.queue.isDownloading(uid);
+    const spaceOk = this.isSpaceOk();
+
+    if (!meta || meta.type === 'none' || !meta.type) {
+      return {
+        status: 'none',
+        icon: '🔒',
+        color: 'grey',
+        opacity: spaceOk ? 0.4 : 0.2,
+        clickable: true,
+        downloading: downloading,
+        quality: null,
+        cloudFullListenCount: meta?.cloudFullListenCount || 0,
+        cloudExpiresAt: null,
+        needsReCache: false
+      };
+    }
+
+    if (meta.type === 'pinned') {
+      const hasBlob = await hasAudioForUid(uid);
+      return {
+        status: 'pinned',
+        icon: '🔒',
+        color: 'gold',
+        opacity: 1.0,
+        clickable: true,
+        downloading: downloading || !hasBlob,
+        quality: meta.quality,
+        cloudFullListenCount: meta.cloudFullListenCount || 0,
+        cloudExpiresAt: meta.cloudExpiresAt,
+        needsReCache: !!meta.needsReCache
+      };
+    }
+
+    if (meta.type === 'cloud') {
+      const hasBlob = await hasAudioForUid(uid);
+      /* ТЗ П.7.2: ☁ отображается только при cloud=true И cachedComplete=100% */
+      if (hasBlob && !downloading) {
+        const daysLeft = meta.cloudExpiresAt
+          ? Math.max(0, Math.ceil((meta.cloudExpiresAt - Date.now()) / DAY_MS))
+          : 0;
+        return {
+          status: 'cloud',
+          icon: '☁',
+          color: 'blue',
+          opacity: 1.0,
+          clickable: true,
+          downloading: false,
+          quality: meta.quality,
+          cloudFullListenCount: meta.cloudFullListenCount || 0,
+          cloudExpiresAt: meta.cloudExpiresAt,
+          daysLeft,
+          needsReCache: !!meta.needsReCache
+        };
+      }
+      /* Cloud но ещё не загружен — серый 🔒 */
+      return {
+        status: 'cloud_loading',
+        icon: '🔒',
+        color: 'grey',
+        opacity: 0.4,
+        clickable: true,
+        downloading: true,
+        quality: meta.quality,
+        cloudFullListenCount: meta.cloudFullListenCount || 0,
+        cloudExpiresAt: meta.cloudExpiresAt,
+        needsReCache: false
+      };
+    }
+
+    /* Fallback: transient / dynamic */
+    return {
+      status: meta.type || 'none',
+      icon: '🔒',
+      color: 'grey',
+      opacity: 0.4,
+      clickable: true,
+      downloading: false,
+      quality: meta.quality,
+      cloudFullListenCount: meta.cloudFullListenCount || 0,
+      cloudExpiresAt: null,
+      needsReCache: false
+    };
+  }
+
+  /**
+   * Batch-версия для рендера трек-листа (один await вместо N).
+   */
+  async getTrackOfflineStates(uids) {
+    const results = {};
+    for (const uid of uids) {
+      results[uid] = await this.getTrackOfflineState(uid);
+    }
+    return results;
   }
 
   /* ─── removeCached (ТЗ П.5.5 пункт 2) ─── */
 
-  /**
-   * Удалить трек из кэша и сбросить cloud-статистику.
-   * Global stats НЕ трогается.
-   */
   async removeCached(uid) {
-    if (!uid) return;
+    const meta = await getTrackMeta(uid);
+    if (!meta) return;
 
-    /* Отменить любые текущие загрузки */
-    this.queue.cancel(uid);
+    /* Удалить blob */
+    await deleteAudio(uid);
 
-    /* Удалить аудио blob */
-    try { await deleteAudio(uid, 'hi'); } catch {}
-    try { await deleteAudio(uid, 'lo'); } catch {}
-
-    /* Сбросить cloud-статистику, сохранить global stats (ТЗ П.5.5) */
-    const meta = (await getTrackMeta(uid)) || {};
+    /* Сбросить cloud-статистику, НЕ трогать global stats */
     await updateTrackMeta(uid, {
       type: 'none',
-      pinnedAt: null,
       quality: null,
       size: 0,
-      cloudAddedAt: null,
-      cloudExpiresAt: null,
       cloudFullListenCount: 0,
       lastFullListenAt: null,
+      cloudAddedAt: null,
+      cloudExpiresAt: null,
+      pinnedAt: null,
       needsReCache: false,
       expiredPending: false
-      /* globalFullListenCount и globalListenSeconds НЕ трогаем */
+      /* globalFullListenCount и globalListenSeconds остаются */
     });
 
+    this.queue.cancel(uid);
     emit('offline:stateChanged');
   }
 
@@ -5474,288 +5573,377 @@ class OfflineManager {
 
     for (const m of metas) {
       if (m.type === 'pinned' || m.type === 'cloud') {
+        await deleteAudio(m.uid);
         totalSize += m.size || 0;
-        await this.removeCached(m.uid);
+        await updateTrackMeta(m.uid, {
+          type: 'none',
+          quality: null,
+          size: 0,
+          cloudFullListenCount: 0,
+          lastFullListenAt: null,
+          cloudAddedAt: null,
+          cloudExpiresAt: null,
+          pinnedAt: null,
+          needsReCache: false,
+          expiredPending: false
+        });
         count++;
       }
     }
 
     this.queue.clear();
-    toast(`Удалено ${count} офлайн-треков (${(totalSize / MB).toFixed(1)} МБ).`);
     emit('offline:stateChanged');
-  }
-
-  /* ─── getTrackOfflineState (ТЗ П.7.2) ─── */
-
-  /**
-   * Возвращает визуальное состояние трека для индикатора.
-   *
-   * Возвращаемые значения cacheKind:
-   *   'none'              — серый 🔒 (opacity 0.4 или 0.2 если нет места)
-   *   'pinned'            — жёлтый 🔒 (загружен 100%)
-   *   'pinned_downloading' — жёлтый 🔒 мигающий
-   *   'cloud'             — голубой ☁ (cloud=true И cachedComplete=100%)
-   *   'cloud_downloading'  — серый 🔒 (ТЗ П.7.2: Cloud, загружается = серый)
-   */
-  async getTrackOfflineState(uid) {
-    const meta = (await getTrackMeta(uid)) || {};
-    const isDownloading = this.queue.isDownloading(uid);
-    const hasBlob = await hasAudioForUid(uid);
-    const quality = this.getCacheQuality();
-    const spaceOk = this.isSpaceOk();
-
-    /* Pinned */
-    if (meta.type === 'pinned') {
-      if (isDownloading || !hasBlob) {
-        return {
-          cacheKind: 'pinned_downloading',
-          quality: meta.quality || quality,
-          size: meta.size || 0,
-          needsReCache: meta.needsReCache || false
-        };
-      }
-      return {
-        cacheKind: 'pinned',
-        quality: meta.quality || quality,
-        size: meta.size || 0,
-        needsReCache: meta.needsReCache || false
-      };
-    }
-
-    /* Cloud */
-    if (meta.type === 'cloud') {
-      /* ТЗ П.7.2: ☁ отображается ТОЛЬКО при cloud=true И cachedComplete=100% */
-      if (isDownloading || !hasBlob) {
-        return {
-          cacheKind: 'cloud_downloading',  /* → серый 🔒 в UI */
-          quality: meta.quality || quality,
-          size: meta.size || 0,
-          needsReCache: meta.needsReCache || false,
-          cloudExpiresAt: meta.cloudExpiresAt,
-          cloudFullListenCount: meta.cloudFullListenCount || 0
-        };
-      }
-      return {
-        cacheKind: 'cloud',
-        quality: meta.quality || quality,
-        size: meta.size || 0,
-        needsReCache: meta.needsReCache || false,
-        cloudExpiresAt: meta.cloudExpiresAt,
-        cloudFullListenCount: meta.cloudFullListenCount || 0
-      };
-    }
-
-    /* None */
-    return {
-      cacheKind: 'none',
-      spaceOk,
-      quality: null,
-      size: 0,
-      cloudFullListenCount: meta.cloudFullListenCount || 0
-    };
-  }
-
-  /* ─── Re-cache (ТЗ П.3.2, П.3.3, П.8.3) ─── */
-
-  /**
-   * Получить список файлов, нуждающихся в перекэшировании.
-   */
-  async getReCacheList() {
-    const metas = await getAllTrackMetas();
-    const quality = this.getCacheQuality();
-    return metas.filter(m =>
-      (m.type === 'pinned' || m.type === 'cloud') &&
-      (m.needsReCache || (m.quality && m.quality !== quality))
-    );
+    return { count, totalSize };
   }
 
   /**
-   * Запуск тихой фоновой замены (после смены качества).
-   * По одному файлу за раз (ТЗ §5.2).
+   * Алиас для PlayerCore / offline-modal.
    */
-  async startSilentReCache() {
-    const list = await this.getReCacheList();
-    const quality = this.getCacheQuality();
-    const curUid = this._getCurrentPlayingUid();
-
-    this.queue.setMaxParallel(1); /* тихий = по одному */
-
-    for (const m of list) {
-      if (m.uid === curUid) continue; /* CUR пропускается */
-      const url = getTrackUrl(m.uid, quality);
-      if (!url) continue;
-
-      const priority = m.type === 'pinned' ? 4 : 3;
-      this.queue.enqueue({ uid: m.uid, url, quality, kind: 're-cache', priority });
-    }
+  async removeAllPinnedAndCloud() {
+    return this.removeAllCached();
   }
 
-  /**
-   * Запуск принудительного перекэширования (кнопка Re-cache в OFFLINE modal).
-   * ТЗ П.8.3: 2-3 параллельных загрузки.
-   */
-  async startForcedReCache() {
-    const list = await this.getReCacheList();
-    if (list.length === 0) return { total: 0 };
+  /* ─── TTL cleanup (ТЗ П.5.6) ─── */
 
-    const quality = this.getCacheQuality();
-    const curUid = this._getCurrentPlayingUid();
-
-    this.queue.setMaxParallel(3); /* ускоренный */
-
-    let queued = 0;
-    for (const m of list) {
-      if (m.uid === curUid) continue;
-      const url = getTrackUrl(m.uid, quality);
-      if (!url) continue;
-
-      const priority = m.type === 'pinned' ? 4 : 3;
-      this.queue.enqueue({ uid: m.uid, url, quality, kind: 're-cache', priority });
-      queued++;
-    }
-
-    emit('offline:reCacheStarted', { total: queued });
-    return { total: queued, skippedCur: list.some(m => m.uid === curUid) };
-  }
-
-  /**
-   * Отмена принудительного перекэширования.
-   */
-  cancelReCache() {
-    /* Убираем все re-cache задачи из очереди */
-    this.queue._queue = this.queue._queue.filter(i => i.kind !== 're-cache');
-    this.queue.setMaxParallel(1);
-    emit('offline:reCacheCancelled');
-  }
-
-  _getCurrentPlayingUid() {
-    /* Пытаемся получить uid текущего играющего трека */
-    return window.playerCore?.currentTrack?.uid ||
-           window.playerCore?._currentUid ||
-           null;
-  }
-
-  /* ─── TTL Cleanup (ТЗ П.5.6) ─── */
-
-  /**
-   * Проверяется при старте приложения.
-   * Удаляет cloud-треки с истёкшим TTL (кроме R3).
-   */
   async _cleanExpiredCloud() {
-    const now = Date.now();
     const mode = this.getMode();
     const metas = await getAllTrackMetas();
+    const now = Date.now();
+    const expired = [];
 
     for (const m of metas) {
       if (m.type !== 'cloud') continue;
       if (!m.cloudExpiresAt) continue;
       if (m.cloudExpiresAt >= now) continue;
 
-      /* TTL истёк */
       if (mode === 'R3') {
         /* ТЗ П.5.6: В R3 не удаляем, помечаем expiredPending */
         await updateTrackMeta(m.uid, { expiredPending: true });
         continue;
       }
 
-      /* Удаляем + toast (ТЗ П.5.6) */
+      expired.push(m);
+    }
+
+    for (const m of expired) {
+      await deleteAudio(m.uid);
+      await updateTrackMeta(m.uid, {
+        type: 'none',
+        quality: null,
+        size: 0,
+        cloudFullListenCount: 0,
+        lastFullListenAt: null,
+        cloudAddedAt: null,
+        cloudExpiresAt: null,
+        needsReCache: false,
+        expiredPending: false
+      });
+
       const trackData = getTrackData(m.uid);
       const title = trackData?.title || m.uid;
-      await this.removeCached(m.uid);
       toast(`Офлайн-доступ истёк. Трек «${title}» удалён из кэша.`);
     }
+
+    if (expired.length > 0) emit('offline:stateChanged');
+    return expired.length;
   }
 
-  /**
-   * ТЗ П.5.6: При выходе из R3 — удалить все expiredPending.
-   */
+  /* ─── cleanExpiredPending — при выходе из R3 (ТЗ П.5.6) ─── */
+
   async cleanExpiredPending() {
     const metas = await getAllTrackMetas();
+    let count = 0;
 
     for (const m of metas) {
       if (!m.expiredPending) continue;
 
+      await deleteAudio(m.uid);
+      await updateTrackMeta(m.uid, {
+        type: 'none',
+        quality: null,
+        size: 0,
+        cloudFullListenCount: 0,
+        lastFullListenAt: null,
+        cloudAddedAt: null,
+        cloudExpiresAt: null,
+        needsReCache: false,
+        expiredPending: false
+      });
+
       const trackData = getTrackData(m.uid);
       const title = trackData?.title || m.uid;
-      await this.removeCached(m.uid);
       toast(`Офлайн-доступ истёк. Трек «${title}» удалён из кэша.`);
+      count++;
     }
+
+    if (count > 0) emit('offline:stateChanged');
+    return count;
   }
 
-  /* ─── Списки для UI (ТЗ П.8.5) ─── */
+  /* ─── Re-cache (ТЗ П.3.2, П.3.3) ─── */
 
   /**
-   * Возвращает список всех 🔒/☁ треков для отображения в OFFLINE modal.
-   * Порядок: pinned (по pinnedAt ASC), cloud (по cloudExpiresAt DESC).
+   * Тихая фоновая замена — одна за одной (ТЗ П.3.2)
    */
-  async getCachedTrackList() {
+  async startSilentReCache() {
+    const quality = this.getCacheQuality();
     const metas = await getAllTrackMetas();
-    const now = Date.now();
-    const result = [];
+    const curUid = window.playerCore?.getCurrentTrackUid?.();
 
-    const pinned = metas
-      .filter(m => m.type === 'pinned')
-      .sort((a, b) => (a.pinnedAt || 0) - (b.pinnedAt || 0));
+    for (const m of metas) {
+      if (m.type !== 'pinned' && m.type !== 'cloud') continue;
+      if (!m.needsReCache) continue;
+      if (m.uid === curUid) continue; /* CUR пропускается */
 
-    const cloud = metas
-      .filter(m => m.type === 'cloud')
-      .sort((a, b) => (b.cloudExpiresAt || 0) - (a.cloudExpiresAt || 0));
+      const url = getTrackUrl(m.uid, quality);
+      if (!url) continue;
 
-    for (const m of [...pinned, ...cloud]) {
-      const trackData = getTrackData(m.uid);
-      const daysLeft = m.cloudExpiresAt
-        ? Math.max(0, Math.ceil((m.cloudExpiresAt - now) / DAY_MS))
-        : null;
-
-      result.push({
-        uid: m.uid,
-        type: m.type,
-        title: trackData?.title || m.uid,
-        album: trackData?.album || '',
-        quality: m.quality || '?',
-        size: m.size || 0,
-        sizeMB: ((m.size || 0) / MB).toFixed(1),
-        daysLeft: m.type === 'cloud' ? daysLeft : null,
-        label: m.type === 'pinned' ? 'Закреплён' : `Осталось ${daysLeft} дн.`,
-        needsReCache: m.needsReCache || false,
-        cloudFullListenCount: m.cloudFullListenCount || 0
-      });
+      const priority = m.type === 'pinned' ? 4 : 3;
+      this.queue.enqueue({ uid: m.uid, url, quality, kind: 'reCache', priority });
     }
-
-    return result;
   }
 
   /**
-   * Итого по 🔒/☁ для секции «Хранилище».
+   * Принудительный ускоренный Re-cache (ТЗ П.3.3)
+   * Возвращает { total, onProgress(done, total) }
    */
+  async startForceReCache(onProgress) {
+    const quality = this.getCacheQuality();
+    const metas = await getAllTrackMetas();
+    const curUid = window.playerCore?.getCurrentTrackUid?.();
+
+    const toReCache = metas.filter(m =>
+      (m.type === 'pinned' || m.type === 'cloud') &&
+      m.needsReCache &&
+      m.uid !== curUid
+    );
+
+    if (toReCache.length === 0) return { total: 0 };
+
+    /* Ускоренный режим: 2-3 параллельных загрузки */
+    const savedParallel = this.queue._maxParallel;
+    this.queue.setMaxParallel(3);
+
+    let done = 0;
+    const total = toReCache.length;
+
+    const unsub = this.on('trackCached', ({ uid }) => {
+      if (toReCache.some(t => t.uid === uid)) {
+        done++;
+        if (onProgress) onProgress(done, total);
+      }
+      if (done >= total) {
+        this.queue.setMaxParallel(savedParallel);
+        unsub();
+      }
+    });
+
+    for (const m of toReCache) {
+      const url = getTrackUrl(m.uid, quality);
+      if (!url) { done++; continue; }
+      this.queue.enqueue({ uid: m.uid, url, quality, kind: 'reCache', priority: 4 });
+    }
+
+    return { total };
+  }
+
+  /**
+   * Сколько файлов нуждаются в re-cache (для UI)
+   */
+  async getReCacheCount() {
+    const metas = await getAllTrackMetas();
+    return metas.filter(m =>
+      (m.type === 'pinned' || m.type === 'cloud') && m.needsReCache
+    ).length;
+  }
+
+  /* ─── getCacheSummary (для OFFLINE modal) ─── */
+
   async getCacheSummary() {
     const metas = await getAllTrackMetas();
     let pinnedCount = 0, pinnedSize = 0;
     let cloudCount = 0, cloudSize = 0;
-    let needsReCacheCount = 0;
+    let dynamicCount = 0, dynamicSize = 0;
+    let reCacheCount = 0;
 
     for (const m of metas) {
-      if (m.type === 'pinned') {
-        pinnedCount++;
-        pinnedSize += m.size || 0;
-      } else if (m.type === 'cloud') {
-        cloudCount++;
-        cloudSize += m.size || 0;
+      const sz = m.size || 0;
+      if (m.type === 'pinned') { pinnedCount++; pinnedSize += sz; }
+      else if (m.type === 'cloud') { cloudCount++; cloudSize += sz; }
+      else if (m.type === 'dynamic' || m.type === 'playbackCache') {
+        dynamicCount++; dynamicSize += sz;
       }
-      if ((m.type === 'pinned' || m.type === 'cloud') &&
-          (m.needsReCache || (m.quality && m.quality !== this.getCacheQuality()))) {
-        needsReCacheCount++;
+      if ((m.type === 'pinned' || m.type === 'cloud') && m.needsReCache) {
+        reCacheCount++;
       }
     }
 
+    const est = await estimateUsage().catch(() => ({ used: 0, quota: 0, free: 0 }));
+
     return {
-      pinnedCount, pinnedSize, pinnedSizeMB: (pinnedSize / MB).toFixed(1),
-      cloudCount, cloudSize, cloudSizeMB: (cloudSize / MB).toFixed(1),
-      totalCount: pinnedCount + cloudCount,
-      totalSize: pinnedSize + cloudSize,
-      totalSizeMB: ((pinnedSize + cloudSize) / MB).toFixed(1),
-      needsReCacheCount,
-      spaceOk: this.isSpaceOk()
+      pinned: { count: pinnedCount, size: pinnedSize },
+      cloud: { count: cloudCount, size: cloudSize },
+      dynamic: { count: dynamicCount, size: dynamicSize },
+      total: {
+        count: pinnedCount + cloudCount + dynamicCount,
+        size: pinnedSize + cloudSize + dynamicSize
+      },
+      reCacheCount,
+      storage: {
+        used: est.used || 0,
+        quota: est.quota || 0,
+        free: est.free || 0
+      },
+      quality: this.getCacheQuality(),
+      mode: this.getMode(),
+      cloudN: this.getCloudN(),
+      cloudD: this.getCloudD(),
+      spaceOk: this._spaceOk
+    };
+  }
+
+  /**
+   * Мост для offline-modal: getCacheStats() → getCacheSummary()
+   */
+  async getCacheStats() {
+    return this.getCacheSummary();
+  }
+
+  /* ─── getCacheList (для «Список 🔒/☁» в OFFLINE modal, ТЗ П.8.5) ─── */
+
+  async getCacheList() {
+    const metas = await getAllTrackMetas();
+    const now = Date.now();
+    const pinnedList = [];
+    const cloudList = [];
+
+    for (const m of metas) {
+      const trackData = getTrackData(m.uid);
+      const title = trackData?.title || m.uid;
+
+      if (m.type === 'pinned') {
+        pinnedList.push({
+          uid: m.uid,
+          title,
+          type: 'pinned',
+          quality: m.quality || '?',
+          size: m.size || 0,
+          pinnedAt: m.pinnedAt || 0,
+          label: 'Закреплён'
+        });
+      } else if (m.type === 'cloud') {
+        const daysLeft = m.cloudExpiresAt
+          ? Math.max(0, Math.ceil((m.cloudExpiresAt - now) / DAY_MS))
+          : 0;
+        cloudList.push({
+          uid: m.uid,
+          title,
+          type: 'cloud',
+          quality: m.quality || '?',
+          size: m.size || 0,
+          cloudExpiresAt: m.cloudExpiresAt || 0,
+          daysLeft,
+          label: `Осталось ${daysLeft} дн.`
+        });
+      }
+    }
+
+    /* ТЗ П.8.5: Pinned в порядке добавления, Cloud по cloudExpiresAt DESC */
+    pinnedList.sort((a, b) => (a.pinnedAt || 0) - (b.pinnedAt || 0));
+    cloudList.sort((a, b) => (b.cloudExpiresAt || 0) - (a.cloudExpiresAt || 0));
+
+    return [...pinnedList, ...cloudList];
+  }
+
+  /* ─── getGlobalStatistics (для statistics-modal) ─── */
+
+  async getGlobalStatistics() {
+    const metas = await getAllTrackMetas();
+    let totalListens = 0;
+    let totalSeconds = 0;
+    let totalCloudListens = 0;
+    const perTrack = [];
+
+    for (const m of metas) {
+      totalListens += m.globalFullListenCount || 0;
+      totalSeconds += m.globalListenSeconds || 0;
+      totalCloudListens += m.cloudFullListenCount || 0;
+
+      if ((m.globalFullListenCount || 0) > 0) {
+        const trackData = getTrackData(m.uid);
+        perTrack.push({
+          uid: m.uid,
+          title: trackData?.title || m.uid,
+          listens: m.globalFullListenCount || 0,
+          seconds: m.globalListenSeconds || 0,
+          cloudListens: m.cloudFullListenCount || 0,
+          type: m.type || 'none'
+        });
+      }
+    }
+
+    perTrack.sort((a, b) => b.listens - a.listens);
+
+    return {
+      totalListens,
+      totalSeconds,
+      totalCloudListens,
+      tracksWithListens: perTrack.length,
+      topTracks: perTrack.slice(0, 20),
+      allTracks: perTrack
+    };
+  }
+
+  /* ─── resolveTrackSource (ТЗ П.6.1) ─── */
+
+  async resolveTrackSource(uid, trackData = {}) {
+    const quality = this.getCacheQuality();
+
+    /* 1. Локальная копия в текущем качестве */
+    const exact = await getAudioBlob(uid, quality);
+    if (exact) {
+      return {
+        source: 'local',
+        blob: exact,
+        quality,
+        needsReCache: false
+      };
+    }
+
+    /* 2. Локальная копия в другом качестве */
+    const any = await getAudioBlobAny(uid);
+    if (any) {
+      /* Пометить needsReCache */
+      await updateTrackMeta(uid, { needsReCache: true });
+      return {
+        source: 'local',
+        blob: any.blob,
+        quality: any.quality,
+        needsReCache: true
+      };
+    }
+
+    /* 3. Стриминг с GitHub */
+    const q = quality;
+    const url = (q === 'lo')
+      ? (trackData.audio_low || trackData.audio || trackData.src || null)
+      : (trackData.audio || trackData.src || null);
+
+    if (url && navigator.onLine) {
+      return {
+        source: 'stream',
+        url,
+        quality: q,
+        needsReCache: false
+      };
+    }
+
+    /* 4. Нет ни копии, ни сети */
+    return {
+      source: 'unavailable',
+      url: null,
+      quality: null,
+      needsReCache: false
     };
   }
 
@@ -5765,99 +5953,36 @@ class OfflineManager {
     return this.queue.getStatus();
   }
 
-  /* ─── Storage estimate ─── */
-
-  async getStorageEstimate() {
-    return estimateUsage();
+  isDownloading(uid) {
+    return this.queue.isDownloading(uid);
   }
 
-  /* ─── Resolve: приоритет локальной копии (ТЗ П.6.1) ─── */
-
-  /**
-   * Попытаться получить blob URL для трека из кэша.
-   * Если blob есть — возвращает { blobUrl, quality, needsReCache }.
-   * Если нет — возвращает null (caller должен использовать стриминг).
-   */
-  async resolveLocalBlob(uid) {
-    if (!uid) return null;
-
-    const meta = (await getTrackMeta(uid)) || {};
-    if (meta.type !== 'pinned' && meta.type !== 'cloud') return null;
-
-    const preferredQ = this.getCacheQuality();
-
-    /* 1. Попытка в текущем качестве */
-    const exact = await getAudioBlob(uid, preferredQ);
-    if (exact) {
-      const url = URL.createObjectURL(exact);
-      return { blobUrl: url, quality: preferredQ, needsReCache: false };
-    }
-
-    /* 2. Fallback: другое качество (ТЗ П.6.1 шаг 2) */
-    const other = preferredQ === 'hi' ? 'lo' : 'hi';
-    const fallback = await getAudioBlob(uid, other);
-    if (fallback) {
-      const url = URL.createObjectURL(fallback);
-      /* Пометить needsReCache */
-      await updateTrackMeta(uid, { needsReCache: true });
-      return { blobUrl: url, quality: other, needsReCache: true };
-    }
-
-    return null;
+  cancelDownload(uid) {
+    this.queue.cancel(uid);
   }
 
-  /* ─── Diagnostic / Debug ─── */
-
-  async getFullState() {
-    const metas = await getAllTrackMetas();
-    return {
-      mode: this.getMode(),
-      quality: this.getCacheQuality(),
-      cloudN: this.getCloudN(),
-      cloudD: this.getCloudD(),
-      netPolicy: this.getNetPolicy(),
-      spaceOk: this.isSpaceOk(),
-      queue: this.queue.getStatus(),
-      tracks: metas
-    };
-  }
+  pauseDownloads() { this.queue.pause(); }
+  resumeDownloads() { this.queue.resume(); }
 }
 
 /* ═══════ Singleton ═══════ */
 
-const offlineManager = new OfflineManager();
-export default offlineManager;
+let _instance = null;
 
-/* ═══════ Обработчики событий Download Queue → meta update ═══════ */
-
-window.addEventListener('offline:trackCached', async (e) => {
-  const { uid, quality, size } = e.detail;
-  const meta = (await getTrackMeta(uid)) || {};
-
-  /* Если это re-cache — удалить старый blob другого качества */
-  if (meta.quality && meta.quality !== quality) {
-    try { await deleteAudio(uid, meta.quality); } catch {}
+/**
+ * Получить (и при необходимости создать) синглтон OfflineManager.
+ * Импорт: import offlineManager, { getOfflineManager } from './offline-manager.js'
+ */
+export function getOfflineManager() {
+  if (!_instance) {
+    _instance = new OfflineManager();
   }
+  return _instance;
+}
 
-  await updateTrackMeta(uid, {
-    quality,
-    size,
-    needsReCache: false
-  });
-
-  emit('offline:stateChanged');
-});
-
-/* ═══════ Обработчик online/offline ═══════ */
-
-window.addEventListener('online', () => {
-  offlineManager.queue.resume();
-});
-
-window.addEventListener('offline', () => {
-  offlineManager.queue.pause();
-});
-
+/* Default export — тот же синглтон */
+const offlineManager = getOfflineManager();
+export default offlineManager;
 
 //=================================================
 // FILE: /scripts/offline/track-resolver.js
