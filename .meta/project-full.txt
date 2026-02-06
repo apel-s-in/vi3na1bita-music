@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-97231c808a89c28ae8d528ccf89051117ee97a7a.idx
-│   │       ├── pack-97231c808a89c28ae8d528ccf89051117ee97a7a.pack
-│   │       └── pack-97231c808a89c28ae8d528ccf89051117ee97a7a.rev
+│   │       ├── pack-066158ea56eedfc6575fb9285990e28df24a70b2.idx
+│   │       ├── pack-066158ea56eedfc6575fb9285990e28df24a70b2.pack
+│   │       └── pack-066158ea56eedfc6575fb9285990e28df24a70b2.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 12:35:28 UTC
+Сгенерировано: 2026-02-06 12:37:15 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5156,12 +5156,7 @@ class DownloadQueue {
       this._active.delete(uid);
 
       await setAudioBlob(uid, quality, blob);
-      await setTrackMeta(uid, {
-        type,
-        quality,
-        size: blob.size,
-        ttl: type === 'cloud' ? CLOUD_TTL_MS : null
-      });
+      await setTrackMeta(uid, { type, quality, size: blob.size, url, ttl: type === 'cloud' ? CLOUD_TTL_MS : null });
 
       emit('offline:trackCached', { uid, quality, type, size: blob.size });
       this._emitUpdate();
@@ -5383,13 +5378,7 @@ class OfflineManager {
       const uid = track.uid || track.id;
       if (!uid || !track.url) continue;
 
-      await setTrackMeta(uid, {
-        type: 'pinned',
-        quality,
-        albumId,
-        title: track.title || '',
-        ttl: null
-      });
+      await setTrackMeta(uid, { type: 'pinned', quality, albumId, title: track.title || '', url: track.url, ttl: null });
 
       this._queue.enqueue(uid, track.url, quality, 'pinned', 10);
     }
