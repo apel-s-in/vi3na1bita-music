@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4459d9f33ae3c5af9ba5a3ed055858cd9848cc02.idx
-│   │       ├── pack-4459d9f33ae3c5af9ba5a3ed055858cd9848cc02.pack
-│   │       └── pack-4459d9f33ae3c5af9ba5a3ed055858cd9848cc02.rev
+│   │       ├── pack-2f20dcc8828d773e2e5cbd63049153c27685300d.idx
+│   │       ├── pack-2f20dcc8828d773e2e5cbd63049153c27685300d.pack
+│   │       └── pack-2f20dcc8828d773e2e5cbd63049153c27685300d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 21:08:20 UTC
+Сгенерировано: 2026-02-06 21:08:50 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7068,7 +7068,7 @@ function _showCloudMenu(ind, uid) {
 
   /* Закрытие по клику вне меню */
   setTimeout(() => {
-    document.addEventListener('click', _onDocClick, { once: true });
+    document.addEventListener('click', _onDocClickForMenu, { once: true });
   }, 50);
 }
 
