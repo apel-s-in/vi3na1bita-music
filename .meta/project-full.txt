@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1d25751002759a5112afc207e501743b5251d613.idx
-│   │       ├── pack-1d25751002759a5112afc207e501743b5251d613.pack
-│   │       └── pack-1d25751002759a5112afc207e501743b5251d613.rev
+│   │       ├── pack-1971e5eb1f9a42a964cd05534e3f980273e9b5ee.idx
+│   │       ├── pack-1971e5eb1f9a42a964cd05534e3f980273e9b5ee.pack
+│   │       └── pack-1971e5eb1f9a42a964cd05534e3f980273e9b5ee.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 21:42:57 UTC
+Сгенерировано: 2026-02-06 21:44:01 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9445,6 +9445,10 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       this.sound = null;
       this.qualityMode = normQ(localStorage.getItem(LS_PQ));
       this._loadToken = 0;
+
+      window.addEventListener('offline:uiChanged', () => {
+        this.qualityMode = normQ(localStorage.getItem(LS_PQ));
+      });
       this._ev = new Map();
       this._favSubs = new Set();
       this._sleepTimer = null;
@@ -9632,6 +9636,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       // Resolve URL through offline system
       const trackMeta = getTrackByUid(track.uid);
       const originalUrl = track.src || track.audio || trackMeta?.audio || null;
+      this.qualityMode = normQ(localStorage.getItem(LS_PQ));
       const quality = this.qualityMode;
       
       let res;
