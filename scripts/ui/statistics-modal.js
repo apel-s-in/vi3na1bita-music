@@ -107,8 +107,10 @@ function _onEscStats(e) {
 }
 
 export function initStatisticsModal() {
+  /* Делегирование для data-атрибутов и .stats-modal-trigger,
+     но НЕ для #stats-btn — он обрабатывается в player-ui.js через actions map */
   document.addEventListener('click', (e) => {
-    const trigger = e.target.closest('[data-open-stats-modal], .stats-modal-trigger, #stats-btn');
+    const trigger = e.target.closest('[data-open-stats-modal], .stats-modal-trigger');
     if (trigger) {
       e.preventDefault();
       openStatisticsModal();
