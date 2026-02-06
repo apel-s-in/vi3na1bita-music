@@ -221,7 +221,7 @@ class AlbumsManager {
     const list = $('track-list');
     if (!list) return;
     list.querySelectorAll('.track[data-uid]').forEach(el => {
-      injectIndicator(el, el.dataset.uid);
+      injectIndicator(el);
     });
   }
 
