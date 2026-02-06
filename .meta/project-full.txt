@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1b30f2d04a6eba1f5f526325ee7b1d15fffc047c.idx
-│   │       ├── pack-1b30f2d04a6eba1f5f526325ee7b1d15fffc047c.pack
-│   │       └── pack-1b30f2d04a6eba1f5f526325ee7b1d15fffc047c.rev
+│   │       ├── pack-0298f32ebe0c39e22612e8b2d0f28c851d0c1338.idx
+│   │       ├── pack-0298f32ebe0c39e22612e8b2d0f28c851d0c1338.pack
+│   │       └── pack-0298f32ebe0c39e22612e8b2d0f28c851d0c1338.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 20:06:01 UTC
+Сгенерировано: 2026-02-06 20:06:38 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2366,7 +2366,7 @@ async function _prefetchNeighbors(currentUid) {
 
     if (await mgr.hasSpace()) {
       mgr.enqueueAudioDownload(uid, {
-        priority: 6, /* P1 — neighbor */
+        priority: 8, /* P1 — neighbor (ТЗ П.10) */
         kind: 'playbackCache'
       });
     }
