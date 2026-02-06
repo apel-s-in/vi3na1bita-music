@@ -15,9 +15,17 @@ let _initialized = false;
 /**
  * initOfflineUI() — вызвать после DOMContentLoaded и после OfflineManager.init().
  */
-export function initOfflineUI() {
+export async function initOfflineUI() {
   if (_initialized) return;
   _initialized = true;
+
+  /* 0. Инициализация OfflineManager (открыть IndexedDB, очистить expired) */
+  try {
+    const { getOfflineManager } = await import('../offline/offline-manager.js');
+    await getOfflineManager().initialize();
+  } catch (e) {
+    console.warn('[OfflineUI] OfflineManager init failed:', e);
+  }
 
   /* 1. Индикаторы 🔒/☁ в трек-листе */
   initOfflineIndicators();
