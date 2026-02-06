@@ -648,10 +648,7 @@ class OfflineManager {
     emit('offline:stateChanged');
   }
 
-  /**
-   * Мост для PlayerCore / statistics-modal:
-   * Записать статистику прослушивания (алиас registerFullListen).
-   */
+  /** Алиас registerFullListen для совместимости с stats-tracker. */
   async recordListenStats(uid, params = {}) {
     return this.registerFullListen(uid, params);
   }
