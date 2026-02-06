@@ -155,7 +155,7 @@ async function _prefetchNeighbors(currentUid) {
 
     if (await mgr.hasSpace()) {
       mgr.enqueueAudioDownload(uid, {
-        priority: 6, /* P1 — neighbor */
+        priority: 8, /* P1 — neighbor (ТЗ П.10) */
         kind: 'playbackCache'
       });
     }
