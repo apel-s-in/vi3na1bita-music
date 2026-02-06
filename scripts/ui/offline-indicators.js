@@ -159,10 +159,9 @@ let _activeCloudMenu = null;
 
 function _closeCloudMenu() {
   if (_activeCloudMenu) {
-    _activeCloudMenu.remove();
+    if (_activeCloudMenu.parentNode) _activeCloudMenu.parentNode.removeChild(_activeCloudMenu);
     _activeCloudMenu = null;
   }
-  document.removeEventListener('click', _onDocClickForMenu);
 }
 
 function _onDocClickForMenu(e) {
@@ -215,16 +214,40 @@ function _showCloudMenu(ind, uid) {
   });
   menu.appendChild(delItem);
 
-  /* Позиционируем относительно ind */
-  ind.style.position = 'relative';
-  ind.appendChild(menu);
-
+  /* Позиционируем через fixed в body, чтобы не перекрывалось плеером */
+  menu.style.position = 'fixed';
+  menu.style.zIndex = '99999';
+  document.body.appendChild(menu);
   _activeCloudMenu = menu;
+
+  /* Вычисляем позицию относительно иконки */
+  const rect = ind.getBoundingClientRect();
+  const menuH = 80; /* примерная высота меню */
+  const playerH = 90; /* высота sticky-плеера внизу */
+  const spaceBelow = window.innerHeight - rect.bottom - playerH;
+
+  if (spaceBelow >= menuH) {
+    /* Открываем вниз */
+    menu.style.top = rect.bottom + 4 + 'px';
+    menu.style.left = rect.left + 'px';
+  } else {
+    /* Открываем вверх */
+    menu.style.bottom = (window.innerHeight - rect.top + 4) + 'px';
+    menu.style.left = rect.left + 'px';
+  }
+
+  /* Не дать меню вылезти за правый край */
+  requestAnimationFrame(() => {
+    const mRect = menu.getBoundingClientRect();
+    if (mRect.right > window.innerWidth - 8) {
+      menu.style.left = (window.innerWidth - mRect.width - 8) + 'px';
+    }
+  });
 
   /* Закрытие по клику вне меню */
   setTimeout(() => {
-    document.addEventListener('click', _onDocClickForMenu);
-  }, 10);
+    document.addEventListener('click', _onDocClick, { once: true });
+  }, 50);
 }
 
 /* ═══════ Refresh helpers ═══════ */
