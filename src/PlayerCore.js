@@ -189,6 +189,12 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       localStorage.setItem(LS_VOL, Math.round(vol * 100));
     }
     getVolume() { return Number(localStorage.getItem(LS_VOL)) || 100; }
+
+    setMuted(muted) {
+      this._muted = !!muted;
+      Howler.volume(this._muted ? 0 : this.getVolume() / 100);
+    }
+    isMuted() { return !!this._muted; }
     getPosition() { return this.sound?.seek() || 0; }
     getDuration() { return this.sound?.duration() || 0; }
 
