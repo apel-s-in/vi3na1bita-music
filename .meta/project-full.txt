@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e36f62253984a08408e708369af57a1d8f58a8c1.idx
-│   │       ├── pack-e36f62253984a08408e708369af57a1d8f58a8c1.pack
-│   │       └── pack-e36f62253984a08408e708369af57a1d8f58a8c1.rev
+│   │       ├── pack-89615236d112dd4c3bd30696fc3fd427b4e6a2d7.idx
+│   │       ├── pack-89615236d112dd4c3bd30696fc3fd427b4e6a2d7.pack
+│   │       └── pack-89615236d112dd4c3bd30696fc3fd427b4e6a2d7.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -372,6 +372,7 @@ vi3na1bita-music/
 │   ├── css/
 │   │   └── offline-ui.css
 │   ├── js/
+│   │   ├── app-init-offline.js
 │   │   ├── cache-db.js
 │   │   ├── download-queue.js
 │   │   ├── integration-bridge.js
@@ -403,7 +404,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 10:44:24 UTC
+Сгенерировано: 2026-02-06 10:44:44 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8373,6 +8374,109 @@ try { main(); } catch (e) { console.error("❌", e); process.exit(1); }
   .ofl-sec h3 { font-size: 13px; }
   .ofl-btn { font-size: 11px; padding: 6px 10px; }
 }
+
+//=================================================
+// FILE: /src/js/app-init-offline.js
+/**
+ * App Init Offline v1.0
+ * Точка входа — вызывается после загрузки конфига и DOM
+ * Подключает integration-bridge к существующему приложению
+ */
+
+(function() {
+  'use strict';
+
+  function waitForDeps(callback, maxWait) {
+    const start = Date.now();
+    const check = () => {
+      // Check for essential deps
+      const hasPlayer = !!(window.PlayerCore || window.playerCore);
+      const hasBridge = !!window.OfflineBridge;
+      const hasConfig = !!(window.appConfig || window.tracksConfig);
+      const domReady = document.readyState !== 'loading';
+
+      if (hasPlayer && hasBridge && domReady) {
+        callback();
+        return;
+      }
+
+      if (Date.now() - start > (maxWait || 10000)) {
+        console.warn('[AppInitOffline] Timeout waiting for deps. Proceeding anyway.');
+        callback();
+        return;
+      }
+
+      setTimeout(check, 200);
+    };
+    check();
+  }
+
+  function initOfflineSystem() {
+    console.log('[AppInitOffline] Starting...');
+
+    const playerCore = window.PlayerCore || window.playerCore;
+    if (!playerCore) {
+      console.error('[AppInitOffline] PlayerCore not found!');
+      return;
+    }
+
+    // Gather tracks from config
+    let allTracks = [];
+    let albumsData = [];
+    let baseUrl = '';
+
+    // Try various config sources
+    if (window.appConfig) {
+      allTracks = window.appConfig.tracks || window.appConfig.allTracks || [];
+      albumsData = window.appConfig.albums || [];
+      baseUrl = window.appConfig.baseUrl || window.appConfig.audioBaseUrl || '';
+    }
+
+    if (allTracks.length === 0 && window.tracksConfig) {
+      allTracks = window.tracksConfig;
+    }
+
+    if (allTracks.length === 0) {
+      // Try to gather from DOM
+      const trackEls = document.querySelectorAll('[data-uid]');
+      trackEls.forEach(el => {
+        const uid = el.dataset.uid;
+        const title = el.dataset.title || el.textContent.trim();
+        const audio = el.dataset.audio;
+        const audioLow = el.dataset.audioLow;
+        if (uid && audio) {
+          allTracks.push({ uid, title, audio, audio_low: audioLow });
+        }
+      });
+    }
+
+    // Detect base URL
+    if (!baseUrl) {
+      // Try to infer from first track URL
+      if (allTracks.length > 0 && allTracks[0].audio) {
+        const parts = allTracks[0].audio.split('/');
+        if (parts.length > 1) {
+          // Don't set base — paths are relative
+        }
+      }
+    }
+
+    console.log(`[AppInitOffline] Found ${allTracks.length} tracks, ${albumsData.length} albums`);
+
+    // Initialize
+    if (window.OfflineBridge && window.OfflineBridge.initialize) {
+      window.OfflineBridge.initialize({
+        playerCore,
+        allTracks,
+        albumsData,
+        baseUrl
+      });
+    }
+  }
+
+  // Auto-init when ready
+  waitForDeps(initOfflineSystem);
+})();
 
 //=================================================
 // FILE: /src/js/cache-db.js
