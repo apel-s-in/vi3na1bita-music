@@ -1,108 +1,92 @@
 /**
- * cache-progress-overlay.js — Оверлей прогресса кэширования
- * Показывает индикатор загрузки на карточках треков
+ * cache-progress-overlay.js — Overlay с прогрессом скачивания.
+ *
+ * Показывает индикатор когда идёт фоновое кэширование 🔒/☁ треков.
  */
 
-import { getOfflineManager } from '../offline/offline-manager.js';
+import offlineManager, { getOfflineManager } from '../offline/offline-manager.js';
 
 let _overlay = null;
-let _unsubs = [];
+let _visible = false;
 
 export function initCacheProgressOverlay() {
+  /* Подписка на события */
+  window.addEventListener('offline:downloadStart', _onDownloadStart);
+  window.addEventListener('offline:trackCached', _onTrackCached);
+  window.addEventListener('offline:downloadFailed', _onUpdate);
+}
+
+function _onDownloadStart(e) {
+  if (!_visible) _show();
+  _update();
+}
+
+function _onTrackCached(e) {
+  _update();
+}
+
+function _onUpdate() {
+  _update();
+}
+
+function _show() {
+  if (_overlay) return;
+
+  _overlay = document.createElement('div');
+  _overlay.id = 'cache-progress-overlay';
+  _overlay.style.cssText = `
+    position: fixed;
+    bottom: 80px;
+    right: 16px;
+    z-index: 9000;
+    background: rgba(26, 26, 46, 0.95);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 12px;
+    color: #aaa;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    transition: opacity 0.3s;
+    max-width: 260px;
+  `;
+  _overlay.innerHTML = `
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span style="animation: offlineIndBlink 1.2s infinite;">⬇</span>
+      <span id="cache-progress-text">Скачивание…</span>
+    </div>
+  `;
+
+  document.body.appendChild(_overlay);
+  _visible = true;
+}
+
+function _hide() {
+  if (_overlay) {
+    _overlay.style.opacity = '0';
+    setTimeout(() => {
+      _overlay?.remove();
+      _overlay = null;
+      _visible = false;
+    }, 300);
+  }
+}
+
+function _update() {
   const mgr = getOfflineManager();
+  const status = mgr.getDownloadStatus();
 
-  // Слушаем события кэширования
-  const onTrackCached = (e) => {
-    const { uid } = e.detail || {};
-    if (uid) updateTrackCard(uid, 100, 'cached');
-  };
+  if (status.active === 0 && status.queued === 0) {
+    _hide();
+    return;
+  }
 
-  const onQueueUpdate = (e) => {
-    const status = e.detail || {};
-    // Обновляем все карточки в очереди
-    if (status.items) {
-      status.items.forEach(item => {
-        updateTrackCard(item.uid, 0, 'queued');
-      });
-    }
-  };
+  if (!_visible) _show();
 
-  const onDownloadFailed = (e) => {
-    const { uid } = e.detail || {};
-    if (uid) updateTrackCard(uid, 0, 'failed');
-  };
-
-  window.addEventListener('offline:trackCached', onTrackCached);
-  window.addEventListener('offline:queueUpdate', onQueueUpdate);
-  window.addEventListener('offline:downloadFailed', onDownloadFailed);
-
-  _unsubs.push(
-    () => window.removeEventListener('offline:trackCached', onTrackCached),
-    () => window.removeEventListener('offline:queueUpdate', onQueueUpdate),
-    () => window.removeEventListener('offline:downloadFailed', onDownloadFailed)
-  );
-
-  console.log('[CacheProgressOverlay] initialized');
+  const text = _overlay?.querySelector('#cache-progress-text');
+  if (text) {
+    const total = status.active + status.queued;
+    text.textContent = `Скачивание: ${status.active} активных, ${status.queued} в очереди`;
+  }
 }
 
-function updateTrackCard(uid, progress, state) {
-  // Ищем карточку трека по data-uid
-  const cards = document.querySelectorAll(`[data-uid="${uid}"], [data-track-uid="${uid}"]`);
-  cards.forEach(card => {
-    let indicator = card.querySelector('.cache-progress-indicator');
-
-    if (state === 'cached') {
-      // Трек закэширован — убираем индикатор, добавляем иконку
-      if (indicator) indicator.remove();
-      let badge = card.querySelector('.cache-badge');
-      if (!badge) {
-        badge = document.createElement('span');
-        badge.className = 'cache-badge';
-        badge.style.cssText = 'position:absolute;top:4px;right:4px;font-size:10px;opacity:0.7;z-index:5;';
-        badge.textContent = '💾';
-        card.style.position = card.style.position || 'relative';
-        card.appendChild(badge);
-      }
-      return;
-    }
-
-    if (state === 'failed') {
-      if (indicator) {
-        indicator.style.background = 'rgba(214,48,49,0.3)';
-        setTimeout(() => indicator.remove(), 2000);
-      }
-      return;
-    }
-
-    // Queued / downloading — показываем прогресс-бар
-    if (!indicator) {
-      indicator = document.createElement('div');
-      indicator.className = 'cache-progress-indicator';
-      indicator.style.cssText = `
-        position:absolute; bottom:0; left:0; right:0; height:3px;
-        background:rgba(108,92,231,0.3); z-index:5; overflow:hidden;
-        border-radius:0 0 8px 8px;
-      `;
-      indicator.innerHTML = '<div class="cache-progress-bar" style="height:100%;width:0%;background:#6c5ce7;transition:width 0.3s;border-radius:0 0 8px 8px;"></div>';
-      card.style.position = card.style.position || 'relative';
-      card.appendChild(indicator);
-    }
-
-    const bar = indicator.querySelector('.cache-progress-bar');
-    if (bar) bar.style.width = `${Math.min(100, progress)}%`;
-  });
-}
-
-/**
- * Обновить оверлей для конкретного трека (вызывается извне)
- */
-export function updateCacheOverlay(uid, progress, state) {
-  updateTrackCard(uid, progress, state);
-}
-
-export function destroyCacheProgressOverlay() {
-  _unsubs.forEach(fn => fn());
-  _unsubs = [];
-}
-
-export default initCacheProgressOverlay;
+export default { initCacheProgressOverlay };
