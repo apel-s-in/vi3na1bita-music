@@ -39,6 +39,14 @@ export async function initOfflineUI() {
   /* 4. Overlay прогресса загрузки */
   initCacheProgressOverlay();
 
+  /* 5. Playback Cache (prefetch соседей, регистрация full listen) */
+  try {
+    const { initPlaybackCache } = await import('./playback-cache-bootstrap.js');
+    initPlaybackCache();
+  } catch (e) {
+    console.warn('[OfflineUI] PlaybackCache init failed:', e);
+  }
+
   console.log('[OfflineUI] All components initialized');
 }
 
