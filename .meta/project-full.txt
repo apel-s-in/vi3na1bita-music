@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d93c5a8ae798d65169d948797dd1bd0808f8a7c2.idx
-│   │       ├── pack-d93c5a8ae798d65169d948797dd1bd0808f8a7c2.pack
-│   │       └── pack-d93c5a8ae798d65169d948797dd1bd0808f8a7c2.rev
+│   │       ├── pack-58f33f850d8cfda3b76a9403ba1540220d5d1339.idx
+│   │       ├── pack-58f33f850d8cfda3b76a9403ba1540220d5d1339.pack
+│   │       └── pack-58f33f850d8cfda3b76a9403ba1540220d5d1339.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 21:36:23 UTC
+Сгенерировано: 2026-02-06 21:42:08 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9636,18 +9636,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         };
         const resolved = await resolveTrackUrl(track.uid, trackDataForResolve);
 
-        /* ТЗ П.6.1: Если local blob — обернуть через Utils.blob для LRU revoke */
         let url = resolved.url;
-        if (resolved.source === 'local' && resolved._blobUrl && url) {
-          const U = W.Utils;
-          if (U?.blob?.createUrl && resolved.url) {
-            /* revoke старый blob этого трека, создать новый */
-            try { U.blob.revokeUrl('player_' + track.uid); } catch {}
-            /* resolved.url уже является objectURL; запоминаем для будущего revoke */
-            U.blob.createUrl('player_' + track.uid, null); // регистрация ключа не нужна, URL уже создан
-            /* Просто запоминаем для cleanup */
-          }
-        }
 
         res = {
           url,
