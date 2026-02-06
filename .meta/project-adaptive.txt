@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-83fd7bcbb865434b31832deef69a749b9b84f99e.idx
-│   │       ├── pack-83fd7bcbb865434b31832deef69a749b9b84f99e.pack
-│   │       └── pack-83fd7bcbb865434b31832deef69a749b9b84f99e.rev
+│   │       ├── pack-bb29f9e82115bd89d684957df12715325d5dde6d.idx
+│   │       ├── pack-bb29f9e82115bd89d684957df12715325d5dde6d.pack
+│   │       └── pack-bb29f9e82115bd89d684957df12715325d5dde6d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 20:04:50 UTC
+Сгенерировано: 2026-02-06 20:05:30 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2715,7 +2715,7 @@ export default {
         'lyrics-text-btn': () => W.LyricsModal?.show(),
         'pulse-btn': () => actions.togglePulse(),
         // 'sleep-timer-btn': handled by scripts/ui/sleep.js delegation
-        'stats-btn': () => window.StatisticsModal?.show(),
+        'stats-btn': () => window.StatisticsModal?.openStatisticsModal?.(),
         'track-download-btn': (b) => { if (!b.getAttribute('href')) U.ui.toast('Скачивание недоступно', 'error'); }
     };
 
