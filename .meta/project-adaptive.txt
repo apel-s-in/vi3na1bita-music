@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2f4a06691258b72e914bafdaeceb224915d49059.idx
-│   │       ├── pack-2f4a06691258b72e914bafdaeceb224915d49059.pack
-│   │       └── pack-2f4a06691258b72e914bafdaeceb224915d49059.rev
+│   │       ├── pack-6c8269d7a6cb190f480f404126d9679b75d286f4.idx
+│   │       ├── pack-6c8269d7a6cb190f480f404126d9679b75d286f4.pack
+│   │       └── pack-6c8269d7a6cb190f480f404126d9679b75d286f4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 21:32:56 UTC
+Сгенерировано: 2026-02-06 21:33:49 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1707,6 +1707,7 @@ export default window.AlbumsManager;
 import { $ } from '../utils/app-utils.js';
 import { renderFavoritesList, renderFavoritesEmpty, bindFavoritesList } from '../../ui/favorites-view.js';
 import { loadAndRenderNewsInline } from '../../ui/news-inline.js';
+import { injectOfflineIndicators } from '../../ui/offline-indicators.js';
 
 const FAV = window.SPECIAL_FAVORITES_KEY || '__favorites__';
 const NEWS = window.SPECIAL_RELIZ_KEY || '__reliz__';
@@ -1731,7 +1732,11 @@ export async function loadFavoritesAlbum(ctx) {
     await refreshData();
     const model = getUiModel();
     if (!model.length) renderFavoritesEmpty(container);
-    else renderFavoritesList(container, model);
+    else {
+      renderFavoritesList(container, model);
+      /* ТЗ П.7.3: Инъекция 🔒/☁ индикаторов в Favorites */
+      await injectOfflineIndicators(container);
+    }
   };
 
   if (!ctx._favoritesViewBound) {
