@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3550791f9e96e3cbcacc2b7ada5ab78c8bd76a8d.idx
-│   │       ├── pack-3550791f9e96e3cbcacc2b7ada5ab78c8bd76a8d.pack
-│   │       └── pack-3550791f9e96e3cbcacc2b7ada5ab78c8bd76a8d.rev
+│   │       ├── pack-8bea88dfab786a7c6e6a8fcbc198b25c13a2e1e7.idx
+│   │       ├── pack-8bea88dfab786a7c6e6a8fcbc198b25c13a2e1e7.pack
+│   │       └── pack-8bea88dfab786a7c6e6a8fcbc198b25c13a2e1e7.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 18:39:53 UTC
+Сгенерировано: 2026-02-06 18:40:24 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6152,6 +6152,28 @@ export async function resolveTrackSource(uid, trackData) {
 export async function onTrackPlayedFull(uid) {
   const mgr = getOfflineManager();
   await mgr.registerFullListen(uid);
+}
+
+/**
+ * Compat alias: PlayerCore импортирует resolveTrackUrl.
+ * Адаптер: принимает (uid, networkUrl, opts), возвращает { url, source, quality }.
+ */
+export async function resolveTrackUrl(uid, networkUrl, opts = {}) {
+  const quality = opts.quality || 'hi';
+  const trackData = window.TrackRegistry?.getTrackByUid?.(uid);
+
+  const result = await resolveTrackSource(uid, trackData);
+
+  if (result.fromCache) {
+    return { url: result.src, source: 'cache', quality: result.quality };
+  }
+
+  /* Если resolveTrackSource не нашёл в кэше — используем networkUrl */
+  return {
+    url: result.src || networkUrl || '',
+    source: result.src ? 'network' : null,
+    quality
+  };
 }
 
 //=================================================
