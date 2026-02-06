@@ -708,9 +708,16 @@ class OfflineManager {
     // Guard: если DB ещё не инициализирована — возвращаем безопасный дефолт
     if (!this._ready) {
       return {
-        status: 'none', icon: '🔒', color: 'grey', opacity: 0.4,
-        clickable: false, downloading: false, quality: null,
-        cloudFullListenCount: 0, cloudExpiresAt: null, needsReCache: false
+        status: 'none',
+        icon: '🔒',
+        color: 'grey',
+        opacity: 0.4,
+        clickable: true,
+        downloading: false,
+        quality: null,
+        cloudFullListenCount: 0,
+        cloudExpiresAt: null,
+        needsReCache: false
       };
     }
     const meta = await getTrackMeta(uid);
