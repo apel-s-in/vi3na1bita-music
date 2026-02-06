@@ -1,99 +1,122 @@
 /**
- * cloud-menu.js — Popup-меню для ☁ индикатора.
+ * cloud-menu.js — Контекстное меню ☁/🔒 при правом клике на индикаторе.
  *
- * Два пункта:
- *   «Закрепить 🔒» → promoteCloudToPinned
- *   «Удалить из кэша» → removeFromCloudCache (с confirm)
+ * ТЗ: П.5.5, П.4.4
  */
 
-import offlineManager from './offline-manager.js';
+import { getOfflineManager } from '../offline/offline-manager.js';
 
-let _menuEl = null;
-let _currentUid = null;
+let _activeMenu = null;
 
-function getOrCreateMenu() {
-  if (_menuEl) return _menuEl;
+export function showCloudMenu(uid, anchorEl, options = {}) {
+  closeCloudMenu();
 
-  _menuEl = document.createElement('div');
-  _menuEl.className = 'cloud-menu-popup';
-  _menuEl.innerHTML = `
-    <div class="cloud-menu-item" data-action="pin">
-      <span>\u{1F512}</span> Закрепить
-    </div>
-    <div class="cloud-menu-item cloud-menu-delete" data-action="delete">
-      <span>\u{1F5D1}</span> Удалить из кэша
-    </div>
-  `;
+  const mgr = getOfflineManager();
 
-  _menuEl.addEventListener('click', onMenuClick);
-  document.body.appendChild(_menuEl);
+  const menu = document.createElement('div');
+  menu.className = 'cloud-context-menu';
+  menu.setAttribute('data-uid', uid);
 
-  // Закрытие по клику вне меню
-  document.addEventListener('click', onOutsideClick);
-  document.addEventListener('scroll', hideMenu, true);
+  /* ── Определяем состояние ── */
+  mgr.getTrackOfflineState(uid).then(state => {
+    const items = [];
 
-  return _menuEl;
-}
-
-function onMenuClick(e) {
-  const item = e.target.closest('.cloud-menu-item');
-  if (!item || !_currentUid) return;
-
-  e.stopPropagation();
-  const action = item.dataset.action;
-
-  if (action === 'pin') {
-    offlineManager.promoteCloudToPinned(_currentUid);
-    hideMenu();
-  } else if (action === 'delete') {
-    const ok = confirm('Удалить трек из кэша?\nСтатистика облачка будет сброшена.');
-    if (ok) {
-      offlineManager.removeFromCloudCache(_currentUid);
+    if (state.pinned) {
+      items.push({
+        label: '🔓 Открепить (убрать 🔒)',
+        action: async () => {
+          await mgr.togglePinned(uid);
+          closeCloudMenu();
+        }
+      });
+    } else {
+      items.push({
+        label: '🔒 Закрепить офлайн',
+        action: async () => {
+          await mgr.togglePinned(uid);
+          closeCloudMenu();
+        }
+      });
     }
-    hideMenu();
+
+    if (state.cloud || state.pinned) {
+      items.push({
+        label: '🗑 Удалить из кэша',
+        action: async () => {
+          const ok = confirm(
+            `Удалить кэшированный аудиофайл для этого трека?\n\n` +
+            `Тип: ${state.pinned ? '🔒 Pinned' : '☁ Cloud'}\n` +
+            `Качество: ${state.cachedVariant || '?'}\n\n` +
+            `Трек останется в каталоге, но будет воспроизводиться только онлайн.`
+          );
+          if (ok) {
+            await mgr.removeCached(uid);
+            closeCloudMenu();
+          }
+        }
+      });
+    }
+
+    items.push({
+      label: 'ℹ️ Информация',
+      action: async () => {
+        const st = await mgr.getTrackOfflineState(uid);
+        const meta = await (await import('../offline/cache-db.js')).getTrackMeta(uid);
+        alert(
+          `UID: ${uid}\n` +
+          `Тип: ${st.cacheKind}\n` +
+          `Качество: ${st.cachedVariant || 'нет'}\n` +
+          `Прослушиваний: ${meta?.cloudFullListenCount || 0}\n` +
+          `Нужен re-cache: ${st.needsReCache ? 'да' : 'нет'}\n` +
+          `Скачивается: ${st.downloading ? 'да' : 'нет'}`
+        );
+        closeCloudMenu();
+      }
+    });
+
+    /* ── Рендер ── */
+    for (const item of items) {
+      const el = document.createElement('div');
+      el.className = 'cloud-context-menu__item';
+      el.textContent = item.label;
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        item.action();
+      });
+      menu.appendChild(el);
+    }
+
+    /* ── Позиционирование ── */
+    document.body.appendChild(menu);
+    _activeMenu = menu;
+
+    if (anchorEl) {
+      const rect = anchorEl.getBoundingClientRect();
+      menu.style.position = 'fixed';
+      menu.style.left = `${rect.right + 4}px`;
+      menu.style.top = `${rect.top}px`;
+      menu.style.zIndex = '99999';
+    }
+
+    /* Закрытие по клику вне */
+    setTimeout(() => {
+      document.addEventListener('click', _outsideClickHandler, { once: true });
+    }, 10);
+  });
+}
+
+function _outsideClickHandler(e) {
+  if (_activeMenu && !_activeMenu.contains(e.target)) {
+    closeCloudMenu();
   }
 }
 
-function onOutsideClick(e) {
-  if (_menuEl && !_menuEl.contains(e.target)) {
-    hideMenu();
+export function closeCloudMenu() {
+  if (_activeMenu) {
+    _activeMenu.remove();
+    _activeMenu = null;
   }
+  document.removeEventListener('click', _outsideClickHandler);
 }
 
-export function hideMenu() {
-  if (_menuEl) {
-    _menuEl.classList.remove('visible');
-    _currentUid = null;
-  }
-}
-
-/**
- * Показать cloud-menu рядом с элементом-якорем.
- */
-export function showCloudMenu(uid, anchorEl) {
-  if (!uid || !anchorEl) return;
-
-  const menu = getOrCreateMenu();
-  _currentUid = uid;
-
-  // Позиционирование
-  const rect = anchorEl.getBoundingClientRect();
-  const menuW = 180;
-  let left = rect.left;
-  let top = rect.bottom + 4;
-
-  // Не вылезать за правый край
-  if (left + menuW > window.innerWidth) {
-    left = window.innerWidth - menuW - 8;
-  }
-  // Не вылезать за нижний край — показать сверху
-  if (top + 80 > window.innerHeight) {
-    top = rect.top - 80;
-  }
-
-  menu.style.left = left + 'px';
-  menu.style.top = top + 'px';
-  menu.classList.add('visible');
-}
-
-export default { showCloudMenu, hideMenu };
+export default { showCloudMenu, closeCloudMenu };
