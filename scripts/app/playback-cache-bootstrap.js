@@ -120,7 +120,7 @@ async function _prefetchNeighbors(currentUid) {
   const playerCore = window.playerCore;
   if (!playerCore) return;
 
-  const playlist = playerCore.getPlaylist?.() || [];
+  const playlist = playerCore.getPlaylistSnapshot?.() || [];
   const currentIdx = playlist.findIndex(t =>
     (t.uid || t.id) === currentUid
   );
