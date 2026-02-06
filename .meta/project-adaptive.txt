@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1d44e4532052b94bf9417788f2763a7b076904c3.idx
-│   │       ├── pack-1d44e4532052b94bf9417788f2763a7b076904c3.pack
-│   │       └── pack-1d44e4532052b94bf9417788f2763a7b076904c3.rev
+│   │       ├── pack-1c5033510fe0ff6ed8806dede0151cd432cd5f41.idx
+│   │       ├── pack-1c5033510fe0ff6ed8806dede0151cd432cd5f41.pack
+│   │       └── pack-1c5033510fe0ff6ed8806dede0151cd432cd5f41.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 13:36:28 UTC
+Сгенерировано: 2026-02-06 13:36:54 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3846,100 +3846,97 @@ window.FavoritesManager = Favorites;
 
 //=================================================
 // FILE: /scripts/core/stats-core.js
-// scripts/core/stats-core.js
-import { updateGlobalStats, getCloudStats, setCloudStats } from '../offline/cache-db.js';
+/**
+ * stats-core.js — Ядро статистики прослушивания
+ * Импортирует updateGlobalStats из cache-db (не setCloudStats)
+ */
 
-const THRESHOLD = 0.90; // 90% for full listen
+import { updateGlobalStats, getCloudStats } from '../offline/cache-db.js';
 
-class StatsCoreImpl {
-  constructor() {
-    this._uid = null;
-    this._dur = 0;
-    this._sec = 0; // seconds played in current session for this track
-    this._maxPos = 0;
-    this._started = false;
-  }
+let _currentUid = null;
+let _startTime = 0;
+let _accumulatedSec = 0;
+let _isPlaying = false;
 
-  onTrackStart(uid, duration) {
-    if (this._uid && this._uid !== uid) this._flush();
-    this._uid = uid;
-    this._dur = duration || 0;
-    this._sec = 0;
-    this._maxPos = 0;
-    this._started = true;
+/**
+ * Начать отслеживание трека
+ */
+export function startTracking(uid) {
+  if (_currentUid && _isPlaying) {
+    flushStats();
   }
-
-  onTick(pos) {
-    if (!this._started || !this._uid) return;
-    this._sec += 0.25; // Called every 250ms usually, or delta passed
-    this._maxPos = Math.max(this._maxPos, pos);
-  }
-  
-  // Custom method for explicit delta from player core
-  onSecondTick(uid, delta) {
-      if (this._uid !== uid) return;
-      this._sec += delta;
-      
-      // Real-time update to DB for robustness? 
-      // For performance, we batch or do it on end. 
-      // TЗ says "Global stats never resets".
-      // Let's update global stats incrementally to avoid data loss on crash
-      updateGlobalStats(uid, delta, 0).catch(() => {});
-  }
-
-  onSeek(uid, from, to) {
-      // Seek doesn't reset "seconds listened" but might affect "full listen" logic if we were strict about continuity.
-      // TЗ 18.3: "seconds считаем только пока playing".
-  }
-
-  async onEnded(uid, pos, dur) {
-     if (this._uid !== uid) return;
-     const isFull = this._checkFull(pos, dur);
-     await this._commit(uid, 0, isFull ? 1 : 0);
-     this._reset();
-  }
-  
-  async onSkip(uid, pos, dur) {
-      if (this._uid !== uid) return;
-      const isFull = this._checkFull(pos, dur);
-      await this._commit(uid, 0, isFull ? 1 : 0);
-      this._reset();
-  }
-
-  _checkFull(pos, dur) {
-      const d = dur || this._dur;
-      if (!d) return false;
-      return (pos / d) >= THRESHOLD;
-  }
-
-  async _commit(uid, dSec, dFull) {
-      if (!uid) return;
-      // Global Stats
-      await updateGlobalStats(uid, dSec, dFull);
-
-      // Cloud Stats (only full listens count for cloud logic usually, but we track dates)
-      if (dFull > 0) {
-         const s = await getCloudStats(uid) || {};
-         const n = (s.cloudFullListenCount || 0) + 1;
-         // Logic for Cloud Promotion is in OfflineManager (NC-4 implied), 
-         // but StatsCore just records data. 
-         // Actually OfflineManager.recordListenStats handles the logic. 
-         // Let's delegate back to OfflineManager for the "Business Logic" of cloud promotion?
-         // TЗ 18.3 says StatsCore is the entry point.
-         
-         // Let's call OfflineManager to handle "Business Logic" side effects (Cloud promotion)
-         const mgr = window.OfflineUI?.offlineManager;
-         if (mgr) mgr.recordListenStats(uid, { deltaSec: dSec, isFullListen: dFull > 0 });
-      }
-  }
-
-  _reset() {
-      this._uid = null;
-      this._started = false;
-  }
+  _currentUid = uid;
+  _startTime = Date.now();
+  _accumulatedSec = 0;
+  _isPlaying = true;
 }
 
-export const StatsCore = new StatsCoreImpl();
+/**
+ * Пауза — сохраняем накопленное
+ */
+export function pauseTracking() {
+  if (!_isPlaying || !_currentUid) return;
+  _accumulatedSec += (Date.now() - _startTime) / 1000;
+  _isPlaying = false;
+}
+
+/**
+ * Возобновление после паузы
+ */
+export function resumeTracking() {
+  if (_isPlaying || !_currentUid) return;
+  _startTime = Date.now();
+  _isPlaying = true;
+}
+
+/**
+ * Трек завершён (полное прослушивание)
+ */
+export function trackCompleted() {
+  if (!_currentUid) return;
+  if (_isPlaying) {
+    _accumulatedSec += (Date.now() - _startTime) / 1000;
+    _isPlaying = false;
+  }
+  const sec = Math.round(_accumulatedSec);
+  if (sec > 0) {
+    updateGlobalStats(_currentUid, sec, 1).catch(() => {});
+  }
+  _accumulatedSec = 0;
+  _currentUid = null;
+}
+
+/**
+ * Сбросить текущую статистику (смена трека)
+ */
+export function flushStats() {
+  if (!_currentUid) return;
+  if (_isPlaying) {
+    _accumulatedSec += (Date.now() - _startTime) / 1000;
+    _isPlaying = false;
+  }
+  const sec = Math.round(_accumulatedSec);
+  if (sec > 0) {
+    updateGlobalStats(_currentUid, sec, 0).catch(() => {});
+  }
+  _accumulatedSec = 0;
+}
+
+/**
+ * Получить облачную статистику
+ */
+export async function getStats() {
+  return getCloudStats();
+}
+
+export default {
+  startTracking,
+  pauseTracking,
+  resumeTracking,
+  trackCompleted,
+  flushStats,
+  getStats
+};
 
 //=================================================
 // FILE: /scripts/core/utils.js
