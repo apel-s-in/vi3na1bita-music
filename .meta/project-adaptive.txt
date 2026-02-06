@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b4397f357288266950625188e4e6368be8da6d16.idx
-│   │       ├── pack-b4397f357288266950625188e4e6368be8da6d16.pack
-│   │       └── pack-b4397f357288266950625188e4e6368be8da6d16.rev
+│   │       ├── pack-0fd8855713a8c60cb96c5166bc47ab4fef6cd6c3.idx
+│   │       ├── pack-0fd8855713a8c60cb96c5166bc47ab4fef6cd6c3.pack
+│   │       └── pack-0fd8855713a8c60cb96c5166bc47ab4fef6cd6c3.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 14:19:37 UTC
+Сгенерировано: 2026-02-06 14:20:20 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1348,15 +1348,11 @@ self.addEventListener('message', (e) => {
       Promise.all([
         import('./ui/offline-indicators.js'),
         import('./ui/cache-progress-overlay.js'),
-        import('./app/playback-cache-bootstrap.js'),
-        import('./ui/offline-modal.js')
-      ]).then(([ind, ov, pb, mod]) => {
-        ind?.attachOfflineIndicators?.();
-        ov?.attachCacheProgressOverlay?.();
-        pb?.attachPlaybackCache?.();
-        if (localStorage.getItem('offline:preloadAllTracksOnce:v1') !== '1' && mod?.preloadAllAlbumsTrackIndex) {
-          mod.preloadAllAlbumsTrackIndex().then(() => localStorage.setItem('offline:preloadAllTracksOnce:v1', '1'));
-        }
+        import('./app/playback-cache-bootstrap.js')
+      ]).then(([ind, ov, pb]) => {
+        ind?.initOfflineIndicators?.();
+        ov?.initCacheProgressOverlay?.();
+        pb?.initPlaybackCache?.();
       });
     } catch (e) { console.error('Offline boot err:', e); }
 
