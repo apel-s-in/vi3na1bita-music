@@ -1,55 +1,103 @@
 /**
- * track-resolver.js — Резолвер URL трека (кэш → онлайн)
+ * track-resolver.js — Резолвер URL аудио с приоритетом офлайн-кэша.
+ *
+ * ТЗ: П.3 (приоритет: 🔒 → ☁ → online)
+ *
+ * Возвращает:
+ *   { url: string|blobURL, source: 'pinned'|'cloud'|'online', quality: string }
  */
 
 import { getOfflineManager } from './offline-manager.js';
-import { getAudioBlob } from './cache-db.js';
+import { getAudioBlobAny, getTrackMeta } from './cache-db.js';
 
-export async function resolveTrackUrl(uid, originalUrl, options = {}) {
+/* Хранилище выданных blobURL для освобождения */
+const _blobURLs = new Map();
+
+/**
+ * resolveTrackUrl — основная функция.
+ *
+ * @param {string} uid — UID трека
+ * @param {string} onlineUrl — URL для онлайн-воспроизведения
+ * @param {object} opts — { quality?, forceOnline? }
+ * @returns {Promise<{ url: string, source: string, quality: string }>}
+ */
+export async function resolveTrackUrl(uid, onlineUrl, opts = {}) {
+  const u = String(uid || '').trim();
   const mgr = getOfflineManager();
-  const mode = mgr.getMode();
+  const quality = opts.quality || mgr.getCacheQuality();
 
-  if (mode === 'R0') {
-    return { url: originalUrl, source: 'network', quality: 'original' };
+  /* Принудительно онлайн */
+  if (opts.forceOnline) {
+    return { url: onlineUrl, source: 'online', quality };
   }
 
-  const quality = options.quality || mgr.getActivePlaybackQuality();
-  const q = quality === 'lo' ? 'low' : 'high';
-
+  /* Проверяем кэш */
   try {
-    // Пробуем запрошенное качество
-    let blob = await getAudioBlob(uid, q);
-    if (blob) {
-      return { url: URL.createObjectURL(blob), source: 'cache', quality };
-    }
+    const meta = await getTrackMeta(u);
 
-    // Пробуем альтернативное качество
-    const altQ = q === 'high' ? 'low' : 'high';
-    blob = await getAudioBlob(uid, altQ);
-    if (blob) {
-      return { url: URL.createObjectURL(blob), source: 'cache', quality: altQ === 'high' ? 'hi' : 'lo' };
+    if (meta && (meta.type === 'pinned' || meta.type === 'cloud')) {
+      const found = await getAudioBlobAny(u, quality);
+
+      if (found && found.blob) {
+        /* Освобождаем предыдущий blobURL для этого uid */
+        if (_blobURLs.has(u)) {
+          URL.revokeObjectURL(_blobURLs.get(u));
+        }
+        const blobUrl = URL.createObjectURL(found.blob);
+        _blobURLs.set(u, blobUrl);
+
+        return {
+          url: blobUrl,
+          source: meta.type,     // 'pinned' или 'cloud'
+          quality: found.quality
+        };
+      }
+
+      /* Мета есть, но blob нет — нужен re-cache */
+      if (meta.type === 'pinned' || meta.type === 'cloud') {
+        console.warn(`[Resolver] Meta exists but no blob for ${u}, marking needsReCache`);
+        const { setTrackMeta } = await import('./cache-db.js');
+        await setTrackMeta(u, { ...meta, needsReCache: true });
+
+        /* Ставим в очередь на докачку */
+        mgr.enqueueAudioDownload(u, quality, {
+          kind: 'reCache',
+          priority: meta.type === 'pinned' ? 9 : 6
+        });
+      }
     }
   } catch (err) {
-    console.warn('[TrackResolver] cache read error:', err);
+    console.warn('[Resolver] Cache lookup failed:', err.message);
   }
 
-  // R3 — только кэш, нет сети
-  if (mode === 'R3') {
-    return { url: null, source: 'none', quality: null };
+  /* Если offline и нет кэша — проблема */
+  if (!navigator.onLine) {
+    console.error(`[Resolver] Offline and no cache for ${u}`);
+    return { url: onlineUrl, source: 'online', quality };
   }
 
-  // R1/R2 — фолбэк на онлайн
-  return { url: originalUrl, source: 'network', quality: 'original' };
+  /* Онлайн fallback */
+  return { url: onlineUrl, source: 'online', quality };
 }
 
-export async function preloadTrack(uid, url, quality) {
-  const mgr = getOfflineManager();
-  if (mgr.getMode() === 'R0') return;
-
-  const complete = await mgr.isTrackComplete(uid, quality);
-  if (complete) return;
-
-  mgr.enqueueAudioDownload({ uid, quality, priority: 30, kind: 'preload' });
+/**
+ * Освободить blobURL трека (при смене трека).
+ */
+export function revokeBlobUrl(uid) {
+  if (_blobURLs.has(uid)) {
+    URL.revokeObjectURL(_blobURLs.get(uid));
+    _blobURLs.delete(uid);
+  }
 }
 
-export default resolveTrackUrl;
+/**
+ * Освободить все blobURL.
+ */
+export function revokeAllBlobUrls() {
+  for (const [uid, url] of _blobURLs) {
+    URL.revokeObjectURL(url);
+  }
+  _blobURLs.clear();
+}
+
+export default { resolveTrackUrl, revokeBlobUrl, revokeAllBlobUrls };
