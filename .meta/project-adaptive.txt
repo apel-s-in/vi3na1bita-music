@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e9599191da9a2b9b521ae65d7240e008c3372c98.idx
-│   │       ├── pack-e9599191da9a2b9b521ae65d7240e008c3372c98.pack
-│   │       └── pack-e9599191da9a2b9b521ae65d7240e008c3372c98.rev
+│   │       ├── pack-708f2853d01cd142ffb6bd1ed2251cdf814f48c8.idx
+│   │       ├── pack-708f2853d01cd142ffb6bd1ed2251cdf814f48c8.pack
+│   │       └── pack-708f2853d01cd142ffb6bd1ed2251cdf814f48c8.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 21:30:42 UTC
+Сгенерировано: 2026-02-06 21:31:18 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9796,6 +9796,13 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       
       this.qualityMode = next;
       localStorage.setItem(LS_PQ, next);
+
+      /* ТЗ П.12.1: Синхронизация PQ↔CQ — уведомить OfflineManager */
+      const mgr = window._offlineManagerInstance;
+      if (mgr) {
+        mgr.setCacheQualitySetting(next);
+      }
+
       window.dispatchEvent(new CustomEvent('offline:uiChanged'));
       
       // ТЗ 4.2: Quiet Switch (без stop)
