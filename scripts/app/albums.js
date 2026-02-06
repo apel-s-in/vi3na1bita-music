@@ -1,6 +1,6 @@
 import { registerTrack } from './track-registry.js';
 import { $, toStr, escHtml, isMobileUA } from './utils/app-utils.js';
-import { injectIndicator } from './offline/offline-indicators.js';
+import { injectIndicator } from '../ui/offline-indicators.js';
 
 const C = window.APP_CONFIG || {};
 const FAV = window.SPECIAL_FAVORITES_KEY || '__favorites__';
