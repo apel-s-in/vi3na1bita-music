@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-19b6e941db32aa00aa180af90a8b9044217ee5e3.idx
-│   │       ├── pack-19b6e941db32aa00aa180af90a8b9044217ee5e3.pack
-│   │       └── pack-19b6e941db32aa00aa180af90a8b9044217ee5e3.rev
+│   │       ├── pack-8e2f73d6a2a80ceff3e807741682de5c91355cd3.idx
+│   │       ├── pack-8e2f73d6a2a80ceff3e807741682de5c91355cd3.pack
+│   │       └── pack-8e2f73d6a2a80ceff3e807741682de5c91355cd3.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 16:35:42 UTC
+Сгенерировано: 2026-02-06 16:43:34 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1447,6 +1447,7 @@ self.addEventListener('message', (e) => {
 // FILE: /scripts/app/albums.js
 import { registerTrack } from './track-registry.js';
 import { $, toStr, escHtml, isMobileUA } from './utils/app-utils.js';
+import { injectIndicator } from './offline/offline-indicators.js';
 
 const C = window.APP_CONFIG || {};
 const FAV = window.SPECIAL_FAVORITES_KEY || '__favorites__';
@@ -1455,7 +1456,6 @@ const STAR_ON = 'img/star.png';
 const STAR_OFF = 'img/star2.png';
 const LOGO = 'img/logo.png';
 
-// ✅ Функция восстановлена
 const toUrl = (b, r) => r ? new URL(r, b).toString() : null;
 
 class AlbumsManager {
@@ -1503,7 +1503,6 @@ class AlbumsManager {
           p2 = base;
         }
         
-        // FIX: Add data-akey for E2E consistency
         return `<div class="album-icon" data-album="${it.key}" data-akey="${it.key}" title="${escHtml(it.title)}">
           <img src="${p1}" srcset="${p2} 2x" alt="${escHtml(it.title)}" draggable="false" loading="lazy" width="60" height="60">
         </div>`;
@@ -1527,15 +1526,16 @@ class AlbumsManager {
     });
 
     $('track-list')?.addEventListener('click', (e) => {
-      // ✅ КРИТИЧНО: Сразу же готовим аудио-контекст по клику (User Gesture)
       if (window.playerCore?.prepareContext) window.playerCore.prepareContext();
 
-      // M1: В режиме Избранного клики обрабатывает bindsFavoritesList (scripts/ui/favorites-view.js)
-      // чтобы корректно поддерживать Soft Delete (серые строки) и модалки.
+      // В режиме Избранного клики обрабатывает favorites-view.js
       if (this.curr === FAV) return;
 
       const trk = e.target.closest('.track');
       if (!trk) return;
+
+      // Клик по офлайн-индикатору обрабатывается в offline-indicators.js (stopPropagation)
+      if (e.target.closest('.offline-ind')) return;
 
       const aKey = toStr(trk.dataset.album).trim();
       const uid = toStr(trk.dataset.uid).trim();
@@ -1582,7 +1582,6 @@ class AlbumsManager {
 
     window.playerCore?.onFavoritesChanged((d) => {
       const s = d?.liked ? STAR_ON : STAR_OFF;
-      // F2: Поддержка обновления звезд даже если albumKey не передан (ищем по uid)
       const sel = d?.albumKey 
         ? `.like-star[data-album="${CSS.escape(d.albumKey)}"][data-uid="${CSS.escape(d.uid)}"]`
         : `.like-star[data-uid="${CSS.escape(d?.uid)}"]`;
@@ -1658,7 +1657,19 @@ class AlbumsManager {
       </div>`;
     }).join('');
     
+    // Вставить офлайн-индикаторы 🔒/☁ во все треки
+    this._injectOfflineIndicators();
+    
     window.PlayerUI?.updateMiniHeader?.();
+  }
+
+  /** Проставить 🔒/☁ индикаторы во все .track[data-uid] в текущем track-list */
+  _injectOfflineIndicators() {
+    const list = $('track-list');
+    if (!list) return;
+    list.querySelectorAll('.track[data-uid]').forEach(el => {
+      injectIndicator(el, el.dataset.uid);
+    });
   }
 
   _normTrack(t, i, base, key, albumTitle) {
