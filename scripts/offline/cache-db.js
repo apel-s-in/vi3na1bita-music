@@ -12,13 +12,15 @@
 const DB_NAME = 'offlineCache';
 const DB_VERSION = 2;
 let _db = null;
+let _dbPending = null;
 
 /* ─── openDB ─── */
 
 export async function openDB() {
   if (_db) return _db;
+  if (_dbPending) return _dbPending;
 
-  return new Promise((resolve, reject) => {
+  _dbPending = new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
 
     req.onupgradeneeded = (e) => {
@@ -41,11 +43,17 @@ export async function openDB() {
 
     req.onsuccess = () => {
       _db = req.result;
+      _dbPending = null;
       resolve(_db);
     };
 
-    req.onerror = () => reject(req.error);
+    req.onerror = () => {
+      _dbPending = null;
+      reject(req.error);
+    };
   });
+
+  return _dbPending;
 }
 
 function db() {
