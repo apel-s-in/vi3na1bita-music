@@ -2,226 +2,210 @@
  * cache-db.js — IndexedDB хранилище для офлайн-кэша аудио и метаданных.
  *
  * Stores:
- *   "audio"  — Blob аудиофайлов, ключ: "uid:quality"
+ *   "audio"  — Blob аудиофайлов, ключ: "uid:hi" или "uid:lo"
  *   "meta"   — JSON метаданные треков, ключ: uid
- *   "global" — глобальные счётчики (статистика, версии), ключ: строка-имя
+ *   "global" — глобальные счётчики (статистика, настройки), ключ: строка
+ *
+ * No-duplicates rule: для одного uid хранится ТОЛЬКО ОДИН variant (hi или lo).
  */
 
 const DB_NAME = 'offlineAudioCache';
-const DB_VERSION = 1;
-
+const DB_VERSION = 2;
 let _dbPromise = null;
 
-/* ───────── Открытие / инициализация БД ───────── */
+/* ───── Открытие БД ───── */
 
 export function openDB() {
   if (_dbPromise) return _dbPromise;
-
   _dbPromise = new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
-
     req.onupgradeneeded = (e) => {
       const db = e.target.result;
       if (!db.objectStoreNames.contains('audio')) db.createObjectStore('audio');
       if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta');
       if (!db.objectStoreNames.contains('global')) db.createObjectStore('global');
     };
-
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
-
   return _dbPromise;
 }
 
-/* ───────── Приватные хелперы ───────── */
+/* ───── Хелперы ───── */
 
 function audioKey(uid, quality) {
-  return `${uid}:${quality}`;
+  const q = quality === 'lo' ? 'lo' : 'hi';
+  return `${uid}:${q}`;
 }
 
-function tx(db, store, mode) {
-  return db.transaction(store, mode).objectStore(store);
+function otherQuality(q) {
+  return q === 'lo' ? 'hi' : 'lo';
 }
 
-function reqToPromise(request) {
+function reqP(request) {
   return new Promise((resolve, reject) => {
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });
 }
 
-/* ───────── Audio store (Blob) ───────── */
+function store(db, name, mode) {
+  return db.transaction(name, mode).objectStore(name);
+}
 
+/* ───── Audio (Blob) ───── */
+
+/**
+ * Сохранить аудио-blob. Удаляет другое качество того же uid (no-duplicates rule).
+ */
 export async function setAudioBlob(uid, quality, blob) {
   const db = await openDB();
-  const ak = audioKey(uid, quality);
-  const otherQ = quality === 'high' ? 'low' : 'high';
-  const otherAk = audioKey(uid, otherQ);
-
+  const q = quality === 'lo' ? 'lo' : 'hi';
+  const ak = audioKey(uid, q);
+  const otherAk = audioKey(uid, otherQuality(q));
   return new Promise((resolve, reject) => {
     const t = db.transaction('audio', 'readwrite');
-    const store = t.objectStore('audio');
-    store.delete(otherAk);
-    store.put(blob, ak);
+    const s = t.objectStore('audio');
+    s.delete(otherAk);
+    s.put(blob, ak);
     t.oncomplete = () => resolve();
     t.onerror = () => reject(t.error);
   });
 }
 
+/**
+ * Получить аудио-blob по uid и quality.
+ */
 export async function getAudioBlob(uid, quality) {
   const db = await openDB();
-  return reqToPromise(tx(db, 'audio', 'readonly').get(audioKey(uid, quality)));
+  const q = quality === 'lo' ? 'lo' : 'hi';
+  return reqP(store(db, 'audio', 'readonly').get(audioKey(uid, q)));
 }
 
+/**
+ * Получить аудио-blob любого качества (приоритет: запрошенное → альтернативное).
+ * Возвращает { blob, quality } или null.
+ */
+export async function getAudioBlobAny(uid, preferredQuality) {
+  const pq = preferredQuality === 'lo' ? 'lo' : 'hi';
+  let blob = await getAudioBlob(uid, pq);
+  if (blob) return { blob, quality: pq };
+  const alt = otherQuality(pq);
+  blob = await getAudioBlob(uid, alt);
+  if (blob) return { blob, quality: alt };
+  return null;
+}
+
+/**
+ * Удалить все аудио для uid (обе качества).
+ */
 export async function deleteAudio(uid) {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const t = db.transaction('audio', 'readwrite');
-    const store = t.objectStore('audio');
-    store.delete(audioKey(uid, 'high'));
-    store.delete(audioKey(uid, 'low'));
+    const s = t.objectStore('audio');
+    s.delete(audioKey(uid, 'hi'));
+    s.delete(audioKey(uid, 'lo'));
     t.oncomplete = () => resolve();
     t.onerror = () => reject(t.error);
   });
 }
 
-/* ───────── Meta store ───────── */
+/* ───── Meta ───── */
 
+/**
+ * Meta-объект трека:
+ * {
+ *   uid, type ('pinned'|'cloud'|'dynamic'|'playbackWindow'|'none'),
+ *   quality ('hi'|'lo'), size, url,
+ *   pinnedAt, cloudAddedAt, cloudExpiresAt,
+ *   cloudFullListenCount, lastFullListenAt,
+ *   needsUpdate, needsReCache,
+ *   ts (last modified)
+ * }
+ */
 export async function setTrackMeta(uid, metaObj) {
   const db = await openDB();
-  return reqToPromise(
-    tx(db, 'meta', 'readwrite').put({ ...metaObj, uid, ts: Date.now() }, uid)
-  );
+  return reqP(store(db, 'meta', 'readwrite').put(
+    { ...metaObj, uid, ts: Date.now() }, uid
+  ));
 }
 
 export async function getTrackMeta(uid) {
   const db = await openDB();
-  return reqToPromise(tx(db, 'meta', 'readonly').get(uid));
+  return reqP(store(db, 'meta', 'readonly').get(uid));
 }
 
 export async function deleteTrackMeta(uid) {
   const db = await openDB();
-  return reqToPromise(tx(db, 'meta', 'readwrite').delete(uid));
+  return reqP(store(db, 'meta', 'readwrite').delete(uid));
 }
 
 export async function getAllTrackMetas() {
   const db = await openDB();
-  return reqToPromise(tx(db, 'meta', 'readonly').getAll());
+  return reqP(store(db, 'meta', 'readonly').getAll());
 }
 
-/* ───────── Ключи audio store ───────── */
+/* ───── Audio Keys ───── */
 
 export async function getAllKeys() {
   const db = await openDB();
-  return reqToPromise(tx(db, 'audio', 'readonly').getAllKeys());
+  return reqP(store(db, 'audio', 'readonly').getAllKeys());
 }
 
-/* ───────── Cloud-статистика ───────── */
-
-export async function getCloudStats() {
-  const metas = await getAllTrackMetas();
-  const now = Date.now();
-  let active = 0;
-  let expired = 0;
-  const expiredUids = [];
-
-  for (const m of metas) {
-    if (m.type !== 'cloud') continue;
-    if (m.ttl && m.ts && (now - m.ts > m.ttl)) {
-      expired++;
-      expiredUids.push(m.uid);
-    } else {
-      active++;
-    }
-  }
-
-  return { total: active + expired, active, expired, expiredUids };
-}
-
-export async function setCloudStats(stats) {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const t = db.transaction('global', 'readwrite');
-    t.objectStore('global').put(stats, 'cloud-stats');
-    t.oncomplete = () => resolve();
-    t.onerror = () => reject(t.error);
-  });
-}
-
-/* ───────── Global store (статистика, настройки) ───────── */
+/* ───── Global store ───── */
 
 export async function getGlobal(key) {
   const db = await openDB();
-  return reqToPromise(tx(db, 'global', 'readonly').get(key));
+  return reqP(store(db, 'global', 'readonly').get(key));
 }
 
 export async function setGlobal(key, value) {
   const db = await openDB();
-  return reqToPromise(tx(db, 'global', 'readwrite').put(value, key));
+  return reqP(store(db, 'global', 'readwrite').put(value, key));
 }
 
+/**
+ * Атомарно обновить global stats для трека.
+ */
 export async function updateGlobalStats(uid, deltaSec, deltaFull) {
   const db = await openDB();
-
   return new Promise((resolve, reject) => {
     const t = db.transaction('global', 'readwrite');
-    const store = t.objectStore('global');
-
-    const perReq = store.get(`stats:${uid}`);
-    const totalReq = store.get('stats:total');
-
+    const s = t.objectStore('global');
+    const perReq = s.get(`stats:${uid}`);
+    const totalReq = s.get('stats:total');
     perReq.onsuccess = () => {
       const cur = perReq.result || { seconds: 0, fullPlays: 0 };
       cur.seconds += deltaSec;
       cur.fullPlays += deltaFull;
       cur.lastPlayed = Date.now();
-      store.put(cur, `stats:${uid}`);
+      s.put(cur, `stats:${uid}`);
     };
-
     totalReq.onsuccess = () => {
       const tot = totalReq.result || { seconds: 0, fullPlays: 0 };
       tot.seconds += deltaSec;
       tot.fullPlays += deltaFull;
-      store.put(tot, 'stats:total');
+      s.put(tot, 'stats:total');
     };
-
     t.oncomplete = () => resolve();
     t.onerror = () => reject(t.error);
   });
 }
 
-/* ───────── Оценка использования хранилища ───────── */
+/* ───── Storage estimate ───── */
 
 export async function estimateUsage() {
-  if (navigator.storage && navigator.storage.estimate) {
+  if (navigator.storage?.estimate) {
     const est = await navigator.storage.estimate();
     const used = est.usage || 0;
     const quota = est.quota || 0;
-    return {
-      usage: used,
-      used: used,       // alias для offline-modal.js
-      quota: quota,
-      free: quota - used
-    };
+    return { usage: used, used, quota, free: quota - used };
   }
   return { usage: 0, used: 0, quota: 0, free: 0 };
 }
 
-/* ───────── Compatibility layer ───────── */
-
-export async function bytesByQuality(uid) {
-  const u = String(uid || '').trim();
-  if (!u) return { hi: 0, lo: 0 };
-  const [hi, lo] = await Promise.all([
-    getAudioBlob(u, 'high'),
-    getAudioBlob(u, 'low')
-  ]);
-  return {
-    hi: hi ? (hi.size || 0) : 0,
-    lo: lo ? (lo.size || 0) : 0
-  };
-}
+/* ───── Convenience: полное удаление трека ───── */
 
 export async function deleteTrackCache(uid) {
   const u = String(uid || '').trim();
@@ -231,25 +215,21 @@ export async function deleteTrackCache(uid) {
   return true;
 }
 
-export async function clearCloudStats(uid) {
-  const u = String(uid || '').trim();
-  if (!u) return false;
-  const meta = await getTrackMeta(u);
-  if (meta && meta.type === 'cloud') {
-    await deleteTrackMeta(u);
-    return true;
+/* ───── Cloud-статистика (агрегат) ───── */
+
+export async function getCloudStats() {
+  const metas = await getAllTrackMetas();
+  const now = Date.now();
+  let active = 0, expired = 0;
+  const expiredUids = [];
+  for (const m of metas) {
+    if (m.type !== 'cloud') continue;
+    if (m.cloudExpiresAt && m.cloudExpiresAt < now) {
+      expired++;
+      expiredUids.push(m.uid);
+    } else {
+      active++;
+    }
   }
-  return false;
-}
-
-export async function getLocalMeta(uid) {
-  return getTrackMeta(String(uid || '').trim());
-}
-
-export async function touchLocalAccess(uid) {
-  const u = String(uid || '').trim();
-  if (!u) return;
-  const meta = await getTrackMeta(u);
-  if (!meta) return;
-  await setTrackMeta(u, { ...meta, lastAccessAt: Date.now() });
+  return { total: active + expired, active, expired, expiredUids };
 }
