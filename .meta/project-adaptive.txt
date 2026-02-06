@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b46ee29c887ff81389ae2204b8e0dd1871e683ca.idx
-│   │       ├── pack-b46ee29c887ff81389ae2204b8e0dd1871e683ca.pack
-│   │       └── pack-b46ee29c887ff81389ae2204b8e0dd1871e683ca.rev
+│   │       ├── pack-cffd4c5ed185af6d4d34a2813acdb39a2ff19681.idx
+│   │       ├── pack-cffd4c5ed185af6d4d34a2813acdb39a2ff19681.pack
+│   │       └── pack-cffd4c5ed185af6d4d34a2813acdb39a2ff19681.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 21:09:36 UTC
+Сгенерировано: 2026-02-06 21:10:10 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2181,7 +2181,10 @@ export async function initOfflineUI() {
   /* 0. Инициализация OfflineManager (открыть IndexedDB, очистить expired) */
   try {
     const { getOfflineManager } = await import('../offline/offline-manager.js');
-    await getOfflineManager().initialize();
+    const mgr = getOfflineManager();
+    await mgr.initialize();
+    /* Глобальный мост для не-модульных скриптов (player-ui.js, playback-policy.js) */
+    window._offlineManagerInstance = mgr;
   } catch (e) {
     console.warn('[OfflineUI] OfflineManager init failed:', e);
   }
