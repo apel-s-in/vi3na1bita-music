@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-06593885494f9ca2a670259b84d557593b58b783.idx
-│   │       ├── pack-06593885494f9ca2a670259b84d557593b58b783.pack
-│   │       └── pack-06593885494f9ca2a670259b84d557593b58b783.rev
+│   │       ├── pack-2f4a06691258b72e914bafdaeceb224915d49059.idx
+│   │       ├── pack-2f4a06691258b72e914bafdaeceb224915d49059.pack
+│   │       └── pack-2f4a06691258b72e914bafdaeceb224915d49059.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 21:31:57 UTC
+Сгенерировано: 2026-02-06 21:32:56 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5237,6 +5237,7 @@ class OfflineManager {
       await updateTrackMeta(uid, {
         type: 'pinned',
         pinnedAt: Date.now(),
+        quality,
         expiredPending: false
       });
 
@@ -5246,6 +5247,7 @@ class OfflineManager {
       } else if (found) {
         await updateTrackMeta(uid, { needsReCache: true });
         toast('Закреплён 🔒 (качество будет обновлено)');
+        this.startSilentReCache();
       } else {
         const url = getTrackUrl(uid, quality);
         if (url) {
