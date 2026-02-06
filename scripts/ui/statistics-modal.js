@@ -1,166 +1,123 @@
 /**
- * statistics-modal.js — Модальное окно статистики офлайн-кэша.
+ * statistics-modal.js — Модалка статистики прослушиваний.
  *
- * ТЗ: П.9
+ * Использует OfflineManager.getGlobalStatistics() для данных.
  */
 
-import { getOfflineManager } from '../offline/offline-manager.js';
+import offlineManager, { getOfflineManager } from '../offline/offline-manager.js';
 
 let _modal = null;
 
 export async function openStatisticsModal() {
-  if (_modal) { closeStatisticsModal(); return; }
+  if (_modal) return;
 
   const mgr = getOfflineManager();
+  const stats = await mgr.getGlobalStatistics();
 
-  let stats;
-  try {
-    stats = await mgr.getGlobalStatistics();
-  } catch (e) {
-    console.error('[StatsModal] Failed to get statistics:', e);
-    alert('Не удалось загрузить статистику.');
-    return;
-  }
-
-  /* ── Overlay ── */
   const overlay = document.createElement('div');
-  overlay.className = 'statistics-modal-overlay';
+  overlay.className = 'offline-modal-overlay';
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) closeStatisticsModal();
   });
 
-  /* ── Modal ── */
   const modal = document.createElement('div');
-  modal.className = 'statistics-modal';
+  modal.className = 'offline-modal';
+  modal.style.maxWidth = '420px';
 
-  const st = stats.storage;
-  const c = stats.counts;
-  const l = stats.listens;
-  const q = stats.queue;
-  const s = stats.settings;
+  /* Header */
+  const header = document.createElement('div');
+  header.className = 'offline-modal__header';
+  header.innerHTML = `
+    <span>📊 Статистика</span>
+    <button class="offline-modal__close" title="Закрыть">&times;</button>
+  `;
+  header.querySelector('.offline-modal__close').addEventListener('click', closeStatisticsModal);
+  modal.appendChild(header);
 
-  const usedMB = ((st.used || 0) / (1024 * 1024)).toFixed(1);
-  const quotaMB = ((st.quota || 0) / (1024 * 1024)).toFixed(0);
+  /* Summary */
+  const summary = document.createElement('div');
+  summary.className = 'offline-section';
 
-  modal.innerHTML = `
-    <div class="statistics-modal__header">
-      <h2>📊 Статистика офлайн-кэша</h2>
-      <button class="statistics-modal__close" title="Закрыть">&times;</button>
+  const hours = Math.floor(stats.totalSeconds / 3600);
+  const mins = Math.floor((stats.totalSeconds % 3600) / 60);
+
+  summary.innerHTML = `
+    <div class="offline-section__title">■ Общая статистика</div>
+    <div class="offline-row">
+      <span class="offline-row__label">Всего прослушиваний</span>
+      <span style="font-weight: 600;">${stats.totalListens}</span>
     </div>
-    <div class="statistics-modal__body">
-
-      <section>
-        <h3>💾 Хранилище</h3>
-        <p>Использовано: <strong>${usedMB} МБ</strong> из ${quotaMB} МБ</p>
-      </section>
-
-      <section>
-        <h3>📦 Кэшированные треки</h3>
-        <table>
-          <tr><td>🔒 Закреплённые</td><td><strong>${c.pinned}</strong></td></tr>
-          <tr><td>☁ Облачные</td><td><strong>${c.cloud}</strong></td></tr>
-          <tr><td>🎵 Динамические</td><td><strong>${c.dynamic}</strong></td></tr>
-          <tr><td>Всего</td><td><strong>${c.total}</strong></td></tr>
-          <tr><td>⚠️ Нужен re-cache</td><td><strong>${c.needsReCache}</strong></td></tr>
-          <tr><td>⏰ ☁ истекает скоро</td><td><strong>${c.cloudExpiringSoon}</strong></td></tr>
-        </table>
-      </section>
-
-      <section>
-        <h3>🎧 Прослушивания</h3>
-        <table>
-          <tr><td>Всего прослушиваний</td><td><strong>${l.total}</strong></td></tr>
-          <tr><td>Среднее на трек</td><td><strong>${l.average}</strong></td></tr>
-        </table>
-      </section>
-
-      <section>
-        <h3>📥 Очередь загрузок</h3>
-        <table>
-          <tr><td>В очереди</td><td><strong>${q.queued}</strong></td></tr>
-          <tr><td>Активных</td><td><strong>${q.active}</strong></td></tr>
-          <tr><td>Пауза</td><td><strong>${q.paused ? 'Да' : 'Нет'}</strong></td></tr>
-        </table>
-      </section>
-
-      <section>
-        <h3>⚙️ Настройки</h3>
-        <table>
-          <tr><td>Режим</td><td><strong>${s.mode}</strong></td></tr>
-          <tr><td>Качество</td><td><strong>${s.quality === 'hi' ? 'Hi' : 'Lo'}</strong></td></tr>
-          <tr><td>Порог ☁ (N)</td><td><strong>${s.cloudN}</strong></td></tr>
-          <tr><td>TTL ☁ (D дней)</td><td><strong>${s.cloudD}</strong></td></tr>
-          <tr><td>Пресет</td><td><strong>${s.preset?.label || s.preset?.name || '?'}</strong></td></tr>
-        </table>
-      </section>
-
-      <section>
-        <h3>📋 Все кэшированные треки</h3>
-        <div class="statistics-modal__track-list" id="stats-track-list"></div>
-      </section>
-
+    <div class="offline-row">
+      <span class="offline-row__label">Время прослушивания</span>
+      <span>${hours}ч ${mins}м</span>
+    </div>
+    <div class="offline-row">
+      <span class="offline-row__label">Треков с историей</span>
+      <span>${stats.tracksWithListens}</span>
     </div>
   `;
+  modal.appendChild(summary);
 
-  modal.querySelector('.statistics-modal__close').addEventListener('click', closeStatisticsModal);
+  /* Top tracks */
+  if (stats.topTracks.length > 0) {
+    const topSection = document.createElement('div');
+    topSection.className = 'offline-section';
 
-  /* ── Список треков ── */
-  const trackListEl = modal.querySelector('#stats-track-list');
-  if (stats.items && stats.items.length > 0) {
-    const table = document.createElement('table');
-    table.className = 'stats-track-table';
-    table.innerHTML = `
-      <thead>
-        <tr>
-          <th>Тип</th>
-          <th>UID</th>
-          <th>Качество</th>
-          <th>Прослуш.</th>
-          <th>Размер</th>
-          <th>Статус</th>
-        </tr>
-      </thead>
-    `;
-    const tbody = document.createElement('tbody');
-    for (const item of stats.items) {
-      const icon = item.type === 'pinned' ? '🔒' : item.type === 'cloud' ? '☁' : '🎵';
-      const sizeMB = item.size ? (item.size / (1024 * 1024)).toFixed(2) : '—';
-      const status = item.needsReCache ? '⚠️ re-cache' : '✅';
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${icon}</td>
-        <td title="${item.uid}">${(item.uid || '').substring(0, 20)}…</td>
-        <td>${item.quality || '?'}</td>
-        <td>${item.cloudFullListenCount || 0}</td>
-        <td>${sizeMB} МБ</td>
-        <td>${status}</td>
-      `;
-      tbody.appendChild(tr);
+    const topTitle = document.createElement('div');
+    topTitle.className = 'offline-section__title';
+    topTitle.textContent = '■ Топ треков';
+    topSection.appendChild(topTitle);
+
+    for (const t of stats.topTracks) {
+      const row = document.createElement('div');
+      row.style.cssText = 'display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px;';
+
+      const nameSpan = document.createElement('span');
+      nameSpan.style.cssText = 'flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 8px;';
+      nameSpan.textContent = t.title;
+
+      const countSpan = document.createElement('span');
+      countSpan.style.cssText = 'color: #5bc0de; font-weight: 600; white-space: nowrap;';
+      countSpan.textContent = `${t.listens}×`;
+
+      row.appendChild(nameSpan);
+      row.appendChild(countSpan);
+      topSection.appendChild(row);
     }
-    table.appendChild(tbody);
-    trackListEl.appendChild(table);
-  } else {
-    trackListEl.innerHTML = '<p class="empty">Нет кэшированных треков.</p>';
+
+    modal.appendChild(topSection);
   }
 
   overlay.appendChild(modal);
   document.body.appendChild(overlay);
   _modal = overlay;
 
-  document.addEventListener('keydown', _escHandler);
+  document.addEventListener('keydown', _onEscStats);
 }
 
 export function closeStatisticsModal() {
-  if (_modal) {
-    _modal.remove();
-    _modal = null;
-  }
-  document.removeEventListener('keydown', _escHandler);
+  if (!_modal) return;
+  _modal.remove();
+  _modal = null;
+  document.removeEventListener('keydown', _onEscStats);
 }
 
-function _escHandler(e) {
+function _onEscStats(e) {
   if (e.key === 'Escape') closeStatisticsModal();
 }
 
-export default { openStatisticsModal, closeStatisticsModal };
+export function initStatisticsModal() {
+  document.addEventListener('click', (e) => {
+    const trigger = e.target.closest('[data-open-stats-modal], .stats-modal-trigger, #stats-btn');
+    if (trigger) {
+      e.preventDefault();
+      openStatisticsModal();
+    }
+  });
+}
 
+export default {
+  openStatisticsModal,
+  closeStatisticsModal,
+  initStatisticsModal
+};
