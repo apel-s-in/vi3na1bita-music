@@ -29,15 +29,11 @@
       Promise.all([
         import('./ui/offline-indicators.js'),
         import('./ui/cache-progress-overlay.js'),
-        import('./app/playback-cache-bootstrap.js'),
-        import('./ui/offline-modal.js')
-      ]).then(([ind, ov, pb, mod]) => {
-        ind?.attachOfflineIndicators?.();
-        ov?.attachCacheProgressOverlay?.();
-        pb?.attachPlaybackCache?.();
-        if (localStorage.getItem('offline:preloadAllTracksOnce:v1') !== '1' && mod?.preloadAllAlbumsTrackIndex) {
-          mod.preloadAllAlbumsTrackIndex().then(() => localStorage.setItem('offline:preloadAllTracksOnce:v1', '1'));
-        }
+        import('./app/playback-cache-bootstrap.js')
+      ]).then(([ind, ov, pb]) => {
+        ind?.initOfflineIndicators?.();
+        ov?.initCacheProgressOverlay?.();
+        pb?.initPlaybackCache?.();
       });
     } catch (e) { console.error('Offline boot err:', e); }
 
