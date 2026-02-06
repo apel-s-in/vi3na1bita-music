@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-78331424d6d0391e53926b384064dd0fceab7301.idx
-│   │       ├── pack-78331424d6d0391e53926b384064dd0fceab7301.pack
-│   │       └── pack-78331424d6d0391e53926b384064dd0fceab7301.rev
+│   │       ├── pack-b4397f357288266950625188e4e6368be8da6d16.idx
+│   │       ├── pack-b4397f357288266950625188e4e6368be8da6d16.pack
+│   │       └── pack-b4397f357288266950625188e4e6368be8da6d16.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 14:19:07 UTC
+Сгенерировано: 2026-02-06 14:19:37 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8462,7 +8462,6 @@ export async function openStatisticsModal() {
           <div style="font-size:11px; opacity:0.5;">часов</div>
         </div>
         <div style="flex:1; background:rgba(255,255,255,0.08); border-radius:10px; padding:14px; text-align:center;">
-          <div style
           <div style="font-size:24px; font-weight:700;">${topTracks.length}</div>
           <div style="font-size:11px; opacity:0.5;">треков</div>
         </div>
@@ -8479,12 +8478,15 @@ export async function openStatisticsModal() {
     </div>
   `;
 
-  const modal = window.Modals.open({
+  window.Modals.open({
     title: '📊 Статистика прослушивания',
     maxWidth: 480,
     bodyHtml
   });
 }
+
+// Глобальный доступ для кнопки stats-btn
+window.StatisticsModal = { show: openStatisticsModal };
 
 export default openStatisticsModal;
 
