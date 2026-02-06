@@ -1,218 +1,516 @@
 /**
- * offline-modal.js — Модальное окно управления офлайн-режимом
+ * offline-modal.js — Модальное окно настроек офлайн-режима.
+ *
+ * ТЗ: П.8 (все секции), П.8.1–П.8.5
+ *
+ * Секции:
+ *   1. Режим офлайн (R0–R3)
+ *   2. Качество кэша (Hi/Lo) — дубль кнопки плеера
+ *   3. Облачные настройки (N, D)
+ *   4. Сетевая политика
+ *   5. Пресет загрузки
+ *   6. Статус очереди загрузок
+ *   7. Хранилище и категории
+ *   8. 🔒/☁ список с кнопками Re-cache, Удалить всё
  */
 
 import { getOfflineManager } from '../offline/offline-manager.js';
 
-const MODE_LABELS = {
-  R0: 'Онлайн (офлайн выключен)',
-  R1: 'Облачный кэш',
-  R2: 'Подготовка к офлайну',
-  R3: 'Полный офлайн'
-};
+let _modal = null;
 
-const MODE_DESCRIPTIONS = {
-  R0: 'Музыка воспроизводится только онлайн. Кэш не используется.',
-  R1: 'Прослушанные треки автоматически кэшируются. При потере сети — воспроизведение из кэша.',
-  R2: 'Выбранные альбомы загружаются целиком для перехода в полный офлайн.',
-  R3: 'Полностью автономный режим. Воспроизведение только из кэша.'
-};
-
-let _activeModal = null;
-
-function _closeModal() {
-  if (_activeModal) {
-    try { _activeModal.remove(); } catch {}
-    _activeModal = null;
-  }
-}
+/* ═══════ Открытие ═══════ */
 
 export async function openOfflineModal() {
-  _closeModal();
-
-  if (!window.Modals?.open) {
-    console.warn('[OfflineModal] window.Modals not available');
-    return;
-  }
+  if (_modal) { closeOfflineModal(); return; }
 
   const mgr = getOfflineManager();
-  const currentMode = mgr.getMode();
-  const storageInfo = await mgr.getStorageInfo().catch(() => ({
-    used: 0, usage: 0, quota: 0, free: 0,
-    categories: { counts: {}, sizes: {} }
-  }));
-  const queueStatus = mgr.getQueueStatus();
 
-  const used = storageInfo.used || storageInfo.usage || 0;
-  const usedMB = (used / (1024 * 1024)).toFixed(1);
-  const quotaMB = ((storageInfo.quota || 0) / (1024 * 1024)).toFixed(0);
-  const freeMB = ((storageInfo.free || 0) / (1024 * 1024)).toFixed(0);
+  /* ── Контейнер ── */
+  const overlay = document.createElement('div');
+  overlay.className = 'offline-modal-overlay';
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeOfflineModal();
+  });
 
-  const cats = storageInfo.categories || { counts: {}, sizes: {} };
-  const pinnedCount = cats.counts?.pinned || 0;
-  const cloudCount = cats.counts?.cloud || 0;
-  const totalCount = cats.counts?.total || 0;
+  const modal = document.createElement('div');
+  modal.className = 'offline-modal';
 
-  const cacheQuality = mgr.getCacheQualitySetting();
-  const netPolicy = mgr.getNetPolicy();
-  const preset = mgr.getPreset();
-
-  const bodyHtml = `
-    <div class="offline-modal" style="color:#fff; font-family:sans-serif;">
-
-      <div style="background:rgba(255,255,255,0.08); border-radius:10px; padding:14px; margin-bottom:14px;">
-        <div style="font-size:13px; opacity:0.6; margin-bottom:4px;">Текущий режим</div>
-        <div style="font-size:17px; font-weight:600;">${MODE_LABELS[currentMode]}</div>
-        <div style="font-size:12px; opacity:0.5; margin-top:4px;">${MODE_DESCRIPTIONS[currentMode]}</div>
-      </div>
-
-      <div style="display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap;" id="offline-mode-btns">
-        ${['R0','R1','R2','R3'].map(m => `
-          <button data-mode="${m}" style="
-            flex:1; min-width:60px; padding:8px 4px; border-radius:8px; border:none;
-            font-size:12px; font-weight:600; cursor:pointer; transition:all .2s;
-            background:${m === currentMode ? '#6c5ce7' : 'rgba(255,255,255,0.1)'};
-            color:${m === currentMode ? '#fff' : 'rgba(255,255,255,0.6)'};">
-            ${m}
-          </button>
-        `).join('')}
-      </div>
-
-      <div style="background:rgba(255,255,255,0.08); border-radius:10px; padding:14px; margin-bottom:14px;">
-        <div style="font-size:13px; opacity:0.6; margin-bottom:8px;">💾 Хранилище</div>
-        <div style="font-size:13px;">Использовано: <b>${usedMB} МБ</b> / ${quotaMB} МБ (свободно: ${freeMB} МБ)</div>
-        <div style="height:6px; background:rgba(255,255,255,0.1); border-radius:3px; margin-top:8px; overflow:hidden;">
-          <div style="height:100%; width:${storageInfo.quota ? Math.min(100, (used / storageInfo.quota) * 100) : 0}%;
-                       background:linear-gradient(90deg,#6c5ce7,#a29bfe); border-radius:3px;"></div>
-        </div>
-        <div style="display:flex; justify-content:space-between; font-size:11px; opacity:0.5; margin-top:6px;">
-          <span>📌 ${pinnedCount}</span>
-          <span>☁️ ${cloudCount}</span>
-          <span>Всего: ${totalCount}</span>
-        </div>
-      </div>
-
-      <div style="background:rgba(255,255,255,0.08); border-radius:10px; padding:14px; margin-bottom:14px;">
-        <div style="font-size:13px; opacity:0.6; margin-bottom:8px;">🎵 Качество кэша</div>
-        <div style="display:flex; gap:8px;" id="offline-quality-btns">
-          <button data-q="hi" style="flex:1; padding:8px; border-radius:8px; border:none; cursor:pointer;
-            background:${cacheQuality === 'hi' ? '#00b894' : 'rgba(255,255,255,0.1)'};
-            color:${cacheQuality === 'hi' ? '#fff' : 'rgba(255,255,255,0.6)'}; font-size:12px; font-weight:600;">HI (320k)</button>
-          <button data-q="lo" style="flex:1; padding:8px; border-radius:8px; border:none; cursor:pointer;
-            background:${cacheQuality === 'lo' ? '#00b894' : 'rgba(255,255,255,0.1)'};
-            color:${cacheQuality === 'lo' ? '#fff' : 'rgba(255,255,255,0.6)'}; font-size:12px; font-weight:600;">LO (128k)</button>
-        </div>
-      </div>
-
-      <div style="background:rgba(255,255,255,0.08); border-radius:10px; padding:14px; margin-bottom:14px;">
-        <div style="font-size:13px; opacity:0.6; margin-bottom:8px;">🌐 Сетевая политика</div>
-        <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer; margin-bottom:6px;">
-          <input type="checkbox" id="offm-wifi" ${netPolicy.wifi ? 'checked' : ''}> Wi-Fi
-        </label>
-        <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
-          <input type="checkbox" id="offm-mobile" ${netPolicy.mobile ? 'checked' : ''}> Мобильные данные
-        </label>
-      </div>
-
-      <div style="background:rgba(255,255,255,0.08); border-radius:10px; padding:14px; margin-bottom:14px;">
-        <div style="font-size:13px; opacity:0.6; margin-bottom:8px;">⚙️ Скорость: <b>${preset.label || preset.name}</b></div>
-        <div style="display:flex; gap:6px;" id="offline-preset-btns">
-          ${['conservative','balanced','aggressive'].map(p => `
-            <button data-preset="${p}" style="flex:1; padding:6px 4px; border-radius:8px; border:none; cursor:pointer;
-              font-size:11px; font-weight:600;
-              background:${preset.name === p ? '#fdcb6e' : 'rgba(255,255,255,0.1)'};
-              color:${preset.name === p ? '#000' : 'rgba(255,255,255,0.6)'};">
-              ${{ conservative: '🐢', balanced: '⚖️', aggressive: '🚀' }[p]}
-            </button>
-          `).join('')}
-        </div>
-      </div>
-
-      <div style="background:rgba(255,255,255,0.08); border-radius:10px; padding:14px; margin-bottom:14px;">
-        <div style="font-size:13px; opacity:0.6; margin-bottom:8px;">📥 Очередь</div>
-        <div style="font-size:13px;">
-          В очереди: <b>${queueStatus.queued}</b> · Активных: <b>${queueStatus.active}</b>
-          ${queueStatus.paused ? ' · <span style="color:#e17055;">⏸</span>' : ''}
-        </div>
-        <div style="display:flex; gap:8px; margin-top:8px;">
-          <button id="offm-pause" style="flex:1; padding:6px; border-radius:6px; border:none; cursor:pointer;
-            background:rgba(255,255,255,0.1); color:#fff; font-size:12px;">
-            ${queueStatus.paused ? '▶ Продолжить' : '⏸ Пауза'}
-          </button>
-          <button id="offm-clear-queue" style="flex:1; padding:6px; border-radius:6px; border:none; cursor:pointer;
-            background:rgba(225,112,85,0.3); color:#e17055; font-size:12px;">🗑 Очистить</button>
-        </div>
-      </div>
-
-      <div style="display:flex; gap:8px; margin-top:10px;">
-        <button id="offm-clear-all" style="flex:1; padding:10px; border-radius:8px; border:none; cursor:pointer;
-          background:rgba(214,48,49,0.2); color:#ff7675; font-size:13px; font-weight:600;">🧹 Очистить кэш</button>
-        <button id="offm-close" style="flex:1; padding:10px; border-radius:8px; border:none; cursor:pointer;
-          background:rgba(108,92,231,0.3); color:#a29bfe; font-size:13px; font-weight:600;">✕ Закрыть</button>
-      </div>
-    </div>
+  /* ── Заголовок ── */
+  const header = document.createElement('div');
+  header.className = 'offline-modal__header';
+  header.innerHTML = `
+    <h2>⚙️ Офлайн-режим</h2>
+    <button class="offline-modal__close" title="Закрыть">&times;</button>
   `;
+  header.querySelector('.offline-modal__close').addEventListener('click', closeOfflineModal);
+  modal.appendChild(header);
 
-  _activeModal = window.Modals.open({
-    title: '⚡ Офлайн-режим',
-    maxWidth: 520,
-    bodyHtml
-  });
+  /* ── Скролл-контейнер ── */
+  const body = document.createElement('div');
+  body.className = 'offline-modal__body';
 
-  // Bind events after render
-  requestAnimationFrame(() => {
-    _activeModal?.querySelectorAll('#offline-mode-btns button').forEach(btn => {
+  /* ═══ Секция 1: Режим ═══ */
+  body.appendChild(_buildSection('📡 Режим офлайн', () => {
+    const currentMode = mgr.getMode();
+    const modes = [
+      { id: 'R0', label: 'R0 — Только онлайн', desc: 'Без кэширования.' },
+      { id: 'R1', label: 'R1 — Только 🔒', desc: 'Кэш только для закреплённых.' },
+      { id: 'R2', label: 'R2 — 🔒 + ☁', desc: 'Закреплённые + облачный авто-кэш.' },
+      { id: 'R3', label: 'R3 — 🔒 + ☁ + окно', desc: 'Всё + предзагрузка соседних треков.' }
+    ];
+
+    const wrap = document.createElement('div');
+    wrap.className = 'offline-modal__modes';
+
+    for (const m of modes) {
+      const label = document.createElement('label');
+      label.className = 'offline-modal__mode-option';
+      label.innerHTML = `
+        <input type="radio" name="offlineMode" value="${m.id}"
+               ${currentMode === m.id ? 'checked' : ''}>
+        <strong>${m.label}</strong>
+        <span class="desc">${m.desc}</span>
+      `;
+      label.querySelector('input').addEventListener('change', async (e) => {
+        await mgr.setMode(e.target.value);
+        _refreshStatus(body, mgr);
+      });
+      wrap.appendChild(label);
+    }
+    return wrap;
+  }));
+
+  /* ═══ Секция 2: Качество ═══ */
+  body.appendChild(_buildSection('🎵 Качество кэша', () => {
+    const q = mgr.getCacheQuality();
+    const wrap = document.createElement('div');
+    wrap.className = 'offline-modal__quality';
+    wrap.innerHTML = `
+      <p>Текущее качество: <strong>${q === 'hi' ? 'Hi (оригинал)' : 'Lo (сжатое)'}</strong></p>
+      <p class="hint">Совпадает с качеством плеера (ТЗ П.3.1)</p>
+      <div class="btn-group">
+        <button class="btn ${q === 'hi' ? 'btn--active' : ''}" data-q="hi">Hi</button>
+        <button class="btn ${q === 'lo' ? 'btn--active' : ''}" data-q="lo">Lo</button>
+      </div>
+      <p class="hint">При смене качества все кэшированные треки будут помечены для re-cache.</p>
+    `;
+    wrap.querySelectorAll('[data-q]').forEach(btn => {
       btn.addEventListener('click', async () => {
-        await mgr.setMode(btn.dataset.mode);
-        _closeModal();
-        setTimeout(() => openOfflineModal(), 200);
-      });
-    });
-
-    _activeModal?.querySelectorAll('#offline-quality-btns button').forEach(btn => {
-      btn.addEventListener('click', () => {
         mgr.setCacheQualitySetting(btn.dataset.q);
-        _closeModal();
-        setTimeout(() => openOfflineModal(), 200);
+        wrap.querySelectorAll('[data-q]').forEach(b => b.classList.remove('btn--active'));
+        btn.classList.add('btn--active');
+        wrap.querySelector('p strong').textContent =
+          btn.dataset.q === 'hi' ? 'Hi (оригинал)' : 'Lo (сжатое)';
       });
     });
+    return wrap;
+  }));
 
-    const wifiCb = _activeModal?.querySelector('#offm-wifi');
-    const mobileCb = _activeModal?.querySelector('#offm-mobile');
-    wifiCb?.addEventListener('change', () => mgr.setNetPolicy({ wifi: wifiCb.checked, mobile: mobileCb?.checked ?? true }));
-    mobileCb?.addEventListener('change', () => mgr.setNetPolicy({ wifi: wifiCb?.checked ?? true, mobile: mobileCb.checked }));
+  /* ═══ Секция 3: Облачные настройки N и D ═══ */
+  body.appendChild(_buildSection('☁ Облачные настройки', () => {
+    const wrap = document.createElement('div');
+    wrap.className = 'offline-modal__cloud-settings';
 
-    _activeModal?.querySelectorAll('#offline-preset-btns button').forEach(btn => {
+    const currentN = mgr.getCloudN();
+    const currentD = mgr.getCloudD();
+
+    wrap.innerHTML = `
+      <div class="field">
+        <label>N — порог прослушиваний для появления ☁:</label>
+        <input type="number" id="om-cloud-n" value="${currentN}" min="1" max="100" step="1">
+      </div>
+      <div class="field">
+        <label>D — срок хранения облачного кэша (дней):</label>
+        <input type="number" id="om-cloud-d" value="${currentD}" min="1" max="365" step="1">
+      </div>
+      <button class="btn btn--apply" id="om-cloud-apply">Применить N/D</button>
+      <p class="hint">
+        Трек получает ☁ после N полных прослушиваний.<br>
+        Каждое новое прослушивание продлевает TTL на D дней.
+      </p>
+    `;
+
+    wrap.querySelector('#om-cloud-apply').addEventListener('click', () => {
+      const n = parseInt(wrap.querySelector('#om-cloud-n').value) || 5;
+      const d = parseInt(wrap.querySelector('#om-cloud-d').value) || 31;
+      mgr.setCloudN(n);
+      mgr.setCloudD(d);
+      window.NotificationSystem?.info?.(`Облачные настройки обновлены: N=${n}, D=${d}`);
+    });
+
+    return wrap;
+  }));
+
+  /* ═══ Секция 4: Сетевая политика ═══ */
+  body.appendChild(_buildSection('📶 Сетевая политика', () => {
+    const policy = mgr.getNetPolicy();
+    const wrap = document.createElement('div');
+    wrap.className = 'offline-modal__net-policy';
+    wrap.innerHTML = `
+      <label><input type="checkbox" id="om-net-wifi" ${policy.wifi ? 'checked' : ''}> Скачивать по Wi-Fi</label>
+      <label><input type="checkbox" id="om-net-mobile" ${policy.mobile ? 'checked' : ''}> Скачивать по мобильной сети</label>
+    `;
+    wrap.querySelector('#om-net-wifi').addEventListener('change', (e) => {
+      mgr.setNetPolicy({ wifi: e.target.checked });
+    });
+    wrap.querySelector('#om-net-mobile').addEventListener('change', (e) => {
+      mgr.setNetPolicy({ mobile: e.target.checked });
+    });
+    return wrap;
+  }));
+
+  /* ═══ Секция 5: Пресет загрузки ═══ */
+  body.appendChild(_buildSection('⚡ Пресет загрузки', () => {
+    const preset = mgr.getPreset();
+    const wrap = document.createElement('div');
+    wrap.className = 'offline-modal__preset';
+    const presets = [
+      { name: 'conservative', label: 'Экономный' },
+      { name: 'balanced', label: 'Сбалансированный' },
+      { name: 'aggressive', label: 'Быстрый' }
+    ];
+    for (const p of presets) {
+      const btn = document.createElement('button');
+      btn.className = `btn ${preset.name === p.name ? 'btn--active' : ''}`;
+      btn.textContent = p.label;
       btn.addEventListener('click', () => {
-        mgr.setPreset(btn.dataset.preset);
-        _closeModal();
-        setTimeout(() => openOfflineModal(), 200);
+        mgr.setPreset(p.name);
+        wrap.querySelectorAll('.btn').forEach(b => b.classList.remove('btn--active'));
+        btn.classList.add('btn--active');
       });
+      wrap.appendChild(btn);
+    }
+    return wrap;
+  }));
+
+  /* ═══ Секция 6: Очередь загрузок ═══ */
+  body.appendChild(_buildSection('📥 Очередь загрузок', () => {
+    const wrap = document.createElement('div');
+    wrap.className = 'offline-modal__queue';
+    wrap.id = 'om-queue-status';
+    _renderQueueStatus(wrap, mgr);
+
+    const btnRow = document.createElement('div');
+    btnRow.className = 'btn-group';
+
+    const pauseBtn = document.createElement('button');
+    pauseBtn.className = 'btn';
+    pauseBtn.textContent = '⏸ Пауза';
+    pauseBtn.addEventListener('click', () => {
+      mgr.pauseDownloads();
+      _renderQueueStatus(wrap, mgr);
     });
 
-    _activeModal?.querySelector('#offm-pause')?.addEventListener('click', () => {
-      mgr.getQueueStatus().paused ? mgr.resumeDownloads() : mgr.pauseDownloads();
-      _closeModal();
-      setTimeout(() => openOfflineModal(), 200);
+    const resumeBtn = document.createElement('button');
+    resumeBtn.className = 'btn';
+    resumeBtn.textContent = '▶ Продолжить';
+    resumeBtn.addEventListener('click', () => {
+      mgr.resumeDownloads();
+      _renderQueueStatus(wrap, mgr);
     });
 
-    _activeModal?.querySelector('#offm-clear-queue')?.addEventListener('click', () => {
-      mgr.queue.clear();
-      _closeModal();
-      setTimeout(() => openOfflineModal(), 200);
+    btnRow.appendChild(pauseBtn);
+    btnRow.appendChild(resumeBtn);
+    wrap.appendChild(btnRow);
+
+    return wrap;
+  }));
+
+  /* ═══ Секция 7: Хранилище ═══ */
+  body.appendChild(_buildSection('💾 Хранилище', () => {
+    const wrap = document.createElement('div');
+    wrap.className = 'offline-modal__storage';
+    wrap.id = 'om-storage-status';
+    wrap.textContent = 'Загрузка…';
+    _renderStorageInfo(wrap, mgr);
+    return wrap;
+  }));
+
+  /* ═══ Секция 8: Список 🔒/☁ (ТЗ П.8.1) ═══ */
+  body.appendChild(_buildSection('🔒☁ Закреплённые и облачные треки', () => {
+    const wrap = document.createElement('div');
+    wrap.className = 'offline-modal__pinned-cloud';
+
+    /* Кнопки управления */
+    const controls = document.createElement('div');
+    controls.className = 'btn-group';
+
+    const reCacheBtn = document.createElement('button');
+    reCacheBtn.className = 'btn';
+    reCacheBtn.textContent = '🔄 Re-cache все';
+    reCacheBtn.addEventListener('click', async () => {
+      reCacheBtn.disabled = true;
+      reCacheBtn.textContent = '🔄 Re-cache…';
+      const progressBar = wrap.querySelector('.recache-progress');
+      if (progressBar) progressBar.style.display = 'block';
+
+      await mgr.reCacheAll((p) => {
+        if (progressBar) {
+          progressBar.textContent = `Re-cache: ${p.done}/${p.total} (${p.pct}%)`;
+        }
+        reCacheBtn.textContent = `🔄 Re-cache… ${p.pct}%`;
+      });
+
+      reCacheBtn.disabled = false;
+      reCacheBtn.textContent = '🔄 Re-cache все';
+      if (progressBar) progressBar.style.display = 'none';
+      _renderPinnedCloudList(listContainer, mgr);
     });
 
-    _activeModal?.querySelector('#offm-clear-all')?.addEventListener('click', async () => {
-      if (confirm('Удалить ВСЕ кэшированные треки?')) {
-        await mgr.clearByCategory('all');
-        await mgr.setMode('R0');
-        _closeModal();
-        window.NotificationSystem?.success('Кэш очищен');
-      }
+    const deleteAllBtn = document.createElement('button');
+    deleteAllBtn.className = 'btn btn--danger';
+    deleteAllBtn.textContent = '🗑 Удалить все 🔒/☁';
+    deleteAllBtn.addEventListener('click', async () => {
+      const ok = confirm(
+        'Удалить ВСЕ закреплённые и облачные треки из кэша?\n\n' +
+        'Это действие нельзя отменить. Треки останутся в каталоге,\n' +
+        'но будут воспроизводиться только онлайн.'
+      );
+      if (!ok) return;
+      const pinnedCount = await mgr.clearByCategory('pinned');
+      const cloudCount = await mgr.clearByCategory('cloud');
+      window.NotificationSystem?.info?.(`Удалено: ${pinnedCount + cloudCount} треков.`);
+      _renderPinnedCloudList(listContainer, mgr);
     });
 
-    _activeModal?.querySelector('#offm-close')?.addEventListener('click', () => _closeModal());
-  });
+    controls.appendChild(reCacheBtn);
+    controls.appendChild(deleteAllBtn);
+    wrap.appendChild(controls);
+
+    /* Прогресс re-cache */
+    const progressEl = document.createElement('div');
+    progressEl.className = 'recache-progress';
+    progressEl.style.display = 'none';
+    wrap.appendChild(progressEl);
+
+    /* Список треков */
+    const listContainer = document.createElement('div');
+    listContainer.className = 'offline-modal__track-list';
+    listContainer.textContent = 'Загрузка…';
+    wrap.appendChild(listContainer);
+
+    _renderPinnedCloudList(listContainer, mgr);
+
+    return wrap;
+  }));
+
+  /* ═══ Секция 9: Очистка по категориям ═══ */
+  body.appendChild(_buildSection('🧹 Очистка кэша', () => {
+    const wrap = document.createElement('div');
+    wrap.className = 'offline-modal__cleanup';
+
+    const categories = [
+      { key: 'pinned', label: '🔒 Закреплённые' },
+      { key: 'cloud', label: '☁ Облачные' },
+      { key: 'dynamic', label: '🎵 Динамические (playback window)' },
+      { key: 'all', label: '💥 Всё' }
+    ];
+
+    for (const cat of categories) {
+      const btn = document.createElement('button');
+      btn.className = `btn ${cat.key === 'all' ? 'btn--danger' : ''}`;
+      btn.textContent = `Удалить ${cat.label}`;
+      btn.addEventListener('click', async () => {
+        const ok = confirm(`Удалить все кэшированные данные категории "${cat.label}"?`);
+        if (!ok) return;
+        const count = await mgr.clearByCategory(cat.key);
+        window.NotificationSystem?.info?.(`Удалено ${count} элементов (${cat.label}).`);
+        _refreshStatus(body, mgr);
+      });
+      wrap.appendChild(btn);
+    }
+
+    return wrap;
+  }));
+
+  /* ── Собираем модал ── */
+  modal.appendChild(body);
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+  _modal = overlay;
+
+  /* ESC закрытие */
+  document.addEventListener('keydown', _escHandler);
 }
 
-export default openOfflineModal;
+/* ═══════ Закрытие ═══════ */
+
+export function closeOfflineModal() {
+  if (_modal) {
+    _modal.remove();
+    _modal = null;
+  }
+  document.removeEventListener('keydown', _escHandler);
+}
+
+function _escHandler(e) {
+  if (e.key === 'Escape') closeOfflineModal();
+}
+
+/* ═══════ Helpers ═══════ */
+
+function _buildSection(title, contentFn) {
+  const section = document.createElement('section');
+  section.className = 'offline-modal__section';
+
+  const h3 = document.createElement('h3');
+  h3.className = 'offline-modal__section-title';
+  h3.textContent = title;
+  section.appendChild(h3);
+
+  const content = contentFn();
+  if (content) section.appendChild(content);
+
+  return section;
+}
+
+function _renderQueueStatus(container, mgr) {
+  const status = mgr.queue.getStatus();
+  const info = container.querySelector('.queue-info') || document.createElement('div');
+  info.className = 'queue-info';
+  info.innerHTML = `
+    <p>В очереди: <strong>${status.queued}</strong> | 
+       Активных: <strong>${status.active}</strong> | 
+       Пауза: <strong>${status.paused ? 'Да' : 'Нет'}</strong></p>
+    ${status.activeUid ? `<p>Скачивается: <code>${status.activeUid}</code></p>` : ''}
+  `;
+  if (!info.parentElement) container.prepend(info);
+}
+
+async function _renderStorageInfo(container, mgr) {
+  try {
+    const info = await mgr.getStorageInfo();
+    const usedMB = ((info.used || 0) / (1024 * 1024)).toFixed(1);
+    const quotaMB = ((info.quota || 0) / (1024 * 1024)).toFixed(0);
+    const freeMB = ((info.free || 0) / (1024 * 1024)).toFixed(0);
+    const cats = info.categories;
+
+    container.innerHTML = `
+      <div class="storage-bar">
+        <div class="storage-bar__fill"
+             style="width: ${info.quota ? Math.min(100, (info.used / info.quota) * 100) : 0}%">
+        </div>
+      </div>
+      <p>Использовано: <strong>${usedMB} МБ</strong> из ${quotaMB} МБ (свободно ${freeMB} МБ)</p>
+      <table class="storage-table">
+        <tr><th>Категория</th><th>Кол-во</th><th>Размер</th></tr>
+        <tr>
+          <td>🔒 Закреплённые</td>
+          <td>${cats.counts.pinned}</td>
+          <td>${(cats.sizes.pinned / (1024 * 1024)).toFixed(1)} МБ</td>
+        </tr>
+        <tr>
+          <td>☁ Облачные</td>
+          <td>${cats.counts.cloud}</td>
+          <td>${(cats.sizes.cloud / (1024 * 1024)).toFixed(1)} МБ</td>
+        </tr>
+        <tr>
+          <td>🎵 Динамические</td>
+          <td>${cats.counts.dynamic}</td>
+          <td>${(cats.sizes.dynamic / (1024 * 1024)).toFixed(1)} МБ</td>
+        </tr>
+        <tr>
+          <td><strong>Всего</strong></td>
+          <td><strong>${cats.counts.total}</strong></td>
+          <td><strong>${(cats.sizes.total / (1024 * 1024)).toFixed(1)} МБ</strong></td>
+        </tr>
+      </table>
+    `;
+  } catch (e) {
+    container.textContent = 'Ошибка загрузки информации о хранилище.';
+    console.error('[OfflineModal] Storage info error:', e);
+  }
+}
+
+async function _renderPinnedCloudList(container, mgr) {
+  try {
+    const items = await mgr.getPinnedAndCloudList();
+
+    if (!items.length) {
+      container.innerHTML = '<p class="empty">Нет закреплённых или облачных треков.</p>';
+      return;
+    }
+
+    const table = document.createElement('table');
+    table.className = 'offline-track-table';
+    table.innerHTML = `
+      <thead>
+        <tr>
+          <th>Тип</th>
+          <th>Название</th>
+          <th>Качество</th>
+          <th>Прослуш.</th>
+          <th>Re-cache</th>
+          <th>Действия</th>
+        </tr>
+      </thead>
+    `;
+
+    const tbody = document.createElement('tbody');
+
+    for (const item of items) {
+      const tr = document.createElement('tr');
+      const icon = item.type === 'pinned' ? '🔒' : '☁';
+      const needsRC = item.needsReCache ? '⚠️' : '✅';
+      const expiresStr = item.cloudExpiresAt
+        ? `TTL: ${Math.ceil((item.cloudExpiresAt - Date.now()) / (24 * 60 * 60 * 1000))}д`
+        : '';
+
+      tr.innerHTML = `
+        <td>${icon}</td>
+        <td>
+          <div class="track-name">${item.title || item.uid}</div>
+          <div class="track-meta">${item.artist || ''} ${expiresStr ? `· ${expiresStr}` : ''}</div>
+        </td>
+        <td>${item.quality || '?'}</td>
+        <td>${item.cloudFullListenCount || 0}</td>
+        <td>${needsRC}</td>
+        <td class="actions"></td>
+      `;
+
+      const actionsCell = tr.querySelector('.actions');
+
+      /* Кнопка toggle pin */
+      const toggleBtn = document.createElement('button');
+      toggleBtn.className = 'btn btn--small';
+      toggleBtn.textContent = item.type === 'pinned' ? '🔓' : '🔒';
+      toggleBtn.title = item.type === 'pinned' ? 'Открепить' : 'Закрепить';
+      toggleBtn.addEventListener('click', async () => {
+        await mgr.togglePinned(item.uid);
+        _renderPinnedCloudList(container, mgr);
+      });
+      actionsCell.appendChild(toggleBtn);
+
+      /* Кнопка удалить */
+      const delBtn = document.createElement('button');
+      delBtn.className = 'btn btn--small btn--danger';
+      delBtn.textContent = '🗑';
+      delBtn.title = 'Удалить из кэша';
+      delBtn.addEventListener('click', async () => {
+        await mgr.removeCached(item.uid);
+        _renderPinnedCloudList(container, mgr);
+      });
+      actionsCell.appendChild(delBtn);
+
+      tbody.appendChild(tr);
+    }
+
+    table.appendChild(tbody);
+    container.innerHTML = '';
+    container.appendChild(table);
+
+  } catch (e) {
+    container.textContent = 'Ошибка загрузки списка.';
+    console.error('[OfflineModal] Track list error:', e);
+  }
+}
+
+function _refreshStatus(body, mgr) {
+  const queueEl = body.querySelector('#om-queue-status');
+  if (queueEl) _renderQueueStatus(queueEl, mgr);
+
+  const storageEl = body.querySelector('#om-storage-status');
+  if (storageEl) _renderStorageInfo(storageEl, mgr);
+}
+
+export default { openOfflineModal, closeOfflineModal };
