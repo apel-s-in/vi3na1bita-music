@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-bb29f9e82115bd89d684957df12715325d5dde6d.idx
-│   │       ├── pack-bb29f9e82115bd89d684957df12715325d5dde6d.pack
-│   │       └── pack-bb29f9e82115bd89d684957df12715325d5dde6d.rev
+│   │       ├── pack-1b30f2d04a6eba1f5f526325ee7b1d15fffc047c.idx
+│   │       ├── pack-1b30f2d04a6eba1f5f526325ee7b1d15fffc047c.pack
+│   │       └── pack-1b30f2d04a6eba1f5f526325ee7b1d15fffc047c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 20:05:30 UTC
+Сгенерировано: 2026-02-06 20:06:01 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9427,6 +9427,9 @@ export function initStatisticsModal() {
     }
   });
 }
+
+// Глобальный доступ для player-ui.js
+window.StatisticsModal = { openStatisticsModal, closeStatisticsModal, initStatisticsModal };
 
 export default {
   openStatisticsModal,
