@@ -47,7 +47,6 @@ export async function openStatisticsModal() {
           <div style="font-size:11px; opacity:0.5;">часов</div>
         </div>
         <div style="flex:1; background:rgba(255,255,255,0.08); border-radius:10px; padding:14px; text-align:center;">
-          <div style
           <div style="font-size:24px; font-weight:700;">${topTracks.length}</div>
           <div style="font-size:11px; opacity:0.5;">треков</div>
         </div>
@@ -64,11 +63,14 @@ export async function openStatisticsModal() {
     </div>
   `;
 
-  const modal = window.Modals.open({
+  window.Modals.open({
     title: '📊 Статистика прослушивания',
     maxWidth: 480,
     bodyHtml
   });
 }
+
+// Глобальный доступ для кнопки stats-btn
+window.StatisticsModal = { show: openStatisticsModal };
 
 export default openStatisticsModal;
