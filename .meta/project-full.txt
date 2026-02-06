@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ab28c2d3741b6e9827230b6b5d405c4520ca035b.idx
-│   │       ├── pack-ab28c2d3741b6e9827230b6b5d405c4520ca035b.pack
-│   │       └── pack-ab28c2d3741b6e9827230b6b5d405c4520ca035b.rev
+│   │       ├── pack-091327f5a3421bd4f26c1e652dfa671acd7cae44.idx
+│   │       ├── pack-091327f5a3421bd4f26c1e652dfa671acd7cae44.pack
+│   │       └── pack-091327f5a3421bd4f26c1e652dfa671acd7cae44.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 12:39:48 UTC
+Сгенерировано: 2026-02-06 13:08:37 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5619,6 +5619,11 @@ function emit(name, detail = {}) {
 
 const instance = new OfflineManager();
 window.OfflineManager = instance;
+
+// Named export для единообразных импортов по проекту
+export function getOfflineManager() {
+  return instance;
+}
 
 export default instance;
 export { BG_PRESETS, OfflineManager };
