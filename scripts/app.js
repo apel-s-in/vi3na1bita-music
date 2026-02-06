@@ -24,17 +24,7 @@
     // 2. Offline System
     try {
       const boot = await import('./app/offline-ui-bootstrap.js');
-      boot?.attachOfflineUI?.();
-      
-      Promise.all([
-        import('./ui/offline-indicators.js'),
-        import('./ui/cache-progress-overlay.js'),
-        import('./app/playback-cache-bootstrap.js')
-      ]).then(([ind, ov, pb]) => {
-        ind?.initOfflineIndicators?.();
-        ov?.initCacheProgressOverlay?.();
-        pb?.initPlaybackCache?.();
-      });
+      boot?.initOfflineUI?.();
     } catch (e) { console.error('Offline boot err:', e); }
 
     // 3. UI Managers
@@ -47,14 +37,7 @@
     ['SleepTimer', 'LyricsModal', 'SystemInfoManager'].forEach(m => W[m]?.initialize?.());
     await import('./ui/statistics-modal.js');
 
-    // 5. Offline Modal button
-    const offBtn = D.getElementById('offline-btn');
-    if (offBtn) {
-      offBtn.addEventListener('click', async () => {
-        const { showOfflineModal } = await import('./ui/offline-modal.js');
-        showOfflineModal();
-      });
-    }
+    // Offline Modal button — handled by initOfflineModal() delegate in offline-modal.js
 
     // 5. Restore State
     W.PlayerState?.apply?.();
