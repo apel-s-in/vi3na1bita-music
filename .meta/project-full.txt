@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-22b726d8c58e647ec7b896a155aa4f1e3b1eeedd.idx
-│   │       ├── pack-22b726d8c58e647ec7b896a155aa4f1e3b1eeedd.pack
-│   │       └── pack-22b726d8c58e647ec7b896a155aa4f1e3b1eeedd.rev
+│   │       ├── pack-60ca070a0c28c26fdc887ff489c5043e8c3315e4.idx
+│   │       ├── pack-60ca070a0c28c26fdc887ff489c5043e8c3315e4.pack
+│   │       └── pack-60ca070a0c28c26fdc887ff489c5043e8c3315e4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -385,7 +385,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 19:44:25 UTC
+Сгенерировано: 2026-02-06 19:45:00 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2180,31 +2180,42 @@ export default NavigationManager;
 //=================================================
 // FILE: /scripts/app/offline-ui-bootstrap.js
 /**
- * offline-ui-bootstrap.js — Инициализация офлайн-UI.
+ * offline-ui-bootstrap.js — Инициализация всех offline UI компонентов.
  *
- * Экспортирует bootstrapOfflineUI + alias attachOfflineUI (ТЗ: рассогласование G).
+ * Вызывается один раз при старте приложения.
+ * Собирает воедино: indicators, modal, progress overlay.
  */
 
-import { getOfflineManager } from '../offline/offline-manager.js';
 import { initOfflineIndicators } from '../ui/offline-indicators.js';
+import { initOfflineModal } from '../ui/offline-modal.js';
+import { initStatisticsModal } from '../ui/statistics-modal.js';
+import { initCacheProgressOverlay } from '../ui/cache-progress-overlay.js';
 
-export async function bootstrapOfflineUI() {
-  try {
-    const mgr = getOfflineManager();
-    await mgr.initialize();
+let _initialized = false;
 
-    /* Запустить систему индикаторов */
-    initOfflineIndicators();
+/**
+ * initOfflineUI() — вызвать после DOMContentLoaded и после OfflineManager.init().
+ */
+export function initOfflineUI() {
+  if (_initialized) return;
+  _initialized = true;
 
-    console.log('[OfflineUI] Bootstrap complete');
-  } catch (err) {
-    console.error('[OfflineUI] Bootstrap failed:', err);
-  }
+  /* 1. Индикаторы 🔒/☁ в трек-листе */
+  initOfflineIndicators();
+
+  /* 2. Модальное окно OFFLINE */
+  initOfflineModal();
+
+  /* 3. Статистика */
+  initStatisticsModal();
+
+  /* 4. Overlay прогресса загрузки */
+  initCacheProgressOverlay();
+
+  console.log('[OfflineUI] All components initialized');
 }
 
-/* Alias для совместимости с app.js (boot.attachOfflineUI?.
-()) */
-export const attachOfflineUI = bootstrapOfflineUI;
+export default { initOfflineUI };
 
 //=================================================
 // FILE: /scripts/app/playback-cache-bootstrap.js
