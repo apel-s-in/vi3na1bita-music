@@ -45,7 +45,16 @@
 
     // 4. Minor Modules
     ['SleepTimer', 'LyricsModal', 'SystemInfoManager'].forEach(m => W[m]?.initialize?.());
-    await import('./ui/statistics-modal.js'); // Загрузка статистики
+    await import('./ui/statistics-modal.js');
+
+    // 5. Offline Modal button
+    const offBtn = D.getElementById('offline-btn');
+    if (offBtn) {
+      offBtn.addEventListener('click', async () => {
+        const { showOfflineModal } = await import('./ui/offline-modal.js');
+        showOfflineModal();
+      });
+    }
 
     // 5. Restore State
     W.PlayerState?.apply?.();
