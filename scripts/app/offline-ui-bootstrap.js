@@ -1,26 +1,37 @@
 /**
- * offline-ui-bootstrap.js — Инициализация офлайн-UI.
+ * offline-ui-bootstrap.js — Инициализация всех offline UI компонентов.
  *
- * Экспортирует bootstrapOfflineUI + alias attachOfflineUI (ТЗ: рассогласование G).
+ * Вызывается один раз при старте приложения.
+ * Собирает воедино: indicators, modal, progress overlay.
  */
 
-import { getOfflineManager } from '../offline/offline-manager.js';
 import { initOfflineIndicators } from '../ui/offline-indicators.js';
+import { initOfflineModal } from '../ui/offline-modal.js';
+import { initStatisticsModal } from '../ui/statistics-modal.js';
+import { initCacheProgressOverlay } from '../ui/cache-progress-overlay.js';
 
-export async function bootstrapOfflineUI() {
-  try {
-    const mgr = getOfflineManager();
-    await mgr.initialize();
+let _initialized = false;
 
-    /* Запустить систему индикаторов */
-    initOfflineIndicators();
+/**
+ * initOfflineUI() — вызвать после DOMContentLoaded и после OfflineManager.init().
+ */
+export function initOfflineUI() {
+  if (_initialized) return;
+  _initialized = true;
 
-    console.log('[OfflineUI] Bootstrap complete');
-  } catch (err) {
-    console.error('[OfflineUI] Bootstrap failed:', err);
-  }
+  /* 1. Индикаторы 🔒/☁ в трек-листе */
+  initOfflineIndicators();
+
+  /* 2. Модальное окно OFFLINE */
+  initOfflineModal();
+
+  /* 3. Статистика */
+  initStatisticsModal();
+
+  /* 4. Overlay прогресса загрузки */
+  initCacheProgressOverlay();
+
+  console.log('[OfflineUI] All components initialized');
 }
 
-/* Alias для совместимости с app.js (boot.attachOfflineUI?.
-()) */
-export const attachOfflineUI = bootstrapOfflineUI;
+export default { initOfflineUI };
