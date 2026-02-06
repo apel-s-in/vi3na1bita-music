@@ -19,8 +19,8 @@
       const needFilter = isFavAlbum || ls();
 
       const source = core.originalPlaylist || [];
-      // Если исходный плейлист пуст, фильтровать нечего
-      if (!source.length) return;
+      // Если исходный плейлист пуст или нет текущего трека, фильтровать нечего
+      if (!source.length || core.getIndex() < 0) return;
 
       let target = source;
 
