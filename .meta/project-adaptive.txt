@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4f89b7b4f4078f9d5c6f19adfebfb4610ea14b01.idx
-│   │       ├── pack-4f89b7b4f4078f9d5c6f19adfebfb4610ea14b01.pack
-│   │       └── pack-4f89b7b4f4078f9d5c6f19adfebfb4610ea14b01.rev
+│   │       ├── pack-9770955ea53cddb93a60d44f7ad6795375572bfc.idx
+│   │       ├── pack-9770955ea53cddb93a60d44f7ad6795375572bfc.pack
+│   │       └── pack-9770955ea53cddb93a60d44f7ad6795375572bfc.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 17:43:06 UTC
+Сгенерировано: 2026-02-06 17:43:29 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6238,127 +6238,166 @@ export default initCacheProgressOverlay;
 //=================================================
 // FILE: /scripts/ui/cloud-menu.js
 /**
- * cloud-menu.js — Контекстное меню ☁/🔒 при правом клике на индикаторе.
+ * cloud-menu.js — Popup-меню при клике по голубому ☁
  *
- * ТЗ: П.5.5, П.4.4
+ * ТЗ: Приложение «Pinned и Cloud», П.5.5
+ *
+ * Два пункта:
+ * 1. «Закрепить 🔒» — pinned=true, cloud-статистика сохраняется
+ * 2. «Удалить из кэша» — confirm → удалить аудио + сбросить cloud-статистику
+ *
+ * Зависимости:
+ * - OfflineManager (pinTrack, removeCachedWithReset)
+ * - refreshIndicator (offline-indicators.js)
  */
 
-import { getOfflineManager } from '../offline/offline-manager.js';
+import { OfflineManager } from '../offline/offline-manager.js';
+import { refreshIndicator } from './offline-indicators.js';
 
-let _activeMenu = null;
+/* ── Состояние ────────────────────────────────────────── */
 
-export function showCloudMenu(uid, anchorEl, options = {}) {
-  closeCloudMenu();
+let _menuEl = null;     /* Текущий открытый popup DOM-элемент */
+let _activeUid = null;  /* uid трека для которого открыто меню */
 
-  const mgr = getOfflineManager();
+/* ── Утилиты ──────────────────────────────────────────── */
 
+function _toast(msg) {
+  if (typeof window.showToast === 'function') {
+    window.showToast(msg);
+  } else {
+    console.log('[cloud-menu] toast:', msg);
+  }
+}
+
+/* ── Закрытие меню ────────────────────────────────────── */
+
+function _closeMenu() {
+  if (_menuEl && _menuEl.parentNode) {
+    _menuEl.parentNode.removeChild(_menuEl);
+  }
+  _menuEl = null;
+  _activeUid = null;
+  document.removeEventListener('click', _onOutsideClick, true);
+}
+
+/**
+ * Закрытие по клику вне меню.
+ */
+function _onOutsideClick(e) {
+  if (_menuEl && !_menuEl.contains(e.target)) {
+    _closeMenu();
+  }
+}
+
+/* ── Действия ─────────────────────────────────────────── */
+
+/**
+ * Пункт 1: «Закрепить 🔒» (П.5.5)
+ * pinned = true, cloud-статистика НЕ сбрасывается.
+ */
+async function _actionPinFromCloud(uid) {
+  _closeMenu();
+  const result = await OfflineManager.pinTrack(uid);
+  if (result.success) {
+    _toast('Трек закреплён 🔒');
+    refreshIndicator(uid);
+    window.dispatchEvent(new CustomEvent('offline-state-changed', { detail: { uid } }));
+  }
+}
+
+/**
+ * Пункт 2: «Удалить из кэша» (П.5.5)
+ * Confirm → удалить аудио → сбросить cloud-статистику.
+ * Global stats НЕ трогаем.
+ */
+async function _actionRemoveFromCache(uid) {
+  /* Confirm (П.5.5) */
+  const confirmed = confirm('Удалить трек из кэша? Статистика облачка будет сброшена.');
+  if (!confirmed) return;
+
+  _closeMenu();
+  const result = await OfflineManager.removeCachedWithReset(uid);
+  if (result.success) {
+    _toast('Трек удалён из кэша');
+    refreshIndicator(uid);
+    window.dispatchEvent(new CustomEvent('offline-state-changed', { detail: { uid } }));
+  }
+}
+
+/* ── Построение popup-меню ────────────────────────────── */
+
+/**
+ * Строит DOM popup-меню и позиционирует рядом с anchorEl.
+ */
+function _buildMenu(uid, anchorEl) {
   const menu = document.createElement('div');
-  menu.className = 'cloud-context-menu';
-  menu.setAttribute('data-uid', uid);
+  menu.classList.add('cloud-menu-popup');
 
-  /* ── Определяем состояние ── */
-  mgr.getTrackOfflineState(uid).then(state => {
-    const items = [];
-
-    if (state.pinned) {
-      items.push({
-        label: '🔓 Открепить (убрать 🔒)',
-        action: async () => {
-          await mgr.togglePinned(uid);
-          closeCloudMenu();
-        }
-      });
-    } else {
-      items.push({
-        label: '🔒 Закрепить офлайн',
-        action: async () => {
-          await mgr.togglePinned(uid);
-          closeCloudMenu();
-        }
-      });
-    }
-
-    if (state.cloud || state.pinned) {
-      items.push({
-        label: '🗑 Удалить из кэша',
-        action: async () => {
-          const ok = confirm(
-            `Удалить кэшированный аудиофайл для этого трека?\n\n` +
-            `Тип: ${state.pinned ? '🔒 Pinned' : '☁ Cloud'}\n` +
-            `Качество: ${state.cachedVariant || '?'}\n\n` +
-            `Трек останется в каталоге, но будет воспроизводиться только онлайн.`
-          );
-          if (ok) {
-            await mgr.removeCached(uid);
-            closeCloudMenu();
-          }
-        }
-      });
-    }
-
-    items.push({
-      label: 'ℹ️ Информация',
-      action: async () => {
-        const st = await mgr.getTrackOfflineState(uid);
-        const meta = await (await import('../offline/cache-db.js')).getTrackMeta(uid);
-        alert(
-          `UID: ${uid}\n` +
-          `Тип: ${st.cacheKind}\n` +
-          `Качество: ${st.cachedVariant || 'нет'}\n` +
-          `Прослушиваний: ${meta?.cloudFullListenCount || 0}\n` +
-          `Нужен re-cache: ${st.needsReCache ? 'да' : 'нет'}\n` +
-          `Скачивается: ${st.downloading ? 'да' : 'нет'}`
-        );
-        closeCloudMenu();
-      }
-    });
-
-    /* ── Рендер ── */
-    for (const item of items) {
-      const el = document.createElement('div');
-      el.className = 'cloud-context-menu__item';
-      el.textContent = item.label;
-      el.addEventListener('click', (e) => {
-        e.stopPropagation();
-        item.action();
-      });
-      menu.appendChild(el);
-    }
-
-    /* ── Позиционирование ── */
-    document.body.appendChild(menu);
-    _activeMenu = menu;
-
-    if (anchorEl) {
-      const rect = anchorEl.getBoundingClientRect();
-      menu.style.position = 'fixed';
-      menu.style.left = `${rect.right + 4}px`;
-      menu.style.top = `${rect.top}px`;
-      menu.style.zIndex = '99999';
-    }
-
-    /* Закрытие по клику вне */
-    setTimeout(() => {
-      document.addEventListener('click', _outsideClickHandler, { once: true });
-    }, 10);
+  /* Пункт 1: Закрепить 🔒 */
+  const itemPin = document.createElement('div');
+  itemPin.classList.add('cloud-menu-item');
+  itemPin.textContent = 'Закрепить 🔒';
+  itemPin.addEventListener('click', (e) => {
+    e.stopPropagation();
+    _actionPinFromCloud(uid);
   });
-}
+  menu.appendChild(itemPin);
 
-function _outsideClickHandler(e) {
-  if (_activeMenu && !_activeMenu.contains(e.target)) {
-    closeCloudMenu();
+  /* Пункт 2: Удалить из кэша */
+  const itemRemove = document.createElement('div');
+  itemRemove.classList.add('cloud-menu-item', 'cloud-menu-item--danger');
+  itemRemove.textContent = 'Удалить из кэша';
+  itemRemove.addEventListener('click', (e) => {
+    e.stopPropagation();
+    _actionRemoveFromCache(uid);
+  });
+  menu.appendChild(itemRemove);
+
+  /* Позиционирование рядом с иконкой */
+  document.body.appendChild(menu);
+  const rect = anchorEl.getBoundingClientRect();
+  menu.style.position = 'fixed';
+  menu.style.left = `${rect.left}px`;
+  menu.style.top = `${rect.bottom + 4}px`;
+  menu.style.zIndex = '9999';
+
+  /* Корректировка если выходит за правый край */
+  const menuRect = menu.getBoundingClientRect();
+  if (menuRect.right > window.innerWidth) {
+    menu.style.left = `${window.innerWidth - menuRect.width - 8}px`;
   }
-}
-
-export function closeCloudMenu() {
-  if (_activeMenu) {
-    _activeMenu.remove();
-    _activeMenu = null;
+  /* Корректировка если выходит за нижний край */
+  if (menuRect.bottom > window.innerHeight) {
+    menu.style.top = `${rect.top - menuRect.height - 4}px`;
   }
-  document.removeEventListener('click', _outsideClickHandler);
+
+  return menu;
 }
 
-export default { showCloudMenu, closeCloudMenu };
+/* ── Публичный API ────────────────────────────────────── */
+
+/**
+ * Показать cloud-menu для трека uid рядом с DOM-элементом anchorEl.
+ * Если меню уже открыто для этого uid — закрываем (toggle).
+ */
+export function showCloudMenu(uid, anchorEl) {
+  /* Toggle: если меню для этого uid уже открыто — закрыть */
+  if (_activeUid === uid && _menuEl) {
+    _closeMenu();
+    return;
+  }
+
+  /* Закрыть предыдущее если было */
+  _closeMenu();
+
+  _activeUid = uid;
+  _menuEl = _buildMenu(uid, anchorEl);
+
+  /* Закрытие по клику вне меню (с задержкой чтобы текущий клик не закрыл) */
+  setTimeout(() => {
+    document.addEventListener('click', _onOutsideClick, true);
+  }, 0);
+}
 
 //=================================================
 // FILE: /scripts/ui/favorites-view.js
