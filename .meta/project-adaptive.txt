@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-61b7fe3c60043cedd0ab00faf1e0493f8cb198f5.idx
-│   │       ├── pack-61b7fe3c60043cedd0ab00faf1e0493f8cb198f5.pack
-│   │       └── pack-61b7fe3c60043cedd0ab00faf1e0493f8cb198f5.rev
+│   │       ├── pack-1718a1085a38cf8c757a98fed2928061da6e539e.idx
+│   │       ├── pack-1718a1085a38cf8c757a98fed2928061da6e539e.pack
+│   │       └── pack-1718a1085a38cf8c757a98fed2928061da6e539e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 13:34:55 UTC
+Сгенерировано: 2026-02-06 13:35:36 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6041,119 +6041,114 @@ export async function resolvePlaybackSource({ track }) {
 
 //=================================================
 // FILE: /scripts/ui/cache-progress-overlay.js
-// scripts/ui/cache-progress-overlay.js
-// AC12: независимый слой прогресса кэша (CQ) поверх основного прогресс-бара.
-// Не трогаем PlayerCore и основной прогресс/seek. Инварианты I1/I2 соблюдены.
+/**
+ * cache-progress-overlay.js — Оверлей прогресса кэширования
+ * Показывает индикатор загрузки на карточках треков
+ */
 
-import { bytesByQuality } from '../offline/cache-db.js';
-// OfflineUI берем из window
-import { getTrackByUid } from '../app/track-registry.js';
+import { getOfflineManager } from '../offline/offline-manager.js';
 
-const CSS_TEXT = `
-  #player-progress-bar { position: relative; }
-  #player-cache-fill {
-    position: absolute;
-    inset: 0;
-    height: 100%;
-    width: 0%;
-    background: linear-gradient(90deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.15) 100%);
-    border-radius: 3px;
-    pointer-events: none;
-    z-index: 0; /* под основным fill */
-  }
-  #player-progress-fill { position: relative; z-index: 1; } /* основной слой сверху */
-`;
+let _overlay = null;
+let _unsubs = [];
 
-function injectCssOnce() {
-  if (document.getElementById('cache-progress-css')) return;
-  const s = document.createElement('style');
-  s.id = 'cache-progress-css';
-  s.textContent = CSS_TEXT;
-  document.head.appendChild(s);
+export function initCacheProgressOverlay() {
+  const mgr = getOfflineManager();
+
+  // Слушаем события кэширования
+  const onTrackCached = (e) => {
+    const { uid } = e.detail || {};
+    if (uid) updateTrackCard(uid, 100, 'cached');
+  };
+
+  const onQueueUpdate = (e) => {
+    const status = e.detail || {};
+    // Обновляем все карточки в очереди
+    if (status.items) {
+      status.items.forEach(item => {
+        updateTrackCard(item.uid, 0, 'queued');
+      });
+    }
+  };
+
+  const onDownloadFailed = (e) => {
+    const { uid } = e.detail || {};
+    if (uid) updateTrackCard(uid, 0, 'failed');
+  };
+
+  window.addEventListener('offline:trackCached', onTrackCached);
+  window.addEventListener('offline:queueUpdate', onQueueUpdate);
+  window.addEventListener('offline:downloadFailed', onDownloadFailed);
+
+  _unsubs.push(
+    () => window.removeEventListener('offline:trackCached', onTrackCached),
+    () => window.removeEventListener('offline:queueUpdate', onQueueUpdate),
+    () => window.removeEventListener('offline:downloadFailed', onDownloadFailed)
+  );
+
+  console.log('[CacheProgressOverlay] initialized');
 }
 
-function ensureOverlay() {
-  const bar = document.getElementById('player-progress-bar');
-  if (!bar) return null;
-  let ov = document.getElementById('player-cache-fill');
-  if (!ov) {
-    ov = document.createElement('div');
-    ov.id = 'player-cache-fill';
-    bar.prepend(ov); // кладём под основной fill
-  }
-  return ov;
+function updateTrackCard(uid, progress, state) {
+  // Ищем карточку трека по data-uid
+  const cards = document.querySelectorAll(`[data-uid="${uid}"], [data-track-uid="${uid}"]`);
+  cards.forEach(card => {
+    let indicator = card.querySelector('.cache-progress-indicator');
+
+    if (state === 'cached') {
+      // Трек закэширован — убираем индикатор, добавляем иконку
+      if (indicator) indicator.remove();
+      let badge = card.querySelector('.cache-badge');
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'cache-badge';
+        badge.style.cssText = 'position:absolute;top:4px;right:4px;font-size:10px;opacity:0.7;z-index:5;';
+        badge.textContent = '💾';
+        card.style.position = card.style.position || 'relative';
+        card.appendChild(badge);
+      }
+      return;
+    }
+
+    if (state === 'failed') {
+      if (indicator) {
+        indicator.style.background = 'rgba(214,48,49,0.3)';
+        setTimeout(() => indicator.remove(), 2000);
+      }
+      return;
+    }
+
+    // Queued / downloading — показываем прогресс-бар
+    if (!indicator) {
+      indicator = document.createElement('div');
+      indicator.className = 'cache-progress-indicator';
+      indicator.style.cssText = `
+        position:absolute; bottom:0; left:0; right:0; height:3px;
+        background:rgba(108,92,231,0.3); z-index:5; overflow:hidden;
+        border-radius:0 0 8px 8px;
+      `;
+      indicator.innerHTML = '<div class="cache-progress-bar" style="height:100%;width:0%;background:#6c5ce7;transition:width 0.3s;border-radius:0 0 8px 8px;"></div>';
+      card.style.position = card.style.position || 'relative';
+      card.appendChild(indicator);
+    }
+
+    const bar = indicator.querySelector('.cache-progress-bar');
+    if (bar) bar.style.width = `${Math.min(100, progress)}%`;
+  });
 }
 
-async function computePercentForCurrent() {
-  const pc = window.playerCore;
-  if (!pc || typeof pc.getCurrentTrack !== 'function') return 0;
-
-  const track = pc.getCurrentTrack();
-  if (!track) return 0;
-
-  const uid = String(track.uid || '').trim();
-  if (!uid) return 0;
-
-  const mgr = window.OfflineUI?.offlineManager;
-  if (!mgr) return 0;
-
-  const cq = await mgr.getCacheQuality();
-  const meta = getTrackByUid(uid) || {};
-
-  const needMb = cq === 'hi'
-    ? Number(meta.sizeHi || meta.size || 0)
-    : Number(meta.sizeLo || meta.size_low || 0);
-
-  if (!(Number.isFinite(needMb) && needMb > 0)) return 0;
-
-  const needBytes = Math.floor(needMb * 1024 * 1024);
-
-  const { hi, lo } = await bytesByQuality(uid);
-  const haveBytes = cq === 'hi' ? Number(hi || 0) : Number(lo || 0);
-
-  if (!(Number.isFinite(haveBytes) && haveBytes > 0)) return 0;
-
-  const pct = Math.max(0, Math.min(100, (haveBytes / needBytes) * 100));
-  return pct;
+/**
+ * Обновить оверлей для конкретного трека (вызывается извне)
+ */
+export function updateCacheOverlay(uid, progress, state) {
+  updateTrackCard(uid, progress, state);
 }
 
-async function updateOverlay() {
-  const ov = ensureOverlay();
-  if (!ov) return;
-  try {
-    const pct = await computePercentForCurrent();
-    ov.style.width = `${pct.toFixed(2)}%`;
-  } catch {}
+export function destroyCacheProgressOverlay() {
+  _unsubs.forEach(fn => fn());
+  _unsubs = [];
 }
 
-export function attachCacheProgressOverlay() {
-  injectCssOnce();
-  ensureOverlay();
-
-  // L1: Используем правильный путь к утилите
-  const schedule = (window.Utils?.func?.debounceFrame)
-    ? window.Utils.func.debounceFrame(() => { updateOverlay(); })
-    : (() => updateOverlay());
-
-  // Обновления по событиям OfflineManager
-  const mgr = window.OfflineUI?.offlineManager;
-  if (mgr?.on) {
-    mgr.on('progress', schedule);
-  }
-
-  // Обновления по событиям PlayerCore (смена трека/тик/seek)
-  const pc = window.playerCore;
-  if (pc?.on) {
-    pc.on({
-      onTrackChange: schedule,
-      onTick: () => schedule(),
-      onPause: schedule,
-      onPlay: schedule,
-    });
-  }
-
-  schedule();
-}
+export default initCacheProgressOverlay;
 
 //=================================================
 // FILE: /scripts/ui/cloud-menu.js
