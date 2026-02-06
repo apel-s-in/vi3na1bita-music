@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-aba04f2cf9f3f7592885b8bb7c16e02542023d53.idx
-│   │       ├── pack-aba04f2cf9f3f7592885b8bb7c16e02542023d53.pack
-│   │       └── pack-aba04f2cf9f3f7592885b8bb7c16e02542023d53.rev
+│   │       ├── pack-bdfd0bf816485b379e9602384039030cb718d0f7.idx
+│   │       ├── pack-bdfd0bf816485b379e9602384039030cb718d0f7.pack
+│   │       └── pack-bdfd0bf816485b379e9602384039030cb718d0f7.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 20:01:20 UTC
+Сгенерировано: 2026-02-06 20:02:13 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2331,7 +2331,7 @@ async function _prefetchNeighbors(currentUid) {
   const playerCore = window.playerCore;
   if (!playerCore) return;
 
-  const playlist = playerCore.getPlaylist?.() || [];
+  const playlist = playerCore.getPlaylistSnapshot?.() || [];
   const currentIdx = playlist.findIndex(t =>
     (t.uid || t.id) === currentUid
   );
