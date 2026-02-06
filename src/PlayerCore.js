@@ -322,11 +322,9 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       // --- ТЗ 7.6.1: В R0 "никакое аудио по факту проигрывания не сохраняется" ---
       const mode = om.getMode();
       if (track.uid && mode !== 'R0' && mode !== 'R3') {
-         om.enqueueAudioDownload({ 
-             uid: track.uid, 
-             quality: res.effectiveQuality, // Используем именно то качество, которое играет
-             priority: 100, 
-             kind: 'playbackCache' 
+         om.enqueueAudioDownload(track.uid, { 
+             kind: 'playbackCache',
+             priority: 100
          });
       }
     }
