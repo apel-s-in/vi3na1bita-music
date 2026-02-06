@@ -479,6 +479,7 @@ class OfflineManager {
       await updateTrackMeta(uid, {
         type: 'pinned',
         pinnedAt: Date.now(),
+        quality,
         expiredPending: false
       });
 
@@ -488,6 +489,7 @@ class OfflineManager {
       } else if (found) {
         await updateTrackMeta(uid, { needsReCache: true });
         toast('Закреплён 🔒 (качество будет обновлено)');
+        this.startSilentReCache();
       } else {
         const url = getTrackUrl(uid, quality);
         if (url) {
