@@ -226,18 +226,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         };
         const resolved = await resolveTrackUrl(track.uid, trackDataForResolve);
 
-        /* ТЗ П.6.1: Если local blob — обернуть через Utils.blob для LRU revoke */
         let url = resolved.url;
-        if (resolved.source === 'local' && resolved._blobUrl && url) {
-          const U = W.Utils;
-          if (U?.blob?.createUrl && resolved.url) {
-            /* revoke старый blob этого трека, создать новый */
-            try { U.blob.revokeUrl('player_' + track.uid); } catch {}
-            /* resolved.url уже является objectURL; запоминаем для будущего revoke */
-            U.blob.createUrl('player_' + track.uid, null); // регистрация ключа не нужна, URL уже создан
-            /* Просто запоминаем для cleanup */
-          }
-        }
 
         res = {
           url,
