@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5489e464a06fc772d0cc178a519b29f5b969d453.idx
-│   │       ├── pack-5489e464a06fc772d0cc178a519b29f5b969d453.pack
-│   │       └── pack-5489e464a06fc772d0cc178a519b29f5b969d453.rev
+│   │       ├── pack-d93c5a8ae798d65169d948797dd1bd0808f8a7c2.idx
+│   │       ├── pack-d93c5a8ae798d65169d948797dd1bd0808f8a7c2.pack
+│   │       └── pack-d93c5a8ae798d65169d948797dd1bd0808f8a7c2.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-06 21:35:32 UTC
+Сгенерировано: 2026-02-06 21:36:23 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5417,7 +5417,7 @@ class OfflineManager {
     emit('offline:stateChanged');
   }
 
-  /** Алиас registerFullListen для совместимости. */
+  /** @deprecated Алиас registerFullListen. Используйте registerFullListen напрямую. */
   async recordListenStats(uid, params = {}) {
     return this.registerFullListen(uid, params);
   }
