@@ -19,22 +19,27 @@ export async function openDB() {
 
     req.onupgradeneeded = (e) => {
       const db = e.target.result;
-      const tx = e.target.transaction;
 
-      // Hard reset для чистоты структуры при смене версий
-      // Если старые сторы существуют, удаляем их, чтобы создать с правильными keyPath
-      if (db.objectStoreNames.contains('audio')) db.deleteObjectStore('audio');
-      if (db.objectStoreNames.contains('trackMeta')) db.deleteObjectStore('trackMeta');
-      if (db.objectStoreNames.contains('global')) db.deleteObjectStore('global');
+      // Не удаляем существующие данные (pinned/cloud/stats). Только создаём недостающее.
+      if (!db.objectStoreNames.contains('audio')) {
+        db.createObjectStore('audio', { keyPath: ['uid', 'quality'] });
+      }
 
-      // Создаем заново с гарантированно правильной схемой
-      db.createObjectStore('audio', { keyPath: ['uid', 'quality'] });
+      if (!db.objectStoreNames.contains('trackMeta')) {
+        const metaStore = db.createObjectStore('trackMeta', { keyPath: 'uid' });
+        metaStore.createIndex('type', 'type', { unique: false });
+        metaStore.createIndex('cloudExpiresAt', 'cloudExpiresAt', { unique: false });
+      } else {
+        // Индексы могут отсутствовать на старых версиях
+        const tx = e.target.transaction;
+        const metaStore = tx.objectStore('trackMeta');
+        if (!metaStore.indexNames.contains('type')) metaStore.createIndex('type', 'type', { unique: false });
+        if (!metaStore.indexNames.contains('cloudExpiresAt')) metaStore.createIndex('cloudExpiresAt', 'cloudExpiresAt', { unique: false });
+      }
 
-      const metaStore = db.createObjectStore('trackMeta', { keyPath: 'uid' });
-      metaStore.createIndex('type', 'type', { unique: false });
-      metaStore.createIndex('cloudExpiresAt', 'cloudExpiresAt', { unique: false });
-
-      db.createObjectStore('global', { keyPath: 'key' });
+      if (!db.objectStoreNames.contains('global')) {
+        db.createObjectStore('global', { keyPath: 'key' });
+      }
     };
 
     req.onsuccess = () => { _db = req.result; _dbPending = null; resolve(_db); };
@@ -62,7 +67,8 @@ export async function setAudioBlob(uid, quality, blob) {
     // Временная двойная копия допускается только на время перекачки,
     // но у нас нет отдельного temp-store, поэтому фиксируем атомарно в одной транзакции.
     store.put({ uid, quality: q, blob });
-    store.delete([uid, otherQ]);
+    // ВАЖНО (ТЗ 1.7): не удаляем другой variant здесь.
+    // Двухфазная замена делается выше уровнем после успешной записи и с запретом для CUR.
 
     tx.oncomplete = resolve;
     tx.onerror = () => reject(tx.error);
