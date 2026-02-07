@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2c2883aa762ea9283563dde117b58c5b2e825066.idx
-│   │       ├── pack-2c2883aa762ea9283563dde117b58c5b2e825066.pack
-│   │       └── pack-2c2883aa762ea9283563dde117b58c5b2e825066.rev
+│   │       ├── pack-5c816aa3adb0e882187ad38c5465c6dfd327f8a3.idx
+│   │       ├── pack-5c816aa3adb0e882187ad38c5465c6dfd327f8a3.pack
+│   │       └── pack-5c816aa3adb0e882187ad38c5465c6dfd327f8a3.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -383,7 +383,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 12:51:52 UTC
+Сгенерировано: 2026-02-07 12:52:46 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2619,19 +2619,17 @@ async function _gc(keepUids) {
         },
         'pq-btn': async () => {
             const mgr = W.OfflineManager || (await import('../offline/offline-manager.js')).getOfflineManager();
-            const stats = await mgr.getCacheSummary();
+            const stats = await mgr.getStorageUsage(); // (1.8 fix)
             const totalFiles = stats.pinned.count + stats.cloud.count;
             
-            const nextQ = U.pq.getMode() === 'hi' ? 'lo' : 'hi';
-            
-            // ТЗ 4.3: Confirm если > 5 файлов
+            // (4.2 Fix) Check confirm FIRST
             if (totalFiles > 5) {
                 if (!confirm(`Смена качества затронет ${totalFiles} файлов. Перекачать?`)) {
-                    return; // Отмена
+                    return; // Cancel logic
                 }
             }
             
-            const r = U.pq.toggle(); // Это вызовет switchQuality в PlayerCore
+            const r = U.pq.toggle(); 
             if (!r.ok) U.ui.toast(r.reason === 'trackNoLo' ? 'Низкое качество недоступно' : r.reason === 'offline' ? 'Нет доступа к сети' : 'Невозможно', 'warning');
             
             updatePQButtonState();
