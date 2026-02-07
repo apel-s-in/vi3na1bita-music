@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d377e7079379ea1ff0cb48ad663fd8dc4d37102d.idx
-│   │       ├── pack-d377e7079379ea1ff0cb48ad663fd8dc4d37102d.pack
-│   │       └── pack-d377e7079379ea1ff0cb48ad663fd8dc4d37102d.rev
+│   │       ├── pack-ffcaf58f965d9a40587b3aa5d81a13f05c907ffa.idx
+│   │       ├── pack-ffcaf58f965d9a40587b3aa5d81a13f05c907ffa.pack
+│   │       └── pack-ffcaf58f965d9a40587b3aa5d81a13f05c907ffa.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -386,7 +386,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 17:03:07 UTC
+Сгенерировано: 2026-02-07 17:25:35 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5769,6 +5769,16 @@ class OfflineManager {
      if (!hasRoom) return;
      const q = this.getQuality();
      const url = getTrackUrl(uid, q);
+
+     // ТЗ 8.x: transient окно в R1 хранится как playbackCache (отдельный слой),
+     // но не должно трогать pinned/cloud статусы.
+     if (kind === 'playbackCache') {
+       const meta = await getTrackMeta(uid);
+       if (!meta?.type) {
+         await updateTrackMeta(uid, { type: 'playbackCache', lastAccessedAt: Date.now() });
+       }
+     }
+
      if (url) this.queue.enqueue({ uid, url, quality: q, kind, priority });
   }
 }
