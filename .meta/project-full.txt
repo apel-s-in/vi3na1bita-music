@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-08478a15347332b8942f2907b677731cf61f5c77.idx
-│   │       ├── pack-08478a15347332b8942f2907b677731cf61f5c77.pack
-│   │       └── pack-08478a15347332b8942f2907b677731cf61f5c77.rev
+│   │       ├── pack-3a0c81c676c1ad4865af099b5d7d23b732c8bade.idx
+│   │       ├── pack-3a0c81c676c1ad4865af099b5d7d23b732c8bade.pack
+│   │       └── pack-3a0c81c676c1ad4865af099b5d7d23b732c8bade.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -383,7 +383,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 12:03:01 UTC
+Сгенерировано: 2026-02-07 12:09:09 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2232,96 +2232,154 @@ export default { initOfflineUI };
 //=================================================
 // FILE: /scripts/app/playback-cache-bootstrap.js
 /**
- * playback-cache-bootstrap.js — Инициализация Playback Cache.
- *
- * Подключается к PlayerCore для автоматического:
- *  - кэширования соседних треков (NEXT/PREV) при воспроизведении
- *
- * Подсчёт full listen реализован в stats-tracker.js → PlayerCore.
- * Здесь НЕ дублируем эту логику.
- *
- * ТЗ: Приложение П.10
+ * playback-cache-bootstrap.js — Контроллер Playback Cache (R1).
+ * 
+ * Реализует стратегию "Трёхтрекового окна" (Current + Next + Prev).
+ * - Если Mode = R0: Не делает ничего (или очищает динамический кэш).
+ * - Если Mode = R1: 
+ *    1. При смене трека ставит в очередь Current (P10), Next (P9), Prev (P8).
+ *    2. Удаляет из кэша треки типа 'playbackCache', которые выпали из этого окна.
  */
 
 import { getOfflineManager } from '../offline/offline-manager.js';
 import { getTrackByUid } from './track-registry.js';
+import { $ } from './utils/app-utils.js';
 
 let _initialized = false;
+let _currentWindow = new Set(); // UIDs currently in window
 
-/**
- * initPlaybackCache() — подключение к PlayerCore.
- * Вызвать после инициализации PlayerCore и OfflineManager.
- */
 export function initPlaybackCache() {
   if (_initialized) return;
   _initialized = true;
 
-  /* ─── Перехват события смены трека → prefetch соседей ─── */
+  const mgr = getOfflineManager();
+
+  // 1. Слушаем смену трека в плеере
   window.addEventListener('player:trackChanged', (e) => {
-    const { uid } = e.detail || {};
-    if (uid) _prefetchNeighbors(uid);
+    _updateWindow(e.detail?.trackData);
   });
 
-  /* ─── Online → возобновить загрузки ─── */
+  // 2. Слушаем смену режима (R0 <-> R1) или появление сети
+  window.addEventListener('offline:uiChanged', () => {
+    _updateWindow(window.playerCore?.getCurrentTrack());
+  });
+
   window.addEventListener('online', () => {
-    getOfflineManager().resumeDownloads();
+    _updateWindow(window.playerCore?.getCurrentTrack());
   });
 
-  console.log('[PlaybackCache] Initialized');
+  console.log('[PlaybackCache] Controller initialized');
 }
 
-/* ═══════ Prefetch neighbors (ТЗ П.10: P1) ═══════ */
-
-async function _prefetchNeighbors(currentUid) {
+/**
+ * Главная логика обновления окна
+ */
+async function _updateWindow(currentTrack) {
   const mgr = getOfflineManager();
-  const mode = mgr.getMode();
+  const mode = mgr.getMode(); // 'R0' or 'R1'
 
-  /* В R0 (чистый стриминг) НЕ предзагружаем соседей */
-  if (mode === 'R0') return;
+  // Если R0 (стриминг) — очищаем окно и выходим
+  if (mode !== 'R1') {
+    if (_currentWindow.size > 0) {
+      _currentWindow.clear();
+      await _gc([]); // Удалить всё динамическое
+    }
+    return;
+  }
 
-  const playerCore = window.playerCore;
-  if (!playerCore) return;
+  if (!currentTrack || !currentTrack.uid) return;
 
-  const playlist = playerCore.getPlaylistSnapshot?.() || [];
-  const currentIdx = playlist.findIndex(t => (t.uid || t.id) === currentUid);
-  if (currentIdx < 0) return;
+  const pc = window.playerCore;
+  const playlist = pc.getPlaylistSnapshot() || [];
+  const idx = pc.getIndex();
+  if (idx === -1) return;
 
-  const quality = mgr.getCacheQuality();
-  const neighbors = [];
+  // 1. Определяем окно [Prev, Curr, Next]
+  const windowUids = new Set();
+  const tasks = [];
 
-  if (currentIdx + 1 < playlist.length) neighbors.push(playlist[currentIdx + 1]);
-  if (currentIdx - 1 >= 0) neighbors.push(playlist[currentIdx - 1]);
+  // Helper to add task
+  const add = (i, prio) => {
+    if (i < 0 || i >= playlist.length) return;
+    const t = playlist[i];
+    const uid = String(t.uid).trim();
+    if (uid) {
+      windowUids.add(uid);
+      tasks.push({ uid, priority: prio });
+    }
+  };
 
-  for (const track of neighbors) {
-    const uid = track.uid || track.id;
-    if (!uid) continue;
+  // Current (Priority 10 - Highest)
+  add(idx, 10);
+  
+  // Next (Priority 9)
+  const nextIdx = (idx + 1) % playlist.length;
+  if (nextIdx !== idx) add(nextIdx, 9);
 
-    const state = await mgr.getTrackOfflineState(uid);
+  // Prev (Priority 8) - если треков достаточно
+  if (playlist.length > 2) {
+    const prevIdx = (idx - 1 + playlist.length) % playlist.length;
+    if (prevIdx !== idx && prevIdx !== nextIdx) add(prevIdx, 8);
+  }
+
+  _currentWindow = windowUids;
+
+  // 2. Garbage Collection (удаляем то, что выпало)
+  await _gc([...windowUids]);
+
+  // 3. Запуск скачивания (если есть место)
+  if (!(await mgr.hasSpace())) return;
+
+  for (const task of tasks) {
+    // Проверяем, есть ли уже (pinned/cloud/dynamic)
+    const state = await mgr.getTrackOfflineState(task.uid);
+    
+    // Если уже есть blob (любого типа) и качество совпадает - пропускаем
+    // Если качество отличается -> reCache (это делает сам менеджер)
+    if (state.status !== 'none' && !state.needsReCache && !state.downloading) {
+       // Уже скачан или в процессе
+       continue;
+    }
+
+    // Если это Cloud или Pinned — менеджер сам разберётся, не трогаем.
+    // Нас интересуют только те, которых нет.
     if (state.status === 'pinned' || state.status === 'cloud') continue;
 
-    /* Используем TrackRegistry для получения URL (Якорь 2) */
-    const meta = getTrackByUid(uid);
-    const url = _resolveUrl(meta || track, quality);
-    if (!url) continue;
-
-    if (await mgr.hasSpace()) {
-      mgr.enqueueAudioDownload(uid, {
-        priority: 8,
-        kind: 'playbackCache'
-      });
-    }
+    // Ставим в очередь как 'playbackCache' (dynamic)
+    mgr.enqueueAudioDownload(task.uid, {
+      priority: task.priority,
+      kind: 'playbackCache'
+    });
   }
 }
 
 /**
- * Получить URL трека, используя TrackRegistry как основной источник.
+ * Garbage Collection для Playback Cache
+ * Удаляет треки типа 'playbackCache', которых нет в keepUids.
  */
-function _resolveUrl(trackOrMeta, quality) {
-  if (!trackOrMeta) return null;
-  if (quality === 'lo') {
-    return trackOrMeta.audio_low || trackOrMeta.audio || trackOrMeta.src || null;
+async function _gc(keepUids) {
+  const mgr = getOfflineManager();
+  // Получаем список всех кэшированных (этот метод мы добавили в cache-db, 
+  // но доступ к нему через getAllTrackMetas внутри менеджера)
+  
+  // Примечание: В публичном API OfflineManager нет метода getAllMetas, 
+  // но мы можем реализовать чистку через cache-db напрямую или добавить метод.
+  // Для надежности используем cache-db.
+  
+  try {
+    const { getAllTrackMetas, deleteTrackCache } = await import('../offline/cache-db.js');
+    const metas = await getAllTrackMetas();
+    
+    for (const m of metas) {
+      // Удаляем ТОЛЬКО если тип playbackCache (или dynamic) И его нет в текущем окне
+      if ((m.type === 'playbackCache' || m.type === 'dynamic') && !keepUids.includes(m.uid)) {
+        console.log(`[PlaybackCache] GC removing: ${m.uid}`);
+        await deleteTrackCache(m.uid);
+      }
+    }
+  } catch (e) {
+    console.warn('[PlaybackCache] GC failed', e);
   }
-  return trackOrMeta.audio || trackOrMeta.src || null;
 }
 
 export default { initPlaybackCache };
