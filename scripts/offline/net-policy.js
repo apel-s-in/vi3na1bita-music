@@ -6,7 +6,7 @@ const LS_WIFI = 'netPolicy:wifi:v1';
 const LS_CELLULAR = 'netPolicy:cellular:v1';
 const LS_CELLULAR_TOAST = 'netPolicy:cellularToast:v1';
 const LS_KILL_SWITCH = 'netPolicy:killSwitch:v1';
-const LS_TRAFFIC = 'trafficStats:v2';
+const LS_TRAFFIC = 'trafficStats:v1';
 
 let _platformCache = null;
 let _interceptorInstalled = false;
@@ -163,7 +163,11 @@ function _getStatsRaw() {
   try {
     const raw = localStorage.getItem(LS_TRAFFIC);
     const mk = _mKey();
-    const def = { wifi: { total: 0, monthly: 0, mKey: mk }, cellular: { total: 0, monthly: 0, mKey: mk }, general: { total: 0, monthly: 0, mKey: mk } };
+    const def = {
+      wifi: { total: 0, monthly: 0, monthKey: mk },
+      cellular: { total: 0, monthly: 0, monthKey: mk },
+      general: { total: 0, monthly: 0, monthKey: mk }
+    };
     if (!raw) return def;
     const d = JSON.parse(raw);
     return { ...def, ...d };
@@ -182,7 +186,12 @@ function recordTraffic(bytes, category = null) {
   const p = getPlatform();
   const type = category || detectNetworkType();
 
-  ['wifi', 'cellular', 'general'].forEach(k => { if (s[k].mKey !== mk) { s[k].monthly = 0; s[k].mKey = mk; } });
+  ['wifi', 'cellular', 'general'].forEach((k) => {
+    if (s[k].monthKey !== mk) {
+      s[k].monthly = 0;
+      s[k].monthKey = mk;
+    }
+  });
 
   if (!p.supportsNetControl) {
     s.general.total += bytes; s.general.monthly += bytes;
