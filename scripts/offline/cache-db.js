@@ -19,17 +19,22 @@ export async function openDB() {
 
     req.onupgradeneeded = (e) => {
       const db = e.target.result;
-      if (!db.objectStoreNames.contains('audio')) {
-        db.createObjectStore('audio', { keyPath: ['uid', 'quality'] });
-      }
-      if (!db.objectStoreNames.contains('trackMeta')) {
-        const store = db.createObjectStore('trackMeta', { keyPath: 'uid' });
-        store.createIndex('type', 'type', { unique: false });
-        store.createIndex('cloudExpiresAt', 'cloudExpiresAt', { unique: false });
-      }
-      if (!db.objectStoreNames.contains('global')) {
-        db.createObjectStore('global', { keyPath: 'key' });
-      }
+      const tx = e.target.transaction;
+
+      // Hard reset для чистоты структуры при смене версий
+      // Если старые сторы существуют, удаляем их, чтобы создать с правильными keyPath
+      if (db.objectStoreNames.contains('audio')) db.deleteObjectStore('audio');
+      if (db.objectStoreNames.contains('trackMeta')) db.deleteObjectStore('trackMeta');
+      if (db.objectStoreNames.contains('global')) db.deleteObjectStore('global');
+
+      // Создаем заново с гарантированно правильной схемой
+      db.createObjectStore('audio', { keyPath: ['uid', 'quality'] });
+
+      const metaStore = db.createObjectStore('trackMeta', { keyPath: 'uid' });
+      metaStore.createIndex('type', 'type', { unique: false });
+      metaStore.createIndex('cloudExpiresAt', 'cloudExpiresAt', { unique: false });
+
+      db.createObjectStore('global', { keyPath: 'key' });
     };
 
     req.onsuccess = () => { _db = req.result; _dbPending = null; resolve(_db); };
