@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-548e8f04bbb58744a0fc3b4e84e302d7b1e269ea.idx
-│   │       ├── pack-548e8f04bbb58744a0fc3b4e84e302d7b1e269ea.pack
-│   │       └── pack-548e8f04bbb58744a0fc3b4e84e302d7b1e269ea.rev
+│   │       ├── pack-fb2c31e7ef28333c073b4fed171925dff9d0935f.idx
+│   │       ├── pack-fb2c31e7ef28333c073b4fed171925dff9d0935f.pack
+│   │       └── pack-fb2c31e7ef28333c073b4fed171925dff9d0935f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -386,7 +386,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 19:52:48 UTC
+Сгенерировано: 2026-02-07 19:53:36 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4128,7 +4128,8 @@ window.FavoritesManager = Favorites;
       },
       toggle: () => {
         const c = W.playerCore; if (!c) return { ok: false, reason: 'noCore' };
-        if (!U.getNet().online) return { ok: false, reason: 'offline' };
+        const netOk = W.NetPolicy?.isNetworkAllowed?.() ?? U.getNet().online;
+        if (!netOk) return { ok: false, reason: 'offline' };
         if (!c.canToggleQualityForCurrentTrack()) return { ok: false, reason: 'trackNoLo' };
         const n = U.pq.getMode() === 'hi' ? 'lo' : 'hi';
         c.switchQuality(n);
