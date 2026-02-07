@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f617953d253b36e1c81f561dcf84e223bad6e7be.idx
-│   │       ├── pack-f617953d253b36e1c81f561dcf84e223bad6e7be.pack
-│   │       └── pack-f617953d253b36e1c81f561dcf84e223bad6e7be.rev
+│   │       ├── pack-548e8f04bbb58744a0fc3b4e84e302d7b1e269ea.idx
+│   │       ├── pack-548e8f04bbb58744a0fc3b4e84e302d7b1e269ea.pack
+│   │       └── pack-548e8f04bbb58744a0fc3b4e84e302d7b1e269ea.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -386,7 +386,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 19:51:53 UTC
+Сгенерировано: 2026-02-07 19:52:48 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2312,11 +2312,11 @@ async function _updateWindow(dir = 1) {
 
   // R0: clean all transient
   if (mode !== 'R1') {
-    // ТЗ 3.2: удаление transient отложенно (после смены трека/старта нового CUR)
+    // ТЗ 3.2: удаление transient строго отложенно (до смены трека/старта нового CUR)
     if (_currentWindow.size) {
       _pendingGC.push(..._currentWindow);
       _currentWindow.clear();
-      _executePendingGC();
+      // НЕ вызываем _executePendingGC() здесь
     }
     return;
   }
