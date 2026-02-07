@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-79b31bf783428c8a9856d3bd58e54b7a492a5586.idx
-│   │       ├── pack-79b31bf783428c8a9856d3bd58e54b7a492a5586.pack
-│   │       └── pack-79b31bf783428c8a9856d3bd58e54b7a492a5586.rev
+│   │       ├── pack-1233c8088c5b585b1f9b66f960aba40b6b0537aa.idx
+│   │       ├── pack-1233c8088c5b585b1f9b66f960aba40b6b0537aa.pack
+│   │       └── pack-1233c8088c5b585b1f9b66f960aba40b6b0537aa.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -383,7 +383,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 12:55:22 UTC
+Сгенерировано: 2026-02-07 12:59:52 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8624,7 +8624,6 @@ export function createListenStatsTracker({ getUid, getPos, getDur, recordTick, r
 // FILE: /src/PlayerCore.js
 // src/PlayerCore.js
 import { getOfflineManager } from '../scripts/offline/offline-manager.js';
-import { resolveTrackUrl } from '../scripts/offline/track-resolver.js';
 import { registerTrack, getTrackByUid } from '../scripts/app/track-registry.js';
 import { Favorites } from '../scripts/core/favorites-manager.js';
 import { ensureMediaSession } from './player-core/media-session.js';
