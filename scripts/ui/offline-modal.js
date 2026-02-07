@@ -51,13 +51,46 @@ async function _refreshStorage(modal, om) {
   try {
     const { estimateUsage } = await import('../offline/cache-db.js');
     const est = await estimateUsage();
-    const v = modal.querySelector('#om-st-val'), b = modal.querySelector('#om-st-bar'), d = modal.querySelector('#om-st-bd');
+    const v = modal.querySelector('#om-st-val');
     if (v) v.textContent = `${fmtMB(est.used)} / ${fmtMB(est.quota)}`;
-    if (b) b.style.width = `${est.quota > 0 ? Math.min(100, est.used / est.quota * 100) : 0}%`;
-    if (om.getStorageBreakdown && d) {
-      const s = await om.getStorageBreakdown();
-      d.innerHTML = [['🔒','Закреплённые',s.pinned],['☁','Облачные',s.cloud],['⏳','PlaybackCache',s.transient],['📦','Прочее',s.other]]
-        .map(([i,l,v]) => `<div class="om-bd-row"><span class="om-bd-icon">${i}</span> ${l} <span class="om-bd-val">${fmtB(v)}</span></div>`).join('');
+
+    if (!om.getStorageBreakdown) return;
+    const s = await om.getStorageBreakdown();
+    const total = (s.pinned || 0) + (s.cloud || 0) + (s.transient || 0) + (s.other || 0);
+    const pct = (v) => total > 0 ? Math.max(0.4, v / total * 100) : 0;
+
+    const sp = modal.querySelector('#om-seg-pinned');
+    const sc = modal.querySelector('#om-seg-cloud');
+    const st = modal.querySelector('#om-seg-trans');
+    const so = modal.querySelector('#om-seg-other');
+    if (sp) sp.style.width = total > 0 && s.pinned > 0 ? pct(s.pinned) + '%' : '0%';
+    if (sc) sc.style.width = total > 0 && s.cloud > 0 ? pct(s.cloud) + '%' : '0%';
+    if (st) st.style.width = total > 0 && s.transient > 0 ? pct(s.transient) + '%' : '0%';
+    if (so) so.style.width = total > 0 && s.other > 0 ? pct(s.other) + '%' : '0%';
+
+    // Compact legend
+    const lg = modal.querySelector('#om-st-legend');
+    if (lg) {
+      const items = [
+        ['pinned', '🔒', s.pinned],
+        ['cloud', '☁', s.cloud],
+        ['transient', '⏳', s.transient],
+        ['other', '📁', s.other]
+      ].filter(([,,v]) => v > 0);
+      lg.innerHTML = items.map(([cls, ic, val]) =>
+        `<span class="om-legend-item"><span class="om-legend-dot om-legend-dot--${cls}"></span>${ic} ${fmtB(val)}</span>`
+      ).join('');
+    }
+
+    // Detail breakdown
+    const bd = modal.querySelector('#om-st-bd');
+    if (bd) {
+      bd.innerHTML = [
+        ['🔒','Закреплённые', s.pinned],
+        ['☁','Облачные', s.cloud],
+        ['⏳','PlaybackCache', s.transient],
+        ['📁','Прочее', s.other]
+      ].map(([i,l,v]) => `<div class="om-bd-row"><span class="om-bd-icon">${i}</span> ${l} <span class="om-bd-val">${fmtB(v)}</span></div>`).join('');
     }
   } catch(e) { console.warn('[OM] storage err:', e); }
 }
@@ -76,8 +109,29 @@ function render() {
   modal.innerHTML = `<div class="om-header"><div class="om-header__title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.7"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span>OFFLINE</span></div><button class="om-header__close" aria-label="Закрыть">&times;</button></div><div class="om-body" id="om-body"></div>`;
   const body = modal.querySelector('#om-body');
 
-  // 1. Storage
-  body.insertAdjacentHTML('beforeend', `<section class="om-section"><h3 class="om-section__title"><span class="om-section__icon">💾</span> Хранилище</h3><div class="om-storage-info"><div class="om-storage-row"><span class="om-storage-label">Занято</span><span class="om-storage-value" id="om-st-val">—</span></div><div class="om-progress-track"><div class="om-progress-fill" id="om-st-bar" style="width:0%"></div></div><div class="om-storage-breakdown" id="om-st-bd"></div></div></section>`);
+  // 1. Storage (compact + expandable)
+  body.insertAdjacentHTML('beforeend', `
+    <section class="om-section">
+      <h3 class="om-section__title"><span class="om-section__icon">📦</span> Хранилище</h3>
+      <div class="om-storage-info" id="om-storage-info">
+        <div class="om-storage-row">
+          <span class="om-storage-label">Занято</span>
+          <span class="om-storage-value" id="om-st-val">—</span>
+        </div>
+        <div class="om-storage-segbar" id="om-st-segbar" title="Нажмите для подробностей">
+          <div class="om-segbar__fill om-segbar--pinned" id="om-seg-pinned" style="width:0%"></div>
+          <div class="om-segbar__fill om-segbar--cloud" id="om-seg-cloud" style="width:0%"></div>
+          <div class="om-segbar__fill om-segbar--transient" id="om-seg-trans" style="width:0%"></div>
+          <div class="om-segbar__fill om-segbar--other" id="om-seg-other" style="width:0%"></div>
+        </div>
+        <div class="om-storage-legend" id="om-st-legend"></div>
+        <div class="om-storage-detail" id="om-st-detail" style="display:none">
+          <div class="om-storage-breakdown" id="om-st-bd"></div>
+          <button class="om-btn om-btn--danger" data-action="nuke" style="width:100%;margin-top:12px">Очистить ВЕСЬ кэш приложения</button>
+        </div>
+      </div>
+    </section>
+  `);
   _refreshStorage(modal, om);
 
   // 2. Net policy
@@ -125,10 +179,7 @@ function render() {
 
   // 6. Downloads
   const ds2 = om.getDownloadStatus?.() || { active: 0, queued: 0 };
-  body.insertAdjacentHTML('beforeend', `<section class="om-section"><h3 class="om-section__title"><span class="om-section__icon">⬇️</span> Загрузки</h3><div class="om-dl-stats"><div class="om-dl-stat"><span class="om-dl-stat__num">${ds2.active}</span><span class="om-dl-stat__label">Активных</span></div><div class="om-dl-stat"><span class="om-dl-stat__num">${ds2.queued}</span><span class="om-dl-stat__label">В очереди</span></div></div><button class="om-btn om-btn--ghost" data-action="dl-pause">⏸ Пауза</button></section>`);
-
-  // 7. Cleanup
-  body.insertAdjacentHTML('beforeend', `<section class="om-section om-section--last"><h3 class="om-section__title"><span class="om-section__icon">🧹</span> Очистка</h3><button class="om-btn om-btn--danger" data-action="nuke" style="width:100%">Очистить ВЕСЬ кэш приложения</button></section>`);
+  body.insertAdjacentHTML('beforeend', `<section class="om-section om-section--last"><h3 class="om-section__title"><span class="om-section__icon">⬇️</span> Загрузки</h3><div class="om-dl-stats"><div class="om-dl-stat"><span class="om-dl-stat__num">${ds2.active}</span><span class="om-dl-stat__label">Активных</span></div><div class="om-dl-stat"><span class="om-dl-stat__num">${ds2.queued}</span><span class="om-dl-stat__label">В очереди</span></div></div><button class="om-btn om-btn--ghost" data-action="dl-pause">⏸ Пауза</button></section>`);
 
   overlay.appendChild(modal);
   document.body.appendChild(overlay);
@@ -138,6 +189,15 @@ function render() {
 }
 
 function _bind(overlay, modal, om) {
+  // Storage expand/collapse
+  modal.querySelector('#om-st-segbar')?.addEventListener('click', () => {
+    const det = modal.querySelector('#om-st-detail');
+    const leg = modal.querySelector('#om-st-legend');
+    if (!det) return;
+    const open = det.style.display !== 'none';
+    det.style.display = open ? 'none' : '';
+    if (leg) leg.style.display = open ? '' : 'none';
+  });
   overlay.addEventListener('click', e => { if (e.target === overlay) _close(); });
   modal.querySelector('.om-header__close')?.addEventListener('click', _close);
   const ek = e => { if (e.key === 'Escape' && _overlay) { _close(); document.removeEventListener('keydown', ek); } };
