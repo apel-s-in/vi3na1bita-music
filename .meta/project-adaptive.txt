@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-09943cb85a6c30c28722690cfbb7a97684673316.idx
-│   │       ├── pack-09943cb85a6c30c28722690cfbb7a97684673316.pack
-│   │       └── pack-09943cb85a6c30c28722690cfbb7a97684673316.rev
+│   │       ├── pack-7965a189973fea16acb287d6192316acbbbd5061.idx
+│   │       ├── pack-7965a189973fea16acb287d6192316acbbbd5061.pack
+│   │       └── pack-7965a189973fea16acb287d6192316acbbbd5061.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 16:16:23 UTC
+Сгенерировано: 2026-02-07 16:17:03 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2200,7 +2200,13 @@ export async function initOfflineUI() {
     const { getOfflineManager } = await import('../offline/offline-manager.js');
     const mgr = getOfflineManager();
     await mgr.initialize();
-    window._offlineManagerInstance = mgr;
+    // Fix #1.7: TrackResolver
+    try {
+      const { initTrackResolver } = await import('../offline/track-resolver.js');
+      initTrackResolver(mgr);
+    } catch (e) {
+      console.warn('[OfflineUI] TrackResolver init failed:', e);
+    }
 
     /* Fix #15.2: Check 60 MB at R1 startup */
     if (mgr.getMode() === 'R1') {
