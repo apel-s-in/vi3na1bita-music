@@ -132,7 +132,7 @@
       getMode: () => (localStorage.getItem('qualityMode:v1') || 'hi') === 'lo' ? 'lo' : 'hi',
       getState: () => {
         const c = W.playerCore;
-        const net = U.getNet().online;
+        const net = W.NetPolicy?.isNetworkAllowed?.() ?? U.getNet().online;
         const can = !!c?.canToggleQualityForCurrentTrack?.();
         return { mode: U.pq.getMode(), canToggle: can && net, canToggleByTrack: can, netOk: net };
       },
