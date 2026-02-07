@@ -1,10 +1,6 @@
 /**
  * cache-db.js — IndexedDB-хранилище для offline-кэша.
- *
- * Stores:
- *   - 'audio'     : { uid, quality, blob }          — аудио-файлы
- *   - 'trackMeta' : { uid, type, quality, ... }     — метаданные треков
- *   - 'global'    : { key, value }                   — глобальные настройки
+ * Stores: 'audio', 'trackMeta', 'global'.
  */
 
 const DB_NAME = 'offlineCache';
@@ -23,34 +19,22 @@ export async function openDB() {
 
     req.onupgradeneeded = (e) => {
       const db = e.target.result;
-
       if (!db.objectStoreNames.contains('audio')) {
         db.createObjectStore('audio', { keyPath: ['uid', 'quality'] });
       }
-
       if (!db.objectStoreNames.contains('trackMeta')) {
         const store = db.createObjectStore('trackMeta', { keyPath: 'uid' });
         store.createIndex('type', 'type', { unique: false });
         store.createIndex('cloudExpiresAt', 'cloudExpiresAt', { unique: false });
       }
-
       if (!db.objectStoreNames.contains('global')) {
         db.createObjectStore('global', { keyPath: 'key' });
       }
     };
 
-    req.onsuccess = () => {
-      _db = req.result;
-      _dbPending = null;
-      resolve(_db);
-    };
-
-    req.onerror = () => {
-      _dbPending = null;
-      reject(req.error);
-    };
+    req.onsuccess = () => { _db = req.result; _dbPending = null; resolve(_db); };
+    req.onerror = () => { _dbPending = null; reject(req.error); };
   });
-
   return _dbPending;
 }
 
@@ -79,9 +63,6 @@ export async function getAudioBlob(uid, quality) {
   });
 }
 
-/**
- * Удалить ВСЕ аудио для трека (Hi и Lo).
- */
 export async function deleteAudio(uid) {
   return new Promise((resolve, reject) => {
     const tx = db().transaction('audio', 'readwrite');
@@ -93,9 +74,6 @@ export async function deleteAudio(uid) {
   });
 }
 
-/**
- * Удалить ТОЛЬКО конкретное качество (для замены Hi<->Lo).
- */
 export async function deleteAudioVariant(uid, quality) {
   return new Promise((resolve, reject) => {
     const tx = db().transaction('audio', 'readwrite');
@@ -106,11 +84,22 @@ export async function deleteAudioVariant(uid, quality) {
 }
 
 export async function hasAudioForUid(uid) {
-  // Проверяем наличие любого качества
   const hi = await getAudioBlob(uid, 'hi');
   if (hi) return true;
   const lo = await getAudioBlob(uid, 'lo');
   return !!lo;
+}
+
+/**
+ * Возвращает качество имеющегося файла ('hi' | 'lo' | null)
+ * Если есть оба (редкий кейс гонки), вернёт 'hi'.
+ */
+export async function getStoredVariant(uid) {
+  const hi = await getAudioBlob(uid, 'hi');
+  if (hi) return 'hi';
+  const lo = await getAudioBlob(uid, 'lo');
+  if (lo) return 'lo';
+  return null;
 }
 
 /* ─── Track meta operations ─── */
@@ -167,13 +156,16 @@ export async function deleteTrackCache(uid) {
 /* ─── Storage estimate ─── */
 
 export async function estimateUsage() {
-  if (navigator.storage && navigator.storage.estimate) {
-    const est = await navigator.storage.estimate();
-    return {
-      used: est.usage || 0,
-      quota: est.quota || 0,
-      free: Math.max(0, (est.quota || 0) - (est.usage || 0))
-    };
-  }
+  try {
+    if (navigator.storage && navigator.storage.estimate) {
+      const est = await navigator.storage.estimate();
+      return {
+        used: est.usage || 0,
+        quota: est.quota || 0,
+        free: Math.max(0, (est.quota || 0) - (est.usage || 0))
+      };
+    }
+  } catch (e) {}
+  // Fallback constant
   return { used: 0, quota: 500 * 1024 * 1024, free: 500 * 1024 * 1024 };
 }
