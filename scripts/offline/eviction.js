@@ -5,7 +5,7 @@
 
 import { getAllTrackMetas, deleteTrackCache } from './cache-db.js';
 
-const MIN_FREE_MB = 30;
+const MIN_FREE_MB = 60;
 
 export async function runEviction(protectedUids = new Set()) {
   const hasFree = await _checkFreeSpace();
