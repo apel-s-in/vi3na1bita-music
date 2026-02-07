@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ea82ab2849628178731f9afa8cdf132bdeb088b7.idx
-│   │       ├── pack-ea82ab2849628178731f9afa8cdf132bdeb088b7.pack
-│   │       └── pack-ea82ab2849628178731f9afa8cdf132bdeb088b7.rev
+│   │       ├── pack-3b8c40eb74551a0867a621635a0bad81ade387b8.idx
+│   │       ├── pack-3b8c40eb74551a0867a621635a0bad81ade387b8.pack
+│   │       └── pack-3b8c40eb74551a0867a621635a0bad81ade387b8.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 13:00:40 UTC
+Сгенерировано: 2026-02-07 13:09:55 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8613,7 +8613,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       this._ms = ensureMediaSession({
         onPlay: () => this.play(), 
         onPause: () => this.pause(),
-        onStop: () => this.pause(), 
+        onStop: () => this.stop(), 
         onPrev: () => this.prev(), 
         onNext: () => this.next(),
         onSeekTo: (t) => this.seek(t)
@@ -8732,8 +8732,8 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     pause() { this.sound?.pause(); }
     
     stop() {
-      this._unload();
-      this._emit('onStop');
+      // #3: stop calls unload without silent flag -> triggers onStop
+      this._unload(false);
       this._updMedia();
     }
 
@@ -8776,31 +8776,126 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
     getCurrentTrackUid() { return safeStr(this.getCurrentTrack()?.uid); }
 
-    async switchQuality(mode) {
-      const next = normQ(mode);
-      if (this.qualityMode === next) return;
-      
-      this.qualityMode = next;
-      localStorage.setItem(LS_PQ, next);
+    // #2: LOAD METHOD Implementation
+    async load(index, opts = {}) {
+      const track = this.playlist[index];
+      if (!track) return;
 
-      window.dispatchEvent(new CustomEvent('quality:changed', { detail: { quality: next } }));
-      window.dispatchEvent(new CustomEvent('offline:uiChanged'));
+      const token = ++this._loadToken;
+      this.currentIndex = index;
       
-      // (14.2) Hot Swap using proper resolver logic (via load)
-      if (this.currentIndex >= 0 && this.sound) {
-          const wasPlaying = this.isPlaying();
-          const pos = this.getPosition();
-          this.load(this.currentIndex, { 
-              autoPlay: wasPlaying, 
-              resumePosition: pos, 
-              isHotSwap: true 
-          });
-          W.NotificationSystem?.info?.(`Качество переключено на ${next === 'hi' ? 'Hi' : 'Lo'}`);
+      if (!opts.isAutoSkip) this._skipSession = { token, count: 0, max: this.playlist.length };
+
+      let res = { url: null, isLocal: false, _blobUrl: false };
+      
+      try {
+          const resolved = await getOfflineManager().resolveTrackSource(track.uid);
+          
+          if (resolved.source === 'local' && resolved.blob) {
+              // Create Blob URL
+              const url = W.Utils?.blob?.createUrl 
+                  ? W.Utils.blob.createUrl('player_' + track.uid, resolved.blob)
+                  : URL.createObjectURL(resolved.blob);
+                  
+              res = { 
+                  url, 
+                  isLocal: true, 
+                  _blobUrl: true,
+                  effectiveQuality: resolved.quality 
+              };
+          } else if (resolved.source === 'stream' && resolved.url) {
+              if (W.Utils?.getNetworkStatusSafe) {
+                  const net = W.Utils.getNetworkStatusSafe();
+                  if (W.NetPolicy && !W.NetPolicy.isNetworkAllowed()) {
+                      throw new Error('Blocked by NetPolicy');
+                  }
+                  if (net.kind === 'cellular' && W.NetPolicy?.shouldShowCellularToast()) {
+                      W.NotificationSystem?.info?.('Воспроизведение через мобильную сеть');
+                  }
+              }
+              res = { url: resolved.url, isLocal: false, effectiveQuality: resolved.quality };
+          }
+      } catch (e) {
+          console.warn('[Player] Resolve failed:', e);
       }
+
+      if (token !== this._loadToken) return;
+      
+      // Emit change early
+      this._emit('onTrackChange', track, index);
+      // Pass direction for window prediction (Audit #12)
+      window.dispatchEvent(new CustomEvent('player:trackChanged', { detail: { uid: track.uid, dir: opts.dir || 1 } }));
+
+      // Fallback / Skip Logic
+      if (!res.url) {
+          if (this._skipSession.count >= this._skipSession.max) {
+              W.NotificationSystem?.error('Нет доступных треков (проверьте сеть)');
+              this.pause();
+              this._stopTick();
+              this._emit('onPlaybackError', { reason: 'no_source' });
+              return;
+          }
+          console.warn(`[Player] Skip ${track.uid}`);
+          setTimeout(() => {
+              if (token === this._loadToken) {
+                  this._skipSession.count++;
+                  const nextIdx = (index + (opts.dir || 1) + this.playlist.length) % this.playlist.length;
+                  if (nextIdx !== index) this.load(nextIdx, { ...opts, autoPlay: true, isAutoSkip: true });
+              }
+          }, 100);
+          return;
+      }
+
+      const isHotSwap = !!opts.isHotSwap;
+      const oldSound = this.sound;
+      
+      // If NOT hot swap, stop and emit stop (silent=true because we are loading new)
+      if (!isHotSwap) this._unload(true);
+
+      const newSound = new Howl({
+          src: [res.url],
+          html5: !res.isLocal, // HTML5 for stream, WebAudio for local blob
+          volume: this.getVolume() / 100,
+          format: ['mp3'],
+          autoplay: !!opts.autoPlay,
+          onload: () => {
+              if (token !== this._loadToken) { newSound.unload(); return; }
+              if (isHotSwap && oldSound) try { oldSound.unload(); } catch(e){}
+              if (opts.resumePosition) newSound.seek(opts.resumePosition);
+              this._updMedia();
+          },
+          onplay: () => {
+              if (token !== this._loadToken) { newSound.stop(); return; }
+              this._startTick();
+              this._emit('onPlay', track, index);
+              this._updMedia();
+          },
+          onpause: () => {
+              if (token !== this._loadToken) return;
+              this._stopTick();
+              this._stats.onPauseOrStop();
+              this._emit('onPause');
+          },
+          onend: () => {
+              if (token !== this._loadToken) return;
+              this._stats.onEnded();
+              this._emit('onEnd');
+              this.repeatMode ? this.play(this.currentIndex) : this.next();
+          },
+          onloaderror: (id, e) => {
+              console.error('Load Error', e);
+              if (isHotSwap && oldSound) try { oldSound.unload(); } catch(ex){}
+              if (token === this._loadToken && !res.isLocal) {
+                  W.NotificationSystem?.warning('Ошибка сети, следующая...');
+                  setTimeout(() => this.next(), 1000);
+              }
+          }
+      });
+      this.sound = newSound;
     }
 
     _unload(silent) {
-      /* Revoke blob URL если был local (ТЗ 14.2) */
+      /* Revoke blob URL если был local */
       const curTrack = this.getCurrentTrack();
       if (curTrack?.uid && W.Utils?.blob?.revokeUrl) {
         W.Utils.blob.revokeUrl('player_' + curTrack.uid);
@@ -8822,22 +8917,20 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       return !!(m?.audio_low || m?.urlLo || t?.sources?.audio?.lo);
     }
 
-    switchQuality(mode) {
+    // #1: Unified switchQuality
+    async switchQuality(mode) {
       const next = normQ(mode);
       if (this.qualityMode === next) return;
       
       this.qualityMode = next;
-      localStorage.setItem(LS_PQ, next); // 'qualityMode:v1'
+      localStorage.setItem(LS_PQ, next);
 
-      // Notify all
       window.dispatchEvent(new CustomEvent('quality:changed', { detail: { quality: next } }));
       window.dispatchEvent(new CustomEvent('offline:uiChanged'));
       
-      // Hot Swap current track (ТЗ 4.3)
       if (this.currentIndex >= 0 && this.sound) {
           const wasPlaying = this.isPlaying();
           const pos = this.getPosition();
-          // Перезагрузка с флагом isHotSwap
           this.load(this.currentIndex, { 
               autoPlay: wasPlaying, 
               resumePosition: pos, 
