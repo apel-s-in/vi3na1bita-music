@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-68e52b887e0adf0e3916db6eaaf40a87f5be042b.idx
-│   │       ├── pack-68e52b887e0adf0e3916db6eaaf40a87f5be042b.pack
-│   │       └── pack-68e52b887e0adf0e3916db6eaaf40a87f5be042b.rev
+│   │       ├── pack-d377e7079379ea1ff0cb48ad663fd8dc4d37102d.idx
+│   │       ├── pack-d377e7079379ea1ff0cb48ad663fd8dc4d37102d.pack
+│   │       └── pack-d377e7079379ea1ff0cb48ad663fd8dc4d37102d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -386,7 +386,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 17:01:46 UTC
+Сгенерировано: 2026-02-07 17:03:07 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9570,7 +9570,8 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
       const newSound = new Howl({
           src: [res.url],
-          html5: !res.isLocal, // HTML5 for stream, WebAudio for local blob
+          // ТЗ v1.0: WebAudio backend + blob/objectURL, без зависимости от Range.
+          html5: false,
           volume: this.getVolume() / 100,
           format: ['mp3'],
           autoplay: !!opts.autoPlay,
