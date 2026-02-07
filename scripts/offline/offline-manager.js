@@ -557,6 +557,11 @@ class OfflineManager {
     return enqueued;
   }
 
+  // Proxy для track-resolver.js (#4 fix)
+  async getTrackMeta(uid) {
+    return getTrackMeta(uid);
+  }
+
   async hasSpace() {
       try {
           const est = await estimateUsage();
@@ -644,7 +649,21 @@ class OfflineManager {
   }
 
   async enqueueAudioDownload(uid, { priority, kind }) {
-     if (!this._ready || !(await this.hasSpace())) return;
+     if (!this._ready) return;
+     // Fix #20.1: Try eviction before giving up on space
+     let hasRoom = await this.hasSpace();
+     if (!hasRoom) {
+       try {
+         const { runEviction } = await import('./eviction.js');
+         const { getWindowState } = await import('../app/playback-cache-bootstrap.js');
+         const ws = getWindowState?.() || { uids: [] };
+         await runEviction(new Set(ws.uids));
+         hasRoom = await this.hasSpace();
+       } catch (e) {
+         console.warn('[OfflineManager] eviction failed:', e);
+       }
+     }
+     if (!hasRoom) return;
      const q = this.getQuality();
      const url = getTrackUrl(uid, q);
      if (url) this.queue.enqueue({ uid, url, quality: q, kind, priority });
