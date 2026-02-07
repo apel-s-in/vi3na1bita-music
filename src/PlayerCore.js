@@ -1,6 +1,5 @@
 // src/PlayerCore.js
-import { getOfflineManager } from '../scripts/offline/offline-manager.js';
-import { registerTrack, getTrackByUid } from '../scripts/app/track-registry.js';
+import { getTrackByUid } from '../scripts/app/track-registry.js';
 import { Favorites } from '../scripts/core/favorites-manager.js';
 import { ensureMediaSession } from './player-core/media-session.js';
 import { createListenStatsTracker } from './player-core/stats-tracker.js';
@@ -51,8 +50,8 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         getUid: () => safeStr(this.getCurrentTrack()?.uid),
         getPos: () => this.getPosition(),
         getDur: () => this.getDuration(),
-        recordTick: (uid, p) => getOfflineManager().recordTickStats(uid, p),
-        recordEnd:  (uid, p) => getOfflineManager().registerFullListen(uid, p)
+        recordTick: (uid, p) => window.OfflineManager?.recordTickStats?.(uid, p),
+        recordEnd: (uid, p) => window.OfflineManager?.registerFullListen?.(uid, p)
       });
 
       // iOS Unlock
@@ -220,34 +219,43 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       let res = { url: null, isLocal: false, _blobUrl: false };
       
       try {
-          const resolved = await getOfflineManager().resolveTrackSource(track.uid);
-          
-          if (resolved.source === 'local' && resolved.blob) {
-              // Create Blob URL
-              const url = W.Utils?.blob?.createUrl 
-                  ? W.Utils.blob.createUrl('player_' + track.uid, resolved.blob)
-                  : URL.createObjectURL(resolved.blob);
-                  
-              res = { 
-                  url, 
-                  isLocal: true, 
-                  _blobUrl: true,
-                  effectiveQuality: resolved.quality 
-              };
-          } else if (resolved.source === 'stream' && resolved.url) {
-              if (W.Utils?.getNetworkStatusSafe) {
-                  const net = W.Utils.getNetworkStatusSafe();
-                  if (W.NetPolicy && !W.NetPolicy.isNetworkAllowed()) {
-                      throw new Error('Blocked by NetPolicy');
-                  }
-                  if (net.kind === 'cellular' && W.NetPolicy?.shouldShowCellularToast()) {
-                      W.NotificationSystem?.info?.('Воспроизведение через мобильную сеть');
-                  }
-              }
-              res = { url: resolved.url, isLocal: false, effectiveQuality: resolved.quality };
+        const q = this.qualityMode;
+        const resolver = window.TrackResolver?.resolve;
+
+        // ТЗ: PlayerCore не знает про OfflineManager/R0/R1. Он только спрашивает resolver.
+        const resolved = resolver
+          ? await resolver(track.uid, q)
+          : { source: 'stream', url: track.src || null, blob: null, quality: q, localKind: 'none' };
+
+        if ((resolved.source === 'local' || resolved.source === 'cache') && resolved.blob) {
+          // Create Blob URL (stable offline playback)
+          const url = W.Utils?.blob?.createUrl
+            ? W.Utils.blob.createUrl('player_' + track.uid, resolved.blob)
+            : URL.createObjectURL(resolved.blob);
+
+          res = {
+            url,
+            isLocal: true,
+            _blobUrl: true,
+            effectiveQuality: resolved.quality
+          };
+        } else if ((resolved.source === 'stream' || resolved.source === 'network') && resolved.url) {
+          // Respect NetPolicy + optional cellular toast (no playback interruption)
+          if (W.NetPolicy && !W.NetPolicy.isNetworkAllowed()) {
+            throw new Error('Blocked by NetPolicy');
           }
+
+          if (W.Utils?.getNetworkStatusSafe) {
+            const net = W.Utils.getNetworkStatusSafe();
+            if (net.kind === 'cellular' && W.NetPolicy?.shouldShowCellularToast?.()) {
+              W.NotificationSystem?.info?.('Воспроизведение через мобильную сеть');
+            }
+          }
+
+          res = { url: resolved.url, isLocal: false, effectiveQuality: resolved.quality };
+        }
       } catch (e) {
-          console.warn('[Player] Resolve failed:', e);
+        console.warn('[Player] Resolve failed:', e);
       }
 
       if (token !== this._loadToken) return;
