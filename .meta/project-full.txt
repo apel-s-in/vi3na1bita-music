@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-00e56625e1724dbc2c347a4b06d4b6008c28ca17.idx
-│   │       ├── pack-00e56625e1724dbc2c347a4b06d4b6008c28ca17.pack
-│   │       └── pack-00e56625e1724dbc2c347a4b06d4b6008c28ca17.rev
+│   │       ├── pack-d3a6f1e73cf665179f5905aeff821ba4ae9eb6f9.idx
+│   │       ├── pack-d3a6f1e73cf665179f5905aeff821ba4ae9eb6f9.pack
+│   │       └── pack-d3a6f1e73cf665179f5905aeff821ba4ae9eb6f9.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -386,7 +386,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 17:58:51 UTC
+Сгенерировано: 2026-02-07 18:01:12 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7934,20 +7934,21 @@ function render() {
 
   // Fix #5.3: Re-cache
   modal.querySelector('#btn-recache')?.addEventListener('click', async () => {
-    const targetQ = om.getQuality();
-    if (!om.countNeedsReCache) {
+    const q = om.getQuality();
+    if (!om.countNeedsReCache || !om.reCacheAll) {
       window.NotificationSystem?.info?.('Re-cache не поддерживается');
       return;
     }
-    const count = await om.countNeedsReCache(targetQ);
-    if (count === 0) {
-      window.NotificationSystem?.info?.('Все файлы уже в правильном качестве.');
-      return;
-    }
-    // Trigger _onQualityChanged to re-enqueue
-    om._onQualityChanged?.(targetQ);
+    const count = await om.countNeedsReCache(q);
+    if (!count) return window.NotificationSystem?.info?.('Все файлы уже в правильном качестве.');
+
+    // ТЗ 4.5: ускоренная перекачка (2-3 параллельных), но базово 1.
     om.queue?.setParallel?.(3);
+    await om.reCacheAll(q);
     window.NotificationSystem?.info?.(`Перекэширование: ${count} файлов`);
+
+    // iOS-safe: вернуть параллелизм обратно (простая гарантия, без усложнения событий)
+    setTimeout(() => om.queue?.setParallel?.(1), 15000);
   });
 
   // Net Policy handlers
