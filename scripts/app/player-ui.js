@@ -193,9 +193,23 @@
             if (W.playerCore.setMuted) W.playerCore.setMuted(m); // Optional support
             U.setBtnActive(b.id, m);
         },
-        'pq-btn': () => {
-            const r = U.pq.toggle();
+        'pq-btn': async () => {
+            const mgr = W.OfflineManager || (await import('../offline/offline-manager.js')).getOfflineManager();
+            const stats = await mgr.getCacheSummary();
+            const totalFiles = stats.pinned.count + stats.cloud.count;
+            
+            const nextQ = U.pq.getMode() === 'hi' ? 'lo' : 'hi';
+            
+            // ТЗ 4.3: Confirm если > 5 файлов
+            if (totalFiles > 5) {
+                if (!confirm(`Смена качества затронет ${totalFiles} файлов. Перекачать?`)) {
+                    return; // Отмена
+                }
+            }
+            
+            const r = U.pq.toggle(); // Это вызовет switchQuality в PlayerCore
             if (!r.ok) U.ui.toast(r.reason === 'trackNoLo' ? 'Низкое качество недоступно' : r.reason === 'offline' ? 'Нет доступа к сети' : 'Невозможно', 'warning');
+            
             updatePQButtonState();
         },
         'favorites-btn': () => actions.toggleFavoritesOnly(),
