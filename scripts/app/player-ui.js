@@ -243,15 +243,7 @@
     function updatePQButtonState() {
         if (!dom.pqBtn) return;
         
-        // CRITICAL FIX: Hide button in R2/R3 modes (ТЗ П.3.4)
-        const mgr = window._offlineManagerInstance;
-        const mode = mgr ? mgr.getMode() : 'R0';
-        
-        if (mode === 'R2' || mode === 'R3') {
-            dom.pqBtn.style.display = 'none';
-            return;
-        }
-        
+        // v1.0: Кнопка качества видна всегда (R0 и R1). R2/R3 не реализованы.
         dom.pqBtn.style.display = '';
 
         const s = U.pq.getState();
