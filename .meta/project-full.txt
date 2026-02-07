@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-94da380df0dad87c741a13561d5908718bc59670.idx
-│   │       ├── pack-94da380df0dad87c741a13561d5908718bc59670.pack
-│   │       └── pack-94da380df0dad87c741a13561d5908718bc59670.rev
+│   │       ├── pack-dd4dcbfe154f6dbf88cdffbd434fc9616c5646eb.idx
+│   │       ├── pack-dd4dcbfe154f6dbf88cdffbd434fc9616c5646eb.pack
+│   │       └── pack-dd4dcbfe154f6dbf88cdffbd434fc9616c5646eb.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 08:30:22 UTC
+Сгенерировано: 2026-02-07 08:31:07 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7867,39 +7867,55 @@ function _buildModesSection(stats, mgr) {
   section.className = 'offline-section';
 
   const mode = mgr.getMode();
+  const isR1 = mode === 'R1';
 
   section.innerHTML = `
     <div class="offline-section__title">■ Режимы кэширования</div>
     <div class="offline-row">
-      <span class="offline-row__label">Текущий режим</span>
-      <span style="font-weight: 600;">${mode}</span>
+      <span class="offline-row__label">PlaybackCache (трёхтрековое окно)</span>
     </div>
-    <div style="margin-top: 8px; font-size: 12px; color: #888;">
-      R0 = Стриминг &nbsp;|&nbsp; R1 = PlaybackCache &nbsp;|&nbsp; R2 = Dynamic Offline &nbsp;|&nbsp; R3 = 100% Offline
+    <div style="margin-top: 4px; font-size: 12px; color: #888;">
+      ${isR1 ? 'Включён — мгновенные переходы prev/next' : 'Выключен — потоковое воспроизведение'}
     </div>
   `;
 
-  /* Mode buttons */
-  const modeRow = document.createElement('div');
-  modeRow.style.cssText = 'display: flex; gap: 4px; margin-top: 10px; flex-wrap: wrap;';
+  /* Тумблер R0↔R1 (ТЗ 3.2) */
+  const toggleRow = document.createElement('div');
+  toggleRow.className = 'offline-row';
+  toggleRow.style.marginTop = '10px';
 
-  for (const m of ['R0', 'R1', 'R2', 'R3']) {
-    const btn = document.createElement('button');
-    btn.className = 'offline-btn' + (m === mode ? ' offline-btn--active' : '');
-    btn.textContent = m;
-    btn.addEventListener('click', async () => {
-      if (m === 'R3') {
-        if (!confirm('Переключиться на 100% Offline? Потребуется загрузка всех треков.')) return;
-      }
-      await mgr.setMode(m);
-      /* Перерендерить модал */
-      closeOfflineModal();
-      setTimeout(() => openOfflineModal(), 100);
-    });
-    modeRow.appendChild(btn);
+  const toggle = document.createElement('button');
+  toggle.className = 'offline-btn' + (isR1 ? ' offline-btn--active' : '');
+  toggle.textContent = isR1 ? 'Включён (R1)' : 'Выключен (R0)';
+  toggle.style.minWidth = '160px';
+
+  if (!stats.spaceOk && !isR1) {
+    toggle.disabled = true;
+    toggle.title = 'Недостаточно места (минимум 60 МБ)';
   }
 
-  section.appendChild(modeRow);
+  toggle.addEventListener('click', async () => {
+    const newMode = isR1 ? 'R0' : 'R1';
+
+    if (newMode === 'R1' && !stats.spaceOk) {
+      window.NotificationSystem?.warning?.('Недостаточно места на устройстве');
+      return;
+    }
+
+    await mgr.setMode(newMode);
+    closeOfflineModal();
+    setTimeout(() => openOfflineModal(), 100);
+  });
+
+  toggleRow.appendChild(toggle);
+  section.appendChild(toggleRow);
+
+  /* Placeholder для будущих R2/R3 */
+  const placeholder = document.createElement('div');
+  placeholder.style.cssText = 'margin-top: 16px; font-size: 11px; color: #555; border-top: 1px solid rgba(255,255,255,0.04); padding-top: 8px;';
+  placeholder.textContent = 'Режимы Dynamic Offline и 100% Offline — в разработке.';
+  section.appendChild(placeholder);
+
   return section;
 }
 
