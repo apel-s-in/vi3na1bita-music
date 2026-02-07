@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e99d05971cfb63e3e82f07e2a44fe8c0824feaeb.idx
-│   │       ├── pack-e99d05971cfb63e3e82f07e2a44fe8c0824feaeb.pack
-│   │       └── pack-e99d05971cfb63e3e82f07e2a44fe8c0824feaeb.rev
+│   │       ├── pack-90009de8498b9e448aaafe6f5baae7f00b774c59.idx
+│   │       ├── pack-90009de8498b9e448aaafe6f5baae7f00b774c59.pack
+│   │       └── pack-90009de8498b9e448aaafe6f5baae7f00b774c59.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -383,7 +383,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 12:01:38 UTC
+Сгенерировано: 2026-02-07 12:02:05 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6148,49 +6148,32 @@ export default offlineManager;
 
 //=================================================
 // FILE: /scripts/offline/track-resolver.js
-/**
- * track-resolver.js — Выбор источника воспроизведения трека.
- *
- * ТЗ: Приложение П.6.1–П.6.3
- *
- * Порядок:
- *   1. Локальная копия (🔒/☁) в текущем качестве → blob URL
- *   2. Локальная копия в другом качестве → blob URL + needsReCache
- *   3. Стриминг с GitHub (если сеть и режим позволяют)
- *   4. Недоступно
- */
+// scripts/offline/track-resolver.js
+// Track Resolver v2.0: Priority Logic (Hi -> Lo -> Stream)
 
 import offlineManager from './offline-manager.js';
 
-/**
- * resolveTrackUrl(uid, trackData)
- *
- * @param {string}  uid       — уникальный id трека
- * @param {Object}  trackData — { audio, audio_low, src, ... } или строка URL
- * @returns {Promise<{ url: string|null, source: 'local'|'stream'|'unavailable', quality: string, needsReCache: boolean }>}
- */
 export async function resolveTrackUrl(uid, trackData) {
-  /* Нормализация: если передали строку — обернуть в объект */
-  if (typeof trackData === 'string') {
-    trackData = { audio: trackData, src: trackData };
-  }
+  // Normalize input
+  if (typeof trackData === 'string') trackData = { audio: trackData, src: trackData };
   if (!trackData) trackData = {};
 
+  // 1. Ask OfflineManager to resolve source (Logic inside OM handles: Hi Blob -> Lo Blob)
   const result = await offlineManager.resolveTrackSource(uid, trackData);
 
+  // 2. Handle Local Blob
   if (result.source === 'local' && result.blob) {
-    /* Создаём Object URL из blob для <audio> */
     const objectUrl = URL.createObjectURL(result.blob);
-
     return {
       url: objectUrl,
       source: 'local',
       quality: result.quality,
       needsReCache: result.needsReCache,
-      _blobUrl: true  /* флаг: нужно revokeObjectURL после использования */
+      _blobUrl: true // Flag to revoke later
     };
   }
 
+  // 3. Handle Stream
   if (result.source === 'stream' && result.url) {
     return {
       url: result.url,
@@ -6201,7 +6184,7 @@ export async function resolveTrackUrl(uid, trackData) {
     };
   }
 
-  /* Недоступно */
+  // 4. Unavailable
   return {
     url: null,
     source: 'unavailable',
@@ -6211,9 +6194,6 @@ export async function resolveTrackUrl(uid, trackData) {
   };
 }
 
-/**
- * Освободить Object URL (вызывать когда трек больше не нужен).
- */
 export function revokeTrackUrl(resolved) {
   if (resolved && resolved._blobUrl && resolved.url) {
     try { URL.revokeObjectURL(resolved.url); } catch {}
