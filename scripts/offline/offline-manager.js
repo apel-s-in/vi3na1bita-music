@@ -32,7 +32,6 @@ const MODE_KEY = 'offline:mode:v1';
 const CLOUD_N_KEY = 'offline:cloud:N';
 const CLOUD_D_KEY = 'offline:cloud:D';
 const NET_POLICY_KEY = 'offline:netPolicy:v1';
-const PRESET_KEY = 'offline:preset:v1';
 const MIN_SPACE_MB = 60;
 const MB = 1024 * 1024;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -246,14 +245,13 @@ class OfflineManager {
   }
 
   async setMode(mode) {
-    const valid = ['R0', 'R1', 'R2', 'R3'];
-    if (!valid.includes(mode)) return;
-    const prevMode = this.getMode();
-    localStorage.setItem(MODE_KEY, mode);
-
-    if (prevMode === 'R3' && mode !== 'R3') {
-      await this.cleanExpiredPending();
+    /* v1.0: только R0 и R1 */
+    const valid = ['R0', 'R1'];
+    if (!valid.includes(mode)) {
+      console.warn(`[OfflineMgr] Mode ${mode} не реализован в v1.0`);
+      return;
     }
+    localStorage.setItem(MODE_KEY, mode);
 
     this._emit('progress', { phase: 'modeChanged', mode });
     emit('offline:uiChanged');
@@ -412,20 +410,6 @@ class OfflineManager {
 
     emit('offline:stateChanged');
     toast(`Настройки: N=${newN}, D=${newD}. Удалено: ${(toRemove || []).length}.`);
-  }
-
-  /* ─── Preset ─── */
-
-  getPreset() {
-    return localStorage.getItem(PRESET_KEY) || 'balanced';
-  }
-
-  setPreset(name) {
-    const presets = { conservative: 1, balanced: 2, aggressive: 3 };
-    if (!presets[name]) return;
-    localStorage.setItem(PRESET_KEY, name);
-    this.queue.setMaxParallel(presets[name]);
-    emit('offline:uiChanged');
   }
 
   /* ─── Space check (ТЗ П.2) ─── */
@@ -625,20 +609,13 @@ class OfflineManager {
     /* ТЗ П.5.3: Автоматическое появление ☁ */
     if (meta.type !== 'pinned' && meta.type !== 'cloud') {
       if (meta.cloudFullListenCount >= threshold) {
-        const hasBlob = await hasAudioForUid(uid);
-
-        if (this.getMode() === 'R3' && hasBlob) {
-          /* В R3 файл уже локальный — просто присваиваем статус */
-          meta.type = 'cloud';
-          meta.cloudAddedAt = now;
-          meta.cloudExpiresAt = now + ttlDays * DAY_MS;
-          meta.quality = quality;
-        } else if (await this.hasSpace()) {
+        if (await this.hasSpace()) {
           meta.type = 'cloud';
           meta.cloudAddedAt = now;
           meta.cloudExpiresAt = now + ttlDays * DAY_MS;
           meta.quality = quality;
 
+          const hasBlob = await hasAudioForUid(uid);
           if (!hasBlob) {
             const url = getTrackUrl(uid, quality);
             if (url) {
@@ -652,11 +629,6 @@ class OfflineManager {
 
     await setTrackMeta(uid, meta);
     emit('offline:stateChanged');
-  }
-
-  /** @deprecated Алиас registerFullListen. Используйте registerFullListen напрямую. */
-  async recordListenStats(uid, params = {}) {
-    return this.registerFullListen(uid, params);
   }
 
   /**
@@ -887,7 +859,6 @@ class OfflineManager {
   /* ─── TTL cleanup (ТЗ П.5.6) ─── */
 
   async _cleanExpiredCloud() {
-    const mode = this.getMode();
     const metas = await getAllTrackMetas();
     const now = Date.now();
     const expired = [];
@@ -896,12 +867,6 @@ class OfflineManager {
       if (m.type !== 'cloud') continue;
       if (!m.cloudExpiresAt) continue;
       if (m.cloudExpiresAt >= now) continue;
-
-      if (mode === 'R3') {
-        /* ТЗ П.5.6: В R3 не удаляем, помечаем expiredPending */
-        await updateTrackMeta(m.uid, { expiredPending: true });
-        continue;
-      }
 
       expired.push(m);
     }
@@ -927,38 +892,6 @@ class OfflineManager {
 
     if (expired.length > 0) emit('offline:stateChanged');
     return expired.length;
-  }
-
-  /* ─── cleanExpiredPending — при выходе из R3 (ТЗ П.5.6) ─── */
-
-  async cleanExpiredPending() {
-    const metas = await getAllTrackMetas();
-    let count = 0;
-
-    for (const m of metas) {
-      if (!m.expiredPending) continue;
-
-      await deleteAudio(m.uid);
-      await updateTrackMeta(m.uid, {
-        type: 'none',
-        quality: null,
-        size: 0,
-        cloudFullListenCount: 0,
-        lastFullListenAt: null,
-        cloudAddedAt: null,
-        cloudExpiresAt: null,
-        needsReCache: false,
-        expiredPending: false
-      });
-
-      const trackData = getTrackData(m.uid);
-      const title = trackData?.title || m.uid;
-      toast(`Офлайн-доступ истёк. Трек «${title}» удалён из кэша.`);
-      count++;
-    }
-
-    if (count > 0) emit('offline:stateChanged');
-    return count;
   }
 
   /* ─── Re-cache (ТЗ П.3.2, П.3.3) ─── */
