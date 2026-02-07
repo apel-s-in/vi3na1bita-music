@@ -287,11 +287,55 @@ export async function refreshAllIndicators() {
 }
 
 /**
+ * Обновление бейджа на кнопке OFFLINE внизу экрана
+ */
+function _updateMainOfflineButton() {
+  const btn = document.getElementById('offline-btn');
+  if (!btn) return;
+  
+  // Проверяем сетевую политику (через глобальный скоуп или импорт, если доступен)
+  let alert = false;
+  
+  // 1. Если включен R1 (Playback Cache)
+  try {
+     if (localStorage.getItem('offline:mode:v1') === 'R1') alert = true;
+  } catch {}
+
+  // 2. Если сеть ограничена политикой (Авиарежим или Killswitch)
+  // Мы можем прочитать LS напрямую, так как модуль NetPolicy может быть еще не загружен
+  try {
+     const ks = localStorage.getItem('netPolicy:killSwitch:v1') === 'on';
+     const w = localStorage.getItem('netPolicy:wifi:v1');
+     const c = localStorage.getItem('netPolicy:cellular:v1');
+     // Если KillSwitch ON или (Wifi OFF и Cell OFF)
+     if (ks || (w === 'off' && c === 'off')) alert = true;
+  } catch {}
+
+  if (alert) {
+      btn.classList.add('alert'); // CSS класс для восклицательного знака
+      // Добавим стиль для alert если его нет
+      if (!document.getElementById('offline-btn-alert-style')) {
+          const s = document.createElement('style');
+          s.id = 'offline-btn-alert-style';
+          s.textContent = `.offline-btn.alert::after { content: "!"; color: #ff6b6b; font-weight: 900; margin-left: 6px; }`;
+          document.head.appendChild(s);
+      }
+  } else {
+      btn.classList.remove('alert');
+  }
+}
+
+/**
  * initOfflineIndicators() — инициализация: подписка на события.
  * ТЗ П.7.4: Обновление по событиям, не по таймеру.
  */
 export function initOfflineIndicators() {
   injectCSS();
+  
+  /* Обновляем кнопку при старте и изменениях */
+  _updateMainOfflineButton();
+  window.addEventListener('offline:uiChanged', _updateMainOfflineButton);
+  window.addEventListener('netPolicy:changed', _updateMainOfflineButton);
 
   /* Подписка на события offline-manager */
   window.addEventListener('offline:stateChanged', () => {
