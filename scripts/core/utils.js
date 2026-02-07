@@ -138,7 +138,8 @@
       },
       toggle: () => {
         const c = W.playerCore; if (!c) return { ok: false, reason: 'noCore' };
-        if (!U.getNet().online) return { ok: false, reason: 'offline' };
+        const netOk = W.NetPolicy?.isNetworkAllowed?.() ?? U.getNet().online;
+        if (!netOk) return { ok: false, reason: 'offline' };
         if (!c.canToggleQualityForCurrentTrack()) return { ok: false, reason: 'trackNoLo' };
         const n = U.pq.getMode() === 'hi' ? 'lo' : 'hi';
         c.switchQuality(n);
