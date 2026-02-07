@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-05d82ef4acd75945684b8ef77c31d1888ccb22ec.idx
-│   │       ├── pack-05d82ef4acd75945684b8ef77c31d1888ccb22ec.pack
-│   │       └── pack-05d82ef4acd75945684b8ef77c31d1888ccb22ec.rev
+│   │       ├── pack-893e05bb6d825214fc939d5c4dbdffadc833fb02.idx
+│   │       ├── pack-893e05bb6d825214fc939d5c4dbdffadc833fb02.pack
+│   │       └── pack-893e05bb6d825214fc939d5c4dbdffadc833fb02.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -383,7 +383,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 12:20:03 UTC
+Сгенерировано: 2026-02-07 12:21:37 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9662,147 +9662,108 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       
       if (!opts.isAutoSkip) this._skipSession = { token, count: 0, max: this.playlist.length };
 
-      // Resolve URL (v2.0 Logic)
-      const trackMeta = getTrackByUid(track.uid);
-      const originalUrl = track.src || track.audio || trackMeta?.audio || null;
+      // Resolve URL via OfflineManager (Single Source of Truth)
+      // OfflineManager сам проверит качество, наличие blob и сетевую политику
+      let res = { url: null, isLocal: false, _blobUrl: false };
       
-      // Update quality from storage just in case
-      this.qualityMode = normQ(localStorage.getItem(LS_PQ));
-
-      let res;
       try {
-        // Collect all potential sources
-        const trackDataForResolve = {
-          audio: trackMeta?.audio || track.src || track.audio || originalUrl,
-          audio_low: trackMeta?.audio_low || track.audio_low || null,
-          src: originalUrl
-        };
-        
-        // Resolver handles Priorities: Local(Hi) > Local(Lo) > Stream(NetPolicy)
-        const resolved = await resolveTrackUrl(track.uid, trackDataForResolve);
-
-        // Fallback Logic (Anchor B): If resolver failed (e.g. offline policy blocked, but we want to try direct?)
-        // No, if resolver says unavailable, we trust it (it checks NetPolicy).
-        // Exception: If we are in "unknown" state or resolver errored.
-        
-        if (resolved.url) {
-            res = {
-                url: resolved.url,
-                isLocal: resolved.source === 'local',
-                effectiveQuality: resolved.quality,
-                _blobUrl: resolved._blobUrl
-            };
-        } else {
-            // Last resort: if online, try original URL direct (bypass policies? No, adhere to policy)
-            // We return null URL to trigger skip logic below
-            res = { url: null, isLocal: false, _blobUrl: false };
-        }
+          const resolved = await getOfflineManager().resolveTrackSource(track.uid);
+          
+          if (resolved.source === 'local' && resolved.blob) {
+              res = { 
+                  url: URL.createObjectURL(resolved.blob), 
+                  isLocal: true, 
+                  _blobUrl: true,
+                  effectiveQuality: resolved.quality 
+              };
+          } else if (resolved.source === 'stream' && resolved.url) {
+              // Дополнительная проверка NetPolicy здесь, чтобы наверняка
+              if (W.Utils?.getNetworkStatusSafe) {
+                  const net = W.Utils.getNetworkStatusSafe();
+                  if (W.NetPolicy && !W.NetPolicy.isNetworkAllowed()) {
+                      throw new Error('Blocked by NetPolicy');
+                  }
+                  // Уведомление о мобильной сети (ТЗ 4.2 Спец. Сетевой Политики)
+                  if (net.kind === 'cellular' && W.NetPolicy?.shouldShowCellularToast()) {
+                      W.NotificationSystem?.info?.('Воспроизведение через мобильную сеть');
+                  }
+              }
+              res = { url: resolved.url, isLocal: false, effectiveQuality: resolved.quality };
+          }
+          // source='unavailable' -> res.url null
       } catch (e) {
-        console.warn('[PlayerCore] resolve error:', e);
-        res = { url: null, isLocal: false, _blobUrl: false };
+          console.warn('[Player] Resolve failed:', e);
       }
-      
+
       if (token !== this._loadToken) return;
-
       this._emit('onTrackChange', track, index);
+      window.dispatchEvent(new CustomEvent('player:trackChanged', { detail: { uid: track.uid } }));
 
-      /* Диспатч window event для PlaybackCache и других подписчиков */
-      try {
-        window.dispatchEvent(new CustomEvent('player:trackChanged', {
-          detail: { uid: safeStr(track?.uid), trackData: track, direction: opts.dir || 0 }
-        }));
-      } catch (e) { /* silent */ }
-
-      // --- Сценарий отсутствия src.url (ТЗ 7.5.3) ---
+      // Fallback / Skip Logic (ТЗ 7.5.3)
       if (!res.url) {
-        // Автоскип к следующему доступному треку
-        if (this._skipSession.count >= this._skipSession.max) {
-           W.NotificationSystem?.error('Нет доступных треков');
-           this.pause();
-           this._stopTick();
-           return;
-        }
-        
-        console.warn(`[Player] Source missing for ${track.uid}, skipping...`);
-        
-        setTimeout(() => {
-           if (token === this._loadToken) {
-             this._skipSession.count++;
-             const nextIdx = (index + (opts.dir || 1) + this.playlist.length) % this.playlist.length;
-             if (nextIdx !== index) this.load(nextIdx, { ...opts, autoPlay: true, isAutoSkip: true });
-           }
-        }, 100);
-        return;
+          // Если есть локально копия в ДРУГОМ качестве - OfflineManager должен был её вернуть (step 2 in resolveTrackSource)
+          // Если мы здесь - значит играть нечего.
+          if (this._skipSession.count >= this._skipSession.max) {
+              W.NotificationSystem?.error('Нет доступных треков (проверьте сеть)');
+              this.pause();
+              this._stopTick();
+              return;
+          }
+          console.warn(`[Player] Skip ${track.uid}`);
+          setTimeout(() => {
+              if (token === this._loadToken) {
+                  this._skipSession.count++;
+                  const nextIdx = (index + (opts.dir || 1) + this.playlist.length) % this.playlist.length;
+                  if (nextIdx !== index) this.load(nextIdx, { ...opts, autoPlay: true, isAutoSkip: true });
+              }
+          }, 100);
+          return;
       }
 
-      // --- Hot Swap Logic (ТЗ 4.3) ---
+      // Hot Swap
       const isHotSwap = !!opts.isHotSwap;
-      const oldSound = this.sound; 
-
+      const oldSound = this.sound;
       if (!isHotSwap) this._unload(true);
 
-      // ТЗ 14.1: WebAudio backend для офлайна (isLocal), HTML5 для стриминга
-      const useHtml5 = !res.isLocal;
-
       const newSound = new Howl({
-        src: [res.url],
-        html5: useHtml5,
-        volume: this.getVolume() / 100,
-        format: ['mp3'],
-        autoplay: !!opts.autoPlay,
-        onload: () => {
-          if (token !== this._loadToken) { newSound.unload(); return; }
-          
-          // Hot Swap: выгружаем старый только после готовности нового
-          if (isHotSwap && oldSound) {
-              try { oldSound.unload(); } catch(e) { console.warn('HotSwap unload err', e); }
-          }
-
-          if (opts.resumePosition) newSound.seek(opts.resumePosition);
-          this._updMedia();
-        },
-        onplay: () => {
-          if (token !== this._loadToken) { newSound.stop(); return; }
-          this._startTick();
-          this._emit('onPlay', track, index);
-          this._updMedia();
-        },
-        onpause: () => {
-          if (token !== this._loadToken) return;
-          this._stopTick();
-          this._stats.onPauseOrStop();
-          this._emit('onPause');
-          this._updMedia();
-        },
-        onend: () => {
-          if (token !== this._loadToken) return;
-          this._stats.onEnded();
-          this._emit('onEnd');
-          /* Диспатч window event для PlaybackCache */
-          try {
-            const _endedTrack = this.getCurrentTrack();
-            window.dispatchEvent(new CustomEvent('player:trackEnded', {
-              detail: {
-                uid: safeStr(_endedTrack?.uid),
-                duration: this.getDuration() || 0,
-                position: this.getPosition() || 0
+          src: [res.url],
+          html5: !res.isLocal, // HTML5 for stream, WebAudio for local blob
+          volume: this.getVolume() / 100,
+          format: ['mp3'],
+          autoplay: !!opts.autoPlay,
+          onload: () => {
+              if (token !== this._loadToken) { newSound.unload(); return; }
+              if (isHotSwap && oldSound) try { oldSound.unload(); } catch(e){}
+              if (opts.resumePosition) newSound.seek(opts.resumePosition);
+              this._updMedia();
+          },
+          onplay: () => {
+              if (token !== this._loadToken) { newSound.stop(); return; }
+              this._startTick();
+              this._emit('onPlay', track, index);
+              this._updMedia();
+          },
+          onpause: () => {
+              if (token !== this._loadToken) return;
+              this._stopTick();
+              this._stats.onPauseOrStop();
+              this._emit('onPause');
+          },
+          onend: () => {
+              if (token !== this._loadToken) return;
+              this._stats.onEnded();
+              this._emit('onEnd');
+              this.repeatMode ? this.play(this.currentIndex) : this.next();
+          },
+          onloaderror: (id, e) => {
+              console.error('Load Error', e);
+              if (isHotSwap && oldSound) try { oldSound.unload(); } catch(ex){}
+              if (token === this._loadToken && !res.isLocal) {
+                  W.NotificationSystem?.warning('Ошибка сети, следующая...');
+                  setTimeout(() => this.next(), 1000);
               }
-            }));
-          } catch (e) { /* silent */ }
-          this.repeatMode ? this.play(this.currentIndex) : this.next();
-        },
-        onloaderror: (id, e) => {
-           console.error('Load Error', e);
-           if (isHotSwap && oldSound) {
-              try { oldSound.unload(); } catch(ex) {}
-           }
-           if (token === this._loadToken && !res.isLocal) {
-              W.NotificationSystem?.warning('Ошибка сети, следующая...');
-              setTimeout(() => this.next(), 1000);
-           }
-        }
+          }
       });
-
       this.sound = newSound;
     }
 
@@ -9834,22 +9795,22 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       if (this.qualityMode === next) return;
       
       this.qualityMode = next;
-      localStorage.setItem(LS_PQ, next);
+      localStorage.setItem(LS_PQ, next); // 'qualityMode:v1'
 
-      /* ТЗ 4.3: Уведомить OfflineManager и все подписчики */
+      // Notify all
       window.dispatchEvent(new CustomEvent('quality:changed', { detail: { quality: next } }));
       window.dispatchEvent(new CustomEvent('offline:uiChanged'));
       
-      // ТЗ 4.3 шаг 3: Hot swap текущего трека (без stop, сохранение pos)
+      // Hot Swap current track (ТЗ 4.3)
       if (this.currentIndex >= 0 && this.sound) {
           const wasPlaying = this.isPlaying();
           const pos = this.getPosition();
+          // Перезагрузка с флагом isHotSwap
           this.load(this.currentIndex, { 
               autoPlay: wasPlaying, 
               resumePosition: pos, 
               isHotSwap: true 
           });
-          // ТЗ 4.3: Toast
           W.NotificationSystem?.info?.(`Качество переключено на ${next === 'hi' ? 'Hi' : 'Lo'}`);
       }
     }
