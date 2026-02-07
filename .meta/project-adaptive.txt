@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6be8132b20d196e7b838fd648296a04132b7bcaf.idx
-│   │       ├── pack-6be8132b20d196e7b838fd648296a04132b7bcaf.pack
-│   │       └── pack-6be8132b20d196e7b838fd648296a04132b7bcaf.rev
+│   │       ├── pack-4f412622fe81e0e1066e3b9d820255ad1cfc332d.idx
+│   │       ├── pack-4f412622fe81e0e1066e3b9d820255ad1cfc332d.pack
+│   │       └── pack-4f412622fe81e0e1066e3b9d820255ad1cfc332d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 16:07:36 UTC
+Сгенерировано: 2026-02-07 16:08:31 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5518,6 +5518,50 @@ class OfflineManager {
           }
       }
       return { toRemove };
+  }
+
+  // Fix #17.4: Clear files by type
+  async clearByType(type) {
+    const metas = await getAllTrackMetas();
+    let count = 0;
+    for (const m of metas) {
+      if (m.type === type) {
+        await deleteTrackCache(m.uid);
+        count++;
+      }
+    }
+    if (count > 0) emit('offline:stateChanged');
+    return count;
+  }
+
+  // Fix #17.4: Clear all cached files
+  async clearAll() {
+    const metas = await getAllTrackMetas();
+    let count = 0;
+    for (const m of metas) {
+      await deleteTrackCache(m.uid);
+      count++;
+    }
+    if (count > 0) emit('offline:stateChanged');
+    return count;
+  }
+
+  // Fix #5.3: Re-cache all files with mismatched quality
+  async reCacheAll(targetQuality) {
+    const q = normQ(targetQuality || this.getQuality());
+    const metas = await getAllTrackMetas();
+    let enqueued = 0;
+    for (const m of metas) {
+      if ((m.type === 'pinned' || m.type === 'cloud') && m.quality && m.quality !== q) {
+        const url = getTrackUrl(m.uid, q);
+        if (url) {
+          const prio = m.type === 'pinned' ? DOWNLOAD_PRIORITY.PINNED : DOWNLOAD_PRIORITY.RECACHE_CLOUD;
+          this.queue.enqueue({ uid: m.uid, url, quality: q, kind: 'reCache', priority: prio });
+          enqueued++;
+        }
+      }
+    }
+    return enqueued;
   }
 
   async hasSpace() {
