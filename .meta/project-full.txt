@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9a204239b2014aac1a48649498d304980084a408.idx
-│   │       ├── pack-9a204239b2014aac1a48649498d304980084a408.pack
-│   │       └── pack-9a204239b2014aac1a48649498d304980084a408.rev
+│   │       ├── pack-6812670fde5122b2f86d0a2bd4f6ce574e935a11.idx
+│   │       ├── pack-6812670fde5122b2f86d0a2bd4f6ce574e935a11.pack
+│   │       └── pack-6812670fde5122b2f86d0a2bd4f6ce574e935a11.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 08:18:53 UTC
+Сгенерировано: 2026-02-07 08:20:08 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4708,7 +4708,6 @@ export async function estimateUsage() {
 // FILE: /scripts/offline/net-policy.js
 // scripts/offline/net-policy.js
 const LS_KEY = 'offline:netPolicy:v1';
-// R3 (100% Offline) overrides everything
 const MODE_KEY = 'offline:mode:v1'; 
 
 const DEFAULT_POLICY = { wifiOnly: false, allowMobile: true, confirmOnMobile: false, saveDataBlock: true };
@@ -4725,10 +4724,7 @@ export function setNetPolicy(next) {
 }
 
 export function isAllowedByNetPolicy(params = {}) {
-  // R3 Check: If mode is R3, network is strictly forbidden for playback/downloads
-  const mode = localStorage.getItem(MODE_KEY) || 'R0';
-  if (mode === 'R3') return false;
-
+  // v1.0: R2/R3 не реализованы. Только R0/R1 — сеть разрешена по policy.
   const policy = params.policy || getNetPolicy();
   const net = params.net || { online: true, kind: 'unknown', saveData: false };
   const userInitiated = !!params.userInitiated;
