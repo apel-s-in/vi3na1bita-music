@@ -412,7 +412,7 @@ class OfflineManager {
               if (!(await hasAudioForUid(uid))) {
                   const url = getTrackUrl(uid, updates.quality);
                   if (url) this.queue.enqueue({ uid, url, quality: updates.quality, kind: 'cloud', priority: DOWNLOAD_PRIORITY.CLOUD_FILL });
-                  toast(`Трек ${getTrackTitle(uid)} добавлен в офлайн`);
+                  toast(`Трек ${getTrackTitle(uid)} добавлен в офлайн на ${D} дней.`);
               }
           }
       }
@@ -440,9 +440,9 @@ class OfflineManager {
   }
 
   getQuality() { return normQ(localStorage.getItem(STORAGE_KEYS.QUALITY)); }
+  // Fix #2.1: Only save, NO emit. switchQuality is the single emit point.
   setCacheQualitySetting(q) {
       localStorage.setItem(STORAGE_KEYS.QUALITY, normQ(q));
-      emit('quality:changed', { quality: normQ(q) });
   }
 
   getCloudSettings() {
@@ -480,6 +480,37 @@ class OfflineManager {
       }
       if (removedCount > 0) toast(`Обновлено. Удалено треков: ${removedCount}`);
       else toast('Настройки облака обновлены');
+  }
+
+  // Fix #9.2: Count files needing re-cache
+  async countNeedsReCache(targetQuality) {
+      const q = normQ(targetQuality || this.getQuality());
+      const metas = await getAllTrackMetas();
+      let count = 0;
+      for (const m of metas) {
+          if ((m.type === 'pinned' || m.type === 'cloud') && m.quality && m.quality !== q) {
+              count++;
+          }
+      }
+      return count;
+  }
+
+  // Fix #1.8: Preview how many files will be removed by new N/D
+  async previewCloudSettingsChange({ newN, newD }) {
+      const metas = await getAllTrackMetas();
+      const now = Date.now();
+      let toRemove = 0;
+      for (const m of metas) {
+          if (m.type === 'cloud' && m.cloudOrigin === 'auto' && (m.cloudFullListenCount || 0) < newN) {
+              toRemove++;
+              continue;
+          }
+          if (m.type === 'cloud' && m.lastFullListenAt) {
+              const newExpire = m.lastFullListenAt + (newD * DAY_MS);
+              if (newExpire < now) toRemove++;
+          }
+      }
+      return { toRemove };
   }
 
   async hasSpace() {
@@ -549,8 +580,8 @@ class OfflineManager {
       const otherBlob = await getAudioBlob(uid, otherQ);
       
       if (otherBlob) {
-          // Если текущее Hi, а есть только Lo -> НЕ ухудшать, если есть сеть (7.2)
-          if (q === 'hi' && navigator.onLine) {
+          // Fix #1.2: use isNetworkAllowed() instead of navigator.onLine
+          if (q === 'hi' && (window.NetPolicy ? window.NetPolicy.isNetworkAllowed() : navigator.onLine)) {
               const url = getTrackUrl(uid, q);
               // Если есть URL, стримим Hi
               if (url) return { source: 'stream', url, quality: q };
