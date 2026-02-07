@@ -201,6 +201,20 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       Howler.volume(this._muted ? 0 : this.getVolume() / 100);
     }
     isMuted() { return !!this._muted; }
+    // Fix #16.4: Snapshot for PlaybackCache window calculation
+    getPlaylistSnapshot() {
+      return this.playlist ? [...this.playlist] : [];
+    }
+
+    getIndex() {
+      return this.currentIndex ?? -1;
+    }
+
+    getCurrentTrackUid() {
+      const t = this.getCurrentTrack();
+      return t?.uid ? String(t.uid).trim() : null;
+    }
+
     getPosition() { return this.sound?.seek() || 0; }
     getDuration() { return this.sound?.duration() || 0; }
 
@@ -460,6 +474,10 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         this.playlist = [...this.originalPlaylist];
         if (uid) this.currentIndex = this.playlist.findIndex(t => t.uid === uid);
       }
+      // Fix #3.4
+      window.dispatchEvent(new CustomEvent('playlist:changed', {
+        detail: { reason: 'shuffle', shuffleMode: this.shuffleMode }
+      }));
     }
     isShuffle() { return this.shuffleMode; }
     toggleRepeat() { this.repeatMode = !this.repeatMode; }
