@@ -180,6 +180,17 @@ class DownloadQueue {
         cachedComplete: true
       });
 
+      // Двухфазная замена (ТЗ 1.7): удаляем старый variant ТОЛЬКО после успеха и не для CUR.
+      try {
+        const curUid = window.playerCore?.getCurrentTrackUid?.();
+        if (curUid && String(curUid).trim() === String(item.uid).trim()) {
+          // CUR не трогаем
+        } else {
+          const otherQ = item.quality === 'hi' ? 'lo' : 'hi';
+          await deleteAudioVariant(item.uid, otherQ).catch(() => {});
+        }
+      } catch {}
+
       this._active.delete(item.uid);
       emit('offline:trackCached', { uid: item.uid });
       emit('offline:stateChanged');
@@ -188,8 +199,8 @@ class DownloadQueue {
     } catch (e) {
       this._active.delete(item.uid);
       if (e.name === 'AbortError') {
-        // ТЗ 4.4: При отмене — удалить недокачанный файл
-        await deleteAudio(item.uid).catch(() => {});
+        // ТЗ 4.4: удаляем только тот variant, который качали (не сносим старый корректный).
+        await deleteAudioVariant(item.uid, item.quality).catch(() => {});
         this._process();
         return;
       }
