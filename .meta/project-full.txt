@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ca04be2ac10580cb1427fcbbb438ac393972fda7.idx
-│   │       ├── pack-ca04be2ac10580cb1427fcbbb438ac393972fda7.pack
-│   │       └── pack-ca04be2ac10580cb1427fcbbb438ac393972fda7.rev
+│   │       ├── pack-c804d7d5ae43ddea644e8598966603c6df150734.idx
+│   │       ├── pack-c804d7d5ae43ddea644e8598966603c6df150734.pack
+│   │       └── pack-c804d7d5ae43ddea644e8598966603c6df150734.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 13:53:07 UTC
+Сгенерировано: 2026-02-07 13:53:43 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8547,11 +8547,8 @@ export function ensureMediaSession(handlers) {
 //=================================================
 // FILE: /src/player-core/stats-tracker.js
 // src/player-core/stats-tracker.js
-// Разделённый трекер: tick (секунды) и ended (full listen).
-// ТЗ 9.1: Два независимых типа статистики:
-//   - Global stats → GlobalStatsManager (никогда не сбрасывается)
-//   - Cloud stats → OfflineManager (для управления облачком)
-// ТЗ 9.2: Full listen = duration > 0 && position/duration > 0.9
+// Fix #2.4/#8.1: Added onSkip method
+// Fix #8.2: onEnded checks active UID
 
 function safeUid(v) { return String(v || '').trim() || null; }
 
@@ -8563,7 +8560,6 @@ export function createListenStatsTracker({ getUid, getPos, getDur, recordTick, r
     if (!uid) return;
 
     if (uid !== state.activeUid) {
-      /* Flush предыдущего трека в GlobalStats при смене */
       if (state.activeUid && window.GlobalStatsManager?.flush) {
         window.GlobalStatsManager.flush().catch(() => {});
       }
@@ -8575,13 +8571,9 @@ export function createListenStatsTracker({ getUid, getPos, getDur, recordTick, r
     const pos = Math.floor(getPos() || 0);
     if (pos > state.lastSecond) {
       state.lastSecond = pos;
-
-      /* 1. Global stats — самодостаточный модуль (ТЗ 9.1) */
       if (window.GlobalStatsManager?.recordTick) {
         window.GlobalStatsManager.recordTick(uid, { deltaSec: 1 });
       }
-
-      /* 2. Cloud stats — OfflineManager (для pinned/cloud механики) */
       if (recordTick) recordTick(uid, { deltaSec: 1 });
     }
   }
@@ -8589,24 +8581,44 @@ export function createListenStatsTracker({ getUid, getPos, getDur, recordTick, r
   function onEnded() {
     const uid = safeUid(getUid());
     if (!uid) return;
-
-    /* Защита от двойного срабатывания на одном треке */
-    if (state.endedFired && uid === state.activeUid) return;
+    // Fix #8.2: Check that UID matches active
+    if (uid !== state.activeUid) return;
+    if (state.endedFired) return;
     state.endedFired = true;
 
     const dur = getDur() || 0;
     const pos = getPos() || 0;
 
-    /* 1. Global stats (ТЗ 9.1) */
     if (window.GlobalStatsManager?.registerFullListen) {
       window.GlobalStatsManager.registerFullListen(uid, { duration: dur, position: pos });
     }
-
-    /* 2. Cloud stats — проверка 90% в registerFullListen */
     if (recordEnd) recordEnd(uid, { duration: dur, position: pos });
   }
 
-  return { onTick, onEnded, onPauseOrStop: () => {} };
+  // Fix #2.4/#8.1: onSkip — check if >90% progress, register full listen
+  function onSkip() {
+    const uid = safeUid(getUid());
+    if (!uid || uid !== state.activeUid) return;
+
+    const dur = getDur() || 0;
+    const pos = getPos() || 0;
+
+    // Fix #11.1: Flush accumulated seconds before skip
+    if (window.GlobalStatsManager?.flush) {
+      window.GlobalStatsManager.flush().catch(() => {});
+    }
+
+    // If >90% played, count as full listen
+    if (dur > 0 && (pos / dur) >= 0.9 && !state.endedFired) {
+      state.endedFired = true;
+      if (window.GlobalStatsManager?.registerFullListen) {
+        window.GlobalStatsManager.registerFullListen(uid, { duration: dur, position: pos });
+      }
+      if (recordEnd) recordEnd(uid, { duration: dur, position: pos });
+    }
+  }
+
+  return { onTick, onEnded, onSkip, onPauseOrStop: () => {} };
 }
 
 //=================================================
