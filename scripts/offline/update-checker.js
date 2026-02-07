@@ -47,7 +47,12 @@ export async function checkForUpdates() {
           ? (ct.size || ct.fileSize || 0)
           : (ct.size_low || ct.fileSizeLow || 0);
 
-        if (remoteSize > 0 && remoteSize !== meta.size) {
+        const remoteBytes = remoteSize > 0 ? Math.round(remoteSize * 1048576) : 0;
+
+        // meta.size у нас в байтах (blob.size). remoteSize в MB.
+        const mismatch = remoteBytes > 0 && meta.size > 0 && Math.abs(remoteBytes - meta.size) > 1024;
+
+        if (mismatch) {
           if (!meta.needsUpdate) {
             await updateTrackMeta(meta.uid, { needsUpdate: true, remoteSize });
             changed++;
