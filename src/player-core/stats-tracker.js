@@ -1,6 +1,9 @@
 // src/player-core/stats-tracker.js
 // Разделённый трекер: tick (секунды) и ended (full listen).
-// ТЗ П.5.2: Full listen = duration > 0 && position/duration > 0.9
+// ТЗ 9.1: Два независимых типа статистики:
+//   - Global stats → GlobalStatsManager (никогда не сбрасывается)
+//   - Cloud stats → OfflineManager (для управления облачком)
+// ТЗ 9.2: Full listen = duration > 0 && position/duration > 0.9
 
 function safeUid(v) { return String(v || '').trim() || null; }
 
@@ -12,6 +15,10 @@ export function createListenStatsTracker({ getUid, getPos, getDur, recordTick, r
     if (!uid) return;
 
     if (uid !== state.activeUid) {
+      /* Flush предыдущего трека в GlobalStats при смене */
+      if (state.activeUid && window.GlobalStatsManager?.flush) {
+        window.GlobalStatsManager.flush().catch(() => {});
+      }
       state.activeUid = uid;
       state.lastSecond = -1;
       state.endedFired = false;
@@ -20,7 +27,13 @@ export function createListenStatsTracker({ getUid, getPos, getDur, recordTick, r
     const pos = Math.floor(getPos() || 0);
     if (pos > state.lastSecond) {
       state.lastSecond = pos;
-      /* Только инкремент секунд — НЕ full listen */
+
+      /* 1. Global stats — самодостаточный модуль (ТЗ 9.1) */
+      if (window.GlobalStatsManager?.recordTick) {
+        window.GlobalStatsManager.recordTick(uid, { deltaSec: 1 });
+      }
+
+      /* 2. Cloud stats — OfflineManager (для pinned/cloud механики) */
       if (recordTick) recordTick(uid, { deltaSec: 1 });
     }
   }
@@ -36,10 +49,14 @@ export function createListenStatsTracker({ getUid, getPos, getDur, recordTick, r
     const dur = getDur() || 0;
     const pos = getPos() || 0;
 
-    /* Передаём duration и position — проверка 90% в registerFullListen */
+    /* 1. Global stats (ТЗ 9.1) */
+    if (window.GlobalStatsManager?.registerFullListen) {
+      window.GlobalStatsManager.registerFullListen(uid, { duration: dur, position: pos });
+    }
+
+    /* 2. Cloud stats — проверка 90% в registerFullListen */
     if (recordEnd) recordEnd(uid, { duration: dur, position: pos });
   }
 
   return { onTick, onEnded, onPauseOrStop: () => {} };
 }
-
