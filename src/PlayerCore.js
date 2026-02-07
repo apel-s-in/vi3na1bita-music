@@ -201,19 +201,6 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       Howler.volume(this._muted ? 0 : this.getVolume() / 100);
     }
     isMuted() { return !!this._muted; }
-    // Fix #16.4: Snapshot for PlaybackCache window calculation
-    getPlaylistSnapshot() {
-      return this.playlist ? [...this.playlist] : [];
-    }
-
-    getIndex() {
-      return this.currentIndex ?? -1;
-    }
-
-    getCurrentTrackUid() {
-      const t = this.getCurrentTrack();
-      return t?.uid ? String(t.uid).trim() : null;
-    }
 
     getPosition() { return this.sound?.seek() || 0; }
     getDuration() { return this.sound?.duration() || 0; }
@@ -480,7 +467,13 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       }));
     }
     isShuffle() { return this.shuffleMode; }
-    toggleRepeat() { this.repeatMode = !this.repeatMode; }
+    toggleRepeat() {
+      this.repeatMode = !this.repeatMode;
+      // Fix #3.4: Repeat mode change affects NEXT calculation
+      window.dispatchEvent(new CustomEvent('playlist:changed', {
+        detail: { reason: 'repeat', repeatMode: this.repeatMode }
+      }));
+    }
     isRepeat() { return this.repeatMode; }
 
     on(evs) { Object.entries(evs).forEach(([k, fn]) => { if(!this._ev.has(k)) this._ev.set(k, new Set()); this._ev.get(k).add(fn); }); }
