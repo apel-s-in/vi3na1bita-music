@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8c796a0853915b98b69eec974d6ca1b2a81a0e50.idx
-│   │       ├── pack-8c796a0853915b98b69eec974d6ca1b2a81a0e50.pack
-│   │       └── pack-8c796a0853915b98b69eec974d6ca1b2a81a0e50.rev
+│   │       ├── pack-6572416f0a55afa10db9ffd9e2f7985302ab9cce.idx
+│   │       ├── pack-6572416f0a55afa10db9ffd9e2f7985302ab9cce.pack
+│   │       └── pack-6572416f0a55afa10db9ffd9e2f7985302ab9cce.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 16:21:43 UTC
+Сгенерировано: 2026-02-07 16:27:25 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2241,6 +2241,22 @@ export async function initOfflineUI() {
     initPlaybackCache();
   } catch (e) {
     console.warn('[OfflineUI] PlaybackCache init failed:', e);
+  }
+
+  /* 6. Offline Playback — skip при потере сети (#19.1-19.3) */
+  try {
+    const { initOfflinePlayback } = await import('../offline/offline-playback.js');
+    initOfflinePlayback();
+  } catch (e) {
+    console.warn('[OfflineUI] OfflinePlayback init failed:', e);
+  }
+
+  /* 7. Update Checker — детекция обновлений config.json (#1.9, #21.1) */
+  try {
+    const { initUpdateChecker } = await import('../offline/update-checker.js');
+    initUpdateChecker();
+  } catch (e) {
+    console.warn('[OfflineUI] UpdateChecker init failed:', e);
   }
 
   console.log('[OfflineUI] All components initialized');
