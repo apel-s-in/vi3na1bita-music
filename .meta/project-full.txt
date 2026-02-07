@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-0cb86e32dde1bb5cfcf555ec7891891ff3b37a09.idx
-│   │       ├── pack-0cb86e32dde1bb5cfcf555ec7891891ff3b37a09.pack
-│   │       └── pack-0cb86e32dde1bb5cfcf555ec7891891ff3b37a09.rev
+│   │       ├── pack-0386757423cd484aa79bb99fc683075517c6dd4c.idx
+│   │       ├── pack-0386757423cd484aa79bb99fc683075517c6dd4c.pack
+│   │       └── pack-0386757423cd484aa79bb99fc683075517c6dd4c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -383,7 +383,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 08:36:38 UTC
+Сгенерировано: 2026-02-07 08:37:23 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9633,7 +9633,10 @@ export function ensureMediaSession(handlers) {
 // FILE: /src/player-core/stats-tracker.js
 // src/player-core/stats-tracker.js
 // Разделённый трекер: tick (секунды) и ended (full listen).
-// ТЗ П.5.2: Full listen = duration > 0 && position/duration > 0.9
+// ТЗ 9.1: Два независимых типа статистики:
+//   - Global stats → GlobalStatsManager (никогда не сбрасывается)
+//   - Cloud stats → OfflineManager (для управления облачком)
+// ТЗ 9.2: Full listen = duration > 0 && position/duration > 0.9
 
 function safeUid(v) { return String(v || '').trim() || null; }
 
@@ -9645,6 +9648,10 @@ export function createListenStatsTracker({ getUid, getPos, getDur, recordTick, r
     if (!uid) return;
 
     if (uid !== state.activeUid) {
+      /* Flush предыдущего трека в GlobalStats при смене */
+      if (state.activeUid && window.GlobalStatsManager?.flush) {
+        window.GlobalStatsManager.flush().catch(() => {});
+      }
       state.activeUid = uid;
       state.lastSecond = -1;
       state.endedFired = false;
@@ -9653,7 +9660,13 @@ export function createListenStatsTracker({ getUid, getPos, getDur, recordTick, r
     const pos = Math.floor(getPos() || 0);
     if (pos > state.lastSecond) {
       state.lastSecond = pos;
-      /* Только инкремент секунд — НЕ full listen */
+
+      /* 1. Global stats — самодостаточный модуль (ТЗ 9.1) */
+      if (window.GlobalStatsManager?.recordTick) {
+        window.GlobalStatsManager.recordTick(uid, { deltaSec: 1 });
+      }
+
+      /* 2. Cloud stats — OfflineManager (для pinned/cloud механики) */
       if (recordTick) recordTick(uid, { deltaSec: 1 });
     }
   }
@@ -9669,13 +9682,17 @@ export function createListenStatsTracker({ getUid, getPos, getDur, recordTick, r
     const dur = getDur() || 0;
     const pos = getPos() || 0;
 
-    /* Передаём duration и position — проверка 90% в registerFullListen */
+    /* 1. Global stats (ТЗ 9.1) */
+    if (window.GlobalStatsManager?.registerFullListen) {
+      window.GlobalStatsManager.registerFullListen(uid, { duration: dur, position: pos });
+    }
+
+    /* 2. Cloud stats — проверка 90% в registerFullListen */
     if (recordEnd) recordEnd(uid, { duration: dur, position: pos });
   }
 
   return { onTick, onEnded, onPauseOrStop: () => {} };
 }
-
 
 //=================================================
 // FILE: /src/PlayerCore.js
