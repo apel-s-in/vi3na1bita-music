@@ -1,6 +1,5 @@
 // src/PlayerCore.js
 import { getOfflineManager } from '../scripts/offline/offline-manager.js';
-import { resolveTrackUrl } from '../scripts/offline/track-resolver.js';
 import { registerTrack, getTrackByUid } from '../scripts/app/track-registry.js';
 import { Favorites } from '../scripts/core/favorites-manager.js';
 import { ensureMediaSession } from './player-core/media-session.js';
