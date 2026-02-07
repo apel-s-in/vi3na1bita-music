@@ -51,9 +51,19 @@ function db() {
 /* ─── Audio blob operations ─── */
 
 export async function setAudioBlob(uid, quality, blob) {
+  const q = String(quality) === 'lo' ? 'lo' : 'hi';
+  const otherQ = q === 'hi' ? 'lo' : 'hi';
+
   return new Promise((resolve, reject) => {
     const tx = db().transaction('audio', 'readwrite');
-    tx.objectStore('audio').put({ uid, quality, blob });
+    const store = tx.objectStore('audio');
+
+    // ТЗ 1.7 No duplicates rule: итогово держим только один variant.
+    // Временная двойная копия допускается только на время перекачки,
+    // но у нас нет отдельного temp-store, поэтому фиксируем атомарно в одной транзакции.
+    store.put({ uid, quality: q, blob });
+    store.delete([uid, otherQ]);
+
     tx.oncomplete = resolve;
     tx.onerror = () => reject(tx.error);
   });
