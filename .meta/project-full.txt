@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3b8c40eb74551a0867a621635a0bad81ade387b8.idx
-│   │       ├── pack-3b8c40eb74551a0867a621635a0bad81ade387b8.pack
-│   │       └── pack-3b8c40eb74551a0867a621635a0bad81ade387b8.rev
+│   │       ├── pack-99c2b183d8e0afa1863815709798a08941106790.idx
+│   │       ├── pack-99c2b183d8e0afa1863815709798a08941106790.pack
+│   │       └── pack-99c2b183d8e0afa1863815709798a08941106790.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 13:09:55 UTC
+Сгенерировано: 2026-02-07 13:12:05 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5706,16 +5706,12 @@ const GlobalStatsManager = {
     try {
       const stats = (await getTrackStats(uid)) || _defaultTrackStats(uid);
       stats.globalFullListenCount = (stats.globalFullListenCount || 0) + 1;
-      /* Также добавим длительность как секунды (для случая repeat без tick) */
-      stats.globalListenSeconds = (stats.globalListenSeconds || 0) + Math.floor(dur);
+      // Audit Fix #25: Не добавляем секунды здесь, они уже учтены через recordTick
       stats.lastListenAt = Date.now();
       if (!stats.firstListenAt) stats.firstListenAt = Date.now();
       await putTrackStats(stats);
 
-      /* Обновить aggregate */
-      const total = (await getAggregate('globalTotalListenSeconds')) || 0;
-      await putAggregate('globalTotalListenSeconds', total + Math.floor(dur));
-
+      // Обновлять aggregate тоже не нужно, секунды пишутся отдельно
     } catch (e) {
       console.warn('[GlobalStats] registerFullListen error:', e);
     }
