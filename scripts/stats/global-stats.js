@@ -212,16 +212,12 @@ const GlobalStatsManager = {
     try {
       const stats = (await getTrackStats(uid)) || _defaultTrackStats(uid);
       stats.globalFullListenCount = (stats.globalFullListenCount || 0) + 1;
-      /* Также добавим длительность как секунды (для случая repeat без tick) */
-      stats.globalListenSeconds = (stats.globalListenSeconds || 0) + Math.floor(dur);
+      // Audit Fix #25: Не добавляем секунды здесь, они уже учтены через recordTick
       stats.lastListenAt = Date.now();
       if (!stats.firstListenAt) stats.firstListenAt = Date.now();
       await putTrackStats(stats);
 
-      /* Обновить aggregate */
-      const total = (await getAggregate('globalTotalListenSeconds')) || 0;
-      await putAggregate('globalTotalListenSeconds', total + Math.floor(dur));
-
+      // Обновлять aggregate тоже не нужно, секунды пишутся отдельно
     } catch (e) {
       console.warn('[GlobalStats] registerFullListen error:', e);
     }
