@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d2f0ebacca2c400bd57c832adf5b541b88902a88.idx
-│   │       ├── pack-d2f0ebacca2c400bd57c832adf5b541b88902a88.pack
-│   │       └── pack-d2f0ebacca2c400bd57c832adf5b541b88902a88.rev
+│   │       ├── pack-f617953d253b36e1c81f561dcf84e223bad6e7be.idx
+│   │       ├── pack-f617953d253b36e1c81f561dcf84e223bad6e7be.pack
+│   │       └── pack-f617953d253b36e1c81f561dcf84e223bad6e7be.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -386,7 +386,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 19:46:26 UTC
+Сгенерировано: 2026-02-07 19:51:53 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7640,7 +7640,7 @@ async function _updateMainOfflineButton() {
   const btn = document.getElementById('offline-btn');
   if (!btn) return;
 
-  const mgr = window._offlineManagerInstance;
+  const mgr = window.OfflineManager || null;
   if (!mgr) return;
 
   const mode = mgr.getMode();
