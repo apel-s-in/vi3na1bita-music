@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-64bbea417febd3b4467442fe0a5cb13aed2fc6d9.idx
-│   │       ├── pack-64bbea417febd3b4467442fe0a5cb13aed2fc6d9.pack
-│   │       └── pack-64bbea417febd3b4467442fe0a5cb13aed2fc6d9.rev
+│   │       ├── pack-a494cf37923125d32f2dfbd99d7b5fed2eb6fd6d.idx
+│   │       ├── pack-a494cf37923125d32f2dfbd99d7b5fed2eb6fd6d.pack
+│   │       └── pack-a494cf37923125d32f2dfbd99d7b5fed2eb6fd6d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -383,7 +383,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 12:22:16 UTC
+Сгенерировано: 2026-02-07 12:23:25 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2617,9 +2617,23 @@ async function _gc(keepUids) {
             if (W.playerCore.setMuted) W.playerCore.setMuted(m); // Optional support
             U.setBtnActive(b.id, m);
         },
-        'pq-btn': () => {
-            const r = U.pq.toggle();
+        'pq-btn': async () => {
+            const mgr = W.OfflineManager || (await import('../offline/offline-manager.js')).getOfflineManager();
+            const stats = await mgr.getCacheSummary();
+            const totalFiles = stats.pinned.count + stats.cloud.count;
+            
+            const nextQ = U.pq.getMode() === 'hi' ? 'lo' : 'hi';
+            
+            // ТЗ 4.3: Confirm если > 5 файлов
+            if (totalFiles > 5) {
+                if (!confirm(`Смена качества затронет ${totalFiles} файлов. Перекачать?`)) {
+                    return; // Отмена
+                }
+            }
+            
+            const r = U.pq.toggle(); // Это вызовет switchQuality в PlayerCore
             if (!r.ok) U.ui.toast(r.reason === 'trackNoLo' ? 'Низкое качество недоступно' : r.reason === 'offline' ? 'Нет доступа к сети' : 'Невозможно', 'warning');
+            
             updatePQButtonState();
         },
         'favorites-btn': () => actions.toggleFavoritesOnly(),
