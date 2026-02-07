@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c804d7d5ae43ddea644e8598966603c6df150734.idx
-│   │       ├── pack-c804d7d5ae43ddea644e8598966603c6df150734.pack
-│   │       └── pack-c804d7d5ae43ddea644e8598966603c6df150734.rev
+│   │       ├── pack-b45b0b2cb6e8908c46adbb0e64e4335136811d7d.idx
+│   │       ├── pack-b45b0b2cb6e8908c46adbb0e64e4335136811d7d.pack
+│   │       └── pack-b45b0b2cb6e8908c46adbb0e64e4335136811d7d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 13:53:43 UTC
+Сгенерировано: 2026-02-07 13:54:19 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8792,6 +8792,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
     next() {
       if (!this.playlist.length) return;
+      this._stats.onSkip(); // Fix #2.4: check >90% before skip
       if (this.shuffleMode) {
         this.shuffleHistory.push(this.currentIndex);
         if (this.shuffleHistory.length > 50) this.shuffleHistory.shift();
@@ -8803,6 +8804,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     prev() {
       if (!this.playlist.length) return;
       if (this.getPosition() > 3) return this.seek(0);
+      this._stats.onSkip(); // Fix #2.4: check >90% before skip
       if (this.shuffleMode && this.shuffleHistory.length) {
         return this.load(this.shuffleHistory.pop(), { autoPlay: true, dir: -1 });
       }
