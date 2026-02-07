@@ -206,20 +206,21 @@ function render() {
 
   // Fix #5.3: Re-cache
   modal.querySelector('#btn-recache')?.addEventListener('click', async () => {
-    const targetQ = om.getQuality();
-    if (!om.countNeedsReCache) {
+    const q = om.getQuality();
+    if (!om.countNeedsReCache || !om.reCacheAll) {
       window.NotificationSystem?.info?.('Re-cache не поддерживается');
       return;
     }
-    const count = await om.countNeedsReCache(targetQ);
-    if (count === 0) {
-      window.NotificationSystem?.info?.('Все файлы уже в правильном качестве.');
-      return;
-    }
-    // Trigger _onQualityChanged to re-enqueue
-    om._onQualityChanged?.(targetQ);
+    const count = await om.countNeedsReCache(q);
+    if (!count) return window.NotificationSystem?.info?.('Все файлы уже в правильном качестве.');
+
+    // ТЗ 4.5: ускоренная перекачка (2-3 параллельных), но базово 1.
     om.queue?.setParallel?.(3);
+    await om.reCacheAll(q);
     window.NotificationSystem?.info?.(`Перекэширование: ${count} файлов`);
+
+    // iOS-safe: вернуть параллелизм обратно (простая гарантия, без усложнения событий)
+    setTimeout(() => om.queue?.setParallel?.(1), 15000);
   });
 
   // Net Policy handlers
