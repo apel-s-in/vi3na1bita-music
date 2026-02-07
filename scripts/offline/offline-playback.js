@@ -3,7 +3,7 @@
  * Поведение при потере сети: skip, protect window, FOQ.
  */
 
-import { getTrackMeta } from './cache-db.js';
+import { hasAudioForUid } from './cache-db.js';
 
 let _active = false;
 
@@ -69,8 +69,10 @@ async function _skipToNextAvailable(fromIdx, dir = 1) {
     const track = playlist[idx];
     if (!track?.uid) continue;
 
-    const meta = await getTrackMeta(String(track.uid).trim());
-    if (meta?.blobStored) {
+    const uid = String(track.uid).trim();
+    const hasBlob = await hasAudioForUid(uid);
+
+    if (hasBlob) {
       try {
         await pc._origLoad(idx, { autoPlay: true, dir });
         return;
