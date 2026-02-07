@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-fd781d7740e0dcf0d273807b35a8452a62d50bbc.idx
-│   │       ├── pack-fd781d7740e0dcf0d273807b35a8452a62d50bbc.pack
-│   │       └── pack-fd781d7740e0dcf0d273807b35a8452a62d50bbc.rev
+│   │       ├── pack-68e52b887e0adf0e3916db6eaaf40a87f5be042b.idx
+│   │       ├── pack-68e52b887e0adf0e3916db6eaaf40a87f5be042b.pack
+│   │       └── pack-68e52b887e0adf0e3916db6eaaf40a87f5be042b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -386,7 +386,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 17:00:25 UTC
+Сгенерировано: 2026-02-07 17:01:46 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4858,7 +4858,7 @@ const LS_WIFI = 'netPolicy:wifi:v1';
 const LS_CELLULAR = 'netPolicy:cellular:v1';
 const LS_CELLULAR_TOAST = 'netPolicy:cellularToast:v1';
 const LS_KILL_SWITCH = 'netPolicy:killSwitch:v1';
-const LS_TRAFFIC = 'trafficStats:v2';
+const LS_TRAFFIC = 'trafficStats:v1';
 
 let _platformCache = null;
 let _interceptorInstalled = false;
@@ -5015,7 +5015,11 @@ function _getStatsRaw() {
   try {
     const raw = localStorage.getItem(LS_TRAFFIC);
     const mk = _mKey();
-    const def = { wifi: { total: 0, monthly: 0, mKey: mk }, cellular: { total: 0, monthly: 0, mKey: mk }, general: { total: 0, monthly: 0, mKey: mk } };
+    const def = {
+      wifi: { total: 0, monthly: 0, monthKey: mk },
+      cellular: { total: 0, monthly: 0, monthKey: mk },
+      general: { total: 0, monthly: 0, monthKey: mk }
+    };
     if (!raw) return def;
     const d = JSON.parse(raw);
     return { ...def, ...d };
@@ -5034,7 +5038,12 @@ function recordTraffic(bytes, category = null) {
   const p = getPlatform();
   const type = category || detectNetworkType();
 
-  ['wifi', 'cellular', 'general'].forEach(k => { if (s[k].mKey !== mk) { s[k].monthly = 0; s[k].mKey = mk; } });
+  ['wifi', 'cellular', 'general'].forEach((k) => {
+    if (s[k].monthKey !== mk) {
+      s[k].monthly = 0;
+      s[k].monthKey = mk;
+    }
+  });
 
   if (!p.supportsNetControl) {
     s.general.total += bytes; s.general.monthly += bytes;
