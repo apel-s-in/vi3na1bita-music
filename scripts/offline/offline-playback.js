@@ -33,7 +33,7 @@ export function initOfflinePlayback() {
 
 async function _onOffline() {
   _active = true;
-  const mgr = window._offlineManagerInstance;
+  const mgr = window.OfflineManager;
   if (!mgr || mgr.getMode() !== 'R1') return;
 
   try {
