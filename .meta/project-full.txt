@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d3a6f1e73cf665179f5905aeff821ba4ae9eb6f9.idx
-│   │       ├── pack-d3a6f1e73cf665179f5905aeff821ba4ae9eb6f9.pack
-│   │       └── pack-d3a6f1e73cf665179f5905aeff821ba4ae9eb6f9.rev
+│   │       ├── pack-5401717b4ecfec805ef426732fd8d53656cdac00.idx
+│   │       ├── pack-5401717b4ecfec805ef426732fd8d53656cdac00.pack
+│   │       └── pack-5401717b4ecfec805ef426732fd8d53656cdac00.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -386,7 +386,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 18:01:12 UTC
+Сгенерировано: 2026-02-07 19:44:06 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5847,8 +5847,8 @@ class OfflineManager {
 
       for (const m of toReCache) {
         // ТЗ 4.4 п.5.6: CUR НИКОГДА не заменяется на лету
-        const curUid = window.PlayerCore?.getCurrentTrackUid?.();
-        if (m.uid === curUid) continue;
+        const curUid = window.playerCore?.getCurrentTrackUid?.();
+        if (curUid && m.uid === curUid) continue;
 
         const url = getTrackUrl(m.uid, q);
         if (!url) continue;
