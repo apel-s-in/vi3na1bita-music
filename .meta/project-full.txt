@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b22b0dd3623129093adfb6691b5a5eef846a46d9.idx
-│   │       ├── pack-b22b0dd3623129093adfb6691b5a5eef846a46d9.pack
-│   │       └── pack-b22b0dd3623129093adfb6691b5a5eef846a46d9.rev
+│   │       ├── pack-88fc8c14d3f0f143b190b1594bcacbd7c3e43c4e.idx
+│   │       ├── pack-88fc8c14d3f0f143b190b1594bcacbd7c3e43c4e.pack
+│   │       └── pack-88fc8c14d3f0f143b190b1594bcacbd7c3e43c4e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -386,7 +386,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 17:42:10 UTC
+Сгенерировано: 2026-02-07 17:54:07 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6009,6 +6009,11 @@ class OfflineManager {
 /* --- SINGLETON & GLOBAL --- */
 const offlineManager = new OfflineManager();
 window.OfflineManager = offlineManager;
+
+export function getOfflineManager() {
+  return offlineManager;
+}
+
 export default offlineManager;
 
 //=================================================
