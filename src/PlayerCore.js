@@ -214,8 +214,6 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       
       if (!opts.isAutoSkip) this._skipSession = { token, count: 0, max: this.playlist.length };
 
-      const om = getOfflineManager();
-      
       // Resolve URL through offline system
       const trackMeta = getTrackByUid(track.uid);
       const originalUrl = track.src || track.audio || trackMeta?.audio || null;
@@ -252,30 +250,16 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
       this._emit('onTrackChange', track, index);
 
-      /* Диспатч window event для playback-cache-bootstrap (ТЗ П.5.2, П.10) */
+      /* Диспатч window event для PlaybackCache и других подписчиков */
       try {
         window.dispatchEvent(new CustomEvent('player:trackChanged', {
-          detail: { uid: safeStr(track?.uid), trackData: track }
+          detail: { uid: safeStr(track?.uid), trackData: track, direction: opts.dir || 0 }
         }));
       } catch (e) { /* silent */ }
 
-      // --- ТЗ 7.5.3: Сценарий отсутствия сети / R3 ---
+      // --- Сценарий отсутствия src.url (ТЗ 7.5.3) ---
       if (!res.url) {
-        // В R3: пауза и модалка, никаких скипов (7.5.4)
-        if (om.getMode() === 'R3') {
-            this.pause(); 
-            W.Modals?.confirm?.({
-                title: '100% OFFLINE',
-                textHtml: 'Трек не найден локально.<br>В режиме 100% Offline сеть запрещена.',
-                confirmText: 'Открыть настройки',
-                cancelText: 'ОК',
-                onConfirm: () => { import('../scripts/ui/offline-modal.js').then(m => m.openOfflineModal()); }
-            });
-            this._stopTick();
-            return;
-        }
-
-        // В R0/R1/R2: Автоскип (7.5.3)
+        // Автоскип к следующему доступному треку
         if (this._skipSession.count >= this._skipSession.max) {
            W.NotificationSystem?.error('Нет доступных треков');
            this.pause();
@@ -284,25 +268,24 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         }
         
         console.warn(`[Player] Source missing for ${track.uid}, skipping...`);
-        if (!opts._skipChain) opts._skipChain = 0;
         
         setTimeout(() => {
            if (token === this._loadToken) {
              this._skipSession.count++;
              const nextIdx = (index + (opts.dir || 1) + this.playlist.length) % this.playlist.length;
-             if (nextIdx !== index) this.load(nextIdx, { ...opts, autoPlay: true, _skipChain: opts._skipChain + 1 });
+             if (nextIdx !== index) this.load(nextIdx, { ...opts, autoPlay: true, isAutoSkip: true });
            }
         }, 100);
         return;
       }
 
-      // --- ТЗ 4.2 / Hot Swap Logic ---
+      // --- Hot Swap Logic (ТЗ 4.3) ---
       const isHotSwap = !!opts.isHotSwap;
       const oldSound = this.sound; 
 
-      if (!isHotSwap) this._unload(true); // Если не swap, сразу чистим старый
+      if (!isHotSwap) this._unload(true);
 
-      // ТЗ 16.1: WebAudio backend для офлайна (isLocal), HTML5 для стриминга
+      // ТЗ 14.1: WebAudio backend для офлайна (isLocal), HTML5 для стриминга
       const useHtml5 = !res.isLocal;
 
       const newSound = new Howl({
@@ -339,7 +322,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
           if (token !== this._loadToken) return;
           this._stats.onEnded();
           this._emit('onEnd');
-          /* Диспатч window event для playback-cache-bootstrap (ТЗ П.5.2) */
+          /* Диспатч window event для PlaybackCache */
           try {
             const _endedTrack = this.getCurrentTrack();
             window.dispatchEvent(new CustomEvent('player:trackEnded', {
@@ -354,11 +337,9 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         },
         onloaderror: (id, e) => {
            console.error('Load Error', e);
-           // Hot swap cleanup: если старый sound не был выгружен в onload
            if (isHotSwap && oldSound) {
               try { oldSound.unload(); } catch(ex) {}
            }
-           // Retry only if it was network
            if (token === this._loadToken && !res.isLocal) {
               W.NotificationSystem?.warning('Ошибка сети, следующая...');
               setTimeout(() => this.next(), 1000);
@@ -367,20 +348,10 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       });
 
       this.sound = newSound;
-
-      // --- ТЗ 7.6.1: В R0 "никакое аудио по факту проигрывания не сохраняется" ---
-      const mode = om.getMode();
-      // ТЗ П.10: P0 (CUR) = priority 10, кэшируем текущий трек при стриминге
-      if (track.uid && mode !== 'R0' && mode !== 'R3' && !res.isLocal) {
-         om.enqueueAudioDownload(track.uid, { 
-             kind: 'playbackCache',
-             priority: 10
-         });
-      }
     }
 
     _unload(silent) {
-      /* Revoke blob URL если был local (ТЗ П.6.3) */
+      /* Revoke blob URL если был local (ТЗ 14.2) */
       const curTrack = this.getCurrentTrack();
       if (curTrack?.uid && W.Utils?.blob?.revokeUrl) {
         W.Utils.blob.revokeUrl('player_' + curTrack.uid);
@@ -409,15 +380,11 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       this.qualityMode = next;
       localStorage.setItem(LS_PQ, next);
 
-      /* ТЗ П.12.1: Синхронизация PQ↔CQ — уведомить OfflineManager */
-      const mgr = window._offlineManagerInstance;
-      if (mgr) {
-        mgr.setCacheQualitySetting(next);
-      }
-
+      /* ТЗ 4.3: Уведомить OfflineManager и все подписчики */
+      window.dispatchEvent(new CustomEvent('quality:changed', { detail: { quality: next } }));
       window.dispatchEvent(new CustomEvent('offline:uiChanged'));
       
-      // ТЗ 4.2: Quiet Switch (без stop)
+      // ТЗ 4.3 шаг 3: Hot swap текущего трека (без stop, сохранение pos)
       if (this.currentIndex >= 0 && this.sound) {
           const wasPlaying = this.isPlaying();
           const pos = this.getPosition();
@@ -426,6 +393,8 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
               resumePosition: pos, 
               isHotSwap: true 
           });
+          // ТЗ 4.3: Toast
+          W.NotificationSystem?.info?.(`Качество переключено на ${next === 'hi' ? 'Hi' : 'Lo'}`);
       }
     }
 
@@ -534,8 +503,6 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         const dur = this.getDuration();
         this._emit('onTick', pos, dur);
         this._stats.onTick();
-
-        /* player:timeUpdate удалён — логика подсчёта в stats-tracker */
       }, 250);
     }
     _stopTick() { clearInterval(this._tickInt); }
