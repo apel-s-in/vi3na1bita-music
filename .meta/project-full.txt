@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-81819cf8b4282e036c03d5e83fce4214c9d03a59.idx
-│   │       ├── pack-81819cf8b4282e036c03d5e83fce4214c9d03a59.pack
-│   │       └── pack-81819cf8b4282e036c03d5e83fce4214c9d03a59.rev
+│   │       ├── pack-3791cb095577729e3b1cb4f6799ebd2b628b45ec.idx
+│   │       ├── pack-3791cb095577729e3b1cb4f6799ebd2b628b45ec.pack
+│   │       └── pack-3791cb095577729e3b1cb4f6799ebd2b628b45ec.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -386,7 +386,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 21:56:50 UTC
+Сгенерировано: 2026-02-07 21:58:09 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -11517,4 +11517,37 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .om-mode-card--disabled::after{content:'';position:absolute;inset:0;border-radius:var(--om-r);background:repeating-linear-gradient(135deg,transparent,transparent 10px,rgba(255,255,255,.02) 10px,rgba(255,255,255,.02) 20px)}
 .om-mode-card--disabled .om-mode-btn{cursor:not-allowed}
 
+/* ═══ Kill-switch hint ═══ */
+.om-net-kill-hint{font-size:12px;color:#ffab40;background:rgba(255,171,64,.08);border:1px solid rgba(255,171,64,.2);border-radius:8px;padding:8px 12px;margin-top:8px;line-height:1.4}
+
+/* ═══ Background presets ═══ */
+.om-presets-list{display:flex;flex-direction:column;gap:8px}
+.om-preset{all:unset;cursor:pointer;box-sizing:border-box;display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;border-radius:var(--om-r);background:var(--om-card);border:1px solid rgba(255,255,255,.06);transition:all .15s;user-select:none}
+.om-preset:hover{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12)}
+.om-preset--active{background:var(--om-accent-a);border-color:rgba(124,77,255,.3)}
+.om-preset__icon{font-size:20px;flex-shrink:0;width:28px;text-align:center}
+.om-preset__text{flex:1;min-width:0}
+.om-preset__name{font:600 14px inherit;color:#fff;margin-bottom:2px}
+.om-preset--active .om-preset__name{color:#b388ff}
+.om-preset__desc{font-size:12px;color:var(--om-muted);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.om-preset__check{font-size:16px;font-weight:700;color:#b388ff;flex-shrink:0;width:20px;text-align:center}
+
+/* ═══ Confirm dialog ═══ */
+.om-confirm-bg{position:fixed;inset:0;z-index:10010;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0);transition:background .2s;padding:20px}
+.om-confirm-bg--visible{background:rgba(0,0,0,.55)}
+.om-confirm-box{background:#1a1a2e;border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:24px;max-width:340px;width:100%;box-shadow:0 16px 48px rgba(0,0,0,.5);opacity:0;transform:scale(.95);transition:opacity .2s,transform .2s}
+.om-confirm-bg--visible .om-confirm-box{opacity:1;transform:scale(1)}
+.om-confirm-title{font:700 16px/1.3 inherit;color:#fff;margin-bottom:10px}
+.om-confirm-body{font-size:14px;line-height:1.5;color:rgba(255,255,255,.65);margin-bottom:20px}
+.om-confirm-btns{display:flex;gap:10px;justify-content:flex-end}
+
+/* ═══ Disabled mode cards (R2, R3) ═══ */
+.om-mode-card--disabled{opacity:.45;pointer-events:none;position:relative}
+.om-mode-card--disabled::after{content:'';position:absolute;inset:0;border-radius:var(--om-r);background:repeating-linear-gradient(135deg,transparent,transparent 10px,rgba(255,255,255,.02) 10px,rgba(255,255,255,.02) 20px)}
+.om-mode-card--disabled .om-mode-btn{cursor:not-allowed}
+
+/* ═══ Preset responsive ═══ */
+@media(max-width:380px){
+  .om-preset__desc{white-space:normal}
+}
 
