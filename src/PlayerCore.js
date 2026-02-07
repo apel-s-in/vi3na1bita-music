@@ -205,118 +205,27 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
     getCurrentTrackUid() { return safeStr(this.getCurrentTrack()?.uid); }
 
-    async load(index, opts = {}) {
-      const track = this.playlist[index];
-      if (!track) return;
-
-      const token = ++this._loadToken;
-      this.currentIndex = index;
+    async switchQuality(mode) {
+      const next = normQ(mode);
+      if (this.qualityMode === next) return;
       
-      if (!opts.isAutoSkip) this._skipSession = { token, count: 0, max: this.playlist.length };
+      this.qualityMode = next;
+      localStorage.setItem(LS_PQ, next);
 
-      // Resolve URL via OfflineManager (Single Source of Truth)
-      // OfflineManager сам проверит качество, наличие blob и сетевую политику
-      let res = { url: null, isLocal: false, _blobUrl: false };
+      window.dispatchEvent(new CustomEvent('quality:changed', { detail: { quality: next } }));
+      window.dispatchEvent(new CustomEvent('offline:uiChanged'));
       
-      try {
-          const resolved = await getOfflineManager().resolveTrackSource(track.uid);
-          
-          if (resolved.source === 'local' && resolved.blob) {
-              res = { 
-                  url: URL.createObjectURL(resolved.blob), 
-                  isLocal: true, 
-                  _blobUrl: true,
-                  effectiveQuality: resolved.quality 
-              };
-          } else if (resolved.source === 'stream' && resolved.url) {
-              // Дополнительная проверка NetPolicy здесь, чтобы наверняка
-              if (W.Utils?.getNetworkStatusSafe) {
-                  const net = W.Utils.getNetworkStatusSafe();
-                  if (W.NetPolicy && !W.NetPolicy.isNetworkAllowed()) {
-                      throw new Error('Blocked by NetPolicy');
-                  }
-                  // Уведомление о мобильной сети (ТЗ 4.2 Спец. Сетевой Политики)
-                  if (net.kind === 'cellular' && W.NetPolicy?.shouldShowCellularToast()) {
-                      W.NotificationSystem?.info?.('Воспроизведение через мобильную сеть');
-                  }
-              }
-              res = { url: resolved.url, isLocal: false, effectiveQuality: resolved.quality };
-          }
-          // source='unavailable' -> res.url null
-      } catch (e) {
-          console.warn('[Player] Resolve failed:', e);
+      // (14.2) Hot Swap using proper resolver logic (via load)
+      if (this.currentIndex >= 0 && this.sound) {
+          const wasPlaying = this.isPlaying();
+          const pos = this.getPosition();
+          this.load(this.currentIndex, { 
+              autoPlay: wasPlaying, 
+              resumePosition: pos, 
+              isHotSwap: true 
+          });
+          W.NotificationSystem?.info?.(`Качество переключено на ${next === 'hi' ? 'Hi' : 'Lo'}`);
       }
-
-      if (token !== this._loadToken) return;
-      this._emit('onTrackChange', track, index);
-      window.dispatchEvent(new CustomEvent('player:trackChanged', { detail: { uid: track.uid } }));
-
-      // Fallback / Skip Logic (ТЗ 7.5.3)
-      if (!res.url) {
-          // Если есть локально копия в ДРУГОМ качестве - OfflineManager должен был её вернуть (step 2 in resolveTrackSource)
-          // Если мы здесь - значит играть нечего.
-          if (this._skipSession.count >= this._skipSession.max) {
-              W.NotificationSystem?.error('Нет доступных треков (проверьте сеть)');
-              this.pause();
-              this._stopTick();
-              return;
-          }
-          console.warn(`[Player] Skip ${track.uid}`);
-          setTimeout(() => {
-              if (token === this._loadToken) {
-                  this._skipSession.count++;
-                  const nextIdx = (index + (opts.dir || 1) + this.playlist.length) % this.playlist.length;
-                  if (nextIdx !== index) this.load(nextIdx, { ...opts, autoPlay: true, isAutoSkip: true });
-              }
-          }, 100);
-          return;
-      }
-
-      // Hot Swap
-      const isHotSwap = !!opts.isHotSwap;
-      const oldSound = this.sound;
-      if (!isHotSwap) this._unload(true);
-
-      const newSound = new Howl({
-          src: [res.url],
-          html5: !res.isLocal, // HTML5 for stream, WebAudio for local blob
-          volume: this.getVolume() / 100,
-          format: ['mp3'],
-          autoplay: !!opts.autoPlay,
-          onload: () => {
-              if (token !== this._loadToken) { newSound.unload(); return; }
-              if (isHotSwap && oldSound) try { oldSound.unload(); } catch(e){}
-              if (opts.resumePosition) newSound.seek(opts.resumePosition);
-              this._updMedia();
-          },
-          onplay: () => {
-              if (token !== this._loadToken) { newSound.stop(); return; }
-              this._startTick();
-              this._emit('onPlay', track, index);
-              this._updMedia();
-          },
-          onpause: () => {
-              if (token !== this._loadToken) return;
-              this._stopTick();
-              this._stats.onPauseOrStop();
-              this._emit('onPause');
-          },
-          onend: () => {
-              if (token !== this._loadToken) return;
-              this._stats.onEnded();
-              this._emit('onEnd');
-              this.repeatMode ? this.play(this.currentIndex) : this.next();
-          },
-          onloaderror: (id, e) => {
-              console.error('Load Error', e);
-              if (isHotSwap && oldSound) try { oldSound.unload(); } catch(ex){}
-              if (token === this._loadToken && !res.isLocal) {
-                  W.NotificationSystem?.warning('Ошибка сети, следующая...');
-                  setTimeout(() => this.next(), 1000);
-              }
-          }
-      });
-      this.sound = newSound;
     }
 
     _unload(silent) {
