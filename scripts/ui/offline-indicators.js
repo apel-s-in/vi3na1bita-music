@@ -298,7 +298,7 @@ async function _updateMainOfflineButton() {
   const btn = document.getElementById('offline-btn');
   if (!btn) return;
 
-  const mgr = window._offlineManagerInstance;
+  const mgr = window.OfflineManager || null;
   if (!mgr) return;
 
   const mode = mgr.getMode();
