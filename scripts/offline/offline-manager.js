@@ -906,4 +906,9 @@ class OfflineManager {
 /* --- SINGLETON & GLOBAL --- */
 const offlineManager = new OfflineManager();
 window.OfflineManager = offlineManager;
+
+export function getOfflineManager() {
+  return offlineManager;
+}
+
 export default offlineManager;
