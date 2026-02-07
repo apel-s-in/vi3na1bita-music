@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5c816aa3adb0e882187ad38c5465c6dfd327f8a3.idx
-│   │       ├── pack-5c816aa3adb0e882187ad38c5465c6dfd327f8a3.pack
-│   │       └── pack-5c816aa3adb0e882187ad38c5465c6dfd327f8a3.rev
+│   │       ├── pack-08f66dfa1c99661204a84c3c00340dc610843f86.idx
+│   │       ├── pack-08f66dfa1c99661204a84c3c00340dc610843f86.pack
+│   │       └── pack-08f66dfa1c99661204a84c3c00340dc610843f86.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -383,7 +383,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 12:52:46 UTC
+Сгенерировано: 2026-02-07 12:54:40 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6746,6 +6746,11 @@ async function _handleClick(ind, uid) {
   switch (state.status) {
     case 'none':
     case 'cloud_loading':
+        // (6.2 Fix) Если уже качается как cloud, просто меняем статус на pinned
+        // не отменяя загрузку, OfflineManager сам повысит приоритет при togglePinned
+        await mgr.togglePinned(uid);
+        await _refreshOne(ind, uid);
+        break;
     case 'transient':
     case 'dynamic': {
       /* ТЗ П.4.3: Клик по серому 🔒 → пиннинг */
