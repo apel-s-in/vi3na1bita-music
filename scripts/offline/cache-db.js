@@ -5,8 +5,6 @@
  *   - 'audio'     : { uid, quality, blob }          — аудио-файлы
  *   - 'trackMeta' : { uid, type, quality, ... }     — метаданные треков
  *   - 'global'    : { key, value }                   — глобальные настройки
- *
- * ТЗ: Приложение П.1–П.15
  */
 
 const DB_NAME = 'offlineCache';
@@ -82,20 +80,8 @@ export async function getAudioBlob(uid, quality) {
 }
 
 /**
- * Получить blob в любом качестве (fallback). Возвращает { blob, quality } или null.
+ * Удалить ВСЕ аудио для трека (Hi и Lo).
  */
-export async function getAudioBlobAny(uid, preferredQuality) {
-  const pq = preferredQuality || 'hi';
-  const preferred = await getAudioBlob(uid, pq);
-  if (preferred) return { blob: preferred, quality: pq };
-
-  const other = pq === 'hi' ? 'lo' : 'hi';
-  const fallback = await getAudioBlob(uid, other);
-  if (fallback) return { blob: fallback, quality: other };
-
-  return null;
-}
-
 export async function deleteAudio(uid) {
   return new Promise((resolve, reject) => {
     const tx = db().transaction('audio', 'readwrite');
@@ -107,7 +93,20 @@ export async function deleteAudio(uid) {
   });
 }
 
+/**
+ * Удалить ТОЛЬКО конкретное качество (для замены Hi<->Lo).
+ */
+export async function deleteAudioVariant(uid, quality) {
+  return new Promise((resolve, reject) => {
+    const tx = db().transaction('audio', 'readwrite');
+    tx.objectStore('audio').delete([uid, quality]);
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
 export async function hasAudioForUid(uid) {
+  // Проверяем наличие любого качества
   const hi = await getAudioBlob(uid, 'hi');
   if (hi) return true;
   const lo = await getAudioBlob(uid, 'lo');
@@ -158,42 +157,7 @@ export async function getAllTrackMetas() {
   });
 }
 
-/* ─── Convenience for TTL/cleanup ─── */
-
-export async function resetCloudStats(uid) {
-  return updateTrackMeta(uid, {
-    cloudFullListenCount: 0,
-    lastFullListenAt: null,
-    cloudAddedAt: null,
-    cloudExpiresAt: null
-  });
-}
-
-export async function markExpiredPending(uid) {
-  return updateTrackMeta(uid, { expiredPending: true });
-}
-
-/* ─── Global key-value ─── */
-
-export async function getGlobal(key) {
-  return new Promise((resolve, reject) => {
-    const tx = db().transaction('global', 'readonly');
-    const req = tx.objectStore('global').get(key);
-    req.onsuccess = () => resolve(req.result?.value ?? null);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-export async function setGlobal(key, value) {
-  return new Promise((resolve, reject) => {
-    const tx = db().transaction('global', 'readwrite');
-    tx.objectStore('global').put({ key, value });
-    tx.oncomplete = resolve;
-    tx.onerror = () => reject(tx.error);
-  });
-}
-
-/* ─── deleteTrackCache (all data for uid) ─── */
+/* ─── Convenience ─── */
 
 export async function deleteTrackCache(uid) {
   await deleteAudio(uid);
@@ -211,6 +175,5 @@ export async function estimateUsage() {
       free: Math.max(0, (est.quota || 0) - (est.usage || 0))
     };
   }
-  /* Fallback: если API недоступен — притворяемся что места достаточно */
   return { used: 0, quota: 500 * 1024 * 1024, free: 500 * 1024 * 1024 };
 }
