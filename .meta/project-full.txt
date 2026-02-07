@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4da09839c5f2515b0b964493a523fc034549b792.idx
-│   │       ├── pack-4da09839c5f2515b0b964493a523fc034549b792.pack
-│   │       └── pack-4da09839c5f2515b0b964493a523fc034549b792.rev
+│   │       ├── pack-fd781d7740e0dcf0d273807b35a8452a62d50bbc.idx
+│   │       ├── pack-fd781d7740e0dcf0d273807b35a8452a62d50bbc.pack
+│   │       └── pack-fd781d7740e0dcf0d273807b35a8452a62d50bbc.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -386,7 +386,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 16:59:28 UTC
+Сгенерировано: 2026-02-07 17:00:25 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5776,7 +5776,7 @@ export default instance;
  * Поведение при потере сети: skip, protect window, FOQ.
  */
 
-import { getTrackMeta } from './cache-db.js';
+import { hasAudioForUid } from './cache-db.js';
 
 let _active = false;
 
@@ -5842,8 +5842,10 @@ async function _skipToNextAvailable(fromIdx, dir = 1) {
     const track = playlist[idx];
     if (!track?.uid) continue;
 
-    const meta = await getTrackMeta(String(track.uid).trim());
-    if (meta?.blobStored) {
+    const uid = String(track.uid).trim();
+    const hasBlob = await hasAudioForUid(uid);
+
+    if (hasBlob) {
       try {
         await pc._origLoad(idx, { autoPlay: true, dir });
         return;
