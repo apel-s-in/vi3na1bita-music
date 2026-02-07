@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a480709b58149827f037115ccbc5320f9fa32772.idx
-│   │       ├── pack-a480709b58149827f037115ccbc5320f9fa32772.pack
-│   │       └── pack-a480709b58149827f037115ccbc5320f9fa32772.rev
+│   │       ├── pack-8afbbb846cc7a88f1359d6f17b564bf658664af1.idx
+│   │       ├── pack-8afbbb846cc7a88f1359d6f17b564bf658664af1.pack
+│   │       └── pack-8afbbb846cc7a88f1359d6f17b564bf658664af1.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -386,7 +386,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 19:54:43 UTC
+Сгенерировано: 2026-02-07 19:55:16 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2383,10 +2383,12 @@ async function _executePendingGC() {
   const toDelete = _pendingGC.filter(uid => !keep.has(uid));
   _pendingGC = [];
 
+  const delSet = new Set(toDelete);
+
   try {
     const metas = await getAllTrackMetas();
     for (const m of metas) {
-      if (m.type === 'playbackCache' && toDelete.includes(m.uid)) {
+      if (m.type === 'playbackCache' && delSet.has(m.uid)) {
         await deleteTrackCache(m.uid);
       }
     }
