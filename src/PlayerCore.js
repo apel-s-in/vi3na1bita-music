@@ -167,6 +167,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
     next() {
       if (!this.playlist.length) return;
+      this._stats.onSkip(); // Fix #2.4: check >90% before skip
       if (this.shuffleMode) {
         this.shuffleHistory.push(this.currentIndex);
         if (this.shuffleHistory.length > 50) this.shuffleHistory.shift();
@@ -178,6 +179,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     prev() {
       if (!this.playlist.length) return;
       if (this.getPosition() > 3) return this.seek(0);
+      this._stats.onSkip(); // Fix #2.4: check >90% before skip
       if (this.shuffleMode && this.shuffleHistory.length) {
         return this.load(this.shuffleHistory.pop(), { autoPlay: true, dir: -1 });
       }
