@@ -1,6 +1,5 @@
 // scripts/offline/net-policy.js
 const LS_KEY = 'offline:netPolicy:v1';
-// R3 (100% Offline) overrides everything
 const MODE_KEY = 'offline:mode:v1'; 
 
 const DEFAULT_POLICY = { wifiOnly: false, allowMobile: true, confirmOnMobile: false, saveDataBlock: true };
@@ -17,10 +16,7 @@ export function setNetPolicy(next) {
 }
 
 export function isAllowedByNetPolicy(params = {}) {
-  // R3 Check: If mode is R3, network is strictly forbidden for playback/downloads
-  const mode = localStorage.getItem(MODE_KEY) || 'R0';
-  if (mode === 'R3') return false;
-
+  // v1.0: R2/R3 не реализованы. Только R0/R1 — сеть разрешена по policy.
   const policy = params.policy || getNetPolicy();
   const net = params.net || { online: true, kind: 'unknown', saveData: false };
   const userInitiated = !!params.userInitiated;
