@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-670ad25b98fa0342623b2c37de1325b6dca9ccc7.idx
-│   │       ├── pack-670ad25b98fa0342623b2c37de1325b6dca9ccc7.pack
-│   │       └── pack-670ad25b98fa0342623b2c37de1325b6dca9ccc7.rev
+│   │       ├── pack-a6df2694869fcca604645edf4ced1e5f3e987ed4.idx
+│   │       ├── pack-a6df2694869fcca604645edf4ced1e5f3e987ed4.pack
+│   │       └── pack-a6df2694869fcca604645edf4ced1e5f3e987ed4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -386,7 +386,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 17:56:21 UTC
+Сгенерировано: 2026-02-07 17:58:00 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5289,6 +5289,17 @@ class DownloadQueue {
         cachedComplete: true
       });
 
+      // Двухфазная замена (ТЗ 1.7): удаляем старый variant ТОЛЬКО после успеха и не для CUR.
+      try {
+        const curUid = window.playerCore?.getCurrentTrackUid?.();
+        if (curUid && String(curUid).trim() === String(item.uid).trim()) {
+          // CUR не трогаем
+        } else {
+          const otherQ = item.quality === 'hi' ? 'lo' : 'hi';
+          await deleteAudioVariant(item.uid, otherQ).catch(() => {});
+        }
+      } catch {}
+
       this._active.delete(item.uid);
       emit('offline:trackCached', { uid: item.uid });
       emit('offline:stateChanged');
@@ -5297,8 +5308,8 @@ class DownloadQueue {
     } catch (e) {
       this._active.delete(item.uid);
       if (e.name === 'AbortError') {
-        // ТЗ 4.4: При отмене — удалить недокачанный файл
-        await deleteAudio(item.uid).catch(() => {});
+        // ТЗ 4.4: удаляем только тот variant, который качали (не сносим старый корректный).
+        await deleteAudioVariant(item.uid, item.quality).catch(() => {});
         this._process();
         return;
       }
