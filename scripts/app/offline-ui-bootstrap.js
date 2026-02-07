@@ -32,7 +32,13 @@ export async function initOfflineUI() {
     const { getOfflineManager } = await import('../offline/offline-manager.js');
     const mgr = getOfflineManager();
     await mgr.initialize();
-    window._offlineManagerInstance = mgr;
+    // Fix #1.7: TrackResolver
+    try {
+      const { initTrackResolver } = await import('../offline/track-resolver.js');
+      initTrackResolver(mgr);
+    } catch (e) {
+      console.warn('[OfflineUI] TrackResolver init failed:', e);
+    }
 
     /* Fix #15.2: Check 60 MB at R1 startup */
     if (mgr.getMode() === 'R1') {
