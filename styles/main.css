@@ -308,33 +308,6 @@ header{width:100%;text-align:center;margin:0 auto}
 .modal-action-btn:hover{background:rgba(77,170,255,.25);transform:translateY(-1px);box-shadow:0 4px 12px rgba(77,170,255,.2)}
 .modal-action-btn:active{transform:translateY(0)}
 
-/* Offline modal helpers (no inline styles) */
-.om-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
-.om-head__left{font-weight:900;color:var(--c-blue)}
-.om-head__title{color:var(--c-blue)}
-.om-head__value{color:var(--c-blue)}
-.om-head__right{font-size:12px;color:var(--om-sub)}
-.om-stack{display:flex;flex-direction:column;gap:12px}
-.om-card{padding:12px;border:1px solid var(--om-bd);border-radius:12px}
-.om-card__title{font-weight:900;color:var(--c-blue);margin-bottom:8px}
-.om-row{display:flex;gap:10px;align-items:center;cursor:pointer}
-.om-row--tight{margin:6px 0}
-.om-check{accent-color:var(--secondary-color)}
-.om-note,.om-text,.om-kv{font-size:12px;color:var(--om-sub);line-height:1.5;margin-top:6px}
-.om-text{margin:0 0 20px}
-.om-inline{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.om-input,.om-select{border-radius:10px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:var(--text-color);outline:0}
-.om-input{padding:10px 8px}
-.om-select{padding:10px 12px}
-.om-field{display:flex;gap:8px;align-items:center}
-.om-field__lbl{opacity:.85}
-.om-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:16px}
-.om-actions--left{justify-content:flex-start;margin-top:8px}
-.om-albums{margin-top:10px;max-height:140px;overflow:auto;border:1px solid var(--om-bd);border-radius:10px;padding:8px}
-.om-btn-primary{background:var(--secondary-color)!important;color:var(--c-w)!important}
-.om-btn-danger{background:var(--primary-color)!important;color:var(--c-w)!important}
-.om-btn-success{background:#27b34c!important;color:var(--c-w)!important}
-
 /* Sleep overlay */
 .sleep-overlay{position:fixed;inset:0;background:rgba(0,0,0,.95);display:none;align-items:center;justify-content:center;z-index:10000;animation:fadeIn .5s}
 .sleep-overlay.active{display:flex}
