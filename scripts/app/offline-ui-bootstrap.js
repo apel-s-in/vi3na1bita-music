@@ -19,7 +19,15 @@ export async function initOfflineUI() {
   if (_initialized) return;
   _initialized = true;
 
-  /* 0. Инициализация OfflineManager (открыть IndexedDB, очистить expired) */
+  /* 0a. Инициализация GlobalStatsManager (самодостаточный, до OfflineManager) */
+  try {
+    const { default: GlobalStats } = await import('../stats/global-stats.js');
+    await GlobalStats.initialize();
+  } catch (e) {
+    console.warn('[OfflineUI] GlobalStatsManager init failed:', e);
+  }
+
+  /* 0b. Инициализация OfflineManager (открыть IndexedDB, очистить expired) */
   try {
     const { getOfflineManager } = await import('../offline/offline-manager.js');
     const mgr = getOfflineManager();
@@ -29,7 +37,6 @@ export async function initOfflineUI() {
   } catch (e) {
     console.warn('[OfflineUI] OfflineManager init failed:', e);
   }
-
   /* 1. Индикаторы 🔒/☁ в трек-листе */
   initOfflineIndicators();
 
