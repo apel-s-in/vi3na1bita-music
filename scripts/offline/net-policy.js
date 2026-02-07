@@ -1,6 +1,6 @@
 // scripts/offline/net-policy.js
-// Network Policy v2.1 (Compatible)
-// Контроль сети, статистика трафика, индикаторы скорости.
+// Network Policy v3.0 — Audit Fix
+// Fixes: #4.1 window.NetPolicy, #4.2 effectiveType removal, #4.5 monthKey format
 
 const LS_WIFI = 'netPolicy:wifi:v1';
 const LS_CELLULAR = 'netPolicy:cellular:v1';
@@ -35,6 +35,7 @@ export function getNetworkSpeed() {
   return conn ? (conn.downlink || null) : null;
 }
 
+// Fix #4.2: Only use conn.type, NOT effectiveType
 export function detectNetworkType() {
   const p = getPlatform();
   if (!p.hasNetInfo) return 'unknown';
@@ -43,8 +44,7 @@ export function detectNetworkType() {
   const type = String(conn.type || '').toLowerCase();
   if (type === 'wifi' || type === 'ethernet') return 'wifi';
   if (type === 'cellular') return 'cellular';
-  const eff = String(conn.effectiveType || '').toLowerCase();
-  if (/2g|3g|4g/i.test(eff) && type !== 'wifi') return 'cellular';
+  // Fix #4.2: If type is not defined, return 'unknown' (treated as wifi per ТЗ 2.5)
   return 'unknown';
 }
 
@@ -80,7 +80,7 @@ export function getNetPolicyState() {
   };
 }
 
-/* ═══════ Helpers for UI (Compatibility) ═══════ */
+/* ═══════ Helpers for UI ═══════ */
 
 export function getCurrentMonthName() {
   try {
@@ -153,17 +153,26 @@ export function shouldShowCellularToast() {
 
 /* ═══════ Traffic Statistics ═══════ */
 
+// Fix #4.5: monthKey format YYYY-MM with zero-padded month
+function _mKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
 function _getStatsRaw() {
   try {
     const raw = localStorage.getItem(LS_TRAFFIC);
-    const def = { wifi: { total: 0, monthly: 0, mKey: _mKey() }, cellular: { total: 0, monthly: 0, mKey: _mKey() }, general: { total: 0, monthly: 0, mKey: _mKey() } };
+    const mk = _mKey();
+    const def = { wifi: { total: 0, monthly: 0, mKey: mk }, cellular: { total: 0, monthly: 0, mKey: mk }, general: { total: 0, monthly: 0, mKey: mk } };
     if (!raw) return def;
     const d = JSON.parse(raw);
     return { ...def, ...d };
-  } catch { return { wifi: { total: 0, monthly: 0, mKey: _mKey() }, cellular: { total: 0, monthly: 0, mKey: _mKey() }, general: { total: 0, monthly: 0, mKey: _mKey() } }; }
+  } catch {
+    const mk = _mKey();
+    return { wifi: { total: 0, monthly: 0, mKey: mk }, cellular: { total: 0, monthly: 0, mKey: mk }, general: { total: 0, monthly: 0, mKey: mk } };
+  }
 }
 
-function _mKey() { const d = new Date(); return `${d.getFullYear()}-${d.getMonth()}`; }
 function _saveStats(s) { localStorage.setItem(LS_TRAFFIC, JSON.stringify(s)); }
 
 function recordTraffic(bytes, category = null) {
@@ -173,7 +182,6 @@ function recordTraffic(bytes, category = null) {
   const p = getPlatform();
   const type = category || detectNetworkType();
 
-  // Reset monthly
   ['wifi', 'cellular', 'general'].forEach(k => { if (s[k].mKey !== mk) { s[k].monthly = 0; s[k].mKey = mk; } });
 
   if (!p.supportsNetControl) {
@@ -196,9 +204,13 @@ export function clearTrafficStats() { localStorage.removeItem(LS_TRAFFIC); }
 
 /* ═══════ Initialization ═══════ */
 
+// Fix #4.1: Bind window.NetPolicy for non-module scripts (PlayerCore, DownloadQueue)
 export function initNetPolicy() {
   if (_interceptorInstalled) return;
   _interceptorInstalled = true;
+
+  // Fix #4.1: Global bridge
+  window.NetPolicy = { isNetworkAllowed, shouldShowCellularToast, getStatusText };
 
   _originalFetch = window.fetch;
   window.fetch = async (input, init) => {
@@ -209,7 +221,7 @@ export function initNetPolicy() {
         const clone = res.clone();
         const len = clone.headers.get('content-length');
         if (len) recordTraffic(parseInt(len, 10));
-        else clone.blob().then(b => recordTraffic(b.size)).catch(()=>{});
+        else clone.blob().then(b => recordTraffic(b.size)).catch(() => {});
       } catch {}
       return res;
     } catch (e) { throw e; }
