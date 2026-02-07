@@ -193,19 +193,25 @@
             if (W.playerCore.setMuted) W.playerCore.setMuted(m); // Optional support
             U.setBtnActive(b.id, m);
         },
-        'pq-btn': async () => {
-            const mgr = W.OfflineManager || (await import('../offline/offline-manager.js')).getOfflineManager();
-            const stats = await mgr.getStorageUsage(); // (1.8 fix)
-            const totalFiles = stats.pinned.count + stats.cloud.count;
-            
-            // (4.2 Fix) Check confirm FIRST
-            if (totalFiles > 5) {
-                if (!confirm(`Смена качества затронет ${totalFiles} файлов. Перекачать?`)) {
-                    return; // Cancel logic
-                }
-            }
-            
-            const r = U.pq.toggle(); 
+      'pq-btn': async () => {
+        const mgr = window._offlineManagerInstance;
+        if (!mgr) { U.pq.toggle(); return; }
+
+        // Fix #1.1/#7.1: Count only files with DIFFERENT quality than new target
+        const currentQ = mgr.getQuality();
+        const newQ = currentQ === 'hi' ? 'lo' : 'hi';
+        const needsReCache = await mgr.countNeedsReCache(newQ);
+
+        if (needsReCache > 5) {
+          // Fix #7.2: Use styled confirm instead of native
+          const confirmFn = window.Modals?.confirm || window.confirm;
+          const ok = await confirmFn(
+            `Сменить качество? ${needsReCache} файлов будут перекэшированы.`
+          );
+          if (!ok) return;
+        }
+
+        const r = U.pq.toggle();
             if (!r.ok) U.ui.toast(r.reason === 'trackNoLo' ? 'Низкое качество недоступно' : r.reason === 'offline' ? 'Нет доступа к сети' : 'Невозможно', 'warning');
             
             updatePQButtonState();
