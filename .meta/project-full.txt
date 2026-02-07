@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-55b85da559fba73160fa2846dbafa5e5169b9401.idx
-│   │       ├── pack-55b85da559fba73160fa2846dbafa5e5169b9401.pack
-│   │       └── pack-55b85da559fba73160fa2846dbafa5e5169b9401.rev
+│   │       ├── pack-9d6002da20e7acbfc0977ef693a2fe9e5a5bdb62.idx
+│   │       ├── pack-9d6002da20e7acbfc0977ef693a2fe9e5a5bdb62.pack
+│   │       └── pack-9d6002da20e7acbfc0977ef693a2fe9e5a5bdb62.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 13:56:31 UTC
+Сгенерировано: 2026-02-07 13:58:31 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6981,39 +6981,39 @@ export async function refreshAllIndicators() {
 /**
  * Обновление бейджа на кнопке OFFLINE внизу экрана
  */
-function _updateMainOfflineButton() {
+async function _updateMainOfflineButton() {
   const btn = document.getElementById('offline-btn');
   if (!btn) return;
-  
-  // Проверяем сетевую политику (через глобальный скоуп или импорт, если доступен)
-  let alert = false;
-  
-  // 1. Если включен R1 (Playback Cache)
-  try {
-     if (localStorage.getItem('offline:mode:v1') === 'R1') alert = true;
-  } catch {}
 
-  // 2. Если сеть ограничена политикой (Авиарежим или Killswitch)
-  // Мы можем прочитать LS напрямую, так как модуль NetPolicy может быть еще не загружен
-  try {
-     const ks = localStorage.getItem('netPolicy:killSwitch:v1') === 'on';
-     const w = localStorage.getItem('netPolicy:wifi:v1');
-     const c = localStorage.getItem('netPolicy:cellular:v1');
-     // Если KillSwitch ON или (Wifi OFF и Cell OFF)
-     if (ks || (w === 'off' && c === 'off')) alert = true;
-  } catch {}
+  const mgr = window._offlineManagerInstance;
+  if (!mgr) return;
 
-  if (alert) {
-      btn.classList.add('alert'); // CSS класс для восклицательного знака
-      // Добавим стиль для alert если его нет
-      if (!document.getElementById('offline-btn-alert-style')) {
-          const s = document.createElement('style');
-          s.id = 'offline-btn-alert-style';
-          s.textContent = `.offline-btn.alert::after { content: "!"; color: #ff6b6b; font-weight: 900; margin-left: 6px; }`;
-          document.head.appendChild(s);
-      }
+  const mode = mgr.getMode();
+  btn.classList.toggle('active', mode === 'R1');
+
+  // Fix #6.1: Check needsReCache / needsUpdate for "!" badge
+  let hasAlert = false;
+  try {
+    const { getAllTrackMetas } = await import('../offline/cache-db.js');
+    const metas = await getAllTrackMetas();
+    hasAlert = metas.some(m => m.needsReCache || m.needsUpdate);
+  } catch (e) {
+    console.warn('[OfflineIndicators] Could not check alert state:', e);
+  }
+
+  // Toggle "!" indicator
+  let alertEl = btn.querySelector('.offline-btn-alert');
+  if (hasAlert) {
+    if (!alertEl) {
+      alertEl = document.createElement('span');
+      alertEl.className = 'offline-btn-alert';
+      alertEl.textContent = '!';
+      alertEl.title = 'Есть треки для обновления';
+      btn.prepend(alertEl);
+    }
+    alertEl.style.display = '';
   } else {
-      btn.classList.remove('alert');
+    if (alertEl) alertEl.style.display = 'none';
   }
 }
 
