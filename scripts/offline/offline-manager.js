@@ -736,8 +736,8 @@ class OfflineManager {
 
       for (const m of toReCache) {
         // ТЗ 4.4 п.5.6: CUR НИКОГДА не заменяется на лету
-        const curUid = window.PlayerCore?.getCurrentTrackUid?.();
-        if (m.uid === curUid) continue;
+        const curUid = window.playerCore?.getCurrentTrackUid?.();
+        if (curUid && m.uid === curUid) continue;
 
         const url = getTrackUrl(m.uid, q);
         if (!url) continue;
