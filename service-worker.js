@@ -33,7 +33,8 @@ const STATIC_ASSETS = [
   './scripts/ui/cache-progress-overlay.js', './scripts/ui/statistics-modal.js',
   './scripts/app/player-ui.js', './scripts/app/albums.js', './scripts/app/navigation.js',
   './scripts/app.js', './src/PlayerCore.js',
-  './scripts/app/offline-ui-bootstrap.js', './scripts/app/playback-cache-bootstrap.js'
+  './scripts/app/offline-ui-bootstrap.js', './scripts/app/playback-cache-bootstrap.js',
+  './scripts/stats/global-stats.js'
 ];
 
 // Helper: Normalize URL for strict cache matching
