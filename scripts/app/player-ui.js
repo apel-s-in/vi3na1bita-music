@@ -195,19 +195,17 @@
         },
         'pq-btn': async () => {
             const mgr = W.OfflineManager || (await import('../offline/offline-manager.js')).getOfflineManager();
-            const stats = await mgr.getCacheSummary();
+            const stats = await mgr.getStorageUsage(); // (1.8 fix)
             const totalFiles = stats.pinned.count + stats.cloud.count;
             
-            const nextQ = U.pq.getMode() === 'hi' ? 'lo' : 'hi';
-            
-            // ТЗ 4.3: Confirm если > 5 файлов
+            // (4.2 Fix) Check confirm FIRST
             if (totalFiles > 5) {
                 if (!confirm(`Смена качества затронет ${totalFiles} файлов. Перекачать?`)) {
-                    return; // Отмена
+                    return; // Cancel logic
                 }
             }
             
-            const r = U.pq.toggle(); // Это вызовет switchQuality в PlayerCore
+            const r = U.pq.toggle(); 
             if (!r.ok) U.ui.toast(r.reason === 'trackNoLo' ? 'Низкое качество недоступно' : r.reason === 'offline' ? 'Нет доступа к сети' : 'Невозможно', 'warning');
             
             updatePQButtonState();
