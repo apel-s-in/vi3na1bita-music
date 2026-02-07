@@ -513,6 +513,50 @@ class OfflineManager {
       return { toRemove };
   }
 
+  // Fix #17.4: Clear files by type
+  async clearByType(type) {
+    const metas = await getAllTrackMetas();
+    let count = 0;
+    for (const m of metas) {
+      if (m.type === type) {
+        await deleteTrackCache(m.uid);
+        count++;
+      }
+    }
+    if (count > 0) emit('offline:stateChanged');
+    return count;
+  }
+
+  // Fix #17.4: Clear all cached files
+  async clearAll() {
+    const metas = await getAllTrackMetas();
+    let count = 0;
+    for (const m of metas) {
+      await deleteTrackCache(m.uid);
+      count++;
+    }
+    if (count > 0) emit('offline:stateChanged');
+    return count;
+  }
+
+  // Fix #5.3: Re-cache all files with mismatched quality
+  async reCacheAll(targetQuality) {
+    const q = normQ(targetQuality || this.getQuality());
+    const metas = await getAllTrackMetas();
+    let enqueued = 0;
+    for (const m of metas) {
+      if ((m.type === 'pinned' || m.type === 'cloud') && m.quality && m.quality !== q) {
+        const url = getTrackUrl(m.uid, q);
+        if (url) {
+          const prio = m.type === 'pinned' ? DOWNLOAD_PRIORITY.PINNED : DOWNLOAD_PRIORITY.RECACHE_CLOUD;
+          this.queue.enqueue({ uid: m.uid, url, quality: q, kind: 'reCache', priority: prio });
+          enqueued++;
+        }
+      }
+    }
+    return enqueued;
+  }
+
   async hasSpace() {
       try {
           const est = await estimateUsage();
