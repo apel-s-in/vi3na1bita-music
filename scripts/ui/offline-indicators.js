@@ -126,6 +126,11 @@ async function _handleClick(ind, uid) {
   switch (state.status) {
     case 'none':
     case 'cloud_loading':
+        // (6.2 Fix) Если уже качается как cloud, просто меняем статус на pinned
+        // не отменяя загрузку, OfflineManager сам повысит приоритет при togglePinned
+        await mgr.togglePinned(uid);
+        await _refreshOne(ind, uid);
+        break;
     case 'transient':
     case 'dynamic': {
       /* ТЗ П.4.3: Клик по серому 🔒 → пиннинг */
