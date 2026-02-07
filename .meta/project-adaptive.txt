@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e73eacad8b24190fbf5a51322b64b8c92bec5b5a.idx
-│   │       ├── pack-e73eacad8b24190fbf5a51322b64b8c92bec5b5a.pack
-│   │       └── pack-e73eacad8b24190fbf5a51322b64b8c92bec5b5a.rev
+│   │       ├── pack-be30ffeab39189077c445a60aad4add85d0ee00d.idx
+│   │       ├── pack-be30ffeab39189077c445a60aad4add85d0ee00d.pack
+│   │       └── pack-be30ffeab39189077c445a60aad4add85d0ee00d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -386,7 +386,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 21:18:24 UTC
+Сгенерировано: 2026-02-07 21:18:51 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -11267,4 +11267,19 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 @media(max-height:500px){.om-body{max-height:calc(100vh - 80px)}.om-overlay{padding:8px}}
 @media(min-width:768px){.om-overlay{align-items:center;padding:40px 20px}.om-body{max-height:70vh}}
 @media(prefers-reduced-motion:reduce){.om-modal,.om-overlay,.om-progress-fill{transition:none!important}}
+
+/* ═══ CONFIRM dialog (поверх om-overlay) ═══ */
+.om-confirm-bg{position:fixed;inset:0;z-index:10010;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0);transition:background .2s;padding:20px}
+.om-confirm-bg--visible{background:rgba(0,0,0,.55)}
+.om-confirm-box{background:#1a1a2e;border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:24px;max-width:340px;width:100%;box-shadow:0 16px 48px rgba(0,0,0,.5);opacity:0;transform:scale(.95);transition:opacity .2s,transform .2s}
+.om-confirm-bg--visible .om-confirm-box{opacity:1;transform:scale(1)}
+.om-confirm-title{font:700 16px/1.3 inherit;color:#fff;margin-bottom:10px}
+.om-confirm-body{font-size:14px;line-height:1.5;color:rgba(255,255,255,.65);margin-bottom:20px}
+.om-confirm-btns{display:flex;gap:10px;justify-content:flex-end}
+
+/* ═══ Disabled mode cards (R2, R3 stubs) ═══ */
+.om-mode-card--disabled{opacity:.45;pointer-events:none;position:relative}
+.om-mode-card--disabled::after{content:'';position:absolute;inset:0;border-radius:var(--om-r);background:repeating-linear-gradient(135deg,transparent,transparent 10px,rgba(255,255,255,.02) 10px,rgba(255,255,255,.02) 20px)}
+.om-mode-card--disabled .om-mode-btn{cursor:not-allowed}
+
 
