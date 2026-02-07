@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-adf51e12f5b26091ae89fd27bacce8bb4428e029.idx
-│   │       ├── pack-adf51e12f5b26091ae89fd27bacce8bb4428e029.pack
-│   │       └── pack-adf51e12f5b26091ae89fd27bacce8bb4428e029.rev
+│   │       ├── pack-e99d05971cfb63e3e82f07e2a44fe8c0824feaeb.idx
+│   │       ├── pack-e99d05971cfb63e3e82f07e2a44fe8c0824feaeb.pack
+│   │       └── pack-e99d05971cfb63e3e82f07e2a44fe8c0824feaeb.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -383,7 +383,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 11:07:34 UTC
+Сгенерировано: 2026-02-07 12:01:38 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4717,592 +4717,232 @@ export async function estimateUsage() {
 //=================================================
 // FILE: /scripts/offline/net-policy.js
 // scripts/offline/net-policy.js
-// Сетевая политика v2.0 — Спецификация "Сетевая политика" (v1.0)
-//
-// Управление типами сети (Ethernet/Wi-Fi, Cellular),
-// "авиарежим" приложения, подсчёт трафика, уведомления.
-//
-// Платформенные различия:
-//   Android/Desktop (Network Information API) — полный функционал
-//   iOS/Firefox (нет API) — урезанный: kill switch, общий трафик
+// Network Policy v2.1 (Compatible)
+// Контроль сети, статистика трафика, индикаторы скорости.
 
 const LS_WIFI = 'netPolicy:wifi:v1';
 const LS_CELLULAR = 'netPolicy:cellular:v1';
 const LS_CELLULAR_TOAST = 'netPolicy:cellularToast:v1';
 const LS_KILL_SWITCH = 'netPolicy:killSwitch:v1';
-const LS_TRAFFIC = 'trafficStats:v1';
-
-/* ═══════ Platform detection ═══════ */
+const LS_TRAFFIC = 'trafficStats:v2';
 
 let _platformCache = null;
+let _interceptorInstalled = false;
+let _originalFetch = null;
+let _networkListenerInstalled = false;
 
-function getPlatform() {
+/* ═══════ Platform & Info ═══════ */
+
+export function getPlatform() {
   if (_platformCache) return _platformCache;
   const ua = navigator.userAgent || '';
   const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
   const isFirefox = /Firefox\//i.test(ua);
   const hasNetInfo = !!(navigator.connection && navigator.connection.type !== undefined);
   _platformCache = {
-    isIOS,
-    isFirefox,
-    hasNetInfo,
+    isIOS, isFirefox, hasNetInfo,
     supportsNetControl: hasNetInfo && !isIOS && !isFirefox
   };
   return _platformCache;
 }
 
-/* ═══════ Network type detection ═══════ */
-
-/**
- * Определить тип текущей сети.
- * @returns {'ethernet'|'wifi'|'cellular'|'unknown'}
- */
-function detectNetworkType() {
-  const p = getPlatform();
-  if (!p.hasNetInfo) return 'unknown';
-
-  const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-  if (!conn) return 'unknown';
-
-  const type = String(conn.type || '').toLowerCase();
-
-  if (type === 'ethernet') return 'ethernet';
-  if (type === 'wifi') return 'wifi';
-  if (type === 'cellular') return 'cellular';
-
-  // effectiveType fallback (2g/3g/4g — это cellular)
-  const eff = String(conn.effectiveType || '').toLowerCase();
-  if (/^(2g|3g|4g|5g|slow-2g)$/.test(eff) && type !== 'wifi' && type !== 'ethernet') {
-    // Если type не определён, но effectiveType есть — можно только предполагать
-    // По спецификации: unknown трактуем как ethernet/wifi (оптимистично)
-  }
-
-  // Спецификация: любое неопределённое = Ethernet/Wi-Fi (оптимистично)
-  return 'unknown';
-}
-
-/**
- * Нормализованная категория: 'wifi' (includes ethernet) или 'cellular'.
- * unknown → 'wifi' (оптимистично, спецификация Часть 2.5)
- */
-function getNetworkCategory() {
-  const raw = detectNetworkType();
-  if (raw === 'cellular') return 'cellular';
-  return 'wifi'; // ethernet, wifi, unknown → wifi
-}
-
-/**
- * Получить скорость сети (Мбит/с). null если недоступно.
- */
-function getNetworkSpeed() {
+export function getNetworkSpeed() {
   const p = getPlatform();
   if (!p.hasNetInfo) return null;
   const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-  if (!conn || typeof conn.downlink !== 'number') return null;
-  return conn.downlink; // Мбит/с
+  return conn ? (conn.downlink || null) : null;
 }
 
-/**
- * Человекочитаемое название типа сети для UI.
- */
-function getNetworkLabel() {
-  const raw = detectNetworkType();
-  switch (raw) {
-    case 'ethernet': return 'Ethernet';
-    case 'wifi': return 'Wi-Fi';
-    case 'cellular': return 'Cellular';
-    default: return 'Wi-Fi'; // unknown → Wi-Fi
-  }
-}
-
-/* ═══════ Policy state ═══════ */
-
-function _lsGet(key, def) {
-  const v = localStorage.getItem(key);
-  return v === null ? def : v;
-}
-
-function _lsSet(key, val) {
-  localStorage.setItem(key, val);
-}
-
-/**
- * Получить состояние политик.
- */
-function getNetPolicyState() {
+export function detectNetworkType() {
   const p = getPlatform();
+  if (!p.hasNetInfo) return 'unknown';
+  const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  if (!conn) return 'unknown';
+  const type = String(conn.type || '').toLowerCase();
+  if (type === 'wifi' || type === 'ethernet') return 'wifi';
+  if (type === 'cellular') return 'cellular';
+  const eff = String(conn.effectiveType || '').toLowerCase();
+  if (/2g|3g|4g/i.test(eff) && type !== 'wifi') return 'cellular';
+  return 'unknown';
+}
 
+export function getNetworkLabel() {
+  const t = detectNetworkType();
+  if (t === 'wifi') return 'Wi-Fi';
+  if (t === 'cellular') return 'Cellular';
+  return 'Wi-Fi';
+}
+
+/* ═══════ Policy State ═══════ */
+
+function _lsGet(k, def) { const v = localStorage.getItem(k); return v === null ? def : v; }
+function _lsSet(k, v) { localStorage.setItem(k, v); }
+
+export function getNetPolicyState() {
+  const p = getPlatform();
   if (!p.supportsNetControl) {
-    // iOS / Firefox — управление сетью недоступно, только kill switch
     const killSwitch = _lsGet(LS_KILL_SWITCH, 'off') === 'on';
     return {
-      wifiEnabled: true,
-      cellularEnabled: true,
-      cellularToast: false,
-      killSwitch,
-      airplaneMode: killSwitch,
-      supportsNetControl: false,
-      isIOS: p.isIOS,
-      isFirefox: p.isFirefox
+      wifiEnabled: true, cellularEnabled: true, cellularToast: false,
+      killSwitch, airplaneMode: killSwitch, supportsNetControl: false
     };
   }
-
   const wifiEnabled = _lsGet(LS_WIFI, 'on') === 'on';
   const cellularEnabled = _lsGet(LS_CELLULAR, 'on') === 'on';
-  const cellularToast = _lsGet(LS_CELLULAR_TOAST, 'off') === 'on';
-
   return {
-    wifiEnabled,
-    cellularEnabled,
-    cellularToast,
+    wifiEnabled, cellularEnabled,
+    cellularToast: _lsGet(LS_CELLULAR_TOAST, 'off') === 'on',
     killSwitch: false,
     airplaneMode: !wifiEnabled && !cellularEnabled,
-    supportsNetControl: true,
-    isIOS: false,
-    isFirefox: false
+    supportsNetControl: true
   };
 }
 
-/**
- * Переключить Ethernet/Wi-Fi.
- */
-function toggleWifi() {
-  const cur = _lsGet(LS_WIFI, 'on') === 'on';
-  _lsSet(LS_WIFI, cur ? 'off' : 'on');
-  _emitPolicyChanged();
-  return !cur;
-}
+/* ═══════ Helpers for UI (Compatibility) ═══════ */
 
-/**
- * Переключить Cellular.
- */
-function toggleCellular() {
-  const cur = _lsGet(LS_CELLULAR, 'on') === 'on';
-  _lsSet(LS_CELLULAR, cur ? 'off' : 'on');
-  _emitPolicyChanged();
-  return !cur;
-}
-
-/**
- * Переключить уведомления о Cellular-стриминге.
- */
-function toggleCellularToast() {
-  const cur = _lsGet(LS_CELLULAR_TOAST, 'off') === 'on';
-  _lsSet(LS_CELLULAR_TOAST, cur ? 'off' : 'on');
-  return !cur;
-}
-
-/**
- * Переключить kill switch (только iOS).
- */
-function toggleKillSwitch() {
-  const cur = _lsGet(LS_KILL_SWITCH, 'off') === 'on';
-  _lsSet(LS_KILL_SWITCH, cur ? 'off' : 'on');
-  _emitPolicyChanged();
-  return !cur;
-}
-
-/* ═══════ Permission check ═══════ */
-
-/**
- * Проверить, разрешена ли сеть по текущей политике.
- * Это ОСНОВНАЯ функция, вызываемая перед каждым fetch.
- * @returns {boolean}
- */
-function isNetworkAllowed() {
-  if (!navigator.onLine) return false;
-
-  const state = getNetPolicyState();
-
-  // Авиарежим приложения
-  if (state.airplaneMode) return false;
-
-  // iOS kill switch
-  if (state.killSwitch) return false;
-
-  // Если управление сетью недоступно — разрешаем (нет данных для блокировки)
-  if (!state.supportsNetControl) return true;
-
-  const category = getNetworkCategory();
-
-  if (category === 'wifi' && state.wifiEnabled) return true;
-  if (category === 'cellular' && state.cellularEnabled) return true;
-
-  // Текущий тип сети запрещён
-  return false;
-}
-
-/**
- * Проверить, нужен ли toast о Cellular-стриминге.
- * Вызывается при начале стриминга трека.
- * @returns {boolean}
- */
-function shouldShowCellularToast() {
-  const state = getNetPolicyState();
-  if (!state.supportsNetControl) return false;
-  if (!state.cellularToast) return false;
-  return getNetworkCategory() === 'cellular';
-}
-
-/**
- * Получить строку статуса для UI.
- */
-function getStatusText() {
-  const state = getNetPolicyState();
-
-  if (state.airplaneMode || state.killSwitch) {
-    return 'Интернет полностью отключён';
+export function getCurrentMonthName() {
+  try {
+    return new Intl.DateTimeFormat('ru', { month: 'long' }).format(new Date());
+  } catch {
+    return ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'][new Date().getMonth()];
   }
+}
 
-  if (!state.supportsNetControl) {
-    return 'Управление сетью не поддерживается';
-  }
-
-  if (!state.wifiEnabled && state.cellularEnabled) {
-    const cat = getNetworkCategory();
-    if (cat === 'wifi') {
-      return 'Wi-Fi/Ethernet заблокирован настройками';
-    }
-  }
-
-  if (state.wifiEnabled && !state.cellularEnabled) {
-    const cat = getNetworkCategory();
-    if (cat === 'cellular') {
-      return 'Мобильная сеть заблокирована настройками. Работаем офлайн.';
-    }
-  }
-
+export function getStatusText() {
+  const s = getNetPolicyState();
+  if (s.airplaneMode || s.killSwitch) return 'Интернет полностью отключён';
+  if (!s.supportsNetControl) return '';
+  const type = detectNetworkType();
+  if (!s.wifiEnabled && (type === 'wifi' || type === 'unknown')) return 'Wi-Fi/Ethernet заблокирован настройками';
+  if (!s.cellularEnabled && type === 'cellular') return 'Мобильная сеть заблокирована настройками';
   return '';
 }
 
-/* ═══════ Traffic statistics ═══════ */
+/* ═══════ Actions ═══════ */
 
-function _getTrafficStats() {
+function _emitChange() {
+  window.dispatchEvent(new CustomEvent('netPolicy:changed', { detail: getNetPolicyState() }));
+}
+
+export function toggleWifi() {
+  const s = _lsGet(LS_WIFI, 'on') === 'on';
+  _lsSet(LS_WIFI, s ? 'off' : 'on');
+  _emitChange();
+  return !s;
+}
+
+export function toggleCellular() {
+  const s = _lsGet(LS_CELLULAR, 'on') === 'on';
+  _lsSet(LS_CELLULAR, s ? 'off' : 'on');
+  _emitChange();
+  return !s;
+}
+
+export function toggleCellularToast() {
+  const s = _lsGet(LS_CELLULAR_TOAST, 'off') === 'on';
+  _lsSet(LS_CELLULAR_TOAST, s ? 'off' : 'on');
+  return !s;
+}
+
+export function toggleKillSwitch() {
+  const s = _lsGet(LS_KILL_SWITCH, 'off') === 'on';
+  _lsSet(LS_KILL_SWITCH, s ? 'off' : 'on');
+  _emitChange();
+  return !s;
+}
+
+/* ═══════ Checks ═══════ */
+
+export function isNetworkAllowed() {
+  if (!navigator.onLine) return false;
+  const s = getNetPolicyState();
+  if (s.airplaneMode || s.killSwitch) return false;
+  if (!s.supportsNetControl) return true;
+  const type = detectNetworkType();
+  if (type === 'wifi' || type === 'unknown') return s.wifiEnabled;
+  if (type === 'cellular') return s.cellularEnabled;
+  return true;
+}
+
+export function shouldShowCellularToast() {
+  const s = getNetPolicyState();
+  return s.supportsNetControl && s.cellularEnabled && s.cellularToast && detectNetworkType() === 'cellular';
+}
+
+/* ═══════ Traffic Statistics ═══════ */
+
+function _getStatsRaw() {
   try {
     const raw = localStorage.getItem(LS_TRAFFIC);
-    if (!raw) return _defaultTrafficStats();
-    const data = JSON.parse(raw);
-    // Автосброс месячной статистики
-    const currentMonth = _currentMonthKey();
-    if (data.wifi && data.wifi.monthKey !== currentMonth) {
-      data.wifi.monthly = 0;
-      data.wifi.monthKey = currentMonth;
-    }
-    if (data.cellular && data.cellular.monthKey !== currentMonth) {
-      data.cellular.monthly = 0;
-      data.cellular.monthKey = currentMonth;
-    }
-    if (data.general && data.general.monthKey !== currentMonth) {
-      data.general.monthly = 0;
-      data.general.monthKey = currentMonth;
-    }
-    return data;
-  } catch {
-    return _defaultTrafficStats();
-  }
+    const def = { wifi: { total: 0, monthly: 0, mKey: _mKey() }, cellular: { total: 0, monthly: 0, mKey: _mKey() }, general: { total: 0, monthly: 0, mKey: _mKey() } };
+    if (!raw) return def;
+    const d = JSON.parse(raw);
+    return { ...def, ...d };
+  } catch { return { wifi: { total: 0, monthly: 0, mKey: _mKey() }, cellular: { total: 0, monthly: 0, mKey: _mKey() }, general: { total: 0, monthly: 0, mKey: _mKey() } }; }
 }
 
-function _saveTrafficStats(data) {
-  try {
-    localStorage.setItem(LS_TRAFFIC, JSON.stringify(data));
-  } catch { /* ignore */ }
-}
+function _mKey() { const d = new Date(); return `${d.getFullYear()}-${d.getMonth()}`; }
+function _saveStats(s) { localStorage.setItem(LS_TRAFFIC, JSON.stringify(s)); }
 
-function _defaultTrafficStats() {
-  const mk = _currentMonthKey();
-  return {
-    wifi: { total: 0, monthly: 0, monthKey: mk },
-    cellular: { total: 0, monthly: 0, monthKey: mk },
-    general: { total: 0, monthly: 0, monthKey: mk }
-  };
-}
-
-function _currentMonthKey() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-}
-
-/**
- * Получить название текущего месяца (локализованное, без года).
- */
-function getCurrentMonthName() {
-  try {
-    return new Intl.DateTimeFormat(navigator.language || 'ru', { month: 'long' }).format(new Date());
-  } catch {
-    const months = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-      'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
-    return months[new Date().getMonth()];
-  }
-}
-
-/**
- * Записать потреблённый трафик.
- * @param {number} bytes - количество байт
- * @param {'wifi'|'cellular'|null} category - тип сети (null = определить автоматически)
- */
 function recordTraffic(bytes, category = null) {
   if (!bytes || bytes <= 0) return;
-
+  const s = _getStatsRaw();
+  const mk = _mKey();
   const p = getPlatform();
-  const stats = _getTrafficStats();
+  const type = category || detectNetworkType();
+
+  // Reset monthly
+  ['wifi', 'cellular', 'general'].forEach(k => { if (s[k].mKey !== mk) { s[k].monthly = 0; s[k].mKey = mk; } });
 
   if (!p.supportsNetControl) {
-    // iOS/Firefox — всё в general
-    stats.general.total += bytes;
-    stats.general.monthly += bytes;
+    s.general.total += bytes; s.general.monthly += bytes;
   } else {
-    const cat = category || getNetworkCategory();
-    if (cat === 'cellular') {
-      stats.cellular.total += bytes;
-      stats.cellular.monthly += bytes;
-    } else {
-      stats.wifi.total += bytes;
-      stats.wifi.monthly += bytes;
-    }
+    if (type === 'cellular') { s.cellular.total += bytes; s.cellular.monthly += bytes; }
+    else { s.wifi.total += bytes; s.wifi.monthly += bytes; }
   }
-
-  _saveTrafficStats(stats);
+  _saveStats(s);
 }
 
-/**
- * Получить статистику трафика для UI.
- */
-function getTrafficStats() {
+export function getTrafficStats() {
+  const s = _getStatsRaw();
   const p = getPlatform();
-  const stats = _getTrafficStats();
-  const monthName = getCurrentMonthName();
-
-  if (!p.supportsNetControl) {
-    // iOS — одна строка "Общий трафик"
-    return {
-      type: 'general',
-      monthName,
-      general: {
-        total: stats.general.total,
-        monthly: stats.general.monthly
-      }
-    };
-  }
-
-  return {
-    type: 'split',
-    monthName,
-    wifi: {
-      total: stats.wifi.total,
-      monthly: stats.wifi.monthly
-    },
-    cellular: {
-      total: stats.cellular.total,
-      monthly: stats.cellular.monthly
-    }
-  };
+  if (!p.supportsNetControl) return { type: 'general', monthName: getCurrentMonthName(), general: s.general };
+  return { type: 'split', monthName: getCurrentMonthName(), wifi: s.wifi, cellular: s.cellular };
 }
 
-/**
- * Очистить всю статистику трафика.
- */
-function clearTrafficStats() {
-  _saveTrafficStats(_defaultTrafficStats());
-}
-
-/* ═══════ Fetch interceptor ═══════ */
-
-let _originalFetch = null;
-let _interceptorInstalled = false;
-
-/**
- * Установить перехватчик fetch для:
- * 1. Блокировки запросов при "авиарежиме"
- * 2. Подсчёта трафика
- */
-function installFetchInterceptor() {
-  if (_interceptorInstalled) return;
-  _interceptorInstalled = true;
-
-  _originalFetch = window.fetch.bind(window);
-
-  window.fetch = async function(input, init) {
-    // Проверка: разрешена ли сеть?
-    if (!isNetworkAllowed()) {
-      // Авиарежим или тип сети запрещён — блокируем
-      return Promise.reject(new TypeError('Network request blocked by app policy'));
-    }
-
-    // Фиксируем тип сети на момент начала запроса
-    const category = getNetworkCategory();
-
-    try {
-      const response = await _originalFetch(input, init);
-
-      // Подсчёт трафика
-      _countResponseTraffic(response, category);
-
-      return response;
-    } catch (err) {
-      throw err;
-    }
-  };
-}
-
-/**
- * Подсчитать размер ответа и записать в статистику.
- */
-function _countResponseTraffic(response, category) {
-  // Пытаемся использовать Content-Length
-  const cl = response.headers.get('content-length');
-  if (cl) {
-    const bytes = parseInt(cl, 10);
-    if (bytes > 0) {
-      recordTraffic(bytes, category);
-      return;
-    }
-  }
-
-  // Если Content-Length нет — клонируем и считаем через blob
-  // Делаем это асинхронно, чтобы не блокировать основной поток
-  try {
-    const clone = response.clone();
-    clone.blob().then(blob => {
-      if (blob.size > 0) {
-        recordTraffic(blob.size, category);
-      }
-    }).catch(() => { /* ignore */ });
-  } catch {
-    /* ignore */
-  }
-}
-
-/* ═══════ Event emission ═══════ */
-
-let _lastToastState = null;
-
-function _emitPolicyChanged() {
-  window.dispatchEvent(new CustomEvent('netPolicy:changed', {
-    detail: getNetPolicyState()
-  }));
-
-  // Показать toast при смене состояния (один раз)
-  const status = getStatusText();
-  if (status && status !== _lastToastState) {
-    _lastToastState = status;
-    window.NotificationSystem?.info?.(status);
-  } else if (!status) {
-    _lastToastState = null;
-  }
-}
-
-/* ═══════ Network change listener ═══════ */
-
-let _networkListenerInstalled = false;
-
-function installNetworkListener() {
-  if (_networkListenerInstalled) return;
-  _networkListenerInstalled = true;
-
-  const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-  if (conn && conn.addEventListener) {
-    conn.addEventListener('change', () => {
-      _emitPolicyChanged();
-    });
-  }
-
-  window.addEventListener('online', () => {
-    _lastToastState = null; // Сбросить для нового toast при смене
-    _emitPolicyChanged();
-  });
-
-  window.addEventListener('offline', () => {
-    _emitPolicyChanged();
-  });
-}
+export function clearTrafficStats() { localStorage.removeItem(LS_TRAFFIC); }
 
 /* ═══════ Initialization ═══════ */
 
-function initNetPolicy() {
-  installFetchInterceptor();
-  installNetworkListener();
-}
+export function initNetPolicy() {
+  if (_interceptorInstalled) return;
+  _interceptorInstalled = true;
 
-/* ═══════ Legacy compatibility ═══════ */
-
-/**
- * Совместимость с существующими вызовами getNetPolicy() в offline-manager.js
- */
-function getNetPolicy() {
-  const state = getNetPolicyState();
-  return {
-    wifiOnly: !state.cellularEnabled,
-    allowMobile: state.cellularEnabled,
-    confirmOnMobile: false,
-    saveDataBlock: false
+  _originalFetch = window.fetch;
+  window.fetch = async (input, init) => {
+    if (!isNetworkAllowed()) return Promise.reject(new TypeError('Network blocked by NetPolicy'));
+    try {
+      const res = await _originalFetch(input, init);
+      try {
+        const clone = res.clone();
+        const len = clone.headers.get('content-length');
+        if (len) recordTraffic(parseInt(len, 10));
+        else clone.blob().then(b => recordTraffic(b.size)).catch(()=>{});
+      } catch {}
+      return res;
+    } catch (e) { throw e; }
   };
-}
 
-function setNetPolicy(next) {
-  if (next.wifiOnly !== undefined) {
-    _lsSet(LS_CELLULAR, next.wifiOnly ? 'off' : 'on');
+  if (!_networkListenerInstalled) {
+    _networkListenerInstalled = true;
+    const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (c) c.addEventListener('change', _emitChange);
+    window.addEventListener('online', _emitChange);
+    window.addEventListener('offline', _emitChange);
   }
-  if (next.allowMobile !== undefined) {
-    _lsSet(LS_CELLULAR, next.allowMobile ? 'on' : 'off');
-  }
-  _emitPolicyChanged();
-  return getNetPolicy();
 }
 
-/**
- * Совместимость с isAllowedByNetPolicy(params)
- */
-function isAllowedByNetPolicy(params = {}) {
-  return isNetworkAllowed();
-}
-
-/* ═══════ Exports ═══════ */
-
-export {
-  // New API (v2.0)
-  initNetPolicy,
-  getPlatform,
-  detectNetworkType,
-  getNetworkCategory,
-  getNetworkSpeed,
-  getNetworkLabel,
-  getNetPolicyState,
-  toggleWifi,
-  toggleCellular,
-  toggleCellularToast,
-  toggleKillSwitch,
-  isNetworkAllowed,
-  shouldShowCellularToast,
-  getStatusText,
-  recordTraffic,
-  getTrafficStats,
-  clearTrafficStats,
-  getCurrentMonthName,
-  installFetchInterceptor,
-
-  // Legacy compatibility
-  getNetPolicy,
-  setNetPolicy,
-  isAllowedByNetPolicy
-};
-
-export default {
-  initNetPolicy,
-  getPlatform,
-  getNetPolicyState,
-  isNetworkAllowed,
-  shouldShowCellularToast,
-  getStatusText,
-  getTrafficStats,
-  clearTrafficStats,
-  toggleWifi,
-  toggleCellular,
-  toggleCellularToast,
-  toggleKillSwitch,
-  getNetworkSpeed,
-  getNetworkLabel,
-  getCurrentMonthName
-};
+export default { initNetPolicy, isNetworkAllowed, shouldShowCellularToast, getStatusText, getCurrentMonthName };
 
 //=================================================
 // FILE: /scripts/offline/offline-manager.js
