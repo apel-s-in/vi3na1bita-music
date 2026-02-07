@@ -1,26 +1,23 @@
 /**
- * offline-manager.js — Центральный модуль офлайн-кэша (v1.0 Final Specification)
+ * offline-manager.js — Центральный модуль офлайн-кэша (v1.0 Verified)
  * 
- * Реализует Часть 15.2 ТЗ (API Contract):
- * - togglePinned, getTrackOfflineState, openCloudMenu
- * - enqueue, pauseQueue, resumeQueue
- * - computeSizeEstimate, startFullOffline (stub)
- * 
- * А также:
- * - Единое качество (qualityMode)
- * - Приоритеты P0-P5
- * - Сетевую политику
+ * Строгое соответствие ТЗ:
+ * - Единое качество (qualityMode) (ТЗ 1.2)
+ * - Приоритеты P0-P5 (ТЗ 10.2)
+ * - Сетевая политика (ТЗ Часть 9 спец. документа)
+ * - No duplicates rule (ТЗ 1.7) - двухфазная замена
+ * - API Contract 15.2
  */
 
 import {
   openDB,
-  setAudioBlob, getAudioBlob, deleteAudio,
+  setAudioBlob, getAudioBlob, deleteAudio, deleteAudioVariant,
   setTrackMeta, getTrackMeta, updateTrackMeta, deleteTrackMeta,
   getAllTrackMetas, hasAudioForUid, estimateUsage,
-  deleteTrackCache // Вспомогательный метод удаления всего кэша трека
+  deleteTrackCache
 } from './cache-db.js';
 
-/* --- CONSTANTS & CONFIG --- */
+/* --- CONSTANTS --- */
 const STORAGE_KEYS = {
   QUALITY: 'qualityMode:v1',
   MODE: 'offline:mode:v1',
@@ -51,7 +48,6 @@ const emit = (name, detail = {}) => window.dispatchEvent(new CustomEvent(name, {
 const normQ = (v) => (String(v || '').toLowerCase() === 'lo' ? 'lo' : 'hi');
 const toast = (msg) => window.NotificationSystem?.info?.(msg);
 const toastWarn = (msg) => window.NotificationSystem?.warning?.(msg);
-const confirmDialog = (msg) => confirm(msg); // Можно заменить на кастомный UI
 
 function getTrackUrl(uid, quality) {
   const t = window.TrackRegistry?.getTrackByUid?.(uid);
@@ -59,26 +55,24 @@ function getTrackUrl(uid, quality) {
   return normQ(quality) === 'lo' ? (t.audio_low || t.audio || t.src) : (t.audio || t.src);
 }
 
-/* --- DOWNLOAD QUEUE (Часть 10) --- */
+/* --- DOWNLOAD QUEUE (ТЗ Часть 10) --- */
 class DownloadQueue {
   constructor() {
-    this._queue = []; // Array of { uid, url, quality, kind, priority, retries }
-    this._active = new Map(); // uid -> { ctrl, item }
+    this._queue = []; 
+    this._active = new Map(); 
     this._paused = false;
-    this._maxParallel = 1; // Default 1 for iOS safety
+    this._maxParallel = 1; // ТЗ 8.11: Default 1 (iOS safe)
   }
 
-  // API 15.2: enqueue
   enqueue(task) {
     const { uid, url, quality, kind = 'cloud', priority = 0 } = task;
     if (!uid || !url) return;
 
-    // Дедупликация: если уже качается или в очереди
     if (this._active.has(uid)) return;
-    const existingIdx = this._queue.findIndex(i => i.uid === uid);
     
+    // Дедупликация в очереди
+    const existingIdx = this._queue.findIndex(i => i.uid === uid);
     if (existingIdx !== -1) {
-      // Если задача уже есть, но новый приоритет выше - обновляем
       if (priority > this._queue[existingIdx].priority) {
         this._queue[existingIdx].priority = priority;
         this._sort();
@@ -93,16 +87,8 @@ class DownloadQueue {
     this._process();
   }
 
-  // API 15.2: pauseQueue / resumeQueue
-  pause() { 
-    this._paused = true; 
-    // Мы не прерываем активные, просто не берем новые
-  }
-  
-  resume() { 
-    this._paused = false; 
-    this._process(); 
-  }
+  pause() { this._paused = true; }
+  resume() { this._paused = false; this._process(); }
 
   cancel(uid) {
     this._queue = this._queue.filter(i => i.uid !== uid);
@@ -114,32 +100,19 @@ class DownloadQueue {
     }
   }
 
-  cancelAllByKind(kind) {
-    // Удаляем из очереди
-    this._queue = this._queue.filter(i => i.kind !== kind);
-    // Прерываем активные
-    for (const [uid, task] of this._active.entries()) {
-      if (task.item.kind === kind) {
-        task.ctrl.abort();
-        this._active.delete(uid);
-      }
-    }
-    this._process();
-  }
-
   getStatus() {
-    return { 
-      active: this._active.size, 
-      queued: this._queue.length,
-      isPaused: this._paused
-    };
+    return { active: this._active.size, queued: this._queue.length, isPaused: this._paused };
   }
   
   isDownloading(uid) { return this._active.has(uid); }
 
-  /* Internals */
+  clear() {
+    this._active.forEach(v => v.ctrl.abort());
+    this._active.clear();
+    this._queue = [];
+  }
+
   _sort() {
-    // Сортировка: Сначала приоритет (desc), потом время добавления (asc)
     this._queue.sort((a, b) => {
       if (b.priority !== a.priority) return b.priority - a.priority;
       return a.addedAt - b.addedAt;
@@ -151,11 +124,8 @@ class DownloadQueue {
     if (this._active.size >= this._maxParallel) return;
     if (this._queue.length === 0) return;
 
-    // Проверка Сетевой Политики (Часть 9.1 Спец. Сети)
-    if (window.NetPolicy && !window.NetPolicy.isNetworkAllowed()) {
-      // Не удаляем задачи, просто ждем
-      return; 
-    }
+    // ТЗ Часть 9 (Спец. Сети): проверка NetPolicy перед стартом
+    if (window.NetPolicy && !window.NetPolicy.isNetworkAllowed()) return;
 
     const item = this._queue.shift();
     this._start(item);
@@ -172,33 +142,31 @@ class DownloadQueue {
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const blob = await resp.blob();
 
-      // Проверка места перед сохранением (Часть 8.12)
+      // ТЗ 8.12: Мягкая проверка места перед сохранением
       if (window.OfflineManager && !(await window.OfflineManager.hasSpace())) {
           throw new Error('DiskFull');
       }
 
-      // 2. Save (Two-phase replacement)
-      // Сначала сохраняем новое
+      // 2. Save (ТЗ 1.7 - Two-phase replacement)
       await setAudioBlob(item.uid, item.quality, blob);
       
-      // Удаляем противоположное качество (No duplicates rule 1.7)
+      // Удаляем ТОЛЬКО противоположное качество (No duplicates rule)
+      // ВАЖНО: Используем deleteAudioVariant, а не deleteAudio(uid)
       const otherQ = item.quality === 'hi' ? 'lo' : 'hi';
-      await deleteAudio(item.uid, otherQ).catch(() => {});
+      await deleteAudioVariant(item.uid, otherQ).catch(() => {});
 
       // 3. Update Meta
       await updateTrackMeta(item.uid, {
         quality: item.quality,
         size: blob.size,
-        needsReCache: false, // Флаг сбрасывается
+        needsReCache: false,
         url: item.url
       });
 
-      // Success
       this._active.delete(item.uid);
       emit('offline:trackCached', { uid: item.uid });
-      emit('offline:stateChanged'); // Обновить индикаторы
+      emit('offline:stateChanged');
       
-      // Next
       this._process();
 
     } catch (e) {
@@ -207,15 +175,14 @@ class DownloadQueue {
 
       console.warn(`[DownloadQueue] Failed ${item.uid}: ${e.message}`);
       
-      // Retry Logic with Backoff (Часть 10.3)
+      // ТЗ 10.3: Retry with backoff
       if (e.message !== 'DiskFull' && item.retries < 3) {
         item.retries++;
-        // Возвращаем в очередь с задержкой (реализовано через setTimeout перед push)
         setTimeout(() => {
             this._queue.push(item);
             this._sort();
             this._process();
-        }, 1000 * Math.pow(2, item.retries)); // 2s, 4s, 8s
+        }, 1000 * Math.pow(2, item.retries));
       } else {
         if (e.message === 'DiskFull') toastWarn('Мало места, загрузка приостановлена');
         emit('offline:downloadFailed', { uid: item.uid, error: e.message });
@@ -239,9 +206,8 @@ class OfflineManager {
     if (this._ready) return;
     await openDB();
     await this._checkSpace();
-    await this._cleanExpired(); // Удаление протухших (Часть 6.7)
+    await this._cleanExpired(); // ТЗ 6.7: Очистка протухших Cloud при старте
     
-    // Listeners
     if (window.NetPolicy) {
         window.addEventListener('netPolicy:changed', () => this.queue.resume());
     }
@@ -251,25 +217,21 @@ class OfflineManager {
     emit('offline:ready');
   }
 
-  /* --- API 15.2 Implementations --- */
+  /* --- API 15.2 (UI Contracts) --- */
 
-  // 1. Получить состояние для UI (Замочек/Облачко)
   async getTrackOfflineState(uid) {
     if (!this._ready) return { status: 'none', clickable: false };
     
     const meta = await getTrackMeta(uid);
     const q = this.getQuality();
-    // Файл считается "готовым", если он есть физически
     const hasBlob = await hasAudioForUid(uid);
     
-    let status = 'none'; // 'pinned', 'cloud', 'cloud_loading', 'transient', 'none'
+    let status = 'none';
     
     if (meta?.type === 'pinned') {
-        // Pinned: Желтый, если скачан. Желтый мигающий (loading), если в процессе.
-        // Но индикатор один. В UI мы вернем 'pinned'. Downloading проверим отдельно.
         status = 'pinned';
     } else if (meta?.type === 'cloud') {
-        // Cloud: Голубой ТОЛЬКО если 100% скачан (ТЗ 5.4). Иначе серый (cloud_loading).
+        // ТЗ 5.4: Облачко только если 100% скачан
         status = hasBlob ? 'cloud' : 'cloud_loading';
     } else if (meta?.type === 'playbackCache') {
         status = 'transient';
@@ -278,20 +240,20 @@ class OfflineManager {
     const needsReCache = meta?.needsReCache || (hasBlob && meta?.quality !== q);
 
     return {
-        status, // Для иконки
+        status,
         downloading: this.queue.isDownloading(uid),
         cachedComplete: hasBlob,
         needsReCache,
         cloudExpiresAt: meta?.cloudExpiresAt,
-        quality: meta?.quality
+        quality: meta?.quality,
+        daysLeft: meta?.cloudExpiresAt ? Math.ceil((meta.cloudExpiresAt - Date.now())/DAY_MS) : 0
     };
   }
 
-  // 2. Переключить Pinned
   async togglePinned(uid) {
     if (!this._ready) return;
     
-    // Проверка места (ТЗ 5.2)
+    // ТЗ 5.2: Проверка места
     if (!(await this.hasSpace())) {
         toastWarn('Недостаточно места на устройстве');
         return;
@@ -312,15 +274,14 @@ class OfflineManager {
         });
         toast(`Офлайн-закрепление снято. Доступен как облачный кэш на ${D} дней.`);
     } else {
-        // Pin (New or Cloud->Pin) (ТЗ 5.5)
+        // Pin (ТЗ 5.5)
         await updateTrackMeta(uid, {
             type: 'pinned',
             pinnedAt: Date.now(),
             quality: q,
-            cloudExpiresAt: null // У pinned нет TTL
+            cloudExpiresAt: null
         });
 
-        // Если файла нет или он не того качества - качаем
         const blob = await getAudioBlob(uid, q);
         if (!blob) {
             const url = getTrackUrl(uid, q);
@@ -335,31 +296,25 @@ class OfflineManager {
     emit('offline:stateChanged');
   }
 
-  // 3. Cloud Menu Helper (для UI)
   async removeCached(uid) {
-    // ТЗ 6.6: Удалить, сбросить cloud stats, global stats не трогать
+    // ТЗ 6.6: Удалить аудио, сбросить cloud stats, global stats не трогать
     await deleteAudio(uid);
-    const meta = await getTrackMeta(uid);
-    if (meta) {
-        await updateTrackMeta(uid, {
-            type: 'none',
-            quality: null,
-            size: 0,
-            cloudFullListenCount: 0,
-            lastFullListenAt: null,
-            cloudAddedAt: null,
-            cloudExpiresAt: null,
-            pinnedAt: null,
-            needsReCache: false
-        });
-    }
+    await updateTrackMeta(uid, {
+        type: 'none',
+        quality: null,
+        size: 0,
+        cloudFullListenCount: 0,
+        lastFullListenAt: null,
+        cloudAddedAt: null,
+        cloudExpiresAt: null,
+        pinnedAt: null,
+        needsReCache: false
+    });
     this.queue.cancel(uid);
     emit('offline:stateChanged');
   }
 
-  // 4. Оценка размера (для R3 или модалки)
   async computeSizeEstimate(uids = []) {
-      // Stub для API 15.2. Реально можно посчитать size из конфига.
       let totalMB = 0;
       uids.forEach(uid => {
           const t = window.TrackRegistry?.getTrackByUid?.(uid);
@@ -368,17 +323,11 @@ class OfflineManager {
       return totalMB;
   }
 
-  // 5. Start/Stop Full Offline (R3 Stub - ТЗ 1.5)
-  startFullOffline() { /* Placeholder for R3 */ }
-  stopFullOffline() { /* Placeholder for R3 */ }
-
-
   /* --- LOGIC CORE --- */
 
   // ТЗ 6.4: Автоматическое появление облачка
   async registerFullListen(uid, { duration, position }) {
       if (!uid || !duration) return;
-      // Сначала сбрасываем накопленные секунды
       await this.flushTicks(uid);
 
       if ((position / duration) < 0.9) return; // < 90%
@@ -387,18 +336,19 @@ class OfflineManager {
       const { N, D } = this.getCloudSettings();
       const now = Date.now();
 
+      // ТЗ 9.1: Global vs Cloud stats
       const updates = {
-          globalFullListenCount: (meta.globalFullListenCount || 0) + 1, // Global +1
-          cloudFullListenCount: (meta.cloudFullListenCount || 0) + 1,   // Cloud +1
+          globalFullListenCount: (meta.globalFullListenCount || 0) + 1,
+          cloudFullListenCount: (meta.cloudFullListenCount || 0) + 1,
           lastFullListenAt: now
       };
 
-      // Продление TTL (ТЗ 6.7)
+      // ТЗ 6.7: Продление TTL
       if (meta.type === 'cloud') {
           updates.cloudExpiresAt = now + (D * DAY_MS);
       }
 
-      // Превращение в Cloud (ТЗ 6.4)
+      // ТЗ 6.4: Превращение в Cloud
       if (meta.type !== 'pinned' && meta.type !== 'cloud' && updates.cloudFullListenCount >= N) {
           if (await this.hasSpace()) {
               updates.type = 'cloud';
@@ -423,7 +373,7 @@ class OfflineManager {
   async recordTickStats(uid, { deltaSec = 1 } = {}) {
       if (!this._tickBatch[uid]) this._tickBatch[uid] = 0;
       this._tickBatch[uid] += deltaSec;
-      if (this._tickBatch[uid] >= 30) await this.flushTicks(uid); // Batch save
+      if (this._tickBatch[uid] >= 30) await this.flushTicks(uid);
   }
 
   async flushTicks(uid) {
@@ -436,7 +386,7 @@ class OfflineManager {
       });
   }
 
-  /* --- SETTINGS & GETTERS --- */
+  /* --- SETTINGS --- */
 
   getMode() { return localStorage.getItem(STORAGE_KEYS.MODE) || 'R0'; }
   async setMode(m) {
@@ -461,7 +411,6 @@ class OfflineManager {
       };
   }
 
-  // Применение настроек из Modal (ТЗ 6.8 - Пересчет)
   async confirmApplyCloudSettings({ newN, newD }) {
       localStorage.setItem(STORAGE_KEYS.CLOUD_N, newN);
       localStorage.setItem(STORAGE_KEYS.CLOUD_D, newD);
@@ -471,13 +420,11 @@ class OfflineManager {
       let removedCount = 0;
 
       for (const m of metas) {
-          // 1. Check N increased -> remove cloud status?
           if (m.type === 'cloud' && m.cloudFullListenCount < newN) {
               await this.removeCached(m.uid);
               removedCount++;
               continue;
           }
-          // 2. Recalculate D
           if (m.type === 'cloud' && m.lastFullListenAt) {
               const newExpire = m.lastFullListenAt + (newD * DAY_MS);
               if (newExpire < now) {
@@ -492,7 +439,7 @@ class OfflineManager {
       else toast('Настройки облака обновлены');
   }
 
-  /* --- STORAGE --- */
+  /* --- STORAGE HELPERS --- */
   
   async hasSpace() {
       try {
@@ -501,8 +448,8 @@ class OfflineManager {
           return this._spaceOk;
       } catch { return true; }
   }
+  isSpaceOk() { return this._spaceOk; }
 
-  // Для UI Modal (Breakdown)
   async getStorageUsage() {
       const metas = await getAllTrackMetas();
       const stats = {
@@ -528,8 +475,6 @@ class OfflineManager {
       toast('Все офлайн-треки удалены');
   }
 
-  /* --- INTERNAL EVENT HANDLERS --- */
-
   async _checkSpace() { await this.hasSpace(); }
   
   async _cleanExpired() {
@@ -542,20 +487,9 @@ class OfflineManager {
       }
   }
 
-  // ТЗ 4.3 + 4.4: Защита от "истерики" + Фоновая замена
+  // ТЗ 4.3 + 4.4: Смена качества (фоновая перекачка)
   async _onQualityChanged(newQ) {
       const q = normQ(newQ);
-      
-      // 1. Отмена загрузок "не того" качества
-      // Если мы качали Hi, а стали Lo -> отменяем Hi
-      const otherQ = q === 'hi' ? 'lo' : 'hi';
-      // В очереди у нас нет поля quality в явном виде для фильтрации, но мы можем проверить
-      // Проще: мы просто ставим новые задачи. Старые перезапишутся или отменятся по логике No Duplicates?
-      // Реализуем отмену по "mismatched quality"
-      // Для этого пройдемся по активным задачам
-      
-      // Но очередь у нас простая. Просто добавим новые задачи ре-кэша.
-      
       const metas = await getAllTrackMetas();
       let count = 0;
       
@@ -563,7 +497,7 @@ class OfflineManager {
           if ((m.type === 'pinned' || m.type === 'cloud') && m.quality !== q) {
               await updateTrackMeta(m.uid, { needsReCache: true });
               count++;
-              // Ставим в очередь (P2 или P3)
+              // Ставим в очередь на перекачку
               const url = getTrackUrl(m.uid, q);
               if (url) {
                   const prio = m.type === 'pinned' ? PRIORITY.P2_PINNED : PRIORITY.P3_UPDATES;
@@ -586,7 +520,6 @@ class OfflineManager {
       const otherQ = q === 'hi' ? 'lo' : 'hi';
       const otherBlob = await getAudioBlob(uid, otherQ);
       if (otherBlob) {
-          // Есть файл, но не того качества. Играем его, но помечаем needsReCache
           await updateTrackMeta(uid, { needsReCache: true });
           // Запускаем фоновую докачку правильного (P3)
           const url = getTrackUrl(uid, q);
@@ -600,7 +533,6 @@ class OfflineManager {
       return { source: 'stream', url, quality: q };
   }
 
-  // Helper for PlaybackCache (transient)
   async enqueueAudioDownload(uid, { priority, kind }) {
      if (!this._ready || !(await this.hasSpace())) return;
      const q = this.getQuality();
@@ -608,15 +540,16 @@ class OfflineManager {
      if (url) this.queue.enqueue({ uid, url, quality: q, kind, priority });
   }
   
-  // Helper for UI (Re-cache button)
   getCacheSummary() {
-      // Stub, UI calls getStorageUsage instead mostly.
-      // But for the confirmation dialog:
       return this.getStorageUsage();
   }
+  
+  // R3 Stub
+  startFullOffline() {}
+  stopFullOffline() {}
 }
 
 const instance = new OfflineManager();
-window.OfflineManager = instance; // Global access for debug/other modules
+window.OfflineManager = instance; 
 export function getOfflineManager() { return instance; }
 export default instance;
