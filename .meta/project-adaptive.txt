@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-883e1c05b9fe1b7bc09222dbf051c93b252279bf.idx
-│   │       ├── pack-883e1c05b9fe1b7bc09222dbf051c93b252279bf.pack
-│   │       └── pack-883e1c05b9fe1b7bc09222dbf051c93b252279bf.rev
+│   │       ├── pack-4d0c89354322b8c16cd73da871cea5d46978eb93.idx
+│   │       ├── pack-4d0c89354322b8c16cd73da871cea5d46978eb93.pack
+│   │       └── pack-4d0c89354322b8c16cd73da871cea5d46978eb93.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -386,7 +386,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 16:30:07 UTC
+Сгенерировано: 2026-02-07 16:30:54 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5796,7 +5796,7 @@ export function initOfflinePlayback() {
 
 async function _onOffline() {
   _active = true;
-  const mgr = window._offlineManagerInstance;
+  const mgr = window.OfflineManager;
   if (!mgr || mgr.getMode() !== 'R1') return;
 
   try {
