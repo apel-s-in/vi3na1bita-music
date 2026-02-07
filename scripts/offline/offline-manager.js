@@ -666,6 +666,16 @@ class OfflineManager {
      if (!hasRoom) return;
      const q = this.getQuality();
      const url = getTrackUrl(uid, q);
+
+     // ТЗ 8.x: transient окно в R1 хранится как playbackCache (отдельный слой),
+     // но не должно трогать pinned/cloud статусы.
+     if (kind === 'playbackCache') {
+       const meta = await getTrackMeta(uid);
+       if (!meta?.type) {
+         await updateTrackMeta(uid, { type: 'playbackCache', lastAccessedAt: Date.now() });
+       }
+     }
+
      if (url) this.queue.enqueue({ uid, url, quality: q, kind, priority });
   }
 }
