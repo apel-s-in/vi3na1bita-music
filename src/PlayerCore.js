@@ -214,36 +214,44 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       
       if (!opts.isAutoSkip) this._skipSession = { token, count: 0, max: this.playlist.length };
 
-      // Resolve URL through offline system
+      // Resolve URL (v2.0 Logic)
       const trackMeta = getTrackByUid(track.uid);
       const originalUrl = track.src || track.audio || trackMeta?.audio || null;
-      this.qualityMode = normQ(localStorage.getItem(LS_PQ));
-      const quality = this.qualityMode;
       
+      // Update quality from storage just in case
+      this.qualityMode = normQ(localStorage.getItem(LS_PQ));
+
       let res;
       try {
+        // Collect all potential sources
         const trackDataForResolve = {
           audio: trackMeta?.audio || track.src || track.audio || originalUrl,
           audio_low: trackMeta?.audio_low || track.audio_low || null,
           src: originalUrl
         };
+        
+        // Resolver handles Priorities: Local(Hi) > Local(Lo) > Stream(NetPolicy)
         const resolved = await resolveTrackUrl(track.uid, trackDataForResolve);
 
-        let url = resolved.url;
-
-        res = {
-          url,
-          isLocal: resolved.source === 'local',
-          effectiveQuality: resolved.quality === 'lo' ? 'lo' : 'hi',
-          _blobUrl: resolved._blobUrl || false
-        };
-        // Якорь B: если resolver вернул unavailable, но есть прямой URL — стримим
-        if (!res.url && originalUrl && navigator.onLine) {
-          res = { url: originalUrl, isLocal: false, effectiveQuality: quality, _blobUrl: false };
+        // Fallback Logic (Anchor B): If resolver failed (e.g. offline policy blocked, but we want to try direct?)
+        // No, if resolver says unavailable, we trust it (it checks NetPolicy).
+        // Exception: If we are in "unknown" state or resolver errored.
+        
+        if (resolved.url) {
+            res = {
+                url: resolved.url,
+                isLocal: resolved.source === 'local',
+                effectiveQuality: resolved.quality,
+                _blobUrl: resolved._blobUrl
+            };
+        } else {
+            // Last resort: if online, try original URL direct (bypass policies? No, adhere to policy)
+            // We return null URL to trigger skip logic below
+            res = { url: null, isLocal: false, _blobUrl: false };
         }
       } catch (e) {
-        console.warn('[PlayerCore] resolveTrackUrl error:', e);
-        res = { url: originalUrl, isLocal: false, effectiveQuality: quality, _blobUrl: false };
+        console.warn('[PlayerCore] resolve error:', e);
+        res = { url: null, isLocal: false, _blobUrl: false };
       }
       
       if (token !== this._loadToken) return;
