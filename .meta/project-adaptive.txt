@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f6d73e1cf603c642b49f01db739fc99632e252ee.idx
-│   │       ├── pack-f6d73e1cf603c642b49f01db739fc99632e252ee.pack
-│   │       └── pack-f6d73e1cf603c642b49f01db739fc99632e252ee.rev
+│   │       ├── pack-ea82ab2849628178731f9afa8cdf132bdeb088b7.idx
+│   │       ├── pack-ea82ab2849628178731f9afa8cdf132bdeb088b7.pack
+│   │       └── pack-ea82ab2849628178731f9afa8cdf132bdeb088b7.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -346,8 +346,7 @@ vi3na1bita-music/
 │   ├── offline/
 │   │   ├── cache-db.js
 │   │   ├── net-policy.js
-│   │   ├── offline-manager.js
-│   │   └── track-resolver.js
+│   │   └── offline-manager.js
 │   ├── stats/
 │   │   └── global-stats.js
 │   ├── ui/
@@ -383,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 13:00:26 UTC
+Сгенерировано: 2026-02-07 13:00:40 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5490,62 +5489,6 @@ const instance = new OfflineManager();
 window.OfflineManager = instance; 
 export function getOfflineManager() { return instance; }
 export default instance;
-
-//=================================================
-// FILE: /scripts/offline/track-resolver.js
-// scripts/offline/track-resolver.js
-// Track Resolver v2.0: Priority Logic (Hi -> Lo -> Stream)
-
-import offlineManager from './offline-manager.js';
-
-export async function resolveTrackUrl(uid, trackData) {
-  // Normalize input
-  if (typeof trackData === 'string') trackData = { audio: trackData, src: trackData };
-  if (!trackData) trackData = {};
-
-  // 1. Ask OfflineManager to resolve source (Logic inside OM handles: Hi Blob -> Lo Blob)
-  const result = await offlineManager.resolveTrackSource(uid, trackData);
-
-  // 2. Handle Local Blob
-  if (result.source === 'local' && result.blob) {
-    const objectUrl = URL.createObjectURL(result.blob);
-    return {
-      url: objectUrl,
-      source: 'local',
-      quality: result.quality,
-      needsReCache: result.needsReCache,
-      _blobUrl: true // Flag to revoke later
-    };
-  }
-
-  // 3. Handle Stream
-  if (result.source === 'stream' && result.url) {
-    return {
-      url: result.url,
-      source: 'stream',
-      quality: result.quality,
-      needsReCache: false,
-      _blobUrl: false
-    };
-  }
-
-  // 4. Unavailable
-  return {
-    url: null,
-    source: 'unavailable',
-    quality: null,
-    needsReCache: false,
-    _blobUrl: false
-  };
-}
-
-export function revokeTrackUrl(resolved) {
-  if (resolved && resolved._blobUrl && resolved.url) {
-    try { URL.revokeObjectURL(resolved.url); } catch {}
-  }
-}
-
-export default { resolveTrackUrl, revokeTrackUrl };
 
 //=================================================
 // FILE: /scripts/stats/global-stats.js
