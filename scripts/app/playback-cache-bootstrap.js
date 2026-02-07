@@ -116,10 +116,12 @@ async function _executePendingGC() {
   const toDelete = _pendingGC.filter(uid => !keep.has(uid));
   _pendingGC = [];
 
+  const delSet = new Set(toDelete);
+
   try {
     const metas = await getAllTrackMetas();
     for (const m of metas) {
-      if (m.type === 'playbackCache' && toDelete.includes(m.uid)) {
+      if (m.type === 'playbackCache' && delSet.has(m.uid)) {
         await deleteTrackCache(m.uid);
       }
     }
