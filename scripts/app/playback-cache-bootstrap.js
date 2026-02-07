@@ -45,11 +45,11 @@ async function _updateWindow(dir = 1) {
 
   // R0: clean all transient
   if (mode !== 'R1') {
-    // ТЗ 3.2: удаление transient отложенно (после смены трека/старта нового CUR)
+    // ТЗ 3.2: удаление transient строго отложенно (до смены трека/старта нового CUR)
     if (_currentWindow.size) {
       _pendingGC.push(..._currentWindow);
       _currentWindow.clear();
-      _executePendingGC();
+      // НЕ вызываем _executePendingGC() здесь
     }
     return;
   }
