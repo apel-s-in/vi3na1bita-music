@@ -72,6 +72,22 @@ export async function initOfflineUI() {
     console.warn('[OfflineUI] PlaybackCache init failed:', e);
   }
 
+  /* 6. Offline Playback — skip при потере сети (#19.1-19.3) */
+  try {
+    const { initOfflinePlayback } = await import('../offline/offline-playback.js');
+    initOfflinePlayback();
+  } catch (e) {
+    console.warn('[OfflineUI] OfflinePlayback init failed:', e);
+  }
+
+  /* 7. Update Checker — детекция обновлений config.json (#1.9, #21.1) */
+  try {
+    const { initUpdateChecker } = await import('../offline/update-checker.js');
+    initUpdateChecker();
+  } catch (e) {
+    console.warn('[OfflineUI] UpdateChecker init failed:', e);
+  }
+
   console.log('[OfflineUI] All components initialized');
 }
 
