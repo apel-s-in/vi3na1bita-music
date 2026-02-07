@@ -132,6 +132,15 @@ function render() {
   const close = () => { overlay.remove(); _modal = null; };
   overlay.addEventListener('click', e => { if(e.target === overlay) close(); });
   modal.querySelector('.offline-modal__close').addEventListener('click', close);
+  
+  // Re-cache Action (Audit #11 Fix)
+  modal.querySelector('#btn-recache').onclick = () => {
+      // Trigger update/recache for all files needing it
+      om._onQualityChanged(q); // Force re-check
+      // Boost parallel
+      om.queue.setParallel(3);
+      alert('Запущена проверка и перекэширование файлов');
+  };
 
   // Net Policy Handlers
   if(plat.supportsNetControl) {
@@ -143,20 +152,25 @@ function render() {
   }
   modal.querySelector('#btn-clear-traffic').onclick = () => { Net.clearTrafficStats(); close(); openOfflineModal(); };
 
-  // Quality Toggle (Confirm logic handled in PlayerUI/OfflineManager, here just trigger)
-  modal.querySelector('#om-qual-toggle').onclick = (e) => {
+  // Quality Toggle (Audit #8 Fix: Confirm)
+  modal.querySelector('#om-qual-toggle').onclick = async (e) => {
       const t = e.target;
       if (!t.dataset.val) return;
       if (t.dataset.val !== q) {
-          // ТЗ 4.3: Если файлов > 5 -> Confirm. 
-          // Проверяем количество через OfflineManager
-          // Но пока просто переключаем, а PlayerUI поймает событие и покажет confirm?
-          // Нет, логика confirm должна быть здесь.
-          // Упростим: просто меняем, OfflineManager пометит needsReCache.
-          // Пользователь нажмет "Re-cache" если надо.
-          om.setCacheQualitySetting(t.dataset.val); // Это вызовет quality:changed и update UI
-          window.playerCore?.switchQuality(t.dataset.val); // Hot swap
-          close(); openOfflineModal();
+          const stats = await om.getStorageUsage();
+          const count = stats.pinned.count + stats.cloud.count;
+          
+          const doSwitch = () => {
+             om.setCacheQualitySetting(t.dataset.val);
+             window.playerCore?.switchQuality(t.dataset.val);
+             close(); openOfflineModal();
+          };
+
+          if (count > 5) {
+              if (confirm(`Смена качества затронет ${count} файлов. Перекачать?`)) doSwitch();
+          } else {
+              doSwitch();
+          }
       }
   };
 
@@ -176,12 +190,14 @@ function render() {
       close();
   };
 
-  // Delete Actions
+  // Delete Actions (Audit #6 Fix: Double Confirm)
   modal.querySelector('#btn-del-all').onclick = () => {
-      if(confirm('Удалить все офлайн-треки?')) { om.removeAllCached(); close(); }
-  };
-  modal.querySelector('#btn-nuke').onclick = () => {
-      if(confirm('Очистить ВЕСЬ кэш?')) { om.queue.clear(); indexedDB.deleteDatabase('offlineCache'); window.location.reload(); }
+      if(confirm('Удалить все офлайн-треки? Статистика облачков будет сброшена.')) { 
+          if (confirm('Вы уверены? Это действие нельзя отменить.')) {
+              om.removeAllCached(); 
+              close();
+          }
+      }
   };
 
   // Storage Update
