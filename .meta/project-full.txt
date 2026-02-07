@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9fc61840ce9590635e06511f49b5c773ef1523b8.idx
-│   │       ├── pack-9fc61840ce9590635e06511f49b5c773ef1523b8.pack
-│   │       └── pack-9fc61840ce9590635e06511f49b5c773ef1523b8.rev
+│   │       ├── pack-09943cb85a6c30c28722690cfbb7a97684673316.idx
+│   │       ├── pack-09943cb85a6c30c28722690cfbb7a97684673316.pack
+│   │       └── pack-09943cb85a6c30c28722690cfbb7a97684673316.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -347,7 +347,8 @@ vi3na1bita-music/
 │   │   ├── cache-db.js
 │   │   ├── download-queue.js
 │   │   ├── net-policy.js
-│   │   └── offline-manager.js
+│   │   ├── offline-manager.js
+│   │   └── track-resolver.js
 │   ├── stats/
 │   │   └── global-stats.js
 │   ├── ui/
@@ -383,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 16:15:48 UTC
+Сгенерировано: 2026-02-07 16:16:23 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5902,6 +5903,61 @@ const instance = new OfflineManager();
 window.OfflineManager = instance; 
 export function getOfflineManager() { return instance; }
 export default instance;
+
+//=================================================
+// FILE: /scripts/offline/track-resolver.js
+/**
+ * track-resolver.js — Fix #1.7/#2.3/#16.1
+ * Тонкая прослойка: PlayerCore → TrackResolver → OfflineManager
+ * PlayerCore не знает об OfflineManager напрямую.
+ */
+
+let _mgr = null;
+
+export function initTrackResolver(offlineManager) {
+  _mgr = offlineManager;
+  window.TrackResolver = { resolve };
+}
+
+/**
+ * @returns {{ source, url, blob, quality, localKind }}
+ *   localKind: 'pinned' | 'cloud' | 'transient' | 'none'
+ */
+export async function resolve(uid, quality) {
+  if (!_mgr) {
+    return { source: 'stream', url: null, blob: null, quality, localKind: 'none' };
+  }
+
+  try {
+    const resolved = await _mgr.resolveTrackSource(uid, quality);
+
+    let localKind = 'none';
+    if (resolved.source === 'local' || resolved.source === 'cache') {
+      try {
+        const meta = await _mgr.getTrackMeta(uid);
+        if (meta) {
+          localKind = meta.type === 'pinned' ? 'pinned'
+            : meta.type === 'cloud' ? 'cloud'
+            : meta.type === 'playbackCache' ? 'transient'
+            : 'none';
+        }
+      } catch {}
+    }
+
+    return {
+      source: resolved.source || 'stream',
+      url: resolved.url || null,
+      blob: resolved.blob || null,
+      quality: resolved.quality || quality,
+      localKind
+    };
+  } catch (e) {
+    console.warn('[TrackResolver] resolve failed:', e);
+    return { source: 'stream', url: null, blob: null, quality, localKind: 'none' };
+  }
+}
+
+export default { initTrackResolver, resolve };
 
 //=================================================
 // FILE: /scripts/stats/global-stats.js
