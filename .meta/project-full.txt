@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-61a7e5973eceb23e2072c7b4e8cd620d5b5743c9.idx
-│   │       ├── pack-61a7e5973eceb23e2072c7b4e8cd620d5b5743c9.pack
-│   │       └── pack-61a7e5973eceb23e2072c7b4e8cd620d5b5743c9.rev
+│   │       ├── pack-0e72710c9a9aa3e5f172d2615826ef4479a2317f.idx
+│   │       ├── pack-0e72710c9a9aa3e5f172d2615826ef4479a2317f.pack
+│   │       └── pack-0e72710c9a9aa3e5f172d2615826ef4479a2317f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 15:57:45 UTC
+Сгенерировано: 2026-02-07 16:01:53 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7218,13 +7218,24 @@ function render() {
   modal.querySelector('.offline-modal__close').addEventListener('click', close);
   
   // Re-cache Action (Audit #11 Fix)
-  modal.querySelector('#btn-recache').onclick = () => {
-      // Trigger update/recache for all files needing it
-      om._onQualityChanged(q); // Force re-check
-      // Boost parallel
-      om.queue.setParallel(3);
-      alert('Запущена проверка и перекэширование файлов');
-  };
+    const recacheBtn = modal.querySelector('#btn-recache');
+    if (recacheBtn) {
+      recacheBtn.onclick = async () => {
+        // Fix #5.3: Proper re-cache — find files with wrong quality and re-download
+        const targetQ = om.getQuality();
+        const count = await om.countNeedsReCache(targetQ);
+        if (count === 0) {
+          (window.NotificationSystem?.info || window.toast)?.('Все файлы уже в правильном качестве.');
+          return;
+        }
+        // Trigger re-cache for files with mismatched quality
+        await om.reCacheAll(targetQ);
+        (window.NotificationSystem?.info || window.toast)?.(
+          `Перекэширование: 0/${count} файлов`,
+          { duration: 4000 }
+        );
+      };
+    }
 
   // Net Policy Handlers
   if(plat.supportsNetControl) {
@@ -7245,8 +7256,15 @@ function render() {
           const count = stats.pinned.count + stats.cloud.count;
           
           const doSwitch = () => {
-             om.setCacheQualitySetting(t.dataset.val);
-             window.playerCore?.switchQuality(t.dataset.val);
+        // Fix #2.1/#5.2: Single emit point — switchQuality handles save + emit + hot swap
+        // setCacheQualitySetting only saves to LS without emitting (see offline-manager fix)
+        om.setCacheQualitySetting(t.dataset.val);
+        if (window.playerCore?.switchQuality) {
+          window.playerCore.switchQuality(t.dataset.val);
+        } else {
+          // Fallback: emit manually if PlayerCore not available
+          window.dispatchEvent(new CustomEvent('quality:changed', { detail: { quality: t.dataset.val } }));
+        }
              close(); openOfflineModal();
           };
 
@@ -7293,6 +7311,195 @@ function render() {
       }));
   });
 }
+    // ═══ Fix #17.1: Storage Breakdown ═══
+    const breakdownSection = document.createElement('div');
+    breakdownSection.className = 'offline-section storage-breakdown';
+    breakdownSection.innerHTML = `
+      <h3>Хранилище</h3>
+      <div class="breakdown-row"><span>🔒 Закреплённые:</span> <span id="sz-pinned">—</span></div>
+      <div class="breakdown-row"><span>☁ Облачные:</span> <span id="sz-cloud">—</span></div>
+      <div class="breakdown-row"><span>⏳ PlaybackCache:</span> <span id="sz-transient">—</span></div>
+      <div class="breakdown-row"><span>📦 Прочее:</span> <span id="sz-other">—</span></div>
+      <div class="breakdown-total"><strong>Занято:</strong> <span id="sz-total">—</span></div>
+    `;
+    container.appendChild(breakdownSection);
+
+    // Populate breakdown async
+    om.getStorageBreakdown?.().then(bd => {
+      const fmt = (b) => b >= 1048576 ? (b / 1048576).toFixed(1) + ' МБ' : (b / 1024).toFixed(0) + ' КБ';
+      if (bd) {
+        const $ = (id, v) => { const el = breakdownSection.querySelector('#' + id); if (el) el.textContent = v; };
+        $('sz-pinned', fmt(bd.pinned || 0));
+        $('sz-cloud', fmt(bd.cloud || 0));
+        $('sz-transient', fmt(bd.transient || 0));
+        $('sz-other', fmt(bd.other || 0));
+        $('sz-total', fmt(bd.total || 0));
+      }
+    }).catch(() => {});
+
+    // ═══ Fix #17.2: Downloads Section ═══
+    const downloadsSection = document.createElement('div');
+    downloadsSection.className = 'offline-section downloads-status';
+    downloadsSection.innerHTML = `
+      <h3>Загрузки</h3>
+      <div id="dl-current">Скачивается сейчас: —</div>
+      <div id="dl-queue">В очереди: 0</div>
+      <button id="dl-pause-btn" class="offline-btn-small">Пауза</button>
+    `;
+    container.appendChild(downloadsSection);
+
+    const dlPauseBtn = downloadsSection.querySelector('#dl-pause-btn');
+    if (dlPauseBtn && om.queue) {
+      let paused = false;
+      dlPauseBtn.onclick = () => {
+        paused = !paused;
+        if (paused) { om.queue.pause?.(); dlPauseBtn.textContent = 'Возобновить'; }
+        else { om.queue.resume?.(); dlPauseBtn.textContent = 'Пауза'; }
+      };
+      // Update queue stats
+      const qStats = om.queue.getStats?.() || {};
+      const dlCur = downloadsSection.querySelector('#dl-current');
+      const dlQ = downloadsSection.querySelector('#dl-queue');
+      if (dlCur) dlCur.textContent = `Скачивается сейчас: ${qStats.active || '—'}`;
+      if (dlQ) dlQ.textContent = `В очереди: ${qStats.pending || 0}`;
+    }
+
+    // ═══ Fix #17.3: Updates Section ═══
+    const updatesSection = document.createElement('div');
+    updatesSection.className = 'offline-section updates-section';
+    updatesSection.innerHTML = `
+      <h3>Обновления</h3>
+      <div id="upd-info">Проверка...</div>
+      <button id="btn-update-all" class="offline-btn-small" style="display:none">Обновить все файлы</button>
+    `;
+    container.appendChild(updatesSection);
+
+    // Check for updates
+    om.countNeedsUpdate?.().then(count => {
+      const info = updatesSection.querySelector('#upd-info');
+      const updBtn = updatesSection.querySelector('#btn-update-all');
+      if (count > 0) {
+        if (info) info.textContent = `${count} файлов требуют обновления`;
+        if (updBtn) {
+          updBtn.style.display = '';
+          updBtn.onclick = async () => {
+            const net = window.NetPolicy ? window.NetPolicy.isNetworkAllowed() : navigator.onLine;
+            const isWifi = (await import('../offline/net-policy.js')).then(m => m.detectNetworkType() === 'wifi').catch(() => true);
+            if (!isWifi) {
+              const ok = (window.Modals?.confirm || window.confirm)(
+                `${count} файлов для обновления. Рекомендуется Wi-Fi. Продолжить?`
+              );
+              if (!ok) return;
+            }
+            om.updateAll?.();
+            (window.NotificationSystem?.info || window.toast)?.('Обновление запущено');
+          };
+        }
+      } else {
+        if (info) info.textContent = 'Все файлы актуальны';
+      }
+    }).catch(() => {
+      const info = updatesSection.querySelector('#upd-info');
+      if (info) info.textContent = 'Все файлы актуальны';
+    });
+
+    // ═══ Fix #17.4: Cache Cleanup Section ═══
+    const cleanupSection = document.createElement('div');
+    cleanupSection.className = 'offline-section cleanup-section';
+    cleanupSection.innerHTML = `
+      <h3>Очистка кэша</h3>
+      <button id="btn-clear-transient" class="offline-btn-small">Очистить PlaybackCache</button>
+      <button id="btn-clear-cloud" class="offline-btn-small">Очистить облачные</button>
+      <button id="btn-clear-pinned" class="offline-btn-small">Очистить закреплённые</button>
+      <button id="btn-clear-all" class="offline-btn-small offline-btn-danger">Очистить всё</button>
+    `;
+    container.appendChild(cleanupSection);
+
+    const confirmFn = window.Modals?.confirm || window.confirm;
+
+    cleanupSection.querySelector('#btn-clear-transient')?.addEventListener('click', async () => {
+      const ok = await confirmFn('Удалить все файлы PlaybackCache?');
+      if (ok) { await om.clearByType?.('playbackCache'); _refreshModal(); }
+    });
+
+    cleanupSection.querySelector('#btn-clear-cloud')?.addEventListener('click', async () => {
+      const ok = await confirmFn('Удалить все облачные файлы?');
+      if (ok) { await om.clearByType?.('cloud'); _refreshModal(); }
+    });
+
+    cleanupSection.querySelector('#btn-clear-pinned')?.addEventListener('click', async () => {
+      // Fix #17.4: Double confirm for pinned
+      const ok1 = await confirmFn('Удалить все закреплённые файлы? Это действие необратимо.');
+      if (!ok1) return;
+      const ok2 = await confirmFn('Вы уверены? Все закреплённые треки будут удалены из кэша.');
+      if (ok2) { await om.clearByType?.('pinned'); _refreshModal(); }
+    });
+
+    cleanupSection.querySelector('#btn-clear-all')?.addEventListener('click', async () => {
+      // Fix #17.6: Double confirm for clear all
+      const stats = await om.getStats();
+      const totalMB = ((stats.totalSize || 0) / 1048576).toFixed(1);
+      const totalFiles = (stats.pinned?.count || 0) + (stats.cloud?.count || 0) + (stats.transient?.count || 0);
+      const ok1 = await confirmFn(`Удалить все файлы? (${totalFiles} файлов, ${totalMB} МБ)`);
+      if (!ok1) return;
+      const ok2 = await confirmFn('Последнее подтверждение. Все офлайн-данные будут удалены.');
+      if (ok2) { await om.clearAll?.(); _refreshModal(); }
+    });
+
+    // ═══ Fix #17.5: Pinned/Cloud List Button ═══
+    const listSection = document.createElement('div');
+    listSection.className = 'offline-section list-section';
+    listSection.innerHTML = `
+      <button id="btn-show-list" class="offline-btn-small">Список закреплённых и облачных</button>
+      <div id="pinned-cloud-list" style="display:none"></div>
+    `;
+    container.appendChild(listSection);
+
+    listSection.querySelector('#btn-show-list')?.addEventListener('click', async () => {
+      const listEl = listSection.querySelector('#pinned-cloud-list');
+      if (!listEl) return;
+      if (listEl.style.display !== 'none') { listEl.style.display = 'none'; return; }
+      listEl.style.display = '';
+      listEl.innerHTML = '<div class="loading">Загрузка...</div>';
+
+      try {
+        const { getAllTrackMetas } = await import('../offline/cache-db.js');
+        const metas = await getAllTrackMetas();
+
+        // Fix #17.5: Sort — pinned first (by added date), then cloud (by expiresAt DESC)
+        const pinned = metas.filter(m => m.type === 'pinned')
+          .sort((a, b) => (a.pinnedAt || 0) - (b.pinnedAt || 0));
+        const cloud = metas.filter(m => m.type === 'cloud')
+          .sort((a, b) => (b.cloudExpiresAt || 0) - (a.cloudExpiresAt || 0));
+
+        const fmt = (b) => b >= 1048576 ? (b / 1048576).toFixed(1) + ' МБ' : (b / 1024).toFixed(0) + ' КБ';
+        const now = Date.now();
+        const DAY = 86400000;
+
+        let html = '';
+        for (const m of [...pinned, ...cloud]) {
+          const icon = m.type === 'pinned' ? '🔒' : '☁';
+          const title = m.title || m.uid;
+          const q = (m.quality || '').toUpperCase();
+          const size = fmt(m.size || 0);
+          let status = '';
+          if (m.type === 'pinned') {
+            status = 'Закреплён';
+          } else if (m.cloudExpiresAt) {
+            const daysLeft = Math.max(0, Math.ceil((m.cloudExpiresAt - now) / DAY));
+            status = `Осталось ${daysLeft} дн.`;
+          }
+          html += `<div class="list-item">${icon} ${title} · ${q} · ${size} · <em>${status}</em></div>`;
+        }
+
+        if (!html) html = '<div class="list-empty">Нет закреплённых или облачных треков</div>';
+        listEl.innerHTML = html;
+      } catch (e) {
+        listEl.innerHTML = '<div class="list-error">Ошибка загрузки</div>';
+      }
+    });
+
+    // --- END SECTIONS ---
 
 export function openOfflineModal() { render(); }
 export function closeOfflineModal() { if(_modal) { _modal.remove(); _modal = null; } }
