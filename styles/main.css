@@ -454,3 +454,28 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 /* Optional utility */
 @keyframes fadeInUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .animate-in{animation:fadeInUp .4s ease-out}
+
+/* (17.1) Blinking animation for loading */
+@keyframes offline-ind-blink { 50% { opacity: 0.4; } }
+.offline-ind--pinned-loading, .offline-ind--cloud-loading {
+  animation: offline-ind-blink 1s ease-in-out infinite;
+}
+
+/* (17.2) Cloud Menu */
+.cloud-menu {
+  background: #1e1e2e;
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 4px 0;
+  min-width: 160px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+.cloud-menu__item {
+  display: block; width: 100%; padding: 10px 16px;
+  color: #e0e0e0; text-align: left; background: none; border: none;
+  cursor: pointer; font-size: 14px;
+}
+.cloud-menu__item:hover { background: #333; }
+.cloud-menu__item--danger { color: #ef5350; }
+.cloud-menu__item--danger:hover { background: #3a1a1a; }
+
