@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6572416f0a55afa10db9ffd9e2f7985302ab9cce.idx
-│   │       ├── pack-6572416f0a55afa10db9ffd9e2f7985302ab9cce.pack
-│   │       └── pack-6572416f0a55afa10db9ffd9e2f7985302ab9cce.rev
+│   │       ├── pack-02b979828b07014ab3eed8aadb33eac054b5ed26.idx
+│   │       ├── pack-02b979828b07014ab3eed8aadb33eac054b5ed26.pack
+│   │       └── pack-02b979828b07014ab3eed8aadb33eac054b5ed26.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 16:27:25 UTC
+Сгенерировано: 2026-02-07 16:28:12 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5881,6 +5881,11 @@ class OfflineManager {
     return enqueued;
   }
 
+  // Proxy для track-resolver.js (#4 fix)
+  async getTrackMeta(uid) {
+    return getTrackMeta(uid);
+  }
+
   async hasSpace() {
       try {
           const est = await estimateUsage();
@@ -5968,7 +5973,21 @@ class OfflineManager {
   }
 
   async enqueueAudioDownload(uid, { priority, kind }) {
-     if (!this._ready || !(await this.hasSpace())) return;
+     if (!this._ready) return;
+     // Fix #20.1: Try eviction before giving up on space
+     let hasRoom = await this.hasSpace();
+     if (!hasRoom) {
+       try {
+         const { runEviction } = await import('./eviction.js');
+         const { getWindowState } = await import('../app/playback-cache-bootstrap.js');
+         const ws = getWindowState?.() || { uids: [] };
+         await runEviction(new Set(ws.uids));
+         hasRoom = await this.hasSpace();
+       } catch (e) {
+         console.warn('[OfflineManager] eviction failed:', e);
+       }
+     }
+     if (!hasRoom) return;
      const q = this.getQuality();
      const url = getTrackUrl(uid, q);
      if (url) this.queue.enqueue({ uid, url, quality: q, kind, priority });
