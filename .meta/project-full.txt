@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-fb2c31e7ef28333c073b4fed171925dff9d0935f.idx
-│   │       ├── pack-fb2c31e7ef28333c073b4fed171925dff9d0935f.pack
-│   │       └── pack-fb2c31e7ef28333c073b4fed171925dff9d0935f.rev
+│   │       ├── pack-a480709b58149827f037115ccbc5320f9fa32772.idx
+│   │       ├── pack-a480709b58149827f037115ccbc5320f9fa32772.pack
+│   │       └── pack-a480709b58149827f037115ccbc5320f9fa32772.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -386,7 +386,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 19:53:36 UTC
+Сгенерировано: 2026-02-07 19:54:43 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4815,7 +4815,7 @@ export async function estimateUsage() {
 
 import { getAllTrackMetas, deleteTrackCache } from './cache-db.js';
 
-const MIN_FREE_MB = 30;
+const MIN_FREE_MB = 60;
 
 export async function runEviction(protectedUids = new Set()) {
   const hasFree = await _checkFreeSpace();
