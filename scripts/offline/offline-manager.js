@@ -314,15 +314,15 @@ class OfflineManager {
     const { D } = this.getCloudSettings();
 
     if (meta.type === 'pinned') {
-        // Unpin -> Cloud (1.3 исправлено)
+        // Unpin -> Cloud
         const now = Date.now();
         await updateTrackMeta(uid, {
             type: 'cloud',
-            cloudOrigin: 'unpin', // (1.6)
+            cloudOrigin: 'unpin',
             pinnedAt: null,
             cloudAddedAt: now,
             cloudExpiresAt: now + (D * DAY_MS),
-            cloudFullListenCount: meta.cloudFullListenCount || 0 // (1.3)
+            cloudFullListenCount: meta.cloudFullListenCount || 0
         });
         toast(`Офлайн-закрепление снято. Доступен как облачный кэш на ${D} дней.`);
     } else {
@@ -334,8 +334,17 @@ class OfflineManager {
             cloudExpiresAt: null
         });
 
-        // (1.4) Проверка наличия файла любого качества
         const existingQ = await getStoredVariant(uid);
+        
+        // Audit Fix #4: Check active download first
+        if (this.queue.isDownloading(uid)) {
+            // Если уже качается - просто обновляем приоритет в очереди (метод enqueue это умеет)
+            // и сообщаем пользователю
+            this.queue.enqueue({ uid, url: getTrackUrl(uid, q), quality: q, kind: 'pinned', priority: DOWNLOAD_PRIORITY.PINNED });
+            toast('Трек закреплён 🔒 (загрузка продолжается)');
+            emit('offline:stateChanged');
+            return;
+        }
         
         if (!existingQ) {
             const url = getTrackUrl(uid, q);
@@ -345,7 +354,6 @@ class OfflineManager {
             }
         } else {
             if (existingQ !== q) {
-                // Файл есть, но не то качество. Помечаем ReCache, но считаем уже запиненным.
                 await updateTrackMeta(uid, { needsReCache: true });
                 const url = getTrackUrl(uid, q);
                 if (url) this.queue.enqueue({ uid, url, quality: q, kind: 'pinned', priority: DOWNLOAD_PRIORITY.PINNED });
