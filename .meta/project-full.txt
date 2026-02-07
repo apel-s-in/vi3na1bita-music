@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-af6be5f62c8acaed302184d50ea959913233b93b.idx
-│   │       ├── pack-af6be5f62c8acaed302184d50ea959913233b93b.pack
-│   │       └── pack-af6be5f62c8acaed302184d50ea959913233b93b.rev
+│   │       ├── pack-d2f0ebacca2c400bd57c832adf5b541b88902a88.idx
+│   │       ├── pack-d2f0ebacca2c400bd57c832adf5b541b88902a88.pack
+│   │       └── pack-d2f0ebacca2c400bd57c832adf5b541b88902a88.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -386,7 +386,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 19:45:26 UTC
+Сгенерировано: 2026-02-07 19:46:26 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4122,7 +4122,7 @@ window.FavoritesManager = Favorites;
       getMode: () => (localStorage.getItem('qualityMode:v1') || 'hi') === 'lo' ? 'lo' : 'hi',
       getState: () => {
         const c = W.playerCore;
-        const net = U.getNet().online;
+        const net = W.NetPolicy?.isNetworkAllowed?.() ?? U.getNet().online;
         const can = !!c?.canToggleQualityForCurrentTrack?.();
         return { mode: U.pq.getMode(), canToggle: can && net, canToggleByTrack: can, netOk: net };
       },
