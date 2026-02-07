@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f02490906d3e816b03149f4e70f748a33dc40d38.idx
-│   │       ├── pack-f02490906d3e816b03149f4e70f748a33dc40d38.pack
-│   │       └── pack-f02490906d3e816b03149f4e70f748a33dc40d38.rev
+│   │       ├── pack-8d678eb694f103b71dad4cb8a7b6c63693e68417.idx
+│   │       ├── pack-8d678eb694f103b71dad4cb8a7b6c63693e68417.pack
+│   │       └── pack-8d678eb694f103b71dad4cb8a7b6c63693e68417.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -383,7 +383,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 08:38:57 UTC
+Сгенерировано: 2026-02-07 08:39:30 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1157,7 +1157,8 @@ const STATIC_ASSETS = [
   './scripts/ui/cache-progress-overlay.js', './scripts/ui/statistics-modal.js',
   './scripts/app/player-ui.js', './scripts/app/albums.js', './scripts/app/navigation.js',
   './scripts/app.js', './src/PlayerCore.js',
-  './scripts/app/offline-ui-bootstrap.js', './scripts/app/playback-cache-bootstrap.js'
+  './scripts/app/offline-ui-bootstrap.js', './scripts/app/playback-cache-bootstrap.js',
+  './scripts/stats/global-stats.js'
 ];
 
 // Helper: Normalize URL for strict cache matching
