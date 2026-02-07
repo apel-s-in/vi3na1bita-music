@@ -285,7 +285,8 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
       const newSound = new Howl({
           src: [res.url],
-          html5: !res.isLocal, // HTML5 for stream, WebAudio for local blob
+          // ТЗ v1.0: WebAudio backend + blob/objectURL, без зависимости от Range.
+          html5: false,
           volume: this.getVolume() / 100,
           format: ['mp3'],
           autoplay: !!opts.autoPlay,
