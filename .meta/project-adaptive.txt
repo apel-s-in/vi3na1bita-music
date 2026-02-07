@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-aa65c3d3d5c868864fe1ec9c002a72a6a8e41dbd.idx
-│   │       ├── pack-aa65c3d3d5c868864fe1ec9c002a72a6a8e41dbd.pack
-│   │       └── pack-aa65c3d3d5c868864fe1ec9c002a72a6a8e41dbd.rev
+│   │       ├── pack-55b85da559fba73160fa2846dbafa5e5169b9401.idx
+│   │       ├── pack-55b85da559fba73160fa2846dbafa5e5169b9401.pack
+│   │       └── pack-55b85da559fba73160fa2846dbafa5e5169b9401.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-07 13:56:01 UTC
+Сгенерировано: 2026-02-07 13:56:31 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2241,37 +2241,58 @@ export default { initOfflineUI };
 // FILE: /scripts/app/playback-cache-bootstrap.js
 /**
  * playback-cache-bootstrap.js — Контроллер окна (R1).
- * Строгое соблюдение ТЗ: R0 = нет кэша, R1 = 3 трека.
+ * Fix #3.1: direction-aware priorities
+ * Fix #3.2: deferred GC (wait for CUR start)
+ * Fix #3.3: NetPolicy check before download
+ * Fix #3.4: react to shuffle/repeat/playlist changes
+ * Fix #3.5: protectWindow/unprotectWindow
  */
 import { getOfflineManager } from '../offline/offline-manager.js';
+import { getAllTrackMetas, deleteTrackCache } from '../offline/cache-db.js';
 
 let _initialized = false;
-let _currentWindow = new Set(); 
+let _currentWindow = new Set();
+let _pendingGC = [];      // Fix #3.2: deferred delete list
+let _windowProtected = false; // Fix #3.5
 
 export function initPlaybackCache() {
   if (_initialized) return;
   _initialized = true;
 
-  window.addEventListener('player:trackChanged', (e) => _updateWindow());
-  window.addEventListener('offline:uiChanged', () => _updateWindow()); // Mode change or Net change
-  window.addEventListener('online', () => _updateWindow());
+  // Fix #3.1: pass direction from event
+  window.addEventListener('player:trackChanged', (e) => {
+    const dir = e.detail?.dir || 1;
+    _updateWindow(dir);
+  });
+  window.addEventListener('offline:uiChanged', () => _updateWindow(1));
+  window.addEventListener('online', () => _updateWindow(1));
+
+  // Fix #3.4: react to shuffle/repeat/playlist changes
+  window.addEventListener('playlist:changed', () => _updateWindow(1));
+
+  // Fix #3.2: Execute pending GC only after new track starts playing
+  const pc = window.playerCore;
+  if (pc?.on) {
+    pc.on({
+      onPlay: () => _executePendingGC()
+    });
+  }
 }
 
-async function _updateWindow() {
+async function _updateWindow(dir = 1) {
   const mgr = getOfflineManager();
-  const mode = mgr.getMode(); // 'R0' or 'R1'
+  const mode = mgr.getMode();
   const pc = window.playerCore;
-  
-  // R0: Очистка всего transient
+
+  // R0: clean all transient
   if (mode !== 'R1') {
     if (_currentWindow.size > 0) {
       _currentWindow.clear();
-      await _gc([]); // Keep nothing transient
+      await _gcImmediate([]);
     }
     return;
   }
 
-  // R1: Расчет окна 3 треков
   const idx = pc.getIndex();
   const playlist = pc.getPlaylistSnapshot() || [];
   if (idx === -1 || !playlist.length) return;
@@ -2280,56 +2301,98 @@ async function _updateWindow() {
   const tasks = [];
 
   const add = (i, p) => {
-      const t = playlist[i];
-      if (t && t.uid) {
-          const u = String(t.uid).trim();
-          windowUids.add(u);
-          tasks.push({ uid: u, priority: p });
-      }
+    const t = playlist[i];
+    if (t && t.uid) {
+      const u = String(t.uid).trim();
+      windowUids.add(u);
+      tasks.push({ uid: u, priority: p });
+    }
   };
 
-  // CUR (P10), NEXT (P9), PREV (P8)
+  // CUR always P10
   add(idx, 10);
-  
+
   if (playlist.length > 1) {
-      const nextIdx = (idx + 1) % playlist.length;
+    const nextIdx = (idx + 1) % playlist.length;
+    const prevIdx = (idx - 1 + playlist.length) % playlist.length;
+
+    // Fix #3.1: direction-aware priorities
+    if (dir >= 0) {
       add(nextIdx, 9);
-  }
-  
-  if (playlist.length > 2) {
-      const prevIdx = (idx - 1 + playlist.length) % playlist.length;
-      add(prevIdx, 8);
+      if (playlist.length > 2) add(prevIdx, 8);
+    } else {
+      if (playlist.length > 2) add(prevIdx, 9);
+      add(nextIdx, 8);
+    }
   }
 
+  // Fix #3.2: Don't GC immediately — schedule for after CUR plays
+  const oldWindow = _currentWindow;
   _currentWindow = windowUids;
 
-  // GC: Удалить transient, которых нет в окне
-  await _gc([...windowUids]);
+  // Determine what left the window
+  for (const uid of oldWindow) {
+    if (!windowUids.has(uid)) {
+      _pendingGC.push(uid);
+    }
+  }
 
-  // Запуск загрузки
-  if (await mgr.hasSpace()) {
-      for (const t of tasks) {
-          // OfflineManager сам решит, качать ли (если уже есть Pinned/Cloud - пропустит)
-          // kind='playbackCache' означает transient
-          mgr.enqueueAudioDownload(t.uid, { priority: t.priority, kind: 'playbackCache' });
-      }
+  // Fix #3.3: Check NetPolicy before download
+  const netOk = window.NetPolicy ? window.NetPolicy.isNetworkAllowed() : navigator.onLine;
+
+  if (netOk && (await mgr.hasSpace())) {
+    for (const t of tasks) {
+      mgr.enqueueAudioDownload(t.uid, { priority: t.priority, kind: 'playbackCache' });
+    }
   }
 }
 
-async function _gc(keepUids) {
-  // Вызов метода удаления transient файлов
-  // В cache-db мы добавим метод удаления по типу, или переберем здесь
-  // Для упрощения предполагаем, что OfflineManager имеет доступ к чистке
-  // В данной реализации: удаляем файлы типа 'playbackCache' которых нет в keepUids
+// Fix #3.2: Execute deferred GC after new CUR started playing
+async function _executePendingGC() {
+  if (_windowProtected || _pendingGC.length === 0) return;
+
+  const keep = _currentWindow;
+  const toDelete = _pendingGC.filter(uid => !keep.has(uid));
+  _pendingGC = [];
+
   try {
-      const { getAllTrackMetas, deleteTrackCache } = await import('../offline/cache-db.js');
-      const metas = await getAllTrackMetas();
-      for (const m of metas) {
-          if (m.type === 'playbackCache' && !keepUids.includes(m.uid)) {
-              await deleteTrackCache(m.uid);
-          }
+    const metas = await getAllTrackMetas();
+    for (const m of metas) {
+      if (m.type === 'playbackCache' && toDelete.includes(m.uid)) {
+        await deleteTrackCache(m.uid);
       }
-  } catch (e) { console.error(e); }
+    }
+  } catch (e) {
+    console.error('[PlaybackCache] GC error:', e);
+  }
+}
+
+// Immediate GC (for R0 transition)
+async function _gcImmediate(keepUids) {
+  try {
+    const metas = await getAllTrackMetas();
+    for (const m of metas) {
+      if (m.type === 'playbackCache' && !keepUids.includes(m.uid)) {
+        await deleteTrackCache(m.uid);
+      }
+    }
+  } catch (e) {
+    console.error('[PlaybackCache] GC error:', e);
+  }
+}
+
+// Fix #3.5: Protect/unprotect window from eviction
+export function protectWindow() { _windowProtected = true; }
+export function unprotectWindow() {
+  _windowProtected = false;
+  _executePendingGC();
+}
+export function getWindowState() {
+  return {
+    uids: [..._currentWindow],
+    protected: _windowProtected,
+    pendingGC: [..._pendingGC]
+  };
 }
 
 //=================================================
