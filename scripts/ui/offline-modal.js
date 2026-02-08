@@ -193,10 +193,6 @@ function render() {
       <button class="om-btn om-btn--outline" data-action="show-list" id="btn-show-list" style="width:100%">Показать закреплённые и облачные</button>
 
       <div id="pinned-cloud-list" class="om-track-list" style="display:none"></div>
-
-      <div class="om-divider"></div>
-
-      <button class="om-btn om-btn--danger-outline" data-action="del-all" style="width:100%">🗑 Удалить все 🔒 и ☁</button>
     </section>
   `);
 
@@ -296,7 +292,7 @@ function _bind(overlay, modal, om) {
     else if (a === 'show-list') {
       const el = modal.querySelector('#pinned-cloud-list');
       if (!el) return;
-      // Toggle: свернуть если открыт
+      // Свернуть если открыт
       if (el.style.display !== 'none') {
         el.style.display = 'none';
         btn.textContent = 'Показать закреплённые и облачные';
@@ -320,12 +316,24 @@ function _bind(overlay, modal, om) {
           const mq = (m.quality||'—').toUpperCase(), sz = fmtB(m.size||0);
           let bg = '';
           if (m.type === 'pinned') bg = '<span class="om-list-badge om-list-badge--pin">Закреплён</span>';
-          else if (m.cloudExpiresAt) { const d = Math.max(0, Math.ceil((m.cloudExpiresAt - now) / DAY_MS)); bg = `<span class="om-list-badge om-list-badge--cloud">${d} дн.</span>`; }
+          else if (m.cloudExpiresAt) {
+            const d = Math.max(0, Math.ceil((m.cloudExpiresAt - now) / DAY_MS));
+            bg = `<span class="om-list-badge om-list-badge--cloud">${d} дн.</span>`;
+          }
           h += `<div class="om-list-item" data-uid="${esc(m.uid)}"><span class="om-list-icon">${ic}</span><span class="om-list-title">${esc(t)}</span><span class="om-list-meta">${mq} · ${sz}</span>${bg}<button class="om-list-del" data-action="del-track" data-uid="${esc(m.uid)}" data-type="${m.type}" title="Удалить">✕</button></div>`;
         }
-        if (!h) h = '<div class="om-list-empty">Нет закреплённых или облачных треков</div>';
+        if (!h) {
+          h = '<div class="om-list-empty">Нет закреплённых или облачных треков</div>';
+        }
+        // Кнопка "Удалить все" ВНУТРИ списка — скрывается вместе с ним
+        if (sorted.length > 0) {
+          h += '<div class="om-divider" style="margin:10px 0 8px"></div>';
+          h += '<button class="om-btn om-btn--danger-outline" data-action="del-all" style="width:100%">🗑 Удалить все 🔒 и ☁</button>';
+        }
         el.innerHTML = h;
-      } catch { el.innerHTML = '<div class="om-list-empty" style="color:#ef5350">Ошибка загрузки</div>'; }
+      } catch {
+        el.innerHTML = '<div class="om-list-empty" style="color:#ef5350">Ошибка загрузки</div>';
+      }
     }
     else if (a === 'del-all') {
       _confirm('Удалить все офлайн-треки?', 'Все закреплённые и облачные треки будут удалены.', 'Удалить', () =>
