@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b3d9e0f5fad850b58a3a8d6f7a0da920f4bf3293.idx
-│   │       ├── pack-b3d9e0f5fad850b58a3a8d6f7a0da920f4bf3293.pack
-│   │       └── pack-b3d9e0f5fad850b58a3a8d6f7a0da920f4bf3293.rev
+│   │       ├── pack-6a5865ecb46067c927a02823fcf843a49d95c6ab.idx
+│   │       ├── pack-6a5865ecb46067c927a02823fcf843a49d95c6ab.pack
+│   │       └── pack-6a5865ecb46067c927a02823fcf843a49d95c6ab.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-08 22:20:40 UTC
+Сгенерировано: 2026-02-08 22:28:59 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2164,162 +2164,174 @@ export default { initOfflineUI };
 //=================================================
 // FILE: /scripts/app/playback-cache-bootstrap.js
 /**
- * playback-cache-bootstrap.js — Контроллер окна (R1).
- * Fix #3.1: direction-aware priorities
- * Fix #3.2: deferred GC (wait for CUR start)
- * Fix #3.3: NetPolicy check before download
- * Fix #3.4: react to shuffle/repeat/playlist changes
- * Fix #3.5: protectWindow/unprotectWindow
+ * playback-cache-bootstrap.js — PlaybackCache (R1) window controller (v1.0 spec).
+ *
+ * Контракт (из ТЗ):
+ * - Работает ТОЛЬКО в R1 и держит transient окно ровно PREV+CUR+NEXT (3 позиции).
+ * - Докачка: CUR (P0) → сосед по направлению (P1) → второй сосед (P1 ниже).
+ * - Ничего не останавливает и не запускает (no stop/play), не сбрасывает позицию/громкость.
+ * - Удаление transient — отложенно: удаляем только после успешного старта нового CUR.
+ * - Protect/unprotect: во время сценариев офлайна окно не подлежит eviction/GC.
  */
-import { getOfflineManager } from '../offline/offline-manager.js';
-import { getAllTrackMetas, deleteTrackCache } from '../offline/cache-db.js';
 
-let _initialized = false;
-let _currentWindow = new Set();
-let _pendingGC = [];      // Fix #3.2: deferred delete list
-let _windowProtected = false; // Fix #3.5
+import { getOfflineManager } from '../offline/offline-manager.js';
+import { deleteTrackCache, getTrackMeta } from '../offline/cache-db.js';
+
+let _init = false;
+let _protected = false;
+
+// Явная модель окна (строго 3 позиции по ТЗ 8.3)
+let _win = { prev: null, cur: null, next: null };
+
+// Что можно удалить (transient), но только после старта нового CUR (ТЗ 8.6/8.7)
+let _pendingDelete = new Set();
 
 export function initPlaybackCache() {
-  if (_initialized) return;
-  _initialized = true;
+  if (_init) return;
+  _init = true;
 
-  // Fix #3.1: pass direction from event
+  // Track change from PlayerCore (dir важен для приоритета соседа)
   window.addEventListener('player:trackChanged', (e) => {
-    const dir = e.detail?.dir || 1;
-    _updateWindow(dir);
+    const dir = Number(e.detail?.dir || 1) || 1;
+    _rebuild(dir).catch(() => {});
   });
-  window.addEventListener('offline:uiChanged', () => _updateWindow(1));
-  window.addEventListener('online', () => _updateWindow(1));
 
-  // Fix #3.4: react to shuffle/repeat/playlist changes
-  window.addEventListener('playlist:changed', () => _updateWindow(1));
+  // Playlist could change due to shuffle/repeat/favoritesOnly
+  window.addEventListener('playlist:changed', () => _rebuild(1).catch(() => {}));
 
-  // Fix #3.2: Execute pending GC only after new track starts playing
+  // UI and connectivity changes can allow/restrict downloads
+  window.addEventListener('offline:uiChanged', () => _rebuild(1).catch(() => {}));
+  window.addEventListener('online', () => _rebuild(1).catch(() => {}));
+
+  // Deferred delete: только когда новый CUR реально стартовал (onPlay)
   const pc = window.playerCore;
+  // Используем хук onPlay, если playerCore его предоставляет, или подписываемся на события
   if (pc?.on) {
-    pc.on({
-      onPlay: () => _executePendingGC()
-    });
+    pc.on({ onPlay: () => _flushPendingDelete().catch(() => {}) });
+  } else {
+    // Fallback на глобальное событие, если PC не имеет метода .on
+    window.addEventListener('player:play', () => _flushPendingDelete().catch(() => {}));
   }
 }
 
-async function _updateWindow(dir = 1) {
+function _idxWrap(i, len) {
+  if (len <= 0) return 0;
+  return (i % len + len) % len;
+}
+
+function _calcWindow(playlist, curIdx) {
+  const len = playlist.length;
+  if (!len || curIdx < 0) return { prev: null, cur: null, next: null };
+
+  const cur = playlist[curIdx]?.uid ? String(playlist[curIdx].uid).trim() : null;
+  if (!cur) return { prev: null, cur: null, next: null };
+
+  if (len === 1) return { prev: cur, cur, next: cur };
+
+  const prevIdx = _idxWrap(curIdx - 1, len);
+  const nextIdx = _idxWrap(curIdx + 1, len);
+
+  const prev = playlist[prevIdx]?.uid ? String(playlist[prevIdx].uid).trim() : cur;
+  const next = playlist[nextIdx]?.uid ? String(playlist[nextIdx].uid).trim() : cur;
+
+  return { prev, cur, next };
+}
+
+function _asUniqueList(win, dir) {
+  // Важно: при 2 треках prev==next — не дублировать
+  const order = dir >= 0
+    ? [win.cur, win.next, win.prev] // “вперёд”: CUR, NEXT, PREV
+    : [win.cur, win.prev, win.next]; // “назад”: CUR, PREV, NEXT
+
+  const out = [];
+  const seen = new Set();
+  for (const uid of order) {
+    if (!uid || seen.has(uid)) continue;
+    seen.add(uid);
+    out.push(uid);
+  }
+  return out;
+}
+
+async function _rebuild(dir = 1) {
   const mgr = getOfflineManager();
-  const mode = mgr.getMode();
   const pc = window.playerCore;
 
-  // R0: clean all transient
-  if (mode !== 'R1') {
-    // ТЗ 3.2: удаление transient строго отложенно (до смены трека/старта нового CUR)
-    if (_currentWindow.size) {
-      _pendingGC.push(..._currentWindow);
-      _currentWindow.clear();
-      // НЕ вызываем _executePendingGC() здесь
-    }
+  // R0: не создаём transient. Но удаление transient отложенно (ТЗ 3.2).
+  if (mgr.getMode() !== 'R1') {
+    for (const uid of [ _win.prev, _win.cur, _win.next ].filter(Boolean)) _pendingDelete.add(uid);
+    _win = { prev: null, cur: null, next: null };
+    // Если мы переключились в R0, можно попробовать почистить сразу, если ничего не играет
+    if (pc && !pc.isPlaying) _flushPendingDelete().catch(()=>{});
     return;
   }
 
-  const idx = pc.getIndex();
-  const playlist = pc.getPlaylistSnapshot() || [];
-  if (idx === -1 || !playlist.length) return;
+  const idx = pc?.getIndex?.() ?? -1;
+  const playlist = pc?.getPlaylistSnapshot?.() || [];
+  if (idx < 0 || !playlist.length) return;
 
-  const windowUids = new Set();
-  const tasks = [];
+  const nextWin = _calcWindow(playlist, idx);
+  if (!nextWin.cur) return;
 
-  const add = (i, p) => {
-    const t = playlist[i];
-    if (t && t.uid) {
-      const u = String(t.uid).trim();
-      windowUids.add(u);
-      tasks.push({ uid: u, priority: p });
-    }
-  };
-
-  // CUR always P10
-  add(idx, 10);
-
-  if (playlist.length > 1) {
-    const nextIdx = (idx + 1) % playlist.length;
-    const prevIdx = (idx - 1 + playlist.length) % playlist.length;
-
-    // Fix #3.1: direction-aware priorities
-    if (dir >= 0) {
-      add(nextIdx, 9);
-      if (playlist.length > 2) add(prevIdx, 8);
-    } else {
-      if (playlist.length > 2) add(prevIdx, 9);
-      add(nextIdx, 8);
-    }
+  // Запланировать удаление того, что вышло из окна (удалить ПОСЛЕ старта нового CUR)
+  for (const uid of [ _win.prev, _win.cur, _win.next ].filter(Boolean)) {
+    if (uid !== nextWin.prev && uid !== nextWin.cur && uid !== nextWin.next) _pendingDelete.add(uid);
   }
+  _win = nextWin;
 
-  // Fix #3.2: Don't GC immediately — schedule for after CUR plays
-  const oldWindow = _currentWindow;
-  _currentWindow = windowUids;
+  // Докачки — только если сеть разрешена политикой (ТЗ NetPolicy)
+  const netOk = window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine;
+  if (!netOk) return;
 
-  // Determine what left the window
-  for (const uid of oldWindow) {
-    if (!windowUids.has(uid)) {
-      _pendingGC.push(uid);
-    }
-  }
+  // Мягкая проверка места (ТЗ 8.12): если мало — не выключаем R1, просто не докачиваем
+  if (!(await mgr.hasSpace())) return;
 
-  // Fix #3.3: Check NetPolicy before download
-  const netOk = window.NetPolicy ? window.NetPolicy.isNetworkAllowed() : navigator.onLine;
+  // Строгий порядок: CUR (P0) → сосед по направлению (P1) → второй сосед (P1 ниже)
+  const list = _asUniqueList(_win, dir);
+  const [curUid, n1, n2] = list;
 
-  if (netOk && (await mgr.hasSpace())) {
-    for (const t of tasks) {
-      mgr.enqueueAudioDownload(t.uid, { priority: t.priority, kind: 'playbackCache' });
-    }
-  }
+  if (curUid) await mgr.enqueueAudioDownload(curUid, { priority: 100, kind: 'playbackCache' }); // P0
+  if (n1) await mgr.enqueueAudioDownload(n1, { priority: 90, kind: 'playbackCache' }); // P1
+  if (n2) await mgr.enqueueAudioDownload(n2, { priority: 80, kind: 'playbackCache' }); // P1 (lower)
 }
 
-// Fix #3.2: Execute deferred GC after new CUR started playing
-async function _executePendingGC() {
-  if (_windowProtected || _pendingGC.length === 0) return;
+async function _flushPendingDelete() {
+  if (_protected) return;
+  if (!_pendingDelete.size) return;
 
-  const keep = _currentWindow;
-  const toDelete = _pendingGC.filter(uid => !keep.has(uid));
-  _pendingGC = [];
+  // Не удаляем то, что снова в окне
+  const keep = new Set([_win.prev, _win.cur, _win.next].filter(Boolean));
 
-  const delSet = new Set(toDelete);
+  const toDel = [..._pendingDelete].filter((uid) => uid && !keep.has(uid));
+  _pendingDelete = new Set(); // сбрасываем сразу
 
-  try {
-    const metas = await getAllTrackMetas();
-    for (const m of metas) {
-      if (m.type === 'playbackCache' && delSet.has(m.uid)) {
-        await deleteTrackCache(m.uid);
+  for (const uid of toDel) {
+    // !CRITICAL FIX: Проверяем тип перед удалением.
+    // Если пользователь успел нажать "Pin" (закрепить) или трек стал "Cloud" 
+    // пока он лежал в _pendingDelete, мы НЕ должны его удалять.
+    try {
+      const m = await getTrackMeta(uid);
+      if (m && (m.type === 'pinned' || m.type === 'cloud')) {
+        continue; // Skip deletion
       }
+      // Удаляем (и блоб, и мету), так как это transient и больше не нужен
+      await deleteTrackCache(uid);
+    } catch (e) {
+      // ignore errors
     }
-  } catch (e) {
-    console.error('[PlaybackCache] GC error:', e);
   }
 }
 
-// Immediate GC (for R0 transition)
-async function _gcImmediate(keepUids) {
-  try {
-    const metas = await getAllTrackMetas();
-    for (const m of metas) {
-      if (m.type === 'playbackCache' && !keepUids.includes(m.uid)) {
-        await deleteTrackCache(m.uid);
-      }
-    }
-  } catch (e) {
-    console.error('[PlaybackCache] GC error:', e);
-  }
-}
+export function protectWindow() { _protected = true; }
+export function unprotectWindow() { _protected = false; _flushPendingDelete().catch(() => {}); }
 
-// Fix #3.5: Protect/unprotect window from eviction
-export function protectWindow() { _windowProtected = true; }
-export function unprotectWindow() {
-  _windowProtected = false;
-  _executePendingGC();
-}
 export function getWindowState() {
   return {
-    uids: [..._currentWindow],
-    protected: _windowProtected,
-    pendingGC: [..._pendingGC]
+    prev: _win.prev,
+    cur: _win.cur,
+    next: _win.next,
+    protected: _protected,
+    pendingGC: [..._pendingDelete]
   };
 }
 
