@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8e251895f5cedd2691e99e5c594387b4ecf19dae.idx
-│   │       ├── pack-8e251895f5cedd2691e99e5c594387b4ecf19dae.pack
-│   │       └── pack-8e251895f5cedd2691e99e5c594387b4ecf19dae.rev
+│   │       ├── pack-8f2937e439902263c87ed465bc636f5786bc1514.idx
+│   │       ├── pack-8f2937e439902263c87ed465bc636f5786bc1514.pack
+│   │       └── pack-8f2937e439902263c87ed465bc636f5786bc1514.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -386,7 +386,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-08 14:13:19 UTC
+Сгенерировано: 2026-02-08 14:15:54 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -10959,4 +10959,30 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 @media(max-height:500px){.om-body{max-height:calc(100vh - 80px)}.om-overlay{padding:8px}}
 @media(min-width:768px){.om-overlay{align-items:center;padding:40px 20px}.om-body{max-height:70vh}}
 @media(prefers-reduced-motion:reduce){.om-modal,.om-overlay,.om-progress-fill{transition:none!important}}
+
+/* Pinned & Cloud top row (quality + recache) */
+.om-pc-toprow{display:flex;gap:12px;align-items:flex-end;margin-bottom:14px}
+.om-pc-quality,.om-pc-recache{display:flex;flex-direction:column;gap:6px}
+.om-pc-quality{flex:0 0 auto}
+.om-pc-recache{flex:1}
+.om-pc-quality__label,.om-pc-recache__label{font-size:11px;color:rgba(255,255,255,.45);font-weight:500}
+.om-pc-recache__btn{width:100%;justify-content:center;white-space:nowrap;padding:6px 14px}
+
+/* Disabled button state */
+.om-btn--disabled{opacity:.35!important;pointer-events:none!important;cursor:not-allowed!important;filter:grayscale(.6)}
+
+/* Track list delete button */
+.om-list-del{all:unset;cursor:pointer;flex-shrink:0;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:6px;font-size:14px;color:rgba(244,67,54,.6);transition:all .15s;margin-left:4px}
+.om-list-del:hover{background:rgba(244,67,54,.12);color:#ef5350}
+.om-list-del:active{transform:scale(.9)}
+
+/* Delete all inside list */
+.om-list-del-all{margin-top:10px}
+
+/* Track item exit animation */
+.om-list-item{transition:opacity .2s,transform .2s}
+
+/* Responsive fix for toprow */
+@media(max-width:340px){.om-pc-toprow{flex-direction:column;gap:8px}}
+
 
