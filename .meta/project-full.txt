@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c27393d3c6119aedbeaccf1176824efbba11f33a.idx
-│   │       ├── pack-c27393d3c6119aedbeaccf1176824efbba11f33a.pack
-│   │       └── pack-c27393d3c6119aedbeaccf1176824efbba11f33a.rev
+│   │       ├── pack-b3d9e0f5fad850b58a3a8d6f7a0da920f4bf3293.idx
+│   │       ├── pack-b3d9e0f5fad850b58a3a8d6f7a0da920f4bf3293.pack
+│   │       └── pack-b3d9e0f5fad850b58a3a8d6f7a0da920f4bf3293.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-08 22:14:59 UTC
+Сгенерировано: 2026-02-08 22:20:40 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5252,7 +5252,7 @@ export default { initNetPolicy, isNetworkAllowed, shouldShowCellularToast, getSt
 import {
   openDB, setAudioBlob, getAudioBlob, deleteAudioVariant, deleteAudio,
   setTrackMeta, getTrackMeta, updateTrackMeta, getAllTrackMetas,
-  hasAudioForUid, getStoredVariant, deleteTrackCache
+  hasAudioForUid, getStoredVariant, deleteTrackCache, deleteTrackMeta
 } from './cache-db.js';
 
 const WIN = window;
@@ -5363,7 +5363,6 @@ class SimpleQueue {
         emit('offline:downloadFailed', { uid: item.uid });
         if (e.message === 'DiskFull') toast('Мало места, загрузка остановлена', 'warning');
       }
-      // Clean up partials if needed, though SetAudioBlob is atomic-ish in IDB
     } finally {
       this.active.delete(item.uid);
       emit('offline:stateChanged');
@@ -5419,6 +5418,10 @@ class OfflineManager {
       return !est || ((est.quota||0) - (est.usage||0)) >= (DEF.MIN_MB * MB);
     } catch { return true; }
   }
+  
+  // !!! LEGACY COMPATIBILITY FIX !!!
+  // offline-indicators.js calls this method
+  async isSpaceOk() { return this.hasSpace(); }
 
   async getTrackOfflineState(uid) {
     if (!uid) return { status: 'none' };
