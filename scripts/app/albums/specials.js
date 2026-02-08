@@ -1,5 +1,5 @@
 import { $ } from '../utils/app-utils.js';
-import { renderFavoritesList, renderFavoritesEmpty, bindFavoritesList } from '../../ui/favorites-view.js';
+import { renderFavoritesList, renderFavoritesEmpty, bindFavoritesList, buildFavoritesRefsModel, getModel, getActiveModel } from '../../ui/favorites-view.js';
 import { loadAndRenderNewsInline } from '../../ui/news-inline.js';
 import { injectOfflineIndicators } from '../../ui/offline-indicators.js';
 
@@ -19,8 +19,8 @@ export async function loadFavoritesAlbum(ctx) {
   const container = $('track-list');
   if (!container) return;
 
-  const refreshData = async () => { try { await window.FavoritesUI?.buildFavoritesRefsModel(); } catch {} };
-  const getUiModel = () => window.FavoritesUI?.getModel() || [];
+  const refreshData = async () => { try { await buildFavoritesRefsModel(); } catch {} };
+  const getUiModel = () => getModel();
 
   const rebuild = async () => {
     await refreshData();
