@@ -37,6 +37,17 @@
     ['SleepTimer', 'LyricsModal', 'SystemInfoManager'].forEach(m => W[m]?.initialize?.());
     await import('./ui/statistics-modal.js');
 
+    // 5. Navigation (inline, was NavigationManager)
+    $('feedback-link')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      W.Modals?.open?.({
+        title: 'Обратная связь', maxWidth: 420,
+        bodyHtml: `<p style="margin-bottom:20px;color:#8ab8fd;text-align:center;">Есть предложения или нашли ошибку?<br>Напишите нам!</p><div style="display:flex;flex-direction:column;gap:15px;max-width:300px;margin:0 auto;"><a href="https://t.me/vitrina_razbita" target="_blank" style="background:#0088cc;color:#fff;padding:15px;border-radius:8px;text-decoration:none;text-align:center;">Telegram</a><a href="mailto:${C.SUPPORT_EMAIL||'support@vitrina-razbita.ru'}" target="_blank" style="background:#4daaff;color:#fff;padding:15px;border-radius:8px;text-decoration:none;text-align:center;">Email</a><a href="${C.GITHUB_URL||'https://github.com/apel-s-in/vi3na1bita-music'}" target="_blank" style="background:#333;color:#fff;padding:15px;border-radius:8px;text-decoration:none;text-align:center;">GitHub</a></div>`
+      });
+    });
+    const sl = $('support-link');
+    if (sl) sl.href = C.SUPPORT_URL || 'https://example.com/support';
+
     // Offline Modal button — handled by initOfflineModal() delegate in offline-modal.js
 
     // 5. Restore State
