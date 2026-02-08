@@ -245,8 +245,8 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
             throw new Error('Blocked by NetPolicy');
           }
 
-          if (W.Utils?.getNetworkStatusSafe) {
-            const net = W.Utils.getNetworkStatusSafe();
+          if (W.Utils?.getNet) {
+            const net = W.Utils.getNet();
             if (net.kind === 'cellular' && W.NetPolicy?.shouldShowCellularToast?.()) {
               W.NotificationSystem?.info?.('Воспроизведение через мобильную сеть');
             }
