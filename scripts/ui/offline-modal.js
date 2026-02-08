@@ -193,6 +193,10 @@ function render() {
       <button class="om-btn om-btn--outline" data-action="show-list" id="btn-show-list" style="width:100%">Показать закреплённые и облачные</button>
 
       <div id="pinned-cloud-list" class="om-track-list" style="display:none"></div>
+
+      <div class="om-divider"></div>
+
+      <button class="om-btn om-btn--danger-outline" data-action="del-all" style="width:100%">🗑 Удалить все 🔒 и ☁</button>
     </section>
   `);
 
@@ -350,7 +354,8 @@ function _bind(overlay, modal, om) {
     else if (a === 'del-track') {
       const uid = btn.dataset.uid, type = btn.dataset.type;
       if (!uid) return;
-      const trackTitle = btn.closest('.om-list-item')?.querySelector('.om-list-title')?.textContent || uid;
+      const row = btn.closest('.om-list-item');
+      const trackTitle = row?.querySelector('.om-list-title')?.textContent || uid;
       const typeLabel = type === 'pinned' ? 'закреплённый' : 'облачный';
       _confirm(
         `Удалить ${typeLabel} трек?`,
@@ -358,43 +363,41 @@ function _bind(overlay, modal, om) {
         'Удалить',
         async () => {
           try {
-            // 1. Удаляем из CacheDB (реальное удаление файла)
-            const { removeTrackFromCache } = await import('../offline/cache-db.js');
-            await removeTrackFromCache(uid);
-
-            // 2. Обновляем состояние в OfflineManager
-            if (type === 'pinned' && om.unpinTrack) {
-              await om.unpinTrack(uid);
-            } else if (type === 'cloud' && om.removeCloudTrack) {
-              await om.removeCloudTrack(uid);
+            // Удаляем через OfflineManager (он сам чистит CacheDB + мету)
+            if (om.removeCachedTrack) {
+              await om.removeCachedTrack(uid);
+            } else {
+              // Fallback: прямое удаление из CacheDB
+              try {
+                const cdb = await import('../offline/cache-db.js');
+                if (cdb.removeTrackFromCache) await cdb.removeTrackFromCache(uid);
+                else if (cdb.deleteTrackMeta) await cdb.deleteTrackMeta(uid);
+              } catch(e2) { console.warn('[OM] direct cache delete failed:', e2); }
+              // + снятие статуса
+              if (type === 'pinned' && om.unpinTrack) await om.unpinTrack(uid);
+              if (type === 'cloud' && om.removeCloudTrack) await om.removeCloudTrack(uid);
             }
 
-            // 3. Обновляем индикатор 🔒/☁ в основном плеере
+            // Обновляем индикатор в основном плеере
             window.dispatchEvent(new CustomEvent('offline:indicator:update', {
               detail: { uid, status: 'none' }
             }));
+            if (window.OfflineIndicators?.refresh) window.OfflineIndicators.refresh(uid);
 
-            // 4. Если есть OfflineIndicators — вызываем напрямую
-            if (window.OfflineIndicators?.refresh) {
-              window.OfflineIndicators.refresh(uid);
-            }
-
-            // 5. Удаляем строку из DOM с анимацией
-            const row = modal.querySelector(`.om-list-item[data-uid="${CSS.escape(uid)}"]`);
+            // Анимация удаления строки
             if (row) {
               row.style.opacity = '0';
               row.style.transform = 'translateX(20px)';
               setTimeout(() => row.remove(), 200);
             }
 
-            // 6. Обновляем storage
             await _refreshStorage(modal, om);
             window.NotificationSystem?.success?.(`${trackTitle} удалён`);
 
-            // 7. Если список пуст
+            // Проверяем пустой ли список
             setTimeout(() => {
-              const remaining = modal.querySelectorAll('.om-list-item');
-              if (remaining.length === 0) {
+              const items = modal.querySelectorAll('#pinned-cloud-list .om-list-item');
+              if (items.length === 0) {
                 const el = modal.querySelector('#pinned-cloud-list');
                 if (el) el.innerHTML = '<div class="om-list-empty">Нет закреплённых или облачных треков</div>';
               }
