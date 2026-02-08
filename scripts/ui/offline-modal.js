@@ -1,827 +1,411 @@
 /**
- * scripts/ui/offline-modal.js — v3.4 (compact rewrite, same DOM ids/classes)
- * Важно:
- * - Не трогаем воспроизведение (NO stop/play).
- * - Сохраняем пиксель-в-пиксель: классы/ID/DOM-структуру секций сохранены.
+ * scripts/ui/offline-modal.js
+ * Optimized Offline Modal v4.0 (Spec-compliant: R1/NetPolicy/UnifiedQuality)
+ * 
+ * Implements strict adherence to "Offline Modal Structure (Part 12)" of the Spec.
+ * Uses event delegation and template literals for minimal LOC and max performance.
  */
+
 import { getOfflineManager } from '../offline/offline-manager.js';
 import * as Net from '../offline/net-policy.js';
+import { estimateUsage } from '../offline/cache-db.js';
 
 let _overlay = null;
 
-const DAY_MS = 86400000;
-
+// --- Helpers ---
 const esc = (s) => window.Utils?.escapeHtml?.(String(s ?? '')) ?? String(s ?? '');
-
 const fmtMB = (b) => {
   const n = Number(b) || 0;
   const mb = n / 1048576;
   return mb < 0.1 && n > 0 ? '< 0.1 МБ' : `${mb.toFixed(1)} МБ`;
 };
-
 const fmtB = (b) => {
   const n = Number(b) || 0;
   if (n >= 1048576) return `${(n / 1048576).toFixed(1)} МБ`;
   if (n >= 1024) return `${(n / 1024).toFixed(0)} КБ`;
   return `${n} Б`;
 };
+const $q = (sel, root = document) => root.querySelector(sel);
 
-const plTr = (n) => {
-  const m10 = n % 10;
-  const m100 = n % 100;
-  if (m100 >= 11 && m100 <= 19) return 'треков';
-  if (m10 === 1) return 'трек';
-  if (m10 >= 2 && m10 <= 4) return 'трека';
-  return 'треков';
-};
+// --- Component Generators ---
 
-const $q = (root, sel) => root.querySelector(sel);
-const $qa = (root, sel) => Array.from(root.querySelectorAll(sel));
+const _tplToggle = (action, isOn, label, isSmall = false) => `
+  <button class="${isSmall ? 'om-toggle-small' : 'om-toggle'} ${isOn ? (isSmall ? 'om-toggle-small--on' : 'om-toggle--on') : (isSmall ? '' : 'om-toggle--off')}" data-action="${action}">
+    ${!isSmall ? `<span class="om-toggle__dot"></span>` : ''}
+    <span class="${isSmall ? '' : 'om-toggle__label'}">${label}</span>
+  </button>`;
 
-function _close() {
-  if (!_overlay) return;
-  $q(_overlay, '.om-modal')?.classList.remove('om-modal--visible');
-  _overlay.classList.remove('om-overlay--visible');
-  const ref = _overlay;
-  _overlay = null;
-  setTimeout(() => ref.remove(), 250);
-}
+const _tplSection = (icon, title, content, isLast = false) => `
+  <section class="om-section ${isLast ? 'om-section--last' : ''}">
+    <h3 class="om-section__title"><span class="om-section__icon">${icon}</span> ${title}</h3>
+    ${content}
+  </section>`;
 
-function _confirm(title, html, okText, onOk) {
-  const bg = document.createElement('div');
-  bg.className = 'om-confirm-bg';
-  bg.innerHTML = `
-    <div class="om-confirm-box">
-      <div class="om-confirm-title">${title}</div>
-      <div class="om-confirm-body">${html}</div>
-      <div class="om-confirm-btns">
-        <button class="om-btn om-btn--ghost" data-role="cancel">Отмена</button>
-        <button class="om-btn om-btn--primary" data-role="ok">${okText}</button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(bg);
-  requestAnimationFrame(() => bg.classList.add('om-confirm-bg--visible'));
+// --- Main Render Logic ---
 
-  const close = () => {
-    bg.classList.remove('om-confirm-bg--visible');
-    setTimeout(() => bg.remove(), 200);
-  };
-
-  bg.addEventListener('click', (e) => {
-    if (e.target === bg) return close();
-    const role = e.target.closest('[data-role]')?.dataset.role;
-    if (role === 'cancel') return close();
-    if (role === 'ok') {
-      close();
-      onOk();
-    }
-  });
-}
-
-async function _refreshStorage(modal, om) {
-  try {
-    const { estimateUsage } = await import('../offline/cache-db.js');
-    const est = await estimateUsage();
-
-    const v = $q(modal, '#om-st-val');
-    if (v) v.textContent = `${fmtMB(est.used)} / ${fmtMB(est.quota)}`;
-
-    if (!om.getStorageBreakdown) return;
-    const s = await om.getStorageBreakdown();
-    const total = (s.pinned || 0) + (s.cloud || 0) + (s.transient || 0) + (s.other || 0);
-    const pct = (x) => (total > 0 ? Math.max(0.4, (x / total) * 100) : 0);
-
-    const sp = $q(modal, '#om-seg-pinned');
-    const sc = $q(modal, '#om-seg-cloud');
-    const st = $q(modal, '#om-seg-trans');
-    const so = $q(modal, '#om-seg-other');
-
-    if (sp) sp.style.width = total > 0 && s.pinned > 0 ? `${pct(s.pinned)}%` : '0%';
-    if (sc) sc.style.width = total > 0 && s.cloud > 0 ? `${pct(s.cloud)}%` : '0%';
-    if (st) st.style.width = total > 0 && s.transient > 0 ? `${pct(s.transient)}%` : '0%';
-    if (so) so.style.width = total > 0 && s.other > 0 ? `${pct(s.other)}%` : '0%';
-
-    const lg = $q(modal, '#om-st-legend');
-    if (lg) {
-      const items = [
-        ['pinned', '🔒', s.pinned],
-        ['cloud', '☁', s.cloud],
-        ['transient', '⏳', s.transient],
-        ['other', '📁', s.other]
-      ].filter(([, , val]) => (val || 0) > 0);
-
-      lg.innerHTML = items
-        .map(
-          ([cls, ic, val]) =>
-            `<span class="om-legend-item"><span class="om-legend-dot om-legend-dot--${cls}"></span>${ic} ${fmtB(val)}</span>`
-        )
-        .join('');
-    }
-
-    const bd = $q(modal, '#om-st-bd');
-    if (bd) {
-      bd.innerHTML = [
-        ['🔒', 'Закреплённые', s.pinned],
-        ['☁', 'Облачные', s.cloud],
-        ['⏳', 'PlaybackCache', s.transient],
-        ['📁', 'Прочее', s.other]
-      ]
-        .map(
-          ([ic, label, val]) =>
-            `<div class="om-bd-row"><span class="om-bd-icon">${ic}</span> ${label} <span class="om-bd-val">${fmtB(val)}</span></div>`
-        )
-        .join('');
-    }
-  } catch (e) {
-    console.warn('[OM] storage err:', e);
-  }
-}
-
-function _netSectionHtml(ns, pl) {
-  let html = '';
-
-  if (pl.hasNetInfo) {
-    const sp = Net.getNetworkSpeed();
-    const lb = Net.getNetworkLabel();
-    if (sp) html += `<div class="om-net-speed">${esc(lb)} · ~${sp} Мбит/с</div>`;
-  }
-
-  if (pl.supportsNetControl) {
-    html += `
-      <div class="om-toggles-row">
-        <button class="om-toggle ${ns.wifiEnabled ? 'om-toggle--on' : 'om-toggle--off'}" data-action="toggle-wifi">
-          <span class="om-toggle__dot"></span><span class="om-toggle__label">Ethernet / Wi-Fi</span>
-        </button>
-        <button class="om-toggle ${ns.cellularEnabled ? 'om-toggle--on' : 'om-toggle--off'}" data-action="toggle-cell">
-          <span class="om-toggle__dot"></span><span class="om-toggle__label">Cellular</span>
-        </button>
-      </div>
-      <button class="om-toggle-small ${ns.cellularToast ? 'om-toggle-small--on' : ''}" data-action="toggle-toast">
-        🔔 Уведомления при Cellular: ${ns.cellularToast ? 'ВКЛ' : 'ВЫКЛ'}
-      </button>
-    `;
-  } else {
-    html += `
-      <div class="om-net-unsupported">Управление сетью ограничено ОС</div>
-      <button class="om-toggle ${ns.killSwitch ? 'om-toggle--on' : 'om-toggle--neutral'}" data-action="toggle-kill" style="margin-top:8px">
-        <span class="om-toggle__dot"></span><span class="om-toggle__label">Принудительно отключить интернет</span>
-      </button>
-      ${ns.killSwitch ? `<div class="om-net-kill-hint">⚠️ Все сетевые запросы заблокированы. Плеер работает только с кэшем.</div>` : ''}
-    `;
-  }
-
-  const st = Net.getStatusText();
-  if (st) html += `<div class="om-net-status">${esc(st)}</div>`;
-
-  const ts = Net.getTrafficStats();
-  const mn = ts.monthName || '';
-
-  if (ts.type === 'general') {
-    html += `
-      <div class="om-traffic">
-        <div class="om-traffic__title">Трафик</div>
-        <div class="om-traffic__row"><span>${esc(mn)}:</span><span>${fmtMB(ts.general.monthly)}</span></div>
-        <div class="om-traffic__row"><span>Всего:</span><span>${fmtMB(ts.general.total)}</span></div>
-      </div>
-    `;
-  } else {
-    html += `
-      <div class="om-traffic">
-        <div class="om-traffic__title">Трафик</div>
-
-        <div class="om-traffic__group">
-          <div class="om-traffic__subtitle">Ethernet / Wi-Fi</div>
-          <div class="om-traffic__row"><span>${esc(mn)}:</span><span>${fmtMB(ts.wifi.monthly)}</span></div>
-          <div class="om-traffic__row"><span>Всего:</span><span>${fmtMB(ts.wifi.total)}</span></div>
-        </div>
-
-        <div class="om-traffic__group">
-          <div class="om-traffic__subtitle">Cellular</div>
-          <div class="om-traffic__row"><span>${esc(mn)}:</span><span>${fmtMB(ts.cellular.monthly)}</span></div>
-          <div class="om-traffic__row"><span>Всего:</span><span>${fmtMB(ts.cellular.total)}</span></div>
-        </div>
-      </div>
-    `;
-  }
-
-  html += `<button class="om-btn om-btn--ghost" data-action="clear-traffic">Очистить статистику</button>`;
-  return html;
-}
-
-function _modeCardsHtml(mode) {
-  const card = (name, desc, id, hint, disabled) => {
-    const toggle = disabled
-      ? `<div class="om-mode-toggle"><button class="om-mode-btn om-mode-btn--active" disabled>OFF</button><button class="om-mode-btn" disabled>ON</button></div>`
-      : `<div class="om-mode-toggle" id="${id}">
-          <button class="om-mode-btn ${mode === 'R0' ? 'om-mode-btn--active' : ''}" data-val="R0">OFF</button>
-          <button class="om-mode-btn ${mode === 'R1' ? 'om-mode-btn--active' : ''}" data-val="R1">ON</button>
-        </div>`;
-
-    return `
-      <div class="om-mode-card${disabled ? ' om-mode-card--disabled' : ''}" style="margin-bottom:10px">
-        <div class="om-mode-card__head">
-          <div>
-            <div class="om-mode-card__name">${name}</div>
-            <div class="om-mode-card__desc">${desc}</div>
-          </div>
-          ${toggle}
-        </div>
-        <div class="om-mode-card__hint"${!disabled ? ` id="${id}-hint"` : ''}>${hint}</div>
-      </div>
-    `;
-  };
-
-  return `
-    ${card(
-      'PlaybackCache (R1)',
-      'Предзагружает соседние треки для мгновенных переходов',
-      'om-mode-toggle',
-      mode === 'R1' ? '✅ Активен — до 3 треков офлайн' : 'R0 — чистый стриминг',
-      false
-    )}
-    ${card('SmartPrefetch (R2)', 'Умная предзагрузка на основе истории прослушиваний', '', '🔒 Будет доступно в следующем обновлении', true)}
-    ${card('FullOffline (R3)', 'Полное офлайн-зеркало плейлиста с фоновой синхронизацией', '', '🔒 Будет доступно в следующем обновлении', true)}
-  `;
-}
-
-function _presetsHtml(bp) {
-  const presets = [
-    ['aggressive', '🚀', 'Агрессивный', 'Максимальная предзагрузка, быстрый расход батареи'],
-    ['balanced', '⚖️', 'Сбалансированный', 'Оптимальный баланс скорости и энергии'],
-    ['saver', '🔋', 'Экономный', 'Минимальная фоновая активность, экономия батареи']
-  ];
-
-  return presets
-    .map(([id, ic, nm, ds]) => {
-      const act = bp === id;
-      return `
-        <button class="om-preset${act ? ' om-preset--active' : ''}" data-action="set-bg-preset" data-preset="${id}">
-          <span class="om-preset__icon">${ic}</span>
-          <div class="om-preset__text">
-            <div class="om-preset__name">${nm}</div>
-            <div class="om-preset__desc">${ds}</div>
-          </div>
-          <span class="om-preset__check">${act ? '✓' : ''}</span>
-        </button>
-      `;
-    })
-    .join('');
-}
-
-function _render() {
-  if (_overlay) return;
-
+async function _renderBody(container) {
   const om = getOfflineManager();
   const ns = Net.getNetPolicyState();
   const pl = Net.getPlatform();
-
-  const q = om.getQuality();
-  const mode = om.getMode();
+  
+  // Async Data Fetching
+  const [est, breakdown, needsReCache] = await Promise.all([
+    estimateUsage(),
+    om.getStorageBreakdown(),
+    om.countNeedsReCache ? om.countNeedsReCache(om.getQuality()) : Promise.resolve(0)
+  ]);
+  
+  const q = om.getQuality(); // 'hi' | 'lo'
+  const mode = om.getMode(); // 'R0' | 'R1'
   const { N, D } = om.getCloudSettings();
+  const dl = om.getDownloadStatus() || { active: 0, queued: 0 };
   const bp = om.getBackgroundPreset?.() || 'balanced';
-  const dl = om.getDownloadStatus?.() || { active: 0, queued: 0 };
 
-  const overlay = document.createElement('div');
-  overlay.className = 'om-overlay';
-
-  const modal = document.createElement('div');
-  modal.className = 'om-modal';
-
-  modal.innerHTML = `
-    <div class="om-header">
-      <div class="om-header__title">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.7">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-          <polyline points="7 10 12 15 17 10"/>
-          <line x1="12" y1="15" x2="12" y2="3"/>
-        </svg>
-        <span>OFFLINE</span>
+  // 1. Storage Section
+  const totalBytes = Object.values(breakdown).reduce((a, b) => a + b, 0);
+  const pct = (v) => totalBytes > 0 ? Math.max(0.5, (v / totalBytes) * 100) : 0;
+  
+  const htmlStorage = `
+    <div class="om-storage-info">
+      <div class="om-storage-row">
+        <span class="om-storage-label">Занято</span>
+        <span class="om-storage-value">${fmtMB(est.used)} / ${fmtMB(est.quota)}</span>
       </div>
-      <button class="om-header__close" aria-label="Закрыть">&times;</button>
+      <div class="om-storage-segbar" data-action="toggle-storage-details" title="Подробности">
+        <div class="om-segbar__fill om-segbar--pinned" style="width:${pct(breakdown.pinned)}%"></div>
+        <div class="om-segbar__fill om-segbar--cloud" style="width:${pct(breakdown.cloud)}%"></div>
+        <div class="om-segbar__fill om-segbar--transient" style="width:${pct(breakdown.transient)}%"></div>
+        <div class="om-segbar__fill om-segbar--other" style="width:${pct(breakdown.other)}%"></div>
+      </div>
+      <div class="om-storage-legend">
+        ${breakdown.pinned ? `<span class="om-legend-item"><span class="om-legend-dot om-legend-dot--pinned"></span>🔒 ${fmtB(breakdown.pinned)}</span>` : ''}
+        ${breakdown.cloud ? `<span class="om-legend-item"><span class="om-legend-dot om-legend-dot--cloud"></span>☁ ${fmtB(breakdown.cloud)}</span>` : ''}
+        ${breakdown.transient ? `<span class="om-legend-item"><span class="om-legend-dot om-legend-dot--transient"></span>⏳ ${fmtB(breakdown.transient)}</span>` : ''}
+      </div>
+      <div id="om-st-detail" style="display:none; margin-top:12px">
+         <button class="om-btn om-btn--danger" data-action="nuke" style="width:100%">Очистить ВЕСЬ кэш</button>
+      </div>
+    </div>`;
+
+  // 2. Network Policy Section
+  let htmlNet = '';
+  if (pl.hasNetInfo) {
+    const sp = Net.getNetworkSpeed();
+    if (sp) htmlNet += `<div class="om-net-speed">${Net.getNetworkLabel()} · ~${sp} Мбит/с</div>`;
+  }
+  
+  if (pl.supportsNetControl) {
+    htmlNet += `
+      <div class="om-toggles-row">
+        ${_tplToggle('toggle-wifi', ns.wifiEnabled, 'Ethernet / Wi-Fi')}
+        ${_tplToggle('toggle-cell', ns.cellularEnabled, 'Cellular')}
+      </div>
+      ${_tplToggle('toggle-toast', ns.cellularToast, `🔔 Уведомления при Cellular: ${ns.cellularToast?'ВКЛ':'ВЫКЛ'}`, true)}`;
+  } else {
+    htmlNet += `
+      <div class="om-net-unsupported">Управление сетью ограничено ОС (iOS)</div>
+      <button class="om-toggle ${ns.killSwitch ? 'om-toggle--on' : 'om-toggle--neutral'}" data-action="toggle-kill" style="margin-top:8px">
+        <span class="om-toggle__dot"></span><span class="om-toggle__label">Отключить весь интернет</span>
+      </button>
+      ${ns.killSwitch ? `<div class="om-net-kill-hint">⚠️ Все запросы заблокированы (Offline).</div>` : ''}`;
+  }
+  
+  // Traffic Stats
+  const ts = Net.getTrafficStats();
+  const mn = ts.monthName || '';
+  const row = (l, v) => `<div class="om-traffic__row"><span>${l}</span><span>${fmtMB(v)}</span></div>`;
+  
+  htmlNet += `<div class="om-traffic" style="margin-top:12px">
+    <div class="om-traffic__title">Трафик (${esc(mn)})</div>
+    ${ts.type === 'split' 
+      ? `<div class="om-traffic__group"><div class="om-traffic__subtitle">Wi-Fi</div>${row('Месяц:', ts.wifi.monthly)}${row('Всего:', ts.wifi.total)}</div>
+         <div class="om-traffic__group"><div class="om-traffic__subtitle">Cellular</div>${row('Месяц:', ts.cellular.monthly)}${row('Всего:', ts.cellular.total)}</div>`
+      : `${row('Месяц:', ts.general.monthly)}${row('Всего:', ts.general.total)}`}
+    <button class="om-btn om-btn--ghost" data-action="clear-traffic" style="margin-top:8px">Очистить статистику</button>
+  </div>`;
+
+  // 3. Pinned & Cloud Section (Unified)
+  const htmlPC = `
+    <div class="om-pc-toprow">
+      <div class="om-pc-quality">
+        <div class="om-pc-quality__label">Качество</div>
+        <div class="om-quality-toggle">
+          <button class="om-quality-btn ${q==='hi'?'om-quality-btn--active-hi':''}" data-action="set-q-hi">Hi</button>
+          <button class="om-quality-btn ${q==='lo'?'om-quality-btn--active-lo':''}" data-action="set-q-lo">Lo</button>
+        </div>
+      </div>
+      <div class="om-pc-recache">
+        <div class="om-pc-recache__label">Обновление (${needsReCache})</div>
+        <button class="om-btn om-btn--accent om-pc-recache__btn ${needsReCache===0?'om-btn--disabled':''}" 
+          data-action="recache" ${needsReCache===0?'disabled':''}>🔄 Re-cache</button>
+      </div>
     </div>
-
-    <div class="om-body" id="om-body">
-
-      <section class="om-section">
-        <h3 class="om-section__title"><span class="om-section__icon">📦</span> Хранилище</h3>
-        <div class="om-storage-info" id="om-storage-info">
-          <div class="om-storage-row">
-            <span class="om-storage-label">Занято</span>
-            <span class="om-storage-value" id="om-st-val">—</span>
-          </div>
-
-          <div class="om-storage-segbar" id="om-st-segbar" title="Нажмите для подробностей">
-            <div class="om-segbar__fill om-segbar--pinned" id="om-seg-pinned" style="width:0%"></div>
-            <div class="om-segbar__fill om-segbar--cloud" id="om-seg-cloud" style="width:0%"></div>
-            <div class="om-segbar__fill om-segbar--transient" id="om-seg-trans" style="width:0%"></div>
-            <div class="om-segbar__fill om-segbar--other" id="om-seg-other" style="width:0%"></div>
-          </div>
-
-          <div class="om-storage-legend" id="om-st-legend"></div>
-
-          <div class="om-storage-detail" id="om-st-detail" style="display:none">
-            <div class="om-storage-breakdown" id="om-st-bd"></div>
-            <button class="om-btn om-btn--danger" data-action="nuke" style="width:100%;margin-top:12px">
-              Очистить ВЕСЬ кэш приложения
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <section class="om-section">
-        <h3 class="om-section__title"><span class="om-section__icon">🌐</span> Сетевая политика</h3>
-        ${_netSectionHtml(ns, pl)}
-      </section>
-
-      <section class="om-section">
-        <h3 class="om-section__title"><span class="om-section__icon">🔒</span> Pinned и Cloud</h3>
-
-        <div class="om-pc-toprow">
-          <div class="om-pc-quality">
-            <div class="om-pc-quality__label">Качество кэша</div>
-            <div class="om-quality-toggle" id="om-qual-toggle">
-              <button class="om-quality-btn ${q === 'hi' ? 'om-quality-btn--active-hi' : ''}" data-val="hi">Hi</button>
-              <button class="om-quality-btn ${q === 'lo' ? 'om-quality-btn--active-lo' : ''}" data-val="lo">Lo</button>
-            </div>
-          </div>
-
-          <div class="om-pc-recache">
-            <div class="om-pc-recache__label">Обновление кэша</div>
-            <button class="om-btn om-btn--accent om-pc-recache__btn" data-action="recache" id="btn-recache">🔄 Re-cache</button>
-          </div>
-        </div>
-
-        <div class="om-settings-grid">
-          <div class="om-setting">
-            <label class="om-setting__label" for="inp-n">Слушать для ☁ (N)</label>
-            <input type="number" id="inp-n" value="${N}" min="1" max="100" class="om-setting__input">
-          </div>
-          <div class="om-setting">
-            <label class="om-setting__label" for="inp-d">Хранить ☁ дней (D)</label>
-            <input type="number" id="inp-d" value="${D}" min="1" max="365" class="om-setting__input">
-          </div>
-        </div>
-
-        <button class="om-btn om-btn--primary" data-action="apply-cloud" style="width:100%">Применить настройки</button>
-
-        <div class="om-divider"></div>
-
-        <button class="om-btn om-btn--outline" data-action="show-list" id="btn-show-list" style="width:100%">
-          Показать закреплённые и облачные
-        </button>
-
-        <div id="pinned-cloud-list" class="om-track-list" style="display:none"></div>
-      </section>
-
-      <section class="om-section">
-        <h3 class="om-section__title"><span class="om-section__icon">⚙️</span> Режимы кэширования</h3>
-        ${_modeCardsHtml(mode)}
-      </section>
-
-      <section class="om-section">
-        <h3 class="om-section__title"><span class="om-section__icon">🌙</span> Пресеты фонового режима</h3>
-        <div class="om-presets-list">${_presetsHtml(bp)}</div>
-      </section>
-
-      <section class="om-section om-section--last">
-        <h3 class="om-section__title"><span class="om-section__icon">⬇️</span> Загрузки</h3>
-        <div class="om-dl-stats">
-          <div class="om-dl-stat">
-            <span class="om-dl-stat__num">${dl.active}</span>
-            <span class="om-dl-stat__label">Активных</span>
-          </div>
-          <div class="om-dl-stat">
-            <span class="om-dl-stat__num">${dl.queued}</span>
-            <span class="om-dl-stat__label">В очереди</span>
-          </div>
-        </div>
-        <button class="om-btn om-btn--ghost" data-action="dl-pause" data-paused="0">⏸ Пауза</button>
-      </section>
-
+    <div class="om-settings-grid">
+      <div class="om-setting"><label class="om-setting__label">Слушать для ☁ (N)</label><input type="number" id="inp-n" value="${N}" min="1" class="om-setting__input"></div>
+      <div class="om-setting"><label class="om-setting__label">Хранить ☁ дней (D)</label><input type="number" id="inp-d" value="${D}" min="1" class="om-setting__input"></div>
     </div>
-  `;
+    <button class="om-btn om-btn--primary" data-action="apply-cloud" style="width:100%; margin-bottom:14px">Применить настройки</button>
+    <div class="om-divider"></div>
+    <button class="om-btn om-btn--outline" data-action="show-list" id="btn-show-list" style="width:100%">Показать список 🔒/☁</button>
+    <div id="pinned-cloud-list" class="om-track-list" style="display:none"></div>`;
 
-  overlay.appendChild(modal);
-  document.body.appendChild(overlay);
-  _overlay = overlay;
+  // 4. Modes (R0/R1)
+  const htmlModes = `
+    <div class="om-mode-card" style="margin-bottom:10px">
+      <div class="om-mode-card__head">
+        <div><div class="om-mode-card__name">PlaybackCache (R1)</div><div class="om-mode-card__desc">Предзагрузка соседних треков</div></div>
+        <div class="om-mode-toggle">
+          <button class="om-mode-btn ${mode==='R0'?'om-mode-btn--active':''}" data-action="set-mode-r0">OFF</button>
+          <button class="om-mode-btn ${mode==='R1'?'om-mode-btn--active':''}" data-action="set-mode-r1">ON</button>
+        </div>
+      </div>
+      <div class="om-mode-card__hint">${mode==='R1'?'✅ Активен — до 3 треков офлайн':'R0 — чистый стриминг'}</div>
+    </div>
+    <div class="om-mode-card om-mode-card--disabled"><div class="om-mode-card__head"><div><div class="om-mode-card__name">SmartPrefetch (R2)</div></div><div class="om-mode-toggle"><button class="om-mode-btn" disabled>OFF</button></div></div></div>`;
 
-  requestAnimationFrame(() => {
-    overlay.classList.add('om-overlay--visible');
-    modal.classList.add('om-modal--visible');
-  });
+  // 5. Presets
+  const presets = [['aggressive','🚀','Агрессивный'],['balanced','⚖️','Баланс'],['saver','🔋','Эконом']];
+  const htmlPresets = `<div class="om-presets-list">
+    ${presets.map(([k,i,n]) => `
+      <button class="om-preset ${bp===k?'om-preset--active':''}" data-action="set-bg-preset" data-val="${k}">
+        <span class="om-preset__icon">${i}</span>
+        <div class="om-preset__text"><div class="om-preset__name">${n}</div></div>
+        <span class="om-preset__check">${bp===k?'✓':''}</span>
+      </button>`).join('')}
+  </div>`;
 
-  _bind(overlay, modal, om);
-  _refreshStorage(modal, om);
+  // 6. Downloads (with Pause/Resume toggle)
+  const isPaused = container.querySelector('[data-action="dl-pause"]')?.dataset.paused === '1';
+  const htmlDL = `
+    <div class="om-dl-stats">
+      <div class="om-dl-stat"><span class="om-dl-stat__num">${dl.active}</span><span class="om-dl-stat__label">Активных</span></div>
+      <div class="om-dl-stat"><span class="om-dl-stat__num">${dl.queued}</span><span class="om-dl-stat__label">В очереди</span></div>
+    </div>
+    <button class="om-btn om-btn--ghost" data-action="dl-pause" data-paused="${isPaused ? '1' : '0'}">
+      ${isPaused ? '▶ Возобновить' : '⏸ Пауза'}
+    </button>`;
 
-  // Disable recache if not needed
-  (async () => {
-    if (!om.countNeedsReCache) return;
-    const cnt = await om.countNeedsReCache(q);
-    const rb = $q(modal, '#btn-recache');
-    if (rb && cnt === 0) {
-      rb.classList.add('om-btn--disabled');
-      rb.setAttribute('disabled', '');
-    }
-  })().catch(() => {});
+  // Combine
+  container.innerHTML = 
+    _tplSection('📦', 'Хранилище', htmlStorage) +
+    _tplSection('🌐', 'Сетевая политика', htmlNet) +
+    _tplSection('🔒', 'Pinned и Cloud', htmlPC) +
+    _tplSection('⚙️', 'Режимы', htmlModes) +
+    _tplSection('🌙', 'Пресеты', htmlPresets) +
+    _tplSection('⬇️', 'Загрузки', htmlDL, true);
 }
 
-function _bind(overlay, modal, om) {
-  // close interactions
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) _close();
-  });
-  $q(modal, '.om-header__close')?.addEventListener('click', _close);
+// --- Action Handlers ---
 
-  const onEsc = (e) => {
-    if (e.key === 'Escape' && _overlay) {
-      _close();
-      document.removeEventListener('keydown', onEsc);
-    }
-  };
-  document.addEventListener('keydown', onEsc);
+async function _handleAction(e) {
+  const el = e.target.closest('[data-action]');
+  if (!el || el.disabled) return;
+  
+  const act = el.dataset.action;
+  const om = getOfflineManager();
+  const modal = e.currentTarget;
 
-  // storage expand/collapse
-  $q(modal, '#om-st-segbar')?.addEventListener('click', () => {
-    const det = $q(modal, '#om-st-detail');
-    const leg = $q(modal, '#om-st-legend');
-    if (!det) return;
-    const open = det.style.display !== 'none';
-    det.style.display = open ? 'none' : '';
-    if (leg) leg.style.display = open ? '' : 'none';
-  });
+  switch(act) {
+    case 'toggle-storage-details':
+      const det = $q('#om-st-detail', modal);
+      if(det) det.style.display = det.style.display === 'none' ? 'block' : 'none';
+      break;
 
-  // main router
-  modal.addEventListener('click', async (e) => {
-    const el = e.target.closest('[data-action]');
-    if (!el) return;
+    case 'nuke':
+      _confirm('Очистить ВЕСЬ кэш?', 'Удалит все данные приложения.', 'Очистить', async () => {
+        await om.removeAllCached();
+        if ('caches' in window) (await caches.keys()).forEach(k => caches.delete(k));
+        window.NotificationSystem?.success('Кэш очищен');
+        _renderBody($q('#om-body', _overlay));
+      });
+      break;
 
-    const a = el.dataset.action;
+    case 'toggle-wifi': Net.toggleWifi(); _renderBody($q('#om-body', _overlay)); break;
+    case 'toggle-cell': Net.toggleCellular(); _renderBody($q('#om-body', _overlay)); break;
+    case 'toggle-toast': Net.toggleCellularToast(); _renderBody($q('#om-body', _overlay)); break;
+    case 'toggle-kill': Net.toggleKillSwitch(); _renderBody($q('#om-body', _overlay)); break;
+    case 'clear-traffic': Net.clearTrafficStats(); _renderBody($q('#om-body', _overlay)); break;
 
-    // Net policy
-    if (a === 'toggle-wifi') {
-      Net.toggleWifi();
-      const s = Net.getNetPolicyState();
-      el.className = `om-toggle ${s.wifiEnabled ? 'om-toggle--on' : 'om-toggle--off'}`;
-      return;
-    }
-
-    if (a === 'toggle-cell') {
-      Net.toggleCellular();
-      const s = Net.getNetPolicyState();
-      el.className = `om-toggle ${s.cellularEnabled ? 'om-toggle--on' : 'om-toggle--off'}`;
-      return;
-    }
-
-    if (a === 'toggle-toast') {
-      Net.toggleCellularToast();
-      const s = Net.getNetPolicyState();
-      el.classList.toggle('om-toggle-small--on', !!s.cellularToast);
-      el.innerHTML = `🔔 Уведомления при Cellular: ${s.cellularToast ? 'ВКЛ' : 'ВЫКЛ'}`;
-      return;
-    }
-
-    if (a === 'toggle-kill') {
-      Net.toggleKillSwitch();
-      const s = Net.getNetPolicyState();
-      const on = !!s.killSwitch;
-      el.className = `om-toggle ${on ? 'om-toggle--on' : 'om-toggle--neutral'}`;
-
-      let hint = el.parentElement?.querySelector('.om-net-kill-hint');
-      if (on && !hint) {
-        el.insertAdjacentHTML('afterend', '<div class="om-net-kill-hint">⚠️ Все сетевые запросы заблокированы. Плеер работает только с кэшем.</div>');
-      } else if (!on && hint) {
-        hint.remove();
-      }
-      return;
-    }
-
-    if (a === 'clear-traffic') {
-      Net.clearTrafficStats();
-      $qa(modal, '.om-traffic .om-traffic__row span:last-child').forEach((n) => (n.textContent = '0.0 МБ'));
-      window.NotificationSystem?.info?.('Статистика очищена');
-      return;
-    }
-
-    // Re-cache
-    if (a === 'recache') {
-      if (el.hasAttribute('disabled')) return;
-      if (!om.countNeedsReCache || !om.reCacheAll) return window.NotificationSystem?.info?.('Re-cache не поддерживается');
-
-      const rq = om.getQuality();
-      const cnt = await om.countNeedsReCache(rq);
-      if (!cnt) return window.NotificationSystem?.info?.('Все файлы в правильном качестве ✓');
-
-      om.queue?.setParallel?.(3);
-      await om.reCacheAll(rq);
-      window.NotificationSystem?.info?.(`Перекэширование: ${cnt} файлов`);
-      setTimeout(() => om.queue?.setParallel?.(1), 15000);
-
-      el.classList.add('om-btn--disabled');
-      el.setAttribute('disabled', '');
-      return;
-    }
-
-    // Apply cloud N/D
-    if (a === 'apply-cloud') {
-      const nN = parseInt($q(modal, '#inp-n')?.value, 10) || 5;
-      const nD = parseInt($q(modal, '#inp-d')?.value, 10) || 31;
-
-      let toRm = 0;
-      if (om.previewCloudSettingsChange) {
-        const p = await om.previewCloudSettingsChange({ newN: nN, newD: nD });
-        toRm = p?.toRemove || 0;
-      }
-
-      const apply = async (toastText) => {
-        await om.confirmApplyCloudSettings({ newN: nN, newD: nD });
-        await _refreshStorage(modal, om);
-        window.NotificationSystem?.success?.(toastText);
+    case 'set-q-hi': case 'set-q-lo':
+      const nq = act === 'set-q-hi' ? 'hi' : 'lo';
+      if (om.getQuality() === nq) return;
+      const count = await om.countNeedsReCache(nq);
+      const doQ = () => {
+        om.setCacheQualitySetting(nq);
+        window.playerCore?.switchQuality?.(nq); // Trigger hot swap in player
+        _renderBody($q('#om-body', _overlay));
       };
+      if (count > 5) _confirm('Смена качества', `Перекэширование затронет ${count} треков.`, 'Перекачать', doQ);
+      else doQ();
+      break;
 
-      if (toRm > 0) {
-        _confirm(
-          'Изменение настроек',
-          `По новым настройкам <b>${toRm}</b> облачных ${plTr(toRm)} будет удалено (срок хранения истёк). Продолжить?`,
-          'Удалить и применить',
-          () => apply(`Настройки применены, удалено ${toRm} треков`)
-        );
-      } else {
-        await apply('Настройки применены');
-      }
-      return;
-    }
+    case 'recache':
+      om.queue?.setParallel?.(3);
+      await om.reCacheAll(om.getQuality());
+      window.NotificationSystem?.info('Перекэширование запущено');
+      setTimeout(() => om.queue?.setParallel?.(1), 15000);
+      _renderBody($q('#om-body', _overlay));
+      break;
 
-    // Show list
-    if (a === 'show-list') {
-      const list = $q(modal, '#pinned-cloud-list');
-      if (!list) return;
+    case 'apply-cloud':
+      const N = parseInt($q('#inp-n', modal).value) || 5;
+      const D = parseInt($q('#inp-d', modal).value) || 31;
+      await om.confirmApplyCloudSettings({ newN: N, newD: D });
+      window.NotificationSystem?.success('Настройки применены');
+      break;
 
-      const isOpen = list.style.display !== 'none';
-      if (isOpen) {
-        list.style.display = 'none';
-        el.textContent = 'Показать закреплённые и облачные';
-        return;
-      }
+    case 'show-list':
+      await _toggleTrackList($q('#pinned-cloud-list', modal), el);
+      break;
+      
+    case 'del-track':
+      _confirm('Удалить?', 'Трек будет удален из кэша.', 'Удалить', async () => {
+        await om.removeCached(el.dataset.uid);
+        el.closest('.om-list-item').remove();
+        _renderBody($q('#om-body', _overlay)); // Update stats
+      });
+      break;
+      
+    case 'del-all':
+      _confirm('Удалить ВСЕ?', 'Удалить все закрепленные и облачные треки?', 'Да, удалить', async () => {
+        await om.removeAllCached();
+        $q('#pinned-cloud-list', modal).innerHTML = '<div class="om-list-empty">Пусто</div>';
+        _renderBody($q('#om-body', _overlay));
+      });
+      break;
 
-      list.style.display = '';
-      el.textContent = 'Скрыть список';
-      list.innerHTML = '<div class="om-list-loading">Загрузка...</div>';
+    case 'set-mode-r0': om.setMode('R0'); _renderBody($q('#om-body', _overlay)); break;
+    case 'set-mode-r1':
+      if (await om.hasSpace()) { om.setMode('R1'); _renderBody($q('#om-body', _overlay)); }
+      else window.NotificationSystem?.warning('Недостаточно места (нужно 60 МБ)');
+      break;
 
-      try {
-        const { getAllTrackMetas } = await import('../offline/cache-db.js');
-        const metas = await getAllTrackMetas();
-        const now = Date.now();
+    case 'set-bg-preset':
+      om.setBackgroundPreset?.(el.dataset.val);
+      _renderBody($q('#om-body', _overlay));
+      break;
 
-        const sorted = [
-          ...metas.filter((m) => m.type === 'pinned').sort((a, b) => (a.pinnedAt || 0) - (b.pinnedAt || 0)),
-          ...metas.filter((m) => m.type === 'cloud').sort((a, b) => (b.cloudExpiresAt || 0) - (a.cloudExpiresAt || 0))
-        ];
-
-        if (!sorted.length) {
-          list.innerHTML = '<div class="om-list-empty">Нет закреплённых или облачных треков</div>';
-          return;
-        }
-
-        let html = '';
-        for (const m of sorted) {
-          const ic = m.type === 'pinned' ? '🔒' : '☁';
-          const title = window.TrackRegistry?.getTrackByUid?.(m.uid)?.title || m.uid;
-          const mq = String(m.quality || '—').toUpperCase();
-          const sz = fmtB(m.size || 0);
-
-          const badge =
-            m.type === 'pinned'
-              ? '<span class="om-list-badge om-list-badge--pin">Закреплён</span>'
-              : m.cloudExpiresAt
-                ? `<span class="om-list-badge om-list-badge--cloud">${Math.max(
-                    0,
-                    Math.ceil((m.cloudExpiresAt - now) / DAY_MS)
-                  )} дн.</span>`
-                : '';
-
-          html += `
-            <div class="om-list-item" data-uid="${esc(m.uid)}">
-              <span class="om-list-icon">${ic}</span>
-              <span class="om-list-title">${esc(title)}</span>
-              <span class="om-list-meta">${mq} · ${sz}</span>
-              ${badge}
-              <button class="om-list-del" data-action="del-track" data-uid="${esc(m.uid)}" data-type="${m.type}" title="Удалить">✕</button>
-            </div>
-          `;
-        }
-
-        html += '<div class="om-divider" style="margin:10px 0 8px"></div>';
-        html += '<button class="om-btn om-btn--danger-outline" data-action="del-all" style="width:100%">🗑 Удалить все 🔒 и ☁</button>';
-
-        list.innerHTML = html;
-      } catch (err) {
-        console.warn('[OM] list err:', err);
-        list.innerHTML = '<div class="om-list-empty" style="color:#ef5350">Ошибка загрузки</div>';
-      }
-
-      return;
-    }
-
-    // Delete all pinned/cloud
-    if (a === 'del-all') {
-      _confirm('Удалить все офлайн-треки?', 'Все закреплённые и облачные треки будут удалены.', 'Удалить', () =>
-        _confirm('Вы уверены?', 'Это действие нельзя отменить.', 'Да, удалить', async () => {
-          await om.removeAllCached();
-          await _refreshStorage(modal, om);
-
-          const list = $q(modal, '#pinned-cloud-list');
-          if (list) list.innerHTML = '<div class="om-list-empty">Нет закреплённых или облачных треков</div>';
-
-          const showBtn = $q(modal, '#btn-show-list');
-          if (showBtn) showBtn.textContent = 'Показать закреплённые и облачные';
-
-          // событие для индикаторов (у вас обновление идет по offline:stateChanged, но оставим совместимость)
-          window.dispatchEvent(new CustomEvent('offline:indicator:update-all'));
-
-          window.NotificationSystem?.success?.('Все офлайн-треки удалены');
-        })
-      );
-      return;
-    }
-
-    // Delete single track from list (pinned/cloud)
-    if (a === 'del-track') {
-      const uid = String(el.dataset.uid || '').trim();
-      const type = String(el.dataset.type || '').trim();
-      if (!uid) return;
-
-      const row = el.closest('.om-list-item');
-      const trackTitle = row?.querySelector('.om-list-title')?.textContent || uid;
-      const typeLabel = type === 'pinned' ? 'закреплённый' : 'облачный';
-
-      _confirm(
-        `Удалить ${typeLabel} трек?`,
-        `<b>${esc(trackTitle)}</b> будет удалён из офлайн-кэша.`,
-        'Удалить',
-        async () => {
-          try {
-            await om.removeCached(uid);
-
-            // UI animation
-            if (row) {
-              row.style.opacity = '0';
-              row.style.transform = 'translateX(20px)';
-              setTimeout(() => row.remove(), 200);
-            }
-
-            await _refreshStorage(modal, om);
-            window.NotificationSystem?.success?.(`${trackTitle} удалён`);
-
-            // if list became empty
-            setTimeout(() => {
-              const list = $q(modal, '#pinned-cloud-list');
-              const items = list ? list.querySelectorAll('.om-list-item') : [];
-              if (list && items.length === 0) {
-                list.innerHTML = '<div class="om-list-empty">Нет закреплённых или облачных треков</div>';
-              }
-            }, 250);
-          } catch (err) {
-            console.error('[OM] del-track error:', err);
-            window.NotificationSystem?.error?.('Ошибка удаления');
-          }
-        }
-      );
-      return;
-    }
-
-    // Pause/resume downloads
-    if (a === 'dl-pause') {
-      const paused = el.dataset.paused === '1';
-      if (paused) {
+    case 'dl-pause':
+      if (el.dataset.paused === '1') {
         om.queue?.resume?.();
-        el.textContent = '⏸ Пауза';
         el.dataset.paused = '0';
+        el.textContent = '⏸ Пауза';
       } else {
         om.queue?.pause?.();
-        el.textContent = '▶ Возобновить';
         el.dataset.paused = '1';
+        el.textContent = '▶ Возобновить';
       }
-      return;
-    }
-
-    // Background preset
-    if (a === 'set-bg-preset') {
-      const id = String(el.dataset.preset || '').trim();
-      if (!id) return;
-
-      om.setBackgroundPreset?.(id);
-
-      $qa(modal, '.om-preset').forEach((p) => {
-        const act = p.dataset.preset === id;
-        p.classList.toggle('om-preset--active', act);
-        const check = p.querySelector('.om-preset__check');
-        if (check) check.textContent = act ? '✓' : '';
-      });
-
-      window.NotificationSystem?.info?.(`Фоновый режим: ${el.querySelector('.om-preset__name')?.textContent || id}`);
-      return;
-    }
-
-    // Nuke app cache (double confirm) — does NOT touch playback directly
-    if (a === 'nuke') {
-      _confirm('Очистить ВЕСЬ кэш?', 'Все офлайн-данные будут утеряны безвозвратно.', 'Очистить', () =>
-        _confirm('Последнее подтверждение', 'Действие необратимо.', 'Да, очистить всё', async () => {
-          try {
-            await om.removeAllCached();
-            if ('caches' in window) {
-              const keys = await caches.keys();
-              await Promise.all(keys.map((k) => caches.delete(k)));
-            }
-            window.NotificationSystem?.success?.('Кэш очищен');
-          } catch {
-            window.NotificationSystem?.error?.('Ошибка очистки');
-          }
-          _close();
-        })
-      );
-    }
-  });
-
-  // Quality toggle block (Hi/Lo)
-  $q(modal, '#om-qual-toggle')?.addEventListener('click', async (e) => {
-    const btn = e.target.closest('.om-quality-btn');
-    if (!btn) return;
-
-    const nq = String(btn.dataset.val || '').trim();
-    const cq = om.getQuality();
-    if (!nq || nq === cq) return;
-
-    const cnt = om.countNeedsReCache ? await om.countNeedsReCache(nq) : 0;
-
-    const doIt = () => {
-      om.setCacheQualitySetting(nq);
-
-      // PlayerCore является источником события quality:changed (и делает hot swap).
-      if (window.playerCore?.switchQuality) window.playerCore.switchQuality(nq);
-      else window.dispatchEvent(new CustomEvent('quality:changed', { detail: { quality: nq } }));
-
-      $qa(modal, '#om-qual-toggle .om-quality-btn').forEach((b) => {
-        b.className = 'om-quality-btn';
-        if (b.dataset.val === nq) b.classList.add(nq === 'hi' ? 'om-quality-btn--active-hi' : 'om-quality-btn--active-lo');
-      });
-
-      window.NotificationSystem?.info?.(`Качество: ${String(nq).toUpperCase()}`);
-    };
-
-    if (cnt > 5) {
-      _confirm(
-        'Смена качества',
-        `Перекэширование затронет <b>${cnt}</b> ${plTr(cnt)}. Продолжить?`,
-        'Перекачать',
-        doIt
-      );
-    } else {
-      doIt();
-    }
-  });
-
-  // Mode toggle R0/R1
-  $q(modal, '#om-mode-toggle')?.addEventListener('click', async (e) => {
-    const btn = e.target.closest('.om-mode-btn');
-    if (!btn || btn.disabled) return;
-
-    const nm = String(btn.dataset.val || '').trim();
-    if (!nm) return;
-
-    if (nm === 'R1') {
-      const ok = await om.hasSpace();
-      if (!ok) return window.NotificationSystem?.warning?.('Недостаточно места (минимум 60 МБ)');
-    }
-
-    om.setMode(nm);
-    $qa(modal, '#om-mode-toggle .om-mode-btn').forEach((b) => b.classList.toggle('om-mode-btn--active', b.dataset.val === nm));
-
-    const hint = $q(modal, '#om-mode-toggle-hint');
-    if (hint) hint.innerHTML = nm === 'R1' ? '✅ Активен — до 3 треков офлайн' : 'R0 — чистый стриминг';
-  });
-}
-
-export function openOfflineModal() {
-  _render();
-}
-
-export function closeOfflineModal() {
-  if (_overlay) {
-    _overlay.remove();
-    _overlay = null;
+      break;
   }
 }
 
-export function initOfflineModal() {
-  document.getElementById('offline-btn')?.addEventListener('click', (e) => {
-    if (e.target.classList?.contains('offline-btn-alert')) {
-      e.stopPropagation();
-      window.NotificationSystem?.info?.('Есть треки для обновления', 6000);
+// --- List Logic ---
+
+async function _toggleTrackList(listDiv, btn) {
+  if (listDiv.style.display !== 'none') {
+    listDiv.style.display = 'none';
+    btn.textContent = 'Показать список 🔒/☁';
+    return;
+  }
+  
+  listDiv.style.display = 'block';
+  listDiv.innerHTML = '<div class="om-list-loading">Загрузка...</div>';
+  btn.textContent = 'Скрыть список';
+
+  try {
+    const { getAllTrackMetas } = await import('../offline/cache-db.js');
+    const all = await getAllTrackMetas();
+    const items = all.filter(m => m.type === 'pinned' || m.type === 'cloud')
+      .sort((a, b) => {
+        if (a.type !== b.type) return a.type === 'pinned' ? -1 : 1;
+        return (b.cloudExpiresAt || 0) - (a.cloudExpiresAt || 0); // Cloud by expire desc
+      });
+
+    if (!items.length) {
+      listDiv.innerHTML = '<div class="om-list-empty">Нет треков</div>';
       return;
     }
-    openOfflineModal();
+
+    const rows = items.map(m => {
+      const title = window.TrackRegistry?.getTrackByUid(m.uid)?.title || m.uid;
+      const icon = m.type === 'pinned' ? '🔒' : '☁';
+      const badge = m.type === 'pinned' ? 'Закреплён' : `${Math.ceil((m.cloudExpiresAt - Date.now())/86400000)} дн.`;
+      return `
+        <div class="om-list-item">
+          <span class="om-list-icon">${icon}</span>
+          <div class="om-list-title">${esc(title)}</div>
+          <div class="om-list-meta">${String(m.quality).toUpperCase()} · ${fmtB(m.size)} · ${badge}</div>
+          <button class="om-list-del" data-action="del-track" data-uid="${esc(m.uid)}">✕</button>
+        </div>`;
+    }).join('');
+    
+    listDiv.innerHTML = rows + `<button class="om-btn om-btn--danger-outline" data-action="del-all" style="width:100%;margin-top:10px">Удалить ВСЕ</button>`;
+  } catch {
+    listDiv.innerHTML = '<div class="om-list-empty">Ошибка</div>';
+  }
+}
+
+// --- Core UI Functions ---
+
+function _confirm(title, text, okBtn, onOk) {
+  const el = document.createElement('div');
+  el.className = 'om-confirm-bg om-confirm-bg--visible';
+  el.innerHTML = `
+    <div class="om-confirm-box">
+      <div class="om-confirm-title">${esc(title)}</div>
+      <div class="om-confirm-body">${esc(text)}</div>
+      <div class="om-confirm-btns">
+        <button class="om-btn om-btn--ghost" id="cfm-cancel">Отмена</button>
+        <button class="om-btn om-btn--primary" id="cfm-ok">${esc(okBtn)}</button>
+      </div>
+    </div>`;
+  
+  const close = () => { el.remove(); };
+  el.querySelector('#cfm-cancel').onclick = close;
+  el.querySelector('#cfm-ok').onclick = () => { close(); onOk(); };
+  el.onclick = (e) => { if(e.target===el) close(); };
+  document.body.appendChild(el);
+}
+
+export function openOfflineModal() {
+  if (_overlay) return;
+  _overlay = document.createElement('div');
+  _overlay.className = 'om-overlay om-overlay--visible';
+  _overlay.innerHTML = `
+    <div class="om-modal om-modal--visible">
+      <div class="om-header">
+        <div class="om-header__title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> OFFLINE</div>
+        <button class="om-header__close">×</button>
+      </div>
+      <div class="om-body" id="om-body"></div>
+    </div>`;
+  
+  document.body.appendChild(_overlay);
+  
+  const modal = _overlay.querySelector('.om-modal');
+  const close = () => { _overlay?.remove(); _overlay = null; };
+  
+  _overlay.onclick = (e) => { if (e.target === _overlay) close(); };
+  modal.querySelector('.om-header__close').onclick = close;
+  modal.addEventListener('click', _handleAction); // Delegation
+  
+  _renderBody($q('#om-body', _overlay));
+}
+
+export function closeOfflineModal() {
+  if (_overlay) _overlay.remove();
+  _overlay = null;
+}
+
+export function initOfflineModal() {
+  const btn = document.getElementById('offline-btn');
+  if (btn) btn.addEventListener('click', (e) => {
+    if (e.target.classList.contains('offline-btn-alert')) {
+      e.stopPropagation();
+      window.NotificationSystem?.info('Есть треки для обновления', 6000);
+    } else {
+      openOfflineModal();
+    }
   });
 }
 
