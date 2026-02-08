@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-78a0313f31a5a5ba6686008f773064cdfa3dff9b.idx
-│   │       ├── pack-78a0313f31a5a5ba6686008f773064cdfa3dff9b.pack
-│   │       └── pack-78a0313f31a5a5ba6686008f773064cdfa3dff9b.rev
+│   │       ├── pack-5c7d17df9215e1832bb2e85b5ec03ec4785d2e42.idx
+│   │       ├── pack-5c7d17df9215e1832bb2e85b5ec03ec4785d2e42.pack
+│   │       └── pack-5c7d17df9215e1832bb2e85b5ec03ec4785d2e42.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -386,7 +386,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-08 20:56:11 UTC
+Сгенерировано: 2026-02-08 21:28:42 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8393,20 +8393,8 @@ function _bind(overlay, modal, om) {
         'Удалить',
         async () => {
           try {
-            // Удаляем через OfflineManager (он сам чистит CacheDB + мету)
-            if (om.removeCachedTrack) {
-              await om.removeCachedTrack(uid);
-            } else {
-              // Fallback: прямое удаление из CacheDB
-              try {
-                const cdb = await import('../offline/cache-db.js');
-                if (cdb.removeTrackFromCache) await cdb.removeTrackFromCache(uid);
-                else if (cdb.deleteTrackMeta) await cdb.deleteTrackMeta(uid);
-              } catch(e2) { console.warn('[OM] direct cache delete failed:', e2); }
-              // + снятие статуса
-              if (type === 'pinned' && om.unpinTrack) await om.unpinTrack(uid);
-              if (type === 'cloud' && om.removeCloudTrack) await om.removeCloudTrack(uid);
-            }
+            // Используем единый метод removeCached из OfflineManager
+            await om.removeCached(uid);
 
             // Обновляем индикатор в основном плеере
             window.dispatchEvent(new CustomEvent('offline:indicator:update', {
