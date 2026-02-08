@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8f2937e439902263c87ed465bc636f5786bc1514.idx
-│   │       ├── pack-8f2937e439902263c87ed465bc636f5786bc1514.pack
-│   │       └── pack-8f2937e439902263c87ed465bc636f5786bc1514.rev
+│   │       ├── pack-e827281c83ad35f9a517b3ac05b4a159c4384a10.idx
+│   │       ├── pack-e827281c83ad35f9a517b3ac05b4a159c4384a10.pack
+│   │       └── pack-e827281c83ad35f9a517b3ac05b4a159c4384a10.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -386,7 +386,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-08 14:15:54 UTC
+Сгенерировано: 2026-02-08 14:27:54 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8313,15 +8313,16 @@ function _bind(overlay, modal, om) {
     }
     else if (a === 'show-list') {
       const el = modal.querySelector('#pinned-cloud-list');
-      const showBtn = modal.querySelector('#btn-show-list');
       if (!el) return;
+      // Toggle: свернуть если открыт
       if (el.style.display !== 'none') {
         el.style.display = 'none';
-        if (showBtn) showBtn.style.display = '';
+        btn.textContent = 'Показать закреплённые и облачные';
         return;
       }
+      // Развернуть
       el.style.display = '';
-      if (showBtn) showBtn.style.display = 'none';
+      btn.textContent = 'Скрыть список';
       el.innerHTML = '<div class="om-list-loading">Загрузка...</div>';
       try {
         const { getAllTrackMetas } = await import('../offline/cache-db.js');
@@ -8341,18 +8342,29 @@ function _bind(overlay, modal, om) {
           h += `<div class="om-list-item" data-uid="${esc(m.uid)}"><span class="om-list-icon">${ic}</span><span class="om-list-title">${esc(t)}</span><span class="om-list-meta">${mq} · ${sz}</span>${bg}<button class="om-list-del" data-action="del-track" data-uid="${esc(m.uid)}" data-type="${m.type}" title="Удалить">✕</button></div>`;
         }
         if (!h) h = '<div class="om-list-empty">Нет закреплённых или облачных треков</div>';
-        h += `<button class="om-btn om-btn--danger-outline om-list-del-all" data-action="del-all" style="width:100%;margin-top:10px">🗑 Удалить все 🔒 и ☁</button>`;
         el.innerHTML = h;
       } catch { el.innerHTML = '<div class="om-list-empty" style="color:#ef5350">Ошибка загрузки</div>'; }
     }
     else if (a === 'del-all') {
       _confirm('Удалить все офлайн-треки?', 'Все закреплённые и облачные треки будут удалены.', 'Удалить', () =>
         _confirm('Вы уверены?', 'Это действие нельзя отменить.', 'Да, удалить', async () => {
-          await om.removeAllCached(); await _refreshStorage(modal, om);
+          await om.removeAllCached();
+          await _refreshStorage(modal, om);
+
+          // Обновляем список
           const el = modal.querySelector('#pinned-cloud-list');
-          if (el) { el.style.display = 'none'; el.innerHTML = ''; }
+          if (el) el.innerHTML = '<div class="om-list-empty">Нет закреплённых или облачных треков</div>';
+
+          // Обновляем ВСЕ индикаторы в основном плеере
+          window.dispatchEvent(new CustomEvent('offline:indicator:update-all'));
+          if (window.OfflineIndicators?.refreshAll) {
+            window.OfflineIndicators.refreshAll();
+          }
+
+          // Сбрасываем текст кнопки
           const showBtn = modal.querySelector('#btn-show-list');
-          if (showBtn) showBtn.style.display = '';
+          if (showBtn) showBtn.textContent = 'Показать закреплённые и облачные';
+
           window.NotificationSystem?.success?.('Все офлайн-треки удалены');
         })
       );
@@ -8364,28 +8376,56 @@ function _bind(overlay, modal, om) {
       const typeLabel = type === 'pinned' ? 'закреплённый' : 'облачный';
       _confirm(
         `Удалить ${typeLabel} трек?`,
-        `<b>${esc(trackTitle)}</b> будет удалён из кэша. ${type === 'cloud' ? 'Облачная статистика для этого трека будет сброшена.' : 'Закрепление будет снято.'}`,
+        `<b>${esc(trackTitle)}</b> будет удалён из офлайн-кэша.`,
         'Удалить',
         async () => {
           try {
-            if (type === 'pinned') {
-              await om.unpinTrack?.(uid);
-            } else {
-              await om.removeCloudTrack?.(uid);
+            // 1. Удаляем из CacheDB (реальное удаление файла)
+            const { removeTrackFromCache } = await import('../offline/cache-db.js');
+            await removeTrackFromCache(uid);
+
+            // 2. Обновляем состояние в OfflineManager
+            if (type === 'pinned' && om.unpinTrack) {
+              await om.unpinTrack(uid);
+            } else if (type === 'cloud' && om.removeCloudTrack) {
+              await om.removeCloudTrack(uid);
             }
-            // Remove row from DOM
+
+            // 3. Обновляем индикатор 🔒/☁ в основном плеере
+            window.dispatchEvent(new CustomEvent('offline:indicator:update', {
+              detail: { uid, status: 'none' }
+            }));
+
+            // 4. Если есть OfflineIndicators — вызываем напрямую
+            if (window.OfflineIndicators?.refresh) {
+              window.OfflineIndicators.refresh(uid);
+            }
+
+            // 5. Удаляем строку из DOM с анимацией
             const row = modal.querySelector(`.om-list-item[data-uid="${CSS.escape(uid)}"]`);
-            if (row) { row.style.opacity = '0'; row.style.transform = 'translateX(20px)'; setTimeout(() => row.remove(), 200); }
-            // Refresh storage
+            if (row) {
+              row.style.opacity = '0';
+              row.style.transform = 'translateX(20px)';
+              setTimeout(() => row.remove(), 200);
+            }
+
+            // 6. Обновляем storage
             await _refreshStorage(modal, om);
             window.NotificationSystem?.success?.(`${trackTitle} удалён`);
-            // If list now empty
-            const remaining = modal.querySelectorAll('.om-list-item');
-            if (remaining.length === 0) {
-              const el = modal.querySelector('#pinned-cloud-list');
-              if (el) el.innerHTML = '<div class="om-list-empty">Нет закреплённых или облачных треков</div>';
-            }
-          } catch(e) { window.NotificationSystem?.error?.('Ошибка удаления'); console.error(e); }
+
+            // 7. Если список пуст
+            setTimeout(() => {
+              const remaining = modal.querySelectorAll('.om-list-item');
+              if (remaining.length === 0) {
+                const el = modal.querySelector('#pinned-cloud-list');
+                if (el) el.innerHTML = '<div class="om-list-empty">Нет закреплённых или облачных треков</div>';
+              }
+            }, 250);
+
+          } catch(e) {
+            window.NotificationSystem?.error?.('Ошибка удаления');
+            console.error('[OM] del-track error:', e);
+          }
         }
       );
     }
