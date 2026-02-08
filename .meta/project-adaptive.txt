@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4ff51775c9e4ab875cd39fb9ee3576601c09812c.idx
-│   │       ├── pack-4ff51775c9e4ab875cd39fb9ee3576601c09812c.pack
-│   │       └── pack-4ff51775c9e4ab875cd39fb9ee3576601c09812c.rev
+│   │       ├── pack-041b9432225cc89154556b0349388d8d153ab5b3.idx
+│   │       ├── pack-041b9432225cc89154556b0349388d8d153ab5b3.pack
+│   │       └── pack-041b9432225cc89154556b0349388d8d153ab5b3.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -386,7 +386,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-08 20:40:12 UTC
+Сгенерировано: 2026-02-08 20:45:41 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7712,69 +7712,45 @@ export default {
 // FILE: /scripts/ui/offline-modal.js
 // scripts/ui/offline-modal.js
 /**
- * offline-modal.js — UI Модального окна "OFFLINE"
- * Реализует управление кэшем, NetPolicy и отображение статистики.
- * Использует CSS классы om-* (определены в main.css).
+ * offline-modal.js — UI Модального окна "OFFLINE" v3.1
+ * Исправлен путь импорта cache-db (Fix #404 error)
  */
 
 import { getOfflineManager } from '../offline/offline-manager.js';
 import { 
-  getNetPolicyState, 
-  toggleWifi, 
-  toggleCellular, 
-  toggleKillSwitch, 
-  getNetworkSpeed,
-  getNetworkLabel,
-  getTrafficStats
+  getNetPolicyState, toggleWifi, toggleCellular, toggleKillSwitch, 
+  getNetworkSpeed, getNetworkLabel, getTrafficStats 
 } from '../offline/net-policy.js';
-// FIX: Правильный путь к cache-db (выход из ui -> вход в offline)
-import { estimateUsage, getAllTrackMetas } from '../offline/cache-db.js';
+import { estimateUsage } from '../offline/cache-db.js'; // FIX: ../offline/
 
-let _modal = null;
-let _isOpen = false;
-let _rafId = null;
+let _modal = null, _isOpen = false, _rafId = null;
 
 // --- Initialization ---
-
 export function initOfflineModal() {
   const btn = document.getElementById('offline-btn');
-  if (btn) {
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      openOfflineModal();
-    });
-  }
+  if (btn) btn.onclick = (e) => { e.preventDefault(); openOfflineModal(); };
 }
 
 // --- Render Logic ---
-
 export async function openOfflineModal() {
-  if (_isOpen && _modal) return;
+  if (_isOpen) return;
   _isOpen = true;
 
-  // 1. Создаем структуру (если нет)
-  if (!_modal) {
-    _createModalStructure();
-  }
-
-  // 2. Показываем
+  if (!_modal) _create();
+  
   document.body.appendChild(_modal);
-  // Force reflow
-  _modal.offsetHeight; 
+  // Force reflow for animation
+  void _modal.offsetWidth;
   _modal.classList.add('om-overlay--visible');
   _modal.querySelector('.om-modal').classList.add('om-modal--visible');
-
-  // 3. Запускаем цикл обновлений
-  _updateLoop();
-
-  // 4. Блокируем скролл body
+  
   document.body.style.overflow = 'hidden';
+  _loop();
 }
 
-function closeOfflineModal() {
+function close() {
   if (!_isOpen || !_modal) return;
   _isOpen = false;
-
   if (_rafId) cancelAnimationFrame(_rafId);
 
   const m = _modal.querySelector('.om-modal');
@@ -7782,31 +7758,25 @@ function closeOfflineModal() {
   m.classList.remove('om-modal--visible');
 
   setTimeout(() => {
-    if (!_isOpen && _modal && _modal.parentNode) {
-      _modal.parentNode.removeChild(_modal);
-    }
+    if (!_isOpen) _modal?.remove();
     document.body.style.overflow = '';
   }, 250);
 }
 
-function _createModalStructure() {
+function _create() {
   _modal = document.createElement('div');
   _modal.className = 'om-overlay';
   _modal.innerHTML = `
     <div class="om-modal">
       <div class="om-header">
-        <div class="om-header__title">
-          <span>📡 OFFLINE MANAGER</span>
-        </div>
+        <div class="om-header__title"><span>📡 OFFLINE MANAGER</span></div>
         <button class="om-header__close">×</button>
       </div>
-      
       <div class="om-body">
-        <!-- Section 1: Storage -->
         <div class="om-section">
           <div class="om-section__title">💾 Хранилище</div>
           <div class="om-storage-info">
-            <div class="om-storage-segbar" id="om-storage-bar">
+            <div class="om-storage-segbar" id="om-bar">
               <div class="om-segbar__fill om-segbar--pinned" style="width:0%"></div>
               <div class="om-segbar__fill om-segbar--cloud" style="width:0%"></div>
               <div class="om-segbar__fill om-segbar--transient" style="width:0%"></div>
@@ -7820,50 +7790,29 @@ function _createModalStructure() {
             </div>
             <div class="om-divider"></div>
             <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#9db7dd">
-               <span id="om-storage-text">Вычисление...</span>
-               <button class="om-btn om-btn--danger-outline" id="om-clean-btn" style="padding:4px 10px;font-size:11px">Очистить всё</button>
+               <span id="om-storage-text">...</span>
+               <button class="om-btn om-btn--danger-outline" id="om-clean" style="padding:4px 10px;font-size:11px">Очистить всё</button>
             </div>
           </div>
         </div>
-
-        <!-- Section 2: Network Policy -->
         <div class="om-section">
           <div class="om-section__title">🌐 Сеть и Экономия</div>
           <div class="om-mode-card">
-            <div class="om-net-status" id="om-net-status">...</div>
+            <div class="om-net-status" id="om-net-st">...</div>
             <div class="om-toggles-row">
-              <button class="om-toggle" id="om-wifi-toggle">
-                <span class="om-toggle__dot"></span>
-                <span class="om-toggle__label">Wi-Fi</span>
-              </button>
-              <button class="om-toggle" id="om-cell-toggle">
-                <span class="om-toggle__dot"></span>
-                <span class="om-toggle__label">Cellular</span>
-              </button>
+              <button class="om-toggle" id="om-wifi"><span class="om-toggle__dot"></span><span class="om-toggle__label">Wi-Fi</span></button>
+              <button class="om-toggle" id="om-cell"><span class="om-toggle__dot"></span><span class="om-toggle__label">Cellular</span></button>
             </div>
-            <button class="om-toggle-small" id="om-kill-toggle">Режим "В самолёте" (Kill Switch)</button>
-            
-            <div class="om-traffic">
-              <div class="om-traffic__title">Трафик (<span id="om-traffic-month">...</span>)</div>
-              <div id="om-traffic-stats">...</div>
-            </div>
+            <button class="om-toggle-small" id="om-kill">Kill Switch</button>
+            <div class="om-traffic"><div class="om-traffic__title">Трафик (<span id="om-traf-m"></span>)</div><div id="om-traf-val"></div></div>
           </div>
         </div>
-
-        <!-- Section 3: Downloads -->
         <div class="om-section om-section--last">
           <div class="om-section__title">⬇️ Загрузки</div>
           <div class="om-dl-stats">
-             <div class="om-dl-stat">
-               <span class="om-dl-stat__num" id="om-dl-active">0</span>
-               <span class="om-dl-stat__label">Активно</span>
-             </div>
-             <div class="om-dl-stat">
-               <span class="om-dl-stat__num" id="om-dl-queued">0</span>
-               <span class="om-dl-stat__label">В очереди</span>
-             </div>
+             <div class="om-dl-stat"><span class="om-dl-stat__num" id="om-dl-act">0</span><span class="om-dl-stat__label">Активно</span></div>
+             <div class="om-dl-stat"><span class="om-dl-stat__num" id="om-dl-q">0</span><span class="om-dl-stat__label">В очереди</span></div>
           </div>
-          
           <div class="om-pc-toprow">
              <div class="om-pc-quality">
                <div class="om-pc-quality__label">Качество кэша</div>
@@ -7873,185 +7822,118 @@ function _createModalStructure() {
                </div>
              </div>
              <div class="om-pc-recache">
-                <div class="om-pc-recache__label" id="om-recache-label">Всё актуально</div>
-                <button class="om-btn om-btn--accent om-pc-recache__btn" id="om-recache-btn" disabled>Обновить качество</button>
+                <div class="om-pc-recache__label" id="om-rc-lbl">Актуально</div>
+                <button class="om-btn om-btn--accent om-pc-recache__btn" id="om-rc-btn" disabled>Обновить</button>
              </div>
           </div>
         </div>
       </div>
-    </div>
-  `;
+    </div>`;
 
-  // Binds
-  _modal.addEventListener('click', (e) => {
-    if (e.target === _modal) closeOfflineModal();
-  });
-  _modal.querySelector('.om-header__close').addEventListener('click', closeOfflineModal);
-
-  // Storage Clean
-  _modal.querySelector('#om-clean-btn').addEventListener('click', async () => {
-    if (confirm('Удалить ВСЕ загруженные треки?')) {
-      await getOfflineManager().removeAllCached();
-      _renderStorage();
-    }
-  });
-
-  // Net Toggles
-  _modal.querySelector('#om-wifi-toggle').addEventListener('click', () => { toggleWifi(); _renderNet(); });
-  _modal.querySelector('#om-cell-toggle').addEventListener('click', () => { toggleCellular(); _renderNet(); });
-  _modal.querySelector('#om-kill-toggle').addEventListener('click', () => { toggleKillSwitch(); _renderNet(); });
-
-  // Quality Toggles
-  const qBtns = _modal.querySelectorAll('.om-quality-btn');
-  qBtns.forEach(btn => btn.addEventListener('click', () => {
-    const q = btn.dataset.q;
-    getOfflineManager().setCacheQualitySetting(q);
-    // Вызываем глобальное событие смены качества
-    window.playerCore?.switchQuality?.(q); 
-    _renderQuality();
-  }));
-
-  // ReCache Btn
-  _modal.querySelector('#om-recache-btn').addEventListener('click', async () => {
-    const btn = _modal.querySelector('#om-recache-btn');
-    btn.disabled = true;
-    btn.textContent = 'В очереди...';
-    await getOfflineManager().reCacheAll();
-  });
-}
-
-// --- Update Loop ---
-
-function _updateLoop() {
-  if (!_isOpen) return;
+  // Bindings
+  const Q = (s) => _modal.querySelector(s);
+  _modal.onclick = (e) => e.target === _modal && close();
+  Q('.om-header__close').onclick = close;
   
-  _renderNet();
-  _renderDownloads();
-  // Storage render is heavy, execute once or sparsely? 
-  // For now, let's do it on open. Ideally throttled.
-  if (!_modal._storageRendered) {
-    _renderStorage();
-    _renderQuality();
-    _modal._storageRendered = true;
-  }
-
-  _rafId = requestAnimationFrame(_updateLoop);
-}
-
-// --- Renderers ---
-
-function _renderNet() {
-  const s = getNetPolicyState();
-  const wifiBtn = _modal.querySelector('#om-wifi-toggle');
-  const cellBtn = _modal.querySelector('#om-cell-toggle');
-  const killBtn = _modal.querySelector('#om-kill-toggle');
-  const statusEl = _modal.querySelector('#om-net-status');
-
-  // Toggles visual
-  const setToggle = (el, on) => {
-    el.className = `om-toggle ${on ? 'om-toggle--on' : 'om-toggle--off'}`;
+  Q('#om-clean').onclick = async () => {
+    if (confirm('Удалить ВСЕ загруженные треки?')) { await getOfflineManager().removeAllCached(); _updStor(); }
   };
 
-  setToggle(wifiBtn, s.wifiEnabled);
-  setToggle(cellBtn, s.cellularEnabled);
-  
-  killBtn.className = `om-toggle-small ${s.killSwitch ? 'om-toggle-small--on' : ''}`;
-  killBtn.textContent = s.killSwitch ? '✈️ Режим "В самолёте" ВКЛЮЧЕН' : 'Режим "В самолёте" (Kill Switch)';
+  Q('#om-wifi').onclick = () => { toggleWifi(); _updNet(); };
+  Q('#om-cell').onclick = () => { toggleCellular(); _updNet(); };
+  Q('#om-kill').onclick = () => { toggleKillSwitch(); _updNet(); };
 
-  // Status text
-  const label = getNetworkLabel();
-  const speed = getNetworkSpeed();
-  const speedStr = speed ? ` (~${speed} Mbps)` : '';
-  
-  if (s.airplaneMode || s.killSwitch) {
-    statusEl.textContent = '⛔ Сеть полностью заблокирована';
-    statusEl.style.color = '#ef5350';
-  } else {
-    statusEl.textContent = `Текущая сеть: ${label}${speedStr}`;
-    statusEl.style.color = '#9db7dd';
-  }
-
-  // Traffic
-  const traf = getTrafficStats();
-  _modal.querySelector('#om-traffic-month').textContent = traf.monthName;
-  const tEl = _modal.querySelector('#om-traffic-stats');
-  
-  const fmt = window.Utils?.fmt?.bytes || ((b)=>b+'B');
-  
-  if (traf.type === 'split') {
-    tEl.innerHTML = `
-      <div class="om-traffic__row"><span>Wi-Fi</span><span>${fmt(traf.wifi.monthly)}</span></div>
-      <div class="om-traffic__row"><span>Cellular</span><span>${fmt(traf.cellular.monthly)}</span></div>
-    `;
-  } else {
-    tEl.innerHTML = `
-      <div class="om-traffic__row"><span>Всего</span><span>${fmt(traf.general.monthly)}</span></div>
-    `;
-  }
-}
-
-function _renderDownloads() {
-  const st = getOfflineManager().getDownloadStatus();
-  _modal.querySelector('#om-dl-active').textContent = st.active;
-  _modal.querySelector('#om-dl-queued').textContent = st.queued;
-}
-
-async function _renderStorage() {
-  const est = await estimateUsage(); // { used, quota, free }
-  const mgr = getOfflineManager();
-  const breakdown = await mgr.getStorageBreakdown(); // { pinned, cloud, transient, other }
-  
-  // Total tracked by us
-  const trackedTotal = breakdown.pinned + breakdown.cloud + breakdown.transient;
-  // "Other" in bar includes non-audio cache or unknown
-  const realUsed = est.used || trackedTotal; 
-  const other = Math.max(0, realUsed - trackedTotal);
-
-  const bar = _modal.querySelector('#om-storage-bar');
-  const p = (v) => (realUsed > 0 ? (v / realUsed) * 100 : 0) + '%';
-  
-  bar.children[0].style.width = p(breakdown.pinned);
-  bar.children[1].style.width = p(breakdown.cloud);
-  bar.children[2].style.width = p(breakdown.transient);
-  bar.children[3].style.width = p(other);
-
-  const fmt = window.Utils?.fmt?.bytes || ((b)=>b+'B');
-  _modal.querySelector('#om-storage-text').textContent = 
-    `Занято: ${fmt(realUsed)} / Свободно: ${fmt(est.free)}`;
-}
-
-async function _renderQuality() {
-  const mgr = getOfflineManager();
-  const q = mgr.getQuality(); // 'hi' or 'lo'
-  
-  const btns = _modal.querySelectorAll('.om-quality-btn');
-  btns.forEach(b => {
-    const myQ = b.dataset.q;
-    const active = myQ === q;
-    // Сброс
-    b.className = 'om-quality-btn';
-    if (active) {
-      b.classList.add(q === 'hi' ? 'om-quality-btn--active-hi' : 'om-quality-btn--active-lo');
-    }
+  _modal.querySelectorAll('.om-quality-btn').forEach(b => b.onclick = () => {
+    const q = b.dataset.q;
+    getOfflineManager().setCacheQualitySetting(q);
+    window.playerCore?.switchQuality?.(q);
+    _updQual();
   });
 
-  // ReCache check
-  const diff = await mgr.countNeedsReCache(q);
-  const rcLabel = _modal.querySelector('#om-recache-label');
-  const rcBtn = _modal.querySelector('#om-recache-btn');
+  Q('#om-rc-btn').onclick = async () => {
+    Q('#om-rc-btn').disabled = true;
+    Q('#om-rc-btn').textContent = 'В очереди...';
+    await getOfflineManager().reCacheAll();
+  };
+}
 
+function _loop() {
+  if (!_isOpen) return;
+  _updNet();
+  _updDL();
+  if (!_modal._storDone) { _updStor(); _updQual(); _modal._storDone = true; } // Lazy update heavy ops
+  _rafId = requestAnimationFrame(_loop);
+}
+
+// --- Updaters ---
+
+function _updNet() {
+  const s = getNetPolicyState();
+  const setT = (id, on) => _modal.querySelector(id).className = `om-toggle ${on?'om-toggle--on':'om-toggle--off'}`;
+  setT('#om-wifi', s.wifiEnabled);
+  setT('#om-cell', s.cellularEnabled);
+  
+  const kBtn = _modal.querySelector('#om-kill');
+  kBtn.className = `om-toggle-small ${s.killSwitch?'om-toggle-small--on':''}`;
+  kBtn.textContent = s.killSwitch ? '✈️ Режим "В самолёте" ВКЛЮЧЕН' : 'Режим "В самолёте" (Kill Switch)';
+
+  const stEl = _modal.querySelector('#om-net-st');
+  if (s.airplaneMode || s.killSwitch) { stEl.textContent = '⛔ Сеть полностью заблокирована'; stEl.style.color = '#ef5350'; }
+  else {
+    const sp = getNetworkSpeed();
+    stEl.textContent = `Текущая сеть: ${getNetworkLabel()}${sp ? ` (~${sp} Mbps)` : ''}`;
+    stEl.style.color = '#9db7dd';
+  }
+
+  const tr = getTrafficStats();
+  _modal.querySelector('#om-traf-m').textContent = tr.monthName;
+  const f = window.Utils?.fmt?.bytes || (b=>b+'B');
+  _modal.querySelector('#om-traf-val').innerHTML = (tr.type === 'split') 
+    ? `<div class="om-traffic__row"><span>Wi-Fi</span><span>${f(tr.wifi.monthly)}</span></div><div class="om-traffic__row"><span>Cellular</span><span>${f(tr.cellular.monthly)}</span></div>`
+    : `<div class="om-traffic__row"><span>Всего</span><span>${f(tr.general.monthly)}</span></div>`;
+}
+
+function _updDL() {
+  const s = getOfflineManager().getDownloadStatus();
+  _modal.querySelector('#om-dl-act').textContent = s.active;
+  _modal.querySelector('#om-dl-q').textContent = s.queued;
+}
+
+async function _updStor() {
+  const est = await estimateUsage();
+  const bd = await getOfflineManager().getStorageBreakdown();
+  const trackT = bd.pinned + bd.cloud + bd.transient;
+  const used = est.used || trackT;
+  const other = Math.max(0, used - trackT);
+  const p = (v) => (used > 0 ? (v/used)*100 : 0) + '%';
+  
+  const bar = _modal.querySelector('#om-bar').children;
+  bar[0].style.width = p(bd.pinned);
+  bar[1].style.width = p(bd.cloud);
+  bar[2].style.width = p(bd.transient);
+  bar[3].style.width = p(other);
+
+  const f = window.Utils?.fmt?.bytes || (b=>b+'B');
+  _modal.querySelector('#om-storage-text').textContent = `Занято: ${f(used)} / Своб.: ${f(est.free)}`;
+}
+
+async function _updQual() {
+  const mgr = getOfflineManager();
+  const q = mgr.getQuality();
+  _modal.querySelectorAll('.om-quality-btn').forEach(b => {
+    b.className = 'om-quality-btn' + (b.dataset.q === q ? (q==='hi'?' om-quality-btn--active-hi':' om-quality-btn--active-lo') : '');
+  });
+
+  const diff = await mgr.countNeedsReCache(q);
+  const lbl = _modal.querySelector('#om-rc-lbl');
+  const btn = _modal.querySelector('#om-rc-btn');
+  
   if (diff > 0) {
-    rcLabel.textContent = `Доступно обновление: ${diff} треков`;
-    rcLabel.style.color = '#ffd54f';
-    rcBtn.disabled = false;
-    rcBtn.textContent = 'Обновить качество';
-    rcBtn.classList.remove('om-btn--disabled');
+    lbl.textContent = `Обновить: ${diff} шт.`; lbl.style.color = '#ffd54f';
+    btn.disabled = false; btn.textContent = 'Обновить'; btn.classList.remove('om-btn--disabled');
   } else {
-    rcLabel.textContent = 'Всё актуально';
-    rcLabel.style.color = 'rgba(255,255,255,0.45)';
-    rcBtn.disabled = true;
-    rcBtn.textContent = 'Нет обновлений';
-    rcBtn.classList.add('om-btn--disabled');
+    lbl.textContent = 'Актуально'; lbl.style.color = 'rgba(255,255,255,0.45)';
+    btn.disabled = true; btn.textContent = 'Нет обновлений'; btn.classList.add('om-btn--disabled');
   }
 }
 
