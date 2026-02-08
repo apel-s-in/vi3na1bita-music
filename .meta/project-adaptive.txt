@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d09941f82f1fddfa4a403b9925272c97ca24824e.idx
-│   │       ├── pack-d09941f82f1fddfa4a403b9925272c97ca24824e.pack
-│   │       └── pack-d09941f82f1fddfa4a403b9925272c97ca24824e.rev
+│   │       ├── pack-9e96734fc8335f5237bbb4928a2cca2c9a955f3c.idx
+│   │       ├── pack-9e96734fc8335f5237bbb4928a2cca2c9a955f3c.pack
+│   │       └── pack-9e96734fc8335f5237bbb4928a2cca2c9a955f3c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -385,7 +385,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-08 21:31:03 UTC
+Сгенерировано: 2026-02-08 21:32:27 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -751,7 +751,7 @@ jobs:
   <!-- UI Modules -->
   <script src="./scripts/ui/notify.js" defer></script>
   <script src="./scripts/ui/modals.js" defer></script>
-  <script src="./scripts/ui/favorites.js" defer></script>
+  <!-- favorites.js объединён в favorites-view.js (ESM) -->
   <script src="./scripts/ui/sleep.js" defer></script>
   <script src="./scripts/ui/lyrics-modal.js" defer></script>
   <script src="./scripts/ui/sysinfo.js" defer></script>
@@ -972,9 +972,7 @@ jobs:
     const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.0.4');
     const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2025-12-07');
 
-    window.autoNextDisabled = false;
-    window.sleepTimerTarget = null;
-    window.sleepTimerInterval = null;
+    // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
 
     window.VERSION = VERSION;
     window.BUILD_DATE = BUILD_DATE;
