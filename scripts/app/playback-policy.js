@@ -1,93 +1,96 @@
-(function(W){
+(function (W) {
   'use strict';
-  
+
   const LS_KEY = 'favoritesOnlyMode';
-  const FAV_KEY = window.SPECIAL_FAVORITES_KEY || '__favorites__';
+  const FAV_KEY = W.SPECIAL_FAVORITES_KEY || '__favorites__';
 
   const pc = () => W.playerCore;
-  const ls = () => localStorage.getItem(LS_KEY) === '1';
+  const isOn = () => localStorage.getItem(LS_KEY) === '1';
 
-  const Policy = {
-    apply: () => {
-      const core = pc();
-      if (!core) return;
-
-      const alb = W.AlbumsManager?.getPlayingAlbum();
-      if (!alb) return;
-
-      const isFavAlbum = alb === FAV_KEY;
-      const needFilter = isFavAlbum || ls();
-
-      const source = core.originalPlaylist || [];
-      // Если исходный плейлист пуст или нет текущего трека, фильтровать нечего
-      if (!source.length || core.getIndex() < 0) return;
-
-      let target = source;
-
-      if (needFilter) {
-        if (isFavAlbum) {
-           // M1: В альбоме Favorites плейлист уже отфильтрован UI, не трогаем его
-           return;
-        } else {
-           const likedUids = new Set(core.getLikedUidsForAlbum(alb));
-           target = source.filter(t => t.uid && likedUids.has(t.uid));
-        }
-
-        // ВАЖНО: Если после фильтрации треков нет (и это не альбом Избранное, где пустота допустима визуально, но не для F режима)
-        if (!target.length) {
-          if (!isFavAlbum) {
-             W.NotificationSystem?.info('Нет избранных треков. Режим не применен.');
-             // Сбрасываем кнопку в UI, так как режим не применился
-             W.Utils?.lsSetBool01(LS_KEY, false);
-             W.PlayerUI?.updateFavoritesBtn?.(); // Обновить кнопку
-          }
-          return; 
-        }
-      }
-
-      const cur = core.getCurrentTrack();
-      const curUid = cur?.uid;
-      
-      let newIdx = target.findIndex(t => t.uid === curUid);
-      const trackLost = newIdx === -1;
-
-      if (trackLost) {
-        const origIdx = source.findIndex(t => t.uid === curUid);
-        if (origIdx >= 0) {
-            for(let i = origIdx + 1; i < source.length; i++) {
-                const nextUid = source[i].uid;
-                newIdx = target.findIndex(t => t.uid === nextUid);
-                if (newIdx !== -1) break;
-            }
-        }
-        if (newIdx === -1) newIdx = 0;
-      }
-
-      const shuffle = core.isShuffle();
-      
-      core.setPlaylist(target, Math.max(0, newIdx), {}, {
-        preserveOriginalPlaylist: true,
-        preserveShuffleMode: true,
-        preservePosition: !trackLost
-      });
-
-      if (shuffle) core.shufflePlaylist(); 
-
-      W.PlayerUI?.updateAvailableTracksForPlayback?.();
-      W.PlayerUI?.updatePlaylistFiltering?.();
+  const uniqByUid = (list) => {
+    const out = [];
+    const seen = new Set();
+    for (const t of (list || [])) {
+      const u = String(t?.uid || '').trim();
+      if (!u || seen.has(u)) continue;
+      seen.add(u);
+      out.push(t);
     }
+    return out;
   };
 
+  const buildTarget = ({ core, playingAlbum, favoritesOnly }) => {
+    const source = core?.originalPlaylist || [];
+    if (!source.length) return null;
+
+    // ТЗ: если playing = Избранное — playback всегда только по active (inactive никогда не участвуют)
+    if (playingAlbum === FAV_KEY) {
+      return uniqByUid(source).filter((t) => core.isFavorite?.(t.uid));
+    }
+
+    // F=OFF: не фильтруем
+    if (!favoritesOnly) return uniqByUid(source);
+
+    // F=ON: только ⭐ в текущем playing альбоме
+    const liked = new Set(core.getLikedUidsForAlbum?.(playingAlbum) || []);
+    return uniqByUid(source).filter((t) => t?.uid && liked.has(t.uid));
+  };
+
+  const pickIndex = ({ core, target }) => {
+    const curUid = String(core?.getCurrentTrack?.()?.uid || '').trim();
+    if (!curUid) return 0;
+    const idx = target.findIndex((t) => String(t?.uid || '').trim() === curUid);
+    return idx >= 0 ? idx : 0;
+  };
+
+  const apply = () => {
+    const core = pc();
+    if (!core) return;
+
+    const playingAlbum = W.AlbumsManager?.getPlayingAlbum?.();
+    if (!playingAlbum) return;
+
+    // F включается/выключается UI-ом. Здесь только применяем политику к playing.
+    const favoritesOnly = isOn();
+
+    // Нельзя применять если нет контекста/текущего трека
+    const source = core.originalPlaylist || [];
+    if (!source.length || core.getIndex() < 0) return;
+
+    const target = buildTarget({ core, playingAlbum, favoritesOnly });
+    if (!target || !target.length) {
+      // Важное правило ТЗ: если ⭐ нет — F не включается (UI уже делает toast и не ставит LS).
+      // Здесь просто ничего не ломаем.
+      return;
+    }
+
+    const newIdx = pickIndex({ core, target });
+    const trackStillInTarget = newIdx === core.getIndex() && String(target[newIdx]?.uid || '') === String(core.getCurrentTrack()?.uid || '');
+
+    core.setPlaylist(target, Math.max(0, newIdx), {}, {
+      preserveOriginalPlaylist: true,
+      preserveShuffleMode: true,
+      // Позицию сохраняем только если текущий трек остался тем же.
+      preservePosition: !!trackStillInTarget
+    });
+
+    W.PlayerUI?.updateAvailableTracksForPlayback?.();
+    W.PlayerUI?.updatePlaylistFiltering?.();
+  };
+
+  // Подписки: политика должна реагировать на изменения ⭐ и на смену плейлиста/контекста
   const bind = () => {
-    if (pc()) {
-      pc().onFavoritesChanged(() => {
-        if (ls() || W.AlbumsManager?.getPlayingAlbum() === FAV_KEY) {
-          Policy.apply();
-        }
-      });
-    } else setTimeout(bind, 100);
+    const core = pc();
+    if (!core?.onFavoritesChanged) return setTimeout(bind, 100);
+
+    core.onFavoritesChanged(() => {
+      const playingAlbum = W.AlbumsManager?.getPlayingAlbum?.();
+      if (playingAlbum === FAV_KEY || isOn()) apply();
+    });
+
+    W.addEventListener('playlist:changed', apply);
   };
   bind();
 
-  W.PlaybackPolicy = Policy;
+  W.PlaybackPolicy = { apply };
 })(window);
