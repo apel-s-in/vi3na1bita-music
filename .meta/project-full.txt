@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-31992f671898978a436c92f17aad04a089694153.idx
-│   │       ├── pack-31992f671898978a436c92f17aad04a089694153.pack
-│   │       └── pack-31992f671898978a436c92f17aad04a089694153.rev
+│   │       ├── pack-0e6f33523d7a006979f7f1ab6d4d23236addbb3a.idx
+│   │       ├── pack-0e6f33523d7a006979f7f1ab6d4d23236addbb3a.pack
+│   │       └── pack-0e6f33523d7a006979f7f1ab6d4d23236addbb3a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -356,7 +356,6 @@ vi3na1bita-music/
 │   ├── ui/
 │   │   ├── cache-progress-overlay.js
 │   │   ├── favorites-view.js
-│   │   ├── favorites.js
 │   │   ├── lyrics-modal.js
 │   │   ├── modals.js
 │   │   ├── news-inline.js
@@ -386,7 +385,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-08 21:29:17 UTC
+Сгенерировано: 2026-02-08 21:29:37 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7161,88 +7160,6 @@ window.FavoritesUI = {
   getActiveModel,
 };
 window.buildFavoritesRefsModel = buildFavoritesRefsModel;
-
-//=================================================
-// FILE: /scripts/ui/favorites.js
-// scripts/ui/favorites.js
-(function (W) {
-  'use strict';
-
-  const FAV = W.SPECIAL_FAVORITES_KEY || '__favorites__';
-  const LOGO = 'img/logo.png';
-  const U = W.Utils;
-  const trim = (v) => U.obj.trim(v);
-
-  const getGlobalAlbumTitle = (key) => {
-    if (!key || !W.albumsIndex) return null;
-    const found = W.albumsIndex.find(a => a.key === key);
-    return found ? found.title : null;
-  };
-
-  const buildFavoritesRefsModel = async () => {
-    const pc = W.playerCore;
-    if (!pc?.getFavoritesState) return (W.favoritesRefsModel = []);
-
-    const st = pc.getFavoritesState();
-    // Объединяем списки, чтобы показать и серые треки
-    const rawItems = [...(st.active || []), ...(st.inactive || [])];
-
-    W.favoritesRefsModel = rawItems.map((item) => {
-      const uid = trim(item.uid);
-      const meta = W.TrackRegistry?.getTrackByUid(uid);
-      const isActive = pc.isFavorite(uid);
-      
-      const albumKey = trim(meta?.sourceAlbum || item.sourceAlbum);
-
-      if (!meta) {
-        return { __uid: uid, title: 'Загрузка...', __active: false, isGhost: true };
-      }
-
-      // Исправление названия альбома
-      let albumTitle = meta.album;
-      if (!albumTitle || albumTitle === 'Альбом') {
-         albumTitle = getGlobalAlbumTitle(albumKey) || 'Альбом';
-      }
-
-      return {
-        ...meta, 
-        __uid: uid,
-        __a: albumKey,
-        __album: albumTitle, 
-        __active: isActive,
-        __cover: meta.cover || LOGO,
-        audio: isActive ? meta.src : null 
-      };
-    });
-    
-    // Сортировка: новые сверху (по addedAt, если есть в item, или просто сохраняем порядок от getFavoritesState)
-    return W.favoritesRefsModel;
-  };
-
-  const init = () => {
-    if (W.__favoritesUIBound) return;
-    W.__favoritesUIBound = true;
-    const bind = () => {
-      if (W.playerCore?.onFavoritesChanged) {
-        W.playerCore.onFavoritesChanged(() => {
-          if (W.AlbumsManager?.getCurrentAlbum?.() === FAV) {
-            buildFavoritesRefsModel().catch(console.error);
-          }
-        });
-      } else { setTimeout(bind, 100); }
-    };
-    bind();
-  };
-
-  W.FavoritesUI = {
-    buildFavoritesRefsModel,
-    getModel: () => W.favoritesRefsModel || [],
-    getActiveModel: (m) => (m || W.FavoritesUI.getModel()).filter(it => it && it.__active && !it.isGhost),
-  };
-  
-  W.buildFavoritesRefsModel = buildFavoritesRefsModel;
-  init();
-})(window);
 
 //=================================================
 // FILE: /scripts/ui/lyrics-modal.js
