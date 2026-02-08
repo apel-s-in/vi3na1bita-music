@@ -1,318 +1,401 @@
-import { getOfflineManager } from '../offline/offline-manager.js';
-import { 
-  getNetPolicyState, toggleWifi, toggleCellular, toggleKillSwitch, 
-  getNetworkSpeed, getNetworkLabel, getTrafficStats 
-} from '../offline/net-policy.js';
-// FIX: Исправлен путь к cache-db (был ./cache-db.js, стал ../offline/cache-db.js)
-import { estimateUsage } from '../offline/cache-db.js';
+/**
+ * offline-manager.js — Core Offline Logic (v2.0 Optimized)
+ * Implements: Pinned/Cloud, PlaybackCache (R1), Single Quality Mode.
+ * Strict adherence to TDA 7.2 (Source Priority) and TDA 10 (Queue).
+ */
 
-let _modal = null;
-let _isOpen = false;
-let _rafId = null;
+import {
+  openDB, setAudioBlob, getAudioBlob, deleteAudioVariant, deleteAudio,
+  setTrackMeta, getTrackMeta, updateTrackMeta, getAllTrackMetas,
+  hasAudioForUid, getStoredVariant, deleteTrackCache
+} from './cache-db.js';
 
-// --- Initialization ---
+const KEYS = { Q: 'qualityMode:v1', MODE: 'offline:mode:v1', N: 'cloud:listenThreshold', D: 'cloud:ttlDays' };
+const DEFAULTS = { N: 5, D: 31, MIN_MB: 60 };
+const PRIO = { CUR: 100, NEIGHBOR: 90, PINNED: 80, RECACHE: 70, CLOUD: 60 };
+const MB = 1024 * 1024;
+const DAY = 86400000;
 
-export function initOfflineModal() {
-  const btn = document.getElementById('offline-btn');
-  if (btn) {
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      openOfflineModal();
-    });
+// Utils
+const emit = (n, d={}) => window.dispatchEvent(new CustomEvent(n, { detail: d }));
+const normQ = (v) => (String(v||'').toLowerCase() === 'lo' ? 'lo' : 'hi');
+const toast = (m, t='info') => window.NotificationSystem?.[t]?.(m);
+const netOk = () => window.NetPolicy ? window.NetPolicy.isNetworkAllowed() : navigator.onLine;
+const getTrk = (id) => window.TrackRegistry?.getTrackByUid?.(id);
+const getUrl = (id, q) => { const t = getTrk(id); return t ? (normQ(q)==='lo' ? (t.audio_low||t.audio||t.src) : (t.audio||t.src)) : null; };
+
+// --- DOWNLOAD QUEUE ---
+class Queue {
+  constructor() { this.q = []; this.act = new Map(); this.par = 1; this.paused = false; }
+  
+  setParallel(n) { this.par = n || 1; this.run(); }
+  pause() { this.paused = true; }
+  resume() { this.paused = false; this.run(); }
+  
+  has(uid) { return this.act.has(uid) || this.q.some(i => i.uid === uid); }
+  cancel(uid) {
+    this.q = this.q.filter(i => i.uid !== uid);
+    if (this.act.has(uid)) { this.act.get(uid).abort(); this.act.delete(uid); }
+    this.run();
   }
-}
 
-// --- Render Logic ---
-
-export async function openOfflineModal() {
-  if (_isOpen) return;
-  _isOpen = true;
-
-  if (!_modal) _createModalStructure();
-
-  document.body.appendChild(_modal);
-  // Force reflow
-  void _modal.offsetWidth;
-  
-  _modal.classList.add('om-overlay--visible');
-  _modal.querySelector('.om-modal').classList.add('om-modal--visible');
-  document.body.style.overflow = 'hidden';
-
-  _updateLoop();
-}
-
-function closeOfflineModal() {
-  if (!_isOpen || !_modal) return;
-  _isOpen = false;
-  if (_rafId) cancelAnimationFrame(_rafId);
-
-  const m = _modal.querySelector('.om-modal');
-  _modal.classList.remove('om-overlay--visible');
-  m.classList.remove('om-modal--visible');
-
-  setTimeout(() => {
-    if (!_isOpen && _modal && _modal.parentNode) {
-      _modal.parentNode.removeChild(_modal);
+  add(task) { // { uid, url, quality, kind, priority }
+    if (!task.uid || !task.url) return;
+    const exist = this.act.get(task.uid);
+    if (exist) {
+      if (exist.item.quality === task.quality) return; // Already downloading same Q
+      exist.abort(); this.act.delete(task.uid); // Swapped quality, abort old
     }
-    document.body.style.overflow = '';
-  }, 250);
-}
+    
+    // Dedup in queue
+    const idx = this.q.findIndex(i => i.uid === task.uid);
+    if (idx > -1) {
+      if (this.q[idx].quality !== task.quality || task.priority > this.q[idx].priority) {
+        this.q[idx] = task; // Replace/Upgrade
+      }
+    } else {
+      this.q.push({ ...task, added: Date.now(), retry: 0 });
+    }
+    this.q.sort((a,b) => b.priority - a.priority || a.added - b.added);
+    this.run();
+  }
 
-function _createModalStructure() {
-  _modal = document.createElement('div');
-  _modal.className = 'om-overlay';
-  
-  // Строгая структура под стили main.css (om-*)
-  _modal.innerHTML = `
-    <div class="om-modal">
-      <div class="om-header">
-        <div class="om-header__title">
-          <span class="om-header__icon">📡</span> OFFLINE MANAGER
-        </div>
-        <button class="om-header__close">×</button>
-      </div>
+  async run() {
+    if (this.paused || this.act.size >= this.par || !this.q.length || !netOk()) return;
+    const item = this.q.shift();
+    
+    const ctrl = new AbortController();
+    this.act.set(item.uid, { ...ctrl, item });
+    emit('offline:downloadStart', { uid: item.uid, kind: item.kind });
+
+    try {
+      const res = await fetch(item.url, { signal: ctrl.signal });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
       
-      <div class="om-body">
-        <!-- Section: Storage -->
-        <div class="om-section">
-          <div class="om-section__title">ХРАНИЛИЩЕ</div>
-          <div class="om-storage-info">
-            <div class="om-storage-segbar" id="om-storage-bar">
-              <div class="om-segbar__fill om-segbar--pinned" style="width:0%"></div>
-              <div class="om-segbar__fill om-segbar--cloud" style="width:0%"></div>
-              <div class="om-segbar__fill om-segbar--transient" style="width:0%"></div>
-              <div class="om-segbar__fill om-segbar--other" style="width:0%"></div>
-            </div>
-            <div class="om-storage-legend">
-              <span class="om-legend-item"><span class="om-legend-dot om-legend-dot--pinned"></span>Закреплено</span>
-              <span class="om-legend-item"><span class="om-legend-dot om-legend-dot--cloud"></span>Облако</span>
-              <span class="om-legend-item"><span class="om-legend-dot om-legend-dot--transient"></span>Кэш</span>
-              <span class="om-legend-item"><span class="om-legend-dot om-legend-dot--other"></span>Другое</span>
-            </div>
-            <div class="om-divider"></div>
-            <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#9db7dd">
-               <span id="om-storage-text">Вычисление...</span>
-               <button class="om-btn om-btn--danger-outline" id="om-clean-btn" style="padding:4px 10px;font-size:11px">Очистить всё</button>
-            </div>
-          </div>
-        </div>
+      if (window.OfflineManager && !(await window.OfflineManager.hasSpace())) throw new Error('DiskFull');
 
-        <!-- Section: Network -->
-        <div class="om-section">
-          <div class="om-section__title">СЕТЬ</div>
-          <div class="om-mode-card">
-            <div class="om-net-status" id="om-net-status">...</div>
-            <div class="om-toggles-row">
-              <button class="om-toggle" id="om-wifi-toggle">
-                <span class="om-toggle__dot"></span>
-                <span class="om-toggle__label">Wi-Fi</span>
-              </button>
-              <button class="om-toggle" id="om-cell-toggle">
-                <span class="om-toggle__dot"></span>
-                <span class="om-toggle__label">Cellular</span>
-              </button>
-            </div>
-            <button class="om-toggle-small" id="om-kill-toggle">Kill Switch</button>
-            
-            <div class="om-traffic">
-              <div class="om-traffic__title">Трафик (<span id="om-traffic-month">...</span>)</div>
-              <div id="om-traffic-stats">...</div>
-            </div>
-          </div>
-        </div>
+      await setAudioBlob(item.uid, item.quality, blob);
+      await updateTrackMeta(item.uid, { quality: item.quality, size: blob.size, cachedComplete: true, needsReCache: false });
+      
+      // TDA 1.7: Cleanup other variant (Two-phase replacement)
+      const cur = window.playerCore?.getCurrentTrackUid?.();
+      if (cur !== item.uid) await deleteAudioVariant(item.uid, item.quality === 'hi' ? 'lo' : 'hi').catch(()=>{});
 
-        <!-- Section: Downloads & Quality -->
-        <div class="om-section om-section--last">
-          <div class="om-section__title">ЗАГРУЗКИ</div>
-          <div class="om-dl-stats">
-             <div class="om-dl-stat">
-               <span class="om-dl-stat__num" id="om-dl-active">0</span>
-               <span class="om-dl-stat__label">Активно</span>
-             </div>
-             <div class="om-dl-stat">
-               <span class="om-dl-stat__num" id="om-dl-queued">0</span>
-               <span class="om-dl-stat__label">В очереди</span>
-             </div>
-          </div>
-          
-          <div class="om-pc-toprow">
-             <div class="om-pc-quality">
-               <div class="om-pc-quality__label">Качество</div>
-               <div class="om-quality-toggle">
-                 <button class="om-quality-btn" data-q="hi">Hi</button>
-                 <button class="om-quality-btn" data-q="lo">Lo</button>
-               </div>
-             </div>
-             <div class="om-pc-recache">
-                <div class="om-pc-recache__label" id="om-recache-label">Актуально</div>
-                <button class="om-btn om-btn--accent om-pc-recache__btn" id="om-recache-btn" disabled>Обновить</button>
-             </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-
-  // --- Bindings ---
-  const q = (s) => _modal.querySelector(s);
-
-  _modal.addEventListener('click', (e) => {
-    if (e.target === _modal) closeOfflineModal();
-  });
-  q('.om-header__close').addEventListener('click', closeOfflineModal);
-
-  // Clean
-  q('#om-clean-btn').addEventListener('click', async () => {
-    if (confirm('Удалить ВСЕ загруженные треки?')) {
-      await getOfflineManager().removeAllCached();
-      _renderStorage();
+      this.act.delete(item.uid);
+      emit('offline:trackCached', { uid: item.uid });
+      emit('offline:stateChanged');
+    } catch (e) {
+      this.act.delete(item.uid);
+      if (e.name === 'AbortError') {
+        // TDA 4.4: If aborted, remove incomplete chunk, keep old valid file
+        await deleteAudioVariant(item.uid, item.quality).catch(()=>{});
+      } else {
+        if (item.retry < 3 && e.message !== 'DiskFull') {
+          setTimeout(() => this.add({ ...item, retry: item.retry + 1 }), 1000 * Math.pow(2, item.retry));
+        } else {
+          emit('offline:downloadFailed', { uid: item.uid });
+          if (e.message === 'DiskFull') toast('Мало места, загрузка пауза', 'warning');
+        }
+      }
     }
-  });
+    this.run();
+  }
+  
+  getStatus() { return { active: this.act.size, queued: this.q.length }; }
+}
 
-  // Network
-  q('#om-wifi-toggle').addEventListener('click', () => { toggleWifi(); _renderNet(); });
-  q('#om-cell-toggle').addEventListener('click', () => { toggleCellular(); _renderNet(); });
-  q('#om-kill-toggle').addEventListener('click', () => { toggleKillSwitch(); _renderNet(); });
+// --- MANAGER ---
+class OfflineManager {
+  constructor() {
+    this.q = new Queue();
+    this.ready = false;
+    this.spaceOk = true;
+    window._offlineManagerInstance = this;
+  }
 
-  // Quality
-  _modal.querySelectorAll('.om-quality-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const qVal = btn.dataset.q;
-      getOfflineManager().setCacheQualitySetting(qVal);
-      if (window.playerCore?.switchQuality) window.playerCore.switchQuality(qVal);
-      _renderQuality();
+  async initialize() {
+    if (this.ready) return;
+    await openDB();
+    await this.hasSpace(); // Check space
+    await this._cleanExpired();
+    
+    window.addEventListener('netPolicy:changed', () => this.q.resume());
+    window.addEventListener('quality:changed', (e) => this._onQChange(e.detail?.quality));
+    
+    this.ready = true;
+    emit('offline:ready');
+  }
+
+  // --- API ---
+  getMode() { return localStorage.getItem(KEYS.MODE) || 'R0'; }
+  async setMode(m) {
+    if (m === 'R1' && !(await this.hasSpace())) { toast('Недостаточно места', 'warning'); m = 'R0'; }
+    localStorage.setItem(KEYS.MODE, m);
+    emit('offline:uiChanged');
+  }
+
+  getQuality() { return normQ(localStorage.getItem(KEYS.Q)); }
+  setCacheQualitySetting(q) { localStorage.setItem(KEYS.Q, normQ(q)); } // No emit here, UI triggers it
+
+  async hasSpace() {
+    try {
+      const e = await navigator.storage?.estimate?.();
+      if (e?.quota) this.spaceOk = ((e.quota - e.usage) / MB) >= DEFAULTS.MIN_MB;
+    } catch {}
+    return this.spaceOk;
+  }
+
+  async getTrackOfflineState(uid) {
+    if (!this.ready || !uid) return { status: 'none' };
+    const m = await getTrackMeta(uid);
+    const has = await hasAudioForUid(uid);
+    const q = this.getQuality();
+    
+    let s = 'none';
+    if (m?.type === 'pinned') s = (has && m.cachedComplete && !this.q.has(uid)) ? 'pinned' : 'pinned'; // Visual fix
+    if (m?.type === 'pinned' && this.q.has(uid)) s = 'pinned'; // Keep pinned even if loading
+    else if (m?.type === 'cloud') s = (has && m.cachedComplete) ? 'cloud' : 'cloud_loading';
+    else if (m?.type === 'playbackCache') s = 'transient';
+
+    return {
+      status: s,
+      downloading: this.q.has(uid),
+      cachedComplete: has && !!m?.cachedComplete,
+      needsReCache: !!m?.needsReCache || (has && m?.quality && m.quality !== q),
+      needsUpdate: !!m?.needsUpdate,
+      cloudExpiresAt: m?.cloudExpiresAt,
+      daysLeft: m?.cloudExpiresAt ? Math.max(0, Math.ceil((m.cloudExpiresAt - Date.now()) / DAY)) : 0
+    };
+  }
+
+  // --- Actions ---
+  async togglePinned(uid) {
+    if (!uid) return;
+    const m = (await getTrackMeta(uid)) || { uid };
+    const now = Date.now();
+    const q = this.getQuality();
+    const { D } = this.getSettings();
+
+    if (m.type === 'pinned') {
+      // Unpin -> Cloud immediately (TDA 5.6)
+      await updateTrackMeta(uid, { type: 'cloud', cloudOrigin: 'unpin', pinnedAt: null, cloudAddedAt: now, cloudExpiresAt: now + D * DAY });
+      toast(`Откреплено. Доступно как ☁ (${D} дн.)`);
+    } else {
+      // Pin
+      if (!this.spaceOk) return toast('Недостаточно места', 'warning');
+      await updateTrackMeta(uid, { type: 'pinned', pinnedAt: now, quality: q, cloudExpiresAt: null });
+      
+      // Check if we need to download
+      const hasQ = await getStoredVariant(uid);
+      if (!hasQ) {
+        this.addDl(uid, q, 'pinned', PRIO.PINNED);
+        toast('Скачивание 🔒...');
+      } else if (hasQ !== q) {
+        await updateTrackMeta(uid, { needsReCache: true });
+        this.addDl(uid, q, 'reCache', PRIO.PINNED);
+        toast('Закреплено 🔒 (обновление качества)');
+      } else {
+        toast('Закреплено 🔒');
+      }
+    }
+    emit('offline:stateChanged');
+  }
+
+  async removeCached(uid) {
+    if (!uid) return;
+    this.q.cancel(uid);
+    await deleteAudio(uid);
+    // TDA 6.6: Wipe cloud stats, Keep global stats
+    await updateTrackMeta(uid, {
+      type: null, cloudOrigin: null, pinnedAt: null, cloudExpiresAt: null,
+      cloudFullListenCount: 0, lastFullListenAt: null,
+      cachedComplete: false, needsReCache: false, quality: null, size: 0
     });
-  });
-
-  // Recache
-  q('#om-recache-btn').addEventListener('click', async () => {
-    const btn = q('#om-recache-btn');
-    btn.disabled = true;
-    btn.textContent = 'В очереди...';
-    await getOfflineManager().reCacheAll();
-  });
-}
-
-function _updateLoop() {
-  if (!_isOpen) return;
-  
-  _renderNet();
-  _renderDownloads();
-  
-  // Storage и Quality рендерим лениво или при изменении, но для простоты здесь в цикле
-  // (можно оптимизировать флагами, но это не критично для модалки)
-  if (!_modal._storageRendered) {
-    _renderStorage();
-    _renderQuality();
-    _modal._storageRendered = true;
+    emit('offline:stateChanged');
   }
 
-  _rafId = requestAnimationFrame(_updateLoop);
-}
-
-// --- Renderers ---
-
-function _renderNet() {
-  const s = getNetPolicyState();
-  const wifiBtn = _modal.querySelector('#om-wifi-toggle');
-  const cellBtn = _modal.querySelector('#om-cell-toggle');
-  const killBtn = _modal.querySelector('#om-kill-toggle');
-  const statusEl = _modal.querySelector('#om-net-status');
-
-  const setToggle = (el, on) => {
-    el.className = `om-toggle ${on ? 'om-toggle--on' : 'om-toggle--off'}`;
-  };
-
-  setToggle(wifiBtn, s.wifiEnabled);
-  setToggle(cellBtn, s.cellularEnabled);
-  
-  killBtn.className = `om-toggle-small ${s.killSwitch ? 'om-toggle-small--on' : ''}`;
-  killBtn.textContent = s.killSwitch ? '✈️ Режим "В самолёте" ВКЛЮЧЕН' : 'Режим "В самолёте" (Kill Switch)';
-
-  if (s.airplaneMode || s.killSwitch) {
-    statusEl.textContent = '⛔ Сеть полностью заблокирована';
-    statusEl.style.color = '#ef5350';
-  } else {
-    const sp = getNetworkSpeed();
-    statusEl.textContent = `Текущая сеть: ${getNetworkLabel()}${sp ? ` (~${sp} Mbps)` : ''}`;
-    statusEl.style.color = '#9db7dd';
+  async removeAllCached() {
+    const all = await getAllTrackMetas();
+    for (const m of all) if (m.type === 'pinned' || m.type === 'cloud') await this.removeCached(m.uid);
+    toast('Кэш очищен');
   }
 
-  // Traffic
-  const traf = getTrafficStats();
-  _modal.querySelector('#om-traffic-month').textContent = traf.monthName;
-  const tEl = _modal.querySelector('#om-traffic-stats');
-  
-  const fmt = window.Utils?.fmt?.bytes || ((b)=>b+'B');
-  
-  if (traf.type === 'split') {
-    tEl.innerHTML = `
-      <div class="om-traffic__row"><span>Wi-Fi</span><span>${fmt(traf.wifi.monthly)}</span></div>
-      <div class="om-traffic__row"><span>Cellular</span><span>${fmt(traf.cellular.monthly)}</span></div>
-    `;
-  } else {
-    tEl.innerHTML = `
-      <div class="om-traffic__row"><span>Всего</span><span>${fmt(traf.general.monthly)}</span></div>
-    `;
-  }
-}
+  // --- Logic & Stats ---
+  async registerFullListen(uid, { duration, position }) {
+    if (!uid || duration <= 0 || (position/duration) <= 0.9) return;
+    
+    const m = (await getTrackMeta(uid)) || { uid };
+    const { N, D } = this.getSettings();
+    const now = Date.now();
+    const count = (m.cloudFullListenCount || 0) + 1;
+    
+    const up = { cloudFullListenCount: count, lastFullListenAt: now };
+    if (m.type === 'cloud') up.cloudExpiresAt = now + D * DAY; // Extend TTL
 
-function _renderDownloads() {
-  const st = getOfflineManager().getDownloadStatus();
-  _modal.querySelector('#om-dl-active').textContent = st.active;
-  _modal.querySelector('#om-dl-queued').textContent = st.queued;
-}
-
-async function _renderStorage() {
-  const est = await estimateUsage();
-  const mgr = getOfflineManager();
-  const breakdown = await mgr.getStorageBreakdown(); // { pinned, cloud, transient, other }
-  
-  const trackedTotal = breakdown.pinned + breakdown.cloud + breakdown.transient;
-  const realUsed = est.used || trackedTotal; 
-  const other = Math.max(0, realUsed - trackedTotal);
-
-  const bar = _modal.querySelector('#om-storage-bar');
-  const p = (v) => (realUsed > 0 ? (v / realUsed) * 100 : 0) + '%';
-  
-  bar.children[0].style.width = p(breakdown.pinned);
-  bar.children[1].style.width = p(breakdown.cloud);
-  bar.children[2].style.width = p(breakdown.transient);
-  bar.children[3].style.width = p(other);
-
-  const fmt = window.Utils?.fmt?.bytes || ((b)=>b+'B');
-  _modal.querySelector('#om-storage-text').textContent = 
-    `Занято: ${fmt(realUsed)} / Своб.: ${fmt(est.free)}`;
-}
-
-async function _renderQuality() {
-  const mgr = getOfflineManager();
-  const q = mgr.getQuality(); 
-  
-  const btns = _modal.querySelectorAll('.om-quality-btn');
-  btns.forEach(b => {
-    const myQ = b.dataset.q;
-    b.className = 'om-quality-btn';
-    if (myQ === q) {
-      b.classList.add(q === 'hi' ? 'om-quality-btn--active-hi' : 'om-quality-btn--active-lo');
+    // Auto-Cloud (TDA 6.4)
+    if (m.type !== 'pinned' && m.type !== 'cloud' && count >= N && await this.hasSpace()) {
+      up.type = 'cloud'; up.cloudOrigin = 'auto'; up.cloudAddedAt = now; up.cloudExpiresAt = now + D * DAY; up.quality = this.getQuality();
+      if (!(await hasAudioForUid(uid))) {
+        this.addDl(uid, up.quality, 'cloud', PRIO.CLOUD);
+        toast(`Добавлено в ☁ (${D} дн.)`);
+      }
     }
-  });
-
-  const diff = await mgr.countNeedsReCache(q);
-  const rcLabel = _modal.querySelector('#om-recache-label');
-  const rcBtn = _modal.querySelector('#om-recache-btn');
-
-  if (diff > 0) {
-    rcLabel.textContent = `Обновить: ${diff} шт.`;
-    rcLabel.style.color = '#ffd54f';
-    rcBtn.disabled = false;
-    rcBtn.textContent = 'Обновить';
-    rcBtn.classList.remove('om-btn--disabled');
-  } else {
-    rcLabel.textContent = 'Актуально';
-    rcLabel.style.color = 'rgba(255,255,255,0.45)';
-    rcBtn.disabled = true;
-    rcBtn.textContent = 'Нет обновлений';
-    rcBtn.classList.add('om-btn--disabled');
+    await updateTrackMeta(uid, up);
+    emit('offline:stateChanged');
   }
+
+  // --- Source Resolution (TDA 7.2 Strict) ---
+  async resolveTrackSource(uid, reqQ) {
+    if (!uid) return { source: 'none' };
+    
+    const selQ = normQ(reqQ || this.getQuality());
+    const othQ = selQ === 'hi' ? 'lo' : 'hi';
+    const isNet = netOk();
+
+    // 1. Local Exact
+    const b1 = await getAudioBlob(uid, selQ);
+    if (b1) return { source: 'local', blob: b1, quality: selQ };
+
+    // 2. Local Other
+    const b2 = await getAudioBlob(uid, othQ);
+    if (b2) {
+      if (selQ === 'lo') {
+        // Upgrade: Wanted Lo, have Hi -> Use Hi
+        await updateTrackMeta(uid, { needsReCache: true }); // Mark to download Lo eventually
+        return { source: 'local', blob: b2, quality: othQ };
+      }
+      // Downgrade: Wanted Hi, have Lo
+      if (isNet) {
+        // 3. Network (if available and local was downgrade)
+        const url = getUrl(uid, selQ);
+        if (url) {
+          // Queue background upgrade
+          await updateTrackMeta(uid, { needsReCache: true });
+          this.addDl(uid, selQ, 'reCache', PRIO.RECACHE);
+          return { source: 'stream', url, quality: selQ };
+        }
+      }
+      // Fallback to local Lo
+      return { source: 'local', blob: b2, quality: othQ };
+    }
+
+    // 3. Network Exact (No local at all)
+    if (isNet) {
+      const url = getUrl(uid, selQ);
+      if (url) return { source: 'stream', url, quality: selQ };
+    }
+
+    return { source: 'none', quality: selQ };
+  }
+
+  // --- Internals ---
+  addDl(uid, q, k, p) { 
+    const url = getUrl(uid, q);
+    if (url) this.q.add({ uid, url, quality: q, kind: k, priority: p });
+  }
+
+  async _onQChange(newQ) {
+    const q = normQ(newQ);
+    const all = await getAllTrackMetas();
+    const cur = window.playerCore?.getCurrentTrackUid?.();
+    let cnt = 0;
+
+    // TDA 4.4: Cancel active if quality mismatch (anti-hysteresis)
+    // Mark needsReCache
+    for (const m of all) {
+      if (m.type !== 'pinned' && m.type !== 'cloud') continue;
+      
+      if (m.quality && m.quality !== q) {
+        await updateTrackMeta(m.uid, { needsReCache: true });
+        cnt++;
+        // Quiet queue (skip CUR)
+        if (m.uid !== cur) {
+          const p = m.type === 'pinned' ? PRIO.PINNED : PRIO.RECACHE;
+          this.addDl(m.uid, q, 'reCache', p);
+        }
+      } else if (m.quality === q && m.needsReCache) {
+        await updateTrackMeta(m.uid, { needsReCache: false });
+      }
+    }
+    emit('offline:stateChanged');
+    emit('offline:reCacheStatus', { count: cnt });
+  }
+
+  async _cleanExpired() {
+    const all = await getAllTrackMetas();
+    const now = Date.now();
+    let c = 0;
+    for (const m of all) {
+      if (m.type === 'cloud' && m.cloudExpiresAt && m.cloudExpiresAt < now) {
+        await this.removeCached(m.uid);
+        c++;
+      }
+    }
+    if (c) toast(`Удалено истёкших: ${c}`);
+  }
+
+  // Settings & Helpers
+  getSettings() { 
+    return { 
+      N: parseInt(localStorage.getItem(KEYS.N)) || DEFAULTS.N, 
+      D: parseInt(localStorage.getItem(KEYS.D)) || DEFAULTS.D 
+    }; 
+  }
+  
+  async confirmApplyCloudSettings({ newN, newD }) {
+    localStorage.setItem(KEYS.N, newN); localStorage.setItem(KEYS.D, newD);
+    const all = await getAllTrackMetas();
+    const now = Date.now();
+    let rm = 0;
+    for (const m of all) {
+      if (m.type !== 'cloud') continue;
+      // Remove if N increased and not enough listens
+      if (m.cloudOrigin === 'auto' && (m.cloudFullListenCount||0) < newN) { await this.removeCached(m.uid); rm++; continue; }
+      // Recalc TTL
+      if (m.lastFullListenAt) {
+        const exp = m.lastFullListenAt + newD * DAY;
+        if (exp < now) { await this.removeCached(m.uid); rm++; }
+        else await updateTrackMeta(m.uid, { cloudExpiresAt: exp });
+      }
+    }
+    toast(rm ? `Обновлено. Удалено: ${rm}` : 'Настройки применены');
+  }
+
+  async countNeedsReCache(tQ) {
+    const q = normQ(tQ || this.getQuality());
+    const all = await getAllTrackMetas();
+    return all.filter(m => (m.type==='pinned'||m.type==='cloud') && m.quality && m.quality !== q).length;
+  }
+
+  async reCacheAll(tQ) {
+    const q = normQ(tQ || this.getQuality());
+    this.q.setParallel(3); // Boost
+    await this._onQChange(q);
+  }
+  
+  async getStorageBreakdown() {
+    const all = await getAllTrackMetas();
+    const bd = { pinned: 0, cloud: 0, transient: 0, other: 0 };
+    for (const m of all) {
+      const sz = m.size || 0;
+      if (m.type === 'pinned') bd.pinned += sz;
+      else if (m.type === 'cloud') bd.cloud += sz;
+      else if (m.type === 'playbackCache') bd.transient += sz;
+      else bd.other += sz;
+    }
+    return bd;
+  }
+  
+  // Proxies for other modules
+  enqueueAudioDownload(uid, { priority, kind }) {
+    this.addDl(uid, this.getQuality(), kind, priority || 50);
+  }
+  getDownloadStatus() { return this.q.getStatus(); }
+  isSpaceOk() { return this.spaceOk; }
 }
+
+const instance = new OfflineManager();
+window.OfflineManager = instance;
+export function getOfflineManager() { return instance; }
+export default instance;
