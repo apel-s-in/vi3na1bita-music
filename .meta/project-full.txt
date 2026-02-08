@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ac569ac87427062b33b6fca23f457fca0c3d02ba.idx
-│   │       ├── pack-ac569ac87427062b33b6fca23f457fca0c3d02ba.pack
-│   │       └── pack-ac569ac87427062b33b6fca23f457fca0c3d02ba.rev
+│   │       ├── pack-03b827edc9958c09a2f37fff3ec1232f8f0fd0d6.idx
+│   │       ├── pack-03b827edc9958c09a2f37fff3ec1232f8f0fd0d6.pack
+│   │       └── pack-03b827edc9958c09a2f37fff3ec1232f8f0fd0d6.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-08 21:45:08 UTC
+Сгенерировано: 2026-02-08 21:45:24 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1328,6 +1328,8 @@ self.addEventListener('message', (e) => {
   };
 
   const initModules = async () => {
+    const C = W.APP_CONFIG || {};
+
     // 1. Albums Index
     if (!Array.isArray(W.albumsIndex) || !W.albumsIndex.length) {
       try { await W.Utils?.onceEvent?.(W, 'albumsIndex:ready', { timeoutMs: 5000 }); } catch {}
