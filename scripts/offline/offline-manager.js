@@ -7,7 +7,7 @@
 import {
   openDB, setAudioBlob, getAudioBlob, deleteAudioVariant, deleteAudio,
   setTrackMeta, getTrackMeta, updateTrackMeta, getAllTrackMetas,
-  hasAudioForUid, getStoredVariant, deleteTrackCache
+  hasAudioForUid, getStoredVariant, deleteTrackCache, deleteTrackMeta
 } from './cache-db.js';
 
 const WIN = window;
@@ -118,7 +118,6 @@ class SimpleQueue {
         emit('offline:downloadFailed', { uid: item.uid });
         if (e.message === 'DiskFull') toast('Мало места, загрузка остановлена', 'warning');
       }
-      // Clean up partials if needed, though SetAudioBlob is atomic-ish in IDB
     } finally {
       this.active.delete(item.uid);
       emit('offline:stateChanged');
@@ -174,6 +173,10 @@ class OfflineManager {
       return !est || ((est.quota||0) - (est.usage||0)) >= (DEF.MIN_MB * MB);
     } catch { return true; }
   }
+  
+  // !!! LEGACY COMPATIBILITY FIX !!!
+  // offline-indicators.js calls this method
+  async isSpaceOk() { return this.hasSpace(); }
 
   async getTrackOfflineState(uid) {
     if (!uid) return { status: 'none' };
