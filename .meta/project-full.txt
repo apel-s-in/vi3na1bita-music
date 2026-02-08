@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9e96734fc8335f5237bbb4928a2cca2c9a955f3c.idx
-│   │       ├── pack-9e96734fc8335f5237bbb4928a2cca2c9a955f3c.pack
-│   │       └── pack-9e96734fc8335f5237bbb4928a2cca2c9a955f3c.rev
+│   │       ├── pack-96c75553a0682059fdf0e2b12b1c9c01a3a7d027.idx
+│   │       ├── pack-96c75553a0682059fdf0e2b12b1c9c01a3a7d027.pack
+│   │       └── pack-96c75553a0682059fdf0e2b12b1c9c01a3a7d027.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -385,7 +385,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-08 21:32:27 UTC
+Сгенерировано: 2026-02-08 21:36:36 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1150,7 +1150,7 @@ const STATIC_ASSETS = [
   './icons/favicon-32.png', './icons/favicon-16.png', './icons/apple-touch-icon.png',
   './scripts/core/bootstrap.js', './scripts/core/config.js', './scripts/core/utils.js',
   './scripts/core/favorites-manager.js',
-  './scripts/app/gallery.js', './scripts/ui/notify.js', './scripts/ui/favorites.js',
+  './scripts/app/gallery.js', './scripts/ui/notify.js',
   './scripts/ui/sleep.js', './scripts/ui/lyrics-modal.js', './scripts/ui/sysinfo.js',
   './scripts/ui/modals.js',
   './scripts/ui/offline-modal.js', './scripts/ui/offline-indicators.js',
