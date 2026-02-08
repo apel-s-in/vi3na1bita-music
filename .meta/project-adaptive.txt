@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-96c75553a0682059fdf0e2b12b1c9c01a3a7d027.idx
-│   │       ├── pack-96c75553a0682059fdf0e2b12b1c9c01a3a7d027.pack
-│   │       └── pack-96c75553a0682059fdf0e2b12b1c9c01a3a7d027.rev
+│   │       ├── pack-58e0288a90ba77f238cedd14371bae9011a0ec53.idx
+│   │       ├── pack-58e0288a90ba77f238cedd14371bae9011a0ec53.pack
+│   │       └── pack-58e0288a90ba77f238cedd14371bae9011a0ec53.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -385,7 +385,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-08 21:36:36 UTC
+Сгенерировано: 2026-02-08 21:37:30 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4435,13 +4435,9 @@ window.FavoritesManager = Favorites;
     lsGetJson: (k, d=null) => { try { const r=localStorage.getItem(k); return r?JSON.parse(r):d; } catch { return d; } }
   };
 
-  // Direct Aliases
+  // Direct Aliases (minimal — only used externally)
   U.escapeHtml = U.ui.escapeHtml;
-  U.formatTime = U.fmt.time;
-  U.formatBytes = U.fmt.bytes;
-  U.getNetworkStatusSafe = U.getNet;
   U.isMobile = () => { const p = U.getPlatform(); return p.isIOS || p.isAndroid; };
-  U.trimStr = U.obj.trim;
   U.waitFor = async (fn, t=2000) => { for(let i=0;i<t/50;i++) { if(fn()) return true; await new Promise(r=>setTimeout(r,50)); } return !!fn(); };
   U.onceEvent = (el, ev, { timeoutMs }={}) => new Promise(r => {
     const h = () => { el.removeEventListener(ev, h); r(); };
