@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-957f7903041c104016b09ab7ea165676a14a9b3c.idx
-│   │       ├── pack-957f7903041c104016b09ab7ea165676a14a9b3c.pack
-│   │       └── pack-957f7903041c104016b09ab7ea165676a14a9b3c.rev
+│   │       ├── pack-6a5507c53969a327fa8cfc9566ac57e98f9c0a96.idx
+│   │       ├── pack-6a5507c53969a327fa8cfc9566ac57e98f9c0a96.pack
+│   │       └── pack-6a5507c53969a327fa8cfc9566ac57e98f9c0a96.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -386,7 +386,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-08 15:47:17 UTC
+Сгенерировано: 2026-02-08 19:59:31 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -10912,9 +10912,9 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 /* Quality + Mode segment toggles */
 .om-quality-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .om-quality-label{font-size:13px;color:var(--om-dim)}
-.om-quality-toggle,.om-mode-toggle{display:flex;border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,.1)}
-.om-quality-btn,.om-mode-btn{all:unset;cursor:pointer;padding:6px 14px;font:600 13px inherit;color:rgba(255,255,255,.35);background:var(--om-card);transition:all .15s;user-select:none}
-.om-mode-btn{font-size:12px}
+.om-quality-toggle,.om-mode-toggle{display:flex;border-radius:8px;overflow:visible;border:1px solid rgba(255,255,255,.1);flex-shrink:0}
+.om-quality-btn,.om-mode-btn{all:unset;cursor:pointer;padding:6px 16px;font:600 13px inherit;color:rgba(255,255,255,.35);background:var(--om-card);transition:all .15s;user-select:none;text-align:center;white-space:nowrap}
+.om-mode-btn{font-size:12px;min-width:40px}
 .om-quality-btn:first-child,.om-mode-btn:first-child{border-right:1px solid rgba(255,255,255,.08)}
 .om-quality-btn:hover,.om-mode-btn:hover{background:rgba(255,255,255,.08)}
 .om-quality-btn--active-hi{background:rgba(76,175,80,.18)!important;color:#81c784!important;box-shadow:inset 0 -2px 0 var(--om-green)}
@@ -10936,7 +10936,8 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .om-dl-stat__label{font-size:11px;color:var(--om-muted);margin-top:2px}
 
 /* Mode card */
-.om-mode-card__head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.om-mode-card__head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.om-mode-card__head>div:first-child{flex:1;min-width:0}
 .om-mode-card__name{font:600 14px inherit;color:#fff;margin-bottom:2px}
 .om-mode-card__desc{font-size:12px;color:var(--om-muted);line-height:1.4}
 .om-mode-card__hint{font-size:12px;color:rgba(255,255,255,.35);margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.05)}
