@@ -1,364 +1,674 @@
 // scripts/app/player-ui.js
-// Optimized PlayerUI v3.0 (Strict R1/Offline Logic)
 (function (W, D) {
   'use strict';
 
-  const U = W.Utils, PC = () => W.playerCore;
-  const $ = (i) => D.getElementById(i);
-  const qs = (s, p = D) => p?.querySelector(s);
-  const cls = (e, c, v) => e?.classList.toggle(c, !!v);
-  const txt = (e, t) => { if(e) e.textContent = t; };
-  const on = (e, t, f) => e?.addEventListener(t, f, { passive: false });
+  const U = W.Utils;
+  const PlayerUI = {};
 
-  // DOM Cache
-  const el = {};
-  const S = { mini: false, seek: false, miniSave: null, vis: false, raf: 0, an: null };
+  const dom = {
+    playerBlock: null,
+    nowPlayingSlot: null,
 
-  const init = () => {
-    if (!PC() || !W.albumsIndex || !U) return setTimeout(init, 50);
+    // player controls
+    fill: null,
+    bar: null,
+    timeElapsed: null,
+    timeRemaining: null,
+    volFill: null,
+    volHandle: null,
+    volSlider: null,
+    icon: null,
+    pqBtn: null,
+    pqLabel: null,
+    favBtn: null,
+    favIcon: null,
 
-    // Event Bindings
-    const c = PC();
-    c.on({
-      onTrackChange: (t, i) => { W.__lastStatsSec = -1; hl(t, i); render(i); updPQ(); updDL(); },
-      onPlay: updIcon, onPause: updIcon, onStop: updIcon, onEnd: updIcon,
-      onTick: onTick
-    });
+    // mini widgets
+    miniHeader: null,
+    nextUp: null,
 
-    c.onFavoritesChanged(() => { updFav(); updMini(); updFilt(); });
-
-    const evs = ['offline:uiChanged', 'online', 'offline', 'netPolicy:changed'];
-    evs.forEach(e => W.addEventListener(e, updPQ));
-
-    // Restore State
-    c.setVolume(U.math.toInt(U.lsGet('playerVolume'), 100));
-    S.vis = U.lsGetBool01('bitEnabled');
-    if (S.vis) visRun();
-
-    updFav();
+    // misc
+    jumpBtn: null
   };
 
-  // --- Rendering & Layout ---
+  const st = {
+    isMiniMode: false,
+    isSeeking: false,
+    miniSavedState: null,
 
-  const cacheDOM = (root) => {
-    el.root = root;
-    el.bar = qs('#player-progress-bar', root);
-    el.fill = qs('#player-progress-fill', root);
-    el.elap = qs('#time-elapsed', root);
-    el.rem = qs('#time-remaining', root);
-    el.vFill = qs('#volume-fill', root);
-    el.vHand = qs('#volume-handle', root);
-    el.vSld = qs('#volume-slider', root);
-    el.icon = qs('#play-pause-icon', root);
-    el.pq = qs('#pq-btn', root);
-    el.pqLbl = qs('#pq-btn-label', root);
-    el.fav = qs('#favorites-btn', root);
-    el.favIcon = qs('#favorites-btn-icon', root);
-    
-    // Bind Seek
-    if (el.bar) {
-      const move = (e) => {
-        const r = el.bar.getBoundingClientRect();
-        const x = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
-        PC().seek(PC().getDuration() * U.math.clamp(x / r.width, 0, 1));
-      };
-      const up = () => { S.seek = false; D.removeEventListener('pointermove', move); D.removeEventListener('pointerup', up); };
-      on(el.bar, 'pointerdown', (e) => { S.seek = true; move(e); D.addEventListener('pointermove', move); D.addEventListener('pointerup', up); });
-    }
-
-    // Bind Volume
-    if (el.vSld) on(el.vSld, 'input', (e) => {
-      const v = U.math.toInt(e.target.value, 100);
-      PC().setVolume(v); updVol(v);
-    });
-    updVol(PC().getVolume());
+    // visualizer
+    bitEnabled: false,
+    analyzer: null,
+    rafId: 0
   };
 
-  const render = (idx, opts) => {
-    if (!el.root) {
-      const t = $('player-template');
-      if (!t) return;
-      cacheDOM(t.content.cloneNode(true).querySelector('#lyricsplayerblock'));
-      bindClicks(el.root);
+  const $id = (id) => D.getElementById(id);
+
+  function init() {
+    if (!W.playerCore || !W.albumsIndex || !U) return setTimeout(init, 100);
+
+    // Core events: строго UI-only
+    W.playerCore.on({
+      onTrackChange: handleTrackChange,
+      onPlay: updatePlayPauseIcon,
+      onPause: updatePlayPauseIcon,
+      onStop: updatePlayPauseIcon,
+      onEnd: updatePlayPauseIcon,
+      onTick: handleTick
+    });
+
+    W.playerCore.onFavoritesChanged(() => {
+      updateFavoritesBtn();
+      updateMiniHeader();
+      updatePlaylistFiltering();
+    });
+
+    // PQ button depends on network policy
+    W.addEventListener('offline:uiChanged', updatePQButtonState);
+    W.addEventListener('online', updatePQButtonState);
+    W.addEventListener('offline', updatePQButtonState);
+
+    // restore volume
+    const savedVol = U.math.toInt(U.lsGet('playerVolume'), 100);
+    W.playerCore.setVolume(savedVol);
+
+    // visualizer state
+    st.bitEnabled = U.lsGetBool01('bitEnabled');
+    if (st.bitEnabled) startVisualizer();
+
+    updateFavoritesBtn();
+  }
+
+  function ensurePlayerBlock(index, options) {
+    if (!dom.playerBlock) {
+      const tpl = $id('player-template');
+      if (!tpl) return;
+
+      dom.playerBlock = tpl.content.cloneNode(true).querySelector('#lyricsplayerblock');
+      if (!dom.playerBlock) return;
+
+      cacheDom(dom.playerBlock);
+      bindPlayerEvents(dom.playerBlock);
     }
 
-    const slot = $('now-playing');
-    const isM = U.isBrowsingOtherAlbum();
-    const chg = S.mini !== isM;
-    S.mini = isM;
+    dom.nowPlayingSlot = $id('now-playing');
 
-    if (isM) { // Mini Mode
-      if (!slot.contains(el.root) || chg) {
-        slot.innerHTML = '';
-        slot.append(getMiniH(), el.root, getNextH());
-      }
-      if (W.LyricsController && S.miniSave === null) {
-        S.miniSave = W.LyricsController.getMiniSaveState();
-        W.LyricsController.applyMiniMode();
-      }
-      if (el.miniH) el.miniH.style.display = 'flex';
-      if (el.nextH) el.nextH.style.display = 'flex';
-    } else { // Inline Mode
-      const row = qs(PC().getCurrentTrack()?.uid ? `.track[data-uid="${CSS.escape(PC().getCurrentTrack().uid)}"]` : `.track[data-index="${idx}"]`, $('track-list'));
+    const newMiniMode = U.isBrowsingOtherAlbum();
+    const modeChanged = st.isMiniMode !== newMiniMode;
+    st.isMiniMode = newMiniMode;
+
+    if (st.isMiniMode) mountMiniMode(modeChanged);
+    else mountInlineMode(index, options);
+
+    manageJumpButton();
+
+    // One-pass UI refresh (без дублей)
+    updatePQButtonState();
+    updateFavoritesBtn();
+    updatePlaylistFiltering();
+    updateMiniHeader();
+    updatePlayPauseIcon();
+    updateDownloadState();
+  }
+
+  function cacheDom(blk) {
+    const q = (s) => blk.querySelector(s);
+
+    dom.fill = q('#player-progress-fill');
+    dom.bar = q('#player-progress-bar');
+    dom.timeElapsed = q('#time-elapsed');
+    dom.timeRemaining = q('#time-remaining');
+
+    dom.volFill = q('#volume-fill');
+    dom.volHandle = q('#volume-handle');
+    dom.volSlider = q('#volume-slider');
+
+    dom.icon = q('#play-pause-icon');
+
+    dom.pqBtn = q('#pq-btn');
+    dom.pqLabel = q('#pq-btn-label');
+
+    dom.favBtn = q('#favorites-btn');
+    dom.favIcon = q('#favorites-btn-icon');
+  }
+
+  function mountMiniMode(modeChanged) {
+    if (!dom.nowPlayingSlot) return;
+
+    if (!dom.nowPlayingSlot.contains(dom.playerBlock) || modeChanged) {
+      dom.nowPlayingSlot.innerHTML = '';
+      dom.nowPlayingSlot.append(getMiniHeader(), dom.playerBlock, getNextUp());
+    }
+
+    if (W.LyricsController) {
+      if (st.miniSavedState === null) st.miniSavedState = W.LyricsController.getMiniSaveState();
+      W.LyricsController.applyMiniMode();
+    }
+
+    if (dom.miniHeader) dom.miniHeader.style.display = 'flex';
+    if (dom.nextUp) dom.nextUp.style.display = 'flex';
+  }
+
+  function mountInlineMode(index, options) {
+    const trackList = $id('track-list');
+
+    if (trackList) {
+      const cur = W.playerCore.getCurrentTrack();
+      const sel = cur?.uid
+        ? `.track[data-uid="${CSS.escape(cur.uid)}"]`
+        : `.track[data-index="${index}"]`;
+
+      const row = trackList.querySelector(sel);
+
       if (row) {
-        if (row.nextSibling !== el.root) row.after(el.root);
-        if (opts?.userInitiated) setTimeout(() => row.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
-      } else $('track-list')?.appendChild(el.root);
-
-      if (W.LyricsController) {
-        W.LyricsController.restoreFromMiniMode(S.miniSave);
-        S.miniSave = null;
-      }
-      if (slot) slot.innerHTML = '';
-      if (el.miniH) el.miniH.style.display = 'none';
-      if (el.nextH) el.nextH.style.display = 'none';
-    }
-
-    chkJump();
-    // Batch updates
-    updPQ(); updFav(); updFilt(); updMini(); updIcon(); updDL();
-  };
-
-  const getMiniH = () => {
-    if (el.miniH) return el.miniH;
-    el.miniH = $('mini-header-template').content.cloneNode(true).querySelector('#mini-now');
-    on(el.miniH, 'click', (e) => {
-      if (e.target.id !== 'mini-now-star') {
-        const k = W.AlbumsManager?.getPlayingAlbum?.();
-        if (k) W.AlbumsManager.loadAlbum(k);
+        if (row.nextSibling !== dom.playerBlock) row.after(dom.playerBlock);
+        if (options?.userInitiated) {
+          setTimeout(() => row.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+        }
       } else {
-        e.stopPropagation();
-        const t = PC().getCurrentTrack();
-        if (t?.uid) PC().toggleFavorite(t.uid, { fromAlbum: true, albumKey: t.sourceAlbum });
-        updMini();
+        trackList.appendChild(dom.playerBlock);
+      }
+    }
+
+    if (W.LyricsController) {
+      W.LyricsController.restoreFromMiniMode(st.miniSavedState);
+      st.miniSavedState = null;
+    }
+
+    if (dom.nowPlayingSlot) dom.nowPlayingSlot.innerHTML = '';
+    if (dom.miniHeader) dom.miniHeader.style.display = 'none';
+    if (dom.nextUp) dom.nextUp.style.display = 'none';
+  }
+
+  function getMiniHeader() {
+    if (dom.miniHeader) return dom.miniHeader;
+
+    const tpl = $id('mini-header-template');
+    if (!tpl) return null;
+
+    dom.miniHeader = tpl.content.cloneNode(true).querySelector('#mini-now');
+
+    // open playing album when clicking mini header (but not star)
+    dom.miniHeader.addEventListener('click', (e) => {
+      if (e.target?.id !== 'mini-now-star') {
+        const pk = W.AlbumsManager?.getPlayingAlbum?.();
+        if (pk) W.AlbumsManager.loadAlbum(pk);
       }
     });
-    return el.miniH;
-  };
 
-  const getNextH = () => (el.nextH = el.nextH || $('next-up-template')?.content.cloneNode(true).querySelector('#next-up'));
-
-  const bindClicks = (root) => {
-    on(root, 'click', (e) => {
-      const b = e.target.closest('button');
-      if (!b) return; // Ignore non-buttons (links handled natively)
-      
-      e.preventDefault();
-      const id = b.id;
-      const core = PC();
-
-      const acts = {
-        'play-pause-btn': () => core.isPlaying() ? core.pause() : core.play(),
-        'prev-btn': () => core.prev(),
-        'next-btn': () => core.next(),
-        'stop-btn': () => core.stop(),
-        'shuffle-btn': () => { core.toggleShuffle(); U.setBtnActive(id, core.isShuffle()); updMini(); },
-        'repeat-btn': () => { core.toggleRepeat(); U.setBtnActive(id, core.isRepeat()); },
-        'mute-btn': () => { const m = !b.classList.contains('active'); core.setMuted(m); U.setBtnActive(id, m); },
-        'pq-btn': onPQ,
-        'favorites-btn': toggleFavMode,
-        'lyrics-toggle-btn': () => W.LyricsController?.toggleLyricsView?.(),
-        'animation-btn': () => W.LyricsController?.toggleAnimation?.(),
-        'lyrics-text-btn': () => W.LyricsModal?.show?.(),
-        'pulse-btn': () => { 
-          S.vis = !S.vis; 
-          U.lsSetBool01('bitEnabled', S.vis); 
-          cls(b, 'active', S.vis); 
-          $('pulse-heart').textContent = S.vis ? '❤️' : '🤍';
-          S.vis ? visRun() : visStop(); 
-        },
-        'stats-btn': () => W.StatisticsModal?.openStatisticsModal?.()
-      };
-      acts[id]?.();
+    dom.miniHeader.querySelector('#mini-now-star')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleLikeCurrent();
     });
-  };
 
-  // --- Logic ---
+    return dom.miniHeader;
+  }
 
-  const onTick = (pos, dur) => {
-    if (!S.seek && el.fill) {
-      el.fill.style.width = dur > 0 ? `${(pos/dur)*100}%` : '0%';
-      if (el.elap) el.elap.textContent = U.fmt.time(pos);
-      if (el.rem) el.rem.textContent = `-${U.fmt.time((dur||0)-pos)}`;
+  function getNextUp() {
+    if (dom.nextUp) return dom.nextUp;
+    const tpl = $id('next-up-template');
+    dom.nextUp = tpl?.content?.cloneNode(true)?.querySelector?.('#next-up') || null;
+    return dom.nextUp;
+  }
+
+  function bindPlayerEvents(root) {
+    // Volume
+    if (dom.volSlider) {
+      dom.volSlider.addEventListener('input', (e) => {
+        const val = U.math.toInt(e.target.value, 100);
+        W.playerCore.setVolume(val);
+        updateVolumeUI(val);
+      });
+      // initial UI reflect
+      updateVolumeUI(W.playerCore.getVolume());
     }
-    W.LyricsController?.onTick?.(pos, { inMiniMode: S.mini });
-  };
 
-  const updIcon = () => {
-    if (el.icon) el.icon.innerHTML = PC().isPlaying() 
-      ? '<path d="M6 4h4v16H6zM14 4h4v16h-4z"/>' 
-      : '<path d="M8 5v14l11-7z"/>';
-  };
+    // Seek bar (pointer)
+    if (dom.bar) {
+      const move = (e) => {
+        const rect = dom.bar.getBoundingClientRect();
+        const x = e.touches ? e.touches[0].clientX : e.clientX;
+        const p = U.math.clamp((x - rect.left) / rect.width, 0, 1);
+        const d = W.playerCore.getDuration();
+        if (d) W.playerCore.seek(d * p);
+      };
 
-  const updVol = (v) => {
-    const p = U.math.clamp(v, 0, 100);
-    if (el.vFill) el.vFill.style.width = `${p}%`;
-    if (el.vHand) el.vHand.style.left = `${U.math.clamp(p, 2, 98)}%`;
-    if (el.vSld) el.vSld.value = p;
-  };
+      const up = () => {
+        st.isSeeking = false;
+        D.removeEventListener('pointermove', move);
+        D.removeEventListener('pointerup', up);
+      };
 
-  const updPQ = () => {
-    if (!el.pq) return;
-    el.pq.style.display = '';
-    const st = U.pq.getState();
-    let c = 'player-control-btn ';
-    if (!st.netOk) { c += 'disabled'; el.pq.setAttribute('aria-disabled', 'true'); }
-    else {
-      c += `pq-${st.mode}`;
-      el.pq.setAttribute('aria-disabled', String(!st.canToggle));
-      if (!st.canToggle) c += ' disabled-soft';
+      dom.bar.addEventListener('pointerdown', (e) => {
+        st.isSeeking = true;
+        move(e);
+        D.addEventListener('pointermove', move);
+        D.addEventListener('pointerup', up);
+      });
     }
-    el.pq.className = c;
-    txt(el.pqLbl, st.mode === 'lo' ? 'Lo' : 'Hi');
-  };
 
-  const onPQ = async () => {
+    // Delegation ONLY inside player block.
+    // Важно: не перехватываем клики по ссылкам/кнопкам по всему документу.
+    root.addEventListener('click', (e) => {
+      const t = e.target;
+
+      // track download link: только предупреждение если href нет
+      if (t?.closest?.('#track-download-btn')) {
+        const a = t.closest('#track-download-btn');
+        if (!a?.getAttribute('href')) {
+          e.preventDefault();
+          U.ui.toast('Скачивание недоступно', 'error');
+        }
+        return;
+      }
+
+      const btn = t?.closest?.('button');
+      if (!btn) return;
+
+      switch (btn.id) {
+        case 'play-pause-btn':
+          e.preventDefault();
+          W.playerCore.isPlaying() ? W.playerCore.pause() : W.playerCore.play();
+          break;
+
+        case 'prev-btn':
+          e.preventDefault();
+          W.playerCore.prev();
+          break;
+
+        case 'next-btn':
+          e.preventDefault();
+          W.playerCore.next();
+          break;
+
+        case 'stop-btn':
+          e.preventDefault();
+          W.playerCore.stop();
+          break;
+
+        case 'shuffle-btn':
+          e.preventDefault();
+          W.playerCore.toggleShuffle();
+          U.setBtnActive(btn.id, W.playerCore.isShuffle());
+          updateMiniHeader();
+          break;
+
+        case 'repeat-btn':
+          e.preventDefault();
+          W.playerCore.toggleRepeat();
+          U.setBtnActive(btn.id, W.playerCore.isRepeat());
+          break;
+
+        case 'mute-btn': {
+          e.preventDefault();
+          const m = !btn.classList.contains('active');
+          if (W.playerCore.setMuted) W.playerCore.setMuted(m);
+          U.setBtnActive(btn.id, m);
+          break;
+        }
+
+        case 'pq-btn':
+          e.preventDefault();
+          onPQClick();
+          break;
+
+        case 'favorites-btn':
+          e.preventDefault();
+          toggleFavoritesOnly();
+          break;
+
+        case 'lyrics-toggle-btn':
+          e.preventDefault();
+          W.LyricsController?.toggleLyricsView?.();
+          break;
+
+        case 'animation-btn':
+          e.preventDefault();
+          W.LyricsController?.toggleAnimation?.();
+          break;
+
+        case 'lyrics-text-btn':
+          e.preventDefault();
+          W.LyricsModal?.show?.();
+          break;
+
+        case 'pulse-btn':
+          e.preventDefault();
+          togglePulse();
+          break;
+
+        case 'stats-btn':
+          e.preventDefault();
+          W.StatisticsModal?.openStatisticsModal?.();
+          break;
+      }
+    }, { passive: false });
+  }
+
+  async function onPQClick() {
+    // Если OfflineManager не поднялся — оставляем старый механизм Utils.pq.toggle()
     const mgr = W._offlineManagerInstance;
     if (!mgr) {
       const r = U.pq.toggle();
-      if (!r.ok) U.ui.toast(r.reason === 'trackNoLo' ? 'Нет Lo качества' : 'Нет сети', 'warning');
-      return updPQ();
+      if (!r.ok) {
+        U.ui.toast(
+          r.reason === 'trackNoLo'
+            ? 'Низкое качество недоступно'
+            : r.reason === 'offline'
+              ? 'Нет доступа к сети'
+              : 'Невозможно',
+          'warning'
+        );
+      }
+      updatePQButtonState();
+      return;
     }
-    const q = mgr.getQuality() === 'hi' ? 'lo' : 'hi';
-    const n = await mgr.countNeedsReCache(q);
-    
-    const go = () => { U.pq.toggle(); updPQ(); };
-    
-    if (n > 5) {
-      W.Modals?.confirm?.({
-        title: 'Смена качества',
-        textHtml: `Затронет ${n} файлов. Перекачать?`,
-        confirmText: 'Да', onConfirm: go
-      }) || (confirm(`Затронет ${n} файлов. Перекачать?`) && go());
-    } else go();
-  };
 
-  const toggleFavMode = () => {
-    const on = !U.lsGetBool01('favoritesOnlyMode');
-    const pa = W.AlbumsManager?.getPlayingAlbum?.();
-    
-    if (on && pa !== W.SPECIAL_FAVORITES_KEY) {
-      if (!PC().getLikedUidsForAlbum(pa)?.length) return U.ui.toast('Отметьте ⭐ трек', 'info');
+    const currentQ = mgr.getQuality();
+    const newQ = currentQ === 'hi' ? 'lo' : 'hi';
+    const needsReCache = await mgr.countNeedsReCache(newQ);
+
+    if (needsReCache > 5) {
+      const confirmFn = W.Modals?.confirm;
+      if (confirmFn) {
+        // styled confirm
+        confirmFn({
+          title: 'Смена качества',
+          textHtml: `Смена качества затронет ${needsReCache} файлов. Перекачать?`,
+          confirmText: 'Перекачать',
+          cancelText: 'Отмена',
+          onConfirm: () => {
+            U.pq.toggle(); // вызывает playerCore.switchQuality(), который эмитит quality:changed
+            updatePQButtonState();
+          }
+        });
+      } else {
+        // fallback native
+        // eslint-disable-next-line no-alert
+        if (confirm(`Смена качества затронет ${needsReCache} файлов. Перекачать?`)) {
+          U.pq.toggle();
+          updatePQButtonState();
+        }
+      }
+      return;
     }
-    U.lsSetBool01('favoritesOnlyMode', on);
-    updFav();
-    W.PlaybackPolicy?.apply?.({ reason: 'toggle' });
-    PlayerUI.updateAvailableTracksForPlayback();
-    updFilt();
-    U.ui.toast(on ? '⭐ Только избранные' : 'Играют все треки', on ? 'success' : 'info');
-  };
 
-  const updFav = () => {
-    const on = U.lsGetBool01('favoritesOnlyMode');
-    if (el.fav) el.fav.className = `player-control-btn ${on ? 'favorites-active' : ''}`;
-    if (el.favIcon) el.favIcon.src = on ? 'img/star.png' : 'img/star2.png';
-  };
+    const r = U.pq.toggle();
+    if (!r.ok) {
+      U.ui.toast(
+        r.reason === 'trackNoLo'
+          ? 'Низкое качество недоступно'
+          : r.reason === 'offline'
+            ? 'Нет доступа к сети'
+            : 'Невозможно',
+        'warning'
+      );
+    }
+    updatePQButtonState();
+  }
 
-  const updFilt = () => {
-    const l = $('track-list');
-    if (!l) return;
-    const on = U.lsGetBool01('favoritesOnlyMode');
-    const same = W.AlbumsManager?.getCurrentAlbum?.() === W.AlbumsManager?.getPlayingAlbum?.();
-    const spec = U.isSpecialAlbumKey(W.AlbumsManager?.getCurrentAlbum?.());
-    
-    const act = on && same && !spec;
-    cls(l, 'favonly-filtered', act);
-    
-    if (act) {
-      const uids = new Set(PC().getLikedUidsForAlbum(W.AlbumsManager.getCurrentAlbum()) || []);
-      l.querySelectorAll('.track').forEach(r => {
-        r.dataset.hiddenByFavonly = uids.has(r.dataset.uid) ? null : '1';
-      });
+  function handleTrackChange(track, index) {
+    W.__lastStatsSec = -1;
+
+    // подсветка трека
+    W.AlbumsManager?.highlightCurrentTrack?.(
+      track?.uid ? -1 : index,
+      track?.uid ? { uid: track.uid, albumKey: track.sourceAlbum } : {}
+    );
+
+    ensurePlayerBlock(index);
+    W.LyricsController?.onTrackChange?.(track);
+
+    updatePQButtonState();
+    updateDownloadState();
+  }
+
+  function handleTick(pos, dur) {
+    if (!st.isSeeking) {
+      const p = dur > 0 ? (pos / dur) * 100 : 0;
+      if (dom.fill) dom.fill.style.width = `${p}%`;
+      if (dom.timeElapsed) dom.timeElapsed.textContent = U.fmt.time(pos);
+      if (dom.timeRemaining) dom.timeRemaining.textContent = `-${U.fmt.time((dur || 0) - pos)}`;
+    }
+    W.LyricsController?.onTick?.(pos, { inMiniMode: st.isMiniMode });
+  }
+
+  function updatePlayPauseIcon() {
+    if (!dom.icon) return;
+    dom.icon.innerHTML = W.playerCore.isPlaying()
+      ? '<path d="M6 4h4v16H6zM14 4h4v16h-4z"/>'
+      : '<path d="M8 5v14l11-7z"/>';
+  }
+
+  function updateVolumeUI(v) {
+    const val = U.math.clamp(v, 0, 100);
+    if (dom.volFill) dom.volFill.style.width = `${val}%`;
+    if (dom.volHandle) dom.volHandle.style.left = `${U.math.clamp(val, 2, 98)}%`;
+    if (dom.volSlider) dom.volSlider.value = val;
+  }
+
+  function updatePQButtonState() {
+    if (!dom.pqBtn) return;
+
+    // v1.0: кнопка качества видна всегда (R0/R1).
+    dom.pqBtn.style.display = '';
+
+    const s = U.pq.getState();
+    let cls = 'player-control-btn ';
+    if (!s.netOk) {
+      cls += 'disabled';
+      dom.pqBtn.setAttribute('aria-disabled', 'true');
     } else {
-      l.querySelectorAll('.track').forEach(r => r.removeAttribute('data-hidden-by-favonly'));
+      cls += `pq-${s.mode}`;
+      dom.pqBtn.setAttribute('aria-disabled', String(!s.canToggle));
+      if (!s.canToggle) cls += ' disabled-soft';
     }
-  };
+    dom.pqBtn.className = cls;
+    if (dom.pqLabel) dom.pqLabel.textContent = s.mode === 'lo' ? 'Lo' : 'Hi';
+  }
 
-  const updMini = () => {
-    if (!S.mini || !el.miniH) return;
-    const t = PC().getCurrentTrack();
-    const nxt = PC().getPlaylistSnapshot()?.[PC().getNextIndex()];
-    
-    txt(el.miniH.querySelector('#mini-now-num'), `${String((PC().getIndex()||0)+1).padStart(2,'0')}.`);
-    txt(el.miniH.querySelector('#mini-now-title'), t ? t.title : '—');
-    
-    const star = el.miniH.querySelector('#mini-now-star');
-    if (star) star.src = U.fav.isTrackLikedInContext({ playingAlbum: W.AlbumsManager?.getPlayingAlbum?.(), track: t }) ? 'img/star.png' : 'img/star2.png';
-    
-    if (el.nextH) txt(el.nextH.querySelector('.title'), nxt ? nxt.title : '—');
-  };
+  function updateFavoritesBtn() {
+    const on = U.lsGetBool01('favoritesOnlyMode');
+    if (dom.favBtn) dom.favBtn.className = `player-control-btn ${on ? 'favorites-active' : ''}`;
+    if (dom.favIcon) dom.favIcon.src = on ? 'img/star.png' : 'img/star2.png';
+  }
 
-  const updDL = () => U.download.applyDownloadLink($('track-download-btn'), PC().getCurrentTrack());
+  function updateMiniHeader() {
+    if (!st.isMiniMode) return;
 
-  const hl = (t, i) => W.AlbumsManager?.highlightCurrentTrack?.(t?.uid ? -1 : i, t?.uid ? { uid: t.uid, albumKey: t.sourceAlbum } : {});
+    const trk = W.playerCore.getCurrentTrack();
+    const snap = W.playerCore.getPlaylistSnapshot?.() || [];
+    const nextIdx = W.playerCore.getNextIndex?.();
+    const nxt = (typeof nextIdx === 'number') ? snap[nextIdx] : null;
 
-  // --- Visualizer (Optimized) ---
-  const visRun = () => {
-    if (W.Howler?.ctx && !S.an) {
-      const c = W.Howler.ctx;
-      if (c.state === 'suspended') c.resume();
-      try { S.an = c.createAnalyser(); S.an.fftSize = 256; W.Howler.masterGain.connect(S.an); } catch { S.an = null; }
+    if (dom.miniHeader) {
+      const tnum = dom.miniHeader.querySelector('#mini-now-num');
+      const tit = dom.miniHeader.querySelector('#mini-now-title');
+      const star = dom.miniHeader.querySelector('#mini-now-star');
+
+      if (tnum) tnum.textContent = `${String((W.playerCore.getIndex() || 0) + 1).padStart(2, '0')}.`;
+      if (tit) tit.textContent = trk ? trk.title : '—';
+
+      if (star) {
+        star.src = U.fav.isTrackLikedInContext({
+          playingAlbum: W.AlbumsManager?.getPlayingAlbum?.(),
+          track: trk
+        })
+          ? 'img/star.png'
+          : 'img/star2.png';
+      }
     }
-    if (!S.an || !S.vis) return;
-    
-    const loop = () => {
-      if (!S.vis) return;
-      const arr = new Uint8Array(S.an.frequencyBinCount);
-      S.an.getByteFrequencyData(arr);
-      let sum = 0, lim = (arr.length * 0.3) | 0;
+
+    if (dom.nextUp) {
+      const t = dom.nextUp.querySelector('.title');
+      if (t) t.textContent = nxt ? nxt.title : '—';
+    }
+  }
+
+  function updatePlaylistFiltering() {
+    const lst = $id('track-list');
+    if (!lst) return;
+
+    const on = U.lsGetBool01('favoritesOnlyMode');
+    const ca = W.AlbumsManager?.getCurrentAlbum?.();
+    const pa = W.AlbumsManager?.getPlayingAlbum?.();
+
+    const filter = on && ca === pa && !U.isSpecialAlbumKey(ca);
+    lst.classList.toggle('favonly-filtered', filter);
+
+    if (!filter) return;
+
+    const liked = new Set(W.playerCore.getLikedUidsForAlbum(ca) || []);
+    lst.querySelectorAll('.track').forEach((r) => {
+      const u = r.dataset.uid;
+      if (u && !liked.has(u)) r.setAttribute('data-hidden-by-favonly', '1');
+      else r.removeAttribute('data-hidden-by-favonly');
+    });
+  }
+
+  function updateDownloadState() {
+    const btn = $id('track-download-btn');
+    if (btn) U.download.applyDownloadLink(btn, W.playerCore.getCurrentTrack());
+  }
+
+  function toggleFavoritesOnly() {
+    const next = !U.lsGetBool01('favoritesOnlyMode');
+    const pa = W.AlbumsManager?.getPlayingAlbum?.();
+
+    if (next && pa !== W.SPECIAL_FAVORITES_KEY) {
+      const liked = W.playerCore.getLikedUidsForAlbum(pa);
+      if (!liked?.length) return U.ui.toast('Отметьте понравившийся трек ⭐', 'info');
+    }
+
+    U.lsSetBool01('favoritesOnlyMode', next);
+    updateFavoritesBtn();
+
+    // PlaybackPolicy сам перестроит playing playlist, без stop().
+    W.PlaybackPolicy?.apply?.({ reason: 'toggle' });
+
+    PlayerUI.updateAvailableTracksForPlayback();
+    updatePlaylistFiltering();
+
+    U.ui.toast(next ? '⭐ Только избранные' : 'Играют все треки', next ? 'success' : 'info');
+  }
+
+  function toggleLikeCurrent() {
+    const t = W.playerCore.getCurrentTrack();
+    if (!t?.uid) return;
+
+    const pa = W.AlbumsManager?.getPlayingAlbum?.();
+    const aKey = t.sourceAlbum || (U.isSpecialAlbumKey(pa) ? null : pa);
+
+    W.playerCore.toggleFavorite(t.uid, { fromAlbum: true, albumKey: aKey });
+    updateMiniHeader();
+  }
+
+  function togglePulse() {
+    st.bitEnabled = !st.bitEnabled;
+    U.lsSetBool01('bitEnabled', st.bitEnabled);
+
+    $id('pulse-btn')?.classList.toggle('active', st.bitEnabled);
+    const heart = $id('pulse-heart');
+    if (heart) heart.textContent = st.bitEnabled ? '❤️' : '🤍';
+
+    st.bitEnabled ? startVisualizer() : stopVisualizer();
+  }
+
+  function startVisualizer() {
+    if (W.Howler?.ctx && !st.analyzer) {
+      const ctx = W.Howler.ctx;
+      if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+      try {
+        st.analyzer = ctx.createAnalyser();
+        st.analyzer.fftSize = 256;
+        W.Howler.masterGain.connect(st.analyzer);
+      } catch {
+        st.analyzer = null;
+      }
+    }
+    if (!st.analyzer) return;
+    visualizerLoop();
+  }
+
+  function visualizerLoop() {
+    if (!st.bitEnabled) return;
+
+    if (st.analyzer) {
+      const len = st.analyzer.frequencyBinCount;
+      const arr = new Uint8Array(len);
+      st.analyzer.getByteFrequencyData(arr);
+
+      let sum = 0;
+      const lim = Math.max(1, (len * 0.3) | 0);
       for (let i = 0; i < lim; i++) sum += arr[i];
-      const s = 1 + (sum / lim / 255) * 0.2;
-      const l = $('logo-bottom');
-      if (l) l.style.transform = `scale(${s})`;
-      S.raf = requestAnimationFrame(loop);
-    };
-    S.raf = requestAnimationFrame(loop);
-  };
 
-  const visStop = () => {
-    if (S.raf) cancelAnimationFrame(S.raf);
-    const l = $('logo-bottom'); if (l) l.style.transform = 'scale(1)';
-    S.an = null;
-  };
-
-  // --- Jump Button ---
-  const chkJump = () => {
-    if (!el.jump) {
-      el.jump = D.createElement('div');
-      el.jump.className = 'jump-to-playing';
-      el.jump.innerHTML = '<button>↑</button>';
-      el.jump.onclick = () => el.root?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      D.body.appendChild(el.jump);
+      const scale = 1 + (sum / lim / 255) * 0.2;
+      const l = $id('logo-bottom');
+      if (l) l.style.transform = `scale(${scale})`;
     }
-    if (!W.IntersectionObserver || !el.root) return;
-    if (W._obs) W._obs.disconnect();
-    W._obs = new IntersectionObserver(([e]) => {
-      el.jump.style.display = (!e.isIntersecting && !S.mini) ? 'flex' : 'none';
+
+    st.rafId = requestAnimationFrame(visualizerLoop);
+  }
+
+  function stopVisualizer() {
+    if (st.rafId) cancelAnimationFrame(st.rafId);
+    st.rafId = 0;
+
+    const l = $id('logo-bottom');
+    if (l) l.style.transform = 'scale(1)';
+
+    st.analyzer = null;
+  }
+
+  function manageJumpButton() {
+    if (!dom.jumpBtn) {
+      dom.jumpBtn = D.createElement('div');
+      dom.jumpBtn.className = 'jump-to-playing';
+      dom.jumpBtn.innerHTML = '<button>↑</button>';
+      dom.jumpBtn.onclick = () => dom.playerBlock?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      D.body.appendChild(dom.jumpBtn);
+    }
+
+    if (!('IntersectionObserver' in W) || !dom.playerBlock) return;
+
+    if (W.playerBlockObserver) W.playerBlockObserver.disconnect();
+    W.playerBlockObserver = new IntersectionObserver(([e]) => {
+      dom.jumpBtn.style.display = (!e.isIntersecting && !st.isMiniMode) ? 'flex' : 'none';
     }, { threshold: 0.1 });
-    W._obs.observe(el.root);
+
+    W.playerBlockObserver.observe(dom.playerBlock);
+  }
+
+  // Public API (то, что уже используется в проекте)
+  PlayerUI.initialize = init;
+  PlayerUI.ensurePlayerBlock = ensurePlayerBlock;
+  PlayerUI.updateMiniHeader = updateMiniHeader;
+  PlayerUI.updateNextUpLabel = updateMiniHeader;
+  PlayerUI.togglePlayPause = () => (W.playerCore.isPlaying() ? W.playerCore.pause() : W.playerCore.play());
+  PlayerUI.switchAlbumInstantly = () => {
+    if (W.playerCore.getIndex() >= 0) {
+      ensurePlayerBlock(W.playerCore.getIndex());
+      updateMiniHeader();
+    }
   };
 
-  // --- Exports ---
-  W.PlayerUI = {
-    initialize: init,
-    ensurePlayerBlock: render,
-    updateMiniHeader: updMini,
-    updateNextUpLabel: updMini,
-    updatePlaylistFiltering: updFilt,
-    updateFavoritesBtn: updFav,
-    updateAvailableTracksForPlayback: () => {
-      const pa = W.AlbumsManager?.getPlayingAlbum?.();
-      if (pa !== W.SPECIAL_FAVORITES_KEY && U.lsGetBool01('favoritesOnlyMode')) {
-        W.availableFavoriteIndices = PC().getPlaylistSnapshot().reduce((a, t, i) => {
-          if (PC().isFavorite(t.uid)) a.push(i);
-          return a;
-        }, []);
-      } else W.availableFavoriteIndices = null;
-    },
-    togglePlayPause: () => PC().isPlaying() ? PC().pause() : PC().play(),
-    switchAlbumInstantly: (k) => { if (PC().getIndex() >= 0) { render(PC().getIndex()); updMini(); } }
+  PlayerUI.updateAvailableTracksForPlayback = () => {
+    const pa = W.AlbumsManager?.getPlayingAlbum?.();
+    const on = U.lsGetBool01('favoritesOnlyMode');
+
+    if (pa !== W.SPECIAL_FAVORITES_KEY && on) {
+      const snap = W.playerCore.getPlaylistSnapshot() || [];
+      W.availableFavoriteIndices = snap.reduce((acc, t, i) => {
+        if (W.playerCore.isFavorite(t.uid)) acc.push(i);
+        return acc;
+      }, []);
+    } else {
+      W.availableFavoriteIndices = null;
+    }
   };
 
-  if (D.readyState === 'loading') D.addEventListener('DOMContentLoaded', init); else init();
+  W.PlayerUI = PlayerUI;
+  if (D.readyState === 'loading') D.addEventListener('DOMContentLoaded', init);
+  else init();
 
 })(window, document);
