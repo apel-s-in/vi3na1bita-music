@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-0e6f33523d7a006979f7f1ab6d4d23236addbb3a.idx
-│   │       ├── pack-0e6f33523d7a006979f7f1ab6d4d23236addbb3a.pack
-│   │       └── pack-0e6f33523d7a006979f7f1ab6d4d23236addbb3a.rev
+│   │       ├── pack-d09941f82f1fddfa4a403b9925272c97ca24824e.idx
+│   │       ├── pack-d09941f82f1fddfa4a403b9925272c97ca24824e.pack
+│   │       └── pack-d09941f82f1fddfa4a403b9925272c97ca24824e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -385,7 +385,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-08 21:29:37 UTC
+Сгенерировано: 2026-02-08 21:31:03 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1710,7 +1710,7 @@ export default window.AlbumsManager;
 //=================================================
 // FILE: /scripts/app/albums/specials.js
 import { $ } from '../utils/app-utils.js';
-import { renderFavoritesList, renderFavoritesEmpty, bindFavoritesList } from '../../ui/favorites-view.js';
+import { renderFavoritesList, renderFavoritesEmpty, bindFavoritesList, buildFavoritesRefsModel, getModel, getActiveModel } from '../../ui/favorites-view.js';
 import { loadAndRenderNewsInline } from '../../ui/news-inline.js';
 import { injectOfflineIndicators } from '../../ui/offline-indicators.js';
 
@@ -1730,8 +1730,8 @@ export async function loadFavoritesAlbum(ctx) {
   const container = $('track-list');
   if (!container) return;
 
-  const refreshData = async () => { try { await window.FavoritesUI?.buildFavoritesRefsModel(); } catch {} };
-  const getUiModel = () => window.FavoritesUI?.getModel() || [];
+  const refreshData = async () => { try { await buildFavoritesRefsModel(); } catch {} };
+  const getUiModel = () => getModel();
 
   const rebuild = async () => {
     await refreshData();
