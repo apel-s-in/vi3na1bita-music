@@ -371,20 +371,8 @@ function _bind(overlay, modal, om) {
         'Удалить',
         async () => {
           try {
-            // Удаляем через OfflineManager (он сам чистит CacheDB + мету)
-            if (om.removeCachedTrack) {
-              await om.removeCachedTrack(uid);
-            } else {
-              // Fallback: прямое удаление из CacheDB
-              try {
-                const cdb = await import('../offline/cache-db.js');
-                if (cdb.removeTrackFromCache) await cdb.removeTrackFromCache(uid);
-                else if (cdb.deleteTrackMeta) await cdb.deleteTrackMeta(uid);
-              } catch(e2) { console.warn('[OM] direct cache delete failed:', e2); }
-              // + снятие статуса
-              if (type === 'pinned' && om.unpinTrack) await om.unpinTrack(uid);
-              if (type === 'cloud' && om.removeCloudTrack) await om.removeCloudTrack(uid);
-            }
+            // Используем единый метод removeCached из OfflineManager
+            await om.removeCached(uid);
 
             // Обновляем индикатор в основном плеере
             window.dispatchEvent(new CustomEvent('offline:indicator:update', {
