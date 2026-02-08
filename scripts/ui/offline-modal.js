@@ -156,7 +156,53 @@ function render() {
   body.insertAdjacentHTML('beforeend', `<section class="om-section"><h3 class="om-section__title"><span class="om-section__icon">🌐</span> Сетевая политика</h3>${nb}</section>`);
 
   // 3. Pinned & Cloud
-  body.insertAdjacentHTML('beforeend', `<section class="om-section"><h3 class="om-section__title"><span class="om-section__icon">🔒</span> Pinned и Cloud</h3><div class="om-quality-row"><span class="om-quality-label">Качество кэша</span><div class="om-quality-toggle" id="om-qual-toggle"><button class="om-quality-btn ${q==='hi'?'om-quality-btn--active-hi':''}" data-val="hi">Hi</button><button class="om-quality-btn ${q==='lo'?'om-quality-btn--active-lo':''}" data-val="lo">Lo</button></div></div><button class="om-btn om-btn--accent" data-action="recache" style="width:100%;margin-bottom:12px">🔄 Re-cache</button><div class="om-settings-grid"><div class="om-setting"><label class="om-setting__label" for="inp-n">Слушать для ☁ (N)</label><input type="number" id="inp-n" value="${N}" min="1" max="100" class="om-setting__input"></div><div class="om-setting"><label class="om-setting__label" for="inp-d">Хранить ☁ дней (D)</label><input type="number" id="inp-d" value="${D}" min="1" max="365" class="om-setting__input"></div></div><button class="om-btn om-btn--primary" data-action="apply-cloud" style="width:100%">Применить настройки</button><div class="om-divider"></div><button class="om-btn om-btn--outline" data-action="show-list" style="width:100%;margin-bottom:12px">Показать закреплённые и облачные</button><div id="pinned-cloud-list" class="om-track-list" style="display:none"></div><div class="om-divider"></div><button class="om-btn om-btn--danger-outline" data-action="del-all" style="width:100%">🗑 Удалить все 🔒 и ☁</button></section>`);
+  const hasRecache = !!(om.countNeedsReCache);
+  body.insertAdjacentHTML('beforeend', `
+    <section class="om-section">
+      <h3 class="om-section__title"><span class="om-section__icon">🔒</span> Pinned и Cloud</h3>
+
+      <div class="om-pc-toprow">
+        <div class="om-pc-quality">
+          <div class="om-pc-quality__label">Качество кэша</div>
+          <div class="om-quality-toggle" id="om-qual-toggle">
+            <button class="om-quality-btn ${q==='hi'?'om-quality-btn--active-hi':''}" data-val="hi">Hi</button>
+            <button class="om-quality-btn ${q==='lo'?'om-quality-btn--active-lo':''}" data-val="lo">Lo</button>
+          </div>
+        </div>
+        <div class="om-pc-recache">
+          <div class="om-pc-recache__label">Обновление кэша</div>
+          <button class="om-btn om-btn--accent om-pc-recache__btn" data-action="recache" id="btn-recache">🔄 Re-cache</button>
+        </div>
+      </div>
+
+      <div class="om-settings-grid">
+        <div class="om-setting">
+          <label class="om-setting__label" for="inp-n">Слушать для ☁ (N)</label>
+          <input type="number" id="inp-n" value="${N}" min="1" max="100" class="om-setting__input">
+        </div>
+        <div class="om-setting">
+          <label class="om-setting__label" for="inp-d">Хранить ☁ дней (D)</label>
+          <input type="number" id="inp-d" value="${D}" min="1" max="365" class="om-setting__input">
+        </div>
+      </div>
+
+      <button class="om-btn om-btn--primary" data-action="apply-cloud" style="width:100%">Применить настройки</button>
+
+      <div class="om-divider"></div>
+
+      <button class="om-btn om-btn--outline" data-action="show-list" id="btn-show-list" style="width:100%">Показать закреплённые и облачные</button>
+
+      <div id="pinned-cloud-list" class="om-track-list" style="display:none"></div>
+    </section>
+  `);
+
+  // Check recache availability and grey out if nothing to recache
+  (async () => {
+    if (!om.countNeedsReCache) return;
+    const cnt = await om.countNeedsReCache(q);
+    const rb = modal.querySelector('#btn-recache');
+    if (rb && cnt === 0) { rb.classList.add('om-btn--disabled'); rb.setAttribute('disabled', ''); }
+  })();
 
   // 4. Cache modes (R1 + R2 stub + R3 stub)
   const modeCard = (name, desc, id, hint, disabled) => {
@@ -220,6 +266,7 @@ function _bind(overlay, modal, om) {
     }
     else if (a === 'clear-traffic') { Net.clearTrafficStats(); modal.querySelectorAll('.om-traffic .om-traffic__row span:last-child').forEach(s => s.textContent = '0.0 МБ'); window.NotificationSystem?.info?.('Статистика очищена'); }
     else if (a === 'recache') {
+      if (btn.hasAttribute('disabled')) return;
       const rq = om.getQuality();
       if (!om.countNeedsReCache || !om.reCacheAll) { window.NotificationSystem?.info?.('Re-cache не поддерживается'); return; }
       const c = await om.countNeedsReCache(rq);
@@ -227,6 +274,8 @@ function _bind(overlay, modal, om) {
       om.queue?.setParallel?.(3); await om.reCacheAll(rq);
       window.NotificationSystem?.info?.(`Перекэширование: ${c} файлов`);
       setTimeout(() => om.queue?.setParallel?.(1), 15000);
+      // Grey out after recache
+      btn.classList.add('om-btn--disabled'); btn.setAttribute('disabled', '');
     }
     else if (a === 'apply-cloud') {
       const nN = parseInt(modal.querySelector('#inp-n')?.value, 10) || 5;
@@ -242,32 +291,80 @@ function _bind(overlay, modal, om) {
     }
     else if (a === 'show-list') {
       const el = modal.querySelector('#pinned-cloud-list');
+      const showBtn = modal.querySelector('#btn-show-list');
       if (!el) return;
-      if (el.style.display !== 'none') { el.style.display = 'none'; return; }
-      el.style.display = ''; el.innerHTML = '<div class="om-list-loading">Загрузка...</div>';
+      if (el.style.display !== 'none') {
+        el.style.display = 'none';
+        if (showBtn) showBtn.style.display = '';
+        return;
+      }
+      el.style.display = '';
+      if (showBtn) showBtn.style.display = 'none';
+      el.innerHTML = '<div class="om-list-loading">Загрузка...</div>';
       try {
         const { getAllTrackMetas } = await import('../offline/cache-db.js');
         const metas = await getAllTrackMetas(), now = Date.now();
-        const sorted = [...metas.filter(m => m.type === 'pinned').sort((a, b) => (a.pinnedAt||0) - (b.pinnedAt||0)), ...metas.filter(m => m.type === 'cloud').sort((a, b) => (b.cloudExpiresAt||0) - (a.cloudExpiresAt||0))];
+        const sorted = [
+          ...metas.filter(m => m.type === 'pinned').sort((a, b) => (a.pinnedAt||0) - (b.pinnedAt||0)),
+          ...metas.filter(m => m.type === 'cloud').sort((a, b) => (b.cloudExpiresAt||0) - (a.cloudExpiresAt||0))
+        ];
         let h = '';
         for (const m of sorted) {
-          const ic = m.type === 'pinned' ? '🔒' : '☁', t = window.TrackRegistry?.getTrackByUid?.(m.uid)?.title || m.uid;
+          const ic = m.type === 'pinned' ? '🔒' : '☁';
+          const t = window.TrackRegistry?.getTrackByUid?.(m.uid)?.title || m.uid;
           const mq = (m.quality||'—').toUpperCase(), sz = fmtB(m.size||0);
           let bg = '';
           if (m.type === 'pinned') bg = '<span class="om-list-badge om-list-badge--pin">Закреплён</span>';
           else if (m.cloudExpiresAt) { const d = Math.max(0, Math.ceil((m.cloudExpiresAt - now) / DAY_MS)); bg = `<span class="om-list-badge om-list-badge--cloud">${d} дн.</span>`; }
-          h += `<div class="om-list-item"><span class="om-list-icon">${ic}</span><span class="om-list-title">${esc(t)}</span><span class="om-list-meta">${mq} · ${sz}</span>${bg}</div>`;
+          h += `<div class="om-list-item" data-uid="${esc(m.uid)}"><span class="om-list-icon">${ic}</span><span class="om-list-title">${esc(t)}</span><span class="om-list-meta">${mq} · ${sz}</span>${bg}<button class="om-list-del" data-action="del-track" data-uid="${esc(m.uid)}" data-type="${m.type}" title="Удалить">✕</button></div>`;
         }
-        el.innerHTML = h || '<div class="om-list-empty">Нет закреплённых или облачных треков</div>';
+        if (!h) h = '<div class="om-list-empty">Нет закреплённых или облачных треков</div>';
+        h += `<button class="om-btn om-btn--danger-outline om-list-del-all" data-action="del-all" style="width:100%;margin-top:10px">🗑 Удалить все 🔒 и ☁</button>`;
+        el.innerHTML = h;
       } catch { el.innerHTML = '<div class="om-list-empty" style="color:#ef5350">Ошибка загрузки</div>'; }
     }
     else if (a === 'del-all') {
       _confirm('Удалить все офлайн-треки?', 'Все закреплённые и облачные треки будут удалены.', 'Удалить', () =>
         _confirm('Вы уверены?', 'Это действие нельзя отменить.', 'Да, удалить', async () => {
           await om.removeAllCached(); await _refreshStorage(modal, om);
-          const el = modal.querySelector('#pinned-cloud-list'); if (el) { el.style.display = 'none'; el.innerHTML = ''; }
+          const el = modal.querySelector('#pinned-cloud-list');
+          if (el) { el.style.display = 'none'; el.innerHTML = ''; }
+          const showBtn = modal.querySelector('#btn-show-list');
+          if (showBtn) showBtn.style.display = '';
           window.NotificationSystem?.success?.('Все офлайн-треки удалены');
         })
+      );
+    }
+    else if (a === 'del-track') {
+      const uid = btn.dataset.uid, type = btn.dataset.type;
+      if (!uid) return;
+      const trackTitle = btn.closest('.om-list-item')?.querySelector('.om-list-title')?.textContent || uid;
+      const typeLabel = type === 'pinned' ? 'закреплённый' : 'облачный';
+      _confirm(
+        `Удалить ${typeLabel} трек?`,
+        `<b>${esc(trackTitle)}</b> будет удалён из кэша. ${type === 'cloud' ? 'Облачная статистика для этого трека будет сброшена.' : 'Закрепление будет снято.'}`,
+        'Удалить',
+        async () => {
+          try {
+            if (type === 'pinned') {
+              await om.unpinTrack?.(uid);
+            } else {
+              await om.removeCloudTrack?.(uid);
+            }
+            // Remove row from DOM
+            const row = modal.querySelector(`.om-list-item[data-uid="${CSS.escape(uid)}"]`);
+            if (row) { row.style.opacity = '0'; row.style.transform = 'translateX(20px)'; setTimeout(() => row.remove(), 200); }
+            // Refresh storage
+            await _refreshStorage(modal, om);
+            window.NotificationSystem?.success?.(`${trackTitle} удалён`);
+            // If list now empty
+            const remaining = modal.querySelectorAll('.om-list-item');
+            if (remaining.length === 0) {
+              const el = modal.querySelector('#pinned-cloud-list');
+              if (el) el.innerHTML = '<div class="om-list-empty">Нет закреплённых или облачных треков</div>';
+            }
+          } catch(e) { window.NotificationSystem?.error?.('Ошибка удаления'); console.error(e); }
+        }
       );
     }
     else if (a === 'dl-pause') {
