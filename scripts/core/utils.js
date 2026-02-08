@@ -209,13 +209,9 @@
     lsGetJson: (k, d=null) => { try { const r=localStorage.getItem(k); return r?JSON.parse(r):d; } catch { return d; } }
   };
 
-  // Direct Aliases
+  // Direct Aliases (minimal — only used externally)
   U.escapeHtml = U.ui.escapeHtml;
-  U.formatTime = U.fmt.time;
-  U.formatBytes = U.fmt.bytes;
-  U.getNetworkStatusSafe = U.getNet;
   U.isMobile = () => { const p = U.getPlatform(); return p.isIOS || p.isAndroid; };
-  U.trimStr = U.obj.trim;
   U.waitFor = async (fn, t=2000) => { for(let i=0;i<t/50;i++) { if(fn()) return true; await new Promise(r=>setTimeout(r,50)); } return !!fn(); };
   U.onceEvent = (el, ev, { timeoutMs }={}) => new Promise(r => {
     const h = () => { el.removeEventListener(ev, h); r(); };
