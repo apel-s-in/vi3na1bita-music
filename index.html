@@ -36,7 +36,7 @@
   <!-- UI Modules -->
   <script src="./scripts/ui/notify.js" defer></script>
   <script src="./scripts/ui/modals.js" defer></script>
-  <script src="./scripts/ui/favorites.js" defer></script>
+  <!-- favorites.js объединён в favorites-view.js (ESM) -->
   <script src="./scripts/ui/sleep.js" defer></script>
   <script src="./scripts/ui/lyrics-modal.js" defer></script>
   <script src="./scripts/ui/sysinfo.js" defer></script>
@@ -257,9 +257,7 @@
     const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.0.4');
     const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2025-12-07');
 
-    window.autoNextDisabled = false;
-    window.sleepTimerTarget = null;
-    window.sleepTimerInterval = null;
+    // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
 
     window.VERSION = VERSION;
     window.BUILD_DATE = BUILD_DATE;
