@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-47199ed1f4e245432cebd42a5ed73e24a7f85cfc.idx
-│   │       ├── pack-47199ed1f4e245432cebd42a5ed73e24a7f85cfc.pack
-│   │       └── pack-47199ed1f4e245432cebd42a5ed73e24a7f85cfc.rev
+│   │       ├── pack-ac569ac87427062b33b6fca23f457fca0c3d02ba.idx
+│   │       ├── pack-ac569ac87427062b33b6fca23f457fca0c3d02ba.pack
+│   │       └── pack-ac569ac87427062b33b6fca23f457fca0c3d02ba.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-08 21:41:22 UTC
+Сгенерировано: 2026-02-08 21:45:08 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -967,8 +967,8 @@ jobs:
   </template>
 
   <script>
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.0.4');
-    const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2025-12-07');
+    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.0.5');
+    const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2025-12-08');
 
     // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
 
