@@ -15,6 +15,8 @@
   };
 
   const initModules = async () => {
+    const C = W.APP_CONFIG || {};
+
     // 1. Albums Index
     if (!Array.isArray(W.albumsIndex) || !W.albumsIndex.length) {
       try { await W.Utils?.onceEvent?.(W, 'albumsIndex:ready', { timeoutMs: 5000 }); } catch {}
