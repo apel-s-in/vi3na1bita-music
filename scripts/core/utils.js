@@ -143,7 +143,15 @@
     lsSetBool01: (k, v) => localStorage.setItem(k, v ? '1' : '0'),
     lsGetJson: (k, d = null) => U.obj.safeJson(k, d)
   };
-
+  
+  // ESM-compatible exports via window
+  W.AppUtils = {
+    $: U.$,
+    toStr: (v) => (v == null ? '' : String(v)),
+    isMobileUA: U.isMobile,
+    escHtml: U.escapeHtml
+  };
+  
   // Safe Global Aliases
   U.escapeHtml = U.ui.escapeHtml;
   U.isMobile = () => U.getPlatform().isIOS || U.getPlatform().isAndroid;
