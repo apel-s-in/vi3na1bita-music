@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6325a9046510cce1de6a87e770b32ae70b625270.idx
-│   │       ├── pack-6325a9046510cce1de6a87e770b32ae70b625270.pack
-│   │       └── pack-6325a9046510cce1de6a87e770b32ae70b625270.rev
+│   │       ├── pack-79083fe5aaf5f53546017ac47c7f40b8dbb25743.idx
+│   │       ├── pack-79083fe5aaf5f53546017ac47c7f40b8dbb25743.pack
+│   │       └── pack-79083fe5aaf5f53546017ac47c7f40b8dbb25743.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-20 14:05:41 UTC
+Сгенерировано: 2026-02-20 14:11:10 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2458,9 +2458,10 @@ export const getWindowState = () => ({ ..._win, protected: _protected, pendingGC
 // scripts/app/player-ui/lyrics.js
 // LyricsController — Optimized JSON-only timed lyrics (v3.0)
 // FIXES:
-// 1. CPU Spikes: Eliminated the forced 250ms DOM rebuild. Updates DOM strictly on line change.
-// 2. Offline Bug: Fixed permanent 'No Lyrics' caching when network is blocked by NetPolicy.
-// 3. Memory & GC: Cached DOM references, removed redundant string/array allocations.
+// 1. SyntaxError: Restored missing file endings (IIFE closure).
+// 2. CPU Spikes: Eliminated the forced 250ms DOM rebuild. Updates DOM strictly on line change.
+// 3. Offline Bug: Fixed permanent 'No Lyrics' caching when network is blocked by NetPolicy.
+// 4. Memory & GC: Cached DOM references, removed redundant string/array allocations.
 
 (function () {
   'use strict';
@@ -2672,7 +2673,11 @@ export const getWindowState = () => ({ ..._win, protected: _protected, pendingGC
       if (saved) { st.mode = saved.viewMode || 'normal'; st.anim = !!saved.animationEnabled; }
       updateUI();
     },
-    checkTrackHas
+    checkTrackHasLyrics: () => st.has
+  };
+
+  init();
+})();
 
 //=================================================
 // FILE: /scripts/app/promocode.js
