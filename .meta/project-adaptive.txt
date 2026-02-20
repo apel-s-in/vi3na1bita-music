@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-bd3424952c376774a12010653eba901ab5fe63ce.idx
-│   │       ├── pack-bd3424952c376774a12010653eba901ab5fe63ce.pack
-│   │       └── pack-bd3424952c376774a12010653eba901ab5fe63ce.rev
+│   │       ├── pack-9e7a1eed398a2ab0af068d2c6808dcdf74f6b76b.idx
+│   │       ├── pack-9e7a1eed398a2ab0af068d2c6808dcdf74f6b76b.pack
+│   │       └── pack-9e7a1eed398a2ab0af068d2c6808dcdf74f6b76b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -380,7 +380,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-20 19:12:35 UTC
+Сгенерировано: 2026-02-20 19:38:23 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1898,87 +1898,41 @@ export const getWindowState = () => ({ ..._win, protected: _protected, pendingGC
 // FILE: /scripts/app/playback-policy.js
 (function (W) {
   'use strict';
-
-  const LS_KEY = 'favoritesOnlyMode';
-  const FAV_KEY = W.SPECIAL_FAVORITES_KEY || '__favorites__';
-
-  const pc = () => W.playerCore;
-  const isOn = () => localStorage.getItem(LS_KEY) === '1';
-
-  const uniqByUid = (list) => {
-    const seen = new Set();
-    return (list || []).filter(t => t?.uid && !seen.has(t.uid) && seen.add(t.uid));
-  };
-
-  const buildTarget = ({ core, playingAlbum, favoritesOnly }) => {
-    const source = core?.originalPlaylist || [];
-    if (!source.length) return null;
-
-    // ТЗ: если playing = Избранное — playback всегда только по active (inactive никогда не участвуют)
-    if (playingAlbum === FAV_KEY) {
-      return uniqByUid(source).filter((t) => core.isFavorite?.(t.uid));
-    }
-
-    // F=OFF: не фильтруем
-    if (!favoritesOnly) return uniqByUid(source);
-
-    // F=ON: только ⭐ в текущем playing альбоме
-    const liked = new Set(core.getLikedUidsForAlbum?.(playingAlbum) || []);
-    return uniqByUid(source).filter((t) => t?.uid && liked.has(t.uid));
-  };
-
-  const pickIndex = ({ core, target }) => {
-    const curUid = String(core?.getCurrentTrack?.()?.uid || '').trim();
-    if (!curUid) return 0;
-    const idx = target.findIndex((t) => String(t?.uid || '').trim() === curUid);
-    return idx >= 0 ? idx : 0;
-  };
-
   const apply = () => {
-    const core = pc();
-    if (!core) return;
+    const core = W.playerCore, pAlbum = W.AlbumsManager?.getPlayingAlbum?.();
+    const isFavOnly = localStorage.getItem('favoritesOnlyMode') === '1';
+    const src = core?.originalPlaylist || [];
+    
+    if (!core || !pAlbum || !src.length || core.getIndex() < 0) return;
 
-    const playingAlbum = W.AlbumsManager?.getPlayingAlbum?.();
-    if (!playingAlbum) return;
+    // Remove duplicates
+    const uniq = src.filter((t, i, arr) => t?.uid && arr.findIndex(x => x.uid === t.uid) === i);
+    let tgt = uniq;
 
-    // F включается/выключается UI-ом. Здесь только применяем политику к playing.
-    const favoritesOnly = isOn();
-
-    // Нельзя применять если нет контекста/текущего трека
-    const source = core.originalPlaylist || [];
-    if (!source.length || core.getIndex() < 0) return;
-
-    const target = buildTarget({ core, playingAlbum, favoritesOnly });
-    if (!target || !target.length) {
-      // Важное правило ТЗ: если ⭐ нет — F не включается (UI уже делает toast и не ставит LS).
-      // Здесь просто ничего не ломаем.
-      return;
+    if (pAlbum === (W.SPECIAL_FAVORITES_KEY || '__favorites__')) {
+      tgt = uniq.filter(t => core.isFavorite?.(t.uid));
+    } else if (isFavOnly) {
+      const liked = new Set(core.getLikedUidsForAlbum?.(pAlbum) || []);
+      tgt = uniq.filter(t => liked.has(t.uid));
     }
 
-    const newIdx = pickIndex({ core, target });
-    const trackStillInTarget = newIdx === core.getIndex() && String(target[newIdx]?.uid || '') === String(core.getCurrentTrack()?.uid || '');
+    if (!tgt.length) return; // Silent fallback if settings mismatch
 
-    core.setPlaylist(target, Math.max(0, newIdx), {}, {
-      preserveOriginalPlaylist: true,
-      preserveShuffleMode: true,
-      // Позицию сохраняем только если текущий трек остался тем же.
-      preservePosition: !!trackStillInTarget
-    });
+    const curUid = String(core.getCurrentTrack?.()?.uid || '').trim();
+    const nIdx = Math.max(0, tgt.findIndex(t => String(t?.uid || '').trim() === curUid));
+    const preserve = nIdx === core.getIndex() && String(tgt[nIdx]?.uid || '') === curUid;
 
+    core.setPlaylist(tgt, nIdx, {}, { preserveOriginalPlaylist: true, preserveShuffleMode: true, preservePosition: preserve });
     W.PlayerUI?.updateAvailableTracksForPlayback?.();
     W.PlayerUI?.updatePlaylistFiltering?.();
   };
 
-  // Подписки: политика должна реагировать на изменения ⭐ и на смену плейлиста/контекста
   const bind = () => {
-    const core = pc();
-    if (!core?.onFavoritesChanged) return setTimeout(bind, 100);
-
-    core.onFavoritesChanged(() => {
-      const playingAlbum = W.AlbumsManager?.getPlayingAlbum?.();
-      if (playingAlbum === FAV_KEY || isOn()) apply();
+    if (!W.playerCore?.onFavoritesChanged) return setTimeout(bind, 100);
+    W.playerCore.onFavoritesChanged(() => {
+      const pAlbum = W.AlbumsManager?.getPlayingAlbum?.();
+      if (pAlbum === (W.SPECIAL_FAVORITES_KEY || '__favorites__') || localStorage.getItem('favoritesOnlyMode') === '1') apply();
     });
-
     W.addEventListener('playlist:changed', apply);
   };
   bind();
@@ -2483,151 +2437,49 @@ export const getWindowState = () => ({ ..._win, protected: _protected, pendingGC
 // FILE: /scripts/app/promocode.js
 (function(W, D) {
   'use strict';
-
-  // --- Helpers & Optimization ---
-  const LS = localStorage;
-  const CL = 'classList';
-  const KEY_PROMO = 'promocode';
-  const KEY_IOS = 'iosInstallDismissed';
+  const LS = localStorage, KEY = 'promocode', IOS_KEY = 'iosInstallDismissed';
+  const $ = id => D.getElementById(id);
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) && !W.MSStream;
   
-  // Safe DOM selector
-  const $ = (id) => D.getElementById(id);
-  
-  // Safe Event Listener (Fixes keyboard issues)
-  const on = (el, event, handler) => {
-    if (el) el.addEventListener(event, handler);
-  };
-
-  // Device detection
-  const isIOS = () => /iPhone|iPad|iPod/i.test(navigator.userAgent) && !W.MSStream;
-  const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone;
-
-  // --- Logic: Unlock Application ---
   const unlock = () => {
-    const p = $('promocode-block');
-    const m = $('main-block');
-    
-    // Switch Views
-    if (p) p[CL].add('hidden');
-    if (m) m[CL].remove('hidden');
-
-    // Initialize App (Safely handle race conditions)
-    const run = () => {
-      if (W.app && typeof W.app.initialize === 'function') {
-        W.app.initialize();
-        return true;
-      }
-      return false;
-    };
-
-    if (!run()) {
-      let attempts = 0;
-      const t = setInterval(() => {
-        if (run() || ++attempts > 50) clearInterval(t);
-      }, 50);
-    }
+    $('promocode-block')?.classList.add('hidden');
+    $('main-block')?.classList.remove('hidden');
+    const init = () => W.app?.initialize?.();
+    if (!init()) { let a = 0, t = setInterval(() => (init() || ++a > 50) && clearInterval(t), 50); }
   };
 
-  // --- Logic: iOS Install Prompt ---
   const showIOS = () => {
-    // Strict check to ensure it never shows on Windows/Android
-    if (!isIOS() || isStandalone() || LS.getItem(KEY_IOS)) return;
-
+    if (!isIOS || matchMedia('(display-mode: standalone)').matches || navigator.standalone || LS.getItem(IOS_KEY)) return;
     setTimeout(() => {
       const el = D.createElement('div');
       el.className = 'ios-install-prompt';
-      // Condensed HTML structure
-      el.innerHTML = 
-        '<button class="ios-prompt-close" type="button">×</button>' +
-        '<div class="ios-prompt-content">' +
-          '<img class="ios-prompt-icon" src="icons/apple-touch-icon.png">' +
-          '<div style="font-weight:800;font-size:18px;margin-bottom:8px">Установить приложение</div>' +
-          '<div style="opacity:.85;margin-bottom:14px">Нажмите <strong>Поделиться</strong> ↗️<br>и выберите <strong>«На экран «Домой»»</strong></div>' +
-          '<button class="ios-prompt-button" type="button">Понятно</button>' +
-        '</div>';
-
-      const close = () => {
-        el[CL].remove('show');
-        try { LS.setItem(KEY_IOS, '1'); } catch (e) {}
-        setTimeout(() => el.remove(), 350);
-      };
-
-      // Delegated event for performance
-      el.onclick = (e) => {
-        if (e.target.closest('button') || e.target.closest('.ios-prompt-close')) close();
-      };
-      
+      el.innerHTML = `<button class="ios-prompt-close" type="button">×</button><div class="ios-prompt-content"><img class="ios-prompt-icon" src="icons/apple-touch-icon.png"><div style="font-weight:800;font-size:18px;margin-bottom:8px">Установить приложение</div><div style="opacity:.85;margin-bottom:14px">Нажмите <strong>Поделиться</strong> ↗️<br>и выберите <strong>«На экран Домой»</strong></div><button class="ios-prompt-button" type="button">Понятно</button></div>`;
+      el.onclick = e => { if (e.target.closest('button') || e.target.closest('.ios-prompt-close')) { el.classList.remove('show'); LS.setItem(IOS_KEY, '1'); setTimeout(() => el.remove(), 350); } };
       D.body.appendChild(el);
-      // Animation frame for smooth transition
-      requestAnimationFrame(() => el[CL].add('show'));
+      requestAnimationFrame(() => el.classList.add('show'));
     }, 2500);
   };
 
-  // --- Main Execution ---
   W.addEventListener('load', () => {
-    // iOS specific styling
-    if (isIOS()) D.body[CL].add('ios');
+    if (isIOS) D.body.classList.add('ios');
+    const code = String(W.APP_CONFIG?.PROMOCODE || '').trim(), inp = $('promo-inp');
+    if (!code || LS.getItem(KEY) === code) { unlock(); return showIOS(); }
 
-    // Safe Config Reading (No optional chaining for max compatibility)
-    const cfg = W.APP_CONFIG || {};
-    const cfgCode = (cfg.PROMOCODE || '').toString().trim();
-    const savedCode = LS.getItem(KEY_PROMO);
-
-    // 1. Check if already authorized or no code needed
-    if (!cfgCode || (savedCode === cfgCode)) {
-      unlock();
-      showIOS();
-      return;
-    }
-
-    // 2. Setup Login UI
-    const inp = $('promo-inp');
-    const btn = $('promo-btn');
-    const err = $('promo-error');
-
-    // Validation Logic
     const check = () => {
-      const val = inp ? inp.value.trim() : '';
-      
-      if (val === cfgCode) {
-        try { LS.setItem(KEY_PROMO, val); } catch (e) {}
-        unlock();
-        // Hide keyboard on mobile
-        if (inp) inp.blur(); 
-      } else {
+      if (inp?.value.trim() === code) { LS.setItem(KEY, code); unlock(); inp.blur(); }
+      else if (inp) {
+        const err = $('promo-error');
         if (err) err.textContent = '❌ Неверный промокод';
-        if (inp) {
-          inp[CL].add('error');
-          // Shake/Error animation reset
-          setTimeout(() => {
-            if (err) err.textContent = '';
-            inp[CL].remove('error');
-          }, 2000);
-        }
+        inp.classList.add('error');
+        setTimeout(() => { if (err) err.textContent = ''; inp.classList.remove('error'); }, 2000);
       }
     };
 
-    // 3. Attach Listeners (using addEventListener via 'on' helper)
-    on(btn, 'click', check);
-    
-    on(inp, 'keydown', (e) => {
-      // Support both modern 'Enter' and legacy keyCode 13
-      if (e.key === 'Enter' || e.keyCode === 13) {
-        e.preventDefault(); // Prevent form submission quirks
-        check();
-      }
-    });
-
-    // 4. Final UX Polish
-    if (inp) {
-      inp.disabled = false; // Ensure input is enabled
-      // Auto-focus logic (timeout to ensure UI is rendered)
-      setTimeout(() => inp.focus(), 100); 
-    }
-
+    $('promo-btn')?.addEventListener('click', check);
+    inp?.addEventListener('keydown', e => { if (e.key === 'Enter' || e.keyCode === 13) { e.preventDefault(); check(); } });
+    setTimeout(() => { if (inp && !inp.disabled) inp.focus(); }, 100);
     showIOS();
   });
-
 })(window, document);
 
 //=================================================
