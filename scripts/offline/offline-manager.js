@@ -1,7 +1,10 @@
 /**
  * scripts/offline/offline-manager.js
- * OfflineManager v3.0 — Compact, Spec-Compliant.
- * Fully supports R0, R1, and R2 (SmartPrefetch Dynamic MRU).
+ * OfflineManager v3.2 — Ultra-Compact, 100% Spec-Compliant.
+ * Fixes: 
+ * 1. UI freeze (relies on cachedComplete instead of heavy blob reads).
+ * 2. Strict "No Duplicates" rule (deferred GC for currently playing tracks).
+ * 3. Queue poisoning on rapid Hi/Lo swaps (clears pending conflicting tasks).
  */
 
 import * as DB from './cache-db.js';
@@ -9,7 +12,7 @@ import * as DB from './cache-db.js';
 const W = window;
 const LS = { MODE: 'offline:mode:v1', QUAL: 'qualityMode:v1', CQ: 'offline:cacheQuality:v1', CN: 'cloud:listenThreshold', CD: 'cloud:ttlDays' };
 const DEF = { N: 5, D: 31, MIN_MB: 60 };
-const PRIO = { CUR: 100, NEXT: 90, PIN: 80, UPD: 70, FILL: 60, DYN: 50 }; // R2 DYN Priority added
+const PRIO = { CUR: 100, NEXT: 90, PIN: 80, UPD: 70, FILL: 60, DYN: 50 };
 
 const now = () => Date.now();
 const normQ = (q) => (String(q || '').toLowerCase() === 'lo' ? 'lo' : 'hi');
@@ -33,47 +36,63 @@ const hasSpace = async () => {
 
 class DownloadQueue {
   constructor() {
-    this.q = []; this.act = new Map(); this.par = 1; this.paused = false;
+    this.q = new Map(); 
+    this.act = new Map(); 
+    this.par = 1; 
+    this.paused = false;
     const wake = () => this.pump();
-    W.addEventListener('netPolicy:changed', wake); W.addEventListener('online', wake);
+    W.addEventListener('netPolicy:changed', wake); 
+    W.addEventListener('online', wake);
   }
 
   add(item) {
     const uid = sUid(item.uid);
     if (!uid || !item.url) return;
-    if (this.act.has(uid) && this.act.get(uid).item.quality !== item.quality) this.cancel(uid);
-    
-    const idx = this.q.findIndex(i => i.uid === uid);
-    const task = { ...item, uid, ts: now() };
-    if (idx >= 0) { if (task.priority > this.q[idx].priority || task.quality !== this.q[idx].quality) this.q[idx] = task; } 
-    else this.q.push(task);
-    
-    this.pump();
+    if (this.act.has(uid)) {
+      if (this.act.get(uid).item.quality !== item.quality) this.cancel(uid);
+      else return; // already downloading correct quality
+    }
+    const exist = this.q.get(uid);
+    if (!exist || exist.priority < item.priority || exist.quality !== item.quality) {
+      this.q.set(uid, { ...item, uid, ts: now() });
+      this.pump();
+    }
   }
 
   cancel(uid) {
     const u = sUid(uid);
-    this.q = this.q.filter(i => i.uid !== u);
-    if (this.act.has(u)) { this.act.get(u).ctrl.abort(); this.act.delete(u); emit('offline:stateChanged'); }
+    this.q.delete(u);
+    if (this.act.has(u)) { 
+      this.act.get(u).ctrl.abort(); 
+      this.act.delete(u); 
+      emit('offline:stateChanged'); 
+    }
     this.pump();
   }
 
-  getStatus() { return { active: this.act.size, queued: this.q.length }; }
+  clearOldQualities(q) {
+    for (const [u, task] of this.q) if (task.quality !== q) this.q.delete(u);
+  }
+
+  getStatus() { return { active: this.act.size, queued: this.q.size }; }
   pause() { this.paused = true; }
   resume() { this.paused = false; this.pump(); }
   setParallel(n) { this.par = n; this.pump(); }
 
   pump() {
-    if (this.paused || !netOk() || this.act.size >= this.par || !this.q.length) return;
-    this.q.sort((a, b) => (b.priority - a.priority) || (a.ts - b.ts));
-    while (this.act.size < this.par && this.q.length) this._run(this.q.shift());
+    if (this.paused || !netOk() || this.act.size >= this.par || !this.q.size) return;
+    const tasks = [...this.q.values()].sort((a, b) => (b.priority - a.priority) || (a.ts - b.ts));
+    while (this.act.size < this.par && tasks.length) {
+      const t = tasks.shift();
+      this.q.delete(t.uid);
+      this._run(t);
+    }
   }
 
   async _run(item) {
-    // R2 MRU Eviction Check before dynamic download
     if (item.priority === PRIO.DYN && !(await hasSpace())) {
       await W._offlineManagerInstance?.evictDynamic();
-      if (!(await hasSpace())) return; // Skip if still full
+      if (!(await hasSpace())) return; 
     }
 
     const ctrl = new AbortController();
@@ -86,10 +105,19 @@ class DownloadQueue {
       const blob = await res.blob();
 
       await DB.setAudioBlob(item.uid, item.quality, blob);
-      await DB.updateTrackMeta(item.uid, { quality: item.quality, size: blob.size, cachedComplete: true, needsReCache: false, needsUpdate: false, lastAccessedAt: now() });
+      await DB.updateTrackMeta(item.uid, { 
+        quality: item.quality, size: blob.size, cachedComplete: true, 
+        needsReCache: false, needsUpdate: false, lastAccessedAt: now() 
+      });
 
+      // Strict No Duplicates Rule: Two-phase cleanup
       const other = item.quality === 'hi' ? 'lo' : 'hi';
-      if (W.playerCore?.getCurrentTrackUid?.() !== item.uid) DB.deleteAudioVariant(item.uid, other).catch(()=>{});
+      if (W.playerCore?.getCurrentTrackUid?.() !== item.uid) {
+        await DB.deleteAudioVariant(item.uid, other).catch(()=>{});
+      } else {
+        W._orphanedBlobs = W._orphanedBlobs || new Set();
+        W._orphanedBlobs.add(item.uid);
+      }
 
       emit('offline:trackCached', { uid: item.uid });
     } catch (e) {
@@ -128,7 +156,6 @@ class OfflineManager {
       }
     }
 
-    // R2: Proxy PQ button directly in Utils to open Modal instead of hot-swapping
     const u = W.Utils?.pq;
     if (u && !u.__r2patched) {
       u.__r2patched = true;
@@ -141,10 +168,23 @@ class OfflineManager {
     }
 
     W.addEventListener('quality:changed', e => this._onQualChg(e.detail?.quality));
+    
+    // Deferred GC for playing tracks (enforces No Duplicates without stopping playback)
+    W.addEventListener('player:trackChanged', async (e) => {
+      if (!W._orphanedBlobs?.size) return;
+      const cur = e.detail?.uid;
+      for (const uid of W._orphanedBlobs) {
+        if (uid !== cur) {
+          const m = await DB.getTrackMeta(uid);
+          if (m?.quality) await DB.deleteAudioVariant(uid, m.quality === 'hi' ? 'lo' : 'hi').catch(()=>{});
+          W._orphanedBlobs.delete(uid);
+        }
+      }
+    });
+
     this.ready = true; emit('offline:ready');
   }
 
-  // --- Modes & Settings ---
   getMode() { return localStorage.getItem(LS.MODE) || 'R0'; }
   setMode(m) { localStorage.setItem(LS.MODE, m); emit('offline:uiChanged'); }
   getQuality() { return normQ(localStorage.getItem(LS.QUAL)); }
@@ -156,15 +196,13 @@ class OfflineManager {
   async hasSpace() { return hasSpace(); }
   async isSpaceOk() { return hasSpace(); }
 
-  // --- Track State & Actions ---
   async getTrackOfflineState(uid) {
     const u = sUid(uid);
     if (!u) return { status: 'none' };
+    
     const m = await DB.getTrackMeta(u);
-    const has = await DB.hasAudioForUid(u);
-    const complete = !!(m?.cachedComplete && has);
+    const complete = !!m?.cachedComplete; // O(1) DB lookup. Replaces heavy Blob loading.
     const q = this.getEffectiveQuality();
-    const stored = await DB.getStoredVariant(u).catch(()=>null);
 
     let status = 'none';
     if (m?.type === 'pinned') status = 'pinned';
@@ -173,8 +211,9 @@ class OfflineManager {
 
     return {
       status, downloading: this.queue.act.has(u), cachedComplete: complete,
-      needsReCache: !!m?.needsReCache || (!!stored && stored !== q), needsUpdate: !!m?.needsUpdate,
-      quality: m?.quality || stored, daysLeft: m?.cloudExpiresAt ? Math.ceil((m.cloudExpiresAt - now()) / 86400000) : 0
+      needsReCache: !!m?.needsReCache || (complete && m.quality !== q), 
+      needsUpdate: !!m?.needsUpdate,
+      quality: m?.quality, daysLeft: m?.cloudExpiresAt ? Math.ceil((m.cloudExpiresAt - now()) / 86400000) : 0
     };
   }
 
@@ -190,8 +229,8 @@ class OfflineManager {
     } else {
       if (!(await hasSpace())) return toast('Недостаточно места', 'warning');
       await DB.updateTrackMeta(u, { type: 'pinned', cloud: false, pinnedAt: now() });
-      const stored = await DB.getStoredVariant(u);
-      if (stored !== q) {
+      
+      if (!m.cachedComplete || m.quality !== q) {
         const url = getUrl(u, q);
         if (url) { toast('Закреплён. Скачивание...', 'info'); this.queue.add({ uid: u, url, quality: q, priority: PRIO.PIN, kind: 'pinned' }); }
       } else toast('Трек закреплён 🔒', 'success');
@@ -211,7 +250,6 @@ class OfflineManager {
     for (const m of all) if (['pinned', 'cloud', 'dynamic'].includes(m.type)) await this.removeCached(m.uid);
   }
 
-  // --- Dynamic Eviction (R2) ---
   async evictDynamic() {
     const metas = await DB.getAllTrackMetas();
     const dyns = metas.filter(m => m.type === 'dynamic').sort((a,b) => (a.lastAccessedAt||0) - (b.lastAccessedAt||0));
@@ -223,7 +261,6 @@ class OfflineManager {
     }
   }
 
-  // --- Cloud & Dynamic Automation ---
   async registerFullListen(uid, { duration, position } = {}) {
     const u = sUid(uid);
     if (!u || !duration || (position / duration) < 0.9) return;
@@ -239,14 +276,14 @@ class OfflineManager {
       if (nextCount >= N) {
         if (await hasSpace()) {
           upd.type = 'cloud'; upd.cloud = true; upd.cloudOrigin = 'auto'; upd.cloudExpiresAt = now() + D * 86400000;
-          if (!(await DB.hasAudioForUid(u))) {
+          if (!m.cachedComplete) {
             const q = this.getEffectiveQuality(); const url = getUrl(u, q);
             if (url) this.queue.add({ uid: u, url, quality: q, priority: PRIO.FILL, kind: 'cloud' });
           }
         }
-      } else if (this.getMode() === 'R2' && m.type !== 'playbackCache') { // R2 MRU Logic
+      } else if (this.getMode() === 'R2' && m.type !== 'playbackCache') { 
         upd.type = 'dynamic'; upd.lastAccessedAt = now();
-        if (!(await DB.hasAudioForUid(u))) {
+        if (!m.cachedComplete) {
           const q = this.getEffectiveQuality(); const url = getUrl(u, q);
           if (url) this.queue.add({ uid: u, url, quality: q, priority: PRIO.DYN, kind: 'dynamic' });
         }
@@ -263,7 +300,7 @@ class OfflineManager {
     const isNet = netOk();
 
     const m = await DB.getTrackMeta(u);
-    if (m?.type === 'dynamic') DB.updateTrackMeta(u, { lastAccessedAt: now() }); // Bump MRU
+    if (m?.type === 'dynamic') DB.updateTrackMeta(u, { lastAccessedAt: now() });
 
     const b1 = await DB.getAudioBlob(u, q);
     if (b1) return { source: 'local', blob: b1, quality: q };
@@ -282,7 +319,7 @@ class OfflineManager {
   async enqueueAudioDownload(uid, { priority, kind } = {}) {
     const u = sUid(uid); if (!u) return;
     const m = await DB.getTrackMeta(u);
-    if (['pinned', 'cloud', 'dynamic'].includes(m?.type) || (await DB.hasAudioForUid(u))) return;
+    if (['pinned', 'cloud', 'dynamic'].includes(m?.type) || m?.cachedComplete) return;
     if (kind === 'playbackCache' && !(await hasSpace())) return;
 
     const q = this.getEffectiveQuality(); const url = getUrl(u, q);
@@ -298,12 +335,13 @@ class OfflineManager {
 
   async _onQualChg(newQ) {
     const q = normQ(newQ);
+    this.queue.clearOldQualities(q);
     for (const [uid] of this.queue.act) this.queue.cancel(uid);
+    
     const all = await DB.getAllTrackMetas();
     for (const m of all) {
       if (!['pinned', 'cloud', 'dynamic'].includes(m.type)) continue;
-      const stored = await DB.getStoredVariant(m.uid).catch(()=>null);
-      if (stored && stored !== q) {
+      if (m.cachedComplete && m.quality !== q) {
         await DB.updateTrackMeta(m.uid, { needsReCache: true });
         this._reCache(m.uid, q, m.type === 'pinned' ? PRIO.PIN : (m.type === 'cloud' ? PRIO.UPD : PRIO.DYN));
       }
@@ -333,12 +371,12 @@ class OfflineManager {
   getDownloadStatus() { return this.queue.getStatus(); }
   async getTrackMeta(uid) { return DB.getTrackMeta(uid); }
   async countNeedsReCache(q) { 
-    if (this.getMode() === 'R2') return 0; // Handled directly in Modal for R2
+    if (this.getMode() === 'R2') return 0; 
     const all = await DB.getAllTrackMetas(); 
-    return all.filter(m => ['pinned', 'cloud'].includes(m.type) && m.quality && m.quality !== normQ(q)).length; 
+    return all.filter(m => ['pinned', 'cloud'].includes(m.type) && m.cachedComplete && m.quality !== normQ(q)).length; 
   }
   async reCacheAll(q) { this._onQualChg(q); }
-  setCacheQualitySetting(q) { this.setCQ(q); } // Proxy to CQ
+  setCacheQualitySetting(q) { this.setCQ(q); }
   recordTickStats() {} getBackgroundPreset() { return 'balanced'; } setBackgroundPreset() {}
 }
 
