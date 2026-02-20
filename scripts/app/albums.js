@@ -1,5 +1,5 @@
 import { registerTrack } from './track-registry.js';
-import { $, toStr, escHtml, isMobileUA } from './utils/app-utils.js';
+const { $, toStr, escHtml, isMobileUA } = window.AppUtils || { $: id => document.getElementById(id), toStr: v => v == null ? '' : String(v), escHtml: s => String(s||''), isMobileUA: () => false };
 import { injectIndicator } from '../ui/offline-indicators.js';
 
 const C = window.APP_CONFIG || {};
