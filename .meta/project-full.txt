@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-49134774bfea23ebe079f9d286e3835cfae3952a.idx
-│   │       ├── pack-49134774bfea23ebe079f9d286e3835cfae3952a.pack
-│   │       └── pack-49134774bfea23ebe079f9d286e3835cfae3952a.rev
+│   │       ├── pack-ca07ac6b908a392c2e0ab719aa5ae5da38c301d5.idx
+│   │       ├── pack-ca07ac6b908a392c2e0ab719aa5ae5da38c301d5.pack
+│   │       └── pack-ca07ac6b908a392c2e0ab719aa5ae5da38c301d5.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -380,7 +380,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-20 19:49:09 UTC
+Сгенерировано: 2026-02-20 19:49:29 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6256,85 +6256,43 @@ try { main(); } catch (e) { console.error("❌", e); process.exit(1); }
 //=================================================
 // FILE: /src/player-core/media-session.js
 // src/player-core/media-session.js
-// MediaSession: handlers ставим один раз, metadata/position обновляем по мере надобности.
+// Optimized MediaSession bindings
 
-export function ensureMediaSession(handlers) {
-  if (!('mediaSession' in navigator)) return null;
-
+export function ensureMediaSession(handlers = {}) {
   const ms = navigator.mediaSession;
+  if (!ms) return null;
 
-  // guard: ставим handlers 1 раз
-  if (!ms.__vitrinaHandlersBound) {
-    ms.__vitrinaHandlersBound = true;
-
-    const h = handlers || {};
-
-    const safe = (fn) => () => { try { fn && fn(); } catch {} };
-
-    ms.setActionHandler('play', safe(h.onPlay));
-    ms.setActionHandler('pause', safe(h.onPause));
-    ms.setActionHandler('stop', safe(h.onStop));
-    ms.setActionHandler('previoustrack', safe(h.onPrev));
-    ms.setActionHandler('nexttrack', safe(h.onNext));
-
-    ms.setActionHandler('seekbackward', (details) => {
-      const off = Number(details?.seekOffset || 10);
-      try { h.onSeekBy && h.onSeekBy(-off); } catch {}
-    });
-
-    ms.setActionHandler('seekforward', (details) => {
-      const off = Number(details?.seekOffset || 10);
-      try { h.onSeekBy && h.onSeekBy(off); } catch {}
-    });
-
-    ms.setActionHandler('seekto', (details) => {
-      const t = Number(details?.seekTime);
-      if (!Number.isFinite(t)) return;
-      try { h.onSeekTo && h.onSeekTo(t); } catch {}
-    });
+  if (!ms.__bound) {
+    ms.__bound = true;
+    const safe = fn => details => { try { fn?.(details); } catch {} };
+    
+    const acts = {
+      play: handlers.onPlay, pause: handlers.onPause, stop: handlers.onStop,
+      previoustrack: handlers.onPrev, nexttrack: handlers.onNext,
+      seekbackward: d => handlers.onSeekBy?.(-(Number(d?.seekOffset) || 10)),
+      seekforward: d => handlers.onSeekBy?.((Number(d?.seekOffset) || 10)),
+      seekto: d => Number.isFinite(d?.seekTime) && handlers.onSeekTo?.(d.seekTime)
+    };
+    
+    for (const [k, fn] of Object.entries(acts)) ms.setActionHandler(k, safe(fn));
   }
 
-  const buildArtwork = (artworkUrl) => {
-    const src = String(artworkUrl || '').trim();
-    if (!src) return [];
-    return [
-      { src, sizes: '96x96', type: 'image/png' },
-      { src, sizes: '128x128', type: 'image/png' },
-      { src, sizes: '192x192', type: 'image/png' },
-      { src, sizes: '256x256', type: 'image/png' },
-      { src, sizes: '384x384', type: 'image/png' },
-      { src, sizes: '512x512', type: 'image/png' },
-    ];
+  return {
+    updateMetadata: ({ title = 'Без названия', artist = '', album = '', artworkUrl, playing } = {}) => {
+      try {
+        const src = String(artworkUrl || '').trim();
+        const artwork = src ? [96, 128, 192, 256, 384, 512].map(s => ({ src, sizes: `${s}x${s}`, type: 'image/png' })) : [];
+        ms.metadata = new MediaMetadata({ title, artist, album, artwork });
+        ms.playbackState = playing ? 'playing' : 'paused';
+      } catch {}
+    },
+    updatePositionState: () => {
+      try {
+        const st = handlers.getPositionState?.();
+        if (st && ms.setPositionState) ms.setPositionState({ duration: Number(st.duration) || 0, playbackRate: Number(st.playbackRate) || 1, position: Number(st.position) || 0 });
+      } catch {}
+    }
   };
-
-  function updateMetadata({ title, artist, album, artworkUrl, playing } = {}) {
-    try {
-      ms.metadata = new MediaMetadata({
-        title: String(title || 'Без названия'),
-        artist: String(artist || ''),
-        album: String(album || ''),
-        artwork: buildArtwork(artworkUrl),
-      });
-    } catch {}
-
-    try { ms.playbackState = playing ? 'playing' : 'paused'; } catch {}
-  }
-
-  function updatePositionState() {
-    try {
-      if (typeof ms.setPositionState !== 'function') return;
-      const st = handlers?.getPositionState ? handlers.getPositionState() : null;
-      if (!st) return;
-
-      ms.setPositionState({
-        duration: Number(st.duration || 0) || 0,
-        playbackRate: Number(st.playbackRate || 1.0) || 1.0,
-        position: Number(st.position || 0) || 0,
-      });
-    } catch {}
-  }
-
-  return { updateMetadata, updatePositionState };
 }
 
 //=================================================
