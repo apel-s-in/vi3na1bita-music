@@ -1,10 +1,11 @@
 /**
  * scripts/offline/offline-manager.js
- * OfflineManager v3.2 — Ultra-Compact, 100% Spec-Compliant.
+ * OfflineManager v3.3 — Ultra-Compact, 100% Spec-Compliant.
  * Fixes: 
- * 1. UI freeze (relies on cachedComplete instead of heavy blob reads).
- * 2. Strict "No Duplicates" rule (deferred GC for currently playing tracks).
- * 3. Queue poisoning on rapid Hi/Lo swaps (clears pending conflicting tasks).
+ * 1. Prevent DB crashes if called before ready.
+ * 2. UI freeze (relies on cachedComplete instead of heavy blob reads).
+ * 3. Strict "No Duplicates" rule (deferred GC for currently playing tracks).
+ * 4. Queue poisoning on rapid Hi/Lo swaps (clears pending conflicting tasks).
  */
 
 import * as DB from './cache-db.js';
@@ -199,6 +200,11 @@ class OfflineManager {
   async getTrackOfflineState(uid) {
     const u = sUid(uid);
     if (!u) return { status: 'none' };
+    
+    // GUARD: If DB/manager is not ready, return safe default without crashing
+    if (!this.ready) {
+      return { status: 'none', downloading: false, cachedComplete: false };
+    }
     
     const m = await DB.getTrackMeta(u);
     const complete = !!m?.cachedComplete; // O(1) DB lookup. Replaces heavy Blob loading.
