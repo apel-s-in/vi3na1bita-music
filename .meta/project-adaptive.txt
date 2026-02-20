@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f5ec76793d4d57fd2b918018e6083b403b3722a1.idx
-│   │       ├── pack-f5ec76793d4d57fd2b918018e6083b403b3722a1.pack
-│   │       └── pack-f5ec76793d4d57fd2b918018e6083b403b3722a1.rev
+│   │       ├── pack-c6ce01b3c73763772fee99d1b197043902472ec8.idx
+│   │       ├── pack-c6ce01b3c73763772fee99d1b197043902472ec8.pack
+│   │       └── pack-c6ce01b3c73763772fee99d1b197043902472ec8.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-20 17:02:32 UTC
+Сгенерировано: 2026-02-20 17:03:08 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1981,15 +1981,8 @@ export const getWindowState = () => ({ ..._win, protected: _protected, pendingGC
   const isOn = () => localStorage.getItem(LS_KEY) === '1';
 
   const uniqByUid = (list) => {
-    const out = [];
     const seen = new Set();
-    for (const t of (list || [])) {
-      const u = String(t?.uid || '').trim();
-      if (!u || seen.has(u)) continue;
-      seen.add(u);
-      out.push(t);
-    }
-    return out;
+    return (list || []).filter(t => t?.uid && !seen.has(t.uid) && seen.add(t.uid));
   };
 
   const buildTarget = ({ core, playingAlbum, favoritesOnly }) => {
