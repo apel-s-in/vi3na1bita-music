@@ -12,7 +12,10 @@ import * as DB from './cache-db.js';
 
 const W = window;
 const LS = { MODE: 'offline:mode:v1', QUAL: 'qualityMode:v1', CQ: 'offline:cacheQuality:v1', CN: 'cloud:listenThreshold', CD: 'cloud:ttlDays' };
-const DEF = { N: 5, D: 31, MIN_MB: 60 };
+const DEF = { N: 5, D: 31, MIN_MB: 60, R2_DYN_MB: 80 };
+
+// R2 globals (IndexedDB: offlineCache/global)
+const G = { MRU: 'r2:mru:list:v1', DYN_MB: 'r2:dynamicLimitMB:v1' };
 const PRIO = { CUR: 100, NEXT: 90, PIN: 80, UPD: 70, FILL: 60, DYN: 50 };
 
 const now = () => Date.now();
@@ -111,6 +114,14 @@ class DownloadQueue {
         needsReCache: false, needsUpdate: false, lastAccessedAt: now() 
       });
 
+      // R2 Q.9.2: MRU membership only after successful download (blob exists)
+      try {
+        const meta = await DB.getTrackMeta(item.uid);
+        if (meta?.type === 'dynamic') {
+          await W._offlineManagerInstance?.touchMRU?.(item.uid);
+        }
+      } catch {}
+
       // Strict No Duplicates Rule: Two-phase cleanup
       const other = item.quality === 'hi' ? 'lo' : 'hi';
       if (W.playerCore?.getCurrentTrackUid?.() !== item.uid) {
@@ -187,7 +198,71 @@ class OfflineManager {
   getEffectiveQuality() { return this.getMode() === 'R2' ? this.getCQ() : this.getQuality(); }
   getCloudSettings() { return { N: parseInt(localStorage.getItem(LS.CN)) || DEF.N, D: parseInt(localStorage.getItem(LS.CD)) || DEF.D }; }
   async hasSpace() { return hasSpace(); }
-  async isSpaceOk() { return hasSpace(); }
+    async isSpaceOk() { return hasSpace(); }
+
+  // ─────────────────────────────────────────────
+  // R2 MRU + Dynamic limit (Q.8/Q.10/Q.11)
+  // ─────────────────────────────────────────────
+  async getDynamicLimitMB() {
+    try {
+      const rec = await DB.getGlobal(G.DYN_MB);
+      const v = Number(rec?.value);
+      return Number.isFinite(v) && v >= 0 ? v : DEF.R2_DYN_MB;
+    } catch {
+      return DEF.R2_DYN_MB;
+    }
+  }
+
+  async setDynamicLimitMB(mb) {
+    const v = Math.max(0, Math.floor(Number(mb) || 0));
+    await DB.setGlobal(G.DYN_MB, v);
+    emit('offline:uiChanged');
+  }
+
+  async _getMRU() {
+    try {
+      const rec = await DB.getGlobal(G.MRU);
+      const list = Array.isArray(rec?.value) ? rec.value : [];
+      return list.map(sUid).filter(Boolean);
+    } catch {
+      return [];
+    }
+  }
+
+  async _setMRU(list) {
+    await DB.setGlobal(G.MRU, list);
+  }
+
+  async touchMRU(uid) {
+    const u = sUid(uid);
+    if (!u || this.getMode() !== 'R2') return;
+
+    const m = await DB.getTrackMeta(u);
+    // Pinned/Cloud/Window are not dynamic; they should not occupy MRU list (Q.11.2 + Q.3.3)
+    if (m?.type === 'pinned' || m?.type === 'cloud' || m?.type === 'playbackCache') {
+      await this._dropFromMRU(u);
+      return;
+    }
+
+    const list = await this._getMRU();
+    const next = [u, ...list.filter(x => x !== u)].slice(0, 2000); // safety cap
+    await this._setMRU(next);
+  }
+
+  async _dropFromMRU(uid) {
+    const u = sUid(uid);
+    if (!u) return;
+    const list = await this._getMRU();
+    const next = list.filter(x => x !== u);
+    if (next.length !== list.length) await this._setMRU(next);
+  }
+
+  async getDynamicUsedBytes() {
+    const metas = await DB.getAllTrackMetas();
+    let sum = 0;
+    for (const m of metas) if (m.type === 'dynamic') sum += (m.size || 0);
+    return sum;
+  }
 
   async getTrackOfflineState(uid) {
     const u = sUid(uid);
@@ -249,13 +324,39 @@ class OfflineManager {
   }
 
   async evictDynamic() {
+    // Q.11: evict strictly from MRU tail, never touch pinned/cloud/protected window
+    const win = W.PlaybackCache?.getWindowState?.() || {};
+    const protectedSet = new Set([win.prev, win.cur, win.next].filter(Boolean));
+
     const metas = await DB.getAllTrackMetas();
-    const dyns = metas.filter(m => m.type === 'dynamic').sort((a,b) => (a.lastAccessedAt||0) - (b.lastAccessedAt||0));
-    for (const m of dyns) {
-      const win = W.PlaybackCache?.getWindowState?.() || {};
-      if (win.cur === m.uid || win.prev === m.uid || win.next === m.uid) continue;
-      await DB.deleteTrackCache(m.uid);
-      if (await hasSpace()) break;
+    const metaByUid = new Map(metas.map(m => [m.uid, m]));
+
+    // Clean MRU from non-existing / non-dynamic / protected / pinned/cloud
+    const list = await this._getMRU();
+    const cleaned = [];
+    for (const uid of list) {
+      const m = metaByUid.get(uid);
+      if (!m) continue;
+      if (protectedSet.has(uid)) continue;
+      if (m.type === 'pinned' || m.type === 'cloud' || m.type === 'playbackCache') continue;
+      if (m.type !== 'dynamic') continue;
+      cleaned.push(uid);
+    }
+
+    // Store cleaned MRU (head..tail)
+    await this._setMRU(cleaned);
+
+    // Evict from tail
+    for (let i = cleaned.length - 1; i >= 0; i--) {
+      const uid = cleaned[i];
+      const m = metaByUid.get(uid);
+      if (!m || m.type !== 'dynamic') continue;
+      if (protectedSet.has(uid)) continue;
+
+      await DB.deleteTrackCache(uid).catch(() => {});
+      await this._dropFromMRU(uid);
+
+      if (await hasSpace()) return;
     }
   }
 
@@ -280,10 +381,32 @@ class OfflineManager {
           }
         }
       } else if (this.getMode() === 'R2' && m.type !== 'playbackCache') { 
-        upd.type = 'dynamic'; upd.lastAccessedAt = now();
+        upd.type = 'dynamic';
+        upd.lastAccessedAt = now();
+
         if (!m.cachedComplete) {
-          const q = this.getEffectiveQuality(); const url = getUrl(u, q);
-          if (url) this.queue.add({ uid: u, url, quality: q, priority: PRIO.DYN, kind: 'dynamic' });
+          const limitBytes = (await this.getDynamicLimitMB()) * 1048576;
+          const usedBytes = await this.getDynamicUsedBytes();
+          const q = this.getEffectiveQuality();
+          const url = getUrl(u, q);
+
+          if (url) {
+            // If limit is 0 => dynamic disabled by user
+            if (limitBytes <= 0) {
+              // Still record meta.type=dynamic? No: keep as none to avoid fake states
+              upd.type = null;
+            } else if (usedBytes >= limitBytes) {
+              await this.evictDynamic();
+              const used2 = await this.getDynamicUsedBytes();
+              if (used2 >= limitBytes) {
+                toast('Хранилище переполнено', 'warning');
+              } else {
+                this.queue.add({ uid: u, url, quality: q, priority: PRIO.DYN, kind: 'dynamic' });
+              }
+            } else {
+              this.queue.add({ uid: u, url, quality: q, priority: PRIO.DYN, kind: 'dynamic' });
+            }
+          }
         }
       }
     }
@@ -298,7 +421,10 @@ class OfflineManager {
     const isNet = netOk();
 
     const m = await DB.getTrackMeta(u);
-    if (m?.type === 'dynamic') DB.updateTrackMeta(u, { lastAccessedAt: now() });
+    if (m?.type === 'dynamic') {
+      DB.updateTrackMeta(u, { lastAccessedAt: now() });
+      this.touchMRU(u).catch(() => {});
+    }
 
     const b1 = await DB.getAudioBlob(u, q);
     if (b1) return { source: 'local', blob: b1, quality: q };
