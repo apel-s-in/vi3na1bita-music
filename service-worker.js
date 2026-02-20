@@ -1,7 +1,7 @@
 // service-worker.js
-// Optimized Service Worker for "Vi3na1bita" (v8.1)
+// Optimized Service Worker for "Vi3na1bita" (v8.1.6)
 
-const SW_VERSION = '8.1.5';
+const SW_VERSION = '8.1.6';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
@@ -18,6 +18,9 @@ const DEFAULT_SW_CONFIG = {
   allowUnknownSize: false,
   revalidateDays: 7
 };
+
+// === ДОБАВЛЕНО: Глобальный стейт Авиарежима ===
+let isAirplaneMode = false;
 
 // Core Assets (App Shell)
 const STATIC_ASSETS = [
@@ -54,11 +57,9 @@ const STATIC_SET = new Set(STATIC_ASSETS.map(norm));
 self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(CORE_CACHE).then(async (cache) => {
-      // Пытаемся кэшировать всё, но не падаем если один файл 404
       const promises = STATIC_ASSETS.map(url => {
         const req = new Request(url); 
         return fetch(req).then(res => {
-          // Защита от редиректов (например, GitHub Pages без слеша)
           if (res.ok && !res.redirected) return cache.put(req, res);
           console.warn('SW: Skipped (redirect/fail):', url);
         }).catch(err => console.warn('SW: Fetch error', url, err));
@@ -71,7 +72,6 @@ self.addEventListener('install', (e) => {
 
 self.addEventListener('activate', (e) => {
   e.waitUntil(caches.keys().then(keys => Promise.all(keys.map(k => {
-    // Clean old caches except current versions
     if (![CORE_CACHE, RUNTIME_CACHE, MEDIA_CACHE, OFFLINE_CACHE, META_CACHE].includes(k)) {
       return caches.delete(k);
     }
@@ -86,9 +86,17 @@ self.addEventListener('fetch', (e) => {
 
   const url = new URL(req.url);
 
+  // === ДОБАВЛЕНО: СТРОГАЯ ПОЛИТИКА АВИАРЕЖИМА ===
+  if (isAirplaneMode) {
+    e.respondWith(
+      caches.match(req).then(cached => {
+        return cached || new Response(null, { status: 503, statusText: 'Airplane Mode Active' });
+      })
+    );
+    return;
+  }
+
   // 1. Audio Bypass: Network Only
-  // Аудио теперь управляется OfflineManager (IndexedDB). SW не должен вмешиваться,
-  // чтобы не дублировать данные и не ломать Range-запросы.
   if (/\.(mp3|ogg|m4a|flac)$/i.test(url.pathname)) {
     return; // Fallback to browser network stack
   }
@@ -126,6 +134,12 @@ self.addEventListener('message', (e) => {
   if (!d || typeof d !== 'object') return;
   const port = e.ports[0];
 
+  // === ДОБАВЛЕНО: Синхронизация состояния Авиарежима ===
+  if (d.type === 'SYNC_AIRPLANE_MODE') {
+    isAirplaneMode = !!d.payload;
+    return;
+  }
+
   switch (d.type) {
     case 'GET_SW_VERSION':
       if (port) port.postMessage({ version: SW_VERSION });
@@ -140,7 +154,6 @@ self.addEventListener('message', (e) => {
       break;
 
     case 'WARM_OFFLINE_SHELL': 
-      // ТЗ: "100% Offline" - предзагрузка ассетов (lyrics/json/etc)
       e.waitUntil((async () => {
         try {
           const c = await caches.open(OFFLINE_CACHE);
@@ -152,7 +165,6 @@ self.addEventListener('message', (e) => {
       break;
 
     case 'GET_CACHE_SIZE': 
-      // ТЗ: Оценка размера "Other" в модалке Offline
       if (!port) return;
       e.waitUntil((async () => {
         let size = 0, entries = 0;
