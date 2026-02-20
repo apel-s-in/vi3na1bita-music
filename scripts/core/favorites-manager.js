@@ -38,7 +38,7 @@ export class FavoritesManager {
     if (act) {
       source === 'favorites' ? this._map.set(u, { ...i, inactiveAt: Date.now() }) : this._map.delete(u);
     } else {
-      this._map.set(u, { uid: u, addedAt: i?.addedAt || Date.now(), albumKey: albumKey || i?.albumKey || null, inactiveAt: null });
+      this._map.set(u, { uid: u, addedAt: i?.addedAt || Date.now(), albumKey: albumKey || i?.albumKey || null, sourceAlbum: albumKey || i?.albumKey || i?.sourceAlbum || null, inactiveAt: null });
       isL = true;
     }
     
