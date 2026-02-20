@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c46be01b39f07db813e07c5b2f636c9749a02d73.idx
-│   │       ├── pack-c46be01b39f07db813e07c5b2f636c9749a02d73.pack
-│   │       └── pack-c46be01b39f07db813e07c5b2f636c9749a02d73.rev
+│   │       ├── pack-a22123be7e654d8f2fb6fe4579a58d81ed58d851.idx
+│   │       ├── pack-a22123be7e654d8f2fb6fe4579a58d81ed58d851.pack
+│   │       └── pack-a22123be7e654d8f2fb6fe4579a58d81ed58d851.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-20 16:43:10 UTC
+Сгенерировано: 2026-02-20 16:43:48 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6353,14 +6353,10 @@ export default window.StatisticsModal;
 
 //=================================================
 // FILE: /scripts/utils/sw-manager.js
-//=================================================
-// FILE: /scripts/utils/sw-manager.js
 /**
  * scripts/utils/sw-manager.js
- * Optimized Service Worker Manager v2.1 (Fix Loop)
- * - Удалено: скачивание альбомов, очистка кэша (перенесено в OfflineManager)
- * - Исправлено: бесконечный цикл перезагрузки в DevTools
- * - Оптимизировано: минимальный размер
+ * Optimized Service Worker Manager v3.0
+ * FIX: Removed dead PlayerState code, modernized UI update button styling natively.
  */
 (function (W, nav) {
   'use strict';
@@ -6368,14 +6364,9 @@ export default window.StatisticsModal;
   let refreshing = false;
 
   class SWManager {
-    constructor() {
-      this.reg = null;
-    }
-
     async init() {
       if (!('serviceWorker' in nav)) return;
 
-      // 1. Prevent infinite loop on controller change
       nav.serviceWorker.addEventListener('controllerchange', () => {
         if (refreshing) return;
         refreshing = true;
@@ -6383,75 +6374,59 @@ export default window.StatisticsModal;
       });
 
       try {
-        // 2. Register
         this.reg = await nav.serviceWorker.register('./service-worker.js', { scope: './' });
 
-        // 3. Detect Update (waiting state)
-        if (this.reg.waiting) {
-          this._notifyUpdate();
-        }
+        if (this.reg.waiting) this._notifyUpdate();
 
-        // 4. Detect Future Updates
         this.reg.addEventListener('updatefound', () => {
-          const newWorker = this.reg.installing;
-          if (!newWorker) return;
-          
-          newWorker.addEventListener('statechange', () => {
-            // Show button ONLY if there is already a controller (it's an update, not fresh install)
-            if (newWorker.state === 'installed' && nav.serviceWorker.controller) {
-              this._notifyUpdate();
-            }
-          });
+          const newW = this.reg.installing;
+          if (newW) {
+            newW.addEventListener('statechange', () => {
+              if (newW.state === 'installed' && nav.serviceWorker.controller) {
+                this._notifyUpdate();
+              }
+            });
+          }
         });
-
       } catch (e) {
-        console.error('SW:', e);
+        console.warn('SW Register Failed:', e);
       }
     }
 
-    // Обработка сообщений о версии (из app.js)
-    handleVersionMessage(data) {
-      if (data?.swVer && data.swVer !== (W.VERSION || '')) {
-        this._notifyUpdate();
-      }
+    handleVersionMessage(d) {
+      if (d?.swVer && d.swVer !== (W.VERSION || '')) this._notifyUpdate();
     }
 
     _notifyUpdate() {
-      // Prevent duplicates
       if (document.getElementById('update-app-btn')) return;
 
-      W.NotificationSystem?.info('Доступно обновление', 5000);
+      W.NotificationSystem?.info('Доступно обновление приложения', 5000);
 
       const btn = document.createElement('button');
       btn.id = 'update-app-btn';
+      // Re-using Offline Modal button styles to remove huge inline CSS payload
+      btn.className = 'om-btn om-btn--primary'; 
       btn.textContent = 'ОБНОВИТЬ';
-      // Стили: поверх всего, внизу по центру, но чуть выше плеера
-      btn.style.cssText = 'position:fixed;bottom:90px;left:50%;transform:translateX(-50%);padding:10px 24px;background:#4daaff;color:#fff;border:0;border-radius:30px;font-weight:900;z-index:10001;box-shadow:0 6px 20px rgba(0,0,0,.6);cursor:pointer;animation:fadeIn .4s ease-out;font-size:14px;letter-spacing:0.05em;';
-      
+      btn.style.cssText = 'position:fixed;bottom:90px;left:50%;transform:translateX(-50%);z-index:10001;box-shadow:0 6px 24px rgba(0,0,0,.6);animation:fadeIn .3s ease-out;padding:12px 28px;border-radius:30px;';
+
       btn.onclick = () => {
         btn.disabled = true;
         btn.textContent = 'ОБНОВЛЕНИЕ...';
-        // Сохраняем состояние плеера перед релоадом
-        if (W.PlayerState?.save) W.PlayerState.save({ forReload: true });
-        
-        // Команда SW пропустить ожидание -> вызовет controllerchange -> reload
         if (this.reg?.waiting) {
           this.reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         } else {
           W.location.reload();
         }
       };
-      
+
       document.body.appendChild(btn);
     }
 
-    // API для Offline Modal (получение размера кэша)
     getCacheSize() {
       if (!this.reg?.active) return Promise.resolve(0);
       return new Promise(resolve => {
         const ch = new MessageChannel();
         ch.port1.onmessage = (e) => resolve(e.data?.size || 0);
-        // Timeout 1s чтобы интерфейс не завис
         setTimeout(() => resolve(0), 1000);
         this.reg.active.postMessage({ type: 'GET_CACHE_SIZE' }, [ch.port2]);
       });
@@ -6460,7 +6435,6 @@ export default window.StatisticsModal;
 
   W.ServiceWorkerManager = new SWManager();
 
-  // Init logic
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => W.ServiceWorkerManager.init());
   } else {
