@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c82781005830334b224ef8f40d0f25148badc1b7.idx
-│   │       ├── pack-c82781005830334b224ef8f40d0f25148badc1b7.pack
-│   │       └── pack-c82781005830334b224ef8f40d0f25148badc1b7.rev
+│   │       ├── pack-ed37c07a488016003595dbe4d042cd8a0c30bca0.idx
+│   │       ├── pack-ed37c07a488016003595dbe4d042cd8a0c30bca0.pack
+│   │       └── pack-ed37c07a488016003595dbe4d042cd8a0c30bca0.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,7 +377,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-20 21:00:25 UTC
+Сгенерировано: 2026-02-20 21:01:08 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2139,9 +2139,8 @@ export const getWindowState = () => ({ ..._win, protected: _protected, pendingGC
     togglePlayPause: () => PC().isPlaying() ? PC().pause() : PC().play(),
     switchAlbumInstantly: () => { if (PC().getIndex() >= 0) ensurePlayerBlock(PC().getIndex()); },
     updateAvailableTracksForPlayback: () => {
-      const pa = W.AlbumsManager?.getPlayingAlbum?.();
-      W.availableFavoriteIndices = (pa !== W.SPECIAL_FAVORITES_KEY && U.lsGetBool01('favoritesOnlyMode')) 
-        ? (PC().getPlaylistSnapshot() || []).reduce((a, t, i) => PC().isFavorite(t.uid) ? [...a, i] : a, []) : null;
+      PC().applyFavoritesOnlyFilter?.();
+      syncUI();
     }
   };
 
