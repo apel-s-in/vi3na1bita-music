@@ -1,4 +1,5 @@
 // scripts/core/favorites-manager.js
+// Optimized v2.0
 const KEY = '__favorites_v2__';
 
 export class FavoritesManager {
@@ -9,95 +10,64 @@ export class FavoritesManager {
   }
 
   init() {
-    try {
-      const raw = localStorage.getItem(KEY);
-      if (raw) {
-        JSON.parse(raw).forEach(i => {
-          if (i && i.uid) this._map.set(String(i.uid).trim(), i);
-        });
-      }
-    } catch (e) {
-      console.error('Favorites init error:', e);
-    }
+    try { 
+      JSON.parse(localStorage.getItem(KEY) || '[]').forEach(i => i?.uid && this._map.set(String(i.uid).trim(), i)); 
+    } catch {}
   }
 
   isLiked(uid) {
-    const u = String(uid || '').trim();
-    if (!u) return false;
-    const item = this._map.get(u);
-    return item && !item.inactiveAt;
+    const i = this._map.get(String(uid || '').trim());
+    return !!(i && !i.inactiveAt);
   }
 
-  getSnapshot() {
-    return Array.from(this._map.values());
+  getSnapshot() { 
+    return Array.from(this._map.values()); 
   }
 
-  // Возвращает Set активных UID (для совместимости)
-  readLikedSet() {
-    const set = new Set();
-    for (const [uid, item] of this._map) {
-      if (!item.inactiveAt) set.add(uid);
-    }
-    return set;
+  readLikedSet() { 
+    return new Set([...this._map.values()].filter(i => !i.inactiveAt).map(i => i.uid)); 
   }
 
   toggle(uid, { source = 'album', albumKey } = {}) {
-    const u = String(uid || '').trim();
+    const u = String(uid || '').trim(); 
     if (!u) return false;
-
-    const item = this._map.get(u);
-    const isActive = item && !item.inactiveAt;
     
-    let isNowLiked = false;
+    const i = this._map.get(u), act = i && !i.inactiveAt;
+    let isL = false;
 
-    if (isActive) {
-      if (source === 'favorites') {
-        // Soft Delete (серый трек)
-        this._map.set(u, { ...item, inactiveAt: Date.now() });
-      } else {
-        // Hard Delete
-        this._map.delete(u);
-      }
-      isNowLiked = false;
+    if (act) {
+      source === 'favorites' ? this._map.set(u, { ...i, inactiveAt: Date.now() }) : this._map.delete(u);
     } else {
-      // Restore / Add
-      this._map.set(u, {
-        uid: u,
-        addedAt: item?.addedAt || Date.now(),
-        albumKey: albumKey || item?.albumKey || null,
-        inactiveAt: null
-      });
-      isNowLiked = true;
+      this._map.set(u, { uid: u, addedAt: i?.addedAt || Date.now(), albumKey: albumKey || i?.albumKey || null, inactiveAt: null });
+      isL = true;
     }
     
-    this._save();
-    this._notify(u, isNowLiked);
-    return isNowLiked;
+    this._save(); 
+    this._notify(u, isL); 
+    return isL;
   }
 
   remove(uid) {
     const u = String(uid).trim();
-    if (this._map.delete(u)) {
-      this._save();
-      this._notify(u, false);
-      return true;
+    if (this._map.delete(u)) { 
+      this._save(); 
+      this._notify(u, false); 
+      return true; 
     }
     return false;
   }
 
-  _save() {
-    try {
-      localStorage.setItem(KEY, JSON.stringify(Array.from(this._map.values())));
-    } catch {}
+  _save() { 
+    try { localStorage.setItem(KEY, JSON.stringify(Array.from(this._map.values()))); } catch {} 
   }
   
-  subscribe(cb) {
-    this._subs.add(cb);
-    return () => this._subs.delete(cb);
+  subscribe(cb) { 
+    this._subs.add(cb); 
+    return () => this._subs.delete(cb); 
   }
 
-  _notify(uid, liked) {
-    this._subs.forEach(cb => { try { cb({ uid, liked }); } catch {} });
+  _notify(uid, liked) { 
+    this._subs.forEach(cb => { try { cb({ uid, liked }); } catch {} }); 
   }
 }
 
