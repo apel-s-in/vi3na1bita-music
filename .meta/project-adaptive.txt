@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-774025821bb2edaba1ce76d5e7382a7b2bd10092.idx
-│   │       ├── pack-774025821bb2edaba1ce76d5e7382a7b2bd10092.pack
-│   │       └── pack-774025821bb2edaba1ce76d5e7382a7b2bd10092.rev
+│   │       ├── pack-320ff1e3e74d1c517eb0bbf9c6cda3ebcb0b2190.idx
+│   │       ├── pack-320ff1e3e74d1c517eb0bbf9c6cda3ebcb0b2190.pack
+│   │       └── pack-320ff1e3e74d1c517eb0bbf9c6cda3ebcb0b2190.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -375,7 +375,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-20 21:40:31 UTC
+Сгенерировано: 2026-02-20 21:45:17 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3117,17 +3117,17 @@ window.FavoritesManager = Favorites;
     lsGetJson: (k, d = null) => U.obj.safeJson(k, d)
   };
   
-  // ESM-compatible exports via window
-  W.AppUtils = {
-    $: U.$,
-    toStr: (v) => (v == null ? '' : String(v)),
-    isMobileUA: U.isMobile,
-    escHtml: U.escapeHtml
-  };
-  
   // Safe Global Aliases
   U.escapeHtml = U.ui.escapeHtml;
   U.isMobile = () => U.getPlatform().isIOS || U.getPlatform().isAndroid;
+  
+  // ESM-compatible exports via window (ПОСЛЕ определения U.isMobile и U.escapeHtml)
+  W.AppUtils = {
+    $: U.$,
+    toStr: (v) => (v == null ? '' : String(v)),
+    isMobileUA: () => U.isMobile(),  // Замыкание, а не прямая ссылка
+    escHtml: (s) => U.escapeHtml(s)  // Замыкание, а не прямая ссылка
+  };
   U.waitFor = async (fn, t = 2000) => { for (let i = 0; i < t / 50; i++) { if (fn()) return true; await new Promise(r => setTimeout(r, 50)); } return !!fn(); };
   U.onceEvent = (el, ev, { timeoutMs } = {}) => new Promise(r => { const h = () => { el.removeEventListener(ev, h); r(); }; el.addEventListener(ev, h, { once: true }); if (timeoutMs) setTimeout(h, timeoutMs); });
 
