@@ -405,16 +405,12 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
       this.sound = newSound;
 
-      // If hot-swap from local to local etc — old sound already unloaded above.
-      // Important: objectURL is revoked in _unload, after Howl unload.
+      // Old sound unloaded. Blob URL lifecycle is safely managed by Utils.blob LRU.
       void oldSound;
       void isLocal;
     }
 
     _unload(silent) {
-      const curUid = uidOf(this.getCurrentTrack()?.uid);
-      if (curUid && W.Utils?.blob?.revokeUrl) W.Utils.blob.revokeUrl('player_' + curUid);
-
       if (this.sound) {
         try { this.sound.stop(); } catch {}
         try { this.sound.unload(); } catch {}
@@ -560,19 +556,13 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     }
 
     getFavoritesState() {
-      const items = Favorites.getSnapshot();
-      const active = [];
-      const inactive = [];
-
-      for (const item of items) {
-        const u = uidOf(item?.uid);
-        if (!u) continue;
-        const sa = uidOf(item.sourceAlbum || item.albumKey || getTrackByUid(u)?.sourceAlbum);
-        if (item.inactiveAt) inactive.push({ uid: u, sourceAlbum: sa, inactiveAt: item.inactiveAt });
-        else active.push({ uid: u, sourceAlbum: sa });
-      }
-
-      return { active, inactive };
+      return Favorites.getSnapshot().reduce((res, i) => {
+        const uid = uidOf(i?.uid);
+        if (uid) res[i.inactiveAt ? 'inactive' : 'active'].push({
+          uid, sourceAlbum: uidOf(i.sourceAlbum || i.albumKey || getTrackByUid(uid)?.sourceAlbum), ...(i.inactiveAt && { inactiveAt: i.inactiveAt })
+        });
+        return res;
+      }, { active: [], inactive: [] });
     }
 
     getLikedUidsForAlbum(key) {
