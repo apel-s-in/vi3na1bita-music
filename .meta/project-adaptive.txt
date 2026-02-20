@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e5877e623a4f4e1cb065d5209f66ccc6804015fe.idx
-│   │       ├── pack-e5877e623a4f4e1cb065d5209f66ccc6804015fe.pack
-│   │       └── pack-e5877e623a4f4e1cb065d5209f66ccc6804015fe.rev
+│   │       ├── pack-468e0f3445444a9a1eaadd5f38b21ca9cce5524e.idx
+│   │       ├── pack-468e0f3445444a9a1eaadd5f38b21ca9cce5524e.pack
+│   │       └── pack-468e0f3445444a9a1eaadd5f38b21ca9cce5524e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-20 16:05:39 UTC
+Сгенерировано: 2026-02-20 16:07:59 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2485,6 +2485,8 @@ export const getWindowState = () => ({ ..._win, protected: _protected, pendingGC
     st.has = st.list.length > 0;
   }
 
+  const _pending = new Map();
+
   async function fetchL(url) {
     const u = String(url || '').trim();
     if (!u || c404.has(u)) return null;
@@ -2493,19 +2495,27 @@ export const getWindowState = () => ({ ..._win, protected: _protected, pendingGC
     const cached = sess(k);
     if (cached) return (cached === NO_LYR) ? null : cached;
 
-    try {
-      const r = await fetch(u, { cache: 'force-cache', headers: { Accept: 'application/json' } });
-      if (!r.ok) { if (r.status === 404) c404.add(u); throw new Error(); }
-      const j = await r.json();
-      if (Array.isArray(j)) { sess(k, j); return j; }
-    } catch {
-      // CRITICAL FIX: Do not cache NO_LYR if network is down or blocked by NetPolicy
-      const netOk = W.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine;
-      if (!netOk) return null;
-    }
-    
-    sess(k, NO_LYR);
-    return null;
+    // Дедупликация запросов (убирает двойные 404 ошибки в консоли при инициализации трека)
+    if (_pending.has(u)) return _pending.get(u);
+
+    const p = (async () => {
+      try {
+        const r = await fetch(u, { cache: 'force-cache', headers: { Accept: 'application/json' } });
+        if (!r.ok) { if (r.status === 404) c404.add(u); throw new Error(); }
+        const j = await r.json();
+        if (Array.isArray(j)) { sess(k, j); return j; }
+      } catch {
+        const netOk = W.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine;
+        if (!netOk) return null;
+      }
+      sess(k, NO_LYR);
+      return null;
+    })();
+
+    _pending.set(u, p);
+    const res = await p;
+    _pending.delete(u);
+    return res;
   }
 
   function updateUI() {
@@ -2582,7 +2592,8 @@ export const getWindowState = () => ({ ..._win, protected: _protected, pendingGC
   async function onTrackChange(t) {
     st.has = false; st.list = []; st.lIdx = -100;
     
-    if (!t?.lyrics || c404.has(t.lyrics)) return updateUI();
+    // Если явно указано что лирики нет (hasLyrics === false), даже не пытаемся качать
+    if (!t?.lyrics || t.hasLyrics === false || c404.has(t.lyrics)) return updateUI();
 
     if (st.prefUrl === t.lyrics && st.pref) {
       parse(st.pref); st.pref = null;
@@ -2593,17 +2604,7 @@ export const getWindowState = () => ({ ..._win, protected: _protected, pendingGC
     }
     
     updateUI();
-    prefetchNext();
-  }
-
-  async function prefetchNext() {
-    st.pref = null; st.prefUrl = null;
-    const pc = W.playerCore;
-    const t = pc?.getPlaylistSnapshot?.()?.[pc?.getNextIndex?.()];
-    if (t?.lyrics) {
-      const d = await fetchL(t.lyrics);
-      if (d) { st.pref = d; st.prefUrl = t.lyrics; }
-    }
+    // prefetchNext удален для минимизации 404 логов для неиграющих треков
   }
 
   W.LyricsController = {
