@@ -35,10 +35,10 @@
     if (dom.vHandle) dom.vHandle.style.left = `${Math.max(2, Math.min(98, v))}%`;
     if (dom.vSlider) dom.vSlider.value = v;
 
-    // Quality (PQ/CQ) -> Strict Spec R1/R2 Adherence
+    // Quality (PQ) — v1.0: единое качество qualityMode:v1 (R2 не используется)
     if (dom.pqBtn) {
       dom.pqBtn.style.display = '';
-      const effQ = mgr?.getMode() === 'R2' ? mgr.getCQ() : pq.mode;
+      const effQ = pq.mode;
       dom.pqBtn.className = `player-control-btn ${!pq.netOk ? 'disabled' : `pq-${effQ}`} ${!pq.canToggleByTrack ? 'disabled-soft' : ''}`;
       dom.pqBtn.setAttribute('aria-disabled', !pq.netOk || !pq.canToggleByTrack);
       if (dom.pqLbl) dom.pqLbl.textContent = effQ === 'lo' ? 'Lo' : 'Hi';
@@ -53,7 +53,6 @@
   // 2. Playback Quality Logic (Strict R1/R2 Spec)
   async function onPQClick() {
     const mgr = W.OfflineManager, c = PC();
-    if (mgr?.getMode() === 'R2') return W.Modals?.openOfflineModal?.(); // Spec R2 Q.4.3
 
     const r = U.pq.getState();
     if (!r.netOk) return U.ui.toast('Нет доступа к сети', 'warning');
