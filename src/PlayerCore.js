@@ -185,6 +185,12 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         if (W.Utils?.getNet?.()?.kind === 'cellular' && W.NetPolicy?.shouldShowCellularToast?.()) toast('Воспроизведение через мобильную сеть', 'info');
       }
 
+      // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Железобетонный Fallback.
+      // Если TrackResolver недоступен или вернул пустой ответ, но сеть есть — играем прямой URL.
+      if (!url && t.src && (!res || !W.TrackResolver || res.source === 'none') && (W.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) {
+        url = this.qMode === 'lo' && trackHasLo(t) ? (W.TrackRegistry?.getTrackByUid(uid)?.audio_low || t.src) : t.src;
+      }
+
       // NO STOP INVARIANT: Fallback skip
       if (!url) {
         if (this._skips.count >= this._skips.max) { toast('Нет доступных треков', 'error'); return this._emit('onPlaybackError', { reason: 'no_source' }); }
@@ -211,6 +217,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
     _unload(silent) {
       if (this.sound) { try { this.sound.stop(); this.sound.unload(); } catch {} this.sound = null; }
+      try { W.Utils?.blob?.revokeUrl?.('p_' + this.getCurrentTrackUid()); } catch {}
       this._stopTick(); this._stats.onPauseOrStop();
       if (!silent) this._emit('onStop');
     }
