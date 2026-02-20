@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a558e85e9f6efb9d1a73412b061375d0547aacb5.idx
-│   │       ├── pack-a558e85e9f6efb9d1a73412b061375d0547aacb5.pack
-│   │       └── pack-a558e85e9f6efb9d1a73412b061375d0547aacb5.rev
+│   │       ├── pack-01958e16f2c5dbb73593f4eaed9d91ae5bc549ce.idx
+│   │       ├── pack-01958e16f2c5dbb73593f4eaed9d91ae5bc549ce.pack
+│   │       └── pack-01958e16f2c5dbb73593f4eaed9d91ae5bc549ce.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-20 14:20:10 UTC
+Сгенерировано: 2026-02-20 15:39:05 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3382,17 +3382,15 @@ window.FavoritesManager = Favorites;
 // FILE: /scripts/core/utils.js
 /**
  * scripts/core/utils.js
- * Centralized Utilities for Vitrina PWA v3.1
- * Provides legacy support and new namespaces for PlayerUI/Offline.
+ * Optimized Utilities v4.0 — Spec Compliant & Memory Safe
  */
 (function(W, D) {
   'use strict';
 
-  // Internal Blob Registry for iOS memory safety
+  // Internal Blob Registry
   const _blobReg = new Map(); 
 
   const U = {
-    // --- 1. DOM Helpers ---
     $: (id) => D.getElementById(id),
     
     dom: {
@@ -3402,7 +3400,7 @@ window.FavoritesManager = Favorites;
         el.addEventListener(ev, fn, opts);
         return () => { try { el.removeEventListener(ev, fn, opts); } catch {} };
       },
-      raf: (fn) => requestAnimationFrame(fn),
+      raf: requestAnimationFrame,
       defer: (fn) => setTimeout(fn, 0),
       createStyleOnce: (id, css) => {
         if (D.getElementById(id)) return;
@@ -3412,81 +3410,55 @@ window.FavoritesManager = Favorites;
       }
     },
 
-    // --- 2. Network & Env ---
     getNet: () => {
-      const nav = navigator;
-      if (nav.onLine === false) return { online: false, kind: 'offline', saveData: false };
-      const conn = nav.connection || nav.mozConnection || nav.webkitConnection;
-      if (!conn) return { online: true, kind: 'wifi', saveData: false };
-      const kind = conn.type || conn.effectiveType || 'unknown';
-      const isCellular = /cellular|2g|3g|4g/i.test(kind);
-      return {
-        online: true,
-        kind: isCellular ? 'cellular' : (kind === 'unknown' ? 'unknown' : 'wifi'),
-        saveData: conn.saveData || false
-      };
+      // SOURCE OF TRUTH: NetPolicy (Compliant with Spec)
+      const NP = W.NetPolicy;
+      if (NP) return { online: NP.isNetworkAllowed(), kind: NP.detectNetworkType(), saveData: false };
+      
+      // Fallback if NetPolicy is somehow not loaded yet
+      const n = navigator, c = n.connection || n.mozConnection || n.webkitConnection, k = c?.type || 'unknown';
+      return { online: n.onLine, kind: /cellular|2g|3g|4g/i.test(k) ? 'cellular' : 'wifi', saveData: c?.saveData || false };
     },
     
     getPlatform: () => {
-      const ua = navigator.userAgent || '';
-      const isIOS = /iPad|iPhone|iPod/.test(ua) && !W.MSStream;
-      const isPWA = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-      return { isIOS, isPWA, isDesktop: !/Mobi|Android/i.test(ua), isAndroid: /Android/.test(ua) };
+      const ua = navigator.userAgent;
+      return { 
+        isIOS: /iPad|iPhone|iPod/.test(ua) && !W.MSStream, 
+        isPWA: matchMedia('(display-mode: standalone)').matches || navigator.standalone, 
+        isDesktop: !/Mobi|Android/i.test(ua), 
+        isAndroid: /Android/.test(ua) 
+      };
     },
 
-    // --- 3. Format & Math (Required by PlayerUI) ---
     fmt: {
       time: (s) => {
-        const n = Number(s);
-        if (!Number.isFinite(n) || n < 0) return '00:00';
-        const h = (n / 3600) | 0;
-        const m = ((n % 3600) / 60) | 0;
-        const sec = (n % 60) | 0;
-        const mmss = `${m.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`;
-        return h > 0 ? `${h}:${mmss}` : mmss;
+        const n = Number(s); if (!n || n < 0) return '00:00';
+        const h = n / 3600 | 0, m = (n % 3600) / 60 | 0, sc = n % 60 | 0;
+        return (h ? h + ':' : '') + String(h ? m % 60 : m).padStart(2, '0') + ':' + String(sc).padStart(2, '0');
       },
-      bytes: (n) => {
-        const b = Number(n);
-        if (!Number.isFinite(b) || b <= 0) return '0 B';
-        const k = 1024, sizes = ['B', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(b) / Math.log(k));
-        return parseFloat((b / Math.pow(k, i)).toFixed(1)) + ' ' + (sizes[i] || 'TB');
+      bytes: (b) => {
+        const n = Number(b); if (!Number.isFinite(n) || n <= 0) return '0 B';
+        const i = Math.floor(Math.log(n) / Math.log(1024));
+        return parseFloat((n / Math.pow(1024, i)).toFixed(1)) + ' ' + (['B','KB','MB','GB'][i] || 'TB');
       },
-      durationHuman: (sec) => {
-        if (!sec) return '0м';
-        const h = (sec / 3600) | 0, m = ((sec % 3600) / 60) | 0;
-        return h > 0 ? `${h}ч ${m}м` : `${m}м`;
-      }
+      durationHuman: (s) => { const h = s / 3600 | 0, m = (s % 3600) / 60 | 0; return h ? `${h}ч ${m}м` : `${m}м`; }
     },
     
     math: {
       clamp: (n, min, max) => Math.min(Math.max(Number(n) || 0, min), max),
-      toInt: (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; }
+      toInt: (v, d = 0) => Number.isFinite(Number(v)) ? Number(v) : d
     },
 
-    // --- 4. Object & Data ---
     obj: {
-      safeJson: (k, d = null) => { try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : d; } catch { return d; } },
+      safeJson: (k, d = null) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
       trim: (v) => String(v || '').trim() || null,
-      normQuality: (q) => (String(q || '').toLowerCase().trim() === 'lo') ? 'lo' : 'hi'
+      normQuality: (q) => String(q || '').toLowerCase() === 'lo' ? 'lo' : 'hi'
     },
 
-    // --- 5. Blob Management (Optimized LRU) ---
     blob: {
       createUrl: (key, blob) => {
-        // Очистка старых ссылок, если их больше 5 (запас для кроссфейда/прелоада)
-        if (_blobReg.size > 5) {
-          const oldest = _blobReg.keys().next().value;
-          URL.revokeObjectURL(_blobReg.get(oldest));
-          _blobReg.delete(oldest);
-        }
-        
-        // Если ключ уже есть, пересоздаем (обновляем "свежесть" в Map порядка вставок)
-        if (_blobReg.has(key)) {
-          URL.revokeObjectURL(_blobReg.get(key));
-          _blobReg.delete(key);
-        }
-        
+        // FIX: Spec 21.2 Strict Compliance - No early/arbitrary revokes. Managed by PlayerCore.
+        if (_blobReg.has(key)) URL.revokeObjectURL(_blobReg.get(key));
         const url = URL.createObjectURL(blob);
         _blobReg.set(key, url);
         return url;
@@ -3501,110 +3473,67 @@ window.FavoritesManager = Favorites;
       }
     },
 
-    // --- 6. UI Helpers ---
     ui: {
-      toast: (msg, type, duration) => W.NotificationSystem?.show(msg, type, duration),
+      toast: (msg, type, dur) => W.NotificationSystem?.show?.(msg, type, dur),
       escapeHtml: (s) => String(s || '').replace(/[<>&'"]/g, m => ({'<':'&lt;','>':'&gt;','&':'&amp;',"'":'&#39;','"':'&quot;'}[m]))
     },
-
-    // --- 7. Functions required by PlayerUI (Facades) ---
     
-    // Playback Quality (PQ)
     pq: {
-      getMode: () => (localStorage.getItem('qualityMode:v1') || 'hi') === 'lo' ? 'lo' : 'hi',
+      getMode: () => localStorage.getItem('qualityMode:v1') === 'lo' ? 'lo' : 'hi',
       getState: () => {
-        const c = W.playerCore;
-        const net = W.NetPolicy?.isNetworkAllowed?.() ?? U.getNet().online;
-        const can = !!c?.canToggleQualityForCurrentTrack?.();
-        return { mode: U.pq.getMode(), canToggle: can && net, canToggleByTrack: can, netOk: net };
+        const netOk = W.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine;
+        const can = !!W.playerCore?.canToggleQualityForCurrentTrack?.();
+        return { mode: U.pq.getMode(), canToggle: can && netOk, canToggleByTrack: can, netOk };
       },
       toggle: () => {
         const c = W.playerCore; if (!c) return { ok: false, reason: 'noCore' };
-        const netOk = W.NetPolicy?.isNetworkAllowed?.() ?? U.getNet().online;
-        if (!netOk) return { ok: false, reason: 'offline' };
+        if (!(W.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) return { ok: false, reason: 'offline' };
         if (!c.canToggleQualityForCurrentTrack()) return { ok: false, reason: 'trackNoLo' };
+        
         const n = U.pq.getMode() === 'hi' ? 'lo' : 'hi';
-        c.switchQuality(n);
+        c.switchQuality(n); // PlayerCore handles persistence and background events
         return { ok: true, next: n };
       }
     },
 
-    // Favorites Helper
     fav: {
-      isTrackLikedInContext: ({ playingAlbum: pa, track: t } = {}) => {
-        const u = String(t?.uid || ''), c = W.playerCore;
-        if (!c || !u) return false;
-        if (pa !== '__favorites__' && t?.sourceAlbum) return c.isFavorite(u);
-        const ref = (W.favoritesRefsModel || []).find(r => String(r?.__uid) === u);
-        return ref?.__a ? c.isFavorite(u) : false;
-      }
+      isTrackLikedInContext: ({ track: t } = {}) => !!(W.playerCore && t?.uid && W.playerCore.isFavorite(t.uid))
     },
 
-    // Download Helper (Fixes PlayerUI crash)
     download: {
       applyDownloadLink: (btn, track) => {
         if (!btn) return;
-        if (!track || !track.src) {
-          btn.removeAttribute('href');
-          btn.removeAttribute('download');
-          btn.classList.add('disabled');
-          return;
-        }
-        btn.href = track.src;
-        btn.download = (track.artist && track.title) 
-          ? `${track.artist} - ${track.title}.mp3` 
-          : `track.mp3`;
+        if (!track?.src) { btn.removeAttribute('href'); btn.removeAttribute('download'); btn.classList.add('disabled'); return; }
+        btn.href = track.src; 
+        btn.download = track.artist && track.title ? `${track.artist} - ${track.title}.mp3` : 'track.mp3'; 
         btn.classList.remove('disabled');
       }
     },
 
-    // Function Helpers
     func: {
-      debounceFrame: (fn) => {
-        let frame;
-        return (...args) => {
-          if (frame) cancelAnimationFrame(frame);
-          frame = requestAnimationFrame(() => { frame = null; fn(...args); });
-        };
-      },
-      throttle: (fn, wait) => {
-        let last = 0;
-        return (...args) => {
-          const now = Date.now();
-          if (now - last >= wait) { last = now; fn(...args); }
-        };
-      }
+      debounceFrame: (fn) => { let f; return (...a) => { if (f) cancelAnimationFrame(f); f = requestAnimationFrame(() => { f = null; fn(...a); }); }; },
+      throttle: (fn, w) => { let l = 0; return (...a) => { const n = Date.now(); if (n - l >= w) { l = n; fn(...a); } }; }
     },
 
-    // --- 8. Legacy / Root Aliases (Backward Compatibility) ---
     isSpecialAlbumKey: (k) => String(k || '').startsWith('__'),
-    isBrowsingOtherAlbum: () => {
-      const p = W.AlbumsManager?.getPlayingAlbum?.(), c = W.AlbumsManager?.getCurrentAlbum?.();
-      return p && c && p !== c && !(p === '__favorites__' && c === '__favorites__');
-    },
-    setBtnActive: (id, a) => { const el = D.getElementById(id); if(el) el.classList.toggle('active', !!a); },
-    setAriaDisabled: (el, d) => { if(el) { el.classList.toggle('disabled', !!d); el.setAttribute('aria-disabled', !!d); }},
-    lsGet: (k, d) => localStorage.getItem(k) || d,
+    isBrowsingOtherAlbum: () => { const p = W.AlbumsManager?.getPlayingAlbum?.(), c = W.AlbumsManager?.getCurrentAlbum?.(); return !!(p && c && p !== c && !(p === '__favorites__' && c === '__favorites__')); },
+    setBtnActive: (id, a) => D.getElementById(id)?.classList.toggle('active', !!a),
+    setAriaDisabled: (el, d) => { if (el) { el.classList.toggle('disabled', !!d); el.setAttribute('aria-disabled', !!d); } },
+    lsGet: (k, d) => localStorage.getItem(k) ?? d,
     lsSet: (k, v) => localStorage.setItem(k, v),
-    lsGetBool01: (k, d=false) => { const v=localStorage.getItem(k); return v===null ? d : v==='1'; },
-    lsSetBool01: (k, v) => localStorage.setItem(k, v?'1':'0'),
-    lsGetJson: (k, d=null) => { try { const r=localStorage.getItem(k); return r?JSON.parse(r):d; } catch { return d; } }
+    lsGetBool01: (k, d = false) => (localStorage.getItem(k) ?? (d ? '1' : '0')) === '1',
+    lsSetBool01: (k, v) => localStorage.setItem(k, v ? '1' : '0'),
+    lsGetJson: (k, d = null) => U.obj.safeJson(k, d)
   };
 
-  // Direct Aliases (minimal — only used externally)
+  // Safe Global Aliases
   U.escapeHtml = U.ui.escapeHtml;
-  U.isMobile = () => { const p = U.getPlatform(); return p.isIOS || p.isAndroid; };
-  U.waitFor = async (fn, t=2000) => { for(let i=0;i<t/50;i++) { if(fn()) return true; await new Promise(r=>setTimeout(r,50)); } return !!fn(); };
-  U.onceEvent = (el, ev, { timeoutMs }={}) => new Promise(r => {
-    const h = () => { el.removeEventListener(ev, h); r(); };
-    el.addEventListener(ev, h, {once:true});
-    if(timeoutMs) setTimeout(h, timeoutMs);
-  });
+  U.isMobile = () => U.getPlatform().isIOS || U.getPlatform().isAndroid;
+  U.waitFor = async (fn, t = 2000) => { for (let i = 0; i < t / 50; i++) { if (fn()) return true; await new Promise(r => setTimeout(r, 50)); } return !!fn(); };
+  U.onceEvent = (el, ev, { timeoutMs } = {}) => new Promise(r => { const h = () => { el.removeEventListener(ev, h); r(); }; el.addEventListener(ev, h, { once: true }); if (timeoutMs) setTimeout(h, timeoutMs); });
 
   W.Utils = U;
-  if (typeof exports !== 'undefined') exports.Utils = U;
 })(window, document);
-// export const Utils удален, так как этот файл загружается через <script> без type="module"
 
 //=================================================
 // FILE: /scripts/e2e/favorites.spec.js
