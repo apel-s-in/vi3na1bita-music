@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-639ab62fa08e488ead7ab3c35818777d941d0900.idx
-│   │       ├── pack-639ab62fa08e488ead7ab3c35818777d941d0900.pack
-│   │       └── pack-639ab62fa08e488ead7ab3c35818777d941d0900.rev
+│   │       ├── pack-7a6d4bbe93bcceed17dac654847eb37682588470.idx
+│   │       ├── pack-7a6d4bbe93bcceed17dac654847eb37682588470.pack
+│   │       └── pack-7a6d4bbe93bcceed17dac654847eb37682588470.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -379,7 +379,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-20 20:50:16 UTC
+Сгенерировано: 2026-02-20 20:51:39 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -750,7 +750,6 @@ jobs:
 
   <!-- App Modules -->
   <script src="./scripts/app/promocode.js" defer></script>
-  <script src="./scripts/app/playback-policy.js" defer></script>
   <script src="./scripts/app/player-ui/lyrics.js" defer></script>
   <script src="./scripts/app/player-ui.js" defer></script>
   <script src="./scripts/app/gallery.js" type="module"></script>
@@ -758,7 +757,6 @@ jobs:
 
   <script src="./scripts/app.js" type="module"></script>
 
-  <script src="./performance/rum.js" defer></script>
 </head>
 <body>
   <!-- Promocode Screen -->
