@@ -51,6 +51,8 @@ export async function loadFavoritesAlbum(ctx) {
     ctx._favBound = true;
     
     container.addEventListener('click', e => {
+       if (ctx.getCurrentAlbum() !== FAV) return; // Защита: логика 'inactive' работает только во вкладке Избранное
+
        const row = e.target.closest('.track');
        if (!row) return;
        
