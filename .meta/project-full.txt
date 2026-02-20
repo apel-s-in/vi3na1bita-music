@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-cbf47264670cbd87eebb6343edf4079256ec910e.idx
-│   │       ├── pack-cbf47264670cbd87eebb6343edf4079256ec910e.pack
-│   │       └── pack-cbf47264670cbd87eebb6343edf4079256ec910e.rev
+│   │       ├── pack-f34a0567c5a394a4673acdfdb81f92bf0690cd58.idx
+│   │       ├── pack-f34a0567c5a394a4673acdfdb81f92bf0690cd58.pack
+│   │       └── pack-f34a0567c5a394a4673acdfdb81f92bf0690cd58.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -380,7 +380,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-20 20:48:08 UTC
+Сгенерировано: 2026-02-20 20:49:19 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4308,8 +4308,8 @@ export async function checkForUpdates() {
       const rSize = q === 'hi' ? (t.size || t.fileSize || 0) : (t.size_low || t.fileSizeLow || 0);
       const rBytes = rSize > 0 ? Math.round(rSize * 1048576) : 0;
       
-      // Mismatch: расхождение размера более чем на 1 КБ
-      const mismatch = rBytes > 0 && Math.abs(rBytes - meta.size) > 1024;
+      // Mismatch: расхождение размера более чем на 100 КБ (защита от округления MB в JSON)
+      const mismatch = rBytes > 0 && Math.abs(rBytes - (meta.size || 0)) > 102400;
 
       if (mismatch && !meta.needsUpdate) {
         await updateTrackMeta(uid, { needsUpdate: true, remoteSize: rSize });
