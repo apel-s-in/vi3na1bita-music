@@ -51,8 +51,8 @@ export async function checkForUpdates() {
       const rSize = q === 'hi' ? (t.size || t.fileSize || 0) : (t.size_low || t.fileSizeLow || 0);
       const rBytes = rSize > 0 ? Math.round(rSize * 1048576) : 0;
       
-      // Mismatch: расхождение размера более чем на 1 КБ
-      const mismatch = rBytes > 0 && Math.abs(rBytes - meta.size) > 1024;
+      // Mismatch: расхождение размера более чем на 100 КБ (защита от округления MB в JSON)
+      const mismatch = rBytes > 0 && Math.abs(rBytes - (meta.size || 0)) > 102400;
 
       if (mismatch && !meta.needsUpdate) {
         await updateTrackMeta(uid, { needsUpdate: true, remoteSize: rSize });
