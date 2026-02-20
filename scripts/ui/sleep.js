@@ -1,7 +1,4 @@
-//=================================================
-// FILE: /scripts/ui/sleep.js
-// Таймер сна: Версия с делегированием событий (Fix dynamic UI)
-// Логика: пауза через PlayerCore. UI: 15/30/60 мин или HH:MM.
+// Таймер сна: Оптимизированная версия с нативным input type="time"
 (function () {
   'use strict';
 
@@ -10,10 +7,8 @@
   const now = () => Date.now();
   const pad = (n) => String(n).padStart(2, '0');
   
-  // State
   let menu = null, tickId = null;
 
-  // --- Helpers ---
   const getTs = () => {
     const pc = W.playerCore?.getSleepTimerTarget?.();
     return (pc && pc > 0) ? pc : parseInt(U.lsGet(LS, '0') || '0', 10);
@@ -30,14 +25,12 @@
     const el = $('sleep-timer-badge'), ts = getTs(), ms = ts - now();
     if (!el) return;
     if (ts > 0 && ms > 0) {
-      el.style.display = '';
-      el.textContent = Math.ceil(ms / 60000);
+      el.style.display = ''; el.textContent = Math.ceil(ms / 60000);
       if (!tickId) tickId = setInterval(updateBadge, 10000);
     } else {
-      el.style.display = 'none';
-      el.textContent = '';
+      el.style.display = 'none'; el.textContent = '';
       if (tickId) { clearInterval(tickId); tickId = null; }
-      if (ts > 0 && ms <= 0) stop(true); // Auto-clear
+      if (ts > 0 && ms <= 0) stop(true);
     }
   };
 
@@ -55,21 +48,16 @@
     if (!silent) W.NotificationSystem?.info?.('⏰ Таймер сна выключен');
   };
 
-  // --- UI: Menu ---
   const toggleMenu = (btn) => {
     if (menu) { menu.remove(); menu = null; return; }
     
-    const ts = getTs(), act = ts > now();
-    const rect = btn.getBoundingClientRect();
+    const ts = getTs(), act = ts > now(), rect = btn.getBoundingClientRect();
     
     menu = document.createElement('div');
     menu.className = 'sleep-menu';
-    // Позиционирование с защитой от вылета за экран
     Object.assign(menu.style, { 
-      position: 'fixed', 
-      right: `${Math.max(8, W.innerWidth - rect.right)}px`, 
-      bottom: `${Math.max(8, W.innerHeight - rect.top)}px`,
-      zIndex: '10000'
+      position: 'fixed', right: `${Math.max(8, W.innerWidth - rect.right)}px`, 
+      bottom: `${Math.max(8, W.innerHeight - rect.top)}px`, zIndex: '10000'
     });
     
     menu.innerHTML = `
@@ -81,39 +69,26 @@
       <div class="sleep-menu-item" data-a="time">К времени…</div>
     `;
 
-    // Global click to close
     setTimeout(() => {
-        const outClick = (e) => { 
-            if (menu && !menu.contains(e.target) && !btn.contains(e.target)) {
-                cleanMenu(); 
-            }
-        };
-        // Сохраняем ссылку для очистки
-        menu._outClick = outClick;
-        document.addEventListener('click', outClick);
+        const outClick = (e) => { if (menu && !menu.contains(e.target) && !btn.contains(e.target)) cleanMenu(); };
+        menu._outClick = outClick; document.addEventListener('click', outClick);
     }, 0);
     
     const cleanMenu = () => {
         if(menu?._outClick) document.removeEventListener('click', menu._outClick);
-        if(menu) menu.remove();
-        menu = null;
+        if(menu) menu.remove(); menu = null;
     };
 
     menu.addEventListener('click', (e) => {
-      const t = e.target.closest('[data-a]');
-      if (!t) return;
-      e.stopPropagation();
-      const a = t.dataset.a;
+      const t = e.target.closest('[data-a]'); if (!t) return;
+      e.stopPropagation(); const a = t.dataset.a;
       
       if (a === 'off') stop();
       else if (a === 'm') {
-        const m = parseInt(t.dataset.v);
-        set(now() + m * 60000);
+        const m = parseInt(t.dataset.v); set(now() + m * 60000);
         W.NotificationSystem?.success?.(`⏰ Таймер: ${m} мин`);
       } else if (a === 'time') {
-        cleanMenu(); 
-        openTimeModal();
-        return;
+        cleanMenu(); openTimeModal(); return;
       }
       if (a !== 'noop') cleanMenu();
     });
@@ -121,20 +96,15 @@
     document.body.appendChild(menu);
   };
 
-  // --- UI: Time Modal (HH:MM) ---
   const openTimeModal = () => {
     const wrap = document.createElement('div');
     wrap.className = 'sleep-time-modal-backdrop';
-    const def = new Date(now() + 30 * 60000), h = pad(def.getHours()), m = pad(def.getMinutes());
+    const def = new Date(now() + 30 * 60000);
     
     wrap.innerHTML = `
-      <div class="sleep-time-modal">
+      <div class="sleep-time-modal" style="max-width:260px">
         <div class="sleep-time-title">Таймер к времени</div>
-        <div class="sleep-time-row">
-          <input id="sh" type="tel" maxlength="2" placeholder="HH" class="sleep-time-input" value="${h}">
-          <span class="sleep-time-sep">:</span>
-          <input id="sm" type="tel" maxlength="2" placeholder="MM" class="sleep-time-input" value="${m}">
-        </div>
+        <input id="stm-inp" type="time" value="${pad(def.getHours())}:${pad(def.getMinutes())}" style="width:100%;padding:12px;margin-bottom:16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:#fff;border-radius:8px;font-size:20px;text-align:center;color-scheme:dark;outline:none">
         <div class="sleep-time-actions">
           <button class="sleep-time-btn" data-a="c">Отмена</button>
           <button class="sleep-time-btn primary" data-a="ok">Ок</button>
@@ -143,23 +113,17 @@
 
     const close = () => { wrap.remove(); document.removeEventListener('keydown', onKey); };
     const apply = () => {
-      let hh = parseInt(wrap.querySelector('#sh').value || '0');
-      let mm = parseInt(wrap.querySelector('#sm').value || '0');
-      // Simple validation
-      if(isNaN(hh)) hh=0; if(isNaN(mm)) mm=0;
-      hh = Math.min(23, Math.max(0, hh));
-      mm = Math.min(59, Math.max(0, mm));
-
-      const d = new Date(); d.setHours(hh, mm, 0, 0);
-      if (d.getTime() <= now()) d.setDate(d.getDate() + 1); // If time passed, set for tomorrow
-      
-      set(d.getTime());
-      W.NotificationSystem?.success?.(`⏰ Таймер до ${pad(hh)}:${pad(mm)}`);
+      const v = wrap.querySelector('#stm-inp').value.split(':');
+      if (v.length === 2) {
+        const d = new Date(); d.setHours(v[0], v[1], 0, 0);
+        if (d.getTime() <= now()) d.setDate(d.getDate() + 1);
+        set(d.getTime());
+        W.NotificationSystem?.success?.(`⏰ Таймер до ${v[0]}:${v[1]}`);
+      }
       close();
     };
 
     const onKey = (e) => { if(e.key==='Enter') apply(); if(e.key==='Escape') close(); };
-    
     wrap.addEventListener('click', (e) => {
       if (e.target === wrap || e.target.dataset.a === 'c') close();
       if (e.target.dataset.a === 'ok') apply();
@@ -167,43 +131,27 @@
 
     document.body.appendChild(wrap);
     document.addEventListener('keydown', onKey);
-    setTimeout(() => wrap.querySelector('#sh').focus(), 50);
+    setTimeout(() => wrap.querySelector('#stm-inp').focus(), 50);
   };
 
-  // --- Init & Delegation ---
   const init = () => {
-    // 1. Делегирование события клика (решает проблему перерисовки кнопки)
     document.addEventListener('click', (e) => {
         const btn = e.target.closest('#sleep-timer-btn');
-        if (btn) {
-            e.stopPropagation();
-            toggleMenu(btn);
-        }
+        if (btn) { e.stopPropagation(); toggleMenu(btn); }
     });
 
-    // 2. Связь с PlayerCore (для восстановления состояния при перезагрузке)
     const bindCore = () => {
       if (W.playerCore?.on) {
         W.playerCore.on({ onSleepTriggered: () => stop() });
         const saved = parseInt(localStorage.getItem(LS)||'0');
         if (saved > now()) W.playerCore.setSleepTimer(saved - now());
-        else if (saved) stop(true); // Expired while app was closed
+        else if (saved) stop(true);
         updateBadge();
-      } else {
-        setTimeout(bindCore, 200);
-      }
+      } else { setTimeout(bindCore, 200); }
     };
     bindCore();
-
-    console.log('✅ SleepTimer optimized (delegation fix)');
   };
 
-  // Public API
-  W.SleepTimer = { 
-    show: () => $('sleep-timer-btn')?.click(), 
-    updateBadge, 
-    clearSleepTimer: () => stop(true) 
-  };
-
+  W.SleepTimer = { show: () => $('sleep-timer-btn')?.click(), updateBadge, clearSleepTimer: () => stop(true) };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
