@@ -101,7 +101,7 @@ class DownloadQueue {
     emit('offline:downloadStart', { uid: item.uid });
 
     try {
-      const res = await fetch(item.url, { signal: ctrl.signal });
+      const res = await fetch(item.url, { signal: ctrl.signal, redirect: 'follow' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const blob = await res.blob();
 
