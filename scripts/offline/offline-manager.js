@@ -361,17 +361,10 @@ class OfflineManager {
   }
   
   async getStorageBreakdown() {
-    const all = await DB.getAllTrackMetas();
-    const out = { pinned: 0, cloud: 0, transient: 0, dynamic: 0, other: 0 };
-    for (const m of all) {
-      const sz = m.size || 0;
-      if (m.type === 'pinned') out.pinned += sz;
-      else if (m.type === 'cloud') out.cloud += sz;
-      else if (m.type === 'playbackCache') out.transient += sz;
-      else if (m.type === 'dynamic') out.dynamic += sz;
-      else out.other += sz;
-    }
-    return out;
+    return (await DB.getAllTrackMetas()).reduce((a, m) => {
+      a[['pinned','cloud','playbackCache','dynamic'].includes(m.type) ? (m.type === 'playbackCache' ? 'transient' : m.type) : 'other'] += (m.size || 0);
+      return a;
+    }, { pinned: 0, cloud: 0, transient: 0, dynamic: 0, other: 0 });
   }
 
   getDownloadStatus() { return this.queue.getStatus(); }
