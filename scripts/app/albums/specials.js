@@ -23,8 +23,12 @@ export async function loadFavoritesAlbum(ctx) {
       ...(st.inactive || []).map(i => ({ ...i, active: false }))
     ];
 
+    const playerBlock = document.getElementById('lyricsplayerblock');
+    const hasPlayer = playerBlock && container.contains(playerBlock);
+    
     if (!items.length) {
       container.innerHTML = `<div class="fav-empty"><h3>Избранные треки</h3><p>Отметьте треки звёздочкой ⭐</p></div>`;
+      if (hasPlayer) container.appendChild(playerBlock);
       return;
     }
 
@@ -46,8 +50,15 @@ export async function loadFavoritesAlbum(ctx) {
         </div>`;
     }).join('');
     
+    if (hasPlayer) {
+      const currentTrack = window.playerCore?.getCurrentTrackUid?.();
+      const row = container.querySelector(`.track[data-uid="${CSS.escape(currentTrack || '')}"]`) || container.lastElementChild;
+      if (row) row.after(playerBlock);
+      else container.appendChild(playerBlock);
+    }
+    
     injectOfflineIndicators(container);
-  };
+};
 
   if (!ctx._favBound) {
     ctx._favBound = true;
