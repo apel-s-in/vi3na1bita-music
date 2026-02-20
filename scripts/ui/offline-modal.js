@@ -77,17 +77,20 @@ function renderNet() {
   const ns = Net.getNetPolicyState(), pl = Net.getPlatform(), ts = Net.getTrafficStats();
   const trRow = (l, v) => `<div class="om-traffic__row"><span>${l}</span><span>${fmtMB(v)}</span></div>`;
   
-  let html = pl.supportsNetControl 
-    ? `<div class="om-toggles-row">
+  let html = '';
+  if (pl.supportsNetControl) {
+    html = `<div class="om-toggles-row">
          ${tplToggle('toggle-wifi', ns.wifiEnabled, 'Ethernet / Wi-Fi')}
          ${tplToggle('toggle-cell', ns.cellularEnabled, 'Cellular')}
        </div>
-       ${tplToggle('toggle-toast', ns.cellularToast, \`🔔 Уведомления при Cellular: \${ns.cellularToast ? 'ВКЛ' : 'ВЫКЛ'}\`, true)}`
-    : `<div class="om-net-unsupported">Управление сетью ограничено ОС</div>
+       ${tplToggle('toggle-toast', ns.cellularToast, '🔔 Уведомления при Cellular: ' + (ns.cellularToast ? 'ВКЛ' : 'ВЫКЛ'), true)}`;
+  } else {
+    html = `<div class="om-net-unsupported">Управление сетью ограничено ОС</div>
        <button class="om-toggle ${ns.killSwitch ? 'om-toggle--on' : 'om-toggle--neutral'}" data-action="toggle-kill" style="margin-top:8px">
          <span class="om-toggle__dot"></span><span class="om-toggle__label">Отключить весь интернет</span>
        </button>
        ${ns.killSwitch ? '<div class="om-net-kill-hint">⚠️ Все запросы заблокированы (Offline).</div>' : ''}`;
+  }
        
   html += `
     <div class="om-traffic" style="margin-top:12px">
