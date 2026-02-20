@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ae8903e877c010177aee928c51b6899daa473fca.idx
-│   │       ├── pack-ae8903e877c010177aee928c51b6899daa473fca.pack
-│   │       └── pack-ae8903e877c010177aee928c51b6899daa473fca.rev
+│   │       ├── pack-b3f6bc930580140d38d437d3fa29f66299cc5802.idx
+│   │       ├── pack-b3f6bc930580140d38d437d3fa29f66299cc5802.pack
+│   │       └── pack-b3f6bc930580140d38d437d3fa29f66299cc5802.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -383,7 +383,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-20 16:12:01 UTC
+Сгенерировано: 2026-02-20 16:13:37 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1595,7 +1595,9 @@ export async function loadFavoritesAlbum(ctx) {
 
     container.innerHTML = items.map((it, i) => {
       const t = window.TrackRegistry?.getTrackByUid(it.uid) || { title: 'Загрузка...', sourceAlbum: it.sourceAlbum };
-      const aTitle = window.TrackRegistry?.getAlbumTitle(t.sourceAlbum) || 'Альбом';
+      const aTitle = window.TrackRegistry?.getAlbumTitle(t.sourceAlbum) 
+                     || window.albumsIndex?.find(a => a.key === t.sourceAlbum)?.title 
+                     || 'Альбом';
       const id = `fav_${it.sourceAlbum}_${it.uid}`;
       
       return `
@@ -1616,8 +1618,8 @@ export async function loadFavoritesAlbum(ctx) {
     ctx._favBound = true;
     
     container.addEventListener('click', e => {
-       if (ctx.getCurrentAlbum() !== FAV) return; // Защита: логика 'inactive' работает только во вкладке Избранное
-
+       if (ctx.getCurrentAlbum() !== FAV) return; // Защита от срабатывания логики Избранного в других альбомах
+       
        const row = e.target.closest('.track');
        if (!row) return;
        
