@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8e5af5e732cf63d226a90cfdd1cc754e9f09e1a4.idx
-│   │       ├── pack-8e5af5e732cf63d226a90cfdd1cc754e9f09e1a4.pack
-│   │       └── pack-8e5af5e732cf63d226a90cfdd1cc754e9f09e1a4.rev
+│   │       ├── pack-e5877e623a4f4e1cb065d5209f66ccc6804015fe.idx
+│   │       ├── pack-e5877e623a4f4e1cb065d5209f66ccc6804015fe.pack
+│   │       └── pack-e5877e623a4f4e1cb065d5209f66ccc6804015fe.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-20 15:52:42 UTC
+Сгенерировано: 2026-02-20 16:05:39 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1618,6 +1618,8 @@ export async function loadFavoritesAlbum(ctx) {
     ctx._favBound = true;
     
     container.addEventListener('click', e => {
+       if (ctx.getCurrentAlbum() !== FAV) return; // Защита: логика 'inactive' работает только во вкладке Избранное
+
        const row = e.target.closest('.track');
        if (!row) return;
        
