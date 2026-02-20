@@ -35,12 +35,19 @@
     if (dom.vHandle) dom.vHandle.style.left = `${Math.max(2, Math.min(98, v))}%`;
     if (dom.vSlider) dom.vSlider.value = v;
 
-    // Quality (PQ) — v1.0: единое качество qualityMode:v1 (R2 не используется)
+    // Quality button behavior:
+    // - R0/R1: PQ (qualityMode:v1)
+    // - R2:   CQ (offline:cacheQuality:v1), click opens OFFLINE modal (Q.4.3)
     if (dom.pqBtn) {
       dom.pqBtn.style.display = '';
-      const effQ = pq.mode;
-      dom.pqBtn.className = `player-control-btn ${!pq.netOk ? 'disabled' : `pq-${effQ}`} ${!pq.canToggleByTrack ? 'disabled-soft' : ''}`;
-      dom.pqBtn.setAttribute('aria-disabled', !pq.netOk || !pq.canToggleByTrack);
+
+      const isR2 = mgr?.getMode?.() === 'R2';
+      const effQ = isR2 ? (mgr?.getCQ?.() || 'hi') : pq.mode;
+
+      const ariaDisabled = isR2 ? false : (!pq.netOk || !pq.canToggleByTrack);
+      dom.pqBtn.className = `player-control-btn ${ariaDisabled ? 'disabled' : `pq-${effQ}`}`;
+      dom.pqBtn.setAttribute('aria-disabled', ariaDisabled);
+
       if (dom.pqLbl) dom.pqLbl.textContent = effQ === 'lo' ? 'Lo' : 'Hi';
     }
 
@@ -52,7 +59,14 @@
 
   // 2. Playback Quality Logic (Strict R1/R2 Spec)
   async function onPQClick() {
-    const mgr = W.OfflineManager, c = PC();
+    const mgr = W.OfflineManager;
+    const c = PC();
+    const isR2 = mgr?.getMode?.() === 'R2';
+
+    // R2: PQ button is CQ entrypoint (Q.4.3)
+    if (isR2) {
+      return W.Modals?.openOfflineModal?.();
+    }
 
     const r = U.pq.getState();
     if (!r.netOk) return U.ui.toast('Нет доступа к сети', 'warning');
