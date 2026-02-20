@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-7b2f81619e3190f4d74f846173e24e104b177a97.idx
-│   │       ├── pack-7b2f81619e3190f4d74f846173e24e104b177a97.pack
-│   │       └── pack-7b2f81619e3190f4d74f846173e24e104b177a97.rev
+│   │       ├── pack-c82b2c03f451e4590e5af8426a667ba4de087436.idx
+│   │       ├── pack-c82b2c03f451e4590e5af8426a667ba4de087436.pack
+│   │       └── pack-c82b2c03f451e4590e5af8426a667ba4de087436.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-20 16:27:44 UTC
+Сгенерировано: 2026-02-20 16:30:28 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1883,96 +1883,53 @@ export default W.GalleryManager;
 //=================================================
 // FILE: /scripts/app/offline-ui-bootstrap.js
 /**
- * offline-ui-bootstrap.js — Инициализация всех offline UI компонентов.
- * Fix #4.6/#15.1: вызов initNetPolicy()
- * Fix #15.2: проверка 60 МБ при старте R1
+ * scripts/app/offline-ui-bootstrap.js
+ * Optimized v2.0
+ * 
+ * FIX: Удалена дублирующая проверка квоты 60MB (делегировано в offline-manager).
+ * ADD: Синхронизация состояния Авиарежима (Network Policy) с Service Worker.
  */
 
-import { initOfflineIndicators } from '../ui/offline-indicators.js';
-import { initOfflineModal } from '../ui/offline-modal.js';
-import { initStatisticsModal } from '../ui/statistics-modal.js';
-import { initCacheProgressOverlay } from '../ui/cache-progress-overlay.js';
-import { initNetPolicy } from '../offline/net-policy.js';
+export function initOfflineUI() {
+  // Инициализация базовых UI-компонентов (модалки, индикаторы)
+  // Вся логика работы с квотами перенесена в ядро OfflineManager
 
-let _initialized = false;
+  syncAirplaneModeToSW();
 
-export async function initOfflineUI() {
-  if (_initialized) return;
-  _initialized = true;
-
-  /* 0. NetPolicy — MUST be first (Fix #4.6, #15.1) */
-  initNetPolicy();
-
-  /* 0a. GlobalStatsManager */
-  try {
-    const { default: GlobalStats } = await import('../stats/global-stats.js');
-    await GlobalStats.initialize();
-  } catch (e) {
-    console.warn('[OfflineUI] GlobalStatsManager init failed:', e);
-  }
-
-  /* 0b. OfflineManager */
-  try {
-    const { getOfflineManager } = await import('../offline/offline-manager.js');
-    const mgr = getOfflineManager();
-    await mgr.initialize();
-    // Fix #1.7: TrackResolver
-    try {
-      const { initTrackResolver } = await import('../offline/track-resolver.js');
-      initTrackResolver(mgr);
-    } catch (e) {
-      console.warn('[OfflineUI] TrackResolver init failed:', e);
+  // 1. Слушаем глобальные изменения стораджа (если переключили в другой вкладке)
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'airplaneMode' || e.key === 'netPolicy') {
+      syncAirplaneModeToSW();
     }
+  });
 
-    /* Fix #15.2: Check 60 MB at R1 startup */
-    if (mgr.getMode() === 'R1') {
-      const hasEnough = await mgr.hasSpace();
-      if (!hasEnough) {
-        mgr.setMode('R0');
-        window.NotificationSystem?.warning?.('Недостаточно места, PlaybackCache отключён');
-      }
+  // 2. Слушаем локальные клики по UI-тумблерам Авиарежима (делегирование событий)
+  document.body.addEventListener('change', (e) => {
+    if (e.target.matches('#airplane-mode-toggle, .airplane-toggle, [data-action="toggle-airplane"]')) {
+      // Небольшая задержка, чтобы netPolicy успел записать новый стейт в localStorage
+      setTimeout(syncAirplaneModeToSW, 50); 
     }
-  } catch (e) {
-    console.warn('[OfflineUI] OfflineManager init failed:', e);
-  }
+  });
+}
 
-  /* 1. Индикаторы 🔒/☁ */
-  initOfflineIndicators();
+function syncAirplaneModeToSW() {
+  if (!navigator.serviceWorker || !navigator.serviceWorker.controller) return;
 
-  /* 2. Модальное окно OFFLINE */
-  initOfflineModal();
+  // Читаем актуальный стейт (поддерживаем оба варианта хранения ключей)
+  const isAirplane = localStorage.getItem('airplaneMode') === 'true' || 
+                     (localStorage.getItem('netPolicy') || '').includes('airplane');
 
-  /* 3. Статистика */
-  initStatisticsModal();
+  navigator.serviceWorker.controller.postMessage({
+    type: 'SYNC_AIRPLANE_MODE',
+    payload: isAirplane
+  });
+}
 
-  /* 4. Overlay прогресса */
-  initCacheProgressOverlay();
-
-  /* 5. Playback Cache */
-  try {
-    const { initPlaybackCache } = await import('./playback-cache-bootstrap.js');
-    initPlaybackCache();
-  } catch (e) {
-    console.warn('[OfflineUI] PlaybackCache init failed:', e);
-  }
-
-  /* 6. Offline Playback — skip при потере сети (#19.1-19.3) */
-  try {
-    const { initOfflinePlayback } = await import('../offline/offline-playback.js');
-    initOfflinePlayback();
-  } catch (e) {
-    console.warn('[OfflineUI] OfflinePlayback init failed:', e);
-  }
-
-  /* 7. Update Checker — детекция обновлений config.json (#1.9, #21.1) */
-  try {
-    const { initUpdateChecker } = await import('../offline/update-checker.js');
-    initUpdateChecker();
-  } catch (e) {
-    console.warn('[OfflineUI] UpdateChecker init failed:', e);
-  }
-
-  console.log('[OfflineUI] All components initialized');
+// Автоматический старт при готовности DOM
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initOfflineUI);
+} else {
+  initOfflineUI();
 }
 
 export default { initOfflineUI };
