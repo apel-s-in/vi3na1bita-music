@@ -256,10 +256,10 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
           const liked = Favorites.toggle(u, { source: src, albumKey: opts.albumKey });
           this._emitFav(u, liked, opts.albumKey);
 
-          // ONLY allowed STOP scenario
+          // ONLY allowed STOP scenario: единственный active снят в favorites view
           if (!liked && src === 'favorites' && isFavPlaying && this.getCurrentTrackUid() === u) {
             if (!Favorites.getSnapshot().some(i => !i.inactiveAt)) this.stop();
-            else if (!this.flags.rep) this.next();
+            else this.next(); // ТЗ: inactive трек ВСЕГДА переключается на next, даже при repeat
           }
           return { liked };
         }
@@ -311,9 +311,10 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
           const curUid = this.getCurrentTrackUid();
           const nIdx = Math.max(0, tgt.findIndex(t => t.uid === curUid));
-         this.shufHist = []; // очищаем историю при изменении набора треков
+          this.shufHist = [];
           const preserve = nIdx === this.currentIndex && tgt[nIdx]?.uid === curUid;
-          this.setPlaylist(tgt, nIdx, {}, { preserveOriginalPlaylist: true, preserveShuffleMode: true, preservePosition: preserve });
+          // ТЗ: при F ON/OFF shuffle-порядок ДОЛЖЕН пересобираться
+          this.setPlaylist(tgt, nIdx, {}, { preserveOriginalPlaylist: true, preserveShuffleMode: false, preservePosition: preserve });
           W.PlayerUI?.updatePlaylistFiltering?.();
       } finally { this._applyingFilter = false; }
     }
