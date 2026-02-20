@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9c4ec552467f06dfc9a27bb59816546eae4605dd.idx
-│   │       ├── pack-9c4ec552467f06dfc9a27bb59816546eae4605dd.pack
-│   │       └── pack-9c4ec552467f06dfc9a27bb59816546eae4605dd.rev
+│   │       ├── pack-e4d4629806ca33a65485fc97a939f83ad0fb9fe6.idx
+│   │       ├── pack-e4d4629806ca33a65485fc97a939f83ad0fb9fe6.pack
+│   │       └── pack-e4d4629806ca33a65485fc97a939f83ad0fb9fe6.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,7 +377,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-20 21:34:27 UTC
+Сгенерировано: 2026-02-20 21:35:10 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2935,7 +2935,7 @@ export class FavoritesManager {
     if (act) {
       source === 'favorites' ? this._map.set(u, { ...i, inactiveAt: Date.now() }) : this._map.delete(u);
     } else {
-      this._map.set(u, { uid: u, addedAt: i?.addedAt || Date.now(), albumKey: albumKey || i?.albumKey || null, inactiveAt: null });
+      this._map.set(u, { uid: u, addedAt: i?.addedAt || Date.now(), albumKey: albumKey || i?.albumKey || null, sourceAlbum: albumKey || i?.albumKey || i?.sourceAlbum || null, inactiveAt: null });
       isL = true;
     }
     
