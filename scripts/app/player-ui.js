@@ -146,7 +146,14 @@
       if (!dom.mini) {
         dom.mini = D.getElementById('mini-header-template').content.cloneNode(true).querySelector('#mini-now');
         dom.mini.onclick = e => {
-          if (e.target.id === 'mini-now-star') { e.stopPropagation(); const t = PC().getCurrentTrack(); if(t?.uid) PC().toggleFavorite(t.uid, { fromAlbum: true, albumKey: t.sourceAlbum }); syncUI(); }
+                  if (e.target.id === 'mini-now-star') { e.stopPropagation();
+                  const t = PC().getCurrentTrack(); 
+                  if(t?.uid) {
+                    const isFav = W.AlbumsManager?.getPlayingAlbum?.() === W.SPECIAL_FAVORITES_KEY;
+                    PC().toggleFavorite(t.uid, { source: isFav ? 'favorites' : 'album', albumKey: t.sourceAlbum });
+                  }
+                  syncUI();
+                }
           else { const pk = W.AlbumsManager?.getPlayingAlbum?.(); if(pk) W.AlbumsManager.loadAlbum(pk); }
         };
         dom.nUp = D.getElementById('next-up-template').content.cloneNode(true).querySelector('#next-up');
@@ -203,13 +210,19 @@
         'pulse-btn': togglePulse,
         'stats-btn': () => W.StatisticsModal?.openStatisticsModal?.(),
         'favorites-btn': () => {
-          const nxt = !U.lsGetBool01('favoritesOnlyMode'), pa = W.AlbumsManager?.getPlayingAlbum?.();
-          if (nxt && pa !== W.SPECIAL_FAVORITES_KEY && !PC().getLikedUidsForAlbum(pa)?.length) return U.ui.toast('Отметьте понравившийся трек ⭐', 'info');
-          U.lsSetBool01('favoritesOnlyMode', nxt);
-          W.PlaybackPolicy?.apply?.({ reason: 'toggle' });
-          W.PlayerUI.updateAvailableTracksForPlayback();
-          syncUI(); U.ui.toast(nxt ? '⭐ Только избранные' : 'Играют все треки', nxt ? 'success' : 'info');
-        }
+                  const nxt = !U.lsGetBool01('favoritesOnlyMode'), pa = W.AlbumsManager?.getPlayingAlbum?.();
+                  if (nxt) {
+                    if (pa === W.SPECIAL_FAVORITES_KEY && !PC().getFavoritesState().active.length) {
+                      return U.ui.toast('Отметьте понравившийся трек ⭐', 'info');
+                    } else if (pa !== W.SPECIAL_FAVORITES_KEY && !PC().getLikedUidsForAlbum(pa)?.length) {
+                      return U.ui.toast('Отметьте понравившийся трек ⭐', 'info');
+                    }
+                  }
+                  U.lsSetBool01('favoritesOnlyMode', nxt);
+                  PC().applyFavoritesOnlyFilter?.();
+                  W.PlayerUI.updateAvailableTracksForPlayback();
+                  syncUI(); U.ui.toast(nxt ? '⭐ Только избранные' : 'Играют все треки', nxt ? 'success' : 'info');
+                }
       })[b.id]?.();
     });
 
@@ -226,7 +239,7 @@
 
     PC().on({
       onPlay: syncUI, onPause: syncUI, onStop: syncUI, onEnd: syncUI,
-      onTrackChange: (t, i) => { W.__lastStatsSec = -1; W.AlbumsManager?.highlightCurrentTrack?.(t?.uid ? -1 : i, t?.uid ? { uid: t.uid, albumKey: t.sourceAlbum } : {}); ensurePlayerBlock(i); W.LyricsController?.onTrackChange?.(t); syncUI(); },
+      onTrackChange: (t, i) => { W.AlbumsManager?.highlightCurrentTrack?.(t?.uid ? -1 : i, t?.uid ? { uid: t.uid, albumKey: t.sourceAlbum } : {}); ensurePlayerBlock(i); W.LyricsController?.onTrackChange?.(t); syncUI(); },
       onTick: (pos, dur) => { 
         if (!st.seeking) {
           if(dom.fill) dom.fill.style.width = `${dur > 0 ? (pos/dur)*100 : 0}%`;
@@ -237,8 +250,21 @@
       }
     });
 
-    PC().onFavoritesChanged(syncUI);
-    ['offline:uiChanged', 'online', 'offline'].forEach(e => W.addEventListener(e, syncUI));
+    PC().onFavoritesChanged(() => {
+          const pAlbum = W.AlbumsManager?.getPlayingAlbum?.();
+          if (pAlbum === W.SPECIAL_FAVORITES_KEY || U.lsGetBool01('favoritesOnlyMode')) {
+            PC().applyFavoritesOnlyFilter?.();
+            W.PlayerUI?.updateAvailableTracksForPlayback?.();
+          }
+          syncUI();
+        });
+        W.addEventListener('playlist:changed', () => {
+          const pAlbum = W.AlbumsManager?.getPlayingAlbum?.();
+          if (pAlbum === W.SPECIAL_FAVORITES_KEY || U.lsGetBool01('favoritesOnlyMode')) {
+            PC().applyFavoritesOnlyFilter?.();
+          }
+        });
+        ['offline:uiChanged', 'online', 'offline'].forEach(e => W.addEventListener(e, syncUI));
     
     PC().setVolume(U.math.toInt(U.lsGet('playerVolume'), 100));
     if (viz.on) togglePulse(true);
