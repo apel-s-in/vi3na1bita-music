@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5329967908bb7d16164326d16b5bdc0bfd52d0df.idx
-│   │       ├── pack-5329967908bb7d16164326d16b5bdc0bfd52d0df.pack
-│   │       └── pack-5329967908bb7d16164326d16b5bdc0bfd52d0df.rev
+│   │       ├── pack-21eb7912e8628b12524d50af02d26064bfdd1551.idx
+│   │       ├── pack-21eb7912e8628b12524d50af02d26064bfdd1551.pack
+│   │       └── pack-21eb7912e8628b12524d50af02d26064bfdd1551.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -375,7 +375,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-20 22:17:23 UTC
+Сгенерировано: 2026-02-20 22:24:49 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3608,6 +3608,10 @@ export const getAllTrackMetas = async () => (await read('trackMeta', s => s.getA
 
 /* ─── Convenience & Storage ─── */
 export const deleteTrackCache = async uid => { await deleteAudio(uid); await deleteTrackMeta(uid); };
+
+/* ─── Global KV store (offlineCache/global) ─── */
+export const getGlobal = (key) => read('global', s => s.get(String(key)));
+export const setGlobal = (key, value) => write('global', s => s.put({ key: String(key), value }));
 
 export const estimateUsage = async () => {
   try {
