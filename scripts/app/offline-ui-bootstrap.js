@@ -3,32 +3,21 @@
  * Optimized Bridge for Network Policy & Service Worker.
  * FIX: Syncs TRUE airplane mode from NetPolicy to SW. Eliminates dead DOM listeners.
  */
-export function initOfflineUI() {
-  const syncAirplaneModeToSW = () => {
-    if (!navigator.serviceWorker || !navigator.serviceWorker.controller) return;
-    
-    // The source of truth is NetPolicy (if available), fallback to offline status
-    const isAirplane = window.NetPolicy 
-      ? window.NetPolicy.getNetPolicyState().airplaneMode 
-      : !navigator.onLine;
-
-    navigator.serviceWorker.controller.postMessage({
-      type: 'SYNC_AIRPLANE_MODE',
-      payload: isAirplane
-    });
+export async function initOfflineUI() {
+  // 1. Синхронизация Авиарежима с Service Worker
+  const sync = () => {
+    const isAir = window.NetPolicy ? window.NetPolicy.getNetPolicyState().airplaneMode : !navigator.onLine;
+    navigator.serviceWorker?.controller?.postMessage({ type: 'SYNC_AIRPLANE_MODE', payload: isAir });
   };
+  ['netPolicy:changed', 'online', 'offline'].forEach(e => window.addEventListener(e, sync));
+  sync();
 
-  // Spec 9.5: Listen to the correct global event emitted by net-policy.js
-  window.addEventListener('netPolicy:changed', syncAirplaneModeToSW);
-  window.addEventListener('online', syncAirplaneModeToSW);
-  window.addEventListener('offline', syncAirplaneModeToSW);
-
-  // Initial sync on load
-  if (document.readyState === 'complete') {
-    syncAirplaneModeToSW();
-  } else {
-    window.addEventListener('load', syncAirplaneModeToSW);
-  }
+  // 2. Инициализация UI-компонентов оффлайн-системы
+  try {
+    (await import('../ui/offline-indicators.js'))?.initOfflineIndicators?.();
+    (await import('../ui/offline-modal.js'))?.initOfflineModal?.();
+    (await import('../ui/cache-progress-overlay.js'))?.initCacheProgressOverlay?.();
+  } catch (e) { console.error('Offline UI init failed:', e); }
 }
 
 export default { initOfflineUI };
