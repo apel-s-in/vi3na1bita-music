@@ -58,6 +58,8 @@
     st.has = st.list.length > 0;
   }
 
+  const _pending = new Map();
+
   async function fetchL(url) {
     const u = String(url || '').trim();
     if (!u || c404.has(u)) return null;
@@ -66,19 +68,27 @@
     const cached = sess(k);
     if (cached) return (cached === NO_LYR) ? null : cached;
 
-    try {
-      const r = await fetch(u, { cache: 'force-cache', headers: { Accept: 'application/json' } });
-      if (!r.ok) { if (r.status === 404) c404.add(u); throw new Error(); }
-      const j = await r.json();
-      if (Array.isArray(j)) { sess(k, j); return j; }
-    } catch {
-      // CRITICAL FIX: Do not cache NO_LYR if network is down or blocked by NetPolicy
-      const netOk = W.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine;
-      if (!netOk) return null;
-    }
-    
-    sess(k, NO_LYR);
-    return null;
+    // Дедупликация запросов (убирает двойные 404 ошибки в консоли при инициализации трека)
+    if (_pending.has(u)) return _pending.get(u);
+
+    const p = (async () => {
+      try {
+        const r = await fetch(u, { cache: 'force-cache', headers: { Accept: 'application/json' } });
+        if (!r.ok) { if (r.status === 404) c404.add(u); throw new Error(); }
+        const j = await r.json();
+        if (Array.isArray(j)) { sess(k, j); return j; }
+      } catch {
+        const netOk = W.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine;
+        if (!netOk) return null;
+      }
+      sess(k, NO_LYR);
+      return null;
+    })();
+
+    _pending.set(u, p);
+    const res = await p;
+    _pending.delete(u);
+    return res;
   }
 
   function updateUI() {
@@ -155,7 +165,8 @@
   async function onTrackChange(t) {
     st.has = false; st.list = []; st.lIdx = -100;
     
-    if (!t?.lyrics || c404.has(t.lyrics)) return updateUI();
+    // Если явно указано что лирики нет (hasLyrics === false), даже не пытаемся качать
+    if (!t?.lyrics || t.hasLyrics === false || c404.has(t.lyrics)) return updateUI();
 
     if (st.prefUrl === t.lyrics && st.pref) {
       parse(st.pref); st.pref = null;
@@ -166,17 +177,7 @@
     }
     
     updateUI();
-    prefetchNext();
-  }
-
-  async function prefetchNext() {
-    st.pref = null; st.prefUrl = null;
-    const pc = W.playerCore;
-    const t = pc?.getPlaylistSnapshot?.()?.[pc?.getNextIndex?.()];
-    if (t?.lyrics) {
-      const d = await fetchL(t.lyrics);
-      if (d) { st.pref = d; st.prefUrl = t.lyrics; }
-    }
+    // prefetchNext удален для минимизации 404 логов для неиграющих треков
   }
 
   W.LyricsController = {
