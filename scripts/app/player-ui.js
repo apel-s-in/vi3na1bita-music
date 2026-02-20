@@ -279,9 +279,8 @@
     togglePlayPause: () => PC().isPlaying() ? PC().pause() : PC().play(),
     switchAlbumInstantly: () => { if (PC().getIndex() >= 0) ensurePlayerBlock(PC().getIndex()); },
     updateAvailableTracksForPlayback: () => {
-      const pa = W.AlbumsManager?.getPlayingAlbum?.();
-      W.availableFavoriteIndices = (pa !== W.SPECIAL_FAVORITES_KEY && U.lsGetBool01('favoritesOnlyMode')) 
-        ? (PC().getPlaylistSnapshot() || []).reduce((a, t, i) => PC().isFavorite(t.uid) ? [...a, i] : a, []) : null;
+      PC().applyFavoritesOnlyFilter?.();
+      syncUI();
     }
   };
 
