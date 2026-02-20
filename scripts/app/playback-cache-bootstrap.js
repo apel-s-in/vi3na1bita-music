@@ -84,3 +84,9 @@ export function initPlaybackCache() {
 export const protectWindow = () => { _protected = true; };
 export const unprotectWindow = () => { _protected = false; flushGC().catch(()=>{}); };
 export const getWindowState = () => ({ ..._win, protected: _protected, pendingGC: [..._pendingGC] });
+
+// Expose minimal API for other modules (OfflineManager eviction needs protected window, Q.11.1)
+window.PlaybackCache = window.PlaybackCache || {};
+window.PlaybackCache.getWindowState = getWindowState;
+window.PlaybackCache.protectWindow = protectWindow;
+window.PlaybackCache.unprotectWindow = unprotectWindow;
