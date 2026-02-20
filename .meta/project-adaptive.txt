@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-fa73dbbd1dda3453f5a7462ae722e5f030720451.idx
-│   │       ├── pack-fa73dbbd1dda3453f5a7462ae722e5f030720451.pack
-│   │       └── pack-fa73dbbd1dda3453f5a7462ae722e5f030720451.rev
+│   │       ├── pack-922d516cad2a3af26e7cc48252abfff724a166a0.idx
+│   │       ├── pack-922d516cad2a3af26e7cc48252abfff724a166a0.pack
+│   │       └── pack-922d516cad2a3af26e7cc48252abfff724a166a0.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-20 13:20:25 UTC
+Сгенерировано: 2026-02-20 13:24:30 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5591,129 +5591,55 @@ export default { initUpdateChecker, checkForUpdates, countNeedsUpdate };
 // FILE: /scripts/stats/global-stats.js
 /**
  * global-stats.js — Самодостаточный модуль глобальной статистики.
+ * Optimized: DRY IndexedDB boilerplate removed.
  *
  * Полностью независим от OfflineManager, Pinned/Cloud.
  * Хранит данные в отдельном IndexedDB store 'globalStats'.
- * Никогда не сбрасывается (ни при смене качества, ни при удалении кэша,
- * ни при перекэшировании — ТЗ Часть 9).
- *
- * Данные:
- *   per-track: globalFullListenCount, globalListenSeconds
- *   aggregate: globalTotalListenSeconds (всё время по всем трекам)
- *
- * Экспорт:
- *   GlobalStatsManager (singleton)
- *   getGlobalStats()
+ * Никогда не сбрасывается.
  */
 
-const DB_NAME = 'globalStatsDB';
-const DB_VERSION = 1;
-const STORE_TRACKS = 'tracks';     // per-track stats
-const STORE_AGGREGATE = 'aggregate'; // global aggregates
-
-let _db = null;
-let _dbPending = null;
-let _ready = false;
-
-/* ─── Tick batch (аккумулятор секунд, flush каждые 30 сек) ─── */
+let _db = null, _dbPending = null, _ready = false;
 let _tickBatch = { uid: null, sec: 0, timer: null };
 
-/* ═══════ IndexedDB ═══════ */
-
-async function openDB() {
-  if (_db) return _db;
+const openDB = () => {
+  if (_db) return Promise.resolve(_db);
   if (_dbPending) return _dbPending;
-
-  _dbPending = new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-
+  return (_dbPending = new Promise((res, rej) => {
+    const req = indexedDB.open('globalStatsDB', 1);
     req.onupgradeneeded = (e) => {
       const db = e.target.result;
-
-      if (!db.objectStoreNames.contains(STORE_TRACKS)) {
-        db.createObjectStore(STORE_TRACKS, { keyPath: 'uid' });
-      }
-
-      if (!db.objectStoreNames.contains(STORE_AGGREGATE)) {
-        db.createObjectStore(STORE_AGGREGATE, { keyPath: 'key' });
-      }
+      if (!db.objectStoreNames.contains('tracks')) db.createObjectStore('tracks', { keyPath: 'uid' });
+      if (!db.objectStoreNames.contains('aggregate')) db.createObjectStore('aggregate', { keyPath: 'key' });
     };
+    req.onsuccess = () => { _db = req.result; _dbPending = null; res(_db); };
+    req.onerror = () => { _dbPending = null; console.warn('[GlobalStats] DB error:', req.error); rej(req.error); };
+  }));
+};
 
-    req.onsuccess = () => {
-      _db = req.result;
-      _dbPending = null;
-      resolve(_db);
-    };
+const db = () => { if (!_db) throw new Error('[GlobalStats] DB not opened'); return _db; };
 
-    req.onerror = () => {
-      _dbPending = null;
-      console.warn('[GlobalStats] DB open error:', req.error);
-      reject(req.error);
-    };
-  });
+const read = (store, fn) => new Promise((res, rej) => {
+  const r = fn(db().transaction(store, 'readonly').objectStore(store));
+  r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+});
 
-  return _dbPending;
-}
+const write = (store, fn) => new Promise((res, rej) => {
+  const tx = db().transaction(store, 'readwrite');
+  fn(tx.objectStore(store));
+  tx.oncomplete = () => res(true); tx.onerror = () => rej(tx.error);
+});
 
-function db() {
-  if (!_db) throw new Error('[GlobalStats] DB not opened. Call initialize() first.');
-  return _db;
-}
+/* ─── Helpers ─── */
+const getTrackStats = uid => read('tracks', s => s.get(uid));
+const putTrackStats = data => write('tracks', s => s.put(data));
+const getAllTrackStats = () => read('tracks', s => s.getAll());
+const getAggregate = async key => (await read('aggregate', s => s.get(key)))?.value ?? 0;
+const putAggregate = (key, value) => write('aggregate', s => s.put({ key, value }));
 
-/* ─── Per-track store helpers ─── */
-
-async function getTrackStats(uid) {
-  return new Promise((resolve, reject) => {
-    const tx = db().transaction(STORE_TRACKS, 'readonly');
-    const req = tx.objectStore(STORE_TRACKS).get(uid);
-    req.onsuccess = () => resolve(req.result || null);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-async function putTrackStats(data) {
-  return new Promise((resolve, reject) => {
-    const tx = db().transaction(STORE_TRACKS, 'readwrite');
-    tx.objectStore(STORE_TRACKS).put(data);
-    tx.oncomplete = resolve;
-    tx.onerror = () => reject(tx.error);
-  });
-}
-
-async function getAllTrackStats() {
-  return new Promise((resolve, reject) => {
-    const tx = db().transaction(STORE_TRACKS, 'readonly');
-    const req = tx.objectStore(STORE_TRACKS).getAll();
-    req.onsuccess = () => resolve(req.result || []);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-/* ─── Aggregate store helpers ─── */
-
-async function getAggregate(key) {
-  return new Promise((resolve, reject) => {
-    const tx = db().transaction(STORE_AGGREGATE, 'readonly');
-    const req = tx.objectStore(STORE_AGGREGATE).get(key);
-    req.onsuccess = () => resolve(req.result?.value ?? 0);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-async function putAggregate(key, value) {
-  return new Promise((resolve, reject) => {
-    const tx = db().transaction(STORE_AGGREGATE, 'readwrite');
-    tx.objectStore(STORE_AGGREGATE).put({ key, value });
-    tx.oncomplete = resolve;
-    tx.onerror = () => reject(tx.error);
-  });
-}
-
-/* ═══════ Flush tick batch ═══════ */
+const _defaultTrackStats = uid => ({ uid, globalFullListenCount: 0, globalListenSeconds: 0, lastListenAt: null, firstListenAt: null });
 
 async function _flushTickBatch() {
   if (!_tickBatch.uid || _tickBatch.sec <= 0 || !_ready) return;
-
   const { uid, sec } = _tickBatch;
   _tickBatch.sec = 0;
   if (_tickBatch.timer) { clearTimeout(_tickBatch.timer); _tickBatch.timer = null; }
@@ -5723,148 +5649,75 @@ async function _flushTickBatch() {
     stats.globalListenSeconds = (stats.globalListenSeconds || 0) + sec;
     stats.lastListenAt = Date.now();
     await putTrackStats(stats);
-
-    /* Обновить aggregate globalTotalListenSeconds */
-    const total = (await getAggregate('globalTotalListenSeconds')) || 0;
-    await putAggregate('globalTotalListenSeconds', total + sec);
-  } catch (e) {
-    console.warn('[GlobalStats] flushTickBatch error:', e);
-  }
+    await putAggregate('globalTotalListenSeconds', (await getAggregate('globalTotalListenSeconds')) + sec);
+  } catch (e) { console.warn('[GlobalStats] flush error:', e); }
 }
 
-function _defaultTrackStats(uid) {
-  return {
-    uid,
-    globalFullListenCount: 0,
-    globalListenSeconds: 0,
-    lastListenAt: null,
-    firstListenAt: null
-  };
+function _emptyStats() {
+  return { totalListens: 0, totalSeconds: 0, totalDays: 0, totalHours: 0, totalMinutes: 0, tracksWithStats: 0, topTracks: [], allTracks: [] };
 }
 
 /* ═══════ Public API ═══════ */
-
 const GlobalStatsManager = {
-
-  /**
-   * Инициализация — открывает IndexedDB.
-   * Вызвать при старте приложения, до любых записей.
-   */
   async initialize() {
     if (_ready) return;
-    try {
-      await openDB();
-      _ready = true;
-      console.log('[GlobalStats] Initialized');
-    } catch (e) {
-      console.error('[GlobalStats] Init failed:', e);
-    }
+    try { await openDB(); _ready = true; console.log('[GlobalStats] Initialized'); } 
+    catch (e) { console.error('[GlobalStats] Init failed:', e); }
   },
 
-  /**
-   * Инкрементальная запись секунд прослушивания.
-   * Вызывается из stats-tracker.js каждую секунду.
-   * Батчинг: копим в памяти, flush каждые 30 сек или при смене трека.
-   */
   async recordTick(uid, { deltaSec = 1 } = {}) {
     if (!uid || !_ready) return;
-
-    /* Если uid сменился — flush старый */
-    if (_tickBatch.uid && _tickBatch.uid !== uid && _tickBatch.sec > 0) {
-      await _flushTickBatch();
-    }
-
+    if (_tickBatch.uid && _tickBatch.uid !== uid && _tickBatch.sec > 0) await _flushTickBatch();
     _tickBatch.uid = uid;
     _tickBatch.sec += deltaSec;
-
-    /* Flush каждые 30 секунд */
-    if (!_tickBatch.timer) {
-      _tickBatch.timer = setTimeout(() => _flushTickBatch(), 30000);
-    }
+    if (!_tickBatch.timer) _tickBatch.timer = setTimeout(_flushTickBatch, 30000);
   },
 
-  /**
-   * Регистрация полного прослушивания (full listen).
-   * ТЗ 9.2: Full listen = duration > 0 AND position/duration > 0.9
-   * Вызывается из stats-tracker.js при onEnded.
-   */
   async registerFullListen(uid, { duration, position } = {}) {
     if (!uid || !_ready) return;
-
-    const dur = Number(duration) || 0;
-    const pos = Number(position) || 0;
-    if (dur <= 0 || (pos / dur) < 0.9) return;
-
-    /* Flush pending ticks для этого трека */
-    if (_tickBatch.uid === uid && _tickBatch.sec > 0) {
-      await _flushTickBatch();
-    }
+    if ((Number(duration) || 0) <= 0 || ((Number(position) || 0) / duration) < 0.9) return;
+    if (_tickBatch.uid === uid && _tickBatch.sec > 0) await _flushTickBatch();
 
     try {
       const stats = (await getTrackStats(uid)) || _defaultTrackStats(uid);
       stats.globalFullListenCount = (stats.globalFullListenCount || 0) + 1;
-      // Audit Fix #25: Не добавляем секунды здесь, они уже учтены через recordTick
       stats.lastListenAt = Date.now();
       if (!stats.firstListenAt) stats.firstListenAt = Date.now();
       await putTrackStats(stats);
-
-      // Обновлять aggregate тоже не нужно, секунды пишутся отдельно
-    } catch (e) {
-      console.warn('[GlobalStats] registerFullListen error:', e);
-    }
+    } catch (e) { console.warn('[GlobalStats] fullListen error:', e); }
   },
 
-  /**
-   * Получить статистику одного трека.
-   */
   async getTrackStats(uid) {
     if (!_ready) return _defaultTrackStats(uid);
-    try {
-      return (await getTrackStats(uid)) || _defaultTrackStats(uid);
-    } catch {
-      return _defaultTrackStats(uid);
-    }
+    try { return (await getTrackStats(uid)) || _defaultTrackStats(uid); } catch { return _defaultTrackStats(uid); }
   },
 
-  /**
-   * Получить полную глобальную статистику для модалки.
-   * ТЗ 9.4: показывать треки с globalFullListenCount >= 3.
-   */
   async getStatistics() {
     if (!_ready) return _emptyStats();
-
     try {
       const allTracks = await getAllTrackStats();
-      const totalSeconds = (await getAggregate('globalTotalListenSeconds')) || 0;
-
+      const totalSeconds = await getAggregate('globalTotalListenSeconds');
       let totalListens = 0;
       const perTrack = [];
 
       for (const t of allTracks) {
-        const listens = t.globalFullListenCount || 0;
-        const seconds = t.globalListenSeconds || 0;
-        totalListens += listens;
-
-        /* ТЗ 9.4: только треки с >= 3 полных прослушиваний */
-        if (listens >= 3) {
-          const trackData = window.TrackRegistry?.getTrackByUid?.(t.uid);
+        totalListens += (t.globalFullListenCount || 0);
+        if ((t.globalFullListenCount || 0) >= 3) {
           perTrack.push({
             uid: t.uid,
-            title: trackData?.title || t.uid,
-            listens,
-            seconds,
+            title: window.TrackRegistry?.getTrackByUid?.(t.uid)?.title || t.uid,
+            listens: t.globalFullListenCount,
+            seconds: t.globalListenSeconds || 0,
             lastListenAt: t.lastListenAt,
             firstListenAt: t.firstListenAt
           });
         }
       }
 
-      /* Сортировка: самые прослушиваемые сверху */
       perTrack.sort((a, b) => b.listens - a.listens);
 
       return {
-        totalListens,
-        totalSeconds,
+        totalListens, totalSeconds,
         totalDays: Math.floor(totalSeconds / 86400),
         totalHours: Math.floor((totalSeconds % 86400) / 3600),
         totalMinutes: Math.floor((totalSeconds % 3600) / 60),
@@ -5878,33 +5731,11 @@ const GlobalStatsManager = {
     }
   },
 
-  /**
-   * Принудительный flush (при смене трека, при закрытии приложения).
-   */
-  async flush() {
-    await _flushTickBatch();
-  },
-
-  /** Проверка готовности */
+  async flush() { await _flushTickBatch(); },
   isReady() { return _ready; }
 };
 
-function _emptyStats() {
-  return {
-    totalListens: 0,
-    totalSeconds: 0,
-    totalDays: 0,
-    totalHours: 0,
-    totalMinutes: 0,
-    tracksWithStats: 0,
-    topTracks: [],
-    allTracks: []
-  };
-}
-
-/* Глобальный доступ */
 window.GlobalStatsManager = GlobalStatsManager;
-
 export function getGlobalStats() { return GlobalStatsManager; }
 export default GlobalStatsManager;
 
