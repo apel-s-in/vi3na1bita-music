@@ -144,17 +144,17 @@
     lsGetJson: (k, d = null) => U.obj.safeJson(k, d)
   };
   
-  // ESM-compatible exports via window
-  W.AppUtils = {
-    $: U.$,
-    toStr: (v) => (v == null ? '' : String(v)),
-    isMobileUA: U.isMobile,
-    escHtml: U.escapeHtml
-  };
-  
   // Safe Global Aliases
   U.escapeHtml = U.ui.escapeHtml;
   U.isMobile = () => U.getPlatform().isIOS || U.getPlatform().isAndroid;
+  
+  // ESM-compatible exports via window (ПОСЛЕ определения U.isMobile и U.escapeHtml)
+  W.AppUtils = {
+    $: U.$,
+    toStr: (v) => (v == null ? '' : String(v)),
+    isMobileUA: () => U.isMobile(),  // Замыкание, а не прямая ссылка
+    escHtml: (s) => U.escapeHtml(s)  // Замыкание, а не прямая ссылка
+  };
   U.waitFor = async (fn, t = 2000) => { for (let i = 0; i < t / 50; i++) { if (fn()) return true; await new Promise(r => setTimeout(r, 50)); } return !!fn(); };
   U.onceEvent = (el, ev, { timeoutMs } = {}) => new Promise(r => { const h = () => { el.removeEventListener(ev, h); r(); }; el.addEventListener(ev, h, { once: true }); if (timeoutMs) setTimeout(h, timeoutMs); });
 
