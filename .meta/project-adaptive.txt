@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-320ff1e3e74d1c517eb0bbf9c6cda3ebcb0b2190.idx
-│   │       ├── pack-320ff1e3e74d1c517eb0bbf9c6cda3ebcb0b2190.pack
-│   │       └── pack-320ff1e3e74d1c517eb0bbf9c6cda3ebcb0b2190.rev
+│   │       ├── pack-19e3f3a575203a6eda57d1a7a25bf6e998caefba.idx
+│   │       ├── pack-19e3f3a575203a6eda57d1a7a25bf6e998caefba.pack
+│   │       └── pack-19e3f3a575203a6eda57d1a7a25bf6e998caefba.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -375,7 +375,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-20 21:45:17 UTC
+Сгенерировано: 2026-02-20 21:46:25 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1144,7 +1144,7 @@ const STATIC_ASSETS = [
   './scripts/app/player-ui.js', './scripts/app/albums.js',
   './scripts/app.js', './src/PlayerCore.js',
   './src/player-core/media-session.js', './src/player-core/stats-tracker.js',
-  './scripts/app/track-registry.js', './scripts/app/utils/app-utils.js',
+  './scripts/app/track-registry.js',
   './scripts/core/favorites-manager.js',
   './scripts/app/offline-ui-bootstrap.js', './scripts/app/playback-cache-bootstrap.js',
   './scripts/stats/global-stats.js'
