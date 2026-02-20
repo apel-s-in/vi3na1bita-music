@@ -21,7 +21,23 @@
     }
     W.albumsIndex = W.albumsIndex || [];
 
-    try { await (await import('./app/offline-ui-bootstrap.js'))?.initOfflineUI?.(); } catch (e) { console.error(e); }
+    try {
+      // Инициализация оффлайн-ядра и связанных модулей
+      const net = await import('./offline/net-policy.js');
+      net.initNetPolicy?.();
+      
+      await (await import('./app/offline-ui-bootstrap.js'))?.initOfflineUI?.();
+      
+      const offMgr = await import('./offline/offline-manager.js');
+      const resolver = await import('./offline/track-resolver.js');
+      await offMgr.default.initialize();
+      resolver.initTrackResolver(offMgr.default);
+      
+      await (await import('./app/playback-cache-bootstrap.js'))?.initPlaybackCache?.();
+      
+      const gStats = await import('./stats/global-stats.js');
+      await gStats.default.initialize();
+    } catch (e) { console.error('Offline/Stats init failed:', e); }
 
     const run = (n) => W[n]?.initialize();
     if (await waitObj('GalleryManager')) run('GalleryManager');
