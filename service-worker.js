@@ -6,7 +6,7 @@ const SW_VERSION = '8.1.6';
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
 const RUNTIME_CACHE = `vitrina-runtime-v${SW_VERSION}`;
-const MEDIA_CACHE = `vitrina-media-v${SW_VERSION}`;
+const MEDIA_CACHE = `vitrina-media-v${SW_VERSION}`; // Reserved: audio cached via IndexedDB, not SW
 const OFFLINE_CACHE = `vitrina-offline-v${SW_VERSION}`;
 const META_CACHE = `vitrina-meta-v${SW_VERSION}`;
 
@@ -34,6 +34,9 @@ const STATIC_ASSETS = [
   './scripts/ui/cache-progress-overlay.js', './scripts/ui/statistics-modal.js',
   './scripts/app/player-ui.js', './scripts/app/albums.js',
   './scripts/app.js', './src/PlayerCore.js',
+  './src/player-core/media-session.js', './src/player-core/stats-tracker.js',
+  './scripts/app/track-registry.js', './scripts/app/utils/app-utils.js',
+  './scripts/core/favorites-manager.js',
   './scripts/app/offline-ui-bootstrap.js', './scripts/app/playback-cache-bootstrap.js',
   './scripts/stats/global-stats.js'
 ];
