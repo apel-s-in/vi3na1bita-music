@@ -74,7 +74,7 @@ test('favoritesOnly: unliking current track switches to next (no stop)', async (
   expect(after.uid).not.toBe(before.uid);
 });
 
-test('repeat has priority: favoritesOnly + repeat + unliking current keeps repeating', async ({ page }) => {
+test('favoritesOnly + repeat: unliking current track still switches to next in favorites rules', async ({ page }) => {
   await loginByPromo(page);
 
   await page.waitForSelector('#track-list .track', { timeout: 10000 });
@@ -93,23 +93,22 @@ test('repeat has priority: favoritesOnly + repeat + unliking current keeps repea
   await expect(page.locator('#repeat-btn')).toHaveClass(/active/);
 
   const before = await page.evaluate(() => ({
-    idx: window.playerCore?.getIndex?.() ?? -1,
-    uid: String(window.playerCore?.getCurrentTrack?.()?.uid || ''),
-    repeat: !!window.playerCore?.isRepeat?.()
+    playing: !!window.playerCore?.isPlaying?.(),
+    uid: String(window.playerCore?.getCurrentTrack?.()?.uid || '')
   }));
-  expect(before.repeat).toBeTruthy();
 
   // Снимем лайк с текущего трека
   await firstRow.locator('.like-star').click();
   await page.waitForTimeout(300);
 
-  // По правилу: repeat игнорирует фильтр и продолжает на том же треке
   const after = await page.evaluate(() => ({
-    idx: window.playerCore?.getIndex?.() ?? -1,
+    playing: !!window.playerCore?.isPlaying?.(),
     uid: String(window.playerCore?.getCurrentTrack?.()?.uid || '')
   }));
 
-  expect(after.uid).toBe(before.uid);
+  // ТЗ: в правилах Избранного текущий трек при снятии ⭐ становится inactive и переключает на следующий active.
+  expect(after.uid).not.toBe(before.uid);
+  expect(after.playing).toBeTruthy();
 });
 
 test('favoritesOnly + shuffle: liking another track adds it to tail of queue', async ({ page }) => {
