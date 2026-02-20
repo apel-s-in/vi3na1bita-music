@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f52f9e019d898aab5ca16c87b4c24b6788f21396.idx
-│   │       ├── pack-f52f9e019d898aab5ca16c87b4c24b6788f21396.pack
-│   │       └── pack-f52f9e019d898aab5ca16c87b4c24b6788f21396.rev
+│   │       ├── pack-2d7811f986c09d9d218d27378cb0fe4208ae8212.idx
+│   │       ├── pack-2d7811f986c09d9d218d27378cb0fe4208ae8212.pack
+│   │       └── pack-2d7811f986c09d9d218d27378cb0fe4208ae8212.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,7 +377,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-20 20:51:54 UTC
+Сгенерировано: 2026-02-20 20:58:31 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6383,6 +6383,9 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     Favorites.getSnapshot().filter(i => !i.inactiveAt && uidOf(getTrackByUid(i.uid)?.sourceAlbum) === k).map(i => i.uid) : []; }
     
         applyFavoritesOnlyFilter() {
+          if (this._applyingFilter) return;
+          this._applyingFilter = true;
+          try {
           const pAlbum = W.AlbumsManager?.getPlayingAlbum?.();
           const isFavOnly = localStorage.getItem('favoritesOnlyMode') === '1';
           const src = this.originalPlaylist || [];
@@ -6402,10 +6405,12 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
           const curUid = this.getCurrentTrackUid();
           const nIdx = Math.max(0, tgt.findIndex(t => t.uid === curUid));
+         this.shufHist = []; // очищаем историю при изменении набора треков
           const preserve = nIdx === this.currentIndex && tgt[nIdx]?.uid === curUid;
           this.setPlaylist(tgt, nIdx, {}, { preserveOriginalPlaylist: true, preserveShuffleMode: true, preservePosition: preserve });
           W.PlayerUI?.updatePlaylistFiltering?.();
-        }
+      } finally { this._applyingFilter = false; }
+    }
 
         onFavoritesChanged(cb) { this._favSubs.add(cb);
     return () => this._favSubs.delete(cb); }
