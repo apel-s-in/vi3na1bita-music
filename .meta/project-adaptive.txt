@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d0850e27559ff66113e8d4b8687feeb32a642d7c.idx
-│   │       ├── pack-d0850e27559ff66113e8d4b8687feeb32a642d7c.pack
-│   │       └── pack-d0850e27559ff66113e8d4b8687feeb32a642d7c.rev
+│   │       ├── pack-b012357f0ed6b97a346c3cb6647ffe82985bc1cf.idx
+│   │       ├── pack-b012357f0ed6b97a346c3cb6647ffe82985bc1cf.pack
+│   │       └── pack-b012357f0ed6b97a346c3cb6647ffe82985bc1cf.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -375,7 +375,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-20 21:57:31 UTC
+Сгенерировано: 2026-02-20 22:16:02 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1910,12 +1910,19 @@ export const getWindowState = () => ({ ..._win, protected: _protected, pendingGC
     if (dom.vHandle) dom.vHandle.style.left = `${Math.max(2, Math.min(98, v))}%`;
     if (dom.vSlider) dom.vSlider.value = v;
 
-    // Quality (PQ) — v1.0: единое качество qualityMode:v1 (R2 не используется)
+    // Quality button behavior:
+    // - R0/R1: PQ (qualityMode:v1)
+    // - R2:   CQ (offline:cacheQuality:v1), click opens OFFLINE modal (Q.4.3)
     if (dom.pqBtn) {
       dom.pqBtn.style.display = '';
-      const effQ = pq.mode;
-      dom.pqBtn.className = `player-control-btn ${!pq.netOk ? 'disabled' : `pq-${effQ}`} ${!pq.canToggleByTrack ? 'disabled-soft' : ''}`;
-      dom.pqBtn.setAttribute('aria-disabled', !pq.netOk || !pq.canToggleByTrack);
+
+      const isR2 = mgr?.getMode?.() === 'R2';
+      const effQ = isR2 ? (mgr?.getCQ?.() || 'hi') : pq.mode;
+
+      const ariaDisabled = isR2 ? false : (!pq.netOk || !pq.canToggleByTrack);
+      dom.pqBtn.className = `player-control-btn ${ariaDisabled ? 'disabled' : `pq-${effQ}`}`;
+      dom.pqBtn.setAttribute('aria-disabled', ariaDisabled);
+
       if (dom.pqLbl) dom.pqLbl.textContent = effQ === 'lo' ? 'Lo' : 'Hi';
     }
 
@@ -1927,7 +1934,14 @@ export const getWindowState = () => ({ ..._win, protected: _protected, pendingGC
 
   // 2. Playback Quality Logic (Strict R1/R2 Spec)
   async function onPQClick() {
-    const mgr = W.OfflineManager, c = PC();
+    const mgr = W.OfflineManager;
+    const c = PC();
+    const isR2 = mgr?.getMode?.() === 'R2';
+
+    // R2: PQ button is CQ entrypoint (Q.4.3)
+    if (isR2) {
+      return W.Modals?.openOfflineModal?.();
+    }
 
     const r = U.pq.getState();
     if (!r.netOk) return U.ui.toast('Нет доступа к сети', 'warning');
