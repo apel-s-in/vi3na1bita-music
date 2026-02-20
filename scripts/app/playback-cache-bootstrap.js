@@ -68,8 +68,17 @@ export function initPlaybackCache() {
   window.addEventListener('player:trackChanged', r);
   window.addEventListener('playlist:changed', r);
   window.addEventListener('offline:uiChanged', r);
-  window.addEventListener('online', r);
+  
+  // Встроенная защита окна при потере сети (заменяет offline-playback.js)
+  const toggleNet = () => {
+    const isBlocked = !navigator.onLine || (window.NetPolicy && !window.NetPolicy.isNetworkAllowed());
+    isBlocked ? protectWindow() : unprotectWindow();
+    if (!isBlocked) r();
+  };
+  ['online', 'offline', 'netPolicy:changed'].forEach(e => window.addEventListener(e, toggleNet));
+  
   window.playerCore?.on?.({ onPlay: () => flushGC().catch(()=>{}) });
+  toggleNet();
 }
 
 export const protectWindow = () => { _protected = true; };
