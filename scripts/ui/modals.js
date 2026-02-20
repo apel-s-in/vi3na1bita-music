@@ -78,21 +78,6 @@
     return bg;
   }
 
-  function actionRow(actions = []) {
-    const arr = Array.isArray(actions) ? actions : [];
-    return `
-      <div class="om-actions">
-        ${arr.map((a) => {
-          const act = esc(a?.act || '');
-          const text = esc(a?.text || '');
-          const cls = esc(a?.className || '');
-          const style = esc(a?.style || '');
-          return `<button type="button" class="modal-action-btn ${cls}" data-act="${act}" style="${style}">${text}</button>`;
-        }).join('')}
-      </div>
-    `;
-  }
-
   function confirm(opts = {}) {
     const title = String(opts.title || 'Подтвердите');
     const textHtml = String(opts.textHtml || '');
@@ -106,10 +91,10 @@
         <div style="color:#9db7dd; line-height:1.45; margin-bottom:14px;">
           ${textHtml}
         </div>
-        ${actionRow([
-          { act: 'cancel', text: cancelText, className: '', style: 'min-width:130px;' },
-          { act: 'confirm', text: confirmText, className: 'online', style: 'min-width:130px;' }
-        ])}
+        <div class="om-actions">
+          <button type="button" class="modal-action-btn" data-act="cancel" style="min-width:130px;">${esc(cancelText)}</button>
+          <button type="button" class="modal-action-btn online" data-act="confirm" style="min-width:130px;">${esc(confirmText)}</button>
+        </div>
       `,
       onClose: opts.onClose
     });
@@ -130,7 +115,6 @@
   window.Modals = window.Modals || {};
   window.Modals.open = open;
   window.Modals.confirm = confirm;
-  window.Modals.actionRow = actionRow;
 
   // bridge: offlineBody берём из ModalTemplates, если есть
   Object.defineProperty(window.Modals, 'offlineBody', {
