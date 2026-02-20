@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3c0c28271b19f9c862e226e7b34d803c3dc6a135.idx
-│   │       ├── pack-3c0c28271b19f9c862e226e7b34d803c3dc6a135.pack
-│   │       └── pack-3c0c28271b19f9c862e226e7b34d803c3dc6a135.rev
+│   │       ├── pack-9122e5922e7dd61d7cdae541ede136e74effa5a6.idx
+│   │       ├── pack-9122e5922e7dd61d7cdae541ede136e74effa5a6.pack
+│   │       └── pack-9122e5922e7dd61d7cdae541ede136e74effa5a6.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-20 17:21:33 UTC
+Сгенерировано: 2026-02-20 19:09:26 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1653,7 +1653,6 @@ export async function loadNewsAlbum(ctx) {
 
 //=================================================
 // FILE: /scripts/app/gallery.js
-// scripts/app/gallery.js
 const W = window, D = document;
 const CACHE_404 = 'gallery_404_cache:v1';
 const MAP = { 
@@ -1664,21 +1663,12 @@ const BASE = './albums/gallery/';
 const LOGO = 'img/logo.png';
 
 const $ = (id) => D.getElementById(id);
-const ss = (k, v) => { 
-  try { 
-    if(v===undefined) return JSON.parse(sessionStorage.getItem(k)||'{}'); 
-    sessionStorage.setItem(k, JSON.stringify(v)); 
-  } catch(e){ return {}; } 
-};
+const ss = (k, v) => { try { if(v===undefined) return JSON.parse(sessionStorage.getItem(k)||'{}'); sessionStorage.setItem(k, JSON.stringify(v)); } catch(e){ return {}; } };
 
 class GalleryManager {
   constructor() {
-    this.it = [];
-    this.idx = 0;
-    this.tm = null;
-    this.lck = false;
-    this.pre = new Set();
-    this.ldr = null;
+    this.it = []; this.idx = 0; this.tm = null; this.lck = false;
+    this.pre = new Set(); this.ldr = null; this.flip = 0;
   }
 
   initialize() {
@@ -1697,155 +1687,93 @@ class GalleryManager {
         x = null;
       }, {passive:true});
     }
-
     D.addEventListener('visibilitychange', () => D.hidden ? this.stop() : (this.it.length > 1 && this.play()));
   }
 
   _id(k) { return (k && k !== '__favorites__' && MAP[k]) || null; }
 
   async loadGallery(key) {
-    this.stop();
-    this.it = [];
-    this.idx = 0;
-    
+    this.stop(); this.it = []; this.idx = 0;
     const id = this._id(key);
     const slot = $('cover-slot');
-    const setLogo = () => { if(slot) slot.innerHTML = `<img src="${LOGO}" alt="Cover" draggable="false">`; this._nav(); };
+    const setLogo = () => { if(slot) slot.innerHTML = `<img src="${LOGO}" alt="Cover" draggable="false" style="width:100%;height:100%;object-fit:contain">`; this._nav(); };
 
     if (!id || ss(CACHE_404)[id]) return setLogo();
 
     try {
       const dir = `${BASE}${id}/`;
       const r = await fetch(`${dir}index.json`, { cache: 'force-cache' });
-      if (!r.ok) {
-        if (r.status === 404) ss(CACHE_404, { ...ss(CACHE_404), [id]: 1 });
-        throw 0;
-      }
+      if (!r.ok) { if (r.status === 404) ss(CACHE_404, { ...ss(CACHE_404), [id]: 1 }); throw 0; }
       const d = await r.json();
-      this.it = (Array.isArray(d.items) ? d.items : (Array.isArray(d) ? d : []))
-        .map(i => this._norm(i, dir)).filter(Boolean);
+      this.it = (Array.isArray(d.items) ? d.items : (Array.isArray(d) ? d : [])).map(i => this._norm(i, dir)).filter(Boolean);
 
-      if (this.it.length) {
-        this.show(0);
-        this.play();
-      } else setLogo();
+      if (this.it.length) { this.show(0); this.play(); } else setLogo();
     } catch { setLogo(); }
     this._nav();
   }
 
   _norm(i, dir) {
-    if (!i) return null;
-    const abs = (p) => {
-      if (!p) return null;
-      return /^(https?:)?\/\//.test(p) ? p : (/^(albums|img|icons)\//.test(p) ? './'+p : dir + p);
-    };
-    if (typeof i === 'string') return /\.html([?#]|$)/i.test(i) ? { t: 'html', s: abs(i) } : { t: 'img', s: abs(i) };
-    const t = (i.type||'').toLowerCase() === 'html' ? 'html' : 'img';
-    if (t === 'html') return { t, s: abs(i.src) };
+    if (!i || i.type === 'html' || (typeof i === 'string' && /\.html/i.test(i))) return null;
+    const abs = (p) => p ? (/^(https?:)?\/\//.test(p) ? p : (/^(albums|img|icons)\//.test(p) ? './'+p : dir + p)) : null;
+    if (typeof i === 'string') return { s: abs(i) };
     const f = i.formats || {};
-    return { t, s: abs(f.full||i.src), w: abs(f.webp), f: { w: abs(f.webp), f: abs(f.full||i.src) } };
+    return { s: abs(f.full||i.src), w: abs(f.webp) };
   }
 
   show(i) {
     if (this.lck || !this.it.length) return;
-    this.lck = true;
-    this.idx = i;
-    
-    const it = this.it[i];
-    const slot = $('cover-slot');
+    this.lck = true; this.idx = i;
+    const it = this.it[i], slot = $('cover-slot');
     if (!slot || !it) return (this.lck = false);
 
-    // FIX BUG-4: Correct cleanup
-    if (this.ldr) { 
-        this.ldr.onload = null; 
-        this.ldr.onerror = null; 
-        this.ldr.src = ''; 
-        this.ldr = null; 
+    // GC Leak Fix: Держим только 2 тега <img> и переключаем opacity.
+    if (slot.children.length < 2 || slot.querySelector('iframe')) {
+      slot.innerHTML = '<img style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transition:opacity .3s ease-out;opacity:1" alt="Cover" draggable="false"><img style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transition:opacity .3s ease-out;opacity:0" alt="Cover" draggable="false">';
+      this.flip = 0;
     }
+
+    if (this.ldr) { this.ldr.onload = this.ldr.onerror = null; this.ldr.src = ''; }
+    const img = new Image(); this.ldr = img;
+    img.src = it.w || it.s;
 
     const finish = () => { setTimeout(() => { this._pre(); this.lck = false; }, 200); };
 
-    while(slot.firstChild) slot.removeChild(slot.firstChild);
-
-    if (it.t === 'html') {
-      const f = D.createElement('iframe');
-      f.sandbox = 'allow-scripts allow-popups allow-forms';
-      f.referrerPolicy = 'no-referrer';
-      f.loading = 'lazy';
-      f.src = it.s;
-      slot.appendChild(f);
+    img.onload = () => {
+      if (this.ldr !== img) return;
+      const imgs = slot.querySelectorAll('img'), nxt = imgs[this.flip === 0 ? 1 : 0], cur = imgs[this.flip];
+      nxt.src = it.w || it.s; // Браузеры нативно понимают webp в img.src
+      nxt.style.opacity = '1'; cur.style.opacity = '0';
+      this.flip = this.flip === 0 ? 1 : 0;
       finish();
-    } else {
-      const img = new Image();
-      this.ldr = img;
-      img.decoding = 'async';
-      img.referrerPolicy = 'no-referrer';
-      img.src = it.w || it.s;
-      
-      img.onload = () => {
-        if (this.ldr !== img) return;
-        const p = D.createElement('picture');
-        if (it.w) { const s = D.createElement('source'); s.type = 'image/webp'; s.srcset = it.w; p.appendChild(s); }
-        const el = D.createElement('img');
-        el.src = it.s;
-        el.alt = 'Cover';
-        el.decoding = 'async';
-        el.referrerPolicy = 'no-referrer';
-        el.style.cssText = 'opacity:0;transition:opacity .15s ease-out';
-        p.appendChild(el);
-        slot.appendChild(p);
-        requestAnimationFrame(() => el.style.opacity = '1');
-        finish();
-      };
-      img.onerror = finish;
-    }
+    };
+    img.onerror = finish;
   }
 
   _pre() {
     if (this.it.length < 2) return;
     const n = this.it[(this.idx + 1) % this.it.length];
-    if (n?.t === 'img' && n.w && !this.pre.has(n.w)) {
+    if (n && n.w && !this.pre.has(n.w)) {
       if (this.pre.size > 20) this.pre.clear();
-      (new Image()).src = n.w;
-      this.pre.add(n.w);
+      (new Image()).src = n.w; this.pre.add(n.w);
     }
   }
 
-  _nav() {
-    $('cover-wrap')?.classList.toggle('gallery-nav-ready', this.it.length > 1);
-  }
-
-  play() {
-    this.stop();
-    if (this.it.length > 1) this.tm = setInterval(() => this.show((this.idx + 1) % this.it.length), 5000);
-  }
-
+  _nav() { $('cover-wrap')?.classList.toggle('gallery-nav-ready', this.it.length > 1); }
+  play() { this.stop(); if (this.it.length > 1) this.tm = setInterval(() => this.show((this.idx + 1) % this.it.length), 5000); }
   stop() { if (this.tm) clearInterval(this.tm); this.tm = null; }
-
-  clear() {
-    this.stop();
-    this.it = [];
-    this.pre.clear();
-    this.ldr = null;
-    if ($('cover-slot')) $('cover-slot').innerHTML = '';
-    this._nav();
-  }
-
+  clear() { this.stop(); this.it = []; this.pre.clear(); this.ldr = null; if ($('cover-slot')) $('cover-slot').innerHTML = ''; this._nav(); }
   getItemsCount() { return this.it.length; }
   getCurrentIndex() { return this.idx; }
-
+  
   async getFirstCoverUrl(key) {
-    const id = this._id(key);
-    if (!id) return LOGO;
+    const id = this._id(key); if (!id) return LOGO;
     try {
-      const dir = `${BASE}${id}/`;
-      const r = await fetch(`${dir}index.json`, { cache: 'force-cache' });
+      const r = await fetch(`${BASE}${id}/index.json`, { cache: 'force-cache' });
       if (!r.ok) return LOGO;
-      const d = await r.json();
-      const i = (d.items||d||[])[0];
+      const d = await r.json(), i = (d.items||d||[])[0];
       if (!i) return LOGO;
-      const n = this._norm(i, dir);
-      return (n.t === 'img' ? (n.w || n.s) : LOGO);
+      const n = this._norm(i, `${BASE}${id}/`);
+      return n ? (n.w || n.s) : LOGO;
     } catch { return LOGO; }
   }
 }
