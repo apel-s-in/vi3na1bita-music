@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-47c0412ccad7f9ac25890cd9013b57b754faad65.idx
-│   │       ├── pack-47c0412ccad7f9ac25890cd9013b57b754faad65.pack
-│   │       └── pack-47c0412ccad7f9ac25890cd9013b57b754faad65.rev
+│   │       ├── pack-f5ec76793d4d57fd2b918018e6083b403b3722a1.idx
+│   │       ├── pack-f5ec76793d4d57fd2b918018e6083b403b3722a1.pack
+│   │       └── pack-f5ec76793d4d57fd2b918018e6083b403b3722a1.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-20 17:01:59 UTC
+Сгенерировано: 2026-02-20 17:02:32 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4191,7 +4191,7 @@ class DownloadQueue {
     emit('offline:downloadStart', { uid: item.uid });
 
     try {
-      const res = await fetch(item.url, { signal: ctrl.signal });
+      const res = await fetch(item.url, { signal: ctrl.signal, redirect: 'follow' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const blob = await res.blob();
 
