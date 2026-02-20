@@ -289,6 +289,9 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     Favorites.getSnapshot().filter(i => !i.inactiveAt && uidOf(getTrackByUid(i.uid)?.sourceAlbum) === k).map(i => i.uid) : []; }
     
         applyFavoritesOnlyFilter() {
+          if (this._applyingFilter) return;
+          this._applyingFilter = true;
+          try {
           const pAlbum = W.AlbumsManager?.getPlayingAlbum?.();
           const isFavOnly = localStorage.getItem('favoritesOnlyMode') === '1';
           const src = this.originalPlaylist || [];
@@ -308,10 +311,12 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
           const curUid = this.getCurrentTrackUid();
           const nIdx = Math.max(0, tgt.findIndex(t => t.uid === curUid));
+         this.shufHist = []; // очищаем историю при изменении набора треков
           const preserve = nIdx === this.currentIndex && tgt[nIdx]?.uid === curUid;
           this.setPlaylist(tgt, nIdx, {}, { preserveOriginalPlaylist: true, preserveShuffleMode: true, preservePosition: preserve });
           W.PlayerUI?.updatePlaylistFiltering?.();
-        }
+      } finally { this._applyingFilter = false; }
+    }
 
         onFavoritesChanged(cb) { this._favSubs.add(cb);
     return () => this._favSubs.delete(cb); }
