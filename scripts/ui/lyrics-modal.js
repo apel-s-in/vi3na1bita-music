@@ -1,96 +1,47 @@
 // scripts/ui/lyrics-modal.js
-// Модальное окно с полным текстом песни
+// Модальное окно с полным текстом песни (Оптимизировано v2.0 + Offline Fallback)
 
-(function LyricsModalModule() {
+(function () {
   'use strict';
 
-  const w = window;
-
-  function showFullLyricsModal() {
-    const track = w.playerCore?.getCurrentTrack();
-    if (!track) {
-      w.NotificationSystem?.warning('Нет активного трека');
-      return;
-    }
-
-    // Получить полный текст
-    const fulltext = track.fulltext;
+  const show = async () => {
+    const W = window, D = document, N = W.NotificationSystem;
+    const t = W.playerCore?.getCurrentTrack();
     
-    if (fulltext) {
-      loadFulltextAndShow(fulltext, track);
-    } else {
-      showLyricsFromTimeline(track);
-    }
-  }
+    if (!t) return N?.warning('Нет активного трека');
 
-  async function loadFulltextAndShow(url, track) {
-    try {
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Failed to load fulltext');
-      
-      const text = await response.text();
-      showModal(track, text);
-      
-    } catch (error) {
-      console.error('Failed to load fulltext:', error);
-      w.NotificationSystem?.error('Не удалось загрузить текст песни');
-    }
-  }
+    let txt = '';
 
-  function showLyricsFromTimeline(track) {
-    // N2: Берём данные из контроллера
-    const c = w.LyricsController;
-    if (!c) {
-      w.NotificationSystem?.warning('Текст песни недоступен');
-      return;
+    // 1. Пытаемся загрузить полный текст (fulltext). 
+    // Если сеть отключена Сетевой политикой, fetch выбросит исключение.
+    if (t.fulltext) {
+      try {
+        const r = await fetch(t.fulltext);
+        if (r.ok) txt = await r.text();
+      } catch (e) {
+        console.warn('[LyricsModal] Fulltext fetch failed (Offline/Network Policy). Falling back to timeline.');
+      }
     }
 
-    // Используем метод совместимости, возвращающий объекты { line: string }
-    const rawLines = (typeof c.getCurrentLyricsLines === 'function') ? c.getCurrentLyricsLines() : [];
-
-    if (!rawLines.length) {
-      w.NotificationSystem?.warning('Текст песни недоступен');
-      return;
+    // 2. Умный Fallback: Если fulltext нет или он заблокирован оффлайн-режимом,
+    // бесшовно берем уже закешированные таймлайн-строки из памяти.
+    if (!txt) {
+      const lines = W.LyricsController?.getCurrentLyricsLines?.() || [];
+      txt = lines.map(i => i.line).filter(Boolean).join('\n');
     }
 
-    const lines = rawLines
-      .map(item => (typeof item.line === 'string' ? item.line : ''))
-      .filter(Boolean);
+    if (!txt) return N?.warning('Текст песни недоступен');
 
-    if (!lines.length) {
-      w.NotificationSystem?.warning('Текст песни недоступен');
-      return;
-    }
-
-    const text = lines.join('\n');
-    showModal(track, text);
-  }
-
-  function showModal(track, text) {
-    const esc = w.Utils?.escapeHtml
-      ? (s) => w.Utils.escapeHtml(String(s || ''))
-      : (s) => String(s || '');
-
-    const bodyHtml = `
+    const esc = W.Utils?.escapeHtml || (s => String(s || ''));
+    
+    // Строгое сохранение пиксель-в-пиксель структуры и ID кнопок
+    const html = `
       <div class="lyrics-modal" style="max-height: 80vh;">
-        <h2 style="margin: 0 0 8px 0;">${esc(track.title)}</h2>
+        <h2 style="margin: 0 0 8px 0;">${esc(t.title)}</h2>
         <div style="color: #8ab8fd; margin-bottom: 16px; font-size: 14px;">
-          ${esc(track.artist || 'Витрина Разбита')} · ${esc(track.album || '')}
+          ${esc(t.artist || 'Витрина Разбита')} · ${esc(t.album || '')}
         </div>
-
-        <div class="lyrics-fulltext" style="
-          max-height: 50vh;
-          overflow-y: auto;
-          padding: 16px;
-          background: rgba(0,0,0,0.2);
-          border-radius: 10px;
-          line-height: 1.8;
-          white-space: pre-wrap;
-          font-size: 15px;
-          scrollbar-width: thin;
-          scrollbar-color: rgba(77,170,255,0.3) transparent;
-        ">${esc(text)}</div>
-
+        <div class="lyrics-fulltext" style="max-height: 50vh; overflow-y: auto; padding: 16px; background: rgba(0,0,0,0.2); border-radius: 10px; line-height: 1.8; white-space: pre-wrap; font-size: 15px; scrollbar-width: thin; scrollbar-color: rgba(77,170,255,0.3) transparent;">${esc(txt)}</div>
         <div style="display:flex; gap:10px; margin-top:16px; justify-content:center; flex-wrap:wrap;">
           <button class="modal-action-btn" id="copy-lyrics-btn">📋 Копировать</button>
           <button class="modal-action-btn" id="share-lyrics-btn">📤 Поделиться</button>
@@ -98,74 +49,37 @@
       </div>
     `;
 
-    if (!w.Modals?.open) {
-      w.NotificationSystem?.error('Modals helper не загружен');
-      return;
-    }
+    if (!W.Modals?.open) return N?.error('Система окон недоступна');
+    const m = W.Modals.open({ title: 'Текст песни', maxWidth: 560, bodyHtml: html });
 
-    const modal = w.Modals.open({
-      title: 'Текст песни',
-      maxWidth: 560,
-      bodyHtml
+    // Обработчик: Копирование (Современный API -> Fallback на execCommand)
+    m.querySelector('#copy-lyrics-btn')?.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(txt);
+        N?.success('Текст скопирован');
+        m.remove();
+      } catch {
+        const ta = D.createElement('textarea');
+        Object.assign(ta.style, { position: 'fixed', opacity: '0' });
+        ta.value = txt;
+        D.body.appendChild(ta);
+        ta.select();
+        try { D.execCommand('copy'); N?.success('Текст скопирован'); m.remove(); } 
+        catch { N?.error('Не удалось скопировать'); }
+        ta.remove();
+      }
     });
 
-    modal.querySelector('#copy-lyrics-btn')?.addEventListener('click', () => copyLyrics(text, modal));
-    modal.querySelector('#share-lyrics-btn')?.addEventListener('click', () => shareLyrics(track, text));
-  }
-
-  async function copyLyrics(text, modal) {
-    try {
-      await navigator.clipboard.writeText(text);
-      w.NotificationSystem?.success('Текст скопирован');
-      modal.remove();
-    } catch (error) {
-      // Fallback для старых браузеров
-      const textarea = document.createElement('textarea');
-      textarea.value = text;
-      textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
-      document.body.appendChild(textarea);
-      textarea.select();
-      
+    // Обработчик: Поделиться (Web Share API)
+    m.querySelector('#share-lyrics-btn')?.addEventListener('click', async () => {
+      if (!navigator.share) return N?.info('Функция "Поделиться" недоступна в этом браузере');
       try {
-        document.execCommand('copy');
-        w.NotificationSystem?.success('Текст скопирован');
-        modal.remove();
+        await navigator.share({ title: t.title, text: `${t.title} - ${t.artist}\n\n${txt}` });
       } catch (e) {
-        w.NotificationSystem?.error('Не удалось скопировать');
+        if (e.name !== 'AbortError') console.error('Share failed:', e);
       }
-      
-      document.body.removeChild(textarea);
-    }
-  }
-
-  async function shareLyrics(track, text) {
-    const shareData = {
-      title: track.title,
-      text: `${track.title} - ${track.artist}\n\n${text}`
-    };
-
-    if (navigator.share) {
-      try {
-        await navigator.share(shareData);
-      } catch (error) {
-        if (error.name !== 'AbortError') {
-          console.error('Share failed:', error);
-        }
-      }
-    } else {
-      w.NotificationSystem?.info('Функция "Поделиться" недоступна в этом браузере');
-    }
-  }
-
-  // escapeHtml: используем window.Utils.escapeHtml (единый источник)
-
-  // Публичный API
-  w.LyricsModal = {
-    show: showFullLyricsModal
+    });
   };
 
-  // Автоинициализация
-  // (Lyrics Modal не требует автозапуска)
-
+  window.LyricsModal = { show };
 })();
