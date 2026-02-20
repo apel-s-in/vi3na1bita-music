@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-87fde2beab5dd632d69e9a0f054590215d223712.idx
-│   │       ├── pack-87fde2beab5dd632d69e9a0f054590215d223712.pack
-│   │       └── pack-87fde2beab5dd632d69e9a0f054590215d223712.rev
+│   │       ├── pack-1189b754d91698296377175580ec19965099f19b.idx
+│   │       ├── pack-1189b754d91698296377175580ec19965099f19b.pack
+│   │       └── pack-1189b754d91698296377175580ec19965099f19b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,7 +377,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-20 21:36:49 UTC
+Сгенерировано: 2026-02-20 21:37:36 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1639,7 +1639,21 @@ export async function loadFavoritesAlbum(ctx) {
     });
 
     window.playerCore?.onFavoritesChanged(() => {
-       if (ctx.getCurrentAlbum() === FAV) { rebuild(); window.PlayerUI?.updateAvailableTracksForPlayback?.(); }
+       if (ctx.getCurrentAlbum() === FAV) {
+         rebuild();
+         // Обновить originalPlaylist чтобы applyFavoritesOnlyFilter работал с актуальными данными
+         const pc = window.playerCore;
+         if (pc && ctx.getPlayingAlbum?.() === FAV) {
+           const activeTracks = pc.getFavoritesState().active.map(i => {
+             const t = window.TrackRegistry?.getTrackByUid(i.uid) || {};
+             return { ...t, uid: i.uid, album: 'Избранное', cover: FAV_COVER, sourceAlbum: i.sourceAlbum };
+           });
+           if (activeTracks.length) {
+             pc.originalPlaylist = activeTracks;
+           }
+         }
+         window.PlayerUI?.updateAvailableTracksForPlayback?.();
+       }
     });
   }
   
