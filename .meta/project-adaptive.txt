@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-7e1377bacf0aa9775eb40ff8664a5d6d96aab700.idx
-│   │       ├── pack-7e1377bacf0aa9775eb40ff8664a5d6d96aab700.pack
-│   │       └── pack-7e1377bacf0aa9775eb40ff8664a5d6d96aab700.rev
+│   │       ├── pack-57291e30eb9e46e2a75f7c8b71775c4611222477.idx
+│   │       ├── pack-57291e30eb9e46e2a75f7c8b71775c4611222477.pack
+│   │       └── pack-57291e30eb9e46e2a75f7c8b71775c4611222477.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -381,7 +381,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-20 19:09:56 UTC
+Сгенерировано: 2026-02-20 19:12:05 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -653,7 +653,6 @@ jobs:
 // FILE: /albums/gallery/news/index.json
 {
   "items": [
-    { "type": "html", "src": "albums/gallery/news/news-01-baner.html" },
     {
       "formats": {
         "webp": "albums/gallery/news/news-cover-02.webp",
