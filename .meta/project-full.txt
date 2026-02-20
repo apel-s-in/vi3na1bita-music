@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-7a6d4bbe93bcceed17dac654847eb37682588470.idx
-│   │       ├── pack-7a6d4bbe93bcceed17dac654847eb37682588470.pack
-│   │       └── pack-7a6d4bbe93bcceed17dac654847eb37682588470.rev
+│   │       ├── pack-f52f9e019d898aab5ca16c87b4c24b6788f21396.idx
+│   │       ├── pack-f52f9e019d898aab5ca16c87b4c24b6788f21396.pack
+│   │       └── pack-f52f9e019d898aab5ca16c87b4c24b6788f21396.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -310,8 +310,6 @@ vi3na1bita-music/
 ├── news/
 │   ├── .gitkeep
 │   └── news.json
-├── performance/
-│   └── rum.js
 ├── scripts/
 │   ├── app/
 │   │   ├── albums/
@@ -379,7 +377,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-20 20:51:39 UTC
+Сгенерировано: 2026-02-20 20:51:54 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1248,17 +1246,6 @@ self.addEventListener('message', (e) => {
     })());
   }
 });
-
-//=================================================
-// FILE: /performance/rum.js
-;(function(){
-  // Неболезненная заглушка: чтобы <script src="./performance/rum.js"> не давал 404
-  // и не ломал метрики. Если в custom.json появится endpoint — ваш код в index.html
-  // вызовет initRUM(...) при наличии совпадающей функции.
-  if (typeof window.initRUM !== 'function') {
-    window.initRUM = function initRUM() { /* no-op */ };
-  }
-})();
 
 //=================================================
 // FILE: /scripts/app.js
