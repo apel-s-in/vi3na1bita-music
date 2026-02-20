@@ -1,91 +1,82 @@
 /**
- * cache-progress-overlay.js — Overlay с прогрессом скачивания.
- *
- * Показывает индикатор когда идёт фоновое кэширование 🔒/☁ треков.
+ * scripts/ui/cache-progress-overlay.js
+ * ОПТИМИЗИРОВАНО: Полное соответствие ТЗ (Раздел 13 "UI ПРОГРЕСС КЭША В ПЛЕЕРЕ").
+ * Устаревший плавающий overlay удален. Индикация кэширования теперь встроена
+ * вторым слоем (background) напрямую под ползунок прогресс-бара плеера.
  */
 
-import offlineManager, { getOfflineManager } from '../offline/offline-manager.js';
+import { getOfflineManager } from '../offline/offline-manager.js';
 
-let _overlay = null;
-let _visible = false;
+let _layer = null;
 
 export function initCacheProgressOverlay() {
-  /* Подписка на события */
-  window.addEventListener('offline:downloadStart', _onDownloadStart);
-  window.addEventListener('offline:trackCached', _onTrackCached);
-  window.addEventListener('offline:downloadFailed', _onUpdate);
+  const sync = () => requestAnimationFrame(updateProgressBar);
+  
+  // Подписываемся на все события, способные изменить статус локального файла или UI плеера
+  ['player:trackChanged', 'offline:downloadStart', 'offline:trackCached', 'offline:downloadFailed', 'offline:stateChanged', 'offline:uiChanged'].forEach(ev => 
+    window.addEventListener(ev, sync)
+  );
+  
+  // Удаление старого (legacy) всплывающего окна, если оно закэшировалось в старом DOM
+  document.getElementById('cache-progress-overlay')?.remove();
 }
 
-function _onDownloadStart(e) {
-  if (!_visible) _show();
-  _update();
-}
+async function updateProgressBar() {
+  const bar = document.getElementById('player-progress-bar');
+  if (!bar) return;
 
-function _onTrackCached(e) {
-  _update();
-}
+  // Если слой еще не создан ИЛИ плеер был перерисован (isConnected === false), создаем заново
+  if (!_layer || !_layer.isConnected) {
+    _layer = document.createElement('div');
+    _layer.className = 'player-cache-layer';
+    bar.insertBefore(_layer, bar.firstChild); // Вставляем строго ПОД основной ползунок
 
-function _onUpdate() {
-  _update();
-}
-
-function _show() {
-  if (_overlay) return;
-
-  _overlay = document.createElement('div');
-  _overlay.id = 'cache-progress-overlay';
-  _overlay.style.cssText = `
-    position: fixed;
-    bottom: 80px;
-    right: 16px;
-    z-index: 9000;
-    background: rgba(26, 26, 46, 0.95);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 8px;
-    padding: 8px 14px;
-    font-size: 12px;
-    color: #aaa;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
-    transition: opacity 0.3s;
-    max-width: 260px;
-  `;
-  _overlay.innerHTML = `
-    <div style="display: flex; align-items: center; gap: 8px;">
-      <span style="animation: offlineIndBlink 1.2s infinite;">⬇</span>
-      <span id="cache-progress-text">Скачивание…</span>
-    </div>
-  `;
-
-  document.body.appendChild(_overlay);
-  _visible = true;
-}
-
-function _hide() {
-  if (_overlay) {
-    _overlay.style.opacity = '0';
-    setTimeout(() => {
-      _overlay?.remove();
-      _overlay = null;
-      _visible = false;
-    }, 300);
+    // Изолированно добавляем нужные стили, не ломая main.css
+    if (!document.getElementById('cache-layer-styles')) {
+      const s = document.createElement('style');
+      s.id = 'cache-layer-styles';
+      s.textContent = `
+        .player-cache-layer {
+          position: absolute; inset: 0 auto auto 0; height: 100%;
+          background: rgba(255, 255, 255, 0.2); border-radius: 3px;
+          pointer-events: none; transition: width 0.3s ease, opacity 0.3s;
+          width: 0%; opacity: 0; z-index: 0;
+        }
+        .player-cache-layer.is-loading {
+          background: linear-gradient(90deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.05) 100%);
+          background-size: 200% 100%; animation: cacheAnim 1.5s infinite linear;
+          width: 100%; opacity: 1;
+        }
+        .player-progress-fill { position: relative; z-index: 1; } /* Гарантируем, что синий бар всегда сверху */
+        @keyframes cacheAnim { to { background-position: -200% 0; } }
+      `;
+      document.head.appendChild(s);
+    }
   }
-}
 
-function _update() {
-  const mgr = getOfflineManager();
-  const status = mgr.getDownloadStatus();
-
-  if (status.active === 0 && status.queued === 0) {
-    _hide();
+  const uid = window.playerCore?.getCurrentTrackUid?.();
+  if (!uid) {
+    _layer.style.opacity = '0';
+    _layer.classList.remove('is-loading');
     return;
   }
 
-  if (!_visible) _show();
+  const state = await getOfflineManager().getTrackOfflineState(uid);
 
-  const text = _overlay?.querySelector('#cache-progress-text');
-  if (text) {
-    const total = status.active + status.queued;
-    text.textContent = `Скачивание: ${status.active} активных, ${status.queued} в очереди`;
+  if (state.cachedComplete) {
+    // 100% = Трек полностью загружен (Pinned, Cloud или отработал R1 PlaybackCache)
+    _layer.style.width = '100%';
+    _layer.style.opacity = '1';
+    _layer.classList.remove('is-loading');
+    _layer.style.background = 'rgba(255,255,255,0.2)'; 
+  } else if (state.downloading) {
+    // Трек в процессе загрузки (анимированный indeterminate-индикатор)
+    _layer.classList.add('is-loading');
+    _layer.style.background = ''; // Возвращаем градиент из CSS-класса
+  } else {
+    // Трека нет в кэше и не предвидится (стриминг без R1)
+    _layer.style.opacity = '0';
+    _layer.classList.remove('is-loading');
   }
 }
 
