@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-79083fe5aaf5f53546017ac47c7f40b8dbb25743.idx
-│   │       ├── pack-79083fe5aaf5f53546017ac47c7f40b8dbb25743.pack
-│   │       └── pack-79083fe5aaf5f53546017ac47c7f40b8dbb25743.rev
+│   │       ├── pack-a558e85e9f6efb9d1a73412b061375d0547aacb5.idx
+│   │       ├── pack-a558e85e9f6efb9d1a73412b061375d0547aacb5.pack
+│   │       └── pack-a558e85e9f6efb9d1a73412b061375d0547aacb5.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-20 14:11:10 UTC
+Сгенерировано: 2026-02-20 14:20:10 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1565,147 +1565,115 @@ export default window.AlbumsManager;
 
 //=================================================
 // FILE: /scripts/app/albums/specials.js
-import { $ } from '../utils/app-utils.js';
-import { renderFavoritesList, renderFavoritesEmpty, bindFavoritesList, buildFavoritesRefsModel, getModel, getActiveModel } from '../../ui/favorites-view.js';
 import { loadAndRenderNewsInline } from '../../ui/news-inline.js';
 import { injectOfflineIndicators } from '../../ui/offline-indicators.js';
 
 const FAV = window.SPECIAL_FAVORITES_KEY || '__favorites__';
 const NEWS = window.SPECIAL_RELIZ_KEY || '__reliz__';
 const FAV_COVER = 'img/Fav_logo.png';
-
-// --- Favorites Logic ---
+const esc = (s) => window.Utils?.escapeHtml ? window.Utils.escapeHtml(String(s || '')) : String(s || '');
 
 export async function loadFavoritesAlbum(ctx) {
   ctx.renderAlbumTitle('⭐⭐⭐ ИЗБРАННОЕ ⭐⭐⭐', 'fav');
-
-  // FIX: Используем глобально доступный метод или проверяем наличие
-  // preloadAllAlbumsTrackIndex больше не используется — данные загружаются через TrackRegistry
-
-  $('cover-wrap').style.display = 'none';
-  const container = $('track-list');
+  document.getElementById('cover-wrap').style.display = 'none';
+  const container = document.getElementById('track-list');
   if (!container) return;
 
-  const refreshData = async () => { try { await buildFavoritesRefsModel(); } catch {} };
-  const getUiModel = () => getModel();
+  const rebuild = () => {
+    const pc = window.playerCore;
+    if (!pc) return;
+    
+    // Единый источник истины (в строгом соответствии с ТЗ)
+    const st = pc.getFavoritesState();
+    const items = [
+      ...(st.active || []).map(i => ({ ...i, active: true })),
+      ...(st.inactive || []).map(i => ({ ...i, active: false }))
+    ];
 
-  const rebuild = async () => {
-    await refreshData();
-    const model = getUiModel();
-    if (!model.length) renderFavoritesEmpty(container);
-    else {
-      renderFavoritesList(container, model);
-      /* ТЗ П.7.3: Инъекция 🔒/☁ индикаторов в Favorites */
-      await injectOfflineIndicators(container);
+    if (!items.length) {
+      container.innerHTML = `<div class="fav-empty"><h3>Избранные треки</h3><p>Отметьте треки звёздочкой ⭐</p></div>`;
+      return;
     }
+
+    container.innerHTML = items.map((it, i) => {
+      const t = window.TrackRegistry?.getTrackByUid(it.uid) || { title: 'Загрузка...', sourceAlbum: it.sourceAlbum };
+      const aTitle = window.TrackRegistry?.getAlbumTitle(t.sourceAlbum) || 'Альбом';
+      const id = `fav_${it.sourceAlbum}_${it.uid}`;
+      
+      return `
+        <div class="track ${it.active ? '' : 'inactive'}" id="${esc(id)}" data-index="${i}" data-album="${esc(t.sourceAlbum)}" data-uid="${esc(it.uid)}">
+          <div class="tnum">${String(i + 1).padStart(2, '0')}.</div>
+          <div class="track-title" title="${esc(t.title)} - ${esc(aTitle)}">
+            <span class="fav-track-name">${esc(t.title)}</span>
+            <span class="fav-album-name"> — ${esc(aTitle)}</span>
+          </div>
+          <img src="${it.active ? 'img/star.png' : 'img/star2.png'}" class="like-star" alt="звезда" data-album="${esc(t.sourceAlbum)}" data-uid="${esc(it.uid)}">
+        </div>`;
+    }).join('');
+    
+    injectOfflineIndicators(container);
   };
 
-  if (!ctx._favoritesViewBound) {
-    ctx._favoritesViewBound = true;
+  if (!ctx._favBound) {
+    ctx._favBound = true;
+    
+    container.addEventListener('click', e => {
+       const row = e.target.closest('.track');
+       if (!row) return;
+       
+       const uid = row.dataset.uid, aKey = row.dataset.album;
+       const isStar = e.target.classList.contains('like-star');
+       const pc = window.playerCore;
+       const isActive = pc.getFavoritesState().active.some(x => x.uid === uid);
 
-    bindFavoritesList(container, {
-      getModel: getUiModel,
+       if (isStar) {
+          e.preventDefault(); e.stopPropagation();
+          // Снятие звезды или быстрое восстановление
+          if (isActive) pc.toggleFavorite(uid, { source: 'favorites', albumKey: aKey });
+          else pc.restoreInactive(uid);
+          return;
+       }
 
-      onStarClick: async ({ uid, albumKey }) => {
-        if (ctx.getCurrentAlbum() !== FAV) return;
-        // FIX: явно указываем source='favorites'
-        window.playerCore?.toggleFavorite?.(uid, { source: 'favorites', albumKey });
-      },
-
-      onActiveRowClick: async ({ uid }) => {
-        if (ctx.getCurrentAlbum() !== FAV) return;
-
-        const model = getUiModel();
-        // Фильтруем только активные для воспроизведения
-        const activeList = model.filter((it) => it && it.__active && !it.isGhost);
-        
-        // FIX: Ищем по __uid, так как модель Favorites UI использует это поле
-        const idx = activeList.findIndex((it) => String(it?.__uid || '').trim() === String(uid || '').trim());
-        
-        if (idx >= 0) await ensureFavoritesPlayback(ctx, activeList, idx);
-      },
-
-      onInactiveRowClick: ({ uid, title }) => {
-        if (ctx.getCurrentAlbum() !== FAV) return;
-        
-        // ВАЖНО: Никакого воспроизведения, только модалка
-        window.playerCore?.showInactiveFavoriteModal?.({
-          uid, title,
-          onDeleted: async () => {
-            await rebuild();
-            window.PlayerUI?.updateAvailableTracksForPlayback?.();
-          },
-        });
-      },
+       if (isActive) {
+          // Playback: формируем чистый плейлист только из active (согласно ТЗ)
+          ctx.setPlayingAlbum(FAV);
+          const tracks = pc.getFavoritesState().active.map(i => {
+             const t = window.TrackRegistry?.getTrackByUid(i.uid) || {};
+             return { ...t, uid: i.uid, album: 'Избранное', cover: FAV_COVER, sourceAlbum: i.sourceAlbum };
+          });
+          
+          const idx = tracks.findIndex(t => t.uid === uid);
+          if (idx >= 0) {
+             pc.setPlaylist(tracks, idx, { artist: 'Витрина Разбита', album: 'Избранное', cover: FAV_COVER }, { preservePosition: false });
+             pc.play(idx);
+             ctx.highlightCurrentTrack(-1, { uid, albumKey: aKey });
+             window.PlayerUI?.ensurePlayerBlock?.(idx, { userInitiated: true });
+             window.PlayerUI?.updateAvailableTracksForPlayback?.();
+          }
+       } else {
+          // Клик по неактивной (серой) строке — показать модалку возврата/удаления
+          const t = window.TrackRegistry?.getTrackByUid(uid);
+          pc.showInactiveFavoriteModal({ 
+              uid, 
+              title: t?.title || 'Трек', 
+              onDeleted: () => { rebuild(); window.PlayerUI?.updateAvailableTracksForPlayback?.(); }
+          });
+       }
     });
 
-    window.playerCore?.onFavoritesChanged(async () => {
-      if (ctx.getCurrentAlbum() === FAV) {
-        await rebuild();
-        window.PlayerUI?.updateAvailableTracksForPlayback?.();
-      }
+    window.playerCore?.onFavoritesChanged(() => {
+       if (ctx.getCurrentAlbum() === FAV) { rebuild(); window.PlayerUI?.updateAvailableTracksForPlayback?.(); }
     });
   }
-
-  await rebuild();
-}
-
-export async function ensureFavoritesPlayback(ctx, activeList, activeIndex) {
-  if (!activeList?.length) return window.NotificationSystem?.warning('Нет доступных треков');
-
-  ctx.setPlayingAlbum(FAV);
-
-  // FIX: Не делаем spread ...it, чтобы не засорять объект трека UI-мусором (__active, __uid и т.д.)
-  // Собираем чистый объект для плеера.
-  const tracks = activeList.map((it) => {
-      const srcAlbum = it.sourceAlbum || it.__a;
-      return {
-        uid: it.__uid, // ensure uid is passed
-        title: it.title,
-        artist: it.artist || 'Витрина Разбита',
-        album: 'Избранное', // В плеере пишем "Избранное"
-        cover: FAV_COVER,   // Обложка избранного
-        src: it.audio || it.src, // Audio url
-        audio: it.audio || it.src,
-        audio_low: it.audio_low,
-        sources: it.sources,
-        lyrics: it.lyrics,
-        fulltext: it.fulltext,
-        sourceAlbum: srcAlbum
-      };
-  });
-
-  window.playerCore.setPlaylist(
-    tracks,
-    activeIndex,
-    { artist: 'Витрина Разбита', album: 'Избранное', cover: FAV_COVER },
-    { preservePosition: false }
-  );
-
-  window.playerCore.play(activeIndex);
   
-  const clicked = activeList[activeIndex];
-  // FIX: Используем __uid
-  ctx.highlightCurrentTrack(-1, { 
-      uid: String(clicked?.__uid).trim(), 
-      albumKey: String(clicked?.sourceAlbum || clicked?.__a).trim() 
-  });
-
-  window.PlayerUI?.ensurePlayerBlock?.(activeIndex, { userInitiated: true });
-  window.PlayerUI?.updateAvailableTracksForPlayback?.();
+  rebuild();
 }
 
-// --- News Logic ---
 export async function loadNewsAlbum(ctx) {
   ctx.renderAlbumTitle('📰 НОВОСТИ 📰', 'news');
-  
-  // FIX: Используем window.GalleryManager напрямую
-  if (window.GalleryManager?.loadGallery) {
-      await window.GalleryManager.loadGallery(NEWS);
-  }
-  
-  $('cover-wrap').style.display = '';
-  const container = $('track-list');
+  if (window.GalleryManager?.loadGallery) await window.GalleryManager.loadGallery(NEWS);
+  document.getElementById('cover-wrap').style.display = '';
+  const container = document.getElementById('track-list');
   if (container) await loadAndRenderNewsInline(container);
 }
 
