@@ -1,5 +1,5 @@
 // service-worker.js
-// Optimized Service Worker for "Vi3na1bita" (v8.1.6)
+// Optimized Service Worker for "Vi3na1bita" (v8.1.6) - Spec Compliant
 
 const SW_VERSION = '8.1.6';
 
@@ -19,10 +19,8 @@ const DEFAULT_SW_CONFIG = {
   revalidateDays: 7
 };
 
-// === ДОБАВЛЕНО: Глобальный стейт Авиарежима ===
 let isAirplaneMode = false;
 
-// Core Assets (App Shell)
 const STATIC_ASSETS = [
   './', './index.html', './news.html', './manifest.json',
   './styles/main.css', './img/logo.png', './img/star.png', './img/star2.png',
@@ -40,150 +38,98 @@ const STATIC_ASSETS = [
   './scripts/stats/global-stats.js'
 ];
 
-// Helper: Normalize URL for strict cache matching
 const norm = (u) => { 
   try { 
     const p = new URL(u, self.registration.scope); 
     p.hash = ''; p.search = ''; 
-    if(p.pathname.endsWith('/')) p.pathname += 'index.html'; 
+    if (p.pathname.endsWith('/')) p.pathname += 'index.html'; 
     return p.href; 
   } catch { return String(u); } 
 };
 const STATIC_SET = new Set(STATIC_ASSETS.map(norm));
 
-// --- Lifecycle ---
-
-// Optimized Install: Best-effort caching
 self.addEventListener('install', (e) => {
   e.waitUntil(
-    caches.open(CORE_CACHE).then(async (cache) => {
-      const promises = STATIC_ASSETS.map(url => {
-        const req = new Request(url); 
-        return fetch(req).then(res => {
-          if (res.ok && !res.redirected) return cache.put(req, res);
-          console.warn('SW: Skipped (redirect/fail):', url);
-        }).catch(err => console.warn('SW: Fetch error', url, err));
-      });
-      await Promise.all(promises);
+    caches.open(CORE_CACHE).then(async (c) => {
+      await Promise.all(STATIC_ASSETS.map(u => 
+        fetch(new Request(u)).then(r => { if (r.ok && !r.redirected) c.put(u, r); }).catch(()=>{})
+      ));
       return self.skipWaiting();
     })
   );
 });
 
 self.addEventListener('activate', (e) => {
-  e.waitUntil(caches.keys().then(keys => Promise.all(keys.map(k => {
-    if (![CORE_CACHE, RUNTIME_CACHE, MEDIA_CACHE, OFFLINE_CACHE, META_CACHE].includes(k)) {
-      return caches.delete(k);
-    }
-  }))).then(() => self.clients.claim()));
+  e.waitUntil(
+    caches.keys()
+      .then(k => Promise.all(k.map(n => ![CORE_CACHE, RUNTIME_CACHE, MEDIA_CACHE, OFFLINE_CACHE, META_CACHE].includes(n) && caches.delete(n))))
+      .then(() => self.clients.claim())
+  );
 });
-
-// --- Fetch Strategy ---
 
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
-
   const url = new URL(req.url);
 
-  // === ДОБАВЛЕНО: СТРОГАЯ ПОЛИТИКА АВИАРЕЖИМА ===
+  // Spec 5.2 & 5.3: Airplane mode fully blocks all network requests in SW layer too.
   if (isAirplaneMode) {
-    e.respondWith(
-      caches.match(req).then(cached => {
-        return cached || new Response(null, { status: 503, statusText: 'Airplane Mode Active' });
-      })
-    );
+    e.respondWith(caches.match(req).then(c => c || new Response(null, { status: 503, statusText: 'Airplane Mode Active' })));
     return;
   }
 
-  // 1. Audio Bypass: Network Only
-  if (/\.(mp3|ogg|m4a|flac)$/i.test(url.pathname)) {
-    return; // Fallback to browser network stack
-  }
+  // Audio bypasses SW completely (Handled by OfflineManager IndexedDB)
+  if (/\.(mp3|ogg|m4a|flac)$/i.test(url.pathname)) return;
 
-  // 2. Static Assets: Cache First (Strict)
+  // Static core assets (Cache First)
   if (STATIC_SET.has(norm(url.href))) {
     e.respondWith(
       caches.open(CORE_CACHE).then(c => c.match(req)).then(r => r || fetch(req).then(n => {
-        if(n.ok) caches.open(CORE_CACHE).then(c => c.put(req, n.clone()));
+        if(n.ok) caches.open(CORE_CACHE).then(cx => cx.put(req, n.clone()));
         return n;
       }))
     );
     return;
   }
 
-  // 3. Default: Network First -> Runtime Cache (Stale-While-Revalidate pattern simplified)
+  // Fallback (Network First -> Cache)
   e.respondWith(
-    caches.match(req).then(cached => {
-      const networked = fetch(req).then(res => {
-        if (res.ok && url.protocol.startsWith('http')) {
-          const clone = res.clone();
-          caches.open(RUNTIME_CACHE).then(c => c.put(req, clone));
-        }
-        return res;
-      });
-      return cached || networked;
-    })
+    caches.match(req).then(cached => cached || fetch(req).then(r => {
+      if (r.ok && url.protocol.startsWith('http')) {
+        const cl = r.clone();
+        caches.open(RUNTIME_CACHE).then(cx => cx.put(req, cl));
+      }
+      return r;
+    }).catch(() => cached))
   );
 });
 
-// --- Messaging API ---
-
 self.addEventListener('message', (e) => {
-  const d = e.data;
-  if (!d || typeof d !== 'object') return;
-  const port = e.ports[0];
+  const d = e.data, p = e.ports[0];
+  if (!d) return;
 
-  // === ДОБАВЛЕНО: Синхронизация состояния Авиарежима ===
   if (d.type === 'SYNC_AIRPLANE_MODE') {
     isAirplaneMode = !!d.payload;
-    return;
-  }
-
-  switch (d.type) {
-    case 'GET_SW_VERSION':
-      if (port) port.postMessage({ version: SW_VERSION });
-      break;
-
-    case 'SKIP_WAITING':
-      self.skipWaiting();
-      break;
-
-    case 'CLEAR_CACHE':
-      e.waitUntil(caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))));
-      break;
-
-    case 'WARM_OFFLINE_SHELL': 
-      e.waitUntil((async () => {
-        try {
-          const c = await caches.open(OFFLINE_CACHE);
-          const urls = (d.payload?.urls || []);
-          await Promise.all(urls.map(u => c.add(u).catch(()=>{})));
-          if (port) port.postMessage({ ok: true });
-        } catch (err) { if (port) port.postMessage({ ok: false, error: String(err) }); }
-      })());
-      break;
-
-    case 'GET_CACHE_SIZE': 
-      if (!port) return;
-      e.waitUntil((async () => {
-        let size = 0, entries = 0;
-        try {
-          for (const name of await caches.keys()) {
-            const c = await caches.open(name);
-            const keys = await c.keys();
-            entries += keys.length;
-            for (const k of keys) {
-              const r = await c.match(k);
-              if (r) {
-                const len = r.headers.get('content-length');
-                if (len) size += parseInt(len, 10) || 0;
-              }
-            }
+  } else if (d.type === 'GET_SW_VERSION' && p) {
+    p.postMessage({ version: SW_VERSION });
+  } else if (d.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  } else if (d.type === 'CLEAR_CACHE') {
+    e.waitUntil(caches.keys().then(k => Promise.all(k.map(n => caches.delete(n)))));
+  } else if (d.type === 'GET_CACHE_SIZE' && p) {
+    e.waitUntil((async () => {
+      let s = 0, n = 0;
+      try {
+        for (const k of await caches.keys()) {
+          const c = await caches.open(k), reqs = await c.keys();
+          n += reqs.length;
+          for (const r of reqs) {
+            const res = await c.match(r);
+            if (res) s += parseInt(res.headers.get('content-length') || 0, 10);
           }
-        } catch {}
-        port.postMessage({ size, entries, approx: true });
-      })());
-      break;
+        }
+      } catch {}
+      p.postMessage({ size: s, entries: n, approx: true });
+    })());
   }
 });
