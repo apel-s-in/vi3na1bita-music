@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e67e7fe64ddf8028c34fd4d281f5f2937bc5a124.idx
-│   │       ├── pack-e67e7fe64ddf8028c34fd4d281f5f2937bc5a124.pack
-│   │       └── pack-e67e7fe64ddf8028c34fd4d281f5f2937bc5a124.rev
+│   │       ├── pack-ce1d7c4167157875a41f3d9bc354f0cb36813f13.idx
+│   │       ├── pack-ce1d7c4167157875a41f3d9bc354f0cb36813f13.pack
+│   │       └── pack-ce1d7c4167157875a41f3d9bc354f0cb36813f13.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,7 +377,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-20 21:39:30 UTC
+Сгенерировано: 2026-02-20 21:40:01 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1384,7 +1384,7 @@ self.addEventListener('message', (e) => {
 //=================================================
 // FILE: /scripts/app/albums.js
 import { registerTrack } from './track-registry.js';
-import { $, toStr, escHtml, isMobileUA } from './utils/app-utils.js';
+const { $, toStr, escHtml, isMobileUA } = window.AppUtils || { $: id => document.getElementById(id), toStr: v => v == null ? '' : String(v), escHtml: s => String(s||''), isMobileUA: () => false };
 import { injectIndicator } from '../ui/offline-indicators.js';
 
 const C = window.APP_CONFIG || {};
