@@ -8,15 +8,8 @@
   const isOn = () => localStorage.getItem(LS_KEY) === '1';
 
   const uniqByUid = (list) => {
-    const out = [];
     const seen = new Set();
-    for (const t of (list || [])) {
-      const u = String(t?.uid || '').trim();
-      if (!u || seen.has(u)) continue;
-      seen.add(u);
-      out.push(t);
-    }
-    return out;
+    return (list || []).filter(t => t?.uid && !seen.has(t.uid) && seen.add(t.uid));
   };
 
   const buildTarget = ({ core, playingAlbum, favoritesOnly }) => {
