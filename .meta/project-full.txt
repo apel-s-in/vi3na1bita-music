@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-21eb7912e8628b12524d50af02d26064bfdd1551.idx
-│   │       ├── pack-21eb7912e8628b12524d50af02d26064bfdd1551.pack
-│   │       └── pack-21eb7912e8628b12524d50af02d26064bfdd1551.rev
+│   │       ├── pack-7937e13727d94be40569668d2f88c92b442c6953.idx
+│   │       ├── pack-7937e13727d94be40569668d2f88c92b442c6953.pack
+│   │       └── pack-7937e13727d94be40569668d2f88c92b442c6953.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -375,7 +375,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-20 22:24:49 UTC
+Сгенерировано: 2026-02-20 22:25:33 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1870,6 +1870,12 @@ export function initPlaybackCache() {
 export const protectWindow = () => { _protected = true; };
 export const unprotectWindow = () => { _protected = false; flushGC().catch(()=>{}); };
 export const getWindowState = () => ({ ..._win, protected: _protected, pendingGC: [..._pendingGC] });
+
+// Expose minimal API for other modules (OfflineManager eviction needs protected window, Q.11.1)
+window.PlaybackCache = window.PlaybackCache || {};
+window.PlaybackCache.getWindowState = getWindowState;
+window.PlaybackCache.protectWindow = protectWindow;
+window.PlaybackCache.unprotectWindow = unprotectWindow;
 
 //=================================================
 // FILE: /scripts/app/player-ui.js
