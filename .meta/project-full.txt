@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e58d9530140107fc73d14a34c97d3458d9c82ced.idx
-│   │       ├── pack-e58d9530140107fc73d14a34c97d3458d9c82ced.pack
-│   │       └── pack-e58d9530140107fc73d14a34c97d3458d9c82ced.rev
+│   │       ├── pack-77e43a9f70c12bd151127c88e50be8cd440de59a.idx
+│   │       ├── pack-77e43a9f70c12bd151127c88e50be8cd440de59a.pack
+│   │       └── pack-77e43a9f70c12bd151127c88e50be8cd440de59a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-20 17:00:26 UTC
+Сгенерировано: 2026-02-20 17:01:05 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1952,8 +1952,17 @@ export function initPlaybackCache() {
   window.addEventListener('player:trackChanged', r);
   window.addEventListener('playlist:changed', r);
   window.addEventListener('offline:uiChanged', r);
-  window.addEventListener('online', r);
+  
+  // Встроенная защита окна при потере сети (заменяет offline-playback.js)
+  const toggleNet = () => {
+    const isBlocked = !navigator.onLine || (window.NetPolicy && !window.NetPolicy.isNetworkAllowed());
+    isBlocked ? protectWindow() : unprotectWindow();
+    if (!isBlocked) r();
+  };
+  ['online', 'offline', 'netPolicy:changed'].forEach(e => window.addEventListener(e, toggleNet));
+  
   window.playerCore?.on?.({ onPlay: () => flushGC().catch(()=>{}) });
+  toggleNet();
 }
 
 export const protectWindow = () => { _protected = true; };
