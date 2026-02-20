@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f629cddd13c2d84638eb06f03e4ccd245b371e48.idx
-│   │       ├── pack-f629cddd13c2d84638eb06f03e4ccd245b371e48.pack
-│   │       └── pack-f629cddd13c2d84638eb06f03e4ccd245b371e48.rev
+│   │       ├── pack-4adf4ec3667e7838f6446b739450e58d9b011dd9.idx
+│   │       ├── pack-4adf4ec3667e7838f6446b739450e58d9b011dd9.pack
+│   │       └── pack-4adf4ec3667e7838f6446b739450e58d9b011dd9.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-20 16:50:39 UTC
+Сгенерировано: 2026-02-20 16:52:14 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7510,6 +7510,12 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         if (W.Utils?.getNet?.()?.kind === 'cellular' && W.NetPolicy?.shouldShowCellularToast?.()) toast('Воспроизведение через мобильную сеть', 'info');
       }
 
+      // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Железобетонный Fallback.
+      // Если TrackResolver недоступен или вернул пустой ответ, но сеть есть — играем прямой URL.
+      if (!url && t.src && (!res || !W.TrackResolver || res.source === 'none') && (W.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) {
+        url = this.qMode === 'lo' && trackHasLo(t) ? (W.TrackRegistry?.getTrackByUid(uid)?.audio_low || t.src) : t.src;
+      }
+
       // NO STOP INVARIANT: Fallback skip
       if (!url) {
         if (this._skips.count >= this._skips.max) { toast('Нет доступных треков', 'error'); return this._emit('onPlaybackError', { reason: 'no_source' }); }
@@ -7536,6 +7542,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
     _unload(silent) {
       if (this.sound) { try { this.sound.stop(); this.sound.unload(); } catch {} this.sound = null; }
+      try { W.Utils?.blob?.revokeUrl?.('p_' + this.getCurrentTrackUid()); } catch {}
       this._stopTick(); this._stats.onPauseOrStop();
       if (!silent) this._emit('onStop');
     }
