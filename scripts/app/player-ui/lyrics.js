@@ -1,9 +1,10 @@
 // scripts/app/player-ui/lyrics.js
 // LyricsController — Optimized JSON-only timed lyrics (v3.0)
 // FIXES:
-// 1. CPU Spikes: Eliminated the forced 250ms DOM rebuild. Updates DOM strictly on line change.
-// 2. Offline Bug: Fixed permanent 'No Lyrics' caching when network is blocked by NetPolicy.
-// 3. Memory & GC: Cached DOM references, removed redundant string/array allocations.
+// 1. SyntaxError: Restored missing file endings (IIFE closure).
+// 2. CPU Spikes: Eliminated the forced 250ms DOM rebuild. Updates DOM strictly on line change.
+// 3. Offline Bug: Fixed permanent 'No Lyrics' caching when network is blocked by NetPolicy.
+// 4. Memory & GC: Cached DOM references, removed redundant string/array allocations.
 
 (function () {
   'use strict';
@@ -215,4 +216,8 @@
       if (saved) { st.mode = saved.viewMode || 'normal'; st.anim = !!saved.animationEnabled; }
       updateUI();
     },
-    checkTrackHas
+    checkTrackHasLyrics: () => st.has
+  };
+
+  init();
+})();
