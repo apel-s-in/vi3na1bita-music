@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f34a0567c5a394a4673acdfdb81f92bf0690cd58.idx
-│   │       ├── pack-f34a0567c5a394a4673acdfdb81f92bf0690cd58.pack
-│   │       └── pack-f34a0567c5a394a4673acdfdb81f92bf0690cd58.rev
+│   │       ├── pack-639ab62fa08e488ead7ab3c35818777d941d0900.idx
+│   │       ├── pack-639ab62fa08e488ead7ab3c35818777d941d0900.pack
+│   │       └── pack-639ab62fa08e488ead7ab3c35818777d941d0900.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -324,7 +324,6 @@ vi3na1bita-music/
 │   │   ├── gallery.js
 │   │   ├── offline-ui-bootstrap.js
 │   │   ├── playback-cache-bootstrap.js
-│   │   ├── playback-policy.js
 │   │   ├── player-ui.js
 │   │   ├── promocode.js
 │   │   └── track-registry.js
@@ -380,7 +379,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-20 20:49:19 UTC
+Сгенерировано: 2026-02-20 20:50:16 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1866,52 +1865,6 @@ export function initPlaybackCache() {
 export const protectWindow = () => { _protected = true; };
 export const unprotectWindow = () => { _protected = false; flushGC().catch(()=>{}); };
 export const getWindowState = () => ({ ..._win, protected: _protected, pendingGC: [..._pendingGC] });
-
-//=================================================
-// FILE: /scripts/app/playback-policy.js
-(function (W) {
-  'use strict';
-  const apply = () => {
-    const core = W.playerCore, pAlbum = W.AlbumsManager?.getPlayingAlbum?.();
-    const isFavOnly = localStorage.getItem('favoritesOnlyMode') === '1';
-    const src = core?.originalPlaylist || [];
-    
-    if (!core || !pAlbum || !src.length || core.getIndex() < 0) return;
-
-    // Remove duplicates
-    const uniq = src.filter((t, i, arr) => t?.uid && arr.findIndex(x => x.uid === t.uid) === i);
-    let tgt = uniq;
-
-    if (pAlbum === (W.SPECIAL_FAVORITES_KEY || '__favorites__')) {
-      tgt = uniq.filter(t => core.isFavorite?.(t.uid));
-    } else if (isFavOnly) {
-      const liked = new Set(core.getLikedUidsForAlbum?.(pAlbum) || []);
-      tgt = uniq.filter(t => liked.has(t.uid));
-    }
-
-    if (!tgt.length) return; // Silent fallback if settings mismatch
-
-    const curUid = String(core.getCurrentTrack?.()?.uid || '').trim();
-    const nIdx = Math.max(0, tgt.findIndex(t => String(t?.uid || '').trim() === curUid));
-    const preserve = nIdx === core.getIndex() && String(tgt[nIdx]?.uid || '') === curUid;
-
-    core.setPlaylist(tgt, nIdx, {}, { preserveOriginalPlaylist: true, preserveShuffleMode: true, preservePosition: preserve });
-    W.PlayerUI?.updateAvailableTracksForPlayback?.();
-    W.PlayerUI?.updatePlaylistFiltering?.();
-  };
-
-  const bind = () => {
-    if (!W.playerCore?.onFavoritesChanged) return setTimeout(bind, 100);
-    W.playerCore.onFavoritesChanged(() => {
-      const pAlbum = W.AlbumsManager?.getPlayingAlbum?.();
-      if (pAlbum === (W.SPECIAL_FAVORITES_KEY || '__favorites__') || localStorage.getItem('favoritesOnlyMode') === '1') apply();
-    });
-    W.addEventListener('playlist:changed', apply);
-  };
-  bind();
-
-  W.PlaybackPolicy = { apply };
-})(window);
 
 //=================================================
 // FILE: /scripts/app/player-ui.js
