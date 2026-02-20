@@ -1,87 +1,55 @@
 /**
- * offline-playback.js — Fix #19.1/#19.2/#19.3
- * Поведение при потере сети: skip, protect window, FOQ.
+ * scripts/offline/offline-playback.js
+ * 
+ * Оптимизировано (v2.0):
+ * 1. Убрано monkey-patching метода PlayerCore.load() (антипаттерн).
+ * 2. Удален дублирующий ручной цикл _skipToNextAvailable. PlayerCore уже имеет 
+ *    встроенный механизм тихого пропуска треков без src (url === null), 
+ *    когда TrackResolver и OfflineManager сообщают о недоступности файла.
+ * 3. Оставлена только строгая логика защиты PlaybackCache Window (protect/unprotect) 
+ *    согласно сценариям потери сети (ТЗ R1/R2) и Сетевой политики.
  */
 
-import { hasAudioForUid } from './cache-db.js';
-
-let _active = false;
+let _activeOffline = false;
 
 export function initOfflinePlayback() {
-  window.addEventListener('offline', _onOffline);
-  window.addEventListener('online', _onOnline);
-
-  const pc = window.playerCore;
-  if (!pc) return;
-
-  // Wrap load to catch network errors
-  const origLoad = pc.load.bind(pc);
-  pc._origLoad = origLoad;
-  pc.load = async function(idx, opts) {
-    try {
-      await origLoad(idx, opts);
-    } catch (e) {
-      const blocked = !navigator.onLine || (window.NetPolicy && !window.NetPolicy.isNetworkAllowed());
-      if (blocked) {
-        await _skipToNextAvailable(idx, opts?.dir || 1);
-      } else {
-        throw e;
-      }
-    }
-  };
-}
-
-async function _onOffline() {
-  _active = true;
-  const mgr = window.OfflineManager;
-  if (!mgr || mgr.getMode() !== 'R1') return;
-
-  try {
-    const { protectWindow } = await import('../app/playback-cache-bootstrap.js');
-    protectWindow();
-  } catch {}
-}
-
-async function _onOnline() {
-  if (!_active) return;
-  _active = false;
-  try {
-    const { unprotectWindow } = await import('../app/playback-cache-bootstrap.js');
-    unprotectWindow();
-  } catch {}
-}
-
-// Fix #19.1
-async function _skipToNextAvailable(fromIdx, dir = 1) {
-  const pc = window.playerCore;
-  if (!pc) return;
-  const playlist = pc.getPlaylistSnapshot?.() || [];
-  if (!playlist.length) return;
-
-  const len = playlist.length;
-  let idx = fromIdx;
-  let attempts = 0;
-
-  while (attempts < len) {
-    idx = dir >= 0 ? (idx + 1) % len : (idx - 1 + len) % len;
-    attempts++;
-
-    const track = playlist[idx];
-    if (!track?.uid) continue;
-
-    const uid = String(track.uid).trim();
-    const hasBlob = await hasAudioForUid(uid);
-
-    if (hasBlob) {
-      try {
-        await pc._origLoad(idx, { autoPlay: true, dir });
-        return;
-      } catch { continue; }
-    }
+  const toggle = () => _handleNetworkShift();
+  
+  // Реагируем на физическую сеть и на "Авиарежим" приложения
+  window.addEventListener('offline', toggle);
+  window.addEventListener('online', toggle);
+  window.addEventListener('netPolicy:changed', toggle);
+  
+  // Инициализация стартового состояния
+  if (document.readyState === 'complete') {
+    toggle();
+  } else {
+    window.addEventListener('load', toggle);
   }
+}
 
-  const toast = window.NotificationSystem?.warning || window.toast;
-  if (toast) toast('Нет доступных треков офлайн.');
+async function _handleNetworkShift() {
+  // Сеть считается недоступной, если нет физического линка ИЛИ она заблокирована юзером
+  const isBlocked = !navigator.onLine || (window.NetPolicy && !window.NetPolicy.isNetworkAllowed());
+  
+  if (isBlocked === _activeOffline) return;
+  _activeOffline = isBlocked;
+
+  const mgr = window.OfflineManager || window._offlineManagerInstance;
+  
+  // Защита окна PlaybackCache применяется в режимах R1 и R2 (согласно ТЗ Q.14.5)
+  if (!mgr || !['R1', 'R2'].includes(mgr.getMode())) return;
+
+  try {
+    const { protectWindow, unprotectWindow } = await import('../app/playback-cache-bootstrap.js');
+    if (_activeOffline) {
+      protectWindow();
+    } else {
+      unprotectWindow();
+    }
+  } catch (err) {
+    console.warn('[OfflinePlayback] failed to toggle window protection', err);
+  }
 }
 
 export default { initOfflinePlayback };
