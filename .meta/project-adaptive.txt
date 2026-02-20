@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1189b754d91698296377175580ec19965099f19b.idx
-│   │       ├── pack-1189b754d91698296377175580ec19965099f19b.pack
-│   │       └── pack-1189b754d91698296377175580ec19965099f19b.rev
+│   │       ├── pack-e67e7fe64ddf8028c34fd4d281f5f2937bc5a124.idx
+│   │       ├── pack-e67e7fe64ddf8028c34fd4d281f5f2937bc5a124.pack
+│   │       └── pack-e67e7fe64ddf8028c34fd4d281f5f2937bc5a124.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,7 +377,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-20 21:37:36 UTC
+Сгенерировано: 2026-02-20 21:39:30 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3135,7 +3135,15 @@ window.FavoritesManager = Favorites;
     lsSetBool01: (k, v) => localStorage.setItem(k, v ? '1' : '0'),
     lsGetJson: (k, d = null) => U.obj.safeJson(k, d)
   };
-
+  
+  // ESM-compatible exports via window
+  W.AppUtils = {
+    $: U.$,
+    toStr: (v) => (v == null ? '' : String(v)),
+    isMobileUA: U.isMobile,
+    escHtml: U.escapeHtml
+  };
+  
   // Safe Global Aliases
   U.escapeHtml = U.ui.escapeHtml;
   U.isMobile = () => U.getPlatform().isIOS || U.getPlatform().isAndroid;
