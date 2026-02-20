@@ -73,13 +73,15 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(req.url);
 
   // Spec 5.2 & 5.3: Airplane mode fully blocks all network requests in SW layer too.
-  if (isAirplaneMode) {
-    e.respondWith(caches.match(req).then(c => c || new Response(null, { status: 503, statusText: 'Airplane Mode Active' })));
-    return;
-  }
+    if (/\.(mp3|ogg|m4a|flac)$/i.test(url.pathname)) {
+      if (isAirplaneMode) e.respondWith(new Response(null, { status: 503, statusText: 'Airplane Mode Active' }));
+      return;
+    }
 
-  // Audio bypasses SW completely (Handled by OfflineManager IndexedDB)
-  if (/\.(mp3|ogg|m4a|flac)$/i.test(url.pathname)) return;
+    if (isAirplaneMode) {
+      e.respondWith(caches.match(req).then(c => c || new Response(null, { status: 503, statusText: 'Airplane Mode Active' })));
+      return;
+    }
 
   // Static core assets (Cache First)
   if (STATIC_SET.has(norm(url.href))) {
