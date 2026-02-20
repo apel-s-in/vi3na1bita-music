@@ -65,6 +65,10 @@ export const getAllTrackMetas = async () => (await read('trackMeta', s => s.getA
 /* ─── Convenience & Storage ─── */
 export const deleteTrackCache = async uid => { await deleteAudio(uid); await deleteTrackMeta(uid); };
 
+/* ─── Global KV store (offlineCache/global) ─── */
+export const getGlobal = (key) => read('global', s => s.get(String(key)));
+export const setGlobal = (key, value) => write('global', s => s.put({ key: String(key), value }));
+
 export const estimateUsage = async () => {
   try {
     if (navigator.storage?.estimate) {
