@@ -30,7 +30,9 @@ export async function loadFavoritesAlbum(ctx) {
 
     container.innerHTML = items.map((it, i) => {
       const t = window.TrackRegistry?.getTrackByUid(it.uid) || { title: 'Загрузка...', sourceAlbum: it.sourceAlbum };
-      const aTitle = window.TrackRegistry?.getAlbumTitle(t.sourceAlbum) || 'Альбом';
+      const aTitle = window.TrackRegistry?.getAlbumTitle(t.sourceAlbum) 
+                     || window.albumsIndex?.find(a => a.key === t.sourceAlbum)?.title 
+                     || 'Альбом';
       const id = `fav_${it.sourceAlbum}_${it.uid}`;
       
       return `
@@ -51,8 +53,8 @@ export async function loadFavoritesAlbum(ctx) {
     ctx._favBound = true;
     
     container.addEventListener('click', e => {
-       if (ctx.getCurrentAlbum() !== FAV) return; // Защита: логика 'inactive' работает только во вкладке Избранное
-
+       if (ctx.getCurrentAlbum() !== FAV) return; // Защита от срабатывания логики Избранного в других альбомах
+       
        const row = e.target.closest('.track');
        if (!row) return;
        
