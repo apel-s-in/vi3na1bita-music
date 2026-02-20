@@ -157,16 +157,8 @@ class OfflineManager {
       }
     }
 
-    const u = W.Utils?.pq;
-    if (u && !u.__r2patched) {
-      u.__r2patched = true;
-      const ogM = u.getMode, ogT = u.toggle;
-      u.getMode = () => this.getMode() === 'R2' ? this.getCQ() : ogM();
-      u.toggle = () => {
-        if (this.getMode() === 'R2') { W.Modals?.openOfflineModal?.(); return { ok: true, next: this.getCQ() }; }
-        return ogT();
-      };
-    }
+    // NOTE: Do not monkey-patch Utils.pq.
+    // UI must handle R2 CQ behavior explicitly (Q.4.3), without hidden global overrides.
 
     W.addEventListener('quality:changed', e => this._onQualChg(e.detail?.quality));
     
@@ -323,14 +315,28 @@ class OfflineManager {
   }
 
   async enqueueAudioDownload(uid, { priority, kind } = {}) {
-    const u = sUid(uid); if (!u) return;
+    const u = sUid(uid);
+    if (!u) return;
+
+    // Q.6: if blob exists on device -> never download again "just because"
+    // (meta.cachedComplete may be stale after iOS cleanup/restarts/crashes)
+    if (await DB.hasAudioForUid(u).catch(() => false)) return;
+
     const m = await DB.getTrackMeta(u);
     if (['pinned', 'cloud', 'dynamic'].includes(m?.type) || m?.cachedComplete) return;
+
     if (kind === 'playbackCache' && !(await hasSpace())) return;
 
-    const q = this.getEffectiveQuality(); const url = getUrl(u, q);
-    if (kind === 'playbackCache' && m?.type !== 'playbackCache') await DB.updateTrackMeta(u, { type: 'playbackCache', lastAccessedAt: now() });
-    if (url) this.queue.add({ uid: u, url, quality: q, priority: priority || PRIO.UPD, kind });
+    const q = this.getEffectiveQuality();
+    const url = getUrl(u, q);
+
+    if (kind === 'playbackCache' && m?.type !== 'playbackCache') {
+      await DB.updateTrackMeta(u, { type: 'playbackCache', lastAccessedAt: now() });
+    }
+
+    if (url) {
+      this.queue.add({ uid: u, url, quality: q, priority: priority || PRIO.UPD, kind });
+    }
   }
 
   _reCache(uid, q, prio = PRIO.UPD) {
