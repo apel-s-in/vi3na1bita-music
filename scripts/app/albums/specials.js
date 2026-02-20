@@ -110,7 +110,21 @@ export async function loadFavoritesAlbum(ctx) {
     });
 
     window.playerCore?.onFavoritesChanged(() => {
-       if (ctx.getCurrentAlbum() === FAV) { rebuild(); window.PlayerUI?.updateAvailableTracksForPlayback?.(); }
+       if (ctx.getCurrentAlbum() === FAV) {
+         rebuild();
+         // Обновить originalPlaylist чтобы applyFavoritesOnlyFilter работал с актуальными данными
+         const pc = window.playerCore;
+         if (pc && ctx.getPlayingAlbum?.() === FAV) {
+           const activeTracks = pc.getFavoritesState().active.map(i => {
+             const t = window.TrackRegistry?.getTrackByUid(i.uid) || {};
+             return { ...t, uid: i.uid, album: 'Избранное', cover: FAV_COVER, sourceAlbum: i.sourceAlbum };
+           });
+           if (activeTracks.length) {
+             pc.originalPlaylist = activeTracks;
+           }
+         }
+         window.PlayerUI?.updateAvailableTracksForPlayback?.();
+       }
     });
   }
   
