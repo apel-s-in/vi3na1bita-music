@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-744218178ca915386fb9581d7dd4694f1154623b.idx
-│   │       ├── pack-744218178ca915386fb9581d7dd4694f1154623b.pack
-│   │       └── pack-744218178ca915386fb9581d7dd4694f1154623b.rev
+│   │       ├── pack-8b89d9b2ad0cb0cc4a804f1c15dcf905bdd18a44.idx
+│   │       ├── pack-8b89d9b2ad0cb0cc4a804f1c15dcf905bdd18a44.pack
+│   │       └── pack-8b89d9b2ad0cb0cc4a804f1c15dcf905bdd18a44.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -380,7 +380,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-20 20:33:26 UTC
+Сгенерировано: 2026-02-20 20:38:12 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6191,20 +6191,21 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     // Playlist & Core Logic
     // =========================
     setPlaylist(tracks, startIdx = 0, meta, opts = {}) {
-      const prevPos = this.getPosition(), wasPlaying = this.isPlaying();
+          const prevPos = this.getPosition(), wasPlaying = this.isPlaying();
+          this.playlist = (tracks || []).map(t => ({ ...t, uid: uidOf(t.uid), title: t.title || 'Без названия', artist: t.artist || 'Витрина Разбита' }));
+          if (!opts.preserveOriginalPlaylist) this.originalPlaylist = [...this.playlist];
 
-      this.playlist = (tracks || []).map(t => ({ ...t, uid: uidOf(t.uid), title: t.title || 'Без названия', artist: t.artist || 'Витрина Разбита' }));
-      if (!opts.preserveOriginalPlaylist) this.originalPlaylist = [...this.playlist];
+          this.currentIndex = clamp(startIdx, 0, this.playlist.length - 1);
+          const targetUid = this.playlist[this.currentIndex]?.uid;
+      
+          if (!opts.preserveShuffleMode) this.shufHist = [];
 
-      this.currentIndex = clamp(startIdx, 0, this.playlist.length - 1);
-      const targetUid = this.playlist[this.currentIndex]?.uid;
-
-      if (this.flags.shuf && !opts.preserveShuffleMode) this.shufflePlaylist(targetUid);
-      else if (!this.flags.shuf) this.shufHist = [];
-      else if (targetUid) {
-        const nIdx = this.playlist.findIndex(t => t.uid === targetUid);
-        if (nIdx >= 0) this.currentIndex = nIdx;
-      }
+          if (this.flags.shuf && !opts.preserveShuffleMode) this.shufflePlaylist(targetUid);
+          else if (!this.flags.shuf) this.shufHist = [];
+          else if (targetUid) {
+            const nIdx = this.playlist.findIndex(t => t.uid === targetUid);
+            if (nIdx >= 0) this.currentIndex = nIdx;
+          }
 
       this._skips = { tok: 0, count: 0, max: this.playlist.length };
       const sameTrack = !!(this.sound && this.getCurrentTrackUid() === targetUid);
@@ -6365,20 +6366,22 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     isFavorite(uid) { return Favorites.isLiked(uidOf(uid)); }
 
     toggleFavorite(uid, opts = {}) {
-      const u = uidOf(uid); if (!u) return { liked: false };
-      const isFav = W.AlbumsManager?.getCurrentAlbum?.() === W.SPECIAL_FAVORITES_KEY;
-      const src = opts.source || (opts.fromAlbum ? 'album' : (isFav ? 'favorites' : 'album'));
+          const u = uidOf(uid);
+          if (!u) return { liked: false };
+          const playingAlbum = W.AlbumsManager?.getPlayingAlbum?.();
+          const isFavPlaying = playingAlbum === W.SPECIAL_FAVORITES_KEY;
+          const src = opts.source || (opts.fromAlbum ? 'album' : (isFavPlaying ? 'favorites' : 'album'));
 
-      const liked = Favorites.toggle(u, { source: src, albumKey: opts.albumKey });
-      this._emitFav(u, liked, opts.albumKey);
+          const liked = Favorites.toggle(u, { source: src, albumKey: opts.albumKey });
+          this._emitFav(u, liked, opts.albumKey);
 
-      // ONLY allowed STOP scenario
-      if (!liked && src === 'favorites' && isFav && this.getCurrentTrackUid() === u) {
-        if (!Favorites.getSnapshot().some(i => !i.inactiveAt)) this.stop();
-        else if (!this.flags.rep) this.next();
-      }
-      return { liked };
-    }
+          // ONLY allowed STOP scenario
+          if (!liked && src === 'favorites' && isFavPlaying && this.getCurrentTrackUid() === u) {
+            if (!Favorites.getSnapshot().some(i => !i.inactiveAt)) this.stop();
+            else if (!this.flags.rep) this.next();
+          }
+          return { liked };
+        }
 
     removeInactivePermanently(uid) { const u = uidOf(uid); if (u && Favorites.remove(u)) this._emitFav(u, false, null, true); }
     restoreInactive(uid) { return this.toggleFavorite(uid, { source: 'favorites' }); }
@@ -6401,8 +6404,36 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       }, { active: [], inactive: [] });
     }
 
-    getLikedUidsForAlbum(key) { const k = uidOf(key); return k ? Favorites.getSnapshot().filter(i => !i.inactiveAt && uidOf(getTrackByUid(i.uid)?.sourceAlbum) === k).map(i => i.uid) : []; }
-    onFavoritesChanged(cb) { this._favSubs.add(cb); return () => this._favSubs.delete(cb); }
+    getLikedUidsForAlbum(key) { const k = uidOf(key); return k ?
+    Favorites.getSnapshot().filter(i => !i.inactiveAt && uidOf(getTrackByUid(i.uid)?.sourceAlbum) === k).map(i => i.uid) : []; }
+    
+        applyFavoritesOnlyFilter() {
+          const pAlbum = W.AlbumsManager?.getPlayingAlbum?.();
+          const isFavOnly = localStorage.getItem('favoritesOnlyMode') === '1';
+          const src = this.originalPlaylist || [];
+          if (!pAlbum || !src.length || this.currentIndex < 0) return;
+
+          const uniq = src.filter((t, i, arr) => t?.uid && arr.findIndex(x => x.uid === t.uid) === i);
+          let tgt = uniq;
+
+          if (pAlbum === W.SPECIAL_FAVORITES_KEY) {
+            tgt = uniq.filter(t => this.isFavorite(t.uid));
+          } else if (isFavOnly) {
+            const liked = new Set(this.getLikedUidsForAlbum(pAlbum) || []);
+            tgt = uniq.filter(t => liked.has(t.uid));
+          }
+
+          if (!tgt.length) return;
+
+          const curUid = this.getCurrentTrackUid();
+          const nIdx = Math.max(0, tgt.findIndex(t => t.uid === curUid));
+          const preserve = nIdx === this.currentIndex && tgt[nIdx]?.uid === curUid;
+          this.setPlaylist(tgt, nIdx, {}, { preserveOriginalPlaylist: true, preserveShuffleMode: true, preservePosition: preserve });
+          W.PlayerUI?.updatePlaylistFiltering?.();
+        }
+
+        onFavoritesChanged(cb) { this._favSubs.add(cb);
+    return () => this._favSubs.delete(cb); }
     _emitFav(uid, liked, albumKey, removed = false) { this._favSubs.forEach(fn => { try { fn({ uid, liked, albumKey, removed }); } catch {} }); }
 
     toggleShuffle() { this.flags.shuf = !this.flags.shuf; if (this.flags.shuf) this.shufflePlaylist(); else { const u = this.getCurrentTrackUid(); this.playlist = [...this.originalPlaylist]; if(u) this.currentIndex = this.playlist.findIndex(t => t.uid === u); } W.dispatchEvent(new CustomEvent('playlist:changed', { detail: { reason: 'shuffle', shuffleMode: this.flags.shuf } })); }
