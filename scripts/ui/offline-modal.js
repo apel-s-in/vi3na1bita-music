@@ -36,6 +36,7 @@ const refresh = async () => {
   const isR2 = om.getMode() === 'R2';
   const q = isR2 ? om.getCQ() : om.getQuality();
   const { N, D } = om.getCloudSettings();
+  const dynLimitMB = isR2 && om.getDynamicLimitMB ? await om.getDynamicLimitMB() : 0;
   
   const bd = { pinned: 0, cloud: 0, transient: 0, dynamic: 0, other: 0 };
   const pcList = [];
@@ -100,6 +101,16 @@ const refresh = async () => {
       <div class="om-setting"><label class="om-setting__label">Слушать для ☁ (N)</label><input type="number" id="inp-n" value="${N}" min="1" class="om-setting__input"></div>
       <div class="om-setting"><label class="om-setting__label">Хранить ☁ дней (D)</label><input type="number" id="inp-d" value="${D}" min="1" class="om-setting__input"></div>
     </div>
+
+    ${isR2 ? `
+      <div class="om-divider"></div>
+      <div class="om-setting">
+        <label class="om-setting__label">Лимит умного кэша (Dynamic), МБ</label>
+        <input type="number" id="inp-dyn-mb" value="${dynLimitMB}" min="0" class="om-setting__input">
+      </div>
+      <button class="om-btn om-btn--outline" data-action="apply-r2-dyn" style="width:100%; margin-top:10px; margin-bottom:14px">Применить лимит Dynamic</button>
+    ` : ''}
+
     <button class="om-btn om-btn--primary" data-action="apply-cloud" style="width:100%; margin-bottom:14px">Применить настройки</button>
     <div class="om-divider"></div>
     <button class="om-btn om-btn--outline" data-action="toggle-list" style="width:100%">${_listExpanded ? 'Скрыть список 🔒/☁' : 'Показать список 🔒/☁'}</button>
@@ -154,14 +165,73 @@ async function handleAction(e) {
     case 'clear-traffic': Net.clearTrafficStats(); refresh(); break;
     case 'set-q': await handleQ(el.dataset.val, false); break;
     case 'set-cq': await handleQ(el.dataset.val, true); break;
-    case 'recache':
-      if (om.queue) om.queue.setParallel(3);
-      await om.reCacheAll(om.getMode() === 'R2' ? om.getCQ() : om.getQuality());
-      setTimeout(() => om.queue?.setParallel?.(1), 15000);
-      refresh(); break;
+    case 'recache': {
+      const isR2 = om.getMode() === 'R2';
+      const targetQ = isR2 ? om.getCQ() : om.getQuality();
+
+      // Q.13.3: двойное подтверждение для R2 (и можно оставить одно для R0/R1)
+      const metas = await getAllTrackMetas();
+      const win = window.PlaybackCache?.getWindowState?.() || {};
+      const winUids = [win.prev, win.cur, win.next].filter(Boolean);
+
+      let uidCount = 0;
+      let bytes = 0;
+
+      for (const m of metas) {
+        if (!m?.cachedComplete) continue;
+        if (!['pinned', 'cloud', 'dynamic', 'playbackCache'].includes(m.type)) continue;
+        const mq = (String(m.quality || '').toLowerCase() === 'lo') ? 'lo' : 'hi';
+        if (mq !== targetQ) { uidCount++; bytes += (m.size || 0); }
+      }
+
+      const explain = () => {
+        const parts = [
+          'Будут перекачаны треки в качестве ' + (targetQ === 'lo' ? 'Lo' : 'Hi') + '.',
+          'Порядок: окно PREV/CUR/NEXT → 🔒 pinned → ☁ cloud → 🧠 dynamic.'
+        ];
+        if (winUids.length) parts.push(`Окно: ${winUids.length} UID.`);
+        return parts.join('<br>');
+      };
+
+      const doRun = async () => {
+        if (om.queue) om.queue.setParallel(3);
+        await om.reCacheAll(targetQ);
+        setTimeout(() => om.queue?.setParallel?.(1), 15000);
+        refresh();
+      };
+
+      if (!isR2) {
+        await doRun();
+        break;
+      }
+
+      confirmBox({
+        title: 'Re-cache (R2)',
+        textHtml: explain(),
+        confirmText: 'Далее',
+        cancelText: 'Отмена',
+        onConfirm: () => confirmBox({
+          title: 'Re-cache (R2)',
+          textHtml: `Будет перекачано: <strong>${uidCount}</strong> UID<br>Объём: <strong>${fMB(bytes)}</strong>`,
+          confirmText: 'Начать',
+          cancelText: 'Отмена',
+          onConfirm: doRun
+        })
+      });
+
+      break;
+    }
     case 'apply-cloud':
       await om.confirmApplyCloudSettings({ newN: Math.max(1, parseInt($('#inp-n', _overlay)?.value || '5')), newD: Math.max(1, parseInt($('#inp-d', _overlay)?.value || '31')) });
       refresh(); window.NotificationSystem?.success?.('Настройки применены'); break;
+
+    case 'apply-r2-dyn': {
+      const v = Math.max(0, parseInt($('#inp-dyn-mb', _overlay)?.value || '0'));
+      if (om.setDynamicLimitMB) await om.setDynamicLimitMB(v);
+      refresh();
+      window.NotificationSystem?.success?.('Лимит Dynamic применён');
+      break;
+    }
     case 'list-item-act': await om.togglePinned(el.dataset.uid); refresh(); break;
     case 'list-item-del': confirmBox({ title: 'Удалить трек?', textHtml: 'Статистика облачка будет сброшена.', confirmText: 'Удалить', onConfirm: async () => { await om.removeCached(el.dataset.uid); refresh(); } }); break;
     case 'set-mode':
