@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-77e43a9f70c12bd151127c88e50be8cd440de59a.idx
-│   │       ├── pack-77e43a9f70c12bd151127c88e50be8cd440de59a.pack
-│   │       └── pack-77e43a9f70c12bd151127c88e50be8cd440de59a.rev
+│   │       ├── pack-47c0412ccad7f9ac25890cd9013b57b754faad65.idx
+│   │       ├── pack-47c0412ccad7f9ac25890cd9013b57b754faad65.pack
+│   │       └── pack-47c0412ccad7f9ac25890cd9013b57b754faad65.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-20 17:01:05 UTC
+Сгенерировано: 2026-02-20 17:01:59 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5536,8 +5536,7 @@ document.addEventListener('click', async (e) => {
 
 export function initOfflineIndicators() {
   ['offline:uiChanged', 'offline:stateChanged', 'offline:trackCached', 'offline:downloadStart', 'netPolicy:changed'].forEach(ev => window.addEventListener(ev, scheduleRefresh));
-  if (document.readyState !== 'loading') injectOfflineIndicators();
-  else document.addEventListener('DOMContentLoaded', () => injectOfflineIndicators());
+  injectOfflineIndicators(); // Вызывается оркестратором app.js, DOM уже готов
 }
 
 export default { initOfflineIndicators, injectOfflineIndicators, injectIndicator, refreshAllIndicators };
