@@ -156,8 +156,7 @@ document.addEventListener('click', async (e) => {
 
 export function initOfflineIndicators() {
   ['offline:uiChanged', 'offline:stateChanged', 'offline:trackCached', 'offline:downloadStart', 'netPolicy:changed'].forEach(ev => window.addEventListener(ev, scheduleRefresh));
-  if (document.readyState !== 'loading') injectOfflineIndicators();
-  else document.addEventListener('DOMContentLoaded', () => injectOfflineIndicators());
+  injectOfflineIndicators(); // Вызывается оркестратором app.js, DOM уже готов
 }
 
 export default { initOfflineIndicators, injectOfflineIndicators, injectIndicator, refreshAllIndicators };
