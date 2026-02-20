@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ce1d7c4167157875a41f3d9bc354f0cb36813f13.idx
-│   │       ├── pack-ce1d7c4167157875a41f3d9bc354f0cb36813f13.pack
-│   │       └── pack-ce1d7c4167157875a41f3d9bc354f0cb36813f13.rev
+│   │       ├── pack-774025821bb2edaba1ce76d5e7382a7b2bd10092.idx
+│   │       ├── pack-774025821bb2edaba1ce76d5e7382a7b2bd10092.pack
+│   │       └── pack-774025821bb2edaba1ce76d5e7382a7b2bd10092.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -316,8 +316,6 @@ vi3na1bita-music/
 │   │   │   └── specials.js
 │   │   ├── player-ui/
 │   │   │   └── lyrics.js
-│   │   ├── utils/
-│   │   │   └── app-utils.js
 │   │   ├── albums.js
 │   │   ├── gallery.js
 │   │   ├── offline-ui-bootstrap.js
@@ -377,7 +375,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-20 21:40:01 UTC
+Сгенерировано: 2026-02-20 21:40:31 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2506,23 +2504,6 @@ const TrackRegistry = { registerTrack, getTrackByUid, getAllUids, getAlbumTitle 
 window.TrackRegistry = TrackRegistry;
 
 export default TrackRegistry;
-
-//=================================================
-// FILE: /scripts/app/utils/app-utils.js
-// scripts/app/utils/app-utils.js
-// Тонкий фасад над window.Utils (без дублей логики).
-// Важно: не трогаем воспроизведение, только утилиты.
-
-export const $ = (id) => document.getElementById(String(id || ''));
-
-export const toStr = (v) => (v == null ? '' : String(v));
-
-export const isMobileUA = () => !!window.Utils?.isMobile?.() || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-export const escHtml = (s) => {
-  const fn = window.Utils?.escapeHtml;
-  return (typeof fn === 'function') ? fn(toStr(s)) : toStr(s);
-};
 
 //=================================================
 // FILE: /scripts/ci/lint-sw.mjs
