@@ -19,6 +19,9 @@ class AlbumsManager {
     const def = C.ICON_ALBUMS_ORDER?.find(x => !x.key.startsWith('__'))?.key || window.albumsIndex?.[0]?.key;
     const key = localStorage.getItem('currentAlbum') || def;
     if (key) await this.loadAlbum(key);
+    window.addEventListener('quality:changed', () => {
+      this.cache.forEach(d => delete d._pTracks);
+    });
   }
 
   _renderIcons() {
@@ -94,6 +97,8 @@ class AlbumsManager {
   }
 
   async _loadReg(key) {
+    const cached = this.cache.get(key);
+    if (cached) delete cached._pTracks; // инвалидация при каждом открытии
     const info = window.albumsIndex?.find(a => a.key === key); if (!info) throw new Error(`Album ${key} missing`);
     let data = this.cache.get(key);
     if (!data) {
