@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e4d4629806ca33a65485fc97a939f83ad0fb9fe6.idx
-│   │       ├── pack-e4d4629806ca33a65485fc97a939f83ad0fb9fe6.pack
-│   │       └── pack-e4d4629806ca33a65485fc97a939f83ad0fb9fe6.rev
+│   │       ├── pack-87fde2beab5dd632d69e9a0f054590215d223712.idx
+│   │       ├── pack-87fde2beab5dd632d69e9a0f054590215d223712.pack
+│   │       └── pack-87fde2beab5dd632d69e9a0f054590215d223712.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,7 +377,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-20 21:35:10 UTC
+Сгенерировано: 2026-02-20 21:36:49 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1117,7 +1117,7 @@ const SW_VERSION = '8.1.6';
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
 const RUNTIME_CACHE = `vitrina-runtime-v${SW_VERSION}`;
-const MEDIA_CACHE = `vitrina-media-v${SW_VERSION}`;
+const MEDIA_CACHE = `vitrina-media-v${SW_VERSION}`; // Reserved: audio cached via IndexedDB, not SW
 const OFFLINE_CACHE = `vitrina-offline-v${SW_VERSION}`;
 const META_CACHE = `vitrina-meta-v${SW_VERSION}`;
 
@@ -1145,6 +1145,9 @@ const STATIC_ASSETS = [
   './scripts/ui/cache-progress-overlay.js', './scripts/ui/statistics-modal.js',
   './scripts/app/player-ui.js', './scripts/app/albums.js',
   './scripts/app.js', './src/PlayerCore.js',
+  './src/player-core/media-session.js', './src/player-core/stats-tracker.js',
+  './scripts/app/track-registry.js', './scripts/app/utils/app-utils.js',
+  './scripts/core/favorites-manager.js',
   './scripts/app/offline-ui-bootstrap.js', './scripts/app/playback-cache-bootstrap.js',
   './scripts/stats/global-stats.js'
 ];
