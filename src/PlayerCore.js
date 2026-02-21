@@ -180,8 +180,11 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       if (tok !== this._tok) return;
 
       if ((res?.source === 'local' || res?.source === 'cache') && res?.blob) {
-        url = W.Utils?.blob?.createUrl ? W.Utils.blob.createUrl('p_'+uid, res.blob) : URL.createObjectURL(res.blob);
+        const key = 'p_' + uid;
+        this._objUrlKey = key;
+        url = W.Utils?.blob?.createUrl ? W.Utils.blob.createUrl(key, res.blob) : URL.createObjectURL(res.blob);
       } else if (res?.source === 'stream' && res?.url && (W.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) {
+        this._objUrlKey = null;
         url = res.url;
         if (W.Utils?.getNet?.()?.kind === 'cellular' && W.NetPolicy?.shouldShowCellularToast?.()) toast('Воспроизведение через мобильную сеть', 'info');
       }
@@ -217,9 +220,22 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     }
 
     _unload(silent) {
-      if (this.sound) { try { this.sound.stop(); this.sound.unload(); } catch {} this.sound = null; }
-      try { W.Utils?.blob?.revokeUrl?.('p_' + this.getCurrentTrackUid()); } catch {}
-      this._stopTick(); this._stats.onPauseOrStop();
+      if (this.sound) {
+        try {
+          this.sound.stop();
+          this.sound.unload();
+        } catch {}
+        this.sound = null;
+      }
+
+      // Spec 21.2: revoke ONLY after Howl unload, and for the exact key that was created.
+      try {
+        if (this._objUrlKey) W.Utils?.blob?.revokeUrl?.(this._objUrlKey);
+      } catch {}
+      this._objUrlKey = null;
+
+      this._stopTick();
+      this._stats.onPauseOrStop();
       if (!silent) this._emit('onStop');
     }
 
@@ -258,8 +274,13 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
           // ONLY allowed STOP scenario: единственный active снят в favorites view
           if (!liked && src === 'favorites' && isFavPlaying && this.getCurrentTrackUid() === u) {
-            if (!Favorites.getSnapshot().some(i => !i.inactiveAt)) this.stop();
-            else this.next(); // ТЗ: inactive трек ВСЕГДА переключается на next, даже при repeat
+            const favState = this.getFavoritesState();
+            const activeCount = Array.isArray(favState?.active) ? favState.active.length : 0;
+
+            // Единственный разрешённый STOP-сценарий:
+            // сняли ⭐ с единственного active прямо во view Избранного (playing === favorites).
+            if (activeCount <= 0) this.stop();
+            else this.next(); // ТЗ: если трек стал inactive во время воспроизведения — сразу на следующий active
           }
           return { liked };
         }
