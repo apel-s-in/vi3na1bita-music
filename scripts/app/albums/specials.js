@@ -131,6 +131,12 @@ export async function loadFavoritesAlbum(ctx) {
   rebuild();
 }
 
+export async function loadShowcaseAlbum(ctx) {
+  ctx.renderAlbumTitle('Витрина Разбита', 'showcase');
+  document.getElementById('cover-wrap').style.display = 'none';
+  if (window.ShowcaseManager) await window.ShowcaseManager.renderTab();
+}
+
 export async function loadNewsAlbum(ctx) {
   ctx.renderAlbumTitle('📰 НОВОСТИ 📰', 'news');
   if (window.GalleryManager?.loadGallery) await window.GalleryManager.loadGallery(NEWS);
