@@ -323,6 +323,8 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
           if (pAlbum === W.SPECIAL_FAVORITES_KEY) {
             tgt = uniq.filter(t => this.isFavorite(t.uid));
+          } else if (W.Utils?.isShowcaseContext?.(pAlbum)) {
+            tgt = isFavOnly ? uniq.filter(t => this.isFavorite(t.uid)) : uniq;
           } else if (isFavOnly) {
             const liked = new Set(this.getLikedUidsForAlbum(pAlbum) || []);
             tgt = uniq.filter(t => liked.has(t.uid));
