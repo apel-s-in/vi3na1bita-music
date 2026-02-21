@@ -9,16 +9,18 @@ export const APP_CONFIG = {
   // Порядок отображения иконок альбомов
   ICON_ALBUMS_ORDER: [
     // Исправлена иконка Избранного
-    { key: '__favorites__', title: '⭐⭐⭐ИЗБРАННОЕ⭐⭐⭐', icon: 'img/Fav_logo.png' },
     { key: 'odnazhdy-v-skazke', title: 'Однажды в Сказке', icon: 'img/icon_album/icon-album-03.png' },
     { key: 'golos-dushi', title: 'Голос Души', icon: 'img/icon_album/icon-album-02.png' },
     { key: 'mezhdu-zlom-i-dobrom', title: 'Между Злом и Добром', icon: 'img/icon_album/icon-album-01.png' },
     { key: 'krevetochka', title: 'КРЕВЕцTOCHKA', icon: 'img/icon_album/icon-album+00.png' },
-    { key: '__reliz__', title: 'НОВОСТИ', icon: 'img/icon_album/icon-album-news.png' }
+    { key: '__showcase__', title: 'Витрина Разбита', icon: 'img/logo.png' },
+    { key: '__reliz__', title: 'НОВОСТИ', icon: 'img/icon_album/icon-album-news.png' },
+    { key: '__favorites__', title: '⭐⭐⭐ИЗБРАННОЕ⭐⭐⭐', icon: 'img/Fav_logo.png' }
   ],
   // Ключи для специальных альбомов
   SPECIAL_FAVORITES_KEY: '__favorites__',
   SPECIAL_RELIZ_KEY: '__reliz__',
+  SPECIAL_SHOWCASE_KEY: '__showcase__',
   // Ссылки
   SUPPORT_URL: 'https://example.com/support',
   SUPPORT_EMAIL: 'support@vitrina-razbita.ru',
@@ -47,4 +49,5 @@ if (typeof window !== 'undefined') {
   // Глобальные константы
   window.SPECIAL_FAVORITES_KEY = APP_CONFIG.SPECIAL_FAVORITES_KEY;
   window.SPECIAL_RELIZ_KEY = APP_CONFIG.SPECIAL_RELIZ_KEY;
+  window.SPECIAL_SHOWCASE_KEY = APP_CONFIG.SPECIAL_SHOWCASE_KEY;
 }
