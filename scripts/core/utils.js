@@ -134,6 +134,7 @@
     },
 
     isSpecialAlbumKey: (k) => String(k || '').startsWith('__'),
+    isShowcaseContext: (k) => k === '__showcase__' || String(k || '').startsWith('__showcase__:'),
     isBrowsingOtherAlbum: () => { const p = W.AlbumsManager?.getPlayingAlbum?.(), c = W.AlbumsManager?.getCurrentAlbum?.(); return !!(p && c && p !== c && !(p === '__favorites__' && c === '__favorites__')); },
     setBtnActive: (id, a) => D.getElementById(id)?.classList.toggle('active', !!a),
     setAriaDisabled: (el, d) => { if (el) { el.classList.toggle('disabled', !!d); el.setAttribute('aria-disabled', !!d); } },
