@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b4bf90fda8c0274cda97926e70ed481ea0535b76.idx
-│   │       ├── pack-b4bf90fda8c0274cda97926e70ed481ea0535b76.pack
-│   │       └── pack-b4bf90fda8c0274cda97926e70ed481ea0535b76.rev
+│   │       ├── pack-7549b9030ec51fa12fbd2d529dfb6d097e42b516.idx
+│   │       ├── pack-7549b9030ec51fa12fbd2d529dfb6d097e42b516.pack
+│   │       └── pack-7549b9030ec51fa12fbd2d529dfb6d097e42b516.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -375,7 +375,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-21 17:59:46 UTC
+Сгенерировано: 2026-02-21 18:00:32 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -5387,7 +5387,10 @@ async function handleAction(e) {
     case 'list-item-del': confirmBox({ title: 'Удалить трек?', textHtml: 'Статистика облачка будет сброшена.', confirmText: 'Удалить', onConfirm: async () => { await om.removeCached(el.dataset.uid); refresh(); } }); break;
     case 'set-mode':
       const v = el.dataset.val;
-      if (v === 'R2' || v === 'R1') { if (await om.hasSpace()) om.setMode(v); else window.NotificationSystem?.warning?.('Нет места'); }
+      if (v === 'R2' || v === 'R1') {
+        if (await om.hasSpace()) om.setMode(v);
+        else window.NotificationSystem?.warning?.('Недостаточно места на устройстве.');
+      }
       else if (v === 'not-R2') om.setMode('R0');
       else om.setMode(v);
       refresh(); break;
