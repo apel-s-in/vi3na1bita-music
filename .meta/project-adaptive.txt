@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-dd9abc952f15732f58ace3d012f5dca846eb9ac9.idx
-│   │       ├── pack-dd9abc952f15732f58ace3d012f5dca846eb9ac9.pack
-│   │       └── pack-dd9abc952f15732f58ace3d012f5dca846eb9ac9.rev
+│   │       ├── pack-08b89b598af29bb2dba257d8550bc120d198b102.idx
+│   │       ├── pack-08b89b598af29bb2dba257d8550bc120d198b102.pack
+│   │       └── pack-08b89b598af29bb2dba257d8550bc120d198b102.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,7 +377,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-21 20:52:53 UTC
+Сгенерировано: 2026-02-21 22:01:15 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2522,8 +2522,8 @@ window.PlaybackCache.unprotectWindow = unprotectWindow;
 // FILE: /scripts/app/showcase/index.js
 /**
  * scripts/app/showcase/index.js
- * "Витрина Разбита" (Showcase) — Мастер Вкладка. 
- * Полная реализация всех фаз ТЗ v2.0
+ * "Витрина Разбита" (Showcase) — Мастер Вкладка.
+ * ПОЛНАЯ РЕАЛИЗАЦИЯ (ТЗ v2.0): Оптимизировано, мгновенный отклик, DND, кэширование.
  */
 
 const W = window;
@@ -2532,15 +2532,9 @@ const U = W.Utils;
 const LS_PREFIX = 'showcase:';
 
 const PALETTE = [
-  { id: 'none', hex: 'transparent' },
-  { id: 'red', hex: '#ef5350' },
-  { id: 'orange', hex: '#ff9800' },
-  { id: 'yellow', hex: '#fdd835' },
-  { id: 'green', hex: '#4caf50' },
-  { id: 'cyan', hex: '#00bcd4' },
-  { id: 'blue', hex: '#2196f3' },
-  { id: 'purple', hex: '#9c27b0' },
-  { id: 'pink', hex: '#e91e63' },
+  { id: 'none', hex: 'transparent' }, { id: 'red', hex: '#ef5350' }, { id: 'orange', hex: '#ff9800' },
+  { id: 'yellow', hex: '#fdd835' }, { id: 'green', hex: '#4caf50' }, { id: 'cyan', hex: '#00bcd4' },
+  { id: 'blue', hex: '#2196f3' }, { id: 'purple', hex: '#9c27b0' }, { id: 'pink', hex: '#e91e63' },
   { id: 'grey', hex: '#9e9e9e' }
 ];
 
@@ -2570,6 +2564,8 @@ class ShowcaseStore {
   static set playlists(p) { this.set('playlists', p); }
   static get albumColors() { return this.get('albumColors', {}); }
   static set albumColors(c) { this.set('albumColors', c); }
+  static get playlistColors() { return this.get('playlistColors', {}); }
+  static set playlistColors(c) { this.set('playlistColors', c); }
 }
 
 class ShowcaseManager {
@@ -2579,18 +2575,45 @@ class ShowcaseManager {
     this.viewMode = ShowcaseStore.get('viewMode', 'flat');
     this.sortMode = ShowcaseStore.get('sortMode', 'user');
     this.selectedUids = new Set();
+    this._albumIconMap = {};
+    this._statsCache = new Map();
+    this._editSnapshot = null;
+    this._activeMenu = null;
+    this._fulltextCache = new Map(); // Кэш для fuzzy-поиска
   }
 
   async initialize() {
+    // 2.7 Формирование иконок альбомов
+    (W.APP_CONFIG?.ICON_ALBUMS_ORDER || []).forEach(it => { this._albumIconMap[it.key] = it.icon; });
+    
     await this.preloadAll();
     ShowcaseStore.init();
     
-    // Синхронизация состояний (Звезды/Замки)
-    W.playerCore?.onFavoritesChanged(() => { if (W.AlbumsManager?.getCurrentAlbum() === '__showcase__') this.renderList(); });
-    W.addEventListener('offline:stateChanged', () => { if (W.AlbumsManager?.getCurrentAlbum() === '__showcase__') this.renderList(); });
+    // 2.8 Восстановление сессии
+    W.playerCore?.on({
+      onTrackChange: (t) => {
+        if (t?.uid && U.isShowcaseContext(W.AlbumsManager?.getPlayingAlbum())) {
+          ShowcaseStore.set('lastTrackUid', t.uid);
+          ShowcaseStore.set('lastPlayingContext', W.AlbumsManager.getPlayingAlbum());
+        }
+      }
+    });
+
+    // 4.4 Точечное обновление звезд
+    W.playerCore?.onFavoritesChanged(({ uid }) => {
+      const img = D.querySelector(`.showcase-track[data-uid="${CSS.escape(uid)}"] .like-star`);
+      if (img) img.src = W.playerCore.isFavorite(uid) ? 'img/star.png' : 'img/star2.png';
+      this.updateStatusBar();
+    });
+
+    W.addEventListener('offline:stateChanged', () => {
+      if (W.AlbumsManager?.getCurrentAlbum() === '__showcase__') {
+        W.OfflineIndicators?.refreshAllIndicators();
+        this.updateStatusBar();
+      }
+    });
   }
 
-  // ФАЗА 1: Предзагрузка всех треков в фоне
   async preloadAll() {
     const albums = W.albumsIndex || [];
     const proms = albums.filter(a => !a.key.startsWith('__')).map(async a => {
@@ -2606,52 +2629,133 @@ class ShowcaseManager {
     await Promise.allSettled(proms);
   }
 
-  // Фильтрация и сортировка треков активного плейлиста
-  getActiveListTracks() {
+  // ФАЗА 4 & 2.6: Сортировка с кэшированием
+  async getActiveListTracks() {
     const pId = ShowcaseStore.activePlaylistId;
     let uids = pId ? (ShowcaseStore.playlists.find(p => p.id === pId)?.uids || []) : ShowcaseStore.get('userOrder', []);
     
-    // Применение сортировки (если не пользовательская и не режим ред.)
-    if (this.sortMode !== 'user' && !this.editMode) {
+    if (this.sortMode === 'shuffle' && !this.editMode) {
+      let sh = ShowcaseStore.get('shuffledOrder', null);
+      if (!sh || sh.length !== uids.length) {
+        sh = [...uids].sort(() => Math.random() - 0.5);
+        ShowcaseStore.set('shuffledOrder', sh);
+      }
+      uids = sh;
+    } else if (this.sortMode !== 'user' && !this.editMode) {
       const tracks = uids.map(u => W.TrackRegistry.getTrackByUid(u)).filter(Boolean);
-      if (this.sortMode === 'name-asc') tracks.sort((a,b) => a.title.localeCompare(b.title));
-      if (this.sortMode === 'name-desc') tracks.sort((a,b) => b.title.localeCompare(a.title));
-      if (this.sortMode === 'album-desc') tracks.sort((a,b) => b.sourceAlbum.localeCompare(a.sourceAlbum));
-      if (this.sortMode === 'shuffle') tracks.sort(() => Math.random() - 0.5);
+      
+      if (this.sortMode.startsWith('plays') || this.sortMode === 'last-played') {
+        // Асинхронный сбор статы перед синхронной сортировкой
+        if (W.GlobalStatsManager) {
+          await Promise.all(tracks.map(async t => {
+            if (!this._statsCache.has(t.uid)) this._statsCache.set(t.uid, await W.GlobalStatsManager.getTrackStats(t.uid));
+          }));
+        }
+      }
+
+      tracks.sort((a,b) => {
+        if (this.sortMode === 'name-asc') return a.title.localeCompare(b.title);
+        if (this.sortMode === 'name-desc') return b.title.localeCompare(a.title);
+        if (this.sortMode === 'album-desc') return b.sourceAlbum.localeCompare(a.sourceAlbum);
+        if (this.sortMode === 'album-asc') return a.sourceAlbum.localeCompare(b.sourceAlbum);
+        if (this.sortMode === 'favorites-first') return (W.playerCore?.isFavorite(b.uid)?1:0) - (W.playerCore?.isFavorite(a.uid)?1:0);
+        
+        const sa = this._statsCache.get(a.uid) || {};
+        const sb = this._statsCache.get(b.uid) || {};
+        if (this.sortMode === 'plays-desc') return (sb.globalFullListenCount||0) - (sa.globalFullListenCount||0);
+        if (this.sortMode === 'plays-asc') return (sa.globalFullListenCount||0) - (sb.globalFullListenCount||0);
+        if (this.sortMode === 'last-played') return (sb.lastListenAt||0) - (sa.lastListenAt||0);
+        return 0;
+      });
       uids = tracks.map(t => t.uid);
     }
 
-    // Скрытие треков
     const hidden = pId ? (ShowcaseStore.playlists.find(p => p.id === pId)?.hiddenUids || []) : ShowcaseStore.get('hiddenUids', []);
     if (!this.editMode) uids = uids.filter(u => !hidden.includes(u));
 
-    // Поиск
+    // 2.1 Расширенный поиск (Fuzzy + Async Fulltext)
     if (this.searchQuery && !this.editMode) {
-      const q = this.searchQuery.toLowerCase();
-      uids = uids.filter(u => {
-        const t = W.TrackRegistry.getTrackByUid(u);
-        return t && (t.title.toLowerCase().includes(q) || t.album?.toLowerCase().includes(q));
-      });
+      const q = this.searchQuery.toLowerCase().trim();
+      uids = await this.performAdvancedSearch(uids, q);
     }
 
     return uids.map(u => {
       const t = W.TrackRegistry.getTrackByUid(u);
-      return t ? { ...t, album: 'Витрина Разбита', cover: t.cover || 'img/logo.png' } : null;
+      return t ? { ...t, album: 'Витрина Разбита', cover: this.getIcon(t.sourceAlbum) } : null;
     }).filter(Boolean);
   }
 
-  // Основной рендер UI (ФАЗА 3)
+  async performAdvancedSearch(uids, q) {
+    // Этап 1: Быстрый поиск по названию
+    let res = uids.filter(u => {
+      const t = W.TrackRegistry.getTrackByUid(u);
+      return t && (t.title.toLowerCase().includes(q) || t.album?.toLowerCase().includes(q));
+    });
+    
+    // Этап 2: Если ничего не найдено, ищем по тексту (асинхронно)
+    if (res.length === 0) {
+       for (const u of uids) {
+          const t = W.TrackRegistry.getTrackByUid(u);
+          if (t?.fulltext) {
+             let text = this._fulltextCache.get(u);
+             if (!text) {
+                try {
+                  const r = await fetch(t.fulltext);
+                  text = (await r.text()).toLowerCase();
+                  this._fulltextCache.set(u, text);
+                } catch(e) { text = ''; }
+             }
+             if (text.includes(q)) res.push(u);
+          }
+       }
+    }
+    return res;
+  }
+
+  getIcon(key) {
+    let icon = this._albumIconMap[key] || 'img/logo.png';
+    if (U.isMobile() && icon.includes('.png')) icon = icon.replace('.png', '/mobile/@1x.jpg').replace('icon_album/', 'icon_album/mobile/');
+    return icon;
+  }
+
+  // ФАЗА 3: Главный рендер
   async renderTab() {
     const list = D.getElementById('track-list');
     if (!list) return;
 
+    // 2.3 Снапшот для отката
+    if (this.editMode && !this._editSnapshot) {
+      const pId = ShowcaseStore.activePlaylistId;
+      this._editSnapshot = {
+        isPl: !!pId,
+        order: pId ? [...ShowcaseStore.playlists.find(p=>p.id===pId).uids] : [...ShowcaseStore.get('userOrder', [])],
+        hidden: pId ? [...ShowcaseStore.playlists.find(p=>p.id===pId).hiddenUids] : [...ShowcaseStore.get('hiddenUids', [])]
+      };
+    } else if (!this.editMode) {
+      this._editSnapshot = null;
+    }
+
+    const hasCustomMaster = JSON.stringify(ShowcaseStore.get('userOrder', [])) !== JSON.stringify(ShowcaseStore.get('masterOrder', []));
+    const showReset = !this.editMode && !ShowcaseStore.activePlaylistId && hasCustomMaster;
+
     list.innerHTML = `
       <div class="showcase-header-controls">
-        ${this.editMode ? `<div class="showcase-edit-banner">✏️ РЕЖИМ РЕДАКТИРОВАНИЯ<br><button class="showcase-btn" id="sc-save" style="margin-top:10px; background:#fff; color:#000;">💾 Сохранить изменения</button></div>` : ''}
-        <input type="text" class="showcase-search" id="sc-search" placeholder="🔍 Поиск по названию или альбому..." value="${U.escapeHtml(this.searchQuery)}">
+        ${this.editMode ? `
+          <div class="showcase-edit-banner">
+            ✏️ РЕЖИМ РЕДАКТИРОВАНИЯ
+            <div style="display:flex;gap:8px;margin-top:10px;">
+              <button class="showcase-btn" id="sc-save" style="background:#fff; color:#000;">💾 Сохранить</button>
+              <button class="showcase-btn" id="sc-reset-edit" style="background:transparent; border-color:#ff9800;">↺ Сброс</button>
+              <button class="showcase-btn showcase-btn--danger" id="sc-cancel">✕ Выйти</button>
+            </div>
+          </div>
+        ` : ''}
+        
+        <input type="text" class="showcase-search" id="sc-search" placeholder="🔍 Поиск трека или текста..." value="${U.escapeHtml(this.searchQuery)}">
         
         <div class="showcase-btns-row">
           ${!this.editMode ? `<button class="showcase-btn" id="sc-edit">✏️ Редактировать</button>` : ''}
+          ${showReset ? `<button class="showcase-btn" id="sc-master-reset" style="flex:0.5">↺ Сброс</button>` : ''}
           <button class="showcase-btn" id="sc-sort">↕️ Сортировка ${this.sortMode !== 'user' ? '●' : ''}</button>
         </div>
 
@@ -2670,108 +2774,224 @@ class ShowcaseManager {
 
     this.bindControls(list);
     this.renderPlaylists();
-    this.renderList();
+    await this.renderList(); // Await is important now for fuzzy search
+
+    // 2.8 Восстановление подсветки
+    if (!this.editMode) {
+       const lastU = ShowcaseStore.get('lastTrackUid');
+       if (lastU && ShowcaseStore.get('lastPlayingContext') === (ShowcaseStore.activePlaylistId ? `__showcase__:${ShowcaseStore.activePlaylistId}` : '__showcase__')) {
+         this.highlightTrackByUid(lastU);
+       }
+    }
   }
 
   bindControls(root) {
     const $id = id => root.querySelector('#' + id);
     
-    $id('sc-search')?.addEventListener('input', (e) => {
+    $id('sc-search')?.addEventListener('input', U.func.debounceFrame(async (e) => {
       this.searchQuery = e.target.value;
-      this.renderList();
-    });
+      await this.renderList();
+    }));
 
     $id('sc-edit')?.addEventListener('click', () => {
       if (this.sortMode !== 'user') return W.NotificationSystem.warning('Для ручной перестановки сбросьте сортировку');
-      this.editMode = true;
-      this.selectedUids.clear();
-      this.renderTab();
+      this.editMode = true; this.selectedUids.clear(); this.renderTab();
     });
 
+    // 2.3 Кнопки режима редактирования
     $id('sc-save')?.addEventListener('click', () => {
-      this.editMode = false;
-      this.selectedUids.clear();
-      this.renderTab();
+      this.editMode = false; this.selectedUids.clear(); this.renderTab();
+      W.NotificationSystem.success('Изменения сохранены');
+    });
+
+    $id('sc-cancel')?.addEventListener('click', () => {
+      this._restoreSnapshot();
+      this.editMode = false; this.selectedUids.clear(); this.renderTab();
+    });
+
+    $id('sc-reset-edit')?.addEventListener('click', () => {
+      this._restoreSnapshot();
+      this.selectedUids.clear(); this.renderList();
+      W.NotificationSystem.info('Сброшено до входа в режим');
+    });
+
+    // 2.2 Сброс мастер списка
+    $id('sc-master-reset')?.addEventListener('click', () => {
+      W.Modals.confirm({
+        title: 'Сбросить порядок?',
+        textHtml: 'Мастер-список вернется к дефолтному состоянию. Плейлисты не пострадают.',
+        confirmText: 'Сбросить',
+        onConfirm: () => {
+          ShowcaseStore.set('userOrder', ShowcaseStore.get('masterOrder'));
+          ShowcaseStore.set('hiddenUids', []);
+          this.sortMode = 'user'; ShowcaseStore.set('sortMode', 'user');
+          this.renderTab();
+        }
+      });
     });
 
     $id('sc-playall')?.addEventListener('click', () => this.playContext());
     $id('sc-shuffle')?.addEventListener('click', () => {
-      this.sortMode = 'shuffle';
-      ShowcaseStore.set('sortMode', 'shuffle');
-      this.playContext();
-      this.renderTab();
+      this.sortMode = 'shuffle'; ShowcaseStore.set('sortMode', 'shuffle');
+      ShowcaseStore.set('shuffledOrder', null); // Force regen
+      this.playContext(); this.renderTab();
     });
 
     $id('sc-sort')?.addEventListener('click', () => this.openSortModal());
 
-    // Делегирование событий клика по списку
+    // Делегирование событий строк списка
+    let longPressTimer = null, isLongPress = false;
+
+    root.addEventListener('touchstart', (e) => {
+      const handle = e.target.closest('.showcase-drag-handle');
+      if (handle && this.editMode) {
+         e.preventDefault(); // Stop scroll
+         this.startDragMobile(e, handle.closest('.showcase-track'));
+         return;
+      }
+      const t = e.target.closest('.showcase-track');
+      if (t && this.editMode && !e.target.closest('button')) {
+         isLongPress = false;
+         longPressTimer = setTimeout(() => {
+            isLongPress = true;
+            this.toggleSelection(t.dataset.uid);
+            if (window.navigator.vibrate) navigator.vibrate(50);
+         }, 500);
+      }
+    }, {passive: false});
+
+    root.addEventListener('touchmove', () => { if(longPressTimer) clearTimeout(longPressTimer); }, {passive: true});
+    root.addEventListener('touchend', () => { if(longPressTimer) clearTimeout(longPressTimer); });
+
     root.addEventListener('click', (e) => {
+      if (isLongPress) return;
       const t = e.target.closest('.showcase-track');
       if (!t) return;
       const uid = t.dataset.uid;
 
       if (this.editMode) {
         if (e.target.closest('.showcase-hide-btn')) return this.toggleHide(uid);
-        if (e.target.closest('.showcase-arrows')) {
-          const dir = parseInt(e.target.dataset.dir);
-          return this.moveTrack(uid, dir);
+        if (e.target.closest('.sc-arrow-up')) return this.swapNodes(uid, -1);
+        if (e.target.closest('.sc-arrow-down')) return this.swapNodes(uid, 1);
+        
+        if (this.selectedUids.size > 0 || e.target.closest('.showcase-checkbox')) {
+           this.toggleSelection(uid);
+           return;
         }
-        // Выбор трека (мультивыбор)
-        if (this.selectedUids.has(uid)) this.selectedUids.delete(uid);
-        else this.selectedUids.add(uid);
-        this.renderList();
-        return;
+        return this.openTrackMenu(uid); // Открывает меню при клике даже в ред.режиме
       }
 
       if (e.target.closest('.showcase-track-menu-btn')) return this.openTrackMenu(uid);
-      if (e.target.closest('.like-star')) return; // Перехватывается albums.js
+      if (e.target.closest('.like-star') || e.target.closest('.offline-ind')) return;
       
       this.playContext(uid);
     });
+
+    // 2.4 Desktop Drag and Drop
+    root.addEventListener('dragstart', e => {
+      if (!this.editMode) return;
+      const t = e.target.closest('.showcase-track');
+      if (t) {
+        e.dataTransfer.setData('text/plain', t.dataset.uid);
+        t.classList.add('is-dragging');
+      }
+    });
+    root.addEventListener('dragover', e => {
+      if (!this.editMode) return;
+      e.preventDefault();
+      const t = e.target.closest('.showcase-track');
+      if (t) t.classList.add('drag-over');
+    });
+    root.addEventListener('dragleave', e => {
+      const t = e.target.closest('.showcase-track');
+      if (t) t.classList.remove('drag-over');
+    });
+    root.addEventListener('drop', e => {
+      if (!this.editMode) return;
+      e.preventDefault();
+      const t = e.target.closest('.showcase-track');
+      D.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+      if (!t) return;
+      const srcUid = e.dataTransfer.getData('text/plain');
+      const tgtUid = t.dataset.uid;
+      if (srcUid && srcUid !== tgtUid) this.moveTrackToNode(srcUid, t);
+    });
+    root.addEventListener('dragend', () => {
+      D.querySelectorAll('.is-dragging').forEach(el => el.classList.remove('is-dragging'));
+    });
   }
 
-  // ФАЗА 2: Мост воспроизведения
+  _restoreSnapshot() {
+    if (!this._editSnapshot) return;
+    const { isPl, order, hidden } = this._editSnapshot;
+    if (isPl) {
+      const pls = ShowcaseStore.playlists;
+      const p = pls.find(x => x.id === ShowcaseStore.activePlaylistId);
+      if (p) { p.uids = order; p.hiddenUids = hidden; ShowcaseStore.playlists = pls; }
+    } else {
+      ShowcaseStore.set('userOrder', order);
+      ShowcaseStore.set('hiddenUids', hidden);
+    }
+  }
+
+  // ФАЗА 2: Воспроизведение
   playContext(uid = null) {
     const pId = ShowcaseStore.activePlaylistId;
     const ctxKey = pId ? `__showcase__:${pId}` : '__showcase__';
-    const tracks = this.getActiveListTracks();
-    if (!tracks.length) return;
+    const tracks = this.getActiveListTracks(); // Это теперь Promise, но мы знаем что кэш уже готов
     
-    let idx = 0;
-    if (uid) idx = tracks.findIndex(t => t.uid === uid);
-    if (idx < 0) idx = 0;
+    // Resolve Promise safely
+    Promise.resolve(tracks).then(trks => {
+        if (!trks.length) return;
+        let idx = 0;
+        if (uid) idx = trks.findIndex(t => t.uid === uid);
+        if (idx < 0) idx = 0;
 
-    W.AlbumsManager.setPlayingAlbum(ctxKey);
-    W.playerCore.setPlaylist(tracks, idx, null, { preservePosition: false });
-    W.playerCore.play(idx);
-    W.PlayerUI.ensurePlayerBlock(idx, { userInitiated: true });
-    this.highlightTrackByUid(tracks[idx].uid);
+        W.AlbumsManager.setPlayingAlbum(ctxKey);
+        W.playerCore.setPlaylist(trks, idx, null, { preservePosition: false });
+        W.playerCore.play(idx);
+        W.PlayerUI.ensurePlayerBlock(idx, { userInitiated: true });
+        this.highlightTrackByUid(trks[idx].uid);
+    });
   }
 
-  // ФАЗА 6: Плейлисты
+  // 3.5 Плейлисты с Цветами
   renderPlaylists() {
     const c = D.getElementById('sc-playlists');
     if (!c) return;
     const pId = ShowcaseStore.activePlaylistId;
     const lists = ShowcaseStore.playlists;
+    const colors = ShowcaseStore.playlistColors;
 
     let html = `<div class="showcase-playlist-chip ${!pId ? 'active' : ''}" data-pid="">Все треки</div>`;
     lists.forEach(p => {
-      html += `<div class="showcase-playlist-chip ${pId === p.id ? 'active' : ''}" data-pid="${p.id}">
+      const col = colors[p.id];
+      const st = col ? `style="border-color:${col}; background:${col}30"` : '';
+      html += `<div class="showcase-playlist-chip ${pId === p.id ? 'active' : ''}" data-pid="${p.id}" ${st}>
         ${U.escapeHtml(p.name)} 
-        <span class="p-share" data-pid="${p.id}" title="Поделиться">🔗</span>
-        <span class="p-del" data-pid="${p.id}" title="Удалить">✖</span>
+        <span class="p-action p-edit" data-pid="${p.id}" title="Редактировать">🔨</span>
+        <span class="p-action p-share" data-pid="${p.id}" title="Поделиться">🔗</span>
+        <span class="p-action p-color" data-pid="${p.id}" title="Цвет">🎨</span>
+        <span class="p-action p-del" data-pid="${p.id}" title="Удалить">✖</span>
       </div>`;
     });
     html += `<div class="showcase-playlist-chip" id="sc-new-pl">+ Новый</div>`;
+    html += `<div class="showcase-playlist-chip" id="sc-paste-pl" title="Из буфера">📋</div>`;
     
     c.innerHTML = html;
 
     c.onclick = (e) => {
       const pid = e.target.dataset.pid;
       if (e.target.id === 'sc-new-pl') return this.createNewPlaylist();
+      if (e.target.id === 'sc-paste-pl') return this.pastePlaylist();
+      if (e.target.classList.contains('p-edit')) {
+         ShowcaseStore.activePlaylistId = pid;
+         this.editMode = true;
+         return this.renderTab();
+      }
       if (e.target.classList.contains('p-share')) return this.sharePlaylist(pid);
       if (e.target.classList.contains('p-del')) return this.deletePlaylist(pid);
+      if (e.target.classList.contains('p-color')) return this.openColorPicker(null, null, pid);
       
       if (e.target.closest('.showcase-playlist-chip')) {
         ShowcaseStore.activePlaylistId = pid || null;
@@ -2780,25 +3000,24 @@ class ShowcaseManager {
     };
   }
 
-  // Рендер строк треков (С учетом Flat / Grouped)
-  renderList() {
+  // 4.1 Оптимизированный Рендер Списка
+  async renderList() {
     const c = D.getElementById('sc-tracks-container');
-    const s = D.getElementById('sc-status');
     if (!c) return;
 
-    const tracks = this.getActiveListTracks();
+    const tracks = await this.getActiveListTracks();
     const colors = ShowcaseStore.albumColors;
     const hiddenList = ShowcaseStore.activePlaylistId 
       ? (ShowcaseStore.playlists.find(p=>p.id===ShowcaseStore.activePlaylistId)?.hiddenUids || []) 
       : ShowcaseStore.get('hiddenUids', []);
 
-    if (s) s.innerHTML = `<span>📋 ${tracks.length} треков ${this.editMode && this.selectedUids.size ? `<span style="color:#ff9800">· ✓ ${this.selectedUids.size}</span>` : ''}</span> <span style="cursor:pointer; font-size:16px;" id="sc-toggle-view" title="Сменить вид">${this.viewMode === 'flat' ? '⊞' : '⊟'}</span>`;
+    this.updateStatusBar(tracks.length);
     
     D.getElementById('sc-toggle-view')?.addEventListener('click', () => {
       this.viewMode = this.viewMode === 'flat' ? 'grouped' : 'flat';
       ShowcaseStore.set('viewMode', this.viewMode);
-      this.renderList();
-    });
+      this.renderList(); // View change needs full re-render
+    }, {once: true});
 
     let html = '';
     let curGrp = null;
@@ -2815,28 +3034,171 @@ class ShowcaseManager {
       const isSel = this.selectedUids.has(t.uid);
       
       html += `
-        <div class="track showcase-track ${isHid ? 'inactive' : ''} ${isSel ? 'current' : ''}" data-uid="${t.uid}" style="border-left: 3px solid ${col}">
-          ${this.editMode ? `
-            <div class="showcase-arrows"><button data-dir="-1">▲</button><button data-dir="1">▼</button></div>
-          ` : `<div class="tnum">${i+1}.</div>`}
-          <img src="${t.cover || 'img/logo.png'}" class="showcase-track-thumb" alt="">
-          <div class="track-title" style="margin-left:4px">
+        <div class="showcase-track ${isHid ? 'inactive' : ''} ${isSel ? 'selected' : ''}" data-uid="${t.uid}" style="border-left: 3px solid ${col}" ${this.editMode?'draggable="true"':''}>
+          ${this.editMode ? `<button class="sc-arrow-up" data-dir="-1">▲</button>` : `<div class="tnum" style="padding-left:10px">${i+1}.</div>`}
+          ${this.editMode ? `<div class="showcase-drag-handle">⠿</div><div class="showcase-checkbox"></div>` : ''}
+          <img src="${t.cover}" class="showcase-track-thumb" alt="" loading="lazy">
+          <div class="track-title">
             <div>${U.escapeHtml(t.title)}</div>
             <div class="showcase-track-meta">${U.escapeHtml(W.TrackRegistry.getAlbumTitle(t.sourceAlbum))}</div>
           </div>
           ${this.editMode ? `<button class="showcase-hide-btn">${isHid ? '👁‍🗨' : '👁'}</button>` : ''}
           <span class="offline-ind" data-uid="${t.uid}">🔒</span>
           <img src="${W.playerCore?.isFavorite(t.uid) ? 'img/star.png' : 'img/star2.png'}" class="like-star" data-uid="${t.uid}" data-album="${t.sourceAlbum}">
-          ${!this.editMode ? `<button class="showcase-track-menu-btn">···</button>` : ''}
+          ${!this.editMode ? `<button class="showcase-track-menu-btn">···</button>` : `<button class="sc-arrow-down" data-dir="1">▼</button>`}
         </div>
       `;
     });
 
+    if (this.editMode && ShowcaseStore.activePlaylistId) {
+      html += `<div style="padding:20px;text-align:center;"><button class="showcase-btn" id="sc-add-to-pl-btn" style="display:inline-block;">➕ Добавить треки из Витрины</button></div>`;
+    }
+
     c.innerHTML = html || '<div class="fav-empty">Треки не найдены</div>';
+    
+    c.querySelector('#sc-add-to-pl-btn')?.addEventListener('click', () => this.showAddTracksModal());
+
     if (W.OfflineIndicators?.injectOfflineIndicators) W.OfflineIndicators.injectOfflineIndicators(c);
     this.highlightTrackByUid(W.playerCore?.getCurrentTrackUid());
-
     this.renderMultiPanel();
+  }
+
+  // 3.2 Full Status Bar
+  updateStatusBar(count) {
+    const s = D.getElementById('sc-status');
+    if (!s) return;
+    const trks = D.querySelectorAll('.showcase-track');
+    const total = count ?? trks.length;
+    let fav = 0, off = 0;
+    
+    // Async offline status check is slow, just read DOM indicators which update automatically via offline-indicators.js
+    fav = D.querySelectorAll('.showcase-track .like-star[src*="star.png"]').length;
+    off = D.querySelectorAll('.showcase-track .offline-ind:not(.offline-ind--none)').length;
+
+    s.innerHTML = `
+      <span>📋 ${total} · ⭐ ${fav} · 🔒 ${off} ${this.editMode && this.selectedUids.size ? `<span style="color:#ff9800">· ✓ ${this.selectedUids.size}</span>` : ''}</span> 
+      <span style="cursor:pointer; font-size:18px;" id="sc-toggle-view" title="Сменить вид">${this.viewMode === 'flat' ? '⊞' : '⊟'}</span>
+    `;
+  }
+
+  // 4.1 Direct DOM Swap for ↑↓
+  swapNodes(uid, dir) {
+    const el = D.querySelector(`.showcase-track[data-uid="${uid}"]`);
+    if (!el) return;
+    
+    const sibling = dir === -1 ? el.previousElementSibling : el.nextElementSibling;
+    if (!sibling || !sibling.classList.contains('showcase-track')) return;
+
+    if (dir === -1) sibling.before(el);
+    else sibling.after(el);
+
+    this._saveOrderFromDOM();
+  }
+
+  moveTrackToNode(srcUid, tgtNode) {
+    const src = D.querySelector(`.showcase-track[data-uid="${srcUid}"]`);
+    if (!src || !tgtNode) return;
+    tgtNode.before(src);
+    this._saveOrderFromDOM();
+  }
+
+  _saveOrderFromDOM() {
+    const uids = Array.from(D.querySelectorAll('.showcase-track')).map(el => el.dataset.uid);
+    const pId = ShowcaseStore.activePlaylistId;
+    if (pId) {
+      const pls = ShowcaseStore.playlists;
+      pls.find(x => x.id === pId).uids = uids;
+      ShowcaseStore.playlists = pls;
+    } else {
+      ShowcaseStore.set('userOrder', uids);
+    }
+  }
+
+  // Vanilla JS Touch DND
+  startDragMobile(e, node) {
+    if (!node) return;
+    const touch = e.touches[0];
+    const clone = node.cloneNode(true);
+    const rect = node.getBoundingClientRect();
+    const offset = touch.clientY - rect.top;
+
+    clone.style.position = 'fixed';
+    clone.style.left = rect.left + 'px';
+    clone.style.width = rect.width + 'px';
+    clone.style.zIndex = 10000;
+    clone.style.opacity = 0.9;
+    clone.style.background = '#252d39';
+    clone.style.boxShadow = '0 10px 30px rgba(0,0,0,0.8)';
+    clone.style.pointerEvents = 'none';
+    D.body.appendChild(clone);
+
+    node.style.opacity = 0.3;
+
+    const move = (e2) => {
+      e2.preventDefault();
+      const y = e2.touches[0].clientY;
+      clone.style.top = (y - offset) + 'px';
+      
+      const overNode = D.elementFromPoint(window.innerWidth/2, y)?.closest('.showcase-track');
+      D.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+      if (overNode && overNode !== node) overNode.classList.add('drag-over');
+    };
+
+    const end = (e2) => {
+      D.removeEventListener('touchmove', move);
+      D.removeEventListener('touchend', end);
+      clone.remove();
+      node.style.opacity = '';
+      
+      const y = e2.changedTouches[0].clientY;
+      const tgt = D.elementFromPoint(window.innerWidth/2, y)?.closest('.showcase-track');
+      D.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+      
+      if (tgt && tgt !== node) {
+         tgt.before(node);
+         this._saveOrderFromDOM();
+      }
+    };
+
+    D.addEventListener('touchmove', move, {passive: false});
+    D.addEventListener('touchend', end);
+  }
+
+  // 4.1 Direct DOM Class Toggle
+  toggleHide(uid, skipSave = false) {
+    const el = D.querySelector(`.showcase-track[data-uid="${uid}"]`);
+    if (el) {
+      el.classList.toggle('inactive');
+      const btn = el.querySelector('.showcase-hide-btn');
+      if (btn) btn.textContent = el.classList.contains('inactive') ? '👁‍🗨' : '👁';
+    }
+
+    const pId = ShowcaseStore.activePlaylistId;
+    let hidden = pId ? ShowcaseStore.playlists.find(p=>p.id===pId).hiddenUids : ShowcaseStore.get('hiddenUids', []);
+    
+    if (hidden.includes(uid)) hidden = hidden.filter(u => u !== uid);
+    else hidden.push(uid);
+
+    if (pId) {
+      const pls = ShowcaseStore.playlists;
+      pls.find(x => x.id === pId).hiddenUids = hidden;
+      ShowcaseStore.playlists = pls;
+    } else {
+      ShowcaseStore.set('hiddenUids', hidden);
+    }
+  }
+
+  toggleSelection(uid) {
+    const el = D.querySelector(`.showcase-track[data-uid="${uid}"]`);
+    if (this.selectedUids.has(uid)) {
+      this.selectedUids.delete(uid);
+      if (el) el.classList.remove('selected');
+    } else {
+      this.selectedUids.add(uid);
+      if (el) el.classList.add('selected');
+    }
+    this.renderMultiPanel();
+    this.updateStatusBar();
   }
 
   renderMultiPanel() {
@@ -2855,90 +3217,71 @@ class ShowcaseManager {
       <span style="color:#fff;font-weight:bold;font-size:14px;white-space:nowrap">${this.selectedUids.size} выбр.</span>
       <button class="showcase-btn" id="sc-m-hide">👁 Скрыть</button>
       <button class="showcase-btn" id="sc-m-color">🎨 Цвет</button>
-      <button class="showcase-btn" id="sc-m-clear" style="border-color:#ff6b6b;color:#ff6b6b">✖</button>
+      <button class="showcase-btn" id="sc-m-pl">➕ В плейлист</button>
+      <button class="showcase-btn showcase-btn--danger" id="sc-m-clear">✖</button>
     `;
 
-    p.querySelector('#sc-m-clear').onclick = () => { this.selectedUids.clear(); this.renderList(); };
+    p.querySelector('#sc-m-clear').onclick = () => { 
+      this.selectedUids.clear(); 
+      D.querySelectorAll('.showcase-track.selected').forEach(el => el.classList.remove('selected'));
+      this.renderMultiPanel(); this.updateStatusBar();
+    };
     p.querySelector('#sc-m-hide').onclick = () => {
-       const uids = Array.from(this.selectedUids);
-       uids.forEach(u => this.toggleHide(u, true));
-       this.selectedUids.clear();
-       this.renderList();
+       Array.from(this.selectedUids).forEach(u => this.toggleHide(u, true));
+       p.querySelector('#sc-m-clear').click();
     };
-    p.querySelector('#sc-m-color').onclick = () => {
-       this.openColorPicker(Array.from(this.selectedUids)[0]); 
-    };
+    p.querySelector('#sc-m-color').onclick = () => { this.openColorPicker(Array.from(this.selectedUids)[0]); };
+    p.querySelector('#sc-m-pl').onclick = () => { this.openAddToPlaylistModal(Array.from(this.selectedUids)); };
   }
 
-  toggleHide(uid, skipRender) {
-    const pId = ShowcaseStore.activePlaylistId;
-    if (pId) {
-      const pls = ShowcaseStore.playlists;
-      const p = pls.find(x => x.id === pId);
-      if (p.hiddenUids.includes(uid)) p.hiddenUids = p.hiddenUids.filter(u => u !== uid);
-      else p.hiddenUids.push(uid);
-      ShowcaseStore.playlists = pls;
-    } else {
-      let h = ShowcaseStore.get('hiddenUids', []);
-      if (h.includes(uid)) h = h.filter(u => u !== uid);
-      else h.push(uid);
-      ShowcaseStore.set('hiddenUids', h);
-    }
-    if (!skipRender) this.renderList();
-  }
-
-  moveTrack(uid, dir) {
-    const pId = ShowcaseStore.activePlaylistId;
-    const list = pId ? ShowcaseStore.playlists.find(p => p.id === pId).uids : ShowcaseStore.get('userOrder', []);
-    
-    const idx = list.indexOf(uid);
-    if (idx < 0) return;
-    const newIdx = idx + dir;
-    if (newIdx < 0 || newIdx >= list.length) return;
-
-    list.splice(idx, 1);
-    list.splice(newIdx, 0, uid);
-
-    if (pId) {
-      const pls = ShowcaseStore.playlists;
-      pls.find(x => x.id === pId).uids = list;
-      ShowcaseStore.playlists = pls;
-    } else {
-      ShowcaseStore.set('userOrder', list);
-    }
-    this.renderList();
-  }
-
+  // 3.6 Создание через Modals.open
   createNewPlaylist() {
-    const name = prompt('Название нового плейлиста:', `Мой плейлист ${ShowcaseStore.playlists.length + 1}`);
-    if (!name) return;
-    const p = {
-      id: Date.now().toString(36),
-      name,
-      uids: [],
-      hiddenUids: [],
-      createdAt: Date.now()
+    const m = W.Modals.open({
+      title: 'Новый плейлист',
+      bodyHtml: `
+        <input type="text" id="pl-name-inp" value="Мой плейлист ${ShowcaseStore.playlists.length + 1}" style="width:100%;padding:10px;border-radius:8px;background:rgba(255,255,255,0.1);color:#fff;border:1px solid #666;margin-bottom:15px">
+        <div style="display:flex;gap:10px"><button class="showcase-btn" id="pl-create-btn">Создать</button></div>
+      `
+    });
+    setTimeout(() => m.querySelector('#pl-name-inp')?.focus(), 100);
+    m.querySelector('#pl-create-btn').onclick = async () => {
+      const name = m.querySelector('#pl-name-inp').value.trim();
+      if (!name) return;
+      const p = { id: Date.now().toString(36), name, uids: [], hiddenUids: [], createdAt: Date.now() };
+      const pls = ShowcaseStore.playlists;
+      pls.push(p); ShowcaseStore.playlists = pls;
+      ShowcaseStore.activePlaylistId = p.id;
+      m.remove();
+      this.renderTab();
     };
-    const pls = ShowcaseStore.playlists;
-    pls.push(p);
-    ShowcaseStore.playlists = pls;
-    ShowcaseStore.activePlaylistId = p.id;
-    
-    if (confirm('Добавить текущие отображаемые треки в этот плейлист?')) {
-       p.uids = this.getActiveListTracks().map(t => t.uid);
-       ShowcaseStore.playlists = pls;
-    }
-    this.renderTab();
   }
 
   deletePlaylist(id) {
-    if (!confirm('Вы уверены, что хотите удалить этот плейлист? (Треки останутся в общем списке)')) return;
-    ShowcaseStore.playlists = ShowcaseStore.playlists.filter(p => p.id !== id);
-    if (ShowcaseStore.activePlaylistId === id) ShowcaseStore.activePlaylistId = null;
-    this.renderTab();
+    W.Modals.confirm({
+      title: 'Удалить плейлист?',
+      textHtml: 'Сами треки останутся в Витрине.',
+      confirmText: 'Удалить',
+      onConfirm: () => {
+        ShowcaseStore.playlists = ShowcaseStore.playlists.filter(p => p.id !== id);
+        if (ShowcaseStore.activePlaylistId === id) ShowcaseStore.activePlaylistId = null;
+        this.renderTab();
+      }
+    });
   }
 
-  // ФАЗА 8: Шаринг
+  // 3.7 Вставить из буфера
+  async pastePlaylist() {
+    try {
+      const text = await navigator.clipboard.readText();
+      const sp = new URLSearchParams(text.split('?')[1] || text);
+      const b64 = sp.get('playlist') || text;
+      this.handleSharedPlaylist(b64);
+    } catch {
+      W.NotificationSystem.error('Буфер не содержит корректной ссылки');
+    }
+  }
+
+  // 2.9 Модалка Шаринга
   sharePlaylist(id) {
     const p = ShowcaseStore.playlists.find(x => x.id === id);
     if (!p) return;
@@ -2946,12 +3289,8 @@ class ShowcaseManager {
     const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
     const url = `${W.location.origin}${W.location.pathname}?playlist=${b64}`;
     
-    if (navigator.share) {
-      navigator.share({ title: `Плейлист: ${p.name}`, url }).catch(()=>{});
-    } else {
-      navigator.clipboard.writeText(url);
-      W.NotificationSystem.success('Ссылка на плейлист скопирована!');
-    }
+    if (navigator.share) navigator.share({ title: `Плейлист: ${p.name}`, url }).catch(()=>{});
+    else { navigator.clipboard.writeText(url); W.NotificationSystem.success('Ссылка на плейлист скопирована!'); }
   }
 
   handleSharedPlaylist(b64) {
@@ -2960,99 +3299,117 @@ class ShowcaseManager {
       if (!json.n || !Array.isArray(json.u)) throw Error();
       
       const available = json.u.filter(u => W.TrackRegistry.getTrackByUid(u));
-      const text = `Вам прислали плейлист "${U.escapeHtml(json.n)}".\nДоступно треков: ${available.length} из ${json.u.length}.\nДобавить к себе?`;
       
-      if (confirm(text)) {
-        const pls = ShowcaseStore.playlists;
-        pls.push({
-          id: Date.now().toString(36),
-          name: json.n + ' (Присланный)',
-          uids: available,
-          hiddenUids: [],
-          createdAt: Date.now()
-        });
-        ShowcaseStore.playlists = pls;
-        W.NotificationSystem.success('Плейлист успешно добавлен');
-      }
-    } catch {
-      W.NotificationSystem.error('Ошибка чтения ссылки плейлиста');
-    }
+      W.Modals.confirm({
+        title: '🎵 Вам прислан плейлист',
+        textHtml: `<b>${U.escapeHtml(json.n)}</b><br><br>Доступно треков: ${available.length} из ${json.u.length}.<br>${available.length < json.u.length ? '<span style="color:#ff9800">Часть треков недоступна (нужен промокод).</span>' : ''}`,
+        confirmText: 'Добавить',
+        onConfirm: () => {
+          const pls = ShowcaseStore.playlists;
+          pls.push({ id: Date.now().toString(36), name: json.n + ' (Присланный)', uids: available, hiddenUids: [], createdAt: Date.now() });
+          ShowcaseStore.playlists = pls;
+          W.NotificationSystem.success('Плейлист успешно добавлен');
+          if (ShowcaseStore.activePlaylistId === null) this.renderPlaylists();
+        }
+      });
+    } catch { W.NotificationSystem.error('Ошибка чтения ссылки плейлиста'); }
   }
 
-  // ФАЗА 4: Сортировка
   openSortModal() {
+    const sm = this.sortMode;
     const m = W.Modals.open({
       title: 'Сортировка списка',
       bodyHtml: `
-        <div style="display:flex;flex-direction:column;gap:10px;">
-          <button class="showcase-btn ${this.sortMode === 'user' ? 'active' : ''}" data-val="user">● Пользовательский (Ручной)</button>
-          <button class="showcase-btn ${this.sortMode === 'album-desc' ? 'active' : ''}" data-val="album-desc">По альбомам (От новых)</button>
-          <button class="showcase-btn ${this.sortMode === 'name-asc' ? 'active' : ''}" data-val="name-asc">По названию (А-Я)</button>
-          <button class="showcase-btn ${this.sortMode === 'shuffle' ? 'active' : ''}" data-val="shuffle">Случайный порядок</button>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <button class="showcase-btn ${sm === 'user' ? 'active' : ''}" style="grid-column: 1 / -1" data-val="user">● Пользовательский (Ручной)</button>
+          <button class="showcase-btn ${sm === 'album-desc' ? 'active' : ''}" data-val="album-desc">Альбомы (Новые)</button>
+          <button class="showcase-btn ${sm === 'album-asc' ? 'active' : ''}" data-val="album-asc">Альбомы (Старые)</button>
+          <button class="showcase-btn ${sm === 'name-asc' ? 'active' : ''}" data-val="name-asc">А → Я</button>
+          <button class="showcase-btn ${sm === 'name-desc' ? 'active' : ''}" data-val="name-desc">Я → А</button>
+          <button class="showcase-btn ${sm === 'plays-desc' ? 'active' : ''}" data-val="plays-desc">Топ прослушиваний</button>
+          <button class="showcase-btn ${sm === 'plays-asc' ? 'active' : ''}" data-val="plays-asc">Меньше всего</button>
+          <button class="showcase-btn ${sm === 'last-played' ? 'active' : ''}" data-val="last-played">Недавние</button>
+          <button class="showcase-btn ${sm === 'favorites-first' ? 'active' : ''}" data-val="favorites-first">Сначала ⭐</button>
+          <button class="showcase-btn ${sm === 'shuffle' ? 'active' : ''}" style="grid-column: 1 / -1" data-val="shuffle">🔀 Случайный порядок</button>
+          <button class="showcase-btn showcase-btn--danger" style="grid-column: 1 / -1" data-val="user">Сбросить сортировку</button>
         </div>
       `
     });
-    m.onclick = (e) => {
+    m.addEventListener('click', (e) => {
       const b = e.target.closest('[data-val]');
       if (b) {
         this.sortMode = b.dataset.val;
         ShowcaseStore.set('sortMode', this.sortMode);
+        if (this.sortMode === 'shuffle') ShowcaseStore.set('shuffledOrder', null); // Reset shuffle
         this.renderTab();
         m.remove();
       }
-    };
-  }
-
-  // ФАЗА 7: Цвета
-  openColorPicker(uid) {
-    const t = W.TrackRegistry.getTrackByUid(uid);
-    if (!t) return;
-    const aKey = t.sourceAlbum;
-    
-    let html = '<div class="showcase-color-picker">';
-    PALETTE.forEach(c => {
-      html += `<div class="showcase-color-dot" style="background:${c.hex}; ${ShowcaseStore.albumColors[aKey] === c.hex ? 'border-color:#fff' : ''}" data-col="${c.hex}"></div>`;
     });
-    html += '</div>';
-    html += `<button class="showcase-btn" data-col="transparent" style="margin-top:15px;width:100%">Сбросить цвет</button>`;
-
-    const m = W.Modals.open({ title: 'Цвет альбома', bodyHtml: html });
-    m.onclick = (e) => {
-      const el = e.target.closest('[data-col]');
-      if (el) {
-        const col = el.dataset.col;
-        const colors = ShowcaseStore.albumColors;
-        colors[aKey] = col === 'transparent' ? '' : col;
-        ShowcaseStore.albumColors = colors;
-        this.renderList();
-        m.remove();
-      }
-    };
   }
 
+  // 1.2 Fast Bottom Sheet Menu (100% Spec Coverage)
   openTrackMenu(uid) {
+    if (this._activeMenu) this._activeMenu.remove();
+    
     const t = W.TrackRegistry.getTrackByUid(uid);
     if (!t) return;
     const isFav = W.playerCore?.isFavorite(uid);
     
-    const m = W.Modals.open({
-      title: t.title,
-      bodyHtml: `
-        <div style="display:flex;flex-direction:column;gap:10px;">
-          <button class="showcase-btn" id="tm-fav">${isFav ? '❌ Убрать из Избранного' : '⭐ Добавить в Избранное'}</button>
-          <button class="showcase-btn" id="tm-color">🎨 Назначить цвет альбома</button>
-          <button class="showcase-btn" id="tm-stat">📊 Статистика трека</button>
-          <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:4px 0;">
-          <button class="showcase-btn" id="tm-addpl">➕ Добавить в другой плейлист</button>
-        </div>
-      `
-    });
+    const bg = D.createElement('div');
+    bg.className = 'sc-bottom-sheet-bg';
+    
+    bg.innerHTML = `
+      <div class="sc-bottom-sheet">
+        <div class="sc-sheet-title">${U.escapeHtml(t.title)}</div>
+        <div class="sc-sheet-sub">${U.escapeHtml(W.TrackRegistry.getAlbumTitle(t.sourceAlbum))}</div>
+        
+        <button class="sc-sheet-btn" id="bs-pl">➕ Добавить в плейлист</button>
+        ${ShowcaseStore.activePlaylistId ? `<button class="sc-sheet-btn" id="bs-rm-pl" style="color:#ff6b6b">✖ Удалить из текущего плейлиста</button>` : ''}
+        <button class="sc-sheet-btn" id="bs-hide">👁 Скрыть / Показать трек</button>
+        <button class="sc-sheet-btn" id="bs-fav">${isFav ? '❌ Убрать из Избранного' : '⭐ В Избранное'}</button>
+        <button class="sc-sheet-btn" id="bs-off">🔒 Скачать / Убрать из офлайн</button>
+        <button class="sc-sheet-btn" id="bs-dl">⬇️ Сохранить mp3 файл</button>
+        <button class="sc-sheet-btn" id="bs-stat">📊 Статистика трека</button>
+        <button class="sc-sheet-btn" id="bs-color">🎨 Цвет альбома</button>
+        <button class="sc-sheet-btn" style="color:#888; justify-content:center; margin-top:10px" id="bs-cancel">Отмена</button>
+      </div>
+    `;
+    D.body.appendChild(bg);
+    this._activeMenu = bg;
 
-    m.querySelector('#tm-fav').onclick = () => { W.playerCore?.toggleFavorite(uid, {albumKey: t.sourceAlbum}); m.remove(); };
-    m.querySelector('#tm-color').onclick = () => { m.remove(); this.openColorPicker(uid); };
-    m.querySelector('#tm-stat').onclick = () => { m.remove(); W.StatisticsModal?.openStatisticsModal?.(); };
-    m.querySelector('#tm-addpl').onclick = () => {
-      m.remove();
+    // Animation frame for slide up
+    requestAnimationFrame(() => bg.classList.add('active'));
+
+    const close = () => { bg.classList.remove('active'); setTimeout(() => bg.remove(), 200); this._activeMenu = null; };
+    
+    bg.onclick = (e) => {
+      if (e.target === bg || e.target.id === 'bs-cancel') return close();
+      const id = e.target.id;
+      if (!id) return;
+      
+      close();
+      if (id === 'bs-pl') setTimeout(() => this.openAddToPlaylistModal([uid]), 250);
+      if (id === 'bs-rm-pl') {
+         const pls = ShowcaseStore.playlists;
+         const p = pls.find(x => x.id === ShowcaseStore.activePlaylistId);
+         if (p) p.uids = p.uids.filter(u => u !== uid);
+         ShowcaseStore.playlists = pls;
+         this.renderList();
+      }
+      if (id === 'bs-hide') this.toggleHide(uid);
+      if (id === 'bs-fav') W.playerCore?.toggleFavorite(uid, {albumKey: t.sourceAlbum});
+      if (id === 'bs-off') W.OfflineManager?.togglePinned?.(uid);
+      if (id === 'bs-dl') {
+         const a = D.createElement('a');
+         W.Utils.download.applyDownloadLink(a, t);
+         if (a.href) a.click();
+      }
+      if (id === 'bs-stat') setTimeout(() => W.StatisticsModal?.openStatisticsModal?.(), 250);
+      if (id === 'bs-color') setTimeout(() => this.openColorPicker(uid), 250);
+    };
+  }
+
+  openAddToPlaylistModal(uidsArray) {
       const pls = ShowcaseStore.playlists;
       if (!pls.length) return W.NotificationSystem.warning('Сначала создайте новый плейлист');
       
@@ -3061,18 +3418,84 @@ class ShowcaseManager {
       html += `</div>`;
       
       const plModal = W.Modals.open({title: 'Выберите плейлист', bodyHtml: html});
-      plModal.onclick = (e2) => {
+      plModal.addEventListener('click', (e2) => {
         const btn = e2.target.closest('[data-pid]');
         if (btn) {
            const id = btn.dataset.pid;
            const targetPl = pls.find(x => x.id === id);
-           if (!targetPl.uids.includes(uid)) targetPl.uids.push(uid);
+           uidsArray.forEach(uid => { if (!targetPl.uids.includes(uid)) targetPl.uids.push(uid); });
            ShowcaseStore.playlists = pls;
-           W.NotificationSystem.success('Трек добавлен в плейлист');
+           W.NotificationSystem.success(`Добавлено треков: ${uidsArray.length}`);
            plModal.remove();
+           if (this.editMode) this.querySelector('#sc-m-clear')?.click();
         }
-      }
+      });
+  }
+
+  showAddTracksModal() {
+    const all = ShowcaseStore.get('userOrder', []).map(u => W.TrackRegistry.getTrackByUid(u)).filter(Boolean);
+    const curr = ShowcaseStore.playlists.find(p => p.id === ShowcaseStore.activePlaylistId)?.uids || [];
+    
+    let html = `<div style="max-height: 50vh; overflow-y:auto; display:flex; flex-direction:column; gap:6px; margin-bottom:15px;">`;
+    all.forEach(t => {
+      const isThere = curr.includes(t.uid);
+      html += `<label style="display:flex; align-items:center; gap:10px; padding:6px; background:rgba(255,255,255,0.05); border-radius:6px;">
+        <input type="checkbox" value="${t.uid}" class="pl-add-chk" ${isThere ? 'checked disabled' : ''}>
+        ${U.escapeHtml(t.title)} <span style="opacity:0.5; font-size:11px;">${U.escapeHtml(W.TrackRegistry.getAlbumTitle(t.sourceAlbum))}</span>
+      </label>`;
+    });
+    html += `</div><button class="showcase-btn" id="pl-add-confirm">Добавить выбранные</button>`;
+
+    const m = W.Modals.open({title: 'Треки из Витрины', bodyHtml: html});
+    m.querySelector('#pl-add-confirm').onclick = () => {
+       const checked = Array.from(m.querySelectorAll('.pl-add-chk:checked:not(:disabled)')).map(inp => inp.value);
+       if (checked.length) {
+          const pls = ShowcaseStore.playlists;
+          const p = pls.find(x => x.id === ShowcaseStore.activePlaylistId);
+          p.uids.push(...checked);
+          ShowcaseStore.playlists = pls;
+          this.renderList();
+          W.NotificationSystem.success(`Добавлено: ${checked.length}`);
+       }
+       m.remove();
     };
+  }
+
+  // 3.5 & 3.8 Color Picker
+  openColorPicker(uid, albumKeyParam = null, playlistId = null) {
+    let aKey = albumKeyParam;
+    if (uid && !aKey) {
+      const t = W.TrackRegistry.getTrackByUid(uid);
+      if (t) aKey = t.sourceAlbum;
+    }
+    
+    const isPl = !!playlistId;
+    const title = isPl ? 'Цвет плейлиста' : 'Цвет альбома';
+    const current = isPl ? ShowcaseStore.playlistColors[playlistId] : ShowcaseStore.albumColors[aKey];
+    
+    let html = '<div class="showcase-color-picker">';
+    PALETTE.forEach(c => {
+      html += `<div class="showcase-color-dot" style="background:${c.hex}; ${current === c.hex ? 'border-color:#fff' : ''}" data-col="${c.hex}"></div>`;
+    });
+    html += '</div>';
+    html += `<button class="showcase-btn" data-col="transparent" style="margin-top:15px;width:100%">Сбросить цвет</button>`;
+
+    const m = W.Modals.open({ title, bodyHtml: html });
+    m.addEventListener('click', (e) => {
+      const el = e.target.closest('[data-col]');
+      if (el) {
+        const col = el.dataset.col;
+        const val = col === 'transparent' ? '' : col;
+        if (isPl) {
+          const pc = ShowcaseStore.playlistColors; pc[playlistId] = val; ShowcaseStore.playlistColors = pc;
+          this.renderPlaylists();
+        } else {
+          const ac = ShowcaseStore.albumColors; ac[aKey] = val; ShowcaseStore.albumColors = ac;
+          if (W.AlbumsManager?.getCurrentAlbum() === '__showcase__') this.renderList();
+        }
+        m.remove();
+      }
+    });
   }
 
   highlightTrackByUid(uid) {
