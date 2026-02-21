@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e2ed32948525c81c2d32803d9919889fde796654.idx
-│   │       ├── pack-e2ed32948525c81c2d32803d9919889fde796654.pack
-│   │       └── pack-e2ed32948525c81c2d32803d9919889fde796654.rev
+│   │       ├── pack-cd22550a242703acdb80a867bc5279030c5994c2.idx
+│   │       ├── pack-cd22550a242703acdb80a867bc5279030c5994c2.pack
+│   │       └── pack-cd22550a242703acdb80a867bc5279030c5994c2.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,7 +377,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-21 20:51:36 UTC
+Сгенерировано: 2026-02-21 20:52:20 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7297,6 +7297,8 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
           if (pAlbum === W.SPECIAL_FAVORITES_KEY) {
             tgt = uniq.filter(t => this.isFavorite(t.uid));
+          } else if (W.Utils?.isShowcaseContext?.(pAlbum)) {
+            tgt = isFavOnly ? uniq.filter(t => this.isFavorite(t.uid)) : uniq;
           } else if (isFavOnly) {
             const liked = new Set(this.getLikedUidsForAlbum(pAlbum) || []);
             tgt = uniq.filter(t => liked.has(t.uid));
