@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e3afc8a81e2eb2ac08c2d433e41029934aa34b29.idx
-│   │       ├── pack-e3afc8a81e2eb2ac08c2d433e41029934aa34b29.pack
-│   │       └── pack-e3afc8a81e2eb2ac08c2d433e41029934aa34b29.rev
+│   │       ├── pack-e2ed32948525c81c2d32803d9919889fde796654.idx
+│   │       ├── pack-e2ed32948525c81c2d32803d9919889fde796654.pack
+│   │       └── pack-e2ed32948525c81c2d32803d9919889fde796654.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,7 +377,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-21 20:50:43 UTC
+Сгенерировано: 2026-02-21 20:51:36 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1694,6 +1694,12 @@ export async function loadFavoritesAlbum(ctx) {
   }
   
   rebuild();
+}
+
+export async function loadShowcaseAlbum(ctx) {
+  ctx.renderAlbumTitle('Витрина Разбита', 'showcase');
+  document.getElementById('cover-wrap').style.display = 'none';
+  if (window.ShowcaseManager) await window.ShowcaseManager.renderTab();
 }
 
 export async function loadNewsAlbum(ctx) {
