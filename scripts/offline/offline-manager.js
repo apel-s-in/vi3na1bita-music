@@ -431,8 +431,21 @@ class OfflineManager {
 
     const b2 = await DB.getAudioBlob(u, alt);
     if (b2) {
+      // Spec 7.2: if requested is Lo and local Hi exists -> play Hi (upgrade).
       if (q === 'lo') return { source: 'local', blob: b2, quality: alt };
-      if (isNet) { const url = getUrl(u, q); if (url) { this._reCache(u, q); return { source: 'stream', url, quality: q }; } }
+
+      // Requested is Hi but only Lo exists:
+      // - R0/R1: do not degrade if network is available -> stream Hi (and may schedule recache)
+      // - R2: streaming is allowed, but automatic recache on mismatch is NOT allowed (Q.6.2), only via CQ change / Re-cache / updates.
+      if (isNet) {
+        const url = getUrl(u, q);
+        if (url) {
+          if (this.getMode() !== 'R2') this._reCache(u, q);
+          return { source: 'stream', url, quality: q };
+        }
+      }
+
+      // Offline fallback: play any available local quality
       return { source: 'local', blob: b2, quality: alt };
     }
 
