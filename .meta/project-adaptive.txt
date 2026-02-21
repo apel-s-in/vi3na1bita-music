@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-baa46f49f66ade1b2e595e872b0fa6ccb8276c2e.idx
-│   │       ├── pack-baa46f49f66ade1b2e595e872b0fa6ccb8276c2e.pack
-│   │       └── pack-baa46f49f66ade1b2e595e872b0fa6ccb8276c2e.rev
+│   │       ├── pack-b2c92018a27e9d349ed4f01db8286473605dcb43.idx
+│   │       ├── pack-b2c92018a27e9d349ed4f01db8286473605dcb43.pack
+│   │       └── pack-b2c92018a27e9d349ed4f01db8286473605dcb43.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,7 +377,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-21 20:43:44 UTC
+Сгенерировано: 2026-02-21 20:45:52 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3715,6 +3715,7 @@ window.FavoritesManager = Favorites;
     },
 
     isSpecialAlbumKey: (k) => String(k || '').startsWith('__'),
+    isShowcaseContext: (k) => k === '__showcase__' || String(k || '').startsWith('__showcase__:'),
     isBrowsingOtherAlbum: () => { const p = W.AlbumsManager?.getPlayingAlbum?.(), c = W.AlbumsManager?.getCurrentAlbum?.(); return !!(p && c && p !== c && !(p === '__favorites__' && c === '__favorites__')); },
     setBtnActive: (id, a) => D.getElementById(id)?.classList.toggle('active', !!a),
     setAriaDisabled: (el, d) => { if (el) { el.classList.toggle('disabled', !!d); el.setAttribute('aria-disabled', !!d); } },
