@@ -39,14 +39,32 @@ class AlbumsManager {
   }
 
   _bindEvents() {
-    $('album-icons')?.addEventListener('click', e => {
-      const k = e.target.closest('.album-icon')?.dataset.album; if (!k) return;
-      if (this.curr === k && !k.startsWith('__')) {
-        this.galVis = !this.galVis;
-        const w = $('cover-wrap'); if (w) w.style.display = this.galVis ? '' : 'none';
-        window.NotificationSystem?.info(this.galVis ? '🖼️ Галерея показана' : '🚫 Галерея скрыта');
-      } else this.loadAlbum(k);
-    });
+    const iconsBox = $('album-icons');
+    if (iconsBox) {
+      let touchTimer = null, isDragging = false;
+      iconsBox.addEventListener('touchstart', e => {
+        const k = e.target.closest('.album-icon')?.dataset.album;
+        if (!k || k.startsWith('__')) return;
+        isDragging = false;
+        touchTimer = setTimeout(() => { touchTimer = null; window.ShowcaseManager?.openColorPicker?.(null, k); }, 600);
+      }, {passive: true});
+      iconsBox.addEventListener('touchmove', () => { isDragging = true; if(touchTimer) clearTimeout(touchTimer); }, {passive: true});
+      iconsBox.addEventListener('touchend', () => { if(touchTimer) clearTimeout(touchTimer); });
+      iconsBox.addEventListener('contextmenu', e => {
+        const k = e.target.closest('.album-icon')?.dataset.album;
+        if (k && !k.startsWith('__')) { e.preventDefault(); window.ShowcaseManager?.openColorPicker?.(null, k); }
+      });
+
+      iconsBox.addEventListener('click', e => {
+        if (isDragging) return;
+        const k = e.target.closest('.album-icon')?.dataset.album; if (!k) return;
+        if (this.curr === k && !k.startsWith('__')) {
+          this.galVis = !this.galVis;
+          const w = $('cover-wrap'); if (w) w.style.display = this.galVis ? '' : 'none';
+          window.NotificationSystem?.info(this.galVis ? '🖼️ Галерея показана' : '🚫 Галерея скрыта');
+        } else this.loadAlbum(k);
+      });
+    }
 
     $('track-list')?.addEventListener('click', e => {
       window.playerCore?.prepareContext?.();
