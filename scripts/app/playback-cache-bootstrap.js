@@ -40,10 +40,29 @@ async function rebuild(dir = 1) {
   const netOk = window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine;
   if (!netOk || !(await mgr.hasSpace())) return;
 
+  // Spec 8.5 "anti-stutter": if CUR is streaming, do not prefetch neighbors yet (especially iOS)
+  // We keep CUR-first rule always.
+  let curIsStreaming = false;
+  try {
+    const curUid = nW.cur;
+    if (curUid) {
+      const resolved = await window.TrackResolver?.resolve?.(curUid, mgr.getEffectiveQuality?.());
+      curIsStreaming = resolved?.source === 'stream';
+    }
+  } catch {}
+
   // Priority: CUR -> direction neighbor -> other neighbor
   const order = dir >= 0 ? [nW.cur, nW.next, nW.prev] : [nW.cur, nW.prev, nW.next];
   const prio = [100, 90, 80];
-  [...new Set(order)].forEach((u, i) => u && mgr.enqueueAudioDownload(u, { priority: prio[i], kind: 'playbackCache' }));
+
+  // Always allow CUR download task; neighbors only if CUR is not currently streaming.
+  const uniq = [...new Set(order)].filter(Boolean);
+  for (let i = 0; i < uniq.length; i++) {
+    const u = uniq[i];
+    if (!u) continue;
+    if (i > 0 && curIsStreaming) continue;
+    mgr.enqueueAudioDownload(u, { priority: prio[i] || 50, kind: 'playbackCache' });
+  }
 }
 
 async function flushGC() {
@@ -65,9 +84,7 @@ async function flushGC() {
 export function initPlaybackCache() {
   if (_init) return; _init = true;
   const r = (e) => rebuild(Number(e?.detail?.dir) || 1).catch(()=>{});
-  window.addEventListener('player:trackChanged', r);
-  window.addEventListener('playlist:changed', r);
-  window.addEventListener('offline:uiChanged', r);
+window.addEventListener('player:trackChanged', r);
   
   // Встроенная защита окна при потере сети (заменяет offline-playback.js)
   const toggleNet = () => {
