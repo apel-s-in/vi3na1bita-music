@@ -41,6 +41,13 @@
 
     const run = (n) => W[n]?.initialize();
     if (await waitObj('GalleryManager')) run('GalleryManager');
+    
+    // Предзагрузка всех config.json для Витрины до AlbumsManager
+    try {
+      const showcaseMgr = await import('./app/showcase/index.js');
+      await showcaseMgr.default.initialize();
+    } catch (e) { console.error('Showcase init failed:', e); }
+
     if (await waitObj('AlbumsManager')) run('AlbumsManager');
     if (await waitObj('PlayerUI')) run('PlayerUI');
 
@@ -118,10 +125,24 @@
 
   let _init = false;
   W.app = {
+    checkShowcaseShare: () => {
+      const sp = new URLSearchParams(W.location.search);
+      const playlistData = sp.get('playlist');
+      if (playlistData && W.ShowcaseManager) {
+        W.ShowcaseManager.handleSharedPlaylist(playlistData);
+        W.history.replaceState(null, '', W.location.pathname);
+      }
+    },
     initialize: async () => {
       if (_init) return;
       _init = true;
-      try { await initModules(); setupHotkeys(); setupPWA(); setupSW(); }
+      try { 
+        await initModules(); 
+        setupHotkeys(); 
+        setupPWA(); 
+        setupSW();
+        W.app.checkShowcaseShare();
+      }
       catch (e) { console.error('App init failed:', e); W.NotificationSystem?.error('Ошибка инициализации'); }
     }
   };
