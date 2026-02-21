@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f28b3ca2caad5bd2dc0ea26663547120076b5f95.idx
-│   │       ├── pack-f28b3ca2caad5bd2dc0ea26663547120076b5f95.pack
-│   │       └── pack-f28b3ca2caad5bd2dc0ea26663547120076b5f95.rev
+│   │       ├── pack-b4bf90fda8c0274cda97926e70ed481ea0535b76.idx
+│   │       ├── pack-b4bf90fda8c0274cda97926e70ed481ea0535b76.pack
+│   │       └── pack-b4bf90fda8c0274cda97926e70ed481ea0535b76.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -375,7 +375,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-21 17:59:04 UTC
+Сгенерировано: 2026-02-21 17:59:46 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4245,8 +4245,21 @@ class OfflineManager {
 
     const b2 = await DB.getAudioBlob(u, alt);
     if (b2) {
+      // Spec 7.2: if requested is Lo and local Hi exists -> play Hi (upgrade).
       if (q === 'lo') return { source: 'local', blob: b2, quality: alt };
-      if (isNet) { const url = getUrl(u, q); if (url) { this._reCache(u, q); return { source: 'stream', url, quality: q }; } }
+
+      // Requested is Hi but only Lo exists:
+      // - R0/R1: do not degrade if network is available -> stream Hi (and may schedule recache)
+      // - R2: streaming is allowed, but automatic recache on mismatch is NOT allowed (Q.6.2), only via CQ change / Re-cache / updates.
+      if (isNet) {
+        const url = getUrl(u, q);
+        if (url) {
+          if (this.getMode() !== 'R2') this._reCache(u, q);
+          return { source: 'stream', url, quality: q };
+        }
+      }
+
+      // Offline fallback: play any available local quality
       return { source: 'local', blob: b2, quality: alt };
     }
 
