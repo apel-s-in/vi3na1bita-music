@@ -159,4 +159,5 @@ export function initOfflineIndicators() {
   injectOfflineIndicators(); // Вызывается оркестратором app.js, DOM уже готов
 }
 
-export default { initOfflineIndicators, injectOfflineIndicators, injectIndicator, refreshAllIndicators };
+window.OfflineIndicators = { initOfflineIndicators, injectOfflineIndicators, injectIndicator, refreshAllIndicators };
+export default window.OfflineIndicators;
