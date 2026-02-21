@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-08b89b598af29bb2dba257d8550bc120d198b102.idx
-│   │       ├── pack-08b89b598af29bb2dba257d8550bc120d198b102.pack
-│   │       └── pack-08b89b598af29bb2dba257d8550bc120d198b102.rev
+│   │       ├── pack-c855e2aef2bb63f7e1740d3f6c96a57c35de5d6c.idx
+│   │       ├── pack-c855e2aef2bb63f7e1740d3f6c96a57c35de5d6c.pack
+│   │       └── pack-c855e2aef2bb63f7e1740d3f6c96a57c35de5d6c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,7 +377,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-21 22:01:15 UTC
+Сгенерировано: 2026-02-21 22:02:03 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6183,7 +6183,8 @@ export function initOfflineIndicators() {
   injectOfflineIndicators(); // Вызывается оркестратором app.js, DOM уже готов
 }
 
-export default { initOfflineIndicators, injectOfflineIndicators, injectIndicator, refreshAllIndicators };
+window.OfflineIndicators = { initOfflineIndicators, injectOfflineIndicators, injectIndicator, refreshAllIndicators };
+export default window.OfflineIndicators;
 
 //=================================================
 // FILE: /scripts/ui/offline-modal.js
