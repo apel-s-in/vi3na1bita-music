@@ -236,7 +236,10 @@ async function handleAction(e) {
     case 'list-item-del': confirmBox({ title: 'Удалить трек?', textHtml: 'Статистика облачка будет сброшена.', confirmText: 'Удалить', onConfirm: async () => { await om.removeCached(el.dataset.uid); refresh(); } }); break;
     case 'set-mode':
       const v = el.dataset.val;
-      if (v === 'R2' || v === 'R1') { if (await om.hasSpace()) om.setMode(v); else window.NotificationSystem?.warning?.('Нет места'); }
+      if (v === 'R2' || v === 'R1') {
+        if (await om.hasSpace()) om.setMode(v);
+        else window.NotificationSystem?.warning?.('Недостаточно места на устройстве.');
+      }
       else if (v === 'not-R2') om.setMode('R0');
       else om.setMode(v);
       refresh(); break;
