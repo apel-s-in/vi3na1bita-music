@@ -5,6 +5,7 @@ import { injectIndicator } from '../ui/offline-indicators.js';
 const C = window.APP_CONFIG || {};
 const FAV = window.SPECIAL_FAVORITES_KEY || '__favorites__';
 const NEWS = window.SPECIAL_RELIZ_KEY || '__reliz__';
+const SHOWCASE = window.SPECIAL_SHOWCASE_KEY || '__showcase__';
 const STAR_ON = 'img/star.png';
 const STAR_OFF = 'img/star2.png';
 const LOGO = 'img/logo.png';
@@ -88,6 +89,7 @@ class AlbumsManager {
       $('track-list').innerHTML = ''; $('social-links').innerHTML = ''; window.GalleryManager?.clear?.();
       if (key === FAV) await (await import('./albums/specials.js')).loadFavoritesAlbum(this);
       else if (key === NEWS) await (await import('./albums/specials.js')).loadNewsAlbum(this);
+      else if (key === SHOWCASE) await (await import('./albums/specials.js')).loadShowcaseAlbum(this);
       else await this._loadReg(key);
 
       this.curr = key; localStorage.setItem('currentAlbum', key);
@@ -129,11 +131,24 @@ class AlbumsManager {
 
   highlightCurrentTrack(i, { uid, albumKey } = {}) {
     document.querySelectorAll('.track.current').forEach(n => n.classList.remove('current'));
-    const sel = (this.curr === FAV && uid && albumKey) ? `.track[data-album="${CSS.escape(albumKey)}"][data-uid="${CSS.escape(uid)}"]` : (uid ? `.track[data-uid="${CSS.escape(uid)}"]` : (i >= 0 ? `.track[data-index="${i}"]` : null));
+    if (window.Utils?.isShowcaseContext?.(this.curr) && uid) {
+      document.querySelectorAll(`[data-uid="${CSS.escape(uid)}"]`).forEach(el => el.classList.add('current'));
+      return;
+    }
+    const sel = (this.curr === FAV && uid && albumKey) ?
+      `.track[data-album="${CSS.escape(albumKey)}"][data-uid="${CSS.escape(uid)}"]` : (uid ? `.track[data-uid="${CSS.escape(uid)}"]` : (i >= 0 ? `.track[data-index="${i}"]` : null));
     if (sel) document.querySelector(sel)?.classList.add('current');
   }
 
-  getCurrentAlbum() { return this.curr; } getPlayingAlbum() { return this.playing; } setPlayingAlbum(k) { this.playing = k; }
+  getCurrentAlbum() { return this.curr; } getPlayingAlbum() { return this.playing; } 
+  setPlayingAlbum(k) { this.playing = k; }
+  getPlayingAlbumTracks() {
+    if (window.Utils?.isShowcaseContext?.(this.playing)) {
+      return window.ShowcaseManager?.getActiveListTracks?.() || [];
+    }
+    const d = this.cache.get(this.playing);
+    return d ? (d._pTracks || d.tracks) : [];
+  }
   renderAlbumTitle(t, mod) { const el = $('active-album-title'); if(el) { el.textContent = t; el.className = `active-album-title ${mod||''}`; } }
 }
 
