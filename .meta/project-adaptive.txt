@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-830da249264b0f3a678337cd29c4e2ad5828f61f.idx
-│   │       ├── pack-830da249264b0f3a678337cd29c4e2ad5828f61f.pack
-│   │       └── pack-830da249264b0f3a678337cd29c4e2ad5828f61f.rev
+│   │       ├── pack-449893472c7974f73dd16aa94ecd1b8fe476ccff.idx
+│   │       ├── pack-449893472c7974f73dd16aa94ecd1b8fe476ccff.pack
+│   │       └── pack-449893472c7974f73dd16aa94ecd1b8fe476ccff.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-22 21:21:41 UTC
+Сгенерировано: 2026-02-22 21:30:59 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8825,7 +8825,8 @@ import { ensureMediaSession } from './player-core/media-session.js';
       if (!silent) this._emit('onStop');
     }
 
-    _startTick() {this._startTick();
+    _startTick() {
+      if (this._tickInt) return;
       this._tickInt = setInterval(() => {
         const pos = this.getPosition();
         const dur = this.getDuration();
