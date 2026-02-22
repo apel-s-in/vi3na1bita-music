@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5886f6e0c645bcb7624caf01fb944c97e4e11b55.idx
-│   │       ├── pack-5886f6e0c645bcb7624caf01fb944c97e4e11b55.pack
-│   │       └── pack-5886f6e0c645bcb7624caf01fb944c97e4e11b55.rev
+│   │       ├── pack-9b5c82ad26a38a8495dc71e1ee3379f53e767d4d.idx
+│   │       ├── pack-9b5c82ad26a38a8495dc71e1ee3379f53e767d4d.pack
+│   │       └── pack-9b5c82ad26a38a8495dc71e1ee3379f53e767d4d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -380,7 +380,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-22 12:51:47 UTC
+Сгенерировано: 2026-02-22 12:52:47 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8635,5 +8635,4 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .sc-sheet-btn { width: 100%; padding: 14px; text-align: left; background: transparent; border: none; color: #e0e0e0; font-size: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; gap: 12px; cursor: pointer; }
 .sc-sheet-btn:active { background: rgba(255,255,255,0.05); }
 .sc-sheet-btn:last-child { border-bottom: none; }
-}
 
