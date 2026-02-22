@@ -39,9 +39,13 @@
     } catch (e) { console.error('Offline/Stats init failed:', e); }
 
     const run = (n) => W[n]?.initialize();
-    // Логика достижений теперь работает автономно внутри engine.js (Analytics v4.0)
+    // Инициализация облака и аналитики
     const { cloudSync } = await import('./analytics/cloud-sync.js');
     cloudSync.checkAuthCallback();
+
+    // Загрузка изолированных модулей по ТЗ
+    await import('./ui/sleep-timer.js');
+    await import('./analytics/backup-manager.js');
     
     // Биндинг кнопок Кабинета
     try {
