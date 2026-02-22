@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f64ff72769fc81c66ab9269960774648e4596bf0.idx
-│   │       ├── pack-f64ff72769fc81c66ab9269960774648e4596bf0.pack
-│   │       └── pack-f64ff72769fc81c66ab9269960774648e4596bf0.rev
+│   │       ├── pack-9c7a9203d03a5953bd61e2dc71f9b22908090e97.idx
+│   │       ├── pack-9c7a9203d03a5953bd61e2dc71f9b22908090e97.pack
+│   │       └── pack-9c7a9203d03a5953bd61e2dc71f9b22908090e97.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -385,7 +385,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-22 20:51:51 UTC
+Сгенерировано: 2026-02-22 20:52:27 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1925,9 +1925,13 @@ export class ShareGenerator {
     } catch (e) { console.error('Offline/Stats init failed:', e); }
 
     const run = (n) => W[n]?.initialize();
-    // Логика достижений теперь работает автономно внутри engine.js (Analytics v4.0)
+    // Инициализация облака и аналитики
     const { cloudSync } = await import('./analytics/cloud-sync.js');
     cloudSync.checkAuthCallback();
+
+    // Загрузка изолированных модулей по ТЗ
+    await import('./ui/sleep-timer.js');
+    await import('./analytics/backup-manager.js');
     
     // Биндинг кнопок Кабинета
     try {
