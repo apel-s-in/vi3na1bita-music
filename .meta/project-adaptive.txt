@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-088f48b42c1bd56db3595d1c0f4fd13ab5772104.idx
-│   │       ├── pack-088f48b42c1bd56db3595d1c0f4fd13ab5772104.pack
-│   │       └── pack-088f48b42c1bd56db3595d1c0f4fd13ab5772104.rev
+│   │       ├── pack-5886f6e0c645bcb7624caf01fb944c97e4e11b55.idx
+│   │       ├── pack-5886f6e0c645bcb7624caf01fb944c97e4e11b55.pack
+│   │       └── pack-5886f6e0c645bcb7624caf01fb944c97e4e11b55.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -380,7 +380,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-22 12:50:59 UTC
+Сгенерировано: 2026-02-22 12:51:47 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8568,7 +8568,24 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 
 /* SHOWCASE STYLES OPTIMIZED */
 .showcase-header-controls { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; padding: 0 10px; }
-.showcase-search { width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.05); color: #fff; outline: none; transition: border-color 0.2s; }
+.showcase-search-wrap { position: relative; width: 100%; }
+.showcase-search { width: 100%; padding: 10px 38px 10px 14px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.05); color: #fff; outline: none; transition: border-color 0.2s; }
+
+.showcase-search-clear {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.8);
+  cursor: pointer;
+  display: none;
+}
+.showcase-search-clear:active { transform: translateY(-50%) scale(0.98); }
 .showcase-search:focus { border-color: var(--secondary-color); }
 .showcase-btns-row { display: flex; gap: 10px; }
 .showcase-btn { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.05); color: var(--c-blue); font-weight: 700; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; user-select: none; }
