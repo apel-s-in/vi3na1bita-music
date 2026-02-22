@@ -170,7 +170,6 @@ import { ensureMediaSession } from './player-core/media-session.js';
 
       this._emit('onTrackChange', t, index);
       W.dispatchEvent(new CustomEvent('player:trackChanged', { detail: { uid, dir } }));
-      W.dispatchEvent(new CustomEvent('player:play', { detail: { uid } })); // Инжект для Analytics v4.0
 
       let res = null, url = null;
       try { res = await W.TrackResolver?.resolve?.(uid, this.qMode); } catch {}
