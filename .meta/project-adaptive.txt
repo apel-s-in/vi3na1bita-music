@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d238a9e891f6f1a000c61fc6baa0d535dfd3b527.idx
-│   │       ├── pack-d238a9e891f6f1a000c61fc6baa0d535dfd3b527.pack
-│   │       └── pack-d238a9e891f6f1a000c61fc6baa0d535dfd3b527.rev
+│   │       ├── pack-a6a79dd081933a10e7a1b155a6a9349d5dc00e1a.idx
+│   │       ├── pack-a6a79dd081933a10e7a1b155a6a9349d5dc00e1a.pack
+│   │       └── pack-a6a79dd081933a10e7a1b155a6a9349d5dc00e1a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -315,11 +315,9 @@ vi3na1bita-music/
 │   └── news.json
 ├── scripts/
 │   ├── analytics/
-│   │   ├── backup-vault.js
 │   │   ├── cabinet-ui.js
 │   │   ├── cloud-sync.js
 │   │   ├── engine.js
-│   │   ├── event-logger.js
 │   │   ├── meta-db.js
 │   │   ├── session-tracker.js
 │   │   ├── share-generator.js
@@ -390,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-22 20:39:15 UTC
+Сгенерировано: 2026-02-22 20:39:58 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1325,50 +1323,6 @@ self.addEventListener('message', (e) => {
 });
 
 //=================================================
-// FILE: /scripts/analytics/backup-vault.js
-import { metaDB } from './meta-db.js';
-
-export class BackupVault {
-  static async exportData() {
-    const data = {
-      timestamp: Date.now(),
-      deviceHash: localStorage.getItem('deviceHash'),
-      stats: await metaDB._tx('stats', 'readonly', store => store.getAll())
-    };
-    const json = JSON.stringify(data);
-    const encoded = btoa(unescape(encodeURIComponent(json)));
-    const blob = new Blob([encoded], { type: 'application/octet-stream' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `vi3na1bita_backup_${new Date().toISOString().split('T')[0]}.vi3bak`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  static async importData(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        try {
-          const decoded = decodeURIComponent(escape(atob(e.target.result)));
-          const data = JSON.parse(decoded);
-          if (!data.stats) throw new Error("Invalid format");
-          for (const stat of data.stats) {
-            await metaDB.updateStat(stat.key, () => stat);
-          }
-          window.dispatchEvent(new CustomEvent('stats:updated'));
-          resolve(true);
-        } catch (err) {
-          reject(err);
-        }
-      };
-      reader.readAsText(file);
-    });
-  }
-}
-
-//=================================================
 // FILE: /scripts/analytics/cabinet-ui.js
 // scripts/analytics/cabinet-ui.js
 import { StatsAggregator, ACHIEVEMENTS, CloudSync, EventLogger } from './engine.js';
@@ -1737,49 +1691,6 @@ export const CloudSync = {
   }
 };
 W.AnalyticsEngine = { EventLogger, StatsAggregator, CloudSync };
-
-//=================================================
-// FILE: /scripts/analytics/event-logger.js
-import { metaDB } from './meta-db.js';
-
-class EventLogger {
-  constructor() {
-    this.hotQueue = [];
-    this.flushInterval = null;
-    this.deviceHash = this._generateDeviceHash();
-  }
-  async init() {
-    await metaDB.init();
-    window.addEventListener('visibilitychange', () => { if (document.hidden) this.flush(); });
-    this.flushInterval = setInterval(() => this.flush(), 30000);
-  }
-  log(type, payload) {
-    const event = {
-      type,
-      payload,
-      timestamp: Date.now(),
-      deviceHash: this.deviceHash,
-      uuid: crypto.randomUUID()
-    };
-    this.hotQueue.push(event);
-    if (this.hotQueue.length > 50) this.flush();
-  }
-  async flush() {
-    if (!this.hotQueue.length) return;
-    const batch = [...this.hotQueue];
-    this.hotQueue = [];
-    for (const ev of batch) {
-      await metaDB.addEvent(ev);
-    }
-    window.dispatchEvent(new CustomEvent('analytics:logUpdated'));
-  }
-  _generateDeviceHash() {
-    let hash = localStorage.getItem('deviceHash');
-    if (!hash) { hash = crypto.randomUUID(); localStorage.setItem('deviceHash', hash); }
-    return hash;
-  }
-}
-export const eventLogger = new EventLogger();
 
 //=================================================
 // FILE: /scripts/analytics/meta-db.js
