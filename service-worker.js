@@ -23,6 +23,8 @@ let isAirplaneMode = false;
 
 const STATIC_ASSETS = [
   './', './index.html', './news.html', './manifest.json',
+  './albums.json',
+  './data/lyrics-index-v1.json',
   './styles/main.css', './img/logo.png', './img/star.png', './img/star2.png',
   './icons/favicon-32.png', './icons/favicon-16.png', './icons/apple-touch-icon.png',
   './scripts/core/bootstrap.js', './scripts/core/config.js', './scripts/core/utils.js',
