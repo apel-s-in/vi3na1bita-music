@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9c39ecb166ee2fb1a27d54f3f7036994acc2ac3b.idx
-│   │       ├── pack-9c39ecb166ee2fb1a27d54f3f7036994acc2ac3b.pack
-│   │       └── pack-9c39ecb166ee2fb1a27d54f3f7036994acc2ac3b.rev
+│   │       ├── pack-5ee0fa0eca850278fe72606b6d690537788cee81.idx
+│   │       ├── pack-5ee0fa0eca850278fe72606b6d690537788cee81.pack
+│   │       └── pack-5ee0fa0eca850278fe72606b6d690537788cee81.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -380,7 +380,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-22 13:07:15 UTC
+Сгенерировано: 2026-02-22 13:08:04 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8630,6 +8630,67 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .showcase-btn.active { background: var(--secondary-color); color: #fff; }
 .showcase-btn--danger { color: #ff6b6b; border-color: rgba(255,107,107,0.3); }
 .showcase-playlists-scroll { display: flex; gap: 10px; overflow-x: auto; padding: 4px 0 10px; scrollbar-width: none; }
+
+/* Showcase playlists (vertical UI) */
+.showcase-playlists-actions { display: flex; gap: 10px; padding: 4px 0 6px; }
+.sc-pl-action {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06);
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+}
+.sc-pl-action.active {
+  border-color: rgba(77,170,255,.45);
+  background: rgba(77,170,255,.18);
+  color: var(--secondary-color);
+}
+
+.showcase-playlists-list { display: flex; flex-direction: column; gap: 8px; padding: 0 0 10px; }
+
+.sc-pl-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.05);
+}
+.sc-pl-row.active {
+  border-color: rgba(77,170,255,.45);
+  background: rgba(77,170,255,.10);
+}
+
+.sc-pl-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.sc-pl-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.sc-pl-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--pl-color, rgba(255,255,255,.25));
+  flex-shrink: 0;
+}
+
+.sc-pl-right { display: flex; gap: 8px; flex-shrink: 0; }
+.sc-pl-btn {
+  width: 36px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06);
+  color: #fff;
+  cursor: pointer;
+}
+.sc-pl-btn.danger { border-color: rgba(255,80,80,.35); }
+
+.sc-pl-empty { opacity: .65; font-size: 13px; padding: 6px 2px; }
 .showcase-playlists-scroll::-webkit-scrollbar { display: none; }
 .showcase-playlist-chip { padding: 6px 14px; border-radius: 16px; background: rgba(255,255,255,0.08); color: #ccc; cursor: pointer; white-space: nowrap; display: flex; align-items: center; gap: 8px; border: 1px solid transparent; font-size: 13px; transition: 0.2s; }
 .showcase-playlist-chip.active { background: rgba(77,170,255,0.2); color: var(--secondary-color); border-color: rgba(77,170,255,0.4); }
