@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1c6a0b97cfda590bca315515c7b41fbc0c3a4f83.idx
-│   │       ├── pack-1c6a0b97cfda590bca315515c7b41fbc0c3a4f83.pack
-│   │       └── pack-1c6a0b97cfda590bca315515c7b41fbc0c3a4f83.rev
+│   │       ├── pack-74f5850c85e6227a4ef2013957b9ae02c396aeee.idx
+│   │       ├── pack-74f5850c85e6227a4ef2013957b9ae02c396aeee.pack
+│   │       └── pack-74f5850c85e6227a4ef2013957b9ae02c396aeee.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,8 +377,7 @@ vi3na1bita-music/
 │   └── app.js
 ├── src/
 │   ├── player-core/
-│   │   ├── media-session.js
-│   │   └── stats-tracker.js
+│   │   └── media-session.js
 │   └── PlayerCore.js
 ├── styles/
 │   └── main.css
@@ -392,7 +391,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-22 20:11:49 UTC
+Сгенерировано: 2026-02-22 20:18:53 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8439,52 +8438,6 @@ export function ensureMediaSession(handlers = {}) {
         if (st && ms.setPositionState) ms.setPositionState({ duration: Number(st.duration) || 0, playbackRate: Number(st.playbackRate) || 1, position: Number(st.position) || 0 });
       } catch {}
     }
-  };
-}
-
-//=================================================
-// FILE: /src/player-core/stats-tracker.js
-// src/player-core/stats-tracker.js
-// Optimized: DRY 90% logic, robust GlobalStats tracking.
-
-const safeUid = v => String(v || '').trim() || null;
-
-export function createListenStatsTracker({ getUid, getPos, getDur, recordTick, recordEnd } = {}) {
-  const st = { last: -1, uid: null, ended: false };
-
-  const checkFull = () => {
-    const u = safeUid(getUid()), dur = getDur() || 0, pos = getPos() || 0;
-    if (u && u === st.uid && dur > 0 && (pos / dur) >= 0.9 && !st.ended) {
-      st.ended = true;
-      window.GlobalStatsManager?.registerFullListen?.(u, { duration: dur, position: pos });
-      recordEnd?.(u, { duration: dur, position: pos });
-    }
-  };
-
-  return {
-    onTick: () => {
-      const u = safeUid(getUid()), p = Math.floor(getPos() || 0);
-      if (!u) return;
-      
-      if (u !== st.uid) {
-        if (st.uid) window.GlobalStatsManager?.flush?.().catch(()=>{});
-        st.uid = u; st.last = -1; st.ended = false;
-      }
-      
-      if (p > st.last) {
-        st.last = p;
-        window.GlobalStatsManager?.recordTick?.(u, { deltaSec: 1 });
-        recordTick?.(u, { deltaSec: 1 });
-      }
-    },
-    onEnded: () => { if (safeUid(getUid()) === st.uid) checkFull(); },
-    onSkip: () => { 
-      if (safeUid(getUid()) === st.uid) { 
-        window.GlobalStatsManager?.flush?.().catch(()=>{}); 
-        checkFull(); 
-      } 
-    },
-    onPauseOrStop: () => {}
   };
 }
 
