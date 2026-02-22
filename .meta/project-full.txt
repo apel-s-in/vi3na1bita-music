@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-684f2ee4d5e15a2bae2db642c898ab66b64c5a27.idx
-│   │       ├── pack-684f2ee4d5e15a2bae2db642c898ab66b64c5a27.pack
-│   │       └── pack-684f2ee4d5e15a2bae2db642c898ab66b64c5a27.rev
+│   │       ├── pack-0dde9a2592ff156cd17af3d85f283a49d5b42c77.idx
+│   │       ├── pack-0dde9a2592ff156cd17af3d85f283a49d5b42c77.pack
+│   │       └── pack-0dde9a2592ff156cd17af3d85f283a49d5b42c77.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -391,7 +391,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-22 21:36:16 UTC
+Сгенерировано: 2026-02-22 21:46:41 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -857,7 +857,7 @@ jobs:
         </button>
       </div>
 
-      <div class="social-links d-flex justify-content-center gap-3 mb-4">
+      <div id="social-links" class="social-links d-flex justify-content-center gap-3 mb-4">
         </div>
 
       <div id="achievements-progress-container" class="achievements-progress-container mb-4" onclick="window.openCabinet ? window.openCabinet() : window.NotificationSystem?.info?.('Кабинет загружается…')">
