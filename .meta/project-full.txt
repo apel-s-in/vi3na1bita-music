@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-edcfb7d64d8347c7b9ab998e573056a73ff68e83.idx
-│   │       ├── pack-edcfb7d64d8347c7b9ab998e573056a73ff68e83.pack
-│   │       └── pack-edcfb7d64d8347c7b9ab998e573056a73ff68e83.rev
+│   │       ├── pack-52a58562a01a7d6b868cb3a1e3b976c3e212e7e7.idx
+│   │       ├── pack-52a58562a01a7d6b868cb3a1e3b976c3e212e7e7.pack
+│   │       └── pack-52a58562a01a7d6b868cb3a1e3b976c3e212e7e7.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -385,7 +385,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-22 20:57:43 UTC
+Сгенерировано: 2026-02-22 20:58:22 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7444,9 +7444,9 @@ export class SleepTimer {
     this.timeoutId = null;
     this.targetTimestamp = null;
     
-    // Безопасная остановка плеера
-    if (window.PlayerCore && typeof window.PlayerCore.pause === 'function') {
-      window.PlayerCore.pause();
+    // Безопасная остановка плеера (разрешённый сценарий STOP по ТЗ)
+    if (window.playerCore && typeof window.playerCore.pause === 'function') {
+      window.playerCore.pause();
     }
     
     this._notify('Время вышло. Воспроизведение остановлено.');
