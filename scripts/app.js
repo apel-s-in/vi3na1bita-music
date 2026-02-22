@@ -35,8 +35,7 @@
       
       await (await import('./app/playback-cache-bootstrap.js'))?.initPlaybackCache?.();
       
-      const gStats = await import('./stats/global-stats.js');
-      await gStats.default.initialize();
+      // GlobalStats удален, используется новая UID-Аналитика
     } catch (e) { console.error('Offline/Stats init failed:', e); }
 
     const run = (n) => W[n]?.initialize();
