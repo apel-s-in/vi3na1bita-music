@@ -246,15 +246,16 @@ import { ensureMediaSession } from './player-core/media-session.js';
     // =========================
     canToggleQualityForCurrentTrack() { return !!this.getCurrentTrack() && trackHasLo(this.getCurrentTrack()); }
 
-    async switchQuality(mode) {
+    switchQuality(mode) {
       const nq = qNorm(mode);
       if (this.qMode === nq) return;
       this.qMode = nq; ls.setItem(LS_PQ, nq);
       W.dispatchEvent(new CustomEvent('quality:changed', { detail: { quality: nq } }));
       W.dispatchEvent(new CustomEvent('offline:uiChanged'));
 
-      if (this.currentIndex < 0 || !this.sound) return;
-      this.load(this.currentIndex, { autoPlay: this.isPlaying(), resumePosition: this.getPosition(), dir: 1 });
+      if (this.currentIndex >= 0 && this.sound) {
+        this.load(this.currentIndex, { autoPlay: this.isPlaying(), resumePosition: this.getPosition(), dir: 1 });
+      }
       toast(`Качество переключено на ${nq === 'hi' ? 'Hi' : 'Lo'}`, 'info');
     }
 
