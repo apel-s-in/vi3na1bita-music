@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-25349a588058b2023b95e420f4eed53c2d8ae22d.idx
-│   │       ├── pack-25349a588058b2023b95e420f4eed53c2d8ae22d.pack
-│   │       └── pack-25349a588058b2023b95e420f4eed53c2d8ae22d.rev
+│   │       ├── pack-1c6a0b97cfda590bca315515c7b41fbc0c3a4f83.idx
+│   │       ├── pack-1c6a0b97cfda590bca315515c7b41fbc0c3a4f83.pack
+│   │       └── pack-1c6a0b97cfda590bca315515c7b41fbc0c3a4f83.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-22 20:11:03 UTC
+Сгенерировано: 2026-02-22 20:11:49 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9606,6 +9606,28 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .showcase-color-picker { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 10px; justify-content: center; }
 .showcase-color-dot { width: 34px; height: 34px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.5); }
 .showcase-color-dot:hover { transform: scale(1.15); }
+
+/* Achievements Progress Bar */
+.achievements-progress-container {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 12px 16px;
+  cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.1);
+  transition: background 0.2s;
+}
+.achievements-progress-container:hover { background: rgba(255, 255, 255, 0.08); }
+.progress-label { font-size: 0.85rem; color: #b3b3b3; font-weight: 500; }
+.progress-count { font-size: 0.85rem; color: #fff; font-weight: bold; }
+.progress-bar-bg { background: rgba(0,0,0,0.4); height: 8px; border-radius: 4px; overflow: hidden; margin-top: 6px; }
+.progress-bar-fill { height: 100%; background: linear-gradient(90deg, #ff007f, #7f00ff); border-radius: 4px; transition: width 0.5s cubic-bezier(0.1, 0.8, 0.2, 1); }
+
+/* Profile Sheet & Stats */
+.profile-sheet { max-height: 90vh; }
+.grid-2-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.stat-card { background: rgba(0,0,0,0.3); border-radius: 12px; padding: 16px; text-align: center; border: 1px solid rgba(255,255,255,0.05); }
+.stat-value { display: block; font-size: 1.5rem; font-weight: bold; color: #fff; margin-bottom: 4px; }
+.stat-desc { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
 
 /* Fast Bottom Sheet (No Blur) */
 .sc-bottom-sheet-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 10000; opacity: 0; transition: opacity 0.2s; display: flex; align-items: flex-end; justify-content: center; }
