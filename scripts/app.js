@@ -40,8 +40,13 @@
     } catch (e) { console.error('Offline/Stats init failed:', e); }
 
     const run = (n) => W[n]?.initialize();
+    // Инициализация UI Кабинета и Прогресс бара (v4.0)
+    try {
+      const cabUi = await import('./analytics/cabinet-ui.js');
+      cabUi.initProgressBar();
+    } catch(e) { console.warn('Analytics UI skipped'); }
+
     if (await waitObj('GalleryManager')) run('GalleryManager');
-    
     // Предзагрузка всех config.json для Витрины до AlbumsManager
     try {
       const showcaseMgr = await import('./app/showcase/index.js');
