@@ -61,9 +61,9 @@ export class SleepTimer {
     this.timeoutId = null;
     this.targetTimestamp = null;
     
-    // Безопасная остановка плеера
-    if (window.PlayerCore && typeof window.PlayerCore.pause === 'function') {
-      window.PlayerCore.pause();
+    // Безопасная остановка плеера (разрешённый сценарий STOP по ТЗ)
+    if (window.playerCore && typeof window.playerCore.pause === 'function') {
+      window.playerCore.pause();
     }
     
     this._notify('Время вышло. Воспроизведение остановлено.');
