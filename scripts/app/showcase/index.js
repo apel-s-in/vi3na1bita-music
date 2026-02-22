@@ -46,6 +46,8 @@ class ShowcaseStore {
   static set playlistColors(c) { this.set('playlistColors', c); }
 }
 
+import { ensureLyricsIndexLoaded, searchUidsByQuery } from './lyrics-search.js';
+
 class ShowcaseManager {
   constructor() {
     this.editMode = false;
@@ -57,7 +59,6 @@ class ShowcaseManager {
     this._statsCache = new Map();
     this._editSnapshot = null;
     this._activeMenu = null;
-    this._fulltextCache = new Map(); // Кэш для fuzzy-поиска
   }
 
   async initialize() {
@@ -151,43 +152,20 @@ class ShowcaseManager {
     const hidden = pId ? (ShowcaseStore.playlists.find(p => p.id === pId)?.hiddenUids || []) : ShowcaseStore.get('hiddenUids', []);
     if (!this.editMode) uids = uids.filter(u => !hidden.includes(u));
 
-    // 2.1 Расширенный поиск (Fuzzy + Async Fulltext)
+    // 2.1 Поиск (title/album/lyrics) — быстрый и офлайн через индекс
     if (this.searchQuery && !this.editMode) {
-      const q = this.searchQuery.toLowerCase().trim();
-      uids = await this.performAdvancedSearch(uids, q);
+      const q = String(this.searchQuery || '').trim();
+
+      // Подгружаем индекс лениво (но cache-first, так что после install доступно офлайн)
+      await ensureLyricsIndexLoaded();
+
+      uids = searchUidsByQuery({ uids, query: q });
     }
 
     return uids.map(u => {
       const t = W.TrackRegistry.getTrackByUid(u);
       return t ? { ...t, album: 'Витрина Разбита', cover: this.getIcon(t.sourceAlbum) } : null;
     }).filter(Boolean);
-  }
-
-  async performAdvancedSearch(uids, q) {
-    // Этап 1: Быстрый поиск по названию
-    let res = uids.filter(u => {
-      const t = W.TrackRegistry.getTrackByUid(u);
-      return t && (t.title.toLowerCase().includes(q) || t.album?.toLowerCase().includes(q));
-    });
-    
-    // Этап 2: Если ничего не найдено, ищем по тексту (асинхронно)
-    if (res.length === 0) {
-       for (const u of uids) {
-          const t = W.TrackRegistry.getTrackByUid(u);
-          if (t?.fulltext) {
-             let text = this._fulltextCache.get(u);
-             if (!text) {
-                try {
-                  const r = await fetch(t.fulltext);
-                  text = (await r.text()).toLowerCase();
-                  this._fulltextCache.set(u, text);
-                } catch(e) { text = ''; }
-             }
-             if (text.includes(q)) res.push(u);
-          }
-       }
-    }
-    return res;
   }
 
   getIcon(key) {
@@ -229,7 +207,10 @@ class ShowcaseManager {
           </div>
         ` : ''}
         
-        <input type="text" class="showcase-search" id="sc-search" placeholder="🔍 Поиск трека или текста..." value="${U.escapeHtml(this.searchQuery)}">
+        <div class="showcase-search-wrap">
+          <input type="text" class="showcase-search" id="sc-search" placeholder="🔍 Поиск трека или текста..." value="${U.escapeHtml(this.searchQuery)}">
+          <button type="button" class="showcase-search-clear" id="sc-search-clear" title="Очистить" aria-label="Очистить">✕</button>
+        </div>
         
         <div class="showcase-btns-row">
           ${!this.editMode ? `<button class="showcase-btn" id="sc-edit">✏️ Редактировать</button>` : ''}
@@ -266,10 +247,47 @@ class ShowcaseManager {
   bindControls(root) {
     const $id = id => root.querySelector('#' + id);
     
-    $id('sc-search')?.addEventListener('input', U.func.debounceFrame(async (e) => {
-      this.searchQuery = e.target.value;
+    const searchInp = $id('sc-search');
+    const clearBtn = $id('sc-search-clear');
+
+    const applySearch = U.func.debounceFrame(async () => {
+      this.searchQuery = String(searchInp?.value || '');
       await this.renderList();
-    }));
+      // Кнопка-крестик видна только если есть текст
+      if (clearBtn) clearBtn.style.display = this.searchQuery.trim() ? '' : 'none';
+    });
+
+    if (searchInp) {
+      searchInp.addEventListener('input', () => applySearch());
+
+      // Enter/OK: фикс для "залипшего" приближения/раскладки на мобильных
+      searchInp.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          searchInp.blur();
+        }
+      });
+
+      // При выходе из поиска — тоже снимаем фокус и не держим раскладку "в режиме ввода"
+      searchInp.addEventListener('blur', () => {
+        // Ничего не меняем в запросе, просто даем браузеру восстановить layout
+        window.scrollTo({ top: window.scrollY, behavior: 'instant' });
+      });
+    }
+
+    if (clearBtn) {
+      clearBtn.style.display = this.searchQuery.trim() ? '' : 'none';
+      clearBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        if (searchInp) {
+          searchInp.value = '';
+          searchInp.blur();
+        }
+        this.searchQuery = '';
+        await this.renderList();
+        clearBtn.style.display = 'none';
+      });
+    }
 
     $id('sc-edit')?.addEventListener('click', () => {
       if (this.sortMode !== 'user') return W.NotificationSystem.warning('Для ручной перестановки сбросьте сортировку');
@@ -905,7 +923,7 @@ class ShowcaseManager {
            ShowcaseStore.playlists = pls;
            W.NotificationSystem.success(`Добавлено треков: ${uidsArray.length}`);
            plModal.remove();
-           if (this.editMode) this.querySelector('#sc-m-clear')?.click();
+           if (this.editMode) document.getElementById('sc-m-clear')?.click();
         }
       });
   }
