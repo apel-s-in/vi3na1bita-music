@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-67b64232cfb2542b580cf50f6769f93799ccdfb5.idx
-│   │       ├── pack-67b64232cfb2542b580cf50f6769f93799ccdfb5.pack
-│   │       └── pack-67b64232cfb2542b580cf50f6769f93799ccdfb5.rev
+│   │       ├── pack-9f440930f567d5eec32cfaeee4972d1f22881bf0.idx
+│   │       ├── pack-9f440930f567d5eec32cfaeee4972d1f22881bf0.pack
+│   │       └── pack-9f440930f567d5eec32cfaeee4972d1f22881bf0.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -362,7 +362,7 @@ vi3na1bita-music/
 │   │   ├── notify.js
 │   │   ├── offline-indicators.js
 │   │   ├── offline-modal.js
-│   │   ├── sleep.js
+│   │   ├── sleep-timer.js
 │   │   ├── statistics-modal.js
 │   │   └── sysinfo.js
 │   ├── utils/
@@ -384,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-22 20:50:19 UTC
+Сгенерировано: 2026-02-22 20:51:20 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7263,97 +7263,97 @@ export function initOfflineModal() {
 export default { initOfflineModal, openOfflineModal, closeOfflineModal };
 
 //=================================================
-// FILE: /scripts/ui/sleep.js
-(function () {
-  'use strict';
-  const W = window, ls = localStorage, LS = 'sleepTimerTarget', pad = n => String(n).padStart(2, '0');
-  const $ = id => document.getElementById(id), now = () => Date.now();
-  let menu = null, tickId = null;
+// FILE: /scripts/ui/sleep-timer.js
+/**
+ * scripts/ui/sleep-timer.js
+ * Реализация Sleep-таймера по ТЗ-UID (v4.0)
+ * Поддерживает интервалы и точное время. Изолирован от ядра плеера.
+ */
 
-  const getTs = () => (W.playerCore?.getSleepTimerTarget?.() > 0) ? W.playerCore.getSleepTimerTarget() : parseInt(ls.getItem(LS)||'0', 10);
-  const set = ts => { if (ts > now()) { W.playerCore?.setSleepTimer?.(ts - now()); ls.setItem(LS, ts); updateBadge(); } };
-  const stop = (silent) => { W.playerCore?.clearSleepTimer?.(); ls.removeItem(LS); updateBadge(); if(!silent) W.NotificationSystem?.info?.('⏰ Таймер сна выключен'); };
+export class SleepTimer {
+  constructor() {
+    this.timeoutId = null;
+    this.targetTimestamp = null;
+  }
 
-  const updateBadge = () => {
-    const el = $('sleep-timer-badge'), ts = getTs(), ms = ts - now();
-    if (!el) return;
-    if (ts > 0 && ms > 0) {
-      el.style.display = ''; el.textContent = Math.ceil(ms / 60000);
-      if (!tickId) tickId = setInterval(updateBadge, 10000);
-    } else {
-      el.style.display = 'none'; el.textContent = '';
-      if (tickId) { clearInterval(tickId); tickId = null; }
-      if (ts > 0) stop(true);
+  /**
+   * Запуск таймера через заданное количество минут
+   */
+  startMinutes(minutes) {
+    this.stop();
+    const ms = minutes * 60 * 1000;
+    this.targetTimestamp = Date.now() + ms;
+    
+    this.timeoutId = setTimeout(() => this._trigger(), ms);
+    this._notify(`Таймер сна установлен на ${minutes} мин.`);
+    this._logEvent('sleep_timer_set', { minutes });
+  }
+
+  /**
+   * Запуск таймера до конкретного времени (ЧЧ:ММ)
+   */
+  startAt(timeString) {
+    this.stop();
+    const [hours, minutes] = timeString.split(':').map(Number);
+    const now = new Date();
+    const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0);
+
+    // Если время уже прошло, ставим на следующий день (согласно ТЗ)
+    if (target.getTime() <= now.getTime()) {
+      target.setDate(target.getDate() + 1);
     }
-  };
 
-  const toggleMenu = btn => {
-    if (menu) { menu.remove(); menu = null; return; }
-    const ts = getTs(), ms = ts - now(), act = ms > 0, r = btn.getBoundingClientRect();
-    menu = document.createElement('div');
-    menu.className = 'sleep-menu';
-    menu.style.cssText = `position:fixed;right:${Math.max(8, W.innerWidth - r.right)}px;bottom:${Math.max(8, W.innerHeight - r.top)}px;z-index:10000`;
-    menu.innerHTML = (act ? `<div class="sleep-menu-item active" data-a="noop">✅ Активен: ${Math.ceil(ms/60000)}м</div>` : '') +
-      `<div class="sleep-menu-item" data-a="off">Выключить</div><div style="height:1px;background:rgba(255,255,255,.1);margin:6px 0"></div>` +
-      [15,30,45,60].map(m => `<div class="sleep-menu-item" data-a="m" data-v="${m}">${m} мин</div>`).join('') +
-      `<div style="height:1px;background:rgba(255,255,255,.1);margin:6px 0"></div><div class="sleep-menu-item" data-a="time">К времени…</div>`;
+    const msUntil = target.getTime() - now.getTime();
+    this.targetTimestamp = target.getTime();
     
-    const outClick = e => { if (menu && !menu.contains(e.target) && !btn.contains(e.target)) { menu.remove(); menu = null; document.removeEventListener('click', outClick); } };
-    setTimeout(() => document.addEventListener('click', outClick), 0);
+    this.timeoutId = setTimeout(() => this._trigger(), msUntil);
+    this._notify(`Таймер сна установлен на ${timeString}`);
+    this._logEvent('sleep_timer_set', { exactTime: timeString });
+  }
 
-    menu.onclick = e => {
-      const t = e.target.closest('[data-a]'); if (!t) return;
-      e.stopPropagation(); const a = t.dataset.a;
-      if (a === 'off') stop();
-      else if (a === 'm') { set(now() + parseInt(t.dataset.v) * 60000); W.NotificationSystem?.success?.(`⏰ Таймер: ${t.dataset.v} мин`); }
-      else if (a === 'time') { menu.remove(); menu = null; openTimeModal(); return; }
-      if (a !== 'noop') { menu.remove(); menu = null; document.removeEventListener('click', outClick); }
-    };
-    document.body.appendChild(menu);
-  };
+  /**
+   * Отключение таймера
+   */
+  stop() {
+    if (this.timeoutId) {
+      clearTimeout(this.timeoutId);
+      this.timeoutId = null;
+      this.targetTimestamp = null;
+      this._notify('Таймер сна отключен');
+    }
+  }
 
-  const openTimeModal = () => {
-    const wrap = document.createElement('div');
-    wrap.className = 'sleep-time-modal-backdrop';
-    const def = new Date(now() + 30 * 60000);
-    wrap.innerHTML = `<div class="sleep-time-modal" style="max-width:260px"><div class="sleep-time-title">Таймер к времени</div><input id="stm-inp" type="time" value="${pad(def.getHours())}:${pad(def.getMinutes())}" style="width:100%;padding:12px;margin-bottom:16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:#fff;border-radius:8px;font-size:20px;text-align:center;color-scheme:dark;outline:none"><div class="sleep-time-actions"><button class="sleep-time-btn" data-a="c">Отмена</button><button class="sleep-time-btn primary" data-a="ok">Ок</button></div></div>`;
+  _trigger() {
+    this.timeoutId = null;
+    this.targetTimestamp = null;
     
-    const close = () => { wrap.remove(); document.removeEventListener('keydown', onKey); };
-    const apply = () => {
-      const v = wrap.querySelector('#stm-inp').value.split(':');
-      if (v.length === 2) {
-        const d = new Date(); d.setHours(v[0], v[1], 0, 0);
-        if (d.getTime() <= now()) d.setDate(d.getDate() + 1);
-        set(d.getTime()); W.NotificationSystem?.success?.(`⏰ Таймер до ${v[0]}:${v[1]}`);
-      }
-      close();
-    };
-
-    const onKey = e => { if (e.key === 'Enter') apply(); if (e.key === 'Escape') close(); };
-    wrap.onclick = e => { if (e.target === wrap || e.target.dataset.a === 'c') close(); if (e.target.dataset.a === 'ok') apply(); };
+    // Безопасная остановка плеера
+    if (window.PlayerCore && typeof window.PlayerCore.pause === 'function') {
+      window.PlayerCore.pause();
+    }
     
-    document.body.appendChild(wrap);
-    document.addEventListener('keydown', onKey);
-    setTimeout(() => wrap.querySelector('#stm-inp').focus(), 50);
-  };
+    this._notify('Время вышло. Воспроизведение остановлено.');
+    this._logEvent('sleep_timer_fired', {});
+  }
 
-  const init = () => {
-    document.addEventListener('click', e => { const b = e.target.closest('#sleep-timer-btn'); if (b) { e.stopPropagation(); toggleMenu(b); } });
-    const bind = () => {
-      if (W.playerCore?.on) {
-        W.playerCore.on({ onSleepTriggered: () => stop() });
-        const saved = parseInt(ls.getItem(LS)||'0', 10);
-        if (saved > now()) W.playerCore.setSleepTimer(saved - now());
-        else if (saved) stop(true);
-        updateBadge();
-      } else setTimeout(bind, 200);
-    };
-    bind();
-  };
+  _notify(message) {
+    if (window.NotificationSystem) {
+      window.NotificationSystem.info(message);
+    } else {
+      console.log(`[SleepTimer] ${message}`);
+    }
+  }
 
-  W.SleepTimer = { show: () => $('sleep-timer-btn')?.click(), updateBadge, clearSleepTimer: () => stop(true) };
-  document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', init) : init();
-})();
+  _logEvent(action, payload) {
+    window.dispatchEvent(new CustomEvent('analytics:event', { 
+      detail: { type: action, payload } 
+    }));
+  }
+}
+
+// Экспорт синглтона для глобального доступа из UI
+export const sleepTimerInstance = new SleepTimer();
+window.SleepTimer = sleepTimerInstance;
 
 //=================================================
 // FILE: /scripts/ui/statistics-modal.js
