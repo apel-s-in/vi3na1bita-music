@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-168777cd5e03b6cf9e98af536f7c5d44abf32027.idx
-│   │       ├── pack-168777cd5e03b6cf9e98af536f7c5d44abf32027.pack
-│   │       └── pack-168777cd5e03b6cf9e98af536f7c5d44abf32027.rev
+│   │       ├── pack-4f14b58f3ec9c2355cf4d20dc21f052586c7fb8b.idx
+│   │       ├── pack-4f14b58f3ec9c2355cf4d20dc21f052586c7fb8b.pack
+│   │       └── pack-4f14b58f3ec9c2355cf4d20dc21f052586c7fb8b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -319,8 +319,7 @@ vi3na1bita-music/
 │   │   ├── cloud-sync.js
 │   │   ├── engine.js
 │   │   ├── share-generator.js
-│   │   ├── sleep-timer.js
-│   │   └── stats-aggregator.js
+│   │   └── sleep-timer.js
 │   ├── app/
 │   │   ├── albums/
 │   │   │   └── specials.js
@@ -386,7 +385,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-22 20:40:36 UTC
+Сгенерировано: 2026-02-22 20:40:48 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1798,47 +1797,6 @@ export class SleepTimer {
   }
 }
 export const sleepTimer = new SleepTimer();
-
-//=================================================
-// FILE: /scripts/analytics/stats-aggregator.js
-import { metaDB } from './meta-db.js';
-
-export class StatsAggregator {
-  constructor() {
-    window.addEventListener('analytics:logUpdated', () => this.processHotEvents());
-  }
-  async processHotEvents() {
-    const events = await metaDB.getEvents();
-    if (!events.length) return;
-    
-    for (const ev of events) {
-      if (ev.type === 'LISTEN_FULL') {
-        await metaDB.updateStat('globalFullListens', (stat) => {
-          stat.value++;
-          stat.details[ev.payload.uid] = (stat.details[ev.payload.uid] || 0) + 1;
-          
-          // Интеграция с OfflineManager (SmartPrefetch R2)
-          if (stat.details[ev.payload.uid] === 5) {
-             window.dispatchEvent(new CustomEvent('analytics:cloudThresholdReached', { detail: { uid: ev.payload.uid }}));
-          }
-          return stat;
-        });
-      }
-      if (ev.type === 'LISTEN_VALID') {
-        await metaDB.updateStat('totalListenTime', (stat) => {
-          stat.value += ev.payload.seconds; return stat;
-        });
-      }
-      if (ev.type === 'FEATURE_USED') {
-         await metaDB.updateStat('features', (stat) => {
-            stat.details[ev.payload.feature] = true; return stat;
-         });
-      }
-    }
-    await metaDB.clearEvents(); // Очищаем обработанные
-    window.dispatchEvent(new CustomEvent('stats:updated'));
-  }
-}
 
 //=================================================
 // FILE: /scripts/app.js
