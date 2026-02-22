@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-87d9b682c438c64bac96c64d3c10cd04c46f3f80.idx
-│   │       ├── pack-87d9b682c438c64bac96c64d3c10cd04c46f3f80.pack
-│   │       └── pack-87d9b682c438c64bac96c64d3c10cd04c46f3f80.rev
+│   │       ├── pack-96cd858b29bee3921520cfcadbd5696ed9d03e72.idx
+│   │       ├── pack-96cd858b29bee3921520cfcadbd5696ed9d03e72.pack
+│   │       └── pack-96cd858b29bee3921520cfcadbd5696ed9d03e72.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -385,7 +385,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-22 19:52:51 UTC
+Сгенерировано: 2026-02-22 19:53:51 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9093,6 +9093,28 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 
 /* Responsive fix for toprow */
 @media(max-width:340px){.om-pc-toprow{flex-direction:column;gap:8px}}
+
+/* === АНАЛИТИКА, ДОСТИЖЕНИЯ И КАБИНЕТ (v4.0) === */
+.ach-widget-box { background: #131a26; border: 1px solid #23324a; border-radius: 14px; padding: 16px; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,0.4); margin-bottom: 15px; position: relative; overflow: hidden; }
+.ach-widget-tip { color: #ffd166; font-size: 12px; margin-bottom: 10px; font-weight: 700; background: rgba(255, 209, 102, 0.1); display: inline-block; padding: 4px 10px; border-radius: 20px; }
+.ach-widget-title { color: #fff; font-size: 15px; font-weight: 900; letter-spacing: 1px; margin-bottom: 12px; text-transform: uppercase; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+.ach-widget-track { height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; margin-bottom: 10px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.3); }
+.ach-widget-fill { height: 100%; background: linear-gradient(90deg, #ff3b3b 0%, #4daaff 100%); transition: width 0.5s ease-out; box-shadow: 0 0 10px rgba(77,170,255,0.5); }
+.ach-widget-count { color: #eaf2ff; font-size: 14px; font-weight: 800; margin-bottom: 14px; }
+.ach-widget-btn { width: 100%; padding: 12px; border-radius: 8px; border: none; background: #4daaff; color: #fff; font-weight: 800; font-size: 14px; cursor: pointer; transition: transform 0.2s, background 0.2s; box-shadow: 0 4px 15px rgba(77,170,255,0.3); }
+.ach-widget-btn:active { transform: scale(0.97); }
+
+.cabinet-wrap { display: flex; flex-direction: column; gap: 16px; color: #eaf2ff; }
+.cab-header { font-size: 18px; font-weight: 900; text-align: center; color: #8ab8fd; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px; }
+.cab-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.cab-card { background: rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; text-align: center; border: 1px solid rgba(255,255,255,0.08); }
+.cab-card h3 { font-size: 11px; color: #9db7dd; margin: 0 0 6px; text-transform: uppercase; }
+.cab-val { font-size: 22px; font-weight: 900; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+.cab-section { background: rgba(0,0,0,0.2); padding: 14px; border-radius: 10px; }
+.cab-section h3 { font-size: 14px; margin: 0 0 8px; color: #fff; }
+.cab-btn { flex: 1; padding: 10px; border: none; border-radius: 8px; background: #357ac9; color: #fff; font-weight: bold; cursor: pointer; text-align: center; }
+.cab-btn-outline { background: transparent; border: 1px solid #357ac9; color: #8ab8fd; display: inline-block; box-sizing: border-box; }
+.yandex-btn { background: #fc3f1d; } .google-btn { background: #fff; color: #000; }
 
 /* SHOWCASE STYLES OPTIMIZED */
 .showcase-header-controls { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; padding: 0 10px; }
