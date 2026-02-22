@@ -173,7 +173,12 @@ class OfflineManager {
 
     W.addEventListener('quality:changed', e => this._onQualChg(e.detail?.quality));
     
-    // Deferred GC for playing tracks (enforces No Duplicates without stopping playback)
+    // Связь новой аналитики с OfflineManager (SmartPrefetch R2)
+    W.addEventListener('analytics:cloudThresholdReached', async (e) => {
+      if (e.detail?.uid) this.registerFullListen(e.detail.uid, { forcedCloud: true });
+    });
+
+// Deferred GC for playing tracks (enforces No Duplicates without stopping playback)
     W.addEventListener('player:trackChanged', async (e) => {
       if (!W._orphanedBlobs?.size) return;
       const cur = e.detail?.uid;
@@ -360,9 +365,9 @@ class OfflineManager {
     }
   }
 
-  async registerFullListen(uid, { duration, position } = {}) {
+  async registerFullListen(uid, { forcedCloud } = {}) {
     const u = sUid(uid);
-    if (!u || !duration || (position / duration) < 0.9) return;
+    if (!u || !forcedCloud) return; // Защита: вызывается только из StatsAggregator
 
     const m = (await DB.getTrackMeta(u)) || { uid: u };
     const { N, D } = this.getCloudSettings();
