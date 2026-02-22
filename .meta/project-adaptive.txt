@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ca4eb34a34168b55ac5e1357288e00af89ed3566.idx
-│   │       ├── pack-ca4eb34a34168b55ac5e1357288e00af89ed3566.pack
-│   │       └── pack-ca4eb34a34168b55ac5e1357288e00af89ed3566.rev
+│   │       ├── pack-bb0075ec7a13ddf39a89f31cd2ec4570a9e054cc.idx
+│   │       ├── pack-bb0075ec7a13ddf39a89f31cd2ec4570a9e054cc.pack
+│   │       └── pack-bb0075ec7a13ddf39a89f31cd2ec4570a9e054cc.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -380,7 +380,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-22 12:46:25 UTC
+Сгенерировано: 2026-02-22 12:47:08 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1137,6 +1137,8 @@ let isAirplaneMode = false;
 
 const STATIC_ASSETS = [
   './', './index.html', './news.html', './manifest.json',
+  './albums.json',
+  './data/lyrics-index-v1.json',
   './styles/main.css', './img/logo.png', './img/star.png', './img/star2.png',
   './icons/favicon-32.png', './icons/favicon-16.png', './icons/apple-touch-icon.png',
   './scripts/core/bootstrap.js', './scripts/core/config.js', './scripts/core/utils.js',
