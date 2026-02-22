@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a6a79dd081933a10e7a1b155a6a9349d5dc00e1a.idx
-│   │       ├── pack-a6a79dd081933a10e7a1b155a6a9349d5dc00e1a.pack
-│   │       └── pack-a6a79dd081933a10e7a1b155a6a9349d5dc00e1a.rev
+│   │       ├── pack-811a82629ab83311aebddda240a05d43fb563717.idx
+│   │       ├── pack-811a82629ab83311aebddda240a05d43fb563717.pack
+│   │       └── pack-811a82629ab83311aebddda240a05d43fb563717.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -318,7 +318,6 @@ vi3na1bita-music/
 │   │   ├── cabinet-ui.js
 │   │   ├── cloud-sync.js
 │   │   ├── engine.js
-│   │   ├── meta-db.js
 │   │   ├── session-tracker.js
 │   │   ├── share-generator.js
 │   │   ├── sleep-timer.js
@@ -388,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-22 20:39:57 UTC
+Сгенерировано: 2026-02-22 20:40:12 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1691,64 +1690,6 @@ export const CloudSync = {
   }
 };
 W.AnalyticsEngine = { EventLogger, StatsAggregator, CloudSync };
-
-//=================================================
-// FILE: /scripts/analytics/meta-db.js
-export class MetaDB {
-  constructor() {
-    this.dbName = 'MetaDB';
-    this.version = 1;
-    this.db = null;
-  }
-  async init() {
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(this.dbName, this.version);
-      request.onupgradeneeded = (e) => {
-        const db = e.target.result;
-        if (!db.objectStoreNames.contains('events_hot')) db.createObjectStore('events_hot', { keyPath: 'id', autoIncrement: true });
-        if (!db.objectStoreNames.contains('stats')) db.createObjectStore('stats', { keyPath: 'key' });
-        if (!db.objectStoreNames.contains('achievements')) db.createObjectStore('achievements', { keyPath: 'id' });
-      };
-      request.onsuccess = (e) => { this.db = e.target.result; resolve(); };
-      request.onerror = (e) => reject(e.target.error);
-    });
-  }
-  async addEvent(event) {
-    return this._tx('events_hot', 'readwrite', store => store.add(event));
-  }
-  async getEvents() {
-    return this._tx('events_hot', 'readonly', store => store.getAll());
-  }
-  async clearEvents() {
-    return this._tx('events_hot', 'readwrite', store => store.clear());
-  }
-  async updateStat(key, mutatorFn) {
-    const tx = this.db.transaction('stats', 'readwrite');
-    const store = tx.objectStore('stats');
-    return new Promise((resolve, reject) => {
-      const req = store.get(key);
-      req.onsuccess = () => {
-        const data = req.result || { key, value: 0, details: {} };
-        const updated = mutatorFn(data);
-        store.put(updated).onsuccess = resolve;
-      };
-      req.onerror = reject;
-    });
-  }
-  async getStat(key) {
-    return this._tx('stats', 'readonly', store => store.get(key));
-  }
-  _tx(storeName, mode, op) {
-    return new Promise((resolve, reject) => {
-      if (!this.db) return reject('DB not initialized');
-      const tx = this.db.transaction(storeName, mode);
-      const req = op(tx.objectStore(storeName));
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
-  }
-}
-export const metaDB = new MetaDB();
 
 //=================================================
 // FILE: /scripts/analytics/session-tracker.js
