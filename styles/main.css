@@ -593,7 +593,24 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 
 /* SHOWCASE STYLES OPTIMIZED */
 .showcase-header-controls { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; padding: 0 10px; }
-.showcase-search { width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.05); color: #fff; outline: none; transition: border-color 0.2s; }
+.showcase-search-wrap { position: relative; width: 100%; }
+.showcase-search { width: 100%; padding: 10px 38px 10px 14px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.05); color: #fff; outline: none; transition: border-color 0.2s; }
+
+.showcase-search-clear {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.8);
+  cursor: pointer;
+  display: none;
+}
+.showcase-search-clear:active { transform: translateY(-50%) scale(0.98); }
 .showcase-search:focus { border-color: var(--secondary-color); }
 .showcase-btns-row { display: flex; gap: 10px; }
 .showcase-btn { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.05); color: var(--c-blue); font-weight: 700; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; user-select: none; }
