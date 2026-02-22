@@ -39,7 +39,11 @@
     } catch (e) { console.error('Offline/Stats init failed:', e); }
 
     const run = (n) => W[n]?.initialize();
-    // Инициализация UI Кабинета и Прогресс бара (v4.0)
+    new AchievementEngine();
+    const { cloudSync } = await import('../scripts/analytics/cloud-sync.js');
+    cloudSync.checkAuthCallback(); // Проверка ответа от OAuth Яндекса/Google
+    
+    // Биндинг кнопок Кабинета
     try {
       const cabUi = await import('./analytics/cabinet-ui.js');
       cabUi.initProgressBar();
