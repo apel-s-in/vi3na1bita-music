@@ -225,7 +225,8 @@ class ShowcaseManager {
         </div>
         ` : ''}
 
-        <div class="showcase-playlists-scroll" id="sc-playlists"></div>
+        <div class="showcase-playlists-actions" id="sc-playlists-actions"></div>
+        <div class="showcase-playlists-list" id="sc-playlists"></div>
         <div class="showcase-status-bar" id="sc-status"></div>
       </div>
       <div id="sc-tracks-container"></div>
@@ -451,46 +452,82 @@ class ShowcaseManager {
     });
   }
 
-  // 3.5 Плейлисты с Цветами
+  // 3.5 Плейлисты (вертикальный список во всю ширину)
   renderPlaylists() {
-    const c = D.getElementById('sc-playlists');
-    if (!c) return;
+    const actions = D.getElementById('sc-playlists-actions');
+    const list = D.getElementById('sc-playlists');
+    if (!actions || !list) return;
+
     const pId = ShowcaseStore.activePlaylistId;
-    const lists = ShowcaseStore.playlists;
-    const colors = ShowcaseStore.playlistColors;
+    const playlists = ShowcaseStore.playlists || [];
+    const colors = ShowcaseStore.playlistColors || {};
 
-    let html = `<div class="showcase-playlist-chip ${!pId ? 'active' : ''}" data-pid="">Все треки</div>`;
-    lists.forEach(p => {
-      const col = colors[p.id];
-      const st = col ? `style="border-color:${col}; background:${col}30"` : '';
-      html += `<div class="showcase-playlist-chip ${pId === p.id ? 'active' : ''}" data-pid="${p.id}" ${st}>
-        ${U.escapeHtml(p.name)} 
-        <span class="p-action p-edit" data-pid="${p.id}" title="Редактировать">🔨</span>
-        <span class="p-action p-share" data-pid="${p.id}" title="Поделиться">🔗</span>
-        <span class="p-action p-color" data-pid="${p.id}" title="Цвет">🎨</span>
-        <span class="p-action p-del" data-pid="${p.id}" title="Удалить">✖</span>
-      </div>`;
-    });
-    html += `<div class="showcase-playlist-chip" id="sc-new-pl">+ Новый</div>`;
-    html += `<div class="showcase-playlist-chip" id="sc-paste-pl" title="Из буфера">📋</div>`;
-    
-    c.innerHTML = html;
+    // Верхняя строка: системные действия
+    actions.innerHTML = `
+      <button class="sc-pl-action ${!pId ? 'active' : ''}" data-action="all">Все треки</button>
+      <button class="sc-pl-action" data-action="new">+ Новый</button>
+      <button class="sc-pl-action" data-action="paste" title="Вставить плейлист из буфера">📋</button>
+    `;
 
-    c.onclick = (e) => {
-      const pid = e.target.dataset.pid;
-      if (e.target.id === 'sc-new-pl') return this.createNewPlaylist();
-      if (e.target.id === 'sc-paste-pl') return this.pastePlaylist();
-      if (e.target.classList.contains('p-edit')) {
-         ShowcaseStore.activePlaylistId = pid;
-         this.editMode = true;
-         return this.renderTab();
+    actions.onclick = (e) => {
+      const act = e.target.closest('[data-action]')?.dataset.action;
+      if (!act) return;
+
+      if (act === 'all') {
+        ShowcaseStore.activePlaylistId = null;
+        this.renderTab();
+        return;
       }
-      if (e.target.classList.contains('p-share')) return this.sharePlaylist(pid);
-      if (e.target.classList.contains('p-del')) return this.deletePlaylist(pid);
-      if (e.target.classList.contains('p-color')) return this.openColorPicker(null, null, pid);
-      
-      if (e.target.closest('.showcase-playlist-chip')) {
-        ShowcaseStore.activePlaylistId = pid || null;
+      if (act === 'new') return this.createNewPlaylist();
+      if (act === 'paste') return this.pastePlaylist();
+    };
+
+    // Вертикальный список плейлистов
+    if (!playlists.length) {
+      list.innerHTML = `<div class="sc-pl-empty">Плейлистов пока нет</div>`;
+      return;
+    }
+
+    list.innerHTML = playlists.map(p => {
+      const col = String(colors[p.id] || '').trim();
+      const style = col ? `style="--pl-color:${col};"` : '';
+      const active = pId === p.id ? 'active' : '';
+      return `
+        <div class="sc-pl-row ${active}" data-pid="${p.id}" ${style}>
+          <div class="sc-pl-left">
+            <span class="sc-pl-dot"></span>
+            <span class="sc-pl-title" title="${U.escapeHtml(p.name)}">${U.escapeHtml(p.name)}</span>
+          </div>
+          <div class="sc-pl-right">
+            <button class="sc-pl-btn" data-act="share" data-pid="${p.id}" title="Поделиться">🔗</button>
+            <button class="sc-pl-btn" data-act="edit" data-pid="${p.id}" title="Редактировать">🔨</button>
+            <button class="sc-pl-btn" data-act="color" data-pid="${p.id}" title="Цвет">🎨</button>
+            <button class="sc-pl-btn danger" data-act="del" data-pid="${p.id}" title="Удалить">✖</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    list.onclick = (e) => {
+      const act = e.target.closest('[data-act]')?.dataset.act;
+      const pid = e.target.closest('[data-pid]')?.dataset.pid;
+      const rowPid = e.target.closest('.sc-pl-row')?.dataset.pid;
+
+      if (act && pid) {
+        if (act === 'edit') {
+          ShowcaseStore.activePlaylistId = pid;
+          this.editMode = true;
+          this.renderTab();
+          return;
+        }
+        if (act === 'share') return this.sharePlaylist(pid);
+        if (act === 'del') return this.deletePlaylist(pid);
+        if (act === 'color') return this.openColorPicker(null, null, pid);
+        return;
+      }
+
+      if (rowPid) {
+        ShowcaseStore.activePlaylistId = rowPid;
         this.renderTab();
       }
     };
