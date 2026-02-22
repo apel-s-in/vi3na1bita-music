@@ -39,9 +39,9 @@
     } catch (e) { console.error('Offline/Stats init failed:', e); }
 
     const run = (n) => W[n]?.initialize();
-    new AchievementEngine();
-    const { cloudSync } = await import('../scripts/analytics/cloud-sync.js');
-    cloudSync.checkAuthCallback(); // Проверка ответа от OAuth Яндекса/Google
+    // Логика достижений теперь работает автономно внутри engine.js (Analytics v4.0)
+    const { cloudSync } = await import('./analytics/cloud-sync.js');
+    cloudSync.checkAuthCallback();
     
     // Биндинг кнопок Кабинета
     try {
