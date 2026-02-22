@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ff52b5cc755e40d22ff36b98bca6ce313b3ef19e.idx
-│   │       ├── pack-ff52b5cc755e40d22ff36b98bca6ce313b3ef19e.pack
-│   │       └── pack-ff52b5cc755e40d22ff36b98bca6ce313b3ef19e.rev
+│   │       ├── pack-10ff1bd95f7eed0a84883662040215ec822491f5.idx
+│   │       ├── pack-10ff1bd95f7eed0a84883662040215ec822491f5.pack
+│   │       └── pack-10ff1bd95f7eed0a84883662040215ec822491f5.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -391,7 +391,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-22 21:47:55 UTC
+Сгенерировано: 2026-02-22 21:49:11 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9215,8 +9215,6 @@ header{width:100%;text-align:center;margin:0 auto}
 .toast-offline{border-left:4px solid #666}
 
 /* Cloud menu popup (☁ context menu) */
-.cloud-menu-popup{position:fixed;z-index:10000;background:#1a1a2e;border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:4px 0;min-width:170px;box-shadow:0 4px 20px rgba(0,0,0,.5);opacity:0;pointer-events:none;transform:translateY(-4px);transition:opacity .15s,transform .15s}
-.cloud-menu-popup.visible{opacity:1;pointer-events:auto;transform:translateY(0)}
 .cloud-menu-item{padding:10px 16px;color:#e0e0e0;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:background .15s}
 .cloud-menu-item:hover{background:rgba(255,255,255,.08)}
 .cloud-menu-item.cloud-menu-delete{color:#ff6b6b}
