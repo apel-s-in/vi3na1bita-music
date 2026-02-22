@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-7f82049994db233b958daa4a241c726118e810e9.idx
-│   │       ├── pack-7f82049994db233b958daa4a241c726118e810e9.pack
-│   │       └── pack-7f82049994db233b958daa4a241c726118e810e9.rev
+│   │       ├── pack-994370c5b8f5e32dfcfd1037208b63df559b6556.idx
+│   │       ├── pack-994370c5b8f5e32dfcfd1037208b63df559b6556.pack
+│   │       └── pack-994370c5b8f5e32dfcfd1037208b63df559b6556.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -182,6 +182,7 @@ vi3na1bita-music/
 │   └── workflows/
 │       ├── e2e.yml
 │       ├── generate-context.yml
+│       ├── generate-lyrics-index.yml
 │       └── validate.yml
 ├── .meta/
 │   └── .gitkeep
@@ -381,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-22 13:08:36 UTC
+Сгенерировано: 2026-02-22 13:09:02 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -461,6 +462,50 @@ jobs:
           commit_message: "CI: generate .meta context"
           branch: ${{ github.ref_name }}
           file_pattern: ".meta/**"
+          commit_user_name: github-actions[bot]
+          commit_user_email: github-actions[bot]@users.noreply.github.com
+
+//=================================================
+// FILE: /.github/workflows/generate-lyrics-index.yml
+name: Generate lyrics index
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'albums.json'
+      - 'scripts/ci/generate-lyrics-index.mjs'
+      - '.github/workflows/generate-lyrics-index.yml'
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * *' # раз в сутки, чтобы подхватывать изменения в удалённых альбомах без пуша сюда
+
+permissions:
+  contents: write
+
+jobs:
+  gen:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Generate data/lyrics-index-v1.json
+        run: node scripts/ci/generate-lyrics-index.mjs
+
+      - name: Commit generated index
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "CI: update lyrics index"
+          branch: ${{ github.ref_name }}
+          file_pattern: "data/lyrics-index-v1.json"
           commit_user_name: github-actions[bot]
           commit_user_email: github-actions[bot]@users.noreply.github.com
 
