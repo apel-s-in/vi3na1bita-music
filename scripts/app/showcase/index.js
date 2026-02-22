@@ -150,7 +150,9 @@ class ShowcaseManager {
     }
 
     const hidden = pId ? (ShowcaseStore.playlists.find(p => p.id === pId)?.hiddenUids || []) : ShowcaseStore.get('hiddenUids', []);
-    if (!this.editMode) uids = uids.filter(u => !hidden.includes(u));
+    const showHidden = localStorage.getItem('showcase:showHidden:v1') === '1';
+
+    if (!this.editMode && !showHidden) uids = uids.filter(u => !hidden.includes(u));
 
     // 2.1 Поиск (title/album/lyrics) — быстрый и офлайн через индекс
     if (this.searchQuery && !this.editMode) {
@@ -550,7 +552,19 @@ class ShowcaseManager {
       this.viewMode = this.viewMode === 'flat' ? 'grouped' : 'flat';
       ShowcaseStore.set('viewMode', this.viewMode);
       this.renderList(); // View change needs full re-render
-    }, {once: true});
+    }, { once: true });
+
+    D.getElementById('sc-toggle-eye')?.addEventListener('click', () => {
+      const cur = localStorage.getItem('showcase:showHidden:v1') === '1';
+      localStorage.setItem('showcase:showHidden:v1', cur ? '0' : '1');
+      this.renderList();
+    }, { once: true });
+
+    D.getElementById('sc-toggle-nums')?.addEventListener('click', () => {
+      const cur = localStorage.getItem('showcase:showNumbers:v1') === '1';
+      localStorage.setItem('showcase:showNumbers:v1', cur ? '0' : '1');
+      this.renderList();
+    }, { once: true });
 
     let html = '';
     let curGrp = null;
@@ -564,19 +578,22 @@ class ShowcaseManager {
 
       const col = colors[t.sourceAlbum] || 'transparent';
       const isHid = hiddenList.includes(t.uid);
+      const showNums = localStorage.getItem('showcase:showNumbers:v1') === '1';
       const isSel = this.selectedUids.has(t.uid);
       
       html += `
         <div class="showcase-track ${isHid ? 'inactive' : ''} ${isSel ? 'selected' : ''}" data-uid="${t.uid}" style="border-left: 3px solid ${col}" ${this.editMode?'draggable="true"':''}>
-          ${this.editMode ? `<button class="sc-arrow-up" data-dir="-1">▲</button>` : `<div class="tnum" style="padding-left:10px">${i+1}.</div>`}
+          ${this.editMode
+            ? `<button class="sc-arrow-up" data-dir="-1">▲</button>`
+            : `<div class="tnum"${showNums ? '' : ' style="display:none"'}>${i + 1}.</div>`}
           ${this.editMode ? `<div class="showcase-drag-handle">⠿</div><div class="showcase-checkbox"></div>` : ''}
           <img src="${t.cover}" class="showcase-track-thumb" alt="" loading="lazy">
           <div class="track-title">
             <div>${U.escapeHtml(t.title)}</div>
             <div class="showcase-track-meta">${U.escapeHtml(W.TrackRegistry.getAlbumTitle(t.sourceAlbum))}</div>
           </div>
-          ${this.editMode ? `<button class="showcase-hide-btn">${isHid ? '👁‍🗨' : '👁'}</button>` : ''}
           <span class="offline-ind" data-uid="${t.uid}">🔒</span>
+          ${this.editMode ? `<button class="showcase-hide-btn">${isHid ? '👁‍🗨' : '👁'}</button>` : ''}
           <img src="${W.playerCore?.isFavorite(t.uid) ? 'img/star.png' : 'img/star2.png'}" class="like-star" data-uid="${t.uid}" data-album="${t.sourceAlbum}">
           ${!this.editMode ? `<button class="showcase-track-menu-btn">···</button>` : `<button class="sc-arrow-down" data-dir="1">▼</button>`}
         </div>
@@ -602,15 +619,24 @@ class ShowcaseManager {
     if (!s) return;
     const trks = D.querySelectorAll('.showcase-track');
     const total = count ?? trks.length;
-    let fav = 0, off = 0;
-    
-    // Async offline status check is slow, just read DOM indicators which update automatically via offline-indicators.js
+    let fav = 0, off = 0, clouds = 0;
+
+    // Быстро по DOM (offline-ind обновляется отдельно)
     fav = D.querySelectorAll('.showcase-track .like-star[src*="star.png"]').length;
     off = D.querySelectorAll('.showcase-track .offline-ind:not(.offline-ind--none)').length;
+    clouds = Array.from(D.querySelectorAll('.showcase-track .offline-ind'))
+      .filter((n) => (n?.textContent || '').trim() === '☁').length;
+
+    const showHidden = localStorage.getItem('showcase:showHidden:v1') === '1';
+    const showNums = localStorage.getItem('showcase:showNumbers:v1') === '1';
 
     s.innerHTML = `
-      <span>📋 ${total} · ⭐ ${fav} · 🔒 ${off} ${this.editMode && this.selectedUids.size ? `<span style="color:#ff9800">· ✓ ${this.selectedUids.size}</span>` : ''}</span> 
-      <span style="cursor:pointer; font-size:18px;" id="sc-toggle-view" title="Сменить вид">${this.viewMode === 'flat' ? '⊞' : '⊟'}</span>
+      <span>📋 ${total} · ⭐ ${fav} · 🔒 ${off} · ☁ ${clouds}${this.editMode && this.selectedUids.size ? `<span style="color:#ff9800"> · ✓ ${this.selectedUids.size}</span>` : ''}</span>
+      <span style="display:flex; gap:12px; align-items:center;">
+        <span style="cursor:pointer; font-size:18px;" id="sc-toggle-eye" title="Показывать скрытые">${showHidden ? '👁' : '🙈'}</span>
+        <span style="cursor:pointer; font-size:18px;" id="sc-toggle-nums" title="Нумерация">${showNums ? '1,2,3' : ''}</span>
+        <span style="cursor:pointer; font-size:18px;" id="sc-toggle-view" title="Сменить вид">${this.viewMode === 'flat' ? '⊞' : '⊟'}</span>
+      </span>
     `;
   }
 
