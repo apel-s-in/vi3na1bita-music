@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-bbfd097ddba7cdde8c926e7fcc0b244b5cead17a.idx
-│   │       ├── pack-bbfd097ddba7cdde8c926e7fcc0b244b5cead17a.pack
-│   │       └── pack-bbfd097ddba7cdde8c926e7fcc0b244b5cead17a.rev
+│   │       ├── pack-67f037258ced226e970a5877d82574364f35c4f7.idx
+│   │       ├── pack-67f037258ced226e970a5877d82574364f35c4f7.pack
+│   │       └── pack-67f037258ced226e970a5877d82574364f35c4f7.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -385,7 +385,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-22 20:42:21 UTC
+Сгенерировано: 2026-02-22 20:43:07 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8396,15 +8396,16 @@ import { ensureMediaSession } from './player-core/media-session.js';
     // =========================
     canToggleQualityForCurrentTrack() { return !!this.getCurrentTrack() && trackHasLo(this.getCurrentTrack()); }
 
-    async switchQuality(mode) {
+    switchQuality(mode) {
       const nq = qNorm(mode);
       if (this.qMode === nq) return;
       this.qMode = nq; ls.setItem(LS_PQ, nq);
       W.dispatchEvent(new CustomEvent('quality:changed', { detail: { quality: nq } }));
       W.dispatchEvent(new CustomEvent('offline:uiChanged'));
 
-      if (this.currentIndex < 0 || !this.sound) return;
-      this.load(this.currentIndex, { autoPlay: this.isPlaying(), resumePosition: this.getPosition(), dir: 1 });
+      if (this.currentIndex >= 0 && this.sound) {
+        this.load(this.currentIndex, { autoPlay: this.isPlaying(), resumePosition: this.getPosition(), dir: 1 });
+      }
       toast(`Качество переключено на ${nq === 'hi' ? 'Hi' : 'Lo'}`, 'info');
     }
 
