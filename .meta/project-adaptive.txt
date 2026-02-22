@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4716a44702e7b28eab6f6731199d3e693e94106d.idx
-│   │       ├── pack-4716a44702e7b28eab6f6731199d3e693e94106d.pack
-│   │       └── pack-4716a44702e7b28eab6f6731199d3e693e94106d.rev
+│   │       ├── pack-4d65e4c0718dc78125cad4c1c36be48a07102f68.idx
+│   │       ├── pack-4d65e4c0718dc78125cad4c1c36be48a07102f68.pack
+│   │       └── pack-4d65e4c0718dc78125cad4c1c36be48a07102f68.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -316,6 +316,7 @@ vi3na1bita-music/
 ├── scripts/
 │   ├── analytics/
 │   │   ├── achievement-engine.js
+│   │   ├── backup-vault.js
 │   │   ├── cabinet-ui.js
 │   │   ├── engine.js
 │   │   ├── event-logger.js
@@ -390,7 +391,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-22 20:07:46 UTC
+Сгенерировано: 2026-02-22 20:08:13 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1381,6 +1382,50 @@ export class AchievementEngine {
     // Вызов встроенной системы уведомлений приложения
     const event = new CustomEvent('app:notify', { detail: { title: 'Достижение разблокировано!', message: ach.name, type: 'achievement' } });
     window.dispatchEvent(event);
+  }
+}
+
+//=================================================
+// FILE: /scripts/analytics/backup-vault.js
+import { metaDB } from './meta-db.js';
+
+export class BackupVault {
+  static async exportData() {
+    const data = {
+      timestamp: Date.now(),
+      deviceHash: localStorage.getItem('deviceHash'),
+      stats: await metaDB._tx('stats', 'readonly', store => store.getAll())
+    };
+    const json = JSON.stringify(data);
+    const encoded = btoa(unescape(encodeURIComponent(json)));
+    const blob = new Blob([encoded], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `vi3na1bita_backup_${new Date().toISOString().split('T')[0]}.vi3bak`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  static async importData(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const decoded = decodeURIComponent(escape(atob(e.target.result)));
+          const data = JSON.parse(decoded);
+          if (!data.stats) throw new Error("Invalid format");
+          for (const stat of data.stats) {
+            await metaDB.updateStat(stat.key, () => stat);
+          }
+          window.dispatchEvent(new CustomEvent('stats:updated'));
+          resolve(true);
+        } catch (err) {
+          reject(err);
+        }
+      };
+      reader.readAsText(file);
+    });
   }
 }
 
