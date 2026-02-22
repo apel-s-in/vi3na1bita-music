@@ -74,3 +74,4 @@ export const openCabinet = async () => {
     } catch(err) { W.NotificationSystem.show('Ошибка бэкапа (Tamper Detected)', 'error'); }
   };
 };
+window.openCabinet = openCabinet;
