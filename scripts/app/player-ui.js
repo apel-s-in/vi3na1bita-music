@@ -175,10 +175,23 @@
       W.LyricsController?.applyMiniMode?.();
       dom.mini.style.display = 'flex'; dom.nUp.style.display = 'flex';
     } else {
-      const lst = D.getElementById('track-list'), t = PC().getCurrentTrack();
-      const r = lst?.querySelector(t?.uid ? `.track[data-uid="${CSS.escape(t.uid)}"]` : `.track[data-index="${idx}"]`);
-      if (r) { r.after(dom.blk); if (userInit) setTimeout(() => r.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50); }
-      else if (lst) lst.appendChild(dom.blk);
+      const lst = D.getElementById('track-list');
+      const t = PC().getCurrentTrack();
+      const uidSel = t?.uid ? CSS.escape(t.uid) : '';
+
+      // Showcase использует .showcase-track, обычные альбомы — .track
+      const r =
+        (uidSel && lst?.querySelector(`.track[data-uid="${uidSel}"]`)) ||
+        (uidSel && lst?.querySelector(`.showcase-track[data-uid="${uidSel}"]`)) ||
+        (idx != null && lst?.querySelector(`.track[data-index="${idx}"]`)) ||
+        null;
+
+      if (r) {
+        r.after(dom.blk);
+        if (userInit) setTimeout(() => r.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+      } else if (lst) {
+        lst.appendChild(dom.blk);
+      }
 
       W.LyricsController?.restoreFromMiniMode?.();
       dom.now.innerHTML = '';
