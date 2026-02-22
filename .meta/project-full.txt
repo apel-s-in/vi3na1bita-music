@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b98c121d4cb56a0bf4708eb0e45e6ba5778b0522.idx
-│   │       ├── pack-b98c121d4cb56a0bf4708eb0e45e6ba5778b0522.pack
-│   │       └── pack-b98c121d4cb56a0bf4708eb0e45e6ba5778b0522.rev
+│   │       ├── pack-edd4a579f21e76826d18f76da0690bb23edac580.idx
+│   │       ├── pack-edd4a579f21e76826d18f76da0690bb23edac580.pack
+│   │       └── pack-edd4a579f21e76826d18f76da0690bb23edac580.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -389,7 +389,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-22 20:25:09 UTC
+Сгенерировано: 2026-02-22 20:26:27 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6112,7 +6112,12 @@ class OfflineManager {
 
     W.addEventListener('quality:changed', e => this._onQualChg(e.detail?.quality));
     
-    // Deferred GC for playing tracks (enforces No Duplicates without stopping playback)
+    // Связь новой аналитики с OfflineManager (SmartPrefetch R2)
+    W.addEventListener('analytics:cloudThresholdReached', async (e) => {
+      if (e.detail?.uid) this.registerFullListen(e.detail.uid, { forcedCloud: true });
+    });
+
+// Deferred GC for playing tracks (enforces No Duplicates without stopping playback)
     W.addEventListener('player:trackChanged', async (e) => {
       if (!W._orphanedBlobs?.size) return;
       const cur = e.detail?.uid;
@@ -6299,9 +6304,9 @@ class OfflineManager {
     }
   }
 
-  async registerFullListen(uid, { duration, position } = {}) {
+  async registerFullListen(uid, { forcedCloud } = {}) {
     const u = sUid(uid);
-    if (!u || !duration || (position / duration) < 0.9) return;
+    if (!u || !forcedCloud) return; // Защита: вызывается только из StatsAggregator
 
     const m = (await DB.getTrackMeta(u)) || { uid: u };
     const { N, D } = this.getCloudSettings();
