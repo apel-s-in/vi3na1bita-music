@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-bd7bd87b09c848f894b052c54b2337764f944013.idx
-│   │       ├── pack-bd7bd87b09c848f894b052c54b2337764f944013.pack
-│   │       └── pack-bd7bd87b09c848f894b052c54b2337764f944013.rev
+│   │       ├── pack-c959d1cea15fe4787a877efb1ee615d8a5504f76.idx
+│   │       ├── pack-c959d1cea15fe4787a877efb1ee615d8a5504f76.pack
+│   │       └── pack-c959d1cea15fe4787a877efb1ee615d8a5504f76.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -391,7 +391,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-22 20:27:20 UTC
+Сгенерировано: 2026-02-22 20:29:19 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2164,7 +2164,11 @@ export class StatsAggregator {
     } catch (e) { console.error('Offline/Stats init failed:', e); }
 
     const run = (n) => W[n]?.initialize();
-    // Инициализация UI Кабинета и Прогресс бара (v4.0)
+    new AchievementEngine();
+    const { cloudSync } = await import('../scripts/analytics/cloud-sync.js');
+    cloudSync.checkAuthCallback(); // Проверка ответа от OAuth Яндекса/Google
+    
+    // Биндинг кнопок Кабинета
     try {
       const cabUi = await import('./analytics/cabinet-ui.js');
       cabUi.initProgressBar();
