@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ea26b0c8522f28a34ef917b9a8b61408aae83117.idx
-│   │       ├── pack-ea26b0c8522f28a34ef917b9a8b61408aae83117.pack
-│   │       └── pack-ea26b0c8522f28a34ef917b9a8b61408aae83117.rev
+│   │       ├── pack-87d9b682c438c64bac96c64d3c10cd04c46f3f80.idx
+│   │       ├── pack-87d9b682c438c64bac96c64d3c10cd04c46f3f80.pack
+│   │       └── pack-87d9b682c438c64bac96c64d3c10cd04c46f3f80.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -385,7 +385,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-22 19:52:03 UTC
+Сгенерировано: 2026-02-22 19:52:51 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1605,8 +1605,13 @@ W.AnalyticsEngine = { EventLogger, StatsAggregator, CloudSync };
     } catch (e) { console.error('Offline/Stats init failed:', e); }
 
     const run = (n) => W[n]?.initialize();
+    // Инициализация UI Кабинета и Прогресс бара (v4.0)
+    try {
+      const cabUi = await import('./analytics/cabinet-ui.js');
+      cabUi.initProgressBar();
+    } catch(e) { console.warn('Analytics UI skipped'); }
+
     if (await waitObj('GalleryManager')) run('GalleryManager');
-    
     // Предзагрузка всех config.json для Витрины до AlbumsManager
     try {
       const showcaseMgr = await import('./app/showcase/index.js');
