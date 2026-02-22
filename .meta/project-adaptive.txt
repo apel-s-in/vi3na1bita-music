@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-494f86565f40311ad0e9ee9539d82cfd6d4b1d74.idx
-│   │       ├── pack-494f86565f40311ad0e9ee9539d82cfd6d4b1d74.pack
-│   │       └── pack-494f86565f40311ad0e9ee9539d82cfd6d4b1d74.rev
+│   │       ├── pack-16acd261a59182cd0cc215d6c5ab20fdd982a70b.idx
+│   │       ├── pack-16acd261a59182cd0cc215d6c5ab20fdd982a70b.pack
+│   │       └── pack-16acd261a59182cd0cc215d6c5ab20fdd982a70b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,7 +377,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-21 22:04:26 UTC
+Сгенерировано: 2026-02-22 12:45:02 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2135,10 +2135,23 @@ window.PlaybackCache.unprotectWindow = unprotectWindow;
       W.LyricsController?.applyMiniMode?.();
       dom.mini.style.display = 'flex'; dom.nUp.style.display = 'flex';
     } else {
-      const lst = D.getElementById('track-list'), t = PC().getCurrentTrack();
-      const r = lst?.querySelector(t?.uid ? `.track[data-uid="${CSS.escape(t.uid)}"]` : `.track[data-index="${idx}"]`);
-      if (r) { r.after(dom.blk); if (userInit) setTimeout(() => r.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50); }
-      else if (lst) lst.appendChild(dom.blk);
+      const lst = D.getElementById('track-list');
+      const t = PC().getCurrentTrack();
+      const uidSel = t?.uid ? CSS.escape(t.uid) : '';
+
+      // Showcase использует .showcase-track, обычные альбомы — .track
+      const r =
+        (uidSel && lst?.querySelector(`.track[data-uid="${uidSel}"]`)) ||
+        (uidSel && lst?.querySelector(`.showcase-track[data-uid="${uidSel}"]`)) ||
+        (idx != null && lst?.querySelector(`.track[data-index="${idx}"]`)) ||
+        null;
+
+      if (r) {
+        r.after(dom.blk);
+        if (userInit) setTimeout(() => r.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+      } else if (lst) {
+        lst.appendChild(dom.blk);
+      }
 
       W.LyricsController?.restoreFromMiniMode?.();
       dom.now.innerHTML = '';
