@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c104f8c671edb7fc43a16a4c9cb972b29b7d7497.idx
-│   │       ├── pack-c104f8c671edb7fc43a16a4c9cb972b29b7d7497.pack
-│   │       └── pack-c104f8c671edb7fc43a16a4c9cb972b29b7d7497.rev
+│   │       ├── pack-684f2ee4d5e15a2bae2db642c898ab66b64c5a27.idx
+│   │       ├── pack-684f2ee4d5e15a2bae2db642c898ab66b64c5a27.pack
+│   │       └── pack-684f2ee4d5e15a2bae2db642c898ab66b64c5a27.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -325,7 +325,6 @@ vi3na1bita-music/
 │   │   ├── meta-db.js
 │   │   ├── session-tracker.js
 │   │   ├── share-generator.js
-│   │   ├── sleep-timer.js
 │   │   └── stats-aggregator.js
 │   ├── app/
 │   │   ├── albums/
@@ -392,7 +391,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-22 21:35:21 UTC
+Сгенерировано: 2026-02-22 21:36:16 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2164,34 +2163,6 @@ export class ShareGenerator {
     }
   }
 }
-
-//=================================================
-// FILE: /scripts/analytics/sleep-timer.js
-import { eventLogger } from './event-logger.js';
-
-export class SleepTimer {
-  constructor() {
-    this.timerId = null;
-    this.targetTime = null;
-  }
-  setTimer(minutes) {
-    this.clear();
-    this.targetTime = Date.now() + minutes * 60000;
-    eventLogger.log('FEATURE_USED', { feature: 'sleep_timer' });
-    this.timerId = setInterval(() => {
-      if (Date.now() >= this.targetTime) {
-        window.dispatchEvent(new CustomEvent('player:stop'));
-        this.clear();
-      }
-    }, 1000);
-  }
-  clear() {
-    if (this.timerId) clearInterval(this.timerId);
-    this.timerId = null;
-    this.targetTime = null;
-  }
-}
-export const sleepTimer = new SleepTimer();
 
 //=================================================
 // FILE: /scripts/analytics/stats-aggregator.js
