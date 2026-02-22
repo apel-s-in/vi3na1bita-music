@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-003ccf17ce83823203ea73fe7f7690aa4576fbd4.idx
-│   │       ├── pack-003ccf17ce83823203ea73fe7f7690aa4576fbd4.pack
-│   │       └── pack-003ccf17ce83823203ea73fe7f7690aa4576fbd4.rev
+│   │       ├── pack-25349a588058b2023b95e420f4eed53c2d8ae22d.idx
+│   │       ├── pack-25349a588058b2023b95e420f4eed53c2d8ae22d.pack
+│   │       └── pack-25349a588058b2023b95e420f4eed53c2d8ae22d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-22 20:08:38 UTC
+Сгенерировано: 2026-02-22 20:11:03 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -858,9 +858,18 @@ jobs:
         </button>
       </div>
 
-      <div id="social-links" class="socials-under-cover"></div>
-      
-      <div id="achievements-progress-container" style="width:100%;max-width:395px;margin:15px auto 0;"></div>
+      <div class="social-links d-flex justify-content-center gap-3 mb-4">
+        </div>
+
+      <div class="achievements-progress-container mb-4" onclick="document.getElementById('profileModal').classList.add('active')">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <span class="progress-label">Прогресс достижений</span>
+          <span class="progress-count" id="achievementsCount">0 / 100</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="achievementsFill" style="width: 0%;"></div>
+        </div>
+      </div>
       
     </header>
 
