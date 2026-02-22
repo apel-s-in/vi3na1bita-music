@@ -236,7 +236,8 @@ import { ensureMediaSession } from './player-core/media-session.js';
       if (!silent) this._emit('onStop');
     }
 
-    _startTick() {this._startTick();
+    _startTick() {
+      if (this._tickInt) return;
       this._tickInt = setInterval(() => {
         const pos = this.getPosition();
         const dur = this.getDuration();
