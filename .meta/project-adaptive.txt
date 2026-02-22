@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ef0c8a66fd9d32479b2cb1568c5a59fa4175b7b7.idx
-│   │       ├── pack-ef0c8a66fd9d32479b2cb1568c5a59fa4175b7b7.pack
-│   │       └── pack-ef0c8a66fd9d32479b2cb1568c5a59fa4175b7b7.rev
+│   │       ├── pack-44c3bce5130a9cf12142380424f21420127dbca4.idx
+│   │       ├── pack-44c3bce5130a9cf12142380424f21420127dbca4.pack
+│   │       └── pack-44c3bce5130a9cf12142380424f21420127dbca4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -319,6 +319,7 @@ vi3na1bita-music/
 │   │   ├── cabinet-ui.js
 │   │   ├── cloud-sync.js
 │   │   ├── engine.js
+│   │   ├── meta-db.js
 │   │   └── share-generator.js
 │   ├── app/
 │   │   ├── albums/
@@ -385,7 +386,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-22 21:07:14 UTC
+Сгенерировано: 2026-02-22 21:19:24 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1799,6 +1800,64 @@ export const CloudSync = {
   }
 };
 W.AnalyticsEngine = { EventLogger, StatsAggregator, CloudSync };
+
+//=================================================
+// FILE: /scripts/analytics/meta-db.js
+export class MetaDB {
+  constructor() {
+    this.dbName = 'MetaDB';
+    this.version = 1;
+    this.db = null;
+  }
+  async init() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(this.dbName, this.version);
+      request.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains('events_hot')) db.createObjectStore('events_hot', { keyPath: 'id', autoIncrement: true });
+        if (!db.objectStoreNames.contains('stats')) db.createObjectStore('stats', { keyPath: 'key' });
+        if (!db.objectStoreNames.contains('achievements')) db.createObjectStore('achievements', { keyPath: 'id' });
+      };
+      request.onsuccess = (e) => { this.db = e.target.result; resolve(); };
+      request.onerror = (e) => reject(e.target.error);
+    });
+  }
+  async addEvent(event) {
+    return this._tx('events_hot', 'readwrite', store => store.add(event));
+  }
+  async getEvents() {
+    return this._tx('events_hot', 'readonly', store => store.getAll());
+  }
+  async clearEvents() {
+    return this._tx('events_hot', 'readwrite', store => store.clear());
+  }
+  async updateStat(key, mutatorFn) {
+    const tx = this.db.transaction('stats', 'readwrite');
+    const store = tx.objectStore('stats');
+    return new Promise((resolve, reject) => {
+      const req = store.get(key);
+      req.onsuccess = () => {
+        const data = req.result || { key, value: 0, details: {} };
+        const updated = mutatorFn(data);
+        store.put(updated).onsuccess = resolve;
+      };
+      req.onerror = reject;
+    });
+  }
+  async getStat(key) {
+    return this._tx('stats', 'readonly', store => store.get(key));
+  }
+  _tx(storeName, mode, op) {
+    return new Promise((resolve, reject) => {
+      if (!this.db) return reject('DB not initialized');
+      const tx = this.db.transaction(storeName, mode);
+      const req = op(tx.objectStore(storeName));
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+}
+export const metaDB = new MetaDB();
 
 //=================================================
 // FILE: /scripts/analytics/share-generator.js
