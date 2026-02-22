@@ -30,7 +30,7 @@ const STATIC_ASSETS = [
   './scripts/core/bootstrap.js', './scripts/core/config.js', './scripts/core/utils.js',
   './scripts/core/favorites-manager.js',
   './scripts/app/gallery.js', './scripts/ui/notify.js',
-  './scripts/ui/sleep.js', './scripts/ui/lyrics-modal.js', './scripts/ui/sysinfo.js',
+  './scripts/ui/sleep-timer.js', './scripts/ui/lyrics-modal.js', './scripts/ui/sysinfo.js',
   './scripts/ui/modals.js',
   './scripts/ui/offline-modal.js', './scripts/ui/offline-indicators.js',
   './scripts/ui/cache-progress-overlay.js', './scripts/ui/statistics-modal.js',
