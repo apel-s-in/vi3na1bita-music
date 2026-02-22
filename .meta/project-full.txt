@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-585b2bdabbfe02facb1f310c806d44a29c3de064.idx
-│   │       ├── pack-585b2bdabbfe02facb1f310c806d44a29c3de064.pack
-│   │       └── pack-585b2bdabbfe02facb1f310c806d44a29c3de064.rev
+│   │       ├── pack-546298579c0e32ec1732d4ad8baa6265e25458b9.idx
+│   │       ├── pack-546298579c0e32ec1732d4ad8baa6265e25458b9.pack
+│   │       └── pack-546298579c0e32ec1732d4ad8baa6265e25458b9.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-22 21:31:49 UTC
+Сгенерировано: 2026-02-22 21:32:53 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -861,7 +861,7 @@ jobs:
       <div class="social-links d-flex justify-content-center gap-3 mb-4">
         </div>
 
-      <div class="achievements-progress-container mb-4" onclick="window.openCabinet ? window.openCabinet() : window.NotificationSystem?.info?.('Кабинет загружается…')">
+      <div id="achievements-progress-container" class="achievements-progress-container mb-4" onclick="window.openCabinet ? window.openCabinet() : window.NotificationSystem?.info?.('Кабинет загружается…')">
         <div class="d-flex justify-content-between align-items-center mb-1">
           <span class="progress-label">Прогресс достижений</span>
           <span class="progress-count" id="achievementsCount">0 / 100</span>
