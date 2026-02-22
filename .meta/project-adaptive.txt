@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-546298579c0e32ec1732d4ad8baa6265e25458b9.idx
-│   │       ├── pack-546298579c0e32ec1732d4ad8baa6265e25458b9.pack
-│   │       └── pack-546298579c0e32ec1732d4ad8baa6265e25458b9.rev
+│   │       ├── pack-c4bcc36f786eb8a38673f3414e70a1b0b1258a6c.idx
+│   │       ├── pack-c4bcc36f786eb8a38673f3414e70a1b0b1258a6c.pack
+│   │       └── pack-c4bcc36f786eb8a38673f3414e70a1b0b1258a6c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-22 21:32:53 UTC
+Сгенерировано: 2026-02-22 21:34:31 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1628,6 +1628,7 @@ export const openCabinet = async () => {
     } catch(err) { W.NotificationSystem.show('Ошибка бэкапа (Tamper Detected)', 'error'); }
   };
 };
+window.openCabinet = openCabinet;
 
 //=================================================
 // FILE: /scripts/analytics/cloud-sync.js
