@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4f14b58f3ec9c2355cf4d20dc21f052586c7fb8b.idx
-│   │       ├── pack-4f14b58f3ec9c2355cf4d20dc21f052586c7fb8b.pack
-│   │       └── pack-4f14b58f3ec9c2355cf4d20dc21f052586c7fb8b.rev
+│   │       ├── pack-5546dbabbe0f8ed4d07a4fcf50ac32243b489386.idx
+│   │       ├── pack-5546dbabbe0f8ed4d07a4fcf50ac32243b489386.pack
+│   │       └── pack-5546dbabbe0f8ed4d07a4fcf50ac32243b489386.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -385,7 +385,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-22 20:40:48 UTC
+Сгенерировано: 2026-02-22 20:42:01 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1841,9 +1841,9 @@ export const sleepTimer = new SleepTimer();
     } catch (e) { console.error('Offline/Stats init failed:', e); }
 
     const run = (n) => W[n]?.initialize();
-    new AchievementEngine();
-    const { cloudSync } = await import('../scripts/analytics/cloud-sync.js');
-    cloudSync.checkAuthCallback(); // Проверка ответа от OAuth Яндекса/Google
+    // Логика достижений теперь работает автономно внутри engine.js (Analytics v4.0)
+    const { cloudSync } = await import('./analytics/cloud-sync.js');
+    cloudSync.checkAuthCallback();
     
     // Биндинг кнопок Кабинета
     try {
