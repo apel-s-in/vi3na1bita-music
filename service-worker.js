@@ -36,11 +36,10 @@ const STATIC_ASSETS = [
   './scripts/ui/cache-progress-overlay.js', './scripts/ui/statistics-modal.js',
   './scripts/app/player-ui.js', './scripts/app/albums.js',
   './scripts/app.js', './src/PlayerCore.js',
-  './src/player-core/media-session.js', './src/player-core/stats-tracker.js',
+  './src/player-core/media-session.js',
   './scripts/app/track-registry.js',
   './scripts/core/favorites-manager.js',
-  './scripts/app/offline-ui-bootstrap.js', './scripts/app/playback-cache-bootstrap.js',
-  './scripts/stats/global-stats.js'
+  './scripts/app/offline-ui-bootstrap.js', './scripts/app/playback-cache-bootstrap.js'
 ];
 
 const norm = (u) => { 
