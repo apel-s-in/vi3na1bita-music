@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-7b4f632262f8fc1b6bf35d96bfd620f04615140b.idx
-│   │       ├── pack-7b4f632262f8fc1b6bf35d96bfd620f04615140b.pack
-│   │       └── pack-7b4f632262f8fc1b6bf35d96bfd620f04615140b.rev
+│   │       ├── pack-af00cd3484167ff1ad4aa70179aa32e902e33a62.idx
+│   │       ├── pack-af00cd3484167ff1ad4aa70179aa32e902e33a62.pack
+│   │       └── pack-af00cd3484167ff1ad4aa70179aa32e902e33a62.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -317,6 +317,7 @@ vi3na1bita-music/
 │   ├── analytics/
 │   │   ├── cabinet-ui.js
 │   │   ├── engine.js
+│   │   ├── event-logger.js
 │   │   └── meta-db.js
 │   ├── app/
 │   │   ├── albums/
@@ -386,7 +387,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-22 20:05:40 UTC
+Сгенерировано: 2026-02-22 20:06:05 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1561,6 +1562,49 @@ export const CloudSync = {
   }
 };
 W.AnalyticsEngine = { EventLogger, StatsAggregator, CloudSync };
+
+//=================================================
+// FILE: /scripts/analytics/event-logger.js
+import { metaDB } from './meta-db.js';
+
+class EventLogger {
+  constructor() {
+    this.hotQueue = [];
+    this.flushInterval = null;
+    this.deviceHash = this._generateDeviceHash();
+  }
+  async init() {
+    await metaDB.init();
+    window.addEventListener('visibilitychange', () => { if (document.hidden) this.flush(); });
+    this.flushInterval = setInterval(() => this.flush(), 30000);
+  }
+  log(type, payload) {
+    const event = {
+      type,
+      payload,
+      timestamp: Date.now(),
+      deviceHash: this.deviceHash,
+      uuid: crypto.randomUUID()
+    };
+    this.hotQueue.push(event);
+    if (this.hotQueue.length > 50) this.flush();
+  }
+  async flush() {
+    if (!this.hotQueue.length) return;
+    const batch = [...this.hotQueue];
+    this.hotQueue = [];
+    for (const ev of batch) {
+      await metaDB.addEvent(ev);
+    }
+    window.dispatchEvent(new CustomEvent('analytics:logUpdated'));
+  }
+  _generateDeviceHash() {
+    let hash = localStorage.getItem('deviceHash');
+    if (!hash) { hash = crypto.randomUUID(); localStorage.setItem('deviceHash', hash); }
+    return hash;
+  }
+}
+export const eventLogger = new EventLogger();
 
 //=================================================
 // FILE: /scripts/analytics/meta-db.js
