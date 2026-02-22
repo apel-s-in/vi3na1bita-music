@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ab212728568becf56b15b3a91bb45ad1c57a1ead.idx
-│   │       ├── pack-ab212728568becf56b15b3a91bb45ad1c57a1ead.pack
-│   │       └── pack-ab212728568becf56b15b3a91bb45ad1c57a1ead.rev
+│   │       ├── pack-ca4eb34a34168b55ac5e1357288e00af89ed3566.idx
+│   │       ├── pack-ca4eb34a34168b55ac5e1357288e00af89ed3566.pack
+│   │       └── pack-ca4eb34a34168b55ac5e1357288e00af89ed3566.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -246,6 +246,8 @@ vi3na1bita-music/
 │   │       ├── news-cover-02.png
 │   │       └── news-cover-02.webp
 │   └── .gitkeep
+├── data/
+│   └── lyrics-index-v1.json
 ├── icons/
 │   ├── .gitkeep
 │   ├── apple-touch-icon.png
@@ -378,7 +380,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-22 12:45:47 UTC
+Сгенерировано: 2026-02-22 12:46:25 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6970,6 +6972,15 @@ export default window.StatisticsModal;
   document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', () => W.ServiceWorkerManager.init()) : W.ServiceWorkerManager.init();
 
 })(window, navigator);
+
+//=================================================
+// FILE: /data/lyrics-index-v1.json
+{
+  "v": 1,
+  "buildTs": 0,
+  "meta": {},
+  "idx": {}
+}
 
 //=================================================
 // FILE: /generate-context.js
