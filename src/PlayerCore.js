@@ -174,6 +174,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
       this._emit('onTrackChange', t, index);
       W.dispatchEvent(new CustomEvent('player:trackChanged', { detail: { uid, dir } }));
+      W.dispatchEvent(new CustomEvent('player:play', { detail: { uid } })); // Инжект для Analytics v4.0
 
       let res = null, url = null;
       try { res = await W.TrackResolver?.resolve?.(uid, this.qMode); } catch {}
@@ -213,8 +214,8 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         autoplay: opts.autoPlay ?? wasPlaying,
         onload: () => tok === this._tok ? (pos && this.seek(pos), this._updMedia()) : this.sound?.unload(),
         onplay: () => tok === this._tok ? (this._startTick(), this._emit('onPlay', t, index), this._updMedia()) : this.sound?.stop(),
-        onpause: () => tok === this._tok && (this._stopTick(), this._stats.onPauseOrStop(), this._emit('onPause'), this._updMedia()),
-        onend: () => tok === this._tok && (this._stats.onEnded(), this._emit('onEnd'), this._updMedia(), this.flags.rep ? this.play(this.currentIndex) : this.next()),
+        onpause: () => tok === this._tok && (this._stopTick(), this._stats.onPauseOrStop(), this._emit('onPause'), W.dispatchEvent(new CustomEvent('player:pause')), this._updMedia()),
+        onend: () => tok === this._tok && (this._stats.onEnded(), this._emit('onEnd'), W.dispatchEvent(new CustomEvent('player:ended')), this._updMedia(), this.flags.rep ? this.play(this.currentIndex) : this.next()),
         onloaderror: () => this._emit('onPlaybackError', { reason: 'loaderror' }) // External modules handle the error, NO STOP
       });
     }
@@ -236,10 +237,10 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
       this._stopTick();
       this._stats.onPauseOrStop();
-      if (!silent) this._emit('onStop');
+      if (!silent) { this._emit('onStop'); W.dispatchEvent(new CustomEvent('player:stop')); }
     }
 
-    _startTick() { this._stopTick(); this._tickInt = setInterval(() => { this._emit('onTick', this.getPosition(), this.getDuration()); this._stats.onTick(); }, 250); }
+    _startTick() { this._stopTick(); this._tickInt = setInterval(() => { this._emit('onTick', this.getPosition(), this.getDuration()); W.dispatchEvent(new CustomEvent('player:tick', {detail: {pos: this.getPosition(), dur: this.getDuration()}})); this._stats.onTick(); }, 250); }
     _stopTick() { if (this._tickInt) clearInterval(this._tickInt); this._tickInt = null; }
     _updMedia() { const t = this.getCurrentTrack(); try { this._ms?.updateMetadata?.({ title: t?.title, artist: t?.artist, album: t?.album, artworkUrl: t?.cover, playing: this.isPlaying() }); } catch {} }
 
