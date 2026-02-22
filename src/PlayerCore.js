@@ -1,7 +1,7 @@
 import { getTrackByUid } from '../scripts/app/track-registry.js';
 import { Favorites } from '../scripts/core/favorites-manager.js';
 import { ensureMediaSession } from './player-core/media-session.js';
-import { createListenStatsTracker } from './player-core/stats-tracker.js';
+// Старый импорт stats-tracker удален
 
 (function () {
   'use strict';
@@ -43,11 +43,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         onPrev: () => this.prev(), onNext: () => this.next(), onSeekTo: t => this.seek(t)
       });
 
-      this._stats = createListenStatsTracker({
-        getUid: () => this.getCurrentTrackUid(), getPos: () => this.getPosition(), getDur: () => this.getDuration(),
-        recordTick: (uid, p) => W.OfflineManager?.recordTickStats?.(uid, p),
-        recordEnd: (uid, p) => W.OfflineManager?.registerFullListen?.(uid, p)
-      });
+      // Сбор статистики делегирован в глобальные события (SessionTracker)
 
       this._bindIOSUnlock();
     }
@@ -136,7 +132,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
 
     next() {
       if (!this.playlist.length) return;
-      this._stats.onSkip();
+      // Skip обрабатывается автоматически через событие trackChanged в трекере
       if (this.flags.shuf) { this.shufHist.push(this.currentIndex); if (this.shufHist.length > 50) this.shufHist.shift(); }
       this.load((this.currentIndex + 1) % this.playlist.length, { autoPlay: true, dir: 1 });
     }
@@ -144,7 +140,7 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
     prev() {
       if (!this.playlist.length) return;
       if (this.getPosition() > 3) return void this.seek(0);
-      this._stats.onSkip();
+      // Skip обрабатывается автоматически через событие trackChanged в трекере
       if (this.flags.shuf && this.shufHist.length) return this.load(this.shufHist.pop(), { autoPlay: true, dir: -1 });
       this.load((this.currentIndex - 1 + this.playlist.length) % this.playlist.length, { autoPlay: true, dir: -1 });
     }
@@ -213,9 +209,9 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
         src: [url], html5: false, volume: this.getVolume() / 100, format: ['mp3'],
         autoplay: opts.autoPlay ?? wasPlaying,
         onload: () => tok === this._tok ? (pos && this.seek(pos), this._updMedia()) : this.sound?.unload(),
-        onplay: () => tok === this._tok ? (this._startTick(), this._emit('onPlay', t, index), this._updMedia()) : this.sound?.stop(),
-        onpause: () => tok === this._tok && (this._stopTick(), this._stats.onPauseOrStop(), this._emit('onPause'), W.dispatchEvent(new CustomEvent('player:pause')), this._updMedia()),
-        onend: () => tok === this._tok && (this._stats.onEnded(), this._emit('onEnd'), W.dispatchEvent(new CustomEvent('player:ended')), this._updMedia(), this.flags.rep ? this.play(this.currentIndex) : this.next()),
+        onplay: () => tok === this._tok ? (this._startTick(), this._emit('onPlay', t, index), this._updMedia(), W.dispatchEvent(new CustomEvent('player:play', { detail: { uid, duration: this.getDuration(), type: 'audio' } }))) : this.sound?.stop(),
+        onpause: () => tok === this._tok && (this._stopTick(), this._emit('onPause'), this._updMedia(), W.dispatchEvent(new CustomEvent('player:pause'))),
+        onend: () => tok === this._tok && (this._emit('onEnd'), this._updMedia(), W.dispatchEvent(new CustomEvent('player:ended')), this.flags.rep ? this.play(this.currentIndex) : this.next()),
         onloaderror: () => this._emit('onPlaybackError', { reason: 'loaderror' }) // External modules handle the error, NO STOP
       });
     }
@@ -236,11 +232,12 @@ import { createListenStatsTracker } from './player-core/stats-tracker.js';
       this._objUrlKey = null;
 
       this._stopTick();
-      this._stats.onPauseOrStop();
-      if (!silent) { this._emit('onStop'); W.dispatchEvent(new CustomEvent('player:stop')); }
+      W.dispatchEvent(new CustomEvent('player:stop'));
+      if (!silent) this._emit('onStop');
     }
 
-    _startTick() { this._stopTick(); this._tickInt = setInterval(() => { this._emit('onTick', this.getPosition(), this.getDuration()); W.dispatchEvent(new CustomEvent('player:tick', {detail: {pos: this.getPosition(), dur: this.getDuration()}})); this._stats.onTick(); }, 250); }
+    _startTick() { this._stopTick(); this._tickInt = setInterval(() => { this._emit('onTick', this.getPosition(), this.getDuration()); W.dispatchEvent(new CustomEvent('player:tick', { detail: { currentTime: this.getPosition(), volume: this.getVolume(), muted: this.isMuted() } })); }, 250);
+    }
     _stopTick() { if (this._tickInt) clearInterval(this._tickInt); this._tickInt = null; }
     _updMedia() { const t = this.getCurrentTrack(); try { this._ms?.updateMetadata?.({ title: t?.title, artist: t?.artist, album: t?.album, artworkUrl: t?.cover, playing: this.isPlaying() }); } catch {} }
 
