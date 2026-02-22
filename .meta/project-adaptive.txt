@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-189cd81f8f4c64decaffff355656ceaa93d5734f.idx
-│   │       ├── pack-189cd81f8f4c64decaffff355656ceaa93d5734f.pack
-│   │       └── pack-189cd81f8f4c64decaffff355656ceaa93d5734f.rev
+│   │       ├── pack-b98c121d4cb56a0bf4708eb0e45e6ba5778b0522.idx
+│   │       ├── pack-b98c121d4cb56a0bf4708eb0e45e6ba5778b0522.pack
+│   │       └── pack-b98c121d4cb56a0bf4708eb0e45e6ba5778b0522.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -389,7 +389,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-22 20:24:33 UTC
+Сгенерировано: 2026-02-22 20:25:10 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1958,8 +1958,7 @@ export class StatsAggregator {
       
       await (await import('./app/playback-cache-bootstrap.js'))?.initPlaybackCache?.();
       
-      const gStats = await import('./stats/global-stats.js');
-      await gStats.default.initialize();
+      // GlobalStats удален, используется новая UID-Аналитика
     } catch (e) { console.error('Offline/Stats init failed:', e); }
 
     const run = (n) => W[n]?.initialize();
