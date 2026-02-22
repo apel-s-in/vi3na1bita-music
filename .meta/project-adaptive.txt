@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-0dde9a2592ff156cd17af3d85f283a49d5b42c77.idx
-│   │       ├── pack-0dde9a2592ff156cd17af3d85f283a49d5b42c77.pack
-│   │       └── pack-0dde9a2592ff156cd17af3d85f283a49d5b42c77.rev
+│   │       ├── pack-ff52b5cc755e40d22ff36b98bca6ce313b3ef19e.idx
+│   │       ├── pack-ff52b5cc755e40d22ff36b98bca6ce313b3ef19e.pack
+│   │       └── pack-ff52b5cc755e40d22ff36b98bca6ce313b3ef19e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -391,7 +391,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-22 21:46:41 UTC
+Сгенерировано: 2026-02-22 21:47:55 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8731,7 +8731,6 @@ import { ensureMediaSession } from './player-core/media-session.js';
 
       this._emit('onTrackChange', t, index);
       W.dispatchEvent(new CustomEvent('player:trackChanged', { detail: { uid, dir } }));
-      W.dispatchEvent(new CustomEvent('player:play', { detail: { uid } })); // Инжект для Analytics v4.0
 
       let res = null, url = null;
       try { res = await W.TrackResolver?.resolve?.(uid, this.qMode); } catch {}
