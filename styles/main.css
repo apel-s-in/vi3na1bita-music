@@ -687,11 +687,21 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .showcase-group-header { padding: 16px 10px 8px; font-weight: 800; color: var(--secondary-color); font-size: 14px; letter-spacing: 1px; text-transform: uppercase; background: rgba(0,0,0,0.2); }
 
 /* Track Row */
-.showcase-track { position: relative; padding: 6px 10px; display: flex; align-items: center; background: transparent; border-bottom: 1px solid var(--border-color); user-select: none; transition: background 0.2s, opacity 0.2s; }
+.showcase-track { position: relative; padding: 6px 10px; display: flex; align-items: center; background: transparent; border-bottom: 1px solid var(--border-color); user-select: none; transition: background 0.2s, opacity 0.2s; gap: 0; }
 .showcase-track.is-dragging { opacity: 0.4; background: rgba(255,255,255,0.1); }
 .showcase-track.drag-over { border-top: 2px solid var(--secondary-color); }
-.showcase-track-thumb { width: 32px; height: 32px; border-radius: 4px; margin: 0 10px; object-fit: cover; flex-shrink: 0; }
+.showcase-track-thumb { width: 32px; height: 32px; border-radius: 4px; margin: 0 8px 0 8px; object-fit: cover; flex-shrink: 0; }
 .showcase-track-meta { font-size: 11px; color: #888; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Showcase: compact left side when numbering is hidden */
+.showcase-track .tnum {
+  min-width: 28px;
+  color: var(--c-blue);
+  font-weight: 500;
+  padding-left: 6px;
+}
+.showcase-track .offline-ind {
+  margin-right: 6px; /* как в родных списках: не впритык */
+}
 .sc-arrow-up, .sc-arrow-down { all: unset; cursor: pointer; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #888; flex-shrink: 0; }
 .sc-arrow-up:hover, .sc-arrow-down:hover { color: #fff; background: rgba(255,255,255,0.1); border-radius: 4px; }
 .showcase-drag-handle { cursor: grab; padding: 0 10px; color: #666; font-size: 22px; display: flex; align-items: center; height: 100%; touch-action: none; }
