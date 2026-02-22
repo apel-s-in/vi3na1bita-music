@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2504a9daac33ed31092b9d4642e6b206d6b47b83.idx
-│   │       ├── pack-2504a9daac33ed31092b9d4642e6b206d6b47b83.pack
-│   │       └── pack-2504a9daac33ed31092b9d4642e6b206d6b47b83.rev
+│   │       ├── pack-ecca24c1f6c36af7200b22e0e26738750b114d58.idx
+│   │       ├── pack-ecca24c1f6c36af7200b22e0e26738750b114d58.pack
+│   │       └── pack-ecca24c1f6c36af7200b22e0e26738750b114d58.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -385,7 +385,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-22 19:44:48 UTC
+Сгенерировано: 2026-02-22 19:46:12 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -805,6 +805,9 @@ jobs:
   <script src="./scripts/app/gallery.js" type="module"></script>
   <script src="./scripts/app/albums.js" type="module"></script>
 
+  <script src="./scripts/analytics/engine.js" type="module"></script>
+  <script src="./scripts/analytics/cabinet-ui.js" type="module"></script>
+
   <script src="./scripts/app.js" type="module"></script>
 
 </head>
@@ -849,9 +852,12 @@ jobs:
       </div>
 
       <div id="social-links" class="socials-under-cover"></div>
+      
+      <div id="achievements-progress-container" style="width:100%;max-width:395px;margin:15px auto 0;"></div>
+      
     </header>
 
-    <div id="now-playing" style="width:100%; max-width:395px; margin:8px auto 0 auto;"></div>
+    <div id="now-playing" style="width:100%;max-width:395px; margin:8px auto 0 auto;"></div>
     <div class="track-list" id="track-list"></div>
 
     <div class="bottom-controls-center">
