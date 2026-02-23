@@ -124,12 +124,16 @@ class ShowcaseManager {
       const tracks = uids.map(u => W.TrackRegistry.getTrackByUid(u)).filter(Boolean);
       
       if (this.sortMode.startsWith('plays') || this.sortMode === 'last-played') {
-        // Асинхронный сбор статы перед синхронной сортировкой
-        if (W.GlobalStatsManager) {
-          await Promise.all(tracks.map(async t => {
-            if (!this._statsCache.has(t.uid)) this._statsCache.set(t.uid, await W.GlobalStatsManager.getTrackStats(t.uid));
-          }));
-        }
+        const { metaDB } = await import('../../analytics/meta-db.js');
+        const listensDoc = await metaDB.getStat('globalFullListens') || { details: {} };
+        const lastPlayDoc = await metaDB.getStat('lastPlayed') || { details: {} };
+        
+        tracks.forEach(t => {
+           this._statsCache.set(t.uid, {
+              plays: listensDoc.details[t.uid] || 0,
+              lastAt: lastPlayDoc.details[t.uid] || 0
+           });
+        });
       }
 
       tracks.sort((a,b) => {
@@ -139,11 +143,11 @@ class ShowcaseManager {
         if (this.sortMode === 'album-asc') return a.sourceAlbum.localeCompare(b.sourceAlbum);
         if (this.sortMode === 'favorites-first') return (W.playerCore?.isFavorite(b.uid)?1:0) - (W.playerCore?.isFavorite(a.uid)?1:0);
         
-        const sa = this._statsCache.get(a.uid) || {};
-        const sb = this._statsCache.get(b.uid) || {};
-        if (this.sortMode === 'plays-desc') return (sb.globalFullListenCount||0) - (sa.globalFullListenCount||0);
-        if (this.sortMode === 'plays-asc') return (sa.globalFullListenCount||0) - (sb.globalFullListenCount||0);
-        if (this.sortMode === 'last-played') return (sb.lastListenAt||0) - (sa.lastListenAt||0);
+        const sa = this._statsCache.get(a.uid) || { plays: 0, lastAt: 0 };
+        const sb = this._statsCache.get(b.uid) || { plays: 0, lastAt: 0 };
+        if (this.sortMode === 'plays-desc') return sb.plays - sa.plays;
+        if (this.sortMode === 'plays-asc') return sa.plays - sb.plays;
+        if (this.sortMode === 'last-played') return sb.lastAt - sa.lastAt;
         return 0;
       });
       uids = tracks.map(t => t.uid);
