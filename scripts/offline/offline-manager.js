@@ -367,7 +367,7 @@ class OfflineManager {
 
   async registerFullListen(uid, { forcedCloud } = {}) {
     const u = sUid(uid);
-    if (!u || !forcedCloud) return; // Защита: вызывается только из StatsAggregator
+    if (!u || !forcedCloud) return; // Теперь вызывается только из StatsAggregator
 
     const m = (await DB.getTrackMeta(u)) || { uid: u };
     const { N, D } = this.getCloudSettings();
