@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c58c11e6dc044392563a72c813476500f1f7c10d.idx
-│   │       ├── pack-c58c11e6dc044392563a72c813476500f1f7c10d.pack
-│   │       └── pack-c58c11e6dc044392563a72c813476500f1f7c10d.rev
+│   │       ├── pack-6aa20f626793db616e243392655b8bcdc43d9374.idx
+│   │       ├── pack-6aa20f626793db616e243392655b8bcdc43d9374.pack
+│   │       └── pack-6aa20f626793db616e243392655b8bcdc43d9374.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-23 08:02:46 UTC
+Сгенерировано: 2026-02-23 08:03:54 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1876,7 +1876,7 @@ export class StatsAggregator {
       catch (e) { console.error('App init failed:', e); W.NotificationSystem?.error('Ошибка инициализации'); }
     }
   };
-})(window, document);
+}(window, document);
 
 //=================================================
 // FILE: /scripts/app/albums.js
