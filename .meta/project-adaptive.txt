@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b429880fcc2e8176ced4a1c6510f1d67ce51e474.idx
-│   │       ├── pack-b429880fcc2e8176ced4a1c6510f1d67ce51e474.pack
-│   │       └── pack-b429880fcc2e8176ced4a1c6510f1d67ce51e474.rev
+│   │       ├── pack-81ba85b0daee739d0184f377e2c1539d3d1b8283.idx
+│   │       ├── pack-81ba85b0daee739d0184f377e2c1539d3d1b8283.pack
+│   │       └── pack-81ba85b0daee739d0184f377e2c1539d3d1b8283.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-23 07:17:12 UTC
+Сгенерировано: 2026-02-23 07:20:45 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8056,7 +8056,6 @@ export function ensureMediaSession(handlers = {}) {
 import { getTrackByUid } from '../scripts/app/track-registry.js';
 import { Favorites } from '../scripts/core/favorites-manager.js';
 import { ensureMediaSession } from './player-core/media-session.js';
-// Старый импорт stats-tracker удален
 
 (function () {
   'use strict';
@@ -8290,16 +8289,7 @@ import { ensureMediaSession } from './player-core/media-session.js';
       if (!silent) this._emit('onStop');
     }
 
-    _startTick() {
-      if (this._tickInt) return;
-      this._tickInt = setInterval(() => {
-        const pos = this.getPosition();
-        const dur = this.getDuration();
-        this._emit('onTick', pos, dur);
-        W.dispatchEvent(new CustomEvent('player:tick', {
-          detail: { pos, dur, currentTime: pos, volume: this.getVolume(), muted: this.isMuted() }
-        }));
-      }, 250);
+    _startTick() { this._stopTick(); this._tickInt = setInterval(() => { this._emit('onTick', this.getPosition(), this.getDuration()); W.dispatchEvent(new CustomEvent('player:tick', { detail: { currentTime: this.getPosition(), volume: this.getVolume(), muted: this.isMuted() } })); }, 250);
     }
     _stopTick() { if (this._tickInt) clearInterval(this._tickInt); this._tickInt = null; }
     _updMedia() { const t = this.getCurrentTrack(); try { this._ms?.updateMetadata?.({ title: t?.title, artist: t?.artist, album: t?.album, artworkUrl: t?.cover, playing: this.isPlaying() }); } catch {} }
