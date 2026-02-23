@@ -48,6 +48,14 @@
       new StatsAggregator();
       window.achievementEngine = new AchievementEngine();
       
+      // Подписка на обновление прогресс-бара достижений
+      window.addEventListener('achievements:updated', (e) => {
+        const countEl = document.getElementById('achievementsCount');
+        const fillEl = document.getElementById('achievementsFill');
+        if (countEl) countEl.textContent = `${e.detail.unlocked} / ${e.detail.total}`;
+        if (fillEl) fillEl.style.width = `${(e.detail.unlocked / e.detail.total) * 100}%`;
+      });
+
       // Запуск агрегатора при старте для обновления UI
       window.dispatchEvent(new CustomEvent('analytics:logUpdated'));
     } catch (e) { console.error('Offline/Analytics init failed:', e);
