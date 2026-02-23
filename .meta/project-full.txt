@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-79ec904b2218ea187186621f43ad3d4938c82cbc.idx
-│   │       ├── pack-79ec904b2218ea187186621f43ad3d4938c82cbc.pack
-│   │       └── pack-79ec904b2218ea187186621f43ad3d4938c82cbc.rev
+│   │       ├── pack-b5db19dbd801c35b4dae1e1eacc170b986175676.idx
+│   │       ├── pack-b5db19dbd801c35b4dae1e1eacc170b986175676.pack
+│   │       └── pack-b5db19dbd801c35b4dae1e1eacc170b986175676.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-23 07:22:10 UTC
+Сгенерировано: 2026-02-23 07:22:54 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6094,7 +6094,7 @@ class OfflineManager {
 
   async registerFullListen(uid, { forcedCloud } = {}) {
     const u = sUid(uid);
-    if (!u || !forcedCloud) return; // Защита: вызывается только из StatsAggregator
+    if (!u || !forcedCloud) return; // Теперь вызывается только из StatsAggregator
 
     const m = (await DB.getTrackMeta(u)) || { uid: u };
     const { N, D } = this.getCloudSettings();
