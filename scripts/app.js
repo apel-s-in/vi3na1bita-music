@@ -39,9 +39,9 @@
     } catch (e) { console.error('Offline/Stats init failed:', e); }
 
     const run = (n) => W[n]?.initialize();
-    // Инициализация облака и аналитики
-    const { cloudSync } = await import('./analytics/cloud-sync.js');
-    cloudSync.checkAuthCallback();
+    // Запуск облачной синхронизации (проверка OAuth-ответа)
+      const { cloudSync } = await import('../scripts/analytics/cloud-sync.js');
+      cloudSync.checkAuthCallback();
 
     // Загрузка изолированных модулей по ТЗ
     await import('./ui/sleep-timer.js');
