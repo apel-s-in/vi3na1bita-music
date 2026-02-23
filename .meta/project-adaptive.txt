@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-81ba85b0daee739d0184f377e2c1539d3d1b8283.idx
-│   │       ├── pack-81ba85b0daee739d0184f377e2c1539d3d1b8283.pack
-│   │       └── pack-81ba85b0daee739d0184f377e2c1539d3d1b8283.rev
+│   │       ├── pack-79ec904b2218ea187186621f43ad3d4938c82cbc.idx
+│   │       ├── pack-79ec904b2218ea187186621f43ad3d4938c82cbc.pack
+│   │       └── pack-79ec904b2218ea187186621f43ad3d4938c82cbc.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-23 07:20:45 UTC
+Сгенерировано: 2026-02-23 07:22:10 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1742,9 +1742,9 @@ export class StatsAggregator {
     } catch (e) { console.error('Offline/Stats init failed:', e); }
 
     const run = (n) => W[n]?.initialize();
-    // Инициализация облака и аналитики
-    const { cloudSync } = await import('./analytics/cloud-sync.js');
-    cloudSync.checkAuthCallback();
+    // Запуск облачной синхронизации (проверка OAuth-ответа)
+      const { cloudSync } = await import('../scripts/analytics/cloud-sync.js');
+      cloudSync.checkAuthCallback();
 
     // Загрузка изолированных модулей по ТЗ
     await import('./ui/sleep-timer.js');
