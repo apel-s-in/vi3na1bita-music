@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b3e20e5439e35b0bb07f5283c75bd0931b3be49e.idx
-│   │       ├── pack-b3e20e5439e35b0bb07f5283c75bd0931b3be49e.pack
-│   │       └── pack-b3e20e5439e35b0bb07f5283c75bd0931b3be49e.rev
+│   │       ├── pack-1b003f70de55684c961525c789f21479e465798a.idx
+│   │       ├── pack-1b003f70de55684c961525c789f21479e465798a.pack
+│   │       └── pack-1b003f70de55684c961525c789f21479e465798a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-23 07:41:29 UTC
+Сгенерировано: 2026-02-23 07:53:25 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8465,20 +8465,30 @@ body{min-height:100vh;min-width:100vw;font-family:-apple-system,BlinkMacSystemFo
 /* Layout */
 #main-block{max-width:420px;margin:0 auto;flex:1 0 auto;display:flex;flex-direction:column;align-items:center;width:100%;padding:0 10px;padding-bottom:env(safe-area-inset-bottom)}
 
+/* --- Analytics & Achievements UI --- */
 .achievements-progress-container {
-  width: 100%;
-  max-width: 398px;
-  margin: 16px auto 0;
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: 10px;
-  padding: 10px 14px;
-  cursor: pointer;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  transition: background 0.2s, transform 0.1s;
+  width: 100%; max-width: 398px; margin: 16px auto 8px;
+  background: rgba(255, 255, 255, 0.04); border-radius: 12px;
+  padding: 12px 16px; cursor: pointer; border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: all 0.2s ease;
 }
-.achievements-progress-container:hover { background: rgba(255, 255, 255, 0.07); }
-.achievements-progress-container:active { transform: scale(0.98); }
-header{width:100%;text-align:center;margin:0 auto}
+.achievements-progress-container:hover { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.15); }
+
+.stats-grid-compact { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+.stat-box { 
+  background: rgba(255,255,255,0.03); padding: 12px; border-radius: 10px; 
+  text-align: center; border: 1px solid rgba(255,255,255,0.05);
+}
+.stat-box b { display: block; font-size: 18px; color: #fff; }
+.stat-box span { font-size: 10px; color: #888; text-transform: uppercase; }
+
+.ach-item {
+  display: flex; align-items: center; gap: 12px; padding: 10px; 
+  background: rgba(255,255,255,0.03); border-radius: 8px; margin-bottom: 6px;
+  transition: opacity 0.3s;
+}
+.ach-item.locked { opacity: 0.3; filter: grayscale(1); }
+.ach-icon { font-size: 20px; width: 32px; text-align: center; }
 
 /* Album title */
 .active-album-title{width:100%;max-width:400px;margin:18px auto 6px;text-align:center;color:#eaf2ff;font-weight:900;letter-spacing:.01em;line-height:1.15;text-shadow:0 1px 0 rgba(0,0,0,.35);font-size:clamp(18px,4.6vw,24px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
