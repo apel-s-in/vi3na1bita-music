@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1b003f70de55684c961525c789f21479e465798a.idx
-│   │       ├── pack-1b003f70de55684c961525c789f21479e465798a.pack
-│   │       └── pack-1b003f70de55684c961525c789f21479e465798a.rev
+│   │       ├── pack-8f623a1fc6dd7da610b9d5bfddd9cbda6c6f7061.idx
+│   │       ├── pack-8f623a1fc6dd7da610b9d5bfddd9cbda6c6f7061.pack
+│   │       └── pack-8f623a1fc6dd7da610b9d5bfddd9cbda6c6f7061.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-23 07:53:25 UTC
+Сгенерировано: 2026-02-23 07:54:12 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1323,43 +1323,60 @@ self.addEventListener('message', (e) => {
 //=================================================
 // FILE: /scripts/analytics/achievement-engine.js
 import { metaDB } from './meta-db.js';
-import { eventLogger } from './event-logger.js';
 
 export class AchievementEngine {
   constructor() {
-    this.achievements = this._generateAchievements();
-    window.addEventListener('stats:updated', () => this.checkAchievements());
+    this.achievements = this._createList();
+    window.addEventListener('stats:updated', () => this.check());
   }
-  _generateAchievements() {
-    const list = [{ id: 'first_blood', name: 'Первая кровь', desc: 'Первое полное прослушивание', icon: '🩸', check: s => s.globalFullListens?.value >= 1 }];
-    for(let i=1; i<=60; i++) list.push({ id: `audiophile_${i}`, name: `Аудиофил ур. ${i}`, desc: `${i * 10} прослушиваний`, icon: '🎧', check: s => s.globalFullListens?.value >= (i * 10) });
-    for(let i=1; i<=30; i++) list.push({ id: `streak_${i}`, name: `Стабильность ур. ${i}`, desc: `${i * 5} дней подряд`, icon: '🔥', check: s => s.currentStreak?.value >= (i * 5) });
-    list.push({ id: 'night_owl', name: 'Ночная сова', desc: 'Слушать после полуночи', icon: '🦉', check: s => s.special?.nightOwl });
-    list.push({ id: 'master_feature', name: 'Мастер функций', desc: 'Использовать lyrics, clip, stems', icon: '🎛️', check: s => Object.keys(s.features?.details || {}).length >= 3 });
-    list.push({ id: 'time_lord', name: 'Повелитель времени', desc: 'Слушать музыку 24 часа', icon: '⏳', check: s => s.totalListenTime?.value >= 86400 });
-    // Итого 94 ачивки
+
+  _createList() {
+    const list = [
+      { id: 'first_listen', name: 'Первый шаг', desc: 'Прослушан 1 трек полностью', icon: '🎵', check: s => (s.globalFullListens?.value || 0) >= 1 },
+      { id: 'night_owl', name: 'Полуночник', desc: 'Слушал музыку после 00:00', icon: '🦉', check: s => s.special?.nightOwl }
+    ];
+    // Динамическая генерация 100 уровней "Аудиофила"
+    for (let i = 1; i <= 100; i++) {
+      list.push({
+        id: `level_${i}`,
+        name: `Аудиофил: Уровень ${i}`,
+        desc: `Всего прослушано: ${i * 5} полных треков`,
+        icon: i % 10 === 0 ? '🏆' : '🎧',
+        check: s => (s.globalFullListens?.value || 0) >= (i * 5)
+      });
+    }
     return list;
   }
-  async checkAchievements() {
-    const unlocked = (await metaDB.getStat('unlocked_achievements'))?.details || {};
-    let newlyUnlocked = 0;
-    const currentStats = {
+
+  async check() {
+    const stats = {
       globalFullListens: await metaDB.getStat('globalFullListens'),
       totalListenTime: await metaDB.getStat('totalListenTime'),
-      currentStreak: await metaDB.getStat('currentStreak'),
-      features: await metaDB.getStat('features')
+      features: await metaDB.getStat('features'),
+      special: await metaDB.getStat('special') || { details: {} }
     };
+
+    const unlocked = (await metaDB.getStat('unlocked_achievements'))?.details || {};
+    let changed = false;
+
     for (const ach of this.achievements) {
-      if (!unlocked[ach.id] && ach.check(currentStats)) {
-        unlocked[ach.id] = Date.now(); newlyUnlocked++;
-        eventLogger.log('ACHIEVEMENT_UNLOCK', { id: ach.id });
+      if (!unlocked[ach.id] && ach.check(stats)) {
+        unlocked[ach.id] = Date.now();
+        changed = true;
         window.NotificationSystem?.success(`🏆 Достижение: ${ach.name}`);
       }
     }
-    if (newlyUnlocked > 0 || Object.keys(unlocked).length === 0) {
-      await metaDB.updateStat('unlocked_achievements', (stat) => { stat.details = unlocked; stat.value = Object.keys(unlocked).length; return stat; });
+
+    if (changed) {
+      await metaDB.updateStat('unlocked_achievements', (s) => { s.details = unlocked; s.value = Object.keys(unlocked).length; return s; });
+      this.broadcast(unlocked);
     }
-    window.dispatchEvent(new CustomEvent('achievements:updated', { detail: { total: this.achievements.length, unlocked: Object.keys(unlocked).length, items: unlocked } }));
+  }
+
+  broadcast(unlocked) {
+    window.dispatchEvent(new CustomEvent('achievements:updated', { 
+      detail: { total: this.achievements.length, unlocked: Object.keys(unlocked).length, items: unlocked } 
+    }));
   }
 }
 
