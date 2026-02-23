@@ -1,7 +1,6 @@
 import { getTrackByUid } from '../scripts/app/track-registry.js';
 import { Favorites } from '../scripts/core/favorites-manager.js';
 import { ensureMediaSession } from './player-core/media-session.js';
-// Старый импорт stats-tracker удален
 
 (function () {
   'use strict';
@@ -235,16 +234,7 @@ import { ensureMediaSession } from './player-core/media-session.js';
       if (!silent) this._emit('onStop');
     }
 
-    _startTick() {
-      if (this._tickInt) return;
-      this._tickInt = setInterval(() => {
-        const pos = this.getPosition();
-        const dur = this.getDuration();
-        this._emit('onTick', pos, dur);
-        W.dispatchEvent(new CustomEvent('player:tick', {
-          detail: { pos, dur, currentTime: pos, volume: this.getVolume(), muted: this.isMuted() }
-        }));
-      }, 250);
+    _startTick() { this._stopTick(); this._tickInt = setInterval(() => { this._emit('onTick', this.getPosition(), this.getDuration()); W.dispatchEvent(new CustomEvent('player:tick', { detail: { currentTime: this.getPosition(), volume: this.getVolume(), muted: this.isMuted() } })); }, 250);
     }
     _stopTick() { if (this._tickInt) clearInterval(this._tickInt); this._tickInt = null; }
     _updMedia() { const t = this.getCurrentTrack(); try { this._ms?.updateMetadata?.({ title: t?.title, artist: t?.artist, album: t?.album, artworkUrl: t?.cover, playing: this.isPlaying() }); } catch {} }
