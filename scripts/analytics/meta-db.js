@@ -1,9 +1,5 @@
 export class MetaDB {
-  constructor() {
-    this.dbName = 'MetaDB';
-    this.version = 1;
-    this.db = null;
-  }
+  constructor() { this.dbName = 'MetaDB'; this.version = 1; this.db = null; }
   async init() {
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(this.dbName, this.version);
@@ -11,7 +7,6 @@ export class MetaDB {
         const db = e.target.result;
         if (!db.objectStoreNames.contains('events_hot')) db.createObjectStore('events_hot', { keyPath: 'id', autoIncrement: true });
         if (!db.objectStoreNames.contains('stats')) db.createObjectStore('stats', { keyPath: 'key' });
-        if (!db.objectStoreNames.contains('achievements')) db.createObjectStore('achievements', { keyPath: 'id' });
       };
       request.onsuccess = (e) => { this.db = e.target.result; resolve(); };
       request.onerror = (e) => reject(e.target.error);
@@ -27,20 +22,19 @@ export class MetaDB {
       const req = store.get(key);
       req.onsuccess = () => {
         const data = req.result || { key, value: 0, details: {} };
-        const updated = mutatorFn(data);
-        store.put(updated).onsuccess = resolve;
+        store.put(mutatorFn(data)).onsuccess = resolve;
       };
       req.onerror = reject;
     });
   }
   async getStat(key) { return this._tx('stats', 'readonly', store => store.get(key)); }
   _tx(storeName, mode, op) {
-    return new Promise((resolve, reject) => {
-      if (!this.db) return reject('DB not initialized');
+    return new Promise((res, rej) => {
+      if (!this.db) return rej('DB not init');
       const tx = this.db.transaction(storeName, mode);
       const req = op(tx.objectStore(storeName));
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
+      req.onsuccess = () => res(req.result);
+      req.onerror = () => rej(req.error);
     });
   }
 }
