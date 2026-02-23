@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-fc1708a2c9ab409c168a2fd232bf658393a767be.idx
-│   │       ├── pack-fc1708a2c9ab409c168a2fd232bf658393a767be.pack
-│   │       └── pack-fc1708a2c9ab409c168a2fd232bf658393a767be.rev
+│   │       ├── pack-37bd9c326dff67c3159d006c7191babc4a2b913d.idx
+│   │       ├── pack-37bd9c326dff67c3159d006c7191babc4a2b913d.pack
+│   │       └── pack-37bd9c326dff67c3159d006c7191babc4a2b913d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-23 07:31:50 UTC
+Сгенерировано: 2026-02-23 07:32:40 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1718,8 +1718,22 @@ export class StatsAggregator {
       
       await (await import('./app/playback-cache-bootstrap.js'))?.initPlaybackCache?.();
       
-      // GlobalStats удален, используется новая UID-Аналитика
-    } catch (e) { console.error('Offline/Stats init failed:', e); }
+      // Инициализация новой UID-Аналитики
+      const { metaDB } = await import('./analytics/meta-db.js');
+      const { eventLogger } = await import('./analytics/event-logger.js');
+      const { SessionTracker } = await import('./analytics/session-tracker.js');
+      const { StatsAggregator } = await import('./analytics/stats-aggregator.js');
+      const { AchievementEngine } = await import('./analytics/achievement-engine.js');
+      
+      await metaDB.init();
+      await eventLogger.init();
+      new SessionTracker();
+      new StatsAggregator();
+      window.achievementEngine = new AchievementEngine();
+      
+      // Запуск агрегатора при старте для обновления UI
+      window.dispatchEvent(new CustomEvent('analytics:logUpdated'));
+    } catch (e) { console.error('Offline/Analytics init failed:', e);
 
     const run = (n) => W[n]?.initialize();
     // Запуск облачной синхронизации (проверка OAuth-ответа)
