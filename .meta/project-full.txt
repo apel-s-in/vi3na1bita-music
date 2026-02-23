@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-29bdbdcc48d5b56686ea1d2e3d3d830f64793014.idx
-│   │       ├── pack-29bdbdcc48d5b56686ea1d2e3d3d830f64793014.pack
-│   │       └── pack-29bdbdcc48d5b56686ea1d2e3d3d830f64793014.rev
+│   │       ├── pack-37f92a67a63c6459d8467dde4a11cb172007ccb0.idx
+│   │       ├── pack-37f92a67a63c6459d8467dde4a11cb172007ccb0.pack
+│   │       └── pack-37f92a67a63c6459d8467dde4a11cb172007ccb0.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -317,7 +317,8 @@ vi3na1bita-music/
 │   ├── analytics/
 │   │   ├── event-logger.js
 │   │   ├── meta-db.js
-│   │   └── session-tracker.js
+│   │   ├── session-tracker.js
+│   │   └── stats-aggregator.js
 │   ├── app/
 │   │   ├── albums/
 │   │   │   └── specials.js
@@ -383,7 +384,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-23 07:14:33 UTC
+Сгенерировано: 2026-02-23 07:15:00 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1452,6 +1453,37 @@ export class SessionTracker {
       window.dispatchEvent(new CustomEvent('analytics:fullListen', { detail: { uid } }));
     }
     this.currentSession = null;
+  }
+}
+
+//=================================================
+// FILE: /scripts/analytics/stats-aggregator.js
+import { metaDB } from './meta-db.js';
+
+export class StatsAggregator {
+  constructor() { window.addEventListener('analytics:logUpdated', () => this.processHotEvents()); }
+  async processHotEvents() {
+    const events = await metaDB.getEvents();
+    if (!events.length) return;
+    
+    for (const ev of events) {
+      if (ev.type === 'LISTEN_FULL') {
+        await metaDB.updateStat('globalFullListens', (stat) => {
+          stat.value++;
+          stat.details[ev.payload.uid] = (stat.details[ev.payload.uid] || 0) + 1;
+          if (stat.details[ev.payload.uid] === 5) window.dispatchEvent(new CustomEvent('analytics:cloudThresholdReached', { detail: { uid: ev.payload.uid }}));
+          return stat;
+        });
+      }
+      if (ev.type === 'LISTEN_VALID') {
+        await metaDB.updateStat('totalListenTime', (stat) => { stat.value += ev.payload.seconds; return stat; });
+      }
+      if (ev.type === 'FEATURE_USED') {
+         await metaDB.updateStat('features', (stat) => { stat.details[ev.payload.feature] = true; return stat; });
+      }
+    }
+    await metaDB.clearEvents();
+    window.dispatchEvent(new CustomEvent('stats:updated'));
   }
 }
 
