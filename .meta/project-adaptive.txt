@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-34f822e59f9d834a626b2f1ff8e4ad8212306f26.idx
-│   │       ├── pack-34f822e59f9d834a626b2f1ff8e4ad8212306f26.pack
-│   │       └── pack-34f822e59f9d834a626b2f1ff8e4ad8212306f26.rev
+│   │       ├── pack-9bc4d9cd849d553588830d91e81948d572ba7ad3.idx
+│   │       ├── pack-9bc4d9cd849d553588830d91e81948d572ba7ad3.pack
+│   │       └── pack-9bc4d9cd849d553588830d91e81948d572ba7ad3.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -315,6 +315,7 @@ vi3na1bita-music/
 │   └── news.json
 ├── scripts/
 │   ├── analytics/
+│   │   ├── event-logger.js
 │   │   └── meta-db.js
 │   ├── app/
 │   │   ├── albums/
@@ -381,7 +382,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-23 07:13:54 UTC
+Сгенерировано: 2026-02-23 07:14:13 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1313,6 +1314,41 @@ self.addEventListener('message', (e) => {
     })());
   }
 });
+
+//=================================================
+// FILE: /scripts/analytics/event-logger.js
+import { metaDB } from './meta-db.js';
+
+class EventLogger {
+  constructor() {
+    this.hotQueue = [];
+    this.flushInterval = null;
+    this.deviceHash = this._generateDeviceHash();
+  }
+  async init() {
+    await metaDB.init();
+    window.addEventListener('visibilitychange', () => { if (document.hidden) this.flush(); });
+    this.flushInterval = setInterval(() => this.flush(), 30000);
+  }
+  log(type, payload) {
+    const event = { type, payload, timestamp: Date.now(), deviceHash: this.deviceHash, uuid: crypto.randomUUID() };
+    this.hotQueue.push(event);
+    if (this.hotQueue.length > 50) this.flush();
+  }
+  async flush() {
+    if (!this.hotQueue.length) return;
+    const batch = [...this.hotQueue];
+    this.hotQueue = [];
+    for (const ev of batch) await metaDB.addEvent(ev);
+    window.dispatchEvent(new CustomEvent('analytics:logUpdated'));
+  }
+  _generateDeviceHash() {
+    let hash = localStorage.getItem('deviceHash');
+    if (!hash) { hash = crypto.randomUUID(); localStorage.setItem('deviceHash', hash); }
+    return hash;
+  }
+}
+export const eventLogger = new EventLogger();
 
 //=================================================
 // FILE: /scripts/analytics/meta-db.js
