@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-65fed92b5999f10a278d536c1b384447ac71cb71.idx
-│   │       ├── pack-65fed92b5999f10a278d536c1b384447ac71cb71.pack
-│   │       └── pack-65fed92b5999f10a278d536c1b384447ac71cb71.rev
+│   │       ├── pack-fc1708a2c9ab409c168a2fd232bf658393a767be.idx
+│   │       ├── pack-fc1708a2c9ab409c168a2fd232bf658393a767be.pack
+│   │       └── pack-fc1708a2c9ab409c168a2fd232bf658393a767be.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-23 07:31:28 UTC
+Сгенерировано: 2026-02-23 07:31:50 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1456,30 +1456,23 @@ import { metaDB } from './meta-db.js';
 class EventLogger {
   constructor() {
     this.hotQueue = [];
-    this.flushInterval = null;
-    this.deviceHash = this._generateDeviceHash();
+    this.deviceHash = localStorage.getItem('deviceHash') || crypto.randomUUID();
+    localStorage.setItem('deviceHash', this.deviceHash);
   }
   async init() {
     await metaDB.init();
     window.addEventListener('visibilitychange', () => { if (document.hidden) this.flush(); });
-    this.flushInterval = setInterval(() => this.flush(), 30000);
+    setInterval(() => this.flush(), 30000);
   }
   log(type, payload) {
-    const event = { type, payload, timestamp: Date.now(), deviceHash: this.deviceHash, uuid: crypto.randomUUID() };
-    this.hotQueue.push(event);
+    this.hotQueue.push({ type, payload, timestamp: Date.now(), deviceHash: this.deviceHash, uuid: crypto.randomUUID() });
     if (this.hotQueue.length > 50) this.flush();
   }
   async flush() {
     if (!this.hotQueue.length) return;
-    const batch = [...this.hotQueue];
-    this.hotQueue = [];
+    const batch = [...this.hotQueue]; this.hotQueue = [];
     for (const ev of batch) await metaDB.addEvent(ev);
     window.dispatchEvent(new CustomEvent('analytics:logUpdated'));
-  }
-  _generateDeviceHash() {
-    let hash = localStorage.getItem('deviceHash');
-    if (!hash) { hash = crypto.randomUUID(); localStorage.setItem('deviceHash', hash); }
-    return hash;
   }
 }
 export const eventLogger = new EventLogger();
