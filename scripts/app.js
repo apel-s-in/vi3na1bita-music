@@ -35,8 +35,22 @@
       
       await (await import('./app/playback-cache-bootstrap.js'))?.initPlaybackCache?.();
       
-      // GlobalStats удален, используется новая UID-Аналитика
-    } catch (e) { console.error('Offline/Stats init failed:', e); }
+      // Инициализация новой UID-Аналитики
+      const { metaDB } = await import('./analytics/meta-db.js');
+      const { eventLogger } = await import('./analytics/event-logger.js');
+      const { SessionTracker } = await import('./analytics/session-tracker.js');
+      const { StatsAggregator } = await import('./analytics/stats-aggregator.js');
+      const { AchievementEngine } = await import('./analytics/achievement-engine.js');
+      
+      await metaDB.init();
+      await eventLogger.init();
+      new SessionTracker();
+      new StatsAggregator();
+      window.achievementEngine = new AchievementEngine();
+      
+      // Запуск агрегатора при старте для обновления UI
+      window.dispatchEvent(new CustomEvent('analytics:logUpdated'));
+    } catch (e) { console.error('Offline/Analytics init failed:', e);
 
     const run = (n) => W[n]?.initialize();
     // Запуск облачной синхронизации (проверка OAuth-ответа)
