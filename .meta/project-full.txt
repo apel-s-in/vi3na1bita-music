@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-73e56353e0e9d681c080eae837b370c9d323954f.idx
-│   │       ├── pack-73e56353e0e9d681c080eae837b370c9d323954f.pack
-│   │       └── pack-73e56353e0e9d681c080eae837b370c9d323954f.rev
+│   │       ├── pack-b3e20e5439e35b0bb07f5283c75bd0931b3be49e.idx
+│   │       ├── pack-b3e20e5439e35b0bb07f5283c75bd0931b3be49e.pack
+│   │       └── pack-b3e20e5439e35b0bb07f5283c75bd0931b3be49e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-23 07:40:07 UTC
+Сгенерировано: 2026-02-23 07:41:29 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8464,6 +8464,20 @@ body{min-height:100vh;min-width:100vw;font-family:-apple-system,BlinkMacSystemFo
 
 /* Layout */
 #main-block{max-width:420px;margin:0 auto;flex:1 0 auto;display:flex;flex-direction:column;align-items:center;width:100%;padding:0 10px;padding-bottom:env(safe-area-inset-bottom)}
+
+.achievements-progress-container {
+  width: 100%;
+  max-width: 398px;
+  margin: 16px auto 0;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: background 0.2s, transform 0.1s;
+}
+.achievements-progress-container:hover { background: rgba(255, 255, 255, 0.07); }
+.achievements-progress-container:active { transform: scale(0.98); }
 header{width:100%;text-align:center;margin:0 auto}
 
 /* Album title */
