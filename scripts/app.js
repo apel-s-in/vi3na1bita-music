@@ -180,4 +180,4 @@
       catch (e) { console.error('App init failed:', e); W.NotificationSystem?.error('Ошибка инициализации'); }
     }
   };
-})(window, document);
+}(window, document);
