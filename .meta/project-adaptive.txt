@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-119ad96c70981d0f19f58139f6f1654204b9400d.idx
-│   │       ├── pack-119ad96c70981d0f19f58139f6f1654204b9400d.pack
-│   │       └── pack-119ad96c70981d0f19f58139f6f1654204b9400d.rev
+│   │       ├── pack-0d025900a5a03b2b4472234ad33f64bfeadfc9fa.idx
+│   │       ├── pack-0d025900a5a03b2b4472234ad33f64bfeadfc9fa.pack
+│   │       └── pack-0d025900a5a03b2b4472234ad33f64bfeadfc9fa.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-23 07:30:32 UTC
+Сгенерировано: 2026-02-23 07:30:52 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1677,12 +1677,13 @@ export class StatsAggregator {
         await metaDB.updateStat('globalFullListens', (stat) => {
           stat.value++;
           stat.details[ev.payload.uid] = (stat.details[ev.payload.uid] || 0) + 1;
-          if (stat.details[ev.payload.uid] === 5) window.dispatchEvent(new CustomEvent('analytics:cloudThresholdReached', { detail: { uid: ev.payload.uid }}));
+          if (stat.details[ev.payload.uid] >= 5) window.dispatchEvent(new CustomEvent('analytics:cloudThresholdReached', { detail: { uid: ev.payload.uid }}));
           return stat;
         });
       }
-      if (ev.type === 'LISTEN_VALID') {
-        await metaDB.updateStat('totalListenTime', (stat) => { stat.value += ev.payload.seconds; return stat; });
+      if (ev.type === 'LISTEN_VALID' || ev.type === 'LISTEN_FULL') {
+        await metaDB.updateStat('totalListenTime', (stat) => { stat.value += (ev.payload.seconds || 0); return stat; });
+        await metaDB.updateStat('lastPlayed', (stat) => { stat.details[ev.payload.uid] = ev.timestamp; return stat; });
       }
       if (ev.type === 'FEATURE_USED') {
          await metaDB.updateStat('features', (stat) => { stat.details[ev.payload.feature] = true; return stat; });
