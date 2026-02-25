@@ -159,6 +159,9 @@ export class AchievementEngine {
       }
     }
 
+    // Сохраняем последний слепок агрегатора для UI (чтобы считать прогресс-бары)
+    this.lastAgg = agg;
+
     // Если было хоть одно обновление
     if (changed) {
       this.profile.xp += earnedXp;
@@ -182,6 +185,7 @@ export class AchievementEngine {
   // Генерация динамического плоского массива для UI (Личный Кабинет / Прогресс бар)
   _buildUIArray() {
     const arr = [];
+    const agg = this.lastAgg || {};
     
     for (const [key, rule] of Object.entries(this.dict)) {
       if (rule.type === 'static') {
@@ -192,21 +196,32 @@ export class AchievementEngine {
           arr.push({
             id: key,
             name: "Секретное достижение",
-            desc: "Откроется при особых условиях",
+            short: "Откроется при особых условиях",
+            desc: "Продолжайте исследовать приложение, чтобы узнать секрет.",
+            howTo: "Скрыто",
             icon: "🔒",
             color: "#888888",
             isUnlocked: false,
+            isHidden: true,
             unlockedAt: null
           });
         } else {
+          const target = rule.trigger.conditions[0].target;
+          const current = agg[rule.trigger.conditions[0].metric] || 0;
+          const pct = Math.min(100, Math.max(0, (current / target) * 100));
+
           arr.push({
             id: key,
             name: rule.ui.name,
+            short: rule.ui.short,
             desc: rule.ui.desc,
+            howTo: rule.ui.howTo,
             icon: rule.ui.icon,
             color: rule.ui.color,
             isUnlocked: isUnl,
-            unlockedAt: this.unlocked[key] || null
+            isHidden: false,
+            unlockedAt: this.unlocked[key] || null,
+            progress: { current, target, pct }
           });
         }
       } else if (rule.type === 'scalable') {
@@ -221,10 +236,13 @@ export class AchievementEngine {
           arr.push({
             id: `${key}_${curLevel}`,
             name: rule.ui.name.replace('{level}', curLevel),
-            desc: rule.ui.desc.replace('{target}', displayTarget).replace('{target_hours}', displayTarget),
+            short: rule.ui.short.replace('{target}', displayTarget).replace('{target_hours}', displayTarget),
+            desc: rule.ui.desc,
+            howTo: rule.ui.howTo,
             icon: rule.ui.icon,
             color: rule.ui.color,
             isUnlocked: true,
+            isHidden: false,
             unlockedAt: this.unlocked[`${key}_${curLevel}`]
           });
           curLevel++;
@@ -239,14 +257,23 @@ export class AchievementEngine {
           let displayTarget = target;
           if (rule.formatters && rule.formatters.target_hours) displayTarget = rule.formatters.target_hours(target);
 
+          const current = agg[rule.trigger.conditions[0].metric] || 0;
+          let displayCurrent = current;
+          if (rule.formatters && rule.formatters.target_hours) displayCurrent = rule.formatters.target_hours(current);
+          const pct = Math.min(100, Math.max(0, (displayCurrent / displayTarget) * 100));
+
           arr.push({
             id: `${key}_${curLevel}`,
             name: rule.ui.name.replace('{level}', curLevel),
-            desc: rule.ui.desc.replace('{target}', displayTarget).replace('{target_hours}', displayTarget),
+            short: rule.ui.short.replace('{target}', displayTarget).replace('{target_hours}', displayTarget),
+            desc: rule.ui.desc,
+            howTo: rule.ui.howTo,
             icon: rule.ui.icon,
             color: '#888888', // Серый цвет для заблокированных
             isUnlocked: false,
-            unlockedAt: null
+            isHidden: false,
+            unlockedAt: null,
+            progress: { current: displayCurrent, target: displayTarget, pct }
           });
         }
       }
