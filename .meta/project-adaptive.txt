@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-11d98038cfc1a5d72e132afed63fdc6fef77bf6d.idx
-│   │       ├── pack-11d98038cfc1a5d72e132afed63fdc6fef77bf6d.pack
-│   │       └── pack-11d98038cfc1a5d72e132afed63fdc6fef77bf6d.rev
+│   │       ├── pack-265e5b097af3fb07a5a29dcbee7ba64d7d2696c1.idx
+│   │       ├── pack-265e5b097af3fb07a5a29dcbee7ba64d7d2696c1.pack
+│   │       └── pack-265e5b097af3fb07a5a29dcbee7ba64d7d2696c1.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-25 19:39:18 UTC
+Сгенерировано: 2026-02-25 19:50:18 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8712,7 +8712,7 @@ import { ensureMediaSession } from './player-core/media-session.js';
         onload: () => tok === this._tok ? (pos && this.seek(pos), this._updMedia()) : this.sound?.unload(),
         onplay: () => tok === this._tok ? (this._startTick(), this._emit('onPlay', t, index), this._updMedia(), W.dispatchEvent(new CustomEvent('player:play', { detail: { uid, duration: this.getDuration(), type: 'audio' } }))) : this.sound?.stop(),
         onpause: () => tok === this._tok && (this._stopTick(), this._emit('onPause'), this._updMedia(), W.dispatchEvent(new CustomEvent('player:pause'))),
-        onend: () => tok === this._tok && (this._emit('onEnd'), this._updMedia(), W.dispatchEvent(new CustomEvent('player:ended')), this.flags.rep ? this.play(this.currentIndex) : this.next()),
+        onend: () => tok === this._tok && (this._emit('onEnd'), this._updMedia(), W.dispatchEvent(new CustomEvent('player:ended')), W.dispatchEvent(new CustomEvent('analytics:forceFlush')), this.flags.rep ? this.play(this.currentIndex) : this.next()),
         onloaderror: () => this._emit('onPlaybackError', { reason: 'loaderror' }) // External modules handle the error, NO STOP
       });
     }
