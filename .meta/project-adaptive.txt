@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-fb41ed8f09006cc062c3a381806b1b237d69c1d1.idx
-│   │       ├── pack-fb41ed8f09006cc062c3a381806b1b237d69c1d1.pack
-│   │       └── pack-fb41ed8f09006cc062c3a381806b1b237d69c1d1.rev
+│   │       ├── pack-fb56a2c5d6a0e76cdfa244a957a1c48d411f639a.idx
+│   │       ├── pack-fb56a2c5d6a0e76cdfa244a957a1c48d411f639a.pack
+│   │       └── pack-fb56a2c5d6a0e76cdfa244a957a1c48d411f639a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -389,7 +389,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-25 22:30:25 UTC
+Сгенерировано: 2026-02-25 22:40:59 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1196,9 +1196,9 @@ jobs:
 //=================================================
 // FILE: /service-worker.js
 // service-worker.js
-// Optimized Service Worker for "Vi3na1bita" (v8.1.6) - Spec Compliant
+// Optimized Service Worker for "Vi3na1bita" (v8.1.8) - Spec Compliant
 
-const SW_VERSION = '8.1.7';
+const SW_VERSION = '8.1.8';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
