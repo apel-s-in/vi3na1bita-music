@@ -12,8 +12,8 @@ export class MetaDB {
         if (!db.objectStoreNames.contains('stats')) db.createObjectStore('stats', { keyPath: 'uid' });
         if (!db.objectStoreNames.contains('global')) db.createObjectStore('global', { keyPath: 'key' });
       };
-      req.onsuccess = () => { this.db = req.target.result; resolve(); };
-      req.onerror = () => reject(req.error);
+      req.onsuccess = (e) => { this.db = e.target.result; resolve(); };
+      req.onerror = (e) => reject(e.target.error);
     });
   }
 
