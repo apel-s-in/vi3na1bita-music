@@ -63,8 +63,8 @@ body{min-height:100vh;min-width:100vw;font-family:-apple-system,BlinkMacSystemFo
 .backup-btn:active { transform: scale(0.98); }
 
 /* Classic List Item (Inside Profile) */
-.ach-classic-tabs { display: flex; gap: 8px; margin-bottom: 12px; background: rgba(0,0,0,0.2); padding: 4px; border-radius: 8px; }
-.ach-classic-tab { flex: 1; padding: 6px; text-align: center; font-size: 12px; font-weight: bold; color: #888; cursor: pointer; border-radius: 6px; transition: 0.2s; }
+.ach-classic-tabs { display: flex; gap: 8px; margin-bottom: 12px; background: rgba(0,0,0,0.2); padding: 4px; border-radius: 8px; overflow-x: auto; scrollbar-width: none; }
+.ach-classic-tab { flex: 1; padding: 6px; text-align: center; font-size: 12px; font-weight: bold; color: #888; cursor: pointer; border-radius: 6px; transition: 0.2s; white-space: nowrap; }
 .ach-classic-tab.active { background: #4daaff; color: #fff; }
 .ach-item { display: flex; align-items: center; padding: 12px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 10px; margin-bottom: 8px; transition: 0.2s; }
 .ach-item.done { background: rgba(76, 175, 80, 0.05); border-color: rgba(76, 175, 80, 0.2); }
