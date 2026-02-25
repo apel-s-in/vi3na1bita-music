@@ -310,17 +310,123 @@ export async function loadProfileAlbum(ctx) {
     }
   });
 
-  // 4. Рендер Топ-Треков
-  const sortedStats = [...allStats].sort((a, b) => (b.globalFullListenCount || 0) - (a.globalFullListenCount || 0)).slice(0, 5);
+  // 4. Рендер Расширенной Статистики (с графиками из старого приложения)
   const topTracksEl = container.querySelector('#prof-top-tracks');
   if (topTracksEl) {
-    topTracksEl.innerHTML = sortedStats.length ? sortedStats.map(s => {
+    const fmtTime = s => {
+      const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+      return h > 0 ? `${h}ч ${m}м` : `${m}м`;
+    };
+
+    const validStats = allStats.filter(s => s.uid !== 'global');
+    
+    // Топ-5 по прослушиваниям
+    const topValid = [...validStats].sort((a, b) => (b.globalValidListenCount || 0) - (a.globalValidListenCount || 0)).slice(0, 5);
+    const tvHtml = topValid.length ? `<ul class="stat-list">${topValid.map(s => {
       const t = window.TrackRegistry?.getTrackByUid(s.uid);
-      return t ? `<div class="profile-list-item">
-        <div class="log-info"><div class="log-title">${esc(t.title)}</div><div class="log-desc">${esc(t.album)}</div></div>
-        <div style="font-weight:900;color:var(--secondary-color)">${s.globalFullListenCount} раз</div>
-      </div>` : '';
-    }).join('') : '<div class="fav-empty">Слушайте треки, чтобы они появились здесь</div>';
+      return t ? `<li><span>${esc(t.title)}</span><span>${s.globalValidListenCount || 0}</span></li>` : '';
+    }).join('')}</ul>` : `<div class="stat-sub" style="color:#888;font-size:12px;text-align:center;">Недостаточно данных</div>`;
+
+    // Топ-5 по времени
+    const topTime = [...validStats].sort((a, b) => (b.globalListenSeconds || 0) - (a.globalListenSeconds || 0)).slice(0, 5);
+    const ttHtml = topTime.length ? `<ul class="stat-list">${topTime.map(s => {
+      const t = window.TrackRegistry?.getTrackByUid(s.uid);
+      return t ? `<li><span>${esc(t.title)}</span><span>${fmtTime(s.globalListenSeconds || 0)}</span></li>` : '';
+    }).join('')}</ul>` : `<div class="stat-sub" style="color:#888;font-size:12px;text-align:center;">Недостаточно данных</div>`;
+
+    // Агрегация графиков
+    const byHour = Array(24).fill(0);
+    const byWeekday = Array(7).fill(0);
+    validStats.forEach(s => {
+      if (Array.isArray(s.byHour)) s.byHour.forEach((v, h) => byHour[h] += v || 0);
+      if (Array.isArray(s.byWeekday)) s.byWeekday.forEach((v, d) => byWeekday[d] += v || 0);
+    });
+
+    const maxH = Math.max(1, ...byHour);
+    const maxW = Math.max(1, ...byWeekday);
+    const hO = localStorage.getItem('myStatsHoursOpen') !== '0';
+    const wO = localStorage.getItem('myStatsWeekOpen') !== '0';
+
+    topTracksEl.innerHTML = `
+      <div class="chart-block" id="chart-hours">
+        <div class="chart-title" style="cursor:pointer;" id="chart-hours-toggle">По часам суток</div>
+        <div class="chart-bars" id="chart-hours-bars" ${hO ? '' : 'style="display:none;"'}>
+          ${byHour.map((v, h) => `<div class="chart-row"><div class="label">${String(h).padStart(2, '0')}</div><div class="bar"><div class="fill" style="width:${Math.round((v / maxH) * 100)}%"></div></div><div class="val">${v}</div></div>`).join('')}
+        </div>
+      </div>
+      <div class="chart-block" id="chart-week">
+        <div class="chart-title" style="cursor:pointer;" id="chart-week-toggle">По дням недели</div>
+        <div class="chart-bars" id="chart-week-bars" ${wO ? '' : 'style="display:none;"'}>
+          ${byWeekday.map((v, d) => `<div class="chart-row"><div class="label">${['Пн','Вт','Ср','Чт','Пт','Сб','Вс'][d]}</div><div class="bar"><div class="fill" style="width:${Math.round((v / maxW) * 100)}%"></div></div><div class="val">${v}</div></div>`).join('')}
+        </div>
+      </div>
+
+      <div class="stat-card" style="margin-bottom:10px;">
+        <div class="stat-title">Топ‑5 по прослушиваниям</div>
+        ${tvHtml}
+      </div>
+      <div class="stat-card" style="margin-bottom:15px;">
+        <div class="stat-title">Топ‑5 по времени</div>
+        ${ttHtml}
+      </div>
+
+      <div style="display:flex; justify-content:center; margin-top:8px;">
+        <button class="backup-btn" id="stats-reset-open-btn" style="background:#444;" type="button">ОЧИСТИТЬ СТАТИСТИКУ</button>
+      </div>
+    `;
+
+    // Привязка событий для сворачивания графиков
+    const bindToggle = (idT, idB, lsK) => {
+      const t = container.querySelector('#' + idT), b = container.querySelector('#' + idB);
+      if (t && b) t.onclick = () => {
+        const v = b.style.display !== 'none';
+        b.style.display = v ? 'none' : '';
+        localStorage.setItem(lsK, v ? '0' : '1');
+      };
+    };
+    bindToggle('chart-hours-toggle', 'chart-hours-bars', 'myStatsHoursOpen');
+    bindToggle('chart-week-toggle', 'chart-week-bars', 'myStatsWeekOpen');
+
+    // Кнопка очистки (Вызов модалки подтверждения)
+    const resetBtn = container.querySelector('#stats-reset-open-btn');
+    if (resetBtn) {
+      resetBtn.onclick = () => {
+        if (!window.Modals?.confirm) return;
+        window.Modals.confirm({
+          title: 'Очистка данных',
+          textHtml: `Что именно вы хотите сбросить?<br><br>
+            <button class="om-btn om-btn--outline" style="width:100%;margin-bottom:8px;" id="reset-only-stats">Только статистику треков</button>
+            <button class="om-btn om-btn--outline" style="width:100%;margin-bottom:8px;" id="reset-only-ach">Только достижения</button>
+            <button class="om-btn om-btn--danger" style="width:100%;" id="reset-all-data">Сбросить всё вообще</button>`,
+          confirmText: 'Отмена',
+          cancelText: 'Закрыть'
+        });
+        
+        setTimeout(() => {
+          document.getElementById('reset-only-stats')?.addEventListener('click', async () => {
+            const dev = localStorage.getItem('deviceHash');
+            await metaDB.tx('stats', 'readwrite', s => s.clear());
+            localStorage.setItem('deviceHash', dev);
+            window.NotificationSystem?.success('Статистика треков очищена');
+            window.location.reload();
+          });
+          document.getElementById('reset-only-ach')?.addEventListener('click', async () => {
+            await metaDB.setGlobal('unlocked_achievements', {});
+            await metaDB.setGlobal('user_profile_rpg', {xp:0, level:1});
+            window.NotificationSystem?.success('Достижения сброшены');
+            window.location.reload();
+          });
+          document.getElementById('reset-all-data')?.addEventListener('click', async () => {
+            await metaDB.tx('stats', 'readwrite', s => s.clear());
+            await metaDB.setGlobal('unlocked_achievements', {});
+            await metaDB.setGlobal('user_profile_rpg', {xp:0, level:1});
+            await metaDB.setGlobal('global_streak', {current:0, longest:0});
+            window.NotificationSystem?.success('Всё сброшено. Начните с чистого листа!');
+            window.location.reload();
+          });
+        }, 100);
+      };
+    }
   }
 
   // 5. Классический Рендер Достижений с фильтрами
