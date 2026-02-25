@@ -27,6 +27,8 @@ export class StatsAggregator {
         await metaDB.updateStat(ev.uid, (stat) => {
           stat.globalListenSeconds += (listenedSeconds || 0);
           stat.lastPlayedAt = ev.timestamp;
+          if (!stat.featuresUsed) stat.featuresUsed = {};
+          
           if (isValidListen) {
             stat.globalValidListenCount++;
             dailyActive = true;
@@ -35,6 +37,12 @@ export class StatsAggregator {
             stat.globalFullListenCount++;
             this.lastFullListens.set(ev.uid, ev.timestamp);
             
+            // Расширенная аналитика для Достижений (ТЗ 11.3)
+            const hour = new Date(ev.timestamp).getHours();
+            if (hour >= 0 && hour < 5) stat.featuresUsed.nightPlay = (stat.featuresUsed.nightPlay || 0) + 1;
+            if (hour >= 5 && hour < 8) stat.featuresUsed.earlyPlay = (stat.featuresUsed.earlyPlay || 0) + 1;
+            if (ev.data?.quality === 'hi') stat.featuresUsed.hiQuality = (stat.featuresUsed.hiQuality || 0) + 1;
+
             // Триггер облачного кэширования (ТЗ 5.2)
             const cN = parseInt(localStorage.getItem('cloud:listenThreshold')) || 5;
             if (stat.globalFullListenCount >= cN) {
