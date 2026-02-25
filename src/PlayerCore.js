@@ -209,7 +209,7 @@ import { ensureMediaSession } from './player-core/media-session.js';
         onload: () => tok === this._tok ? (pos && this.seek(pos), this._updMedia()) : this.sound?.unload(),
         onplay: () => tok === this._tok ? (this._startTick(), this._emit('onPlay', t, index), this._updMedia(), W.dispatchEvent(new CustomEvent('player:play', { detail: { uid, duration: this.getDuration(), type: 'audio' } }))) : this.sound?.stop(),
         onpause: () => tok === this._tok && (this._stopTick(), this._emit('onPause'), this._updMedia(), W.dispatchEvent(new CustomEvent('player:pause'))),
-        onend: () => tok === this._tok && (this._emit('onEnd'), this._updMedia(), W.dispatchEvent(new CustomEvent('player:ended')), this.flags.rep ? this.play(this.currentIndex) : this.next()),
+        onend: () => tok === this._tok && (this._emit('onEnd'), this._updMedia(), W.dispatchEvent(new CustomEvent('player:ended')), W.dispatchEvent(new CustomEvent('analytics:forceFlush')), this.flags.rep ? this.play(this.currentIndex) : this.next()),
         onloaderror: () => this._emit('onPlaybackError', { reason: 'loaderror' }) // External modules handle the error, NO STOP
       });
     }
