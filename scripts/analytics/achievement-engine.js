@@ -272,7 +272,8 @@ export class AchievementEngine {
             isUnlocked: isUnl,
             isHidden: false,
             unlockedAt: this.unlocked[key] || null,
-            progress: { current, target, pct }
+            progress: { current, target, pct },
+            xpReward: rule.reward.xp || 0
           });
         }
       } else if (rule.type === 'scalable') {
@@ -294,7 +295,8 @@ export class AchievementEngine {
             color: rule.ui.color,
             isUnlocked: true,
             isHidden: false,
-            unlockedAt: this.unlocked[`${key}_${curLevel}`]
+            unlockedAt: this.unlocked[`${key}_${curLevel}`],
+            xpReward: this._getScalableXP(rule, curLevel)
           });
           curLevel++;
         }
@@ -324,7 +326,8 @@ export class AchievementEngine {
             isUnlocked: false,
             isHidden: false,
             unlockedAt: null,
-            progress: { current: displayCurrent, target: displayTarget, pct }
+            progress: { current: displayCurrent, target: displayTarget, pct },
+            xpReward: this._getScalableXP(rule, curLevel)
           });
         }
       }
