@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-0e0619b30e6620e5b98453e55c7ee64a9d599556.idx
-│   │       ├── pack-0e0619b30e6620e5b98453e55c7ee64a9d599556.pack
-│   │       └── pack-0e0619b30e6620e5b98453e55c7ee64a9d599556.rev
+│   │       ├── pack-1612ab5c460aee2e84bb3251fa1d6b038731a86a.idx
+│   │       ├── pack-1612ab5c460aee2e84bb3251fa1d6b038731a86a.pack
+│   │       └── pack-1612ab5c460aee2e84bb3251fa1d6b038731a86a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -389,7 +389,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-25 20:50:24 UTC
+Сгенерировано: 2026-02-25 20:53:30 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -854,16 +854,33 @@ jobs:
 
       <div id="social-links" class="socials-under-cover"></div>
       
-      <div class="dashboard-widget" id="dashboard-widget">
-        <div class="streak-banner">
-          <span class="streak-icon">💡</span> <span id="streak-text">До «Недельный стрик»: 7 дней подряд</span>
+      <div id="ach-progress-root" class="ach-progress-root" aria-live="polite">
+        <!-- Классический баббл-подсказка -->
+        <div class="ach-hint-bubble" id="ach-hint-bubble" role="status" title="Открыть список достижений">
+          <span id="ach-hint-bubble-text">✨ Мы готовим достижения. Слушайте — прогресс уже копится.</span>
         </div>
-        <div class="dash-title">ПРОГРЕСС ДОСТИЖЕНИЙ</div>
-        <div class="dash-progress-wrap">
-          <div class="dash-progress-fill" id="achievementsFill"></div>
+        
+        <!-- RPG Шапка: Уровень и Прогресс Ачивок -->
+        <div class="ach-rpg-header">
+          <div class="rpg-level-badge">
+            <span class="lvl-lbl">УР</span>
+            <span class="lvl-val" id="user-level-badge">1</span>
+          </div>
+          <div class="ach-progress-bars">
+            <div class="ach-progress-header"><span class="ach-progress-title">ПРОГРЕСС ДОСТИЖЕНИЙ</span></div>
+            <div class="ach-bar ach-bar-single"><div class="ach-bar-fill" id="achievementsFill" style="width:0%"></div></div>
+            <div class="ach-stat-row">
+              <div class="ach-done-label" id="achievementsCount">ВЫПОЛНЕНО: 0 / 0</div>
+              <div class="ach-xp-label" id="xp-text">0 / 100 XP</div>
+            </div>
+            <!-- Полоска опыта -->
+            <div class="ach-bar ach-bar-xp"><div class="ach-bar-fill xp-fill" id="xp-progress-fill" style="width:0%"></div></div>
+          </div>
         </div>
-        <div class="dash-stats">ВЫПОЛНЕНО: <span id="achievementsCount">0 / 100</span></div>
-        <button class="dash-save-btn" id="dash-save-btn">СОХРАНИТЬ ДОСТИЖЕНИЯ</button>
+
+        <div class="ach-backup-controls" id="ach-backup-controls">
+          <button class="backup-btn" id="dash-save-btn" type="button">СОХРАНИТЬ ПРОГРЕСС</button>
+        </div>
       </div>
       
     </header>
