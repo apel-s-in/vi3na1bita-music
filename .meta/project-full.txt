@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-0d2c4f70cd514429abae3c1f2b042fc4b90174f0.idx
-│   │       ├── pack-0d2c4f70cd514429abae3c1f2b042fc4b90174f0.pack
-│   │       └── pack-0d2c4f70cd514429abae3c1f2b042fc4b90174f0.rev
+│   │       ├── pack-7b039c6ce8eb1c3238b1359becdb3f0f92688ca4.idx
+│   │       ├── pack-7b039c6ce8eb1c3238b1359becdb3f0f92688ca4.pack
+│   │       └── pack-7b039c6ce8eb1c3238b1359becdb3f0f92688ca4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -389,7 +389,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-25 21:26:23 UTC
+Сгенерировано: 2026-02-25 21:26:59 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2463,7 +2463,22 @@ export class StatsAggregator {
       W.NotificationSystem?.success('Успешно установлено!');
       const btn = $('install-pwa-btn');
       if (btn) btn.style.display = 'none';
+      if (W.eventLogger) {
+        W.eventLogger.log('FEATURE_USED', 'global', { feature: 'pwa_installed' });
+        W.dispatchEvent(new CustomEvent('analytics:forceFlush'));
+      }
     });
+
+    // Трекинг социальных сетей
+    const socialsBlock = $('social-links');
+    if (socialsBlock) {
+      socialsBlock.addEventListener('click', e => {
+        if (e.target.tagName === 'A' && W.eventLogger) {
+          W.eventLogger.log('FEATURE_USED', 'global', { feature: 'social_visit' });
+          W.dispatchEvent(new CustomEvent('analytics:forceFlush'));
+        }
+      });
+    }
   };
 
   const setupSW = () => {
