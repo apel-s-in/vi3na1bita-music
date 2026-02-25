@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8eaeb9ed5f52388cec1634115d130e7a00380440.idx
-│   │       ├── pack-8eaeb9ed5f52388cec1634115d130e7a00380440.pack
-│   │       └── pack-8eaeb9ed5f52388cec1634115d130e7a00380440.rev
+│   │       ├── pack-adca5ca88a3eb791ad98ae3912187d95ca1683ae.idx
+│   │       ├── pack-adca5ca88a3eb791ad98ae3912187d95ca1683ae.pack
+│   │       └── pack-adca5ca88a3eb791ad98ae3912187d95ca1683ae.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -389,7 +389,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-25 21:24:31 UTC
+Сгенерировано: 2026-02-25 21:25:10 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2182,7 +2182,10 @@ export class StatsAggregator {
           return stat;
         });
       } else if (ev.type === 'FEATURE_USED') {
-         await metaDB.updateStat(ev.uid, s => {
+         // Для фич самого приложения используем системный uid "global"
+         const targetUid = ev.uid || 'global';
+         await metaDB.updateStat(targetUid, s => {
+           if (!s.featuresUsed) s.featuresUsed = {};
            s.featuresUsed[ev.data.feature] = (s.featuresUsed[ev.data.feature] || 0) + 1;
            return s;
          });
