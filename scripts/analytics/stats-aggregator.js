@@ -18,6 +18,16 @@ export class StatsAggregator {
       if (ev.type === 'LISTEN_VALID' || ev.type === 'LISTEN_FULL') {
         await metaDB.updateStat('totalListenTime', (stat) => { stat.value += (ev.payload.seconds || 0); return stat; });
         await metaDB.updateStat('lastPlayed', (stat) => { stat.details[ev.payload.uid] = ev.timestamp; return stat; });
+        
+        // Логика стриков
+        await metaDB.updateStat('dailyStreak', (stat) => {
+          const today = Math.floor(ev.timestamp / 86400000);
+          const lastDay = stat.details.lastDay || 0;
+          if (today - lastDay === 1) { stat.value++; stat.details.lastDay = today; }
+          else if (today - lastDay > 1) { stat.value = 1; stat.details.lastDay = today; }
+          else if (!lastDay) { stat.value = 1; stat.details.lastDay = today; }
+          return stat;
+        });
       }
       if (ev.type === 'FEATURE_USED') {
          await metaDB.updateStat('features', (stat) => { stat.details[ev.payload.feature] = true; return stat; });
