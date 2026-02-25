@@ -6,6 +6,7 @@ const C = window.APP_CONFIG || {};
 const FAV = window.SPECIAL_FAVORITES_KEY || '__favorites__';
 const NEWS = window.SPECIAL_RELIZ_KEY || '__reliz__';
 const SHOWCASE = window.SPECIAL_SHOWCASE_KEY || '__showcase__';
+const PROFILE = window.APP_CONFIG?.SPECIAL_PROFILE_KEY || '__profile__';
 const STAR_ON = 'img/star.png';
 const STAR_OFF = 'img/star2.png';
 const LOGO = 'img/logo.png';
@@ -108,6 +109,7 @@ class AlbumsManager {
       if (key === FAV) await (await import('./albums/specials.js')).loadFavoritesAlbum(this);
       else if (key === NEWS) await (await import('./albums/specials.js')).loadNewsAlbum(this);
       else if (key === SHOWCASE) await (await import('./albums/specials.js')).loadShowcaseAlbum(this);
+      else if (key === PROFILE) await (await import('./albums/specials.js')).loadProfileAlbum(this);
       else await this._loadReg(key);
 
       this.curr = key; localStorage.setItem('currentAlbum', key);
