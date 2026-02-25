@@ -3,7 +3,11 @@ import { eventLogger } from './event-logger.js';
 
 export class CloudSyncManager {
   constructor() {
-    this.providers = { yandex: { clientId: 'YOUR_YANDEX_CLIENT_ID', authUrl: 'https://oauth.yandex.ru/authorize' } };
+    this.providers = { 
+      yandex: { clientId: 'YOUR_YANDEX_CLIENT_ID', authUrl: 'https://oauth.yandex.ru/authorize', name: 'Яндекс.Диск' },
+      google: { clientId: 'YOUR_GOOGLE_CLIENT_ID', authUrl: 'https://accounts.google.com/o/oauth2/v2/auth', name: 'Google Drive' },
+      vk: { clientId: 'YOUR_VK_CLIENT_ID', authUrl: 'https://oauth.vk.com/authorize', name: 'VK ID' }
+    };
     this.tokens = JSON.parse(localStorage.getItem('cloud_tokens') || '{}');
   }
 
