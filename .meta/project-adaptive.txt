@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-076f7ec9f5df33563a51020522e670cf94a165ec.idx
-│   │       ├── pack-076f7ec9f5df33563a51020522e670cf94a165ec.pack
-│   │       └── pack-076f7ec9f5df33563a51020522e670cf94a165ec.rev
+│   │       ├── pack-a57a196a6e6e9c6faea0a02e417dd0d03d07e56c.idx
+│   │       ├── pack-a57a196a6e6e9c6faea0a02e417dd0d03d07e56c.pack
+│   │       └── pack-a57a196a6e6e9c6faea0a02e417dd0d03d07e56c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-25 19:26:40 UTC
+Сгенерировано: 2026-02-25 19:31:51 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2618,149 +2618,6 @@ export async function loadProfileAlbum(ctx) {
     }
   }, 100);
 }
-    // ------------------------------------------------------------------------
-    // ВКЛАДКА: РЕКОМЕНДАЦИИ
-    // ------------------------------------------------------------------------
-    renderRecommendationsTab(container) {
-      container.innerHTML = `
-        <div class="profile-section fade-in">
-          <h3 class="section-title">Специально для вас</h3>
-          <div id="prof-recs-list" class="recs-grid">
-            <div class="profile-loader"></div>
-          </div>
-        </div>
-      `;
-
-      setTimeout(async () => {
-        try {
-          // Используем stats-aggregator для формирования умных рекомендаций
-          const stats = await window.StatsAggregator.getGlobalStats();
-          const topGenres = stats?.topGenres || [];
-          
-          let html = '';
-          if (topGenres.length === 0) {
-            html = `
-              <div class="fav-empty">
-                <i class="fas fa-headphones" style="font-size: 2rem; margin-bottom: 10px; opacity: 0.5;"></i><br>
-                Слушайте больше треков, чтобы алгоритм подобрал рекомендации.
-              </div>`;
-          } else {
-            html = topGenres.slice(0, 4).map(genre => `
-              <div class="rec-card glass-panel">
-                <div class="rec-icon"><i class="fas fa-magic"></i></div>
-                <div class="rec-info">
-                  <h4>Микс: ${genre.name || genre}</h4>
-                  <p>На основе ваших вкусов</p>
-                </div>
-                <button class="btn-icon btn-play-rec" title="Слушать"><i class="fas fa-play"></i></button>
-              </div>
-            `).join('');
-          }
-          container.querySelector('#prof-recs-list').innerHTML = html;
-        } catch (e) {
-          console.error('[ProfileUI] Ошибка загрузки рекомендаций:', e);
-          container.querySelector('#prof-recs-list').innerHTML = '<div class="fav-empty">Ошибка загрузки рекомендаций</div>';
-        }
-      }, 100);
-    }
-
-    // ------------------------------------------------------------------------
-    // ЛОГИКА АВТОРИЗАЦИИ И СИНХРОНИЗАЦИИ (Cloud Sync & MetaDB)
-    // ------------------------------------------------------------------------
-    initAuthListeners() {
-      // Кнопки OAuth
-      document.getElementById('auth-yandex')?.addEventListener('click', () => this.handleAuth('yandex'));
-      document.getElementById('auth-google')?.addEventListener('click', () => this.handleAuth('google'));
-      document.getElementById('auth-vk')?.addEventListener('click', () => this.handleAuth('vk'));
-      
-      // Кнопка принудительной синхронизации
-      document.getElementById('sync-now-btn')?.addEventListener('click', async (e) => {
-        const btn = e.target;
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Синхронизация...';
-        btn.disabled = true;
-        
-        try {
-          if (window.CloudSync && typeof window.CloudSync.sync === 'function') {
-            await window.CloudSync.sync();
-          }
-          window.EventLogger?.log('SYNC_MANUAL_TRIGGER', { status: 'success' });
-          
-          // Визуальное подтверждение
-          btn.innerHTML = '<i class="fas fa-check"></i> Успешно';
-          btn.classList.add('btn-success');
-          setTimeout(() => {
-            btn.innerHTML = originalText;
-            btn.classList.remove('btn-success');
-            btn.disabled = false;
-          }, 2000);
-        } catch (error) {
-          console.error('[ProfileUI] Ошибка синхронизации:', error);
-          btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Ошибка';
-          btn.classList.add('btn-error');
-          setTimeout(() => {
-            btn.innerHTML = originalText;
-            btn.classList.remove('btn-error');
-            btn.disabled = false;
-          }, 2000);
-        }
-      });
-    }
-
-    async handleAuth(provider) {
-      window.EventLogger?.log('AUTH_ATTEMPT', { provider });
-      try {
-        // Интеграция с существующим cloud-sync.js
-        if (provider === 'google' && window.CloudSync?.authenticateGoogle) {
-          await window.CloudSync.authenticateGoogle();
-        } else if (provider === 'yandex' && window.CloudSync?.authenticateYandex) {
-          await window.CloudSync.authenticateYandex();
-        } else {
-          // Fallback / Мок для визуализации, если API еще пишется
-          alert(`Процесс авторизации через ${provider.toUpperCase()} инициализирован.\nОкно провайдера откроется в новой вкладке.`);
-        }
-        
-        window.EventLogger?.log('AUTH_SUCCESS', { provider });
-        // Обновляем UI после успешной авторизации
-        this.renderProfileHeader();
-      } catch (e) {
-        console.error(`[ProfileUI] Ошибка авторизации (${provider}):`, e);
-        window.EventLogger?.log('AUTH_ERROR', { provider, error: e.message });
-      }
-    }
-
-    // ------------------------------------------------------------------------
-    // РЕДАКТИРОВАНИЕ ПРОФИЛЯ
-    // ------------------------------------------------------------------------
-    editProfile() {
-      // Используем session-tracker / meta-db для хранения
-      const currentName = localStorage.getItem('app_user_name') || 'Слушатель';
-      const newName = prompt('Введите ваше имя или никнейм:', currentName);
-      
-      if (newName && newName.trim() && newName.trim() !== currentName) {
-        const cleanName = newName.trim().substring(0, 30);
-        localStorage.setItem('app_user_name', cleanName);
-        document.getElementById('profile-user-name').textContent = cleanName;
-        window.EventLogger?.log('PROFILE_NAME_CHANGED');
-      }
-    }
-
-    changeAvatar() {
-      const avatars = ['🧑‍🚀', '🐱‍👤', '🎸', '🎧', '🦄', '😎', '🤖', '🦊', '🐼', '👽'];
-      const current = localStorage.getItem('app_user_avatar') || '🧑‍🚀';
-      const currentIndex = avatars.indexOf(current);
-      const nextAvatar = avatars[(currentIndex + 1) % avatars.length];
-      
-      localStorage.setItem('app_user_avatar', nextAvatar);
-      document.querySelector('.profile-avatar-img').textContent = nextAvatar;
-      window.EventLogger?.log('PROFILE_AVATAR_CHANGED', { avatar: nextAvatar });
-    }
-}
-
-// Экспортируем или инициализируем глобально
-document.addEventListener('DOMContentLoaded', () => {
-    window.UserProfile = new UserProfileUI();
-});
 
 //=================================================
 // FILE: /scripts/app/gallery.js
