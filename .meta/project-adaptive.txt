@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6abaf8931db4417ad8787bc1a5eb6c3783ef743b.idx
-│   │       ├── pack-6abaf8931db4417ad8787bc1a5eb6c3783ef743b.pack
-│   │       └── pack-6abaf8931db4417ad8787bc1a5eb6c3783ef743b.rev
+│   │       ├── pack-11d98038cfc1a5d72e132afed63fdc6fef77bf6d.idx
+│   │       ├── pack-11d98038cfc1a5d72e132afed63fdc6fef77bf6d.pack
+│   │       └── pack-11d98038cfc1a5d72e132afed63fdc6fef77bf6d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-25 19:38:02 UTC
+Сгенерировано: 2026-02-25 19:39:18 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2416,20 +2416,29 @@ export async function loadProfileAlbum(ctx) {
   const container = document.getElementById('track-list');
   if (!container) return;
 
-  const { metaDB } = await import('../../analytics/meta-db.js');
-  const { cloudSync } = await import('../../analytics/cloud-sync.js');
-  
-  // Получение данных
-  const allStats = await metaDB.getAllStats() || [];
-  const achievementsDoc = await metaDB.getGlobal('unlocked_achievements') || { value: {} };
-  const streakDoc = await metaDB.getGlobal('global_streak') || { value: { current: 0 } };
-  const userProfile = await metaDB.getGlobal('user_profile') || { value: { name: 'Слушатель', avatar: '😎' } };
+  // Безопасная загрузка модулей и данных с fallback'ами
+  let metaDB = null, cloudSync = null;
+  let allStats = [], achVal = {}, streakVal = { current: 0 }, upVal = { name: 'Слушатель', avatar: '😎' };
+
+  try {
+    const mDB = await import('../../analytics/meta-db.js');
+    metaDB = mDB.metaDB;
+    const cSync = await import('../../analytics/cloud-sync.js');
+    cloudSync = cSync.cloudSync;
+
+    allStats = (await metaDB.getAllStats().catch(()=>[])) || [];
+    achVal = (await metaDB.getGlobal('unlocked_achievements').catch(()=>({})))?.value || {};
+    streakVal = (await metaDB.getGlobal('global_streak').catch(()=>({})))?.value || { current: 0 };
+    upVal = (await metaDB.getGlobal('user_profile').catch(()=>({})))?.value || { name: 'Слушатель', avatar: '😎' };
+  } catch (e) {
+    console.error('[Profile] Ошибка инициализации БД или модулей:', e);
+  }
   
   // Агрегация статистики
   const totalFull = allStats.reduce((acc, s) => acc + (s.globalFullListenCount || 0), 0);
   const totalSecs = allStats.reduce((acc, s) => acc + (s.globalListenSeconds || 0), 0);
   const totalTimeStr = window.Utils?.fmt?.durationHuman ? window.Utils.fmt.durationHuman(totalSecs) : `${Math.floor(totalSecs / 60)}м`;
-  const achUnlocked = Object.keys(achievementsDoc.value).length;
+  const achUnlocked = Object.keys(achVal).length;
   const engine = window.achievementEngine;
 
   // Авторизации
@@ -2444,9 +2453,9 @@ export async function loadProfileAlbum(ctx) {
     <div class="profile-wrap">
       <!-- Шапка: Аватар и Имя -->
       <div class="profile-header">
-        <div class="profile-avatar-btn" id="prof-avatar-btn" title="Изменить аватар">${userProfile.value.avatar}</div>
+        <div class="profile-avatar-btn" id="prof-avatar-btn" title="Изменить аватар">${upVal.avatar}</div>
         <div class="profile-name-wrap">
-          <input type="text" id="prof-name-inp" class="profile-name-input" value="${esc(userProfile.value.name)}" maxlength="15" autocomplete="off" spellcheck="false">
+          <input type="text" id="prof-name-inp" class="profile-name-input" value="${esc(upVal.name)}" maxlength="15" autocomplete="off" spellcheck="false">
           <span class="profile-edit-icon" id="prof-name-edit">✏️</span>
         </div>
       </div>
@@ -2471,7 +2480,7 @@ export async function loadProfileAlbum(ctx) {
         <div class="stats-grid-compact">
           <div class="stat-box"><b>${totalFull}</b><span>Треков</span></div>
           <div class="stat-box"><b>${totalTimeStr}</b><span>В пути</span></div>
-          <div class="stat-box"><b>${streakDoc.value.current}</b><span>Стрик (дней)</span></div>
+          <div class="stat-box"><b>${streakVal.current}</b><span>Стрик (дней)</span></div>
           <div class="stat-box"><b>${achUnlocked}</b><span>Ачивок</span></div>
         </div>
         <div class="profile-section-title">🏆 ТОП-5 ТРЕКОВ</div>
@@ -2480,7 +2489,7 @@ export async function loadProfileAlbum(ctx) {
 
       <!-- Содержимое: Достижения -->
       <div class="profile-tab-content" id="tab-achievements">
-        <div class="profile-section-title">ОТКРЫТО: ${achUnlocked} / ${engine?.achievements.length || 0}</div>
+        <div class="profile-section-title">ОТКРЫТО: ${achUnlocked} / ${engine?.achievements?.length || 0}</div>
         <div id="prof-ach-list"></div>
       </div>
 
@@ -2503,44 +2512,52 @@ export async function loadProfileAlbum(ctx) {
   // 1. Аватар и Имя
   const nameInp = container.querySelector('#prof-name-inp');
   const saveProfile = async () => {
-    const newName = nameInp.value.trim() || 'Слушатель';
-    await metaDB.setGlobal('user_profile', { ...userProfile.value, name: newName });
+    if (!nameInp) return;
+    upVal.name = nameInp.value.trim() || 'Слушатель';
+    if (metaDB) await metaDB.setGlobal('user_profile', upVal).catch(()=>{});
     window.NotificationSystem?.success('Имя сохранено');
   };
-  nameInp.addEventListener('blur', saveProfile);
-  nameInp.addEventListener('keydown', e => e.key === 'Enter' && nameInp.blur());
   
-  container.querySelector('#prof-name-edit').onclick = () => nameInp.focus();
+  if (nameInp) {
+    nameInp.addEventListener('blur', saveProfile);
+    nameInp.addEventListener('keydown', e => e.key === 'Enter' && nameInp.blur());
+  }
+  
+  const editBtn = container.querySelector('#prof-name-edit');
+  if (editBtn && nameInp) editBtn.onclick = () => nameInp.focus();
 
-  container.querySelector('#prof-avatar-btn').onclick = async (e) => {
-    const avatars = ['😎','🎧','🎸','🦄','🦇','👽','🤖','🐱','🦊','🐼','🔥','💎'];
-    const html = `<div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;">` + 
-      avatars.map(a => `<button class="showcase-color-dot" style="font-size:24px;background:#232b38" data-ava="${a}">${a}</button>`).join('') + `</div>`;
-    const m = window.Modals.open({ title: 'Выберите аватар', bodyHtml: html });
-    m.addEventListener('click', async ev => {
-      const btn = ev.target.closest('[data-ava]');
-      if (btn) {
-        userProfile.value.avatar = btn.dataset.ava;
-        e.target.textContent = btn.dataset.ava;
-        await metaDB.setGlobal('user_profile', userProfile.value);
-        m.remove();
-      }
-    });
-  };
+  const avaBtn = container.querySelector('#prof-avatar-btn');
+  if (avaBtn) {
+    avaBtn.onclick = async (e) => {
+      const avatars = ['😎','🎧','🎸','🦄','🦇','👽','🤖','🐱','🦊','🐼','🔥','💎'];
+      const html = `<div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;">` + 
+        avatars.map(a => `<button class="showcase-color-dot" style="font-size:24px;background:#232b38" data-ava="${a}">${a}</button>`).join('') + `</div>`;
+      const m = window.Modals.open({ title: 'Выберите аватар', bodyHtml: html });
+      m.addEventListener('click', async ev => {
+        const btn = ev.target.closest('[data-ava]');
+        if (btn) {
+          upVal.avatar = btn.dataset.ava;
+          e.target.textContent = btn.dataset.ava;
+          if (metaDB) await metaDB.setGlobal('user_profile', upVal).catch(()=>{});
+          m.remove();
+        }
+      });
+    };
+  }
 
   // 2. Вкладки
   const tabs = container.querySelectorAll('.profile-tab-btn');
   const contents = container.querySelectorAll('.profile-tab-content');
-  container.querySelector('#prof-tabs').addEventListener('click', e => {
+  container.querySelector('#prof-tabs')?.addEventListener('click', e => {
     if (e.target.tagName !== 'BUTTON') return;
     tabs.forEach(t => t.classList.remove('active'));
     contents.forEach(c => c.classList.remove('active'));
     e.target.classList.add('active');
-    container.querySelector(`#tab-${e.target.dataset.tab}`).classList.add('active');
+    container.querySelector(`#tab-${e.target.dataset.tab}`)?.classList.add('active');
   });
 
   // 3. Авторизация (Облако)
-  container.querySelector('.profile-auth-grid').addEventListener('click', e => {
+  container.querySelector('.profile-auth-grid')?.addEventListener('click', e => {
     const btn = e.target.closest('.auth-btn');
     if (!btn) return;
     const id = btn.dataset.auth;
@@ -2555,60 +2572,69 @@ export async function loadProfileAlbum(ctx) {
 
   // 4. Рендер Топ-Треков
   const sortedStats = [...allStats].sort((a, b) => (b.globalFullListenCount || 0) - (a.globalFullListenCount || 0)).slice(0, 5);
-  container.querySelector('#prof-top-tracks').innerHTML = sortedStats.length ? sortedStats.map(s => {
-    const t = window.TrackRegistry?.getTrackByUid(s.uid);
-    return t ? `<div class="profile-list-item">
-      <div class="log-info"><div class="log-title">${esc(t.title)}</div><div class="log-desc">${esc(t.album)}</div></div>
-      <div style="font-weight:900;color:var(--secondary-color)">${s.globalFullListenCount} раз</div>
-    </div>` : '';
-  }).join('') : '<div class="fav-empty">Слушайте треки, чтобы они появились здесь</div>';
+  const topTracksEl = container.querySelector('#prof-top-tracks');
+  if (topTracksEl) {
+    topTracksEl.innerHTML = sortedStats.length ? sortedStats.map(s => {
+      const t = window.TrackRegistry?.getTrackByUid(s.uid);
+      return t ? `<div class="profile-list-item">
+        <div class="log-info"><div class="log-title">${esc(t.title)}</div><div class="log-desc">${esc(t.album)}</div></div>
+        <div style="font-weight:900;color:var(--secondary-color)">${s.globalFullListenCount} раз</div>
+      </div>` : '';
+    }).join('') : '<div class="fav-empty">Слушайте треки, чтобы они появились здесь</div>';
+  }
 
   // 5. Рендер Достижений
-  if (engine) {
-    const achSorted = [...engine.achievements].sort((a, b) => (achievementsDoc.value[b.id] ? 1 : 0) - (achievementsDoc.value[a.id] ? 1 : 0));
-    container.querySelector('#prof-ach-list').innerHTML = achSorted.map(a => `
-      <div class="ach-item ${achievementsDoc.value[a.id] ? '' : 'locked'}">
+  const achListEl = container.querySelector('#prof-ach-list');
+  if (achListEl && engine?.achievements) {
+    const achSorted = [...engine.achievements].sort((a, b) => (achVal[b.id] ? 1 : 0) - (achVal[a.id] ? 1 : 0));
+    achListEl.innerHTML = achSorted.map(a => `
+      <div class="ach-item ${achVal[a.id] ? '' : 'locked'}">
         <div class="ach-icon">${a.icon}</div>
         <div class="ach-info"><div class="ach-name">${a.name}</div><div class="ach-desc">${a.desc}</div></div>
-        ${achievementsDoc.value[a.id] ? '<div class="ach-check">✓</div>' : ''}
+        ${achVal[a.id] ? '<div class="ach-check">✓</div>' : ''}
       </div>`).join('');
   }
 
-  // 6. Рендер Рекомендаций (Lightweight algorithm based on 0 listens or random)
-  const allUids = window.TrackRegistry?.getAllUids() || [];
+  // 6. Рендер Рекомендаций
+  const allUids = window.TrackRegistry?.getAllUids?.() || [];
   const listenedUids = new Set(allStats.filter(s => s.globalFullListenCount > 0).map(s => s.uid));
   const recUids = allUids.filter(u => !listenedUids.has(u)).sort(() => Math.random() - 0.5).slice(0, 4);
   
-  container.querySelector('#prof-recs-list').innerHTML = recUids.length ? recUids.map(uid => {
-    const t = window.TrackRegistry?.getTrackByUid(uid);
-    if (!t) return '';
-    return `<div class="profile-list-item">
-      <div class="log-info"><div class="log-title">${esc(t.title)}</div><div class="log-desc">${esc(t.album)}</div></div>
-      <button class="rec-play-btn" data-playuid="${uid}">▶</button>
-    </div>`;
-  }).join('') : '<div class="fav-empty">Вы прослушали абсолютно всё! 🏆</div>';
+  const recsListEl = container.querySelector('#prof-recs-list');
+  if (recsListEl) {
+    recsListEl.innerHTML = recUids.length ? recUids.map(uid => {
+      const t = window.TrackRegistry?.getTrackByUid(uid);
+      if (!t) return '';
+      return `<div class="profile-list-item">
+        <div class="log-info"><div class="log-title">${esc(t.title)}</div><div class="log-desc">${esc(t.album)}</div></div>
+        <button class="rec-play-btn" data-playuid="${uid}">▶</button>
+      </div>`;
+    }).join('') : '<div class="fav-empty">Вы прослушали абсолютно всё! 🏆</div>';
 
-  container.querySelector('#prof-recs-list').addEventListener('click', e => {
-    const btn = e.target.closest('.rec-play-btn');
-    if (btn && window.ShowcaseManager) {
-      window.ShowcaseManager.playContext(btn.dataset.playuid);
-      window.NotificationSystem?.info('Запуск рекомендации');
-    }
-  });
+    recsListEl.addEventListener('click', e => {
+      const btn = e.target.closest('.rec-play-btn');
+      if (btn && window.ShowcaseManager?.playContext) {
+        window.ShowcaseManager.playContext(btn.dataset.playuid);
+        window.NotificationSystem?.info('Запуск рекомендации');
+      }
+    });
+  }
 
-  // 7. Рендер Журнала (Асинхронно, чтобы не тормозить UI)
+  // 7. Рендер Журнала (Асинхронно)
   setTimeout(async () => {
+    const logsEl = container.querySelector('#prof-logs-list');
+    if (!logsEl) return;
     try {
-      const hot = await metaDB.getEvents('events_hot');
-      const warm = await metaDB.getEvents('events_warm');
+      const hot = metaDB ? await metaDB.getEvents('events_hot').catch(()=>[]) : [];
+      const warm = metaDB ? await metaDB.getEvents('events_warm').catch(()=>[]) : [];
       const logs = [...hot, ...warm].sort((a, b) => b.timestamp - a.timestamp).slice(0, 20);
       
       const typeMap = { 'LISTEN_COMPLETE': '🎵 Прослушано', 'LISTEN_SKIP': '⏭️ Пропущено', 'ACHIEVEMENT_UNLOCK': '🏆 Достижение', 'FEATURE_USED': '🛠️ Использовано' };
       
-      container.querySelector('#prof-logs-list').innerHTML = logs.length ? logs.map(l => {
+      logsEl.innerHTML = logs.length ? logs.map(l => {
         const d = new Date(l.timestamp);
         const timeStr = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-        let desc = window.TrackRegistry?.getTrackByUid(l.uid)?.title || l.uid || '';
+        let desc = window.TrackRegistry?.getTrackByUid?.(l.uid)?.title || l.uid || '';
         if (l.type === 'ACHIEVEMENT_UNLOCK') desc = `Ачивка: ${l.data?.id || ''}`;
         
         return `<div class="profile-list-item">
@@ -2617,7 +2643,7 @@ export async function loadProfileAlbum(ctx) {
         </div>`;
       }).join('') : '<div class="fav-empty">Журнал событий пуст</div>';
     } catch {
-      container.querySelector('#prof-logs-list').innerHTML = '<div class="fav-empty">Ошибка загрузки журнала</div>';
+      logsEl.innerHTML = '<div class="fav-empty">Журнал событий пуст или недоступен</div>';
     }
   }, 100);
 }
