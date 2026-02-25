@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-62b24b9f936f958b87d232b61d94f2efd635da45.idx
-│   │       ├── pack-62b24b9f936f958b87d232b61d94f2efd635da45.pack
-│   │       └── pack-62b24b9f936f958b87d232b61d94f2efd635da45.rev
+│   │       ├── pack-0d2c4f70cd514429abae3c1f2b042fc4b90174f0.idx
+│   │       ├── pack-0d2c4f70cd514429abae3c1f2b042fc4b90174f0.pack
+│   │       └── pack-0d2c4f70cd514429abae3c1f2b042fc4b90174f0.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -389,7 +389,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-25 21:25:48 UTC
+Сгенерировано: 2026-02-25 21:26:23 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1779,6 +1779,11 @@ export class BackupVault {
     const a = document.createElement('a'); a.href = url; 
     a.download = `vi3na1bita_backup_${new Date().toISOString().split('T')[0]}.vi3bak`; 
     a.click(); URL.revokeObjectURL(url);
+    
+    if (window.eventLogger) {
+      window.eventLogger.log('FEATURE_USED', 'global', { feature: 'backup' });
+      window.dispatchEvent(new CustomEvent('analytics:forceFlush'));
+    }
   }
 
   static async importData(file) {
