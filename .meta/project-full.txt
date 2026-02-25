@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-01778efd75557c6fc2256f9fb36ef869f5454d62.idx
-│   │       ├── pack-01778efd75557c6fc2256f9fb36ef869f5454d62.pack
-│   │       └── pack-01778efd75557c6fc2256f9fb36ef869f5454d62.rev
+│   │       ├── pack-eb5049e63de837a94733467cccd753aea788365a.idx
+│   │       ├── pack-eb5049e63de837a94733467cccd753aea788365a.pack
+│   │       └── pack-eb5049e63de837a94733467cccd753aea788365a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-25 18:39:08 UTC
+Сгенерировано: 2026-02-25 18:39:51 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2879,7 +2879,7 @@ window.PlaybackCache.unprotectWindow = unprotectWindow;
         'repeat-btn': () => { PC().toggleRepeat(); syncUI(); },
         'mute-btn': () => { PC().setMuted(!PC().isMuted()); syncUI(); },
         'pq-btn': onPQClick,
-        'lyrics-toggle-btn': () => W.LyricsController?.toggleLyricsView?.(),
+        'lyrics-toggle-btn': () => { W.LyricsController?.toggleLyricsView?.(); W.eventLogger?.log('FEATURE_USED', PC().getCurrentTrackUid(), { feature: 'lyrics' }); },
         'animation-btn': () => W.LyricsController?.toggleAnimation?.(),
         'lyrics-text-btn': () => W.LyricsModal?.show?.(),
         'pulse-btn': togglePulse,
