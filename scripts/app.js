@@ -93,11 +93,40 @@
           if (xpTextEl) xpTextEl.textContent = `${profile.xp} / ${nextLevelXp} XP`;
         }
         
-        if (bubbleText && streak !== undefined) {
-          const s = streak;
-          const next = s < 3 ? 3 : (s < 7 ? 7 : (s < 14 ? 14 : (s < 30 ? 30 : 100)));
-          if (s >= 100) bubbleText.innerHTML = `✨ Легенда! Ваш стрик: ${s} дней`;
-          else bubbleText.innerHTML = `✨ До «Стрик ${next} дней»: осталось ${next - s}`;
+        // Ротатор подсказок для Баббла (Ближайшие цели)
+        if (bubbleText) {
+          // Выцепляем из движка невыполненные ачивки, где есть прогресс
+          const engine = W.achievementEngine;
+          if (engine && engine.achievements) {
+            const goals = engine.achievements
+              .filter(a => !a.isUnlocked && !a.isHidden && a.progress && a.progress.target > a.progress.current)
+              .sort((a, b) => b.progress.pct - a.progress.pct) // Сортируем по близости к выполнению
+              .slice(0, 3)
+              .map(a => `✨ До «${a.name.replace(/ ур\. \d+/, '')}»: осталось ${a.progress.target - a.progress.current}`);
+            
+            // Всегда добавляем стрик в пул подсказок
+            const nextStreak = streak < 3 ? 3 : (streak < 7 ? 7 : (streak < 14 ? 14 : 30));
+            if (streak < 30) goals.push(`✨ До «Стрик ${nextStreak} дней»: осталось ${nextStreak - streak}`);
+            else goals.push(`✨ Легенда! Ваш стрик: ${streak} дней`);
+
+            // Очищаем старый интервал, если был
+            if (W._bubbleInterval) clearInterval(W._bubbleInterval);
+            
+            let bIdx = 0;
+            const updateB = () => {
+              if (goals.length > 0) {
+                bubbleText.style.opacity = 0;
+                setTimeout(() => {
+                  bubbleText.innerHTML = goals[bIdx % goals.length];
+                  bubbleText.style.opacity = 1;
+                  bIdx++;
+                }, 300);
+              }
+            };
+            
+            updateB();
+            if (goals.length > 1) W._bubbleInterval = setInterval(updateB, 8000);
+          }
         }
       });
 
