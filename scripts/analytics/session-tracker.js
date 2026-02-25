@@ -24,6 +24,16 @@ export class SessionTracker {
       uid, variant: type, quality: window.playerCore?.qMode || 'hi',
       duration: duration || 0, accumulatedMs: 0, lastPos: 0, lastUpdate: Date.now() 
     };
+    
+    // Скрытые временные события для Rule Engine
+    const d = new Date();
+    if (d.getHours() === 11 && d.getMinutes() === 11) {
+      eventLogger.log('FEATURE_USED', 'global', { feature: 'play_11_11' });
+    }
+    if (d.getDay() === 0 || d.getDay() === 6) {
+      eventLogger.log('FEATURE_USED', 'global', { feature: 'weekend_play' });
+    }
+
     eventLogger.log('LISTEN_START', uid, { variant: type });
   }
 
