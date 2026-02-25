@@ -2,24 +2,40 @@ import { metaDB } from './meta-db.js';
 
 class EventLogger {
   constructor() {
-    this.hotQueue = [];
+    this.queue = [];
     this.deviceHash = localStorage.getItem('deviceHash') || crypto.randomUUID();
+    this.sessionId = crypto.randomUUID();
     localStorage.setItem('deviceHash', this.deviceHash);
   }
+
   async init() {
     await metaDB.init();
-    window.addEventListener('visibilitychange', () => { if (document.hidden) this.flush(); });
-    setInterval(() => this.flush(), 30000);
+    window.addEventListener('visibilitychange', () => document.hidden && this.flush());
+    window.addEventListener('beforeunload', () => this.flush());
+    setInterval(() => this.flush(), 15000); // Оптимизированный сброс каждые 15 сек
   }
-  log(type, payload) {
-    this.hotQueue.push({ type, payload, timestamp: Date.now(), deviceHash: this.deviceHash, uuid: crypto.randomUUID() });
-    if (this.hotQueue.length > 50) this.flush();
+
+  log(type, uid, data = {}) {
+    this.queue.push({
+      eventId: crypto.randomUUID(),
+      sessionId: this.sessionId,
+      deviceHash: this.deviceHash,
+      platform: window.Utils?.getPlatform()?.isIOS ? 'ios' : 'web',
+      type, uid, timestamp: Date.now(), data
+    });
+    if (this.queue.length > 20) this.flush();
   }
+
   async flush() {
-    if (!this.hotQueue.length) return;
-    const batch = [...this.hotQueue]; this.hotQueue = [];
-    for (const ev of batch) await metaDB.addEvent(ev);
-    window.dispatchEvent(new CustomEvent('analytics:logUpdated'));
+    if (!this.queue.length) return;
+    const batch = [...this.queue];
+    this.queue = [];
+    try {
+      await metaDB.addEvents(batch, 'events_hot');
+      window.dispatchEvent(new CustomEvent('analytics:logUpdated'));
+    } catch (e) {
+      this.queue = [...batch, ...this.queue]; // Возврат в очередь при ошибке
+    }
   }
 }
 export const eventLogger = new EventLogger();
