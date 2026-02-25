@@ -224,7 +224,11 @@ export async function loadProfileAlbum(ctx) {
 
       <!-- Содержимое: Достижения -->
       <div class="profile-tab-content" id="tab-achievements">
-        <div class="profile-section-title">ОТКРЫТО: ${achUnlocked} / ${engine?.achievements?.length || 0}</div>
+        <div class="ach-classic-tabs" id="ach-inner-tabs">
+          <div class="ach-classic-tab active" data-filter="all">Все</div>
+          <div class="ach-classic-tab" data-filter="available">Доступные</div>
+          <div class="ach-classic-tab" data-filter="done">Выполненные</div>
+        </div>
         <div id="prof-ach-list"></div>
       </div>
 
@@ -318,17 +322,67 @@ export async function loadProfileAlbum(ctx) {
     }).join('') : '<div class="fav-empty">Слушайте треки, чтобы они появились здесь</div>';
   }
 
-  // 5. Рендер Достижений
+  // 5. Классический Рендер Достижений с фильтрами
   const achListEl = container.querySelector('#prof-ach-list');
-  if (achListEl && engine?.achievements) {
-    const achSorted = [...engine.achievements].sort((a, b) => (achVal[b.id] ? 1 : 0) - (achVal[a.id] ? 1 : 0));
-    achListEl.innerHTML = achSorted.map(a => `
-      <div class="ach-item ${achVal[a.id] ? '' : 'locked'}">
-        <div class="ach-icon">${a.icon}</div>
-        <div class="ach-info"><div class="ach-name">${a.name}</div><div class="ach-desc">${a.desc}</div></div>
-        ${achVal[a.id] ? '<div class="ach-check">✓</div>' : ''}
-      </div>`).join('');
+  const innerTabs = container.querySelector('#ach-inner-tabs');
+  
+  const renderAchievements = (filter) => {
+    if (!achListEl || !engine || !engine.achievements) return;
+    
+    // Движок уже вернул правильно отсортированный плоский массив
+    let items = engine.achievements;
+    
+    if (filter === 'available') items = items.filter(a => !a.isUnlocked);
+    if (filter === 'done') items = items.filter(a => a.isUnlocked);
+    
+    if (!items.length) {
+      achListEl.innerHTML = '<div class="fav-empty">По данному фильтру ничего нет</div>';
+      return;
+    }
+
+    achListEl.innerHTML = items.map(a => {
+      // Ищем XP награду в словаре движка (вытаскиваем математику)
+      const isBaseId = a.id.split('_').slice(0, -1).join('_');
+      const rule = engine.dict[a.id] || engine.dict[isBaseId];
+      let xp = 0;
+      if (rule) {
+        if (rule.type === 'static') xp = rule.reward.xp;
+        else if (rule.type === 'scalable') {
+          const lvl = parseInt(a.id.split('_').pop(), 10);
+          xp = engine._getScalableXP(rule, lvl);
+        }
+      }
+
+      return `
+        <div class="ach-item ${a.isUnlocked ? 'done' : ''}">
+          <div class="ach-status" style="filter: drop-shadow(0 0 4px ${a.color || '#fff'})">${a.isUnlocked ? '✅' : '🔸'}</div>
+          <div class="ach-main">
+            <div class="ach-title">${a.icon} ${a.name}</div>
+            <div class="ach-sub">${a.isUnlocked && a.unlockedAt ? `Открыто: ${new Date(a.unlockedAt).toLocaleDateString()}` : a.desc}</div>
+          </div>
+          <div class="ach-right">
+            ${a.isUnlocked 
+              ? `<span class="ach-done-date">+${xp} XP</span>` 
+              : `<span class="ach-lock">${xp} XP</span>`
+            }
+          </div>
+        </div>
+      `;
+    }).join('');
+  };
+
+  if (innerTabs) {
+    innerTabs.addEventListener('click', e => {
+      const tab = e.target.closest('.ach-classic-tab');
+      if (!tab) return;
+      innerTabs.querySelectorAll('.ach-classic-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      renderAchievements(tab.dataset.filter);
+    });
   }
+  
+  // Первичный рендер (Все)
+  renderAchievements('all');
 
   // 6. Рендер Рекомендаций
   const allUids = window.TrackRegistry?.getAllUids?.() || [];
