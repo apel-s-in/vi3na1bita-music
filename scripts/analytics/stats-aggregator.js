@@ -3,6 +3,12 @@ import { metaDB } from './meta-db.js';
 export class StatsAggregator {
   constructor() {
     this.lastFullListens = new Map(); // Anti-tamper & Rate Limiting (in-memory)
+    this.session = {
+      favOrderedRun: 0,
+      favShuffleEvents: new Set(),
+      midnightTripleTrack: null,
+      midnightTripleCount: 0
+    };
     window.addEventListener('analytics:logUpdated', () => this.processHotEvents());
   }
 
@@ -47,6 +53,44 @@ export class StatsAggregator {
             const cN = parseInt(localStorage.getItem('cloud:listenThreshold')) || 5;
             if (stat.globalFullListenCount >= cN) {
                window.dispatchEvent(new CustomEvent('analytics:cloudThresholdReached', { detail: { uid: ev.uid } }));
+            }
+            
+            // --- ТРЕКИНГ КОМБО (Старое приложение) ---
+            const g = window.playerCore;
+            if (g) {
+              const isFavOnly = localStorage.getItem('favoritesOnlyMode') === '1';
+              const isShuffle = g.isShuffle();
+              const isFavNow = g.isFavorite(ev.uid);
+
+              if (isShuffle) stat.featuresUsed.shufflePlay = (stat.featuresUsed.shufflePlay || 0) + 1;
+
+              if (isFavOnly && !isShuffle && isFavNow) this.session.favOrderedRun++;
+              else this.session.favOrderedRun = 0;
+
+              if (isFavOnly && isShuffle && isFavNow) this.session.favShuffleEvents.add(ev.uid);
+              else this.session.favShuffleEvents.clear();
+
+              // Полночный цикл (00:00 - 00:30)
+              const timeStr = new Date(ev.timestamp).toTimeString().slice(0, 8);
+              if (timeStr >= '00:00:00' && timeStr <= '00:30:00') {
+                if (this.session.midnightTripleTrack === ev.uid) this.session.midnightTripleCount++;
+                else { this.session.midnightTripleTrack = ev.uid; this.session.midnightTripleCount = 1; }
+              } else {
+                this.session.midnightTripleCount = 0;
+              }
+
+              // Запись комбо в глобальную статистику
+              if (this.session.favOrderedRun >= 5 || this.session.favShuffleEvents.size >= 5 || this.session.midnightTripleCount >= 3) {
+                 setTimeout(async () => {
+                   await metaDB.updateStat('global', s => {
+                     if (!s.featuresUsed) s.featuresUsed = {};
+                     if (this.session.favOrderedRun >= 5) s.featuresUsed.fav_ordered_5 = 5;
+                     if (this.session.favShuffleEvents.size >= 5) s.featuresUsed.fav_shuffle_5 = 5;
+                     if (this.session.midnightTripleCount >= 3) s.featuresUsed.midnight_triple = 1;
+                     return s;
+                   });
+                 }, 500);
+              }
             }
           }
           return stat;
