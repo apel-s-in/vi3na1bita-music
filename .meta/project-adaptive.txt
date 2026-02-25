@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-654b710bf0455c8175bf0a60098fb7f2e3ad58c6.idx
-│   │       ├── pack-654b710bf0455c8175bf0a60098fb7f2e3ad58c6.pack
-│   │       └── pack-654b710bf0455c8175bf0a60098fb7f2e3ad58c6.rev
+│   │       ├── pack-c8c17719782e3e7e353708f350a1b93e9d1355a2.idx
+│   │       ├── pack-c8c17719782e3e7e353708f350a1b93e9d1355a2.pack
+│   │       └── pack-c8c17719782e3e7e353708f350a1b93e9d1355a2.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -389,7 +389,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-25 21:45:04 UTC
+Сгенерировано: 2026-02-25 21:46:24 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9726,6 +9726,22 @@ body{min-height:100vh;min-width:100vw;font-family:-apple-system,BlinkMacSystemFo
 .ach-right { text-align: right; flex-shrink: 0; margin-left: 10px; }
 .ach-done-date { display: inline-block; background: rgba(76, 175, 80, 0.15); color: #81c784; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 900; }
 .ach-lock { display: inline-block; background: rgba(255, 152, 0, 0.15); color: #ffb74d; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 900; }
+
+/* Раскрывающийся блок "Подробнее" */
+.ach-item { flex-direction: column; align-items: stretch; cursor: pointer; }
+.ach-item-header { display: flex; align-items: center; width: 100%; }
+.ach-more {
+  display: block; margin-top: 6px; padding: 4px 8px; font-size: 10px; font-weight: bold;
+  background: rgba(255,255,255,0.1); color: #ccc; border: none; border-radius: 4px; cursor: pointer;
+  width: 100%; text-transform: uppercase;
+}
+.ach-more:hover { background: rgba(255,255,255,0.2); color: #fff; }
+.ach-details {
+  grid-column: 1 / -1; padding: 12px 8px 4px; border-top: 1px dashed rgba(255,255,255,0.1); 
+  margin-top: 10px; width: 100%; animation: fadeIn 0.2s ease;
+}
+.ach-mini-bar { width: 100%; background: rgba(0,0,0,0.3); height: 4px; border-radius: 2px; overflow: hidden; }
+.ach-mini-fill { background: #4daaff; height: 100%; transition: width 0.3s ease; }
 
 /* Modern Profile View (v4.0) */
 .profile-wrap { padding: 0 10px 20px; display: flex; flex-direction: column; gap: 16px; animation: fadeIn 0.3s ease; }
