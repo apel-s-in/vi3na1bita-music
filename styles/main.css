@@ -819,3 +819,188 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .sc-sheet-btn { width: 100%; padding: 14px; text-align: left; background: transparent; border: none; color: #e0e0e0; font-size: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; gap: 12px; cursor: pointer; }
 .sc-sheet-btn:active { background: rgba(255,255,255,0.05); }
 .sc-sheet-btn:last-child { border-bottom: none; }
+
+/* ==========================================================================
+   USER PROFILE DASHBOARD STYLES (v4.0)
+   ========================================================================== */
+.profile-modal {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: var(--bg-color, #121212);
+    z-index: 9999;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.profile-modal.hidden {
+    display: none;
+}
+
+/* Header & User Info */
+.profile-header {
+    padding: 30px 20px 20px;
+    background: linear-gradient(180deg, var(--accent-color, #1db954) 0%, transparent 100%);
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    position: relative;
+}
+
+.btn-close-profile {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(0,0,0,0.5);
+    border: none;
+    color: #fff;
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    backdrop-filter: blur(5px);
+    transition: transform 0.2s ease;
+}
+
+.btn-close-profile:hover { transform: scale(1.1); }
+
+.profile-avatar {
+    position: relative;
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.1);
+    display: flex;
+    align-items: center; justify-content: center;
+    font-size: 40px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+
+.btn-edit-avatar {
+    position: absolute;
+    bottom: -5px; right: -5px;
+    background: var(--accent-color, #1db954);
+    border: none; border-radius: 50%;
+    width: 28px; height: 28px;
+    color: #fff; font-size: 12px;
+    cursor: pointer;
+}
+
+.profile-info h2 {
+    margin: 0; font-size: 24px; color: #fff;
+    display: flex; align-items: center; gap: 10px;
+}
+
+.btn-edit-name {
+    background: none; border: none; color: rgba(255,255,255,0.7); cursor: pointer; font-size: 14px;
+}
+
+.profile-uid {
+    margin: 5px 0 0; font-size: 12px; color: rgba(255,255,255,0.6); font-family: monospace;
+}
+
+/* Auth & Sync Panel */
+.profile-auth-panel {
+    padding: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.btn-auth {
+    flex: 1;
+    min-width: 100px;
+    padding: 10px;
+    border: none; border-radius: 8px;
+    color: #fff; font-weight: 600; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: opacity 0.2s;
+}
+
+.btn-auth:hover { opacity: 0.8; }
+.auth-yandex { background: #fc3f1d; }
+.auth-google { background: #4285F4; }
+.auth-vk { background: #0077FF; }
+
+.btn-sync {
+    width: 100%;
+    padding: 12px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #fff; border-radius: 8px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+}
+.btn-sync.btn-success { background: rgba(46, 204, 113, 0.2); border-color: #2ecc71; color: #2ecc71; }
+.btn-sync.btn-error { background: rgba(231, 76, 60, 0.2); border-color: #e74c3c; color: #e74c3c; }
+
+/* Navigation Tabs */
+.profile-nav {
+    display: flex;
+    overflow-x: auto;
+    padding: 0 20px;
+    gap: 15px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.profile-nav::-webkit-scrollbar { display: none; }
+
+.prof-tab-btn {
+    background: none; border: none;
+    color: rgba(255,255,255,0.5);
+    padding: 15px 0;
+    font-size: 15px; font-weight: 600;
+    cursor: pointer;
+    position: relative;
+    white-space: nowrap;
+}
+
+.prof-tab-btn.active { color: var(--accent-color, #1db954); }
+.prof-tab-btn.active::after {
+    content: ''; position: absolute; bottom: 0; left: 0; right: 0;
+    height: 3px; background: var(--accent-color, #1db954);
+    border-radius: 3px 3px 0 0;
+}
+
+/* Content Area */
+.profile-content { padding: 20px; flex: 1; overflow-y: auto; }
+
+/* Grid Layouts (Stats & Achievements) */
+.stats-grid, .achievements-grid, .recs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 15px;
+}
+
+.stat-card, .achiev-card, .rec-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 12px;
+    padding: 15px;
+    text-align: center;
+    transition: transform 0.2s;
+}
+
+.stat-card:hover, .achiev-card:hover { transform: translateY(-2px); background: rgba(255,255,255,0.05); }
+.stat-value { font-size: 24px; font-weight: bold; color: var(--accent-color, #1db954); margin-bottom: 5px; }
+.stat-label { font-size: 12px; color: rgba(255,255,255,0.6); }
+
+.achiev-icon { font-size: 32px; margin-bottom: 10px; filter: grayscale(1); opacity: 0.5; transition: all 0.3s; }
+.achiev-card.unlocked .achiev-icon { filter: grayscale(0); opacity: 1; transform: scale(1.1); }
+.achiev-card h4 { margin: 0 0 5px; font-size: 14px; color: #fff; }
+.achiev-card p { margin: 0; font-size: 11px; color: rgba(255,255,255,0.5); }
+
+/* Logs List */
+.logs-list { display: flex; flex-direction: column; gap: 10px; }
+.log-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 15px; background: rgba(0,0,0,0.2); border-radius: 8px;
+}
+.log-info { display: flex; flex-direction: column; gap: 4px; }
+.log-action { font-size: 14px; color: #fff; }
+.log-meta { font-size: 11px; color: rgba(255,255,255,0.4); }
+.log-time { font-size: 12px; color: var(--accent-color, #1db954); font-family: monospace; }
+
+/* Animations & Utilities */
+.fade-in { animation: fadeIn 0.3s ease-in; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.profile-loader { width: 30px; height: 30px; border: 3px solid rgba(255,255,255,0.1); border-top-color: var(--accent-color, #1db954); border-radius: 50%; animation: spin 1s linear infinite; margin: 20px auto; }
+@keyframes spin { to { transform: rotate(360deg); } }
