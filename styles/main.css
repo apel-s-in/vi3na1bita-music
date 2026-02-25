@@ -76,6 +76,22 @@ body{min-height:100vh;min-width:100vw;font-family:-apple-system,BlinkMacSystemFo
 .ach-done-date { display: inline-block; background: rgba(76, 175, 80, 0.15); color: #81c784; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 900; }
 .ach-lock { display: inline-block; background: rgba(255, 152, 0, 0.15); color: #ffb74d; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 900; }
 
+/* Раскрывающийся блок "Подробнее" */
+.ach-item { flex-direction: column; align-items: stretch; cursor: pointer; }
+.ach-item-header { display: flex; align-items: center; width: 100%; }
+.ach-more {
+  display: block; margin-top: 6px; padding: 4px 8px; font-size: 10px; font-weight: bold;
+  background: rgba(255,255,255,0.1); color: #ccc; border: none; border-radius: 4px; cursor: pointer;
+  width: 100%; text-transform: uppercase;
+}
+.ach-more:hover { background: rgba(255,255,255,0.2); color: #fff; }
+.ach-details {
+  grid-column: 1 / -1; padding: 12px 8px 4px; border-top: 1px dashed rgba(255,255,255,0.1); 
+  margin-top: 10px; width: 100%; animation: fadeIn 0.2s ease;
+}
+.ach-mini-bar { width: 100%; background: rgba(0,0,0,0.3); height: 4px; border-radius: 2px; overflow: hidden; }
+.ach-mini-fill { background: #4daaff; height: 100%; transition: width 0.3s ease; }
+
 /* Modern Profile View (v4.0) */
 .profile-wrap { padding: 0 10px 20px; display: flex; flex-direction: column; gap: 16px; animation: fadeIn 0.3s ease; }
 .profile-header { display: flex; flex-direction: column; align-items: center; gap: 12px; background: rgba(255,255,255,0.03); padding: 20px; border-radius: 16px; border: 1px solid var(--border-color); position: relative; }
