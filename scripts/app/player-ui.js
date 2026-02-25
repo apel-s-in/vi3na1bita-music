@@ -230,7 +230,7 @@
         'repeat-btn': () => { PC().toggleRepeat(); syncUI(); },
         'mute-btn': () => { PC().setMuted(!PC().isMuted()); syncUI(); },
         'pq-btn': onPQClick,
-        'lyrics-toggle-btn': () => W.LyricsController?.toggleLyricsView?.(),
+        'lyrics-toggle-btn': () => { W.LyricsController?.toggleLyricsView?.(); W.eventLogger?.log('FEATURE_USED', PC().getCurrentTrackUid(), { feature: 'lyrics' }); },
         'animation-btn': () => W.LyricsController?.toggleAnimation?.(),
         'lyrics-text-btn': () => W.LyricsModal?.show?.(),
         'pulse-btn': togglePulse,
