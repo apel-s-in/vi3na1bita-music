@@ -228,6 +228,7 @@ export async function loadProfileAlbum(ctx) {
           <div class="ach-classic-tab active" data-filter="all">Все</div>
           <div class="ach-classic-tab" data-filter="available">Доступные</div>
           <div class="ach-classic-tab" data-filter="done">Выполненные</div>
+          <div class="ach-classic-tab" data-filter="secret">Секретные</div>
         </div>
         <div id="prof-ach-list"></div>
       </div>
@@ -332,8 +333,10 @@ export async function loadProfileAlbum(ctx) {
     // Движок уже вернул правильно отсортированный плоский массив
     let items = engine.achievements;
     
-    if (filter === 'available') items = items.filter(a => !a.isUnlocked);
+    if (filter === 'all') items = items.filter(a => !a.isHidden || a.isUnlocked); // Скрываем невыполненные секретные из общего списка
+    if (filter === 'available') items = items.filter(a => !a.isUnlocked && !a.isHidden);
     if (filter === 'done') items = items.filter(a => a.isUnlocked);
+    if (filter === 'secret') items = engine.achievements.filter(a => a.isHidden); // Показываем только секретные (даже невыполненные)
     
     if (!items.length) {
       achListEl.innerHTML = '<div class="fav-empty">По данному фильтру ничего нет</div>';
@@ -353,23 +356,56 @@ export async function loadProfileAlbum(ctx) {
         }
       }
 
+      const p = (!a.isUnlocked && !a.isHidden && a.progress) 
+        ? `<div class="ach-mini-bar-wrap" style="margin-top:6px;"><div class="ach-mini-bar"><div class="ach-mini-fill" style="width:${a.progress.pct}%"></div></div><div style="font-size:10px; color:#888; margin-top:2px;">Прогресс: ${a.progress.current} / ${a.progress.target}</div></div>` 
+        : '';
+
       return `
         <div class="ach-item ${a.isUnlocked ? 'done' : ''}">
-          <div class="ach-status" style="filter: drop-shadow(0 0 4px ${a.color || '#fff'})">${a.isUnlocked ? '✅' : '🔸'}</div>
-          <div class="ach-main">
-            <div class="ach-title">${a.icon} ${a.name}</div>
-            <div class="ach-sub">${a.isUnlocked && a.unlockedAt ? `Открыто: ${new Date(a.unlockedAt).toLocaleDateString()}` : a.desc}</div>
+          <div class="ach-item-header">
+            <div class="ach-status" style="filter: drop-shadow(0 0 4px ${a.color || '#fff'})">${a.isUnlocked ? '✅' : (a.isHidden ? '🔒' : '🔸')}</div>
+            <div class="ach-main">
+              <div class="ach-title">${a.icon} ${a.name}</div>
+              <div class="ach-sub">${a.isUnlocked && a.unlockedAt ? `Открыто: ${new Date(a.unlockedAt).toLocaleDateString()}` : (a.isHidden ? 'Секретное задание' : a.short)}</div>
+            </div>
+            <div class="ach-right">
+              ${a.isUnlocked 
+                ? `<span class="ach-done-date">+${xp} XP</span>` 
+                : `<span class="ach-lock">${a.isHidden ? '???' : `${xp} XP`}</span>`
+              }
+              ${!a.isHidden ? `<button class="ach-more" type="button">Подробнее</button>` : ''}
+            </div>
           </div>
-          <div class="ach-right">
-            ${a.isUnlocked 
-              ? `<span class="ach-done-date">+${xp} XP</span>` 
-              : `<span class="ach-lock">${xp} XP</span>`
-            }
-          </div>
+          ${!a.isHidden ? `
+            <div class="ach-details" style="display:none;">
+              <div style="color:#cfe3ff; font-weight:700; margin-bottom:4px;">Как выполнить:</div>
+              <div style="color:#eaeffb; margin-bottom:6px; font-size:12px;">${a.howTo || 'Слушайте музыку.'}</div>
+              ${a.desc ? `<div style="color:#9aa8c4; font-size:11px; margin-bottom:6px;">${a.desc}</div>` : ''}
+              ${p}
+            </div>
+          ` : ''}
         </div>
       `;
     }).join('');
   };
+
+  // Логика кнопок "Подробнее" (Делегирование)
+  if (achListEl) {
+    achListEl.addEventListener('click', e => {
+      const btn = e.target.closest('.ach-more');
+      const main = e.target.closest('.ach-main');
+      if (btn || main) {
+        const item = (btn || main).closest('.ach-item');
+        const det = item.querySelector('.ach-details');
+        const b = item.querySelector('.ach-more');
+        if (det) {
+          const isHid = det.style.display === 'none';
+          det.style.display = isHid ? 'block' : 'none';
+          if (b) b.textContent = isHid ? 'Свернуть' : 'Подробнее';
+        }
+      }
+    });
+  }
 
   if (innerTabs) {
     innerTabs.addEventListener('click', e => {
