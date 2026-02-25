@@ -52,7 +52,10 @@ export class StatsAggregator {
           return stat;
         });
       } else if (ev.type === 'FEATURE_USED') {
-         await metaDB.updateStat(ev.uid, s => {
+         // Для фич самого приложения используем системный uid "global"
+         const targetUid = ev.uid || 'global';
+         await metaDB.updateStat(targetUid, s => {
+           if (!s.featuresUsed) s.featuresUsed = {};
            s.featuresUsed[ev.data.feature] = (s.featuresUsed[ev.data.feature] || 0) + 1;
            return s;
          });
