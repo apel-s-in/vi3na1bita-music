@@ -233,7 +233,22 @@
       W.NotificationSystem?.success('Успешно установлено!');
       const btn = $('install-pwa-btn');
       if (btn) btn.style.display = 'none';
+      if (W.eventLogger) {
+        W.eventLogger.log('FEATURE_USED', 'global', { feature: 'pwa_installed' });
+        W.dispatchEvent(new CustomEvent('analytics:forceFlush'));
+      }
     });
+
+    // Трекинг социальных сетей
+    const socialsBlock = $('social-links');
+    if (socialsBlock) {
+      socialsBlock.addEventListener('click', e => {
+        if (e.target.tagName === 'A' && W.eventLogger) {
+          W.eventLogger.log('FEATURE_USED', 'global', { feature: 'social_visit' });
+          W.dispatchEvent(new CustomEvent('analytics:forceFlush'));
+        }
+      });
+    }
   };
 
   const setupSW = () => {
