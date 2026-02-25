@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ab1e72bb468138dc7f82d3c4f1d6880b3b66aebc.idx
-│   │       ├── pack-ab1e72bb468138dc7f82d3c4f1d6880b3b66aebc.pack
-│   │       └── pack-ab1e72bb468138dc7f82d3c4f1d6880b3b66aebc.rev
+│   │       ├── pack-7cc087daafd961d2f83737a9c6c715967864f491.idx
+│   │       ├── pack-7cc087daafd961d2f83737a9c6c715967864f491.pack
+│   │       └── pack-7cc087daafd961d2f83737a9c6c715967864f491.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-25 18:08:51 UTC
+Сгенерировано: 2026-02-25 18:10:31 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1938,6 +1938,7 @@ const C = window.APP_CONFIG || {};
 const FAV = window.SPECIAL_FAVORITES_KEY || '__favorites__';
 const NEWS = window.SPECIAL_RELIZ_KEY || '__reliz__';
 const SHOWCASE = window.SPECIAL_SHOWCASE_KEY || '__showcase__';
+const PROFILE = window.APP_CONFIG?.SPECIAL_PROFILE_KEY || '__profile__';
 const STAR_ON = 'img/star.png';
 const STAR_OFF = 'img/star2.png';
 const LOGO = 'img/logo.png';
@@ -2040,6 +2041,7 @@ class AlbumsManager {
       if (key === FAV) await (await import('./albums/specials.js')).loadFavoritesAlbum(this);
       else if (key === NEWS) await (await import('./albums/specials.js')).loadNewsAlbum(this);
       else if (key === SHOWCASE) await (await import('./albums/specials.js')).loadShowcaseAlbum(this);
+      else if (key === PROFILE) await (await import('./albums/specials.js')).loadProfileAlbum(this);
       else await this._loadReg(key);
 
       this.curr = key; localStorage.setItem('currentAlbum', key);
