@@ -356,31 +356,30 @@ export async function loadProfileAlbum(ctx) {
         }
       }
 
+      // Классическая верстка элемента достижения из index (3).html
       const p = (!a.isUnlocked && !a.isHidden && a.progress) 
-        ? `<div class="ach-mini-bar-wrap" style="margin-top:6px;"><div class="ach-mini-bar"><div class="ach-mini-fill" style="width:${a.progress.pct}%"></div></div><div style="font-size:10px; color:#888; margin-top:2px;">Прогресс: ${a.progress.current} / ${a.progress.target}</div></div>` 
+        ? `<div style="margin-top:8px;"><div class="ach-mini-bar" style="width:100%"><div class="ach-mini-fill" style="width:${a.progress.pct}%"></div></div><div style="color:#9aa8c4; font-size:.86em; margin-top:4px;">Осталось: ${Math.max(0, a.progress.target - a.progress.current)}</div></div>` 
         : '';
 
       return `
-        <div class="ach-item ${a.isUnlocked ? 'done' : ''}">
-          <div class="ach-item-header">
-            <div class="ach-status" style="filter: drop-shadow(0 0 4px ${a.color || '#fff'})">${a.isUnlocked ? '✅' : (a.isHidden ? '🔒' : '🔸')}</div>
-            <div class="ach-main">
-              <div class="ach-title">${a.icon} ${a.name}</div>
-              <div class="ach-sub">${a.isUnlocked && a.unlockedAt ? `Открыто: ${new Date(a.unlockedAt).toLocaleDateString()}` : (a.isHidden ? 'Секретное задание' : a.short)}</div>
-            </div>
-            <div class="ach-right">
-              ${a.isUnlocked 
-                ? `<span class="ach-done-date">+${xp} XP</span>` 
-                : `<span class="ach-lock">${a.isHidden ? '???' : `${xp} XP`}</span>`
-              }
-              ${!a.isHidden ? `<button class="ach-more" type="button">Подробнее</button>` : ''}
-            </div>
+        <div class="ach-item ${a.isUnlocked ? 'done' : ''}" data-ach="${a.id}">
+          <div class="ach-status">${a.isUnlocked ? '✅' : (a.isHidden ? '🔒' : '🔸')}</div>
+          <div class="ach-main">
+            <div class="ach-title" style="color: ${a.isUnlocked ? '#fff' : (a.color || '#fff')}">${a.icon} ${a.name}</div>
+            <div class="ach-sub">${a.isUnlocked && a.unlockedAt ? `Открыто: ${new Date(a.unlockedAt).toLocaleDateString()}` : (a.isHidden ? 'Откроется при особых условиях' : a.short)}</div>
+          </div>
+          <div class="ach-right">
+            ${a.isUnlocked 
+              ? `<span class="ach-done-date">+${xp} XP</span>` 
+              : `<span class="ach-lock">${a.isHidden ? 'Секретное' : `${xp} XP`}</span>`
+            }
+            ${!a.isHidden ? `<button class="backup-btn secondary ach-more" type="button" style="padding:4px 8px; margin-top: 4px; font-size: 10px; width: 100%;">Подробнее</button>` : ''}
           </div>
           ${!a.isHidden ? `
-            <div class="ach-details" style="display:none;">
-              <div style="color:#cfe3ff; font-weight:700; margin-bottom:4px;">Как выполнить:</div>
-              <div style="color:#eaeffb; margin-bottom:6px; font-size:12px;">${a.howTo || 'Слушайте музыку.'}</div>
-              ${a.desc ? `<div style="color:#9aa8c4; font-size:11px; margin-bottom:6px;">${a.desc}</div>` : ''}
+            <div class="ach-details" style="display:none; grid-column: 1 / -1; padding:8px; border-top:1px dashed rgba(255,255,255,0.1); margin-top:6px;">
+              <div style="color:#cfe3ff; font-weight:700; margin-bottom:6px;">Как выполнить</div>
+              <div style="color:#eaeffb; margin-bottom:6px; font-size:12px;">${a.howTo || 'Выполните условия.'}</div>
+              ${a.desc ? `<div style="color:#9aa8c4; font-size:.9em;">${a.desc}</div>` : ''}
               ${p}
             </div>
           ` : ''}
@@ -389,8 +388,9 @@ export async function loadProfileAlbum(ctx) {
     }).join('');
   };
 
-  // Логика кнопок "Подробнее" (Делегирование)
-  if (achListEl) {
+  // Классическая логика сворачивания/разворачивания (Делегирование)
+  if (!achListEl.dataset.bound) {
+    achListEl.dataset.bound = "true";
     achListEl.addEventListener('click', e => {
       const btn = e.target.closest('.ach-more');
       const main = e.target.closest('.ach-main');
