@@ -49,10 +49,42 @@ body{min-height:100vh;min-width:100vw;font-family:-apple-system,BlinkMacSystemFo
 .dash-save-btn:hover { background: #0099e6; transform: translateY(-1px); }
 .dash-save-btn:active { transform: scale(0.98); }
 
-/* Profile View */
-.profile-header-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px; margin-bottom: 10px; }
-.profile-section-title { padding: 10px; font-weight: 900; color: #8ab8fd; text-align: center; background: rgba(255,255,255,0.03); border-radius: 8px; margin: 0 10px 10px; }
-.profile-achievements-list { padding: 0 10px 20px; display: flex; flex-direction: column; gap: 8px; }
+/* Modern Profile View (v4.0) */
+.profile-wrap { padding: 0 10px 20px; display: flex; flex-direction: column; gap: 16px; animation: fadeIn 0.3s ease; }
+.profile-header { display: flex; flex-direction: column; align-items: center; gap: 12px; background: rgba(255,255,255,0.03); padding: 20px; border-radius: 16px; border: 1px solid var(--border-color); position: relative; }
+.profile-avatar-btn { background: #232b38; border: 2px solid var(--secondary-color); width: 80px; height: 80px; border-radius: 50%; font-size: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+.profile-avatar-btn:hover { transform: scale(1.05); box-shadow: 0 0 15px rgba(77,170,255,0.4); }
+.profile-name-wrap { display: flex; align-items: center; gap: 8px; }
+.profile-name-input { background: transparent; border: none; border-bottom: 1px dashed var(--secondary-color); color: #fff; font-size: 20px; font-weight: 900; text-align: center; outline: none; width: 150px; transition: 0.2s; }
+.profile-name-input:focus { border-bottom-color: #fff; }
+.profile-edit-icon { cursor: pointer; color: var(--c-blue); font-size: 16px; }
+
+/* Auth & Sync */
+.profile-auth-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.auth-btn { padding: 10px 0; border-radius: 10px; border: none; font-weight: bold; font-size: 13px; cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #fff; }
+.auth-btn:active { transform: scale(0.95); }
+.auth-btn.yandex { background: #E60000; } .auth-btn.google { background: #4285F4; } .auth-btn.vk { background: #0077FF; }
+.auth-btn.connected { opacity: 0.5; border: 2px solid #4caf50; background: #232b38; }
+
+/* Tabs */
+.profile-tabs { display: flex; background: rgba(255,255,255,0.05); border-radius: 10px; padding: 4px; overflow-x: auto; scrollbar-width: none; }
+.profile-tabs::-webkit-scrollbar { display: none; }
+.profile-tab-btn { flex: 1; min-width: max-content; padding: 8px 12px; background: transparent; border: none; color: #888; font-weight: 700; font-size: 13px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+.profile-tab-btn.active { background: var(--secondary-color); color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+.profile-tab-content { display: none; flex-direction: column; gap: 12px; }
+.profile-tab-content.active { display: flex; animation: slideUp 0.3s ease; }
+
+/* Lists & Items (Logs, Recs, Stats) */
+.profile-list-item { background: rgba(255,255,255,0.03); border-radius: 12px; padding: 12px; border: 1px solid rgba(255,255,255,0.05); display: flex; gap: 12px; align-items: center; }
+.log-time { font-size: 11px; color: #888; min-width: 45px; }
+.log-info { flex: 1; }
+.log-title { font-size: 13px; font-weight: bold; color: #eaf2ff; }
+.log-desc { font-size: 11px; color: var(--secondary-color); margin-top: 2px; }
+
+.rec-cover { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; }
+.rec-play-btn { background: rgba(77,170,255,0.15); color: var(--secondary-color); border: none; width: 36px; height: 36px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: 0.2s; }
+.rec-play-btn:hover { background: var(--secondary-color); color: #fff; transform: scale(1.1); }
+
 .ach-info { flex: 1; text-align: left; }
 .ach-name { font-size: 14px; font-weight: bold; color: #fff; margin-bottom: 2px; }
 .ach-desc { font-size: 11px; color: #888; }
