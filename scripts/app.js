@@ -64,21 +64,50 @@
       new StatsAggregator();
       W.achievementEngine = new AchievementEngine();
 
-      // Обновление progress UI (Виджет V4.0)
+      // Обновление Classic RPG Progress UI
       W.addEventListener('achievements:updated', (e) => {
+        const { total, unlocked, streak, profile } = e.detail;
+        
         const countEl = $('achievementsCount');
         const fillEl = $('achievementsFill');
-        const streakText = $('streak-text');
+        const bubbleText = $('ach-hint-bubble-text');
         
-        if (countEl) countEl.textContent = `${e.detail.unlocked} / ${e.detail.total}`;
-        if (fillEl) fillEl.style.width = `${(e.detail.unlocked / e.detail.total) * 100}%`;
+        const levelEl = $('user-level-badge');
+        const xpFillEl = $('xp-progress-fill');
+        const xpTextEl = $('xp-text');
         
-        if (streakText && e.detail.streak !== undefined) {
-          const s = e.detail.streak;
-          const next = s < 3 ? 3 : (s < 7 ? 7 : 30);
-          streakText.textContent = s >= 30 ? `Легенда! Стрик: ${s} дней` : `До «Стрик ${next} дней»: осталось ${next - s}`;
+        if (countEl) countEl.textContent = `ВЫПОЛНЕНО: ${unlocked} / ${total}`;
+        if (fillEl && total > 0) fillEl.style.width = `${(unlocked / total) * 100}%`;
+        
+        // Математика уровней (Формула: Уровень = sqrt(XP/100) + 1)
+        if (profile) {
+          if (levelEl) levelEl.textContent = profile.level;
+          
+          const currentLevelXp = Math.pow(profile.level - 1, 2) * 100;
+          const nextLevelXp = Math.pow(profile.level, 2) * 100;
+          const xpNeeded = nextLevelXp - currentLevelXp;
+          const xpGained = profile.xp - currentLevelXp;
+          
+          const pct = Math.max(0, Math.min(100, (xpGained / xpNeeded) * 100));
+          if (xpFillEl) xpFillEl.style.width = `${pct}%`;
+          if (xpTextEl) xpTextEl.textContent = `${profile.xp} / ${nextLevelXp} XP`;
+        }
+        
+        if (bubbleText && streak !== undefined) {
+          const s = streak;
+          const next = s < 3 ? 3 : (s < 7 ? 7 : (s < 14 ? 14 : (s < 30 ? 30 : 100)));
+          if (s >= 100) bubbleText.innerHTML = `✨ Легенда! Ваш стрик: ${s} дней`;
+          else bubbleText.innerHTML = `✨ До «Стрик ${next} дней»: осталось ${next - s}`;
         }
       });
+
+      // Клик по бабблу открывает профиль сразу на вкладке достижений
+      const bubbleBtn = $('ach-hint-bubble');
+      if (bubbleBtn) {
+        bubbleBtn.onclick = () => {
+           if (W.AlbumsManager) W.AlbumsManager.loadAlbum(W.APP_CONFIG?.SPECIAL_PROFILE_KEY || '__profile__');
+        };
+      }
 
       // Привязка кнопки сохранения
       const saveBtn = $('dash-save-btn');
