@@ -344,22 +344,8 @@ export async function loadProfileAlbum(ctx) {
     }
 
     achListEl.innerHTML = items.map(a => {
-      // Ищем XP награду в словаре движка (вытаскиваем математику)
-      const isBaseId = a.id.split('_').slice(0, -1).join('_');
-      const rule = engine.dict[a.id] || engine.dict[isBaseId];
-      let xp = 0;
-      if (rule) {
-        if (rule.type === 'static') xp = rule.reward.xp;
-        else if (rule.type === 'scalable') {
-          const lvl = parseInt(a.id.split('_').pop(), 10);
-          xp = engine._getScalableXP(rule, lvl);
-        }
-      }
-
-      // Классическая верстка элемента достижения из index (3).html
       const p = (!a.isUnlocked && !a.isHidden && a.progress) 
-        ? `<div style="margin-top:8px;"><div class="ach-mini-bar" style="width:100%"><div class="ach-mini-fill" style="width:${a.progress.pct}%"></div></div><div style="color:#9aa8c4; font-size:.86em; margin-top:4px;">Осталось: ${Math.max(0, a.progress.target - a.progress.current)}</div></div>` 
-        : '';
+        ? `<div style="margin-top:8px;"><div class="ach-mini-bar" style="width:100%"><div class="ach-mini-fill" style="width:${a.progress.pct}%"></div></div><div style="color:#9aa8c4; font-size:.86em; margin-top:4px;">Осталось: ${Math.max(0, a.progress.target - a.progress.current)}</div></div>` : '';
 
       return `
         <div class="ach-item ${a.isUnlocked ? 'done' : ''}" data-ach="${a.id}">
@@ -369,10 +355,7 @@ export async function loadProfileAlbum(ctx) {
             <div class="ach-sub">${a.isUnlocked && a.unlockedAt ? `Открыто: ${new Date(a.unlockedAt).toLocaleDateString()}` : (a.isHidden ? 'Откроется при особых условиях' : a.short)}</div>
           </div>
           <div class="ach-right">
-            ${a.isUnlocked 
-              ? `<span class="ach-done-date">+${xp} XP</span>` 
-              : `<span class="ach-lock">${a.isHidden ? 'Секретное' : `${xp} XP`}</span>`
-            }
+            ${a.isUnlocked ? `<span class="ach-done-date">+${a.xpReward} XP</span>` : `<span class="ach-lock">${a.isHidden ? 'Секретное' : `${a.xpReward} XP`}</span>`}
             ${!a.isHidden ? `<button class="backup-btn secondary ach-more" type="button" style="padding:4px 8px; margin-top: 4px; font-size: 10px; width: 100%;">Подробнее</button>` : ''}
           </div>
           ${!a.isHidden ? `
@@ -381,10 +364,8 @@ export async function loadProfileAlbum(ctx) {
               <div style="color:#eaeffb; margin-bottom:6px; font-size:12px;">${a.howTo || 'Выполните условия.'}</div>
               ${a.desc ? `<div style="color:#9aa8c4; font-size:.9em;">${a.desc}</div>` : ''}
               ${p}
-            </div>
-          ` : ''}
-        </div>
-      `;
+            </div>` : ''}
+        </div>`;
     }).join('');
   };
 
