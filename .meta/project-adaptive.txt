@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1764bdd1de674c748a63025a64532ded9dde68b0.idx
-│   │       ├── pack-1764bdd1de674c748a63025a64532ded9dde68b0.pack
-│   │       └── pack-1764bdd1de674c748a63025a64532ded9dde68b0.rev
+│   │       ├── pack-6abaf8931db4417ad8787bc1a5eb6c3783ef743b.idx
+│   │       ├── pack-6abaf8931db4417ad8787bc1a5eb6c3783ef743b.pack
+│   │       └── pack-6abaf8931db4417ad8787bc1a5eb6c3783ef743b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-25 19:32:59 UTC
+Сгенерировано: 2026-02-25 19:38:02 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2198,7 +2198,10 @@ class AlbumsManager {
       this.curr = key; localStorage.setItem('currentAlbum', key);
       document.querySelectorAll('.album-icon').forEach(el => el.classList.toggle('active', el.dataset.album === key));
       $('track-list')?.classList.remove('filtered'); window.PlayerUI?.switchAlbumInstantly?.(key);
-    } catch (e) { window.NotificationSystem?.error('Ошибка загрузки'); } finally { this.loading = false; }
+    } catch (e) { 
+      console.error('[AlbumsManager] Ошибка загрузки альбома:', e);
+      window.NotificationSystem?.error('Ошибка загрузки'); 
+    } finally { this.loading = false; }
   }
 
   async _loadReg(key) {
