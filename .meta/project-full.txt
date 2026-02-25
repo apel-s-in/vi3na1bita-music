@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-181fbf93caca2780d5d04e7a845bca9e2fe2446f.idx
-│   │       ├── pack-181fbf93caca2780d5d04e7a845bca9e2fe2446f.pack
-│   │       └── pack-181fbf93caca2780d5d04e7a845bca9e2fe2446f.rev
+│   │       ├── pack-11f24f6398fe402bf63532643dc640a19123c5f0.idx
+│   │       ├── pack-11f24f6398fe402bf63532643dc640a19123c5f0.pack
+│   │       └── pack-11f24f6398fe402bf63532643dc640a19123c5f0.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -389,7 +389,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-25 22:16:09 UTC
+Сгенерировано: 2026-02-25 22:17:28 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -9780,8 +9780,8 @@ body{min-height:100vh;min-width:100vw;font-family:-apple-system,BlinkMacSystemFo
 .backup-btn:active { transform: scale(0.98); }
 
 /* Classic List Item (Inside Profile) */
-.ach-classic-tabs { display: flex; gap: 8px; margin-bottom: 12px; background: rgba(0,0,0,0.2); padding: 4px; border-radius: 8px; }
-.ach-classic-tab { flex: 1; padding: 6px; text-align: center; font-size: 12px; font-weight: bold; color: #888; cursor: pointer; border-radius: 6px; transition: 0.2s; }
+.ach-classic-tabs { display: flex; gap: 8px; margin-bottom: 12px; background: rgba(0,0,0,0.2); padding: 4px; border-radius: 8px; overflow-x: auto; scrollbar-width: none; }
+.ach-classic-tab { flex: 1; padding: 6px; text-align: center; font-size: 12px; font-weight: bold; color: #888; cursor: pointer; border-radius: 6px; transition: 0.2s; white-space: nowrap; }
 .ach-classic-tab.active { background: #4daaff; color: #fff; }
 .ach-item { display: flex; align-items: center; padding: 12px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 10px; margin-bottom: 8px; transition: 0.2s; }
 .ach-item.done { background: rgba(76, 175, 80, 0.05); border-color: rgba(76, 175, 80, 0.2); }
