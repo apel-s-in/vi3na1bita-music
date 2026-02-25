@@ -31,16 +31,35 @@ export class AchievementEngine {
     this.broadcast(0);
   }
 
-  // Подгрузка авторских заданий (JSON Drop)
+  // Подгрузка авторских заданий (JSON Drop) и Альбомов
   async loadCustomAchievements() {
     try {
+      // 1. Читаем кастомные JSON (Требование №3)
       const res = await fetch('./data/custom_achievements.json', { cache: 'no-cache' });
       if (res.ok) {
         const customDict = await res.json();
         this.dict = { ...this.dict, ...customDict };
       }
-    } catch (e) {
-      // Игнорируем, если файла пока нет
+    } catch (e) {}
+
+    // 2. АВТО-ГЕНЕРАЦИЯ АЛЬБОМНЫХ ДОСТИЖЕНИЙ (Требование №2)
+    if (window.albumsIndex) {
+      window.albumsIndex.forEach(a => {
+        if (a.key.startsWith('__')) return;
+        
+        // Ачивка "Марафонец альбома" (Послушать всё)
+        this.dict[`album_complete_${a.key}`] = {
+          id: `album_complete_${a.key}`, type: "static", category: "albums",
+          ui: { 
+            name: `Альбом «${a.title}»`, short: `Послушайте все треки альбома.`, 
+            desc: `Соберите полные прослушивания всех треков релиза.`, 
+            howTo: `Зайдите в альбом и слушайте без пропусков.`, 
+            icon: "💿", color: "#4caf50" 
+          },
+          reward: { xp: 150, tier: 3 },
+          trigger: { conditions: [{ metric: `album_${a.key}_complete`, operator: "gte", target: 1 }] }
+        };
+      });
     }
   }
 
@@ -101,8 +120,30 @@ export class AchievementEngine {
       backups: globalStat.featuresUsed?.backup || 0,
       pwaInstalled: globalStat.featuresUsed?.pwa_installed || 0,
       sleepTimerTriggers: globalStat.featuresUsed?.sleep_timer || 0,
-      socialVisits: globalStat.featuresUsed?.social_visit || 0
+      socialVisits: globalStat.featuresUsed?.social_visit || 0,
+      
+      // Сложные комбо из StatsAggregator
+      shufflePlays: trackStats.reduce((a, b) => a + (b.featuresUsed?.shufflePlay || 0), 0),
+      favOrderedCombo: globalStat.featuresUsed?.fav_ordered_5 || 0,
+      favShuffleCombo: globalStat.featuresUsed?.fav_shuffle_5 || 0,
+      midnightTriple: globalStat.featuresUsed?.midnight_triple || 0,
     };
+
+    // Подсчет полного прохождения альбомов (Динамика)
+    if (window.TrackRegistry) {
+      const allReg = window.TrackRegistry.getAllUids().map(u => window.TrackRegistry.getTrackByUid(u));
+      const albumsSet = new Set(allReg.map(t => t.sourceAlbum).filter(Boolean));
+      
+      albumsSet.forEach(aKey => {
+        const aTracks = allReg.filter(t => t.sourceAlbum === aKey);
+        const playedInAlbum = aTracks.filter(t => {
+          const s = trackStats.find(ts => ts.uid === t.uid);
+          return s && s.globalFullListenCount > 0;
+        });
+        // Если прослушаны все треки в альбоме -> ставим флаг 1
+        agg[`album_${aKey}_complete`] = (playedInAlbum.length >= aTracks.length && aTracks.length > 0) ? 1 : 0;
+      });
+    }
 
     let changed = false;
     let earnedXp = 0;
