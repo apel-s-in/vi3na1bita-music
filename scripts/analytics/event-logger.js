@@ -12,7 +12,8 @@ class EventLogger {
     await metaDB.init();
     window.addEventListener('visibilitychange', () => document.hidden && this.flush());
     window.addEventListener('beforeunload', () => this.flush());
-    setInterval(() => this.flush(), 15000); // Оптимизированный сброс каждые 15 сек
+    window.addEventListener('analytics:forceFlush', () => this.flush()); // Мгновенный сброс при окончании трека для выдачи ачивок
+    setInterval(() => this.flush(), 15000); // Оптимизированный фоновый сброс
   }
 
   log(type, uid, data = {}) {
