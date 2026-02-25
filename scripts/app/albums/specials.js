@@ -144,3 +144,46 @@ export async function loadNewsAlbum(ctx) {
   const container = document.getElementById('track-list');
   if (container) await loadAndRenderNewsInline(container);
 }
+
+export async function loadProfileAlbum(ctx) {
+  ctx.renderAlbumTitle('👤 ЛИЧНЫЙ КАБИНЕТ 👤', 'profile');
+  document.getElementById('cover-wrap').style.display = 'none';
+  const container = document.getElementById('track-list');
+  if (!container) return;
+
+  const { metaDB } = await import('../../analytics/meta-db.js');
+  const listens = await metaDB.getStat('globalFullListens') || { details: {}, value: 0 };
+  const time = await metaDB.getStat('totalListenTime') || { value: 0 };
+  const ach = await metaDB.getStat('unlocked_achievements') || { details: {}, value: 0 };
+  const streak = await metaDB.getStat('dailyStreak') || { value: 0 };
+  const engine = window.achievementEngine;
+
+  let html = `
+    <div class="profile-header-stats">
+      <div class="stat-box"><b>${listens.value}</b><span>Треков</span></div>
+      <div class="stat-box"><b>${Math.floor(time.value / 60)}м</b><span>В пути</span></div>
+      <div class="stat-box"><b>${streak.value}</b><span>Дней подряд</span></div>
+      <div class="stat-box"><b>${ach.value}</b><span>Ачивок</span></div>
+    </div>
+    <div class="profile-section-title">🏆 ВАШИ ДОСТИЖЕНИЯ (${ach.value} / ${engine?.achievements.length || 0})</div>
+    <div class="profile-achievements-list">
+  `;
+
+  if (engine) {
+    // Сортировка: сначала открытые, потом заблокированные
+    const sorted = [...engine.achievements].sort((a, b) => (ach.details[b.id] ? 1 : 0) - (ach.details[a.id] ? 1 : 0));
+    html += sorted.map(a => `
+      <div class="ach-item ${ach.details[a.id] ? 'unlocked' : 'locked'}">
+        <div class="ach-icon">${a.icon}</div>
+        <div class="ach-info">
+          <div class="ach-name">${a.name}</div>
+          <div class="ach-desc">${a.desc}</div>
+        </div>
+        ${ach.details[a.id] ? '<div class="ach-check">✓</div>' : ''}
+      </div>
+    `).join('');
+  }
+
+  html += `</div>`;
+  container.innerHTML = html;
+}
