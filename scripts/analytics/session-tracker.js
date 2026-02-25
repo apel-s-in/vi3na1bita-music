@@ -2,41 +2,71 @@ import { eventLogger } from './event-logger.js';
 
 export class SessionTracker {
   constructor() {
-    this.currentSession = null;
+    this.s = null;
     this._bindEvents();
   }
+
   _bindEvents() {
-    window.addEventListener('player:play', (e) => this._startSession(e.detail));
-    window.addEventListener('player:pause', () => this._pauseSession());
-    window.addEventListener('player:tick', (e) => this._updateSession(e.detail));
-    window.addEventListener('player:ended', () => this._endSession(true));
-    window.addEventListener('player:stop', () => this._endSession(false));
-    window.addEventListener('player:trackChanged', () => this._endSession(false));
+    window.addEventListener('player:play', e => this._start(e.detail));
+    window.addEventListener('player:pause', () => this._pause());
+    window.addEventListener('player:tick', e => this._tick(e.detail));
+    window.addEventListener('player:ended', () => this._end(true));
+    window.addEventListener('player:stop', () => this._end(false));
+    window.addEventListener('player:trackChanged', () => this._end(false));
   }
-  _startSession({ uid, duration, type = 'audio' }) {
-    if (this.currentSession && this.currentSession.uid === uid) { this.currentSession.lastUpdate = Date.now(); return; }
-    this._endSession(false);
-    this.currentSession = { uid, type, duration, accumulatedMs: 0, lastUpdate: Date.now(), suspect: false };
-  }
-  _updateSession({ currentTime, volume, muted }) {
-    if (!this.currentSession) return;
-    const now = Date.now(); const delta = now - this.currentSession.lastUpdate; this.currentSession.lastUpdate = now;
-    if (delta > 0 && delta < 2000) {
-      this.currentSession.accumulatedMs += delta;
-      if (document.hidden && (volume === 0 || muted)) this.currentSession.suspect = true;
+
+  _start({ uid, duration, type = 'audio' }) {
+    if (this.s && this.s.uid === uid && this.s.variant === type) {
+      this.s.lastUpdate = Date.now(); return;
     }
-    if (this.currentSession.accumulatedMs >= (this.currentSession.duration * 1000 * 0.9)) this._endSession(true);
+    this._end(false);
+    this.s = { 
+      uid, variant: type, quality: window.playerCore?.qMode || 'hi',
+      duration: duration || 0, accumulatedMs: 0, lastPos: 0, lastUpdate: Date.now() 
+    };
+    eventLogger.log('LISTEN_START', uid, { variant: type });
   }
-  _pauseSession() { if (this.currentSession) this.currentSession.lastUpdate = Date.now(); }
-  _endSession(isFull) {
-    if (!this.currentSession) return;
-    const { uid, type, accumulatedMs, suspect } = this.currentSession;
+
+  _tick({ currentTime, volume, muted }) {
+    if (!this.s) return;
+    const now = Date.now();
+    const deltaMs = now - this.s.lastUpdate;
+    const posDelta = Math.abs(currentTime - this.s.lastPos);
+    
+    this.s.lastUpdate = now;
+    this.s.lastPos = currentTime;
+    
+    // Считаем только реальное звучание (защита от перемотки/паузы)
+    if (deltaMs > 0 && deltaMs < 2000 && posDelta < 1.5 && volume > 0 && !muted) {
+      this.s.accumulatedMs += deltaMs;
+    }
+    
+    if (this.s.duration <= 0) this.s.duration = window.playerCore?.getDuration() || 0;
+  }
+
+  _pause() { if (this.s) this.s.lastUpdate = Date.now(); }
+
+  _end(isEndedEvent) {
+    if (!this.s) return;
+    const { uid, variant, quality, accumulatedMs, duration, lastPos } = this.s;
+    this.s = null;
+
+    if (duration <= 0 && !isEndedEvent) return;
+
     const seconds = Math.floor(accumulatedMs / 1000);
-    if (seconds >= 13) eventLogger.log('LISTEN_VALID', { uid, type, seconds, suspect });
-    if (isFull && type !== 'short') {
-      eventLogger.log('LISTEN_FULL', { uid, type, suspect });
-      window.dispatchEvent(new CustomEvent('analytics:fullListen', { detail: { uid } }));
+    const progress = duration > 0 ? (lastPos / duration) : 0;
+    
+    // ТЗ: Valid = 13 сек ИЛИ доиграл до конца. Full = 90% ИЛИ доиграл до конца.
+    const isValid = seconds >= 13 || isEndedEvent;
+    const isFull = progress >= 0.9 || isEndedEvent;
+
+    if (isValid || isFull) {
+      eventLogger.log('LISTEN_COMPLETE', uid, {
+        variant, quality, listenedSeconds: seconds, trackDuration: duration, 
+        progress, isFullListen: isFull, isValidListen: isValid
+      });
+    } else {
+      eventLogger.log('LISTEN_SKIP', uid, { listenedSeconds: seconds });
     }
-    this.currentSession = null;
   }
 }
