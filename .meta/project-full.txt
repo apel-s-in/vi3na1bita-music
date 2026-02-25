@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1f55ebd95d2d36fba610e19ba1ab0ac660214173.idx
-│   │       ├── pack-1f55ebd95d2d36fba610e19ba1ab0ac660214173.pack
-│   │       └── pack-1f55ebd95d2d36fba610e19ba1ab0ac660214173.rev
+│   │       ├── pack-8f3a27abde3f984f108f099ab91f1bf1cc86c34b.idx
+│   │       ├── pack-8f3a27abde3f984f108f099ab91f1bf1cc86c34b.pack
+│   │       └── pack-8f3a27abde3f984f108f099ab91f1bf1cc86c34b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-25 18:36:15 UTC
+Сгенерировано: 2026-02-25 18:36:36 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1496,24 +1496,40 @@ import { metaDB } from './meta-db.js';
 
 class EventLogger {
   constructor() {
-    this.hotQueue = [];
+    this.queue = [];
     this.deviceHash = localStorage.getItem('deviceHash') || crypto.randomUUID();
+    this.sessionId = crypto.randomUUID();
     localStorage.setItem('deviceHash', this.deviceHash);
   }
+
   async init() {
     await metaDB.init();
-    window.addEventListener('visibilitychange', () => { if (document.hidden) this.flush(); });
-    setInterval(() => this.flush(), 30000);
+    window.addEventListener('visibilitychange', () => document.hidden && this.flush());
+    window.addEventListener('beforeunload', () => this.flush());
+    setInterval(() => this.flush(), 15000); // Оптимизированный сброс каждые 15 сек
   }
-  log(type, payload) {
-    this.hotQueue.push({ type, payload, timestamp: Date.now(), deviceHash: this.deviceHash, uuid: crypto.randomUUID() });
-    if (this.hotQueue.length > 50) this.flush();
+
+  log(type, uid, data = {}) {
+    this.queue.push({
+      eventId: crypto.randomUUID(),
+      sessionId: this.sessionId,
+      deviceHash: this.deviceHash,
+      platform: window.Utils?.getPlatform()?.isIOS ? 'ios' : 'web',
+      type, uid, timestamp: Date.now(), data
+    });
+    if (this.queue.length > 20) this.flush();
   }
+
   async flush() {
-    if (!this.hotQueue.length) return;
-    const batch = [...this.hotQueue]; this.hotQueue = [];
-    for (const ev of batch) await metaDB.addEvent(ev);
-    window.dispatchEvent(new CustomEvent('analytics:logUpdated'));
+    if (!this.queue.length) return;
+    const batch = [...this.queue];
+    this.queue = [];
+    try {
+      await metaDB.addEvents(batch, 'events_hot');
+      window.dispatchEvent(new CustomEvent('analytics:logUpdated'));
+    } catch (e) {
+      this.queue = [...batch, ...this.queue]; // Возврат в очередь при ошибке
+    }
   }
 }
 export const eventLogger = new EventLogger();
