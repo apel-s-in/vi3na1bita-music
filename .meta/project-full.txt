@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3da64656ec27e9ac2a04e103dd7f93cbdfaa0da8.idx
-│   │       ├── pack-3da64656ec27e9ac2a04e103dd7f93cbdfaa0da8.pack
-│   │       └── pack-3da64656ec27e9ac2a04e103dd7f93cbdfaa0da8.rev
+│   │       ├── pack-2c8d93651b95d130030ebe214deb3287b39c32b0.idx
+│   │       ├── pack-2c8d93651b95d130030ebe214deb3287b39c32b0.pack
+│   │       └── pack-2c8d93651b95d130030ebe214deb3287b39c32b0.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -389,7 +389,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-25 22:00:27 UTC
+Сгенерировано: 2026-02-25 22:05:13 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1492,6 +1492,16 @@ export class AchievementEngine {
     // Главный цикл обработки словаря
     for (const [key, rule] of Object.entries(this.dict)) {
       
+      // Проверка сезонности (ТЗ 11.4)
+      if (rule.seasonal) {
+        const now = Date.now();
+        // Если указан строгий timestamp
+        if (rule.seasonal.start && now < rule.seasonal.start) continue;
+        if (rule.seasonal.end && now > rule.seasonal.end) continue;
+        // Если указаны месяцы (0 - январь, 11 - декабрь)
+        if (rule.seasonal.months && !rule.seasonal.months.includes(new Date().getMonth())) continue;
+      }
+
       // 1. СТАТИЧНЫЕ ДОСТИЖЕНИЯ
       if (rule.type === 'static') {
         if (!this.unlocked[key]) {
