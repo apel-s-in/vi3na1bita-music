@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-adca5ca88a3eb791ad98ae3912187d95ca1683ae.idx
-│   │       ├── pack-adca5ca88a3eb791ad98ae3912187d95ca1683ae.pack
-│   │       └── pack-adca5ca88a3eb791ad98ae3912187d95ca1683ae.rev
+│   │       ├── pack-62b24b9f936f958b87d232b61d94f2efd635da45.idx
+│   │       ├── pack-62b24b9f936f958b87d232b61d94f2efd635da45.pack
+│   │       └── pack-62b24b9f936f958b87d232b61d94f2efd635da45.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -389,7 +389,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-25 21:25:10 UTC
+Сгенерировано: 2026-02-25 21:25:48 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2032,6 +2032,16 @@ export class SessionTracker {
       uid, variant: type, quality: window.playerCore?.qMode || 'hi',
       duration: duration || 0, accumulatedMs: 0, lastPos: 0, lastUpdate: Date.now() 
     };
+    
+    // Скрытые временные события для Rule Engine
+    const d = new Date();
+    if (d.getHours() === 11 && d.getMinutes() === 11) {
+      eventLogger.log('FEATURE_USED', 'global', { feature: 'play_11_11' });
+    }
+    if (d.getDay() === 0 || d.getDay() === 6) {
+      eventLogger.log('FEATURE_USED', 'global', { feature: 'weekend_play' });
+    }
+
     eventLogger.log('LISTEN_START', uid, { variant: type });
   }
 
