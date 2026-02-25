@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-af991a871a4c0071e2ca5272f8467f8ada3ddd2c.idx
-│   │       ├── pack-af991a871a4c0071e2ca5272f8467f8ada3ddd2c.pack
-│   │       └── pack-af991a871a4c0071e2ca5272f8467f8ada3ddd2c.rev
+│   │       ├── pack-f0346d4a05531ddca6ee82d9c0bd2b1cf533f33a.idx
+│   │       ├── pack-f0346d4a05531ddca6ee82d9c0bd2b1cf533f33a.pack
+│   │       └── pack-f0346d4a05531ddca6ee82d9c0bd2b1cf533f33a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-25 18:12:58 UTC
+Сгенерировано: 2026-02-25 18:13:41 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1762,13 +1762,33 @@ export class StatsAggregator {
       new StatsAggregator();
       W.achievementEngine = new AchievementEngine();
 
-      // Обновление progress UI
+      // Обновление progress UI (Виджет V4.0)
       W.addEventListener('achievements:updated', (e) => {
         const countEl = $('achievementsCount');
         const fillEl = $('achievementsFill');
+        const streakText = $('streak-text');
+        
         if (countEl) countEl.textContent = `${e.detail.unlocked} / ${e.detail.total}`;
         if (fillEl) fillEl.style.width = `${(e.detail.unlocked / e.detail.total) * 100}%`;
+        
+        if (streakText && e.detail.streak !== undefined) {
+          const s = e.detail.streak;
+          const next = s < 3 ? 3 : (s < 7 ? 7 : 30);
+          streakText.textContent = s >= 30 ? `Легенда! Стрик: ${s} дней` : `До «Стрик ${next} дней»: осталось ${next - s}`;
+        }
       });
+
+      // Привязка кнопки сохранения
+      const saveBtn = $('dash-save-btn');
+      if (saveBtn) {
+        saveBtn.onclick = () => {
+          if (!W.NetPolicy?.isNetworkAllowed()) return W.NotificationSystem?.warning('Сеть недоступна');
+          // Если подключен Yandex - синкаем, иначе просим авторизацию
+          const tokens = JSON.parse(localStorage.getItem('cloud_tokens') || '{}');
+          if (tokens.yandex) cloudSync.sync('yandex');
+          else cloudSync.auth('yandex');
+        };
+      }
 
       // OAuth callback (если включали облако)
       cloudSync?.checkAuthCallback?.();
