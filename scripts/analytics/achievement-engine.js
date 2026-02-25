@@ -151,6 +151,16 @@ export class AchievementEngine {
     // Главный цикл обработки словаря
     for (const [key, rule] of Object.entries(this.dict)) {
       
+      // Проверка сезонности (ТЗ 11.4)
+      if (rule.seasonal) {
+        const now = Date.now();
+        // Если указан строгий timestamp
+        if (rule.seasonal.start && now < rule.seasonal.start) continue;
+        if (rule.seasonal.end && now > rule.seasonal.end) continue;
+        // Если указаны месяцы (0 - январь, 11 - декабрь)
+        if (rule.seasonal.months && !rule.seasonal.months.includes(new Date().getMonth())) continue;
+      }
+
       // 1. СТАТИЧНЫЕ ДОСТИЖЕНИЯ
       if (rule.type === 'static') {
         if (!this.unlocked[key]) {
