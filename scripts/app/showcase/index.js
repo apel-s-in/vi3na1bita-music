@@ -933,6 +933,7 @@ class ShowcaseManager {
         <button class="sc-sheet-btn" id="bs-off">🔒 Скачать / Убрать из офлайн</button>
         <button class="sc-sheet-btn" id="bs-dl">⬇️ Сохранить mp3 файл</button>
         <button class="sc-sheet-btn" id="bs-stat">📊 Статистика трека</button>
+        <button class="sc-sheet-btn" id="bs-share">📸 Поделиться треком (Карточка)</button>
         <button class="sc-sheet-btn" id="bs-color">🎨 Цвет альбома</button>
         <button class="sc-sheet-btn" style="color:#888; justify-content:center; margin-top:10px" id="bs-cancel">Отмена</button>
       </div>
@@ -967,7 +968,8 @@ class ShowcaseManager {
          W.Utils.download.applyDownloadLink(a, t);
          if (a.href) a.click();
       }
-      if (id === 'bs-stat') setTimeout(() => W.StatisticsModal?.openStatisticsModal?.(), 250);
+      if (id === 'bs-stat') setTimeout(() => W.StatisticsModal?.openStatisticsModal?.(uid), 250);
+      if (id === 'bs-share') setTimeout(() => import('../../analytics/share-generator.js').then(m => m.ShareGenerator.generateAndShare('track', t)), 250);
       if (id === 'bs-color') setTimeout(() => this.openColorPicker(uid), 250);
     };
   }
