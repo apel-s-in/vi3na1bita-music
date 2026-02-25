@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a9020124c732a8595cb24835ab88e9b59404c1ea.idx
-│   │       ├── pack-a9020124c732a8595cb24835ab88e9b59404c1ea.pack
-│   │       └── pack-a9020124c732a8595cb24835ab88e9b59404c1ea.rev
+│   │       ├── pack-4f3386ad7093a81339d8e8d6ae26224c3d47b7b5.idx
+│   │       ├── pack-4f3386ad7093a81339d8e8d6ae26224c3d47b7b5.pack
+│   │       └── pack-4f3386ad7093a81339d8e8d6ae26224c3d47b7b5.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-25 18:49:24 UTC
+Сгенерировано: 2026-02-25 19:18:33 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1446,7 +1446,11 @@ import { eventLogger } from './event-logger.js';
 
 export class CloudSyncManager {
   constructor() {
-    this.providers = { yandex: { clientId: 'YOUR_YANDEX_CLIENT_ID', authUrl: 'https://oauth.yandex.ru/authorize' } };
+    this.providers = { 
+      yandex: { clientId: 'YOUR_YANDEX_CLIENT_ID', authUrl: 'https://oauth.yandex.ru/authorize', name: 'Яндекс.Диск' },
+      google: { clientId: 'YOUR_GOOGLE_CLIENT_ID', authUrl: 'https://accounts.google.com/o/oauth2/v2/auth', name: 'Google Drive' },
+      vk: { clientId: 'YOUR_VK_CLIENT_ID', authUrl: 'https://oauth.vk.com/authorize', name: 'VK ID' }
+    };
     this.tokens = JSON.parse(localStorage.getItem('cloud_tokens') || '{}');
   }
 
