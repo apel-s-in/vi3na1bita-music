@@ -22,32 +22,59 @@ body{min-height:100vh;min-width:100vw;font-family:-apple-system,BlinkMacSystemFo
 /* Layout */
 #main-block{max-width:420px;margin:0 auto;flex:1 0 auto;display:flex;flex-direction:column;align-items:center;width:100%;padding:0 10px;padding-bottom:env(safe-area-inset-bottom)}
 
-/* --- Analytics & Dashboard UI (v4.0) --- */
-.dashboard-widget {
+/* --- RPG Classic Achievements Widget --- */
+.ach-progress-root {
   width: 100%; max-width: 398px; margin: 16px auto 8px;
-  background: #0f1218; border-radius: 14px;
+  background: rgba(15,18,24,0.85); border-radius: 14px;
   padding: 14px 16px; border: 1px solid #232b38;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-  text-align: center;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4); text-align: center;
 }
-.streak-banner {
+.ach-hint-bubble {
   background: rgba(77, 170, 255, 0.1); border-radius: 8px;
   padding: 8px 12px; font-size: 13px; color: #eaf2ff; font-weight: 600;
-  display: inline-flex; align-items: center; gap: 8px; margin-bottom: 12px;
-  box-shadow: inset 0 0 0 1px rgba(77, 170, 255, 0.2);
+  display: inline-block; margin-bottom: 12px; cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(77, 170, 255, 0.2); transition: 0.2s;
 }
-.streak-icon { text-shadow: 0 0 8px rgba(255, 215, 0, 0.8); }
-.dash-title { font-size: 14px; font-weight: 900; color: #fff; letter-spacing: 0.5px; margin-bottom: 8px; }
-.dash-progress-wrap { background: #232b38; height: 6px; border-radius: 3px; overflow: hidden; margin-bottom: 8px; }
-.dash-progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #e80100, #4daaff); transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
-.dash-stats { font-size: 12px; color: #8ab8fd; font-weight: 700; margin-bottom: 14px; }
-.dash-save-btn {
+.ach-hint-bubble:hover { background: rgba(77, 170, 255, 0.2); transform: translateY(-1px); }
+.ach-rpg-header { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; text-align: left; }
+.rpg-level-badge {
+  background: linear-gradient(135deg, #ff9800, #ff5722);
+  width: 54px; height: 54px; border-radius: 50%;
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+  box-shadow: 0 0 15px rgba(255,87,34,0.4); border: 2px solid #fff; flex-shrink: 0;
+}
+.rpg-level-badge .lvl-lbl { font-size: 10px; font-weight: 900; color: #fff; opacity: 0.9; line-height: 1; }
+.rpg-level-badge .lvl-val { font-size: 24px; font-weight: 900; color: #fff; line-height: 1.1; }
+.ach-progress-bars { flex: 1; min-width: 0; }
+.ach-progress-header { margin-bottom: 6px; }
+.ach-progress-title { font-size: 12px; font-weight: 900; color: #fff; letter-spacing: 0.5px; }
+.ach-bar { background: #232b38; height: 6px; border-radius: 3px; overflow: hidden; margin-bottom: 4px; }
+.ach-bar-xp { height: 4px; opacity: 0.8; }
+.ach-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #e80100, #4daaff); transition: width 0.5s ease; }
+.ach-bar-fill.xp-fill { background: linear-gradient(90deg, #ff9800, #ffeb3b); }
+.ach-stat-row { display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; color: #8ab8fd; margin-bottom: 4px; }
+.ach-xp-label { color: #ff9800; }
+.backup-btn {
   background: #0088cc; color: #fff; border: none; border-radius: 8px;
   padding: 10px 20px; font-size: 13px; font-weight: 900; cursor: pointer;
   width: 100%; transition: 0.2s; box-shadow: 0 4px 12px rgba(0, 136, 204, 0.3);
 }
-.dash-save-btn:hover { background: #0099e6; transform: translateY(-1px); }
-.dash-save-btn:active { transform: scale(0.98); }
+.backup-btn:hover { background: #0099e6; transform: translateY(-1px); }
+.backup-btn:active { transform: scale(0.98); }
+
+/* Classic List Item (Inside Profile) */
+.ach-classic-tabs { display: flex; gap: 8px; margin-bottom: 12px; background: rgba(0,0,0,0.2); padding: 4px; border-radius: 8px; }
+.ach-classic-tab { flex: 1; padding: 6px; text-align: center; font-size: 12px; font-weight: bold; color: #888; cursor: pointer; border-radius: 6px; transition: 0.2s; }
+.ach-classic-tab.active { background: #4daaff; color: #fff; }
+.ach-item { display: flex; align-items: center; padding: 12px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 10px; margin-bottom: 8px; transition: 0.2s; }
+.ach-item.done { background: rgba(76, 175, 80, 0.05); border-color: rgba(76, 175, 80, 0.2); }
+.ach-status { font-size: 20px; margin-right: 12px; flex-shrink: 0; }
+.ach-main { flex: 1; text-align: left; min-width: 0; }
+.ach-title { font-size: 14px; font-weight: 900; color: #fff; margin-bottom: 2px; }
+.ach-sub { font-size: 12px; color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ach-right { text-align: right; flex-shrink: 0; margin-left: 10px; }
+.ach-done-date { display: inline-block; background: rgba(76, 175, 80, 0.15); color: #81c784; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 900; }
+.ach-lock { display: inline-block; background: rgba(255, 152, 0, 0.15); color: #ffb74d; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 900; }
 
 /* Modern Profile View (v4.0) */
 .profile-wrap { padding: 0 10px 20px; display: flex; flex-direction: column; gap: 16px; animation: fadeIn 0.3s ease; }
