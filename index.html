@@ -92,14 +92,16 @@
 
       <div id="social-links" class="socials-under-cover"></div>
       
-      <div class="achievements-progress-container" onclick="window.StatisticsModal?.openStatisticsModal?.()">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-          <span style="font-size:12px; color:#b3b3b3; font-weight:600; text-transform:uppercase;">Достижения</span>
-          <span id="achievementsCount" style="font-size:12px; color:#fff; font-weight:bold;">0 / 94</span>
+      <div class="dashboard-widget" id="dashboard-widget">
+        <div class="streak-banner">
+          <span class="streak-icon">💡</span> <span id="streak-text">До «Недельный стрик»: 7 дней подряд</span>
         </div>
-        <div style="background:rgba(0,0,0,0.4); height:6px; border-radius:3px; overflow:hidden;">
-          <div id="achievementsFill" style="height:100%; width:0%; background:linear-gradient(90deg, #4daaff, #b388ff); transition:width 0.5s ease;"></div>
+        <div class="dash-title">ПРОГРЕСС ДОСТИЖЕНИЙ</div>
+        <div class="dash-progress-wrap">
+          <div class="dash-progress-fill" id="achievementsFill"></div>
         </div>
+        <div class="dash-stats">ВЫПОЛНЕНО: <span id="achievementsCount">0 / 100</span></div>
+        <button class="dash-save-btn" id="dash-save-btn">СОХРАНИТЬ ДОСТИЖЕНИЯ</button>
       </div>
       
     </header>
