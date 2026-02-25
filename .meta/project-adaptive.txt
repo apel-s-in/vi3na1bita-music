@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-265e5b097af3fb07a5a29dcbee7ba64d7d2696c1.idx
-│   │       ├── pack-265e5b097af3fb07a5a29dcbee7ba64d7d2696c1.pack
-│   │       └── pack-265e5b097af3fb07a5a29dcbee7ba64d7d2696c1.rev
+│   │       ├── pack-4e662939ba2b2d07b2ac2b7f5c2d2b6e674aa68b.idx
+│   │       ├── pack-4e662939ba2b2d07b2ac2b7f5c2d2b6e674aa68b.pack
+│   │       └── pack-4e662939ba2b2d07b2ac2b7f5c2d2b6e674aa68b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-25 19:50:18 UTC
+Сгенерировано: 2026-02-25 19:51:00 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1504,7 +1504,8 @@ class EventLogger {
     await metaDB.init();
     window.addEventListener('visibilitychange', () => document.hidden && this.flush());
     window.addEventListener('beforeunload', () => this.flush());
-    setInterval(() => this.flush(), 15000); // Оптимизированный сброс каждые 15 сек
+    window.addEventListener('analytics:forceFlush', () => this.flush()); // Мгновенный сброс при окончании трека для выдачи ачивок
+    setInterval(() => this.flush(), 15000); // Оптимизированный фоновый сброс
   }
 
   log(type, uid, data = {}) {
