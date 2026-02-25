@@ -64,13 +64,33 @@
       new StatsAggregator();
       W.achievementEngine = new AchievementEngine();
 
-      // Обновление progress UI
+      // Обновление progress UI (Виджет V4.0)
       W.addEventListener('achievements:updated', (e) => {
         const countEl = $('achievementsCount');
         const fillEl = $('achievementsFill');
+        const streakText = $('streak-text');
+        
         if (countEl) countEl.textContent = `${e.detail.unlocked} / ${e.detail.total}`;
         if (fillEl) fillEl.style.width = `${(e.detail.unlocked / e.detail.total) * 100}%`;
+        
+        if (streakText && e.detail.streak !== undefined) {
+          const s = e.detail.streak;
+          const next = s < 3 ? 3 : (s < 7 ? 7 : 30);
+          streakText.textContent = s >= 30 ? `Легенда! Стрик: ${s} дней` : `До «Стрик ${next} дней»: осталось ${next - s}`;
+        }
       });
+
+      // Привязка кнопки сохранения
+      const saveBtn = $('dash-save-btn');
+      if (saveBtn) {
+        saveBtn.onclick = () => {
+          if (!W.NetPolicy?.isNetworkAllowed()) return W.NotificationSystem?.warning('Сеть недоступна');
+          // Если подключен Yandex - синкаем, иначе просим авторизацию
+          const tokens = JSON.parse(localStorage.getItem('cloud_tokens') || '{}');
+          if (tokens.yandex) cloudSync.sync('yandex');
+          else cloudSync.auth('yandex');
+        };
+      }
 
       // OAuth callback (если включали облако)
       cloudSync?.checkAuthCallback?.();
