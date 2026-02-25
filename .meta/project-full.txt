@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ef1993909fa3344d6c1e426e29d69ed370c89f43.idx
-│   │       ├── pack-ef1993909fa3344d6c1e426e29d69ed370c89f43.pack
-│   │       └── pack-ef1993909fa3344d6c1e426e29d69ed370c89f43.rev
+│   │       ├── pack-8ce4c07386dd2dcbf53b7b3c3aca85828e81b0cc.idx
+│   │       ├── pack-8ce4c07386dd2dcbf53b7b3c3aca85828e81b0cc.pack
+│   │       └── pack-8ce4c07386dd2dcbf53b7b3c3aca85828e81b0cc.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -388,7 +388,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-25 18:36:51 UTC
+Сгенерировано: 2026-02-25 18:37:15 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1761,39 +1761,71 @@ export class ShareGenerator {
 import { metaDB } from './meta-db.js';
 
 export class StatsAggregator {
-  constructor() { window.addEventListener('analytics:logUpdated', () => this.processHotEvents()); }
+  constructor() {
+    this.lastFullListens = new Map(); // Anti-tamper & Rate Limiting (in-memory)
+    window.addEventListener('analytics:logUpdated', () => this.processHotEvents());
+  }
+
   async processHotEvents() {
-    const events = await metaDB.getEvents();
+    const events = await metaDB.getEvents('events_hot');
     if (!events.length) return;
-    
+
+    let globalSecs = 0, todayStr = new Date().toISOString().split('T')[0];
+    let dailyActive = false;
+
     for (const ev of events) {
-      if (ev.type === 'LISTEN_FULL') {
-        await metaDB.updateStat('globalFullListens', (stat) => {
-          stat.value++;
-          stat.details[ev.payload.uid] = (stat.details[ev.payload.uid] || 0) + 1;
-          if (stat.details[ev.payload.uid] >= 5) window.dispatchEvent(new CustomEvent('analytics:cloudThresholdReached', { detail: { uid: ev.payload.uid }}));
-          return stat;
-        });
-      }
-      if (ev.type === 'LISTEN_VALID' || ev.type === 'LISTEN_FULL') {
-        await metaDB.updateStat('totalListenTime', (stat) => { stat.value += (ev.payload.seconds || 0); return stat; });
-        await metaDB.updateStat('lastPlayed', (stat) => { stat.details[ev.payload.uid] = ev.timestamp; return stat; });
+      if (ev.type === 'LISTEN_COMPLETE' && ev.data) {
+        const { isFullListen, isValidListen, listenedSeconds, variant } = ev.data;
+        globalSecs += (listenedSeconds || 0);
         
-        // Логика стриков
-        await metaDB.updateStat('dailyStreak', (stat) => {
-          const today = Math.floor(ev.timestamp / 86400000);
-          const lastDay = stat.details.lastDay || 0;
-          if (today - lastDay === 1) { stat.value++; stat.details.lastDay = today; }
-          else if (today - lastDay > 1) { stat.value = 1; stat.details.lastDay = today; }
-          else if (!lastDay) { stat.value = 1; stat.details.lastDay = today; }
+        // Rate Limiting (ТЗ 7.1)
+        const lastPlay = this.lastFullListens.get(ev.uid) || 0;
+        const timeSince = ev.timestamp - lastPlay;
+        const minInterval = (ev.data.trackDuration || 0) * 1000 * 0.9;
+        const isRateLimited = isFullListen && timeSince < minInterval;
+
+        await metaDB.updateStat(ev.uid, (stat) => {
+          stat.globalListenSeconds += (listenedSeconds || 0);
+          stat.lastPlayedAt = ev.timestamp;
+          if (isValidListen) {
+            stat.globalValidListenCount++;
+            dailyActive = true;
+          }
+          if (isFullListen && !isRateLimited && variant !== 'short') {
+            stat.globalFullListenCount++;
+            this.lastFullListens.set(ev.uid, ev.timestamp);
+            
+            // Триггер облачного кэширования (ТЗ 5.2)
+            const cN = parseInt(localStorage.getItem('cloud:listenThreshold')) || 5;
+            if (stat.globalFullListenCount >= cN) {
+               window.dispatchEvent(new CustomEvent('analytics:cloudThresholdReached', { detail: { uid: ev.uid } }));
+            }
+          }
           return stat;
         });
-      }
-      if (ev.type === 'FEATURE_USED') {
-         await metaDB.updateStat('features', (stat) => { stat.details[ev.payload.feature] = true; return stat; });
+      } else if (ev.type === 'FEATURE_USED') {
+         await metaDB.updateStat(ev.uid, s => {
+           s.featuresUsed[ev.data.feature] = (s.featuresUsed[ev.data.feature] || 0) + 1;
+           return s;
+         });
       }
     }
-    await metaDB.clearEvents();
+
+    // Управление стриками (ТЗ 10.2)
+    if (dailyActive) {
+      const streakObj = (await metaDB.getGlobal('global_streak'))?.value || { current: 0, longest: 0, lastActiveDate: '' };
+      if (streakObj.lastActiveDate !== todayStr) {
+        const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+        streakObj.current = (streakObj.lastActiveDate === yesterday) ? streakObj.current + 1 : 1;
+        streakObj.longest = Math.max(streakObj.longest, streakObj.current);
+        streakObj.lastActiveDate = todayStr;
+        await metaDB.setGlobal('global_streak', streakObj);
+      }
+    }
+
+    // Ротация: Hot -> Warm
+    await metaDB.addEvents(events, 'events_warm');
+    await metaDB.clearEvents('events_hot');
     window.dispatchEvent(new CustomEvent('stats:updated'));
   }
 }
