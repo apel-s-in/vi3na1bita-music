@@ -20,6 +20,11 @@ export class BackupVault {
     const a = document.createElement('a'); a.href = url; 
     a.download = `vi3na1bita_backup_${new Date().toISOString().split('T')[0]}.vi3bak`; 
     a.click(); URL.revokeObjectURL(url);
+    
+    if (window.eventLogger) {
+      window.eventLogger.log('FEATURE_USED', 'global', { feature: 'backup' });
+      window.dispatchEvent(new CustomEvent('analytics:forceFlush'));
+    }
   }
 
   static async importData(file) {
