@@ -38,7 +38,21 @@ export class StatsAggregator {
           if (isValidListen) {
             stat.globalValidListenCount++;
             dailyActive = true;
+
+            // Расширенная аналитика: По часам и дням недели (из старого приложения)
+            try {
+              const d = new Date(ev.timestamp);
+              const h = d.getHours();
+              const w = (d.getDay() + 6) % 7; // Пн=0, Вс=6
+              
+              if (!stat.byHour) stat.byHour = Array(24).fill(0);
+              if (!stat.byWeekday) stat.byWeekday = Array(7).fill(0);
+              
+              stat.byHour[h] = (stat.byHour[h] || 0) + 1;
+              stat.byWeekday[w] = (stat.byWeekday[w] || 0) + 1;
+            } catch (e) {}
           }
+
           if (isFullListen && !isRateLimited && variant !== 'short') {
             stat.globalFullListenCount++;
             this.lastFullListens.set(ev.uid, ev.timestamp);
