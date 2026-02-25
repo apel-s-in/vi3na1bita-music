@@ -23,9 +23,25 @@ export class AchievementEngine {
     this.unlocked = unData?.value || {};
     this.profile = profData?.value || { xp: 0, level: 1 };
     
+    // Загружаем внешние/авторские JSON-задания
+    await this.loadCustomAchievements();
+    
     // Сразу строим интерфейсный список, чтобы Личный кабинет не был пустым при загрузке
     this.achievements = this._buildUIArray();
     this.broadcast(0);
+  }
+
+  // Подгрузка авторских заданий (JSON Drop)
+  async loadCustomAchievements() {
+    try {
+      const res = await fetch('./data/custom_achievements.json', { cache: 'no-cache' });
+      if (res.ok) {
+        const customDict = await res.json();
+        this.dict = { ...this.dict, ...customDict };
+      }
+    } catch (e) {
+      // Игнорируем, если файла пока нет
+    }
   }
 
   // Внутренний метод оценки (Rule Evaluator)
@@ -56,15 +72,36 @@ export class AchievementEngine {
     const statsArr = await metaDB.getAllStats();
     const streakData = await metaDB.getGlobal('global_streak');
     
-    // Собираем агрегированные метрики из базы
+    // Выделяем глобальную статистику (фичи приложения, не привязанные к трекам)
+    const globalStat = statsArr.find(s => s.uid === 'global') || { featuresUsed: {} };
+    const trackStats = statsArr.filter(s => s.uid !== 'global');
+    
+    // Считаем избранное на лету
+    const favCount = window.FavoritesManager ? window.FavoritesManager.getSnapshot().filter(i => !i.inactiveAt).length : 0;
+    
+    // Собираем агрегированные метрики для Rule Engine
     const agg = {
-      totalFull: statsArr.reduce((a, b) => a + (b.globalFullListenCount || 0), 0),
-      totalSec: statsArr.reduce((a, b) => a + (b.globalListenSeconds || 0), 0),
-      featLyrics: statsArr.reduce((a, b) => a + (b.featuresUsed?.lyrics || 0), 0),
-      nightPlays: statsArr.reduce((a, b) => a + (b.featuresUsed?.nightPlay || 0), 0),
-      earlyPlays: statsArr.reduce((a, b) => a + (b.featuresUsed?.earlyPlay || 0), 0),
-      hiPlays: statsArr.reduce((a, b) => a + (b.featuresUsed?.hiQuality || 0), 0),
-      streak: streakData?.value?.current || 0
+      validPlays: trackStats.reduce((a, b) => a + (b.globalValidListenCount || 0), 0),
+      fullPlays: trackStats.reduce((a, b) => a + (b.globalFullListenCount || 0), 0),
+      totalSec: trackStats.reduce((a, b) => a + (b.globalListenSeconds || 0), 0),
+      uniqueTracks: trackStats.filter(s => s.globalValidListenCount > 0).length,
+      maxOneTrackFull: Math.max(0, ...trackStats.map(s => s.globalFullListenCount || 0)),
+      favCount: favCount,
+      streak: streakData?.value?.current || 0,
+      
+      // Специфичные фичи и тайминги
+      featLyrics: trackStats.reduce((a, b) => a + (b.featuresUsed?.lyrics || 0), 0),
+      nightPlays: trackStats.reduce((a, b) => a + (b.featuresUsed?.nightPlay || 0), 0),
+      earlyPlays: trackStats.reduce((a, b) => a + (b.featuresUsed?.earlyPlay || 0), 0),
+      hiPlays: trackStats.reduce((a, b) => a + (b.featuresUsed?.hiQuality || 0), 0),
+      
+      // Глобальные события (из 'global' uid)
+      play11_11: globalStat.featuresUsed?.play_11_11 || 0,
+      weekendPlays: globalStat.featuresUsed?.weekend_play || 0,
+      backups: globalStat.featuresUsed?.backup || 0,
+      pwaInstalled: globalStat.featuresUsed?.pwa_installed || 0,
+      sleepTimerTriggers: globalStat.featuresUsed?.sleep_timer || 0,
+      socialVisits: globalStat.featuresUsed?.social_visit || 0
     };
 
     let changed = false;
@@ -148,15 +185,30 @@ export class AchievementEngine {
     
     for (const [key, rule] of Object.entries(this.dict)) {
       if (rule.type === 'static') {
-        arr.push({
-          id: key,
-          name: rule.ui.name,
-          desc: rule.ui.desc,
-          icon: rule.ui.icon,
-          color: rule.ui.color,
-          isUnlocked: !!this.unlocked[key],
-          unlockedAt: this.unlocked[key] || null
-        });
+        const isUnl = !!this.unlocked[key];
+        
+        // Маскировка секретных достижений (в точности как в старом аппе)
+        if (rule.hidden && !isUnl) {
+          arr.push({
+            id: key,
+            name: "Секретное достижение",
+            desc: "Откроется при особых условиях",
+            icon: "🔒",
+            color: "#888888",
+            isUnlocked: false,
+            unlockedAt: null
+          });
+        } else {
+          arr.push({
+            id: key,
+            name: rule.ui.name,
+            desc: rule.ui.desc,
+            icon: rule.ui.icon,
+            color: rule.ui.color,
+            isUnlocked: isUnl,
+            unlockedAt: this.unlocked[key] || null
+          });
+        }
       } else if (rule.type === 'scalable') {
         let curLevel = 1;
         
