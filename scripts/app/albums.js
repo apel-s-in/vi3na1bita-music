@@ -115,7 +115,10 @@ class AlbumsManager {
       this.curr = key; localStorage.setItem('currentAlbum', key);
       document.querySelectorAll('.album-icon').forEach(el => el.classList.toggle('active', el.dataset.album === key));
       $('track-list')?.classList.remove('filtered'); window.PlayerUI?.switchAlbumInstantly?.(key);
-    } catch (e) { window.NotificationSystem?.error('Ошибка загрузки'); } finally { this.loading = false; }
+    } catch (e) { 
+      console.error('[AlbumsManager] Ошибка загрузки альбома:', e);
+      window.NotificationSystem?.error('Ошибка загрузки'); 
+    } finally { this.loading = false; }
   }
 
   async _loadReg(key) {
