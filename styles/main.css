@@ -867,8 +867,8 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .chart-row .val { font-size: 0.86em; color: rgba(255,255,255,0.8); text-align: right; }
 
 /* Fast Bottom Sheet (No Blur) */
-.sc-bottom-sheet-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 10000; opacity: 0; transition: opacity 0.2s; display: flex; align-items: flex-end; justify-content: center; }
-.sc-bottom-sheet-bg.active { opacity: 1; }
+.sc-bottom-sheet-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 10000; opacity: 0; transition: opacity 0.2s, visibility 0.2s; display: flex; align-items: flex-end; justify-content: center; pointer-events: none; visibility: hidden; }
+.sc-bottom-sheet-bg.active { opacity: 1; pointer-events: auto; visibility: visible; }
 .sc-bottom-sheet { width: 100%; max-width: 420px; background: #1a1a2e; border-radius: 20px 20px 0 0; padding: 20px 16px 30px; transform: translateY(100%); transition: transform 0.2s cubic-bezier(0.1, 0.8, 0.2, 1); box-shadow: 0 -4px 24px rgba(0,0,0,0.5); border-top: 1px solid rgba(255,255,255,0.1); max-height: 85vh; overflow-y: auto; }
 .sc-bottom-sheet-bg.active .sc-bottom-sheet { transform: translateY(0); }
 .sc-sheet-title { color: #fff; font-weight: 800; font-size: 16px; margin-bottom: 4px; text-align: center; }
