@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e032c3e414fa71562968191151aab0cde723d1c6.idx
-│   │       ├── pack-e032c3e414fa71562968191151aab0cde723d1c6.pack
-│   │       └── pack-e032c3e414fa71562968191151aab0cde723d1c6.rev
+│   │       ├── pack-cf89d8f3701adec622d591da206f632006595e85.idx
+│   │       ├── pack-cf89d8f3701adec622d591da206f632006595e85.pack
+│   │       └── pack-cf89d8f3701adec622d591da206f632006595e85.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -389,7 +389,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-27 18:40:44 UTC
+Сгенерировано: 2026-02-27 18:56:12 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -10170,7 +10170,7 @@ body{min-height:100vh;min-width:100vw;font-family:-apple-system,BlinkMacSystemFo
 .track:active{transform:scale(.98);background:rgba(255,255,255,.08)!important}
 .track.inactive{opacity:.45;filter:grayscale(.6)}
 
-/* FavoritesOnly: UI-only фильтрация списка по ⭐ (не влияет на playback) */
+/* FavoritesOnly: UI-only фильтрация списка по ⭐ */
 .track-list.favonly-filtered .track[data-hidden-by-favonly="1"]{display:none!important}
 .track.is-favorite{background:rgba(77,170,255,.06)}
 .tnum{min-width:30px;color:var(--c-blue);font-weight:500}
@@ -10181,7 +10181,7 @@ body{min-height:100vh;min-width:100vw;font-family:-apple-system,BlinkMacSystemFo
 .like-star.animating{animation:starPulse .3s}
 @keyframes starPulse{0%,to{transform:scale(1)}50%{transform:scale(1.4)}}
 
-/* Offline indicators 🔒/☁ (ТЗ П.7.2) */
+/* Offline indicators 🔒/☁ */
 .offline-ind{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;min-width:20px;font-size:12px;line-height:1;cursor:pointer;user-select:none;-webkit-user-select:none;flex-shrink:0;border-radius:3px;transition:opacity .2s,transform .15s;vertical-align:middle;margin-right:2px}
 .offline-ind:hover{transform:scale(1.2)}
 .offline-ind:active{transform:scale(.95)}
@@ -10219,10 +10219,6 @@ body{min-height:100vh;min-width:100vw;font-family:-apple-system,BlinkMacSystemFo
 .offline-btn:active{transform:translateY(0)}
 .offline-btn.online{background:var(--primary-color);color:var(--c-w)}
 .offline-btn.offline{background:#27b34c;color:var(--c-w)}
-.track .offline-indicator{margin-right:8px;font-size:18px}
-.offline-indicator.pinned{color:#ffd166}
-.offline-indicator.cloud{color:var(--c-blue);opacity:.8}
-.offline-indicator.gray{color:#555}
 #offline-btn.alert::after{content:"!";color:var(--primary-color);font-weight:900;margin-left:6px}
 
 /* Toasts */
@@ -10237,12 +10233,6 @@ body{min-height:100vh;min-width:100vw;font-family:-apple-system,BlinkMacSystemFo
 .toast-error{border-left:4px solid var(--primary-color)}
 .toast-warning{border-left:4px solid #ff9800}
 .toast-offline{border-left:4px solid #666}
-
-/* Cloud menu popup (☁ context menu) */
-.cloud-menu-item{padding:10px 16px;color:#e0e0e0;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:background .15s}
-.cloud-menu-item:hover{background:rgba(255,255,255,.08)}
-.cloud-menu-item.cloud-menu-delete{color:#ff6b6b}
-.cloud-menu-item.cloud-menu-delete:hover{background:rgba(255,80,80,.12)}
 
 /* Cloud menu */
 .cloud-menu{position:fixed;z-index:10000;background:#1e1e2e;border:1px solid #444;border-radius:8px;padding:4px 0;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,.5);font-size:14px}
@@ -10268,27 +10258,6 @@ body{min-height:100vh;min-width:100vw;font-family:-apple-system,BlinkMacSystemFo
 .modal-action-btn{background:rgba(77,170,255,.15);border:1px solid rgba(77,170,255,.3);color:var(--secondary-color);padding:10px 20px;border-radius:8px;cursor:pointer;font-weight:900;font-size:14px;transition:.2s}
 .modal-action-btn:hover{background:rgba(77,170,255,.25);transform:translateY(-1px);box-shadow:0 4px 12px rgba(77,170,255,.2)}
 .modal-action-btn:active{transform:translateY(0)}
-
-/* Sleep overlay */
-.sleep-overlay{position:fixed;inset:0;background:rgba(0,0,0,.95);display:none;align-items:center;justify-content:center;z-index:10000;animation:fadeIn .5s}
-.sleep-overlay.active{display:flex}
-.sleep-content{text-align:center;padding:40px;max-width:400px}
-.sleep-icon{font-size:64px;margin-bottom:20px;opacity:.5}
-.sleep-title{font-size:24px;margin-bottom:10px;color:var(--text-color)}
-.sleep-message{color:rgba(255,255,255,.6);margin-bottom:30px}
-.sleep-buttons{display:flex;gap:10px;justify-content:center}
-.sleep-btn{padding:12px 24px;border-radius:8px;border:0;cursor:pointer;font-weight:900;transition:opacity .2s}
-.sleep-btn-primary{background:var(--primary-color);color:var(--c-w)}
-.sleep-btn-secondary{background:rgba(255,255,255,.1);color:var(--text-color)}
-.sleep-btn:hover{opacity:.8}
-
-/* Hotkeys modal */
-.hotkeys-modal{max-width:600px;max-height:80vh;overflow-y:auto}
-.hotkeys-section{margin-bottom:24px}
-.hotkeys-section h3{color:var(--c-blue);font-size:16px;margin-bottom:12px}
-.hotkey-item{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;margin-bottom:6px;background:rgba(255,255,255,.05);border-radius:6px}
-.hotkey-combo{font-family:"SF Mono",Monaco,"Courier New",monospace;background:rgba(77,170,255,.15);padding:4px 10px;border-radius:4px;color:var(--secondary-color);font-weight:900;font-size:13px}
-.hotkey-desc{color:#cfe3ff;font-size:14px;margin-left:16px;flex:1;text-align:right}
 
 /* iOS install prompt */
 .ios-install-prompt{position:fixed;bottom:0;left:0;right:0;background:#1a1a1a;border-top-left-radius:20px;border-top-right-radius:20px;padding:20px;transform:translateY(100%);transition:transform .3s ease;z-index:10000;box-shadow:0 -4px 20px rgba(0,0,0,.3)}
@@ -10337,9 +10306,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 @keyframes fadeInUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .animate-in{animation:fadeInUp .4s ease-out}
 
-/* ═══════════════════════════════════════════════════════
-   OFFLINE MODAL (om-*) — v3.3 clean, no dupes
-   ═══════════════════════════════════════════════════════ */
+/* OFFLINE MODAL (om-*) — v3.3 clean, no dupes */
 :root{--om-bg:#141420;--om-border:rgba(255,255,255,.08);--om-muted:rgba(255,255,255,.4);--om-dim:rgba(255,255,255,.6);--om-card:rgba(255,255,255,.03);--om-accent:#7c4dff;--om-accent-a:rgba(124,77,255,.15);--om-green:#4caf50;--om-red:#f44336;--om-yellow:#ffc107;--om-r:10px}
 
 /* Overlay + Modal */
@@ -10457,7 +10424,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .om-mode-card__desc{font-size:12px;color:var(--om-muted);line-height:1.4}
 .om-mode-card__hint{font-size:12px;color:rgba(255,255,255,.35);margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.05)}
 
-/* Disabled mode cards (R2, R3 stubs) */
+/* Disabled mode cards (R2) */
 .om-mode-card--disabled{opacity:.45;pointer-events:none;position:relative}
 .om-mode-card--disabled::after{content:'';position:absolute;inset:0;border-radius:var(--om-r);background:repeating-linear-gradient(135deg,transparent,transparent 10px,rgba(255,255,255,.02) 10px,rgba(255,255,255,.02) 20px)}
 .om-mode-card--disabled .om-mode-btn{cursor:not-allowed}
@@ -10472,21 +10439,6 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .om-list-icon{font-size:14px;flex-shrink:0;width:20px;text-align:center}
 .om-list-title{flex:1;font-size:13px;color:rgba(255,255,255,.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .om-list-meta{font-size:11px;color:rgba(255,255,255,.35);flex-shrink:0;font-variant-numeric:tabular-nums}
-.om-list-badge{font:600 10px inherit;padding:2px 6px;border-radius:4px;flex-shrink:0}
-.om-list-badge--pin{background:rgba(255,193,7,.15);color:#ffd54f}
-.om-list-badge--cloud{background:rgba(68,138,255,.15);color:#82b1ff}
-
-/* Background presets */
-.om-presets-list{display:flex;flex-direction:column;gap:8px}
-.om-preset{all:unset;cursor:pointer;box-sizing:border-box;display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;border-radius:var(--om-r);background:var(--om-card);border:1px solid rgba(255,255,255,.06);transition:all .15s;user-select:none}
-.om-preset:hover{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12)}
-.om-preset--active{background:var(--om-accent-a);border-color:rgba(124,77,255,.3)}
-.om-preset__icon{font-size:20px;flex-shrink:0;width:28px;text-align:center}
-.om-preset__text{flex:1;min-width:0}
-.om-preset__name{font:600 14px inherit;color:#fff;margin-bottom:2px}
-.om-preset--active .om-preset__name{color:#b388ff}
-.om-preset__desc{font-size:12px;color:var(--om-muted);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.om-preset__check{font-size:16px;font-weight:700;color:#b388ff;flex-shrink:0;width:20px;text-align:center}
 
 /* Buttons */
 .om-btn{all:unset;cursor:pointer;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 18px;border-radius:var(--om-r);font:600 13px inherit;text-align:center;transition:all .15s;user-select:none}
@@ -10513,7 +10465,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .om-confirm-body{font-size:14px;line-height:1.5;color:rgba(255,255,255,.65);margin-bottom:20px}
 .om-confirm-btns{display:flex;gap:10px;justify-content:flex-end}
 
-/* Responsive */
+/* Responsive Offline Modal */
 @media(max-width:380px){
   .om-overlay{padding:8px 6px 24px}
   .om-modal{border-radius:12px}
@@ -10521,7 +10473,6 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
   .om-settings-grid{grid-template-columns:1fr}
   .om-toggles-row{flex-direction:column;gap:6px}
   .om-mode-card__head,.om-quality-row{flex-direction:column;align-items:flex-start;gap:8px}
-  .om-preset__desc{white-space:normal}
 }
 @media(max-height:500px){.om-body{max-height:calc(100vh - 80px)}.om-overlay{padding:8px}}
 @media(min-width:768px){.om-overlay{align-items:center;padding:40px 20px}.om-body{max-height:70vh}}
@@ -10542,14 +10493,9 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .om-list-del{all:unset;cursor:pointer;flex-shrink:0;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:6px;font-size:14px;color:rgba(244,67,54,.6);transition:all .15s;margin-left:4px}
 .om-list-del:hover{background:rgba(244,67,54,.12);color:#ef5350}
 .om-list-del:active{transform:scale(.9)}
-
-/* Delete all inside list */
 .om-list-del-all{margin-top:10px}
-
-/* Track item exit animation */
 .om-list-item{transition:opacity .2s,transform .2s}
 
-/* Responsive fix for toprow */
 @media(max-width:340px){.om-pc-toprow{flex-direction:column;gap:8px}}
 
 /* SHOWCASE STYLES OPTIMIZED */
@@ -10558,18 +10504,9 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .showcase-search { width: 100%; padding: 10px 38px 10px 14px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.05); color: #fff; outline: none; transition: border-color 0.2s; }
 
 .showcase-search-clear {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  border: 1px solid rgba(255,255,255,0.10);
-  background: rgba(255,255,255,0.06);
-  color: rgba(255,255,255,0.8);
-  cursor: pointer;
-  display: none;
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px;
+  border-radius: 8px; border: 1px solid rgba(255,255,255,0.10); background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.8); cursor: pointer; display: none;
 }
 .showcase-search-clear:active { transform: translateY(-50%) scale(0.98); }
 .showcase-search:focus { border-color: var(--secondary-color); }
@@ -10578,72 +10515,32 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .showcase-btn:hover { background: rgba(77,170,255,0.15); border-color: var(--secondary-color); }
 .showcase-btn.active { background: var(--secondary-color); color: #fff; }
 .showcase-btn--danger { color: #ff6b6b; border-color: rgba(255,107,107,0.3); }
-.showcase-playlists-scroll { display: flex; gap: 10px; overflow-x: auto; padding: 4px 0 10px; scrollbar-width: none; }
 
 /* Showcase playlists (vertical UI) */
 .showcase-playlists-actions { display: flex; gap: 10px; padding: 4px 0 6px; }
 .sc-pl-action {
-  flex: 1;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,.12);
-  background: rgba(255,255,255,.06);
-  color: #fff;
-  font-weight: 800;
-  cursor: pointer;
+  flex: 1; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06); color: #fff; font-weight: 800; cursor: pointer;
 }
-.sc-pl-action.active {
-  border-color: rgba(77,170,255,.45);
-  background: rgba(77,170,255,.18);
-  color: var(--secondary-color);
-}
+.sc-pl-action.active { border-color: rgba(77,170,255,.45); background: rgba(77,170,255,.18); color: var(--secondary-color); }
 
 .showcase-playlists-list { display: flex; flex-direction: column; gap: 8px; padding: 0 0 10px; }
-
 .sc-pl-row {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,.10);
-  background: rgba(255,255,255,.05);
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,.10); background: rgba(255,255,255,.05);
 }
-.sc-pl-row.active {
-  border-color: rgba(77,170,255,.45);
-  background: rgba(77,170,255,.10);
-}
+.sc-pl-row.active { border-color: rgba(77,170,255,.45); background: rgba(77,170,255,.10); }
 
 .sc-pl-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .sc-pl-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-.sc-pl-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  background: var(--pl-color, rgba(255,255,255,.25));
-  flex-shrink: 0;
-}
+.sc-pl-dot { width: 10px; height: 10px; border-radius: 999px; background: var(--pl-color, rgba(255,255,255,.25)); flex-shrink: 0; }
 
 .sc-pl-right { display: flex; gap: 8px; flex-shrink: 0; }
-.sc-pl-btn {
-  width: 36px;
-  height: 32px;
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,.12);
-  background: rgba(255,255,255,.06);
-  color: #fff;
-  cursor: pointer;
-}
+.sc-pl-btn { width: 36px; height: 32px; border-radius: 10px; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.06); color: #fff; cursor: pointer; }
 .sc-pl-btn.danger { border-color: rgba(255,80,80,.35); }
 
 .sc-pl-empty { opacity: .65; font-size: 13px; padding: 6px 2px; }
-.showcase-playlists-scroll::-webkit-scrollbar { display: none; }
-.showcase-playlist-chip { padding: 6px 14px; border-radius: 16px; background: rgba(255,255,255,0.08); color: #ccc; cursor: pointer; white-space: nowrap; display: flex; align-items: center; gap: 8px; border: 1px solid transparent; font-size: 13px; transition: 0.2s; }
-.showcase-playlist-chip.active { background: rgba(77,170,255,0.2); color: var(--secondary-color); border-color: rgba(77,170,255,0.4); }
-.p-action { opacity: 0.6; padding: 0 2px; } .p-action:hover { opacity: 1; color: #fff; }
+
 .showcase-status-bar { display: flex; justify-content: space-between; font-size: 13px; color: #9db7dd; padding: 0 10px 10px; border-bottom: 1px solid var(--border-color); align-items: center; }
 .showcase-group-header { padding: 16px 10px 8px; font-weight: 800; color: var(--secondary-color); font-size: 14px; letter-spacing: 1px; text-transform: uppercase; background: rgba(0,0,0,0.2); }
 
@@ -10653,16 +10550,10 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .showcase-track.drag-over { border-top: 2px solid var(--secondary-color); }
 .showcase-track-thumb { width: 32px; height: 32px; border-radius: 4px; margin: 0 8px 0 8px; object-fit: cover; flex-shrink: 0; }
 .showcase-track-meta { font-size: 11px; color: #888; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 /* Showcase: compact left side when numbering is hidden */
-.showcase-track .tnum {
-  min-width: 28px;
-  color: var(--c-blue);
-  font-weight: 500;
-  padding-left: 6px;
-}
-.showcase-track .offline-ind {
-  margin-right: 6px; /* как в родных списках: не впритык */
-}
+.showcase-track .tnum { min-width: 28px; color: var(--c-blue); font-weight: 500; padding-left: 6px; }
+.showcase-track .offline-ind { margin-right: 6px; }
 .sc-arrow-up, .sc-arrow-down { all: unset; cursor: pointer; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #888; flex-shrink: 0; }
 .sc-arrow-up:hover, .sc-arrow-down:hover { color: #fff; background: rgba(255,255,255,0.1); border-radius: 4px; }
 .showcase-drag-handle { cursor: grab; padding: 0 10px; color: #666; font-size: 22px; display: flex; align-items: center; height: 100%; touch-action: none; }
@@ -10682,12 +10573,8 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .showcase-color-dot { width: 34px; height: 34px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.5); }
 .showcase-color-dot:hover { transform: scale(1.15); }
 
-/* Profile Sheet & Stats */
-.profile-sheet { max-height: 90vh; }
-.grid-2-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+/* Stats UI */
 .stat-card { background: rgba(0,0,0,0.3); border-radius: 12px; padding: 16px; text-align: center; border: 1px solid rgba(255,255,255,0.05); }
-.stat-value { display: block; font-size: 1.5rem; font-weight: bold; color: #fff; margin-bottom: 4px; }
-.stat-desc { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
 
 /* Classic MyStats Chart UI */
 .stat-list { margin: 8px 0 12px; padding: 0; list-style: none; text-align: left; }
