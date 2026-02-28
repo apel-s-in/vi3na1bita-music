@@ -160,18 +160,31 @@ import { ensureMediaSession } from './player-core/media-session.js';
     }
 
     _unload(silent) {
-      if (this.sound) { try { this.sound.stop(); this.sound.unload(); } catch {} this.sound = null; }
-      // ВАЖНО: blob: URL нельзя отзывать "на горячую" — Howler/браузер может ещё обращаться к нему,
-      // особенно при ретраях/быстрых переключениях. Отзываем только если этот blob-url
-      // не относится к текущему token загрузки.
-      // При stop (не silent) можно отозвать текущий blob-url сразу, так как мы гарантированно остановили трек.
-      if (this._oK) {
-        try { W.Utils?.blob?.revokeUrl?.(this._oK); } catch {}
+      if (this.sound) {
+        try { this.sound.stop(); this.sound.unload(); } catch {}
+        this.sound = null;
       }
-      this._oK = null;
-      this._oKTok = 0;
+
+      // CRITICAL: не отзываем blob-url "на горячую" при silent unload.
+      // Howler может ещё обращаться к нему (ретраи/буфер/события) => blob: ERR_FILE_NOT_FOUND => автоскип.
+      //
+      // Правило:
+      // - silent=true: revoke только если blob-url принадлежит НЕ текущей загрузке (устаревший token)
+      // - silent=false (stop): можно revoke всегда (мы сознательно остановили)
+      if (this._oK) {
+        const canRevoke = !silent || (this._oKTok && this._oKTok !== this._tok);
+        if (canRevoke) {
+          try { W.Utils?.blob?.revokeUrl?.(this._oK); } catch {}
+          this._oK = null;
+          this._oKTok = 0;
+        }
+      }
+
       this._stopT();
-      if (!silent) { emitG('player:stop'); this._emit('onStop'); }
+      if (!silent) {
+        emitG('player:stop');
+        this._emit('onStop');
+      }
     }
 
     _startT() { this._stopT(); this._tick = setInterval(() => { this._emit('onTick', this.getPosition(), this.getDuration()); emitG('player:tick', { currentTime: this.getPosition(), volume: this.getVolume(), muted: this.isMuted() }); }, 250); }
