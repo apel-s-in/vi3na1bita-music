@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-198852bd0e52041a236ea789d0972d40b5139fec.idx
-│   │       ├── pack-198852bd0e52041a236ea789d0972d40b5139fec.pack
-│   │       └── pack-198852bd0e52041a236ea789d0972d40b5139fec.rev
+│   │       ├── pack-44dc0f50fb0466d2e4cb34459c496516d1062644.idx
+│   │       ├── pack-44dc0f50fb0466d2e4cb34459c496516d1062644.pack
+│   │       └── pack-44dc0f50fb0466d2e4cb34459c496516d1062644.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -390,7 +390,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-28 21:23:21 UTC
+Сгенерировано: 2026-02-28 21:37:21 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1934,21 +1934,17 @@ export const eventLogger = new EventLogger();
 export class MetaDB {
   constructor() { 
     this.dbName = 'MetaDB_v4'; 
-    this.version = 1; 
+    this.version = 1;
     this.db = null; 
+    this._initPromise = null;
   }
   
   async init() {
-    if (this.db) return;
-    
-    return new Promise((resolve, reject) => {
-      if (!window.indexedDB) {
-        console.error("IndexedDB не поддерживается вашим браузером");
-        return reject('IndexedDB is not supported');
-      }
-
+    if (this.db) return this.db;
+    if (this._initPromise) return this._initPromise;
+    this._initPromise = new Promise((resolve, reject) => {
+      if (!window.indexedDB) return reject('IndexedDB is not supported');
       const req = indexedDB.open(this.dbName, this.version);
-
       req.onupgradeneeded = (e) => {
         const db = e.target.result;
         if (!db.objectStoreNames.contains('events_hot')) db.createObjectStore('events_hot', { keyPath: 'eventId' });
@@ -1956,70 +1952,96 @@ export class MetaDB {
         if (!db.objectStoreNames.contains('stats')) db.createObjectStore('stats', { keyPath: 'uid' });
         if (!db.objectStoreNames.contains('global')) db.createObjectStore('global', { keyPath: 'key' });
       };
-
-      // Пуленепробиваемый вариант: берем result напрямую из req, без использования event.target
-      req.onsuccess = () => { 
-        this.db = req.result; 
-        resolve(); 
-      };
-
-      req.onerror = () => { 
-        console.error("MetaDB Error:", req.error);
-        reject(req.error); 
-      };
+      req.onsuccess = () => { this.db = req.result; resolve(this.db); };
+      req.onerror = () => reject(req.error);
     });
-  }
-
-  async tx(storeName, mode, op) {
-    if (!this.db) await this.init();
-    return new Promise((res, rej) => {
-      try {
-        const transaction = this.db.transaction(storeName, mode);
-        const request = op(transaction.objectStore(storeName));
-        request.onsuccess = () => res(request.result);
-        request.onerror = () => rej(request.error);
-      } catch (e) {
-        rej(e);
-      }
-    });
+    return this._initPromise;
   }
 
   async addEvents(events, store = 'events_hot') {
-    if (!this.db) await this.init();
-    return new Promise((res, rej) => {
-      try {
-        const t = this.db.transaction(store, 'readwrite');
-        const s = t.objectStore(store);
-        events.forEach(ev => s.put(ev));
-        t.oncomplete = () => res(true);
-        t.onerror = () => rej(t.error);
-      } catch (e) {
-        rej(e);
-      }
+    await this.init();
+    return new Promise((resolve, reject) => {
+      const tx = this.db.transaction(store, 'readwrite');
+      const s = tx.objectStore(store);
+      events.forEach(ev => s.put(ev));
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => reject(tx.error);
     });
   }
 
-  async getEvents(store = 'events_hot') { return this.tx(store, 'readonly', s => s.getAll()); }
-  async clearEvents(store = 'events_hot') { return this.tx(store, 'readwrite', s => s.clear()); }
+  async getEvents(store = 'events_hot') {
+    await this.init();
+    return new Promise((resolve, reject) => {
+      const req = this.db.transaction(store, 'readonly').objectStore(store).getAll();
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async clearEvents(store = 'events_hot') {
+    await this.init();
+    return new Promise((resolve, reject) => {
+      const tx = this.db.transaction(store, 'readwrite');
+      tx.objectStore(store).clear();
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => reject(tx.error);
+    });
+  }
   
   async updateStat(uid, mutatorFn) {
-    return this.tx('stats', 'readwrite', store => {
-      const req = store.get(uid);
-      req.onsuccess = () => {
-        const data = req.result || { 
+    await this.init();
+    return new Promise((resolve, reject) => {
+      const tx = this.db.transaction('stats', 'readwrite');
+      const store = tx.objectStore('stats');
+      const getReq = store.get(uid);
+      getReq.onsuccess = () => {
+        const data = getReq.result || { 
           uid, globalListenSeconds: 0, globalValidListenCount: 0, globalFullListenCount: 0, 
           firstPlayedAt: Date.now(), lastPlayedAt: Date.now(), featuresUsed: {} 
         };
         store.put(mutatorFn(data));
       };
-      return req;
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => reject(tx.error);
     });
   }
   
-  async getStat(uid) { return this.tx('stats', 'readonly', s => s.get(uid)); }
-  async getAllStats() { return this.tx('stats', 'readonly', s => s.getAll()); }
-  async getGlobal(key) { return this.tx('global', 'readonly', s => s.get(key)); }
-  async setGlobal(key, value) { return this.tx('global', 'readwrite', s => s.put({ key, value })); }
+  async getStat(uid) {
+    await this.init();
+    return new Promise((resolve, reject) => {
+      const req = this.db.transaction('stats', 'readonly').objectStore('stats').get(uid);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async getAllStats() {
+    await this.init();
+    return new Promise((resolve, reject) => {
+      const req = this.db.transaction('stats', 'readonly').objectStore('stats').getAll();
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async getGlobal(key) {
+    await this.init();
+    return new Promise((resolve, reject) => {
+      const req = this.db.transaction('global', 'readonly').objectStore('global').get(key);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async setGlobal(key, value) {
+    await this.init();
+    return new Promise((resolve, reject) => {
+      const tx = this.db.transaction('global', 'readwrite');
+      tx.objectStore('global').put({ key, value });
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => reject(tx.error);
+    });
+  }
 }
 
 export const metaDB = new MetaDB();
