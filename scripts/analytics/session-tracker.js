@@ -49,6 +49,15 @@ export class SessionTracker {
     // Считаем только реальное звучание (защита от перемотки/паузы)
     if (deltaMs > 0 && deltaMs < 2000 && posDelta < 1.5 && volume > 0 && !muted) {
       this.s.accumulatedMs += deltaMs;
+      
+      // Логика непрерывного прослушивания для ачивки Speed Runner (3 часа = 10800000 мс)
+      window._speedRunnerMs = (window._speedRunnerMs || 0) + deltaMs;
+      if (window._speedRunnerMs >= 10800000 && !window._speedRunnerLogged) {
+        window._speedRunnerLogged = true;
+        if (window.eventLogger) window.eventLogger.log('FEATURE_USED', 'global', { feature: 'speed_runner' });
+      }
+    } else {
+      window._speedRunnerMs = 0; // Сброс при паузе, муте или перемотке
     }
     
     if (this.s.duration <= 0) this.s.duration = window.playerCore?.getDuration() || 0;
