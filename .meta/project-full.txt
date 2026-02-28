@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-92670f77501fd9ba509e57dbdf5506bc97190897.idx
-│   │       ├── pack-92670f77501fd9ba509e57dbdf5506bc97190897.pack
-│   │       └── pack-92670f77501fd9ba509e57dbdf5506bc97190897.rev
+│   │       ├── pack-ec1e1ea7933f87f495744d26d3f60c1ab7f9779d.idx
+│   │       ├── pack-ec1e1ea7933f87f495744d26d3f60c1ab7f9779d.pack
+│   │       └── pack-ec1e1ea7933f87f495744d26d3f60c1ab7f9779d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -390,7 +390,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-28 21:11:36 UTC
+Сгенерировано: 2026-02-28 21:21:08 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -1434,8 +1434,12 @@ export class AchievementEngine {
       }
     });
 
-    this.achievements = this._buildUIArray();
-    this.broadcast(0);
+    // Ожидаем загрузки реестра треков для корректной работы album_complete_* ачивок
+    if (window.TrackRegistry?.ensurePopulated) {
+      await window.TrackRegistry.ensurePopulated();
+    }
+    // Выполняем полноценный пересчет прогресса сразу при запуске
+    await this.check();
   }
 
   _evalCondition(cond, agg) {
