@@ -1,6 +1,7 @@
 import { metaDB } from '../analytics/meta-db.js';
 
 export async function openStatisticsModal(uid = null) {
+  if (!uid) uid = window.playerCore?.getCurrentTrackUid?.() || null;
   if (uid) {
     // -----------------------------------------------------
     // 1. ТРЕКОВАЯ СТАТИСТИКА (По конкретному треку)
@@ -39,9 +40,15 @@ export async function openStatisticsModal(uid = null) {
        });
     };
   } else {
-    // -----------------------------------------------------
-    // 2. ГЛОБАЛЬНАЯ СТАТИСТИКА (Сводка профиля)
-    // -----------------------------------------------------
+    // Глобальная статистика отключена: модалка работает только по текущему треку (uid)
+    wrap.innerHTML = `
+      <div style="padding:14px;">
+        <div style="font-weight:900; color:#fff; margin-bottom:6px;">Статистика</div>
+        <div style="color:rgba(234,242,255,.72); font-size:12px; line-height:1.35;">
+          Не удалось определить текущий трек.
+        </div>
+      </div>
+    `;
     const allStats = await metaDB.getAllStats();
     const totalFull = allStats.reduce((acc, s) => acc + (s.globalFullListenCount || 0), 0);
     const totalSecs = allStats.reduce((acc, s) => acc + (s.globalListenSeconds || 0), 0);
@@ -85,6 +92,7 @@ export async function openStatisticsModal(uid = null) {
     `;
 
     window.Modals.open({ title: 'Профиль слушателя', bodyHtml, maxWidth: 400 });
+    return;
   }
 }
 
