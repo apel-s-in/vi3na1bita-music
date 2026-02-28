@@ -40,8 +40,12 @@ export class AchievementEngine {
       }
     });
 
-    this.achievements = this._buildUIArray();
-    this.broadcast(0);
+    // Ожидаем загрузки реестра треков для корректной работы album_complete_* ачивок
+    if (window.TrackRegistry?.ensurePopulated) {
+      await window.TrackRegistry.ensurePopulated();
+    }
+    // Выполняем полноценный пересчет прогресса сразу при запуске
+    await this.check();
   }
 
   _evalCondition(cond, agg) {
