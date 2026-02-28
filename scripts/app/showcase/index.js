@@ -7,6 +7,7 @@
 import { ensureLyricsIndexLoaded, searchUidsByQuery } from './lyrics-search.js';
 
 const W = window, D = document, U = W.Utils, LS = 'showcase:';
+const ls = localStorage;
 const PALETTE = ['transparent','#ef5350','#ff9800','#fdd835','#4caf50','#00bcd4','#2196f3','#9c27b0','#e91e63','#9e9e9e'];
 const esc = s => U.escapeHtml(String(s || ''));
 const $ = id => D.getElementById(id);
