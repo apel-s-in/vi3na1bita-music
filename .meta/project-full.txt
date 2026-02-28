@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-7220e218e972cc261e2c0b77266cccb40043e72f.idx
-│   │       ├── pack-7220e218e972cc261e2c0b77266cccb40043e72f.pack
-│   │       └── pack-7220e218e972cc261e2c0b77266cccb40043e72f.rev
+│   │       ├── pack-5f4e3f63341fa39018a731327646a29712a7eaeb.idx
+│   │       ├── pack-5f4e3f63341fa39018a731327646a29712a7eaeb.pack
+│   │       └── pack-5f4e3f63341fa39018a731327646a29712a7eaeb.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -390,7 +390,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-28 14:47:12 UTC
+Сгенерировано: 2026-02-28 14:58:05 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8236,11 +8236,6 @@ body{min-height:100vh;min-width:100vw;font-family:-apple-system,BlinkMacSystemFo
 .ach-more{appearance:none;border:1px solid rgba(77,170,255,.22);background:rgba(77,170,255,.10);color:#eaf2ff;border-radius:10px;padding:6px 10px;font-size:11px;font-weight:900;cursor:pointer;line-height:1;text-transform:uppercase;min-width:110px}
 .ach-more:hover{background:rgba(77,170,255,.18);border-color:rgba(77,170,255,.32)}
 .ach-more:active{transform:scale(.98)}
-
-.ach-details{display:none;margin-top:8px;padding-top:10px;border-top:1px dashed rgba(255,255,255,.12)}
-.ach-details-title{color:#cfe3ff;font-weight:900;margin-bottom:6px}
-.ach-details-how{color:#eaeffb;margin-bottom:6px;font-size:12px;line-height:1.35}
-.ach-details-desc{color:#9aa8c4;font-size:12px;line-height:1.35}
 
 .ach-details{display:none;padding:10px 2px 2px;border-top:1px dashed rgba(255,255,255,.12)}
 .ach-details-title{color:#cfe3ff;font-weight:900;margin-bottom:6px}
