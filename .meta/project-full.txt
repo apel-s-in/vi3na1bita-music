@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-7ae26d7f81d8fb0ca8516dad5a126b3a350ddfe1.idx
-│   │       ├── pack-7ae26d7f81d8fb0ca8516dad5a126b3a350ddfe1.pack
-│   │       └── pack-7ae26d7f81d8fb0ca8516dad5a126b3a350ddfe1.rev
+│   │       ├── pack-dc893d9864480cbd503374255b6a3f9e7aa97dd9.idx
+│   │       ├── pack-dc893d9864480cbd503374255b6a3f9e7aa97dd9.pack
+│   │       └── pack-dc893d9864480cbd503374255b6a3f9e7aa97dd9.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -390,7 +390,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-28 19:06:01 UTC
+Сгенерировано: 2026-02-28 19:20:13 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3803,17 +3803,16 @@ class ShowcaseManager {
     return uids.map(u => {
       const t = W.TrackRegistry.getTrackByUid(u);
       if (!t) return null;
-      // Обложка для Showcase: 1 обложка на альбом (быстро и стабильно).
-      // Берём из центральной галереи (first cover), с fallback на иконку/лого.
-      this._albumCoverCache ??= new Map();
-      let cv = this._albumCoverCache.get(t.sourceAlbum);
 
-      if (!cv) {
-        try {
-          cv = await W.GalleryManager?.getFirstCoverUrl?.(t.sourceAlbum);
-        } catch {}
-        cv = cv || this._ic[t.sourceAlbum] || 'img/logo.png';
-        this._albumCoverCache.set(t.sourceAlbum, cv);
+      // Showcase: одна обложка на альбом, синхронно (без await), чтобы не падал init.
+      // Берём иконку альбома, а если нет — logo.
+      // (Если хочешь именно gallery first cover — сделаем отдельный async прогрев позже, без await в map.)
+      let cv = this._ic[t.sourceAlbum] || 'img/logo.png';
+
+      // Корректный mobile путь (у тебя реально есть img/icon_album/mobile/<name>@1x.jpg)
+      if (U.isMobile() && /\/icon_album\/[^/]+\.png$/i.test(cv)) {
+        const m = cv.match(/\/icon_album\/([^/]+)\.png$/i);
+        if (m) cv = `img/icon_album/mobile/${m[1]}@1x.jpg`;
       }
 
       return { ...t, album: 'Витрина Разбита', cover: cv };
