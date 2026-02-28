@@ -87,11 +87,6 @@ body{min-height:100vh;min-width:100vw;font-family:-apple-system,BlinkMacSystemFo
 .ach-more:hover{background:rgba(77,170,255,.18);border-color:rgba(77,170,255,.32)}
 .ach-more:active{transform:scale(.98)}
 
-.ach-details{display:none;margin-top:8px;padding-top:10px;border-top:1px dashed rgba(255,255,255,.12)}
-.ach-details-title{color:#cfe3ff;font-weight:900;margin-bottom:6px}
-.ach-details-how{color:#eaeffb;margin-bottom:6px;font-size:12px;line-height:1.35}
-.ach-details-desc{color:#9aa8c4;font-size:12px;line-height:1.35}
-
 .ach-details{display:none;padding:10px 2px 2px;border-top:1px dashed rgba(255,255,255,.12)}
 .ach-details-title{color:#cfe3ff;font-weight:900;margin-bottom:6px}
 .ach-details-how{color:#eaeffb;margin-bottom:6px;font-size:12px;line-height:1.35}
