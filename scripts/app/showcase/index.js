@@ -89,8 +89,19 @@ class ShowcaseManager {
     return uids.map(u => {
       const t = W.TrackRegistry.getTrackByUid(u);
       if (!t) return null;
-      let cv = this._ic[t.sourceAlbum] || 'img/logo.png';
-      if (U.isMobile() && cv.includes('.png')) cv = cv.replace('.png', '/mobile/@1x.jpg').replace('icon_album/', 'icon_album/mobile/');
+      // Обложка для Showcase: 1 обложка на альбом (быстро и стабильно).
+      // Берём из центральной галереи (first cover), с fallback на иконку/лого.
+      this._albumCoverCache ??= new Map();
+      let cv = this._albumCoverCache.get(t.sourceAlbum);
+
+      if (!cv) {
+        try {
+          cv = await W.GalleryManager?.getFirstCoverUrl?.(t.sourceAlbum);
+        } catch {}
+        cv = cv || this._ic[t.sourceAlbum] || 'img/logo.png';
+        this._albumCoverCache.set(t.sourceAlbum, cv);
+      }
+
       return { ...t, album: 'Витрина Разбита', cover: cv };
     }).filter(Boolean);
   }
