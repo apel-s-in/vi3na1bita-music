@@ -89,7 +89,8 @@ export class AchievementEngine {
       backups: globalStat.backup || 0, pwaInstalled: globalStat.pwa_installed || 0,
       sleepTimerTriggers: globalStat.sleep_timer || 0, socialVisits: globalStat.social_visit || 0,
       favOrderedCombo: globalStat.fav_ordered_5 || 0, favShuffleCombo: globalStat.fav_shuffle_5 || 0,
-      midnightTriple: globalStat.midnight_triple || 0
+      midnightTriple: globalStat.midnight_triple || 0,
+      speedRunnerCombo: globalStat.speed_runner || 0
     });
 
     // ОПТИМИЗАЦИЯ: O(1) поиск по Set (вместо медленного O(N^2) поиска .find() внутри .filter())
