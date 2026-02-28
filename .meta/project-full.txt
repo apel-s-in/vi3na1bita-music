@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6d257f536d9899723fcab586b841ae69d908535a.idx
-│   │       ├── pack-6d257f536d9899723fcab586b841ae69d908535a.pack
-│   │       └── pack-6d257f536d9899723fcab586b841ae69d908535a.rev
+│   │       ├── pack-1a1ee9d130bcf7215c53d318b5b1ae2516cf6070.idx
+│   │       ├── pack-1a1ee9d130bcf7215c53d318b5b1ae2516cf6070.pack
+│   │       └── pack-1a1ee9d130bcf7215c53d318b5b1ae2516cf6070.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -390,7 +390,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-28 09:47:28 UTC
+Сгенерировано: 2026-02-28 09:49:36 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4842,8 +4842,11 @@ export function getAlbumConfig(key) { return _albumConfigs.get(key) || null; }
 export function getTracksForAlbum(key) { return _albumTracks.get(key) || []; }
 
 export async function ensurePopulated() {
-  if (_populatedPromise) return _populatedPromise;
-  _populatedPromise = (async () => {
+    if (_populatedPromise) return _populatedPromise;
+    _populatedPromise = (async () => {
+    if (!window.albumsIndex?.length) {
+    try { await window.Utils?.onceEvent?.(window, 'albumsIndex:ready', { timeoutMs: 5000 }); } catch {}
+    }
     const idx = window.albumsIndex || [];
     await Promise.allSettled(idx.filter(a => !a.key.startsWith('__')).map(async a => {
       try {
