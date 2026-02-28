@@ -116,7 +116,13 @@ import { ensureMediaSession } from './player-core/media-session.js';
       if (tok !== this._tok) return;
 
       const netOk = W.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine;
-      if (r?.blob) url = W.Utils?.blob?.createUrl ? W.Utils.blob.createUrl(this._oK = 'p_' + uid, r.blob) : URL.createObjectURL(r.blob);
+      if (r?.blob) {
+        this._oK = 'p_' + uid;
+        this._oKTok = tok;
+        url = W.Utils?.blob?.createUrl
+          ? W.Utils.blob.createUrl(this._oK, r.blob)
+          : URL.createObjectURL(r.blob);
+      }
       else if (r?.source === 'stream' && r.url && netOk) {
         this._oK = null; url = r.url;
         if (W.Utils?.getNet?.()?.kind === 'cellular' && W.NetPolicy?.shouldShowCellularToast?.()) W.NotificationSystem?.show?.('Воспроизведение через мобильную сеть', 'info');
@@ -155,8 +161,16 @@ import { ensureMediaSession } from './player-core/media-session.js';
 
     _unload(silent) {
       if (this.sound) { try { this.sound.stop(); this.sound.unload(); } catch {} this.sound = null; }
-      if (this._oK) try { W.Utils?.blob?.revokeUrl?.(this._oK); } catch {}
-      this._oK = null; this._stopT();
+      // ВАЖНО: blob: URL нельзя отзывать "на горячую" — Howler/браузер может ещё обращаться к нему,
+      // особенно при ретраях/быстрых переключениях. Отзываем только если этот blob-url
+      // не относится к текущему token загрузки.
+      // При stop (не silent) можно отозвать текущий blob-url сразу, так как мы гарантированно остановили трек.
+      if (this._oK) {
+        try { W.Utils?.blob?.revokeUrl?.(this._oK); } catch {}
+      }
+      this._oK = null;
+      this._oKTok = 0;
+      this._stopT();
       if (!silent) { emitG('player:stop'); this._emit('onStop'); }
     }
 
