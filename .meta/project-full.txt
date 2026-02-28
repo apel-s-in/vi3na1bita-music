@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-615ca4fc7695680b63b5846bf6c0e3e2d06175fb.idx
-│   │       ├── pack-615ca4fc7695680b63b5846bf6c0e3e2d06175fb.pack
-│   │       └── pack-615ca4fc7695680b63b5846bf6c0e3e2d06175fb.rev
+│   │       ├── pack-462744e9915ff2a694c67ac92e93561267db9e78.idx
+│   │       ├── pack-462744e9915ff2a694c67ac92e93561267db9e78.pack
+│   │       └── pack-462744e9915ff2a694c67ac92e93561267db9e78.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -390,7 +390,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-28 11:02:13 UTC
+Сгенерировано: 2026-02-28 11:03:07 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -783,6 +783,12 @@ jobs:
 
   <link rel="preload" href="img/logo.png" as="image">
   <link rel="stylesheet" href="styles/main.css">
+
+  <!-- R0 streaming hardening -->
+  <link rel="dns-prefetch" href="https://apel-s-in.github.io">
+  <link rel="preconnect" href="https://apel-s-in.github.io" crossorigin>
+  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 
   <!-- Howler first -->
   <script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js"></script>
