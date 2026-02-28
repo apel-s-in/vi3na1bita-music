@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f720ccd80f707a4ffcae7cbccc80701583c949c3.idx
-│   │       ├── pack-f720ccd80f707a4ffcae7cbccc80701583c949c3.pack
-│   │       └── pack-f720ccd80f707a4ffcae7cbccc80701583c949c3.rev
+│   │       ├── pack-6d257f536d9899723fcab586b841ae69d908535a.idx
+│   │       ├── pack-6d257f536d9899723fcab586b841ae69d908535a.pack
+│   │       └── pack-6d257f536d9899723fcab586b841ae69d908535a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -390,7 +390,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-28 09:26:42 UTC
+Сгенерировано: 2026-02-28 09:47:28 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2425,13 +2425,7 @@ export class StatsAggregator {
   const initModules = async () => {
     const C = W.APP_CONFIG || {};
 
-    // albumsIndex приходит из scripts/core/bootstrap.js
-    if (!W.albumsIndex?.length) {
-      try {
-        await W.Utils?.onceEvent?.(W, 'albumsIndex:ready', { timeoutMs: 5000 });
-      } catch {}
-    }
-    W.albumsIndex = W.albumsIndex || [];
+    // Ожидание albumsIndex теперь инкапсулировано внутри TrackRegistry.ensurePopulated()
 
     // Offline ядро + UI
     try {
