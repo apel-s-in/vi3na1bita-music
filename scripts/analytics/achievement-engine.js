@@ -40,11 +40,15 @@ export class AchievementEngine {
       }
     });
 
+    // Строим первоначальный (закэшированный) UI-массив до асинхронных проверок сети
+    this.achievements = this._buildUIArray();
+    this.broadcast(0);
+
     // Ожидаем загрузки реестра треков для корректной работы album_complete_* ачивок
     if (window.TrackRegistry?.ensurePopulated) {
       await window.TrackRegistry.ensurePopulated();
     }
-    // Выполняем полноценный пересчет прогресса сразу при запуске
+    // Выполняем полноценный пересчет прогресса при запуске
     await this.check();
   }
 
@@ -145,9 +149,11 @@ export class AchievementEngine {
         setTimeout(() => window.NotificationSystem?.success(`🎉 ПОЗДРАВЛЯЕМ! Ваш уровень повышен до ${newLevel}!`), 2000);
       }
       await Promise.all([metaDB.setGlobal('unlocked_achievements', this.unlocked), metaDB.setGlobal('user_profile_rpg', this.profile)]);
-      this.achievements = this._buildUIArray();
-      this.broadcast(agg.streak);
     }
+    
+    // ВАЖНО: Всегда перестраиваем UI-массив и вещаем событие (чтобы ползунки прогресса и список отображались)
+    this.achievements = this._buildUIArray();
+    this.broadcast(agg.streak);
   }
 
   _buildUIArray() {
