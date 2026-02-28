@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-67456cab56af89991488af01e5faadf1a1f91547.idx
-│   │       ├── pack-67456cab56af89991488af01e5faadf1a1f91547.pack
-│   │       └── pack-67456cab56af89991488af01e5faadf1a1f91547.rev
+│   │       ├── pack-c566624ca1e9198b8eae12c2ad29167b95a01ffc.idx
+│   │       ├── pack-c566624ca1e9198b8eae12c2ad29167b95a01ffc.pack
+│   │       └── pack-c566624ca1e9198b8eae12c2ad29167b95a01ffc.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -390,7 +390,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-28 09:21:32 UTC
+Сгенерировано: 2026-02-28 09:23:54 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -2856,13 +2856,14 @@ class AlbumsManager {
   async _loadReg(key) {
     const cached = this.cache.get(key);
     if (cached) delete cached._pTracks; // инвалидация при каждом открытии
-    const info = window.albumsIndex?.find(a => a.key === key); if (!info) throw new Error(`Album ${key} missing`);
+    
+    await window.TrackRegistry?.ensurePopulated?.();
     let data = this.cache.get(key);
+    
     if (!data) {
-      const base = info.base.endsWith('/') ? info.base : `${info.base}/`, res = await fetch(`${base}config.json`);
-      if (!res.ok) throw new Error('Config err');
-      const raw = await res.json();
-      data = { title: raw.albumName || info.title, artist: raw.artist || 'Витрина Разбита', links: (raw.social_links || raw.socials || []).map(s => ({ label: s.title || s.label, url: s.url })), tracks: (raw.tracks || []).map((t, i) => this._normTrack(t, i, base, key, raw.albumName || info.title)) };
+      const cfg = window.TrackRegistry.getAlbumConfig(key);
+      if (!cfg) throw new Error(`Album ${key} missing or failed to load`);
+      data = { ...cfg, tracks: window.TrackRegistry.getTracksForAlbum(key) };
       this.cache.set(key, data);
     }
     await window.GalleryManager?.loadGallery?.(key);
@@ -2876,12 +2877,6 @@ class AlbumsManager {
     // ТЗ П.7.2: Инъекция офлайн-индикаторов
     $('track-list').querySelectorAll('.track[data-uid]').forEach(el => injectIndicator(el));
     window.PlayerUI?.updateMiniHeader?.();
-  }
-
-  _normTrack(t, i, b, k, aT) {
-    const hi = toUrl(b, t.audio), lo = toUrl(b, t.audio_low), uid = toStr(t.uid).trim() || null;
-    if (uid) registerTrack({ uid, title: t.title, audio: hi, audio_low: lo, size: t.size, size_low: t.size_low, lyrics: toUrl(b, t.lyrics), fulltext: toUrl(b, t.fulltext), sourceAlbum: k }, { title: aT });
-    return { num: i + 1, title: t.title || `Трек ${i + 1}`, uid, src: hi, sources: (hi || lo) ? { audio: { hi, lo } } : null, lyrics: toUrl(b, t.lyrics), fulltext: toUrl(b, t.fulltext), hasLyrics: t.hasLyrics ?? !!t.lyrics };
   }
 
   highlightCurrentTrack(i, { uid, albumKey } = {}) {
