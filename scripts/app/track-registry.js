@@ -63,8 +63,11 @@ export function getAlbumConfig(key) { return _albumConfigs.get(key) || null; }
 export function getTracksForAlbum(key) { return _albumTracks.get(key) || []; }
 
 export async function ensurePopulated() {
-  if (_populatedPromise) return _populatedPromise;
-  _populatedPromise = (async () => {
+    if (_populatedPromise) return _populatedPromise;
+    _populatedPromise = (async () => {
+    if (!window.albumsIndex?.length) {
+    try { await window.Utils?.onceEvent?.(window, 'albumsIndex:ready', { timeoutMs: 5000 }); } catch {}
+    }
     const idx = window.albumsIndex || [];
     await Promise.allSettled(idx.filter(a => !a.key.startsWith('__')).map(async a => {
       try {
