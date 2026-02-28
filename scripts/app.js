@@ -22,13 +22,7 @@
   const initModules = async () => {
     const C = W.APP_CONFIG || {};
 
-    // albumsIndex приходит из scripts/core/bootstrap.js
-    if (!W.albumsIndex?.length) {
-      try {
-        await W.Utils?.onceEvent?.(W, 'albumsIndex:ready', { timeoutMs: 5000 });
-      } catch {}
-    }
-    W.albumsIndex = W.albumsIndex || [];
+    // Ожидание albumsIndex теперь инкапсулировано внутри TrackRegistry.ensurePopulated()
 
     // Offline ядро + UI
     try {
