@@ -307,37 +307,26 @@ import { ensureMediaSession } from './player-core/media-session.js';
     Favorites.getSnapshot().filter(i => !i.inactiveAt && uidOf(getTrackByUid(i.uid)?.sourceAlbum) === k).map(i => i.uid) : []; }
     
         applyFavoritesOnlyFilter() {
-          if (this._applyingFilter) return;
-          this._applyingFilter = true;
-          try {
-          const pAlbum = W.AlbumsManager?.getPlayingAlbum?.();
-          const isFavOnly = localStorage.getItem('favoritesOnlyMode') === '1';
-          const src = this.originalPlaylist || [];
-          if (!pAlbum || !src.length || this.currentIndex < 0) return;
+              const pA = W.AlbumsManager?.getPlayingAlbum?.(), isFavOnly = ls.getItem('favoritesOnlyMode') === '1';
+              const src = this.originalPlaylist || [];
+              if (!pA || !src.length || this.currentIndex < 0) return;
 
-          const uniq = src.filter((t, i, arr) => t?.uid && arr.findIndex(x => x.uid === t.uid) === i);
-          let tgt = uniq;
+              const uniq = src.filter((t, i, arr) => t?.uid && arr.findIndex(x => x.uid === t.uid) === i);
+              const liked = new Set(this.getLikedUidsForAlbum(pA) || []);
+      
+              const tgt = (pA === W.SPECIAL_FAVORITES_KEY || (isFavOnly && !W.Utils?.isShowcaseContext?.(pA))) 
+                ? uniq.filter(t => pA === W.SPECIAL_FAVORITES_KEY ? this.isFavorite(t.uid) : liked.has(t.uid)) 
+                : (isFavOnly ? uniq.filter(t => this.isFavorite(t.uid)) : uniq);
 
-          if (pAlbum === W.SPECIAL_FAVORITES_KEY) {
-            tgt = uniq.filter(t => this.isFavorite(t.uid));
-          } else if (W.Utils?.isShowcaseContext?.(pAlbum)) {
-            tgt = isFavOnly ? uniq.filter(t => this.isFavorite(t.uid)) : uniq;
-          } else if (isFavOnly) {
-            const liked = new Set(this.getLikedUidsForAlbum(pAlbum) || []);
-            tgt = uniq.filter(t => liked.has(t.uid));
-          }
+              if (!tgt.length) return;
 
-          if (!tgt.length) return;
-
-          const curUid = this.getCurrentTrackUid();
-          const nIdx = Math.max(0, tgt.findIndex(t => t.uid === curUid));
-          this.shufHist = [];
-          const preserve = nIdx === this.currentIndex && tgt[nIdx]?.uid === curUid;
-          // ТЗ: при F ON/OFF shuffle-порядок ДОЛЖЕН пересобираться
-          this.setPlaylist(tgt, nIdx, {}, { preserveOriginalPlaylist: true, preserveShuffleMode: false, preservePosition: preserve });
-          W.PlayerUI?.updatePlaylistFiltering?.();
-      } finally { this._applyingFilter = false; }
-    }
+              const curUid = this.getCurrentTrackUid();
+              const nIdx = Math.max(0, tgt.findIndex(t => t.uid === curUid));
+              this.shufHist = [];
+      
+              this.setPlaylist(tgt, nIdx, {}, { preserveOriginalPlaylist: true, preserveShuffleMode: false, preservePosition: (nIdx === this.currentIndex && tgt[nIdx]?.uid === curUid) });
+              W.PlayerUI?.updatePlaylistFiltering?.();
+            }
 
         onFavoritesChanged(cb) { this._favSubs.add(cb);
     return () => this._favSubs.delete(cb); }
