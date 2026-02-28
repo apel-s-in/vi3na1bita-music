@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-124222c05267c2bd4e374c2e111952fa138e0350.idx
-│   │       ├── pack-124222c05267c2bd4e374c2e111952fa138e0350.pack
-│   │       └── pack-124222c05267c2bd4e374c2e111952fa138e0350.rev
+│   │       ├── pack-c4bd4b493ad442c67332810d7f5191b749103cd6.idx
+│   │       ├── pack-c4bd4b493ad442c67332810d7f5191b749103cd6.pack
+│   │       └── pack-c4bd4b493ad442c67332810d7f5191b749103cd6.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -390,7 +390,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-28 19:20:50 UTC
+Сгенерировано: 2026-02-28 19:22:26 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3721,6 +3721,7 @@ window.PlaybackCache.unprotectWindow = unprotectWindow;
 import { ensureLyricsIndexLoaded, searchUidsByQuery } from './lyrics-search.js';
 
 const W = window, D = document, U = W.Utils, LS = 'showcase:';
+const ls = localStorage;
 const PALETTE = ['transparent','#ef5350','#ff9800','#fdd835','#4caf50','#00bcd4','#2196f3','#9c27b0','#e91e63','#9e9e9e'];
 const esc = s => U.escapeHtml(String(s || ''));
 const $ = id => D.getElementById(id);
