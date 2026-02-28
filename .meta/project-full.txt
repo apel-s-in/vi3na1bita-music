@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5993c3a406c0e0a2f424298005a27e45052702cd.idx
-│   │       ├── pack-5993c3a406c0e0a2f424298005a27e45052702cd.pack
-│   │       └── pack-5993c3a406c0e0a2f424298005a27e45052702cd.rev
+│   │       ├── pack-b870438165c8c6cc7aa373d6f49234e818498d1f.idx
+│   │       ├── pack-b870438165c8c6cc7aa373d6f49234e818498d1f.pack
+│   │       └── pack-b870438165c8c6cc7aa373d6f49234e818498d1f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -390,7 +390,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-28 14:10:28 UTC
+Сгенерировано: 2026-02-28 14:14:01 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8208,35 +8208,38 @@ body{min-height:100vh;min-width:100vw;font-family:-apple-system,BlinkMacSystemFo
 .backup-btn:hover { background: #0099e6; transform: translateY(-1px); }
 .backup-btn:active { transform: scale(0.98); }
 
-/* Classic List Item (Inside Profile) */
-.ach-classic-tabs { display: flex; gap: 8px; margin-bottom: 12px; background: rgba(0,0,0,0.2); padding: 4px; border-radius: 8px; overflow-x: auto; scrollbar-width: none; }
-.ach-classic-tab { flex: 1; padding: 6px; text-align: center; font-size: 12px; font-weight: bold; color: #888; cursor: pointer; border-radius: 6px; transition: 0.2s; white-space: nowrap; }
-.ach-classic-tab.active { background: #4daaff; color: #fff; }
-.ach-item { display: flex; align-items: center; padding: 12px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 10px; margin-bottom: 8px; transition: 0.2s; }
-.ach-item.done { background: rgba(76, 175, 80, 0.05); border-color: rgba(76, 175, 80, 0.2); }
-.ach-status { font-size: 20px; margin-right: 12px; flex-shrink: 0; }
-.ach-main { flex: 1; text-align: left; min-width: 0; }
-.ach-title { font-size: 14px; font-weight: 900; color: #fff; margin-bottom: 2px; }
-.ach-sub { font-size: 12px; color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ach-right { text-align: right; flex-shrink: 0; margin-left: 10px; }
-.ach-done-date { display: inline-block; background: rgba(76, 175, 80, 0.15); color: #81c784; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 900; }
-.ach-lock { display: inline-block; background: rgba(255, 152, 0, 0.15); color: #ffb74d; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 900; }
+/* Classic Achievements (Profile -> Достижения) */
+.ach-classic-tabs{display:flex;gap:8px;margin-bottom:12px;background:rgba(0,0,0,.18);padding:4px;border-radius:10px;overflow-x:auto;scrollbar-width:none}
+.ach-classic-tab{flex:1;padding:7px 10px;text-align:center;font-size:12px;font-weight:900;color:rgba(255,255,255,.45);cursor:pointer;border-radius:8px;transition:.18s;white-space:nowrap;border:1px solid transparent}
+.ach-classic-tab.active{background:rgba(77,170,255,.18);border-color:rgba(77,170,255,.28);color:#eaf2ff}
 
-/* Раскрывающийся блок "Подробнее" */
-.ach-item { flex-direction: column; align-items: stretch; cursor: pointer; }
-.ach-item-header { display: flex; align-items: center; width: 100%; }
-.ach-more {
-  display: block; margin-top: 6px; padding: 4px 8px; font-size: 10px; font-weight: bold;
-  background: rgba(255,255,255,0.1); color: #ccc; border: none; border-radius: 4px; cursor: pointer;
-  width: 100%; text-transform: uppercase;
-}
-.ach-more:hover { background: rgba(255,255,255,0.2); color: #fff; }
-.ach-details {
-  grid-column: 1 / -1; padding: 12px 8px 4px; border-top: 1px dashed rgba(255,255,255,0.1); 
-  margin-top: 10px; width: 100%; animation: fadeIn 0.2s ease;
-}
-.ach-mini-bar { width: 100%; background: rgba(0,0,0,0.3); height: 4px; border-radius: 2px; overflow: hidden; }
-.ach-mini-fill { background: #4daaff; height: 100%; transition: width 0.3s ease; }
+.ach-item{display:flex;flex-direction:column;gap:10px;padding:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;margin-bottom:10px;box-shadow:0 8px 30px rgba(0,0,0,.22)}
+.ach-item.done{background:rgba(76,175,80,.05);border-color:rgba(76,175,80,.18)}
+.ach-item-header{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%}
+
+.ach-left{display:flex;align-items:center;gap:10px;min-width:0}
+.ach-ic{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;border:1px solid rgba(77,170,255,.22);flex-shrink:0}
+.ach-main{flex:1;min-width:0;text-align:left}
+.ach-title{font-size:14px;font-weight:900;color:#fff;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ach-sub{font-size:12px;color:rgba(234,242,255,.72);margin-top:2px;line-height:1.2}
+
+.ach-right{display:flex;flex-direction:column;gap:6px;align-items:flex-end;flex-shrink:0}
+.ach-xp{display:inline-flex;align-items:center;justify-content:center;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:900;color:#ffd54f;background:rgba(255,193,7,.10);border:1px solid rgba(255,193,7,.20);white-space:nowrap}
+.ach-item.done .ach-xp{color:#81c784;background:rgba(76,175,80,.12);border-color:rgba(76,175,80,.22)}
+
+.ach-more{appearance:none;border:1px solid rgba(77,170,255,.22);background:rgba(77,170,255,.10);color:#eaf2ff;border-radius:10px;padding:6px 10px;font-size:11px;font-weight:900;cursor:pointer;line-height:1;min-width:110px}
+.ach-more:hover{background:rgba(77,170,255,.18);border-color:rgba(77,170,255,.32)}
+.ach-more:active{transform:scale(.98)}
+
+.ach-progress{padding:0 2px}
+.ach-mini-bar{width:100%;background:rgba(255,255,255,.06);height:6px;border-radius:999px;overflow:hidden;border:1px solid rgba(255,255,255,.08)}
+.ach-mini-fill{height:100%;background:linear-gradient(90deg,#4daaff,#7c4dff);transition:width .25s ease}
+.ach-remaining{margin-top:6px;font-size:12px;color:rgba(157,183,221,.92);text-align:center}
+
+.ach-details{display:none;padding:10px 2px 2px;border-top:1px dashed rgba(255,255,255,.12)}
+.ach-details-title{color:#cfe3ff;font-weight:900;margin-bottom:6px}
+.ach-details-how{color:#eaeffb;margin-bottom:6px;font-size:12px;line-height:1.35}
+.ach-details-desc{color:#9aa8c4;font-size:12px;line-height:1.35}
 
 /* Modern Profile View (v4.0) */
 .profile-wrap { padding: 0 10px 20px; display: flex; flex-direction: column; gap: 16px; animation: fadeIn 0.3s ease; }
@@ -8287,13 +8290,9 @@ body{min-height:100vh;min-width:100vw;font-family:-apple-system,BlinkMacSystemFo
 .stat-box b { display: block; font-size: 18px; color: #fff; }
 .stat-box span { font-size: 10px; color: #888; text-transform: uppercase; }
 
-.ach-item {
-  display: flex; align-items: center; gap: 12px; padding: 10px; 
-  background: rgba(255,255,255,0.03); border-radius: 8px; margin-bottom: 6px;
-  transition: opacity 0.3s;
-}
-.ach-item.locked { opacity: 0.3; filter: grayscale(1); }
-.ach-icon { font-size: 20px; width: 32px; text-align: center; }
+/* (removed) legacy duplicate .ach-item styles in profile — replaced by new Achievements card UI above */
+.ach-item.locked{opacity:.35;filter:grayscale(1)}
+.ach-icon{font-size:20px;width:32px;text-align:center}
 
 /* Album title */
 .active-album-title{width:100%;max-width:400px;margin:18px auto 6px;text-align:center;color:#eaf2ff;font-weight:900;letter-spacing:.01em;line-height:1.15;text-shadow:0 1px 0 rgba(0,0,0,.35);font-size:clamp(18px,4.6vw,24px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
