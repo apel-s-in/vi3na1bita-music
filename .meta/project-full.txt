@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1a1ee9d130bcf7215c53d318b5b1ae2516cf6070.idx
-│   │       ├── pack-1a1ee9d130bcf7215c53d318b5b1ae2516cf6070.pack
-│   │       └── pack-1a1ee9d130bcf7215c53d318b5b1ae2516cf6070.rev
+│   │       ├── pack-f02470a65d531963d60a583bc7cab92de444dc9a.idx
+│   │       ├── pack-f02470a65d531963d60a583bc7cab92de444dc9a.pack
+│   │       └── pack-f02470a65d531963d60a583bc7cab92de444dc9a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -390,7 +390,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-28 09:49:36 UTC
+Сгенерировано: 2026-02-28 09:51:39 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -914,7 +914,53 @@ jobs:
     </div>
   </template>
 
-  <template id="next-up-template">
+<template id="profile-template">
+<div class="profile-wrap">
+<div class="profile-header">
+<div class="profile-avatar-btn" id="prof-avatar-btn" title="Изменить аватар"></div>
+<div class="profile-name-wrap">
+<input type="text" id="prof-name-inp" class="profile-name-input" maxlength="15" autocomplete="off" spellcheck="false">
+<span class="profile-edit-icon" id="prof-name-edit">✏️</span>
+</div>
+</div>
+<div class="profile-auth-grid" id="prof-auth-grid"></div>
+<div class="profile-tabs" id="prof-tabs">
+<button class="profile-tab-btn active" data-tab="stats">Статистика</button>
+<button class="profile-tab-btn" data-tab="achievements">Достижения</button>
+<button class="profile-tab-btn" data-tab="recs">Для Вас</button>
+<button class="profile-tab-btn" data-tab="logs">Журнал</button>
+</div>
+<div class="profile-tab-content active" id="tab-stats">
+<div class="stats-grid-compact">
+<div class="stat-box"><b id="prof-stat-tracks">0</b><span>Треков</span></div>
+<div class="stat-box"><b id="prof-stat-time">0м</b><span>В пути</span></div>
+<div class="stat-box"><b id="prof-stat-streak">0</b><span>Стрик (дней)</span></div>
+<div class="stat-box"><b id="prof-stat-ach">0</b><span>Ачивок</span></div>
+</div>
+<div class="profile-section-title">🏆 ТОП-5 ТРЕКОВ</div>
+<div id="prof-top-tracks"></div>
+</div>
+<div class="profile-tab-content" id="tab-achievements">
+<div class="ach-classic-tabs" id="ach-inner-tabs">
+<div class="ach-classic-tab active" data-filter="all">Все</div>
+<div class="ach-classic-tab" data-filter="available">Доступные</div>
+<div class="ach-classic-tab" data-filter="done">Выполненные</div>
+<div class="ach-classic-tab" data-filter="secret">Секретные</div>
+</div>
+<div id="prof-ach-list"></div>
+</div>
+<div class="profile-tab-content" id="tab-recs">
+<div class="profile-section-title">💡 МЫ РЕКОМЕНДУЕМ</div>
+<div id="prof-recs-list"></div>
+</div>
+<div class="profile-tab-content" id="tab-logs">
+<div class="profile-section-title">📜 ИСТОРИЯ АКТИВНОСТИ</div>
+<div id="prof-logs-list">Загрузка...</div>
+</div>
+</div>
+</template>
+
+<template id="next-up-template">
     <div class="next-up" id="next-up">
       <span class="label">Далее:</span>
       <span class="title" title="">—</span>
