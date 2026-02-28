@@ -89,17 +89,16 @@ class ShowcaseManager {
     return uids.map(u => {
       const t = W.TrackRegistry.getTrackByUid(u);
       if (!t) return null;
-      // Обложка для Showcase: 1 обложка на альбом (быстро и стабильно).
-      // Берём из центральной галереи (first cover), с fallback на иконку/лого.
-      this._albumCoverCache ??= new Map();
-      let cv = this._albumCoverCache.get(t.sourceAlbum);
 
-      if (!cv) {
-        try {
-          cv = await W.GalleryManager?.getFirstCoverUrl?.(t.sourceAlbum);
-        } catch {}
-        cv = cv || this._ic[t.sourceAlbum] || 'img/logo.png';
-        this._albumCoverCache.set(t.sourceAlbum, cv);
+      // Showcase: одна обложка на альбом, синхронно (без await), чтобы не падал init.
+      // Берём иконку альбома, а если нет — logo.
+      // (Если хочешь именно gallery first cover — сделаем отдельный async прогрев позже, без await в map.)
+      let cv = this._ic[t.sourceAlbum] || 'img/logo.png';
+
+      // Корректный mobile путь (у тебя реально есть img/icon_album/mobile/<name>@1x.jpg)
+      if (U.isMobile() && /\/icon_album\/[^/]+\.png$/i.test(cv)) {
+        const m = cv.match(/\/icon_album\/([^/]+)\.png$/i);
+        if (m) cv = `img/icon_album/mobile/${m[1]}@1x.jpg`;
       }
 
       return { ...t, album: 'Витрина Разбита', cover: cv };
