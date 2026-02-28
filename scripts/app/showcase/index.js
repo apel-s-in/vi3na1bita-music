@@ -239,7 +239,11 @@ class ShowcaseManager {
     this.updStatus(trks.length);
     let h = '', grp = null, sN = localStorage.getItem('showcase:showNumbers:v1') === '1';
     trks.forEach((t, i) => {
-      if (this.viewMode === 'grouped' && grp !== t.sourceAlbum) { grp = t.sourceAlbum; h += `<div class="showcase-group-header">── ${esc(W.TrackRegistry.getAlbumTitle(t.sourceAlbum)||\'Альбом\')} ──</div>`; }
+      if (this.viewMode === 'grouped' && grp !== t.sourceAlbum) {
+        grp = t.sourceAlbum;
+        const albumTitle = W.TrackRegistry.getAlbumTitle(t.sourceAlbum) || 'Альбом';
+        h += `<div class="showcase-group-header">── ${esc(albumTitle)} ──</div>`;
+      }
       const cl = cols[t.sourceAlbum] || 'transparent', isH = hidL.includes(t.uid), isS = this.selectedUids.has(t.uid);
       h += `<div class="showcase-track ${isH?'inactive':''} ${isS?'selected':''}" data-uid="${t.uid}" style="border-left: 3px solid ${cl}" ${this.editMode?'draggable="true"':''}>${this.editMode?`<button class="sc-arrow-up" data-dir="-1">▲</button>`:`<div class="tnum"${sN?'':' style="display:none"'}>${i+1}.</div>`}${this.editMode?`<div class="showcase-drag-handle">⠿</div><div class="showcase-checkbox"></div>`:''}<img src="${t.cover}" class="showcase-track-thumb" loading="lazy"><div class="track-title"><div>${esc(t.title)}</div><div class="showcase-track-meta">${esc(W.TrackRegistry.getAlbumTitle(t.sourceAlbum))}</div></div><span class="offline-ind" data-uid="${t.uid}">🔒</span>${this.editMode?`<button class="showcase-hide-btn">${isH?'👁‍🗨':'👁'}</button>`:''}<img src="${W.playerCore?.isFavorite(t.uid)?'img/star.png':'img/star2.png'}" class="like-star" data-uid="${t.uid}" data-album="${t.sourceAlbum}">${!this.editMode?`<button class="showcase-track-menu-btn">···</button>`:`<button class="sc-arrow-down" data-dir="1">▼</button>`}</div>`;
     });
