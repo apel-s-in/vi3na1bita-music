@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-97b4b97e386affffa78cfed9667c9e24f3fe7099.idx
-│   │       ├── pack-97b4b97e386affffa78cfed9667c9e24f3fe7099.pack
-│   │       └── pack-97b4b97e386affffa78cfed9667c9e24f3fe7099.rev
+│   │       ├── pack-615ca4fc7695680b63b5846bf6c0e3e2d06175fb.idx
+│   │       ├── pack-615ca4fc7695680b63b5846bf6c0e3e2d06175fb.pack
+│   │       └── pack-615ca4fc7695680b63b5846bf6c0e3e2d06175fb.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -390,7 +390,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-28 10:19:18 UTC
+Сгенерировано: 2026-02-28 11:02:13 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -8635,17 +8635,76 @@ import { ensureMediaSession } from './player-core/media-session.js';
         }, 80);
       }
 
-      const wasPlaying = this.isPlaying(), pos = Number(opts.resumePosition) || 0;
+      const wasPlaying = this.isPlaying();
+      const pos = Number(opts.resumePosition) || 0;
+
+      const retry = {
+        n: Number(opts._retryN) || 0,
+        max: 2
+      };
+
       this._unload(true); // Silent Hot Swap
 
+      const isStreaming = !!(res?.source === 'stream');
+
       this.sound = new Howl({
-        src: [url], html5: false, volume: this.getVolume() / 100, format: ['mp3'],
+        src: [url],
+        // R0 hardening: stream via HTML5 Audio (iOS/Safari stability), local blobs keep WebAudio.
+        html5: isStreaming,
+        volume: this.getVolume() / 100,
+        format: ['mp3'],
         autoplay: opts.autoPlay ?? wasPlaying,
         onload: () => tok === this._tok ? (pos && this.seek(pos), this._updMedia()) : this.sound?.unload(),
         onplay: () => tok === this._tok ? (this._startTick(), this._emit('onPlay', t, index), this._updMedia(), W.dispatchEvent(new CustomEvent('player:play', { detail: { uid, duration: this.getDuration(), type: 'audio' } }))) : this.sound?.stop(),
         onpause: () => tok === this._tok && (this._stopTick(), this._emit('onPause'), this._updMedia(), W.dispatchEvent(new CustomEvent('player:pause'))),
-        onend: () => tok === this._tok && (this._emit('onEnd'), this._updMedia(), W.dispatchEvent(new CustomEvent('player:ended')), W.dispatchEvent(new CustomEvent('analytics:forceFlush')), this.flags.rep ? this.play(this.currentIndex) : this.next()),
-        onloaderror: () => this._emit('onPlaybackError', { reason: 'loaderror' }) // External modules handle the error, NO STOP
+        onend: () => tok === this._tok && (
+          this._emit('onEnd'),
+          this._updMedia(),
+          W.dispatchEvent(new CustomEvent('player:ended')),
+          W.dispatchEvent(new CustomEvent('analytics:forceFlush')),
+          this.flags.rep ? this.play(this.currentIndex) : this.next()
+        ),
+
+        onloaderror: () => {
+          if (tok !== this._tok) return;
+          this._emit('onPlaybackError', { reason: 'loaderror' });
+
+          const netAllowed = W.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine;
+          if (netAllowed && retry.n < retry.max) {
+            const delay = 250 + retry.n * 500;
+            setTimeout(() => {
+              if (tok !== this._tok) return;
+              this.load(index, { ...opts, autoPlay: true, _retryN: retry.n + 1, dir });
+            }, delay);
+            return;
+          }
+
+          // No-stop invariant: auto-skip forward
+          this._skips.count = Math.min(this._skips.max, (this._skips.count || 0) + 1);
+          setTimeout(() => {
+            if (tok !== this._tok) return;
+            this.load((index + dir + this.playlist.length) % this.playlist.length, {
+              ...opts,
+              autoPlay: true,
+              isAutoSkip: true,
+              dir
+            });
+          }, 120);
+        },
+
+        onplayerror: () => {
+          if (tok !== this._tok) return;
+          this._emit('onPlaybackError', { reason: 'playerror' });
+
+          const netAllowed = W.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine;
+          if (netAllowed && retry.n < retry.max) {
+            const delay = 250 + retry.n * 500;
+            setTimeout(() => {
+              if (tok !== this._tok) return;
+              this.load(index, { ...opts, autoPlay: true, _retryN: retry.n + 1, dir });
+            }, delay);
+          }
+        }
       });
     }
 
@@ -8665,8 +8724,12 @@ import { ensureMediaSession } from './player-core/media-session.js';
       this._objUrlKey = null;
 
       this._stopTick();
-      W.dispatchEvent(new CustomEvent('player:stop'));
-      if (!silent) this._emit('onStop');
+
+      // IMPORTANT: do not broadcast "stop" on silent hot swap (track change / retry).
+      if (!silent) {
+        W.dispatchEvent(new CustomEvent('player:stop'));
+        this._emit('onStop');
+      }
     }
 
     _startTick() { this._stopTick(); this._tickInt = setInterval(() => { this._emit('onTick', this.getPosition(), this.getDuration()); W.dispatchEvent(new CustomEvent('player:tick', { detail: { currentTime: this.getPosition(), volume: this.getVolume(), muted: this.isMuted() } })); }, 250);
