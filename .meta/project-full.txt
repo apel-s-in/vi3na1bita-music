@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c566624ca1e9198b8eae12c2ad29167b95a01ffc.idx
-│   │       ├── pack-c566624ca1e9198b8eae12c2ad29167b95a01ffc.pack
-│   │       └── pack-c566624ca1e9198b8eae12c2ad29167b95a01ffc.rev
+│   │       ├── pack-f720ccd80f707a4ffcae7cbccc80701583c949c3.idx
+│   │       ├── pack-f720ccd80f707a4ffcae7cbccc80701583c949c3.pack
+│   │       └── pack-f720ccd80f707a4ffcae7cbccc80701583c949c3.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -390,7 +390,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-28 09:23:54 UTC
+Сгенерировано: 2026-02-28 09:26:42 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -4336,12 +4336,7 @@ class ShowcaseManager {
 
   async initialize() {
     (W.APP_CONFIG?.ICON_ALBUMS_ORDER || []).forEach(i => this._ic[i.key] = i.icon);
-    await Promise.allSettled((W.albumsIndex || []).filter(a => !a.key.startsWith('__')).map(async a => {
-      try {
-        const r = await fetch(`${a.base.endsWith('/') ? a.base : a.base + '/'}config.json`, { cache: 'force-cache' });
-        if (r.ok) (await r.json()).tracks?.forEach(t => W.TrackRegistry.registerTrack({ ...t, sourceAlbum: a.key }, { title: a.title || a.albumName }));
-      } catch {}
-    }));
+    await W.TrackRegistry?.ensurePopulated?.();
     Store.init();
     W.playerCore?.on({ onTrackChange: t => { if (t?.uid && U.isShowcaseContext(W.AlbumsManager?.getPlayingAlbum())) { Store.set('lastTrackUid', t.uid); Store.set('lastPlayingContext', W.AlbumsManager.getPlayingAlbum()); } } });
     W.playerCore?.onFavoritesChanged(({ uid }) => {
