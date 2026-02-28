@@ -183,69 +183,21 @@ export async function loadProfileAlbum(ctx) {
       <span>${icon}</span> ${tokens[id] ? 'Подключено' : name}
     </button>`;
 
-  // Шаблон интерфейса
-  container.innerHTML = `
-    <div class="profile-wrap">
-      <!-- Шапка: Аватар и Имя -->
-      <div class="profile-header">
-        <div class="profile-avatar-btn" id="prof-avatar-btn" title="Изменить аватар">${upVal.avatar}</div>
-        <div class="profile-name-wrap">
-          <input type="text" id="prof-name-inp" class="profile-name-input" value="${esc(upVal.name)}" maxlength="15" autocomplete="off" spellcheck="false">
-          <span class="profile-edit-icon" id="prof-name-edit">✏️</span>
-        </div>
-      </div>
+  // Использование вынесенного шаблона интерфейса
+  container.innerHTML = '';
+  const tpl = document.getElementById('profile-template').content.cloneNode(true);
 
-      <!-- Авторизация и Синхронизация -->
-      <div class="profile-auth-grid">
-        ${renderAuthBtn('yandex', 'Яндекс', '💽')}
-        ${renderAuthBtn('google', 'Google', '☁️')}
-        ${renderAuthBtn('vk', 'VK ID', '🔵')}
-      </div>
+  tpl.querySelector('#prof-avatar-btn').textContent = upVal.avatar;
+  tpl.querySelector('#prof-name-inp').value = esc(upVal.name);
 
-      <!-- Вкладки -->
-      <div class="profile-tabs" id="prof-tabs">
-        <button class="profile-tab-btn active" data-tab="stats">Статистика</button>
-        <button class="profile-tab-btn" data-tab="achievements">Достижения</button>
-        <button class="profile-tab-btn" data-tab="recs">Для Вас</button>
-        <button class="profile-tab-btn" data-tab="logs">Журнал</button>
-      </div>
+  tpl.querySelector('#prof-auth-grid').innerHTML = ${renderAuthBtn('yandex', 'Яндекс', '💽')} ${renderAuthBtn('google', 'Google', '☁️')} ${renderAuthBtn('vk', 'VK ID', '🔵')};
 
-      <!-- Содержимое: Статистика -->
-      <div class="profile-tab-content active" id="tab-stats">
-        <div class="stats-grid-compact">
-          <div class="stat-box"><b>${totalFull}</b><span>Треков</span></div>
-          <div class="stat-box"><b>${totalTimeStr}</b><span>В пути</span></div>
-          <div class="stat-box"><b>${streakVal.current}</b><span>Стрик (дней)</span></div>
-          <div class="stat-box"><b>${achUnlocked}</b><span>Ачивок</span></div>
-        </div>
-        <div class="profile-section-title">🏆 ТОП-5 ТРЕКОВ</div>
-        <div id="prof-top-tracks"></div>
-      </div>
+  tpl.querySelector('#prof-stat-tracks').textContent = totalFull;
+  tpl.querySelector('#prof-stat-time').textContent = totalTimeStr;
+  tpl.querySelector('#prof-stat-streak').textContent = streakVal.current;
+  tpl.querySelector('#prof-stat-ach').textContent = achUnlocked;
 
-      <!-- Содержимое: Достижения -->
-      <div class="profile-tab-content" id="tab-achievements">
-        <div class="ach-classic-tabs" id="ach-inner-tabs">
-          <div class="ach-classic-tab active" data-filter="all">Все</div>
-          <div class="ach-classic-tab" data-filter="available">Доступные</div>
-          <div class="ach-classic-tab" data-filter="done">Выполненные</div>
-          <div class="ach-classic-tab" data-filter="secret">Секретные</div>
-        </div>
-        <div id="prof-ach-list"></div>
-      </div>
-
-      <!-- Содержимое: Рекомендации -->
-      <div class="profile-tab-content" id="tab-recs">
-        <div class="profile-section-title">💡 МЫ РЕКОМЕНДУЕМ</div>
-        <div id="prof-recs-list"></div>
-      </div>
-
-      <!-- Содержимое: Журнал Событий -->
-      <div class="profile-tab-content" id="tab-logs">
-        <div class="profile-section-title">📜 ИСТОРИЯ АКТИВНОСТИ</div>
-        <div id="prof-logs-list">Загрузка...</div>
-      </div>
-    </div>
-  `;
+  container.appendChild(tpl);
 
   // === ПРИВЯЗКА ЛОГИКИ ===
 
