@@ -172,21 +172,17 @@ export async function loadProfileAlbum(ctx) {
       const p = (!a.isUnlocked && !a.isHidden && a.progress) ? `<div style="margin-top:8px;"><div class="ach-mini-bar" style="width:100%"><div class="ach-mini-fill" style="width:${a.progress.pct}%"></div></div><div style="color:#9aa8c4; font-size:.86em; margin-top:4px;">Осталось: ${Math.max(0, a.progress.target - a.progress.current)}</div></div>` : '';
 return `
         <div class="ach-item ${a.isUnlocked ? 'done' : ''}" data-ach="${a.id}">
-          <div class="ach-item-header">
-            <div class="ach-left">
-              <div class="ach-ic" style="background:${a.isUnlocked ? 'rgba(76,175,80,.16)' : 'rgba(77,170,255,.12)'};border-color:${a.isUnlocked ? 'rgba(76,175,80,.25)' : 'rgba(77,170,255,.22)'}">${a.icon}</div>
-              <div class="ach-main">
-                <div class="ach-title" style="color:${a.isUnlocked ? '#fff' : (a.color || '#fff')}">${a.name}</div>
-                <div class="ach-sub">${a.isUnlocked && a.unlockedAt ? `Открыто: ${new Date(a.unlockedAt).toLocaleDateString()}` : (a.isHidden ? 'Откроется при особых условиях' : a.short)}</div>
-              </div>
-            </div>
-            <div class="ach-right">
-              ${a.isUnlocked ? `<span class="ach-xp">+${a.xpReward} XP</span>` : `<span class="ach-xp">${a.isHidden ? 'Секретное' : `${a.xpReward} XP`}</span>`}
-              ${!a.isHidden ? `<button class="ach-more" type="button">Подробнее</button>` : ''}
-            </div>
+          <div class="ach-top">
+            <div class="ach-title" style="color:${a.isUnlocked ? '#fff' : (a.color || '#fff')}">${a.icon} ${a.name}</div>
           </div>
-          ${(!a.isUnlocked && !a.isHidden && a.progress) ? `<div class="ach-progress"><div class="ach-mini-bar"><div class="ach-mini-fill" style="width:${a.progress.pct}%"></div></div><div class="ach-remaining">Осталось: ${Math.max(0, a.progress.target - a.progress.current)}</div></div>` : ''}
-          ${!a.isHidden ? `<div class="ach-details" style="display:none;"><div class="ach-details-title">Как выполнить</div><div class="ach-details-how">${a.howTo || 'Выполните условия.'}</div>${a.desc ? `<div class="ach-details-desc">${a.desc}</div>` : ''}</div>` : ''}
+          <div class="ach-sub">${a.isUnlocked && a.unlockedAt ? `Открыто: ${new Date(a.unlockedAt).toLocaleDateString()}` : (a.isHidden ? 'Откроется при особых условиях' : a.short)}</div>
+          ${(!a.isUnlocked && !a.isHidden && a.progress) ? `<div class="ach-progress"><div class="ach-mini-bar"><div class="ach-mini-fill" style="width:${a.progress.pct}%"></div></div></div>` : ``}
+          <div class="ach-bottom">
+            <div class="ach-xp">${a.isUnlocked ? `+${a.xpReward} XP` : (a.isHidden ? `Секретное` : `${a.xpReward} XP`)}</div>
+            <div class="ach-remaining">${(!a.isUnlocked && !a.isHidden && a.progress) ? `Осталось: ${Math.max(0, a.progress.target - a.progress.current)}` : ``}</div>
+            <button class="ach-more" type="button">Подробнее</button>
+          </div>
+          <div class="ach-details" style="display:none;"><div class="ach-details-title">Как выполнить</div><div class="ach-details-how">${a.howTo || 'Выполните условия.'}</div>${a.desc ? `<div class="ach-details-desc">${a.desc}</div>` : ''}</div>
         </div>`;
     }).join('') : '<div class="fav-empty">По данному фильтру ничего нет</div>';
   };
