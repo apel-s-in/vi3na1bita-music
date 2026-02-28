@@ -42,12 +42,7 @@ class ShowcaseManager {
 
   async initialize() {
     (W.APP_CONFIG?.ICON_ALBUMS_ORDER || []).forEach(i => this._ic[i.key] = i.icon);
-    await Promise.allSettled((W.albumsIndex || []).filter(a => !a.key.startsWith('__')).map(async a => {
-      try {
-        const r = await fetch(`${a.base.endsWith('/') ? a.base : a.base + '/'}config.json`, { cache: 'force-cache' });
-        if (r.ok) (await r.json()).tracks?.forEach(t => W.TrackRegistry.registerTrack({ ...t, sourceAlbum: a.key }, { title: a.title || a.albumName }));
-      } catch {}
-    }));
+    await W.TrackRegistry?.ensurePopulated?.();
     Store.init();
     W.playerCore?.on({ onTrackChange: t => { if (t?.uid && U.isShowcaseContext(W.AlbumsManager?.getPlayingAlbum())) { Store.set('lastTrackUid', t.uid); Store.set('lastPlayingContext', W.AlbumsManager.getPlayingAlbum()); } } });
     W.playerCore?.onFavoritesChanged(({ uid }) => {
