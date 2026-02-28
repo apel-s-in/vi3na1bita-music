@@ -164,16 +164,13 @@ export async function loadProfileAlbum(ctx) {
   }
 
   const achListEl = container.querySelector('#prof-ach-list');
-  let currentFilter = 'all';
-
-  const renderAchievements = () => {
+  const renderAchievements = (filter) => {
     if (!achListEl || !engine?.achievements) return;
-    const filter = currentFilter;
     let items = engine.achievements.filter(a => filter === 'secret' ? a.isHidden : (filter === 'done' ? a.isUnlocked : (filter === 'available' ? !a.isUnlocked && !a.isHidden : (!a.isHidden || a.isUnlocked))));
     
     achListEl.innerHTML = items.length ? items.map(a => {
       const p = (!a.isUnlocked && !a.isHidden && a.progress) ? `<div style="margin-top:8px;"><div class="ach-mini-bar" style="width:100%"><div class="ach-mini-fill" style="width:${a.progress.pct}%"></div></div><div style="color:#9aa8c4; font-size:.86em; margin-top:4px;">Осталось: ${Math.max(0, a.progress.target - a.progress.current)}</div></div>` : '';
-      return `
+return `
         <div class="ach-item ${a.isUnlocked ? 'done' : ''}" data-ach="${a.id}">
           <div class="ach-top">
             <div class="ach-title" style="color:${a.isUnlocked ? '#fff' : (a.color || '#fff')}">${a.icon} ${a.name}</div>
@@ -189,17 +186,7 @@ export async function loadProfileAlbum(ctx) {
         </div>`;
     }).join('') : '<div class="fav-empty">По данному фильтру ничего нет</div>';
   };
-  renderAchievements();
-
-  // Авто-обновление UI при получении ачивок
-  const onAchUpdate = () => {
-    if (!document.body.contains(container)) return window.removeEventListener('achievements:updated', onAchUpdate);
-    // Обновляем счетчик в шапке профиля, если он есть
-    const achCountEl = container.querySelector('#prof-stat-ach');
-    if (achCountEl) import('../../analytics/meta-db.js').then(m => m.metaDB.getGlobal('unlocked_achievements').then(r => achCountEl.textContent = Object.keys(r?.value||{}).length));
-    renderAchievements();
-  };
-  window.addEventListener('achievements:updated', onAchUpdate);
+  renderAchievements('all');
 
   const topTracksEl = container.querySelector('#prof-top-tracks');
   if (topTracksEl) {
@@ -265,8 +252,7 @@ export async function loadProfileAlbum(ctx) {
       if (achTab) {
         container.querySelectorAll('.ach-classic-tab').forEach(x => x.classList.remove('active'));
         achTab.classList.add('active');
-        currentFilter = achTab.dataset.filter;
-        renderAchievements();
+        renderAchievements(achTab.dataset.filter);
         return;
       }
       
