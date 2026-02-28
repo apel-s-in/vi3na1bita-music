@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9b8a4b7ccc6f607f6455a33a08ce4468a577798a.idx
-│   │       ├── pack-9b8a4b7ccc6f607f6455a33a08ce4468a577798a.pack
-│   │       └── pack-9b8a4b7ccc6f607f6455a33a08ce4468a577798a.rev
+│   │       ├── pack-7ae26d7f81d8fb0ca8516dad5a126b3a350ddfe1.idx
+│   │       ├── pack-7ae26d7f81d8fb0ca8516dad5a126b3a350ddfe1.pack
+│   │       └── pack-7ae26d7f81d8fb0ca8516dad5a126b3a350ddfe1.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -390,7 +390,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-28 19:04:54 UTC
+Сгенерировано: 2026-02-28 19:06:01 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -3803,8 +3803,19 @@ class ShowcaseManager {
     return uids.map(u => {
       const t = W.TrackRegistry.getTrackByUid(u);
       if (!t) return null;
-      let cv = this._ic[t.sourceAlbum] || 'img/logo.png';
-      if (U.isMobile() && cv.includes('.png')) cv = cv.replace('.png', '/mobile/@1x.jpg').replace('icon_album/', 'icon_album/mobile/');
+      // Обложка для Showcase: 1 обложка на альбом (быстро и стабильно).
+      // Берём из центральной галереи (first cover), с fallback на иконку/лого.
+      this._albumCoverCache ??= new Map();
+      let cv = this._albumCoverCache.get(t.sourceAlbum);
+
+      if (!cv) {
+        try {
+          cv = await W.GalleryManager?.getFirstCoverUrl?.(t.sourceAlbum);
+        } catch {}
+        cv = cv || this._ic[t.sourceAlbum] || 'img/logo.png';
+        this._albumCoverCache.set(t.sourceAlbum, cv);
+      }
+
       return { ...t, album: 'Витрина Разбита', cover: cv };
     }).filter(Boolean);
   }
