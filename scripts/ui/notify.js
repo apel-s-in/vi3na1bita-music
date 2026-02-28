@@ -14,23 +14,19 @@
     return cont;
   };
 
-  class NotificationSystem {
-    constructor() { this.q = Promise.resolve(); }
-    
+class NotificationSystem {
     show(msg, type = 'info', dur = 3000) {
-      this.q = this.q.then(() => new Promise(res => {
-        const el = document.createElement('div');
-        el.className = `toast toast-${type}`;
-        el.innerHTML = `<div class="toast-content"><span class="toast-emoji">${emojis[type]||'ℹ️'}</span><span class="toast-message">${esc(msg)}</span></div>`;
-        getCont().appendChild(el);
-        
-        requestAnimationFrame(() => el.classList.add('show'));
-        
-        setTimeout(() => {
-          el.classList.remove('show');
-          setTimeout(() => { el.remove(); res(); }, 300);
-        }, Math.max(0, Number(dur) || 0));
-      })).catch(() => {});
+      const el = document.createElement('div');
+      el.className = `toast toast-${type}`;
+      el.innerHTML = `<div class="toast-content"><span class="toast-emoji">${emojis[type]||'ℹ️'}</span><span class="toast-message">${esc(msg)}</span></div>`;
+      getCont().appendChild(el);
+      
+      requestAnimationFrame(() => el.classList.add('show'));
+      
+      setTimeout(() => {
+        el.classList.remove('show');
+        setTimeout(() => el.remove(), 300);
+      }, Math.max(0, Number(dur) || 0));
     }
 
     info(m, d) { this.show(m, 'info', d); }
