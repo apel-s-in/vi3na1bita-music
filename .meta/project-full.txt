@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2062985d9ad15c1052b41d2cd606f1faa333a729.idx
-│   │       ├── pack-2062985d9ad15c1052b41d2cd606f1faa333a729.pack
-│   │       └── pack-2062985d9ad15c1052b41d2cd606f1faa333a729.rev
+│   │       ├── pack-198852bd0e52041a236ea789d0972d40b5139fec.idx
+│   │       ├── pack-198852bd0e52041a236ea789d0972d40b5139fec.pack
+│   │       └── pack-198852bd0e52041a236ea789d0972d40b5139fec.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -390,7 +390,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-02-28 21:22:40 UTC
+Сгенерировано: 2026-02-28 21:23:21 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -6372,23 +6372,19 @@ export async function loadAndRenderNewsInline(container) {
     return cont;
   };
 
-  class NotificationSystem {
-    constructor() { this.q = Promise.resolve(); }
-    
+class NotificationSystem {
     show(msg, type = 'info', dur = 3000) {
-      this.q = this.q.then(() => new Promise(res => {
-        const el = document.createElement('div');
-        el.className = `toast toast-${type}`;
-        el.innerHTML = `<div class="toast-content"><span class="toast-emoji">${emojis[type]||'ℹ️'}</span><span class="toast-message">${esc(msg)}</span></div>`;
-        getCont().appendChild(el);
-        
-        requestAnimationFrame(() => el.classList.add('show'));
-        
-        setTimeout(() => {
-          el.classList.remove('show');
-          setTimeout(() => { el.remove(); res(); }, 300);
-        }, Math.max(0, Number(dur) || 0));
-      })).catch(() => {});
+      const el = document.createElement('div');
+      el.className = `toast toast-${type}`;
+      el.innerHTML = `<div class="toast-content"><span class="toast-emoji">${emojis[type]||'ℹ️'}</span><span class="toast-message">${esc(msg)}</span></div>`;
+      getCont().appendChild(el);
+      
+      requestAnimationFrame(() => el.classList.add('show'));
+      
+      setTimeout(() => {
+        el.classList.remove('show');
+        setTimeout(() => el.remove(), 300);
+      }, Math.max(0, Number(dur) || 0));
     }
 
     info(m, d) { this.show(m, 'info', d); }
