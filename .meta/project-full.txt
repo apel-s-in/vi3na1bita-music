@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-18f7e1002ab975c23fcdfd36c611253e0810892e.idx
-│   │       ├── pack-18f7e1002ab975c23fcdfd36c611253e0810892e.pack
-│   │       └── pack-18f7e1002ab975c23fcdfd36c611253e0810892e.rev
+│   │       ├── pack-ead4f4e14464cdaea6e70a04039b09d7ea1c6f9c.idx
+│   │       ├── pack-ead4f4e14464cdaea6e70a04039b09d7ea1c6f9c.pack
+│   │       └── pack-ead4f4e14464cdaea6e70a04039b09d7ea1c6f9c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-04 22:24:28 UTC
+Сгенерировано: 2026-03-04 22:25:22 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -8425,15 +8425,19 @@ import { ensureMediaSession } from './player-core/media-session.js';
           ? W.Utils.blob.createUrl(this._oK, r.blob)
           : URL.createObjectURL(r.blob);
       }
-      else if (r?.source === 'stream' && r.url && netOk) {
+      else if (r?.source === 'stream' && r.url) {
         this._oK = null; url = r.url;
-        if (W.Utils?.getNet?.()?.kind === 'cellular' && W.NetPolicy?.shouldShowCellularToast?.()) W.NotificationSystem?.show?.('Воспроизведение через мобильную сеть', 'info');
+        if (netOk && W.Utils?.getNet?.()?.kind === 'cellular' && W.NetPolicy?.shouldShowCellularToast?.()) {
+          W.NotificationSystem?.show?.('Воспроизведение через мобильную сеть', 'info');
+        }
       }
       
       let activeProvider = r?.provider || 'unknown';
-      if (!url && (!r || r.source === 'none') && netOk) {
-        const smart = await W.TrackRegistry?.getSmartUrlInfo?.(uid, 'audio', this.qMode);
-        if (smart) { url = smart.url; activeProvider = smart.provider; }
+      if (!url) {
+        try {
+          const smart = await W.TrackRegistry?.getSmartUrlInfo?.(uid, 'audio', this.qMode);
+          if (smart?.url) { url = smart.url; activeProvider = smart.provider; }
+        } catch (e) { console.warn('[PlayerCore] Smart URL failed:', e); }
       }
       this.currentProvider = activeProvider;
 
