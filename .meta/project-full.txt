@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-00b4e1d689b7d70b1ebcf9e18695e8fafee87eea.idx
-│   │       ├── pack-00b4e1d689b7d70b1ebcf9e18695e8fafee87eea.pack
-│   │       └── pack-00b4e1d689b7d70b1ebcf9e18695e8fafee87eea.rev
+│   │       ├── pack-627bdb07b6b892135a8304ac14cdb182bab6ff10.idx
+│   │       ├── pack-627bdb07b6b892135a8304ac14cdb182bab6ff10.pack
+│   │       └── pack-627bdb07b6b892135a8304ac14cdb182bab6ff10.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-04 21:01:02 UTC
+Сгенерировано: 2026-03-04 21:03:04 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -3330,7 +3330,7 @@ window.PlaybackCache.unprotectWindow = unprotectWindow;
   'use strict';
 
   const U = W.Utils, PC = () => W.playerCore;
-  const st = { isMini: false, seeking: false, vizOn: U.lsGetBool01('bitEnabled'), vizId: 0, ctx: null };
+  const st = { isMini: false, seeking: false, vizOn: U.lsGetBool01('bitEnabled'), vizId: 0, ctx: null, provider: 'unknown' };
   const dom = { blk: null, now: null, mini: null, nUp: null, jump: null, el: {} };
 
   // 1. Unified & Cached State Synchronization
@@ -3362,6 +3362,14 @@ window.PlaybackCache.unprotectWindow = unprotectWindow;
     }
 
     U.download.applyDownloadLink(e.dl, t);
+
+    if (e.srcInd) {
+        e.srcInd.className = 'source-indicator';
+        if (st.provider === 'yandex') { e.srcInd.classList.add('si-yandex'); e.srcInd.title = 'Источник: Yandex Cloud'; }
+        else if (st.provider === 'github') { e.srcInd.classList.add('si-github'); e.srcInd.title = 'Источник: GitHub Pages'; }
+        else if (st.provider === 'cache') { e.srcInd.classList.add('si-cache'); e.srcInd.title = 'Источник: Офлайн Кэш'; }
+        else { e.srcInd.style.opacity = '0'; }
+    }
 
     // Mini Header sync
     if (st.isMini && dom.mini) {
@@ -3442,6 +3450,7 @@ window.PlaybackCache.unprotectWindow = unprotectWindow;
       const q = s => dom.blk.querySelector(s);
       
       dom.el = { 
+        srcInd: q('#source-indicator'),
         fill: q('#player-progress-fill'), bar: q('#player-progress-bar'), tE: q('#time-elapsed'), tR: q('#time-remaining'), 
         vF: q('#volume-fill'), vH: q('#volume-handle'), vS: q('#volume-slider'), ico: q('#play-pause-icon'), 
         pq: q('#pq-btn'), pqL: q('#pq-btn-label'), fav: q('#favorites-btn'), favI: q('#favorites-btn-icon'), dl: q('#track-download-btn') 
@@ -3576,6 +3585,7 @@ window.PlaybackCache.unprotectWindow = unprotectWindow;
       if (p === W.SPECIAL_FAVORITES_KEY || U.lsGetBool01('favoritesOnlyMode')) PC().applyFavoritesOnlyFilter?.(); 
     });
 
+    W.addEventListener('player:providerChanged', (e) => { st.provider = e.detail?.provider; syncUI(); });
     ['offline:uiChanged', 'online', 'offline'].forEach(e => W.addEventListener(e, syncUI));
     
     PC().setVolume(U.math.toInt(U.lsGet('playerVolume'), 100));
