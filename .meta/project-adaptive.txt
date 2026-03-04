@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-fdde3a6f8627a9897a642e7926a27c3c26d2abb1.idx
-│   │       ├── pack-fdde3a6f8627a9897a642e7926a27c3c26d2abb1.pack
-│   │       └── pack-fdde3a6f8627a9897a642e7926a27c3c26d2abb1.rev
+│   │       ├── pack-f219a83f98f36719757c567093e82df7c0bc9ab2.idx
+│   │       ├── pack-f219a83f98f36719757c567093e82df7c0bc9ab2.pack
+│   │       └── pack-f219a83f98f36719757c567093e82df7c0bc9ab2.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-04 20:53:50 UTC
+Сгенерировано: 2026-03-04 20:58:47 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -5910,7 +5910,8 @@ const sUid = u => String(u || '').trim() || null;
 const emit = (n, d) => W.dispatchEvent(new CustomEvent(n, { detail: d }));
 const toast = (m, t = 'info') => W.NotificationSystem?.show?.(m, t);
 const netOk = () => W.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine;
-const getUrl = (u, q) => { const t = W.TrackRegistry?.getTrackByUid?.(u); return t ? (normQ(q) === 'lo' ? (t.audio_low || t.audio) : t.audio) : null; };
+const getUrl = async (u, q) => { const info = await W.TrackRegistry?.getSmartUrlInfo?.(u, 'audio', normQ(q)); return info ? info.url : null; };
+const getSmartInfo = async (u, q) => { return await W.TrackRegistry?.getSmartUrlInfo?.(u, 'audio', normQ(q)); };
 const hasSpace = async () => { try { const e = await navigator.storage?.estimate(); return !e || (e.quota - e.usage) >= DEF.MIN_MB * 1048576; } catch { return true; } };
 
 class DownloadQueue {
@@ -5981,7 +5982,7 @@ class OfflineManager {
   async togglePinned(u) {
     if (!(u = sUid(u))) return; const m = (await DB.getTrackMeta(u)) || { uid: u }, { D } = this.getCloudSettings(), q = this.getEffectiveQuality();
     if (m.type === 'pinned') { await DB.updateTrackMeta(u, { type: 'cloud', cloud: true, pinnedAt: null, cloudAddedAt: now(), cloudExpiresAt: now() + D * 864e5 }); toast(`Закрепление снято. Доступно как облако на ${D} дн.`, 'info'); }
-    else { if (!(await hasSpace())) return toast('Недостаточно места', 'warning'); await DB.updateTrackMeta(u, { type: 'pinned', cloud: false, pinnedAt: now() }); if (!m.cachedComplete || m.quality !== q) { const url = getUrl(u, q); if (url) { toast('Закреплён. Скачивание...', 'info'); this.queue.add({ uid: u, url, quality: q, priority: PRIO.PIN, kind: 'pinned' }); } } else toast('Трек закреплён 🔒', 'success'); }
+    else { if (!(await hasSpace())) return toast('Недостаточно места', 'warning'); await DB.updateTrackMeta(u, { type: 'pinned', cloud: false, pinnedAt: now() }); if (!m.cachedComplete || m.quality !== q) { const url = await getUrl(u, q); if (url) { toast('Закреплён. Скачивание...', 'info'); this.queue.add({ uid: u, url, quality: q, priority: PRIO.PIN, kind: 'pinned' }); } } else toast('Трек закреплён 🔒', 'success'); }
     emit('offline:stateChanged');
   }
   async removeCached(u) { if (u = sUid(u)) { this.queue.cancel(u); await DB.deleteAudio(u); await DB.updateTrackMeta(u, { type: null, cloud: false, cachedComplete: false, quality: null, size: 0, cloudFullListenCount: 0, lastFullListenAt: null, cloudAddedAt: null, cloudExpiresAt: null }); emit('offline:stateChanged'); } }
@@ -5996,10 +5997,10 @@ class OfflineManager {
     if (!(u = sUid(u)) || !forcedCloud) return; const m = (await DB.getTrackMeta(u)) || { uid: u }, { N, D } = this.getCloudSettings(), nC = (m.cloudFullListenCount || 0) + 1, upd = { cloudFullListenCount: nC, lastFullListenAt: now() };
     if (m.type === 'cloud') upd.cloudExpiresAt = now() + D * 864e5;
     if (!['pinned', 'cloud'].includes(m.type)) {
-      if (nC >= N) { if (await hasSpace()) { Object.assign(upd, { type: 'cloud', cloud: true, cloudOrigin: 'auto', cloudExpiresAt: now() + D * 864e5 }); if (!m.cachedComplete) { const q = this.getEffectiveQuality(), url = getUrl(u, q); if (url) this.queue.add({ uid: u, url, quality: q, priority: PRIO.FILL, kind: 'cloud' }); } } }
+      if (nC >= N) { if (await hasSpace()) { Object.assign(upd, { type: 'cloud', cloud: true, cloudOrigin: 'auto', cloudExpiresAt: now() + D * 864e5 }); if (!m.cachedComplete) { const q = this.getEffectiveQuality(), url = await getUrl(u, q); if (url) this.queue.add({ uid: u, url, quality: q, priority: PRIO.FILL, kind: 'cloud' }); } } }
       else if (this.getMode() === 'R2' && m.type !== 'playbackCache') {
         upd.type = 'dynamic'; upd.lastAccessedAt = now();
-        if (!m.cachedComplete) { const lB = (await this.getDynamicLimitMB()) * 1048576, uB = await this.getDynamicUsedBytes(), q = this.getEffectiveQuality(), url = getUrl(u, q); if (url) { if (lB <= 0) upd.type = null; else if (uB >= lB) { await this.evictDynamic(); if (await this.getDynamicUsedBytes() >= lB) toast('Хранилище переполнено', 'warning'); else this.queue.add({ uid: u, url, quality: q, priority: PRIO.DYN, kind: 'dynamic' }); } else this.queue.add({ uid: u, url, quality: q, priority: PRIO.DYN, kind: 'dynamic' }); } }
+        if (!m.cachedComplete) { const lB = (await this.getDynamicLimitMB()) * 1048576, uB = await this.getDynamicUsedBytes(), q = this.getEffectiveQuality(), url = await getUrl(u, q); if (url) { if (lB <= 0) upd.type = null; else if (uB >= lB) { await this.evictDynamic(); if (await this.getDynamicUsedBytes() >= lB) toast('Хранилище переполнено', 'warning'); else this.queue.add({ uid: u, url, quality: q, priority: PRIO.DYN, kind: 'dynamic' }); } else this.queue.add({ uid: u, url, quality: q, priority: PRIO.DYN, kind: 'dynamic' }); } }
       }
     }
     await DB.updateTrackMeta(u, upd); emit('offline:stateChanged');
@@ -6010,18 +6011,18 @@ class OfflineManager {
     if (m?.type === 'dynamic') { DB.updateTrackMeta(u, { lastAccessedAt: now() }); this.touchMRU(u).catch(()=>{}); }
     const b1 = await DB.getAudioBlob(u, q); if (b1) return { source: 'local', blob: b1, quality: q };
     const b2 = await DB.getAudioBlob(u, a);
-    if (b2) { if (q === 'lo') return { source: 'local', blob: b2, quality: a }; if (iN) { const url = getUrl(u, q); if (url) { if (this.getMode() !== 'R2') this._reCache(u, q); return { source: 'stream', url, quality: q }; } } return { source: 'local', blob: b2, quality: a }; }
-    if (iN) { const url = getUrl(u, q); if (url) return { source: 'stream', url, quality: q }; }
+    if (b2) { if (q === 'lo') return { source: 'local', blob: b2, quality: a, provider: 'cache' }; if (iN) { const info = await getSmartInfo(u, q); if (info && info.url) { if (this.getMode() !== 'R2') this._reCache(u, q); return { source: 'stream', url: info.url, quality: q, provider: info.provider }; } } return { source: 'local', blob: b2, quality: a, provider: 'cache' }; }
+    if (iN) { const info = await getSmartInfo(u, q); if (info && info.url) return { source: 'stream', url: info.url, quality: q, provider: info.provider }; }
     return { source: 'none' };
   }
   async enqueueAudioDownload(u, { priority, kind } = {}) {
     if (!(u = sUid(u)) || await DB.hasAudioForUid(u).catch(()=>false)) return; const m = await DB.getTrackMeta(u);
     if (['pinned', 'cloud', 'dynamic'].includes(m?.type) || m?.cachedComplete || (kind === 'playbackCache' && !(await hasSpace()))) return;
-    const q = this.getEffectiveQuality(), url = getUrl(u, q);
+    const q = this.getEffectiveQuality(), url = await getUrl(u, q);
     if (kind === 'playbackCache' && m?.type !== 'playbackCache') await DB.updateTrackMeta(u, { type: 'playbackCache', lastAccessedAt: now() });
     if (url) this.queue.add({ uid: u, url, quality: q, priority: priority || PRIO.UPD, kind });
   }
-  _reCache(u, q, p = PRIO.UPD) { if (W.playerCore?.getCurrentTrackUid?.() === u) return; const url = getUrl(u, q); if (url) this.queue.add({ uid: u, url, quality: q, priority: p, kind: 'reCache' }); }
+  async _reCache(u, q, p = PRIO.UPD) { if (W.playerCore?.getCurrentTrackUid?.() === u) return; const url = await getUrl(u, q); if (url) this.queue.add({ uid: u, url, quality: q, priority: p, kind: 'reCache' }); }
   async _onQualChg(nQ) { const q = normQ(nQ); this.queue.clearOldQualities(q); for (const [u] of this.queue.act) this.queue.cancel(u); for (const m of await DB.getAllTrackMetas()) if (['pinned', 'cloud', 'dynamic'].includes(m.type) && m.cachedComplete && m.quality !== q) { await DB.updateTrackMeta(m.uid, { needsReCache: true }); this._reCache(m.uid, q, m.type === 'pinned' ? PRIO.PIN : (m.type === 'cloud' ? PRIO.UPD : PRIO.DYN)); } emit('offline:uiChanged'); }
   async confirmApplyCloudSettings({ newN, newD }) { localStorage.setItem(LS.CN, newN); localStorage.setItem(LS.CD, newD); emit('offline:uiChanged'); }
   async getStorageBreakdown() { return (await DB.getAllTrackMetas()).reduce((a, m) => { a[['pinned','cloud','playbackCache','dynamic'].includes(m.type) ? (m.type === 'playbackCache' ? 'transient' : m.type) : 'other'] += (m.size || 0); return a; }, { pinned: 0, cloud: 0, transient: 0, dynamic: 0, other: 0 }); }
