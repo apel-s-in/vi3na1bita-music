@@ -128,9 +128,12 @@ import { ensureMediaSession } from './player-core/media-session.js';
         if (W.Utils?.getNet?.()?.kind === 'cellular' && W.NetPolicy?.shouldShowCellularToast?.()) W.NotificationSystem?.show?.('Воспроизведение через мобильную сеть', 'info');
       }
       
-      if (!url && t.src && (!r || r.source === 'none') && netOk) {
-        url = (this.qMode === 'lo' && (getTrackByUid(uid)?.audio_low || t.sources?.audio?.lo)) ? (getTrackByUid(uid)?.audio_low || t.src) : t.src;
+      let activeProvider = r?.provider || 'unknown';
+      if (!url && (!r || r.source === 'none') && netOk) {
+        const smart = await W.TrackRegistry?.getSmartUrlInfo?.(uid, 'audio', this.qMode);
+        if (smart) { url = smart.url; activeProvider = smart.provider; }
       }
+      this.currentProvider = activeProvider;
 
       const sf = fn => (...a) => tok === this._tok && fn(...a);
 
@@ -145,7 +148,7 @@ import { ensureMediaSession } from './player-core/media-session.js';
       this.sound = new Howl({
         src: [url], html5: r?.source === 'stream' || !r?.blob, volume: this.getVolume() / 100, format: ['mp3'], autoplay: opts.autoPlay ?? this.isPlaying(),
         onload: sf(() => { pos && this.seek(pos); this._updMedia(); }),
-        onplay: sf(() => { this._startT(); this._emit('onPlay', t, idx); this._updMedia(); emitG('player:play', { uid, duration: this.getDuration(), type: 'audio' }); }),
+        onplay: sf(() => { this._startT(); this._emit('onPlay', t, idx); this._updMedia(); emitG('player:play', { uid, duration: this.getDuration(), type: 'audio', provider: this.currentProvider }); emitG('player:providerChanged', { provider: this.currentProvider }); }),
         onpause: sf(() => { this._stopT(); this._emit('onPause'); this._updMedia(); emitG('player:pause'); }),
         onend: sf(() => { this._emit('onEnd'); this._updMedia(); emitG('player:ended'); emitG('analytics:forceFlush'); this.flags.rep ? this.play(this.currentIndex) : this.next(); }),
         onloaderror: sf(() => this._err(idx, retry, opts, dir)),
