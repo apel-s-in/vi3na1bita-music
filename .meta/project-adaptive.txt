@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c6409e0aa9c7bbbab82afa2c4e4f9c9df8adf2eb.idx
-│   │       ├── pack-c6409e0aa9c7bbbab82afa2c4e4f9c9df8adf2eb.pack
-│   │       └── pack-c6409e0aa9c7bbbab82afa2c4e4f9c9df8adf2eb.rev
+│   │       ├── pack-3ad8f3d80d0dcaf1904e8dd4bc9d85655238e5d2.idx
+│   │       ├── pack-3ad8f3d80d0dcaf1904e8dd4bc9d85655238e5d2.pack
+│   │       └── pack-3ad8f3d80d0dcaf1904e8dd4bc9d85655238e5d2.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -391,7 +391,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-04 10:35:14 UTC
+Сгенерировано: 2026-03-04 12:00:47 UTC
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
@@ -7563,7 +7563,7 @@ window.StatisticsModal = {
       "items": {
         "explicit_language": "Ненормативная лексика/мат.",
         "violence": "Насилие (описания/призывы/натурализм).",
-        "self_harm": "Самоповреждение/суицидальные мотивы.",,
+        "self_harm": "Самоповреждение/суицидальные мотивы.",
         "hate_speech": "Язык ненависти/дискриминация.",
         "sexual_content": "Сексуальный контент (явные описания).",
         "war_trauma": "Тяжёлые сцены войны/травмы.",
@@ -7580,7 +7580,7 @@ window.StatisticsModal = {
         "family_mode": "Режим для семьи/детей: повышать family_friendly, kids_time, kids_bedtime.",
         "sleep_mode": "Режим сна: повышать sleep/relax, понижать energy/tension."
       }
-    },
+    }
   },
   "defaults": {
     "threshold_store": 0.05,
