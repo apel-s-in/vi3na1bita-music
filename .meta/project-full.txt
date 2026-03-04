@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4ded366847b8640bf01c5833cd84d977eadea50a.idx
-│   │       ├── pack-4ded366847b8640bf01c5833cd84d977eadea50a.pack
-│   │       └── pack-4ded366847b8640bf01c5833cd84d977eadea50a.rev
+│   │       ├── pack-8b00d32d2f70ab62958b3537e2cadc22e6caf227.idx
+│   │       ├── pack-8b00d32d2f70ab62958b3537e2cadc22e6caf227.pack
+│   │       └── pack-8b00d32d2f70ab62958b3537e2cadc22e6caf227.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-04 21:19:53 UTC
+Сгенерировано: 2026-03-04 21:29:34 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -1286,19 +1286,15 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-// service-worker.js
-// Optimized Service Worker for "Vi3na1bita" (v8.1.10) - Spec Compliant
-
-const SW_VERSION = '8.1.10';
+const SW_VERSION = '8.1.11';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
 const RUNTIME_CACHE = `vitrina-runtime-v${SW_VERSION}`;
-const MEDIA_CACHE = `vitrina-media-v${SW_VERSION}`; // Reserved: audio cached via IndexedDB, not SW
+const MEDIA_CACHE = `vitrina-media-v${SW_VERSION}`; 
 const OFFLINE_CACHE = `vitrina-offline-v${SW_VERSION}`;
 const META_CACHE = `vitrina-meta-v${SW_VERSION}`;
 
-// Config (Required by lint-sw.mjs - do not remove)
 const DEFAULT_SW_CONFIG = {
   mediaMaxCacheMB: 150,
   nonRangeMaxStoreMB: 25,
@@ -1364,16 +1360,19 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
 
-  // Spec 5.2 & 5.3: Airplane mode fully blocks all network requests in SW layer too.
-    if (/\.(mp3|ogg|m4a|flac)$/i.test(url.pathname)) {
-      if (isAirplaneMode) e.respondWith(new Response(null, { status: 503, statusText: 'Airplane Mode Active' }));
-      return;
-    }
-
+  // 1. СТРОГИЙ ОБХОД ДЛЯ АУДИО (Игнорируем Range запросы и файлы музыки)
+  // Это критически важно, чтобы Service Worker не блокировал медиа-потоки Howler.js
+  if (req.headers.get('range') || /\.(mp3|ogg|m4a|flac)$/i.test(url.pathname)) {
     if (isAirplaneMode) {
-      e.respondWith(caches.match(req).then(c => c || new Response(null, { status: 503, statusText: 'Airplane Mode Active' })));
-      return;
+        e.respondWith(new Response(null, { status: 503, statusText: 'Airplane Mode Active' }));
     }
+    return; // Полностью отдаем запрос браузеру
+  }
+
+  if (isAirplaneMode) {
+    e.respondWith(caches.match(req).then(c => c || new Response(null, { status: 503, statusText: 'Airplane Mode Active' })));
+    return;
+  }
 
   // Static core assets (Cache First)
   if (STATIC_SET.has(norm(url.href))) {
@@ -1389,12 +1388,13 @@ self.addEventListener('fetch', (e) => {
   // Fallback (Network First -> Cache)
   e.respondWith(
       caches.match(req).then(cached => cached || fetch(req).then(r => {
-        if (r.ok && url.protocol.startsWith('http')) {
+        // Кэшируем только полные ответы (200 OK), игнорируем частичные (206 Partial Content)
+        if (r.ok && r.status === 200 && url.protocol.startsWith('http')) {
           try {
             const cl = r.clone();
             caches.open(RUNTIME_CACHE).then(cx => cx.put(req, cl));
           } catch(err) {
-            // Игнорируем ошибку body stream already used при аудио
+            // Тихий fail
           }
         }
         return r;
