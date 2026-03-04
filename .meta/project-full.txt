@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f8d86e768928d59cec0bbe8bcc39830585502448.idx
-│   │       ├── pack-f8d86e768928d59cec0bbe8bcc39830585502448.pack
-│   │       └── pack-f8d86e768928d59cec0bbe8bcc39830585502448.rev
+│   │       ├── pack-476f91e128f647d343f709d683d81f83c5622fc5.idx
+│   │       ├── pack-476f91e128f647d343f709d683d81f83c5622fc5.pack
+│   │       └── pack-476f91e128f647d343f709d683d81f83c5622fc5.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-04 19:03:44 UTC
+Сгенерировано: 2026-03-04 19:24:31 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -601,22 +601,26 @@ jobs:
     {
       "key": "mezhdu-zlom-i-dobrom",
       "title": "Между Злом и Добром",
-      "base": "https://apel-s-in.github.io/vi3na1bita-mezhdu-zlom-i-dobrom/"
+      "yandex_base": "./albums/mezhdu-zlom-i-dobrom/",
+      "github_base": "https://apel-s-in.github.io/vi3na1bita-mezhdu-zlom-i-dobrom/"
     },
     {
       "key": "golos-dushi",
       "title": "Голос Души",
-      "base": "https://apel-s-in.github.io/vi3na1bita-golos-dushi/"
+      "yandex_base": "./albums/golos-dushi/",
+      "github_base": "https://apel-s-in.github.io/vi3na1bita-golos-dushi/"
     },
     {
       "key": "odnazhdy-v-skazke",
       "title": "Однажды в Сказке",
-      "base": "https://apel-s-in.github.io/vi3na1bita-odnazhdy-v-skazke/"
+      "yandex_base": "./albums/odnazhdy-v-skazke/",
+      "github_base": "https://apel-s-in.github.io/vi3na1bita-odnazhdy-v-skazke/"
     },
     {
       "key": "krevetochka",
       "title": "КРЕВЕツTOCHKA",
-      "base": "https://apel-s-in.github.io/krevetochka/"
+      "yandex_base": "./albums/krevetochka/",
+      "github_base": "https://apel-s-in.github.io/krevetochka/"
     }
   ]
 }
