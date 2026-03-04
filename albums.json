@@ -3,25 +3,25 @@
     {
       "key": "mezhdu-zlom-i-dobrom",
       "title": "Между Злом и Добром",
-      "yandex_base": "./albums/mezhdu-zlom-i-dobrom/",
+      "yandex_base": "https://storage.yandexcloud.net/vi3na1bita/albums/mezhdu-zlom-i-dobrom/",
       "github_base": "https://apel-s-in.github.io/vi3na1bita-mezhdu-zlom-i-dobrom/"
     },
     {
       "key": "golos-dushi",
       "title": "Голос Души",
-      "yandex_base": "./albums/golos-dushi/",
+      "yandex_base": "https://storage.yandexcloud.net/vi3na1bita/albums/golos-dushi/",
       "github_base": "https://apel-s-in.github.io/vi3na1bita-golos-dushi/"
     },
     {
       "key": "odnazhdy-v-skazke",
       "title": "Однажды в Сказке",
-      "yandex_base": "./albums/odnazhdy-v-skazke/",
+      "yandex_base": "https://storage.yandexcloud.net/vi3na1bita/albums/odnazhdy-v-skazke/",
       "github_base": "https://apel-s-in.github.io/vi3na1bita-odnazhdy-v-skazke/"
     },
     {
       "key": "krevetochka",
       "title": "КРЕВЕツTOCHKA",
-      "yandex_base": "./albums/krevetochka/",
+      "yandex_base": "https://storage.yandexcloud.net/vi3na1bita/albums/krevetochka/",
       "github_base": "https://apel-s-in.github.io/krevetochka/"
     }
   ]
