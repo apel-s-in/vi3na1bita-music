@@ -16,7 +16,10 @@
     // Если сеть отключена Сетевой политикой, fetch выбросит исключение.
     if (t.fulltext) {
       try {
-        const r = await fetch(t.fulltext);
+        let fetchUrl = t.fulltext;
+        const smart = await W.TrackRegistry?.getSmartUrlInfo?.(t.uid, 'fulltext');
+        if (smart) fetchUrl = smart.url;
+        const r = await fetch(fetchUrl);
         if (r.ok) txt = await r.text();
       } catch (e) {
         console.warn('[LyricsModal] Fulltext fetch failed (Offline/Network Policy). Falling back to timeline.');
