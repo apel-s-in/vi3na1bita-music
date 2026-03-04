@@ -48,9 +48,12 @@ export const toggleCellularToast = () => set(K.T, ls(K.T, 'off') === 'on' ? 'off
 export const toggleKillSwitch = () => set(K.K, ls(K.K, 'off') === 'on' ? 'off' : 'on');
 
 export const isNetworkAllowed = () => {
-  if (!navigator.onLine) return false;
   const s = getNetPolicyState();
-  if (s.airplaneMode || s.killSwitch) return false;
+  // Ручные блокировки юзера в приоритете
+  if (s.killSwitch || s.airplaneMode) return false;
+  // Fallback на нативный API, только если нет ручных блокировок
+  if (!navigator.onLine) return false;
+  
   if (!s.supportsNetControl) return true;
   return detectNetworkType() === 'cellular' ? s.cellularEnabled : s.wifiEnabled;
 };
