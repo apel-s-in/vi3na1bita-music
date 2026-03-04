@@ -29,12 +29,11 @@ class NotificationSystem {
       }, Math.max(0, Number(dur) || 0));
     }
 
-    info(m, d) { this.show(m, 'info', d); }
-    success(m, d) { this.show(m, 'success', d); }
-    error(m, d) { this.show(m, 'error', d); }
-    warning(m, d) { this.show(m, 'warning', d); }
-    offline(m, d) { this.show(m, 'offline', d); }
   }
+  
+  ['info','success','error','warning','offline'].forEach(t => {
+    NotificationSystem.prototype[t] = function(m, d) { this.show(m, t, d); };
+  });
 
   window.NotificationSystem = new NotificationSystem();
 })();
