@@ -289,7 +289,7 @@
       "items": {
         "explicit_language": "Ненормативная лексика/мат.",
         "violence": "Насилие (описания/призывы/натурализм).",
-        "self_harm": "Самоповреждение/суицидальные мотивы.",,
+        "self_harm": "Самоповреждение/суицидальные мотивы.",
         "hate_speech": "Язык ненависти/дискриминация.",
         "sexual_content": "Сексуальный контент (явные описания).",
         "war_trauma": "Тяжёлые сцены войны/травмы.",
@@ -306,7 +306,7 @@
         "family_mode": "Режим для семьи/детей: повышать family_friendly, kids_time, kids_bedtime.",
         "sleep_mode": "Режим сна: повышать sleep/relax, понижать energy/tension."
       }
-    },
+    }
   },
   "defaults": {
     "threshold_store": 0.05,
