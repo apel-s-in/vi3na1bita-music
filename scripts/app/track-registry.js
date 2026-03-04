@@ -20,12 +20,12 @@ const toUrl = (b, r) => {
   }
 };
 
-// Глобальный маршрутизатор (Failover Engine)
+// Глобальный маршрутизатор (Оптимизированный: O(1) маршрутизация без блокирующих HEAD-запросов)
 export async function getSmartUrlInfo(uid, prop = 'audio', quality = 'hi') {
   const track = _tracks.get(uid);
   if (!track || !track.sourceAlbum) return null;
   const conf = _albumConfigs.get(track.sourceAlbum);
-  if (!conf || !conf.bases) return null;
+  if (!conf || !conf.activeBase) return null;
 
   let relPath = null;
   if (prop === 'audio') relPath = quality === 'lo' ? (track.rel_audio_low || track.rel_audio) : track.rel_audio;
@@ -35,36 +35,15 @@ export async function getSmartUrlInfo(uid, prop = 'audio', quality = 'hi') {
   if (!relPath) return null;
   const cleanRel = relPath.replace(/^(\.\/|\/)/, ''); 
 
-  const pref = localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex';
-  const fallback = pref === 'yandex' ? 'github' : 'yandex';
-  
-  const build = (src) => {
-      try {
-          const baseStr = conf.bases[src];
-          if (!baseStr) return null;
-          const absoluteBase = new URL(baseStr, window.location.origin + window.location.pathname).toString();
-          return new URL(cleanRel, absoluteBase).toString();
-      } catch(e) { return null; }
-  };
-
   try {
-    const url1 = build(pref);
-    if (url1) {
-        const r1 = await fetch(url1, { method: 'HEAD', cache: 'no-cache' });
-        if (r1.ok) return { url: url1, provider: pref };
-    }
-  } catch (e) {}
-
-  try {
-    const url2 = build(fallback);
-    if (url2) {
-        const r2 = await fetch(url2, { method: 'HEAD', cache: 'no-cache' });
-        if (r2.ok) return { url: url2, provider: fallback };
-    }
-  } catch (e) {}
-
-  const defaultUrl = build(pref) || build(fallback);
-  return { url: defaultUrl, provider: pref };
+    const absoluteBase = new URL(conf.activeBase, window.location.origin + window.location.pathname).toString();
+    const finalUrl = new URL(cleanRel, absoluteBase).toString();
+    const provider = conf.activeBase === conf.bases.yandex ? 'yandex' : 'github';
+    
+    return { url: finalUrl, provider };
+  } catch (e) {
+    return null;
+  }
 }
 
 /**
