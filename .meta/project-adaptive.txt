@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f9e8ce1b7300d2cbbbcc2f48c0e435bf09e3163e.idx
-│   │       ├── pack-f9e8ce1b7300d2cbbbcc2f48c0e435bf09e3163e.pack
-│   │       └── pack-f9e8ce1b7300d2cbbbcc2f48c0e435bf09e3163e.rev
+│   │       ├── pack-2fbafb706fb6ebe7a6b030d2cf6fa5ae87b8d818.idx
+│   │       ├── pack-2fbafb706fb6ebe7a6b030d2cf6fa5ae87b8d818.pack
+│   │       └── pack-2fbafb706fb6ebe7a6b030d2cf6fa5ae87b8d818.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-04 22:55:08 UTC
+Сгенерировано: 2026-03-04 23:53:59 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -598,30 +598,28 @@ jobs:
 //=================================================
 // FILE: /albums.json
 {
+  "yandex_base": "https://storage.yandexcloud.net/vi3na1bita/",
+  "github_base": "https://apel-s-in.github.io/",
   "albums": [
     {
       "key": "mezhdu-zlom-i-dobrom",
       "title": "Между Злом и Добром",
-      "yandex_base": "https://storage.yandexcloud.net/vi3na1bita/albums/mezhdu-zlom-i-dobrom/",
-      "github_base": "https://apel-s-in.github.io/vi3na1bita-mezhdu-zlom-i-dobrom/"
+      "base": "albums/mezhdu-zlom-i-dobrom/"
     },
     {
       "key": "golos-dushi",
       "title": "Голос Души",
-      "yandex_base": "https://storage.yandexcloud.net/vi3na1bita/albums/golos-dushi/",
-      "github_base": "https://apel-s-in.github.io/vi3na1bita-golos-dushi/"
+      "base": "albums/golos-dushi/"
     },
     {
       "key": "odnazhdy-v-skazke",
       "title": "Однажды в Сказке",
-      "yandex_base": "https://storage.yandexcloud.net/vi3na1bita/albums/odnazhdy-v-skazke/",
-      "github_base": "https://apel-s-in.github.io/vi3na1bita-odnazhdy-v-skazke/"
+      "base": "albums/odnazhdy-v-skazke/"
     },
     {
       "key": "krevetochka",
       "title": "КРЕВЕツTOCHKA",
-      "yandex_base": "https://storage.yandexcloud.net/vi3na1bita/albums/krevetochka/",
-      "github_base": "https://apel-s-in.github.io/krevetochka/"
+      "base": "albums/krevetochka/"
     }
   ]
 }
