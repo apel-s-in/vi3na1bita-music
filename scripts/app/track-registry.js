@@ -25,7 +25,7 @@ export async function getSmartUrlInfo(uid, prop = 'audio', quality = 'hi') {
   const track = _tracks.get(uid);
   if (!track || !track.sourceAlbum) return null;
   const conf = _albumConfigs.get(track.sourceAlbum);
-  if (!conf || !conf.activeBase) return null;
+  if (!conf || !conf.bases) return null;
 
   let relPath = null;
   if (prop === 'audio') relPath = quality === 'lo' ? (track.rel_audio_low || track.rel_audio) : track.rel_audio;
@@ -35,12 +35,15 @@ export async function getSmartUrlInfo(uid, prop = 'audio', quality = 'hi') {
   if (!relPath) return null;
   const cleanRel = relPath.replace(/^(\.\/|\/)/, ''); 
 
+  // Берем выбор пользователя из Личного кабинета (по умолчанию 'yandex')
+  const pref = localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex';
+  const baseStr = conf.bases[pref] || conf.bases['github'];
+
   try {
-    const absoluteBase = new URL(conf.activeBase, window.location.origin + window.location.pathname).toString();
+    const absoluteBase = new URL(baseStr, window.location.origin + window.location.pathname).toString();
     const finalUrl = new URL(cleanRel, absoluteBase).toString();
-    const provider = conf.activeBase === conf.bases.yandex ? 'yandex' : 'github';
     
-    return { url: finalUrl, provider };
+    return { url: finalUrl, provider: pref };
   } catch (e) {
     return null;
   }
