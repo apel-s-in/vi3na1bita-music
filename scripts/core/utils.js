@@ -49,11 +49,7 @@
     },
 
     fmt: {
-      time: (s) => {
-        const n = Number(s); if (!n || n < 0) return '00:00';
-        const h = n / 3600 | 0, m = (n % 3600) / 60 | 0, sc = n % 60 | 0;
-        return (h ? h + ':' : '') + String(h ? m % 60 : m).padStart(2, '0') + ':' + String(sc).padStart(2, '0');
-      },
+      time: s => { const n = Number(s); return (!n || n<0) ? '00:00' : new Date(n*1000).toISOString().slice(n>=3600?11:14, 19); },
       bytes: (b) => {
         const n = Number(b); if (!Number.isFinite(n) || n <= 0) return '0 B';
         const i = Math.floor(Math.log(n) / Math.log(1024));
