@@ -38,9 +38,9 @@ export async function getSmartUrlInfo(uid, prop = 'audio', quality = 'hi') {
   if (!relPath) return null;
   const cleanRel = relPath.replace(/^(\.\/|\/)/, ''); 
 
-  // Ищем предпочтительный источник, при неудаче используем резервный
-  const pref = localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex';
-  const sources = [pref, pref === 'yandex' ? 'github' : 'yandex'];
+  // Используем тот источник, который был реально доступен при инициализации (или ручной выбор)
+  const activeSrc = conf.activeSrc || (localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex');
+  const sources = [activeSrc, activeSrc === 'yandex' ? 'github' : 'yandex'];
   
   for (const src of sources) {
     const baseStr = conf.bases[src];
@@ -127,7 +127,12 @@ export async function ensurePopulated() {
         };
 
         // Запрашиваем конфиг с учетом приоритета и резерва
-        let confData = await tryFetchConfig(pref) || await tryFetchConfig(pref === 'yandex' ? 'github' : 'yandex');
+        let activeSrc = pref;
+        let confData = await tryFetchConfig(activeSrc);
+        if (!confData) {
+          activeSrc = pref === 'yandex' ? 'github' : 'yandex';
+          confData = await tryFetchConfig(activeSrc);
+        }
         if (!confData) return;
         
         const raw = confData.raw;
@@ -139,6 +144,7 @@ export async function ensurePopulated() {
         _albumConfigs.set(a.key, {
           title,
           bases: { yandex: y_base, github: g_base },
+          activeSrc: activeSrc, // Сохраняем реально работающий источник для плеера
           artist: raw.artist || 'Витрина Разбита',
           links: (raw.social_links || raw.socials || []).map(s => ({ label: s.title || s.label, url: s.url }))
         });
