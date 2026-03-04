@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-51c92a18dfc6fd3dcef25789e9948608d7846539.idx
-│   │       ├── pack-51c92a18dfc6fd3dcef25789e9948608d7846539.pack
-│   │       └── pack-51c92a18dfc6fd3dcef25789e9948608d7846539.rev
+│   │       ├── pack-f9e8ce1b7300d2cbbbcc2f48c0e435bf09e3163e.idx
+│   │       ├── pack-f9e8ce1b7300d2cbbbcc2f48c0e435bf09e3163e.pack
+│   │       └── pack-f9e8ce1b7300d2cbbbcc2f48c0e435bf09e3163e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-04 22:35:49 UTC
+Сгенерировано: 2026-03-04 22:55:08 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -5192,11 +5192,7 @@ window.FavoritesManager = Favorites;
     },
 
     fmt: {
-      time: (s) => {
-        const n = Number(s); if (!n || n < 0) return '00:00';
-        const h = n / 3600 | 0, m = (n % 3600) / 60 | 0, sc = n % 60 | 0;
-        return (h ? h + ':' : '') + String(h ? m % 60 : m).padStart(2, '0') + ':' + String(sc).padStart(2, '0');
-      },
+      time: s => { const n = Number(s); return (!n || n<0) ? '00:00' : new Date(n*1000).toISOString().slice(n>=3600?11:14, 19); },
       bytes: (b) => {
         const n = Number(b); if (!Number.isFinite(n) || n <= 0) return '0 B';
         const i = Math.floor(Math.log(n) / Math.log(1024));
