@@ -11,6 +11,42 @@ let _populatedPromise = null;
 
 const toUrl = (b, r) => r ? new URL(r, b).toString() : null;
 
+// Глобальный маршрутизатор (Failover Engine)
+export async function getSmartUrlInfo(uid, prop = 'audio', quality = 'hi') {
+  const track = _tracks.get(uid);
+  if (!track || !track.sourceAlbum) return null;
+  const conf = _albumConfigs.get(track.sourceAlbum);
+  if (!conf || !conf.bases) return null;
+
+  let relPath = null;
+  if (prop === 'audio') relPath = quality === 'lo' ? (track.rel_audio_low || track.rel_audio) : track.rel_audio;
+  else if (prop === 'lyrics') relPath = track.rel_lyrics;
+  else if (prop === 'fulltext') relPath = track.rel_fulltext;
+  
+  if (!relPath) return null;
+  const cleanRel = relPath.replace(/^(\.\/|\/)/, ''); // Убираем слэши для склейки
+
+  const pref = localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex';
+  const fallback = pref === 'yandex' ? 'github' : 'yandex';
+  const build = (src) => conf.bases[src] + cleanRel;
+
+  // Быстрый пинг предпочитаемого источника
+  try {
+    const url1 = build(pref);
+    const r1 = await fetch(url1, { method: 'HEAD', cache: 'no-cache' });
+    if (r1.ok) return { url: url1, provider: pref };
+  } catch (e) {}
+
+  // Если упал - мгновенный резерв
+  try {
+    const url2 = build(fallback);
+    const r2 = await fetch(url2, { method: 'HEAD', cache: 'no-cache' });
+    if (r2.ok) return { url: url2, provider: fallback };
+  } catch (e) {}
+
+  return { url: build(pref), provider: pref };
+}
+
 /**
  * Зарегистрировать трек.
  * @param {Object} track - { uid, title, audio, audio_low, size, size_low, lyrics, fulltext, sourceAlbum }
@@ -71,24 +107,46 @@ export async function ensurePopulated() {
     const idx = window.albumsIndex || [];
     await Promise.allSettled(idx.filter(a => !a.key.startsWith('__')).map(async a => {
       try {
-        const base = a.base.endsWith('/') ? a.base : `${a.base}/`;
-        const r = await fetch(`${base}config.json`, { cache: 'force-cache' });
-        if (!r.ok) return;
-        const raw = await r.json();
+        const y_base = a.yandex_base ? (a.yandex_base.endsWith('/') ? a.yandex_base : `${a.yandex_base}/`) : '';
+        const g_base = a.github_base ? (a.github_base.endsWith('/') ? a.github_base : `${a.github_base}/`) : '';
         
+        let pref = localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex';
+        const tryFetchConfig = async (src) => {
+            const b = src === 'yandex' ? y_base : g_base;
+            if (!b) return null;
+            try {
+                const res = await fetch(`${b}config.json`, { cache: 'no-cache' }); // Важно! Конфиги тянем свежие
+                if (res.ok) return { raw: await res.json(), base: b };
+            } catch (e) {}
+            return null;
+        };
+
+        // Запрашиваем конфиг с учетом приоритета и резерва
+        let confData = await tryFetchConfig(pref) || await tryFetchConfig(pref === 'yandex' ? 'github' : 'yandex');
+        if (!confData) return;
+        
+        const raw = confData.raw;
+        const activeBase = confData.base;
+
         const title = raw.albumName || a.title;
         _albums.set(a.key, title);
         
         _albumConfigs.set(a.key, {
           title,
+          bases: { yandex: y_base, github: g_base },
           artist: raw.artist || 'Витрина Разбита',
           links: (raw.social_links || raw.socials || []).map(s => ({ label: s.title || s.label, url: s.url }))
         });
 
         const trks = (raw.tracks || []).map((t, i) => {
-          const hi = toUrl(base, t.audio), lo = toUrl(base, t.audio_low), uid = String(t.uid || '').trim() || null;
-          if (uid) registerTrack({ uid, title: t.title, audio: hi, audio_low: lo, size: t.size, size_low: t.size_low, lyrics: toUrl(base, t.lyrics), fulltext: toUrl(base, t.fulltext), sourceAlbum: a.key }, { title });
-          return { num: i + 1, title: t.title || `Трек ${i + 1}`, uid, src: hi, sources: (hi || lo) ? { audio: { hi, lo } } : null, lyrics: toUrl(base, t.lyrics), fulltext: toUrl(base, t.fulltext), hasLyrics: t.hasLyrics ?? !!t.lyrics };
+          const hi = toUrl(activeBase, t.audio), lo = toUrl(activeBase, t.audio_low), uid = String(t.uid || '').trim() || null;
+          if (uid) {
+              const trkObj = { uid, title: t.title, audio: hi, audio_low: lo, size: t.size, size_low: t.size_low, lyrics: toUrl(activeBase, t.lyrics), fulltext: toUrl(activeBase, t.fulltext), sourceAlbum: a.key };
+              // Сохраняем относительные пути для роутера
+              trkObj.rel_audio = t.audio; trkObj.rel_audio_low = t.audio_low; trkObj.rel_lyrics = t.lyrics; trkObj.rel_fulltext = t.fulltext;
+              registerTrack(trkObj, { title });
+          }
+          return { num: i + 1, title: t.title || `Трек ${i + 1}`, uid, src: hi, sources: (hi || lo) ? { audio: { hi, lo } } : null, lyrics: toUrl(activeBase, t.lyrics), fulltext: toUrl(activeBase, t.fulltext), hasLyrics: t.hasLyrics ?? !!t.lyrics };
         });
         _albumTracks.set(a.key, trks);
       } catch(e) { console.error('[TrackRegistry]', e); }
@@ -98,7 +156,7 @@ export async function ensurePopulated() {
 }
 
 // Глобальный доступ
-const TrackRegistry = { registerTrack, getTrackByUid, getAllUids, getAlbumTitle, ensurePopulated, getAlbumConfig, getTracksForAlbum };
+const TrackRegistry = { registerTrack, getTrackByUid, getAllUids, getAlbumTitle, ensurePopulated, getAlbumConfig, getTracksForAlbum, getSmartUrlInfo };
 window.TrackRegistry = TrackRegistry;
 
 export default TrackRegistry;
