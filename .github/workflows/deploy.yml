@@ -1,0 +1,26 @@
+name: Deploy App to Yandex Cloud S3
+
+on:
+  push:
+    branches:
+      - main  # ВАЖНО: посмотри в левом меню GitHub, как называется твоя ветка (main или master). Если master - поменяй здесь слово main на master.
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Sync Code to Yandex S3
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.YC_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.YC_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: 'ru-central1'
+        run: |
+          aws --endpoint-url=https://storage.yandexcloud.net \
+          s3 sync ./ s3://vi3na1bita/ \
+          --exclude ".git/*" \
+          --exclude ".github/*" \
+          --exclude "albums/*" \
+          --delete
