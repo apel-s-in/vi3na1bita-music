@@ -1,7 +1,7 @@
 // service-worker.js
-// Optimized Service Worker for "Vi3na1bita" (v8.1.9) - Spec Compliant
+// Optimized Service Worker for "Vi3na1bita" (v8.1.10) - Spec Compliant
 
-const SW_VERSION = '8.1.9';
+const SW_VERSION = '8.1.10';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
@@ -100,13 +100,17 @@ self.addEventListener('fetch', (e) => {
 
   // Fallback (Network First -> Cache)
   e.respondWith(
-    caches.match(req).then(cached => cached || fetch(req).then(r => {
-      if (r.ok && url.protocol.startsWith('http')) {
-        const cl = r.clone();
-        caches.open(RUNTIME_CACHE).then(cx => cx.put(req, cl));
-      }
-      return r;
-    }).catch(() => cached))
+      caches.match(req).then(cached => cached || fetch(req).then(r => {
+        if (r.ok && url.protocol.startsWith('http')) {
+          try {
+            const cl = r.clone();
+            caches.open(RUNTIME_CACHE).then(cx => cx.put(req, cl));
+          } catch(err) {
+            // Игнорируем ошибку body stream already used при аудио
+          }
+        }
+        return r;
+      }).catch(() => cached))
   );
 });
 
