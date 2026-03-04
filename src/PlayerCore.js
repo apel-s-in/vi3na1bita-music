@@ -123,15 +123,19 @@ import { ensureMediaSession } from './player-core/media-session.js';
           ? W.Utils.blob.createUrl(this._oK, r.blob)
           : URL.createObjectURL(r.blob);
       }
-      else if (r?.source === 'stream' && r.url && netOk) {
+      else if (r?.source === 'stream' && r.url) {
         this._oK = null; url = r.url;
-        if (W.Utils?.getNet?.()?.kind === 'cellular' && W.NetPolicy?.shouldShowCellularToast?.()) W.NotificationSystem?.show?.('Воспроизведение через мобильную сеть', 'info');
+        if (netOk && W.Utils?.getNet?.()?.kind === 'cellular' && W.NetPolicy?.shouldShowCellularToast?.()) {
+          W.NotificationSystem?.show?.('Воспроизведение через мобильную сеть', 'info');
+        }
       }
       
       let activeProvider = r?.provider || 'unknown';
-      if (!url && (!r || r.source === 'none') && netOk) {
-        const smart = await W.TrackRegistry?.getSmartUrlInfo?.(uid, 'audio', this.qMode);
-        if (smart) { url = smart.url; activeProvider = smart.provider; }
+      if (!url) {
+        try {
+          const smart = await W.TrackRegistry?.getSmartUrlInfo?.(uid, 'audio', this.qMode);
+          if (smart?.url) { url = smart.url; activeProvider = smart.provider; }
+        } catch (e) { console.warn('[PlayerCore] Smart URL failed:', e); }
       }
       this.currentProvider = activeProvider;
 
