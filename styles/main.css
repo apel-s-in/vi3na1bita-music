@@ -755,3 +755,13 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .sc-sheet-btn { width: 100%; padding: 14px; text-align: left; background: transparent; border: none; color: #e0e0e0; font-size: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; gap: 12px; cursor: pointer; }
 .sc-sheet-btn:active { background: rgba(255,255,255,0.05); }
 .sc-sheet-btn:last-child { border-bottom: none; }
+
+/* Source Indicator (Yandex/GitHub/Cache) */
+.source-indicator { width: 34px; height: 34px; border-radius: 50%; background-size: cover; background-position: center; flex-shrink: 0; transition: transform 0.2s, opacity 0.2s, box-shadow 0.2s; opacity: 0.85; box-shadow: 0 0 10px rgba(0,0,0,0.5); cursor: help; background-color: #1a1a1a; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 16px; font-family: sans-serif; pointer-events: auto; }
+.source-indicator.si-yandex { background: radial-gradient(circle, #ff0000 0%, #aa0000 100%); color: #fff; border: 1px solid #ff4d4d; }
+.source-indicator.si-yandex::after { content: 'Я'; }
+.source-indicator.si-github { background: radial-gradient(circle, #444 0%, #000 100%); color: #fff; border: 1px solid #666; }
+.source-indicator.si-github::after { content: 'GH'; font-size: 13px; }
+.source-indicator.si-cache { background: radial-gradient(circle, #4caf50 0%, #2e7d32 100%); color: #fff; border: 1px solid #81c784; }
+.source-indicator.si-cache::after { content: '💾'; font-size: 15px; }
+.source-indicator:hover { opacity: 1; transform: scale(1.1); }
