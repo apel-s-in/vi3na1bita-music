@@ -27,7 +27,13 @@
     
     const p = (async () => {
       try {
-        const r = await fetch(u, { cache: 'force-cache', headers: { Accept: 'application/json' } });
+        let fetchUrl = u;
+        const t = W.playerCore?.getCurrentTrack();
+        if (t && t.uid) {
+           const smart = await W.TrackRegistry?.getSmartUrlInfo?.(t.uid, 'lyrics');
+           if (smart) fetchUrl = smart.url;
+        }
+        const r = await fetch(fetchUrl, { cache: 'force-cache', headers: { Accept: 'application/json' } });
         if (!r.ok) throw r.status;
         const j = await r.json();
         if (Array.isArray(j)) { sess(k, j); return j; }
