@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b5d9b4995f769b12268a27188a852a8474728d9d.idx
-│   │       ├── pack-b5d9b4995f769b12268a27188a852a8474728d9d.pack
-│   │       └── pack-b5d9b4995f769b12268a27188a852a8474728d9d.rev
+│   │       ├── pack-6dc4ce761e0eaaecaecc81d79b71a2239cd2a0c6.idx
+│   │       ├── pack-6dc4ce761e0eaaecaecc81d79b71a2239cd2a0c6.pack
+│   │       └── pack-6dc4ce761e0eaaecaecc81d79b71a2239cd2a0c6.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-04 19:48:47 UTC
+Сгенерировано: 2026-03-04 20:49:56 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -1119,6 +1119,8 @@ jobs:
           <button class="karaoke-btn" id="lyrics-text-btn" title="Полный текст песни">📝</button>
 
           <button class="stats-btn" id="stats-btn" title="Статистика" style="background:none; border:none; cursor:pointer; font-size:18px; opacity:0.8; padding:0 8px;">📊</button>
+
+          <div class="source-indicator" id="source-indicator" title="Источник потока"></div>
 
           <button class="pulse-btn" id="pulse-btn" title="Пульсация логотипа">
             <span id="pulse-heart">🤍</span>
