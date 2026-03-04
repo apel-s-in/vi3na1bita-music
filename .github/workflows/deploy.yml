@@ -20,7 +20,8 @@ jobs:
         run: |
           aws --endpoint-url=https://storage.yandexcloud.net \
           s3 sync ./ s3://vi3na1bita/ \
+          --delete \
           --exclude ".git/*" \
           --exclude ".github/*" \
           --exclude "albums/*" \
-          --delete
+          --include "albums/gallery/*"
