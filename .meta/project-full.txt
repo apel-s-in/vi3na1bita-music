@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9f0040c1be0f6666ecc0a8df490cfb176a2d1aa9.idx
-│   │       ├── pack-9f0040c1be0f6666ecc0a8df490cfb176a2d1aa9.pack
-│   │       └── pack-9f0040c1be0f6666ecc0a8df490cfb176a2d1aa9.rev
+│   │       ├── pack-b443c9c62161db465f0458942068db89487fcf63.idx
+│   │       ├── pack-b443c9c62161db465f0458942068db89487fcf63.pack
+│   │       └── pack-b443c9c62161db465f0458942068db89487fcf63.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-04 21:51:10 UTC
+Сгенерировано: 2026-03-04 21:55:10 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -822,6 +822,7 @@ jobs:
 
   <!-- R0 streaming hardening -->
   <link rel="dns-prefetch" href="https://apel-s-in.github.io">
+  <link rel="preconnect" href="https://storage.yandexcloud.net" crossorigin>
   <link rel="preconnect" href="https://apel-s-in.github.io" crossorigin>
   <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
