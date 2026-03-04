@@ -1,7 +1,7 @@
 // service-worker.js
-// Optimized Service Worker for "Vi3na1bita" (v8.1.8) - Spec Compliant
+// Optimized Service Worker for "Vi3na1bita" (v8.1.9) - Spec Compliant
 
-const SW_VERSION = '8.1.8';
+const SW_VERSION = '8.1.9';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
