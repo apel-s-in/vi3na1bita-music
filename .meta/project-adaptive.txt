@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2c2c8841f96cdf82e57f4ca6d855bd0f50e26ade.idx
-│   │       ├── pack-2c2c8841f96cdf82e57f4ca6d855bd0f50e26ade.pack
-│   │       └── pack-2c2c8841f96cdf82e57f4ca6d855bd0f50e26ade.rev
+│   │       ├── pack-d701be2256939e9d7b49bf6adf5817891e086286.idx
+│   │       ├── pack-d701be2256939e9d7b49bf6adf5817891e086286.pack
+│   │       └── pack-d701be2256939e9d7b49bf6adf5817891e086286.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-04 21:58:38 UTC
+Сгенерировано: 2026-03-04 22:06:04 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -4367,7 +4367,7 @@ export async function getSmartUrlInfo(uid, prop = 'audio', quality = 'hi') {
   const track = _tracks.get(uid);
   if (!track || !track.sourceAlbum) return null;
   const conf = _albumConfigs.get(track.sourceAlbum);
-  if (!conf || !conf.activeBase) return null;
+  if (!conf || !conf.bases) return null;
 
   let relPath = null;
   if (prop === 'audio') relPath = quality === 'lo' ? (track.rel_audio_low || track.rel_audio) : track.rel_audio;
@@ -4377,12 +4377,15 @@ export async function getSmartUrlInfo(uid, prop = 'audio', quality = 'hi') {
   if (!relPath) return null;
   const cleanRel = relPath.replace(/^(\.\/|\/)/, ''); 
 
+  // Берем выбор пользователя из Личного кабинета (по умолчанию 'yandex')
+  const pref = localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex';
+  const baseStr = conf.bases[pref] || conf.bases['github'];
+
   try {
-    const absoluteBase = new URL(conf.activeBase, window.location.origin + window.location.pathname).toString();
+    const absoluteBase = new URL(baseStr, window.location.origin + window.location.pathname).toString();
     const finalUrl = new URL(cleanRel, absoluteBase).toString();
-    const provider = conf.activeBase === conf.bases.yandex ? 'yandex' : 'github';
     
-    return { url: finalUrl, provider };
+    return { url: finalUrl, provider: pref };
   } catch (e) {
     return null;
   }
