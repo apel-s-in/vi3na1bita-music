@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8a1c5ada5fc31deba62ecfb5ae50328221522f4b.idx
-│   │       ├── pack-8a1c5ada5fc31deba62ecfb5ae50328221522f4b.pack
-│   │       └── pack-8a1c5ada5fc31deba62ecfb5ae50328221522f4b.rev
+│   │       ├── pack-18f7e1002ab975c23fcdfd36c611253e0810892e.idx
+│   │       ├── pack-18f7e1002ab975c23fcdfd36c611253e0810892e.pack
+│   │       └── pack-18f7e1002ab975c23fcdfd36c611253e0810892e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-04 22:23:49 UTC
+Сгенерировано: 2026-03-04 22:24:28 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -5826,9 +5826,12 @@ export const toggleCellularToast = () => set(K.T, ls(K.T, 'off') === 'on' ? 'off
 export const toggleKillSwitch = () => set(K.K, ls(K.K, 'off') === 'on' ? 'off' : 'on');
 
 export const isNetworkAllowed = () => {
-  if (!navigator.onLine) return false;
   const s = getNetPolicyState();
-  if (s.airplaneMode || s.killSwitch) return false;
+  // Ручные блокировки юзера в приоритете
+  if (s.killSwitch || s.airplaneMode) return false;
+  // Fallback на нативный API, только если нет ручных блокировок
+  if (!navigator.onLine) return false;
+  
   if (!s.supportsNetControl) return true;
   return detectNetworkType() === 'cellular' ? s.cellularEnabled : s.wifiEnabled;
 };
