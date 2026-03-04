@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-06b3d3ee680c531435169213591a602c8ab9924c.idx
-│   │       ├── pack-06b3d3ee680c531435169213591a602c8ab9924c.pack
-│   │       └── pack-06b3d3ee680c531435169213591a602c8ab9924c.rev
+│   │       ├── pack-859cb69912f83b41f426d2e3c36d387a1f6cda2c.idx
+│   │       ├── pack-859cb69912f83b41f426d2e3c36d387a1f6cda2c.pack
+│   │       └── pack-859cb69912f83b41f426d2e3c36d387a1f6cda2c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-04 21:04:44 UTC
+Сгенерировано: 2026-03-04 21:05:38 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -2908,6 +2908,22 @@ export async function loadProfileAlbum(ctx) {
   tpl.querySelector('#prof-avatar-btn').textContent = upVal.avatar;
   tpl.querySelector('#prof-name-inp').value = esc(upVal.name);
   tpl.querySelector('#prof-auth-grid').innerHTML = renderAuthBtn('yandex', 'Яндекс', '💽') + renderAuthBtn('google', 'Google', '☁️') + renderAuthBtn('vk', 'VK ID', '🔵');
+  
+  const prefSource = localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex';
+  const sourceToggle = document.createElement('div');
+  sourceToggle.innerHTML = `
+    <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:12px; padding:12px; display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+      <div>
+        <div style="font-size:13px; font-weight:bold; color:#fff;">Приоритет источника</div>
+        <div style="font-size:11px; color:#888;">Моментальный резерв включен всегда</div>
+      </div>
+      <div style="display:flex; background:rgba(0,0,0,0.3); border-radius:8px; overflow:hidden; border:1px solid rgba(255,255,255,0.1);">
+        <button data-src="yandex" class="src-toggle-btn" style="all:unset; cursor:pointer; padding:6px 12px; font-size:12px; font-weight:bold; transition:0.2s; color:${prefSource==='yandex'?'#fff':'#666'}; background:${prefSource==='yandex'?'radial-gradient(circle, #cc0000 0%, #880000 100%)':'transparent'};">Yandex</button>
+        <button data-src="github" class="src-toggle-btn" style="all:unset; cursor:pointer; padding:6px 12px; font-size:12px; font-weight:bold; transition:0.2s; color:${prefSource==='github'?'#fff':'#666'}; background:${prefSource==='github'?'radial-gradient(circle, #444 0%, #000 100%)':'transparent'};">GitHub</button>
+      </div>
+    </div>
+  `;
+  tpl.querySelector('.profile-header').after(sourceToggle);
   tpl.querySelector('#prof-stat-tracks').textContent = totalFull;
   tpl.querySelector('#prof-stat-time').textContent = totalTimeStr;
   tpl.querySelector('#prof-stat-streak').textContent = streakVal.current;
@@ -3063,6 +3079,15 @@ return `
       }
       
       if (t.closest('#prof-name-edit')) return container.querySelector('#prof-name-inp')?.focus();
+      
+      const srcBtn = t.closest('.src-toggle-btn');
+      if (srcBtn) {
+          const newSrc = srcBtn.dataset.src;
+          localStorage.setItem('sourcePref', newSrc);
+          window.NotificationSystem?.success(`Приоритет изменён на ${newSrc === 'yandex' ? 'Yandex Cloud' : 'GitHub'}`);
+          loadProfileAlbum(ctx); // Обновляем UI тумблера
+          return;
+      }
       
       const recBtn = t.closest('.rec-play-btn');
       if (recBtn && window.ShowcaseManager?.playContext) {
