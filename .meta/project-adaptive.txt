@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ead4f4e14464cdaea6e70a04039b09d7ea1c6f9c.idx
-│   │       ├── pack-ead4f4e14464cdaea6e70a04039b09d7ea1c6f9c.pack
-│   │       └── pack-ead4f4e14464cdaea6e70a04039b09d7ea1c6f9c.rev
+│   │       ├── pack-762982972bf36dc6e91bc7cc3c84cff22fa45840.idx
+│   │       ├── pack-762982972bf36dc6e91bc7cc3c84cff22fa45840.pack
+│   │       └── pack-762982972bf36dc6e91bc7cc3c84cff22fa45840.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-04 22:25:22 UTC
+Сгенерировано: 2026-03-04 22:34:56 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -4377,9 +4377,9 @@ export async function getSmartUrlInfo(uid, prop = 'audio', quality = 'hi') {
   if (!relPath) return null;
   const cleanRel = relPath.replace(/^(\.\/|\/)/, ''); 
 
-  // Ищем предпочтительный источник, при неудаче используем резервный
-  const pref = localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex';
-  const sources = [pref, pref === 'yandex' ? 'github' : 'yandex'];
+  // Используем тот источник, который был реально доступен при инициализации (или ручной выбор)
+  const activeSrc = conf.activeSrc || (localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex');
+  const sources = [activeSrc, activeSrc === 'yandex' ? 'github' : 'yandex'];
   
   for (const src of sources) {
     const baseStr = conf.bases[src];
@@ -4466,7 +4466,12 @@ export async function ensurePopulated() {
         };
 
         // Запрашиваем конфиг с учетом приоритета и резерва
-        let confData = await tryFetchConfig(pref) || await tryFetchConfig(pref === 'yandex' ? 'github' : 'yandex');
+        let activeSrc = pref;
+        let confData = await tryFetchConfig(activeSrc);
+        if (!confData) {
+          activeSrc = pref === 'yandex' ? 'github' : 'yandex';
+          confData = await tryFetchConfig(activeSrc);
+        }
         if (!confData) return;
         
         const raw = confData.raw;
@@ -4478,6 +4483,7 @@ export async function ensurePopulated() {
         _albumConfigs.set(a.key, {
           title,
           bases: { yandex: y_base, github: g_base },
+          activeSrc: activeSrc, // Сохраняем реально работающий источник для плеера
           artist: raw.artist || 'Витрина Разбита',
           links: (raw.social_links || raw.socials || []).map(s => ({ label: s.title || s.label, url: s.url }))
         });
