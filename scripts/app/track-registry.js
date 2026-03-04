@@ -9,7 +9,16 @@ const _albumConfigs = new Map();
 const _albumTracks = new Map();
 let _populatedPromise = null;
 
-const toUrl = (b, r) => r ? new URL(r, b).toString() : null;
+// Безопасное формирование URL (решает проблему Invalid base URL)
+const toUrl = (b, r) => {
+  if (!r) return null;
+  try {
+    const absoluteBase = new URL(b, window.location.origin + window.location.pathname).toString();
+    return new URL(r, absoluteBase).toString();
+  } catch (e) {
+    return null;
+  }
+};
 
 // Глобальный маршрутизатор (Failover Engine)
 export async function getSmartUrlInfo(uid, prop = 'audio', quality = 'hi') {
@@ -24,27 +33,38 @@ export async function getSmartUrlInfo(uid, prop = 'audio', quality = 'hi') {
   else if (prop === 'fulltext') relPath = track.rel_fulltext;
   
   if (!relPath) return null;
-  const cleanRel = relPath.replace(/^(\.\/|\/)/, ''); // Убираем слэши для склейки
+  const cleanRel = relPath.replace(/^(\.\/|\/)/, ''); 
 
   const pref = localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex';
   const fallback = pref === 'yandex' ? 'github' : 'yandex';
-  const build = (src) => conf.bases[src] + cleanRel;
+  
+  const build = (src) => {
+      try {
+          const baseStr = conf.bases[src];
+          if (!baseStr) return null;
+          const absoluteBase = new URL(baseStr, window.location.origin + window.location.pathname).toString();
+          return new URL(cleanRel, absoluteBase).toString();
+      } catch(e) { return null; }
+  };
 
-  // Быстрый пинг предпочитаемого источника
   try {
     const url1 = build(pref);
-    const r1 = await fetch(url1, { method: 'HEAD', cache: 'no-cache' });
-    if (r1.ok) return { url: url1, provider: pref };
+    if (url1) {
+        const r1 = await fetch(url1, { method: 'HEAD', cache: 'no-cache' });
+        if (r1.ok) return { url: url1, provider: pref };
+    }
   } catch (e) {}
 
-  // Если упал - мгновенный резерв
   try {
     const url2 = build(fallback);
-    const r2 = await fetch(url2, { method: 'HEAD', cache: 'no-cache' });
-    if (r2.ok) return { url: url2, provider: fallback };
+    if (url2) {
+        const r2 = await fetch(url2, { method: 'HEAD', cache: 'no-cache' });
+        if (r2.ok) return { url: url2, provider: fallback };
+    }
   } catch (e) {}
 
-  return { url: build(pref), provider: pref };
+  const defaultUrl = build(pref) || build(fallback);
+  return { url: defaultUrl, provider: pref };
 }
 
 /**
