@@ -73,12 +73,9 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(req.url);
 
   // 1. СТРОГИЙ ОБХОД ДЛЯ АУДИО (Игнорируем Range запросы и файлы музыки)
-  // Это критически важно, чтобы Service Worker не блокировал медиа-потоки Howler.js
+  // Строгий пропуск аудио. Возврат 503 ломает HTML5 Audio/Howler намертво.
   if (req.headers.get('range') || /\.(mp3|ogg|m4a|flac)$/i.test(url.pathname)) {
-    if (isAirplaneMode) {
-        e.respondWith(new Response(null, { status: 503, statusText: 'Airplane Mode Active' }));
-    }
-    return; // Полностью отдаем запрос браузеру
+    return; // Всегда отдаем браузеру
   }
 
   if (isAirplaneMode) {
