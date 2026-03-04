@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-627bdb07b6b892135a8304ac14cdb182bab6ff10.idx
-│   │       ├── pack-627bdb07b6b892135a8304ac14cdb182bab6ff10.pack
-│   │       └── pack-627bdb07b6b892135a8304ac14cdb182bab6ff10.rev
+│   │       ├── pack-6ee3cc24c4e8d227176a0d12e5a4101f102f0bac.idx
+│   │       ├── pack-6ee3cc24c4e8d227176a0d12e5a4101f102f0bac.pack
+│   │       └── pack-6ee3cc24c4e8d227176a0d12e5a4101f102f0bac.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-04 21:03:04 UTC
+Сгенерировано: 2026-03-04 21:03:59 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -3639,7 +3639,13 @@ window.PlaybackCache.unprotectWindow = unprotectWindow;
     
     const p = (async () => {
       try {
-        const r = await fetch(u, { cache: 'force-cache', headers: { Accept: 'application/json' } });
+        let fetchUrl = u;
+        const t = W.playerCore?.getCurrentTrack();
+        if (t && t.uid) {
+           const smart = await W.TrackRegistry?.getSmartUrlInfo?.(t.uid, 'lyrics');
+           if (smart) fetchUrl = smart.url;
+        }
+        const r = await fetch(fetchUrl, { cache: 'force-cache', headers: { Accept: 'application/json' } });
         if (!r.ok) throw r.status;
         const j = await r.json();
         if (Array.isArray(j)) { sess(k, j); return j; }
