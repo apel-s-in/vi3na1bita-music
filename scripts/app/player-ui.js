@@ -4,7 +4,7 @@
   'use strict';
 
   const U = W.Utils, PC = () => W.playerCore;
-  const st = { isMini: false, seeking: false, vizOn: U.lsGetBool01('bitEnabled'), vizId: 0, ctx: null };
+  const st = { isMini: false, seeking: false, vizOn: U.lsGetBool01('bitEnabled'), vizId: 0, ctx: null, provider: 'unknown' };
   const dom = { blk: null, now: null, mini: null, nUp: null, jump: null, el: {} };
 
   // 1. Unified & Cached State Synchronization
@@ -36,6 +36,14 @@
     }
 
     U.download.applyDownloadLink(e.dl, t);
+
+    if (e.srcInd) {
+        e.srcInd.className = 'source-indicator';
+        if (st.provider === 'yandex') { e.srcInd.classList.add('si-yandex'); e.srcInd.title = 'Источник: Yandex Cloud'; }
+        else if (st.provider === 'github') { e.srcInd.classList.add('si-github'); e.srcInd.title = 'Источник: GitHub Pages'; }
+        else if (st.provider === 'cache') { e.srcInd.classList.add('si-cache'); e.srcInd.title = 'Источник: Офлайн Кэш'; }
+        else { e.srcInd.style.opacity = '0'; }
+    }
 
     // Mini Header sync
     if (st.isMini && dom.mini) {
@@ -116,6 +124,7 @@
       const q = s => dom.blk.querySelector(s);
       
       dom.el = { 
+        srcInd: q('#source-indicator'),
         fill: q('#player-progress-fill'), bar: q('#player-progress-bar'), tE: q('#time-elapsed'), tR: q('#time-remaining'), 
         vF: q('#volume-fill'), vH: q('#volume-handle'), vS: q('#volume-slider'), ico: q('#play-pause-icon'), 
         pq: q('#pq-btn'), pqL: q('#pq-btn-label'), fav: q('#favorites-btn'), favI: q('#favorites-btn-icon'), dl: q('#track-download-btn') 
@@ -250,6 +259,7 @@
       if (p === W.SPECIAL_FAVORITES_KEY || U.lsGetBool01('favoritesOnlyMode')) PC().applyFavoritesOnlyFilter?.(); 
     });
 
+    W.addEventListener('player:providerChanged', (e) => { st.provider = e.detail?.provider; syncUI(); });
     ['offline:uiChanged', 'online', 'offline'].forEach(e => W.addEventListener(e, syncUI));
     
     PC().setVolume(U.math.toInt(U.lsGet('playerVolume'), 100));
