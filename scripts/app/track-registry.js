@@ -9,13 +9,16 @@ const _albumConfigs = new Map();
 const _albumTracks = new Map();
 let _populatedPromise = null;
 
-// Безопасное формирование URL (решает проблему Invalid base URL)
+// Безопасное формирование URL (Оптимизировано: валидация + очистка путей)
 const toUrl = (b, r) => {
-  if (!r) return null;
+  if (!r || !b) return null;
   try {
-    const absoluteBase = new URL(b, window.location.origin + window.location.pathname).toString();
-    return new URL(r, absoluteBase).toString();
+    const cleanRel = String(r).replace(/^(\.\/|\/)+/, '');
+    const cleanBase = String(b).replace(/\/+$/, '') + '/';
+    if (!/^https?:\/\//i.test(cleanBase)) return null;
+    return new URL(cleanRel, cleanBase).toString();
   } catch (e) {
+    console.warn('[TrackRegistry] URL build failed:', b, r, e);
     return null;
   }
 };
@@ -35,18 +38,18 @@ export async function getSmartUrlInfo(uid, prop = 'audio', quality = 'hi') {
   if (!relPath) return null;
   const cleanRel = relPath.replace(/^(\.\/|\/)/, ''); 
 
-  // Берем выбор пользователя из Личного кабинета (по умолчанию 'yandex')
+  // Ищем предпочтительный источник, при неудаче используем резервный
   const pref = localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex';
-  const baseStr = conf.bases[pref] || conf.bases['github'];
-
-  try {
-    const absoluteBase = new URL(baseStr, window.location.origin + window.location.pathname).toString();
-    const finalUrl = new URL(cleanRel, absoluteBase).toString();
-    
-    return { url: finalUrl, provider: pref };
-  } catch (e) {
-    return null;
+  const sources = [pref, pref === 'yandex' ? 'github' : 'yandex'];
+  
+  for (const src of sources) {
+    const baseStr = conf.bases[src];
+    if (!baseStr) continue;
+    const url = toUrl(baseStr, relPath);
+    if (url) return { url, provider: src };
   }
+  
+  return null;
 }
 
 /**
