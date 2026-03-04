@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f219a83f98f36719757c567093e82df7c0bc9ab2.idx
-│   │       ├── pack-f219a83f98f36719757c567093e82df7c0bc9ab2.pack
-│   │       └── pack-f219a83f98f36719757c567093e82df7c0bc9ab2.rev
+│   │       ├── pack-97985104818d1a8b5f1a4556bdbe2e875724de7c.idx
+│   │       ├── pack-97985104818d1a8b5f1a4556bdbe2e875724de7c.pack
+│   │       └── pack-97985104818d1a8b5f1a4556bdbe2e875724de7c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-04 20:58:47 UTC
+Сгенерировано: 2026-03-04 21:00:05 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -6069,7 +6069,8 @@ export async function resolve(uid, quality) {
       url: res.url || null,
       blob: res.blob || null,
       quality: res.quality || quality,
-      localKind: res.source === 'local' ? 'cache' : 'none' // Информативно, без блокировки Main Thread
+      localKind: res.source === 'local' ? 'cache' : 'none',
+      provider: res.source === 'local' ? 'cache' : (res.provider || 'unknown')
     };
   } catch (e) {
     console.warn('[TrackResolver] resolve failed:', e);
