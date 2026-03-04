@@ -27,7 +27,8 @@ export async function resolve(uid, quality) {
       url: res.url || null,
       blob: res.blob || null,
       quality: res.quality || quality,
-      localKind: res.source === 'local' ? 'cache' : 'none' // Информативно, без блокировки Main Thread
+      localKind: res.source === 'local' ? 'cache' : 'none',
+      provider: res.source === 'local' ? 'cache' : (res.provider || 'unknown')
     };
   } catch (e) {
     console.warn('[TrackResolver] resolve failed:', e);
