@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1c1b19a953646daf9fe841a488b23ba8a51595a9.idx
-│   │       ├── pack-1c1b19a953646daf9fe841a488b23ba8a51595a9.pack
-│   │       └── pack-1c1b19a953646daf9fe841a488b23ba8a51595a9.rev
+│   │       ├── pack-05bd2f52189f343f72041dd8c12117c365f585a6.idx
+│   │       ├── pack-05bd2f52189f343f72041dd8c12117c365f585a6.pack
+│   │       └── pack-05bd2f52189f343f72041dd8c12117c365f585a6.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-04 21:17:43 UTC
+Сгенерировано: 2026-03-04 21:18:52 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -1287,9 +1287,9 @@ jobs:
 //=================================================
 // FILE: /service-worker.js
 // service-worker.js
-// Optimized Service Worker for "Vi3na1bita" (v8.1.9) - Spec Compliant
+// Optimized Service Worker for "Vi3na1bita" (v8.1.10) - Spec Compliant
 
-const SW_VERSION = '8.1.9';
+const SW_VERSION = '8.1.10';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
@@ -1388,13 +1388,17 @@ self.addEventListener('fetch', (e) => {
 
   // Fallback (Network First -> Cache)
   e.respondWith(
-    caches.match(req).then(cached => cached || fetch(req).then(r => {
-      if (r.ok && url.protocol.startsWith('http')) {
-        const cl = r.clone();
-        caches.open(RUNTIME_CACHE).then(cx => cx.put(req, cl));
-      }
-      return r;
-    }).catch(() => cached))
+      caches.match(req).then(cached => cached || fetch(req).then(r => {
+        if (r.ok && url.protocol.startsWith('http')) {
+          try {
+            const cl = r.clone();
+            caches.open(RUNTIME_CACHE).then(cx => cx.put(req, cl));
+          } catch(err) {
+            // Игнорируем ошибку body stream already used при аудио
+          }
+        }
+        return r;
+      }).catch(() => cached))
   );
 });
 
