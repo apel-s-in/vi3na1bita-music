@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-364ce5ff89f6e290c7e093c9e4f4b5c692dc34e2.idx
-│   │       ├── pack-364ce5ff89f6e290c7e093c9e4f4b5c692dc34e2.pack
-│   │       └── pack-364ce5ff89f6e290c7e093c9e4f4b5c692dc34e2.rev
+│   │       ├── pack-a07925fa99d385060becbe1c41ebc14b50132eb5.idx
+│   │       ├── pack-a07925fa99d385060becbe1c41ebc14b50132eb5.pack
+│   │       └── pack-a07925fa99d385060becbe1c41ebc14b50132eb5.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-05 19:04:06 UTC
+Сгенерировано: 2026-03-05 19:04:51 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
