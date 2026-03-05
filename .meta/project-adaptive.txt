@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-839522d7d2412deb230df10a43138e2da695678d.idx
-│   │       ├── pack-839522d7d2412deb230df10a43138e2da695678d.pack
-│   │       └── pack-839522d7d2412deb230df10a43138e2da695678d.rev
+│   │       ├── pack-f76a61e8fc7e0550eb00caef9af14799b15205e1.idx
+│   │       ├── pack-f76a61e8fc7e0550eb00caef9af14799b15205e1.pack
+│   │       └── pack-f76a61e8fc7e0550eb00caef9af14799b15205e1.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -393,7 +393,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-05 12:28:18 UTC
+Сгенерировано: 2026-03-05 12:29:10 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -3087,6 +3087,13 @@ return `
       if (srcBtn) {
           const newSrc = srcBtn.dataset.src;
           localStorage.setItem('sourcePref', newSrc);
+          
+          // Сбрасываем кэш пингов, чтобы следующий трек мгновенно взял новый источник
+          if (window.TrackRegistry) {
+            const confs = window.TrackRegistry.getAllUids().map(u => window.TrackRegistry.getAlbumConfig(window.TrackRegistry.getTrackByUid(u)?.sourceAlbum));
+            confs.forEach(c => { if (c) { c._rt = {}; c.activeSrc = newSrc; } });
+          }
+          
           window.NotificationSystem?.success(`Приоритет изменён на ${newSrc === 'yandex' ? 'Yandex Cloud' : 'GitHub'}`);
           loadProfileAlbum(ctx); // Обновляем UI тумблера
           return;
