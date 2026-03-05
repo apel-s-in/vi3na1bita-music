@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f68f71e1094c1f94bd4a32a797c9d4110d6106dd.idx
-│   │       ├── pack-f68f71e1094c1f94bd4a32a797c9d4110d6106dd.pack
-│   │       └── pack-f68f71e1094c1f94bd4a32a797c9d4110d6106dd.rev
+│   │       ├── pack-1697a982ae3850f22c28f2e938346609962fe3db.idx
+│   │       ├── pack-1697a982ae3850f22c28f2e938346609962fe3db.pack
+│   │       └── pack-1697a982ae3850f22c28f2e938346609962fe3db.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-05 00:20:16 UTC
+Сгенерировано: 2026-03-05 00:32:17 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -4760,7 +4760,9 @@ try {
   fail('albums.json is not valid JSON: ' + e.message);
 }
 albums.forEach((a, i) => {
-  if (!a.key || !a.title || !a.base) fail(`albums.json: album[${i}] must contain key/title/base`);
+  if (!a.key || !a.title || (!a.base && !a.yandex_base && !a.github_base)) {
+    fail(`albums.json: album[${i}] must contain key/title and base or yandex_base/github_base`);
+  }
   if (typeof a.key !== 'string' || typeof a.title !== 'string' || typeof a.base !== 'string') {
     fail(`albums.json: album[${i}] key/title/base must be strings`);
   }
