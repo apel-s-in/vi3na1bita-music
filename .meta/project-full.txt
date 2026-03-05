@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a07925fa99d385060becbe1c41ebc14b50132eb5.idx
-│   │       ├── pack-a07925fa99d385060becbe1c41ebc14b50132eb5.pack
-│   │       └── pack-a07925fa99d385060becbe1c41ebc14b50132eb5.rev
+│   │       ├── pack-5379582102338abc75571e0aa23ff5f1182dfb5e.idx
+│   │       ├── pack-5379582102338abc75571e0aa23ff5f1182dfb5e.pack
+│   │       └── pack-5379582102338abc75571e0aa23ff5f1182dfb5e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-05 19:04:51 UTC
+Сгенерировано: 2026-03-05 19:17:22 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -5204,7 +5204,10 @@ console.log('Manifest validation OK');
     preventZoom();
     
     // Mark env
-    if (/iPad|iPhone|iPod/.test(navigator.userAgent) && !W.MSStream) D.body.classList.add('ios');
+    const ua = navigator.userAgent;
+    if (/iPad|iPhone|iPod/.test(ua) && !W.MSStream) D.body.classList.add('ios', 'mobile-device');
+    else if (/Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua)) D.body.classList.add('android', 'mobile-device');
+    
     if (matchMedia('(display-mode: standalone)').matches) D.body.classList.add('standalone');
 
     if (!(await waitForHowler())) return fail('Ошибка загрузки аудио-движка (Howler).');
