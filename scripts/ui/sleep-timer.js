@@ -102,22 +102,23 @@ export class SleepTimer {
     const tick = () => {
       if (!this.tgt) return clearInterval(this._int);
       const r = this.tgt - Date.now();
-      if (r <= 0) {
-        this.stop();
-        // PLAYBACK SAFETY: Единственный легальный STOP сценарий извне (помимо Избранного)
-        window.playerCore?.pause?.();
-        window.NotificationSystem?.info?.('Время вышло. Музыка остановлена.');
-      } else {
-        this._upd(Math.ceil(r / 60000));
+          if (r <= 0) {
+            this.stop();
+            // PLAYBACK SAFETY: Единственный легальный STOP сценарий извне (помимо Избранного)
+            window.playerCore?.pause?.();
+            window.NotificationSystem?.info?.('Время вышло. Музыка остановлена.');
+            
+            // ФИКС АЧИВОК: Логируем только ПРИ УСПЕШНОМ срабатывании, и обязательно в 'global'
+            window.eventLogger?.log?.('FEATURE_USED', 'global', { feature: 'sleep_timer', ...log });
+          } else {
+            this._upd(Math.ceil(r / 60000));
+          }
+        };
+        
+        tick(); // Немедленный апдейт UI (убирает баг 1-секундной задержки)
+        this._int = setInterval(tick, 1000);
+        window.NotificationSystem?.info?.(`Таймер сна установлен ${msg}`);
       }
-    };
-    
-    tick(); // Немедленный апдейт UI (убирает баг 1-секундной задержки)
-    this._int = setInterval(tick, 1000);
-    
-    window.NotificationSystem?.info?.(`Таймер сна установлен ${msg}`);
-    window.eventLogger?.log?.('FEATURE_USED', window.playerCore?.getCurrentTrackUid?.() || 'none', { feature: 'sleep_timer', ...log });
-  }
 
   _upd(m) {
     const bg = document.getElementById('sleep-timer-badge');
