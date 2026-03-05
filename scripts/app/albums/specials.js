@@ -321,19 +321,27 @@ return `
       
       const srcBtn = t.closest('.src-toggle-btn');
       if (srcBtn) {
-          const newSrc = srcBtn.dataset.src;
-          localStorage.setItem('sourcePref', newSrc);
-          
-          // Сбрасываем кэш пингов, чтобы следующий трек мгновенно взял новый источник
-          if (window.TrackRegistry) {
-            const confs = window.TrackRegistry.getAllUids().map(u => window.TrackRegistry.getAlbumConfig(window.TrackRegistry.getTrackByUid(u)?.sourceAlbum));
-            confs.forEach(c => { if (c) { c._rt = {}; c.activeSrc = newSrc; } });
-          }
-          
-          window.NotificationSystem?.success(`Приоритет изменён на ${newSrc === 'yandex' ? 'Yandex Cloud' : 'GitHub'}`);
-          loadProfileAlbum(ctx); // Обновляем UI тумблера
-          return;
-      }
+        const newSrc = srcBtn.dataset.src;
+        localStorage.setItem('sourcePref', newSrc);
+
+        // Полный сброс кэша и перезагрузка реестра треков с новым приоритетом
+        if (window.TrackRegistry?.resetSourceCache) {
+          window.TrackRegistry.resetSourceCache();
+          // Перезаполняем реестр с новым источником в фоне
+          window.TrackRegistry.ensurePopulated().then(() => {
+            // Если сейчас играет трек — перезагружаем его с нового источника
+            const pc = window.playerCore;
+            if (pc?.isPlaying?.() && pc.currentIndex >= 0) {
+              const pos = pc.getPosition();
+              pc.load(pc.currentIndex, { autoPlay: true, resumePosition: pos });
+            }
+          }).catch(() => {});
+        }
+
+  window.NotificationSystem?.success(`Приоритет изменён на ${newSrc === 'yandex' ? 'Yandex Cloud' : 'GitHub'}`);
+  loadProfileAlbum(ctx);
+  return;
+}
       
       const recBtn = t.closest('.rec-play-btn');
       if (recBtn && window.ShowcaseManager?.playContext) {
