@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2d2773fa1057d8bad2973bc6ca754a1423d7f191.idx
-│   │       ├── pack-2d2773fa1057d8bad2973bc6ca754a1423d7f191.pack
-│   │       └── pack-2d2773fa1057d8bad2973bc6ca754a1423d7f191.rev
+│   │       ├── pack-d18d552ea1517b5983a6fafc1a2033da5f8509e6.idx
+│   │       ├── pack-d18d552ea1517b5983a6fafc1a2033da5f8509e6.pack
+│   │       └── pack-d18d552ea1517b5983a6fafc1a2033da5f8509e6.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -393,7 +393,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-05 12:50:30 UTC
+Сгенерировано: 2026-03-05 12:52:18 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -3085,19 +3085,27 @@ return `
       
       const srcBtn = t.closest('.src-toggle-btn');
       if (srcBtn) {
-          const newSrc = srcBtn.dataset.src;
-          localStorage.setItem('sourcePref', newSrc);
-          
-          // Сбрасываем кэш пингов, чтобы следующий трек мгновенно взял новый источник
-          if (window.TrackRegistry) {
-            const confs = window.TrackRegistry.getAllUids().map(u => window.TrackRegistry.getAlbumConfig(window.TrackRegistry.getTrackByUid(u)?.sourceAlbum));
-            confs.forEach(c => { if (c) { c._rt = {}; c.activeSrc = newSrc; } });
-          }
-          
-          window.NotificationSystem?.success(`Приоритет изменён на ${newSrc === 'yandex' ? 'Yandex Cloud' : 'GitHub'}`);
-          loadProfileAlbum(ctx); // Обновляем UI тумблера
-          return;
-      }
+        const newSrc = srcBtn.dataset.src;
+        localStorage.setItem('sourcePref', newSrc);
+
+        // Полный сброс кэша и перезагрузка реестра треков с новым приоритетом
+        if (window.TrackRegistry?.resetSourceCache) {
+          window.TrackRegistry.resetSourceCache();
+          // Перезаполняем реестр с новым источником в фоне
+          window.TrackRegistry.ensurePopulated().then(() => {
+            // Если сейчас играет трек — перезагружаем его с нового источника
+            const pc = window.playerCore;
+            if (pc?.isPlaying?.() && pc.currentIndex >= 0) {
+              const pos = pc.getPosition();
+              pc.load(pc.currentIndex, { autoPlay: true, resumePosition: pos });
+            }
+          }).catch(() => {});
+        }
+
+  window.NotificationSystem?.success(`Приоритет изменён на ${newSrc === 'yandex' ? 'Yandex Cloud' : 'GitHub'}`);
+  loadProfileAlbum(ctx);
+  return;
+}
       
       const recBtn = t.closest('.rec-play-btn');
       if (recBtn && window.ShowcaseManager?.playContext) {
