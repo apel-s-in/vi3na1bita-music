@@ -26,22 +26,29 @@
     if (_pend.has(u)) return _pend.get(u);
     
     const p = (async () => {
-      try {
-        let fetchUrl = u;
-        const t = W.playerCore?.getCurrentTrack();
-        if (t && t.uid) {
-           const smart = await W.TrackRegistry?.getSmartUrlInfo?.(t.uid, 'lyrics');
-           if (smart) fetchUrl = smart.url;
-        }
-        const r = await fetch(fetchUrl, { cache: 'force-cache', headers: { Accept: 'application/json' } });
-        if (!r.ok) throw r.status;
-        const j = await r.json();
-        if (Array.isArray(j)) { sess(k, j); return j; }
-      } catch (e) {
-        if (e === 404) sess('404_'+u, 1);
-        else if (!(W.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) return null;
+      const t = W.playerCore?.getCurrentTrack();
+      // Собираем список URL для попытки (smart → исходный)
+      const urls = [];
+      if (t?.uid) {
+        try {
+          const smart = await W.TrackRegistry?.getSmartUrlInfo?.(t.uid, 'lyrics');
+          if (smart?.url) urls.push(smart.url);
+        } catch {}
       }
-      sess(k, 'NO'); return null;
+      if (u && !urls.includes(u)) urls.push(u);
+      
+      for (const fetchUrl of urls) {
+        try {
+          const r = await fetch(fetchUrl, { cache: 'force-cache', headers: { Accept: 'application/json' } });
+          if (!r.ok) { if (r.status === 404) continue; throw r.status; }
+          const j = await r.json();
+          if (Array.isArray(j)) { sess(k, j); return j; }
+        } catch (e) {
+          if (e === 404) continue;
+          if (!(W.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) return null;
+        }
+      }
+      sess(k, 'NO'); sess('404_'+u, 1); return null;
     })();
     _pend.set(u, p);
     const res = await p;
