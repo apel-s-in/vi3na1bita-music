@@ -98,9 +98,27 @@ import { ensureMediaSession } from './player-core/media-session.js';
     getPosition() { return this.sound?.seek() || 0; }
     getDuration() { return this.sound?.duration() || 0; }
 
-    setVolume(v) { const vol = clamp(Number(v)/100, 0, 1); ls.setItem(LS_VOL, String(Math.round(vol * 100))); if (!this.flags.mute) Howler.volume(vol); }
-    getVolume() { return Number(ls.getItem(LS_VOL)) || 100; }
-    setMuted(m) { this.flags.mute = !!m; Howler.volume(this.flags.mute ? 0 : this.getVolume() / 100); }
+    _isMob() { return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent); }
+
+    setVolume(v) { 
+      if (this._isMob()) return; // На смартфонах блокируем вмешательство JS в звук
+      const vol = clamp(Number(v)/100, 0, 1); 
+      ls.setItem(LS_VOL, String(Math.round(vol * 100))); 
+      if (!this.flags.mute) Howler.volume(vol);
+    }
+    
+    getVolume() { 
+      if (this._isMob()) return 100; // Телефоны всегда играют на 100% чистого аудио-потока
+      const saved = ls.getItem(LS_VOL);
+      return saved !== null ? Number(saved) : 100; 
+    }
+    
+    setMuted(m) { 
+      if (this._isMob()) return; // На телефонах mute делается кнопками телефона
+      this.flags.mute = !!m;
+      Howler.volume(this.flags.mute ? 0 : this.getVolume() / 100); 
+    }
+    
     isMuted() { return this.flags.mute; }
 
     async load(idx, opts = {}) {
