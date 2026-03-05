@@ -46,7 +46,7 @@ export async function getSmartUrlInfo(uid, prop = 'audio', quality = 'hi') {
   const TTL_OK_MS = 60_000;
   const TTL_FAIL_MS = 10_000;
 
-  const probe = async (provider) => {
+    const probe = async (provider) => {
     const baseStr = conf.bases[provider];
     if (!baseStr) return false;
 
@@ -54,13 +54,18 @@ export async function getSmartUrlInfo(uid, prop = 'audio', quality = 'hi') {
     const now = Date.now();
     const cached = conf._rt[key];
     const ttl = cached?.ok ? TTL_OK_MS : TTL_FAIL_MS;
+    
     if (cached && (now - cached.at) < ttl) return !!cached.ok;
-
-    const url = toUrl(baseStr, 'config.json');
+    
+    const url = toUrl(baseStr, `config.json?_p=${now}`);
     if (!url) return false;
 
     try {
-      const r = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+      const ctrl = new AbortController();
+      const id = setTimeout(() => ctrl.abort(), 2500); // 2.5s failover
+      const r = await fetch(url, { method: 'HEAD', mode: 'cors', cache: 'no-store', signal: ctrl.signal });
+      clearTimeout(id);
+      
       conf._rt[key] = { ok: r.ok, at: now };
       return r.ok;
     } catch {
@@ -204,7 +209,11 @@ export async function ensurePopulated() {
             const b = src === 'yandex' ? y_base : g_base;
             if (!b) return null;
             try {
-                const res = await fetch(`${b}config.json`, { cache: 'no-cache' }); // Важно! Конфиги тянем свежие
+                const ctrl = new AbortController();
+                const id = setTimeout(() => ctrl.abort(), 3500); // Быстрый failover (3.5 сек)
+                const res = await fetch(`${b}config.json?_t=${Date.now()}`, { cache: 'no-store', signal: ctrl.signal });
+                clearTimeout(id);
+                // Важно! Конфиги тянем свежие
                 if (res.ok) return { raw: await res.json(), base: b };
             } catch (e) {}
             return null;
