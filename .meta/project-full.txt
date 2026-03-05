@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a5306a1bd3d5566488af1503bc01cc0a6b9f800a.idx
-│   │       ├── pack-a5306a1bd3d5566488af1503bc01cc0a6b9f800a.pack
-│   │       └── pack-a5306a1bd3d5566488af1503bc01cc0a6b9f800a.rev
+│   │       ├── pack-2d8861a2aee7b428fcb3871d2819248a0ba98a11.idx
+│   │       ├── pack-2d8861a2aee7b428fcb3871d2819248a0ba98a11.pack
+│   │       └── pack-2d8861a2aee7b428fcb3871d2819248a0ba98a11.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-05 14:48:32 UTC
+Сгенерировано: 2026-03-05 14:49:32 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -3127,8 +3127,8 @@ return `
       
       if (t.closest('#prof-name-edit')) return container.querySelector('#prof-name-inp')?.focus();
       
-      const srcBtn = t.closest('.src-toggle-btn');
-      if (srcBtn) {
+      const srcBtn = t.closest('[data-src]');
+      if (srcBtn && (srcBtn.dataset.src === 'yandex' || srcBtn.dataset.src === 'github')) {
         const newSrc = srcBtn.dataset.src;
         localStorage.setItem('sourcePref', newSrc);
 
