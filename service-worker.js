@@ -86,10 +86,16 @@ self.addEventListener('fetch', (e) => {
   // Static core assets (Cache First)
   if (STATIC_SET.has(norm(url.href))) {
     e.respondWith(
-      caches.open(CORE_CACHE).then(c => c.match(req)).then(r => r || fetch(req).then(n => {
-        if(n.ok) caches.open(CORE_CACHE).then(cx => cx.put(req, n.clone()));
+      caches.open(CORE_CACHE).then(async c => {
+        const cached = await c.match(req);
+        if (cached) return cached;
+        const n = await fetch(req);
+        if (n.ok) {
+          const cl = n.clone();
+          caches.open(CORE_CACHE).then(cx => cx.put(req, cl)).catch(() => {});
+        }
         return n;
-      }))
+      })
     );
     return;
   }
@@ -106,15 +112,19 @@ self.addEventListener('fetch', (e) => {
 
   // Fallback (Network First -> Cache) только для локальных ресурсов
   e.respondWith(
-    caches.match(req).then(cached => cached || fetch(req).then(r => {
-      if (r.ok && r.status === 200 && url.protocol.startsWith('http') && url.hostname === self.location.hostname) {
-        try {
+    (async () => {
+      try {
+        const r = await fetch(req);
+        if (r.ok && r.status === 200 && url.protocol.startsWith('http') && url.hostname === self.location.hostname) {
           const cl = r.clone();
-          caches.open(RUNTIME_CACHE).then(cx => cx.put(req, cl));
-        } catch {}
+          caches.open(RUNTIME_CACHE).then(cx => cx.put(req, cl)).catch(() => {});
+        }
+        return r;
+      } catch {
+        const cached = await caches.match(req);
+        return cached || new Response(null, { status: 503 });
       }
-      return r;
-    }).catch(() => cached))
+    })()
   );
 });
 
