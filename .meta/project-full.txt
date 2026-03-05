@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-0debdf1b9f85e4c6dafc1d6cb500b163b4af0922.idx
-│   │       ├── pack-0debdf1b9f85e4c6dafc1d6cb500b163b4af0922.pack
-│   │       └── pack-0debdf1b9f85e4c6dafc1d6cb500b163b4af0922.rev
+│   │       ├── pack-d862989dec9c9ec7ccf4c5b6875d1fd51e1bbc59.idx
+│   │       ├── pack-d862989dec9c9ec7ccf4c5b6875d1fd51e1bbc59.pack
+│   │       └── pack-d862989dec9c9ec7ccf4c5b6875d1fd51e1bbc59.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-05 13:41:26 UTC
+Сгенерировано: 2026-03-05 14:37:52 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -4361,7 +4361,7 @@ export function searchUidsByQuery({ uids, query }) {
 // FILE: /scripts/app/track-registry.js
 /**
  * track-registry.js — Глобальный реестр треков по uid.
- * v2.1 — исправлен дублированный getSmartUrlInfo, корректный failover
+ * v2.2 — Robust dual-source (Yandex Cloud + GitHub Pages), CORS-safe
  */
 
 const _tracks = new Map();
@@ -4370,6 +4370,11 @@ const _albumConfigs = new Map();
 const _albumTracks = new Map();
 let _populatedPromise = null;
 
+// Кэш доступности: albumKey:provider → { ok, at }
+const _srcCache = new Map();
+const TTL_OK = 120_000;   // 2 мин если ок
+const TTL_FAIL = 15_000;  // 15 сек если fail
+
 const toUrl = (b, r) => {
   if (!r || !b) return null;
   try {
@@ -4377,44 +4382,55 @@ const toUrl = (b, r) => {
     const cleanBase = String(b).replace(/\/+$/, '') + '/';
     if (!/^https?:\/\//i.test(cleanBase)) return null;
     return new URL(cleanRel, cleanBase).toString();
-  } catch (e) {
-    console.warn('[TrackRegistry] URL build failed:', b, r, e);
+  } catch {
     return null;
   }
 };
 
-// Кэш доступности источников: { yandex: { ok, at }, github: { ok, at } }
-// Ключ — albumKey, чтобы разные альбомы не мешали друг другу
-const _rtCache = new Map();
-const TTL_OK_MS = 60_000;
-const TTL_FAIL_MS = 10_000;
-
-async function probeProvider(albumKey, provider, baseStr) {
-  if (!baseStr) return false;
-  const cacheKey = `${albumKey}:${provider}`;
-  const now = Date.now();
-  const cached = _rtCache.get(cacheKey);
-  const ttl = cached?.ok ? TTL_OK_MS : TTL_FAIL_MS;
-  if (cached && (now - cached.at) < ttl) return !!cached.ok;
-
-  try {
-    const ctrl = new AbortController();
-    const id = setTimeout(() => ctrl.abort(), 3000);
-    const url = baseStr.replace(/\/+$/, '') + '/config.json?_p=' + now;
-    // no-cors для cross-origin хостов (Яндекс S3 HEAD блокируется CORS до ответа)
-    // opaque response (status=0) считается успехом — файл существует, просто CORS не пустил заголовки
-    const r = await fetch(url, { method: 'HEAD', mode: 'no-cors', cache: 'no-store', signal: ctrl.signal });
-    clearTimeout(id);
-    // status=0 = opaque = доступен (no-cors успех), status>0 = cors доступен
-    const ok = r.status === 0 || r.ok;
-    _rtCache.set(cacheKey, { ok, at: now });
-    return ok;
-  } catch {
-    _rtCache.set(cacheKey, { ok: false, at: now });
-    return false;
-  }
+function getSourcePref() {
+  const host = window.location?.hostname || '';
+  const stored = localStorage.getItem('sourcePref');
+  if (stored === 'github' || stored === 'yandex') return stored;
+  // Автоматика: если мы на Yandex Cloud → yandex, иначе github
+  return host.includes('yandexcloud.net') ? 'yandex' : 'github';
 }
 
+function getSourceOrder() {
+  const pref = getSourcePref();
+  return pref === 'github' ? ['github', 'yandex'] : ['yandex', 'github'];
+}
+
+// Попытка fetch JSON с таймаутом. Возвращает { json, src } или null.
+async function fetchJsonWithFallback(bases, path, timeout = 5000) {
+  const order = getSourceOrder();
+  for (const src of order) {
+    const base = bases[src];
+    if (!base) continue;
+    const url = base.replace(/\/+$/, '') + '/' + path.replace(/^\/+/, '');
+    const cacheKey = `${url}`;
+    const cached = _srcCache.get(cacheKey);
+    const now = Date.now();
+    if (cached && (now - cached.at) < (cached.ok ? TTL_OK : TTL_FAIL)) {
+      if (!cached.ok) continue;
+    }
+    try {
+      const ctrl = new AbortController();
+      const id = setTimeout(() => ctrl.abort(), timeout);
+      const r = await fetch(url, { cache: 'no-store', signal: ctrl.signal });
+      clearTimeout(id);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const json = await r.json();
+      _srcCache.set(cacheKey, { ok: true, at: now });
+      return { json, src, base };
+    } catch (e) {
+      _srcCache.set(cacheKey, { ok: false, at: now });
+      console.warn(`[TrackRegistry] fetch ${src} failed for ${path}:`, e?.message || e);
+    }
+  }
+  return null;
+}
+
+// Строит URL ресурса (аудио/лирика/fulltext) с учётом приоритетного источника
 export async function getSmartUrlInfo(uid, prop = 'audio', quality = 'hi') {
   const track = _tracks.get(String(uid || '').trim());
   if (!track || !track.sourceAlbum) return null;
@@ -4430,27 +4446,17 @@ export async function getSmartUrlInfo(uid, prop = 'audio', quality = 'hi') {
 
   if (!relPath) return null;
 
-  const pref = localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex';
-  const secondary = pref === 'github' ? 'yandex' : 'github';
-
-  // Пробуем приоритетный источник, при неудаче — резервный
-  const primaryOk = await probeProvider(track.sourceAlbum, pref, conf.bases[pref]);
-  const order = primaryOk ? [pref, secondary] : [secondary, pref];
-
+  const order = getSourceOrder();
   for (const src of order) {
-    const baseStr = conf.bases[src];
-    if (!baseStr) continue;
-    const url = toUrl(baseStr, relPath);
+    const base = conf.bases[src];
+    if (!base) continue;
+    const url = toUrl(base, relPath);
     if (url) {
-      conf.activeSrc = src;
-      // Уведомляем UI об изменении источника
-      if (window.playerCore?.currentProvider !== src) {
-        window.dispatchEvent(new CustomEvent('player:providerChanged', { detail: { provider: src } }));
-      }
+      // Уведомляем UI о текущем провайдере
+      window.dispatchEvent(new CustomEvent('player:providerChanged', { detail: { provider: src } }));
       return { url, provider: src };
     }
   }
-
   return null;
 }
 
@@ -4458,7 +4464,6 @@ export function registerTrack(track, albumMeta) {
   if (!track?.uid) return;
   const uid = String(track.uid).trim();
   if (!uid) return;
-
   _tracks.set(uid, {
     uid,
     title: track.title || 'Трек',
@@ -4471,13 +4476,11 @@ export function registerTrack(track, albumMeta) {
     fulltext: track.fulltext || null,
     sourceAlbum: track.sourceAlbum || null,
     album: albumMeta?.title || null,
-    // Относительные пути для роутера (не зависят от источника)
     rel_audio: track.rel_audio || null,
     rel_audio_low: track.rel_audio_low || null,
     rel_lyrics: track.rel_lyrics || null,
     rel_fulltext: track.rel_fulltext || null
   });
-
   if (track.sourceAlbum && albumMeta?.title) {
     _albums.set(track.sourceAlbum, albumMeta.title);
   }
@@ -4487,10 +4490,7 @@ export function getTrackByUid(uid) {
   return _tracks.get(String(uid || '').trim()) || null;
 }
 
-export function getAllUids() {
-  return [..._tracks.keys()];
-}
-
+export function getAllUids() { return [..._tracks.keys()]; }
 export function getAlbumTitle(key) { return _albums.get(key) || null; }
 export function getAlbumConfig(key) { return _albumConfigs.get(key) || null; }
 export function getTracksForAlbum(key) { return _albumTracks.get(key) || []; }
@@ -4506,55 +4506,31 @@ export async function ensurePopulated() {
       try {
         const y_base = a.yandex_base
           ? (a.yandex_base.endsWith('/') ? a.yandex_base : `${a.yandex_base}/`)
-          : (a.base ? (a.base.endsWith('/') ? a.base : `${a.base}/`) : '');
-
+          : '';
         const g_base = a.github_base
           ? (a.github_base.endsWith('/') ? a.github_base : `${a.github_base}/`)
-          : (a.base ? (a.base.endsWith('/') ? a.base : `${a.base}/`) : '');
+          : '';
 
-        const pref = localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex';
-        const secondary = pref === 'github' ? 'yandex' : 'github';
+        const bases = { yandex: y_base, github: g_base };
 
-        const tryFetchConfig = async (src) => {
-          const b = src === 'yandex' ? y_base : g_base;
-          if (!b) return null;
-          try {
-            const ctrl = new AbortController();
-            const id = setTimeout(() => ctrl.abort(), 4000);
-            // cors — чтобы можно было читать JSON тело ответа
-            const res = await fetch(`${b}config.json?_t=${Date.now()}`, {
-              cache: 'no-store',
-              mode: 'cors',
-              signal: ctrl.signal
-            });
-            clearTimeout(id);
-            if (res.ok) return { raw: await res.json(), base: b, src };
-          } catch (e) {
-            // CORS заблокировал или сеть недоступна — этот источник недоступен
-            console.warn(`[TrackRegistry] ${src} config fetch failed:`, e?.message || e);
-          }
-          return null;
-        };
+        // Используем fetchJsonWithFallback — пробует оба источника по приоритету
+        const result = await fetchJsonWithFallback(bases, 'config.json', 5000);
+        if (!result) {
+          console.warn(`[TrackRegistry] No accessible source for album ${a.key}`);
+          return;
+        }
 
-        let confData = await tryFetchConfig(pref);
-        if (!confData) confData = await tryFetchConfig(secondary);
-        if (!confData) return;
-
-        const { raw, src: activeSrc } = confData;
+        const { json: raw, src: activeSrc, base: activeBase } = result;
         const title = raw.albumName || a.title;
         _albums.set(a.key, title);
 
         _albumConfigs.set(a.key, {
           title,
-          bases: { yandex: y_base, github: g_base },
+          bases,
           activeSrc,
           artist: raw.artist || 'Витрина Разбита',
           links: (raw.social_links || raw.socials || []).map(s => ({ label: s.title || s.label, url: s.url }))
         });
-
-        // Треки строим с ОТНОСИТЕЛЬНЫМИ путями — URL будет строиться динамически через getSmartUrlInfo
-        // Но для первоначальной загрузки используем активный источник
-        const activeBase = activeSrc === 'yandex' ? y_base : g_base;
 
         const trks = (raw.tracks || []).map((t, i) => {
           const hi = toUrl(activeBase, t.audio);
@@ -4569,7 +4545,6 @@ export async function ensurePopulated() {
               lyrics: toUrl(activeBase, t.lyrics),
               fulltext: toUrl(activeBase, t.fulltext),
               sourceAlbum: a.key,
-              // Сохраняем rel-пути для динамического роутинга
               rel_audio: t.audio,
               rel_audio_low: t.audio_low,
               rel_lyrics: t.lyrics,
@@ -4598,9 +4573,8 @@ export async function ensurePopulated() {
   return _populatedPromise;
 }
 
-// Сброс кэша при смене приоритета источника (вызывается из профиля)
 export function resetSourceCache() {
-  _rtCache.clear();
+  _srcCache.clear();
   _populatedPromise = null;
   _tracks.clear();
   _albums.clear();
