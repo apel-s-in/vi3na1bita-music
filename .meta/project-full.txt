@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d1c31b4feb6686b7be20bb7194b5bfa87999c23f.idx
-│   │       ├── pack-d1c31b4feb6686b7be20bb7194b5bfa87999c23f.pack
-│   │       └── pack-d1c31b4feb6686b7be20bb7194b5bfa87999c23f.rev
+│   │       ├── pack-f0c1cc677acd79a2412f7aae66d920730816fad3.idx
+│   │       ├── pack-f0c1cc677acd79a2412f7aae66d920730816fad3.pack
+│   │       └── pack-f0c1cc677acd79a2412f7aae66d920730816fad3.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-05 14:42:03 UTC
+Сгенерировано: 2026-03-05 14:43:00 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -6430,18 +6430,22 @@ export default { initCacheProgressOverlay };
 
     let txt = '';
 
-    // 1. Пытаемся загрузить полный текст (fulltext). 
-    // Если сеть отключена Сетевой политикой, fetch выбросит исключение.
-    if (t.fulltext) {
+    // 1. Пытаемся загрузить полный текст (fulltext) с dual-source fallback
+    if (t.fulltext || t.uid) {
+      const urls = [];
       try {
-        let fetchUrl = t.fulltext;
         const smart = await W.TrackRegistry?.getSmartUrlInfo?.(t.uid, 'fulltext');
-        if (smart) fetchUrl = smart.url;
-        const r = await fetch(fetchUrl);
-        if (r.ok) txt = await r.text();
-      } catch (e) {
-        console.warn('[LyricsModal] Fulltext fetch failed (Offline/Network Policy). Falling back to timeline.');
+        if (smart?.url) urls.push(smart.url);
+      } catch {}
+      if (t.fulltext && !urls.includes(t.fulltext)) urls.push(t.fulltext);
+
+      for (const fetchUrl of urls) {
+        try {
+          const r = await fetch(fetchUrl);
+          if (r.ok) { txt = await r.text(); break; }
+        } catch {}
       }
+      if (!txt) console.warn('[LyricsModal] Fulltext fetch failed. Falling back to timeline.');
     }
 
     // 2. Умный Fallback: Если fulltext нет или он заблокирован оффлайн-режимом,
