@@ -1,6 +1,6 @@
 /**
  * track-registry.js — Глобальный реестр треков по uid.
- * v2.2 — Robust dual-source (Yandex Cloud + GitHub Pages), CORS-safe
+ * v2.3 — Robust dual-source, aggressive caching, minimal server requests
  */
 
 const _tracks = new Map();
@@ -9,10 +9,10 @@ const _albumConfigs = new Map();
 const _albumTracks = new Map();
 let _populatedPromise = null;
 
-// Кэш доступности: albumKey:provider → { ok, at }
-const _srcCache = new Map();
-const TTL_OK = 120_000;   // 2 мин если ок
-const TTL_FAIL = 15_000;  // 15 сек если fail
+// Кэш доступности провайдера (не URL, а провайдера целиком)
+const _providerHealth = new Map(); // 'yandex'|'github' → { ok, at }
+const TTL_OK = 300_000;   // 5 мин если ок (снижаем запросы)
+const TTL_FAIL = 30_000;  // 30 сек если fail
 
 const toUrl = (b, r) => {
   if (!r || !b) return null;
@@ -30,7 +30,6 @@ function getSourcePref() {
   const host = window.location?.hostname || '';
   const stored = localStorage.getItem('sourcePref');
   if (stored === 'github' || stored === 'yandex') return stored;
-  // Автоматика: если мы на Yandex Cloud → yandex, иначе github
   return host.includes('yandexcloud.net') ? 'yandex' : 'github';
 }
 
@@ -39,37 +38,70 @@ function getSourceOrder() {
   return pref === 'github' ? ['github', 'yandex'] : ['yandex', 'github'];
 }
 
-// Попытка fetch JSON с таймаутом. Возвращает { json, src } или null.
-async function fetchJsonWithFallback(bases, path, timeout = 5000) {
+function isProviderHealthy(src) {
+  const h = _providerHealth.get(src);
+  if (!h) return true; // unknown = try it
+  const ttl = h.ok ? TTL_OK : TTL_FAIL;
+  if (Date.now() - h.at > ttl) return true; // expired = try again
+  return h.ok;
+}
+
+function markProvider(src, ok) {
+  _providerHealth.set(src, { ok, at: Date.now() });
+}
+
+// Кэш config.json в sessionStorage для минимизации GET-запросов
+function getCachedConfig(key) {
+  try {
+    const raw = sessionStorage.getItem(`tr:cfg:${key}`);
+    if (!raw) return null;
+    const { data, ts } = JSON.parse(raw);
+    // Кэш живёт 10 минут
+    if (Date.now() - ts > 600_000) return null;
+    return data;
+  } catch { return null; }
+}
+
+function setCachedConfig(key, data) {
+  try {
+    sessionStorage.setItem(`tr:cfg:${key}`, JSON.stringify({ data, ts: Date.now() }));
+  } catch {}
+}
+
+/**
+ * Fetch JSON с dual-source fallback.
+ * Использует cache: 'force-cache' для минимизации сетевых запросов.
+ * Возвращает { json, src, base } или null.
+ */
+async function fetchJsonWithFallback(bases, path, timeout = 6000) {
   const order = getSourceOrder();
   for (const src of order) {
+    if (!isProviderHealthy(src)) continue;
     const base = bases[src];
     if (!base) continue;
     const url = base.replace(/\/+$/, '') + '/' + path.replace(/^\/+/, '');
-    const cacheKey = `${url}`;
-    const cached = _srcCache.get(cacheKey);
-    const now = Date.now();
-    if (cached && (now - cached.at) < (cached.ok ? TTL_OK : TTL_FAIL)) {
-      if (!cached.ok) continue;
-    }
     try {
       const ctrl = new AbortController();
       const id = setTimeout(() => ctrl.abort(), timeout);
-      const r = await fetch(url, { cache: 'no-store', signal: ctrl.signal });
+      // force-cache: браузер отдаст из HTTP-кэша если есть, иначе сходит в сеть
+      const r = await fetch(url, { cache: 'force-cache', signal: ctrl.signal });
       clearTimeout(id);
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const json = await r.json();
-      _srcCache.set(cacheKey, { ok: true, at: now });
+      markProvider(src, true);
       return { json, src, base };
     } catch (e) {
-      _srcCache.set(cacheKey, { ok: false, at: now });
-      console.warn(`[TrackRegistry] fetch ${src} failed for ${path}:`, e?.message || e);
+      markProvider(src, false);
+      console.warn(`[TrackRegistry] ${src} failed for ${path}:`, e?.message || e);
     }
   }
   return null;
 }
 
-// Строит URL ресурса (аудио/лирика/fulltext) с учётом приоритетного источника
+/**
+ * Строит URL ресурса с учётом приоритетного источника.
+ * НЕ стреляет событиями — это чистый URL resolver.
+ */
 export async function getSmartUrlInfo(uid, prop = 'audio', quality = 'hi') {
   const track = _tracks.get(String(uid || '').trim());
   if (!track || !track.sourceAlbum) return null;
@@ -87,14 +119,18 @@ export async function getSmartUrlInfo(uid, prop = 'audio', quality = 'hi') {
 
   const order = getSourceOrder();
   for (const src of order) {
+    if (!isProviderHealthy(src)) continue;
     const base = conf.bases[src];
     if (!base) continue;
     const url = toUrl(base, relPath);
-    if (url) {
-      // Уведомляем UI о текущем провайдере
-      window.dispatchEvent(new CustomEvent('player:providerChanged', { detail: { provider: src } }));
-      return { url, provider: src };
-    }
+    if (url) return { url, provider: src };
+  }
+  // Fallback: try all sources ignoring health
+  for (const src of order) {
+    const base = conf.bases[src];
+    if (!base) continue;
+    const url = toUrl(base, relPath);
+    if (url) return { url, provider: src };
   }
   return null;
 }
@@ -152,14 +188,26 @@ export async function ensurePopulated() {
 
         const bases = { yandex: y_base, github: g_base };
 
-        // Используем fetchJsonWithFallback — пробует оба источника по приоритету
-        const result = await fetchJsonWithFallback(bases, 'config.json', 5000);
-        if (!result) {
-          console.warn(`[TrackRegistry] No accessible source for album ${a.key}`);
-          return;
+        // Проверяем sessionStorage-кэш
+        const cached = getCachedConfig(a.key);
+        let raw, activeSrc, activeBase;
+
+        if (cached) {
+          raw = cached.json;
+          activeSrc = cached.src;
+          activeBase = cached.base;
+        } else {
+          const result = await fetchJsonWithFallback(bases, 'config.json', 6000);
+          if (!result) {
+            console.warn(`[TrackRegistry] No accessible source for album ${a.key}`);
+            return;
+          }
+          raw = result.json;
+          activeSrc = result.src;
+          activeBase = result.base;
+          setCachedConfig(a.key, { json: raw, src: activeSrc, base: activeBase });
         }
 
-        const { json: raw, src: activeSrc, base: activeBase } = result;
         const title = raw.albumName || a.title;
         _albums.set(a.key, title);
 
@@ -213,12 +261,21 @@ export async function ensurePopulated() {
 }
 
 export function resetSourceCache() {
-  _srcCache.clear();
+  _providerHealth.clear();
   _populatedPromise = null;
   _tracks.clear();
   _albums.clear();
   _albumConfigs.clear();
   _albumTracks.clear();
+  // Очищаем sessionStorage-кэш конфигов
+  try {
+    const keys = [];
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const k = sessionStorage.key(i);
+      if (k?.startsWith('tr:cfg:')) keys.push(k);
+    }
+    keys.forEach(k => sessionStorage.removeItem(k));
+  } catch {}
 }
 
 const TrackRegistry = {
