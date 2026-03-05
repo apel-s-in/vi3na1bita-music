@@ -18,7 +18,9 @@ try {
   fail('albums.json is not valid JSON: ' + e.message);
 }
 albums.forEach((a, i) => {
-  if (!a.key || !a.title || !a.base) fail(`albums.json: album[${i}] must contain key/title/base`);
+  if (!a.key || !a.title || (!a.base && !a.yandex_base && !a.github_base)) {
+    fail(`albums.json: album[${i}] must contain key/title and base or yandex_base/github_base`);
+  }
   if (typeof a.key !== 'string' || typeof a.title !== 'string' || typeof a.base !== 'string') {
     fail(`albums.json: album[${i}] key/title/base must be strings`);
   }
