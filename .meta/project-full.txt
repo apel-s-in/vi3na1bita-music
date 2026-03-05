@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-160052cd81d6380543d2a42f3eace058230dd9e0.idx
-│   │       ├── pack-160052cd81d6380543d2a42f3eace058230dd9e0.pack
-│   │       └── pack-160052cd81d6380543d2a42f3eace058230dd9e0.rev
+│   │       ├── pack-00a7fa817698a11cdb601754f5f18401a590edbe.idx
+│   │       ├── pack-00a7fa817698a11cdb601754f5f18401a590edbe.pack
+│   │       └── pack-00a7fa817698a11cdb601754f5f18401a590edbe.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-05 19:19:45 UTC
+Сгенерировано: 2026-03-05 19:34:42 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -8730,11 +8730,11 @@ import { ensureMediaSession } from './player-core/media-session.js';
 
       const pos = Number(opts.resumePosition) || 0, retry = Number(opts._retryN) || 0;
       this._unload(true);
-
       this.sound = new Howl({
         src: [url], 
         html5: r?.source === 'stream' || !r?.blob, 
-        volume: this.getVolume() / 100, 
+        // Локальный volume убран: Howler автоматически применяет глобальный Howler.volume() 
+        // ко всем инстансам. Если оставить, громкость умножится сама на себя (0.5 * 0.5 = 0.25).
         format: ['mp3'], 
         xhr: { withCredentials: false },
         autoplay: opts.autoPlay ?? this.isPlaying(),
