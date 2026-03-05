@@ -38,12 +38,16 @@ async function probeProvider(albumKey, provider, baseStr) {
 
   try {
     const ctrl = new AbortController();
-    const id = setTimeout(() => ctrl.abort(), 2500);
+    const id = setTimeout(() => ctrl.abort(), 3000);
     const url = baseStr.replace(/\/+$/, '') + '/config.json?_p=' + now;
-    const r = await fetch(url, { method: 'HEAD', mode: 'cors', cache: 'no-store', signal: ctrl.signal });
+    // no-cors для cross-origin хостов (Яндекс S3 HEAD блокируется CORS до ответа)
+    // opaque response (status=0) считается успехом — файл существует, просто CORS не пустил заголовки
+    const r = await fetch(url, { method: 'HEAD', mode: 'no-cors', cache: 'no-store', signal: ctrl.signal });
     clearTimeout(id);
-    _rtCache.set(cacheKey, { ok: r.ok, at: now });
-    return r.ok;
+    // status=0 = opaque = доступен (no-cors успех), status>0 = cors доступен
+    const ok = r.status === 0 || r.ok;
+    _rtCache.set(cacheKey, { ok, at: now });
+    return ok;
   } catch {
     _rtCache.set(cacheKey, { ok: false, at: now });
     return false;
@@ -155,11 +159,19 @@ export async function ensurePopulated() {
           if (!b) return null;
           try {
             const ctrl = new AbortController();
-            const id = setTimeout(() => ctrl.abort(), 3500);
-            const res = await fetch(`${b}config.json?_t=${Date.now()}`, { cache: 'no-store', signal: ctrl.signal });
+            const id = setTimeout(() => ctrl.abort(), 4000);
+            // cors — чтобы можно было читать JSON тело ответа
+            const res = await fetch(`${b}config.json?_t=${Date.now()}`, {
+              cache: 'no-store',
+              mode: 'cors',
+              signal: ctrl.signal
+            });
             clearTimeout(id);
             if (res.ok) return { raw: await res.json(), base: b, src };
-          } catch {}
+          } catch (e) {
+            // CORS заблокировал или сеть недоступна — этот источник недоступен
+            console.warn(`[TrackRegistry] ${src} config fetch failed:`, e?.message || e);
+          }
           return null;
         };
 
