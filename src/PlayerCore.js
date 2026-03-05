@@ -132,6 +132,19 @@ import { ensureMediaSession } from './player-core/media-session.js';
       
       let activeProvider = r?.provider || 'unknown';
       if (!url) {
+
+        const pref = localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex';
+        const alt = pref === 'yandex' ? 'github' : 'yandex';
+
+        try {
+          const smart = await W.TrackRegistry?.getSmartUrlInfo?.(uid,'audio',this.qMode,alt);
+          if (smart?.url) {
+            url = smart.url;
+            this.currentProvider = smart.provider;
+          }
+        } catch {}
+
+      }
         try {
           const smart = await W.TrackRegistry?.getSmartUrlInfo?.(uid, 'audio', this.qMode);
           if (smart?.url) { url = smart.url; activeProvider = smart.provider; }
