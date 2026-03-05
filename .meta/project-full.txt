@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5379582102338abc75571e0aa23ff5f1182dfb5e.idx
-│   │       ├── pack-5379582102338abc75571e0aa23ff5f1182dfb5e.pack
-│   │       └── pack-5379582102338abc75571e0aa23ff5f1182dfb5e.rev
+│   │       ├── pack-140bf3c09ddfe5b331bdba3ba96c8060a3d0c0eb.idx
+│   │       ├── pack-140bf3c09ddfe5b331bdba3ba96c8060a3d0c0eb.pack
+│   │       └── pack-140bf3c09ddfe5b331bdba3ba96c8060a3d0c0eb.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-05 19:17:22 UTC
+Сгенерировано: 2026-03-05 19:18:09 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -9281,7 +9281,7 @@ body{min-height:100vh;min-width:100vw;font-family:-apple-system,BlinkMacSystemFo
 .jump-to-playing button{all:unset;width:100%;height:100%;cursor:pointer;display:grid;place-items:center;line-height:1;user-select:none}
 
 /* Platform */
-body.ios .volume-control-wrapper,body.ios #mute-btn{display:none!important}
+body.mobile-device .volume-control-wrapper, body.mobile-device #mute-btn { display: none !important; }
 
 /* Responsive */
 @media (max-width:600px){
