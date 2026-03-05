@@ -113,7 +113,9 @@ if (fs.existsSync(customFile)) {
     warn('fetch() is not available in this Node runtime; skip remote config.json uid checks');
   } else {
     for (const a of albums) {
-      const base = a.base.endsWith('/') ? a.base : `${a.base}/`;
+      const rawBase = a.yandex_base || a.github_base || a.base || '';
+      if (!rawBase) { warn(`album "${a.key}": no base URL, skipping remote check`); continue; }
+      const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
       const url = `${base}config.json`;
 
       try {
