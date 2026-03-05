@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1b49dde5ab9cf63908f390cb7aa32db065ef44c7.idx
-│   │       ├── pack-1b49dde5ab9cf63908f390cb7aa32db065ef44c7.pack
-│   │       └── pack-1b49dde5ab9cf63908f390cb7aa32db065ef44c7.rev
+│   │       ├── pack-152c2d23a163ab487fae3bdd1d32a54b71dae1d5.idx
+│   │       ├── pack-152c2d23a163ab487fae3bdd1d32a54b71dae1d5.pack
+│   │       └── pack-152c2d23a163ab487fae3bdd1d32a54b71dae1d5.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -393,7 +393,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-05 12:03:18 UTC
+Сгенерировано: 2026-03-05 12:05:36 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -4363,8 +4363,78 @@ const toUrl = (b, r) => {
   }
 };
 
-// Глобальный маршрутизатор (Оптимизированный: O(1) маршрутизация без блокирующих HEAD-запросов)
+// Глобальный маршрутизатор (Runtime failover: prefers sourcePref, auto-switches on outage)
 export async function getSmartUrlInfo(uid, prop = 'audio', quality = 'hi') {
+  const track = _tracks.get(uid);
+  if (!track || !track.sourceAlbum) return null;
+
+  const conf = _albumConfigs.get(track.sourceAlbum);
+  if (!conf || !conf.bases) return null;
+
+  let relPath = null;
+  if (prop === 'audio') relPath = quality === 'lo' ? (track.rel_audio_low || track.rel_audio) : track.rel_audio;
+  else if (prop === 'lyrics') relPath = track.rel_lyrics;
+  else if (prop === 'fulltext') relPath = track.rel_fulltext;
+
+  if (!relPath) return null;
+
+  const pref = localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex';
+
+  // Runtime availability cache (per provider) to avoid spamming HEAD.
+  // Key: provider -> { ok: boolean, at: number }
+  conf._rt = conf._rt || {};
+  const TTL_OK_MS = 60_000;
+  const TTL_FAIL_MS = 10_000;
+
+  const probe = async (provider) => {
+    const baseStr = conf.bases[provider];
+    if (!baseStr) return false;
+
+    const key = provider;
+    const now = Date.now();
+    const cached = conf._rt[key];
+    const ttl = cached?.ok ? TTL_OK_MS : TTL_FAIL_MS;
+    if (cached && (now - cached.at) < ttl) return !!cached.ok;
+
+    const url = toUrl(baseStr, 'config.json');
+    if (!url) return false;
+
+    try {
+      const r = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+      conf._rt[key] = { ok: r.ok, at: now };
+      return r.ok;
+    } catch {
+      conf._rt[key] = { ok: false, at: now };
+      return false;
+    }
+  };
+
+  const chooseOrder = async () => {
+    const primary = pref;
+    const secondary = primary === 'github' ? 'yandex' : 'github';
+
+    // 1) prefer saved activeSrc only if it matches pref OR pref currently fails
+    // 2) but always try to return to pref when it becomes available again
+    if (await probe(primary)) return [primary, secondary];
+    return [secondary, primary];
+  };
+
+  const order = await chooseOrder();
+
+  for (const src of order) {
+    const baseStr = conf.bases[src];
+    if (!baseStr) continue;
+
+    const url = toUrl(baseStr, relPath);
+    if (url) {
+      // Запоминаем активный источник на рантайме, чтобы UI показывал корректно
+      conf.activeSrc = src;
+      return { url, provider: src };
+    }
+  }
+
+  return null;
+}
   const track = _tracks.get(uid);
   if (!track || !track.sourceAlbum) return null;
   const conf = _albumConfigs.get(track.sourceAlbum);
