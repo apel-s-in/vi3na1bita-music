@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2a14e431be3e45bf056e56948ce53172553ce9f0.idx
-│   │       ├── pack-2a14e431be3e45bf056e56948ce53172553ce9f0.pack
-│   │       └── pack-2a14e431be3e45bf056e56948ce53172553ce9f0.rev
+│   │       ├── pack-55bc416d024f4cc0f784180e1d9719fe11214a5e.idx
+│   │       ├── pack-55bc416d024f4cc0f784180e1d9719fe11214a5e.pack
+│   │       └── pack-55bc416d024f4cc0f784180e1d9719fe11214a5e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-05 12:54:49 UTC
+Сгенерировано: 2026-03-05 13:38:02 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -4849,16 +4849,23 @@ albums.forEach((a, i) => {
   if (!a.key || !a.title || (!a.base && !a.yandex_base && !a.github_base)) {
     fail(`albums.json: album[${i}] must contain key/title and base or yandex_base/github_base`);
   }
-  if (typeof a.key !== 'string' || typeof a.title !== 'string' || typeof a.base !== 'string') {
-    fail(`albums.json: album[${i}] key/title/base must be strings`);
+  if (typeof a.key !== 'string' || typeof a.title !== 'string') {
+    fail(`albums.json: album[${i}] key/title must be strings`);
   }
-  if (!/^https?:\/\//i.test(a.base)) {
-    fail(`albums.json: album[${i}].base must be absolute http(s) url`);
+  // Проверяем base только если оно задано явно (старый формат)
+  const baseUrl = a.base || a.yandex_base || a.github_base || '';
+  if (typeof baseUrl !== 'string') {
+    fail(`albums.json: album[${i}] base/yandex_base/github_base must be strings`);
   }
-  if (!/\/$/.test(a.base)) {
+  if (!/^https?:\/\//i.test(baseUrl)) {
+    fail(`albums.json: album[${i}] base url must be absolute http(s) url`);
+  }
+  if (a.base && !/\/$/.test(a.base)) {
     warn(`albums.json: album[${i}].base should end with "/" (got: ${a.base})`);
   }
 });
+
+// Уникальность ключей (уже есть ниже — убираем дубль проверки ключей)
 
 // 1.5) Уникальность ключей альбомов
 {
