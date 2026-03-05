@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3e97b11e1a3f732d90bd534c3ea83c59c902e1ec.idx
-│   │       ├── pack-3e97b11e1a3f732d90bd534c3ea83c59c902e1ec.pack
-│   │       └── pack-3e97b11e1a3f732d90bd534c3ea83c59c902e1ec.rev
+│   │       ├── pack-418fdcdc91a5adcabf888f638a10c7f02cc3053a.idx
+│   │       ├── pack-418fdcdc91a5adcabf888f638a10c7f02cc3053a.pack
+│   │       └── pack-418fdcdc91a5adcabf888f638a10c7f02cc3053a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-05 14:44:43 UTC
+Сгенерировано: 2026-03-05 14:46:54 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -408,6 +408,34 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Configure CORS on Yandex S3 bucket
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.YC_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.YC_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: 'ru-central1'
+        run: |
+          cat > /tmp/cors.json << 'EOF'
+          {
+            "CORSRules": [
+              {
+                "AllowedOrigins": [
+                  "https://vi3na1bita.website.yandexcloud.net",
+                  "https://apel-s-in.github.io",
+                  "http://localhost:*",
+                  "http://127.0.0.1:*"
+                ],
+                "AllowedMethods": ["GET", "HEAD"],
+                "AllowedHeaders": ["*"],
+                "MaxAgeSeconds": 86400
+              }
+            ]
+          }
+          EOF
+          aws --endpoint-url=https://storage.yandexcloud.net \
+            s3api put-bucket-cors \
+            --bucket vi3na1bita \
+            --cors-configuration file:///tmp/cors.json
 
       - name: Sync Code to Yandex S3
         env:
