@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2a65f2cb4435fcaf196f92b89bcd4464c1cb3861.idx
-│   │       ├── pack-2a65f2cb4435fcaf196f92b89bcd4464c1cb3861.pack
-│   │       └── pack-2a65f2cb4435fcaf196f92b89bcd4464c1cb3861.rev
+│   │       ├── pack-4d543cd8fdab9c191efe1afe877759573a5cd206.idx
+│   │       ├── pack-4d543cd8fdab9c191efe1afe877759573a5cd206.pack
+│   │       └── pack-4d543cd8fdab9c191efe1afe877759573a5cd206.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -393,7 +393,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-05 11:10:23 UTC
+Сгенерировано: 2026-03-05 11:12:39 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -4379,10 +4379,26 @@ export async function getSmartUrlInfo(uid, prop = 'audio', quality = 'hi') {
   const cleanRel = relPath.replace(/^(\.\/|\/)/, ''); 
 
   // Используем тот источник, который был реально доступен при инициализации (или ручной выбор)
-  const activeSrc = conf.activeSrc || (localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex');
-  const sources = [activeSrc, activeSrc === 'yandex' ? 'github' : 'yandex'];
+  const pref = localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex';
+  const activeSrc = conf.activeSrc || pref; || (localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex');
+  const pref = localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex';
+  const sources = pref === 'github'
+    ? ['github','yandex']
+    : ['yandex','github'];
   
   for (const src of sources) {
+
+    const baseStr = conf.bases[src];
+    if (!baseStr) continue;
+
+    try {
+
+      const probe = await fetch(baseStr + 'config.json',{method:'HEAD',cache:'no-store'});
+      if (!probe.ok) continue;
+
+    } catch {
+      continue;
+    }
     const baseStr = conf.bases[src];
     if (!baseStr) continue;
     const url = toUrl(baseStr, relPath);
