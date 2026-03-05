@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ef534d706abf10310a802113dc656e558f06727c.idx
-│   │       ├── pack-ef534d706abf10310a802113dc656e558f06727c.pack
-│   │       └── pack-ef534d706abf10310a802113dc656e558f06727c.rev
+│   │       ├── pack-3c2369c2593146f034670575ea17c93d49a668fc.idx
+│   │       ├── pack-3c2369c2593146f034670575ea17c93d49a668fc.pack
+│   │       └── pack-3c2369c2593146f034670575ea17c93d49a668fc.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-05 21:28:39 UTC
+Сгенерировано: 2026-03-05 21:39:15 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -1319,7 +1319,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.1.11';
+const SW_VERSION = '8.1.12';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
