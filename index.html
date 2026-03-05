@@ -152,9 +152,12 @@
   <div id="modals-container"></div>
 
   <template id="mini-header-template">
-    <div class="mini-now" id="mini-now">
-      <span class="tnum" id="mini-now-num">--.</span>
-      <span class="track-title" id="mini-now-title">—</span>
+    <div class="mini-now" id="mini-now" title="Вернуться к альбому">
+      <div class="mini-progress-fill" id="mini-now-progress"></div>
+      <div class="mini-text-switcher">
+        <span class="mini-track-title" id="mini-now-title">—</span>
+        <span class="mini-track-hint">Нажми чтобы вернуться к альбому</span>
+      </div>
       <img src="img/star2.png" class="like-star" id="mini-now-star" alt="звезда">
     </div>
   </template>
