@@ -117,7 +117,7 @@ class OfflineManager {
     const b1 = await DB.getAudioBlob(u, q); if (b1) return { source: 'local', blob: b1, quality: q };
     const b2 = await DB.getAudioBlob(u, a);
     if (b2) { if (q === 'lo') return { source: 'local', blob: b2, quality: a, provider: 'cache' }; if (iN) { const info = await getSmartInfo(u, q); if (info && info.url) { if (this.getMode() !== 'R2') this._reCache(u, q); return { source: 'stream', url: info.url, quality: q, provider: info.provider }; } } return { source: 'local', blob: b2, quality: a, provider: 'cache' }; }
-    if (iN) { const info = await getSmartInfo(u, q); if (info && info.url) return { source: 'stream', url: info.url, quality: q, provider: info.provider }; }
+    if (iN) { const info = await getSmartInfo(u, q); if (info?.url) return { source: 'stream', url: info.url, quality: q, provider: info.provider || 'unknown' }; }
     return { source: 'none' };
   }
   async enqueueAudioDownload(u, { priority, kind } = {}) {
