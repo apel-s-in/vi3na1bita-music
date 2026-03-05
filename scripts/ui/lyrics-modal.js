@@ -12,18 +12,22 @@
 
     let txt = '';
 
-    // 1. Пытаемся загрузить полный текст (fulltext). 
-    // Если сеть отключена Сетевой политикой, fetch выбросит исключение.
-    if (t.fulltext) {
+    // 1. Пытаемся загрузить полный текст (fulltext) с dual-source fallback
+    if (t.fulltext || t.uid) {
+      const urls = [];
       try {
-        let fetchUrl = t.fulltext;
         const smart = await W.TrackRegistry?.getSmartUrlInfo?.(t.uid, 'fulltext');
-        if (smart) fetchUrl = smart.url;
-        const r = await fetch(fetchUrl);
-        if (r.ok) txt = await r.text();
-      } catch (e) {
-        console.warn('[LyricsModal] Fulltext fetch failed (Offline/Network Policy). Falling back to timeline.');
+        if (smart?.url) urls.push(smart.url);
+      } catch {}
+      if (t.fulltext && !urls.includes(t.fulltext)) urls.push(t.fulltext);
+
+      for (const fetchUrl of urls) {
+        try {
+          const r = await fetch(fetchUrl);
+          if (r.ok) { txt = await r.text(); break; }
+        } catch {}
       }
+      if (!txt) console.warn('[LyricsModal] Fulltext fetch failed. Falling back to timeline.');
     }
 
     // 2. Умный Fallback: Если fulltext нет или он заблокирован оффлайн-режимом,
