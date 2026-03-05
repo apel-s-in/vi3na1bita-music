@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-bf95d8d0e3a1cf307e67e6fb2dadb727c86c0974.idx
-│   │       ├── pack-bf95d8d0e3a1cf307e67e6fb2dadb727c86c0974.pack
-│   │       └── pack-bf95d8d0e3a1cf307e67e6fb2dadb727c86c0974.rev
+│   │       ├── pack-21000162c1c9203ba5744fe9a9828ab054c3ff7c.idx
+│   │       ├── pack-21000162c1c9203ba5744fe9a9828ab054c3ff7c.pack
+│   │       └── pack-21000162c1c9203ba5744fe9a9828ab054c3ff7c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -393,7 +393,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-05 11:46:36 UTC
+Сгенерировано: 2026-03-05 11:49:24 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -8463,18 +8463,15 @@ import { ensureMediaSession } from './player-core/media-session.js';
       
       let activeProvider = r?.provider || 'unknown';
       if (!url) {
-
-        const pref = localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex';
-        const alt = pref === 'yandex' ? 'github' : 'yandex';
-
         try {
-          const smart = await W.TrackRegistry?.getSmartUrlInfo?.(uid,'audio',this.qMode,alt);
+          const smart = await W.TrackRegistry?.getSmartUrlInfo?.(uid, 'audio', this.qMode);
           if (smart?.url) {
             url = smart.url;
             this.currentProvider = smart.provider;
           }
-        } catch {}
-
+        } catch (e) {
+          console.warn('[PlayerCore] Smart URL fallback failed:', e);
+        }
       }
         try {
           const smart = await W.TrackRegistry?.getSmartUrlInfo?.(uid, 'audio', this.qMode);
