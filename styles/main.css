@@ -350,10 +350,111 @@ body{min-height:100vh;min-width:100vw;font-family:-apple-system,BlinkMacSystemFo
 .offline-ind--cloud-loading{opacity:.4;color:#888;animation:offline-ind-blink 1s ease-in-out infinite}
 @keyframes offline-ind-blink{50%{opacity:.4}}
 
-/* Mini header / Next up */
-.mini-now{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:10px;background:#232b38;margin-bottom:8px;box-shadow:0 2px 8px rgba(0,0,0,.2);transition:none!important}
-.mini-now .tnum{color:var(--c-blue);min-width:28px;font-weight:500}
-.mini-now .track-title{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px}
+/* =========================================
+   РЕДИЗАЙН МИНИ-ПЛЕЕРА (PROTO v2.0)
+   ========================================= */
+.mini-now {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 48px;
+  padding: 0 14px;
+  border-radius: 16px 16px 0 0 !important;
+  background: #11141a !important; /* Тёмный фон из прототипа */
+  margin-bottom: 0 !important; /* Бесшовно сливается с кнопками управления */
+  box-shadow: none !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  overflow: hidden;
+  transition: none !important;
+}
+
+/* Слой заливки прогресса под текстом */
+.mini-progress-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 0%;
+  background: rgba(77, 170, 255, 0.12); /* Плавная синяя заливка */
+  border-right: 1px solid rgba(77, 170, 255, 0.3);
+  pointer-events: none;
+  transition: width 0.1s linear;
+  z-index: 1;
+}
+
+/* Контейнер чередующегося текста */
+.mini-text-switcher {
+  position: relative;
+  flex: 1;
+  height: 100%;
+  min-width: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* Общие стили для переключаемого текста */
+.mini-track-title, .mini-track-hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+}
+
+/* CSS-Анимации (цикл 6 секунд: 3 сек на каждое состояние) */
+.mini-track-title {
+  color: #eaf2ff;
+  animation: swapTextMain 6s infinite;
+}
+.mini-track-hint {
+  color: #9db7dd;
+  font-size: 12px;
+  animation: swapTextHint 6s infinite;
+}
+
+@keyframes swapTextMain {
+  0%, 40% { opacity: 1; }
+  45%, 95% { opacity: 0; }
+  100% { opacity: 1; }
+}
+@keyframes swapTextHint {
+  0%, 40% { opacity: 0; }
+  45%, 95% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.mini-now .like-star {
+  z-index: 2;
+  margin-left: 10px;
+}
+
+/* Скрываем всё лишнее из основного плеера, когда он находится в режиме МИНИ (#now-playing) */
+#now-playing #lyricsplayerblock .player-progress-wrapper,
+#now-playing #lyricsplayerblock .player-controls-row:nth-child(2), /* Нижний ряд кнопок */
+#now-playing #lyricsplayerblock .volume-control-wrapper,
+#now-playing #lyricsplayerblock .player-buttons-wrapper,
+#now-playing #next-up {
+  display: none !important;
+}
+
+/* Стилизуем оставшийся блок управления под стиль прототипа */
+#now-playing #lyricsplayerblock {
+  border-radius: 0 0 16px 16px !important;
+  background: #11141a !important; /* Единый цвет с mini-now */
+  box-shadow: 0 8px 24px rgba(0,0,0,0.6) !important;
+  border-bottom: 2px solid rgba(77, 170, 255, 0.3) !important; /* Узенькая полосочка снизу */
+  margin-top: 0 !important;
+}
+#now-playing #lyricsplayerblock .player-controls {
+  background: transparent !important;
+  padding: 8px 18px 14px !important;
+}
 .next-up{display:none;margin:8px 4px 0;font-size:.98em;align-items:center;gap:8px;padding:6px 10px;background:rgba(255,255,255,.03);border-radius:8px;transition:none!important}
 .next-up .label{color:var(--c-blue);opacity:.9;font-size:13px}
 .next-up .title{color:var(--primary-color);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1;font-size:14px}
