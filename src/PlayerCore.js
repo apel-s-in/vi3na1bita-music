@@ -131,22 +131,19 @@ import { ensureMediaSession } from './player-core/media-session.js';
       }
       
       let activeProvider = r?.provider || 'unknown';
+
       if (!url) {
         try {
           const smart = await W.TrackRegistry?.getSmartUrlInfo?.(uid, 'audio', this.qMode);
           if (smart?.url) {
             url = smart.url;
-            this.currentProvider = smart.provider;
+            activeProvider = smart.provider || activeProvider;
           }
         } catch (e) {
-          console.warn('[PlayerCore] Smart URL fallback failed:', e);
+          console.warn('[PlayerCore] Smart URL failed:', e);
         }
       }
-        try {
-          const smart = await W.TrackRegistry?.getSmartUrlInfo?.(uid, 'audio', this.qMode);
-          if (smart?.url) { url = smart.url; activeProvider = smart.provider; }
-        } catch (e) { console.warn('[PlayerCore] Smart URL failed:', e); }
-      }
+
       this.currentProvider = activeProvider;
 
       const sf = fn => (...a) => tok === this._tok && fn(...a);
