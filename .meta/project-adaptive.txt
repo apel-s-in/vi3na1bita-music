@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1697a982ae3850f22c28f2e938346609962fe3db.idx
-│   │       ├── pack-1697a982ae3850f22c28f2e938346609962fe3db.pack
-│   │       └── pack-1697a982ae3850f22c28f2e938346609962fe3db.rev
+│   │       ├── pack-2a65f2cb4435fcaf196f92b89bcd4464c1cb3861.idx
+│   │       ├── pack-2a65f2cb4435fcaf196f92b89bcd4464c1cb3861.pack
+│   │       └── pack-2a65f2cb4435fcaf196f92b89bcd4464c1cb3861.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -374,6 +374,7 @@ vi3na1bita-music/
 │   │   ├── statistics-modal.js
 │   │   └── sysinfo.js
 │   ├── utils/
+│   │   ├── source-probe.js
 │   │   └── sw-manager.js
 │   └── app.js
 ├── src/
@@ -392,7 +393,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-05 00:32:17 UTC
+Сгенерировано: 2026-03-05 11:10:23 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -7357,6 +7358,17 @@ window.StatisticsModal = {
 })(window, navigator);
 
 //=================================================
+// FILE: /scripts/utils/source-probe.js
+export async function probeSource(url) {
+  try {
+    const r = await fetch(url,{method:'HEAD',cache:'no-store'});
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+
+//=================================================
 // FILE: /scripts/utils/sw-manager.js
 /**
  * scripts/utils/sw-manager.js
@@ -7430,7 +7442,7 @@ window.StatisticsModal = {
 
 //=================================================
 // FILE: /data/lyrics-index-v1.json
-{"v":1,"buildTs":1772660899667,"meta":{},"idx":{}}
+{"v":1,"buildTs":1772686228809,"meta":{},"idx":{}}
 //=================================================
 // FILE: /data/taxonomy.json
 {
