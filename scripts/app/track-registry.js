@@ -112,9 +112,16 @@ export async function ensurePopulated() {
     const idx = window.albumsIndex || [];
     await Promise.allSettled(idx.filter(a => !a.key.startsWith('__')).map(async a => {
       try {
-        const y_base = a.yandex_base ? (a.yandex_base.endsWith('/') ? a.yandex_base : `${a.yandex_base}/`) : '';
-        const g_base = a.github_base ? (a.github_base.endsWith('/') ? a.github_base : `${a.github_base}/`) : '';
-        
+        // Поддержка старой и новой схемы albums.json
+        const base = a.base ? (a.base.endsWith('/') ? a.base : `${a.base}/`) : '';
+
+        const y_base = a.yandex_base
+          ? (a.yandex_base.endsWith('/') ? a.yandex_base : `${a.yandex_base}/`)
+          : base;
+
+        const g_base = a.github_base
+          ? (a.github_base.endsWith('/') ? a.github_base : `${a.github_base}/`)
+          : base;     
         let pref = localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex';
         const tryFetchConfig = async (src) => {
             const b = src === 'yandex' ? y_base : g_base;
