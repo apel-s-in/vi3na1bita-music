@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d5f9e6b20b4b701bc8bfca0ada7b1e5e64c53919.idx
-│   │       ├── pack-d5f9e6b20b4b701bc8bfca0ada7b1e5e64c53919.pack
-│   │       └── pack-d5f9e6b20b4b701bc8bfca0ada7b1e5e64c53919.rev
+│   │       ├── pack-bf95d8d0e3a1cf307e67e6fb2dadb727c86c0974.idx
+│   │       ├── pack-bf95d8d0e3a1cf307e67e6fb2dadb727c86c0974.pack
+│   │       └── pack-bf95d8d0e3a1cf307e67e6fb2dadb727c86c0974.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -393,7 +393,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-05 11:15:01 UTC
+Сгенерировано: 2026-03-05 11:46:36 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -4380,29 +4380,20 @@ export async function getSmartUrlInfo(uid, prop = 'audio', quality = 'hi') {
 
   // Используем тот источник, который был реально доступен при инициализации (или ручной выбор)
   const pref = localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex';
-  const activeSrc = conf.activeSrc || pref; || (localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex');
-  const pref = localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex';
-  const sources = pref === 'github'
+  const activeSrc = conf.activeSrc || pref;
+
+  const sources = activeSrc === 'github'
     ? ['github','yandex']
     : ['yandex','github'];
   
   for (const src of sources) {
-
     const baseStr = conf.bases[src];
     if (!baseStr) continue;
 
-    try {
-
-      const probe = await fetch(baseStr + 'config.json',{method:'HEAD',cache:'no-store'});
-      if (!probe.ok) continue;
-
-    } catch {
-      continue;
-    }
-    const baseStr = conf.bases[src];
-    if (!baseStr) continue;
     const url = toUrl(baseStr, relPath);
-    if (url) return { url, provider: src };
+    if (url) {
+      return { url, provider: src };
+    }
   }
   
   return null;
