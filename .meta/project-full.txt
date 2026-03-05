@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e92153d692892aeed671ed2464a2dc9738350544.idx
-│   │       ├── pack-e92153d692892aeed671ed2464a2dc9738350544.pack
-│   │       └── pack-e92153d692892aeed671ed2464a2dc9738350544.rev
+│   │       ├── pack-3b51c4d6443d58e7c4df5172d8547f8e842886c9.idx
+│   │       ├── pack-3b51c4d6443d58e7c4df5172d8547f8e842886c9.pack
+│   │       └── pack-3b51c4d6443d58e7c4df5172d8547f8e842886c9.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-05 20:37:05 UTC
+Сгенерировано: 2026-03-05 20:43:19 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -979,9 +979,12 @@ jobs:
   <div id="modals-container"></div>
 
   <template id="mini-header-template">
-    <div class="mini-now" id="mini-now">
-      <span class="tnum" id="mini-now-num">--.</span>
-      <span class="track-title" id="mini-now-title">—</span>
+    <div class="mini-now" id="mini-now" title="Вернуться к альбому">
+      <div class="mini-progress-fill" id="mini-now-progress"></div>
+      <div class="mini-text-switcher">
+        <span class="mini-track-title" id="mini-now-title">—</span>
+        <span class="mini-track-hint">Нажми чтобы вернуться к альбому</span>
+      </div>
       <img src="img/star2.png" class="like-star" id="mini-now-star" alt="звезда">
     </div>
   </template>
