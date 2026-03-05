@@ -39,10 +39,26 @@ export async function getSmartUrlInfo(uid, prop = 'audio', quality = 'hi') {
   const cleanRel = relPath.replace(/^(\.\/|\/)/, ''); 
 
   // Используем тот источник, который был реально доступен при инициализации (или ручной выбор)
-  const activeSrc = conf.activeSrc || (localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex');
-  const sources = [activeSrc, activeSrc === 'yandex' ? 'github' : 'yandex'];
+  const pref = localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex';
+  const activeSrc = conf.activeSrc || pref; || (localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex');
+  const pref = localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex';
+  const sources = pref === 'github'
+    ? ['github','yandex']
+    : ['yandex','github'];
   
   for (const src of sources) {
+
+    const baseStr = conf.bases[src];
+    if (!baseStr) continue;
+
+    try {
+
+      const probe = await fetch(baseStr + 'config.json',{method:'HEAD',cache:'no-store'});
+      if (!probe.ok) continue;
+
+    } catch {
+      continue;
+    }
     const baseStr = conf.bases[src];
     if (!baseStr) continue;
     const url = toUrl(baseStr, relPath);
