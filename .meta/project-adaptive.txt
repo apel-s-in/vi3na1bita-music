@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-55bc416d024f4cc0f784180e1d9719fe11214a5e.idx
-│   │       ├── pack-55bc416d024f4cc0f784180e1d9719fe11214a5e.pack
-│   │       └── pack-55bc416d024f4cc0f784180e1d9719fe11214a5e.rev
+│   │       ├── pack-c4993dd1b144ffd99a78ce77e982c451fb6d28a2.idx
+│   │       ├── pack-c4993dd1b144ffd99a78ce77e982c451fb6d28a2.pack
+│   │       └── pack-c4993dd1b144ffd99a78ce77e982c451fb6d28a2.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-05 13:38:02 UTC
+Сгенерировано: 2026-03-05 13:39:18 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -4671,7 +4671,8 @@ async function main() {
   for (const a of albums) {
     const albumKey = String(a?.key || '').trim();
     const albumTitle = String(a?.title || '').trim();
-    const base = String(a?.base || '').trim();
+    // Поддержка dual-source: предпочитаем yandex_base, fallback на github_base или base
+    const base = String(a?.yandex_base || a?.github_base || a?.base || '').trim();
     if (!albumKey || !base) continue;
 
     const baseUrl = base.endsWith('/') ? base : `${base}/`;
