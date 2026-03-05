@@ -323,6 +323,13 @@ return `
       if (srcBtn) {
           const newSrc = srcBtn.dataset.src;
           localStorage.setItem('sourcePref', newSrc);
+          
+          // Сбрасываем кэш пингов, чтобы следующий трек мгновенно взял новый источник
+          if (window.TrackRegistry) {
+            const confs = window.TrackRegistry.getAllUids().map(u => window.TrackRegistry.getAlbumConfig(window.TrackRegistry.getTrackByUid(u)?.sourceAlbum));
+            confs.forEach(c => { if (c) { c._rt = {}; c.activeSrc = newSrc; } });
+          }
+          
           window.NotificationSystem?.success(`Приоритет изменён на ${newSrc === 'yandex' ? 'Yandex Cloud' : 'GitHub'}`);
           loadProfileAlbum(ctx); // Обновляем UI тумблера
           return;
