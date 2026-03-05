@@ -118,24 +118,29 @@
       applyDownloadLink: (btn, track) => {
         if (!btn) return;
         if (!track?.src && !track?.uid) { 
-          btn.removeAttribute('href'); btn.removeAttribute('download'); btn.classList.add('disabled'); 
+          btn.removeAttribute('href'); btn.removeAttribute('download'); btn.classList.add('disabled');
+          btn._dlUid = null;
           return; 
         }
         const fileName = (track.artist && track.title) 
           ? `${track.artist} - ${track.title}.mp3` 
           : (track.title ? `${track.title}.mp3` : 'track.mp3');
         
-        // Для cross-origin нельзя использовать просто href+download
-        // Используем программную загрузку через fetch+blob
         btn.removeAttribute('href');
         btn.download = fileName;
         btn.classList.remove('disabled');
         
+        // Идемпотентность: не перевешиваем обработчик если трек не менялся
+        const dlKey = `${track.uid || track.src}:${fileName}`;
+        if (btn._dlUid === dlKey) return;
+        btn._dlUid = dlKey;
+        
         btn.onclick = async (e) => {
           e.preventDefault(); e.stopPropagation();
+          if (btn._dlBusy) return;
+          btn._dlBusy = true;
           
           try {
-            // Получаем URL через smart resolver
             let url = track.src;
             if (track.uid) {
               const smart = await W.TrackRegistry?.getSmartUrlInfo?.(track.uid, 'audio', W.playerCore?.qMode || 'hi');
@@ -155,28 +160,28 @@
                   return;
                 }
               } catch (shareErr) {
-                // Share не удался — переходим к прямому скачиванию
-                console.warn('[Download] Share failed, falling back to download:', shareErr);
+                console.warn('[Download] Share failed, falling back:', shareErr);
               }
             }
             
-            // Fetch + Blob download (работает cross-origin)
             W.NotificationSystem?.info?.('Скачивание...');
             const resp = await fetch(url);
             if (!resp.ok) throw new Error('HTTP ' + resp.status);
             const blob = await resp.blob();
             const blobUrl = URL.createObjectURL(blob);
-            const a = document.createElement('a');
+            const a = D.createElement('a');
             a.href = blobUrl;
             a.download = fileName;
             a.style.display = 'none';
-            document.body.appendChild(a);
+            D.body.appendChild(a);
             a.click();
             setTimeout(() => { URL.revokeObjectURL(blobUrl); a.remove(); }, 5000);
             W.NotificationSystem?.success?.('Файл скачивается');
           } catch (err) {
             console.error('[Download] Error:', err);
             W.NotificationSystem?.error?.('Ошибка скачивания');
+          } finally {
+            btn._dlBusy = false;
           }
         };
       }
