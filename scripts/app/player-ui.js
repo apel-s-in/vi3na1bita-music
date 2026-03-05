@@ -50,10 +50,14 @@
     if (st.isMini && dom.mini) {
       const nt = c.getPlaylistSnapshot()?.[c.getNextIndex()];
       const qs = (s, r = dom.mini) => r.querySelector(s);
-      const n = qs('#mini-now-num'), ti = qs('#mini-now-title'), sr = qs('#mini-now-star'), nti = qs('.title', dom.nUp);
+      const ti = qs('#mini-now-title'), sr = qs('#mini-now-star'), nti = qs('.title', dom.nUp);
       
-      if (n) n.textContent = `${String((c.getIndex() || 0) + 1).padStart(2, '0')}.`;
-      if (ti) ti.textContent = t?.title || '—';
+      if (ti) {
+        // Рендерим "Название - Альбом", как просил автор
+        const albumName = W.TrackRegistry?.getAlbumTitle(t?.sourceAlbum) || t?.album || 'Альбом';
+        ti.textContent = t?.title ? `${t.title} — ${albumName}` : '—';
+      }
+      
       if (sr) sr.src = U.fav.isTrackLikedInContext({ playingAlbum: W.AlbumsManager?.getPlayingAlbum?.(), track: t }) ? 'img/star.png' : 'img/star2.png';
       if (nti) nti.textContent = nt?.title || '—';
     }
@@ -138,15 +142,24 @@
     if (st.isMini) {
       if (!dom.mini) {
         dom.mini = D.getElementById('mini-header-template').content.cloneNode(true).querySelector('#mini-now');
+        
+        // Кэшируем новый элемент заливки прогресса
+        dom.el.miniProgress = dom.mini.querySelector('#mini-now-progress');
+
         dom.mini.onclick = e => {
           if (e.target.id === 'mini-now-star') { 
-            e.stopPropagation(); 
+            e.stopPropagation();
             const t = PC().getCurrentTrack(); 
             if(t?.uid) PC().toggleFavorite(t.uid, { source: W.AlbumsManager?.getPlayingAlbum?.() === W.SPECIAL_FAVORITES_KEY ? 'favorites' : 'album', albumKey: t.sourceAlbum }); 
-            syncUI(); 
+            syncUI();
           } else { 
-            const p = W.AlbumsManager?.getPlayingAlbum?.(); 
-            if(p) W.AlbumsManager.loadAlbum(p); 
+            const p = W.AlbumsManager?.getPlayingAlbum?.();
+            if (p) {
+              // Возвращаемся в родной альбом и центрируем экран на текущем играющем треке
+              W.AlbumsManager.loadAlbum(p).then(() => {
+                setTimeout(() => dom.blk?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
+              });
+            }
           }
         };
         dom.nUp = D.getElementById('next-up-template').content.cloneNode(true).querySelector('#next-up');
@@ -239,10 +252,19 @@
         syncUI(); 
       },
       onTick: (p, d) => {
-        if (!st.seeking && dom.el.fill) { 
-          dom.el.fill.style.width = `${d > 0 ? (p / d) * 100 : 0}%`; 
-          dom.el.tE.textContent = U.fmt.time(p); 
-          dom.el.tR.textContent = `-${U.fmt.time((d || 0) - p)}`; 
+        if (!st.seeking) {
+          const percent = d > 0 ? (p / d) * 100 : 0;
+          
+          // Прогресс основного плеера
+          if (dom.el.fill) dom.el.fill.style.width = `${percent}%`; 
+          
+          // Заливка нового мини-плеера
+          if (st.isMini && dom.el.miniProgress) {
+            dom.el.miniProgress.style.width = `${percent}%`;
+          }
+
+          if (dom.el.tE) dom.el.tE.textContent = U.fmt.time(p); 
+          if (dom.el.tR) dom.el.tR.textContent = `-${U.fmt.time((d || 0) - p)}`; 
         }
         W.LyricsController?.onTick?.(p, { inMiniMode: st.isMini });
       }
