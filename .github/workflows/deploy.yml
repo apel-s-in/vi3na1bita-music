@@ -12,6 +12,34 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Configure CORS on Yandex S3 bucket
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.YC_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.YC_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: 'ru-central1'
+        run: |
+          cat > /tmp/cors.json << 'EOF'
+          {
+            "CORSRules": [
+              {
+                "AllowedOrigins": [
+                  "https://vi3na1bita.website.yandexcloud.net",
+                  "https://apel-s-in.github.io",
+                  "http://localhost:*",
+                  "http://127.0.0.1:*"
+                ],
+                "AllowedMethods": ["GET", "HEAD"],
+                "AllowedHeaders": ["*"],
+                "MaxAgeSeconds": 86400
+              }
+            ]
+          }
+          EOF
+          aws --endpoint-url=https://storage.yandexcloud.net \
+            s3api put-bucket-cors \
+            --bucket vi3na1bita \
+            --cors-configuration file:///tmp/cors.json
+
       - name: Sync Code to Yandex S3
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.YC_ACCESS_KEY_ID }}
