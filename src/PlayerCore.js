@@ -162,7 +162,7 @@ import { ensureMediaSession } from './player-core/media-session.js';
         xhr: { withCredentials: false },
         autoplay: opts.autoPlay ?? this.isPlaying(),
         onload: sf(() => { pos && this.seek(pos); this._updMedia(); }),
-        onplay: sf(() => { this._startT(); this._emit('onPlay', t, idx); this._updMedia(); emitG('player:play', { uid, duration: this.getDuration(), type: 'audio', provider: this.currentProvider }); emitG('player:providerChanged', { provider: this.currentProvider }); }),
+        onplay: sf(() => { this._startT(); this._emit('onPlay', t, idx); this._updMedia(); emitG('player:play', { uid, duration: this.getDuration(), type: 'audio', provider: activeProvider }); emitG('player:providerChanged', { provider: activeProvider }); }),
         onpause: sf(() => { this._stopT(); this._emit('onPause'); this._updMedia(); emitG('player:pause'); }),
         onend: sf(() => { this._emit('onEnd'); this._updMedia(); emitG('player:ended'); emitG('analytics:forceFlush'); this.flags.rep ? this.play(this.currentIndex) : this.next(); }),
         onloaderror: sf(() => this._err(idx, retry, opts, dir)),
