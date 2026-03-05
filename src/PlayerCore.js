@@ -171,11 +171,11 @@ import { ensureMediaSession } from './player-core/media-session.js';
 
       const pos = Number(opts.resumePosition) || 0, retry = Number(opts._retryN) || 0;
       this._unload(true);
-
       this.sound = new Howl({
         src: [url], 
         html5: r?.source === 'stream' || !r?.blob, 
-        volume: this.getVolume() / 100, 
+        // Локальный volume убран: Howler автоматически применяет глобальный Howler.volume() 
+        // ко всем инстансам. Если оставить, громкость умножится сама на себя (0.5 * 0.5 = 0.25).
         format: ['mp3'], 
         xhr: { withCredentials: false },
         autoplay: opts.autoPlay ?? this.isPlaying(),
