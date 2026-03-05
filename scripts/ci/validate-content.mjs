@@ -21,16 +21,23 @@ albums.forEach((a, i) => {
   if (!a.key || !a.title || (!a.base && !a.yandex_base && !a.github_base)) {
     fail(`albums.json: album[${i}] must contain key/title and base or yandex_base/github_base`);
   }
-  if (typeof a.key !== 'string' || typeof a.title !== 'string' || typeof a.base !== 'string') {
-    fail(`albums.json: album[${i}] key/title/base must be strings`);
+  if (typeof a.key !== 'string' || typeof a.title !== 'string') {
+    fail(`albums.json: album[${i}] key/title must be strings`);
   }
-  if (!/^https?:\/\//i.test(a.base)) {
-    fail(`albums.json: album[${i}].base must be absolute http(s) url`);
+  // Проверяем base только если оно задано явно (старый формат)
+  const baseUrl = a.base || a.yandex_base || a.github_base || '';
+  if (typeof baseUrl !== 'string') {
+    fail(`albums.json: album[${i}] base/yandex_base/github_base must be strings`);
   }
-  if (!/\/$/.test(a.base)) {
+  if (!/^https?:\/\//i.test(baseUrl)) {
+    fail(`albums.json: album[${i}] base url must be absolute http(s) url`);
+  }
+  if (a.base && !/\/$/.test(a.base)) {
     warn(`albums.json: album[${i}].base should end with "/" (got: ${a.base})`);
   }
 });
+
+// Уникальность ключей (уже есть ниже — убираем дубль проверки ключей)
 
 // 1.5) Уникальность ключей альбомов
 {
