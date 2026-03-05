@@ -63,7 +63,8 @@ async function main() {
   for (const a of albums) {
     const albumKey = String(a?.key || '').trim();
     const albumTitle = String(a?.title || '').trim();
-    const base = String(a?.base || '').trim();
+    // Поддержка dual-source: предпочитаем yandex_base, fallback на github_base или base
+    const base = String(a?.yandex_base || a?.github_base || a?.base || '').trim();
     if (!albumKey || !base) continue;
 
     const baseUrl = base.endsWith('/') ? base : `${base}/`;
