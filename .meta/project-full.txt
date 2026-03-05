@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-418fdcdc91a5adcabf888f638a10c7f02cc3053a.idx
-│   │       ├── pack-418fdcdc91a5adcabf888f638a10c7f02cc3053a.pack
-│   │       └── pack-418fdcdc91a5adcabf888f638a10c7f02cc3053a.rev
+│   │       ├── pack-a5306a1bd3d5566488af1503bc01cc0a6b9f800a.idx
+│   │       ├── pack-a5306a1bd3d5566488af1503bc01cc0a6b9f800a.pack
+│   │       └── pack-a5306a1bd3d5566488af1503bc01cc0a6b9f800a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-05 14:46:54 UTC
+Сгенерировано: 2026-03-05 14:48:32 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -6258,7 +6258,7 @@ class OfflineManager {
     const b1 = await DB.getAudioBlob(u, q); if (b1) return { source: 'local', blob: b1, quality: q };
     const b2 = await DB.getAudioBlob(u, a);
     if (b2) { if (q === 'lo') return { source: 'local', blob: b2, quality: a, provider: 'cache' }; if (iN) { const info = await getSmartInfo(u, q); if (info && info.url) { if (this.getMode() !== 'R2') this._reCache(u, q); return { source: 'stream', url: info.url, quality: q, provider: info.provider }; } } return { source: 'local', blob: b2, quality: a, provider: 'cache' }; }
-    if (iN) { const info = await getSmartInfo(u, q); if (info && info.url) return { source: 'stream', url: info.url, quality: q, provider: info.provider }; }
+    if (iN) { const info = await getSmartInfo(u, q); if (info?.url) return { source: 'stream', url: info.url, quality: q, provider: info.provider || 'unknown' }; }
     return { source: 'none' };
   }
   async enqueueAudioDownload(u, { priority, kind } = {}) {
