@@ -58,7 +58,10 @@
     preventZoom();
     
     // Mark env
-    if (/iPad|iPhone|iPod/.test(navigator.userAgent) && !W.MSStream) D.body.classList.add('ios');
+    const ua = navigator.userAgent;
+    if (/iPad|iPhone|iPod/.test(ua) && !W.MSStream) D.body.classList.add('ios', 'mobile-device');
+    else if (/Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua)) D.body.classList.add('android', 'mobile-device');
+    
     if (matchMedia('(display-mode: standalone)').matches) D.body.classList.add('standalone');
 
     if (!(await waitForHowler())) return fail('Ошибка загрузки аудио-движка (Howler).');
