@@ -36,8 +36,10 @@ export async function checkForUpdates() {
 
   // Параллельный и безопасный опрос всех remote config.json
   await Promise.allSettled(albums.map(async (album) => {
-    const base = album.base.endsWith('/') ? album.base : `${album.base}/`;
-    const res = await fetch(`${base}config.json`, { cache: 'no-cache' });
+    const rawBase = album.yandex_base || album.github_base || album.base || '';
+    if (!rawBase) return;
+    const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
+    const res = await fetch(`${base}config.json`, { cache: 'force-cache' });
     if (!res.ok) return;
 
     const { tracks = [] } = await res.json();
