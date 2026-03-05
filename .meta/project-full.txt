@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-0a9c65cc8915245f36612e1ee740fbd4114d6b3a.idx
-│   │       ├── pack-0a9c65cc8915245f36612e1ee740fbd4114d6b3a.pack
-│   │       └── pack-0a9c65cc8915245f36612e1ee740fbd4114d6b3a.rev
+│   │       ├── pack-f68f71e1094c1f94bd4a32a797c9d4110d6106dd.idx
+│   │       ├── pack-f68f71e1094c1f94bd4a32a797c9d4110d6106dd.pack
+│   │       └── pack-f68f71e1094c1f94bd4a32a797c9d4110d6106dd.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-05 00:02:45 UTC
+Сгенерировано: 2026-03-05 00:20:16 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -4451,9 +4451,16 @@ export async function ensurePopulated() {
     const idx = window.albumsIndex || [];
     await Promise.allSettled(idx.filter(a => !a.key.startsWith('__')).map(async a => {
       try {
-        const y_base = a.yandex_base ? (a.yandex_base.endsWith('/') ? a.yandex_base : `${a.yandex_base}/`) : '';
-        const g_base = a.github_base ? (a.github_base.endsWith('/') ? a.github_base : `${a.github_base}/`) : '';
-        
+        // Поддержка старой и новой схемы albums.json
+        const base = a.base ? (a.base.endsWith('/') ? a.base : `${a.base}/`) : '';
+
+        const y_base = a.yandex_base
+          ? (a.yandex_base.endsWith('/') ? a.yandex_base : `${a.yandex_base}/`)
+          : base;
+
+        const g_base = a.github_base
+          ? (a.github_base.endsWith('/') ? a.github_base : `${a.github_base}/`)
+          : base;     
         let pref = localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex';
         const tryFetchConfig = async (src) => {
             const b = src === 'yandex' ? y_base : g_base;
