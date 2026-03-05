@@ -94,20 +94,27 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // Fallback (Network First -> Cache)
+  // Для cross-origin запросов к storage.yandexcloud.net — всегда network first, без кэша SW
+  // (кэширование аудио/медиа файлов управляется OfflineManager, не SW)
+  const isYandexStorage = url.hostname.includes('yandexcloud.net');
+  const isGithubPages = url.hostname.includes('github.io') && url.pathname.includes('/albums/');
+
+  if (isYandexStorage || isGithubPages) {
+    // Не кэшируем в SW — отдаём браузеру напрямую
+    return;
+  }
+
+  // Fallback (Network First -> Cache) только для локальных ресурсов
   e.respondWith(
-      caches.match(req).then(cached => cached || fetch(req).then(r => {
-        // Кэшируем только полные ответы (200 OK), игнорируем частичные (206 Partial Content)
-        if (r.ok && r.status === 200 && url.protocol.startsWith('http')) {
-          try {
-            const cl = r.clone();
-            caches.open(RUNTIME_CACHE).then(cx => cx.put(req, cl));
-          } catch(err) {
-            // Тихий fail
-          }
-        }
-        return r;
-      }).catch(() => cached))
+    caches.match(req).then(cached => cached || fetch(req).then(r => {
+      if (r.ok && r.status === 200 && url.protocol.startsWith('http') && url.hostname === self.location.hostname) {
+        try {
+          const cl = r.clone();
+          caches.open(RUNTIME_CACHE).then(cx => cx.put(req, cl));
+        } catch {}
+      }
+      return r;
+    }).catch(() => cached))
   );
 });
 
