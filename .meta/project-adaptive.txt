@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b42182a1941852baefc6ca194b3547559300f769.idx
-│   │       ├── pack-b42182a1941852baefc6ca194b3547559300f769.pack
-│   │       └── pack-b42182a1941852baefc6ca194b3547559300f769.rev
+│   │       ├── pack-45d3902bb20a8c05c7d4a18b9d167c7c497059ec.idx
+│   │       ├── pack-45d3902bb20a8c05c7d4a18b9d167c7c497059ec.pack
+│   │       └── pack-45d3902bb20a8c05c7d4a18b9d167c7c497059ec.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-05 18:59:57 UTC
+Сгенерировано: 2026-03-05 19:00:57 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -4441,9 +4441,10 @@ const _albumTracks = new Map();
 let _populatedPromise = null;
 
 // Кэш доступности провайдера (не URL, а провайдера целиком)
-const _providerHealth = new Map(); // 'yandex'|'github' → { ok, at }
-const TTL_OK = 300_000;   // 5 мин если ок (снижаем запросы)
-const TTL_FAIL = 30_000;  // 30 сек если fail
+const _providerHealth = new Map();
+// 'yandex'|'github' → { ok, at }
+const TTL_OK = 3600_000;  // 1 час! Экономим запросы, пока источник жив.
+const TTL_FAIL = 30_000;  // 30 сек. Если упал — быстро пробуем снова.
 
 const toUrl = (b, r) => {
   if (!r || !b) return null;
