@@ -100,14 +100,37 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // Для cross-origin запросов к storage.yandexcloud.net — всегда network first, без кэша SW
-  // (кэширование аудио/медиа файлов управляется OfflineManager, не SW)
-  const isYandexStorage = url.hostname.includes('yandexcloud.net');
-  const isGithubPages = url.hostname.includes('github.io') && url.pathname.includes('/albums/');
-
-  if (isYandexStorage || isGithubPages) {
-    // Не кэшируем в SW — отдаём браузеру напрямую
-    return;
+  // Умное кэширование удаленных источников (Снижение расходов на GET/OPTIONS)
+  const isRemoteAsset = url.hostname.includes('yandexcloud.net') || url.hostname.includes('github.io');
+  
+  if (isRemoteAsset) {
+    // 1. Картинки: жесткий Cache-First (Они не меняются)
+    if (/\.(png|jpe?g|webp|avif|gif|svg)$/i.test(url.pathname)) {
+      e.respondWith(
+        caches.match(req).then(cached => {
+          if (cached) return cached;
+          return fetch(req).then(res => {
+            if (res.ok) caches.open(MEDIA_CACHE).then(c => c.put(req, res.clone()));
+            return res;
+          });
+        })
+      );
+      return;
+    }
+    // 2. Конфиги (JSON): Stale-While-Revalidate (Мгновенная отдача + фоновое обновление)
+    if (url.pathname.endsWith('.json')) {
+      e.respondWith(
+        caches.match(req).then(cached => {
+          const fetchPromise = fetch(req).then(res => {
+            if (res.ok) caches.open(RUNTIME_CACHE).then(c => c.put(req, res.clone()));
+            return res;
+          }).catch(() => cached);
+          return cached || fetchPromise;
+        })
+      );
+      return;
+    }
+    return; // Аудио и прочее всё ещё идут мимо SW напрямую в браузер/OfflineManager
   }
 
   // Fallback (Network First -> Cache) только для локальных ресурсов
