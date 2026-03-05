@@ -319,8 +319,8 @@ return `
       
       if (t.closest('#prof-name-edit')) return container.querySelector('#prof-name-inp')?.focus();
       
-      const srcBtn = t.closest('.src-toggle-btn');
-      if (srcBtn) {
+      const srcBtn = t.closest('[data-src]');
+      if (srcBtn && (srcBtn.dataset.src === 'yandex' || srcBtn.dataset.src === 'github')) {
         const newSrc = srcBtn.dataset.src;
         localStorage.setItem('sourcePref', newSrc);
 
