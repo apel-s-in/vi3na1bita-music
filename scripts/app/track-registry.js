@@ -40,29 +40,20 @@ export async function getSmartUrlInfo(uid, prop = 'audio', quality = 'hi') {
 
   // Используем тот источник, который был реально доступен при инициализации (или ручной выбор)
   const pref = localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex';
-  const activeSrc = conf.activeSrc || pref; || (localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex');
-  const pref = localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex';
-  const sources = pref === 'github'
+  const activeSrc = conf.activeSrc || pref;
+
+  const sources = activeSrc === 'github'
     ? ['github','yandex']
     : ['yandex','github'];
   
   for (const src of sources) {
-
     const baseStr = conf.bases[src];
     if (!baseStr) continue;
 
-    try {
-
-      const probe = await fetch(baseStr + 'config.json',{method:'HEAD',cache:'no-store'});
-      if (!probe.ok) continue;
-
-    } catch {
-      continue;
-    }
-    const baseStr = conf.bases[src];
-    if (!baseStr) continue;
     const url = toUrl(baseStr, relPath);
-    if (url) return { url, provider: src };
+    if (url) {
+      return { url, provider: src };
+    }
   }
   
   return null;
