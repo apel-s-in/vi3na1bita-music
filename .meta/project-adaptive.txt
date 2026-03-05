@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-45d3902bb20a8c05c7d4a18b9d167c7c497059ec.idx
-│   │       ├── pack-45d3902bb20a8c05c7d4a18b9d167c7c497059ec.pack
-│   │       └── pack-45d3902bb20a8c05c7d4a18b9d167c7c497059ec.rev
+│   │       ├── pack-0391f4c1ec9632d5aa0ea7d44cb875906766e599.idx
+│   │       ├── pack-0391f4c1ec9632d5aa0ea7d44cb875906766e599.pack
+│   │       └── pack-0391f4c1ec9632d5aa0ea7d44cb875906766e599.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-05 19:00:57 UTC
+Сгенерировано: 2026-03-05 19:03:00 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -3156,18 +3156,13 @@ return `
         const newSrc = srcBtn.dataset.src;
         localStorage.setItem('sourcePref', newSrc);
 
-        // Полный сброс кэша и перезагрузка реестра треков с новым приоритетом
+        // Мягкое переключение: сбрасываем только сессионный кэш путей, аудио в IndexedDB остается.
         if (window.TrackRegistry?.resetSourceCache) {
           window.TrackRegistry.resetSourceCache();
-          // Перезаполняем реестр с новым источником в фоне
-          window.TrackRegistry.ensurePopulated().then(() => {
-            // Если сейчас играет трек — перезагружаем его с нового источника
-            const pc = window.playerCore;
-            if (pc?.isPlaying?.() && pc.currentIndex >= 0) {
-              const pos = pc.getPosition();
-              pc.load(pc.currentIndex, { autoPlay: true, resumePosition: pos });
-            }
-          }).catch(() => {});
+          window.TrackRegistry.ensurePopulated().catch(() => {});
+          // Мы НЕ прерываем текущий играющий трек (pc.load). 
+          // Он доиграет со старого источника, а следующий (или при ручном переключении) 
+          // уже бесшовно пойдет с нового приоритетного URL.
         }
 
   window.NotificationSystem?.success(`Приоритет изменён на ${newSrc === 'yandex' ? 'Yandex Cloud' : 'GitHub'}`);
