@@ -10,9 +10,10 @@ const _albumTracks = new Map();
 let _populatedPromise = null;
 
 // Кэш доступности провайдера (не URL, а провайдера целиком)
-const _providerHealth = new Map(); // 'yandex'|'github' → { ok, at }
-const TTL_OK = 300_000;   // 5 мин если ок (снижаем запросы)
-const TTL_FAIL = 30_000;  // 30 сек если fail
+const _providerHealth = new Map();
+// 'yandex'|'github' → { ok, at }
+const TTL_OK = 3600_000;  // 1 час! Экономим запросы, пока источник жив.
+const TTL_FAIL = 30_000;  // 30 сек. Если упал — быстро пробуем снова.
 
 const toUrl = (b, r) => {
   if (!r || !b) return null;
