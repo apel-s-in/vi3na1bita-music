@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d862989dec9c9ec7ccf4c5b6875d1fd51e1bbc59.idx
-│   │       ├── pack-d862989dec9c9ec7ccf4c5b6875d1fd51e1bbc59.pack
-│   │       └── pack-d862989dec9c9ec7ccf4c5b6875d1fd51e1bbc59.rev
+│   │       ├── pack-56f5928f21bbbda303222ad3166fae955538ca70.idx
+│   │       ├── pack-56f5928f21bbbda303222ad3166fae955538ca70.pack
+│   │       └── pack-56f5928f21bbbda303222ad3166fae955538ca70.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-05 14:37:52 UTC
+Сгенерировано: 2026-03-05 14:40:46 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -1375,10 +1375,16 @@ self.addEventListener('fetch', (e) => {
   // Static core assets (Cache First)
   if (STATIC_SET.has(norm(url.href))) {
     e.respondWith(
-      caches.open(CORE_CACHE).then(c => c.match(req)).then(r => r || fetch(req).then(n => {
-        if(n.ok) caches.open(CORE_CACHE).then(cx => cx.put(req, n.clone()));
+      caches.open(CORE_CACHE).then(async c => {
+        const cached = await c.match(req);
+        if (cached) return cached;
+        const n = await fetch(req);
+        if (n.ok) {
+          const cl = n.clone();
+          caches.open(CORE_CACHE).then(cx => cx.put(req, cl)).catch(() => {});
+        }
         return n;
-      }))
+      })
     );
     return;
   }
@@ -1395,15 +1401,19 @@ self.addEventListener('fetch', (e) => {
 
   // Fallback (Network First -> Cache) только для локальных ресурсов
   e.respondWith(
-    caches.match(req).then(cached => cached || fetch(req).then(r => {
-      if (r.ok && r.status === 200 && url.protocol.startsWith('http') && url.hostname === self.location.hostname) {
-        try {
+    (async () => {
+      try {
+        const r = await fetch(req);
+        if (r.ok && r.status === 200 && url.protocol.startsWith('http') && url.hostname === self.location.hostname) {
           const cl = r.clone();
-          caches.open(RUNTIME_CACHE).then(cx => cx.put(req, cl));
-        } catch {}
+          caches.open(RUNTIME_CACHE).then(cx => cx.put(req, cl)).catch(() => {});
+        }
+        return r;
+      } catch {
+        const cached = await caches.match(req);
+        return cached || new Response(null, { status: 503 });
       }
-      return r;
-    }).catch(() => cached))
+    })()
   );
 });
 
