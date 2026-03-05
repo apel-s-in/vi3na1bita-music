@@ -324,18 +324,13 @@ return `
         const newSrc = srcBtn.dataset.src;
         localStorage.setItem('sourcePref', newSrc);
 
-        // Полный сброс кэша и перезагрузка реестра треков с новым приоритетом
+        // Мягкое переключение: сбрасываем только сессионный кэш путей, аудио в IndexedDB остается.
         if (window.TrackRegistry?.resetSourceCache) {
           window.TrackRegistry.resetSourceCache();
-          // Перезаполняем реестр с новым источником в фоне
-          window.TrackRegistry.ensurePopulated().then(() => {
-            // Если сейчас играет трек — перезагружаем его с нового источника
-            const pc = window.playerCore;
-            if (pc?.isPlaying?.() && pc.currentIndex >= 0) {
-              const pos = pc.getPosition();
-              pc.load(pc.currentIndex, { autoPlay: true, resumePosition: pos });
-            }
-          }).catch(() => {});
+          window.TrackRegistry.ensurePopulated().catch(() => {});
+          // Мы НЕ прерываем текущий играющий трек (pc.load). 
+          // Он доиграет со старого источника, а следующий (или при ручном переключении) 
+          // уже бесшовно пойдет с нового приоритетного URL.
         }
 
   window.NotificationSystem?.success(`Приоритет изменён на ${newSrc === 'yandex' ? 'Yandex Cloud' : 'GitHub'}`);
