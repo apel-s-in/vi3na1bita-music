@@ -145,9 +145,7 @@ import { ensureMediaSession } from './player-core/media-session.js';
       }
 
       this.currentProvider = activeProvider;
-
       const sf = fn => (...a) => tok === this._tok && fn(...a);
-
       if (!url) {
         if (this._skips >= this.playlist.length) { W.NotificationSystem?.show?.('Нет доступных треков', 'error'); return this._emit('onPlaybackError', { reason: 'no_source' }); }
         return setTimeout(sf(() => { this._skips++; this.load((idx + dir + this.playlist.length) % this.playlist.length, { ...opts, autoPlay: true, isAutoSkip: true, dir }); }), 80);
@@ -157,7 +155,12 @@ import { ensureMediaSession } from './player-core/media-session.js';
       this._unload(true);
 
       this.sound = new Howl({
-        src: [url], html5: r?.source === 'stream' || !r?.blob, volume: this.getVolume() / 100, format: ['mp3'], autoplay: opts.autoPlay ?? this.isPlaying(),
+        src: [url], 
+        html5: r?.source === 'stream' || !r?.blob, 
+        volume: this.getVolume() / 100, 
+        format: ['mp3'], 
+        xhr: { withCredentials: false },
+        autoplay: opts.autoPlay ?? this.isPlaying(),
         onload: sf(() => { pos && this.seek(pos); this._updMedia(); }),
         onplay: sf(() => { this._startT(); this._emit('onPlay', t, idx); this._updMedia(); emitG('player:play', { uid, duration: this.getDuration(), type: 'audio', provider: this.currentProvider }); emitG('player:providerChanged', { provider: this.currentProvider }); }),
         onpause: sf(() => { this._stopT(); this._emit('onPause'); this._updMedia(); emitG('player:pause'); }),
