@@ -196,6 +196,8 @@
         'shuffle-btn': () => { c.toggleShuffle(); syncUI(); },
         'repeat-btn': () => { c.toggleRepeat(); syncUI(); },
         'mute-btn': () => { c.setMuted(!c.isMuted()); syncUI(); },
+        'sleep-timer-btn': () => W.SleepTimer?.show?.(),
+       
         'pq-btn': onPQClick,
         'lyrics-toggle-btn': () => { W.LyricsController?.toggleLyricsView?.(); W.eventLogger?.log('FEATURE_USED', c.getCurrentTrackUid(), { feature: 'lyrics' }); },
         'animation-btn': () => W.LyricsController?.toggleAnimation?.(),
