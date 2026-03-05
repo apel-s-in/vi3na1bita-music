@@ -39,10 +39,11 @@
 
     if (e.srcInd) {
         e.srcInd.className = 'source-indicator';
+        e.srcInd.style.opacity = '';
         if (st.provider === 'yandex') { e.srcInd.classList.add('si-yandex'); e.srcInd.title = 'Источник: Yandex Cloud'; }
         else if (st.provider === 'github') { e.srcInd.classList.add('si-github'); e.srcInd.title = 'Источник: GitHub Pages'; }
         else if (st.provider === 'cache') { e.srcInd.classList.add('si-cache'); e.srcInd.title = 'Источник: Офлайн Кэш'; }
-        else { e.srcInd.style.opacity = '0'; }
+        else { e.srcInd.style.opacity = '0.3'; e.srcInd.title = 'Определение источника...'; }
     }
 
     // Mini Header sync
