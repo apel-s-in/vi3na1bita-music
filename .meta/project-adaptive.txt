@@ -164,9 +164,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-0bf244131c7d25bbf0b6c525b574f4146455df95.idx
-│   │       ├── pack-0bf244131c7d25bbf0b6c525b574f4146455df95.pack
-│   │       └── pack-0bf244131c7d25bbf0b6c525b574f4146455df95.rev
+│   │       ├── pack-6c614c744ea6235473b42299af1320a48c9903ea.idx
+│   │       ├── pack-6c614c744ea6235473b42299af1320a48c9903ea.pack
+│   │       └── pack-6c614c744ea6235473b42299af1320a48c9903ea.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -378,7 +378,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-06 14:57:39 UTC
+Сгенерировано: 2026-03-06 15:06:52 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2541,10 +2541,10 @@ export async function loadNewsAlbum(ctx) {
   const social = document.getElementById('social-links');
   if (social) {
     social.innerHTML = `
-      <a href="https://music.yandex.ru/artist/24739002?utm_source=web&utm_medium=copy_link" target="_blank" rel="noopener noreferrer">YouTube</a>
+      <a href="https://www.youtube.com/channel/UCbjm1J0V8RkWvNj4Z8-JIhA/" target="_blank" rel="noopener noreferrer">YouTube</a>
       <a href="https://t.me/vitrina_razbita" target="_blank" rel="noopener noreferrer">Telegram</a>
-      <a href="https://vk.com/public165137" target="_blank" rel="noopener noreferrer">VK</a>
-      <a href="https://www.tiktok.com/" target="_blank" rel="noopener noreferrer">TikTok</a>
+      <a href="https://vk.com/apelsinov" target="_blank" rel="noopener noreferrer">VK</a>
+      <a href="https://www.tiktok.com/@vi3na1bita" target="_blank" rel="noopener noreferrer">TikTok</a>
     `;
   }
 
