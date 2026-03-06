@@ -164,9 +164,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-01aaed9bfcb216fe03c84d62c8e212c68c82950f.idx
-│   │       ├── pack-01aaed9bfcb216fe03c84d62c8e212c68c82950f.pack
-│   │       └── pack-01aaed9bfcb216fe03c84d62c8e212c68c82950f.rev
+│   │       ├── pack-459b0be250afde43cb98d612e4980231d6808766.idx
+│   │       ├── pack-459b0be250afde43cb98d612e4980231d6808766.pack
+│   │       └── pack-459b0be250afde43cb98d612e4980231d6808766.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -372,13 +372,12 @@ vi3na1bita-music/
 ├── .gitignore
 ├── ai-rules.txt
 ├── albums.json
-├── custom.json
 ├── generate-context.js
 ├── index.html
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-06 15:28:15 UTC
+Сгенерировано: 2026-03-06 15:28:47 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7053,10 +7052,6 @@ window.StatisticsModal = {
   document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', () => W.ServiceWorkerManager.init()) : W.ServiceWorkerManager.init();
 
 })(window, navigator);
-
-//=================================================
-// FILE: /custom.json
-{"rumEndpoint":"","sw":{"mediaMaxCacheMB":150,"nonRangeMaxStoreMB":25,"nonRangeMaxStoreMBSlow":10,"allowUnknownSize":false,"revalidateDays":7},"items":[{"type":"ym","title":"Исполнитель — Витрина Разбита","subtitle":"Яндекс Музыка","url":"https://music.yandex.ru/artist/24739002?utm_source=web&utm_medium=copy_link","cover":""},{"type":"tgPost","title":"Свежий пост в Telegram","url":"https://t.me/vitrina_razbita/28","height":480},{"type":"vkPlaylist","title":"Альбом «Голос Души» (VK)","ownerId":165137,"playlistId":3,"hash":"b8300406c5f33725de","containerId":"vk_playlist_165137_3"},{"type":"vkPlaylist","title":"Альбом «Между Злом и Добром» (VK)","ownerId":165137,"playlistId":2,"hash":"d70fba309dc0bea296","containerId":"vk_playlist_165137_2"}]}
 
 //=================================================
 // FILE: /data/custom_achievements.json
