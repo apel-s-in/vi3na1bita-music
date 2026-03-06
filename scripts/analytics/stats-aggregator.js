@@ -5,6 +5,7 @@ export class StatsAggregator {
     this.lastFullListens = new Map(); // Anti-tamper & Rate Limiting (in-memory)
     this.session = {
       favOrderedRun: 0,
+      favOrderedLastUid: null,
       favShuffleEvents: new Set(),
       midnightTripleTrack: null,
       midnightTripleCount: 0
@@ -86,11 +87,21 @@ export class StatsAggregator {
 
               if (isShuffle) stat.featuresUsed.shufflePlay = (stat.featuresUsed.shufflePlay || 0) + 1;
 
-              if (isFavOnly && !isShuffle && isFavNow) this.session.favOrderedRun++;
-              else this.session.favOrderedRun = 0;
+              if (isFavOnly && !isShuffle && isFavNow) {
+                if (this.session.favOrderedLastUid !== ev.uid) {
+                  this.session.favOrderedRun++;
+                  this.session.favOrderedLastUid = ev.uid;
+                }
+              } else {
+                this.session.favOrderedRun = 0;
+                this.session.favOrderedLastUid = null;
+              }
 
-              if (isFavOnly && isShuffle && isFavNow) this.session.favShuffleEvents.add(ev.uid);
-              else this.session.favShuffleEvents.clear();
+              if (isFavOnly && isShuffle && isFavNow) {
+                this.session.favShuffleEvents.add(ev.uid);
+              } else {
+                this.session.favShuffleEvents.clear();
+              }
 
               // Полночный цикл (00:00 - 00:30)
               const timeStr = new Date(ev.timestamp).toTimeString().slice(0, 8);
