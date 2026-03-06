@@ -164,9 +164,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a76efd2b0e01bed53da3fdf94347919b35935a35.idx
-│   │       ├── pack-a76efd2b0e01bed53da3fdf94347919b35935a35.pack
-│   │       └── pack-a76efd2b0e01bed53da3fdf94347919b35935a35.rev
+│   │       ├── pack-d84c4c4020c2e1e84472b16be6aa69f842cd9e2b.idx
+│   │       ├── pack-d84c4c4020c2e1e84472b16be6aa69f842cd9e2b.pack
+│   │       └── pack-d84c4c4020c2e1e84472b16be6aa69f842cd9e2b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -378,7 +378,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-06 14:12:10 UTC
+Сгенерировано: 2026-03-06 14:21:31 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2408,6 +2408,7 @@ class AlbumsManager {
 
       this.curr = key; 
       localStorage.setItem('currentAlbum', key);
+      D.body.classList.toggle('news-view', key === NEWS);
       D.querySelectorAll('.album-icon').forEach(el => el.classList.toggle('active', el.dataset.album === key));
       $('track-list')?.classList.remove('filtered'); 
       W.PlayerUI?.switchAlbumInstantly?.(key);
