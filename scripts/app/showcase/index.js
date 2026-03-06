@@ -66,9 +66,15 @@ class ShowcaseManager {
       const tr = uids.map(u => W.TrackRegistry.getTrackByUid(u)).filter(Boolean);
       if (this.sortMode.startsWith('plays') || this.sortMode === 'last-played') {
         const db = (await import('../../analytics/meta-db.js')).metaDB;
-        const full = (await db.getStat('globalFullListens'))?.details || {};
-        const last = (await db.getStat('lastPlayed'))?.details || {};
-        tr.forEach(t => this._stat.set(t.uid, { plays: full[t.uid] || 0, lastAt: last[t.uid] || 0 }));
+        const stats = await db.getAllStats();
+        const map = new Map(stats.filter(s => s.uid !== 'global').map(s => [s.uid, s]));
+        tr.forEach(t => {
+          const st = map.get(t.uid);
+          this._stat.set(t.uid, {
+            plays: st?.globalFullListenCount || 0,
+            lastAt: st?.lastPlayedAt || 0
+          });
+        });
       }
       const S = this._stat;
       const sorters = {
