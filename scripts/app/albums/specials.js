@@ -75,6 +75,17 @@ export async function loadNewsAlbum(ctx) {
   ctx.renderAlbumTitle('📰 НОВОСТИ 📰', 'news');
   document.getElementById('cover-wrap').style.display = 'none';
   if (window.GalleryManager?.clear) window.GalleryManager.clear();
+
+  const social = document.getElementById('social-links');
+  if (social) {
+    social.innerHTML = `
+      <a href="https://music.yandex.ru/artist/24739002?utm_source=web&utm_medium=copy_link" target="_blank" rel="noopener noreferrer">YouTube</a>
+      <a href="https://t.me/vitrina_razbita" target="_blank" rel="noopener noreferrer">Telegram</a>
+      <a href="https://vk.com/public165137" target="_blank" rel="noopener noreferrer">VK</a>
+      <a href="https://www.tiktok.com/" target="_blank" rel="noopener noreferrer">TikTok</a>
+    `;
+  }
+
   const c = document.getElementById('track-list');
   if (c) await loadAndRenderNewsInline(c);
 }
