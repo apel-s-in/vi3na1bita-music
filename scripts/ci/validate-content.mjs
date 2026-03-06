@@ -82,31 +82,9 @@ required.forEach(id => {
   }
 });
 
-// 3) custom.json sw конфиг: revalidateDays целое число
-const customFile = path.resolve('custom.json');
-if (fs.existsSync(customFile)) {
-  try {
-    const raw = fs.readFileSync(customFile, 'utf8');
-    const j = JSON.parse(raw);
-    if (j && j.sw) {
-      const d = j.sw.revalidateDays;
-      if (!(Number.isInteger(d) && d > 0)) {
-        fail('custom.json.sw.revalidateDays must be positive integer');
-      }
-      ['mediaMaxCacheMB','nonRangeMaxStoreMB','nonRangeMaxStoreMBSlow'].forEach(key => {
-        const v = j.sw[key];
-        if (!(typeof v === 'number' && v > 0)) fail(`custom.json.sw.${key} must be positive number`);
-      });
-      if (typeof j.sw.allowUnknownSize !== 'boolean') {
-        fail('custom.json.sw.allowUnknownSize must be boolean');
-      }
-    }
-  } catch (e) {
-    fail('custom.json invalid JSON: ' + e.message);
-  }
-}
-// 4) Опционально: проверить уникальность uid в удалённых config.json (НЕ фейлим билд из-за сети)
+// 3) Опционально: проверить уникальность uid в удалённых config.json (НЕ фейлим билд из-за сети)
 {
+
   // Node 20: fetch доступен. Если вдруг его нет — просто предупреждаем.
   const hasFetch = typeof fetch === 'function';
   if (!hasFetch) {
