@@ -79,10 +79,10 @@ export async function loadNewsAlbum(ctx) {
   const social = document.getElementById('social-links');
   if (social) {
     social.innerHTML = `
-      <a href="https://music.yandex.ru/artist/24739002?utm_source=web&utm_medium=copy_link" target="_blank" rel="noopener noreferrer">YouTube</a>
+      <a href="https://www.youtube.com/channel/UCbjm1J0V8RkWvNj4Z8-JIhA/" target="_blank" rel="noopener noreferrer">YouTube</a>
       <a href="https://t.me/vitrina_razbita" target="_blank" rel="noopener noreferrer">Telegram</a>
-      <a href="https://vk.com/public165137" target="_blank" rel="noopener noreferrer">VK</a>
-      <a href="https://www.tiktok.com/" target="_blank" rel="noopener noreferrer">TikTok</a>
+      <a href="https://vk.com/apelsinov" target="_blank" rel="noopener noreferrer">VK</a>
+      <a href="https://www.tiktok.com/@vi3na1bita" target="_blank" rel="noopener noreferrer">TikTok</a>
     `;
   }
 
