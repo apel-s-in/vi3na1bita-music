@@ -45,7 +45,7 @@ const norm = (u) => {
     return p.href; 
   } catch { return String(u); } 
 };
-const STATIC_SET = new Set(STATIC_ASSETS.map(norm));
+const STATIC_SET = new Set([...new Set(STATIC_ASSETS)].map(norm));
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
