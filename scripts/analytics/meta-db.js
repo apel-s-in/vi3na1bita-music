@@ -109,6 +109,25 @@ export class MetaDB {
       tx.onerror = () => reject(tx.error);
     });
   }
+
+  async tx(storeName, mode, handler) {
+    await this.init();
+    return new Promise((resolve, reject) => {
+      const tx = this.db.transaction(storeName, mode);
+      const store = tx.objectStore(storeName);
+
+      try {
+        handler(store, tx);
+      } catch (error) {
+        reject(error);
+        return;
+      }
+
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error || new Error(`Transaction aborted: ${storeName}`));
+    });
+  }
 }
 
 export const metaDB = new MetaDB();
