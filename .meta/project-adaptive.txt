@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-0a517d90e0c178767e3eb092e0520cb5f8dc90d5.idx
-│   │       ├── pack-0a517d90e0c178767e3eb092e0520cb5f8dc90d5.pack
-│   │       └── pack-0a517d90e0c178767e3eb092e0520cb5f8dc90d5.rev
+│   │       ├── pack-5b2090407fdaceee1fb138ed8049d7e9a083b2f2.idx
+│   │       ├── pack-5b2090407fdaceee1fb138ed8049d7e9a083b2f2.pack
+│   │       └── pack-5b2090407fdaceee1fb138ed8049d7e9a083b2f2.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-06 12:02:59 UTC
+Сгенерировано: 2026-03-06 12:03:36 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -422,40 +422,22 @@ jobs:
 //=================================================
 // FILE: /.github/workflows/e2e.yml
 name: E2E smoke
-
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   pull_request:
-
 jobs:
   e2e:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install Playwright
-        run: npx -y playwright@1.48.2 install --with-deps
-
-      - name: Start static server
-        run: |
-          npx -y http-server -p 4173 -c-1 . &
-          echo $! > server.pid
-          sleep 2
-
-      - name: Run smoke tests
-        env:
-          BASE_URL: http://127.0.0.1:4173
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npx -y playwright@1.48.2 install --with-deps
+      - run: npx -y http-server -p 4173 -c-1 . & echo $! > server.pid && sleep 2
+      - env: { BASE_URL: 'http://127.0.0.1:4173' }
         run: npx -y @playwright/test@1.48.2 scripts/e2e
-
-      - name: Stop server
-        if: always()
+      - if: always()
         run: kill $(cat server.pid) || true
 
 //=================================================
