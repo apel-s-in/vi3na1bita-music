@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-af4aa2e2755955f062c63ff30f88a8fb67707955.idx
-│   │       ├── pack-af4aa2e2755955f062c63ff30f88a8fb67707955.pack
-│   │       └── pack-af4aa2e2755955f062c63ff30f88a8fb67707955.rev
+│   │       ├── pack-0a517d90e0c178767e3eb092e0520cb5f8dc90d5.idx
+│   │       ├── pack-0a517d90e0c178767e3eb092e0520cb5f8dc90d5.pack
+│   │       └── pack-0a517d90e0c178767e3eb092e0520cb5f8dc90d5.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,64 +392,32 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-06 11:51:07 UTC
+Сгенерировано: 2026-03-06 12:02:59 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
-
 on:
   push:
-    branches:
-      - main  # ВАЖНО: посмотри в левом меню GitHub, как называется твоя ветка (main или master). Если master - поменяй здесь слово main на master.
-
+    branches: [main, master]
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Configure CORS on Yandex S3 bucket
-        env:
+      - uses: actions/checkout@v4
+      - env:
           AWS_ACCESS_KEY_ID: ${{ secrets.YC_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.YC_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: 'ru-central1'
         run: |
           cat > /tmp/cors.json << 'EOF'
-          {
-            "CORSRules": [
-              {
-                "AllowedOrigins": [
-                  "https://vi3na1bita.website.yandexcloud.net",
-                  "https://apel-s-in.github.io",
-                  "http://localhost:*",
-                  "http://127.0.0.1:*"
-                ],
-                "AllowedMethods": ["GET", "HEAD"],
-                "AllowedHeaders": ["*"],
-                "MaxAgeSeconds": 86400
-              }
-            ]
-          }
+          {"CORSRules":[{"AllowedOrigins":["https://vi3na1bita.website.yandexcloud.net","https://apel-s-in.github.io","http://localhost:*","http://127.0.0.1:*"],"AllowedMethods":["GET","HEAD"],"AllowedHeaders":["*"],"MaxAgeSeconds":86400}]}
           EOF
-          aws --endpoint-url=https://storage.yandexcloud.net \
-            s3api put-bucket-cors \
-            --bucket vi3na1bita \
-            --cors-configuration file:///tmp/cors.json
-
-      - name: Sync Code to Yandex S3
-        env:
+          aws --endpoint-url=https://storage.yandexcloud.net s3api put-bucket-cors --bucket vi3na1bita --cors-configuration file:///tmp/cors.json
+      - env:
           AWS_ACCESS_KEY_ID: ${{ secrets.YC_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.YC_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: 'ru-central1'
-        run: |
-          aws --endpoint-url=https://storage.yandexcloud.net \
-          s3 sync ./ s3://vi3na1bita/ \
-          --delete \
-          --exclude ".git/*" \
-          --exclude ".github/*" \
-          --exclude "albums/*" \
-          --include "albums/gallery/*"
+        run: aws --endpoint-url=https://storage.yandexcloud.net s3 sync ./ s3://vi3na1bita/ --delete --exclude ".git/*" --exclude ".github/*" --exclude "albums/*" --include "albums/gallery/*"
 
 //=================================================
 // FILE: /.github/workflows/e2e.yml
