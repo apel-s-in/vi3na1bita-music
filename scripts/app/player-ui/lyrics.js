@@ -8,7 +8,7 @@
   const sess = (k, v) => v === undefined ? JSON.parse(sessionStorage.getItem(k) || 'null') : sessionStorage.setItem(k, JSON.stringify(v));
   const esc = s => U?.escapeHtml?.(String(s||'')) || String(s||'');
 
-  let st = { list: [], has: false, mode: 'normal', anim: false, lIdx: -100 }, dom = {};
+  let st = { list: [], has: false, mode: 'normal', anim: false, lIdx: -100, mini: false }, dom = {};
 
   const initDom = () => {
     if (dom.blk) return true;
@@ -58,15 +58,41 @@
 
   const updateUI = () => {
     if (!initDom() || !dom.win) return;
-    const ok = st.has && st.mode !== 'hidden', { win, btnT, btnA, bg, btnK, lyr } = dom;
-    
+    const ok = st.has && st.mode !== 'hidden';
+    const { win, btnT, btnA, bg, btnK, lyr } = dom;
+
+    if (st.mini) {
+      win.style.display = 'none';
+      win.className = `lyrics-${st.mode}`;
+      if (btnT) btnT.style.display = 'none';
+      if (btnA) {
+        btnA.classList.toggle('active', false);
+        btnA.classList.toggle('disabled', !st.has);
+      }
+      if (bg) bg.classList.remove('active');
+      if (btnK) {
+        const can = !!W.playerCore?.getCurrentTrack?.()?.fulltext || !!st.has;
+        btnK.classList.toggle('disabled', !can);
+        Object.assign(btnK.style, { pointerEvents: can ? '' : 'none', opacity: can ? '' : '0.4' });
+      }
+      if (!st.has && lyr) lyr.innerHTML = '<div class="lyrics-placeholder">Текст не найден</div>';
+      return;
+    }
+
     win.style.display = st.has ? '' : 'none';
     win.className = `lyrics-${st.mode}`;
-    
-    if (btnT) { btnT.className = `lyrics-toggle-btn lyrics-${st.mode} ${st.has ? '' : 'disabled'}`; U?.setAriaDisabled?.(btnT, !st.has); }
-    if (btnA) { btnA.classList.toggle('active', st.anim && ok); btnA.classList.toggle('disabled', !st.has); }
+
+    if (btnT) {
+      btnT.style.display = '';
+      btnT.className = `lyrics-toggle-btn lyrics-${st.mode} ${st.has ? '' : 'disabled'}`;
+      U?.setAriaDisabled?.(btnT, !st.has);
+    }
+    if (btnA) {
+      btnA.classList.toggle('active', st.anim && ok);
+      btnA.classList.toggle('disabled', !st.has);
+    }
     if (bg) bg.classList.toggle('active', st.anim && ok);
-    
+
     if (btnK) {
       const can = ok || !!W.playerCore?.getCurrentTrack?.()?.fulltext;
       btnK.classList.toggle('disabled', !can);
@@ -134,16 +160,23 @@
     },
     getMiniSaveState: () => ({ viewMode: st.mode === 'hidden' ? 'normal' : st.mode, animationEnabled: st.anim }),
     applyMiniMode: () => {
+      st.mini = true;
       if (!initDom() || !dom.win) return;
       Object.assign(dom.win.style, { transition: 'none', display: 'none' });
       if (dom.btnT) dom.btnT.style.display = 'none';
       if (dom.bg) dom.bg.classList.remove('active');
+      updateUI();
     },
     restoreFromMiniMode: (sv) => {
+      st.mini = false;
       if (!initDom() || !dom.win) return;
-      dom.win.style.display = ''; setTimeout(() => dom.win.style.transition = '', 50);
+      dom.win.style.display = '';
+      setTimeout(() => dom.win.style.transition = '', 50);
       if (dom.btnT) dom.btnT.style.display = '';
-      if (sv) { st.mode = sv.viewMode || 'normal'; st.anim = !!sv.animationEnabled; }
+      if (sv) {
+        st.mode = sv.viewMode || 'normal';
+        st.anim = !!sv.animationEnabled;
+      }
       updateUI();
     },
     checkTrackHasLyrics: () => st.has
