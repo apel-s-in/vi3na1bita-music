@@ -164,9 +164,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-69ad9cee32c734dcb6ac1b34cfa3a9ddde26a21c.idx
-│   │       ├── pack-69ad9cee32c734dcb6ac1b34cfa3a9ddde26a21c.pack
-│   │       └── pack-69ad9cee32c734dcb6ac1b34cfa3a9ddde26a21c.rev
+│   │       ├── pack-3590e0af313c9d37b9fbad8d77e7beb39a886dae.idx
+│   │       ├── pack-3590e0af313c9d37b9fbad8d77e7beb39a886dae.pack
+│   │       └── pack-3590e0af313c9d37b9fbad8d77e7beb39a886dae.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,7 +377,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-06 21:19:37 UTC
+Сгенерировано: 2026-03-06 21:20:06 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1219,6 +1219,7 @@ export class AchievementEngine {
       play11_11: globalStat.play_11_11 || 0, weekendPlays: globalStat.weekend_play || 0,
       backups: globalStat.backup || 0, pwaInstalled: globalStat.pwa_installed || 0,
       sleepTimerTriggers: globalStat.sleep_timer || 0, socialVisits: globalStat.social_visit || 0,
+      socialVisitAll: globalStat.social_visit_all || 0,
       favOrderedCombo: globalStat.fav_ordered_5 || 0, favShuffleCombo: globalStat.fav_shuffle_5 || 0,
       midnightTriple: globalStat.midnight_triple || 0,
       speedRunnerCombo: globalStat.speed_runner || 0
