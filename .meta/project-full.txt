@@ -164,9 +164,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c64647a5afbf5c30821618a84cef67b730f43aed.idx
-│   │       ├── pack-c64647a5afbf5c30821618a84cef67b730f43aed.pack
-│   │       └── pack-c64647a5afbf5c30821618a84cef67b730f43aed.rev
+│   │       ├── pack-0bf244131c7d25bbf0b6c525b574f4146455df95.idx
+│   │       ├── pack-0bf244131c7d25bbf0b6c525b574f4146455df95.pack
+│   │       └── pack-0bf244131c7d25bbf0b6c525b574f4146455df95.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -378,7 +378,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-06 14:54:14 UTC
+Сгенерировано: 2026-03-06 14:57:39 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7501,7 +7501,7 @@ try {
       "title": "Клип КРЕВЕツTOCHKA на трек «Упала Слеза»",
       "date": "2025-08-02",
       "youtubeUrl": "https://www.youtube.com/watch?v=0rJMP2jwegk",
-      "youtubeThumb": "https://i.ytimg.com/vi/0rJMP2jwegk/hqdefault.jpg",
+      "youtubeThumb": "albums/gallery/00/00-cover-02.webp",
       "tags": ["клип", "видео"]
     },
     {
@@ -7509,7 +7509,7 @@ try {
       "title": "Клип КРЕВЕツTOCHKA на трек «Принц»",
       "date": "2025-07-21",
       "youtubeUrl": "https://www.youtube.com/watch?v=jfYplnj6DbA",
-      "youtubeThumb": "https://i.ytimg.com/vi/jfYplnj6DbA/hqdefault.jpg",
+      "youtubeThumb": "albums/gallery/00/00-cover-01.webp",
       "tags": ["клип", "видео"]
     },
     {
