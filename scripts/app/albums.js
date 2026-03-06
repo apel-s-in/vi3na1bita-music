@@ -183,6 +183,7 @@ class AlbumsManager {
 
       this.curr = key; 
       localStorage.setItem('currentAlbum', key);
+      D.body.classList.toggle('news-view', key === NEWS);
       D.querySelectorAll('.album-icon').forEach(el => el.classList.toggle('active', el.dataset.album === key));
       $('track-list')?.classList.remove('filtered'); 
       W.PlayerUI?.switchAlbumInstantly?.(key);
