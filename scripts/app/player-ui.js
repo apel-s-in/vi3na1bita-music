@@ -173,7 +173,15 @@
     }
     syncUI();
   };
-
+  // Жёстко блокируем открытие окна лирики, если активен мини-режим
+  new MutationObserver(() => {
+    const m = document.querySelector('.mini-now'), l = document.getElementById('lyrics-wrapper');
+    if (m?.offsetHeight && l && !l.classList.contains('hidden')) {
+      l.classList.add('hidden');
+      l.style.display = 'none';
+    }
+  }).observe(document.body, { attributes: true, childList: true, subtree: true });
+  
   const init = () => {
     if (!W.playerCore || !W.albumsIndex || !U) return setTimeout(init, 100);
     const c = PC();
