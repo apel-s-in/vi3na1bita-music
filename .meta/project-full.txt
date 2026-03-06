@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-233aeb83e7d6b594d96705e546e2713d0e4435e3.idx
-│   │       ├── pack-233aeb83e7d6b594d96705e546e2713d0e4435e3.pack
-│   │       └── pack-233aeb83e7d6b594d96705e546e2713d0e4435e3.rev
+│   │       ├── pack-e043e02bc3f0311d4c7fe870e7e008a6c500fe2f.idx
+│   │       ├── pack-e043e02bc3f0311d4c7fe870e7e008a6c500fe2f.pack
+│   │       └── pack-e043e02bc3f0311d4c7fe870e7e008a6c500fe2f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-06 11:13:08 UTC
+Сгенерировано: 2026-03-06 11:39:58 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -8966,118 +8966,56 @@ body{min-height:100vh;min-width:100vw;font-family:-apple-system,BlinkMacSystemFo
 .offline-ind--cloud-loading{opacity:.4;color:#888;animation:offline-ind-blink 1s ease-in-out infinite}
 @keyframes offline-ind-blink{50%{opacity:.4}}
 
-/* =========================================
-   РЕДИЗАЙН МИНИ-ПЛЕЕРА (PROTO v2.1 - ИСПРАВЛЕНИЯ)
-   ========================================= */
+/* ==== РЕДИЗАЙН МИНИ-ПЛЕЕРА (PROTO v2.2 - ФИНАЛ) ==== */
 
-/* 1. Делаем саму обертку единым литым блоком и добавляем ВОЗДУХ вокруг */
 #now-playing {
   background: #11141a !important;
   border-radius: 16px !important;
   padding: 0 !important;
   border: none !important;
-  border-bottom: 2px solid rgba(77, 170, 255, 0.3) !important; /* Узенькая синяя полосочка переехала сюда */
+  border-bottom: 2px solid rgba(77, 170, 255, 0.3) !important;
   box-shadow: 0 12px 32px rgba(0,0,0,0.6) !important;
-  
-  /* Отступы (воздух) вокруг плеера, чтобы не прилипал к краям и спискам */
   margin: 0 16px 24px 16px !important; 
-  width: auto !important; /* Позволяет margin корректно сжимать блок слева/справа на десктопе */
+  width: auto !important;
   bottom: calc(var(--nav-height, 60px) + env(safe-area-inset-bottom)) !important;
+  overflow: hidden !important; /* ФИКС: Жестко обрезает прямые углы прогресс-бара по краям! */
 }
 
-/* 2. Верхняя часть (название и прогресс) сливается с фоном */
 .mini-now {
   position: relative;
   display: flex;
   align-items: center;
-  height: 48px;
+  height: 32px; /* ФИКС: Сделали строку на треть уже (было 48px) */
   padding: 0 14px;
-  border-radius: 0 !important;
-  background: transparent !important; /* Прозрачный, фон берется от #now-playing */
+  border-radius: 16px 16px 0 0 !important;
+  background: transparent !important;
   margin: 0 !important; 
   box-shadow: none !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.03);
   cursor: pointer;
-  overflow: hidden;
+  overflow: hidden !important; 
   transition: none !important;
 }
 
-/* Слой заливки прогресса под текстом */
 .mini-progress-fill {
   position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
+  inset: 0 auto 0 0; /* Современный эквивалент top/left/bottom: 0 */
   width: 0%;
-  background: rgba(77, 170, 255, 0.12); /* Плавная синяя заливка */
+  background: rgba(77, 170, 255, 0.12);
   border-right: 1px solid rgba(77, 170, 255, 0.3);
   pointer-events: none;
   transition: width 0.1s linear;
   z-index: 1;
 }
 
-/* Контейнер чередующегося текста */
-.mini-text-switcher {
-  position: relative;
-  flex: 1;
-  height: 100%;
-  min-width: 0;
-  z-index: 2;
-  pointer-events: none;
-}
+.mini-text-switcher { position: relative; flex: 1; height: 100%; min-width: 0; z-index: 2; pointer-events: none; }
+.mini-track-title, .mini-track-hint { position: absolute; inset: 0; display: flex; align-items: center; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 0; }
+.mini-track-title { color: #eaf2ff; animation: swapTextMain 6s infinite; }
+.mini-track-hint { color: #9db7dd; font-size: 12px; animation: swapTextHint 6s infinite; }
+@keyframes swapTextMain { 0%, 40% { opacity: 1; } 45%, 95% { opacity: 0; } 100% { opacity: 1; } }
+@keyframes swapTextHint { 0%, 40% { opacity: 0; } 45%, 95% { opacity: 1; } 100% { opacity: 0; } }
+.mini-now .like-star { z-index: 2; margin-left: 10px; }
 
-/* Общие стили для переключаемого текста */
-.mini-track-title, .mini-track-hint {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  font-size: 14px;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  opacity: 0;
-}
-
-/* CSS-Анимации (цикл 6 секунд: 3 сек на каждое состояние) */
-.mini-track-title {
-  color: #eaf2ff;
-  animation: swapTextMain 6s infinite;
-}
-.mini-track-hint {
-  color: #9db7dd;
-  font-size: 12px;
-  animation: swapTextHint 6s infinite;
-}
-
-@keyframes swapTextMain {
-  0%, 40% { opacity: 1; }
-  45%, 95% { opacity: 0; }
-  100% { opacity: 1; }
-}
-@keyframes swapTextHint {
-  0%, 40% { opacity: 0; }
-  45%, 95% { opacity: 1; }
-  100% { opacity: 0; }
-}
-
-.mini-now .like-star {
-  z-index: 2;
-  margin-left: 10px;
-}
-
-/* 3. БАГФИКС И СКРЫТИЕ ЛИШНЕГО: скрываем окно лирики и старые ползунки */
-#now-playing #lyrics-wrapper, /* БАГФИКС: Окно лирики больше не открывается в мини-режиме */
-#now-playing #lyricsplayerblock .player-progress-wrapper,
-#now-playing #lyricsplayerblock .player-controls-row:nth-child(2),
-#now-playing #lyricsplayerblock .volume-control-wrapper,
-#now-playing #lyricsplayerblock .player-buttons-wrapper,
-#now-playing #next-up {
-  display: none !important;
-}
-
-/* 4. Нижняя часть (кнопки плеера) сливается с фоном */
 #now-playing #lyricsplayerblock {
   border-radius: 0 !important;
   background: transparent !important;
@@ -9086,10 +9024,19 @@ body{min-height:100vh;min-width:100vw;font-family:-apple-system,BlinkMacSystemFo
   margin: 0 !important;
 }
 
-/* Балансируем отступы (воздух) снизу и сверху от кнопок Плей/Пауза */
 #now-playing #lyricsplayerblock .player-controls {
   background: transparent !important;
-  padding: 8px 18px 8px !important; /* Уменьшен нижний отступ до 8px для идеальной симметрии */
+  padding: 4px 18px !important; /* ФИКС: Убрали нижний воздух, сжали до симметрии сверху и снизу */
+}
+
+/* Скрываем всё лишнее */
+#now-playing #lyrics-wrapper,
+#now-playing #lyricsplayerblock .player-progress-wrapper,
+#now-playing #lyricsplayerblock .player-controls-row:nth-child(2),
+#now-playing #lyricsplayerblock .volume-control-wrapper,
+#now-playing #lyricsplayerblock .player-buttons-wrapper,
+#now-playing #next-up {
+  display: none !important;
 }
 .next-up{display:none;margin:8px 4px 0;font-size:.98em;align-items:center;gap:8px;padding:6px 10px;background:rgba(255,255,255,.03);border-radius:8px;transition:none!important}
 .next-up .label{color:var(--c-blue);opacity:.9;font-size:13px}
