@@ -25,15 +25,6 @@ export class SessionTracker {
       duration: duration || 0, accumulatedMs: 0, lastPos: 0, lastUpdate: Date.now() 
     };
     
-    // Скрытые временные события для Rule Engine
-    const d = new Date();
-    if (d.getHours() === 11 && d.getMinutes() === 11) {
-      eventLogger.log('FEATURE_USED', 'global', { feature: 'play_11_11' });
-    }
-    if (d.getDay() === 0 || d.getDay() === 6) {
-      eventLogger.log('FEATURE_USED', 'global', { feature: 'weekend_play' });
-    }
-
     eventLogger.log('LISTEN_START', uid, { variant: type });
   }
 
@@ -80,6 +71,18 @@ export class SessionTracker {
     const isFull = progress >= 0.9 || isEndedEvent;
 
     if (isValid || isFull) {
+      const now = new Date();
+      const hour = now.getHours();
+      const minutes = now.getMinutes();
+
+      if (isValid && hour === 11 && minutes === 11) {
+        eventLogger.log('FEATURE_USED', 'global', { feature: 'play_11_11' });
+      }
+
+      if (isValid && (now.getDay() === 0 || now.getDay() === 6)) {
+        eventLogger.log('FEATURE_USED', 'global', { feature: 'weekend_play' });
+      }
+
       eventLogger.log('LISTEN_COMPLETE', uid, {
         variant, quality, listenedSeconds: seconds, trackDuration: duration, 
         progress, isFullListen: isFull, isValidListen: isValid
