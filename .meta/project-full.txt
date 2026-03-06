@@ -164,9 +164,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ecb6417b39c06de14ca2352d34039565230bd287.idx
-│   │       ├── pack-ecb6417b39c06de14ca2352d34039565230bd287.pack
-│   │       └── pack-ecb6417b39c06de14ca2352d34039565230bd287.rev
+│   │       ├── pack-0f627bf7f544eaf465eae73280240944d39e5bd4.idx
+│   │       ├── pack-0f627bf7f544eaf465eae73280240944d39e5bd4.pack
+│   │       └── pack-0f627bf7f544eaf465eae73280240944d39e5bd4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 ├── news.html
 └── service-worker.js
 
-Сгенерировано: 2026-03-06 13:31:51 UTC
+Сгенерировано: 2026-03-06 13:33:18 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -6243,11 +6243,6 @@ export function renderNewsInlineSkeleton(container) {
 
   container.innerHTML = `
     <div class="news-inline__head">
-      <div class="news-inline__links">
-        <a href="https://t.me/vitrina_razbita" target="_blank" rel="noopener noreferrer">Telegram канал</a>
-        <span class="news-inline__dot">·</span>
-        <a href="./news.html" target="_blank" rel="noopener noreferrer">Страница новостей</a>
-      </div>
       <div id="news-inline-status" class="news-inline__status">Загрузка...</div>
     </div>
     <div id="news-inline-list" class="news-inline__list"></div>
