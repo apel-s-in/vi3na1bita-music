@@ -164,9 +164,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8158be377c74ec8676e0997ceafc92b5145911b6.idx
-│   │       ├── pack-8158be377c74ec8676e0997ceafc92b5145911b6.pack
-│   │       └── pack-8158be377c74ec8676e0997ceafc92b5145911b6.rev
+│   │       ├── pack-dd8b6a29231555d8355650fb780ed04a36e9f74b.idx
+│   │       ├── pack-dd8b6a29231555d8355650fb780ed04a36e9f74b.pack
+│   │       └── pack-dd8b6a29231555d8355650fb780ed04a36e9f74b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,7 +377,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-06 21:29:06 UTC
+Сгенерировано: 2026-03-06 21:29:39 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5887,7 +5887,6 @@ class OfflineManager {
   async countNeedsReCache(q) { if (this.getMode() === 'R2') return 0; return (await DB.getAllTrackMetas()).filter(m => ['pinned', 'cloud'].includes(m.type) && m.cachedComplete && m.quality !== normQ(q)).length; }
   async reCacheAll(q) { this._onQualChg(q); }
   setCacheQualitySetting(q) { this.setCQ(q); }
-  recordTickStats() {} getBackgroundPreset() { return 'balanced'; } setBackgroundPreset() {}
 }
 
 const instance = new OfflineManager();
