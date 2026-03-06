@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e043e02bc3f0311d4c7fe870e7e008a6c500fe2f.idx
-│   │       ├── pack-e043e02bc3f0311d4c7fe870e7e008a6c500fe2f.pack
-│   │       └── pack-e043e02bc3f0311d4c7fe870e7e008a6c500fe2f.rev
+│   │       ├── pack-c813d810a431275f8589dea77788970f6a990975.idx
+│   │       ├── pack-c813d810a431275f8589dea77788970f6a990975.pack
+│   │       └── pack-c813d810a431275f8589dea77788970f6a990975.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-06 11:39:58 UTC
+Сгенерировано: 2026-03-06 11:45:57 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -3410,7 +3410,15 @@ window.PlaybackCache.unprotectWindow = unprotectWindow;
     }
     syncUI();
   };
-
+  // Жёстко блокируем открытие окна лирики, если активен мини-режим
+  new MutationObserver(() => {
+    const m = document.querySelector('.mini-now'), l = document.getElementById('lyrics-wrapper');
+    if (m?.offsetHeight && l && !l.classList.contains('hidden')) {
+      l.classList.add('hidden');
+      l.style.display = 'none';
+    }
+  }).observe(document.body, { attributes: true, childList: true, subtree: true });
+  
   const init = () => {
     if (!W.playerCore || !W.albumsIndex || !U) return setTimeout(init, 100);
     const c = PC();
