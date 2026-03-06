@@ -1,7 +1,7 @@
 // Optimized GalleryManager v3.0
 const W = window, D = document, $ = id => D.getElementById(id);
 const BASE = './albums/gallery/', LOGO = 'img/logo.png', C404 = 'gallery_404_cache:v2';
-const MAP = { 'krevetochka': '00', 'mezhdu-zlom-i-dobrom': '01', 'golos-dushi': '02', 'odnazhdy-v-skazke': '03', '__reliz__': 'news' };
+const MAP = { 'krevetochka': '00', 'mezhdu-zlom-i-dobrom': '01', 'golos-dushi': '02', 'odnazhdy-v-skazke': '03' };
 const ss = (k, v) => v === undefined ? JSON.parse(sessionStorage.getItem(k) || '{}') : sessionStorage.setItem(k, JSON.stringify(v));
 
 class GalleryManager {
