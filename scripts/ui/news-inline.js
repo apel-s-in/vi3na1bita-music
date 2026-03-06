@@ -13,7 +13,7 @@ function renderCard(it) {
   const text = esc(it?.text || '');
   const tags = Array.isArray(it?.tags) ? it.tags : [];
 
-  const media = it?.youtubeThumb && it?.youtubeUrl
+  const media = it?.youtubeUrl
     ? `
       <div class="news-inline__media news-inline__media--youtube">
         <a
@@ -23,7 +23,8 @@ function renderCard(it) {
           rel="noopener noreferrer"
           aria-label="${title}"
         >
-          <img loading="lazy" src="${esc(it.youtubeThumb)}" alt="${title}">
+          ${it.youtubeThumb ? `<img loading="lazy" src="${esc(it.youtubeThumb)}" alt="${title}" onerror="this.style.display='none';this.parentElement.classList.add('news-inline__youtube-link--fallback')">` : ''}
+          <span class="news-inline__youtube-fallback-title">${title}</span>
           <span class="news-inline__youtube-play">▶</span>
         </a>
       </div>
