@@ -164,9 +164,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-12b6fef55937e2b36d3b2473e6e08472932a4f59.idx
-│   │       ├── pack-12b6fef55937e2b36d3b2473e6e08472932a4f59.pack
-│   │       └── pack-12b6fef55937e2b36d3b2473e6e08472932a4f59.rev
+│   │       ├── pack-ba3c1119811d362b96013f2cd02b6f6221b6a778.idx
+│   │       ├── pack-ba3c1119811d362b96013f2cd02b6f6221b6a778.pack
+│   │       └── pack-ba3c1119811d362b96013f2cd02b6f6221b6a778.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -378,7 +378,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-06 15:25:09 UTC
+Сгенерировано: 2026-03-06 15:26:53 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -553,10 +553,6 @@ jobs:
 //=================================================
 // FILE: /albums/gallery/03/index.json
 {"items":[{"formats":{"webp":"albums/gallery/03/03-cover-01.webp","full":"albums/gallery/03/03-cover-01.png"}},{"formats":{"webp":"albums/gallery/03/03-cover-02.webp","full":"albums/gallery/03/03-cover-02.png"}},{"formats":{"webp":"albums/gallery/03/03-cover-03.webp","full":"albums/gallery/03/03-cover-03.png"}},{"formats":{"webp":"albums/gallery/03/03-cover-04.webp","full":"albums/gallery/03/03-cover-04.png"}}]}
-
-//=================================================
-// FILE: /custom.json
-{"rumEndpoint":"","sw":{"mediaMaxCacheMB":150,"nonRangeMaxStoreMB":25,"nonRangeMaxStoreMBSlow":10,"allowUnknownSize":false,"revalidateDays":7},"items":[{"type":"ym","title":"Исполнитель — Витрина Разбита","subtitle":"Яндекс Музыка","url":"https://music.yandex.ru/artist/24739002?utm_source=web&utm_medium=copy_link","cover":""},{"type":"tgPost","title":"Свежий пост в Telegram","url":"https://t.me/vitrina_razbita/28","height":480},{"type":"vkPlaylist","title":"Альбом «Голос Души» (VK)","ownerId":165137,"playlistId":3,"hash":"b8300406c5f33725de","containerId":"vk_playlist_165137_3"},{"type":"vkPlaylist","title":"Альбом «Между Злом и Добром» (VK)","ownerId":165137,"playlistId":2,"hash":"d70fba309dc0bea296","containerId":"vk_playlist_165137_2"}]}
 
 //=================================================
 // FILE: /index.html
@@ -7060,6 +7056,10 @@ window.StatisticsModal = {
 })(window, navigator);
 
 //=================================================
+// FILE: /custom.json
+{"rumEndpoint":"","sw":{"mediaMaxCacheMB":150,"nonRangeMaxStoreMB":25,"nonRangeMaxStoreMBSlow":10,"allowUnknownSize":false,"revalidateDays":7},"items":[{"type":"ym","title":"Исполнитель — Витрина Разбита","subtitle":"Яндекс Музыка","url":"https://music.yandex.ru/artist/24739002?utm_source=web&utm_medium=copy_link","cover":""},{"type":"tgPost","title":"Свежий пост в Telegram","url":"https://t.me/vitrina_razbita/28","height":480},{"type":"vkPlaylist","title":"Альбом «Голос Души» (VK)","ownerId":165137,"playlistId":3,"hash":"b8300406c5f33725de","containerId":"vk_playlist_165137_3"},{"type":"vkPlaylist","title":"Альбом «Между Злом и Добром» (VK)","ownerId":165137,"playlistId":2,"hash":"d70fba309dc0bea296","containerId":"vk_playlist_165137_2"}]}
+
+//=================================================
 // FILE: /data/custom_achievements.json
 {}
 
@@ -7407,7 +7407,7 @@ const TEXT_EXTS = new Set([".html",".htm",".css",".js",".mjs",".cjs",".ts",".tsx
 const globToRegExp = pat => new RegExp("^" + pat.replace(/[.+^${}()|[\]\\]/g, "\\$").replace(/\*\*/g, "___GLOBSTAR___").replace(/\*/g, "[^/]*").replace(/___GLOBSTAR___/g, ".*") + "$");
 const EXCLUDE_FILES_PATTERNS = ["node_modules/**",".git/**",".meta/**","assets/**",".next/**","dist/**","build/**","out/**","coverage/**",".cache/**",".vscode/**",".idea/**",".husky/**","**/*.log",".DS_Store","ai-rules.txt"].map(globToRegExp);
 const EXCLUDE_TREE_PATTERNS = ["node_modules/**",".git/**",".meta/**",".next/**","dist/**","build/**","out/**","coverage/**",".cache/**",".vscode/**",".idea/**",".husky/**","**/*.log",".DS_Store"].map(globToRegExp);
-const PRIORITY = { critical: [/^index\.html?$/i,/^service-worker\.js$/i,/^manifest\.json$/i,/^albums\.json$/i,/^custom\.json$/i,/^news\.html?$/i,/^generate-index\.(js|mjs|cjs)$/i,/^albums\/gallery\/[^/]+\/index\.json$/i,/^\.github\/workflows\/.*\.ya?ml$/i], high: [/^AudioController\.(js|mjs|cjs|ts)$/i,/^GlobalState\.(js|mjs|cjs|ts)$/i,/^scripts\/.*\.(mjs|js|ts)$/i,/^performance\/.*\.(js|ts)$/i,/^.*\.(ya?ml)$/i], medium: [/^.*\.(js|mjs|cjs|ts|tsx|json|html?|css)$/i] };
+const PRIORITY = { critical: [/^index\.html?$/i,/^service-worker\.js$/i,/^manifest\.json$/i,/^albums\.json$/i,/^news\.html?$/i,/^generate-index\.(js|mjs|cjs)$/i,/^albums\/gallery\/[^/]+\/index\.json$/i,/^\.github\/workflows\/.*\.ya?ml$/i], high: [/^AudioController\.(js|mjs|cjs|ts)$/i,/^GlobalState\.(js|mjs|cjs|ts)$/i,/^scripts\/.*\.(mjs|js|ts)$/i,/^performance\/.*\.(js|ts)$/i,/^.*\.(ya?ml)$/i], medium: [/^.*\.(js|mjs|cjs|ts|tsx|json|html?|css)$/i] };
 const isTextFile = rel => TEXT_EXTS.has(path.extname(rel).toLowerCase());
 const readText = rel => { try { return fs.readFileSync(path.join(ROOT, rel), "utf8"); } catch (e) { return `// read error: ${e.message}`; } };
 const countLines = s => (s.match(/\n/g) || []).length + (s.length ? 1 : 0);
