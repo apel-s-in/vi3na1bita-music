@@ -164,9 +164,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-810acd416d98b9be8107d46b295e2089da0a7ddc.idx
-│   │       ├── pack-810acd416d98b9be8107d46b295e2089da0a7ddc.pack
-│   │       └── pack-810acd416d98b9be8107d46b295e2089da0a7ddc.rev
+│   │       ├── pack-9d842a171cd44f6e55bdb1c2de3ce588119269d5.idx
+│   │       ├── pack-9d842a171cd44f6e55bdb1c2de3ce588119269d5.pack
+│   │       └── pack-9d842a171cd44f6e55bdb1c2de3ce588119269d5.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -378,7 +378,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-06 14:24:55 UTC
+Сгенерировано: 2026-03-06 14:26:05 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4598,8 +4598,8 @@ console.log('Manifest validation OK');
 // Конфигурация приложения
 export const APP_CONFIG = {
   // Версия приложения
-  APP_VERSION: '8.0.5',
-  BUILD_DATE: '2025-12-08',
+  APP_VERSION: '8.1.14',
+  BUILD_DATE: '2026-03-06',
   // ✅ ПРОМОКОД ДЛЯ ВХОДА
   PROMOCODE: 'VITRINA2025',
   // Порядок отображения иконок альбомов
