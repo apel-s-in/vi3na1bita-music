@@ -242,15 +242,56 @@ test('social achievement tracks all four news social links', async ({ page }) =>
 
   await page.waitForTimeout(500);
 
-  const socialState = await page.evaluate(async () => {
-    const mod = await import('./scripts/analytics/meta-db.js');
-    const g = await mod.metaDB.getStat('global');
-    return g?.featuresUsed || {};
-  });
+  const socialState = await page.evaluate(() => new Promise((resolve, reject) => {
+    const req = indexedDB.open('MetaDB_v4', 1);
+
+    req.onerror = () => reject(req.error);
+
+    req.onsuccess = () => {
+      const db = req.result;
+      const tx = db.transaction('stats', 'readonly');
+      const store = tx.objectStore('stats');
+      const getReq = store.get('global');
+
+      getReq.onerror = () => reject(getReq.error);
+      getReq.onsuccess = () => resolve(getReq.result?.featuresUsed || {});
+    };
+  }));
 
   expect(socialState.social_visit_youtube || 0).toBeGreaterThan(0);
   expect(socialState.social_visit_telegram || 0).toBeGreaterThan(0);
   expect(socialState.social_visit_vk || 0).toBeGreaterThan(0);
   expect(socialState.social_visit_tiktok || 0).toBeGreaterThan(0);
   expect(socialState.social_visit_all || 0).toBe(1);
+});
+
+test('sleep timer logs feature usage into global stats', async ({ page }) => {
+  await loginByPromo(page);
+  await page.waitForSelector('#track-list .track', { timeout: 10000 });
+  await page.click('#track-list .track >> nth=0');
+  await page.waitForSelector('#lyricsplayerblock', { timeout: 10000 });
+
+  await page.evaluate(() => {
+    window.SleepTimer?.startMinutes?.(0.001);
+  });
+
+  await page.waitForTimeout(1500);
+
+  const globalFeatures = await page.evaluate(() => new Promise((resolve, reject) => {
+    const req = indexedDB.open('MetaDB_v4', 1);
+
+    req.onerror = () => reject(req.error);
+
+    req.onsuccess = () => {
+      const db = req.result;
+      const tx = db.transaction('stats', 'readonly');
+      const store = tx.objectStore('stats');
+      const getReq = store.get('global');
+
+      getReq.onerror = () => reject(getReq.error);
+      getReq.onsuccess = () => resolve(getReq.result?.featuresUsed || {});
+    };
+  }));
+
+  expect(globalFeatures.sleep_timer || 0).toBeGreaterThan(0);
 });
