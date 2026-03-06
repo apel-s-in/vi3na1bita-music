@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-311099b43aa3162a095d37ccd8e720a05c69a409.idx
-│   │       ├── pack-311099b43aa3162a095d37ccd8e720a05c69a409.pack
-│   │       └── pack-311099b43aa3162a095d37ccd8e720a05c69a409.rev
+│   │       ├── pack-6bdafa19b0969829a59fb94e3d212915677a93bc.idx
+│   │       ├── pack-6bdafa19b0969829a59fb94e3d212915677a93bc.pack
+│   │       └── pack-6bdafa19b0969829a59fb94e3d212915677a93bc.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-06 12:04:08 UTC
+Сгенерировано: 2026-03-06 12:05:11 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -469,40 +469,23 @@ jobs:
 //=================================================
 // FILE: /.github/workflows/generate-lyrics-index.yml
 name: Generate lyrics index
-
 on:
   push:
-    branches: [ main, master ]
-    paths:
-      - 'albums.json'
-      - 'scripts/ci/generate-lyrics-index.mjs'
-      - '.github/workflows/generate-lyrics-index.yml'
+    branches: [main, master]
+    paths: ['albums.json', 'scripts/ci/generate-lyrics-index.mjs', '.github/workflows/generate-lyrics-index.yml']
   workflow_dispatch:
-  schedule:
-    - cron: '0 3 * * *' # раз в сутки, чтобы подхватывать изменения в удалённых альбомах без пуша сюда
-
-permissions:
-  contents: write
-
+  schedule: [{ cron: '0 3 * * *' }]
+permissions: { contents: write }
 jobs:
   gen:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Generate data/lyrics-index-v1.json
-        run: node scripts/ci/generate-lyrics-index.mjs
-
-      - name: Commit generated index
-        uses: stefanzweifel/git-auto-commit-action@v5
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: node scripts/ci/generate-lyrics-index.mjs
+      - uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "CI: update lyrics index"
           branch: ${{ github.ref_name }}
