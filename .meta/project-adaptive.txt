@@ -164,9 +164,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9e0bf19f2afa51b77470cf099b8edc8881536f99.idx
-│   │       ├── pack-9e0bf19f2afa51b77470cf099b8edc8881536f99.pack
-│   │       └── pack-9e0bf19f2afa51b77470cf099b8edc8881536f99.rev
+│   │       ├── pack-ca8455de72219c29daa1574efd4d0b713ef10840.idx
+│   │       ├── pack-ca8455de72219c29daa1574efd4d0b713ef10840.pack
+│   │       └── pack-ca8455de72219c29daa1574efd4d0b713ef10840.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -378,7 +378,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-06 13:40:21 UTC
+Сгенерировано: 2026-03-06 13:44:33 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2636,7 +2636,7 @@ export async function loadProfileAlbum(ctx) {
 // Optimized GalleryManager v3.0
 const W = window, D = document, $ = id => D.getElementById(id);
 const BASE = './albums/gallery/', LOGO = 'img/logo.png', C404 = 'gallery_404_cache:v2';
-const MAP = { 'krevetochka': '00', 'mezhdu-zlom-i-dobrom': '01', 'golos-dushi': '02', 'odnazhdy-v-skazke': '03', '__reliz__': 'news' };
+const MAP = { 'krevetochka': '00', 'mezhdu-zlom-i-dobrom': '01', 'golos-dushi': '02', 'odnazhdy-v-skazke': '03' };
 const ss = (k, v) => v === undefined ? JSON.parse(sessionStorage.getItem(k) || '{}') : sessionStorage.setItem(k, JSON.stringify(v));
 
 class GalleryManager {
