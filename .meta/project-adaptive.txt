@@ -164,9 +164,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e657a191abd47110a90038c27490ae034ac67ca8.idx
-│   │       ├── pack-e657a191abd47110a90038c27490ae034ac67ca8.pack
-│   │       └── pack-e657a191abd47110a90038c27490ae034ac67ca8.rev
+│   │       ├── pack-cb7a3cf5ed479e0e81285a7e7f3aedaf76d68112.idx
+│   │       ├── pack-cb7a3cf5ed479e0e81285a7e7f3aedaf76d68112.pack
+│   │       └── pack-cb7a3cf5ed479e0e81285a7e7f3aedaf76d68112.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,7 +377,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-06 20:57:11 UTC
+Сгенерировано: 2026-03-06 20:58:12 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1958,6 +1958,7 @@ export class StatsAggregator {
     this.lastFullListens = new Map(); // Anti-tamper & Rate Limiting (in-memory)
     this.session = {
       favOrderedRun: 0,
+      favOrderedLastUid: null,
       favShuffleEvents: new Set(),
       midnightTripleTrack: null,
       midnightTripleCount: 0
@@ -2039,11 +2040,21 @@ export class StatsAggregator {
 
               if (isShuffle) stat.featuresUsed.shufflePlay = (stat.featuresUsed.shufflePlay || 0) + 1;
 
-              if (isFavOnly && !isShuffle && isFavNow) this.session.favOrderedRun++;
-              else this.session.favOrderedRun = 0;
+              if (isFavOnly && !isShuffle && isFavNow) {
+                if (this.session.favOrderedLastUid !== ev.uid) {
+                  this.session.favOrderedRun++;
+                  this.session.favOrderedLastUid = ev.uid;
+                }
+              } else {
+                this.session.favOrderedRun = 0;
+                this.session.favOrderedLastUid = null;
+              }
 
-              if (isFavOnly && isShuffle && isFavNow) this.session.favShuffleEvents.add(ev.uid);
-              else this.session.favShuffleEvents.clear();
+              if (isFavOnly && isShuffle && isFavNow) {
+                this.session.favShuffleEvents.add(ev.uid);
+              } else {
+                this.session.favShuffleEvents.clear();
+              }
 
               // Полночный цикл (00:00 - 00:30)
               const timeStr = new Date(ev.timestamp).toTimeString().slice(0, 8);
