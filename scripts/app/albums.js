@@ -1,4 +1,3 @@
-import { registerTrack } from './track-registry.js';
 import { injectIndicator } from '../ui/offline-indicators.js';
 
 const W = window, D = document, C = W.APP_CONFIG || {};
