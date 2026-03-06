@@ -94,9 +94,9 @@ export const AchievementDictionary = {
   },
   "socials_all_visited": {
     id: "socials_all_visited", type: "static", category: "features",
-    ui: { name: "На связи", short: "Откройте любую соцсеть из шапки.", desc: "Засчитывается первый переход по ссылке соцсетей.", howTo: "Перейдите по любой ссылке соцсетей в шапке приложения.", icon: "🌐", color: "#03a9f4" },
+    ui: { name: "Подписчик всего", short: "Откройте все соцсети из шапки.", desc: "Кликните по каждой из ссылок соцсетей хотя бы один раз.", howTo: "Перейдите по всем ссылкам соцсетей в шапке приложения.", icon: "🌐", color: "#03a9f4" },
     reward: { xp: 50, tier: 1 },
-    trigger: { conditions: [{ metric: "socialVisits", operator: "gte", target: 1 }] }
+    trigger: { conditions: [{ metric: "socialVisitAll", operator: "gte", target: 1 }] }
   },
   "pwa_installed": {
     id: "pwa_installed", type: "static", category: "features",
