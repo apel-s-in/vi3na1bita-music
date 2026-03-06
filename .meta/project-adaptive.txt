@@ -164,9 +164,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3590e0af313c9d37b9fbad8d77e7beb39a886dae.idx
-│   │       ├── pack-3590e0af313c9d37b9fbad8d77e7beb39a886dae.pack
-│   │       └── pack-3590e0af313c9d37b9fbad8d77e7beb39a886dae.rev
+│   │       ├── pack-446ac2b5f63961b787a7cdb9bff195a01753a68c.idx
+│   │       ├── pack-446ac2b5f63961b787a7cdb9bff195a01753a68c.pack
+│   │       └── pack-446ac2b5f63961b787a7cdb9bff195a01753a68c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,7 +377,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-06 21:20:06 UTC
+Сгенерировано: 2026-03-06 21:20:43 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -976,7 +976,6 @@ const STATIC_ASSETS = [
   './scripts/app.js', './src/PlayerCore.js',
   './src/player-core/media-session.js',
   './scripts/app/track-registry.js',
-  './scripts/core/favorites-manager.js',
   './scripts/app/offline-ui-bootstrap.js', './scripts/app/playback-cache-bootstrap.js'
 ];
 
