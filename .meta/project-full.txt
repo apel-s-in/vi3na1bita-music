@@ -164,9 +164,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-81805ca7d8c1aee34ca49a99fe7e4018d86bac8f.idx
-│   │       ├── pack-81805ca7d8c1aee34ca49a99fe7e4018d86bac8f.pack
-│   │       └── pack-81805ca7d8c1aee34ca49a99fe7e4018d86bac8f.rev
+│   │       ├── pack-fbacf13eb4b66c661da8ae328fca298cbbe7bd84.idx
+│   │       ├── pack-fbacf13eb4b66c661da8ae328fca298cbbe7bd84.pack
+│   │       └── pack-fbacf13eb4b66c661da8ae328fca298cbbe7bd84.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -378,7 +378,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-06 14:50:05 UTC
+Сгенерировано: 2026-03-06 14:51:52 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -6176,6 +6176,9 @@ export async function loadAndRenderNewsInline(container) {
   if (!list) return;
 
   try {
+    const legacyLinks = container.querySelectorAll('a[href*="t.me"], a[href*="news"], .news-inline__links, .news-inline__dot');
+    legacyLinks.forEach((el) => el.remove());
+
     const r = await fetch('./news/news.json', { cache: 'no-cache' });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
 
