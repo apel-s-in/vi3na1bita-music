@@ -164,9 +164,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6c614c744ea6235473b42299af1320a48c9903ea.idx
-│   │       ├── pack-6c614c744ea6235473b42299af1320a48c9903ea.pack
-│   │       └── pack-6c614c744ea6235473b42299af1320a48c9903ea.rev
+│   │       ├── pack-12b6fef55937e2b36d3b2473e6e08472932a4f59.idx
+│   │       ├── pack-12b6fef55937e2b36d3b2473e6e08472932a4f59.pack
+│   │       └── pack-12b6fef55937e2b36d3b2473e6e08472932a4f59.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -378,7 +378,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-06 15:06:52 UTC
+Сгенерировано: 2026-03-06 15:25:09 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4403,31 +4403,9 @@ required.forEach(id => {
   }
 });
 
-// 3) custom.json sw конфиг: revalidateDays целое число
-const customFile = path.resolve('custom.json');
-if (fs.existsSync(customFile)) {
-  try {
-    const raw = fs.readFileSync(customFile, 'utf8');
-    const j = JSON.parse(raw);
-    if (j && j.sw) {
-      const d = j.sw.revalidateDays;
-      if (!(Number.isInteger(d) && d > 0)) {
-        fail('custom.json.sw.revalidateDays must be positive integer');
-      }
-      ['mediaMaxCacheMB','nonRangeMaxStoreMB','nonRangeMaxStoreMBSlow'].forEach(key => {
-        const v = j.sw[key];
-        if (!(typeof v === 'number' && v > 0)) fail(`custom.json.sw.${key} must be positive number`);
-      });
-      if (typeof j.sw.allowUnknownSize !== 'boolean') {
-        fail('custom.json.sw.allowUnknownSize must be boolean');
-      }
-    }
-  } catch (e) {
-    fail('custom.json invalid JSON: ' + e.message);
-  }
-}
-// 4) Опционально: проверить уникальность uid в удалённых config.json (НЕ фейлим билд из-за сети)
+// 3) Опционально: проверить уникальность uid в удалённых config.json (НЕ фейлим билд из-за сети)
 {
+
   // Node 20: fetch доступен. Если вдруг его нет — просто предупреждаем.
   const hasFetch = typeof fetch === 'function';
   if (!hasFetch) {
