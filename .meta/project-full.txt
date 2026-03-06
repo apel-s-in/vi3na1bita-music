@@ -164,9 +164,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-fbacf13eb4b66c661da8ae328fca298cbbe7bd84.idx
-│   │       ├── pack-fbacf13eb4b66c661da8ae328fca298cbbe7bd84.pack
-│   │       └── pack-fbacf13eb4b66c661da8ae328fca298cbbe7bd84.rev
+│   │       ├── pack-0bacfd49d2799061f841dba9cec2fa70731fb137.idx
+│   │       ├── pack-0bacfd49d2799061f841dba9cec2fa70731fb137.pack
+│   │       └── pack-0bacfd49d2799061f841dba9cec2fa70731fb137.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -378,7 +378,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-06 14:51:52 UTC
+Сгенерировано: 2026-03-06 14:52:54 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -6105,7 +6105,7 @@ function renderCard(it) {
   const text = esc(it?.text || '');
   const tags = Array.isArray(it?.tags) ? it.tags : [];
 
-  const media = it?.youtubeThumb && it?.youtubeUrl
+  const media = it?.youtubeUrl
     ? `
       <div class="news-inline__media news-inline__media--youtube">
         <a
@@ -6115,7 +6115,8 @@ function renderCard(it) {
           rel="noopener noreferrer"
           aria-label="${title}"
         >
-          <img loading="lazy" src="${esc(it.youtubeThumb)}" alt="${title}">
+          ${it.youtubeThumb ? `<img loading="lazy" src="${esc(it.youtubeThumb)}" alt="${title}" onerror="this.style.display='none';this.parentElement.classList.add('news-inline__youtube-link--fallback')">` : ''}
+          <span class="news-inline__youtube-fallback-title">${title}</span>
           <span class="news-inline__youtube-play">▶</span>
         </a>
       </div>
