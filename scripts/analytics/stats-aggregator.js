@@ -8,7 +8,8 @@ export class StatsAggregator {
       favOrderedLastUid: null,
       favShuffleEvents: new Set(),
       midnightTripleTrack: null,
-      midnightTripleCount: 0
+      midnightTripleCount: 0,
+      lastFullUid: null
     };
     window.addEventListener('analytics:logUpdated', () => this.processHotEvents());
   }
@@ -103,14 +104,21 @@ export class StatsAggregator {
                 this.session.favShuffleEvents.clear();
               }
 
-              // Полночный цикл (00:00 - 00:30)
+              // Полночный цикл (00:00 - 00:30) — только последовательные полные прослушивания одного и того же трека
               const timeStr = new Date(ev.timestamp).toTimeString().slice(0, 8);
               if (timeStr >= '00:00:00' && timeStr <= '00:30:00') {
-                if (this.session.midnightTripleTrack === ev.uid) this.session.midnightTripleCount++;
-                else { this.session.midnightTripleTrack = ev.uid; this.session.midnightTripleCount = 1; }
+                if (this.session.lastFullUid === ev.uid && this.session.midnightTripleTrack === ev.uid) {
+                  this.session.midnightTripleCount++;
+                } else {
+                  this.session.midnightTripleTrack = ev.uid;
+                  this.session.midnightTripleCount = 1;
+                }
               } else {
+                this.session.midnightTripleTrack = null;
                 this.session.midnightTripleCount = 0;
               }
+
+              this.session.lastFullUid = ev.uid;
 
               // Запись комбо в глобальную статистику
               if (this.session.favOrderedRun >= 5 || this.session.favShuffleEvents.size >= 5 || this.session.midnightTripleCount >= 3) {
@@ -128,6 +136,13 @@ export class StatsAggregator {
           }
           return stat;
         });
+      } else if (ev.type === 'LISTEN_SKIP') {
+        this.session.favOrderedRun = 0;
+        this.session.favOrderedLastUid = null;
+        this.session.favShuffleEvents.clear();
+        this.session.midnightTripleTrack = null;
+        this.session.midnightTripleCount = 0;
+        this.session.lastFullUid = null;
       } else if (ev.type === 'FEATURE_USED') {
          // Для фич самого приложения используем системный uid "global"
          const targetUid = ev.uid || 'global';
