@@ -164,9 +164,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-32cfeac7a0041a6b718a0a7354d2c8f0a42d2757.idx
-│   │       ├── pack-32cfeac7a0041a6b718a0a7354d2c8f0a42d2757.pack
-│   │       └── pack-32cfeac7a0041a6b718a0a7354d2c8f0a42d2757.rev
+│   │       ├── pack-9e0bf19f2afa51b77470cf099b8edc8881536f99.idx
+│   │       ├── pack-9e0bf19f2afa51b77470cf099b8edc8881536f99.pack
+│   │       └── pack-9e0bf19f2afa51b77470cf099b8edc8881536f99.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -229,28 +229,20 @@ vi3na1bita-music/
 │   │   │   ├── 02-cover-04.png
 │   │   │   ├── 02-cover-04.webp
 │   │   │   └── index.json
-│   │   ├── 03/
-│   │   │   ├── 03-cover-01.jpg
-│   │   │   ├── 03-cover-01.png
-│   │   │   ├── 03-cover-01.webp
-│   │   │   ├── 03-cover-02.jpg
-│   │   │   ├── 03-cover-02.png
-│   │   │   ├── 03-cover-02.webp
-│   │   │   ├── 03-cover-03.jpg
-│   │   │   ├── 03-cover-03.png
-│   │   │   ├── 03-cover-03.webp
-│   │   │   ├── 03-cover-04.jpg
-│   │   │   ├── 03-cover-04.png
-│   │   │   ├── 03-cover-04.webp
-│   │   │   └── index.json
-│   │   └── news/
-│   │       ├── thumbs/
-│   │       │   ├── news-cover-02-thumb.jpg
-│   │       │   └── news-cover-02-thumb.webp
-│   │       ├── index.json
-│   │       ├── news-cover-02.avif
-│   │       ├── news-cover-02.png
-│   │       └── news-cover-02.webp
+│   │   └── 03/
+│   │       ├── 03-cover-01.jpg
+│   │       ├── 03-cover-01.png
+│   │       ├── 03-cover-01.webp
+│   │       ├── 03-cover-02.jpg
+│   │       ├── 03-cover-02.png
+│   │       ├── 03-cover-02.webp
+│   │       ├── 03-cover-03.jpg
+│   │       ├── 03-cover-03.png
+│   │       ├── 03-cover-03.webp
+│   │       ├── 03-cover-04.jpg
+│   │       ├── 03-cover-04.png
+│   │       ├── 03-cover-04.webp
+│   │       └── index.json
 │   └── .gitkeep
 ├── data/
 │   ├── custom_achievements.json
@@ -386,7 +378,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-06 13:38:16 UTC
+Сгенерировано: 2026-03-06 13:40:21 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -561,10 +553,6 @@ jobs:
 //=================================================
 // FILE: /albums/gallery/03/index.json
 {"items":[{"formats":{"webp":"albums/gallery/03/03-cover-01.webp","full":"albums/gallery/03/03-cover-01.png"}},{"formats":{"webp":"albums/gallery/03/03-cover-02.webp","full":"albums/gallery/03/03-cover-02.png"}},{"formats":{"webp":"albums/gallery/03/03-cover-03.webp","full":"albums/gallery/03/03-cover-03.png"}},{"formats":{"webp":"albums/gallery/03/03-cover-04.webp","full":"albums/gallery/03/03-cover-04.png"}}]}
-
-//=================================================
-// FILE: /albums/gallery/news/index.json
-{"items":[{"formats":{"webp":"albums/gallery/news/news-cover-02.webp","full":"albums/gallery/news/news-cover-02.png"}}]}
 
 //=================================================
 // FILE: /custom.json
