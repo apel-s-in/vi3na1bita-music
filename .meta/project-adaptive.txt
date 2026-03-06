@@ -164,9 +164,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e6d5dc4fe2856d0328edd8ab36cd68a52508c118.idx
-│   │       ├── pack-e6d5dc4fe2856d0328edd8ab36cd68a52508c118.pack
-│   │       └── pack-e6d5dc4fe2856d0328edd8ab36cd68a52508c118.rev
+│   │       ├── pack-1b317d960ed4dbf47a0a6635c92a45193e492913.idx
+│   │       ├── pack-1b317d960ed4dbf47a0a6635c92a45193e492913.pack
+│   │       └── pack-1b317d960ed4dbf47a0a6635c92a45193e492913.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -307,7 +307,6 @@ vi3na1bita-music/
 │   ├── bg.png
 │   ├── Fav_logo.png
 │   ├── logo.png
-│   ├── prize-01.png
 │   ├── prize-02.png
 │   ├── prize-03.png
 │   ├── prize-04.png
@@ -396,7 +395,7 @@ vi3na1bita-music/
 ├── news.html
 └── service-worker.js
 
-Сгенерировано: 2026-03-06 13:24:05 UTC
+Сгенерировано: 2026-03-06 13:24:33 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
