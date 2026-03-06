@@ -92,6 +92,7 @@ export class AchievementEngine {
       play11_11: globalStat.play_11_11 || 0, weekendPlays: globalStat.weekend_play || 0,
       backups: globalStat.backup || 0, pwaInstalled: globalStat.pwa_installed || 0,
       sleepTimerTriggers: globalStat.sleep_timer || 0, socialVisits: globalStat.social_visit || 0,
+      socialVisitAll: globalStat.social_visit_all || 0,
       favOrderedCombo: globalStat.fav_ordered_5 || 0, favShuffleCombo: globalStat.fav_shuffle_5 || 0,
       midnightTriple: globalStat.midnight_triple || 0,
       speedRunnerCombo: globalStat.speed_runner || 0
