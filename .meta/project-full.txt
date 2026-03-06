@@ -164,9 +164,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-37d7dc539fb9150fdbf26ea5ae071eccd28360ca.idx
-│   │       ├── pack-37d7dc539fb9150fdbf26ea5ae071eccd28360ca.pack
-│   │       └── pack-37d7dc539fb9150fdbf26ea5ae071eccd28360ca.rev
+│   │       ├── pack-ff0fb4e82ccfb6924cce490f211e9752aa7fd795.idx
+│   │       ├── pack-ff0fb4e82ccfb6924cce490f211e9752aa7fd795.pack
+│   │       └── pack-ff0fb4e82ccfb6924cce490f211e9752aa7fd795.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,7 +377,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-06 20:32:34 UTC
+Сгенерировано: 2026-03-06 20:53:41 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1667,6 +1667,7 @@ class EventLogger {
   }
 }
 export const eventLogger = new EventLogger();
+window.eventLogger = eventLogger;
 
 //=================================================
 // FILE: /scripts/analytics/meta-db.js
