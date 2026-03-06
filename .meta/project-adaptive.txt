@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-425cd7555829a95efccdde0ef39400c60a7f0c97.idx
-│   │       ├── pack-425cd7555829a95efccdde0ef39400c60a7f0c97.pack
-│   │       └── pack-425cd7555829a95efccdde0ef39400c60a7f0c97.rev
+│   │       ├── pack-f5dae758fb4788885a6b60b4b8a31e4ad46b1d9f.idx
+│   │       ├── pack-f5dae758fb4788885a6b60b4b8a31e4ad46b1d9f.pack
+│   │       └── pack-f5dae758fb4788885a6b60b4b8a31e4ad46b1d9f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-06 12:05:42 UTC
+Сгенерировано: 2026-03-06 12:07:27 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -553,22 +553,7 @@ jobs:
 
 //=================================================
 // FILE: /albums/gallery/00/index.json
-{
-  "items": [
-    {
-      "formats": {
-        "webp": "albums/gallery/00/00-cover-01.webp",
-        "full": "albums/gallery/00/00-cover-01.png"
-      }
-    },
-    {
-      "formats": {
-        "webp": "albums/gallery/00/00-cover-02.webp",
-        "full": "albums/gallery/00/00-cover-02.png"
-      }
-    }
-  ]
-}
+{"items":[{"formats":{"webp":"albums/gallery/00/00-cover-01.webp","full":"albums/gallery/00/00-cover-01.png"}},{"formats":{"webp":"albums/gallery/00/00-cover-02.webp","full":"albums/gallery/00/00-cover-02.png"}}]}
 
 //=================================================
 // FILE: /albums/gallery/01/index.json
