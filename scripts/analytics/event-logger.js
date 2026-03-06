@@ -40,3 +40,4 @@ class EventLogger {
   }
 }
 export const eventLogger = new EventLogger();
+window.eventLogger = eventLogger;
