@@ -221,3 +221,36 @@ test('favoritesOnly + shuffle: unliking NOT current removes it from tail if not 
 
   expect(afterLen).toBeLessThanOrEqual(beforeLen);
 });
+
+test('social achievement tracks all four news social links', async ({ page }) => {
+  await loginByPromo(page);
+
+  await page.click('.album-icon[data-akey="__reliz__"]');
+  await page.waitForTimeout(300);
+
+  const hrefs = [
+    'https://www.youtube.com/channel/UCbjm1J0V8RkWvNj4Z8-JIhA/',
+    'https://t.me/vitrina_razbita',
+    'https://vk.com/apelsinov',
+    'https://www.tiktok.com/@vi3na1bita'
+  ];
+
+  for (const href of hrefs) {
+    await page.locator(`#social-links a[href="${href}"]`).click();
+    await page.waitForTimeout(100);
+  }
+
+  await page.waitForTimeout(500);
+
+  const socialState = await page.evaluate(async () => {
+    const mod = await import('./scripts/analytics/meta-db.js');
+    const g = await mod.metaDB.getStat('global');
+    return g?.featuresUsed || {};
+  });
+
+  expect(socialState.social_visit_youtube || 0).toBeGreaterThan(0);
+  expect(socialState.social_visit_telegram || 0).toBeGreaterThan(0);
+  expect(socialState.social_visit_vk || 0).toBeGreaterThan(0);
+  expect(socialState.social_visit_tiktok || 0).toBeGreaterThan(0);
+  expect(socialState.social_visit_all || 0).toBe(1);
+});
