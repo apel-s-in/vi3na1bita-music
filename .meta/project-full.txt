@@ -164,9 +164,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-932870cf43dfcdcc3d31390fdf3cb8047cea9a62.idx
-│   │       ├── pack-932870cf43dfcdcc3d31390fdf3cb8047cea9a62.pack
-│   │       └── pack-932870cf43dfcdcc3d31390fdf3cb8047cea9a62.rev
+│   │       ├── pack-7df3db039e4272ba2c295fa0074f28f16b87dd00.idx
+│   │       ├── pack-7df3db039e4272ba2c295fa0074f28f16b87dd00.pack
+│   │       └── pack-7df3db039e4272ba2c295fa0074f28f16b87dd00.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -396,7 +396,7 @@ vi3na1bita-music/
 ├── news.html
 └── service-worker.js
 
-Сгенерировано: 2026-03-06 12:54:08 UTC
+Сгенерировано: 2026-03-06 13:15:42 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7582,25 +7582,32 @@ try {
 {
   "items": [
     {
-      "id": "2025-11-01-release",
-      "title": "Новый релиз — Между Злом и Добром",
-      "date": "2025-11-01",
+      "id": "2025-12-18-release",
+      "title": "Новый релиз — Однажды в Сказке",
+      "date": "2025-12-18",
       "text": "Доступен новый альбом. Слушайте онлайн и офлайн в нашем приложении.",
-      "image": "img/logo.png",
+      "image": "albums/gallery/03/03-cover-01.webp",
       "tags": ["релиз", "альбом"]
     },
     {
-      "id": "2025-10-20-video",
-      "title": "Клип на трек «Отражение»",
+      "id": "2025-08-02-video",
+      "title": "Клип КРЕВЕツTOCHKA на трек «Упала Слеза»",
       "date": "2025-10-20",
-      "embedUrl": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      "embedUrl": "https://youtu.be/embed/0rJMP2jwegk",
+      "tags": ["клип", "видео"]
+    },
+    {
+      "id": "2025-07-21-video",
+      "title": "Клип КРЕВЕツTOCHKA на трек «Принц»",
+      "date": "2025-10-20",
+      "embedUrl": "https://youtu.be/embed/jfYplnj6DbA",
       "tags": ["клип", "видео"]
     },
     {
       "id": "2025-10-05-tour",
       "title": "Тур: зимние концерты",
       "date": "2025-10-05",
-      "text": "Актуальное расписание — в наших соцсетях.",
+      "text": "НЕ ПЛАНИРУЮТСЯ.",
       "tags": ["концерты"]
     }
   ]
