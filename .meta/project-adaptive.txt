@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f5dae758fb4788885a6b60b4b8a31e4ad46b1d9f.idx
-│   │       ├── pack-f5dae758fb4788885a6b60b4b8a31e4ad46b1d9f.pack
-│   │       └── pack-f5dae758fb4788885a6b60b4b8a31e4ad46b1d9f.rev
+│   │       ├── pack-50c94ada41d707038d42a97a4cea09ef389f8885.idx
+│   │       ├── pack-50c94ada41d707038d42a97a4cea09ef389f8885.pack
+│   │       └── pack-50c94ada41d707038d42a97a4cea09ef389f8885.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-06 12:07:27 UTC
+Сгенерировано: 2026-03-06 12:07:53 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -557,34 +557,7 @@ jobs:
 
 //=================================================
 // FILE: /albums/gallery/01/index.json
-{
-  "items": [
-    {
-      "formats": {
-        "webp": "albums/gallery/01/01-cover-01.webp",
-        "full": "albums/gallery/01/01-cover-01.png"
-      }
-    },
-    {
-      "formats": {
-        "webp": "albums/gallery/01/01-cover-02.webp",
-        "full": "albums/gallery/01/01-cover-02.png"
-      }
-    },
-    {
-      "formats": {
-        "webp": "albums/gallery/01/01-cover-03.webp",
-        "full": "albums/gallery/01/01-cover-03.png"
-      }
-    },
-    {
-      "formats": {
-        "webp": "albums/gallery/01/01-cover-04.webp",
-        "full": "albums/gallery/01/01-cover-04.png"
-      }
-    }
-  ]
-}
+{"items":[{"formats":{"webp":"albums/gallery/01/01-cover-01.webp","full":"albums/gallery/01/01-cover-01.png"}},{"formats":{"webp":"albums/gallery/01/01-cover-02.webp","full":"albums/gallery/01/01-cover-02.png"}},{"formats":{"webp":"albums/gallery/01/01-cover-03.webp","full":"albums/gallery/01/01-cover-03.png"}},{"formats":{"webp":"albums/gallery/01/01-cover-04.webp","full":"albums/gallery/01/01-cover-04.png"}}]}
 
 //=================================================
 // FILE: /albums/gallery/02/index.json
