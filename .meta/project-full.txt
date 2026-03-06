@@ -164,9 +164,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8eec3cb32495ca063d00cbdd37419eec43082728.idx
-│   │       ├── pack-8eec3cb32495ca063d00cbdd37419eec43082728.pack
-│   │       └── pack-8eec3cb32495ca063d00cbdd37419eec43082728.rev
+│   │       ├── pack-8158be377c74ec8676e0997ceafc92b5145911b6.idx
+│   │       ├── pack-8158be377c74ec8676e0997ceafc92b5145911b6.pack
+│   │       └── pack-8158be377c74ec8676e0997ceafc92b5145911b6.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,7 +377,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-06 21:23:07 UTC
+Сгенерировано: 2026-03-06 21:29:06 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1982,13 +1982,12 @@ export class StatsAggregator {
     const events = await metaDB.getEvents('events_hot');
     if (!events.length) return;
 
-    let globalSecs = 0, todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = new Date().toISOString().split('T')[0];
     let dailyActive = false;
 
     for (const ev of events) {
       if (ev.type === 'LISTEN_COMPLETE' && ev.data) {
         const { isFullListen, isValidListen, listenedSeconds, variant } = ev.data;
-        globalSecs += (listenedSeconds || 0);
         
         // Rate Limiting (ТЗ 7.1)
         const lastPlay = this.lastFullListens.get(ev.uid) || 0;
