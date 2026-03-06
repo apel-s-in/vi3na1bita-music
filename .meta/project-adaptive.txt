@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-50c94ada41d707038d42a97a4cea09ef389f8885.idx
-│   │       ├── pack-50c94ada41d707038d42a97a4cea09ef389f8885.pack
-│   │       └── pack-50c94ada41d707038d42a97a4cea09ef389f8885.rev
+│   │       ├── pack-d96468b091324c8d6a9577ff4367d8f4a486a69c.idx
+│   │       ├── pack-d96468b091324c8d6a9577ff4367d8f4a486a69c.pack
+│   │       └── pack-d96468b091324c8d6a9577ff4367d8f4a486a69c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-06 12:07:53 UTC
+Сгенерировано: 2026-03-06 12:08:46 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -561,65 +561,11 @@ jobs:
 
 //=================================================
 // FILE: /albums/gallery/02/index.json
-{
-  "items": [
-    {
-      "formats": {
-        "webp": "albums/gallery/02/02-cover-01.webp",
-        "full": "albums/gallery/02/02-cover-01.png"
-      }
-    },
-    {
-      "formats": {
-        "webp": "albums/gallery/02/02-cover-02.webp",
-        "full": "albums/gallery/02/02-cover-02.png"
-      }
-    },
-    {
-      "formats": {
-        "webp": "albums/gallery/02/02-cover-03.webp",
-        "full": "albums/gallery/02/02-cover-03.png"
-      }
-    },
-    {
-      "formats": {
-        "webp": "albums/gallery/02/02-cover-04.webp",
-        "full": "albums/gallery/02/02-cover-04.png"
-      }
-    }
-  ]
-}
+{"items":[{"formats":{"webp":"albums/gallery/02/02-cover-01.webp","full":"albums/gallery/02/02-cover-01.png"}},{"formats":{"webp":"albums/gallery/02/02-cover-02.webp","full":"albums/gallery/02/02-cover-02.png"}},{"formats":{"webp":"albums/gallery/02/02-cover-03.webp","full":"albums/gallery/02/02-cover-03.png"}},{"formats":{"webp":"albums/gallery/02/02-cover-04.webp","full":"albums/gallery/02/02-cover-04.png"}}]}
 
 //=================================================
 // FILE: /albums/gallery/03/index.json
-{
-  "items": [
-    {
-      "formats": {
-        "webp": "albums/gallery/03/03-cover-01.webp",
-        "full": "albums/gallery/03/03-cover-01.png"
-      }
-    },
-    {
-      "formats": {
-        "webp": "albums/gallery/03/03-cover-02.webp",
-        "full": "albums/gallery/03/03-cover-02.png"
-      }
-    },
-    {
-      "formats": {
-        "webp": "albums/gallery/03/03-cover-03.webp",
-        "full": "albums/gallery/03/03-cover-03.png"
-      }
-    },
-    {
-      "formats": {
-        "webp": "albums/gallery/03/03-cover-04.webp",
-        "full": "albums/gallery/03/03-cover-04.png"
-      }
-    }
-  ]
-}
+{"items":[{"formats":{"webp":"albums/gallery/03/03-cover-01.webp","full":"albums/gallery/03/03-cover-01.png"}},{"formats":{"webp":"albums/gallery/03/03-cover-02.webp","full":"albums/gallery/03/03-cover-02.png"}},{"formats":{"webp":"albums/gallery/03/03-cover-03.webp","full":"albums/gallery/03/03-cover-03.png"}},{"formats":{"webp":"albums/gallery/03/03-cover-04.webp","full":"albums/gallery/03/03-cover-04.png"}}]}
 
 //=================================================
 // FILE: /albums/gallery/news/index.json
