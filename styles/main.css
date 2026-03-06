@@ -351,17 +351,34 @@ body{min-height:100vh;min-width:100vw;font-family:-apple-system,BlinkMacSystemFo
 @keyframes offline-ind-blink{50%{opacity:.4}}
 
 /* =========================================
-   РЕДИЗАЙН МИНИ-ПЛЕЕРА (PROTO v2.0)
+   РЕДИЗАЙН МИНИ-ПЛЕЕРА (PROTO v2.1 - ИСПРАВЛЕНИЯ)
    ========================================= */
+
+/* 1. Делаем саму обертку единым литым блоком и добавляем ВОЗДУХ вокруг */
+#now-playing {
+  background: #11141a !important;
+  border-radius: 16px !important;
+  padding: 0 !important;
+  border: none !important;
+  border-bottom: 2px solid rgba(77, 170, 255, 0.3) !important; /* Узенькая синяя полосочка переехала сюда */
+  box-shadow: 0 12px 32px rgba(0,0,0,0.6) !important;
+  
+  /* Отступы (воздух) вокруг плеера, чтобы не прилипал к краям и спискам */
+  margin: 0 16px 24px 16px !important; 
+  width: auto !important; /* Позволяет margin корректно сжимать блок слева/справа на десктопе */
+  bottom: calc(var(--nav-height, 60px) + env(safe-area-inset-bottom)) !important;
+}
+
+/* 2. Верхняя часть (название и прогресс) сливается с фоном */
 .mini-now {
   position: relative;
   display: flex;
   align-items: center;
   height: 48px;
   padding: 0 14px;
-  border-radius: 16px 16px 0 0 !important;
-  background: #11141a !important; /* Тёмный фон из прототипа */
-  margin-bottom: 0 !important; /* Бесшовно сливается с кнопками управления */
+  border-radius: 0 !important;
+  background: transparent !important; /* Прозрачный, фон берется от #now-playing */
+  margin: 0 !important; 
   box-shadow: none !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.03);
   cursor: pointer;
@@ -434,26 +451,29 @@ body{min-height:100vh;min-width:100vw;font-family:-apple-system,BlinkMacSystemFo
   margin-left: 10px;
 }
 
-/* Скрываем всё лишнее из основного плеера, когда он находится в режиме МИНИ (#now-playing) */
+/* 3. БАГФИКС И СКРЫТИЕ ЛИШНЕГО: скрываем окно лирики и старые ползунки */
+#now-playing #lyrics-wrapper, /* БАГФИКС: Окно лирики больше не открывается в мини-режиме */
 #now-playing #lyricsplayerblock .player-progress-wrapper,
-#now-playing #lyricsplayerblock .player-controls-row:nth-child(2), /* Нижний ряд кнопок */
+#now-playing #lyricsplayerblock .player-controls-row:nth-child(2),
 #now-playing #lyricsplayerblock .volume-control-wrapper,
 #now-playing #lyricsplayerblock .player-buttons-wrapper,
 #now-playing #next-up {
   display: none !important;
 }
 
-/* Стилизуем оставшийся блок управления под стиль прототипа */
+/* 4. Нижняя часть (кнопки плеера) сливается с фоном */
 #now-playing #lyricsplayerblock {
-  border-radius: 0 0 16px 16px !important;
-  background: #11141a !important; /* Единый цвет с mini-now */
-  box-shadow: 0 8px 24px rgba(0,0,0,0.6) !important;
-  border-bottom: 2px solid rgba(77, 170, 255, 0.3) !important; /* Узенькая полосочка снизу */
-  margin-top: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-bottom: none !important;
+  margin: 0 !important;
 }
+
+/* Балансируем отступы (воздух) снизу и сверху от кнопок Плей/Пауза */
 #now-playing #lyricsplayerblock .player-controls {
   background: transparent !important;
-  padding: 8px 18px 14px !important;
+  padding: 8px 18px 8px !important; /* Уменьшен нижний отступ до 8px для идеальной симметрии */
 }
 .next-up{display:none;margin:8px 4px 0;font-size:.98em;align-items:center;gap:8px;padding:6px 10px;background:rgba(255,255,255,.03);border-radius:8px;transition:none!important}
 .next-up .label{color:var(--c-blue);opacity:.9;font-size:13px}
