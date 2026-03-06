@@ -12,14 +12,16 @@
       "id": "2025-08-02-video",
       "title": "Клип КРЕВЕツTOCHKA на трек «Упала Слеза»",
       "date": "2025-08-02",
-      "embedUrl": "https://www.youtube.com/embed/0rJMP2jwegk",
+      "youtubeUrl": "https://www.youtube.com/watch?v=0rJMP2jwegk",
+      "youtubeThumb": "https://i.ytimg.com/vi/0rJMP2jwegk/hqdefault.jpg",
       "tags": ["клип", "видео"]
     },
     {
       "id": "2025-07-21-video",
       "title": "Клип КРЕВЕツTOCHKA на трек «Принц»",
       "date": "2025-07-21",
-      "embedUrl": "https://www.youtube.com/embed/jfYplnj6DbA",
+      "youtubeUrl": "https://www.youtube.com/watch?v=jfYplnj6DbA",
+      "youtubeThumb": "https://i.ytimg.com/vi/jfYplnj6DbA/hqdefault.jpg",
       "tags": ["клип", "видео"]
     },
     {
