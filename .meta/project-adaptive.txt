@@ -164,9 +164,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ff0fb4e82ccfb6924cce490f211e9752aa7fd795.idx
-│   │       ├── pack-ff0fb4e82ccfb6924cce490f211e9752aa7fd795.pack
-│   │       └── pack-ff0fb4e82ccfb6924cce490f211e9752aa7fd795.rev
+│   │       ├── pack-f82b7b10ec27275b30ab18b57f0c5c5ba2fcbe5a.idx
+│   │       ├── pack-f82b7b10ec27275b30ab18b57f0c5c5ba2fcbe5a.pack
+│   │       └── pack-f82b7b10ec27275b30ab18b57f0c5c5ba2fcbe5a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,7 +377,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-06 20:53:41 UTC
+Сгенерировано: 2026-03-06 20:54:02 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1780,6 +1780,25 @@ export class MetaDB {
       tx.objectStore('global').put({ key, value });
       tx.oncomplete = () => resolve(true);
       tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  async tx(storeName, mode, handler) {
+    await this.init();
+    return new Promise((resolve, reject) => {
+      const tx = this.db.transaction(storeName, mode);
+      const store = tx.objectStore(storeName);
+
+      try {
+        handler(store, tx);
+      } catch (error) {
+        reject(error);
+        return;
+      }
+
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error || new Error(`Transaction aborted: ${storeName}`));
     });
   }
 }
