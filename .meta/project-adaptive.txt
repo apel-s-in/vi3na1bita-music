@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5b2090407fdaceee1fb138ed8049d7e9a083b2f2.idx
-│   │       ├── pack-5b2090407fdaceee1fb138ed8049d7e9a083b2f2.pack
-│   │       └── pack-5b2090407fdaceee1fb138ed8049d7e9a083b2f2.rev
+│   │       ├── pack-311099b43aa3162a095d37ccd8e720a05c69a409.idx
+│   │       ├── pack-311099b43aa3162a095d37ccd8e720a05c69a409.pack
+│   │       └── pack-311099b43aa3162a095d37ccd8e720a05c69a409.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-06 12:03:36 UTC
+Сгенерировано: 2026-03-06 12:04:08 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -443,39 +443,22 @@ jobs:
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
 name: Generate .meta context
-
 on:
   push:
-    branches: [ main, master ]
-    # не перезапускать воркфлоу от собственных коммитов, меняющих только .meta
-    paths-ignore:
-      - '.meta/**'
+    branches: [main, master]
+    paths-ignore: ['.meta/**']
   workflow_dispatch:
-
-permissions:
-  contents: write
-
+permissions: { contents: write }
 jobs:
   meta:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Generate .meta
-        run: |
-          node generate-context.js --mode=both --max-lines=20000
-          ls -la .meta || true
-
-      - name: Commit .meta
-        uses: stefanzweifel/git-auto-commit-action@v5
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: node generate-context.js --mode=both --max-lines=20000 && ls -la .meta || true
+      - uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "CI: generate .meta context"
           branch: ${{ github.ref_name }}
