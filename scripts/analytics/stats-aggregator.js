@@ -58,9 +58,17 @@ export class StatsAggregator {
             this.lastFullListens.set(ev.uid, ev.timestamp);
             
             // Расширенная аналитика для Достижений (ТЗ 11.3)
-            const hour = new Date(ev.timestamp).getHours();
-            if (hour >= 0 && hour < 5) stat.featuresUsed.nightPlay = (stat.featuresUsed.nightPlay || 0) + 1;
-            if (hour >= 5 && hour < 8) stat.featuresUsed.earlyPlay = (stat.featuresUsed.earlyPlay || 0) + 1;
+            const dt = new Date(ev.timestamp);
+            const minutesOfDay = dt.getHours() * 60 + dt.getMinutes();
+
+            if (minutesOfDay >= 120 && minutesOfDay <= 270) {
+              stat.featuresUsed.nightPlay = (stat.featuresUsed.nightPlay || 0) + 1;
+            }
+
+            if (minutesOfDay >= 300 && minutesOfDay <= 539) {
+              stat.featuresUsed.earlyPlay = (stat.featuresUsed.earlyPlay || 0) + 1;
+            }
+
             if (ev.data?.quality === 'hi') stat.featuresUsed.hiQuality = (stat.featuresUsed.hiQuality || 0) + 1;
 
             // Триггер облачного кэширования (ТЗ 5.2)
