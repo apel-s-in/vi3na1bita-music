@@ -118,7 +118,19 @@
     });
     const s = $('social-links');
     if (s) s.addEventListener('click', e => {
-      if (e.target.tagName === 'A' && W.eventLogger) { W.eventLogger.log('FEATURE_USED', 'global', { feature: 'social_visit' }); W.dispatchEvent(new CustomEvent('analytics:forceFlush')); }
+      const link = e.target.closest?.('a');
+      if (!link || !W.eventLogger) return;
+
+      const href = String(link.getAttribute('href') || '').toLowerCase();
+      let target = 'other';
+
+      if (href.includes('youtube.com') || href.includes('youtu.be')) target = 'youtube';
+      else if (href.includes('t.me')) target = 'telegram';
+      else if (href.includes('vk.com')) target = 'vk';
+      else if (href.includes('tiktok.com')) target = 'tiktok';
+
+      W.eventLogger.log('FEATURE_USED', 'global', { feature: 'social_visit', target });
+      W.dispatchEvent(new CustomEvent('analytics:forceFlush'));
     });
   };
 
