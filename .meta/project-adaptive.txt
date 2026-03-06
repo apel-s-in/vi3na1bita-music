@@ -164,9 +164,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9d842a171cd44f6e55bdb1c2de3ce588119269d5.idx
-│   │       ├── pack-9d842a171cd44f6e55bdb1c2de3ce588119269d5.pack
-│   │       └── pack-9d842a171cd44f6e55bdb1c2de3ce588119269d5.rev
+│   │       ├── pack-5dcf9929fa915fa72fa9762d503bec3fe26c43e3.idx
+│   │       ├── pack-5dcf9929fa915fa72fa9762d503bec3fe26c43e3.pack
+│   │       └── pack-5dcf9929fa915fa72fa9762d503bec3fe26c43e3.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -378,7 +378,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-06 14:26:05 UTC
+Сгенерировано: 2026-03-06 14:26:36 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -901,8 +901,8 @@ jobs:
   </template>
 
   <script>
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.0.5');
-    const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2025-12-08');
+    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.14');
+    const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-03-06');
 
     // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
 
