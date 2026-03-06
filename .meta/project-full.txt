@@ -164,9 +164,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-52344c6137407ab4eab4e4f5767f08e8d6ccc94b.idx
-│   │       ├── pack-52344c6137407ab4eab4e4f5767f08e8d6ccc94b.pack
-│   │       └── pack-52344c6137407ab4eab4e4f5767f08e8d6ccc94b.rev
+│   │       ├── pack-69ad9cee32c734dcb6ac1b34cfa3a9ddde26a21c.idx
+│   │       ├── pack-69ad9cee32c734dcb6ac1b34cfa3a9ddde26a21c.pack
+│   │       └── pack-69ad9cee32c734dcb6ac1b34cfa3a9ddde26a21c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,7 +377,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-06 21:18:51 UTC
+Сгенерировано: 2026-03-06 21:19:37 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1440,9 +1440,9 @@ export const AchievementDictionary = {
   },
   "socials_all_visited": {
     id: "socials_all_visited", type: "static", category: "features",
-    ui: { name: "На связи", short: "Откройте любую соцсеть из шапки.", desc: "Засчитывается первый переход по ссылке соцсетей.", howTo: "Перейдите по любой ссылке соцсетей в шапке приложения.", icon: "🌐", color: "#03a9f4" },
+    ui: { name: "Подписчик всего", short: "Откройте все соцсети из шапки.", desc: "Кликните по каждой из ссылок соцсетей хотя бы один раз.", howTo: "Перейдите по всем ссылкам соцсетей в шапке приложения.", icon: "🌐", color: "#03a9f4" },
     reward: { xp: 50, tier: 1 },
-    trigger: { conditions: [{ metric: "socialVisits", operator: "gte", target: 1 }] }
+    trigger: { conditions: [{ metric: "socialVisitAll", operator: "gte", target: 1 }] }
   },
   "pwa_installed": {
     id: "pwa_installed", type: "static", category: "features",
