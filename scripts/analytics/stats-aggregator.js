@@ -18,13 +18,12 @@ export class StatsAggregator {
     const events = await metaDB.getEvents('events_hot');
     if (!events.length) return;
 
-    let globalSecs = 0, todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = new Date().toISOString().split('T')[0];
     let dailyActive = false;
 
     for (const ev of events) {
       if (ev.type === 'LISTEN_COMPLETE' && ev.data) {
         const { isFullListen, isValidListen, listenedSeconds, variant } = ev.data;
-        globalSecs += (listenedSeconds || 0);
         
         // Rate Limiting (ТЗ 7.1)
         const lastPlay = this.lastFullListens.get(ev.uid) || 0;
