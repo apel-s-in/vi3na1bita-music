@@ -375,7 +375,6 @@ body.news-view #cover-wrap{display:none!important}
 
 /* FavoritesOnly: UI-only фильтрация списка по ⭐ */
 .track-list.favonly-filtered .track[data-hidden-by-favonly="1"]{display:none!important}
-.track.is-favorite{background:rgba(77,170,255,.06)}
 .tnum{min-width:30px;color:var(--c-blue);font-weight:500}
 .track-title{margin-left:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
 .like-star{margin-left:auto;width:20px;height:20px;cursor:pointer;opacity:.97;transition:transform .2s,filter .13s,opacity .13s;pointer-events:auto!important;position:relative;z-index:10}
