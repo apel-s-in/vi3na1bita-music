@@ -84,6 +84,9 @@ export async function loadAndRenderNewsInline(container) {
   if (!list) return;
 
   try {
+    const legacyLinks = container.querySelectorAll('a[href*="t.me"], a[href*="news"], .news-inline__links, .news-inline__dot');
+    legacyLinks.forEach((el) => el.remove());
+
     const r = await fetch('./news/news.json', { cache: 'no-cache' });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
 
