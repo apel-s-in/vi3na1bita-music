@@ -164,9 +164,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ca8455de72219c29daa1574efd4d0b713ef10840.idx
-│   │       ├── pack-ca8455de72219c29daa1574efd4d0b713ef10840.pack
-│   │       └── pack-ca8455de72219c29daa1574efd4d0b713ef10840.rev
+│   │       ├── pack-6a1c3294abfba23321f9b3390b4538668327ce47.idx
+│   │       ├── pack-6a1c3294abfba23321f9b3390b4538668327ce47.pack
+│   │       └── pack-6a1c3294abfba23321f9b3390b4538668327ce47.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -378,7 +378,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-06 13:44:33 UTC
+Сгенерировано: 2026-03-06 13:45:08 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4360,7 +4360,7 @@ albums.forEach((a, i) => {
 
 // 2) Проверка центральных галерей и index.json наличия/структуры
 const galleryRoot = path.resolve('albums/gallery');
-const required = ['00','01','02','03','news'];
+const required = ['00','01','02','03'];
 required.forEach(id => {
   const dir = path.join(galleryRoot, id);
   const idx = path.join(dir, 'index.json');
