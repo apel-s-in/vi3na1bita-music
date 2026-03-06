@@ -1,43 +1,24 @@
 name: Validate manifest and SW
-
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   pull_request:
-
 jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Run manifest validator
-        run: node scripts/ci/validate-manifest.mjs
-
-      - name: Run SW linter
-        run: node scripts/ci/lint-sw.mjs
-
-      - name: Validate albums and galleries
-        run: node scripts/ci/validate-content.mjs
-
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: node scripts/ci/validate-manifest.mjs
+      - run: node scripts/ci/lint-sw.mjs
+      - run: node scripts/ci/validate-content.mjs
   remote-validate:
     name: Remote content validate (informational)
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Remote validate (warnings only)
-        run: node scripts/ci/validate-content.mjs
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: node scripts/ci/validate-content.mjs
