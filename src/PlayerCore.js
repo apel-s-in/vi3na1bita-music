@@ -4,12 +4,13 @@ import { ensureMediaSession } from './player-core/media-session.js';
 
 (function () {
   'use strict';
-  const W = window, ls = localStorage;
-  const LS_VOL = 'playerVolume', LS_PQ = 'qualityMode:v1';
+  
+  const W = window, ls = localStorage, LS_VOL = 'playerVolume', LS_PQ = 'qualityMode:v1';
   const clamp = (n, a, b) => Math.min(Math.max(Number(n) || 0, a), b);
   const sUid = v => (v == null ? '' : String(v)).trim() || null;
   const qNorm = v => String(v || '').toLowerCase() === 'lo' ? 'lo' : 'hi';
   const emitG = (n, d) => W.dispatchEvent(new CustomEvent(n, d ? { detail: d } : undefined));
+  const isMob = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
   
   class PlayerCore {
     playlist = []; originalPlaylist = []; currentIndex = -1;
@@ -24,6 +25,7 @@ import { ensureMediaSession } from './player-core/media-session.js';
         onPlay: () => this.play(), onPause: () => this.pause(), onStop: () => this.stop(),
         onPrev: () => this.prev(), onNext: () => this.next(), onSeekTo: t => this.seek(t)
       });
+      
       const unlock = () => { 
         if (W.Howler?.ctx?.state === 'suspended') W.Howler.ctx.resume().catch(()=>{});
         if (this._unlk) return; this._unlk = true;
@@ -46,7 +48,7 @@ import { ensureMediaSession } from './player-core/media-session.js';
 
       if (this.flags.shuf && !opts.preserveShuffleMode) this.shufflePlaylist(tUid);
       else if (tUid) this.currentIndex = Math.max(0, this.playlist.findIndex(t => t.uid === tUid));
-
+      
       this._skips = 0;
       if (this.sound && this.getCurrentTrackUid() === tUid && wasPlay && opts.preservePosition) {
         this._emit('onTrackChange', this.getCurrentTrack(), this.currentIndex); return this._updMedia();
@@ -98,27 +100,14 @@ import { ensureMediaSession } from './player-core/media-session.js';
     getPosition() { return this.sound?.seek() || 0; }
     getDuration() { return this.sound?.duration() || 0; }
 
-    _isMob() { return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent); }
-
     setVolume(v) { 
-      if (this._isMob()) return; // На смартфонах блокируем вмешательство JS в звук
+      if (isMob) return; 
       const vol = clamp(Number(v)/100, 0, 1); 
       ls.setItem(LS_VOL, String(Math.round(vol * 100))); 
       if (!this.flags.mute) Howler.volume(vol);
     }
-    
-    getVolume() { 
-      if (this._isMob()) return 100; // Телефоны всегда играют на 100% чистого аудио-потока
-      const saved = ls.getItem(LS_VOL);
-      return saved !== null ? Number(saved) : 100; 
-    }
-    
-    setMuted(m) { 
-      if (this._isMob()) return; // На телефонах mute делается кнопками телефона
-      this.flags.mute = !!m;
-      Howler.volume(this.flags.mute ? 0 : this.getVolume() / 100); 
-    }
-    
+    getVolume() { return isMob ? 100 : Number(ls.getItem(LS_VOL) ?? 100); }
+    setMuted(m) { if (isMob) return; this.flags.mute = !!m; Howler.volume(this.flags.mute ? 0 : this.getVolume() / 100); }
     isMuted() { return this.flags.mute; }
 
     async load(idx, opts = {}) {
@@ -129,58 +118,39 @@ import { ensureMediaSession } from './player-core/media-session.js';
       if (!opts.isAutoSkip) this._skips = 0;
       this._emit('onTrackChange', t, idx); emitG('player:trackChanged', { uid, dir });
 
-      let r = null, url = null;
-      try { r = await W.TrackResolver?.resolve?.(uid, this.qMode); } catch {}
+      let r = await W.TrackResolver?.resolve?.(uid, this.qMode).catch(()=>null);
       if (tok !== this._tok) return;
 
       const netOk = W.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine;
+      let url = r?.url || null, aP = r?.provider || 'unknown';
+
       if (r?.blob) {
-        this._oK = 'p_' + uid;
-        this._oKTok = tok;
-        url = W.Utils?.blob?.createUrl
-          ? W.Utils.blob.createUrl(this._oK, r.blob)
-          : URL.createObjectURL(r.blob);
-      }
-      else if (r?.source === 'stream' && r.url) {
-        this._oK = null; url = r.url;
-        if (netOk && W.Utils?.getNet?.()?.kind === 'cellular' && W.NetPolicy?.shouldShowCellularToast?.()) {
-          W.NotificationSystem?.show?.('Воспроизведение через мобильную сеть', 'info');
-        }
+        this._oK = 'p_' + uid; this._oKTok = tok;
+        url = W.Utils?.blob?.createUrl ? W.Utils.blob.createUrl(this._oK, r.blob) : URL.createObjectURL(r.blob);
+      } else if (url && netOk && W.Utils?.getNet?.()?.kind === 'cellular' && W.NetPolicy?.shouldShowCellularToast?.()) {
+        W.NotificationSystem?.show?.('Воспроизведение через мобильную сеть', 'info');
       }
       
-      let activeProvider = r?.provider || 'unknown';
-
       if (!url) {
-        try {
-          const smart = await W.TrackRegistry?.getSmartUrlInfo?.(uid, 'audio', this.qMode);
-          if (smart?.url) {
-            url = smart.url;
-            activeProvider = smart.provider || activeProvider;
-          }
-        } catch (e) {
-          console.warn('[PlayerCore] Smart URL failed:', e);
-        }
+        const smart = await W.TrackRegistry?.getSmartUrlInfo?.(uid, 'audio', this.qMode).catch(()=>null);
+        if (smart?.url) { url = smart.url; aP = smart.provider || aP; }
       }
 
-      this.currentProvider = activeProvider;
+      this.currentProvider = aP;
       const sf = fn => (...a) => tok === this._tok && fn(...a);
+      
       if (!url) {
-        if (this._skips >= this.playlist.length) { W.NotificationSystem?.show?.('Нет доступных треков', 'error'); return this._emit('onPlaybackError', { reason: 'no_source' }); }
+        if (this._skips >= this.playlist.length) { W.NotificationSystem?.error('Нет доступных треков'); return this._emit('onPlaybackError', { reason: 'no_source' }); }
         return setTimeout(sf(() => { this._skips++; this.load((idx + dir + this.playlist.length) % this.playlist.length, { ...opts, autoPlay: true, isAutoSkip: true, dir }); }), 80);
       }
 
       const pos = Number(opts.resumePosition) || 0, retry = Number(opts._retryN) || 0;
       this._unload(true);
+      
       this.sound = new Howl({
-        src: [url], 
-        html5: r?.source === 'stream' || !r?.blob, 
-        // Локальный volume убран: Howler автоматически применяет глобальный Howler.volume() 
-        // ко всем инстансам. Если оставить, громкость умножится сама на себя (0.5 * 0.5 = 0.25).
-        format: ['mp3'], 
-        xhr: { withCredentials: false },
-        autoplay: opts.autoPlay ?? this.isPlaying(),
+        src: [url], html5: r?.source === 'stream' || !r?.blob, format: ['mp3'], xhr: { withCredentials: false }, autoplay: opts.autoPlay ?? this.isPlaying(),
         onload: sf(() => { pos && this.seek(pos); this._updMedia(); }),
-        onplay: sf(() => { this._startT(); this._emit('onPlay', t, idx); this._updMedia(); emitG('player:play', { uid, duration: this.getDuration(), type: 'audio', provider: activeProvider }); emitG('player:providerChanged', { provider: activeProvider }); }),
+        onplay: sf(() => { this._startT(); this._emit('onPlay', t, idx); this._updMedia(); emitG('player:play', { uid, duration: this.getDuration(), type: 'audio', provider: aP }); emitG('player:providerChanged', { provider: aP }); }),
         onpause: sf(() => { this._stopT(); this._emit('onPause'); this._updMedia(); emitG('player:pause'); }),
         onend: sf(() => { this._emit('onEnd'); this._updMedia(); emitG('player:ended'); emitG('analytics:forceFlush'); this.flags.rep ? this.play(this.currentIndex) : this.next(); }),
         onloaderror: sf(() => this._err(idx, retry, opts, dir)),
@@ -195,31 +165,13 @@ import { ensureMediaSession } from './player-core/media-session.js';
     }
 
     _unload(silent) {
-      if (this.sound) {
-        try { this.sound.stop(); this.sound.unload(); } catch {}
-        this.sound = null;
+      if (this.sound) { try { this.sound.stop(); this.sound.unload(); } catch {} this.sound = null; }
+      if (this._oK && (!silent || (this._oKTok && this._oKTok !== this._tok))) {
+        try { W.Utils?.blob?.revokeUrl?.(this._oK); } catch {}
+        this._oK = null; this._oKTok = 0;
       }
-
-      // CRITICAL: не отзываем blob-url "на горячую" при silent unload.
-      // Howler может ещё обращаться к нему (ретраи/буфер/события) => blob: ERR_FILE_NOT_FOUND => автоскип.
-      //
-      // Правило:
-      // - silent=true: revoke только если blob-url принадлежит НЕ текущей загрузке (устаревший token)
-      // - silent=false (stop): можно revoke всегда (мы сознательно остановили)
-      if (this._oK) {
-        const canRevoke = !silent || (this._oKTok && this._oKTok !== this._tok);
-        if (canRevoke) {
-          try { W.Utils?.blob?.revokeUrl?.(this._oK); } catch {}
-          this._oK = null;
-          this._oKTok = 0;
-        }
-      }
-
       this._stopT();
-      if (!silent) {
-        emitG('player:stop');
-        this._emit('onStop');
-      }
+      if (!silent) { emitG('player:stop'); this._emit('onStop'); }
     }
 
     _startT() { this._stopT(); this._tick = setInterval(() => { this._emit('onTick', this.getPosition(), this.getDuration()); emitG('player:tick', { currentTime: this.getPosition(), volume: this.getVolume(), muted: this.isMuted() }); }, 250); }
@@ -239,6 +191,7 @@ import { ensureMediaSession } from './player-core/media-session.js';
       const u = sUid(uid); if (!u) return { liked: false };
       const pA = W.AlbumsManager?.getPlayingAlbum?.(), isFavView = pA === W.SPECIAL_FAVORITES_KEY;
       const src = opts.source || (opts.fromAlbum ? 'album' : (isFavView ? 'favorites' : 'album'));
+      
       const liked = Favorites.toggle(u, { source: src, albumKey: opts.albumKey });
       this._favSubs.forEach(f => { try { f({ uid: u, liked, albumKey: opts.albumKey }); } catch {} });
 
