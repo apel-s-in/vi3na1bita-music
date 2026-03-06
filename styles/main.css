@@ -124,14 +124,8 @@ body{min-height:100vh;min-width:100vw;font-family:-apple-system,BlinkMacSystemFo
 .log-title { font-size: 13px; font-weight: bold; color: #eaf2ff; }
 .log-desc { font-size: 11px; color: var(--secondary-color); margin-top: 2px; }
 
-.rec-cover { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; }
 .rec-play-btn { background: rgba(77,170,255,0.15); color: var(--secondary-color); border: none; width: 36px; height: 36px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: 0.2s; }
 .rec-play-btn:hover { background: var(--secondary-color); color: #fff; transform: scale(1.1); }
-
-.ach-info { flex: 1; text-align: left; }
-.ach-name { font-size: 14px; font-weight: bold; color: #fff; margin-bottom: 2px; }
-.ach-desc { font-size: 11px; color: #888; }
-.ach-check { color: #4caf50; font-weight: bold; font-size: 18px; }
 
 .stats-grid-compact { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
 .stat-box { 
@@ -250,8 +244,6 @@ body.news-view #cover-wrap{display:none!important}
 .sleep-menu-item.active{background:rgba(77,170,255,.2);color:var(--secondary-color)}
 
 /* Sleep timer: time dialog (HH:MM) */
-.sleep-time-modal-backdrop{position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:14px}
-.sleep-time-modal{width:min(360px,100%);background:var(--modal-bg);border:1px solid var(--border-color);border-radius:14px;padding:14px;box-shadow:0 8px 40px rgba(0,0,0,.6)}
 .sleep-time-title{color:var(--secondary-color);font-weight:900;margin:0 0 12px;text-align:center}
 .sleep-time-row{display:flex;gap:8px;align-items:center;justify-content:center;margin-bottom:12px}
 .sleep-time-input{width:72px;text-align:center;padding:10px 8px;border-radius:10px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:var(--text-color);outline:none}
@@ -496,9 +488,6 @@ body.news-view #cover-wrap{display:none!important}
 .offline-btn{min-width:110px;height:40px;font-size:1.05em;font-weight:900;border:0;border-radius:10px;cursor:pointer;letter-spacing:.07em;box-shadow:0 2px 8px rgba(6,0,0,.2);transition:background .2s,color .14s,transform .1s,box-shadow .2s;display:block;margin:10px auto 0}
 .offline-btn:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(6,0,0,.3)}
 .offline-btn:active{transform:translateY(0)}
-.offline-btn.online{background:var(--primary-color);color:var(--c-w)}
-.offline-btn.offline{background:#27b34c;color:var(--c-w)}
-#offline-btn.alert::after{content:"!";color:var(--primary-color);font-weight:900;margin-left:6px}
 
 /* Toasts */
 #toast-container{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:10000;pointer-events:none;display:flex;flex-direction:column;gap:10px;align-items:center}
@@ -635,14 +624,8 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .om-legend-dot--transient{background:#ef5350}
 .om-legend-dot--other{background:#78909c}
 
-/* Storage expandable detail */
-.om-storage-detail{animation:omFadeIn .2s ease}
-@keyframes omFadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
-
 /* Net policy */
-.om-net-speed{font-size:13px;color:var(--om-muted);margin-bottom:12px}
 .om-net-unsupported{font-size:13px;color:var(--om-muted);font-style:italic;margin-bottom:10px;padding:8px 12px;background:var(--om-card);border-radius:8px;border-left:3px solid rgba(255,255,255,.12)}
-.om-net-status{font-size:12px;color:var(--om-muted);margin:8px 0}
 .om-net-kill-hint{font-size:12px;color:#ffab40;background:rgba(255,171,64,.08);border:1px solid rgba(255,171,64,.2);border-radius:8px;padding:8px 12px;margin-top:8px;line-height:1.4}
 
 /* Toggles */
@@ -671,8 +654,6 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .om-traffic__row span:last-child{font-weight:500;color:rgba(255,255,255,.8);font-variant-numeric:tabular-nums}
 
 /* Quality + Mode segment toggles */
-.om-quality-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.om-quality-label{font-size:13px;color:var(--om-dim)}
 .om-quality-toggle,.om-mode-toggle{display:flex;border-radius:8px;overflow:visible;border:1px solid rgba(255,255,255,.1);flex-shrink:0}
 .om-quality-btn,.om-mode-btn{all:unset;cursor:pointer;padding:6px 16px;font:600 13px inherit;color:rgba(255,255,255,.35);background:var(--om-card);transition:all .15s;user-select:none;text-align:center;white-space:nowrap}
 .om-mode-btn{font-size:12px;min-width:40px}
@@ -712,7 +693,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .om-track-list{margin-top:12px;max-height:260px;overflow-y:auto;scrollbar-width:thin}
 .om-track-list::-webkit-scrollbar{width:4px}
 .om-track-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
-.om-list-loading,.om-list-empty{text-align:center;padding:20px 12px;font-size:13px;color:rgba(255,255,255,.35)}
+.om-list-empty{text-align:center;padding:20px 12px;font-size:13px;color:rgba(255,255,255,.35)}
 .om-list-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;transition:background .12s}
 .om-list-item:hover{background:rgba(255,255,255,.04)}
 .om-list-icon{font-size:14px;flex-shrink:0;width:20px;text-align:center}
