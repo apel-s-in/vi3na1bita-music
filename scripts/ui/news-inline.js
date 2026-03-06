@@ -41,11 +41,6 @@ export function renderNewsInlineSkeleton(container) {
 
   container.innerHTML = `
     <div class="news-inline__head">
-      <div class="news-inline__links">
-        <a href="https://t.me/vitrina_razbita" target="_blank" rel="noopener noreferrer">Telegram канал</a>
-        <span class="news-inline__dot">·</span>
-        <a href="./news.html" target="_blank" rel="noopener noreferrer">Страница новостей</a>
-      </div>
       <div id="news-inline-status" class="news-inline__status">Загрузка...</div>
     </div>
     <div id="news-inline-list" class="news-inline__list"></div>
