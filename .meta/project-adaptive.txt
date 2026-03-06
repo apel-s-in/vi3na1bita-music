@@ -164,9 +164,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-0f627bf7f544eaf465eae73280240944d39e5bd4.idx
-│   │       ├── pack-0f627bf7f544eaf465eae73280240944d39e5bd4.pack
-│   │       └── pack-0f627bf7f544eaf465eae73280240944d39e5bd4.rev
+│   │       ├── pack-c19c8e66ad38ffd874e96af4f8dd27dc15f16f72.idx
+│   │       ├── pack-c19c8e66ad38ffd874e96af4f8dd27dc15f16f72.pack
+│   │       └── pack-c19c8e66ad38ffd874e96af4f8dd27dc15f16f72.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -387,7 +387,7 @@ vi3na1bita-music/
 ├── news.html
 └── service-worker.js
 
-Сгенерировано: 2026-03-06 13:33:18 UTC
+Сгенерировано: 2026-03-06 13:34:28 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2656,8 +2656,8 @@ export async function loadShowcaseAlbum(ctx) {
 
 export async function loadNewsAlbum(ctx) {
   ctx.renderAlbumTitle('📰 НОВОСТИ 📰', 'news');
-  if (window.GalleryManager?.loadGallery) await window.GalleryManager.loadGallery(NEWS);
-  document.getElementById('cover-wrap').style.display = '';
+  document.getElementById('cover-wrap').style.display = 'none';
+  if (window.GalleryManager?.clear) window.GalleryManager.clear();
   const c = document.getElementById('track-list');
   if (c) await loadAndRenderNewsInline(c);
 }
