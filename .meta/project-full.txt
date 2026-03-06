@@ -160,9 +160,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-04a894f4585f9a17befe37fa3a17b2fffb08588b.idx
-│   │       ├── pack-04a894f4585f9a17befe37fa3a17b2fffb08588b.pack
-│   │       └── pack-04a894f4585f9a17befe37fa3a17b2fffb08588b.rev
+│   │       ├── pack-acbfa23d537fe82c6b1b9f55420c8524c05dedc9.idx
+│   │       ├── pack-acbfa23d537fe82c6b1b9f55420c8524c05dedc9.pack
+│   │       └── pack-acbfa23d537fe82c6b1b9f55420c8524c05dedc9.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 └── service-worker.js
 
 
-Сгенерировано: 2026-03-06 12:09:17 UTC
+Сгенерировано: 2026-03-06 12:09:52 UTC
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
@@ -573,47 +573,7 @@ jobs:
 
 //=================================================
 // FILE: /custom.json
-{
-  "rumEndpoint": "",
-  "sw": {
-    "mediaMaxCacheMB": 150,
-    "nonRangeMaxStoreMB": 25,
-    "nonRangeMaxStoreMBSlow": 10,
-    "allowUnknownSize": false,
-    "revalidateDays": 7
-  },
-  "items": [
-    {
-      "type": "ym",
-      "title": "Исполнитель — Витрина Разбита",
-      "subtitle": "Яндекс Музыка",
-      "url": "https://music.yandex.ru/artist/24739002?utm_source=web&utm_medium=copy_link",
-      "cover": ""
-    },
-    {
-      "type": "tgPost",
-      "title": "Свежий пост в Telegram",
-      "url": "https://t.me/vitrina_razbita/28",
-      "height": 480
-    },
-    {
-      "type": "vkPlaylist",
-      "title": "Альбом «Голос Души» (VK)",
-      "ownerId": 165137,
-      "playlistId": 3,
-      "hash": "b8300406c5f33725de",
-      "containerId": "vk_playlist_165137_3"
-    },
-    {
-      "type": "vkPlaylist",
-      "title": "Альбом «Между Злом и Добром» (VK)",
-      "ownerId": 165137,
-      "playlistId": 2,
-      "hash": "d70fba309dc0bea296",
-      "containerId": "vk_playlist_165137_2"
-    }
-  ]
-}
+{"rumEndpoint":"","sw":{"mediaMaxCacheMB":150,"nonRangeMaxStoreMB":25,"nonRangeMaxStoreMBSlow":10,"allowUnknownSize":false,"revalidateDays":7},"items":[{"type":"ym","title":"Исполнитель — Витрина Разбита","subtitle":"Яндекс Музыка","url":"https://music.yandex.ru/artist/24739002?utm_source=web&utm_medium=copy_link","cover":""},{"type":"tgPost","title":"Свежий пост в Telegram","url":"https://t.me/vitrina_razbita/28","height":480},{"type":"vkPlaylist","title":"Альбом «Голос Души» (VK)","ownerId":165137,"playlistId":3,"hash":"b8300406c5f33725de","containerId":"vk_playlist_165137_3"},{"type":"vkPlaylist","title":"Альбом «Между Злом и Добром» (VK)","ownerId":165137,"playlistId":2,"hash":"d70fba309dc0bea296","containerId":"vk_playlist_165137_2"}]}
 
 //=================================================
 // FILE: /index.html
