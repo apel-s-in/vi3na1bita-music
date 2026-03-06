@@ -164,9 +164,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d84c4c4020c2e1e84472b16be6aa69f842cd9e2b.idx
-│   │       ├── pack-d84c4c4020c2e1e84472b16be6aa69f842cd9e2b.pack
-│   │       └── pack-d84c4c4020c2e1e84472b16be6aa69f842cd9e2b.rev
+│   │       ├── pack-62eb0ed83115a5f5055e42ea43dfc1e2fc398ad0.idx
+│   │       ├── pack-62eb0ed83115a5f5055e42ea43dfc1e2fc398ad0.pack
+│   │       └── pack-62eb0ed83115a5f5055e42ea43dfc1e2fc398ad0.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -378,7 +378,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-06 14:21:31 UTC
+Сгенерировано: 2026-03-06 14:22:07 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7951,6 +7951,7 @@ body{min-height:100vh;min-width:100vw;font-family:-apple-system,BlinkMacSystemFo
 
 /* Cover / gallery */
 #cover-wrap{width:100%;max-width:400px;margin:14px auto 0;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;position:relative}
+body.news-view #cover-wrap{display:none!important}
 .cover-gallery-arrow{position:absolute;top:50%;transform:translateY(-50%);z-index:2;border:0;cursor:pointer;background:0 0;padding:0;width:44px;height:44px;display:flex;align-items:center;justify-content:center;transition:opacity .2s;visibility:hidden;pointer-events:none}
 .cover-gallery-arrow:hover{opacity:.8}
 .cover-gallery-arrow:active{transform:translateY(-50%) scale(.9)}
