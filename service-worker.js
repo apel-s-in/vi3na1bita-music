@@ -18,7 +18,7 @@ const DEFAULT_SW_CONFIG = {
 let isAirplaneMode = false;
 
 const STATIC_ASSETS = [
-  './', './index.html', './news.html', './manifest.json',
+  './', './index.html', './manifest.json',
   './albums.json',
   './data/lyrics-index-v1.json',
   './styles/main.css', './img/logo.png', './img/star.png', './img/star2.png',
