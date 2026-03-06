@@ -220,7 +220,7 @@ body.news-view #cover-wrap{display:none!important}
 .player-control-btn.main:hover{background:#c60000}
 .player-control-btn svg{width:20px;height:20px}
 .player-control-btn.main svg{width:24px;height:24px}
-.player-control-btn.active,.player-control-btn.repeat-active,.sleep-timer-btn.active{background:rgba(77,170,255,.2);border-color:var(--secondary-color);color:var(--secondary-color);box-shadow:0 0 12px rgba(77,170,255,.3)}
+.player-control-btn.active,.sleep-timer-btn.active{background:rgba(77,170,255,.2);border-color:var(--secondary-color);color:var(--secondary-color);box-shadow:0 0 12px rgba(77,170,255,.3)}
 
 /* Favorites */
 #favorites-btn{position:relative}
@@ -462,7 +462,6 @@ body.news-view #cover-wrap{display:none!important}
 }
 
 /* Скрываем всё лишнее */
-#now-playing #lyrics-wrapper,
 #now-playing #lyricsplayerblock .player-progress-wrapper,
 #now-playing #lyricsplayerblock .player-controls-row:nth-child(2),
 #now-playing #lyricsplayerblock .volume-control-wrapper,
@@ -732,11 +731,11 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
   .om-section,.om-header{padding:14px}
   .om-settings-grid{grid-template-columns:1fr}
   .om-toggles-row{flex-direction:column;gap:6px}
-  .om-mode-card__head,.om-quality-row{flex-direction:column;align-items:flex-start;gap:8px}
+  .om-mode-card__head{flex-direction:column;align-items:flex-start;gap:8px}
 }
 @media(max-height:500px){.om-body{max-height:calc(100vh - 80px)}.om-overlay{padding:8px}}
 @media(min-width:768px){.om-overlay{align-items:center;padding:40px 20px}.om-body{max-height:70vh}}
-@media(prefers-reduced-motion:reduce){.om-modal,.om-overlay,.om-progress-fill{transition:none!important}}
+@media(prefers-reduced-motion:reduce){.om-modal,.om-overlay{transition:none!important}}
 
 /* Pinned & Cloud top row (quality + recache) */
 .om-pc-toprow{display:flex;gap:12px;align-items:flex-end;margin-bottom:14px}
