@@ -73,8 +73,8 @@ export async function loadShowcaseAlbum(ctx) {
 
 export async function loadNewsAlbum(ctx) {
   ctx.renderAlbumTitle('📰 НОВОСТИ 📰', 'news');
-  if (window.GalleryManager?.loadGallery) await window.GalleryManager.loadGallery(NEWS);
-  document.getElementById('cover-wrap').style.display = '';
+  document.getElementById('cover-wrap').style.display = 'none';
+  if (window.GalleryManager?.clear) window.GalleryManager.clear();
   const c = document.getElementById('track-list');
   if (c) await loadAndRenderNewsInline(c);
 }
