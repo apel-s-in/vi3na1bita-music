@@ -164,9 +164,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e4e3dd6ef6381e4a14fccfe01dfa92e26a259b51.idx
-│   │       ├── pack-e4e3dd6ef6381e4a14fccfe01dfa92e26a259b51.pack
-│   │       └── pack-e4e3dd6ef6381e4a14fccfe01dfa92e26a259b51.rev
+│   │       ├── pack-4c7d08810d7fa45780e9018ec0ccbbceb61a852c.idx
+│   │       ├── pack-4c7d08810d7fa45780e9018ec0ccbbceb61a852c.pack
+│   │       └── pack-4c7d08810d7fa45780e9018ec0ccbbceb61a852c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,7 +377,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-06 21:10:16 UTC
+Сгенерировано: 2026-03-06 21:11:35 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2286,7 +2286,6 @@ export class StatsAggregator {
 
 //=================================================
 // FILE: /scripts/app/albums.js
-import { registerTrack } from './track-registry.js';
 import { injectIndicator } from '../ui/offline-indicators.js';
 
 const W = window, D = document, C = W.APP_CONFIG || {};
