@@ -148,7 +148,24 @@ export class StatsAggregator {
          const targetUid = ev.uid || 'global';
          await metaDB.updateStat(targetUid, s => {
            if (!s.featuresUsed) s.featuresUsed = {};
-           s.featuresUsed[ev.data.feature] = (s.featuresUsed[ev.data.feature] || 0) + 1;
+
+           const feature = ev.data.feature;
+           s.featuresUsed[feature] = (s.featuresUsed[feature] || 0) + 1;
+
+           if (feature === 'social_visit') {
+             const target = String(ev.data.target || 'other').toLowerCase();
+             const key = `social_visit_${target}`;
+             s.featuresUsed[key] = (s.featuresUsed[key] || 0) + 1;
+
+             const hasAll =
+               (s.featuresUsed.social_visit_youtube || 0) > 0 &&
+               (s.featuresUsed.social_visit_telegram || 0) > 0 &&
+               (s.featuresUsed.social_visit_vk || 0) > 0 &&
+               (s.featuresUsed.social_visit_tiktok || 0) > 0;
+
+             if (hasAll) s.featuresUsed.social_visit_all = 1;
+           }
+
            return s;
          });
       }
