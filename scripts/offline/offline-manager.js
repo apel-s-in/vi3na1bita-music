@@ -136,7 +136,6 @@ class OfflineManager {
   async countNeedsReCache(q) { if (this.getMode() === 'R2') return 0; return (await DB.getAllTrackMetas()).filter(m => ['pinned', 'cloud'].includes(m.type) && m.cachedComplete && m.quality !== normQ(q)).length; }
   async reCacheAll(q) { this._onQualChg(q); }
   setCacheQualitySetting(q) { this.setCQ(q); }
-  recordTickStats() {} getBackgroundPreset() { return 'balanced'; } setBackgroundPreset() {}
 }
 
 const instance = new OfflineManager();
