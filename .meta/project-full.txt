@@ -164,9 +164,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-446f132557855f2c1eb2c3381d2fab30c7329df9.idx
-│   │       ├── pack-446f132557855f2c1eb2c3381d2fab30c7329df9.pack
-│   │       └── pack-446f132557855f2c1eb2c3381d2fab30c7329df9.rev
+│   │       ├── pack-81805ca7d8c1aee34ca49a99fe7e4018d86bac8f.idx
+│   │       ├── pack-81805ca7d8c1aee34ca49a99fe7e4018d86bac8f.pack
+│   │       └── pack-81805ca7d8c1aee34ca49a99fe7e4018d86bac8f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -378,7 +378,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-06 14:32:55 UTC
+Сгенерировано: 2026-03-06 14:50:05 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2537,6 +2537,17 @@ export async function loadNewsAlbum(ctx) {
   ctx.renderAlbumTitle('📰 НОВОСТИ 📰', 'news');
   document.getElementById('cover-wrap').style.display = 'none';
   if (window.GalleryManager?.clear) window.GalleryManager.clear();
+
+  const social = document.getElementById('social-links');
+  if (social) {
+    social.innerHTML = `
+      <a href="https://music.yandex.ru/artist/24739002?utm_source=web&utm_medium=copy_link" target="_blank" rel="noopener noreferrer">YouTube</a>
+      <a href="https://t.me/vitrina_razbita" target="_blank" rel="noopener noreferrer">Telegram</a>
+      <a href="https://vk.com/public165137" target="_blank" rel="noopener noreferrer">VK</a>
+      <a href="https://www.tiktok.com/" target="_blank" rel="noopener noreferrer">TikTok</a>
+    `;
+  }
+
   const c = document.getElementById('track-list');
   if (c) await loadAndRenderNewsInline(c);
 }
