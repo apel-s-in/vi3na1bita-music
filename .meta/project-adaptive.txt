@@ -164,9 +164,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-cb7a3cf5ed479e0e81285a7e7f3aedaf76d68112.idx
-│   │       ├── pack-cb7a3cf5ed479e0e81285a7e7f3aedaf76d68112.pack
-│   │       └── pack-cb7a3cf5ed479e0e81285a7e7f3aedaf76d68112.rev
+│   │       ├── pack-c8780ef6914942f0139c919bf6bd739905b79983.idx
+│   │       ├── pack-c8780ef6914942f0139c919bf6bd739905b79983.pack
+│   │       └── pack-c8780ef6914942f0139c919bf6bd739905b79983.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,7 +377,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-06 20:58:12 UTC
+Сгенерировано: 2026-03-06 21:01:37 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3443,9 +3443,15 @@ class ShowcaseManager {
       const tr = uids.map(u => W.TrackRegistry.getTrackByUid(u)).filter(Boolean);
       if (this.sortMode.startsWith('plays') || this.sortMode === 'last-played') {
         const db = (await import('../../analytics/meta-db.js')).metaDB;
-        const full = (await db.getStat('globalFullListens'))?.details || {};
-        const last = (await db.getStat('lastPlayed'))?.details || {};
-        tr.forEach(t => this._stat.set(t.uid, { plays: full[t.uid] || 0, lastAt: last[t.uid] || 0 }));
+        const stats = await db.getAllStats();
+        const map = new Map(stats.filter(s => s.uid !== 'global').map(s => [s.uid, s]));
+        tr.forEach(t => {
+          const st = map.get(t.uid);
+          this._stat.set(t.uid, {
+            plays: st?.globalFullListenCount || 0,
+            lastAt: st?.lastPlayedAt || 0
+          });
+        });
       }
       const S = this._stat;
       const sorters = {
