@@ -164,9 +164,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2af8636c75842249c6a5d29783d82a011b1c88cf.idx
-│   │       ├── pack-2af8636c75842249c6a5d29783d82a011b1c88cf.pack
-│   │       └── pack-2af8636c75842249c6a5d29783d82a011b1c88cf.rev
+│   │       ├── pack-d481c68a199a7431bfc50c97e81c762e9f46cba8.idx
+│   │       ├── pack-d481c68a199a7431bfc50c97e81c762e9f46cba8.pack
+│   │       └── pack-d481c68a199a7431bfc50c97e81c762e9f46cba8.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,7 +377,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-06 15:44:28 UTC
+Сгенерировано: 2026-03-06 15:54:13 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -8024,7 +8024,7 @@ body.news-view #cover-wrap{display:none!important}
 .player-control-btn.main:hover{background:#c60000}
 .player-control-btn svg{width:20px;height:20px}
 .player-control-btn.main svg{width:24px;height:24px}
-.player-control-btn.active,.player-control-btn.repeat-active,.sleep-timer-btn.active{background:rgba(77,170,255,.2);border-color:var(--secondary-color);color:var(--secondary-color);box-shadow:0 0 12px rgba(77,170,255,.3)}
+.player-control-btn.active,.sleep-timer-btn.active{background:rgba(77,170,255,.2);border-color:var(--secondary-color);color:var(--secondary-color);box-shadow:0 0 12px rgba(77,170,255,.3)}
 
 /* Favorites */
 #favorites-btn{position:relative}
@@ -8266,7 +8266,6 @@ body.news-view #cover-wrap{display:none!important}
 }
 
 /* Скрываем всё лишнее */
-#now-playing #lyrics-wrapper,
 #now-playing #lyricsplayerblock .player-progress-wrapper,
 #now-playing #lyricsplayerblock .player-controls-row:nth-child(2),
 #now-playing #lyricsplayerblock .volume-control-wrapper,
@@ -8536,11 +8535,11 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
   .om-section,.om-header{padding:14px}
   .om-settings-grid{grid-template-columns:1fr}
   .om-toggles-row{flex-direction:column;gap:6px}
-  .om-mode-card__head,.om-quality-row{flex-direction:column;align-items:flex-start;gap:8px}
+  .om-mode-card__head{flex-direction:column;align-items:flex-start;gap:8px}
 }
 @media(max-height:500px){.om-body{max-height:calc(100vh - 80px)}.om-overlay{padding:8px}}
 @media(min-width:768px){.om-overlay{align-items:center;padding:40px 20px}.om-body{max-height:70vh}}
-@media(prefers-reduced-motion:reduce){.om-modal,.om-overlay,.om-progress-fill{transition:none!important}}
+@media(prefers-reduced-motion:reduce){.om-modal,.om-overlay{transition:none!important}}
 
 /* Pinned & Cloud top row (quality + recache) */
 .om-pc-toprow{display:flex;gap:12px;align-items:flex-end;margin-bottom:14px}
