@@ -13,13 +13,39 @@ function renderCard(it) {
   const text = esc(it?.text || '');
   const tags = Array.isArray(it?.tags) ? it.tags : [];
 
-  const media = it?.embedUrl
-    ? `<div class="news-inline__media"><iframe loading="lazy" src="${esc(it.embedUrl)}" allowfullscreen></iframe></div>`
+  const media = it?.youtubeThumb && it?.youtubeUrl
+    ? `
+      <div class="news-inline__media news-inline__media--youtube">
+        <a
+          class="news-inline__youtube-link"
+          href="${esc(it.youtubeUrl)}"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="${title}"
+        >
+          <img loading="lazy" src="${esc(it.youtubeThumb)}" alt="${title}">
+          <span class="news-inline__youtube-play">▶</span>
+        </a>
+      </div>
+    `
     : it?.image
-      ? `<div class="news-inline__media"><img loading="lazy" src="${esc(it.image)}" alt=""></div>`
+      ? `<div class="news-inline__media"><img loading="lazy" src="${esc(it.image)}" alt="${title}"></div>`
       : it?.video
         ? `<div class="news-inline__media"><video controls preload="metadata" src="${esc(it.video)}"></video></div>`
         : '';
+
+  const actions = it?.youtubeUrl
+    ? `
+      <div class="news-inline__actions">
+        <a
+          class="news-inline__action-link"
+          href="${esc(it.youtubeUrl)}"
+          target="_blank"
+          rel="noopener noreferrer"
+        >Смотреть на YouTube</a>
+      </div>
+    `
+    : '';
 
   const tagHtml = tags.length
     ? `<div class="news-inline__tags">${tags.map((t) => `<span class="news-inline__tag">#${esc(t)}</span>`).join('')}</div>`
@@ -31,6 +57,7 @@ function renderCard(it) {
       ${date ? `<div class="news-inline__date">${date}</div>` : ''}
       ${media}
       ${text ? `<div class="news-inline__text">${text}</div>` : ''}
+      ${actions}
       ${tagHtml}
     </article>
   `;
