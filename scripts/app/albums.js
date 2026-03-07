@@ -49,7 +49,13 @@ class AlbumsManager {
         const k = e.target.closest('.album-icon')?.dataset.album;
         if (!k || k.startsWith('__')) return;
         isDragging = false;
-        touchTimer = setTimeout(() => { touchTimer = null; W.ShowcaseManager?.openColorPicker?.(null, k); }, 600);
+        touchTimer = setTimeout(() => {
+          touchTimer = null;
+          const openShowcaseColorPicker = W.ShowcaseManager?.openColorPicker || W.ShowcaseManager?.opnCol;
+          if (typeof openShowcaseColorPicker === 'function') {
+            openShowcaseColorPicker.call(W.ShowcaseManager, null, k);
+          }
+        }, 600);
       }, {passive: true});
       
       iconsBox.addEventListener('touchmove', () => { isDragging = true; if(touchTimer) clearTimeout(touchTimer); }, {passive: true});
@@ -57,7 +63,13 @@ class AlbumsManager {
       
       iconsBox.addEventListener('contextmenu', e => {
         const k = e.target.closest('.album-icon')?.dataset.album;
-        if (k && !k.startsWith('__')) { e.preventDefault(); W.ShowcaseManager?.openColorPicker?.(null, k); }
+        if (k && !k.startsWith('__')) {
+          e.preventDefault();
+          const openShowcaseColorPicker = W.ShowcaseManager?.openColorPicker || W.ShowcaseManager?.opnCol;
+          if (typeof openShowcaseColorPicker === 'function') {
+            openShowcaseColorPicker.call(W.ShowcaseManager, null, k);
+          }
+        }
       });
       
       iconsBox.addEventListener('click', e => {
