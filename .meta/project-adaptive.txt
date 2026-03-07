@@ -164,9 +164,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-de7016c182277b58a7ff0cacaab676d2eaa63ddd.idx
-│   │       ├── pack-de7016c182277b58a7ff0cacaab676d2eaa63ddd.pack
-│   │       └── pack-de7016c182277b58a7ff0cacaab676d2eaa63ddd.rev
+│   │       ├── pack-b9f0f5eb82f9ead8918b9dd4aed8f61da1f931d6.idx
+│   │       ├── pack-b9f0f5eb82f9ead8918b9dd4aed8f61da1f931d6.pack
+│   │       └── pack-b9f0f5eb82f9ead8918b9dd4aed8f61da1f931d6.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,7 +377,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-07 19:34:31 UTC
+Сгенерировано: 2026-03-07 19:36:10 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -8168,7 +8168,12 @@ import { ensureMediaSession } from './player-core/media-session.js';
       this._favSubs.forEach(f => { try { f({ uid: u, liked, albumKey: opts.albumKey }); } catch {} });
 
       if (!liked && src === 'favorites' && isFavView && this.getCurrentTrackUid() === u) {
-        if ((this.getFavoritesState().active?.length || 0) <= 0) this.stop(); else this.next();
+        const activeCount = this.getFavoritesState().active?.length || 0;
+        if (activeCount <= 0) {
+          this.stop();
+        } else {
+          this.next();
+        }
       }
       return { liked };
     }
