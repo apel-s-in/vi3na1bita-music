@@ -164,9 +164,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-424b3d919e3461174c5a3f0675ab8d23fbd0c473.idx
-│   │       ├── pack-424b3d919e3461174c5a3f0675ab8d23fbd0c473.pack
-│   │       └── pack-424b3d919e3461174c5a3f0675ab8d23fbd0c473.rev
+│   │       ├── pack-02e0bb9c9e591bcbe5c425a7073cc1b96c42f1c0.idx
+│   │       ├── pack-02e0bb9c9e591bcbe5c425a7073cc1b96c42f1c0.pack
+│   │       └── pack-02e0bb9c9e591bcbe5c425a7073cc1b96c42f1c0.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,7 +377,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-07 19:59:23 UTC
+Сгенерировано: 2026-03-07 20:18:17 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3852,139 +3852,7 @@ class ShowcaseManager {
       h += `<div class="showcase-track ${eyeOff ? 'inactive' : ''} ${isS ? 'selected' : ''}" data-uid="${uid}" style="border-left: 3px solid ${cl}" ${isD ? 'draggable="true"' : ''}>
               ${isD ? `<button class="sc-arrow-up" data-dir="-1">▲</button>` : `<div class="tnum" style="display:${sN?'block':'none'}">${i + 1}.</div>`}
               ${isD || this.searchQuery ? `<div class="showcase-drag-handle">${isD ? '⠿' : ''}</div><div class="showcase-checkbox"></div>` : ''}
-              <img src="${this.getCover(t)}" class="showcase-track-thumb" loading="lazy">
-              <div class="track-title"><div>${esc(t.title)}</div><div class="showcase-track-meta">${badges} ${esc(W.TrackRegistry.getAlbumTitle(t.sourceAlbum))}</div></div>
-              ${!isD ? `<span class="offline-ind" data-uid="${uid}" title="Оффлайн статус">🔒</span><img src="${W.playerCore?.isFavorite(uid) ? 'img/star.png' : 'img/star2.png'}" class="like-star" data-readonly="1" alt="favorite-state" title="Изменение только через меню"><button class="showcase-track-menu-btn">···</button>` : ''}
-              ${isD ? `<button class="showcase-hide-btn">${eyeOff ? '👁‍🗨' : '👁'}</button>` : `<button class="sc-arrow-down" data-dir="1">▼</button>`}
-            </div>`;
-    });
-    c.innerHTML = h || '<div class="fav-empty">Треки не найдены</div>';
-    if (!isD) W.OfflineIndicators?.injectOfflineIndicators?.(c); 
-    this.hiTrack(W.playerCore?.getCurrentTrackUid()); this.rndrMPnl();
-  }
-
-  bindCtrl(root) {
-    if (!root || this.controlsBound) return;
-    this.controlsBound = true;
-
-    const applyQ = U.func.debounceFrame(async () => { this.searchQuery = ($('sc-search')?.value || '').trim(); this.searchSel.clear(); await this.renderList(); const c=$('sc-search-clear'); if(c) c.style.display = this.searchQuery ? '' : 'none'; });
-    root.addEventListener('input', e => e.target.id === 'sc-search' && applyQ());
-    root.addEventListener('keydown', e => e.target.id === 'sc-search' && e.key === 'Enter' && e.target.blur());
-
-    const acts = {
-      'sc-search-clear': () => { const i=$('sc-search'); if(i){i.value=''; i.blur();} this.searchQuery=''; this.searchSel.clear(); this.renderList(); },
-      'sc-edit': () => this.enterEdit(), 'sc-save': () => this.saveEdit(), 'sc-create': () => this.createFromEdit(), 'sc-reset': () => this.resetEdit(), 'sc-exit': () => this.exitEdit(),
-      'sc-playall': () => this.playCtx(), 
-      'sc-shuffle': () => { 
-        // Rule 17.2: Shuffle is a playback action, not a sort mode
-        const trks = this.getPlaybackTracks(); 
-        if(!trks.length) return W.NotificationSystem.warning('Нет активных треков');
-        W.AlbumsManager.setPlayingAlbum(this.getCtx().isPl ? `__showcase__:${this.state.ctx.id}` : '__showcase__'); 
-        W.playerCore.setPlaylist(trks, 0, null, { preservePosition: false }); 
-        W.playerCore.shufflePlaylist(); W.playerCore.play(0); W.PlayerUI.ensurePlayerBlock(0, { userInitiated: true }); 
-        this.hiTrack(W.playerCore.getCurrentTrackUid()); 
-      },
-      'sc-sort': () => this.openSort(),
-      'sc-tg-e': () => { this.state.ui.hid = !this.state.ui.hid; this.saveState(); this.renderList(); this.updStatus(); },
-      'sc-tg-n': () => { this.state.ui.num = !this.state.ui.num; this.saveState(); this.renderList(); this.updStatus(); },
-      'sc-tg-v': () => { this.state.ui.view = this.state.ui.view === 'flat' ? 'grouped' : 'flat'; this.saveState(); this.renderList(); this.updStatus(); },
-      'sc-b-add': () => {
-        // Search Add Action (Rule 15.4)
-        const c = this.getCtx();
-        if (c.isPl) {
-          const p = this.state.pls.find(x => x.id === c.id);
-          if (p) {
-            [...this.searchSel].forEach(u => {
-              if (!W.TrackRegistry?.getTrackByUid?.(u)) return;
-              if (!p.uids.includes(u)) { p.uids.push(u); p.ord.push(u); }
-              p.hid = p.hid.filter(x => x !== u); // Force activate
-            });
-          }
-        } else {
-          const d = this.state.def;
-          [...this.searchSel].forEach(u => {
-            if (!W.TrackRegistry?.getTrackByUid?.(u)) return;
-            if (!d.ord.includes(u)) d.ord.push(u);
-            d.hid = d.hid.filter(x => x !== u); // Force activate
-          });
-        }
-        this.searchSel.clear(); this.searchQuery = ''; this.saveState(); this.renderTab();
-        W.NotificationSystem.success('Добавлено в текущий плейлист');
-      },
-      'sc-b-new': () => this.createFromEdit(true), 
-      'sc-b-clr': () => { this.searchSel.clear(); this.renderList(); }
-    };
-
-    let lpTm = null, isLp = false;
-    root.addEventListener('touchstart', e => {
-      const h = e.target.closest('.showcase-drag-handle'); if (h && this.draft && !this.searchQuery) return e.preventDefault(), this.strtDrg(e, h.closest('.showcase-track'));
-      const t = e.target.closest('.showcase-track');
-      if (t && (this.draft || this.searchQuery) && !e.target.closest('button')) { isLp = false; lpTm = setTimeout(() => { isLp = true; this.togSel(t.dataset.uid); navigator.vibrate?.(50); }, 500); }
-    }, { passive: false });
-    root.addEventListener('touchmove', () => clearTimeout(lpTm), { passive: true });
-    root.addEventListener('touchend', () => clearTimeout(lpTm));
-
-    root.addEventListener('click', e => {
-      const a = e.target.closest('button'); if (a && acts[a.id]) return acts[a.id]();
-      if (isLp) return;
-      
-      // Indicators in showcase are read-only to avoid UX conflict (Rule 10 & 16)
-      if (e.target.closest('.like-star') || e.target.closest('.offline-ind')) {
-        const u = e.target.closest('.showcase-track')?.dataset.uid;
-        if (u && !this.draft && !this.searchQuery) { e.preventDefault(); e.stopPropagation(); return this.opnMenu(u); }
-      }
-
-      const t = e.target.closest('.showcase-track'), u = t?.dataset.uid; if (!t) return;
-
-      if (this.draft) {
-        if (e.target.closest('.showcase-hide-btn')) return this.togHid(u);
-        if (e.target.closest('.sc-arrow-up')) return this.swp(u, -1);
-        if (e.target.closest('.sc-arrow-down')) return this.swp(u, 1);
-        if (e.target.closest('.showcase-checkbox')) return this.togSel(u);
-        return;
-      }
-      
-      if (this.searchQuery) {
-        if (e.target.closest('.showcase-checkbox')) return this.togSel(u);
-        return this.opnMenu(u); // Tap on search result opens menu (Rule 15.5)
-      }
-      
-      if (e.target.closest('.showcase-track-menu-btn')) return this.opnMenu(u);
-      
-      const ctx = this.getCtx();
-      if (ctx.hid.includes(u)) return this.opnMenu(u); // Hidden track tap opens menu (Rule 11.1)
-      this.playCtx(u);
-    });
-
-    // Drag-and-Drop functionality
-    root.addEventListener('dragstart', e => { if (!this.draft || this.searchQuery) return; const t = e.target.closest('.showcase-track'); if (t) { e.dataTransfer.setData('text/plain', t.dataset.uid); t.classList.add('is-dragging'); }});
-    root.addEventListener('dragover', e => { if (!this.draft || this.searchQuery) return; e.preventDefault(); const t = e.target.closest('.showcase-track'); if (t) t.classList.add('drag-over');});
-    root.addEventListener('dragleave', e => e.target.closest('.showcase-track')?.classList.remove('drag-over'));
-    root.addEventListener('drop', e => {
-      if (!this.draft || this.searchQuery) return; e.preventDefault();
-      const t = e.target.closest('.showcase-track'), s = e.dataTransfer.getData('text/plain');
-      D.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
-      if (t && s && s !== t.dataset.uid) { t.before(D.querySelector(`.showcase-track[data-uid="${s}"]`)); this.svOrd(); }
-    });
-    root.addEventListener('dragend', () => D.querySelectorAll('.is-dragging').forEach(el => el.classList.remove('is-dragging')));
-  }
-
-  rndrMPnl() {
-    let p = $('sc-multi-panel'); 
-    const hasSel = this.searchQuery ? this.searchSel.size > 0 : false;
-    if (!hasSel) return p?.remove();
-    
-    if (!p) { p = D.createElement('div'); p.id = 'sc-multi-panel'; p.className = 'showcase-sticky-bar animate-in'; D.body.appendChild(p); }
-    p.innerHTML = `<span>Выбрано: ${this.searchSel.size}</span><button id="sc-b-add" class="om-btn om-btn--outline" style="padding:6px 12px">➕ В плейлист</button><button id="sc-b-new" class="om-btn om-btn--outline" style="padding:6px 12px">✨ Создать</button><button id="sc-b-clr" class="om-btn om-btn--danger" style="padding:6px 12px">✖</button>`;
-  }
-
-  updStatus(cnt) {
-    const s = $('sc-status');
-    if (!s) return;
-    const ctx = this.getCtx();
-    const total = ctx.isPl ? (ctx.uids || []).length : (ctx.ord || []).length;
-    const hidden = ctx.hid.length;
-    const active = Math.max(0, total - hidden);
+              <img src="${this.getCover(t)}" class="showcase-track-thumb" loading="lazy total - hidden);
     const found = this.searchQuery ? Number(cnt || 0) : 0;
     const numOn = this.state.ui.num;
 
@@ -4075,24 +3943,622 @@ class ShowcaseManager {
   }
 
   openSort() {
-    const sm = this.state.def.sort, m = W.Modals.open({ title: 'Сортировка (Визуальная)', bodyHtml: `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"><button class="showcase-btn ${sm==='user'?'active':''}" style="grid-column:1/-1" data-val="user">● Пользовательский (Ручной)</button><button class="showcase-btn ${sm==='album-desc'?'active':''}" data-val="album-desc">Альбомы (Новые)</button><button class="showcase-btn ${sm==='album-asc'?'active':''}" data-val="album-asc">Альбомы (Старые)</button><button class="showcase-btn ${sm==='name-asc'?'active':''}" data-val="name-asc">А → Я</button><button class="showcase-btn ${sm==='name-desc'?'active':''}" data-val="name-desc">Я → А</button><button class="showcase-btn ${sm==='plays-desc'?'active':''}" data-val="plays-desc">Топ прослушиваний</button><button class="showcase-btn ${sm==='plays-asc'?'active':''}" data-val="plays-asc">Меньше всего</button><button class="showcase-btn ${sm==='last-played'?'active':''}" data-val="last-played">Недавние</button><button class="showcase-btn ${sm==='favorites-first'?'active':''}" data-val="favorites-first">Сначала ⭐</button></div>` });
-    m.onclick = e => { const b = e.target.closest('[data-val]'); if(b) { const v = b.dataset.val; if (this.state.ctx.type === 'playlist') { const p = this.state.pls.find(x=>x.id===this.state.ctx.id); if(p) p.sort = v; } else { this.state.def.sort = v; } this.saveState(); this.renderTab(); m.remove(); } };
+    const sm = this.state.def.sort, m = W.Modals.open({ title: 'Сортировка (Визу stat = this._stat;
+    const sorters = {
+      'name-asc': (a, b) => a.title.localeCompare(b.title),
+      'name-desc': (a, b) => b.title.localeCompare(a.title),
+      'album-desc': (a, b) => b.sourceAlbum.localeCompare(a.sourceAlbum),
+      'album-asc': (a, b) => a.sourceAlbum.localeCompare(b.sourceAlbum),
+      'favorites-first': (a, b) => (W.playerCore?.isFavorite?.(b.uid) ? 1 : 0) - (W.playerCore?.isFavorite?.(a.uid) ? 1 : 0),
+      'plays-desc': (a, b) => (stat.get(b.uid)?.plays || 0) - (stat.get(a.uid)?.plays || 0),
+      'plays-asc': (a, b) => (stat.get(a.uid)?.plays || 0) - (stat.get(b.uid)?.plays || 0),
+      'last-played': (a, b) => (stat.get(b.uid)?.lastAt || 0) - (stat.get(a.uid)?.lastAt || 0)
+    };
+
+    if (sorters[mode]) tracks.sort(sorters[mode]);
+    return tracks.map(track => track.uid);
   }
 
-  _markDraftDirty() { if(this.draft) { this.draft.dirty = true; const btn = $('sc-reset'); if(btn) btn.disabled = false; } }
-  swp(u, d) { const el = D.querySelector(`.showcase-track[data-uid="${u}"]`), sb = d === -1 ? el?.previousElementSibling : el?.nextElementSibling; if (el && sb?.classList.contains('showcase-track')) { d === -1 ? sb.before(el) : sb.after(el); this.svOrd(); } }
-  svOrd() { if (!this.draft) return; this.draft.ord = Array.from(D.querySelectorAll('.showcase-track')).map(e => e.dataset.uid).filter(Boolean); this._markDraftDirty(); }
-  strtDrg(e, n) {
-    if(!n)return; const t=e.touches[0], c=n.cloneNode(true), r=n.getBoundingClientRect(), os=t.clientY-r.top;
-    c.style.cssText=`position:fixed;left:${r.left}px;width:${r.width}px;z-index:10000;opacity:0.9;background:#252d39;box-shadow:0 10px 30px rgba(0,0,0,0.8);pointer-events:none`; D.body.appendChild(c); n.style.opacity=0.3;
-    const m = e2 => { e2.preventDefault(); const y=e2.touches[0].clientY; c.style.top=(y-os)+'px'; D.querySelectorAll('.drag-over').forEach(el=>el.classList.remove('drag-over')); const o = D.elementFromPoint(W.innerWidth/2, y)?.closest('.showcase-track'); if(o && o!==n) o.classList.add('drag-over'); };
-    const d = e2 => { D.removeEventListener('touchmove',m); D.removeEventListener('touchend',d); c.remove(); n.style.opacity=''; const y=e2.changedTouches[0].clientY, tg=D.elementFromPoint(W.innerWidth/2,y)?.closest('.showcase-track'); D.querySelectorAll('.drag-over').forEach(el=>el.classList.remove('drag-over')); if(tg && tg!==n) { tg.before(n); this.svOrd(); } };
-    D.addEventListener('touchmove',m,{passive:false}); D.addEventListener('touchend',d);
+  getContextActiveSet(ctx = this.getCtx()) {
+    return new Set((ctx.isPl ? ctx.ord : ctx.ord).filter(uid => !ctx.hid.includes(uid)));
   }
-  
-  _saveScrollPosition() { try { const key = this._scrollKeyPrefix + (this.getCtx().isPl ? `playlist:${this.getCtx().id}` : 'all'); localStorage.setItem(key, String(document.documentElement.scrollTop || document.body.scrollTop || 0)); } catch {} }
-  _restoreScrollPosition() { try { const key = this._scrollKeyPrefix + (this.getCtx().isPl ? `playlist:${this.getCtx().id}` : 'all'); const y = Number(localStorage.getItem(key) || 0); requestAnimationFrame(() => window.scrollTo(0, Number.isFinite(y) ? y : 0)); } catch {} }
-  hiTrack(u) { D.querySelectorAll('.showcase-track.current').forEach(e=>e.classList.remove('current')); if(u) D.querySelectorAll(`.showcase-track[data-uid="${CSS.escape(u)}"]`).forEach(e=>e.classList.add('current')); }
+
+  async getDisplayList() {
+    const ctx = this.getCtx();
+
+    if (this.draft) {
+      return this.draft.ord
+        .map(uid => ({
+          uid,
+          status: 'edit',
+          track: W.TrackRegistry?.getTrackByUid?.(uid)
+        }))
+        .filter(item => item.track);
+    }
+
+    if (this.searchQuery) {
+      await ensureLyricsIndexLoaded();
+
+      const matched = searchUidsByQuery({ query: this.searchQuery });
+      const hiddenSet = new Set(ctx.hid);
+      const memberSet = new Set(ctx.isPl ? ctx.uids : ctx.ord);
+
+      return matched.map(uid => {
+        let status = 'missing';
+        if (memberSet.has(uid)) status = hiddenSet.has(uid) ? 'hidden' : 'active';
+        else if (!ctx.isPl && hiddenSet.has(uid)) status = 'hidden-def';
+
+        return {
+          uid,
+          status,
+          track: W.TrackRegistry?.getTrackByUid?.(uid)
+        };
+      }).filter(item => item.track);
+    }
+
+    const sorted = await this.getSorted([...ctx.ord], ctx.sort);
+    const hiddenSet = new Set(ctx.hid);
+    let rows = [];
+
+    sorted.forEach(uid => {
+      const hidden = hiddenSet.has(uid);
+      if (hidden && !this.state.ui.hid) return;
+
+      rows.push({
+        uid,
+        status: hidden ? 'hidden' : 'active',
+        track: W.TrackRegistry?.getTrackByUid?.(uid)
+      });
+    });
+
+    if (this.state.ui.plc === 'end') {
+      rows = [
+        ...rows.filter(item => item.status === 'active'),
+        ...rows.filter(item => item.status !== 'active')
+      ];
+    }
+
+    return rows.filter(item => item.track);
+  }
+
+  getPlayableUidsSync(ctx = this.getCtx()) {
+    return ctx.ord.filter(uid => !ctx.hid.includes(uid) && !!W.TrackRegistry?.getTrackByUid?.(uid));
+  }
+
+  async getPlayableUidsSorted(ctx = this.getCtx()) {
+    const sorted = await this.getSorted([...ctx.ord], ctx.sort);
+    return sorted.filter(uid => !ctx.hid.includes(uid) && !!W.TrackRegistry?.getTrackByUid?.(uid));
+  }
+
+  getActiveListTracks() {
+    const ctx = this.getCtx();
+    return this.getPlayableUidsSync(ctx).map(uid => {
+      const track = W.TrackRegistry?.getTrackByUid?.(uid);
+      return track ? { ...track, album: 'Витрина Разбита', cover: this.getCover(track) } : null;
+    }).filter(Boolean);
+  }
+
+  enterEdit() {
+    const ctx = this.getCtx();
+    const ord = sanitizeUidList(ctx.ord);
+    const hidden = new Set(sanitizeUidList(ctx.hid).filter(uid => ord.includes(uid)));
+    const checked = new Set(
+      (ctx.isPl ? sanitizeUidList(ctx.uids) : ord).filter(uid => !hidden.has(uid) && ord.includes(uid))
+    );
+
+    this.draft = {
+      isPl: ctx.isPl,
+      id: ctx.id || null,
+      ord: [...ord],
+      chk: checked,
+      hid: hidden,
+      dirty: false
+    };
+
+    this.renderTab();
+  }
+
+  saveEdit() {
+    if (!this.draft) return;
+    const d = this.draft;
+
+    if (d.isPl) {
+      const playlist = byId(this.state.pls, d.id);
+      if (playlist) {
+        const kept = d.ord.filter(uid => d.chk.has(uid) && !!W.TrackRegistry?.getTrackByUid?.(uid));
+        playlist.uids = [...kept];
+        playlist.ord = [...kept];
+        playlist.hid = kept.filter(uid => d.hid.has(uid));
+      }
+    } else {
+      const ord = d.ord.filter(uid => !!W.TrackRegistry?.getTrackByUid?.(uid));
+      this.state.def.ord = [...ord];
+      this.state.def.hid = ord.filter(uid => !d.chk.has(uid));
+    }
+
+    this.saveState();
+    this.draft = null;
+    W.NotificationSystem?.success?.('Изменения сохранены');
+    this.renderTab();
+  }
+
+  createFromEdit(fromSearch = false) {
+    const modal = W.Modals.open({
+      title: 'Название плейлиста',
+      bodyHtml: `<input id="pl-name" value="Мой плейлист ${this.state.pls.length + 1}" style="width:100%;padding:10px;border-radius:8px;background:rgba(255,255,255,.05);color:#fff;border:1px solid #666;margin-bottom:15px"/><button id="pl-ok" class="om-btn om-btn--primary" style="width:100%">Создать</button>`
+    });
+
+    setTimeout(() => modal.querySelector('#pl-name')?.focus(), 100);
+
+    modal.onclick = e => {
+      if (e.target.id !== 'pl-ok') return;
+
+      const name = modal.querySelector('#pl-name')?.value.trim();
+      if (!name) return;
+
+      let uids = [];
+
+      if (fromSearch) {
+        uids = [...this.searchSel].filter(uid => !!W.TrackRegistry?.getTrackByUid?.(uid));
+      } else if (this.draft) {
+        uids = this.draft.ord.filter(uid => this.draft.chk.has(uid) && !this.draft.hid.has(uid));
+      }
+
+      uids = sanitizeUidList(uids);
+      if (!uids.length) {
+        W.NotificationSystem?.warning?.('Нет активных треков для нового плейлиста');
+        return;
+      }
+
+      const id = now().toString(36);
+      this.state.pls.push({
+        id,
+        name,
+        col: '',
+        uids: [...uids],
+        ord: [...uids],
+        hid: [],
+        sort: 'user',
+        createdAt: now(),
+        snap: {
+          uids: [...uids],
+          ord: [...uids],
+          hid: []
+        }
+      });
+
+      this.state.ctx = { type: 'playlist', id };
+      this.draft = null;
+      this.searchSel.clear();
+      this.searchQuery = '';
+      this.saveState();
+      modal.remove();
+      this.renderTab();
+      W.NotificationSystem?.success?.('Плейлист создан');
+    };
+  }
+
+  resetEdit() {
+    if (!this.draft) return;
+
+    W.Modals.confirm({
+      title: 'Сбросить изменения?',
+      textHtml: this.draft.isPl ? 'Вернуть к состоянию на момент создания?' : 'Вернуть весь каталог в заводское состояние?',
+      confirmText: 'Да, сбросить',
+      onConfirm: () => {
+        if (!this.draft) return;
+
+        if (-search')?.value || '').trim();
+      this.searchSel.clear();
+      await this.renderList();
+      const clearBtn = $('sc-search-clear');
+      if (clearBtn) clearBtn.style.display = this.searchQuery ? '' : 'none';
+    });
+
+    root.addEventListener('input', e => {
+      if (e.target.id === 'sc-search') applySearch();
+    });
+
+    root.addEventListener('keydown', e => {
+      if (e.target.id === 'sc-search' && e.key === 'Enter') e.target.blur();
+    });
+
+    const actions = {
+      'sc-search-clear': () => {
+        const inp = $('sc-search');
+        if (inp) {
+          inp.value = '';
+          inp.blur();
+        }
+        this.searchQuery = '';
+        this.searchSel.clear();
+        this.renderList();
+      },
+      'sc-edit': () => this.enterEdit(),
+      'sc-save': () => this.saveEdit(),
+      'sc-create': () => this.createFromEdit(),
+      'sc-reset': () => this.resetEdit(),
+      'sc-exit': () => this.exitEdit(),
+      'sc-playall': () => this.playCtx(),
+      'sc-shuffle': () => {
+        const tracks = this.getActiveListTracks();
+        if (!tracks.length) {
+          W.NotificationSystem?.warning?.('Нет активных треков');
+          return;
+        }
+
+        const ctx = this.getCtx();
+        W.AlbumsManager?.setPlayingAlbum?.(ctx.isPl ? `__showcase__:${ctx.id}` : ALL_PLAYING_KEY);
+        W.playerCore?.setPlaylist?.(tracks, 0, null, { preservePosition: false });
+        W.playerCore?.shufflePlaylist?.();
+        W.playerCore?.play?.(0);
+        W.PlayerUI?.ensurePlayerBlock?.(0, { userInitiated: true });
+        this.hiTrack(W.playerCore?.getCurrentTrackUid?.());
+      },
+      'sc-sort': () => this.openSort(),
+      'sc-tg-e': () => {
+        this.state.ui.hid = !this.state.ui.hid;
+        this.saveState();
+        this.renderList();
+        this.updStatus();
+      },
+      'sc-tg-n': () => {
+        this.state.ui.num = !this.state.ui.num;
+        this.saveState();
+        this.renderList();
+        this.updStatus();
+      },
+      'sc-tg-v': () => {
+        this.state.ui.view = this.state.ui.view === 'flat' ? 'grouped' : 'flat';
+        this.saveState();
+        this.renderList();
+        this.updStatus();
+      },
+      'sc-b-add': () => {
+        const ctx = this.getCtx();
+
+        if (ctx.isPl) {
+          const playlist = byId(this.state.pls, ctx.id);
+          if (playlist) {
+            [...this.searchSel].forEach(uid => {
+              if (!W.TrackRegistry?.getTrackByUid?.(uid)) return;
+              if (!playlist.uids.includes(uid)) {
+                playlist.uids.push(uid);
+                playlist.ord.push(uid);
+              }
+              playlist.hid = playlist.hid.filter(item => item !== uid);
+            });
+          }
+        } else {
+          [...this.searchSel].forEach(uid => {
+            if (!W.TrackRegistry?.getTrackByUid?.(uid)) return;
+            if (!this.state.def.ord.includes(uid)) this.state.def.ord.push(uid);
+            this.state.def.hid = this.state.def.hid.filter(item => item !== uid);
+          });
+        }
+
+        this.searchSel.clear();
+        this.searchQuery = '';
+        this.saveState();
+        this.renderTab();
+        W.NotificationSystem?.success?.('Добавлено в текущий плейлист');
+      },
+      'sc-b-new': () => this.createFromEdit(true),
+      'sc-b-clr': () => {
+        this.searchSel.clear();
+        this.renderList();
+      }
+    };
+
+    let longPressTimer = null;
+    let wasLongPress = false;
+
+    root.addEventListener('touchstart', e => {
+      const dragHandle = e.target.closest('.showcase-drag-handle');
+      if (dragHandle && this.draft && !this.searchQuery) {
+        e.preventDefault();
+        this.strtDrg(e, dragHandle.closest('.showcase-track'));
+        return;
+      }
+
+      const trackRow = e.target.closest('.showcase-track');
+      if (trackRow && (this.draft || this.searchQuery) && !e.target.closest('button')) {
+        wasLongPress = false;
+        longPressTimer = setTimeout(() => {
+          wasLongPress = true;
+          this.togSel(trackRow.dataset.uid);
+          navigator.vibrate?.(50);
+        }, 500);
+      }
+    }, { passive: false });
+
+    root.addEventListener('touchmove', () => clearTimeout(longPressTimer), { passive: true });
+    root.addEventListener('touchend', () => clearTimeout(longPressTimer));
+
+    root.addEventListener('click', e => {
+      const button = e.target.closest('button');
+      if (button && actions[button.id]) {
+        actions[button.id]();
+        return;
+      }
+
+      if (wasLongPress) return;
+
+      if (e.target.closest('.like-star') || e.target.closest('.offline-ind')) {
+        const uid = e.target.closest('.showcase-track')?.dataset.uid;
+        if (uid && !this.draft && !this.searchQuery) {
+          e.preventDefault();
+          e.stopPropagation();
+          this.opnMenu(uid);
+          return;
+        }
+      }
+
+      const row = e.target.closest('.showcase-track');
+      const uid = row?.dataset.uid;
+      if (!row || !uid) return;
+
+      if (this.draft) {
+        if (e.target.closest('.showcase-hide-btn')) return this.togHid(uid);
+        if (e.target.closest('.sc-arrow-up')) return this.swp(uid, -1);
+        if (e.target.closest('.sc-arrow-down')) return this.swp(uid, 1);
+        if (e.target.closest('.showcase-checkbox')) return this.togSel(uid);
+        return;
+      }
+
+      if (this.searchQuery) {
+        if (e.target.closest('.showcase-checkbox')) return this.togSel(uid);
+        this.opnMenu(uid);
+        return;
+      }
+
+      if (e.target.closest('.showcase-track-menu-btn')) {
+        this.opnMenu(uid);
+        return;
+      }
+
+      const ctx = this.getCtx();
+      if (ctx.hid.includes(uid)) {
+        this.opnMenu(uid);
+        return;
+      }
+
+      this.playCtx(uid);
+    });
+
+    root.addEventListener('dragstart', e => {
+      if (!this.draft || this.searchQuery) return;
+      const row = e.target.closest('.showcase-track');
+      if (!row) return;
+      e.dataTransfer.setData('text/plain', row.dataset.uid);
+      row.classList.add('is-dragging');
+    });
+
+    root.addEventListener('dragover', e => {
+      if (!this.draft || this.searchQuery) return;
+      e.preventDefault();
+      const row = e.target.closest('.showcase-track');
+      if (row) row.classList.add('drag-over');
+    });
+
+    root.addEventListener('dragleave', e => {
+      e.target.closest('.showcase-track')?.classList.remove('drag-over');
+    });
+
+    root.addEventListener('drop', e => {
+      if (!this.draft || this.searchQuery) return;
+      e.preventDefault();
+
+      const target = e.target.closest('.showcase-track');
+      const draggedUid = e.dataTransfer.getData('text/plain');
+
+      D.querySelectorAll('.drag-over').forEach(node => node.classList.remove('drag-over'));
+
+      if (target && draggedUid && draggedUid !== target.dataset.uid) {
+        const dragged = D.querySelector(`.showcase-track[data-uid="${CSS.escape(draggedUid)}"]`);
+        if (dragged) {
+          target.before(dragged);
+          this.svOrd();
+        }
+      }
+    });
+
+    root.addEventListener('dragend', () => {
+      D.querySelectorAll('.is-dragging').forEach(node => node.classList.remove('is-dragging'));
+    });
+  }
+
+  rndrMPnl() {
+    let panel = $('sc-multi-panel');
+    const hasSelection = this.searchQuery ? this.searchSel.size > 0 : false;
+
+    if (!hasSelection) {
+      panel?.remove();
+      return;
+    }
+
+    if (!panel) {
+      panel = D.createElement('div');
+      panel.id = 'sc-multi-panel';
+      panel.className = 'showcase-sticky-bar animate-in';
+      D.body.appendChild) return;
+
+      const nextColor = dot.dataset.col === 'transparent' ? '' : dot.dataset.col;
+
+      if (playlistId) {
+        const playlist = byId(this.state.pls, playlistId);
+        if (playlist) playlist.col = nextColor;
+        this.saveState();
+        this.renderPls();
+      } else if (albumKey) {
+        this.state.col[albumKey] = nextColor;
+        this.saveState();
+        if (W.AlbumsManager?.getCurrentAlbum?.() === '__showcase__') this.renderList();
+      }
+
+      modal.remove();
+    };
+  }
+
+  openColorPicker(uid, albumKey = null, playlistId = null) {
+    this.opnCol(uid, albumKey, playlistId);
+  }
+
+  openSort() {
+    const ctx = this.getCtx();
+    const selectedMode = ctx.sort || 'user';
+
+    const modal = W.Modals.open({
+      title: 'Сортировка (Визуальная)',
+      bodyHtml: `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"><button class="showcase-btn ${selectedMode === 'user' ? 'active' : ''}" style="grid-column:1/-1" data-val="user">● Пользовательский (Ручной)</button><button class="showcase-btn ${selectedMode === 'album-desc' ? 'active' : ''}" data-val="album-desc">Альбомы (Новые)</button><button class="showcase-btn ${selectedMode === 'album-asc' ? 'active' : ''}" data-val="album-asc">Альбомы (Старые)</button><button class="showcase-btn ${selectedMode === 'name-asc' ? 'active' : ''}" data-val="name-asc">А → Я</button><button class="showcase-btn ${selectedMode === 'name-desc' ? 'active' : ''}" data-val="name-desc">Я → А</button><button class="showcase-btn ${selectedMode === 'plays-desc' ? 'active' : ''}" data-val="plays-desc">Топ прослушиваний</button><button class="showcase-btn ${selectedMode === 'plays-asc' ? 'active' : ''}" data-val="plays-asc">Меньше всего</button><button class="showcase-btn ${selectedMode === 'last-played' ? 'active' : ''}" data-val="last-played">Недавние</button><button class="showcase-btn ${selectedMode === 'favorites-first' ? 'active' : ''}" data-val="favorites-first">Сначала ⭐</button></div>`
+    });
+
+    modal.onclick = e => {
+      const btn = e.target.closest('[data-val]');
+      if (!btn) return;
+
+      const value = btn.dataset.val;
+      if (this.state.ctx.type === 'playlist') {
+        const playlist = byId(this.state.pls, this.state.ctx.id);
+        if (playlist) playlist.sort = value;
+      } else {
+        this.state.def.sort = value;
+      }
+
+      this.saveState();
+      this.renderTab();
+      modal.remove();
+    };
+  }
+
+  handleSharedPlaylist(raw) {
+    const source = String(raw || '').trim();
+    if (!source) return false;
+
+    try {
+      const decoded = JSON.parse(atob(source));
+      const name = String(decoded?.name || 'Поделились плейлистом').trim();
+      const uids = sanitizeUidList(decoded?.uids);
+      if (!uids.length) return false;
+
+      const id = now().toString(36);
+      this.state.pls.push({
+        id,
+        name,
+        col: '',
+        uids: [...uids],
+        ord: [...uids],
+        hid: [],
+        sort: 'user',
+        createdAt: now(),
+        snap: {
+          uids: [...uids],
+          ord: [...uids],
+          hid: []
+        }
+      });
+
+      this.state.ctx = { type: 'playlist', id };
+      this.saveState();
+      this.renderTab();
+      W.NotificationSystem?.success?.('Плейлист импортирован');
+      return true;
+    } catch {
+      W.NotificationSystem?.warning?.('Не удалось открыть shared playlist');
+      return false;
+    }
+  }
+
+  _markDraftDirty() {
+    if (!this.draft) return;
+    this.draft.dirty = true;
+    const btn = $('sc-reset');
+    if (btn) btn.disabled = false;
+  }
+
+  swp(uid, dir) {
+    const row = D.querySelector(`.showcase-track[data-uid="${CSS.escape(uid)}"]`);
+    const sibling = dir === -1 ? row?.previousElementSibling : row?.nextElementSibling;
+
+    if (row && sibling?.classList.contains('showcase-track')) {
+      if (dir === -1) sibling.before(row);
+      else sibling.after(row);
+      this.svOrd();
+    }
+  }
+
+  svOrd() {
+    if (!this.draft) return;
+    this.draft.ord = Array.from(D.querySelectorAll('.showcase-track'))
+      .map(node => node.dataset.uid)
+      .filter(Boolean);
+    this._markDraftDirty();
+  }
+
+  strtDrg(e, node) {
+    if (!node) return;
+
+    const touch = e.touches[0];
+    const clone = node.cloneNode(true);
+    const rect = node.getBoundingClientRect();
+    const offsetY = touch.clientY - rect.top;
+
+    clone.style.cssText = `position:fixed;left:${rect.left}px;width:${rect.width}px;z-index:10000;opacity:0.9;background:#252d39;box-shadow:0 10px 30px rgba(0,0,0,0.8);pointer-events:none`;
+    D.body.appendChild(clone);
+    node.style.opacity = '0.3';
+
+    const move = ev => {
+      ev.preventDefault();
+      const y = ev.touches[0].clientY;
+      clone.style.top = `${y - offsetY}px`;
+      D.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+      const over = D.elementFromPoint(W.innerWidth / 2, y)?.closest('.showcase-track');
+      if (over && over !== node) over.classList.add('drag-over');
+    };
+
+    const end = ev => {
+      D.removeEventListener('touchmove', move);
+      D.removeEventListener('touchend', end);
+      clone.remove();
+      node.style.opacity = '';
+
+      const y = ev.changedTouches[0].clientY;
+      const target = D.elementFromPoint(W.innerWidth / 2, y)?.closest('.showcase-track');
+
+      D.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+
+      if (target && target !== node) {
+        target.before(node);
+        this.svOrd();
+      }
+    };
+
+    D.addEventListener('touchmove', move, { passive: false });
+    D.addEventListener('touchend', end);
+  }
+
+  _saveScrollPosition() {
+    try {
+      const ctx = this.getCtx();
+      const key = this._scrollKeyPrefix + (ctx.isPl ? `playlist:${ctx.id}` : 'all');
+      localStorage.setItem(key, String(document.documentElement.scrollTop || document.body.scrollTop || 0));
+    } catch {}
+  }
+
+  _restoreScrollPosition() {
+    try {
+      const ctx = this.getCtx();
+      const key = this._scrollKeyPrefix + (ctx.isPl ? `playlist:${ctx.id}` : 'all');
+      const y = Number(localStorage.getItem(key) || 0);
+      requestAnimationFrame(() => window.scrollTo(0, Number.isFinite(y) ? y : 0));
+    } catch {}
+  }
+
+  hiTrack(uid) {
+    D.querySelectorAll('.showcase-track.current').forEach(node => node.classList.remove('current'));
+    if (!uid) return;
+    D.querySelectorAll(`.showcase-track[data-uid="${CSS.escape(uid)}"]`).forEach(node => node.classList.add('current'));
+  }
 }
 
 W.ShowcaseManager = new ShowcaseManager();
