@@ -164,9 +164,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2cb9a302ba9ae931772e5e9fe64972abf394d652.idx
-│   │       ├── pack-2cb9a302ba9ae931772e5e9fe64972abf394d652.pack
-│   │       └── pack-2cb9a302ba9ae931772e5e9fe64972abf394d652.rev
+│   │       ├── pack-de7016c182277b58a7ff0cacaab676d2eaa63ddd.idx
+│   │       ├── pack-de7016c182277b58a7ff0cacaab676d2eaa63ddd.pack
+│   │       └── pack-de7016c182277b58a7ff0cacaab676d2eaa63ddd.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,7 +377,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-07 14:40:31 UTC
+Сгенерировано: 2026-03-07 19:34:31 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3464,6 +3464,46 @@ class ShowcaseManager {
     this.renderToken = 0;
     this._ic = {};
     this._stat = new Map();
+    this._scrollKeyPrefix = 'showcase:scroll:v1:';
+  }
+
+  _getContextKey() {
+    const ctx = this.getCtx();
+    return ctx.isPl ? `playlist:${ctx.id}` : 'all';
+  }
+
+  _saveScrollPosition() {
+    try {
+      const key = this._scrollKeyPrefix + this._getContextKey();
+      localStorage.setItem(key, String(document.documentElement.scrollTop || document.body.scrollTop || 0));
+    } catch {}
+  }
+
+  _restoreScrollPosition() {
+    try {
+      const key = this._scrollKeyPrefix + this._getContextKey();
+      const y = Number(localStorage.getItem(key) || 0);
+      requestAnimationFrame(() => window.scrollTo(0, Number.isFinite(y) ? y : 0));
+    } catch {}
+  }
+
+  _markDraftDirty() {
+    if (!this.draft) return;
+    this.draft.dirty = true;
+    const btn = $('sc-reset');
+    if (btn) btn.disabled = false;
+  }
+
+  _getDefaultBaselineOrder() {
+    const all = [];
+    [...(W.albumsIndex || [])].reverse().forEach(a => {
+      if (a.key.startsWith('__')) return;
+      (W.TrackRegistry?.getAllUids?.() || []).forEach(u => {
+        const t = W.TrackRegistry.getTrackByUid(u);
+        if (t?.sourceAlbum === a.key && !all.includes(u)) all.push(u);
+      });
+    });
+    return all;
   }
 
   async initialize() {
@@ -3586,6 +3626,7 @@ class ShowcaseManager {
 
   /* --- RENDER --- */
   async renderTab() {
+    this._saveScrollPosition();
     const list = $('track-list'); if (!list) return;
     const ctx = this.getCtx(), isD = !!this.draft;
     const showRes = !isD && !ctx.isPl && JSON.stringify(ctx.ord) !== JSON.stringify(this.getFactoryBaseline());
@@ -3598,8 +3639,17 @@ class ShowcaseManager {
         <div class="showcase-playlists-actions" id="sc-playlists-actions"></div><div class="showcase-playlists-list" id="sc-playlists"></div><div class="showcase-status-bar" id="sc-status"></div>
       </div><div id="sc-tracks-container"></div>`;
 
-    this.bindCtrl(list); this.renderPls(); await this.renderList();
-    if (!isD) { const lu = localStorage.getItem('showcase:lastTrackUid'); if (lu && localStorage.getItem('showcase:lastPlayingContext') === (ctx.isPl ? `__showcase__:${ctx.id}` : '__showcase__')) this.hiTrack(lu); }
+    this.bindCtrl(list);
+    this.renderPls();
+    await this.renderList();
+    this._restoreScrollPosition();
+
+    if (!isD) {
+      const lu = localStorage.getItem('showcase:lastTrackUid');
+      if (lu && localStorage.getItem('showcase:lastPlayingContext') === (ctx.isPl ? `__showcase__:${ctx.id}` : '__showcase__')) {
+        this.hiTrack(lu);
+      }
+    }
   }
 
   bindCtrl(root) {
@@ -3619,7 +3669,36 @@ class ShowcaseManager {
       'sc-tg-e': () => { this.state.ui.hid = !this.state.ui.hid; this.saveState(); this.renderList(); },
       'sc-tg-n': () => { this.state.ui.num = !this.state.ui.num; this.saveState(); this.renderList(); },
       'sc-tg-v': () => { this.state.ui.view = this.state.ui.view === 'flat' ? 'grouped' : 'flat'; this.saveState(); this.renderList(); },
-      'sc-b-add': () => { const c=this.getCtx(); if(c.isPl){ const p=this.state.pls.find(x=>x.id===c.id); [...this.searchSel].forEach(u=>{ if(!p.uids.includes(u)) p.uids.push(u); p.hid=p.hid.filter(x=>x!==u); }); p.ord=p.uids; } else { const d=this.state.def; [...this.searchSel].forEach(u=>{ if(!d.ord.includes(u)) d.ord.push(u); d.hid=d.hid.filter(x=>x!==u); }); } this.searchSel.clear(); this.searchQuery=''; this.saveState(); this.renderTab(); W.NotificationSystem.success('Добавлено'); },
+      'sc-b-add': () => {
+        const c = this.getCtx();
+
+        if (c.isPl) {
+          const p = this.state.pls.find(x => x.id === c.id);
+          if (p) {
+            [...this.searchSel].forEach(u => {
+              if (!W.TrackRegistry?.getTrackByUid?.(u)) return;
+              if (!p.uids.includes(u)) {
+                p.uids.push(u);
+                p.ord.push(u);
+              }
+              p.hid = p.hid.filter(x => x !== u);
+            });
+          }
+        } else {
+          const d = this.state.def;
+          [...this.searchSel].forEach(u => {
+            if (!W.TrackRegistry?.getTrackByUid?.(u)) return;
+            if (!d.ord.includes(u)) d.ord.push(u);
+            d.hid = d.hid.filter(x => x !== u);
+          });
+        }
+
+        this.searchSel.clear();
+        this.searchQuery = '';
+        this.saveState();
+        this.renderTab();
+        W.NotificationSystem.success('Добавлено в текущий контекст');
+      },
       'sc-b-new': () => this.createFromEdit(true), 'sc-b-clr': () => { this.searchSel.clear(); this.renderList(); }
     };
 
@@ -3649,7 +3728,8 @@ class ShowcaseManager {
         return this.opnMenu(u);
       }
       if (e.target.closest('.showcase-track-menu-btn')) return this.opnMenu(u);
-      if (e.target.closest('.like-star') || e.target.closest('.offline-ind')) return;
+      if (e.target.closest('.offline-ind')) return;
+      if (e.target.closest('.like-star')) return this.opnMenu(u);
       
       const ctx = this.getCtx();
       if (ctx.hid.includes(u)) return;
@@ -3670,29 +3750,62 @@ class ShowcaseManager {
 
   /* --- DRAFT ACTIONS --- */
   getFactoryBaseline() {
-    let r = []; [...(W.albumsIndex || [])].reverse().forEach(a => { if (!a.key.startsWith('__')) W.TrackRegistry?.getAllUids()?.forEach(u => { if (W.TrackRegistry.getTrackByUid(u)?.sourceAlbum === a.key && !r.includes(u)) r.push(u); }); });
-    return r;
+    return this._getDefaultBaselineOrder();
   }
 
   enterEdit() {
     const c = this.getCtx();
-    const ord = c.isPl ? [...c.ord] : this.getFactoryBaseline().map(u => c.ord.includes(u) ? null : u).filter(Boolean); // all tracks
-    const realOrd = c.isPl ? [...c.ord] : [...c.ord, ...ord]; // existing + missing at end
-    const chk = new Set(c.isPl ? c.uids : realOrd.filter(u => !c.hid.includes(u)));
-    this.draft = { isPl: c.isPl, id: c.id, ord: realOrd, chk, hid: new Set(c.hid), dirty: false };
+    const baseAll = this.getFactoryBaseline();
+
+    if (c.isPl) {
+      this.draft = {
+        isPl: true,
+        id: c.id,
+        ord: [...c.ord].filter(u => W.TrackRegistry?.getTrackByUid?.(u)),
+        chk: new Set((c.uids || []).filter(u => W.TrackRegistry?.getTrackByUid?.(u))),
+        hid: new Set((c.hid || []).filter(u => W.TrackRegistry?.getTrackByUid?.(u))),
+        dirty: false
+      };
+    } else {
+      const saved = [...(c.ord || [])].filter(u => W.TrackRegistry?.getTrackByUid?.(u));
+      const missing = baseAll.filter(u => !saved.includes(u));
+      const ord = [...saved, ...missing];
+
+      this.draft = {
+        isPl: false,
+        id: null,
+        ord,
+        chk: new Set(ord.filter(u => !(c.hid || []).includes(u))),
+        hid: new Set((c.hid || []).filter(u => W.TrackRegistry?.getTrackByUid?.(u))),
+        dirty: false
+      };
+    }
+
     this.renderTab();
   }
 
   saveEdit() {
-    const d = this.draft; if (!d) return;
+    const d = this.draft;
+    if (!d) return;
+
     if (d.isPl) {
       const p = this.state.pls.find(x => x.id === d.id);
-      if (p) { p.uids = d.ord.filter(u => d.chk.has(u)); p.ord = [...p.uids]; p.hid = p.uids.filter(u => d.hid.has(u)); }
+      if (p) {
+        const kept = d.ord.filter(u => d.chk.has(u) && W.TrackRegistry?.getTrackByUid?.(u));
+        p.uids = [...kept];
+        p.ord = [...kept];
+        p.hid = kept.filter(u => d.hid.has(u));
+      }
     } else {
-      this.state.def.ord = [...d.ord];
-      this.state.def.hid = d.ord.filter(u => !d.chk.has(u)); // unchecked -> hidden
+      const ord = d.ord.filter(u => W.TrackRegistry?.getTrackByUid?.(u));
+      this.state.def.ord = [...ord];
+      this.state.def.hid = ord.filter(u => !d.chk.has(u));
     }
-    this.saveState(); this.draft = null; W.NotificationSystem.success('Сохранено'); this.renderTab();
+
+    this.saveState();
+    this.draft = null;
+    W.NotificationSystem.success('Сохранено');
+    this.renderTab();
   }
 
   createFromEdit(fromSearch = false) {
@@ -3713,16 +3826,31 @@ class ShowcaseManager {
   }
 
   resetEdit() {
-    W.Modals.confirm({ title: 'Сбросить?', textHtml: 'Вернуть к начальному виду?', confirmText: 'Да', onConfirm: () => {
-      if (this.draft.isPl) {
-        const p = this.state.pls.find(x => x.id === this.draft.id);
-        if (p && p.snap) { this.draft.ord = [...p.snap.ord]; this.draft.chk = new Set(p.snap.uids); this.draft.hid = new Set(p.snap.hid); }
-      } else {
-        const b = this.getFactoryBaseline();
-        this.draft.ord = b; this.draft.chk = new Set(b); this.draft.hid = new Set();
+    W.Modals.confirm({
+      title: 'Сбросить?',
+      textHtml: 'Вернуть к начальному виду?',
+      confirmText: 'Да',
+      onConfirm: () => {
+        if (!this.draft) return;
+
+        if (this.draft.isPl) {
+          const p = this.state.pls.find(x => x.id === this.draft.id);
+          if (p?.snap) {
+            this.draft.ord = [...p.snap.ord].filter(u => W.TrackRegistry?.getTrackByUid?.(u));
+            this.draft.chk = new Set((p.snap.uids || []).filter(u => W.TrackRegistry?.getTrackByUid?.(u)));
+            this.draft.hid = new Set((p.snap.hid || []).filter(u => W.TrackRegistry?.getTrackByUid?.(u)));
+          }
+        } else {
+          const b = this.getFactoryBaseline();
+          this.draft.ord = [...b];
+          this.draft.chk = new Set(b);
+          this.draft.hid = new Set();
+        }
+
+        this._markDraftDirty();
+        this.renderList();
       }
-      this.draft.dirty = true; $('sc-reset').disabled = false; this.renderList();
-    }});
+    });
   }
 
   exitEdit() {
@@ -3740,14 +3868,15 @@ class ShowcaseManager {
     if (!uids.length) return W.NotificationSystem.warning('Нет активных треков для воспроизведения');
     let idx = uid ? Math.max(0, uids.indexOf(uid)) : 0;
     
-    // Explicit play from search
-    if (this.searchQuery && uid) {
-      if (!uids.includes(uid)) {
-         const t = W.TrackRegistry.getTrackByUid(uid);
-         W.AlbumsManager.setPlayingAlbum('__showcase__:search');
-         W.playerCore.setPlaylist([{...t, album: 'Поиск', cover: this.getCover(t)}], 0, null, { preservePosition: false });
-         W.playerCore.play(0); W.PlayerUI.ensurePlayerBlock(0, { userInitiated: true }); return;
-      }
+    // Explicit play from search: не меняем состав текущего контекста, играем временный single-track context
+    if (this.searchQuery && uid && !uids.includes(uid)) {
+      const t = W.TrackRegistry.getTrackByUid(uid);
+      if (!t) return;
+      W.AlbumsManager.setPlayingAlbum('__showcase__:search');
+      W.playerCore.setPlaylist([{ ...t, album: 'Поиск', cover: this.getCover(t) }], 0, null, { preservePosition: false });
+      W.playerCore.play(0);
+      W.PlayerUI.ensurePlayerBlock(0, { userInitiated: true });
+      return;
     }
 
     const trks = uids.map(u => { const t = W.TrackRegistry.getTrackByUid(u); return { ...t, album: 'Витрина Разбита', cover: this.getCover(t) }; });
@@ -3808,7 +3937,7 @@ class ShowcaseManager {
           if (status === 'missing' && this.state.ctx.type === 'playlist') badges = `<span class="showcase-row-badge sc-badge-missing">Нет в плейлисте</span>`;
       }
 
-      h += `<div class="showcase-track ${eyeOff?'inactive':''} ${isS?'selected':''}" data-uid="${uid}" style="border-left: 3px solid ${cl}" ${isD?'draggable="true"':''}>${isD?`<button class="sc-arrow-up" data-dir="-1">▲</button>`:`<div class="tnum"${sN?'':' style="display:none"'}>${i+1}.</div>`}${isD||this.searchQuery?`<div class="showcase-drag-handle">${isD?'⠿':''}</div><div class="showcase-checkbox"></div>`:''}<img src="${this.getCover(t)}" class="showcase-track-thumb" loading="lazy"><div class="track-title"><div>${esc(t.title)}</div><div class="showcase-track-meta">${badges} ${esc(W.TrackRegistry.getAlbumTitle(t.sourceAlbum))}</div></div>${!isD?`<span class="offline-ind" data-uid="${uid}">🔒</span>`:''}${isD?`<button class="showcase-hide-btn">${eyeOff?'👁‍🗨':'👁'}</button>`:''}${!isD?`<img src="${W.playerCore?.isFavorite(uid)?'img/star.png':'img/star2.png'}" class="like-star" data-uid="${uid}" data-album="${t.sourceAlbum}"><button class="showcase-track-menu-btn">···</button>`:`<button class="sc-arrow-down" data-dir="1">▼</button>`}</div>`;
+      h += `<div class="showcase-track ${eyeOff ? 'inactive' : ''} ${isS ? 'selected' : ''}" data-uid="${uid}" style="border-left: 3px solid ${cl}" ${isD ? 'draggable="true"' : ''}>${isD ? `<button class="sc-arrow-up" data-dir="-1">▲</button>` : `<div class="tnum"${sN ? '' : ' style="display:none"'}>${i + 1}.</div>`}${isD || this.searchQuery ? `<div class="showcase-drag-handle">${isD ? '⠿' : ''}</div><div class="showcase-checkbox"></div>` : ''}<img src="${this.getCover(t)}" class="showcase-track-thumb" loading="lazy"><div class="track-title"><div>${esc(t.title)}</div><div class="showcase-track-meta">${badges} ${esc(W.TrackRegistry.getAlbumTitle(t.sourceAlbum))}</div></div>${!isD ? `<span class="offline-ind" data-uid="${uid}" title="Оффлайн статус">🔒</span><img src="${W.playerCore?.isFavorite(uid) ? 'img/star.png' : 'img/star2.png'}" class="like-star" data-readonly="1" alt="favorite-state" title="Статус избранного"><button class="showcase-track-menu-btn">···</button>` : ''}${isD ? `<button class="showcase-hide-btn">${eyeOff ? '👁‍🗨' : '👁'}</button>` : `<button class="sc-arrow-down" data-dir="1">▼</button>`}</div>`;
     });
     c.innerHTML = h || '<div class="fav-empty">Треки не найдены</div>';
     if (!isD) W.OfflineIndicators?.injectOfflineIndicators?.(c); 
@@ -3816,14 +3945,26 @@ class ShowcaseManager {
   }
 
   updStatus(cnt) {
-    const s = $('sc-status'); if (!s) return;
-    const dom = D.querySelectorAll('.showcase-track'), f = D.querySelectorAll('.showcase-track .like-star[src*="star.png"]').length, o = D.querySelectorAll('.showcase-track .offline-ind:not(.offline-ind--none)').length;
+    const s = $('sc-status');
+    if (!s) return;
+
+    const ctx = this.getCtx();
+    const hiddenSet = new Set(ctx.hid || []);
+    const total = ctx.isPl ? (ctx.uids || []).length : (ctx.ord || []).length;
+    const hidden = [...hiddenSet].filter(u => (ctx.isPl ? (ctx.uids || []).includes(u) : (ctx.ord || []).includes(u)).length).length;
+    const active = Math.max(0, total - hidden);
+    const found = this.searchQuery ? Number(cnt || 0) : 0;
     const numOn = this.state.ui.num;
-    s.innerHTML = `<span>📋 ${cnt??dom.length} · ⭐ ${f} · 🔒 ${o}</span><span style="display:flex;gap:12px;align-items:center"><span id="sc-tg-e" style="cursor:pointer;font-size:18px" title="Показывать скрытые">${this.state.ui.hid?'👁':'🙈'}</span><span id="sc-tg-n" style="cursor:pointer;font-size:16px;font-weight:bold;opacity:${numOn?'1':'.72'}" aria-pressed="${numOn?'true':'false'}" title="Нумерация">1,2,3</span><span id="sc-tg-v" style="cursor:pointer;font-size:18px" title="Сменить вид">${this.state.ui.view==='flat'?'⊞':'⊟'}</span></span>`;
+
+    s.innerHTML = `<span>📋 ${total} · ✅ ${active} · 🙈 ${hidden}${this.searchQuery ? ` · 🔎 ${found}` : ''}</span><span style="display:flex;gap:12px;align-items:center"><span id="sc-tg-e" style="cursor:pointer;font-size:18px" title="Показывать скрытые">${this.state.ui.hid ? '👁' : '🙈'}</span><span id="sc-tg-n" style="cursor:pointer;font-size:16px;font-weight:bold;opacity:${numOn ? '1' : '.72'}" aria-pressed="${numOn ? 'true' : 'false'}" title="Нумерация">1,2,3</span><span id="sc-tg-v" style="cursor:pointer;font-size:18px" title="Сменить вид">${this.state.ui.view === 'flat' ? '⊞' : '⊟'}</span></span>`;
   }
 
   swp(u, d) { const el = D.querySelector(`.showcase-track[data-uid="${u}"]`), sb = d === -1 ? el?.previousElementSibling : el?.nextElementSibling; if (el && sb?.classList.contains('showcase-track')) { d === -1 ? sb.before(el) : sb.after(el); this.svOrd(); } }
-  svOrd() { if(this.draft) { this.draft.ord = Array.from(D.querySelectorAll('.showcase-track')).map(e => e.dataset.uid); this.draft.dirty = true; $('sc-reset').disabled = false; } }
+  svOrd() {
+    if (!this.draft) return;
+    this.draft.ord = Array.from(D.querySelectorAll('.showcase-track')).map(e => e.dataset.uid).filter(Boolean);
+    this._markDraftDirty();
+  }
   strtDrg(e, n) {
     if(!n)return; const t=e.touches[0], c=n.cloneNode(true), r=n.getBoundingClientRect(), os=t.clientY-r.top;
     c.style.cssText=`position:fixed;left:${r.left}px;width:${r.width}px;z-index:10000;opacity:0.9;background:#252d39;box-shadow:0 10px 30px rgba(0,0,0,0.8);pointer-events:none`; D.body.appendChild(c); n.style.opacity=0.3;
@@ -3837,8 +3978,10 @@ class ShowcaseManager {
     if (!this.draft) return;
     const el = D.querySelector(`.showcase-track[data-uid="${u}"]`); if (el) { el.classList.toggle('inactive'); const b = el.querySelector('.showcase-hide-btn'); if(b) b.textContent = el.classList.contains('inactive') ? '👁‍🗨' : '👁'; }
     this.draft.hid.has(u) ? this.draft.hid.delete(u) : this.draft.hid.add(u);
-    if (!this.draft.isPl) { this.draft.hid.has(u) ? this.draft.chk.delete(u) : this.draft.chk.add(u); } // sync for default
-    this.draft.dirty = true; $('sc-reset').disabled = false;
+    if (!this.draft.isPl) {
+      this.draft.hid.has(u) ? this.draft.chk.delete(u) : this.draft.chk.add(u);
+    }
+    this._markDraftDirty();
     if(!this.draft.isPl) { this.rndrMPnl(); this.updStatus(); }
   }
 
@@ -3846,7 +3989,15 @@ class ShowcaseManager {
     const s = this.draft ? this.draft.chk : this.searchSel;
     const el = D.querySelector(`.showcase-track[data-uid="${u}"]`);
     if (s.has(u)) { s.delete(u); el?.classList.remove('selected'); } else { s.add(u); el?.classList.add('selected'); }
-    if (this.draft) { this.draft.dirty = true; $('sc-reset').disabled = false; if(!this.draft.isPl) { s.has(u) ? this.draft.hid.delete(u) : this.draft.hid.add(u); const b = el?.querySelector('.showcase-hide-btn'); if(b) b.textContent = s.has(u) ? '👁' : '👁‍🗨'; el?.classList.toggle('inactive', !s.has(u)); } }
+    if (this.draft) {
+      this._markDraftDirty();
+      if (!this.draft.isPl) {
+        s.has(u) ? this.draft.hid.delete(u) : this.draft.hid.add(u);
+        const b = el?.querySelector('.showcase-hide-btn');
+        if (b) b.textContent = s.has(u) ? '👁' : '👁‍🗨';
+        el?.classList.toggle('inactive', !s.has(u));
+      }
+    }
     this.rndrMPnl(); this.updStatus();
   }
 
@@ -3869,7 +4020,7 @@ class ShowcaseManager {
     const bg = D.createElement('div'); bg.className = 'sc-bottom-sheet-bg';
     const c = this.getCtx();
     const inPl = c.isPl && c.uids.includes(u);
-    bg.innerHTML = `<div class="sc-bottom-sheet"><div class="sc-sheet-title">${esc(t.title)}</div><div class="sc-sheet-sub">${esc(W.TrackRegistry.getAlbumTitle(t.sourceAlbum))}</div><button class="sc-sheet-btn" id="bm-play">▶ Воспроизвести</button><button class="sc-sheet-btn" id="bm-pl">➕ Добавить в другой плейлист</button>${inPl?`<button class="sc-sheet-btn" id="bm-rm" style="color:#ff6b6b">✖ Удалить из текущего плейлиста</button>`:''}<button class="sc-sheet-btn" id="bm-hd">👁 Скрыть / Показать (в этом списке)</button><button class="sc-sheet-btn" id="bm-fv">${W.playerCore?.isFavorite(u)?'❌ Убрать из Избранного':'⭐ В Избранное'}</button><button class="sc-sheet-btn" id="bm-of">🔒 Скачать / Убрать из офлайн</button><button class="sc-sheet-btn" id="bm-dl">⬇️ Сохранить mp3 файл</button><button class="sc-sheet-btn" id="bm-st">📊 Статистика трека</button><button class="sc-sheet-btn" id="bm-sh">📸 Поделиться треком (Карточка)</button><button class="sc-sheet-btn" id="bm-cl">🎨 Цвет альбома</button><button class="sc-sheet-btn" style="color:#888;justify-content:center;margin-top:10px" id="bm-cx">Отмена</button></div>`;
+    bg.innerHTML = `<div class="sc-bottom-sheet"><div class="sc-sheet-title">${esc(t.title)}</div><div class="sc-sheet-sub">${esc(W.TrackRegistry.getAlbumTitle(t.sourceAlbum))}</div><button class="sc-sheet-btn" id="bm-play">▶ Воспроизвести</button><button class="sc-sheet-btn" id="bm-pl">➕ Добавить в другой плейлист</button>${inPl ? `<button class="sc-sheet-btn" id="bm-rm" style="color:#ff6b6b">✖ Удалить из текущего плейлиста</button>` : ''}<button class="sc-sheet-btn" id="bm-hd">👁 Скрыть / Показать (в этом списке)</button><button class="sc-sheet-btn" id="bm-fv">${W.playerCore?.isFavorite(u) ? '❌ Убрать из Избранного' : '⭐ В Избранное'}</button><button class="sc-sheet-btn" id="bm-of">🔒 Скачать / Убрать из офлайн</button><button class="sc-sheet-btn" id="bm-dl">⬇️ Сохранить mp3 файл</button><button class="sc-sheet-btn" id="bm-st">📊 Статистика трека</button><button class="sc-sheet-btn" id="bm-sh">📸 Поделиться треком (Карточка)</button><button class="sc-sheet-btn" id="bm-cl">🎨 Цвет альбома</button><button class="sc-sheet-btn" style="color:#888;justify-content:center;margin-top:10px" id="bm-cx">Отмена</button></div>`;
     D.body.appendChild(bg); this._menu = bg; requestAnimationFrame(() => bg.classList.add('active'));
     const cls = () => { bg.classList.remove('active'); setTimeout(()=>bg.remove(), 200); this._menu=null; };
     bg.onclick = e => {
