@@ -164,9 +164,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d98f89f575321f98d5eeea23aff72dc80781be83.idx
-│   │       ├── pack-d98f89f575321f98d5eeea23aff72dc80781be83.pack
-│   │       └── pack-d98f89f575321f98d5eeea23aff72dc80781be83.rev
+│   │       ├── pack-96b559b2a4ba572fe1c80217bd6f4f91a4529ff4.idx
+│   │       ├── pack-96b559b2a4ba572fe1c80217bd6f4f91a4529ff4.pack
+│   │       └── pack-96b559b2a4ba572fe1c80217bd6f4f91a4529ff4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,7 +377,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-07 12:51:44 UTC
+Сгенерировано: 2026-03-07 13:22:35 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5044,7 +5044,18 @@ window.FavoritesManager = Favorites;
 
     isSpecialAlbumKey: (k) => String(k || '').startsWith('__'),
     isShowcaseContext: (k) => k === '__showcase__' || String(k || '').startsWith('__showcase__:'),
-    isBrowsingOtherAlbum: () => { const p = W.AlbumsManager?.getPlayingAlbum?.(), c = W.AlbumsManager?.getCurrentAlbum?.(); return !!(p && c && p !== c && !(p === '__favorites__' && c === '__favorites__')); },
+    isBrowsingOtherAlbum: () => {
+      const norm = (v) => {
+        const s = String(v || '').trim();
+        if (!s) return '';
+        if (s === '__showcase__' || s.startsWith('__showcase__:')) return '__showcase__';
+        if (s === '__favorites__' || s.startsWith('__favorites__:')) return '__favorites__';
+        return s;
+      };
+      const p = norm(W.AlbumsManager?.getPlayingAlbum?.());
+      const c = norm(W.AlbumsManager?.getCurrentAlbum?.());
+      return !!(p && c && p !== c);
+    },
     setBtnActive: (id, a) => D.getElementById(id)?.classList.toggle('active', !!a),
     setAriaDisabled: (el, d) => { if (el) { el.classList.toggle('disabled', !!d); el.setAttribute('aria-disabled', !!d); } },
     lsGet: (k, d) => localStorage.getItem(k) ?? d,
