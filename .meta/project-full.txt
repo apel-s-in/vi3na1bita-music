@@ -164,9 +164,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-96b559b2a4ba572fe1c80217bd6f4f91a4529ff4.idx
-│   │       ├── pack-96b559b2a4ba572fe1c80217bd6f4f91a4529ff4.pack
-│   │       └── pack-96b559b2a4ba572fe1c80217bd6f4f91a4529ff4.rev
+│   │       ├── pack-e4cb1a6a21bcd9fb570434d6cc9a7ec306fab108.idx
+│   │       ├── pack-e4cb1a6a21bcd9fb570434d6cc9a7ec306fab108.pack
+│   │       └── pack-e4cb1a6a21bcd9fb570434d6cc9a7ec306fab108.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,7 +377,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-07 13:22:35 UTC
+Сгенерировано: 2026-03-07 13:23:28 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2365,7 +2365,13 @@ class AlbumsManager {
         const k = e.target.closest('.album-icon')?.dataset.album;
         if (!k || k.startsWith('__')) return;
         isDragging = false;
-        touchTimer = setTimeout(() => { touchTimer = null; W.ShowcaseManager?.openColorPicker?.(null, k); }, 600);
+        touchTimer = setTimeout(() => {
+          touchTimer = null;
+          const openShowcaseColorPicker = W.ShowcaseManager?.openColorPicker || W.ShowcaseManager?.opnCol;
+          if (typeof openShowcaseColorPicker === 'function') {
+            openShowcaseColorPicker.call(W.ShowcaseManager, null, k);
+          }
+        }, 600);
       }, {passive: true});
       
       iconsBox.addEventListener('touchmove', () => { isDragging = true; if(touchTimer) clearTimeout(touchTimer); }, {passive: true});
@@ -2373,7 +2379,13 @@ class AlbumsManager {
       
       iconsBox.addEventListener('contextmenu', e => {
         const k = e.target.closest('.album-icon')?.dataset.album;
-        if (k && !k.startsWith('__')) { e.preventDefault(); W.ShowcaseManager?.openColorPicker?.(null, k); }
+        if (k && !k.startsWith('__')) {
+          e.preventDefault();
+          const openShowcaseColorPicker = W.ShowcaseManager?.openColorPicker || W.ShowcaseManager?.opnCol;
+          if (typeof openShowcaseColorPicker === 'function') {
+            openShowcaseColorPicker.call(W.ShowcaseManager, null, k);
+          }
+        }
       });
       
       iconsBox.addEventListener('click', e => {
