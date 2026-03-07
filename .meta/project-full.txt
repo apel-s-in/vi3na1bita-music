@@ -164,9 +164,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e560cc2228d13d6e32167785ecdb6c8c51034d53.idx
-│   │       ├── pack-e560cc2228d13d6e32167785ecdb6c8c51034d53.pack
-│   │       └── pack-e560cc2228d13d6e32167785ecdb6c8c51034d53.rev
+│   │       ├── pack-06d1b2d49494296f776d8ad021b94feaab2e79eb.idx
+│   │       ├── pack-06d1b2d49494296f776d8ad021b94feaab2e79eb.pack
+│   │       └── pack-06d1b2d49494296f776d8ad021b94feaab2e79eb.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,7 +377,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-07 14:38:26 UTC
+Сгенерировано: 2026-03-07 14:39:05 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -8971,11 +8971,19 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
   white-space: nowrap;
   text-align: center;
 }
-
 #sc-tg-n:empty::after {
   content: '1,2,3';
   opacity: .72;
 }
+
+/* Showcase V2: Search & Sticky Bar */
+.showcase-sticky-bar { position:fixed; bottom:85px; left:50%; transform:translateX(-50%); z-index:1000; background:#1e222d; border:1px solid var(--secondary-color); padding:10px 14px; border-radius:12px; display:flex; gap:10px; align-items:center; box-shadow:0 8px 32px rgba(0,0,0,.8); white-space:nowrap; max-width: 95vw; overflow-x: auto; }
+.showcase-sticky-bar span { color: #fff; font-weight: bold; font-size: 14px; }
+.showcase-row-badge { font-size:10px; padding:2px 6px; border-radius:4px; font-weight:800; letter-spacing:0.5px; }
+.sc-badge-active { background:rgba(76,175,80,0.2); color:#81c784; }
+.sc-badge-hidden { background:rgba(255,152,0,0.2); color:#ffb74d; }
+.sc-badge-missing { background:rgba(244,67,54,0.2); color:#ef9a9a; }
+.showcase-track-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 
 //=================================================
 // FILE: /ai-rules.txt
