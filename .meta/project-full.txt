@@ -164,9 +164,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e4cb1a6a21bcd9fb570434d6cc9a7ec306fab108.idx
-│   │       ├── pack-e4cb1a6a21bcd9fb570434d6cc9a7ec306fab108.pack
-│   │       └── pack-e4cb1a6a21bcd9fb570434d6cc9a7ec306fab108.rev
+│   │       ├── pack-c5a707aa73a8b8f3cf05f50ac2c53046f8942380.idx
+│   │       ├── pack-c5a707aa73a8b8f3cf05f50ac2c53046f8942380.pack
+│   │       └── pack-c5a707aa73a8b8f3cf05f50ac2c53046f8942380.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -377,7 +377,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-07 13:23:28 UTC
+Сгенерировано: 2026-03-07 13:24:47 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -6536,6 +6536,20 @@ const scheduleRefresh = () => {
   if (!_timer) _timer = setTimeout(() => { _timer = 0; refreshAllIndicators(); }, 50);
 };
 
+function isShowcaseIndicatorClick(target) {
+  try {
+    if (!target?.closest) return false;
+    const ind = target.closest('.offline-ind');
+    if (!ind) return false;
+    if (!target.closest('#track-list')) return false;
+
+    const currentAlbum = String(window.AlbumsManager?.getCurrentAlbum?.() || '');
+    return currentAlbum === '__showcase__';
+  } catch {
+    return false;
+  }
+}
+
 function showCloudMenu(ind, uid) {
   _menu?.remove();
   _menu = document.createElement('div');
@@ -6588,6 +6602,7 @@ document.addEventListener('click', async (e) => {
 
   const ind = e.target.closest('.offline-ind');
   if (ind) {
+    if (isShowcaseIndicatorClick(e.target)) return;
     e.preventDefault(); e.stopPropagation();
     const uid = ind.dataset.uid, mgr = getOfflineManager();
     const st = await mgr.getTrackOfflineState(uid);
