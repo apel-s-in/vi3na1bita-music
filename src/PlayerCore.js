@@ -196,7 +196,12 @@ import { ensureMediaSession } from './player-core/media-session.js';
       this._favSubs.forEach(f => { try { f({ uid: u, liked, albumKey: opts.albumKey }); } catch {} });
 
       if (!liked && src === 'favorites' && isFavView && this.getCurrentTrackUid() === u) {
-        if ((this.getFavoritesState().active?.length || 0) <= 0) this.stop(); else this.next();
+        const activeCount = this.getFavoritesState().active?.length || 0;
+        if (activeCount <= 0) {
+          this.stop();
+        } else {
+          this.next();
+        }
       }
       return { liked };
     }
