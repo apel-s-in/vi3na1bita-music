@@ -194,7 +194,18 @@
 
     isSpecialAlbumKey: (k) => String(k || '').startsWith('__'),
     isShowcaseContext: (k) => k === '__showcase__' || String(k || '').startsWith('__showcase__:'),
-    isBrowsingOtherAlbum: () => { const p = W.AlbumsManager?.getPlayingAlbum?.(), c = W.AlbumsManager?.getCurrentAlbum?.(); return !!(p && c && p !== c && !(p === '__favorites__' && c === '__favorites__')); },
+    isBrowsingOtherAlbum: () => {
+      const norm = (v) => {
+        const s = String(v || '').trim();
+        if (!s) return '';
+        if (s === '__showcase__' || s.startsWith('__showcase__:')) return '__showcase__';
+        if (s === '__favorites__' || s.startsWith('__favorites__:')) return '__favorites__';
+        return s;
+      };
+      const p = norm(W.AlbumsManager?.getPlayingAlbum?.());
+      const c = norm(W.AlbumsManager?.getCurrentAlbum?.());
+      return !!(p && c && p !== c);
+    },
     setBtnActive: (id, a) => D.getElementById(id)?.classList.toggle('active', !!a),
     setAriaDisabled: (el, d) => { if (el) { el.classList.toggle('disabled', !!d); el.setAttribute('aria-disabled', !!d); } },
     lsGet: (k, d) => localStorage.getItem(k) ?? d,
