@@ -86,6 +86,20 @@ const scheduleRefresh = () => {
   if (!_timer) _timer = setTimeout(() => { _timer = 0; refreshAllIndicators(); }, 50);
 };
 
+function isShowcaseIndicatorClick(target) {
+  try {
+    if (!target?.closest) return false;
+    const ind = target.closest('.offline-ind');
+    if (!ind) return false;
+    if (!target.closest('#track-list')) return false;
+
+    const currentAlbum = String(window.AlbumsManager?.getCurrentAlbum?.() || '');
+    return currentAlbum === '__showcase__';
+  } catch {
+    return false;
+  }
+}
+
 function showCloudMenu(ind, uid) {
   _menu?.remove();
   _menu = document.createElement('div');
@@ -138,6 +152,7 @@ document.addEventListener('click', async (e) => {
 
   const ind = e.target.closest('.offline-ind');
   if (ind) {
+    if (isShowcaseIndicatorClick(e.target)) return;
     e.preventDefault(); e.stopPropagation();
     const uid = ind.dataset.uid, mgr = getOfflineManager();
     const st = await mgr.getTrackOfflineState(uid);
