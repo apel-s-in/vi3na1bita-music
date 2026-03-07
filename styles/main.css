@@ -876,3 +876,18 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .source-indicator.si-cache { background: radial-gradient(circle, #4caf50 0%, #2e7d32 100%); color: #fff; border: 1px solid #81c784; }
 .source-indicator.si-cache::after { content: '💾'; font-size: 15px; }
 .source-indicator:hover { opacity: 1; transform: scale(1.1); }
+
+/* Showcase numbers toggle fix */
+#sc-tg-n {
+  min-width: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  text-align: center;
+}
+
+#sc-tg-n:empty::after {
+  content: '1,2,3';
+  opacity: .72;
+}
