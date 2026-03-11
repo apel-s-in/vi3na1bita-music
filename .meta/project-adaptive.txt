@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-af7b8ccb23f8a67f9e17380afa59ff5f7c4014ee.idx
-│   │       ├── pack-af7b8ccb23f8a67f9e17380afa59ff5f7c4014ee.pack
-│   │       └── pack-af7b8ccb23f8a67f9e17380afa59ff5f7c4014ee.rev
+│   │       ├── pack-f56f3b9ecca38628a2533263804f1b5991af2f03.idx
+│   │       ├── pack-f56f3b9ecca38628a2533263804f1b5991af2f03.pack
+│   │       └── pack-f56f3b9ecca38628a2533263804f1b5991af2f03.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -378,7 +378,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-11 19:04:32 UTC
+Сгенерировано: 2026-03-11 19:05:48 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3721,8 +3721,7 @@ class ShowcaseManager {
     // search
     if (this._searchQ) {
       await ensureLyricsIndexLoaded();
-      const allUids = W.TrackRegistry?.getAllUids?.() || [];
-      const found = searchUidsByQuery({ uids: allUids, query: this._searchQ });
+      const found = searchUidsByQuery({ query: this._searchQ });
       // mark which are in context and which aren't
       return { type: 'search', results: found, ctxOrder: order, ctxHidden: hidden };
     }
@@ -3818,7 +3817,6 @@ class ShowcaseManager {
       this._renderSearchResults(c, displayData, ui);
     } else {
       const { uids, hidden } = displayData;
-      this._updStatus(uids.length);
       let h = '', grp = null;
       uids.forEach((u, i) => {
         const t = buildTrackObj(u);
