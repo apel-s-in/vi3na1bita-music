@@ -141,10 +141,11 @@
   };
 
   let _init = false;
-  checkShowcaseShare: () => {
-        const p = new URLSearchParams(W.location.search).get('playlist');
-        if (p && W.ShowcaseManager) { W.ShowcaseManager.handleSharedPlaylist(p); W.history.replaceState(null, '', W.location.pathname); }
-      },
+  W.app = {
+    checkShowcaseShare: () => {
+      const p = new URLSearchParams(W.location.search).get('playlist');
+      if (p && W.ShowcaseManager) { W.ShowcaseManager.handleSharedPlaylist(p); W.history.replaceState(null, '', W.location.pathname); }
+    },
     initialize: async () => {
       if (_init) return; _init = true;
       try {
