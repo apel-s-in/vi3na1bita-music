@@ -90,11 +90,8 @@ function isShowcaseIndicatorClick(target) {
   try {
     if (!target?.closest) return false;
     const ind = target.closest('.offline-ind');
-    if (!ind) return false;
-    if (!target.closest('#track-list')) return false;
-
-    const currentAlbum = String(window.AlbumsManager?.getCurrentAlbum?.() || '');
-    return currentAlbum === '__showcase__';
+    if (!ind || !target.closest('#track-list')) return false;
+    return !!window.Utils?.isShowcaseContext?.(window.AlbumsManager?.getCurrentAlbum?.());
   } catch {
     return false;
   }
@@ -152,7 +149,11 @@ document.addEventListener('click', async (e) => {
 
   const ind = e.target.closest('.offline-ind');
   if (ind) {
-    if (isShowcaseIndicatorClick(e.target)) return;
+    if (isShowcaseIndicatorClick(e.target)) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     e.preventDefault(); e.stopPropagation();
     const uid = ind.dataset.uid, mgr = getOfflineManager();
     const st = await mgr.getTrackOfflineState(uid);
