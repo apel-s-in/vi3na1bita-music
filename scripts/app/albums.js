@@ -51,10 +51,7 @@ class AlbumsManager {
         isDragging = false;
         touchTimer = setTimeout(() => {
           touchTimer = null;
-          const openShowcaseColorPicker = W.ShowcaseManager?.openColorPicker || W.ShowcaseManager?.opnCol;
-          if (typeof openShowcaseColorPicker === 'function') {
-            openShowcaseColorPicker.call(W.ShowcaseManager, null, k);
-          }
+          W.ShowcaseManager?.openColorPicker?.(null, k);
         }, 600);
       }, {passive: true});
       
@@ -65,10 +62,7 @@ class AlbumsManager {
         const k = e.target.closest('.album-icon')?.dataset.album;
         if (k && !k.startsWith('__')) {
           e.preventDefault();
-          const openShowcaseColorPicker = W.ShowcaseManager?.openColorPicker || W.ShowcaseManager?.opnCol;
-          if (typeof openShowcaseColorPicker === 'function') {
-            openShowcaseColorPicker.call(W.ShowcaseManager, null, k);
-          }
+          W.ShowcaseManager?.openColorPicker?.(null, k);
         }
       });
       
