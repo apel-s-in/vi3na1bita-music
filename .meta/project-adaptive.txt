@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-48ff751c3702b6eaef3ba718109c7a91cdb497e4.idx
-│   │       ├── pack-48ff751c3702b6eaef3ba718109c7a91cdb497e4.pack
-│   │       └── pack-48ff751c3702b6eaef3ba718109c7a91cdb497e4.rev
+│   │       ├── pack-e7ecb3826a9e6dc8eacc80bb61a07e7cfbdd1f9b.idx
+│   │       ├── pack-e7ecb3826a9e6dc8eacc80bb61a07e7cfbdd1f9b.pack
+│   │       └── pack-e7ecb3826a9e6dc8eacc80bb61a07e7cfbdd1f9b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -378,7 +378,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-11 12:47:34 UTC
+Сгенерировано: 2026-03-11 12:48:41 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3443,1534 +3443,509 @@ window.PlaybackCache.unprotectWindow = unprotectWindow;
 // FILE: /scripts/app/showcase/index.js
 /**
  * scripts/app/showcase/index.js
- * ShowcaseManager v4.0
- * Полная стабилизация вкладки "Витрина Разбита" по нормативной спецификации.
- * Цели:
- * - один источник истины для Showcase state
- * - отсутствие дублированной логики и повторных listeners
- * - быстрый рендер без гонок
- * - draft-state строго отделён от persisted-state
- * - playback отделён от display
- * - search работает по всему каталогу
- * - скрытые треки никогда не попадают в playback
+ * "Витрина Разбита" (Showcase) — Мастер Вкладка.
+ * ПОЛНАЯ РЕАЛИЗАЦИЯ (ТЗ v2.0): Оптимизировано, мгновенный отклик, DND, кэширование.
  */
 
 import { ensureLyricsIndexLoaded, searchUidsByQuery } from './lyrics-search.js';
 
-const W = window;
-const D = document;
-const U = W.Utils;
-const LS_KEY = 'showcase:state:v4';
-const SHOWCASE_KEY = '__showcase__';
-const PALETTE = ['transparent', '#ef5350', '#ff9800', '#fdd835', '#4caf50', '#00bcd4', '#2196f3', '#9c27b0', '#e91e63', '#9e9e9e'];
+const W = window, D = document, U = W.Utils, LS = 'showcase:';
+const ls = localStorage;
+const PALETTE = ['transparent','#ef5350','#ff9800','#fdd835','#4caf50','#00bcd4','#2196f3','#9c27b0','#e91e63','#9e9e9e'];
+const esc = s => U.escapeHtml(String(s || ''));
+const $ = id => D.getElementById(id);
 
-const $ = (id) => D.getElementById(id);
-const esc = (s) => U?.escapeHtml?.(String(s || '')) || String(s || '');
-const now = () => Date.now();
-const sUid = (v) => String(v || '').trim() || null;
-
-function uniq(arr) {
-  return [...new Set(arr)];
-}
-
-function sanitizeUidList(list) {
-  if (!Array.isArray(list)) return [];
-  const seen = new Set();
-  const out = [];
-  list.forEach((item) => {
-    const uid = sUid(item);
-    if (!uid || seen.has(uid) || !W.TrackRegistry?.getTrackByUid?.(uid)) return;
-    seen.add(uid);
-    out.push(uid);
-  });
-  return out;
-}
-
-function safeName(v, fallback) {
-  const s = String(v || '').trim();
-  return s || fallback;
-}
-
-function safeColor(v) {
-  return PALETTE.includes(v) ? v : '';
-}
-
-function byId(arr, id) {
-  return Array.isArray(arr) ? arr.find((item) => item?.id === id) || null : null;
-}
+const Store = {
+  get: (k, d) => U.lsGetJson(LS + k, d),
+  set: (k, v) => U.lsSet(LS + k, JSON.stringify(v)),
+  get pId() { return this.get('activePlaylistId', null); },
+  set pId(id) { this.set('activePlaylistId', id); },
+  get pls() { return this.get('playlists', []); },
+  set pls(p) { this.set('playlists', p); },
+  get aCol() { return this.get('albumColors', {}); },
+  get pCol() { return this.get('playlistColors', {}); },
+  init() {
+    let m = this.get('masterOrder', []);
+    if (!m.length) {
+      [...(W.albumsIndex || [])].reverse().forEach(a => {
+        if (!a.key.startsWith('__')) W.TrackRegistry?.getAllUids()?.forEach(u => {
+          if (W.TrackRegistry.getTrackByUid(u)?.sourceAlbum === a.key && !m.includes(u)) m.push(u);
+        });
+      });
+      this.set('masterOrder', m); this.set('userOrder', [...m]);
+    }
+  }
+};
 
 class ShowcaseManager {
   constructor() {
-    this.state = null;
-    this.draft = null;
-    this.searchQuery = '';
-    this.searchSel = new Set();
-    this.controlsBound = false;
-    this.renderToken = 0;
-    this._icons = {};
-    this._statsCache = new Map();
-    this._scrollKeyPrefix = 'showcase:scroll:v4:';
-    this._menu = null;
-    this._boundRoot = null;
-    this._longPressTimer = null;
-    this._wasLongPress = false;
+    this.editMode = false; this.searchQuery = '';
+    this.viewMode = Store.get('viewMode', 'flat'); this.sortMode = Store.get('sortMode', 'user');
+    this.selectedUids = new Set(); this._ic = {}; this._stat = new Map();
   }
 
   async initialize() {
-    (W.APP_CONFIG?.ICON_ALBUMS_ORDER || []).forEach((item) => {
-      if (item?.key) this._icons[item.key] = item.icon;
-    });
-
+    (W.APP_CONFIG?.ICON_ALBUMS_ORDER || []).forEach(i => this._ic[i.key] = i.icon);
     await W.TrackRegistry?.ensurePopulated?.();
-    this._loadState();
-    this._bindGlobalEvents();
+    Store.init();
+    W.playerCore?.on({ onTrackChange: t => { if (t?.uid && U.isShowcaseContext(W.AlbumsManager?.getPlayingAlbum())) { Store.set('lastTrackUid', t.uid); Store.set('lastPlayingContext', W.AlbumsManager.getPlayingAlbum()); } } });
+    W.playerCore?.onFavoritesChanged(({ uid }) => {
+      const img = D.querySelector(`.showcase-track[data-uid="${CSS.escape(uid)}"] .like-star`);
+      if (img) img.src = W.playerCore.isFavorite(uid) ? 'img/star.png' : 'img/star2.png';
+      this.updStatus();
+    });
+    W.addEventListener('offline:stateChanged', () => W.AlbumsManager?.getCurrentAlbum() === '__showcase__' && (W.OfflineIndicators?.refreshAllIndicators(), this.updStatus()));
   }
 
-  _bindGlobalEvents() {
-    W.playerCore?.on({
-      onTrackChange: (track) => {
-        if (!track?.uid) return;
-        const playingAlbum = String(W.AlbumsManager?.getPlayingAlbum?.() || '');
-        if (!U.isShowcaseContext(playingAlbum)) return;
-        localStorage.setItem('showcase:lastTrackUid', track.uid);
-        localStorage.setItem('showcase:lastPlayingContext', playingAlbum);
-        this.highlightCurrentTrack(track.uid);
+  async getActiveListTracks() {
+    const pId = Store.pId;
+    let uids = pId ? (Store.pls.find(p => p.id === pId)?.uids || []) : Store.get('userOrder', []);
+
+    if (this.sortMode === 'shuffle' && !this.editMode) {
+      let sh = Store.get('shuffledOrder', null);
+      if (!sh || sh.length !== uids.length) { sh = [...uids].sort(() => Math.random() - 0.5); Store.set('shuffledOrder', sh); }
+      uids = sh;
+    } else if (this.sortMode !== 'user' && !this.editMode) {
+      const tr = uids.map(u => W.TrackRegistry.getTrackByUid(u)).filter(Boolean);
+      if (this.sortMode.startsWith('plays') || this.sortMode === 'last-played') {
+        const db = (await import('../../analytics/meta-db.js')).metaDB;
+        const stats = await db.getAllStats();
+        const map = new Map(stats.filter(s => s.uid !== 'global').map(s => [s.uid, s]));
+        tr.forEach(t => {
+          const st = map.get(t.uid);
+          this._stat.set(t.uid, {
+            plays: st?.globalFullListenCount || 0,
+            lastAt: st?.lastPlayedAt || 0
+          });
+        });
       }
-    });
+      const S = this._stat;
+      const sorters = {
+        'name-asc': (a, b) => a.title.localeCompare(b.title), 'name-desc': (a, b) => b.title.localeCompare(a.title),
+        'album-desc': (a, b) => b.sourceAlbum.localeCompare(a.sourceAlbum), 'album-asc': (a, b) => a.sourceAlbum.localeCompare(b.sourceAlbum),
+        'favorites-first': (a, b) => (W.playerCore?.isFavorite(b.uid)?1:0) - (W.playerCore?.isFavorite(a.uid)?1:0),
+        'plays-desc': (a, b) => (S.get(b.uid)?.plays||0) - (S.get(a.uid)?.plays||0), 'plays-asc': (a, b) => (S.get(a.uid)?.plays||0) - (S.get(b.uid)?.plays||0),
+        'last-played': (a, b) => (S.get(b.uid)?.lastAt||0) - (S.get(a.uid)?.lastAt||0)
+      };
+      tr.sort(sorters[this.sortMode]);
+      uids = tr.map(t => t.uid);
+    }
 
-    W.playerCore?.onFavoritesChanged(() => {
-      if (!this.draft && W.AlbumsManager?.getCurrentAlbum?.() === SHOWCASE_KEY) {
-        this.renderList().catch(() => {});
+    const hid = pId ? (Store.pls.find(p => p.id === pId)?.hiddenUids || []) : Store.get('hiddenUids', []);
+    if (!this.editMode && localStorage.getItem('showcase:showHidden:v1') !== '1') uids = uids.filter(u => !hid.includes(u));
+
+    if (this.searchQuery && !this.editMode) { await ensureLyricsIndexLoaded(); uids = searchUidsByQuery({ uids, query: this.searchQuery }); }
+
+    return uids.map(u => {
+      const t = W.TrackRegistry.getTrackByUid(u);
+      if (!t) return null;
+
+      // Showcase: одна обложка на альбом, синхронно (без await), чтобы не падал init.
+      // Берём иконку альбома, а если нет — logo.
+      // (Если хочешь именно gallery first cover — сделаем отдельный async прогрев позже, без await в map.)
+      let cv = this._ic[t.sourceAlbum] || 'img/logo.png';
+
+      // Корректный mobile путь (у тебя реально есть img/icon_album/mobile/<name>@1x.jpg)
+      if (U.isMobile() && /\/icon_album\/[^/]+\.png$/i.test(cv)) {
+        const m = cv.match(/\/icon_album\/([^/]+)\.png$/i);
+        if (m) cv = `img/icon_album/mobile/${m[1]}@1x.jpg`;
       }
-    });
 
-    ['offline:stateChanged', 'offline:uiChanged'].forEach((ev) => {
-      W.addEventListener(ev, () => {
-        if (W.AlbumsManager?.getCurrentAlbum?.() !== SHOWCASE_KEY) return;
-        W.OfflineIndicators?.refreshAllIndicators?.();
-        this.updateStatus().catch(() => {});
-      });
-    });
-  }
-
-  _loadState() {
-    try {
-      const raw = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
-      if (raw && raw.v === 4) {
-        this.state = this._sanitizeState(raw);
-        return;
-      }
-    } catch {}
-    this._migrateOrCreateFreshState();
-  }
-
-  _saveState() {
-    localStorage.setItem(LS_KEY, JSON.stringify(this.state));
-  }
-
-  _migrateOrCreateFreshState() {
-    const baseline = this.getFactoryBaseline();
-    let migrated = null;
-
-    try {
-      const old = JSON.parse(localStorage.getItem('showcase:state:v3') || 'null');
-      if (old) migrated = old;
-    } catch {}
-
-    const next = {
-      v: 4,
-      ctx: { type: 'all', id: null },
-      ui: {
-        view: migrated?.ui?.view === 'grouped' ? 'grouped' : 'flat',
-        num: migrated?.ui?.num !== false,
-        hid: !!migrated?.ui?.hid,
-        plc: migrated?.ui?.plc === 'end' ? 'end' : 'keep'
-      },
-      def: {
-        ord: sanitizeUidList(migrated?.def?.ord).length ? sanitizeUidList(migrated.def.ord) : [...baseline],
-        hid: sanitizeUidList(migrated?.def?.hid),
-        sort: this._safeSortMode(migrated?.def?.sort)
-      },
-      pls: Array.isArray(migrated?.pls) ? migrated.pls.map((pl, idx) => this._sanitizePlaylist(pl, idx + 1)) : [],
-      col: this._sanitizeAlbumColors(migrated?.col)
-    };
-
-    this.state = this._sanitizeState(next);
-    this._saveState();
-  }
-
-  _sanitizeAlbumColors(src) {
-    const out = {};
-    if (!src || typeof src !== 'object') return out;
-    Object.entries(src).forEach(([albumKey, color]) => {
-      if (!albumKey || !W.TrackRegistry?.getAlbumTitle?.(albumKey)) return;
-      out[albumKey] = safeColor(color);
-    });
-    return out;
-  }
-
-  _safeSortMode(mode) {
-    const ok = new Set([
-      'user',
-      'name-asc',
-      'name-desc',
-      'album-asc',
-      'album-desc',
-      'favorites-first',
-      'plays-desc',
-      'plays-asc',
-      'last-played'
-    ]);
-    return ok.has(mode) ? mode : 'user';
-  }
-
-  _sanitizePlaylist(pl, n = 1) {
-    const uids = sanitizeUidList(pl?.uids);
-    const ord = sanitizeUidList(pl?.ord);
-    const order = ord.length ? uniq([...ord, ...uids]) : [...uids];
-    const hidden = sanitizeUidList(pl?.hid).filter((uid) => order.includes(uid));
-
-    const snapUids = sanitizeUidList(pl?.snap?.uids).length ? sanitizeUidList(pl.snap.uids) : [...uids];
-    const snapOrd = sanitizeUidList(pl?.snap?.ord).length ? sanitizeUidList(pl.snap.ord) : [...uids];
-    const snapHid = sanitizeUidList(pl?.snap?.hid).filter((uid) => snapOrd.includes(uid));
-
-    return {
-      id: sUid(pl?.id) || now().toString(36) + '_' + n,
-      name: safeName(pl?.name, `Мой плейлист ${n}`),
-      col: safeColor(pl?.col),
-      uids: [...uids],
-      ord: [...order],
-      hid: [...hidden],
-      sort: this._safeSortMode(pl?.sort),
-      createdAt: Number(pl?.createdAt) || now(),
-      snap: {
-        uids: [...snapUids],
-        ord: [...snapOrd],
-        hid: [...snapHid]
-      }
-    };
-  }
-
-  _sanitizeState(src) {
-    const baseline = this.getFactoryBaseline();
-
-    const defOrdRaw = sanitizeUidList(src?.def?.ord);
-    const defOrd = defOrdRaw.length ? uniq([...defOrdRaw, ...baseline.filter((uid) => !defOrdRaw.includes(uid))]) : [...baseline];
-    const defHid = sanitizeUidList(src?.def?.hid).filter((uid) => defOrd.includes(uid));
-
-    const pls = Array.isArray(src?.pls) ? src.pls.map((pl, idx) => this._sanitizePlaylist(pl, idx + 1)) : [];
-
-    const ctxType = src?.ctx?.type === 'playlist' ? 'playlist' : 'all';
-    const ctxId = ctxType === 'playlist' && byId(pls, src?.ctx?.id) ? src.ctx.id : null;
-
-    return {
-      v: 4,
-      ctx: ctxType === 'playlist' && ctxId ? { type: 'playlist', id: ctxId } : { type: 'all', id: null },
-      ui: {
-        view: src?.ui?.view === 'grouped' ? 'grouped' : 'flat',
-        num: src?.ui?.num !== false,
-        hid: !!src?.ui?.hid,
-        plc: src?.ui?.plc === 'end' ? 'end' : 'keep'
-      },
-      def: {
-        ord: [...defOrd],
-        hid: [...defHid],
-        sort: this._safeSortMode(src?.def?.sort)
-      },
-      pls,
-      col: this._sanitizeAlbumColors(src?.col)
-    };
-  }
-
-  getFactoryBaseline() {
-    const result = [];
-    const albums = [...(W.albumsIndex || [])].filter((a) => !String(a?.key || '').startsWith('__')).reverse();
-
-    albums.forEach((album) => {
-      const albumTracks = W.TrackRegistry?.getTracksForAlbum?.(album.key) || [];
-      albumTracks.forEach((track) => {
-        const uid = sUid(track?.uid);
-        if (uid && !result.includes(uid)) result.push(uid);
-      });
-    });
-
-    return result;
-  }
-
-  getCurrentContext() {
-    if (this.state.ctx.type === 'playlist') {
-      const pl = byId(this.state.pls, this.state.ctx.id);
-      if (pl) return { isPlaylist: true, ...pl };
-      this.state.ctx = { type: 'all', id: null };
-      this._saveState();
-    }
-
-    const baseline = this.getFactoryBaseline();
-    const saved = this.state.def.ord || [];
-    const missing = baseline.filter((uid) => !saved.includes(uid));
-    if (missing.length) {
-      this.state.def.ord = [...saved, ...missing];
-      this._saveState();
-    }
-
-    return {
-      isPlaylist: false,
-      id: null,
-      name: 'Все треки',
-      ord: [...this.state.def.ord],
-      hid: [...this.state.def.hid],
-      sort: this.state.def.sort,
-      uids: [...baseline]
-    };
-  }
-
-  getCover(track) {
-    if (!track) return 'img/logo.png';
-    let icon = this._icons[track.sourceAlbum] || 'img/logo.png';
-
-    if (U.isMobile?.() && /\/icon_album\/[^/]+\.png$/i.test(icon)) {
-      const match = icon.match(/\/icon_album\/([^/]+)\.png$/i);
-      if (match) icon = `img/icon_album/mobile/${match[1]}@1x.jpg`;
-    }
-
-    return icon;
-  }
-
-  async _warmStatsCacheIfNeeded(mode, uids) {
-    if (!(mode === 'plays-desc' || mode === 'plays-asc' || mode === 'last-played')) return;
-
-    const missing = uids.some((uid) => !this._statsCache.has(uid));
-    if (!missing) return;
-
-    const mod = await import('../../analytics/meta-db.js');
-    const stats = await mod.metaDB.getAllStats();
-    const map = new Map(stats.filter((item) => item.uid !== 'global').map((item) => [item.uid, item]));
-
-    uids.forEach((uid) => {
-      const stat = map.get(uid);
-      this._statsCache.set(uid, {
-        plays: stat?.globalFullListenCount || 0,
-        lastAt: stat?.lastPlayedAt || 0
-      });
-    });
-  }
-
-  async getSortedUids(uids, mode) {
-    const list = sanitizeUidList(uids);
-
-    if (mode === 'user') return list;
-    await this._warmStatsCacheIfNeeded(mode, list);
-
-    const tracks = list
-      .map((uid) => W.TrackRegistry?.getTrackByUid?.(uid))
-      .filter(Boolean);
-
-    const sorters = {
-      'name-asc': (a, b) => String(a.title || '').localeCompare(String(b.title || '')),
-      'name-desc': (a, b) => String(b.title || '').localeCompare(String(a.title || '')),
-      'album-asc': (a, b) => String(a.sourceAlbum || '').localeCompare(String(b.sourceAlbum || '')),
-      'album-desc': (a, b) => String(b.sourceAlbum || '').localeCompare(String(a.sourceAlbum || '')),
-      'favorites-first': (a, b) => (W.playerCore?.isFavorite?.(b.uid) ? 1 : 0) - (W.playerCore?.isFavorite?.(a.uid) ? 1 : 0),
-      'plays-desc': (a, b) => (this._statsCache.get(b.uid)?.plays || 0) - (this._statsCache.get(a.uid)?.plays || 0),
-      'plays-asc': (a, b) => (this._statsCache.get(a.uid)?.plays || 0) - (this._statsCache.get(b.uid)?.plays || 0),
-      'last-played': (a, b) => (this._statsCache.get(b.uid)?.lastAt || 0) - (this._statsCache.get(a.uid)?.lastAt || 0)
-    };
-
-    const sorter = sorters[mode];
-    if (sorter) tracks.sort(sorter);
-
-    return tracks.map((track) => track.uid);
-  }
-
-  async getDisplayList() {
-    const ctx = this.getCurrentContext();
-
-    if (this.draft) {
-      return this.draft.ord
-        .map((uid) => ({
-          uid,
-          status: 'edit',
-          track: W.TrackRegistry?.getTrackByUid?.(uid)
-        }))
-        .filter((item) => item.track);
-    }
-
-    if (this.searchQuery) {
-      await ensureLyricsIndexLoaded();
-      const matched = searchUidsByQuery({ query: this.searchQuery });
-      const hiddenSet = new Set(ctx.hid);
-      const memberSet = new Set(ctx.isPlaylist ? ctx.uids : ctx.ord);
-
-      return matched.map((uid) => {
-        let status = 'missing';
-        if (memberSet.has(uid)) status = hiddenSet.has(uid) ? 'hidden' : 'active';
-        else if (!ctx.isPlaylist && hiddenSet.has(uid)) status = 'hidden-def';
-
-        return {
-          uid,
-          status,
-          track: W.TrackRegistry?.getTrackByUid?.(uid)
-        };
-      }).filter((item) => item.track);
-    }
-
-    const sorted = await this.getSortedUids(ctx.ord, ctx.sort);
-    const hiddenSet = new Set(ctx.hid);
-
-    let rows = [];
-    sorted.forEach((uid) => {
-      const hidden = hiddenSet.has(uid);
-      if (hidden && !this.state.ui.hid) return;
-      rows.push({
-        uid,
-        status: hidden ? 'hidden' : 'active',
-        track: W.TrackRegistry?.getTrackByUid?.(uid)
-      });
-    });
-
-    if (this.state.ui.plc === 'end') {
-      rows = [
-        ...rows.filter((item) => item.status === 'active'),
-        ...rows.filter((item) => item.status !== 'active')
-      ];
-    }
-
-    return rows.filter((item) => item.track);
-  }
-
-  getPlayableUidsSync(ctx = this.getCurrentContext()) {
-    return ctx.ord.filter((uid) => !ctx.hid.includes(uid) && !!W.TrackRegistry?.getTrackByUid?.(uid));
-  }
-
-  getActiveListTracks() {
-    return this.getPlayableUidsSync().map((uid) => {
-      const track = W.TrackRegistry?.getTrackByUid?.(uid);
-      return track ? { ...track, album: 'Витрина Разбита', cover: this.getCover(track) } : null;
+      return { ...t, album: 'Витрина Разбита', cover: cv };
     }).filter(Boolean);
   }
 
-  enterEdit() {
-    const ctx = this.getCurrentContext();
-    const ord = sanitizeUidList(ctx.ord);
-    const hidden = new Set(sanitizeUidList(ctx.hid).filter((uid) => ord.includes(uid)));
-
-    const checked = new Set(
-      (ctx.isPlaylist ? sanitizeUidList(ctx.uids) : ord).filter((uid) => !hidden.has(uid) && ord.includes(uid))
-    );
-
-    this.draft = {
-      isPlaylist: ctx.isPlaylist,
-      id: ctx.id || null,
-      ord: [...ord],
-      chk: checked,
-      hid: hidden,
-      dirty: false
-    };
-
-    this.renderTab().catch(() => {});
-  }
-
-  saveEdit() {
-    if (!this.draft) return;
-    const d = this.draft;
-
-    if (d.isPlaylist) {
-      const pl = byId(this.state.pls, d.id);
-      if (pl) {
-        const kept = d.ord.filter((uid) => d.chk.has(uid) && !!W.TrackRegistry?.getTrackByUid?.(uid));
-        pl.uids = [...kept];
-        pl.ord = [...kept];
-        pl.hid = kept.filter((uid) => d.hid.has(uid));
-      }
-    } else {
-      const ord = d.ord.filter((uid) => !!W.TrackRegistry?.getTrackByUid?.(uid));
-      this.state.def.ord = [...ord];
-      this.state.def.hid = ord.filter((uid) => !d.chk.has(uid));
-    }
-
-    this._saveState();
-    this.draft = null;
-    W.NotificationSystem?.success?.('Изменения сохранены');
-    this.renderTab().catch(() => {});
-  }
-
-  createFromEdit(fromSearch = false) {
-    const modal = W.Modals?.open?.({
-      title: 'Название плейлиста',
-      bodyHtml: `
-        <input
-          id="pl-name"
-          value="Мой плейлист ${this.state.pls.length + 1}"
-          style="width:100%;padding:10px;border-radius:8px;background:rgba(255,255,255,.05);color:#fff;border:1px solid #666;margin-bottom:15px"
-        />
-        <button id="pl-ok" class="om-btn om-btn--primary" style="width:100%">Создать</button>
-      `
-    });
-
-    if (!modal) return;
-    setTimeout(() => modal.querySelector('#pl-name')?.focus(), 100);
-
-    modal.onclick = (e) => {
-      if (e.target.id !== 'pl-ok') return;
-
-      const name = modal.querySelector('#pl-name')?.value.trim();
-      if (!name) return;
-
-      let uids = [];
-      if (fromSearch) {
-        uids = [...this.searchSel].filter((uid) => !!W.TrackRegistry?.getTrackByUid?.(uid));
-      } else if (this.draft) {
-        uids = this.draft.ord.filter((uid) => this.draft.chk.has(uid) && !this.draft.hid.has(uid));
-      }
-
-      uids = sanitizeUidList(uids);
-      if (!uids.length) {
-        W.NotificationSystem?.warning?.('Нет активных треков для нового плейлиста');
-        return;
-      }
-
-      const id = now().toString(36);
-      this.state.pls.push({
-        id,
-        name,
-        col: '',
-        uids: [...uids],
-        ord: [...uids],
-        hid: [],
-        sort: 'user',
-        createdAt: now(),
-        snap: {
-          uids: [...uids],
-          ord: [...uids],
-          hid: []
-        }
-      });
-
-      this.state.ctx = { type: 'playlist', id };
-      this.draft = null;
-      this.searchSel.clear();
-      this.searchQuery = '';
-      this._saveState();
-      modal.remove();
-      W.NotificationSystem?.success?.('Плейлист создан');
-      this.renderTab().catch(() => {});
-    };
-  }
-
-  resetEdit() {
-    if (!this.draft) return;
-
-    W.Modals?.confirm?.({
-      title: 'Сбросить изменения?',
-      textHtml: this.draft.isPlaylist
-        ? 'Вернуть к состоянию на момент создания?'
-        : 'Вернуть весь каталог в заводское состояние?',
-      confirmText: 'Да, сбросить',
-      onConfirm: () => {
-        if (!this.draft) return;
-
-        if (this.draft.isPlaylist) {
-          const pl = byId(this.state.pls, this.draft.id);
-          if (pl?.snap) {
-            this.draft.ord = [...sanitizeUidList(pl.snap.ord)];
-            this.draft.chk = new Set(sanitizeUidList(pl.snap.uids));
-            this.draft.hid = new Set(sanitizeUidList(pl.snap.hid));
-          }
-        } else {
-          const baseline = this.getFactoryBaseline();
-          this.draft.ord = [...baseline];
-          this.draft.chk = new Set(baseline);
-          this.draft.hid = new Set();
-        }
-
-        this._markDraftDirty();
-        this.renderList().catch(() => {});
-      }
-    });
-  }
-
-  exitEdit() {
-    if (!this.draft?.dirty) {
-      this.draft = null;
-      this.renderTab().catch(() => {});
-      return;
-    }
-
-    W.Modals?.confirm?.({
-      title: 'Выйти без сохранения?',
-      textHtml: 'Вы внесли изменения. Если выйдете, они не сохранятся.',
-      confirmText: 'Да, выйти',
-      onConfirm: () => {
-        this.draft = null;
-        this.renderTab().catch(() => {});
-      }
-    });
-  }
-
-  toggleSelection(uid) {
-    const set = this.draft ? this.draft.chk : this.searchSel;
-    const row = D.querySelector(`.showcase-track[data-uid="${CSS.escape(uid)}"]`);
-
-    if (set.has(uid)) {
-      set.delete(uid);
-      row?.classList.remove('selected');
-    } else {
-      set.add(uid);
-      row?.classList.add('selected');
-    }
-
-    if (this.draft) {
-      this._markDraftDirty();
-
-      if (!this.draft.isPlaylist) {
-        if (set.has(uid)) this.draft.hid.delete(uid);
-        else this.draft.hid.add(uid);
-
-        const eyeBtn = row?.querySelector('.showcase-hide-btn');
-        if (eyeBtn) eyeBtn.textContent = set.has(uid) ? '👁' : '👁‍🗨';
-        row?.classList.toggle('inactive', !set.has(uid));
-      }
-    }
-
-    this.renderMultiPanel();
-    this.updateStatus().catch(() => {});
-  }
-
-  toggleHidden(uid) {
-    if (!this.draft) return;
-    const row = D.querySelector(`.showcase-track[data-uid="${CSS.escape(uid)}"]`);
-
-    if (this.draft.hid.has(uid)) this.draft.hid.delete(uid);
-    else this.draft.hid.add(uid);
-
-    if (row) {
-      row.classList.toggle('inactive', this.draft.hid.has(uid));
-      const eyeBtn = row.querySelector('.showcase-hide-btn');
-      if (eyeBtn) eyeBtn.textContent = this.draft.hid.has(uid) ? '👁‍🗨' : '👁';
-    }
-
-    if (!this.draft.isPlaylist) {
-      if (this.draft.hid.has(uid)) this.draft.chk.delete(uid);
-      else this.draft.chk.add(uid);
-      row?.classList.toggle('selected', !this.draft.hid.has(uid));
-    }
-
-    this._markDraftDirty();
-    this.renderMultiPanel();
-    this.updateStatus().catch(() => {});
-  }
-
-  async playContext(uid = null) {
-    const ctx = this.getCurrentContext();
-    const hiddenSet = new Set(ctx.hid);
-
-    let playableUids = await this.getSortedUids(ctx.ord, ctx.sort);
-    playableUids = playableUids.filter((id) => !hiddenSet.has(id));
-
-    if (!playableUids.length && !this.searchQuery) {
-      W.NotificationSystem?.warning?.('Нет активных треков для воспроизведения');
-      return;
-    }
-
-    if (this.searchQuery && uid && !playableUids.includes(uid)) {
-      const track = W.TrackRegistry?.getTrackByUid?.(uid);
-      if (!track) return;
-      W.AlbumsManager?.setPlayingAlbum?.('__showcase__:search');
-      W.playerCore?.setPlaylist?.([{ ...track, album: 'Поиск (Витрина)', cover: this.getCover(track) }], 0, null, { preservePosition: false });
-      W.playerCore?.play?.(0);
-      W.PlayerUI?.ensurePlayerBlock?.(0, { userInitiated: true });
-      return;
-    }
-
-    const tracks = playableUids.map((id) => {
-      const track = W.TrackRegistry?.getTrackByUid?.(id);
-      return { ...track, album: 'Витрина Разбита', cover: this.getCover(track) };
-    });
-
-    let startIndex = uid ? Math.max(0, playableUids.indexOf(uid)) : 0;
-    W.AlbumsManager?.setPlayingAlbum?.(ctx.isPlaylist ? `__showcase__:${ctx.id}` : SHOWCASE_KEY);
-    W.playerCore?.setPlaylist?.(tracks, startIndex, null, { preservePosition: false });
-    W.playerCore?.play?.(startIndex);
-    W.PlayerUI?.ensurePlayerBlock?.(startIndex, { userInitiated: true });
-
-    if (tracks[startIndex]?.uid) this.highlightCurrentTrack(tracks[startIndex].uid);
-  }
-
   async renderTab() {
-    this._saveScrollPosition();
+    const list = $('track-list'); if (!list) return;
 
-    const list = $('track-list');
-    if (!list) return;
+    if (this.editMode && !this._snap) this._snap = { isPl: !!Store.pId, ord: Store.pId ? [...Store.pls.find(p => p.id === Store.pId).uids] : [...Store.get('userOrder', [])], hid: Store.pId ? [...Store.pls.find(p => p.id === Store.pId).hiddenUids] : [...Store.get('hiddenUids', [])] };
+    else if (!this.editMode) this._snap = null;
 
-    const ctx = this.getCurrentContext();
-    const isEdit = !!this.draft;
+    const showRes = !this.editMode && !Store.pId && JSON.stringify(Store.get('userOrder', [])) !== JSON.stringify(Store.get('masterOrder', []));
 
     list.innerHTML = `
       <div class="showcase-header-controls">
-        ${isEdit ? `
-          <div class="showcase-edit-banner">
-            ✏️ РЕЖИМ РЕДАКТИРОВАНИЯ
-            <div style="display:flex;gap:8px;margin-top:10px;">
-              <button class="showcase-btn" id="sc-save" style="background:#fff;color:#000;">💾 Сохранить</button>
-              <button class="showcase-btn" id="sc-create">✨ Создать новый</button>
-              <button class="showcase-btn" id="sc-reset" style="border-color:#ff9800;color:#ff9800" ${!this.draft?.dirty ? 'disabled' : ''}>↺ Сброс</button>
-              <button class="showcase-btn showcase-btn--danger" id="sc-exit">✕ Выйти</button>
-            </div>
-          </div>
-        ` : ''}
-
-        <div class="showcase-search-wrap">
-          <input
-            type="text"
-            class="showcase-search"
-            id="sc-search"
-            placeholder="🔍 Поиск по всему каталогу..."
-            value="${esc(this.searchQuery)}"
-          />
-          <button
-            type="button"
-            class="showcase-search-clear"
-            id="sc-search-clear"
-            style="display:${this.searchQuery ? '' : 'none'}"
-          >✕</button>
+        ${this.editMode ? `<div class="showcase-edit-banner">✏️ РЕЖИМ РЕДАКТИРОВАНИЯ<div style="display:flex;gap:8px;margin-top:10px;"><button class="showcase-btn" id="sc-save" style="background:#fff; color:#000;">💾 Сохранить</button><button class="showcase-btn" id="sc-reset-edit" style="background:transparent; border-color:#ff9800;">↺ Сброс</button><button class="showcase-btn showcase-btn--danger" id="sc-cancel">✕ Выйти</button></div></div>` : ''}
+        <div class="showcase-search-wrap"><input type="text" class="showcase-search" id="sc-search" placeholder="🔍 Поиск трека или текста..." value="${esc(this.searchQuery)}"><button type="button" class="showcase-search-clear" id="sc-search-clear" style="display:${this.searchQuery?'':'none'}">✕</button></div>
+        <div class="showcase-btns-row">
+          ${!this.editMode ? `<button class="showcase-btn" id="sc-edit">✏️ Редактировать</button>` : ''}
+          ${showRes ? `<button class="showcase-btn" id="sc-master-reset" style="flex:0.5">↺ Сброс</button>` : ''}
+          <button class="showcase-btn" id="sc-sort">↕️ Сортировка ${this.sortMode !== 'user' ? '●' : ''}</button>
         </div>
+        ${!this.editMode ? `<div class="showcase-btns-row"><button class="showcase-btn" id="sc-playall">▶ Играть всё</button><button class="showcase-btn" id="sc-shuffle">🔀 Перемешать</button></div>` : ''}
+        <div class="showcase-playlists-actions" id="sc-playlists-actions"></div><div class="showcase-playlists-list" id="sc-playlists"></div><div class="showcase-status-bar" id="sc-status"></div>
+      </div><div id="sc-tracks-container"></div>`;
 
-        ${!isEdit ? `
-          <div class="showcase-btns-row">
-            <button class="showcase-btn" id="sc-edit">✏️ Редактировать</button>
-            <button class="showcase-btn" id="sc-sort">↕️ Сортировка ${ctx.sort !== 'user' ? '●' : ''}</button>
-          </div>
-          <div class="showcase-btns-row">
-            <button class="showcase-btn" id="sc-playall">▶ Играть всё</button>
-            <button class="showcase-btn" id="sc-shuffle">🔀 Перемешать</button>
-          </div>
-        ` : ''}
+    this.bindCtrl(list); this.renderPls(); await this.renderList();
+    if (!this.editMode) { const lu = Store.get('lastTrackUid'); if (lu && Store.get('lastPlayingContext') === (Store.pId ? `__showcase__:${Store.pId}` : '__showcase__')) this.hiTrack(lu); }
+  }
 
-        <div class="showcase-playlists-actions" id="sc-playlists-actions"></div>
-        <div class="showcase-playlists-list" id="sc-playlists"></div>
-        <div class="showcase-status-bar" id="sc-status"></div>
-      </div>
+  bindCtrl(root) {
+    const inp = $('sc-search'), clr = $('sc-search-clear');
+    const applyQ = U.func.debounceFrame(async () => { this.searchQuery = (inp?.value || '').trim(); await this.renderList(); if (clr) clr.style.display = this.searchQuery ? '' : 'none'; });
 
-      <div id="sc-tracks-container"></div>
-    `;
-
-    this.bindControls(list);
-    this.renderPlaylists();
-    await this.renderList();
-    this._restoreScrollPosition();
-
-    if (!isEdit) {
-      const lastUid = localStorage.getItem('showcase:lastTrackUid');
-      const lastCtx = localStorage.getItem('showcase:lastPlayingContext');
-      const curCtx = ctx.isPlaylist ? `__showcase__:${ctx.id}` : SHOWCASE_KEY;
-      if (lastUid && lastCtx === curCtx) this.highlightCurrentTrack(lastUid);
+    if (inp) {
+      inp.addEventListener('input', applyQ);
+      inp.addEventListener('keydown', e => e.key === 'Enter' && inp.blur());
+      inp.addEventListener('blur', () => window.scrollTo({ top: window.scrollY, behavior: 'instant' }));
     }
+    if (clr) clr.addEventListener('click', e => { e.preventDefault(); if (inp) { inp.value = ''; inp.blur(); } this.searchQuery = ''; this.renderList(); clr.style.display = 'none'; });
+
+    const acts = {
+      'sc-edit': () => { if (this.sortMode !== 'user') return W.NotificationSystem.warning('Сбросьте сортировку'); this.editMode = true; this.selectedUids.clear(); this.renderTab(); },
+      'sc-save': () => { this.editMode = false; this.selectedUids.clear(); this.renderTab(); W.NotificationSystem.success('Сохранено'); },
+      'sc-cancel': () => { this.rstSnap(); this.editMode = false; this.selectedUids.clear(); this.renderTab(); },
+      'sc-reset-edit': () => { this.rstSnap(); this.selectedUids.clear(); this.renderList(); W.NotificationSystem.info('Сброшено'); },
+      'sc-master-reset': () => W.Modals.confirm({ title: 'Сбросить порядок?', textHtml: 'Мастер-список вернется к дефолту.', confirmText: 'Сбросить', onConfirm: () => { Store.set('userOrder', Store.get('masterOrder')); Store.set('hiddenUids', []); this.sortMode = 'user'; Store.set('sortMode', 'user'); this.renderTab(); } }),
+      'sc-playall': () => this.playCtx(),
+      'sc-shuffle': () => { this.sortMode = 'shuffle'; Store.set('sortMode', 'shuffle'); Store.set('shuffledOrder', null); this.playCtx(); this.renderTab(); },
+      'sc-sort': () => this.openSort(),
+      'sc-tg-e': () => { ls.setItem('showcase:showHidden:v1', ls.getItem('showcase:showHidden:v1') === '1' ? '0' : '1'); this.renderList(); },
+      'sc-tg-n': () => { ls.setItem('showcase:showNumbers:v1', ls.getItem('showcase:showNumbers:v1') === '1' ? '0' : '1'); this.renderList(); },
+      'sc-tg-v': () => { this.viewMode = this.viewMode === 'flat' ? 'grouped' : 'flat'; Store.set('viewMode', this.viewMode); this.renderList(); }
+    };
+
+    let lpTm = null, isLp = false;
+    root.addEventListener('touchstart', e => {
+      const h = e.target.closest('.showcase-drag-handle'); if (h && this.editMode) return e.preventDefault(), this.strtDrg(e, h.closest('.showcase-track'));
+      const t = e.target.closest('.showcase-track');
+      if (t && this.editMode && !e.target.closest('button')) {
+        isLp = false; lpTm = setTimeout(() => { isLp = true; this.togSel(t.dataset.uid); navigator.vibrate?.(50); }, 500);
+      }
+    }, { passive: false });
+    root.addEventListener('touchmove', () => clearTimeout(lpTm), { passive: true });
+    root.addEventListener('touchend', () => clearTimeout(lpTm));
+
+    root.addEventListener('click', e => {
+      if (acts[e.target.id]) return acts[e.target.id]();
+      if (isLp) return;
+      const t = e.target.closest('.showcase-track'), u = t?.dataset.uid;
+      if (!t) return;
+
+      if (this.editMode) {
+        if (e.target.closest('.showcase-hide-btn')) return this.togHid(u);
+        if (e.target.closest('.sc-arrow-up')) return this.swp(u, -1);
+        if (e.target.closest('.sc-arrow-down')) return this.swp(u, 1);
+        if (this.selectedUids.size > 0 || e.target.closest('.showcase-checkbox')) return this.togSel(u);
+        return this.opnMenu(u);
+      }
+      if (e.target.closest('.showcase-track-menu-btn')) return this.opnMenu(u);
+      if (e.target.closest('.like-star') || e.target.closest('.offline-ind')) return;
+      this.playCtx(u);
+    });
+
+    root.addEventListener('dragstart', e => { if (!this.editMode) return; const t = e.target.closest('.showcase-track'); if (t) { e.dataTransfer.setData('text/plain', t.dataset.uid); t.classList.add('is-dragging'); }});
+    root.addEventListener('dragover', e => { if (!this.editMode) return; e.preventDefault(); const t = e.target.closest('.showcase-track'); if (t) t.classList.add('drag-over');});
+    root.addEventListener('dragleave', e => e.target.closest('.showcase-track')?.classList.remove('drag-over'));
+    root.addEventListener('drop', e => {
+      if (!this.editMode) return; e.preventDefault();
+      const t = e.target.closest('.showcase-track'), s = e.dataTransfer.getData('text/plain');
+      D.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+      if (t && s && s !== t.dataset.uid) { t.before(D.querySelector(`.showcase-track[data-uid="${s}"]`)); this.svOrd(); }
+    });
+    root.addEventListener('dragend', () => D.querySelectorAll('.is-dragging').forEach(el => el.classList.remove('is-dragging')));
+  }
+
+  rstSnap() {
+    if (!this._snap) return;
+    const { isPl, ord, hid } = this._snap;
+    if (isPl) { const p = Store.pls; const trg = p.find(x => x.id === Store.pId); if (trg) { trg.uids = ord; trg.hiddenUids = hid; Store.pls = p; } }
+    else { Store.set('userOrder', ord); Store.set('hiddenUids', hid); }
+  }
+
+  async playCtx(uid = null) {
+    const id = Store.pId, k = id ? `__showcase__:${id}` : '__showcase__';
+    const trks = await this.getActiveListTracks();
+    if (!trks.length) return;
+    let idx = uid ? Math.max(0, trks.findIndex(t => t.uid === uid)) : 0;
+    W.AlbumsManager.setPlayingAlbum(k);
+    W.playerCore.setPlaylist(trks, idx, null, { preservePosition: false });
+    W.playerCore.play(idx);
+    W.PlayerUI.ensurePlayerBlock(idx, { userInitiated: true });
+    this.hiTrack(trks[idx].uid);
+  }
+
+  renderPls() {
+    const act = $('sc-playlists-actions'), lst = $('sc-playlists'), id = Store.pId, pls = Store.pls, col = Store.pCol;
+    if (!act || !lst) return;
+    act.innerHTML = `<button class="sc-pl-action ${!id ? 'active' : ''}" id="sc-pl-all">Все треки</button><button class="sc-pl-action" id="sc-pl-nw">+ Новый</button><button class="sc-pl-action" id="sc-pl-pst" title="Вставить">📋</button>`;
+    act.onclick = e => {
+      const i = e.target.id;
+      if (i === 'sc-pl-all') { Store.pId = null; this.renderTab(); }
+      else if (i === 'sc-pl-nw') this.mkPl();
+      else if (i === 'sc-pl-pst') navigator.clipboard.readText().then(t => this.hndlShPl(new URLSearchParams(t.split('?')[1] || t).get('playlist') || t)).catch(()=>W.NotificationSystem.error('Ошибка буфера'));
+    };
+    if (!pls.length) return lst.innerHTML = `<div class="sc-pl-empty">Плейлистов пока нет</div>`;
+    lst.innerHTML = pls.map(p => `<div class="sc-pl-row ${id === p.id ? 'active' : ''}" data-pid="${p.id}" ${col[p.id] ? `style="--pl-color:${col[p.id]};"` : ''}><div class="sc-pl-left"><span class="sc-pl-dot"></span><span class="sc-pl-title" title="${esc(p.name)}">${esc(p.name)}</span></div><div class="sc-pl-right"><button class="sc-pl-btn" data-act="shr" data-pid="${p.id}">🔗</button><button class="sc-pl-btn" data-act="ed" data-pid="${p.id}">🔨</button><button class="sc-pl-btn" data-act="col" data-pid="${p.id}">🎨</button><button class="sc-pl-btn danger" data-act="del" data-pid="${p.id}">✖</button></div></div>`).join('');
+    lst.onclick = e => {
+      const a = e.target.closest('[data-act]')?.dataset.act, pid = e.target.closest('[data-pid]')?.dataset.pid;
+      if (a && pid) {
+        if (a === 'ed') { Store.pId = pid; this.editMode = true; this.renderTab(); }
+        else if (a === 'shr') this.shrPl(pid);
+        else if (a === 'del') W.Modals.confirm({ title: 'Удалить?', confirmText: 'Да', onConfirm: () => { Store.pls = Store.pls.filter(p => p.id !== pid); if (Store.pId === pid) Store.pId = null; this.renderTab(); }});
+        else if (a === 'col') this.opnCol(null, null, pid);
+      } else if (e.target.closest('.sc-pl-row')?.dataset.pid) { Store.pId = e.target.closest('.sc-pl-row').dataset.pid; this.renderTab(); }
+    };
   }
 
   async renderList() {
-    const token = ++this.renderToken;
-    const cont = $('sc-tracks-container');
-    if (!cont) return;
-
-    const rows = await this.getDisplayList();
-    if (token !== this.renderToken) return;
-
-    await this.updateStatus(rows.length);
-
-    const isEdit = !!this.draft;
-    const showNumbers = this.state.ui.num;
-    let html = '';
-    let currentGroup = null;
-
-    rows.forEach(({ uid, status, track }, index) => {
-      if (
-        this.state.ui.view === 'grouped' &&
-        !isEdit &&
-        !this.searchQuery &&
-        currentGroup !== track.sourceAlbum
-      ) {
-        currentGroup = track.sourceAlbum;
-        html += `<div class="showcase-group-header">── ${esc(W.TrackRegistry?.getAlbumTitle?.(track.sourceAlbum) || 'Альбом')} ──</div>`;
+    const c = $('sc-tracks-container'); if (!c) return;
+    const trks = await this.getActiveListTracks(), cols = Store.aCol, hidL = Store.pId ? (Store.pls.find(p=>p.id===Store.pId)?.hiddenUids||[]) : Store.get('hiddenUids', []);
+    this.updStatus(trks.length);
+    let h = '', grp = null, sN = localStorage.getItem('showcase:showNumbers:v1') === '1';
+    trks.forEach((t, i) => {
+      if (this.viewMode === 'grouped' && grp !== t.sourceAlbum) {
+        grp = t.sourceAlbum;
+        const albumTitle = W.TrackRegistry.getAlbumTitle(t.sourceAlbum) || 'Альбом';
+        h += `<div class="showcase-group-header">── ${esc(albumTitle)} ──</div>`;
       }
-
-      const color = this.state.col[track.sourceAlbum] || 'transparent';
-      const selected = this.searchSel.has(uid) || (isEdit && this.draft?.chk.has(uid));
-      const eyeOff = isEdit ? this.draft?.hid.has(uid) : status.includes('hidden');
-
-      let badges = '';
-      if (this.searchQuery) {
-        if (status === 'active') badges = `<span class="showcase-row-badge sc-badge-active">Уже активен</span>`;
-        else if (status === 'hidden') badges = `<span class="showcase-row-badge sc-badge-hidden">Скрыт</span>`;
-        else if (status === 'missing' && this.state.ctx.type === 'playlist') badges = `<span class="showcase-row-badge sc-badge-missing">Нет в плейлисте</span>`;
-      }
-
-      html += `
-        <div
-          class="showcase-track ${eyeOff ? 'inactive' : ''} ${selected ? 'selected' : ''}"
-          data-uid="${uid}"
-          style="border-left:3px solid ${color}"
-          ${isEdit ? 'draggable="true"' : ''}
-        >
-          ${isEdit ? `
-            <button class="sc-arrow-up" data-dir="-1">▲</button>
-          ` : `
-            <div class="tnum" style="display:${showNumbers ? 'block' : 'none'}">${index + 1}.</div>
-          `}
-
-          ${isEdit || this.searchQuery ? `
-            <div class="showcase-drag-handle">${isEdit ? '⠿' : ''}</div>
-            <div class="showcase-checkbox"></div>
-          ` : ''}
-
-          <img src="${this.getCover(track)}" class="showcase-track-thumb" loading="lazy" alt="cover">
-
-          <div class="track-title">
-            <div>${esc(track.title || 'Без названия')}</div>
-            <div class="showcase-track-meta">
-              <span>${esc(W.TrackRegistry?.getAlbumTitle?.(track.sourceAlbum) || track.album || 'Альбом')}</span>
-              ${badges}
-            </div>
-          </div>
-
-          ${isEdit ? `
-            <button class="showcase-hide-btn" type="button" title="Скрыть / Показать">${eyeOff ? '👁‍🗨' : '👁'}</button>
-            <button class="sc-arrow-down" data-dir="1">▼</button>
-          ` : `
-            <span class="offline-ind" data-uid="${uid}">🔒</span>
-            <img src="img/star${W.playerCore?.isFavorite?.(uid) ? '' : '2'}.png" class="like-star" alt="★" aria-hidden="true">
-            <button class="showcase-track-menu-btn" type="button">...</button>
-          `}
-        </div>
-      `;
+      const cl = cols[t.sourceAlbum] || 'transparent', isH = hidL.includes(t.uid), isS = this.selectedUids.has(t.uid);
+      h += `<div class="showcase-track ${isH?'inactive':''} ${isS?'selected':''}" data-uid="${t.uid}" style="border-left: 3px solid ${cl}" ${this.editMode?'draggable="true"':''}>${this.editMode?`<button class="sc-arrow-up" data-dir="-1">▲</button>`:`<div class="tnum"${sN?'':' style="display:none"'}>${i+1}.</div>`}${this.editMode?`<div class="showcase-drag-handle">⠿</div><div class="showcase-checkbox"></div>`:''}<img src="${t.cover}" class="showcase-track-thumb" loading="lazy"><div class="track-title"><div>${esc(t.title)}</div><div class="showcase-track-meta">${esc(W.TrackRegistry.getAlbumTitle(t.sourceAlbum))}</div></div><span class="offline-ind" data-uid="${t.uid}">🔒</span>${this.editMode?`<button class="showcase-hide-btn">${isH?'👁‍🗨':'👁'}</button>`:''}<img src="${W.playerCore?.isFavorite(t.uid)?'img/star.png':'img/star2.png'}" class="like-star" data-uid="${t.uid}" data-album="${t.sourceAlbum}">${!this.editMode?`<button class="showcase-track-menu-btn">···</button>`:`<button class="sc-arrow-down" data-dir="1">▼</button>`}</div>`;
     });
-
-    cont.innerHTML = html || `<div class="fav-empty">Ничего не найдено</div>`;
-    W.OfflineIndicators?.refreshAllIndicators?.();
-    this.renderMultiPanel();
+    if (this.editMode && Store.pId) h += `<div style="padding:20px;text-align:center;"><button class="showcase-btn" id="sc-add-t">➕ Добавить треки</button></div>`;
+    c.innerHTML = h || '<div class="fav-empty">Треки не найдены</div>';
+    $('sc-add-t')?.addEventListener('click', () => this.addTrks());
+    W.OfflineIndicators?.injectOfflineIndicators?.(c); this.hiTrack(W.playerCore?.getCurrentTrackUid()); this.rndrMPnl();
   }
 
-  async updateStatus(foundCount = null) {
-    const el = $('sc-status');
-    if (!el) return;
-
-    const ctx = this.getCurrentContext();
-    const total = ctx.ord.length;
-    const hidden = ctx.hid.length;
-    const active = Math.max(0, total - hidden);
-    const found = this.searchQuery ? Number(foundCount || 0) : 0;
-    const numOn = this.state.ui.num;
-
-    el.innerHTML = `
-      <span>📋 ${total} · ✅ ${active} · 🙈 ${hidden}${this.searchQuery ? ` · 🔎 ${found}` : ''}</span>
-      <span style="display:flex;gap:12px;align-items:center">
-        <span id="sc-tg-e" style="cursor:pointer;font-size:18px" title="Показывать скрытые">${this.state.ui.hid ? '👁' : '🙈'}</span>
-        <span id="sc-tg-n" style="cursor:pointer;font-size:16px;font-weight:bold;opacity:${numOn ? '1' : '.72'}" aria-pressed="${numOn ? 'true' : 'false'}" title="Нумерация">1,2,3</span>
-        <span id="sc-tg-v" style="cursor:pointer;font-size:18px" title="Сменить вид">${this.state.ui.view === 'flat' ? '⊞' : '⊟'}</span>
-      </span>
-    `;
+  updStatus(cnt) {
+    const s = $('sc-status'); if (!s) return;
+    const dom = D.querySelectorAll('.showcase-track'), f = D.querySelectorAll('.showcase-track .like-star[src*="star.png"]').length, o = D.querySelectorAll('.showcase-track .offline-ind:not(.offline-ind--none)').length, c = Array.from(D.querySelectorAll('.showcase-track .offline-ind')).filter(n => (n?.textContent||'').trim() === '☁').length;
+    s.innerHTML = `<span>📋 ${cnt??dom.length} · ⭐ ${f} · 🔒 ${o} · ☁ ${c}${this.editMode&&this.selectedUids.size?`<span style="color:#ff9800"> · ✓ ${this.selectedUids.size}</span>`:''}</span><span style="display:flex;gap:12px;align-items:center"><span id="sc-tg-e" style="cursor:pointer;font-size:18px" title="Показывать скрытые">${localStorage.getItem('showcase:showHidden:v1')==='1'?'👁':'🙈'}</span><span id="sc-tg-n" style="cursor:pointer;font-size:18px" title="Нумерация">${localStorage.getItem('showcase:showNumbers:v1')==='1'?'1,2,3':''}</span><span id="sc-tg-v" style="cursor:pointer;font-size:18px" title="Сменить вид">${this.viewMode==='flat'?'⊞':'⊟'}</span></span>`;
   }
 
-  openTrackMenu(uid) {
-    this._menu?.remove();
-
-    const track = W.TrackRegistry?.getTrackByUid?.(uid);
-    if (!track) return;
-
-    const bg = D.createElement('div');
-    bg.className = 'sc-bottom-sheet-bg';
-
-    const ctx = this.getCurrentContext();
-    const inPlaylist = ctx.isPlaylist && ctx.uids.includes(uid);
-
-    bg.innerHTML = `
-      <div class="sc-bottom-sheet">
-        <button class="bigclose" type="button" aria-label="Закрыть" id="bm-cx">
-          <svg viewBox="0 0 24 24" fill="currentColor">
-            <path d="M18.3 5.71a1 1 0 0 0-1.41 0L12 10.59 7.11 5.7A1 1 0 0 0 5.7 7.11L10.59 12l-4.9 4.89a1 1 0 1 0 1.41 1.42L12 13.41l4.89 4.9a1 1 0 0 0 1.42-1.41L13.41 12l4.9-4.89a1 1 0 0 0-.01-1.4z"/>
-          </svg>
-        </button>
-
-        <div class="sc-sheet-title">${esc(track.title)}</div>
-        <div class="sc-sheet-sub">${esc(W.TrackRegistry?.getAlbumTitle?.(track.sourceAlbum) || 'Альбом')}</div>
-
-        ${this.searchQuery ? `<button class="sc-sheet-btn" id="bm-play" style="color:var(--secondary-color)">▶ Воспроизвести</button>` : ''}
-        <button class="sc-sheet-btn" id="bm-pl">➕ Добавить в другой плейлист</button>
-        ${inPlaylist ? `<button class="sc-sheet-btn" id="bm-rm" style="color:#ff6b6b">✖ Удалить из текущего плейлиста</button>` : ''}
-        <button class="sc-sheet-btn" id="bm-hd">👁 Скрыть / Показать (в этом списке)</button>
-        <button class="sc-sheet-btn" id="bm-fv">${W.playerCore?.isFavorite?.(uid) ? '❌ Убрать из Избранного' : '⭐ В Избранное'}</button>
-        <button class="sc-sheet-btn" id="bm-of">🔒 Скачать / Убрать из офлайн</button>
-        <button class="sc-sheet-btn" id="bm-dl">⬇️ Сохранить mp3 файл</button>
-        <button class="sc-sheet-btn" id="bm-st">📊 Статистика трека</button>
-      </div>
-    `;
-
-    D.body.appendChild(bg);
-    this._menu = bg;
-    requestAnimationFrame(() => bg.classList.add('active'));
-
-    const close = () => {
-      bg.classList.remove('active');
-      setTimeout(() => bg.remove(), 200);
-      this._menu = null;
-    };
-
-    bg.onclick = (e) => {
-      const id = e.target.closest('[id]')?.id;
-      if (e.target === bg || id === 'bm-cx') return close();
-      if (!id) return;
-      close();
-
-      if (id === 'bm-play') {
-        this.playContext(uid);
-      } else if (id === 'bm-pl') {
-        setTimeout(() => this.openAddToPlaylist([uid]), 150);
-      } else if (id === 'bm-rm') {
-        const pl = byId(this.state.pls, ctx.id);
-        if (pl) {
-          pl.uids = pl.uids.filter((item) => item !== uid);
-          pl.ord = pl.ord.filter((item) => item !== uid);
-          pl.hid = pl.hid.filter((item) => item !== uid);
-          this._saveState();
-          this.renderList().catch(() => {});
-        }
-      } else if (id === 'bm-hd') {
-        if (ctx.isPlaylist) {
-          const pl = byId(this.state.pls, ctx.id);
-          if (pl) {
-            if (pl.hid.includes(uid)) pl.hid = pl.hid.filter((item) => item !== uid);
-            else pl.hid.push(uid);
-          }
-        } else {
-          if (this.state.def.hid.includes(uid)) this.state.def.hid = this.state.def.hid.filter((item) => item !== uid);
-          else this.state.def.hid.push(uid);
-        }
-        this._saveState();
-        this.renderList().catch(() => {});
-      } else if (id === 'bm-fv') {
-        W.playerCore?.toggleFavorite?.(uid, { albumKey: track.sourceAlbum });
-      } else if (id === 'bm-of') {
-        W.OfflineManager?.togglePinned?.(uid);
-      } else if (id === 'bm-dl') {
-        const a = D.createElement('a');
-        U.download?.applyDownloadLink?.(a, track);
-        if (a.href) a.click();
-      } else if (id === 'bm-st') {
-        setTimeout(() => W.StatisticsModal?.openStatisticsModal?.(uid), 150);
-      }
-    };
+  swp(u, d) { const el = D.querySelector(`.showcase-track[data-uid="${u}"]`), sb = d === -1 ? el?.previousElementSibling : el?.nextElementSibling; if (el && sb?.classList.contains('showcase-track')) { d === -1 ? sb.before(el) : sb.after(el); this.svOrd(); } }
+  svOrd() { const u = Array.from(D.querySelectorAll('.showcase-track')).map(e => e.dataset.uid); if (Store.pId) { const p = Store.pls; p.find(x=>x.id===Store.pId).uids = u; Store.pls = p; } else Store.set('userOrder', u); }
+  strtDrg(e, n) {
+    if(!n)return; const t=e.touches[0], c=n.cloneNode(true), r=n.getBoundingClientRect(), os=t.clientY-r.top;
+    c.style.cssText=`position:fixed;left:${r.left}px;width:${r.width}px;z-index:10000;opacity:0.9;background:#252d39;box-shadow:0 10px 30px rgba(0,0,0,0.8);pointer-events:none`; D.body.appendChild(c); n.style.opacity=0.3;
+    const m = e2 => { e2.preventDefault(); const y=e2.touches[0].clientY; c.style.top=(y-os)+'px'; D.querySelectorAll('.drag-over').forEach(el=>el.classList.remove('drag-over')); const o = D.elementFromPoint(W.innerWidth/2, y)?.closest('.showcase-track'); if(o && o!==n) o.classList.add('drag-over'); };
+    const d = e2 => { D.removeEventListener('touchmove',m); D.removeEventListener('touchend',d); c.remove(); n.style.opacity=''; const y=e2.changedTouches[0].clientY, tg=D.elementFromPoint(W.innerWidth/2,y)?.closest('.showcase-track'); D.querySelectorAll('.drag-over').forEach(el=>el.classList.remove('drag-over')); if(tg && tg!==n) { tg.before(n); this.svOrd(); } };
+    D.addEventListener('touchmove',m,{passive:false}); D.addEventListener('touchend',d);
   }
 
-  renderPlaylists() {
-    const actions = $('sc-playlists-actions');
-    const list = $('sc-playlists');
-    const ctx = this.state.ctx;
-    const playlists = this.state.pls;
-
-    if (!actions || !list) return;
-
-    actions.innerHTML = `
-      <button class="sc-pl-action ${ctx.type === 'all' ? 'active' : ''}" id="sc-pl-all">Все треки</button>
-      <button class="sc-pl-action" id="sc-pl-nw">+ Новый</button>
-    `;
-
-    actions.onclick = (e) => {
-      if (e.target.id === 'sc-pl-all') {
-        this.state.ctx = { type: 'all', id: null };
-        this._saveState();
-        this.renderTab().catch(() => {});
-      } else if (e.target.id === 'sc-pl-nw') {
-        this.createFromEdit(false);
-      }
-    };
-
-    if (!playlists.length) {
-      list.innerHTML = `<div class="sc-pl-empty">Плейлистов пока нет</div>`;
-      return;
-    }
-
-    list.innerHTML = playlists.map((pl) => `
-      <div class="sc-pl-row ${ctx.type === 'playlist' && ctx.id === pl.id ? 'active' : ''}" data-pid="${pl.id}" ${pl.col ? `style="--pl-color:${pl.col};"` : ''}>
-        <div class="sc-pl-left">
-          <span class="sc-pl-dot"></span>
-          <span class="sc-pl-title" title="${esc(pl.name)}">${esc(pl.name)}</span>
-        </div>
-        <div class="sc-pl-right">
-          <button class="sc-pl-btn" data-act="ren" data-pid="${pl.id}">✏️</button>
-          <button class="sc-pl-btn" data-act="col" data-pid="${pl.id}">🎨</button>
-          <button class="sc-pl-btn danger" data-act="del" data-pid="${pl.id}">✖</button>
-        </div>
-      </div>
-    `).join('');
-
-    list.onclick = (e) => {
-      const act = e.target.closest('[data-act]')?.dataset.act;
-      const pid = e.target.closest('[data-pid]')?.dataset.pid;
-
-      if (act && pid) {
-        if (act === 'del') {
-          W.Modals?.confirm?.({
-            title: 'Удалить?',
-            confirmText: 'Да',
-            onConfirm: () => {
-              this.state.pls = this.state.pls.filter((pl) => pl.id !== pid);
-              if (this.state.ctx.id === pid) this.state.ctx = { type: 'all', id: null };
-              this._saveState();
-              this.renderTab().catch(() => {});
-            }
-          });
-        } else if (act === 'col') {
-          this.openColorPicker(null, null, pid);
-        } else if (act === 'ren') {
-          const pl = byId(this.state.pls, pid);
-          if (!pl) return;
-
-          const modal = W.Modals?.open?.({
-            title: 'Переименовать',
-            bodyHtml: `
-              <input
-                id="pl-ren"
-                value="${esc(pl.name)}"
-                style="width:100%;padding:10px;border-radius:8px;background:rgba(255,255,255,.05);color:#fff;border:1px solid #666;margin-bottom:15px"
-              />
-              <button id="pl-rok" class="om-btn om-btn--primary" style="width:100%">Сохранить</button>
-            `
-          });
-
-          if (!modal) return;
-          modal.onclick = (ev) => {
-            if (ev.target.id !== 'pl-rok') return;
-            const value = D.getElementById('pl-ren')?.value.trim();
-            if (!value) return;
-            pl.name = value;
-            this._saveState();
-            this.renderPlaylists();
-            modal.remove();
-          };
-        }
-        return;
-      }
-
-      const row = e.target.closest('.sc-pl-row');
-      if (!row?.dataset.pid) return;
-      this.state.ctx = { type: 'playlist', id: row.dataset.pid };
-      this._saveState();
-      this.renderTab().catch(() => {});
-    };
+  togHid(u, sk = false) {
+    const el = D.querySelector(`.showcase-track[data-uid="${u}"]`); if (el) { el.classList.toggle('inactive'); const b = el.querySelector('.showcase-hide-btn'); if(b) b.textContent = el.classList.contains('inactive') ? '👁‍🗨' : '👁'; }
+    let h = Store.pId ? Store.pls.find(p=>p.id===Store.pId).hiddenUids : Store.get('hiddenUids', []);
+    h.includes(u) ? h = h.filter(x=>x!==u) : h.push(u);
+    if (Store.pId) { const p = Store.pls; p.find(x=>x.id===Store.pId).hiddenUids = h; Store.pls = p; } else Store.set('hiddenUids', h);
   }
 
-  openAddToPlaylist(uids) {
-    const playlists = this.state.pls;
-    if (!playlists.length) {
-      W.NotificationSystem?.warning?.('Сначала создайте новый плейлист');
-      return;
-    }
-
-    const modal = W.Modals?.open?.({
-      title: 'Выберите плейлист',
-      bodyHtml: `<div style="display:flex;flex-direction:column;gap:10px;">${playlists.map((pl) => `<button class="showcase-btn" data-pid="${pl.id}">${esc(pl.name)}</button>`).join('')}</div>`
-    });
-
-    if (!modal) return;
-
-    modal.onclick = (e) => {
-      const btn = e.target.closest('[data-pid]');
-      if (!btn) return;
-
-      const pl = byId(playlists, btn.dataset.pid);
-      if (!pl) return;
-
-      uids.forEach((uid) => {
-        if (!pl.uids.includes(uid)) {
-          pl.uids.push(uid);
-          pl.ord.push(uid);
-        }
-        pl.hid = pl.hid.filter((item) => item !== uid);
-      });
-
-      this._saveState();
-      W.NotificationSystem?.success?.(`Добавлено треков: ${uids.length}`);
-      modal.remove();
-    };
+  togSel(u) {
+    const el = D.querySelector(`.showcase-track[data-uid="${u}"]`);
+    if (this.selectedUids.has(u)) { this.selectedUids.delete(u); el?.classList.remove('selected'); } else { this.selectedUids.add(u); el?.classList.add('selected'); }
+    this.rndrMPnl(); this.updStatus();
   }
 
-  openColorPicker(uid, albumKey = null, playlistId = null) {
-    if (uid && !albumKey) albumKey = W.TrackRegistry?.getTrackByUid?.(uid)?.sourceAlbum;
+  rndrMPnl() {
+    let p = $('sc-multi-panel'); if (!this.editMode || !this.selectedUids.size) return p?.remove();
+    if (!p) { p = D.createElement('div'); p.id = 'sc-multi-panel'; p.className = 'showcase-multi-panel animate-in'; D.body.appendChild(p); }
+    p.innerHTML = `<span style="color:#fff;font-weight:bold;font-size:14px;white-space:nowrap">${this.selectedUids.size} выбр.</span><button class="showcase-btn" id="sc-m-hd">👁 Скрыть</button><button class="showcase-btn" id="sc-m-cl">🎨 Цвет</button><button class="showcase-btn" id="sc-m-pl">➕ В плейлист</button><button class="showcase-btn showcase-btn--danger" id="sc-m-cr">✖</button>`;
+    p.onclick = e => { const id=e.target.id; if(id==='sc-m-cr'){this.selectedUids.clear(); D.querySelectorAll('.showcase-track.selected').forEach(el=>el.classList.remove('selected')); this.rndrMPnl(); this.updStatus();}else if(id==='sc-m-hd'){[...this.selectedUids].forEach(u=>this.togHid(u,true)); $('sc-m-cr').click();}else if(id==='sc-m-cl') this.opnCol([...this.selectedUids][0]);else if(id==='sc-m-pl') this.opnAddPl([...this.selectedUids]); };
+  }
 
-    const current = playlistId
-      ? byId(this.state.pls, playlistId)?.col || ''
-      : this.state.col[albumKey] || '';
+  mkPl() {
+    const m = W.Modals.open({ title: 'Новый плейлист', bodyHtml: `<input type="text" id="pl-inp" value="Мой плейлист ${Store.pls.length+1}" style="width:100%;padding:10px;border-radius:8px;background:rgba(255,255,255,.1);color:#fff;border:1px solid #666;margin-bottom:15px"><div style="display:flex;gap:10px"><button class="showcase-btn" id="pl-btn">Создать</button></div>` });
+    setTimeout(() => m.querySelector('#pl-inp')?.focus(), 100);
+    m.querySelector('#pl-btn').onclick = () => { const n = m.querySelector('#pl-inp').value.trim(); if(n) { const p = Store.pls, id = Date.now().toString(36); p.push({id, name:n, uids:[], hiddenUids:[], createdAt:Date.now()}); Store.pls = p; Store.pId = id; m.remove(); this.renderTab(); } };
+  }
 
-    const modal = W.Modals?.open?.({
-      title: playlistId ? 'Цвет плейлиста' : 'Цвет альбома',
-      bodyHtml: `
-        <div class="showcase-color-picker">
-          ${PALETTE.map((color) => `
-            <div
-              class="showcase-color-dot"
-              style="background:${color};${current === color ? 'border-color:#fff;' : ''}"
-              data-col="${color}"
-            ></div>
-          `).join('')}
-        </div>
-        <button class="showcase-btn" data-col="transparent" style="margin-top:15px;width:100%">Сбросить цвет</button>
-      `
-    });
+  shrPl(id) {
+    const p = Store.pls.find(x=>x.id===id); if(!p)return; const url = `${W.location.origin}${W.location.pathname}?playlist=${btoa(unescape(encodeURIComponent(JSON.stringify({v:1,n:p.name,u:p.uids}))))}`;
+    navigator.share ? navigator.share({title:p.name, url}).catch(()=>{}) : (navigator.clipboard.writeText(url), W.NotificationSystem.success('Ссылка на плейлист скопирована!'));
+  }
 
-    if (!modal) return;
-
-    modal.onclick = (e) => {
-      const dot = e.target.closest('[data-col]');
-      if (!dot) return;
-
-      const nextColor = dot.dataset.col === 'transparent' ? '' : dot.dataset.col;
-
-      if (playlistId) {
-        const pl = byId(this.state.pls, playlistId);
-        if (pl) pl.col = nextColor;
-        this._saveState();
-        this.renderPlaylists();
-      } else if (albumKey) {
-        this.state.col[albumKey] = nextColor;
-        this._saveState();
-        if (W.AlbumsManager?.getCurrentAlbum?.() === SHOWCASE_KEY) this.renderList().catch(() => {});
-      }
-
-      modal.remove();
-    };
+  hndlShPl(b64) {
+    try {
+      const j = JSON.parse(decodeURIComponent(escape(atob(b64)))); if(!j.n || !Array.isArray(j.u)) throw 1;
+      const u = j.u.filter(x=>W.TrackRegistry.getTrackByUid(x));
+      W.Modals.confirm({ title: '🎵 Вам прислан плейлист', textHtml: `<b>${esc(j.n)}</b><br><br>Доступно треков: ${u.length} из ${j.u.length}.${u.length<j.u.length?'<br><span style="color:#ff9800">Часть треков недоступна.</span>':''}`, confirmText: 'Добавить', onConfirm: () => { const p=Store.pls; p.push({id:Date.now().toString(36), name:j.n+' (Присланный)', uids:u, hiddenUids:[], createdAt:Date.now()}); Store.pls=p; W.NotificationSystem.success('Плейлист успешно добавлен'); if(!Store.pId) this.renderPls(); }});
+    } catch { W.NotificationSystem.error('Ошибка чтения ссылки плейлиста'); }
   }
 
   openSort() {
-    const ctx = this.getCurrentContext();
-    const selected = ctx.sort || 'user';
+    const sm = this.sortMode, m = W.Modals.open({ title: 'Сортировка списка', bodyHtml: `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"><button class="showcase-btn ${sm==='user'?'active':''}" style="grid-column:1/-1" data-val="user">● Пользовательский (Ручной)</button><button class="showcase-btn ${sm==='album-desc'?'active':''}" data-val="album-desc">Альбомы (Новые)</button><button class="showcase-btn ${sm==='album-asc'?'active':''}" data-val="album-asc">Альбомы (Старые)</button><button class="showcase-btn ${sm==='name-asc'?'active':''}" data-val="name-asc">А → Я</button><button class="showcase-btn ${sm==='name-desc'?'active':''}" data-val="name-desc">Я → А</button><button class="showcase-btn ${sm==='plays-desc'?'active':''}" data-val="plays-desc">Топ прослушиваний</button><button class="showcase-btn ${sm==='plays-asc'?'active':''}" data-val="plays-asc">Меньше всего</button><button class="showcase-btn ${sm==='last-played'?'active':''}" data-val="last-played">Недавние</button><button class="showcase-btn ${sm==='favorites-first'?'active':''}" data-val="favorites-first">Сначала ⭐</button><button class="showcase-btn ${sm==='shuffle'?'active':''}" style="grid-column:1/-1" data-val="shuffle">🔀 Случайный порядок</button><button class="showcase-btn showcase-btn--danger" style="grid-column:1/-1" data-val="user">Сбросить сортировку</button></div>` });
+    m.onclick = e => { const b = e.target.closest('[data-val]'); if(b) { this.sortMode = b.dataset.val; Store.set('sortMode', this.sortMode); if(this.sortMode==='shuffle') Store.set('shuffledOrder', null); this.renderTab(); m.remove(); } };
+  }
 
-    const modal = W.Modals?.open?.({
-      title: 'Сортировка (Визуальная)',
-      bodyHtml: `
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-          <button class="showcase-btn ${selected === 'user' ? 'active' : ''}" style="grid-column:1/-1" data-val="user">● Пользовательский (Ручной)</button>
-          <button class="showcase-btn ${selected === 'album-desc' ? 'active' : ''}" data-val="album-desc">Альбомы (Новые)</button>
-          <button class="showcase-btn ${selected === 'album-asc' ? 'active' : ''}" data-val="album-asc">Альбомы (Старые)</button>
-          <button class="showcase-btn ${selected === 'name-asc' ? 'active' : ''}" data-val="name-asc">А → Я</button>
-          <button class="showcase-btn ${selected === 'name-desc' ? 'active' : ''}" data-val="name-desc">Я → А</button>
-          <button class="showcase-btn ${selected === 'plays-desc' ? 'active' : ''}" data-val="plays-desc">Топ прослушиваний</button>
-          <button class="showcase-btn ${selected === 'plays-asc' ? 'active' : ''}" data-val="plays-asc">Меньше всего</button>
-          <button class="showcase-btn ${selected === 'last-played' ? 'active' : ''}" data-val="last-played">Недавние</button>
-          <button class="showcase-btn ${selected === 'favorites-first' ? 'active' : ''}" data-val="favorites-first">Сначала ⭐</button>
-        </div>
-      `
-    });
-
-    if (!modal) return;
-
-    modal.onclick = (e) => {
-      const btn = e.target.closest('[data-val]');
-      if (!btn) return;
-
-      const value = this._safeSortMode(btn.dataset.val);
-
-      if (this.state.ctx.type === 'playlist') {
-        const pl = byId(this.state.pls, this.state.ctx.id);
-        if (pl) pl.sort = value;
-      } else {
-        this.state.def.sort = value;
-      }
-
-      this._saveState();
-      modal.remove();
-      this.renderTab().catch(() => {});
+  opnMenu(u) {
+    if(this._menu) this._menu.remove(); const t = W.TrackRegistry.getTrackByUid(u); if(!t) return;
+    const bg = D.createElement('div'); bg.className = 'sc-bottom-sheet-bg';
+    bg.innerHTML = `<div class="sc-bottom-sheet"><div class="sc-sheet-title">${esc(t.title)}</div><div class="sc-sheet-sub">${esc(W.TrackRegistry.getAlbumTitle(t.sourceAlbum))}</div><button class="sc-sheet-btn" id="bm-pl">➕ Добавить в плейлист</button>${Store.pId?`<button class="sc-sheet-btn" id="bm-rm" style="color:#ff6b6b">✖ Удалить из текущего плейлиста</button>`:''}<button class="sc-sheet-btn" id="bm-hd">👁 Скрыть / Показать трек</button><button class="sc-sheet-btn" id="bm-fv">${W.playerCore?.isFavorite(u)?'❌ Убрать из Избранного':'⭐ В Избранное'}</button><button class="sc-sheet-btn" id="bm-of">🔒 Скачать / Убрать из офлайн</button><button class="sc-sheet-btn" id="bm-dl">⬇️ Сохранить mp3 файл</button><button class="sc-sheet-btn" id="bm-st">📊 Статистика трека</button><button class="sc-sheet-btn" id="bm-sh">📸 Поделиться треком (Карточка)</button><button class="sc-sheet-btn" id="bm-cl">🎨 Цвет альбома</button><button class="sc-sheet-btn" style="color:#888;justify-content:center;margin-top:10px" id="bm-cx">Отмена</button></div>`;
+    D.body.appendChild(bg); this._menu = bg; requestAnimationFrame(() => bg.classList.add('active'));
+    const cls = () => { bg.classList.remove('active'); setTimeout(()=>bg.remove(), 200); this._menu=null; };
+    bg.onclick = e => {
+      const id = e.target.id; if(e.target===bg || id==='bm-cx') return cls(); if(!id) return; cls();
+      if(id==='bm-pl') setTimeout(()=>this.opnAddPl([u]),250); else if(id==='bm-rm') { const p=Store.pls, tr=p.find(x=>x.id===Store.pId); if(tr) { tr.uids=tr.uids.filter(x=>x!==u); Store.pls=p; this.renderList(); } } else if(id==='bm-hd') this.togHid(u); else if(id==='bm-fv') W.playerCore?.toggleFavorite(u,{albumKey:t.sourceAlbum}); else if(id==='bm-of') W.OfflineManager?.togglePinned?.(u); else if(id==='bm-dl') { const a=D.createElement('a'); U.download.applyDownloadLink(a,t); if(a.href) a.click(); } else if(id==='bm-st') setTimeout(()=>W.StatisticsModal?.openStatisticsModal?.(u),250); else if(id==='bm-sh') setTimeout(()=>import('../../analytics/share-generator.js').then(m=>m.ShareGenerator.generateAndShare('track',t)),250); else if(id==='bm-cl') setTimeout(()=>this.opnCol(u),250);
     };
   }
 
-  handleSharedPlaylist(raw) {
-    const source = String(raw || '').trim();
-    if (!source) return false;
-
-    try {
-      const decoded = JSON.parse(atob(source));
-      const name = safeName(decoded?.name, 'Поделились плейлистом');
-      const uids = sanitizeUidList(decoded?.uids);
-      if (!uids.length) return false;
-
-      const id = now().toString(36);
-      this.state.pls.push({
-        id,
-        name,
-        col: '',
-        uids: [...uids],
-        ord: [...uids],
-        hid: [],
-        sort: 'user',
-        createdAt: now(),
-        snap: {
-          uids: [...uids],
-          ord: [...uids],
-          hid: []
-        }
-      });
-
-      this.state.ctx = { type: 'playlist', id };
-      this._saveState();
-      this.renderTab().catch(() => {});
-      W.NotificationSystem?.success?.('Плейлист импортирован');
-      return true;
-    } catch {
-      W.NotificationSystem?.warning?.('Не удалось открыть shared playlist');
-      return false;
-    }
+  opnAddPl(uids) {
+    const pls = Store.pls; if(!pls.length) return W.NotificationSystem.warning('Сначала создайте новый плейлист');
+    const m = W.Modals.open({ title: 'Выберите плейлист', bodyHtml: `<div style="display:flex;flex-direction:column;gap:10px;">${pls.map(p=>`<button class="showcase-btn" data-pid="${p.id}">${esc(p.name)}</button>`).join('')}</div>` });
+    m.onclick = e => { const b=e.target.closest('[data-pid]'); if(b) { const t=pls.find(x=>x.id===b.dataset.pid); uids.forEach(u=>{if(!t.uids.includes(u)) t.uids.push(u);}); Store.pls=pls; W.NotificationSystem.success(`Добавлено треков: ${uids.length}`); m.remove(); $('sc-m-cr')?.click(); } };
   }
 
-  _markDraftDirty() {
-    if (!this.draft) return;
-    this.draft.dirty = true;
-    const btn = $('sc-reset');
-    if (btn) btn.disabled = false;
+  addTrks() {
+    const a = Store.get('userOrder',[]).map(u=>W.TrackRegistry.getTrackByUid(u)).filter(Boolean), c = Store.pls.find(p=>p.id===Store.pId)?.uids||[];
+    const m = W.Modals.open({ title: 'Треки из Витрины', bodyHtml: `<div style="max-height:50vh;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:15px;">${a.map(t=>`<label style="display:flex;align-items:center;gap:10px;padding:6px;background:rgba(255,255,255,.05);border-radius:6px;"><input type="checkbox" value="${t.uid}" class="pl-add-chk" ${c.includes(t.uid)?'checked disabled':''}>${esc(t.title)} <span style="opacity:.5;font-size:11px">${esc(W.TrackRegistry.getAlbumTitle(t.sourceAlbum))}</span></label>`).join('')}</div><button class="showcase-btn" id="pl-ac">Добавить выбранные</button>` });
+    m.querySelector('#pl-ac').onclick = () => { const ch = Array.from(m.querySelectorAll('.pl-add-chk:checked:not(:disabled)')).map(i=>i.value); if(ch.length) { const p=Store.pls; p.find(x=>x.id===Store.pId).uids.push(...ch); Store.pls=p; this.renderList(); W.NotificationSystem.success(`Добавлено: ${ch.length}`); } m.remove(); };
   }
 
-  moveRow(uid, dir) {
-    const row = D.querySelector(`.showcase-track[data-uid="${CSS.escape(uid)}"]`);
-    const sib = dir === -1 ? row?.previousElementSibling : row?.nextElementSibling;
-
-    if (row && sib?.classList.contains('showcase-track')) {
-      if (dir === -1) sib.before(row);
-      else sib.after(row);
-      this.saveDraftOrderFromDom();
-    }
+  opnCol(u, aKey = null, pId = null) {
+    if (u && !aKey) aKey = W.TrackRegistry.getTrackByUid(u)?.sourceAlbum;
+    const cur = pId ? Store.pCol[pId] : Store.aCol[aKey], m = W.Modals.open({ title: pId ? 'Цвет плейлиста' : 'Цвет альбома', bodyHtml: `<div class="showcase-color-picker">${PALETTE.map(c=>`<div class="showcase-color-dot" style="background:${c};${cur===c?'border-color:#fff':''}" data-col="${c}"></div>`).join('')}</div><button class="showcase-btn" data-col="transparent" style="margin-top:15px;width:100%">Сбросить цвет</button>` });
+    m.onclick = e => { const el = e.target.closest('[data-col]'); if(el) { const c = el.dataset.col==='transparent'?'':el.dataset.col; if(pId) { const p = Store.pCol; p[pId]=c; Store.pCol=p; this.renderPls(); } else { const a = Store.aCol; a[aKey]=c; Store.aCol=a; W.AlbumsManager?.getCurrentAlbum() === '__showcase__' && this.renderList(); } m.remove(); } };
   }
 
-  saveDraftOrderFromDom() {
-    if (!this.draft) return;
-    this.draft.ord = Array.from(D.querySelectorAll('.showcase-track'))
-      .map((node) => node.dataset.uid)
-      .filter(Boolean);
-    this._markDraftDirty();
-  }
-
-  startTouchDrag(e, node) {
-    if (!node) return;
-
-    const touch = e.touches[0];
-    const clone = node.cloneNode(true);
-    const rect = node.getBoundingClientRect();
-    const offsetY = touch.clientY - rect.top;
-
-    clone.style.cssText = `
-      position:fixed;
-      left:${rect.left}px;
-      width:${rect.width}px;
-      z-index:10000;
-      opacity:0.9;
-      background:#252d39;
-      box-shadow:0 10px 30px rgba(0,0,0,0.8);
-      pointer-events:none
-    `;
-
-    D.body.appendChild(clone);
-    node.style.opacity = '0.3';
-
-    const move = (ev) => {
-      ev.preventDefault();
-      const y = ev.touches[0].clientY;
-      clone.style.top = `${y - offsetY}px`;
-      D.querySelectorAll('.drag-over').forEach((el) => el.classList.remove('drag-over'));
-      const over = D.elementFromPoint(W.innerWidth / 2, y)?.closest('.showcase-track');
-      if (over && over !== node) over.classList.add('drag-over');
-    };
-
-    const end = (ev) => {
-      D.removeEventListener('touchmove', move);
-      D.removeEventListener('touchend', end);
-      clone.remove();
-      node.style.opacity = '';
-
-      const y = ev.changedTouches[0].clientY;
-      const target = D.elementFromPoint(W.innerWidth / 2, y)?.closest('.showcase-track');
-
-      D.querySelectorAll('.drag-over').forEach((el) => el.classList.remove('drag-over'));
-
-      if (target && target !== node) {
-        target.before(node);
-        this.saveDraftOrderFromDom();
-      }
-    };
-
-    D.addEventListener('touchmove', move, { passive: false });
-    D.addEventListener('touchend', end);
-  }
-
-  bindControls(root) {
-    if (this._boundRoot === root) return;
-    this._boundRoot = root;
-
-    const applySearch = U.func?.debounceFrame?.(async () => {
-      this.searchQuery = String($('sc-search')?.value || '').trim();
-      this.searchSel.clear();
-      await this.renderList();
-      const clearBtn = $('sc-search-clear');
-      if (clearBtn) clearBtn.style.display = this.searchQuery ? '' : 'none';
-    }) || (async () => {
-      this.searchQuery = String($('sc-search')?.value || '').trim();
-      this.searchSel.clear();
-      await this.renderList();
-    });
-
-    root.addEventListener('input', (e) => {
-      if (e.target.id === 'sc-search') applySearch();
-    });
-
-    root.addEventListener('keydown', (e) => {
-      if (e.target.id === 'sc-search' && e.key === 'Enter') e.target.blur();
-    });
-
-    const actions = {
-      'sc-search-clear': () => {
-        const inp = $('sc-search');
-        if (inp) {
-          inp.value = '';
-          inp.blur();
-        }
-        this.searchQuery = '';
-        this.searchSel.clear();
-        this.renderList().catch(() => {});
-      },
-      'sc-edit': () => this.enterEdit(),
-      'sc-save': () => this.saveEdit(),
-      'sc-create': () => this.createFromEdit(),
-      'sc-reset': () => this.resetEdit(),
-      'sc-exit': () => this.exitEdit(),
-      'sc-playall': () => this.playContext(),
-      'sc-shuffle': () => {
-        const tracks = this.getActiveListTracks();
-        if (!tracks.length) {
-          W.NotificationSystem?.warning?.('Нет активных треков');
-          return;
-        }
-
-        const ctx = this.getCurrentContext();
-        W.AlbumsManager?.setPlayingAlbum?.(ctx.isPlaylist ? `__showcase__:${ctx.id}` : SHOWCASE_KEY);
-        W.playerCore?.setPlaylist?.(tracks, 0, null, { preservePosition: false });
-        W.playerCore?.toggleShuffle?.();
-        W.playerCore?.play?.(0);
-        W.PlayerUI?.ensurePlayerBlock?.(0, { userInitiated: true });
-        this.highlightCurrentTrack(W.playerCore?.getCurrentTrackUid?.());
-      },
-      'sc-sort': () => this.openSort(),
-      'sc-tg-e': () => {
-        this.state.ui.hid = !this.state.ui.hid;
-        this._saveState();
-        this.renderList().catch(() => {});
-      },
-      'sc-tg-n': () => {
-        this.state.ui.num = !this.state.ui.num;
-        this._saveState();
-        this.renderList().catch(() => {});
-      },
-      'sc-tg-v': () => {
-        this.state.ui.view = this.state.ui.view === 'flat' ? 'grouped' : 'flat';
-        this._saveState();
-        this.renderList().catch(() => {});
-      },
-      'sc-b-add': () => {
-        const ctx = this.getCurrentContext();
-
-        if (ctx.isPlaylist) {
-          const pl = byId(this.state.pls, ctx.id);
-          if (pl) {
-            [...this.searchSel].forEach((uid) => {
-              if (!W.TrackRegistry?.getTrackByUid?.(uid)) return;
-              if (!pl.uids.includes(uid)) {
-                pl.uids.push(uid);
-                pl.ord.push(uid);
-              }
-              pl.hid = pl.hid.filter((item) => item !== uid);
-            });
-          }
-        } else {
-          [...this.searchSel].forEach((uid) => {
-            if (!W.TrackRegistry?.getTrackByUid?.(uid)) return;
-            if (!this.state.def.ord.includes(uid)) this.state.def.ord.push(uid);
-            this.state.def.hid = this.state.def.hid.filter((item) => item !== uid);
-          });
-        }
-
-        this.searchSel.clear();
-        this.searchQuery = '';
-        this._saveState();
-        this.renderTab().catch(() => {});
-        W.NotificationSystem?.success?.('Добавлено в текущий плейлист');
-      },
-      'sc-b-new': () => this.createFromEdit(true),
-      'sc-b-clr': () => {
-        this.searchSel.clear();
-        this.renderList().catch(() => {});
-      }
-    };
-
-    root.addEventListener('touchstart', (e) => {
-      const dragHandle = e.target.closest('.showcase-drag-handle');
-      if (dragHandle && this.draft && !this.searchQuery) {
-        e.preventDefault();
-        this.startTouchDrag(e, dragHandle.closest('.showcase-track'));
-        return;
-      }
-
-      const row = e.target.closest('.showcase-track');
-      if (row && (this.draft || this.searchQuery) && !e.target.closest('button')) {
-        this._wasLongPress = false;
-        this._longPressTimer = setTimeout(() => {
-          this._wasLongPress = true;
-          this.toggleSelection(row.dataset.uid);
-          navigator.vibrate?.(50);
-        }, 500);
-      }
-    }, { passive: false });
-
-    root.addEventListener('touchmove', () => clearTimeout(this._longPressTimer), { passive: true });
-    root.addEventListener('touchend', () => clearTimeout(this._longPressTimer));
-
-    root.addEventListener('click', (e) => {
-      const button = e.target.closest('button');
-      if (button && actions[button.id]) {
-        actions[button.id]();
-        return;
-      }
-
-      if (this._wasLongPress) return;
-
-      const row = e.target.closest('.showcase-track');
-      const uid = row?.dataset.uid;
-      if (!row || !uid) return;
-
-      if (this.draft) {
-        if (e.target.closest('.showcase-hide-btn')) return this.toggleHidden(uid);
-        if (e.target.closest('.sc-arrow-up')) return this.moveRow(uid, -1);
-        if (e.target.closest('.sc-arrow-down')) return this.moveRow(uid, 1);
-        if (e.target.closest('.showcase-checkbox')) return this.toggleSelection(uid);
-        return;
-      }
-
-      if (this.searchQuery) {
-        if (e.target.closest('.showcase-checkbox')) return this.toggleSelection(uid);
-        this.openTrackMenu(uid);
-        return;
-      }
-
-      if (e.target.closest('.showcase-track-menu-btn')) {
-        this.openTrackMenu(uid);
-        return;
-      }
-
-      if (e.target.closest('.like-star') || e.target.closest('.offline-ind')) {
-        this.openTrackMenu(uid);
-        return;
-      }
-
-      const ctx = this.getCurrentContext();
-      if (ctx.hid.includes(uid)) {
-        this.openTrackMenu(uid);
-        return;
-      }
-
-      this.playContext(uid);
-    });
-
-    root.addEventListener('dragstart', (e) => {
-      if (!this.draft || this.searchQuery) return;
-      const row = e.target.closest('.showcase-track');
-      if (!row) return;
-      e.dataTransfer.setData('text/plain', row.dataset.uid);
-      row.classList.add('is-dragging');
-    });
-
-    root.addEventListener('dragover', (e) => {
-      if (!this.draft || this.searchQuery) return;
-      e.preventDefault();
-      const row = e.target.closest('.showcase-track');
-      if (row) row.classList.add('drag-over');
-    });
-
-    root.addEventListener('dragleave', (e) => {
-      e.target.closest('.showcase-track')?.classList.remove('drag-over');
-    });
-
-    root.addEventListener('drop', (e) => {
-      if (!this.draft || this.searchQuery) return;
-      e.preventDefault();
-
-      const target = e.target.closest('.showcase-track');
-      const draggedUid = e.dataTransfer.getData('text/plain');
-      D.querySelectorAll('.drag-over').forEach((node) => node.classList.remove('drag-over'));
-
-      if (target && draggedUid && draggedUid !== target.dataset.uid) {
-        const dragged = D.querySelector(`.showcase-track[data-uid="${CSS.escape(draggedUid)}"]`);
-        if (dragged) {
-          target.before(dragged);
-          this.saveDraftOrderFromDom();
-        }
-      }
-    });
-
-    root.addEventListener('dragend', () => {
-      D.querySelectorAll('.is-dragging').forEach((node) => node.classList.remove('is-dragging'));
-    });
-  }
-
-  renderMultiPanel() {
-    let panel = $('sc-multi-panel');
-    const hasSelection = this.searchQuery ? this.searchSel.size > 0 : false;
-
-    if (!hasSelection) {
-      panel?.remove();
-      return;
-    }
-
-    if (!panel) {
-      panel = D.createElement('div');
-      panel.id = 'sc-multi-panel';
-      panel.className = 'showcase-sticky-bar animate-in';
-      D.body.appendChild(panel);
-    }
-
-    panel.innerHTML = `
-      <span>Выбрано: ${this.searchSel.size}</span>
-      <button class="showcase-btn" id="sc-b-add">Добавить в текущий</button>
-      <button class="showcase-btn" id="sc-b-new">Создать новый</button>
-      <button class="showcase-btn" id="sc-b-clr">Очистить</button>
-    `;
-  }
-
-  _saveScrollPosition() {
-    try {
-      const ctx = this.getCurrentContext();
-      const key = this._scrollKeyPrefix + (ctx.isPlaylist ? `playlist:${ctx.id}` : 'all');
-      localStorage.setItem(key, String(D.documentElement.scrollTop || D.body.scrollTop || 0));
-    } catch {}
-  }
-
-  _restoreScrollPosition() {
-    try {
-      const ctx = this.getCurrentContext();
-      const key = this._scrollKeyPrefix + (ctx.isPlaylist ? `playlist:${ctx.id}` : 'all');
-      const y = Number(localStorage.getItem(key) || 0);
-      requestAnimationFrame(() => W.scrollTo(0, Number.isFinite(y) ? y : 0));
-    } catch {}
-  }
-
-  highlightCurrentTrack(uid) {
-    D.querySelectorAll('.showcase-track.current').forEach((node) => node.classList.remove('current'));
-    if (!uid) return;
-    D.querySelectorAll(`.showcase-track[data-uid="${CSS.escape(uid)}"]`).forEach((node) => node.classList.add('current'));
-  }
-
-  renderTabSafe() {
-    this.renderTab().catch((e) => {
-      console.error('[Showcase] render failed', e);
-      W.NotificationSystem?.error?.('Ошибка вкладки Витрина Разбита');
-    });
-  }
+  hiTrack(u) { D.querySelectorAll('.showcase-track.current').forEach(e=>e.classList.remove('current')); if(u) D.querySelectorAll(`.showcase-track[data-uid="${CSS.escape(u)}"]`).forEach(e=>e.classList.add('current')); }
 }
 
 W.ShowcaseManager = new ShowcaseManager();
 export default W.ShowcaseManager;
+
+//=================================================
+// FILE: /scripts/app/showcase/lyrics-search.js
+/**
+ * scripts/app/showcase/lyrics-search.js
+ * Offline fast search (title/album/lyrics) based on prebuilt index file.
+ *
+ * Index is expected at: ./data/lyrics-index-v1.json
+ * Format v1:
+ * {
+ *   v: 1,
+ *   buildTs: number,
+ *   meta: { [uid]: { t: string, a: string, k: string, n?: number } },
+ *   idx:  { [token]: string[] }
+ * }
+ */
+
+const W = window;
+
+const INDEX_URL = './data/lyrics-index-v1.json';
+
+let _loaded = false;
+let _pending = null;
+
+let _meta = {};
+let _idx = {};
+let _buildTs = 0;
+
+const normStr = (s) => String(s || '')
+  .toLowerCase()
+  .replace(/ё/g, 'е')
+  .replace(/[^\p{L}\p{N}\s]+/gu, ' ')
+  .replace(/\s+/g, ' ')
+  .trim();
+
+const tokenize = (q) => {
+  const s = normStr(q);
+  if (!s) return [];
+  return s.split(' ').filter(w => w.length >= 2);
+};
+
+async function fetchJsonCacheFirst(url) {
+  // Cache-first: работает офлайн при наличии SW precache.
+  const r = await fetch(url, { cache: 'force-cache' });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
+export async function ensureLyricsIndexLoaded() {
+  if (_loaded) return true;
+  if (_pending) return _pending;
+
+  _pending = (async () => {
+    try {
+      const j = await fetchJsonCacheFirst(INDEX_URL);
+      if (!j || j.v !== 1 || typeof j !== 'object') throw new Error('Bad index format');
+
+      _meta = j.meta && typeof j.meta === 'object' ? j.meta : {};
+      _idx = j.idx && typeof j.idx === 'object' ? j.idx : {};
+      _buildTs = Number(j.buildTs) || 0;
+
+      _loaded = true;
+      return true;
+    } catch (e) {
+      // Индекс не обязателен для запуска UI: просто считаем, что lyrics-поиск недоступен.
+      _meta = {};
+      _idx = {};
+      _buildTs = 0;
+      _loaded = false;
+      return false;
+    } finally {
+      _pending = null;
+    }
+  })();
+
+  return _pending;
+}
+
+export function getLyricsIndexState() {
+  return { loaded: _loaded, buildTs: _buildTs, metaCount: Object.keys(_meta).length };
+}
+
+function getTrackText(uid) {
+  const t = W.TrackRegistry?.getTrackByUid?.(uid);
+  if (!t) return { title: '', album: '' };
+
+  const title = String(t.title || '');
+  const album = String(W.TrackRegistry?.getAlbumTitle?.(t.sourceAlbum) || t.album || '');
+  return { title, album };
+}
+
+export function searchUidsByQuery({ uids, query }) {
+  const q = String(query || '').trim();
+  if (!q) return uids;
+
+  const qNorm = normStr(q);
+  const toks = tokenize(qNorm);
+
+  // База кандидатов: если индекс загружен — из idx, иначе просто "все uids" (поиском по title/album).
+  let candidates = null;
+
+  if (_loaded && toks.length) {
+    const set = new Set();
+    toks.forEach(tok => {
+      const list = _idx[tok];
+      if (Array.isArray(list)) list.forEach(uid => set.add(uid));
+    });
+    candidates = [...set];
+  } else {
+    candidates = [...uids];
+  }
+
+  // Ограничиваем кандидатов текущим списком (мастер/плейлист) — важно для Showcase.
+  const allowed = new Set(uids);
+  candidates = candidates.filter(uid => allowed.has(uid));
+
+  // Скоринг: title > album > lyrics.
+  const scored = candidates.map(uid => {
+    const { title, album } = getTrackText(uid);
+    const tN = normStr(title);
+    const aN = normStr(album);
+
+    let score = 0;
+
+    // Фраза целиком
+    if (tN.includes(qNorm)) score += 120;
+    if (aN.includes(qNorm)) score += 70;
+
+    // Токены
+    toks.forEach(tok => {
+      if (tN.includes(tok)) score += 40;
+      else if (aN.includes(tok)) score += 20;
+      else if (_loaded && Array.isArray(_idx[tok]) && _idx[tok].includes(uid)) score += 8;
+    });
+
+    return { uid, score };
+  });
+
+  scored.sort((x, y) => y.score - x.score);
+
+  // Если кто-то набрал 0 — всё равно оставляем, но ниже (это полезно для коротких запросов).
+  return scored.map(x => x.uid);
+}
 
 //=================================================
 // FILE: /scripts/app/showcase/lyrics-search.js
