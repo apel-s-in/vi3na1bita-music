@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9a7c6b24490a89ccf576d8e319df0e44357a3dde.idx
-│   │       ├── pack-9a7c6b24490a89ccf576d8e319df0e44357a3dde.pack
-│   │       └── pack-9a7c6b24490a89ccf576d8e319df0e44357a3dde.rev
+│   │       ├── pack-c35ed29418bb41a56562c689b06f9738d9045cdb.idx
+│   │       ├── pack-c35ed29418bb41a56562c689b06f9738d9045cdb.pack
+│   │       └── pack-c35ed29418bb41a56562c689b06f9738d9045cdb.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -378,7 +378,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-11 22:17:25 UTC
+Сгенерировано: 2026-03-11 22:18:27 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5444,19 +5444,27 @@ window.FavoritesManager = Favorites;
     },
 
     isSpecialAlbumKey: (k) => String(k || '').startsWith('__'),
-    isShowcaseContext: (k) => k === '__showcase__' || String(k || '').startsWith('__showcase__:'),
-    isBrowsingOtherAlbum: () => {
-      const norm = (v) => {
-        const s = String(v || '').trim();
-        if (!s) return '';
-        if (s === '__showcase__' || s.startsWith('__showcase__:')) return '__showcase__';
-        if (s === '__favorites__' || s.startsWith('__favorites__:')) return '__favorites__';
-        return s;
-      };
-      const p = norm(W.AlbumsManager?.getPlayingAlbum?.());
-      const c = norm(W.AlbumsManager?.getCurrentAlbum?.());
-      return !!(p && c && p !== c);
+    normalizeAlbumContextKey: (k) => {
+      const s = String(k || '').trim();
+      if (!s) return '';
+      if (s === '__showcase__' || s.startsWith('__showcase__:')) return '__showcase__';
+      if (s === '__favorites__' || s.startsWith('__favorites__:')) return '__favorites__';
+      return s;
     },
+    isShowcaseContext: (k) => U.normalizeAlbumContextKey(k) === '__showcase__',
+    isBrowsingOtherAlbum: ()N.includes(qNorm)) score += 120;
+    if (aN.includes(qNorm)) score += 70;
+    toks.forEach((tok, i) => {
+      if (tN.includes(tok)) score += 40;
+      else if (aN.includes(tok)) score += 20;
+      else if (tokSets[i]?.has(uid)) score += 8;
+    });
+    return score > 0 ? { uid, score } : null;
+  }).filter(Boolean);
+
+  scored.sort((x, y) => y.score - x.score);
+  return scored.map(x => x.uid);
+}
     setBtnActive: (id, a) => D.getElementById(id)?.classList.toggle('active', !!a),
     setAriaDisabled: (el, d) => { if (el) { el.classList.toggle('disabled', !!d); el.setAttribute('aria-disabled', !!d); } },
     lsGet: (k, d) => localStorage.getItem(k) ?? d,
