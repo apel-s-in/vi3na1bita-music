@@ -286,9 +286,11 @@ class ShowcaseManager {
     if (this._searchQ) {
       await ensureLyricsIndexLoaded();
       const found = searchUidsByQuery({ query: this._searchQ });
-      // mark which are in context and which aren't
-      return { type: 'search', results: found, ctxOrder: order, ctxHidden: hidden };
+      this._searchResults = Array.isArray(found) ? found : [];
+      return { type: 'search', results: this._searchResults, ctxOrder: order, ctxHidden: hidden };
     }
+
+    this._searchResults = null;
 
     return { type: 'normal', uids: order.filter(u => uid2track(u)), hidden };
   }
@@ -460,6 +462,20 @@ class ShowcaseManager {
     this._menu = null;
   }
 
+  _getStatusState(cnt, isSearch = false) {
+    const ctx = this._getActiveCtx();
+    const allOrder = Array.isArray(ctx?.order) ? ctx.order.filter(u => uid2track(u)) : [];
+    const hiddenSet = new Set(ctx?.hidden || []);
+    const all = allOrder.length;
+    const hidden = allOrder.filter(u => hiddenSet.has(u)).length;
+    const active = Math.max(0, all - hidden);
+    const found = isSearch ? Number(cnt || 0) : 0;
+    const checked = this._editMode
+      ? (this._draft?.checked?.size || 0)
+      : (this._searchChecked?.size || 0);
+    return { all, active, hidden, found, checked, isSearch };
+  }
+
   /* ── Edit list render ── */
   async _renderEditList(tok) {
     const c = $('sc-tracks-container');
@@ -475,7 +491,7 @@ class ShowcaseManager {
       if (!t) return;
       const isH = this._draft.hidden.has(u);
       const isC = this._draft.checked.has(u);
-      h += `<div class="showcase-track sc-edit-row ${isH ? 'inactive' : ''} ${isC ? 'sc-checked' : ''}"
+      h += `<div class="showcase-track sc-edit-row ${isH ? 'inactive' : ''} ${isC ? 'sc-checked' : ''} ${!isC && !this._draft.isDefault ? 'sc-will-remove' : ''}"
               data-uid="${u}" draggable="true">
         <button class="sc-arrow-up">▲</button>
         <div class="showcase-drag-handle">⠿</div>
@@ -483,10 +499,11 @@ class ShowcaseManager {
         <img src="${t.cover}" class="showcase-track-thumb" loading="lazy">
         <div class="track-title">
           <div>${esc(t.title)}</div>
-          <div class="showcase-track-meta">${esc(albumTitle(t.sourceAlbum))}</div>
+          <div class="showcase-track-meta">${esc(albumTitle(t.sourceAlbum))}${!isC && !this._draft.isDefault ? ' · будет удалён' : (isH && isC && !this._draft.isDefault ? ' · скрыт' : '')}</div>
         </div>
         <button class="sc-eye-btn" title="Показать/Скрыть">${isH ? '🙈' : '👁'}</button>
         <button class="sc-arrow-down">▼</button>
+      </div>`;
       </div>`;
     });
 
@@ -665,8 +682,36 @@ class ShowcaseManager {
     if (this._editMode) {
       const row = e.target.closest('.sc-edit-row, .showcase-track'), u = row?.dataset.uid;
       if (!u) return;
-      if (e.target.classList.contains('sc-chk')) { this._draft?.toggleChecked(u); row.classList.toggle('sc-checked', this._draft?.checked.has(u)); row.classList.toggle('inactive', this._draft?.hidden.has(u)); this._draft?.markDirty(); this._updStatus(); return; }
-      if (e.target.closest('.sc-eye-btn')) { this._draft?.toggleHidden(u); this._renderEditList(this._renderTok); return; }
+      if (e.target.classList.contains('sc-chk')) {
+        this._draft?.toggleChecked(u);
+        const isC = this._draft?.checked.has(u);
+        const isH = this._draft?.hidden.has(u);
+        row.classList.toggle('sc-checked', isC);
+        row.classList.toggle('inactive', isH);
+        row.classList.toggle('sc-will-remove', !isC && !this._draft?.isDefault);
+        const eye = row.querySelector('.sc-eye-btn');
+        if (eye) eye.textContent = isH ? '🙈' : '👁';
+        const meta = row.querySelector('.showcase-track-meta');
+        if (meta) meta.textContent = `${albumTitle(u ? (uid2track(u)?.sourceAlbum) : '')}${!isC && !this._draft?.isDefault ? ' · будет удалён' : (isH && isC && !this._draft?.isDefault ? ' · скрыт' : '')}`;
+        this._updStatus();
+        return;
+      }
+      if (e.target.closest('.sc-eye-btn')) {
+        this._draft?.toggleHidden(u);
+        const isC = this._draft?.checked.has(u);
+        const isH = this._draft?.hidden.has(u);
+        row.classList.toggle('inactive', isH);
+        row.classList.toggle('sc-checked', isC);
+        row.classList.toggle('sc-will-remove', !isC && !this._draft?.isDefault);
+        const chk = row.querySelector('.sc-chk');
+        if (chk) chk.checked = isC;
+        const eye = row.querySelector('.sc-eye-btn');
+        if (eye) eye.textContent = isH ? '🙈' : '👁';
+        const meta = row.querySelector('.showcase-track-meta');
+        if (meta) meta.textContent = `${albumTitle(u ? (uid2track(u)?.sourceAlbum) : '')}${!isC && !this._draft?.isDefault ? ' · будет удалён' : (isH && isC && !this._draft?.isDefault ? ' · скрыт' : '')}`;
+        this._updStatus();
+        return;
+      }
       if (e.target.closest('.sc-arrow-up')) { this._swpEdit(u, -1); return; }
       if (e.target.closest('.sc-arrow-down')) { this._swpEdit(u, 1); return; }
       return;
@@ -677,7 +722,22 @@ class ShowcaseManager {
       const row = e.target.closest('.showcase-track'), u = row?.dataset.uid;
       if (!u) return;
       const chk = e.target.closest('.sc-search-chk');
-      if (chk) { if (chk.checked) this._searchChecked.add(u); else this._searchChecked.delete(u); this._renderNormalList(++this._renderTok); return; }
+      if (chk) {
+        if (chk.checked) this._searchChecked.add(u); else this._searchChecked.delete(u);
+        const bar = $('sc-search-sticky');
+        if (this._searchChecked.size > 0) {
+          if (bar) {
+            const lbl = bar.querySelector('span');
+            if (lbl) lbl.textContent = `Выбрано: ${this._searchChecked.size}`;
+          } else {
+            this._renderSearchResults($('sc-tracks-container'), { results: this._searchResults || [], ctxOrder: this._getActiveCtx()?.order || [], ctxHidden: new Set(this._getActiveCtx()?.hidden || []) }, Store.getUI());
+          }
+        } else {
+          bar?.remove();
+        }
+        this._updStatus(this._searchResults?.length || 0, true);
+        return;
+      }
       const menuBtn = e.target.closest('.showcase-track-menu-btn');
       if (menuBtn) { this._opnMenu(u, true); return; }
       // tap on row in search → open menu (not play)
@@ -1117,26 +1177,17 @@ class ShowcaseManager {
   _updStatus(cnt, isSearch = false) {
     const s = $('sc-status');
     if (!s) return;
-    const all = D.querySelectorAll('.showcase-track');
-    const favs = D.querySelectorAll('.showcase-track .like-star[src*="star.png"]').length;
-    const pins = D.querySelectorAll('.showcase-track .offline-ind:not(.offline-ind--none)').length;
-    const clouds = Array.from(D.querySelectorAll('.showcase-track .offline-ind')).filter(n => (n?.textContent || '').trim() === '☁').length;
     const ui = Store.getUI();
+    const st = this._getStatusState(cnt, isSearch);
 
     s.innerHTML = `
-      <span>📋 ${cnt ?? all.length}${isSearch ? ' найдено' : ''} · ⭐ ${favs} · 🔒 ${pins} · ☁ ${clouds}${this._editMode && D.querySelectorAll('.sc-checked').length ? `<span style="color:#ff9800"> · ✓ ${D.querySelectorAll('.sc-checked').length}</span>` : ''}</span>
+      <span>📋 ${isSearch ? `${st.found} найдено` : `${st.all} всего · ${st.active} активных · ${st.hidden} скрытых`}${st.checked ? `<span style="color:#ff9800"> · ✓ ${st.checked}</span>` : ''}</span>
       <span style="display:flex;gap:12px;align-items:center">
         <span id="sc-tg-hidden" style="cursor:pointer;font-size:18px" title="Показывать скрытые">${ui.showHidden ? '👁' : '🙈'}</span>
         <span id="sc-tg-numbers" style="cursor:pointer;font-size:18px;min-width:42px;display:inline-flex;align-items:center;justify-content:center;opacity:${ui.showNumbers ? '1' : '.72'}" title="Нумерация">1,2,3</span>
         <span id="sc-tg-view" style="cursor:pointer;font-size:18px" title="Вид">${ui.viewMode === 'flat' ? '⊞' : '⊟'}</span>
         <span id="sc-tg-placement" style="cursor:pointer;font-size:14px" title="Скрытые в конце">${ui.hiddenPlacement === 'end' ? '↓скр' : '≡скр'}</span>
       </span>`;
-  }
-
-  /* ── Highlight current track ── */
-  _hiTrack(uid) {
-    D.querySelectorAll('.showcase-track.current').forEach(e => e.classList.remove('current'));
-    if (uid) D.querySelectorAll(`.showcase-track[data-uid="${CSS.escape(uid)}"]`).forEach(e => e.classList.add('current'));
   }
 
   _saveScroll(id) {
