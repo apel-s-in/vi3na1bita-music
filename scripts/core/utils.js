@@ -201,19 +201,11 @@
       return s;
     },
     isShowcaseContext: (k) => U.normalizeAlbumContextKey(k) === '__showcase__',
-    isBrowsingOtherAlbum: ()N.includes(qNorm)) score += 120;
-    if (aN.includes(qNorm)) score += 70;
-    toks.forEach((tok, i) => {
-      if (tN.includes(tok)) score += 40;
-      else if (aN.includes(tok)) score += 20;
-      else if (tokSets[i]?.has(uid)) score += 8;
-    });
-    return score > 0 ? { uid, score } : null;
-  }).filter(Boolean);
-
-  scored.sort((x, y) => y.score - x.score);
-  return scored.map(x => x.uid);
-}
+    isBrowsingOtherAlbum: () => {
+      const p = U.normalizeAlbumContextKey(W.AlbumsManager?.getPlayingAlbum?.());
+      const c = U.normalizeAlbumContextKey(W.AlbumsManager?.getCurrentAlbum?.());
+      return !!(p && c && p !== c);
+    },
     setBtnActive: (id, a) => D.getElementById(id)?.classList.toggle('active', !!a),
     setAriaDisabled: (el, d) => { if (el) { el.classList.toggle('disabled', !!d); el.setAttribute('aria-disabled', !!d); } },
     lsGet: (k, d) => localStorage.getItem(k) ?? d,
