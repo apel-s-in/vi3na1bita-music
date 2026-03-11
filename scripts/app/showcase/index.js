@@ -329,12 +329,13 @@ class ShowcaseManager {
     const sm = ctx?.sortMode || 'user';
     const showRes = isDefault && this._hasDefaultChanges();
 
+    const canResetEdit = !!this._draft?.isDirty?.();
     const editBtns = this._editMode
       ? `<div class="sc-edit-banner">✏️ РЕЖИМ РЕДАКТИРОВАНИЯ
           <div class="sc-edit-actions">
             <button class="showcase-btn sc-btn-save" style="background:#4caf50;color:#fff;">💾 Сохранить</button>
             <button class="showcase-btn sc-btn-create" style="background:#4daaff;color:#fff;">✨ Создать</button>
-            ${isDefault ? `<button class="showcase-btn sc-btn-reset" style="border-color:#ff9800;">↺ Сброс</button>` : `<button class="showcase-btn sc-btn-reset" style="border-color:#ff9800;">↺ Сброс</button>`}
+            <button class="showcase-btn sc-btn-reset ${canResetEdit ? '' : 'sc-btn-disabled'}" style="border-color:#ff9800;" ${canResetEdit ? '' : 'disabled'}>↺ Сброс</button>
             <button class="showcase-btn sc-btn-exit" style="border-color:#ff6b6b;">✕ Выйти</button>
           </div></div>`
       : '';
@@ -406,7 +407,7 @@ class ShowcaseManager {
   }
 
   _renderSearchResults(c, { results, ctxOrder, ctxHidden }, ui) {
-    const ctxSet = new Set(ctxOrder);
+    const ctxSet = new Set(Array.isArray(ctxOrder) ? ctxOrder : []);
     this._updStatus(results.length, true);
 
     let h = `<div class="sc-search-info">Найдено: ${results.length} треков</div>`;
@@ -483,7 +484,6 @@ class ShowcaseManager {
     if (tok !== this._renderTok) return;
 
     const uids = this._draft.getEditList();
-    const ui = Store.getUI();
     let h = '';
 
     uids.forEach((u, i) => {
@@ -503,7 +503,6 @@ class ShowcaseManager {
         </div>
         <button class="sc-eye-btn" title="Показать/Скрыть">${isH ? '🙈' : '👁'}</button>
         <button class="sc-arrow-down">▼</button>
-      </div>`;
       </div>`;
     });
 
@@ -810,7 +809,7 @@ class ShowcaseManager {
   }
 
   _doReset() {
-    if (!this._draft) return;
+    if (!this._draft || !this._draft.isDirty()) return;
     const id = this._activeCtxId();
     const isDefault = this._isDefault(id);
     const msg = isDefault
@@ -1065,7 +1064,6 @@ class ShowcaseManager {
       const newId = Date.now().toString(36);
       const snap = { order: [...uids], hidden: [] };
       const pl = { id: newId, name, order: [...uids], hidden: [], sortMode: 'user', color: '', creationSnapshot: JSON.parse(JSON.stringify(snap)), createdAt: Date.now() };
-      Store.savePlaylist(pl);
       Store.savePlaylist(pl);
       this._searchQ = '';
       this._searchChecked.clear();
