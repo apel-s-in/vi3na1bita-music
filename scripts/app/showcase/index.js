@@ -191,6 +191,7 @@ class ShowcaseManager {
     this._searchQ = '';
     this._searchChecked = new Set();
     this._renderTok = 0;       // race-condition guard
+    this._searchTok = 0;       // search race-condition guard
     this._menu = null;
     this._scrollMem = new Map();
   }
@@ -294,6 +295,7 @@ class ShowcaseManager {
 
   /* ── Main render ── */
   async renderTab() {
+    this._cleanupTransientUi();
     const list = $('track-list');
     if (!list) return;
 
@@ -440,6 +442,7 @@ class ShowcaseManager {
         <span>Выбрано: ${this._searchChecked.size}</span>
         <button class="showcase-btn sc-search-add">➕ Добавить</button>
         <button class="showcase-btn sc-search-create" style="background:#4daaff;color:#fff;">✨ Создать</button>
+        <button class="showcase-btn" id="sc-search-clear-query">🧹 Очистить поиск</button>
         <button class="showcase-btn" id="sc-search-clear-selection">✕ Снять</button>`;
       D.body.appendChild(bar);
     }
@@ -449,6 +452,12 @@ class ShowcaseManager {
     const id = this._activeCtxId();
     if (this._isDefault(id)) return 'Все треки';
     return Store.getPlaylist(id)?.name || 'Плейлист';
+  }
+
+  _cleanupTransientUi() {
+    try { $('sc-search-sticky')?.remove(); } catch {}
+    try { this._menu?.remove(); } catch {}
+    this._menu = null;
   }
 
   /* ── Edit list render ── */
@@ -556,6 +565,8 @@ class ShowcaseManager {
 
   _switchCtx(id) {
     if (this._editMode) { W.NotificationSystem?.warning('Выйдите из режима редактирования'); return; }
+    this._cleanupTransientUi();
+    this._searchChecked.clear();
     Store.setActiveId(id);
     this.renderTab();
   }
@@ -580,9 +591,11 @@ class ShowcaseManager {
     if (inp) {
       if (inp._scInput) inp.removeEventListener('input', inp._scInput);
       inp._scInput = U.func.debounceFrame(async () => {
+        const tok = ++this._searchTok;
         this._searchQ = inp.value.trim();
         this._searchChecked.clear();
         if (clr) clr.style.display = this._searchQ ? '' : 'none';
+        if (tok !== this._searchTok) return;
         await this._renderNormalList(++this._renderTok);
       });
       inp.addEventListener('input', inp._scInput);
@@ -591,7 +604,14 @@ class ShowcaseManager {
     }
     if (clr) {
       if (clr._scClick) clr.removeEventListener('click', clr._scClick);
-      clr._scClick = () => { if (inp) inp.value = ''; this._searchQ = ''; this._searchChecked.clear(); clr.style.display = 'none'; this._renderNormalList(++this._renderTok); };
+      clr._scClick = () => {
+        if (inp) inp.value = '';
+        this._searchQ = '';
+        this._searchChecked.clear();
+        clr.style.display = 'none';
+        this._cleanupTransientUi();
+        this._renderNormalList(++this._renderTok);
+      };
       clr.addEventListener('click', clr._scClick);
     }
   }
@@ -619,6 +639,14 @@ class ShowcaseManager {
       'sc-search-clear-selection': () => {
         this._searchChecked.clear();
         $('sc-search-sticky')?.remove();
+        this._renderNormalList(++this._renderTok);
+      },
+      'sc-search-clear-query': () => {
+        const inp = $('sc-search');
+        if (inp) inp.value = '';
+        this._searchQ = '';
+        this._searchChecked.clear();
+        this._cleanupTransientUi();
         this._renderNormalList(++this._renderTok);
       },
       'sc-pl-all': () => this._switchCtx('__default__'),
@@ -674,6 +702,7 @@ class ShowcaseManager {
 
   /* ── Edit mode ── */
   _enterEdit() {
+    this._cleanupTransientUi();
     const id = this._activeCtxId();
     const ctx = this._isDefault(id) ? Store.getOrCreateDefault() : Store.getPlaylist(id);
     if (!ctx) return;
@@ -839,7 +868,11 @@ class ShowcaseManager {
     this._menu = bg;
     requestAnimationFrame(() => bg.classList.add('active'));
 
-    const cls = () => { bg.classList.remove('active'); setTimeout(() => bg.remove(), 200); this._menu = null; };
+    const cls = () => {
+      bg.classList.remove('active');
+      setTimeout(() => { try { bg.remove(); } catch {} }, 200);
+      this._menu = null;
+    };
     bg.querySelector('.sc-sheet-close').onclick = cls;
 
     bg.onclick = e => {
@@ -957,7 +990,9 @@ class ShowcaseManager {
       pl.hidden = [...hiddenSet];
       Store.savePlaylist(pl);
     }
-    this._searchQ = ''; this._searchChecked.clear();
+    this._searchQ = '';
+    this._searchChecked.clear();
+    this._cleanupTransientUi();
     W.NotificationSystem?.success(`Добавлено ${uids.length} треков`);
     this.renderTab();
   }
@@ -971,7 +1006,10 @@ class ShowcaseManager {
       const snap = { order: [...uids], hidden: [] };
       const pl = { id: newId, name, order: [...uids], hidden: [], sortMode: 'user', color: '', creationSnapshot: JSON.parse(JSON.stringify(snap)), createdAt: Date.now() };
       Store.savePlaylist(pl);
-      this._searchQ = ''; this._searchChecked.clear();
+      Store.savePlaylist(pl);
+      this._searchQ = '';
+      this._searchChecked.clear();
+      this._cleanupTransientUi();
       Store.setActiveId(newId);
       this.renderTab();
       W.NotificationSystem?.success(`Плейлист «${name}» создан`);
