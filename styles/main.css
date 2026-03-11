@@ -807,7 +807,26 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 
 .sc-pl-empty { opacity: .65; font-size: 13px; padding: 6px 2px; }
 
-.showcase-status-bar { display: flex; justify-content: space-between; font-size: 13px; color: #9db7dd; padding: 0 10px 10px; border-bottom: 1px solid var(--border-color); align-items: center; }
+.showcase-status-bar {
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  flex-wrap:wrap;
+  font-size:13px;
+  color:#9db7dd;
+  padding:0 10px 10px;
+  border-bottom:1px solid var(--border-color);
+  align-items:center
+}
+.showcase-status-bar > span:first-child{
+  flex:1 1 220px;
+  min-width:0;
+  white-space:normal;
+  line-height:1.35
+}
+.showcase-status-bar > span:last-child{
+  flex:0 0 auto
+}
 .showcase-group-header { padding: 16px 10px 8px; font-weight: 800; color: var(--secondary-color); font-size: 14px; letter-spacing: 1px; text-transform: uppercase; background: rgba(0,0,0,0.2); }
 
 /* Track Row */
@@ -901,10 +920,19 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 
 /* Showcase v3: edit row */
 .sc-edit-row.sc-checked { background: rgba(77,170,255,.07); }
+.sc-edit-row.sc-will-remove { opacity: .72; background: rgba(255,107,107,.06); }
+.sc-edit-row.sc-will-remove .track-title > div:first-child { text-decoration: line-through; text-decoration-thickness: 1px; }
 .sc-chk { width: 18px; height: 18px; accent-color: var(--secondary-color); cursor: pointer; flex-shrink: 0; margin-right: 6px; }
 .sc-eye-btn { all: unset; cursor: pointer; padding: 6px 8px; font-size: 17px; flex-shrink: 0; opacity: .65; }
 .sc-eye-btn:hover { opacity: 1; }
 .sc-edit-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; justify-content: center; }
+.sc-btn-disabled,
+.showcase-btn.sc-btn-reset:disabled {
+  opacity: .45 !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+  filter: grayscale(.35);
+}
 
 /* Showcase v3: search results */
 .sc-search-info { font-size: 13px; color: #9db7dd; padding: 6px 10px 12px; }
