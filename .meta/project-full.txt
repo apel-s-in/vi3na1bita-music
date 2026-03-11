@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-649a5237f60465445e8c638b82151a745ff12c2b.idx
-│   │       ├── pack-649a5237f60465445e8c638b82151a745ff12c2b.pack
-│   │       └── pack-649a5237f60465445e8c638b82151a745ff12c2b.rev
+│   │       ├── pack-e14a00cb16396adcb77b1b4962ae660e88cef7ec.idx
+│   │       ├── pack-e14a00cb16396adcb77b1b4962ae660e88cef7ec.pack
+│   │       └── pack-e14a00cb16396adcb77b1b4962ae660e88cef7ec.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -378,7 +378,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-11 18:45:27 UTC
+Сгенерировано: 2026-03-11 18:46:27 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -9628,6 +9628,24 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .sc-badge-hidden { background:rgba(255,152,0,0.2); color:#ffb74d; border: 1px solid rgba(255,152,0,0.4); }
 .sc-badge-missing { background:rgba(244,67,54,0.2); color:#ef9a9a; border: 1px solid rgba(244,67,54,0.4); }
 .showcase-track-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; line-height: 1.2; }
+
+/* Showcase v3: edit row */
+.sc-edit-row.sc-checked { background: rgba(77,170,255,.07); }
+.sc-chk { width: 18px; height: 18px; accent-color: var(--secondary-color); cursor: pointer; flex-shrink: 0; margin-right: 6px; }
+.sc-eye-btn { all: unset; cursor: pointer; padding: 6px 8px; font-size: 17px; flex-shrink: 0; opacity: .65; }
+.sc-eye-btn:hover { opacity: 1; }
+.sc-edit-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; justify-content: center; }
+
+/* Showcase v3: search results */
+.sc-search-info { font-size: 13px; color: #9db7dd; padding: 6px 10px 12px; }
+.sc-search-result { cursor: pointer; }
+.sc-search-result:hover { background: rgba(255,255,255,.04); }
+.sc-search-actions { display: flex; gap: 10px; padding: 12px 10px; border-top: 1px solid var(--border-color); }
+.sc-badge { font-size: 10px; padding: 2px 7px; border-radius: 999px; font-weight: 800; white-space: nowrap; }
+.sc-badge-active { background: rgba(76,175,80,.2); color: #81c784; }
+.sc-badge-hidden { background: rgba(255,152,0,.2); color: #ffb74d; }
+.sc-badge-missing { background: rgba(100,100,100,.2); color: #aaa; }
+.sc-sheet-close { position: absolute; top: 14px; right: 14px; all: unset; cursor: pointer; font-size: 22px; color: #888; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; }
 
 //=================================================
 // FILE: /ai-rules.txt
