@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c35ed29418bb41a56562c689b06f9738d9045cdb.idx
-│   │       ├── pack-c35ed29418bb41a56562c689b06f9738d9045cdb.pack
-│   │       └── pack-c35ed29418bb41a56562c689b06f9738d9045cdb.rev
+│   │       ├── pack-7fe95c76abe1a2266cd470830b74fa9151d09fc6.idx
+│   │       ├── pack-7fe95c76abe1a2266cd470830b74fa9151d09fc6.pack
+│   │       └── pack-7fe95c76abe1a2266cd470830b74fa9151d09fc6.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -378,7 +378,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-11 22:18:27 UTC
+Сгенерировано: 2026-03-11 22:24:08 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5452,19 +5452,11 @@ window.FavoritesManager = Favorites;
       return s;
     },
     isShowcaseContext: (k) => U.normalizeAlbumContextKey(k) === '__showcase__',
-    isBrowsingOtherAlbum: ()N.includes(qNorm)) score += 120;
-    if (aN.includes(qNorm)) score += 70;
-    toks.forEach((tok, i) => {
-      if (tN.includes(tok)) score += 40;
-      else if (aN.includes(tok)) score += 20;
-      else if (tokSets[i]?.has(uid)) score += 8;
-    });
-    return score > 0 ? { uid, score } : null;
-  }).filter(Boolean);
-
-  scored.sort((x, y) => y.score - x.score);
-  return scored.map(x => x.uid);
-}
+    isBrowsingOtherAlbum: () => {
+      const p = U.normalizeAlbumContextKey(W.AlbumsManager?.getPlayingAlbum?.());
+      const c = U.normalizeAlbumContextKey(W.AlbumsManager?.getCurrentAlbum?.());
+      return !!(p && c && p !== c);
+    },
     setBtnActive: (id, a) => D.getElementById(id)?.classList.toggle('active', !!a),
     setAriaDisabled: (el, d) => { if (el) { el.classList.toggle('disabled', !!d); el.setAttribute('aria-disabled', !!d); } },
     lsGet: (k, d) => localStorage.getItem(k) ?? d,
