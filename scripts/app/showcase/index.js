@@ -191,8 +191,8 @@ class ShowcaseManager {
     this._searchQ = '';
     this._searchChecked = new Set();
     this._renderTok = 0;       // race-condition guard
-    this._listenerBound = false;
     this._menu = null;
+    this._scrollMem = new Map();
   }
 
   /* ── Init ── */
@@ -297,25 +297,27 @@ class ShowcaseManager {
     const list = $('track-list');
     if (!list) return;
 
+    const prevId = list.dataset.scCtxId;
+    if (prevId) this._saveScroll(prevId);
+
     const tok = ++this._renderTok;
     const ui = Store.getUI();
     const activeId = this._activeCtxId();
     const ctx = this._getActiveCtx();
 
+    list.dataset.scCtxId = activeId;
     list.innerHTML = this._buildHeader(ctx, ui, activeId);
     this._bindCtrl(list);
     this._renderPls();
 
-    if (this._editMode) {
-      await this._renderEditList(tok);
-    } else {
-      await this._renderNormalList(tok);
-    }
+    if (this._editMode) await this._renderEditList(tok);
+    else await this._renderNormalList(tok);
 
     if (!this._editMode) {
       const lu = this._isDefault(activeId) ? lsGet('lastUid_default') : lsGet(`lastUid_${activeId}`);
       if (lu) this._hiTrack(lu);
     }
+    requestAnimationFrame(() => this._restoreScroll(activeId));
   }
 
   _buildHeader(ctx, ui, activeId) {
@@ -401,7 +403,6 @@ class ShowcaseManager {
 
   _renderSearchResults(c, { results, ctxOrder, ctxHidden }, ui) {
     const ctxSet = new Set(ctxOrder);
-    const activeId = this._activeCtxId();
     this._updStatus(results.length, true);
 
     let h = `<div class="sc-search-info">Найдено: ${results.length} треков</div>`;
@@ -411,7 +412,7 @@ class ShowcaseManager {
       const inCtx = ctxSet.has(u);
       const isHidden = ctxHidden?.has(u);
       const badge = inCtx
-        ? (isHidden ? '<span class="sc-badge sc-badge-hidden">скрыт</span>' : '<span class="sc-badge sc-badge-active">в плейлисте</span>')
+        ? (isHidden ? '<span class="sc-badge sc-badge-hidden">скрыт</span>' : '<span class="sc-badge sc-badge-active">уже есть</span>')
         : '<span class="sc-badge sc-badge-missing">добавить?</span>';
       const checkbox = !inCtx || isHidden
         ? `<input type="checkbox" class="sc-search-chk" data-uid="${u}" ${this._searchChecked.has(u) ? 'checked' : ''}>`
@@ -427,13 +428,21 @@ class ShowcaseManager {
       </div>`;
     });
 
-    if (this._searchChecked.size > 0) {
-      h += `<div class="sc-search-actions">
-        <button class="showcase-btn sc-search-add">➕ Добавить в «${this._ctxName()}»</button>
-        <button class="showcase-btn sc-search-create" style="background:#4daaff;color:#fff;">✨ Создать новый</button>
-      </div>`;
-    }
     c.innerHTML = h;
+
+    const old = $('sc-search-sticky');
+    if (old) old.remove();
+    if (this._searchChecked.size > 0) {
+      const bar = D.createElement('div');
+      bar.id = 'sc-search-sticky';
+      bar.className = 'showcase-sticky-bar';
+      bar.innerHTML = `
+        <span>Выбрано: ${this._searchChecked.size}</span>
+        <button class="showcase-btn sc-search-add">➕ Добавить</button>
+        <button class="showcase-btn sc-search-create" style="background:#4daaff;color:#fff;">✨ Создать</button>
+        <button class="showcase-btn" id="sc-search-clear-selection">✕ Снять</button>`;
+      D.body.appendChild(bar);
+    }
   }
 
   _ctxName() {
@@ -607,6 +616,11 @@ class ShowcaseManager {
       'sc-tg-placement': () => { const ui = Store.getUI(); ui.hiddenPlacement = ui.hiddenPlacement === 'inline' ? 'end' : 'inline'; Store.setUI(ui); this._renderNormalList(++this._renderTok); },
       'sc-search-add': () => this._addSearchCheckedToCtx(),
       'sc-search-create': () => this._createFromSearchChecked(),
+      'sc-search-clear-selection': () => {
+        this._searchChecked.clear();
+        $('sc-search-sticky')?.remove();
+        this._renderNormalList(++this._renderTok);
+      },
       'sc-pl-all': () => this._switchCtx('__default__'),
     };
     if (headerBtns[id]) { headerBtns[id](); return; }
@@ -888,6 +902,8 @@ class ShowcaseManager {
   }
 
   _bindDrag(c) {
+    if (c._scDragBound) return;
+    c._scDragBound = true;
     c.addEventListener('dragstart', e => {
       const t = e.target.closest('.sc-edit-row');
       if (t) { e.dataTransfer.setData('text/plain', t.dataset.uid); t.classList.add('is-dragging'); }
@@ -1070,10 +1086,10 @@ class ShowcaseManager {
     const ui = Store.getUI();
 
     s.innerHTML = `
-      <span>📋 ${cnt ?? all.length} · ⭐ ${favs} · 🔒 ${pins} · ☁ ${clouds}${this._editMode && D.querySelectorAll('.sc-checked').length ? `<span style="color:#ff9800"> · ✓ ${D.querySelectorAll('.sc-checked').length}</span>` : ''}</span>
+      <span>📋 ${cnt ?? all.length}${isSearch ? ' найдено' : ''} · ⭐ ${favs} · 🔒 ${pins} · ☁ ${clouds}${this._editMode && D.querySelectorAll('.sc-checked').length ? `<span style="color:#ff9800"> · ✓ ${D.querySelectorAll('.sc-checked').length}</span>` : ''}</span>
       <span style="display:flex;gap:12px;align-items:center">
         <span id="sc-tg-hidden" style="cursor:pointer;font-size:18px" title="Показывать скрытые">${ui.showHidden ? '👁' : '🙈'}</span>
-        <span id="sc-tg-numbers" style="cursor:pointer;font-size:18px;min-width:42px;display:inline-flex;align-items:center;justify-content:center" title="Нумерация">${ui.showNumbers ? '1,2,3' : ''}</span>
+        <span id="sc-tg-numbers" style="cursor:pointer;font-size:18px;min-width:42px;display:inline-flex;align-items:center;justify-content:center;opacity:${ui.showNumbers ? '1' : '.72'}" title="Нумерация">1,2,3</span>
         <span id="sc-tg-view" style="cursor:pointer;font-size:18px" title="Вид">${ui.viewMode === 'flat' ? '⊞' : '⊟'}</span>
         <span id="sc-tg-placement" style="cursor:pointer;font-size:14px" title="Скрытые в конце">${ui.hiddenPlacement === 'end' ? '↓скр' : '≡скр'}</span>
       </span>`;
@@ -1083,6 +1099,22 @@ class ShowcaseManager {
   _hiTrack(uid) {
     D.querySelectorAll('.showcase-track.current').forEach(e => e.classList.remove('current'));
     if (uid) D.querySelectorAll(`.showcase-track[data-uid="${CSS.escape(uid)}"]`).forEach(e => e.classList.add('current'));
+  }
+
+  _saveScroll(id) {
+    const el = $('track-list');
+    if (!el || !id) return;
+    const v = el.scrollTop || 0;
+    this._scrollMem.set(id, v);
+    lsSet(`scroll_${id}`, v);
+  }
+
+  _restoreScroll(id) {
+    const el = $('track-list');
+    if (!el || !id) return;
+    const v = this._scrollMem.get(id);
+    const saved = Number.isFinite(v) ? v : Number(lsGet(`scroll_${id}`, 0) || 0);
+    el.scrollTop = Math.max(0, saved);
   }
 
   /* ── Public API (used by AlbumsManager, app.js, PlayerUI) ── */
