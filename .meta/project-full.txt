@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1546a806a16dee45f49525f2f0dffa3fdb191dc9.idx
-│   │       ├── pack-1546a806a16dee45f49525f2f0dffa3fdb191dc9.pack
-│   │       └── pack-1546a806a16dee45f49525f2f0dffa3fdb191dc9.rev
+│   │       ├── pack-7cd5d464e4a0033143900312b365baa39192b701.idx
+│   │       ├── pack-7cd5d464e4a0033143900312b365baa39192b701.pack
+│   │       └── pack-7cd5d464e4a0033143900312b365baa39192b701.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -378,7 +378,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-11 18:41:18 UTC
+Сгенерировано: 2026-03-11 18:43:26 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2368,10 +2368,7 @@ class AlbumsManager {
         isDragging = false;
         touchTimer = setTimeout(() => {
           touchTimer = null;
-          const openShowcaseColorPicker = W.ShowcaseManager?.openColorPicker || W.ShowcaseManager?.opnCol;
-          if (typeof openShowcaseColorPicker === 'function') {
-            openShowcaseColorPicker.call(W.ShowcaseManager, null, k);
-          }
+          W.ShowcaseManager?.openColorPicker?.(null, k);
         }, 600);
       }, {passive: true});
       
@@ -2382,10 +2379,7 @@ class AlbumsManager {
         const k = e.target.closest('.album-icon')?.dataset.album;
         if (k && !k.startsWith('__')) {
           e.preventDefault();
-          const openShowcaseColorPicker = W.ShowcaseManager?.openColorPicker || W.ShowcaseManager?.opnCol;
-          if (typeof openShowcaseColorPicker === 'function') {
-            openShowcaseColorPicker.call(W.ShowcaseManager, null, k);
-          }
+          W.ShowcaseManager?.openColorPicker?.(null, k);
         }
       });
       
