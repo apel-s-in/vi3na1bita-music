@@ -284,8 +284,7 @@ class ShowcaseManager {
     // search
     if (this._searchQ) {
       await ensureLyricsIndexLoaded();
-      const allUids = W.TrackRegistry?.getAllUids?.() || [];
-      const found = searchUidsByQuery({ uids: allUids, query: this._searchQ });
+      const found = searchUidsByQuery({ query: this._searchQ });
       // mark which are in context and which aren't
       return { type: 'search', results: found, ctxOrder: order, ctxHidden: hidden };
     }
@@ -381,7 +380,6 @@ class ShowcaseManager {
       this._renderSearchResults(c, displayData, ui);
     } else {
       const { uids, hidden } = displayData;
-      this._updStatus(uids.length);
       let h = '', grp = null;
       uids.forEach((u, i) => {
         const t = buildTrackObj(u);
