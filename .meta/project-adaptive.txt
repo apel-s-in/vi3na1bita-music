@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-7cd5d464e4a0033143900312b365baa39192b701.idx
-│   │       ├── pack-7cd5d464e4a0033143900312b365baa39192b701.pack
-│   │       └── pack-7cd5d464e4a0033143900312b365baa39192b701.rev
+│   │       ├── pack-649a5237f60465445e8c638b82151a745ff12c2b.idx
+│   │       ├── pack-649a5237f60465445e8c638b82151a745ff12c2b.pack
+│   │       └── pack-649a5237f60465445e8c638b82151a745ff12c2b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -378,7 +378,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-11 18:43:26 UTC
+Сгенерировано: 2026-03-11 18:45:27 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2299,11 +2299,10 @@ export class StatsAggregator {
   };
 
   let _init = false;
-  W.app = {
-    checkShowcaseShare: () => {
-      const p = new URLSearchParams(W.location.search).get('playlist');
-      if (p && W.ShowcaseManager) { W.ShowcaseManager.handleSharedPlaylist(p); W.history.replaceState(null, '', W.location.pathname); }
-    },
+  checkShowcaseShare: () => {
+        const p = new URLSearchParams(W.location.search).get('playlist');
+        if (p && W.ShowcaseManager) { W.ShowcaseManager.handleSharedPlaylist(p); W.history.replaceState(null, '', W.location.pathname); }
+      },
     initialize: async () => {
       if (_init) return; _init = true;
       try {
