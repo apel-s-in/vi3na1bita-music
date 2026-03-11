@@ -634,6 +634,10 @@ class ShowcaseManager {
 
   _onRootClick(e) {
     const id = e.target.id || '';
+    const btn = e.target.closest('button, [id], [class]');
+    if (btn?.disabled) return;
+    const btnId = btn?.id || '';
+    const btnCls = btn?.classList || null;
 
     // header buttons
     const headerBtns = {
@@ -667,7 +671,14 @@ class ShowcaseManager {
       },
       'sc-pl-all': () => this._switchCtx('__default__'),
     };
-    if (headerBtns[id]) { headerBtns[id](); return; }
+
+    const directKey = headerBtns[id] ? id : (headerBtns[btnId] ? btnId : null);
+    if (directKey) { headerBtns[directKey](); return; }
+
+    const classKey = btnCls
+      ? Object.keys(headerBtns).find(k => btnCls.contains(k))
+      : null;
+    if (classKey) { headerBtns[classKey](); return; }
 
     // status bar toggles (rendered dynamically)
     const tgE = e.target.closest('#sc-tg-hidden'), tgN = e.target.closest('#sc-tg-numbers');
@@ -819,7 +830,7 @@ class ShowcaseManager {
   }
 
   _doExit() {
-    if (!this._draft?.isDirty()) { this._exitEditClean(); return; }
+    if (!this._draft || !this._draft.isDirty()) { this._exitEditClean(); return; }
     W.Modals?.confirm({ title: 'Выйти без сохранения?', textHtml: 'Изменения не будут сохранены.', confirmText: 'Выйти', cancelText: 'Отмена', onConfirm: () => this._exitEditClean() });
   }
 
@@ -1186,6 +1197,13 @@ class ShowcaseManager {
         <span id="sc-tg-view" style="cursor:pointer;font-size:18px" title="Вид">${ui.viewMode === 'flat' ? '⊞' : '⊟'}</span>
         <span id="sc-tg-placement" style="cursor:pointer;font-size:14px" title="Скрытые в конце">${ui.hiddenPlacement === 'end' ? '↓скр' : '≡скр'}</span>
       </span>`;
+  }
+
+  _hiTrack(uid) {
+    D.querySelectorAll('.showcase-track.current').forEach(el => el.classList.remove('current'));
+    const u = String(uid || '').trim();
+    if (!u) return;
+    D.querySelectorAll(`.showcase-track[data-uid="${CSS.escape(u)}"]`).forEach(el => el.classList.add('current'));
   }
 
   _saveScroll(id) {
