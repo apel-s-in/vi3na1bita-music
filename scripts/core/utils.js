@@ -193,19 +193,27 @@
     },
 
     isSpecialAlbumKey: (k) => String(k || '').startsWith('__'),
-    isShowcaseContext: (k) => k === '__showcase__' || String(k || '').startsWith('__showcase__:'),
-    isBrowsingOtherAlbum: () => {
-      const norm = (v) => {
-        const s = String(v || '').trim();
-        if (!s) return '';
-        if (s === '__showcase__' || s.startsWith('__showcase__:')) return '__showcase__';
-        if (s === '__favorites__' || s.startsWith('__favorites__:')) return '__favorites__';
-        return s;
-      };
-      const p = norm(W.AlbumsManager?.getPlayingAlbum?.());
-      const c = norm(W.AlbumsManager?.getCurrentAlbum?.());
-      return !!(p && c && p !== c);
+    normalizeAlbumContextKey: (k) => {
+      const s = String(k || '').trim();
+      if (!s) return '';
+      if (s === '__showcase__' || s.startsWith('__showcase__:')) return '__showcase__';
+      if (s === '__favorites__' || s.startsWith('__favorites__:')) return '__favorites__';
+      return s;
     },
+    isShowcaseContext: (k) => U.normalizeAlbumContextKey(k) === '__showcase__',
+    isBrowsingOtherAlbum: ()N.includes(qNorm)) score += 120;
+    if (aN.includes(qNorm)) score += 70;
+    toks.forEach((tok, i) => {
+      if (tN.includes(tok)) score += 40;
+      else if (aN.includes(tok)) score += 20;
+      else if (tokSets[i]?.has(uid)) score += 8;
+    });
+    return score > 0 ? { uid, score } : null;
+  }).filter(Boolean);
+
+  scored.sort((x, y) => y.score - x.score);
+  return scored.map(x => x.uid);
+}
     setBtnActive: (id, a) => D.getElementById(id)?.classList.toggle('active', !!a),
     setAriaDisabled: (el, d) => { if (el) { el.classList.toggle('disabled', !!d); el.setAttribute('aria-disabled', !!d); } },
     lsGet: (k, d) => localStorage.getItem(k) ?? d,
