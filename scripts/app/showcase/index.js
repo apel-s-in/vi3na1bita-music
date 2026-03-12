@@ -69,8 +69,12 @@ function normalizeCtxState(ctx, { isDefault = false, fallbackOrder = getCatalogO
     } : { order: [...order], hidden: [...hidden] } })
   };
 }
-function stateSig({ order = [], hidden = [] } = {}) {
-  return JSON.stringify({ order: [...order], hidden: [...hidden] });
+function stateSig({ order = [], hidden = [], checked = null } = {}) {
+  return JSON.stringify({
+    order: [...order],
+    hidden: [...hidden],
+    ...(checked ? { checked: [...checked] } : {})
+  });
 }
 function buildTrackObj(uid, coverFallback) {
   const t = uid2track(uid);
@@ -113,8 +117,9 @@ const Store = {
   makeDefaultBaseline() { return normalizeCtxState({ order: getCatalogOrder(), hidden: [], sortMode: 'user', hiddenPlacement: 'inline' }, { isDefault: true }); },
   getOrCreateDefault() {
     const ctx = normalizeCtxState(this.getDefault(), { isDefault: true, fallbackOrder: getCatalogOrder() });
-    this.setDefault(ctx.order.length ? ctx : this.makeDefaultBaseline());
-    return this.getDefault() ? normalizeCtxState(this.getDefault(), { isDefault: true, fallbackOrder: getCatalogOrder() }) : this.makeDefaultBaseline();
+    const out = ctx.order.length ? ctx : this.makeDefaultBaseline();
+    this.setDefault(out);
+    return out;
   }
 };
 
@@ -123,20 +128,36 @@ class Draft {
     this.contextId = id;
     this.isDefault = isDef(id);
     const src = this.isDefault ? Store.getOrCreateDefault() : Store.getPlaylist(id);
-    this.baseline = normalizeCtxState(src, { isDefault: this.isDefault, fallbackOrder: this.isDefault ? getCatalogOrder() : (src?.creationSnapshot?.order || src?.order || getCatalogOrder()) });
-    this.order = [...(this.baseline?.order || [])];
-    this.hidden = new Set(this.baseline?.hidden || []);
+    const baseSrc = this.isDefault
+      ? normalizeCtxState(src, { isDefault: true, fallbackOrder: getCatalogOrder() })
+      : normalizeCtxState(src?.creationSnapshot || { order: src?.order || [], hidden: src?.hidden || [] }, { isDefault: false, fallbackOrder: src?.creationSnapshot?.order || src?.order || getCatalogOrder() });
+    this.baseline = {
+      order: [...(baseSrc?.order || [])],
+      hidden: [...(baseSrc?.hidden || [])],
+      checked: this.isDefault ? [...(baseSrc?.order || []).filter(u => !(baseSrc?.hidden || []).includes(u))] : [...(baseSrc?.order || [])]
+    };
+    this.order = [...(src?.order || this.baseline.order || [])];
+    this.hidden = new Set(src?.hidden || this.baseline.hidden || []);
     this.checked = new Set(this.isDefault ? this.order.filter(u => !this.hidden.has(u)) : this.order);
   }
   markDirty() {}
   isDirty() {
-    const cur = {
-      order: [...this.order].filter(uid2track),
-      hidden: [...this.hidden].filter(uid2track)
-    };
-    if (!this.isDefault) cur.order = cur.order.filter(u => this.checked.has(u));
-    if (!this.isDefault) cur.hidden = cur.hidden.filter(u => this.checked.has(u));
-    return stateSig(cur) !== stateSig(this.baseline);
+    const curOrder = [...this.order].filter(uid2track);
+    const curHidden = [...this.hidden].filter(uid2track);
+    if (this.isDefault) {
+      return stateSig({
+        order: curOrder,
+        hidden: curHidden,
+        checked: curOrder.filter(u => !this.hidden.has(u))
+      }) !== stateSig(this.baseline);
+    }
+    const keptOrder = curOrder.filter(u => this.checked.has(u));
+    const keptHidden = curHidden.filter(u => this.checked.has(u));
+    return stateSig({
+      order: keptOrder,
+      hidden: keptHidden,
+      checked: keptOrder
+    }) !== stateSig(this.baseline);
   }
   toggleHidden(uid) {
     if (this.hidden.has(uid)) { this.hidden.delete(uid); this.checked.add(uid); }
@@ -150,7 +171,9 @@ class Draft {
   }
   setOrder(arr) { this.order = [...arr]; this.markDirty(); }
   applyReset() {
-    const b = this.isDefault ? Store.makeDefaultBaseline() : normalizeCtxState(this.baseline, { isDefault: false, fallbackOrder: this.baseline?.creationSnapshot?.order || this.baseline?.order || getCatalogOrder() });
+    const b = this.isDefault
+      ? Store.makeDefaultBaseline()
+      : { order: [...(this.baseline.order || [])], hidden: [...(this.baseline.hidden || [])] };
     this.order = [...(b.order || [])];
     this.hidden = new Set(b.hidden || []);
     this.checked = new Set(this.isDefault ? this.order.filter(u => !this.hidden.has(u)) : this.order);
@@ -576,13 +599,17 @@ class ShowcaseManager {
     const id = this._ctxId();
     if (isDef(id)) {
       const ctx = Store.getOrCreateDefault();
-      ctx.order = this._draft.order.filter(uid2track);
-      ctx.hidden = [...this._draft.hidden].filter(uid2track);
+      const order = this._draft.order.filter(uid2track);
+      const hidden = order.filter(u => !this._draft.checked.has(u) || this._draft.hidden.has(u));
+      ctx.order = order;
+      ctx.hidden = hidden;
       Store.setDefault(ctx);
     } else {
       const pl = Store.getPlaylist(id); if (!pl) return;
-      pl.order = this._draft.order.filter(u => this._draft.checked.has(u) && uid2track(u));
-      pl.hidden = [...this._draft.hidden].filter(u => this._draft.checked.has(u) && uid2track(u));
+      const order = this._draft.order.filter(u => this._draft.checked.has(u) && uid2track(u));
+      const hidden = [...this._draft.hidden].filter(u => this._draft.checked.has(u) && uid2track(u));
+      pl.order = order;
+      pl.hidden = hidden;
       Store.savePlaylist(pl);
     }
     this._leaveEdit();
@@ -594,7 +621,7 @@ class ShowcaseManager {
     if (!uids.length) return W.NotificationSystem?.warning('Отметьте треки чекбоксами');
     this._askPlaylistName(name => {
       const id = Date.now().toString(36), snap = { order: [...uids], hidden: [] };
-      Store.savePlaylist({ id, name, order: [...uids], hidden: [], sortMode: 'user', color: '', creationSnapshot: deep(snap), createdAt: Date.now() });
+      Store.savePlaylist(normalizeCtxState({ id, name, order: [...uids], hidden: [], sortMode: 'user', color: '', creationSnapshot: deep(snap), createdAt: Date.now() }, { isDefault: false, fallbackOrder: uids }));
       this._draft = null; this._editMode = false; Store.setActiveId(id); this.renderTab();
       W.NotificationSystem?.success(`Плейлист «${name}» создан`);
     });
@@ -774,7 +801,7 @@ class ShowcaseManager {
     if (!uids.length) return;
     this._askPlaylistName(name => {
       const id = Date.now().toString(36), snap = { order: [...uids], hidden: [] };
-      Store.savePlaylist({ id, name, order: [...uids], hidden: [], sortMode: 'user', color: '', creationSnapshot: deep(snap), createdAt: Date.now() });
+      Store.savePlaylist(normalizeCtxState({ id, name, order: [...uids], hidden: [], sortMode: 'user', color: '', creationSnapshot: deep(snap), createdAt: Date.now() }, { isDefault: false, fallbackOrder: uids }));
       this._searchQ = ''; this._searchChecked.clear(); this._cleanupUi(); Store.setActiveId(id); this.renderTab();
       W.NotificationSystem?.success(`Плейлист «${name}» создан`);
     });
