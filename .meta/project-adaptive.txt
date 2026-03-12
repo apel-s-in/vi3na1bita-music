@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-beec08ed52d37cb82f80977b841ed124b22c7ff2.idx
-│   │       ├── pack-beec08ed52d37cb82f80977b841ed124b22c7ff2.pack
-│   │       └── pack-beec08ed52d37cb82f80977b841ed124b22c7ff2.rev
+│   │       ├── pack-4e95e3e0f3a04dabb4abcb9f08f3ade2986e414f.idx
+│   │       ├── pack-4e95e3e0f3a04dabb4abcb9f08f3ade2986e414f.pack
+│   │       └── pack-4e95e3e0f3a04dabb4abcb9f08f3ade2986e414f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -378,7 +378,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-12 09:08:54 UTC
+Сгенерировано: 2026-03-12 09:10:48 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -9206,6 +9206,19 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .showcase-track-menu-btn { all: unset; cursor: pointer; padding: 8px 12px; color: #888; font-weight: 900; font-size: 16px; margin-left: 4px; letter-spacing: 1px; }
 .showcase-track-menu-btn:hover { color: #fff; }
 .showcase-checkbox { width: 20px; height: 20px; border: 2px solid #666; border-radius: 4px; margin-right: 10px; display: flex; align-items: center; justify-content: center; }
+.showcase-track.selected,
+.track.selected,
+.sc-edit-row.selected,
+.sc-search-result.selected{
+  background:rgba(76,175,80,.12)!important;
+  box-shadow:inset 0 0 0 1px rgba(76,175,80,.28);
+}
+.showcase-track.selected .track-title,
+.track.selected .track-title,
+.sc-edit-row.selected .track-title,
+.sc-search-result.selected .track-title{
+  color:#dff7e5;
+}
 .showcase-track.selected .showcase-checkbox { background: var(--secondary-color); border-color: var(--secondary-color); }
 .showcase-track.selected .showcase-checkbox::after { content: '✓'; color: #fff; font-size: 14px; font-weight: bold; }
 
