@@ -17,6 +17,15 @@ const isDef = id => id === '__default__';
 const uidEsc = u => CSS.escape(String(u || ''));
 const randShuffle = arr => { for (let i = arr.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
 
+function getAlbumReleaseOrderMap() {
+  const map = new Map();
+  const idx = W.albumsIndex || [];
+  [...idx].reverse().forEach((a, i) => {
+    const k = String(a?.key || '');
+    if (k && !k.startsWith('__')) map.set(k, i);
+  });
+  return map;
+}
 function getCatalogOrder() {
   const idx = W.albumsIndex || [], out = [];
   [...idx].reverse().forEach(a => {
@@ -24,6 +33,44 @@ function getCatalogOrder() {
     (W.TrackRegistry?.getTracksForAlbum?.(a.key) || []).forEach(t => t?.uid && out.push(t.uid));
   });
   return out;
+}
+function normalizeOrder(order, fallbackOrder) {
+  const fb = Array.isArray(fallbackOrder) ? fallbackOrder.filter(uid2track) : [];
+  const seen = new Set(), out = [];
+  (Array.isArray(order) ? order : []).forEach(u => {
+    const uid = String(u || '').trim();
+    if (uid && uid2track(uid) && !seen.has(uid)) { seen.add(uid); out.push(uid); }
+  });
+  fb.forEach(u => { if (!seen.has(u)) { seen.add(u); out.push(u); } });
+  return out;
+}
+function normalizeHidden(hidden, order) {
+  const allowed = new Set(Array.isArray(order) ? order : []);
+  const out = [];
+  (Array.isArray(hidden) ? hidden : []).forEach(u => {
+    const uid = String(u || '').trim();
+    if (uid && allowed.has(uid) && uid2track(uid) && !out.includes(uid)) out.push(uid);
+  });
+  return out;
+}
+function normalizeCtxState(ctx, { isDefault = false, fallbackOrder = getCatalogOrder() } = {}) {
+  const base = ctx && typeof ctx === 'object' ? deep(ctx) : {};
+  const order = normalizeOrder(base.order, fallbackOrder);
+  const hidden = normalizeHidden(base.hidden, order);
+  return {
+    ...base,
+    order,
+    hidden,
+    sortMode: String(base.sortMode || 'user'),
+    hiddenPlacement: String(base.hiddenPlacement || 'inline'),
+    ...(isDefault ? {} : { creationSnapshot: base.creationSnapshot && typeof base.creationSnapshot === 'object' ? {
+      order: normalizeOrder(base.creationSnapshot.order, order),
+      hidden: normalizeHidden(base.creationSnapshot.hidden, normalizeOrder(base.creationSnapshot.order, order))
+    } : { order: [...order], hidden: [...hidden] } })
+  };
+}
+function stateSig({ order = [], hidden = [] } = {}) {
+  return JSON.stringify({ order: [...order], hidden: [...hidden] });
 }
 function buildTrackObj(uid, coverFallback) {
   const t = uid2track(uid);
@@ -42,13 +89,18 @@ function buildTrackObj(uid, coverFallback) {
 
 const Store = {
   getDefault() { return jGet('default', null); },
-  setDefault(v) { jSet('default', v); },
-  getPlaylists() { return jGet('playlists', []); },
-  setPlaylists(v) { jSet('playlists', v); },
+  setDefault(v) { jSet('default', normalizeCtxState(v, { isDefault: true })); },
+  getPlaylists() {
+    return (jGet('playlists', []) || [])
+      .filter(p => p && typeof p === 'object' && p.id)
+      .map(p => normalizeCtxState(p, { isDefault: false, fallbackOrder: Array.isArray(p.order) ? p.order : getCatalogOrder() }));
+  },
+  setPlaylists(v) { jSet('playlists', (Array.isArray(v) ? v : []).map(p => normalizeCtxState(p, { isDefault: false, fallbackOrder: Array.isArray(p?.order) ? p.order : getCatalogOrder() }))); },
   getPlaylist(id) { return this.getPlaylists().find(p => p.id === id) || null; },
   savePlaylist(pl) {
-    const arr = this.getPlaylists(), i = arr.findIndex(x => x.id === pl.id);
-    if (i >= 0) arr[i] = pl; else arr.push(pl);
+    const norm = normalizeCtxState(pl, { isDefault: false, fallbackOrder: Array.isArray(pl?.order) ? pl.order : getCatalogOrder() });
+    const arr = this.getPlaylists(), i = arr.findIndex(x => x.id === norm.id);
+    if (i >= 0) arr[i] = norm; else arr.push(norm);
     this.setPlaylists(arr);
   },
   deletePlaylist(id) { this.setPlaylists(this.getPlaylists().filter(p => p.id !== id)); },
@@ -58,21 +110,11 @@ const Store = {
   setUI(v) { jSet('ui', v); },
   getAlbumColors() { return jGet('albumColors', {}); },
   setAlbumColors(v) { jSet('albumColors', v); },
-  makeDefaultBaseline() { return { order: getCatalogOrder(), hidden: [], sortMode: 'user', hiddenPlacement: 'inline' }; },
+  makeDefaultBaseline() { return normalizeCtxState({ order: getCatalogOrder(), hidden: [], sortMode: 'user', hiddenPlacement: 'inline' }, { isDefault: true }); },
   getOrCreateDefault() {
-    let ctx = this.getDefault();
-    const cat = getCatalogOrder(), catSet = new Set(cat);
-    if (!ctx) {
-      ctx = this.makeDefaultBaseline();
-    } else {
-      const ex = new Set(ctx.order || []);
-      cat.forEach(u => !ex.has(u) && ctx.order.push(u));
-      ctx.order = (ctx.order || []).filter(u => catSet.has(u));
-      ctx.hidden = (ctx.hidden || []).filter(u => catSet.has(u));
-      ctx.sortMode = ctx.sortMode || 'user';
-    }
-    this.setDefault(ctx);
-    return ctx;
+    const ctx = normalizeCtxState(this.getDefault(), { isDefault: true, fallbackOrder: getCatalogOrder() });
+    this.setDefault(ctx.order.length ? ctx : this.makeDefaultBaseline());
+    return this.getDefault() ? normalizeCtxState(this.getDefault(), { isDefault: true, fallbackOrder: getCatalogOrder() }) : this.makeDefaultBaseline();
   }
 };
 
@@ -81,14 +123,21 @@ class Draft {
     this.contextId = id;
     this.isDefault = isDef(id);
     const src = this.isDefault ? Store.getOrCreateDefault() : Store.getPlaylist(id);
-    this.baseline = deep(src);
-    this.order = [...(src?.order || [])];
-    this.hidden = new Set(src?.hidden || []);
+    this.baseline = normalizeCtxState(src, { isDefault: this.isDefault, fallbackOrder: this.isDefault ? getCatalogOrder() : (src?.creationSnapshot?.order || src?.order || getCatalogOrder()) });
+    this.order = [...(this.baseline?.order || [])];
+    this.hidden = new Set(this.baseline?.hidden || []);
     this.checked = new Set(this.isDefault ? this.order.filter(u => !this.hidden.has(u)) : this.order);
-    this.dirty = false;
   }
-  markDirty() { this.dirty = true; }
-  isDirty() { return !!this.dirty; }
+  markDirty() {}
+  isDirty() {
+    const cur = {
+      order: [...this.order].filter(uid2track),
+      hidden: [...this.hidden].filter(uid2track)
+    };
+    if (!this.isDefault) cur.order = cur.order.filter(u => this.checked.has(u));
+    if (!this.isDefault) cur.hidden = cur.hidden.filter(u => this.checked.has(u));
+    return stateSig(cur) !== stateSig(this.baseline);
+  }
   toggleHidden(uid) {
     if (this.hidden.has(uid)) { this.hidden.delete(uid); this.checked.add(uid); }
     else { this.hidden.add(uid); this.checked.delete(uid); }
@@ -101,11 +150,10 @@ class Draft {
   }
   setOrder(arr) { this.order = [...arr]; this.markDirty(); }
   applyReset() {
-    const b = this.isDefault ? Store.makeDefaultBaseline() : this.baseline;
+    const b = this.isDefault ? Store.makeDefaultBaseline() : normalizeCtxState(this.baseline, { isDefault: false, fallbackOrder: this.baseline?.creationSnapshot?.order || this.baseline?.order || getCatalogOrder() });
     this.order = [...(b.order || [])];
     this.hidden = new Set(b.hidden || []);
     this.checked = new Set(this.isDefault ? this.order.filter(u => !this.hidden.has(u)) : this.order);
-    this.dirty = false;
   }
   getEditList() {
     if (!this.isDefault) return [...this.order];
@@ -198,11 +246,13 @@ class ShowcaseManager {
         tracks.sort(f);
       } catch {}
     } else {
+      const relMap = getAlbumReleaseOrderMap();
+      const relOrd = (k) => relMap.get(String(k || '')) ?? 9999;
       const f = {
         'name-asc': (a, b) => a.title.localeCompare(b.title),
         'name-desc': (a, b) => b.title.localeCompare(a.title),
-        'album-asc': (a, b) => String(a.sourceAlbum).localeCompare(String(b.sourceAlbum)),
-        'album-desc': (a, b) => String(b.sourceAlbum).localeCompare(String(a.sourceAlbum)),
+        'album-asc': (a, b) => relOrd(b.sourceAlbum) - relOrd(a.sourceAlbum) || a.title.localeCompare(b.title),
+        'album-desc': (a, b) => relOrd(a.sourceAlbum) - relOrd(b.sourceAlbum) || a.title.localeCompare(b.title),
         'favorites-first': (a, b) => (W.playerCore?.isFavorite?.(b.uid) ? 1 : 0) - (W.playerCore?.isFavorite?.(a.uid) ? 1 : 0)
       }[sm];
       f && tracks.sort(f);
@@ -772,7 +822,7 @@ class ShowcaseManager {
         confirmText: 'Добавить', cancelText: 'Отмена',
         onConfirm: () => {
           const id = Date.now().toString(36), snap = { order: [...uids], hidden: [] };
-          Store.savePlaylist({ id, name: `${data.n} (Присланный)`, order: [...uids], hidden: [], sortMode: 'user', color: '', creationSnapshot: deep(snap), createdAt: Date.now() });
+          Store.savePlaylist(normalizeCtxState({ id, name: `${data.n} (Присланный)`, order: [...uids], hidden: [], sortMode: 'user', color: '', creationSnapshot: deep(snap), createdAt: Date.now() }, { isDefault: false, fallbackOrder: uids }));
           W.NotificationSystem?.success('Плейлист добавлен');
           this.renderTab();
         }
