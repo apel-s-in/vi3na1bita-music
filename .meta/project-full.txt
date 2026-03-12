@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-440dd4279c14f0dded868784ab8761f28ebf9fa9.idx
-│   │       ├── pack-440dd4279c14f0dded868784ab8761f28ebf9fa9.pack
-│   │       └── pack-440dd4279c14f0dded868784ab8761f28ebf9fa9.rev
+│   │       ├── pack-971e12d9ac808772b973159796b61742f4122298.idx
+│   │       ├── pack-971e12d9ac808772b973159796b61742f4122298.pack
+│   │       └── pack-971e12d9ac808772b973159796b61742f4122298.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -378,7 +378,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-12 07:26:21 UTC
+Сгенерировано: 2026-03-12 07:48:18 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3453,16 +3453,21 @@ const deep = v => JSON.parse(JSON.stringify(v));
 const uidEsc = u => CSS.escape(String(u || ''));
 const randShuffle = a => { for(let i=a.length-1; i>0; i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
 
-const getCat = () => (W.albumsIndex||[]).filter(a=>!a.key.startsWith('__')).flatMap(a=>(W.TrackRegistry?.getTracksForAlbum?.(a.key)||[]).map(t=>t.uid).filter(Boolean));
+const getCat = () => (W.albumsIndex || []).filter(a => !String(a?.key || '').startsWith('__')).flatMap(a => (W.TrackRegistry?.getTracksForAlbum?.(a.key) || []).map(t => t?.uid).filter(Boolean));
 
-const normCtx = (c, isDef, fbOrd = getCat()) => {
+const normSnap = (c, fbOrd = getCat()) => {
   c = (c && typeof c === 'object') ? deep(c) : {};
-  const ord = [], hid = [], oS = new Set(), fS = new Set((c.order || []).filter(trk));
+  const ord = [], hid = [], oS = new Set();
   (c.order || []).forEach(u => trk(u) && !oS.has(u) && (oS.add(u), ord.push(u)));
   fbOrd.forEach(u => trk(u) && !oS.has(u) && (oS.add(u), ord.push(u)));
   (c.hidden || []).forEach(u => trk(u) && oS.has(u) && !hid.includes(u) && hid.push(u));
-  const res = { ...c, order: ord, hidden: hid, sortMode: c.sortMode || 'user', hiddenPlacement: c.hiddenPlacement || 'inline' };
-  if (!isDef) res.creationSnapshot = c.creationSnapshot ? normCtx(c.creationSnapshot, false, ord) : { order: [...ord], hidden: [...hid] };
+  return { order: ord, hidden: hid };
+};
+const normCtx = (c, isDef, fbOrd = getCat()) => {
+  c = (c && typeof c === 'object') ? deep(c) : {};
+  const { order, hidden } = normSnap(c, fbOrd);
+  const res = { ...c, order, hidden, sortMode: c.sortMode || 'user', hiddenPlacement: c.hiddenPlacement || 'inline' };
+  if (!isDef) res.creationSnapshot = c.creationSnapshot ? normSnap(c.creationSnapshot, c.creationSnapshot.order || order) : { order: [...order], hidden: [...hidden] };
   return res;
 };
 
@@ -3476,14 +3481,19 @@ const bldTrk = u => {
 
 const Store = {
   pl: () => (jGet('playlists', []) || []).filter(p => p?.id).map(p => normCtx(p, false, p.order || getCat())),
-  setPl: v => jSet('playlists', v.map(p => normCtx(p, false, p.order || getCat()))),
+  setPl: v => jSet('playlists', (Array.isArray(v) ? v : []).map(p => normCtx(p, false, p?.order || getCat()))),
   get: id => Store.pl().find(p => p.id === id),
-  save: p => { const a = Store.pl(), i = a.findIndex(x => x.id === p.id); ~i ? a[i]=p : a.push(p); Store.setPl(a); },
+  save: p => { const a = Store.pl(), i = a.findIndex(x => x.id === p.id); ~i ? a[i] = p : a.push(p); Store.setPl(a); },
   del: id => Store.setPl(Store.pl().filter(p => p.id !== id)),
   act: () => jGet('activeId', '__default__'), setAct: id => jSet('activeId', id),
   ui: () => jGet('ui', { viewMode:'flat', showNumbers:false, showHidden:false, hiddenPlacement:'inline' }), setUi: v => jSet('ui', v),
   cols: () => jGet('albumColors', {}), setCols: v => jSet('albumColors', v),
-  def: () => normCtx(jGet('default'), true, getCat()), setDef: v => jSet('default', normCtx(v, true))
+  def: () => {
+    const d = normCtx(jGet('default'), true, getCat());
+    if (!jGet('default')) jSet('default', d);
+    return d;
+  },
+  setDef: v => jSet('default', normCtx(v, true))
 };
 
 class Draft {
@@ -3729,7 +3739,15 @@ class ShowcaseManager {
     bg.onclick = e => {
       const b = e.target.id; if (e.target === bg || b === 'bm-cx') return close(); if (!b) return; close();
       const acts = {
-        'bm-play': () => this._playCtx(uid),
+        'bm-play': () => {
+          if (!fromSrh) return this._playCtx(uid);
+          const t = bldTrk(uid); if (!t) return;
+          const key = `__showcase__:search:${this._ctxId()}`;
+          W.AlbumsManager?.setPlayingAlbum?.(key);
+          W.playerCore?.setPlaylist?.([t], 0, null, { preservePosition: false });
+          W.playerCore?.play?.(0);
+          W.PlayerUI?.ensurePlayerBlock?.(0, { userInitiated: true });
+        },
         'bm-pl': () => setTimeout(() => { const pls=Store.pl(); if(!pls.length)return W.NotificationSystem?.warning('Сначала создайте плейлист'); const m=W.Modals?.open({title:'Добавить в плейлист',bodyHtml:`<div style="display:flex;flex-direction:column;gap:10px">${pls.map(p=>`<button class="showcase-btn" data-pid="${p.id}">${esc(p.name)}</button>`).join('')}</div>`}); if(!m)return; m.onclick=e=>{ const b=e.target.closest('[data-pid]'); if(!b)return; const p=Store.get(b.dataset.pid); if(!p)return; const s=new Set(p.order||[]); if(!s.has(uid)){p.order.push(uid); Store.save(p); W.NotificationSystem?.success('Добавлено');} m.remove(); }; }, 180),
         'bm-rm': () => { const p = Store.get(id); if (p) { p.order = p.order.filter(x=>x!==uid); p.hidden = (p.hidden||[]).filter(x=>x!==uid); Store.save(p); this.renderTab(); } },
         'bm-eye': () => this._tgHid(uid, id),
