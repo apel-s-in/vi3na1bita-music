@@ -233,11 +233,11 @@ class ShowcaseManager {
     const rPl = t.closest('.sc-pl-row'); if (rPl?.dataset.pid && !act) return this._swCtx(rPl.dataset.pid);
 
       const clActs = {
-        'sc-btn-edit': () => this._editM(true), 'sc-btn-save': () => this._saveEdit(), 'sc-btn-create': () => this._crtEdit(), 'sc-btn-reset': () => this._rstEdit(), 'sc-btn-exit': () => this._exitEdit(),
+        'sc-btn-edit': () => this._enterEdit(), 'sc-btn-save': () => this._saveEdit(), 'sc-btn-create': () => this._createPl(this._mkFromEdit(), true), 'sc-btn-reset': () => this._rstEdit(), 'sc-btn-exit': () => this._exitEdit(),
         'sc-btn-master-reset': () => W.Modals?.confirm({ title:'Сбросить «Все треки»?', textHtml:'Порядок вернётся к заводскому, все скрытые треки станут видимыми.', confirmText:'Сбросить', cancelText:'Отмена', onConfirm:() => { Store.setDef(normCtx({order:getCat(), hidden:[], sortMode:'user', hiddenPlacement:'inline'}, true)); this.renderTab(); } }),
         'sc-btn-playall': () => this._playCtx(), 'sc-btn-shuffle': () => this._playCtx(null, true), 'sc-btn-sort': () => this._opnSort(),
         'sc-search-add': () => { const u=[...this._sChk].filter(trk); if(!u.length)return; const c=this._ctx(); if(!c)return; const oS=new Set(c.order||[]), hS=new Set(c.hidden||[]); u.forEach(x=>{ if(!oS.has(x)){ c.order.push(x); oS.add(x); } hS.delete(x); }); c.hidden=[...hS]; isDef(this._ctxId()) ? Store.setDef(c) : Store.save(c); this._sQ=''; this._sChk.clear(); this._cleanupUi(); this.renderTab(); W.NotificationSystem?.success(`Добавлено ${u.length} треков`); },
-        'sc-search-create': () => { const u=[...this._sChk].filter(trk); if(!u.length)return; this._askPl(n=>{ const id=Date.now().toString(36); Store.save(mkPl({ id, name:n, order:[...u] })); this._sQ=''; this._sChk.clear(); this._cleanupUi(); Store.setAct(id); this.renderTab(); W.NotificationSystem?.success(`Плейлист «${n}» создан`); }); }
+        'sc-search-create': () => this._createPl([...this._sChk].filter(trk)),
       };
       for (const k in clActs) if (btn.classList?.contains(k)) return clActs[k]();
 
@@ -260,11 +260,12 @@ class ShowcaseManager {
   }
 
   _swCtx(id) { if (this._edit) return W.NotificationSystem?.warning('Выйдите из режима редактирования'); this._cleanupUi(); this._sChk.clear(); Store.setAct(id); this.renderTab(); }
-  _editM(mode) { if (mode) { const c=this._ctx(); if(!c)return; this._drf=new Draft(this._ctxId()); this._edit=true; } else { this._drf=null; this._edit=false; } this.renderTab(); }
-  _saveEdit() { if (!this._drf) return; const id = this._ctxId(), ord = this._drf.ord.filter(trk), hid = [...this._drf.hid].filter(trk); if (isDef(id)) { const c = Store.def(); c.order = ord; c.hidden = ord.filter(u => !this._drf.chk.has(u) || this._drf.hid.has(u)); Store.setDef(c); } else { const c = Store.get(id); if(!c) return; c.order = ord.filter(u=>this._drf.chk.has(u)); c.hidden = hid.filter(u=>this._drf.chk.has(u)); Store.save(c); } this._editM(false); W.NotificationSystem?.success('Сохранено'); }
-  _crtEdit() { if (!this._drf) return; const u = this._drf.ord.filter(x => this._drf.chk.has(x) && !this._drf.hid.has(x) && trk(x)); if (!u.length) return W.NotificationSystem?.warning('Отметьте треки чекбоксами'); this._askPl(n => { const id=Date.now().toString(36); Store.save(mkPl({ id, name:n, order:[...u] })); this._editM(false); Store.setAct(id); this.renderTab(); W.NotificationSystem?.success(`Плейлист «${n}» создан`); }); }
+  _enterEdit() { if (this._ctx()) { this._drf = new Draft(this._ctxId()); this._edit = true; this.renderTab(); } }
+  _leaveEdit() { this._drf = null; this._edit = false; this.renderTab(); }
+  _saveEdit() { if (!this._drf) return; const id = this._ctxId(), ord = this._drf.ord.filter(trk), hid = [...this._drf.hid].filter(trk); if (isDef(id)) { const c = Store.def(); c.order = ord; c.hidden = ord.filter(u => !this._drf.chk.has(u) || this._drf.hid.has(u)); Store.setDef(c); } else { const c = Store.get(id); if(!c) return; c.order = ord.filter(u=>this._drf.chk.has(u)); c.hidden = hid.filter(u=>this._drf.chk.has(u)); Store.save(c); } this._leaveEdit(); W.NotificationSystem?.success('Сохранено'); }
+  _mkFromEdit() { return this._drf?.ord.filter(u => this._drf.chk.has(u) && !this._drf.hid.has(u) && trk(u)) || []; }
   _rstEdit() { if(this._drf?.isDirty()) W.Modals?.confirm({ title:'Сброс', textHtml:this._drf.isDef ? 'Список вернётся к заводскому: все треки, порядок по альбомам. Продолжить?' : 'Плейлист вернётся к состоянию при создании. Продолжить?', confirmText:'Сбросить', cancelText:'Отмена', onConfirm:()=>{ this._drf.reset(); this._renderEdit($('sc-tracks-container'), this._drf.getEdit()); } }); }
-  _exitEdit() { this._drf?.isDirty() ? W.Modals?.confirm({ title:'Выйти без сохранения?', textHtml:'Изменения не будут сохранены.', confirmText:'Выйти', cancelText:'Отмена', onConfirm:()=>this._editM(false) }) : this._editM(false); }
+  _exitEdit() { this._drf?.isDirty() ? W.Modals?.confirm({ title:'Выйти без сохранения?', textHtml:'Изменения не будут сохранены.', confirmText:'Выйти', cancelText:'Отмена', onConfirm:()=>this._leaveEdit() }) : this._leaveEdit(); }
 
   _bindDrag(c) {
     if (c._scDrag) return; c._scDrag = 1;
@@ -327,11 +328,16 @@ class ShowcaseManager {
     };
   }
 
-  _askPl(cb) {
-    const m = W.Modals?.open({ title:'Новый плейлист', bodyHtml:`<input type="text" id="pl-name-inp" value="Мой плейлист ${Store.pl().length + 1}" style="width:100%;padding:10px;border-radius:8px;background:rgba(255,255,255,.1);color:#fff;border:1px solid #666;margin-bottom:15px"><button class="showcase-btn" id="pl-name-save">Создать</button>` });
-    if(!m)return; setTimeout(()=>m.querySelector('#pl-name-inp')?.select(),50);
-    m.querySelector('#pl-name-save').onclick = () => { const v=m.querySelector('#pl-name-inp')?.value.trim(); v&&(m.remove(),cb(v)); };
+  _promptName({ title, value, btnText, onSubmit }) {
+    const m = W.Modals?.open({ title, bodyHtml:`<input type="text" id="sc-name-inp" value="${esc(value)}" style="width:100%;padding:10px;border-radius:8px;background:rgba(255,255,255,.1);color:#fff;border:1px solid #666;margin-bottom:15px"><button class="showcase-btn" id="sc-name-save">${btnText}</button>` });
+    if(!m)return; setTimeout(()=>m.querySelector('#sc-name-inp')?.select(),50);
+    m.querySelector('#sc-name-save').onclick = () => { const v=m.querySelector('#sc-name-inp')?.value.trim(); if(v){ m.remove(); onSubmit(v); } };
   }
+
+  _rnmPl(id) {
+    const p = Store.get(id); if(!p)return;
+    this._promptName({ title:'Переименовать', value:p.name, btnText:'Сохранить', onSubmit:v => { p.name=v; Store.save(p); this._renderPlaylists(); } });
+  }}
 
   _rnmPl(id) {
     const p = Store.get(id); if(!p)return;
@@ -345,11 +351,17 @@ class ShowcaseManager {
     navigator.share ? navigator.share({title:p.name, url:u}).catch(()=>{}) : navigator.clipboard.writeText(u).then(()=>W.NotificationSystem?.success('Ссылка скопирована!'));
   }
 
+  _createPl(uids, fromEdit = false, name = '') {
+    const u = (uids || []).filter(trk); if(!u.length) return W.NotificationSystem?.warning('Отметьте треки чекбоксами');
+    const done = n => { const id=Date.now().toString(36); Store.save(mkPl({ id, name:n, order:[...u] })); if(fromEdit) this._leaveEdit(); this._sQ=''; this._sChk.clear(); this._cleanupUi(); Store.setAct(id); this.renderTab(); W.NotificationSystem?.success(`Плейлист «${n}» создан`); };
+    return name ? done(name) : this._promptName({ title:'Новый плейлист', value:`Мой плейлист ${Store.pl().length + 1}`, btnText:'Создать', onSubmit:done });
+  }
+
   _handleShr(b64) {
     try {
       const d = JSON.parse(decodeURIComponent(escape(atob(String(b64).trim())))); if (!d?.n || !Array.isArray(d?.u)) throw 1;
       const u = d.u.filter(trk), m = d.u.length - u.length;
-      W.Modals?.confirm({ title:'🎵 Вам прислан плейлист', textHtml:`<b>${esc(d.n)}</b><br><br>Доступно треков: ${u.length} из ${d.u.length}.${m>0?'<br><span style="color:#ff9800">Часть треков недоступна.</span>':''}`, confirmText:'Добавить', cancelText:'Отмена', onConfirm:()=>{ const id=Date.now().toString(36); Store.save(mkPl({ id, name:`${d.n} (Присланный)`, order:[...u] })); W.NotificationSystem?.success('Плейлист добавлен'); this.renderTab(); } });
+      W.Modals?.confirm({ title:'🎵 Вам прислан плейлист', textHtml:`<b>${esc(d.n)}</b><br><br>Доступно треков: ${u.length} из ${d.u.length}.${m>0?'<br><span style="color:#ff9800">Часть треков недоступна.</span>':''}`, confirmText:'Добавить', cancelText:'Отмена', onConfirm:()=>this._createPl(u, false, `${d.n} (Присланный)`) });
     } catch { W.NotificationSystem?.error('Ошибка чтения ссылки'); }
   }
 
