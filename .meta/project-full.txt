@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-dd1c093d648a8da21d60403b500f1da380a3f907.idx
-│   │       ├── pack-dd1c093d648a8da21d60403b500f1da380a3f907.pack
-│   │       └── pack-dd1c093d648a8da21d60403b500f1da380a3f907.rev
+│   │       ├── pack-3549d3be67ac3c391e0c0537bdd1a4ebadbe3a98.idx
+│   │       ├── pack-3549d3be67ac3c391e0c0537bdd1a4ebadbe3a98.pack
+│   │       └── pack-3549d3be67ac3c391e0c0537bdd1a4ebadbe3a98.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -378,7 +378,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-14 14:36:56 UTC
+Сгенерировано: 2026-03-14 14:39:27 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4039,8 +4039,7 @@ class ShowcaseManager {
     const idx = uid && !shuf ? Math.max(0, list.findIndex(t => t.uid === uid)) : 0;
     
     W.AlbumsManager?.setPlayingAlbum?.(key);
-    W.playerCore?.setPlaylist?.(list, idx, null, { preservePosition: false });
-    W.playerCore?.play?.(idx);
+    if (!W.playerCore?.playExactFromPlaylist?.(list, list[idx]?.uid, { dir: 1 })) return;
     W.PlayerUI?.ensurePlayerBlock?.(idx, { userInitiated: true });
     this._hi(list[idx]?.uid);
     if (list[idx]?.uid) this._markLast(list[idx].uid, id);
