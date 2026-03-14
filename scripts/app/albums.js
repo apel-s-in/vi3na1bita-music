@@ -1,4 +1,5 @@
 import { injectIndicator } from '../ui/offline-indicators.js';
+import { renderFavoriteStar, setFavoriteStarState } from '../ui/icon-utils.js';
 
 const W = window, D = document, C = W.APP_CONFIG || {};
 const { $, toStr, escHtml, isMobileUA } = W.AppUtils || { $: id => D.getElementById(id), toStr: v => v == null ? '' : String(v), escHtml: s => String(s||''), isMobileUA: () => false };
@@ -8,8 +9,6 @@ const [FAV, NEWS, SHOWCASE, PROFILE, LOGO] = [
   W.SPECIAL_SHOWCASE_KEY || '__showcase__', C.SPECIAL_PROFILE_KEY || '__profile__',
   'img/logo.png'
 ];
-
-const renderFavoriteStar = (liked, attrs = '') => `<span class="like-star like-star-svg" data-liked="${liked ? '1' : '0'}" aria-label="★" ${attrs}><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-favorite-star"></use></svg></span>`;
 
 class AlbumsManager {
   curr = null; playing = null; cache = new Map(); covers = new Map();
@@ -96,7 +95,7 @@ class AlbumsManager {
       if (star && uid && pc) {
         e.preventDefault(); e.stopPropagation();
         const nextLiked = !pc.isFavorite(uid);
-        star.dataset.liked = nextLiked ? '1' : '0';
+        setFavoriteStarState(star, nextLiked);
         star.classList.add('animating');
         setTimeout(() => star.classList.remove('animating'), 320);
         pc.toggleFavorite(uid, { fromAlbum: true, albumKey: aKey });
@@ -127,8 +126,7 @@ class AlbumsManager {
 
     W.playerCore?.onFavoritesChanged(d => {
       const sel = d?.albumKey ? `.like-star[data-album="${CSS.escape(d.albumKey)}"][data-uid="${CSS.escape(d.uid)}"]` : `.like-star[data-uid="${CSS.escape(d?.uid)}"]`;
-      D.querySelectorAll(sel).forEach(el => { el.dataset.liked = d?.liked ? '1' : '0'; });
-    });
+      D.querySelectorAll(sel).forEach(el => setFavoriteStarState(el, !!d?.liked));
   }
 
   async loadAlbum(key) {
