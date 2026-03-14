@@ -50,9 +50,12 @@ const STATIC_SET = new Set([...new Set(STATIC_ASSETS)].map(norm));
 self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(CORE_CACHE).then(async (c) => {
-      await Promise.all(STATIC_ASSETS.map(u => 
-        fetch(new Request(u)).then(r => { if (r.ok && !r.redirected) c.put(u, r); }).catch(()=>{})
-      ));
+      await Promise.all(STATIC_ASSETS.map(async (u) => {
+        try {
+          const r = await fetch(new Request(u, { cache: 'no-cache' }));
+          if (r.ok && !r.redirected) await c.put(u, r.clone());
+        } catch {}
+      }));
       return self.skipWaiting();
     })
   );
