@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2011a65af381f2a9d24e6d373fe0637a16006887.idx
-│   │       ├── pack-2011a65af381f2a9d24e6d373fe0637a16006887.pack
-│   │       └── pack-2011a65af381f2a9d24e6d373fe0637a16006887.rev
+│   │       ├── pack-1e41fd64b8d6ab69e3a0ed08f18ea82cdaafb982.idx
+│   │       ├── pack-1e41fd64b8d6ab69e3a0ed08f18ea82cdaafb982.pack
+│   │       └── pack-1e41fd64b8d6ab69e3a0ed08f18ea82cdaafb982.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -378,7 +378,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-14 23:05:34 UTC
+Сгенерировано: 2026-03-14 23:07:22 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5592,6 +5592,9 @@ import {
   likeFirstTrack,
   openFavorites,
   playFirstTrack,
+  openSleepTimer,
+  setSleepPreset,
+  resetSleepTimer,
   seedPlayerStateV2FromCurrent
 } from './utils.js';
 
@@ -5614,11 +5617,11 @@ test('play track, toggle favorites-only and sleep timer UI', async ({ page }) =>
   await expect(favBtn).toHaveClass(/favorites-active/);
 
   // Таймер сна: открыть модалку, выбрать "15 минут", затем сбросить
-  await page.click('#sleep-timer-btn');
-  await page.click('.sleep-preset-btn[data-min="15"]');
+  await openSleepTimer(page);
+  await setSleepPreset(page, 15);
   await expect(page.locator('#sleep-timer-badge')).toBeVisible();
-  await page.click('#sleep-timer-btn');
-  await page.click('[data-act="reset"]');
+  await openSleepTimer(page);
+  await resetSleepTimer(page);
   await expect(page.locator('#sleep-timer-badge')).toBeHidden();
 });
 
