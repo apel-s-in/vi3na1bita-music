@@ -8,7 +8,7 @@
 
     const bg = document.createElement('div');
     bg.className = 'modal-bg active';
-    bg.innerHTML = `<div class="modal-feedback" style="max-width:${maxWidth}px"><button class="bigclose" type="button" aria-label="Закрыть"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.3 5.71a1 1 0 0 0-1.41 0L12 10.59 7.11 5.7A1 1 0 0 0 5.7 7.11L10.59 12l-4.9 4.89a1 1 0 1 0 1.41 1.42L12 13.41l4.89 4.9a1 1 0 0 0 1.42-1.41L13.41 12l4.9-4.89a1 1 0 0 0-.01-1.4z"/></svg></button>${title ? `<h2>${esc(title)}</h2>` : ''}<div class="modal-body">${bodyHtml}</div></div>`;
+    bg.innerHTML = `<div class="modal-feedback" style="max-width:${maxWidth}px"><button class="bigclose" type="button" aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-close"></use></svg></button>${title ? `<h2>${esc(title)}</h2>` : ''}<div class="modal-body">${bodyHtml}</div></div>`;
     c.appendChild(bg);
 
     const close = () => { onClose?.(); bg.remove(); };
