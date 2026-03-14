@@ -35,6 +35,18 @@ export async function playFirstTrack(page) {
   await page.waitForSelector('#lyricsplayerblock', { timeout: 10000 });
 }
 
+export async function openSleepTimer(page) {
+  await page.click('[data-testid="sleep-open"]');
+}
+
+export async function setSleepPreset(page, minutes) {
+  await page.click(`[data-testid="sleep-preset-${minutes}"]`);
+}
+
+export async function resetSleepTimer(page) {
+  await page.click('[data-testid="sleep-reset"]');
+}
+
 /**
  * Записать PlayerState в localStorage в uid-формате (V2).
  * Берём playingAlbum из AlbumsManager, а uid/sourceAlbum из текущего трека.
