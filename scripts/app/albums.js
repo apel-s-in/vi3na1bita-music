@@ -127,6 +127,7 @@ class AlbumsManager {
     W.playerCore?.onFavoritesChanged(d => {
       const sel = d?.albumKey ? `.like-star[data-album="${CSS.escape(d.albumKey)}"][data-uid="${CSS.escape(d.uid)}"]` : `.like-star[data-uid="${CSS.escape(d?.uid)}"]`;
       D.querySelectorAll(sel).forEach(el => setFavoriteStarState(el, !!d?.liked));
+    });
   }
 
   async loadAlbum(key) {
