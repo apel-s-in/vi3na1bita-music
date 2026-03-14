@@ -68,21 +68,58 @@ const Store = {
 
 class Draft {
   constructor(id) {
-    this.isDef = isDef(id); const src = this.isDef ? Store.def() : Store.get(id);
-    const b = this.isDef ? normCtx(src, true, getCat()) : normCtx(src?.creationSnapshot || {order:src?.order||[], hidden:src?.hidden||[]}, false, src?.creationSnapshot?.order || src?.order || getCat());
-    this.b = { ord: [...(b?.order||[])], hid: [...(b?.hidden||[])], chk: this.isDef ? [...(b?.order||[]).filter(u=>!(b?.hidden||[]).includes(u))] : [...(b?.order||[])] };
-    this.ord = [...(src?.order || this.b.ord)]; this.hid = new Set(src?.hidden || this.b.hid); this.chk = new Set(this.isDef ? this.ord.filter(u=>!this.hid.has(u)) : this.ord);
+    this.isDef = isDef(id);
+    const src = this.isDef ? Store.def() : Store.get(id);
+    const b = this.isDef
+      ? normCtx(src, true, getCat())
+      : normCtx(
+          src?.creationSnapshot || { order: src?.order || [], hidden: src?.hidden || [] },
+          false,
+          src?.creationSnapshot?.order || src?.order || getCat()
+        );
+
+    this.b = {
+      ord: [...(b?.order || [])],
+      hid: [...(b?.hidden || [])],
+      chk: []
+    };
+
+    this.ord = [...(src?.order || this.b.ord)];
+    this.hid = new Set(src?.hidden || this.b.hid);
+    this.chk = new Set();
   }
   isDirty() {
-    const o = this.ord.filter(trk), h = [...this.hid].filter(trk);
-    const cOrd = this.isDef ? o : o.filter(u=>this.chk.has(u)), cHid = this.isDef ? h : h.filter(u=>this.chk.has(u)), cChk = this.isDef ? o.filter(u=>!this.hid.has(u)) : cOrd;
-    return stateSig({order:cOrd, hidden:cHid, checked:cChk}) !== stateSig({order:this.b.ord, hidden:this.b.hid, checked:this.b.chk});
+    const o = this.ord.filter(trk);
+    const h = [...this.hid].filter(trk);
+    const cChk = [...this.chk].filter(trk);
+    return stateSig({ order: o, hidden: h, checked: cChk }) !== stateSig({ order: this.b.ord, hidden: this.b.hid, checked: this.b.chk });
   }
-  tgHid(u) { this.hid.has(u) ? (this.hid.delete(u), this.chk.add(u)) : (this.hid.add(u), this.chk.delete(u)); }
-  tgChk(u) { this.chk.has(u) ? (this.chk.delete(u), this.isDef && this.hid.add(u)) : (this.chk.add(u), this.isDef && this.hid.delete(u)); }
+  tgHid(u) {
+    if (this.hid.has(u)) this.hid.delete(u);
+    else this.hid.add(u);
+  }
+  tgChk(u) {
+    if (this.chk.has(u)) this.chk.delete(u);
+    else this.chk.add(u);
+  }
+  setAllChecked(on) {
+    this.chk = new Set(on ? this.getEdit().filter(trk) : []);
+  }
   setOrd(a) { this.ord = [...a]; }
-  reset() { const b = this.isDef ? normCtx({order:getCat(),hidden:[],sortMode:'user',hiddenPlacement:'inline'},true) : {order:[...this.b.ord],hidden:[...this.b.hid]}; this.ord=[...(b.order||b.ord)]; this.hid=new Set(b.hidden||b.hid); this.chk=new Set(this.isDef ? this.ord.filter(u=>!this.hid.has(u)) : this.ord); }
-  getEdit() { if(!this.isDef) return [...this.ord]; const c=getCat(), s=new Set(c), o=this.ord.filter(u=>s.has(u)), e=new Set(o); c.forEach(u=>!e.has(u)&&o.push(u)); return o; }
+  reset() {
+    const b = this.isDef
+      ? normCtx({ order: getCat(), hidden: [], sortMode: 'user', hiddenPlacement: 'inline' }, true)
+      : { order: [...this.b.ord], hidden: [...this.b.hid] };
+    this.ord = [...(b.order || b.ord)];
+    this.hid = new Set(b.hidden || b.hid);
+    this.chk = new Set();
+  }
+  getEdit() {
+    if (!this.isDef) return [...this.ord];
+    const c = getCat(), s = new Set(c), o = this.ord.filter(u => s.has(u)), e = new Set(o);
+    c.forEach(u => !e.has(u) && o.push(u));
+    return o;
+  }
 }
 
 class ShowcaseManager {
@@ -152,8 +189,23 @@ class ShowcaseManager {
     if(d.t === 'edit') return this._renderEdit(c, d.uids); if(d.t === 'search') return this._renderSearch(c, d); return this._renderNormal(c, d);
   }
 
-  _trackRow(t, i, { isH=false, sN=false, col='transparent', srh=false, chk=false, bdg='' }={}) {
-    return `<div class="showcase-track ${isH ? 'inactive' : ''} ${srh ? 'sc-search-result' : ''}" data-uid="${t.uid}" style="border-left:3px solid ${col}"><div class="tnum" ${sN ? '' : 'style="display:none"'}>${i + 1}.</div><img src="${t.cover}" class="showcase-track-thumb" loading="lazy"><div class="track-title"><div>${esc(t.title)}</div><div class="showcase-track-meta">${esc(albT(t.sourceAlbum))}${bdg ? ` ${bdg}` : ''}</div></div>${srh ? `<input type="checkbox" class="sc-search-chk" data-uid="${t.uid}" ${chk ? 'checked' : ''}>` : `<span class="offline-ind" data-uid="${t.uid}">🔒</span><img src="${W.playerCore?.isFavorite?.(t.uid) ? 'img/star.png' : 'img/star2.png'}" class="like-star" data-uid="${t.uid}" data-album="${t.sourceAlbum}">`}<button class="showcase-track-menu-btn" data-uid="${t.uid}">···</button></div>`;
+  _trackRow(t, i, { isH = false, sN = false, col = 'transparent', srh = false, chk = false, bdg = '' } = {}) {
+    const rowCls = [
+      'showcase-track',
+      isH ? 'inactive' : '',
+      srh ? 'sc-search-result' : '',
+      chk ? 'selected' : ''
+    ].filter(Boolean).join(' ');
+    return `<div class="${rowCls}" data-uid="${t.uid}" data-hidden="${isH ? '1' : '0'}" style="border-left:3px solid ${col}">
+      <div class="tnum" ${sN ? '' : 'style="display:none"'}>${i + 1}.</div>
+      <img src="${t.cover}" class="showcase-track-thumb" loading="lazy">
+      <div class="track-title">
+        <div>${esc(t.title)}</div>
+        <div class="showcase-track-meta">${esc(albT(t.sourceAlbum))}${bdg ? ` ${bdg}` : ''}</div>
+      </div>
+      ${srh ? `<input type="checkbox" class="sc-search-chk" data-uid="${t.uid}" ${chk ? 'checked' : ''}>` : `<span class="offline-ind" data-uid="${t.uid}">🔒</span><img src="${W.playerCore?.isFavorite?.(t.uid) ? 'img/star.png' : 'img/star2.png'}" class="like-star" data-uid="${t.uid}" data-album="${t.sourceAlbum}">`}
+      <button class="showcase-track-menu-btn" data-uid="${t.uid}">···</button>
+    </div>`;
   }
 
   _renderNormal(c, { uids, hid }) {
@@ -163,23 +215,58 @@ class ShowcaseManager {
   }
 
   _renderSearch(c, { res, cOrd, cHid }) {
-    const oS = new Set(cOrd||[]); let h = `<div class="sc-search-info">Найдено: ${res.length} треков</div>`;
-    res.forEach((u,i) => { const t=bldTrk(u); if(!t)return; const bdg = oS.has(u) ? (cHid?.has(u) ? '<span class="sc-badge sc-badge-hidden">скрыт</span>' : '<span class="sc-badge sc-badge-active">уже есть</span>') : '<span class="sc-badge sc-badge-missing">добавить?</span>'; h+=this._trackRow(t,i,{srh:true, chk:this._sChk.has(u), bdg}); });
-    c.innerHTML = h || '<div class="fav-empty">Ничего не найдено</div>'; this._renderSrhStk(); this._updStatus(res.length, true);
+    const oS = new Set(cOrd || []);
+    let h = `<div class="sc-search-info">Найдено: ${res.length} треков</div>`;
+    res.forEach((u, i) => {
+      const t = bldTrk(u);
+      if (!t) return;
+      const inCtx = oS.has(u);
+      const isH = !!cHid?.has(u);
+      const bdg = inCtx
+        ? (isH ? '<span class="sc-badge sc-badge-hidden">скрыт</span>' : '<span class="sc-badge sc-badge-active">уже есть</span>')
+        : '<span class="sc-badge sc-badge-missing">добавить?</span>';
+      h += this._trackRow(t, i, { srh: true, chk: this._sChk.has(u), bdg, isH });
+    });
+    c.innerHTML = h || '<div class="fav-empty">Ничего не найдено</div>';
+    this._renderSrhStk();
+    this._updStatus(res.length, true);
   }
 
   _renderSrhStk() {
-    $('sc-search-sticky')?.remove(); if(!this._sChk.size) return;
-    const b=D.createElement('div'); b.id='sc-search-sticky'; b.className='showcase-sticky-bar';
-    b.innerHTML=`<span>Выбрано: ${this._sChk.size}</span><button class="showcase-btn sc-search-add">➕ Добавить</button><button class="showcase-btn sc-search-create" style="background:#4daaff;color:#fff;">✨ Создать</button><button class="showcase-btn" id="sc-search-clear-query">🧹 Очистить поиск</button><button class="showcase-btn" id="sc-search-clear-selection">✕ Снять</button>`; D.body.appendChild(b);
+    $('sc-search-sticky')?.remove();
+    if (!this._sChk.size) return;
+    const b = D.createElement('div');
+    b.id = 'sc-search-sticky';
+    b.className = 'showcase-sticky-bar';
+    b.innerHTML = `<span>Выбрано: ${this._sChk.size}</span>
+      <button class="showcase-btn sc-search-add">➕ Добавить</button>
+      <button class="showcase-btn sc-search-create" style="background:#4daaff;color:#fff;">✨ Создать</button>
+      <button class="showcase-btn sc-search-share">📸 Карточка</button>
+      <button class="showcase-btn sc-search-check-all">✓ Всё</button>
+      <button class="showcase-btn" id="sc-search-clear-query">🧹 Очистить поиск</button>
+      <button class="showcase-btn" id="sc-search-clear-selection">✕ Снять</button>`;
+    D.body.appendChild(b);
   }
 
   _renderEdit(c, uids) {
     c.innerHTML = uids.map(u => {
-      const t = bldTrk(u); if(!t) return ''; const isH = this._drf.hid.has(u), isC = this._drf.chk.has(u), rm = !isC && !this._drf.isDef, mt = `${esc(albT(t.sourceAlbum))}${rm ? ' · будет удалён' : (isH && isC && !this._drf.isDef ? ' · скрыт' : '')}`;
-      return `<div class="showcase-track sc-edit-row ${isH ? 'inactive' : ''} ${isC ? 'sc-checked' : ''} ${rm ? 'sc-will-remove' : ''}" data-uid="${u}" draggable="true"><button class="sc-arrow-up">▲</button><div class="showcase-drag-handle">⠿</div><input type="checkbox" class="sc-chk" ${isC ? 'checked' : ''}><img src="${t.cover}" class="showcase-track-thumb" loading="lazy"><div class="track-title"><div>${esc(t.title)}</div><div class="showcase-track-meta">${mt}</div></div><button class="sc-eye-btn" title="Показать/Скрыть">${isH ? '🙈' : '👁'}</button><button class="sc-arrow-down">▼</button></div>`;
+      const t = bldTrk(u);
+      if (!t) return '';
+      const isH = this._drf.hid.has(u);
+      const isC = this._drf.chk.has(u);
+      const mt = `${esc(albT(t.sourceAlbum))}${isH ? ' · скрыт' : ''}`;
+      return `<div class="showcase-track sc-edit-row ${isH ? 'inactive' : ''} ${isC ? 'selected' : ''}" data-uid="${u}" data-hidden="${isH ? '1' : '0'}" draggable="true">
+        <button class="sc-arrow-up">▲</button>
+        <div class="showcase-drag-handle">⠿</div>
+        <input type="checkbox" class="sc-chk" ${isC ? 'checked' : ''}>
+        <img src="${t.cover}" class="showcase-track-thumb" loading="lazy">
+        <div class="track-title"><div>${esc(t.title)}</div><div class="showcase-track-meta">${mt}</div></div>
+        <button class="sc-eye-btn" title="Показать/Скрыть">${isH ? '🙈' : '👁'}</button>
+        <button class="sc-arrow-down">▼</button>
+      </div>`;
     }).join('') || '<div class="fav-empty">Нет треков</div>';
-    this._bindDrag(c); this._updStatus(uids.filter(u => !this._drf.hid.has(u)).length, false);
+    this._bindDrag(c);
+    this._updStatus(uids.length, false);
   }
 
   _renderPlaylists() {
@@ -233,37 +320,111 @@ class ShowcaseManager {
     const rPl = t.closest('.sc-pl-row'); if (rPl?.dataset.pid && !act) return this._swCtx(rPl.dataset.pid);
 
       const clActs = {
-        'sc-btn-edit': () => this._enterEdit(), 'sc-btn-save': () => this._saveEdit(), 'sc-btn-create': () => this._createPl(this._mkFromEdit(), true), 'sc-btn-reset': () => this._rstEdit(), 'sc-btn-exit': () => this._exitEdit(),
-        'sc-btn-master-reset': () => W.Modals?.confirm({ title:'Сбросить «Все треки»?', textHtml:'Порядок вернётся к заводскому, все скрытые треки станут видимыми.', confirmText:'Сбросить', cancelText:'Отмена', onConfirm:() => { Store.setDef(normCtx({order:getCat(), hidden:[], sortMode:'user', hiddenPlacement:'inline'}, true)); this.renderTab(); } }),
-        'sc-btn-playall': () => this._playCtx(), 'sc-btn-shuffle': () => this._playCtx(null, true), 'sc-btn-sort': () => this._opnSort(),
-        'sc-search-add': () => { const u=[...this._sChk].filter(trk); if(!u.length)return; const c=this._ctx(); if(!c)return; const oS=new Set(c.order||[]), hS=new Set(c.hidden||[]); u.forEach(x=>{ if(!oS.has(x)){ c.order.push(x); oS.add(x); } hS.delete(x); }); c.hidden=[...hS]; isDef(this._ctxId()) ? Store.setDef(c) : Store.save(c); this._sQ=''; this._sChk.clear(); this._cleanupUi(); this.renderTab(); W.NotificationSystem?.success(`Добавлено ${u.length} треков`); },
+        'sc-btn-edit': () => this._enterEdit(),
+        'sc-btn-save': () => this._saveEdit(),
+        'sc-btn-create': () => this._createPl(this._mkFromEdit(), true),
+        'sc-btn-reset': () => this._rstEdit(),
+        'sc-btn-exit': () => this._exitEdit(),
+        'sc-btn-master-reset': () => W.Modals?.confirm({
+          title: 'Сбросить «Все треки»?',
+          textHtml: 'Порядок вернётся к заводскому, все скрытые треки станут видимыми.',
+          confirmText: 'Сбросить',
+          cancelText: 'Отмена',
+          onConfirm: () => {
+            Store.setDef(normCtx({ order: getCat(), hidden: [], sortMode: 'user', hiddenPlacement: 'inline' }, true));
+            this.renderTab();
+          }
+        }),
+        'sc-btn-playall': () => this._playCtx(),
+        'sc-btn-shuffle': () => this._playCtx(null, true),
+        'sc-btn-sort': () => this._opnSort(),
+        'sc-search-add': () => {
+          const u = [...this._sChk].filter(trk);
+          if (!u.length) return;
+          const c = this._ctx();
+          if (!c) return;
+          const oS = new Set(c.order || []);
+          u.forEach(x => { if (!oS.has(x)) { c.order.push(x); oS.add(x); } });
+          isDef(this._ctxId()) ? Store.setDef(c) : Store.save(c);
+          this._sQ = '';
+          this._sChk.clear();
+          this._cleanupUi();
+          this.renderTab();
+          W.NotificationSystem?.success(`Добавлено ${u.length} треков`);
+        },
         'sc-search-create': () => this._createPl([...this._sChk].filter(trk)),
+        'sc-search-check-all': () => {
+          this._sRes.forEach(u => this._sChk.add(u));
+          this._renderBody(++this._rTok);
+        },
+        'sc-search-share': () => {
+          const list = [...this._sChk].filter(trk).map(bldTrk).filter(Boolean);
+          if (!list.length) return;
+          import('../../analytics/share-generator.js').then(m => m.ShareGenerator.generateAndShare('track', list[0], { playlist: list }));
+        }
       };
       for (const k in clActs) if (btn.classList?.contains(k)) return clActs[k]();
 
     if (this._edit) return this._hEditClick(e);
     if (t.closest('.like-star') || t.closest('.offline-ind')) return;
-    const uid = t.closest('.showcase-track')?.dataset.uid; if (!uid) return;
-    if (this._sQ) { if (t.classList?.contains('sc-search-chk')) { t.checked ? this._sChk.add(uid) : this._sChk.delete(uid); this._renderSrhStk(); return this._updStatus(this._sRes.length, true); } return this._openMenu(uid, true); }
+    const row = t.closest('.showcase-track');
+    const uid = row?.dataset.uid;
+    const isHiddenRow = row?.dataset.hidden === '1';
+    if (!uid) return;
+    if (this._sQ) {
+      if (t.classList?.contains('sc-search-chk')) {
+        t.checked ? this._sChk.add(uid) : this._sChk.delete(uid);
+        this._renderBody(++this._rTok);
+        return;
+      }
+      return this._openMenu(uid, true);
+    }
     if (t.closest('.showcase-track-menu-btn')) return this._openMenu(uid, false);
+    if (isHiddenRow) return this._openMenu(uid, false);
     return this._playCtx(uid);
   }
 
   _hEditClick(e) {
-    const r = e.target.closest('.sc-edit-row'), u = r?.dataset.uid; if (!u || !this._drf) return;
+    const r = e.target.closest('.sc-edit-row'), u = r?.dataset.uid;
+    if (!u || !this._drf) return;
     if (e.target.classList.contains('sc-chk')) this._drf.tgChk(u);
     else if (e.target.closest('.sc-eye-btn')) this._drf.tgHid(u);
-    else if (e.target.closest('.sc-arrow-up')) { const a=this._drf.ord, i=a.indexOf(u); if(i>0) { [a[i],a[i-1]]=[a[i-1],a[i]]; this._drf.ord=[...a]; } }
-    else if (e.target.closest('.sc-arrow-down')) { const a=this._drf.ord, i=a.indexOf(u); if(i<a.length-1 && i>=0) { [a[i],a[i+1]]=[a[i+1],a[i]]; this._drf.ord=[...a]; } }
-    else return;
+    else if (e.target.closest('.sc-arrow-up')) {
+      const a = this._drf.ord, i = a.indexOf(u);
+      if (i > 0) { [a[i], a[i - 1]] = [a[i - 1], a[i]]; this._drf.ord = [...a]; }
+    } else if (e.target.closest('.sc-arrow-down')) {
+      const a = this._drf.ord, i = a.indexOf(u);
+      if (i < a.length - 1 && i >= 0) { [a[i], a[i + 1]] = [a[i + 1], a[i]]; this._drf.ord = [...a]; }
+    } else return;
     this._renderEdit($('sc-tracks-container'), this._drf.getEdit());
   }
 
   _swCtx(id) { if (this._edit) return W.NotificationSystem?.warning('Выйдите из режима редактирования'); this._cleanupUi(); this._sChk.clear(); Store.setAct(id); this.renderTab(); }
   _enterEdit() { if (this._ctx()) { this._drf = new Draft(this._ctxId()); this._edit = true; this.renderTab(); } }
   _leaveEdit() { this._drf = null; this._edit = false; this.renderTab(); }
-  _saveEdit() { if (!this._drf) return; const id = this._ctxId(), ord = this._drf.ord.filter(trk), hid = [...this._drf.hid].filter(trk); if (isDef(id)) { const c = Store.def(); c.order = ord; c.hidden = ord.filter(u => !this._drf.chk.has(u) || this._drf.hid.has(u)); Store.setDef(c); } else { const c = Store.get(id); if(!c) return; c.order = ord.filter(u=>this._drf.chk.has(u)); c.hidden = hid.filter(u=>this._drf.chk.has(u)); Store.save(c); } this._leaveEdit(); W.NotificationSystem?.success('Сохранено'); }
-  _mkFromEdit() { return this._drf?.ord.filter(u => this._drf.chk.has(u) && !this._drf.hid.has(u) && trk(u)) || []; }
+  _saveEdit() {
+    if (!this._drf) return;
+    const id = this._ctxId();
+    const ord = this._drf.ord.filter(trk);
+    const hid = [...this._drf.hid].filter(trk);
+    if (isDef(id)) {
+      const c = Store.def();
+      c.order = ord;
+      c.hidden = hid.filter(u => ord.includes(u));
+      Store.setDef(c);
+    } else {
+      const c = Store.get(id);
+      if (!c) return;
+      c.order = ord;
+      c.hidden = hid.filter(u => ord.includes(u));
+      Store.save(c);
+    }
+    this._leaveEdit();
+    W.NotificationSystem?.success('Сохранено');
+  }
+  _mkFromEdit() {
+    return this._drf?.ord.filter(u => this._drf.chk.has(u) && trk(u)) || [];
+  }
   _rstEdit() { if(this._drf?.isDirty()) W.Modals?.confirm({ title:'Сброс', textHtml:this._drf.isDef ? 'Список вернётся к заводскому: все треки, порядок по альбомам. Продолжить?' : 'Плейлист вернётся к состоянию при создании. Продолжить?', confirmText:'Сбросить', cancelText:'Отмена', onConfirm:()=>{ this._drf.reset(); this._renderEdit($('sc-tracks-container'), this._drf.getEdit()); } }); }
   _exitEdit() { this._drf?.isDirty() ? W.Modals?.confirm({ title:'Выйти без сохранения?', textHtml:'Изменения не будут сохранены.', confirmText:'Выйти', cancelText:'Отмена', onConfirm:()=>this._leaveEdit() }) : this._leaveEdit(); }
 
@@ -335,15 +496,18 @@ class ShowcaseManager {
   }
 
   _rnmPl(id) {
-    const p = Store.get(id); if(!p)return;
-    this._promptName({ title:'Переименовать', value:p.name, btnText:'Сохранить', onSubmit:v => { p.name=v; Store.save(p); this._renderPlaylists(); } });
-  }}
-
-  _rnmPl(id) {
-    const p = Store.get(id); if(!p)return;
-    const m = W.Modals?.open({ title:'Переименовать', bodyHtml:`<input type="text" id="rnm-inp" value="${esc(p.name)}" style="width:100%;padding:10px;border-radius:8px;background:rgba(255,255,255,.1);color:#fff;border:1px solid #666;margin-bottom:15px"><button class="showcase-btn" id="rnm-save">Сохранить</button>` });
-    if(!m)return; setTimeout(()=>m.querySelector('#rnm-inp')?.select(),50);
-    m.querySelector('#rnm-save').onclick = () => { const v=m.querySelector('#rnm-inp')?.value.trim(); if(v){ p.name=v; Store.save(p); this._renderPlaylists(); m.remove(); } };
+    const p = Store.get(id);
+    if (!p) return;
+    this._promptName({
+      title: 'Переименовать',
+      value: p.name,
+      btnText: 'Сохранить',
+      onSubmit: v => {
+        p.name = v;
+        Store.save(p);
+        this._renderPlaylists();
+      }
+    });
   }
 
   _shrPl(id) {
