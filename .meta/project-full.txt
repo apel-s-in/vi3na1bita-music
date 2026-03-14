@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b772748d3d705500a01653978603800557ea9501.idx
-│   │       ├── pack-b772748d3d705500a01653978603800557ea9501.pack
-│   │       └── pack-b772748d3d705500a01653978603800557ea9501.rev
+│   │       ├── pack-f2726335d9c28cd5c8c529454cb1b821f0a78e54.idx
+│   │       ├── pack-f2726335d9c28cd5c8c529454cb1b821f0a78e54.pack
+│   │       └── pack-f2726335d9c28cd5c8c529454cb1b821f0a78e54.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -378,7 +378,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-14 22:53:37 UTC
+Сгенерировано: 2026-03-14 23:03:18 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -824,7 +824,7 @@ jobs:
             <svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-repeat"></use></svg>
           </button>
 
-          <button class="sleep-timer-btn" id="sleep-timer-btn" title="Таймер сна (T)">
+          <button class="sleep-timer-btn" id="sleep-timer-btn" data-testid="sleep-open" title="Таймер сна (T)">
             <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-sleep"></use></svg>
             <span class="sleep-timer-badge" id="sleep-timer-badge" style="display:none;">0</span>
           </button>
