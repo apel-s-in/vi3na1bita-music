@@ -115,10 +115,10 @@ export class SleepTimer {
           <div class="sleep-extend-title">Таймер завершится через 5 минут</div>
           <div class="sleep-extend-sub">Продлить таймер или оставить как есть?</div>
           <div class="sleep-extend-actions">
-            <button class="modal-action-btn" data-act="plus5">+5 мин</button>
-            <button class="modal-action-btn" data-act="plus15">+15 мин</button>
-            <button class="modal-action-btn online" data-act="keep">Оставить</button>
-            <button class="modal-action-btn" data-act="reset">Сброс</button>
+            <button class="modal-action-btn" data-act="plus5" data-testid="sleep-reminder-plus5">+5 мин</button>
+            <button class="modal-action-btn" data-act="plus15" data-testid="sleep-reminder-plus15">+15 мин</button>
+            <button class="modal-action-btn online" data-act="keep" data-testid="sleep-reminder-keep">Оставить</button>
+            <button class="modal-action-btn" data-act="reset" data-testid="sleep-reminder-reset">Сброс</button>
           </div>
         </div>
       `
@@ -162,12 +162,12 @@ export class SleepTimer {
         </div>
 
         <div class="sleep-preset-grid">
-          <button class="sleep-preset-btn" data-min="15">15 мин</button>
-          <button class="sleep-preset-btn" data-min="30">30 мин</button>
-          <button class="sleep-preset-btn" data-min="45">45 мин</button>
-          <button class="sleep-preset-btn" data-min="60">60 мин</button>
-          <button class="sleep-preset-btn" data-min="90">90 мин</button>
-          <button class="sleep-preset-btn" data-min="120">120 мин</button>
+          <button class="sleep-preset-btn" data-min="15" data-testid="sleep-preset-15">15 мин</button>
+          <button class="sleep-preset-btn" data-min="30" data-testid="sleep-preset-30">30 мин</button>
+          <button class="sleep-preset-btn" data-min="45" data-testid="sleep-preset-45">45 мин</button>
+          <button class="sleep-preset-btn" data-min="60" data-testid="sleep-preset-60">60 мин</button>
+          <button class="sleep-preset-btn" data-min="90" data-testid="sleep-preset-90">90 мин</button>
+          <button class="sleep-preset-btn" data-min="120" data-testid="sleep-preset-120">120 мин</button>
         </div>
 
         <div class="sleep-custom-card">
@@ -203,7 +203,7 @@ export class SleepTimer {
         </div>
 
         <div class="sleep-bottom-actions">
-          <button class="sleep-danger-btn" data-act="reset">Сброс</button>
+          <button class="sleep-danger-btn" data-act="reset" data-testid="sleep-reset">Сброс</button>
         </div>
       </div>
     `;
