@@ -17,7 +17,7 @@
     e.ico.innerHTML = p ? '<path d="M6 4h4v16H6zM14 4h4v16h-4z"/>' : '<path d="M8 5v14l11-7z"/>';
     ['shuffle', 'repeat', 'mute'].forEach(k => U.setBtnActive(`${k}-btn`, c[`is${k.charAt(0).toUpperCase() + k.slice(1)}`]?.()));
     e.fav.className = `player-control-btn ${f ? 'favorites-active' : ''}`;
-    if (e.favI) e.favI.dataset.liked = f ? '1' : '0';
+    if (e.favI) W.IconUtils?.setFavoriteStarState?.(e.favI, f);
 
     const v = c.getVolume();
     e.vF.style.width = `${v}%`; e.vH.style.left = `${U.math.clamp(v, 2, 98)}%`; e.vS.value = v;
@@ -41,7 +41,7 @@
     if (st.isMini && dom.mini) {
       const nt = c.getPlaylistSnapshot()?.[c.getNextIndex()];
       if (e.mTi) e.mTi.textContent = t?.title ? `${t.title} — ${W.TrackRegistry?.getAlbumTitle(t.sourceAlbum) || t.album || 'Альбом'}` : '—';
-      if (e.mSr) e.mSr.dataset.liked = U.fav.isTrackLikedInContext({ playingAlbum: pA, track: t }) ? '1' : '0';
+      if (e.mSr) W.IconUtils?.setFavoriteStarState?.(e.mSr, U.fav.isTrackLikedInContext({ playingAlbum: pA, track: t }));
       if (e.mNUp) e.mNUp.textContent = nt?.title || '—';
     }
 
