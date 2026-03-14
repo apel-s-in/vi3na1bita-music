@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-58dba8cdceac34240bf83ac28059da2ec65d2df9.idx
-│   │       ├── pack-58dba8cdceac34240bf83ac28059da2ec65d2df9.pack
-│   │       └── pack-58dba8cdceac34240bf83ac28059da2ec65d2df9.rev
+│   │       ├── pack-7586920d8a1703f5cc58a1b75b1d1c6385ebc1d5.idx
+│   │       ├── pack-7586920d8a1703f5cc58a1b75b1d1c6385ebc1d5.pack
+│   │       └── pack-7586920d8a1703f5cc58a1b75b1d1c6385ebc1d5.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -380,7 +380,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-14 17:20:53 UTC
+Сгенерировано: 2026-03-14 17:21:22 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2959,7 +2959,7 @@ window.PlaybackCache.unprotectWindow = unprotectWindow;
     const q = isR2 ? (oM?.getCQ() || 'hi') : U.pq.getState().mode;
     const pA = AM()?.getPlayingAlbum?.();
 
-    e.ico.innerHTML = p ? '<path d="M6 4h4v16H6zM14 4h4v16h-4z"/>' : '<path d="M8 5v14l11-7z"/>';
+    W.IconUtils?.setIconUse?.(e.ico, p ? 'icon-pause' : 'icon-play');
     ['shuffle', 'repeat', 'mute'].forEach(k => U.setBtnActive(`${k}-btn`, c[`is${k.charAt(0).toUpperCase() + k.slice(1)}`]?.()));
     e.fav.className = `player-control-btn ${f ? 'favorites-active' : ''}`;
     if (e.favI) W.IconUtils?.setFavoriteStarState?.(e.favI, f);
