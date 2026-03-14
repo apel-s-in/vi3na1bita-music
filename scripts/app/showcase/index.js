@@ -605,8 +605,7 @@ class ShowcaseManager {
     const idx = uid && !shuf ? Math.max(0, list.findIndex(t => t.uid === uid)) : 0;
     
     W.AlbumsManager?.setPlayingAlbum?.(key);
-    W.playerCore?.setPlaylist?.(list, idx, null, { preservePosition: false });
-    W.playerCore?.play?.(idx);
+    if (!W.playerCore?.playExactFromPlaylist?.(list, list[idx]?.uid, { dir: 1 })) return;
     W.PlayerUI?.ensurePlayerBlock?.(idx, { userInitiated: true });
     this._hi(list[idx]?.uid);
     if (list[idx]?.uid) this._markLast(list[idx].uid, id);
