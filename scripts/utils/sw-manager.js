@@ -7,15 +7,22 @@
   let refreshing = false;
 
   class SWManager {
+    _clearUpdateUi() {
+      document.getElementById('update-app-btn')?.remove();
+    }
+
     async init() {
       if (!('serviceWorker' in N)) return;
+      this._clearUpdateUi();
 
       N.serviceWorker.addEventListener('controllerchange', () => {
+        this._clearUpdateUi();
         if (!refreshing) { refreshing = true; W.location.reload(); }
       });
 
       try {
         this.reg = await N.serviceWorker.register('./service-worker.js', { scope: './' });
+        if (!this.reg.waiting) this._clearUpdateUi();
         if (this.reg.waiting) this._notifyUpdate();
 
         this.reg.addEventListener('updatefound', () => {
@@ -34,16 +41,22 @@
     _notifyUpdate() {
       if (document.getElementById('update-app-btn')) return;
       W.NotificationSystem?.info('Доступно обновление приложения', 5000);
-      
+
       const b = document.createElement('button');
       b.id = 'update-app-btn';
       b.className = 'om-btn om-btn--primary';
       b.textContent = 'ОБНОВИТЬ';
       b.style.cssText = 'position:fixed;bottom:90px;left:50%;transform:translateX(-50%);z-index:10001;box-shadow:0 6px 24px rgba(0,0,0,.6);animation:fadeIn .3s ease-out;padding:12px 28px;border-radius:30px;';
-      
+
       b.onclick = () => {
-        b.disabled = true; b.textContent = 'ОБНОВЛЕНИЕ...';
-        this.reg?.waiting ? this.reg.waiting.postMessage({ type: 'SKIP_WAITING' }) : W.location.reload();
+        b.disabled = true;
+        b.textContent = 'ОБНОВЛЕНИЕ...';
+        if (this.reg?.waiting) {
+          this.reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        } else {
+          this._clearUpdateUi();
+          W.location.reload();
+        }
       };
       document.body.appendChild(b);
     }
