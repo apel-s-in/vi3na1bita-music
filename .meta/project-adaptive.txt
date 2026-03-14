@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-34b39129a4d633756e12e7a218633749f590f09b.idx
-│   │       ├── pack-34b39129a4d633756e12e7a218633749f590f09b.pack
-│   │       └── pack-34b39129a4d633756e12e7a218633749f590f09b.rev
+│   │       ├── pack-499791b0be4f31e97249132cc58fe6f07dee316a.idx
+│   │       ├── pack-499791b0be4f31e97249132cc58fe6f07dee316a.pack
+│   │       └── pack-499791b0be4f31e97249132cc58fe6f07dee316a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -378,7 +378,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-14 12:11:09 UTC
+Сгенерировано: 2026-03-14 12:13:30 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3874,18 +3874,7 @@ class ShowcaseManager {
       'sc-tg-hidden': () => { const x = uiMut(); x.ui.showHidden = !x.ui.showHidden; x.save(); },
       'sc-tg-numbers': () => { const x = uiMut(); x.ui.showNumbers = !x.ui.showNumbers; x.save(); },
       'sc-tg-view': () => { const x = uiMut(); x.ui.viewMode = x.ui.viewMode === 'flat' ? 'grouped' : 'flat'; x.save(); },
-      'sc-tg-placement': () => { const x = uiMut(); x.ui.hiddenPlacement = x.ui.hiddenPlacement === 'inline' ? 'end' : 'inline'; x.save(); },
-      'sc-search-add': () => this._searchAdd(),
-      'sc-unified-create': () => this._createPl(this._edit ? this._mkFromEdit() : this._getSelectedUids(), !!this._edit),
-      'sc-unified-share': () => this._shareList(this._edit ? this._mkFromEdit() : this._getSelectedUids()),
-      'sc-unified-all': () => {
-        this._setSelectedAll(true);
-        this._edit ? this._renderEdit($('sc-tracks-container'), this._drf.getList()) : this._renderBody(++this._tok);
-      },
-      'sc-unified-none': () => {
-        this._clearSelected();
-        this._edit ? this._renderEdit($('sc-tracks-container'), this._drf.getList()) : this._renderBody(++this._tok);
-      }
+      'sc-tg-placement': () => { const x = uiMut(); x.ui.hiddenPlacement = x.ui.hiddenPlacement === 'inline' ? 'end' : 'inline'; x.save(); }
     };
 
     if (one[btn.id]) return one[btn.id]();
