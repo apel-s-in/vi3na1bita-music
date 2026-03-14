@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d907a3ed06d9635d6ce9c88e54b3770addfa3b46.idx
-│   │       ├── pack-d907a3ed06d9635d6ce9c88e54b3770addfa3b46.pack
-│   │       └── pack-d907a3ed06d9635d6ce9c88e54b3770addfa3b46.rev
+│   │       ├── pack-6ac32159638d8aa22d2cc82ab1afbd25992a42f2.idx
+│   │       ├── pack-6ac32159638d8aa22d2cc82ab1afbd25992a42f2.pack
+│   │       └── pack-6ac32159638d8aa22d2cc82ab1afbd25992a42f2.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -380,7 +380,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-14 16:41:58 UTC
+Сгенерировано: 2026-03-14 16:43:01 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2990,7 +2990,7 @@ window.PlaybackCache.unprotectWindow = unprotectWindow;
     e.ico.innerHTML = p ? '<path d="M6 4h4v16H6zM14 4h4v16h-4z"/>' : '<path d="M8 5v14l11-7z"/>';
     ['shuffle', 'repeat', 'mute'].forEach(k => U.setBtnActive(`${k}-btn`, c[`is${k.charAt(0).toUpperCase() + k.slice(1)}`]?.()));
     e.fav.className = `player-control-btn ${f ? 'favorites-active' : ''}`;
-    if (e.favI) e.favI.dataset.liked = f ? '1' : '0';
+    if (e.favI) W.IconUtils?.setFavoriteStarState?.(e.favI, f);
 
     const v = c.getVolume();
     e.vF.style.width = `${v}%`; e.vH.style.left = `${U.math.clamp(v, 2, 98)}%`; e.vS.value = v;
@@ -3014,7 +3014,7 @@ window.PlaybackCache.unprotectWindow = unprotectWindow;
     if (st.isMini && dom.mini) {
       const nt = c.getPlaylistSnapshot()?.[c.getNextIndex()];
       if (e.mTi) e.mTi.textContent = t?.title ? `${t.title} — ${W.TrackRegistry?.getAlbumTitle(t.sourceAlbum) || t.album || 'Альбом'}` : '—';
-      if (e.mSr) e.mSr.dataset.liked = U.fav.isTrackLikedInContext({ playingAlbum: pA, track: t }) ? '1' : '0';
+      if (e.mSr) W.IconUtils?.setFavoriteStarState?.(e.mSr, U.fav.isTrackLikedInContext({ playingAlbum: pA, track: t }));
       if (e.mNUp) e.mNUp.textContent = nt?.title || '—';
     }
 
