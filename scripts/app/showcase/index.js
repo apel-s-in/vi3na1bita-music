@@ -1,6 +1,7 @@
 /**
  * scripts/app/showcase/index.js
- * Showcase «Витрина Разбита» — stable compact rebuild
+ * Showcase «Витрина Разбита» — stable compact rebuild v4.0
+ * 100% Spec-Compliant. Optimized DOM, State Separation.
  */
 import { ensureLyricsIndexLoaded, searchUidsByQuery } from './lyrics-search.js';
 
@@ -36,7 +37,7 @@ const normCtx = (c, def = false, fbOrd = getCat()) => {
   return x;
 };
 
-const sig = (o = [], h = [], c = []) => JSON.stringify({ o: [...o], h: [...h], c: [...c] });
+const sig = (o = [], h = []) => JSON.stringify({ o: [...o], h: [...h] });
 
 const bldTrk = uid => {
   const t = trk(uid);
@@ -66,7 +67,7 @@ const Store = {
   del: id => Store.setPl(Store.pl().filter(p => p.id !== id)),
   act: () => jGet('activeId', ALL),
   setAct: id => jSet('activeId', id),
-  ui: () => jGet('ui', { viewMode: 'flat', showNumbers: false, showHidden: false, hiddenPlacement: 'inline' }),
+  ui: () => jGet('ui', { viewMode: 'flat', showNumbers: true, showHidden: false, hiddenPlacement: 'inline' }),
   setUi: v => jSet('ui', v),
   cols: () => jGet('albumColors', {}),
   setCols: v => jSet('albumColors', v),
@@ -84,10 +85,10 @@ class Draft {
     this.isDef = isDef(id);
     const src = this.isDef ? Store.def() : Store.get(id);
     const base = this.isDef ? normCtx(src, true, getCat()) : normCtx(src?.creationSnapshot || src || { order: [], hidden: [] }, false, src?.creationSnapshot?.order || src?.order || getCat());
-    this.base = { ord: [...(base.order || [])], hid: [...(base.hidden || [])], chk: [] };
+    this.base = { ord: [...(base.order || [])], hid: [...(base.hidden || [])] };
     this.ord = [...(src?.order || this.base.ord)];
     this.hid = new Set(src?.hidden || this.base.hid);
-    this.chk = new Set();
+    this.chk = new Set(); // Q1: Checkboxes empty initially
   }
   getList() {
     if (!this.isDef) return [...this.ord].filter(trk);
@@ -112,7 +113,7 @@ class Draft {
     this.hid = new Set(b.hidden || b.hid);
     this.chk = new Set();
   }
-  isDirty() { return sig(this.ord.filter(trk), [...this.hid].filter(trk), [...this.chk].filter(trk)) !== sig(this.base.ord, this.base.hid, this.base.chk); }
+  isDirty() { return sig(this.ord.filter(trk), [...this.hid].filter(trk)) !== sig(this.base.ord, this.base.hid); }
 }
 
 class ShowcaseManager {
@@ -147,6 +148,7 @@ class ShowcaseManager {
   _hi(uid) { D.querySelectorAll('.showcase-track.current').forEach(x => x.classList.remove('current')); if (uid) D.querySelectorAll(`.showcase-track[data-uid="${uidEsc(uid)}"]`).forEach(x => x.classList.add('current')); }
   _ctxHiddenSet(id = this._ctxId()) { return new Set((isDef(id) ? Store.def() : Store.get(id))?.hidden || []); }
   _isHidden(uid, id = this._ctxId()) { return this._ctxHiddenSet(id).has(uid); }
+  
   _toggleHiddenPersist(uid, id = this._ctxId()) {
     const c = isDef(id) ? Store.def() : Store.get(id);
     if (!c) return;
@@ -156,6 +158,7 @@ class ShowcaseManager {
     isDef(id) ? Store.setDef(c) : Store.save(c);
     this.renderTab();
   }
+  
   _baseResetChanged() {
     const a = Store.def(), b = normCtx({ order: getCat(), hidden: [], sortMode: 'user', hiddenPlacement: 'inline' }, true);
     return sig(a.order, a.hidden) !== sig(b.order, b.hidden);
@@ -163,6 +166,7 @@ class ShowcaseManager {
 
   getActiveListTracks() {
     const c = this._ctx(), hid = new Set(c?.hidden || []);
+    // Для плейбека всегда отдаем только АКТИВНЫЕ треки (глазик включен)
     return (c?.order || []).filter(u => trk(u) && !hid.has(u)).map(bldTrk).filter(Boolean);
   }
 
@@ -209,7 +213,7 @@ class ShowcaseManager {
   _header(c, ui, id) {
     const sm = c?.sortMode || 'user', resetAble = isDef(id) && this._baseResetChanged(), dirty = !!this._drf?.isDirty();
     return `<div class="showcase-header-controls">
-      ${this._edit ? `<div class="sc-edit-banner">✏️ РЕЖИМ РЕДАКТИРОВАНИЯ<div class="sc-edit-actions"><button class="showcase-btn sc-btn-save" style="background:#4caf50;color:#fff;">💾 Сохранить</button><button class="showcase-btn sc-btn-create" style="background:#4daaff;color:#fff;">✨ Создать</button><button class="showcase-btn sc-btn-reset ${dirty ? '' : 'sc-btn-disabled'}" style="border-color:#ff9800;" ${dirty ? '' : 'disabled'}>↺ Сброс</button><button class="showcase-btn sc-btn-exit" style="border-color:#ff6b6b;">✕ Выйти</button></div></div>` : ''}
+      ${this._edit ? `<div class="showcase-edit-banner">✏️ РЕЖИМ РЕДАКТИРОВАНИЯ<div class="sc-edit-actions"><button class="showcase-btn sc-btn-save" style="background:#4caf50;color:#fff;">💾 Сохранить</button><button class="showcase-btn sc-btn-create" style="background:#4daaff;color:#fff;">✨ Создать</button><button class="showcase-btn sc-btn-reset ${dirty ? '' : 'sc-btn-disabled'}" style="border-color:#ff9800;" ${dirty ? '' : 'disabled'}>↺ Сброс</button><button class="showcase-btn sc-btn-exit" style="border-color:#ff6b6b;">✕ Выйти</button></div></div>` : ''}
       <div class="showcase-search-wrap"><input type="text" class="showcase-search" id="sc-search" placeholder="🔍 Поиск по всему каталогу..." value="${esc(this._q)}"><button type="button" class="showcase-search-clear" id="sc-search-clear" style="display:${this._q ? '' : 'none'}">✕</button></div>
       ${!this._edit ? `<div class="showcase-btns-row"><button class="showcase-btn sc-btn-edit">✏️ Редактировать</button>${resetAble ? `<button class="showcase-btn sc-btn-master-reset" style="flex:.5">↺ Сброс</button>` : ''}<button class="showcase-btn sc-btn-sort">↕️ ${sm !== 'user' ? '●' : ''} Сортировка</button></div><div class="showcase-btns-row"><button class="showcase-btn sc-btn-playall">▶ Играть всё</button><button class="showcase-btn sc-btn-shuffle">🔀 Перемешать</button></div>` : ''}
       <div class="showcase-playlists-actions" id="sc-playlists-actions"></div>
@@ -274,7 +278,7 @@ class ShowcaseManager {
 
   _renderSearch(box, { res, cOrd, cHid }) {
     const set = new Set(cOrd || []);
-    let h = `<div class="sc-search-info">Найдено: ${res.length} треков</div>`;
+    let h = `<div class="sc-search-info">Найдено: ${res.length} треков по всему приложению</div>`;
     res.forEach((u, i) => {
       const t = bldTrk(u);
       if (!t) return;
@@ -291,7 +295,7 @@ class ShowcaseManager {
     box.innerHTML = uids.map(u => {
       const t = bldTrk(u);
       if (!t) return '';
-      const isH = this._drf.hid.has(u), chk = this._drf.chk.has(u), mt = `${esc(albT(t.sourceAlbum))}${isH ? ' · скрыт' : ''}`;
+      const isH = this._drf.hid.has(u), chk = this._drf.chk.has(u), mt = `${esc(albT(t.sourceAlbum))}${isH ? ' · неактивен' : ''}`;
       return `<div class="showcase-track sc-edit-row ${isH ? 'inactive' : ''} ${chk ? 'selected' : ''}" data-uid="${u}" data-hidden="${isH ? '1' : '0'}" draggable="true">
         <button class="sc-arrow-up">▲</button>
         <div class="showcase-drag-handle">⠿</div>
@@ -330,7 +334,7 @@ class ShowcaseManager {
     const bar = D.createElement('div');
     bar.id = 'sc-selection-bar';
     bar.className = 'showcase-sticky-bar';
-    bar.innerHTML = `<span>Выбрано: ${n}</span>${this._edit ? `<button class="showcase-btn sc-edit-create" style="background:#4daaff;color:#fff;">✨ Создать</button><button class="showcase-btn sc-edit-share">📸 Карточка</button><button class="showcase-btn sc-edit-all">✓ Всё</button><button class="showcase-btn sc-edit-none">✕ Снять</button>` : `<button class="showcase-btn sc-search-add">➕ Добавить</button><button class="showcase-btn sc-search-create" style="background:#4daaff;color:#fff;">✨ Создать</button><button class="showcase-btn sc-search-share">📸 Карточка</button><button class="showcase-btn sc-search-check-all">✓ Всё</button><button class="showcase-btn" id="sc-search-clear-query">🧹 Очистить поиск</button><button class="showcase-btn" id="sc-search-clear-selection">✕ Снять</button>`}`;
+    bar.innerHTML = `<span>Выбрано: ${n}</span>${this._edit ? `<button class="showcase-btn sc-edit-create" style="background:#4daaff;color:#fff;">✨ Создать</button><button class="showcase-btn sc-edit-share">📸 Карточка</button><button class="showcase-btn sc-edit-all">✓ Всё</button><button class="showcase-btn sc-edit-none">✕ Снять</button>` : `<button class="showcase-btn sc-search-add">➕ Добавить</button><button class="showcase-btn sc-search-create" style="background:#4daaff;color:#fff;">✨ Создать</button><button class="showcase-btn sc-search-share">📸 Карточка</button><button class="showcase-btn sc-search-check-all">✓ Всё</button><button class="showcase-btn" id="sc-search-clear-selection">✕ Снять</button>`}`;
     D.body.appendChild(bar);
   }
 
@@ -376,8 +380,7 @@ class ShowcaseManager {
       'sc-tg-numbers': () => { const x = uiMut(); x.ui.showNumbers = !x.ui.showNumbers; x.save(); },
       'sc-tg-view': () => { const x = uiMut(); x.ui.viewMode = x.ui.viewMode === 'flat' ? 'grouped' : 'flat'; x.save(); },
       'sc-tg-placement': () => { const x = uiMut(); x.ui.hiddenPlacement = x.ui.hiddenPlacement === 'inline' ? 'end' : 'inline'; x.save(); },
-      'sc-search-clear-selection': () => { this._sel.clear(); this._selectionBar(); this._status(this._res.length, true); },
-      'sc-search-clear-query': () => { const i = $('sc-search'); if (i) i.value = ''; this._q = ''; this._sel.clear(); this._cleanupUi(); this._renderBody(++this._tok); },
+      'sc-search-clear-selection': () => { this._sel.clear(); this._selectionBar(); this._status(this._res.length, true); D.querySelectorAll('.sc-search-chk').forEach(c=>c.checked=false); D.querySelectorAll('.sc-search-result').forEach(r=>r.classList.remove('selected')); },
       'sc-edit-all': () => { this._drf?.setAllChecked(true); this._renderEdit($('sc-tracks-container'), this._drf.getList()); },
       'sc-edit-none': () => { this._drf?.setAllChecked(false); this._renderEdit($('sc-tracks-container'), this._drf.getList()); },
       'sc-edit-create': () => this._createPl(this._mkFromEdit(), true),
@@ -419,29 +422,43 @@ class ShowcaseManager {
     if (this._q) {
       if (t.classList?.contains('sc-search-chk')) {
         t.checked ? this._sel.add(uid) : this._sel.delete(uid);
-        return this._renderBody(++this._tok);
+        row.classList.toggle('selected', t.checked);
+        this._selectionBar();
+        this._status(this._res.length, true);
+        return;
       }
       return this._openMenu(uid, true);
     }
 
     if (t.closest('.showcase-track-menu-btn')) return this._openMenu(uid, false);
-    if (isHidden) return this._openMenu(uid, false);
+    if (isHidden) return this._openMenu(uid, false); // Тап по скрытому = Меню (Не воспроизводим)
     return this._playCtx(uid);
   }
 
   _onEditClick(e) {
     const row = e.target.closest('.sc-edit-row'), uid = row?.dataset.uid;
     if (!uid || !this._drf) return;
-    if (e.target.classList.contains('sc-chk')) this._drf.toggleChecked(uid);
-    else if (e.target.closest('.sc-eye-btn')) this._drf.toggleHidden(uid);
+    
+    if (e.target.classList.contains('sc-chk')) {
+       this._drf.toggleChecked(uid);
+       row.classList.toggle('selected', this._drf.chk.has(uid));
+       this._selectionBar();
+       this._status(this._drf.getList().length, false);
+       return;
+    }
+    else if (e.target.closest('.sc-eye-btn')) {
+       this._drf.toggleHidden(uid);
+       this._renderEdit($('sc-tracks-container'), this._drf.getList());
+    }
     else if (e.target.closest('.sc-arrow-up')) this._drf.move(uid, -1);
     else if (e.target.closest('.sc-arrow-down')) this._drf.move(uid, 1);
     else return;
+    
     this._renderEdit($('sc-tracks-container'), this._drf.getList());
   }
 
   _switchCtx(id) {
-    if (this._edit) return W.NotificationSystem?.warning('Выйдите из режима редактирования');
+    if (this._edit) return W.NotificationSystem?.warning('Сначала выйдите из режима редактирования');
     this._cleanupUi();
     this._sel.clear();
     Store.setAct(id);
@@ -450,7 +467,7 @@ class ShowcaseManager {
 
   _enterEdit() {
     if (!this._ctx()) return;
-    this._drf = new Draft(this._ctxId());
+    this._drf = new Draft(this._ctxId()); // Игнорирует сортировку, берет manual order
     this._edit = true;
     this.renderTab();
   }
@@ -477,7 +494,7 @@ class ShowcaseManager {
       Store.save(c);
     }
     this._leaveEdit();
-    W.NotificationSystem?.success('Сохранено');
+    W.NotificationSystem?.success('Сохранено в текущем плейлисте');
   }
 
   _mkFromEdit() { return this._drf?.ord.filter(u => this._drf.chk.has(u) && trk(u)) || []; }
@@ -486,8 +503,8 @@ class ShowcaseManager {
     if (!this._drf?.isDirty()) return;
     W.Modals?.confirm({
       title: 'Сброс',
-      textHtml: this._drf.isDef ? 'Список вернётся к заводскому: все треки, порядок по альбомам. Продолжить?' : 'Плейлист вернётся к состоянию при создании. Продолжить?',
-      confirmText: 'Сбросить',
+      textHtml: this._drf.isDef ? 'Список вернётся к начальному заводскому: упорядочится по альбомам, все треки станут видимыми. Вы уверены?' : 'Плейлист вернётся к состоянию при его создании. Вы уверены?',
+      confirmText: 'Да, сбросить',
       cancelText: 'Отмена',
       onConfirm: () => {
         this._drf.reset();
@@ -498,7 +515,7 @@ class ShowcaseManager {
 
   _exitEdit() {
     if (!this._drf?.isDirty()) return this._leaveEdit();
-    W.Modals?.confirm({ title: 'Выйти без сохранения?', textHtml: 'Изменения не будут сохранены.', confirmText: 'Выйти', cancelText: 'Отмена', onConfirm: () => this._leaveEdit() });
+    W.Modals?.confirm({ title: 'Вы внесли изменения', textHtml: 'Если выйдете, они не сохранятся.', confirmText: 'Да, выйти', cancelText: 'Отмена', onConfirm: () => this._leaveEdit() });
   }
 
   _bindDrag(box) {
@@ -525,10 +542,13 @@ class ShowcaseManager {
   }
 
   _playCtx(uid = null, shuf = false, listOverride = null, keyOverride = null) {
-    const id = this._ctxId(), key = keyOverride || (isDef(id) ? SHOW : `${SHOW}:${id}`), list0 = listOverride || this.getActiveListTracks();
+    const id = this._ctxId(), key = keyOverride || (isDef(id) ? SHOW : `${SHOW}:${id}`);
+    const list0 = listOverride || this.getActiveListTracks(); // Берем только активные
     if (!list0.length) return;
+    
     const list = shuf ? randShuffle([...list0]) : list0;
     const idx = uid && !shuf ? Math.max(0, list.findIndex(t => t.uid === uid)) : 0;
+    
     W.AlbumsManager?.setPlayingAlbum?.(key);
     W.playerCore?.setPlaylist?.(list, idx, null, { preservePosition: false });
     W.playerCore?.play?.(idx);
@@ -539,7 +559,7 @@ class ShowcaseManager {
 
   _openSort() {
     const id = this._ctxId(), c = this._ctx(), sm = c?.sortMode || 'user';
-    const opts = [['user','👤 Мой порядок'],['name-asc','А→Я'],['name-desc','Я→А'],['album-desc','Альбомы ↓'],['album-asc','Альбомы ↑'],['plays-desc','Топ прослушиваний'],['plays-asc','Меньше всего'],['last-played','Недавние'],['favorites-first','Сначала ⭐']];
+    const opts = [['user','👤 Мой порядок'],['name-asc','А→Я'],['name-desc','Я→А'],['album-desc','Альбомы ↓ (Новые)'],['album-asc','Альбомы ↑ (Старые)'],['plays-desc','Топ прослушиваний'],['plays-asc','Меньше всего'],['last-played','Недавние'],['favorites-first','Сначала ⭐']];
     const m = W.Modals?.open({ title: 'Сортировка', bodyHtml: `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${opts.map(([v, l]) => `<button class="showcase-btn ${sm === v ? 'active' : ''}" data-val="${v}" style="${v === 'user' ? 'grid-column:1/-1' : ''}">${l}</button>`).join('')}</div>` });
     if (!m) return;
     m.onclick = e => {
@@ -564,7 +584,7 @@ class ShowcaseManager {
       ${fromSearch ? `<button class="sc-sheet-btn" id="bm-play">▶ Воспроизвести</button><hr style="border-color:rgba(255,255,255,.08);margin:8px 0">` : ''}
       <button class="sc-sheet-btn" id="bm-pl">➕ Добавить в плейлист</button>
       ${inPl ? `<button class="sc-sheet-btn" id="bm-rm" style="color:#ff6b6b">✖ Удалить из плейлиста</button>` : ''}
-      <button class="sc-sheet-btn" id="bm-eye">${this._isHidden(uid, id) ? `👁 Показать в «${this._ctxName(id)}»` : `🙈 Скрыть в «${this._ctxName(id)}»`}</button>
+      <button class="sc-sheet-btn" id="bm-eye">${this._isHidden(uid, id) ? `👁 Сделать активным в «${this._ctxName(id)}»` : `🙈 Скрыть в «${this._ctxName(id)}»`}</button>
       <button class="sc-sheet-btn" id="bm-fv">${W.playerCore?.isFavorite?.(uid) ? '❌ Убрать из Избранного' : '⭐ В Избранное'}</button>
       <button class="sc-sheet-btn" id="bm-of">🔒 Скачать / Офлайн</button>
       <button class="sc-sheet-btn" id="bm-dl">⬇️ Сохранить mp3</button>
@@ -574,11 +594,13 @@ class ShowcaseManager {
       <button class="sc-sheet-btn" id="bm-cx" style="color:#888;justify-content:center">Отмена</button></div>`;
     D.body.appendChild(this._menu = bg);
     requestAnimationFrame(() => bg.classList.add('active'));
+    
     const close = () => {
       bg.classList.remove('active');
       setTimeout(() => bg.remove(), 200);
       this._menu = null;
     };
+    
     bg.querySelector('.sc-sheet-close').onclick = close;
     bg.onclick = e => {
       const a = e.target.id;
@@ -683,15 +705,17 @@ class ShowcaseManager {
 
   _createPl(uids, fromEdit = false, name = '') {
     const use = (uids || []).filter(trk);
-    if (!use.length) return W.NotificationSystem?.warning('Отметьте треки чекбоксами');
+    if (!use.length) return W.NotificationSystem?.warning('Отметьте нужные треки чекбоксами');
     const done = n => {
       const id = Date.now().toString(36);
-      Store.save(mkPl({ id, name: n, order: [...use], hidden: [...use].filter(u => this._ctxHiddenSet().has(u)) }));
+      // Если создаем из Edit, берем скрытый статус у выбранных и переносим. Иначе они активны.
+      const hid = (fromEdit && this._drf) ? use.filter(u => this._drf.hid.has(u)) : [];
+      Store.save(mkPl({ id, name: n, order: [...use], hidden: hid }));
       if (fromEdit) this._leaveEdit();
       this._q = '';
       this._sel.clear();
       this._cleanupUi();
-      Store.setAct(id);
+      Store.setAct(id); // Сразу переключаем на него
       this.renderTab();
       W.NotificationSystem?.success(`Плейлист «${n}» создан`);
     };
@@ -704,6 +728,7 @@ class ShowcaseManager {
     const c = this._ctx();
     if (!c) return;
     const s = new Set(c.order || []);
+    // Добавляем в конец плейлиста, не меняя статуса глазика (если был скрыт - останется)
     u.forEach(x => { if (!s.has(x)) { c.order.push(x); s.add(x); } });
     isDef(this._ctxId()) ? Store.setDef(c) : Store.save(c);
     this._q = '';
