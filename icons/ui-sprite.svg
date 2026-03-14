@@ -18,4 +18,72 @@
   <symbol id="icon-lyrics" viewBox="0 0 24 24">
     <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M7 6h10M7 10h10M7 14h7M7 18h6"/>
   </symbol>
+
+  <!-- icon-prev: предыдущий трек -->
+  <symbol id="icon-prev" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M11 5L4 12l7 7V5zm9 0v14l-7-7 7-7z"/>
+  </symbol>
+
+  <!-- icon-play: play -->
+  <symbol id="icon-play" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M8 5v14l11-7z"/>
+  </symbol>
+
+  <!-- icon-pause: pause -->
+  <symbol id="icon-pause" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M6 4h4v16H6zM14 4h4v16h-4z"/>
+  </symbol>
+
+  <!-- icon-stop: stop -->
+  <symbol id="icon-stop" viewBox="0 0 24 24">
+    <rect x="6" y="6" width="12" height="12" fill="currentColor"/>
+  </symbol>
+
+  <!-- icon-next: следующий трек -->
+  <symbol id="icon-next" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M13 5l7 7-7 7V5zM4 5v14l7-7-7-7z"/>
+  </symbol>
+
+  <!-- icon-mute: mute -->
+  <symbol id="icon-mute" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
+  </symbol>
+
+  <!-- icon-shuffle: shuffle -->
+  <symbol id="icon-shuffle" viewBox="0 0 24 24">
+    <path fill="none" stroke="currentColor" stroke-width="2" d="M3 17h2.735a4 4 0 003.43-1.942l3.67-6.116A4 4 0 0116.265 7H21m0 0l-3-3m3 3l-3 3"/>
+    <path fill="none" stroke="currentColor" stroke-width="2" d="M3 7h2.735a4 4 0 013.43 1.942l3.67 6.116A4 4 0 0016.265 17H21m0 0l-3 3m3-3l-3-3"/>
+  </symbol>
+
+  <!-- icon-repeat: repeat -->
+  <symbol id="icon-repeat" viewBox="0 0 24 24">
+    <path fill="none" stroke="currentColor" stroke-width="2" d="M17 2l4 4-4 4"/>
+    <path fill="none" stroke="currentColor" stroke-width="2" d="M3 11V9a4 4 0 014-4h14"/>
+    <path fill="none" stroke="currentColor" stroke-width="2" d="M7 22l-4-4 4-4"/>
+    <path fill="none" stroke="currentColor" stroke-width="2" d="M21 13v2a4 4 0 01-4 4H3"/>
+    <circle cx="12" cy="12" r="1" fill="currentColor"/>
+  </symbol>
+
+  <!-- icon-sleep: таймер сна -->
+  <symbol id="icon-sleep" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/>
+    <path d="M12 7v5l3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+
+  <!-- icon-gallery-left: стрелка галереи влево -->
+  <symbol id="icon-gallery-left" viewBox="0 0 34 34">
+    <circle cx="17" cy="17" r="16" fill="#23252e" opacity="0.65"/>
+    <polyline points="20,10 13,17 20,24" fill="none" stroke="#fff" stroke-width="2.9" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+
+  <!-- icon-gallery-right: стрелка галереи вправо -->
+  <symbol id="icon-gallery-right" viewBox="0 0 34 34">
+    <circle cx="17" cy="17" r="16" fill="#23252e" opacity="0.65"/>
+    <polyline points="14,10 21,17 14,24" fill="none" stroke="#fff" stroke-width="2.9" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+
+  <!-- icon-close: крестик модалки -->
+  <symbol id="icon-close" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M18.3 5.71a1 1 0 0 0-1.41 0L12 10.59 7.11 5.7A1 1 0 0 0 5.7 7.11L10.59 12l-4.9 4.89a1 1 0 1 0 1.41 1.42L12 13.41l4.89 4.9a1 1 0 0 0 1.42-1.41L13.41 12l4.9-4.89a1 1 0 0 0-.01-1.4z"/>
+  </symbol>
 </svg>
