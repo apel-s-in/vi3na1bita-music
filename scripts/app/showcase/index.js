@@ -211,28 +211,32 @@ class ShowcaseManager {
     return (c?.order || []).filter(u => trk(u) && !hid.has(u)).map(bldTrk).filter(Boolean);
   }
 
-  async _sortedOrder(ctx) {
-    let ord = [...(ctx?.order || [])].filter(trk), sm = ctx?.sortMode || 'user';
+  _sortedOrderSync(ctx) {
+    const ord = [...(ctx?.order || [])].filter(trk), sm = ctx?.sortMode || 'user';
     if (sm === 'user') return ord;
     const arr = ord.map(trk).filter(Boolean);
-    if (['plays-desc', 'plays-asc', 'last-played'].includes(sm)) {
-      try {
-        const { metaDB } = await import('../../analytics/meta-db.js');
-        const st = new Map((await metaDB.getAllStats()).map(s => [s.uid, s]));
-        const g = (u, k) => st.get(u)?.[k] || 0;
-        arr.sort((a, b) => sm === 'plays-desc' ? g(b.uid, 'globalFullListenCount') - g(a.uid, 'globalFullListenCount') : sm === 'plays-asc' ? g(a.uid, 'globalFullListenCount') - g(b.uid, 'globalFullListenCount') : g(b.uid, 'lastPlayedAt') - g(a.uid, 'lastPlayedAt'));
-      } catch {}
-    } else {
-      const rank = new Map((W.albumsIndex || []).reverse().map((a, i) => [a.key, i])), r = k => rank.get(k) ?? 9999;
-      const cmp = {
-        'name-asc': (a, b) => a.title.localeCompare(b.title),
-        'name-desc': (a, b) => b.title.localeCompare(a.title),
-        'album-asc': (a, b) => r(b.sourceAlbum) - r(a.sourceAlbum) || a.title.localeCompare(b.title),
-        'album-desc': (a, b) => r(a.sourceAlbum) - r(b.sourceAlbum) || a.title.localeCompare(b.title),
-        'favorites-first': (a, b) => (W.playerCore?.isFavorite?.(b.uid) ? 1 : 0) - (W.playerCore?.isFavorite?.(a.uid) ? 1 : 0)
-      };
-      cmp[sm] && arr.sort(cmp[sm]);
-    }
+    const rank = new Map((W.albumsIndex || []).reverse().map((a, i) => [a.key, i])), r = k => rank.get(k) ?? 9999;
+    const cmp = {
+      'name-asc': (a, b) => a.title.localeCompare(b.title),
+      'name-desc': (a, b) => b.title.localeCompare(a.title),
+      'album-asc': (a, b) => r(b.sourceAlbum) - r(a.sourceAlbum) || a.title.localeCompare(b.title),
+      'album-desc': (a, b) => r(a.sourceAlbum) - r(b.sourceAlbum) || a.title.localeCompare(b.title),
+      'favorites-first': (a, b) => (W.playerCore?.isFavorite?.(b.uid) ? 1 : 0) - (W.playerCore?.isFavorite?.(a.uid) ? 1 : 0)
+    };
+    cmp[sm] && arr.sort(cmp[sm]);
+    return arr.map(x => x.uid);
+  }
+
+  async _sortedOrderAsync(ctx) {
+    const ord = [...(ctx?.order || [])].filter(trk), sm = ctx?.sortMode || 'user';
+    if (!['plays-desc', 'plays-asc', 'last-played'].includes(sm)) return this._sortedOrderSync(ctx);
+    const arr = ord.map(trk).filter(Boolean);
+    try {
+      const { metaDB } = await import('../../analytics/meta-db.js');
+      const st = new Map((await metaDB.getAllStats()).map(s => [s.uid, s]));
+      const g = (u, k) => st.get(u)?.[k] || 0;
+      arr.sort((a, b) => sm === 'plays-desc' ? g(b.uid, 'globalFullListenCount') - g(a.uid, 'globalFullListenCount') : sm === 'plays-asc' ? g(a.uid, 'globalFullListenCount') - g(b.uid, 'globalFullListenCount') : g(b.uid, 'lastPlayedAt') - g(a.uid, 'lastPlayedAt'));
+    } catch {}
     return arr.map(x => x.uid);
   }
 
@@ -245,7 +249,8 @@ class ShowcaseManager {
       return { type: 'search', res: this._res, cOrd: c?.order || [], cHid: hid };
     }
     this._res = [];
-    let ord = await this._sortedOrder(c);
+    let ord = this._sortedOrderSync(c);
+    if (['plays-desc', 'plays-asc', 'last-played'].includes(c?.sortMode || 'user')) ord = await this._sortedOrderAsync(c);
     if (ui.hiddenPlacement === 'end') ord = [...ord.filter(u => !hid.has(u)), ...ord.filter(u => hid.has(u))];
     if (!ui.showHidden) ord = ord.filter(u => !hid.has(u));
     return { type: 'normal', uids: ord, hid };
