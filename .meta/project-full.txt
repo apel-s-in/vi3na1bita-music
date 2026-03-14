@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-87974c205e84a0fb66f24f7866b6f9a2c8aa188e.idx
-│   │       ├── pack-87974c205e84a0fb66f24f7866b6f9a2c8aa188e.pack
-│   │       └── pack-87974c205e84a0fb66f24f7866b6f9a2c8aa188e.rev
+│   │       ├── pack-4fbb63540b7e6af8ba2df324ebc4acc49c232209.idx
+│   │       ├── pack-4fbb63540b7e6af8ba2df324ebc4acc49c232209.pack
+│   │       └── pack-4fbb63540b7e6af8ba2df324ebc4acc49c232209.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -378,7 +378,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-14 10:28:33 UTC
+Сгенерировано: 2026-03-14 10:34:18 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -941,7 +941,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.1.15';
+const SW_VERSION = '8.1.16';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
