@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-657d52e4397d69a3c72f5b4d981435fbe8e56e73.idx
-│   │       ├── pack-657d52e4397d69a3c72f5b4d981435fbe8e56e73.pack
-│   │       └── pack-657d52e4397d69a3c72f5b4d981435fbe8e56e73.rev
+│   │       ├── pack-15f82c9c36bbbc7d7f779f352f72b66e396665c1.idx
+│   │       ├── pack-15f82c9c36bbbc7d7f779f352f72b66e396665c1.pack
+│   │       └── pack-15f82c9c36bbbc7d7f779f352f72b66e396665c1.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -380,7 +380,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-14 16:57:08 UTC
+Сгенерировано: 2026-03-14 16:57:56 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2447,6 +2447,7 @@ class AlbumsManager {
     W.playerCore?.onFavoritesChanged(d => {
       const sel = d?.albumKey ? `.like-star[data-album="${CSS.escape(d.albumKey)}"][data-uid="${CSS.escape(d.uid)}"]` : `.like-star[data-uid="${CSS.escape(d?.uid)}"]`;
       D.querySelectorAll(sel).forEach(el => setFavoriteStarState(el, !!d?.liked));
+    });
   }
 
   async loadAlbum(key) {
