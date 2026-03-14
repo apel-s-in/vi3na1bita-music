@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-feea9433516300d9335081d3ac976b4c13d6116b.idx
-│   │       ├── pack-feea9433516300d9335081d3ac976b4c13d6116b.pack
-│   │       └── pack-feea9433516300d9335081d3ac976b4c13d6116b.rev
+│   │       ├── pack-dd1c093d648a8da21d60403b500f1da380a3f907.idx
+│   │       ├── pack-dd1c093d648a8da21d60403b500f1da380a3f907.pack
+│   │       └── pack-dd1c093d648a8da21d60403b500f1da380a3f907.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -378,7 +378,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-14 14:36:09 UTC
+Сгенерировано: 2026-03-14 14:36:56 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2431,13 +2431,10 @@ class AlbumsManager {
       const pIdx = data._pTracks.findIndex(t => t.uid === uid); 
       if (pIdx === -1) return;
       
-      const curSnap = pc.getPlaylistSnapshot() || [];
-      if (curSnap.length !== data._pTracks.length || curSnap[0]?.sourceAlbum !== aKey) {
-        pc.setPlaylist(data._pTracks, pIdx, null, { preservePosition: false });
-      }
-      
-      this.highlightCurrentTrack(pIdx); 
-      pc.play(pIdx);
+      const started = pc.playExactFromPlaylist?.(data._pTracks, uid, { dir: 1 });
+      if (!started) return;
+
+      this.highlightCurrentTrack(pIdx, { uid, albumKey: aKey });
       W.PlayerUI?.ensurePlayerBlock?.(pIdx, { userInitiated: true });
     });
 
