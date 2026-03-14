@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c96744599baa53ce58308172b3be4b86aac5ffc9.idx
-│   │       ├── pack-c96744599baa53ce58308172b3be4b86aac5ffc9.pack
-│   │       └── pack-c96744599baa53ce58308172b3be4b86aac5ffc9.rev
+│   │       ├── pack-171f2f1765775d23fa35fe4cf4642b9938c92b67.idx
+│   │       ├── pack-171f2f1765775d23fa35fe4cf4642b9938c92b67.pack
+│   │       └── pack-171f2f1765775d23fa35fe4cf4642b9938c92b67.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -378,7 +378,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-14 09:15:20 UTC
+Сгенерировано: 2026-03-14 09:24:07 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3888,8 +3888,12 @@ class ShowcaseManager {
   }
 
   _openMenu(uid, fromSrh = false) {
-    this._cleanupUi(); const t = trk(uid), id = this._ctxId(), inPl = !isDef(id) && (Store.get(id)?.order || []).includes(uid); if (!t) return;
-    const bg = D.createElement('div'); bg.className = 'sc-bottom-sheet-bg';
+    this._cleanupUi();
+    const t = trk(uid), id = this._ctxId(), inPl = !isDef(id) && (Store.get(id)?.order || []).includes(uid);
+    if (!t) return;
+
+    const bg = D.createElement('div');
+    bg.className = 'sc-bottom-sheet-bg';
     bg.innerHTML = `<div class="sc-bottom-sheet"><button class="sc-sheet-close">×</button><div class="sc-sheet-title">${esc(t.title)}</div><div class="sc-sheet-sub">${esc(albT(t.sourceAlbum))}</div>
       ${fromSrh ? `<button class="sc-sheet-btn" id="bm-play">▶ Воспроизвести</button><hr style="border-color:rgba(255,255,255,.08);margin:8px 0">` : ''}
       <button class="sc-sheet-btn" id="bm-pl">➕ Добавить в плейлист</button>
@@ -3902,56 +3906,76 @@ class ShowcaseManager {
       <button class="sc-sheet-btn" id="bm-sh">📸 Поделиться (Карточка)</button>
       <button class="sc-sheet-btn" id="bm-cl">🎨 Цвет альбома</button>
       <button class="sc-sheet-btn" id="bm-cx" style="color:#888;justify-content:center">Отмена</button></div>`;
-    D.body.appendChild(this._menu = bg); requestAnimationFrame(() => bg.classList.add('active'));
-    const close = () => { bg.classList.remove('active'); setTimeout(() => bg.remove(), 200); this._menu = null; };
+
+    D.body.appendChild(this._menu = bg);
+    requestAnimationFrame(() => bg.classList.add('active'));
+
+    const close = () => {
+      bg.classList.remove('active');
+      setTimeout(() => bg.remove(), 200);
+      this._menu = null;
+    };
+
     bg.querySelector('.sc-sheet-close').onclick = close;
     bg.onclick = e => {
-      const b = e.target.id; if (e.target === bg || b === 'bm-cx') return close(); if (!b) return; close();
+      const actId = e.target.id;
+      if (e.target === bg || actId === 'bm-cx') return close();
+      if (!actId) return;
+      close();
+
       const acts = {
         'bm-play': () => {
           if (!fromSrh) return this._playCtx(uid);
-          const t = bldTrk(uid); if (!t) return;
-          this._playCtx(uid, false, [t], `__showcase__:search:${this._ctxId()}`);
+          const one = bldTrk(uid);
+          if (!one) return;
+          this._playCtx(uid, false, [one], `__showcase__:search:${this._ctxId()}`);
         },
-        'bm-pl': () => setTimeout(() => {
-          const pls = Store.pl();
-          if (!pls.length) return W.NotificationSystem?.warning('Сначала создайте плейлист');
-          const m = W.Modals?.open({
-            title: 'Добавить в плейлист',
-            bodyHtml: `<div style="display:flex;flex-direction:column;gap:10px">${pls.map(p => `<button class="showcase-btn" data-pid="${p.id}">${esc(p.name)}</button>`).join('')}</div>`
-          });
-          if (!m) return;
-          m.onclick = e => {
-            const b = e.target.closest('[data-pid]');
-            if (!b) return;
-            const p = Store.get(b.dataset.pid);
-            if (!p) return;
-            const s = new Set(p.order || []);
-            if (!s.has(uid)) {
-              p.order.push(uid);
-              Store.save(p);
-              W.NotificationSystem?.success('Добавлено');
-            }
-            m.remove();
-          };
-        }, 180),
+        'bm-pl': () => {
+          setTimeout(() => {
+            const pls = Store.pl();
+            if (!pls.length) return W.NotificationSystem?.warning('Сначала создайте плейлист');
+            const m = W.Modals?.open({
+              title: 'Добавить в плейлист',
+              bodyHtml: `<div style="display:flex;flex-direction:column;gap:10px">${pls.map(p => `<button class="showcase-btn" data-pid="${p.id}">${esc(p.name)}</button>`).join('')}</div>`
+            });
+            if (!m) return;
+            m.onclick = ev => {
+              const pick = ev.target.closest('[data-pid]');
+              if (!pick) return;
+              const p = Store.get(pick.dataset.pid);
+              if (!p) return;
+              const s = new Set(p.order || []);
+              if (!s.has(uid)) {
+                p.order.push(uid);
+                Store.save(p);
+                W.NotificationSystem?.success('Добавлено');
+              }
+              m.remove();
+            };
+          }, 180);
+        },
         'bm-rm': () => {
           const p = Store.get(id);
-          if (p) {
-            p.order = p.order.filter(x => x !== uid);
-            p.hidden = (p.hidden || []).filter(x => x !== uid);
-            Store.save(p);
-            this.renderTab();
-          }
+          if (!p) return;
+          p.order = p.order.filter(x => x !== uid);
+          p.hidden = (p.hidden || []).filter(x => x !== uid);
+          Store.save(p);
+          this.renderTab();
         },
         'bm-eye': () => this._tgHid(uid, id),
         'bm-fv': () => W.playerCore?.toggleFavorite?.(uid, { albumKey: t.sourceAlbum }),
         'bm-of': () => W.OfflineManager?.togglePinned?.(uid),
-        'bm-dl': () => { const a = D.createElement('a'); U.download.applyDownloadLink(a, bldTrk(uid)); a.href && a.click(); },
+        'bm-dl': () => {
+          const a = D.createElement('a');
+          U.download.applyDownloadLink(a, bldTrk(uid));
+          if (a.href) a.click();
+        },
         'bm-st': () => setTimeout(() => W.StatisticsModal?.openStatisticsModal?.(uid), 150),
         'bm-sh': () => setTimeout(() => import('../../analytics/share-generator.js').then(m => m.ShareGenerator.generateAndShare('track', bldTrk(uid))), 150),
         'bm-cl': () => setTimeout(() => this.opnCol(uid), 150)
-      }; acts[b]?.();
+      };
+
+      acts[actId]?.();
     };
   }
 
