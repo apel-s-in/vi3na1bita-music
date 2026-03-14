@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-735a4121122852789b7de5922d36facaabb4931b.idx
-│   │       ├── pack-735a4121122852789b7de5922d36facaabb4931b.pack
-│   │       └── pack-735a4121122852789b7de5922d36facaabb4931b.rev
+│   │       ├── pack-901e1efe7547fbbb08e99ec6a327abebd81b66f5.idx
+│   │       ├── pack-901e1efe7547fbbb08e99ec6a327abebd81b66f5.pack
+│   │       └── pack-901e1efe7547fbbb08e99ec6a327abebd81b66f5.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -378,7 +378,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-14 09:08:37 UTC
+Сгенерировано: 2026-03-14 09:09:24 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -9027,14 +9027,19 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .track.selected,
 .sc-edit-row.selected,
 .sc-search-result.selected{
-  background:rgba(76,175,80,.12)!important;
-  box-shadow:inset 0 0 0 1px rgba(76,175,80,.28);
+  background:rgba(76,175,80,.18)!important;
+  box-shadow:inset 0 0 0 1px rgba(76,175,80,.34);
 }
 .showcase-track.selected .track-title,
 .track.selected .track-title,
 .sc-edit-row.selected .track-title,
 .sc-search-result.selected .track-title{
   color:#dff7e5;
+}
+.showcase-track.selected .showcase-track-meta,
+.sc-edit-row.selected .showcase-track-meta,
+.sc-search-result.selected .showcase-track-meta{
+  color:#bfe8c9;
 }
 .showcase-track.selected .showcase-checkbox { background: var(--secondary-color); border-color: var(--secondary-color); }
 .showcase-track.selected .showcase-checkbox::after { content: '✓'; color: #fff; font-size: 14px; font-weight: bold; }
