@@ -25,7 +25,7 @@ const STATIC_ASSETS = [
   './icons/favicon-32.png', './icons/favicon-16.png', './icons/apple-touch-icon.png',
   './scripts/core/bootstrap.js', './scripts/core/config.js', './scripts/core/utils.js',
   './scripts/core/favorites-manager.js',
-  './scripts/app/gallery.js', './scripts/ui/notify.js',
+  './scripts/app/gallery.js', './scripts/ui/icon-utils.js', './scripts/ui/notify.js',
   './scripts/ui/sleep-timer.js', './scripts/ui/lyrics-modal.js', './scripts/ui/sysinfo.js',
   './scripts/ui/modals.js',
   './scripts/ui/offline-modal.js', './scripts/ui/offline-indicators.js',
