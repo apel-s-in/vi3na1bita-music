@@ -1,4 +1,4 @@
-const SW_VERSION = '8.1.16';
+const SW_VERSION = '8.1.17';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
@@ -48,25 +48,28 @@ const norm = (u) => {
 const STATIC_SET = new Set([...new Set(STATIC_ASSETS)].map(norm));
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open(CORE_CACHE).then(async (c) => {
-      await Promise.all(STATIC_ASSETS.map(async (u) => {
-        try {
-          const r = await fetch(new Request(u, { cache: 'no-cache' }));
-          if (r.ok && !r.redirected) await c.put(u, r.clone());
-        } catch {}
-      }));
-      return self.skipWaiting();
-    })
-  );
+  e.waitUntil((async () => {
+    const c = await caches.open(CORE_CACHE);
+    await Promise.all(STATIC_ASSETS.map(async (u) => {
+      try {
+        const req = new Request(norm(u), { cache: 'no-cache' });
+        const res = await fetch(req);
+        if (res.ok && !res.redirected) await c.put(req, res.clone());
+      } catch {}
+    }));
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener('activate', (e) => {
-  e.waitUntil(
-    caches.keys()
-      .then(k => Promise.all(k.map(n => ![CORE_CACHE, RUNTIME_CACHE, MEDIA_CACHE, OFFLINE_CACHE, META_CACHE].includes(n) && caches.delete(n))))
-      .then(() => self.clients.claim())
-  );
+  e.waitUntil((async () => {
+    const keep = new Set([CORE_CACHE, RUNTIME_CACHE, MEDIA_CACHE, OFFLINE_CACHE, META_CACHE]);
+    const keys = await caches.keys();
+    await Promise.all(keys.map((n) => keep.has(n) ? Promise.resolve(false) : caches.delete(n)));
+    await self.clients.claim();
+    const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    clients.forEach((client) => client.postMessage({ type: 'SW_VERSION', version: SW_VERSION }));
+  })());
 });
 
 self.addEventListener('fetch', (e) => {
@@ -87,18 +90,15 @@ self.addEventListener('fetch', (e) => {
 
   // Static core assets (Cache First)
   if (STATIC_SET.has(norm(url.href))) {
-    e.respondWith(
-      caches.open(CORE_CACHE).then(async c => {
-        const cached = await c.match(req);
-        if (cached) return cached;
-        const n = await fetch(req);
-        if (n.ok) {
-          const cl = n.clone();
-          caches.open(CORE_CACHE).then(cx => cx.put(req, cl)).catch(() => {});
-        }
-        return n;
-      })
-    );
+    e.respondWith((async () => {
+      const c = await caches.open(CORE_CACHE);
+      const key = new Request(norm(url.href));
+      const cached = await c.match(key);
+      if (cached) return cached;
+      const res = await fetch(req);
+      if (res.ok && !res.redirected) await c.put(key, res.clone());
+      return res;
+    })());
     return;
   }
 
@@ -108,49 +108,46 @@ self.addEventListener('fetch', (e) => {
   if (isRemoteAsset) {
     // 1. Картинки: жесткий Cache-First (Они не меняются)
     if (/\.(png|jpe?g|webp|avif|gif|svg)$/i.test(url.pathname)) {
-      e.respondWith(
-        caches.match(req).then(cached => {
-          if (cached) return cached;
-          return fetch(req).then(res => {
-            if (res.ok) caches.open(MEDIA_CACHE).then(c => c.put(req, res.clone()));
-            return res;
-          });
-        })
-      );
+      e.respondWith((async () => {
+        const c = await caches.open(MEDIA_CACHE);
+        const cached = await c.match(req);
+        if (cached) return cached;
+        const res = await fetch(req);
+        if (res.ok) await c.put(req, res.clone());
+        return res;
+      })());
       return;
     }
     // 2. Конфиги (JSON): Stale-While-Revalidate (Мгновенная отдача + фоновое обновление)
     if (url.pathname.endsWith('.json')) {
-      e.respondWith(
-        caches.match(req).then(cached => {
-          const fetchPromise = fetch(req).then(res => {
-            if (res.ok) caches.open(RUNTIME_CACHE).then(c => c.put(req, res.clone()));
-            return res;
-          }).catch(() => cached);
-          return cached || fetchPromise;
-        })
-      );
+      e.respondWith((async () => {
+        const c = await caches.open(RUNTIME_CACHE);
+        const cached = await c.match(req);
+        const fetchPromise = fetch(req).then(async (res) => {
+          if (res.ok) await c.put(req, res.clone());
+          return res;
+        }).catch(() => cached);
+        return cached || fetchPromise;
+      })());
       return;
     }
     return; // Аудио и прочее всё ещё идут мимо SW напрямую в браузер/OfflineManager
   }
 
   // Fallback (Network First -> Cache) только для локальных ресурсов
-  e.respondWith(
-    (async () => {
-      try {
-        const r = await fetch(req);
-        if (r.ok && r.status === 200 && url.protocol.startsWith('http') && url.hostname === self.location.hostname) {
-          const cl = r.clone();
-          caches.open(RUNTIME_CACHE).then(cx => cx.put(req, cl)).catch(() => {});
-        }
-        return r;
-      } catch {
-        const cached = await caches.match(req);
-        return cached || new Response(null, { status: 503 });
+  e.respondWith((async () => {
+    try {
+      const res = await fetch(req);
+      if (res.ok && res.status === 200 && url.protocol.startsWith('http') && url.hostname === self.location.hostname) {
+        const c = await caches.open(RUNTIME_CACHE);
+        await c.put(req, res.clone());
       }
-    })()
-  );
+      return res;
+    } catch {
+      const cached = await caches.match(req);
+      return cached || new Response(null, { status: 503 });
+    }
+  })());
 });
 
 self.addEventListener('message', (e) => {
