@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-58706f5a689f61baa20642a32004c77cbe0336be.idx
-│   │       ├── pack-58706f5a689f61baa20642a32004c77cbe0336be.pack
-│   │       └── pack-58706f5a689f61baa20642a32004c77cbe0336be.rev
+│   │       ├── pack-01aee64c8ccd02982e3d9a8a2f327c3cf338adb2.idx
+│   │       ├── pack-01aee64c8ccd02982e3d9a8a2f327c3cf338adb2.pack
+│   │       └── pack-01aee64c8ccd02982e3d9a8a2f327c3cf338adb2.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -378,7 +378,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-14 19:21:11 UTC
+Сгенерировано: 2026-03-14 22:36:45 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -8506,8 +8506,35 @@ import { ensureMediaSession } from './player-core/media-session.js';
     on(evs) { Object.entries(evs||{}).forEach(([k, f]) => { if (!this._ev.has(k)) this._ev.set(k, new Set()); this._ev.get(k).add(f); }); }
     _emit(n, ...a) { this._ev.get(n)?.forEach(f => { try { f(...a); } catch {} }); }
 
-    setSleepTimer(ms) { clearTimeout(this._sleep); this._sleepTarget = ms > 0 ? Date.now() + ms : 0; if (ms > 0) this._sleep = setTimeout(() => { this.pause(); this._emit('onSleepTriggered'); }, ms); }
-    getSleepTimerTarget() { return this._sleepTarget; }
+    setSleepTimer(ms, meta = {}) {
+      clearTimeout(this._sleep);
+      this._sleep = null;
+      this._sleepMeta = ms > 0 ? { ...meta } : null;
+      this._sleepTarget = ms > 0 ? Date.now() + ms : 0;
+
+      emitG('player:sleepTimerChanged', {
+        active: ms > 0,
+        targetAt: this._sleepTarget || 0,
+        meta: this._sleepMeta || null
+      });
+
+      if (ms > 0) {
+        this._sleep = setTimeout(() => {
+          this.stop();
+          this._emit('onSleepTriggered');
+          emitG('player:sleepTimerTriggered', {
+            targetAt: this._sleepTarget || 0,
+            meta: this._sleepMeta || null
+          });
+          this._sleep = null;
+          this._sleepTarget = 0;
+          this._sleepMeta = null;
+          emitG('player:sleepTimerChanged', { active: false, targetAt: 0, meta: null });
+        }, ms);
+      }
+    }
+    getSleepTimerTarget() { return this._sleepTarget || 0; }
+    getSleepTimerMeta() { return this._sleepMeta || null; }
     clearSleepTimer() { this.setSleepTimer(0); }
   }
 
