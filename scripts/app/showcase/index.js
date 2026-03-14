@@ -72,7 +72,7 @@ const Store = {
   cols: () => jGet('albumColors', {}),
   setCols: v => jSet('albumColors', v),
   def: () => {
-    const d = normCtx(jGet('default'), true, getCat());
+    const d = normCtx({ sortMode: 'album-desc', ...(jGet('default') || {}) }, true, getCat());
     jSet('default', d);
     return d;
   },
@@ -449,7 +449,7 @@ class ShowcaseManager {
     if (btn.classList?.contains('sc-btn-playall')) return this._playCtx();
     if (btn.classList?.contains('sc-btn-shuffle')) return this._playCtx(null, true);
     if (btn.classList?.contains('sc-btn-sort')) return this._openSort();
-    if (btn.classList?.contains('sc-btn-master-reset')) return W.Modals?.confirm({ title: 'Сбросить «Все треки»?', textHtml: 'Порядок вернётся к заводскому, все скрытые треки станут видимыми.', confirmText: 'Сбросить', cancelText: 'Отмена', onConfirm: () => { Store.setDef(normCtx({ order: getCat(), hidden: [], sortMode: 'user', hiddenPlacement: 'inline' }, true)); this.renderTab(); } });
+    if (btn.classList?.contains('sc-btn-master-reset')) return W.Modals?.confirm({ title: 'Сбросить «Все треки»?', textHtml: 'Порядок вернётся к заводскому, все скрытые треки станут видимыми.', confirmText: 'Сбросить', cancelText: 'Отмена', onConfirm: () => { Store.setDef(normCtx({ order: getCat(), hidden: [], sortMode: 'album-desc', hiddenPlacement: 'inline' }, true)); this.renderTab(); } });
 
     const act = btn.dataset?.act, pid = btn.dataset?.pid;
     if (act && pid) {
@@ -463,9 +463,9 @@ class ShowcaseManager {
     if (plRow?.dataset.pid && !act) return this._switchCtx(plRow.dataset.pid);
 
     if (this._edit) return this._onEditClick(e);
-    if (t.closest('.like-star') || t.closest('.offline-ind')) return;
 
     const row = t.closest('.showcase-track'), uid = row?.dataset.uid, isHidden = row?.dataset.hidden === '1';
+    if ((t.closest('.like-star') || t.closest('.offline-ind')) && uid) return this._openMenu(uid, !!this._q);
     if (!uid) return;
 
     if (this._q) {
@@ -481,6 +481,7 @@ class ShowcaseManager {
 
     if (t.closest('.showcase-track-menu-btn')) return this._openMenu(uid, false);
     if (isHidden) return this._openMenu(uid, false); // Тап по скрытому = Меню (Не воспроизводим)
+    if (W.playerCore?.getCurrentTrackUid?.() === uid && W.Utils?.isShowcaseContext?.(W.AlbumsManager?.getPlayingAlbum?.())) return this._openMenu(uid, false);
     return this._playCtx(uid);
   }
 
