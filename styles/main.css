@@ -235,13 +235,9 @@ body.news-view #cover-wrap{display:none!important}
 #pq-btn.pq-lo{background:rgba(255,152,0,.16);border-color:rgba(255,152,0,.35);color:#ffe0b2}
 #pq-btn.disabled{background:rgba(30,30,30,.6)!important;border-color:rgba(255,255,255,.06)!important;color:rgba(255,255,255,.25)!important;box-shadow:none!important;cursor:not-allowed!important;opacity:.6}
 
-/* Sleep menu */
+/* Sleep timer button */
 .sleep-timer-btn{position:relative}
 .sleep-timer-badge{position:absolute;top:-4px;right:-4px;background:var(--primary-color);color:var(--c-w);font-size:10px;font-weight:800;border-radius:10px;padding:2px 6px;min-width:18px;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,.4)}
-.sleep-menu{position:absolute;bottom:100%;right:0;margin-bottom:8px;background:var(--modal-bg);border:1px solid var(--border-color);border-radius:10px;padding:8px;box-shadow:0 4px 20px rgba(0,0,0,.5);min-width:180px;z-index:100}
-.sleep-menu-item{padding:10px 14px;cursor:pointer;border-radius:6px;transition:background .2s;color:var(--text-color);font-size:14px}
-.sleep-menu-item:hover{background:rgba(77,170,255,.15)}
-.sleep-menu-item.active{background:rgba(77,170,255,.2);color:var(--secondary-color)}
 
 /* Sleep timer modal v5 */
 .sleep-full{display:flex;flex-direction:column;gap:14px}
