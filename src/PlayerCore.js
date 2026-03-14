@@ -39,23 +39,41 @@ import { ensureMediaSession } from './player-core/media-session.js';
 
     setPlaylist(tracks, startIdx = 0, meta, opts = {}) {
       const prevPos = this.getPosition(), wasPlay = this.isPlaying();
-      this.playlist = (tracks || []).map(t => ({ ...t, uid: sUid(t.uid), title: t.title || 'Без названия', artist: t.artist || 'Витрина Разбита' }));
+      this.playlist = (tracks || []).map(t => ({ ...t, uid: sUid(t.uid), title: t.title || 'Без названия', artist: t.artist || 'Витрина Разбита' })).filter(t => t.uid);
       if (!opts.preserveOriginalPlaylist) this.originalPlaylist = [...this.playlist];
 
-      this.currentIndex = clamp(startIdx, 0, this.playlist.length - 1);
-      const tUid = this.playlist[this.currentIndex]?.uid;
+      this.currentIndex = clamp(startIdx, 0, Math.max(0, this.playlist.length - 1));
+      const tUid = this.playlist[this.currentIndex]?.uid || null;
       if (!opts.preserveShuffleMode) this.shufHist = [];
 
       if (this.flags.shuf && !opts.preserveShuffleMode) this.shufflePlaylist(tUid);
       else if (tUid) this.currentIndex = Math.max(0, this.playlist.findIndex(t => t.uid === tUid));
-      
+
       this._skips = 0;
       if (this.sound && this.getCurrentTrackUid() === tUid && wasPlay && opts.preservePosition) {
-        this._emit('onTrackChange', this.getCurrentTrack(), this.currentIndex); return this._updMedia();
+        this._emit('onTrackChange', this.getCurrentTrack(), this.currentIndex);
+        return this._updMedia();
       }
 
       if (wasPlay) this.load(this.currentIndex, { autoPlay: true, resumePosition: opts.preservePosition ? prevPos : 0 });
       else { this._emit('onTrackChange', this.getCurrentTrack(), this.currentIndex); this._updMedia(); }
+    }
+
+    playExactFromPlaylist(tracks, targetUid, opts = {}) {
+      const uid = sUid(targetUid);
+      const list = (tracks || []).map(t => ({ ...t, uid: sUid(t.uid), title: t.title || 'Без названия', artist: t.artist || 'Витрина Разбита' })).filter(t => t.uid);
+      if (!uid || !list.length) return false;
+
+      const idx = list.findIndex(t => t.uid === uid);
+      if (idx < 0) return false;
+
+      this.setPlaylist(list, idx, null, {
+        preservePosition: false,
+        preserveOriginalPlaylist: !!opts.preserveOriginalPlaylist,
+        preserveShuffleMode: false
+      });
+      this.load(idx, { autoPlay: true, dir: Number(opts.dir) || 1 });
+      return true;
     }
 
     shufflePlaylist(keepUid = null) {
