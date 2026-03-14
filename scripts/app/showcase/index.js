@@ -476,8 +476,37 @@ class ShowcaseManager {
           const t = bldTrk(uid); if (!t) return;
           this._playCtx(uid, false, [t], `__showcase__:search:${this._ctxId()}`);
         },
-        'bm-pl': () => setTimeout(() => { const pls=Store.pl(); if(!pls.length)return W.NotificationSystem?.warning('Сначала создайте плейлист'); const m=W.Modals?.open({title:'Добавить в плейлист',bodyHtml:`<div style="display:flex;flex-direction:column;gap:10px">${pls.map(p=>`<button class="showcase-btn" data-pid="${p.id}">${esc(p.name)}</button>`).join('')}</div>`}); if(!m)return; m.onclick=e=>{ const b=e.target.closest('[data-pid]'); if(!b)return; const p=Store.get(b.dataset.pid); if(!p)return; const s=new Set(p.order||[]); if(!s.has(uid)){p.order.push(uid); Store.save(p); W.NotificationSystem?.success('Добавлено');} m.remove(); }; }, 180),
-        'bm-rm': () => { const p = Store.get(id); if (p) { p.order = p.order.filter(x=>x!==uid); p.hidden = (p.hidden||[]).filter(x=>x!==uid); Store.save(p); this.renderTab(); } },
+        'bm-pl': () => setTimeout(() => {
+          const pls = Store.pl();
+          if (!pls.length) return W.NotificationSystem?.warning('Сначала создайте плейлист');
+          const m = W.Modals?.open({
+            title: 'Добавить в плейлист',
+            bodyHtml: `<div style="display:flex;flex-direction:column;gap:10px">${pls.map(p => `<button class="showcase-btn" data-pid="${p.id}">${esc(p.name)}</button>`).join('')}</div>`
+          });
+          if (!m) return;
+          m.onclick = e => {
+            const b = e.target.closest('[data-pid]');
+            if (!b) return;
+            const p = Store.get(b.dataset.pid);
+            if (!p) return;
+            const s = new Set(p.order || []);
+            if (!s.has(uid)) {
+              p.order.push(uid);
+              Store.save(p);
+              W.NotificationSystem?.success('Добавлено');
+            }
+            m.remove();
+          };
+        }, 180),
+        'bm-rm': () => {
+          const p = Store.get(id);
+          if (p) {
+            p.order = p.order.filter(x => x !== uid);
+            p.hidden = (p.hidden || []).filter(x => x !== uid);
+            Store.save(p);
+            this.renderTab();
+          }
+        },
         'bm-eye': () => this._tgHid(uid, id),
         'bm-fv': () => W.playerCore?.toggleFavorite?.(uid, { albumKey: t.sourceAlbum }),
         'bm-of': () => W.OfflineManager?.togglePinned?.(uid),
