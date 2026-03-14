@@ -5,6 +5,7 @@ const FAV = window.SPECIAL_FAVORITES_KEY || '__favorites__';
 const NEWS = window.SPECIAL_RELIZ_KEY || '__reliz__';
 const FAV_COVER = 'img/Fav_logo.png';
 const esc = s => window.Utils?.escapeHtml ? window.Utils.escapeHtml(String(s || '')) : String(s || '');
+const renderFavoriteStar = (liked, attrs = '') => `<span class="like-star like-star-svg" data-liked="${liked ? '1' : '0'}" aria-label="звезда" ${attrs}><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-favorite-star"></use></svg></span>`;
 
 export async function loadFavoritesAlbum(ctx) {
   ctx.renderAlbumTitle('⭐⭐⭐ ИЗБРАННОЕ ⭐⭐⭐', 'fav');
@@ -27,7 +28,7 @@ export async function loadFavoritesAlbum(ctx) {
     c.innerHTML = it.map((x, i) => {
       const t = window.TrackRegistry?.getTrackByUid(x.uid) || { title: 'Загрузка...', sourceAlbum: x.sourceAlbum };
       const aT = window.TrackRegistry?.getAlbumTitle(t.sourceAlbum) || window.albumsIndex?.find(a => a.key === t.sourceAlbum)?.title || 'Альбом';
-      return `<div class="track ${x.act?'':'inactive'}" id="${esc(`fav_${x.sourceAlbum}_${x.uid}`)}" data-index="${i}" data-album="${esc(t.sourceAlbum)}" data-uid="${esc(x.uid)}"><div class="tnum">${String(i+1).padStart(2,'0')}.</div><div class="track-title" title="${esc(t.title)} - ${esc(aT)}"><span class="fav-track-name">${esc(t.title)}</span><span class="fav-album-name"> — ${esc(aT)}</span></div><img src="${x.act?'img/star.png':'img/star2.png'}" class="like-star" alt="звезда" data-album="${esc(t.sourceAlbum)}" data-uid="${esc(x.uid)}"></div>`;
+      return `<div class="track ${x.act?'':'inactive'}" id="${esc(`fav_${x.sourceAlbum}_${x.uid}`)}" data-index="${i}" data-album="${esc(t.sourceAlbum)}" data-uid="${esc(x.uid)}"><div class="tnum">${String(i+1).padStart(2,'0')}.</div><div class="track-title" title="${esc(t.title)} - ${esc(aT)}"><span class="fav-track-name">${esc(t.title)}</span><span class="fav-album-name"> — ${esc(aT)}</span></div>${renderFavoriteStar(!!x.act, `data-album="${esc(t.sourceAlbum)}" data-uid="${esc(x.uid)}"` )}</div>`;
     }).join('');
 
     if (hp) { const r = c.querySelector(`.track[data-uid="${CSS.escape(pc.getCurrentTrackUid?.()||'')}"]`) || c.lastElementChild; r ? r.after(pb) : c.appendChild(pb); }
@@ -41,7 +42,7 @@ export async function loadFavoritesAlbum(ctx) {
       const r = e.target.closest('.track'); if (!r) return;
       const u = r.dataset.uid, aK = r.dataset.album, pc = window.playerCore, isA = pc.getFavoritesState().active.some(x => x.uid === u);
       
-      if (e.target.classList.contains('like-star')) { e.preventDefault(); e.stopPropagation(); isA ? pc.toggleFavorite(u, { source: 'favorites', albumKey: aK }) : pc.restoreInactive(u); return; }
+      if (e.target.closest('.like-star')) { e.preventDefault(); e.stopPropagation(); isA ? pc.toggleFavorite(u, { source: 'favorites', albumKey: aK }) : pc.restoreInactive(u); return; }
       
       if (isA) {
         ctx.setPlayingAlbum(FAV);
