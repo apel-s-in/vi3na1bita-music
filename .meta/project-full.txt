@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-399e73e9dc2b6ee708e2eda17617378535b88d20.idx
-│   │       ├── pack-399e73e9dc2b6ee708e2eda17617378535b88d20.pack
-│   │       └── pack-399e73e9dc2b6ee708e2eda17617378535b88d20.rev
+│   │       ├── pack-2011a65af381f2a9d24e6d373fe0637a16006887.idx
+│   │       ├── pack-2011a65af381f2a9d24e6d373fe0637a16006887.pack
+│   │       └── pack-2011a65af381f2a9d24e6d373fe0637a16006887.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -378,7 +378,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-14 23:04:50 UTC
+Сгенерировано: 2026-03-14 23:05:34 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5918,6 +5918,18 @@ export async function playFirstTrack(page) {
   await waitTracks(page);
   await page.click('#track-list .track >> nth=0');
   await page.waitForSelector('#lyricsplayerblock', { timeout: 10000 });
+}
+
+export async function openSleepTimer(page) {
+  await page.click('[data-testid="sleep-open"]');
+}
+
+export async function setSleepPreset(page, minutes) {
+  await page.click(`[data-testid="sleep-preset-${minutes}"]`);
+}
+
+export async function resetSleepTimer(page) {
+  await page.click('[data-testid="sleep-reset"]');
 }
 
 /**
