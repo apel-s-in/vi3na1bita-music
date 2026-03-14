@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-918f2f669d6538da2fbf9b3075c6d295c415479a.idx
-│   │       ├── pack-918f2f669d6538da2fbf9b3075c6d295c415479a.pack
-│   │       └── pack-918f2f669d6538da2fbf9b3075c6d295c415479a.rev
+│   │       ├── pack-3df6bb1e2cf6acac3b04b6b0b1d97501b542ea32.idx
+│   │       ├── pack-3df6bb1e2cf6acac3b04b6b0b1d97501b542ea32.pack
+│   │       └── pack-3df6bb1e2cf6acac3b04b6b0b1d97501b542ea32.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -380,7 +380,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-14 17:00:44 UTC
+Сгенерировано: 2026-03-14 17:03:02 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -971,7 +971,7 @@ const STATIC_ASSETS = [
   './icons/favicon-32.png', './icons/favicon-16.png', './icons/apple-touch-icon.png',
   './scripts/core/bootstrap.js', './scripts/core/config.js', './scripts/core/utils.js',
   './scripts/core/favorites-manager.js',
-  './scripts/app/gallery.js', './scripts/ui/notify.js',
+  './scripts/app/gallery.js', './scripts/ui/icon-utils.js', './scripts/ui/notify.js',
   './scripts/ui/sleep-timer.js', './scripts/ui/lyrics-modal.js', './scripts/ui/sysinfo.js',
   './scripts/ui/modals.js',
   './scripts/ui/offline-modal.js', './scripts/ui/offline-indicators.js',
