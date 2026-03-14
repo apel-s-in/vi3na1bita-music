@@ -5,6 +5,9 @@ import {
   likeFirstTrack,
   openFavorites,
   playFirstTrack,
+  openSleepTimer,
+  setSleepPreset,
+  resetSleepTimer,
   seedPlayerStateV2FromCurrent
 } from './utils.js';
 
@@ -27,11 +30,11 @@ test('play track, toggle favorites-only and sleep timer UI', async ({ page }) =>
   await expect(favBtn).toHaveClass(/favorites-active/);
 
   // Таймер сна: открыть модалку, выбрать "15 минут", затем сбросить
-  await page.click('#sleep-timer-btn');
-  await page.click('.sleep-preset-btn[data-min="15"]');
+  await openSleepTimer(page);
+  await setSleepPreset(page, 15);
   await expect(page.locator('#sleep-timer-badge')).toBeVisible();
-  await page.click('#sleep-timer-btn');
-  await page.click('[data-act="reset"]');
+  await openSleepTimer(page);
+  await resetSleepTimer(page);
   await expect(page.locator('#sleep-timer-badge')).toBeHidden();
 });
 
