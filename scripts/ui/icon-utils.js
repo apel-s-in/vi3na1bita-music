@@ -6,7 +6,20 @@ export function renderIcon(name, attrs = '', options = {}) {
     viewBox = '0 0 24 24',
     ariaHidden = true
   } = options;
-  return `<svg viewBox="${viewBox}" ${className ? `class="${className}" ` : ''}${ariaHidden ? 'aria-hidden="true" ' : ''}><use href="${SPRITE_PATH}#${name}"></use></svg>`;
+  return `<svg viewBox="${viewBox}" ${className ? `class="${className}" ` : ''}${ariaHidden ? 'aria-hidden="true" ' : ''}${attrs}><use href="${SPRITE_PATH}#${name}"></use></svg>`;
+}
+
+export function setIconUse(el, name, options = {}) {
+  if (!el || !name) return;
+  const {
+    viewBox = '0 0 24 24',
+    className = '',
+    ariaHidden = true
+  } = options;
+  el.innerHTML = `<use href="${SPRITE_PATH}#${name}"></use>`;
+  el.setAttribute('viewBox', viewBox);
+  if (className) el.setAttribute('class', className);
+  if (ariaHidden) el.setAttribute('aria-hidden', 'true');
 }
 
 export function renderFavoriteStar(liked, attrs = '') {
@@ -20,6 +33,7 @@ export function setFavoriteStarState(el, liked) {
 
 window.IconUtils = {
   renderIcon,
+  setIconUse,
   renderFavoriteStar,
   setFavoriteStarState
 };
