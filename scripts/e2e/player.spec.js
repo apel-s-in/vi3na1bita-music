@@ -26,14 +26,12 @@ test('play track, toggle favorites-only and sleep timer UI', async ({ page }) =>
   const favBtn = page.locator('#favorites-btn');
   await expect(favBtn).toHaveClass(/favorites-active/);
 
-  // Таймер сна: открыть меню и выбрать "15 минут", затем выключить
+  // Таймер сна: открыть модалку, выбрать "15 минут", затем сбросить
   await page.click('#sleep-timer-btn');
-  await page.click('.sleep-menu-item:has-text("15 минут")');
-  // Бейдж должен появиться
+  await page.click('.sleep-preset-btn[data-min="15"]');
   await expect(page.locator('#sleep-timer-badge')).toBeVisible();
-  // Выключим
   await page.click('#sleep-timer-btn');
-  await page.click('.sleep-menu-item:has-text("Выключить")');
+  await page.click('[data-act="reset"]');
   await expect(page.locator('#sleep-timer-badge')).toBeHidden();
 });
 
