@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a8d0f57954eddf45b60531b8ec9a33db31084621.idx
-│   │       ├── pack-a8d0f57954eddf45b60531b8ec9a33db31084621.pack
-│   │       └── pack-a8d0f57954eddf45b60531b8ec9a33db31084621.rev
+│   │       ├── pack-91bf680fa391f971ba54d76dff2627d9ee73fc89.idx
+│   │       ├── pack-91bf680fa391f971ba54d76dff2627d9ee73fc89.pack
+│   │       └── pack-91bf680fa391f971ba54d76dff2627d9ee73fc89.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -378,7 +378,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-14 10:55:08 UTC
+Сгенерировано: 2026-03-14 11:20:09 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -993,9 +993,12 @@ const STATIC_SET = new Set([...new Set(STATIC_ASSETS)].map(norm));
 self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(CORE_CACHE).then(async (c) => {
-      await Promise.all(STATIC_ASSETS.map(u => 
-        fetch(new Request(u)).then(r => { if (r.ok && !r.redirected) c.put(u, r); }).catch(()=>{})
-      ));
+      await Promise.all(STATIC_ASSETS.map(async (u) => {
+        try {
+          const r = await fetch(new Request(u, { cache: 'no-cache' }));
+          if (r.ok && !r.redirected) await c.put(u, r.clone());
+        } catch {}
+      }));
       return self.skipWaiting();
     })
   );
