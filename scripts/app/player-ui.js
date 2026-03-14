@@ -14,7 +14,7 @@
     const q = isR2 ? (oM?.getCQ() || 'hi') : U.pq.getState().mode;
     const pA = AM()?.getPlayingAlbum?.();
 
-    e.ico.innerHTML = p ? '<path d="M6 4h4v16H6zM14 4h4v16h-4z"/>' : '<path d="M8 5v14l11-7z"/>';
+    W.IconUtils?.setIconUse?.(e.ico, p ? 'icon-pause' : 'icon-play');
     ['shuffle', 'repeat', 'mute'].forEach(k => U.setBtnActive(`${k}-btn`, c[`is${k.charAt(0).toUpperCase() + k.slice(1)}`]?.()));
     e.fav.className = `player-control-btn ${f ? 'favorites-active' : ''}`;
     if (e.favI) W.IconUtils?.setFavoriteStarState?.(e.favI, f);
