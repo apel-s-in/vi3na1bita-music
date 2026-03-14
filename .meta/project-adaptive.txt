@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9d7c5ccacc96adcca312ead6712d260c1db72de7.idx
-│   │       ├── pack-9d7c5ccacc96adcca312ead6712d260c1db72de7.pack
-│   │       └── pack-9d7c5ccacc96adcca312ead6712d260c1db72de7.rev
+│   │       ├── pack-c14eb05b4dd34f17c4ddeb0e2a1c73fc068ee084.idx
+│   │       ├── pack-c14eb05b4dd34f17c4ddeb0e2a1c73fc068ee084.pack
+│   │       └── pack-c14eb05b4dd34f17c4ddeb0e2a1c73fc068ee084.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -378,7 +378,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-14 22:40:24 UTC
+Сгенерировано: 2026-03-14 22:51:41 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5613,14 +5613,12 @@ test('play track, toggle favorites-only and sleep timer UI', async ({ page }) =>
   const favBtn = page.locator('#favorites-btn');
   await expect(favBtn).toHaveClass(/favorites-active/);
 
-  // Таймер сна: открыть меню и выбрать "15 минут", затем выключить
+  // Таймер сна: открыть модалку, выбрать "15 минут", затем сбросить
   await page.click('#sleep-timer-btn');
-  await page.click('.sleep-menu-item:has-text("15 минут")');
-  // Бейдж должен появиться
+  await page.click('.sleep-preset-btn[data-min="15"]');
   await expect(page.locator('#sleep-timer-badge')).toBeVisible();
-  // Выключим
   await page.click('#sleep-timer-btn');
-  await page.click('.sleep-menu-item:has-text("Выключить")');
+  await page.click('[data-act="reset"]');
   await expect(page.locator('#sleep-timer-badge')).toBeHidden();
 });
 
