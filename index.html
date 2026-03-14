@@ -158,7 +158,7 @@
         <span class="mini-track-title" id="mini-now-title">—</span>
         <span class="mini-track-hint">Нажми чтобы вернуться к альбому</span>
       </div>
-      <img src="img/star2.png" class="like-star" id="mini-now-star" alt="звезда">
+      <span class="like-star like-star-svg" id="mini-now-star" data-liked="0" aria-label="звезда"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-favorite-star"></use></svg></span>
     </div>
   </template>
 
@@ -301,7 +301,7 @@
           </button>
 
           <button class="player-control-btn" id="favorites-btn" title="Только избранные (F)">
-            <img src="img/star2.png" alt="★" id="favorites-btn-icon"/>
+            <span id="favorites-btn-icon" class="like-star like-star-svg" data-liked="0" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="icons/ui-sprite.svg#icon-favorite-star"></use></svg></span>
           </button>
         </div>
       </div>
