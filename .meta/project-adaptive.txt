@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-bd4ac60cb009833b579d3d380646310f7689ef7c.idx
-│   │       ├── pack-bd4ac60cb009833b579d3d380646310f7689ef7c.pack
-│   │       └── pack-bd4ac60cb009833b579d3d380646310f7689ef7c.rev
+│   │       ├── pack-96e2c34678f73250ba1239bb269943c0eb576985.idx
+│   │       ├── pack-96e2c34678f73250ba1239bb269943c0eb576985.pack
+│   │       └── pack-96e2c34678f73250ba1239bb269943c0eb576985.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -380,7 +380,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-14 16:54:13 UTC
+Сгенерировано: 2026-03-14 16:55:09 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -6571,8 +6571,17 @@ export default { initCacheProgressOverlay };
 // FILE: /scripts/ui/icon-utils.js
 const SPRITE_PATH = 'icons/ui-sprite.svg';
 
+export function renderIcon(name, attrs = '', options = {}) {
+  const {
+    className = '',
+    viewBox = '0 0 24 24',
+    ariaHidden = true
+  } = options;
+  return `<svg viewBox="${viewBox}" ${className ? `class="${className}" ` : ''}${ariaHidden ? 'aria-hidden="true" ' : ''}><use href="${SPRITE_PATH}#${name}"></use></svg>`;
+}
+
 export function renderFavoriteStar(liked, attrs = '') {
-  return `<span class="like-star like-star-svg" data-liked="${liked ? '1' : '0'}" aria-label="★" ${attrs}><svg viewBox="0 0 24 24" aria-hidden="true"><use href="${SPRITE_PATH}#icon-favorite-star"></use></svg></span>`;
+  return `<span class="like-star like-star-svg" data-liked="${liked ? '1' : '0'}" aria-label="★" ${attrs}>${renderIcon('icon-favorite-star')}</span>`;
 }
 
 export function setFavoriteStarState(el, liked) {
@@ -6581,6 +6590,7 @@ export function setFavoriteStarState(el, liked) {
 }
 
 window.IconUtils = {
+  renderIcon,
   renderFavoriteStar,
   setFavoriteStarState
 };
