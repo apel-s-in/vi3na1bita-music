@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-15f82c9c36bbbc7d7f779f352f72b66e396665c1.idx
-│   │       ├── pack-15f82c9c36bbbc7d7f779f352f72b66e396665c1.pack
-│   │       └── pack-15f82c9c36bbbc7d7f779f352f72b66e396665c1.rev
+│   │       ├── pack-7c37afd9218f251767cc3bdbdc6798b7c46c2b47.idx
+│   │       ├── pack-7c37afd9218f251767cc3bdbdc6798b7c46c2b47.pack
+│   │       └── pack-7c37afd9218f251767cc3bdbdc6798b7c46c2b47.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -380,7 +380,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-14 16:57:56 UTC
+Сгенерировано: 2026-03-14 16:58:52 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -883,9 +883,9 @@ jobs:
 
           <button class="animation-btn" id="animation-btn" title="Анимация лирики (A)">A</button>
 
-          <button class="karaoke-btn" id="lyrics-text-btn" title="Полный текст песни">📝</button>
+          <button class="karaoke-btn" id="lyrics-text-btn" title="Полный текст песни"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-lyrics"></use></svg></button>
 
-          <button class="stats-btn" id="stats-btn" title="Статистика" style="background:none; border:none; cursor:pointer; font-size:18px; opacity:0.8; padding:0 8px;">📊</button>
+          <button class="stats-btn" id="stats-btn" title="Статистика" style="background:none; border:none; cursor:pointer; font-size:18px; opacity:0.8; padding:0 8px;"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-stats"></use></svg></button>
 
           <div class="source-indicator" id="source-indicator" title="Источник потока"></div>
 
@@ -893,7 +893,7 @@ jobs:
             <span id="pulse-heart">🤍</span>
           </button>
 
-          <a class="player-download-btn" href="#" id="track-download-btn" download title="Скачать трек">💾</a>
+          <a class="player-download-btn" href="#" id="track-download-btn" download title="Скачать трек"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-download"></use></svg></a>
         </div>
       </div>
     </div>
