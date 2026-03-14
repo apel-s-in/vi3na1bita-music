@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c2e585ae83a3b8134bcb33dbcb2f135cf858933c.idx
-│   │       ├── pack-c2e585ae83a3b8134bcb33dbcb2f135cf858933c.pack
-│   │       └── pack-c2e585ae83a3b8134bcb33dbcb2f135cf858933c.rev
+│   │       ├── pack-d907a3ed06d9635d6ce9c88e54b3770addfa3b46.idx
+│   │       ├── pack-d907a3ed06d9635d6ce9c88e54b3770addfa3b46.pack
+│   │       └── pack-d907a3ed06d9635d6ce9c88e54b3770addfa3b46.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -380,7 +380,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-14 16:41:15 UTC
+Сгенерировано: 2026-03-14 16:41:58 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -602,8 +602,8 @@ jobs:
   <script src="./src/PlayerCore.js" type="module"></script>
 
   <!-- UI Modules -->
+  <script src="./scripts/ui/icon-utils.js" type="module"></script>
   <script src="./scripts/ui/notify.js" defer></script>
-  <script src="./scripts/ui/modals.js" defer></script>
   <script src="./scripts/ui/sleep-timer.js" type="module"></script>
   <script src="./scripts/ui/lyrics-modal.js" defer></script>
   <script src="./scripts/ui/sysinfo.js" defer></script>
