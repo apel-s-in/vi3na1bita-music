@@ -437,18 +437,7 @@ class ShowcaseManager {
       'sc-tg-hidden': () => { const x = uiMut(); x.ui.showHidden = !x.ui.showHidden; x.save(); },
       'sc-tg-numbers': () => { const x = uiMut(); x.ui.showNumbers = !x.ui.showNumbers; x.save(); },
       'sc-tg-view': () => { const x = uiMut(); x.ui.viewMode = x.ui.viewMode === 'flat' ? 'grouped' : 'flat'; x.save(); },
-      'sc-tg-placement': () => { const x = uiMut(); x.ui.hiddenPlacement = x.ui.hiddenPlacement === 'inline' ? 'end' : 'inline'; x.save(); },
-      'sc-search-add': () => this._searchAdd(),
-      'sc-unified-create': () => this._createPl(this._edit ? this._mkFromEdit() : this._getSelectedUids(), !!this._edit),
-      'sc-unified-share': () => this._shareList(this._edit ? this._mkFromEdit() : this._getSelectedUids()),
-      'sc-unified-all': () => {
-        this._setSelectedAll(true);
-        this._edit ? this._renderEdit($('sc-tracks-container'), this._drf.getList()) : this._renderBody(++this._tok);
-      },
-      'sc-unified-none': () => {
-        this._clearSelected();
-        this._edit ? this._renderEdit($('sc-tracks-container'), this._drf.getList()) : this._renderBody(++this._tok);
-      }
+      'sc-tg-placement': () => { const x = uiMut(); x.ui.hiddenPlacement = x.ui.hiddenPlacement === 'inline' ? 'end' : 'inline'; x.save(); }
     };
 
     if (one[btn.id]) return one[btn.id]();
