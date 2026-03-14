@@ -274,8 +274,35 @@ import { ensureMediaSession } from './player-core/media-session.js';
     on(evs) { Object.entries(evs||{}).forEach(([k, f]) => { if (!this._ev.has(k)) this._ev.set(k, new Set()); this._ev.get(k).add(f); }); }
     _emit(n, ...a) { this._ev.get(n)?.forEach(f => { try { f(...a); } catch {} }); }
 
-    setSleepTimer(ms) { clearTimeout(this._sleep); this._sleepTarget = ms > 0 ? Date.now() + ms : 0; if (ms > 0) this._sleep = setTimeout(() => { this.pause(); this._emit('onSleepTriggered'); }, ms); }
-    getSleepTimerTarget() { return this._sleepTarget; }
+    setSleepTimer(ms, meta = {}) {
+      clearTimeout(this._sleep);
+      this._sleep = null;
+      this._sleepMeta = ms > 0 ? { ...meta } : null;
+      this._sleepTarget = ms > 0 ? Date.now() + ms : 0;
+
+      emitG('player:sleepTimerChanged', {
+        active: ms > 0,
+        targetAt: this._sleepTarget || 0,
+        meta: this._sleepMeta || null
+      });
+
+      if (ms > 0) {
+        this._sleep = setTimeout(() => {
+          this.stop();
+          this._emit('onSleepTriggered');
+          emitG('player:sleepTimerTriggered', {
+            targetAt: this._sleepTarget || 0,
+            meta: this._sleepMeta || null
+          });
+          this._sleep = null;
+          this._sleepTarget = 0;
+          this._sleepMeta = null;
+          emitG('player:sleepTimerChanged', { active: false, targetAt: 0, meta: null });
+        }, ms);
+      }
+    }
+    getSleepTimerTarget() { return this._sleepTarget || 0; }
+    getSleepTimerMeta() { return this._sleepMeta || null; }
     clearSleepTimer() { this.setSleepTimer(0); }
   }
 
