@@ -3,11 +3,13 @@ import { injectIndicator } from '../ui/offline-indicators.js';
 const W = window, D = document, C = W.APP_CONFIG || {};
 const { $, toStr, escHtml, isMobileUA } = W.AppUtils || { $: id => D.getElementById(id), toStr: v => v == null ? '' : String(v), escHtml: s => String(s||''), isMobileUA: () => false };
 
-const [FAV, NEWS, SHOWCASE, PROFILE, STAR_ON, STAR_OFF, LOGO] = [
+const [FAV, NEWS, SHOWCASE, PROFILE, LOGO] = [
   W.SPECIAL_FAVORITES_KEY || '__favorites__', W.SPECIAL_RELIZ_KEY || '__reliz__',
   W.SPECIAL_SHOWCASE_KEY || '__showcase__', C.SPECIAL_PROFILE_KEY || '__profile__',
-  'img/star.png', 'img/star2.png', 'img/logo.png'
+  'img/logo.png'
 ];
+
+const renderFavoriteStar = (liked, attrs = '') => `<span class="like-star like-star-svg" data-liked="${liked ? '1' : '0'}" aria-label="★" ${attrs}><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-favorite-star"></use></svg></span>`;
 
 class AlbumsManager {
   curr = null; playing = null; cache = new Map(); covers = new Map();
@@ -90,11 +92,13 @@ class AlbumsManager {
       const aKey = toStr(trk.dataset.album).trim(), uid = toStr(trk.dataset.uid).trim(), pc = W.playerCore;
       if (!aKey || aKey.startsWith('__')) return;
 
-      if (e.target.classList.contains('like-star') && uid && pc) {
+      const star = e.target.closest('.like-star');
+      if (star && uid && pc) {
         e.preventDefault(); e.stopPropagation();
-        e.target.src = !pc.isFavorite(uid) ? STAR_ON : STAR_OFF;
-        e.target.classList.add('animating'); 
-        setTimeout(() => e.target.classList.remove('animating'), 320);
+        const nextLiked = !pc.isFavorite(uid);
+        star.dataset.liked = nextLiked ? '1' : '0';
+        star.classList.add('animating');
+        setTimeout(() => star.classList.remove('animating'), 320);
         pc.toggleFavorite(uid, { fromAlbum: true, albumKey: aKey });
         return;
       }
@@ -122,9 +126,8 @@ class AlbumsManager {
     });
 
     W.playerCore?.onFavoritesChanged(d => {
-      const s = d?.liked ? STAR_ON : STAR_OFF;
       const sel = d?.albumKey ? `.like-star[data-album="${CSS.escape(d.albumKey)}"][data-uid="${CSS.escape(d.uid)}"]` : `.like-star[data-uid="${CSS.escape(d?.uid)}"]`;
-      D.querySelectorAll(sel).forEach(el => el.src = s);
+      D.querySelectorAll(sel).forEach(el => { el.dataset.liked = d?.liked ? '1' : '0'; });
     });
   }
 
@@ -177,7 +180,7 @@ class AlbumsManager {
         $('social-links').innerHTML = (data.links || []).filter(l => l.url).map(l => `<a href="${l.url}" target="_blank" rel="noopener noreferrer">${l.label}</a>`).join('');
         
         if (trackList) {
-          trackList.innerHTML = data.tracks.map((t, i) => `<div class="track" id="trk${i}" data-index="${i}" data-album="${escHtml(key)}" data-uid="${escHtml(t.uid)}"><div class="tnum">${String(t.num).padStart(2,'0')}.</div><div class="track-title">${escHtml(t.title)}</div><img src="${t.uid && W.playerCore?.isFavorite?.(t.uid) ? STAR_ON : STAR_OFF}" class="like-star" alt="★" data-album="${escHtml(key)}" data-uid="${escHtml(t.uid)}"></div>`).join('');
+          trackList.innerHTML = data.tracks.map((t, i) => `<div class="track" id="trk${i}" data-index="${i}" data-album="${escHtml(key)}" data-uid="${escHtml(t.uid)}"><div class="tnum">${String(t.num).padStart(2,'0')}.</div><div class="track-title">${escHtml(t.title)}</div>${renderFavoriteStar(!!(t.uid && W.playerCore?.isFavorite?.(t.uid)), `data-album="${escHtml(key)}" data-uid="${escHtml(t.uid)}"` )}</div>`).join('');
           trackList.querySelectorAll('.track[data-uid]').forEach(el => injectIndicator(el));
         }
         W.PlayerUI?.updateMiniHeader?.();
