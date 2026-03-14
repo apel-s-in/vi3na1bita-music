@@ -17,6 +17,7 @@ const deep = v => JSON.parse(JSON.stringify(v));
 const jGet = (k, d = null) => { try { const v = ls.getItem(NS + k); return v ? JSON.parse(v) : d; } catch { return d; } };
 const jSet = (k, v) => { try { ls.setItem(NS + k, JSON.stringify(v)); } catch {} };
 const randShuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const renderFavoriteStar = (liked, attrs = '') => `<span class="like-star like-star-svg" data-liked="${liked ? '1' : '0'}" aria-label="★" ${attrs}><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-favorite-star"></use></svg></span>`;
 
 const getCat = () => (W.albumsIndex || []).filter(a => !String(a?.key || '').startsWith('__')).flatMap(a => (W.TrackRegistry?.getTracksForAlbum?.(a.key) || []).map(t => t?.uid).filter(Boolean));
 
@@ -166,7 +167,7 @@ class ShowcaseManager {
     Store.def();
     W.playerCore?.onFavoritesChanged?.(({ uid }) => {
       if (W.AlbumsManager?.getCurrentAlbum?.() !== SHOW) return;
-      D.querySelectorAll(`.showcase-track[data-uid="${uidEsc(uid)}"] .like-star`).forEach(el => el.src = W.playerCore.isFavorite(uid) ? 'img/star.png' : 'img/star2.png');
+      D.querySelectorAll(`.showcase-track[data-uid="${uidEsc(uid)}"] .like-star`).forEach(el => { el.dataset.liked = W.playerCore.isFavorite(uid) ? '1' : '0'; });
     });
     W.addEventListener('offline:stateChanged', () => W.AlbumsManager?.getCurrentAlbum?.() === SHOW && W.OfflineIndicators?.refreshAllIndicators?.());
   }
@@ -299,7 +300,7 @@ class ShowcaseManager {
       <div class="tnum" ${o.sN ? '' : 'style="display:none"'}>${i + 1}.</div>
       <img src="${t.cover}" class="showcase-track-thumb" loading="lazy">
       <div class="track-title"><div>${esc(t.title)}</div><div class="showcase-track-meta">${esc(albT(t.sourceAlbum))}${o.bdg ? ` ${o.bdg}` : ''}</div></div>
-      ${o.srh ? `<input type="checkbox" class="sc-search-chk" data-uid="${t.uid}" ${o.chk ? 'checked' : ''}>` : `<span class="offline-ind" data-uid="${t.uid}">🔒</span><img src="${W.playerCore?.isFavorite?.(t.uid) ? 'img/star.png' : 'img/star2.png'}" class="like-star" data-uid="${t.uid}" data-album="${t.sourceAlbum}">`}
+      ${o.srh ? `<input type="checkbox" class="sc-search-chk" data-uid="${t.uid}" ${o.chk ? 'checked' : ''}>` : `<span class="offline-ind" data-uid="${t.uid}">🔒</span>${renderFavoriteStar(!!W.playerCore?.isFavorite?.(t.uid), `data-uid="${t.uid}" data-album="${t.sourceAlbum}"`)}`}
       <button class="showcase-track-menu-btn" data-uid="${t.uid}">···</button>
     </div>`;
   }
