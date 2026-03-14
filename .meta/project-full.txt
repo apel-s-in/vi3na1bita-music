@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ce29c66b8c155cf342d7b4ffdda083309afc4269.idx
-│   │       ├── pack-ce29c66b8c155cf342d7b4ffdda083309afc4269.pack
-│   │       └── pack-ce29c66b8c155cf342d7b4ffdda083309afc4269.rev
+│   │       ├── pack-1ec83a6a5b7aa0f6622c47e7e646459aa69bee8c.idx
+│   │       ├── pack-1ec83a6a5b7aa0f6622c47e7e646459aa69bee8c.pack
+│   │       └── pack-1ec83a6a5b7aa0f6622c47e7e646459aa69bee8c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -380,7 +380,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-14 16:38:24 UTC
+Сгенерировано: 2026-03-14 16:39:45 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2559,12 +2559,12 @@ export default W.AlbumsManager;
 // FILE: /scripts/app/albums/specials.js
 import { loadAndRenderNewsInline } from '../../ui/news-inline.js';
 import { injectOfflineIndicators } from '../../ui/offline-indicators.js';
+import { renderFavoriteStar } from '../../ui/icon-utils.js';
 
 const FAV = window.SPECIAL_FAVORITES_KEY || '__favorites__';
 const NEWS = window.SPECIAL_RELIZ_KEY || '__reliz__';
 const FAV_COVER = 'img/Fav_logo.png';
 const esc = s => window.Utils?.escapeHtml ? window.Utils.escapeHtml(String(s || '')) : String(s || '');
-const renderFavoriteStar = (liked, attrs = '') => `<span class="like-star like-star-svg" data-liked="${liked ? '1' : '0'}" aria-label="звезда" ${attrs}><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-favorite-star"></use></svg></span>`;
 
 export async function loadFavoritesAlbum(ctx) {
   ctx.renderAlbumTitle('⭐⭐⭐ ИЗБРАННОЕ ⭐⭐⭐', 'fav');
