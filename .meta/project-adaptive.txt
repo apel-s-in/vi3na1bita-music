@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-65e78de2c71a1d5e05aa79e9ff8fadf915005d41.idx
-│   │       ├── pack-65e78de2c71a1d5e05aa79e9ff8fadf915005d41.pack
-│   │       └── pack-65e78de2c71a1d5e05aa79e9ff8fadf915005d41.rev
+│   │       ├── pack-49a711d63703fa685b79ca94564814e00fc063be.idx
+│   │       ├── pack-49a711d63703fa685b79ca94564814e00fc063be.pack
+│   │       └── pack-49a711d63703fa685b79ca94564814e00fc063be.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -379,7 +379,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-14 16:16:42 UTC
+Сгенерировано: 2026-03-14 16:17:53 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2991,7 +2991,7 @@ window.PlaybackCache.unprotectWindow = unprotectWindow;
     e.ico.innerHTML = p ? '<path d="M6 4h4v16H6zM14 4h4v16h-4z"/>' : '<path d="M8 5v14l11-7z"/>';
     ['shuffle', 'repeat', 'mute'].forEach(k => U.setBtnActive(`${k}-btn`, c[`is${k.charAt(0).toUpperCase() + k.slice(1)}`]?.()));
     e.fav.className = `player-control-btn ${f ? 'favorites-active' : ''}`;
-    e.favI.src = `img/star${f ? '' : '2'}.png`;
+    if (e.favI) e.favI.dataset.liked = f ? '1' : '0';
 
     const v = c.getVolume();
     e.vF.style.width = `${v}%`; e.vH.style.left = `${U.math.clamp(v, 2, 98)}%`; e.vS.value = v;
@@ -3015,7 +3015,7 @@ window.PlaybackCache.unprotectWindow = unprotectWindow;
     if (st.isMini && dom.mini) {
       const nt = c.getPlaylistSnapshot()?.[c.getNextIndex()];
       if (e.mTi) e.mTi.textContent = t?.title ? `${t.title} — ${W.TrackRegistry?.getAlbumTitle(t.sourceAlbum) || t.album || 'Альбом'}` : '—';
-      if (e.mSr) e.mSr.src = `img/star${U.fav.isTrackLikedInContext({ playingAlbum: pA, track: t }) ? '' : '2'}.png`;
+      if (e.mSr) e.mSr.dataset.liked = U.fav.isTrackLikedInContext({ playingAlbum: pA, track: t }) ? '1' : '0';
       if (e.mNUp) e.mNUp.textContent = nt?.title || '—';
     }
 
@@ -3115,7 +3115,7 @@ window.PlaybackCache.unprotectWindow = unprotectWindow;
         Object.assign(dom.el, { mPrg: dom.mini.querySelector('#mini-now-progress'), mTi: dom.mini.querySelector('#mini-now-title'), mSr: dom.mini.querySelector('#mini-now-star'), mNUp: dom.nUp.querySelector('.title') });
         
         dom.mini.onclick = e => {
-          if (e.target.id === 'mini-now-star') { 
+          if (e.target.closest('#mini-now-star')) { 
             e.stopPropagation(); const t = PC().getCurrentTrack(); 
             if(t?.uid) PC().toggleFavorite(t.uid, { source: AM()?.getPlayingAlbum?.() === W.SPECIAL_FAVORITES_KEY ? 'favorites' : 'album', albumKey: t.sourceAlbum }); syncUI();
           } else { 
