@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6d80ee06569e18a4b848c267dbcd908008713d2c.idx
-│   │       ├── pack-6d80ee06569e18a4b848c267dbcd908008713d2c.pack
-│   │       └── pack-6d80ee06569e18a4b848c267dbcd908008713d2c.rev
+│   │       ├── pack-2b230c15a78c43213e1a5c3374db544bbb3f6dbd.idx
+│   │       ├── pack-2b230c15a78c43213e1a5c3374db544bbb3f6dbd.pack
+│   │       └── pack-2b230c15a78c43213e1a5c3374db544bbb3f6dbd.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -353,6 +353,7 @@ vi3na1bita-music/
 │   │   └── update-checker.js
 │   ├── ui/
 │   │   ├── cache-progress-overlay.js
+│   │   ├── icon-utils.js
 │   │   ├── lyrics-modal.js
 │   │   ├── modals.js
 │   │   ├── news-inline.js
@@ -379,7 +380,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-14 16:20:37 UTC
+Сгенерировано: 2026-03-14 16:35:13 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -6567,6 +6568,24 @@ async function updateProgressBar() {
 }
 
 export default { initCacheProgressOverlay };
+
+//=================================================
+// FILE: /scripts/ui/icon-utils.js
+const SPRITE_PATH = 'icons/ui-sprite.svg';
+
+export function renderFavoriteStar(liked, attrs = '') {
+  return `<span class="like-star like-star-svg" data-liked="${liked ? '1' : '0'}" aria-label="★" ${attrs}><svg viewBox="0 0 24 24" aria-hidden="true"><use href="${SPRITE_PATH}#icon-favorite-star"></use></svg></span>`;
+}
+
+export function setFavoriteStarState(el, liked) {
+  if (!el) return;
+  el.dataset.liked = liked ? '1' : '0';
+}
+
+window.IconUtils = {
+  renderFavoriteStar,
+  setFavoriteStarState
+};
 
 //=================================================
 // FILE: /scripts/ui/lyrics-modal.js
