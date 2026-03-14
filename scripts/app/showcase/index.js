@@ -177,7 +177,15 @@ class ShowcaseManager {
   _saveScroll(id) { const el = $('track-list'); if (el && id) { const y = el.scrollTop || 0; this._scr.set(id, y); jSet(`scroll_${id}`, y); } }
   _restoreScroll(id) { const el = $('track-list'); if (el && id) el.scrollTop = Math.max(0, Number(this._scr.get(id) ?? jGet(`scroll_${id}`, 0)) || 0); }
   _markLast(uid, id = this._ctxId()) { jSet(isDef(id) ? 'lastUid_default' : `lastUid_${id}`, uid); }
-  _cleanupUi() { try { $('sc-selection-bar')?.remove(); this._menu?.remove(); } catch {} this._menu = null; }
+  _cleanupUi() {
+    try {
+      const bar = $('sc-selection-bar');
+      if (bar && bar._scClick) bar.removeEventListener('click', bar._scClick);
+      bar?.remove();
+      this._menu?.remove();
+    } catch {}
+    this._menu = null;
+  }
   _hi(uid) { D.querySelectorAll('.showcase-track.current').forEach(x => x.classList.remove('current')); if (uid) D.querySelectorAll(`.showcase-track[data-uid="${uidEsc(uid)}"]`).forEach(x => x.classList.add('current')); }
   _ctxHiddenSet(id = this._ctxId()) { return new Set((isDef(id) ? Store.def() : Store.get(id))?.hidden || []); }
   _isHidden(uid, id = this._ctxId()) { return this._ctxHiddenSet(id).has(uid); }
@@ -361,13 +369,30 @@ class ShowcaseManager {
   }
 
   _selectionBar() {
-    $('sc-selection-bar')?.remove();
+    const old = $('sc-selection-bar');
+    if (old && old._scClick) old.removeEventListener('click', old._scClick);
+    old?.remove();
     const n = this._getSelectedSet().size;
     if (!n) return;
     const bar = D.createElement('div');
     bar.id = 'sc-selection-bar';
     bar.className = 'showcase-sticky-bar';
-    bar.innerHTML = `<span>Выбрано: ${n}</span>${!this._edit ? `<button class="showcase-btn sc-search-add">➕ Добавить</button>` : ''}<button class="showcase-btn sc-unified-create" style="background:#4daaff;color:#fff;">✨ Создать</button><button class="showcase-btn sc-unified-share">📸 Карточка</button><button class="showcase-btn sc-unified-all">✓ Всё</button><button class="showcase-btn sc-unified-none">✕ Снять</button>`;
+    bar.innerHTML = `<span>Выбрано: ${n}</span>${!this._edit ? `<button type="button" class="showcase-btn sc-search-add">➕ Добавить</button>` : ''}<button type="button" class="showcase-btn sc-unified-create" style="background:#4daaff;color:#fff;">✨ Создать</button><button type="button" class="showcase-btn sc-unified-share">📸 Карточка</button><button type="button" class="showcase-btn sc-unified-all">✓ Всё</button><button type="button" class="showcase-btn sc-unified-none">✕ Снять</button>`;
+    bar.addEventListener('click', bar._scClick = (e) => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      if (b.classList.contains('sc-search-add')) return this._searchAdd();
+      if (b.classList.contains('sc-unified-create')) return this._createPl(this._edit ? this._mkFromEdit() : this._getSelectedUids(), !!this._edit);
+      if (b.classList.contains('sc-unified-share')) return this._shareList(this._edit ? this._mkFromEdit() : this._getSelectedUids());
+      if (b.classList.contains('sc-unified-all')) {
+        this._setSelectedAll(true);
+        return this._edit ? this._renderEdit($('sc-tracks-container'), this._drf.getList()) : this._renderBody(++this._tok);
+      }
+      if (b.classList.contains('sc-unified-none')) {
+        this._clearSelected();
+        return this._edit ? this._renderEdit($('sc-tracks-container'), this._drf.getList()) : this._renderBody(++this._tok);
+      }
+    });
     D.body.appendChild(bar);
   }
 
