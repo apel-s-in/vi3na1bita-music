@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-91bf680fa391f971ba54d76dff2627d9ee73fc89.idx
-│   │       ├── pack-91bf680fa391f971ba54d76dff2627d9ee73fc89.pack
-│   │       └── pack-91bf680fa391f971ba54d76dff2627d9ee73fc89.rev
+│   │       ├── pack-8e3ff65230b3a6502492eb787ca14ea41995b93a.idx
+│   │       ├── pack-8e3ff65230b3a6502492eb787ca14ea41995b93a.pack
+│   │       └── pack-8e3ff65230b3a6502492eb787ca14ea41995b93a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -378,7 +378,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-14 11:20:09 UTC
+Сгенерировано: 2026-03-14 11:36:02 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3568,6 +3568,39 @@ class ShowcaseManager {
     this._scr = new Map();
   }
 
+  _getSelectedSet() {
+    return this._edit ? (this._drf?.chk || new Set()) : this._sel;
+  }
+
+  _getSelectedUids() {
+    return [...this._getSelectedSet()].filter(trk);
+  }
+
+  _setSelectedAll(on) {
+    if (this._edit) {
+      this._drf?.setAllChecked(!!on);
+    } else {
+      this._sel = new Set(on ? this._res.filter(trk) : []);
+    }
+  }
+
+  _clearSelected() {
+    if (this._edit) {
+      this._drf?.setAllChecked(false);
+    } else {
+      this._sel.clear();
+    }
+  }
+
+  _toggleSelected(uid) {
+    if (!uid) return;
+    if (this._edit) {
+      this._drf?.toggleChecked(uid);
+    } else {
+      this._sel.has(uid) ? this._sel.delete(uid) : this._sel.add(uid);
+    }
+  }
+
   async initialize() {
     await W.TrackRegistry?.ensurePopulated?.();
     Store.def();
@@ -3769,12 +3802,12 @@ class ShowcaseManager {
 
   _selectionBar() {
     $('sc-selection-bar')?.remove();
-    const n = this._edit ? (this._drf?.chk?.size || 0) : this._sel.size;
+    const n = this._getSelectedSet().size;
     if (!n) return;
     const bar = D.createElement('div');
     bar.id = 'sc-selection-bar';
     bar.className = 'showcase-sticky-bar';
-    bar.innerHTML = `<span>Выбрано: ${n}</span>${this._edit ? `<button class="showcase-btn sc-edit-create" style="background:#4daaff;color:#fff;">✨ Создать</button><button class="showcase-btn sc-edit-share">📸 Карточка</button><button class="showcase-btn sc-edit-all">✓ Всё</button><button class="showcase-btn sc-edit-none">✕ Снять</button>` : `<button class="showcase-btn sc-search-add">➕ Добавить</button><button class="showcase-btn sc-search-create" style="background:#4daaff;color:#fff;">✨ Создать</button><button class="showcase-btn sc-search-share">📸 Карточка</button><button class="showcase-btn sc-search-check-all">✓ Всё</button><button class="showcase-btn" id="sc-search-clear-selection">✕ Снять</button>`}`;
+    bar.innerHTML = `<span>Выбрано: ${n}</span>${!this._edit ? `<button class="showcase-btn sc-search-add">➕ Добавить</button>` : ''}<button class="showcase-btn sc-unified-create" style="background:#4daaff;color:#fff;">✨ Создать</button><button class="showcase-btn sc-unified-share">📸 Карточка</button><button class="showcase-btn sc-unified-all">✓ Всё</button><button class="showcase-btn sc-unified-none">✕ Снять</button>`;
     D.body.appendChild(bar);
   }
 
@@ -3820,15 +3853,17 @@ class ShowcaseManager {
       'sc-tg-numbers': () => { const x = uiMut(); x.ui.showNumbers = !x.ui.showNumbers; x.save(); },
       'sc-tg-view': () => { const x = uiMut(); x.ui.viewMode = x.ui.viewMode === 'flat' ? 'grouped' : 'flat'; x.save(); },
       'sc-tg-placement': () => { const x = uiMut(); x.ui.hiddenPlacement = x.ui.hiddenPlacement === 'inline' ? 'end' : 'inline'; x.save(); },
-      'sc-search-clear-selection': () => { this._sel.clear(); this._selectionBar(); this._status(this._res.length, true); D.querySelectorAll('.sc-search-chk').forEach(c=>c.checked=false); D.querySelectorAll('.sc-search-result').forEach(r=>r.classList.remove('selected')); },
-      'sc-edit-all': () => { this._drf?.setAllChecked(true); this._renderEdit($('sc-tracks-container'), this._drf.getList()); },
-      'sc-edit-none': () => { this._drf?.setAllChecked(false); this._renderEdit($('sc-tracks-container'), this._drf.getList()); },
-      'sc-edit-create': () => this._createPl(this._mkFromEdit(), true),
-      'sc-edit-share': () => this._shareList(this._mkFromEdit()),
       'sc-search-add': () => this._searchAdd(),
-      'sc-search-create': () => this._createPl([...this._sel].filter(trk)),
-      'sc-search-check-all': () => { this._res.forEach(u => this._sel.add(u)); this._renderBody(++this._tok); },
-      'sc-search-share': () => this._shareList([...this._sel].filter(trk))
+      'sc-unified-create': () => this._createPl(this._edit ? this._mkFromEdit() : this._getSelectedUids(), !!this._edit),
+      'sc-unified-share': () => this._shareList(this._edit ? this._mkFromEdit() : this._getSelectedUids()),
+      'sc-unified-all': () => {
+        this._setSelectedAll(true);
+        this._edit ? this._renderEdit($('sc-tracks-container'), this._drf.getList()) : this._renderBody(++this._tok);
+      },
+      'sc-unified-none': () => {
+        this._clearSelected();
+        this._edit ? this._renderEdit($('sc-tracks-container'), this._drf.getList()) : this._renderBody(++this._tok);
+      }
     };
 
     if (one[btn.id]) return one[btn.id]();
@@ -3880,7 +3915,7 @@ class ShowcaseManager {
     if (!uid || !this._drf) return;
     
     if (e.target.classList.contains('sc-chk')) {
-       this._drf.toggleChecked(uid);
+       this._toggleSelected(uid);
        row.classList.toggle('selected', this._drf.chk.has(uid));
        this._selectionBar();
        this._status(this._drf.getList().length, false);
