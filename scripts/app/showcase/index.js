@@ -810,8 +810,11 @@ class ShowcaseManager {
     if (idx<0) return;
     const ctxId = this._ctxId();
     jSet(this._isDef(ctxId)?'lastUid_default':`lastUid_${ctxId}`, uid);
-    W.AlbumsManager?.setCurrentAlbum?.(SHOW);
-    W.playerCore?.loadPlaylist?.(list, idx);
+    W.AlbumsManager?.loadAlbum?.(SHOW);
+    W.AlbumsManager?.setPlayingAlbum?.(SHOW);
+    W.playerCore?.setPlaylist?.(list, idx, null, { preservePosition: false });
+    W.PlayerUI?.ensurePlayerBlock?.(idx, { userInitiated: true });
+    W.playerCore?.play?.(idx);
     this._hi(uid);
   }
 
@@ -819,9 +822,10 @@ class ShowcaseManager {
     let list = this._getPlaybackList();
     if (!list.length) return;
     if (shuffle) list = randShuffle(list);
-    W.AlbumsManager?.setCurrentAlbum?.(SHOW);
-    W.playerCore?.loadPlaylist?.(list, 0);
-    W.playerCore?.play?.();
+    W.AlbumsManager?.setPlayingAlbum?.(SHOW);
+    W.playerCore?.setPlaylist?.(list, 0, null, { preservePosition: false });
+    W.PlayerUI?.ensurePlayerBlock?.(0, { userInitiated: true });
+    W.playerCore?.play?.(0);
     this._hi(list[0].uid);
   }
 
@@ -965,9 +969,10 @@ class ShowcaseManager {
     let list = this._getPlaybackList(ctxId);
     if (!list.length) { this._toast('Нет активных треков'); return; }
     if (shuffle) list = randShuffle(list);
-    W.AlbumsManager?.setCurrentAlbum?.(SHOW);
-    W.playerCore?.loadPlaylist?.(list, 0);
-    W.playerCore?.play?.();
+    W.AlbumsManager?.setPlayingAlbum?.(SHOW);
+    W.playerCore?.setPlaylist?.(list, 0, null, { preservePosition: false });
+    W.PlayerUI?.ensurePlayerBlock?.(0, { userInitiated: true });
+    W.playerCore?.play?.(0);
   }
 
   _renamePl(plid) {
@@ -1359,8 +1364,8 @@ injectCSS();
 
 W.ShowcaseManager = showcase;
 
-// Хук на смену трека
-W.addEventListener?.('playerCore:trackChanged', e => {
+// Хук на смену трека (событие из PlayerCore — player:trackChanged)
+W.addEventListener?.('player:trackChanged', e => {
   showcase.onTrackChanged(e?.detail?.uid || W.playerCore?.getCurrentTrackUid?.());
 });
 
@@ -1369,12 +1374,12 @@ W.addEventListener?.('tab:activated', e => {
   if (e?.detail?.tab === 'showcase') showcase.onTabActivated();
 });
 
-// Хук для AlbumsManager
+// Хук для AlbumsManager: перехватываем loadAlbum для showcase-контекста
 if (W.AlbumsManager) {
-  const orig = W.AlbumsManager.openAlbum?.bind?.(W.AlbumsManager);
+  const orig = W.AlbumsManager.loadAlbum?.bind?.(W.AlbumsManager);
   if (orig) {
-    W.AlbumsManager.openAlbum = function(key, ...rest) {
-      if (isShowcaseCtx(key)) { showcase.onTabActivated(); return; }
+    W.AlbumsManager.loadAlbum = function(key, ...rest) {
+      if (isShowcaseCtx(key)) { showcase.onTabActivated(); return Promise.resolve(); }
       return orig(key, ...rest);
     };
   }
