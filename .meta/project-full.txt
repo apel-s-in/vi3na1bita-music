@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5bd5d5418374efaaae397b5e5f785a35bb83ba77.idx
-│   │       ├── pack-5bd5d5418374efaaae397b5e5f785a35bb83ba77.pack
-│   │       └── pack-5bd5d5418374efaaae397b5e5f785a35bb83ba77.rev
+│   │       ├── pack-357e542b2afbb4fd6bb72ee768f626879d5100da.idx
+│   │       ├── pack-357e542b2afbb4fd6bb72ee768f626879d5100da.pack
+│   │       └── pack-357e542b2afbb4fd6bb72ee768f626879d5100da.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -379,7 +379,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-14 16:08:36 UTC
+Сгенерировано: 2026-03-14 16:09:34 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -717,7 +717,7 @@ jobs:
         <span class="mini-track-title" id="mini-now-title">—</span>
         <span class="mini-track-hint">Нажми чтобы вернуться к альбому</span>
       </div>
-      <img src="img/star2.png" class="like-star" id="mini-now-star" alt="звезда">
+      <span class="like-star like-star-svg" id="mini-now-star" data-liked="0" aria-label="звезда"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-favorite-star"></use></svg></span>
     </div>
   </template>
 
@@ -860,7 +860,7 @@ jobs:
           </button>
 
           <button class="player-control-btn" id="favorites-btn" title="Только избранные (F)">
-            <img src="img/star2.png" alt="★" id="favorites-btn-icon"/>
+            <span id="favorites-btn-icon" class="like-star like-star-svg" data-liked="0" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="icons/ui-sprite.svg#icon-favorite-star"></use></svg></span>
           </button>
         </div>
       </div>
