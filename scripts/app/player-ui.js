@@ -17,7 +17,7 @@
     e.ico.innerHTML = p ? '<path d="M6 4h4v16H6zM14 4h4v16h-4z"/>' : '<path d="M8 5v14l11-7z"/>';
     ['shuffle', 'repeat', 'mute'].forEach(k => U.setBtnActive(`${k}-btn`, c[`is${k.charAt(0).toUpperCase() + k.slice(1)}`]?.()));
     e.fav.className = `player-control-btn ${f ? 'favorites-active' : ''}`;
-    e.favI.src = `img/star${f ? '' : '2'}.png`;
+    if (e.favI) e.favI.dataset.liked = f ? '1' : '0';
 
     const v = c.getVolume();
     e.vF.style.width = `${v}%`; e.vH.style.left = `${U.math.clamp(v, 2, 98)}%`; e.vS.value = v;
@@ -41,7 +41,7 @@
     if (st.isMini && dom.mini) {
       const nt = c.getPlaylistSnapshot()?.[c.getNextIndex()];
       if (e.mTi) e.mTi.textContent = t?.title ? `${t.title} — ${W.TrackRegistry?.getAlbumTitle(t.sourceAlbum) || t.album || 'Альбом'}` : '—';
-      if (e.mSr) e.mSr.src = `img/star${U.fav.isTrackLikedInContext({ playingAlbum: pA, track: t }) ? '' : '2'}.png`;
+      if (e.mSr) e.mSr.dataset.liked = U.fav.isTrackLikedInContext({ playingAlbum: pA, track: t }) ? '1' : '0';
       if (e.mNUp) e.mNUp.textContent = nt?.title || '—';
     }
 
@@ -141,7 +141,7 @@
         Object.assign(dom.el, { mPrg: dom.mini.querySelector('#mini-now-progress'), mTi: dom.mini.querySelector('#mini-now-title'), mSr: dom.mini.querySelector('#mini-now-star'), mNUp: dom.nUp.querySelector('.title') });
         
         dom.mini.onclick = e => {
-          if (e.target.id === 'mini-now-star') { 
+          if (e.target.closest('#mini-now-star')) { 
             e.stopPropagation(); const t = PC().getCurrentTrack(); 
             if(t?.uid) PC().toggleFavorite(t.uid, { source: AM()?.getPlayingAlbum?.() === W.SPECIAL_FAVORITES_KEY ? 'favorites' : 'album', albumKey: t.sourceAlbum }); syncUI();
           } else { 
