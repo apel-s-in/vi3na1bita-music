@@ -114,13 +114,10 @@ class AlbumsManager {
       const pIdx = data._pTracks.findIndex(t => t.uid === uid); 
       if (pIdx === -1) return;
       
-      const curSnap = pc.getPlaylistSnapshot() || [];
-      if (curSnap.length !== data._pTracks.length || curSnap[0]?.sourceAlbum !== aKey) {
-        pc.setPlaylist(data._pTracks, pIdx, null, { preservePosition: false });
-      }
-      
-      this.highlightCurrentTrack(pIdx); 
-      pc.play(pIdx);
+      const started = pc.playExactFromPlaylist?.(data._pTracks, uid, { dir: 1 });
+      if (!started) return;
+
+      this.highlightCurrentTrack(pIdx, { uid, albumKey: aKey });
       W.PlayerUI?.ensurePlayerBlock?.(pIdx, { userInitiated: true });
     });
 
