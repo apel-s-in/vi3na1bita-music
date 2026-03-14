@@ -4,6 +4,7 @@
  * 100% Spec-Compliant. Optimized DOM, State Separation.
  */
 import { ensureLyricsIndexLoaded, searchUidsByQuery } from './lyrics-search.js';
+import { renderFavoriteStar, setFavoriteStarState } from '../../ui/icon-utils.js';
 
 const W = window, D = document, U = W.Utils, ls = localStorage;
 const NS = 'sc3:', ALL = '__default__', SHOW = '__showcase__';
@@ -17,7 +18,6 @@ const deep = v => JSON.parse(JSON.stringify(v));
 const jGet = (k, d = null) => { try { const v = ls.getItem(NS + k); return v ? JSON.parse(v) : d; } catch { return d; } };
 const jSet = (k, v) => { try { ls.setItem(NS + k, JSON.stringify(v)); } catch {} };
 const randShuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
-const renderFavoriteStar = (liked, attrs = '') => `<span class="like-star like-star-svg" data-liked="${liked ? '1' : '0'}" aria-label="★" ${attrs}><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-favorite-star"></use></svg></span>`;
 
 const getCat = () => (W.albumsIndex || []).filter(a => !String(a?.key || '').startsWith('__')).flatMap(a => (W.TrackRegistry?.getTracksForAlbum?.(a.key) || []).map(t => t?.uid).filter(Boolean));
 
@@ -167,7 +167,7 @@ class ShowcaseManager {
     Store.def();
     W.playerCore?.onFavoritesChanged?.(({ uid }) => {
       if (W.AlbumsManager?.getCurrentAlbum?.() !== SHOW) return;
-      D.querySelectorAll(`.showcase-track[data-uid="${uidEsc(uid)}"] .like-star`).forEach(el => { el.dataset.liked = W.playerCore.isFavorite(uid) ? '1' : '0'; });
+      D.querySelectorAll(`.showcase-track[data-uid="${uidEsc(uid)}"] .like-star`).forEach(el => setFavoriteStarState(el, W.playerCore.isFavorite(uid)));
     });
     W.addEventListener('offline:stateChanged', () => W.AlbumsManager?.getCurrentAlbum?.() === SHOW && W.OfflineIndicators?.refreshAllIndicators?.());
   }
