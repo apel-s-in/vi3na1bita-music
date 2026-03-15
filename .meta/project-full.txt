@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8b6940e8bc8c64b9793c1303023c55a1962d93dd.idx
-│   │       ├── pack-8b6940e8bc8c64b9793c1303023c55a1962d93dd.pack
-│   │       └── pack-8b6940e8bc8c64b9793c1303023c55a1962d93dd.rev
+│   │       ├── pack-d7c7615f6a40a83596a31172cd592d6a22cc1973.idx
+│   │       ├── pack-d7c7615f6a40a83596a31172cd592d6a22cc1973.pack
+│   │       └── pack-d7c7615f6a40a83596a31172cd592d6a22cc1973.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -399,7 +399,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 20:53:10 UTC
+Сгенерировано: 2026-03-15 20:54:16 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -686,13 +686,13 @@ jobs:
           </div>
           <div class="ach-progress-bars">
             <div class="ach-progress-header"><span class="ach-progress-title">ПРОГРЕСС ДОСТИЖЕНИЙ</span></div>
-            <div class="ach-bar ach-bar-single"><div class="ach-bar-fill" id="achievementsFill" style="width:0%"></div></div>
+            <div class="ach-bar ach-bar-single"><div class="ach-bar-fill" id="achievementsFill"></div></div>
             <div class="ach-stat-row">
               <div class="ach-done-label" id="achievementsCount">ВЫПОЛНЕНО: 0 / 0</div>
               <div class="ach-xp-label" id="xp-text">0 / 100 XP</div>
             </div>
             <!-- Полоска опыта -->
-            <div class="ach-bar ach-bar-xp"><div class="ach-bar-fill xp-fill" id="xp-progress-fill" style="width:0%"></div></div>
+            <div class="ach-bar ach-bar-xp"><div class="ach-bar-fill xp-fill" id="xp-progress-fill"></div></div>
           </div>
         </div>
 
@@ -706,7 +706,7 @@ jobs:
     <div id="now-playing" class="now-playing-inline"></div>
     <div class="track-list" id="track-list"></div>
 
-    <div class="bottom-controls-center">
+    <div class="bottom-controls-center" id="app-shell-controls">
       <img class="logo-bottom" id="logo-bottom" src="img/logo.png" alt="Логотип"/>
 
       <button id="install-pwa-btn" class="install-pwa-hidden">УСТАНОВИТЬ КАК ПРИЛОЖЕНИЕ</button>
@@ -714,9 +714,7 @@ jobs:
       <button id="sysinfo-btn" class="sysinfo-hidden">О СИСТЕМЕ</button>
 
       <span class="feedback-link" id="feedback-link">ОБРАТНАЯ СВЯЗЬ</span>
-
       <a class="support-link" id="support-link" href="#" target="_blank">ПОДДЕРЖАТЬ</a>
-
       <button class="offline-btn" id="offline-btn">OFFLINE</button>
     </div>
   </div>
