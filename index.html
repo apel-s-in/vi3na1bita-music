@@ -124,15 +124,15 @@
       
     </header>
 
-    <div id="now-playing" style="width:100%; max-width:395px; margin:8px auto 0 auto;"></div>
+    <div id="now-playing" class="now-playing-inline"></div>
     <div class="track-list" id="track-list"></div>
 
     <div class="bottom-controls-center">
       <img class="logo-bottom" id="logo-bottom" src="img/logo.png" alt="Логотип"/>
 
-      <button id="install-pwa-btn" style="display: none;">УСТАНОВИТЬ КАК ПРИЛОЖЕНИЕ</button>
-      <button class="hotkeys-btn" id="hotkeys-btn" style="display:none;">ГОРЯЧИЕ КЛАВИШИ</button>
-      <button id="sysinfo-btn" style="display:none;">О СИСТЕМЕ</button>
+      <button id="install-pwa-btn" class="install-pwa-hidden">УСТАНОВИТЬ КАК ПРИЛОЖЕНИЕ</button>
+      <button class="hotkeys-btn hotkeys-hidden" id="hotkeys-btn">ГОРЯЧИЕ КЛАВИШИ</button>
+      <button id="sysinfo-btn" class="sysinfo-hidden">О СИСТЕМЕ</button>
 
       <span class="feedback-link" id="feedback-link">ОБРАТНАЯ СВЯЗЬ</span>
 
@@ -268,7 +268,7 @@
 
           <button class="sleep-timer-btn" id="sleep-timer-btn" data-testid="sleep-open" title="Таймер сна (T)">
             <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-sleep"></use></svg>
-            <span class="sleep-timer-badge" id="sleep-timer-badge" style="display:none;">0</span>
+            <span class="sleep-timer-badge sleep-badge-hidden" id="sleep-timer-badge">0</span>
           </button>
 
           <button class="player-control-btn" id="favorites-btn" title="Только избранные (F)">
@@ -295,7 +295,7 @@
 
           <button class="karaoke-btn" id="lyrics-text-btn" title="Полный текст песни"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-lyrics"></use></svg></button>
 
-          <button class="stats-btn" id="stats-btn" title="Статистика" style="background:none; border:none; cursor:pointer; font-size:18px; opacity:0.8; padding:0 8px;"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-stats"></use></svg></button>
+          <button class="stats-btn stats-btn-reset" id="stats-btn" title="Статистика"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-stats"></use></svg></button>
 
           <div class="source-indicator" id="source-indicator" title="Источник потока"></div>
 
