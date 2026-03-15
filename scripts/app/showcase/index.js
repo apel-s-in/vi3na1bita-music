@@ -3,7 +3,7 @@
  * Showcase «Витрина Разбита» — stable compact rebuild v4.0
  * 100% Spec-Compliant. Optimized DOM, State Separation.
  */
-import { ensureLyricsIndexLoaded, searchUidsByQuery } from './lyrics-search.js';
+import { ensureLyricsIndexLoaded } from './lyrics-search.js';
 import { renderFavoriteStar, setFavoriteStarState } from '../../ui/icon-utils.js';
 import { renderShowcasePlaylists, renameShowcasePlaylist, shareShowcasePlaylist, createShowcasePlaylist } from './playlists.js';
 import { renderShowcaseHeader, renderShowcaseNormal, renderShowcaseSearch, renderShowcaseEdit, renderShowcaseStatus, renderShowcaseSelectionBar } from './render.js';
@@ -446,7 +446,7 @@ class ShowcaseManager {
 
   _enterEdit() {
     if (!this._ctx()) return;
-    this._drf = new Draft(this._ctxId()); // Игнорирует сортировку, берет manual order
+    this._drf = new Draft(this._ctxId(), isDef); // Игнорирует сортировку, берет manual order
     this._edit = true;
     this.renderTab();
   }
