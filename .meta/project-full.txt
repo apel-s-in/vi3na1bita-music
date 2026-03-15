@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5de571d8c4cbe9fa82c64966969c66730d9f33ee.idx
-│   │       ├── pack-5de571d8c4cbe9fa82c64966969c66730d9f33ee.pack
-│   │       └── pack-5de571d8c4cbe9fa82c64966969c66730d9f33ee.rev
+│   │       ├── pack-ccee2c15333c53581b9bf557c22d26bdf034f8aa.idx
+│   │       ├── pack-ccee2c15333c53581b9bf557c22d26bdf034f8aa.pack
+│   │       └── pack-ccee2c15333c53581b9bf557c22d26bdf034f8aa.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -396,7 +396,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 19:59:06 UTC
+Сгенерировано: 2026-03-15 19:59:45 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5112,7 +5112,7 @@ export function renderShowcaseHeader({ edit, query, sortMode, resetAble, dirty, 
 export function renderShowcaseRow({ track, index, options, esc, albumTitle, renderFavoriteStar, isFavorite }) {
   const o = options || {};
   const cls = ['showcase-track', o.isH ? 'inactive' : '', o.srh ? 'sc-search-result' : '', o.chk ? 'selected' : ''].filter(Boolean).join(' ');
-  return `<div class="${cls}" data-uid="${track.uid}" data-hidden="${o.isH ? '1' : '0'}" style="border-left:3px solid ${o.col || 'transparent'}">
+  return `<div class="${cls}" data-uid="${track.uid}" data-hidden="${o.isH ? '1' : '0'}" style="--sc-left-color:${o.col || 'transparent'}">
     <div class="tnum" ${o.sN ? '' : 'hidden'}>${index + 1}.</div>
     <img src="${track.cover}" class="showcase-track-thumb" loading="lazy">
     <div class="track-title"><div>${esc(track.title)}</div><div class="showcase-track-meta">${esc(albumTitle(track.sourceAlbum))}${o.bdg ? ` ${o.bdg}` : ''}</div></div>
