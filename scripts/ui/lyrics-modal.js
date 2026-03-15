@@ -5,7 +5,7 @@
   'use strict';
 
   const show = async () => {
-    const W = window, D = document, N = W.NotificationSystem;
+    const W = window, D = document, N = W.NotificationSystem, U = W.Utils;
     const t = W.playerCore?.getCurrentTrack();
     
     if (!t) return N?.warning('Нет активного трека');
@@ -82,8 +82,9 @@
         N?.success('Текст скопирован');
         m.remove();
       } catch {
+        U?.dom?.createStyleOnce?.('lyrics-modal-copy-helper-style', `.lyrics-copy-helper{position:fixed;opacity:0;pointer-events:none;inset:-9999px auto auto -9999px}`);
         const ta = D.createElement('textarea');
-        Object.assign(ta.style, { position: 'fixed', opacity: '0' });
+        ta.className = 'lyrics-copy-helper';
         ta.value = txt;
         D.body.appendChild(ta);
         ta.select();
