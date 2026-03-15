@@ -10,11 +10,13 @@ export function createShowcaseActions({
   esc,
   uidEsc,
   PALETTE,
-  openShowcaseSheet,
   renderShowcasePlaylists,
   renameShowcasePlaylist,
   shareShowcasePlaylist,
-  createShowcasePlaylist
+  createShowcasePlaylist,
+  openShowcaseSheetModal,
+  openShowcaseAddToPlaylistModal,
+  openShowcasePaletteModal
 }) {
   const randShuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 
@@ -39,7 +41,7 @@ export function createShowcaseActions({
       const t = trk(uid), id = api.ctxId(), inPl = !isDef(id) && (Store.get(id)?.order || []).includes(uid);
       if (!t) return;
 
-      const sh = openShowcaseSheet({
+      const sh = openShowcaseSheetModal({
         title: esc(t.title),
         subtitle: esc(albT(t.sourceAlbum)),
         fromSearch,
@@ -60,21 +62,22 @@ export function createShowcaseActions({
             return setTimeout(() => {
               const pls = Store.pl();
               if (!pls.length) return W.NotificationSystem?.warning('Сначала создайте плейлист');
-              const m = W.Modals?.open({ title: 'Добавить в плейлист', bodyHtml: `<div class="sc-playlist-pick">${pls.map(p => `<button class="showcase-btn" data-pid="${p.id}">${esc(p.name)}</button>`).join('')}</div>` });
-              if (!m) return;
-              m.onclick = ev => {
-                const b = ev.target.closest('[data-pid]');
-                if (!b) return;
-                const p = Store.get(b.dataset.pid);
-                if (!p) return;
-                const s = new Set(p.order || []);
-                if (!s.has(uid)) {
-                  p.order.push(uid);
-                  Store.save(p);
-                  W.NotificationSystem?.success('Добавлено');
+              openShowcaseAddToPlaylistModal({
+                playlists: pls,
+                esc,
+                modalApi: W.Modals,
+                onPick: (pid, m) => {
+                  const p = Store.get(pid);
+                  if (!p) return;
+                  const s = new Set(p.order || []);
+                  if (!s.has(uid)) {
+                    p.order.push(uid);
+                    Store.save(p);
+                    W.NotificationSystem?.success('Добавлено');
+                  }
+                  m?.remove?.();
                 }
-                m.remove();
-              };
+              });
             }, 120);
           }
 
@@ -115,11 +118,12 @@ export function createShowcaseActions({
         cur = Store.cols()?.[aKey] || '';
       }
 
-      W.Utils?.profileModals?.palettePicker?.({
+      openShowcasePaletteModal({
         title: playlistId ? 'Цвет плейлиста' : 'Цвет альбома',
         items: PALETTE,
         value: cur,
         resetText: 'Сбросить цвет',
+        modalHelper: W.Utils?.profileModals?.palettePicker,
         onPick: (v, m) => {
           if (playlistId) {
             const p = Store.get(playlistId);
