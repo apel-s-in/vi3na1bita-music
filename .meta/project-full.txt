@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ea138198f5e3040c1824f83ff59079def8434c4a.idx
-│   │       ├── pack-ea138198f5e3040c1824f83ff59079def8434c4a.pack
-│   │       └── pack-ea138198f5e3040c1824f83ff59079def8434c4a.rev
+│   │       ├── pack-5a670a13c5fe638caaef21a446a8338c66d1a3d8.idx
+│   │       ├── pack-5a670a13c5fe638caaef21a446a8338c66d1a3d8.pack
+│   │       └── pack-5a670a13c5fe638caaef21a446a8338c66d1a3d8.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -394,7 +394,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 19:41:13 UTC
+Сгенерировано: 2026-03-15 19:42:27 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -10731,6 +10731,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
   border-radius: 8px; border: 1px solid rgba(255,255,255,0.10); background: rgba(255,255,255,0.06);
   color: rgba(255,255,255,0.8); cursor: pointer; display: none;
 }
+.showcase-search-clear[hidden]{display:none!important}
 .showcase-search-clear:active { transform: translateY(-50%) scale(0.98); }
 .showcase-search:focus { border-color: var(--secondary-color); }
 .showcase-btns-row { display: flex; gap: 10px; }
@@ -10763,6 +10764,20 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .sc-pl-btn.danger { border-color: rgba(255,80,80,.35); }
 
 .sc-pl-empty { opacity: .65; font-size: 13px; padding: 6px 2px; }
+.sc-btn-save-ok{background:#4caf50!important;color:#fff!important}
+.sc-btn-create-accent{background:#4daaff!important;color:#fff!important}
+.sc-btn-reset-warn{border-color:#ff9800!important}
+.sc-btn-exit-danger{border-color:#ff6b6b!important}
+.sc-btn-half{flex:.5}
+.sc-status-checked{color:#ff9800}
+.sc-status-toggles{display:flex;gap:12px;align-items:center}
+.sc-status-toggle{cursor:pointer}
+.sc-status-toggle--icon{font-size:18px}
+.sc-status-toggle--text{font-size:14px}
+.sc-status-toggle--dim{opacity:.72}
+.sc-sort-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sc-sort-grid-full{grid-column:1/-1}
+.sc-unified-create-accent{background:#4daaff!important;color:#fff!important}
 
 .showcase-status-bar {
   display:flex;
