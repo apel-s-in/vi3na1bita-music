@@ -294,6 +294,11 @@
         };
         return m;
       },
+      failScreen: (msg) => {
+        const esc = U.ui.escapeHtml;
+        U.dom.createStyleOnce('boot-fail-screen-styles', `.boot-fail{position:fixed;inset:0;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;font-family:sans-serif}.boot-fail__box{max-width:560px}.boot-fail__title{color:#e80100;margin:0 0 12px}.boot-fail__text{margin:0}`);
+        return `<div class="boot-fail"><div class="boot-fail__box"><h2 class="boot-fail__title">Ошибка запуска</h2><p class="boot-fail__text">${esc(msg)}</p></div></div>`;
+      },
       avatarPicker: ({ title = 'Аватар', items = [], onPick } = {}) => {
         U.dom.createStyleOnce('profile-avatar-picker-styles', `.prof-ava-grid{display:flex;flex-wrap:wrap;gap:12px;justify-content:center}.prof-ava-btn{font-size:24px;background:#232b38}`);
         const m = W.Modals?.open?.({ title, bodyHtml: `<div class="prof-ava-grid">${items.map(a => `<button class="showcase-color-dot prof-ava-btn" data-ava="${U.ui.escapeHtml(a)}">${U.ui.escapeHtml(a)}</button>`).join('')}</div>` });
