@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-06b86dfc1839f99bb935936fc760418b58e51b8f.idx
-│   │       ├── pack-06b86dfc1839f99bb935936fc760418b58e51b8f.pack
-│   │       └── pack-06b86dfc1839f99bb935936fc760418b58e51b8f.rev
+│   │       ├── pack-d941e96abdf89876938117dcfb9ae9fe399f5b9d.idx
+│   │       ├── pack-d941e96abdf89876938117dcfb9ae9fe399f5b9d.pack
+│   │       └── pack-d941e96abdf89876938117dcfb9ae9fe399f5b9d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 12:28:17 UTC
+Сгенерировано: 2026-03-15 12:30:44 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3492,6 +3492,7 @@ window.PlaybackCache.unprotectWindow = unprotectWindow;
   const W = window, D = document, U = W.Utils;
   const LS = { V: 'lyricsViewMode', A: 'lyricsAnimationEnabled' }, PRE = 'lyr_';
   const sess = (k, v) => v === undefined ? JSON.parse(sessionStorage.getItem(k) || 'null') : sessionStorage.setItem(k, JSON.stringify(v));
+  const fc = W.Utils?.fetchCache;
   const esc = s => U?.escapeHtml?.(String(s||'')) || String(s||'');
 
   let st = { list: [], has: false, mode: 'normal', anim: false, lIdx: -100, mini: false }, dom = {};
@@ -3507,7 +3508,8 @@ window.PlaybackCache.unprotectWindow = unprotectWindow;
   const _pend = new Map();
   const fetchL = async (u) => {
     if (!(u = String(u || '').trim()) || sess('404_'+u)) return null;
-    const k = PRE + u, c = sess(k);
+    const k = PRE + u;
+    const c = fc?.get?.(k, 43200000, 'session') ?? sess(k);
     if (c) return c === 'NO' ? null : c;
     if (_pend.has(u)) return _pend.get(u);
 
@@ -3540,7 +3542,7 @@ window.PlaybackCache.unprotectWindow = unprotectWindow;
               });
 
           if (Array.isArray(j)) {
-            sess(k, j);
+            fc?.set?.(k, j, 'session');
             return j;
           }
         } catch (e) {
@@ -3550,7 +3552,7 @@ window.PlaybackCache.unprotectWindow = unprotectWindow;
         }
       }
 
-      sess(k, 'NO');
+      fc?.set?.(k, 'NO', 'session');
       sess('404_'+u, 1);
       return null;
     })();
