@@ -24,11 +24,11 @@
     const k = PRE + u, c = sess(k);
     if (c) return c === 'NO' ? null : c;
     if (_pend.has(u)) return _pend.get(u);
-    
+
     const p = (async () => {
       const t = W.playerCore?.getCurrentTrack();
-      // Собираем список URL для попытки (smart → исходный)
       const urls = [];
+
       if (t?.uid) {
         try {
           const smart = await W.TrackRegistry?.getSmartUrlInfo?.(t.uid, 'lyrics');
@@ -36,20 +36,39 @@
         } catch {}
       }
       if (u && !urls.includes(u)) urls.push(u);
-      
+
       for (const fetchUrl of urls) {
         try {
-          const r = await fetch(fetchUrl, { cache: 'force-cache', headers: { Accept: 'application/json' } });
-          if (!r.ok) { if (r.status === 404) continue; throw r.status; }
-          const j = await r.json();
-          if (Array.isArray(j)) { sess(k, j); return j; }
+          const key = `lyrics:timeline:${fetchUrl}`;
+          const j = W.Utils?.fetchCache?.getJson
+            ? await W.Utils.fetchCache.getJson({
+                key,
+                url: fetchUrl,
+                ttlMs: 43200000,
+                store: 'session',
+                fetchInit: { cache: 'force-cache', headers: { Accept: 'application/json' } }
+              })
+            : await fetch(fetchUrl, { cache: 'force-cache', headers: { Accept: 'application/json' } }).then(r => {
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                return r.json();
+              });
+
+          if (Array.isArray(j)) {
+            sess(k, j);
+            return j;
+          }
         } catch (e) {
-          if (e === 404) continue;
+          const msg = String(e?.message || e || '');
+          if (msg.includes('404')) continue;
           if (!(W.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) return null;
         }
       }
-      sess(k, 'NO'); sess('404_'+u, 1); return null;
+
+      sess(k, 'NO');
+      sess('404_'+u, 1);
+      return null;
     })();
+
     _pend.set(u, p);
     const res = await p;
     _pend.delete(u);
