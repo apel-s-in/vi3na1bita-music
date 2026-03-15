@@ -119,7 +119,7 @@ export async function openStatisticsModal(uid = null) {
     <div class="sm-ach-wrap">
       ${(engine?.achievements || []).map(a => `
         <div class="ach-item ${achVal[a.id] ? '' : 'locked'} sm-ach-row">
-          <div class="ach-icon sm-ach-icon" style="filter:${achVal[a.id] ? 'none' : 'grayscale(1)'};opacity:${achVal[a.id] ? '1' : '0.5'};">${a.icon}</div>
+          <div class="ach-icon sm-ach-icon ${achVal[a.id] ? '' : 'sm-ach-locked'}">${a.icon}</div>
           <div class="sm-ach-main">
             <div class="sm-ach-name">${a.name}</div>
             <div class="sm-ach-desc">${a.desc}${!achVal[a.id] && a.progressMeta ? ` · ${fmtAchTimerText(a, 'remaining')}` : ''}</div>
