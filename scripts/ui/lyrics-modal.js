@@ -23,8 +23,19 @@
 
       for (const fetchUrl of urls) {
         try {
-          const r = await fetch(fetchUrl);
-          if (r.ok) { txt = await r.text(); break; }
+          txt = W.Utils?.fetchCache?.getText
+            ? await W.Utils.fetchCache.getText({
+                key: `lyrics:fulltext:${fetchUrl}`,
+                url: fetchUrl,
+                ttlMs: 43200000,
+                store: 'session',
+                fetchInit: { cache: 'force-cache' }
+              })
+            : await fetch(fetchUrl, { cache: 'force-cache' }).then(r => {
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                return r.text();
+              });
+          if (txt) break;
         } catch {}
       }
       if (!txt) console.warn('[LyricsModal] Fulltext fetch failed. Falling back to timeline.');
