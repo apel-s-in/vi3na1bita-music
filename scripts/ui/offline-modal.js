@@ -184,8 +184,8 @@ async function handleAction(e) {
       for (const m of metas) {
         if (!m?.cachedComplete) continue;
         if (!['pinned', 'cloud', 'dynamic', 'playbackCache'].includes(m.type)) continue;
-        const mq = (String(m.quality || '').toLowerCase() === 'lo') ? 'lo' : 'hi';
-        if (mq !== targetQ) { uidCount++; bytes += (m.size || 0); }
+      const mq = (String(m.quality || '').toLowerCase() === 'lo') ? 'lo' : 'hi';
+      if (mq !== targetQ) { uidCount++; bytes += (m.size || 0); }
       }
 
       const explain = () => {
