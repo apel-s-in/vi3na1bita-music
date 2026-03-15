@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9adee22d65643392be298846c5a20f8e750fd7f5.idx
-│   │       ├── pack-9adee22d65643392be298846c5a20f8e750fd7f5.pack
-│   │       └── pack-9adee22d65643392be298846c5a20f8e750fd7f5.rev
+│   │       ├── pack-d63cf766c553d0592b8e660cb816fc261e9b2c32.idx
+│   │       ├── pack-d63cf766c553d0592b8e660cb816fc261e9b2c32.pack
+│   │       └── pack-d63cf766c553d0592b8e660cb816fc261e9b2c32.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -322,6 +322,7 @@ vi3na1bita-music/
 │   │   │   └── lyrics.js
 │   │   ├── profile/
 │   │   │   ├── achievements-view.js
+│   │   │   ├── logs-view.js
 │   │   │   ├── recs-view.js
 │   │   │   ├── stats-view.js
 │   │   │   └── view.js
@@ -385,7 +386,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 14:12:40 UTC
+Сгенерировано: 2026-03-15 14:13:15 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3646,6 +3647,25 @@ export function createProfileAchievementsView({ ctx, container, engine }) {
   };
 
   return { render, updateLiveNodes, toggleTimerMode };
+}
+
+//=================================================
+// FILE: /scripts/app/profile/logs-view.js
+const esc = s => window.Utils?.escapeHtml ? window.Utils.escapeHtml(String(s || '')) : String(s || '');
+
+export async function renderProfileLogs({ container, metaDB }) {
+  const lg = container?.querySelector('#prof-logs-list');
+  if (!lg) return;
+
+  try {
+    const l = [...(metaDB ? await metaDB.getEvents('events_hot').catch(()=>[]) : []), ...(metaDB ? await metaDB.getEvents('events_warm').catch(()=>[]) : [])].sort((a,b)=>b.timestamp-a.timestamp).slice(0,20);
+    const tM = { 'LISTEN_COMPLETE': '🎵 Прослушано', 'LISTEN_SKIP': '⏭️ Пропущено', 'ACHIEVEMENT_UNLOCK': '🏆 Достижение', 'FEATURE_USED': '🛠️ Использовано' };
+    lg.innerHTML = l.length
+      ? l.map(x => `<div class="profile-list-item"><div class="log-time">${String(new Date(x.timestamp).getHours()).padStart(2,'0')}:${String(new Date(x.timestamp).getMinutes()).padStart(2,'0')}</div><div class="log-info"><div class="log-title">${tM[x.type]||x.type}</div><div class="log-desc">${esc(x.type==='ACHIEVEMENT_UNLOCK'?`Ачивка: ${x.data?.id||''}`:(window.TrackRegistry?.getTrackByUid?.(x.uid)?.title||x.uid||''))}</div></div></div>`).join('')
+      : '<div class="fav-empty">Журнал событий пуст</div>';
+  } catch {
+    lg.innerHTML = '<div class="fav-empty">Ошибка загрузки</div>';
+  }
 }
 
 //=================================================
