@@ -24,6 +24,7 @@
       await om.default.initialize();
       (await import('./offline/track-resolver.js')).initTrackResolver(om.default);
       (await import('./app/playback-cache-bootstrap.js'))?.initPlaybackCache?.();
+      (await import('./offline/update-checker.js'))?.initUpdateChecker?.();
     } catch (e) { console.error('Offline init failed:', e); }
 
     // 2. Analytics & RPG Progress UI (Parallel execution)
