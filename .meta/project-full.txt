@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-00826be6edd943085b37d7b63ba01f23971c3ced.idx
-│   │       ├── pack-00826be6edd943085b37d7b63ba01f23971c3ced.pack
-│   │       └── pack-00826be6edd943085b37d7b63ba01f23971c3ced.rev
+│   │       ├── pack-5de571d8c4cbe9fa82c64966969c66730d9f33ee.idx
+│   │       ├── pack-5de571d8c4cbe9fa82c64966969c66730d9f33ee.pack
+│   │       └── pack-5de571d8c4cbe9fa82c64966969c66730d9f33ee.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -396,7 +396,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 19:57:04 UTC
+Сгенерировано: 2026-03-15 19:59:06 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -10883,6 +10883,17 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .sc-sort-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .sc-sort-grid-full{grid-column:1/-1}
 .sc-unified-create-accent{background:#4daaff!important;color:#fff!important}
+.sc-shared-warn{color:#ff9800}
+.om-fill-dyn{background:#9c27b0}
+.om-fullw{width:100%}
+.om-mt8{margin-top:8px}
+.om-mt10{margin-top:10px}
+.om-mb10{margin-bottom:10px}
+.om-mb14{margin-bottom:14px}
+.om-pt10{padding-top:10px}
+.om-item-btn-sm{padding:4px 8px;font-size:11px}
+.om-net-kill-btn{margin-top:8px}
+.sm-ach-locked{filter:grayscale(1);opacity:.5}
 
 .showcase-status-bar {
   display:flex;
@@ -10907,7 +10918,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .showcase-group-header { padding: 16px 10px 8px; font-weight: 800; color: var(--secondary-color); font-size: 14px; letter-spacing: 1px; text-transform: uppercase; background: rgba(0,0,0,0.2); }
 
 /* Track Row */
-.showcase-track { position: relative; padding: 6px 10px; display: flex; align-items: center; background: transparent; border-bottom: 1px solid var(--border-color); user-select: none; transition: background 0.2s, opacity 0.2s; gap: 0; }
+.showcase-track { position: relative; padding: 6px 10px; display: flex; align-items: center; background: transparent; border-bottom: 1px solid var(--border-color); border-left:3px solid var(--sc-left-color, transparent); user-select: none; transition: background 0.2s, opacity 0.2s; gap: 0; }
 .showcase-track.is-dragging { opacity: 0.4; background: rgba(255,255,255,0.1); }
 .showcase-track.drag-over { border-top: 2px solid var(--secondary-color); }
 .showcase-track-thumb { width: 32px; height: 32px; border-radius: 4px; margin: 0 8px 0 8px; object-fit: cover; flex-shrink: 0; }
