@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-0e554603dc250131ed4ddfabe2fe9b379e776508.idx
-│   │       ├── pack-0e554603dc250131ed4ddfabe2fe9b379e776508.pack
-│   │       └── pack-0e554603dc250131ed4ddfabe2fe9b379e776508.rev
+│   │       ├── pack-72c75559fcbc2048d1a84f98592999f2d560057e.idx
+│   │       ├── pack-72c75559fcbc2048d1a84f98592999f2d560057e.pack
+│   │       └── pack-72c75559fcbc2048d1a84f98592999f2d560057e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -398,7 +398,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 20:51:44 UTC
+Сгенерировано: 2026-03-15 20:52:12 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5318,18 +5318,6 @@ export function renderShowcaseSelectionBar({ selectedCount, edit, onClick }) {
   return bar;
 }
 
-export function renderShowcaseSortModal({ modalApi, currentSort, options, onPick }) {
-  const body = `<div class="sc-sort-grid">${options.map(([v, l]) => `<button class="showcase-btn ${currentSort === v ? 'active' : ''} ${v === 'user' ? 'sc-sort-grid-full' : ''}" data-val="${v}">${l}</button>`).join('')}</div>`;
-  const m = modalApi?.open?.({ title: 'Сортировка', bodyHtml: body });
-  if (!m) return null;
-  m.onclick = e => {
-    const b = e.target.closest('[data-val]');
-    if (!b) return;
-    onPick?.(b.dataset.val, m);
-  };
-  return m;
-}
-
 export default {
   renderShowcaseHeader,
   renderShowcaseRow,
@@ -5337,8 +5325,7 @@ export default {
   renderShowcaseSearch,
   renderShowcaseEdit,
   renderShowcaseStatus,
-  renderShowcaseSelectionBar,
-  renderShowcaseSortModal
+  renderShowcaseSelectionBar
 };
 
 //=================================================
