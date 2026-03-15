@@ -8,6 +8,7 @@
 import { getOfflineManager } from '../offline/offline-manager.js';
 import * as Net from '../offline/net-policy.js';
 import { estimateUsage, getAllTrackMetas } from '../offline/cache-db.js';
+import { getUpdateList, clearNeedsUpdate, checkForUpdates } from '../offline/update-checker.js';
 
 let _overlay = null, _dlPaused = false, _listExpanded = false, _stExpanded = false;
 
@@ -31,7 +32,7 @@ const refresh = async () => {
 
   const om = getOfflineManager();
   // Batch Fetching: ОДИН запрос к тяжелым подсистемам на весь рендер
-  const [metas, est, dl] = await Promise.all([getAllTrackMetas(), estimateUsage(), om.getDownloadStatus?.() || { active: 0, queued: 0 }]);
+  const [metas, est, dl, updList] = await Promise.all([getAllTrackMetas(), estimateUsage(), om.getDownloadStatus?.() || { active: 0, queued: 0 }, getUpdateList().catch(() => [])]);
   
   const isR2 = om.getMode() === 'R2';
   const q = isR2 ? om.getCQ() : om.getQuality();
@@ -120,9 +121,12 @@ const refresh = async () => {
     <div class="om-mode-card ${isR2 ? 'om-mode-card--disabled' : ''}" style="margin-bottom:10px"><div class="om-mode-card__head"><div><div class="om-mode-card__name">PlaybackCache (R1)</div><div class="om-mode-card__desc">Окно предзагрузки из 3 треков</div></div><div class="om-mode-toggle"><button class="om-mode-btn ${om.getMode() === 'R0' ? 'om-mode-btn--active' : ''}" data-action="set-mode" data-val="R0" ${isR2 ? 'disabled' : ''}>OFF</button><button class="om-mode-btn ${om.getMode() === 'R1' ? 'om-mode-btn--active' : ''}" data-action="set-mode" data-val="R1" ${isR2 ? 'disabled' : ''}>ON</button></div></div></div>
     <div class="om-mode-card"><div class="om-mode-card__head"><div><div class="om-mode-card__name">SmartPrefetch (R2)</div><div class="om-mode-card__desc">Умное фоновое хранилище (MRU)</div></div><div class="om-mode-toggle"><button class="om-mode-btn ${!isR2 ? 'om-mode-btn--active' : ''}" data-action="set-mode" data-val="not-R2">OFF</button><button class="om-mode-btn ${isR2 ? 'om-mode-btn--active' : ''}" data-action="set-mode" data-val="R2">ON</button></div></div></div>`;
 
+  const sUpd = !updList.length
+    ? `<div class="om-list-empty">Обновления не требуются</div><button class="om-btn om-btn--ghost" data-action="recheck-updates" style="width:100%;margin-top:10px">Проверить снова</button>`
+    : `<div class="om-track-list">${updList.map(m => { const tr = window.TrackRegistry?.getTrackByUid?.(m.uid); return `<div class="om-list-item"><div class="om-list-icon">!</div><div class="om-list-title" title="${esc(tr?.title || m.uid)}">${esc(tr?.title || m.uid)}<div class="om-list-meta">Нужна проверка/обновление${m.remoteSize ? ` • ~${Number(m.remoteSize).toFixed(1)} МБ` : ''}</div></div><button class="om-btn om-btn--ghost" data-action="clear-needs-update" data-uid="${m.uid}" style="padding:4px 8px;font-size:11px">Скрыть</button></div>`; }).join('')}</div><button class="om-btn om-btn--ghost" data-action="recheck-updates" style="width:100%;margin-top:10px">Проверить снова</button>`;
   const sDl = `<div class="om-dl-stats"><div class="om-dl-stat"><span class="om-dl-stat__num">${dl.active}</span><span class="om-dl-stat__label">Активных</span></div><div class="om-dl-stat"><span class="om-dl-stat__num">${dl.queued}</span><span class="om-dl-stat__label">В очереди</span></div></div><button class="om-btn om-btn--ghost" data-action="dl-toggle" style="width:100%;">${_dlPaused ? '▶ Возобновить' : '⏸ Пауза'}</button>`;
 
-  body.innerHTML = tplSect('📦', 'Хранилище', sStorage) + tplSect('🌐', 'Сетевая политика', sNet) + tplSect('🔒', 'Pinned и Cloud', sPC) + tplSect('⚙️', 'Режимы', sModes) + tplSect('⬇️', 'Загрузки', sDl, true);
+  body.innerHTML = tplSect('📦', 'Хранилище', sStorage) + tplSect('🌐', 'Сетевая политика', sNet) + tplSect('🔒', 'Pinned и Cloud', sPC) + tplSect('!', 'Треки с обновлениями', sUpd) + tplSect('⚙️', 'Режимы', sModes) + tplSect('⬇️', 'Загрузки', sDl, true);
   body.scrollTop = scroll;
 };
 
@@ -243,6 +247,14 @@ async function handleAction(e) {
       else if (v === 'not-R2') om.setMode('R0');
       else om.setMode(v);
       refresh(); break;
+    case 'clear-needs-update':
+      await clearNeedsUpdate(el.dataset.uid);
+      refresh();
+      break;
+    case 'recheck-updates':
+      await checkForUpdates();
+      refresh();
+      break;
     case 'dl-toggle':
       _dlPaused = !_dlPaused;
       if (om.queue) _dlPaused ? om.queue.pause() : om.queue.resume();
