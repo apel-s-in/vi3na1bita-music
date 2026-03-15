@@ -11,6 +11,7 @@ import { renderShowcaseHeader, renderShowcaseNormal, renderShowcaseSearch, rende
 import { handleShowcaseEditClick, bindShowcaseDrag, saveShowcaseEdit, resetShowcaseEdit, exitShowcaseEdit } from './edit.js';
 import { createShowcaseStore } from './store.js';
 import { buildShowcaseSearchDisplay, addSearchResultsToContext, handleSharedShowcasePlaylist } from './search.js';
+import { createShowcaseActions } from './actions.js';
 
 const W = window, D = document, U = W.Utils;
 const ALL = '__default__', SHOW = '__showcase__';
@@ -20,7 +21,6 @@ const trk = u => W.TrackRegistry?.getTrackByUid?.(u);
 const albT = k => W.TrackRegistry?.getAlbumTitle?.(k) || k || '';
 const isDef = id => id === ALL;
 const uidEsc = u => CSS.escape(String(u || ''));
-const randShuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 
 const getCat = () => (W.albumsIndex || []).filter(a => !String(a?.key || '').startsWith('__')).flatMap(a => (W.TrackRegistry?.getTracksForAlbum?.(a.key) || []).map(t => t?.uid).filter(Boolean));
 const { Store, Draft, mkPl, normCtx, jGet, jSet } = createShowcaseStore({ trk, getCat, ls: localStorage });
@@ -36,72 +36,6 @@ const bldTrk = uid => {
   return { ...t, album: 'Витрина Разбита', cover };
 };
 
-const mkPl = ({ id, name, order, hidden = [], color = '', sortMode = 'user', hiddenPlacement = 'inline', createdAt = Date.now() }) => {
-  const s = normSnap({ order, hidden }, order || getCat());
-  return normCtx({ id, name, order: s.order, hidden: s.hidden, color, sortMode, hiddenPlacement, createdAt, creationSnapshot: deep(s) }, false, s.order);
-};
-
-const Store = {
-  pl: () => (jGet('playlists', []) || []).filter(p => p?.id).map(p => normCtx(p, false, p.order || getCat())),
-  setPl: v => jSet('playlists', (Array.isArray(v) ? v : []).map(p => normCtx(p, false, p?.order || getCat()))),
-  get: id => Store.pl().find(p => p.id === id) || null,
-  save: p => {
-    const arr = Store.pl(), i = arr.findIndex(x => x.id === p.id), next = normCtx(p, false, p.order || getCat());
-    i >= 0 ? arr.splice(i, 1, next) : arr.push(next);
-    Store.setPl(arr);
-  },
-  del: id => Store.setPl(Store.pl().filter(p => p.id !== id)),
-  act: () => jGet('activeId', ALL),
-  setAct: id => jSet('activeId', id),
-  ui: () => jGet('ui', { viewMode: 'flat', showNumbers: true, showHidden: false, hiddenPlacement: 'inline' }),
-  setUi: v => jSet('ui', v),
-  cols: () => jGet('albumColors', {}),
-  setCols: v => jSet('albumColors', v),
-  def: () => {
-    const d = normCtx({ sortMode: 'album-desc', ...(jGet('default') || {}) }, true, getCat());
-    jSet('default', d);
-    return d;
-  },
-  setDef: v => jSet('default', normCtx(v, true))
-};
-
-class Draft {
-  constructor(id) {
-    this.id = id;
-    this.isDef = isDef(id);
-    const src = this.isDef ? Store.def() : Store.get(id);
-    const base = this.isDef ? normCtx(src, true, getCat()) : normCtx(src?.creationSnapshot || src || { order: [], hidden: [] }, false, src?.creationSnapshot?.order || src?.order || getCat());
-    this.base = { ord: [...(base.order || [])], hid: [...(base.hidden || [])] };
-    this.ord = [...(src?.order || this.base.ord)];
-    this.hid = new Set(src?.hidden || this.base.hid);
-    this.chk = new Set(); // Q1: Checkboxes empty initially
-  }
-  getList() {
-    if (!this.isDef) return [...this.ord].filter(trk);
-    const seen = new Set(), out = [];
-    this.ord.forEach(u => trk(u) && !seen.has(u) && (seen.add(u), out.push(u)));
-    getCat().forEach(u => trk(u) && !seen.has(u) && (seen.add(u), out.push(u)));
-    return out;
-  }
-  toggleChecked(uid) { this.chk.has(uid) ? this.chk.delete(uid) : this.chk.add(uid); }
-  toggleHidden(uid) { this.hid.has(uid) ? this.hid.delete(uid) : this.hid.add(uid); }
-  setAllChecked(on) { this.chk = new Set(on ? this.getList() : []); }
-  move(uid, dir) {
-    const a = this.ord, i = a.indexOf(uid), j = i + dir;
-    if (i < 0 || j < 0 || j >= a.length) return;
-    [a[i], a[j]] = [a[j], a[i]];
-    this.ord = [...a];
-  }
-  setOrd(a) { this.ord = [...a].filter(Boolean); }
-  reset() {
-    const b = this.isDef ? normCtx({ order: getCat(), hidden: [], sortMode: 'user', hiddenPlacement: 'inline' }, true) : { order: [...this.base.ord], hidden: [...this.base.hid] };
-    this.ord = [...(b.order || b.ord)];
-    this.hid = new Set(b.hidden || b.hid);
-    this.chk = new Set();
-  }
-  isDirty() { return sig(this.ord.filter(trk), [...this.hid].filter(trk)) !== sig(this.base.ord, this.base.hid); }
-}
-
 class ShowcaseManager {
   constructor() {
     this._edit = false;
@@ -112,6 +46,24 @@ class ShowcaseManager {
     this._menu = null;
     this._tok = 0;
     this._scr = new Map();
+    this._actions = createShowcaseActions({
+      W,
+      D,
+      Store,
+      SHOW,
+      isDef,
+      trk,
+      bldTrk,
+      albT,
+      esc,
+      uidEsc,
+      PALETTE,
+      openShowcaseSheet,
+      renderShowcasePlaylists,
+      renameShowcasePlaylist,
+      shareShowcasePlaylist,
+      createShowcasePlaylist
+    });
   }
 
   _getSelectedSet() {
@@ -543,18 +495,12 @@ class ShowcaseManager {
   }
 
   _playCtx(uid = null, shuf = false, listOverride = null, keyOverride = null) {
-    const id = this._ctxId(), key = keyOverride || (isDef(id) ? SHOW : `${SHOW}:${id}`);
-    const list0 = listOverride || this.getActiveListTracks(); // Берем только активные
-    if (!list0.length) return;
-    
-    const list = shuf ? randShuffle([...list0]) : list0;
-    const idx = uid && !shuf ? Math.max(0, list.findIndex(t => t.uid === uid)) : 0;
-    
-    W.AlbumsManager?.setPlayingAlbum?.(key);
-    if (!W.playerCore?.playExactFromPlaylist?.(list, list[idx]?.uid, { dir: 1 })) return;
-    W.PlayerUI?.ensurePlayerBlock?.(idx, { userInitiated: true });
-    this._hi(list[idx]?.uid);
-    if (list[idx]?.uid) this._markLast(list[idx].uid, id);
+    return this._actions.playCtx({
+      ctxId: () => this._ctxId(),
+      getActiveListTracks: () => this.getActiveListTracks(),
+      hi: (u) => this._hi(u),
+      markLast: (u, id) => this._markLast(u, id)
+    }, uid, shuf, listOverride, keyOverride);
   }
 
   _openSort() {
@@ -576,96 +522,22 @@ class ShowcaseManager {
   }
 
   _openMenu(uid, fromSearch = false) {
-    this._cleanupUi();
-    const t = trk(uid), id = this._ctxId(), inPl = !isDef(id) && (Store.get(id)?.order || []).includes(uid);
-    if (!t) return;
-
-    const sh = openShowcaseSheet({
-      title: esc(t.title),
-      subtitle: esc(albT(t.sourceAlbum)),
-      fromSearch,
-      inPlaylist: inPl,
-      hiddenLabel: this._isHidden(uid, id) ? `👁 Сделать активным в «${this._ctxName(id)}»` : `🙈 Скрыть в «${this._ctxName(id)}»`,
-      favoriteLabel: W.playerCore?.isFavorite?.(uid) ? '❌ Убрать из Избранного' : '⭐ В Избранное',
-      onAction: (a) => {
-        this._menu = null;
-
-        if (a === 'bm-play') {
-          if (!fromSearch) return this._playCtx(uid);
-          const one = bldTrk(uid);
-          if (!one) return;
-          return this._playCtx(uid, false, [one], `${SHOW}:search:${this._ctxId()}`);
-        }
-
-        if (a === 'bm-pl') {
-          return setTimeout(() => {
-            const pls = Store.pl();
-            if (!pls.length) return W.NotificationSystem?.warning('Сначала создайте плейлист');
-            const m = W.Modals?.open({ title: 'Добавить в плейлист', bodyHtml: `<div style="display:flex;flex-direction:column;gap:10px">${pls.map(p => `<button class="showcase-btn" data-pid="${p.id}">${esc(p.name)}</button>`).join('')}</div>` });
-            if (!m) return;
-            m.onclick = ev => {
-              const b = ev.target.closest('[data-pid]');
-              if (!b) return;
-              const p = Store.get(b.dataset.pid);
-              if (!p) return;
-              const s = new Set(p.order || []);
-              if (!s.has(uid)) {
-                p.order.push(uid);
-                Store.save(p);
-                W.NotificationSystem?.success('Добавлено');
-              }
-              m.remove();
-            };
-          }, 120);
-        }
-
-        if (a === 'bm-rm') {
-          const p = Store.get(id);
-          if (!p) return;
-          p.order = p.order.filter(x => x !== uid);
-          p.hidden = (p.hidden || []).filter(x => x !== uid);
-          Store.save(p);
-          return this.renderTab();
-        }
-
-        if (a === 'bm-eye') return this._toggleHiddenPersist(uid, id);
-        if (a === 'bm-fv') return W.playerCore?.toggleFavorite?.(uid, { albumKey: t.sourceAlbum });
-        if (a === 'bm-of') return W.OfflineManager?.togglePinned?.(uid);
-
-        if (a === 'bm-dl') {
-          const link = D.createElement('a');
-          U.download.applyDownloadLink(link, bldTrk(uid));
-          if (link.href) link.click();
-          return;
-        }
-
-        if (a === 'bm-st') return setTimeout(() => W.StatisticsModal?.openStatisticsModal?.(uid), 120);
-        if (a === 'bm-sh') return setTimeout(() => import('../../analytics/share-generator.js').then(m => m.ShareGenerator.generateAndShare('track', bldTrk(uid))), 120);
-        if (a === 'bm-cl') return setTimeout(() => this.openColorPicker(null, t.sourceAlbum), 120);
-      }
-    });
-
-    this._menu = sh?.el || null;
+    return this._actions.openMenu({
+      cleanupUi: () => this._cleanupUi(),
+      ctxId: () => this._ctxId(),
+      ctxName: (id) => this._ctxName(id),
+      isHidden: (u, id) => this._isHidden(u, id),
+      toggleHiddenPersist: (u, id) => this._toggleHiddenPersist(u, id),
+      renderTab: () => this.renderTab(),
+      setMenu: (v) => { this._menu = v; },
+      playCtx: (u, s, l, k) => this._playCtx(u, s, l, k),
+      openColorPicker: (el, albumKey, playlistId) => this.openColorPicker(el, albumKey, playlistId)
+    }, uid, fromSearch);
   }
 
-  _renamePl(id) {
-    renameShowcasePlaylist({
-      id,
-      store: Store,
-      promptName: W.Utils?.profileModals?.promptName,
-      onDone: () => this._renderPlaylists()
-    });
-  }
+  _renamePl(id) { return this._actions.renamePlaylist(id); }
 
-  _sharePl(id) {
-    shareShowcasePlaylist({
-      id,
-      store: Store,
-      origin: W.location.origin,
-      pathname: W.location.pathname,
-      notify: W.NotificationSystem
-    });
-  }
+  _sharePl(id) { return this._actions.sharePlaylist(id); }
 
   _shareList(uids) {
     const list = (uids || []).filter(trk).map(bldTrk).filter(Boolean);
@@ -674,7 +546,7 @@ class ShowcaseManager {
   }
 
   _createPl(uids, fromEdit = false, name = '') {
-    return createShowcasePlaylist({
+    return this._actions.createPlaylist({
       uids,
       fromEdit,
       name,
@@ -725,30 +597,10 @@ class ShowcaseManager {
   }
 
   openColorPicker(el, albumKey, playlistId) {
-    let aKey = albumKey, cur = '';
-    if (playlistId) cur = Store.get(playlistId)?.color || '';
-    else {
-      if (!aKey && el) aKey = trk(el)?.sourceAlbum;
-      cur = Store.cols()?.[aKey] || '';
-    }
-    W.Utils?.profileModals?.palettePicker?.({
-      title: playlistId ? 'Цвет плейлиста' : 'Цвет альбома',
-      items: PALETTE,
-      value: cur,
-      resetText: 'Сбросить цвет',
-      onPick: (v, m) => {
-        if (playlistId) {
-          const p = Store.get(playlistId);
-          if (p) { p.color = v; Store.save(p); this._renderPlaylists(); }
-        } else if (aKey) {
-          const c = Store.cols();
-          c[aKey] = v;
-          Store.setCols(c);
-          this._renderBody(++this._tok);
-        }
-        m?.remove?.();
-      }
-    });
+    return this._actions.openColorPicker({
+      ctxId: () => this._ctxId(),
+      renderBody: () => this._renderBody(++this._tok)
+    }, el, albumKey, playlistId);
   }
 
   playContext(uid = null) { this._playCtx(uid); }
