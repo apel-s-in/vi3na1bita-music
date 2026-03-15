@@ -1,7 +1,7 @@
 (function () {
   'use strict';
   const esc = s => window.Utils?.escapeHtml?.(String(s ?? '')) ?? String(s ?? '');
-  window.Utils?.dom?.createStyleOnce?.('modals-inline-cleanup', `.modal-feedback--dynamic{width:100%}.modal-confirm-text{color:#9db7dd;line-height:1.45;margin-bottom:14px}.modal-confirm-btn{min-width:130px}`);
+  window.Utils?.dom?.createStyleOnce?.('modals-inline-cleanup', `.modal-feedback--dynamic{width:100%;max-width:var(--modal-max-width,520px)}.modal-confirm-text{color:#9db7dd;line-height:1.45;margin-bottom:14px}.modal-confirm-btn{min-width:130px}`);
   
   const open = ({ title = '', bodyHtml = '', maxWidth = 520, onClose } = {}) => {
     let c = document.getElementById('modals-container');
@@ -9,7 +9,8 @@
 
     const bg = document.createElement('div');
     bg.className = 'modal-bg active';
-    bg.innerHTML = `<div class="modal-feedback modal-feedback--dynamic" style="max-width:${maxWidth}px"><button class="bigclose" type="button" aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-close"></use></svg></button>${title ? `<h2>${esc(title)}</h2>` : ''}<div class="modal-body">${bodyHtml}</div></div>`;
+    bg.style.setProperty('--modal-max-width', `${maxWidth}px`);
+    bg.innerHTML = `<div class="modal-feedback modal-feedback--dynamic"><button class="bigclose" type="button" aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-close"></use></svg></button>${title ? `<h2>${esc(title)}</h2>` : ''}<div class="modal-body">${bodyHtml}</div></div>`;
     c.appendChild(bg);
 
     const close = () => { onClose?.(); bg.remove(); };
