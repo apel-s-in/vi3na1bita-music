@@ -21,6 +21,16 @@ body{min-height:100vh;min-width:100vw;font-family:-apple-system,BlinkMacSystemFo
 
 /* Layout */
 #main-block{max-width:420px;margin:0 auto;flex:1 0 auto;display:flex;flex-direction:column;align-items:center;width:100%;padding:0 10px;padding-bottom:env(safe-area-inset-bottom)}
+#now-playing.now-playing-inline{width:100%;max-width:395px;margin:8px auto 0}
+#install-pwa-btn.install-pwa-hidden,
+#hotkeys-btn.hotkeys-hidden,
+#sysinfo-btn.sysinfo-hidden,
+#sleep-timer-badge.sleep-badge-hidden{display:none}
+.stats-btn-reset{background:none!important;border:none!important;cursor:pointer!important;font-size:18px!important;opacity:.8!important;padding:0 8px!important}
+.sc-sheet-sep{border-color:rgba(255,255,255,.08);margin:8px 0}
+.sc-sheet-btn--danger{color:#ff6b6b!important}
+.sc-sheet-btn--cancel{color:#888!important;justify-content:center}
+.sc-playlist-pick{display:flex;flex-direction:column;gap:10px}
 
 /* --- RPG Classic Achievements Widget --- */
 .ach-progress-root {
