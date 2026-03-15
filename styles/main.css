@@ -654,7 +654,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .om-storage-segbar{display:flex;height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden;cursor:pointer;margin-bottom:8px;transition:box-shadow .2s}
 .om-storage-segbar:hover{box-shadow:0 0 0 2px rgba(124,77,255,.25)}
 .om-storage-segbar:active{box-shadow:0 0 0 2px rgba(124,77,255,.4)}
-.om-segbar__fill{height:100%;transition:width .5s ease;min-width:0}
+.om-segbar__fill{height:100%;transition:width .5s ease;min-width:0;width:var(--seg-w,0%)}
 .om-segbar--pinned{background:#f5c842}
 .om-segbar--cloud{background:#5bc0de}
 .om-segbar--transient{background:#ef5350}
