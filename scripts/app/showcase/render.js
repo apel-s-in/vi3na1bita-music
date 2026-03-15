@@ -12,7 +12,7 @@ export function renderShowcaseHeader({ edit, query, sortMode, resetAble, dirty, 
 export function renderShowcaseRow({ track, index, options, esc, albumTitle, renderFavoriteStar, isFavorite }) {
   const o = options || {};
   const cls = ['showcase-track', o.isH ? 'inactive' : '', o.srh ? 'sc-search-result' : '', o.chk ? 'selected' : ''].filter(Boolean).join(' ');
-  return `<div class="${cls}" data-uid="${track.uid}" data-hidden="${o.isH ? '1' : '0'}" style="border-left:3px solid ${o.col || 'transparent'}">
+  return `<div class="${cls}" data-uid="${track.uid}" data-hidden="${o.isH ? '1' : '0'}" style="--sc-left-color:${o.col || 'transparent'}">
     <div class="tnum" ${o.sN ? '' : 'hidden'}>${index + 1}.</div>
     <img src="${track.cover}" class="showcase-track-thumb" loading="lazy">
     <div class="track-title"><div>${esc(track.title)}</div><div class="showcase-track-meta">${esc(albumTitle(track.sourceAlbum))}${o.bdg ? ` ${o.bdg}` : ''}</div></div>
