@@ -52,15 +52,20 @@
 
     const esc = W.Utils?.escapeHtml || (s => String(s || ''));
     
-    // Строгое сохранение пиксель-в-пиксель структуры и ID кнопок
+    U?.dom?.createStyleOnce?.('lyrics-modal-styles', `
+      .lyrics-modal-box{max-height:80vh}
+      .lyrics-modal-title{margin:0 0 8px 0}
+      .lyrics-modal-meta{color:#8ab8fd;margin-bottom:16px;font-size:14px}
+      .lyrics-modal-text{max-height:50vh;overflow-y:auto;padding:16px;background:rgba(0,0,0,0.2);border-radius:10px;line-height:1.8;white-space:pre-wrap;font-size:15px;scrollbar-width:thin;scrollbar-color:rgba(77,170,255,0.3) transparent}
+      .lyrics-modal-actions{display:flex;gap:10px;margin-top:16px;justify-content:center;flex-wrap:wrap}
+    `);
+
     const html = `
-      <div class="lyrics-modal" style="max-height: 80vh;">
-        <h2 style="margin: 0 0 8px 0;">${esc(t.title)}</h2>
-        <div style="color: #8ab8fd; margin-bottom: 16px; font-size: 14px;">
-          ${esc(t.artist || 'Витрина Разбита')} · ${esc(t.album || '')}
-        </div>
-        <div class="lyrics-fulltext" style="max-height: 50vh; overflow-y: auto; padding: 16px; background: rgba(0,0,0,0.2); border-radius: 10px; line-height: 1.8; white-space: pre-wrap; font-size: 15px; scrollbar-width: thin; scrollbar-color: rgba(77,170,255,0.3) transparent;">${esc(txt)}</div>
-        <div style="display:flex; gap:10px; margin-top:16px; justify-content:center; flex-wrap:wrap;">
+      <div class="lyrics-modal lyrics-modal-box">
+        <h2 class="lyrics-modal-title">${esc(t.title)}</h2>
+        <div class="lyrics-modal-meta">${esc(t.artist || 'Витрина Разбита')} · ${esc(t.album || '')}</div>
+        <div class="lyrics-fulltext lyrics-modal-text">${esc(txt)}</div>
+        <div class="lyrics-modal-actions">
           <button class="modal-action-btn" id="copy-lyrics-btn">📋 Копировать</button>
           <button class="modal-action-btn" id="share-lyrics-btn">📤 Поделиться</button>
         </div>
