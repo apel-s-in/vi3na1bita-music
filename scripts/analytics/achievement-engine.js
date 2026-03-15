@@ -24,8 +24,16 @@ export class AchievementEngine {
     this.profile = profData?.value || { xp: 0, level: 1 };
     
     try {
-      const res = await fetch('./data/custom_achievements.json', { cache: 'no-cache' });
-      if (res.ok) Object.assign(this.dict, await res.json());
+      const data = window.Utils?.fetchCache?.getJson
+        ? await window.Utils.fetchCache.getJson({
+            key: 'custom:achievements:v1',
+            url: './data/custom_achievements.json',
+            ttlMs: 43200000,
+            store: 'session',
+            fetchInit: { cache: 'force-cache' }
+          })
+        : await fetch('./data/custom_achievements.json', { cache: 'force-cache' }).then(r => r.ok ? r.json() : null);
+      if (data && typeof data === 'object') Object.assign(this.dict, data);
     } catch (e) {}
 
     // Авто-генерация достижений для альбомов
