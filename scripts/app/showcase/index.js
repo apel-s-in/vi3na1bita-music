@@ -5,13 +5,13 @@
  */
 import { ensureLyricsIndexLoaded, searchUidsByQuery } from './lyrics-search.js';
 import { renderFavoriteStar, setFavoriteStarState } from '../../ui/icon-utils.js';
-import { openShowcaseSheet } from './sheet.js';
 import { renderShowcasePlaylists, renameShowcasePlaylist, shareShowcasePlaylist, createShowcasePlaylist } from './playlists.js';
-import { renderShowcaseHeader, renderShowcaseNormal, renderShowcaseSearch, renderShowcaseEdit, renderShowcaseStatus, renderShowcaseSelectionBar, renderShowcaseSortModal } from './render.js';
+import { renderShowcaseHeader, renderShowcaseNormal, renderShowcaseSearch, renderShowcaseEdit, renderShowcaseStatus, renderShowcaseSelectionBar } from './render.js';
 import { handleShowcaseEditClick, bindShowcaseDrag, saveShowcaseEdit, resetShowcaseEdit, exitShowcaseEdit } from './edit.js';
 import { createShowcaseStore } from './store.js';
 import { buildShowcaseSearchDisplay, addSearchResultsToContext, handleSharedShowcasePlaylist } from './search.js';
 import { createShowcaseActions } from './actions.js';
+import { openShowcaseSheetModal, openShowcaseAddToPlaylistModal, openShowcaseSortModal, openShowcaseSharedPlaylistConfirm, openShowcasePaletteModal } from './modals.js';
 
 const W = window, D = document, U = W.Utils;
 const ALL = '__default__', SHOW = '__showcase__';
@@ -58,11 +58,13 @@ class ShowcaseManager {
       esc,
       uidEsc,
       PALETTE,
-      openShowcaseSheet,
       renderShowcasePlaylists,
       renameShowcasePlaylist,
       shareShowcasePlaylist,
-      createShowcasePlaylist
+      createShowcasePlaylist,
+      openShowcaseSheetModal,
+      openShowcaseAddToPlaylistModal,
+      openShowcasePaletteModal
     });
   }
 
@@ -506,7 +508,7 @@ class ShowcaseManager {
   _openSort() {
     const id = this._ctxId(), c = this._ctx(), sm = c?.sortMode || 'user';
     const opts = [['user','👤 Мой порядок'],['name-asc','А→Я'],['name-desc','Я→А'],['album-desc','Альбомы ↓ (Новые)'],['album-asc','Альбомы ↑ (Старые)'],['plays-desc','Топ прослушиваний'],['plays-asc','Меньше всего'],['last-played','Недавние'],['favorites-first','Сначала ⭐']];
-    renderShowcaseSortModal({
+    openShowcaseSortModal({
       modalApi: W.Modals,
       currentSort: sm,
       options: opts,
@@ -588,11 +590,14 @@ class ShowcaseManager {
   _handleShr(b64) {
     return handleSharedShowcasePlaylist({
       raw: b64,
-      trk,
-      modals: W.Modals,
-      esc,
-      createPlaylist: (uids, fromEdit, name) => this._createPl(uids, fromEdit, name),
-      notify: W.NotificationSystem
+      opener: (raw) => openShowcaseSharedPlaylistConfirm({
+        raw,
+        trk,
+        esc,
+        createPlaylist: (uids, fromEdit, name) => this._createPl(uids, fromEdit, name),
+        notify: W.NotificationSystem,
+        modalApi: W.Modals
+      })
     });
   }
 
