@@ -10,7 +10,7 @@
   const D = document;
 
   const fail = (msg) => {
-    D.body.innerHTML = `<div style="position:fixed;inset:0;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;font-family:sans-serif"><h2 style="color:#e80100">Ошибка запуска</h2><p>${msg}</p></div>`;
+    D.body.innerHTML = W.Utils?.profileModals?.failScreen?.(msg) || `<div><h2>Ошибка запуска</h2><p>${msg}</p></div>`;
     throw new Error(msg);
   };
 
