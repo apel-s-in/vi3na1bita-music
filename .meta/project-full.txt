@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-05ab598d3587b204b2387c2ce760de80b1b967cb.idx
-│   │       ├── pack-05ab598d3587b204b2387c2ce760de80b1b967cb.pack
-│   │       └── pack-05ab598d3587b204b2387c2ce760de80b1b967cb.rev
+│   │       ├── pack-9adee22d65643392be298846c5a20f8e750fd7f5.idx
+│   │       ├── pack-9adee22d65643392be298846c5a20f8e750fd7f5.pack
+│   │       └── pack-9adee22d65643392be298846c5a20f8e750fd7f5.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -322,6 +322,7 @@ vi3na1bita-music/
 │   │   │   └── lyrics.js
 │   │   ├── profile/
 │   │   │   ├── achievements-view.js
+│   │   │   ├── recs-view.js
 │   │   │   ├── stats-view.js
 │   │   │   └── view.js
 │   │   ├── showcase/
@@ -384,7 +385,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 14:12:01 UTC
+Сгенерировано: 2026-03-15 14:12:40 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3645,6 +3646,21 @@ export function createProfileAchievementsView({ ctx, container, engine }) {
   };
 
   return { render, updateLiveNodes, toggleTimerMode };
+}
+
+//=================================================
+// FILE: /scripts/app/profile/recs-view.js
+const esc = s => window.Utils?.escapeHtml ? window.Utils.escapeHtml(String(s || '')) : String(s || '');
+
+export function renderProfileRecs({ container, all }) {
+  const recEl = container?.querySelector('#prof-recs-list');
+  if (!recEl) return;
+
+  const pd = new Set((all || []).filter(s => s.globalFullListenCount > 0).map(s => s.uid));
+  const recs = (window.TrackRegistry?.getAllUids?.()||[]).filter(u => !pd.has(u)).sort(()=>Math.random()-.5).slice(0,4);
+  recEl.innerHTML = recs.length
+    ? recs.map(u => `<div class="profile-list-item"><div class="log-info"><div class="log-title">${esc(window.TrackRegistry?.getTrackByUid(u)?.title)}</div><div class="log-desc">${esc(window.TrackRegistry?.getTrackByUid(u)?.album)}</div></div><button class="rec-play-btn" data-playuid="${u}">▶</button></div>`).join('')
+    : '<div class="fav-empty">Вы прослушали абсолютно всё! 🏆</div>';
 }
 
 //=================================================
