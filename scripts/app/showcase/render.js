@@ -96,18 +96,6 @@ export function renderShowcaseSelectionBar({ selectedCount, edit, onClick }) {
   return bar;
 }
 
-export function renderShowcaseSortModal({ modalApi, currentSort, options, onPick }) {
-  const body = `<div class="sc-sort-grid">${options.map(([v, l]) => `<button class="showcase-btn ${currentSort === v ? 'active' : ''} ${v === 'user' ? 'sc-sort-grid-full' : ''}" data-val="${v}">${l}</button>`).join('')}</div>`;
-  const m = modalApi?.open?.({ title: 'Сортировка', bodyHtml: body });
-  if (!m) return null;
-  m.onclick = e => {
-    const b = e.target.closest('[data-val]');
-    if (!b) return;
-    onPick?.(b.dataset.val, m);
-  };
-  return m;
-}
-
 export default {
   renderShowcaseHeader,
   renderShowcaseRow,
@@ -115,6 +103,5 @@ export default {
   renderShowcaseSearch,
   renderShowcaseEdit,
   renderShowcaseStatus,
-  renderShowcaseSelectionBar,
-  renderShowcaseSortModal
+  renderShowcaseSelectionBar
 };
