@@ -160,26 +160,66 @@ export class AchievementEngine {
   _buildUIArray() {
     const arr = [];
     const agg = this.lastAgg || {};
+    const live = window.liveStatsTracker?.getSnapshot?.() || null;
     
-    // Универсальный билдер (спасает 40 строк копипасты)
     const add = (id, r, lvl, unl, uAt, cur, tgt) => {
-      const t = r.formatters?.target_hours ? r.formatters.target_hours(tgt) : tgt;
-      const c = r.formatters?.target_hours ? r.formatters.target_hours(cur) : cur;
+      const rawCurrent = Number(cur || 0);
+      const rawTarget = Number(tgt || 0);
       const isHid = !unl && r.hidden;
+      const viewCurrent = r.formatters?.target_hours ? r.formatters.target_hours(rawCurrent) : rawCurrent;
+      const viewTarget = r.formatters?.target_hours ? r.formatters.target_hours(rawTarget) : rawTarget;
+      const pct = rawTarget > 0 ? Math.min(100, Math.max(0, (rawCurrent / rawTarget) * 100)) : 0;
+      let progressMeta = null;
+
+      if (!unl && !isHid && rawTarget > 0) {
+        if (r.id === 'time_total') {
+          const projected = Number(live?.projectedTotalSec || rawCurrent);
+          progressMeta = {
+            kind: 'time_accum',
+            live: true,
+            toggleableTimer: true,
+            remainingMs: Math.max(0, (rawTarget - projected) * 1000),
+            elapsedMs: Math.max(0, projected * 1000),
+            targetMs: rawTarget * 1000,
+            currentRaw: projected,
+            targetRaw: rawTarget
+          };
+        } else if (r.id === 'streak_base') {
+          progressMeta = {
+            kind: 'streak_days',
+            live: false,
+            toggleableTimer: true,
+            remainingDays: Math.max(0, rawTarget - rawCurrent),
+            elapsedDays: rawCurrent,
+            targetDays: rawTarget,
+            currentRaw: rawCurrent,
+            targetRaw: rawTarget
+          };
+        } else {
+          progressMeta = {
+            kind: 'count',
+            live: false,
+            toggleableTimer: false,
+            currentRaw: rawCurrent,
+            targetRaw: rawTarget
+          };
+        }
+      }
       
       arr.push({
         id,
-        name: lvl ? r.ui.name.replace('{level}', lvl) : (isHid ? "Секретное достижение" : r.ui.name),
-        short: isHid ? "Откроется при особых условиях" : r.ui.short.replace(/{target[a-z_]*}/g, t),
-        desc: isHid ? "Продолжайте исследовать приложение, чтобы узнать секрет." : r.ui.desc,
-        howTo: isHid ? "Скрыто" : r.ui.howTo,
-        icon: isHid ? "🔒" : r.ui.icon,
-        color: isHid || (!unl && lvl) ? "#888888" : r.ui.color,
+        name: lvl ? r.ui.name.replace('{level}', lvl) : (isHid ? 'Секретное достижение' : r.ui.name),
+        short: isHid ? 'Откроется при особых условиях' : r.ui.short.replace(/{target[a-z_]*}/g, viewTarget),
+        desc: isHid ? 'Продолжайте исследовать приложение, чтобы узнать секрет.' : r.ui.desc,
+        howTo: isHid ? 'Скрыто' : r.ui.howTo,
+        icon: isHid ? '🔒' : r.ui.icon,
+        color: isHid || (!unl && lvl) ? '#888888' : r.ui.color,
         isUnlocked: unl,
         isHidden: isHid,
         unlockedAt: uAt || null,
         xpReward: lvl ? this._getSc(r, lvl, true) : (r.reward.xp || 0),
-        ...(!unl && !isHid && tgt && { progress: { current: c, target: t, pct: Math.min(100, Math.max(0, (c / t) * 100)) } })
+        ...(!unl && !isHid && rawTarget > 0 && { progress: { current: viewCurrent, target: viewTarget, pct } }),
+        ...(progressMeta && { progressMeta })
       });
     };
 
