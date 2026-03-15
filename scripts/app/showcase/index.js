@@ -9,40 +9,21 @@ import { openShowcaseSheet } from './sheet.js';
 import { renderShowcasePlaylists, renameShowcasePlaylist, shareShowcasePlaylist, createShowcasePlaylist } from './playlists.js';
 import { renderShowcaseHeader, renderShowcaseNormal, renderShowcaseSearch, renderShowcaseEdit, renderShowcaseStatus, renderShowcaseSelectionBar, renderShowcaseSortModal } from './render.js';
 import { handleShowcaseEditClick, bindShowcaseDrag, saveShowcaseEdit, resetShowcaseEdit, exitShowcaseEdit } from './edit.js';
+import { createShowcaseStore } from './store.js';
+import { buildShowcaseSearchDisplay, addSearchResultsToContext, handleSharedShowcasePlaylist } from './search.js';
 
-const W = window, D = document, U = W.Utils, ls = localStorage;
-const NS = 'sc3:', ALL = '__default__', SHOW = '__showcase__';
+const W = window, D = document, U = W.Utils;
+const ALL = '__default__', SHOW = '__showcase__';
 const PALETTE = ['transparent','#ef5350','#ff9800','#fdd835','#4caf50','#00bcd4','#2196f3','#9c27b0','#e91e63','#9e9e9e'];
 const $ = id => D.getElementById(id), esc = s => U.escapeHtml(String(s ?? ''));
 const trk = u => W.TrackRegistry?.getTrackByUid?.(u);
 const albT = k => W.TrackRegistry?.getAlbumTitle?.(k) || k || '';
 const isDef = id => id === ALL;
 const uidEsc = u => CSS.escape(String(u || ''));
-const deep = v => JSON.parse(JSON.stringify(v));
-const jGet = (k, d = null) => { try { const v = ls.getItem(NS + k); return v ? JSON.parse(v) : d; } catch { return d; } };
-const jSet = (k, v) => { try { ls.setItem(NS + k, JSON.stringify(v)); } catch {} };
 const randShuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 
 const getCat = () => (W.albumsIndex || []).filter(a => !String(a?.key || '').startsWith('__')).flatMap(a => (W.TrackRegistry?.getTracksForAlbum?.(a.key) || []).map(t => t?.uid).filter(Boolean));
-
-const normSnap = (c, fbOrd = getCat()) => {
-  c = (c && typeof c === 'object') ? deep(c) : {};
-  const order = [], hidden = [], seen = new Set();
-  (c.order || []).forEach(u => trk(u) && !seen.has(u) && (seen.add(u), order.push(u)));
-  fbOrd.forEach(u => trk(u) && !seen.has(u) && (seen.add(u), order.push(u)));
-  (c.hidden || []).forEach(u => trk(u) && seen.has(u) && !hidden.includes(u) && hidden.push(u));
-  return { order, hidden };
-};
-
-const normCtx = (c, def = false, fbOrd = getCat()) => {
-  c = (c && typeof c === 'object') ? deep(c) : {};
-  const { order, hidden } = normSnap(c, fbOrd);
-  const x = { ...c, order, hidden, sortMode: c.sortMode || 'user', hiddenPlacement: c.hiddenPlacement || 'inline' };
-  if (!def) x.creationSnapshot = c.creationSnapshot ? normSnap(c.creationSnapshot, c.creationSnapshot.order || order) : { order: [...order], hidden: [...hidden] };
-  return x;
-};
-
-const sig = (o = [], h = []) => JSON.stringify({ o: [...o], h: [...h] });
+const { Store, Draft, mkPl, normCtx, jGet, jSet } = createShowcaseStore({ trk, getCat, ls: localStorage });
 
 const bldTrk = uid => {
   const t = trk(uid);
@@ -249,9 +230,15 @@ class ShowcaseManager {
     const c = this._ctx(), ui = Store.ui(), hid = new Set(c?.hidden || []);
     if (this._edit) return { type: 'edit', uids: this._drf?.getList() || [] };
     if (this._q) {
-      await ensureLyricsIndexLoaded();
-      this._res = (searchUidsByQuery({ query: this._q }) || []).filter(trk);
-      return { type: 'search', res: this._res, cOrd: c?.order || [], cHid: hid };
+      const d = await buildShowcaseSearchDisplay({
+        query: this._q,
+        ensureLyricsIndexLoaded,
+        searchUidsByQuery,
+        trk,
+        ctx: c
+      });
+      this._res = d.res || [];
+      return d;
     }
     this._res = [];
     let ord = this._sortedOrderSync(c);
@@ -709,36 +696,32 @@ class ShowcaseManager {
   }
 
   _searchAdd() {
-    const u = [...this._sel].filter(trk);
-    if (!u.length) return;
-    const c = this._ctx();
-    if (!c) return;
-    const s = new Set(c.order || []);
-    // Добавляем в конец плейлиста, не меняя статуса глазика (если был скрыт - останется)
-    u.forEach(x => { if (!s.has(x)) { c.order.push(x); s.add(x); } });
-    isDef(this._ctxId()) ? Store.setDef(c) : Store.save(c);
-    this._q = '';
-    this._sel.clear();
-    this._cleanupUi();
-    this.renderTab();
-    W.NotificationSystem?.success(`Добавлено ${u.length} треков`);
+    return addSearchResultsToContext({
+      selected: this._sel,
+      trk,
+      ctx: this._ctx(),
+      saveCtx: (c) => isDef(this._ctxId()) ? Store.setDef(c) : Store.save(c),
+      isDefault: isDef(this._ctxId()),
+      store: Store,
+      clearSearch: () => {
+        this._q = '';
+        this._sel.clear();
+        this._cleanupUi();
+      },
+      rerender: () => this.renderTab(),
+      notify: W.NotificationSystem
+    });
   }
 
   _handleShr(b64) {
-    try {
-      const d = JSON.parse(decodeURIComponent(escape(atob(String(b64).trim()))));
-      if (!d?.n || !Array.isArray(d?.u)) throw 1;
-      const u = d.u.filter(trk), miss = d.u.length - u.length;
-      W.Modals?.confirm({
-        title: '🎵 Вам прислан плейлист',
-        textHtml: `<b>${esc(d.n)}</b><br><br>Доступно треков: ${u.length} из ${d.u.length}.${miss > 0 ? '<br><span style="color:#ff9800">Часть треков недоступна.</span>' : ''}`,
-        confirmText: 'Добавить',
-        cancelText: 'Отмена',
-        onConfirm: () => this._createPl(u, false, `${d.n} (Присланный)`)
-      });
-    } catch {
-      W.NotificationSystem?.error('Ошибка чтения ссылки');
-    }
+    return handleSharedShowcasePlaylist({
+      raw: b64,
+      trk,
+      modals: W.Modals,
+      esc,
+      createPlaylist: (uids, fromEdit, name) => this._createPl(uids, fromEdit, name),
+      notify: W.NotificationSystem
+    });
   }
 
   openColorPicker(el, albumKey, playlistId) {
