@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-70e30916137c4bc3606226e6692b075d7cd1728f.idx
-│   │       ├── pack-70e30916137c4bc3606226e6692b075d7cd1728f.pack
-│   │       └── pack-70e30916137c4bc3606226e6692b075d7cd1728f.rev
+│   │       ├── pack-b85f878dde317fb24b300ece8a0afe9bce1e0369.idx
+│   │       ├── pack-b85f878dde317fb24b300ece8a0afe9bce1e0369.pack
+│   │       └── pack-b85f878dde317fb24b300ece8a0afe9bce1e0369.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -379,7 +379,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 08:46:36 UTC
+Сгенерировано: 2026-03-15 08:48:02 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2201,7 +2201,8 @@ export class StatsAggregator {
     const events = await metaDB.getEvents('events_hot');
     if (!events.length) return;
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    const nowLocal = new Date();
+    const todayStr = `${nowLocal.getFullYear()}-${String(nowLocal.getMonth() + 1).padStart(2, '0')}-${String(nowLocal.getDate()).padStart(2, '0')}`;
     let dailyActive = false;
 
     for (const ev of events) {
@@ -2326,26 +2327,40 @@ export class StatsAggregator {
         this.session.midnightTripleCount = 0;
         this.session.lastFullUid = null;
       } else if (ev.type === 'FEATURE_USED') {
-         // Для фич самого приложения используем системный uid "global"
          const targetUid = ev.uid || 'global';
          await metaDB.updateStat(targetUid, s => {
            if (!s.featuresUsed) s.featuresUsed = {};
-
            const feature = ev.data.feature;
            s.featuresUsed[feature] = (s.featuresUsed[feature] || 0) + 1;
+
+           if (!s.byHour) s.byHour = Array(24).fill(0);
+           if (!s.byWeekday) s.byWeekday = Array(7).fill(0);
+           const d = new Date(ev.timestamp);
+           const h = d.getHours();
+           const w = (d.getDay() + 6) % 7;
+           s.byHour[h] = (s.byHour[h] || 0) + 1;
+           s.byWeekday[w] = (s.byWeekday[w] || 0) + 1;
+           s.lastPlayedAt = ev.timestamp;
 
            if (feature === 'social_visit') {
              const target = String(ev.data.target || 'other').toLowerCase();
              const key = `social_visit_${target}`;
              s.featuresUsed[key] = (s.featuresUsed[key] || 0) + 1;
-
              const hasAll =
                (s.featuresUsed.social_visit_youtube || 0) > 0 &&
                (s.featuresUsed.social_visit_telegram || 0) > 0 &&
                (s.featuresUsed.social_visit_vk || 0) > 0 &&
                (s.featuresUsed.social_visit_tiktok || 0) > 0;
-
              if (hasAll) s.featuresUsed.social_visit_all = 1;
+           }
+
+           if (feature === 'sleep_timer_set' || feature === 'sleep_timer_extend' || feature === 'sleep_timer_cancel' || feature === 'sleep_timer') {
+             const mins = Math.max(0, Number(ev.data.minutes || 0));
+             s.featuresUsed.sleep_timer_minutes_total = (s.featuresUsed.sleep_timer_minutes_total || 0) + mins;
+             if (ev.data.mode) {
+               const mKey = `sleep_timer_mode_${String(ev.data.mode).toLowerCase()}`;
+               s.featuresUsed[mKey] = (s.featuresUsed[mKey] || 0) + 1;
+             }
            }
 
            return s;
@@ -2353,11 +2368,13 @@ export class StatsAggregator {
       }
     }
 
-    // Управление стриками (ТЗ 10.2)
+    // Управление стриками (локальный календарный день)
     if (dailyActive) {
       const streakObj = (await metaDB.getGlobal('global_streak'))?.value || { current: 0, longest: 0, lastActiveDate: '' };
       if (streakObj.lastActiveDate !== todayStr) {
-        const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+        const yd = new Date();
+        yd.setDate(yd.getDate() - 1);
+        const yesterday = `${yd.getFullYear()}-${String(yd.getMonth() + 1).padStart(2, '0')}-${String(yd.getDate()).padStart(2, '0')}`;
         streakObj.current = (streakObj.lastActiveDate === yesterday) ? streakObj.current + 1 : 1;
         streakObj.longest = Math.max(streakObj.longest, streakObj.current);
         streakObj.lastActiveDate = todayStr;
