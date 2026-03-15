@@ -269,7 +269,8 @@
     profileModals: {
       promptName: ({ title = '', value = '', btnText = 'Сохранить', onSubmit } = {}) => {
         const esc = U.ui.escapeHtml;
-        const m = W.Modals?.open?.({ title, bodyHtml: `<input type="text" id="pm-name-inp" value="${esc(value)}" style="width:100%;padding:10px;border-radius:8px;background:rgba(255,255,255,.1);color:#fff;border:1px solid #666;margin-bottom:15px"><button class="showcase-btn" id="pm-name-save">${esc(btnText)}</button>` });
+        U.dom.createStyleOnce('pm-name-styles', `.pm-name-inp{width:100%;padding:10px;border-radius:8px;background:rgba(255,255,255,.1);color:#fff;border:1px solid #666;margin-bottom:15px}.pm-name-save{width:100%}`);
+        const m = W.Modals?.open?.({ title, bodyHtml: `<input type="text" id="pm-name-inp" class="pm-name-inp" value="${esc(value)}"><button class="showcase-btn pm-name-save" id="pm-name-save">${esc(btnText)}</button>` });
         if (!m) return null;
         setTimeout(() => m.querySelector('#pm-name-inp')?.select(), 50);
         m.querySelector('#pm-name-save')?.addEventListener('click', () => {
@@ -278,6 +279,19 @@
           m.remove();
           onSubmit?.(v);
         });
+        return m;
+      },
+      palettePicker: ({ title = 'Выбор цвета', items = [], value = '', resetText = 'Сбросить цвет', onPick } = {}) => {
+        const esc = U.ui.escapeHtml;
+        U.dom.createStyleOnce('pm-palette-styles', `.pm-palette{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;justify-content:center}.pm-palette__dot{width:34px;height:34px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .2s;box-shadow:0 2px 8px rgba(0,0,0,.5)}.pm-palette__dot:hover{transform:scale(1.15)}.pm-palette__reset{margin-top:15px;width:100%}`);
+        const m = W.Modals?.open?.({ title, bodyHtml: `<div class="pm-palette">${items.map(x => `<div class="pm-palette__dot" style="background:${x};${value === (x === 'transparent' ? '' : x) ? 'border-color:#fff;' : ''}" data-col="${esc(x)}"></div>`).join('')}</div><button class="showcase-btn pm-palette__reset" data-col="transparent">${esc(resetText)}</button>` });
+        if (!m) return null;
+        m.onclick = ev => {
+          const b = ev.target.closest('[data-col]');
+          if (!b) return;
+          const raw = b.dataset.col;
+          onPick?.(raw === 'transparent' ? '' : raw, m);
+        };
         return m;
       },
       avatarPicker: ({ title = 'Аватар', items = [], onPick } = {}) => {
