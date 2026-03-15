@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b6a4940ca01dc53e60d644870aff10a617ac878d.idx
-│   │       ├── pack-b6a4940ca01dc53e60d644870aff10a617ac878d.pack
-│   │       └── pack-b6a4940ca01dc53e60d644870aff10a617ac878d.rev
+│   │       ├── pack-d882bb94166b3ae95844b1a9782be82d17ce9caa.idx
+│   │       ├── pack-d882bb94166b3ae95844b1a9782be82d17ce9caa.pack
+│   │       └── pack-d882bb94166b3ae95844b1a9782be82d17ce9caa.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 20:22:03 UTC
+Сгенерировано: 2026-03-15 20:23:23 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -6209,23 +6209,7 @@ export const APP_CONFIG = {
   // Ссылки
   SUPPORT_URL: 'https://example.com/support',
   SUPPORT_EMAIL: 'support@vitrina-razbita.ru',
-  GITHUB_URL: 'https://github.com/apel-s-in/vi3na1bita-music',
-  // Настройки плеера
-  PLAYER_SETTINGS: {
-    defaultVolume: 1.0,
-    crossfade: false,
-    preload: true
-  },
-  // Настройки кэширования
-  CACHE_VERSION: 'v1.0.0',
-  CACHE_AUDIO: false, // Кэшировать ли аудио файлы
-  // Аналитика (опционально)
-  ANALYTICS_ENABLED: false,
-  ANALYTICS_ID: null,
-  // Настройки галереи
-  CENTRAL_GALLERY_BASE: './albums/gallery/',
-  // Публикация альбомов
-  PUBLISHED_ALBUM_KEYS: new Set(['odnazhdy-v-skazke', 'golos-dushi', 'mezhdu-zlom-i-dobrom', 'krevetochka'])
+  GITHUB_URL: 'https://github.com/apel-s-in/vi3na1bita-music'
 };
 
 // Экспорт в глобальную область для совместимости
