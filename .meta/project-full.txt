@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-7588abdc11ad66fe5893ba0f4e19a6a61314cf97.idx
-│   │       ├── pack-7588abdc11ad66fe5893ba0f4e19a6a61314cf97.pack
-│   │       └── pack-7588abdc11ad66fe5893ba0f4e19a6a61314cf97.rev
+│   │       ├── pack-6a3cf0d78e5f0360624dd79d96043a235130367a.idx
+│   │       ├── pack-6a3cf0d78e5f0360624dd79d96043a235130367a.pack
+│   │       └── pack-6a3cf0d78e5f0360624dd79d96043a235130367a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -359,6 +359,7 @@ vi3na1bita-music/
 │   │   ├── notify.js
 │   │   ├── offline-indicators.js
 │   │   ├── offline-modal.js
+│   │   ├── progress-formatters.js
 │   │   ├── sleep-timer.js
 │   │   ├── statistics-modal.js
 │   │   └── sysinfo.js
@@ -379,7 +380,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 09:06:48 UTC
+Сгенерировано: 2026-03-15 09:21:45 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7695,6 +7696,33 @@ export function initOfflineModal() {
 }
 
 export default { initOfflineModal, openOfflineModal, closeOfflineModal };
+
+//=================================================
+// FILE: /scripts/ui/progress-formatters.js
+export const fmtClockMs = (ms) => {
+  const s = Math.max(0, Math.floor(Number(ms || 0) / 1000));
+  const d = Math.floor(s / 86400);
+  const h = Math.floor((s % 86400) / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  return d > 0 ? `${d}д ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}` : `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+};
+
+export const fmtAchTimerText = (a, mode = 'remaining') => {
+  const pm = a?.progressMeta;
+  if (!pm || a?.isUnlocked || a?.isHidden) return '';
+  if (pm.kind === 'time_accum') return mode === 'elapsed' ? fmtClockMs(pm.elapsedMs) : fmtClockMs(pm.remainingMs);
+  if (pm.kind === 'streak_days') return mode === 'elapsed' ? `${pm.elapsedDays} / ${pm.targetDays} дн` : `ещё ${pm.remainingDays} дн`;
+  return a?.progress ? `Осталось: ${Math.max(0, (a.progress.target || 0) - (a.progress.current || 0))}` : '';
+};
+
+export const fmtAchBubbleText = (a) => {
+  const nm = String(a?.name || '').replace(/ ур\. \d+/, '');
+  const pm = a?.progressMeta;
+  if (pm?.kind === 'time_accum') return `✨ До «${nm}»: ${fmtClockMs(pm.remainingMs)}`;
+  if (pm?.kind === 'streak_days') return `✨ До «${nm}»: ${pm.remainingDays} дн`;
+  return `✨ До «${nm}»: осталось ${Math.max(0, (a?.progress?.target || 0) - (a?.progress?.current || 0))}`;
+};
 
 //=================================================
 // FILE: /scripts/ui/sleep-timer.js
