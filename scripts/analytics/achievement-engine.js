@@ -166,8 +166,6 @@ export class AchievementEngine {
       const rawCurrent = Number(cur || 0);
       const rawTarget = Number(tgt || 0);
       const isHid = !unl && r.hidden;
-      const viewCurrent = r.formatters?.target_hours ? r.formatters.target_hours(effectiveCurrent) : effectiveCurrent;
-      const viewTarget = r.formatters?.target_hours ? r.formatters.target_hours(rawTarget) : rawTarget;
       let effectiveCurrent = rawCurrent;
       let pct = rawTarget > 0 ? Math.min(100, Math.max(0, (rawCurrent / rawTarget) * 100)) : 0;
       let progressMeta = null;
@@ -214,6 +212,9 @@ export class AchievementEngine {
         }
       }
       
+      const viewCurrent = r.formatters?.target_hours ? r.formatters.target_hours(effectiveCurrent) : effectiveCurrent;
+      const viewTarget = r.formatters?.target_hours ? r.formatters.target_hours(rawTarget) : rawTarget;
+
       arr.push({
         id,
         name: lvl ? r.ui.name.replace('{level}', lvl) : (isHid ? 'Секретное достижение' : r.ui.name),
