@@ -296,8 +296,23 @@
       },
       failScreen: (msg) => {
         const esc = U.ui.escapeHtml;
-        U.dom.createStyleOnce('boot-fail-screen-styles', `.boot-fail{position:fixed;inset:0;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;font-family:sans-serif}.boot-fail__box{max-width:560px}.boot-fail__title{color:#e80100;margin:0 0 12px}.boot-fail__text{margin:0}`);
+        U.dom.createStyleOnce('boot-fail-screen-styles', `.boot-fail{position:fixed;inset:0;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;font-family:sans-serif}.boot-fail__box{max-width:560px}.boot-fail__title{color:#e80100;margin:0 0 12px}.boot-fail__text{margin:0}.sysinfo-root{font-size:13px;line-height:1.6;color:#eaf2ff}.sysinfo-group-title{color:#8ab8fd;margin:12px 0 6px}.sysinfo-row{margin:0 0 4px}.sysinfo-footer{margin-top:16px;border-top:1px solid #333;text-align:center;color:#666;font-size:10px;padding-top:10px}`);
         return `<div class="boot-fail"><div class="boot-fail__box"><h2 class="boot-fail__title">Ошибка запуска</h2><p class="boot-fail__text">${esc(msg)}</p></div></div>`;
+      },
+      sysInfo: {
+        row: (label, value) => `<div class="sysinfo-row"><strong>${U.ui.escapeHtml(label)}:</strong> ${value}</div>`,
+        group: (title, content) => `<h3 class="sysinfo-group-title">${U.ui.escapeHtml(title)}</h3>${content}`,
+        render: ({ appVersion, buildDate, isPwa, userAgent, screenText, online, audioText, ramText, swVersion }) => {
+          const yn = v => v ? '✅' : '❌';
+          const row = U.profileModals.sysInfo.row;
+          const group = U.profileModals.sysInfo.group;
+          return `<div class="sysinfo-root">
+            ${group('Приложение', row('Версия', `${U.ui.escapeHtml(appVersion)} (${U.ui.escapeHtml(buildDate)})`) + row('PWA', yn(isPwa)) + `<div id="sw-ver-row" class="sysinfo-row"><strong>SW:</strong> ${U.ui.escapeHtml(swVersion)}</div>`)}
+            ${group('Среда', row('UA', U.ui.escapeHtml(userAgent).slice(0,45) + '...') + row('Экран', screenText) + row('Online', yn(online)))}
+            ${group('Система', row('Audio', audioText) + row('RAM', ramText))}
+            <div class="sysinfo-footer">Vi3na1bita © 2025</div>
+          </div>`;
+        }
       },
       avatarPicker: ({ title = 'Аватар', items = [], onPick } = {}) => {
         U.dom.createStyleOnce('profile-avatar-picker-styles', `.prof-ava-grid{display:flex;flex-wrap:wrap;gap:12px;justify-content:center}.prof-ava-btn{font-size:24px;background:#232b38}`);
