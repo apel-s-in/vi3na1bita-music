@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-523aa2a5667146b418d833bae1e39532358d393b.idx
-│   │       ├── pack-523aa2a5667146b418d833bae1e39532358d393b.pack
-│   │       └── pack-523aa2a5667146b418d833bae1e39532358d393b.rev
+│   │       ├── pack-06b86dfc1839f99bb935936fc760418b58e51b8f.idx
+│   │       ├── pack-06b86dfc1839f99bb935936fc760418b58e51b8f.pack
+│   │       └── pack-06b86dfc1839f99bb935936fc760418b58e51b8f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 12:11:47 UTC
+Сгенерировано: 2026-03-15 12:28:17 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2431,6 +2431,7 @@ export class StatsAggregator {
       await om.default.initialize();
       (await import('./offline/track-resolver.js')).initTrackResolver(om.default);
       (await import('./app/playback-cache-bootstrap.js'))?.initPlaybackCache?.();
+      (await import('./offline/update-checker.js'))?.initUpdateChecker?.();
     } catch (e) { console.error('Offline init failed:', e); }
 
     // 2. Analytics & RPG Progress UI (Parallel execution)
