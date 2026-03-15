@@ -18,21 +18,8 @@ export function addSearchResultsToContext({ selected, trk, ctx, saveCtx, isDefau
   notify?.success?.(`Добавлено ${u.length} треков`);
 }
 
-export function handleSharedShowcasePlaylist({ raw, trk, modals, esc, createPlaylist, notify }) {
-  try {
-    const d = JSON.parse(decodeURIComponent(escape(atob(String(raw).trim()))));
-    if (!d?.n || !Array.isArray(d?.u)) throw 1;
-    const u = d.u.filter(trk), miss = d.u.length - u.length;
-    modals?.confirm?.({
-      title: '🎵 Вам прислан плейлист',
-      textHtml: `<b>${esc(d.n)}</b><br><br>Доступно треков: ${u.length} из ${d.u.length}.${miss > 0 ? '<br><span class="sc-shared-warn">Часть треков недоступна.</span>' : ''}`,
-      confirmText: 'Добавить',
-      cancelText: 'Отмена',
-      onConfirm: () => createPlaylist(u, false, `${d.n} (Присланный)`)
-    });
-  } catch {
-    notify?.error?.('Ошибка чтения ссылки');
-  }
+export function handleSharedShowcasePlaylist({ raw, opener }) {
+  return opener?.(raw);
 }
 
 export default {
