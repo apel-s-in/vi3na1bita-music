@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6cb3a9cc446949d4640536e3170f4ddcc55d59e3.idx
-│   │       ├── pack-6cb3a9cc446949d4640536e3170f4ddcc55d59e3.pack
-│   │       └── pack-6cb3a9cc446949d4640536e3170f4ddcc55d59e3.rev
+│   │       ├── pack-d641903bc416cbc2a93bcfa118edf6a952488ecc.idx
+│   │       ├── pack-d641903bc416cbc2a93bcfa118edf6a952488ecc.pack
+│   │       └── pack-d641903bc416cbc2a93bcfa118edf6a952488ecc.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -379,7 +379,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 08:25:47 UTC
+Сгенерировано: 2026-03-15 08:26:28 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2305,10 +2305,11 @@ export class StatsAggregator {
     // 2. Analytics & RPG Progress UI (Parallel execution)
     try {
       const loadA = async (p) => await import(`./analytics/${p}.js`);
-      const [M, L, ST, SA, AE, CS] = await Promise.all(['meta-db', 'event-logger', 'session-tracker', 'stats-aggregator', 'achievement-engine', 'cloud-sync'].map(loadA));
+      const [M, L, ST, SA, AE, CS, LS] = await Promise.all(['meta-db', 'event-logger', 'session-tracker', 'stats-aggregator', 'achievement-engine', 'cloud-sync', 'live-stats'].map(loadA));
       
       await M.metaDB.init(); await L.eventLogger.init();
       new ST.SessionTracker(); new SA.StatsAggregator();
+      await LS.liveStatsTracker.initialize();
       W.achievementEngine = new AE.AchievementEngine();
       
       W.addEventListener('achievements:updated', e => {
