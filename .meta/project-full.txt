@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-0d2644cd34aed8fb1be383c56ded569bfd7870b3.idx
-│   │       ├── pack-0d2644cd34aed8fb1be383c56ded569bfd7870b3.pack
-│   │       └── pack-0d2644cd34aed8fb1be383c56ded569bfd7870b3.rev
+│   │       ├── pack-4b4314477d9b00c5e9f44cb4e8864415dff1fdde.idx
+│   │       ├── pack-4b4314477d9b00c5e9f44cb4e8864415dff1fdde.pack
+│   │       └── pack-4b4314477d9b00c5e9f44cb4e8864415dff1fdde.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -379,7 +379,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 09:02:45 UTC
+Сгенерировано: 2026-03-15 09:03:32 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2446,10 +2446,26 @@ export class StatsAggregator {
         
         const bTxt = $el('ach-hint-bubble-text');
         if (bTxt && W.achievementEngine?.achievements) {
-          const goals = W.achievementEngine.achievements.filter(a => !a.isUnlocked && !a.isHidden && a.progress?.target > a.progress?.current).sort((a, b) => b.progress.pct - a.progress.pct).slice(0, 3).map(a => `✨ До «${a.name.replace(/ ур\. \d+/, '')}»: осталось ${a.progress.target - a.progress.current}`);
-          const nS = streak < 3 ? 3 : (streak < 7 ? 7 : (streak < 14 ? 14 : 30));
-          goals.push(streak < 30 ? `✨ До «Стрик ${nS} дней»: осталось ${nS - streak}` : `✨ Легенда! Ваш стрик: ${streak} дней`);
-          
+          const fmtMs = (ms) => {
+            const s = Math.max(0, Math.floor(ms / 1000));
+            const d = Math.floor(s / 86400);
+            const h = Math.floor((s % 86400) / 3600);
+            const m = Math.floor((s % 3600) / 60);
+            const sec = s % 60;
+            return d > 0 ? `${d}д ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}` : `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+          };
+          const goals = W.achievementEngine.achievements
+            .filter(a => !a.isUnlocked && !a.isHidden && (a.progressMeta || (a.progress?.target > a.progress?.current)))
+            .sort((a, b) => (b.progress?.pct || 0) - (a.progress?.pct || 0))
+            .slice(0, 3)
+            .map(a => {
+              const nm = a.name.replace(/ ур\. \d+/, '');
+              const pm = a.progressMeta;
+              if (pm?.kind === 'time_accum') return `✨ До «${nm}»: ${fmtMs(pm.remainingMs)}`;
+              if (pm?.kind === 'streak_days') return `✨ До «${nm}»: ${pm.remainingDays} дн`;
+              return `✨ До «${nm}»: осталось ${Math.max(0, (a.progress?.target || 0) - (a.progress?.current || 0))}`;
+            });
+
           clearInterval(W._bInt); let i = 0;
           const uB = () => { if (!goals.length) return; bTxt.style.opacity = 0; setTimeout(() => { bTxt.innerHTML = goals[i++ % goals.length]; bTxt.style.opacity = 1; }, 300); };
           uB(); if (goals.length > 1) W._bInt = setInterval(uB, 8000);
