@@ -49,6 +49,15 @@ export async function openStatisticsModal(uid = null) {
   const allStats = await metaDB.getAllStats();
   const totalFull = allStats.reduce((acc, s) => acc + (s.globalFullListenCount || 0), 0);
   const totalSecs = allStats.reduce((acc, s) => acc + (s.globalListenSeconds || 0), 0);
+  const byH = Array(24).fill(0), byW = Array(7).fill(0);
+  allStats.filter(s => s.uid !== 'global').forEach(s => {
+    (s.byHour || []).forEach((v, h) => byH[h] += v || 0);
+    (s.byWeekday || []).forEach((v, d) => byW[d] += v || 0);
+  });
+  const gStat = allStats.find(s => s.uid === 'global') || {};
+  const gFeat = gStat.featuresUsed || {};
+  const peakHour = byH.indexOf(Math.max(...byH));
+  const deadHour = byH.indexOf(Math.min(...byH));
 
   const achVal = (await metaDB.getGlobal('unlocked_achievements'))?.value || {};
   const engine = window.achievementEngine;
@@ -72,6 +81,16 @@ export async function openStatisticsModal(uid = null) {
     <div class="stats-grid-compact" style="margin-bottom: 15px;">
       <div class="stat-box"><b>${totalFull}</b><span>Треков</span></div>
       <div class="stat-box"><b>${Math.floor(totalSecs / 60)}м</b><span>В пути</span></div>
+      <div class="stat-box"><b>${String(peakHour).padStart(2,'0')}:00</b><span>Пик активности</span></div>
+      <div class="stat-box"><b>${String(deadHour).padStart(2,'0')}:00</b><span>Тихий час</span></div>
+    </div>
+    <div style="margin-bottom:12px;background:rgba(0,0,0,0.2);padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.05);font-size:12px;color:#cfe3ff">
+      <div style="font-size:11px;color:#888;margin-bottom:8px;font-weight:bold;letter-spacing:1px;">🌙 ТАЙМЕР СНА</div>
+      <div>Срабатываний: <b>${gFeat.sleep_timer || 0}</b></div>
+      <div>Установок: <b>${gFeat.sleep_timer_set || 0}</b></div>
+      <div>Продлений: <b>${gFeat.sleep_timer_extend || 0}</b></div>
+      <div>Отмен: <b>${gFeat.sleep_timer_cancel || 0}</b></div>
+      <div>Сумма минут: <b>${gFeat.sleep_timer_minutes_total || 0}</b></div>
     </div>
     <div style="margin-bottom:15px; background:rgba(0,0,0,0.2); padding:12px; border-radius:10px; border: 1px solid rgba(255,255,255,0.05);">
       <div style="font-size:11px; color:#888; margin-bottom:8px; font-weight:bold; letter-spacing:1px;">🏆 ТОП 5 ТРЕКОВ</div>
