@@ -85,9 +85,6 @@ export async function loadAndRenderNewsInline(container) {
   if (!list) return;
 
   try {
-    const legacyLinks = container.querySelectorAll('a[href*="t.me"], a[href*="news"], .news-inline__links, .news-inline__dot');
-    legacyLinks.forEach((el) => el.remove());
-
     const j = window.Utils?.fetchCache?.getJson
       ? await window.Utils.fetchCache.getJson({
           key: 'news:inline:v1',
