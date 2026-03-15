@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-7d63ec7a5c7f11c4ce325a0af146c45824998944.idx
-│   │       ├── pack-7d63ec7a5c7f11c4ce325a0af146c45824998944.pack
-│   │       └── pack-7d63ec7a5c7f11c4ce325a0af146c45824998944.rev
+│   │       ├── pack-5c59c35a4feddc737db4808e85f5186954c0cf37.idx
+│   │       ├── pack-5c59c35a4feddc737db4808e85f5186954c0cf37.pack
+│   │       └── pack-5c59c35a4feddc737db4808e85f5186954c0cf37.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -398,7 +398,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 20:36:00 UTC
+Сгенерировано: 2026-03-15 20:37:16 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4344,13 +4344,13 @@ export default {
  */
 import { ensureLyricsIndexLoaded, searchUidsByQuery } from './lyrics-search.js';
 import { renderFavoriteStar, setFavoriteStarState } from '../../ui/icon-utils.js';
-import { openShowcaseSheet } from './sheet.js';
 import { renderShowcasePlaylists, renameShowcasePlaylist, shareShowcasePlaylist, createShowcasePlaylist } from './playlists.js';
-import { renderShowcaseHeader, renderShowcaseNormal, renderShowcaseSearch, renderShowcaseEdit, renderShowcaseStatus, renderShowcaseSelectionBar, renderShowcaseSortModal } from './render.js';
+import { renderShowcaseHeader, renderShowcaseNormal, renderShowcaseSearch, renderShowcaseEdit, renderShowcaseStatus, renderShowcaseSelectionBar } from './render.js';
 import { handleShowcaseEditClick, bindShowcaseDrag, saveShowcaseEdit, resetShowcaseEdit, exitShowcaseEdit } from './edit.js';
 import { createShowcaseStore } from './store.js';
 import { buildShowcaseSearchDisplay, addSearchResultsToContext, handleSharedShowcasePlaylist } from './search.js';
 import { createShowcaseActions } from './actions.js';
+import { openShowcaseSheetModal, openShowcaseAddToPlaylistModal, openShowcaseSortModal, openShowcaseSharedPlaylistConfirm, openShowcasePaletteModal } from './modals.js';
 
 const W = window, D = document, U = W.Utils;
 const ALL = '__default__', SHOW = '__showcase__';
@@ -4397,11 +4397,13 @@ class ShowcaseManager {
       esc,
       uidEsc,
       PALETTE,
-      openShowcaseSheet,
       renderShowcasePlaylists,
       renameShowcasePlaylist,
       shareShowcasePlaylist,
-      createShowcasePlaylist
+      createShowcasePlaylist,
+      openShowcaseSheetModal,
+      openShowcaseAddToPlaylistModal,
+      openShowcasePaletteModal
     });
   }
 
@@ -4845,7 +4847,7 @@ class ShowcaseManager {
   _openSort() {
     const id = this._ctxId(), c = this._ctx(), sm = c?.sortMode || 'user';
     const opts = [['user','👤 Мой порядок'],['name-asc','А→Я'],['name-desc','Я→А'],['album-desc','Альбомы ↓ (Новые)'],['album-asc','Альбомы ↑ (Старые)'],['plays-desc','Топ прослушиваний'],['plays-asc','Меньше всего'],['last-played','Недавние'],['favorites-first','Сначала ⭐']];
-    renderShowcaseSortModal({
+    openShowcaseSortModal({
       modalApi: W.Modals,
       currentSort: sm,
       options: opts,
@@ -4927,11 +4929,14 @@ class ShowcaseManager {
   _handleShr(b64) {
     return handleSharedShowcasePlaylist({
       raw: b64,
-      trk,
-      modals: W.Modals,
-      esc,
-      createPlaylist: (uids, fromEdit, name) => this._createPl(uids, fromEdit, name),
-      notify: W.NotificationSystem
+      opener: (raw) => openShowcaseSharedPlaylistConfirm({
+        raw,
+        trk,
+        esc,
+        createPlaylist: (uids, fromEdit, name) => this._createPl(uids, fromEdit, name),
+        notify: W.NotificationSystem,
+        modalApi: W.Modals
+      })
     });
   }
 
