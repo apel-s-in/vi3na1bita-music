@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-240d6cbe0ce68e6dcebd17a73a3156afa4f539d2.idx
-│   │       ├── pack-240d6cbe0ce68e6dcebd17a73a3156afa4f539d2.pack
-│   │       └── pack-240d6cbe0ce68e6dcebd17a73a3156afa4f539d2.rev
+│   │       ├── pack-0d2644cd34aed8fb1be383c56ded569bfd7870b3.idx
+│   │       ├── pack-0d2644cd34aed8fb1be383c56ded569bfd7870b3.pack
+│   │       └── pack-0d2644cd34aed8fb1be383c56ded569bfd7870b3.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -379,7 +379,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 08:51:00 UTC
+Сгенерировано: 2026-03-15 09:02:45 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1265,8 +1265,6 @@ export class AchievementEngine {
       const rawCurrent = Number(cur || 0);
       const rawTarget = Number(tgt || 0);
       const isHid = !unl && r.hidden;
-      const viewCurrent = r.formatters?.target_hours ? r.formatters.target_hours(effectiveCurrent) : effectiveCurrent;
-      const viewTarget = r.formatters?.target_hours ? r.formatters.target_hours(rawTarget) : rawTarget;
       let effectiveCurrent = rawCurrent;
       let pct = rawTarget > 0 ? Math.min(100, Math.max(0, (rawCurrent / rawTarget) * 100)) : 0;
       let progressMeta = null;
@@ -1313,6 +1311,9 @@ export class AchievementEngine {
         }
       }
       
+      const viewCurrent = r.formatters?.target_hours ? r.formatters.target_hours(effectiveCurrent) : effectiveCurrent;
+      const viewTarget = r.formatters?.target_hours ? r.formatters.target_hours(rawTarget) : rawTarget;
+
       arr.push({
         id,
         name: lvl ? r.ui.name.replace('{level}', lvl) : (isHid ? 'Секретное достижение' : r.ui.name),
