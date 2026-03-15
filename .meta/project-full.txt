@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-7283f4aaeef10208e623d9e6806b764594dbaa5a.idx
-│   │       ├── pack-7283f4aaeef10208e623d9e6806b764594dbaa5a.pack
-│   │       └── pack-7283f4aaeef10208e623d9e6806b764594dbaa5a.rev
+│   │       ├── pack-b6a4940ca01dc53e60d644870aff10a617ac878d.idx
+│   │       ├── pack-b6a4940ca01dc53e60d644870aff10a617ac878d.pack
+│   │       └── pack-b6a4940ca01dc53e60d644870aff10a617ac878d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -397,7 +397,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 20:20:56 UTC
+Сгенерировано: 2026-03-15 20:22:03 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -8449,13 +8449,13 @@ async function handleAction(e) {
     case 'toggle-storage-details':
       _stExpanded = !_stExpanded;
       const st = $('#om-st-detail', _overlay);
-      if (st) st.style.display = _stExpanded ? 'block' : 'none';
+      if (st) st.classList.toggle('hidden', !_stExpanded);
       break;
     case 'toggle-list':
       _listExpanded = !_listExpanded;
       el.textContent = _listExpanded ? 'Скрыть список 🔒/☁' : 'Показать список 🔒/☁';
       const c = $('#om-track-list-container', _overlay);
-      if (c) c.style.display = _listExpanded ? 'block' : 'none';
+      if (c) c.classList.toggle('hidden', !_listExpanded);
       break;
     case 'nuke':
       confirmBox({ title: 'Удалить все офлайн-треки?', textHtml: 'Статистика облачков будет сброшена.<br>Global-статистика останется.', confirmText: 'Далее', onConfirm: () => setTimeout(() => confirmBox({ title: 'Вы уверены?', textHtml: 'Это действие нельзя отменить.', confirmText: 'Удалить всё', onConfirm: async () => { await om.removeAllCached(); refresh(); } }), 100) });
