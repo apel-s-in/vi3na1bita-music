@@ -718,22 +718,10 @@ class ShowcaseManager {
     };
   }
 
-  _promptName({ title, value, btnText, onSubmit }) {
-    const m = W.Modals?.open({ title, bodyHtml: `<input type="text" id="sc-name-inp" value="${esc(value)}" style="width:100%;padding:10px;border-radius:8px;background:rgba(255,255,255,.1);color:#fff;border:1px solid #666;margin-bottom:15px"><button class="showcase-btn" id="sc-name-save">${btnText}</button>` });
-    if (!m) return;
-    setTimeout(() => m.querySelector('#sc-name-inp')?.select(), 50);
-    m.querySelector('#sc-name-save').onclick = () => {
-      const v = m.querySelector('#sc-name-inp')?.value.trim();
-      if (!v) return;
-      m.remove();
-      onSubmit(v);
-    };
-  }
-
   _renamePl(id) {
     const p = Store.get(id);
     if (!p) return;
-    this._promptName({
+    W.Utils?.profileModals?.promptName?.({
       title: 'Переименовать',
       value: p.name,
       btnText: 'Сохранить',
@@ -774,7 +762,7 @@ class ShowcaseManager {
       this.renderTab();
       W.NotificationSystem?.success(`Плейлист «${n}» создан`);
     };
-    return name ? done(name) : this._promptName({ title: 'Новый плейлист', value: `Мой плейлист ${Store.pl().length + 1}`, btnText: 'Создать', onSubmit: done });
+    return name ? done(name) : W.Utils?.profileModals?.promptName?.({ title: 'Новый плейлист', value: `Мой плейлист ${Store.pl().length + 1}`, btnText: 'Создать', onSubmit: done });
   }
 
   _searchAdd() {
@@ -817,23 +805,24 @@ class ShowcaseManager {
       if (!aKey && el) aKey = trk(el)?.sourceAlbum;
       cur = Store.cols()?.[aKey] || '';
     }
-    const m = W.Modals?.open({ title: playlistId ? 'Цвет плейлиста' : 'Цвет альбома', bodyHtml: `<div class="showcase-color-picker">${PALETTE.map(x => `<div class="showcase-color-dot" style="background:${x};${cur === (x === 'transparent' ? '' : x) ? 'border-color:#fff;' : ''}" data-col="${x}"></div>`).join('')}</div><button class="showcase-btn" data-col="transparent" style="margin-top:15px;width:100%">Сбросить цвет</button>` });
-    if (!m) return;
-    m.onclick = e => {
-      const b = e.target.closest('[data-col]');
-      if (!b) return;
-      const v = b.dataset.col === 'transparent' ? '' : b.dataset.col;
-      if (playlistId) {
-        const p = Store.get(playlistId);
-        if (p) { p.color = v; Store.save(p); this._renderPlaylists(); }
-      } else if (aKey) {
-        const c = Store.cols();
-        c[aKey] = v;
-        Store.setCols(c);
-        this._renderBody(++this._tok);
+    W.Utils?.profileModals?.palettePicker?.({
+      title: playlistId ? 'Цвет плейлиста' : 'Цвет альбома',
+      items: PALETTE,
+      value: cur,
+      resetText: 'Сбросить цвет',
+      onPick: (v, m) => {
+        if (playlistId) {
+          const p = Store.get(playlistId);
+          if (p) { p.color = v; Store.save(p); this._renderPlaylists(); }
+        } else if (aKey) {
+          const c = Store.cols();
+          c[aKey] = v;
+          Store.setCols(c);
+          this._renderBody(++this._tok);
+        }
+        m?.remove?.();
       }
-      m.remove();
-    };
+    });
   }
 
   playContext(uid = null) { this._playCtx(uid); }
