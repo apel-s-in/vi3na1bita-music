@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-98da01aefb7a7f6e5bfa1c6e127e68e1d4a38aaf.idx
-│   │       ├── pack-98da01aefb7a7f6e5bfa1c6e127e68e1d4a38aaf.pack
-│   │       └── pack-98da01aefb7a7f6e5bfa1c6e127e68e1d4a38aaf.rev
+│   │       ├── pack-ff2e321ecb203dd2526c98d635b72910903a05d9.idx
+│   │       ├── pack-ff2e321ecb203dd2526c98d635b72910903a05d9.pack
+│   │       └── pack-ff2e321ecb203dd2526c98d635b72910903a05d9.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -398,7 +398,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 20:37:45 UTC
+Сгенерировано: 2026-03-15 20:38:13 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -10146,6 +10146,16 @@ body{min-height:100vh;min-width:100vw;font-family:-apple-system,BlinkMacSystemFo
 
 /* Layout */
 #main-block{max-width:420px;margin:0 auto;flex:1 0 auto;display:flex;flex-direction:column;align-items:center;width:100%;padding:0 10px;padding-bottom:env(safe-area-inset-bottom)}
+#now-playing.now-playing-inline{width:100%;max-width:395px;margin:8px auto 0}
+#install-pwa-btn.install-pwa-hidden,
+#hotkeys-btn.hotkeys-hidden,
+#sysinfo-btn.sysinfo-hidden,
+#sleep-timer-badge.sleep-badge-hidden{display:none}
+.stats-btn-reset{background:none!important;border:none!important;cursor:pointer!important;font-size:18px!important;opacity:.8!important;padding:0 8px!important}
+.sc-sheet-sep{border-color:rgba(255,255,255,.08);margin:8px 0}
+.sc-sheet-btn--danger{color:#ff6b6b!important}
+.sc-sheet-btn--cancel{color:#888!important;justify-content:center}
+.sc-playlist-pick{display:flex;flex-direction:column;gap:10px}
 
 /* --- RPG Classic Achievements Widget --- */
 .ach-progress-root {
