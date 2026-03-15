@@ -1,4 +1,5 @@
 import { metaDB } from '../analytics/meta-db.js';
+import { fmtAchTimerText } from './progress-formatters.js';
 
 export async function openStatisticsModal(uid = null) {
   if (!uid) uid = window.playerCore?.getCurrentTrackUid?.() || null;
@@ -103,7 +104,7 @@ export async function openStatisticsModal(uid = null) {
           <div class="ach-icon" style="font-size:24px; filter:${achVal[a.id] ? 'none' : 'grayscale(1)'}; opacity:${achVal[a.id] ? '1' : '0.5'};">${a.icon}</div>
           <div style="flex:1;">
             <div style="font-size:14px; font-weight:bold; color:#fff; margin-bottom:2px;">${a.name}</div>
-            <div style="font-size:11px; color:#aaa;">${a.desc}</div>
+            <div style="font-size:11px; color:#aaa;">${a.desc}${!achVal[a.id] && a.progressMeta ? ` · ${fmtAchTimerText(a, 'remaining')}` : ''}</div>
           </div>
           ${achVal[a.id] ? '<div style="color:#4caf50; font-weight:bold;">✓</div>' : ''}
         </div>
