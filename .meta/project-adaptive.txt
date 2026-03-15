@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b3f3e67d1e18a7bf8f73b21d8cc9ab43bb9d8a00.idx
-│   │       ├── pack-b3f3e67d1e18a7bf8f73b21d8cc9ab43bb9d8a00.pack
-│   │       └── pack-b3f3e67d1e18a7bf8f73b21d8cc9ab43bb9d8a00.rev
+│   │       ├── pack-1786bd267b43c5c70f4ef983178221abf24330f5.idx
+│   │       ├── pack-1786bd267b43c5c70f4ef983178221abf24330f5.pack
+│   │       └── pack-1786bd267b43c5c70f4ef983178221abf24330f5.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 12:02:38 UTC
+Сгенерировано: 2026-03-15 12:10:48 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7266,9 +7266,6 @@ export async function loadAndRenderNewsInline(container) {
   if (!list) return;
 
   try {
-    const legacyLinks = container.querySelectorAll('a[href*="t.me"], a[href*="news"], .news-inline__links, .news-inline__dot');
-    legacyLinks.forEach((el) => el.remove());
-
     const j = window.Utils?.fetchCache?.getJson
       ? await window.Utils.fetchCache.getJson({
           key: 'news:inline:v1',
