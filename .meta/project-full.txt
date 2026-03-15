@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-7b078604100a6b22d34523d7603d49cba0c81755.idx
-│   │       ├── pack-7b078604100a6b22d34523d7603d49cba0c81755.pack
-│   │       └── pack-7b078604100a6b22d34523d7603d49cba0c81755.rev
+│   │       ├── pack-0e554603dc250131ed4ddfabe2fe9b379e776508.idx
+│   │       ├── pack-0e554603dc250131ed4ddfabe2fe9b379e776508.pack
+│   │       └── pack-0e554603dc250131ed4ddfabe2fe9b379e776508.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -398,7 +398,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 20:44:00 UTC
+Сгенерировано: 2026-03-15 20:51:44 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4363,6 +4363,7 @@ const isDef = id => id === ALL;
 const uidEsc = u => CSS.escape(String(u || ''));
 
 const getCat = () => (W.albumsIndex || []).filter(a => !String(a?.key || '').startsWith('__')).flatMap(a => (W.TrackRegistry?.getTracksForAlbum?.(a.key) || []).map(t => t?.uid).filter(Boolean));
+const sig = (o = [], h = []) => JSON.stringify({ o: [...o], h: [...h] });
 const { Store, Draft, mkPl, normCtx, jGet, jSet } = createShowcaseStore({ trk, getCat, ls: localStorage });
 
 const bldTrk = uid => {
