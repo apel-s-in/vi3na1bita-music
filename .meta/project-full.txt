@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-262fb0b9e7de1612cf0989a3ebad7332703c896f.idx
-│   │       ├── pack-262fb0b9e7de1612cf0989a3ebad7332703c896f.pack
-│   │       └── pack-262fb0b9e7de1612cf0989a3ebad7332703c896f.rev
+│   │       ├── pack-3120c57ce46431799631ec572d40a02e6f7b5b21.idx
+│   │       ├── pack-3120c57ce46431799631ec572d40a02e6f7b5b21.pack
+│   │       └── pack-3120c57ce46431799631ec572d40a02e6f7b5b21.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -339,7 +339,6 @@ vi3na1bita-music/
 │   │   │   ├── playlists.js
 │   │   │   ├── render.js
 │   │   │   ├── search.js
-│   │   │   ├── sheet.js
 │   │   │   └── store.js
 │   │   ├── albums.js
 │   │   ├── gallery.js
@@ -399,7 +398,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 21:13:36 UTC
+Сгенерировано: 2026-03-15 21:14:21 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5344,11 +5343,6 @@ export default {
   addSearchResultsToContext,
   handleSharedShowcasePlaylist
 };
-
-//=================================================
-// FILE: /scripts/app/showcase/sheet.js
-// Legacy wrapper removed. Use scripts/app/showcase/modals.js instead.
-export {};
 
 //=================================================
 // FILE: /scripts/app/showcase/store.js
