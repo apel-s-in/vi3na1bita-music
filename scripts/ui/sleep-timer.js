@@ -275,6 +275,7 @@ export class SleepTimer {
     this._state.lastDurationMin = m;
     this._saveState();
     window.playerCore?.setSleepTimer?.(ms, { mode: 'minutes', minutes: m, remind5m: !!this._state.remind5m });
+    window.eventLogger?.log?.('FEATURE_USED', 'global', { feature: 'sleep_timer_set', mode: 'minutes', minutes: m });
     this._syncBadge();
     window.NotificationSystem?.info?.(`Таймер сна установлен на ${m} мин.`);
   }
@@ -288,6 +289,7 @@ export class SleepTimer {
     this._state.lastDurationMin = minutes;
     this._saveState();
     window.playerCore?.setSleepTimer?.(tgt.getTime() - Date.now(), { mode: 'clock', exactTime: t, remind5m: !!this._state.remind5m });
+    window.eventLogger?.log?.('FEATURE_USED', 'global', { feature: 'sleep_timer_set', mode: 'clock', minutes, exactTime: t });
     this._syncBadge();
     window.NotificationSystem?.info?.(`Таймер сна установлен на ${t}`);
   }
@@ -300,13 +302,16 @@ export class SleepTimer {
     this._state.lastDurationMin = nextMin;
     this._saveState();
     window.playerCore?.setSleepTimer?.(nextMs, { mode: 'extended', minutes: nextMin, remind5m: !!this._state.remind5m });
+    window.eventLogger?.log?.('FEATURE_USED', 'global', { feature: 'sleep_timer_extend', mode: 'extended', minutes: m, totalMinutes: nextMin });
     this._syncBadge();
     window.NotificationSystem?.success?.(`Таймер продлён на ${m} мин.`);
   }
 
   stop(notify = true) {
+    const remMin = Math.ceil(this._getRemainingMs() / 60000);
     this._clearWarning();
     window.playerCore?.clearSleepTimer?.();
+    window.eventLogger?.log?.('FEATURE_USED', 'global', { feature: 'sleep_timer_cancel', minutes: Math.max(0, remMin) });
     this._syncBadge();
     if (notify) window.NotificationSystem?.info?.('Таймер сна сброшен');
   }
