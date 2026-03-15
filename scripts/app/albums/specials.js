@@ -129,10 +129,34 @@ export async function loadProfileAlbum(ctx) {
   if (nInp) { nInp.onblur = async () => { up.name = nInp.value.trim() || 'Слушатель'; mDB && await mDB.setGlobal('user_profile', up).catch(()=>{}); window.NotificationSystem?.success('Имя сохранено'); }; nInp.onkeydown = e => e.key === 'Enter' && nInp.blur(); }
 
   const achEl = cont.querySelector('#prof-ach-list');
+  const achTimerMode = ctx._achTimerMode || (ctx._achTimerMode = new Map());
+  const fmtMs = (ms) => {
+    const s = Math.max(0, Math.floor(ms / 1000));
+    const d = Math.floor(s / 86400);
+    const h = Math.floor((s % 86400) / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    if (d > 0) return `${d}д ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+  };
+  const timerHtml = (a) => {
+    const pm = a.progressMeta;
+    if (!pm || a.isUnlocked || a.isHidden) return '';
+    const mode = achTimerMode.get(a.id) || 'remaining';
+    if (pm.kind === 'time_accum') {
+      const val = mode === 'elapsed' ? fmtMs(pm.elapsedMs) : fmtMs(pm.remainingMs);
+      return `<button class="ach-timer" type="button" data-ach-timer="${a.id}" title="Нажмите для переключения режима">${val}</button>`;
+    }
+    if (pm.kind === 'streak_days') {
+      const val = mode === 'elapsed' ? `${pm.elapsedDays} / ${pm.targetDays} дн` : `${pm.remainingDays} дн`;
+      return `<button class="ach-timer" type="button" data-ach-timer="${a.id}" title="Нажмите для переключения режима">${val}</button>`;
+    }
+    return a.progress ? `Осталось: ${Math.max(0, a.progress.target - a.progress.current)}` : '';
+  };
   const rAch = (f) => {
     if (!achEl || !eng?.achievements) return;
     const it = eng.achievements.filter(a => f === 'secret' ? a.isHidden : (f === 'done' ? a.isUnlocked : (f === 'available' ? !a.isUnlocked && !a.isHidden : (!a.isHidden || a.isUnlocked))));
-    achEl.innerHTML = it.length ? it.map(a => `<div class="ach-item ${a.isUnlocked ? 'done' : ''}" data-ach="${a.id}"><div class="ach-top"><div class="ach-title" style="color:${a.isUnlocked ? '#fff' : (a.color || '#fff')}">${a.icon} ${a.name}</div></div><div class="ach-sub">${a.isUnlocked && a.unlockedAt ? `Открыто: ${new Date(a.unlockedAt).toLocaleDateString()}` : (a.isHidden ? 'Откроется при особых условиях' : a.short)}</div>${(!a.isUnlocked && !a.isHidden && a.progress) ? `<div class="ach-progress"><div class="ach-mini-bar"><div class="ach-mini-fill" style="width:${a.progress.pct}%"></div></div></div>` : ``}<div class="ach-bottom"><div class="ach-xp">${a.isUnlocked ? `+${a.xpReward} XP` : (a.isHidden ? `Секретное` : `${a.xpReward} XP`)}</div><div class="ach-remaining">${(!a.isUnlocked && !a.isHidden && a.progress) ? `Осталось: ${Math.max(0, a.progress.target - a.progress.current)}` : ``}</div><button class="ach-more" type="button">Подробнее</button></div><div class="ach-details" style="display:none"><div class="ach-details-title">Как выполнить</div><div class="ach-details-how">${a.howTo || 'Выполните условия.'}</div>${a.desc ? `<div class="ach-details-desc">${a.desc}</div>` : ''}</div></div>`).join('') : '<div class="fav-empty">По данному фильтру ничего нет</div>';
+    achEl.innerHTML = it.length ? it.map(a => `<div class="ach-item ${a.isUnlocked ? 'done' : ''}" data-ach="${a.id}"><div class="ach-top"><div class="ach-title" style="color:${a.isUnlocked ? '#fff' : (a.color || '#fff')}">${a.icon} ${a.name}</div></div><div class="ach-sub">${a.isUnlocked && a.unlockedAt ? `Открыто: ${new Date(a.unlockedAt).toLocaleDateString()}` : (a.isHidden ? 'Откроется при особых условиях' : a.short)}</div>${(!a.isUnlocked && !a.isHidden && a.progress) ? `<div class="ach-progress"><div class="ach-mini-bar"><div class="ach-mini-fill" style="width:${a.progress.pct}%"></div></div></div>` : ``}<div class="ach-bottom"><div class="ach-xp">${a.isUnlocked ? `+${a.xpReward} XP` : (a.isHidden ? `Секретное` : `${a.xpReward} XP`)}</div><div class="ach-remaining">${timerHtml(a)}</div><button class="ach-more" type="button">Подробнее</button></div><div class="ach-details" style="display:none"><div class="ach-details-title">Как выполнить</div><div class="ach-details-how">${a.howTo || 'Выполните условия.'}</div>${a.desc ? `<div class="ach-details-desc">${a.desc}</div>` : ''}</div></div>`).join('') : '<div class="fav-empty">По данному фильтру ничего нет</div>';
   };
   rAch('all');
 
@@ -164,6 +188,16 @@ export async function loadProfileAlbum(ctx) {
     } catch { lg.innerHTML = '<div class="fav-empty">Ошибка загрузки</div>'; }
   }, 100);
 
+  if (!ctx._profLiveAchBound) {
+    ctx._profLiveAchBound = true;
+    window.addEventListener('analytics:liveTick', () => {
+      if (ctx.getCurrentAlbum?.() !== (window.APP_CONFIG?.SPECIAL_PROFILE_KEY || '__profile__')) return;
+      const activeTab = cont.querySelector('#tab-achievements.active');
+      if (!activeTab || !cont.isConnected) return;
+      rAch(cont.querySelector('.ach-classic-tab.active')?.dataset.filter || 'all');
+    });
+  }
+
   if (!ctx._profBound) {
     ctx._profBound = true;
     cont.addEventListener('click', e => {
@@ -171,6 +205,12 @@ export async function loadProfileAlbum(ctx) {
       if (el = c('.profile-tab-btn')) { cont.querySelectorAll('.profile-tab-btn, .profile-tab-content').forEach(x => x.classList.remove('active')); el.classList.add('active'); cont.querySelector(`#tab-${el.dataset.tab}`)?.classList.add('active'); }
       else if (el = c('.ach-classic-tab')) { cont.querySelectorAll('.ach-classic-tab').forEach(x => x.classList.remove('active')); el.classList.add('active'); rAch(el.dataset.filter); }
       else if (el = c('.ach-more') || c('.ach-main')) { const d = el.closest('.ach-item')?.querySelector('.ach-details'), b = el.closest('.ach-item')?.querySelector('.ach-more'); if (d) { const h = d.style.display === 'none'; d.style.display = h ? 'block' : 'none'; if (b) b.textContent = h ? 'Свернуть' : 'Подробнее'; } }
+      else if (el = c('[data-ach-timer]')) {
+        const id = el.dataset.achTimer;
+        const prev = achTimerMode.get(id) || 'remaining';
+        achTimerMode.set(id, prev === 'remaining' ? 'elapsed' : 'remaining');
+        rAch(cont.querySelector('.ach-classic-tab.active')?.dataset.filter || 'all');
+      }
       else if (el = c('.chart-title')) { const b = cont.querySelector('#'+el.dataset.tg); if(b) { const v = b.style.display !== 'none'; b.style.display = v ? 'none' : ''; localStorage.setItem(el.dataset.ls, v ? '0' : '1'); } }
       else if (el = c('.auth-btn')) { const id = el.dataset.auth; if (tks[id]) id==='yandex'&&cSync?.sync?cSync.sync(id):window.NotificationSystem?.info('Синхронизация...'); else id==='yandex'&&cSync?.auth?cSync.auth(id):window.NotificationSystem?.info('Недоступно'); }
       else if (c('#prof-avatar-btn')) { const av = ['😎','🎧','🎸','🦄','🦇','👽','🤖','🐱','🦊','🐼','🔥','💎'], m = window.Modals.open({title:'Аватар',bodyHtml:`<div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center">${av.map(a=>`<button class="showcase-color-dot" style="font-size:24px;background:#232b38" data-ava="${a}">${a}</button>`).join('')}</div>`}); m.onclick = async ev => { const b = ev.target.closest('[data-ava]'); if(b) { up.avatar = b.dataset.ava; cont.querySelector('#prof-avatar-btn').textContent = b.dataset.ava; mDB && await mDB.setGlobal('user_profile', up).catch(()=>{}); m.remove(); } }; }
