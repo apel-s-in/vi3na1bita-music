@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-bb2b02260ae07a5e312babf92d213d2e86d99f22.idx
-│   │       ├── pack-bb2b02260ae07a5e312babf92d213d2e86d99f22.pack
-│   │       └── pack-bb2b02260ae07a5e312babf92d213d2e86d99f22.rev
+│   │       ├── pack-b1b1ede28c951aaf5c7db44cfdce6e22ab7d62a6.idx
+│   │       ├── pack-b1b1ede28c951aaf5c7db44cfdce6e22ab7d62a6.pack
+│   │       └── pack-b1b1ede28c951aaf5c7db44cfdce6e22ab7d62a6.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 09:26:26 UTC
+Сгенерировано: 2026-03-15 09:27:44 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -8043,6 +8043,7 @@ window.SleepTimer = sleepTimerInstance;
 //=================================================
 // FILE: /scripts/ui/statistics-modal.js
 import { metaDB } from '../analytics/meta-db.js';
+import { fmtAchTimerText } from './progress-formatters.js';
 
 export async function openStatisticsModal(uid = null) {
   if (!uid) uid = window.playerCore?.getCurrentTrackUid?.() || null;
@@ -8147,7 +8148,7 @@ export async function openStatisticsModal(uid = null) {
           <div class="ach-icon" style="font-size:24px; filter:${achVal[a.id] ? 'none' : 'grayscale(1)'}; opacity:${achVal[a.id] ? '1' : '0.5'};">${a.icon}</div>
           <div style="flex:1;">
             <div style="font-size:14px; font-weight:bold; color:#fff; margin-bottom:2px;">${a.name}</div>
-            <div style="font-size:11px; color:#aaa;">${a.desc}</div>
+            <div style="font-size:11px; color:#aaa;">${a.desc}${!achVal[a.id] && a.progressMeta ? ` · ${fmtAchTimerText(a, 'remaining')}` : ''}</div>
           </div>
           ${achVal[a.id] ? '<div style="color:#4caf50; font-weight:bold;">✓</div>' : ''}
         </div>
