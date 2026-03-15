@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d6e412323e633737145dadaa707f89282e9e5e01.idx
-│   │       ├── pack-d6e412323e633737145dadaa707f89282e9e5e01.pack
-│   │       └── pack-d6e412323e633737145dadaa707f89282e9e5e01.rev
+│   │       ├── pack-0f38b5d3e2c43c19cc717db57039bde0407a0af7.idx
+│   │       ├── pack-0f38b5d3e2c43c19cc717db57039bde0407a0af7.pack
+│   │       └── pack-0f38b5d3e2c43c19cc717db57039bde0407a0af7.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 13:02:52 UTC
+Сгенерировано: 2026-03-15 13:04:24 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3516,7 +3516,6 @@ window.PlaybackCache.unprotectWindow = unprotectWindow;
 
   const W = window, D = document, U = W.Utils;
   const LS = { V: 'lyricsViewMode', A: 'lyricsAnimationEnabled' }, PRE = 'lyr_';
-  const sess = (k, v) => v === undefined ? JSON.parse(sessionStorage.getItem(k) || 'null') : sessionStorage.setItem(k, JSON.stringify(v));
   const fc = W.Utils?.fetchCache;
   const esc = s => U?.escapeHtml?.(String(s||'')) || String(s||'');
 
@@ -3532,10 +3531,10 @@ window.PlaybackCache.unprotectWindow = unprotectWindow;
 
   const _pend = new Map();
   const fetchL = async (u) => {
-    if (!(u = String(u || '').trim()) || sess('404_'+u)) return null;
+    if (!(u = String(u || '').trim())) return null;
     const k = PRE + u;
-    const c = fc?.get?.(k, 43200000, 'session') ?? sess(k);
-    if (c) return c === 'NO' ? null : c;
+    const rec = fc?.get?.(k, 43200000, 'session');
+    if (rec && typeof rec === 'object') return rec.ok ? rec.data : null;
     if (_pend.has(u)) return _pend.get(u);
 
     const p = (async () => {
@@ -3552,10 +3551,9 @@ window.PlaybackCache.unprotectWindow = unprotectWindow;
 
       for (const fetchUrl of urls) {
         try {
-          const key = `lyrics:timeline:${fetchUrl}`;
-          const j = W.Utils?.fetchCache?.getJson
-            ? await W.Utils.fetchCache.getJson({
-                key,
+          const j = fc?.getJson
+            ? await fc.getJson({
+                key: `lyrics:timeline:${fetchUrl}`,
                 url: fetchUrl,
                 ttlMs: 43200000,
                 store: 'session',
@@ -3567,7 +3565,7 @@ window.PlaybackCache.unprotectWindow = unprotectWindow;
               });
 
           if (Array.isArray(j)) {
-            fc?.set?.(k, j, 'session');
+            fc?.set?.(k, { ok: 1, data: j }, 'session');
             return j;
           }
         } catch (e) {
@@ -3577,8 +3575,7 @@ window.PlaybackCache.unprotectWindow = unprotectWindow;
         }
       }
 
-      fc?.set?.(k, 'NO', 'session');
-      sess('404_'+u, 1);
+      fc?.set?.(k, { ok: 0 }, 'session');
       return null;
     })();
 
@@ -3667,7 +3664,7 @@ window.PlaybackCache.unprotectWindow = unprotectWindow;
     },
     onTrackChange: async (t) => {
       st.has = false; st.list = []; st.lIdx = -100;
-      if (!t?.lyrics || t.hasLyrics === false || sess('404_'+t.lyrics)) return updateUI();
+      if (!t?.lyrics || t.hasLyrics === false) return updateUI();
       
       if (initDom() && dom.lyr) dom.lyr.innerHTML = '<div class="lyrics-spinner"></div>';
       const d = await fetchL(t.lyrics);
