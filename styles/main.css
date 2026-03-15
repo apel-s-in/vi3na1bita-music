@@ -1030,3 +1030,4 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .sc-badge-missing{background:rgba(100,100,100,.2);color:#aaa}
 #sc-search-sticky .showcase-btn{flex:0 0 auto;min-width:max-content;padding:9px 12px}
 .sc-sheet-close{position:absolute;top:14px;right:14px;all:unset;cursor:pointer;font-size:22px;color:#888;width:30px;height:30px;display:flex;align-items:center;justify-content:center}
+#achievementsFill,#xp-progress-fill{width:0}
