@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-01377b50e59330e173f1a3f2290dcb1d6955d6c4.idx
-│   │       ├── pack-01377b50e59330e173f1a3f2290dcb1d6955d6c4.pack
-│   │       └── pack-01377b50e59330e173f1a3f2290dcb1d6955d6c4.rev
+│   │       ├── pack-90ec9f59c6c07abba81482a8dbe5717e490497d1.idx
+│   │       ├── pack-90ec9f59c6c07abba81482a8dbe5717e490497d1.pack
+│   │       └── pack-90ec9f59c6c07abba81482a8dbe5717e490497d1.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -399,7 +399,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 20:55:27 UTC
+Сгенерировано: 2026-03-15 20:56:20 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -8579,8 +8579,8 @@ async function handleAction(e) {
       for (const m of metas) {
         if (!m?.cachedComplete) continue;
         if (!['pinned', 'cloud', 'dynamic', 'playbackCache'].includes(m.type)) continue;
-        const mq = (String(m.quality || '').toLowerCase() === 'lo') ? 'lo' : 'hi';
-        if (mq !== targetQ) { uidCount++; bytes += (m.size || 0); }
+      const mq = (String(m.quality || '').toLowerCase() === 'lo') ? 'lo' : 'hi';
+      if (mq !== targetQ) { uidCount++; bytes += (m.size || 0); }
       }
 
       const explain = () => {
