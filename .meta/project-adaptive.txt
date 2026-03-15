@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-90215f3b4a005ade3e6ac0dcc452c4366fa8823c.idx
-│   │       ├── pack-90215f3b4a005ade3e6ac0dcc452c4366fa8823c.pack
-│   │       └── pack-90215f3b4a005ade3e6ac0dcc452c4366fa8823c.rev
+│   │       ├── pack-7d63ec7a5c7f11c4ce325a0af146c45824998944.idx
+│   │       ├── pack-7d63ec7a5c7f11c4ce325a0af146c45824998944.pack
+│   │       └── pack-7d63ec7a5c7f11c4ce325a0af146c45824998944.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -398,7 +398,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 20:35:24 UTC
+Сгенерировано: 2026-03-15 20:36:00 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5356,21 +5356,8 @@ export function addSearchResultsToContext({ selected, trk, ctx, saveCtx, isDefau
   notify?.success?.(`Добавлено ${u.length} треков`);
 }
 
-export function handleSharedShowcasePlaylist({ raw, trk, modals, esc, createPlaylist, notify }) {
-  try {
-    const d = JSON.parse(decodeURIComponent(escape(atob(String(raw).trim()))));
-    if (!d?.n || !Array.isArray(d?.u)) throw 1;
-    const u = d.u.filter(trk), miss = d.u.length - u.length;
-    modals?.confirm?.({
-      title: '🎵 Вам прислан плейлист',
-      textHtml: `<b>${esc(d.n)}</b><br><br>Доступно треков: ${u.length} из ${d.u.length}.${miss > 0 ? '<br><span class="sc-shared-warn">Часть треков недоступна.</span>' : ''}`,
-      confirmText: 'Добавить',
-      cancelText: 'Отмена',
-      onConfirm: () => createPlaylist(u, false, `${d.n} (Присланный)`)
-    });
-  } catch {
-    notify?.error?.('Ошибка чтения ссылки');
-  }
+export function handleSharedShowcasePlaylist({ raw, opener }) {
+  return opener?.(raw);
 }
 
 export default {
