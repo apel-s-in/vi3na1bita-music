@@ -41,7 +41,4 @@
   window.Modals = window.Modals || {};
   window.Modals.open = open;
   window.Modals.confirm = confirm;
-  Object.defineProperty(window.Modals, 'offlineBody', {
-    configurable: true, get() { return window.ModalTemplates?.offlineBody || null; }
-  });
 })();
