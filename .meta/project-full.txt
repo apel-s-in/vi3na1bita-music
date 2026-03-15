@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c7106a0dacf27f8e4f62f114b275dd882f3b3cc4.idx
-│   │       ├── pack-c7106a0dacf27f8e4f62f114b275dd882f3b3cc4.pack
-│   │       └── pack-c7106a0dacf27f8e4f62f114b275dd882f3b3cc4.rev
+│   │       ├── pack-b4f02cf91bf754fe2458a3fac6244511af8bd8fc.idx
+│   │       ├── pack-b4f02cf91bf754fe2458a3fac6244511af8bd8fc.pack
+│   │       └── pack-b4f02cf91bf754fe2458a3fac6244511af8bd8fc.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -323,6 +323,7 @@ vi3na1bita-music/
 │   │   ├── profile/
 │   │   │   ├── achievements-view.js
 │   │   │   ├── actions.js
+│   │   │   ├── live-bindings.js
 │   │   │   ├── logs-view.js
 │   │   │   ├── model.js
 │   │   │   ├── recs-view.js
@@ -388,7 +389,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 18:19:13 UTC
+Сгенерировано: 2026-03-15 18:19:44 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3749,6 +3750,33 @@ export function bindProfileActions({
     }
   });
 }
+
+//=================================================
+// FILE: /scripts/app/profile/live-bindings.js
+export function bindProfileLiveBindings({ ctx, getContainer, achView }) {
+  if (ctx._profLiveAchBound) return;
+  ctx._profLiveAchBound = true;
+
+  const isProfileOpen = () => ctx.getCurrentAlbum?.() === (window.APP_CONFIG?.SPECIAL_PROFILE_KEY || '__profile__');
+
+  window.addEventListener('analytics:liveTick', () => {
+    const container = getContainer?.();
+    if (!isProfileOpen() || !container?.isConnected) return;
+    const activeTab = container.querySelector('#tab-achievements.active');
+    if (!activeTab) return;
+    achView.updateLiveNodes();
+  });
+
+  window.addEventListener('achievements:updated', () => {
+    const container = getContainer?.();
+    if (!isProfileOpen() || !container?.isConnected) return;
+    const activeTab = container.querySelector('#tab-achievements.active');
+    if (!activeTab) return;
+    achView.render(ctx._achCurrentFilter || 'all');
+  });
+}
+
+export default { bindProfileLiveBindings };
 
 //=================================================
 // FILE: /scripts/app/profile/logs-view.js
