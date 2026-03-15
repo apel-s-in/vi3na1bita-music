@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-254e7f766ffe1b972f87334112b64469c7362348.idx
-│   │       ├── pack-254e7f766ffe1b972f87334112b64469c7362348.pack
-│   │       └── pack-254e7f766ffe1b972f87334112b64469c7362348.rev
+│   │       ├── pack-ee0a9f471f3d4acb1b0885d281774aeadc50b2cb.idx
+│   │       ├── pack-ee0a9f471f3d4acb1b0885d281774aeadc50b2cb.pack
+│   │       └── pack-ee0a9f471f3d4acb1b0885d281774aeadc50b2cb.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -389,7 +389,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 18:21:31 UTC
+Сгенерировано: 2026-03-15 18:22:10 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3886,6 +3886,8 @@ import { renderProfileStats } from './stats-view.js';
 import { renderProfileRecs } from './recs-view.js';
 import { renderProfileLogs } from './logs-view.js';
 import { bindProfileActions } from './actions.js';
+import { bindProfileLiveBindings } from './live-bindings.js';
+import { loadProfileModel } from './model.js';
 
 const esc = s => window.Utils?.escapeHtml ? window.Utils.escapeHtml(String(s || '')) : String(s || '');
 
@@ -3895,28 +3897,14 @@ export async function loadProfileView(ctx) {
   const cont = document.getElementById('track-list');
   if (!cont) return;
 
-  let mDB, cSync, all = [], ach = {}, stk = 0, up = { name: 'Слушатель', avatar: '😎' };
-  try {
-    const [dbM, csM] = await Promise.all([import('../../analytics/meta-db.js'), import('../../analytics/cloud-sync.js')]);
-    mDB = dbM.metaDB; cSync = csM.cloudSync;
-    const r = await Promise.all([mDB.getAllStats(), mDB.getGlobal('unlocked_achievements'), mDB.getGlobal('global_streak'), mDB.getGlobal('user_profile')].map(p => p.catch(()=>null)));
-    all = r[0] || [];
-    ach = r[1]?.value || {};
-    stk = r[2]?.value?.current || 0;
-    up = r[3]?.value || up;
-  } catch (e) { console.error('[Profile] init err:', e); }
-
-  let tFull = 0, tSec = 0;
-  all.forEach(s => { tFull += s.globalFullListenCount || 0; tSec += s.globalListenSeconds || 0; });
-
+  const { metaDB, cloudSync, all, ach, streak, profile, totalFull, totalSec, tokens } = await loadProfileModel();
   const eng = window.achievementEngine;
-  const tks = JSON.parse(localStorage.getItem('cloud_tokens') || '{}');
-  const ab = (id, n, ic) => `<button class="auth-btn ${id} ${tks[id] ? 'connected' : ''}" data-auth="${id}"><span>${ic}</span> ${tks[id] ? 'Подключено' : n}</button>`;
+  const ab = (id, n, ic) => `<button class="auth-btn ${id} ${tokens[id] ? 'connected' : ''}" data-auth="${id}"><span>${ic}</span> ${tokens[id] ? 'Подключено' : n}</button>`;
 
   cont.innerHTML = '';
   const tpl = document.getElementById('profile-template').content.cloneNode(true);
-  tpl.querySelector('#prof-avatar-btn').textContent = up.avatar;
-  tpl.querySelector('#prof-name-inp').value = esc(up.name);
+  tpl.querySelector('#prof-avatar-btn').textContent = profile.avatar;
+  tpl.querySelector('#prof-name-inp').value = esc(profile.name);
   tpl.querySelector('#prof-auth-grid').innerHTML = ab('yandex', 'Яндекс', '💽') + ab('google', 'Google', '☁️') + ab('vk', 'VK ID', '🔵');
 
   const ps = localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex';
@@ -3932,17 +3920,17 @@ export async function loadProfileView(ctx) {
   `);
   tpl.querySelector('.profile-header').insertAdjacentHTML('afterend', `<div class="prof-src-box"><div><div class="prof-src-title">Приоритет источника</div><div class="prof-src-sub">Моментальный резерв включен всегда</div></div><div class="prof-src-switch"><button data-src="yandex" class="prof-src-btn prof-src-btn--yandex ${ps==='yandex'?'prof-src-btn--active':''}">Yandex</button><button data-src="github" class="prof-src-btn prof-src-btn--github ${ps==='github'?'prof-src-btn--active':''}">GitHub</button></div></div>`);
 
-  tpl.querySelector('#prof-stat-tracks').textContent = tFull;
-  tpl.querySelector('#prof-stat-time').textContent = window.Utils?.fmt?.durationHuman ? window.Utils.fmt.durationHuman(tSec) : `${Math.floor(tSec/60)}м`;
-  tpl.querySelector('#prof-stat-streak').textContent = stk;
+  tpl.querySelector('#prof-stat-tracks').textContent = totalFull;
+  tpl.querySelector('#prof-stat-time').textContent = window.Utils?.fmt?.durationHuman ? window.Utils.fmt.durationHuman(totalSec) : `${Math.floor(totalSec/60)}м`;
+  tpl.querySelector('#prof-stat-streak').textContent = streak;
   tpl.querySelector('#prof-stat-ach').textContent = Object.keys(ach).length;
   cont.appendChild(tpl);
 
   const nInp = cont.querySelector('#prof-name-inp');
   if (nInp) {
     nInp.onblur = async () => {
-      up.name = nInp.value.trim() || 'Слушатель';
-      mDB && await mDB.setGlobal('user_profile', up).catch(()=>{});
+      profile.name = nInp.value.trim() || 'Слушатель';
+      metaDB && await metaDB.setGlobal('user_profile', profile).catch(()=>{});
       window.NotificationSystem?.success('Имя сохранено');
     };
     nInp.onkeydown = e => e.key === 'Enter' && nInp.blur();
@@ -3953,32 +3941,22 @@ export async function loadProfileView(ctx) {
 
   renderProfileStats({ container: cont, all });
   renderProfileRecs({ container: cont, all });
-  setTimeout(() => { renderProfileLogs({ container: cont, metaDB: mDB }); }, 100);
+  setTimeout(() => { renderProfileLogs({ container: cont, metaDB }); }, 100);
 
-  if (!ctx._profLiveAchBound) {
-    ctx._profLiveAchBound = true;
-    window.addEventListener('analytics:liveTick', () => {
-      if (ctx.getCurrentAlbum?.() !== (window.APP_CONFIG?.SPECIAL_PROFILE_KEY || '__profile__')) return;
-      const activeTab = cont.querySelector('#tab-achievements.active');
-      if (!activeTab || !cont.isConnected) return;
-      achView.updateLiveNodes();
-    });
-    window.addEventListener('achievements:updated', () => {
-      if (ctx.getCurrentAlbum?.() !== (window.APP_CONFIG?.SPECIAL_PROFILE_KEY || '__profile__')) return;
-      const activeTab = cont.querySelector('#tab-achievements.active');
-      if (!activeTab || !cont.isConnected) return;
-      achView.render(ctx._achCurrentFilter || 'all');
-    });
-  }
+  bindProfileLiveBindings({
+    ctx,
+    getContainer: () => document.getElementById('track-list'),
+    achView
+  });
 
   bindProfileActions({
     ctx,
     container: cont,
     achView,
-    profile: up,
-    metaDB: mDB,
-    cloudSync: cSync,
-    tokens: tks,
+    profile,
+    metaDB,
+    cloudSync,
+    tokens,
     reloadProfile: () => loadProfileView(ctx)
   });
 }
