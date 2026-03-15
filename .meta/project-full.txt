@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b93c8fbe8aa4919b94f2e0708df729e6c6625177.idx
-│   │       ├── pack-b93c8fbe8aa4919b94f2e0708df729e6c6625177.pack
-│   │       └── pack-b93c8fbe8aa4919b94f2e0708df729e6c6625177.rev
+│   │       ├── pack-1b32e65a02d1d012f3c4678a8113a0342704993e.idx
+│   │       ├── pack-1b32e65a02d1d012f3c4678a8113a0342704993e.pack
+│   │       └── pack-1b32e65a02d1d012f3c4678a8113a0342704993e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 11:37:53 UTC
+Сгенерировано: 2026-03-15 11:38:27 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1128,8 +1128,16 @@ export class AchievementEngine {
     this.profile = profData?.value || { xp: 0, level: 1 };
     
     try {
-      const res = await fetch('./data/custom_achievements.json', { cache: 'no-cache' });
-      if (res.ok) Object.assign(this.dict, await res.json());
+      const data = window.Utils?.fetchCache?.getJson
+        ? await window.Utils.fetchCache.getJson({
+            key: 'custom:achievements:v1',
+            url: './data/custom_achievements.json',
+            ttlMs: 43200000,
+            store: 'session',
+            fetchInit: { cache: 'force-cache' }
+          })
+        : await fetch('./data/custom_achievements.json', { cache: 'force-cache' }).then(r => r.ok ? r.json() : null);
+      if (data && typeof data === 'object') Object.assign(this.dict, data);
     } catch (e) {}
 
     // Авто-генерация достижений для альбомов
