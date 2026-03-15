@@ -5,7 +5,7 @@ const MAP = { 'krevetochka': '00', 'mezhdu-zlom-i-dobrom': '01', 'golos-dushi': 
 const ss = (k, v) => v === undefined ? JSON.parse(sessionStorage.getItem(k) || '{}') : sessionStorage.setItem(k, JSON.stringify(v));
 
 class GalleryManager {
-  it = []; idx = 0; tm = null; pre = new Set(); flip = 0;
+  it = []; idx = 0; tm = null; pre = new Set(); flip = 0; meta = new Map();
   
   initialize() {
     const go = d => this.it.length > 1 && (this.show((this.idx + d + this.it.length) % this.it.length), this.play());
@@ -35,12 +35,25 @@ class GalleryManager {
     
     if (!id || ss(C404)[id]) return setL();
     try {
-      const r = await fetch(`${dir}index.json`, { cache: 'force-cache' });
-      if (!r.ok) { if (r.status === 404) ss(C404, { ...ss(C404), [id]: 1 }); throw 0; }
-      const d = await r.json();
-      this.it = (Array.isArray(d.items) ? d.items : (Array.isArray(d) ? d : [])).map(i => this._norm(i, dir)).filter(Boolean);
+      let items = this.meta.get(id);
+      if (!items) {
+        const fc = W.Utils?.fetchCache;
+        const key = `gallery:index:${id}`;
+        const d = fc?.getJson
+          ? await fc.getJson({ key, url: `${dir}index.json`, ttlMs: 43200000, store: 'session', fetchInit: { cache: 'force-cache' } })
+          : await fetch(`${dir}index.json`, { cache: 'force-cache' }).then(r => {
+              if (!r.ok) throw new Error(`HTTP ${r.status}`);
+              return r.json();
+            });
+        items = (Array.isArray(d.items) ? d.items : (Array.isArray(d) ? d : []));
+        this.meta.set(id, items);
+      }
+      this.it = items.map(i => this._norm(i, dir)).filter(Boolean);
       this.it.length ? (this.show(0), this.play()) : setL();
-    } catch { setL(); }
+    } catch (e) {
+      if (String(e?.message || '').includes('404')) ss(C404, { ...ss(C404), [id]: 1 });
+      setL();
+    }
     this._nav();
   }
 
@@ -76,9 +89,16 @@ class GalleryManager {
   async getFirstCoverUrl(key) {
     const id = MAP[key]; if (!id) return LOGO;
     try {
-      const r = await fetch(`${BASE}${id}/index.json`, { cache: 'force-cache' });
-      if (!r.ok) return LOGO;
-      const d = await r.json(), n = this._norm((d.items || d || [])[0], `${BASE}${id}/`);
+      let items = this.meta.get(id);
+      if (!items) {
+        const dir = `${BASE}${id}/`, fc = W.Utils?.fetchCache;
+        const d = fc?.getJson
+          ? await fc.getJson({ key: `gallery:index:${id}`, url: `${dir}index.json`, ttlMs: 43200000, store: 'session', fetchInit: { cache: 'force-cache' } })
+          : await fetch(`${dir}index.json`, { cache: 'force-cache' }).then(r => r.ok ? r.json() : null);
+        items = Array.isArray(d?.items) ? d.items : (Array.isArray(d) ? d : []);
+        this.meta.set(id, items);
+      }
+      const n = this._norm((items || [])[0], `${BASE}${id}/`);
       return n || LOGO;
     } catch { return LOGO; }
   }
