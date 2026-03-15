@@ -151,13 +151,13 @@ async function handleAction(e) {
     case 'toggle-storage-details':
       _stExpanded = !_stExpanded;
       const st = $('#om-st-detail', _overlay);
-      if (st) st.style.display = _stExpanded ? 'block' : 'none';
+      if (st) st.classList.toggle('hidden', !_stExpanded);
       break;
     case 'toggle-list':
       _listExpanded = !_listExpanded;
       el.textContent = _listExpanded ? 'Скрыть список 🔒/☁' : 'Показать список 🔒/☁';
       const c = $('#om-track-list-container', _overlay);
-      if (c) c.style.display = _listExpanded ? 'block' : 'none';
+      if (c) c.classList.toggle('hidden', !_listExpanded);
       break;
     case 'nuke':
       confirmBox({ title: 'Удалить все офлайн-треки?', textHtml: 'Статистика облачков будет сброшена.<br>Global-статистика останется.', confirmText: 'Далее', onConfirm: () => setTimeout(() => confirmBox({ title: 'Вы уверены?', textHtml: 'Это действие нельзя отменить.', confirmText: 'Удалить всё', onConfirm: async () => { await om.removeAllCached(); refresh(); } }), 100) });
