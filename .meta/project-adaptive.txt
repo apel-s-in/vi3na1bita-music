@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8741e54d8f33dba24a4c5d87472216d151ac70a0.idx
-│   │       ├── pack-8741e54d8f33dba24a4c5d87472216d151ac70a0.pack
-│   │       └── pack-8741e54d8f33dba24a4c5d87472216d151ac70a0.rev
+│   │       ├── pack-c3ab6650e21f0e31e8d013ad4005043bb0e4c792.idx
+│   │       ├── pack-c3ab6650e21f0e31e8d013ad4005043bb0e4c792.pack
+│   │       └── pack-c3ab6650e21f0e31e8d013ad4005043bb0e4c792.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 19:19:50 UTC
+Сгенерировано: 2026-03-15 19:23:25 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4046,6 +4046,8 @@ export default { loadProfileView };
  */
 import { ensureLyricsIndexLoaded, searchUidsByQuery } from './lyrics-search.js';
 import { renderFavoriteStar, setFavoriteStarState } from '../../ui/icon-utils.js';
+import { openShowcaseSheet } from './sheet.js';
+import { renderShowcasePlaylists, renameShowcasePlaylist, shareShowcasePlaylist, createShowcasePlaylist } from './playlists.js';
 
 const W = window, D = document, U = W.Utils, ls = localStorage;
 const NS = 'sc3:', ALL = '__default__', SHOW = '__showcase__';
@@ -4400,11 +4402,14 @@ class ShowcaseManager {
   }
 
   _renderPlaylists() {
-    const a = $('sc-playlists-actions'), l = $('sc-playlists');
-    if (!a || !l) return;
-    const id = this._ctxId(), pls = Store.pl();
-    a.innerHTML = `<button class="sc-pl-action ${isDef(id) ? 'active' : ''}" id="sc-pl-all">Все треки</button><button class="sc-pl-action" id="sc-pl-pst" title="Вставить ссылку">📋</button>`;
-    l.innerHTML = !pls.length ? '<div class="sc-pl-empty">Плейлистов пока нет</div>' : pls.map(p => `<div class="sc-pl-row ${id === p.id ? 'active' : ''}" data-pid="${p.id}" ${p.color ? `style="--pl-color:${p.color};"` : ''}><div class="sc-pl-left"><span class="sc-pl-dot"></span><span class="sc-pl-title" title="${esc(p.name)}">${esc(p.name)}</span></div><div class="sc-pl-right"><button class="sc-pl-btn" data-act="rename" data-pid="${p.id}" title="Переименовать">✏️</button><button class="sc-pl-btn" data-act="shr" data-pid="${p.id}" title="Поделиться">🔗</button><button class="sc-pl-btn" data-act="col" data-pid="${p.id}" title="Цвет">🎨</button><button class="sc-pl-btn danger" data-act="del" data-pid="${p.id}" title="Удалить">✖</button></div></div>`).join('');
+    renderShowcasePlaylists({
+      actionsRoot: $('sc-playlists-actions'),
+      listRoot: $('sc-playlists'),
+      activeId: this._ctxId(),
+      playlists: Store.pl(),
+      isDefaultId: isDef,
+      esc
+    });
   }
 
   _status(cnt, srh = false) {
@@ -4674,111 +4679,92 @@ class ShowcaseManager {
     this._cleanupUi();
     const t = trk(uid), id = this._ctxId(), inPl = !isDef(id) && (Store.get(id)?.order || []).includes(uid);
     if (!t) return;
-    const bg = D.createElement('div');
-    bg.className = 'sc-bottom-sheet-bg';
-    bg.innerHTML = `<div class="sc-bottom-sheet"><button class="sc-sheet-close">×</button><div class="sc-sheet-title">${esc(t.title)}</div><div class="sc-sheet-sub">${esc(albT(t.sourceAlbum))}</div>
-      ${fromSearch ? `<button class="sc-sheet-btn" id="bm-play">▶ Воспроизвести</button><hr style="border-color:rgba(255,255,255,.08);margin:8px 0">` : ''}
-      <button class="sc-sheet-btn" id="bm-pl">➕ Добавить в плейлист</button>
-      ${inPl ? `<button class="sc-sheet-btn" id="bm-rm" style="color:#ff6b6b">✖ Удалить из плейлиста</button>` : ''}
-      <button class="sc-sheet-btn" id="bm-eye">${this._isHidden(uid, id) ? `👁 Сделать активным в «${this._ctxName(id)}»` : `🙈 Скрыть в «${this._ctxName(id)}»`}</button>
-      <button class="sc-sheet-btn" id="bm-fv">${W.playerCore?.isFavorite?.(uid) ? '❌ Убрать из Избранного' : '⭐ В Избранное'}</button>
-      <button class="sc-sheet-btn" id="bm-of">🔒 Скачать / Офлайн</button>
-      <button class="sc-sheet-btn" id="bm-dl">⬇️ Сохранить mp3</button>
-      <button class="sc-sheet-btn" id="bm-st">📊 Статистика трека</button>
-      <button class="sc-sheet-btn" id="bm-sh">📸 Поделиться (Карточка)</button>
-      <button class="sc-sheet-btn" id="bm-cl">🎨 Цвет альбома</button>
-      <button class="sc-sheet-btn" id="bm-cx" style="color:#888;justify-content:center">Отмена</button></div>`;
-    D.body.appendChild(this._menu = bg);
-    requestAnimationFrame(() => bg.classList.add('active'));
-    
-    const close = () => {
-      bg.classList.remove('active');
-      setTimeout(() => bg.remove(), 200);
-      this._menu = null;
-    };
-    
-    bg.querySelector('.sc-sheet-close').onclick = close;
-    bg.onclick = e => {
-      const a = e.target.id;
-      if (e.target === bg || a === 'bm-cx') return close();
-      if (!a) return;
-      close();
 
-      if (a === 'bm-play') {
-        if (!fromSearch) return this._playCtx(uid);
-        const one = bldTrk(uid);
-        if (!one) return;
-        return this._playCtx(uid, false, [one], `${SHOW}:search:${this._ctxId()}`);
+    const sh = openShowcaseSheet({
+      title: esc(t.title),
+      subtitle: esc(albT(t.sourceAlbum)),
+      fromSearch,
+      inPlaylist: inPl,
+      hiddenLabel: this._isHidden(uid, id) ? `👁 Сделать активным в «${this._ctxName(id)}»` : `🙈 Скрыть в «${this._ctxName(id)}»`,
+      favoriteLabel: W.playerCore?.isFavorite?.(uid) ? '❌ Убрать из Избранного' : '⭐ В Избранное',
+      onAction: (a) => {
+        this._menu = null;
+
+        if (a === 'bm-play') {
+          if (!fromSearch) return this._playCtx(uid);
+          const one = bldTrk(uid);
+          if (!one) return;
+          return this._playCtx(uid, false, [one], `${SHOW}:search:${this._ctxId()}`);
+        }
+
+        if (a === 'bm-pl') {
+          return setTimeout(() => {
+            const pls = Store.pl();
+            if (!pls.length) return W.NotificationSystem?.warning('Сначала создайте плейлист');
+            const m = W.Modals?.open({ title: 'Добавить в плейлист', bodyHtml: `<div style="display:flex;flex-direction:column;gap:10px">${pls.map(p => `<button class="showcase-btn" data-pid="${p.id}">${esc(p.name)}</button>`).join('')}</div>` });
+            if (!m) return;
+            m.onclick = ev => {
+              const b = ev.target.closest('[data-pid]');
+              if (!b) return;
+              const p = Store.get(b.dataset.pid);
+              if (!p) return;
+              const s = new Set(p.order || []);
+              if (!s.has(uid)) {
+                p.order.push(uid);
+                Store.save(p);
+                W.NotificationSystem?.success('Добавлено');
+              }
+              m.remove();
+            };
+          }, 120);
+        }
+
+        if (a === 'bm-rm') {
+          const p = Store.get(id);
+          if (!p) return;
+          p.order = p.order.filter(x => x !== uid);
+          p.hidden = (p.hidden || []).filter(x => x !== uid);
+          Store.save(p);
+          return this.renderTab();
+        }
+
+        if (a === 'bm-eye') return this._toggleHiddenPersist(uid, id);
+        if (a === 'bm-fv') return W.playerCore?.toggleFavorite?.(uid, { albumKey: t.sourceAlbum });
+        if (a === 'bm-of') return W.OfflineManager?.togglePinned?.(uid);
+
+        if (a === 'bm-dl') {
+          const link = D.createElement('a');
+          U.download.applyDownloadLink(link, bldTrk(uid));
+          if (link.href) link.click();
+          return;
+        }
+
+        if (a === 'bm-st') return setTimeout(() => W.StatisticsModal?.openStatisticsModal?.(uid), 120);
+        if (a === 'bm-sh') return setTimeout(() => import('../../analytics/share-generator.js').then(m => m.ShareGenerator.generateAndShare('track', bldTrk(uid))), 120);
+        if (a === 'bm-cl') return setTimeout(() => this.openColorPicker(null, t.sourceAlbum), 120);
       }
+    });
 
-      if (a === 'bm-pl') {
-        return setTimeout(() => {
-          const pls = Store.pl();
-          if (!pls.length) return W.NotificationSystem?.warning('Сначала создайте плейлист');
-          const m = W.Modals?.open({ title: 'Добавить в плейлист', bodyHtml: `<div style="display:flex;flex-direction:column;gap:10px">${pls.map(p => `<button class="showcase-btn" data-pid="${p.id}">${esc(p.name)}</button>`).join('')}</div>` });
-          if (!m) return;
-          m.onclick = ev => {
-            const b = ev.target.closest('[data-pid]');
-            if (!b) return;
-            const p = Store.get(b.dataset.pid);
-            if (!p) return;
-            const s = new Set(p.order || []);
-            if (!s.has(uid)) {
-              p.order.push(uid);
-              Store.save(p);
-              W.NotificationSystem?.success('Добавлено');
-            }
-            m.remove();
-          };
-        }, 120);
-      }
-
-      if (a === 'bm-rm') {
-        const p = Store.get(id);
-        if (!p) return;
-        p.order = p.order.filter(x => x !== uid);
-        p.hidden = (p.hidden || []).filter(x => x !== uid);
-        Store.save(p);
-        return this.renderTab();
-      }
-
-      if (a === 'bm-eye') return this._toggleHiddenPersist(uid, id);
-      if (a === 'bm-fv') return W.playerCore?.toggleFavorite?.(uid, { albumKey: t.sourceAlbum });
-      if (a === 'bm-of') return W.OfflineManager?.togglePinned?.(uid);
-
-      if (a === 'bm-dl') {
-        const link = D.createElement('a');
-        U.download.applyDownloadLink(link, bldTrk(uid));
-        if (link.href) link.click();
-        return;
-      }
-
-      if (a === 'bm-st') return setTimeout(() => W.StatisticsModal?.openStatisticsModal?.(uid), 120);
-      if (a === 'bm-sh') return setTimeout(() => import('../../analytics/share-generator.js').then(m => m.ShareGenerator.generateAndShare('track', bldTrk(uid))), 120);
-      if (a === 'bm-cl') return setTimeout(() => this.openColorPicker(null, t.sourceAlbum), 120);
-    };
+    this._menu = sh?.el || null;
   }
 
   _renamePl(id) {
-    const p = Store.get(id);
-    if (!p) return;
-    W.Utils?.profileModals?.promptName?.({
-      title: 'Переименовать',
-      value: p.name,
-      btnText: 'Сохранить',
-      onSubmit: v => {
-        p.name = v;
-        Store.save(p);
-        this._renderPlaylists();
-      }
+    renameShowcasePlaylist({
+      id,
+      store: Store,
+      promptName: W.Utils?.profileModals?.promptName,
+      onDone: () => this._renderPlaylists()
     });
   }
 
   _sharePl(id) {
-    const p = Store.get(id);
-    if (!p) return;
-    const u = `${W.location.origin}${W.location.pathname}?playlist=${btoa(unescape(encodeURIComponent(JSON.stringify({ v: 1, n: p.name, u: p.order || [] }))))}`;
-    navigator.share ? navigator.share({ title: p.name, url: u }).catch(() => {}) : navigator.clipboard.writeText(u).then(() => W.NotificationSystem?.success('Ссылка скопирована!'));
+    shareShowcasePlaylist({
+      id,
+      store: Store,
+      origin: W.location.origin,
+      pathname: W.location.pathname,
+      notify: W.NotificationSystem
+    });
   }
 
   _shareList(uids) {
@@ -4788,22 +4774,25 @@ class ShowcaseManager {
   }
 
   _createPl(uids, fromEdit = false, name = '') {
-    const use = (uids || []).filter(trk);
-    if (!use.length) return W.NotificationSystem?.warning('Отметьте нужные треки чекбоксами');
-    const done = n => {
-      const id = Date.now().toString(36);
-      // Если создаем из Edit, берем скрытый статус у выбранных и переносим. Иначе они активны.
-      const hid = (fromEdit && this._drf) ? use.filter(u => this._drf.hid.has(u)) : [];
-      Store.save(mkPl({ id, name: n, order: [...use], hidden: hid }));
-      if (fromEdit) this._leaveEdit();
-      this._q = '';
-      this._sel.clear();
-      this._cleanupUi();
-      Store.setAct(id); // Сразу переключаем на него
-      this.renderTab();
-      W.NotificationSystem?.success(`Плейлист «${n}» создан`);
-    };
-    return name ? done(name) : W.Utils?.profileModals?.promptName?.({ title: 'Новый плейлист', value: `Мой плейлист ${Store.pl().length + 1}`, btnText: 'Создать', onSubmit: done });
+    return createShowcasePlaylist({
+      uids,
+      fromEdit,
+      name,
+      draft: this._drf,
+      store: Store,
+      mkPl,
+      trk,
+      setActive: id => Store.setAct(id),
+      clearUi: () => {
+        if (fromEdit) this._leaveEdit();
+        this._q = '';
+        this._sel.clear();
+        this._cleanupUi();
+      },
+      renderTab: () => this.renderTab(),
+      notify: W.NotificationSystem,
+      promptName: W.Utils?.profileModals?.promptName
+    });
   }
 
   _searchAdd() {
