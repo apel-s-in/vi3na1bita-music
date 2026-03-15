@@ -26,23 +26,7 @@ export const APP_CONFIG = {
   // Ссылки
   SUPPORT_URL: 'https://example.com/support',
   SUPPORT_EMAIL: 'support@vitrina-razbita.ru',
-  GITHUB_URL: 'https://github.com/apel-s-in/vi3na1bita-music',
-  // Настройки плеера
-  PLAYER_SETTINGS: {
-    defaultVolume: 1.0,
-    crossfade: false,
-    preload: true
-  },
-  // Настройки кэширования
-  CACHE_VERSION: 'v1.0.0',
-  CACHE_AUDIO: false, // Кэшировать ли аудио файлы
-  // Аналитика (опционально)
-  ANALYTICS_ENABLED: false,
-  ANALYTICS_ID: null,
-  // Настройки галереи
-  CENTRAL_GALLERY_BASE: './albums/gallery/',
-  // Публикация альбомов
-  PUBLISHED_ALBUM_KEYS: new Set(['odnazhdy-v-skazke', 'golos-dushi', 'mezhdu-zlom-i-dobrom', 'krevetochka'])
+  GITHUB_URL: 'https://github.com/apel-s-in/vi3na1bita-music'
 };
 
 // Экспорт в глобальную область для совместимости
