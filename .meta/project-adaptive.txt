@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c6def03b624b9ca46401866c6fd273b4681d905c.idx
-│   │       ├── pack-c6def03b624b9ca46401866c6fd273b4681d905c.pack
-│   │       └── pack-c6def03b624b9ca46401866c6fd273b4681d905c.rev
+│   │       ├── pack-c7106a0dacf27f8e4f62f114b275dd882f3b3cc4.idx
+│   │       ├── pack-c7106a0dacf27f8e4f62f114b275dd882f3b3cc4.pack
+│   │       └── pack-c7106a0dacf27f8e4f62f114b275dd882f3b3cc4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -324,6 +324,7 @@ vi3na1bita-music/
 │   │   │   ├── achievements-view.js
 │   │   │   ├── actions.js
 │   │   │   ├── logs-view.js
+│   │   │   ├── model.js
 │   │   │   ├── recs-view.js
 │   │   │   ├── stats-view.js
 │   │   │   └── view.js
@@ -387,7 +388,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 14:15:41 UTC
+Сгенерировано: 2026-03-15 18:19:13 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3767,6 +3768,56 @@ export async function renderProfileLogs({ container, metaDB }) {
     lg.innerHTML = '<div class="fav-empty">Ошибка загрузки</div>';
   }
 }
+
+//=================================================
+// FILE: /scripts/app/profile/model.js
+export async function loadProfileModel() {
+  let metaDB = null, cloudSync = null;
+  let all = [], ach = {}, streak = 0, profile = { name: 'Слушатель', avatar: '😎' };
+
+  try {
+    const [dbM, csM] = await Promise.all([
+      import('../../analytics/meta-db.js'),
+      import('../../analytics/cloud-sync.js')
+    ]);
+    metaDB = dbM.metaDB;
+    cloudSync = csM.cloudSync;
+
+    const [stats, achData, streakData, profileData] = await Promise.all([
+      metaDB.getAllStats().catch(() => []),
+      metaDB.getGlobal('unlocked_achievements').catch(() => null),
+      metaDB.getGlobal('global_streak').catch(() => null),
+      metaDB.getGlobal('user_profile').catch(() => null)
+    ]);
+
+    all = stats || [];
+    ach = achData?.value || {};
+    streak = streakData?.value?.current || 0;
+    profile = profileData?.value || profile;
+  } catch (e) {
+    console.error('[Profile] init err:', e);
+  }
+
+  let totalFull = 0, totalSec = 0;
+  all.forEach(s => {
+    totalFull += s.globalFullListenCount || 0;
+    totalSec += s.globalListenSeconds || 0;
+  });
+
+  return {
+    metaDB,
+    cloudSync,
+    all,
+    ach,
+    streak,
+    profile,
+    totalFull,
+    totalSec,
+    tokens: JSON.parse(localStorage.getItem('cloud_tokens') || '{}')
+  };
+}
+
+export default { loadProfileModel };
 
 //=================================================
 // FILE: /scripts/app/profile/recs-view.js
