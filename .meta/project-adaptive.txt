@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5e543b5b07ffdb1869d651aec485dbba12a8831b.idx
-│   │       ├── pack-5e543b5b07ffdb1869d651aec485dbba12a8831b.pack
-│   │       └── pack-5e543b5b07ffdb1869d651aec485dbba12a8831b.rev
+│   │       ├── pack-8741e54d8f33dba24a4c5d87472216d151ac70a0.idx
+│   │       ├── pack-8741e54d8f33dba24a4c5d87472216d151ac70a0.pack
+│   │       └── pack-8741e54d8f33dba24a4c5d87472216d151ac70a0.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,7 +392,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 19:19:17 UTC
+Сгенерировано: 2026-03-15 19:19:50 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5772,7 +5772,7 @@ console.log('Manifest validation OK');
   const D = document;
 
   const fail = (msg) => {
-    D.body.innerHTML = `<div style="position:fixed;inset:0;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;font-family:sans-serif"><h2 style="color:#e80100">Ошибка запуска</h2><p>${msg}</p></div>`;
+    D.body.innerHTML = W.Utils?.profileModals?.failScreen?.(msg) || `<div><h2>Ошибка запуска</h2><p>${msg}</p></div>`;
     throw new Error(msg);
   };
 
