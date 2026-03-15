@@ -88,10 +88,18 @@ export async function loadAndRenderNewsInline(container) {
     const legacyLinks = container.querySelectorAll('a[href*="t.me"], a[href*="news"], .news-inline__links, .news-inline__dot');
     legacyLinks.forEach((el) => el.remove());
 
-    const r = await fetch('./news/news.json', { cache: 'no-cache' });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-
-    const j = await r.json();
+    const j = window.Utils?.fetchCache?.getJson
+      ? await window.Utils.fetchCache.getJson({
+          key: 'news:inline:v1',
+          url: './news/news.json',
+          ttlMs: 300000,
+          store: 'session',
+          fetchInit: { cache: 'force-cache' }
+        })
+      : await fetch('./news/news.json', { cache: 'force-cache' }).then(r => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.json();
+        });
     const items = Array.isArray(j?.items) ? j.items : [];
 
     if (!items.length) {
