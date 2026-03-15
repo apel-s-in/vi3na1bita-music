@@ -29,10 +29,11 @@
     // 2. Analytics & RPG Progress UI (Parallel execution)
     try {
       const loadA = async (p) => await import(`./analytics/${p}.js`);
-      const [M, L, ST, SA, AE, CS] = await Promise.all(['meta-db', 'event-logger', 'session-tracker', 'stats-aggregator', 'achievement-engine', 'cloud-sync'].map(loadA));
+      const [M, L, ST, SA, AE, CS, LS] = await Promise.all(['meta-db', 'event-logger', 'session-tracker', 'stats-aggregator', 'achievement-engine', 'cloud-sync', 'live-stats'].map(loadA));
       
       await M.metaDB.init(); await L.eventLogger.init();
       new ST.SessionTracker(); new SA.StatsAggregator();
+      await LS.liveStatsTracker.initialize();
       W.achievementEngine = new AE.AchievementEngine();
       
       W.addEventListener('achievements:updated', e => {
