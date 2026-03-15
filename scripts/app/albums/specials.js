@@ -148,7 +148,7 @@ export async function loadProfileAlbum(ctx) {
       return `<button class="ach-timer" type="button" data-ach-timer="${a.id}" title="Нажмите для переключения режима">${val}</button>`;
     }
     if (pm.kind === 'streak_days') {
-      const val = mode === 'elapsed' ? `${pm.elapsedDays} / ${pm.targetDays} дн` : `${pm.remainingDays} дн`;
+      const val = mode === 'elapsed' ? `${pm.elapsedDays} / ${pm.targetDays} дн` : `ещё ${pm.remainingDays} дн`;
       return `<button class="ach-timer" type="button" data-ach-timer="${a.id}" title="Нажмите для переключения режима">${val}</button>`;
     }
     return a.progress ? `Осталось: ${Math.max(0, a.progress.target - a.progress.current)}` : '';
