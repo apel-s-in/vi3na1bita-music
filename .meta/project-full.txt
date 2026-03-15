@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ecb5eb0ef4ff79a8fd614de867c49dd03fae60e6.idx
-│   │       ├── pack-ecb5eb0ef4ff79a8fd614de867c49dd03fae60e6.pack
-│   │       └── pack-ecb5eb0ef4ff79a8fd614de867c49dd03fae60e6.rev
+│   │       ├── pack-2d3ed79b722f8840da72b3cd4800fb2b757ae859.idx
+│   │       ├── pack-2d3ed79b722f8840da72b3cd4800fb2b757ae859.pack
+│   │       └── pack-2d3ed79b722f8840da72b3cd4800fb2b757ae859.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 11:35:37 UTC
+Сгенерировано: 2026-03-15 11:36:44 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7222,10 +7222,18 @@ export async function loadAndRenderNewsInline(container) {
     const legacyLinks = container.querySelectorAll('a[href*="t.me"], a[href*="news"], .news-inline__links, .news-inline__dot');
     legacyLinks.forEach((el) => el.remove());
 
-    const r = await fetch('./news/news.json', { cache: 'no-cache' });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-
-    const j = await r.json();
+    const j = window.Utils?.fetchCache?.getJson
+      ? await window.Utils.fetchCache.getJson({
+          key: 'news:inline:v1',
+          url: './news/news.json',
+          ttlMs: 300000,
+          store: 'session',
+          fetchInit: { cache: 'force-cache' }
+        })
+      : await fetch('./news/news.json', { cache: 'force-cache' }).then(r => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.json();
+        });
     const items = Array.isArray(j?.items) ? j.items : [];
 
     if (!items.length) {
