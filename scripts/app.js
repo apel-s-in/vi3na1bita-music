@@ -29,7 +29,7 @@
     // 2. Analytics & RPG Progress UI (Parallel execution)
     try {
       const loadA = async (p) => await import(`./analytics/${p}.js`);
-      const [M, L, ST, SA, AE, CS, LS] = await Promise.all(['meta-db', 'event-logger', 'session-tracker', 'stats-aggregator', 'achievement-engine', 'cloud-sync', 'live-stats'].map(loadA));
+      const [M, L, ST, SA, AE, CS, LS, PF] = await Promise.all(['meta-db', 'event-logger', 'session-tracker', 'stats-aggregator', 'achievement-engine', 'cloud-sync', 'live-stats', '../ui/progress-formatters'].map(loadA));
       
       await M.metaDB.init(); await L.eventLogger.init();
       new ST.SessionTracker(); new SA.StatsAggregator();
@@ -52,25 +52,11 @@
         
         const bTxt = $el('ach-hint-bubble-text');
         if (bTxt && W.achievementEngine?.achievements) {
-          const fmtMs = (ms) => {
-            const s = Math.max(0, Math.floor(ms / 1000));
-            const d = Math.floor(s / 86400);
-            const h = Math.floor((s % 86400) / 3600);
-            const m = Math.floor((s % 3600) / 60);
-            const sec = s % 60;
-            return d > 0 ? `${d}д ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}` : `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
-          };
           const goals = W.achievementEngine.achievements
             .filter(a => !a.isUnlocked && !a.isHidden && (a.progressMeta || (a.progress?.target > a.progress?.current)))
             .sort((a, b) => (b.progress?.pct || 0) - (a.progress?.pct || 0))
             .slice(0, 3)
-            .map(a => {
-              const nm = a.name.replace(/ ур\. \d+/, '');
-              const pm = a.progressMeta;
-              if (pm?.kind === 'time_accum') return `✨ До «${nm}»: ${fmtMs(pm.remainingMs)}`;
-              if (pm?.kind === 'streak_days') return `✨ До «${nm}»: ${pm.remainingDays} дн`;
-              return `✨ До «${nm}»: осталось ${Math.max(0, (a.progress?.target || 0) - (a.progress?.current || 0))}`;
-            });
+            .map(PF.fmtAchBubbleText);
 
           clearInterval(W._bInt); let i = 0;
           const uB = () => { if (!goals.length) return; bTxt.style.opacity = 0; setTimeout(() => { bTxt.innerHTML = goals[i++ % goals.length]; bTxt.style.opacity = 1; }, 300); };
