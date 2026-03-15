@@ -7,6 +7,8 @@ import { ensureLyricsIndexLoaded, searchUidsByQuery } from './lyrics-search.js';
 import { renderFavoriteStar, setFavoriteStarState } from '../../ui/icon-utils.js';
 import { openShowcaseSheet } from './sheet.js';
 import { renderShowcasePlaylists, renameShowcasePlaylist, shareShowcasePlaylist, createShowcasePlaylist } from './playlists.js';
+import { renderShowcaseHeader, renderShowcaseNormal, renderShowcaseSearch, renderShowcaseEdit, renderShowcaseStatus, renderShowcaseSelectionBar, renderShowcaseSortModal } from './render.js';
+import { handleShowcaseEditClick, bindShowcaseDrag, saveShowcaseEdit, resetShowcaseEdit, exitShowcaseEdit } from './edit.js';
 
 const W = window, D = document, U = W.Utils, ls = localStorage;
 const NS = 'sc3:', ALL = '__default__', SHOW = '__showcase__';
@@ -260,15 +262,14 @@ class ShowcaseManager {
   }
 
   _header(c, ui, id) {
-    const sm = c?.sortMode || 'user', resetAble = isDef(id) && this._baseResetChanged(), dirty = !!this._drf?.isDirty();
-    return `<div class="showcase-header-controls">
-      ${this._edit ? `<div class="showcase-edit-banner">✏️ РЕЖИМ РЕДАКТИРОВАНИЯ<div class="sc-edit-actions"><button class="showcase-btn sc-btn-save" style="background:#4caf50;color:#fff;">💾 Сохранить</button><button class="showcase-btn sc-btn-create" style="background:#4daaff;color:#fff;">✨ Создать</button><button class="showcase-btn sc-btn-reset ${dirty ? '' : 'sc-btn-disabled'}" style="border-color:#ff9800;" ${dirty ? '' : 'disabled'}>↺ Сброс</button><button class="showcase-btn sc-btn-exit" style="border-color:#ff6b6b;">✕ Выйти</button></div></div>` : ''}
-      <div class="showcase-search-wrap"><input type="text" class="showcase-search" id="sc-search" placeholder="🔍 Поиск по всему каталогу..." value="${esc(this._q)}"><button type="button" class="showcase-search-clear" id="sc-search-clear" style="display:${this._q ? '' : 'none'}">✕</button></div>
-      ${!this._edit ? `<div class="showcase-btns-row"><button class="showcase-btn sc-btn-edit">✏️ Редактировать</button>${resetAble ? `<button class="showcase-btn sc-btn-master-reset" style="flex:.5">↺ Сброс</button>` : ''}<button class="showcase-btn sc-btn-sort">↕️ ${sm !== 'user' ? '●' : ''} Сортировка</button></div><div class="showcase-btns-row"><button class="showcase-btn sc-btn-playall">▶ Играть всё</button><button class="showcase-btn sc-btn-shuffle">🔀 Перемешать</button></div>` : ''}
-      <div class="showcase-playlists-actions" id="sc-playlists-actions"></div>
-      <div class="showcase-playlists-list" id="sc-playlists"></div>
-      <div class="showcase-status-bar" id="sc-status"></div>
-    </div><div id="sc-tracks-container"></div>`;
+    return renderShowcaseHeader({
+      edit: this._edit,
+      query: this._q,
+      sortMode: c?.sortMode || 'user',
+      resetAble: isDef(id) && this._baseResetChanged(),
+      dirty: !!this._drf?.isDirty(),
+      esc
+    });
   }
 
   async renderTab() {
@@ -296,68 +297,53 @@ class ShowcaseManager {
     return this._renderNormal(box, d);
   }
 
-  _row(t, i, o = {}) {
-    const cls = ['showcase-track', o.isH ? 'inactive' : '', o.srh ? 'sc-search-result' : '', o.chk ? 'selected' : ''].filter(Boolean).join(' ');
-    return `<div class="${cls}" data-uid="${t.uid}" data-hidden="${o.isH ? '1' : '0'}" style="border-left:3px solid ${o.col || 'transparent'}">
-      <div class="tnum" ${o.sN ? '' : 'style="display:none"'}>${i + 1}.</div>
-      <img src="${t.cover}" class="showcase-track-thumb" loading="lazy">
-      <div class="track-title"><div>${esc(t.title)}</div><div class="showcase-track-meta">${esc(albT(t.sourceAlbum))}${o.bdg ? ` ${o.bdg}` : ''}</div></div>
-      ${o.srh ? `<input type="checkbox" class="sc-search-chk" data-uid="${t.uid}" ${o.chk ? 'checked' : ''}>` : `<span class="offline-ind" data-uid="${t.uid}">🔒</span>${renderFavoriteStar(!!W.playerCore?.isFavorite?.(t.uid), `data-uid="${t.uid}" data-album="${t.sourceAlbum}"`)}`}
-      <button class="showcase-track-menu-btn" data-uid="${t.uid}">···</button>
-    </div>`;
-  }
-
   _renderNormal(box, { uids, hid }) {
-    const ui = Store.ui(), cols = Store.cols();
-    let h = '', g = null;
-    uids.forEach((u, i) => {
-      const t = bldTrk(u);
-      if (!t) return;
-      if (ui.viewMode === 'grouped' && g !== t.sourceAlbum) {
-        g = t.sourceAlbum;
-        h += `<div class="showcase-group-header">── ${esc(albT(t.sourceAlbum))} ──</div>`;
-      }
-      h += this._row(t, i, { isH: hid?.has(u), sN: ui.showNumbers, col: cols[t.sourceAlbum] || 'transparent' });
+    renderShowcaseNormal({
+      box,
+      uids,
+      hiddenSet: hid,
+      ui: Store.ui(),
+      colors: Store.cols(),
+      buildTrack: bldTrk,
+      hi: () => this._hi(W.playerCore?.getCurrentTrackUid?.()),
+      setStatus: (n, s) => this._status(n, s),
+      esc,
+      albumTitle: albT,
+      renderFavoriteStar,
+      isFavorite: uid => W.playerCore?.isFavorite?.(uid),
+      injectOfflineIndicators: W.OfflineIndicators?.injectOfflineIndicators
     });
-    box.innerHTML = h || '<div class="fav-empty">Треки не найдены</div>';
-    W.OfflineIndicators?.injectOfflineIndicators?.(box);
-    this._hi(W.playerCore?.getCurrentTrackUid?.());
-    this._status(uids.length, false);
   }
 
   _renderSearch(box, { res, cOrd, cHid }) {
-    const set = new Set(cOrd || []);
-    let h = `<div class="sc-search-info">Найдено: ${res.length} треков по всему приложению</div>`;
-    res.forEach((u, i) => {
-      const t = bldTrk(u);
-      if (!t) return;
-      const inCtx = set.has(u), isH = !!cHid?.has(u);
-      const bdg = inCtx ? (isH ? '<span class="sc-badge sc-badge-hidden">скрыт</span>' : '<span class="sc-badge sc-badge-active">уже есть</span>') : '<span class="sc-badge sc-badge-missing">добавить?</span>';
-      h += this._row(t, i, { srh: true, chk: this._sel.has(u), bdg, isH });
+    renderShowcaseSearch({
+      box,
+      res,
+      ctxOrder: cOrd,
+      ctxHidden: cHid,
+      selected: this._sel,
+      buildTrack: bldTrk,
+      setSelectionBar: () => this._selectionBar(),
+      setStatus: (n, s) => this._status(n, s),
+      esc,
+      albumTitle: albT,
+      renderFavoriteStar,
+      isFavorite: uid => W.playerCore?.isFavorite?.(uid)
     });
-    box.innerHTML = h || '<div class="fav-empty">Ничего не найдено</div>';
-    this._selectionBar();
-    this._status(res.length, true);
   }
 
   _renderEdit(box, uids) {
-    box.innerHTML = uids.map(u => {
-      const t = bldTrk(u);
-      if (!t) return '';
-      const isH = this._drf.hid.has(u), chk = this._drf.chk.has(u), mt = `${esc(albT(t.sourceAlbum))}${isH ? ' · неактивен' : ''}`;
-      return `<div class="showcase-track sc-edit-row ${isH ? 'inactive' : ''} ${chk ? 'selected' : ''}" data-uid="${u}" data-hidden="${isH ? '1' : '0'}" draggable="true">
-        <button class="sc-arrow-up">▲</button>
-        <div class="showcase-drag-handle">⠿</div>
-        <input type="checkbox" class="sc-chk" ${chk ? 'checked' : ''}>
-        <img src="${t.cover}" class="showcase-track-thumb" loading="lazy">
-        <div class="track-title"><div>${esc(t.title)}</div><div class="showcase-track-meta">${mt}</div></div>
-        <button class="sc-eye-btn" title="Показать/Скрыть">${isH ? '🙈' : '👁'}</button>
-        <button class="sc-arrow-down">▼</button>
-      </div>`;
-    }).join('') || '<div class="fav-empty">Нет треков</div>';
-    this._bindDrag(box);
-    this._selectionBar();
-    this._status(uids.length, false);
+    renderShowcaseEdit({
+      box,
+      uids,
+      draft: this._drf,
+      buildTrack: bldTrk,
+      esc,
+      albumTitle: albT,
+      setSelectionBar: () => this._selectionBar(),
+      setStatus: (n, s) => this._status(n, s),
+      bindDrag: (node) => this._bindDrag(node)
+    });
   }
 
   _renderPlaylists() {
@@ -372,39 +358,37 @@ class ShowcaseManager {
   }
 
   _status(cnt, srh = false) {
-    const s = $('sc-status');
-    if (!s) return;
-    const c = this._ctx(), ui = Store.ui(), ord = (c?.order || []).filter(trk), hid = new Set(c?.hidden || []);
-    const total = ord.length, hidden = ord.filter(u => hid.has(u)).length, checked = this._edit ? (this._drf?.chk?.size || 0) : this._sel.size;
-    s.innerHTML = `<span>📋 ${srh ? `${cnt} найдено` : `${total} всего · ${total - hidden} активных · ${hidden} скрытых`}${checked ? `<span style="color:#ff9800"> · ✓ ${checked}</span>` : ''}</span><span style="display:flex;gap:12px;align-items:center"><span id="sc-tg-hidden" style="cursor:pointer;font-size:18px" title="Показывать скрытые">${ui.showHidden ? '👁' : '🙈'}</span><span id="sc-tg-numbers" style="cursor:pointer;font-size:18px;min-width:42px;display:inline-flex;align-items:center;justify-content:center;opacity:${ui.showNumbers ? '1' : '.72'}" title="Нумерация">1,2,3</span><span id="sc-tg-view" style="cursor:pointer;font-size:18px" title="Вид">${ui.viewMode === 'flat' ? '⊞' : '⊟'}</span><span id="sc-tg-placement" style="cursor:pointer;font-size:14px" title="Скрытые в конце">${ui.hiddenPlacement === 'end' ? '↓скр' : '≡скр'}</span></span>`;
+    renderShowcaseStatus({
+      root: $('sc-status'),
+      count: cnt,
+      isSearch: srh,
+      ctx: this._ctx(),
+      ui: Store.ui(),
+      trackExists: trk,
+      checkedCount: this._edit ? (this._drf?.chk?.size || 0) : this._sel.size
+    });
   }
 
   _selectionBar() {
-    const old = $('sc-selection-bar');
-    if (old && old._scClick) old.removeEventListener('click', old._scClick);
-    old?.remove();
-    const n = this._getSelectedSet().size;
-    if (!n) return;
-    const bar = D.createElement('div');
-    bar.id = 'sc-selection-bar';
-    bar.className = 'showcase-sticky-bar';
-    bar.innerHTML = `<span>Выбрано: ${n}</span>${!this._edit ? `<button type="button" class="showcase-btn sc-search-add">➕ Добавить</button>` : ''}<button type="button" class="showcase-btn sc-unified-create" style="background:#4daaff;color:#fff;">✨ Создать</button><button type="button" class="showcase-btn sc-unified-share">📸 Карточка</button><button type="button" class="showcase-btn sc-unified-all">✓ Всё</button><button type="button" class="showcase-btn sc-unified-none">✕ Снять</button>`;
-    bar.addEventListener('click', bar._scClick = (e) => {
-      const b = e.target.closest('button');
-      if (!b) return;
-      if (b.classList.contains('sc-search-add')) return this._searchAdd();
-      if (b.classList.contains('sc-unified-create')) return this._createPl(this._edit ? this._mkFromEdit() : this._getSelectedUids(), !!this._edit);
-      if (b.classList.contains('sc-unified-share')) return this._shareList(this._edit ? this._mkFromEdit() : this._getSelectedUids());
-      if (b.classList.contains('sc-unified-all')) {
-        this._setSelectedAll(true);
-        return this._edit ? this._renderEdit($('sc-tracks-container'), this._drf.getList()) : this._renderBody(++this._tok);
-      }
-      if (b.classList.contains('sc-unified-none')) {
-        this._clearSelected();
-        return this._edit ? this._renderEdit($('sc-tracks-container'), this._drf.getList()) : this._renderBody(++this._tok);
+    renderShowcaseSelectionBar({
+      selectedCount: this._getSelectedSet().size,
+      edit: this._edit,
+      onClick: (e) => {
+        const b = e.target.closest('button');
+        if (!b) return;
+        if (b.classList.contains('sc-search-add')) return this._searchAdd();
+        if (b.classList.contains('sc-unified-create')) return this._createPl(this._edit ? this._mkFromEdit() : this._getSelectedUids(), !!this._edit);
+        if (b.classList.contains('sc-unified-share')) return this._shareList(this._edit ? this._mkFromEdit() : this._getSelectedUids());
+        if (b.classList.contains('sc-unified-all')) {
+          this._setSelectedAll(true);
+          return this._edit ? this._renderEdit($('sc-tracks-container'), this._drf.getList()) : this._renderBody(++this._tok);
+        }
+        if (b.classList.contains('sc-unified-none')) {
+          this._clearSelected();
+          return this._edit ? this._renderEdit($('sc-tracks-container'), this._drf.getList()) : this._renderBody(++this._tok);
+        }
       }
     });
-    D.body.appendChild(bar);
   }
 
   _bindRoot(root) {
@@ -497,25 +481,17 @@ class ShowcaseManager {
   }
 
   _onEditClick(e) {
-    const row = e.target.closest('.sc-edit-row'), uid = row?.dataset.uid;
-    if (!uid || !this._drf) return;
-    
-    if (e.target.classList.contains('sc-chk')) {
-       this._toggleSelected(uid);
-       row.classList.toggle('selected', this._drf.chk.has(uid));
-       this._selectionBar();
-       this._status(this._drf.getList().length, false);
-       return;
-    }
-    else if (e.target.closest('.sc-eye-btn')) {
-       this._drf.toggleHidden(uid);
-       this._renderEdit($('sc-tracks-container'), this._drf.getList());
-    }
-    else if (e.target.closest('.sc-arrow-up')) this._drf.move(uid, -1);
-    else if (e.target.closest('.sc-arrow-down')) this._drf.move(uid, 1);
-    else return;
-    
-    this._renderEdit($('sc-tracks-container'), this._drf.getList());
+    return handleShowcaseEditClick({
+      event: e,
+      draft: this._drf,
+      toggleSelected: uid => this._toggleSelected(uid),
+      renderEdit: (uids) => this._renderEdit($('sc-tracks-container'), uids),
+      getList: () => this._drf.getList(),
+      getStatusCount: () => {
+        this._selectionBar();
+        this._status(this._drf.getList().length, false);
+      }
+    });
   }
 
   _switchCtx(id) {
@@ -540,66 +516,43 @@ class ShowcaseManager {
   }
 
   _saveEdit() {
-    if (!this._drf) return;
-    const id = this._ctxId(), ord = this._drf.ord.filter(trk), hid = [...this._drf.hid].filter(trk);
-    if (isDef(id)) {
-      const c = Store.def();
-      c.order = ord;
-      c.hidden = hid.filter(u => ord.includes(u));
-      Store.setDef(c);
-    } else {
-      const c = Store.get(id);
-      if (!c) return;
-      c.order = ord;
-      c.hidden = hid.filter(u => ord.includes(u));
-      Store.save(c);
-    }
-    this._leaveEdit();
-    W.NotificationSystem?.success('Сохранено в текущем плейлисте');
+    saveShowcaseEdit({
+      draft: this._drf,
+      ctxId: this._ctxId(),
+      isDefaultId: isDef,
+      store: Store,
+      trackExists: trk,
+      leaveEdit: () => this._leaveEdit(),
+      notify: W.NotificationSystem
+    });
   }
 
   _mkFromEdit() { return this._drf?.ord.filter(u => this._drf.chk.has(u) && trk(u)) || []; }
 
   _resetEdit() {
-    if (!this._drf?.isDirty()) return;
-    W.Modals?.confirm({
-      title: 'Сброс',
-      textHtml: this._drf.isDef ? 'Список вернётся к начальному заводскому: упорядочится по альбомам, все треки станут видимыми. Вы уверены?' : 'Плейлист вернётся к состоянию при его создании. Вы уверены?',
-      confirmText: 'Да, сбросить',
-      cancelText: 'Отмена',
-      onConfirm: () => {
-        this._drf.reset();
-        this._renderEdit($('sc-tracks-container'), this._drf.getList());
-      }
+    resetShowcaseEdit({
+      draft: this._drf,
+      modals: W.Modals,
+      isDefault: !!this._drf?.isDef,
+      renderEdit: (uids) => this._renderEdit($('sc-tracks-container'), uids)
     });
   }
 
   _exitEdit() {
-    if (!this._drf?.isDirty()) return this._leaveEdit();
-    W.Modals?.confirm({ title: 'Вы внесли изменения', textHtml: 'Если выйдете, они не сохранятся.', confirmText: 'Да, выйти', cancelText: 'Отмена', onConfirm: () => this._leaveEdit() });
+    exitShowcaseEdit({
+      draft: this._drf,
+      modals: W.Modals,
+      leaveEdit: () => this._leaveEdit()
+    });
   }
 
   _bindDrag(box) {
-    if (box._scDrag) return;
-    box._scDrag = 1;
-    box.addEventListener('dragstart', e => {
-      const r = e.target.closest('.sc-edit-row');
-      if (!r) return;
-      e.dataTransfer.setData('text/plain', r.dataset.uid);
-      r.classList.add('is-dragging');
+    bindShowcaseDrag({
+      box,
+      documentRef: D,
+      uidEsc,
+      draft: this._drf
     });
-    box.addEventListener('dragover', e => { e.preventDefault(); e.target.closest('.sc-edit-row')?.classList.add('drag-over'); });
-    box.addEventListener('dragleave', e => e.target.closest('.sc-edit-row')?.classList.remove('drag-over'));
-    box.addEventListener('drop', e => {
-      e.preventDefault();
-      const to = e.target.closest('.sc-edit-row'), uid = e.dataTransfer.getData('text/plain');
-      D.querySelectorAll('.drag-over').forEach(x => x.classList.remove('drag-over'));
-      const from = uid ? box.querySelector(`.sc-edit-row[data-uid="${uidEsc(uid)}"]`) : null;
-      if (!to || !from || to === from) return;
-      to.before(from);
-      this._drf?.setOrd([...D.querySelectorAll('.sc-edit-row')].map(x => x.dataset.uid).filter(Boolean));
-    });
-    box.addEventListener('dragend', () => D.querySelectorAll('.is-dragging').forEach(x => x.classList.remove('is-dragging')));
   }
 
   _playCtx(uid = null, shuf = false, listOverride = null, keyOverride = null) {
@@ -620,18 +573,19 @@ class ShowcaseManager {
   _openSort() {
     const id = this._ctxId(), c = this._ctx(), sm = c?.sortMode || 'user';
     const opts = [['user','👤 Мой порядок'],['name-asc','А→Я'],['name-desc','Я→А'],['album-desc','Альбомы ↓ (Новые)'],['album-asc','Альбомы ↑ (Старые)'],['plays-desc','Топ прослушиваний'],['plays-asc','Меньше всего'],['last-played','Недавние'],['favorites-first','Сначала ⭐']];
-    const m = W.Modals?.open({ title: 'Сортировка', bodyHtml: `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${opts.map(([v, l]) => `<button class="showcase-btn ${sm === v ? 'active' : ''}" data-val="${v}" style="${v === 'user' ? 'grid-column:1/-1' : ''}">${l}</button>`).join('')}</div>` });
-    if (!m) return;
-    m.onclick = e => {
-      const b = e.target.closest('[data-val]');
-      if (!b) return;
-      const t = isDef(id) ? Store.def() : Store.get(id);
-      if (!t) return;
-      t.sortMode = b.dataset.val;
-      isDef(id) ? Store.setDef(t) : Store.save(t);
-      m.remove();
-      this.renderTab();
-    };
+    renderShowcaseSortModal({
+      modalApi: W.Modals,
+      currentSort: sm,
+      options: opts,
+      onPick: (val, modal) => {
+        const t = isDef(id) ? Store.def() : Store.get(id);
+        if (!t) return;
+        t.sortMode = val;
+        isDef(id) ? Store.setDef(t) : Store.save(t);
+        modal?.remove?.();
+        this.renderTab();
+      }
+    });
   }
 
   _openMenu(uid, fromSearch = false) {
