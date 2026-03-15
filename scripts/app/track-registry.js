@@ -51,23 +51,7 @@ function markProvider(src, ok) {
   _providerHealth.set(src, { ok, at: Date.now() });
 }
 
-// Кэш config.json в sessionStorage для минимизации GET-запросов
-function getCachedConfig(key) {
-  try {
-    const raw = sessionStorage.getItem(`tr:cfg:${key}`);
-    if (!raw) return null;
-    const { data, ts } = JSON.parse(raw);
-    // Кэш живёт 10 минут
-    if (Date.now() - ts > 600_000) return null;
-    return data;
-  } catch { return null; }
-}
-
-function setCachedConfig(key, data) {
-  try {
-    sessionStorage.setItem(`tr:cfg:${key}`, JSON.stringify({ data, ts: Date.now() }));
-  } catch {}
-}
+const CFG_TTL_MS = 43200000; // 12 часов
 
 /**
  * Fetch JSON с dual-source fallback.
@@ -189,9 +173,10 @@ export async function ensurePopulated() {
 
         const bases = { yandex: y_base, github: g_base };
 
-        // Проверяем sessionStorage-кэш
-        const cached = getCachedConfig(a.key);
+        const fc = window.Utils?.fetchCache;
+        const cKey = `tr:cfg:${a.key}`;
         let raw, activeSrc, activeBase;
+        const cached = fc?.get?.(cKey, CFG_TTL_MS, 'session');
 
         if (cached) {
           raw = cached.json;
@@ -206,7 +191,7 @@ export async function ensurePopulated() {
           raw = result.json;
           activeSrc = result.src;
           activeBase = result.base;
-          setCachedConfig(a.key, { json: raw, src: activeSrc, base: activeBase });
+          fc?.set?.(cKey, { json: raw, src: activeSrc, base: activeBase }, 'session');
         }
 
         const title = raw.albumName || a.title;
@@ -268,14 +253,14 @@ export function resetSourceCache() {
   _albums.clear();
   _albumConfigs.clear();
   _albumTracks.clear();
-  // Очищаем sessionStorage-кэш конфигов
   try {
+    const fc = window.Utils?.fetchCache;
     const keys = [];
     for (let i = 0; i < sessionStorage.length; i++) {
       const k = sessionStorage.key(i);
       if (k?.startsWith('tr:cfg:')) keys.push(k);
     }
-    keys.forEach(k => sessionStorage.removeItem(k));
+    keys.forEach(k => fc?.del ? fc.del(k, 'session') : sessionStorage.removeItem(k));
   } catch {}
 }
 
