@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c110f3257ef6ff4ff79459e52e2fadf1d563e896.idx
-│   │       ├── pack-c110f3257ef6ff4ff79459e52e2fadf1d563e896.pack
-│   │       └── pack-c110f3257ef6ff4ff79459e52e2fadf1d563e896.rev
+│   │       ├── pack-37f3d5a05b9b82f09a23e6fcd4f03a8d710008cb.idx
+│   │       ├── pack-37f3d5a05b9b82f09a23e6fcd4f03a8d710008cb.pack
+│   │       └── pack-37f3d5a05b9b82f09a23e6fcd4f03a8d710008cb.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -396,7 +396,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 20:06:13 UTC
+Сгенерировано: 2026-03-15 20:07:03 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -9043,7 +9043,7 @@ export async function openStatisticsModal(uid = null) {
     <div class="sm-ach-wrap">
       ${(engine?.achievements || []).map(a => `
         <div class="ach-item ${achVal[a.id] ? '' : 'locked'} sm-ach-row">
-          <div class="ach-icon sm-ach-icon" style="filter:${achVal[a.id] ? 'none' : 'grayscale(1)'};opacity:${achVal[a.id] ? '1' : '0.5'};">${a.icon}</div>
+          <div class="ach-icon sm-ach-icon ${achVal[a.id] ? '' : 'sm-ach-locked'}">${a.icon}</div>
           <div class="sm-ach-main">
             <div class="sm-ach-name">${a.name}</div>
             <div class="sm-ach-desc">${a.desc}${!achVal[a.id] && a.progressMeta ? ` · ${fmtAchTimerText(a, 'remaining')}` : ''}</div>
