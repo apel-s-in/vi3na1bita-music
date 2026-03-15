@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8dd307c7305b6e9908ad4f4d458a7d33038e8901.idx
-│   │       ├── pack-8dd307c7305b6e9908ad4f4d458a7d33038e8901.pack
-│   │       └── pack-8dd307c7305b6e9908ad4f4d458a7d33038e8901.rev
+│   │       ├── pack-60f0d85523ece6f6cdb0a7b1a80ae63c17176618.idx
+│   │       ├── pack-60f0d85523ece6f6cdb0a7b1a80ae63c17176618.pack
+│   │       └── pack-60f0d85523ece6f6cdb0a7b1a80ae63c17176618.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -399,7 +399,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 20:57:30 UTC
+Сгенерировано: 2026-03-15 21:12:58 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4328,7 +4328,7 @@ export default {
  * Showcase «Витрина Разбита» — stable compact rebuild v4.0
  * 100% Spec-Compliant. Optimized DOM, State Separation.
  */
-import { ensureLyricsIndexLoaded, searchUidsByQuery } from './lyrics-search.js';
+import { ensureLyricsIndexLoaded } from './lyrics-search.js';
 import { renderFavoriteStar, setFavoriteStarState } from '../../ui/icon-utils.js';
 import { renderShowcasePlaylists, renameShowcasePlaylist, shareShowcasePlaylist, createShowcasePlaylist } from './playlists.js';
 import { renderShowcaseHeader, renderShowcaseNormal, renderShowcaseSearch, renderShowcaseEdit, renderShowcaseStatus, renderShowcaseSelectionBar } from './render.js';
@@ -4771,7 +4771,7 @@ class ShowcaseManager {
 
   _enterEdit() {
     if (!this._ctx()) return;
-    this._drf = new Draft(this._ctxId()); // Игнорирует сортировку, берет manual order
+    this._drf = new Draft(this._ctxId(), isDef); // Игнорирует сортировку, берет manual order
     this._edit = true;
     this.renderTab();
   }
