@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6d2b375752adaceccb552a4ff3aab53259250f65.idx
-│   │       ├── pack-6d2b375752adaceccb552a4ff3aab53259250f65.pack
-│   │       └── pack-6d2b375752adaceccb552a4ff3aab53259250f65.rev
+│   │       ├── pack-8d0ad1429edfb94ee46eb1ddf7481b6b9d3fdedd.idx
+│   │       ├── pack-8d0ad1429edfb94ee46eb1ddf7481b6b9d3fdedd.pack
+│   │       └── pack-8d0ad1429edfb94ee46eb1ddf7481b6b9d3fdedd.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -332,7 +332,8 @@ vi3na1bita-music/
 │   │   │   └── view.js
 │   │   ├── showcase/
 │   │   │   ├── index.js
-│   │   │   └── lyrics-search.js
+│   │   │   ├── lyrics-search.js
+│   │   │   └── sheet.js
 │   │   ├── albums.js
 │   │   ├── gallery.js
 │   │   ├── offline-ui-bootstrap.js
@@ -390,7 +391,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 18:58:10 UTC
+Сгенерировано: 2026-03-15 19:16:28 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4965,6 +4966,54 @@ export function searchUidsByQuery({ query }) {
   scored.sort((x, y) => y.score - x.score);
   return scored.map(x => x.uid);
 }
+
+//=================================================
+// FILE: /scripts/app/showcase/sheet.js
+export function openShowcaseSheet({
+  title = '',
+  subtitle = '',
+  fromSearch = false,
+  inPlaylist = false,
+  hiddenLabel = '',
+  favoriteLabel = '',
+  onAction
+} = {}) {
+  const bg = document.createElement('div');
+  bg.className = 'sc-bottom-sheet-bg';
+  bg.innerHTML = `<div class="sc-bottom-sheet"><button class="sc-sheet-close">×</button><div class="sc-sheet-title">${title}</div><div class="sc-sheet-sub">${subtitle}</div>
+    ${fromSearch ? `<button class="sc-sheet-btn" id="bm-play">▶ Воспроизвести</button><hr style="border-color:rgba(255,255,255,.08);margin:8px 0">` : ''}
+    <button class="sc-sheet-btn" id="bm-pl">➕ Добавить в плейлист</button>
+    ${inPlaylist ? `<button class="sc-sheet-btn" id="bm-rm" style="color:#ff6b6b">✖ Удалить из плейлиста</button>` : ''}
+    <button class="sc-sheet-btn" id="bm-eye">${hiddenLabel}</button>
+    <button class="sc-sheet-btn" id="bm-fv">${favoriteLabel}</button>
+    <button class="sc-sheet-btn" id="bm-of">🔒 Скачать / Офлайн</button>
+    <button class="sc-sheet-btn" id="bm-dl">⬇️ Сохранить mp3</button>
+    <button class="sc-sheet-btn" id="bm-st">📊 Статистика трека</button>
+    <button class="sc-sheet-btn" id="bm-sh">📸 Поделиться (Карточка)</button>
+    <button class="sc-sheet-btn" id="bm-cl">🎨 Цвет альбома</button>
+    <button class="sc-sheet-btn" id="bm-cx" style="color:#888;justify-content:center">Отмена</button></div>`;
+
+  document.body.appendChild(bg);
+  requestAnimationFrame(() => bg.classList.add('active'));
+
+  const close = () => {
+    bg.classList.remove('active');
+    setTimeout(() => bg.remove(), 200);
+  };
+
+  bg.querySelector('.sc-sheet-close')?.addEventListener('click', close);
+  bg.addEventListener('click', e => {
+    const act = e.target.id;
+    if (e.target === bg || act === 'bm-cx') return close();
+    if (!act) return;
+    close();
+    onAction?.(act);
+  });
+
+  return { el: bg, close };
+}
+
+export default { openShowcaseSheet };
 
 //=================================================
 // FILE: /scripts/app/track-registry.js
