@@ -212,7 +212,60 @@
     lsSet: (k, v) => localStorage.setItem(k, v),
     lsGetBool01: (k, d = false) => (localStorage.getItem(k) ?? (d ? '1' : '0')) === '1',
     lsSetBool01: (k, v) => localStorage.setItem(k, v ? '1' : '0'),
-    lsGetJson: (k, d = null) => U.obj.safeJson(k, d)
+    lsGetJson: (k, d = null) => U.obj.safeJson(k, d),
+    ssGetJson: (k, d = null) => { try { const v = sessionStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+    ssSetJson: (k, v) => { try { sessionStorage.setItem(k, JSON.stringify(v)); } catch {} },
+    fetchCache: (() => {
+      const mem = new Map(), pend = new Map();
+      const now = () => Date.now();
+      const read = (key, ttlMs, store = 'session') => {
+        const m = mem.get(key);
+        if (m && (!ttlMs || now() - m.ts < ttlMs)) return m.val;
+        const box = store === 'local' ? localStorage : sessionStorage;
+        try {
+          const raw = box.getItem(key);
+          if (!raw) return null;
+          const rec = JSON.parse(raw);
+          if (ttlMs && now() - Number(rec.ts || 0) >= ttlMs) return null;
+          mem.set(key, { ts: Number(rec.ts || now()), val: rec.val });
+          return rec.val;
+        } catch { return null; }
+      };
+      const write = (key, val, store = 'session') => {
+        const rec = { ts: now(), val };
+        mem.set(key, rec);
+        try { (store === 'local' ? localStorage : sessionStorage).setItem(key, JSON.stringify(rec)); } catch {}
+        return val;
+      };
+      const del = (key, store = 'session') => {
+        mem.delete(key);
+        try { (store === 'local' ? localStorage : sessionStorage).removeItem(key); } catch {}
+      };
+      const cached = async ({ key, url, ttlMs = 0, type = 'json', store = 'session', fetchInit = {} }) => {
+        const hit = read(key, ttlMs, store);
+        if (hit != null) return hit;
+        if (pend.has(key)) return pend.get(key);
+        const p = (async () => {
+          try {
+            const res = await fetch(url, fetchInit);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const val = type === 'text' ? await res.text() : await res.json();
+            return write(key, val, store);
+          } finally {
+            pend.delete(key);
+          }
+        })();
+        pend.set(key, p);
+        return p;
+      };
+      return {
+        getJson: (opts) => cached({ ...opts, type: 'json' }),
+        getText: (opts) => cached({ ...opts, type: 'text' }),
+        get: read,
+        set: write,
+        del
+      };
+    })()
   };
   
   // Safe Global Aliases
