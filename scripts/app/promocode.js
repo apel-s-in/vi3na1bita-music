@@ -13,10 +13,11 @@
 
   const showIOS = () => {
     if (!isIOS || matchMedia('(display-mode: standalone)').matches || navigator.standalone || LS.getItem(IOS_KEY)) return;
+    W.Utils?.dom?.createStyleOnce?.('ios-prompt-inline-cleanup', `.ios-prompt-title{font-weight:800;font-size:18px;margin-bottom:8px}.ios-prompt-text{opacity:.85;margin-bottom:14px}`);
     setTimeout(() => {
       const el = D.createElement('div');
       el.className = 'ios-install-prompt';
-      el.innerHTML = `<button class="ios-prompt-close" type="button">×</button><div class="ios-prompt-content"><img class="ios-prompt-icon" src="icons/apple-touch-icon.png"><div style="font-weight:800;font-size:18px;margin-bottom:8px">Установить приложение</div><div style="opacity:.85;margin-bottom:14px">Нажмите <strong>Поделиться</strong> ↗️<br>и выберите <strong>«На экран Домой»</strong></div><button class="ios-prompt-button" type="button">Понятно</button></div>`;
+      el.innerHTML = `<button class="ios-prompt-close" type="button">×</button><div class="ios-prompt-content"><img class="ios-prompt-icon" src="icons/apple-touch-icon.png"><div class="ios-prompt-title">Установить приложение</div><div class="ios-prompt-text">Нажмите <strong>Поделиться</strong> ↗️<br>и выберите <strong>«На экран Домой»</strong></div><button class="ios-prompt-button" type="button">Понятно</button></div>`;
       el.onclick = e => { if (e.target.closest('button') || e.target.closest('.ios-prompt-close')) { el.classList.remove('show'); LS.setItem(IOS_KEY, '1'); setTimeout(() => el.remove(), 350); } };
       D.body.appendChild(el);
       requestAnimationFrame(() => el.classList.add('show'));
