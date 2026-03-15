@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-40ca01443a41e9ae93cc23bea572dabc5d808ec9.idx
-│   │       ├── pack-40ca01443a41e9ae93cc23bea572dabc5d808ec9.pack
-│   │       └── pack-40ca01443a41e9ae93cc23bea572dabc5d808ec9.rev
+│   │       ├── pack-01377b50e59330e173f1a3f2290dcb1d6955d6c4.idx
+│   │       ├── pack-01377b50e59330e173f1a3f2290dcb1d6955d6c4.pack
+│   │       └── pack-01377b50e59330e173f1a3f2290dcb1d6955d6c4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -399,7 +399,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 20:54:59 UTC
+Сгенерировано: 2026-03-15 20:55:27 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -10786,7 +10786,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .om-storage-segbar{display:flex;height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden;cursor:pointer;margin-bottom:8px;transition:box-shadow .2s}
 .om-storage-segbar:hover{box-shadow:0 0 0 2px rgba(124,77,255,.25)}
 .om-storage-segbar:active{box-shadow:0 0 0 2px rgba(124,77,255,.4)}
-.om-segbar__fill{height:100%;transition:width .5s ease;min-width:0}
+.om-segbar__fill{height:100%;transition:width .5s ease;min-width:0;width:var(--seg-w,0%)}
 .om-segbar--pinned{background:#f5c842}
 .om-segbar--cloud{background:#5bc0de}
 .om-segbar--transient{background:#ef5350}
