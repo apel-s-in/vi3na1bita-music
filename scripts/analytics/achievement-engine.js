@@ -166,14 +166,17 @@ export class AchievementEngine {
       const rawCurrent = Number(cur || 0);
       const rawTarget = Number(tgt || 0);
       const isHid = !unl && r.hidden;
-      const viewCurrent = r.formatters?.target_hours ? r.formatters.target_hours(rawCurrent) : rawCurrent;
+      const viewCurrent = r.formatters?.target_hours ? r.formatters.target_hours(effectiveCurrent) : effectiveCurrent;
       const viewTarget = r.formatters?.target_hours ? r.formatters.target_hours(rawTarget) : rawTarget;
-      const pct = rawTarget > 0 ? Math.min(100, Math.max(0, (rawCurrent / rawTarget) * 100)) : 0;
+      let effectiveCurrent = rawCurrent;
+      let pct = rawTarget > 0 ? Math.min(100, Math.max(0, (rawCurrent / rawTarget) * 100)) : 0;
       let progressMeta = null;
 
       if (!unl && !isHid && rawTarget > 0) {
         if (r.id === 'time_total') {
           const projected = Number(live?.projectedTotalSec || rawCurrent);
+          effectiveCurrent = projected;
+          pct = rawTarget > 0 ? Math.min(100, Math.max(0, (projected / rawTarget) * 100)) : 0;
           progressMeta = {
             kind: 'time_accum',
             live: true,
@@ -185,15 +188,20 @@ export class AchievementEngine {
             targetRaw: rawTarget
           };
         } else if (r.id === 'streak_base') {
+          const projectedStreak = Number(live?.projectedStreak || rawCurrent);
+          effectiveCurrent = projectedStreak;
+          pct = rawTarget > 0 ? Math.min(100, Math.max(0, (projectedStreak / rawTarget) * 100)) : 0;
           progressMeta = {
             kind: 'streak_days',
-            live: false,
+            live: true,
             toggleableTimer: true,
-            remainingDays: Math.max(0, rawTarget - rawCurrent),
-            elapsedDays: rawCurrent,
+            remainingDays: Math.max(0, rawTarget - projectedStreak),
+            elapsedDays: projectedStreak,
             targetDays: rawTarget,
-            currentRaw: rawCurrent,
-            targetRaw: rawTarget
+            currentRaw: projectedStreak,
+            targetRaw: rawTarget,
+            hasTodayPersistent: !!live?.hasTodayPersistent,
+            wouldCountToday: !!live?.wouldCountToday
           };
         } else {
           progressMeta = {
