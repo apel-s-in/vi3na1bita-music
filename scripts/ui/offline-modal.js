@@ -65,32 +65,32 @@ const refresh = async () => {
       <div class="om-storage-row"><span class="om-storage-label">Занято</span><span class="om-storage-value">${fMB(est.used)} / ${fMB(est.quota)}</span></div>
       <div class="om-storage-segbar" data-action="toggle-storage-details">
         <div class="om-segbar__fill om-segbar--pinned" style="width:${pct(bd.pinned)}%"></div><div class="om-segbar__fill om-segbar--cloud" style="width:${pct(bd.cloud)}%"></div>
-        <div class="om-segbar__fill om-segbar--transient" style="width:${pct(bd.transient)}%"></div><div class="om-segbar__fill" style="background:#9c27b0; width:${pct(bd.dynamic)}%"></div>
+        <div class="om-segbar__fill om-segbar--transient" style="width:${pct(bd.transient)}%"></div><div class="om-segbar__fill om-fill-dyn" style="width:${pct(bd.dynamic)}%"></div>
         <div class="om-segbar__fill om-segbar--other" style="width:${pct(bd.other)}%"></div>
       </div>
       <div class="om-storage-legend">
         ${bd.pinned ? `<span class="om-legend-item"><span class="om-legend-dot om-legend-dot--pinned"></span>🔒 ${fB(bd.pinned)}</span>` : ''}
         ${bd.cloud ? `<span class="om-legend-item"><span class="om-legend-dot om-legend-dot--cloud"></span>☁ ${fB(bd.cloud)}</span>` : ''}
-        ${bd.dynamic ? `<span class="om-legend-item"><span class="om-legend-dot" style="background:#9c27b0"></span>🧠 ${fB(bd.dynamic)}</span>` : ''}
+        ${bd.dynamic ? `<span class="om-legend-item"><span class="om-legend-dot om-fill-dyn"></span>🧠 ${fB(bd.dynamic)}</span>` : ''}
         ${bd.transient ? `<span class="om-legend-item"><span class="om-legend-dot om-legend-dot--transient"></span>⏳ ${fB(bd.transient)}</span>` : ''}
       </div>
-      <div id="om-st-detail" style="display:${_stExpanded ? 'block' : 'none'}; margin-top:12px"><button class="om-btn om-btn--danger" data-action="nuke" style="width:100%">Очистить кэш (🔒 и ☁)</button></div>
+      <div id="om-st-detail" class="${_stExpanded ? '' : 'hidden'} om-mt10"><button class="om-btn om-btn--danger om-fullw" data-action="nuke">Очистить кэш (🔒 и ☁)</button></div>
     </div>`;
 
   const sNet = (pl.supportsNetControl ? 
     `<div class="om-toggles-row">${tplTog('toggle-wifi', ns.wifiEnabled, 'Ethernet / Wi-Fi')}${tplTog('toggle-cell', ns.cellularEnabled, 'Cellular')}</div>
      ${tplTog('toggle-toast', ns.cellularToast, '🔔 Уведомления при Cellular: ' + (ns.cellularToast ? 'ВКЛ' : 'ВЫКЛ'), true)}` :
     `<div class="om-net-unsupported">Управление сетью ограничено ОС</div>
-     <button class="om-toggle ${ns.killSwitch ? 'om-toggle--on' : 'om-toggle--neutral'}" data-action="toggle-kill" style="margin-top:8px"><span class="om-toggle__dot"></span><span class="om-toggle__label">Отключить весь интернет</span></button>
+     <button class="om-toggle ${ns.killSwitch ? 'om-toggle--on' : 'om-toggle--neutral'} om-net-kill-btn" data-action="toggle-kill"><span class="om-toggle__dot"></span><span class="om-toggle__label">Отключить весь интернет</span></button>
      ${ns.killSwitch ? '<div class="om-net-kill-hint">⚠️ Все запросы заблокированы (Offline).</div>' : ''}`) +
-    `<div class="om-traffic" style="margin-top:12px"><div class="om-traffic__title">Трафик (${esc(ts?.monthName)})</div>
+    `<div class="om-traffic om-mt10"><div class="om-traffic__title">Трафик (${esc(ts?.monthName)})</div>
      ${ts?.type === 'split' ? `<div class="om-traffic__group"><div class="om-traffic__subtitle">Wi-Fi</div>${trRow('Месяц:', ts.wifi.monthly)}${trRow('Всего:', ts.wifi.total)}</div><div class="om-traffic__group"><div class="om-traffic__subtitle">Cellular</div>${trRow('Месяц:', ts.cellular.monthly)}${trRow('Всего:', ts.cellular.total)}</div>` : `${trRow('Месяц:', ts.general.monthly)}${trRow('Всего:', ts.general.total)}`}
-     <button class="om-btn om-btn--ghost" data-action="clear-traffic" style="margin-top:8px; width:100%;">Очистить статистику</button></div>`;
+     <button class="om-btn om-btn--ghost om-mt8 om-fullw" data-action="clear-traffic">Очистить статистику</button></div>`;
 
   const sList = !pcList.length ? `<div class="om-list-empty">Нет сохранённых треков</div>` : pcList.map(m => {
     const isPin = m.type === 'pinned', tr = window.TrackRegistry?.getTrackByUid?.(m.uid);
     const sub = isPin ? `🔒 Закреплён • ${m.quality === 'lo' ? 'Lo' : 'Hi'} • ${fMB(m.size)}` : `☁ Осталось ${Math.max(0, Math.ceil(((m.cloudExpiresAt || 0) - Date.now()) / 86400000))} дн. • ${m.quality === 'lo' ? 'Lo' : 'Hi'} • ${fMB(m.size)}`;
-    return `<div class="om-list-item"><div class="om-list-icon">${isPin ? '🔒' : '☁'}</div><div class="om-list-title" title="${esc(tr?.title || m.uid)}">${esc(tr?.title || m.uid)}<div class="om-list-meta">${sub}</div></div><button class="om-btn om-btn--ghost" data-action="list-item-act" data-uid="${m.uid}" style="padding:4px 8px; font-size:11px;">${isPin ? 'Снять' : '🔒'}</button><button class="om-list-del" data-action="list-item-del" data-uid="${m.uid}" title="Удалить">×</button></div>`;
+    return `<div class="om-list-item"><div class="om-list-icon">${isPin ? '🔒' : '☁'}</div><div class="om-list-title" title="${esc(tr?.title || m.uid)}">${esc(tr?.title || m.uid)}<div class="om-list-meta">${sub}</div></div><button class="om-btn om-btn--ghost om-item-btn-sm" data-action="list-item-act" data-uid="${m.uid}">${isPin ? 'Снять' : '🔒'}</button><button class="om-list-del" data-action="list-item-del" data-uid="${m.uid}" title="Удалить">×</button></div>`;
   }).join('');
 
   const sPC = `
@@ -109,22 +109,22 @@ const refresh = async () => {
         <label class="om-setting__label">Лимит умного кэша (Dynamic), МБ</label>
         <input type="number" id="inp-dyn-mb" value="${dynLimitMB}" min="0" class="om-setting__input">
       </div>
-      <button class="om-btn om-btn--outline" data-action="apply-r2-dyn" style="width:100%; margin-top:10px; margin-bottom:14px">Применить лимит Dynamic</button>
+      <button class="om-btn om-btn--outline om-fullw om-mt10 om-mb14" data-action="apply-r2-dyn">Применить лимит Dynamic</button>
     ` : ''}
 
-    <button class="om-btn om-btn--primary" data-action="apply-cloud" style="width:100%; margin-bottom:14px">Применить настройки</button>
+    <button class="om-btn om-btn--primary om-fullw om-mb14" data-action="apply-cloud">Применить настройки</button>
     <div class="om-divider"></div>
-    <button class="om-btn om-btn--outline" data-action="toggle-list" style="width:100%">${_listExpanded ? 'Скрыть список 🔒/☁' : 'Показать список 🔒/☁'}</button>
-    <div id="om-track-list-container" style="display:${_listExpanded ? 'block' : 'none'}; padding-top: 10px;"><div class="om-track-list" id="om-track-list">${sList}</div><button class="om-btn om-btn--danger-outline om-list-del-all" data-action="nuke" style="width:100%; margin-top:10px;">Удалить все закреплённые и облачные</button></div>`;
+    <button class="om-btn om-btn--outline om-fullw" data-action="toggle-list">${_listExpanded ? 'Скрыть список 🔒/☁' : 'Показать список 🔒/☁'}</button>
+    <div id="om-track-list-container" class="${_listExpanded ? '' : 'hidden'} om-pt10"><div class="om-track-list" id="om-track-list">${sList}</div><button class="om-btn om-btn--danger-outline om-list-del-all om-fullw om-mt10" data-action="nuke">Удалить все закреплённые и облачные</button></div>`;
 
   const sModes = `
-    <div class="om-mode-card ${isR2 ? 'om-mode-card--disabled' : ''}" style="margin-bottom:10px"><div class="om-mode-card__head"><div><div class="om-mode-card__name">PlaybackCache (R1)</div><div class="om-mode-card__desc">Окно предзагрузки из 3 треков</div></div><div class="om-mode-toggle"><button class="om-mode-btn ${om.getMode() === 'R0' ? 'om-mode-btn--active' : ''}" data-action="set-mode" data-val="R0" ${isR2 ? 'disabled' : ''}>OFF</button><button class="om-mode-btn ${om.getMode() === 'R1' ? 'om-mode-btn--active' : ''}" data-action="set-mode" data-val="R1" ${isR2 ? 'disabled' : ''}>ON</button></div></div></div>
+    <div class="om-mode-card ${isR2 ? 'om-mode-card--disabled' : ''} om-mb10"><div class="om-mode-card__head"><div><div class="om-mode-card__name">PlaybackCache (R1)</div><div class="om-mode-card__desc">Окно предзагрузки из 3 треков</div></div><div class="om-mode-toggle"><button class="om-mode-btn ${om.getMode() === 'R0' ? 'om-mode-btn--active' : ''}" data-action="set-mode" data-val="R0" ${isR2 ? 'disabled' : ''}>OFF</button><button class="om-mode-btn ${om.getMode() === 'R1' ? 'om-mode-btn--active' : ''}" data-action="set-mode" data-val="R1" ${isR2 ? 'disabled' : ''}>ON</button></div></div></div>
     <div class="om-mode-card"><div class="om-mode-card__head"><div><div class="om-mode-card__name">SmartPrefetch (R2)</div><div class="om-mode-card__desc">Умное фоновое хранилище (MRU)</div></div><div class="om-mode-toggle"><button class="om-mode-btn ${!isR2 ? 'om-mode-btn--active' : ''}" data-action="set-mode" data-val="not-R2">OFF</button><button class="om-mode-btn ${isR2 ? 'om-mode-btn--active' : ''}" data-action="set-mode" data-val="R2">ON</button></div></div></div>`;
 
   const sUpd = !updList.length
-    ? `<div class="om-list-empty">Обновления не требуются</div><button class="om-btn om-btn--ghost" data-action="recheck-updates" style="width:100%;margin-top:10px">Проверить снова</button>`
-    : `<div class="om-track-list">${updList.map(m => { const tr = window.TrackRegistry?.getTrackByUid?.(m.uid); return `<div class="om-list-item"><div class="om-list-icon">!</div><div class="om-list-title" title="${esc(tr?.title || m.uid)}">${esc(tr?.title || m.uid)}<div class="om-list-meta">Нужна проверка/обновление${m.remoteSize ? ` • ~${Number(m.remoteSize).toFixed(1)} МБ` : ''}</div></div><button class="om-btn om-btn--ghost" data-action="clear-needs-update" data-uid="${m.uid}" style="padding:4px 8px;font-size:11px">Скрыть</button></div>`; }).join('')}</div><button class="om-btn om-btn--ghost" data-action="recheck-updates" style="width:100%;margin-top:10px">Проверить снова</button>`;
-  const sDl = `<div class="om-dl-stats"><div class="om-dl-stat"><span class="om-dl-stat__num">${dl.active}</span><span class="om-dl-stat__label">Активных</span></div><div class="om-dl-stat"><span class="om-dl-stat__num">${dl.queued}</span><span class="om-dl-stat__label">В очереди</span></div></div><button class="om-btn om-btn--ghost" data-action="dl-toggle" style="width:100%;">${_dlPaused ? '▶ Возобновить' : '⏸ Пауза'}</button>`;
+    ? `<div class="om-list-empty">Обновления не требуются</div><button class="om-btn om-btn--ghost om-fullw om-mt10" data-action="recheck-updates">Проверить снова</button>`
+    : `<div class="om-track-list">${updList.map(m => { const tr = window.TrackRegistry?.getTrackByUid?.(m.uid); return `<div class="om-list-item"><div class="om-list-icon">!</div><div class="om-list-title" title="${esc(tr?.title || m.uid)}">${esc(tr?.title || m.uid)}<div class="om-list-meta">Нужна проверка/обновление${m.remoteSize ? ` • ~${Number(m.remoteSize).toFixed(1)} МБ` : ''}</div></div><button class="om-btn om-btn--ghost om-item-btn-sm" data-action="clear-needs-update" data-uid="${m.uid}">Скрыть</button></div>`; }).join('')}</div><button class="om-btn om-btn--ghost om-fullw om-mt10" data-action="recheck-updates">Проверить снова</button>`;
+  const sDl = `<div class="om-dl-stats"><div class="om-dl-stat"><span class="om-dl-stat__num">${dl.active}</span><span class="om-dl-stat__label">Активных</span></div><div class="om-dl-stat"><span class="om-dl-stat__num">${dl.queued}</span><span class="om-dl-stat__label">В очереди</span></div></div><button class="om-btn om-btn--ghost om-fullw" data-action="dl-toggle">${_dlPaused ? '▶ Возобновить' : '⏸ Пауза'}</button>`;
 
   body.innerHTML = tplSect('📦', 'Хранилище', sStorage) + tplSect('🌐', 'Сетевая политика', sNet) + tplSect('🔒', 'Pinned и Cloud', sPC) + tplSect('!', 'Треки с обновлениями', sUpd) + tplSect('⚙️', 'Режимы', sModes) + tplSect('⬇️', 'Загрузки', sDl, true);
   body.scrollTop = scroll;
