@@ -6,6 +6,7 @@
   const W = window, D = document, U = W.Utils;
   const LS = { V: 'lyricsViewMode', A: 'lyricsAnimationEnabled' }, PRE = 'lyr_';
   const sess = (k, v) => v === undefined ? JSON.parse(sessionStorage.getItem(k) || 'null') : sessionStorage.setItem(k, JSON.stringify(v));
+  const fc = W.Utils?.fetchCache;
   const esc = s => U?.escapeHtml?.(String(s||'')) || String(s||'');
 
   let st = { list: [], has: false, mode: 'normal', anim: false, lIdx: -100, mini: false }, dom = {};
@@ -21,7 +22,8 @@
   const _pend = new Map();
   const fetchL = async (u) => {
     if (!(u = String(u || '').trim()) || sess('404_'+u)) return null;
-    const k = PRE + u, c = sess(k);
+    const k = PRE + u;
+    const c = fc?.get?.(k, 43200000, 'session') ?? sess(k);
     if (c) return c === 'NO' ? null : c;
     if (_pend.has(u)) return _pend.get(u);
 
@@ -54,7 +56,7 @@
               });
 
           if (Array.isArray(j)) {
-            sess(k, j);
+            fc?.set?.(k, j, 'session');
             return j;
           }
         } catch (e) {
@@ -64,7 +66,7 @@
         }
       }
 
-      sess(k, 'NO');
+      fc?.set?.(k, 'NO', 'session');
       sess('404_'+u, 1);
       return null;
     })();
