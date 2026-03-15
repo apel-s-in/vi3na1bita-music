@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e2895845fb41b6c84994967078e6a0b19b431cdb.idx
-│   │       ├── pack-e2895845fb41b6c84994967078e6a0b19b431cdb.pack
-│   │       └── pack-e2895845fb41b6c84994967078e6a0b19b431cdb.rev
+│   │       ├── pack-7588abdc11ad66fe5893ba0f4e19a6a61314cf97.idx
+│   │       ├── pack-7588abdc11ad66fe5893ba0f4e19a6a61314cf97.pack
+│   │       └── pack-7588abdc11ad66fe5893ba0f4e19a6a61314cf97.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -379,7 +379,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 09:05:58 UTC
+Сгенерировано: 2026-03-15 09:06:48 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2959,7 +2959,7 @@ export async function loadProfileAlbum(ctx) {
       return `<button class="ach-timer" type="button" data-ach-timer="${a.id}" title="Нажмите для переключения режима">${val}</button>`;
     }
     if (pm.kind === 'streak_days') {
-      const val = mode === 'elapsed' ? `${pm.elapsedDays} / ${pm.targetDays} дн` : `${pm.remainingDays} дн`;
+      const val = mode === 'elapsed' ? `${pm.elapsedDays} / ${pm.targetDays} дн` : `ещё ${pm.remainingDays} дн`;
       return `<button class="ach-timer" type="button" data-ach-timer="${a.id}" title="Нажмите для переключения режима">${val}</button>`;
     }
     return a.progress ? `Осталось: ${Math.max(0, a.progress.target - a.progress.current)}` : '';
