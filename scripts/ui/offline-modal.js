@@ -64,9 +64,9 @@ const refresh = async () => {
     <div class="om-storage-info">
       <div class="om-storage-row"><span class="om-storage-label">Занято</span><span class="om-storage-value">${fMB(est.used)} / ${fMB(est.quota)}</span></div>
       <div class="om-storage-segbar" data-action="toggle-storage-details">
-        <div class="om-segbar__fill om-segbar--pinned" style="width:${pct(bd.pinned)}%"></div><div class="om-segbar__fill om-segbar--cloud" style="width:${pct(bd.cloud)}%"></div>
-        <div class="om-segbar__fill om-segbar--transient" style="width:${pct(bd.transient)}%"></div><div class="om-segbar__fill om-fill-dyn" style="width:${pct(bd.dynamic)}%"></div>
-        <div class="om-segbar__fill om-segbar--other" style="width:${pct(bd.other)}%"></div>
+        <div class="om-segbar__fill om-segbar--pinned" style="--seg-w:${pct(bd.pinned)}%"></div><div class="om-segbar__fill om-segbar--cloud" style="--seg-w:${pct(bd.cloud)}%"></div>
+        <div class="om-segbar__fill om-segbar--transient" style="--seg-w:${pct(bd.transient)}%"></div><div class="om-segbar__fill om-fill-dyn" style="--seg-w:${pct(bd.dynamic)}%"></div>
+        <div class="om-segbar__fill om-segbar--other" style="--seg-w:${pct(bd.other)}%"></div>
       </div>
       <div class="om-storage-legend">
         ${bd.pinned ? `<span class="om-legend-item"><span class="om-legend-dot om-legend-dot--pinned"></span>🔒 ${fB(bd.pinned)}</span>` : ''}
