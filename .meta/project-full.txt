@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1786bd267b43c5c70f4ef983178221abf24330f5.idx
-│   │       ├── pack-1786bd267b43c5c70f4ef983178221abf24330f5.pack
-│   │       └── pack-1786bd267b43c5c70f4ef983178221abf24330f5.rev
+│   │       ├── pack-523aa2a5667146b418d833bae1e39532358d393b.idx
+│   │       ├── pack-523aa2a5667146b418d833bae1e39532358d393b.pack
+│   │       └── pack-523aa2a5667146b418d833bae1e39532358d393b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 12:10:48 UTC
+Сгенерировано: 2026-03-15 12:11:47 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7172,9 +7172,6 @@ window.IconUtils = {
   window.Modals = window.Modals || {};
   window.Modals.open = open;
   window.Modals.confirm = confirm;
-  Object.defineProperty(window.Modals, 'offlineBody', {
-    configurable: true, get() { return window.ModalTemplates?.offlineBody || null; }
-  });
 })();
 
 //=================================================
