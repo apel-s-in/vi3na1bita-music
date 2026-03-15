@@ -5,7 +5,6 @@
 
   const W = window, D = document, U = W.Utils;
   const LS = { V: 'lyricsViewMode', A: 'lyricsAnimationEnabled' }, PRE = 'lyr_';
-  const sess = (k, v) => v === undefined ? JSON.parse(sessionStorage.getItem(k) || 'null') : sessionStorage.setItem(k, JSON.stringify(v));
   const fc = W.Utils?.fetchCache;
   const esc = s => U?.escapeHtml?.(String(s||'')) || String(s||'');
 
@@ -21,10 +20,10 @@
 
   const _pend = new Map();
   const fetchL = async (u) => {
-    if (!(u = String(u || '').trim()) || sess('404_'+u)) return null;
+    if (!(u = String(u || '').trim())) return null;
     const k = PRE + u;
-    const c = fc?.get?.(k, 43200000, 'session') ?? sess(k);
-    if (c) return c === 'NO' ? null : c;
+    const rec = fc?.get?.(k, 43200000, 'session');
+    if (rec && typeof rec === 'object') return rec.ok ? rec.data : null;
     if (_pend.has(u)) return _pend.get(u);
 
     const p = (async () => {
@@ -41,10 +40,9 @@
 
       for (const fetchUrl of urls) {
         try {
-          const key = `lyrics:timeline:${fetchUrl}`;
-          const j = W.Utils?.fetchCache?.getJson
-            ? await W.Utils.fetchCache.getJson({
-                key,
+          const j = fc?.getJson
+            ? await fc.getJson({
+                key: `lyrics:timeline:${fetchUrl}`,
                 url: fetchUrl,
                 ttlMs: 43200000,
                 store: 'session',
@@ -56,7 +54,7 @@
               });
 
           if (Array.isArray(j)) {
-            fc?.set?.(k, j, 'session');
+            fc?.set?.(k, { ok: 1, data: j }, 'session');
             return j;
           }
         } catch (e) {
@@ -66,8 +64,7 @@
         }
       }
 
-      fc?.set?.(k, 'NO', 'session');
-      sess('404_'+u, 1);
+      fc?.set?.(k, { ok: 0 }, 'session');
       return null;
     })();
 
@@ -156,7 +153,7 @@
     },
     onTrackChange: async (t) => {
       st.has = false; st.list = []; st.lIdx = -100;
-      if (!t?.lyrics || t.hasLyrics === false || sess('404_'+t.lyrics)) return updateUI();
+      if (!t?.lyrics || t.hasLyrics === false) return updateUI();
       
       if (initDom() && dom.lyr) dom.lyr.innerHTML = '<div class="lyrics-spinner"></div>';
       const d = await fetchL(t.lyrics);
