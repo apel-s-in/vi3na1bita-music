@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4053a5687a79899fcde3e08b0b70aa7085ddcb03.idx
-│   │       ├── pack-4053a5687a79899fcde3e08b0b70aa7085ddcb03.pack
-│   │       └── pack-4053a5687a79899fcde3e08b0b70aa7085ddcb03.rev
+│   │       ├── pack-64ec469d5bd6d1a359ac0b17939d2e31ad272648.idx
+│   │       ├── pack-64ec469d5bd6d1a359ac0b17939d2e31ad272648.pack
+│   │       └── pack-64ec469d5bd6d1a359ac0b17939d2e31ad272648.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -382,7 +382,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 12:00:41 UTC
+Сгенерировано: 2026-03-15 12:01:46 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7048,8 +7048,19 @@ window.IconUtils = {
 
       for (const fetchUrl of urls) {
         try {
-          const r = await fetch(fetchUrl);
-          if (r.ok) { txt = await r.text(); break; }
+          txt = W.Utils?.fetchCache?.getText
+            ? await W.Utils.fetchCache.getText({
+                key: `lyrics:fulltext:${fetchUrl}`,
+                url: fetchUrl,
+                ttlMs: 43200000,
+                store: 'session',
+                fetchInit: { cache: 'force-cache' }
+              })
+            : await fetch(fetchUrl, { cache: 'force-cache' }).then(r => {
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                return r.text();
+              });
+          if (txt) break;
         } catch {}
       }
       if (!txt) console.warn('[LyricsModal] Fulltext fetch failed. Falling back to timeline.');
