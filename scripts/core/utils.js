@@ -265,7 +265,48 @@
         set: write,
         del
       };
-    })()
+    })(),
+    profileModals: {
+      promptName: ({ title = '', value = '', btnText = 'Сохранить', onSubmit } = {}) => {
+        const esc = U.ui.escapeHtml;
+        const m = W.Modals?.open?.({ title, bodyHtml: `<input type="text" id="pm-name-inp" value="${esc(value)}" style="width:100%;padding:10px;border-radius:8px;background:rgba(255,255,255,.1);color:#fff;border:1px solid #666;margin-bottom:15px"><button class="showcase-btn" id="pm-name-save">${esc(btnText)}</button>` });
+        if (!m) return null;
+        setTimeout(() => m.querySelector('#pm-name-inp')?.select(), 50);
+        m.querySelector('#pm-name-save')?.addEventListener('click', () => {
+          const v = m.querySelector('#pm-name-inp')?.value.trim();
+          if (!v) return;
+          m.remove();
+          onSubmit?.(v);
+        });
+        return m;
+      },
+      avatarPicker: ({ title = 'Аватар', items = [], onPick } = {}) => {
+        U.dom.createStyleOnce('profile-avatar-picker-styles', `.prof-ava-grid{display:flex;flex-wrap:wrap;gap:12px;justify-content:center}.prof-ava-btn{font-size:24px;background:#232b38}`);
+        const m = W.Modals?.open?.({ title, bodyHtml: `<div class="prof-ava-grid">${items.map(a => `<button class="showcase-color-dot prof-ava-btn" data-ava="${U.ui.escapeHtml(a)}">${U.ui.escapeHtml(a)}</button>`).join('')}</div>` });
+        if (!m) return null;
+        m.onclick = ev => {
+          const b = ev.target.closest('[data-ava]');
+          if (!b) return;
+          onPick?.(b.dataset.ava, m);
+        };
+        return m;
+      },
+      resetProfileData: ({ onAction } = {}) => {
+        U.dom.createStyleOnce('profile-reset-modal-styles', `.prof-reset-btn{width:100%}.prof-reset-btn--mb{margin-bottom:8px}`);
+        const m = W.Modals?.confirm?.({
+          title: 'Очистка',
+          textHtml: `<button class="om-btn om-btn--outline prof-reset-btn prof-reset-btn--mb" data-act="stats">Только статистику</button><button class="om-btn om-btn--outline prof-reset-btn prof-reset-btn--mb" data-act="ach">Только достижения</button><button class="om-btn om-btn--danger prof-reset-btn" data-act="all">Сбросить всё</button>`,
+          confirmText: 'Закрыть',
+          cancelText: 'Отмена'
+        });
+        if (!m) return null;
+        m.onclick = ev => {
+          const act = ev.target.closest('.om-btn')?.dataset?.act;
+          if (act) onAction?.(act, m);
+        };
+        return m;
+      }
+    }
   };
   
   // Safe Global Aliases
