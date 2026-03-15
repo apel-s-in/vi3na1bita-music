@@ -23,6 +23,7 @@ const isDef = id => id === ALL;
 const uidEsc = u => CSS.escape(String(u || ''));
 
 const getCat = () => (W.albumsIndex || []).filter(a => !String(a?.key || '').startsWith('__')).flatMap(a => (W.TrackRegistry?.getTracksForAlbum?.(a.key) || []).map(t => t?.uid).filter(Boolean));
+const sig = (o = [], h = []) => JSON.stringify({ o: [...o], h: [...h] });
 const { Store, Draft, mkPl, normCtx, jGet, jSet } = createShowcaseStore({ trk, getCat, ls: localStorage });
 
 const bldTrk = uid => {
