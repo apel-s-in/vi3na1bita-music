@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a2027636c7ffaff79bbb1dd06c72350cfc0662cf.idx
-│   │       ├── pack-a2027636c7ffaff79bbb1dd06c72350cfc0662cf.pack
-│   │       └── pack-a2027636c7ffaff79bbb1dd06c72350cfc0662cf.rev
+│   │       ├── pack-8b6940e8bc8c64b9793c1303023c55a1962d93dd.idx
+│   │       ├── pack-8b6940e8bc8c64b9793c1303023c55a1962d93dd.pack
+│   │       └── pack-8b6940e8bc8c64b9793c1303023c55a1962d93dd.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -399,7 +399,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-15 20:52:33 UTC
+Сгенерировано: 2026-03-15 20:53:10 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2508,21 +2508,7 @@ export class StatsAggregator {
     
     ['SleepTimer', 'LyricsModal', 'SystemInfoManager'].forEach(run);
     import('./ui/statistics-modal.js').catch(e => console.warn('Statistics modal skipped:', e));
-
-    const fb = $('feedback-link');
-    if (fb) fb.onclick = e => {
-      e.preventDefault();
-      W.Utils?.dom?.createStyleOnce?.('feedback-modal-styles', `
-        .fb-modal-note{margin-bottom:20px;color:#8ab8fd;text-align:center}
-        .fb-modal-links{display:flex;flex-direction:column;gap:15px;max-width:300px;margin:0 auto}
-        .fb-modal-link{color:#fff;padding:15px;border-radius:8px;text-decoration:none;text-align:center}
-        .fb-modal-link--tg{background:#0088cc}
-        .fb-modal-link--mail{background:#4daaff}
-        .fb-modal-link--gh{background:#333}
-      `);
-      W.Modals?.open?.({ title: 'Обратная связь', maxWidth: 420, bodyHtml: `<p class="fb-modal-note">Есть предложения или нашли ошибку?<br>Напишите нам!</p><div class="fb-modal-links"><a href="https://t.me/vitrina_razbita" target="_blank" class="fb-modal-link fb-modal-link--tg">Telegram</a><a href="mailto:${C.SUPPORT_EMAIL || 'support@vitrina-razbita.ru'}" target="_blank" class="fb-modal-link fb-modal-link--mail">Email</a><a href="${C.GITHUB_URL || 'https://github.com/apel-s-in/vi3na1bita-music'}" target="_blank" class="fb-modal-link fb-modal-link--gh">GitHub</a></div>` });
-    };
-    const sl = $('support-link'); if (sl) sl.href = C.SUPPORT_URL || 'https://example.com/support';
+    import('./ui/app-modals.js').then(m => m.bindAppModals?.({ W, D, config: C })).catch(e => console.warn('App modals skipped:', e));
   };
 
   const setupHotkeys = () => {
