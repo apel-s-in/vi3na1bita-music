@@ -148,7 +148,11 @@ export async function loadProfileAlbum(ctx) {
     const vs = all.filter(s => s.uid !== 'global');
     window.Utils?.dom?.createStyleOnce?.('profile-stat-sub-styles', `.stat-sub{color:#888;font-size:12px;text-align:center}`);
     const mkL = (arr, fn) => arr.length ? `<ul class="stat-list">${arr.map(s => `<li><span>${esc(window.TrackRegistry?.getTrackByUid(s.uid)?.title)}</span><span>${fn(s)}</span></li>`).join('')}</ul>` : `<div class="stat-sub">Недостаточно данных</div>`;
-    const rCh = (id, tit, d, lsk, lb) => `<div class="chart-block" id="${id}"><div class="chart-title" style="cursor:pointer" data-tg="${id}-bars" data-ls="${lsk}">${tit}</div><div class="chart-bars" id="${id}-bars" ${localStorage.getItem(lsk)==='0'?'style="display:none"':''}>${d.map((v, i) => `<div class="chart-row"><div class="label">${lb?lb[i]:String(i).padStart(2,'0')}</div><div class="bar"><div class="fill" style="width:${Math.round((v/Math.max(1,...d))*100)}%"></div></div><div class="val">${v}</div></div>`).join('')}</div></div>`;
+    window.Utils?.dom?.createStyleOnce?.('profile-chart-styles', `
+      .chart-title--click{cursor:pointer}
+      .chart-bars--hidden{display:none}
+    `);
+    const rCh = (id, tit, d, lsk, lb) => `<div class="chart-block" id="${id}"><div class="chart-title chart-title--click" data-tg="${id}-bars" data-ls="${lsk}">${tit}</div><div class="chart-bars ${localStorage.getItem(lsk)==='0'?'chart-bars--hidden':''}" id="${id}-bars">${d.map((v, i) => `<div class="chart-row"><div class="label">${lb?lb[i]:String(i).padStart(2,'0')}</div><div class="bar"><div class="fill" style="width:${Math.round((v/Math.max(1,...d))*100)}%"></div></div><div class="val">${v}</div></div>`).join('')}</div></div>`;
     
     const byH = Array(24).fill(0), byW = Array(7).fill(0);
     vs.forEach(s => { (s.byHour||[]).forEach((v,h)=>byH[h]+=v||0); (s.byWeekday||[]).forEach((v,d)=>byW[d]+=v||0); });
