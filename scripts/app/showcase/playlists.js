@@ -7,7 +7,7 @@ export const renameShowcasePlaylist = ({ id: i, store: s, promptName: pN, onDone
 export const shareShowcasePlaylist = ({ id: i, store: s, origin: o, pathname: ph, notify: n }) => { const p = s.get(i); if (p) { const u = `${o}${ph}?playlist=${btoa(unescape(encodeURIComponent(JSON.stringify({ v: 1, n: p.name, u: p.order || [] }))))}`; navigator.share ? navigator.share({ title: p.name, url: u }).catch(()=>{}) : navigator.clipboard.writeText(u).then(() => n?.success?.('Ссылка скопирована!')); } };
 export const createShowcasePlaylist = ({ uids: u, fromEdit: fE = false, name: n = '', draft: d = null, store: s, mkPl: mP, trk: t, setActive: sA, clearUi: cU, renderTab: rT, notify: nf, promptName: pN }) => {
   const use = (u || []).filter(t); if (!use.length) return nf?.warning?.('Отметьте нужные треки чекбоксами');
-  const done = nm => { s.save(mP({ id: Date.now().toString(36), name: nm, order: [...use], hidden: fE && d ? use.filter(x => d.hid.has(x)) : [] })); cU?.(); sA?.(id); rT?.(); nf?.success?.(`Плейлист «${nm}» создан`); };
+  const done = nm => { const id = Date.now().toString(36); s.save(mP({ id, name: nm, order: [...use], hidden: fE && d ? use.filter(x => d.hid.has(x)) : [] })); cU?.(); sA?.(id); rT?.(); nf?.success?.(`Плейлист «${nm}» создан`); };
   n ? done(n) : pN?.({ title: 'Новый плейлист', value: `Мой плейлист ${s.pl().length + 1}`, btnText: 'Создать', onSubmit: done });
 };
 export default { renderShowcasePlaylists, renameShowcasePlaylist, shareShowcasePlaylist, createShowcasePlaylist };
