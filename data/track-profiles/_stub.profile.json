@@ -1,0 +1,17 @@
+{
+  "version": "track-profile-v1",
+  "uid": "__STUB__",
+  "musicAnalysis": null,
+  "lyricAnalysis": null,
+  "finalProfile": null,
+  "presentation": {
+    "tagline_ru": "",
+    "hook_ru": "",
+    "mini_description_ru": "",
+    "hero_quote_ru": ""
+  },
+  "relations": {
+    "similar_tracks": [],
+    "relation_types": {}
+  }
+}
