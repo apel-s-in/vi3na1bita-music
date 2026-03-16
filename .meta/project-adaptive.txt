@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-47a8c72d2bb0d92bed112983fef53ad5a69d715d.idx
-│   │       ├── pack-47a8c72d2bb0d92bed112983fef53ad5a69d715d.pack
-│   │       └── pack-47a8c72d2bb0d92bed112983fef53ad5a69d715d.rev
+│   │       ├── pack-3928879dc6f9d56b315880ffdef1c2f0d63b8ed5.idx
+│   │       ├── pack-3928879dc6f9d56b315880ffdef1c2f0d63b8ed5.pack
+│   │       └── pack-3928879dc6f9d56b315880ffdef1c2f0d63b8ed5.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -436,7 +436,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 19:37:42 UTC
+Сгенерировано: 2026-03-16 19:38:38 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1757,6 +1757,9 @@ export class SessionTracker {
 
 //=================================================
 // FILE: /scripts/analytics/share-generator.js
+// UID.039_(Share cards from profile)_(сделать карточки умнее и богаче)_(future использовать scripts/intel/track/track-presentation.js и relation/reason data)
+// UID.052_(Track badges and completion)_(добавить collectible badges в sharing)_(future подмешивать collection state пользователя)
+// UID.068_(Public playlist analytics)_(готовить социальный слой карточек и плейлистов)_(future логировать views/saves/share conversions отдельно)
 export class ShareGenerator {
   static async generateAndShare(type, track, stats = {}) {
     if (!window.NotificationSystem) return; window.NotificationSystem.info('Создание карточки...');
