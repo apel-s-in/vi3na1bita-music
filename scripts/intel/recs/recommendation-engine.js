@@ -4,6 +4,7 @@
 // UID.060_(Session-aware next-track strategy)_(подбирать следующий трек под текущую сессию)_(держать context slot в engine API)
 // UID.061_(Community-driven recommendations)_(готовить future recs по похожим слушателям)_(оставить strategy hook, но пока без давления на runtime)
 // UID.063_(Profile recs tab upgrade)_(иметь один источник recs для профиля и витрины)_(этот engine станет входом для Profile/Showcase/UI)
+// UID.095_(Ownership boundary: legacy vs intel)_(не дать recommendation engine стать владельцем playback или UI)_(engine только считает/объясняет candidates, а применение и рендеринг остаются во внешних слоях)
 
 import { recommendationStrategies } from './recommendation-strategies.js';
 import { getRecommendationReasonText } from './recommendation-reasons.js';
