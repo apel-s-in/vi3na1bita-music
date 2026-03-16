@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-cb65a8b9eb67e0915caf63ae94cd69128ee5407f.idx
-│   │       ├── pack-cb65a8b9eb67e0915caf63ae94cd69128ee5407f.pack
-│   │       └── pack-cb65a8b9eb67e0915caf63ae94cd69128ee5407f.rev
+│   │       ├── pack-aa4c719e4d0dcbcc62ee00acdfbe1f5cba7ffaf3.idx
+│   │       ├── pack-aa4c719e4d0dcbcc62ee00acdfbe1f5cba7ffaf3.pack
+│   │       └── pack-aa4c719e4d0dcbcc62ee00acdfbe1f5cba7ffaf3.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -369,7 +369,8 @@ vi3na1bita-music/
 │   │   │   ├── listener-collection.js
 │   │   │   └── listener-profile.js
 │   │   ├── providers/
-│   │   │   └── provider-consents.js
+│   │   │   ├── provider-consents.js
+│   │   │   └── provider-identity.js
 │   │   ├── recs/
 │   │   │   ├── recommendation-engine.js
 │   │   │   ├── recommendation-reasons.js
@@ -422,7 +423,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 19:27:42 UTC
+Сгенерировано: 2026-03-16 19:28:06 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3776,6 +3777,91 @@ export const providerConsents = {
 };
 
 export default providerConsents;
+
+//=================================================
+// FILE: /scripts/intel/providers/provider-identity.js
+// UID.069_(Internal user identity)_(иметь один профиль на все внешние входы)_(держать internalUserId независимо от provider ids)
+// UID.070_(Linked providers)_(подключать Яндекс/Google/VK без конфликтов)_(вести providers внутри одного identity state)
+// UID.071_(Provider capability model)_(понимать что умеет каждый provider)_(хранить capabilities/scopes/roles в связке provider state)
+// UID.077_(Yandex auth/backup/AI)_(готовить Яндекс как основной хаб)_(по умолчанию считать yandex primary provider)
+// UID.078_(Google mirror/export)_(готовить резервный и вспомогательный provider)_(держать google как linked extension)
+// UID.079_(VK social/media actions)_(готовить social/media provider)_(держать vk как linked extension с отдельными capability flags)
+
+const KEY = 'intel:provider-identity:v1';
+
+function makeBase() {
+  return {
+    version: 'provider-identity-v1',
+    internalUserId: localStorage.getItem('intel:internal-user-id') || crypto.randomUUID(),
+    primaryProvider: 'yandex',
+    providers: {}
+  };
+}
+
+function read() {
+  try {
+    const base = { ...makeBase(), ...(JSON.parse(localStorage.getItem(KEY) || '{}') || {}) };
+    localStorage.setItem('intel:internal-user-id', base.internalUserId);
+    return base;
+  } catch {
+    return makeBase();
+  }
+}
+
+function write(value) {
+  localStorage.setItem(KEY, JSON.stringify(value));
+  localStorage.setItem('intel:internal-user-id', value.internalUserId);
+  window.dispatchEvent(new CustomEvent('intel:provider-identity:updated', { detail: value }));
+  return value;
+}
+
+export const providerIdentity = {
+  async init() {
+    write(read());
+    return true;
+  },
+
+  get() {
+    return read();
+  },
+
+  setPrimary(provider) {
+    const state = read();
+    state.primaryProvider = String(provider || '').trim() || state.primaryProvider;
+    return write(state);
+  },
+
+  link(provider, patch = {}) {
+    const name = String(provider || '').trim();
+    if (!name) return read();
+    const state = read();
+    state.providers[name] = {
+      provider: name,
+      linkedAt: Date.now(),
+      scopes: [],
+      capabilities: [],
+      roles: [],
+      status: 'linked',
+      ...(state.providers[name] || {}),
+      ...(patch || {})
+    };
+    return write(state);
+  },
+
+  unlink(provider) {
+    const name = String(provider || '').trim();
+    const state = read();
+    delete state.providers[name];
+    return write(state);
+  },
+
+  hasCapability(provider, capability) {
+    const item = read().providers?.[String(provider || '').trim()];
+    return !!item?.capabilities?.includes?.(capability);
+  }
+};
+
+export default providerIdentity;
 
 //=================================================
 // FILE: /scripts/intel/recs/recommendation-engine.js
