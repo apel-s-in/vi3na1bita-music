@@ -1,3 +1,7 @@
+// UID.044_(ListenerProfile core)_(развить Личный кабинет до профиля вкуса пользователя)_(future интеграция через scripts/intel/listener/listener-profile.js)
+// UID.047_(Feature affinity)_(показывать продуктовые привычки пользователя)_(future profile insights рендерить отдельным intel-ui слоем)
+// UID.063_(Profile recs tab upgrade)_(сделать вкладку Для Вас умной)_(future recs брать из scripts/intel/recs/recommendation-engine.js)
+// UID.070_(Linked providers)_(показывать связанные Яндекс/Google/VK аккаунты как части одного профиля)_(future identity UI связать с scripts/intel/providers/provider-identity.js)
 import { createProfileAchievementsView } from './achievements-view.js';
 import { renderProfileStats } from './stats-view.js';
 import { renderProfileRecs } from './recs-view.js';
