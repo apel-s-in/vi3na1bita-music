@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2f9b85df8f01e148e8925f7d3b3511cc978c90bc.idx
-│   │       ├── pack-2f9b85df8f01e148e8925f7d3b3511cc978c90bc.pack
-│   │       └── pack-2f9b85df8f01e148e8925f7d3b3511cc978c90bc.rev
+│   │       ├── pack-c778ae31bf91dbad8ca144c6a132788e73008299.idx
+│   │       ├── pack-c778ae31bf91dbad8ca144c6a132788e73008299.pack
+│   │       └── pack-c778ae31bf91dbad8ca144c6a132788e73008299.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -404,6 +404,7 @@ vi3na1bita-music/
 │   │   ├── flags.js
 │   │   ├── listener-profile.js
 │   │   ├── manifest.js
+│   │   ├── session-context.js
 │   │   ├── taxonomy-service.js
 │   │   ├── track-presentation.js
 │   │   ├── track-profile-loader.js
@@ -446,7 +447,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 19:49:07 UTC
+Сгенерировано: 2026-03-16 19:49:28 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5092,6 +5093,29 @@ export const INTELLIGENCE_MANIFEST = Object.freeze({
 });
 
 export default INTELLIGENCE_MANIFEST;
+
+//=================================================
+// FILE: /scripts/intelligence/session-context.js
+/* SESSION CONTEXT — future current-session intelligence layer. */
+// UID.068_session_profile_layer_(ввести session profile)_(для “что сейчас включить дальше”)_(track recent context here)
+// UID.102_session_next_recommendations_(готовить next-track recommendations)_(для умного потока воспроизведения)_(session window owned here)
+// UID.167_sleep_mode_layer_(подготовить sleep mode context)_(для ночных/тихих подсказок)_(session flags and mood intent)
+
+const noopAsync = async () => null;
+
+export const sessionContext = {
+  id: 'session-context',
+  version: '0.0.1-stub',
+  ready: false,
+  async initialize() { this.ready = true; return this; },
+  capture() { return null; },
+  getCurrent() { return null; },
+  getRecentTrackWindow() { return []; },
+  reset() {},
+  teardown: noopAsync
+};
+
+export default sessionContext;
 
 //=================================================
 // FILE: /scripts/intelligence/taxonomy-service.js
