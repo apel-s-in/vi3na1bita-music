@@ -4,6 +4,7 @@
 // UID.077_(Yandex auth/backup/AI)_(готовить Яндекс как основной хаб)_(по умолчанию считать yandex primary provider)
 // UID.078_(Google mirror/export)_(готовить резервный и вспомогательный provider)_(держать google как linked extension)
 // UID.079_(VK social/media actions)_(готовить social/media provider)_(держать vk как linked extension с отдельными capability flags)
+// UID.095_(Ownership boundary: legacy vs intel)_(identity layer не должен подменять локальный профиль пользователя приложения)_(этот модуль хранит provider-link metadata, а не владеет stats/favorites/playback/app-profile truth)
 
 const KEY = 'intel:provider-identity:v1';
 
