@@ -1,105 +1,45 @@
 import { eventLogger } from './event-logger.js';
 
 export class SessionTracker {
-  constructor() {
-    this.s = null;
-    this._speedRunnerMs = 0;
-    this._speedRunnerAwarded = false;
-    this._bindEvents();
-  }
+  constructor() { this.s = null; this._speedRunnerMs = 0; this._speedRunnerAwarded = false; this._bindEvents(); }
 
   _bindEvents() {
     window.addEventListener('player:play', e => this._start(e.detail));
     window.addEventListener('player:pause', () => this._pause());
     window.addEventListener('player:tick', e => this._tick(e.detail));
-    window.addEventListener('player:ended', () => this._end(true));
-    window.addEventListener('player:stop', () => {
-      this._resetContinuousRun();
-      this._end(false);
-    });
-    window.addEventListener('player:trackChanged', () => this._end(false));
+    ['player:ended', 'player:stop', 'player:trackChanged'].forEach(ev => window.addEventListener(ev, () => { if(ev !== 'player:ended') this._resetContinuousRun(); this._end(ev === 'player:ended'); }));
   }
 
   _start({ uid, duration, type = 'audio' }) {
-    if (this.s && this.s.uid === uid && this.s.variant === type) {
-      this.s.lastUpdate = Date.now(); return;
-    }
+    if (this.s?.uid === uid && this.s?.variant === type) return void (this.s.lastUpdate = Date.now());
     this._end(false);
-    this.s = { 
-      uid, variant: type, quality: window.playerCore?.qMode || 'hi',
-      duration: duration || 0, accumulatedMs: 0, lastPos: 0, lastUpdate: Date.now() 
-    };
-    
+    this.s = { uid, variant: type, quality: window.playerCore?.qMode || 'hi', duration: duration || 0, accumulatedMs: 0, lastPos: 0, lastUpdate: Date.now() };
     eventLogger.log('LISTEN_START', uid, { variant: type });
   }
 
   _tick({ currentTime, volume, muted }) {
-    if (!this.s) return;
-    const now = Date.now();
-    const deltaMs = now - this.s.lastUpdate;
-    const posDelta = Math.abs(currentTime - this.s.lastPos);
-    
-    this.s.lastUpdate = now;
-    this.s.lastPos = currentTime;
-    
-    // Считаем только реальное звучание (защита от перемотки/паузы)
-    if (deltaMs > 0 && deltaMs < 2000 && posDelta < 1.5 && volume > 0 && !muted) {
-      this.s.accumulatedMs += deltaMs;
-      this._speedRunnerMs += deltaMs;
-
-      if (this._speedRunnerMs >= 10800000 && !this._speedRunnerAwarded) {
-        this._speedRunnerAwarded = true;
-        eventLogger.log('FEATURE_USED', 'global', { feature: 'speed_runner' });
-      }
-    } else {
-      this._resetContinuousRun(); // Сброс при паузе, муте или перемотке
-    }
-    
+    if (!this.s) return; const now = Date.now(), dMs = now - this.s.lastUpdate, pD = Math.abs(currentTime - this.s.lastPos);
+    this.s.lastUpdate = now; this.s.lastPos = currentTime;
+    if (dMs > 0 && dMs < 2000 && pD < 1.5 && volume > 0 && !muted) {
+      this.s.accumulatedMs += dMs; this._speedRunnerMs += dMs;
+      if (this._speedRunnerMs >= 10800000 && !this._speedRunnerAwarded) { this._speedRunnerAwarded = true; eventLogger.log('FEATURE_USED', 'global', { feature: 'speed_runner' }); }
+    } else this._resetContinuousRun();
     if (this.s.duration <= 0) this.s.duration = window.playerCore?.getDuration() || 0;
   }
 
-  _pause() {
-    if (this.s) this.s.lastUpdate = Date.now();
-    this._resetContinuousRun();
-  }
+  _pause() { if (this.s) this.s.lastUpdate = Date.now(); this._resetContinuousRun(); }
+  _resetContinuousRun() { this._speedRunnerMs = 0; }
 
-  _resetContinuousRun() {
-    this._speedRunnerMs = 0;
-  }
+  _end(isE) {
+    if (!this.s) return; const { uid, variant, quality, accumulatedMs, duration, lastPos } = this.s; this.s = null;
+    if (duration <= 0 && !isE) return;
+    const sec = Math.floor(accumulatedMs / 1000), prg = duration > 0 ? (lastPos / duration) : 0, isV = sec >= 13 || isE, isF = prg >= 0.9 || isE;
 
-  _end(isEndedEvent) {
-    if (!this.s) return;
-    const { uid, variant, quality, accumulatedMs, duration, lastPos } = this.s;
-    this.s = null;
-
-    if (duration <= 0 && !isEndedEvent) return;
-
-    const seconds = Math.floor(accumulatedMs / 1000);
-    const progress = duration > 0 ? (lastPos / duration) : 0;
-    
-    // ТЗ: Valid = 13 сек ИЛИ доиграл до конца. Full = 90% ИЛИ доиграл до конца.
-    const isValid = seconds >= 13 || isEndedEvent;
-    const isFull = progress >= 0.9 || isEndedEvent;
-
-    if (isValid || isFull) {
-      const now = new Date();
-      const hour = now.getHours();
-      const minutes = now.getMinutes();
-
-      if (isValid && hour === 11 && minutes === 11) {
-        eventLogger.log('FEATURE_USED', 'global', { feature: 'play_11_11' });
-      }
-
-      if (isValid && (now.getDay() === 0 || now.getDay() === 6)) {
-        eventLogger.log('FEATURE_USED', 'global', { feature: 'weekend_play' });
-      }
-
-      eventLogger.log('LISTEN_COMPLETE', uid, {
-        variant, quality, listenedSeconds: seconds, trackDuration: duration, 
-        progress, isFullListen: isFull, isValidListen: isValid
-      });
-    } else {
-      eventLogger.log('LISTEN_SKIP', uid, { listenedSeconds: seconds });
-    }
+    if (isV || isF) {
+      const n = new Date(), h = n.getHours(), m = n.getMinutes();
+      if (isV && h === 11 && m === 11) eventLogger.log('FEATURE_USED', 'global', { feature: 'play_11_11' });
+      if (isV && (n.getDay() === 0 || n.getDay() === 6)) eventLogger.log('FEATURE_USED', 'global', { feature: 'weekend_play' });
+      eventLogger.log('LISTEN_COMPLETE', uid, { variant, quality, listenedSeconds: sec, trackDuration: duration, progress: prg, isFullListen: isF, isValidListen: isV });
+    } else eventLogger.log('LISTEN_SKIP', uid, { listenedSeconds: sec });
   }
 }
