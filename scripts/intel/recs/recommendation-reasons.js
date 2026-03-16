@@ -1,5 +1,6 @@
 // UID.056_(Recommendation reasons)_(объяснять почему показан трек)_(держать reason-code -> human text отдельно от scorer logic)
 // UID.085_(AI explanation layer)_(в будущем легко строить богатые объяснения)_(сначала ввести детерминированный словарь причин)
+// UID.095_(Ownership boundary: legacy vs intel)_(не смешивать reason dictionary и recommendation scoring)_(этот модуль только объясняет codes и не участвует в UI/storage/playback logic)
 
 const REASON_TEXTS_RU = Object.freeze({
   taste_fit: 'подходит под ваш вкус',
