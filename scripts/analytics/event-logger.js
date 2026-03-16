@@ -1,3 +1,10 @@
+// UID.003_(Event log truth)_(оставить события источником правды)_(все долгоживущие user states должны выводиться отсюда или из кэша поверх этого слоя)
+// UID.017_(Launch source stats)_(подготовить логирование discovery source)_(future track launches/recommendation/provider actions должны иметь source-aware events)
+// UID.056_(Recommendation reasons)_(готовить explainable rec telemetry)_(shown/clicked/accepted/dismissed reason-aware rec events логировать здесь)
+// UID.072_(Provider consents)_(не логировать лишнее без разрешений)_(future external-exportable events должны отличаться от полного локального event log)
+// UID.081_(Telemetry mapper)_(развести raw events и external payloads)_(event-logger пишет локальную truth, mapper позже решает что можно экспортировать)
+// UID.083_(Yandex Metrica safe export)_(не слать сырые local events напрямую наружу)_(метрика должна получать только mapped whitelist layer)
+// UID.094_(No-paralysis rule)_(event logging не должен зависеть от intel/providers)_(любые новые event types additive и безопасные)
 import { metaDB } from './meta-db.js';
 
 class EventLogger {
