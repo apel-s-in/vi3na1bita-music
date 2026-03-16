@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-23e3ede3c00f85063f3139f2709b5308cf54cb99.idx
-│   │       ├── pack-23e3ede3c00f85063f3139f2709b5308cf54cb99.pack
-│   │       └── pack-23e3ede3c00f85063f3139f2709b5308cf54cb99.rev
+│   │       ├── pack-7a393e8246a61c1b39349ca5f1204948ab820c5b.idx
+│   │       ├── pack-7a393e8246a61c1b39349ca5f1204948ab820c5b.pack
+│   │       └── pack-7a393e8246a61c1b39349ca5f1204948ab820c5b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -437,7 +437,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 21:07:54 UTC
+Сгенерировано: 2026-03-16 21:08:15 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5016,6 +5016,7 @@ export default profileInsights;
 // UID.041_(Showcase semantic filters)_(готовить витрину к смысловым фильтрам)_(держать отдельный helper слой вне showcase монолита)
 // UID.042_(Showcase semantic sorting)_(готовить сортировки по axes)_(держать отдельные helper methods для future showcase integration)
 // UID.043_(Smart playlists)_(готовить сценарные semantic blocks)_(возвращать пустой API сейчас и наращивать позже)
+// UID.095_(Ownership boundary: legacy vs intel)_(semantic showcase helper не должен стать новым ShowcaseManager)_(модуль только поставляет optional semantic helpers, а UI/store/playback orchestration остаются в legacy showcase слоях)
 
 export const showcaseSemantic = {
   async init() {
