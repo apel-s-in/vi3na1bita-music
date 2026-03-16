@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c4b97d799fc364cb6a5ab5abdfa744589e472fdb.idx
-│   │       ├── pack-c4b97d799fc364cb6a5ab5abdfa744589e472fdb.pack
-│   │       └── pack-c4b97d799fc364cb6a5ab5abdfa744589e472fdb.rev
+│   │       ├── pack-52781f468943bf47375b51248d307be0b526fe2e.idx
+│   │       ├── pack-52781f468943bf47375b51248d307be0b526fe2e.pack
+│   │       └── pack-52781f468943bf47375b51248d307be0b526fe2e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -403,6 +403,8 @@ vi3na1bita-music/
 │   │   ├── bridges.js
 │   │   ├── flags.js
 │   │   ├── manifest.js
+│   │   ├── taxonomy-service.js
+│   │   ├── track-profile-loader.js
 │   │   └── uid-roadmap.js
 │   ├── offline/
 │   │   ├── cache-db.js
@@ -441,7 +443,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 19:47:20 UTC
+Сгенерировано: 2026-03-16 19:48:01 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5060,6 +5062,58 @@ export const INTELLIGENCE_MANIFEST = Object.freeze({
 });
 
 export default INTELLIGENCE_MANIFEST;
+
+//=================================================
+// FILE: /scripts/intelligence/taxonomy-service.js
+/* TAXONOMY SERVICE — future canonical access to taxonomy-v2 and tag validation. */
+// UID.031_taxonomy_v2_canonical_(держать taxonomy единой)_(для предсказуемых тегов во всём приложении)_(future loader/validator here)
+// UID.032_weighted_tag_model_(держать веса 0..1)_(для рекомендаций и осей)_(normalize and validate here)
+// UID.042_recommendation_controls_layer_(держать rec controls рядом с taxonomy)_(для family/sleep/no_explicit режимов)_(consume taxonomy groups safely)
+
+const noopAsync = async () => null;
+
+export const taxonomyService = {
+  id: 'taxonomy-service',
+  version: '0.0.1-stub',
+  ready: false,
+  taxonomyVersion: 'taxonomy-v2',
+  async initialize() { this.ready = true; return this; },
+  async load() { return null; },
+  async getGroup() { return null; },
+  isValidTag() { return false; },
+  normalizeWeight(value) { return Math.max(0, Math.min(1, Number(value) || 0)); },
+  getRecommendationControls() { return []; },
+  teardown: noopAsync
+};
+
+export default taxonomyService;
+
+//=================================================
+// FILE: /scripts/intelligence/track-profile-loader.js
+/* TRACK PROFILE LOADER — future compact/full TrackProfile access layer. */
+// UID.025_track_profile_two_layer_(делить profile на index/full)_(для скорости и lazy loading)_(loader owns both entrypoints)
+// UID.026_track_profiles_index_(держать compact index отдельно)_(для browse/recs/search)_(load/cached here)
+// UID.027_track_profiles_full_(держать full profile отдельно)_(для modal/card/deep analysis)_(load per UID on demand)
+// UID.154_lazy_load_heavy_profiles_(строго лениво грузить full profiles)_(для startup performance)_(only on request)
+
+const noopAsync = async () => null;
+
+export const trackProfileLoader = {
+  id: 'track-profile-loader',
+  version: '0.0.1-stub',
+  ready: false,
+  async initialize() { this.ready = true; return this; },
+  async loadIndex() { return null; },
+  async getIndex() { return null; },
+  async hasProfile() { return false; },
+  async getPreview() { return null; },
+  async loadProfile() { return null; },
+  async getProfile() { return null; },
+  clearMemoryCache() {},
+  teardown: noopAsync
+};
+
+export default trackProfileLoader;
 
 //=================================================
 // FILE: /scripts/intelligence/uid-roadmap.js
