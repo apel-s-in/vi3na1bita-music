@@ -1,3 +1,9 @@
+// UID.001_(Playback safety invariant)_(не допустить обходного управления воспроизведением)_(Media Session может вызывать только безопасные handlers PlayerCore, но не владеть playback truth)
+// UID.008_(No playback mutation by intel)_(не допустить второго центра управления плеером)_(intel/provider/ui слой не должен подменять Media Session handlers своей логикой)
+// UID.012_(Quality dimension)_(не смешивать качество и системные media controls)_(Media Session управляет transport controls, а не quality/source logic)
+// UID.050_(Session profile)_(оставить Media Session только источником transport actions)_(session intelligence может читать эффекты play/pause/seek, но не внедряться сюда)
+// UID.079_(VK social/media actions)_(не смешивать внешние provider media actions и OS media controls)_(provider bridge не должен переписывать Media Session ownership)
+// UID.094_(No-paralysis rule)_(даже при сбоях расширенных слоёв системные media controls должны работать)_(этот bridge остаётся тонким адаптером между ОС и PlayerCore)
 export function ensureMediaSession(h = {}) {
   const ms = navigator.mediaSession; if (!ms) return null;
   if (!ms.__bound) {
