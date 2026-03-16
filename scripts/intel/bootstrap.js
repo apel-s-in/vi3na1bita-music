@@ -13,6 +13,7 @@ import { getIntelFlags, setIntelDisabled } from './flags.js';
 import { INTEL_CONTRACTS } from './shared/contracts.js';
 import { intelBus } from './shared/bus.js';
 import { intelGuards } from './shared/guards.js';
+import { makeNoopModule, makeMemoryState, makeJsonStorage, safeEmit } from './shared/helpers.js';
 import { trackProfiles } from './track/track-profiles.js';
 import { trackPresentation } from './track/track-presentation.js';
 import { trackRelations } from './track/track-relations.js';
@@ -45,6 +46,12 @@ export async function initIntelBootstrap({ W = window, D = document, C = W.APP_C
     contracts: INTEL_CONTRACTS,
     bus: intelBus,
     guards: intelGuards,
+    helpers: {
+      makeNoopModule,
+      makeMemoryState,
+      makeJsonStorage,
+      safeEmit
+    },
     trackProfiles,
     trackPresentation,
     trackRelations,
