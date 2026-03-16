@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-618e9a747903f556cbb23df6750b8a89bedac6fb.idx
-│   │       ├── pack-618e9a747903f556cbb23df6750b8a89bedac6fb.pack
-│   │       └── pack-618e9a747903f556cbb23df6750b8a89bedac6fb.rev
+│   │       ├── pack-3b317e1eee538cfd46a7c29bdbf3ef4bb6ce8bd7.idx
+│   │       ├── pack-3b317e1eee538cfd46a7c29bdbf3ef4bb6ce8bd7.pack
+│   │       └── pack-3b317e1eee538cfd46a7c29bdbf3ef4bb6ce8bd7.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -398,7 +398,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 11:22:54 UTC
+Сгенерировано: 2026-03-16 11:23:09 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2942,35 +2942,21 @@ export default { renderShowcaseHeader, renderShowcaseRow, renderShowcaseNormal, 
 
 //=================================================
 // FILE: /scripts/app/showcase/search.js
-export async function buildShowcaseSearchDisplay({ query, ensureLyricsIndexLoaded, searchUidsByQuery, trk, ctx }) {
-  const hid = new Set(ctx?.hidden || []);
-  if (!query) return { type: 'normal' };
-  await ensureLyricsIndexLoaded();
-  const res = (searchUidsByQuery({ query }) || []).filter(trk);
-  return { type: 'search', res, cOrd: ctx?.order || [], cHid: hid };
-}
-
-export function addSearchResultsToContext({ selected, trk, ctx, saveCtx, isDefault, store, clearSearch, rerender, notify }) {
-  const u = [...selected].filter(trk);
-  if (!u.length) return;
-  if (!ctx) return;
-  const s = new Set(ctx.order || []);
-  u.forEach(x => { if (!s.has(x)) { ctx.order.push(x); s.add(x); } });
-  saveCtx(ctx);
-  clearSearch?.();
-  rerender?.();
-  notify?.success?.(`Добавлено ${u.length} треков`);
-}
-
-export function handleSharedShowcasePlaylist({ raw, opener }) {
-  return opener?.(raw);
-}
-
-export default {
-  buildShowcaseSearchDisplay,
-  addSearchResultsToContext,
-  handleSharedShowcasePlaylist
+export const buildShowcaseSearchDisplay = async ({ query: q, ensureLyricsIndexLoaded: eL, searchUidsByQuery: sQ, trk, ctx }) => {
+  if (!q) return { type: 'normal' };
+  await eL();
+  return { type: 'search', res: (sQ({ query: q }) || []).filter(trk), cOrd: ctx?.order || [], cHid: new Set(ctx?.hidden || []) };
 };
+
+export const addSearchResultsToContext = ({ selected: s, trk, ctx: c, saveCtx: sC, clearSearch: cS, rerender: r, notify: n }) => {
+  const u = [...s].filter(trk); if (!u.length || !c) return;
+  const set = new Set(c.order || []);
+  u.forEach(x => !set.has(x) && (c.order.push(x), set.add(x)));
+  sC(c); cS?.(); r?.(); n?.success?.(`Добавлено ${u.length} треков`);
+};
+
+export const handleSharedShowcasePlaylist = ({ raw, opener }) => opener?.(raw);
+export default { buildShowcaseSearchDisplay, addSearchResultsToContext, handleSharedShowcasePlaylist };
 
 //=================================================
 // FILE: /scripts/app/showcase/store.js
