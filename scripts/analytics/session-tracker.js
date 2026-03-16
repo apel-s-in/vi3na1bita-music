@@ -1,3 +1,9 @@
+// UID.003_(Event log truth)_(оставить session-tracker строителем playback-session событий)_(session intelligence должна опираться на эти события, а не обходить их)
+// UID.018_(Variant and quality stats)_(готовить future variant-aware session accounting)_(audio/minus/stems/clip session semantics должны развиваться здесь)
+// UID.050_(Session profile)_(дать listener/intel слою корректную основу текущей сессии)_(session tracker остаётся truth-layer для session context, а не UI слой)
+// UID.060_(Session-aware next-track strategy)_(подготовить основу для context-aware рекомендаций)_(future session recs должны читать session data отсюда, не вмешиваясь в трекинг)
+// UID.084_(AI content analysis)_(не смешивать AI и session truth)_(AI может интерпретировать session patterns позже, но не заменяет этот слой)
+// UID.094_(No-paralysis rule)_(session tracking должен быть независимым от intel availability)_(никакой intel failure не должен ломать LISTEN_* events)
 import { eventLogger } from './event-logger.js';
 
 export class SessionTracker {
