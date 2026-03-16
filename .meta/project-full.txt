@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-86eecf6fb5ebeab1ac0e04bf6575d2b0c21f2201.idx
-│   │       ├── pack-86eecf6fb5ebeab1ac0e04bf6575d2b0c21f2201.pack
-│   │       └── pack-86eecf6fb5ebeab1ac0e04bf6575d2b0c21f2201.rev
+│   │       ├── pack-0e0abeb8a5a92f0a067636e94ee51c522d8ad647.idx
+│   │       ├── pack-0e0abeb8a5a92f0a067636e94ee51c522d8ad647.pack
+│   │       └── pack-0e0abeb8a5a92f0a067636e94ee51c522d8ad647.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -436,7 +436,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 19:39:06 UTC
+Сгенерировано: 2026-03-16 19:40:09 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1456,6 +1456,9 @@ export const AchievementDictionary = {
 
 //=================================================
 // FILE: /scripts/analytics/backup-vault.js
+// UID.003_(Event log truth)_(держать backup честным и пересчитываемым)_(backup должен оставаться event-log-centric)
+// UID.073_(Hybrid sync orchestrator)_(подготовить backup как transport-слой для multi-provider sync)_(future orchestration жить отдельно от vault)
+// UID.089_(Future MetaDB stores)_(расширить backup listener/provider/recommendation/collection state)_(когда intel stores начнут наполняться, vault должен включить их без ломки формата)
 import { metaDB } from './meta-db.js';
 
 export class BackupVault {
