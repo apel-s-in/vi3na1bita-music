@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-acfc45717cbdb24734f45ff4b97b7b23dc65ec92.idx
-│   │       ├── pack-acfc45717cbdb24734f45ff4b97b7b23dc65ec92.pack
-│   │       └── pack-acfc45717cbdb24734f45ff4b97b7b23dc65ec92.rev
+│   │       ├── pack-2f47a17586a98792d2f44cf7f954ac9d10093b97.idx
+│   │       ├── pack-2f47a17586a98792d2f44cf7f954ac9d10093b97.pack
+│   │       └── pack-2f47a17586a98792d2f44cf7f954ac9d10093b97.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -436,7 +436,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 19:35:54 UTC
+Сгенерировано: 2026-03-16 19:36:26 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2883,6 +2883,10 @@ export default { handleShowcaseEditClick, bindShowcaseDrag, saveShowcaseEdit, re
 
 //=================================================
 // FILE: /scripts/app/showcase/index.js
+// UID.041_(Showcase semantic filters)_(подготовить витрину к смысловой навигации)_(future интеграция через scripts/intel/ui/showcase-semantic.js и recommendation engine)
+// UID.042_(Showcase semantic sorting)_(подготовить сортировки по axes и настроениям)_(сохранять heavy-логику вне showcase монолита)
+// UID.043_(Smart playlists)_(развить витрину как discovery-центр)_(semantic blocks и smart playlists будут добавляться поверх текущего UI)
+// UID.063_(Profile recs tab upgrade)_(свести рекомендации профиля и витрины к одному движку)_(future вход через scripts/intel/recs/recommendation-engine.js)
 import { ensureLyricsIndexLoaded, searchUidsByQuery } from './lyrics-search.js';
 import { renderFavoriteStar, setFavoriteStarState } from '../../ui/icon-utils.js';
 import { renderShowcasePlaylists, renameShowcasePlaylist, shareShowcasePlaylist, createShowcasePlaylist } from './playlists.js';
