@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-bcc23e2193e3af3fcc10d9b7239d46093f5b8574.idx
-│   │       ├── pack-bcc23e2193e3af3fcc10d9b7239d46093f5b8574.pack
-│   │       └── pack-bcc23e2193e3af3fcc10d9b7239d46093f5b8574.rev
+│   │       ├── pack-182d1d4d754add24dddf48df2813dedf45e641ec.idx
+│   │       ├── pack-182d1d4d754add24dddf48df2813dedf45e641ec.pack
+│   │       └── pack-182d1d4d754add24dddf48df2813dedf45e641ec.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -398,7 +398,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 10:37:38 UTC
+Сгенерировано: 2026-03-16 10:38:30 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1549,137 +1549,41 @@ export const liveStatsTracker = new LiveStatsTracker(); window.liveStatsTracker 
 //=================================================
 // FILE: /scripts/analytics/meta-db.js
 export class MetaDB {
-  constructor() { 
-    this.dbName = 'MetaDB_v4'; 
-    this.version = 1;
-    this.db = null; 
-    this._initPromise = null;
-  }
+  constructor() { this.dbName = 'MetaDB_v4'; this.version = 1; this.db = null; this._initPromise = null; }
   
   async init() {
     if (this.db) return this.db;
     if (this._initPromise) return this._initPromise;
-    this._initPromise = new Promise((resolve, reject) => {
-      if (!window.indexedDB) return reject('IndexedDB is not supported');
+    return (this._initPromise = new Promise((res, rej) => {
+      if (!window.indexedDB) return rej('IndexedDB is not supported');
       const req = indexedDB.open(this.dbName, this.version);
-      req.onupgradeneeded = (e) => {
+      req.onupgradeneeded = e => {
         const db = e.target.result;
-        if (!db.objectStoreNames.contains('events_hot')) db.createObjectStore('events_hot', { keyPath: 'eventId' });
-        if (!db.objectStoreNames.contains('events_warm')) db.createObjectStore('events_warm', { keyPath: 'eventId' });
+        ['events_hot', 'events_warm'].forEach(n => !db.objectStoreNames.contains(n) && db.createObjectStore(n, { keyPath: 'eventId' }));
         if (!db.objectStoreNames.contains('stats')) db.createObjectStore('stats', { keyPath: 'uid' });
         if (!db.objectStoreNames.contains('global')) db.createObjectStore('global', { keyPath: 'key' });
       };
-      req.onsuccess = () => { this.db = req.result; resolve(this.db); };
-      req.onerror = () => reject(req.error);
-    });
-    return this._initPromise;
+      req.onsuccess = () => { this.db = req.result; res(this.db); }; req.onerror = () => rej(req.error);
+    }));
   }
 
-  async addEvents(events, store = 'events_hot') {
-    await this.init();
-    return new Promise((resolve, reject) => {
-      const tx = this.db.transaction(store, 'readwrite');
-      const s = tx.objectStore(store);
-      events.forEach(ev => s.put(ev));
-      tx.oncomplete = () => resolve(true);
-      tx.onerror = () => reject(tx.error);
-    });
-  }
+  _exec(store, mode, fn) { return this.init().then(() => new Promise((res, rej) => { const tx = this.db.transaction(store, mode), r = fn(tx.objectStore(store), tx); if(r?.onsuccess !== undefined) { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); } else { tx.oncomplete = () => res(true); tx.onerror = () => rej(tx.error); } })); }
 
-  async getEvents(store = 'events_hot') {
-    await this.init();
-    return new Promise((resolve, reject) => {
-      const req = this.db.transaction(store, 'readonly').objectStore(store).getAll();
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
-  }
-
-  async clearEvents(store = 'events_hot') {
-    await this.init();
-    return new Promise((resolve, reject) => {
-      const tx = this.db.transaction(store, 'readwrite');
-      tx.objectStore(store).clear();
-      tx.oncomplete = () => resolve(true);
-      tx.onerror = () => reject(tx.error);
-    });
+  addEvents(events, store = 'events_hot') { return this._exec(store, 'readwrite', s => events.forEach(ev => s.put(ev))); }
+  getEvents(store = 'events_hot') { return this._exec(store, 'readonly', s => s.getAll()); }
+  clearEvents(store = 'events_hot') { return this._exec(store, 'readwrite', s => s.clear()); }
+  
+  updateStat(uid, fn) {
+    return this._exec('stats', 'readwrite', s => { const r = s.get(uid); r.onsuccess = () => s.put(fn(r.result || { uid, globalListenSeconds: 0, globalValidListenCount: 0, globalFullListenCount: 0, firstPlayedAt: Date.now(), lastPlayedAt: Date.now(), featuresUsed: {} })); });
   }
   
-  async updateStat(uid, mutatorFn) {
-    await this.init();
-    return new Promise((resolve, reject) => {
-      const tx = this.db.transaction('stats', 'readwrite');
-      const store = tx.objectStore('stats');
-      const getReq = store.get(uid);
-      getReq.onsuccess = () => {
-        const data = getReq.result || { 
-          uid, globalListenSeconds: 0, globalValidListenCount: 0, globalFullListenCount: 0, 
-          firstPlayedAt: Date.now(), lastPlayedAt: Date.now(), featuresUsed: {} 
-        };
-        store.put(mutatorFn(data));
-      };
-      tx.oncomplete = () => resolve(true);
-      tx.onerror = () => reject(tx.error);
-    });
-  }
+  getStat(uid) { return this._exec('stats', 'readonly', s => s.get(uid)); }
+  getAllStats() { return this._exec('stats', 'readonly', s => s.getAll()); }
+  getGlobal(key) { return this._exec('global', 'readonly', s => s.get(key)); }
+  setGlobal(key, value) { return this._exec('global', 'readwrite', s => s.put({ key, value })); }
   
-  async getStat(uid) {
-    await this.init();
-    return new Promise((resolve, reject) => {
-      const req = this.db.transaction('stats', 'readonly').objectStore('stats').get(uid);
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
-  }
-
-  async getAllStats() {
-    await this.init();
-    return new Promise((resolve, reject) => {
-      const req = this.db.transaction('stats', 'readonly').objectStore('stats').getAll();
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
-  }
-
-  async getGlobal(key) {
-    await this.init();
-    return new Promise((resolve, reject) => {
-      const req = this.db.transaction('global', 'readonly').objectStore('global').get(key);
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
-  }
-
-  async setGlobal(key, value) {
-    await this.init();
-    return new Promise((resolve, reject) => {
-      const tx = this.db.transaction('global', 'readwrite');
-      tx.objectStore('global').put({ key, value });
-      tx.oncomplete = () => resolve(true);
-      tx.onerror = () => reject(tx.error);
-    });
-  }
-
-  async tx(storeName, mode, handler) {
-    await this.init();
-    return new Promise((resolve, reject) => {
-      const tx = this.db.transaction(storeName, mode);
-      const store = tx.objectStore(storeName);
-
-      try {
-        handler(store, tx);
-      } catch (error) {
-        reject(error);
-        return;
-      }
-
-      tx.oncomplete = () => resolve(true);
-      tx.onerror = () => reject(tx.error);
-      tx.onabort = () => reject(tx.error || new Error(`Transaction aborted: ${storeName}`));
-    });
-  }
+  tx(sName, mode, fn) { return this._exec(sName, mode, (s, tx) => { fn(s, tx); tx.onabort = () => { throw tx.error || new Error(`Abort: ${sName}`); }; }); }
 }
-
 export const metaDB = new MetaDB();
 
 //=================================================
@@ -1687,106 +1591,46 @@ export const metaDB = new MetaDB();
 import { eventLogger } from './event-logger.js';
 
 export class SessionTracker {
-  constructor() {
-    this.s = null;
-    this._speedRunnerMs = 0;
-    this._speedRunnerAwarded = false;
-    this._bindEvents();
-  }
+  constructor() { this.s = null; this._speedRunnerMs = 0; this._speedRunnerAwarded = false; this._bindEvents(); }
 
   _bindEvents() {
     window.addEventListener('player:play', e => this._start(e.detail));
     window.addEventListener('player:pause', () => this._pause());
     window.addEventListener('player:tick', e => this._tick(e.detail));
-    window.addEventListener('player:ended', () => this._end(true));
-    window.addEventListener('player:stop', () => {
-      this._resetContinuousRun();
-      this._end(false);
-    });
-    window.addEventListener('player:trackChanged', () => this._end(false));
+    ['player:ended', 'player:stop', 'player:trackChanged'].forEach(ev => window.addEventListener(ev, () => { if(ev !== 'player:ended') this._resetContinuousRun(); this._end(ev === 'player:ended'); }));
   }
 
   _start({ uid, duration, type = 'audio' }) {
-    if (this.s && this.s.uid === uid && this.s.variant === type) {
-      this.s.lastUpdate = Date.now(); return;
-    }
+    if (this.s?.uid === uid && this.s?.variant === type) return void (this.s.lastUpdate = Date.now());
     this._end(false);
-    this.s = { 
-      uid, variant: type, quality: window.playerCore?.qMode || 'hi',
-      duration: duration || 0, accumulatedMs: 0, lastPos: 0, lastUpdate: Date.now() 
-    };
-    
+    this.s = { uid, variant: type, quality: window.playerCore?.qMode || 'hi', duration: duration || 0, accumulatedMs: 0, lastPos: 0, lastUpdate: Date.now() };
     eventLogger.log('LISTEN_START', uid, { variant: type });
   }
 
   _tick({ currentTime, volume, muted }) {
-    if (!this.s) return;
-    const now = Date.now();
-    const deltaMs = now - this.s.lastUpdate;
-    const posDelta = Math.abs(currentTime - this.s.lastPos);
-    
-    this.s.lastUpdate = now;
-    this.s.lastPos = currentTime;
-    
-    // Считаем только реальное звучание (защита от перемотки/паузы)
-    if (deltaMs > 0 && deltaMs < 2000 && posDelta < 1.5 && volume > 0 && !muted) {
-      this.s.accumulatedMs += deltaMs;
-      this._speedRunnerMs += deltaMs;
-
-      if (this._speedRunnerMs >= 10800000 && !this._speedRunnerAwarded) {
-        this._speedRunnerAwarded = true;
-        eventLogger.log('FEATURE_USED', 'global', { feature: 'speed_runner' });
-      }
-    } else {
-      this._resetContinuousRun(); // Сброс при паузе, муте или перемотке
-    }
-    
+    if (!this.s) return; const now = Date.now(), dMs = now - this.s.lastUpdate, pD = Math.abs(currentTime - this.s.lastPos);
+    this.s.lastUpdate = now; this.s.lastPos = currentTime;
+    if (dMs > 0 && dMs < 2000 && pD < 1.5 && volume > 0 && !muted) {
+      this.s.accumulatedMs += dMs; this._speedRunnerMs += dMs;
+      if (this._speedRunnerMs >= 10800000 && !this._speedRunnerAwarded) { this._speedRunnerAwarded = true; eventLogger.log('FEATURE_USED', 'global', { feature: 'speed_runner' }); }
+    } else this._resetContinuousRun();
     if (this.s.duration <= 0) this.s.duration = window.playerCore?.getDuration() || 0;
   }
 
-  _pause() {
-    if (this.s) this.s.lastUpdate = Date.now();
-    this._resetContinuousRun();
-  }
+  _pause() { if (this.s) this.s.lastUpdate = Date.now(); this._resetContinuousRun(); }
+  _resetContinuousRun() { this._speedRunnerMs = 0; }
 
-  _resetContinuousRun() {
-    this._speedRunnerMs = 0;
-  }
+  _end(isE) {
+    if (!this.s) return; const { uid, variant, quality, accumulatedMs, duration, lastPos } = this.s; this.s = null;
+    if (duration <= 0 && !isE) return;
+    const sec = Math.floor(accumulatedMs / 1000), prg = duration > 0 ? (lastPos / duration) : 0, isV = sec >= 13 || isE, isF = prg >= 0.9 || isE;
 
-  _end(isEndedEvent) {
-    if (!this.s) return;
-    const { uid, variant, quality, accumulatedMs, duration, lastPos } = this.s;
-    this.s = null;
-
-    if (duration <= 0 && !isEndedEvent) return;
-
-    const seconds = Math.floor(accumulatedMs / 1000);
-    const progress = duration > 0 ? (lastPos / duration) : 0;
-    
-    // ТЗ: Valid = 13 сек ИЛИ доиграл до конца. Full = 90% ИЛИ доиграл до конца.
-    const isValid = seconds >= 13 || isEndedEvent;
-    const isFull = progress >= 0.9 || isEndedEvent;
-
-    if (isValid || isFull) {
-      const now = new Date();
-      const hour = now.getHours();
-      const minutes = now.getMinutes();
-
-      if (isValid && hour === 11 && minutes === 11) {
-        eventLogger.log('FEATURE_USED', 'global', { feature: 'play_11_11' });
-      }
-
-      if (isValid && (now.getDay() === 0 || now.getDay() === 6)) {
-        eventLogger.log('FEATURE_USED', 'global', { feature: 'weekend_play' });
-      }
-
-      eventLogger.log('LISTEN_COMPLETE', uid, {
-        variant, quality, listenedSeconds: seconds, trackDuration: duration, 
-        progress, isFullListen: isFull, isValidListen: isValid
-      });
-    } else {
-      eventLogger.log('LISTEN_SKIP', uid, { listenedSeconds: seconds });
-    }
+    if (isV || isF) {
+      const n = new Date(), h = n.getHours(), m = n.getMinutes();
+      if (isV && h === 11 && m === 11) eventLogger.log('FEATURE_USED', 'global', { feature: 'play_11_11' });
+      if (isV && (n.getDay() === 0 || n.getDay() === 6)) eventLogger.log('FEATURE_USED', 'global', { feature: 'weekend_play' });
+      eventLogger.log('LISTEN_COMPLETE', uid, { variant, quality, listenedSeconds: sec, trackDuration: duration, progress: prg, isFullListen: isF, isValidListen: isV });
+    } else eventLogger.log('LISTEN_SKIP', uid, { listenedSeconds: sec });
   }
 }
 
