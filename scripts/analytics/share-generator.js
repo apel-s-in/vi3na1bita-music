@@ -1,3 +1,6 @@
+// UID.039_(Share cards from profile)_(сделать карточки умнее и богаче)_(future использовать scripts/intel/track/track-presentation.js и relation/reason data)
+// UID.052_(Track badges and completion)_(добавить collectible badges в sharing)_(future подмешивать collection state пользователя)
+// UID.068_(Public playlist analytics)_(готовить социальный слой карточек и плейлистов)_(future логировать views/saves/share conversions отдельно)
 export class ShareGenerator {
   static async generateAndShare(type, track, stats = {}) {
     if (!window.NotificationSystem) return; window.NotificationSystem.info('Создание карточки...');
