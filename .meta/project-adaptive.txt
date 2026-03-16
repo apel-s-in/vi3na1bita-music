@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9444790115f78ef9bb80b1c0a49a54a31bec0e5f.idx
-│   │       ├── pack-9444790115f78ef9bb80b1c0a49a54a31bec0e5f.pack
-│   │       └── pack-9444790115f78ef9bb80b1c0a49a54a31bec0e5f.rev
+│   │       ├── pack-e64fa121a2ab5f07df00429a757b57e93fa66f35.idx
+│   │       ├── pack-e64fa121a2ab5f07df00429a757b57e93fa66f35.pack
+│   │       └── pack-e64fa121a2ab5f07df00429a757b57e93fa66f35.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -367,7 +367,8 @@ vi3na1bita-music/
 │   ├── intel/
 │   │   ├── shared/
 │   │   │   ├── bus.js
-│   │   │   └── contracts.js
+│   │   │   ├── contracts.js
+│   │   │   └── guards.js
 │   │   ├── flags.js
 │   │   └── roadmap.js
 │   ├── offline/
@@ -407,7 +408,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 19:22:58 UTC
+Сгенерировано: 2026-03-16 19:23:18 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3760,6 +3761,36 @@ export const INTEL_CONTRACTS = Object.freeze({
 });
 
 export default INTEL_CONTRACTS;
+
+//=================================================
+// FILE: /scripts/intel/shared/guards.js
+// UID.001_(Playback safety invariant)_(защитить ядро плеера)_(все intel-модули обязаны помнить что playback не трогается)
+// UID.008_(No playback mutation by intel)_(не ломать playing playlist и позицию)_(использовать guard helpers вместо прямого вмешательства)
+// UID.091_(No-op stubs before full implementation)_(оставить слой безопасным до реализации логики)_(делать safeCall/safeAsync и мягкие fallback)
+
+export const intelGuards = {
+  getCurrentUid() {
+    try { return String(window.playerCore?.getCurrentTrackUid?.() || '').trim() || null; } catch { return null; }
+  },
+
+  isPlaybackActive() {
+    try { return !!window.playerCore?.isPlaying?.(); } catch { return false; }
+  },
+
+  canMutatePlayback() {
+    return false;
+  },
+
+  safeCall(fn, fallback = null) {
+    try { return fn(); } catch { return fallback; }
+  },
+
+  async safeAsync(fn, fallback = null) {
+    try { return await fn(); } catch { return fallback; }
+  }
+};
+
+export default intelGuards;
 
 //=================================================
 // FILE: /scripts/offline/cache-db.js
