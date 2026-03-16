@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-53c6590fd115e395480d4d70a4786d65e4e5b1f3.idx
-│   │       ├── pack-53c6590fd115e395480d4d70a4786d65e4e5b1f3.pack
-│   │       └── pack-53c6590fd115e395480d4d70a4786d65e4e5b1f3.rev
+│   │       ├── pack-f92fdcd64ab5f6d3e4f5f9f0c0272b3569e030f6.idx
+│   │       ├── pack-f92fdcd64ab5f6d3e4f5f9f0c0272b3569e030f6.pack
+│   │       └── pack-f92fdcd64ab5f6d3e4f5f9f0c0272b3569e030f6.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -370,6 +370,7 @@ vi3na1bita-music/
 │   │   │   └── listener-profile.js
 │   │   ├── providers/
 │   │   │   ├── hybrid-sync.js
+│   │   │   ├── provider-actions.js
 │   │   │   ├── provider-consents.js
 │   │   │   └── provider-identity.js
 │   │   ├── recs/
@@ -424,7 +425,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 19:28:26 UTC
+Сгенерировано: 2026-03-16 19:29:01 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3789,6 +3790,33 @@ export const hybridSync = {
 };
 
 export default hybridSync;
+
+//=================================================
+// FILE: /scripts/intel/providers/provider-actions.js
+// UID.079_(VK social/media actions)_(подготовить нативные внешние действия)_(держать их в одном bridge слое, а не в UI хаосе)
+// UID.080_(Provider actions bridge)_(не размазывать external actions по проекту)_(все likes/comments/community/video/audio hooks вести через этот модуль)
+// UID.094_(No-paralysis rule)_(не ломать плеер при external action failure)_(любая ошибка action должна давать только мягкий false/null)
+
+import { providerIdentity } from './provider-identity.js';
+
+export const providerActions = {
+  async init() {
+    return true;
+  },
+
+  can(provider, capability) {
+    return providerIdentity.hasCapability(provider, capability);
+  },
+
+  async run(provider, action, payload = {}) {
+    const name = String(provider || '').trim();
+    if (!name) return { ok: false, reason: 'provider_missing' };
+    window.dispatchEvent(new CustomEvent('intel:provider-action', { detail: { provider: name, action, payload } }));
+    return { ok: false, reason: 'not_implemented' };
+  }
+};
+
+export default providerActions;
 
 //=================================================
 // FILE: /scripts/intel/providers/provider-consents.js
