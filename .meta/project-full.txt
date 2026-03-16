@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-7fa1dab991c4d40a325bd9ab1695af7554ce657d.idx
-│   │       ├── pack-7fa1dab991c4d40a325bd9ab1695af7554ce657d.pack
-│   │       └── pack-7fa1dab991c4d40a325bd9ab1695af7554ce657d.rev
+│   │       ├── pack-c4b97d799fc364cb6a5ab5abdfa744589e472fdb.idx
+│   │       ├── pack-c4b97d799fc364cb6a5ab5abdfa744589e472fdb.pack
+│   │       └── pack-c4b97d799fc364cb6a5ab5abdfa744589e472fdb.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -400,7 +400,9 @@ vi3na1bita-music/
 │   │   ├── flags.js
 │   │   └── roadmap.js
 │   ├── intelligence/
+│   │   ├── bridges.js
 │   │   ├── flags.js
+│   │   ├── manifest.js
 │   │   └── uid-roadmap.js
 │   ├── offline/
 │   │   ├── cache-db.js
@@ -439,7 +441,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 19:46:44 UTC
+Сгенерировано: 2026-03-16 19:47:20 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4959,6 +4961,42 @@ export const trackProfileModal = {
 export default trackProfileModal;
 
 //=================================================
+// FILE: /scripts/intelligence/bridges.js
+/* INTELLIGENCE BRIDGES — no-op safe hooks between existing runtime and future intelligence modules. */
+// UID.157_bridge_existing_modules_(связать existing modules безопасными мостами)_(для staged rollout без переписывания)_(через no-op callbacks)
+// UID.155_disabled_layer_fallback_(держать все hooks no-op safe)_(для нулевого влияния на текущую работу)_(любая bridge call должна быть необязательной)
+
+const noop = () => {};
+const noopAsync = async () => null;
+
+export function createIntelligenceBridges() {
+  return {
+    onBootstrap: noop,
+    onAppInitialized: noop,
+    onTrackRegistryReady: noop,
+    onPlayerCoreReady: noop,
+    onTrackStatisticsOpened: noop,
+    onProfileViewOpened: noop,
+    onShowcaseInitialized: noop,
+    onShowcaseRendered: noop,
+    onShareCardRequested: noop,
+    onEventLogged: noop,
+    onEventsFlushed: noop,
+    onStatsUpdated: noop,
+    onRecommendationInteraction: noop,
+    onProviderLinked: noop,
+    onProviderUnlinked: noop,
+    onHybridSyncStateChanged: noop,
+    onTelemetryMapped: noop,
+    onTrackProfileRequested: noopAsync,
+    onListenerProfileRequested: noopAsync,
+    onRecommendationsRequested: noopAsync
+  };
+}
+
+export default createIntelligenceBridges;
+
+//=================================================
 // FILE: /scripts/intelligence/flags.js
 /* INTELLIGENCE FLAGS — safe toggle layer for optional bootstrap and staged rollout. */
 // UID.008_optional_intelligence_layer_(держать слой отключаемым)_(для безопасного rollout/rollback)_(через bootstrap flags + localStorage kill switch)
@@ -4981,6 +5019,47 @@ export const INTELLIGENCE_FLAGS = Object.freeze({
 });
 
 export default INTELLIGENCE_FLAGS;
+
+//=================================================
+// FILE: /scripts/intelligence/manifest.js
+/* INTELLIGENCE MANIFEST — canonical module map and connection plan. */
+// UID.013_track_registry_anchor_(связать intelligent layer с TrackRegistry)_(для единой точки правды)_(через bridges+module map)
+// UID.090_recommendation_engine_core_(держать rec engine отдельным модулем)_(для расширяемости)_(manifest lists module ownership and connection points)
+// UID.156_namespace_manifest_layer_(держать карту модулей явно)_(для понятного сопровождения)_(id/path/connects/use-cases)
+
+export const INTELLIGENCE_MANIFEST = Object.freeze({
+  version: 'intelligence-manifest-v1',
+  root: 'scripts/intelligence',
+  optional: true,
+  data: {
+    trackProfilesIndex: 'data/track-profiles-index.json',
+    trackProfilesDir: 'data/track-profiles/'
+  },
+  modules: [
+    { id: 'bridges', path: 'scripts/intelligence/bridges.js', connects: ['scripts/app.js'] },
+    { id: 'taxonomyService', path: 'scripts/intelligence/taxonomy-service.js', connects: ['data/taxonomy.json'] },
+    { id: 'trackProfileLoader', path: 'scripts/intelligence/track-profile-loader.js', connects: ['scripts/app/track-registry.js', 'data/track-profiles-index.json'] },
+    { id: 'trackPresentation', path: 'scripts/intelligence/track-presentation.js', connects: ['scripts/ui/track-profile-modal.js', 'scripts/analytics/share-generator.js'] },
+    { id: 'trackRelations', path: 'scripts/intelligence/track-relations.js', connects: ['scripts/app/showcase/index.js'] },
+    { id: 'listenerProfile', path: 'scripts/intelligence/listener-profile.js', connects: ['scripts/analytics/meta-db.js', 'scripts/app/profile/view.js'] },
+    { id: 'sessionContext', path: 'scripts/intelligence/session-context.js', connects: ['src/PlayerCore.js', 'scripts/analytics/session-tracker.js'] },
+    { id: 'recommendationStrategies', path: 'scripts/intelligence/recommendation-strategies.js', connects: ['scripts/intelligence/recommendation-engine.js'] },
+    { id: 'recommendationReasons', path: 'scripts/intelligence/recommendation-reasons.js', connects: ['scripts/intelligence/recommendation-engine.js'] },
+    { id: 'recommendationMemory', path: 'scripts/intelligence/recommendation-memory.js', connects: ['scripts/analytics/meta-db.js'] },
+    { id: 'recommendationEngine', path: 'scripts/intelligence/recommendation-engine.js', connects: ['scripts/app/showcase/index.js', 'scripts/app/profile/view.js'] },
+    { id: 'collectionEngine', path: 'scripts/intelligence/collection-engine.js', connects: ['scripts/analytics/share-generator.js', 'scripts/ui/track-profile-modal.js'] },
+    { id: 'providerCapabilities', path: 'scripts/intelligence/provider-capabilities.js', connects: ['scripts/intelligence/provider-identity.js'] },
+    { id: 'providerIdentity', path: 'scripts/intelligence/provider-identity.js', connects: ['scripts/analytics/cloud-sync.js', 'scripts/app/profile/view.js'] },
+    { id: 'providerActions', path: 'scripts/intelligence/provider-actions.js', connects: ['scripts/app/profile/view.js'] },
+    { id: 'hybridSync', path: 'scripts/intelligence/hybrid-sync.js', connects: ['scripts/analytics/backup-vault.js', 'scripts/analytics/cloud-sync.js'] },
+    { id: 'telemetryMapper', path: 'scripts/intelligence/telemetry-mapper.js', connects: ['scripts/analytics/event-logger.js'] },
+    { id: 'globalInsights', path: 'scripts/intelligence/global-insights.js', connects: ['scripts/app/profile/view.js', 'scripts/app/showcase/index.js'] },
+    { id: 'aiAssistant', path: 'scripts/intelligence/ai-assistant.js', connects: ['scripts/ui/track-profile-modal.js', 'scripts/app/profile/view.js'] },
+    { id: 'trackProfileModal', path: 'scripts/ui/track-profile-modal.js', connects: ['scripts/ui/statistics-modal.js'] }
+  ]
+});
+
+export default INTELLIGENCE_MANIFEST;
 
 //=================================================
 // FILE: /scripts/intelligence/uid-roadmap.js
