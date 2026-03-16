@@ -2,206 +2,69 @@ import { metaDB } from './meta-db.js';
 
 export class StatsAggregator {
   constructor() {
-    this.lastFullListens = new Map(); // Anti-tamper & Rate Limiting (in-memory)
-    this.session = {
-      favOrderedRun: 0,
-      favOrderedLastUid: null,
-      favShuffleEvents: new Set(),
-      midnightTripleTrack: null,
-      midnightTripleCount: 0,
-      lastFullUid: null
-    };
+    this.lastFullListens = new Map();
+    this.session = { favOrderedRun: 0, favOrderedLastUid: null, favShuffleEvents: new Set(), midnightTripleTrack: null, midnightTripleCount: 0, lastFullUid: null };
     window.addEventListener('analytics:logUpdated', () => this.processHotEvents());
   }
 
   async processHotEvents() {
-    const events = await metaDB.getEvents('events_hot');
-    if (!events.length) return;
-
-    const nowLocal = new Date();
-    const todayStr = `${nowLocal.getFullYear()}-${String(nowLocal.getMonth() + 1).padStart(2, '0')}-${String(nowLocal.getDate()).padStart(2, '0')}`;
+    const events = await metaDB.getEvents('events_hot'); if (!events.length) return;
+    const n = new Date(), tStr = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
     let dailyActive = false;
 
     for (const ev of events) {
       if (ev.type === 'LISTEN_COMPLETE' && ev.data) {
-        const { isFullListen, isValidListen, listenedSeconds, variant } = ev.data;
-        
-        // Rate Limiting (ТЗ 7.1)
-        const lastPlay = this.lastFullListens.get(ev.uid) || 0;
-        const timeSince = ev.timestamp - lastPlay;
-        const minInterval = (ev.data.trackDuration || 0) * 1000 * 0.9;
-        const isRateLimited = isFullListen && timeSince < minInterval;
+        const { isFullListen: isF, isValidListen: isV, listenedSeconds: lSec, variant: v, trackDuration: tDur } = ev.data;
+        const isRateLimited = isF && (ev.timestamp - (this.lastFullListens.get(ev.uid) || 0)) < (tDur || 0) * 900;
 
-        await metaDB.updateStat(ev.uid, (stat) => {
-          stat.globalListenSeconds += (listenedSeconds || 0);
-          stat.lastPlayedAt = ev.timestamp;
-          if (!stat.featuresUsed) stat.featuresUsed = {};
-          
-          if (isValidListen) {
-            stat.globalValidListenCount++;
-            dailyActive = true;
-
-            // Расширенная аналитика: По часам и дням недели (из старого приложения)
-            try {
-              const d = new Date(ev.timestamp);
-              const h = d.getHours();
-              const w = (d.getDay() + 6) % 7; // Пн=0, Вс=6
-              
-              if (!stat.byHour) stat.byHour = Array(24).fill(0);
-              if (!stat.byWeekday) stat.byWeekday = Array(7).fill(0);
-              
-              stat.byHour[h] = (stat.byHour[h] || 0) + 1;
-              stat.byWeekday[w] = (stat.byWeekday[w] || 0) + 1;
-            } catch (e) {}
+        await metaDB.updateStat(ev.uid, s => {
+          s.globalListenSeconds += (lSec || 0); s.lastPlayedAt = ev.timestamp; s.featuresUsed = s.featuresUsed || {};
+          if (isV) {
+            s.globalValidListenCount++; dailyActive = true;
+            try { const d = new Date(ev.timestamp), h = d.getHours(), w = (d.getDay() + 6) % 7; (s.byHour = s.byHour || Array(24).fill(0))[h]++; (s.byWeekday = s.byWeekday || Array(7).fill(0))[w]++; } catch {}
           }
+          if (isF && !isRateLimited && v !== 'short') {
+            s.globalFullListenCount++; this.lastFullListens.set(ev.uid, ev.timestamp);
+            const mins = new Date(ev.timestamp).getHours() * 60 + new Date(ev.timestamp).getMinutes();
+            if (mins >= 120 && mins <= 270) s.featuresUsed.nightPlay = (s.featuresUsed.nightPlay || 0) + 1;
+            if (mins >= 300 && mins <= 539) s.featuresUsed.earlyPlay = (s.featuresUsed.earlyPlay || 0) + 1;
+            if (ev.data?.quality === 'hi') s.featuresUsed.hiQuality = (s.featuresUsed.hiQuality || 0) + 1;
+            if (s.globalFullListenCount >= (parseInt(localStorage.getItem('cloud:listenThreshold')) || 5)) window.dispatchEvent(new CustomEvent('analytics:cloudThresholdReached', { detail: { uid: ev.uid } }));
 
-          if (isFullListen && !isRateLimited && variant !== 'short') {
-            stat.globalFullListenCount++;
-            this.lastFullListens.set(ev.uid, ev.timestamp);
-            
-            // Расширенная аналитика для Достижений (ТЗ 11.3)
-            const dt = new Date(ev.timestamp);
-            const minutesOfDay = dt.getHours() * 60 + dt.getMinutes();
-
-            if (minutesOfDay >= 120 && minutesOfDay <= 270) {
-              stat.featuresUsed.nightPlay = (stat.featuresUsed.nightPlay || 0) + 1;
-            }
-
-            if (minutesOfDay >= 300 && minutesOfDay <= 539) {
-              stat.featuresUsed.earlyPlay = (stat.featuresUsed.earlyPlay || 0) + 1;
-            }
-
-            if (ev.data?.quality === 'hi') stat.featuresUsed.hiQuality = (stat.featuresUsed.hiQuality || 0) + 1;
-
-            // Триггер облачного кэширования (ТЗ 5.2)
-            const cN = parseInt(localStorage.getItem('cloud:listenThreshold')) || 5;
-            if (stat.globalFullListenCount >= cN) {
-               window.dispatchEvent(new CustomEvent('analytics:cloudThresholdReached', { detail: { uid: ev.uid } }));
-            }
-            
-            // --- ТРЕКИНГ КОМБО (Старое приложение) ---
-            const g = window.playerCore;
-            if (g) {
-              const isFavOnly = localStorage.getItem('favoritesOnlyMode') === '1';
-              const isShuffle = g.isShuffle();
-              const isFavNow = g.isFavorite(ev.uid);
-
-              if (isShuffle) stat.featuresUsed.shufflePlay = (stat.featuresUsed.shufflePlay || 0) + 1;
-
-              if (isFavOnly && !isShuffle && isFavNow) {
-                if (this.session.favOrderedLastUid !== ev.uid) {
-                  this.session.favOrderedRun++;
-                  this.session.favOrderedLastUid = ev.uid;
-                }
-              } else {
-                this.session.favOrderedRun = 0;
-                this.session.favOrderedLastUid = null;
-              }
-
-              if (isFavOnly && isShuffle && isFavNow) {
-                this.session.favShuffleEvents.add(ev.uid);
-              } else {
-                this.session.favShuffleEvents.clear();
-              }
-
-              // Полночный цикл (00:00 - 00:30) — только последовательные полные прослушивания одного и того же трека
-              const timeStr = new Date(ev.timestamp).toTimeString().slice(0, 8);
-              if (timeStr >= '00:00:00' && timeStr <= '00:30:00') {
-                if (this.session.lastFullUid === ev.uid && this.session.midnightTripleTrack === ev.uid) {
-                  this.session.midnightTripleCount++;
-                } else {
-                  this.session.midnightTripleTrack = ev.uid;
-                  this.session.midnightTripleCount = 1;
-                }
-              } else {
-                this.session.midnightTripleTrack = null;
-                this.session.midnightTripleCount = 0;
-              }
-
+            if (window.playerCore) {
+              const isFavOnly = localStorage.getItem('favoritesOnlyMode') === '1', isShuf = window.playerCore.isShuffle(), isFav = window.playerCore.isFavorite(ev.uid);
+              if (isShuf) s.featuresUsed.shufflePlay = (s.featuresUsed.shufflePlay || 0) + 1;
+              if (isFavOnly && !isShuf && isFav) { if (this.session.favOrderedLastUid !== ev.uid) { this.session.favOrderedRun++; this.session.favOrderedLastUid = ev.uid; } } else { this.session.favOrderedRun = 0; this.session.favOrderedLastUid = null; }
+              isFavOnly && isShuf && isFav ? this.session.favShuffleEvents.add(ev.uid) : this.session.favShuffleEvents.clear();
+              
+              const tStr = new Date(ev.timestamp).toTimeString().slice(0, 8);
+              if (tStr >= '00:00:00' && tStr <= '00:30:00') { if (this.session.lastFullUid === ev.uid && this.session.midnightTripleTrack === ev.uid) this.session.midnightTripleCount++; else { this.session.midnightTripleTrack = ev.uid; this.session.midnightTripleCount = 1; } } else { this.session.midnightTripleTrack = null; this.session.midnightTripleCount = 0; }
               this.session.lastFullUid = ev.uid;
 
-              // Запись комбо в глобальную статистику
               if (this.session.favOrderedRun >= 5 || this.session.favShuffleEvents.size >= 5 || this.session.midnightTripleCount >= 3) {
-                 setTimeout(async () => {
-                   await metaDB.updateStat('global', s => {
-                     if (!s.featuresUsed) s.featuresUsed = {};
-                     if (this.session.favOrderedRun >= 5) s.featuresUsed.fav_ordered_5 = 5;
-                     if (this.session.favShuffleEvents.size >= 5) s.featuresUsed.fav_shuffle_5 = 5;
-                     if (this.session.midnightTripleCount >= 3) s.featuresUsed.midnight_triple = 1;
-                     return s;
-                   });
-                 }, 500);
+                setTimeout(async () => await metaDB.updateStat('global', gs => { gs.featuresUsed = gs.featuresUsed || {}; if (this.session.favOrderedRun >= 5) gs.featuresUsed.fav_ordered_5 = 5; if (this.session.favShuffleEvents.size >= 5) gs.featuresUsed.fav_shuffle_5 = 5; if (this.session.midnightTripleCount >= 3) gs.featuresUsed.midnight_triple = 1; return gs; }), 500);
               }
             }
           }
-          return stat;
+          return s;
         });
-      } else if (ev.type === 'LISTEN_SKIP') {
-        this.session.favOrderedRun = 0;
-        this.session.favOrderedLastUid = null;
-        this.session.favShuffleEvents.clear();
-        this.session.midnightTripleTrack = null;
-        this.session.midnightTripleCount = 0;
-        this.session.lastFullUid = null;
-      } else if (ev.type === 'FEATURE_USED') {
-         const targetUid = ev.uid || 'global';
-         await metaDB.updateStat(targetUid, s => {
-           if (!s.featuresUsed) s.featuresUsed = {};
-           const feature = ev.data.feature;
-           s.featuresUsed[feature] = (s.featuresUsed[feature] || 0) + 1;
-
-           if (!s.byHour) s.byHour = Array(24).fill(0);
-           if (!s.byWeekday) s.byWeekday = Array(7).fill(0);
-           const d = new Date(ev.timestamp);
-           const h = d.getHours();
-           const w = (d.getDay() + 6) % 7;
-           s.byHour[h] = (s.byHour[h] || 0) + 1;
-           s.byWeekday[w] = (s.byWeekday[w] || 0) + 1;
-           s.lastPlayedAt = ev.timestamp;
-
-           if (feature === 'social_visit') {
-             const target = String(ev.data.target || 'other').toLowerCase();
-             const key = `social_visit_${target}`;
-             s.featuresUsed[key] = (s.featuresUsed[key] || 0) + 1;
-             const hasAll =
-               (s.featuresUsed.social_visit_youtube || 0) > 0 &&
-               (s.featuresUsed.social_visit_telegram || 0) > 0 &&
-               (s.featuresUsed.social_visit_vk || 0) > 0 &&
-               (s.featuresUsed.social_visit_tiktok || 0) > 0;
-             if (hasAll) s.featuresUsed.social_visit_all = 1;
-           }
-
-           if (feature === 'sleep_timer_set' || feature === 'sleep_timer_extend' || feature === 'sleep_timer_cancel' || feature === 'sleep_timer') {
-             const mins = Math.max(0, Number(ev.data.minutes || 0));
-             s.featuresUsed.sleep_timer_minutes_total = (s.featuresUsed.sleep_timer_minutes_total || 0) + mins;
-             if (ev.data.mode) {
-               const mKey = `sleep_timer_mode_${String(ev.data.mode).toLowerCase()}`;
-               s.featuresUsed[mKey] = (s.featuresUsed[mKey] || 0) + 1;
-             }
-           }
-
-           return s;
-         });
+      } else if (ev.type === 'LISTEN_SKIP') { this.session.favOrderedRun = 0; this.session.favOrderedLastUid = null; this.session.favShuffleEvents.clear(); this.session.midnightTripleTrack = null; this.session.midnightTripleCount = 0; this.session.lastFullUid = null; }
+      else if (ev.type === 'FEATURE_USED') {
+        await metaDB.updateStat(ev.uid || 'global', s => {
+          s.featuresUsed = s.featuresUsed || {}; const f = ev.data.feature; s.featuresUsed[f] = (s.featuresUsed[f] || 0) + 1;
+          const d = new Date(ev.timestamp), h = d.getHours(), w = (d.getDay() + 6) % 7; (s.byHour = s.byHour || Array(24).fill(0))[h]++; (s.byWeekday = s.byWeekday || Array(7).fill(0))[w]++; s.lastPlayedAt = ev.timestamp;
+          if (f === 'social_visit') { const tgt = String(ev.data.target || 'other').toLowerCase(); s.featuresUsed[`social_visit_${tgt}`] = (s.featuresUsed[`social_visit_${tgt}`] || 0) + 1; if ((s.featuresUsed.social_visit_youtube || 0) > 0 && (s.featuresUsed.social_visit_telegram || 0) > 0 && (s.featuresUsed.social_visit_vk || 0) > 0 && (s.featuresUsed.social_visit_tiktok || 0) > 0) s.featuresUsed.social_visit_all = 1; }
+          if (['sleep_timer_set', 'sleep_timer_extend', 'sleep_timer_cancel', 'sleep_timer'].includes(f)) { s.featuresUsed.sleep_timer_minutes_total = (s.featuresUsed.sleep_timer_minutes_total || 0) + Math.max(0, Number(ev.data.minutes || 0)); if (ev.data.mode) s.featuresUsed[`sleep_timer_mode_${String(ev.data.mode).toLowerCase()}`] = (s.featuresUsed[`sleep_timer_mode_${String(ev.data.mode).toLowerCase()}`] || 0) + 1; }
+          return s;
+        });
       }
     }
 
-    // Управление стриками (локальный календарный день)
     if (dailyActive) {
-      const streakObj = (await metaDB.getGlobal('global_streak'))?.value || { current: 0, longest: 0, lastActiveDate: '' };
-      if (streakObj.lastActiveDate !== todayStr) {
-        const yd = new Date();
-        yd.setDate(yd.getDate() - 1);
-        const yesterday = `${yd.getFullYear()}-${String(yd.getMonth() + 1).padStart(2, '0')}-${String(yd.getDate()).padStart(2, '0')}`;
-        streakObj.current = (streakObj.lastActiveDate === yesterday) ? streakObj.current + 1 : 1;
-        streakObj.longest = Math.max(streakObj.longest, streakObj.current);
-        streakObj.lastActiveDate = todayStr;
-        await metaDB.setGlobal('global_streak', streakObj);
-      }
+      const sObj = (await metaDB.getGlobal('global_streak'))?.value || { current: 0, longest: 0, lastActiveDate: '' };
+      if (sObj.lastActiveDate !== tStr) { const yd = new Date(); yd.setDate(yd.getDate() - 1); const yStr = `${yd.getFullYear()}-${String(yd.getMonth() + 1).padStart(2, '0')}-${String(yd.getDate()).padStart(2, '0')}`; sObj.current = (sObj.lastActiveDate === yStr) ? sObj.current + 1 : 1; sObj.longest = Math.max(sObj.longest, sObj.current); sObj.lastActiveDate = tStr; await metaDB.setGlobal('global_streak', sObj); }
     }
 
-    // Ротация: Hot -> Warm
-    await metaDB.addEvents(events, 'events_warm');
-    await metaDB.clearEvents('events_hot');
-    window.dispatchEvent(new CustomEvent('stats:updated'));
+    await metaDB.addEvents(events, 'events_warm'); await metaDB.clearEvents('events_hot'); window.dispatchEvent(new CustomEvent('stats:updated'));
   }
 }
