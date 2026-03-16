@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-fed1a1d65c02d37f1110b09b8839e1f83d4eb156.idx
-│   │       ├── pack-fed1a1d65c02d37f1110b09b8839e1f83d4eb156.pack
-│   │       └── pack-fed1a1d65c02d37f1110b09b8839e1f83d4eb156.rev
+│   │       ├── pack-acfc45717cbdb24734f45ff4b97b7b23dc65ec92.idx
+│   │       ├── pack-acfc45717cbdb24734f45ff4b97b7b23dc65ec92.pack
+│   │       └── pack-acfc45717cbdb24734f45ff4b97b7b23dc65ec92.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -436,7 +436,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 19:35:11 UTC
+Сгенерировано: 2026-03-16 19:35:54 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1006,7 +1006,34 @@ const STATIC_ASSETS = [
   './scripts/app.js', './src/PlayerCore.js',
   './src/player-core/media-session.js',
   './scripts/app/track-registry.js',
-  './scripts/app/offline-ui-bootstrap.js', './scripts/app/playback-cache-bootstrap.js'
+  './scripts/app/offline-ui-bootstrap.js', './scripts/app/playback-cache-bootstrap.js',
+  './data/track-profiles-index.json',
+  './scripts/intel/roadmap.js',
+  './scripts/intel/flags.js',
+  './scripts/intel/bootstrap.js',
+  './scripts/intel/shared/contracts.js',
+  './scripts/intel/shared/bus.js',
+  './scripts/intel/shared/guards.js',
+  './scripts/intel/track/track-profiles.js',
+  './scripts/intel/track/track-presentation.js',
+  './scripts/intel/track/track-relations.js',
+  './scripts/intel/listener/listener-profile.js',
+  './scripts/intel/listener/listener-collection.js',
+  './scripts/intel/recs/recommendation-engine.js',
+  './scripts/intel/recs/recommendation-strategies.js',
+  './scripts/intel/recs/recommendation-reasons.js',
+  './scripts/intel/recs/rediscovery.js',
+  './scripts/intel/providers/provider-consents.js',
+  './scripts/intel/providers/provider-identity.js',
+  './scripts/intel/providers/hybrid-sync.js',
+  './scripts/intel/providers/provider-actions.js',
+  './scripts/intel/telemetry/telemetry-mapper.js',
+  './scripts/intel/community/cohorts.js',
+  './scripts/intel/community/similar-listeners.js',
+  './scripts/intel/community/community-stats.js',
+  './scripts/intel/ui/track-profile-modal.js',
+  './scripts/intel/ui/profile-insights.js',
+  './scripts/intel/ui/showcase-semantic.js'
 ];
 
 const norm = (u) => { 
