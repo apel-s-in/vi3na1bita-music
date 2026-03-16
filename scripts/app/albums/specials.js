@@ -3,28 +3,20 @@ import { injectOfflineIndicators } from '../../ui/offline-indicators.js';
 import { renderFavoriteStar } from '../../ui/icon-utils.js';
 import { loadProfileView } from '../profile/view.js';
 
-const FAV = window.SPECIAL_FAVORITES_KEY || '__favorites__';
-const NEWS = window.SPECIAL_RELIZ_KEY || '__reliz__';
-const FAV_COVER = 'img/Fav_logo.png';
+const FAV = window.SPECIAL_FAVORITES_KEY || '__favorites__', NEWS = window.SPECIAL_RELIZ_KEY || '__reliz__', FAV_COVER = 'img/Fav_logo.png';
 const esc = s => window.Utils?.escapeHtml ? window.Utils.escapeHtml(String(s || '')) : String(s || '');
 
 export async function loadFavoritesAlbum(ctx) {
   ctx.renderAlbumTitle('⭐⭐⭐ ИЗБРАННОЕ ⭐⭐⭐', 'fav');
   document.getElementById('cover-wrap').style.display = 'none';
-  const c = document.getElementById('track-list');
-  if (!c) return;
+  const c = document.getElementById('track-list'); if (!c) return;
 
   const rb = () => {
     const pc = window.playerCore; if (!pc) return;
-    const { active = [], inactive = [] } = pc.getFavoritesState() || {};
-    const it = [...active.map(i => ({...i, act: 1})), ...inactive.map(i => ({...i, act: 0}))];
+    const { active = [], inactive = [] } = pc.getFavoritesState() || {}, it = [...active.map(i => ({...i, act: 1})), ...inactive.map(i => ({...i, act: 0}))];
     const pb = document.getElementById('lyricsplayerblock'), hp = pb && c.contains(pb);
 
-    if (!it.length) {
-      c.innerHTML = `<div class="fav-empty"><h3>Избранные треки</h3><p>Отметьте треки звёздочкой ⭐</p></div>`;
-      if (hp) c.appendChild(pb);
-      return;
-    }
+    if (!it.length) { c.innerHTML = `<div class="fav-empty"><h3>Избранные треки</h3><p>Отметьте треки звёздочкой ⭐</p></div>`; if (hp) c.appendChild(pb); return; }
 
     c.innerHTML = it.map((x, i) => {
       const t = window.TrackRegistry?.getTrackByUid(x.uid) || { title: 'Загрузка...', sourceAlbum: x.sourceAlbum };
@@ -43,7 +35,7 @@ export async function loadFavoritesAlbum(ctx) {
       const r = e.target.closest('.track'); if (!r) return;
       const u = r.dataset.uid, aK = r.dataset.album, pc = window.playerCore, isA = pc.getFavoritesState().active.some(x => x.uid === u);
       
-      if (e.target.closest('.like-star')) { e.preventDefault(); e.stopPropagation(); isA ? pc.toggleFavorite(u, { source: 'favorites', albumKey: aK }) : pc.restoreInactive(u); return; }
+      if (e.target.closest('.like-star')) return e.preventDefault(), e.stopPropagation(), isA ? pc.toggleFavorite(u, { source: 'favorites', albumKey: aK }) : pc.restoreInactive(u);
       
       if (isA) {
         ctx.setPlayingAlbum(FAV);
@@ -67,31 +59,13 @@ export async function loadFavoritesAlbum(ctx) {
   rb();
 }
 
-export async function loadShowcaseAlbum(ctx) {
-  ctx.renderAlbumTitle('Витрина Разбита', 'showcase');
-  document.getElementById('cover-wrap').style.display = 'none';
-  if (window.ShowcaseManager) await window.ShowcaseManager.renderTab();
-}
+export async function loadShowcaseAlbum(ctx) { ctx.renderAlbumTitle('Витрина Разбита', 'showcase'); document.getElementById('cover-wrap').style.display = 'none'; if (window.ShowcaseManager) await window.ShowcaseManager.renderTab(); }
 
 export async function loadNewsAlbum(ctx) {
-  ctx.renderAlbumTitle('📰 НОВОСТИ 📰', 'news');
-  document.getElementById('cover-wrap').style.display = 'none';
-  if (window.GalleryManager?.clear) window.GalleryManager.clear();
-
+  ctx.renderAlbumTitle('📰 НОВОСТИ 📰', 'news'); document.getElementById('cover-wrap').style.display = 'none'; window.GalleryManager?.clear?.();
   const social = document.getElementById('social-links');
-  if (social) {
-    social.innerHTML = `
-      <a href="https://www.youtube.com/channel/UCbjm1J0V8RkWvNj4Z8-JIhA/" target="_blank" rel="noopener noreferrer">YouTube</a>
-      <a href="https://t.me/vitrina_razbita" target="_blank" rel="noopener noreferrer">Telegram</a>
-      <a href="https://vk.com/apelsinov" target="_blank" rel="noopener noreferrer">VK</a>
-      <a href="https://www.tiktok.com/@vi3na1bita" target="_blank" rel="noopener noreferrer">TikTok</a>
-    `;
-  }
-
-  const c = document.getElementById('track-list');
-  if (c) await loadAndRenderNewsInline(c);
+  if (social) social.innerHTML = `<a href="https://www.youtube.com/channel/UCbjm1J0V8RkWvNj4Z8-JIhA/" target="_blank" rel="noopener noreferrer">YouTube</a><a href="https://t.me/vitrina_razbita" target="_blank" rel="noopener noreferrer">Telegram</a><a href="https://vk.com/apelsinov" target="_blank" rel="noopener noreferrer">VK</a><a href="https://www.tiktok.com/@vi3na1bita" target="_blank" rel="noopener noreferrer">TikTok</a>`;
+  const c = document.getElementById('track-list'); if (c) await loadAndRenderNewsInline(c);
 }
 
-export async function loadProfileAlbum(ctx) {
-  return loadProfileView(ctx);
-}
+export async function loadProfileAlbum(ctx) { return loadProfileView(ctx); }
