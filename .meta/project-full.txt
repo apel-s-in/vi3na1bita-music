@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-69d7a12ad10df999ac440ef04014f0d3ed27e1ed.idx
-│   │       ├── pack-69d7a12ad10df999ac440ef04014f0d3ed27e1ed.pack
-│   │       └── pack-69d7a12ad10df999ac440ef04014f0d3ed27e1ed.rev
+│   │       ├── pack-5125ccd69986411bdca173a67555dfca9c16fd2e.idx
+│   │       ├── pack-5125ccd69986411bdca173a67555dfca9c16fd2e.pack
+│   │       └── pack-5125ccd69986411bdca173a67555dfca9c16fd2e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -437,7 +437,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 21:18:43 UTC
+Сгенерировано: 2026-03-16 21:19:27 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4805,6 +4805,14 @@ export const intelGuards = {
 
   async safeAsync(fn, fallback = null) {
     try { return await fn(); } catch { return fallback; }
+  },
+
+  normalizeKey(value) {
+    return String(value || '').trim();
+  },
+
+  isPlainObject(value) {
+    return !!value && typeof value === 'object' && !Array.isArray(value);
   }
 };
 
