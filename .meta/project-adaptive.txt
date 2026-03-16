@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-625a13c675a42385d969bdb1bcdcdfe20e683a44.idx
-│   │       ├── pack-625a13c675a42385d969bdb1bcdcdfe20e683a44.pack
-│   │       └── pack-625a13c675a42385d969bdb1bcdcdfe20e683a44.rev
+│   │       ├── pack-fed1a1d65c02d37f1110b09b8839e1f83d4eb156.idx
+│   │       ├── pack-fed1a1d65c02d37f1110b09b8839e1f83d4eb156.pack
+│   │       └── pack-fed1a1d65c02d37f1110b09b8839e1f83d4eb156.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -436,7 +436,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 19:34:35 UTC
+Сгенерировано: 2026-03-16 19:35:11 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1884,6 +1884,13 @@ export class StatsAggregator {
       };
       CS.cloudSync?.checkAuthCallback?.(); W.dispatchEvent(new CustomEvent('analytics:logUpdated'));
     } catch (e) { console.warn('Analytics init skipped/failed:', e); }
+
+    try {
+      if (C.INTEL_LAYER_ENABLED !== false) {
+        const intel = await import('./intel/bootstrap.js');
+        await intel.initIntelBootstrap?.({ W, D, C });
+      }
+    } catch (e) { console.warn('Intel layer init skipped/failed:', e); }
 
     const run = n => W[n]?.initialize?.();
     if (await waitObj('GalleryManager')) run('GalleryManager');
