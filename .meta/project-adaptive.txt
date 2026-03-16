@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d43d640b1862081c7cf00ef012553706bbf47634.idx
-│   │       ├── pack-d43d640b1862081c7cf00ef012553706bbf47634.pack
-│   │       └── pack-d43d640b1862081c7cf00ef012553706bbf47634.rev
+│   │       ├── pack-a9dc5ca128401ccf19babd689679eaccf0911f0e.idx
+│   │       ├── pack-a9dc5ca128401ccf19babd689679eaccf0911f0e.pack
+│   │       └── pack-a9dc5ca128401ccf19babd689679eaccf0911f0e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -437,7 +437,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 20:56:14 UTC
+Сгенерировано: 2026-03-16 20:56:30 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5534,6 +5534,13 @@ window.IconUtils = { renderIcon, setIconUse, renderFavoriteStar, setFavoriteStar
 
 //=================================================
 // FILE: /scripts/ui/modals.js
+// UID.038_(Track profile modal)_(дать безопасный host для умных карточек и окон)_(Modals остаётся центральным generic UI-bridge, а не местом бизнес-логики профилей)
+// UID.070_(Linked providers)_(дать profile/provider слою единый способ открытия окон)_(provider/profile UI может использовать Modals как host, не дублируя modal engines)
+// UID.072_(Provider consents)_(позже показывать consent/policy окна через единый слой)_(consent content может приходить из intel/providers, но рендериться через этот generic bridge)
+// UID.073_(Hybrid sync orchestrator)_(позже показывать sync/restore/provider role dialogs)_(Modals только отображает, orchestration logic живёт вне этого файла)
+// UID.080_(Provider actions bridge)_(provider action confirmations/openers не должны плодить свои modal subsystems)_(все optional provider окна лучше вешать на этот central bridge)
+// UID.082_(Local truth vs external telemetry split)_(modals не должны экспортировать наружу raw state сами)_(любая внешняя аналитика modal-actions только через mapper/consent слой)
+// UID.094_(No-paralysis rule)_(generic modal engine должен быть независимым от intel)_(если intel/profile/providers выключены, базовые confirm/open продолжают работать как сейчас)
 (function () {
   'use strict';
   const esc = s => window.Utils?.escapeHtml?.(String(s ?? '')) ?? String(s ?? '');
