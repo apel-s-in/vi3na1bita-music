@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-87289b3c942e435ba23da66f2557ae7d6b399430.idx
-│   │       ├── pack-87289b3c942e435ba23da66f2557ae7d6b399430.pack
-│   │       └── pack-87289b3c942e435ba23da66f2557ae7d6b399430.rev
+│   │       ├── pack-9eddee9aa12618e50ee9b39b0068744d2d5e6aa2.idx
+│   │       ├── pack-9eddee9aa12618e50ee9b39b0068744d2d5e6aa2.pack
+│   │       └── pack-9eddee9aa12618e50ee9b39b0068744d2d5e6aa2.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -406,6 +406,7 @@ vi3na1bita-music/
 │   │   ├── taxonomy-service.js
 │   │   ├── track-presentation.js
 │   │   ├── track-profile-loader.js
+│   │   ├── track-relations.js
 │   │   └── uid-roadmap.js
 │   ├── offline/
 │   │   ├── cache-db.js
@@ -444,7 +445,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 19:48:28 UTC
+Сгенерировано: 2026-03-16 19:48:45 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5138,6 +5139,31 @@ export const trackProfileLoader = {
 };
 
 export default trackProfileLoader;
+
+//=================================================
+// FILE: /scripts/intelligence/track-relations.js
+/* TRACK RELATIONS — future relation graph beyond similar_tracks. */
+// UID.053_track_relation_graph_(ввести relation graph)_(для richer discovery и переходов)_(module will own relation types)
+// UID.054_audio_similarity_relation_(держать audio similarity)_(для похожего звучания)_(future embeddings edges)
+// UID.055_lyric_similarity_relation_(держать lyric similarity)_(для похожего смысла)_(themes/keywords/entities edges)
+// UID.057_transition_fit_relation_(держать transition fit)_(для хороших переходов между треками)_(sequence-aware edges)
+// UID.059_same_universe_relation_(держать same-universe)_(для внутренних миров/циклов)_(manual+semantic links)
+
+const noopAsync = async () => null;
+
+export const trackRelations = {
+  id: 'track-relations',
+  version: '0.0.1-stub',
+  ready: false,
+  async initialize() { this.ready = true; return this; },
+  async getSimilar() { return []; },
+  async getRelations() { return []; },
+  async getTransitionCandidates() { return []; },
+  async getUniverseLinks() { return []; },
+  teardown: noopAsync
+};
+
+export default trackRelations;
 
 //=================================================
 // FILE: /scripts/intelligence/uid-roadmap.js
