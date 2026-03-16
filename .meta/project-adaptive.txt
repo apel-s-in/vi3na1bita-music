@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5c3f3fc6ff8882cb516af26768c444c30578b7a0.idx
-│   │       ├── pack-5c3f3fc6ff8882cb516af26768c444c30578b7a0.pack
-│   │       └── pack-5c3f3fc6ff8882cb516af26768c444c30578b7a0.rev
+│   │       ├── pack-69d7a12ad10df999ac440ef04014f0d3ed27e1ed.idx
+│   │       ├── pack-69d7a12ad10df999ac440ef04014f0d3ed27e1ed.pack
+│   │       └── pack-69d7a12ad10df999ac440ef04014f0d3ed27e1ed.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -437,7 +437,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 21:17:33 UTC
+Сгенерировано: 2026-03-16 21:18:44 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4757,6 +4757,13 @@ export const INTEL_CONTRACTS = Object.freeze({
     collectionState: 'collection_state',
     intelRuntime: 'intel_runtime'
   }),
+  helperKinds: Object.freeze([
+    'moduleInit',
+    'localStorageState',
+    'memoryState',
+    'safeEmitter',
+    'optionalGetter'
+  ]),
   providers: Object.freeze(['yandex', 'google', 'vk']),
   providerRoles: Object.freeze(['primaryAuth', 'primaryBackup', 'secondaryBackup', 'social', 'ai']),
   events: Object.freeze([
