@@ -1,3 +1,8 @@
+// UID.044_(ListenerProfile core)_(profile model должен стать местом мягкой сборки user portrait)_(future сюда можно подмешивать listener profile summary без ломки legacy stats model)
+// UID.070_(Linked providers)_(model должен уметь принимать provider identity snapshot)_(но truth linked accounts хранится не здесь, а в intel/providers/provider-identity.js)
+// UID.072_(Provider consents)_(model сможет отдавать consent snapshot для profile UI)_(но хранение consent state вынесено в intel/providers/provider-consents.js)
+// UID.073_(Hybrid sync orchestrator)_(model должен принять sync state как optional extension)_(но orchestration logic не должна появляться в этом файле)
+// UID.094_(No-paralysis rule)_(legacy profile model остаётся валидным fallback)_(если intel слой недоступен, этот model продолжает работать сам)
 export const loadProfileModel = async () => {
   let db = null, cs = null, all = [], ach = {}, streak = 0, profile = { name: 'Слушатель', avatar: '😎' };
   try {
