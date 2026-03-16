@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-232cfffb9cabfb79f1b5f872e6ccab7dc1a1fd1a.idx
-│   │       ├── pack-232cfffb9cabfb79f1b5f872e6ccab7dc1a1fd1a.pack
-│   │       └── pack-232cfffb9cabfb79f1b5f872e6ccab7dc1a1fd1a.rev
+│   │       ├── pack-b602be15e5831c825f6752f158c75cbcbdacf4bf.idx
+│   │       ├── pack-b602be15e5831c825f6752f158c75cbcbdacf4bf.pack
+│   │       └── pack-b602be15e5831c825f6752f158c75cbcbdacf4bf.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -398,7 +398,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 11:27:26 UTC
+Сгенерировано: 2026-03-16 11:27:46 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3205,81 +3205,24 @@ if (typeof window !== 'undefined') { window.APP_CONFIG = APP_CONFIG; window.SPEC
 
 //=================================================
 // FILE: /scripts/core/favorites-manager.js
-// scripts/core/favorites-manager.js
-// Optimized v2.0
 const KEY = '__favorites_v2__';
-
 export class FavoritesManager {
-  constructor() {
-    this._map = new Map();
-    this._subs = new Set();
-    this.init();
+  constructor() { this._m = new Map(); this._s = new Set(); try { JSON.parse(localStorage.getItem(KEY) || '[]').forEach(i => i?.uid && this._m.set(String(i.uid).trim(), i)); } catch {} }
+  isLiked(uid) { const i = this._m.get(String(uid || '').trim()); return !!(i && !i.inactiveAt); }
+  getSnapshot() { return Array.from(this._m.values()); }
+  readLikedSet() { return new Set([...this._m.values()].filter(i => !i.inactiveAt).map(i => i.uid)); }
+  toggle(uid, { source: s = 'album', albumKey: aK } = {}) {
+    const u = String(uid || '').trim(); if (!u) return false;
+    const i = this._m.get(u), act = i && !i.inactiveAt; let L = false;
+    if (act) s === 'favorites' ? this._m.set(u, { ...i, inactiveAt: Date.now() }) : this._m.delete(u);
+    else { this._m.set(u, { uid: u, addedAt: i?.addedAt || Date.now(), albumKey: aK || i?.albumKey || null, sourceAlbum: aK || i?.albumKey || i?.sourceAlbum || null, inactiveAt: null }); L = true; }
+    try { localStorage.setItem(KEY, JSON.stringify(Array.from(this._m.values()))); } catch {}
+    this._s.forEach(cb => { try { cb({ uid: u, liked: L }); } catch {} }); return L;
   }
-
-  init() {
-    try { 
-      JSON.parse(localStorage.getItem(KEY) || '[]').forEach(i => i?.uid && this._map.set(String(i.uid).trim(), i)); 
-    } catch {}
-  }
-
-  isLiked(uid) {
-    const i = this._map.get(String(uid || '').trim());
-    return !!(i && !i.inactiveAt);
-  }
-
-  getSnapshot() { 
-    return Array.from(this._map.values()); 
-  }
-
-  readLikedSet() { 
-    return new Set([...this._map.values()].filter(i => !i.inactiveAt).map(i => i.uid)); 
-  }
-
-  toggle(uid, { source = 'album', albumKey } = {}) {
-    const u = String(uid || '').trim(); 
-    if (!u) return false;
-    
-    const i = this._map.get(u), act = i && !i.inactiveAt;
-    let isL = false;
-
-    if (act) {
-      source === 'favorites' ? this._map.set(u, { ...i, inactiveAt: Date.now() }) : this._map.delete(u);
-    } else {
-      this._map.set(u, { uid: u, addedAt: i?.addedAt || Date.now(), albumKey: albumKey || i?.albumKey || null, sourceAlbum: albumKey || i?.albumKey || i?.sourceAlbum || null, inactiveAt: null });
-      isL = true;
-    }
-    
-    this._save(); 
-    this._notify(u, isL); 
-    return isL;
-  }
-
-  remove(uid) {
-    const u = String(uid).trim();
-    if (this._map.delete(u)) { 
-      this._save(); 
-      this._notify(u, false); 
-      return true; 
-    }
-    return false;
-  }
-
-  _save() { 
-    try { localStorage.setItem(KEY, JSON.stringify(Array.from(this._map.values()))); } catch {} 
-  }
-  
-  subscribe(cb) { 
-    this._subs.add(cb); 
-    return () => this._subs.delete(cb); 
-  }
-
-  _notify(uid, liked) { 
-    this._subs.forEach(cb => { try { cb({ uid, liked }); } catch {} }); 
-  }
+  remove(uid) { const u = String(uid).trim(); if (this._m.delete(u)) { try { localStorage.setItem(KEY, JSON.stringify(Array.from(this._m.values()))); } catch {} this._s.forEach(cb => { try { cb({ uid: u, liked: false }); } catch {} }); return true; } return false; }
+  subscribe(cb) { this._s.add(cb); return () => this._s.delete(cb); }
 }
-
-export const Favorites = new FavoritesManager();
-window.FavoritesManager = Favorites;
+export const Favorites = new FavoritesManager(); window.FavoritesManager = Favorites;
 
 //=================================================
 // FILE: /scripts/core/utils.js
