@@ -1,6 +1,9 @@
 // UID.039_(Share cards from profile)_(сделать карточки умнее и богаче)_(future использовать scripts/intel/track/track-presentation.js и relation/reason data)
 // UID.052_(Track badges and completion)_(добавить collectible badges в sharing)_(future подмешивать collection state пользователя)
+// UID.056_(Recommendation reasons)_(дать share-карточкам explainable подачу)_(future карточки рекомендаций могут показывать почему этот трек подходит)
 // UID.068_(Public playlist analytics)_(готовить социальный слой карточек и плейлистов)_(future логировать views/saves/share conversions отдельно)
+// UID.082_(Local truth vs external telemetry split)_(не смешивать генерацию карточки и внешнюю отправку raw payloads)_(share telemetry должен идти через mapper/consent слой)
+// UID.094_(No-paralysis rule)_(share cards должны деградировать до простого режима)_(если intel/presentation/collection недоступны, generator работает как сейчас)
 export class ShareGenerator {
   static async generateAndShare(type, track, stats = {}) {
     if (!window.NotificationSystem) return; window.NotificationSystem.info('Создание карточки...');
