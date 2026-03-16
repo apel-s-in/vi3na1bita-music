@@ -2,6 +2,7 @@
 // UID.082_(Local truth vs external telemetry split)_(защитить приватные данные)_(возвращать только whitelisted безопасные payload)
 // UID.083_(Yandex Metrica safe export)_(готовить безопасную интеграцию с Метрикой)_(маппить только screen/recs/share/provider/sync события)
 // UID.072_(Provider consents)_(уважать пользовательские разрешения)_(любой mapper должен сперва проверять consent state)
+// UID.095_(Ownership boundary: legacy vs intel)_(mapper не должен читать/мутировать raw truth напрямую по месту)_(модуль только преобразует уже разрешённые события в export-safe payloads)
 
 import { providerConsents } from '../providers/provider-consents.js';
 
