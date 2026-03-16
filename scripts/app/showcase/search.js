@@ -1,29 +1,15 @@
-export async function buildShowcaseSearchDisplay({ query, ensureLyricsIndexLoaded, searchUidsByQuery, trk, ctx }) {
-  const hid = new Set(ctx?.hidden || []);
-  if (!query) return { type: 'normal' };
-  await ensureLyricsIndexLoaded();
-  const res = (searchUidsByQuery({ query }) || []).filter(trk);
-  return { type: 'search', res, cOrd: ctx?.order || [], cHid: hid };
-}
-
-export function addSearchResultsToContext({ selected, trk, ctx, saveCtx, isDefault, store, clearSearch, rerender, notify }) {
-  const u = [...selected].filter(trk);
-  if (!u.length) return;
-  if (!ctx) return;
-  const s = new Set(ctx.order || []);
-  u.forEach(x => { if (!s.has(x)) { ctx.order.push(x); s.add(x); } });
-  saveCtx(ctx);
-  clearSearch?.();
-  rerender?.();
-  notify?.success?.(`Добавлено ${u.length} треков`);
-}
-
-export function handleSharedShowcasePlaylist({ raw, opener }) {
-  return opener?.(raw);
-}
-
-export default {
-  buildShowcaseSearchDisplay,
-  addSearchResultsToContext,
-  handleSharedShowcasePlaylist
+export const buildShowcaseSearchDisplay = async ({ query: q, ensureLyricsIndexLoaded: eL, searchUidsByQuery: sQ, trk, ctx }) => {
+  if (!q) return { type: 'normal' };
+  await eL();
+  return { type: 'search', res: (sQ({ query: q }) || []).filter(trk), cOrd: ctx?.order || [], cHid: new Set(ctx?.hidden || []) };
 };
+
+export const addSearchResultsToContext = ({ selected: s, trk, ctx: c, saveCtx: sC, clearSearch: cS, rerender: r, notify: n }) => {
+  const u = [...s].filter(trk); if (!u.length || !c) return;
+  const set = new Set(c.order || []);
+  u.forEach(x => !set.has(x) && (c.order.push(x), set.add(x)));
+  sC(c); cS?.(); r?.(); n?.success?.(`Добавлено ${u.length} треков`);
+};
+
+export const handleSharedShowcasePlaylist = ({ raw, opener }) => opener?.(raw);
+export default { buildShowcaseSearchDisplay, addSearchResultsToContext, handleSharedShowcasePlaylist };
