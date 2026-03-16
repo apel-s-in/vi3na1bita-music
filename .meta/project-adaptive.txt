@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-00692f4b3b8951e8429d45c0440837e5f810dbd0.idx
-│   │       ├── pack-00692f4b3b8951e8429d45c0440837e5f810dbd0.pack
-│   │       └── pack-00692f4b3b8951e8429d45c0440837e5f810dbd0.rev
+│   │       ├── pack-5bffd1b43f647e810bbbd964923bab79bd142c4c.idx
+│   │       ├── pack-5bffd1b43f647e810bbbd964923bab79bd142c4c.pack
+│   │       └── pack-5bffd1b43f647e810bbbd964923bab79bd142c4c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -404,6 +404,8 @@ vi3na1bita-music/
 │   │   ├── flags.js
 │   │   ├── listener-profile.js
 │   │   ├── manifest.js
+│   │   ├── recommendation-memory.js
+│   │   ├── recommendation-reasons.js
 │   │   ├── recommendation-strategies.js
 │   │   ├── session-context.js
 │   │   ├── taxonomy-service.js
@@ -448,7 +450,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 19:49:46 UTC
+Сгенерировано: 2026-03-16 19:50:26 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5094,6 +5096,51 @@ export const INTELLIGENCE_MANIFEST = Object.freeze({
 });
 
 export default INTELLIGENCE_MANIFEST;
+
+//=================================================
+// FILE: /scripts/intelligence/recommendation-memory.js
+/* RECOMMENDATION MEMORY — future persistence for shown/accepted/dismissed recommendations. */
+// UID.070_recommendation_memory_layer_(ввести recommendation memory)_(для не повторять одинаковое)_(state store owner)
+// UID.120_recommendation_interaction_tracking_(логировать interaction lifecycle)_(для улучшения engine и аналитики)_(shown/clicked/accepted/dismissed)
+
+const noopAsync = async () => null;
+
+export const recommendationMemory = {
+  id: 'recommendation-memory',
+  version: '0.0.1-stub',
+  ready: false,
+  async initialize() { this.ready = true; return this; },
+  async markShown() { return null; },
+  async markClicked() { return null; },
+  async markAccepted() { return null; },
+  async markDismissed() { return null; },
+  async getCooldowns() { return []; },
+  teardown: noopAsync
+};
+
+export default recommendationMemory;
+
+//=================================================
+// FILE: /scripts/intelligence/recommendation-reasons.js
+/* RECOMMENDATION REASONS — future explainability layer. */
+// UID.092_recommendation_reason_model_(ввести reason model)_(для explainability и доверия)_(machine reasons live here)
+// UID.093_recommendation_human_explanations_(ввести human explanations)_(для UI и AI assistant)_(convert scores to readable text)
+// UID.144_ai_recommendation_explanations_(подготовить AI explanation bridge)_(для richer why-this-track)_(consume reason payloads here)
+
+const noopAsync = async () => null;
+
+export const recommendationReasons = {
+  id: 'recommendation-reasons',
+  version: '0.0.1-stub',
+  ready: false,
+  async initialize() { this.ready = true; return this; },
+  buildMachineReasons() { return []; },
+  buildHumanExplanation() { return ''; },
+  async explain() { return null; },
+  teardown: noopAsync
+};
+
+export default recommendationReasons;
 
 //=================================================
 // FILE: /scripts/intelligence/recommendation-strategies.js
