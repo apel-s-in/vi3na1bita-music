@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-7a393e8246a61c1b39349ca5f1204948ab820c5b.idx
-│   │       ├── pack-7a393e8246a61c1b39349ca5f1204948ab820c5b.pack
-│   │       └── pack-7a393e8246a61c1b39349ca5f1204948ab820c5b.rev
+│   │       ├── pack-26f20ed8858b3d065aa7a6830cb986646cb4aa52.idx
+│   │       ├── pack-26f20ed8858b3d065aa7a6830cb986646cb4aa52.pack
+│   │       └── pack-26f20ed8858b3d065aa7a6830cb986646cb4aa52.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -437,7 +437,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 21:08:15 UTC
+Сгенерировано: 2026-03-16 21:16:20 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3065,6 +3065,13 @@ export const searchUidsByQuery = ({ query: q }) => {
 
 //=================================================
 // FILE: /scripts/app/showcase/modals.js
+// UID.038_(Track profile modal)_(сделать showcase вторичной точкой входа в умные карточки)_(showcase-specific windows могут открывать track/intel/profile surfaces, но не владеть semantic logic)
+// UID.056_(Recommendation reasons)_(подготовить modals showcase к reason-aware подаче)_(bottom-sheet и sort/share/pick modals позже смогут принимать reason/explainer fragments извне)
+// UID.068_(Public playlist analytics)_(сделать модалки витрины частью social/discovery surface)_(share/import/public playlist confirmations должны быть отмечены как analytics touchpoints)
+// UID.080_(Provider actions bridge)_(не тащить external provider logic прямо в showcase modal helpers)_(любые provider/social actions приходят как callbacks через bridge, а не реализуются здесь)
+// UID.082_(Local truth vs external telemetry split)_(showcase modal actions не должны сами экспортировать raw data)_(наружу только mapper-safe события из внешнего orchestration слоя)
+// UID.094_(No-paralysis rule)_(showcase modal helpers обязаны жить без intel/social/provider слоя)_(эти функции — чистые UI hosts с optional callbacks)
+// UID.095_(Ownership boundary: legacy vs intel)_(showcase modals — secondary semantic/social modal surface, но не новый ShowcaseManager)_(этот файл только рендерит showcase-специфичные окна и не владеет rec/semantic/business logic)
 export const openShowcaseSheetModal = ({ title: t = '', subtitle: s = '', fromSearch: fS = false, inPlaylist: iP = false, hiddenLabel: hL = '', favoriteLabel: fL = '', onAction: oA } = {}) => {
   const bg = document.createElement('div'); bg.className = 'sc-bottom-sheet-bg';
   bg.innerHTML = `<div class="sc-bottom-sheet"><button class="sc-sheet-close">×</button><div class="sc-sheet-title">${t}</div><div class="sc-sheet-sub">${s}</div>${fS ? `<button class="sc-sheet-btn" id="bm-play">▶ Воспроизвести</button><hr class="sc-sheet-sep">` : ''}<button class="sc-sheet-btn" id="bm-pl">➕ Добавить в плейлист</button>${iP ? `<button class="sc-sheet-btn sc-sheet-btn--danger" id="bm-rm">✖ Удалить из плейлиста</button>` : ''}<button class="sc-sheet-btn" id="bm-eye">${hL}</button><button class="sc-sheet-btn" id="bm-fv">${fL}</button><button class="sc-sheet-btn" id="bm-of">🔒 Скачать / Офлайн</button><button class="sc-sheet-btn" id="bm-dl">⬇️ Сохранить mp3</button><button class="sc-sheet-btn" id="bm-st">📊 Статистика трека</button><button class="sc-sheet-btn" id="bm-sh">📸 Поделиться (Карточка)</button><button class="sc-sheet-btn" id="bm-cl">🎨 Цвет альбома</button><button class="sc-sheet-btn sc-sheet-btn--cancel" id="bm-cx">Отмена</button></div>`;
