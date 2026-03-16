@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a18071ba7001930c383fa72b4c6f04ea0c6fec9e.idx
-│   │       ├── pack-a18071ba7001930c383fa72b4c6f04ea0c6fec9e.pack
-│   │       └── pack-a18071ba7001930c383fa72b4c6f04ea0c6fec9e.rev
+│   │       ├── pack-db1053a9792c4d82b1f76c5ca249bca95357ed10.idx
+│   │       ├── pack-db1053a9792c4d82b1f76c5ca249bca95357ed10.pack
+│   │       └── pack-db1053a9792c4d82b1f76c5ca249bca95357ed10.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -438,7 +438,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 21:21:03 UTC
+Сгенерировано: 2026-03-16 21:21:40 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1016,6 +1016,7 @@ const STATIC_ASSETS = [
   './scripts/intel/shared/contracts.js',
   './scripts/intel/shared/bus.js',
   './scripts/intel/shared/guards.js',
+  './scripts/intel/shared/helpers.js',
   './scripts/intel/track/track-profiles.js',
   './scripts/intel/track/track-presentation.js',
   './scripts/intel/track/track-relations.js',
