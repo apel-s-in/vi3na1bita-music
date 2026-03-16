@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a9f8555ebfc7a5ae73f6ef77bafcc2fe98df0f14.idx
-│   │       ├── pack-a9f8555ebfc7a5ae73f6ef77bafcc2fe98df0f14.pack
-│   │       └── pack-a9f8555ebfc7a5ae73f6ef77bafcc2fe98df0f14.rev
+│   │       ├── pack-ed29c1d4df0fd628cc5eb280b539d5997e436c15.idx
+│   │       ├── pack-ed29c1d4df0fd628cc5eb280b539d5997e436c15.pack
+│   │       └── pack-ed29c1d4df0fd628cc5eb280b539d5997e436c15.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -248,7 +248,8 @@ vi3na1bita-music/
 ├── data/
 │   ├── custom_achievements.json
 │   ├── lyrics-index-v1.json
-│   └── taxonomy.json
+│   ├── taxonomy.json
+│   └── track-profiles-index.json
 ├── icons/
 │   ├── .gitkeep
 │   ├── apple-touch-icon.png
@@ -398,7 +399,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 14:40:54 UTC
+Сгенерировано: 2026-03-16 19:20:37 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4800,6 +4801,15 @@ window.StatisticsModal = { openStatisticsModal, init: () => document.addEventLis
       "events": 8
     }
   }
+}
+
+//=================================================
+// FILE: /data/track-profiles-index.json
+{
+  "version": "track-profiles-index-v1",
+  "generatedAt": null,
+  "taxonomyVersion": "taxonomy-v2",
+  "items": {}
 }
 
 //=================================================
