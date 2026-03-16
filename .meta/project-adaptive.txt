@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-201678fa8bccbf3c42070d5f36f0130000c532dc.idx
-│   │       ├── pack-201678fa8bccbf3c42070d5f36f0130000c532dc.pack
-│   │       └── pack-201678fa8bccbf3c42070d5f36f0130000c532dc.rev
+│   │       ├── pack-71b2bdb9cf8ad1d2159a8f36e9a3f9e4fed2ac6b.idx
+│   │       ├── pack-71b2bdb9cf8ad1d2159a8f36e9a3f9e4fed2ac6b.pack
+│   │       └── pack-71b2bdb9cf8ad1d2159a8f36e9a3f9e4fed2ac6b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -437,7 +437,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 20:58:55 UTC
+Сгенерировано: 2026-03-16 20:59:25 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4953,6 +4953,7 @@ export default trackProfiles;
 // UID.034_(Track relations graph)_(не ограничиваться одним similar_tracks)_(подготовить единый доступ к связям между треками)
 // UID.035_(Similar tracks)_(дать быстрый блок похожих песен)_(читать related/similar из preview/full profile)
 // UID.041_(Showcase semantic filters)_(готовить витрину к умным связям)_(отдавать relation sets как data-layer без UI логики)
+// UID.095_(Ownership boundary: legacy vs intel)_(не делать relations слоем orchestration)_(track-relations только читает graph data, а не решает playback/order/navigation самостоятельно)
 
 import { trackProfiles } from './track-profiles.js';
 
