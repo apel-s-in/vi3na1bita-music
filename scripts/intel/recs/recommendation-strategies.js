@@ -3,6 +3,7 @@
 // UID.057_(Audio similarity strategy)_(подбирать по звучанию)_(держать отдельный scorer для audio profile)
 // UID.058_(Lyric and theme strategy)_(подбирать по смыслу)_(держать отдельный scorer для lyrics/themes/scenes/entities)
 // UID.059_(Mood/use-case/event/season strategy)_(подбирать по контексту жизни)_(держать отдельные scorer hooks для mood/use-case/event/season)
+// UID.095_(Ownership boundary: legacy vs intel)_(не пускать UI/business-effects внутрь scorer-ов)_(стратегии должны возвращать только score/reason signals без side effects, playback calls и storage writes)
 
 function zero(code) {
   return { score: 0, reasonCode: code };
