@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8160390d0e0520fcbbb5fa12c4eaad7aa8cdfc88.idx
-│   │       ├── pack-8160390d0e0520fcbbb5fa12c4eaad7aa8cdfc88.pack
-│   │       └── pack-8160390d0e0520fcbbb5fa12c4eaad7aa8cdfc88.rev
+│   │       ├── pack-8c2cd5aa23f9b52f3024c8082457f1aec20558b8.idx
+│   │       ├── pack-8c2cd5aa23f9b52f3024c8082457f1aec20558b8.pack
+│   │       └── pack-8c2cd5aa23f9b52f3024c8082457f1aec20558b8.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -398,7 +398,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 12:02:54 UTC
+Сгенерировано: 2026-03-16 12:03:14 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4263,26 +4263,20 @@ export default { initOfflineModal, openOfflineModal, closeOfflineModal };
 
 //=================================================
 // FILE: /scripts/ui/progress-formatters.js
-export const fmtClockMs = (ms) => {
-  const s = Math.max(0, Math.floor(Number(ms || 0) / 1000));
-  const d = Math.floor(s / 86400);
-  const h = Math.floor((s % 86400) / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = s % 60;
-  return d > 0 ? `${d}д ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}` : `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+export const fmtClockMs = ms => {
+  const s = Math.max(0, Math.floor((Number(ms)||0) / 1000)), m = Math.floor((s % 3600) / 60), h = Math.floor((s % 86400) / 3600), d = Math.floor(s / 86400);
+  return d > 0 ? `${d}д ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}` : `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
 };
 
 export const fmtAchTimerText = (a, mode = 'remaining') => {
-  const pm = a?.progressMeta;
-  if (!pm || a?.isUnlocked || a?.isHidden) return '';
-  if (pm.kind === 'time_accum') return mode === 'elapsed' ? fmtClockMs(pm.elapsedMs) : fmtClockMs(pm.remainingMs);
+  const pm = a?.progressMeta; if (!pm || a?.isUnlocked || a?.isHidden) return '';
+  if (pm.kind === 'time_accum') return fmtClockMs(mode === 'elapsed' ? pm.elapsedMs : pm.remainingMs);
   if (pm.kind === 'streak_days') return mode === 'elapsed' ? `${pm.elapsedDays} / ${pm.targetDays} дн` : `ещё ${pm.remainingDays} дн`;
   return a?.progress ? `Осталось: ${Math.max(0, (a.progress.target || 0) - (a.progress.current || 0))}` : '';
 };
 
-export const fmtAchBubbleText = (a) => {
-  const nm = String(a?.name || '').replace(/ ур\. \d+/, '');
-  const pm = a?.progressMeta;
+export const fmtAchBubbleText = a => {
+  const nm = String(a?.name || '').replace(/ ур\. \d+/, ''), pm = a?.progressMeta;
   if (pm?.kind === 'time_accum') return `✨ До «${nm}»: ${fmtClockMs(pm.remainingMs)}`;
   if (pm?.kind === 'streak_days') return `✨ До «${nm}»: ${pm.remainingDays} дн`;
   return `✨ До «${nm}»: осталось ${Math.max(0, (a?.progress?.target || 0) - (a?.progress?.current || 0))}`;
