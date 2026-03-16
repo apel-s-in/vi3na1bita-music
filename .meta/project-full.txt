@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a6f70a55870493e2d2f31239436ef5bb3c30698e.idx
-│   │       ├── pack-a6f70a55870493e2d2f31239436ef5bb3c30698e.pack
-│   │       └── pack-a6f70a55870493e2d2f31239436ef5bb3c30698e.rev
+│   │       ├── pack-8e303c523111fcf2ce5f8c3cabfe09c8ea9e090c.idx
+│   │       ├── pack-8e303c523111fcf2ce5f8c3cabfe09c8ea9e090c.pack
+│   │       └── pack-8e303c523111fcf2ce5f8c3cabfe09c8ea9e090c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -403,6 +403,7 @@ vi3na1bita-music/
 │   │   ├── bridges.js
 │   │   ├── collection-engine.js
 │   │   ├── flags.js
+│   │   ├── global-insights.js
 │   │   ├── hybrid-sync.js
 │   │   ├── listener-profile.js
 │   │   ├── manifest.js
@@ -457,7 +458,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 19:53:03 UTC
+Сгенерировано: 2026-03-16 19:53:20 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5057,6 +5058,29 @@ export const INTELLIGENCE_FLAGS = Object.freeze({
 });
 
 export default INTELLIGENCE_FLAGS;
+
+//=================================================
+// FILE: /scripts/intelligence/global-insights.js
+/* GLOBAL INSIGHTS — future cohort/similar-listeners/community compare layer. */
+// UID.113_global_track_aggregates_(подготовить global aggregates)_(для community/trends)_(future remote aggregates consumer)
+// UID.114_cohort_segmentation_(подготовить cohort segmentation)_(для similar users)_(cohort hints and ids)
+// UID.115_similar_listeners_layer_(подготовить similar listeners)_(для community recs)_(future similarity hooks)
+// UID.116_user_vs_community_layer_(подготовить compare layer)_(для insight blocks)_(user-vs-community hints)
+
+const noopAsync = async () => null;
+
+export const globalInsights = {
+  id: 'global-insights',
+  version: '0.0.1-stub',
+  ready: false,
+  async initialize() { this.ready = true; return this; },
+  async getCohortHints() { return []; },
+  async getUserVsCommunity() { return null; },
+  async getTrackGlobalStats() { return null; },
+  teardown: noopAsync
+};
+
+export default globalInsights;
 
 //=================================================
 // FILE: /scripts/intelligence/hybrid-sync.js
