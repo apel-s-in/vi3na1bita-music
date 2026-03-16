@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-fe8a998d1284366a1fd5507498280debc4e342b3.idx
-│   │       ├── pack-fe8a998d1284366a1fd5507498280debc4e342b3.pack
-│   │       └── pack-fe8a998d1284366a1fd5507498280debc4e342b3.rev
+│   │       ├── pack-8927417daa1e94439871b4fc618aa72ce8a2c4a6.idx
+│   │       ├── pack-8927417daa1e94439871b4fc618aa72ce8a2c4a6.pack
+│   │       └── pack-8927417daa1e94439871b4fc618aa72ce8a2c4a6.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -437,7 +437,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 21:00:51 UTC
+Сгенерировано: 2026-03-16 21:01:18 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4543,6 +4543,7 @@ export default { getRecommendationReasonText };
 // UID.057_(Audio similarity strategy)_(подбирать по звучанию)_(держать отдельный scorer для audio profile)
 // UID.058_(Lyric and theme strategy)_(подбирать по смыслу)_(держать отдельный scorer для lyrics/themes/scenes/entities)
 // UID.059_(Mood/use-case/event/season strategy)_(подбирать по контексту жизни)_(держать отдельные scorer hooks для mood/use-case/event/season)
+// UID.095_(Ownership boundary: legacy vs intel)_(не пускать UI/business-effects внутрь scorer-ов)_(стратегии должны возвращать только score/reason signals без side effects, playback calls и storage writes)
 
 function zero(code) {
   return { score: 0, reasonCode: code };
