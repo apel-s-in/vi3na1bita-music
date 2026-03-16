@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2719bb7cd43f75a2ca9260a43b58ff77c39fddce.idx
-│   │       ├── pack-2719bb7cd43f75a2ca9260a43b58ff77c39fddce.pack
-│   │       └── pack-2719bb7cd43f75a2ca9260a43b58ff77c39fddce.rev
+│   │       ├── pack-2a8f2114d6e2d31e904f97c9dcc3e2496e332d2e.idx
+│   │       ├── pack-2a8f2114d6e2d31e904f97c9dcc3e2496e332d2e.pack
+│   │       └── pack-2a8f2114d6e2d31e904f97c9dcc3e2496e332d2e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -368,6 +368,8 @@ vi3na1bita-music/
 │   │   ├── listener/
 │   │   │   ├── listener-collection.js
 │   │   │   └── listener-profile.js
+│   │   ├── recs/
+│   │   │   └── recommendation-strategies.js
 │   │   ├── shared/
 │   │   │   ├── bus.js
 │   │   │   ├── contracts.js
@@ -415,7 +417,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 19:25:48 UTC
+Сгенерировано: 2026-03-16 19:26:10 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3724,6 +3726,32 @@ export const listenerProfile = {
 };
 
 export default listenerProfile;
+
+//=================================================
+// FILE: /scripts/intel/recs/recommendation-strategies.js
+// UID.054_(Recommendation engine core)_(не держать подбор в UI)_(выносить логику scorer-ов в отдельный слой)
+// UID.055_(Recommendation strategies)_(легко добавлять новые типы рекомендаций)_(каждая стратегия должна быть маленькой независимой функцией)
+// UID.057_(Audio similarity strategy)_(подбирать по звучанию)_(держать отдельный scorer для audio profile)
+// UID.058_(Lyric and theme strategy)_(подбирать по смыслу)_(держать отдельный scorer для lyrics/themes/scenes/entities)
+// UID.059_(Mood/use-case/event/season strategy)_(подбирать по контексту жизни)_(держать отдельные scorer hooks для mood/use-case/event/season)
+
+function zero(code) {
+  return { score: 0, reasonCode: code };
+}
+
+export const recommendationStrategies = Object.freeze({
+  tasteFit() { return zero('taste_fit'); },
+  audioSimilarity() { return zero('audio_similarity'); },
+  lyricThemeSimilarity() { return zero('lyric_theme_similarity'); },
+  moodFit() { return zero('mood_fit'); },
+  useCaseFit() { return zero('use_case_fit'); },
+  eventSeasonFit() { return zero('event_season_fit'); },
+  sessionNext() { return zero('session_next'); },
+  communityFit() { return zero('community_fit'); },
+  collectionFit() { return zero('collection_fit'); }
+});
+
+export default recommendationStrategies;
 
 //=================================================
 // FILE: /scripts/intel/roadmap.js
