@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8737393660d23ff93442861af153d2aa8a6e1035.idx
-│   │       ├── pack-8737393660d23ff93442861af153d2aa8a6e1035.pack
-│   │       └── pack-8737393660d23ff93442861af153d2aa8a6e1035.rev
+│   │       ├── pack-2ea3c614fbb1a77c1e6a7e798769be8f72535971.idx
+│   │       ├── pack-2ea3c614fbb1a77c1e6a7e798769be8f72535971.pack
+│   │       └── pack-2ea3c614fbb1a77c1e6a7e798769be8f72535971.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -420,8 +420,7 @@ vi3na1bita-music/
 │   │   ├── progress-formatters.js
 │   │   ├── sleep-timer.js
 │   │   ├── statistics-modal.js
-│   │   ├── sysinfo.js
-│   │   └── track-profile-modal.js
+│   │   └── sysinfo.js
 │   ├── utils/
 │   │   └── sw-manager.js
 │   └── app.js
@@ -439,7 +438,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 20:03:13 UTC
+Сгенерировано: 2026-03-16 20:08:46 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5882,27 +5881,6 @@ window.StatisticsModal = { openStatisticsModal, init: () => document.addEventLis
   W.SystemInfoManager = Sys;
   document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', Sys.initialize) : Sys.initialize();
 })(window, navigator);
-
-//=================================================
-// FILE: /scripts/ui/track-profile-modal.js
-/* TRACK PROFILE MODAL — future UI passport for a single track. */
-// UID.051_track_profile_modal_ui_(ввести modal паспорта трека)_(для deep card UX)_(summary+themes+quotes+relations+badges here)
-// UID.049_track_presentation_layer_(опираться на presentation layer)_(для редактируемых карточек)_(modal uses card-ready fields)
-// UID.027_track_profiles_full_(грузить full profile on demand)_(для deep modal)_(loader integration planned here)
-
-const noopAsync = async () => null;
-
-export const trackProfileModal = {
-  id: 'track-profile-modal',
-  version: '0.0.1-stub',
-  ready: false,
-  async initialize() { this.ready = true; window.TrackProfileModal = this; return this; },
-  async open() { return null; },
-  close() { return null; },
-  teardown: noopAsync
-};
-
-export default trackProfileModal;
 
 //=================================================
 // FILE: /scripts/utils/sw-manager.js
