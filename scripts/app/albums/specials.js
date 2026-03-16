@@ -1,3 +1,8 @@
+// UID.017_(Launch source stats)_(special albums — важные источники запуска и discovery)_(future launches from favorites/news/profile/showcase должны явно различаться в analytics)
+// UID.053_(Rediscovery engine)_(favorites/profile special views станут consumption points для forgotten hits)_(здесь later можно подмешивать rediscovery sections без ломки legacy)
+// UID.063_(Profile recs tab upgrade)_(special profile album станет главным host для personalized intelligence)_(но heavy rec logic должна жить вне этого файла)
+// UID.068_(Public playlist analytics)_(showcase special view — social/discovery surface)_(future playlist analytics и shared flows связывать через showcase/profile layers)
+// UID.094_(No-paralysis rule)_(special albums должны оставаться рабочими без intel)_(любые intelligent blocks строго optional, с fallback на текущий UI)
 import { loadAndRenderNewsInline } from '../../ui/news-inline.js';
 import { injectOfflineIndicators } from '../../ui/offline-indicators.js';
 import { renderFavoriteStar } from '../../ui/icon-utils.js';
