@@ -1,3 +1,6 @@
+// UID.038_(Track profile modal)_(не раздувать statistics-modal)_(future открыть отдельный scripts/intel/ui/track-profile-modal.js из этой точки)
+// UID.036_(Track presentation layer)_(показывать карточные summary/reasons/quotes)_(future брать safe presentation snapshot через intel-layer)
+// UID.052_(Track badges and completion)_(добавить collectible-состояние трека)_(future в модалке выводить badges/completion, не ломая текущую статистику)
 import { metaDB } from '../analytics/meta-db.js';
 import { fmtAchTimerText } from './progress-formatters.js';
 
