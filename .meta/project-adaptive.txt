@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-26f20ed8858b3d065aa7a6830cb986646cb4aa52.idx
-│   │       ├── pack-26f20ed8858b3d065aa7a6830cb986646cb4aa52.pack
-│   │       └── pack-26f20ed8858b3d065aa7a6830cb986646cb4aa52.rev
+│   │       ├── pack-fdf92c3f073dd3a790c424371e8b5d625559b93f.idx
+│   │       ├── pack-fdf92c3f073dd3a790c424371e8b5d625559b93f.pack
+│   │       └── pack-fdf92c3f073dd3a790c424371e8b5d625559b93f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -437,7 +437,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 21:16:20 UTC
+Сгенерировано: 2026-03-16 21:17:02 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2774,6 +2774,14 @@ export const renderProfileRecs = ({ container: c, all }) => {
 
 //=================================================
 // FILE: /scripts/app/profile/render-shell.js
+// UID.044_(ListenerProfile core)_(подготовить профиль к встраиванию user-intelligence блоков)_(render-shell остаётся legacy host, принимающим optional intel fragments)
+// UID.056_(Recommendation reasons)_(позже принимать explainable rec fragments без knowledge об их расчёте)_(shell только размещает future blocks, но не считает причины)
+// UID.070_(Linked providers)_(показывать provider shell-поверхность без владения identity truth)_(render-shell рендерит auth/provider area, но данные linked accounts приходят извне)
+// UID.072_(Provider consents)_(shell должен уметь принять consent UI блоки)_(но не хранить и не вычислять consent state самостоятельно)
+// UID.073_(Hybrid sync orchestrator)_(shell станет host для sync-role/status block)_(но orchestration logic останется в intel/providers layer)
+// UID.082_(Local truth vs external telemetry split)_(shell не должен экспортировать profile/raw insights сам)_(это только layout/render host)
+// UID.094_(No-paralysis rule)_(profile shell обязан работать без intel fragments)_(если intelligent blocks отсутствуют, legacy profile UI остаётся полноценным)
+// UID.095_(Ownership boundary: legacy vs intel)_(жёстко закрепить render-shell как legacy-shell, принимающий optional intel fragments)_(layout/profile navigation/stat shell здесь, а listener/recs/providers/community insights приходят как надстройка)
 const esc = s => window.Utils?.escapeHtml ? window.Utils.escapeHtml(String(s || '')) : String(s || '');
 export const renderProfileShell = ({ container: c, profile: p, tokens: tk, totalFull: tF, totalSec: tS, streak: strk, achCount: aC }) => {
   if (!c) return null; c.innerHTML = '';
