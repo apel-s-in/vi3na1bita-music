@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ae76ba5a5d87c90f7821f26bcb8284e1740a8916.idx
-│   │       ├── pack-ae76ba5a5d87c90f7821f26bcb8284e1740a8916.pack
-│   │       └── pack-ae76ba5a5d87c90f7821f26bcb8284e1740a8916.rev
+│   │       ├── pack-ef651c54f41b42b999134a8bf3c86e11c65dd1f4.idx
+│   │       ├── pack-ef651c54f41b42b999134a8bf3c86e11c65dd1f4.pack
+│   │       └── pack-ef651c54f41b42b999134a8bf3c86e11c65dd1f4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -398,7 +398,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 11:49:46 UTC
+Сгенерировано: 2026-03-16 11:50:14 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3850,44 +3850,19 @@ export default instance;
 
 //=================================================
 // FILE: /scripts/offline/track-resolver.js
-/**
- * scripts/offline/track-resolver.js
- * Optimized v2.0 — 100% Spec-Compliant (R1/R2)
- * 
- * FIX: Устранена избыточная нагрузка на IndexedDB (N+1 query problem).
- * PlayerCore использует исключительно `source`, `blob` и `url`. 
- * Удаление лишнего запроса за `meta` обеспечивает действительно мгновенные 
- * переходы (instant transitions) в режиме PlaybackCache.
- */
-
 let _mgr = null;
+export const initTrackResolver = (offlineManager) => { _mgr = offlineManager; window.TrackResolver = { resolve }; };
 
-export const initTrackResolver = (offlineManager) => {
-  _mgr = offlineManager;
-  window.TrackResolver = { resolve };
-};
-
-export async function resolve(uid, quality) {
+export const resolve = async (uid, quality) => {
   if (!_mgr) return { source: 'stream', url: null, blob: null, quality, localKind: 'none' };
-  
   try {
-    // Вся тяжелая работа уже выполнена внутри OfflineManager
-    const res = await _mgr.resolveTrackSource(uid, quality);
-    
-    return {
-      source: res.source || 'stream',
-      url: res.url || null,
-      blob: res.blob || null,
-      quality: res.quality || quality,
-      localKind: res.source === 'local' ? 'cache' : 'none',
-      provider: res.source === 'local' ? 'cache' : (res.provider || 'unknown')
-    };
+    const r = await _mgr.resolveTrackSource(uid, quality);
+    return { source: r.source || 'stream', url: r.url || null, blob: r.blob || null, quality: r.quality || quality, localKind: r.source === 'local' ? 'cache' : 'none', provider: r.source === 'local' ? 'cache' : (r.provider || 'unknown') };
   } catch (e) {
     console.warn('[TrackResolver] resolve failed:', e);
     return { source: 'stream', url: null, blob: null, quality, localKind: 'none' };
   }
-}
-
+};
 export default { initTrackResolver, resolve };
 
 //=================================================
