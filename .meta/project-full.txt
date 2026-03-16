@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-62e7cf8bb4b3ca0bdbf937b80b99e2ae5c8b2ec4.idx
-│   │       ├── pack-62e7cf8bb4b3ca0bdbf937b80b99e2ae5c8b2ec4.pack
-│   │       └── pack-62e7cf8bb4b3ca0bdbf937b80b99e2ae5c8b2ec4.rev
+│   │       ├── pack-89bdcbbe0e4281b442aefdda0d3681bee84bf149.idx
+│   │       ├── pack-89bdcbbe0e4281b442aefdda0d3681bee84bf149.pack
+│   │       └── pack-89bdcbbe0e4281b442aefdda0d3681bee84bf149.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -437,7 +437,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 21:02:10 UTC
+Сгенерировано: 2026-03-16 21:03:12 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4334,6 +4334,7 @@ export default providerActions;
 // UID.072_(Provider consents)_(контролировать приватность и доступы)_(держать consent flags рядом с linked providers и sync)
 // UID.082_(Local truth vs external telemetry split)_(не отправлять лишнее наружу)_(любой export должен проверять consent state)
 // UID.083_(Yandex Metrica safe export)_(внешняя аналитика только по согласию)_(позже telemetry mapper обязан читать этот модуль)
+// UID.095_(Ownership boundary: legacy vs intel)_(consent layer не должен сам ничего экспортировать и не должен жить в UI)_(модуль только хранит flags, а применение/рендеринг делегируется mapper/UI слоям)
 
 const KEY = 'intel:provider-consents:v1';
 
@@ -4382,6 +4383,7 @@ export default providerConsents;
 // UID.077_(Yandex auth/backup/AI)_(готовить Яндекс как основной хаб)_(по умолчанию считать yandex primary provider)
 // UID.078_(Google mirror/export)_(готовить резервный и вспомогательный provider)_(держать google как linked extension)
 // UID.079_(VK social/media actions)_(готовить social/media provider)_(держать vk как linked extension с отдельными capability flags)
+// UID.095_(Ownership boundary: legacy vs intel)_(identity layer не должен подменять локальный профиль пользователя приложения)_(этот модуль хранит provider-link metadata, а не владеет stats/favorites/playback/app-profile truth)
 
 const KEY = 'intel:provider-identity:v1';
 
