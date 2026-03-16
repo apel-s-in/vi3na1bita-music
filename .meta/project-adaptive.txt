@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-7396141a0bf19f8d52061865d518772478631314.idx
-│   │       ├── pack-7396141a0bf19f8d52061865d518772478631314.pack
-│   │       └── pack-7396141a0bf19f8d52061865d518772478631314.rev
+│   │       ├── pack-57798a286f8fe5a45fb7c8458dd26c2e423d0d48.idx
+│   │       ├── pack-57798a286f8fe5a45fb7c8458dd26c2e423d0d48.pack
+│   │       └── pack-57798a286f8fe5a45fb7c8458dd26c2e423d0d48.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -398,7 +398,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 11:50:29 UTC
+Сгенерировано: 2026-03-16 11:51:33 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3940,241 +3940,79 @@ export default { bindAppModals };
 
 //=================================================
 // FILE: /scripts/ui/cache-progress-overlay.js
-/**
- * scripts/ui/cache-progress-overlay.js
- * ОПТИМИЗИРОВАНО: Полное соответствие ТЗ (Раздел 13 "UI ПРОГРЕСС КЭША В ПЛЕЕРЕ").
- * Устаревший плавающий overlay удален. Индикация кэширования теперь встроена
- * вторым слоем (background) напрямую под ползунок прогресс-бара плеера.
- */
-
 import { getOfflineManager } from '../offline/offline-manager.js';
-
 let _layer = null;
 
-export function initCacheProgressOverlay() {
-  const sync = () => requestAnimationFrame(updateProgressBar);
-  
-  // Подписываемся на все события, способные изменить статус локального файла или UI плеера
-  ['player:trackChanged', 'offline:downloadStart', 'offline:trackCached', 'offline:downloadFailed', 'offline:stateChanged', 'offline:uiChanged'].forEach(ev => 
-    window.addEventListener(ev, sync)
-  );
-  
-  // Удаление старого (legacy) всплывающего окна, если оно закэшировалось в старом DOM
+export const initCacheProgressOverlay = () => {
+  const s = () => requestAnimationFrame(updateProgressBar);
+  ['player:trackChanged', 'offline:downloadStart', 'offline:trackCached', 'offline:downloadFailed', 'offline:stateChanged', 'offline:uiChanged'].forEach(ev => window.addEventListener(ev, s));
   document.getElementById('cache-progress-overlay')?.remove();
-}
+};
 
-async function updateProgressBar() {
-  const bar = document.getElementById('player-progress-bar');
-  if (!bar) return;
-
-  // Если слой еще не создан ИЛИ плеер был перерисован (isConnected === false), создаем заново
+const updateProgressBar = async () => {
+  const bar = document.getElementById('player-progress-bar'); if (!bar) return;
   if (!_layer || !_layer.isConnected) {
-    _layer = document.createElement('div');
-    _layer.className = 'player-cache-layer';
-    bar.insertBefore(_layer, bar.firstChild); // Вставляем строго ПОД основной ползунок
-
-    // Изолированно добавляем нужные стили, не ломая main.css
+    _layer = Object.assign(document.createElement('div'), { className: 'player-cache-layer' });
+    bar.insertBefore(_layer, bar.firstChild);
     if (!document.getElementById('cache-layer-styles')) {
-      const s = document.createElement('style');
-      s.id = 'cache-layer-styles';
-      s.textContent = `
-        .player-cache-layer {
-          position: absolute; inset: 0 auto auto 0; height: 100%;
-          background: rgba(255, 255, 255, 0.2); border-radius: 3px;
-          pointer-events: none; transition: width 0.3s ease, opacity 0.3s;
-          width: 0%; opacity: 0; z-index: 0;
-        }
-        .player-cache-layer.is-loading {
-          background: linear-gradient(90deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.05) 100%);
-          background-size: 200% 100%; animation: cacheAnim 1.5s infinite linear;
-          width: 100%; opacity: 1;
-        }
-        .player-progress-fill { position: relative; z-index: 1; } /* Гарантируем, что синий бар всегда сверху */
-        @keyframes cacheAnim { to { background-position: -200% 0; } }
-      `;
+      const s = document.createElement('style'); s.id = 'cache-layer-styles';
+      s.textContent = `.player-cache-layer{position:absolute;inset:0 auto auto 0;height:100%;background:rgba(255,255,255,0.2);border-radius:3px;pointer-events:none;transition:width .3s ease,opacity .3s;width:0%;opacity:0;z-index:0}.player-cache-layer.is-loading{background:linear-gradient(90deg,rgba(255,255,255,0.05) 0%,rgba(255,255,255,0.3) 50%,rgba(255,255,255,0.05) 100%);background-size:200% 100%;animation:cacheAnim 1.5s infinite linear;width:100%;opacity:1}.player-progress-fill{position:relative;z-index:1}@keyframes cacheAnim{to{background-position:-200% 0}}`;
       document.head.appendChild(s);
     }
   }
-
   const uid = window.playerCore?.getCurrentTrackUid?.();
-  if (!uid) {
-    _layer.style.opacity = '0';
-    _layer.classList.remove('is-loading');
-    return;
-  }
-
-  const state = await getOfflineManager().getTrackOfflineState(uid);
-
-  if (state.cachedComplete) {
-    // 100% = Трек полностью загружен (Pinned, Cloud или отработал R1 PlaybackCache)
-    _layer.style.width = '100%';
-    _layer.style.opacity = '1';
-    _layer.classList.remove('is-loading');
-    _layer.style.background = 'rgba(255,255,255,0.2)'; 
-  } else if (state.downloading) {
-    // Трек в процессе загрузки (анимированный indeterminate-индикатор)
-    _layer.classList.add('is-loading');
-    _layer.style.background = ''; // Возвращаем градиент из CSS-класса
-  } else {
-    // Трека нет в кэше и не предвидится (стриминг без R1)
-    _layer.style.opacity = '0';
-    _layer.classList.remove('is-loading');
-  }
-}
-
+  if (!uid) return Object.assign(_layer.style, { opacity: '0' }) && _layer.classList.remove('is-loading');
+  const st = await getOfflineManager().getTrackOfflineState(uid);
+  if (st.cachedComplete) { Object.assign(_layer.style, { width: '100%', opacity: '1', background: 'rgba(255,255,255,0.2)' }); _layer.classList.remove('is-loading'); } 
+  else if (st.downloading) { _layer.classList.add('is-loading'); _layer.style.background = ''; } 
+  else { _layer.style.opacity = '0'; _layer.classList.remove('is-loading'); }
+};
 export default { initCacheProgressOverlay };
 
 //=================================================
 // FILE: /scripts/ui/icon-utils.js
 const SPRITE_PATH = 'icons/ui-sprite.svg';
-
-export function renderIcon(name, attrs = '', options = {}) {
-  const {
-    className = '',
-    viewBox = '0 0 24 24',
-    ariaHidden = true
-  } = options;
-  return `<svg viewBox="${viewBox}" ${className ? `class="${className}" ` : ''}${ariaHidden ? 'aria-hidden="true" ' : ''}${attrs}><use href="${SPRITE_PATH}#${name}"></use></svg>`;
-}
-
-export function setIconUse(el, name, options = {}) {
-  if (!el || !name) return;
-  const {
-    viewBox = '0 0 24 24',
-    className = '',
-    ariaHidden = true
-  } = options;
-  el.innerHTML = `<use href="${SPRITE_PATH}#${name}"></use>`;
-  el.setAttribute('viewBox', viewBox);
-  if (className) el.setAttribute('class', className);
-  if (ariaHidden) el.setAttribute('aria-hidden', 'true');
-}
-
-export function renderFavoriteStar(liked, attrs = '') {
-  return `<span class="like-star like-star-svg" data-liked="${liked ? '1' : '0'}" aria-label="★" ${attrs}>${renderIcon('icon-favorite-star')}</span>`;
-}
-
-export function setFavoriteStarState(el, liked) {
-  if (!el) return;
-  el.dataset.liked = liked ? '1' : '0';
-}
-
-window.IconUtils = {
-  renderIcon,
-  setIconUse,
-  renderFavoriteStar,
-  setFavoriteStarState
-};
+export const renderIcon = (n, a = '', { className: c = '', viewBox: v = '0 0 24 24', ariaHidden: ah = true } = {}) => `<svg viewBox="${v}" ${c ? `class="${c}" ` : ''}${ah ? 'aria-hidden="true" ' : ''}${a}><use href="${SPRITE_PATH}#${n}"></use></svg>`;
+export const setIconUse = (el, n, { viewBox: v = '0 0 24 24', className: c = '', ariaHidden: ah = true } = {}) => { if (el && n) { el.innerHTML = `<use href="${SPRITE_PATH}#${n}"></use>`; el.setAttribute('viewBox', v); if (c) el.setAttribute('class', c); if (ah) el.setAttribute('aria-hidden', 'true'); } };
+export const renderFavoriteStar = (l, a = '') => `<span class="like-star like-star-svg" data-liked="${l ? '1' : '0'}" aria-label="★" ${a}>${renderIcon('icon-favorite-star')}</span>`;
+export const setFavoriteStarState = (el, l) => { if (el) el.dataset.liked = l ? '1' : '0'; };
+window.IconUtils = { renderIcon, setIconUse, renderFavoriteStar, setFavoriteStarState };
 
 //=================================================
 // FILE: /scripts/ui/lyrics-modal.js
-// scripts/ui/lyrics-modal.js
-// Модальное окно с полным текстом песни (Оптимизировано v2.0 + Offline Fallback)
-
 (function () {
   'use strict';
-
   const show = async () => {
-    const W = window, D = document, N = W.NotificationSystem, U = W.Utils;
-    const t = W.playerCore?.getCurrentTrack();
-    
+    const W = window, D = document, N = W.NotificationSystem, U = W.Utils, t = W.playerCore?.getCurrentTrack();
     if (!t) return N?.warning('Нет активного трека');
-
     let txt = '';
-
-    // 1. Пытаемся загрузить полный текст (fulltext) с dual-source fallback
     if (t.fulltext || t.uid) {
-      const urls = [];
-      try {
-        const smart = await W.TrackRegistry?.getSmartUrlInfo?.(t.uid, 'fulltext');
-        if (smart?.url) urls.push(smart.url);
-      } catch {}
-      if (t.fulltext && !urls.includes(t.fulltext)) urls.push(t.fulltext);
-
-      for (const fetchUrl of urls) {
-        try {
-          txt = W.Utils?.fetchCache?.getText
-            ? await W.Utils.fetchCache.getText({
-                key: `lyrics:fulltext:${fetchUrl}`,
-                url: fetchUrl,
-                ttlMs: 43200000,
-                store: 'session',
-                fetchInit: { cache: 'force-cache' }
-              })
-            : await fetch(fetchUrl, { cache: 'force-cache' }).then(r => {
-                if (!r.ok) throw new Error(`HTTP ${r.status}`);
-                return r.text();
-              });
-          if (txt) break;
-        } catch {}
+      const urls = [...(await W.TrackRegistry?.getSmartUrlInfo?.(t.uid, 'fulltext').then(s=>s?.url?[s.url]:[]).catch(()=>[])), t.fulltext].filter((v,i,a)=>v&&a.indexOf(v)===i);
+      for (const u of urls) {
+        try { txt = U?.fetchCache?.getText ? await U.fetchCache.getText({ key: `lyrics:fulltext:${u}`, url: u, ttlMs: 43200000, store: 'session', fetchInit: { cache: 'force-cache' } }) : await fetch(u, { cache: 'force-cache' }).then(r => r.ok ? r.text() : ''); if (txt) break; } catch {}
       }
-      if (!txt) console.warn('[LyricsModal] Fulltext fetch failed. Falling back to timeline.');
     }
-
-    // 2. Умный Fallback: Если fulltext нет или он заблокирован оффлайн-режимом,
-    // бесшовно берем уже закешированные таймлайн-строки из памяти.
-    if (!txt) {
-      const lines = W.LyricsController?.getCurrentLyricsLines?.() || [];
-      txt = lines.map(i => i.line).filter(Boolean).join('\n');
-    }
-
+    if (!txt) txt = (W.LyricsController?.getCurrentLyricsLines?.() || []).map(i => i.line).filter(Boolean).join('\n');
     if (!txt) return N?.warning('Текст песни недоступен');
-
-    const esc = W.Utils?.escapeHtml || (s => String(s || ''));
+    const esc = U?.escapeHtml || (s => String(s || ''));
     
-    U?.dom?.createStyleOnce?.('lyrics-modal-styles', `
-      .lyrics-modal-box{max-height:80vh}
-      .lyrics-modal-title{margin:0 0 8px 0}
-      .lyrics-modal-meta{color:#8ab8fd;margin-bottom:16px;font-size:14px}
-      .lyrics-modal-text{max-height:50vh;overflow-y:auto;padding:16px;background:rgba(0,0,0,0.2);border-radius:10px;line-height:1.8;white-space:pre-wrap;font-size:15px;scrollbar-width:thin;scrollbar-color:rgba(77,170,255,0.3) transparent}
-      .lyrics-modal-actions{display:flex;gap:10px;margin-top:16px;justify-content:center;flex-wrap:wrap}
-    `);
+    U?.dom?.createStyleOnce?.('lyrics-modal-styles', `.lyrics-modal-box{max-height:80vh}.lyrics-modal-title{margin:0 0 8px 0}.lyrics-modal-meta{color:#8ab8fd;margin-bottom:16px;font-size:14px}.lyrics-modal-text{max-height:50vh;overflow-y:auto;padding:16px;background:rgba(0,0,0,0.2);border-radius:10px;line-height:1.8;white-space:pre-wrap;font-size:15px;scrollbar-width:thin;scrollbar-color:rgba(77,170,255,0.3) transparent}.lyrics-modal-actions{display:flex;gap:10px;margin-top:16px;justify-content:center;flex-wrap:wrap}`);
 
-    const html = `
-      <div class="lyrics-modal lyrics-modal-box">
-        <h2 class="lyrics-modal-title">${esc(t.title)}</h2>
-        <div class="lyrics-modal-meta">${esc(t.artist || 'Витрина Разбита')} · ${esc(t.album || '')}</div>
-        <div class="lyrics-fulltext lyrics-modal-text">${esc(txt)}</div>
-        <div class="lyrics-modal-actions">
-          <button class="modal-action-btn" id="copy-lyrics-btn">📋 Копировать</button>
-          <button class="modal-action-btn" id="share-lyrics-btn">📤 Поделиться</button>
-        </div>
-      </div>
-    `;
+    const m = W.Modals?.open?.({ title: 'Текст песни', maxWidth: 560, bodyHtml: `<div class="lyrics-modal lyrics-modal-box"><h2 class="lyrics-modal-title">${esc(t.title)}</h2><div class="lyrics-modal-meta">${esc(t.artist || 'Витрина Разбита')} · ${esc(t.album || '')}</div><div class="lyrics-fulltext lyrics-modal-text">${esc(txt)}</div><div class="lyrics-modal-actions"><button class="modal-action-btn" id="copy-lyrics-btn">📋 Копировать</button><button class="modal-action-btn" id="share-lyrics-btn">📤 Поделиться</button></div></div>` });
+    if (!m) return N?.error('Система окон недоступна');
 
-    if (!W.Modals?.open) return N?.error('Система окон недоступна');
-    const m = W.Modals.open({ title: 'Текст песни', maxWidth: 560, bodyHtml: html });
-
-    // Обработчик: Копирование (Современный API -> Fallback на execCommand)
     m.querySelector('#copy-lyrics-btn')?.addEventListener('click', async () => {
-      try {
-        await navigator.clipboard.writeText(txt);
-        N?.success('Текст скопирован');
-        m.remove();
-      } catch {
+      try { await navigator.clipboard.writeText(txt); N?.success('Текст скопирован'); m.remove(); } catch {
         U?.dom?.createStyleOnce?.('lyrics-modal-copy-helper-style', `.lyrics-copy-helper{position:fixed;opacity:0;pointer-events:none;inset:-9999px auto auto -9999px}`);
-        const ta = D.createElement('textarea');
-        ta.className = 'lyrics-copy-helper';
-        ta.value = txt;
-        D.body.appendChild(ta);
-        ta.select();
-        try { D.execCommand('copy'); N?.success('Текст скопирован'); m.remove(); } 
-        catch { N?.error('Не удалось скопировать'); }
-        ta.remove();
+        const ta = Object.assign(D.createElement('textarea'), { className: 'lyrics-copy-helper', value: txt }); D.body.appendChild(ta); ta.select();
+        try { D.execCommand('copy'); N?.success('Текст скопирован'); m.remove(); } catch { N?.error('Не удалось скопировать'); } ta.remove();
       }
     });
-
-    // Обработчик: Поделиться (Web Share API)
     m.querySelector('#share-lyrics-btn')?.addEventListener('click', async () => {
       if (!navigator.share) return N?.info('Функция "Поделиться" недоступна в этом браузере');
-      try {
-        await navigator.share({ title: t.title, text: `${t.title} - ${t.artist}\n\n${txt}` });
-      } catch (e) {
-        if (e.name !== 'AbortError') console.error('Share failed:', e);
-      }
+      try { await navigator.share({ title: t.title, text: `${t.title} - ${t.artist}\n\n${txt}` }); } catch (e) { if (e.name !== 'AbortError') console.error(e); }
     });
   };
-
   window.LyricsModal = { show };
 })();
 
