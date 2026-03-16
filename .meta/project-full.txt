@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ed29c1d4df0fd628cc5eb280b539d5997e436c15.idx
-│   │       ├── pack-ed29c1d4df0fd628cc5eb280b539d5997e436c15.pack
-│   │       └── pack-ed29c1d4df0fd628cc5eb280b539d5997e436c15.rev
+│   │       ├── pack-12206efb8c734e7afc01362b64737e32472470ab.idx
+│   │       ├── pack-12206efb8c734e7afc01362b64737e32472470ab.pack
+│   │       └── pack-12206efb8c734e7afc01362b64737e32472470ab.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -246,6 +246,8 @@ vi3na1bita-music/
 │   │       └── index.json
 │   └── .gitkeep
 ├── data/
+│   ├── track-profiles/
+│   │   └── README.txt
 │   ├── custom_achievements.json
 │   ├── lyrics-index-v1.json
 │   ├── taxonomy.json
@@ -399,7 +401,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 19:20:37 UTC
+Сгенерировано: 2026-03-16 19:21:12 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -6050,4 +6052,8 @@ ON → OFF
 inactive в ИЗБРАННОМ — это UI-элемент для возврата/удаления, он не должен попадать ни в какие плейлисты воспроизведения, ни в Next/Prev, ни в Shuffle.
 
 Проект делается и обслуживается средствами https://github.com/ (GitHub Pages + GitHub Actions).
+
+//=================================================
+// FILE: /data/track-profiles/README.txt
+UID.088_(директория полных TrackProfile JSON)_(хранить детальные паспорта треков отдельно от легкого индекса)_(складывать сюда файлы вида UID.json и грузить их лениво через scripts/intel/track/track-profiles.js)
 
