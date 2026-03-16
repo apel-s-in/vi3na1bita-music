@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e4aec8f2b633d6978cf0d0abad08d2f37294d3de.idx
-│   │       ├── pack-e4aec8f2b633d6978cf0d0abad08d2f37294d3de.pack
-│   │       └── pack-e4aec8f2b633d6978cf0d0abad08d2f37294d3de.rev
+│   │       ├── pack-201678fa8bccbf3c42070d5f36f0130000c532dc.idx
+│   │       ├── pack-201678fa8bccbf3c42070d5f36f0130000c532dc.pack
+│   │       └── pack-201678fa8bccbf3c42070d5f36f0130000c532dc.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -437,7 +437,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 20:58:39 UTC
+Сгенерировано: 2026-03-16 20:58:55 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4806,6 +4806,7 @@ export default telemetryMapper;
 // UID.036_(Track presentation layer)_(отделить карточную подачу от сырых данных)_(читать presentation/card fields из preview/full profile)
 // UID.037_(Card overrides)_(разрешить ручную правку карточки)_(держать слой overrides отдельным от raw/final analysis)
 // UID.039_(Share cards from profile)_(использовать умную подачу в UI и share)_(отдавать safe presentation snapshot для других модулей)
+// UID.095_(Ownership boundary: legacy vs intel)_(не смешивать presentation и raw semantic truth)_(этот модуль только собирает UI-ready snapshot, но не меняет TrackProfile и не владеет карточным UI host)
 
 import { trackProfiles } from './track-profiles.js';
 
