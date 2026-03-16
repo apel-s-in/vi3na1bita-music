@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9eddee9aa12618e50ee9b39b0068744d2d5e6aa2.idx
-│   │       ├── pack-9eddee9aa12618e50ee9b39b0068744d2d5e6aa2.pack
-│   │       └── pack-9eddee9aa12618e50ee9b39b0068744d2d5e6aa2.rev
+│   │       ├── pack-2f9b85df8f01e148e8925f7d3b3511cc978c90bc.idx
+│   │       ├── pack-2f9b85df8f01e148e8925f7d3b3511cc978c90bc.pack
+│   │       └── pack-2f9b85df8f01e148e8925f7d3b3511cc978c90bc.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -402,6 +402,7 @@ vi3na1bita-music/
 │   ├── intelligence/
 │   │   ├── bridges.js
 │   │   ├── flags.js
+│   │   ├── listener-profile.js
 │   │   ├── manifest.js
 │   │   ├── taxonomy-service.js
 │   │   ├── track-presentation.js
@@ -445,7 +446,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 19:48:45 UTC
+Сгенерировано: 2026-03-16 19:49:07 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5023,6 +5024,33 @@ export const INTELLIGENCE_FLAGS = Object.freeze({
 });
 
 export default INTELLIGENCE_FLAGS;
+
+//=================================================
+// FILE: /scripts/intelligence/listener-profile.js
+/* LISTENER PROFILE — future taste and behavior model built from stats/events/favorites. */
+// UID.061_listener_profile_core_(ввести ListenerProfile)_(для персонализации beyond raw stats)_(this module is the canonical builder)
+// UID.062_tag_preferences_layer_(строить tag preferences)_(для знать что реально любит пользователь)_(derive from TrackProfiles + listens)
+// UID.063_axis_preferences_layer_(строить axis preferences)_(для тонкого taste-fit matching)_(aggregate energy/melancholy/etc)
+// UID.065_feature_affinity_layer_(строить feature affinity)_(для product-aware recs)_(lyrics/stems/minus/lossless/clip usage)
+// UID.066_time_profile_layer_(строить time profile)_(для contextual recommendations)_(hour/day/week patterns)
+// UID.067_behavior_archetype_layer_(строить archetypes)_(для profile insight и AI explanations)_(explorer/repeater/etc)
+
+const noopAsync = async () => null;
+
+export const listenerProfile = {
+  id: 'listener-profile',
+  version: '0.0.1-stub',
+  ready: false,
+  async initialize() { this.ready = true; return this; },
+  async build() { return null; },
+  async rebuild() { return null; },
+  async getCurrent() { return null; },
+  async getSummary() { return null; },
+  async getArchetype() { return null; },
+  teardown: noopAsync
+};
+
+export default listenerProfile;
 
 //=================================================
 // FILE: /scripts/intelligence/manifest.js
