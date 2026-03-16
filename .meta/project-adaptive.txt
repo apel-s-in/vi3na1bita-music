@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-57798a286f8fe5a45fb7c8458dd26c2e423d0d48.idx
-│   │       ├── pack-57798a286f8fe5a45fb7c8458dd26c2e423d0d48.pack
-│   │       └── pack-57798a286f8fe5a45fb7c8458dd26c2e423d0d48.rev
+│   │       ├── pack-d0f3659789aedfea88cb8fcb045aab5059adfb39.idx
+│   │       ├── pack-d0f3659789aedfea88cb8fcb045aab5059adfb39.pack
+│   │       └── pack-d0f3659789aedfea88cb8fcb045aab5059adfb39.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -398,7 +398,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 11:51:33 UTC
+Сгенерировано: 2026-03-16 11:52:02 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4024,163 +4024,45 @@ window.IconUtils = { renderIcon, setIconUse, renderFavoriteStar, setFavoriteStar
   window.Utils?.dom?.createStyleOnce?.('modals-inline-cleanup', `.modal-feedback--dynamic{width:100%;max-width:var(--modal-max-width,520px)}.modal-confirm-text{color:#9db7dd;line-height:1.45;margin-bottom:14px}.modal-confirm-btn{min-width:130px}`);
   
   const open = ({ title = '', bodyHtml = '', maxWidth = 520, onClose } = {}) => {
-    let c = document.getElementById('modals-container');
-    if (!c) { c = document.createElement('div'); c.id = 'modals-container'; document.body.appendChild(c); }
-
-    const bg = document.createElement('div');
-    bg.className = 'modal-bg active';
+    let c = document.getElementById('modals-container') || Object.assign(document.createElement('div'), { id: 'modals-container' });
+    if (!c.isConnected) document.body.appendChild(c);
+    const bg = Object.assign(document.createElement('div'), { className: 'modal-bg active' });
     bg.style.setProperty('--modal-max-width', `${maxWidth}px`);
     bg.innerHTML = `<div class="modal-feedback modal-feedback--dynamic"><button class="bigclose" type="button" aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-close"></use></svg></button>${title ? `<h2>${esc(title)}</h2>` : ''}<div class="modal-body">${bodyHtml}</div></div>`;
     c.appendChild(bg);
-
-    const close = () => { onClose?.(); bg.remove(); };
-    const onKey = e => { if (e.key === 'Escape') { e.preventDefault(); close(); } };
-
-    bg.onclick = e => { if (e.target === bg || e.target.closest('.bigclose')) close(); };
-    window.addEventListener('keydown', onKey);
-
-    const _rem = bg.remove.bind(bg);
-    bg.remove = () => { window.removeEventListener('keydown', onKey); _rem(); };
-
+    const cl = () => { onClose?.(); bg.remove(); }, oK = e => { if (e.key === 'Escape') { e.preventDefault(); cl(); } };
+    bg.onclick = e => { if (e.target === bg || e.target.closest('.bigclose')) cl(); }; window.addEventListener('keydown', oK);
+    const _rem = bg.remove.bind(bg); bg.remove = () => { window.removeEventListener('keydown', oK); _rem(); };
     return bg;
   };
 
   const confirm = ({ title = 'Подтвердите', textHtml = '', confirmText = 'Ок', cancelText = 'Отмена', maxWidth = 460, onClose, onConfirm, onCancel } = {}) => {
-    const m = open({
-      title, maxWidth, onClose,
-      bodyHtml: `<div class="modal-confirm-text">${textHtml}</div><div class="om-actions"><button type="button" class="modal-action-btn modal-confirm-btn" data-act="cancel">${esc(cancelText)}</button><button type="button" class="modal-action-btn online modal-confirm-btn" data-act="confirm">${esc(confirmText)}</button></div>`
-    });
-
-    m.addEventListener('click', e => {
-      if (e.target.closest('[data-act="cancel"]')) { onCancel?.(); m.remove(); }
-      else if (e.target.closest('[data-act="confirm"]')) { onConfirm?.(); m.remove(); }
-    });
-
+    const m = open({ title, maxWidth, onClose, bodyHtml: `<div class="modal-confirm-text">${textHtml}</div><div class="om-actions"><button type="button" class="modal-action-btn modal-confirm-btn" data-act="cancel">${esc(cancelText)}</button><button type="button" class="modal-action-btn online modal-confirm-btn" data-act="confirm">${esc(confirmText)}</button></div>` });
+    m.addEventListener('click', e => { if (e.target.closest('[data-act="cancel"]')) { onCancel?.(); m.remove(); } else if (e.target.closest('[data-act="confirm"]')) { onConfirm?.(); m.remove(); } });
     return m;
   };
 
-  window.Modals = window.Modals || {};
-  window.Modals.open = open;
-  window.Modals.confirm = confirm;
+  window.Modals = { ...window.Modals, open, confirm };
 })();
 
 //=================================================
 // FILE: /scripts/ui/news-inline.js
-// scripts/ui/news-inline.js
-// Рендер новостей внутри основного приложения (альбом __reliz__).
-// Только UI/fetch, не трогает воспроизведение.
-
-const esc = (s) => {
-  const fn = window.Utils?.escapeHtml;
-  return typeof fn === 'function' ? fn(String(s ?? '')) : String(s ?? '');
+const esc = s => window.Utils?.escapeHtml?.(String(s ?? '')) ?? String(s ?? '');
+const renderCard = (it) => {
+  const t = esc(it?.title || 'Новость'), m = it?.youtubeUrl ? `<div class="news-inline__media news-inline__media--youtube"><a class="news-inline__youtube-link" href="${esc(it.youtubeUrl)}" target="_blank" rel="noopener noreferrer" aria-label="${t}">${it.youtubeThumb ? `<img loading="lazy" src="${esc(it.youtubeThumb)}" alt="${t}" onerror="this.style.display='none';this.parentElement.classList.add('news-inline__youtube-link--fallback')">` : ''}<span class="news-inline__youtube-fallback-title">${t}</span><span class="news-inline__youtube-play">▶</span></a></div>` : (it?.image ? `<div class="news-inline__media"><img loading="lazy" src="${esc(it.image)}" alt="${t}"></div>` : (it?.video ? `<div class="news-inline__media"><video controls preload="metadata" src="${esc(it.video)}"></video></div>` : ''));
+  return `<article class="news-inline__card"><div class="news-inline__title">${t}</div>${it?.date ? `<div class="news-inline__date">${esc(it.date)}</div>` : ''}${m}${it?.text ? `<div class="news-inline__text">${esc(it.text)}</div>` : ''}${it?.youtubeUrl ? `<div class="news-inline__actions"><a class="news-inline__action-link" href="${esc(it.youtubeUrl)}" target="_blank" rel="noopener noreferrer">Смотреть на YouTube</a></div>` : ''}${it?.tags?.length ? `<div class="news-inline__tags">${it.tags.map(tag => `<span class="news-inline__tag">#${esc(tag)}</span>`).join('')}</div>` : ''}</article>`;
 };
 
-function renderCard(it) {
-  const title = esc(it?.title || 'Новость');
-  const date = esc(it?.date || '');
-  const text = esc(it?.text || '');
-  const tags = Array.isArray(it?.tags) ? it.tags : [];
-
-  const media = it?.youtubeUrl
-    ? `
-      <div class="news-inline__media news-inline__media--youtube">
-        <a
-          class="news-inline__youtube-link"
-          href="${esc(it.youtubeUrl)}"
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="${title}"
-        >
-          ${it.youtubeThumb ? `<img loading="lazy" src="${esc(it.youtubeThumb)}" alt="${title}" onerror="this.style.display='none';this.parentElement.classList.add('news-inline__youtube-link--fallback')">` : ''}
-          <span class="news-inline__youtube-fallback-title">${title}</span>
-          <span class="news-inline__youtube-play">▶</span>
-        </a>
-      </div>
-    `
-    : it?.image
-      ? `<div class="news-inline__media"><img loading="lazy" src="${esc(it.image)}" alt="${title}"></div>`
-      : it?.video
-        ? `<div class="news-inline__media"><video controls preload="metadata" src="${esc(it.video)}"></video></div>`
-        : '';
-
-  const actions = it?.youtubeUrl
-    ? `
-      <div class="news-inline__actions">
-        <a
-          class="news-inline__action-link"
-          href="${esc(it.youtubeUrl)}"
-          target="_blank"
-          rel="noopener noreferrer"
-        >Смотреть на YouTube</a>
-      </div>
-    `
-    : '';
-
-  const tagHtml = tags.length
-    ? `<div class="news-inline__tags">${tags.map((t) => `<span class="news-inline__tag">#${esc(t)}</span>`).join('')}</div>`
-    : '';
-
-  return `
-    <article class="news-inline__card">
-      <div class="news-inline__title">${title}</div>
-      ${date ? `<div class="news-inline__date">${date}</div>` : ''}
-      ${media}
-      ${text ? `<div class="news-inline__text">${text}</div>` : ''}
-      ${actions}
-      ${tagHtml}
-    </article>
-  `;
-}
-
-export function renderNewsInlineSkeleton(container) {
-  if (!container) return;
-
-  container.innerHTML = `
-    <div class="news-inline__head">
-      <div id="news-inline-status" class="news-inline__status">Загрузка...</div>
-    </div>
-    <div id="news-inline-list" class="news-inline__list"></div>
-  `;
-}
-
-export async function loadAndRenderNewsInline(container) {
-  if (!container) return;
-
-  renderNewsInlineSkeleton(container);
-
-  const status = container.querySelector('#news-inline-status');
-  const list = container.querySelector('#news-inline-list');
-  if (!list) return;
-
+export const renderNewsInlineSkeleton = c => { if (c) c.innerHTML = `<div class="news-inline__head"><div id="news-inline-status" class="news-inline__status">Загрузка...</div></div><div id="news-inline-list" class="news-inline__list"></div>`; };
+export const loadAndRenderNewsInline = async c => {
+  if (!c) return; renderNewsInlineSkeleton(c);
+  const st = c.querySelector('#news-inline-status'), lst = c.querySelector('#news-inline-list'); if (!lst) return;
   try {
-    const j = window.Utils?.fetchCache?.getJson
-      ? await window.Utils.fetchCache.getJson({
-          key: 'news:inline:v1',
-          url: './news/news.json',
-          ttlMs: 300000,
-          store: 'session',
-          fetchInit: { cache: 'force-cache' }
-        })
-      : await fetch('./news/news.json', { cache: 'force-cache' }).then(r => {
-          if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          return r.json();
-        });
-    const items = Array.isArray(j?.items) ? j.items : [];
-
-    if (!items.length) {
-      if (status) status.textContent = 'Пока новостей нет';
-      return;
-    }
-
-    if (status) status.style.display = 'none';
-    list.innerHTML = items.map(renderCard).join('');
-  } catch {
-    if (status) {
-      status.textContent = 'Не удалось загрузить новости';
-      status.classList.add('news-inline__status--error');
-    }
-  }
-}
+    const j = window.Utils?.fetchCache?.getJson ? await window.Utils.fetchCache.getJson({ key: 'news:inline:v1', url: './news/news.json', ttlMs: 300000, store: 'session', fetchInit: { cache: 'force-cache' } }) : await fetch('./news/news.json', { cache: 'force-cache' }).then(r => r.ok ? r.json() : { items: [] });
+    if (!j?.items?.length) { if (st) st.textContent = 'Пока новостей нет'; return; }
+    if (st) st.style.display = 'none'; lst.innerHTML = j.items.map(renderCard).join('');
+  } catch { if (st) { st.textContent = 'Не удалось загрузить новости'; st.classList.add('news-inline__status--error'); } }
+};
 
 //=================================================
 // FILE: /scripts/ui/notify.js
