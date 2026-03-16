@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-904e9b3ebec053e96fd8d56b196f97a7aef5407b.idx
-│   │       ├── pack-904e9b3ebec053e96fd8d56b196f97a7aef5407b.pack
-│   │       └── pack-904e9b3ebec053e96fd8d56b196f97a7aef5407b.rev
+│   │       ├── pack-cb65a8b9eb67e0915caf63ae94cd69128ee5407f.idx
+│   │       ├── pack-cb65a8b9eb67e0915caf63ae94cd69128ee5407f.pack
+│   │       └── pack-cb65a8b9eb67e0915caf63ae94cd69128ee5407f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -368,6 +368,8 @@ vi3na1bita-music/
 │   │   ├── listener/
 │   │   │   ├── listener-collection.js
 │   │   │   └── listener-profile.js
+│   │   ├── providers/
+│   │   │   └── provider-consents.js
 │   │   ├── recs/
 │   │   │   ├── recommendation-engine.js
 │   │   │   ├── recommendation-reasons.js
@@ -420,7 +422,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 19:27:18 UTC
+Сгенерировано: 2026-03-16 19:27:42 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3729,6 +3731,51 @@ export const listenerProfile = {
 };
 
 export default listenerProfile;
+
+//=================================================
+// FILE: /scripts/intel/providers/provider-consents.js
+// UID.072_(Provider consents)_(контролировать приватность и доступы)_(держать consent flags рядом с linked providers и sync)
+// UID.082_(Local truth vs external telemetry split)_(не отправлять лишнее наружу)_(любой export должен проверять consent state)
+// UID.083_(Yandex Metrica safe export)_(внешняя аналитика только по согласию)_(позже telemetry mapper обязан читать этот модуль)
+
+const KEY = 'intel:provider-consents:v1';
+
+const defaults = () => ({
+  analytics: false,
+  personalization: false,
+  cloudBackup: false,
+  socialActions: false,
+  aiAssistant: false
+});
+
+function read() {
+  try {
+    return { ...defaults(), ...(JSON.parse(localStorage.getItem(KEY) || '{}') || {}) };
+  } catch {
+    return defaults();
+  }
+}
+
+function write(value) {
+  localStorage.setItem(KEY, JSON.stringify({ ...defaults(), ...(value || {}) }));
+  return read();
+}
+
+export const providerConsents = {
+  async init() {
+    return true;
+  },
+
+  get() {
+    return read();
+  },
+
+  set(patch = {}) {
+    return write({ ...read(), ...(patch || {}) });
+  }
+};
+
+export default providerConsents;
 
 //=================================================
 // FILE: /scripts/intel/recs/recommendation-engine.js
