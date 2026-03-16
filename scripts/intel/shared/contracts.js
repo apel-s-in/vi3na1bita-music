@@ -2,6 +2,7 @@
 // UID.024_(Strict taxonomy-v2)_(не расползаться по разным схемам)_(фиксировать канонические URLs и имена store)
 // UID.071_(Provider capability model)_(не размазывать роли провайдеров)_(держать provider names и role slots в одном контракте)
 // UID.089_(Future MetaDB stores)_(подготовить persistent контур)_(объявить будущие store names заранее)
+// UID.095_(Ownership boundary: legacy vs intel)_(зафиксировать что intel работает поверх legacy truth)_(contracts описывают только intel data/API, но не подменяют PlayerCore/TrackRegistry/analytics truth)
 
 export const INTEL_CONTRACTS = Object.freeze({
   version: 'intel-contracts-v1',
