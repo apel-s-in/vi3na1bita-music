@@ -1,3 +1,8 @@
+// UID.002_(UID-first core)_(сохранить AlbumsManager как контентный навигатор по uid-трекам)_(album shell не должен брать на себя semantic/recommendation ownership)
+// UID.017_(Launch source stats)_(подготовить точку фиксации запуска из album view)_(future analytics/recs слой сможет читать source=album именно отсюда)
+// UID.019_(Compact TrackProfile index)_(дать будущим album-row/card enhancements опору)_(album screen сможет читать preview profile через TrackRegistry/Intel bridge без загрузки full profile)
+// UID.041_(Showcase semantic filters)_(развести обычный album UI и semantic showcase)_(albums.js не должен превращаться в semantic browser)
+// UID.094_(No-paralysis rule)_(обычные альбомы обязаны работать без intel-слоя)_(любой semantic enhancement на строке трека только optional)
 import { injectIndicator } from '../ui/offline-indicators.js';
 import { renderFavoriteStar, setFavoriteStarState } from '../ui/icon-utils.js';
 
