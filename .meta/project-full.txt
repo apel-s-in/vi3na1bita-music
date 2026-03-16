@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a2e608e6dffe97378bb1a1f40071a3537b1cc6a1.idx
-│   │       ├── pack-a2e608e6dffe97378bb1a1f40071a3537b1cc6a1.pack
-│   │       └── pack-a2e608e6dffe97378bb1a1f40071a3537b1cc6a1.rev
+│   │       ├── pack-11aea68503023895078653782cecd7709ad6e5a0.idx
+│   │       ├── pack-11aea68503023895078653782cecd7709ad6e5a0.pack
+│   │       └── pack-11aea68503023895078653782cecd7709ad6e5a0.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -398,7 +398,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 10:36:56 UTC
+Сгенерировано: 2026-03-16 10:37:16 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1468,45 +1468,30 @@ import { metaDB } from './meta-db.js';
 
 class EventLogger {
   constructor() {
-    this.queue = [];
-    this.deviceHash = localStorage.getItem('deviceHash') || crypto.randomUUID();
-    this.sessionId = crypto.randomUUID();
+    this.queue = []; this.deviceHash = localStorage.getItem('deviceHash') || crypto.randomUUID(); this.sessionId = crypto.randomUUID();
     localStorage.setItem('deviceHash', this.deviceHash);
   }
 
   async init() {
     await metaDB.init();
-    window.addEventListener('visibilitychange', () => document.hidden && this.flush());
-    window.addEventListener('beforeunload', () => this.flush());
-    window.addEventListener('analytics:forceFlush', () => this.flush()); // Мгновенный сброс при окончании трека для выдачи ачивок
-    setInterval(() => this.flush(), 15000); // Оптимизированный фоновый сброс
+    ['visibilitychange', 'beforeunload'].forEach(e => window.addEventListener(e, () => document.hidden !== false && this.flush()));
+    window.addEventListener('analytics:forceFlush', () => this.flush());
+    setInterval(() => this.flush(), 15000);
   }
 
   log(type, uid, data = {}) {
-    this.queue.push({
-      eventId: crypto.randomUUID(),
-      sessionId: this.sessionId,
-      deviceHash: this.deviceHash,
-      platform: window.Utils?.getPlatform()?.isIOS ? 'ios' : 'web',
-      type, uid, timestamp: Date.now(), data
-    });
+    this.queue.push({ eventId: crypto.randomUUID(), sessionId: this.sessionId, deviceHash: this.deviceHash, platform: window.Utils?.getPlatform()?.isIOS ? 'ios' : 'web', type, uid, timestamp: Date.now(), data });
     if (this.queue.length > 20) this.flush();
   }
 
   async flush() {
     if (!this.queue.length) return;
-    const batch = [...this.queue];
-    this.queue = [];
-    try {
-      await metaDB.addEvents(batch, 'events_hot');
-      window.dispatchEvent(new CustomEvent('analytics:logUpdated'));
-    } catch (e) {
-      this.queue = [...batch, ...this.queue]; // Возврат в очередь при ошибке
-    }
+    const b = [...this.queue]; this.queue = [];
+    try { await metaDB.addEvents(b, 'events_hot'); window.dispatchEvent(new CustomEvent('analytics:logUpdated')); } 
+    catch { this.queue = [...b, ...this.queue]; }
   }
 }
-export const eventLogger = new EventLogger();
-window.eventLogger = eventLogger;
+export const eventLogger = new EventLogger(); window.eventLogger = eventLogger;
 
 //=================================================
 // FILE: /scripts/analytics/live-stats.js
