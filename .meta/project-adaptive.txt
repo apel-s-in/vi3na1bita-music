@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-733fa28aa859fa85e6117cab0cf7527d8d612d12.idx
-│   │       ├── pack-733fa28aa859fa85e6117cab0cf7527d8d612d12.pack
-│   │       └── pack-733fa28aa859fa85e6117cab0cf7527d8d612d12.rev
+│   │       ├── pack-93e2c0385806ee53cba5850799141a25a8129fb9.idx
+│   │       ├── pack-93e2c0385806ee53cba5850799141a25a8129fb9.pack
+│   │       └── pack-93e2c0385806ee53cba5850799141a25a8129fb9.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -392,6 +392,8 @@ vi3na1bita-music/
 │   │   │   ├── track-presentation.js
 │   │   │   ├── track-profiles.js
 │   │   │   └── track-relations.js
+│   │   ├── ui/
+│   │   │   └── track-profile-modal.js
 │   │   ├── flags.js
 │   │   └── roadmap.js
 │   ├── offline/
@@ -431,7 +433,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 19:30:20 UTC
+Сгенерировано: 2026-03-16 19:30:36 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4522,6 +4524,39 @@ export const trackRelations = {
 };
 
 export default trackRelations;
+
+//=================================================
+// FILE: /scripts/intel/ui/track-profile-modal.js
+// UID.038_(Track profile modal)_(дать отдельный UI-паспорт трека)_(не раздувать statistics-modal, а открывать отдельный modal layer)
+// UID.036_(Track presentation layer)_(показывать card-ready данные)_(брать summary/presentation из semantic profile)
+// UID.094_(No-paralysis rule)_(не ломать UX при отсутствии profile data)_(если данных нет — просто мягко вернуть false)
+
+import { trackProfiles } from '../track/track-profiles.js';
+import { trackPresentation } from '../track/track-presentation.js';
+
+export const trackProfileModal = {
+  async init() {
+    return true;
+  },
+
+  async open(uid) {
+    const safeUid = String(uid || '').trim();
+    if (!safeUid || !window.Modals?.open) return false;
+
+    const profile = await trackProfiles.getProfile(safeUid);
+    if (!profile) return false;
+
+    const presentation = await trackPresentation.getPresentation(safeUid);
+    window.Modals.open({
+      title: 'Паспорт трека',
+      maxWidth: 460,
+      bodyHtml: `<div class="sm-center"><div class="sm-note">${window.Utils?.escapeHtml?.(presentation.one_liner_ru || presentation.short_ru || presentation.tagline_ru || '') || 'Semantic profile loaded'}</div></div>`
+    });
+    return true;
+  }
+};
+
+export default trackProfileModal;
 
 //=================================================
 // FILE: /scripts/offline/cache-db.js
