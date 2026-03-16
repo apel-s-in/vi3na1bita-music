@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b44b731ebd8714a3e768787fc68c82b8557eac04.idx
-│   │       ├── pack-b44b731ebd8714a3e768787fc68c82b8557eac04.pack
-│   │       └── pack-b44b731ebd8714a3e768787fc68c82b8557eac04.rev
+│   │       ├── pack-47a8c72d2bb0d92bed112983fef53ad5a69d715d.idx
+│   │       ├── pack-47a8c72d2bb0d92bed112983fef53ad5a69d715d.pack
+│   │       └── pack-47a8c72d2bb0d92bed112983fef53ad5a69d715d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -436,7 +436,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 19:37:07 UTC
+Сгенерировано: 2026-03-16 19:37:42 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5778,6 +5778,9 @@ window.SleepTimer = sleepTimerInstance;
 
 //=================================================
 // FILE: /scripts/ui/statistics-modal.js
+// UID.038_(Track profile modal)_(не раздувать statistics-modal)_(future открыть отдельный scripts/intel/ui/track-profile-modal.js из этой точки)
+// UID.036_(Track presentation layer)_(показывать карточные summary/reasons/quotes)_(future брать safe presentation snapshot через intel-layer)
+// UID.052_(Track badges and completion)_(добавить collectible-состояние трека)_(future в модалке выводить badges/completion, не ломая текущую статистику)
 import { metaDB } from '../analytics/meta-db.js';
 import { fmtAchTimerText } from './progress-formatters.js';
 
