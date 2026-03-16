@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-dd35c8e21ede804569904fbcaa47befda5146c39.idx
-│   │       ├── pack-dd35c8e21ede804569904fbcaa47befda5146c39.pack
-│   │       └── pack-dd35c8e21ede804569904fbcaa47befda5146c39.rev
+│   │       ├── pack-02b909e366062278ed0c0c1b47a7717309c839ca.idx
+│   │       ├── pack-02b909e366062278ed0c0c1b47a7717309c839ca.pack
+│   │       └── pack-02b909e366062278ed0c0c1b47a7717309c839ca.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -437,7 +437,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 20:59:47 UTC
+Сгенерировано: 2026-03-16 21:00:17 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4129,6 +4129,7 @@ export default { getIntelFlags, setIntelDisabled };
 // FILE: /scripts/intel/listener/listener-collection.js
 // UID.051_(Collection state)_(сделать треки собираемыми объектами)_(вести per-uid user-state для badges/completion)
 // UID.052_(Track badges and completion)_(дать геймификацию и collectible cards)_(готовить badges на основе favorite/stats/features)
+// UID.095_(Ownership boundary: legacy vs intel)_(не дублировать truth избранного и статистики)_(collection слой только вычисляет derived collectible state поверх existing favorites/stats/features)
 
 function isFavorite(uid) {
   try { return !!window.playerCore?.isFavorite?.(uid); } catch { return false; }
