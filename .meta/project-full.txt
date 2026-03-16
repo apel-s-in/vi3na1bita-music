@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-02b909e366062278ed0c0c1b47a7717309c839ca.idx
-│   │       ├── pack-02b909e366062278ed0c0c1b47a7717309c839ca.pack
-│   │       └── pack-02b909e366062278ed0c0c1b47a7717309c839ca.rev
+│   │       ├── pack-fe8a998d1284366a1fd5507498280debc4e342b3.idx
+│   │       ├── pack-fe8a998d1284366a1fd5507498280debc4e342b3.pack
+│   │       └── pack-fe8a998d1284366a1fd5507498280debc4e342b3.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -437,7 +437,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 21:00:17 UTC
+Сгенерировано: 2026-03-16 21:00:51 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4467,6 +4467,7 @@ export default providerIdentity;
 // UID.060_(Session-aware next-track strategy)_(подбирать следующий трек под текущую сессию)_(держать context slot в engine API)
 // UID.061_(Community-driven recommendations)_(готовить future recs по похожим слушателям)_(оставить strategy hook, но пока без давления на runtime)
 // UID.063_(Profile recs tab upgrade)_(иметь один источник recs для профиля и витрины)_(этот engine станет входом для Profile/Showcase/UI)
+// UID.095_(Ownership boundary: legacy vs intel)_(не дать recommendation engine стать владельцем playback или UI)_(engine только считает/объясняет candidates, а применение и рендеринг остаются во внешних слоях)
 
 import { recommendationStrategies } from './recommendation-strategies.js';
 import { getRecommendationReasonText } from './recommendation-reasons.js';
