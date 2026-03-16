@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-14ff9fb4c0bd0553a957e12235169c7804469728.idx
-│   │       ├── pack-14ff9fb4c0bd0553a957e12235169c7804469728.pack
-│   │       └── pack-14ff9fb4c0bd0553a957e12235169c7804469728.rev
+│   │       ├── pack-9444790115f78ef9bb80b1c0a49a54a31bec0e5f.idx
+│   │       ├── pack-9444790115f78ef9bb80b1c0a49a54a31bec0e5f.pack
+│   │       └── pack-9444790115f78ef9bb80b1c0a49a54a31bec0e5f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -366,6 +366,7 @@ vi3na1bita-music/
 │   │   └── utils.js
 │   ├── intel/
 │   │   ├── shared/
+│   │   │   ├── bus.js
 │   │   │   └── contracts.js
 │   │   ├── flags.js
 │   │   └── roadmap.js
@@ -406,7 +407,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 19:22:22 UTC
+Сгенерировано: 2026-03-16 19:22:58 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3695,6 +3696,35 @@ export default { getIntelFlags, setIntelDisabled };
 // UID.094_(No-paralysis rule)_(оставить текущее приложение рабочим на каждом шаге)_(любой сбой intel-слоя должен только отключать intel-функции, но не ломать плеер)
 export const INTEL_ROADMAP_VERSION = 'uid-roadmap-v1';
 export default INTEL_ROADMAP_VERSION;
+
+//=================================================
+// FILE: /scripts/intel/shared/bus.js
+// UID.009_(GitHub-first additive rollout)_(подключать слой без тяжёлого рефакторинга)_(использовать window events как мягкую шину)
+// UID.081_(Telemetry mapper)_(иметь чистые доменные события для future mapping)_(эмитить intel:* events централизованно)
+// UID.094_(No-paralysis rule)_(падение intel-слоя не должно ломать плеер)_(шина обязана быть максимально безопасной и без throw)
+
+const PREFIX = 'intel:';
+
+export const intelBus = {
+  on(name, handler, options) {
+    const eventName = `${PREFIX}${name}`;
+    window.addEventListener(eventName, handler, options);
+    return () => {
+      try { window.removeEventListener(eventName, handler, options); } catch {}
+    };
+  },
+
+  emit(name, detail = {}) {
+    try {
+      window.dispatchEvent(new CustomEvent(`${PREFIX}${name}`, { detail }));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+};
+
+export default intelBus;
 
 //=================================================
 // FILE: /scripts/intel/shared/contracts.js
