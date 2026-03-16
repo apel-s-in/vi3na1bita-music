@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-299220bbe56ffcadf3aa87d6e622419b6690facb.idx
-│   │       ├── pack-299220bbe56ffcadf3aa87d6e622419b6690facb.pack
-│   │       └── pack-299220bbe56ffcadf3aa87d6e622419b6690facb.rev
+│   │       ├── pack-3b57174d6b836d1117fa7486536955f188caf46f.idx
+│   │       ├── pack-3b57174d6b836d1117fa7486536955f188caf46f.pack
+│   │       └── pack-3b57174d6b836d1117fa7486536955f188caf46f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -437,7 +437,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 20:45:51 UTC
+Сгенерировано: 2026-03-16 20:46:34 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2152,6 +2152,11 @@ W.AlbumsManager = new AlbumsManager(); export default W.AlbumsManager;
 
 //=================================================
 // FILE: /scripts/app/albums/specials.js
+// UID.017_(Launch source stats)_(special albums — важные источники запуска и discovery)_(future launches from favorites/news/profile/showcase должны явно различаться в analytics)
+// UID.053_(Rediscovery engine)_(favorites/profile special views станут consumption points для forgotten hits)_(здесь later можно подмешивать rediscovery sections без ломки legacy)
+// UID.063_(Profile recs tab upgrade)_(special profile album станет главным host для personalized intelligence)_(но heavy rec logic должна жить вне этого файла)
+// UID.068_(Public playlist analytics)_(showcase special view — social/discovery surface)_(future playlist analytics и shared flows связывать через showcase/profile layers)
+// UID.094_(No-paralysis rule)_(special albums должны оставаться рабочими без intel)_(любые intelligent blocks строго optional, с fallback на текущий UI)
 import { loadAndRenderNewsInline } from '../../ui/news-inline.js';
 import { injectOfflineIndicators } from '../../ui/offline-indicators.js';
 import { renderFavoriteStar } from '../../ui/icon-utils.js';
