@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c778ae31bf91dbad8ca144c6a132788e73008299.idx
-│   │       ├── pack-c778ae31bf91dbad8ca144c6a132788e73008299.pack
-│   │       └── pack-c778ae31bf91dbad8ca144c6a132788e73008299.rev
+│   │       ├── pack-00692f4b3b8951e8429d45c0440837e5f810dbd0.idx
+│   │       ├── pack-00692f4b3b8951e8429d45c0440837e5f810dbd0.pack
+│   │       └── pack-00692f4b3b8951e8429d45c0440837e5f810dbd0.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -404,6 +404,7 @@ vi3na1bita-music/
 │   │   ├── flags.js
 │   │   ├── listener-profile.js
 │   │   ├── manifest.js
+│   │   ├── recommendation-strategies.js
 │   │   ├── session-context.js
 │   │   ├── taxonomy-service.js
 │   │   ├── track-presentation.js
@@ -447,7 +448,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 19:49:28 UTC
+Сгенерировано: 2026-03-16 19:49:46 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5093,6 +5094,39 @@ export const INTELLIGENCE_MANIFEST = Object.freeze({
 });
 
 export default INTELLIGENCE_MANIFEST;
+
+//=================================================
+// FILE: /scripts/intelligence/recommendation-strategies.js
+/* RECOMMENDATION STRATEGIES — future scorer registry for modular recommendation growth. */
+// UID.091_recommendation_strategies_registry_(держать стратегии отдельно)_(для расширяемости)_(new scorers append here only)
+// UID.094_taste_fit_recommendations_(strategy placeholder)_(для user taste matching)_(listenerProfile vs finalProfile)
+// UID.095_mood_fit_recommendations_(strategy placeholder)_(для emotional matching)_(moods+axes)
+// UID.096_theme_fit_recommendations_(strategy placeholder)_(для смыслового matching)_(themes+storytelling)
+// UID.097_use_case_fit_recommendations_(strategy placeholder)_(для сценарного matching)_(use_cases + context)
+// UID.099_rediscovery_recommendations_(strategy placeholder)_(для forgotten hits)_(recall prior affinity)
+// UID.100_exploration_recommendations_(strategy placeholder)_(для hidden gems)_(novel compatible candidates)
+// UID.103_community_recommendations_(strategy placeholder)_(для cohort/similar listeners)_(future global aggregates)
+
+const scoreZero = () => 0;
+
+export const recommendationStrategies = {
+  id: 'recommendation-strategies',
+  version: '0.0.1-stub',
+  registry: Object.freeze({
+    tasteFit: scoreZero,
+    moodFit: scoreZero,
+    themeFit: scoreZero,
+    useCaseFit: scoreZero,
+    audioSimilarity: scoreZero,
+    rediscovery: scoreZero,
+    exploration: scoreZero,
+    collectionDriven: scoreZero,
+    sessionNext: scoreZero,
+    communityFit: scoreZero
+  })
+};
+
+export default recommendationStrategies;
 
 //=================================================
 // FILE: /scripts/intelligence/session-context.js
