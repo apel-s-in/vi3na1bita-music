@@ -5,6 +5,8 @@
 // UID.081_(Telemetry mapper)_(подготовить безопасную внешнюю аналитику)_(подключить mapper как отдельный no-op сервис)
 // UID.092_(Incremental rollout order)_(сохранить staged внедрение)_(здесь концентрируется только wiring, а не heavy business logic)
 // UID.093_(Roadmap markers in touched files)_(не терять вектор реализации)_(bootstrap собирает и публикует весь новый контур в window.Intel)
+// UID.094_(No-paralysis rule)_(оставить legacy приложение главным хозяином runtime)_(bootstrap только публикует optional services, не подменяя core/app ownership)
+// UID.095_(Ownership boundary: legacy vs intel)_(не дать intel-слою утечь в старую архитектуру)_(bootstrap собирает intel как надстройку, а не как новый app-core)
 
 import { INTEL_ROADMAP_VERSION } from './roadmap.js';
 import { getIntelFlags, setIntelDisabled } from './flags.js';
