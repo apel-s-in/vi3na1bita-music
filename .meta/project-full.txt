@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8927417daa1e94439871b4fc618aa72ce8a2c4a6.idx
-│   │       ├── pack-8927417daa1e94439871b4fc618aa72ce8a2c4a6.pack
-│   │       └── pack-8927417daa1e94439871b4fc618aa72ce8a2c4a6.rev
+│   │       ├── pack-9049a3ada51742226097f2823511a21a0d1ef4e9.idx
+│   │       ├── pack-9049a3ada51742226097f2823511a21a0d1ef4e9.pack
+│   │       └── pack-9049a3ada51742226097f2823511a21a0d1ef4e9.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -437,7 +437,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 21:01:17 UTC
+Сгенерировано: 2026-03-16 21:01:48 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4516,6 +4516,7 @@ export default recommendationEngine;
 // FILE: /scripts/intel/recs/recommendation-reasons.js
 // UID.056_(Recommendation reasons)_(объяснять почему показан трек)_(держать reason-code -> human text отдельно от scorer logic)
 // UID.085_(AI explanation layer)_(в будущем легко строить богатые объяснения)_(сначала ввести детерминированный словарь причин)
+// UID.095_(Ownership boundary: legacy vs intel)_(не смешивать reason dictionary и recommendation scoring)_(этот модуль только объясняет codes и не участвует в UI/storage/playback logic)
 
 const REASON_TEXTS_RU = Object.freeze({
   taste_fit: 'подходит под ваш вкус',
