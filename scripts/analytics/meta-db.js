@@ -1,133 +1,37 @@
 export class MetaDB {
-  constructor() { 
-    this.dbName = 'MetaDB_v4'; 
-    this.version = 1;
-    this.db = null; 
-    this._initPromise = null;
-  }
+  constructor() { this.dbName = 'MetaDB_v4'; this.version = 1; this.db = null; this._initPromise = null; }
   
   async init() {
     if (this.db) return this.db;
     if (this._initPromise) return this._initPromise;
-    this._initPromise = new Promise((resolve, reject) => {
-      if (!window.indexedDB) return reject('IndexedDB is not supported');
+    return (this._initPromise = new Promise((res, rej) => {
+      if (!window.indexedDB) return rej('IndexedDB is not supported');
       const req = indexedDB.open(this.dbName, this.version);
-      req.onupgradeneeded = (e) => {
+      req.onupgradeneeded = e => {
         const db = e.target.result;
-        if (!db.objectStoreNames.contains('events_hot')) db.createObjectStore('events_hot', { keyPath: 'eventId' });
-        if (!db.objectStoreNames.contains('events_warm')) db.createObjectStore('events_warm', { keyPath: 'eventId' });
+        ['events_hot', 'events_warm'].forEach(n => !db.objectStoreNames.contains(n) && db.createObjectStore(n, { keyPath: 'eventId' }));
         if (!db.objectStoreNames.contains('stats')) db.createObjectStore('stats', { keyPath: 'uid' });
         if (!db.objectStoreNames.contains('global')) db.createObjectStore('global', { keyPath: 'key' });
       };
-      req.onsuccess = () => { this.db = req.result; resolve(this.db); };
-      req.onerror = () => reject(req.error);
-    });
-    return this._initPromise;
+      req.onsuccess = () => { this.db = req.result; res(this.db); }; req.onerror = () => rej(req.error);
+    }));
   }
 
-  async addEvents(events, store = 'events_hot') {
-    await this.init();
-    return new Promise((resolve, reject) => {
-      const tx = this.db.transaction(store, 'readwrite');
-      const s = tx.objectStore(store);
-      events.forEach(ev => s.put(ev));
-      tx.oncomplete = () => resolve(true);
-      tx.onerror = () => reject(tx.error);
-    });
-  }
+  _exec(store, mode, fn) { return this.init().then(() => new Promise((res, rej) => { const tx = this.db.transaction(store, mode), r = fn(tx.objectStore(store), tx); if(r?.onsuccess !== undefined) { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); } else { tx.oncomplete = () => res(true); tx.onerror = () => rej(tx.error); } })); }
 
-  async getEvents(store = 'events_hot') {
-    await this.init();
-    return new Promise((resolve, reject) => {
-      const req = this.db.transaction(store, 'readonly').objectStore(store).getAll();
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
-  }
-
-  async clearEvents(store = 'events_hot') {
-    await this.init();
-    return new Promise((resolve, reject) => {
-      const tx = this.db.transaction(store, 'readwrite');
-      tx.objectStore(store).clear();
-      tx.oncomplete = () => resolve(true);
-      tx.onerror = () => reject(tx.error);
-    });
+  addEvents(events, store = 'events_hot') { return this._exec(store, 'readwrite', s => events.forEach(ev => s.put(ev))); }
+  getEvents(store = 'events_hot') { return this._exec(store, 'readonly', s => s.getAll()); }
+  clearEvents(store = 'events_hot') { return this._exec(store, 'readwrite', s => s.clear()); }
+  
+  updateStat(uid, fn) {
+    return this._exec('stats', 'readwrite', s => { const r = s.get(uid); r.onsuccess = () => s.put(fn(r.result || { uid, globalListenSeconds: 0, globalValidListenCount: 0, globalFullListenCount: 0, firstPlayedAt: Date.now(), lastPlayedAt: Date.now(), featuresUsed: {} })); });
   }
   
-  async updateStat(uid, mutatorFn) {
-    await this.init();
-    return new Promise((resolve, reject) => {
-      const tx = this.db.transaction('stats', 'readwrite');
-      const store = tx.objectStore('stats');
-      const getReq = store.get(uid);
-      getReq.onsuccess = () => {
-        const data = getReq.result || { 
-          uid, globalListenSeconds: 0, globalValidListenCount: 0, globalFullListenCount: 0, 
-          firstPlayedAt: Date.now(), lastPlayedAt: Date.now(), featuresUsed: {} 
-        };
-        store.put(mutatorFn(data));
-      };
-      tx.oncomplete = () => resolve(true);
-      tx.onerror = () => reject(tx.error);
-    });
-  }
+  getStat(uid) { return this._exec('stats', 'readonly', s => s.get(uid)); }
+  getAllStats() { return this._exec('stats', 'readonly', s => s.getAll()); }
+  getGlobal(key) { return this._exec('global', 'readonly', s => s.get(key)); }
+  setGlobal(key, value) { return this._exec('global', 'readwrite', s => s.put({ key, value })); }
   
-  async getStat(uid) {
-    await this.init();
-    return new Promise((resolve, reject) => {
-      const req = this.db.transaction('stats', 'readonly').objectStore('stats').get(uid);
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
-  }
-
-  async getAllStats() {
-    await this.init();
-    return new Promise((resolve, reject) => {
-      const req = this.db.transaction('stats', 'readonly').objectStore('stats').getAll();
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
-  }
-
-  async getGlobal(key) {
-    await this.init();
-    return new Promise((resolve, reject) => {
-      const req = this.db.transaction('global', 'readonly').objectStore('global').get(key);
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
-  }
-
-  async setGlobal(key, value) {
-    await this.init();
-    return new Promise((resolve, reject) => {
-      const tx = this.db.transaction('global', 'readwrite');
-      tx.objectStore('global').put({ key, value });
-      tx.oncomplete = () => resolve(true);
-      tx.onerror = () => reject(tx.error);
-    });
-  }
-
-  async tx(storeName, mode, handler) {
-    await this.init();
-    return new Promise((resolve, reject) => {
-      const tx = this.db.transaction(storeName, mode);
-      const store = tx.objectStore(storeName);
-
-      try {
-        handler(store, tx);
-      } catch (error) {
-        reject(error);
-        return;
-      }
-
-      tx.oncomplete = () => resolve(true);
-      tx.onerror = () => reject(tx.error);
-      tx.onabort = () => reject(tx.error || new Error(`Transaction aborted: ${storeName}`));
-    });
-  }
+  tx(sName, mode, fn) { return this._exec(sName, mode, (s, tx) => { fn(s, tx); tx.onabort = () => { throw tx.error || new Error(`Abort: ${sName}`); }; }); }
 }
-
 export const metaDB = new MetaDB();
