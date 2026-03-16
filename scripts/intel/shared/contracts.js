@@ -1,0 +1,32 @@
+// UID.002_(UID-first core)_(единые ключи и связи)_(держать contracts и store names централизованно)
+// UID.024_(Strict taxonomy-v2)_(не расползаться по разным схемам)_(фиксировать канонические URLs и имена store)
+// UID.071_(Provider capability model)_(не размазывать роли провайдеров)_(держать provider names и role slots в одном контракте)
+// UID.089_(Future MetaDB stores)_(подготовить persistent контур)_(объявить будущие store names заранее)
+
+export const INTEL_CONTRACTS = Object.freeze({
+  version: 'intel-contracts-v1',
+  taxonomyVersion: 'taxonomy-v2',
+  profileIndexUrl: './data/track-profiles-index.json',
+  profileDir: './data/track-profiles/',
+  stores: Object.freeze({
+    listenerProfile: 'listener_profile',
+    providerIdentity: 'provider_identity',
+    hybridSync: 'hybrid_sync',
+    recommendationState: 'recommendation_state',
+    collectionState: 'collection_state',
+    intelRuntime: 'intel_runtime'
+  }),
+  providers: Object.freeze(['yandex', 'google', 'vk']),
+  providerRoles: Object.freeze(['primaryAuth', 'primaryBackup', 'secondaryBackup', 'social', 'ai']),
+  events: Object.freeze([
+    'intel:ready',
+    'intel:disabled',
+    'intel:track-profiles:index-ready',
+    'intel:listener-profile:updated',
+    'intel:recommendations:updated',
+    'intel:provider-identity:updated',
+    'intel:hybrid-sync:updated'
+  ])
+});
+
+export default INTEL_CONTRACTS;
