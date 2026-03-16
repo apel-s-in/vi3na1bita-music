@@ -2,6 +2,13 @@
  * scripts/offline/offline-manager.js
  * OfflineManager v3.3 — Ultra-Compact, 100% Spec-Compliant.
  */
+// UID.007_(Local-first compute)_(держать устойчивость и экономить облачные запросы)_(offline слой остаётся приоритетным источником resilience и cost-saving)
+// UID.011_(Media variants registry)_(готовить future richer media caching)_(offline архитектура должна расширяться на minus/stems/clip без ломки current audio flow)
+// UID.012_(Quality dimension)_(держать quality-aware cache truth)_(offline cache остаётся владельцем physical quality storage и re-cache логики)
+// UID.018_(Variant and quality stats)_(подготовить аналитику офлайн-режимов)_(future usage layer может читать offline transitions, не управляя cache truth)
+// UID.073_(Hybrid sync orchestrator)_(не смешивать backup/profile sync и offline cache)_(hybrid sync не должен забирать на себя логику physical media cache)
+// UID.090_(Service-worker caching for intel assets)_(развести content cache и semantic cache)_(offline manager отвечает за media cache, а intel static assets кэширует SW)
+// UID.094_(No-paralysis rule)_(не связывать офлайн-контур с intel/runtime intelligence жёстко)_(offline playback/cache обязаны жить даже при полном отключении intel-слоя)
 
 import * as DB from './cache-db.js';
 const W = window;
