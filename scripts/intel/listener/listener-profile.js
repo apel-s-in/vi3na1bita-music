@@ -5,6 +5,7 @@
 // UID.048_(Time profile)_(учитывать когда слушает пользователь)_(готовить timeProfile на базе byHour/byWeekday)
 // UID.049_(Behavior archetype)_(иметь human-readable портрет слушателя)_(оставить место под future archetype resolver)
 // UID.050_(Session profile)_(развести общий вкус и текущий контекст)_(хранить session hooks отдельно от permanent profile)
+// UID.095_(Ownership boundary: legacy vs intel)_(не превращать listener profile в новый stats/source-of-truth)_(этот слой только интерпретирует локальные aggregates/events/favorites и не владеет ими)
 
 const state = {
   profile: null,
