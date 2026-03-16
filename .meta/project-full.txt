@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-77b9ed5f0b3e7df8a033ba262a6e7320dd6b9824.idx
-│   │       ├── pack-77b9ed5f0b3e7df8a033ba262a6e7320dd6b9824.pack
-│   │       └── pack-77b9ed5f0b3e7df8a033ba262a6e7320dd6b9824.rev
+│   │       ├── pack-284a6c1e0927884936b5bcd56524c07c4562876a.idx
+│   │       ├── pack-284a6c1e0927884936b5bcd56524c07c4562876a.pack
+│   │       └── pack-284a6c1e0927884936b5bcd56524c07c4562876a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -398,7 +398,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 11:09:42 UTC
+Сгенерировано: 2026-03-16 11:10:06 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2858,62 +2858,19 @@ export default { openShowcaseSheetModal, openShowcaseAddToPlaylistModal, openSho
 
 //=================================================
 // FILE: /scripts/app/showcase/playlists.js
-export function renderShowcasePlaylists({ actionsRoot, listRoot, activeId, playlists, isDefaultId, esc }) {
-  if (!actionsRoot || !listRoot) return;
-  actionsRoot.innerHTML = `<button class="sc-pl-action ${isDefaultId(activeId) ? 'active' : ''}" id="sc-pl-all">Все треки</button><button class="sc-pl-action" id="sc-pl-pst" title="Вставить ссылку">📋</button>`;
-  listRoot.innerHTML = !playlists.length ? '<div class="sc-pl-empty">Плейлистов пока нет</div>' : playlists.map(p => `<div class="sc-pl-row ${activeId === p.id ? 'active' : ''}" data-pid="${p.id}" ${p.color ? `style="--pl-color:${p.color};"` : ''}><div class="sc-pl-left"><span class="sc-pl-dot"></span><span class="sc-pl-title" title="${esc(p.name)}">${esc(p.name)}</span></div><div class="sc-pl-right"><button class="sc-pl-btn" data-act="rename" data-pid="${p.id}" title="Переименовать">✏️</button><button class="sc-pl-btn" data-act="shr" data-pid="${p.id}" title="Поделиться">🔗</button><button class="sc-pl-btn" data-act="col" data-pid="${p.id}" title="Цвет">🎨</button><button class="sc-pl-btn danger" data-act="del" data-pid="${p.id}" title="Удалить">✖</button></div></div>`).join('');
-}
-
-export function renameShowcasePlaylist({ id, store, promptName, onDone }) {
-  const p = store.get(id);
-  if (!p) return;
-  promptName?.({
-    title: 'Переименовать',
-    value: p.name,
-    btnText: 'Сохранить',
-    onSubmit: v => {
-      p.name = v;
-      store.save(p);
-      onDone?.(p);
-    }
-  });
-}
-
-export function shareShowcasePlaylist({ id, store, origin, pathname, notify }) {
-  const p = store.get(id);
-  if (!p) return;
-  const url = `${origin}${pathname}?playlist=${btoa(unescape(encodeURIComponent(JSON.stringify({ v: 1, n: p.name, u: p.order || [] }))))}`;
-  navigator.share ? navigator.share({ title: p.name, url }).catch(() => {}) : navigator.clipboard.writeText(url).then(() => notify?.success?.('Ссылка скопирована!'));
-}
-
-export function createShowcasePlaylist({ uids, fromEdit = false, name = '', draft = null, store, mkPl, trk, setActive, clearUi, renderTab, notify, promptName }) {
-  const use = (uids || []).filter(trk);
-  if (!use.length) return notify?.warning?.('Отметьте нужные треки чекбоксами');
-
-  const done = n => {
-    const id = Date.now().toString(36);
-    const hid = (fromEdit && draft) ? use.filter(u => draft.hid.has(u)) : [];
-    store.save(mkPl({ id, name: n, order: [...use], hidden: hid }));
-    clearUi?.();
-    setActive?.(id);
-    renderTab?.();
-    notify?.success?.(`Плейлист «${n}» создан`);
-  };
-
-  return name ? done(name) : promptName?.({
-    title: 'Новый плейлист',
-    value: `Мой плейлист ${store.pl().length + 1}`,
-    btnText: 'Создать',
-    onSubmit: done
-  });
-}
-
-export default {
-  renderShowcasePlaylists,
-  renameShowcasePlaylist,
-  shareShowcasePlaylist,
-  createShowcasePlaylist
+export const renderShowcasePlaylists = ({ actionsRoot: aR, listRoot: lR, activeId: aI, playlists: p, isDefaultId: iD, esc }) => {
+  if (!aR || !lR) return;
+  aR.innerHTML = `<button class="sc-pl-action ${iD(aI) ? 'active' : ''}" id="sc-pl-all">Все треки</button><button class="sc-pl-action" id="sc-pl-pst" title="Вставить ссылку">📋</button>`;
+  lR.innerHTML = p.length ? p.map(x => `<div class="sc-pl-row ${aI === x.id ? 'active' : ''}" data-pid="${x.id}" ${x.color ? `style="--pl-color:${x.color};"` : ''}><div class="sc-pl-left"><span class="sc-pl-dot"></span><span class="sc-pl-title" title="${esc(x.name)}">${esc(x.name)}</span></div><div class="sc-pl-right"><button class="sc-pl-btn" data-act="rename" data-pid="${x.id}" title="Переименовать">✏️</button><button class="sc-pl-btn" data-act="shr" data-pid="${x.id}" title="Поделиться">🔗</button><button class="sc-pl-btn" data-act="col" data-pid="${x.id}" title="Цвет">🎨</button><button class="sc-pl-btn danger" data-act="del" data-pid="${x.id}" title="Удалить">✖</button></div></div>`).join('') : '<div class="sc-pl-empty">Плейлистов пока нет</div>';
 };
+export const renameShowcasePlaylist = ({ id: i, store: s, promptName: pN, onDone: oD }) => { const p = s.get(i); if (p) pN?.({ title: 'Переименовать', value: p.name, btnText: 'Сохранить', onSubmit: v => { p.name = v; s.save(p); oD?.(p); } }); };
+export const shareShowcasePlaylist = ({ id: i, store: s, origin: o, pathname: ph, notify: n }) => { const p = s.get(i); if (p) { const u = `${o}${ph}?playlist=${btoa(unescape(encodeURIComponent(JSON.stringify({ v: 1, n: p.name, u: p.order || [] }))))}`; navigator.share ? navigator.share({ title: p.name, url: u }).catch(()=>{}) : navigator.clipboard.writeText(u).then(() => n?.success?.('Ссылка скопирована!')); } };
+export const createShowcasePlaylist = ({ uids: u, fromEdit: fE = false, name: n = '', draft: d = null, store: s, mkPl: mP, trk: t, setActive: sA, clearUi: cU, renderTab: rT, notify: nf, promptName: pN }) => {
+  const use = (u || []).filter(t); if (!use.length) return nf?.warning?.('Отметьте нужные треки чекбоксами');
+  const done = nm => { s.save(mP({ id: Date.now().toString(36), name: nm, order: [...use], hidden: fE && d ? use.filter(x => d.hid.has(x)) : [] })); cU?.(); sA?.(id); rT?.(); nf?.success?.(`Плейлист «${nm}» создан`); };
+  n ? done(n) : pN?.({ title: 'Новый плейлист', value: `Мой плейлист ${s.pl().length + 1}`, btnText: 'Создать', onSubmit: done });
+};
+export default { renderShowcasePlaylists, renameShowcasePlaylist, shareShowcasePlaylist, createShowcasePlaylist };
 
 //=================================================
 // FILE: /scripts/app/showcase/render.js
