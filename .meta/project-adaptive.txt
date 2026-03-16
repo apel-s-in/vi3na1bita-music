@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-cfe6b62937010a5d2c0755f9708db287c7980479.idx
-│   │       ├── pack-cfe6b62937010a5d2c0755f9708db287c7980479.pack
-│   │       └── pack-cfe6b62937010a5d2c0755f9708db287c7980479.rev
+│   │       ├── pack-f4ba03244bf7c99c0291ff94c65f7a556a0dbd24.idx
+│   │       ├── pack-f4ba03244bf7c99c0291ff94c65f7a556a0dbd24.pack
+│   │       └── pack-f4ba03244bf7c99c0291ff94c65f7a556a0dbd24.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -437,7 +437,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 20:33:40 UTC
+Сгенерировано: 2026-03-16 20:35:18 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5278,6 +5278,11 @@ export default instance;
 
 //=================================================
 // FILE: /scripts/offline/track-resolver.js
+// UID.011_(Media variants registry)_(держать единый bridge выбора источника трека)_(TrackResolver остаётся слоем разрешения source/quality, а не semantic/business логики)
+// UID.012_(Quality dimension)_(не распылять выбор качества по приложению)_(PlayerCore/UI должны получать уже resolved source отсюда)
+// UID.019_(Compact TrackProfile index)_(не смешивать semantic profile и media resolution)_(track profile layer не должен вмешиваться в resolver path)
+// UID.077_(Yandex auth/backup/AI)_(не смешивать provider identity и source resolution)_(provider-linked capabilities не должны ломать текущий dual-source resolution)
+// UID.094_(No-paralysis rule)_(оставить resolver безопасным fallback-слоем)_(при любых сбоях intel/providers resolver должен возвращать stream/none без падения приложения)
 let _mgr = null;
 export const initTrackResolver = (offlineManager) => { _mgr = offlineManager; window.TrackResolver = { resolve }; };
 
@@ -5578,6 +5583,11 @@ export default window.OfflineIndicators;
 
 //=================================================
 // FILE: /scripts/ui/offline-modal.js
+// UID.007_(Local-first compute)_(делать офлайн-политику видимой и управляемой пользователем)_(offline modal остаётся главным UI для cache/network/storage control)
+// UID.018_(Variant and quality stats)_(подготовить future отображение richer cache usage)_(в будущем сюда можно добавить variant-aware breakdown без смешивания с semantic UI)
+// UID.073_(Hybrid sync orchestrator)_(не смешивать backup sync и media cache UI)_(offline modal управляет physical cache/network, а не account/provider sync)
+// UID.082_(Local truth vs external telemetry split)_(готовить безопасную product analytics точку)_(future telemetry mapper может получать UI actions отсюда по consent, без raw leakage)
+// UID.094_(No-paralysis rule)_(offline modal должен жить независимо от intel)_(никакие intel/recs/provider features не должны быть required для этого окна)
 import { getOfflineManager } from '../offline/offline-manager.js';
 import * as Net from '../offline/net-policy.js';
 import { estimateUsage, getAllTrackMetas } from '../offline/cache-db.js';
