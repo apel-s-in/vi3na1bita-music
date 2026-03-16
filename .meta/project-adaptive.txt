@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-89bdcbbe0e4281b442aefdda0d3681bee84bf149.idx
-│   │       ├── pack-89bdcbbe0e4281b442aefdda0d3681bee84bf149.pack
-│   │       └── pack-89bdcbbe0e4281b442aefdda0d3681bee84bf149.rev
+│   │       ├── pack-a4310b67dec040ef4aa26ca1e5de0cfe3716c07a.idx
+│   │       ├── pack-a4310b67dec040ef4aa26ca1e5de0cfe3716c07a.pack
+│   │       └── pack-a4310b67dec040ef4aa26ca1e5de0cfe3716c07a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -437,7 +437,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 21:03:12 UTC
+Сгенерировано: 2026-03-16 21:03:29 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4253,6 +4253,7 @@ export default listenerProfile;
 // UID.075_(Secondary mirror backup)_(иметь резервную копию профиля)_(сохранять secondaryBackup role в state)
 // UID.076_(Restore policy)_(восстанавливать предсказуемо)_(фиксировать порядок primary -> secondary -> local merge)
 // UID.094_(No-paralysis rule)_(не ломать старый sync)_(пока быть только orchestration-layer без перехвата playback и core backup logic)
+// UID.095_(Ownership boundary: legacy vs intel)_(hybrid-sync не должен становиться новым backup engine)_(модуль только оркестрирует provider roles/state, а transport/backup truth остаются в legacy analytics sync/vault)
 
 const KEY = 'intel:hybrid-sync:v1';
 
