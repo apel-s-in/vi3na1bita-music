@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5bffd1b43f647e810bbbd964923bab79bd142c4c.idx
-│   │       ├── pack-5bffd1b43f647e810bbbd964923bab79bd142c4c.pack
-│   │       └── pack-5bffd1b43f647e810bbbd964923bab79bd142c4c.rev
+│   │       ├── pack-67ef109ae5e244bb1f045d3dd8ac1d81fd3eb13d.idx
+│   │       ├── pack-67ef109ae5e244bb1f045d3dd8ac1d81fd3eb13d.pack
+│   │       └── pack-67ef109ae5e244bb1f045d3dd8ac1d81fd3eb13d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -404,6 +404,7 @@ vi3na1bita-music/
 │   │   ├── flags.js
 │   │   ├── listener-profile.js
 │   │   ├── manifest.js
+│   │   ├── recommendation-engine.js
 │   │   ├── recommendation-memory.js
 │   │   ├── recommendation-reasons.js
 │   │   ├── recommendation-strategies.js
@@ -450,7 +451,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 19:50:26 UTC
+Сгенерировано: 2026-03-16 19:50:47 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5096,6 +5097,31 @@ export const INTELLIGENCE_MANIFEST = Object.freeze({
 });
 
 export default INTELLIGENCE_MANIFEST;
+
+//=================================================
+// FILE: /scripts/intelligence/recommendation-engine.js
+/* RECOMMENDATION ENGINE — future modular ranking engine for profile/showcase/track contexts. */
+// UID.090_recommendation_engine_core_(ввести recommendation engine)_(для настоящих персональных recs)_(single orchestrator module)
+// UID.091_recommendation_strategies_registry_(использовать registry стратегий)_(для лёгкого расширения)_(engine consumes strategies not UI)
+// UID.092_recommendation_reason_model_(возвращать reasons вместе с recs)_(для explainability)_(score+reasons+human text)
+// UID.111_profile_for_you_block_(первый consumer engine = profile tab)_(для быстрой ценности)_(replace random recs safely)
+// UID.104_showcase_semantic_hub_(второй consumer engine = Showcase)_(для semantic browsing)_(consume engine lazily)
+
+const noopAsync = async () => null;
+
+export const recommendationEngine = {
+  id: 'recommendation-engine',
+  version: '0.0.1-stub',
+  ready: false,
+  async initialize() { this.ready = true; return this; },
+  async recommendForUser() { return []; },
+  async recommendForTrack() { return []; },
+  async recommendForSession() { return []; },
+  async explainResult() { return null; },
+  teardown: noopAsync
+};
+
+export default recommendationEngine;
 
 //=================================================
 // FILE: /scripts/intelligence/recommendation-memory.js
