@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-dde8c82d373b1fc7d57158ab606fb260cbe88cb7.idx
-│   │       ├── pack-dde8c82d373b1fc7d57158ab606fb260cbe88cb7.pack
-│   │       └── pack-dde8c82d373b1fc7d57158ab606fb260cbe88cb7.rev
+│   │       ├── pack-733fa28aa859fa85e6117cab0cf7527d8d612d12.idx
+│   │       ├── pack-733fa28aa859fa85e6117cab0cf7527d8d612d12.pack
+│   │       └── pack-733fa28aa859fa85e6117cab0cf7527d8d612d12.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -367,6 +367,7 @@ vi3na1bita-music/
 │   ├── intel/
 │   │   ├── community/
 │   │   │   ├── cohorts.js
+│   │   │   ├── community-stats.js
 │   │   │   └── similar-listeners.js
 │   │   ├── listener/
 │   │   │   ├── listener-collection.js
@@ -430,7 +431,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 19:29:56 UTC
+Сгенерировано: 2026-03-16 19:30:20 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3601,6 +3602,24 @@ export const cohorts = {
 };
 
 export default cohorts;
+
+//=================================================
+// FILE: /scripts/intel/community/community-stats.js
+// UID.064_(Global track stats)_(готовить community-level сигналы)_(держать слой агрегатов отдельно от локальных stats)
+// UID.067_(User-vs-community compare)_(готовить future сравнение пользователя с аудиторией)_(здесь будет вход для aggregated community metrics)
+// UID.068_(Public playlist analytics)_(готовить social metrics playlists/shares/views)_(держать place-holder API до появления backend/export pipeline)
+
+export const communityStats = {
+  async init() {
+    return true;
+  },
+
+  async getTrackStats(uid) {
+    return { uid: String(uid || '').trim(), popularity: 0, completionRate: 0, replayRate: 0 };
+  }
+};
+
+export default communityStats;
 
 //=================================================
 // FILE: /scripts/intel/community/similar-listeners.js
