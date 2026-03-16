@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b04c91f1fe3b00ea18551fea1cc4868be8e62562.idx
-│   │       ├── pack-b04c91f1fe3b00ea18551fea1cc4868be8e62562.pack
-│   │       └── pack-b04c91f1fe3b00ea18551fea1cc4868be8e62562.rev
+│   │       ├── pack-c2382fc7a7540f6919e760d09a3c98daccc218ee.idx
+│   │       ├── pack-c2382fc7a7540f6919e760d09a3c98daccc218ee.pack
+│   │       └── pack-c2382fc7a7540f6919e760d09a3c98daccc218ee.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -354,6 +354,7 @@ vi3na1bita-music/
 │   │   ├── generate-lyrics-index.mjs
 │   │   ├── lint-sw.mjs
 │   │   ├── validate-content.mjs
+│   │   ├── validate-intelligence.mjs
 │   │   └── validate-manifest.mjs
 │   ├── core/
 │   │   ├── bootstrap.js
@@ -461,7 +462,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 19:54:25 UTC
+Сгенерировано: 2026-03-16 19:54:48 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3440,6 +3441,44 @@ const albs = JSON.parse(fs.readFileSync(af, 'utf8'))?.albums; if (!Array.isArray
 albs.forEach((a, i) => { if (!a.key || !a.title || (!a.base && !a.yandex_base && !a.github_base)) fail(`album[${i}] missing fields`); if (!/^https?:\/\//i.test(a.base || a.yandex_base || a.github_base)) fail(`album[${i}] base invalid`); });
 if (new Set(albs.map(a => a.key)).size !== albs.length) fail('duplicate keys');
 ['00','01','02','03'].forEach(id => { const iF = path.join(path.resolve('albums/gallery', id), 'index.json'); if (!fs.existsSync(iF)) fail(`gallery ${id} missing`); try { const it = JSON.parse(fs.readFileSync(iF, 'utf8'))?.items || []; if (!Array.isArray(it)) fail('items not array'); } catch { fail(`gallery ${id} invalid json`); } });
+
+//=================================================
+// FILE: /scripts/ci/validate-intelligence.mjs
+#!/usr/bin/env node
+import fs from 'node:fs';
+import path from 'node:path';
+
+const required = [
+  'scripts/intelligence/bootstrap.js',
+  'scripts/intelligence/flags.js',
+  'scripts/intelligence/manifest.js',
+  'scripts/intelligence/uid-roadmap.js',
+  'scripts/intelligence/bridges.js',
+  'scripts/intelligence/track-profile-loader.js',
+  'scripts/intelligence/listener-profile.js',
+  'scripts/intelligence/recommendation-engine.js',
+  'scripts/intelligence/provider-identity.js',
+  'scripts/intelligence/hybrid-sync.js',
+  'scripts/ui/track-profile-modal.js',
+  'data/track-profiles-index.json',
+  'data/track-profiles/_stub.profile.json'
+];
+
+const missing = required.filter(rel => !fs.existsSync(path.resolve(rel)));
+if (missing.length) {
+  console.error('Missing intelligence files:\n' + missing.join('\n'));
+  process.exit(2);
+}
+
+for (const rel of ['data/track-profiles-index.json', 'data/track-profiles/_stub.profile.json']) {
+  try { JSON.parse(fs.readFileSync(path.resolve(rel), 'utf8')); }
+  catch (e) {
+    console.error(`Invalid JSON in ${rel}: ${e.message}`);
+    process.exit(2);
+  }
+}
+
+console.log('Intelligence scaffold validation passed.');
 
 //=================================================
 // FILE: /scripts/ci/validate-manifest.mjs
