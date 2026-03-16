@@ -1,6 +1,7 @@
 // UID.036_(Track presentation layer)_(отделить карточную подачу от сырых данных)_(читать presentation/card fields из preview/full profile)
 // UID.037_(Card overrides)_(разрешить ручную правку карточки)_(держать слой overrides отдельным от raw/final analysis)
 // UID.039_(Share cards from profile)_(использовать умную подачу в UI и share)_(отдавать safe presentation snapshot для других модулей)
+// UID.095_(Ownership boundary: legacy vs intel)_(не смешивать presentation и raw semantic truth)_(этот модуль только собирает UI-ready snapshot, но не меняет TrackProfile и не владеет карточным UI host)
 
 import { trackProfiles } from './track-profiles.js';
 
