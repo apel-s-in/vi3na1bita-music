@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-194144c9d7f2ac3282e2756cf478773bc9c26e0b.idx
-│   │       ├── pack-194144c9d7f2ac3282e2756cf478773bc9c26e0b.pack
-│   │       └── pack-194144c9d7f2ac3282e2756cf478773bc9c26e0b.rev
+│   │       ├── pack-a18071ba7001930c383fa72b4c6f04ea0c6fec9e.idx
+│   │       ├── pack-a18071ba7001930c383fa72b4c6f04ea0c6fec9e.pack
+│   │       └── pack-a18071ba7001930c383fa72b4c6f04ea0c6fec9e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -438,7 +438,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 21:20:01 UTC
+Сгенерировано: 2026-03-16 21:21:03 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3957,6 +3957,7 @@ import { getIntelFlags, setIntelDisabled } from './flags.js';
 import { INTEL_CONTRACTS } from './shared/contracts.js';
 import { intelBus } from './shared/bus.js';
 import { intelGuards } from './shared/guards.js';
+import { makeNoopModule, makeMemoryState, makeJsonStorage, safeEmit } from './shared/helpers.js';
 import { trackProfiles } from './track/track-profiles.js';
 import { trackPresentation } from './track/track-presentation.js';
 import { trackRelations } from './track/track-relations.js';
@@ -3989,6 +3990,12 @@ export async function initIntelBootstrap({ W = window, D = document, C = W.APP_C
     contracts: INTEL_CONTRACTS,
     bus: intelBus,
     guards: intelGuards,
+    helpers: {
+      makeNoopModule,
+      makeMemoryState,
+      makeJsonStorage,
+      safeEmit
+    },
     trackProfiles,
     trackPresentation,
     trackRelations,
