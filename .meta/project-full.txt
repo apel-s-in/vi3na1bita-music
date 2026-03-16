@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9b7f4d26b76cc3f58e3d53238758814d1a7c84ec.idx
-│   │       ├── pack-9b7f4d26b76cc3f58e3d53238758814d1a7c84ec.pack
-│   │       └── pack-9b7f4d26b76cc3f58e3d53238758814d1a7c84ec.rev
+│   │       ├── pack-33c0f58fc43a9de0691b3b2c5c554e24b0075f59.idx
+│   │       ├── pack-33c0f58fc43a9de0691b3b2c5c554e24b0075f59.pack
+│   │       └── pack-33c0f58fc43a9de0691b3b2c5c554e24b0075f59.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -398,7 +398,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 11:06:20 UTC
+Сгенерировано: 2026-03-16 11:06:40 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2561,17 +2561,12 @@ export default { loadProfileModel };
 //=================================================
 // FILE: /scripts/app/profile/recs-view.js
 const esc = s => window.Utils?.escapeHtml ? window.Utils.escapeHtml(String(s || '')) : String(s || '');
-
-export function renderProfileRecs({ container, all }) {
-  const recEl = container?.querySelector('#prof-recs-list');
-  if (!recEl) return;
-
+export const renderProfileRecs = ({ container: c, all }) => {
+  const rE = c?.querySelector('#prof-recs-list'); if (!rE) return;
   const pd = new Set((all || []).filter(s => s.globalFullListenCount > 0).map(s => s.uid));
   const recs = (window.TrackRegistry?.getAllUids?.()||[]).filter(u => !pd.has(u)).sort(()=>Math.random()-.5).slice(0,4);
-  recEl.innerHTML = recs.length
-    ? recs.map(u => `<div class="profile-list-item"><div class="log-info"><div class="log-title">${esc(window.TrackRegistry?.getTrackByUid(u)?.title)}</div><div class="log-desc">${esc(window.TrackRegistry?.getTrackByUid(u)?.album)}</div></div><button class="rec-play-btn" data-playuid="${u}">▶</button></div>`).join('')
-    : '<div class="fav-empty">Вы прослушали абсолютно всё! 🏆</div>';
-}
+  rE.innerHTML = recs.length ? recs.map(u => `<div class="profile-list-item"><div class="log-info"><div class="log-title">${esc(window.TrackRegistry?.getTrackByUid(u)?.title)}</div><div class="log-desc">${esc(window.TrackRegistry?.getTrackByUid(u)?.album)}</div></div><button class="rec-play-btn" data-playuid="${u}">▶</button></div>`).join('') : '<div class="fav-empty">Вы прослушали абсолютно всё! 🏆</div>';
+};
 
 //=================================================
 // FILE: /scripts/app/profile/render-shell.js
