@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2a8f2114d6e2d31e904f97c9dcc3e2496e332d2e.idx
-│   │       ├── pack-2a8f2114d6e2d31e904f97c9dcc3e2496e332d2e.pack
-│   │       └── pack-2a8f2114d6e2d31e904f97c9dcc3e2496e332d2e.rev
+│   │       ├── pack-1dc0b2a0e73af70dd93ffc0bec71b5e60f06d038.idx
+│   │       ├── pack-1dc0b2a0e73af70dd93ffc0bec71b5e60f06d038.pack
+│   │       └── pack-1dc0b2a0e73af70dd93ffc0bec71b5e60f06d038.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -369,6 +369,7 @@ vi3na1bita-music/
 │   │   │   ├── listener-collection.js
 │   │   │   └── listener-profile.js
 │   │   ├── recs/
+│   │   │   ├── recommendation-reasons.js
 │   │   │   └── recommendation-strategies.js
 │   │   ├── shared/
 │   │   │   ├── bus.js
@@ -417,7 +418,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 19:26:10 UTC
+Сгенерировано: 2026-03-16 19:26:39 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3726,6 +3727,30 @@ export const listenerProfile = {
 };
 
 export default listenerProfile;
+
+//=================================================
+// FILE: /scripts/intel/recs/recommendation-reasons.js
+// UID.056_(Recommendation reasons)_(объяснять почему показан трек)_(держать reason-code -> human text отдельно от scorer logic)
+// UID.085_(AI explanation layer)_(в будущем легко строить богатые объяснения)_(сначала ввести детерминированный словарь причин)
+
+const REASON_TEXTS_RU = Object.freeze({
+  taste_fit: 'подходит под ваш вкус',
+  audio_similarity: 'похож по звучанию',
+  lyric_theme_similarity: 'близок по смыслу и теме',
+  mood_fit: 'совпадает по настроению',
+  use_case_fit: 'подходит под ситуацию',
+  event_season_fit: 'подходит по сезону или событию',
+  session_next: 'хорошо продолжает текущую сессию',
+  community_fit: 'нравится похожим слушателям',
+  collection_fit: 'закрывает коллекционный прогресс',
+  rediscovery: 'давно не слушали, но раньше любили'
+});
+
+export function getRecommendationReasonText(code) {
+  return REASON_TEXTS_RU[code] || 'подходит по вашему профилю';
+}
+
+export default { getRecommendationReasonText };
 
 //=================================================
 // FILE: /scripts/intel/recs/recommendation-strategies.js
