@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b8e730a306573728db60f813f7b8b01d4f997090.idx
-│   │       ├── pack-b8e730a306573728db60f813f7b8b01d4f997090.pack
-│   │       └── pack-b8e730a306573728db60f813f7b8b01d4f997090.rev
+│   │       ├── pack-365a127b8053def87965bb5f5a696c06cc2cdf81.idx
+│   │       ├── pack-365a127b8053def87965bb5f5a696c06cc2cdf81.pack
+│   │       └── pack-365a127b8053def87965bb5f5a696c06cc2cdf81.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -437,7 +437,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 20:57:27 UTC
+Сгенерировано: 2026-03-16 20:58:10 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4710,6 +4710,7 @@ export default intelBus;
 // UID.024_(Strict taxonomy-v2)_(не расползаться по разным схемам)_(фиксировать канонические URLs и имена store)
 // UID.071_(Provider capability model)_(не размазывать роли провайдеров)_(держать provider names и role slots в одном контракте)
 // UID.089_(Future MetaDB stores)_(подготовить persistent контур)_(объявить будущие store names заранее)
+// UID.095_(Ownership boundary: legacy vs intel)_(зафиксировать что intel работает поверх legacy truth)_(contracts описывают только intel data/API, но не подменяют PlayerCore/TrackRegistry/analytics truth)
 
 export const INTEL_CONTRACTS = Object.freeze({
   version: 'intel-contracts-v1',
@@ -4744,6 +4745,7 @@ export default INTEL_CONTRACTS;
 // UID.001_(Playback safety invariant)_(защитить ядро плеера)_(все intel-модули обязаны помнить что playback не трогается)
 // UID.008_(No playback mutation by intel)_(не ломать playing playlist и позицию)_(использовать guard helpers вместо прямого вмешательства)
 // UID.091_(No-op stubs before full implementation)_(оставить слой безопасным до реализации логики)_(делать safeCall/safeAsync и мягкие fallback)
+// UID.095_(Ownership boundary: legacy vs intel)_(не дать future коду проломить архитектурные границы)_(guards — это policy layer, запрещающий intel считать себя владельцем playback/core truth)
 
 export const intelGuards = {
   getCurrentUid() {
