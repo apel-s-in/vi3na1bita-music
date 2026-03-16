@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9049a3ada51742226097f2823511a21a0d1ef4e9.idx
-│   │       ├── pack-9049a3ada51742226097f2823511a21a0d1ef4e9.pack
-│   │       └── pack-9049a3ada51742226097f2823511a21a0d1ef4e9.rev
+│   │       ├── pack-62e7cf8bb4b3ca0bdbf937b80b99e2ae5c8b2ec4.idx
+│   │       ├── pack-62e7cf8bb4b3ca0bdbf937b80b99e2ae5c8b2ec4.pack
+│   │       └── pack-62e7cf8bb4b3ca0bdbf937b80b99e2ae5c8b2ec4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -437,7 +437,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 21:01:48 UTC
+Сгенерировано: 2026-03-16 21:02:10 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4568,6 +4568,7 @@ export default recommendationStrategies;
 // FILE: /scripts/intel/recs/rediscovery.js
 // UID.053_(Rediscovery engine)_(возвращать забытые любимые треки)_(держать отдельный источник forgotten_hits, не смешивая его с common recs)
 // UID.062_(Recommendation memory and feedback)_(не спамить одинаковыми возвратами)_(позже учитывать cooldown и recommendation_state)
+// UID.095_(Ownership boundary: legacy vs intel)_(rediscovery не должен владеть favorites/history truth)_(модуль только вычисляет кандидатов поверх existing stats/favorites и не меняет их напрямую)
 
 export const rediscovery = {
   async init() {
