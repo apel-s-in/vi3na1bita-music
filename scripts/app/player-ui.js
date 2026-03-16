@@ -1,3 +1,10 @@
+// UID.001_(Playback safety invariant)_(сохранить UI-слой как безопасный фасад над PlayerCore)_(PlayerUI не должен принимать intel/provider решений, которые меняют playback вне разрешённых правил)
+// UID.038_(Track profile modal)_(подготовить мягкую точку входа в паспорт трека)_(кнопка статистики/будущие action buttons могут открывать intel ui, не раздувая PlayerUI)
+// UID.050_(Session profile)_(дать session-aware слою безопасные UI hooks)_(PlayerUI эмитит/use current state for intel, но не получает права навязывать playback)
+// UID.060_(Session-aware next-track strategy)_(не позволять recommendation logic менять очередь из UI silently)_(любая future next suggestion только как предложение пользователю)
+// UID.072_(Provider consents)_(готовить user-facing toggles без жёсткой зависимости)_(future provider/AI/social buttons должны проверять consents/capabilities вне этого файла)
+// UID.082_(Local truth vs external telemetry split)_(UI interactions можно маппить наружу только через mapper)_(не строить внешнюю аналитику прямо в PlayerUI)
+// UID.094_(No-paralysis rule)_(PlayerUI должен работать даже без intel/recs/providers)_(все точки intel integration только optional и lazy)
 (function (W, D) {
   'use strict';
   const U = W.Utils, PC = () => W.playerCore, AM = () => W.AlbumsManager;
