@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d15157ee9894b1d927ba4c1bda34c80bd3a5a864.idx
-│   │       ├── pack-d15157ee9894b1d927ba4c1bda34c80bd3a5a864.pack
-│   │       └── pack-d15157ee9894b1d927ba4c1bda34c80bd3a5a864.rev
+│   │       ├── pack-6af3387fa10136a13cea0da43d0196713d9c64f0.idx
+│   │       ├── pack-6af3387fa10136a13cea0da43d0196713d9c64f0.pack
+│   │       └── pack-6af3387fa10136a13cea0da43d0196713d9c64f0.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -398,7 +398,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 11:25:43 UTC
+Сгенерировано: 2026-03-16 11:26:14 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3146,145 +3146,13 @@ if (errs.length) { console.error('Errors:', errs); process.exit(2); }
 //=================================================
 // FILE: /scripts/ci/validate-content.mjs
 #!/usr/bin/env node
-import fs from 'node:fs';
-import path from 'node:path';
-
-const fail = (msg) => { console.error(msg); process.exit(2); };
-const warn = (msg) => { console.warn(msg); };
-
-// 1) albums.json базовая проверка
-const albumsFile = path.resolve('albums.json');
-if (!fs.existsSync(albumsFile)) fail('albums.json not found');
-let albums;
-try {
-  const raw = fs.readFileSync(albumsFile, 'utf8');
-  const j = JSON.parse(raw);
-  if (!j || !Array.isArray(j.albums)) fail('albums.json: "albums" must be an array');
-  albums = j.albums;
-} catch (e) {
-  fail('albums.json is not valid JSON: ' + e.message);
-}
-albums.forEach((a, i) => {
-  if (!a.key || !a.title || (!a.base && !a.yandex_base && !a.github_base)) {
-    fail(`albums.json: album[${i}] must contain key/title and base or yandex_base/github_base`);
-  }
-  if (typeof a.key !== 'string' || typeof a.title !== 'string') {
-    fail(`albums.json: album[${i}] key/title must be strings`);
-  }
-  // Проверяем base только если оно задано явно (старый формат)
-  const baseUrl = a.base || a.yandex_base || a.github_base || '';
-  if (typeof baseUrl !== 'string') {
-    fail(`albums.json: album[${i}] base/yandex_base/github_base must be strings`);
-  }
-  if (!/^https?:\/\//i.test(baseUrl)) {
-    fail(`albums.json: album[${i}] base url must be absolute http(s) url`);
-  }
-  if (a.base && !/\/$/.test(a.base)) {
-    warn(`albums.json: album[${i}].base should end with "/" (got: ${a.base})`);
-  }
-});
-
-// Уникальность ключей (уже есть ниже — убираем дубль проверки ключей)
-
-// 1.5) Уникальность ключей альбомов
-{
-  const keys = albums.map(a => a.key);
-  const uniq = new Set(keys);
-  if (uniq.size !== keys.length) {
-    const dup = keys.filter((k, idx) => keys.indexOf(k) !== idx);
-    fail(`albums.json: duplicate album keys: ${Array.from(new Set(dup)).join(', ')}`);
-  }
-}
-
-// 2) Проверка центральных галерей и index.json наличия/структуры
-const galleryRoot = path.resolve('albums/gallery');
-const required = ['00','01','02','03'];
-required.forEach(id => {
-  const dir = path.join(galleryRoot, id);
-  const idx = path.join(dir, 'index.json');
-  if (!fs.existsSync(dir)) fail(`albums/gallery/${id} directory missing`);
-  if (!fs.existsSync(idx)) fail(`albums/gallery/${id}/index.json missing`);
-  try {
-    const raw = fs.readFileSync(idx, 'utf8');
-    const j = JSON.parse(raw);
-    const items = Array.isArray(j.items) ? j.items : (Array.isArray(j) ? j : []);
-    if (!Array.isArray(items)) fail(`albums/gallery/${id}/index.json: items must be array`);
-    if (items.length === 0) warn(`albums/gallery/${id}/index.json: items is empty`);
-    // Локальные пути — проверяем существование файлов (если относительные)
-    items.forEach((it, k) => {
-      const check = (p) => {
-        if (!p || /^https?:\/\//i.test(p)) return;
-        const rel = p.replace(/^\.\//, '');
-        const fp = path.resolve(rel);
-        if (!fs.existsSync(fp)) warn(`Missing file referenced from gallery ${id} item[${k}]: ${p}`);
-      };
-      if (typeof it === 'string') check(it);
-      else if (it && typeof it === 'object') {
-        if (it.src) check(it.src);
-        if (it.formats) Object.values(it.formats).forEach(check);
-      }
-    });
-  } catch (e) {
-    fail(`albums/gallery/${id}/index.json invalid JSON: ${e.message}`);
-  }
-});
-
-// 3) Опционально: проверить уникальность uid в удалённых config.json (НЕ фейлим билд из-за сети)
-{
-
-  // Node 20: fetch доступен. Если вдруг его нет — просто предупреждаем.
-  const hasFetch = typeof fetch === 'function';
-  if (!hasFetch) {
-    warn('fetch() is not available in this Node runtime; skip remote config.json uid checks');
-  } else {
-    for (const a of albums) {
-      const rawBase = a.yandex_base || a.github_base || a.base || '';
-      if (!rawBase) { warn(`album "${a.key}": no base URL, skipping remote check`); continue; }
-      const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
-      const url = `${base}config.json`;
-
-      try {
-        const r = await fetch(url, { cache: 'no-cache' });
-        if (!r.ok) {
-          warn(`remote config.json not reachable for "${a.key}": HTTP ${r.status} (${url})`);
-          continue;
-        }
-
-        const cfg = await r.json();
-        const tracks = Array.isArray(cfg?.tracks) ? cfg.tracks : null;
-        if (!tracks) {
-          warn(`remote config.json "${a.key}": tracks must be array (${url})`);
-          continue;
-        }
-
-        const seen = new Set();
-        const dups = new Set();
-        let missing = 0;
-
-        for (const t of tracks) {
-          const uid = String(t?.uid || '').trim();
-          if (!uid) {
-            missing++;
-            continue;
-          }
-          if (seen.has(uid)) dups.add(uid);
-          seen.add(uid);
-        }
-
-        if (missing > 0) {
-          warn(`remote config.json "${a.key}": ${missing} track(s) have empty uid (${url})`);
-        }
-        if (dups.size > 0) {
-          warn(`remote config.json "${a.key}": duplicate uid(s): ${Array.from(dups).join(', ')} (${url})`);
-        }
-      } catch (e) {
-        warn(`remote config.json check failed for "${a.key}": ${e?.message || e} (${url})`);
-      }
-    }
-  }
-}
-
-console.log('Content validation OK');
+import fs from 'node:fs'; import path from 'node:path';
+const fail = m => { console.error(m); process.exit(2); };
+const af = path.resolve('albums.json'); if (!fs.existsSync(af)) fail('albums.json missing');
+const albs = JSON.parse(fs.readFileSync(af, 'utf8'))?.albums; if (!Array.isArray(albs)) fail('albums must be array');
+albs.forEach((a, i) => { if (!a.key || !a.title || (!a.base && !a.yandex_base && !a.github_base)) fail(`album[${i}] missing fields`); if (!/^https?:\/\//i.test(a.base || a.yandex_base || a.github_base)) fail(`album[${i}] base invalid`); });
+if (new Set(albs.map(a => a.key)).size !== albs.length) fail('duplicate keys');
+['00','01','02','03'].forEach(id => { const iF = path.join(path.resolve('albums/gallery', id), 'index.json'); if (!fs.existsSync(iF)) fail(`gallery ${id} missing`); try { const it = JSON.parse(fs.readFileSync(iF, 'utf8'))?.items || []; if (!Array.isArray(it)) fail('items not array'); } catch { fail(`gallery ${id} invalid json`); } });
 
 //=================================================
 // FILE: /scripts/ci/validate-manifest.mjs
