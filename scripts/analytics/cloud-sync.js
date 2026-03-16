@@ -1,3 +1,7 @@
+// UID.069_(Internal user identity)_(не смешивать provider token и identity модели)_(future cloud sync должен работать поверх provider identity layer)
+// UID.073_(Hybrid sync orchestrator)_(дать primary/mirror/social роли провайдеров)_(текущий cloud-sync будет legacy transport под future hybrid-sync)
+// UID.074_(Primary backup provider)_(готовить Yandex как основной backup channel)_(future orchestration вынести в scripts/intel/providers/hybrid-sync.js)
+// UID.075_(Secondary mirror backup)_(подготовить Google как резервный mirror)_(future mirror backup не должен конфликтовать с primary sync)
 import { BackupVault } from './backup-vault.js';
 import { eventLogger } from './event-logger.js';
 
