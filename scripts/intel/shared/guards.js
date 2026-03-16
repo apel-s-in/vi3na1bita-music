@@ -22,6 +22,14 @@ export const intelGuards = {
 
   async safeAsync(fn, fallback = null) {
     try { return await fn(); } catch { return fallback; }
+  },
+
+  normalizeKey(value) {
+    return String(value || '').trim();
+  },
+
+  isPlainObject(value) {
+    return !!value && typeof value === 'object' && !Array.isArray(value);
   }
 };
 
