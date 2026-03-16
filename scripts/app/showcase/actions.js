@@ -1,11 +1,21 @@
-export const createShowcaseActions = ({ W, D, Store, SHOW, isDef, trk, bldTrk, albT, esc, uidEsc, PALETTE, renderShowcasePlaylists, renameShowcasePlaylist, shareShowcasePlaylist, createShowcasePlaylist, openShowcaseSheetModal, openShowcaseAddToPlaylistModal, openShowcasePaletteModal }) => ({
-  playCtx: ({ ctxId, getActiveListTracks, hi, markLast }, uid = null, shuf = false, lOver = null, kOver = null) => {
-    const id = ctxId(), key = kOver || (isDef(id) ? SHOW : `${SHOW}:${id}`), list0 = lOver || getActiveListTracks(); if (!list0.length) return;
-    const list = shuf ? [...list0].sort(()=>Math.random()-.5) : list0, idx = uid && !shuf ? Math.max(0, list.findIndex(t => t.uid === uid)) : 0;
-    W.AlbumsManager?.setPlayingAlbum?.(key);
-    if (!W.playerCore?.playExactFromPlaylist?.(list, list[idx]?.uid, { dir: 1 })) return;
-    W.PlayerUI?.ensurePlayerBlock?.(idx, { userInitiated: true }); hi?.(list[idx]?.uid); if (list[idx]?.uid) markLast?.(list[idx].uid, id);
-  },
+export const createShowcaseActions = ({ W, D, Store, SHOW, isDef, trk, bldTrk, albT, esc, uidEsc, PALETTE, renderShowcasePlaylists, renameShowcasePlaylist, shareShowcasePlaylist, createShowcasePlaylist, openShowcaseSheetModal, openShowcaseAddToPlaylistModal, openShowcasePaletteModal }) => {
+  const shuffle = (arr) => {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  };
+
+  return {
+    playCtx: ({ ctxId, getActiveListTracks, hi, markLast }, uid = null, shuf = false, lOver = null, kOver = null) => {
+      const id = ctxId(), key = kOver || (isDef(id) ? SHOW : `${SHOW}:${id}`), list0 = lOver || getActiveListTracks(); if (!list0.length) return;
+      const list = shuf ? shuffle(list0) : list0, idx = uid && !shuf ? Math.max(0, list.findIndex(t => t.uid === uid)) : 0;
+      W.AlbumsManager?.setPlayingAlbum?.(key);
+      if (!W.playerCore?.playExactFromPlaylist?.(list, list[idx]?.uid, { dir: 1 })) return;
+      W.PlayerUI?.ensurePlayerBlock?.(idx, { userInitiated: true }); hi?.(list[idx]?.uid); if (list[idx]?.uid) markLast?.(list[idx].uid, id);
+    },
   openMenu: (api, uid, fromSearch = false) => {
     api.cleanupUi?.(); const t = trk(uid), id = api.ctxId(), inPl = !isDef(id) && (Store.get(id)?.order || []).includes(uid); if (!t) return;
     const sh = openShowcaseSheetModal({
@@ -37,6 +47,7 @@ export const createShowcaseActions = ({ W, D, Store, SHOW, isDef, trk, bldTrk, a
   },
   renamePlaylist: id => renameShowcasePlaylist({ id, store: Store, promptName: W.Utils?.profileModals?.promptName, onDone: () => renderShowcasePlaylists({ actionsRoot: D.getElementById('sc-playlists-actions'), listRoot: D.getElementById('sc-playlists'), activeId: Store.act(), playlists: Store.pl(), isDefaultId: isDef, esc }) }),
   sharePlaylist: id => shareShowcasePlaylist({ id, store: Store, origin: W.location.origin, pathname: W.location.pathname, notify: W.NotificationSystem }),
-  createPlaylist: args => createShowcasePlaylist(args)
-});
+    createPlaylist: args => createShowcasePlaylist(args)
+  };
+};
 export default { createShowcaseActions };
