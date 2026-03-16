@@ -4,6 +4,7 @@
 // UID.022_(lyricAnalysis block)_(подготовить текстовый паспорт трека)_(читать этот блок из full profile когда он появится)
 // UID.023_(finalProfile block)_(иметь fused truth для рекомендаций)_(отдавать finalProfile из full JSON без влияния на playback)
 // UID.088_(Profiles data layout)_(сохранить лёгкий startup)_(держать индекс отдельно и полные профили грузить по uid)
+// UID.095_(Ownership boundary: legacy vs intel)_(не превращать semantic profiles в новый source-of-truth для playback/content)_(track-profiles слой только читает static semantic data и не владеет media/state logic)
 
 const state = {
   index: null,
