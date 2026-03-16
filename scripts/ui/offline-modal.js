@@ -1,3 +1,8 @@
+// UID.007_(Local-first compute)_(делать офлайн-политику видимой и управляемой пользователем)_(offline modal остаётся главным UI для cache/network/storage control)
+// UID.018_(Variant and quality stats)_(подготовить future отображение richer cache usage)_(в будущем сюда можно добавить variant-aware breakdown без смешивания с semantic UI)
+// UID.073_(Hybrid sync orchestrator)_(не смешивать backup sync и media cache UI)_(offline modal управляет physical cache/network, а не account/provider sync)
+// UID.082_(Local truth vs external telemetry split)_(готовить безопасную product analytics точку)_(future telemetry mapper может получать UI actions отсюда по consent, без raw leakage)
+// UID.094_(No-paralysis rule)_(offline modal должен жить независимо от intel)_(никакие intel/recs/provider features не должны быть required для этого окна)
 import { getOfflineManager } from '../offline/offline-manager.js';
 import * as Net from '../offline/net-policy.js';
 import { estimateUsage, getAllTrackMetas } from '../offline/cache-db.js';
