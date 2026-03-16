@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-52781f468943bf47375b51248d307be0b526fe2e.idx
-│   │       ├── pack-52781f468943bf47375b51248d307be0b526fe2e.pack
-│   │       └── pack-52781f468943bf47375b51248d307be0b526fe2e.rev
+│   │       ├── pack-87289b3c942e435ba23da66f2557ae7d6b399430.idx
+│   │       ├── pack-87289b3c942e435ba23da66f2557ae7d6b399430.pack
+│   │       └── pack-87289b3c942e435ba23da66f2557ae7d6b399430.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -404,6 +404,7 @@ vi3na1bita-music/
 │   │   ├── flags.js
 │   │   ├── manifest.js
 │   │   ├── taxonomy-service.js
+│   │   ├── track-presentation.js
 │   │   ├── track-profile-loader.js
 │   │   └── uid-roadmap.js
 │   ├── offline/
@@ -443,7 +444,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 19:48:01 UTC
+Сгенерировано: 2026-03-16 19:48:28 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5087,6 +5088,29 @@ export const taxonomyService = {
 };
 
 export default taxonomyService;
+
+//=================================================
+// FILE: /scripts/intelligence/track-presentation.js
+/* TRACK PRESENTATION — future UI-ready card layer and manual override anchor. */
+// UID.049_track_presentation_layer_(вынести presentation отдельно)_(для редактируемых карточек)_(card-ready fields live here)
+// UID.050_track_presentation_overrides_(держать ручные overrides отдельно)_(для правки любой карточки)_(merge manual + generated fields)
+// UID.158_editable_any_track_card_(обеспечить редактируемость любого UID)_(для редакторского контроля)_(per-UID presentation override strategy)
+
+const noopAsync = async () => null;
+
+export const trackPresentation = {
+  id: 'track-presentation',
+  version: '0.0.1-stub',
+  ready: false,
+  async initialize() { this.ready = true; return this; },
+  async getCard() { return null; },
+  async getOverride() { return null; },
+  async applyOverride() { return null; },
+  async getSharePayload() { return null; },
+  teardown: noopAsync
+};
+
+export default trackPresentation;
 
 //=================================================
 // FILE: /scripts/intelligence/track-profile-loader.js
