@@ -1,3 +1,7 @@
+// UID.092_(Incremental rollout order)_(держать staged boot как главный механизм безопасного развития)_(legacy app boot и intel boot должны быть отделены по фазам и soft-fallback)
+// UID.094_(No-paralysis rule)_(оставить всё приложение работоспособным при отказе любого нового слоя)_(legacy/offline/analytics/ui boot не должны зависеть от intel success)
+// UID.095_(Ownership boundary: legacy vs intel)_(жёстко развести bootstrap ownership)_(scripts/app.js остаётся хозяином legacy runtime orchestration, а intel bootstrap подключается только как optional надстройка после core слоёв)
+// UID.096_(Helper-first anti-duplication policy)_(сразу закрепить курс на унификацию повторяющегося кода)_(повторяющиеся init/no-op/state/storage/emitter patterns в intel слое должны выноситься в shared helpers, а не копироваться по модулям)
 (function (W, D) {
   'use strict';
   const $ = id => D.getElementById(id), click = id => $(id)?.click();
