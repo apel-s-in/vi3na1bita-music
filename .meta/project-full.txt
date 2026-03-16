@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5adb9eee3e4d0954058a8946a5f4365fa654f395.idx
-│   │       ├── pack-5adb9eee3e4d0954058a8946a5f4365fa654f395.pack
-│   │       └── pack-5adb9eee3e4d0954058a8946a5f4365fa654f395.rev
+│   │       ├── pack-dde8c82d373b1fc7d57158ab606fb260cbe88cb7.idx
+│   │       ├── pack-dde8c82d373b1fc7d57158ab606fb260cbe88cb7.pack
+│   │       └── pack-dde8c82d373b1fc7d57158ab606fb260cbe88cb7.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -366,7 +366,8 @@ vi3na1bita-music/
 │   │   └── utils.js
 │   ├── intel/
 │   │   ├── community/
-│   │   │   └── cohorts.js
+│   │   │   ├── cohorts.js
+│   │   │   └── similar-listeners.js
 │   │   ├── listener/
 │   │   │   ├── listener-collection.js
 │   │   │   └── listener-profile.js
@@ -429,7 +430,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 19:29:39 UTC
+Сгенерировано: 2026-03-16 19:29:56 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3600,6 +3601,23 @@ export const cohorts = {
 };
 
 export default cohorts;
+
+//=================================================
+// FILE: /scripts/intel/community/similar-listeners.js
+// UID.066_(Similar listeners)_(готовить рекомендации по похожим пользователям)_(держать placeholder API для future remote/local matching)
+// UID.067_(User-vs-community compare)_(готовить сравнительные инсайты)_(пока возвращать безопасный пустой слой, не влияющий на UI)
+
+export const similarListeners = {
+  async init() {
+    return true;
+  },
+
+  async getList() {
+    return [];
+  }
+};
+
+export default similarListeners;
 
 //=================================================
 // FILE: /scripts/intel/flags.js
