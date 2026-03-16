@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e046677d59799fea53a8a29f8aba464ff167e739.idx
-│   │       ├── pack-e046677d59799fea53a8a29f8aba464ff167e739.pack
-│   │       └── pack-e046677d59799fea53a8a29f8aba464ff167e739.rev
+│   │       ├── pack-1b60d53008f1e7ba02dfe48ab1f037c1b71b250d.idx
+│   │       ├── pack-1b60d53008f1e7ba02dfe48ab1f037c1b71b250d.pack
+│   │       └── pack-1b60d53008f1e7ba02dfe48ab1f037c1b71b250d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -370,7 +370,9 @@ vi3na1bita-music/
 │   │   │   ├── contracts.js
 │   │   │   └── guards.js
 │   │   ├── track/
-│   │   │   └── track-profiles.js
+│   │   │   ├── track-presentation.js
+│   │   │   ├── track-profiles.js
+│   │   │   └── track-relations.js
 │   │   ├── flags.js
 │   │   └── roadmap.js
 │   ├── offline/
@@ -410,7 +412,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 19:23:57 UTC
+Сгенерировано: 2026-03-16 19:24:36 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3795,6 +3797,49 @@ export const intelGuards = {
 export default intelGuards;
 
 //=================================================
+// FILE: /scripts/intel/track/track-presentation.js
+// UID.036_(Track presentation layer)_(отделить карточную подачу от сырых данных)_(читать presentation/card fields из preview/full profile)
+// UID.037_(Card overrides)_(разрешить ручную правку карточки)_(держать слой overrides отдельным от raw/final analysis)
+// UID.039_(Share cards from profile)_(использовать умную подачу в UI и share)_(отдавать safe presentation snapshot для других модулей)
+
+import { trackProfiles } from './track-profiles.js';
+
+function normalizePresentation(source = {}) {
+  return {
+    hook_ru: source.hook_ru || '',
+    tagline_ru: source.tagline_ru || source.tagline || '',
+    one_liner_ru: source.one_liner_ru || '',
+    short_ru: source.short_ru || '',
+    hero_quote_ru: source.hero_quote_ru || '',
+    badges: Array.isArray(source.badges) ? source.badges : [],
+    chips: Array.isArray(source.chips) ? source.chips : []
+  };
+}
+
+export const trackPresentation = {
+  async init() {
+    return true;
+  },
+
+  async getPresentation(uid) {
+    const full = await trackProfiles.getProfile(uid);
+    if (full?.presentation) return normalizePresentation(full.presentation);
+    if (full?.summary || full?.card) {
+      return normalizePresentation({
+        hook_ru: full.summary?.hook_ru || '',
+        tagline_ru: full.card?.tagline_ru || '',
+        one_liner_ru: full.summary?.one_liner_ru || '',
+        short_ru: full.summary?.short_ru || ''
+      });
+    }
+    const preview = trackProfiles.getPreview(uid);
+    return normalizePresentation(preview?.presentation || preview || {});
+  }
+};
+
+export default trackPresentation;
+
+//=================================================
 // FILE: /scripts/intel/track/track-profiles.js
 // UID.019_(Compact TrackProfile index)_(быстро фильтровать и рекомендовать каталог)_(загружать и кэшировать легкий index отдельно от full profiles)
 // UID.020_(Full TrackProfile per uid)_(открывать детальную карточку трека)_(лениво загружать файлы data/track-profiles/UID.json)
@@ -3895,6 +3940,36 @@ export const trackProfiles = {
 };
 
 export default trackProfiles;
+
+//=================================================
+// FILE: /scripts/intel/track/track-relations.js
+// UID.034_(Track relations graph)_(не ограничиваться одним similar_tracks)_(подготовить единый доступ к связям между треками)
+// UID.035_(Similar tracks)_(дать быстрый блок похожих песен)_(читать related/similar из preview/full profile)
+// UID.041_(Showcase semantic filters)_(готовить витрину к умным связям)_(отдавать relation sets как data-layer без UI логики)
+
+import { trackProfiles } from './track-profiles.js';
+
+export const trackRelations = {
+  async init() {
+    return true;
+  },
+
+  async getRelations(uid) {
+    const full = await trackProfiles.getProfile(uid);
+    if (full?.relations && typeof full.relations === 'object') return full.relations;
+    const preview = trackProfiles.getPreview(uid);
+    return preview?.relations || {};
+  },
+
+  async getSimilar(uid) {
+    const relations = await this.getRelations(uid);
+    if (Array.isArray(relations.similar_tracks)) return relations.similar_tracks;
+    const preview = trackProfiles.getPreview(uid);
+    return Array.isArray(preview?.similar_tracks) ? preview.similar_tracks : [];
+  }
+};
+
+export default trackRelations;
 
 //=================================================
 // FILE: /scripts/offline/cache-db.js
