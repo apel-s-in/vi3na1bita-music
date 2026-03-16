@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-0dce0157a1bfc84da4ba7a50a4aa9181ac54d751.idx
-│   │       ├── pack-0dce0157a1bfc84da4ba7a50a4aa9181ac54d751.pack
-│   │       └── pack-0dce0157a1bfc84da4ba7a50a4aa9181ac54d751.rev
+│   │       ├── pack-fad43cab8803e1d02629508b8acbae944c5d69c4.idx
+│   │       ├── pack-fad43cab8803e1d02629508b8acbae944c5d69c4.pack
+│   │       └── pack-fad43cab8803e1d02629508b8acbae944c5d69c4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -398,7 +398,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 11:26:39 UTC
+Сгенерировано: 2026-03-16 11:27:10 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3166,80 +3166,22 @@ if (errs.length) { console.error('Failed:\n', errs.join('\n')); process.exit(2);
 
 //=================================================
 // FILE: /scripts/core/bootstrap.js
-//=================================================
-// FILE: /scripts/core/bootstrap.js
-// scripts/core/bootstrap.js
-// Легковесный загрузчик: проверка env, загрузка config, init.
-
 (function () {
   'use strict';
-
-  const W = window;
-  const D = document;
-
-  const fail = (msg) => {
-    D.body.innerHTML = W.Utils?.profileModals?.failScreen?.(msg) || `<div><h2>Ошибка запуска</h2><p>${msg}</p></div>`;
-    throw new Error(msg);
-  };
-
-  const checkEnv = () => {
-    if (!W.fetch || !W.Promise || !W.localStorage) return 'Ваш браузер устарел. Обновите его.';
-    try { localStorage.setItem('_t', '1'); localStorage.removeItem('_t'); } catch { return 'Включите Cookies/Storage.'; }
-    return null;
-  };
-
-  const preventZoom = () => {
-    // iOS zoom fix
-    D.addEventListener('touchstart', (e) => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
-    let last = 0;
-    D.addEventListener('touchend', (e) => {
-      const now = Date.now();
-      if (now - last < 300) e.preventDefault();
-      last = now;
-    }, { passive: false });
-  };
-
-  const loadIndex = async () => {
-    try {
-      const res = await fetch('./albums.json');
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      W.albumsIndex = (await res.json())?.albums || [];
-      W.dispatchEvent(new Event('albumsIndex:ready'));
-    } catch (e) {
-      console.error(e);
-      W.albumsIndex = []; // Не роняем, даём запуститься пустым (для offline кэша)
-    }
-  };
-
-  const waitForHowler = async () => {
-    for (let i = 0; i < 50; i++) { // 5 sec max
-      if (W.Howler) return true;
-      await new Promise(r => setTimeout(r, 100));
-    }
-    return false;
-  };
-
+  const fail = m => { document.body.innerHTML = window.Utils?.profileModals?.failScreen?.(m) || `<div><h2>Ошибка</h2><p>${m}</p></div>`; throw new Error(m); };
   const init = async () => {
-    const err = checkEnv();
-    if (err) return fail(err);
-
-    preventZoom();
-    
-    // Mark env
-    const ua = navigator.userAgent;
-    if (/iPad|iPhone|iPod/.test(ua) && !W.MSStream) D.body.classList.add('ios', 'mobile-device');
-    else if (/Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua)) D.body.classList.add('android', 'mobile-device');
-    
-    if (matchMedia('(display-mode: standalone)').matches) D.body.classList.add('standalone');
-
-    if (!(await waitForHowler())) return fail('Ошибка загрузки аудио-движка (Howler).');
-
-    await loadIndex();
+    if (!window.fetch || !window.Promise || !window.localStorage) return fail('Ваш браузер устарел.');
+    try { localStorage.setItem('_t', '1'); localStorage.removeItem('_t'); } catch { return fail('Включите Storage.'); }
+    let l = 0; document.addEventListener('touchstart', e => e.touches.length > 1 && e.preventDefault(), { passive: false });
+    document.addEventListener('touchend', e => { const n = Date.now(); if (n - l < 300) e.preventDefault(); l = n; }, { passive: false });
+    const ua = navigator.userAgent; document.body.classList.add(/iPad|iPhone|iPod/.test(ua) && !window.MSStream ? 'ios' : (/Android|webOS/i.test(ua) ? 'android' : ''), /Mobi/i.test(ua) ? 'mobile-device' : '');
+    if (matchMedia('(display-mode: standalone)').matches) document.body.classList.add('standalone');
+    let hwOk = false; for (let i = 0; i < 50 && !hwOk; i++) { if (window.Howler) hwOk = true; else await new Promise(r => setTimeout(r, 100)); }
+    if (!hwOk) return fail('Ошибка загрузки аудио-движка.');
+    try { window.albumsIndex = (await (await fetch('./albums.json')).json())?.albums || []; } catch { window.albumsIndex = []; }
+    window.dispatchEvent(new Event('albumsIndex:ready'));
   };
-
-  if (D.readyState === 'loading') D.addEventListener('DOMContentLoaded', init);
-  else init();
-
+  document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', init) : init();
 })();
 
 //=================================================
