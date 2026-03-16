@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-646b03847c5da23ec3970a5b4229304d0a3ebf18.idx
-│   │       ├── pack-646b03847c5da23ec3970a5b4229304d0a3ebf18.pack
-│   │       └── pack-646b03847c5da23ec3970a5b4229304d0a3ebf18.rev
+│   │       ├── pack-5adb9eee3e4d0954058a8946a5f4365fa654f395.idx
+│   │       ├── pack-5adb9eee3e4d0954058a8946a5f4365fa654f395.pack
+│   │       └── pack-5adb9eee3e4d0954058a8946a5f4365fa654f395.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -365,6 +365,8 @@ vi3na1bita-music/
 │   │   ├── player.spec.js
 │   │   └── utils.js
 │   ├── intel/
+│   │   ├── community/
+│   │   │   └── cohorts.js
 │   │   ├── listener/
 │   │   │   ├── listener-collection.js
 │   │   │   └── listener-profile.js
@@ -427,7 +429,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 19:29:16 UTC
+Сгенерировано: 2026-03-16 19:29:39 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3581,6 +3583,23 @@ export const seedPlayerStateV2FromCurrent = async (page, { position = 5, wasPlay
     localStorage.setItem('playerStateV2', JSON.stringify({ album: aK, currentAlbum: window.AlbumsManager?.getCurrentAlbum?.() || aK, trackUid: String(t?.uid || '').trim() || null, sourceAlbum: String(t?.sourceAlbum || '').trim() || null, trackIndex: pc?.getIndex?.() || 0, position: Math.floor(p), volume: pc?.getVolume?.() ?? 100, wasPlaying: !!wP }));
   }, { p: position, wP: wasPlaying });
 };
+
+//=================================================
+// FILE: /scripts/intel/community/cohorts.js
+// UID.065_(Cohort model)_(группировать пользователей по паттернам)_(держать место под будущие segment labels и cluster ids)
+// UID.066_(Similar listeners)_(построить future social-intelligence слой)_(пока подготовить стабильный API без runtime-нагрузки)
+
+export const cohorts = {
+  async init() {
+    return true;
+  },
+
+  async getCurrentCohorts() {
+    return [];
+  }
+};
+
+export default cohorts;
 
 //=================================================
 // FILE: /scripts/intel/flags.js
