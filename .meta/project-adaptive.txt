@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2f1af67e3b60a08646f37aa08d6f785f85aeacbc.idx
-│   │       ├── pack-2f1af67e3b60a08646f37aa08d6f785f85aeacbc.pack
-│   │       └── pack-2f1af67e3b60a08646f37aa08d6f785f85aeacbc.rev
+│   │       ├── pack-22b0eec3c447c4ae4e1fadad30b46ab60e7208ae.idx
+│   │       ├── pack-22b0eec3c447c4ae4e1fadad30b46ab60e7208ae.pack
+│   │       └── pack-22b0eec3c447c4ae4e1fadad30b46ab60e7208ae.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -437,7 +437,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 20:35:53 UTC
+Сгенерировано: 2026-03-16 20:36:56 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1997,6 +1997,11 @@ export class StatsAggregator {
 
 //=================================================
 // FILE: /scripts/app/albums.js
+// UID.002_(UID-first core)_(сохранить AlbumsManager как контентный навигатор по uid-трекам)_(album shell не должен брать на себя semantic/recommendation ownership)
+// UID.017_(Launch source stats)_(подготовить точку фиксации запуска из album view)_(future analytics/recs слой сможет читать source=album именно отсюда)
+// UID.019_(Compact TrackProfile index)_(дать будущим album-row/card enhancements опору)_(album screen сможет читать preview profile через TrackRegistry/Intel bridge без загрузки full profile)
+// UID.041_(Showcase semantic filters)_(развести обычный album UI и semantic showcase)_(albums.js не должен превращаться в semantic browser)
+// UID.094_(No-paralysis rule)_(обычные альбомы обязаны работать без intel-слоя)_(любой semantic enhancement на строке трека только optional)
 import { injectIndicator } from '../ui/offline-indicators.js';
 import { renderFavoriteStar, setFavoriteStarState } from '../ui/icon-utils.js';
 
