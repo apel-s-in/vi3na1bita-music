@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1dc0b2a0e73af70dd93ffc0bec71b5e60f06d038.idx
-│   │       ├── pack-1dc0b2a0e73af70dd93ffc0bec71b5e60f06d038.pack
-│   │       └── pack-1dc0b2a0e73af70dd93ffc0bec71b5e60f06d038.rev
+│   │       ├── pack-4cba8f21aa2947a487a1081e8951aba0918da253.idx
+│   │       ├── pack-4cba8f21aa2947a487a1081e8951aba0918da253.pack
+│   │       └── pack-4cba8f21aa2947a487a1081e8951aba0918da253.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -370,7 +370,8 @@ vi3na1bita-music/
 │   │   │   └── listener-profile.js
 │   │   ├── recs/
 │   │   │   ├── recommendation-reasons.js
-│   │   │   └── recommendation-strategies.js
+│   │   │   ├── recommendation-strategies.js
+│   │   │   └── rediscovery.js
 │   │   ├── shared/
 │   │   │   ├── bus.js
 │   │   │   ├── contracts.js
@@ -418,7 +419,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 19:26:39 UTC
+Сгенерировано: 2026-03-16 19:26:55 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3777,6 +3778,23 @@ export const recommendationStrategies = Object.freeze({
 });
 
 export default recommendationStrategies;
+
+//=================================================
+// FILE: /scripts/intel/recs/rediscovery.js
+// UID.053_(Rediscovery engine)_(возвращать забытые любимые треки)_(держать отдельный источник forgotten_hits, не смешивая его с common recs)
+// UID.062_(Recommendation memory and feedback)_(не спамить одинаковыми возвратами)_(позже учитывать cooldown и recommendation_state)
+
+export const rediscovery = {
+  async init() {
+    return true;
+  },
+
+  async getCandidates() {
+    return [];
+  }
+};
+
+export default rediscovery;
 
 //=================================================
 // FILE: /scripts/intel/roadmap.js
