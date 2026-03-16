@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-71b2bdb9cf8ad1d2159a8f36e9a3f9e4fed2ac6b.idx
-│   │       ├── pack-71b2bdb9cf8ad1d2159a8f36e9a3f9e4fed2ac6b.pack
-│   │       └── pack-71b2bdb9cf8ad1d2159a8f36e9a3f9e4fed2ac6b.rev
+│   │       ├── pack-dd35c8e21ede804569904fbcaa47befda5146c39.idx
+│   │       ├── pack-dd35c8e21ede804569904fbcaa47befda5146c39.pack
+│   │       └── pack-dd35c8e21ede804569904fbcaa47befda5146c39.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -437,7 +437,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 20:59:25 UTC
+Сгенерировано: 2026-03-16 20:59:47 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4164,6 +4164,7 @@ export default listenerCollection;
 // UID.048_(Time profile)_(учитывать когда слушает пользователь)_(готовить timeProfile на базе byHour/byWeekday)
 // UID.049_(Behavior archetype)_(иметь human-readable портрет слушателя)_(оставить место под future archetype resolver)
 // UID.050_(Session profile)_(развести общий вкус и текущий контекст)_(хранить session hooks отдельно от permanent profile)
+// UID.095_(Ownership boundary: legacy vs intel)_(не превращать listener profile в новый stats/source-of-truth)_(этот слой только интерпретирует локальные aggregates/events/favorites и не владеет ими)
 
 const state = {
   profile: null,
