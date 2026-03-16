@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3ed63ea3eb48868459e023214561081235a7ad56.idx
-│   │       ├── pack-3ed63ea3eb48868459e023214561081235a7ad56.pack
-│   │       └── pack-3ed63ea3eb48868459e023214561081235a7ad56.rev
+│   │       ├── pack-1b362002743c9878762784be793af91faaa4a32e.idx
+│   │       ├── pack-1b362002743c9878762784be793af91faaa4a32e.pack
+│   │       └── pack-1b362002743c9878762784be793af91faaa4a32e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -437,7 +437,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 21:04:19 UTC
+Сгенерировано: 2026-03-16 21:05:23 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4041,6 +4041,7 @@ export default { initIntelBootstrap };
 // FILE: /scripts/intel/community/cohorts.js
 // UID.065_(Cohort model)_(группировать пользователей по паттернам)_(держать место под будущие segment labels и cluster ids)
 // UID.066_(Similar listeners)_(построить future social-intelligence слой)_(пока подготовить стабильный API без runtime-нагрузки)
+// UID.095_(Ownership boundary: legacy vs intel)_(community labels не должны считаться локальной truth пользователя)_(cohort слой — только derived/aggregated intelligence и не владеет profile/stats/playback state)
 
 export const cohorts = {
   async init() {
