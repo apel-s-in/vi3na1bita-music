@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5e17cc180ea80a0a6f3d48b7757038ceb24de7af.idx
-│   │       ├── pack-5e17cc180ea80a0a6f3d48b7757038ceb24de7af.pack
-│   │       └── pack-5e17cc180ea80a0a6f3d48b7757038ceb24de7af.rev
+│   │       ├── pack-23e3ede3c00f85063f3139f2709b5308cf54cb99.idx
+│   │       ├── pack-23e3ede3c00f85063f3139f2709b5308cf54cb99.pack
+│   │       └── pack-23e3ede3c00f85063f3139f2709b5308cf54cb99.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -437,7 +437,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 21:06:26 UTC
+Сгенерировано: 2026-03-16 21:07:54 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4997,6 +4997,7 @@ export default trackRelations;
 // FILE: /scripts/intel/ui/profile-insights.js
 // UID.044_(ListenerProfile core)_(вынести будущий UI вкусового профиля из current profile view)_(держать отдельный render helper)
 // UID.063_(Profile recs tab upgrade)_(готовить профиль к умным рекомендациям и инсайтам)_(дать выделенный intel-ui модуль для profile shell)
+// UID.095_(Ownership boundary: legacy vs intel)_(intel ui helper не должен подменять profile shell)_(этот модуль только даёт optional fragments/insights, а layout/profile navigation остаются в scripts/app/profile/*)
 
 export const profileInsights = {
   async init() {
