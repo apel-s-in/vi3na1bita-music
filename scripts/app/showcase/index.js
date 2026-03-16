@@ -1,3 +1,7 @@
+// UID.041_(Showcase semantic filters)_(подготовить витрину к смысловой навигации)_(future интеграция через scripts/intel/ui/showcase-semantic.js и recommendation engine)
+// UID.042_(Showcase semantic sorting)_(подготовить сортировки по axes и настроениям)_(сохранять heavy-логику вне showcase монолита)
+// UID.043_(Smart playlists)_(развить витрину как discovery-центр)_(semantic blocks и smart playlists будут добавляться поверх текущего UI)
+// UID.063_(Profile recs tab upgrade)_(свести рекомендации профиля и витрины к одному движку)_(future вход через scripts/intel/recs/recommendation-engine.js)
 import { ensureLyricsIndexLoaded, searchUidsByQuery } from './lyrics-search.js';
 import { renderFavoriteStar, setFavoriteStarState } from '../../ui/icon-utils.js';
 import { renderShowcasePlaylists, renameShowcasePlaylist, shareShowcasePlaylist, createShowcasePlaylist } from './playlists.js';
