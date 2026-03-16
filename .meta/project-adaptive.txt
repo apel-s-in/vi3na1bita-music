@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ad18b63480f1f5a1455a6778429ee7e43146c0a2.idx
-│   │       ├── pack-ad18b63480f1f5a1455a6778429ee7e43146c0a2.pack
-│   │       └── pack-ad18b63480f1f5a1455a6778429ee7e43146c0a2.rev
+│   │       ├── pack-4a2f4b3498352de55291d912375b7a1a90fdf7a7.idx
+│   │       ├── pack-4a2f4b3498352de55291d912375b7a1a90fdf7a7.pack
+│   │       └── pack-4a2f4b3498352de55291d912375b7a1a90fdf7a7.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -405,6 +405,7 @@ vi3na1bita-music/
 │   │   ├── flags.js
 │   │   ├── listener-profile.js
 │   │   ├── manifest.js
+│   │   ├── provider-actions.js
 │   │   ├── provider-capabilities.js
 │   │   ├── provider-identity.js
 │   │   ├── recommendation-engine.js
@@ -454,7 +455,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 19:51:48 UTC
+Сгенерировано: 2026-03-16 19:52:06 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5122,6 +5123,31 @@ export const INTELLIGENCE_MANIFEST = Object.freeze({
 });
 
 export default INTELLIGENCE_MANIFEST;
+
+//=================================================
+// FILE: /scripts/intelligence/provider-actions.js
+/* PROVIDER ACTIONS — future capability-gated bridge for Yandex/Google/VK actions. */
+// UID.126_provider_action_bridge_(ввести provider action bridge)_(для безопасных внешних действий)_(single action router here)
+// UID.161_vk_community_open_(подготовить open community action)_(для связи с сообществом)_(VK capability-gated actions)
+// UID.162_vk_comments_likes_video_(подготовить comments/likes/video actions)_(для social UX)_(future VK actions)
+// UID.163_vk_music_api_future_(зарезервировать future music API actions)_(для прямых медиа-фич)_(vk media capability placeholder)
+
+const noopAsync = async () => null;
+
+export const providerActions = {
+  id: 'provider-actions',
+  version: '0.0.1-stub',
+  ready: false,
+  async initialize() { this.ready = true; return this; },
+  async listAvailable() { return []; },
+  async run() { return null; },
+  async openCommunity() { return null; },
+  async openVideo() { return null; },
+  async sendMessage() { return null; },
+  teardown: noopAsync
+};
+
+export default providerActions;
 
 //=================================================
 // FILE: /scripts/intelligence/provider-capabilities.js
