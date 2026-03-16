@@ -1,3 +1,10 @@
+// UID.054_(Recommendation engine core)_(перевести вкладку Для Вас на единый движок)_(этот view должен стать thin renderer поверх intel recommendation engine)
+// UID.056_(Recommendation reasons)_(показывать пользователю объяснение)_(future рендерить reason chips/human explanations рядом с треком)
+// UID.060_(Session-aware next-track strategy)_(развести общие рекомендации и текущий session context)_(profile recs — taste/global слой, а не next-track executor)
+// UID.061_(Community-driven recommendations)_(подмешивать cohort/similar listeners сигналы)_(view должен уметь принять community reasons, но не считать их сам)
+// UID.062_(Recommendation memory and feedback)_(помнить shown/clicked/accepted/dismissed)_(recs-view станет важной точкой user feedback для recommendation_state)
+// UID.063_(Profile recs tab upgrade)_(полностью заменить случайные recs на explainable personalized recs)_(текущая random fallback логика должна остаться только как safe fallback)
+// UID.082_(Local truth vs external telemetry split)_(любые rec interactions наружу только через telemetry mapper)_(не слать raw rec data напрямую из view)
 const esc = s => window.Utils?.escapeHtml ? window.Utils.escapeHtml(String(s || '')) : String(s || '');
 export const renderProfileRecs = ({ container: c, all }) => {
   const rE = c?.querySelector('#prof-recs-list'); if (!rE) return;
