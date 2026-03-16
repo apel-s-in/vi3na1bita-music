@@ -1,7 +1,13 @@
 // UID.041_(Showcase semantic filters)_(подготовить витрину к смысловой навигации)_(future интеграция через scripts/intel/ui/showcase-semantic.js и recommendation engine)
 // UID.042_(Showcase semantic sorting)_(подготовить сортировки по axes и настроениям)_(сохранять heavy-логику вне showcase монолита)
 // UID.043_(Smart playlists)_(развить витрину как discovery-центр)_(semantic blocks и smart playlists будут добавляться поверх текущего UI)
+// UID.056_(Recommendation reasons)_(показывать объяснения рядом с discovery)_(future витрина должна уметь рендерить reason chips без расчёта их внутри себя)
+// UID.060_(Session-aware next-track strategy)_(не превращать Showcase в playback-оркестратор)_(showcase может предлагать контекстные ряды, но не менять playback самовольно)
+// UID.061_(Community-driven recommendations)_(готовить блоки на основе похожих слушателей/кохорт)_(showcase станет consumption-layer для community recs, не их вычислителем)
 // UID.063_(Profile recs tab upgrade)_(свести рекомендации профиля и витрины к одному движку)_(future вход через scripts/intel/recs/recommendation-engine.js)
+// UID.068_(Public playlist analytics)_(усилить витрину как социальную поверхность)_(playlist/share/import/view analytics должны сходиться сюда как UI touchpoint)
+// UID.082_(Local truth vs external telemetry split)_(showcase interactions могут экспортироваться только через mapper)_(не смешивать UI кликстрим и raw truth)
+// UID.094_(No-paralysis rule)_(showcase должен оставаться рабочим без semantic слоя)_(semantic/discovery enhancements строго optional)
 import { ensureLyricsIndexLoaded, searchUidsByQuery } from './lyrics-search.js';
 import { renderFavoriteStar, setFavoriteStarState } from '../../ui/icon-utils.js';
 import { renderShowcasePlaylists, renameShowcasePlaylist, shareShowcasePlaylist, createShowcasePlaylist } from './playlists.js';
