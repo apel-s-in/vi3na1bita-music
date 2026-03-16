@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3928879dc6f9d56b315880ffdef1c2f0d63b8ed5.idx
-│   │       ├── pack-3928879dc6f9d56b315880ffdef1c2f0d63b8ed5.pack
-│   │       └── pack-3928879dc6f9d56b315880ffdef1c2f0d63b8ed5.rev
+│   │       ├── pack-86eecf6fb5ebeab1ac0e04bf6575d2b0c21f2201.idx
+│   │       ├── pack-86eecf6fb5ebeab1ac0e04bf6575d2b0c21f2201.pack
+│   │       └── pack-86eecf6fb5ebeab1ac0e04bf6575d2b0c21f2201.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -436,7 +436,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 19:38:38 UTC
+Сгенерировано: 2026-03-16 19:39:06 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1493,6 +1493,10 @@ export class BackupVault {
 
 //=================================================
 // FILE: /scripts/analytics/cloud-sync.js
+// UID.069_(Internal user identity)_(не смешивать provider token и identity модели)_(future cloud sync должен работать поверх provider identity layer)
+// UID.073_(Hybrid sync orchestrator)_(дать primary/mirror/social роли провайдеров)_(текущий cloud-sync будет legacy transport под future hybrid-sync)
+// UID.074_(Primary backup provider)_(готовить Yandex как основной backup channel)_(future orchestration вынести в scripts/intel/providers/hybrid-sync.js)
+// UID.075_(Secondary mirror backup)_(подготовить Google как резервный mirror)_(future mirror backup не должен конфликтовать с primary sync)
 import { BackupVault } from './backup-vault.js';
 import { eventLogger } from './event-logger.js';
 
