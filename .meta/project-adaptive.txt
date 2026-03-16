@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c2382fc7a7540f6919e760d09a3c98daccc218ee.idx
-│   │       ├── pack-c2382fc7a7540f6919e760d09a3c98daccc218ee.pack
-│   │       └── pack-c2382fc7a7540f6919e760d09a3c98daccc218ee.rev
+│   │       ├── pack-4609ee2a2bab6999ed17b1896bc03d92ca02f97a.idx
+│   │       ├── pack-4609ee2a2bab6999ed17b1896bc03d92ca02f97a.pack
+│   │       └── pack-4609ee2a2bab6999ed17b1896bc03d92ca02f97a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -247,6 +247,7 @@ vi3na1bita-music/
 │   └── .gitkeep
 ├── data/
 │   ├── track-profiles/
+│   │   ├── _stub.profile.json
 │   │   └── README.txt
 │   ├── custom_achievements.json
 │   ├── lyrics-index-v1.json
@@ -462,7 +463,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 19:54:48 UTC
+Сгенерировано: 2026-03-16 19:56:09 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7159,6 +7160,26 @@ export default trackProfileModal;
   "generatedAt": null,
   "taxonomyVersion": "taxonomy-v2",
   "items": {}
+}
+
+//=================================================
+// FILE: /data/track-profiles/_stub.profile.json
+{
+  "version": "track-profile-v1",
+  "uid": "__STUB__",
+  "musicAnalysis": null,
+  "lyricAnalysis": null,
+  "finalProfile": null,
+  "presentation": {
+    "tagline_ru": "",
+    "hook_ru": "",
+    "mini_description_ru": "",
+    "hero_quote_ru": ""
+  },
+  "relations": {
+    "similar_tracks": [],
+    "relation_types": {}
+  }
 }
 
 //=================================================
