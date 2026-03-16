@@ -17,6 +17,13 @@ export const INTEL_CONTRACTS = Object.freeze({
     collectionState: 'collection_state',
     intelRuntime: 'intel_runtime'
   }),
+  helperKinds: Object.freeze([
+    'moduleInit',
+    'localStorageState',
+    'memoryState',
+    'safeEmitter',
+    'optionalGetter'
+  ]),
   providers: Object.freeze(['yandex', 'google', 'vk']),
   providerRoles: Object.freeze(['primaryAuth', 'primaryBackup', 'secondaryBackup', 'social', 'ai']),
   events: Object.freeze([
