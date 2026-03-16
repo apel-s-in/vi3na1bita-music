@@ -1,3 +1,9 @@
+// UID.004_(Stats as cache)_(ачивки должны опираться на агрегаты/event truth, а не на UI)_(achievement engine остаётся отдельным геймификационным слоем)
+// UID.051_(Collection state)_(подготовить future связь achievements и collectible progress)_(часть track mastery/badges позже может подмешиваться как условия/визуал)
+// UID.052_(Track badges and completion)_(не смешивать badge truth и unlock truth)_(achievement engine отвечает за unlock/XP, collection engine — за per-track completion)
+// UID.063_(Profile recs tab upgrade)_(позже использовать achievements как мягкий recommendation signal)_(например rediscovery/collection-driven recs, но без логики внутри engine)
+// UID.068_(Public playlist analytics)_(подготовить future social achievements)_(playlist/share/community unlocks могут появиться additively)
+// UID.094_(No-paralysis rule)_(ачивки не должны зависеть от intel-слоя)_(semantic/community/provider achievements только optional extensions)
 import { metaDB } from './meta-db.js';
 import { eventLogger } from './event-logger.js';
 import { AchievementDictionary } from './achievements-dict.js';
