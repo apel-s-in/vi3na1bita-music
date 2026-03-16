@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-42aed2a74146810db117b065690ce1bb7322e5aa.idx
-│   │       ├── pack-42aed2a74146810db117b065690ce1bb7322e5aa.pack
-│   │       └── pack-42aed2a74146810db117b065690ce1bb7322e5aa.rev
+│   │       ├── pack-299220bbe56ffcadf3aa87d6e622419b6690facb.idx
+│   │       ├── pack-299220bbe56ffcadf3aa87d6e622419b6690facb.pack
+│   │       └── pack-299220bbe56ffcadf3aa87d6e622419b6690facb.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -437,7 +437,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 20:44:57 UTC
+Сгенерировано: 2026-03-16 20:45:51 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2662,6 +2662,12 @@ export const createProfileAchievementsView = ({ ctx, container: c, engine: e }) 
 
 //=================================================
 // FILE: /scripts/app/profile/actions.js
+// UID.070_(Linked providers)_(сделать profile actions точкой управления связками аккаунтов)_(future link/unlink/set-primary flows будут входить здесь, но храниться в intel provider layer)
+// UID.072_(Provider consents)_(здесь будут user-facing consent toggles)_(analytics/personalization/social/cloud/AI switches должны жить в profile actions UI)
+// UID.073_(Hybrid sync orchestrator)_(profile actions станут control surface для primary/mirror sync roles)_(текущий cloud sync buttons — временный legacy bridge)
+// UID.080_(Provider actions bridge)_(социальные/provider действия из профиля должны идти через единый bridge)_(не вызывать provider API напрямую из view)
+// UID.083_(Yandex Metrica safe export)_(profile interactions можно маппить наружу только через mapper)_(не писать external telemetry напрямую из action handlers)
+// UID.094_(No-paralysis rule)_(profile actions должны сохранять старое поведение при отсутствии intel layer)_(новые provider/consent controls strictly optional)
 export const bindProfileActions = ({ ctx, container: c, achView: aV, profile: p, metaDB: db, cloudSync: cs, tokens: tk, reloadProfile: rP }) => {
   if (!c || ctx._pB) return; ctx._pB = true;
   c.addEventListener('click', async e => {
@@ -2726,6 +2732,11 @@ export const renderProfileLogs = async ({ container: c, metaDB: db }) => {
 
 //=================================================
 // FILE: /scripts/app/profile/model.js
+// UID.044_(ListenerProfile core)_(profile model должен стать местом мягкой сборки user portrait)_(future сюда можно подмешивать listener profile summary без ломки legacy stats model)
+// UID.070_(Linked providers)_(model должен уметь принимать provider identity snapshot)_(но truth linked accounts хранится не здесь, а в intel/providers/provider-identity.js)
+// UID.072_(Provider consents)_(model сможет отдавать consent snapshot для profile UI)_(но хранение consent state вынесено в intel/providers/provider-consents.js)
+// UID.073_(Hybrid sync orchestrator)_(model должен принять sync state как optional extension)_(но orchestration logic не должна появляться в этом файле)
+// UID.094_(No-paralysis rule)_(legacy profile model остаётся валидным fallback)_(если intel слой недоступен, этот model продолжает работать сам)
 export const loadProfileModel = async () => {
   let db = null, cs = null, all = [], ach = {}, streak = 0, profile = { name: 'Слушатель', avatar: '😎' };
   try {
