@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c4b55b22d58b236c966c7c140b5a4c7806e7eb4e.idx
-│   │       ├── pack-c4b55b22d58b236c966c7c140b5a4c7806e7eb4e.pack
-│   │       └── pack-c4b55b22d58b236c966c7c140b5a4c7806e7eb4e.rev
+│   │       ├── pack-40cec29b4cc243c9721628feadf71a302c5f466e.idx
+│   │       ├── pack-40cec29b4cc243c9721628feadf71a302c5f466e.pack
+│   │       └── pack-40cec29b4cc243c9721628feadf71a302c5f466e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -398,7 +398,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 11:05:31 UTC
+Сгенерировано: 2026-03-16 11:05:57 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2534,21 +2534,14 @@ export default { bindProfileLiveBindings };
 //=================================================
 // FILE: /scripts/app/profile/logs-view.js
 const esc = s => window.Utils?.escapeHtml ? window.Utils.escapeHtml(String(s || '')) : String(s || '');
-
-export async function renderProfileLogs({ container, metaDB }) {
-  const lg = container?.querySelector('#prof-logs-list');
-  if (!lg) return;
-
+export const renderProfileLogs = async ({ container: c, metaDB: db }) => {
+  const lg = c?.querySelector('#prof-logs-list'); if (!lg) return;
   try {
-    const l = [...(metaDB ? await metaDB.getEvents('events_hot').catch(()=>[]) : []), ...(metaDB ? await metaDB.getEvents('events_warm').catch(()=>[]) : [])].sort((a,b)=>b.timestamp-a.timestamp).slice(0,20);
+    const l = [...(db ? await db.getEvents('events_hot').catch(()=>[]) : []), ...(db ? await db.getEvents('events_warm').catch(()=>[]) : [])].sort((a,b)=>b.timestamp-a.timestamp).slice(0,20);
     const tM = { 'LISTEN_COMPLETE': '🎵 Прослушано', 'LISTEN_SKIP': '⏭️ Пропущено', 'ACHIEVEMENT_UNLOCK': '🏆 Достижение', 'FEATURE_USED': '🛠️ Использовано' };
-    lg.innerHTML = l.length
-      ? l.map(x => `<div class="profile-list-item"><div class="log-time">${String(new Date(x.timestamp).getHours()).padStart(2,'0')}:${String(new Date(x.timestamp).getMinutes()).padStart(2,'0')}</div><div class="log-info"><div class="log-title">${tM[x.type]||x.type}</div><div class="log-desc">${esc(x.type==='ACHIEVEMENT_UNLOCK'?`Ачивка: ${x.data?.id||''}`:(window.TrackRegistry?.getTrackByUid?.(x.uid)?.title||x.uid||''))}</div></div></div>`).join('')
-      : '<div class="fav-empty">Журнал событий пуст</div>';
-  } catch {
-    lg.innerHTML = '<div class="fav-empty">Ошибка загрузки</div>';
-  }
-}
+    lg.innerHTML = l.length ? l.map(x => `<div class="profile-list-item"><div class="log-time">${String(new Date(x.timestamp).getHours()).padStart(2,'0')}:${String(new Date(x.timestamp).getMinutes()).padStart(2,'0')}</div><div class="log-info"><div class="log-title">${tM[x.type]||x.type}</div><div class="log-desc">${esc(x.type==='ACHIEVEMENT_UNLOCK'?`Ачивка: ${x.data?.id||''}`:(window.TrackRegistry?.getTrackByUid?.(x.uid)?.title||x.uid||''))}</div></div></div>`).join('') : '<div class="fav-empty">Журнал событий пуст</div>';
+  } catch { lg.innerHTML = '<div class="fav-empty">Ошибка загрузки</div>'; }
+};
 
 //=================================================
 // FILE: /scripts/app/profile/model.js
