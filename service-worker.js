@@ -44,6 +44,7 @@ const STATIC_ASSETS = [
   './scripts/intel/shared/contracts.js',
   './scripts/intel/shared/bus.js',
   './scripts/intel/shared/guards.js',
+  './scripts/intel/shared/helpers.js',
   './scripts/intel/track/track-profiles.js',
   './scripts/intel/track/track-presentation.js',
   './scripts/intel/track/track-relations.js',
