@@ -3,6 +3,7 @@
 // UID.075_(Secondary mirror backup)_(иметь резервную копию профиля)_(сохранять secondaryBackup role в state)
 // UID.076_(Restore policy)_(восстанавливать предсказуемо)_(фиксировать порядок primary -> secondary -> local merge)
 // UID.094_(No-paralysis rule)_(не ломать старый sync)_(пока быть только orchestration-layer без перехвата playback и core backup logic)
+// UID.095_(Ownership boundary: legacy vs intel)_(hybrid-sync не должен становиться новым backup engine)_(модуль только оркестрирует provider roles/state, а transport/backup truth остаются в legacy analytics sync/vault)
 
 const KEY = 'intel:hybrid-sync:v1';
 
