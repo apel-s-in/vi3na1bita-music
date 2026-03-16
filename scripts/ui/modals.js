@@ -1,3 +1,10 @@
+// UID.038_(Track profile modal)_(дать безопасный host для умных карточек и окон)_(Modals остаётся центральным generic UI-bridge, а не местом бизнес-логики профилей)
+// UID.070_(Linked providers)_(дать profile/provider слою единый способ открытия окон)_(provider/profile UI может использовать Modals как host, не дублируя modal engines)
+// UID.072_(Provider consents)_(позже показывать consent/policy окна через единый слой)_(consent content может приходить из intel/providers, но рендериться через этот generic bridge)
+// UID.073_(Hybrid sync orchestrator)_(позже показывать sync/restore/provider role dialogs)_(Modals только отображает, orchestration logic живёт вне этого файла)
+// UID.080_(Provider actions bridge)_(provider action confirmations/openers не должны плодить свои modal subsystems)_(все optional provider окна лучше вешать на этот central bridge)
+// UID.082_(Local truth vs external telemetry split)_(modals не должны экспортировать наружу raw state сами)_(любая внешняя аналитика modal-actions только через mapper/consent слой)
+// UID.094_(No-paralysis rule)_(generic modal engine должен быть независимым от intel)_(если intel/profile/providers выключены, базовые confirm/open продолжают работать как сейчас)
 (function () {
   'use strict';
   const esc = s => window.Utils?.escapeHtml?.(String(s ?? '')) ?? String(s ?? '');
