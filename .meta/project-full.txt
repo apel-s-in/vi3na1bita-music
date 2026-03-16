@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9202f623045623c8b02c2ad4116c8a1288a4dfbe.idx
-│   │       ├── pack-9202f623045623c8b02c2ad4116c8a1288a4dfbe.pack
-│   │       └── pack-9202f623045623c8b02c2ad4116c8a1288a4dfbe.rev
+│   │       ├── pack-3ed63ea3eb48868459e023214561081235a7ad56.idx
+│   │       ├── pack-3ed63ea3eb48868459e023214561081235a7ad56.pack
+│   │       └── pack-3ed63ea3eb48868459e023214561081235a7ad56.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -437,7 +437,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 21:03:57 UTC
+Сгенерировано: 2026-03-16 21:04:19 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4787,6 +4787,7 @@ export default intelGuards;
 // UID.082_(Local truth vs external telemetry split)_(защитить приватные данные)_(возвращать только whitelisted безопасные payload)
 // UID.083_(Yandex Metrica safe export)_(готовить безопасную интеграцию с Метрикой)_(маппить только screen/recs/share/provider/sync события)
 // UID.072_(Provider consents)_(уважать пользовательские разрешения)_(любой mapper должен сперва проверять consent state)
+// UID.095_(Ownership boundary: legacy vs intel)_(mapper не должен читать/мутировать raw truth напрямую по месту)_(модуль только преобразует уже разрешённые события в export-safe payloads)
 
 import { providerConsents } from '../providers/provider-consents.js';
 
