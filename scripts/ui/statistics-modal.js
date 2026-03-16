@@ -1,6 +1,9 @@
 // UID.038_(Track profile modal)_(не раздувать statistics-modal)_(future открыть отдельный scripts/intel/ui/track-profile-modal.js из этой точки)
 // UID.036_(Track presentation layer)_(показывать карточные summary/reasons/quotes)_(future брать safe presentation snapshot через intel-layer)
 // UID.052_(Track badges and completion)_(добавить collectible-состояние трека)_(future в модалке выводить badges/completion, не ломая текущую статистику)
+// UID.056_(Recommendation reasons)_(показывать почему трек рекомендован/ценен)_(statistics modal может стать точкой входа в explainable layer, но не считать причины сам)
+// UID.068_(Public playlist analytics)_(подготовить social-stat extension)_(future сюда можно добавлять share/save/community signals по треку)
+// UID.094_(No-paralysis rule)_(statistics modal должен оставаться usable без intel)_(если profile modal/intel недоступны, текущее окно работает как сейчас)
 import { metaDB } from '../analytics/meta-db.js';
 import { fmtAchTimerText } from './progress-formatters.js';
 
