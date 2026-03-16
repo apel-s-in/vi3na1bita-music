@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1b362002743c9878762784be793af91faaa4a32e.idx
-│   │       ├── pack-1b362002743c9878762784be793af91faaa4a32e.pack
-│   │       └── pack-1b362002743c9878762784be793af91faaa4a32e.rev
+│   │       ├── pack-78bf5314061a96655ddbaf0beaa2697ce7ee3de9.idx
+│   │       ├── pack-78bf5314061a96655ddbaf0beaa2697ce7ee3de9.pack
+│   │       └── pack-78bf5314061a96655ddbaf0beaa2697ce7ee3de9.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -437,7 +437,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 21:05:23 UTC
+Сгенерировано: 2026-03-16 21:06:04 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4060,6 +4060,7 @@ export default cohorts;
 // UID.064_(Global track stats)_(готовить community-level сигналы)_(держать слой агрегатов отдельно от локальных stats)
 // UID.067_(User-vs-community compare)_(готовить future сравнение пользователя с аудиторией)_(здесь будет вход для aggregated community metrics)
 // UID.068_(Public playlist analytics)_(готовить social metrics playlists/shares/views)_(держать place-holder API до появления backend/export pipeline)
+// UID.095_(Ownership boundary: legacy vs intel)_(community aggregates не должны подменять локальные stats truth)_(этот модуль хранит только outer/community signals и не пишет в local user stats)
 
 export const communityStats = {
   async init() {
@@ -4077,6 +4078,7 @@ export default communityStats;
 // FILE: /scripts/intel/community/similar-listeners.js
 // UID.066_(Similar listeners)_(готовить рекомендации по похожим пользователям)_(держать placeholder API для future remote/local matching)
 // UID.067_(User-vs-community compare)_(готовить сравнительные инсайты)_(пока возвращать безопасный пустой слой, не влияющий на UI)
+// UID.095_(Ownership boundary: legacy vs intel)_(similar-listeners слой не должен знать о UI и playback)_(модуль только отдаёт community intelligence candidates, а потребление остаётся внешним)
 
 export const similarListeners = {
   async init() {
