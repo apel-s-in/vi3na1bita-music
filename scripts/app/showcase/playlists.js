@@ -1,3 +1,9 @@
+// UID.043_(Smart playlists)_(сделать плейлисты важной discovery-сущностью)_(showcase playlists остаются UI/store слоем, а semantic генерация позже приходит извне)
+// UID.061_(Community-driven recommendations)_(готовить будущие community/shared playlist сценарии)_(плейлисты смогут становиться surface для cohort/similar-listener подборок, но не считать их сами)
+// UID.068_(Public playlist analytics)_(развить публичные плейлисты как социальный объект)_(views/saves/share/import analytics должны сходиться сюда как UI touchpoint)
+// UID.080_(Provider actions bridge)_(не смешивать sharing/community provider actions с playlist store)_(внешние social/provider действия должны идти через bridge, не прямо из playlist state)
+// UID.082_(Local truth vs external telemetry split)_(не смешивать локальное состояние плейлиста и внешнюю аналитику)_(наружу только mapper-safe события, локально — только playlist truth)
+// UID.094_(No-paralysis rule)_(плейлисты обязаны работать без intel/community/providers)_(любой social/semantic upgrade поверх них строго optional)
 export const renderShowcasePlaylists = ({ actionsRoot: aR, listRoot: lR, activeId: aI, playlists: p, isDefaultId: iD, esc }) => {
   if (!aR || !lR) return;
   aR.innerHTML = `<button class="sc-pl-action ${iD(aI) ? 'active' : ''}" id="sc-pl-all">Все треки</button><button class="sc-pl-action" id="sc-pl-pst" title="Вставить ссылку">📋</button>`;
