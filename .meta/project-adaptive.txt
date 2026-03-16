@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1e2bf255017da769ddd16c07c94ba39b5fc51ff7.idx
-│   │       ├── pack-1e2bf255017da769ddd16c07c94ba39b5fc51ff7.pack
-│   │       └── pack-1e2bf255017da769ddd16c07c94ba39b5fc51ff7.rev
+│   │       ├── pack-c7b271ff55b12628589f57ab5ca42e7c742f169c.idx
+│   │       ├── pack-c7b271ff55b12628589f57ab5ca42e7c742f169c.pack
+│   │       └── pack-c7b271ff55b12628589f57ab5ca42e7c742f169c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -398,7 +398,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-16 11:09:03 UTC
+Сгенерировано: 2026-03-16 11:09:22 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2814,98 +2814,19 @@ W.ShowcaseManager = new ShowcaseManager(); export default W.ShowcaseManager;
 
 //=================================================
 // FILE: /scripts/app/showcase/lyrics-search.js
-/**
- * scripts/app/showcase/lyrics-search.js
- * Offline fast search (title/album/lyrics).
- * V2: Global search across entire catalog.
- */
-
-const W = window;
-const INDEX_URL = './data/lyrics-index-v1.json';
-
-let _loaded = false;
-let _pending = null;
-let _idx = {};
-
-const normStr = (s) => String(s || '')
-  .toLowerCase()
-  .replace(/ё/g, 'е')
-  .replace(/[^\p{L}\p{N}\s]+/gu, ' ')
-  .replace(/\s+/g, ' ')
-  .trim();
-
-const tokenize = (q) => {
-  const s = normStr(q);
-  return s ? s.split(' ').filter(w => w.length >= 2) : [];
+const W = window, I = './data/lyrics-index-v1.json';
+let _l = false, _p = null, _idx = {};
+const nS = s => String(s||'').toLowerCase().replace(/ё/g,'е').replace(/[^\p{L}\p{N}\s]+/gu,' ').replace(/\s+/g,' ').trim(), tK = q => { const s = nS(q); return s ? s.split(' ').filter(w => w.length >= 2) : []; };
+export const ensureLyricsIndexLoaded = async () => {
+  if (_l) return true; if (_p) return _p;
+  return (_p = (async () => { try { const j = W.Utils?.fetchCache?.getJson ? await W.Utils.fetchCache.getJson({ key: 'lyrics:index:v1', url: I, ttlMs: 43200000, store: 'session', fetchInit: { cache: 'force-cache' } }) : await fetch(I, { cache: 'force-cache' }).then(r => { if (!r.ok) throw 1; return r.json(); }); if (!j || j.v !== 1) throw 1; _idx = j.idx && typeof j.idx === 'object' ? j.idx : {}; _l = true; return true; } catch { _idx = {}; _l = false; return false; } finally { _p = null; } })());
 };
-
-export async function ensureLyricsIndexLoaded() {
-  if (_loaded) return true;
-  if (_pending) return _pending;
-
-  _pending = (async () => {
-    try {
-      const j = W.Utils?.fetchCache?.getJson
-        ? await W.Utils.fetchCache.getJson({
-            key: 'lyrics:index:v1',
-            url: INDEX_URL,
-            ttlMs: 43200000,
-            store: 'session',
-            fetchInit: { cache: 'force-cache' }
-          })
-        : await fetch(INDEX_URL, { cache: 'force-cache' }).then(r => {
-            if (!r.ok) throw new Error('HTTP ' + r.status);
-            return r.json();
-          });
-      if (!j || j.v !== 1) throw new Error('Bad index');
-      _idx = j.idx && typeof j.idx === 'object' ? j.idx : {};
-      _loaded = true;
-      return true;
-    } catch (e) {
-      _idx = {}; _loaded = false; return false;
-    } finally { _pending = null; }
-  })();
-  return _pending;
-}
-
-function getTrackText(uid) {
-  const t = W.TrackRegistry?.getTrackByUid?.(uid);
-  if (!t) return { title: '', album: '' };
-  return { title: String(t.title || ''), album: String(W.TrackRegistry?.getAlbumTitle?.(t.sourceAlbum) || t.album || '') };
-}
-
-export function searchUidsByQuery({ query }) {
-  const q = String(query || '').trim();
-  const allUids = W.TrackRegistry?.getAllUids?.() || [];
-  if (!q) return allUids;
-
-  const qNorm = normStr(q);
-  const toks = tokenize(qNorm);
-
-  let candidates = allUids;
-  if (_loaded && toks.length) {
-    const set = new Set();
-    toks.forEach(tok => { if (Array.isArray(_idx[tok])) _idx[tok].forEach(u => set.add(u)); });
-    if (set.size > 0) candidates = [...set];
-  }
-
-  const scored = candidates.map(uid => {
-    const { title, album } = getTrackText(uid);
-    const tN = normStr(title), aN = normStr(album);
-    let score = 0;
-    if (tN.includes(qNorm)) score += 120;
-    if (aN.includes(qNorm)) score += 70;
-    toks.forEach(tok => {
-      if (tN.includes(tok)) score += 40;
-      else if (aN.includes(tok)) score += 20;
-      else if (_loaded && Array.isArray(_idx[tok]) && _idx[tok].includes(uid)) score += 8;
-    });
-    return { uid, score };
-  }).filter(x => x.score > 0);
-
-  scored.sort((x, y) => y.score - x.score);
-  return scored.map(x => x.uid);
-}
+const gTT = u => { const t = W.TrackRegistry?.getTrackByUid?.(u); return t ? { title: String(t.title||''), album: String(W.TrackRegistry?.getAlbumTitle?.(t.sourceAlbum)||t.album||'') } : { title: '', album: '' }; };
+export const searchUidsByQuery = ({ query: q }) => {
+  const qN = nS(q), tks = tK(qN), all = W.TrackRegistry?.getAllUids?.() || []; if (!qN) return all;
+  let c = all; if (_l && tks.length) { const s = new Set(); tks.forEach(t => Array.isArray(_idx[t]) && _idx[t].forEach(u => s.add(u))); if (s.size) c = [...s]; }
+  return c.map(u => { const { title: t, album: a } = gTT(u), tN = nS(t), aN = nS(a); let sc = 0; if (tN.includes(qN)) sc += 120; if (aN.includes(qN)) sc += 70; tks.forEach(k => { if (tN.includes(k)) sc += 40; else if (aN.includes(k)) sc += 20; else if (_l && Array.isArray(_idx[k]) && _idx[k].includes(u)) sc += 8; }); return { uid: u, score: sc }; }).filter(x => x.score > 0).sort((x, y) => y.score - x.score).map(x => x.uid);
+};
 
 //=================================================
 // FILE: /scripts/app/showcase/modals.js
