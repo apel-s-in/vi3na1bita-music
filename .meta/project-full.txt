@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d57b5eb2d85d9b90790e97e0196b8a6d7061d600.idx
-│   │       ├── pack-d57b5eb2d85d9b90790e97e0196b8a6d7061d600.pack
-│   │       └── pack-d57b5eb2d85d9b90790e97e0196b8a6d7061d600.rev
+│   │       ├── pack-d5a25b58740781b44d6f19a346077a9e2dc63cdd.idx
+│   │       ├── pack-d5a25b58740781b44d6f19a346077a9e2dc63cdd.pack
+│   │       └── pack-d5a25b58740781b44d6f19a346077a9e2dc63cdd.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -440,7 +440,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-17 13:44:40 UTC
+Сгенерировано: 2026-03-17 13:45:52 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -6304,7 +6304,7 @@ window.IconUtils = { renderIcon, setIconUse, renderFavoriteStar, setFavoriteStar
 (function () {
   'use strict';
   const esc = s => window.Utils?.escapeHtml?.(String(s ?? '')) ?? String(s ?? '');
-  window.Utils?.dom?.createStyleOnce?.('modals-inline-cleanup', `.modal-feedback--dynamic{width:100%;max-width:var(--modal-max-width,520px)}.modal-confirm-text{color:#9db7dd;line-height:1.45;margin-bottom:14px}.modal-confirm-btn{min-width:130px}`);
+  window.Utils?.dom?.createStyleOnce?.('modals-inline-cleanup', `.modal-feedback--dynamic{width:min(100%,var(--modal-max-width,520px));max-width:var(--modal-max-width,520px)}.modal-confirm-text{color:#9db7dd;line-height:1.45;margin-bottom:14px}.modal-confirm-btn{min-width:130px}.modal-choice-actions{display:flex;flex-direction:column;gap:8px;width:100%}.modal-choice-actions .modal-action-btn{width:100%;justify-content:center;min-height:44px}`);
   
   const open = ({ title = '', bodyHtml = '', maxWidth = 520, onClose } = {}) => {
     let c = document.getElementById('modals-container') || Object.assign(document.createElement('div'), { id: 'modals-container' });
@@ -6327,7 +6327,7 @@ window.IconUtils = { renderIcon, setIconUse, renderFavoriteStar, setFavoriteStar
 
   const choice = ({ title = '', textHtml = '', maxWidth = 460, actions = [], onClose } = {}) => {
     const btns = (actions || []).map((a, i) => `<button type="button" class="modal-action-btn modal-confirm-btn ${a.primary ? 'online' : ''}" data-choice="${esc(a.key || String(i))}">${esc(a.text || 'OK')}</button>`).join('');
-    const m = open({ title, maxWidth, onClose, bodyHtml: `<div class="modal-confirm-text">${textHtml}</div><div class="om-actions">${btns}</div>` });
+    const m = open({ title, maxWidth, onClose, bodyHtml: `<div class="modal-confirm-text">${textHtml}</div><div class="modal-choice-actions">${btns}</div>` });
     m.addEventListener('click', e => {
       const b = e.target.closest('[data-choice]');
       if (!b) return;
