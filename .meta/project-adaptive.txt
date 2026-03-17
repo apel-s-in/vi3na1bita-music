@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5b72e2458e08e578e963e8e0e28bf16e6568e841.idx
-│   │       ├── pack-5b72e2458e08e578e963e8e0e28bf16e6568e841.pack
-│   │       └── pack-5b72e2458e08e578e963e8e0e28bf16e6568e841.rev
+│   │       ├── pack-1d2a027d191291bc05bafb9491c7ee425bcb458e.idx
+│   │       ├── pack-1d2a027d191291bc05bafb9491c7ee425bcb458e.pack
+│   │       └── pack-1d2a027d191291bc05bafb9491c7ee425bcb458e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -438,7 +438,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-17 10:09:17 UTC
+Сгенерировано: 2026-03-17 10:09:52 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7946,7 +7946,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .showcase-track.inactive .track-title,.sc-edit-row.inactive .track-title,.sc-search-result.inactive .track-title{opacity:.72}
 .showcase-track.inactive .offline-ind,.showcase-track.inactive .like-star,.showcase-track.inactive .showcase-track-menu-btn,.sc-edit-row.inactive .sc-eye-btn,.sc-search-result.inactive .showcase-track-menu-btn{opacity:.65}
 .showcase-track .tnum{min-width:28px;color:var(--c-blue);font-weight:500;padding-left:6px}
-.showcase-track .offline-ind{margin-right:6px}
+.showcase-track .offline-ind{margin-right:2px}
 .sc-arrow-up,.sc-arrow-down{all:unset;cursor:pointer;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:20px;color:#888;flex-shrink:0}
 .sc-arrow-up:hover,.sc-arrow-down:hover{color:#fff;background:rgba(255,255,255,.1);border-radius:4px}
 .showcase-drag-handle{cursor:grab;padding:0 10px;color:#666;font-size:22px;display:flex;align-items:center;height:100%;touch-action:none}
