@@ -21,7 +21,7 @@ test('play track, toggle favorites-only and sleep timer UI', async ({ page }) =>
   await expect(page.locator('#sleep-timer-badge')).toBeHidden();
 });
 
-test('favoritesOnly: ON with current non-starred jumps to first starred and keeps playing', async ({ page }) => {
+test('favoritesOnly: ON with current non-starred jumps to first starred, keeps playing and hides non-starred rows', async ({ page }) => {
   await loginByPromo(page);
   await page.waitForSelector('#track-list .track', { timeout: 10000 });
   const rows = page.locator('#track-list .track');
@@ -29,14 +29,20 @@ test('favoritesOnly: ON with current non-starred jumps to first starred and keep
   await rows.nth(0).click();
   const before = await page.evaluate(() => String(window.playerCore?.getCurrentTrack?.()?.uid || ''));
   await page.click('#favorites-btn');
-  const after = await page.evaluate(() => ({
-    uid: String(window.playerCore?.getCurrentTrack?.()?.uid || ''),
-    playing: !!window.playerCore?.isPlaying?.(),
-    len: (window.playerCore?.getPlaylistSnapshot?.() || []).length
-  }));
+  await page.waitForTimeout(250);
+  const after = await page.evaluate(() => {
+    const all = [...document.querySelectorAll('#track-list .track[data-uid]')];
+    return {
+      uid: String(window.playerCore?.getCurrentTrack?.()?.uid || ''),
+      playing: !!window.playerCore?.isPlaying?.(),
+      len: (window.playerCore?.getPlaylistSnapshot?.() || []).length,
+      visibleUnfav: all.filter(x => !x.hasAttribute('data-hidden-by-favonly')).map(x => x.dataset.uid).filter(uid => !window.playerCore?.isFavorite?.(uid))
+    };
+  });
   expect(after.playing).toBeTruthy();
   expect(after.uid).not.toBe(before);
   expect(after.len).toBe(1);
+  expect(after.visibleUnfav.length).toBe(0);
 });
 
 test('favoritesOnly: OFF restores full playlist without interrupting current track', async ({ page }) => {
