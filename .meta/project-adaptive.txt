@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3b0892b6fe21f12109304a3850c541d21441f469.idx
-│   │       ├── pack-3b0892b6fe21f12109304a3850c541d21441f469.pack
-│   │       └── pack-3b0892b6fe21f12109304a3850c541d21441f469.rev
+│   │       ├── pack-6477050384f133f78bfcc9c538e657e4eb0652be.idx
+│   │       ├── pack-6477050384f133f78bfcc9c538e657e4eb0652be.pack
+│   │       └── pack-6477050384f133f78bfcc9c538e657e4eb0652be.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -402,7 +402,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-17 16:45:36 UTC
+Сгенерировано: 2026-03-17 16:47:20 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -635,6 +635,7 @@ jobs:
   <script src="./scripts/app/promocode.js" defer></script>
   <script src="./scripts/app/player-ui/lyrics.js" defer></script>
   <script src="./scripts/app/player/favorites-only-resolver.js" type="module"></script>
+  <script src="./scripts/app/player/playback-context-source.js" type="module"></script>
   <script src="./scripts/app/player/favorites-only-actions.js" type="module"></script>
   <script src="./scripts/app/player-ui.js" defer></script>
   <script src="./scripts/app/gallery.js" type="module"></script>
