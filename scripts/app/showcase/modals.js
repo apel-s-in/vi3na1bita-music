@@ -84,4 +84,4 @@ export const openShowcaseSharedPlaylistConfirm = ({ raw: r, trk: t, esc, createP
   } catch { n?.error?.('Ошибка чтения ссылки'); }
 };
 export const openShowcasePaletteModal = ({ title: t, items: i, value: v, resetText: r, onPick: o, modalHelper: m }) => m?.({ title: t, items: i, value: v, resetText: r, onPick: o }) || null;
-export default { openShowcaseSheetModal, openShowcaseAddToPlaylistModal, openShowcaseSortModal, openShowcaseSharedPlaylistConfirm, openShowcasePaletteModal };
+export default { openShowcaseSheetModal, openShowcaseAddToPlaylistModal, openShowcaseSettingsModal, openShowcaseSharedPlaylistConfirm, openShowcasePaletteModal };
