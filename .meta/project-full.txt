@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c80529e60d6a83d5ffb3b2e37d2885343dff4ff1.idx
-│   │       ├── pack-c80529e60d6a83d5ffb3b2e37d2885343dff4ff1.pack
-│   │       └── pack-c80529e60d6a83d5ffb3b2e37d2885343dff4ff1.rev
+│   │       ├── pack-17d71ad62d7cba716b5ba9314b03c8367f6f4e7e.idx
+│   │       ├── pack-17d71ad62d7cba716b5ba9314b03c8367f6f4e7e.pack
+│   │       └── pack-17d71ad62d7cba716b5ba9314b03c8367f6f4e7e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -401,7 +401,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-17 16:22:24 UTC
+Сгенерировано: 2026-03-17 16:24:03 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2007,7 +2007,7 @@ export class StatsAggregator {
 // UID.094_(No-paralysis rule)_(обычные альбомы обязаны работать без intel-слоя)_(любой semantic enhancement на строке трека только optional)
 import { injectIndicator } from '../ui/offline-indicators.js';
 import { renderFavoriteStar, setFavoriteStarState } from '../ui/icon-utils.js';
-import { playWithFavoritesOnlyResolution } from './player/favorites-only-actions.js';
+import { makeFavoritesOnlyAfterPlay, playWithFavoritesOnlyResolution } from './player/favorites-only-actions.js';
 
 const W = window, D = document, C = W.APP_CONFIG || {};
 const { $, toStr, escHtml, isMobileUA } = W.AppUtils || { $: id => D.getElementById(id), toStr: v => v == null ? '' : String(v), escHtml: s => String(s||''), isMobileUA: () => false };
@@ -2069,6 +2069,10 @@ class AlbumsManager {
       
       const pIdx = data._pTracks.findIndex(t => t.uid === uid); if (pIdx === -1) return;
 
+      const afterPlay = makeFavoritesOnlyAfterPlay({
+        highlight: (i, meta) => this.highlightCurrentTrack(i, meta),
+        ensureBlock: (i, o) => W.PlayerUI?.ensurePlayerBlock?.(i, o)
+      });
       return playWithFavoritesOnlyResolution({
         list: data._pTracks,
         uid,
@@ -2077,10 +2081,7 @@ class AlbumsManager {
         play: (list, trackUid) => pc.playExactFromPlaylist?.(list, trackUid, { dir: 1 }),
         addFavorite: trackUid => pc.toggleFavorite(trackUid, { fromAlbum: true, albumKey: aKey }),
         disableMode: () => localStorage.setItem('favoritesOnlyMode', '0'),
-        afterPlay: () => {
-          this.highlightCurrentTrack(pIdx, { uid, albumKey: aKey });
-          W.PlayerUI?.ensurePlayerBlock?.(pIdx, { userInitiated: true });
-        }
+        afterPlay: () => afterPlay({ index: pIdx, uid, albumKey: aKey })
       });
     });
 
