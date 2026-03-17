@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8349c0524b5f0a0860dd8a517806b630f8e9477f.idx
-│   │       ├── pack-8349c0524b5f0a0860dd8a517806b630f8e9477f.pack
-│   │       └── pack-8349c0524b5f0a0860dd8a517806b630f8e9477f.rev
+│   │       ├── pack-c342b3c0b3f5b730cfd4f4de20c4111caed84cdb.idx
+│   │       ├── pack-c342b3c0b3f5b730cfd4f4de20c4111caed84cdb.pack
+│   │       └── pack-c342b3c0b3f5b730cfd4f4de20c4111caed84cdb.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -401,7 +401,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-17 14:10:28 UTC
+Сгенерировано: 2026-03-17 14:11:58 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2399,8 +2399,6 @@ window.PlaybackCache.getWindowState = getWindowState; window.PlaybackCache.prote
 (function (W, D) {
   'use strict';
   const U = W.Utils, PC = () => W.playerCore, AM = () => W.AlbumsManager;
-  let favResolver = null;
-  import('./player/favorites-only-resolver.js').then(m => favResolver = m).catch(() => {});
   const st = { isMini: false, seeking: false, vizOn: U.lsGetBool01('bitEnabled'), vizId: 0, ctx: null, provider: 'unknown' }, dom = { blk: null, now: null, mini: null, nUp: null, jump: null, el: {} };
 
   const syncUI = () => {
@@ -2429,16 +2427,13 @@ window.PlaybackCache.getWindowState = getWindowState; window.PlaybackCache.prote
     if (lst) {
       const act = f && cA === pA;
       lst.classList.toggle('favonly-filtered', act);
-      if (act && favResolver?.resolveFavoritesOnlyState) {
-        const rs = favResolver.resolveFavoritesOnlyState({
+      if (act && W.FavoritesOnlyResolver?.getFavoritesOnlyVisibleUidSet) {
+        const vis = W.FavoritesOnlyResolver.getFavoritesOnlyVisibleUidSet({
           sourcePlaylist: c.originalPlaylist || c.getPlaylistSnapshot?.() || [],
           playingAlbum: pA,
-          favoritesOnly: true,
-          currentUid: c.getCurrentTrackUid?.(),
           isFavorite: uid => c.isFavorite?.(uid),
           favoritesState: c.getFavoritesState?.() || { active: [], inactive: [] }
         });
-        const vis = new Set((rs?.resolvedPlaylist || []).map(t => String(t?.uid || '').trim()).filter(Boolean));
         lst.querySelectorAll('.track[data-uid], .showcase-track[data-uid]').forEach(r => r.toggleAttribute('data-hidden-by-favonly', !vis.has(String(r.dataset.uid || '').trim())));
       } else {
         lst.querySelectorAll('.track[data-hidden-by-favonly], .showcase-track[data-hidden-by-favonly]').forEach(r => r.removeAttribute('data-hidden-by-favonly'));
