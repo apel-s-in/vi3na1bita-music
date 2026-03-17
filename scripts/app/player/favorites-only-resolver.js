@@ -85,13 +85,38 @@ function canLaunchTrackInFavoritesOnlyContext({ uid, albumKey } = {}) {
   return { ok: true };
 }
 
+function getFavoritesOnlyVisibleUidSetForContext({
+  contextType = 'album',
+  albumKey = '',
+  sourcePlaylist = [],
+  isFavorite = () => false,
+  favoritesState = { active: [], inactive: [] }
+} = {}) {
+  if (contextType === 'favorites') {
+    const active = new Set((favoritesState.active || []).map(i => sUid(i.uid)).filter(Boolean));
+    return new Set([...active].filter(uid => isFavorite(uid)));
+  }
+
+  const st = resolveFavoritesOnlyState({
+    sourcePlaylist,
+    playingAlbum: albumKey,
+    favoritesOnly: true,
+    currentUid: null,
+    isFavorite,
+    favoritesState
+  });
+
+  return new Set((st.resolvedPlaylist || []).map(t => sUid(t.uid)).filter(Boolean));
+}
+
 const api = {
   resolveFavoritesOnlyState,
   getFavoritesOnlyVisibleUidSet,
+  getFavoritesOnlyVisibleUidSetForContext,
   canLaunchTrackInFavoritesOnlyContext
 };
 
 W.FavoritesOnlyResolver = api;
 
-export { resolveFavoritesOnlyState, getFavoritesOnlyVisibleUidSet, canLaunchTrackInFavoritesOnlyContext };
+export { resolveFavoritesOnlyState, getFavoritesOnlyVisibleUidSet, getFavoritesOnlyVisibleUidSetForContext, canLaunchTrackInFavoritesOnlyContext };
 export default api;
