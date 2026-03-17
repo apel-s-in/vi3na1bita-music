@@ -146,8 +146,12 @@
       }
     });
 
-    c.onFavoritesChanged(() => { const p = AM()?.getPlayingAlbum?.(); if (p === W.SPECIAL_FAVORITES_KEY || U.lsGetBool01('favoritesOnlyMode')) { c.applyFavoritesOnlyFilter?.(); W.PlayerUI?.updateAvailableTracksForPlayback?.(); } syncUI(); });
-    W.addEventListener('playlist:changed', () => { const p = AM()?.getPlayingAlbum?.(); if (p === W.SPECIAL_FAVORITES_KEY || U.lsGetBool01('favoritesOnlyMode')) c.applyFavoritesOnlyFilter?.(); });
+    c.onFavoritesChanged(() => {
+      const p = AM()?.getPlayingAlbum?.();
+      if (p === W.SPECIAL_FAVORITES_KEY || U.lsGetBool01('favoritesOnlyMode')) c.applyFavoritesOnlyFilter?.();
+      syncUI();
+    });
+    W.addEventListener('playlist:changed', syncUI);
     W.addEventListener('player:providerChanged', e => { st.provider = e.detail?.provider; syncUI(); });
     ['offline:uiChanged', 'online', 'offline'].forEach(e => W.addEventListener(e, syncUI));
     
