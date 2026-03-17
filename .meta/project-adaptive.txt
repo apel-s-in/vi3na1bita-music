@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-0669dcd4469a29b30d44e2eace665be40d813c45.idx
-│   │       ├── pack-0669dcd4469a29b30d44e2eace665be40d813c45.pack
-│   │       └── pack-0669dcd4469a29b30d44e2eace665be40d813c45.rev
+│   │       ├── pack-34c07e1d376f177a1acf580a6e94bdd9fc228595.idx
+│   │       ├── pack-34c07e1d376f177a1acf580a6e94bdd9fc228595.pack
+│   │       └── pack-34c07e1d376f177a1acf580a6e94bdd9fc228595.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -440,7 +440,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-17 13:49:57 UTC
+Сгенерировано: 2026-03-17 13:50:41 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2598,7 +2598,7 @@ window.PlaybackCache.getWindowState = getWindowState; window.PlaybackCache.prote
     syncUI();
   };
 
-  W.PlayerUI = { initialize: init, ensurePlayerBlock: (i, o) => ensureBlock(i, o?.userInitiated), updateMiniHeader: syncUI, updateNextUpLabel: syncUI, updatePlaylistFiltering: syncUI, togglePlayPause: () => PC().isPlaying() ? PC().pause() : PC().play(), switchAlbumInstantly: () => { if (PC().getIndex() >= 0) ensureBlock(PC().getIndex()); }, updateAvailableTracksForPlayback: () => { PC().applyFavoritesOnlyFilter?.(); syncUI(); } };
+  W.PlayerUI = { initialize: init, ensurePlayerBlock: (i, o) => ensureBlock(i, o?.userInitiated), updateMiniHeader: syncUI, updateNextUpLabel: syncUI, updatePlaylistFiltering: syncUI, togglePlayPause: () => PC().isPlaying() ? PC().pause() : PC().play(), switchAlbumInstantly: () => { if (PC().getIndex() >= 0) ensureBlock(PC().getIndex()); } };
   D.readyState === 'loading' ? D.addEventListener('DOMContentLoaded', init) : init();
 })(window, document);
 
