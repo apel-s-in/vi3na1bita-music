@@ -170,6 +170,6 @@
     syncUI();
   };
 
-  W.PlayerUI = { initialize: init, ensurePlayerBlock: (i, o) => ensureBlock(i, o?.userInitiated), updateMiniHeader: syncUI, updateNextUpLabel: syncUI, updatePlaylistFiltering: syncUI, togglePlayPause: () => PC().isPlaying() ? PC().pause() : PC().play(), switchAlbumInstantly: () => { if (PC().getIndex() >= 0) ensureBlock(PC().getIndex()); }, updateAvailableTracksForPlayback: () => { PC().applyFavoritesOnlyFilter?.(); syncUI(); } };
+  W.PlayerUI = { initialize: init, ensurePlayerBlock: (i, o) => ensureBlock(i, o?.userInitiated), updateMiniHeader: syncUI, updateNextUpLabel: syncUI, updatePlaylistFiltering: syncUI, togglePlayPause: () => PC().isPlaying() ? PC().pause() : PC().play(), switchAlbumInstantly: () => { if (PC().getIndex() >= 0) ensureBlock(PC().getIndex()); } };
   D.readyState === 'loading' ? D.addEventListener('DOMContentLoaded', init) : init();
 })(window, document);
