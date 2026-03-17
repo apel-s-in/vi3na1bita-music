@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b190686b99f9e5b005f99b6e1dcdd5e0cc4338f4.idx
-│   │       ├── pack-b190686b99f9e5b005f99b6e1dcdd5e0cc4338f4.pack
-│   │       └── pack-b190686b99f9e5b005f99b6e1dcdd5e0cc4338f4.rev
+│   │       ├── pack-60189839e1f59c3697cca8bcac7216819461466c.idx
+│   │       ├── pack-60189839e1f59c3697cca8bcac7216819461466c.pack
+│   │       └── pack-60189839e1f59c3697cca8bcac7216819461466c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -402,7 +402,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-17 18:38:33 UTC
+Сгенерировано: 2026-03-17 18:39:30 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2194,7 +2194,7 @@ export async function loadFavoritesAlbum(ctx) {
         const tr = window.PlaybackContextSource?.getSourcePlaylistForContext?.(FAV) || [];
         const idx = tr.findIndex(t => t.uid === u);
         if (idx >= 0) { pc.setPlaylist(tr, idx, { artist: 'Витрина Разбита', album: 'Избранное', cover: FAV_COVER }, { preservePosition: false }); pc.play(idx); pc.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true }); ctx.highlightCurrentTrack(-1, { uid: u, albumKey: aK }); window.PlayerUI?.ensurePlayerBlock?.(idx, { userInitiated: true }); window.PlayerUI?.applyFavoritesOnlyDomFilter?.(); requestAnimationFrame(() => window.PlayerUI?.applyFavoritesOnlyDomFilter?.()); }
-      } else pc.showInactiveFavoriteModal({ uid: u, title: window.TrackRegistry?.getTrackByUid(u)?.title || 'Трек', onDeleted: () => { rb(); pc.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true }); window.PlayerUI?.updatePlaylistFiltering?.(); } });
+      } else pc.showInactiveFavoriteModal({ uid: u, title: window.TrackRegistry?.getTrackByUid(u)?.title || 'Трек', onDeleted: () => { rb(); pc.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true }); window.PlayerUI?.applyFavoritesOnlyDomFilter?.(); requestAnimationFrame(() => window.PlayerUI?.applyFavoritesOnlyDomFilter?.()); } });
     });
 
     window.playerCore?.onFavoritesChanged(() => {
