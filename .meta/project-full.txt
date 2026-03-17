@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2ff715c46f3c8f9ca227df9c5ec35e83de54eae1.idx
-│   │       ├── pack-2ff715c46f3c8f9ca227df9c5ec35e83de54eae1.pack
-│   │       └── pack-2ff715c46f3c8f9ca227df9c5ec35e83de54eae1.rev
+│   │       ├── pack-9135a95f7a56f72a7ab86892d93c07bd5a6cd7d1.idx
+│   │       ├── pack-9135a95f7a56f72a7ab86892d93c07bd5a6cd7d1.pack
+│   │       └── pack-9135a95f7a56f72a7ab86892d93c07bd5a6cd7d1.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -402,7 +402,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-17 20:56:27 UTC
+Сгенерировано: 2026-03-17 21:34:55 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -8507,7 +8507,13 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 @media(max-width:340px){.om-pc-toprow{flex-direction:column;gap:8px}}
 .showcase-header-controls{display:flex;flex-direction:column;gap:10px;margin-bottom:15px;padding:0 10px}
 .showcase-search-wrap{position:relative;width:100%}
-.showcase-search{width:100%;padding:10px 38px 10px 14px;border-radius:8px;border:1px solid var(--border-color);background:rgba(255,255,255,.05);color:#fff;outline:none;transition:border-color .2s}
+.showcase-search{font-size:16px!important;width:100%;padding:10px 38px 10px 14px;border-radius:8px;border:1px solid var(--border-color);background:rgba(255,255,255,.05);color:#fff;outline:none;transition:border-color .2s}
+#track-list.sc-is-searching{position:fixed;inset:0;z-index:10000;background:var(--primary-bg);max-width:100%;border-radius:0;padding:calc(env(safe-area-inset-top) + 15px) 15px 20px;overflow-y:auto;overflow-x:hidden}
+#track-list.sc-is-searching .showcase-btns-row,#track-list.sc-is-searching .showcase-playlists-actions,#track-list.sc-is-searching .showcase-playlists-list,#track-list.sc-is-searching .showcase-status-bar,#track-list.sc-is-searching .showcase-edit-banner{display:none!important}
+.sc-search-settings-row{display:none;justify-content:space-between;align-items:center;margin-bottom:12px;animation:fadeIn .25s ease}
+#track-list.sc-is-searching .sc-search-settings-row{display:flex}
+.sc-btn-search-cfg{background:var(--secondary-color)!important;color:#fff!important;border:none!important;text-transform:uppercase;font-size:13px;font-weight:900;padding:12px 18px!important;letter-spacing:.5px;border-radius:10px;flex:1}
+.sc-btn-search-close{background:rgba(255,255,255,.08)!important;color:#fff!important;border:none!important;font-size:18px;width:48px!important;flex:0 0 48px!important;padding:0!important;border-radius:10px;margin-left:10px}
 .showcase-search-clear{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:28px;height:28px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);color:rgba(255,255,255,.8);cursor:pointer;display:none}
 .showcase-search-clear[hidden]{display:none!important}
 .showcase-search-clear:active{transform:translateY(-50%) scale(.98)}
