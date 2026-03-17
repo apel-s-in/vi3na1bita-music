@@ -16,7 +16,7 @@ import { handleShowcaseEditClick, bindShowcaseDrag, saveShowcaseEdit, resetShowc
 import { createShowcaseStore } from './store.js';
 import { buildShowcaseSearchDisplay, addSearchResultsToContext, handleSharedShowcasePlaylist } from './search.js';
 import { createShowcaseActions } from './actions.js';
-import { openShowcaseSheetModal, openShowcaseAddToPlaylistModal, openShowcaseSortModal, openShowcaseSharedPlaylistConfirm, openShowcasePaletteModal } from './modals.js';
+import { openShowcaseSheetModal, openShowcaseAddToPlaylistModal, openShowcaseSettingsModal, openShowcaseSharedPlaylistConfirm, openShowcasePaletteModal } from './modals.js';
 import { makeFavoritesOnlyAfterPlay, playWithFavoritesOnlyResolution } from '../player/favorites-only-actions.js';
 const W = window, D = document, U = W.Utils, ALL = '__default__', SHOW = '__showcase__', PALETTE = ['transparent','#ef5350','#ff9800','#fdd835','#4caf50','#00bcd4','#2196f3','#9c27b0','#e91e63','#9e9e9e'];
 const $ = id => D.getElementById(id), esc = s => U.escapeHtml(String(s ?? '')), trk = u => W.TrackRegistry?.getTrackByUid?.(u), albT = k => W.TrackRegistry?.getAlbumTitle?.(k) || k || '', isDef = id => id === ALL, uidEsc = u => CSS.escape(String(u || ''));
