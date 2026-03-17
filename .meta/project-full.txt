@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-37c8f47edb0463d4cad29921220b1a70a179915a.idx
-│   │       ├── pack-37c8f47edb0463d4cad29921220b1a70a179915a.pack
-│   │       └── pack-37c8f47edb0463d4cad29921220b1a70a179915a.rev
+│   │       ├── pack-cc2a6f19c8ab54a499b13e04341606068c4692bb.idx
+│   │       ├── pack-cc2a6f19c8ab54a499b13e04341606068c4692bb.pack
+│   │       └── pack-cc2a6f19c8ab54a499b13e04341606068c4692bb.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -401,7 +401,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-17 16:20:42 UTC
+Сгенерировано: 2026-03-17 16:21:37 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2426,14 +2426,29 @@ window.PlaybackCache.getWindowState = getWindowState; window.PlaybackCache.prote
     if (lst) {
       const act = f && cA === pA;
       lst.classList.toggle('favonly-filtered', act);
-      if (act && W.FavoritesOnlyResolver?.getFavoritesOnlyVisibleUidSet) {
-        const vis = W.FavoritesOnlyResolver.getFavoritesOnlyVisibleUidSet({
-          sourcePlaylist: c.originalPlaylist || c.getPlaylistSnapshot?.() || [],
-          playingAlbum: pA,
+      if (act && W.FavoritesOnlyResolver?.getFavoritesOnlyVisibleUidSetForContext) {
+        let src = [], type = 'album';
+        if (cA === W.SPECIAL_FAVORITES_KEY) {
+          type = 'favorites';
+        } else if (W.Utils?.isShowcaseContext?.(cA)) {
+          type = 'showcase';
+          src = W.ShowcaseManager?.getContextSourcePlaylist?.(cA) || [];
+        } else {
+          src = AM()?.getAlbumSourcePlaylist?.(cA) || [];
+        }
+
+        const vis = W.FavoritesOnlyResolver.getFavoritesOnlyVisibleUidSetForContext({
+          contextType: type,
+          albumKey: cA,
+          sourcePlaylist: src,
           isFavorite: uid => c.isFavorite?.(uid),
           favoritesState: c.getFavoritesState?.() || { active: [], inactive: [] }
         });
-        lst.querySelectorAll('.track[data-uid], .showcase-track[data-uid]').forEach(r => r.toggleAttribute('data-hidden-by-favonly', !vis.has(String(r.dataset.uid || '').trim())));
+
+        lst.querySelectorAll('.track[data-uid], .showcase-track[data-uid]').forEach(r => {
+          const uid = String(r.dataset.uid || '').trim();
+          r.toggleAttribute('data-hidden-by-favonly', !!uid && !vis.has(uid));
+        });
       } else {
         lst.querySelectorAll('.track[data-hidden-by-favonly], .showcase-track[data-hidden-by-favonly]').forEach(r => r.removeAttribute('data-hidden-by-favonly'));
       }
