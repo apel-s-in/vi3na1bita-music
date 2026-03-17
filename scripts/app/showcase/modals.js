@@ -18,7 +18,7 @@ export const openShowcaseAddToPlaylistModal = ({ playlists: p, esc, onPick: oP, 
   if (m) m.onclick = e => { const b = e.target.closest('[data-pid]'); if (b) oP?.(b.dataset.pid, m); }; return m;
 };
 export const openShowcaseSortModal = ({ currentSort: cS, options: o, onPick: oP, modalApi: mA }) => {
-  const m = mA?.open?.({ title: 'Сортировка', bodyHtml: `<div class="sc-sort-grid">${o.map(([v, l]) => `<button class="showcase-btn ${cS === v ? 'active' : ''} ${v === 'user' ? 'sc-sort-grid-full' : ''}" data-val="${v}">${l}</button>`).join('')}</div>` });
+  const m = mA?.open?.({ title: 'Настройки списка', bodyHtml: `<div class="sc-sort-grid">${o.map(([v, l]) => `<button class="showcase-btn ${cS === v ? 'active' : ''} ${v === 'user' ? 'sc-sort-grid-full' : ''}" data-val="${v}">${l}</button>`).join('')}</div>` });
   if (m) m.onclick = e => { const b = e.target.closest('[data-val]'); if (b) oP?.(b.dataset.val, m); }; return m;
 };
 export const openShowcaseSharedPlaylistConfirm = ({ raw: r, trk: t, esc, createPlaylist: cP, notify: n, modalApi: mA }) => {
