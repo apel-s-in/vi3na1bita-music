@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-298f4c2f961487d16de423febb411fb52b8028fa.idx
-│   │       ├── pack-298f4c2f961487d16de423febb411fb52b8028fa.pack
-│   │       └── pack-298f4c2f961487d16de423febb411fb52b8028fa.rev
+│   │       ├── pack-80a009a66ab919ecede81fd708b6b39efa7606e8.idx
+│   │       ├── pack-80a009a66ab919ecede81fd708b6b39efa7606e8.pack
+│   │       └── pack-80a009a66ab919ecede81fd708b6b39efa7606e8.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -440,7 +440,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-17 12:45:41 UTC
+Сгенерировано: 2026-03-17 12:48:11 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7806,7 +7806,7 @@ body.news-view #cover-wrap{display:none!important}
 .track.current{background:#232b38;border-left:3px solid var(--secondary-color)}
 .track:active{transform:scale(.98);background:rgba(255,255,255,.08)!important}
 .track.inactive,.showcase-track.inactive,.sc-edit-row.inactive,.sc-search-result.inactive{opacity:.45;filter:grayscale(.6)}
-.track-list.favonly-filtered .track[data-hidden-by-favonly="1"]{display:none!important}
+.track-list.favonly-filtered .track[data-hidden-by-favonly="1"],.track-list.favonly-filtered .showcase-track[data-hidden-by-favonly="1"]{display:none!important}
 .tnum{min-width:30px;color:var(--c-blue);font-weight:500}
 .track-title{margin-left:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
 .like-star{
