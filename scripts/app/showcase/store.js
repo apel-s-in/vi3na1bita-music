@@ -30,7 +30,7 @@ export const createShowcaseStore = ({ trk, getCat, ls = localStorage }) => {
     save: p => { const a = Store.pl(), i = a.findIndex(x => x.id === p.id), n = normCtx(p, false, p.order || getCat()); i >= 0 ? a.splice(i, 1, n) : a.push(n); Store.setPl(a); },
     del: id => Store.setPl(Store.pl().filter(p => p.id !== id)),
     act: () => jGet('activeId', '__default__'), setAct: id => jSet('activeId', id),
-    ui: () => jGet('ui', { viewMode: 'flat', showNumbers: false, showHidden: false, hiddenPlacement: 'inline' }), setUi: v => jSet('ui', v),
+    ui: () => jGet('ui_v2', { viewMode: 'flat', showNumbers: false, showHidden: false, hiddenPlacement: 'inline' }), setUi: v => jSet('ui_v2', v),
     cols: () => jGet('albumColors', {}), setCols: v => jSet('albumColors', v),
     def: () => { const d = normCtx({ sortMode: 'album-desc', ...(jGet('default') || {}) }, true, getCat()); jSet('default', d); return d; },
     setDef: v => jSet('default', normCtx(v, true)), jGet, jSet, normSnap, normCtx, mkPl
