@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b50af3a674b9bebf283e97d21719543bf5efc6f5.idx
-│   │       ├── pack-b50af3a674b9bebf283e97d21719543bf5efc6f5.pack
-│   │       └── pack-b50af3a674b9bebf283e97d21719543bf5efc6f5.rev
+│   │       ├── pack-189b4d17b1a053cdc066b41747ca4c8d8469dc7b.idx
+│   │       ├── pack-189b4d17b1a053cdc066b41747ca4c8d8469dc7b.pack
+│   │       └── pack-189b4d17b1a053cdc066b41747ca4c8d8469dc7b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -440,7 +440,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-17 12:38:55 UTC
+Сгенерировано: 2026-03-17 12:39:51 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -672,6 +672,7 @@ jobs:
   <!-- App Modules -->
   <script src="./scripts/app/promocode.js" defer></script>
   <script src="./scripts/app/player-ui/lyrics.js" defer></script>
+  <script src="./scripts/app/player/favorites-only-resolver.js" type="module"></script>
   <script src="./scripts/app/player-ui.js" defer></script>
   <script src="./scripts/app/gallery.js" type="module"></script>
   <script src="./scripts/app/albums.js" type="module"></script>
