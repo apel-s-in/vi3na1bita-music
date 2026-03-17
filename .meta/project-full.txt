@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6a5cc078517d8ecc5bd641637f9b2f97dae81116.idx
-│   │       ├── pack-6a5cc078517d8ecc5bd641637f9b2f97dae81116.pack
-│   │       └── pack-6a5cc078517d8ecc5bd641637f9b2f97dae81116.rev
+│   │       ├── pack-704636755be6ecf1c91060217978dd96943d9a55.idx
+│   │       ├── pack-704636755be6ecf1c91060217978dd96943d9a55.pack
+│   │       └── pack-704636755be6ecf1c91060217978dd96943d9a55.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -401,7 +401,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-17 14:15:57 UTC
+Сгенерировано: 2026-03-17 16:19:11 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2811,15 +2811,40 @@ function canLaunchTrackInFavoritesOnlyContext({ uid, albumKey } = {}) {
   return { ok: true };
 }
 
+function getFavoritesOnlyVisibleUidSetForContext({
+  contextType = 'album',
+  albumKey = '',
+  sourcePlaylist = [],
+  isFavorite = () => false,
+  favoritesState = { active: [], inactive: [] }
+} = {}) {
+  if (contextType === 'favorites') {
+    const active = new Set((favoritesState.active || []).map(i => sUid(i.uid)).filter(Boolean));
+    return new Set([...active].filter(uid => isFavorite(uid)));
+  }
+
+  const st = resolveFavoritesOnlyState({
+    sourcePlaylist,
+    playingAlbum: albumKey,
+    favoritesOnly: true,
+    currentUid: null,
+    isFavorite,
+    favoritesState
+  });
+
+  return new Set((st.resolvedPlaylist || []).map(t => sUid(t.uid)).filter(Boolean));
+}
+
 const api = {
   resolveFavoritesOnlyState,
   getFavoritesOnlyVisibleUidSet,
+  getFavoritesOnlyVisibleUidSetForContext,
   canLaunchTrackInFavoritesOnlyContext
 };
 
 W.FavoritesOnlyResolver = api;
 
-export { resolveFavoritesOnlyState, getFavoritesOnlyVisibleUidSet, canLaunchTrackInFavoritesOnlyContext };
+export { resolveFavoritesOnlyState, getFavoritesOnlyVisibleUidSet, getFavoritesOnlyVisibleUidSetForContext, canLaunchTrackInFavoritesOnlyContext };
 export default api;
 
 //=================================================
