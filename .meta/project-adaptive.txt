@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-80a009a66ab919ecede81fd708b6b39efa7606e8.idx
-│   │       ├── pack-80a009a66ab919ecede81fd708b6b39efa7606e8.pack
-│   │       └── pack-80a009a66ab919ecede81fd708b6b39efa7606e8.rev
+│   │       ├── pack-c861d57988226e7836fe52aab1b3d68a22e80b84.idx
+│   │       ├── pack-c861d57988226e7836fe52aab1b3d68a22e80b84.pack
+│   │       └── pack-c861d57988226e7836fe52aab1b3d68a22e80b84.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -440,7 +440,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-17 12:48:11 UTC
+Сгенерировано: 2026-03-17 13:14:15 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2584,8 +2584,12 @@ window.PlaybackCache.getWindowState = getWindowState; window.PlaybackCache.prote
       }
     });
 
-    c.onFavoritesChanged(() => { const p = AM()?.getPlayingAlbum?.(); if (p === W.SPECIAL_FAVORITES_KEY || U.lsGetBool01('favoritesOnlyMode')) { c.applyFavoritesOnlyFilter?.(); W.PlayerUI?.updateAvailableTracksForPlayback?.(); } syncUI(); });
-    W.addEventListener('playlist:changed', () => { const p = AM()?.getPlayingAlbum?.(); if (p === W.SPECIAL_FAVORITES_KEY || U.lsGetBool01('favoritesOnlyMode')) c.applyFavoritesOnlyFilter?.(); });
+    c.onFavoritesChanged(() => {
+      const p = AM()?.getPlayingAlbum?.();
+      if (p === W.SPECIAL_FAVORITES_KEY || U.lsGetBool01('favoritesOnlyMode')) c.applyFavoritesOnlyFilter?.();
+      syncUI();
+    });
+    W.addEventListener('playlist:changed', syncUI);
     W.addEventListener('player:providerChanged', e => { st.provider = e.detail?.provider; syncUI(); });
     ['offline:uiChanged', 'online', 'offline'].forEach(e => W.addEventListener(e, syncUI));
     
