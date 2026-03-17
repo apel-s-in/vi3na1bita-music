@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-7feeb7f34dafb8a295c4184b9b77287f7480dd6a.idx
-│   │       ├── pack-7feeb7f34dafb8a295c4184b9b77287f7480dd6a.pack
-│   │       └── pack-7feeb7f34dafb8a295c4184b9b77287f7480dd6a.rev
+│   │       ├── pack-8cd9feeb660969d9711c0bf060a6d34e2fa05b78.idx
+│   │       ├── pack-8cd9feeb660969d9711c0bf060a6d34e2fa05b78.pack
+│   │       └── pack-8cd9feeb660969d9711c0bf060a6d34e2fa05b78.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -402,7 +402,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-17 20:53:23 UTC
+Сгенерировано: 2026-03-17 20:54:07 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -937,7 +937,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.1.23';
+const SW_VERSION = '8.1.24';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
@@ -3637,7 +3637,7 @@ export const createShowcaseStore = ({ trk, getCat, ls = localStorage }) => {
     save: p => { const a = Store.pl(), i = a.findIndex(x => x.id === p.id), n = normCtx(p, false, p.order || getCat()); i >= 0 ? a.splice(i, 1, n) : a.push(n); Store.setPl(a); },
     del: id => Store.setPl(Store.pl().filter(p => p.id !== id)),
     act: () => jGet('activeId', '__default__'), setAct: id => jSet('activeId', id),
-    ui: () => jGet('ui', { viewMode: 'flat', showNumbers: false, showHidden: false, hiddenPlacement: 'inline' }), setUi: v => jSet('ui', v),
+    ui: () => jGet('ui_v2', { viewMode: 'flat', showNumbers: false, showHidden: false, hiddenPlacement: 'inline' }), setUi: v => jSet('ui_v2', v),
     cols: () => jGet('albumColors', {}), setCols: v => jSet('albumColors', v),
     def: () => { const d = normCtx({ sortMode: 'album-desc', ...(jGet('default') || {}) }, true, getCat()); jSet('default', d); return d; },
     setDef: v => jSet('default', normCtx(v, true)), jGet, jSet, normSnap, normCtx, mkPl
