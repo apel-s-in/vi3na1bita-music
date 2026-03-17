@@ -44,9 +44,9 @@ export async function loadFavoritesAlbum(ctx) {
       
       if (isA) {
         ctx.setPlayingAlbum(FAV);
-        const tr = pc.getFavoritesState().active.map(i => ({ ...(window.TrackRegistry?.getTrackByUid(i.uid) || {}), uid: i.uid, album: 'Избранное', cover: FAV_COVER, sourceAlbum: i.sourceAlbum }));
+        const tr = window.PlaybackContextSource?.getSourcePlaylistForContext?.(FAV) || [];
         const idx = tr.findIndex(t => t.uid === u);
-        if (idx >= 0) { pc.setPlaylist(tr, idx, { artist: 'Витрина Разбита', album: 'Избранное', cover: FAV_COVER }, { preservePosition: false }); pc.play(idx); pc.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true }); ctx.highlightCurrentTrack(-1, { uid: u, albumKey: aK }); window.PlayerUI?.ensurePlayerBlock?.(idx, { userInitiated: true }); window.PlayerUI?.updatePlaylistFiltering?.(); }
+        if (idx >= 0) { pc.setPlaylist(tr, idx, { artist: 'Витрина Разбита', album: 'Избранное', cover: FAV_COVER }, { preservePosition: false }); pc.play(idx); pc.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true }); ctx.highlightCurrentTrack(-1, { uid: u, albumKey: aK }); window.PlayerUI?.ensurePlayerBlock?.(idx, { userInitiated: true }); window.PlayerUI?.applyFavoritesOnlyDomFilter?.(); requestAnimationFrame(() => window.PlayerUI?.applyFavoritesOnlyDomFilter?.()); }
       } else pc.showInactiveFavoriteModal({ uid: u, title: window.TrackRegistry?.getTrackByUid(u)?.title || 'Трек', onDeleted: () => { rb(); pc.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true }); window.PlayerUI?.updatePlaylistFiltering?.(); } });
     });
 
@@ -54,11 +54,12 @@ export async function loadFavoritesAlbum(ctx) {
       if (ctx.getCurrentAlbum() === FAV) {
         rb(); const pc = window.playerCore;
         if (pc && ctx.getPlayingAlbum?.() === FAV) {
-          const aT = pc.getFavoritesState().active.map(i => ({ ...(window.TrackRegistry?.getTrackByUid(i.uid) || {}), uid: i.uid, album: 'Избранное', cover: FAV_COVER, sourceAlbum: i.sourceAlbum }));
+          const aT = window.PlaybackContextSource?.getSourcePlaylistForContext?.(FAV) || [];
           if (aT.length) pc.originalPlaylist = aT;
         }
         pc.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true });
-        window.PlayerUI?.updatePlaylistFiltering?.();
+        window.PlayerUI?.applyFavoritesOnlyDomFilter?.();
+        requestAnimationFrame(() => window.PlayerUI?.applyFavoritesOnlyDomFilter?.());
       }
     });
   }
