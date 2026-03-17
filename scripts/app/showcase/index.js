@@ -18,6 +18,7 @@ import { buildShowcaseSearchDisplay, addSearchResultsToContext, handleSharedShow
 import { createShowcaseActions } from './actions.js';
 import { openShowcaseSheetModal, openShowcaseAddToPlaylistModal, openShowcaseSortModal, openShowcaseSharedPlaylistConfirm, openShowcasePaletteModal } from './modals.js';
 import { canLaunchTrackInFavoritesOnlyContext } from '../player/favorites-only-resolver.js';
+import { openFavoritesOnlyConflictModal } from '../player/favorites-only-actions.js';
 const W = window, D = document, U = W.Utils, ALL = '__default__', SHOW = '__showcase__', PALETTE = ['transparent','#ef5350','#ff9800','#fdd835','#4caf50','#00bcd4','#2196f3','#9c27b0','#e91e63','#9e9e9e'];
 const $ = id => D.getElementById(id), esc = s => U.escapeHtml(String(s ?? '')), trk = u => W.TrackRegistry?.getTrackByUid?.(u), albT = k => W.TrackRegistry?.getAlbumTitle?.(k) || k || '', isDef = id => id === ALL, uidEsc = u => CSS.escape(String(u || ''));
 const getCat = () => (W.albumsIndex || []).filter(a => !String(a?.key || '').startsWith('__')).flatMap(a => (W.TrackRegistry?.getTracksForAlbum?.(a.key) || []).map(t => t?.uid).filter(Boolean)), sig = (o = [], h = []) => JSON.stringify({ o: [...o], h: [...h] });
@@ -79,31 +80,19 @@ class ShowcaseManager {
       const gate = canLaunchTrackInFavoritesOnlyContext({ uid: u, albumKey: k || `${SHOW}:${this._ctxId()}` });
       if (!gate.ok) {
         const t = bldTrk(u);
-        return W.Modals?.choice?.({
-          title: 'Режим только избранные',
-          textHtml: `Плеер работает в режиме <b>только избранные</b>.<br><br><b>${esc(t?.title || 'Трек')}</b>${gate.reason === 'hidden' ? ' скрыт.' : ' не отмечен ⭐.'}<br><br>Выберите действие:`,
-          actions: [
-            {
-              key: 'disable',
-              text: 'Отключить F и воспроизвести',
-              primary: true,
-              onClick: () => {
-                localStorage.setItem('favoritesOnlyMode', '0');
-                this._actions.playCtx({ ctxId: () => this._ctxId(), getActiveListTracks: () => this.getActiveListTracks(), hi: x => this._hi(x), markLast: (x, i) => this._markLast(x, i) }, u, s, l, k);
-                W.playerCore?.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true });
-              }
-            },
-            ...(gate.reason === 'hidden' ? [] : [{
-              key: 'add',
-              text: 'Добавить ⭐ и играть в F',
-              onClick: () => {
-                W.playerCore?.toggleFavorite?.(u, { albumKey: t?.sourceAlbum });
-                this._actions.playCtx({ ctxId: () => this._ctxId(), getActiveListTracks: () => this.getActiveListTracks(), hi: x => this._hi(x), markLast: (x, i) => this._markLast(x, i) }, u, s, l, k);
-                W.playerCore?.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true });
-              }
-            }]),
-            { key: 'cancel', text: 'Отмена', onClick: () => {} }
-          ]
+        return openFavoritesOnlyConflictModal({
+          track: t,
+          hidden: gate.reason === 'hidden',
+          onDisable: () => {
+            localStorage.setItem('favoritesOnlyMode', '0');
+            this._actions.playCtx({ ctxId: () => this._ctxId(), getActiveListTracks: () => this.getActiveListTracks(), hi: x => this._hi(x), markLast: (x, i) => this._markLast(x, i) }, u, s, l, k);
+            W.playerCore?.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true });
+          },
+          onAddFavorite: gate.reason === 'hidden' ? null : () => {
+            W.playerCore?.toggleFavorite?.(u, { albumKey: t?.sourceAlbum });
+            this._actions.playCtx({ ctxId: () => this._ctxId(), getActiveListTracks: () => this.getActiveListTracks(), hi: x => this._hi(x), markLast: (x, i) => this._markLast(x, i) }, u, s, l, k);
+            W.playerCore?.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true });
+          }
         });
       }
     }
