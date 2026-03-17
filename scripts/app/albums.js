@@ -5,7 +5,7 @@
 // UID.094_(No-paralysis rule)_(обычные альбомы обязаны работать без intel-слоя)_(любой semantic enhancement на строке трека только optional)
 import { injectIndicator } from '../ui/offline-indicators.js';
 import { renderFavoriteStar, setFavoriteStarState } from '../ui/icon-utils.js';
-import { playWithFavoritesOnlyResolution } from './player/favorites-only-actions.js';
+import { makeFavoritesOnlyAfterPlay, playWithFavoritesOnlyResolution } from './player/favorites-only-actions.js';
 
 const W = window, D = document, C = W.APP_CONFIG || {};
 const { $, toStr, escHtml, isMobileUA } = W.AppUtils || { $: id => D.getElementById(id), toStr: v => v == null ? '' : String(v), escHtml: s => String(s||''), isMobileUA: () => false };
@@ -67,6 +67,10 @@ class AlbumsManager {
       
       const pIdx = data._pTracks.findIndex(t => t.uid === uid); if (pIdx === -1) return;
 
+      const afterPlay = makeFavoritesOnlyAfterPlay({
+        highlight: (i, meta) => this.highlightCurrentTrack(i, meta),
+        ensureBlock: (i, o) => W.PlayerUI?.ensurePlayerBlock?.(i, o)
+      });
       return playWithFavoritesOnlyResolution({
         list: data._pTracks,
         uid,
@@ -75,10 +79,7 @@ class AlbumsManager {
         play: (list, trackUid) => pc.playExactFromPlaylist?.(list, trackUid, { dir: 1 }),
         addFavorite: trackUid => pc.toggleFavorite(trackUid, { fromAlbum: true, albumKey: aKey }),
         disableMode: () => localStorage.setItem('favoritesOnlyMode', '0'),
-        afterPlay: () => {
-          this.highlightCurrentTrack(pIdx, { uid, albumKey: aKey });
-          W.PlayerUI?.ensurePlayerBlock?.(pIdx, { userInitiated: true });
-        }
+        afterPlay: () => afterPlay({ index: pIdx, uid, albumKey: aKey })
       });
     });
 
