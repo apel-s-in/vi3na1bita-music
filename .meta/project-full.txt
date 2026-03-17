@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-bb5ae2fd761c41099100ac5fffa1ead776660a3f.idx
-│   │       ├── pack-bb5ae2fd761c41099100ac5fffa1ead776660a3f.pack
-│   │       └── pack-bb5ae2fd761c41099100ac5fffa1ead776660a3f.rev
+│   │       ├── pack-25ca5096849fbdf1143feddb46505d9d1fca3b48.idx
+│   │       ├── pack-25ca5096849fbdf1143feddb46505d9d1fca3b48.pack
+│   │       └── pack-25ca5096849fbdf1143feddb46505d9d1fca3b48.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -283,6 +283,7 @@ vi3na1bita-music/
 │   │   ├── albums/
 │   │   │   └── specials.js
 │   │   ├── player/
+│   │   │   ├── favorites-only-actions.js
 │   │   │   └── favorites-only-resolver.js
 │   │   ├── player-ui/
 │   │   │   └── lyrics.js
@@ -400,7 +401,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-17 13:54:50 UTC
+Сгенерировано: 2026-03-17 14:09:22 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2666,11 +2667,11 @@ window.PlaybackCache.getWindowState = getWindowState; window.PlaybackCache.prote
 })();
 
 //=================================================
-// FILE: /scripts/app/player/favorites-only-resolver.js
+// FILE: /scripts/app/player/favorites-only-actions.js
 const W = window;
 const esc = s => W.Utils?.escapeHtml?.(String(s || '')) || String(s || '');
 
-export function openFavoritesOnlyConflictModal({ track, onDisable, onAddFavorite, hidden = false } = {}) {
+function openFavoritesOnlyConflictModal({ track, onDisable, onAddFavorite, hidden = false } = {}) {
   if (!W.Modals?.choice || !track) return null;
   return W.Modals.choice({
     title: 'Режим только избранные',
@@ -2696,7 +2697,148 @@ export function openFavoritesOnlyConflictModal({ track, onDisable, onAddFavorite
   });
 }
 
-export default { openFavoritesOnlyConflictModal };
+function playWithFavoritesOnlyResolution({
+  list = [],
+  uid,
+  albumKey = '',
+  track = null,
+  hidden = false,
+  play,
+  addFavorite,
+  disableMode,
+  afterPlay
+} = {}) {
+  const pc = W.playerCore;
+  const favOn = localStorage.getItem('favoritesOnlyMode') === '1';
+  const gate = W.FavoritesOnlyResolver?.canLaunchTrackInFavoritesOnlyContext?.({ uid, albumKey }) || { ok: true };
+
+  const runPlay = () => {
+    const ok = play?.(list, uid);
+    if (ok !== false) {
+      pc?.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true });
+      afterPlay?.();
+    }
+    return ok;
+  };
+
+  if (!favOn || gate.ok) return runPlay();
+
+  return openFavoritesOnlyConflictModal({
+    track,
+    hidden: hidden || gate.reason === 'hidden',
+    onDisable: () => {
+      disableMode?.();
+      runPlay();
+    },
+    onAddFavorite: (hidden || gate.reason === 'hidden') ? null : () => {
+      addFavorite?.(uid);
+      runPlay();
+    }
+  });
+}
+
+export { openFavoritesOnlyConflictModal, playWithFavoritesOnlyResolution };
+export default { openFavoritesOnlyConflictModal, playWithFavoritesOnlyResolution };
+
+//=================================================
+// FILE: /scripts/app/player/favorites-only-resolver.js
+const W = window;
+
+const sUid = v => String(v || '').trim() || null;
+const isFavView = key => String(key || '') === (W.SPECIAL_FAVORITES_KEY || '__favorites__');
+const isShowcase = key => String(key || '').startsWith(W.SPECIAL_SHOWCASE_KEY || '__showcase__');
+
+const normalizeTrack = t => t && sUid(t.uid) ? t : null;
+
+const getShowcaseHiddenSet = (albumKey) => {
+  try {
+    if (!isShowcase(albumKey) || !W.ShowcaseManager?._ctxHiddenSet) return new Set();
+    const raw = String(albumKey || '');
+    const id = raw.includes(':') ? raw.slice(raw.indexOf(':') + 1) : '__default__';
+    return new Set(W.ShowcaseManager._ctxHiddenSet(id));
+  } catch {
+    return new Set();
+  }
+};
+
+function resolveFavoritesOnlyState({
+  sourcePlaylist = [],
+  playingAlbum = '',
+  favoritesOnly = false,
+  currentUid = null,
+  isFavorite = () => false,
+  favoritesState = { active: [], inactive: [] }
+} = {}) {
+  const src = sourcePlaylist.map(normalizeTrack).filter(Boolean);
+  const hiddenSet = getShowcaseHiddenSet(playingAlbum);
+  const activeFavSet = new Set((favoritesState.active || []).map(i => sUid(i.uid)).filter(Boolean));
+
+  const basePlayable = src.filter(t => {
+    const uid = sUid(t.uid);
+    if (!uid) return false;
+    if (hiddenSet.has(uid)) return false;
+    if (isFavView(playingAlbum) && !activeFavSet.has(uid)) return false;
+    return true;
+  });
+
+  const favPlayable = basePlayable.filter(t => isFavorite(sUid(t.uid)));
+  const resolved = favoritesOnly ? favPlayable : basePlayable;
+  const currentAllowed = !!resolved.find(t => sUid(t.uid) === sUid(currentUid));
+  const currentIndex = resolved.findIndex(t => sUid(t.uid) === sUid(currentUid));
+
+  return {
+    sourcePlaylist: src,
+    playingAlbum,
+    hiddenSet,
+    basePlayable,
+    favoritesPlayable: favPlayable,
+    resolvedPlaylist: resolved,
+    currentAllowed,
+    currentIndex,
+    firstPlayableUid: sUid(resolved[0]?.uid),
+    isEmptyForFavoritesMode: favPlayable.length === 0
+  };
+}
+
+function getFavoritesOnlyVisibleUidSet({
+  sourcePlaylist = [],
+  playingAlbum = '',
+  isFavorite = () => false,
+  favoritesState = { active: [], inactive: [] }
+} = {}) {
+  const st = resolveFavoritesOnlyState({
+    sourcePlaylist,
+    playingAlbum,
+    favoritesOnly: true,
+    currentUid: null,
+    isFavorite,
+    favoritesState
+  });
+  return new Set((st.resolvedPlaylist || []).map(t => sUid(t.uid)).filter(Boolean));
+}
+
+function canLaunchTrackInFavoritesOnlyContext({ uid, albumKey } = {}) {
+  const safeUid = sUid(uid);
+  if (!safeUid) return { ok: false, reason: 'bad_uid' };
+  if (!W.playerCore) return { ok: true };
+  if (String(localStorage.getItem('favoritesOnlyMode') || '0') !== '1') return { ok: true };
+
+  const hiddenSet = getShowcaseHiddenSet(albumKey);
+  if (hiddenSet.has(safeUid)) return { ok: false, reason: 'hidden' };
+  if (!W.playerCore.isFavorite(safeUid)) return { ok: false, reason: 'not_favorite' };
+  return { ok: true };
+}
+
+const api = {
+  resolveFavoritesOnlyState,
+  getFavoritesOnlyVisibleUidSet,
+  canLaunchTrackInFavoritesOnlyContext
+};
+
+W.FavoritesOnlyResolver = api;
+
+export { resolveFavoritesOnlyState, getFavoritesOnlyVisibleUidSet, canLaunchTrackInFavoritesOnlyContext };
+export default api;
 
 //=================================================
 // FILE: /scripts/app/profile/achievements-view.js
