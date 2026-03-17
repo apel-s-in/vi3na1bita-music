@@ -27,6 +27,14 @@ function openFavoritesOnlyConflictModal({ track, onDisable, onAddFavorite, hidde
   });
 }
 
+function makeFavoritesOnlyAfterPlay({ highlight, ensureBlock } = {}) {
+  return ({ index = -1, uid = '', albumKey = '' } = {}) => {
+    highlight?.(index, { uid, albumKey });
+    ensureBlock?.(index, { userInitiated: true });
+    W.PlayerUI?.updatePlaylistFiltering?.();
+  };
+}
+
 function playWithFavoritesOnlyResolution({
   list = [],
   uid,
@@ -67,5 +75,5 @@ function playWithFavoritesOnlyResolution({
   });
 }
 
-export { openFavoritesOnlyConflictModal, playWithFavoritesOnlyResolution };
-export default { openFavoritesOnlyConflictModal, playWithFavoritesOnlyResolution };
+export { openFavoritesOnlyConflictModal, makeFavoritesOnlyAfterPlay, playWithFavoritesOnlyResolution };
+export default { openFavoritesOnlyConflictModal, makeFavoritesOnlyAfterPlay, playWithFavoritesOnlyResolution };
