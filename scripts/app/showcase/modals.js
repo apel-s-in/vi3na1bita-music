@@ -83,5 +83,9 @@ export const openShowcaseSharedPlaylistConfirm = ({ raw: r, trk: t, esc, createP
     mA?.confirm?.({ title: '🎵 Вам прислан плейлист', textHtml: `<b>${esc(d.n)}</b><br><br>Доступно треков: ${u.length} из ${d.u.length}.${m > 0 ? '<br><span class="sc-shared-warn">Часть треков недоступна.</span>' : ''}`, confirmText: 'Добавить', cancelText: 'Отмена', onConfirm: () => cP(u, false, `${d.n} (Присланный)`) });
   } catch { n?.error?.('Ошибка чтения ссылки'); }
 };
+export const openShowcaseSearchSettingsModal = ({ modalApi: mA }) => {
+  const m = mA?.open?.({ title: 'Настройки поиска', maxWidth: 400, bodyHtml: `<div class="sm-note" style="margin-bottom:18px;text-align:left;color:#9db7dd">Настройте параметры умного поиска. Продвинутые семантические алгоритмы в разработке.</div><div class="sleep-custom-card" style="margin-bottom:20px;display:flex;flex-direction:column;gap:14px"><label class="sleep-check"><input type="checkbox" checked><span>Поиск по тексту песен (Lyrics)</span></label><label class="sleep-check"><input type="checkbox" checked><span>Учитывать жанры и настроения</span></label><label class="sleep-check"><input type="checkbox"><span>Искать только в Избранном</span></label><label class="sleep-check"><input type="checkbox"><span>Строгое совпадение фразы</span></label></div><div class="om-actions"><button class="modal-action-btn" data-act="cancel">Сбросить</button><button class="modal-action-btn online" data-act="apply">Применить</button></div>` });
+  if (m) m.addEventListener('click', e => { if (e.target.closest('.modal-action-btn')) m.remove(); }); return m;
+};
 export const openShowcasePaletteModal = ({ title: t, items: i, value: v, resetText: r, onPick: o, modalHelper: m }) => m?.({ title: t, items: i, value: v, resetText: r, onPick: o }) || null;
-export default { openShowcaseSheetModal, openShowcaseAddToPlaylistModal, openShowcaseSettingsModal, openShowcaseSharedPlaylistConfirm, openShowcasePaletteModal };
+export default { openShowcaseSheetModal, openShowcaseAddToPlaylistModal, openShowcaseSettingsModal, openShowcaseSharedPlaylistConfirm, openShowcasePaletteModal, openShowcaseSearchSettingsModal };
