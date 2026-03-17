@@ -47,7 +47,7 @@ export async function loadFavoritesAlbum(ctx) {
         const tr = window.PlaybackContextSource?.getSourcePlaylistForContext?.(FAV) || [];
         const idx = tr.findIndex(t => t.uid === u);
         if (idx >= 0) { pc.setPlaylist(tr, idx, { artist: 'Витрина Разбита', album: 'Избранное', cover: FAV_COVER }, { preservePosition: false }); pc.play(idx); pc.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true }); ctx.highlightCurrentTrack(-1, { uid: u, albumKey: aK }); window.PlayerUI?.ensurePlayerBlock?.(idx, { userInitiated: true }); window.PlayerUI?.applyFavoritesOnlyDomFilter?.(); requestAnimationFrame(() => window.PlayerUI?.applyFavoritesOnlyDomFilter?.()); }
-      } else pc.showInactiveFavoriteModal({ uid: u, title: window.TrackRegistry?.getTrackByUid(u)?.title || 'Трек', onDeleted: () => { rb(); pc.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true }); window.PlayerUI?.updatePlaylistFiltering?.(); } });
+      } else pc.showInactiveFavoriteModal({ uid: u, title: window.TrackRegistry?.getTrackByUid(u)?.title || 'Трек', onDeleted: () => { rb(); pc.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true }); window.PlayerUI?.applyFavoritesOnlyDomFilter?.(); requestAnimationFrame(() => window.PlayerUI?.applyFavoritesOnlyDomFilter?.()); } });
     });
 
     window.playerCore?.onFavoritesChanged(() => {
