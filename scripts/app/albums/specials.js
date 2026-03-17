@@ -46,8 +46,8 @@ export async function loadFavoritesAlbum(ctx) {
         ctx.setPlayingAlbum(FAV);
         const tr = pc.getFavoritesState().active.map(i => ({ ...(window.TrackRegistry?.getTrackByUid(i.uid) || {}), uid: i.uid, album: 'Избранное', cover: FAV_COVER, sourceAlbum: i.sourceAlbum }));
         const idx = tr.findIndex(t => t.uid === u);
-        if (idx >= 0) { pc.setPlaylist(tr, idx, { artist: 'Витрина Разбита', album: 'Избранное', cover: FAV_COVER }, { preservePosition: false }); pc.play(idx); ctx.highlightCurrentTrack(-1, { uid: u, albumKey: aK }); window.PlayerUI?.ensurePlayerBlock?.(idx, { userInitiated: true }); window.PlayerUI?.updateAvailableTracksForPlayback?.(); }
-      } else pc.showInactiveFavoriteModal({ uid: u, title: window.TrackRegistry?.getTrackByUid(u)?.title || 'Трек', onDeleted: () => { rb(); window.PlayerUI?.updateAvailableTracksForPlayback?.(); } });
+        if (idx >= 0) { pc.setPlaylist(tr, idx, { artist: 'Витрина Разбита', album: 'Избранное', cover: FAV_COVER }, { preservePosition: false }); pc.play(idx); pc.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true }); ctx.highlightCurrentTrack(-1, { uid: u, albumKey: aK }); window.PlayerUI?.ensurePlayerBlock?.(idx, { userInitiated: true }); window.PlayerUI?.updatePlaylistFiltering?.(); }
+      } else pc.showInactiveFavoriteModal({ uid: u, title: window.TrackRegistry?.getTrackByUid(u)?.title || 'Трек', onDeleted: () => { rb(); pc.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true }); window.PlayerUI?.updatePlaylistFiltering?.(); } });
     });
 
     window.playerCore?.onFavoritesChanged(() => {
@@ -57,7 +57,8 @@ export async function loadFavoritesAlbum(ctx) {
           const aT = pc.getFavoritesState().active.map(i => ({ ...(window.TrackRegistry?.getTrackByUid(i.uid) || {}), uid: i.uid, album: 'Избранное', cover: FAV_COVER, sourceAlbum: i.sourceAlbum }));
           if (aT.length) pc.originalPlaylist = aT;
         }
-        window.PlayerUI?.updateAvailableTracksForPlayback?.();
+        pc.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true });
+        window.PlayerUI?.updatePlaylistFiltering?.();
       }
     });
   }
