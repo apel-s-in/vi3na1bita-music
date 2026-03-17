@@ -5,8 +5,7 @@
 // UID.094_(No-paralysis rule)_(обычные альбомы обязаны работать без intel-слоя)_(любой semantic enhancement на строке трека только optional)
 import { injectIndicator } from '../ui/offline-indicators.js';
 import { renderFavoriteStar, setFavoriteStarState } from '../ui/icon-utils.js';
-import { canLaunchTrackInFavoritesOnlyContext } from './player/favorites-only-resolver.js';
-import { openFavoritesOnlyConflictModal } from './player/favorites-only-actions.js';
+import { playWithFavoritesOnlyResolution } from './player/favorites-only-actions.js';
 
 const W = window, D = document, C = W.APP_CONFIG || {};
 const { $, toStr, escHtml, isMobileUA } = W.AppUtils || { $: id => D.getElementById(id), toStr: v => v == null ? '' : String(v), escHtml: s => String(s||''), isMobileUA: () => false };
@@ -68,33 +67,19 @@ class AlbumsManager {
       
       const pIdx = data._pTracks.findIndex(t => t.uid === uid); if (pIdx === -1) return;
 
-      const gate = canLaunchTrackInFavoritesOnlyContext({ uid, albumKey: aKey });
-      if (!gate.ok && localStorage.getItem('favoritesOnlyMode') === '1') {
-        const tr = data._pTracks[pIdx];
-        return openFavoritesOnlyConflictModal({
-          track: tr,
-          hidden: false,
-          onDisable: () => {
-            localStorage.setItem('favoritesOnlyMode', '0');
-            pc.playExactFromPlaylist?.(data._pTracks, uid, { dir: 1 });
-            pc.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true });
-            this.highlightCurrentTrack(pIdx, { uid, albumKey: aKey });
-            W.PlayerUI?.ensurePlayerBlock?.(pIdx, { userInitiated: true });
-          },
-          onAddFavorite: () => {
-            pc.toggleFavorite(uid, { fromAlbum: true, albumKey: aKey });
-            pc.playExactFromPlaylist?.(data._pTracks, uid, { dir: 1 });
-            pc.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true });
-            this.highlightCurrentTrack(pIdx, { uid, albumKey: aKey });
-            W.PlayerUI?.ensurePlayerBlock?.(pIdx, { userInitiated: true });
-          }
-        });
-      }
-
-      if (!pc.playExactFromPlaylist?.(data._pTracks, uid, { dir: 1 })) return;
-      pc.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true });
-      this.highlightCurrentTrack(pIdx, { uid, albumKey: aKey });
-      W.PlayerUI?.ensurePlayerBlock?.(pIdx, { userInitiated: true });
+      return playWithFavoritesOnlyResolution({
+        list: data._pTracks,
+        uid,
+        albumKey: aKey,
+        track: data._pTracks[pIdx],
+        play: (list, trackUid) => pc.playExactFromPlaylist?.(list, trackUid, { dir: 1 }),
+        addFavorite: trackUid => pc.toggleFavorite(trackUid, { fromAlbum: true, albumKey: aKey }),
+        disableMode: () => localStorage.setItem('favoritesOnlyMode', '0'),
+        afterPlay: () => {
+          this.highlightCurrentTrack(pIdx, { uid, albumKey: aKey });
+          W.PlayerUI?.ensurePlayerBlock?.(pIdx, { userInitiated: true });
+        }
+      });
     });
 
     W.playerCore?.onFavoritesChanged(d => D.querySelectorAll(d?.albumKey ? `.like-star[data-album="${CSS.escape(d.albumKey)}"][data-uid="${CSS.escape(d.uid)}"]` : `.like-star[data-uid="${CSS.escape(d?.uid)}"]`).forEach(el => setFavoriteStarState(el, !!d?.liked)));
