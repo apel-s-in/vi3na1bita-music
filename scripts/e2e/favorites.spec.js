@@ -60,8 +60,16 @@ test('favoritesOnly hides non-starred rows in current playing album', async ({ p
   await rows.nth(0).click();
   await page.click('#favorites-btn');
   await expect(page.locator('#favorites-btn')).toHaveClass(/favorites-active/);
-  const hiddenCount = await page.evaluate(() => document.querySelectorAll('#track-list .track[data-hidden-by-favonly="1"]').length);
-  expect(hiddenCount).toBeGreaterThan(0);
+  await page.waitForTimeout(250);
+  const st = await page.evaluate(() => {
+    const all = [...document.querySelectorAll('#track-list .track[data-uid]')];
+    return {
+      hidden: all.filter(x => x.hasAttribute('data-hidden-by-favonly')).length,
+      visibleUnfav: all.filter(x => !x.hasAttribute('data-hidden-by-favonly')).map(x => x.dataset.uid).filter(uid => !window.playerCore?.isFavorite?.(uid))
+    };
+  });
+  expect(st.hidden).toBeGreaterThan(0);
+  expect(st.visibleUnfav.length).toBe(0);
 });
 
 test('favoritesOnly modal keeps previous playback on cancel', async ({ page }) => {
