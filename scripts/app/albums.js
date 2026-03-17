@@ -6,6 +6,7 @@
 import { injectIndicator } from '../ui/offline-indicators.js';
 import { renderFavoriteStar, setFavoriteStarState } from '../ui/icon-utils.js';
 import { canLaunchTrackInFavoritesOnlyContext } from './player/favorites-only-resolver.js';
+import { openFavoritesOnlyConflictModal } from './player/favorites-only-actions.js';
 
 const W = window, D = document, C = W.APP_CONFIG || {};
 const { $, toStr, escHtml, isMobileUA } = W.AppUtils || { $: id => D.getElementById(id), toStr: v => v == null ? '' : String(v), escHtml: s => String(s||''), isMobileUA: () => false };
