@@ -36,14 +36,29 @@
     if (lst) {
       const act = f && cA === pA;
       lst.classList.toggle('favonly-filtered', act);
-      if (act && W.FavoritesOnlyResolver?.getFavoritesOnlyVisibleUidSet) {
-        const vis = W.FavoritesOnlyResolver.getFavoritesOnlyVisibleUidSet({
-          sourcePlaylist: c.originalPlaylist || c.getPlaylistSnapshot?.() || [],
-          playingAlbum: pA,
+      if (act && W.FavoritesOnlyResolver?.getFavoritesOnlyVisibleUidSetForContext) {
+        let src = [], type = 'album';
+        if (cA === W.SPECIAL_FAVORITES_KEY) {
+          type = 'favorites';
+        } else if (W.Utils?.isShowcaseContext?.(cA)) {
+          type = 'showcase';
+          src = W.ShowcaseManager?.getContextSourcePlaylist?.(cA) || [];
+        } else {
+          src = AM()?.getAlbumSourcePlaylist?.(cA) || [];
+        }
+
+        const vis = W.FavoritesOnlyResolver.getFavoritesOnlyVisibleUidSetForContext({
+          contextType: type,
+          albumKey: cA,
+          sourcePlaylist: src,
           isFavorite: uid => c.isFavorite?.(uid),
           favoritesState: c.getFavoritesState?.() || { active: [], inactive: [] }
         });
-        lst.querySelectorAll('.track[data-uid], .showcase-track[data-uid]').forEach(r => r.toggleAttribute('data-hidden-by-favonly', !vis.has(String(r.dataset.uid || '').trim())));
+
+        lst.querySelectorAll('.track[data-uid], .showcase-track[data-uid]').forEach(r => {
+          const uid = String(r.dataset.uid || '').trim();
+          r.toggleAttribute('data-hidden-by-favonly', !!uid && !vis.has(uid));
+        });
       } else {
         lst.querySelectorAll('.track[data-hidden-by-favonly], .showcase-track[data-hidden-by-favonly]').forEach(r => r.removeAttribute('data-hidden-by-favonly'));
       }
