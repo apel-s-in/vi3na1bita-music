@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-60189839e1f59c3697cca8bcac7216819461466c.idx
-│   │       ├── pack-60189839e1f59c3697cca8bcac7216819461466c.pack
-│   │       └── pack-60189839e1f59c3697cca8bcac7216819461466c.rev
+│   │       ├── pack-df88a0b3f304113952b8ff2fb184b6d22b380e32.idx
+│   │       ├── pack-df88a0b3f304113952b8ff2fb184b6d22b380e32.pack
+│   │       └── pack-df88a0b3f304113952b8ff2fb184b6d22b380e32.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -402,7 +402,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-17 18:39:30 UTC
+Сгенерировано: 2026-03-17 19:01:38 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -8120,7 +8120,7 @@ body.news-view #cover-wrap{display:none!important}
 .track.current{background:#232b38;border-left:3px solid var(--secondary-color)}
 .track:active{transform:scale(.98);background:rgba(255,255,255,.08)!important}
 .track.inactive,.showcase-track.inactive,.sc-edit-row.inactive,.sc-search-result.inactive{opacity:.45;filter:grayscale(.6)}
-.track-list.favonly-filtered .track[data-hidden-by-favonly="1"],.track-list.favonly-filtered .showcase-track[data-hidden-by-favonly="1"]{display:none!important}
+.favonly-filtered [data-hidden-by-favonly]{display:none!important}
 .tnum{min-width:30px;color:var(--c-blue);font-weight:500}
 .track-title{margin-left:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
 .like-star{
