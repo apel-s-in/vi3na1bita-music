@@ -262,7 +262,7 @@ body.news-view #cover-wrap{display:none!important}
 .track.current{background:#232b38;border-left:3px solid var(--secondary-color)}
 .track:active{transform:scale(.98);background:rgba(255,255,255,.08)!important}
 .track.inactive,.showcase-track.inactive,.sc-edit-row.inactive,.sc-search-result.inactive{opacity:.45;filter:grayscale(.6)}
-.track-list.favonly-filtered .track[data-hidden-by-favonly="1"],.track-list.favonly-filtered .showcase-track[data-hidden-by-favonly="1"]{display:none!important}
+.favonly-filtered [data-hidden-by-favonly]{display:none!important}
 .tnum{min-width:30px;color:var(--c-blue);font-weight:500}
 .track-title{margin-left:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
 .like-star{
