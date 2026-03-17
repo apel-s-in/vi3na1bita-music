@@ -79,33 +79,32 @@ class ShowcaseManager {
       const gate = canLaunchTrackInFavoritesOnlyContext({ uid: u, albumKey: k || `${SHOW}:${this._ctxId()}` });
       if (!gate.ok) {
         const t = bldTrk(u);
-        return W.Modals?.confirm?.({
+        return W.Modals?.choice?.({
           title: 'Режим только избранные',
-          textHtml: `Плеер работает в режиме <b>только избранные</b>.<br><br><b>${esc(t?.title || 'Трек')}</b> не отмечен ⭐ или скрыт.<br><br>Выберите действие:`,
-          confirmText: 'Отключить F и воспроизвести',
-          cancelText: 'Отмена',
-          onConfirm: () => {
-            localStorage.setItem('favoritesOnlyMode', '0');
-            this._actions.playCtx({ ctxId: () => this._ctxId(), getActiveListTracks: () => this.getActiveListTracks(), hi: x => this._hi(x), markLast: (x, i) => this._markLast(x, i) }, u, s, l, k);
-            W.playerCore?.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true });
-          }
-        }) && setTimeout(() => {
-          const m = document.querySelector('#modals-container .modal-bg:last-child');
-          const box = m?.querySelector('.om-actions, .modal-body');
-          if (!box || m.querySelector('[data-fav-add]') || gate.reason === 'hidden') return;
-          const add = document.createElement('button');
-          add.type = 'button';
-          add.className = 'modal-action-btn';
-          add.setAttribute('data-fav-add', '1');
-          add.textContent = 'Добавить ⭐ и играть в F';
-          add.onclick = () => {
-            W.playerCore?.toggleFavorite?.(u, { albumKey: t?.sourceAlbum });
-            m.remove();
-            this._actions.playCtx({ ctxId: () => this._ctxId(), getActiveListTracks: () => this.getActiveListTracks(), hi: x => this._hi(x), markLast: (x, i) => this._markLast(x, i) }, u, s, l, k);
-            W.playerCore?.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true });
-          };
-          box.appendChild(add);
-        }, 0);
+          textHtml: `Плеер работает в режиме <b>только избранные</b>.<br><br><b>${esc(t?.title || 'Трек')}</b>${gate.reason === 'hidden' ? ' скрыт.' : ' не отмечен ⭐.'}<br><br>Выберите действие:`,
+          actions: [
+            {
+              key: 'disable',
+              text: 'Отключить F и воспроизвести',
+              primary: true,
+              onClick: () => {
+                localStorage.setItem('favoritesOnlyMode', '0');
+                this._actions.playCtx({ ctxId: () => this._ctxId(), getActiveListTracks: () => this.getActiveListTracks(), hi: x => this._hi(x), markLast: (x, i) => this._markLast(x, i) }, u, s, l, k);
+                W.playerCore?.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true });
+              }
+            },
+            ...(gate.reason === 'hidden' ? [] : [{
+              key: 'add',
+              text: 'Добавить ⭐ и играть в F',
+              onClick: () => {
+                W.playerCore?.toggleFavorite?.(u, { albumKey: t?.sourceAlbum });
+                this._actions.playCtx({ ctxId: () => this._ctxId(), getActiveListTracks: () => this.getActiveListTracks(), hi: x => this._hi(x), markLast: (x, i) => this._markLast(x, i) }, u, s, l, k);
+                W.playerCore?.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true });
+              }
+            }]),
+            { key: 'cancel', text: 'Отмена', onClick: () => {} }
+          ]
+        });
       }
     }
     return this._actions.playCtx({ ctxId: () => this._ctxId(), getActiveListTracks: () => this.getActiveListTracks(), hi: x => this._hi(x), markLast: (x, i) => this._markLast(x, i) }, u, s, l, k);
