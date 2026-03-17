@@ -34,8 +34,14 @@
 
     const lst = D.getElementById('track-list'), cA = AM()?.getCurrentAlbum?.();
     if (lst) {
-      const act = f && cA === pA && !U.isSpecialAlbumKey(cA); lst.classList.toggle('favonly-filtered', act);
-      if (act) { const lkd = new Set(c.getLikedUidsForAlbum(cA)); lst.querySelectorAll('.track[data-uid]').forEach(r => r.toggleAttribute('data-hidden-by-favonly', !lkd.has(r.dataset.uid))); }
+      const act = f && cA === pA;
+      lst.classList.toggle('favonly-filtered', act);
+      if (act) {
+        const vis = new Set((c.getPlaylistSnapshot?.() || []).map(t => String(t?.uid || '').trim()).filter(Boolean));
+        lst.querySelectorAll('.track[data-uid], .showcase-track[data-uid]').forEach(r => r.toggleAttribute('data-hidden-by-favonly', !vis.has(String(r.dataset.uid || '').trim())));
+      } else {
+        lst.querySelectorAll('.track[data-hidden-by-favonly], .showcase-track[data-hidden-by-favonly]').forEach(r => r.removeAttribute('data-hidden-by-favonly'));
+      }
     }
   };
 
@@ -80,9 +86,16 @@
           'lyrics-toggle-btn': () => { W.LyricsController?.toggleLyricsView?.(); W.eventLogger?.log('FEATURE_USED', c.getCurrentTrackUid(), { feature: 'lyrics' }); },
           'animation-btn': () => W.LyricsController?.toggleAnimation?.(),
           'favorites-btn': () => {
-            const nx = !U.lsGetBool01('favoritesOnlyMode'), pa = AM()?.getPlayingAlbum?.();
-            if (nx && (!c.getLikedUidsForAlbum(pa)?.length && (pa !== W.SPECIAL_FAVORITES_KEY || !c.getFavoritesState().active.length))) return U.ui.toast('Отметьте понравившийся трек ⭐', 'info');
-            U.lsSetBool01('favoritesOnlyMode', nx); c.applyFavoritesOnlyFilter?.(); W.PlayerUI.updateAvailableTracksForPlayback(); syncUI(); U.ui.toast(nx ? '⭐ Только избранные' : 'Играют все треки', nx ? 'success' : 'info');
+            const nx = !U.lsGetBool01('favoritesOnlyMode');
+            U.lsSetBool01('favoritesOnlyMode', nx);
+            const ok = c.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true });
+            if (nx && ok === false) {
+              U.lsSetBool01('favoritesOnlyMode', false);
+              syncUI();
+              return U.ui.toast('Отметьте понравившийся трек ⭐', 'info');
+            }
+            syncUI();
+            U.ui.toast(nx ? '⭐ Только избранные' : 'Играют все треки', nx ? 'success' : 'info');
           }
         })[b.id]?.();
       });
