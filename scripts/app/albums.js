@@ -132,6 +132,19 @@ class AlbumsManager {
 
   getCurrentAlbum() { return this.curr; } getPlayingAlbum() { return this.playing; } setPlayingAlbum(k) { this.playing = k; }
   getPlayingAlbumTracks() { if (W.Utils?.isShowcaseContext?.(this.playing)) return W.ShowcaseManager?.getActiveListTracks?.() || []; const d = this.cache.get(this.playing); return d ? (d._pTracks || d.tracks) : []; }
+  getAlbumSourcePlaylist(key) {
+    const k = toStr(key || '').trim();
+    if (!k) return [];
+    if (k === FAV) {
+      const pc = W.playerCore, st = pc?.getFavoritesState?.() || { active: [] };
+      return (st.active || []).map(i => ({ ...(W.TrackRegistry?.getTrackByUid(i.uid) || {}), uid: i.uid, sourceAlbum: i.sourceAlbum || getTrackByUid?.(i.uid)?.sourceAlbum || null, album: 'Избранное', cover: 'img/Fav_logo.png' })).filter(t => t?.uid);
+    }
+    if (W.Utils?.isShowcaseContext?.(k)) return W.ShowcaseManager?.getContextSourcePlaylist?.(k) || [];
+    const d = this.cache.get(k);
+    if (!d) return [];
+    if (!d._pTracks) d._pTracks = d.tracks.filter(t => t.src).map(t => ({ src: t.src, sources: t.sources, title: t.title, artist: d.artist, album: d.title, cover: this.covers.get(k) || LOGO, uid: t.uid, lyrics: t.lyrics, fulltext: t.fulltext, hasLyrics: t.hasLyrics, sourceAlbum: k }));
+    return d._pTracks || [];
+  }
   renderAlbumTitle(t, mod) { const el = $('active-album-title'); if(el) { el.textContent = t; el.className = `active-album-title ${mod||''}`; } }
 }
 W.AlbumsManager = new AlbumsManager(); export default W.AlbumsManager;
