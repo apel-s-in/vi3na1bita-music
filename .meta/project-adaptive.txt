@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3de966c9548613cfcb6e4ffeee5a5bd0334d4754.idx
-│   │       ├── pack-3de966c9548613cfcb6e4ffeee5a5bd0334d4754.pack
-│   │       └── pack-3de966c9548613cfcb6e4ffeee5a5bd0334d4754.rev
+│   │       ├── pack-91d7ac3da3d1accba48ce321ab60045f129e0724.idx
+│   │       ├── pack-91d7ac3da3d1accba48ce321ab60045f129e0724.pack
+│   │       └── pack-91d7ac3da3d1accba48ce321ab60045f129e0724.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -402,7 +402,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-17 19:57:52 UTC
+Сгенерировано: 2026-03-17 20:29:58 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3582,7 +3582,7 @@ export const createShowcaseStore = ({ trk, getCat, ls = localStorage }) => {
     save: p => { const a = Store.pl(), i = a.findIndex(x => x.id === p.id), n = normCtx(p, false, p.order || getCat()); i >= 0 ? a.splice(i, 1, n) : a.push(n); Store.setPl(a); },
     del: id => Store.setPl(Store.pl().filter(p => p.id !== id)),
     act: () => jGet('activeId', '__default__'), setAct: id => jSet('activeId', id),
-    ui: () => jGet('ui', { viewMode: 'flat', showNumbers: true, showHidden: false, hiddenPlacement: 'inline' }), setUi: v => jSet('ui', v),
+    ui: () => jGet('ui', { viewMode: 'flat', showNumbers: false, showHidden: false, hiddenPlacement: 'inline' }), setUi: v => jSet('ui', v),
     cols: () => jGet('albumColors', {}), setCols: v => jSet('albumColors', v),
     def: () => { const d = normCtx({ sortMode: 'album-desc', ...(jGet('default') || {}) }, true, getCat()); jSet('default', d); return d; },
     setDef: v => jSet('default', normCtx(v, true)), jGet, jSet, normSnap, normCtx, mkPl
