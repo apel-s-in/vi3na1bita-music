@@ -70,38 +70,36 @@ class AlbumsManager {
       const gate = canLaunchTrackInFavoritesOnlyContext({ uid, albumKey: aKey });
       if (!gate.ok && localStorage.getItem('favoritesOnlyMode') === '1') {
         const tr = data._pTracks[pIdx];
-        return W.Modals?.confirm?.({
+        return W.Modals?.choice?.({
           title: 'Режим только избранные',
           textHtml: `Плеер работает в режиме <b>только избранные</b>.<br><br><b>${escHtml(tr.title)}</b> не отмечен ⭐.<br><br>Выберите действие:`,
-          confirmText: 'Отключить F и воспроизвести',
-          cancelText: 'Отмена',
-          onConfirm: () => {
-            localStorage.setItem('favoritesOnlyMode', '0');
-            pc.playExactFromPlaylist?.(data._pTracks, uid, { dir: 1 });
-            pc.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true });
-            this.highlightCurrentTrack(pIdx, { uid, albumKey: aKey });
-            W.PlayerUI?.ensurePlayerBlock?.(pIdx, { userInitiated: true });
-          },
-          onCancel: () => {}
-        }) && setTimeout(() => {
-          const m = document.querySelector('#modals-container .modal-bg:last-child');
-          const box = m?.querySelector('.om-actions, .modal-body');
-          if (!box || m.querySelector('[data-fav-add]')) return;
-          const add = document.createElement('button');
-          add.type = 'button';
-          add.className = 'modal-action-btn';
-          add.setAttribute('data-fav-add', '1');
-          add.textContent = 'Добавить ⭐ и играть в F';
-          add.onclick = () => {
-            pc.toggleFavorite(uid, { fromAlbum: true, albumKey: aKey });
-            m.remove();
-            pc.playExactFromPlaylist?.(data._pTracks, uid, { dir: 1 });
-            pc.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true });
-            this.highlightCurrentTrack(pIdx, { uid, albumKey: aKey });
-            W.PlayerUI?.ensurePlayerBlock?.(pIdx, { userInitiated: true });
-          };
-          box.appendChild(add);
-        }, 0);
+          actions: [
+            {
+              key: 'disable',
+              text: 'Отключить F и воспроизвести',
+              primary: true,
+              onClick: () => {
+                localStorage.setItem('favoritesOnlyMode', '0');
+                pc.playExactFromPlaylist?.(data._pTracks, uid, { dir: 1 });
+                pc.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true });
+                this.highlightCurrentTrack(pIdx, { uid, albumKey: aKey });
+                W.PlayerUI?.ensurePlayerBlock?.(pIdx, { userInitiated: true });
+              }
+            },
+            {
+              key: 'add',
+              text: 'Добавить ⭐ и играть в F',
+              onClick: () => {
+                pc.toggleFavorite(uid, { fromAlbum: true, albumKey: aKey });
+                pc.playExactFromPlaylist?.(data._pTracks, uid, { dir: 1 });
+                pc.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true });
+                this.highlightCurrentTrack(pIdx, { uid, albumKey: aKey });
+                W.PlayerUI?.ensurePlayerBlock?.(pIdx, { userInitiated: true });
+              }
+            },
+            { key: 'cancel', text: 'Отмена', onClick: () => {} }
+          ]
+        });
       }
 
       if (!pc.playExactFromPlaylist?.(data._pTracks, uid, { dir: 1 })) return;
