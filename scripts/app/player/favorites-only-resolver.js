@@ -62,15 +62,13 @@ function getFavoritesOnlyVisibleUidSet({
   isFavorite = () => false,
   favoritesState = { active: [], inactive: [] }
 } = {}) {
-  const st = resolveFavoritesOnlyState({
+  return getFavoritesOnlyVisibleUidSetForContext({
+    contextType: isFavView(playingAlbum) ? 'favorites' : (isShowcase(playingAlbum) ? 'showcase' : 'album'),
+    albumKey: playingAlbum,
     sourcePlaylist,
-    playingAlbum,
-    favoritesOnly: true,
-    currentUid: null,
     isFavorite,
     favoritesState
   });
-  return new Set((st.resolvedPlaylist || []).map(t => sUid(t.uid)).filter(Boolean));
 }
 
 function canLaunchTrackInFavoritesOnlyContext({ uid, albumKey } = {}) {
