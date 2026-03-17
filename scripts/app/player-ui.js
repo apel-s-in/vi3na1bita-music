@@ -10,6 +10,30 @@
   const U = W.Utils, PC = () => W.playerCore, AM = () => W.AlbumsManager;
   const st = { isMini: false, seeking: false, vizOn: U.lsGetBool01('bitEnabled'), vizId: 0, ctx: null, provider: 'unknown' }, dom = { blk: null, now: null, mini: null, nUp: null, jump: null, el: {} };
 
+  const applyFavoritesOnlyDomFilter = () => {
+    const c = PC(), lst = D.getElementById('track-list'), cA = AM()?.getCurrentAlbum?.(), pA = AM()?.getPlayingAlbum?.(), f = U.lsGetBool01('favoritesOnlyMode');
+    if (!c || !lst) return;
+    const act = f && cA === pA;
+    lst.classList.toggle('favonly-filtered', act);
+    if (!act) {
+      lst.querySelectorAll('.track[data-hidden-by-favonly], .showcase-track[data-hidden-by-favonly]').forEach(r => r.removeAttribute('data-hidden-by-favonly'));
+      return;
+    }
+    const src = W.PlaybackContextSource?.getSourcePlaylistForContext?.(cA) || [];
+    const type = cA === W.SPECIAL_FAVORITES_KEY ? 'favorites' : (W.Utils?.isShowcaseContext?.(cA) ? 'showcase' : 'album');
+    const vis = W.FavoritesOnlyResolver?.getFavoritesOnlyVisibleUidSetForContext?.({
+      contextType: type,
+      albumKey: cA,
+      sourcePlaylist: src,
+      isFavorite: uid => c.isFavorite?.(uid),
+      favoritesState: c.getFavoritesState?.() || { active: [], inactive: [] }
+    }) || new Set();
+    lst.querySelectorAll('.track[data-uid], .showcase-track[data-uid]').forEach(r => {
+      const uid = String(r.dataset.uid || '').trim();
+      r.toggleAttribute('data-hidden-by-favonly', !!uid && !vis.has(uid));
+    });
+  };
+
   const syncUI = () => {
     const c = PC(); if (!c || !dom.blk) return;
     const t = c.getCurrentTrack(), p = c.isPlaying(), e = dom.el, f = U.lsGetBool01('favoritesOnlyMode'), oM = W.OfflineManager, isR2 = oM?.getMode?.() === 'R2', q = isR2 ? (oM?.getCQ() || 'hi') : U.pq.getState().mode, pA = AM()?.getPlayingAlbum?.();
@@ -32,37 +56,7 @@
       if (e.mNUp) e.mNUp.textContent = nt?.title || '—';
     }
 
-    const lst = D.getElementById('track-list'), cA = AM()?.getCurrentAlbum?.();
-    if (lst) {
-      const act = f && cA === pA;
-      lst.classList.toggle('favonly-filtered', act);
-      if (act && W.FavoritesOnlyResolver?.getFavoritesOnlyVisibleUidSetForContext) {
-        let src = [], type = 'album';
-        if (cA === W.SPECIAL_FAVORITES_KEY) {
-          type = 'favorites';
-        } else if (W.Utils?.isShowcaseContext?.(cA)) {
-          type = 'showcase';
-          src = W.ShowcaseManager?.getContextSourcePlaylist?.(cA) || [];
-        } else {
-          src = AM()?.getAlbumSourcePlaylist?.(cA) || [];
-        }
-
-        const vis = W.FavoritesOnlyResolver.getFavoritesOnlyVisibleUidSetForContext({
-          contextType: type,
-          albumKey: cA,
-          sourcePlaylist: src,
-          isFavorite: uid => c.isFavorite?.(uid),
-          favoritesState: c.getFavoritesState?.() || { active: [], inactive: [] }
-        });
-
-        lst.querySelectorAll('.track[data-uid], .showcase-track[data-uid]').forEach(r => {
-          const uid = String(r.dataset.uid || '').trim();
-          r.toggleAttribute('data-hidden-by-favonly', !!uid && !vis.has(uid));
-        });
-      } else {
-        lst.querySelectorAll('.track[data-hidden-by-favonly], .showcase-track[data-hidden-by-favonly]').forEach(r => r.removeAttribute('data-hidden-by-favonly'));
-      }
-    }
+    applyFavoritesOnlyDomFilter();
   };
 
   const onPQClick = async () => {
@@ -180,6 +174,6 @@
     syncUI();
   };
 
-  W.PlayerUI = { initialize: init, ensurePlayerBlock: (i, o) => ensureBlock(i, o?.userInitiated), updateMiniHeader: syncUI, updateNextUpLabel: syncUI, updatePlaylistFiltering: syncUI, togglePlayPause: () => PC().isPlaying() ? PC().pause() : PC().play(), switchAlbumInstantly: () => { if (PC().getIndex() >= 0) ensureBlock(PC().getIndex()); } };
+  W.PlayerUI = { initialize: init, ensurePlayerBlock: (i, o) => ensureBlock(i, o?.userInitiated), updateMiniHeader: syncUI, updateNextUpLabel: syncUI, updatePlaylistFiltering: syncUI, applyFavoritesOnlyDomFilter, togglePlayPause: () => PC().isPlaying() ? PC().pause() : PC().play(), switchAlbumInstantly: () => { if (PC().getIndex() >= 0) ensureBlock(PC().getIndex()); } };
   D.readyState === 'loading' ? D.addEventListener('DOMContentLoaded', init) : init();
 })(window, document);
