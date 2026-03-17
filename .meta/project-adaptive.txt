@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9135a95f7a56f72a7ab86892d93c07bd5a6cd7d1.idx
-│   │       ├── pack-9135a95f7a56f72a7ab86892d93c07bd5a6cd7d1.pack
-│   │       └── pack-9135a95f7a56f72a7ab86892d93c07bd5a6cd7d1.rev
+│   │       ├── pack-97387234678ec85c48d7fb1d5de5701623c7286d.idx
+│   │       ├── pack-97387234678ec85c48d7fb1d5de5701623c7286d.pack
+│   │       └── pack-97387234678ec85c48d7fb1d5de5701623c7286d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -402,7 +402,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-17 21:34:55 UTC
+Сгенерировано: 2026-03-17 21:36:36 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3522,6 +3522,7 @@ export default { renderShowcasePlaylists, renameShowcasePlaylist, shareShowcaseP
 export const renderShowcaseHeader = ({ edit: e, query: q, sortMode: s, resetAble: r, dirty: d, esc }) => `
   <div class="showcase-header-controls">
     ${e ? `<div class="showcase-edit-banner">✏️ РЕЖИМ РЕДАКТИРОВАНИЯ<div class="sc-edit-actions"><button class="showcase-btn sc-btn-save sc-btn-save-ok">💾 Сохранить</button><button class="showcase-btn sc-btn-create sc-btn-create-accent">✨ Создать</button><button class="showcase-btn sc-btn-reset ${d ? '' : 'sc-btn-disabled'} sc-btn-reset-warn" ${d ? '' : 'disabled'}>↺ Сброс</button><button class="showcase-btn sc-btn-exit sc-btn-exit-danger">✕ Выйти</button></div></div>` : ''}
+    <div class="sc-search-settings-row"><button class="showcase-btn sc-btn-search-cfg" id="sc-btn-search-cfg">⚙️ Настройки поиска</button><button class="showcase-btn sc-btn-search-close" id="sc-btn-search-close" title="Свернуть поиск">🔽</button></div>
     <div class="showcase-search-wrap"><input type="text" class="showcase-search" id="sc-search" placeholder="🔍 Поиск по всему каталогу..." value="${esc(q)}"><button type="button" class="showcase-search-clear" id="sc-search-clear" ${q ? '' : 'hidden'}>✕</button></div>
     ${!e ? `<div class="showcase-btns-row"><button class="showcase-btn sc-btn-edit">✏️ Редактировать</button>${r ? `<button class="showcase-btn sc-btn-master-reset sc-btn-half">↺ Сброс</button>` : ''}<button class="showcase-btn sc-btn-sort">⚙️ ${s !== 'user' ? '●' : ''} Настройки</button></div>` : ''}
     <div class="showcase-playlists-actions" id="sc-playlists-actions"></div><div class="showcase-playlists-list" id="sc-playlists"></div><div class="showcase-status-bar" id="sc-status"></div>
