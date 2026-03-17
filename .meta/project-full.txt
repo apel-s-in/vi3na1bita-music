@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e3abb77ecda131ebdba643d3867cb7c6b9e315ae.idx
-│   │       ├── pack-e3abb77ecda131ebdba643d3867cb7c6b9e315ae.pack
-│   │       └── pack-e3abb77ecda131ebdba643d3867cb7c6b9e315ae.rev
+│   │       ├── pack-d57b5eb2d85d9b90790e97e0196b8a6d7061d600.idx
+│   │       ├── pack-d57b5eb2d85d9b90790e97e0196b8a6d7061d600.pack
+│   │       └── pack-d57b5eb2d85d9b90790e97e0196b8a6d7061d600.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -440,7 +440,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-17 13:44:04 UTC
+Сгенерировано: 2026-03-17 13:44:40 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2181,7 +2181,9 @@ class AlbumsManager {
       this.curr = key; localStorage.setItem('currentAlbum', key);
       D.body.classList.toggle('news-view', key === NEWS);
       D.querySelectorAll('.album-icon').forEach(el => el.classList.toggle('active', el.dataset.album === key));
-      $('track-list')?.classList.remove('filtered'); W.PlayerUI?.switchAlbumInstantly?.(key);
+      $('track-list')?.classList.remove('filtered');
+      W.PlayerUI?.switchAlbumInstantly?.(key);
+      W.PlayerUI?.updatePlaylistFiltering?.();
     } catch (e) { console.error('[AlbumsManager] Ошибка:', e); W.NotificationSystem?.error('Ошибка загрузки'); } 
     finally { this.loading = false; }
   }
