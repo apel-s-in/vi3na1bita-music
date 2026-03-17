@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-91d7ac3da3d1accba48ce321ab60045f129e0724.idx
-│   │       ├── pack-91d7ac3da3d1accba48ce321ab60045f129e0724.pack
-│   │       └── pack-91d7ac3da3d1accba48ce321ab60045f129e0724.rev
+│   │       ├── pack-5cca85cb559fd384ca8b4f60ca6bb87f6523efce.idx
+│   │       ├── pack-5cca85cb559fd384ca8b4f60ca6bb87f6523efce.pack
+│   │       └── pack-5cca85cb559fd384ca8b4f60ca6bb87f6523efce.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -402,7 +402,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-17 20:29:58 UTC
+Сгенерировано: 2026-03-17 20:30:48 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3468,7 +3468,7 @@ export const renderShowcaseHeader = ({ edit: e, query: q, sortMode: s, resetAble
   <div class="showcase-header-controls">
     ${e ? `<div class="showcase-edit-banner">✏️ РЕЖИМ РЕДАКТИРОВАНИЯ<div class="sc-edit-actions"><button class="showcase-btn sc-btn-save sc-btn-save-ok">💾 Сохранить</button><button class="showcase-btn sc-btn-create sc-btn-create-accent">✨ Создать</button><button class="showcase-btn sc-btn-reset ${d ? '' : 'sc-btn-disabled'} sc-btn-reset-warn" ${d ? '' : 'disabled'}>↺ Сброс</button><button class="showcase-btn sc-btn-exit sc-btn-exit-danger">✕ Выйти</button></div></div>` : ''}
     <div class="showcase-search-wrap"><input type="text" class="showcase-search" id="sc-search" placeholder="🔍 Поиск по всему каталогу..." value="${esc(q)}"><button type="button" class="showcase-search-clear" id="sc-search-clear" ${q ? '' : 'hidden'}>✕</button></div>
-    ${!e ? `<div class="showcase-btns-row"><button class="showcase-btn sc-btn-edit">✏️ Редактировать</button>${r ? `<button class="showcase-btn sc-btn-master-reset sc-btn-half">↺ Сброс</button>` : ''}<button class="showcase-btn sc-btn-sort">⚙️ ${s !== 'user' ? '●' : ''} Настроить</button></div>` : ''}
+    ${!e ? `<div class="showcase-btns-row"><button class="showcase-btn sc-btn-edit">✏️ Редактировать</button>${r ? `<button class="showcase-btn sc-btn-master-reset sc-btn-half">↺ Сброс</button>` : ''}<button class="showcase-btn sc-btn-sort">⚙️ ${s !== 'user' ? '●' : ''} Настройки</button></div>` : ''}
     <div class="showcase-playlists-actions" id="sc-playlists-actions"></div><div class="showcase-playlists-list" id="sc-playlists"></div><div class="showcase-status-bar" id="sc-status"></div>
   </div><div id="sc-tracks-container"></div>`;
 
@@ -3514,7 +3514,7 @@ export const renderShowcaseEdit = ({ box, uids, draft: d, buildTrack: bT, esc, a
 export const renderShowcaseStatus = ({ root, count: c, isSearch: iS, ctx, ui, trackExists: tE, checkedCount: cC }) => {
   if (!root) return;
   const o = (ctx?.order || []).filter(tE), hS = new Set(ctx?.hidden || []), t = o.length, h = o.filter(u => hS.has(u)).length;
-  root.innerHTML = `<span>📋 ${iS ? `${c} найдено` : `${t} всего · ${t - h} активных · ${h} скрытых`}${cC ? `<span class="sc-status-checked"> · ✓ ${cC}</span>` : ''}</span><span class="sc-status-toggles"><span id="sc-tg-hidden" class="sc-status-toggle sc-status-toggle--icon" title="Показывать скрытые">${ui.showHidden ? '👁' : '🙈'}</span><span id="sc-tg-numbers" class="sc-status-toggle sc-status-toggle--icon ${ui.showNumbers ? '' : 'sc-status-toggle--dim'}" title="Нумерация">1,2,3</span><span id="sc-tg-view" class="sc-status-toggle sc-status-toggle--icon" title="Вид">${ui.viewMode === 'flat' ? '⊞' : '⊟'}</span><span id="sc-tg-placement" class="sc-status-toggle sc-status-toggle--text" title="Скрытые в конце">${ui.hiddenPlacement === 'end' ? '↓скр' : '≡скр'}</span></span>`;
+  root.innerHTML = `<span>📋 ${iS ? `${c} найдено` : `${t} всего · ${h} скрытых`}${cC ? `<span class="sc-status-checked"> · ✓ ${cC}</span>` : ''}</span><span class="sc-status-toggles"><span id="sc-tg-hidden" class="sc-status-toggle sc-status-toggle--icon" title="Показывать скрытые">${ui.showHidden ? '👁' : '🙈'}</span></span>`;
 };
 
 export const renderShowcaseSelectionBar = ({ selectedCount: sC, edit: e, onClick: oC }) => {
