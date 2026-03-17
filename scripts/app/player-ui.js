@@ -8,8 +8,6 @@
 (function (W, D) {
   'use strict';
   const U = W.Utils, PC = () => W.playerCore, AM = () => W.AlbumsManager;
-  let favResolver = null;
-  import('./player/favorites-only-resolver.js').then(m => favResolver = m).catch(() => {});
   const st = { isMini: false, seeking: false, vizOn: U.lsGetBool01('bitEnabled'), vizId: 0, ctx: null, provider: 'unknown' }, dom = { blk: null, now: null, mini: null, nUp: null, jump: null, el: {} };
 
   const syncUI = () => {
@@ -38,16 +36,13 @@
     if (lst) {
       const act = f && cA === pA;
       lst.classList.toggle('favonly-filtered', act);
-      if (act && favResolver?.resolveFavoritesOnlyState) {
-        const rs = favResolver.resolveFavoritesOnlyState({
+      if (act && W.FavoritesOnlyResolver?.getFavoritesOnlyVisibleUidSet) {
+        const vis = W.FavoritesOnlyResolver.getFavoritesOnlyVisibleUidSet({
           sourcePlaylist: c.originalPlaylist || c.getPlaylistSnapshot?.() || [],
           playingAlbum: pA,
-          favoritesOnly: true,
-          currentUid: c.getCurrentTrackUid?.(),
           isFavorite: uid => c.isFavorite?.(uid),
           favoritesState: c.getFavoritesState?.() || { active: [], inactive: [] }
         });
-        const vis = new Set((rs?.resolvedPlaylist || []).map(t => String(t?.uid || '').trim()).filter(Boolean));
         lst.querySelectorAll('.track[data-uid], .showcase-track[data-uid]').forEach(r => r.toggleAttribute('data-hidden-by-favonly', !vis.has(String(r.dataset.uid || '').trim())));
       } else {
         lst.querySelectorAll('.track[data-hidden-by-favonly], .showcase-track[data-hidden-by-favonly]').forEach(r => r.removeAttribute('data-hidden-by-favonly'));
