@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-36af5068c04771bb8db95c3d40ba95034759643b.idx
-│   │       ├── pack-36af5068c04771bb8db95c3d40ba95034759643b.pack
-│   │       └── pack-36af5068c04771bb8db95c3d40ba95034759643b.rev
+│   │       ├── pack-7feeb7f34dafb8a295c4184b9b77287f7480dd6a.idx
+│   │       ├── pack-7feeb7f34dafb8a295c4184b9b77287f7480dd6a.pack
+│   │       └── pack-7feeb7f34dafb8a295c4184b9b77287f7480dd6a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -402,7 +402,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-17 20:46:44 UTC
+Сгенерировано: 2026-03-17 20:53:23 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3292,7 +3292,7 @@ import { handleShowcaseEditClick, bindShowcaseDrag, saveShowcaseEdit, resetShowc
 import { createShowcaseStore } from './store.js';
 import { buildShowcaseSearchDisplay, addSearchResultsToContext, handleSharedShowcasePlaylist } from './search.js';
 import { createShowcaseActions } from './actions.js';
-import { openShowcaseSheetModal, openShowcaseAddToPlaylistModal, openShowcaseSortModal, openShowcaseSharedPlaylistConfirm, openShowcasePaletteModal } from './modals.js';
+import { openShowcaseSheetModal, openShowcaseAddToPlaylistModal, openShowcaseSettingsModal, openShowcaseSharedPlaylistConfirm, openShowcasePaletteModal } from './modals.js';
 import { makeFavoritesOnlyAfterPlay, playWithFavoritesOnlyResolution } from '../player/favorites-only-actions.js';
 const W = window, D = document, U = W.Utils, ALL = '__default__', SHOW = '__showcase__', PALETTE = ['transparent','#ef5350','#ff9800','#fdd835','#4caf50','#00bcd4','#2196f3','#9c27b0','#e91e63','#9e9e9e'];
 const $ = id => D.getElementById(id), esc = s => U.escapeHtml(String(s ?? '')), trk = u => W.TrackRegistry?.getTrackByUid?.(u), albT = k => W.TrackRegistry?.getAlbumTitle?.(k) || k || '', isDef = id => id === ALL, uidEsc = u => CSS.escape(String(u || ''));
