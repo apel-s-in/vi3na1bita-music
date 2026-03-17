@@ -1,6 +1,7 @@
 import { getTrackByUid } from '../scripts/app/track-registry.js';
 import { Favorites } from '../scripts/core/favorites-manager.js';
 import { ensureMediaSession } from './player-core/media-session.js';
+import { resolveFavoritesOnlyState } from '../scripts/app/player/favorites-only-resolver.js';
 
 // UID.001_(Playback safety invariant)_(защитить священное правило проигрывания)_(никакие intel/recs/providers/telemetry не имеют права стопать/сбрасывать playback кроме уже разрешённых сценариев)
 // UID.008_(No playback mutation by intel)_(развести ядро плеера и интеллектуальный слой)_(PlayerCore остаётся единственным владельцем playback state, intel только читает и рекомендует)
@@ -230,6 +231,24 @@ import { ensureMediaSession } from './player-core/media-session.js';
         } else {
           this.next();
         }
+      } else if (!liked && ls.getItem('favoritesOnlyMode') === '1') {
+        const pA = W.AlbumsManager?.getPlayingAlbum?.();
+        const st = resolveFavoritesOnlyState({
+          sourcePlaylist: this.originalPlaylist,
+          playingAlbum: pA,
+          favoritesOnly: true,
+          currentUid: this.getCurrentTrackUid(),
+          isFavorite: x => this.isFavorite(x),
+          favoritesState: this.getFavoritesState()
+        });
+
+        if (!st.resolvedPlaylist.length) {
+          ls.setItem('favoritesOnlyMode', '0');
+          this.applyFavoritesOnlyFilter({ forceReload: false });
+          W.NotificationSystem?.info?.('⭐ Режим только избранные выключен');
+        } else {
+          this.applyFavoritesOnlyFilter({ forceReload: this.getCurrentTrackUid() === u });
+        }
       }
       return { liked };
     }
@@ -254,19 +273,75 @@ import { ensureMediaSession } from './player-core/media-session.js';
 
     getLikedUidsForAlbum(key) { const k = sUid(key); return k ? Favorites.getSnapshot().filter(i => !i.inactiveAt && sUid(getTrackByUid(i.uid)?.sourceAlbum) === k).map(i => i.uid) : []; }
     
-    applyFavoritesOnlyFilter() {
-      const pA = W.AlbumsManager?.getPlayingAlbum?.(), isFav = ls.getItem('favoritesOnlyMode') === '1';
-      if (!pA || !this.originalPlaylist?.length || this.currentIndex < 0) return;
-      
-      const uniq = this.originalPlaylist.filter((t, i, a) => t?.uid && a.findIndex(x => x.uid === t.uid) === i);
-      const liked = new Set(this.getLikedUidsForAlbum(pA));
-      const tgt = (pA === W.SPECIAL_FAVORITES_KEY || (isFav && !W.Utils?.isShowcaseContext?.(pA))) ? uniq.filter(t => pA === W.SPECIAL_FAVORITES_KEY ? this.isFavorite(t.uid) : liked.has(t.uid)) : (isFav ? uniq.filter(t => this.isFavorite(t.uid)) : uniq);
+    applyFavoritesOnlyFilter(opts = {}) {
+      const pA = W.AlbumsManager?.getPlayingAlbum?.();
+      const favOn = ls.getItem('favoritesOnlyMode') === '1';
+      if (!pA || !this.originalPlaylist?.length) return false;
 
-      if (!tgt.length) return;
-      const nIdx = Math.max(0, tgt.findIndex(t => t.uid === this.getCurrentTrackUid()));
+      const wasPlaying = this.isPlaying();
+      const curUid = this.getCurrentTrackUid();
+      const prevPos = this.getPosition();
+
+      const st = resolveFavoritesOnlyState({
+        sourcePlaylist: this.originalPlaylist,
+        playingAlbum: pA,
+        favoritesOnly: favOn,
+        currentUid: curUid,
+        isFavorite: uid => this.isFavorite(uid),
+        favoritesState: this.getFavoritesState()
+      });
+
+      if (favOn && st.isEmptyForFavoritesMode) return false;
+      if (!st.resolvedPlaylist.length) return false;
+
+      const sameSet = st.resolvedPlaylist.length === this.playlist.length && st.resolvedPlaylist.every((t, i) => sUid(t.uid) === sUid(this.playlist[i]?.uid));
+      const nextIdx = st.currentAllowed ? Math.max(0, st.currentIndex) : 0;
+      const keepUid = sUid(st.resolvedPlaylist[nextIdx]?.uid);
+      const keepCurrent = st.currentAllowed && sUid(curUid) === keepUid;
+
       this.shufHist = [];
-      this.setPlaylist(tgt, nIdx, {}, { preserveOriginalPlaylist: true, preserveShuffleMode: false, preservePosition: (nIdx === this.currentIndex && tgt[nIdx]?.uid === this.getCurrentTrackUid()) });
+      this.playlist = [...st.resolvedPlaylist];
+      this.currentIndex = nextIdx;
+
+      if (!favOn) {
+        if (this.flags.shuf) {
+          const cur = keepUid || curUid;
+          this.shufflePlaylist(cur);
+          this.currentIndex = Math.max(0, this.playlist.findIndex(t => sUid(t.uid) === cur));
+        }
+        if (keepCurrent && this.sound) {
+          this._emit('onTrackChange', this.getCurrentTrack(), this.currentIndex);
+          this._updMedia();
+          W.PlayerUI?.updatePlaylistFiltering?.();
+          emitG('playlist:changed', { reason: 'favoritesOnlyOff' });
+          return true;
+        }
+      }
+
+      if (favOn && this.flags.shuf) {
+        const head = keepUid || st.firstPlayableUid;
+        this.shufflePlaylist(head);
+        this.currentIndex = Math.max(0, this.playlist.findIndex(t => sUid(t.uid) === head));
+      }
+
+      if (keepCurrent && this.sound && (sameSet || !opts.forceReload)) {
+        this._emit('onTrackChange', this.getCurrentTrack(), this.currentIndex);
+        this._updMedia();
+        W.PlayerUI?.updatePlaylistFiltering?.();
+        emitG('playlist:changed', { reason: favOn ? 'favoritesOnlyOnKeep' : 'favoritesOnlyOffKeep' });
+        return true;
+      }
+
+      if (wasPlaying || opts.autoPlayIfNeeded) {
+        this.load(this.currentIndex, { autoPlay: true, resumePosition: keepCurrent ? prevPos : 0, dir: 1 });
+      } else {
+        this._emit('onTrackChange', this.getCurrentTrack(), this.currentIndex);
+        this._updMedia();
+      }
+
       W.PlayerUI?.updatePlaylistFiltering?.();
+      emitG('playlist:changed', { reason: favOn ? 'favoritesOnlyOn' : 'favoritesOnlyOff' });
+      return true;
     }
 
     onFavoritesChanged(cb) { this._favSubs.add(cb); return () => this._favSubs.delete(cb); }
