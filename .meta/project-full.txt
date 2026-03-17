@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8fe7ff880020c4c444b5f2941932247d78c1c22e.idx
-│   │       ├── pack-8fe7ff880020c4c444b5f2941932247d78c1c22e.pack
-│   │       └── pack-8fe7ff880020c4c444b5f2941932247d78c1c22e.rev
+│   │       ├── pack-1b96eb8af3ae5a838e5eb8b748361eb435d6e7f2.idx
+│   │       ├── pack-1b96eb8af3ae5a838e5eb8b748361eb435d6e7f2.pack
+│   │       └── pack-1b96eb8af3ae5a838e5eb8b748361eb435d6e7f2.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -402,7 +402,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-17 19:36:25 UTC
+Сгенерировано: 2026-03-17 19:38:49 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3427,7 +3427,7 @@ export const openShowcaseAddToPlaylistModal = ({ playlists: p, esc, onPick: oP, 
   if (m) m.onclick = e => { const b = e.target.closest('[data-pid]'); if (b) oP?.(b.dataset.pid, m); }; return m;
 };
 export const openShowcaseSortModal = ({ currentSort: cS, options: o, onPick: oP, modalApi: mA }) => {
-  const m = mA?.open?.({ title: 'Сортировка', bodyHtml: `<div class="sc-sort-grid">${o.map(([v, l]) => `<button class="showcase-btn ${cS === v ? 'active' : ''} ${v === 'user' ? 'sc-sort-grid-full' : ''}" data-val="${v}">${l}</button>`).join('')}</div>` });
+  const m = mA?.open?.({ title: 'Настройки списка', bodyHtml: `<div class="sc-sort-grid">${o.map(([v, l]) => `<button class="showcase-btn ${cS === v ? 'active' : ''} ${v === 'user' ? 'sc-sort-grid-full' : ''}" data-val="${v}">${l}</button>`).join('')}</div>` });
   if (m) m.onclick = e => { const b = e.target.closest('[data-val]'); if (b) oP?.(b.dataset.val, m); }; return m;
 };
 export const openShowcaseSharedPlaylistConfirm = ({ raw: r, trk: t, esc, createPlaylist: cP, notify: n, modalApi: mA }) => {
