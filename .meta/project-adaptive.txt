@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8f74ebd3e9e27288ba3cbe85b9ad92a6c7b8b974.idx
-│   │       ├── pack-8f74ebd3e9e27288ba3cbe85b9ad92a6c7b8b974.pack
-│   │       └── pack-8f74ebd3e9e27288ba3cbe85b9ad92a6c7b8b974.rev
+│   │       ├── pack-b190686b99f9e5b005f99b6e1dcdd5e0cc4338f4.idx
+│   │       ├── pack-b190686b99f9e5b005f99b6e1dcdd5e0cc4338f4.pack
+│   │       └── pack-b190686b99f9e5b005f99b6e1dcdd5e0cc4338f4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -402,7 +402,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-17 16:53:13 UTC
+Сгенерировано: 2026-03-17 18:38:33 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2418,7 +2418,9 @@ window.PlaybackCache.getWindowState = getWindowState; window.PlaybackCache.prote
   };
 
   const syncUI = () => {
-    const c = PC(); if (!c || !dom.blk) return;
+    const c = PC();
+    applyFavoritesOnlyDomFilter();
+    if (!c || !dom.blk) return;
     const t = c.getCurrentTrack(), p = c.isPlaying(), e = dom.el, f = U.lsGetBool01('favoritesOnlyMode'), oM = W.OfflineManager, isR2 = oM?.getMode?.() === 'R2', q = isR2 ? (oM?.getCQ() || 'hi') : U.pq.getState().mode, pA = AM()?.getPlayingAlbum?.();
 
     W.IconUtils?.setIconUse?.(e.ico, p ? 'icon-pause' : 'icon-play');
@@ -2439,7 +2441,6 @@ window.PlaybackCache.getWindowState = getWindowState; window.PlaybackCache.prote
       if (e.mNUp) e.mNUp.textContent = nt?.title || '—';
     }
 
-    applyFavoritesOnlyDomFilter();
   };
 
   const onPQClick = async () => {
@@ -2557,7 +2558,7 @@ window.PlaybackCache.getWindowState = getWindowState; window.PlaybackCache.prote
     syncUI();
   };
 
-  W.PlayerUI = { initialize: init, ensurePlayerBlock: (i, o) => ensureBlock(i, o?.userInitiated), updateMiniHeader: syncUI, updateNextUpLabel: syncUI, updatePlaylistFiltering: syncUI, applyFavoritesOnlyDomFilter, togglePlayPause: () => PC().isPlaying() ? PC().pause() : PC().play(), switchAlbumInstantly: () => { if (PC().getIndex() >= 0) ensureBlock(PC().getIndex()); } };
+  W.PlayerUI = { initialize: init, ensurePlayerBlock: (i, o) => ensureBlock(i, o?.userInitiated), updateMiniHeader: syncUI, updateNextUpLabel: syncUI, updatePlaylistFiltering: () => { applyFavoritesOnlyDomFilter(); if (dom.blk) syncUI(); }, applyFavoritesOnlyDomFilter, togglePlayPause: () => PC().isPlaying() ? PC().pause() : PC().play(), switchAlbumInstantly: () => { if (PC().getIndex() >= 0) ensureBlock(PC().getIndex()); } };
   D.readyState === 'loading' ? D.addEventListener('DOMContentLoaded', init) : init();
 })(window, document);
 
