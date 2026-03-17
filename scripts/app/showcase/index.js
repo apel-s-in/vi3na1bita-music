@@ -17,7 +17,7 @@ import { createShowcaseStore } from './store.js';
 import { buildShowcaseSearchDisplay, addSearchResultsToContext, handleSharedShowcasePlaylist } from './search.js';
 import { createShowcaseActions } from './actions.js';
 import { openShowcaseSheetModal, openShowcaseAddToPlaylistModal, openShowcaseSortModal, openShowcaseSharedPlaylistConfirm, openShowcasePaletteModal } from './modals.js';
-import { playWithFavoritesOnlyResolution } from '../player/favorites-only-actions.js';
+import { makeFavoritesOnlyAfterPlay, playWithFavoritesOnlyResolution } from '../player/favorites-only-actions.js';
 const W = window, D = document, U = W.Utils, ALL = '__default__', SHOW = '__showcase__', PALETTE = ['transparent','#ef5350','#ff9800','#fdd835','#4caf50','#00bcd4','#2196f3','#9c27b0','#e91e63','#9e9e9e'];
 const $ = id => D.getElementById(id), esc = s => U.escapeHtml(String(s ?? '')), trk = u => W.TrackRegistry?.getTrackByUid?.(u), albT = k => W.TrackRegistry?.getAlbumTitle?.(k) || k || '', isDef = id => id === ALL, uidEsc = u => CSS.escape(String(u || ''));
 const getCat = () => (W.albumsIndex || []).filter(a => !String(a?.key || '').startsWith('__')).flatMap(a => (W.TrackRegistry?.getTracksForAlbum?.(a.key) || []).map(t => t?.uid).filter(Boolean)), sig = (o = [], h = []) => JSON.stringify({ o: [...o], h: [...h] });
@@ -82,16 +82,23 @@ class ShowcaseManager {
   _bindDrag(b) { bindShowcaseDrag({ box: b, documentRef: D, uidEsc, draft: this._drf }); }
   _playCtx(u = null, s = false, l = null, k = null) {
     const t = u ? bldTrk(u) : null;
+    const afterPlay = makeFavoritesOnlyAfterPlay({
+      highlight: (_, meta) => this._hi(meta?.uid),
+      ensureBlock: (i, o) => W.PlayerUI?.ensurePlayerBlock?.(i, o)
+    });
+    const list = l || this.getActiveListTracks();
+    const idx = u ? Math.max(0, list.findIndex(x => x.uid === u)) : 0;
+
     return playWithFavoritesOnlyResolution({
-      list: l || this.getActiveListTracks(),
+      list,
       uid: u,
       albumKey: k || `${SHOW}:${this._ctxId()}`,
       track: t,
       hidden: !!(u && this._isHidden(u, this._ctxId())),
-      play: (list, trackUid) => this._actions.playCtx({ ctxId: () => this._ctxId(), getActiveListTracks: () => this.getActiveListTracks(), hi: x => this._hi(x), markLast: (x, i) => this._markLast(x, i) }, trackUid, s, list, k),
+      play: (src, trackUid) => this._actions.playCtx({ ctxId: () => this._ctxId(), getActiveListTracks: () => this.getActiveListTracks(), hi: x => this._hi(x), markLast: (x, i) => this._markLast(x, i) }, trackUid, s, src, k),
       addFavorite: trackUid => W.playerCore?.toggleFavorite?.(trackUid, { albumKey: t?.sourceAlbum }),
       disableMode: () => localStorage.setItem('favoritesOnlyMode', '0'),
-      afterPlay: () => {}
+      afterPlay: () => afterPlay({ index: idx, uid: u || list[0]?.uid || '', albumKey: k || `${SHOW}:${this._ctxId()}` })
     });
   }
   _openSort() { const id = this._ctxId(), c = this._ctx(), sm = c?.sortMode || 'user', o = [['user','👤 Мой порядок'],['name-asc','А→Я'],['name-desc','Я→А'],['album-desc','Альбомы ↓ (Новые)'],['album-asc','Альбомы ↑ (Старые)'],['plays-desc','Топ прослушиваний'],['plays-asc','Меньше всего'],['last-played','Недавние'],['favorites-first','Сначала ⭐']]; openShowcaseSortModal({ modalApi: W.Modals, currentSort: sm, options: o, onPick: (v, m) => { const t = isDef(id) ? Store.def() : Store.get(id); if (t) { t.sortMode = v; isDef(id) ? Store.setDef(t) : Store.save(t); m?.remove?.(); this.renderTab(); } } }); }
