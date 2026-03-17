@@ -50,6 +50,12 @@ class ShowcaseManager {
     this.renderTab();
   }
   _baseResetChanged() { const a = Store.def(), b = normCtx({ order: getCat(), hidden: [], sortMode: 'user', hiddenPlacement: 'inline' }, true); return sig(a.order, a.hidden) !== sig(b.order, b.hidden); }
+  getContextSourcePlaylist(key = null) {
+    const raw = String(key || `${SHOW}:${this._ctxId()}`);
+    const id = raw.startsWith(`${SHOW}:`) ? raw.slice(`${SHOW}:`.length) : this._ctxId();
+    const c = isDef(id) ? Store.def() : Store.get(id);
+    return (c?.order || []).filter(trk).map(bldTrk).filter(Boolean);
+  }
   getActiveListTracks() { const c = this._ctx(), hid = new Set(c?.hidden || []); return (c?.order || []).filter(u => trk(u) && !hid.has(u)).map(bldTrk).filter(Boolean); }
   _sortedOrderSync(ctx) { const ord = [...(ctx?.order || [])].filter(trk), sm = ctx?.sortMode || 'user'; if (sm === 'user') return ord; const a = ord.map(trk).filter(Boolean), rk = new Map((W.albumsIndex || []).reverse().map((al, i) => [al.key, i])), r = k => rk.get(k) ?? 9999; const c = { 'name-asc': (x, y) => x.title.localeCompare(y.title), 'name-desc': (x, y) => y.title.localeCompare(x.title), 'album-asc': (x, y) => r(y.sourceAlbum) - r(x.sourceAlbum) || x.title.localeCompare(y.title), 'album-desc': (x, y) => r(x.sourceAlbum) - r(y.sourceAlbum) || x.title.localeCompare(y.title), 'favorites-first': (x, y) => (W.playerCore?.isFavorite?.(y.uid) ? 1 : 0) - (W.playerCore?.isFavorite?.(x.uid) ? 1 : 0) }; c[sm] && a.sort(c[sm]); return a.map(x => x.uid); }
   async _sortedOrderAsync(ctx) { const ord = [...(ctx?.order || [])].filter(trk), sm = ctx?.sortMode || 'user'; if (!['plays-desc', 'plays-asc', 'last-played'].includes(sm)) return this._sortedOrderSync(ctx); const a = ord.map(trk).filter(Boolean); try { const { metaDB: db } = await import('../../analytics/meta-db.js'), st = new Map((await db.getAllStats()).map(s => [s.uid, s])), g = (u, k) => st.get(u)?.[k] || 0; a.sort((x, y) => sm === 'plays-desc' ? g(y.uid, 'globalFullListenCount') - g(x.uid, 'globalFullListenCount') : sm === 'plays-asc' ? g(x.uid, 'globalFullListenCount') - g(y.uid, 'globalFullListenCount') : g(y.uid, 'lastPlayedAt') - g(x.uid, 'lastPlayedAt')); } catch {} return a.map(x => x.uid); }
