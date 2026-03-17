@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4175dc903de238fa6f3f84a4d91eef9ad51f9461.idx
-│   │       ├── pack-4175dc903de238fa6f3f84a4d91eef9ad51f9461.pack
-│   │       └── pack-4175dc903de238fa6f3f84a4d91eef9ad51f9461.rev
+│   │       ├── pack-8f74ebd3e9e27288ba3cbe85b9ad92a6c7b8b974.idx
+│   │       ├── pack-8f74ebd3e9e27288ba3cbe85b9ad92a6c7b8b974.pack
+│   │       └── pack-8f74ebd3e9e27288ba3cbe85b9ad92a6c7b8b974.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -402,7 +402,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-17 16:52:40 UTC
+Сгенерировано: 2026-03-17 16:53:13 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2811,15 +2811,13 @@ function getFavoritesOnlyVisibleUidSet({
   isFavorite = () => false,
   favoritesState = { active: [], inactive: [] }
 } = {}) {
-  const st = resolveFavoritesOnlyState({
+  return getFavoritesOnlyVisibleUidSetForContext({
+    contextType: isFavView(playingAlbum) ? 'favorites' : (isShowcase(playingAlbum) ? 'showcase' : 'album'),
+    albumKey: playingAlbum,
     sourcePlaylist,
-    playingAlbum,
-    favoritesOnly: true,
-    currentUid: null,
     isFavorite,
     favoritesState
   });
-  return new Set((st.resolvedPlaylist || []).map(t => sUid(t.uid)).filter(Boolean));
 }
 
 function canLaunchTrackInFavoritesOnlyContext({ uid, albumKey } = {}) {
