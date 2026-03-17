@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-0a7d4e9729c1243f78b8da3e4b77f608f53f6779.idx
-│   │       ├── pack-0a7d4e9729c1243f78b8da3e4b77f608f53f6779.pack
-│   │       └── pack-0a7d4e9729c1243f78b8da3e4b77f608f53f6779.rev
+│   │       ├── pack-5b72e2458e08e578e963e8e0e28bf16e6568e841.idx
+│   │       ├── pack-5b72e2458e08e578e963e8e0e28bf16e6568e841.pack
+│   │       └── pack-5b72e2458e08e578e963e8e0e28bf16e6568e841.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -438,7 +438,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-17 10:08:04 UTC
+Сгенерировано: 2026-03-17 10:09:17 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7558,26 +7558,27 @@ body.news-view #cover-wrap{display:none!important}
 .tnum{min-width:30px;color:var(--c-blue);font-weight:500}
 .track-title{margin-left:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
 .like-star{
-  --star-size:28px;
-  --star-icon-scale:1;
+  --star-hit-size:24px;
+  --star-glyph-size:28px;
   margin-left:auto;
-  width:var(--star-size);
-  height:var(--star-size);
-  min-width:var(--star-size);
-  min-height:var(--star-size);
+  width:var(--star-hit-size);
+  height:var(--star-hit-size);
+  min-width:var(--star-hit-size);
+  min-height:var(--star-hit-size);
   cursor:pointer;
   opacity:.98;
   transition:transform .18s,filter .13s,opacity .13s,color .13s;
   pointer-events:auto!important;
   position:relative;
   z-index:10;
-  flex:0 0 var(--star-size);
+  flex:0 0 var(--star-hit-size);
   display:inline-flex;
   align-items:center;
   justify-content:center;
   transform-origin:center;
+  line-height:0;
 }
-.like-star:hover{filter:brightness(1.13);opacity:1;transform:scale(1.1)}
+.like-star:hover{filter:brightness(1.13);opacity:1;transform:scale(1.12)}
 .like-star:active{transform:scale(.95)}
 .like-star.animating{animation:starPulse .3s}
 .like-star-svg{
@@ -7588,36 +7589,46 @@ body.news-view #cover-wrap{display:none!important}
   line-height:0;
 }
 .like-star-svg svg{
-  width:calc(var(--star-size) * var(--star-icon-scale));
-  height:calc(var(--star-size) * var(--star-icon-scale));
+  width:var(--star-glyph-size);
+  height:var(--star-glyph-size);
   display:block;
+  overflow:visible;
 }
 .like-star-svg[data-liked="1"]{color:#ffd54a;filter:drop-shadow(0 0 8px rgba(255,213,74,.26))}
 .like-star-svg[data-liked="0"]{color:#f5f7fb}
 
 .track .like-star{
-  --star-size:30px;
-  --star-icon-scale:.92;
+  --star-hit-size:22px;
+  --star-glyph-size:34px;
 }
 
 .showcase-track .like-star{
-  --star-size:30px;
-  --star-icon-scale:.92;
-  margin-left:8px;
+  --star-hit-size:22px;
+  --star-glyph-size:34px;
+  margin-left:2px;
+  margin-right:2px;
 }
 
 #favorites-btn-icon{
-  --star-size:24px;
-  --star-icon-scale:1;
+  --star-hit-size:20px;
+  --star-glyph-size:28px;
   margin:0!important;
-  flex:0 0 var(--star-size);
+  width:var(--star-hit-size);
+  height:var(--star-hit-size);
+  min-width:var(--star-hit-size);
+  min-height:var(--star-hit-size);
+  flex:0 0 var(--star-hit-size);
 }
 
 #mini-now-star{
-  --star-size:24px;
-  --star-icon-scale:1;
-  margin-left:10px!important;
-  flex:0 0 var(--star-size);
+  --star-hit-size:20px;
+  --star-glyph-size:28px;
+  margin-left:8px!important;
+  width:var(--star-hit-size);
+  height:var(--star-hit-size);
+  min-width:var(--star-hit-size);
+  min-height:var(--star-hit-size);
+  flex:0 0 var(--star-hit-size);
 }
 
 #favorites-btn,
