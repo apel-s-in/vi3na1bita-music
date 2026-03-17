@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-704636755be6ecf1c91060217978dd96943d9a55.idx
-│   │       ├── pack-704636755be6ecf1c91060217978dd96943d9a55.pack
-│   │       └── pack-704636755be6ecf1c91060217978dd96943d9a55.rev
+│   │       ├── pack-37c8f47edb0463d4cad29921220b1a70a179915a.idx
+│   │       ├── pack-37c8f47edb0463d4cad29921220b1a70a179915a.pack
+│   │       └── pack-37c8f47edb0463d4cad29921220b1a70a179915a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -401,7 +401,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-17 16:19:11 UTC
+Сгенерировано: 2026-03-17 16:20:42 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2134,6 +2134,19 @@ class AlbumsManager {
 
   getCurrentAlbum() { return this.curr; } getPlayingAlbum() { return this.playing; } setPlayingAlbum(k) { this.playing = k; }
   getPlayingAlbumTracks() { if (W.Utils?.isShowcaseContext?.(this.playing)) return W.ShowcaseManager?.getActiveListTracks?.() || []; const d = this.cache.get(this.playing); return d ? (d._pTracks || d.tracks) : []; }
+  getAlbumSourcePlaylist(key) {
+    const k = toStr(key || '').trim();
+    if (!k) return [];
+    if (k === FAV) {
+      const pc = W.playerCore, st = pc?.getFavoritesState?.() || { active: [] };
+      return (st.active || []).map(i => ({ ...(W.TrackRegistry?.getTrackByUid(i.uid) || {}), uid: i.uid, sourceAlbum: i.sourceAlbum || getTrackByUid?.(i.uid)?.sourceAlbum || null, album: 'Избранное', cover: 'img/Fav_logo.png' })).filter(t => t?.uid);
+    }
+    if (W.Utils?.isShowcaseContext?.(k)) return W.ShowcaseManager?.getContextSourcePlaylist?.(k) || [];
+    const d = this.cache.get(k);
+    if (!d) return [];
+    if (!d._pTracks) d._pTracks = d.tracks.filter(t => t.src).map(t => ({ src: t.src, sources: t.sources, title: t.title, artist: d.artist, album: d.title, cover: this.covers.get(k) || LOGO, uid: t.uid, lyrics: t.lyrics, fulltext: t.fulltext, hasLyrics: t.hasLyrics, sourceAlbum: k }));
+    return d._pTracks || [];
+  }
   renderAlbumTitle(t, mod) { const el = $('active-album-title'); if(el) { el.textContent = t; el.className = `active-album-title ${mod||''}`; } }
 }
 W.AlbumsManager = new AlbumsManager(); export default W.AlbumsManager;
@@ -3239,6 +3252,12 @@ class ShowcaseManager {
     this.renderTab();
   }
   _baseResetChanged() { const a = Store.def(), b = normCtx({ order: getCat(), hidden: [], sortMode: 'user', hiddenPlacement: 'inline' }, true); return sig(a.order, a.hidden) !== sig(b.order, b.hidden); }
+  getContextSourcePlaylist(key = null) {
+    const raw = String(key || `${SHOW}:${this._ctxId()}`);
+    const id = raw.startsWith(`${SHOW}:`) ? raw.slice(`${SHOW}:`.length) : this._ctxId();
+    const c = isDef(id) ? Store.def() : Store.get(id);
+    return (c?.order || []).filter(trk).map(bldTrk).filter(Boolean);
+  }
   getActiveListTracks() { const c = this._ctx(), hid = new Set(c?.hidden || []); return (c?.order || []).filter(u => trk(u) && !hid.has(u)).map(bldTrk).filter(Boolean); }
   _sortedOrderSync(ctx) { const ord = [...(ctx?.order || [])].filter(trk), sm = ctx?.sortMode || 'user'; if (sm === 'user') return ord; const a = ord.map(trk).filter(Boolean), rk = new Map((W.albumsIndex || []).reverse().map((al, i) => [al.key, i])), r = k => rk.get(k) ?? 9999; const c = { 'name-asc': (x, y) => x.title.localeCompare(y.title), 'name-desc': (x, y) => y.title.localeCompare(x.title), 'album-asc': (x, y) => r(y.sourceAlbum) - r(x.sourceAlbum) || x.title.localeCompare(y.title), 'album-desc': (x, y) => r(x.sourceAlbum) - r(y.sourceAlbum) || x.title.localeCompare(y.title), 'favorites-first': (x, y) => (W.playerCore?.isFavorite?.(y.uid) ? 1 : 0) - (W.playerCore?.isFavorite?.(x.uid) ? 1 : 0) }; c[sm] && a.sort(c[sm]); return a.map(x => x.uid); }
   async _sortedOrderAsync(ctx) { const ord = [...(ctx?.order || [])].filter(trk), sm = ctx?.sortMode || 'user'; if (!['plays-desc', 'plays-asc', 'last-played'].includes(sm)) return this._sortedOrderSync(ctx); const a = ord.map(trk).filter(Boolean); try { const { metaDB: db } = await import('../../analytics/meta-db.js'), st = new Map((await db.getAllStats()).map(s => [s.uid, s])), g = (u, k) => st.get(u)?.[k] || 0; a.sort((x, y) => sm === 'plays-desc' ? g(y.uid, 'globalFullListenCount') - g(x.uid, 'globalFullListenCount') : sm === 'plays-asc' ? g(x.uid, 'globalFullListenCount') - g(y.uid, 'globalFullListenCount') : g(y.uid, 'lastPlayedAt') - g(x.uid, 'lastPlayedAt')); } catch {} return a.map(x => x.uid); }
