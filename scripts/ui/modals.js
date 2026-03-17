@@ -29,5 +29,17 @@
     return m;
   };
 
-  window.Modals = { ...window.Modals, open, confirm };
+  const choice = ({ title = '', textHtml = '', maxWidth = 460, actions = [], onClose } = {}) => {
+    const btns = (actions || []).map((a, i) => `<button type="button" class="modal-action-btn modal-confirm-btn ${a.primary ? 'online' : ''}" data-choice="${esc(a.key || String(i))}">${esc(a.text || 'OK')}</button>`).join('');
+    const m = open({ title, maxWidth, onClose, bodyHtml: `<div class="modal-confirm-text">${textHtml}</div><div class="om-actions">${btns}</div>` });
+    m.addEventListener('click', e => {
+      const b = e.target.closest('[data-choice]');
+      if (!b) return;
+      const act = (actions || []).find(x => String(x.key) === String(b.dataset.choice));
+      try { act?.onClick?.(); } finally { m.remove(); }
+    });
+    return m;
+  };
+
+  window.Modals = { ...window.Modals, open, confirm, choice };
 })();
