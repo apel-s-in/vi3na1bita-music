@@ -165,9 +165,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-67aab7eb1a09cb6554e1922e54ad67a572d0b859.idx
-│   │       ├── pack-67aab7eb1a09cb6554e1922e54ad67a572d0b859.pack
-│   │       └── pack-67aab7eb1a09cb6554e1922e54ad67a572d0b859.rev
+│   │       ├── pack-298f4c2f961487d16de423febb411fb52b8028fa.idx
+│   │       ├── pack-298f4c2f961487d16de423febb411fb52b8028fa.pack
+│   │       └── pack-298f4c2f961487d16de423febb411fb52b8028fa.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -440,7 +440,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-17 12:43:42 UTC
+Сгенерировано: 2026-03-17 12:45:41 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3133,6 +3133,7 @@ import { createShowcaseStore } from './store.js';
 import { buildShowcaseSearchDisplay, addSearchResultsToContext, handleSharedShowcasePlaylist } from './search.js';
 import { createShowcaseActions } from './actions.js';
 import { openShowcaseSheetModal, openShowcaseAddToPlaylistModal, openShowcaseSortModal, openShowcaseSharedPlaylistConfirm, openShowcasePaletteModal } from './modals.js';
+import { canLaunchTrackInFavoritesOnlyContext } from '../player/favorites-only-resolver.js';
 const W = window, D = document, U = W.Utils, ALL = '__default__', SHOW = '__showcase__', PALETTE = ['transparent','#ef5350','#ff9800','#fdd835','#4caf50','#00bcd4','#2196f3','#9c27b0','#e91e63','#9e9e9e'];
 const $ = id => D.getElementById(id), esc = s => U.escapeHtml(String(s ?? '')), trk = u => W.TrackRegistry?.getTrackByUid?.(u), albT = k => W.TrackRegistry?.getAlbumTitle?.(k) || k || '', isDef = id => id === ALL, uidEsc = u => CSS.escape(String(u || ''));
 const getCat = () => (W.albumsIndex || []).filter(a => !String(a?.key || '').startsWith('__')).flatMap(a => (W.TrackRegistry?.getTracksForAlbum?.(a.key) || []).map(t => t?.uid).filter(Boolean)), sig = (o = [], h = []) => JSON.stringify({ o: [...o], h: [...h] });
@@ -3153,7 +3154,17 @@ class ShowcaseManager {
   _cleanupUi() { try { const b = $('sc-selection-bar'); if (b && b._scClick) b.removeEventListener('click', b._scClick); b?.remove(); this._menu?.remove(); } catch {} this._menu = null; }
   _hi(uid) { D.querySelectorAll('.showcase-track.current').forEach(x => x.classList.remove('current')); if (uid) D.querySelectorAll(`.showcase-track[data-uid="${uidEsc(uid)}"]`).forEach(x => x.classList.add('current')); }
   _ctxHiddenSet(id = this._ctxId()) { return new Set((isDef(id) ? Store.def() : Store.get(id))?.hidden || []); } _isHidden(u, id = this._ctxId()) { return this._ctxHiddenSet(id).has(u); }
-  _toggleHiddenPersist(uid, id = this._ctxId()) { const c = isDef(id) ? Store.def() : Store.get(id); if (!c) return; const h = new Set(c.hidden || []); h.has(uid) ? h.delete(uid) : h.add(uid); c.hidden = [...h]; isDef(id) ? Store.setDef(c) : Store.save(c); this.renderTab(); }
+  _toggleHiddenPersist(uid, id = this._ctxId()) {
+    const c = isDef(id) ? Store.def() : Store.get(id); if (!c) return;
+    const h = new Set(c.hidden || []);
+    h.has(uid) ? h.delete(uid) : h.add(uid);
+    c.hidden = [...h];
+    isDef(id) ? Store.setDef(c) : Store.save(c);
+    if (localStorage.getItem('favoritesOnlyMode') === '1' && W.Utils?.isShowcaseContext?.(W.AlbumsManager?.getPlayingAlbum?.())) {
+      W.playerCore?.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true, forceReload: W.playerCore?.getCurrentTrackUid?.() === uid });
+    }
+    this.renderTab();
+  }
   _baseResetChanged() { const a = Store.def(), b = normCtx({ order: getCat(), hidden: [], sortMode: 'user', hiddenPlacement: 'inline' }, true); return sig(a.order, a.hidden) !== sig(b.order, b.hidden); }
   getActiveListTracks() { const c = this._ctx(), hid = new Set(c?.hidden || []); return (c?.order || []).filter(u => trk(u) && !hid.has(u)).map(bldTrk).filter(Boolean); }
   _sortedOrderSync(ctx) { const ord = [...(ctx?.order || [])].filter(trk), sm = ctx?.sortMode || 'user'; if (sm === 'user') return ord; const a = ord.map(trk).filter(Boolean), rk = new Map((W.albumsIndex || []).reverse().map((al, i) => [al.key, i])), r = k => rk.get(k) ?? 9999; const c = { 'name-asc': (x, y) => x.title.localeCompare(y.title), 'name-desc': (x, y) => y.title.localeCompare(x.title), 'album-asc': (x, y) => r(y.sourceAlbum) - r(x.sourceAlbum) || x.title.localeCompare(y.title), 'album-desc': (x, y) => r(x.sourceAlbum) - r(y.sourceAlbum) || x.title.localeCompare(y.title), 'favorites-first': (x, y) => (W.playerCore?.isFavorite?.(y.uid) ? 1 : 0) - (W.playerCore?.isFavorite?.(x.uid) ? 1 : 0) }; c[sm] && a.sort(c[sm]); return a.map(x => x.uid); }
@@ -3179,7 +3190,42 @@ class ShowcaseManager {
   _resetEdit() { resetShowcaseEdit({ draft: this._drf, modals: W.Modals, isDefault: !!this._drf?.isDef, renderEdit: u => this._renderEdit($('sc-tracks-container'), u) }); }
   _exitEdit() { exitShowcaseEdit({ draft: this._drf, modals: W.Modals, leaveEdit: () => this._leaveEdit() }); }
   _bindDrag(b) { bindShowcaseDrag({ box: b, documentRef: D, uidEsc, draft: this._drf }); }
-  _playCtx(u = null, s = false, l = null, k = null) { return this._actions.playCtx({ ctxId: () => this._ctxId(), getActiveListTracks: () => this.getActiveListTracks(), hi: x => this._hi(x), markLast: (x, i) => this._markLast(x, i) }, u, s, l, k); }
+  _playCtx(u = null, s = false, l = null, k = null) {
+    if (u && localStorage.getItem('favoritesOnlyMode') === '1') {
+      const gate = canLaunchTrackInFavoritesOnlyContext({ uid: u, albumKey: k || `${SHOW}:${this._ctxId()}` });
+      if (!gate.ok) {
+        const t = bldTrk(u);
+        return W.Modals?.confirm?.({
+          title: 'Режим только избранные',
+          textHtml: `Плеер работает в режиме <b>только избранные</b>.<br><br><b>${esc(t?.title || 'Трек')}</b> не отмечен ⭐ или скрыт.<br><br>Выберите действие:`,
+          confirmText: 'Отключить F и воспроизвести',
+          cancelText: 'Отмена',
+          onConfirm: () => {
+            localStorage.setItem('favoritesOnlyMode', '0');
+            this._actions.playCtx({ ctxId: () => this._ctxId(), getActiveListTracks: () => this.getActiveListTracks(), hi: x => this._hi(x), markLast: (x, i) => this._markLast(x, i) }, u, s, l, k);
+            W.playerCore?.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true });
+          }
+        }) && setTimeout(() => {
+          const m = document.querySelector('#modals-container .modal-bg:last-child');
+          const box = m?.querySelector('.om-actions, .modal-body');
+          if (!box || m.querySelector('[data-fav-add]') || gate.reason === 'hidden') return;
+          const add = document.createElement('button');
+          add.type = 'button';
+          add.className = 'modal-action-btn';
+          add.setAttribute('data-fav-add', '1');
+          add.textContent = 'Добавить ⭐ и играть в F';
+          add.onclick = () => {
+            W.playerCore?.toggleFavorite?.(u, { albumKey: t?.sourceAlbum });
+            m.remove();
+            this._actions.playCtx({ ctxId: () => this._ctxId(), getActiveListTracks: () => this.getActiveListTracks(), hi: x => this._hi(x), markLast: (x, i) => this._markLast(x, i) }, u, s, l, k);
+            W.playerCore?.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true });
+          };
+          box.appendChild(add);
+        }, 0);
+      }
+    }
+    return this._actions.playCtx({ ctxId: () => this._ctxId(), getActiveListTracks: () => this.getActiveListTracks(), hi: x => this._hi(x), markLast: (x, i) => this._markLast(x, i) }, u, s, l, k);
+  }
   _openSort() { const id = this._ctxId(), c = this._ctx(), sm = c?.sortMode || 'user', o = [['user','👤 Мой порядок'],['name-asc','А→Я'],['name-desc','Я→А'],['album-desc','Альбомы ↓ (Новые)'],['album-asc','Альбомы ↑ (Старые)'],['plays-desc','Топ прослушиваний'],['plays-asc','Меньше всего'],['last-played','Недавние'],['favorites-first','Сначала ⭐']]; openShowcaseSortModal({ modalApi: W.Modals, currentSort: sm, options: o, onPick: (v, m) => { const t = isDef(id) ? Store.def() : Store.get(id); if (t) { t.sortMode = v; isDef(id) ? Store.setDef(t) : Store.save(t); m?.remove?.(); this.renderTab(); } } }); }
   _openMenu(u, f = false) { return this._actions.openMenu({ cleanupUi: () => this._cleanupUi(), ctxId: () => this._ctxId(), ctxName: i => this._ctxName(i), isHidden: (x, i) => this._isHidden(x, i), toggleHiddenPersist: (x, i) => this._toggleHiddenPersist(x, i), renderTab: () => this.renderTab(), setMenu: v => { this._menu = v; }, playCtx: (x, y, z, w) => this._playCtx(x, y, z, w), openColorPicker: (x, y, z) => this.openColorPicker(x, y, z) }, u, f); }
   _renamePl(id) { return this._actions.renamePlaylist(id); } _sharePl(id) { return this._actions.sharePlaylist(id); }
