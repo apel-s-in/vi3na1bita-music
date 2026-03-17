@@ -15,11 +15,11 @@ export const openShowcaseSheetModal = ({ title: t = '', subtitle: s = '', fromSe
 };
 export const openShowcaseAddToPlaylistModal = ({ playlists: p, esc, onPick: oP, modalApi: mA }) => {
   if (!p?.length) return null; const m = mA?.open?.({ title: 'Добавить в плейлист', bodyHtml: `<div class="sc-playlist-pick">${p.map(x => `<button class="showcase-btn" data-pid="${x.id}">${esc(x.name)}</button>`).join('')}</div>` });
-  if (m) m.onclick = e => { const b = e.target.closest('[data-pid]'); if (b) oP?.(b.dataset.pid, m); }; return m;
+  if (m) m.addEventListener('click', e => { const b = e.target.closest('[data-pid]'); if (b) oP?.(b.dataset.pid, m); }); return m;
 };
 export const openShowcaseSortModal = ({ currentSort: cS, options: o, onPick: oP, modalApi: mA }) => {
   const m = mA?.open?.({ title: 'Настройки списка', bodyHtml: `<div class="sc-sort-grid">${o.map(([v, l]) => `<button class="showcase-btn ${cS === v ? 'active' : ''} ${v === 'user' ? 'sc-sort-grid-full' : ''}" data-val="${v}">${l}</button>`).join('')}</div>` });
-  if (m) m.onclick = e => { const b = e.target.closest('[data-val]'); if (b) oP?.(b.dataset.val, m); }; return m;
+  if (m) m.addEventListener('click', e => { const b = e.target.closest('[data-val]'); if (b) oP?.(b.dataset.val, m); }); return m;
 };
 export const openShowcaseSharedPlaylistConfirm = ({ raw: r, trk: t, esc, createPlaylist: cP, notify: n, modalApi: mA }) => {
   try {
