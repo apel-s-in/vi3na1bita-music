@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-cc2a6f19c8ab54a499b13e04341606068c4692bb.idx
-│   │       ├── pack-cc2a6f19c8ab54a499b13e04341606068c4692bb.pack
-│   │       └── pack-cc2a6f19c8ab54a499b13e04341606068c4692bb.rev
+│   │       ├── pack-c80529e60d6a83d5ffb3b2e37d2885343dff4ff1.idx
+│   │       ├── pack-c80529e60d6a83d5ffb3b2e37d2885343dff4ff1.pack
+│   │       └── pack-c80529e60d6a83d5ffb3b2e37d2885343dff4ff1.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -401,7 +401,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-17 16:21:37 UTC
+Сгенерировано: 2026-03-17 16:22:24 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2707,6 +2707,14 @@ function openFavoritesOnlyConflictModal({ track, onDisable, onAddFavorite, hidde
   });
 }
 
+function makeFavoritesOnlyAfterPlay({ highlight, ensureBlock } = {}) {
+  return ({ index = -1, uid = '', albumKey = '' } = {}) => {
+    highlight?.(index, { uid, albumKey });
+    ensureBlock?.(index, { userInitiated: true });
+    W.PlayerUI?.updatePlaylistFiltering?.();
+  };
+}
+
 function playWithFavoritesOnlyResolution({
   list = [],
   uid,
@@ -2747,8 +2755,8 @@ function playWithFavoritesOnlyResolution({
   });
 }
 
-export { openFavoritesOnlyConflictModal, playWithFavoritesOnlyResolution };
-export default { openFavoritesOnlyConflictModal, playWithFavoritesOnlyResolution };
+export { openFavoritesOnlyConflictModal, makeFavoritesOnlyAfterPlay, playWithFavoritesOnlyResolution };
+export default { openFavoritesOnlyConflictModal, makeFavoritesOnlyAfterPlay, playWithFavoritesOnlyResolution };
 
 //=================================================
 // FILE: /scripts/app/player/favorites-only-resolver.js
