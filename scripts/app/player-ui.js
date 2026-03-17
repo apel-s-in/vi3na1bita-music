@@ -35,7 +35,9 @@
   };
 
   const syncUI = () => {
-    const c = PC(); if (!c || !dom.blk) return;
+    const c = PC();
+    applyFavoritesOnlyDomFilter();
+    if (!c || !dom.blk) return;
     const t = c.getCurrentTrack(), p = c.isPlaying(), e = dom.el, f = U.lsGetBool01('favoritesOnlyMode'), oM = W.OfflineManager, isR2 = oM?.getMode?.() === 'R2', q = isR2 ? (oM?.getCQ() || 'hi') : U.pq.getState().mode, pA = AM()?.getPlayingAlbum?.();
 
     W.IconUtils?.setIconUse?.(e.ico, p ? 'icon-pause' : 'icon-play');
@@ -56,7 +58,6 @@
       if (e.mNUp) e.mNUp.textContent = nt?.title || '—';
     }
 
-    applyFavoritesOnlyDomFilter();
   };
 
   const onPQClick = async () => {
@@ -174,6 +175,6 @@
     syncUI();
   };
 
-  W.PlayerUI = { initialize: init, ensurePlayerBlock: (i, o) => ensureBlock(i, o?.userInitiated), updateMiniHeader: syncUI, updateNextUpLabel: syncUI, updatePlaylistFiltering: syncUI, applyFavoritesOnlyDomFilter, togglePlayPause: () => PC().isPlaying() ? PC().pause() : PC().play(), switchAlbumInstantly: () => { if (PC().getIndex() >= 0) ensureBlock(PC().getIndex()); } };
+  W.PlayerUI = { initialize: init, ensurePlayerBlock: (i, o) => ensureBlock(i, o?.userInitiated), updateMiniHeader: syncUI, updateNextUpLabel: syncUI, updatePlaylistFiltering: () => { applyFavoritesOnlyDomFilter(); if (dom.blk) syncUI(); }, applyFavoritesOnlyDomFilter, togglePlayPause: () => PC().isPlaying() ? PC().pause() : PC().play(), switchAlbumInstantly: () => { if (PC().getIndex() >= 0) ensureBlock(PC().getIndex()); } };
   D.readyState === 'loading' ? D.addEventListener('DOMContentLoaded', init) : init();
 })(window, document);
