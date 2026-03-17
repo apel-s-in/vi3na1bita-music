@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3e9717b2ea1b7fffe4abf7476cb7a69abd080fae.idx
-│   │       ├── pack-3e9717b2ea1b7fffe4abf7476cb7a69abd080fae.pack
-│   │       └── pack-3e9717b2ea1b7fffe4abf7476cb7a69abd080fae.rev
+│   │       ├── pack-6a5cc078517d8ecc5bd641637f9b2f97dae81116.idx
+│   │       ├── pack-6a5cc078517d8ecc5bd641637f9b2f97dae81116.pack
+│   │       └── pack-6a5cc078517d8ecc5bd641637f9b2f97dae81116.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -401,7 +401,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-17 14:14:26 UTC
+Сгенерировано: 2026-03-17 14:15:57 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -935,7 +935,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.1.21';
+const SW_VERSION = '8.1.22';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
@@ -968,6 +968,7 @@ const STATIC_ASSETS = [
   './scripts/ui/offline-modal.js', './scripts/ui/offline-indicators.js',
   './scripts/ui/cache-progress-overlay.js', './scripts/ui/statistics-modal.js',
   './scripts/app/player/favorites-only-resolver.js',
+  './scripts/app/player/favorites-only-actions.js',
   './scripts/app/player-ui.js', './scripts/app/albums.js',
   './scripts/app/profile/achievements-view.js',
   './scripts/ui/progress-formatters.js',
