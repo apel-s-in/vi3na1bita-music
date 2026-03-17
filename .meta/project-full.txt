@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-977c4123196b368abcda02b59f4d60f1533a443b.idx
-│   │       ├── pack-977c4123196b368abcda02b59f4d60f1533a443b.pack
-│   │       └── pack-977c4123196b368abcda02b59f4d60f1533a443b.rev
+│   │       ├── pack-ed3f49ec3187713570fd1576bd384f19366b627b.idx
+│   │       ├── pack-ed3f49ec3187713570fd1576bd384f19366b627b.pack
+│   │       └── pack-ed3f49ec3187713570fd1576bd384f19366b627b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -402,7 +402,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-17 20:32:59 UTC
+Сгенерировано: 2026-03-17 20:43:27 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -937,7 +937,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.1.22';
+const SW_VERSION = '8.1.23';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
@@ -3493,7 +3493,7 @@ export const openShowcaseSharedPlaylistConfirm = ({ raw: r, trk: t, esc, createP
   } catch { n?.error?.('Ошибка чтения ссылки'); }
 };
 export const openShowcasePaletteModal = ({ title: t, items: i, value: v, resetText: r, onPick: o, modalHelper: m }) => m?.({ title: t, items: i, value: v, resetText: r, onPick: o }) || null;
-export default { openShowcaseSheetModal, openShowcaseAddToPlaylistModal, openShowcaseSortModal, openShowcaseSharedPlaylistConfirm, openShowcasePaletteModal };
+export default { openShowcaseSheetModal, openShowcaseAddToPlaylistModal, openShowcaseSettingsModal, openShowcaseSharedPlaylistConfirm, openShowcasePaletteModal };
 
 //=================================================
 // FILE: /scripts/app/showcase/playlists.js
