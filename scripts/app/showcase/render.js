@@ -1,7 +1,7 @@
 export const renderShowcaseHeader = ({ edit: e, query: q, sortMode: s, resetAble: r, dirty: d, esc }) => `
   <div class="showcase-header-controls">
     ${e ? `<div class="showcase-edit-banner">✏️ РЕЖИМ РЕДАКТИРОВАНИЯ<div class="sc-edit-actions"><button class="showcase-btn sc-btn-save sc-btn-save-ok">💾 Сохранить</button><button class="showcase-btn sc-btn-create sc-btn-create-accent">✨ Создать</button><button class="showcase-btn sc-btn-reset ${d ? '' : 'sc-btn-disabled'} sc-btn-reset-warn" ${d ? '' : 'disabled'}>↺ Сброс</button><button class="showcase-btn sc-btn-exit sc-btn-exit-danger">✕ Выйти</button></div></div>` : ''}
-    <div class="sc-search-settings-row"><button class="showcase-btn sc-btn-search-cfg" id="sc-btn-search-cfg">⚙️ Настройки поиска</button><button class="showcase-btn sc-btn-search-close" id="sc-btn-search-close" title="Свернуть поиск">🔽</button></div>
+    <div class="sc-search-settings-row"><button type="button" class="sc-btn-search-top" id="sc-btn-search-close">🔽 Свернуть</button><button type="button" class="sc-btn-search-top" id="sc-btn-search-clear-top">✖ Очистить</button><button type="button" class="sc-btn-search-top accent" id="sc-btn-search-cfg">⚙ Настройки</button></div>
     <div class="showcase-search-wrap"><input type="text" class="showcase-search" id="sc-search" placeholder="🔍 Поиск по всему каталогу..." value="${esc(q)}"><button type="button" class="showcase-search-clear" id="sc-search-clear" ${q ? '' : 'hidden'}>✕</button></div>
     ${!e ? `<div class="showcase-btns-row"><button class="showcase-btn sc-btn-edit">✏️ Редактировать</button>${r ? `<button class="showcase-btn sc-btn-master-reset sc-btn-half">↺ Сброс</button>` : ''}<button class="showcase-btn sc-btn-sort">⚙️ ${s !== 'user' ? '●' : ''} Настройки</button></div>` : ''}
     <div class="showcase-playlists-actions" id="sc-playlists-actions"></div><div class="showcase-playlists-list" id="sc-playlists"></div><div class="showcase-status-bar" id="sc-status"></div>
@@ -58,7 +58,7 @@ export const renderShowcaseSelectionBar = ({ selectedCount: sC, edit: e, onClick
   if (!sC) return null;
   const b = document.createElement('div');
   b.id = 'sc-selection-bar'; b.className = 'showcase-sticky-bar';
-  b.innerHTML = `<span>Выбрано: ${sC}</span>${!e ? `<button type="button" class="showcase-btn sc-search-add">➕ Добавить</button>` : ''}<button type="button" class="showcase-btn sc-unified-create sc-unified-create-accent">✨ Создать</button><button type="button" class="showcase-btn sc-unified-share">📸 Карточка</button><button type="button" class="showcase-btn sc-unified-all">✓ Всё</button><button type="button" class="showcase-btn sc-unified-none">✕ Снять</button>`;
+  b.innerHTML = `<div class="sc-sel-count">${sC}</div><button type="button" class="sc-sel-btn accent sc-unified-action-menu">✨ Действие</button><button type="button" class="sc-sel-btn sc-unified-all">✓ Всё</button><button type="button" class="sc-sel-btn sc-unified-none">✕ Снять</button>`;
   b.addEventListener('click', b._scClick = oC); document.body.appendChild(b);
   return b;
 };
