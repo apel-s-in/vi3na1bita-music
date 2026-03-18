@@ -87,5 +87,15 @@ export const openShowcaseSearchSettingsModal = ({ modalApi: mA }) => {
   const m = mA?.open?.({ title: 'Настройки поиска', maxWidth: 400, bodyHtml: `<div class="sm-note" style="margin-bottom:18px;text-align:left;color:#9db7dd">Настройте параметры умного поиска. Продвинутые семантические алгоритмы в разработке.</div><div class="sleep-custom-card" style="margin-bottom:20px;display:flex;flex-direction:column;gap:14px"><label class="sleep-check"><input type="checkbox" checked><span>Поиск по тексту песен (Lyrics)</span></label><label class="sleep-check"><input type="checkbox" checked><span>Учитывать жанры и настроения</span></label><label class="sleep-check"><input type="checkbox"><span>Искать только в Избранном</span></label><label class="sleep-check"><input type="checkbox"><span>Строгое совпадение фразы</span></label></div><div class="om-actions"><button class="modal-action-btn" data-act="cancel">Сбросить</button><button class="modal-action-btn online" data-act="apply">Применить</button></div>` });
   if (m) m.addEventListener('click', e => { if (e.target.closest('.modal-action-btn')) m.remove(); }); return m;
 };
+export const openShowcaseSelectionMenuModal = ({ modalApi: mA, isSearch: iS, isEdit: iE, onAction: oA }) => {
+  const acts = `${!iE && iS ? `<button class="sc-sheet-btn" data-act="add">➕ Добавить в текущий плейлист</button>` : ''}<button class="sc-sheet-btn" data-act="create">✨ Создать новый плейлист</button><button class="sc-sheet-btn" data-act="share">📸 Сгенерировать карточку</button><button class="sc-sheet-btn sc-sheet-btn--cancel" data-act="cancel">Отмена</button>`;
+  const bg = document.createElement('div'); bg.className = 'sc-bottom-sheet-bg';
+  bg.innerHTML = `<div class="sc-bottom-sheet"><button class="sc-sheet-close">×</button><div class="sc-sheet-title">Выбранные треки</div><div class="sc-sheet-sub">Что сделать с выбранными треками?</div>${acts}</div>`;
+  document.body.appendChild(bg); requestAnimationFrame(() => bg.classList.add('active'));
+  const cl = () => { bg.classList.remove('active'); setTimeout(() => bg.remove(), 200); };
+  bg.querySelector('.sc-sheet-close')?.addEventListener('click', cl);
+  bg.addEventListener('click', e => { const b = e.target.closest('button[data-act]'); if (e.target === bg || b?.dataset.act === 'cancel') return cl(); if (b) { cl(); oA?.(b.dataset.act); } });
+  return { el: bg, close: cl };
+};
 export const openShowcasePaletteModal = ({ title: t, items: i, value: v, resetText: r, onPick: o, modalHelper: m }) => m?.({ title: t, items: i, value: v, resetText: r, onPick: o }) || null;
-export default { openShowcaseSheetModal, openShowcaseAddToPlaylistModal, openShowcaseSettingsModal, openShowcaseSharedPlaylistConfirm, openShowcasePaletteModal, openShowcaseSearchSettingsModal };
+export default { openShowcaseSheetModal, openShowcaseAddToPlaylistModal, openShowcaseSettingsModal, openShowcaseSharedPlaylistConfirm, openShowcaseSearchSettingsModal, openShowcaseSelectionMenuModal, openShowcasePaletteModal };
