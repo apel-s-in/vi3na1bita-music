@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-0cacc9ca9747d2eb9429227faa7bfd34c4a49fc9.idx
-│   │       ├── pack-0cacc9ca9747d2eb9429227faa7bfd34c4a49fc9.pack
-│   │       └── pack-0cacc9ca9747d2eb9429227faa7bfd34c4a49fc9.rev
+│   │       ├── pack-fd7287b44ebc373123f0d2233ee0fd70731c694e.idx
+│   │       ├── pack-fd7287b44ebc373123f0d2233ee0fd70731c694e.pack
+│   │       └── pack-fd7287b44ebc373123f0d2233ee0fd70731c694e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -402,7 +402,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-18 08:15:22 UTC
+Сгенерировано: 2026-03-18 08:15:53 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4015,8 +4015,8 @@ if (errs.length) { console.error('Failed:\n', errs.join('\n')); process.exit(2);
 // UID.092_(Incremental rollout order)_(делать staged внедрение через один конфиг)_(intel boot должен управляться отсюда)
 
 export const APP_CONFIG = {
-  APP_VERSION: '8.1.17',
-  BUILD_DATE: '2026-03-17',
+  APP_VERSION: '8.1.26',
+  BUILD_DATE: '2026-03-18',
   PROMOCODE: 'VITRINA2025',
   ICON_ALBUMS_ORDER: [
     { key: 'odnazhdy-v-skazke', title: 'Однажды в Сказке', icon: 'img/icon_album/icon-album-03.png' },
