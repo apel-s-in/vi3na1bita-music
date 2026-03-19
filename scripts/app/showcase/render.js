@@ -58,7 +58,7 @@ export const renderShowcaseSelectionBar = ({ selectedCount: sC, edit: e, onClick
   if (!sC) return null;
   const b = document.createElement('div');
   b.id = 'sc-selection-bar'; b.className = 'showcase-sticky-bar';
-  b.innerHTML = `<div class="sc-sel-count">${sC}</div><button type="button" class="sc-sel-btn accent sc-unified-action-menu">✨ Действие</button><button type="button" class="sc-sel-btn sc-unified-all">✓ Всё</button><button type="button" class="sc-sel-btn sc-unified-none">✕ Снять</button>`;
+  b.innerHTML = `<div class="sc-sel-count">${sC}</div><button type="button" class="sc-sel-btn accent sc-unified-action-menu">Действие</button><button type="button" class="sc-sel-btn sc-unified-all">✓ Всё</button><button type="button" class="sc-sel-btn sc-unified-none">✕ Снять</button><div class="sc-action-popup">${!e ? `<button type="button" class="sc-action-popup-btn" data-popact="add"><span class="ic">➕</span> Добавить в текущий</button>` : ''}<button type="button" class="sc-action-popup-btn" data-popact="create"><span class="ic">✨</span> Создать новый</button><button type="button" class="sc-action-popup-btn" data-popact="share"><span class="ic">📸</span> Сгенерировать карточку</button></div>`;
   b.addEventListener('click', b._scClick = oC); document.body.appendChild(b);
   return b;
 };
