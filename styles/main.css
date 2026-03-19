@@ -713,6 +713,12 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .source-indicator:hover{opacity:1;transform:scale(1.1)}
 #sc-tg-numbers{min-width:42px;display:inline-flex!important;align-items:center;justify-content:center;white-space:nowrap;text-align:center;user-select:none}
 .showcase-sticky-bar{position:fixed;left:50%;bottom:85px;transform:translateX(-50%);z-index:10005;background:rgba(20,24,32,0.95);border:1px solid rgba(77,170,255,.3);padding:6px 8px;border-radius:12px;display:flex;gap:6px;align-items:center;box-shadow:0 8px 32px rgba(0,0,0,.8);width:calc(100% - 20px);max-width:380px;backdrop-filter:blur(8px)}
+.sc-action-popup{position:absolute;bottom:calc(100% + 10px);left:0;right:0;background:rgba(20,24,32,0.98);border:1px solid rgba(77,170,255,.4);border-radius:12px;padding:6px;display:flex;flex-direction:column;gap:4px;box-shadow:0 8px 32px rgba(0,0,0,.8);opacity:0;transform:translateY(10px) scale(.95);pointer-events:none;transition:all .2s cubic-bezier(.1,.8,.2,1);transform-origin:bottom center;backdrop-filter:blur(8px);z-index:-1}
+.showcase-sticky-bar.menu-open .sc-action-popup{opacity:1;transform:translateY(0) scale(1);pointer-events:auto;z-index:1}
+.sc-action-popup-btn{background:transparent;border:none;color:#eaf2ff;padding:12px 14px;text-align:left;font-size:14px;font-weight:700;border-radius:8px;cursor:pointer;transition:.15s;display:flex;align-items:center;gap:10px}
+.sc-action-popup-btn:hover{background:rgba(255,255,255,.06)}
+.sc-action-popup-btn:active{transform:scale(.98);background:rgba(255,255,255,.1)}
+.sc-action-popup-btn .ic{font-size:16px;width:18px;text-align:center}
 .sc-sel-count{background:var(--secondary-color);color:#fff;font-weight:900;font-size:15px;border-radius:8px;min-width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px rgba(77,170,255,.4)}
 .sc-sel-btn{flex:1;background:rgba(255,255,255,.06);border:none;color:#eaf2ff;border-radius:8px;font-size:13px;font-weight:800;height:36px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;transition:.15s}
 .sc-sel-btn:active{transform:scale(0.96);background:rgba(255,255,255,.1)}
