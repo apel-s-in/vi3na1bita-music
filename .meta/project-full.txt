@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a1a6a28459657e0d0fd4af0bb6728f7c7822143d.idx
-│   │       ├── pack-a1a6a28459657e0d0fd4af0bb6728f7c7822143d.pack
-│   │       └── pack-a1a6a28459657e0d0fd4af0bb6728f7c7822143d.rev
+│   │       ├── pack-05d1fa9f4797bb93c24b33fd9972ef2b6adde18d.idx
+│   │       ├── pack-05d1fa9f4797bb93c24b33fd9972ef2b6adde18d.pack
+│   │       └── pack-05d1fa9f4797bb93c24b33fd9972ef2b6adde18d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -402,7 +402,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-19 19:38:48 UTC
+Сгенерировано: 2026-03-19 19:50:05 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -8320,7 +8320,7 @@ body.news-view #cover-wrap{display:none!important}
 .cloud-menu__item:hover{background:#333}
 .cloud-menu__item--danger{color:#ef5350}
 .cloud-menu__item--danger:hover{background:#3a1a1a}
-.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;backdrop-filter:blur(6px);z-index:9999;animation:fadeIn .3s}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;backdrop-filter:blur(6px);z-index:10015;animation:fadeIn .3s}
 .modal-bg.active{display:flex}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 .modal-feedback{background:var(--modal-bg);border-radius:14px;padding:28px 24px;min-width:240px;max-width:90vw;max-height:85vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.6);position:relative;animation:slideUp .3s}
@@ -8333,6 +8333,8 @@ body.news-view #cover-wrap{display:none!important}
 .lyrics-modal .lyrics-fulltext::-webkit-scrollbar{width:8px}
 .lyrics-modal .lyrics-fulltext::-webkit-scrollbar-track{background:rgba(255,255,255,.05);border-radius:4px}
 .lyrics-modal .lyrics-fulltext::-webkit-scrollbar-thumb{background:rgba(77,170,255,.3);border-radius:4px}
+.om-actions{display:flex;gap:12px;width:100%;margin-top:14px}
+.om-actions .modal-action-btn{flex:1;display:flex;align-items:center;justify-content:center;text-align:center}
 .modal-action-btn{background:rgba(77,170,255,.15);border:1px solid rgba(77,170,255,.3);color:var(--secondary-color);padding:10px 20px;border-radius:8px;cursor:pointer;font-weight:900;font-size:14px;transition:.2s}
 .modal-action-btn:hover{background:rgba(77,170,255,.25);transform:translateY(-1px);box-shadow:0 4px 12px rgba(77,170,255,.2)}
 .modal-action-btn:active{transform:translateY(0)}
