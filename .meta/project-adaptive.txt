@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ba55829a2d124019d6ea674f6d4019ef5de9ae25.idx
-│   │       ├── pack-ba55829a2d124019d6ea674f6d4019ef5de9ae25.pack
-│   │       └── pack-ba55829a2d124019d6ea674f6d4019ef5de9ae25.rev
+│   │       ├── pack-a1a6a28459657e0d0fd4af0bb6728f7c7822143d.idx
+│   │       ├── pack-a1a6a28459657e0d0fd4af0bb6728f7c7822143d.pack
+│   │       └── pack-a1a6a28459657e0d0fd4af0bb6728f7c7822143d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -402,7 +402,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-19 19:37:22 UTC
+Сгенерировано: 2026-03-19 19:38:48 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
