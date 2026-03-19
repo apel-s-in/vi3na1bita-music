@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d5ccd650f76d210c7f738464cebd962489ea6a67.idx
-│   │       ├── pack-d5ccd650f76d210c7f738464cebd962489ea6a67.pack
-│   │       └── pack-d5ccd650f76d210c7f738464cebd962489ea6a67.rev
+│   │       ├── pack-7cbfa2cc34a11a54650e585cd972ec4e1b85537b.idx
+│   │       ├── pack-7cbfa2cc34a11a54650e585cd972ec4e1b85537b.pack
+│   │       └── pack-7cbfa2cc34a11a54650e585cd972ec4e1b85537b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -402,7 +402,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-19 19:33:53 UTC
+Сгенерировано: 2026-03-19 19:34:35 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3594,7 +3594,7 @@ export const renderShowcaseSelectionBar = ({ selectedCount: sC, edit: e, onClick
   if (!sC) return null;
   const b = document.createElement('div');
   b.id = 'sc-selection-bar'; b.className = 'showcase-sticky-bar';
-  b.innerHTML = `<div class="sc-sel-count">${sC}</div><button type="button" class="sc-sel-btn accent sc-unified-action-menu">✨ Действие</button><button type="button" class="sc-sel-btn sc-unified-all">✓ Всё</button><button type="button" class="sc-sel-btn sc-unified-none">✕ Снять</button>`;
+  b.innerHTML = `<div class="sc-sel-count">${sC}</div><button type="button" class="sc-sel-btn accent sc-unified-action-menu">Действие</button><button type="button" class="sc-sel-btn sc-unified-all">✓ Всё</button><button type="button" class="sc-sel-btn sc-unified-none">✕ Снять</button><div class="sc-action-popup">${!e ? `<button type="button" class="sc-action-popup-btn" data-popact="add"><span class="ic">➕</span> Добавить в текущий</button>` : ''}<button type="button" class="sc-action-popup-btn" data-popact="create"><span class="ic">✨</span> Создать новый</button><button type="button" class="sc-action-popup-btn" data-popact="share"><span class="ic">📸</span> Сгенерировать карточку</button></div>`;
   b.addEventListener('click', b._scClick = oC); document.body.appendChild(b);
   return b;
 };
