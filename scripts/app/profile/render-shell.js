@@ -22,90 +22,69 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
 
   // === 3D CAROUSEL v4 — PHYSICAL GLASS ===
   window.Utils?.dom?.createStyleOnce?.('sc-3d-carousel-styles', `
-    .sc-3d-wrap{margin:20px 0;touch-action:pan-y;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;overflow:visible}
-    .sc-3d-scene{perspective:1100px;perspective-origin:50% 42%;height:320px;display:flex;align-items:center;justify-content:center;overflow:visible}
-    .sc-3d-car{width:160px;height:230px;position:relative;transform-style:preserve-3d;transition:transform .6s cubic-bezier(.15,.85,.35,1);will-change:transform}
+    .sc-3d-wrap{margin:14px 0 18px;padding:0 4px;touch-action:pan-y;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;overflow:hidden}
+    .sc-3d-scene{perspective:980px;perspective-origin:50% 42%;height:250px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+    .sc-3d-car{width:124px;height:184px;position:relative;transform-style:preserve-3d;transition:transform .56s cubic-bezier(.15,.85,.35,1);will-change:transform;--sc3d-th:10px}
 
-    /* ── КАРТОЧКА (контейнер слоёв) ── */
     .sc-3d-card{position:absolute;inset:0;transform-style:preserve-3d;cursor:pointer;will-change:transform}
+    .glass-front,.glass-back{position:absolute;inset:0;border-radius:20px;overflow:hidden}
 
-    /* ── ЛИЦЕВАЯ ГРАНЬ ── */
-    .glass-front{position:absolute;inset:0;border-radius:20px;background:linear-gradient(145deg,rgba(20,40,70,.6),rgba(8,14,25,.75));backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(100,180,255,.55);box-shadow:inset 0 0 40px rgba(77,170,255,.1),0 0 0 .5px rgba(255,255,255,.2) inset;transform:translateZ(7px);overflow:hidden}
-    /* верхний блик — имитация каустики */
-    .glass-front::before{content:'';position:absolute;top:-40%;left:-30%;width:160%;height:65%;background:linear-gradient(155deg,rgba(255,255,255,.18) 0%,rgba(100,180,255,.08) 40%,transparent 65%);border-radius:50%;pointer-events:none}
-    /* нижний блик + левый боковой */
-    .glass-front::after{content:'';position:absolute;bottom:0;left:5%;right:5%;height:1px;background:linear-gradient(90deg,transparent,rgba(100,180,255,.8),transparent);box-shadow:0 0 8px rgba(77,170,255,.4);pointer-events:none}
+    .glass-front{transform:translateZ(calc(var(--sc3d-th)/2));background:linear-gradient(180deg,rgba(22,43,72,.82),rgba(7,15,27,.94));border:1px solid rgba(110,194,255,.56);box-shadow:inset 0 0 22px rgba(160,220,255,.1),inset 0 0 46px rgba(77,170,255,.07),0 0 18px rgba(77,170,255,.18)}
+    .glass-front::before{content:'';position:absolute;top:-42%;left:-30%;width:165%;height:66%;background:linear-gradient(155deg,rgba(255,255,255,.17) 0%,rgba(140,205,255,.08) 42%,transparent 68%);border-radius:50%;pointer-events:none}
+    .glass-front::after{content:'';position:absolute;inset:1px;border-radius:19px;box-shadow:inset 0 0 0 1px rgba(214,240,255,.16),inset 0 -18px 28px rgba(16,37,66,.46);pointer-events:none}
 
-    /* ── ЗАДНЯЯ ГРАНЬ ── */
-    .glass-back{position:absolute;inset:0;border-radius:20px;background:rgba(3,8,18,.9);border:1px solid rgba(77,170,255,.25);transform:translateZ(-7px);box-shadow:inset 0 0 20px rgba(0,0,0,.5)}
+    .glass-back{transform:translateZ(calc(var(--sc3d-th)/-2));background:linear-gradient(180deg,rgba(5,11,20,.96),rgba(2,6,12,.99));border:1px solid rgba(77,170,255,.14);box-shadow:inset 0 0 18px rgba(0,0,0,.58)}
 
-    /* ── ТОРЦЫ (боковые грани — толщина стекла) ── */
-    .glass-side{position:absolute;background:linear-gradient(180deg,rgba(100,190,255,.45),rgba(40,80,130,.55));backdrop-filter:blur(6px)}
-    .glass-side-top{top:0;left:4px;right:4px;height:14px;transform:rotateX(90deg) translateZ(7px);transform-origin:top center;border-top:1px solid rgba(255,255,255,.5)}
-    .glass-side-bottom{bottom:0;left:4px;right:4px;height:14px;transform:rotateX(-90deg) translateZ(7px);transform-origin:bottom center;border-bottom:1px solid rgba(255,255,255,.25)}
-    .glass-side-left{left:0;top:4px;bottom:4px;width:14px;transform:rotateY(-90deg) translateZ(7px);transform-origin:left center;border-left:1px solid rgba(255,255,255,.4)}
-    .glass-side-right{right:0;top:4px;bottom:4px;width:14px;transform:rotateY(90deg) translateZ(7px);transform-origin:right center;border-right:1px solid rgba(255,255,255,.35)}
+    .glass-side{position:absolute;background:linear-gradient(180deg,rgba(126,194,255,.4),rgba(31,69,114,.56));box-shadow:inset 0 0 0 1px rgba(220,242,255,.1)}
+    .glass-side-top{left:10px;right:10px;top:0;height:var(--sc3d-th);border-radius:12px 12px 0 0;transform:translateY(calc(var(--sc3d-th)/-2)) rotateX(90deg)}
+    .glass-side-bottom{left:10px;right:10px;bottom:0;height:var(--sc3d-th);border-radius:0 0 12px 12px;transform:translateY(calc(var(--sc3d-th)/2)) rotateX(-90deg)}
+    .glass-side-left{top:10px;bottom:10px;left:0;width:var(--sc3d-th);border-radius:12px 0 0 12px;transform:translateX(calc(var(--sc3d-th)/-2)) rotateY(-90deg)}
+    .glass-side-right{top:10px;bottom:10px;right:0;width:var(--sc3d-th);border-radius:0 12px 12px 0;transform:translateX(calc(var(--sc3d-th)/2)) rotateY(90deg)}
 
-    /* ── ТРЕЩИНЫ ── */
-    .crack-layer{position:absolute;inset:0;border-radius:20px;pointer-events:none;overflow:hidden}
-    .crack-layer svg{width:100%;height:100%}
-    .crack-layer image{mix-blend-mode:screen}
-    /* трещины на задней грани — темнее и тусклее */
-    .crack-back{position:absolute;inset:0;border-radius:20px;pointer-events:none;overflow:hidden;transform:translateZ(-4px);opacity:.3}
-    .crack-back svg{width:100%;height:100%}
-    .crack-back image{mix-blend-mode:screen;filter:hue-rotate(180deg) brightness(0.5)}
+    .surface-content{position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px 12px 18px;transform:translateZ(.2px);pointer-events:none}
+    .surface-content::before{content:'';position:absolute;left:50%;top:48%;width:86px;height:86px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(165,222,255,.52) 0%,rgba(89,174,255,.18) 32%,rgba(42,93,155,.08) 52%,transparent 74%);filter:blur(8px);pointer-events:none}
+    .sc-3d-ic{position:relative;z-index:1;font-size:48px;line-height:1;margin-bottom:10px;filter:drop-shadow(0 0 10px rgba(146,215,255,.62)) drop-shadow(0 0 4px rgba(255,255,255,.34))}
+    .sc-3d-tit{position:relative;z-index:1;font-size:11px;font-weight:900;color:#fff;letter-spacing:1.4px;text-transform:uppercase;text-align:center;text-shadow:0 0 10px rgba(117,198,255,.95),0 1px 0 rgba(255,255,255,.14),0 2px 6px rgba(0,0,0,.78);line-height:1.25}
 
-    /* ── КОНТЕНТ (парит над стеклом) ── */
-    .card-content{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;transform:translateZ(28px);pointer-events:none;z-index:10}
-    .sc-3d-ic{font-size:56px;line-height:1;margin-bottom:14px;filter:drop-shadow(0 0 18px rgba(77,170,255,1)) drop-shadow(0 0 6px rgba(255,255,255,.8)) drop-shadow(0 2px 8px rgba(0,0,0,.9));transition:filter .3s}
-    .sc-3d-tit{font-size:13px;font-weight:900;color:#fff;letter-spacing:2px;text-transform:uppercase;text-align:center;text-shadow:0 0 14px rgba(77,170,255,1),0 0 6px rgba(255,255,255,.7),0 2px 4px rgba(0,0,0,.9);line-height:1.3}
+    .crack-layer,.crack-back{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+    .crack-layer{z-index:3;opacity:.94}
+    .crack-back{z-index:0;transform:translateZ(calc(var(--sc3d-th)/-2 + 1px));opacity:.22;filter:blur(.15px)}
+    .crack-layer svg,.crack-back svg{width:100%;height:100%;display:block}
+    .crack-layer image,.crack-back image{mix-blend-mode:screen}
 
-    /* ── СОСТОЯНИЯ КАРТОЧЕК ── */
-    /* активная (центральная) */
-    .sc-3d-card.is-active .glass-front{border-color:rgba(77,170,255,.9);box-shadow:inset 0 0 40px rgba(77,170,255,.15),0 0 30px rgba(77,170,255,.4)}
-    .sc-3d-card.is-active .sc-3d-ic{filter:drop-shadow(0 0 22px rgba(77,170,255,1)) drop-shadow(0 0 10px rgba(255,255,255,.9)) drop-shadow(0 0 40px rgba(77,170,255,.6))}
-    /* задние карточки — затухание */
-    .sc-3d-card.is-back .glass-front{opacity:.35;border-color:rgba(77,170,255,.15)}
-    .sc-3d-card.is-back .card-content{opacity:.2}
-    .sc-3d-card.is-back .crack-layer{opacity:.15}
+    .sc-3d-card.is-active .glass-front{border-color:rgba(124,205,255,.86);box-shadow:inset 0 0 26px rgba(166,226,255,.14),inset 0 0 58px rgba(77,170,255,.09),0 0 24px rgba(77,170,255,.26)}
+    .sc-3d-card.is-active .surface-content::before{width:98px;height:98px}
+    .sc-3d-card.is-active .sc-3d-tit{text-shadow:0 0 13px rgba(123,205,255,1),0 0 4px rgba(255,255,255,.72),0 2px 8px rgba(0,0,0,.82)}
 
-    /* ── КНОПКИ УПРАВЛЕНИЯ ── */
-    .sc-3d-controls{display:flex;gap:14px;justify-content:center;padding:4px 16px 28px}
+    .sc-3d-card.is-back .glass-front,.sc-3d-card.is-back .glass-back,.sc-3d-card.is-back .glass-side{opacity:.54}
+    .sc-3d-card.is-back .surface-content{opacity:.4}
+    .sc-3d-card.is-back .crack-layer{opacity:.34}
+
+    .sc-3d-controls{display:flex;gap:14px;justify-content:center;padding:2px 16px 24px}
     .sc-3d-btn{position:relative;flex:1;max-width:125px;height:52px;background:linear-gradient(180deg,#0d1828,#070d16);border:1px solid rgba(77,170,255,.35);color:#7ab4f5;border-radius:16px;font-weight:900;font-size:14px;cursor:pointer;transition:all .25s cubic-bezier(.4,0,.2,1);overflow:hidden;box-shadow:0 8px 20px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.08)}
-    /* верхний блик кнопки */
     .sc-3d-btn::before{content:'';position:absolute;top:0;left:0;right:0;height:48%;background:linear-gradient(180deg,rgba(255,255,255,.1),transparent);border-radius:16px 16px 0 0;pointer-events:none}
-    /* нижняя окантовка кнопки */
     .sc-3d-btn::after{content:'';position:absolute;bottom:0;left:15%;right:15%;height:1px;background:linear-gradient(90deg,transparent,rgba(77,170,255,.5),transparent);pointer-events:none}
     .sc-3d-btn:active{transform:translateY(2px) scale(.96);box-shadow:0 4px 10px rgba(0,0,0,.7)}
     .sc-3d-btn.is-select{background:linear-gradient(180deg,#0e2040,#071020);border-color:rgba(77,170,255,.9);color:#fff;box-shadow:0 0 24px rgba(77,170,255,.45),0 8px 20px rgba(0,0,0,.6),inset 0 0 16px rgba(77,170,255,.12);text-shadow:0 0 10px rgba(77,170,255,1),0 0 4px #fff}
   `);
 
-  // ── Трещины через файл img/vitrina-crack-01.svg ──
-  // Каждая карточка использует одну трещину, но с уникальным transform
-  // чтобы на каждой карточке она выглядела по-разному
-  const crackTransforms = [
-    'translate(0,0)   scale(1,1)    rotate(0,80,115)',   // 0 — оригинал
-    'translate(0,0)   scale(-1,1)   rotate(15,80,115)',  // 1 — зеркал + поворот
-    'translate(0,0)   scale(1,-1)   rotate(0,80,115)',   // 2 — вертикальный флип
-    'translate(0,0)   scale(-1,-1)  rotate(10,80,115)',  // 3 — двойной флип
-    'translate(0,0)   scale(1,1)    rotate(45,80,115)',  // 4 — поворот 45°
-    'translate(0,0)   scale(-1,1)   rotate(-20,80,115)', // 5 — зеркал + поворот -20°
+  // ── Один и тот же crack-файл, но 6 разных композиций ──
+  const crackCfg = [
+    { x: -18, y: -18, w: 92,  h: 122, r: -16, o: .82 }, // верхний левый край
+    { x: 62,  y: 20,  w: 90,  h: 122, r: 12,  o: .88 }, // правая верхняя зона
+    { x: 14,  y: 86,  w: 104, h: 136, r: 172, o: .74 }, // нижняя часть
+    { x: 22,  y: -16, w: 120, h: 160, r: 24,  o: .86 }, // диагональ сверху
+    { x: -14, y: 92,  w: 96,  h: 126, r: -28, o: .78 }, // нижний левый край
+    { x: 76,  y: 56,  w: 78,  h: 106, r: 8,   o: .84 }  // правый край
   ];
 
-  // Генерируем HTML для слоя трещины каждой карточки
-  const makeCrack = (idx) => `
-    <svg viewBox="0 0 160 230"
-         xmlns="http://www.w3.org/2000/svg"
-         style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none">
-      <image href="img/vitrina-crack-01.svg"
-             x="0" y="0" width="160" height="230"
-             transform="${crackTransforms[idx]}"
-             preserveAspectRatio="xMidYMid meet"
-             style="mix-blend-mode:screen;opacity:0.85"/>
-    </svg>`;
+  const makeCrack = (idx, back = false) => {
+    const c = crackCfg[idx] || crackCfg[0], x = c.x + (back ? (idx % 2 ? 3 : -3) : 0), y = c.y + (back ? (idx % 3) - 1 : 0), w = c.w + (back ? 4 : 0), h = c.h + (back ? 4 : 0), r = c.r + (back ? -6 : 0), o = back ? Math.max(.14, c.o * .28) : c.o;
+    return `<svg viewBox="0 0 160 230" xmlns="http://www.w3.org/2000/svg" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"><image href="img/vitrina-crack-01.svg" x="${x}" y="${y}" width="${w}" height="${h}" transform="rotate(${r},${x + w / 2},${y + h / 2})" preserveAspectRatio="xMidYMid meet" style="mix-blend-mode:screen;opacity:${o}"/></svg>`;
+  };
 
-  // Массив для совместимости с остальным кодом карточек
-  const cracks = crackTransforms.map((_, i) => makeCrack(i));
+  const cracks = crackCfg.map((_, i) => makeCrack(i));
+  const cracksBack = crackCfg.map((_, i) => makeCrack(i, true));
 
   const cardsData = [
     { id: 'stats',        tit: 'Статистика',    ic: '📊' },
@@ -118,25 +97,24 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
 
   const TOTAL   = cardsData.length;   // 6
   const STEP    = 360 / TOTAL;        // 60°
-  const RADIUS  = 195;
+  const RADIUS  = 146;
 
   const cardsHtml = cardsData.map((d, i) => {
     const angle = i * STEP;
     return `
-      <div class="sc-3d-card" data-idx="${i}" data-id="${d.id}"
-           style="transform:rotateY(${angle}deg) translateZ(${RADIUS}px)">
+      <div class="sc-3d-card" data-idx="${i}" data-id="${d.id}" style="transform:rotateY(${angle}deg) translateZ(${RADIUS}px)">
         <div class="glass-back"></div>
-        <div class="crack-back">${cracks[i]}</div>
+        <div class="crack-back">${cracksBack[i]}</div>
         <div class="glass-side glass-side-top"></div>
         <div class="glass-side glass-side-bottom"></div>
         <div class="glass-side glass-side-left"></div>
         <div class="glass-side glass-side-right"></div>
         <div class="glass-front">
+          <div class="surface-content">
+            <div class="sc-3d-ic">${d.ic}</div>
+            <div class="sc-3d-tit">${d.tit}</div>
+          </div>
           <div class="crack-layer">${cracks[i]}</div>
-        </div>
-        <div class="card-content">
-          <div class="sc-3d-ic">${d.ic}</div>
-          <div class="sc-3d-tit">${d.tit}</div>
         </div>
       </div>`;
   }).join('');
