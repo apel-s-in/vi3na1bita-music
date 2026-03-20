@@ -131,7 +131,7 @@ const ensureStyles = () => {
   `);
 };
 
-export function mountProfileCarouselFlat({ root, tpl }) {
+export function mountProfileCarouselFlat({ root }) {
   ensureStyles();
 
   const TOTAL = cardsData.length;
@@ -147,8 +147,9 @@ export function mountProfileCarouselFlat({ root, tpl }) {
   wrap.className = 'sc-3d-wrap';
   wrap.innerHTML = `<div class="sc-3d-scene"><div class="sc-3d-car" id="sc-3d-car">${cardsHtml}</div></div><div class="sc-3d-controls"><button class="sc-3d-btn" id="sc-3d-prev">◄ Пред</button><button class="sc-3d-btn is-select" id="sc-3d-sel">Выбрать</button><button class="sc-3d-btn" id="sc-3d-next">След ►</button></div>`;
 
-  const oldTabs = tpl.querySelector('.profile-tabs');
-  if (oldTabs) oldTabs.replaceWith(wrap);
+  const oldTabs = root.querySelector('.profile-tabs');
+  if (!oldTabs) return;
+  oldTabs.replaceWith(wrap);
 
   let currIdx = 0;
   let startX = 0;
