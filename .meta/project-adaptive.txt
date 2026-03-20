@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-dc53e1a9361b11704deead3bd45cdd19f14dec9f.idx
-│   │       ├── pack-dc53e1a9361b11704deead3bd45cdd19f14dec9f.pack
-│   │       └── pack-dc53e1a9361b11704deead3bd45cdd19f14dec9f.rev
+│   │       ├── pack-c5c0c5bdacfe1ffe340f5be666d0acb0477bff15.idx
+│   │       ├── pack-c5c0c5bdacfe1ffe340f5be666d0acb0477bff15.pack
+│   │       └── pack-c5c0c5bdacfe1ffe340f5be666d0acb0477bff15.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -404,7 +404,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-20 21:11:50 UTC
+Сгенерировано: 2026-03-20 21:39:10 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3148,7 +3148,7 @@ const ensureStyles = () => {
   `);
 };
 
-export function mountProfileCarouselFlat({ root, tpl }) {
+export function mountProfileCarouselFlat({ root }) {
   ensureStyles();
 
   const TOTAL = cardsData.length;
@@ -3164,8 +3164,9 @@ export function mountProfileCarouselFlat({ root, tpl }) {
   wrap.className = 'sc-3d-wrap';
   wrap.innerHTML = `<div class="sc-3d-scene"><div class="sc-3d-car" id="sc-3d-car">${cardsHtml}</div></div><div class="sc-3d-controls"><button class="sc-3d-btn" id="sc-3d-prev">◄ Пред</button><button class="sc-3d-btn is-select" id="sc-3d-sel">Выбрать</button><button class="sc-3d-btn" id="sc-3d-next">След ►</button></div>`;
 
-  const oldTabs = tpl.querySelector('.profile-tabs');
-  if (oldTabs) oldTabs.replaceWith(wrap);
+  const oldTabs = root.querySelector('.profile-tabs');
+  if (!oldTabs) return;
+  oldTabs.replaceWith(wrap);
 
   let currIdx = 0;
   let startX = 0;
