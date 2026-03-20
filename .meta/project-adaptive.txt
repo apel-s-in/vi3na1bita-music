@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9d4475084406b6b0e71e380ca05bca51804ede31.idx
-│   │       ├── pack-9d4475084406b6b0e71e380ca05bca51804ede31.pack
-│   │       └── pack-9d4475084406b6b0e71e380ca05bca51804ede31.rev
+│   │       ├── pack-7ecd13c00308e918a8bcafa4ea8f647a39d298f1.idx
+│   │       ├── pack-7ecd13c00308e918a8bcafa4ea8f647a39d298f1.pack
+│   │       └── pack-7ecd13c00308e918a8bcafa4ea8f647a39d298f1.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -403,7 +403,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-20 13:11:52 UTC
+Сгенерировано: 2026-03-20 13:13:27 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3122,10 +3122,12 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
 
     /* ── ТРЕЩИНЫ ── */
     .crack-layer{position:absolute;inset:0;border-radius:20px;pointer-events:none;overflow:hidden}
-    .crack-layer svg{width:100%;height:100%;filter:drop-shadow(0 0 2px rgba(180,220,255,.9))}
-    /* трещины на задней грани — чуть темнее */
-    .crack-back{position:absolute;inset:0;border-radius:20px;pointer-events:none;overflow:hidden;transform:translateZ(-4px);opacity:.4}
+    .crack-layer svg{width:100%;height:100%}
+    .crack-layer image{mix-blend-mode:screen}
+    /* трещины на задней грани — темнее и тусклее */
+    .crack-back{position:absolute;inset:0;border-radius:20px;pointer-events:none;overflow:hidden;transform:translateZ(-4px);opacity:.3}
     .crack-back svg{width:100%;height:100%}
+    .crack-back image{mix-blend-mode:screen;filter:hue-rotate(180deg) brightness(0.5)}
 
     /* ── КОНТЕНТ (парит над стеклом) ── */
     .card-content{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;transform:translateZ(28px);pointer-events:none;z-index:10}
@@ -3152,51 +3154,32 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
     .sc-3d-btn.is-select{background:linear-gradient(180deg,#0e2040,#071020);border-color:rgba(77,170,255,.9);color:#fff;box-shadow:0 0 24px rgba(77,170,255,.45),0 8px 20px rgba(0,0,0,.6),inset 0 0 16px rgba(77,170,255,.12);text-shadow:0 0 10px rgba(77,170,255,1),0 0 4px #fff}
   `);
 
-  // ── Уникальные трещины для каждой карточки (SVG inline) ──
-  const cracks = [
-    // Карточка 0 — удар сверху-слева
-    `<svg viewBox="0 0 160 230" xmlns="http://www.w3.org/2000/svg"><g stroke="rgba(180,220,255,0.55)" stroke-width="0.8" fill="none" stroke-linecap="round">
-      <path d="M45,30 L20,0 M45,30 L0,55 M45,30 L30,110 M45,30 L90,80 M45,30 L70,0"/>
-      <path d="M45,30 L160,140 M45,30 L50,230"/>
-      <path d="M30,18 L50,45 M20,65 L45,50 M55,90 L80,75" stroke-width="0.5" stroke="rgba(180,220,255,0.3)"/>
-      <circle cx="45" cy="30" r="3" fill="rgba(200,230,255,0.6)" stroke="none"/>
-    </g></svg>`,
-    // Карточка 1 — удар по центру
-    `<svg viewBox="0 0 160 230" xmlns="http://www.w3.org/2000/svg"><g stroke="rgba(180,220,255,0.55)" stroke-width="0.8" fill="none" stroke-linecap="round">
-      <path d="M80,100 L10,0 M80,100 L0,80 M80,100 L0,160 M80,100 L40,230"/>
-      <path d="M80,100 L160,20 M80,100 L160,90 M80,100 L160,180 M80,100 L110,230"/>
-      <path d="M55,65 L75,90 M40,120 L70,105 M100,60 L85,85 M110,130 L90,110" stroke-width="0.5" stroke="rgba(180,220,255,0.3)"/>
-      <circle cx="80" cy="100" r="4" fill="rgba(200,230,255,0.7)" stroke="none"/>
-    </g></svg>`,
-    // Карточка 2 — удар снизу-справа
-    `<svg viewBox="0 0 160 230" xmlns="http://www.w3.org/2000/svg"><g stroke="rgba(180,220,255,0.55)" stroke-width="0.8" fill="none" stroke-linecap="round">
-      <path d="M120,190 L160,230 M120,190 L160,160 M120,190 L80,230 M120,190 L160,100"/>
-      <path d="M120,190 L0,230 M120,190 L30,120 M120,190 L90,0"/>
-      <path d="M130,170 L115,185 M145,200 L125,190 M100,210 L115,195" stroke-width="0.5" stroke="rgba(180,220,255,0.3)"/>
-      <circle cx="120" cy="190" r="3" fill="rgba(200,230,255,0.6)" stroke="none"/>
-    </g></svg>`,
-    // Карточка 3 — удар сверху по центру
-    `<svg viewBox="0 0 160 230" xmlns="http://www.w3.org/2000/svg"><g stroke="rgba(180,220,255,0.55)" stroke-width="0.8" fill="none" stroke-linecap="round">
-      <path d="M80,25 L50,0 M80,25 L110,0 M80,25 L0,70 M80,25 L160,60"/>
-      <path d="M80,25 L20,230 M80,25 L80,230 M80,25 L140,230"/>
-      <path d="M60,15 L78,28 M100,15 L82,28 M50,50 L72,35 M110,50 L88,35" stroke-width="0.5" stroke="rgba(180,220,255,0.3)"/>
-      <circle cx="80" cy="25" r="3.5" fill="rgba(200,230,255,0.65)" stroke="none"/>
-    </g></svg>`,
-    // Карточка 4 — удар снизу-слева
-    `<svg viewBox="0 0 160 230" xmlns="http://www.w3.org/2000/svg"><g stroke="rgba(180,220,255,0.55)" stroke-width="0.8" fill="none" stroke-linecap="round">
-      <path d="M35,195 L0,230 M35,195 L0,180 M35,195 L0,130 M35,195 L60,230"/>
-      <path d="M35,195 L160,230 M35,195 L110,140 M35,195 L70,0"/>
-      <path d="M20,210 L38,196 M50,220 L36,200 M15,170 L32,188" stroke-width="0.5" stroke="rgba(180,220,255,0.3)"/>
-      <circle cx="35" cy="195" r="3" fill="rgba(200,230,255,0.6)" stroke="none"/>
-    </g></svg>`,
-    // Карточка 5 — удар справа по центру
-    `<svg viewBox="0 0 160 230" xmlns="http://www.w3.org/2000/svg"><g stroke="rgba(180,220,255,0.55)" stroke-width="0.8" fill="none" stroke-linecap="round">
-      <path d="M140,115 L160,80 M140,115 L160,130 M140,115 L160,40 M140,115 L160,200"/>
-      <path d="M140,115 L0,30 M140,115 L0,115 M140,115 L0,200 M140,115 L60,230"/>
-      <path d="M150,95 L138,112 M155,135 L141,118 M125,90 L136,108 M125,140 L137,122" stroke-width="0.5" stroke="rgba(180,220,255,0.3)"/>
-      <circle cx="140" cy="115" r="3" fill="rgba(200,230,255,0.6)" stroke="none"/>
-    </g></svg>`
+  // ── Трещины через файл img/vitrina-crack-01.svg ──
+  // Каждая карточка использует одну трещину, но с уникальным transform
+  // чтобы на каждой карточке она выглядела по-разному
+  const crackTransforms = [
+    'translate(0,0)   scale(1,1)    rotate(0,80,115)',   // 0 — оригинал
+    'translate(0,0)   scale(-1,1)   rotate(15,80,115)',  // 1 — зеркал + поворот
+    'translate(0,0)   scale(1,-1)   rotate(0,80,115)',   // 2 — вертикальный флип
+    'translate(0,0)   scale(-1,-1)  rotate(10,80,115)',  // 3 — двойной флип
+    'translate(0,0)   scale(1,1)    rotate(45,80,115)',  // 4 — поворот 45°
+    'translate(0,0)   scale(-1,1)   rotate(-20,80,115)', // 5 — зеркал + поворот -20°
   ];
+
+  // Генерируем HTML для слоя трещины каждой карточки
+  const makeCrack = (idx) => `
+    <svg viewBox="0 0 160 230"
+         xmlns="http://www.w3.org/2000/svg"
+         style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none">
+      <image href="img/vitrina-crack-01.svg"
+             x="0" y="0" width="160" height="230"
+             transform="${crackTransforms[idx]}"
+             preserveAspectRatio="xMidYMid meet"
+             style="mix-blend-mode:screen;opacity:0.85"/>
+    </svg>`;
+
+  // Массив для совместимости с остальным кодом карточек
+  const cracks = crackTransforms.map((_, i) => makeCrack(i));
 
   const cardsData = [
     { id: 'stats',        tit: 'Статистика',    ic: '📊' },
