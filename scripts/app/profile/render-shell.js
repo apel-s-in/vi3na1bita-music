@@ -24,7 +24,7 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
   window.Utils?.dom?.createStyleOnce?.('sc-3d-carousel-styles', `
     .sc-3d-wrap{margin:14px 0 18px;padding:0 4px;touch-action:pan-y;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;overflow:hidden}
     .sc-3d-scene{perspective:1120px;perspective-origin:50% 41%;height:258px;display:flex;align-items:center;justify-content:center;overflow:visible}
-    .sc-3d-car{width:124px;height:184px;position:relative;transform-style:preserve-3d;transition:transform .56s cubic-bezier(.15,.85,.35,1);will-change:transform;--sc3d-th:12px;--sc3d-r:22px;overflow:visible}
+    .sc-3d-car{width:124px;height:184px;position:relative;transform-style:preserve-3d;transition:transform .56s cubic-bezier(.15,.85,.35,1);will-change:transform;--sc3d-th:10px;--sc3d-r:23px;overflow:visible}
 
     .sc-3d-card{position:absolute;inset:0;transform-style:preserve-3d;cursor:pointer;will-change:transform;overflow:visible}
     .glass-front,.glass-back{position:absolute;inset:0;border-radius:var(--sc3d-r);overflow:hidden}
@@ -32,12 +32,12 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
     .glass-front{
       transform:translateZ(calc(var(--sc3d-th)/2));
       background:linear-gradient(180deg,rgba(24,46,77,.80),rgba(8,17,31,.95));
-      border:1px solid rgba(136,208,255,.58);
+      border:1px solid rgba(136,208,255,.54);
       box-shadow:
         inset 0 0 0 1px rgba(224,244,255,.08),
-        inset 0 0 22px rgba(180,228,255,.08),
-        inset 0 -24px 34px rgba(15,38,70,.42),
-        0 0 20px rgba(77,170,255,.18);
+        inset 0 0 18px rgba(180,228,255,.07),
+        inset 0 -20px 30px rgba(15,38,70,.38),
+        0 0 16px rgba(77,170,255,.14);
     }
     .glass-front::before{
       content:'';
@@ -66,44 +66,45 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
 
     .glass-back{
       transform:translateZ(calc(var(--sc3d-th)/-2));
-      background:linear-gradient(180deg,rgba(6,12,22,.94),rgba(2,5,11,.99));
-      border:1px solid rgba(77,170,255,.12);
-      box-shadow:inset 0 0 16px rgba(0,0,0,.58);
+      background:linear-gradient(180deg,rgba(7,13,23,.94),rgba(2,5,11,.995));
+      border:1px solid rgba(77,170,255,.10);
+      box-shadow:inset 0 0 14px rgba(0,0,0,.56);
     }
 
-    .glass-side{
-      position:absolute;
-      background:linear-gradient(180deg,rgba(154,214,255,.34),rgba(53,95,142,.54));
-      box-shadow:inset 0 0 0 1px rgba(232,246,255,.10),0 0 10px rgba(77,170,255,.08);
-      overflow:hidden;
-    }
-    .glass-side::before{
-      content:'';
+    .glass-shell,
+    .glass-shell-inner{
       position:absolute;
       inset:0;
-      background:linear-gradient(180deg,rgba(255,255,255,.16),transparent 44%,rgba(120,190,255,.05) 70%,transparent);
+      border-radius:var(--sc3d-r);
       pointer-events:none;
+      transform-style:preserve-3d;
     }
-    .glass-side-top{
-      left:11px;right:11px;top:0;height:var(--sc3d-th);
-      border-radius:calc(var(--sc3d-r) - 6px) calc(var(--sc3d-r) - 6px) 0 0;
-      transform:translateY(calc(var(--sc3d-th)/-2)) rotateX(90deg);
+    .glass-shell{
+      transform:translateZ(0);
+      box-shadow:
+        inset 0 0 0 calc(var(--sc3d-th) * .52) rgba(116,192,255,.18),
+        inset 0 0 0 calc(var(--sc3d-th) * .60) rgba(220,244,255,.08),
+        inset 0 0 18px rgba(150,214,255,.08),
+        0 0 12px rgba(77,170,255,.06);
+      background:
+        linear-gradient(180deg,rgba(166,221,255,.10),rgba(57,99,150,.12)),
+        radial-gradient(120% 30% at 50% 0%,rgba(255,255,255,.18),transparent 58%),
+        radial-gradient(120% 32% at 50% 100%,rgba(120,190,255,.14),transparent 62%);
     }
-    .glass-side-bottom{
-      left:11px;right:11px;bottom:0;height:var(--sc3d-th);
-      border-radius:0 0 calc(var(--sc3d-r) - 6px) calc(var(--sc3d-r) - 6px);
-      transform:translateY(calc(var(--sc3d-th)/2)) rotateX(-90deg);
+    .glass-shell-inner{
+      inset:calc(var(--sc3d-th) * .52);
+      border-radius:calc(var(--sc3d-r) - (var(--sc3d-th) * .52));
+      box-shadow:
+        inset 0 0 0 1px rgba(232,246,255,.08),
+        inset 0 12px 16px rgba(255,255,255,.05),
+        inset 0 -10px 18px rgba(19,40,74,.18);
     }
-    .glass-side-left{
-      top:11px;bottom:11px;left:0;width:var(--sc3d-th);
-      border-radius:calc(var(--sc3d-r) - 6px) 0 0 calc(var(--sc3d-r) - 6px);
-      transform:translateX(calc(var(--sc3d-th)/-2)) rotateY(-90deg);
-    }
-    .glass-side-right{
-      top:11px;bottom:11px;right:0;width:var(--sc3d-th);
-      border-radius:0 calc(var(--sc3d-r) - 6px) calc(var(--sc3d-r) - 6px) 0;
-      transform:translateX(calc(var(--sc3d-th)/2)) rotateY(90deg);
-    }
+
+    .glass-side,
+    .glass-side-top,
+    .glass-side-bottom,
+    .glass-side-left,
+    .glass-side-right{display:none!important}
 
     .surface-content{position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px 12px 18px;transform:translateZ(.25px);pointer-events:none}
     .surface-content::before{
@@ -188,6 +189,8 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
       <div class="sc-3d-card" data-idx="${i}" data-id="${d.id}" style="transform:rotateY(${angle}deg) translateZ(${RADIUS}px)">
         <div class="glass-back"></div>
         <div class="crack-back">${cracksBack[i]}</div>
+        <div class="glass-shell"></div>
+        <div class="glass-shell-inner"></div>
         <div class="glass-side glass-side-top"></div>
         <div class="glass-side glass-side-bottom"></div>
         <div class="glass-side glass-side-left"></div>
