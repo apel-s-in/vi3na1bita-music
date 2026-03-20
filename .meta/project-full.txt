@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-c5c0c5bdacfe1ffe340f5be666d0acb0477bff15.idx
-│   │       ├── pack-c5c0c5bdacfe1ffe340f5be666d0acb0477bff15.pack
-│   │       └── pack-c5c0c5bdacfe1ffe340f5be666d0acb0477bff15.rev
+│   │       ├── pack-c9ec270536030e55ff882c80efbf5794c14d0918.idx
+│   │       ├── pack-c9ec270536030e55ff882c80efbf5794c14d0918.pack
+│   │       └── pack-c9ec270536030e55ff882c80efbf5794c14d0918.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -404,7 +404,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-20 21:39:10 UTC
+Сгенерировано: 2026-03-20 21:39:44 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3345,7 +3345,7 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
   tpl.querySelector('#prof-stat-streak').textContent = strk; tpl.querySelector('#prof-stat-ach').textContent = aC;
 
   c.appendChild(tpl);
-  mountProfileCarouselFlat({ root: c, tpl });
+  mountProfileCarouselFlat({ root: c });
   return c;
 };
 export default { renderProfileShell };
