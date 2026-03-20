@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-dff2935858276173c06155a35b95244c5906cdca.idx
-│   │       ├── pack-dff2935858276173c06155a35b95244c5906cdca.pack
-│   │       └── pack-dff2935858276173c06155a35b95244c5906cdca.rev
+│   │       ├── pack-be225cf951ba362bc1de66023665ccfe27e972bb.idx
+│   │       ├── pack-be225cf951ba362bc1de66023665ccfe27e972bb.pack
+│   │       └── pack-be225cf951ba362bc1de66023665ccfe27e972bb.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -404,7 +404,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-20 21:00:56 UTC
+Сгенерировано: 2026-03-20 21:10:19 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3192,8 +3192,6 @@ export function mountProfileCarouselFlat({ root, tpl }) {
         card.classList.toggle('is-side', diff === 1);
       });
     };
-
-    const step = dir => { currIdx += dir; update(true); };
 
     const step = dir => { currIdx += dir; update(true); };
 
