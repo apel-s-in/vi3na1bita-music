@@ -178,8 +178,6 @@ export function mountProfileCarouselFlat({ root, tpl }) {
 
     const step = dir => { currIdx += dir; update(true); };
 
-    const step = dir => { currIdx += dir; update(true); };
-
     prev?.addEventListener('click', () => step(-1));
     next?.addEventListener('click', () => step(1));
 
