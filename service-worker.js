@@ -34,6 +34,7 @@ const STATIC_ASSETS = [
   './scripts/app/player/favorites-only-actions.js',
   './scripts/app/player-ui.js', './scripts/app/albums.js',
   './scripts/app/profile/achievements-view.js',
+  './scripts/app/profile/carousel-flat.js',
   './scripts/ui/progress-formatters.js',
   './scripts/app.js', './src/PlayerCore.js',
   './src/player-core/media-session.js',
