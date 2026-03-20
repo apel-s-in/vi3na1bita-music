@@ -22,24 +22,24 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
 
   // === 3D CAROUSEL PROTOTYPE (ISOLATED MODULE) ===
   window.Utils?.dom?.createStyleOnce?.('sc-3d-carousel-styles', `
-    .sc-3d-wrap { margin: 20px 0; overflow: hidden; touch-action: pan-y; }
-    .sc-3d-scene { perspective: 1200px; height: 260px; display: flex; align-items: center; justify-content: center; }
-    .sc-3d-car { width: 140px; height: 200px; position: relative; transform-style: preserve-3d; transition: transform .45s cubic-bezier(.25,1,.4,1); }
-    .sc-3d-card { position: absolute; inset: 0; background: rgba(20,25,35,.45); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(77,170,255,.3); border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; transform-style: preserve-3d; backface-visibility: visible; box-shadow: inset 0 0 20px rgba(255,255,255,.05), 0 15px 35px rgba(0,0,0,.6); user-select: none; }
+    .sc-3d-wrap{margin:20px 0;overflow:hidden;touch-action:pan-y}
+    .sc-3d-scene{perspective:1000px;height:280px;display:flex;align-items:center;justify-content:center}
+    .sc-3d-car{width:150px;height:220px;position:relative;transform-style:preserve-3d;transition:transform .5s cubic-bezier(.2,.8,.2,1)}
+    .sc-3d-card{position:absolute;inset:0;background:rgba(10,18,30,.4);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(77,170,255,.4);border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;transform-style:preserve-3d;backface-visibility:visible;box-shadow:inset 0 0 20px rgba(77,170,255,.1),0 15px 40px rgba(0,0,0,.8);user-select:none}
     /* Толщина стекла */
-    .sc-3d-card::before { content: ''; position: absolute; inset: -1px; border: 2px solid rgba(255,255,255,.1); border-radius: 17px; transform: translateZ(-5px); box-shadow: 0 0 10px rgba(77,170,255,.2); pointer-events: none; }
-    /* Эффект стилизованных трещин / бликов */
-    .sc-3d-card::after { content: ''; position: absolute; inset: 0; border-radius: 16px; background: linear-gradient(115deg, transparent 48%, rgba(255,255,255,.4) 49%, transparent 50%), linear-gradient(60deg, transparent 65%, rgba(255,255,255,.25) 66%, transparent 67%); pointer-events: none; opacity: .6; transform: translateZ(1px); }
-    /* Контент карточки */
-    .sc-3d-ic { font-size: 50px; transform: translateZ(35px); margin-bottom: 12px; filter: drop-shadow(0 4px 10px rgba(0,0,0,.6)); pointer-events: none; }
-    .sc-3d-tit { font-size: 13px; font-weight: 900; color: #eaf2ff; transform: translateZ(30px); text-shadow: 0 2px 8px #000; letter-spacing: 1px; text-transform: uppercase; text-align: center; pointer-events: none; }
-    /* Матирование текста на обратной стороне для реализма */
-    .sc-3d-card.is-back .sc-3d-ic, .sc-3d-card.is-back .sc-3d-tit { opacity: 0.15; filter: blur(2px); }
-    /* Нижние кнопки управления */
-    .sc-3d-controls { display: flex; gap: 10px; justify-content: center; padding: 0 10px 20px; }
-    .sc-3d-btn { flex: 1; max-width: 110px; background: rgba(77,170,255,.08); border: 1px solid rgba(77,170,255,.3); color: var(--secondary-color); padding: 12px 10px; border-radius: 10px; font-weight: 800; font-size: 13px; cursor: pointer; transition: .2s; }
-    .sc-3d-btn:active { transform: scale(.95); background: rgba(77,170,255,.2); }
-    .sc-3d-btn.active { background: linear-gradient(135deg,#4daaff,#357ac9); color: #fff; box-shadow: 0 4px 12px rgba(77,170,255,.3); border: none; }
+    .sc-3d-card::before{content:'';position:absolute;inset:-1px;border:3px solid rgba(77,170,255,.2);border-radius:19px;transform:translateZ(-8px);box-shadow:0 0 15px rgba(77,170,255,.3);pointer-events:none}
+    /* SVG Паутина трещин (как на референсе) */
+    .sc-3d-card::after{content:'';position:absolute;inset:0;border-radius:18px;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 150 220' xmlns='http://www.w3.org/2000/svg'%3E%3Cg stroke='rgba(255,255,255,0.5)' stroke-width='0.8' fill='none'%3E%3Cpath d='M100,50 L150,10 M100,50 L150,70 M100,50 L120,220 M100,50 L30,220 M100,50 L0,120 M100,50 L0,30 M100,50 L60,0 M100,50 L120,0'/%3E%3Cpath d='M110,30 L130,50 M70,30 L40,70 M80,110 L110,130 M40,110 L60,160 M90,80 L80,140 M110,70 L140,100' stroke='rgba(255,255,255,0.25)' stroke-width='0.5'/%3E%3C/g%3E%3C/svg%3E");background-size:cover;pointer-events:none;transform:translateZ(1px);opacity:0.9}
+    /* Голографический контент */
+    .sc-3d-ic{font-size:54px;transform:translateZ(30px);margin-bottom:15px;filter:drop-shadow(0 0 12px rgba(77,170,255,.8)) drop-shadow(0 0 4px rgba(255,255,255,.5));pointer-events:none}
+    .sc-3d-tit{font-size:14px;font-weight:900;color:#fff;transform:translateZ(25px);text-shadow:0 0 10px rgba(77,170,255,.9), 0 0 5px rgba(255,255,255,.5);letter-spacing:1px;text-transform:uppercase;text-align:center;pointer-events:none}
+    .sc-3d-card.is-back .sc-3d-ic,.sc-3d-card.is-back .sc-3d-tit{opacity:.1;filter:blur(3px)}
+    /* Глянцевые кнопки (Glossy) */
+    .sc-3d-controls{display:flex;gap:12px;justify-content:center;padding:0 10px 20px}
+    .sc-3d-btn{position:relative;flex:1;max-width:120px;background:rgba(15,25,40,.8);border:1px solid rgba(77,170,255,.3);color:#8ab8fd;padding:14px 10px;border-radius:14px;font-weight:800;font-size:14px;cursor:pointer;transition:all .2s;overflow:hidden;box-shadow:0 6px 15px rgba(0,0,0,.6)}
+    .sc-3d-btn::before{content:'';position:absolute;top:0;left:0;right:0;height:45%;background:linear-gradient(180deg,rgba(255,255,255,.15),transparent);pointer-events:none}
+    .sc-3d-btn:active{transform:scale(.95);background:rgba(77,170,255,.1)}
+    .sc-3d-btn.active{background:rgba(77,170,255,.25);border-color:rgba(77,170,255,.8);color:#fff;box-shadow:0 0 20px rgba(77,170,255,.4),inset 0 0 10px rgba(77,170,255,.2);text-shadow:0 0 8px rgba(255,255,255,.6)}
   `);
 
   const cardsData = [
