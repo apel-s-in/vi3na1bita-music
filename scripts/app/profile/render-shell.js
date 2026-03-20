@@ -22,8 +22,8 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
   tpl.querySelector('#prof-stat-time').textContent = window.Utils?.fmt?.durationHuman ? window.Utils.fmt.durationHuman(tS) : `${Math.floor(tS/60)}м`;
   tpl.querySelector('#prof-stat-streak').textContent = strk; tpl.querySelector('#prof-stat-ach').textContent = aC;
 
+  c.appendChild(tpl);
   mountProfileCarouselFlat({ root: c, tpl });
-
-  c.appendChild(tpl); return c;
+  return c;
 };
 export default { renderProfileShell };
