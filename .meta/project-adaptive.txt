@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-feed3bfc508c491f0056dd3a785d95bda9cc75ae.idx
-│   │       ├── pack-feed3bfc508c491f0056dd3a785d95bda9cc75ae.pack
-│   │       └── pack-feed3bfc508c491f0056dd3a785d95bda9cc75ae.rev
+│   │       ├── pack-fab4b1ba272bcc04bf34640d76fbfffe38883050.idx
+│   │       ├── pack-fab4b1ba272bcc04bf34640d76fbfffe38883050.pack
+│   │       └── pack-fab4b1ba272bcc04bf34640d76fbfffe38883050.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -402,7 +402,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-20 12:19:11 UTC
+Сгенерировано: 2026-03-20 12:20:57 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3093,26 +3093,40 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
   tpl.querySelector('#prof-stat-time').textContent = window.Utils?.fmt?.durationHuman ? window.Utils.fmt.durationHuman(tS) : `${Math.floor(tS/60)}м`;
   tpl.querySelector('#prof-stat-streak').textContent = strk; tpl.querySelector('#prof-stat-ach').textContent = aC;
 
-  // === 3D CAROUSEL PROTOTYPE (ISOLATED MODULE) ===
+  // === 3D CAROUSEL PROTOTYPE (V3 - PHYSICAL GLASS) ===
   window.Utils?.dom?.createStyleOnce?.('sc-3d-carousel-styles', `
-    .sc-3d-wrap{margin:20px 0;overflow:hidden;touch-action:pan-y}
-    .sc-3d-scene{perspective:1000px;height:280px;display:flex;align-items:center;justify-content:center}
-    .sc-3d-car{width:150px;height:220px;position:relative;transform-style:preserve-3d;transition:transform .5s cubic-bezier(.2,.8,.2,1)}
-    .sc-3d-card{position:absolute;inset:0;background:rgba(10,18,30,.4);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(77,170,255,.4);border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;transform-style:preserve-3d;backface-visibility:visible;box-shadow:inset 0 0 20px rgba(77,170,255,.1),0 15px 40px rgba(0,0,0,.8);user-select:none}
-    /* Толщина стекла */
-    .sc-3d-card::before{content:'';position:absolute;inset:-1px;border:3px solid rgba(77,170,255,.2);border-radius:19px;transform:translateZ(-8px);box-shadow:0 0 15px rgba(77,170,255,.3);pointer-events:none}
-    /* SVG Паутина трещин (как на референсе) */
-    .sc-3d-card::after{content:'';position:absolute;inset:0;border-radius:18px;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 150 220' xmlns='http://www.w3.org/2000/svg'%3E%3Cg stroke='rgba(255,255,255,0.5)' stroke-width='0.8' fill='none'%3E%3Cpath d='M100,50 L150,10 M100,50 L150,70 M100,50 L120,220 M100,50 L30,220 M100,50 L0,120 M100,50 L0,30 M100,50 L60,0 M100,50 L120,0'/%3E%3Cpath d='M110,30 L130,50 M70,30 L40,70 M80,110 L110,130 M40,110 L60,160 M90,80 L80,140 M110,70 L140,100' stroke='rgba(255,255,255,0.25)' stroke-width='0.5'/%3E%3C/g%3E%3C/svg%3E");background-size:cover;pointer-events:none;transform:translateZ(1px);opacity:0.9}
-    /* Голографический контент */
-    .sc-3d-ic{font-size:54px;transform:translateZ(30px);margin-bottom:15px;filter:drop-shadow(0 0 12px rgba(77,170,255,.8)) drop-shadow(0 0 4px rgba(255,255,255,.5));pointer-events:none}
-    .sc-3d-tit{font-size:14px;font-weight:900;color:#fff;transform:translateZ(25px);text-shadow:0 0 10px rgba(77,170,255,.9), 0 0 5px rgba(255,255,255,.5);letter-spacing:1px;text-transform:uppercase;text-align:center;pointer-events:none}
-    .sc-3d-card.is-back .sc-3d-ic,.sc-3d-card.is-back .sc-3d-tit{opacity:.1;filter:blur(3px)}
-    /* Глянцевые кнопки (Glossy) */
-    .sc-3d-controls{display:flex;gap:12px;justify-content:center;padding:0 10px 20px}
-    .sc-3d-btn{position:relative;flex:1;max-width:120px;background:rgba(15,25,40,.8);border:1px solid rgba(77,170,255,.3);color:#8ab8fd;padding:14px 10px;border-radius:14px;font-weight:800;font-size:14px;cursor:pointer;transition:all .2s;overflow:hidden;box-shadow:0 6px 15px rgba(0,0,0,.6)}
-    .sc-3d-btn::before{content:'';position:absolute;top:0;left:0;right:0;height:45%;background:linear-gradient(180deg,rgba(255,255,255,.15),transparent);pointer-events:none}
-    .sc-3d-btn:active{transform:scale(.95);background:rgba(77,170,255,.1)}
-    .sc-3d-btn.active{background:rgba(77,170,255,.25);border-color:rgba(77,170,255,.8);color:#fff;box-shadow:0 0 20px rgba(77,170,255,.4),inset 0 0 10px rgba(77,170,255,.2);text-shadow:0 0 8px rgba(255,255,255,.6)}
+    .sc-3d-wrap{margin:25px 0;overflow:hidden;touch-action:pan-y}
+    .sc-3d-scene{perspective:1400px;height:300px;display:flex;align-items:center;justify-content:center}
+    .sc-3d-car{width:160px;height:230px;position:relative;transform-style:preserve-3d;transition:transform .6s cubic-bezier(.15,.85,.35,1)}
+    .sc-3d-card{position:absolute;inset:0;transform-style:preserve-3d;backface-visibility:visible;user-select:none;cursor:pointer}
+    
+    /* Основное тело стекла (Volume Body) */
+    .sc-3d-body{position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,0.05),rgba(255,255,255,0.01));backdrop-filter:blur(15px);-webkit-backdrop-filter:blur(15px);border-radius:20px;border:1px solid rgba(255,255,255,0.1);box-shadow:inset 0 0 30px rgba(77,170,255,0.1), 0 20px 50px rgba(0,0,0,0.7);transform:translateZ(0)}
+    
+    /* Огранка граней (Refraction Edges) */
+    .sc-3d-body::before{content:'';position:absolute;inset:-2px;border:1.5px solid rgba(255,255,255,0.4);border-radius:22px;transform:translateZ(-10px);opacity:0.3;pointer-events:none}
+    .sc-3d-body::after{content:'';position:absolute;inset:0;border:0.5px solid rgba(77,170,255,0.6);border-radius:20px;box-shadow:0 0 15px rgba(77,170,255,0.4);pointer-events:none}
+
+    /* Слой вашей трещины из спрайта */
+    .sc-3d-crack{position:absolute;inset:0;z-index:2;pointer-events:none;transform:translateZ(2px);opacity:0.85}
+    .sc-3d-crack svg{width:100%;height:100%;filter:drop-shadow(0 0 2px rgba(255,255,255,0.5))}
+
+    /* Внутренний рефлекс контента (Reflections) */
+    .sc-3d-reflection{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;transform:translateZ(-5px) scale(0.98);opacity:0.2;filter:blur(4px);pointer-events:none}
+
+    /* Голографический контент (Floating above) */
+    .sc-3d-content{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:5;transform:translateZ(40px)}
+    .sc-3d-ic{font-size:58px;margin-bottom:15px;filter:drop-shadow(0 0 15px rgba(77,170,255,0.9)) drop-shadow(0 0 5px #fff)}
+    .sc-3d-tit{font-size:15px;font-weight:950;color:#fff;text-shadow:0 0 12px rgba(77,170,255,1), 0 0 4px rgba(255,255,255,0.8);letter-spacing:1.5px;text-transform:uppercase;text-align:center}
+
+    .sc-3d-card.is-back{filter:brightness(0.4) blur(4px);opacity:0.3}
+
+    /* Глянцевые физические кнопки */
+    .sc-3d-controls{display:flex;gap:15px;justify-content:center;padding:0 15px 25px}
+    .sc-3d-btn{position:relative;flex:1;max-width:130px;height:50px;background:#0a0e14;border:1px solid rgba(77,170,255,0.4);color:#8ab8fd;border-radius:15px;font-weight:900;font-size:14px;cursor:pointer;transition:all .3s cubic-bezier(.4,0,.2,1);overflow:hidden;box-shadow:0 10px 20px rgba(0,0,0,0.5), inset 0 0 10px rgba(77,170,255,0.1)}
+    .sc-3d-btn::before{content:'';position:absolute;top:0;left:0;right:0;height:50%;background:linear-gradient(180deg,rgba(255,255,255,0.12),transparent);pointer-events:none}
+    .sc-3d-btn:active{transform:scale(.92);background:rgba(77,170,255,0.1)}
+    .sc-3d-btn.active{background:radial-gradient(circle at center, rgba(77,170,255,0.3), #0a0e14);border-color:rgba(77,170,255,1);color:#fff;box-shadow:0 0 25px rgba(77,170,255,0.5);text-shadow:0 0 10px #fff}
   `);
 
   const cardsData = [
@@ -3124,13 +3138,24 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
     { id: 'account', tit: 'Аккаунт', ic: '👤' }
   ];
 
-  // Создаем DOM 3D сцены
-  const radius = 135; // Радиус окружности для 6 карточек
+  const radius = 150; 
   const cardsHtml = cardsData.map((d, i) => {
     const angle = i * 60;
-    return `<div class="sc-3d-card" style="transform: rotateY(${angle}deg) translateZ(${radius}px);" data-id="${d.id}">
-              <div class="sc-3d-ic">${d.ic}</div><div class="sc-3d-tit">${d.tit}</div>
-            </div>`;
+    return `
+      <div class="sc-3d-card" style="transform: rotateY(${angle}deg) translateZ(${radius}px);" data-id="${d.id}">
+        <div class="sc-3d-body"></div>
+        <div class="sc-3d-crack">
+          <svg><use href="icons/ui-sprite.svg#icon-glass-crack"></use></svg>
+        </div>
+        <div class="sc-3d-reflection">
+          <div class="sc-3d-ic">${d.ic}</div>
+          <div class="sc-3d-tit">${d.tit}</div>
+        </div>
+        <div class="sc-3d-content">
+          <div class="sc-3d-ic">${d.ic}</div>
+          <div class="sc-3d-tit">${d.tit}</div>
+        </div>
+      </div>`;
   }).join('');
 
   const protoWrap = document.createElement('div');
