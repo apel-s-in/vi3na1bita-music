@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b59dad2e7f3020041261cf687f41e8bd535b680a.idx
-│   │       ├── pack-b59dad2e7f3020041261cf687f41e8bd535b680a.pack
-│   │       └── pack-b59dad2e7f3020041261cf687f41e8bd535b680a.rev
+│   │       ├── pack-9d4475084406b6b0e71e380ca05bca51804ede31.idx
+│   │       ├── pack-9d4475084406b6b0e71e380ca05bca51804ede31.pack
+│   │       └── pack-9d4475084406b6b0e71e380ca05bca51804ede31.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -263,7 +263,8 @@ vi3na1bita-music/
 │   │   └── logo@2x.jpg
 │   ├── .gitkeep
 │   ├── Fav_logo.png
-│   └── logo.png
+│   ├── logo.png
+│   └── vitrina-crack-01.svg
 ├── news/
 │   ├── .gitkeep
 │   └── news.json
@@ -402,7 +403,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-20 12:42:00 UTC
+Сгенерировано: 2026-03-20 13:11:52 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
