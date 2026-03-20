@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-be225cf951ba362bc1de66023665ccfe27e972bb.idx
-│   │       ├── pack-be225cf951ba362bc1de66023665ccfe27e972bb.pack
-│   │       └── pack-be225cf951ba362bc1de66023665ccfe27e972bb.rev
+│   │       ├── pack-ca1aeb66fe539e7d495a7cfea743983be11f5b33.idx
+│   │       ├── pack-ca1aeb66fe539e7d495a7cfea743983be11f5b33.pack
+│   │       └── pack-ca1aeb66fe539e7d495a7cfea743983be11f5b33.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -404,7 +404,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-20 21:10:19 UTC
+Сгенерировано: 2026-03-20 21:10:40 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3343,9 +3343,9 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
   tpl.querySelector('#prof-stat-time').textContent = window.Utils?.fmt?.durationHuman ? window.Utils.fmt.durationHuman(tS) : `${Math.floor(tS/60)}м`;
   tpl.querySelector('#prof-stat-streak').textContent = strk; tpl.querySelector('#prof-stat-ach').textContent = aC;
 
+  c.appendChild(tpl);
   mountProfileCarouselFlat({ root: c, tpl });
-
-  c.appendChild(tpl); return c;
+  return c;
 };
 export default { renderProfileShell };
 
