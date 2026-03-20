@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d0e554c158bea14e5dad8c1ea4343caa1fd22342.idx
-│   │       ├── pack-d0e554c158bea14e5dad8c1ea4343caa1fd22342.pack
-│   │       └── pack-d0e554c158bea14e5dad8c1ea4343caa1fd22342.rev
+│   │       ├── pack-e9c712229eb5764965e7c2fa40337691451691b3.idx
+│   │       ├── pack-e9c712229eb5764965e7c2fa40337691451691b3.pack
+│   │       └── pack-e9c712229eb5764965e7c2fa40337691451691b3.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -404,7 +404,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-20 20:10:09 UTC
+Сгенерировано: 2026-03-20 20:11:38 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -975,6 +975,7 @@ const STATIC_ASSETS = [
   './scripts/app/player/favorites-only-actions.js',
   './scripts/app/player-ui.js', './scripts/app/albums.js',
   './scripts/app/profile/achievements-view.js',
+  './scripts/app/profile/carousel-flat.js',
   './scripts/ui/progress-formatters.js',
   './scripts/app.js', './src/PlayerCore.js',
   './src/player-core/media-session.js',
