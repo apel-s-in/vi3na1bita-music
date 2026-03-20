@@ -29,7 +29,10 @@ const ensureStyles = () => {
     .sc-3d-wrap{margin:14px 0 18px;padding:0 2px;touch-action:pan-y;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;overflow:visible}
     .sc-3d-scene{perspective:1080px;perspective-origin:50% 40%;height:264px;display:flex;align-items:center;justify-content:center;overflow:visible;padding-top:10px}
     .sc-3d-car{width:128px;height:190px;position:relative;transform-style:preserve-3d;transition:transform .64s cubic-bezier(.16,.84,.28,1);will-change:transform}
-    .sc-3d-card{position:absolute;inset:0;cursor:pointer;will-change:transform;transition:opacity .22s ease,filter .22s ease;overflow:visible;transform-style:preserve-3d}
+    
+    /* Кинетический эффект (разлет карточек при вращении) */
+    .sc-3d-card{position:absolute;inset:0;cursor:pointer;will-change:transform;transition:opacity .22s ease,filter .22s ease,transform .45s cubic-bezier(.2,.8,.3,1);overflow:visible;transform-style:preserve-3d;transform:rotateY(var(--a)) translateZ(158px)}
+    .sc-3d-wrap.is-settled .sc-3d-card{transform:rotateY(var(--a)) translateZ(142px)}
     
     /* 0. Halo (Внешнее свечение позади) - ВКЛЮЧАЕТСЯ ТОЛЬКО ПРИ ОСТАНОВКЕ */
     .glass-halo{position:absolute;left:-20%;right:-20%;top:-20%;bottom:-20%;z-index:0;pointer-events:none;opacity:0;background:radial-gradient(circle at center,rgba(77,170,255,.25) 0%,transparent 60%);filter:blur(20px);transition:opacity .4s ease}
@@ -89,12 +92,11 @@ export function mountProfileCarouselFlat({ root }) {
 
   const TOTAL = cardsData.length;
   const STEP = 360 / TOTAL;
-  const RADIUS = 142;
 
   const cardsHtml = cardsData.map((d, i) => {
     const angle = i * STEP;
     return `
-      <div class="sc-3d-card" data-idx="${i}" data-id="${d.id}" style="transform:rotateY(${angle}deg) translateZ(${RADIUS}px)">
+      <div class="sc-3d-card" data-idx="${i}" data-id="${d.id}" style="--a:${angle}deg">
         <div class="glass-halo"></div>
         <div class="glass-face">
           <div class="surface-content">
@@ -145,10 +147,10 @@ export function mountProfileCarouselFlat({ root }) {
         card.classList.toggle('is-back', diff >= 2);
       });
 
-      // Логика задержки свечения (is-settled)
+      // Логика задержки свечения и втягивания карточек (is-settled)
       wrap.classList.remove('is-settled');
       clearTimeout(wrap._tS);
-      if (animated) wrap._tS = setTimeout(() => wrap.classList.add('is-settled'), 640);
+      if (animated) wrap._tS = setTimeout(() => wrap.classList.add('is-settled'), 400);
       else wrap.classList.add('is-settled');
     };
 
@@ -177,14 +179,17 @@ export function mountProfileCarouselFlat({ root }) {
       const rawDx = e.touches[0].clientX - startX, dy = e.touches[0].clientY - startY;
       if (Math.abs(rawDx) < 8 && Math.abs(dy) < 8) return;
       if (Math.abs(dy) > Math.abs(rawDx) + 14) { isDrag = false; update(true); return; }
-      dragDelta = Math.max(-78, Math.min(78, rawDx));
-      car.style.transform = `rotateY(${currIdx * -STEP + dragDelta / 4.8}deg)`;
+      
+      dragDelta = rawDx; 
+      const visualDelta = Math.max(-140, Math.min(140, rawDx)); // Широкий лимит для визуального поворота
+      car.style.transform = `rotateY(${currIdx * -STEP + visualDelta * 0.45}deg)`; // Легкое и предсказуемое следование за пальцем
     }, { passive: true });
 
     scene.addEventListener('touchend', () => {
       if (!isDrag) return;
       isDrag = false;
-      if (Math.abs(dragDelta) > 42) currIdx += dragDelta > 0 ? -1 : 1;
+      if (dragDelta > 40) currIdx--;
+      else if (dragDelta < -40) currIdx++;
       dragDelta = 0; update(true);
     }, { passive: true });
 
