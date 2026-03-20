@@ -23,7 +23,7 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
   tpl.querySelector('#prof-stat-streak').textContent = strk; tpl.querySelector('#prof-stat-ach').textContent = aC;
 
   c.appendChild(tpl);
-  mountProfileCarouselFlat({ root: c, tpl });
+  mountProfileCarouselFlat({ root: c });
   return c;
 };
 export default { renderProfileShell };
