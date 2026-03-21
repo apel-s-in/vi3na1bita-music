@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a7405f5185472d38b8cc0459b122feea648d9428.idx
-│   │       ├── pack-a7405f5185472d38b8cc0459b122feea648d9428.pack
-│   │       └── pack-a7405f5185472d38b8cc0459b122feea648d9428.rev
+│   │       ├── pack-ab1475ad047f341cbb422c5eb0728bb3ec0f7420.idx
+│   │       ├── pack-ab1475ad047f341cbb422c5eb0728bb3ec0f7420.pack
+│   │       └── pack-ab1475ad047f341cbb422c5eb0728bb3ec0f7420.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -404,7 +404,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-21 17:07:36 UTC
+Сгенерировано: 2026-03-21 17:09:30 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3384,8 +3384,13 @@ export const loadProfileView = async (ctx) => {
     nInp.onkeydown = e => e.key === 'Enter' && nInp.blur();
   }
 
+  const achRoot = document.getElementById('ach-progress-root');
+  const tabAch = c.querySelector('#tab-achievements');
+  const innerTabs = c.querySelector('#ach-inner-tabs');
+  if (achRoot && tabAch && innerTabs) tabAch.insertBefore(achRoot, innerTabs);
+
   const achView = createProfileAchievementsView({ ctx, container: c.querySelector('#prof-ach-list'), engine: window.achievementEngine });
-  achView.render('all');
+  achView.render('available');
 
   renderProfileStats({ container: c, all });
   renderProfileRecs({ container: c, all });
