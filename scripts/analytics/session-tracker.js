@@ -7,6 +7,7 @@
 import { eventLogger } from './event-logger.js';
 import { isValidPlaybackDelta } from './playback-validity.js';
 import { makePlaybackRuntimeSnapshot } from './playback-runtime.js';
+import { makePlaybackLifecycleBoundary } from './playback-lifecycle.js';
 
 export class SessionTracker {
   constructor() { this.s = null; this._speedRunnerMs = 0; this._speedRunnerAwarded = false; this._bindEvents(); }
@@ -35,11 +36,20 @@ export class SessionTracker {
     } else this._resetContinuousRun();
   }
 
-  _pause() { if (this.s) this.s.lastUpdate = Date.now(); this._resetContinuousRun(); }
+  _pause() {
+    if (this.s) {
+      this._tick({ currentTime: window.playerCore?.getPosition?.() || this.s.lastPos || 0, volume: window.playerCore?.getVolume?.() ?? 100, muted: window.playerCore?.isMuted?.() ?? false });
+      Object.assign(this.s, { ...this.s, ...makePlaybackLifecycleBoundary({ playing: false, uid: this.s.uid, lastPos: this.s.lastPos }) , lastUpdate: Date.now() });
+    }
+    this._resetContinuousRun();
+  }
   _resetContinuousRun() { this._speedRunnerMs = 0; }
 
   _end(isE) {
-    if (!this.s) return; const { uid, variant, quality, accumulatedMs, duration, lastPos } = this.s; this.s = null;
+    if (!this.s) return;
+    if (!isE) this._tick({ currentTime: window.playerCore?.getPosition?.() || this.s.lastPos || 0, volume: window.playerCore?.getVolume?.() ?? 100, muted: window.playerCore?.isMuted?.() ?? false });
+    const { uid, variant, quality, accumulatedMs, duration, lastPos } = this.s;
+    this.s = null;
     if (duration <= 0 && !isE) return;
     const sec = Math.floor(accumulatedMs / 1000), prg = duration > 0 ? (lastPos / duration) : 0, isV = sec >= 13 || isE, isF = prg >= 0.9 || isE;
 
