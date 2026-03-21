@@ -26,7 +26,7 @@ const makeCrack = idx => {
 
 const ensureStyles = () => {
   W.Utils?.dom?.createStyleOnce?.('sc-3d-carousel-flat-styles', `
-    .sc-3d-wrap{margin:14px 0 24px;padding:0 2px;touch-action:pan-y;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;overflow:visible}
+    .sc-3d-wrap{margin:8px 0 12px;padding:0 2px;touch-action:pan-y;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;overflow:visible}
     .sc-3d-scene{perspective:1080px;perspective-origin:50% 40%;height:210px;display:flex;align-items:center;justify-content:center;overflow:visible;padding-top:0}
     .sc-3d-car{width:128px;height:190px;position:relative;transform-style:preserve-3d;transition:transform .64s cubic-bezier(.16,.84,.28,1);will-change:transform}
     
@@ -65,7 +65,7 @@ const ensureStyles = () => {
     .sc-3d-wrap.is-settled .sc-3d-card.is-active .glass-3d-edge {border-color: rgba(184,233,255,.9)}
 
     /* Кнопки внизу */
-    .sc-3d-controls{display:flex;gap:14px;justify-content:center;padding:10px 16px 24px}
+    .sc-3d-controls{display:flex;gap:14px;justify-content:center;padding:20px 16px 12px}
     .sc-3d-btn{position:relative;background:linear-gradient(180deg,#0d1828,#070d16);border:1px solid rgba(77,170,255,.3);color:#7ab4f5;border-radius:12px;font-weight:900;cursor:pointer;transition:all .3s cubic-bezier(.4,0,.2,1);overflow:hidden;box-shadow:0 6px 15px rgba(0,0,0,.6);height:44px}
     .sc-3d-btn::before{content:'';position:absolute;top:0;left:0;right:0;height:45%;background:linear-gradient(180deg,rgba(255,255,255,.1),transparent);border-radius:12px 12px 0 0;pointer-events:none}
     .sc-3d-btn:active{transform:translateY(2px) scale(.96);box-shadow:0 3px 8px rgba(0,0,0,.7)}
@@ -140,10 +140,13 @@ export function mountProfileCarouselFlat({ root }) {
       clearTimeout(wrap._tAuto);
       const norm = ((currIdx % TOTAL) + TOTAL) % TOTAL;
       const activeId = cardsData[norm].id;
-      root.querySelectorAll('.profile-tab-content').forEach(x => x.classList.remove('active'));
       const tab = root.querySelector(`#tab-${activeId}`);
-      if (tab) tab.classList.add('active');
-      else W.NotificationSystem?.info(`Раздел «${cardsData[norm].tit}» открывается...`);
+      if (tab && !tab.classList.contains('active')) {
+        root.querySelectorAll('.profile-tab-content').forEach(x => x.classList.remove('active'));
+        tab.classList.add('active');
+      } else if (!tab) {
+        W.NotificationSystem?.info(`Раздел «${cardsData[norm].tit}» открывается...`);
+      }
     };
 
     const update = (animated = true) => {
@@ -189,11 +192,19 @@ export function mountProfileCarouselFlat({ root }) {
       car.style.transform = `rotateY(${currIdx * -STEP + visualDelta * 0.45}deg)`; // Легкое и предсказуемое следование за пальцем
     }, { passive: true });
 
-    scene.addEventListener('touchend', () => {
+    scene.addEventListener('touchend', e => {
       if (!isDrag) return;
       isDrag = false;
       if (dragDelta > 40) currIdx--;
       else if (dragDelta < -40) currIdx++;
+      else if (Math.abs(dragDelta) < 10) {
+        const card = e.target.closest('.sc-3d-card');
+        if (card) {
+          const idx = parseInt(card.dataset.idx, 10);
+          const norm = ((currIdx % TOTAL) + TOTAL) % TOTAL;
+          if (idx === norm && wrap.classList.contains('is-settled')) doSelect();
+        }
+      }
       dragDelta = 0; update(true);
     }, { passive: true });
 
