@@ -54,8 +54,6 @@
       const bub = $('ach-hint-bubble'); if (bub) bub.onclick = () => { 
         sessionStorage.setItem('jumpToAch', '1'); 
         W.AlbumsManager?.loadAlbum(C.SPECIAL_PROFILE_KEY || '__profile__'); 
-        const achTab = D.querySelector('.ach-classic-tab[data-filter="available"]');
-        if (achTab) achTab.click();
       };
       const sv = $('dash-save-btn'); if (sv) sv.onclick = () => {
         if (!W.NetPolicy?.isNetworkAllowed()) return W.NotificationSystem?.warning('Сеть недоступна');
