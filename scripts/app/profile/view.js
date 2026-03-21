@@ -31,11 +31,6 @@ export const loadProfileView = async (ctx) => {
     nInp.onkeydown = e => e.key === 'Enter' && nInp.blur();
   }
 
-  const achRoot = document.getElementById('ach-progress-root');
-  const tabAch = c.querySelector('#tab-achievements');
-  const innerTabs = c.querySelector('#ach-inner-tabs');
-  if (achRoot && tabAch && innerTabs) tabAch.insertBefore(achRoot, innerTabs);
-
   const achView = createProfileAchievementsView({ ctx, container: c.querySelector('#prof-ach-list'), engine: window.achievementEngine });
   achView.render('available');
 
@@ -45,5 +40,14 @@ export const loadProfileView = async (ctx) => {
 
   bindProfileLiveBindings({ ctx, getContainer: () => document.getElementById('track-list'), achView });
   bindProfileActions({ ctx, container: c, achView, profile, metaDB, cloudSync, tokens, reloadProfile: () => loadProfileView(ctx) });
+
+  if (sessionStorage.getItem('jumpToAch')) {
+    sessionStorage.removeItem('jumpToAch');
+    setTimeout(() => {
+      const idx = cardsData.findIndex(d => d.id === 'achievements');
+      if (idx >= 0 && window.Intel_CarouselFlat) window.Intel_CarouselFlat.jumpTo(idx);
+      c.querySelector('[data-tab="achievements"]')?.click();
+    }, 50);
+  }
 };
 export default { loadProfileView };
