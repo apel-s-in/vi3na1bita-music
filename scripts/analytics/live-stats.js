@@ -1,5 +1,6 @@
 import { metaDB } from './meta-db.js';
 import { isValidPlaybackDelta } from './playback-validity.js';
+import { makePlaybackRuntimeSnapshot } from './playback-runtime.js';
 
 const dayKeyLocal = (ts = Date.now()) => { const d = new Date(ts); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
@@ -32,11 +33,10 @@ class LiveStatsTracker {
 
   _flush(t = null) {
     if (!this.state.playing) return;
-    const now = Date.now(), prevTickAt = this.state.lastTickAt || now, prevPos = Number(this.state.lastPos || 0), dt = now - prevTickAt, cT = Number(t?.currentTime ?? window.playerCore?.getPosition?.() ?? prevPos);
-    this.state.duration = Number(t?.duration || this.state.duration || window.playerCore?.getDuration?.() || 0);
-    this.state.lastTickAt = now; this.state.lastPos = cT;
-    if (isValidPlaybackDelta({ deltaMs: dt, prevTime: prevPos, currentTime: cT, volume: t?.volume ?? this.state.volume ?? 100, muted: t?.muted ?? this.state.muted })) {
-      this.state.liveAccumulatedMs += dt; this.state.todayValidSec = Math.floor(this.state.liveAccumulatedMs / 1000);
+    const rt = makePlaybackRuntimeSnapshot({ lastTickAt: this.state.lastTickAt, lastPos: this.state.lastPos, duration: this.state.duration, volume: this.state.volume, muted: this.state.muted, tick: t, playerCore: window.playerCore });
+    this.state.duration = rt.duration; this.state.lastTickAt = rt.now; this.state.lastPos = rt.currentTime;
+    if (isValidPlaybackDelta({ deltaMs: rt.deltaMs, prevTime: rt.prevPos, currentTime: rt.currentTime, volume: rt.volume, muted: rt.muted })) {
+      this.state.liveAccumulatedMs += rt.deltaMs; this.state.todayValidSec = Math.floor(this.state.liveAccumulatedMs / 1000);
     }
   }
 
