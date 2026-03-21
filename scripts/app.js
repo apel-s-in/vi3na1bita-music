@@ -40,7 +40,6 @@
           const curXp = Math.pow(profile.level - 1, 2) * 100, nxtXp = Math.pow(profile.level, 2) * 100;
           if ($el('xp-progress-fill')) $el('xp-progress-fill').style.width = `${Math.max(0, Math.min(100, ((profile.xp - curXp) / (nxtXp - curXp)) * 100))}%`;
           if ($el('xp-text')) $el('xp-text').textContent = `${profile.xp} / ${nxtXp} XP`;
-          if ($el('pg-xp-next')) $el('pg-xp-next').textContent = `ДО УР ${profile.level + 1} — ${nxtXp} XP`;
           if ($el('pg-xp-cur')) $el('pg-xp-cur').textContent = `${profile.xp} XP`;
         }
         const bTxt = $el('ach-hint-bubble-text');
@@ -52,7 +51,12 @@
         }
       });
 
-      const bub = $('ach-hint-bubble'); if (bub) bub.onclick = () => { sessionStorage.setItem('jumpToAch', '1'); W.AlbumsManager?.loadAlbum(C.SPECIAL_PROFILE_KEY || '__profile__'); };
+      const bub = $('ach-hint-bubble'); if (bub) bub.onclick = () => { 
+        sessionStorage.setItem('jumpToAch', '1'); 
+        W.AlbumsManager?.loadAlbum(C.SPECIAL_PROFILE_KEY || '__profile__'); 
+        const achTab = D.querySelector('.ach-classic-tab[data-filter="available"]');
+        if (achTab) achTab.click();
+      };
       const sv = $('dash-save-btn'); if (sv) sv.onclick = () => {
         if (!W.NetPolicy?.isNetworkAllowed()) return W.NotificationSystem?.warning('Сеть недоступна');
         const tk = JSON.parse(localStorage.getItem('cloud_tokens') || '{}');
