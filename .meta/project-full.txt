@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3efea138fc3e5aa948a93c35fbd00f3adf479c76.idx
-│   │       ├── pack-3efea138fc3e5aa948a93c35fbd00f3adf479c76.pack
-│   │       └── pack-3efea138fc3e5aa948a93c35fbd00f3adf479c76.rev
+│   │       ├── pack-0cd96f564dd07d346ea50a39c84a918bc015726a.idx
+│   │       ├── pack-0cd96f564dd07d346ea50a39c84a918bc015726a.pack
+│   │       └── pack-0cd96f564dd07d346ea50a39c84a918bc015726a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -277,6 +277,7 @@ vi3na1bita-music/
 │   │   ├── event-logger.js
 │   │   ├── live-stats.js
 │   │   ├── meta-db.js
+│   │   ├── playback-lifecycle.js
 │   │   ├── playback-runtime.js
 │   │   ├── playback-validity.js
 │   │   ├── session-tracker.js
@@ -406,7 +407,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-21 22:04:49 UTC
+Сгенерировано: 2026-03-21 22:15:55 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1716,6 +1717,30 @@ export class MetaDB {
   }
 }
 export const metaDB = new MetaDB();
+
+//=================================================
+// FILE: /scripts/analytics/playback-lifecycle.js
+// UID.003_(Event log truth)_(единая boundary-семантика playback analytics)_(session/live слои должны одинаково флашить и нормализовать границы play/pause/stop/ended/trackChanged)
+// UID.004_(Stats as cache)_(убрать расхождение между event truth и live projection на переходах состояний)_(helper не пишет storage, только нормализует lifecycle-поведение)
+// UID.018_(Variant and quality stats)_(подготовить единый lifecycle contract для future variant-aware accounting)_(новые поля добавляются additive, не ломая текущую логику)
+// UID.050_(Session profile)_(дать session/live аналитике единые правила обработки границ сессии)_(верхние слои используют helper и не копируют boundary-логику)
+// UID.094_(No-paralysis rule)_(helper должен быть безопасным и no-throw)_(только чистые функции, без side-effects на playback)
+
+export function makePlaybackLifecycleBoundary({
+  playing = false,
+  uid = null,
+  lastPos = 0,
+  resetUid = false,
+  resetPos = false
+} = {}) {
+  return {
+    playing: !!playing,
+    uid: resetUid ? null : (uid || null),
+    lastPos: resetPos ? 0 : Number(lastPos || 0)
+  };
+}
+
+export default { makePlaybackLifecycleBoundary };
 
 //=================================================
 // FILE: /scripts/analytics/playback-runtime.js
