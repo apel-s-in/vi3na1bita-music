@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f47ea855d087b4a1648d28a29aee11fb9b70957c.idx
-│   │       ├── pack-f47ea855d087b4a1648d28a29aee11fb9b70957c.pack
-│   │       └── pack-f47ea855d087b4a1648d28a29aee11fb9b70957c.rev
+│   │       ├── pack-c7c60eb1e8b4ce85f512d6ec78188bd6329abcc0.idx
+│   │       ├── pack-c7c60eb1e8b4ce85f512d6ec78188bd6329abcc0.pack
+│   │       └── pack-c7c60eb1e8b4ce85f512d6ec78188bd6329abcc0.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -407,7 +407,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-21 22:26:25 UTC
+Сгенерировано: 2026-03-21 22:27:19 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1832,7 +1832,6 @@ export default { isValidPlaybackDelta };
 import { eventLogger } from './event-logger.js';
 import { isValidPlaybackDelta } from './playback-validity.js';
 import { makePlaybackRuntimeSnapshot } from './playback-runtime.js';
-import { makePlaybackLifecycleBoundary } from './playback-lifecycle.js';
 
 export class SessionTracker {
   constructor() { this.s = null; this._speedRunnerMs = 0; this._speedRunnerAwarded = false; this._bindEvents(); }
@@ -1845,9 +1844,9 @@ export class SessionTracker {
   }
 
   _start({ uid, duration, type = 'audio' }) {
-    if (this.s?.uid === uid && this.s?.variant === type) return void (this.s.lastUpdate = Date.now());
+    if (this.s?.uid === uid && this.s?.variant === type) { this.s.lastUpdate = Date.now(); return; }
     this._end(false);
-    this.s = { uid, variant: type, quality: window.playerCore?.qMode || 'hi', duration: duration || 0, accumulatedMs: 0, lastPos: 0, lastUpdate: Date.now() };
+    this.s = { uid, variant: type, quality: window.playerCore?.qMode || 'hi', duration: duration || 0, accumulatedMs: 0, lastPos: Number(window.playerCore?.getPosition?.() || 0), lastUpdate: Date.now() };
     eventLogger.log('LISTEN_START', uid, { variant: type });
   }
 
@@ -1864,7 +1863,7 @@ export class SessionTracker {
   _pause() {
     if (this.s) {
       this._tick({ currentTime: window.playerCore?.getPosition?.() || this.s.lastPos || 0, volume: window.playerCore?.getVolume?.() ?? 100, muted: window.playerCore?.isMuted?.() ?? false });
-      Object.assign(this.s, { ...this.s, ...makePlaybackLifecycleBoundary({ playing: false, uid: this.s.uid, lastPos: this.s.lastPos }) , lastUpdate: Date.now() });
+      this.s.lastUpdate = Date.now();
     }
     this._resetContinuousRun();
   }
