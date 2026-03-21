@@ -7,7 +7,6 @@
 import { eventLogger } from './event-logger.js';
 import { isValidPlaybackDelta } from './playback-validity.js';
 import { makePlaybackRuntimeSnapshot } from './playback-runtime.js';
-import { makePlaybackLifecycleBoundary } from './playback-lifecycle.js';
 
 export class SessionTracker {
   constructor() { this.s = null; this._speedRunnerMs = 0; this._speedRunnerAwarded = false; this._bindEvents(); }
@@ -20,9 +19,9 @@ export class SessionTracker {
   }
 
   _start({ uid, duration, type = 'audio' }) {
-    if (this.s?.uid === uid && this.s?.variant === type) return void (this.s.lastUpdate = Date.now());
+    if (this.s?.uid === uid && this.s?.variant === type) { this.s.lastUpdate = Date.now(); return; }
     this._end(false);
-    this.s = { uid, variant: type, quality: window.playerCore?.qMode || 'hi', duration: duration || 0, accumulatedMs: 0, lastPos: 0, lastUpdate: Date.now() };
+    this.s = { uid, variant: type, quality: window.playerCore?.qMode || 'hi', duration: duration || 0, accumulatedMs: 0, lastPos: Number(window.playerCore?.getPosition?.() || 0), lastUpdate: Date.now() };
     eventLogger.log('LISTEN_START', uid, { variant: type });
   }
 
@@ -39,7 +38,7 @@ export class SessionTracker {
   _pause() {
     if (this.s) {
       this._tick({ currentTime: window.playerCore?.getPosition?.() || this.s.lastPos || 0, volume: window.playerCore?.getVolume?.() ?? 100, muted: window.playerCore?.isMuted?.() ?? false });
-      Object.assign(this.s, { ...this.s, ...makePlaybackLifecycleBoundary({ playing: false, uid: this.s.uid, lastPos: this.s.lastPos }) , lastUpdate: Date.now() });
+      this.s.lastUpdate = Date.now();
     }
     this._resetContinuousRun();
   }
