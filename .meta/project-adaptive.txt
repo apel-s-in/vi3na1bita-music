@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ad38d347bbb2f8b85903cbe7e7482640b296bae7.idx
-│   │       ├── pack-ad38d347bbb2f8b85903cbe7e7482640b296bae7.pack
-│   │       └── pack-ad38d347bbb2f8b85903cbe7e7482640b296bae7.rev
+│   │       ├── pack-82c61f3626020cb59bcb90bbc5fce6599c49a2ed.idx
+│   │       ├── pack-82c61f3626020cb59bcb90bbc5fce6599c49a2ed.pack
+│   │       └── pack-82c61f3626020cb59bcb90bbc5fce6599c49a2ed.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -404,7 +404,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-21 19:15:27 UTC
+Сгенерировано: 2026-03-21 19:16:23 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -930,7 +930,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.1.35';
+const SW_VERSION = '8.1.36';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
@@ -3043,8 +3043,8 @@ const makeCrack = idx => {
 
 const ensureStyles = () => {
   W.Utils?.dom?.createStyleOnce?.('sc-3d-carousel-flat-styles', `
-    .sc-3d-wrap{margin:14px 0 18px;padding:0 2px;touch-action:pan-y;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;overflow:visible}
-    .sc-3d-scene{perspective:1080px;perspective-origin:50% 40%;height:264px;display:flex;align-items:center;justify-content:center;overflow:visible;padding-top:10px}
+    .sc-3d-wrap{margin:0 0 4px;padding:0 2px;touch-action:pan-y;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;overflow:visible}
+    .sc-3d-scene{perspective:1080px;perspective-origin:50% 40%;height:210px;display:flex;align-items:center;justify-content:center;overflow:visible;padding-top:0}
     .sc-3d-car{width:128px;height:190px;position:relative;transform-style:preserve-3d;transition:transform .64s cubic-bezier(.16,.84,.28,1);will-change:transform}
     
     /* Кинетический эффект (разлет карточек при вращении) */
