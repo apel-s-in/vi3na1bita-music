@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f6238c6e2cff806656ae6dc77fd7c505f787deac.idx
-│   │       ├── pack-f6238c6e2cff806656ae6dc77fd7c505f787deac.pack
-│   │       └── pack-f6238c6e2cff806656ae6dc77fd7c505f787deac.rev
+│   │       ├── pack-e04ae05bf60714ffbe34f26bd62048b42c16d59f.idx
+│   │       ├── pack-e04ae05bf60714ffbe34f26bd62048b42c16d59f.pack
+│   │       └── pack-e04ae05bf60714ffbe34f26bd62048b42c16d59f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -404,7 +404,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-21 20:18:31 UTC
+Сгенерировано: 2026-03-21 20:19:21 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3416,9 +3416,9 @@ export const loadProfileView = async (ctx) => {
       if (window.Intel_CarouselFlat) {
         window.Intel_CarouselFlat.jumpTo(1); // 1 = Индекс карточки "Достижения"
         window.Intel_CarouselFlat.selectCurrent();
-        c.querySelector('.ach-classic-tab[data-filter="available"]')?.click();
+        setTimeout(() => c.querySelector('.ach-classic-tab[data-filter="available"]')?.click(), 50);
       }
-    }, 80);
+    }, 150);
   }
 };
 export default { loadProfileView };
