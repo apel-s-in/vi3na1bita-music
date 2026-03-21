@@ -5,6 +5,7 @@
 // UID.084_(AI content analysis)_(не смешивать AI и session truth)_(AI может интерпретировать session patterns позже, но не заменяет этот слой)
 // UID.094_(No-paralysis rule)_(session tracking должен быть независимым от intel availability)_(никакой intel failure не должен ломать LISTEN_* events)
 import { eventLogger } from './event-logger.js';
+import { isValidPlaybackDelta } from './playback-validity.js';
 
 export class SessionTracker {
   constructor() { this.s = null; this._speedRunnerMs = 0; this._speedRunnerAwarded = false; this._bindEvents(); }
@@ -24,9 +25,10 @@ export class SessionTracker {
   }
 
   _tick({ currentTime, volume, muted }) {
-    if (!this.s) return; const now = Date.now(), dMs = now - this.s.lastUpdate, pD = Math.abs(currentTime - this.s.lastPos);
-    this.s.lastUpdate = now; this.s.lastPos = currentTime;
-    if (dMs > 0 && dMs < 2000 && pD < 1.5 && volume > 0 && !muted) {
+    if (!this.s) return;
+    const now = Date.now(), prevPos = Number(this.s.lastPos || 0), nextPos = Number(currentTime || 0), dMs = now - this.s.lastUpdate;
+    this.s.lastUpdate = now; this.s.lastPos = nextPos;
+    if (isValidPlaybackDelta({ deltaMs: dMs, prevTime: prevPos, currentTime: nextPos, volume, muted })) {
       this.s.accumulatedMs += dMs; this._speedRunnerMs += dMs;
       if (this._speedRunnerMs >= 10800000 && !this._speedRunnerAwarded) { this._speedRunnerAwarded = true; eventLogger.log('FEATURE_USED', 'global', { feature: 'speed_runner' }); }
     } else this._resetContinuousRun();
