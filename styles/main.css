@@ -28,8 +28,8 @@ body{min-height:100vh;min-width:100vw;padding-top:env(safe-area-inset-top);-webk
 .ach-hint-bubble:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.1);border-color:rgba(77,170,255,.6)}
 .ach-hint-bubble:active{transform:scale(.98)}
 .ach-rpg-header{display:flex;align-items:center;gap:14px;margin-bottom:14px;text-align:left;background:rgba(255,255,255,.03);padding:14px;border-radius:14px;border:1px solid rgba(255,255,255,.05)}
-.profile-dyn-icon{background:rgba(255,255,255,.03);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px;gap:4px;border:1px solid var(--border-color)}
-.pg-lvl-val{font-size:36px;font-weight:900;background:linear-gradient(135deg,#ff9800,#e65100);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))}
+.profile-dyn-icon{background:rgba(255,255,255,.03);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px;gap:2px;border:1px solid var(--border-color)}
+.pg-lvl-val{font-size:28px;font-weight:900;background:linear-gradient(135deg,#ffb74d,#ff5722);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1}
 .pg-xp-cur{color:#888;font-size:11px;font-weight:800;letter-spacing:0.5px}
 .rpg-level-badge{background:linear-gradient(135deg,#ff9800,#ff5722);width:54px;height:54px;border-radius:50%;display:flex;flex-direction:column;justify-content:center;align-items:center;box-shadow:0 0 15px rgba(255,87,34,.4);border:2px solid #fff;flex-shrink:0}
 .rpg-level-badge .lvl-lbl{font-size:10px;font-weight:900;color:#fff;opacity:.9;line-height:1}
