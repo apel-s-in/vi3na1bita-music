@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-45a56e561dbd3eb5ff79d2da0461d5aa648c8b44.idx
-│   │       ├── pack-45a56e561dbd3eb5ff79d2da0461d5aa648c8b44.pack
-│   │       └── pack-45a56e561dbd3eb5ff79d2da0461d5aa648c8b44.rev
+│   │       ├── pack-13a50d2023292f73711c8716724953c36cd03900.idx
+│   │       ├── pack-13a50d2023292f73711c8716724953c36cd03900.pack
+│   │       └── pack-13a50d2023292f73711c8716724953c36cd03900.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -407,7 +407,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-21 22:16:54 UTC
+Сгенерировано: 2026-03-21 22:18:35 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1832,6 +1832,7 @@ export default { isValidPlaybackDelta };
 import { eventLogger } from './event-logger.js';
 import { isValidPlaybackDelta } from './playback-validity.js';
 import { makePlaybackRuntimeSnapshot } from './playback-runtime.js';
+import { makePlaybackLifecycleBoundary } from './playback-lifecycle.js';
 
 export class SessionTracker {
   constructor() { this.s = null; this._speedRunnerMs = 0; this._speedRunnerAwarded = false; this._bindEvents(); }
@@ -1860,11 +1861,20 @@ export class SessionTracker {
     } else this._resetContinuousRun();
   }
 
-  _pause() { if (this.s) this.s.lastUpdate = Date.now(); this._resetContinuousRun(); }
+  _pause() {
+    if (this.s) {
+      this._tick({ currentTime: window.playerCore?.getPosition?.() || this.s.lastPos || 0, volume: window.playerCore?.getVolume?.() ?? 100, muted: window.playerCore?.isMuted?.() ?? false });
+      Object.assign(this.s, { ...this.s, ...makePlaybackLifecycleBoundary({ playing: false, uid: this.s.uid, lastPos: this.s.lastPos }) , lastUpdate: Date.now() });
+    }
+    this._resetContinuousRun();
+  }
   _resetContinuousRun() { this._speedRunnerMs = 0; }
 
   _end(isE) {
-    if (!this.s) return; const { uid, variant, quality, accumulatedMs, duration, lastPos } = this.s; this.s = null;
+    if (!this.s) return;
+    if (!isE) this._tick({ currentTime: window.playerCore?.getPosition?.() || this.s.lastPos || 0, volume: window.playerCore?.getVolume?.() ?? 100, muted: window.playerCore?.isMuted?.() ?? false });
+    const { uid, variant, quality, accumulatedMs, duration, lastPos } = this.s;
+    this.s = null;
     if (duration <= 0 && !isE) return;
     const sec = Math.floor(accumulatedMs / 1000), prg = duration > 0 ? (lastPos / duration) : 0, isV = sec >= 13 || isE, isF = prg >= 0.9 || isE;
 
