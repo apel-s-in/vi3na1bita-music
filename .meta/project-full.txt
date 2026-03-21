@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-56b3a855c05a975574492aa98a1679034b56dd51.idx
-│   │       ├── pack-56b3a855c05a975574492aa98a1679034b56dd51.pack
-│   │       └── pack-56b3a855c05a975574492aa98a1679034b56dd51.rev
+│   │       ├── pack-f37450d15e7c101023b7872f1bc967a1e5ba4a6f.idx
+│   │       ├── pack-f37450d15e7c101023b7872f1bc967a1e5ba4a6f.pack
+│   │       └── pack-f37450d15e7c101023b7872f1bc967a1e5ba4a6f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -404,7 +404,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-21 19:39:05 UTC
+Сгенерировано: 2026-03-21 19:39:37 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1918,8 +1918,6 @@ export class StatsAggregator {
       const bub = $('ach-hint-bubble'); if (bub) bub.onclick = () => { 
         sessionStorage.setItem('jumpToAch', '1'); 
         W.AlbumsManager?.loadAlbum(C.SPECIAL_PROFILE_KEY || '__profile__'); 
-        const achTab = D.querySelector('.ach-classic-tab[data-filter="available"]');
-        if (achTab) achTab.click();
       };
       const sv = $('dash-save-btn'); if (sv) sv.onclick = () => {
         if (!W.NetPolicy?.isNetworkAllowed()) return W.NotificationSystem?.warning('Сеть недоступна');
