@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-725b5d739005ac33828fb2469883d69de0bfd574.idx
-│   │       ├── pack-725b5d739005ac33828fb2469883d69de0bfd574.pack
-│   │       └── pack-725b5d739005ac33828fb2469883d69de0bfd574.rev
+│   │       ├── pack-56b3a855c05a975574492aa98a1679034b56dd51.idx
+│   │       ├── pack-56b3a855c05a975574492aa98a1679034b56dd51.pack
+│   │       └── pack-56b3a855c05a975574492aa98a1679034b56dd51.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -404,7 +404,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-21 19:38:32 UTC
+Сгенерировано: 2026-03-21 19:39:05 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3400,10 +3400,12 @@ export const loadProfileView = async (ctx) => {
   if (sessionStorage.getItem('jumpToAch')) {
     sessionStorage.removeItem('jumpToAch');
     setTimeout(() => {
-      const idx = cardsData.findIndex(d => d.id === 'achievements');
-      if (idx >= 0 && window.Intel_CarouselFlat) window.Intel_CarouselFlat.jumpTo(idx);
-      c.querySelector('[data-tab="achievements"]')?.click();
-    }, 50);
+      if (window.Intel_CarouselFlat) {
+        window.Intel_CarouselFlat.jumpTo(1); // 1 = Индекс карточки "Достижения"
+        window.Intel_CarouselFlat.selectCurrent();
+        c.querySelector('.ach-classic-tab[data-filter="available"]')?.click();
+      }
+    }, 80);
   }
 };
 export default { loadProfileView };
