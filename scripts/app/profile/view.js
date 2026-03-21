@@ -31,8 +31,13 @@ export const loadProfileView = async (ctx) => {
     nInp.onkeydown = e => e.key === 'Enter' && nInp.blur();
   }
 
+  const achRoot = document.getElementById('ach-progress-root');
+  const tabAch = c.querySelector('#tab-achievements');
+  const innerTabs = c.querySelector('#ach-inner-tabs');
+  if (achRoot && tabAch && innerTabs) tabAch.insertBefore(achRoot, innerTabs);
+
   const achView = createProfileAchievementsView({ ctx, container: c.querySelector('#prof-ach-list'), engine: window.achievementEngine });
-  achView.render('all');
+  achView.render('available');
 
   renderProfileStats({ container: c, all });
   renderProfileRecs({ container: c, all });
