@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1f5b051b9718b0b1fe1ecf621c4ba0d7212e2e63.idx
-│   │       ├── pack-1f5b051b9718b0b1fe1ecf621c4ba0d7212e2e63.pack
-│   │       └── pack-1f5b051b9718b0b1fe1ecf621c4ba0d7212e2e63.rev
+│   │       ├── pack-82056b8b4a5b0929361b189ec04bf10fba748435.idx
+│   │       ├── pack-82056b8b4a5b0929361b189ec04bf10fba748435.pack
+│   │       └── pack-82056b8b4a5b0929361b189ec04bf10fba748435.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -404,7 +404,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-21 19:12:31 UTC
+Сгенерировано: 2026-03-21 19:14:22 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2027,7 +2027,7 @@ class AlbumsManager {
     const box = $('album-icons'); if (!box) return;
     const isMob = isMobileUA(), idx = W.albumsIndex || [];
     box.innerHTML = (C.ICON_ALBUMS_ORDER || []).filter(it => it.key && (it.key.startsWith('__') || idx.some(a => a.key === it.key))).map(it => {
-      if (it.key === PROFILE) return `<div class="album-icon profile-dyn-icon" data-album="${it.key}" data-akey="${it.key}" title="${escHtml(it.title)}"><div class="pg-xp-next" id="pg-xp-next">... XP</div><div class="pg-level-wrap"><span class="pg-lvl-lbl">УР</span><span class="pg-lvl-val" id="pg-lvl-val">-</span></div><div class="pg-xp-cur" id="pg-xp-cur">...</div></div>`;
+      if (it.key === PROFILE) return `<div class="album-icon profile-dyn-icon" data-album="${it.key}" data-akey="${it.key}" title="${escHtml(it.title)}"><span class="pg-lvl-val" id="pg-lvl-val">-</span><div class="pg-xp-cur" id="pg-xp-cur">...</div></div>`;
       let b = it.icon || LOGO, p1 = b, p2 = b;
       if (b.includes('icon_album') && !b.includes('Fav_logo')) { p1 = isMob ? b.replace(/icon_album\/(.+)\.png$/, 'icon_album/mobile/$1@1x.jpg') : b.replace(/\.png$/, '@1x.png'); p2 = isMob ? p1.replace(/@1x\.jpg$/, '@2x.jpg') : p1.replace(/@1x\.png$/, '@2x.png'); }
       return `<div class="album-icon" data-album="${it.key}" data-akey="${it.key}" title="${escHtml(it.title)}"><img src="${p1}" srcset="${p2} 2x" alt="${escHtml(it.title)}" draggable="false" loading="lazy" width="60" height="60"></div>`;
