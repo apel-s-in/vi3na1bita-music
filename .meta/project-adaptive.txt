@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-fbfd6c9cbc4c55ae54655d50f1fc0693ae0eba3d.idx
-│   │       ├── pack-fbfd6c9cbc4c55ae54655d50f1fc0693ae0eba3d.pack
-│   │       └── pack-fbfd6c9cbc4c55ae54655d50f1fc0693ae0eba3d.rev
+│   │       ├── pack-a7405f5185472d38b8cc0459b122feea648d9428.idx
+│   │       ├── pack-a7405f5185472d38b8cc0459b122feea648d9428.pack
+│   │       └── pack-a7405f5185472d38b8cc0459b122feea648d9428.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -404,7 +404,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-21 17:06:48 UTC
+Сгенерировано: 2026-03-21 17:07:36 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2102,6 +2102,7 @@ class AlbumsManager {
   async loadAlbum(key) {
     if (this.loading) return; this.loading = true; this.galVis = true;
     try {
+      const achR = $('ach-progress-root'); if (achR && achR.parentElement?.tagName !== 'HEADER') D.querySelector('header')?.appendChild(achR);
       const tList = $('track-list'); if (tList) tList.innerHTML = '';
       $('social-links').innerHTML = ''; W.GalleryManager?.clear?.();
 
