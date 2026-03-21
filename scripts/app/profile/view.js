@@ -47,9 +47,9 @@ export const loadProfileView = async (ctx) => {
       if (window.Intel_CarouselFlat) {
         window.Intel_CarouselFlat.jumpTo(1); // 1 = Индекс карточки "Достижения"
         window.Intel_CarouselFlat.selectCurrent();
-        c.querySelector('.ach-classic-tab[data-filter="available"]')?.click();
+        setTimeout(() => c.querySelector('.ach-classic-tab[data-filter="available"]')?.click(), 50);
       }
-    }, 80);
+    }, 150);
   }
 };
 export default { loadProfileView };
