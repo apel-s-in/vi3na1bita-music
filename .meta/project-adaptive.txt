@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d6a240051b218279ba13e275e0720654610f37a0.idx
-│   │       ├── pack-d6a240051b218279ba13e275e0720654610f37a0.pack
-│   │       └── pack-d6a240051b218279ba13e275e0720654610f37a0.rev
+│   │       ├── pack-bc7a72f597b4af234d42676523610b03054fdade.idx
+│   │       ├── pack-bc7a72f597b4af234d42676523610b03054fdade.pack
+│   │       └── pack-bc7a72f597b4af234d42676523610b03054fdade.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -404,7 +404,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-21 20:20:15 UTC
+Сгенерировано: 2026-03-21 21:00:43 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -762,7 +762,27 @@ jobs:
 <div id="prof-logs-list">Загрузка...</div>
 </div>
 <div class="profile-tab-content" id="tab-settings">
-<div class="fav-empty"><h3>Настройки</h3><p>Раздел находится в разработке 🛠️</p></div>
+<div class="ach-classic-tabs">
+<div class="ach-classic-tab active" data-set-tab="general">Общие</div>
+<div class="ach-classic-tab" data-set-tab="interface">Интерфейс</div>
+<div class="ach-classic-tab" data-set-tab="data">Данные</div>
+<div class="ach-classic-tab" data-set-tab="keys" id="set-tab-keys" style="display:none">Клавиатура</div>
+</div>
+<div class="settings-content active" id="set-general"><div class="fav-empty">Раздел в разработке 🛠️</div></div>
+<div class="settings-content" id="set-interface">
+<div class="set-preview-box">
+<div class="sc-mini-preview" id="sc-mini-preview">
+<div class="sc-mini-card"><div class="sc-mini-ic">📊</div></div>
+<div class="sc-mini-controls"><div>◀</div><div class="sel">ВЫБРАТЬ</div><div>▶</div></div>
+</div>
+</div>
+<div class="set-row">
+<div class="set-info"><div class="set-title">Кнопки карусели</div><div class="set-sub">Показывать кнопки управления под 3D-каруселью</div></div>
+<label class="set-switch"><input type="checkbox" id="set-car-controls"><span class="set-slider"></span></label>
+</div>
+</div>
+<div class="settings-content" id="set-data"><div class="fav-empty">Раздел в разработке 🛠️</div></div>
+<div class="settings-content" id="set-keys"><div class="fav-empty">Раздел в разработке 🛠️</div></div>
 </div>
 <div class="profile-tab-content" id="tab-account">
 <div class="profile-header">
