@@ -12,8 +12,11 @@ export const bindProfileActions = ({ ctx, container: c, achView: aV, profile: p,
       c.querySelectorAll('.profile-tab-btn, .profile-tab-content').forEach(x => x.classList.remove('active'));
       el.classList.add('active'); c.querySelector(`#tab-${el.dataset.tab}`)?.classList.add('active');
     } else if (el = f('.ach-classic-tab')) {
-      c.querySelectorAll('.ach-classic-tab').forEach(x => x.classList.remove('active'));
-      el.classList.add('active'); aV.render(el.dataset.filter);
+      const p = el.closest('.profile-tab-content');
+      p.querySelectorAll('.ach-classic-tab').forEach(x => x.classList.remove('active'));
+      el.classList.add('active');
+      if (p.id === 'tab-achievements') aV.render(el.dataset.filter);
+      else if (p.id === 'tab-settings') { p.querySelectorAll('.settings-content').forEach(x => x.classList.remove('active')); p.querySelector(`#set-${el.dataset.setTab}`)?.classList.add('active'); }
     } else if (el = f('.ach-more') || f('.ach-main')) {
       const d = el.closest('.ach-item')?.querySelector('.ach-details'), b = el.closest('.ach-item')?.querySelector('.ach-more');
       if (d) { const h = d.style.display === 'none'; d.style.display = h ? 'block' : 'none'; if (b) b.textContent = h ? 'Свернуть' : 'Подробнее'; }
