@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-4ff00ff247db3492ed1d139bef11b5b2be03ea8d.idx
-│   │       ├── pack-4ff00ff247db3492ed1d139bef11b5b2be03ea8d.pack
-│   │       └── pack-4ff00ff247db3492ed1d139bef11b5b2be03ea8d.rev
+│   │       ├── pack-fbfd6c9cbc4c55ae54655d50f1fc0693ae0eba3d.idx
+│   │       ├── pack-fbfd6c9cbc4c55ae54655d50f1fc0693ae0eba3d.pack
+│   │       └── pack-fbfd6c9cbc4c55ae54655d50f1fc0693ae0eba3d.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -404,7 +404,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-21 16:42:30 UTC
+Сгенерировано: 2026-03-21 17:06:48 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -762,8 +762,7 @@ jobs:
 </div>
 <div class="profile-tab-content" id="tab-achievements">
 <div class="ach-classic-tabs" id="ach-inner-tabs">
-<div class="ach-classic-tab active" data-filter="all">Все</div>
-<div class="ach-classic-tab" data-filter="available">Доступные</div>
+<div class="ach-classic-tab active" data-filter="available">Доступные</div>
 <div class="ach-classic-tab" data-filter="done">Выполненные</div>
 <div class="ach-classic-tab" data-filter="secret">Секретные</div>
 </div>
