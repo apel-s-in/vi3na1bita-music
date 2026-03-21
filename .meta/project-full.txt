@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a64adfca034a23d996cbb1b1380bc3105d343650.idx
-│   │       ├── pack-a64adfca034a23d996cbb1b1380bc3105d343650.pack
-│   │       └── pack-a64adfca034a23d996cbb1b1380bc3105d343650.rev
+│   │       ├── pack-cfac9c42db6366620588ee4c2da6e2efd3f38062.idx
+│   │       ├── pack-cfac9c42db6366620588ee4c2da6e2efd3f38062.pack
+│   │       └── pack-cfac9c42db6366620588ee4c2da6e2efd3f38062.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -404,7 +404,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-21 21:02:18 UTC
+Сгенерировано: 2026-03-21 21:04:10 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3070,10 +3070,10 @@ const ensureStyles = () => {
   W.Utils?.dom?.createStyleOnce?.('sc-3d-carousel-flat-styles', `
     .sc-3d-wrap{margin:8px 0 12px;padding:0 2px;touch-action:pan-y;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;overflow:visible}
     .sc-3d-scene{perspective:1080px;perspective-origin:50% 40%;height:210px;display:flex;align-items:center;justify-content:center;overflow:visible;padding-top:0}
-    .sc-3d-car{width:128px;height:190px;position:relative;transform-style:preserve-3d;transition:transform .64s cubic-bezier(.16,.84,.28,1);will-change:transform}
+    .sc-3d-car{width:128px;height:190px;position:relative;transform-style:preserve-3d;transition:transform .75s cubic-bezier(.22,1,.36,1);will-change:transform}
     
     /* Кинетический эффект (разлет карточек при вращении) */
-    .sc-3d-card{position:absolute;inset:0;cursor:pointer;will-change:transform;transition:opacity .22s ease,filter .22s ease,transform .45s cubic-bezier(.2,.8,.3,1);overflow:visible;transform-style:preserve-3d;transform:rotateY(var(--a)) translateZ(158px)}
+    .sc-3d-card{position:absolute;inset:0;cursor:pointer;will-change:transform;transition:opacity .25s ease,filter .25s ease,transform .55s cubic-bezier(.2,.8,.3,1);overflow:visible;transform-style:preserve-3d;transform:rotateY(var(--a)) translateZ(158px)}
     .sc-3d-wrap.is-settled .sc-3d-card{transform:rotateY(var(--a)) translateZ(142px)}
     
     /* 0. Halo (Внешнее свечение позади) - ВКЛЮЧАЕТСЯ ТОЛЬКО ПРИ ОСТАНОВКЕ */
@@ -3106,8 +3106,9 @@ const ensureStyles = () => {
     .sc-3d-wrap.is-settled .sc-3d-card.is-active .glass-face {box-shadow: inset 0 0 30px rgba(180,232,255,.15), inset 0 -26px 38px rgba(16,39,68,.5), 0 0 20px rgba(77,170,255,.15)}
     .sc-3d-wrap.is-settled .sc-3d-card.is-active .glass-3d-edge {border-color: rgba(184,233,255,.9)}
 
-    /* Кнопки внизу */
-    .sc-3d-controls{display:flex;gap:14px;justify-content:center;padding:20px 16px 12px}
+    /* Кнопки внизу (По умолчанию скрыты, управляются настройками) */
+    .sc-3d-controls{display:none;gap:14px;justify-content:center;padding:20px 16px 12px}
+    .sc-3d-wrap.show-controls .sc-3d-controls{display:flex}
     .sc-3d-btn{position:relative;background:linear-gradient(180deg,#0d1828,#070d16);border:1px solid rgba(77,170,255,.3);color:#7ab4f5;border-radius:12px;font-weight:900;cursor:pointer;transition:all .3s cubic-bezier(.4,0,.2,1);overflow:hidden;box-shadow:0 6px 15px rgba(0,0,0,.6);height:44px}
     .sc-3d-btn::before{content:'';position:absolute;top:0;left:0;right:0;height:45%;background:linear-gradient(180deg,rgba(255,255,255,.1),transparent);border-radius:12px 12px 0 0;pointer-events:none}
     .sc-3d-btn:active{transform:translateY(2px) scale(.96);box-shadow:0 3px 8px rgba(0,0,0,.7)}
@@ -3153,7 +3154,7 @@ export function mountProfileCarouselFlat({ root }) {
   }).join('');
 
   const wrap = document.createElement('div');
-  wrap.className = 'sc-3d-wrap';
+  wrap.className = 'sc-3d-wrap' + (localStorage.getItem('profileShowControls') === '1' ? ' show-controls' : '');
   wrap.innerHTML = `
     <div class="sc-3d-scene">
       <div class="sc-3d-car" id="sc-3d-car">${cardsHtml}</div>
@@ -3192,7 +3193,7 @@ export function mountProfileCarouselFlat({ root }) {
     };
 
     const update = (animated = true) => {
-      car.style.transition = animated ? 'transform .64s cubic-bezier(.16,.84,.28,1)' : 'none';
+      car.style.transition = animated ? 'transform .75s cubic-bezier(.22,1,.36,1)' : 'none';
       car.style.transform = `rotateY(${currIdx * -STEP}deg)`;
       
       const norm = ((currIdx % TOTAL) + TOTAL) % TOTAL;
@@ -3202,13 +3203,17 @@ export function mountProfileCarouselFlat({ root }) {
         card.classList.toggle('is-back', diff >= 2);
       });
 
-      // Логика задержки свечения и втягивания карточек (is-settled)
       wrap.classList.remove('is-settled');
-      clearTimeout(wrap._tS); clearTimeout(wrap._tAuto);
+      clearTimeout(wrap._tS);
       if (animated) {
-        wrap._tS = setTimeout(() => wrap.classList.add('is-settled'), 400);
-        wrap._tAuto = setTimeout(doSelect, 2400);
-      } else wrap.classList.add('is-settled');
+        wrap._tS = setTimeout(() => {
+          wrap.classList.add('is-settled');
+          doSelect();
+        }, 500); // Мгновенное открытие контента синхронно с подсветкой
+      } else {
+        wrap.classList.add('is-settled');
+        doSelect();
+      }
     };
 
     const step = dir => { currIdx += dir; update(true); };
@@ -3220,7 +3225,7 @@ export function mountProfileCarouselFlat({ root }) {
     scene.addEventListener('touchstart', e => {
       startX = e.touches[0].clientX; startY = e.touches[0].clientY;
       isDrag = true; dragDelta = 0; car.style.transition = 'none';
-      wrap.classList.remove('is-settled'); clearTimeout(wrap._tS); clearTimeout(wrap._tAuto);
+      wrap.classList.remove('is-settled'); clearTimeout(wrap._tS);
     }, { passive: true });
 
     scene.addEventListener('touchmove', e => {
