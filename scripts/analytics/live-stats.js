@@ -1,4 +1,5 @@
 import { metaDB } from './meta-db.js';
+import { isValidPlaybackDelta } from './playback-validity.js';
 
 const dayKeyLocal = (ts = Date.now()) => { const d = new Date(ts); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
@@ -31,9 +32,10 @@ class LiveStatsTracker {
 
   _flush(t = null) {
     if (!this.state.playing) return;
-    const now = Date.now(), dt = now - (this.state.lastTickAt || now), cT = Number(t?.currentTime ?? window.playerCore?.getPosition?.() ?? this.state.lastPos ?? 0);
-    this.state.duration = Number(t?.duration || this.state.duration || window.playerCore?.getDuration?.() || 0); this.state.lastTickAt = now; this.state.lastPos = cT;
-    if (dt > 0 && dt < 2000 && Math.abs(cT - (this.state.lastPos || 0)) < 1.5 && Number(t?.volume ?? this.state.volume ?? 100) > 0 && !~~(t?.muted ?? this.state.muted)) {
+    const now = Date.now(), prevTickAt = this.state.lastTickAt || now, prevPos = Number(this.state.lastPos || 0), dt = now - prevTickAt, cT = Number(t?.currentTime ?? window.playerCore?.getPosition?.() ?? prevPos);
+    this.state.duration = Number(t?.duration || this.state.duration || window.playerCore?.getDuration?.() || 0);
+    this.state.lastTickAt = now; this.state.lastPos = cT;
+    if (isValidPlaybackDelta({ deltaMs: dt, prevTime: prevPos, currentTime: cT, volume: t?.volume ?? this.state.volume ?? 100, muted: t?.muted ?? this.state.muted })) {
       this.state.liveAccumulatedMs += dt; this.state.todayValidSec = Math.floor(this.state.liveAccumulatedMs / 1000);
     }
   }
