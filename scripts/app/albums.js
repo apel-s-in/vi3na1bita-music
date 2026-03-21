@@ -26,7 +26,11 @@ class AlbumsManager {
     const box = $('album-icons'); if (!box) return;
     const isMob = isMobileUA(), idx = W.albumsIndex || [];
     box.innerHTML = (C.ICON_ALBUMS_ORDER || []).filter(it => it.key && (it.key.startsWith('__') || idx.some(a => a.key === it.key))).map(it => {
-      if (it.key === PROFILE) return `<div class="album-icon profile-dyn-icon" data-album="${it.key}" data-akey="${it.key}" title="${escHtml(it.title)}"><span class="pg-lvl-val" id="pg-lvl-val">-</span><div class="pg-xp-cur" id="pg-xp-cur">...</div></div>`;
+      if (it.key === PROFILE) {
+        const l = W.achievementEngine?.profile?.level || '-';
+        const x = W.achievementEngine?.profile?.xp !== undefined ? `${W.achievementEngine.profile.xp} XP` : '...';
+        return `<div class="album-icon profile-dyn-icon" data-album="${it.key}" data-akey="${it.key}" title="${escHtml(it.title)}"><span class="pg-lvl-val" id="pg-lvl-val">${l}</span><div class="pg-xp-cur" id="pg-xp-cur">${x}</div></div>`;
+      }
       let b = it.icon || LOGO, p1 = b, p2 = b;
       if (b.includes('icon_album') && !b.includes('Fav_logo')) { p1 = isMob ? b.replace(/icon_album\/(.+)\.png$/, 'icon_album/mobile/$1@1x.jpg') : b.replace(/\.png$/, '@1x.png'); p2 = isMob ? p1.replace(/@1x\.jpg$/, '@2x.jpg') : p1.replace(/@1x\.png$/, '@2x.png'); }
       return `<div class="album-icon" data-album="${it.key}" data-akey="${it.key}" title="${escHtml(it.title)}"><img src="${p1}" srcset="${p2} 2x" alt="${escHtml(it.title)}" draggable="false" loading="lazy" width="60" height="60"></div>`;
