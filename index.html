@@ -158,19 +158,13 @@
 
 <template id="profile-template">
 <div class="profile-wrap">
-<div class="profile-header">
-<div class="profile-avatar-btn" id="prof-avatar-btn" title="Изменить аватар"></div>
-<div class="profile-name-wrap">
-<input type="text" id="prof-name-inp" class="profile-name-input" maxlength="15" autocomplete="off" spellcheck="false">
-<span class="profile-edit-icon" id="prof-name-edit">✏️</span>
-</div>
-</div>
-<div class="profile-auth-grid" id="prof-auth-grid"></div>
 <div class="profile-tabs" id="prof-tabs">
 <button class="profile-tab-btn active" data-tab="stats">Статистика</button>
 <button class="profile-tab-btn" data-tab="achievements">Достижения</button>
 <button class="profile-tab-btn" data-tab="recs">Для Вас</button>
 <button class="profile-tab-btn" data-tab="logs">Журнал</button>
+<button class="profile-tab-btn" data-tab="settings">Настройки</button>
+<button class="profile-tab-btn" data-tab="account">Аккаунт</button>
 </div>
 <div class="profile-tab-content active" id="tab-stats">
 <div class="stats-grid-compact">
@@ -198,6 +192,19 @@
 <div class="profile-tab-content" id="tab-logs">
 <div class="profile-section-title">📜 ИСТОРИЯ АКТИВНОСТИ</div>
 <div id="prof-logs-list">Загрузка...</div>
+</div>
+<div class="profile-tab-content" id="tab-settings">
+<div class="fav-empty"><h3>Настройки</h3><p>Раздел находится в разработке 🛠️</p></div>
+</div>
+<div class="profile-tab-content" id="tab-account">
+<div class="profile-header">
+<div class="profile-avatar-btn" id="prof-avatar-btn" title="Изменить аватар"></div>
+<div class="profile-name-wrap">
+<input type="text" id="prof-name-inp" class="profile-name-input" maxlength="15" autocomplete="off" spellcheck="false">
+<span class="profile-edit-icon" id="prof-name-edit">✏️</span>
+</div>
+</div>
+<div class="profile-auth-grid" id="prof-auth-grid"></div>
 </div>
 </div>
 </template>
@@ -311,7 +318,7 @@
   </template>
 
   <script>
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.30');
+    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.32');
     const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-03-21');
 
     // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
