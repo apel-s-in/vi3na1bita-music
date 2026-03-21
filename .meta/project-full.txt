@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d64e3c9788d73209c45d3ce2e894adb44e185789.idx
-│   │       ├── pack-d64e3c9788d73209c45d3ce2e894adb44e185789.pack
-│   │       └── pack-d64e3c9788d73209c45d3ce2e894adb44e185789.rev
+│   │       ├── pack-6ff3b939417c4937dfd8615ce24c6f6a896eabda.idx
+│   │       ├── pack-6ff3b939417c4937dfd8615ce24c6f6a896eabda.pack
+│   │       └── pack-6ff3b939417c4937dfd8615ce24c6f6a896eabda.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -404,7 +404,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-21 18:36:56 UTC
+Сгенерировано: 2026-03-21 18:38:00 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3373,11 +3373,6 @@ export const loadProfileView = async (ctx) => {
     nInp.onkeydown = e => e.key === 'Enter' && nInp.blur();
   }
 
-  const achRoot = document.getElementById('ach-progress-root');
-  const tabAch = c.querySelector('#tab-achievements');
-  const innerTabs = c.querySelector('#ach-inner-tabs');
-  if (achRoot && tabAch && innerTabs) tabAch.insertBefore(achRoot, innerTabs);
-
   const achView = createProfileAchievementsView({ ctx, container: c.querySelector('#prof-ach-list'), engine: window.achievementEngine });
   achView.render('available');
 
@@ -3387,6 +3382,15 @@ export const loadProfileView = async (ctx) => {
 
   bindProfileLiveBindings({ ctx, getContainer: () => document.getElementById('track-list'), achView });
   bindProfileActions({ ctx, container: c, achView, profile, metaDB, cloudSync, tokens, reloadProfile: () => loadProfileView(ctx) });
+
+  if (sessionStorage.getItem('jumpToAch')) {
+    sessionStorage.removeItem('jumpToAch');
+    setTimeout(() => {
+      const idx = cardsData.findIndex(d => d.id === 'achievements');
+      if (idx >= 0 && window.Intel_CarouselFlat) window.Intel_CarouselFlat.jumpTo(idx);
+      c.querySelector('[data-tab="achievements"]')?.click();
+    }, 50);
+  }
 };
 export default { loadProfileView };
 
