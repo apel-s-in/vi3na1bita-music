@@ -44,10 +44,12 @@ export const loadProfileView = async (ctx) => {
   if (sessionStorage.getItem('jumpToAch')) {
     sessionStorage.removeItem('jumpToAch');
     setTimeout(() => {
-      const idx = cardsData.findIndex(d => d.id === 'achievements');
-      if (idx >= 0 && window.Intel_CarouselFlat) window.Intel_CarouselFlat.jumpTo(idx);
-      c.querySelector('[data-tab="achievements"]')?.click();
-    }, 50);
+      if (window.Intel_CarouselFlat) {
+        window.Intel_CarouselFlat.jumpTo(1); // 1 = Индекс карточки "Достижения"
+        window.Intel_CarouselFlat.selectCurrent();
+        c.querySelector('.ach-classic-tab[data-filter="available"]')?.click();
+      }
+    }, 80);
   }
 };
 export default { loadProfileView };
