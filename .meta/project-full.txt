@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-13a50d2023292f73711c8716724953c36cd03900.idx
-│   │       ├── pack-13a50d2023292f73711c8716724953c36cd03900.pack
-│   │       └── pack-13a50d2023292f73711c8716724953c36cd03900.rev
+│   │       ├── pack-f47ea855d087b4a1648d28a29aee11fb9b70957c.idx
+│   │       ├── pack-f47ea855d087b4a1648d28a29aee11fb9b70957c.pack
+│   │       └── pack-f47ea855d087b4a1648d28a29aee11fb9b70957c.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -407,7 +407,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-21 22:18:35 UTC
+Сгенерировано: 2026-03-21 22:26:25 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1572,7 +1572,6 @@ export const eventLogger = new EventLogger(); window.eventLogger = eventLogger;
 import { metaDB } from './meta-db.js';
 import { isValidPlaybackDelta } from './playback-validity.js';
 import { makePlaybackRuntimeSnapshot } from './playback-runtime.js';
-import { makePlaybackLifecycleBoundary } from './playback-lifecycle.js';
 
 const dayKeyLocal = (ts = Date.now()) => { const d = new Date(ts); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
@@ -1586,7 +1585,8 @@ class LiveStatsTracker {
     window.addEventListener('player:tick', e => { const d = e.detail || {}; this.state.volume = Number(d.volume ?? this.state.volume ?? 100); this.state.muted = !!d.muted; this._flush({ currentTime: d.currentTime, duration: window.playerCore?.getDuration?.() || this.state.duration, volume: this.state.volume, muted: this.state.muted }); });
     ['player:pause', 'player:stop', 'player:ended'].forEach(ev => window.addEventListener(ev, () => {
       this._flush();
-      Object.assign(this.state, makePlaybackLifecycleBoundary({ playing: false, uid: this.state.uid, lastPos: this.state.lastPos, resetUid: ev === 'player:stop', resetPos: ev === 'player:stop' }));
+      this.state.playing = false;
+      if (ev === 'player:stop') { this.state.uid = null; this.state.lastPos = 0; }
       this._stopTickerIfIdle(); this._syncSleep(); this._emit();
     }));
     window.addEventListener('player:trackChanged', e => { this._flush(); this._updMeta(e.detail?.uid); this._emit(); });
