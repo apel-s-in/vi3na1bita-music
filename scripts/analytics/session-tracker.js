@@ -6,6 +6,7 @@
 // UID.094_(No-paralysis rule)_(session tracking должен быть независимым от intel availability)_(никакой intel failure не должен ломать LISTEN_* events)
 import { eventLogger } from './event-logger.js';
 import { isValidPlaybackDelta } from './playback-validity.js';
+import { makePlaybackRuntimeSnapshot } from './playback-runtime.js';
 
 export class SessionTracker {
   constructor() { this.s = null; this._speedRunnerMs = 0; this._speedRunnerAwarded = false; this._bindEvents(); }
@@ -26,13 +27,12 @@ export class SessionTracker {
 
   _tick({ currentTime, volume, muted }) {
     if (!this.s) return;
-    const now = Date.now(), prevPos = Number(this.s.lastPos || 0), nextPos = Number(currentTime || 0), dMs = now - this.s.lastUpdate;
-    this.s.lastUpdate = now; this.s.lastPos = nextPos;
-    if (isValidPlaybackDelta({ deltaMs: dMs, prevTime: prevPos, currentTime: nextPos, volume, muted })) {
-      this.s.accumulatedMs += dMs; this._speedRunnerMs += dMs;
+    const rt = makePlaybackRuntimeSnapshot({ lastTickAt: this.s.lastUpdate, lastPos: this.s.lastPos, duration: this.s.duration, volume, muted, tick: { currentTime, volume, muted }, playerCore: window.playerCore });
+    this.s.lastUpdate = rt.now; this.s.lastPos = rt.currentTime; this.s.duration = this.s.duration > 0 ? this.s.duration : rt.duration;
+    if (isValidPlaybackDelta({ deltaMs: rt.deltaMs, prevTime: rt.prevPos, currentTime: rt.currentTime, volume: rt.volume, muted: rt.muted })) {
+      this.s.accumulatedMs += rt.deltaMs; this._speedRunnerMs += rt.deltaMs;
       if (this._speedRunnerMs >= 10800000 && !this._speedRunnerAwarded) { this._speedRunnerAwarded = true; eventLogger.log('FEATURE_USED', 'global', { feature: 'speed_runner' }); }
     } else this._resetContinuousRun();
-    if (this.s.duration <= 0) this.s.duration = window.playerCore?.getDuration() || 0;
   }
 
   _pause() { if (this.s) this.s.lastUpdate = Date.now(); this._resetContinuousRun(); }
