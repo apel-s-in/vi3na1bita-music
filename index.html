@@ -96,33 +96,8 @@
 
       <div id="social-links" class="socials-under-cover"></div>
       
-      <div id="ach-progress-root" class="ach-progress-root" aria-live="polite">
-        <!-- Классический баббл-подсказка -->
-        <div class="ach-hint-bubble" id="ach-hint-bubble" role="status" title="Открыть список достижений">
-          <span id="ach-hint-bubble-text">✨ Мы готовим достижения. Слушайте — прогресс уже копится.</span>
-        </div>
-        
-        <!-- RPG Шапка: Уровень и Прогресс Ачивок -->
-        <div class="ach-rpg-header">
-          <div class="rpg-level-badge">
-            <span class="lvl-lbl">УР</span>
-            <span class="lvl-val" id="user-level-badge">1</span>
-          </div>
-          <div class="ach-progress-bars">
-            <div class="ach-progress-header"><span class="ach-progress-title">ПРОГРЕСС ДОСТИЖЕНИЙ</span></div>
-            <div class="ach-bar ach-bar-single"><div class="ach-bar-fill" id="achievementsFill"></div></div>
-            <div class="ach-stat-row">
-              <div class="ach-done-label" id="achievementsCount">ВЫПОЛНЕНО: 0 / 0</div>
-              <div class="ach-xp-label" id="xp-text">0 / 100 XP</div>
-            </div>
-            <!-- Полоска опыта -->
-            <div class="ach-bar ach-bar-xp"><div class="ach-bar-fill xp-fill" id="xp-progress-fill"></div></div>
-          </div>
-        </div>
-
-        <div class="ach-backup-controls" id="ach-backup-controls">
-          <button class="backup-btn" id="dash-save-btn" type="button">СОХРАНИТЬ ПРОГРЕСС</button>
-        </div>
+      <div class="ach-hint-bubble" id="ach-hint-bubble" role="status" title="Открыть список достижений">
+        <span id="ach-hint-bubble-text">✨ Подгружаем статистику...</span>
       </div>
       
     </header>
@@ -177,6 +152,16 @@
 <div id="prof-top-tracks"></div>
 </div>
 <div class="profile-tab-content" id="tab-achievements">
+<div class="ach-rpg-header">
+<div class="rpg-level-badge"><span class="lvl-lbl">УР</span><span class="lvl-val" id="user-level-badge">1</span></div>
+<div class="ach-progress-bars">
+<div class="ach-progress-header"><span class="ach-progress-title">ПРОГРЕСС ДОСТИЖЕНИЙ</span></div>
+<div class="ach-bar ach-bar-single"><div class="ach-bar-fill" id="achievementsFill"></div></div>
+<div class="ach-stat-row"><div class="ach-done-label" id="achievementsCount">ВЫПОЛНЕНО: 0 / 0</div><div class="ach-xp-label" id="xp-text">0 / 100 XP</div></div>
+<div class="ach-bar ach-bar-xp"><div class="ach-bar-fill xp-fill" id="xp-progress-fill"></div></div>
+</div>
+</div>
+<div class="ach-backup-controls" id="ach-backup-controls" style="margin-bottom:12px"><button class="backup-btn" id="dash-save-btn" type="button">СОХРАНИТЬ ПРОГРЕСС</button></div>
 <div class="ach-classic-tabs" id="ach-inner-tabs">
 <div class="ach-classic-tab active" data-filter="available">Доступные</div>
 <div class="ach-classic-tab" data-filter="done">Выполненные</div>
