@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b5f08a72ff77b64982a59fa13308bec423e83b42.idx
-│   │       ├── pack-b5f08a72ff77b64982a59fa13308bec423e83b42.pack
-│   │       └── pack-b5f08a72ff77b64982a59fa13308bec423e83b42.rev
+│   │       ├── pack-9811c66029e34b0f9953d83a477b58df9fe2f2cf.idx
+│   │       ├── pack-9811c66029e34b0f9953d83a477b58df9fe2f2cf.pack
+│   │       └── pack-9811c66029e34b0f9953d83a477b58df9fe2f2cf.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -277,7 +277,6 @@ vi3na1bita-music/
 │   │   ├── event-logger.js
 │   │   ├── live-stats.js
 │   │   ├── meta-db.js
-│   │   ├── playback-lifecycle.js
 │   │   ├── playback-runtime.js
 │   │   ├── playback-validity.js
 │   │   ├── session-tracker.js
@@ -407,7 +406,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-21 22:28:02 UTC
+Сгенерировано: 2026-03-21 22:29:58 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1722,10 +1721,6 @@ export class MetaDB {
   }
 }
 export const metaDB = new MetaDB();
-
-//=================================================
-// FILE: /scripts/analytics/playback-lifecycle.js
-// playback-lifecycle.js removed: helper was redundant after final analytics cleanup.
 
 //=================================================
 // FILE: /scripts/analytics/playback-runtime.js
