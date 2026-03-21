@@ -26,8 +26,8 @@ const makeCrack = idx => {
 
 const ensureStyles = () => {
   W.Utils?.dom?.createStyleOnce?.('sc-3d-carousel-flat-styles', `
-    .sc-3d-wrap{margin:14px 0 18px;padding:0 2px;touch-action:pan-y;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;overflow:visible}
-    .sc-3d-scene{perspective:1080px;perspective-origin:50% 40%;height:264px;display:flex;align-items:center;justify-content:center;overflow:visible;padding-top:10px}
+    .sc-3d-wrap{margin:0 0 4px;padding:0 2px;touch-action:pan-y;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;overflow:visible}
+    .sc-3d-scene{perspective:1080px;perspective-origin:50% 40%;height:210px;display:flex;align-items:center;justify-content:center;overflow:visible;padding-top:0}
     .sc-3d-car{width:128px;height:190px;position:relative;transform-style:preserve-3d;transition:transform .64s cubic-bezier(.16,.84,.28,1);will-change:transform}
     
     /* Кинетический эффект (разлет карточек при вращении) */
