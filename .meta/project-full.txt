@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9d970edbd3546f54d197747dc907b9f50678244f.idx
-│   │       ├── pack-9d970edbd3546f54d197747dc907b9f50678244f.pack
-│   │       └── pack-9d970edbd3546f54d197747dc907b9f50678244f.rev
+│   │       ├── pack-725b5d739005ac33828fb2469883d69de0bfd574.idx
+│   │       ├── pack-725b5d739005ac33828fb2469883d69de0bfd574.pack
+│   │       └── pack-725b5d739005ac33828fb2469883d69de0bfd574.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -404,7 +404,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-21 19:36:18 UTC
+Сгенерировано: 2026-03-21 19:38:32 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3043,7 +3043,7 @@ const makeCrack = idx => {
 
 const ensureStyles = () => {
   W.Utils?.dom?.createStyleOnce?.('sc-3d-carousel-flat-styles', `
-    .sc-3d-wrap{margin:0 0 4px;padding:0 2px;touch-action:pan-y;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;overflow:visible}
+    .sc-3d-wrap{margin:14px 0 24px;padding:0 2px;touch-action:pan-y;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;overflow:visible}
     .sc-3d-scene{perspective:1080px;perspective-origin:50% 40%;height:210px;display:flex;align-items:center;justify-content:center;overflow:visible;padding-top:0}
     .sc-3d-car{width:128px;height:190px;position:relative;transform-style:preserve-3d;transition:transform .64s cubic-bezier(.16,.84,.28,1);will-change:transform}
     
@@ -3083,15 +3083,15 @@ const ensureStyles = () => {
 
     /* Кнопки внизу */
     .sc-3d-controls{display:flex;gap:14px;justify-content:center;padding:10px 16px 24px}
-    .sc-3d-btn{position:relative;background:linear-gradient(180deg,#0d1828,#070d16);border:1px solid rgba(77,170,255,.3);color:#7ab4f5;border-radius:14px;font-weight:900;cursor:pointer;transition:all .3s cubic-bezier(.4,0,.2,1);overflow:hidden;box-shadow:0 6px 15px rgba(0,0,0,.6)}
-    .sc-3d-btn::before{content:'';position:absolute;top:0;left:0;right:0;height:45%;background:linear-gradient(180deg,rgba(255,255,255,.1),transparent);border-radius:14px 14px 0 0;pointer-events:none}
+    .sc-3d-btn{position:relative;background:linear-gradient(180deg,#0d1828,#070d16);border:1px solid rgba(77,170,255,.3);color:#7ab4f5;border-radius:12px;font-weight:900;cursor:pointer;transition:all .3s cubic-bezier(.4,0,.2,1);overflow:hidden;box-shadow:0 6px 15px rgba(0,0,0,.6);height:44px}
+    .sc-3d-btn::before{content:'';position:absolute;top:0;left:0;right:0;height:45%;background:linear-gradient(180deg,rgba(255,255,255,.1),transparent);border-radius:12px 12px 0 0;pointer-events:none}
     .sc-3d-btn:active{transform:translateY(2px) scale(.96);box-shadow:0 3px 8px rgba(0,0,0,.7)}
     
     /* Боковые кнопки (Квадратные со стрелками) */
-    .sc-3d-btn-sq{flex:0 0 52px;width:52px;height:52px;padding:0;font-size:18px;display:flex;align-items:center;justify-content:center}
+    .sc-3d-btn-sq{flex:0 0 44px;width:44px;padding:0;font-size:18px;display:flex;align-items:center;justify-content:center}
     
     /* Центральная кнопка Выбрать */
-    .sc-3d-btn-sel{flex:1;max-width:140px;height:52px;font-size:14px;text-transform:uppercase;letter-spacing:1px}
+    .sc-3d-btn-sel{flex:1;max-width:140px;font-size:13px;text-transform:uppercase;letter-spacing:1px}
     
     /* Синхронное свечение кнопки Выбрать при остановке */
     .sc-3d-wrap.is-settled .sc-3d-btn-sel {
@@ -3239,7 +3239,8 @@ export function mountProfileCarouselFlat({ root }) {
         if (diff > TOTAL / 2) diff -= TOTAL;
         if (diff < -TOTAL / 2) diff += TOTAL;
         currIdx += diff; update(true);
-      }
+      },
+      selectCurrent: () => doSelect()
     };
   }, 60);
 }
