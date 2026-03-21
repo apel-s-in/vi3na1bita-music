@@ -89,6 +89,7 @@ class AlbumsManager {
   async loadAlbum(key) {
     if (this.loading) return; this.loading = true; this.galVis = true;
     try {
+      const achR = $('ach-progress-root'); if (achR && achR.parentElement?.tagName !== 'HEADER') D.querySelector('header')?.appendChild(achR);
       const tList = $('track-list'); if (tList) tList.innerHTML = '';
       $('social-links').innerHTML = ''; W.GalleryManager?.clear?.();
 
