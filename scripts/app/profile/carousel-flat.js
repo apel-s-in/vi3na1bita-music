@@ -215,6 +215,15 @@ export function mountProfileCarouselFlat({ root }) {
     });
 
     update(false);
+    W.Intel_CarouselFlat = {
+      jumpTo: (targetIdx) => {
+        const norm = ((currIdx % TOTAL) + TOTAL) % TOTAL;
+        let diff = targetIdx - norm;
+        if (diff > TOTAL / 2) diff -= TOTAL;
+        if (diff < -TOTAL / 2) diff += TOTAL;
+        currIdx += diff; update(true);
+      }
+    };
   }, 60);
 }
 
