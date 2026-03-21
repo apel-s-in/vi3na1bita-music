@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b170ab7e39f8fd4c4e6621d7b731e82b972bd632.idx
-│   │       ├── pack-b170ab7e39f8fd4c4e6621d7b731e82b972bd632.pack
-│   │       └── pack-b170ab7e39f8fd4c4e6621d7b731e82b972bd632.rev
+│   │       ├── pack-74665335209fb35558a2f0ecdad4063960c0c6b6.idx
+│   │       ├── pack-74665335209fb35558a2f0ecdad4063960c0c6b6.pack
+│   │       └── pack-74665335209fb35558a2f0ecdad4063960c0c6b6.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -406,7 +406,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-21 22:02:13 UTC
+Сгенерировано: 2026-03-21 22:02:56 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1570,6 +1570,7 @@ export const eventLogger = new EventLogger(); window.eventLogger = eventLogger;
 // FILE: /scripts/analytics/live-stats.js
 import { metaDB } from './meta-db.js';
 import { isValidPlaybackDelta } from './playback-validity.js';
+import { makePlaybackRuntimeSnapshot } from './playback-runtime.js';
 
 const dayKeyLocal = (ts = Date.now()) => { const d = new Date(ts); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
@@ -1602,11 +1603,10 @@ class LiveStatsTracker {
 
   _flush(t = null) {
     if (!this.state.playing) return;
-    const now = Date.now(), prevTickAt = this.state.lastTickAt || now, prevPos = Number(this.state.lastPos || 0), dt = now - prevTickAt, cT = Number(t?.currentTime ?? window.playerCore?.getPosition?.() ?? prevPos);
-    this.state.duration = Number(t?.duration || this.state.duration || window.playerCore?.getDuration?.() || 0);
-    this.state.lastTickAt = now; this.state.lastPos = cT;
-    if (isValidPlaybackDelta({ deltaMs: dt, prevTime: prevPos, currentTime: cT, volume: t?.volume ?? this.state.volume ?? 100, muted: t?.muted ?? this.state.muted })) {
-      this.state.liveAccumulatedMs += dt; this.state.todayValidSec = Math.floor(this.state.liveAccumulatedMs / 1000);
+    const rt = makePlaybackRuntimeSnapshot({ lastTickAt: this.state.lastTickAt, lastPos: this.state.lastPos, duration: this.state.duration, volume: this.state.volume, muted: this.state.muted, tick: t, playerCore: window.playerCore });
+    this.state.duration = rt.duration; this.state.lastTickAt = rt.now; this.state.lastPos = rt.currentTime;
+    if (isValidPlaybackDelta({ deltaMs: rt.deltaMs, prevTime: rt.prevPos, currentTime: rt.currentTime, volume: rt.volume, muted: rt.muted })) {
+      this.state.liveAccumulatedMs += rt.deltaMs; this.state.todayValidSec = Math.floor(this.state.liveAccumulatedMs / 1000);
     }
   }
 
