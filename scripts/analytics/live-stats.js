@@ -1,6 +1,7 @@
 import { metaDB } from './meta-db.js';
 import { isValidPlaybackDelta } from './playback-validity.js';
 import { makePlaybackRuntimeSnapshot } from './playback-runtime.js';
+import { makePlaybackLifecycleBoundary } from './playback-lifecycle.js';
 
 const dayKeyLocal = (ts = Date.now()) => { const d = new Date(ts); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
@@ -12,7 +13,11 @@ class LiveStatsTracker {
     window.addEventListener('stats:updated', async () => { await this._reloadBase(); this._emit(); });
     window.addEventListener('player:play', e => { this.state.playing = true; this._updMeta(e.detail?.uid, e.detail?.duration); this._ensureTicker(); this._emit(); });
     window.addEventListener('player:tick', e => { const d = e.detail || {}; this.state.volume = Number(d.volume ?? this.state.volume ?? 100); this.state.muted = !!d.muted; this._flush({ currentTime: d.currentTime, duration: window.playerCore?.getDuration?.() || this.state.duration, volume: this.state.volume, muted: this.state.muted }); });
-    ['player:pause', 'player:stop', 'player:ended'].forEach(ev => window.addEventListener(ev, () => { this._flush(); this.state.playing = false; if(ev === 'player:stop') this.state.uid = null, this.state.lastPos = 0; this._stopTickerIfIdle(); this._syncSleep(); this._emit(); }));
+    ['player:pause', 'player:stop', 'player:ended'].forEach(ev => window.addEventListener(ev, () => {
+      this._flush();
+      Object.assign(this.state, makePlaybackLifecycleBoundary({ playing: false, uid: this.state.uid, lastPos: this.state.lastPos, resetUid: ev === 'player:stop', resetPos: ev === 'player:stop' }));
+      this._stopTickerIfIdle(); this._syncSleep(); this._emit();
+    }));
     window.addEventListener('player:trackChanged', e => { this._flush(); this._updMeta(e.detail?.uid); this._emit(); });
     window.addEventListener('player:sleepTimerChanged', () => { this._syncSleep(); this._emit(); });
     document.addEventListener('visibilitychange', () => { if (document.hidden) this._flush(); });
