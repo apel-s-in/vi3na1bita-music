@@ -136,6 +136,16 @@ export function mountProfileCarouselFlat({ root }) {
     const scene = root.querySelector('.sc-3d-scene');
     if (!car || !scene) return;
 
+    const doSelect = () => {
+      clearTimeout(wrap._tAuto);
+      const norm = ((currIdx % TOTAL) + TOTAL) % TOTAL;
+      const activeId = cardsData[norm].id;
+      root.querySelectorAll('.profile-tab-content').forEach(x => x.classList.remove('active'));
+      const tab = root.querySelector(`#tab-${activeId}`);
+      if (tab) tab.classList.add('active');
+      else W.NotificationSystem?.info(`Раздел «${cardsData[norm].tit}» открывается...`);
+    };
+
     const update = (animated = true) => {
       car.style.transition = animated ? 'transform .64s cubic-bezier(.16,.84,.28,1)' : 'none';
       car.style.transform = `rotateY(${currIdx * -STEP}deg)`;
@@ -149,29 +159,23 @@ export function mountProfileCarouselFlat({ root }) {
 
       // Логика задержки свечения и втягивания карточек (is-settled)
       wrap.classList.remove('is-settled');
-      clearTimeout(wrap._tS);
-      if (animated) wrap._tS = setTimeout(() => wrap.classList.add('is-settled'), 400);
-      else wrap.classList.add('is-settled');
+      clearTimeout(wrap._tS); clearTimeout(wrap._tAuto);
+      if (animated) {
+        wrap._tS = setTimeout(() => wrap.classList.add('is-settled'), 400);
+        wrap._tAuto = setTimeout(doSelect, 2400);
+      } else wrap.classList.add('is-settled');
     };
 
     const step = dir => { currIdx += dir; update(true); };
 
     prev?.addEventListener('click', () => step(-1));
     next?.addEventListener('click', () => step(1));
-
-    sel?.addEventListener('click', () => {
-      const norm = ((currIdx % TOTAL) + TOTAL) % TOTAL;
-      const activeId = cardsData[norm].id;
-      root.querySelectorAll('.profile-tab-content').forEach(x => x.classList.remove('active'));
-      const tab = root.querySelector(`#tab-${activeId}`);
-      if (tab) tab.classList.add('active');
-      else W.NotificationSystem?.info(`Раздел «${cardsData[norm].tit}» открывается...`);
-    });
+    sel?.addEventListener('click', doSelect);
 
     scene.addEventListener('touchstart', e => {
       startX = e.touches[0].clientX; startY = e.touches[0].clientY;
       isDrag = true; dragDelta = 0; car.style.transition = 'none';
-      wrap.classList.remove('is-settled'); clearTimeout(wrap._tS);
+      wrap.classList.remove('is-settled'); clearTimeout(wrap._tS); clearTimeout(wrap._tAuto);
     }, { passive: true });
 
     scene.addEventListener('touchmove', e => {
@@ -205,6 +209,8 @@ export function mountProfileCarouselFlat({ root }) {
         if (diff > TOTAL / 2) diff -= TOTAL;
         if (diff < -TOTAL / 2) diff += TOTAL;
         currIdx += diff; update(true);
+      } else if (wrap.classList.contains('is-settled')) {
+        doSelect();
       }
     });
 
