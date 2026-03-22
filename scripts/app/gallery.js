@@ -29,7 +29,7 @@ class GalleryManager {
       let items = this.meta.get(id);
       if (!items) {
         const fc = W.Utils?.fetchCache, k = `gallery:index:${id}`;
-        const d = fc?.getJson ? await fc.getJson({ key: k, url: `${dir}index.json`, ttlMs: 43200000, store: 'session', fetchInit: { cache: 'force-cache' } }) : await fetch(`${dir}index.json`, { cache: 'force-cache' }).then(r => r.ok ? r.json() : Promise.reject(`HTTP ${r.status}`));
+        const d = fc?.getJson ? await fc.getJson({ key: k, url: `${dir}index.json`, ttlMs: 43200000, store: 'session', fetchInit: { cache: 'force-cache' } }) : await (W.NetPolicy?.fetchWithTraffic?.(`${dir}index.json`, { cache: 'force-cache' }) || fetch(`${dir}index.json`, { cache: 'force-cache' })).then(r => r.ok ? r.json() : Promise.reject(`HTTP ${r.status}`));
         this.meta.set(id, items = Array.isArray(d.items) ? d.items : (Array.isArray(d) ? d : []));
       }
       this.it = items.map(i => this._norm(i, dir)).filter(Boolean);
@@ -59,7 +59,7 @@ class GalleryManager {
       let items = this.meta.get(id);
       if (!items) {
         const dir = `${BASE}${id}/`, fc = W.Utils?.fetchCache;
-        const d = fc?.getJson ? await fc.getJson({ key: `gallery:index:${id}`, url: `${dir}index.json`, ttlMs: 43200000, store: 'session', fetchInit: { cache: 'force-cache' } }) : await fetch(`${dir}index.json`, { cache: 'force-cache' }).then(r => r.ok ? r.json() : null);
+        const d = fc?.getJson ? await fc.getJson({ key: `gallery:index:${id}`, url: `${dir}index.json`, ttlMs: 43200000, store: 'session', fetchInit: { cache: 'force-cache' } }) : await (W.NetPolicy?.fetchWithTraffic?.(`${dir}index.json`, { cache: 'force-cache' }) || fetch(`${dir}index.json`, { cache: 'force-cache' })).then(r => r.ok ? r.json() : null);
         this.meta.set(id, items = Array.isArray(d?.items) ? d.items : (Array.isArray(d) ? d : []));
       }
       return this._norm((items || [])[0], `${BASE}${id}/`) || LOGO;
