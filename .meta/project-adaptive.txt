@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-00904394a57ae6eb4020b86788ffd364bfd07673.idx
-│   │       ├── pack-00904394a57ae6eb4020b86788ffd364bfd07673.pack
-│   │       └── pack-00904394a57ae6eb4020b86788ffd364bfd07673.rev
+│   │       ├── pack-8558d3ab41adcf03f4a31e6dec0a2aae9e066276.idx
+│   │       ├── pack-8558d3ab41adcf03f4a31e6dec0a2aae9e066276.pack
+│   │       └── pack-8558d3ab41adcf03f4a31e6dec0a2aae9e066276.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -407,7 +407,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 19:28:24 UTC
+Сгенерировано: 2026-03-22 19:29:19 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7026,7 +7026,7 @@ class DownloadQueue {
     if (i.priority === PRIO.DYN && !(await hasSpace()) && (await this.m.evictDynamic(), !(await hasSpace()))) return;
     const c = new AbortController(); this.act.set(i.uid, { c, i }); emit('offline:downloadStart', { uid: i.uid });
     try {
-      const r = await fetch(i.url, { signal: c.signal, redirect: 'follow' }); if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const r = await (W.NetPolicy?.guardedFetch?.(i.url, { signal: c.signal, redirect: 'follow' }) || fetch(i.url, { signal: c.signal, redirect: 'follow' })); if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const b = await r.blob(); await DB.setAudioBlob(i.uid, i.quality, b);
       await DB.updateTrackMeta(i.uid, { quality: i.quality, size: b.size, cachedComplete: true, needsReCache: false, needsUpdate: false, lastAccessedAt: now() });
       if ((await DB.getTrackMeta(i.uid))?.type === 'dynamic') await this.m.touchMRU(i.uid);
