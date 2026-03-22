@@ -48,7 +48,7 @@
     }
 
     win.style.display = st.has ? '' : 'none'; win.className = `lyrics-${st.mode}`;
-    if (btnT) { btnT.style.display = ''; btnT.className = `lyrics-toggle-btn lyrics-${st.mode} ${st.has ? '' : 'disabled'}`; U?.setAriaDisabled?.(btnT, !st.has); }
+    if (btnT) { btnT.style.display = st.has ? '' : 'none'; btnT.className = `lyrics-toggle-btn lyrics-${st.mode}`; U?.setAriaDisabled?.(btnT, !st.has); }
     if (btnA) { btnA.style.display = st.showBtn ? '' : 'none'; btnA.classList.toggle('active', st.anim && ok); btnA.classList.toggle('disabled', !st.has); }
     if (bg) bg.classList.toggle('active', st.anim && ok);
     if (btnK) { const can = ok || !!W.playerCore?.getCurrentTrack?.()?.fulltext; btnK.classList.toggle('disabled', !can); Object.assign(btnK.style, { pointerEvents: can ? '' : 'none', opacity: can ? '' : '0.4' }); }
