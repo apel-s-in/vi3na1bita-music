@@ -42,7 +42,7 @@ class ShowcaseManager {
   _saveScroll(id) { const el = $('track-list'); if (el && id) { const y = el.scrollTop || 0; this._scr.set(id, y); jSet(`scroll_${id}`, y); } } _restoreScroll(id) { const el = $('track-list'); if (el && id) el.scrollTop = Math.max(0, Number(this._scr.get(id) ?? jGet(`scroll_${id}`, 0)) || 0); }
   _markLast(uid, id = this._ctxId()) { jSet(isDef(id) ? 'lastUid_default' : `lastUid_${id}`, uid); }
   _cleanupUi() { try { const b = $('sc-selection-bar'); if (b && b._scClick) b.removeEventListener('click', b._scClick); b?.remove(); this._menu?.remove(); } catch {} this._menu = null; }
-  _hi(uid) { D.querySelectorAll('.showcase-track.current').forEach(x => x.classList.remove('current')); if (uid) D.querySelectorAll(`.showcase-track[data-uid="${uidEsc(uid)}"]`).forEach(x => x.classList.add('current')); }
+  _hi(uid) { D.querySelectorAll('.showcase-track.current, .track.current').forEach(x => x.classList.remove('current')); const u = uid || W.playerCore?.getCurrentTrackUid?.(); if (u) D.querySelectorAll(`[data-uid="${uidEsc(u)}"]`).forEach(x => x.classList.add('current')); }
   _ctxHiddenSet(id = this._ctxId()) { return new Set((isDef(id) ? Store.def() : Store.get(id))?.hidden || []); } _isHidden(u, id = this._ctxId()) { return this._ctxHiddenSet(id).has(u); }
   _toggleHiddenPersist(uid, id = this._ctxId()) {
     const c = isDef(id) ? Store.def() : Store.get(id); if (!c) return;
