@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-18a0052695900ae01c7c15d691946eeadca074af.idx
-│   │       ├── pack-18a0052695900ae01c7c15d691946eeadca074af.pack
-│   │       └── pack-18a0052695900ae01c7c15d691946eeadca074af.rev
+│   │       ├── pack-e74ad87b6139abbdb4757394dc7151a3098b51e7.idx
+│   │       ├── pack-e74ad87b6139abbdb4757394dc7151a3098b51e7.pack
+│   │       └── pack-e74ad87b6139abbdb4757394dc7151a3098b51e7.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -407,7 +407,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 18:51:16 UTC
+Сгенерировано: 2026-03-22 18:52:06 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -6847,8 +6847,24 @@ let _db = null, _dbPending = null;
 
 export const openDB = () => {
   if (_db) return Promise.resolve(_db);
-  if (_dbPending) return _dbPending;
-  return (_dbPending = new Promise((res, rej) => {
+  return window.Utils?.func?.memoAsyncOnce?.('offline:cache-db:open', () => new Promise((res, rej) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('audio')) db.createObjectStore('audio', { keyPath: ['uid', 'quality'] });
+      
+      let metaStore = db.objectStoreNames.contains('trackMeta') 
+        ? e.target.transaction.objectStore('trackMeta') 
+        : db.createObjectStore('trackMeta', { keyPath: 'uid' });
+        
+      if (!metaStore.indexNames.contains('type')) metaStore.createIndex('type', 'type', { unique: false });
+      if (!metaStore.indexNames.contains('cloudExpiresAt')) metaStore.createIndex('cloudExpiresAt', 'cloudExpiresAt', { unique: false });
+      
+      if (!db.objectStoreNames.contains('global')) db.createObjectStore('global', { keyPath: 'key' });
+    };
+    req.onsuccess = () => { _db = req.result; _dbPending = null; res(_db); };
+    req.onerror = () => { _dbPending = null; rej(req.error); };
+  })) || (_dbPending ||= new Promise((res, rej) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
     req.onupgradeneeded = (e) => {
       const db = e.target.result;
