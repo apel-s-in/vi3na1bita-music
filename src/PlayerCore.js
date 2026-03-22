@@ -257,10 +257,11 @@ import { resolveFavoritesOnlyState } from '../scripts/app/player/favorites-only-
     restoreInactive(uid) { return this.toggleFavorite(uid, { source: 'favorites' }); }
     
     showInactiveFavoriteModal(p = {}) {
-      if (!W.Modals?.open) return;
-      const m = W.Modals.open({ title: 'Трек неактивен', maxWidth: 420, bodyHtml: `<div style="color:#9db7dd;margin-bottom:14px"><div><strong>${W.Utils?.escapeHtml?.(p.title)||'Трек'}</strong></div><div style="opacity:.9">Вернуть в ⭐ или удалить?</div></div><div class="om-actions"><button type="button" class="modal-action-btn online" data-act="add">Вернуть</button><button type="button" class="modal-action-btn" data-act="remove">Удалить</button></div>` });
-      m.querySelector('[data-act="add"]')?.addEventListener('click', () => { m.remove(); this.restoreInactive(p.uid); });
-      m.querySelector('[data-act="remove"]')?.addEventListener('click', () => { m.remove(); this.removeInactivePermanently(p.uid); try { p.onDeleted?.(); } catch {} });
+      emitG('player:inactiveFavoriteModalRequested', {
+        uid: sUid(p.uid),
+        title: String(p.title || 'Трек'),
+        onDeleted: typeof p.onDeleted === 'function' ? p.onDeleted : null
+      });
     }
 
     getFavoritesState() {
