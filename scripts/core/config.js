@@ -21,8 +21,8 @@ export const APP_CONFIG = {
   SPECIAL_RELIZ_KEY: '__reliz__',
   SPECIAL_SHOWCASE_KEY: '__showcase__',
   SPECIAL_PROFILE_KEY: '__profile__',
-  SUPPORT_URL: 'https://example.com/support',
-  SUPPORT_EMAIL: 'support@vitrina-razbita.ru',
+  SUPPORT_URL: 'https://vk.com/apelsinov',
+  SUPPORT_EMAIL: 'apel-s-in@ya.ru',
   GITHUB_URL: 'https://github.com/apel-s-in/vi3na1bita-music',
 
   INTEL_LAYER_ENABLED: true,
