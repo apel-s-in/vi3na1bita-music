@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6d3cbf042d3fcc8e50cee4337fe11e1bdccefdd8.idx
-│   │       ├── pack-6d3cbf042d3fcc8e50cee4337fe11e1bdccefdd8.pack
-│   │       └── pack-6d3cbf042d3fcc8e50cee4337fe11e1bdccefdd8.rev
+│   │       ├── pack-f98facf76a4f0c10df69c1f8479a7eab34b614fb.idx
+│   │       ├── pack-f98facf76a4f0c10df69c1f8479a7eab34b614fb.pack
+│   │       └── pack-f98facf76a4f0c10df69c1f8479a7eab34b614fb.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -407,7 +407,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 11:37:54 UTC
+Сгенерировано: 2026-03-22 11:38:27 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -931,7 +931,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.1.42';
+const SW_VERSION = '8.1.43';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
@@ -968,6 +968,7 @@ const STATIC_ASSETS = [
   './scripts/app/player-ui.js', './scripts/app/albums.js',
   './scripts/app/profile/achievements-view.js',
   './scripts/app/profile/carousel-flat.js',
+  './scripts/app/profile/settings-view.js',
   './scripts/ui/progress-formatters.js',
   './scripts/app.js', './src/PlayerCore.js',
   './src/player-core/media-session.js',
