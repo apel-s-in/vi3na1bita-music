@@ -26,7 +26,9 @@ export async function loadFavoritesAlbum(ctx) {
     c.innerHTML = it.map((x, i) => {
       const t = window.TrackRegistry?.getTrackByUid(x.uid) || { title: 'Загрузка...', sourceAlbum: x.sourceAlbum };
       const aT = window.TrackRegistry?.getAlbumTitle(t.sourceAlbum) || window.albumsIndex?.find(a => a.key === t.sourceAlbum)?.title || 'Альбом';
-      return `<div class="track ${x.act?'':'inactive'}" id="${esc(`fav_${x.sourceAlbum}_${x.uid}`)}" data-index="${i}" data-album="${esc(t.sourceAlbum)}" data-uid="${esc(x.uid)}"><div class="tnum">${String(i+1).padStart(2,'0')}.</div><div class="track-title" title="${esc(t.title)} - ${esc(aT)}"><span class="fav-track-name">${esc(t.title)}</span><span class="fav-album-name"> — ${esc(aT)}</span></div>${renderFavoriteStar(!!x.act, `data-album="${esc(t.sourceAlbum)}" data-uid="${esc(x.uid)}"` )}</div>`;
+      let cv = window.APP_CONFIG?.ICON_ALBUMS_ORDER?.find(item => item.key === t.sourceAlbum)?.icon || 'img/logo.png';
+      if (window.Utils?.isMobile?.() && /\/icon_album\/[^/]+\.png$/i.test(cv)) { const m = cv.match(/\/icon_album\/([^/]+)\.png$/i); if (m?.[1]) cv = `img/icon_album/mobile/${m[1]}@1x.jpg`; }
+      return `<div class="track ${x.act?'':'inactive'}" id="${esc(`fav_${x.sourceAlbum}_${x.uid}`)}" data-index="${i}" data-album="${esc(t.sourceAlbum)}" data-uid="${esc(x.uid)}"><img src="${esc(cv)}" class="fav-track-thumb" loading="lazy"><div class="track-title fav-track-title-wrap" title="${esc(t.title)} - ${esc(aT)}"><div>${esc(t.title)}</div><div class="fav-track-meta">${esc(aT)}</div></div>${renderFavoriteStar(!!x.act, `data-album="${esc(t.sourceAlbum)}" data-uid="${esc(x.uid)}"` )}</div>`;
     }).join('');
 
     if (hp) { const r = c.querySelector(`.track[data-uid="${CSS.escape(pc.getCurrentTrackUid?.()||'')}"]`) || c.lastElementChild; r ? r.after(pb) : c.appendChild(pb); }
