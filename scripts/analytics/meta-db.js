@@ -15,8 +15,7 @@ export class MetaDB {
 
   async init() {
     if (this.db) return this.db;
-    if (this._initPromise) return this._initPromise;
-    return (this._initPromise = new Promise((res, rej) => {
+    return window.Utils?.func?.memoAsyncOnce?.('analytics:meta-db:init', () => new Promise((res, rej) => {
       if (!window.indexedDB) return rej('IndexedDB is not supported');
       const req = indexedDB.open(this.dbName, this.version);
       req.onupgradeneeded = e => {
@@ -36,8 +35,20 @@ export class MetaDB {
           if (!db.objectStoreNames.contains(n)) db.createObjectStore(n, { keyPath: 'key' });
         });
       };
-      req.onsuccess = () => { this.db = req.result; res(this.db); };
-      req.onerror = () => rej(req.error);
+      req.onsuccess = () => { this.db = req.result; this._initPromise = null; res(this.db); };
+      req.onerror = () => { this._initPromise = null; rej(req.error); };
+    })) || (this._initPromise ||= new Promise((res, rej) => {
+      if (!window.indexedDB) return rej('IndexedDB is not supported');
+      const req = indexedDB.open(this.dbName, this.version);
+      req.onupgradeneeded = e => {
+        const db = e.target.result;
+        ['events_hot', 'events_warm'].forEach(n => !db.objectStoreNames.contains(n) && db.createObjectStore(n, { keyPath: 'eventId' }));
+        if (!db.objectStoreNames.contains('stats')) db.createObjectStore('stats', { keyPath: 'uid' });
+        if (!db.objectStoreNames.contains('global')) db.createObjectStore('global', { keyPath: 'key' });
+        ['listener_profile','provider_identity','hybrid_sync','recommendation_state','collection_state','intel_runtime'].forEach(n => { if (!db.objectStoreNames.contains(n)) db.createObjectStore(n, { keyPath: 'key' }); });
+      };
+      req.onsuccess = () => { this.db = req.result; this._initPromise = null; res(this.db); };
+      req.onerror = () => { this._initPromise = null; rej(req.error); };
     }));
   }
 
