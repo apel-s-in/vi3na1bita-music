@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ed11b3d4e7c569156ac8fe736414022c4d59d7c7.idx
-│   │       ├── pack-ed11b3d4e7c569156ac8fe736414022c4d59d7c7.pack
-│   │       └── pack-ed11b3d4e7c569156ac8fe736414022c4d59d7c7.rev
+│   │       ├── pack-aee828994f6ce55e69f3bd80108d5053ee5c8cb8.idx
+│   │       ├── pack-aee828994f6ce55e69f3bd80108d5053ee5c8cb8.pack
+│   │       └── pack-aee828994f6ce55e69f3bd80108d5053ee5c8cb8.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -407,7 +407,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 13:15:16 UTC
+Сгенерировано: 2026-03-22 13:16:17 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2487,8 +2487,6 @@ window.PlaybackCache.getWindowState = getWindowState; window.PlaybackCache.prote
 // UID.072_(Provider consents)_(готовить user-facing toggles без жёсткой зависимости)_(future provider/AI/social buttons должны проверять consents/capabilities вне этого файла)
 // UID.082_(Local truth vs external telemetry split)_(UI interactions можно маппить наружу только через mapper)_(не строить внешнюю аналитику прямо в PlayerUI)
 // UID.094_(No-paralysis rule)_(PlayerUI должен работать даже без intel/recs/providers)_(все точки intel integration только optional и lazy)
-import { toggleFavoritesOnlyMode } from './player/favorites-only-actions.js';
-
 (function (W, D) {
   'use strict';
   const U = W.Utils, PC = () => W.playerCore, AM = () => W.AlbumsManager;
@@ -2586,8 +2584,9 @@ import { toggleFavoritesOnlyMode } from './player/favorites-only-actions.js';
           'animation-btn': () => W.LyricsController?.toggleAnimation?.(),
           'source-indicator': () => { const p = {yandex:'Yandex Cloud', github:'GitHub Pages', cache:'Ваше устройство'}[st.provider] || 'Неизвестно'; U.ui.toast(`Источник музыки: ${p}`, 'info'); },
           'favorites-btn': () => {
-            const res = toggleFavoritesOnlyMode({ player: c, storage: localStorage, syncUi: syncUI });
+            const res = W.FavoritesOnlyActions?.toggleFavoritesOnlyMode?.({ player: c, storage: localStorage, syncUi: syncUI }) || { ok: false, enabled: U.lsGetBool01('favoritesOnlyMode'), reason: 'missing_action' };
             if (!res.ok && res.reason === 'empty') return U.ui.toast('Отметьте понравившийся трек ⭐', 'info');
+            if (!res.ok && res.reason === 'missing_action') return U.ui.toast('Ошибка режима избранного', 'error');
             U.ui.toast(res.enabled ? '⭐ Только избранные' : 'Играют все треки', res.enabled ? 'success' : 'info');
           }
         })[b.id]?.();
