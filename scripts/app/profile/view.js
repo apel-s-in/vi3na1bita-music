@@ -36,7 +36,7 @@ export const loadProfileView = async (ctx) => {
 
   renderProfileStats({ container: c, all });
   renderProfileRecs({ container: c, all });
-  setTimeout(() => renderProfileLogs({ container: c, metaDB }), 100);
+  setTimeout(() => { renderProfileLogs({ container: c, metaDB }); window.AlbumsManager?.highlightCurrentTrack?.(); }, 120);
 
   bindProfileLiveBindings({ ctx, getContainer: () => document.getElementById('track-list'), achView });
   bindProfileActions({ ctx, container: c, achView, profile, metaDB, cloudSync, tokens, reloadProfile: () => loadProfileView(ctx) });
