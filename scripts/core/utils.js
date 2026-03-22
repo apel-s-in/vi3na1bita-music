@@ -22,7 +22,45 @@
     ui: { toast: (m, t, d) => W.NotificationSystem?.show?.(m, t, d), escapeHtml: s => String(s || '').replace(/[<>&'"]/g, m => ({'<':'&lt;','>':'&gt;','&':'&amp;',"'":'&#39;','"':'&quot;'}[m])) },
     pq: { getMode: () => localStorage.getItem('qualityMode:v1') === 'lo' ? 'lo' : 'hi', getState: () => { const nO = W.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine, cT = !!W.playerCore?.canToggleQualityForCurrentTrack?.(); return { mode: U.pq.getMode(), canToggle: cT && nO, canToggleByTrack: cT, netOk: nO }; }, toggle: () => { const c = W.playerCore; if (!c) return { ok: false, reason: 'noCore' }; if (!(W.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) return { ok: false, reason: 'offline' }; if (!c.canToggleQualityForCurrentTrack()) return { ok: false, reason: 'trackNoLo' }; const n = U.pq.getMode() === 'hi' ? 'lo' : 'hi'; c.switchQuality(n); return { ok: true, next: n }; } },
     fav: { isTrackLikedInContext: ({ track: t } = {}) => !!(W.playerCore && t?.uid && W.playerCore.isFavorite(t.uid)) },
-    download: { applyDownloadLink: (btn, t) => { if (!btn) return; if (!t?.src && !t?.uid) { btn.removeAttribute('href'); btn.removeAttribute('download'); btn.classList.add('disabled'); btn._dlUid = null; return; } const fN = t.artist && t.title ? `${t.artist} - ${t.title}.mp3` : (t.title ? `${t.title}.mp3` : 'track.mp3'); btn.removeAttribute('href'); btn.download = fN; btn.classList.remove('disabled'); const dK = `${t.uid || t.src}:${fN}`; if (btn._dlUid === dK) return; btn._dlUid = dK; btn.onclick = async e => { e.preventDefault(); e.stopPropagation(); if (btn._dlBusy) return; btn._dlBusy = true; try { let u = t.src; if (t.uid) { const s = await W.TrackRegistry?.getSmartUrlInfo?.(t.uid, 'audio', W.playerCore?.qMode || 'hi'); if (s?.url) u = s.url; } if (!u) return W.NotificationSystem?.warning?.('Ссылка недоступна'); if (navigator.share && navigator.canShare) { try { const r = await fetch(u); if (!r.ok) throw 1; const file = new File([await r.blob()], fN, { type: 'audio/mpeg' }); if (navigator.canShare({ files: [file] })) return await navigator.share({ title: t.title || 'Трек', files: [file] }); } catch {} } W.NotificationSystem?.info?.('Скачивание...'); const r = await fetch(u); if (!r.ok) throw 1; const bU = URL.createObjectURL(await r.blob()), a = D.createElement('a'); a.href = bU; a.download = fN; a.style.display = 'none'; D.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(bU); a.remove(); }, 5000); W.NotificationSystem?.success?.('Файл скачивается'); } catch { W.NotificationSystem?.error?.('Ошибка скачивания'); } finally { btn._dlBusy = false; } }; } },
+    download: { applyDownloadLink: (btn, t) => {
+      if (!btn) return;
+      if (!t?.src && !t?.uid) { btn.removeAttribute('href'); btn.removeAttribute('download'); btn.classList.add('disabled'); btn._dlUid = null; return; }
+      const fN = t.title ? `Vi3na1bita - ${t.title}.mp3` : 'track.mp3';
+      btn.removeAttribute('href'); btn.download = fN; btn.classList.remove('disabled');
+      const dK = `${t.uid || t.src}:${fN}`; if (btn._dlUid === dK) return; btn._dlUid = dK;
+      btn.onclick = async e => {
+        e.preventDefault(); e.stopPropagation();
+        if (btn._dlBusy) return; btn._dlBusy = true;
+        try {
+          let bU = null;
+          if (t.uid) {
+            try {
+              const db = await import('../offline/cache-db.js');
+              const blob = (await db.getAudioBlob(t.uid, 'hi')) || (await db.getAudioBlob(t.uid, 'lo'));
+              if (blob) bU = URL.createObjectURL(blob);
+            } catch(err) {}
+          }
+          if (!bU) {
+            W.NotificationSystem?.info?.('Подготовка файла...');
+            let u = t.src;
+            if (t.uid) {
+              const s = await W.TrackRegistry?.getSmartUrlInfo?.(t.uid, 'audio', W.playerCore?.qMode || 'hi');
+              if (s?.url) u = s.url;
+            }
+            if (!u) throw new Error('No URL');
+            const r = await fetch(u); if (!r.ok) throw 1;
+            bU = URL.createObjectURL(await r.blob());
+          }
+          const a = D.createElement('a'); a.href = bU; a.download = fN; a.style.display = 'none'; D.body.appendChild(a); a.click();
+          setTimeout(() => { URL.revokeObjectURL(bU); a.remove(); }, 5000);
+          W.NotificationSystem?.success?.('Файл сохранен на устройство');
+        } catch {
+          W.NotificationSystem?.error?.('Ошибка сохранения');
+        } finally {
+          btn._dlBusy = false;
+        }
+      };
+    } },
     func: { debounceFrame: fn => { let f; return (...a) => { if (f) cancelAnimationFrame(f); f = requestAnimationFrame(() => { f = null; fn(...a); }); }; }, throttle: (fn, w) => { let l = 0; return (...a) => { const n = Date.now(); if (n - l >= w) { l = n; fn(...a); } }; } },
     isSpecialAlbumKey: k => String(k || '').startsWith('__'),
     normalizeAlbumContextKey: k => { const s = String(k || '').trim(); return !s ? '' : (s.startsWith('__showcase__') ? '__showcase__' : (s.startsWith('__favorites__') ? '__favorites__' : s)); },
