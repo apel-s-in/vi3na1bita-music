@@ -46,6 +46,8 @@ export const renderProfileSettings = (root) => {
     input:checked + .set-slider:before{transform:translateX(20px);background:#fff}
     
     .set-preview-box{background:linear-gradient(180deg,#1a1d24,#11141a);border-radius:12px;padding:20px;display:flex;justify-content:center;border:1px solid rgba(77,170,255,.15);margin-bottom:2px}
+    
+    /* Carousel Mini */
     .sc-mini-preview{display:flex;flex-direction:column;align-items:center;gap:10px;transition:.3s}
     .sc-mini-card{width:64px;height:95px;border-radius:12px;background:linear-gradient(180deg,rgba(26,49,82,.8),rgba(8,16,30,.9));border:1px solid rgba(168,225,255,.5);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(77,170,255,.2)}
     .sc-mini-ic{font-size:26px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.5))}
@@ -55,6 +57,7 @@ export const renderProfileSettings = (root) => {
     .sc-mini-controls div:not(.sel){width:18px}
     .sc-mini-controls .sel{width:56px}
     
+    /* Player Mini */
     .pl-prev-box{background:linear-gradient(180deg,rgba(30,34,45,.95),rgba(15,18,24,.98));border-radius:12px;padding:12px;border:1px solid rgba(77,170,255,.15);margin-bottom:2px;box-shadow:0 4px 15px rgba(0,0,0,.4)}
     .pl-prev-lyr{height:60px;background:#0f1218;border-radius:8px 8px 0 0;position:relative;overflow:hidden;margin-bottom:12px;display:flex;align-items:center;justify-content:center}
     .pl-prev-bg{position:absolute;inset:0;opacity:0;background:linear-gradient(45deg,rgba(232,1,0,.15),rgba(77,170,255,.15),rgba(232,1,0,.15));background-size:400% 400%;transition:.5s;pointer-events:none}
@@ -65,7 +68,12 @@ export const renderProfileSettings = (root) => {
     .pl-prev-btn.a-btn{background:linear-gradient(135deg,#4a1a7a,#2a0a4a);border-color:rgba(138,43,226,.3);color:#c8a2ff}
     .pl-prev-btn.a-btn.active{background:linear-gradient(135deg,#5a2a8a,#3a1a5a);box-shadow:0 0 8px rgba(138,43,226,.4)}
 
-    /* Конструктор имени файла */
+    /* Range Slider */
+    .lp-slider-row{display:flex;align-items:center;margin-top:4px;gap:12px}
+    .lp-slider{flex:1;height:4px;background:rgba(255,255,255,.1);border-radius:2px;outline:none;-webkit-appearance:none}
+    .lp-slider::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;background:var(--secondary-color);border-radius:50%;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.5)}
+
+    /* Name Constructor */
     .dl-fmt-container{display:flex;flex-direction:column;gap:10px}
     .dl-fmt-row{display:flex;align-items:center;background:rgba(0,0,0,.2);border-radius:12px;padding:6px;gap:10px;border:1px solid rgba(255,255,255,.05)}
     .dl-arr{all:unset;cursor:pointer;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:18px;color:#888;border-radius:8px;transition:.2s;flex-shrink:0}
@@ -117,6 +125,26 @@ export const renderProfileSettings = (root) => {
           <div class="set-info"><div class="set-title">Анимация фона</div><div class="set-sub">Цветовая пульсация фона в режиме лирики</div></div>
           <label class="set-switch"><input type="checkbox" id="set-pl-anim-play"><span class="set-slider"></span></label>
         </div>
+      </div>
+
+      <button type="button" class="set-acc-btn">ПУЛЬСАЦИЯ</button>
+      <div class="set-acc-body" id="set-pulse-body">
+        <div class="set-preview-box">
+          <img class="logo-pulse-target" id="lp-preview-logo" src="img/logo.png" alt="Логотип" style="width:70px;height:auto">
+        </div>
+        <div class="set-row" style="flex-direction:column;align-items:stretch;gap:8px">
+          <div class="set-info"><div class="set-title">Интенсивность бита</div></div>
+          <div class="lp-slider-row">
+            <span style="font-size:12px;color:#888">min</span>
+            <input type="range" id="lp-intensity" class="lp-slider" min="0" max="0.5" step="0.05" value="0.15">
+            <span style="font-size:12px;color:#888">max</span>
+          </div>
+        </div>
+        <div class="set-row">
+          <div class="set-info"><div class="set-title">Глитч эффект</div><div class="set-sub">Неоновые искажения при ударах</div></div>
+          <label class="set-switch"><input type="checkbox" id="lp-glitch"><span class="set-slider"></span></label>
+        </div>
+        <button class="om-btn om-btn--outline om-fullw" id="lp-reset-btn">Сбросить по умолчанию</button>
       </div>
 
       <button type="button" class="set-acc-btn">КАРУСЕЛЬ</button>
@@ -190,6 +218,28 @@ export const renderProfileSettings = (root) => {
       prevABtn.classList.toggle('active', v);
       prevABg.classList.toggle('active', v);
       W.LyricsController?.restoreSettingsIntoDom?.();
+    });
+  }
+
+  // --- Логика Пульсации (Интерфейс) ---
+  const lpInt = root.querySelector('#lp-intensity'), lpGlitch = root.querySelector('#lp-glitch'), lpReset = root.querySelector('#lp-reset-btn');
+  if (lpInt && lpGlitch && lpReset) {
+    lpInt.value = localStorage.getItem('logoPulseIntensity') || '0.15';
+    lpGlitch.checked = localStorage.getItem('logoPulseGlitch') === '1';
+
+    const applyLp = () => {
+      localStorage.setItem('logoPulseIntensity', lpInt.value);
+      localStorage.setItem('logoPulseGlitch', lpGlitch.checked ? '1' : '0');
+      W.LogoPulse?.updateSettings?.();
+    };
+
+    lpInt.addEventListener('input', applyLp);
+    lpGlitch.addEventListener('change', applyLp);
+    lpReset.addEventListener('click', () => {
+      lpInt.value = '0.15';
+      lpGlitch.checked = false;
+      applyLp();
+      W.NotificationSystem?.success?.('Настройки пульсации сброшены');
     });
   }
 
