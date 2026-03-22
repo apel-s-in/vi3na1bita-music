@@ -93,5 +93,9 @@ function toggleFavoritesOnlyMode({
   return { ok: true, enabled: next };
 }
 
+const api = { openFavoritesOnlyConflictModal, makeFavoritesOnlyAfterPlay, playWithFavoritesOnlyResolution, toggleFavoritesOnlyMode };
+
+W.FavoritesOnlyActions = api;
+
 export { openFavoritesOnlyConflictModal, makeFavoritesOnlyAfterPlay, playWithFavoritesOnlyResolution, toggleFavoritesOnlyMode };
-export default { openFavoritesOnlyConflictModal, makeFavoritesOnlyAfterPlay, playWithFavoritesOnlyResolution, toggleFavoritesOnlyMode };
+export default api;
