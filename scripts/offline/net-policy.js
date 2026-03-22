@@ -55,20 +55,24 @@ const readStats = () => {
 };
 
 const writeStats = (b, t) => { if ((b = Number(b)) > 0) { const s = readStats(); s[t].total += b; s[t].monthly += b; localStorage.setItem(K.S, JSON.stringify(s)); } };
+export const trackTrafficFromResponse = (res, forcedType = null) => {
+  const len = res?.headers?.get?.('content-length');
+  if (!len) return res;
+  writeStats(len, getPlatform().supportsNetControl ? (forcedType || detectNetworkType()) : 'general');
+  return res;
+};
+export const guardedFetch = async (req, init) => {
+  if (!isNetworkAllowed()) throw new TypeError('Network blocked by NetPolicy');
+  const res = await fetch(req, init);
+  return trackTrafficFromResponse(res);
+};
 export const getTrafficStats = () => { const s = readStats(), n = getCurrentMonthName(); return getPlatform().supportsNetControl ? { type: 'split', monthName: n, wifi: s.wifi, cellular: s.cellular } : { type: 'general', monthName: n, general: s.general }; };
 export const clearTrafficStats = () => { localStorage.removeItem(K.S); emitChange(); };
 
 export const initNetPolicy = () => {
   if (_installed) return; _installed = true;
-  window.NetPolicy = { isNetworkAllowed, shouldShowCellularToast, getStatusText, detectNetworkType, getNetPolicyState };
-  const orig = window.fetch?.bind(window);
-  if (orig) window.fetch = async (req, init) => {
-    if (!isNetworkAllowed()) throw new TypeError('Network blocked by NetPolicy');
-    const res = await orig(req, init), len = res.headers?.get('content-length');
-    if (len) writeStats(len, getPlatform().supportsNetControl ? detectNetworkType() : 'general');
-    return res;
-  };
+  window.NetPolicy = { isNetworkAllowed, shouldShowCellularToast, getStatusText, detectNetworkType, getNetPolicyState, guardedFetch, trackTrafficFromResponse };
   const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
   c?.addEventListener?.('change', emitChange); window.addEventListener('online', emitChange); window.addEventListener('offline', emitChange); emitChange();
 };
-export default { initNetPolicy, getPlatform, getNetPolicyState, getStatusText, detectNetworkType, getNetworkLabel, getNetworkSpeed, toggleWifi, toggleCellular, toggleCellularToast, toggleKillSwitch, isNetworkAllowed, shouldShowCellularToast, getTrafficStats, clearTrafficStats, getCurrentMonthName };
+export default { initNetPolicy, getPlatform, getNetPolicyState, getStatusText, detectNetworkType, getNetworkLabel, getNetworkSpeed, toggleWifi, toggleCellular, toggleCellularToast, toggleKillSwitch, isNetworkAllowed, shouldShowCellularToast, guardedFetch, trackTrafficFromResponse, getTrafficStats, clearTrafficStats, getCurrentMonthName };
