@@ -178,10 +178,20 @@ import { resolveFavoritesOnlyState } from '../scripts/app/player/favorites-only-
       }
 
       const pos = Number(opts.resumePosition) || 0, retry = Number(opts._retryN) || 0;
+      
+      if (this.sound && this.getCurrentTrackUid() === uid && !opts._forceReload) {
+        this.currentIndex = idx;
+        this._emit('onTrackChange', t, idx);
+        emitG('player:trackChanged', { uid, dir });
+        if (pos) this.seek(pos);
+        if (opts.autoPlay !== false && !this.isPlaying()) this.play();
+        return;
+      }
+      
       this._unload(true);
       
       this.sound = new Howl({
-        src: [url], html5: true, format: ['mp3'], xhr: { withCredentials: false }, autoplay: opts.autoPlay ?? this.isPlaying(),
+        src: [url], html5: !url.startsWith('blob:'), format: ['mp3'], xhr: { withCredentials: false }, autoplay: opts.autoPlay ?? this.isPlaying(),
         onload: sf(() => { pos && this.seek(pos); this._updMedia(); }),
         onplay: sf(() => { this._startT(); this._emit('onPlay', t, idx); this._updMedia(); emitG('player:play', { uid, duration: this.getDuration(), type: 'audio', provider: aP }); emitG('player:providerChanged', { provider: aP }); }),
         onpause: sf(() => { this._stopT(); this._emit('onPause'); this._updMedia(); emitG('player:pause'); }),
