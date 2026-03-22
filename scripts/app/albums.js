@@ -131,10 +131,14 @@ class AlbumsManager {
     finally { this.loading = false; }
   }
 
-  highlightCurrentTrack(i, { uid, albumKey } = {}) {
-    D.querySelectorAll('.track.current, .showcase-track.current').forEach(n => n.classList.remove('current'));
-    const u = uid || W.playerCore?.getCurrentTrackUid?.();
-    if (u) D.querySelectorAll(`[data-uid="${CSS.escape(u)}"]`).forEach(el => el.classList.add('current'));
+  highlightCurrentTrack() {
+    D.querySelectorAll('.current').forEach(n => {
+      if (['track','showcase-track','profile-list-item','sm-top-row'].some(c => n.classList.contains(c)) || n.tagName === 'LI') n.classList.remove('current');
+    });
+    const u = W.playerCore?.getCurrentTrackUid?.();
+    if (u) D.querySelectorAll(`[data-uid="${CSS.escape(u)}"]`).forEach(el => {
+      if (['track','showcase-track','profile-list-item','sm-top-row'].some(c => el.classList.contains(c)) || el.tagName === 'LI') el.classList.add('current');
+    });
   }
 
   getCurrentAlbum() { return this.curr; } getPlayingAlbum() { return this.playing; } setPlayingAlbum(k) { this.playing = k; }
