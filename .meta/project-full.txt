@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-b37766eac1bda5bb9f6cf4b6b3c9e9f80f5eb2c2.idx
-│   │       ├── pack-b37766eac1bda5bb9f6cf4b6b3c9e9f80f5eb2c2.pack
-│   │       └── pack-b37766eac1bda5bb9f6cf4b6b3c9e9f80f5eb2c2.rev
+│   │       ├── pack-83eaf84d2a511a4e2e894ad0d2fed0956fd84cc1.idx
+│   │       ├── pack-83eaf84d2a511a4e2e894ad0d2fed0956fd84cc1.pack
+│   │       └── pack-83eaf84d2a511a4e2e894ad0d2fed0956fd84cc1.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -407,7 +407,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 18:34:01 UTC
+Сгенерировано: 2026-03-22 18:36:08 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -887,7 +887,7 @@ jobs:
   </template>
 
   <script>
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.46');
+    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.47');
     const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-03-22');
 
     // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
@@ -931,7 +931,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.1.46';
+const SW_VERSION = '8.1.47';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
@@ -3975,15 +3975,14 @@ const { Store, Draft, mkPl, normCtx, jGet, jSet } = createShowcaseStore({ trk, g
 const bldTrk = uid => { const t = trk(uid); if (!t) return null; let c = W.APP_CONFIG?.ICON_ALBUMS_ORDER?.find(i => i.key === t.sourceAlbum)?.icon || 'img/logo.png'; if (U.isMobile?.() && /\/icon_album\/[^/]+\.png$/i.test(c)) { const m = c.match(/\/icon_album\/([^/]+)\.png$/i); if (m?.[1]) c = `img/icon_album/mobile/${m[1]}@1x.jpg`; } return { ...t, album: 'Витрина Разбита', cover: c }; };
 
 class ShowcaseManager {
-  constructor() { this._edit = false; this._drf = null; this._q = ''; this._res = []; this._sel = new Set(); this._menu = null; this._tok = 0; this._scr = new Map(); this._initialized = false; this._actions = createShowcaseActions({ W, D, Store, SHOW, isDef, trk, bldTrk, albT, esc, uidEsc, PALETTE, renderShowcasePlaylists, renameShowcasePlaylist, shareShowcasePlaylist, createShowcasePlaylist, openShowcaseSheetModal, openShowcaseAddToPlaylistModal, openShowcasePaletteModal }); }
+  constructor() { this._edit = false; this._drf = null; this._q = ''; this._res = []; this._sel = new Set(); this._menu = null; this._tok = 0; this._scr = new Map(); this._actions = createShowcaseActions({ W, D, Store, SHOW, isDef, trk, bldTrk, albT, esc, uidEsc, PALETTE, renderShowcasePlaylists, renameShowcasePlaylist, shareShowcasePlaylist, createShowcasePlaylist, openShowcaseSheetModal, openShowcaseAddToPlaylistModal, openShowcasePaletteModal }); }
   _getSelectedSet() { return this._edit ? (this._drf?.chk || new Set()) : this._sel; }
   _getSelectedUids() { return [...this._getSelectedSet()].filter(trk); }
   _setSelectedAll(on) { this._edit ? this._drf?.setAllChecked(!!on) : (this._sel = new Set(on ? this._res.filter(trk) : [])); }
   _clearSelected() { this._edit ? this._drf?.setAllChecked(false) : this._sel.clear(); }
   _toggleSelected(uid) { uid && (this._edit ? this._drf?.toggleChecked(uid) : (this._sel.has(uid) ? this._sel.delete(uid) : this._sel.add(uid))); }
   async initialize() {
-    if (this._initialized) return;
-    this._initialized = true;
+    if (!W.Utils?.func?.initOnce?.('app:showcase:init', () => {})) return;
     await W.TrackRegistry?.ensurePopulated?.();
     Store.def();
     W.playerCore?.onFavoritesChanged?.(({ uid }) => W.AlbumsManager?.getCurrentAlbum?.() === SHOW && D.querySelectorAll(`.showcase-track[data-uid="${uidEsc(uid)}"] .like-star`).forEach(el => setFavoriteStarState(el, W.playerCore.isFavorite(uid))));
@@ -4685,7 +4684,7 @@ if (errs.length) { console.error('Failed:\n', errs.join('\n')); process.exit(2);
 // UID.092_(Incremental rollout order)_(делать staged внедрение через один конфиг)_(intel boot должен управляться отсюда)
 
 export const APP_CONFIG = {
-  APP_VERSION: '8.1.46',
+  APP_VERSION: '8.1.47',
   BUILD_DATE: '2026-03-22',
   PROMOCODE: 'VITRINA2025',
   ICON_ALBUMS_ORDER: [
