@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2978de064619607a81844fc2cef823318547d776.idx
-│   │       ├── pack-2978de064619607a81844fc2cef823318547d776.pack
-│   │       └── pack-2978de064619607a81844fc2cef823318547d776.rev
+│   │       ├── pack-ed11b3d4e7c569156ac8fe736414022c4d59d7c7.idx
+│   │       ├── pack-ed11b3d4e7c569156ac8fe736414022c4d59d7c7.pack
+│   │       └── pack-ed11b3d4e7c569156ac8fe736414022c4d59d7c7.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -407,7 +407,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 13:06:26 UTC
+Сгенерировано: 2026-03-22 13:15:16 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2856,8 +2856,12 @@ function toggleFavoritesOnlyMode({
   return { ok: true, enabled: next };
 }
 
+const api = { openFavoritesOnlyConflictModal, makeFavoritesOnlyAfterPlay, playWithFavoritesOnlyResolution, toggleFavoritesOnlyMode };
+
+W.FavoritesOnlyActions = api;
+
 export { openFavoritesOnlyConflictModal, makeFavoritesOnlyAfterPlay, playWithFavoritesOnlyResolution, toggleFavoritesOnlyMode };
-export default { openFavoritesOnlyConflictModal, makeFavoritesOnlyAfterPlay, playWithFavoritesOnlyResolution, toggleFavoritesOnlyMode };
+export default api;
 
 //=================================================
 // FILE: /scripts/app/player/favorites-only-resolver.js
