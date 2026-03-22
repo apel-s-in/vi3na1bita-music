@@ -1,7 +1,7 @@
 import { getOfflineManager } from '../offline/offline-manager.js';
 import { getAllTrackMetas } from '../offline/cache-db.js';
 
-let _timer = 0, _menu = null;
+let _timer = 0, _menu = null, _inited = false;
 
 export const refreshAllIndicators = async () => {
   const mgr = getOfflineManager(), hasSpace = await mgr.hasSpace().catch(() => true), metaMap = new Map((await getAllTrackMetas().catch(() => [])).map(m => [m.uid, m]));
@@ -58,6 +58,11 @@ document.addEventListener('click', async (e) => {
   }
 });
 
-export const initOfflineIndicators = () => { ['offline:uiChanged', 'offline:stateChanged', 'offline:trackCached', 'offline:downloadStart', 'netPolicy:changed'].forEach(ev => window.addEventListener(ev, scheduleRefresh)); injectOfflineIndicators(); };
+export const initOfflineIndicators = () => {
+  if (_inited) return;
+  _inited = true;
+  ['offline:uiChanged', 'offline:stateChanged', 'offline:trackCached', 'offline:downloadStart', 'netPolicy:changed'].forEach(ev => window.addEventListener(ev, scheduleRefresh));
+  injectOfflineIndicators();
+};
 window.OfflineIndicators = { initOfflineIndicators, injectOfflineIndicators, injectIndicator, refreshAllIndicators };
 export default window.OfflineIndicators;
