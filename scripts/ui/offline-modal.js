@@ -8,7 +8,7 @@ import * as Net from '../offline/net-policy.js';
 import { estimateUsage, getAllTrackMetas } from '../offline/cache-db.js';
 import { getUpdateList, clearNeedsUpdate, checkForUpdates } from '../offline/update-checker.js';
 
-let _overlay = null, _dlPaused = false, _listExpanded = false, _stExpanded = false, _inited = false;
+let _overlay = null, _dlPaused = false, _listExpanded = false, _stExpanded = false;
 const $ = (sel, root = document) => root.querySelector(sel);
 const esc = s => window.Utils?.escapeHtml?.(String(s ?? '')) ?? String(s ?? '');
 const fMB = b => ((b || 0) / 1048576 < 0.1 && b > 0) ? '< 0.1 МБ' : `${((b || 0) / 1048576).toFixed(1)} МБ`;
@@ -108,8 +108,7 @@ export function openOfflineModal() {
 export function closeOfflineModal() { try { _overlay?.remove(); } catch {} _overlay = null; }
 
 export function initOfflineModal() {
-  if (_inited) return;
-  _inited = true;
+  if (!window.Utils?.func?.initOnce?.('ui:offline-modal:init', () => {})) return;
   document.getElementById('offline-btn')?.addEventListener('click', e => e.target?.classList?.contains('offline-btn-alert') ? window.NotificationSystem?.show?.('Есть треки для обновления', 'info', 6000) : openOfflineModal());
   ['offline:uiChanged', 'netPolicy:changed', 'offline:stateChanged'].forEach(ev => window.addEventListener(ev, () => _overlay && refresh()));
 }
