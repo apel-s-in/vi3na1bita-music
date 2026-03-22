@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-88cb7deafcf87481540d071f1f81d21aa745f139.idx
-│   │       ├── pack-88cb7deafcf87481540d071f1f81d21aa745f139.pack
-│   │       └── pack-88cb7deafcf87481540d071f1f81d21aa745f139.rev
+│   │       ├── pack-e50b09c54a7b7bcd2ab7cad4bbffb46461666812.idx
+│   │       ├── pack-e50b09c54a7b7bcd2ab7cad4bbffb46461666812.pack
+│   │       └── pack-e50b09c54a7b7bcd2ab7cad4bbffb46461666812.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -407,7 +407,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 18:31:09 UTC
+Сгенерировано: 2026-03-22 18:32:11 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7395,7 +7395,7 @@ export const loadAndRenderNewsInline = async c => {
 import { getOfflineManager } from '../offline/offline-manager.js';
 import { getAllTrackMetas } from '../offline/cache-db.js';
 
-let _timer = 0, _menu = null, _inited = false;
+let _timer = 0, _menu = null;
 
 export const refreshAllIndicators = async () => {
   const mgr = getOfflineManager(), hasSpace = await mgr.hasSpace().catch(() => true), metaMap = new Map((await getAllTrackMetas().catch(() => [])).map(m => [m.uid, m]));
@@ -7453,8 +7453,7 @@ document.addEventListener('click', async (e) => {
 });
 
 export const initOfflineIndicators = () => {
-  if (_inited) return;
-  _inited = true;
+  if (!window.Utils?.func?.initOnce?.('ui:offline-indicators:init', () => {})) return;
   ['offline:uiChanged', 'offline:stateChanged', 'offline:trackCached', 'offline:downloadStart', 'netPolicy:changed'].forEach(ev => window.addEventListener(ev, scheduleRefresh));
   injectOfflineIndicators();
 };
