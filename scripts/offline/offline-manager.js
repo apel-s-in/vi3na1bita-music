@@ -38,7 +38,7 @@ class DownloadQueue {
     if (i.priority === PRIO.DYN && !(await hasSpace()) && (await this.m.evictDynamic(), !(await hasSpace()))) return;
     const c = new AbortController(); this.act.set(i.uid, { c, i }); emit('offline:downloadStart', { uid: i.uid });
     try {
-      const r = await fetch(i.url, { signal: c.signal, redirect: 'follow' }); if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const r = await (W.NetPolicy?.guardedFetch?.(i.url, { signal: c.signal, redirect: 'follow' }) || fetch(i.url, { signal: c.signal, redirect: 'follow' })); if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const b = await r.blob(); await DB.setAudioBlob(i.uid, i.quality, b);
       await DB.updateTrackMeta(i.uid, { quality: i.quality, size: b.size, cachedComplete: true, needsReCache: false, needsUpdate: false, lastAccessedAt: now() });
       if ((await DB.getTrackMeta(i.uid))?.type === 'dynamic') await this.m.touchMRU(i.uid);
