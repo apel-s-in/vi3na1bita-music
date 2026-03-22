@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-3aef5387a95992c793d416badb9d50f65f9b14df.idx
-│   │       ├── pack-3aef5387a95992c793d416badb9d50f65f9b14df.pack
-│   │       └── pack-3aef5387a95992c793d416badb9d50f65f9b14df.rev
+│   │       ├── pack-f973ef4fef56bc4212a5908e080b0d7500443a9e.idx
+│   │       ├── pack-f973ef4fef56bc4212a5908e080b0d7500443a9e.pack
+│   │       └── pack-f973ef4fef56bc4212a5908e080b0d7500443a9e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -408,7 +408,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 21:45:32 UTC
+Сгенерировано: 2026-03-22 21:46:48 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2245,10 +2245,9 @@ class AlbumsManager {
   }
 
   highlightCurrentTrack(i, { uid, albumKey } = {}) {
-    D.querySelectorAll('.track.current').forEach(n => n.classList.remove('current'));
-    if (W.Utils?.isShowcaseContext?.(this.curr) && uid) return D.querySelectorAll(`[data-uid="${CSS.escape(uid)}"]`).forEach(el => el.classList.add('current'));
-    const sel = (this.curr === FAV && uid && albumKey) ? `.track[data-album="${CSS.escape(albumKey)}"][data-uid="${CSS.escape(uid)}"]` : (uid ? `.track[data-uid="${CSS.escape(uid)}"]` : (i >= 0 ? `.track[data-index="${i}"]` : null));
-    if (sel) D.querySelector(sel)?.classList.add('current');
+    D.querySelectorAll('.track.current, .showcase-track.current').forEach(n => n.classList.remove('current'));
+    const u = uid || W.playerCore?.getCurrentTrackUid?.();
+    if (u) D.querySelectorAll(`[data-uid="${CSS.escape(u)}"]`).forEach(el => el.classList.add('current'));
   }
 
   getCurrentAlbum() { return this.curr; } getPlayingAlbum() { return this.playing; } setPlayingAlbum(k) { this.playing = k; }
