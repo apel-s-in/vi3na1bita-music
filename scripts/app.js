@@ -75,6 +75,7 @@
     try { const sm = await import('./app/showcase/index.js'); await sm.default.initialize(); } catch (e) { console.error('Showcase init failed:', e); }
     if (await waitObj('AlbumsManager')) run('AlbumsManager');
     if (await waitObj('PlayerUI')) run('PlayerUI');
+    try { await import('./ui/logo-pulse.js'); } catch(e) { console.warn(e); }
     ['SleepTimer', 'LyricsModal', 'SystemInfoManager'].forEach(run);
     import('./ui/statistics-modal.js').catch(e => console.warn('Statistics modal skipped:', e));
     import('./ui/app-modals.js').then(m => m.bindAppModals?.({ W, D, config: C })).catch(e => console.warn('App modals skipped:', e));
