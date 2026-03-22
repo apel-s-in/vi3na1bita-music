@@ -44,7 +44,11 @@
         }
         const bTxt = $el('ach-hint-bubble-text');
         if (bTxt && W.achievementEngine?.achievements) {
-          const goals = W.achievementEngine.achievements.filter(a => !a.isUnlocked && !a.isHidden && (a.progressMeta || a.progress?.target > a.progress?.current)).sort((a, b) => (b.progress?.pct || 0) - (a.progress?.pct || 0)).slice(0, 3).map(PF.fmtAchBubbleText);
+          let goals = W.achievementEngine.achievements.filter(a => !a.isUnlocked && !a.isHidden && (a.progressMeta || a.progress?.target > a.progress?.current)).sort((a, b) => (b.progress?.pct || 0) - (a.progress?.pct || 0));
+          const pwaIdx = goals.findIndex(a => a.id === 'pwa_installed');
+          if (pwaIdx >= 0 && !matchMedia('(display-mode: standalone)').matches && !navigator.standalone) goals.unshift(goals.splice(pwaIdx, 1)[0]);
+          goals = goals.slice(0, 3).map(PF.fmtAchBubbleText);
+          
           clearInterval(W._bInt); let i = 0;
           const uB = () => { if (!goals.length) return; bTxt.style.opacity = 0; setTimeout(() => { bTxt.innerHTML = goals[i++ % goals.length]; bTxt.style.opacity = 1; }, 300); };
           uB(); if (goals.length > 1) W._bInt = setInterval(uB, 8000);
@@ -97,14 +101,34 @@
   };
 
   const setupPWA = () => {
-    W.addEventListener('beforeinstallprompt', e => {
-      e.preventDefault(); const b = $('install-pwa-btn'); if (!b) return;
-      b.style.display = 'block';
-      b.onclick = async () => { e.prompt(); if ((await e.userChoice).outcome === 'accepted') W.NotificationSystem?.success('Приложение установлено!'); b.style.display = 'none'; };
-    });
+    let pwaPrompt = null;
+    const b = $('install-pwa-btn');
+    if (matchMedia('(display-mode: standalone)').matches || navigator.standalone) {
+      if (b) b.style.display = 'none';
+    } else {
+      W.addEventListener('beforeinstallprompt', e => { e.preventDefault(); pwaPrompt = e; });
+      if (b) {
+        b.onclick = async () => {
+          if (pwaPrompt) {
+            pwaPrompt.prompt();
+            if ((await pwaPrompt.userChoice).outcome === 'accepted') { W.NotificationSystem?.success('Установка началась!'); b.style.display = 'none'; }
+            pwaPrompt = null;
+          } else if (W.Utils?.getPlatform()?.isIOS) {
+            W.Utils?.dom?.createStyleOnce?.('ios-prompt-styles', `.ios-install-prompt{position:fixed;bottom:0;left:0;right:0;background:#1a1a1a;border-radius:20px 20px 0 0;padding:24px 20px;transform:translateY(100%);transition:transform .3s cubic-bezier(.1,.8,.2,1);z-index:10000;box-shadow:0 -4px 30px rgba(0,0,0,.5)}.ios-install-prompt.show{transform:translateY(0)}.ios-prompt-icon{width:64px;height:64px;margin:0 auto 16px;display:block;border-radius:14px;box-shadow:0 4px 12px rgba(0,0,0,.4)}.ios-prompt-title{font-weight:900;font-size:18px;margin-bottom:8px;color:#fff;text-align:center}.ios-prompt-text{opacity:.85;margin-bottom:20px;text-align:center;font-size:14px;line-height:1.5;color:#eaf2ff}.ios-prompt-close{position:absolute;top:12px;right:12px;background:rgba(255,255,255,.1);border:0;color:#fff;font-size:24px;cursor:pointer;line-height:1;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center}.ios-prompt-button{background:linear-gradient(135deg,#7c4dff,#4daaff);color:#fff;border:0;padding:14px;border-radius:12px;font-weight:900;width:100%;cursor:pointer;font-size:15px}`);
+            const el = D.createElement('div'); el.className = 'ios-install-prompt';
+            el.innerHTML = `<button class="ios-prompt-close" type="button">×</button><img class="ios-prompt-icon" src="icons/apple-touch-icon.png"><div class="ios-prompt-title">Установить на iPhone</div><div class="ios-prompt-text">Нажмите <strong>Поделиться</strong> <span style="font-size:18px">↗️</span> в меню браузера,<br>а затем выберите <strong>«На экран Домой»</strong></div><button class="ios-prompt-button" type="button">Понятно</button>`;
+            el.onclick = e => { if (e.target.closest('button')) { el.classList.remove('show'); setTimeout(() => el.remove(), 350); } };
+            D.body.appendChild(el); requestAnimationFrame(() => el.classList.add('show'));
+          } else {
+            W.NotificationSystem?.info('Установите через меню браузера (Добавить на экран)');
+          }
+        };
+      }
+    }
+
     W.addEventListener('appinstalled', () => {
       W.NotificationSystem?.success('Успешно установлено!');
-      const b = $('install-pwa-btn'); if (b) b.style.display = 'none';
+      if (b) b.style.display = 'none';
       if (W.eventLogger) { W.eventLogger.log('FEATURE_USED', 'global', { feature: 'pwa_installed' }); W.dispatchEvent(new CustomEvent('analytics:forceFlush')); }
     });
     $('social-links')?.addEventListener('click', e => {
