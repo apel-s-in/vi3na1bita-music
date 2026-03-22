@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e83a0c42cea8075cf91e5733e6293eadefb4d3d4.idx
-│   │       ├── pack-e83a0c42cea8075cf91e5733e6293eadefb4d3d4.pack
-│   │       └── pack-e83a0c42cea8075cf91e5733e6293eadefb4d3d4.rev
+│   │       ├── pack-1def3268462a554ae743d5e3e206b1d7b2fae9dc.idx
+│   │       ├── pack-1def3268462a554ae743d5e3e206b1d7b2fae9dc.pack
+│   │       └── pack-1def3268462a554ae743d5e3e206b1d7b2fae9dc.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -408,7 +408,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 22:22:11 UTC
+Сгенерировано: 2026-03-22 22:23:32 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4048,7 +4048,7 @@ class ShowcaseManager {
   _saveScroll(id) { const el = $('track-list'); if (el && id) { const y = el.scrollTop || 0; this._scr.set(id, y); jSet(`scroll_${id}`, y); } } _restoreScroll(id) { const el = $('track-list'); if (el && id) el.scrollTop = Math.max(0, Number(this._scr.get(id) ?? jGet(`scroll_${id}`, 0)) || 0); }
   _markLast(uid, id = this._ctxId()) { jSet(isDef(id) ? 'lastUid_default' : `lastUid_${id}`, uid); }
   _cleanupUi() { try { const b = $('sc-selection-bar'); if (b && b._scClick) b.removeEventListener('click', b._scClick); b?.remove(); this._menu?.remove(); } catch {} this._menu = null; }
-  _hi(uid) { D.querySelectorAll('.showcase-track.current, .track.current').forEach(x => x.classList.remove('current')); const u = uid || W.playerCore?.getCurrentTrackUid?.(); if (u) D.querySelectorAll(`[data-uid="${uidEsc(u)}"]`).forEach(x => x.classList.add('current')); }
+  _hi() { W.AlbumsManager?.highlightCurrentTrack?.(); }
   _ctxHiddenSet(id = this._ctxId()) { return new Set((isDef(id) ? Store.def() : Store.get(id))?.hidden || []); } _isHidden(u, id = this._ctxId()) { return this._ctxHiddenSet(id).has(u); }
   _toggleHiddenPersist(uid, id = this._ctxId()) {
     const c = isDef(id) ? Store.def() : Store.get(id); if (!c) return;
@@ -4073,8 +4073,8 @@ class ShowcaseManager {
   async _sortedOrderAsync(ctx) { const ord = [...(ctx?.order || [])].filter(trk), sm = ctx?.sortMode || 'user'; if (!['plays-desc', 'plays-asc', 'last-played'].includes(sm)) return this._sortedOrderSync(ctx); const a = ord.map(trk).filter(Boolean); try { const { metaDB: db } = await import('../../analytics/meta-db.js'), st = new Map((await db.getAllStats()).map(s => [s.uid, s])), g = (u, k) => st.get(u)?.[k] || 0; a.sort((x, y) => sm === 'plays-desc' ? g(y.uid, 'globalFullListenCount') - g(x.uid, 'globalFullListenCount') : sm === 'plays-asc' ? g(x.uid, 'globalFullListenCount') - g(y.uid, 'globalFullListenCount') : g(y.uid, 'lastPlayedAt') - g(x.uid, 'lastPlayedAt')); } catch {} return a.map(x => x.uid); }
   async _disp() { const c = this._ctx(), ui = Store.ui(), hid = new Set(c?.hidden || []); if (this._edit) return { type: 'edit', uids: this._drf?.getList() || [] }; if (this._q) { const d = await buildShowcaseSearchDisplay({ query: this._q, ensureLyricsIndexLoaded, searchUidsByQuery, trk, ctx: c }); this._res = d.res || []; return d; } this._res = []; let o = this._sortedOrderSync(c); if (['plays-desc', 'plays-asc', 'last-played'].includes(c?.sortMode || 'user')) o = await this._sortedOrderAsync(c); if (ui.hiddenPlacement === 'end') o = [...o.filter(u => !hid.has(u)), ...o.filter(u => hid.has(u))]; if (!ui.showHidden) o = o.filter(u => !hid.has(u)); return { type: 'normal', uids: o, hid }; }
   _header(c, ui, id) { return renderShowcaseHeader({ edit: this._edit, query: this._q, sortMode: c?.sortMode || 'user', resetAble: isDef(id) && this._baseResetChanged(), dirty: !!this._drf?.isDirty(), esc }); }
-  async renderTab() { const r = $('track-list'); if (!r) return; r.dataset.scCtxId && this._saveScroll(r.dataset.scCtxId); const tk = ++this._tok, id = this._ctxId(); this._cleanupUi(); r.dataset.scCtxId = id; r.innerHTML = this._header(this._ctx(), Store.ui(), id); W.PlayerUI?.switchAlbumInstantly?.(); if (this._q) r.classList.add('sc-is-searching'); else r.classList.remove('sc-is-searching'); this._bindRoot(r); this._renderPlaylists(); await this._renderBody(tk); !this._edit && this._hi(jGet(isDef(id) ? 'lastUid_default' : `lastUid_${id}`, '')); W.FavoritesOnlyActions?.syncFavoritesOnlyUiFrame?.(); requestAnimationFrame(() => this._restoreScroll(id)); }
-  async _renderBody(tk) { const b = $('sc-tracks-container'); if (!b) return; const d = await this._disp(); if (tk !== this._tok) return; if (d.type === 'edit') this._renderEdit(b, d.uids); else if (d.type === 'search') this._renderSearch(b, d); else this._renderNormal(b, d); W.PlayerUI?.switchAlbumInstantly?.(); }
+  async renderTab() { const r = $('track-list'); if (!r) return; r.dataset.scCtxId && this._saveScroll(r.dataset.scCtxId); const tk = ++this._tok, id = this._ctxId(); this._cleanupUi(); r.dataset.scCtxId = id; r.innerHTML = this._header(this._ctx(), Store.ui(), id); W.PlayerUI?.switchAlbumInstantly?.(); if (this._q) r.classList.add('sc-is-searching'); else r.classList.remove('sc-is-searching'); this._bindRoot(r); this._renderPlaylists(); await this._renderBody(tk); !this._edit && this._hi(); W.FavoritesOnlyActions?.syncFavoritesOnlyUiFrame?.(); requestAnimationFrame(() => this._restoreScroll(id)); }
+  async _renderBody(tk) { const b = $('sc-tracks-container'); if (!b) return; const d = await this._disp(); if (tk !== this._tok) return; if (d.type === 'edit') this._renderEdit(b, d.uids); else if (d.type === 'search') this._renderSearch(b, d); else this._renderNormal(b, d); this._hi(); W.PlayerUI?.switchAlbumInstantly?.(); }
   _renderNormal(b, { uids, hid }) { renderShowcaseNormal({ box: b, uids, hiddenSet: hid, ui: Store.ui(), colors: Store.cols(), buildTrack: bldTrk, hi: () => this._hi(W.playerCore?.getCurrentTrackUid?.()), setStatus: (n, s) => this._status(n, s), esc, albumTitle: albT, renderFavoriteStar, isFavorite: u => W.playerCore?.isFavorite?.(u), injectOfflineIndicators: W.OfflineIndicators?.injectOfflineIndicators }); }
   _renderSearch(b, { res, cOrd, cHid }) { renderShowcaseSearch({ box: b, res, ctxOrder: cOrd, ctxHidden: cHid, selected: this._sel, buildTrack: bldTrk, setSelectionBar: () => this._selectionBar(), setStatus: (n, s) => this._status(n, s), esc, albumTitle: albT, renderFavoriteStar, isFavorite: u => W.playerCore?.isFavorite?.(u) }); }
   _renderEdit(b, u) { renderShowcaseEdit({ box: b, uids: u, draft: this._drf, buildTrack: bldTrk, esc, albumTitle: albT, setSelectionBar: () => this._selectionBar(), setStatus: (n, s) => this._status(n, s), bindDrag: n => this._bindDrag(n) }); }
