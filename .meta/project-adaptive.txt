@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-16e49efdf0ab9e6c069d164582bbef852276a39b.idx
-│   │       ├── pack-16e49efdf0ab9e6c069d164582bbef852276a39b.pack
-│   │       └── pack-16e49efdf0ab9e6c069d164582bbef852276a39b.rev
+│   │       ├── pack-4fc6d959a3bb7bcbe81320716f3b3ac64b6c8ba3.idx
+│   │       ├── pack-4fc6d959a3bb7bcbe81320716f3b3ac64b6c8ba3.pack
+│   │       └── pack-4fc6d959a3bb7bcbe81320716f3b3ac64b6c8ba3.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -407,7 +407,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 16:26:39 UTC
+Сгенерировано: 2026-03-22 16:37:33 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2844,6 +2844,13 @@ function playWithFavoritesOnlyResolution({
   });
 }
 
+function syncFavoritesOnlyUiFrame({
+  applyDomFilter = () => W.PlayerUI?.applyFavoritesOnlyDomFilter?.()
+} = {}) {
+  applyDomFilter?.();
+  requestAnimationFrame(() => applyDomFilter?.());
+}
+
 function syncFavoritesOnlyPlayback({
   player = W.playerCore,
   autoPlayIfNeeded = true,
@@ -2873,11 +2880,11 @@ function toggleFavoritesOnlyMode({
   return { ok: true, enabled: next };
 }
 
-const api = { openFavoritesOnlyConflictModal, makeFavoritesOnlyAfterPlay, playWithFavoritesOnlyResolution, syncFavoritesOnlyPlayback, toggleFavoritesOnlyMode };
+const api = { openFavoritesOnlyConflictModal, makeFavoritesOnlyAfterPlay, playWithFavoritesOnlyResolution, syncFavoritesOnlyUiFrame, syncFavoritesOnlyPlayback, toggleFavoritesOnlyMode };
 
 W.FavoritesOnlyActions = api;
 
-export { openFavoritesOnlyConflictModal, makeFavoritesOnlyAfterPlay, playWithFavoritesOnlyResolution, syncFavoritesOnlyPlayback, toggleFavoritesOnlyMode };
+export { openFavoritesOnlyConflictModal, makeFavoritesOnlyAfterPlay, playWithFavoritesOnlyResolution, syncFavoritesOnlyUiFrame, syncFavoritesOnlyPlayback, toggleFavoritesOnlyMode };
 export default api;
 
 //=================================================
