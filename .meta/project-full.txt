@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f9211676de23f8c2ed12a4d08687d6723c566c4b.idx
-│   │       ├── pack-f9211676de23f8c2ed12a4d08687d6723c566c4b.pack
-│   │       └── pack-f9211676de23f8c2ed12a4d08687d6723c566c4b.rev
+│   │       ├── pack-2978de064619607a81844fc2cef823318547d776.idx
+│   │       ├── pack-2978de064619607a81844fc2cef823318547d776.pack
+│   │       └── pack-2978de064619607a81844fc2cef823318547d776.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -407,7 +407,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 13:04:58 UTC
+Сгенерировано: 2026-03-22 13:06:26 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2487,6 +2487,8 @@ window.PlaybackCache.getWindowState = getWindowState; window.PlaybackCache.prote
 // UID.072_(Provider consents)_(готовить user-facing toggles без жёсткой зависимости)_(future provider/AI/social buttons должны проверять consents/capabilities вне этого файла)
 // UID.082_(Local truth vs external telemetry split)_(UI interactions можно маппить наружу только через mapper)_(не строить внешнюю аналитику прямо в PlayerUI)
 // UID.094_(No-paralysis rule)_(PlayerUI должен работать даже без intel/recs/providers)_(все точки intel integration только optional и lazy)
+import { toggleFavoritesOnlyMode } from './player/favorites-only-actions.js';
+
 (function (W, D) {
   'use strict';
   const U = W.Utils, PC = () => W.playerCore, AM = () => W.AlbumsManager;
@@ -2584,16 +2586,9 @@ window.PlaybackCache.getWindowState = getWindowState; window.PlaybackCache.prote
           'animation-btn': () => W.LyricsController?.toggleAnimation?.(),
           'source-indicator': () => { const p = {yandex:'Yandex Cloud', github:'GitHub Pages', cache:'Ваше устройство'}[st.provider] || 'Неизвестно'; U.ui.toast(`Источник музыки: ${p}`, 'info'); },
           'favorites-btn': () => {
-            const nx = !U.lsGetBool01('favoritesOnlyMode');
-            U.lsSetBool01('favoritesOnlyMode', nx);
-            const ok = c.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true });
-            if (nx && ok === false) {
-              U.lsSetBool01('favoritesOnlyMode', false);
-              syncUI();
-              return U.ui.toast('Отметьте понравившийся трек ⭐', 'info');
-            }
-            syncUI();
-            U.ui.toast(nx ? '⭐ Только избранные' : 'Играют все треки', nx ? 'success' : 'info');
+            const res = toggleFavoritesOnlyMode({ player: c, storage: localStorage, syncUi: syncUI });
+            if (!res.ok && res.reason === 'empty') return U.ui.toast('Отметьте понравившийся трек ⭐', 'info');
+            U.ui.toast(res.enabled ? '⭐ Только избранные' : 'Играют все треки', res.enabled ? 'success' : 'info');
           }
         })[b.id]?.();
       });
