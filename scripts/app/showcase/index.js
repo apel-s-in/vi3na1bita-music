@@ -25,13 +25,20 @@ const { Store, Draft, mkPl, normCtx, jGet, jSet } = createShowcaseStore({ trk, g
 const bldTrk = uid => { const t = trk(uid); if (!t) return null; let c = W.APP_CONFIG?.ICON_ALBUMS_ORDER?.find(i => i.key === t.sourceAlbum)?.icon || 'img/logo.png'; if (U.isMobile?.() && /\/icon_album\/[^/]+\.png$/i.test(c)) { const m = c.match(/\/icon_album\/([^/]+)\.png$/i); if (m?.[1]) c = `img/icon_album/mobile/${m[1]}@1x.jpg`; } return { ...t, album: 'Витрина Разбита', cover: c }; };
 
 class ShowcaseManager {
-  constructor() { this._edit = false; this._drf = null; this._q = ''; this._res = []; this._sel = new Set(); this._menu = null; this._tok = 0; this._scr = new Map(); this._actions = createShowcaseActions({ W, D, Store, SHOW, isDef, trk, bldTrk, albT, esc, uidEsc, PALETTE, renderShowcasePlaylists, renameShowcasePlaylist, shareShowcasePlaylist, createShowcasePlaylist, openShowcaseSheetModal, openShowcaseAddToPlaylistModal, openShowcasePaletteModal }); }
+  constructor() { this._edit = false; this._drf = null; this._q = ''; this._res = []; this._sel = new Set(); this._menu = null; this._tok = 0; this._scr = new Map(); this._initialized = false; this._actions = createShowcaseActions({ W, D, Store, SHOW, isDef, trk, bldTrk, albT, esc, uidEsc, PALETTE, renderShowcasePlaylists, renameShowcasePlaylist, shareShowcasePlaylist, createShowcasePlaylist, openShowcaseSheetModal, openShowcaseAddToPlaylistModal, openShowcasePaletteModal }); }
   _getSelectedSet() { return this._edit ? (this._drf?.chk || new Set()) : this._sel; }
   _getSelectedUids() { return [...this._getSelectedSet()].filter(trk); }
   _setSelectedAll(on) { this._edit ? this._drf?.setAllChecked(!!on) : (this._sel = new Set(on ? this._res.filter(trk) : [])); }
   _clearSelected() { this._edit ? this._drf?.setAllChecked(false) : this._sel.clear(); }
   _toggleSelected(uid) { uid && (this._edit ? this._drf?.toggleChecked(uid) : (this._sel.has(uid) ? this._sel.delete(uid) : this._sel.add(uid))); }
-  async initialize() { await W.TrackRegistry?.ensurePopulated?.(); Store.def(); W.playerCore?.onFavoritesChanged?.(({ uid }) => W.AlbumsManager?.getCurrentAlbum?.() === SHOW && D.querySelectorAll(`.showcase-track[data-uid="${uidEsc(uid)}"] .like-star`).forEach(el => setFavoriteStarState(el, W.playerCore.isFavorite(uid)))); W.addEventListener('offline:stateChanged', () => W.AlbumsManager?.getCurrentAlbum?.() === SHOW && W.OfflineIndicators?.refreshAllIndicators?.()); }
+  async initialize() {
+    if (this._initialized) return;
+    this._initialized = true;
+    await W.TrackRegistry?.ensurePopulated?.();
+    Store.def();
+    W.playerCore?.onFavoritesChanged?.(({ uid }) => W.AlbumsManager?.getCurrentAlbum?.() === SHOW && D.querySelectorAll(`.showcase-track[data-uid="${uidEsc(uid)}"] .like-star`).forEach(el => setFavoriteStarState(el, W.playerCore.isFavorite(uid))));
+    W.addEventListener('offline:stateChanged', () => W.AlbumsManager?.getCurrentAlbum?.() === SHOW && W.OfflineIndicators?.refreshAllIndicators?.());
+  }
   _ctxId() { return Store.act(); } _ctx() { return isDef(this._ctxId()) ? Store.def() : Store.get(this._ctxId()); } _ctxName(id = this._ctxId()) { return isDef(id) ? 'Все треки' : (Store.get(id)?.name || 'Плейлист'); }
   _saveScroll(id) { const el = $('track-list'); if (el && id) { const y = el.scrollTop || 0; this._scr.set(id, y); jSet(`scroll_${id}`, y); } } _restoreScroll(id) { const el = $('track-list'); if (el && id) el.scrollTop = Math.max(0, Number(this._scr.get(id) ?? jGet(`scroll_${id}`, 0)) || 0); }
   _markLast(uid, id = this._ctxId()) { jSet(isDef(id) ? 'lastUid_default' : `lastUid_${id}`, uid); }
