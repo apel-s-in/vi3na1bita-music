@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6de5b7e21f60b22c1a1a010abce98d2df67d7beb.idx
-│   │       ├── pack-6de5b7e21f60b22c1a1a010abce98d2df67d7beb.pack
-│   │       └── pack-6de5b7e21f60b22c1a1a010abce98d2df67d7beb.rev
+│   │       ├── pack-9f75021edc5132c1a1ccf8ad6ff553009646b9f4.idx
+│   │       ├── pack-9f75021edc5132c1a1ccf8ad6ff553009646b9f4.pack
+│   │       └── pack-9f75021edc5132c1a1ccf8ad6ff553009646b9f4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -408,7 +408,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 22:44:43 UTC
+Сгенерировано: 2026-03-22 22:45:15 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -888,7 +888,7 @@ jobs:
   </template>
 
   <script>
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.56');
+    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.57');
     const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-03-22');
 
     // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
@@ -4749,7 +4749,7 @@ if (errs.length) { console.error('Failed:\n', errs.join('\n')); process.exit(2);
 // UID.092_(Incremental rollout order)_(делать staged внедрение через один конфиг)_(intel boot должен управляться отсюда)
 
 export const APP_CONFIG = {
-  APP_VERSION: '8.1.56',
+  APP_VERSION: '8.1.57',
   BUILD_DATE: '2026-03-22',
   PROMOCODE: 'VITRINA2025',
   ICON_ALBUMS_ORDER: [
