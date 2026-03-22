@@ -8,7 +8,7 @@
 (function (W, D) {
   'use strict';
   const U = W.Utils, PC = () => W.playerCore, AM = () => W.AlbumsManager;
-  const st = { isMini: false, seeking: false, vizOn: U.lsGetBool01('bitEnabled'), vizId: 0, ctx: null, provider: 'unknown' }, dom = { blk: null, now: null, mini: null, nUp: null, jump: null, el: {} };
+  const st = { isMini: false, seeking: false, provider: 'unknown' }, dom = { blk: null, now: null, mini: null, nUp: null, jump: null, el: {} };
   let _inited = false, _booting = false;
 
   const applyFavoritesOnlyDomFilter = () => {
@@ -70,18 +70,6 @@
     nds > 5 ? (W.Modals?.confirm?.({ title: 'Смена качества', textHtml: `Затронет ${nds} файлов. Перекачать?`, confirmText: 'Перекачать', onConfirm: apply }) || (confirm(`Затронет ${nds} файлов. Перекачать?`) && apply())) : apply();
   };
 
-  const loopViz = () => { if (!st.vizOn || !st.ctx) return; const d = new Uint8Array(st.ctx.frequencyBinCount); st.ctx.getByteFrequencyData(d); const l = D.getElementById('logo-bottom'), lim = Math.max(1, d.length * 0.3) | 0; if (l) l.style.transform = `scale(${1 + (d.slice(0, lim).reduce((a, b) => a + b, 0) / lim / 255) * 0.2})`; st.vizId = requestAnimationFrame(loopViz); };
-
-  const togViz = (init = false) => {
-    if (!init) U.lsSetBool01('bitEnabled', st.vizOn = !st.vizOn);
-    const h = D.getElementById('pulse-heart'), b = D.getElementById('pulse-btn'), l = D.getElementById('logo-bottom');
-    if (h) h.textContent = st.vizOn ? '❤️' : '🤍'; if (b) b.classList.toggle('active', st.vizOn);
-    if (st.vizOn) {
-      if (!st.ctx && W.Howler?.ctx) { if (W.Howler.ctx.state === 'suspended') W.Howler.ctx.resume().catch(()=>{}); try { st.ctx = W.Howler.ctx.createAnalyser(); st.ctx.fftSize = 256; W.Howler.masterGain.connect(st.ctx); } catch {} }
-      if (st.ctx && !st.vizId) loopViz();
-    } else { cancelAnimationFrame(st.vizId); st.vizId = 0; if (l) l.style.transform = ''; }
-  };
-
   const ensureBlock = (idx, uInit) => {
     if (!dom.blk) {
       dom.blk = D.getElementById('player-template').content.cloneNode(true).querySelector('#lyricsplayerblock'); dom.now = D.getElementById('now-playing');
@@ -97,7 +85,7 @@
           'prev-btn': () => c.prev(), 'next-btn': () => c.next(), 'stop-btn': () => c.stop(),
           'shuffle-btn': () => { c.toggleShuffle(); syncUI(); }, 'repeat-btn': () => { c.toggleRepeat(); syncUI(); },
           'mute-btn': () => { c.setMuted(!c.isMuted()); syncUI(); }, 'sleep-timer-btn': () => W.SleepTimer?.show?.(),
-          'pq-btn': onPQClick, 'lyrics-text-btn': () => W.LyricsModal?.show?.(), 'pulse-btn': () => togViz(),
+          'pq-btn': onPQClick, 'lyrics-text-btn': () => W.LyricsModal?.show?.(), 'pulse-btn': () => W.LogoPulse?.toggle?.(),
           'stats-btn': () => W.StatisticsModal?.openStatisticsModal?.(),
           'lyrics-toggle-btn': () => { W.LyricsController?.toggleLyricsView?.(); W.eventLogger?.log('FEATURE_USED', c.getCurrentTrackUid(), { feature: 'lyrics' }); },
           'animation-btn': () => W.LyricsController?.toggleAnimation?.(),
@@ -179,7 +167,6 @@
     ['offline:uiChanged', 'online', 'offline'].forEach(e => W.addEventListener(e, syncUI));
 
     c.setVolume(U.math.toInt(U.lsGet('playerVolume'), 100));
-    if (st.vizOn) togViz(true);
     syncUI();
 
     _inited = true;
