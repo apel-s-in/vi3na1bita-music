@@ -78,12 +78,16 @@ import { resolveFavoritesOnlyState } from '../scripts/app/player/favorites-only-
       const idx = list.findIndex(t => t.uid === uid);
       if (idx < 0) return false;
 
+      const isSame = !!this.sound && this.getCurrentTrackUid() === uid;
+
       this.setPlaylist(list, idx, null, {
-        preservePosition: false,
+        preservePosition: isSame,
         preserveOriginalPlaylist: !!opts.preserveOriginalPlaylist,
         preserveShuffleMode: false
       });
-      this.load(idx, { autoPlay: true, dir: Number(opts.dir) || 1 });
+      
+      if (!isSame) this.load(idx, { autoPlay: true, dir: Number(opts.dir) || 1 });
+      else emitG('playlist:changed', { reason: 'seamless_switch' });
       return true;
     }
 
