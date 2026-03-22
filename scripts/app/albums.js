@@ -125,8 +125,7 @@ class AlbumsManager {
       D.querySelectorAll('.album-icon').forEach(el => el.classList.toggle('active', el.dataset.album === key));
       $('track-list')?.classList.remove('filtered');
       W.PlayerUI?.switchAlbumInstantly?.(key);
-      W.PlayerUI?.applyFavoritesOnlyDomFilter?.();
-      requestAnimationFrame(() => W.PlayerUI?.applyFavoritesOnlyDomFilter?.());
+      W.FavoritesOnlyActions?.syncFavoritesOnlyUiFrame?.();
     } catch (e) { console.error('[AlbumsManager] Ошибка:', e); W.NotificationSystem?.error('Ошибка загрузки'); } 
     finally { this.loading = false; }
   }
