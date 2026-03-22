@@ -88,7 +88,7 @@
       dom.el = { srcInd: q('#source-indicator'), fill: q('#player-progress-fill'), bar: q('#player-progress-bar'), tE: q('#time-elapsed'), tR: q('#time-remaining'), vF: q('#volume-fill'), vH: q('#volume-handle'), vS: q('#volume-slider'), ico: q('#play-pause-icon'), pq: q('#pq-btn'), pqL: q('#pq-btn-label'), fav: q('#favorites-btn'), favI: q('#favorites-btn-icon'), dl: q('#track-download-btn') };
       
       dom.blk.addEventListener('click', e => {
-        const b = e.target.closest('button, a'); if (!b || b.tagName === 'A') return;
+        const b = e.target.closest('button, a, .source-indicator'); if (!b || b.tagName === 'A') return;
         if (b.id === 'track-download-btn' && !b.getAttribute('href')) return e.preventDefault(), U.ui.toast('Скачивание недоступно', 'error');
         e.preventDefault(); const c = PC();
         ({
@@ -100,6 +100,7 @@
           'stats-btn': () => W.StatisticsModal?.openStatisticsModal?.(),
           'lyrics-toggle-btn': () => { W.LyricsController?.toggleLyricsView?.(); W.eventLogger?.log('FEATURE_USED', c.getCurrentTrackUid(), { feature: 'lyrics' }); },
           'animation-btn': () => W.LyricsController?.toggleAnimation?.(),
+          'source-indicator': () => { const p = {yandex:'Yandex Cloud', github:'GitHub Pages', cache:'Ваше устройство'}[st.provider] || 'Неизвестно'; U.ui.toast(`Источник музыки: ${p}`, 'info'); },
           'favorites-btn': () => {
             const nx = !U.lsGetBool01('favoritesOnlyMode');
             U.lsSetBool01('favoritesOnlyMode', nx);
