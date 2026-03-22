@@ -1,5 +1,6 @@
 const W = window;
 const esc = s => W.Utils?.escapeHtml?.(String(s || '')) || String(s || '');
+const isFavOnlyOn = () => localStorage.getItem('favoritesOnlyMode') === '1';
 
 function openFavoritesOnlyConflictModal({ track, onDisable, onAddFavorite, hidden = false } = {}) {
   if (!W.Modals?.choice || !track) return null;
@@ -47,7 +48,6 @@ function playWithFavoritesOnlyResolution({
   afterPlay
 } = {}) {
   const pc = W.playerCore;
-  const favOn = localStorage.getItem('favoritesOnlyMode') === '1';
   const gate = W.FavoritesOnlyResolver?.canLaunchTrackInFavoritesOnlyContext?.({ uid, albumKey }) || { ok: true };
 
   const runPlay = () => {
@@ -59,7 +59,7 @@ function playWithFavoritesOnlyResolution({
     return ok;
   };
 
-  if (!favOn || gate.ok) return runPlay();
+  if (!isFavOnlyOn() || gate.ok) return runPlay();
 
   return openFavoritesOnlyConflictModal({
     track,
@@ -75,5 +75,23 @@ function playWithFavoritesOnlyResolution({
   });
 }
 
-export { openFavoritesOnlyConflictModal, makeFavoritesOnlyAfterPlay, playWithFavoritesOnlyResolution };
-export default { openFavoritesOnlyConflictModal, makeFavoritesOnlyAfterPlay, playWithFavoritesOnlyResolution };
+function toggleFavoritesOnlyMode({
+  player = W.playerCore,
+  storage = localStorage,
+  syncUi
+} = {}) {
+  if (!player) return { ok: false, enabled: isFavOnlyOn(), reason: 'no_player' };
+  const next = !isFavOnlyOn();
+  storage.setItem('favoritesOnlyMode', next ? '1' : '0');
+  const applied = player.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true });
+  if (next && applied === false) {
+    storage.setItem('favoritesOnlyMode', '0');
+    syncUi?.();
+    return { ok: false, enabled: false, reason: 'empty' };
+  }
+  syncUi?.();
+  return { ok: true, enabled: next };
+}
+
+export { openFavoritesOnlyConflictModal, makeFavoritesOnlyAfterPlay, playWithFavoritesOnlyResolution, toggleFavoritesOnlyMode };
+export default { openFavoritesOnlyConflictModal, makeFavoritesOnlyAfterPlay, playWithFavoritesOnlyResolution, toggleFavoritesOnlyMode };
