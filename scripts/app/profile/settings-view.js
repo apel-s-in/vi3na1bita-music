@@ -7,12 +7,12 @@ const getDlFmt = () => {
   try {
     const d = JSON.parse(localStorage.getItem('dl_format_v1') || '{}');
     return {
-      ord: d.ord || ['band', 'album', 'num', 'title', 'custom'],
-      en: d.en || { band: true, title: true },
+      ord: d.ord || ['custom', 'band', 'album', 'num', 'title'],
+      en: d.en || { custom: true, title: true },
       cst: d.cst || ''
     };
   } catch {
-    return { ord: ['band', 'album', 'num', 'title', 'custom'], en: { band: true, title: true }, cst: '' };
+    return { ord: ['custom', 'band', 'album', 'num', 'title'], en: { custom: true, title: true }, cst: '' };
   }
 };
 
@@ -66,19 +66,17 @@ export const renderProfileSettings = (root) => {
     .pl-prev-btn.a-btn.active{background:linear-gradient(135deg,#5a2a8a,#3a1a5a);box-shadow:0 0 8px rgba(138,43,226,.4)}
 
     /* Конструктор имени файла */
-    .dl-fmt-container{background:rgba(255,255,255,.03);border-radius:12px;border:1px solid rgba(255,255,255,.05);padding:14px;display:flex;flex-direction:column;gap:8px}
-    .dl-fmt-row{display:flex;align-items:center;background:rgba(0,0,0,.2);border-radius:8px;padding:6px 10px;gap:12px;border:1px solid rgba(255,255,255,.05)}
-    .dl-fmt-arrs{display:flex;flex-direction:column;gap:2px}
-    .dl-arr{all:unset;cursor:pointer;font-size:10px;color:#888;line-height:1;padding:2px;display:flex;align-items:center;justify-content:center}
-    .dl-arr:hover:not(:disabled){color:#fff}
-    .dl-arr:disabled{opacity:0.2;cursor:default}
-    .dl-fmt-lbl{flex:1;display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:#eaf2ff}
-    .dl-chk{width:16px;height:16px;accent-color:var(--secondary-color);cursor:pointer}
-    .dl-inp-custom{width:100%;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#fff;padding:10px 12px;font-size:13px;outline:none;margin-top:4px}
+    .dl-fmt-container{display:flex;flex-direction:column;gap:10px}
+    .dl-fmt-row{display:flex;align-items:center;background:rgba(0,0,0,.2);border-radius:12px;padding:6px;gap:10px;border:1px solid rgba(255,255,255,.05)}
+    .dl-arr{all:unset;cursor:pointer;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:18px;color:#888;border-radius:8px;transition:.2s;flex-shrink:0}
+    .dl-arr:hover:not(:disabled){color:#fff;background:rgba(255,255,255,.05)}
+    .dl-arr:disabled{opacity:0.15;cursor:default}
+    .dl-fmt-lbl{flex:1;font-size:14px;font-weight:600;color:#eaf2ff;padding-left:4px}
+    .dl-inp-custom{width:100%;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.1);border-radius:12px;color:#fff;padding:12px 14px;font-size:16px!important;outline:none;transition:.2s}
     .dl-inp-custom:focus{border-color:var(--secondary-color)}
-    .dl-preview-box{background:#11141a;border-radius:8px;padding:12px;border:1px dashed rgba(77,170,255,.3);margin-top:6px}
+    .dl-preview-box{background:#11141a;border-radius:12px;padding:14px;border:1px dashed rgba(77,170,255,.3);margin-bottom:6px;text-align:center}
     .dl-preview-lbl{font-size:11px;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px}
-    .dl-preview-val{font-size:13px;color:var(--secondary-color);font-weight:700;word-break:break-all}
+    .dl-preview-val{font-size:14px;color:var(--secondary-color);font-weight:800;word-break:break-all}
   `);
 
   root.innerHTML = `
@@ -90,14 +88,16 @@ export const renderProfileSettings = (root) => {
     </div>
     
     <div class="settings-content active" id="set-general">
-      <div class="sc-set-sec-title" style="margin-top:10px;margin-bottom:0">Скачивание треков</div>
-      <div class="set-sub" style="margin-bottom:8px">Соберите формат имени файла для сохранения на устройство.</div>
-      <div class="dl-fmt-container">
-        <div id="dl-fmt-list"></div>
-        <input type="text" id="dl-fmt-custom" class="dl-inp-custom" placeholder="Свой текст (например: OST)" autocomplete="off">
-        <div class="dl-preview-box">
-          <div class="dl-preview-lbl">Пример файла:</div>
-          <div class="dl-preview-val" id="dl-fmt-preview"></div>
+      <button type="button" class="set-acc-btn open">СКАЧИВАНИЕ ТРЕКОВ</button>
+      <div class="set-acc-body">
+        <div class="set-sub" style="margin-bottom:4px;padding:0 4px">Соберите формат имени файла по умолчанию.</div>
+        <div class="dl-fmt-container">
+          <div class="dl-preview-box">
+            <div class="dl-preview-lbl">Пример файла:</div>
+            <div class="dl-preview-val" id="dl-fmt-preview"></div>
+          </div>
+          <div id="dl-fmt-list"></div>
+          <input type="text" id="dl-fmt-custom" class="dl-inp-custom" placeholder="Свой текст или Vi3na1bita" autocomplete="off">
         </div>
       </div>
     </div>
@@ -201,11 +201,11 @@ export const renderProfileSettings = (root) => {
     const pts = [];
     fmtSt.ord.forEach(k => {
       if (!fmtSt.en[k]) return;
-      if (k === 'band') pts.push('Vi3na1bita');
+      if (k === 'custom') pts.push(fmtSt.cst || 'Vi3na1bita');
+      if (k === 'band') pts.push('Витрина разбита');
       if (k === 'album') pts.push('Название Альбома');
       if (k === 'num') pts.push('01');
       if (k === 'title') pts.push('Название Песни');
-      if (k === 'custom' && fmtSt.cst) pts.push(fmtSt.cst);
     });
     prevEl.textContent = (pts.length ? pts.join(' - ') : 'track') + '.mp3';
     setDlFmt(fmtSt);
@@ -214,14 +214,10 @@ export const renderProfileSettings = (root) => {
   const renderFmtList = () => {
     listEl.innerHTML = fmtSt.ord.map((k, i) => `
       <div class="dl-fmt-row" data-key="${k}">
-        <div class="dl-fmt-arrs">
-          <button type="button" class="dl-arr up" data-dir="-1" ${i === 0 ? 'disabled' : ''}>▲</button>
-          <button type="button" class="dl-arr down" data-dir="1" ${i === fmtSt.ord.length - 1 ? 'disabled' : ''}>▼</button>
-        </div>
-        <label class="dl-fmt-lbl">
-          <input type="checkbox" class="dl-chk" data-key="${k}" ${fmtSt.en[k] ? 'checked' : ''}>
-          <span>${LABELS[k]}</span>
-        </label>
+        <button type="button" class="dl-arr up" data-dir="-1" ${i === 0 ? 'disabled' : ''}>▲</button>
+        <div class="dl-fmt-lbl">${LABELS[k]}</div>
+        <label class="set-switch"><input type="checkbox" class="dl-chk" data-key="${k}" ${fmtSt.en[k] ? 'checked' : ''}><span class="set-slider"></span></label>
+        <button type="button" class="dl-arr down" data-dir="1" ${i === fmtSt.ord.length - 1 ? 'disabled' : ''}>▼</button>
       </div>
     `).join('');
     updatePreview();
