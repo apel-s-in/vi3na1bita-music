@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e590ab0a6c26d307b9e1bb7a06c7fa8cdfe6e236.idx
-│   │       ├── pack-e590ab0a6c26d307b9e1bb7a06c7fa8cdfe6e236.pack
-│   │       └── pack-e590ab0a6c26d307b9e1bb7a06c7fa8cdfe6e236.rev
+│   │       ├── pack-87bf10ef3853aae3ac966ce46ea3d2b476a2d664.idx
+│   │       ├── pack-87bf10ef3853aae3ac966ce46ea3d2b476a2d664.pack
+│   │       └── pack-87bf10ef3853aae3ac966ce46ea3d2b476a2d664.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -406,7 +406,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 09:51:43 UTC
+Сгенерировано: 2026-03-22 09:58:04 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4531,8 +4531,8 @@ export const APP_CONFIG = {
   SPECIAL_RELIZ_KEY: '__reliz__',
   SPECIAL_SHOWCASE_KEY: '__showcase__',
   SPECIAL_PROFILE_KEY: '__profile__',
-  SUPPORT_URL: 'https://example.com/support',
-  SUPPORT_EMAIL: 'support@vitrina-razbita.ru',
+  SUPPORT_URL: 'https://vk.com/apelsinov',
+  SUPPORT_EMAIL: 'apel-s-in@ya.ru',
   GITHUB_URL: 'https://github.com/apel-s-in/vi3na1bita-music',
 
   INTEL_LAYER_ENABLED: true,
