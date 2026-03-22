@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f2062d7500f7698f2c7f7a1b2dc55908da105126.idx
-│   │       ├── pack-f2062d7500f7698f2c7f7a1b2dc55908da105126.pack
-│   │       └── pack-f2062d7500f7698f2c7f7a1b2dc55908da105126.rev
+│   │       ├── pack-18a0052695900ae01c7c15d691946eeadca074af.idx
+│   │       ├── pack-18a0052695900ae01c7c15d691946eeadca074af.pack
+│   │       └── pack-18a0052695900ae01c7c15d691946eeadca074af.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -407,7 +407,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 18:50:03 UTC
+Сгенерировано: 2026-03-22 18:51:16 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1625,8 +1625,7 @@ export class MetaDB {
 
   async init() {
     if (this.db) return this.db;
-    if (this._initPromise) return this._initPromise;
-    return (this._initPromise = new Promise((res, rej) => {
+    return window.Utils?.func?.memoAsyncOnce?.('analytics:meta-db:init', () => new Promise((res, rej) => {
       if (!window.indexedDB) return rej('IndexedDB is not supported');
       const req = indexedDB.open(this.dbName, this.version);
       req.onupgradeneeded = e => {
@@ -1646,8 +1645,20 @@ export class MetaDB {
           if (!db.objectStoreNames.contains(n)) db.createObjectStore(n, { keyPath: 'key' });
         });
       };
-      req.onsuccess = () => { this.db = req.result; res(this.db); };
-      req.onerror = () => rej(req.error);
+      req.onsuccess = () => { this.db = req.result; this._initPromise = null; res(this.db); };
+      req.onerror = () => { this._initPromise = null; rej(req.error); };
+    })) || (this._initPromise ||= new Promise((res, rej) => {
+      if (!window.indexedDB) return rej('IndexedDB is not supported');
+      const req = indexedDB.open(this.dbName, this.version);
+      req.onupgradeneeded = e => {
+        const db = e.target.result;
+        ['events_hot', 'events_warm'].forEach(n => !db.objectStoreNames.contains(n) && db.createObjectStore(n, { keyPath: 'eventId' }));
+        if (!db.objectStoreNames.contains('stats')) db.createObjectStore('stats', { keyPath: 'uid' });
+        if (!db.objectStoreNames.contains('global')) db.createObjectStore('global', { keyPath: 'key' });
+        ['listener_profile','provider_identity','hybrid_sync','recommendation_state','collection_state','intel_runtime'].forEach(n => { if (!db.objectStoreNames.contains(n)) db.createObjectStore(n, { keyPath: 'key' }); });
+      };
+      req.onsuccess = () => { this.db = req.result; this._initPromise = null; res(this.db); };
+      req.onerror = () => { this._initPromise = null; rej(req.error); };
     }));
   }
 
