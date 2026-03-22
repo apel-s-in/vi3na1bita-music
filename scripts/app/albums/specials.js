@@ -31,6 +31,7 @@ export async function loadFavoritesAlbum(ctx) {
 
     if (hp) { const r = c.querySelector(`.track[data-uid="${CSS.escape(pc.getCurrentTrackUid?.()||'')}"]`) || c.lastElementChild; r ? r.after(pb) : c.appendChild(pb); }
     injectOfflineIndicators(c);
+    ctx.highlightCurrentTrack();
   };
 
   if (!ctx._favB) {
@@ -46,7 +47,7 @@ export async function loadFavoritesAlbum(ctx) {
         ctx.setPlayingAlbum(FAV);
         const tr = window.PlaybackContextSource?.getSourcePlaylistForContext?.(FAV) || [];
         const idx = tr.findIndex(t => t.uid === u);
-        if (idx >= 0) { pc.setPlaylist(tr, idx, { artist: 'Витрина Разбита', album: 'Избранное', cover: FAV_COVER }, { preservePosition: false }); pc.play(idx); window.FavoritesOnlyActions?.syncFavoritesOnlyPlayback?.({ player: pc, autoPlayIfNeeded: true, forceReload: false, syncUi: () => window.PlayerUI?.applyFavoritesOnlyDomFilter?.() }); ctx.highlightCurrentTrack(-1, { uid: u, albumKey: aK }); window.PlayerUI?.ensurePlayerBlock?.(idx, { userInitiated: true }); window.FavoritesOnlyActions?.syncFavoritesOnlyUiFrame?.(); }
+        if (idx >= 0) { pc.playExactFromPlaylist(tr, u); window.FavoritesOnlyActions?.syncFavoritesOnlyPlayback?.({ player: pc, autoPlayIfNeeded: true, forceReload: false, syncUi: () => window.PlayerUI?.applyFavoritesOnlyDomFilter?.() }); ctx.highlightCurrentTrack(-1, { uid: u, albumKey: aK }); window.PlayerUI?.ensurePlayerBlock?.(idx, { userInitiated: true }); window.FavoritesOnlyActions?.syncFavoritesOnlyUiFrame?.(); }
       } else pc.showInactiveFavoriteModal({ uid: u, title: window.TrackRegistry?.getTrackByUid(u)?.title || 'Трек', onDeleted: () => { rb(); window.FavoritesOnlyActions?.syncFavoritesOnlyPlayback?.({ player: pc, autoPlayIfNeeded: true, forceReload: false, syncUi: () => window.PlayerUI?.applyFavoritesOnlyDomFilter?.() }); window.FavoritesOnlyActions?.syncFavoritesOnlyUiFrame?.(); } });
     });
 
