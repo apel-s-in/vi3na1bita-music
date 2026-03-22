@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d58ba6eda08c127cf923f453564dcf57731f8b1b.idx
-│   │       ├── pack-d58ba6eda08c127cf923f453564dcf57731f8b1b.pack
-│   │       └── pack-d58ba6eda08c127cf923f453564dcf57731f8b1b.rev
+│   │       ├── pack-422deb82288bac8ce0583f410515dc8dd32a05ee.idx
+│   │       ├── pack-422deb82288bac8ce0583f410515dc8dd32a05ee.pack
+│   │       └── pack-422deb82288bac8ce0583f410515dc8dd32a05ee.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -408,7 +408,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 20:52:08 UTC
+Сгенерировано: 2026-03-22 21:09:59 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2602,21 +2602,27 @@ window.PlaybackCache.getWindowState = getWindowState; window.PlaybackCache.prote
       dom.el.vS?.addEventListener('input', e => { PC().setVolume(e.target.value); syncUI(); });
     }
 
-    st.isMini = U.isBrowsingOtherAlbum();
+    const l = D.getElementById('track-list'), t = PC().getCurrentTrack(), u = t?.uid ? CSS.escape(t.uid) : '';
+    let isMini = U.isBrowsingOtherAlbum(), r = null;
+    if (!isMini) {
+      r = (u && l?.querySelector(`.track[data-uid="${u}"], .showcase-track[data-uid="${u}"]`)) || (idx != null && l?.querySelector(`.track[data-index="${idx}"]`));
+      if (!r) isMini = true;
+    }
+    st.isMini = isMini;
+
     if (st.isMini) {
       if (!dom.mini) {
         dom.mini = D.getElementById('mini-header-template').content.cloneNode(true).querySelector('#mini-now'); dom.nUp = D.getElementById('next-up-template').content.cloneNode(true).querySelector('#next-up');
         Object.assign(dom.el, { mPrg: dom.mini.querySelector('#mini-now-progress'), mTi: dom.mini.querySelector('#mini-now-title'), mSr: dom.mini.querySelector('#mini-now-star'), mNUp: dom.nUp.querySelector('.title') });
         dom.mini.onclick = e => {
-          if (e.target.closest('#mini-now-star')) { e.stopPropagation(); const t = PC().getCurrentTrack(); if(t?.uid) PC().toggleFavorite(t.uid, { source: AM()?.getPlayingAlbum?.() === W.SPECIAL_FAVORITES_KEY ? 'favorites' : 'album', albumKey: t.sourceAlbum }); syncUI(); } 
+          if (e.target.closest('#mini-now-star')) { e.stopPropagation(); const tr = PC().getCurrentTrack(); if(tr?.uid) PC().toggleFavorite(tr.uid, { source: AM()?.getPlayingAlbum?.() === W.SPECIAL_FAVORITES_KEY ? 'favorites' : 'album', albumKey: tr.sourceAlbum }); syncUI(); } 
           else { const p = AM()?.getPlayingAlbum?.(); if (p) AM().loadAlbum(p).then(() => setTimeout(() => dom.blk?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150)); }
         };
       }
       if (!dom.now.contains(dom.blk)) dom.now.append(dom.mini, dom.blk, dom.nUp);
       W.LyricsController?.applyMiniMode?.(); dom.mini.style.display = dom.nUp.style.display = 'flex';
     } else {
-      const l = D.getElementById('track-list'), t = PC().getCurrentTrack(), u = t?.uid ? CSS.escape(t.uid) : '', r = (u && l?.querySelector(`.track[data-uid="${u}"], .showcase-track[data-uid="${u}"]`)) || (idx != null && l?.querySelector(`.track[data-index="${idx}"]`));
-      r ? (r.after(dom.blk), uInit && setTimeout(() => r.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50)) : l?.appendChild(dom.blk);
+      if (r) { r.after(dom.blk); if (uInit) setTimeout(() => r.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50); }
       W.LyricsController?.restoreFromMiniMode?.(); dom.now.innerHTML = ''; if (dom.mini) dom.mini.style.display = dom.nUp.style.display = 'none';
     }
 
