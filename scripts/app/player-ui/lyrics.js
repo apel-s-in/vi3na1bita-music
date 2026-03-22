@@ -1,7 +1,7 @@
 (function () {
   'use strict';
   const W = window, D = document, U = W.Utils, LS = { V: 'lyricsViewMode', A: 'lyricsAnimationEnabled' }, PRE = 'lyr_', fc = U?.fetchCache, esc = s => U?.escapeHtml?.(String(s||'')) || String(s||'');
-  let st = { list: [], has: false, mode: 'normal', anim: false, lIdx: -100, mini: false }, dom = {}, _pend = new Map();
+  let st = { list: [], has: false, mode: 'normal', anim: true, showBtn: false, lIdx: -100, mini: false }, dom = {}, _pend = new Map();
 
   const initDom = () => {
     if (dom.blk) return true;
@@ -40,7 +40,7 @@
     if (st.mini) {
       win.style.display = 'none'; win.className = `lyrics-${st.mode}`;
       if (btnT) btnT.style.display = 'none';
-      if (btnA) { btnA.classList.toggle('active', false); btnA.classList.toggle('disabled', !st.has); }
+      if (btnA) { btnA.style.display = 'none'; btnA.classList.toggle('active', false); btnA.classList.toggle('disabled', !st.has); }
       if (bg) bg.classList.remove('active');
       if (btnK) { const can = !!W.playerCore?.getCurrentTrack?.()?.fulltext || !!st.has; btnK.classList.toggle('disabled', !can); Object.assign(btnK.style, { pointerEvents: can ? '' : 'none', opacity: can ? '' : '0.4' }); }
       if (!st.has && lyr) lyr.innerHTML = '<div class="lyrics-placeholder">Текст не найден</div>';
@@ -49,7 +49,7 @@
 
     win.style.display = st.has ? '' : 'none'; win.className = `lyrics-${st.mode}`;
     if (btnT) { btnT.style.display = ''; btnT.className = `lyrics-toggle-btn lyrics-${st.mode} ${st.has ? '' : 'disabled'}`; U?.setAriaDisabled?.(btnT, !st.has); }
-    if (btnA) { btnA.classList.toggle('active', st.anim && ok); btnA.classList.toggle('disabled', !st.has); }
+    if (btnA) { btnA.style.display = st.showBtn ? '' : 'none'; btnA.classList.toggle('active', st.anim && ok); btnA.classList.toggle('disabled', !st.has); }
     if (bg) bg.classList.toggle('active', st.anim && ok);
     if (btnK) { const can = ok || !!W.playerCore?.getCurrentTrack?.()?.fulltext; btnK.classList.toggle('disabled', !can); Object.assign(btnK.style, { pointerEvents: can ? '' : 'none', opacity: can ? '' : '0.4' }); }
     if (!st.has && lyr) lyr.innerHTML = '<div class="lyrics-placeholder">Текст не найден</div>';
@@ -78,7 +78,7 @@
   W.LyricsController = {
     getState: () => ({ lyricsViewMode: st.mode, animationEnabled: st.anim, hasTimedLyricsForCurrentTrack: st.has }),
     getCurrentLyrics: () => st.list, getCurrentLyricsLines: () => st.list.map(l => ({ line: l.text })),
-    restoreSettingsIntoDom: () => { st.mode = ['normal','hidden','expanded'].includes(localStorage.getItem(LS.V)) ? localStorage.getItem(LS.V) : 'normal'; st.anim = localStorage.getItem(LS.A) === '1'; updateUI(); },
+    restoreSettingsIntoDom: () => { st.mode = ['normal','hidden','expanded'].includes(localStorage.getItem(LS.V)) ? localStorage.getItem(LS.V) : 'normal'; st.anim = localStorage.getItem(LS.A) !== '0'; st.showBtn = localStorage.getItem('lyricsShowAnimBtn') === '1'; updateUI(); },
     onTrackChange: async (t) => {
       st.has = false; st.list = []; st.lIdx = -100;
       if (!t?.lyrics || t.hasLyrics === false) return updateUI();
