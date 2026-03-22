@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ea0bcfc9efe198dccb4f027bab15f7007be9a542.idx
-│   │       ├── pack-ea0bcfc9efe198dccb4f027bab15f7007be9a542.pack
-│   │       └── pack-ea0bcfc9efe198dccb4f027bab15f7007be9a542.rev
+│   │       ├── pack-e83a0c42cea8075cf91e5733e6293eadefb4d3d4.idx
+│   │       ├── pack-e83a0c42cea8075cf91e5733e6293eadefb4d3d4.pack
+│   │       └── pack-e83a0c42cea8075cf91e5733e6293eadefb4d3d4.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -408,7 +408,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 22:21:32 UTC
+Сгенерировано: 2026-03-22 22:22:11 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2245,10 +2245,14 @@ class AlbumsManager {
     finally { this.loading = false; }
   }
 
-  highlightCurrentTrack(i, { uid, albumKey } = {}) {
-    D.querySelectorAll('.track.current, .showcase-track.current').forEach(n => n.classList.remove('current'));
-    const u = uid || W.playerCore?.getCurrentTrackUid?.();
-    if (u) D.querySelectorAll(`[data-uid="${CSS.escape(u)}"]`).forEach(el => el.classList.add('current'));
+  highlightCurrentTrack() {
+    D.querySelectorAll('.current').forEach(n => {
+      if (['track','showcase-track','profile-list-item','sm-top-row'].some(c => n.classList.contains(c)) || n.tagName === 'LI') n.classList.remove('current');
+    });
+    const u = W.playerCore?.getCurrentTrackUid?.();
+    if (u) D.querySelectorAll(`[data-uid="${CSS.escape(u)}"]`).forEach(el => {
+      if (['track','showcase-track','profile-list-item','sm-top-row'].some(c => el.classList.contains(c)) || el.tagName === 'LI') el.classList.add('current');
+    });
   }
 
   getCurrentAlbum() { return this.curr; } getPlayingAlbum() { return this.playing; } setPlayingAlbum(k) { this.playing = k; }
