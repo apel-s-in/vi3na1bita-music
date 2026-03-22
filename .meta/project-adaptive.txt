@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-06c4aca5b2223128c75532629c93a349cd5863af.idx
-│   │       ├── pack-06c4aca5b2223128c75532629c93a349cd5863af.pack
-│   │       └── pack-06c4aca5b2223128c75532629c93a349cd5863af.rev
+│   │       ├── pack-e6e3ad5092a40ae67cdd9cb1f34796410a18a1d3.idx
+│   │       ├── pack-e6e3ad5092a40ae67cdd9cb1f34796410a18a1d3.pack
+│   │       └── pack-e6e3ad5092a40ae67cdd9cb1f34796410a18a1d3.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -408,7 +408,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 22:59:49 UTC
+Сгенерировано: 2026-03-22 23:00:43 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -888,7 +888,7 @@ jobs:
   </template>
 
   <script>
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.57');
+    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.58');
     const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-03-22');
 
     // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
@@ -932,7 +932,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.1.57';
+const SW_VERSION = '8.1.58';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
@@ -9147,6 +9147,9 @@ body.news-view #cover-wrap{display:none!important}
 .fav-empty{padding:20px;text-align:center;color:#8ab8fd}
 .fav-empty h3{margin:0 0 10px}
 .fav-empty p{margin:0;opacity:.9}
+.fav-track-thumb{width:32px;height:32px;border-radius:4px;margin:0 8px 0 4px;object-fit:cover;flex-shrink:0}
+.fav-track-title-wrap{margin-left:0!important}
+.fav-track-meta{font-size:11px;color:#888;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .news-inline__head{padding:14px 10px;text-align:center;color:#8ab8fd}
 .news-inline__status{opacity:.85}
 .news-inline__status--error{color:#ff6b6b}
