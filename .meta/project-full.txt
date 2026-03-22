@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ee31d20526fc6dbdb6713d760b4dac2be03975b0.idx
-│   │       ├── pack-ee31d20526fc6dbdb6713d760b4dac2be03975b0.pack
-│   │       └── pack-ee31d20526fc6dbdb6713d760b4dac2be03975b0.rev
+│   │       ├── pack-88cb7deafcf87481540d071f1f81d21aa745f139.idx
+│   │       ├── pack-88cb7deafcf87481540d071f1f81d21aa745f139.pack
+│   │       └── pack-88cb7deafcf87481540d071f1f81d21aa745f139.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -407,7 +407,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 18:30:32 UTC
+Сгенерировано: 2026-03-22 18:31:09 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7225,11 +7225,10 @@ export default { bindAppModals };
 //=================================================
 // FILE: /scripts/ui/cache-progress-overlay.js
 import { getOfflineManager } from '../offline/offline-manager.js';
-let _layer = null, _init = false;
+let _layer = null;
 
 export const initCacheProgressOverlay = () => {
-  if (_init) return;
-  _init = true;
+  if (!window.Utils?.func?.initOnce?.('ui:cache-progress-overlay:init', () => {})) return;
   const s = () => requestAnimationFrame(updateProgressBar);
   ['player:trackChanged', 'offline:downloadStart', 'offline:trackCached', 'offline:downloadFailed', 'offline:stateChanged', 'offline:uiChanged'].forEach(ev => window.addEventListener(ev, s));
   document.getElementById('cache-progress-overlay')?.remove();
