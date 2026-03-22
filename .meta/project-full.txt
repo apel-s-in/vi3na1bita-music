@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9181c5d3e1451b6e63b12a854c0c7c9636ab640d.idx
-│   │       ├── pack-9181c5d3e1451b6e63b12a854c0c7c9636ab640d.pack
-│   │       └── pack-9181c5d3e1451b6e63b12a854c0c7c9636ab640d.rev
+│   │       ├── pack-5f5ef00027367ac87de3154ee45da918a2ac8565.idx
+│   │       ├── pack-5f5ef00027367ac87de3154ee45da918a2ac8565.pack
+│   │       └── pack-5f5ef00027367ac87de3154ee45da918a2ac8565.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -407,7 +407,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 19:12:05 UTC
+Сгенерировано: 2026-03-22 19:14:02 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -931,7 +931,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.1.47';
+const SW_VERSION = '8.1.48';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
@@ -4062,11 +4062,11 @@ W.ShowcaseManager = new ShowcaseManager(); export default W.ShowcaseManager;
 //=================================================
 // FILE: /scripts/app/showcase/lyrics-search.js
 const W = window, I = './data/lyrics-index-v1.json';
-let _l = false, _p = null, _idx = {};
+let _l = false, _idx = {};
 const nS = s => String(s||'').toLowerCase().replace(/ё/g,'е').replace(/[^\p{L}\p{N}\s]+/gu,' ').replace(/\s+/g,' ').trim(), tK = q => { const s = nS(q); return s ? s.split(' ').filter(w => w.length >= 2) : []; };
 export const ensureLyricsIndexLoaded = async () => {
   if (_l) return true;
-  return W.Utils?.func?.memoAsyncOnce?.('app:showcase:lyrics-index', async () => {
+  return W.Utils.func.memoAsyncOnce('app:showcase:lyrics-index', async () => {
     try {
       const j = W.Utils?.fetchCache?.getJson ? await W.Utils.fetchCache.getJson({ key: 'lyrics:index:v1', url: I, ttlMs: 43200000, store: 'session', fetchInit: { cache: 'force-cache' } }) : await fetch(I, { cache: 'force-cache' }).then(r => { if (!r.ok) throw 1; return r.json(); });
       if (!j || j.v !== 1) throw 1;
@@ -4078,21 +4078,7 @@ export const ensureLyricsIndexLoaded = async () => {
       _l = false;
       return false;
     }
-  }) || (_p ||= (async () => {
-    try {
-      const j = W.Utils?.fetchCache?.getJson ? await W.Utils.fetchCache.getJson({ key: 'lyrics:index:v1', url: I, ttlMs: 43200000, store: 'session', fetchInit: { cache: 'force-cache' } }) : await fetch(I, { cache: 'force-cache' }).then(r => { if (!r.ok) throw 1; return r.json(); });
-      if (!j || j.v !== 1) throw 1;
-      _idx = j.idx && typeof j.idx === 'object' ? j.idx : {};
-      _l = true;
-      return true;
-    } catch {
-      _idx = {};
-      _l = false;
-      return false;
-    } finally {
-      _p = null;
-    }
-  })());
+  });
 };
 const gTT = u => { const t = W.TrackRegistry?.getTrackByUid?.(u); return t ? { title: String(t.title||''), album: String(W.TrackRegistry?.getAlbumTitle?.(t.sourceAlbum)||t.album||'') } : { title: '', album: '' }; };
 export const searchUidsByQuery = ({ query: q }) => {
