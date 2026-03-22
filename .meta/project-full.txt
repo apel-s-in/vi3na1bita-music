@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a8b12fe34668cbf1e6015d0913c13cb4863bb9f2.idx
-│   │       ├── pack-a8b12fe34668cbf1e6015d0913c13cb4863bb9f2.pack
-│   │       └── pack-a8b12fe34668cbf1e6015d0913c13cb4863bb9f2.rev
+│   │       ├── pack-02f1defedcb07eeff3603e65ed49b05b9be6a768.idx
+│   │       ├── pack-02f1defedcb07eeff3603e65ed49b05b9be6a768.pack
+│   │       └── pack-02f1defedcb07eeff3603e65ed49b05b9be6a768.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -407,7 +407,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 19:40:55 UTC
+Сгенерировано: 2026-03-22 19:41:50 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2344,7 +2344,7 @@ class GalleryManager {
       let items = this.meta.get(id);
       if (!items) {
         const fc = W.Utils?.fetchCache, k = `gallery:index:${id}`;
-        const d = fc?.getJson ? await fc.getJson({ key: k, url: `${dir}index.json`, ttlMs: 43200000, store: 'session', fetchInit: { cache: 'force-cache' } }) : await fetch(`${dir}index.json`, { cache: 'force-cache' }).then(r => r.ok ? r.json() : Promise.reject(`HTTP ${r.status}`));
+        const d = fc?.getJson ? await fc.getJson({ key: k, url: `${dir}index.json`, ttlMs: 43200000, store: 'session', fetchInit: { cache: 'force-cache' } }) : await (W.NetPolicy?.fetchWithTraffic?.(`${dir}index.json`, { cache: 'force-cache' }) || fetch(`${dir}index.json`, { cache: 'force-cache' })).then(r => r.ok ? r.json() : Promise.reject(`HTTP ${r.status}`));
         this.meta.set(id, items = Array.isArray(d.items) ? d.items : (Array.isArray(d) ? d : []));
       }
       this.it = items.map(i => this._norm(i, dir)).filter(Boolean);
@@ -2374,7 +2374,7 @@ class GalleryManager {
       let items = this.meta.get(id);
       if (!items) {
         const dir = `${BASE}${id}/`, fc = W.Utils?.fetchCache;
-        const d = fc?.getJson ? await fc.getJson({ key: `gallery:index:${id}`, url: `${dir}index.json`, ttlMs: 43200000, store: 'session', fetchInit: { cache: 'force-cache' } }) : await fetch(`${dir}index.json`, { cache: 'force-cache' }).then(r => r.ok ? r.json() : null);
+        const d = fc?.getJson ? await fc.getJson({ key: `gallery:index:${id}`, url: `${dir}index.json`, ttlMs: 43200000, store: 'session', fetchInit: { cache: 'force-cache' } }) : await (W.NetPolicy?.fetchWithTraffic?.(`${dir}index.json`, { cache: 'force-cache' }) || fetch(`${dir}index.json`, { cache: 'force-cache' })).then(r => r.ok ? r.json() : null);
         this.meta.set(id, items = Array.isArray(d?.items) ? d.items : (Array.isArray(d) ? d : []));
       }
       return this._norm((items || [])[0], `${BASE}${id}/`) || LOGO;
