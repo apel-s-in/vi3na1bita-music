@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f973ef4fef56bc4212a5908e080b0d7500443a9e.idx
-│   │       ├── pack-f973ef4fef56bc4212a5908e080b0d7500443a9e.pack
-│   │       └── pack-f973ef4fef56bc4212a5908e080b0d7500443a9e.rev
+│   │       ├── pack-5f5ef944c196c959095c6de38693b08463eb354f.idx
+│   │       ├── pack-5f5ef944c196c959095c6de38693b08463eb354f.pack
+│   │       └── pack-5f5ef944c196c959095c6de38693b08463eb354f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -408,7 +408,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 21:46:48 UTC
+Сгенерировано: 2026-03-22 21:47:33 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -888,7 +888,7 @@ jobs:
   </template>
 
   <script>
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.53');
+    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.54');
     const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-03-22');
 
     // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
@@ -932,7 +932,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.1.53';
+const SW_VERSION = '8.1.54';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
@@ -4042,7 +4042,7 @@ class ShowcaseManager {
   _saveScroll(id) { const el = $('track-list'); if (el && id) { const y = el.scrollTop || 0; this._scr.set(id, y); jSet(`scroll_${id}`, y); } } _restoreScroll(id) { const el = $('track-list'); if (el && id) el.scrollTop = Math.max(0, Number(this._scr.get(id) ?? jGet(`scroll_${id}`, 0)) || 0); }
   _markLast(uid, id = this._ctxId()) { jSet(isDef(id) ? 'lastUid_default' : `lastUid_${id}`, uid); }
   _cleanupUi() { try { const b = $('sc-selection-bar'); if (b && b._scClick) b.removeEventListener('click', b._scClick); b?.remove(); this._menu?.remove(); } catch {} this._menu = null; }
-  _hi(uid) { D.querySelectorAll('.showcase-track.current').forEach(x => x.classList.remove('current')); if (uid) D.querySelectorAll(`.showcase-track[data-uid="${uidEsc(uid)}"]`).forEach(x => x.classList.add('current')); }
+  _hi(uid) { D.querySelectorAll('.showcase-track.current, .track.current').forEach(x => x.classList.remove('current')); const u = uid || W.playerCore?.getCurrentTrackUid?.(); if (u) D.querySelectorAll(`[data-uid="${uidEsc(u)}"]`).forEach(x => x.classList.add('current')); }
   _ctxHiddenSet(id = this._ctxId()) { return new Set((isDef(id) ? Store.def() : Store.get(id))?.hidden || []); } _isHidden(u, id = this._ctxId()) { return this._ctxHiddenSet(id).has(u); }
   _toggleHiddenPersist(uid, id = this._ctxId()) {
     const c = isDef(id) ? Store.def() : Store.get(id); if (!c) return;
