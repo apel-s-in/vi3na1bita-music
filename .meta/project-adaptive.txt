@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6cc520862cbf74f11f1b3309875161220c445b00.idx
-│   │       ├── pack-6cc520862cbf74f11f1b3309875161220c445b00.pack
-│   │       └── pack-6cc520862cbf74f11f1b3309875161220c445b00.rev
+│   │       ├── pack-ea0bcfc9efe198dccb4f027bab15f7007be9a542.idx
+│   │       ├── pack-ea0bcfc9efe198dccb4f027bab15f7007be9a542.pack
+│   │       └── pack-ea0bcfc9efe198dccb4f027bab15f7007be9a542.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -408,7 +408,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 22:08:56 UTC
+Сгенерировано: 2026-03-22 22:21:32 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -8978,7 +8978,9 @@ body{min-height:100vh;min-width:100vw;padding-top:env(safe-area-inset-top);-webk
 .profile-tab-btn.active{background:var(--secondary-color);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.2)}
 .profile-tab-content{display:none;flex-direction:column;gap:12px}
 .profile-tab-content.active{display:flex;animation:slideUp .3s ease}
-.profile-list-item{background:rgba(255,255,255,.03);border-radius:12px;padding:12px;border:1px solid rgba(255,255,255,.05);display:flex;gap:12px;align-items:center}
+.profile-list-item{background:rgba(255,255,255,.03);border-radius:12px;padding:12px;border:1px solid rgba(255,255,255,.05);display:flex;gap:12px;align-items:center;transition:background .2s, border-color .2s}
+.profile-list-item.current{background:#232b38;border-color:var(--secondary-color)}
+.profile-list-item.current .log-title{color:var(--secondary-color)}
 .log-time{font-size:11px;color:#888;min-width:45px}
 .log-info{flex:1}
 .log-title{font-size:13px;font-weight:bold;color:#eaf2ff}
@@ -9578,9 +9580,13 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .showcase-color-dot:hover{transform:scale(1.15)}
 .stat-card{background:rgba(0,0,0,.3);border-radius:12px;padding:16px;text-align:center;border:1px solid rgba(255,255,255,.05)}
 .stat-list{margin:8px 0 12px;padding:0;list-style:none;text-align:left}
-.stat-list li{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px dashed rgba(255,255,255,.08);font-size:.96em;color:#eaf2ff}
+.stat-list li{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px dashed rgba(255,255,255,.08);font-size:.96em;color:#eaf2ff;transition:all .2s}
+.stat-list li.current{color:var(--secondary-color);background:rgba(77,170,255,.1);border-radius:6px;padding:6px 8px;margin:0 -8px;border-bottom:none}
+.stat-list li.current span:first-child{color:#fff;font-weight:800}
 .stat-list li:last-child{border-bottom:none}
 .stat-list li span:last-child{color:var(--secondary-color);font-weight:700}
+.sm-top-row.current{background:rgba(77,170,255,.15);border-radius:6px;padding:4px 8px;margin:0 -8px}
+.sm-top-row.current .sm-top-title{color:#fff;font-weight:bold}
 .chart-block{margin:12px 0;background:rgba(255,255,255,.03);padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,.05)}
 .chart-title{margin-bottom:10px;font-size:.92em;font-weight:800;text-transform:uppercase;color:#9fc3ff}
 .chart-bars{display:grid;gap:4px}
