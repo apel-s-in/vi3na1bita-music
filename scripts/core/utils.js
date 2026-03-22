@@ -25,14 +25,31 @@
     download: { applyDownloadLink: (btn, t) => {
       if (!btn) return;
       if (!t?.src && !t?.uid) { btn.removeAttribute('href'); btn.removeAttribute('download'); btn.classList.add('disabled'); btn._dlUid = null; return; }
-      const fN = t.title ? `Vi3na1bita - ${t.title}.mp3` : 'track.mp3';
+      
+      const getFmt = () => { try { const d = JSON.parse(localStorage.getItem('dl_format_v1') || '{}'); return { ord: d.ord || ['band','album','num','title','custom'], en: d.en || {band:true, title:true}, cst: d.cst || '' }; } catch { return { ord: ['band','album','num','title','custom'], en: {band:true, title:true}, cst: '' }; } };
+      const fmt = getFmt();
+      const tNum = t.uid && t.sourceAlbum ? (W.TrackRegistry?.getTracksForAlbum?.(t.sourceAlbum)?.findIndex(x => x.uid === t.uid) + 1) : '';
+      const aT = W.TrackRegistry?.getAlbumTitle?.(t.sourceAlbum) || t.album || '';
+      const pts = [];
+      fmt.ord.forEach(k => {
+        if(!fmt.en[k]) return;
+        if(k==='band') pts.push(t.artist || 'Витрина Разбита');
+        if(k==='album' && aT) pts.push(aT);
+        if(k==='num' && tNum) pts.push(String(tNum).padStart(2,'0'));
+        if(k==='title' && t.title) pts.push(t.title);
+        if(k==='custom' && fmt.cst) pts.push(fmt.cst);
+      });
+      let fN = pts.length ? pts.join(' - ') + '.mp3' : (t.title ? `${t.title}.mp3` : 'track.mp3');
+      fN = fN.replace(/[<>:"/\\|?*]+/g, '');
+
       btn.removeAttribute('href'); btn.download = fN; btn.classList.remove('disabled');
       const dK = `${t.uid || t.src}:${fN}`; if (btn._dlUid === dK) return; btn._dlUid = dK;
+      
       btn.onclick = async e => {
         e.preventDefault(); e.stopPropagation();
         if (btn._dlBusy) return; btn._dlBusy = true;
         try {
-          let bU = null;
+          let bU = null, isNet = false;
           if (t.uid) {
             try {
               const db = await import('../offline/cache-db.js');
@@ -41,7 +58,8 @@
             } catch(err) {}
           }
           if (!bU) {
-            W.NotificationSystem?.info?.('Подготовка файла...');
+            isNet = true;
+            W.NotificationSystem?.info?.('Скачивание файла...');
             let u = t.src;
             if (t.uid) {
               const s = await W.TrackRegistry?.getSmartUrlInfo?.(t.uid, 'audio', W.playerCore?.qMode || 'hi');
@@ -53,7 +71,7 @@
           }
           const a = D.createElement('a'); a.href = bU; a.download = fN; a.style.display = 'none'; D.body.appendChild(a); a.click();
           setTimeout(() => { URL.revokeObjectURL(bU); a.remove(); }, 5000);
-          W.NotificationSystem?.success?.('Файл сохранен на устройство');
+          if (isNet) W.NotificationSystem?.success?.('Файл готов к сохранению');
         } catch {
           W.NotificationSystem?.error?.('Ошибка сохранения');
         } finally {
