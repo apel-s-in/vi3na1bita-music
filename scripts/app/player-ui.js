@@ -158,8 +158,8 @@
 
     c.onFavoritesChanged(() => {
       const p = AM()?.getPlayingAlbum?.();
-      if (p === W.SPECIAL_FAVORITES_KEY || U.lsGetBool01('favoritesOnlyMode')) c.applyFavoritesOnlyFilter?.();
-      syncUI();
+      if (p === W.SPECIAL_FAVORITES_KEY || U.lsGetBool01('favoritesOnlyMode')) W.FavoritesOnlyActions?.syncFavoritesOnlyPlayback?.({ player: c, autoPlayIfNeeded: true, forceReload: false, syncUi: syncUI });
+      else syncUI();
     });
     W.addEventListener('playlist:changed', syncUI);
     W.addEventListener('player:providerChanged', e => { st.provider = e.detail?.provider; syncUI(); });
