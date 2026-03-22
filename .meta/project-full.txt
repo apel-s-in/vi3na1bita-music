@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-cfddb1f0575ddcf5af125aa3dfca1ea6c5740f1c.idx
-│   │       ├── pack-cfddb1f0575ddcf5af125aa3dfca1ea6c5740f1c.pack
-│   │       └── pack-cfddb1f0575ddcf5af125aa3dfca1ea6c5740f1c.rev
+│   │       ├── pack-ed90973c90c6112779c1312228fed8e545ea9a78.idx
+│   │       ├── pack-ed90973c90c6112779c1312228fed8e545ea9a78.pack
+│   │       └── pack-ed90973c90c6112779c1312228fed8e545ea9a78.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -407,7 +407,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 17:20:41 UTC
+Сгенерировано: 2026-03-22 17:21:44 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7443,7 +7443,7 @@ import * as Net from '../offline/net-policy.js';
 import { estimateUsage, getAllTrackMetas } from '../offline/cache-db.js';
 import { getUpdateList, clearNeedsUpdate, checkForUpdates } from '../offline/update-checker.js';
 
-let _overlay = null, _dlPaused = false, _listExpanded = false, _stExpanded = false;
+let _overlay = null, _dlPaused = false, _listExpanded = false, _stExpanded = false, _inited = false;
 const $ = (sel, root = document) => root.querySelector(sel);
 const esc = s => window.Utils?.escapeHtml?.(String(s ?? '')) ?? String(s ?? '');
 const fMB = b => ((b || 0) / 1048576 < 0.1 && b > 0) ? '< 0.1 МБ' : `${((b || 0) / 1048576).toFixed(1)} МБ`;
@@ -7543,6 +7543,8 @@ export function openOfflineModal() {
 export function closeOfflineModal() { try { _overlay?.remove(); } catch {} _overlay = null; }
 
 export function initOfflineModal() {
+  if (_inited) return;
+  _inited = true;
   document.getElementById('offline-btn')?.addEventListener('click', e => e.target?.classList?.contains('offline-btn-alert') ? window.NotificationSystem?.show?.('Есть треки для обновления', 'info', 6000) : openOfflineModal());
   ['offline:uiChanged', 'netPolicy:changed', 'offline:stateChanged'].forEach(ev => window.addEventListener(ev, () => _overlay && refresh()));
 }
