@@ -118,6 +118,7 @@ class AlbumsManager {
           tList.innerHTML = d.tracks.map((t, i) => `<div class="track" id="trk${i}" data-index="${i}" data-album="${escHtml(key)}" data-uid="${escHtml(t.uid)}"><div class="tnum">${String(t.num).padStart(2,'0')}.</div><div class="track-title">${escHtml(t.title)}</div>${renderFavoriteStar(!!(t.uid && W.playerCore?.isFavorite?.(t.uid)), `data-album="${escHtml(key)}" data-uid="${escHtml(t.uid)}"` )}</div>`).join('');
           tList.querySelectorAll('.track[data-uid]').forEach(el => injectIndicator(el));
         }
+        this.highlightCurrentTrack();
         W.PlayerUI?.updateMiniHeader?.();
       }
       this.curr = key; localStorage.setItem('currentAlbum', key);
