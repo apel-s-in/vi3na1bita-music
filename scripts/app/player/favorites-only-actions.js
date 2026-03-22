@@ -75,6 +75,13 @@ function playWithFavoritesOnlyResolution({
   });
 }
 
+function syncFavoritesOnlyUiFrame({
+  applyDomFilter = () => W.PlayerUI?.applyFavoritesOnlyDomFilter?.()
+} = {}) {
+  applyDomFilter?.();
+  requestAnimationFrame(() => applyDomFilter?.());
+}
+
 function syncFavoritesOnlyPlayback({
   player = W.playerCore,
   autoPlayIfNeeded = true,
@@ -104,9 +111,9 @@ function toggleFavoritesOnlyMode({
   return { ok: true, enabled: next };
 }
 
-const api = { openFavoritesOnlyConflictModal, makeFavoritesOnlyAfterPlay, playWithFavoritesOnlyResolution, syncFavoritesOnlyPlayback, toggleFavoritesOnlyMode };
+const api = { openFavoritesOnlyConflictModal, makeFavoritesOnlyAfterPlay, playWithFavoritesOnlyResolution, syncFavoritesOnlyUiFrame, syncFavoritesOnlyPlayback, toggleFavoritesOnlyMode };
 
 W.FavoritesOnlyActions = api;
 
-export { openFavoritesOnlyConflictModal, makeFavoritesOnlyAfterPlay, playWithFavoritesOnlyResolution, syncFavoritesOnlyPlayback, toggleFavoritesOnlyMode };
+export { openFavoritesOnlyConflictModal, makeFavoritesOnlyAfterPlay, playWithFavoritesOnlyResolution, syncFavoritesOnlyUiFrame, syncFavoritesOnlyPlayback, toggleFavoritesOnlyMode };
 export default api;
