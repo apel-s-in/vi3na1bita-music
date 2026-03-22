@@ -3,7 +3,7 @@ export const renderProfileStats = ({ container: c, all }) => {
   const ttEl = c?.querySelector('#prof-top-tracks'); if (!ttEl) return;
   const vs = (all || []).filter(s => s.uid !== 'global');
   window.Utils?.dom?.createStyleOnce?.('profile-stat-sub-styles', `.stat-sub{color:#888;font-size:12px;text-align:center}.chart-title--click{cursor:pointer}.chart-bars--hidden{display:none}.stat-card--mb10{margin-bottom:10px}.stat-card--mb15{margin-bottom:15px}.prof-reset-wrap{display:flex;justify-content:center;margin-top:8px}.backup-btn--dark{background:#444}`);
-  const mkL = (a, f) => a.length ? `<ul class="stat-list">${a.map(s => `<li><span>${esc(window.TrackRegistry?.getTrackByUid(s.uid)?.title)}</span><span>${f(s)}</span></li>`).join('')}</ul>` : `<div class="stat-sub">Недостаточно данных</div>`;
+  const mkL = (a, f) => a.length ? `<ul class="stat-list">${a.map(s => `<li data-uid="${s.uid}"><span>${esc(window.TrackRegistry?.getTrackByUid(s.uid)?.title)}</span><span>${f(s)}</span></li>`).join('')}</ul>` : `<div class="stat-sub">Недостаточно данных</div>`;
   const rCh = (id, tit, d, lsk, lb) => `<div class="chart-block" id="${id}"><div class="chart-title chart-title--click" data-tg="${id}-bars" data-ls="${lsk}">${tit}</div><div class="chart-bars ${localStorage.getItem(lsk)==='0'?'chart-bars--hidden':''}" id="${id}-bars">${d.map((v, i) => `<div class="chart-row"><div class="label">${lb?lb[i]:String(i).padStart(2,'0')}</div><div class="bar"><div class="fill" style="width:${Math.round((v/Math.max(1,...d))*100)}%"></div></div><div class="val">${v}</div></div>`).join('')}</div></div>`;
   const byH = Array(24).fill(0), byW = Array(7).fill(0);
   vs.forEach(s => { (s.byHour||[]).forEach((v,h)=>byH[h]+=v||0); (s.byWeekday||[]).forEach((v,d)=>byW[d]+=v||0); });
