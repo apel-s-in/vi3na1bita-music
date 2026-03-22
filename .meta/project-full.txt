@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-81037f19d57dc30da64ded20490b69bc239e0f92.idx
-│   │       ├── pack-81037f19d57dc30da64ded20490b69bc239e0f92.pack
-│   │       └── pack-81037f19d57dc30da64ded20490b69bc239e0f92.rev
+│   │       ├── pack-eb70782a12d64f397052f0fa92bcb40c334fb094.idx
+│   │       ├── pack-eb70782a12d64f397052f0fa92bcb40c334fb094.pack
+│   │       └── pack-eb70782a12d64f397052f0fa92bcb40c334fb094.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -407,7 +407,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 18:53:11 UTC
+Сгенерировано: 2026-03-22 18:54:58 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4086,8 +4086,34 @@ const W = window, I = './data/lyrics-index-v1.json';
 let _l = false, _p = null, _idx = {};
 const nS = s => String(s||'').toLowerCase().replace(/ё/g,'е').replace(/[^\p{L}\p{N}\s]+/gu,' ').replace(/\s+/g,' ').trim(), tK = q => { const s = nS(q); return s ? s.split(' ').filter(w => w.length >= 2) : []; };
 export const ensureLyricsIndexLoaded = async () => {
-  if (_l) return true; if (_p) return _p;
-  return (_p = (async () => { try { const j = W.Utils?.fetchCache?.getJson ? await W.Utils.fetchCache.getJson({ key: 'lyrics:index:v1', url: I, ttlMs: 43200000, store: 'session', fetchInit: { cache: 'force-cache' } }) : await fetch(I, { cache: 'force-cache' }).then(r => { if (!r.ok) throw 1; return r.json(); }); if (!j || j.v !== 1) throw 1; _idx = j.idx && typeof j.idx === 'object' ? j.idx : {}; _l = true; return true; } catch { _idx = {}; _l = false; return false; } finally { _p = null; } })());
+  if (_l) return true;
+  return W.Utils?.func?.memoAsyncOnce?.('app:showcase:lyrics-index', async () => {
+    try {
+      const j = W.Utils?.fetchCache?.getJson ? await W.Utils.fetchCache.getJson({ key: 'lyrics:index:v1', url: I, ttlMs: 43200000, store: 'session', fetchInit: { cache: 'force-cache' } }) : await fetch(I, { cache: 'force-cache' }).then(r => { if (!r.ok) throw 1; return r.json(); });
+      if (!j || j.v !== 1) throw 1;
+      _idx = j.idx && typeof j.idx === 'object' ? j.idx : {};
+      _l = true;
+      return true;
+    } catch {
+      _idx = {};
+      _l = false;
+      return false;
+    }
+  }) || (_p ||= (async () => {
+    try {
+      const j = W.Utils?.fetchCache?.getJson ? await W.Utils.fetchCache.getJson({ key: 'lyrics:index:v1', url: I, ttlMs: 43200000, store: 'session', fetchInit: { cache: 'force-cache' } }) : await fetch(I, { cache: 'force-cache' }).then(r => { if (!r.ok) throw 1; return r.json(); });
+      if (!j || j.v !== 1) throw 1;
+      _idx = j.idx && typeof j.idx === 'object' ? j.idx : {};
+      _l = true;
+      return true;
+    } catch {
+      _idx = {};
+      _l = false;
+      return false;
+    } finally {
+      _p = null;
+    }
+  })());
 };
 const gTT = u => { const t = W.TrackRegistry?.getTrackByUid?.(u); return t ? { title: String(t.title||''), album: String(W.TrackRegistry?.getAlbumTitle?.(t.sourceAlbum)||t.album||'') } : { title: '', album: '' }; };
 export const searchUidsByQuery = ({ query: q }) => {
