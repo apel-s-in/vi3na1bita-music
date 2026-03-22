@@ -88,8 +88,60 @@ export const hasTrackProfile = uid => !!getTrackProfilePreview(uid);
 export const getTrackProfile = async uid => await window.Intel?.trackProfiles?.getProfile?.(uid) || null;
 
 export const ensurePopulated = async () => {
-  if (_popP) return _popP;
-  return (_popP = (async () => {
+  return window.Utils?.func?.memoAsyncOnce?.('app:track-registry:populate', async () => {
+    if (!window.albumsIndex?.length) try { await window.Utils?.onceEvent?.(window, 'albumsIndex:ready', { timeoutMs: 5000 }); } catch {}
+    await Promise.allSettled((window.albumsIndex || []).filter(a => !a.key.startsWith('__')).map(async a => {
+      try {
+        const bs = {
+          yandex: a.yandex_base ? `${a.yandex_base.replace(/\/$/, '')}/` : '',
+          github: a.github_base ? `${a.github_base.replace(/\/$/, '')}/` : ''
+        };
+        const cK = `tr:cfg:${a.key}`, c = window.Utils?.fetchCache?.get?.(cK, 43200000, 'session');
+        const r = c ? c : await fetchFall(bs, 'config.json', 6000);
+        if (!r) return;
+        if (!c) window.Utils?.fetchCache?.set?.(cK, { json: r.json, src: r.src, base: r.base }, 'session');
+
+        const tit = r.json.albumName || a.title;
+        _alb.set(a.key, tit);
+        _cfg.set(a.key, {
+          title: tit,
+          bases: bs,
+          activeSrc: r.src,
+          artist: r.json.artist || 'Витрина Разбита',
+          links: (r.json.social_links || r.json.socials || []).map(s => ({ label: s.title || s.label, url: s.url }))
+        });
+
+        _albTr.set(a.key, (r.json.tracks || []).map((t, i) => {
+          const hi = toUrl(r.base, t.audio), lo = toUrl(r.base, t.audio_low), u = String(t.uid || '').trim() || null;
+          if (u) registerTrack({
+            uid: u,
+            title: t.title,
+            audio: hi,
+            audio_low: lo,
+            size: t.size,
+            size_low: t.size_low,
+            lyrics: toUrl(r.base, t.lyrics),
+            fulltext: toUrl(r.base, t.fulltext),
+            sourceAlbum: a.key,
+            rel_audio: t.audio,
+            rel_audio_low: t.audio_low,
+            rel_lyrics: t.lyrics,
+            rel_fulltext: t.fulltext
+          }, { title: tit });
+          return {
+            num: i + 1,
+            title: t.title || `Трек ${i + 1}`,
+            uid: u,
+            src: hi,
+            sources: hi || lo ? { audio: { hi, lo } } : null,
+            lyrics: toUrl(r.base, t.lyrics),
+            fulltext: toUrl(r.base, t.fulltext),
+            hasLyrics: t.hasLyrics ?? !!t.lyrics
+          };
+        }));
+      } catch {}
+    }));
+  }) || (_popP ||= (async () => {
     if (!window.albumsIndex?.length) try { await window.Utils?.onceEvent?.(window, 'albumsIndex:ready', { timeoutMs: 5000 }); } catch {}
     await Promise.allSettled((window.albumsIndex || []).filter(a => !a.key.startsWith('__')).map(async a => {
       try {
