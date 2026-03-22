@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-86a8c466667dd4a0611eda175300fdfb2e2db807.idx
-│   │       ├── pack-86a8c466667dd4a0611eda175300fdfb2e2db807.pack
-│   │       └── pack-86a8c466667dd4a0611eda175300fdfb2e2db807.rev
+│   │       ├── pack-d2fa19be59749fd05e11838fb91cf20950e08186.idx
+│   │       ├── pack-d2fa19be59749fd05e11838fb91cf20950e08186.pack
+│   │       └── pack-d2fa19be59749fd05e11838fb91cf20950e08186.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -408,7 +408,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 22:24:57 UTC
+Сгенерировано: 2026-03-22 22:25:30 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3880,7 +3880,7 @@ export const loadProfileView = async (ctx) => {
 
   renderProfileStats({ container: c, all });
   renderProfileRecs({ container: c, all });
-  setTimeout(() => renderProfileLogs({ container: c, metaDB }), 100);
+  setTimeout(() => { renderProfileLogs({ container: c, metaDB }); window.AlbumsManager?.highlightCurrentTrack?.(); }, 120);
 
   bindProfileLiveBindings({ ctx, getContainer: () => document.getElementById('track-list'), achView });
   bindProfileActions({ ctx, container: c, achView, profile, metaDB, cloudSync, tokens, reloadProfile: () => loadProfileView(ctx) });
