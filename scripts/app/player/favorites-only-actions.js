@@ -75,6 +75,18 @@ function playWithFavoritesOnlyResolution({
   });
 }
 
+function syncFavoritesOnlyPlayback({
+  player = W.playerCore,
+  autoPlayIfNeeded = true,
+  forceReload = false,
+  syncUi
+} = {}) {
+  if (!player) return { ok: false, reason: 'no_player' };
+  const applied = player.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded, forceReload });
+  syncUi?.();
+  return applied === false ? { ok: false, reason: 'empty' } : { ok: true };
+}
+
 function toggleFavoritesOnlyMode({
   player = W.playerCore,
   storage = localStorage,
@@ -83,19 +95,18 @@ function toggleFavoritesOnlyMode({
   if (!player) return { ok: false, enabled: isFavOnlyOn(), reason: 'no_player' };
   const next = !isFavOnlyOn();
   storage.setItem('favoritesOnlyMode', next ? '1' : '0');
-  const applied = player.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true });
-  if (next && applied === false) {
+  const res = syncFavoritesOnlyPlayback({ player, autoPlayIfNeeded: true, forceReload: false, syncUi });
+  if (next && !res.ok) {
     storage.setItem('favoritesOnlyMode', '0');
     syncUi?.();
     return { ok: false, enabled: false, reason: 'empty' };
   }
-  syncUi?.();
   return { ok: true, enabled: next };
 }
 
-const api = { openFavoritesOnlyConflictModal, makeFavoritesOnlyAfterPlay, playWithFavoritesOnlyResolution, toggleFavoritesOnlyMode };
+const api = { openFavoritesOnlyConflictModal, makeFavoritesOnlyAfterPlay, playWithFavoritesOnlyResolution, syncFavoritesOnlyPlayback, toggleFavoritesOnlyMode };
 
 W.FavoritesOnlyActions = api;
 
-export { openFavoritesOnlyConflictModal, makeFavoritesOnlyAfterPlay, playWithFavoritesOnlyResolution, toggleFavoritesOnlyMode };
+export { openFavoritesOnlyConflictModal, makeFavoritesOnlyAfterPlay, playWithFavoritesOnlyResolution, syncFavoritesOnlyPlayback, toggleFavoritesOnlyMode };
 export default api;
