@@ -122,14 +122,16 @@
         };
       }
       if (!dom.now.contains(dom.blk)) dom.now.append(dom.mini, dom.blk, dom.nUp);
-      W.LyricsController?.applyMiniMode?.(); dom.mini.style.display = dom.nUp.style.display = 'flex';
+      W.LyricsController?.applyMiniMode?.(); dom.mini.style.display = dom.nUp.style.display = l?.classList.contains('sc-is-searching') ? 'none' : 'flex';
     } else {
       if (r) { r.after(dom.blk); if (uInit) setTimeout(() => r.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50); }
       W.LyricsController?.restoreFromMiniMode?.(); dom.now.innerHTML = ''; if (dom.mini) dom.mini.style.display = dom.nUp.style.display = 'none';
     }
 
+    dom.blk.style.display = l?.classList.contains('sc-is-searching') ? 'none' : '';
+
     if (!dom.jump) { dom.jump = Object.assign(D.createElement('div'), { className: 'jump-to-playing', innerHTML: '<button>↑</button>', onclick: () => dom.blk?.scrollIntoView({ behavior: 'smooth', block: 'center' }) }); D.body.appendChild(dom.jump); }
-    if (W.IntersectionObserver) { W.pBlockObs?.disconnect(); (W.pBlockObs = new IntersectionObserver(([e]) => dom.jump.style.display = (!e.isIntersecting && !st.isMini) ? 'flex' : 'none', { threshold: 0.1 })).observe(dom.blk); }
+    if (W.IntersectionObserver) { W.pBlockObs?.disconnect(); (W.pBlockObs = new IntersectionObserver(([e]) => dom.jump.style.display = (!e.isIntersecting && !st.isMini && !l?.classList.contains('sc-is-searching')) ? 'flex' : 'none', { threshold: 0.1 })).observe(dom.blk); }
     syncUI();
   };
   
