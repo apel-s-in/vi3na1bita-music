@@ -79,7 +79,22 @@
         }
       };
     } },
-    func: { debounceFrame: fn => { let f; return (...a) => { if (f) cancelAnimationFrame(f); f = requestAnimationFrame(() => { f = null; fn(...a); }); }; }, throttle: (fn, w) => { let l = 0; return (...a) => { const n = Date.now(); if (n - l >= w) { l = n; fn(...a); } }; } },
+    func: {
+      debounceFrame: fn => { let f; return (...a) => { if (f) cancelAnimationFrame(f); f = requestAnimationFrame(() => { f = null; fn(...a); }); }; },
+      throttle: (fn, w) => { let l = 0; return (...a) => { const n = Date.now(); if (n - l >= w) { l = n; fn(...a); } }; },
+      once: fn => { let d = false, r; return (...a) => d ? r : ((d = true), (r = fn(...a))); },
+      initOnce: (() => {
+        const m = new Map();
+        return (k, fn) => {
+          const key = String(k || '').trim();
+          if (!key || typeof fn !== 'function') return false;
+          if (m.has(key)) return false;
+          m.set(key, 1);
+          fn();
+          return true;
+        };
+      })()
+    },
     isSpecialAlbumKey: k => String(k || '').startsWith('__'),
     normalizeAlbumContextKey: k => { const s = String(k || '').trim(); return !s ? '' : (s.startsWith('__showcase__') ? '__showcase__' : (s.startsWith('__favorites__') ? '__favorites__' : s)); },
     isShowcaseContext: k => U.normalizeAlbumContextKey(k) === '__showcase__',
