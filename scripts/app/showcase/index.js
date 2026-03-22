@@ -45,7 +45,7 @@ class ShowcaseManager {
     c.hidden = [...h];
     isDef(id) ? Store.setDef(c) : Store.save(c);
     if (localStorage.getItem('favoritesOnlyMode') === '1' && W.Utils?.isShowcaseContext?.(W.AlbumsManager?.getPlayingAlbum?.())) {
-      W.playerCore?.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true, forceReload: W.playerCore?.getCurrentTrackUid?.() === uid });
+      W.FavoritesOnlyActions?.syncFavoritesOnlyPlayback?.({ player: W.playerCore, autoPlayIfNeeded: true, forceReload: W.playerCore?.getCurrentTrackUid?.() === uid, syncUi: () => W.PlayerUI?.applyFavoritesOnlyDomFilter?.() });
     }
     this.renderTab();
   }
