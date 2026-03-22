@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6e01e74105cf0c04504ad4f80b7a494e0ff7ab1c.idx
-│   │       ├── pack-6e01e74105cf0c04504ad4f80b7a494e0ff7ab1c.pack
-│   │       └── pack-6e01e74105cf0c04504ad4f80b7a494e0ff7ab1c.rev
+│   │       ├── pack-3aef5387a95992c793d416badb9d50f65f9b14df.idx
+│   │       ├── pack-3aef5387a95992c793d416badb9d50f65f9b14df.pack
+│   │       └── pack-3aef5387a95992c793d416badb9d50f65f9b14df.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -408,7 +408,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 21:44:51 UTC
+Сгенерировано: 2026-03-22 21:45:32 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2620,14 +2620,16 @@ window.PlaybackCache.getWindowState = getWindowState; window.PlaybackCache.prote
         };
       }
       if (!dom.now.contains(dom.blk)) dom.now.append(dom.mini, dom.blk, dom.nUp);
-      W.LyricsController?.applyMiniMode?.(); dom.mini.style.display = dom.nUp.style.display = 'flex';
+      W.LyricsController?.applyMiniMode?.(); dom.mini.style.display = dom.nUp.style.display = l?.classList.contains('sc-is-searching') ? 'none' : 'flex';
     } else {
       if (r) { r.after(dom.blk); if (uInit) setTimeout(() => r.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50); }
       W.LyricsController?.restoreFromMiniMode?.(); dom.now.innerHTML = ''; if (dom.mini) dom.mini.style.display = dom.nUp.style.display = 'none';
     }
 
+    dom.blk.style.display = l?.classList.contains('sc-is-searching') ? 'none' : '';
+
     if (!dom.jump) { dom.jump = Object.assign(D.createElement('div'), { className: 'jump-to-playing', innerHTML: '<button>↑</button>', onclick: () => dom.blk?.scrollIntoView({ behavior: 'smooth', block: 'center' }) }); D.body.appendChild(dom.jump); }
-    if (W.IntersectionObserver) { W.pBlockObs?.disconnect(); (W.pBlockObs = new IntersectionObserver(([e]) => dom.jump.style.display = (!e.isIntersecting && !st.isMini) ? 'flex' : 'none', { threshold: 0.1 })).observe(dom.blk); }
+    if (W.IntersectionObserver) { W.pBlockObs?.disconnect(); (W.pBlockObs = new IntersectionObserver(([e]) => dom.jump.style.display = (!e.isIntersecting && !st.isMini && !l?.classList.contains('sc-is-searching')) ? 'flex' : 'none', { threshold: 0.1 })).observe(dom.blk); }
     syncUI();
   };
   
