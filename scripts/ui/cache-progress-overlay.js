@@ -1,7 +1,9 @@
 import { getOfflineManager } from '../offline/offline-manager.js';
-let _layer = null;
+let _layer = null, _init = false;
 
 export const initCacheProgressOverlay = () => {
+  if (_init) return;
+  _init = true;
   const s = () => requestAnimationFrame(updateProgressBar);
   ['player:trackChanged', 'offline:downloadStart', 'offline:trackCached', 'offline:downloadFailed', 'offline:stateChanged', 'offline:uiChanged'].forEach(ev => window.addEventListener(ev, s));
   document.getElementById('cache-progress-overlay')?.remove();
