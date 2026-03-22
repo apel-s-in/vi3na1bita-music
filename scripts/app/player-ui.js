@@ -9,6 +9,7 @@
   'use strict';
   const U = W.Utils, PC = () => W.playerCore, AM = () => W.AlbumsManager;
   const st = { isMini: false, seeking: false, vizOn: U.lsGetBool01('bitEnabled'), vizId: 0, ctx: null, provider: 'unknown' }, dom = { blk: null, now: null, mini: null, nUp: null, jump: null, el: {} };
+  let _inited = false, _booting = false;
 
   const applyFavoritesOnlyDomFilter = () => {
     const c = PC(), lst = D.getElementById('track-list'), cA = AM()?.getCurrentAlbum?.(), pA = AM()?.getPlayingAlbum?.(), f = U.lsGetBool01('favoritesOnlyMode');
@@ -139,18 +140,21 @@
   };
   
   const init = () => {
+    if (_inited || _booting) return;
     if (!W.playerCore || !W.albumsIndex || !U) return setTimeout(init, 100);
+    _booting = true;
     const c = PC();
+
     c.on({
       onPlay: syncUI, onPause: syncUI, onStop: syncUI, onEnd: syncUI,
       onTrackChange: (t, i) => { AM()?.highlightCurrentTrack?.(t?.uid ? -1 : i, t?.uid ? { uid: t.uid, albumKey: t.sourceAlbum } : {}); ensureBlock(i); W.LyricsController?.onTrackChange?.(t); syncUI(); },
       onTick: (p, d) => {
         if (!st.seeking) {
           const pct = d > 0 ? (p / d) * 100 : 0;
-          if (dom.el.fill) dom.el.fill.style.width = `${pct}%`; 
+          if (dom.el.fill) dom.el.fill.style.width = `${pct}%`;
           if (st.isMini && dom.el.mPrg) dom.el.mPrg.style.width = `${pct}%`;
-          if (dom.el.tE) dom.el.tE.textContent = U.fmt.time(p); 
-          if (dom.el.tR) dom.el.tR.textContent = `-${U.fmt.time((d || 0) - p)}`; 
+          if (dom.el.tE) dom.el.tE.textContent = U.fmt.time(p);
+          if (dom.el.tR) dom.el.tR.textContent = `-${U.fmt.time((d || 0) - p)}`;
         }
         W.LyricsController?.onTick?.(p, { inMiniMode: st.isMini });
       }
@@ -161,6 +165,7 @@
       if (p === W.SPECIAL_FAVORITES_KEY || U.lsGetBool01('favoritesOnlyMode')) W.FavoritesOnlyActions?.syncFavoritesOnlyPlayback?.({ player: c, autoPlayIfNeeded: true, forceReload: false, syncUi: syncUI });
       else syncUI();
     });
+
     W.addEventListener('player:inactiveFavoriteModalRequested', e => {
       const d = e.detail || {}, uid = String(d.uid || '').trim();
       if (!uid || !W.Modals?.open) return;
@@ -168,13 +173,17 @@
       m.querySelector('[data-act="add"]')?.addEventListener('click', () => { m.remove(); c.restoreInactive(uid); });
       m.querySelector('[data-act="remove"]')?.addEventListener('click', () => { m.remove(); c.removeInactivePermanently(uid); try { d.onDeleted?.(); } catch {} });
     });
+
     W.addEventListener('playlist:changed', syncUI);
     W.addEventListener('player:providerChanged', e => { st.provider = e.detail?.provider; syncUI(); });
     ['offline:uiChanged', 'online', 'offline'].forEach(e => W.addEventListener(e, syncUI));
-    
+
     c.setVolume(U.math.toInt(U.lsGet('playerVolume'), 100));
-    if (st.vizOn) togViz(true); 
+    if (st.vizOn) togViz(true);
     syncUI();
+
+    _inited = true;
+    _booting = false;
   };
 
   W.PlayerUI = { initialize: init, ensurePlayerBlock: (i, o) => ensureBlock(i, o?.userInitiated), updateMiniHeader: syncUI, updateNextUpLabel: syncUI, updatePlaylistFiltering: () => { applyFavoritesOnlyDomFilter(); if (dom.blk) syncUI(); }, applyFavoritesOnlyDomFilter, togglePlayPause: () => PC().isPlaying() ? PC().pause() : PC().play(), switchAlbumInstantly: () => { if (PC().getIndex() >= 0) ensureBlock(PC().getIndex()); } };
