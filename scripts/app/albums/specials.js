@@ -46,8 +46,8 @@ export async function loadFavoritesAlbum(ctx) {
         ctx.setPlayingAlbum(FAV);
         const tr = window.PlaybackContextSource?.getSourcePlaylistForContext?.(FAV) || [];
         const idx = tr.findIndex(t => t.uid === u);
-        if (idx >= 0) { pc.setPlaylist(tr, idx, { artist: 'Витрина Разбита', album: 'Избранное', cover: FAV_COVER }, { preservePosition: false }); pc.play(idx); pc.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true }); ctx.highlightCurrentTrack(-1, { uid: u, albumKey: aK }); window.PlayerUI?.ensurePlayerBlock?.(idx, { userInitiated: true }); window.PlayerUI?.applyFavoritesOnlyDomFilter?.(); requestAnimationFrame(() => window.PlayerUI?.applyFavoritesOnlyDomFilter?.()); }
-      } else pc.showInactiveFavoriteModal({ uid: u, title: window.TrackRegistry?.getTrackByUid(u)?.title || 'Трек', onDeleted: () => { rb(); pc.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true }); window.PlayerUI?.applyFavoritesOnlyDomFilter?.(); requestAnimationFrame(() => window.PlayerUI?.applyFavoritesOnlyDomFilter?.()); } });
+        if (idx >= 0) { pc.setPlaylist(tr, idx, { artist: 'Витрина Разбита', album: 'Избранное', cover: FAV_COVER }, { preservePosition: false }); pc.play(idx); window.FavoritesOnlyActions?.syncFavoritesOnlyPlayback?.({ player: pc, autoPlayIfNeeded: true, forceReload: false, syncUi: () => window.PlayerUI?.applyFavoritesOnlyDomFilter?.() }); ctx.highlightCurrentTrack(-1, { uid: u, albumKey: aK }); window.PlayerUI?.ensurePlayerBlock?.(idx, { userInitiated: true }); window.PlayerUI?.applyFavoritesOnlyDomFilter?.(); requestAnimationFrame(() => window.PlayerUI?.applyFavoritesOnlyDomFilter?.()); }
+      } else pc.showInactiveFavoriteModal({ uid: u, title: window.TrackRegistry?.getTrackByUid(u)?.title || 'Трек', onDeleted: () => { rb(); window.FavoritesOnlyActions?.syncFavoritesOnlyPlayback?.({ player: pc, autoPlayIfNeeded: true, forceReload: false, syncUi: () => window.PlayerUI?.applyFavoritesOnlyDomFilter?.() }); window.PlayerUI?.applyFavoritesOnlyDomFilter?.(); requestAnimationFrame(() => window.PlayerUI?.applyFavoritesOnlyDomFilter?.()); } });
     });
 
     window.playerCore?.onFavoritesChanged(() => {
@@ -57,7 +57,7 @@ export async function loadFavoritesAlbum(ctx) {
           const aT = window.PlaybackContextSource?.getSourcePlaylistForContext?.(FAV) || [];
           if (aT.length) pc.originalPlaylist = aT;
         }
-        pc.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true });
+        window.FavoritesOnlyActions?.syncFavoritesOnlyPlayback?.({ player: pc, autoPlayIfNeeded: true, forceReload: false, syncUi: () => window.PlayerUI?.applyFavoritesOnlyDomFilter?.() });
         window.PlayerUI?.applyFavoritesOnlyDomFilter?.();
         requestAnimationFrame(() => window.PlayerUI?.applyFavoritesOnlyDomFilter?.());
       }
