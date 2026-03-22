@@ -27,7 +27,7 @@ async function fetchJson(url, cacheKey) {
       fetchInit: { cache: 'force-cache' }
     });
   }
-  const res = await fetch(url, { cache: 'force-cache' });
+  const res = await (window.NetPolicy?.fetchWithTraffic?.(url, { cache: 'force-cache' }) || fetch(url, { cache: 'force-cache' }));
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
