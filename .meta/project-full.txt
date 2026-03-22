@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-0698dee314aac0fdf5008a0f9b2599910e6abe66.idx
-│   │       ├── pack-0698dee314aac0fdf5008a0f9b2599910e6abe66.pack
-│   │       └── pack-0698dee314aac0fdf5008a0f9b2599910e6abe66.rev
+│   │       ├── pack-866bba1c5c3178bf0ef19927587558f15994dcce.idx
+│   │       ├── pack-866bba1c5c3178bf0ef19927587558f15994dcce.pack
+│   │       └── pack-866bba1c5c3178bf0ef19927587558f15994dcce.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -407,7 +407,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 12:17:30 UTC
+Сгенерировано: 2026-03-22 12:18:32 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4629,7 +4629,7 @@ if (errs.length) { console.error('Failed:\n', errs.join('\n')); process.exit(2);
 // UID.092_(Incremental rollout order)_(делать staged внедрение через один конфиг)_(intel boot должен управляться отсюда)
 
 export const APP_CONFIG = {
-  APP_VERSION: '8.1.43',
+  APP_VERSION: '8.1.44',
   BUILD_DATE: '2026-03-22',
   PROMOCODE: 'VITRINA2025',
   ICON_ALBUMS_ORDER: [
@@ -4723,18 +4723,18 @@ export const Favorites = new FavoritesManager(); window.FavoritesManager = Favor
       if (!btn) return;
       if (!t?.src && !t?.uid) { btn.removeAttribute('href'); btn.removeAttribute('download'); btn.classList.add('disabled'); btn._dlUid = null; return; }
       
-      const getFmt = () => { try { const d = JSON.parse(localStorage.getItem('dl_format_v1') || '{}'); return { ord: d.ord || ['band','album','num','title','custom'], en: d.en || {band:true, title:true}, cst: d.cst || '' }; } catch { return { ord: ['band','album','num','title','custom'], en: {band:true, title:true}, cst: '' }; } };
+      const getFmt = () => { try { const d = JSON.parse(localStorage.getItem('dl_format_v1') || '{}'); return { ord: d.ord || ['custom','band','album','num','title'], en: d.en || {custom:true, title:true}, cst: d.cst || '' }; } catch { return { ord: ['custom','band','album','num','title'], en: {custom:true, title:true}, cst: '' }; } };
       const fmt = getFmt();
       const tNum = t.uid && t.sourceAlbum ? (W.TrackRegistry?.getTracksForAlbum?.(t.sourceAlbum)?.findIndex(x => x.uid === t.uid) + 1) : '';
       const aT = W.TrackRegistry?.getAlbumTitle?.(t.sourceAlbum) || t.album || '';
       const pts = [];
       fmt.ord.forEach(k => {
         if(!fmt.en[k]) return;
-        if(k==='band') pts.push(t.artist || 'Витрина Разбита');
+        if(k==='custom') pts.push(fmt.cst || 'Vi3na1bita');
+        if(k==='band') pts.push(t.artist || 'Витрина разбита');
         if(k==='album' && aT) pts.push(aT);
         if(k==='num' && tNum) pts.push(String(tNum).padStart(2,'0'));
         if(k==='title' && t.title) pts.push(t.title);
-        if(k==='custom' && fmt.cst) pts.push(fmt.cst);
       });
       let fN = pts.length ? pts.join(' - ') + '.mp3' : (t.title ? `${t.title}.mp3` : 'track.mp3');
       fN = fN.replace(/[<>:"/\\|?*]+/g, '');
