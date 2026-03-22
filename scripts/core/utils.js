@@ -26,18 +26,18 @@
       if (!btn) return;
       if (!t?.src && !t?.uid) { btn.removeAttribute('href'); btn.removeAttribute('download'); btn.classList.add('disabled'); btn._dlUid = null; return; }
       
-      const getFmt = () => { try { const d = JSON.parse(localStorage.getItem('dl_format_v1') || '{}'); return { ord: d.ord || ['band','album','num','title','custom'], en: d.en || {band:true, title:true}, cst: d.cst || '' }; } catch { return { ord: ['band','album','num','title','custom'], en: {band:true, title:true}, cst: '' }; } };
+      const getFmt = () => { try { const d = JSON.parse(localStorage.getItem('dl_format_v1') || '{}'); return { ord: d.ord || ['custom','band','album','num','title'], en: d.en || {custom:true, title:true}, cst: d.cst || '' }; } catch { return { ord: ['custom','band','album','num','title'], en: {custom:true, title:true}, cst: '' }; } };
       const fmt = getFmt();
       const tNum = t.uid && t.sourceAlbum ? (W.TrackRegistry?.getTracksForAlbum?.(t.sourceAlbum)?.findIndex(x => x.uid === t.uid) + 1) : '';
       const aT = W.TrackRegistry?.getAlbumTitle?.(t.sourceAlbum) || t.album || '';
       const pts = [];
       fmt.ord.forEach(k => {
         if(!fmt.en[k]) return;
-        if(k==='band') pts.push(t.artist || 'Витрина Разбита');
+        if(k==='custom') pts.push(fmt.cst || 'Vi3na1bita');
+        if(k==='band') pts.push(t.artist || 'Витрина разбита');
         if(k==='album' && aT) pts.push(aT);
         if(k==='num' && tNum) pts.push(String(tNum).padStart(2,'0'));
         if(k==='title' && t.title) pts.push(t.title);
-        if(k==='custom' && fmt.cst) pts.push(fmt.cst);
       });
       let fN = pts.length ? pts.join(' - ') + '.mp3' : (t.title ? `${t.title}.mp3` : 'track.mp3');
       fN = fN.replace(/[<>:"/\\|?*]+/g, '');
