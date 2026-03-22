@@ -1,4 +1,8 @@
+let _inited = false;
+
 export async function initOfflineUI() {
+  if (_inited) return;
+  _inited = true;
   const sync = () => navigator.serviceWorker?.controller?.postMessage({ type: 'SYNC_AIRPLANE_MODE', payload: window.NetPolicy ? window.NetPolicy.getNetPolicyState().airplaneMode : !navigator.onLine });
   ['netPolicy:changed', 'online', 'offline'].forEach(e => window.addEventListener(e, sync)); sync();
   try {
