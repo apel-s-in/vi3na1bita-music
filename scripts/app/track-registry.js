@@ -29,7 +29,7 @@ async function fetchFall(bs, p, t = 6000) {
     if (!isHlthy(s) || !bs[s]) continue;
     try {
       const c = new AbortController(), id = setTimeout(() => c.abort(), t);
-      const r = await fetch(bs[s].replace(/\/+$/, '') + '/' + p.replace(/^\/+/, ''), { cache: 'force-cache', signal: c.signal });
+      const r = await ((window.NetPolicy?.guardedFetch?.(bs[s].replace(/\/+$/, '') + '/' + p.replace(/^\/+/, ''), { cache: 'force-cache', signal: c.signal })) || fetch(bs[s].replace(/\/+$/, '') + '/' + p.replace(/^\/+/, ''), { cache: 'force-cache', signal: c.signal }));
       clearTimeout(id);
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       mark(s, true);
