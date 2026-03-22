@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a54e1eff0cc4edbc0a48ba5b32f1e5a80afc4a72.idx
-│   │       ├── pack-a54e1eff0cc4edbc0a48ba5b32f1e5a80afc4a72.pack
-│   │       └── pack-a54e1eff0cc4edbc0a48ba5b32f1e5a80afc4a72.rev
+│   │       ├── pack-aee763f26502d2d9e49167abbc3ae388b4fe287b.idx
+│   │       ├── pack-aee763f26502d2d9e49167abbc3ae388b4fe287b.pack
+│   │       └── pack-aee763f26502d2d9e49167abbc3ae388b4fe287b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -408,7 +408,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 22:06:01 UTC
+Сгенерировано: 2026-03-22 22:06:35 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2232,6 +2232,7 @@ class AlbumsManager {
           tList.innerHTML = d.tracks.map((t, i) => `<div class="track" id="trk${i}" data-index="${i}" data-album="${escHtml(key)}" data-uid="${escHtml(t.uid)}"><div class="tnum">${String(t.num).padStart(2,'0')}.</div><div class="track-title">${escHtml(t.title)}</div>${renderFavoriteStar(!!(t.uid && W.playerCore?.isFavorite?.(t.uid)), `data-album="${escHtml(key)}" data-uid="${escHtml(t.uid)}"` )}</div>`).join('');
           tList.querySelectorAll('.track[data-uid]').forEach(el => injectIndicator(el));
         }
+        this.highlightCurrentTrack();
         W.PlayerUI?.updateMiniHeader?.();
       }
       this.curr = key; localStorage.setItem('currentAlbum', key);
