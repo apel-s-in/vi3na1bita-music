@@ -131,10 +131,9 @@ class AlbumsManager {
   }
 
   highlightCurrentTrack(i, { uid, albumKey } = {}) {
-    D.querySelectorAll('.track.current').forEach(n => n.classList.remove('current'));
-    if (W.Utils?.isShowcaseContext?.(this.curr) && uid) return D.querySelectorAll(`[data-uid="${CSS.escape(uid)}"]`).forEach(el => el.classList.add('current'));
-    const sel = (this.curr === FAV && uid && albumKey) ? `.track[data-album="${CSS.escape(albumKey)}"][data-uid="${CSS.escape(uid)}"]` : (uid ? `.track[data-uid="${CSS.escape(uid)}"]` : (i >= 0 ? `.track[data-index="${i}"]` : null));
-    if (sel) D.querySelector(sel)?.classList.add('current');
+    D.querySelectorAll('.track.current, .showcase-track.current').forEach(n => n.classList.remove('current'));
+    const u = uid || W.playerCore?.getCurrentTrackUid?.();
+    if (u) D.querySelectorAll(`[data-uid="${CSS.escape(u)}"]`).forEach(el => el.classList.add('current'));
   }
 
   getCurrentAlbum() { return this.curr; } getPlayingAlbum() { return this.playing; } setPlayingAlbum(k) { this.playing = k; }
