@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-50c064687e3c91606cb08dab3764efcd013fe4c4.idx
-│   │       ├── pack-50c064687e3c91606cb08dab3764efcd013fe4c4.pack
-│   │       └── pack-50c064687e3c91606cb08dab3764efcd013fe4c4.rev
+│   │       ├── pack-7a3c9519c895231b8a4e6aa5c0b89c3f511d830e.idx
+│   │       ├── pack-7a3c9519c895231b8a4e6aa5c0b89c3f511d830e.pack
+│   │       └── pack-7a3c9519c895231b8a4e6aa5c0b89c3f511d830e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -407,7 +407,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 13:32:09 UTC
+Сгенерировано: 2026-03-22 13:32:47 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3973,7 +3973,7 @@ class ShowcaseManager {
     c.hidden = [...h];
     isDef(id) ? Store.setDef(c) : Store.save(c);
     if (localStorage.getItem('favoritesOnlyMode') === '1' && W.Utils?.isShowcaseContext?.(W.AlbumsManager?.getPlayingAlbum?.())) {
-      W.playerCore?.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true, forceReload: W.playerCore?.getCurrentTrackUid?.() === uid });
+      W.FavoritesOnlyActions?.syncFavoritesOnlyPlayback?.({ player: W.playerCore, autoPlayIfNeeded: true, forceReload: W.playerCore?.getCurrentTrackUid?.() === uid, syncUi: () => W.PlayerUI?.applyFavoritesOnlyDomFilter?.() });
     }
     this.renderTab();
   }
