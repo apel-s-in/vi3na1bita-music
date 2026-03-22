@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ed90973c90c6112779c1312228fed8e545ea9a78.idx
-│   │       ├── pack-ed90973c90c6112779c1312228fed8e545ea9a78.pack
-│   │       └── pack-ed90973c90c6112779c1312228fed8e545ea9a78.rev
+│   │       ├── pack-98250fd95ff903a0d0ad88e11f8eef305fe4d5a9.idx
+│   │       ├── pack-98250fd95ff903a0d0ad88e11f8eef305fe4d5a9.pack
+│   │       └── pack-98250fd95ff903a0d0ad88e11f8eef305fe4d5a9.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -407,7 +407,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 17:21:44 UTC
+Сгенерировано: 2026-03-22 17:22:36 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7370,7 +7370,7 @@ export const loadAndRenderNewsInline = async c => {
 import { getOfflineManager } from '../offline/offline-manager.js';
 import { getAllTrackMetas } from '../offline/cache-db.js';
 
-let _timer = 0, _menu = null;
+let _timer = 0, _menu = null, _inited = false;
 
 export const refreshAllIndicators = async () => {
   const mgr = getOfflineManager(), hasSpace = await mgr.hasSpace().catch(() => true), metaMap = new Map((await getAllTrackMetas().catch(() => [])).map(m => [m.uid, m]));
@@ -7427,7 +7427,12 @@ document.addEventListener('click', async (e) => {
   }
 });
 
-export const initOfflineIndicators = () => { ['offline:uiChanged', 'offline:stateChanged', 'offline:trackCached', 'offline:downloadStart', 'netPolicy:changed'].forEach(ev => window.addEventListener(ev, scheduleRefresh)); injectOfflineIndicators(); };
+export const initOfflineIndicators = () => {
+  if (_inited) return;
+  _inited = true;
+  ['offline:uiChanged', 'offline:stateChanged', 'offline:trackCached', 'offline:downloadStart', 'netPolicy:changed'].forEach(ev => window.addEventListener(ev, scheduleRefresh));
+  injectOfflineIndicators();
+};
 window.OfflineIndicators = { initOfflineIndicators, injectOfflineIndicators, injectIndicator, refreshAllIndicators };
 export default window.OfflineIndicators;
 
