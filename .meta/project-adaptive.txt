@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-50ed24e72c0e9f4c802acc28a392f9c11280a46a.idx
-│   │       ├── pack-50ed24e72c0e9f4c802acc28a392f9c11280a46a.pack
-│   │       └── pack-50ed24e72c0e9f4c802acc28a392f9c11280a46a.rev
+│   │       ├── pack-b37766eac1bda5bb9f6cf4b6b3c9e9f80f5eb2c2.idx
+│   │       ├── pack-b37766eac1bda5bb9f6cf4b6b3c9e9f80f5eb2c2.pack
+│   │       └── pack-b37766eac1bda5bb9f6cf4b6b3c9e9f80f5eb2c2.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -407,7 +407,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 18:33:06 UTC
+Сгенерировано: 2026-03-22 18:34:01 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2395,11 +2395,8 @@ W.GalleryManager = new GalleryManager(); export default W.GalleryManager;
 
 //=================================================
 // FILE: /scripts/app/offline-ui-bootstrap.js
-let _inited = false;
-
 export async function initOfflineUI() {
-  if (_inited) return;
-  _inited = true;
+  if (!window.Utils?.func?.initOnce?.('app:offline-ui-bootstrap:init', () => {})) return;
   const sync = () => navigator.serviceWorker?.controller?.postMessage({ type: 'SYNC_AIRPLANE_MODE', payload: window.NetPolicy ? window.NetPolicy.getNetPolicyState().airplaneMode : !navigator.onLine });
   ['netPolicy:changed', 'online', 'offline'].forEach(e => window.addEventListener(e, sync)); sync();
   try {
