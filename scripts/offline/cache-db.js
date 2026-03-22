@@ -6,44 +6,27 @@
 
 const DB_NAME = 'offlineCache';
 const DB_VERSION = 2;
-let _db = null, _dbPending = null;
+let _db = null;
 
 export const openDB = () => {
   if (_db) return Promise.resolve(_db);
-  return window.Utils?.func?.memoAsyncOnce?.('offline:cache-db:open', () => new Promise((res, rej) => {
+  return window.Utils.func.memoAsyncOnce('offline:cache-db:open', () => new Promise((res, rej) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
     req.onupgradeneeded = (e) => {
       const db = e.target.result;
       if (!db.objectStoreNames.contains('audio')) db.createObjectStore('audio', { keyPath: ['uid', 'quality'] });
-      
-      let metaStore = db.objectStoreNames.contains('trackMeta') 
-        ? e.target.transaction.objectStore('trackMeta') 
+
+      let metaStore = db.objectStoreNames.contains('trackMeta')
+        ? e.target.transaction.objectStore('trackMeta')
         : db.createObjectStore('trackMeta', { keyPath: 'uid' });
-        
+
       if (!metaStore.indexNames.contains('type')) metaStore.createIndex('type', 'type', { unique: false });
       if (!metaStore.indexNames.contains('cloudExpiresAt')) metaStore.createIndex('cloudExpiresAt', 'cloudExpiresAt', { unique: false });
-      
+
       if (!db.objectStoreNames.contains('global')) db.createObjectStore('global', { keyPath: 'key' });
     };
-    req.onsuccess = () => { _db = req.result; _dbPending = null; res(_db); };
-    req.onerror = () => { _dbPending = null; rej(req.error); };
-  })) || (_dbPending ||= new Promise((res, rej) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = (e) => {
-      const db = e.target.result;
-      if (!db.objectStoreNames.contains('audio')) db.createObjectStore('audio', { keyPath: ['uid', 'quality'] });
-      
-      let metaStore = db.objectStoreNames.contains('trackMeta') 
-        ? e.target.transaction.objectStore('trackMeta') 
-        : db.createObjectStore('trackMeta', { keyPath: 'uid' });
-        
-      if (!metaStore.indexNames.contains('type')) metaStore.createIndex('type', 'type', { unique: false });
-      if (!metaStore.indexNames.contains('cloudExpiresAt')) metaStore.createIndex('cloudExpiresAt', 'cloudExpiresAt', { unique: false });
-      
-      if (!db.objectStoreNames.contains('global')) db.createObjectStore('global', { keyPath: 'key' });
-    };
-    req.onsuccess = () => { _db = req.result; _dbPending = null; res(_db); };
-    req.onerror = () => { _dbPending = null; rej(req.error); };
+    req.onsuccess = () => { _db = req.result; res(_db); };
+    req.onerror = () => rej(req.error);
   }));
 };
 
