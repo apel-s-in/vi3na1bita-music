@@ -14,10 +14,18 @@
     if (!txt) return N?.warning('Текст песни недоступен');
     const esc = U?.escapeHtml || (s => String(s || ''));
     
-    U?.dom?.createStyleOnce?.('lyrics-modal-styles', `.lyrics-modal-box{max-height:80vh}.lyrics-modal-title{margin:0 0 8px 0}.lyrics-modal-meta{color:#8ab8fd;margin-bottom:16px;font-size:14px}.lyrics-modal-text{max-height:50vh;overflow-y:auto;padding:16px;background:rgba(0,0,0,0.2);border-radius:10px;line-height:1.8;white-space:pre-wrap;font-size:15px;scrollbar-width:thin;scrollbar-color:rgba(77,170,255,0.3) transparent}.lyrics-modal-actions{display:flex;gap:10px;margin-top:16px;justify-content:center;flex-wrap:wrap}`);
+    U?.dom?.createStyleOnce?.('lyrics-modal-styles', `.lyrics-modal-box{max-height:80vh}.lyrics-modal-meta{color:#8ab8fd;margin-bottom:16px;font-size:14px;text-align:center}.lyrics-modal-text-wrap{max-height:55vh;overflow-y:auto;overflow-x:hidden;padding:16px;background:rgba(0,0,0,0.2);border-radius:10px;scrollbar-width:thin;scrollbar-color:rgba(77,170,255,0.3) transparent}.lyrics-modal-text-inner{white-space:pre;font-size:15px;line-height:1.8;width:max-content}.lyrics-modal-actions{display:flex;gap:10px;margin-top:16px;justify-content:center;flex-wrap:wrap}`);
 
-    const m = W.Modals?.open?.({ title: 'Текст песни', maxWidth: 560, bodyHtml: `<div class="lyrics-modal lyrics-modal-box"><h2 class="lyrics-modal-title">${esc(t.title)}</h2><div class="lyrics-modal-meta">${esc(t.artist || 'Витрина Разбита')} · ${esc(t.album || '')}</div><div class="lyrics-fulltext lyrics-modal-text">${esc(txt)}</div><div class="lyrics-modal-actions"><button class="modal-action-btn" id="copy-lyrics-btn">📋 Копировать</button><button class="modal-action-btn" id="share-lyrics-btn">📤 Поделиться</button></div></div>` });
+    const m = W.Modals?.open?.({ title: esc(t.title), maxWidth: 420, bodyHtml: `<div class="lyrics-modal lyrics-modal-box"><div class="lyrics-modal-meta">${esc(t.artist || 'Витрина Разбита')} · ${esc(t.album || '')}</div><div class="lyrics-modal-text-wrap" id="lm-wrap"><div class="lyrics-fulltext lyrics-modal-text-inner" id="lm-inner">${esc(txt)}</div></div><div class="lyrics-modal-actions"><button class="modal-action-btn" id="copy-lyrics-btn">📋 Копировать</button></div></div>` });
     if (!m) return N?.error('Система окон недоступна');
+
+    requestAnimationFrame(() => {
+      const wrap = m.querySelector('#lm-wrap'), inner = m.querySelector('#lm-inner');
+      if (wrap && inner) {
+        const ratio = (wrap.clientWidth - 32) / inner.scrollWidth;
+        if (ratio < 1) inner.style.fontSize = Math.floor(15 * ratio) + 'px';
+      }
+    });
 
     m.querySelector('#copy-lyrics-btn')?.addEventListener('click', async () => {
       try { await navigator.clipboard.writeText(txt); N?.success('Текст скопирован'); m.remove(); } catch {
@@ -25,10 +33,6 @@
         const ta = Object.assign(D.createElement('textarea'), { className: 'lyrics-copy-helper', value: txt }); D.body.appendChild(ta); ta.select();
         try { D.execCommand('copy'); N?.success('Текст скопирован'); m.remove(); } catch { N?.error('Не удалось скопировать'); } ta.remove();
       }
-    });
-    m.querySelector('#share-lyrics-btn')?.addEventListener('click', async () => {
-      if (!navigator.share) return N?.info('Функция "Поделиться" недоступна в этом браузере');
-      try { await navigator.share({ title: t.title, text: `${t.title} - ${t.artist}\n\n${txt}` }); } catch (e) { if (e.name !== 'AbortError') console.error(e); }
     });
   };
   window.LyricsModal = { show };
