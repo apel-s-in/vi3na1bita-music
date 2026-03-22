@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8558d3ab41adcf03f4a31e6dec0a2aae9e066276.idx
-│   │       ├── pack-8558d3ab41adcf03f4a31e6dec0a2aae9e066276.pack
-│   │       └── pack-8558d3ab41adcf03f4a31e6dec0a2aae9e066276.rev
+│   │       ├── pack-56a0d9c46f6070c40bfff7d8f77094f78a34d15e.idx
+│   │       ├── pack-56a0d9c46f6070c40bfff7d8f77094f78a34d15e.pack
+│   │       └── pack-56a0d9c46f6070c40bfff7d8f77094f78a34d15e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -407,7 +407,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 19:29:19 UTC
+Сгенерировано: 2026-03-22 19:30:28 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1499,9 +1499,9 @@ export class CloudSyncManager {
     window.NotificationSystem?.info('Синхронизация с облаком...');
     try {
       const b = new Blob([JSON.stringify(await BackupVault.buildBackupObject())], { type: 'application/json' });
-      const r = await fetch('https://cloud-api.yandex.net/v1/disk/resources/upload?path=app:/vi3na1bita_sync.vi3bak&overwrite=true', { headers: { 'Authorization': `OAuth ${this.tokens.yandex}` } });
+      const r = await (window.NetPolicy?.guardedFetch?.('https://cloud-api.yandex.net/v1/disk/resources/upload?path=app:/vi3na1bita_sync.vi3bak&overwrite=true', { headers: { 'Authorization': `OAuth ${this.tokens.yandex}` } }) || fetch('https://cloud-api.yandex.net/v1/disk/resources/upload?path=app:/vi3na1bita_sync.vi3bak&overwrite=true', { headers: { 'Authorization': `OAuth ${this.tokens.yandex}` } }));
       if (!r.ok) throw { status: r.status };
-      await fetch((await r.json()).href, { method: 'PUT', body: b });
+      await (window.NetPolicy?.guardedFetch?.((await r.json()).href, { method: 'PUT', body: b }) || fetch((await r.json()).href, { method: 'PUT', body: b }));
       window.NotificationSystem?.success('Синхронизация завершена'); eventLogger.log('CLOUD_SYNC_SUCCESS', null, { provider });
     } catch (e) { window.NotificationSystem?.error('Ошибка синхронизации'); }
   }
