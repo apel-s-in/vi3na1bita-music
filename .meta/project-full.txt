@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-83eaf84d2a511a4e2e894ad0d2fed0956fd84cc1.idx
-│   │       ├── pack-83eaf84d2a511a4e2e894ad0d2fed0956fd84cc1.pack
-│   │       └── pack-83eaf84d2a511a4e2e894ad0d2fed0956fd84cc1.rev
+│   │       ├── pack-f2062d7500f7698f2c7f7a1b2dc55908da105126.idx
+│   │       ├── pack-f2062d7500f7698f2c7f7a1b2dc55908da105126.pack
+│   │       └── pack-f2062d7500f7698f2c7f7a1b2dc55908da105126.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -407,7 +407,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 18:36:08 UTC
+Сгенерировано: 2026-03-22 18:50:03 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4844,6 +4844,18 @@ export const Favorites = new FavoritesManager(); window.FavoritesManager = Favor
           m.set(key, 1);
           fn();
           return true;
+        };
+      })(),
+      memoAsyncOnce: (() => {
+        const m = new Map();
+        return (k, fn, { resetOnReject = true } = {}) => {
+          const key = String(k || '').trim();
+          if (!key || typeof fn !== 'function') return Promise.resolve(null);
+          if (m.has(key)) return m.get(key);
+          const p = Promise.resolve().then(fn);
+          m.set(key, p);
+          if (resetOnReject) p.catch(() => m.delete(key));
+          return p;
         };
       })()
     },
