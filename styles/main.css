@@ -241,6 +241,9 @@ body.news-view #cover-wrap{display:none!important}
 .fav-empty{padding:20px;text-align:center;color:#8ab8fd}
 .fav-empty h3{margin:0 0 10px}
 .fav-empty p{margin:0;opacity:.9}
+.fav-track-thumb{width:32px;height:32px;border-radius:4px;margin:0 8px 0 4px;object-fit:cover;flex-shrink:0}
+.fav-track-title-wrap{margin-left:0!important}
+.fav-track-meta{font-size:11px;color:#888;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .news-inline__head{padding:14px 10px;text-align:center;color:#8ab8fd}
 .news-inline__status{opacity:.85}
 .news-inline__status--error{color:#ff6b6b}
