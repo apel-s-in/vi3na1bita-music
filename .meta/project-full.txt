@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-8a432c9a0e45ea7ead32ccb01a1fc62d9eb0c539.idx
-│   │       ├── pack-8a432c9a0e45ea7ead32ccb01a1fc62d9eb0c539.pack
-│   │       └── pack-8a432c9a0e45ea7ead32ccb01a1fc62d9eb0c539.rev
+│   │       ├── pack-989e174d8b84e9f7827d069e0ef3509bb87b7afa.idx
+│   │       ├── pack-989e174d8b84e9f7827d069e0ef3509bb87b7afa.pack
+│   │       └── pack-989e174d8b84e9f7827d069e0ef3509bb87b7afa.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -406,7 +406,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 09:50:00 UTC
+Сгенерировано: 2026-03-22 09:50:54 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2752,7 +2752,7 @@ window.PlaybackCache.getWindowState = getWindowState; window.PlaybackCache.prote
     }
 
     win.style.display = st.has ? '' : 'none'; win.className = `lyrics-${st.mode}`;
-    if (btnT) { btnT.style.display = ''; btnT.className = `lyrics-toggle-btn lyrics-${st.mode} ${st.has ? '' : 'disabled'}`; U?.setAriaDisabled?.(btnT, !st.has); }
+    if (btnT) { btnT.style.display = st.has ? '' : 'none'; btnT.className = `lyrics-toggle-btn lyrics-${st.mode}`; U?.setAriaDisabled?.(btnT, !st.has); }
     if (btnA) { btnA.style.display = st.showBtn ? '' : 'none'; btnA.classList.toggle('active', st.anim && ok); btnA.classList.toggle('disabled', !st.has); }
     if (bg) bg.classList.toggle('active', st.anim && ok);
     if (btnK) { const can = ok || !!W.playerCore?.getCurrentTrack?.()?.fulltext; btnK.classList.toggle('disabled', !can); Object.assign(btnK.style, { pointerEvents: can ? '' : 'none', opacity: can ? '' : '0.4' }); }
