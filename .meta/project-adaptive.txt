@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d00b6c460bea1281832bf3e6b0a8163f22edd667.idx
-│   │       ├── pack-d00b6c460bea1281832bf3e6b0a8163f22edd667.pack
-│   │       └── pack-d00b6c460bea1281832bf3e6b0a8163f22edd667.rev
+│   │       ├── pack-41e40b33745e1390f81c80eb8e9a454e9fd2dff8.idx
+│   │       ├── pack-41e40b33745e1390f81c80eb8e9a454e9fd2dff8.pack
+│   │       └── pack-41e40b33745e1390f81c80eb8e9a454e9fd2dff8.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -408,7 +408,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 20:28:13 UTC
+Сгенерировано: 2026-03-22 20:48:10 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -696,7 +696,7 @@ jobs:
     <div class="bottom-controls-center" id="app-shell-controls">
       <img class="logo-bottom logo-pulse-target" id="logo-bottom" src="img/logo.png" alt="Логотип"/>
 
-      <button id="install-pwa-btn" class="install-pwa-hidden">УСТАНОВИТЬ КАК ПРИЛОЖЕНИЕ</button>
+      <button id="install-pwa-btn"><span style="font-size:18px;line-height:1">📱</span> УСТАНОВИТЬ ПРИЛОЖЕНИЕ</button>
       <button class="hotkeys-btn hotkeys-hidden" id="hotkeys-btn">ГОРЯЧИЕ КЛАВИШИ</button>
       <button id="sysinfo-btn" class="sysinfo-hidden">О СИСТЕМЕ</button>
 
@@ -888,7 +888,7 @@ jobs:
   </template>
 
   <script>
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.51');
+    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.52');
     const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-03-22');
 
     // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
