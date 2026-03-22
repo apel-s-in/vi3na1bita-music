@@ -5,6 +5,8 @@
 // UID.072_(Provider consents)_(готовить user-facing toggles без жёсткой зависимости)_(future provider/AI/social buttons должны проверять consents/capabilities вне этого файла)
 // UID.082_(Local truth vs external telemetry split)_(UI interactions можно маппить наружу только через mapper)_(не строить внешнюю аналитику прямо в PlayerUI)
 // UID.094_(No-paralysis rule)_(PlayerUI должен работать даже без intel/recs/providers)_(все точки intel integration только optional и lazy)
+import { toggleFavoritesOnlyMode } from './player/favorites-only-actions.js';
+
 (function (W, D) {
   'use strict';
   const U = W.Utils, PC = () => W.playerCore, AM = () => W.AlbumsManager;
@@ -102,16 +104,9 @@
           'animation-btn': () => W.LyricsController?.toggleAnimation?.(),
           'source-indicator': () => { const p = {yandex:'Yandex Cloud', github:'GitHub Pages', cache:'Ваше устройство'}[st.provider] || 'Неизвестно'; U.ui.toast(`Источник музыки: ${p}`, 'info'); },
           'favorites-btn': () => {
-            const nx = !U.lsGetBool01('favoritesOnlyMode');
-            U.lsSetBool01('favoritesOnlyMode', nx);
-            const ok = c.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true });
-            if (nx && ok === false) {
-              U.lsSetBool01('favoritesOnlyMode', false);
-              syncUI();
-              return U.ui.toast('Отметьте понравившийся трек ⭐', 'info');
-            }
-            syncUI();
-            U.ui.toast(nx ? '⭐ Только избранные' : 'Играют все треки', nx ? 'success' : 'info');
+            const res = toggleFavoritesOnlyMode({ player: c, storage: localStorage, syncUi: syncUI });
+            if (!res.ok && res.reason === 'empty') return U.ui.toast('Отметьте понравившийся трек ⭐', 'info');
+            U.ui.toast(res.enabled ? '⭐ Только избранные' : 'Играют все треки', res.enabled ? 'success' : 'info');
           }
         })[b.id]?.();
       });
