@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-6d9c96e07e6aeac7c0638441d5f486839e7474a9.idx
-│   │       ├── pack-6d9c96e07e6aeac7c0638441d5f486839e7474a9.pack
-│   │       └── pack-6d9c96e07e6aeac7c0638441d5f486839e7474a9.rev
+│   │       ├── pack-bfd1be217208d27652314bef61a9b46b7e83fa17.idx
+│   │       ├── pack-bfd1be217208d27652314bef61a9b46b7e83fa17.pack
+│   │       └── pack-bfd1be217208d27652314bef61a9b46b7e83fa17.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -407,7 +407,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 17:26:01 UTC
+Сгенерировано: 2026-03-22 18:29:31 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4835,7 +4835,22 @@ export const Favorites = new FavoritesManager(); window.FavoritesManager = Favor
         }
       };
     } },
-    func: { debounceFrame: fn => { let f; return (...a) => { if (f) cancelAnimationFrame(f); f = requestAnimationFrame(() => { f = null; fn(...a); }); }; }, throttle: (fn, w) => { let l = 0; return (...a) => { const n = Date.now(); if (n - l >= w) { l = n; fn(...a); } }; } },
+    func: {
+      debounceFrame: fn => { let f; return (...a) => { if (f) cancelAnimationFrame(f); f = requestAnimationFrame(() => { f = null; fn(...a); }); }; },
+      throttle: (fn, w) => { let l = 0; return (...a) => { const n = Date.now(); if (n - l >= w) { l = n; fn(...a); } }; },
+      once: fn => { let d = false, r; return (...a) => d ? r : ((d = true), (r = fn(...a))); },
+      initOnce: (() => {
+        const m = new Map();
+        return (k, fn) => {
+          const key = String(k || '').trim();
+          if (!key || typeof fn !== 'function') return false;
+          if (m.has(key)) return false;
+          m.set(key, 1);
+          fn();
+          return true;
+        };
+      })()
+    },
     isSpecialAlbumKey: k => String(k || '').startsWith('__'),
     normalizeAlbumContextKey: k => { const s = String(k || '').trim(); return !s ? '' : (s.startsWith('__showcase__') ? '__showcase__' : (s.startsWith('__favorites__') ? '__favorites__' : s)); },
     isShowcaseContext: k => U.normalizeAlbumContextKey(k) === '__showcase__',
