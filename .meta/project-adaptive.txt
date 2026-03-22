@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1def3268462a554ae743d5e3e206b1d7b2fae9dc.idx
-│   │       ├── pack-1def3268462a554ae743d5e3e206b1d7b2fae9dc.pack
-│   │       └── pack-1def3268462a554ae743d5e3e206b1d7b2fae9dc.rev
+│   │       ├── pack-3f8d7b413b23b3c54c3cbe23cd3d378521183eb1.idx
+│   │       ├── pack-3f8d7b413b23b3c54c3cbe23cd3d378521183eb1.pack
+│   │       └── pack-3f8d7b413b23b3c54c3cbe23cd3d378521183eb1.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -408,7 +408,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 22:23:32 UTC
+Сгенерировано: 2026-03-22 22:24:14 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3485,7 +3485,7 @@ export const renderProfileRecs = ({ container: c, all }) => {
   const rE = c?.querySelector('#prof-recs-list'); if (!rE) return;
   const pd = new Set((all || []).filter(s => s.globalFullListenCount > 0).map(s => s.uid));
   const recs = (window.TrackRegistry?.getAllUids?.()||[]).filter(u => !pd.has(u)).sort(()=>Math.random()-.5).slice(0,4);
-  rE.innerHTML = recs.length ? recs.map(u => `<div class="profile-list-item"><div class="log-info"><div class="log-title">${esc(window.TrackRegistry?.getTrackByUid(u)?.title)}</div><div class="log-desc">${esc(window.TrackRegistry?.getTrackByUid(u)?.album)}</div></div><button class="rec-play-btn" data-playuid="${u}">▶</button></div>`).join('') : '<div class="fav-empty">Вы прослушали абсолютно всё! 🏆</div>';
+  rE.innerHTML = recs.length ? recs.map(u => `<div class="profile-list-item" data-uid="${u}"><div class="log-info"><div class="log-title">${esc(window.TrackRegistry?.getTrackByUid(u)?.title)}</div><div class="log-desc">${esc(window.TrackRegistry?.getTrackByUid(u)?.album)}</div></div><button class="rec-play-btn" data-playuid="${u}">▶</button></div>`).join('') : '<div class="fav-empty">Вы прослушали абсолютно всё! 🏆</div>';
 };
 
 //=================================================
