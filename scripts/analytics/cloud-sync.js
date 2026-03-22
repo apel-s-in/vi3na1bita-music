@@ -27,9 +27,9 @@ export class CloudSyncManager {
     window.NotificationSystem?.info('Синхронизация с облаком...');
     try {
       const b = new Blob([JSON.stringify(await BackupVault.buildBackupObject())], { type: 'application/json' });
-      const r = await fetch('https://cloud-api.yandex.net/v1/disk/resources/upload?path=app:/vi3na1bita_sync.vi3bak&overwrite=true', { headers: { 'Authorization': `OAuth ${this.tokens.yandex}` } });
+      const r = await (window.NetPolicy?.guardedFetch?.('https://cloud-api.yandex.net/v1/disk/resources/upload?path=app:/vi3na1bita_sync.vi3bak&overwrite=true', { headers: { 'Authorization': `OAuth ${this.tokens.yandex}` } }) || fetch('https://cloud-api.yandex.net/v1/disk/resources/upload?path=app:/vi3na1bita_sync.vi3bak&overwrite=true', { headers: { 'Authorization': `OAuth ${this.tokens.yandex}` } }));
       if (!r.ok) throw { status: r.status };
-      await fetch((await r.json()).href, { method: 'PUT', body: b });
+      await (window.NetPolicy?.guardedFetch?.((await r.json()).href, { method: 'PUT', body: b }) || fetch((await r.json()).href, { method: 'PUT', body: b }));
       window.NotificationSystem?.success('Синхронизация завершена'); eventLogger.log('CLOUD_SYNC_SUCCESS', null, { provider });
     } catch (e) { window.NotificationSystem?.error('Ошибка синхронизации'); }
   }
