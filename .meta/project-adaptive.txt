@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-24d14b109a7c336c5bd2fa16583fc2ac90609c13.idx
-│   │       ├── pack-24d14b109a7c336c5bd2fa16583fc2ac90609c13.pack
-│   │       └── pack-24d14b109a7c336c5bd2fa16583fc2ac90609c13.rev
+│   │       ├── pack-6d9c96e07e6aeac7c0638441d5f486839e7474a9.idx
+│   │       ├── pack-6d9c96e07e6aeac7c0638441d5f486839e7474a9.pack
+│   │       └── pack-6d9c96e07e6aeac7c0638441d5f486839e7474a9.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -407,7 +407,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 17:25:47 UTC
+Сгенерировано: 2026-03-22 17:26:01 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4688,7 +4688,7 @@ if (errs.length) { console.error('Failed:\n', errs.join('\n')); process.exit(2);
 // UID.092_(Incremental rollout order)_(делать staged внедрение через один конфиг)_(intel boot должен управляться отсюда)
 
 export const APP_CONFIG = {
-  APP_VERSION: '8.1.45',
+  APP_VERSION: '8.1.46',
   BUILD_DATE: '2026-03-22',
   PROMOCODE: 'VITRINA2025',
   ICON_ALBUMS_ORDER: [
