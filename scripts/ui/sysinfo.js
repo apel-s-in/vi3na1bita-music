@@ -1,10 +1,8 @@
 (function(W, N) {
   'use strict';
-  let _initialized = false;
   const Sys = {
     initialize: () => {
-      if (_initialized) return;
-      _initialized = true;
+      if (!W.Utils?.func?.initOnce?.('ui:sysinfo:init', () => {})) return;
       const btn = W.Utils.dom.byId('sysinfo-btn'); if (btn) { btn.style.display = ''; btn.onclick = Sys.show; }
       document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key === 'i') { e.preventDefault(); Sys.show(); } });
     },
