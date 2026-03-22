@@ -2,10 +2,13 @@ export class SleepTimer {
   constructor() {
     this._tick = this._warnTimer = null;
     this._extendPromptOpen = false;
+    this._initialized = false;
     this._state = { remind5m: true, autoPromptExtend: true, usageCount: 0, lastDurationMin: 0, lastFinishedAt: 0, ...(JSON.parse(localStorage.getItem('sleepTimerState:v2') || '{}') || {}) };
   }
 
   initialize() {
+    if (this._initialized) return;
+    this._initialized = true;
     window.addEventListener('player:sleepTimerChanged', () => this._syncBadge());
     window.addEventListener('player:sleepTimerTriggered', () => {
       this._clearWarning(); this._extendPromptOpen = false; this._state.lastFinishedAt = Date.now(); this._state.usageCount++; this._saveState();
