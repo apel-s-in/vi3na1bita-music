@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-eb669c8d72445f3b77f9a08c05934230b41f272f.idx
-│   │       ├── pack-eb669c8d72445f3b77f9a08c05934230b41f272f.pack
-│   │       └── pack-eb669c8d72445f3b77f9a08c05934230b41f272f.rev
+│   │       ├── pack-16e49efdf0ab9e6c069d164582bbef852276a39b.idx
+│   │       ├── pack-16e49efdf0ab9e6c069d164582bbef852276a39b.pack
+│   │       └── pack-16e49efdf0ab9e6c069d164582bbef852276a39b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -407,7 +407,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 16:25:31 UTC
+Сгенерировано: 2026-03-22 16:26:39 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2642,6 +2642,13 @@ window.PlaybackCache.getWindowState = getWindowState; window.PlaybackCache.prote
       const p = AM()?.getPlayingAlbum?.();
       if (p === W.SPECIAL_FAVORITES_KEY || U.lsGetBool01('favoritesOnlyMode')) W.FavoritesOnlyActions?.syncFavoritesOnlyPlayback?.({ player: c, autoPlayIfNeeded: true, forceReload: false, syncUi: syncUI });
       else syncUI();
+    });
+    W.addEventListener('player:inactiveFavoriteModalRequested', e => {
+      const d = e.detail || {}, uid = String(d.uid || '').trim();
+      if (!uid || !W.Modals?.open) return;
+      const m = W.Modals.open({ title: 'Трек неактивен', maxWidth: 420, bodyHtml: `<div style="color:#9db7dd;margin-bottom:14px"><div><strong>${W.Utils?.escapeHtml?.(d.title) || 'Трек'}</strong></div><div style="opacity:.9">Вернуть в ⭐ или удалить?</div></div><div class="om-actions"><button type="button" class="modal-action-btn online" data-act="add">Вернуть</button><button type="button" class="modal-action-btn" data-act="remove">Удалить</button></div>` });
+      m.querySelector('[data-act="add"]')?.addEventListener('click', () => { m.remove(); c.restoreInactive(uid); });
+      m.querySelector('[data-act="remove"]')?.addEventListener('click', () => { m.remove(); c.removeInactivePermanently(uid); try { d.onDeleted?.(); } catch {} });
     });
     W.addEventListener('playlist:changed', syncUI);
     W.addEventListener('player:providerChanged', e => { st.provider = e.detail?.provider; syncUI(); });
