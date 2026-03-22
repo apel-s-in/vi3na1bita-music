@@ -17,7 +17,7 @@ export const checkForUpdates = async () => {
 
     await Promise.allSettled((window.albumsIndex || []).map(async a => {
       const b = a.yandex_base || a.github_base; if (!b) return;
-      const res = await fetch(`${b.endsWith('/') ? b : `${b}/`}config.json`, { cache: 'force-cache' });
+      const res = await (window.NetPolicy?.guardedFetch?.(`${b.endsWith('/') ? b : `${b}/`}config.json`, { cache: 'force-cache' }) || fetch(`${b.endsWith('/') ? b : `${b}/`}config.json`, { cache: 'force-cache' }));
       if (!res.ok) return;
       for (const t of (await res.json()).tracks || []) {
         const m = tgt.get(t.uid); if (!m) continue;
