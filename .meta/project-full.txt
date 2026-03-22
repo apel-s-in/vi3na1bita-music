@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-ca4c263b00c375696f64253d761894feb0c85f9a.idx
-│   │       ├── pack-ca4c263b00c375696f64253d761894feb0c85f9a.pack
-│   │       └── pack-ca4c263b00c375696f64253d761894feb0c85f9a.rev
+│   │       ├── pack-8a432c9a0e45ea7ead32ccb01a1fc62d9eb0c539.idx
+│   │       ├── pack-8a432c9a0e45ea7ead32ccb01a1fc62d9eb0c539.pack
+│   │       └── pack-8a432c9a0e45ea7ead32ccb01a1fc62d9eb0c539.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -406,7 +406,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 09:47:49 UTC
+Сгенерировано: 2026-03-22 09:50:00 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -912,7 +912,7 @@ jobs:
 
           <button class="karaoke-btn" id="lyrics-text-btn" title="Полный текст песни"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-lyrics"></use></svg></button>
 
-          <button class="stats-btn stats-btn-reset" id="stats-btn" title="Статистика"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-stats"></use></svg></button>
+          <button class="stats-btn" id="stats-btn" title="Статистика"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-stats"></use></svg></button>
 
           <div class="source-indicator" id="source-indicator" title="Источник потока"></div>
 
