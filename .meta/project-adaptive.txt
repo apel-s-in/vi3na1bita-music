@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-d2fa19be59749fd05e11838fb91cf20950e08186.idx
-│   │       ├── pack-d2fa19be59749fd05e11838fb91cf20950e08186.pack
-│   │       └── pack-d2fa19be59749fd05e11838fb91cf20950e08186.rev
+│   │       ├── pack-0cb68002e29984d7c2caa94042de7b901f0552eb.idx
+│   │       ├── pack-0cb68002e29984d7c2caa94042de7b901f0552eb.pack
+│   │       └── pack-0cb68002e29984d7c2caa94042de7b901f0552eb.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -408,7 +408,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 22:25:30 UTC
+Сгенерировано: 2026-03-22 22:27:07 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -888,7 +888,7 @@ jobs:
   </template>
 
   <script>
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.55');
+    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.56');
     const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-03-22');
 
     // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
@@ -932,7 +932,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.1.55';
+const SW_VERSION = '8.1.56';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
@@ -4749,7 +4749,7 @@ if (errs.length) { console.error('Failed:\n', errs.join('\n')); process.exit(2);
 // UID.092_(Incremental rollout order)_(делать staged внедрение через один конфиг)_(intel boot должен управляться отсюда)
 
 export const APP_CONFIG = {
-  APP_VERSION: '8.1.55',
+  APP_VERSION: '8.1.56',
   BUILD_DATE: '2026-03-22',
   PROMOCODE: 'VITRINA2025',
   ICON_ALBUMS_ORDER: [
@@ -7922,9 +7922,10 @@ export async function openStatisticsModal(uid = null) {
   allStats.filter(s => s.uid !== 'global').forEach(s => { (s.byHour || []).forEach((v, h) => byH[h] += v || 0); (s.byWeekday || []).forEach((v, d) => byW[d] += v || 0); });
   const gFeat = (allStats.find(s => s.uid === 'global') || {}).featuresUsed || {}, achVal = (await metaDB.getGlobal('unlocked_achievements'))?.value || {}, engine = window.achievementEngine;
 
-  const topTracks = [...allStats].filter(s => s.uid !== 'global').sort((a, b) => (b.globalFullListenCount || 0) - (a.globalFullListenCount || 0)).slice(0, 5).map(s => { const tr = window.TrackRegistry?.getTrackByUid(s.uid); return tr ? `<div class="sm-top-row"><span class="sm-top-title">${window.Utils?.escapeHtml(tr.title)}</span><b class="sm-top-val">${s.globalFullListenCount} раз</b></div>` : ''; }).join('') || '<div class="sm-empty">Слушайте музыку, чтобы увидеть топ</div>';
+  const topTracks = [...allStats].filter(s => s.uid !== 'global').sort((a, b) => (b.globalFullListenCount || 0) - (a.globalFullListenCount || 0)).slice(0, 5).map(s => { const tr = window.TrackRegistry?.getTrackByUid(s.uid); return tr ? `<div class="sm-top-row" data-uid="${s.uid}"><span class="sm-top-title">${window.Utils?.escapeHtml(tr.title)}</span><b class="sm-top-val">${s.globalFullListenCount} раз</b></div>` : ''; }).join('') || '<div class="sm-empty">Слушайте музыку, чтобы увидеть топ</div>';
 
   window.Modals.open({ title: 'Профиль слушателя', maxWidth: 400, bodyHtml: `<div class="sm-note">Не удалось определить текущий трек. Показана общая статистика.</div><div class="stats-grid-compact sm-mb20"><div class="stat-box"><b>${totalFull}</b><span>Треков</span></div><div class="stat-box"><b>${Math.floor(totalSecs / 60)}м</b><span>В пути</span></div><div class="stat-box"><b>${String(byH.indexOf(Math.max(...byH))).padStart(2,'0')}:00</b><span>Пик активности</span></div><div class="stat-box"><b>${String(byH.indexOf(Math.min(...byH))).padStart(2,'0')}:00</b><span>Тихий час</span></div></div><div class="sm-card"><div class="sm-cap">🌙 ТАЙМЕР СНА</div><div>Срабатываний: <b>${gFeat.sleep_timer || 0}</b></div><div>Установок: <b>${gFeat.sleep_timer_set || 0}</b></div><div>Продлений: <b>${gFeat.sleep_timer_extend || 0}</b></div><div>Отмен: <b>${gFeat.sleep_timer_cancel || 0}</b></div><div>Сумма минут: <b>${gFeat.sleep_timer_minutes_total || 0}</b></div></div><div class="sm-card-lg"><div class="sm-cap">🏆 ТОП 5 ТРЕКОВ</div>${topTracks}</div><div class="sm-cap">ДОСТИЖЕНИЯ (${Object.keys(achVal).length}/${engine?.achievements?.length || 0})</div><div class="sm-ach-wrap">${(engine?.achievements || []).map(a => `<div class="ach-item ${achVal[a.id] ? '' : 'locked'} sm-ach-row"><div class="ach-icon sm-ach-icon ${achVal[a.id] ? '' : 'sm-ach-locked'}">${a.icon}</div><div class="sm-ach-main"><div class="sm-ach-name">${a.name}</div><div class="sm-ach-desc">${a.desc}${!achVal[a.id] && a.progressMeta ? ` · ${fmtAchTimerText(a, 'remaining')}` : ''}</div></div>${achVal[a.id] ? '<div class="sm-ach-ok">✓</div>' : ''}</div>`).join('')}</div>` });
+  window.AlbumsManager?.highlightCurrentTrack?.();
 }
 
 window.StatisticsModal = { openStatisticsModal, init: () => document.addEventListener('click', e => { const btn = e.target.closest('.stats-trigger'); if (btn) openStatisticsModal(btn.dataset.uid); }) };
