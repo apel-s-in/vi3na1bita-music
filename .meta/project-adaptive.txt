@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-9e9851eb8866f9bbee18824d3684d1509e047962.idx
-│   │       ├── pack-9e9851eb8866f9bbee18824d3684d1509e047962.pack
-│   │       └── pack-9e9851eb8866f9bbee18824d3684d1509e047962.rev
+│   │       ├── pack-de28e85f86e7ad31a7f6335ad0f8f0f8a3e5e990.idx
+│   │       ├── pack-de28e85f86e7ad31a7f6335ad0f8f0f8a3e5e990.pack
+│   │       └── pack-de28e85f86e7ad31a7f6335ad0f8f0f8a3e5e990.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -406,7 +406,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 08:39:36 UTC
+Сгенерировано: 2026-03-22 08:41:24 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3489,6 +3489,14 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
   window.Utils?.dom?.createStyleOnce?.('profile-settings-styles', `
     .settings-content{display:none;flex-direction:column;gap:12px;animation:fadeIn .3s}
     .settings-content.active{display:flex}
+    .set-acc-btn{width:100%;text-align:left;padding:16px 14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);color:#fff;font-size:14px;font-weight:900;border-radius:12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:.2s;letter-spacing:1px}
+    .set-acc-btn:hover{background:rgba(77,170,255,0.1);border-color:rgba(77,170,255,0.3)}
+    .set-acc-btn::after{content:'▼';font-size:12px;transition:.3s;color:var(--secondary-color)}
+    .set-acc-btn.open{background:rgba(77,170,255,0.15);border-color:var(--secondary-color);border-radius:12px 12px 0 0}
+    .set-acc-btn.open::after{transform:rotate(180deg)}
+    .set-acc-body{display:none;padding:12px 0 6px;flex-direction:column;gap:12px}
+    .set-acc-btn.open + .set-acc-body{display:flex;animation:slideDown .3s ease}
+    @keyframes slideDown{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
     .set-row{display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.03);padding:14px;border-radius:12px;border:1px solid rgba(255,255,255,.05)}
     .set-info{flex:1;padding-right:12px}
     .set-title{font-size:14px;font-weight:bold;color:#fff;margin-bottom:4px}
@@ -3508,6 +3516,15 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
     .sc-mini-controls div{background:linear-gradient(180deg,#0d1828,#070d16);border:1px solid rgba(77,170,255,.3);color:#7ab4f5;border-radius:4px;height:18px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900}
     .sc-mini-controls div:not(.sel){width:18px}
     .sc-mini-controls .sel{width:56px}
+    .pl-prev-box{background:linear-gradient(180deg,rgba(30,34,45,.95),rgba(15,18,24,.98));border-radius:12px;padding:12px;border:1px solid rgba(77,170,255,.15);margin-bottom:2px;box-shadow:0 4px 15px rgba(0,0,0,.4)}
+    .pl-prev-lyr{height:60px;background:#0f1218;border-radius:8px 8px 0 0;position:relative;overflow:hidden;margin-bottom:12px;display:flex;align-items:center;justify-content:center}
+    .pl-prev-bg{position:absolute;inset:0;opacity:0;background:linear-gradient(45deg,rgba(232,1,0,.15),rgba(77,170,255,.15),rgba(232,1,0,.15));background-size:400% 400%;transition:.5s;pointer-events:none}
+    .pl-prev-bg.active{opacity:1;animation:lyricsGradient 10s ease infinite}
+    .pl-prev-txt{position:relative;z-index:1;color:var(--primary-color);font-size:16px;font-weight:900;text-shadow:0 1px 7px rgba(115,22,22,.27)}
+    .pl-prev-btns{display:flex;gap:6px;justify-content:space-between;padding:0 4px}
+    .pl-prev-btn{width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;background:rgba(77,170,255,.12);border:1px solid rgba(77,170,255,.25);color:var(--secondary-color);transition:.2s}
+    .pl-prev-btn.a-btn{background:linear-gradient(135deg,#4a1a7a,#2a0a4a);border-color:rgba(138,43,226,.3);color:#c8a2ff}
+    .pl-prev-btn.a-btn.active{background:linear-gradient(135deg,#5a2a8a,#3a1a5a);box-shadow:0 0 8px rgba(138,43,226,.4)}
   `);
 
   if (!window.Utils?.isMobile?.()) {
@@ -3518,6 +3535,16 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
   c.appendChild(tpl);
   mountProfileCarouselFlat({ root: c });
 
+  // Логика аккордеона
+  c.querySelectorAll('.set-acc-btn').forEach(btn => {
+    btn.onclick = () => {
+      const isOpen = btn.classList.contains('open');
+      c.querySelectorAll('.set-acc-btn').forEach(b => b.classList.remove('open'));
+      if (!isOpen) btn.classList.add('open');
+    };
+  });
+
+  // Логика Карусели
   const ctrlInp = c.querySelector('#set-car-controls'), scPrev = c.querySelector('#sc-mini-preview'), scWrap = c.querySelector('.sc-3d-wrap');
   if (ctrlInp && scPrev) {
     const isShow = localStorage.getItem('profileShowControls') === '1';
@@ -3528,6 +3555,39 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
       localStorage.setItem('profileShowControls', show ? '1' : '0');
       scPrev.classList.toggle('show-ctrl', show);
       if (scWrap) scWrap.classList.toggle('show-controls', show);
+    });
+  }
+
+  // Логика Плеера
+  const btnAnimShow = c.querySelector('#set-pl-btn-anim');
+  const btnAnimPlay = c.querySelector('#set-pl-anim-play');
+  const prevABtn = c.querySelector('#prev-a-btn');
+  const prevABg = c.querySelector('#prev-a-bg');
+
+  if (btnAnimShow && btnAnimPlay && prevABtn && prevABg) {
+    const isBtnVis = localStorage.getItem('lyricsShowAnimBtn') === '1'; // default: false
+    const isAnimOn = localStorage.getItem('lyricsAnimationEnabled') !== '0'; // default: true
+
+    btnAnimShow.checked = isBtnVis;
+    btnAnimPlay.checked = isAnimOn;
+
+    prevABtn.style.display = isBtnVis ? '' : 'none';
+    prevABtn.classList.toggle('active', isAnimOn);
+    prevABg.classList.toggle('active', isAnimOn);
+
+    btnAnimShow.addEventListener('change', e => {
+      const v = e.target.checked;
+      localStorage.setItem('lyricsShowAnimBtn', v ? '1' : '0');
+      prevABtn.style.display = v ? '' : 'none';
+      if (window.LyricsController) window.LyricsController.restoreSettingsIntoDom();
+    });
+
+    btnAnimPlay.addEventListener('change', e => {
+      const v = e.target.checked;
+      localStorage.setItem('lyricsAnimationEnabled', v ? '1' : '0');
+      prevABtn.classList.toggle('active', v);
+      prevABg.classList.toggle('active', v);
+      if (window.LyricsController) window.LyricsController.restoreSettingsIntoDom();
     });
   }
 
