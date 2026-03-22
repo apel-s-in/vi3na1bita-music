@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-fb450c48f34436fbe7e24500e52ba2849150e4c4.idx
-│   │       ├── pack-fb450c48f34436fbe7e24500e52ba2849150e4c4.pack
-│   │       └── pack-fb450c48f34436fbe7e24500e52ba2849150e4c4.rev
+│   │       ├── pack-c50dea4049a86828a5c8a459a5ed0ad210bef8b0.idx
+│   │       ├── pack-c50dea4049a86828a5c8a459a5ed0ad210bef8b0.pack
+│   │       └── pack-c50dea4049a86828a5c8a459a5ed0ad210bef8b0.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -406,7 +406,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 11:07:09 UTC
+Сгенерировано: 2026-03-22 11:33:22 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -763,48 +763,7 @@ jobs:
 <div class="profile-section-title">📜 ИСТОРИЯ АКТИВНОСТИ</div>
 <div id="prof-logs-list">Загрузка...</div>
 </div>
-<div class="profile-tab-content" id="tab-settings">
-<div class="ach-classic-tabs">
-<div class="ach-classic-tab active" data-set-tab="general">Общие</div>
-<div class="ach-classic-tab" data-set-tab="interface">Интерфейс</div>
-<div class="ach-classic-tab" data-set-tab="data">Данные</div>
-<div class="ach-classic-tab" data-set-tab="keys" id="set-tab-keys" style="display:none">Клавиатура</div>
-</div>
-<div class="settings-content active" id="set-general"><div class="fav-empty">Раздел в разработке 🛠️</div></div>
-<div class="settings-content" id="set-interface">
-<button type="button" class="set-acc-btn open">ПЛЕЕР</button>
-<div class="set-acc-body">
-<div class="pl-prev-box">
-<div class="pl-prev-lyr"><div class="pl-prev-bg" id="prev-a-bg"></div><div class="pl-prev-txt">Играет трек...</div></div>
-<div class="pl-prev-btns"><div class="pl-prev-btn">Т</div><div class="pl-prev-btn a-btn" id="prev-a-btn">A</div><div class="pl-prev-btn">≡</div><div class="pl-prev-btn">ılı</div><div class="pl-prev-btn" style="background:#e80100;color:#fff;border-color:#e80100">Я</div><div class="pl-prev-btn">🤍</div><div class="pl-prev-btn">⬇</div></div>
-</div>
-<div class="set-row">
-<div class="set-info"><div class="set-title">Кнопка Анимации (А)</div><div class="set-sub">Показывать кнопку (A) в меню управления плеера</div></div>
-<label class="set-switch"><input type="checkbox" id="set-pl-btn-anim"><span class="set-slider"></span></label>
-</div>
-<div class="set-row">
-<div class="set-info"><div class="set-title">Анимация фона</div><div class="set-sub">Цветовая пульсация фона в режиме лирики</div></div>
-<label class="set-switch"><input type="checkbox" id="set-pl-anim-play"><span class="set-slider"></span></label>
-</div>
-</div>
-
-<button type="button" class="set-acc-btn">КАРУСЕЛЬ</button>
-<div class="set-acc-body">
-<div class="set-preview-box">
-<div class="sc-mini-preview" id="sc-mini-preview">
-<div class="sc-mini-card"><div class="sc-mini-ic">📊</div></div>
-<div class="sc-mini-controls"><div>◀</div><div class="sel">ВЫБРАТЬ</div><div>▶</div></div>
-</div>
-</div>
-<div class="set-row">
-<div class="set-info"><div class="set-title">Кнопки карусели</div><div class="set-sub">Показывать кнопки управления под 3D-каруселью</div></div>
-<label class="set-switch"><input type="checkbox" id="set-car-controls"><span class="set-slider"></span></label>
-</div>
-</div>
-</div>
-<div class="settings-content" id="set-data"><div class="fav-empty">Раздел в разработке 🛠️</div></div>
-<div class="settings-content" id="set-keys"><div class="fav-empty">Раздел в разработке 🛠️</div></div>
-</div>
+<div class="profile-tab-content" id="tab-settings"></div>
 <div class="profile-tab-content" id="tab-account">
 <div class="profile-header">
 <div class="profile-avatar-btn" id="prof-avatar-btn" title="Изменить аватар"></div>
