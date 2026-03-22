@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e4391fc7de1f13e1361149a095e231c99116d096.idx
-│   │       ├── pack-e4391fc7de1f13e1361149a095e231c99116d096.pack
-│   │       └── pack-e4391fc7de1f13e1361149a095e231c99116d096.rev
+│   │       ├── pack-ee31d20526fc6dbdb6713d760b4dac2be03975b0.idx
+│   │       ├── pack-ee31d20526fc6dbdb6713d760b4dac2be03975b0.pack
+│   │       └── pack-ee31d20526fc6dbdb6713d760b4dac2be03975b0.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -407,7 +407,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 18:30:06 UTC
+Сгенерировано: 2026-03-22 18:30:32 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7733,11 +7733,9 @@ window.StatisticsModal = { openStatisticsModal, init: () => document.addEventLis
 // FILE: /scripts/ui/sysinfo.js
 (function(W, N) {
   'use strict';
-  let _initialized = false;
   const Sys = {
     initialize: () => {
-      if (_initialized) return;
-      _initialized = true;
+      if (!W.Utils?.func?.initOnce?.('ui:sysinfo:init', () => {})) return;
       const btn = W.Utils.dom.byId('sysinfo-btn'); if (btn) { btn.style.display = ''; btn.onclick = Sys.show; }
       document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key === 'i') { e.preventDefault(); Sys.show(); } });
     },
