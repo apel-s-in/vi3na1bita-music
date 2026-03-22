@@ -1,4 +1,4 @@
-const SW_VERSION = '8.1.49';
+const SW_VERSION = '8.1.50';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
@@ -37,6 +37,7 @@ const STATIC_ASSETS = [
   './scripts/app/profile/carousel-flat.js',
   './scripts/app/profile/settings-view.js',
   './scripts/ui/progress-formatters.js',
+  './scripts/ui/logo-pulse.js',
   './scripts/app.js', './src/PlayerCore.js',
   './src/player-core/media-session.js',
   './scripts/app/track-registry.js',
