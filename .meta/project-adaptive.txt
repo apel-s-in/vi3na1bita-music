@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-aee763f26502d2d9e49167abbc3ae388b4fe287b.idx
-│   │       ├── pack-aee763f26502d2d9e49167abbc3ae388b4fe287b.pack
-│   │       └── pack-aee763f26502d2d9e49167abbc3ae388b4fe287b.rev
+│   │       ├── pack-1995e09899bc5a883f77e5bc04a72981daf89cfc.idx
+│   │       ├── pack-1995e09899bc5a883f77e5bc04a72981daf89cfc.pack
+│   │       └── pack-1995e09899bc5a883f77e5bc04a72981daf89cfc.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -408,7 +408,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 22:06:35 UTC
+Сгенерировано: 2026-03-22 22:07:27 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2293,6 +2293,7 @@ export async function loadFavoritesAlbum(ctx) {
 
     if (hp) { const r = c.querySelector(`.track[data-uid="${CSS.escape(pc.getCurrentTrackUid?.()||'')}"]`) || c.lastElementChild; r ? r.after(pb) : c.appendChild(pb); }
     injectOfflineIndicators(c);
+    ctx.highlightCurrentTrack();
   };
 
   if (!ctx._favB) {
@@ -2308,7 +2309,7 @@ export async function loadFavoritesAlbum(ctx) {
         ctx.setPlayingAlbum(FAV);
         const tr = window.PlaybackContextSource?.getSourcePlaylistForContext?.(FAV) || [];
         const idx = tr.findIndex(t => t.uid === u);
-        if (idx >= 0) { pc.setPlaylist(tr, idx, { artist: 'Витрина Разбита', album: 'Избранное', cover: FAV_COVER }, { preservePosition: false }); pc.play(idx); window.FavoritesOnlyActions?.syncFavoritesOnlyPlayback?.({ player: pc, autoPlayIfNeeded: true, forceReload: false, syncUi: () => window.PlayerUI?.applyFavoritesOnlyDomFilter?.() }); ctx.highlightCurrentTrack(-1, { uid: u, albumKey: aK }); window.PlayerUI?.ensurePlayerBlock?.(idx, { userInitiated: true }); window.FavoritesOnlyActions?.syncFavoritesOnlyUiFrame?.(); }
+        if (idx >= 0) { pc.playExactFromPlaylist(tr, u); window.FavoritesOnlyActions?.syncFavoritesOnlyPlayback?.({ player: pc, autoPlayIfNeeded: true, forceReload: false, syncUi: () => window.PlayerUI?.applyFavoritesOnlyDomFilter?.() }); ctx.highlightCurrentTrack(-1, { uid: u, albumKey: aK }); window.PlayerUI?.ensurePlayerBlock?.(idx, { userInitiated: true }); window.FavoritesOnlyActions?.syncFavoritesOnlyUiFrame?.(); }
       } else pc.showInactiveFavoriteModal({ uid: u, title: window.TrackRegistry?.getTrackByUid(u)?.title || 'Трек', onDeleted: () => { rb(); window.FavoritesOnlyActions?.syncFavoritesOnlyPlayback?.({ player: pc, autoPlayIfNeeded: true, forceReload: false, syncUi: () => window.PlayerUI?.applyFavoritesOnlyDomFilter?.() }); window.FavoritesOnlyActions?.syncFavoritesOnlyUiFrame?.(); } });
     });
 
