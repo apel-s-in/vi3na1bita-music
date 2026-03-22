@@ -161,6 +161,13 @@
       if (p === W.SPECIAL_FAVORITES_KEY || U.lsGetBool01('favoritesOnlyMode')) W.FavoritesOnlyActions?.syncFavoritesOnlyPlayback?.({ player: c, autoPlayIfNeeded: true, forceReload: false, syncUi: syncUI });
       else syncUI();
     });
+    W.addEventListener('player:inactiveFavoriteModalRequested', e => {
+      const d = e.detail || {}, uid = String(d.uid || '').trim();
+      if (!uid || !W.Modals?.open) return;
+      const m = W.Modals.open({ title: 'Трек неактивен', maxWidth: 420, bodyHtml: `<div style="color:#9db7dd;margin-bottom:14px"><div><strong>${W.Utils?.escapeHtml?.(d.title) || 'Трек'}</strong></div><div style="opacity:.9">Вернуть в ⭐ или удалить?</div></div><div class="om-actions"><button type="button" class="modal-action-btn online" data-act="add">Вернуть</button><button type="button" class="modal-action-btn" data-act="remove">Удалить</button></div>` });
+      m.querySelector('[data-act="add"]')?.addEventListener('click', () => { m.remove(); c.restoreInactive(uid); });
+      m.querySelector('[data-act="remove"]')?.addEventListener('click', () => { m.remove(); c.removeInactivePermanently(uid); try { d.onDeleted?.(); } catch {} });
+    });
     W.addEventListener('playlist:changed', syncUI);
     W.addEventListener('player:providerChanged', e => { st.provider = e.detail?.provider; syncUI(); });
     ['offline:uiChanged', 'online', 'offline'].forEach(e => W.addEventListener(e, syncUI));
