@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-37fe43e751f461f36366e0e5779fc736faae6dc3.idx
-│   │       ├── pack-37fe43e751f461f36366e0e5779fc736faae6dc3.pack
-│   │       └── pack-37fe43e751f461f36366e0e5779fc736faae6dc3.rev
+│   │       ├── pack-1039e0b4871390b6e03e34e59a0ee4d7f6d3863f.idx
+│   │       ├── pack-1039e0b4871390b6e03e34e59a0ee4d7f6d3863f.pack
+│   │       └── pack-1039e0b4871390b6e03e34e59a0ee4d7f6d3863f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -407,7 +407,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-22 13:30:15 UTC
+Сгенерировано: 2026-03-22 13:30:41 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2640,8 +2640,8 @@ window.PlaybackCache.getWindowState = getWindowState; window.PlaybackCache.prote
 
     c.onFavoritesChanged(() => {
       const p = AM()?.getPlayingAlbum?.();
-      if (p === W.SPECIAL_FAVORITES_KEY || U.lsGetBool01('favoritesOnlyMode')) c.applyFavoritesOnlyFilter?.();
-      syncUI();
+      if (p === W.SPECIAL_FAVORITES_KEY || U.lsGetBool01('favoritesOnlyMode')) W.FavoritesOnlyActions?.syncFavoritesOnlyPlayback?.({ player: c, autoPlayIfNeeded: true, forceReload: false, syncUi: syncUI });
+      else syncUI();
     });
     W.addEventListener('playlist:changed', syncUI);
     W.addEventListener('player:providerChanged', e => { st.provider = e.detail?.provider; syncUI(); });
