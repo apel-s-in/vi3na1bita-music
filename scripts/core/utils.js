@@ -93,6 +93,18 @@
           fn();
           return true;
         };
+      })(),
+      memoAsyncOnce: (() => {
+        const m = new Map();
+        return (k, fn, { resetOnReject = true } = {}) => {
+          const key = String(k || '').trim();
+          if (!key || typeof fn !== 'function') return Promise.resolve(null);
+          if (m.has(key)) return m.get(key);
+          const p = Promise.resolve().then(fn);
+          m.set(key, p);
+          if (resetOnReject) p.catch(() => m.delete(key));
+          return p;
+        };
       })()
     },
     isSpecialAlbumKey: k => String(k || '').startsWith('__'),
