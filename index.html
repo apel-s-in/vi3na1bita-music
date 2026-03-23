@@ -63,6 +63,10 @@
 
 </head>
 <body>
+  <!-- Global Visual FX Layers -->
+  <div id="global-fx-bg"></div>
+  <div id="global-particles"></div>
+
   <!-- Promocode Screen -->
   <div id="promocode-block">
     <div class="promo-inner">
@@ -300,7 +304,7 @@
   </template>
 
   <script>
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.62');
+    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.63');
     const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-03-22');
 
     // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
