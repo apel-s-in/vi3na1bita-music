@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-133764c7f8c5c649f2c38a7a9004c2d44d568b2f.idx
-│   │       ├── pack-133764c7f8c5c649f2c38a7a9004c2d44d568b2f.pack
-│   │       └── pack-133764c7f8c5c649f2c38a7a9004c2d44d568b2f.rev
+│   │       ├── pack-3e35cb6a2750b221f96d133b157a89f5d170735f.idx
+│   │       ├── pack-3e35cb6a2750b221f96d133b157a89f5d170735f.pack
+│   │       └── pack-3e35cb6a2750b221f96d133b157a89f5d170735f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -410,7 +410,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-23 17:15:42 UTC
+Сгенерировано: 2026-03-23 17:16:25 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7456,11 +7456,18 @@ window.IconUtils = { renderIcon, setIconUse, renderFavoriteStar, setFavoriteStar
   const loop = () => {
     const forcePreview = previewLogo && previewLogo.offsetParent !== null;
     
-    // ГЛАВНЫЙ ВЫКЛЮЧАТЕЛЬ. Если выключено - прячем фон и частицы.
-    if (globalBg) globalBg.classList.toggle('fx-active', st.active && st.bg);
-    if (particlesContainer) particlesContainer.classList.toggle('fx-active', st.active && st.particles);
+    // МАСТЕР ВЫКЛЮЧАТЕЛЬ: Если общая кнопка эффектов выключена
+    if (!st.active && !forcePreview) {
+      if (globalBg) globalBg.classList.remove('fx-active');
+      if (particlesContainer) particlesContainer.classList.remove('fx-active');
+      animId = requestAnimationFrame(loop);
+      return;
+    }
 
-    if (!st.active && !forcePreview) { animId = requestAnimationFrame(loop); return; }
+    // Если включена - активируем слои согласно настройкам пользователя
+    if (globalBg) globalBg.classList.toggle('fx-active', st.bg);
+    if (particlesContainer) particlesContainer.classList.toggle('fx-active', st.particles);
+
     if (!cachedTargets.length) { animId = requestAnimationFrame(loop); return; }
 
     let p = 0;
