@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-94d056f087a7b17e9550166af2cfdcd269290a9e.idx
-│   │       ├── pack-94d056f087a7b17e9550166af2cfdcd269290a9e.pack
-│   │       └── pack-94d056f087a7b17e9550166af2cfdcd269290a9e.rev
+│   │       ├── pack-fc739ce154bb6d4b0b71e8e63d865267363879d3.idx
+│   │       ├── pack-fc739ce154bb6d4b0b71e8e63d865267363879d3.pack
+│   │       └── pack-fc739ce154bb6d4b0b71e8e63d865267363879d3.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -409,7 +409,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-23 15:39:28 UTC
+Сгенерировано: 2026-03-23 15:40:26 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -10828,7 +10828,10 @@ import { resolveFavoritesOnlyState } from '../scripts/app/player/favorites-only-
 :root{--primary-bg:#181818;--primary-color:#e80100;--secondary-color:#4daaff;--text-color:#f2f2f2;--modal-bg:#252d39;--border-color:#394866;--btn-size:44px;--btn-radius:8px;--bg-0:#0f1218;--c-blue:#8ab8fd;--c-w:#fff;--c-e:#eee;--shadow-1:0 4px 24px rgba(0,0,0,.3);--shadow-2:0 8px 32px rgba(0,0,0,.4);--grad-blue:linear-gradient(90deg,#4daaff,#357ac9);--om-bd:rgba(255,255,255,.1);--om-sub:#9db7dd}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;background:var(--primary-bg);color:var(--text-color);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column}
-body{min-height:100vh;min-width:100vw;padding-top:env(safe-area-inset-top);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+body{min-height:100vh;min-width:100vw;padding-top:env(safe-area-inset-top);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;background:transparent!important}
+#global-fx-bg{position:fixed;inset:0;z-index:-2;background:var(--primary-bg);transition:background 1s ease;pointer-events:none}
+#global-particles{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden}
+.fx-particle{position:absolute;border-radius:50%;background:#fff;opacity:0;will-change:transform,opacity}
 .hidden,[hidden]{display:none!important}
 #promocode-block{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--primary-bg);z-index:100}
 .promo-inner{display:flex;flex-direction:column;align-items:center;background:rgba(15,18,24,.98);border-radius:16px;box-shadow:0 6px 24px rgba(0,0,0,.5);padding:36px 26px 32px;min-width:280px;max-width:90vw}
