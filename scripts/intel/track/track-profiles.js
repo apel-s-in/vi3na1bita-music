@@ -86,11 +86,6 @@ export const trackProfiles = {
       return null; 
     }
   },
-  
-  preloadAlbumProfiles(uids) {
-    // Тихая фоновая загрузка навсегда в localStorage
-    setTimeout(() => { (uids || []).forEach(u => this.getProfile(u).catch(()=>{})); }, 2000);
-  },
 
   dropProfile(uid) {
     state.profileCache.delete(String(uid || '').trim());
