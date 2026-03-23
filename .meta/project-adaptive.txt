@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f56b47c008ecffa1e5c2c495b6650637b668fc1b.idx
-│   │       ├── pack-f56b47c008ecffa1e5c2c495b6650637b668fc1b.pack
-│   │       └── pack-f56b47c008ecffa1e5c2c495b6650637b668fc1b.rev
+│   │       ├── pack-3c4886b473a859e8665bfa40a7957383077a13dd.idx
+│   │       ├── pack-3c4886b473a859e8665bfa40a7957383077a13dd.pack
+│   │       └── pack-3c4886b473a859e8665bfa40a7957383077a13dd.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -408,7 +408,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-23 09:47:54 UTC
+Сгенерировано: 2026-03-23 09:49:33 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -888,7 +888,7 @@ jobs:
   </template>
 
   <script>
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.58');
+    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.59');
     const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-03-22');
 
     // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
@@ -932,7 +932,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.1.58';
+const SW_VERSION = '8.1.59';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
@@ -2305,7 +2305,7 @@ export async function loadFavoritesAlbum(ctx) {
   if (!ctx._favB) {
     ctx._favB = 1;
     c.addEventListener('click', e => {
-      if (ctx.getCurrentAlbum() !== FAV) return;
+      if (ctx.getCurrentAlbum() !== FAV || e.target.closest('.offline-ind')) return;
       const r = e.target.closest('.track'); if (!r) return;
       const u = r.dataset.uid, aK = r.dataset.album, pc = window.playerCore, isA = pc.getFavoritesState().active.some(x => x.uid === u);
       
@@ -4751,7 +4751,7 @@ if (errs.length) { console.error('Failed:\n', errs.join('\n')); process.exit(2);
 // UID.092_(Incremental rollout order)_(делать staged внедрение через один конфиг)_(intel boot должен управляться отсюда)
 
 export const APP_CONFIG = {
-  APP_VERSION: '8.1.58',
+  APP_VERSION: '8.1.59',
   BUILD_DATE: '2026-03-22',
   PROMOCODE: 'VITRINA2025',
   ICON_ALBUMS_ORDER: [
