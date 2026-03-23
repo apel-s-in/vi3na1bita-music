@@ -119,7 +119,6 @@ class AlbumsManager {
           tList.querySelectorAll('.track[data-uid]').forEach(el => injectIndicator(el));
         }
         this.highlightCurrentTrack();
-        if (W.Intel?.trackProfiles?.preloadAlbumProfiles) W.Intel.trackProfiles.preloadAlbumProfiles(d.tracks.map(t => t.uid));
         W.PlayerUI?.updateMiniHeader?.();
       }
       this.curr = key; localStorage.setItem('currentAlbum', key);
