@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-764eb61a66ee73c150b5c87993849a13ec20b158.idx
-│   │       ├── pack-764eb61a66ee73c150b5c87993849a13ec20b158.pack
-│   │       └── pack-764eb61a66ee73c150b5c87993849a13ec20b158.rev
+│   │       ├── pack-94d056f087a7b17e9550166af2cfdcd269290a9e.idx
+│   │       ├── pack-94d056f087a7b17e9550166af2cfdcd269290a9e.pack
+│   │       └── pack-94d056f087a7b17e9550166af2cfdcd269290a9e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -409,7 +409,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-23 15:38:46 UTC
+Сгенерировано: 2026-03-23 15:39:28 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -652,6 +652,10 @@ jobs:
 
 </head>
 <body>
+  <!-- Global Visual FX Layers -->
+  <div id="global-fx-bg"></div>
+  <div id="global-particles"></div>
+
   <!-- Promocode Screen -->
   <div id="promocode-block">
     <div class="promo-inner">
@@ -889,7 +893,7 @@ jobs:
   </template>
 
   <script>
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.62');
+    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.63');
     const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-03-22');
 
     // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
