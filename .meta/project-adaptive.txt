@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e11a78312d50b741997e57f624ba5124651de125.idx
-│   │       ├── pack-e11a78312d50b741997e57f624ba5124651de125.pack
-│   │       └── pack-e11a78312d50b741997e57f624ba5124651de125.rev
+│   │       ├── pack-133764c7f8c5c649f2c38a7a9004c2d44d568b2f.idx
+│   │       ├── pack-133764c7f8c5c649f2c38a7a9004c2d44d568b2f.pack
+│   │       └── pack-133764c7f8c5c649f2c38a7a9004c2d44d568b2f.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -410,7 +410,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-23 17:15:01 UTC
+Сгенерировано: 2026-03-23 17:15:42 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2239,7 +2239,6 @@ class AlbumsManager {
           tList.querySelectorAll('.track[data-uid]').forEach(el => injectIndicator(el));
         }
         this.highlightCurrentTrack();
-        if (W.Intel?.trackProfiles?.preloadAlbumProfiles) W.Intel.trackProfiles.preloadAlbumProfiles(d.tracks.map(t => t.uid));
         W.PlayerUI?.updateMiniHeader?.();
       }
       this.curr = key; localStorage.setItem('currentAlbum', key);
