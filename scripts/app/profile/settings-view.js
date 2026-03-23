@@ -141,8 +141,20 @@ export const renderProfileSettings = (root) => {
           </div>
         </div>
         <div class="set-row">
-          <div class="set-info"><div class="set-title">Глитч эффект</div><div class="set-sub">Неоновые искажения при ударах</div></div>
+          <div class="set-info"><div class="set-title">Глитч эффект</div><div class="set-sub">Неоновые искажения логотипа</div></div>
           <label class="set-switch"><input type="checkbox" id="lp-glitch"><span class="set-slider"></span></label>
+        </div>
+        <div class="set-row">
+          <div class="set-info"><div class="set-title">Тряска интерфейса</div><div class="set-sub">Землетрясение плеера на дропах</div></div>
+          <label class="set-switch"><input type="checkbox" id="lp-shake"><span class="set-slider"></span></label>
+        </div>
+        <div class="set-row">
+          <div class="set-info"><div class="set-title">Динамический фон</div><div class="set-sub">Перекраска фона приложения под трек</div></div>
+          <label class="set-switch"><input type="checkbox" id="lp-bg"><span class="set-slider"></span></label>
+        </div>
+        <div class="set-row">
+          <div class="set-info"><div class="set-title">Частицы (Снег/Искры)</div><div class="set-sub">Генерация частиц в зависимости от музыки</div></div>
+          <label class="set-switch"><input type="checkbox" id="lp-particles"><span class="set-slider"></span></label>
         </div>
         <button class="om-btn om-btn--outline om-fullw" id="lp-reset-btn">Сбросить по умолчанию</button>
       </div>
@@ -222,24 +234,29 @@ export const renderProfileSettings = (root) => {
   }
 
   // --- Логика Пульсации (Интерфейс) ---
-  const lpInt = root.querySelector('#lp-intensity'), lpGlitch = root.querySelector('#lp-glitch'), lpReset = root.querySelector('#lp-reset-btn');
+  const lpInt = root.querySelector('#lp-intensity'), lpGlitch = root.querySelector('#lp-glitch'), lpShake = root.querySelector('#lp-shake'), lpBg = root.querySelector('#lp-bg'), lpPart = root.querySelector('#lp-particles'), lpReset = root.querySelector('#lp-reset-btn');
   if (lpInt && lpGlitch && lpReset) {
     lpInt.value = localStorage.getItem('logoPulseIntensity') || '0.15';
     lpGlitch.checked = localStorage.getItem('logoPulseGlitch') === '1';
+    lpShake.checked = localStorage.getItem('fxShakeEnabled') !== '0'; // по умолчанию вкл
+    lpBg.checked = localStorage.getItem('fxBgEnabled') !== '0';
+    lpPart.checked = localStorage.getItem('fxParticlesEnabled') !== '0';
 
     const applyLp = () => {
       localStorage.setItem('logoPulseIntensity', lpInt.value);
       localStorage.setItem('logoPulseGlitch', lpGlitch.checked ? '1' : '0');
+      localStorage.setItem('fxShakeEnabled', lpShake.checked ? '1' : '0');
+      localStorage.setItem('fxBgEnabled', lpBg.checked ? '1' : '0');
+      localStorage.setItem('fxParticlesEnabled', lpPart.checked ? '1' : '0');
       W.LogoPulse?.updateSettings?.();
     };
 
-    lpInt.addEventListener('input', applyLp);
-    lpGlitch.addEventListener('change', applyLp);
+    [lpInt].forEach(el => el.addEventListener('input', applyLp));
+    [lpGlitch, lpShake, lpBg, lpPart].forEach(el => el.addEventListener('change', applyLp));
+    
     lpReset.addEventListener('click', () => {
-      lpInt.value = '0.15';
-      lpGlitch.checked = false;
-      applyLp();
-      W.NotificationSystem?.success?.('Настройки пульсации сброшены');
+      lpInt.value = '0.15'; lpGlitch.checked = false; lpShake.checked = true; lpBg.checked = true; lpPart.checked = true;
+      applyLp(); W.NotificationSystem?.success?.('Настройки эффектов сброшены');
     });
   }
 
