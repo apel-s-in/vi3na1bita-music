@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-85b83a5efda8058c2695486733fcea3028cb66ba.idx
-│   │       ├── pack-85b83a5efda8058c2695486733fcea3028cb66ba.pack
-│   │       └── pack-85b83a5efda8058c2695486733fcea3028cb66ba.rev
+│   │       ├── pack-8e81034e7c28e42989b873ec48f7a28f161eca87.idx
+│   │       ├── pack-8e81034e7c28e42989b873ec48f7a28f161eca87.pack
+│   │       └── pack-8e81034e7c28e42989b873ec48f7a28f161eca87.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -410,7 +410,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-23 16:48:02 UTC
+Сгенерировано: 2026-03-23 16:49:39 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -6782,12 +6782,19 @@ export const trackProfiles = {
 
     const url = `${getProfileDir()}${encodeURIComponent(key)}.json`;
     try {
-      const data = await fetchJson(url, `intel:track-profile:${key}:v1`);
+      const cleanUrl = `${url}?cb=${window.APP_CONFIG?.APP_VERSION || Date.now()}`;
+      const fc = window.Utils?.fetchCache;
+      const data = fc?.getJson ? await fc.getJson({ key: `intel:profile:${key}`, url: cleanUrl, ttlMs: 2592000000, store: 'local', fetchInit: { cache: 'force-cache' } }) : await fetch(cleanUrl).then(r => r.json());
       if (data) state.profileCache.set(key, data);
       return data || null;
     } catch {
-      return null; // Не кэшируем пустоту, чтобы плеер мог найти файл позже
+      return null; 
     }
+  },
+  
+  preloadAlbumProfiles(uids) {
+    // Тихая фоновая загрузка навсегда в localStorage
+    setTimeout(() => { (uids || []).forEach(u => this.getProfile(u).catch(()=>{})); }, 2000);
   },
 
   dropProfile(uid) {
