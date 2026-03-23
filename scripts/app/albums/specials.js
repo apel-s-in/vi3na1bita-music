@@ -39,7 +39,7 @@ export async function loadFavoritesAlbum(ctx) {
   if (!ctx._favB) {
     ctx._favB = 1;
     c.addEventListener('click', e => {
-      if (ctx.getCurrentAlbum() !== FAV) return;
+      if (ctx.getCurrentAlbum() !== FAV || e.target.closest('.offline-ind')) return;
       const r = e.target.closest('.track'); if (!r) return;
       const u = r.dataset.uid, aK = r.dataset.album, pc = window.playerCore, isA = pc.getFavoritesState().active.some(x => x.uid === u);
       
