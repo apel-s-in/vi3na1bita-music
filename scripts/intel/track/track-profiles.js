@@ -77,12 +77,19 @@ export const trackProfiles = {
 
     const url = `${getProfileDir()}${encodeURIComponent(key)}.json`;
     try {
-      const data = await fetchJson(url, `intel:track-profile:${key}:v1`);
+      const cleanUrl = `${url}?cb=${window.APP_CONFIG?.APP_VERSION || Date.now()}`;
+      const fc = window.Utils?.fetchCache;
+      const data = fc?.getJson ? await fc.getJson({ key: `intel:profile:${key}`, url: cleanUrl, ttlMs: 2592000000, store: 'local', fetchInit: { cache: 'force-cache' } }) : await fetch(cleanUrl).then(r => r.json());
       if (data) state.profileCache.set(key, data);
       return data || null;
     } catch {
-      return null; // Не кэшируем пустоту, чтобы плеер мог найти файл позже
+      return null; 
     }
+  },
+  
+  preloadAlbumProfiles(uids) {
+    // Тихая фоновая загрузка навсегда в localStorage
+    setTimeout(() => { (uids || []).forEach(u => this.getProfile(u).catch(()=>{})); }, 2000);
   },
 
   dropProfile(uid) {
