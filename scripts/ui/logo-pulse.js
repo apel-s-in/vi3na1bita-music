@@ -103,19 +103,17 @@
       }
       return;
     }
-    // Добавляем новые
     while(pActive.length < targetAmount && pPool.length > 0) {
       let p = pPool.pop();
       p.active = true;
       p.x = Math.random() * 100;
-      p.y = 105 + Math.random() * 20; // Спавнятся ниже экрана
+      p.y = Math.random() * 110; // Мгновенный спавн по всей высоте экрана
       p.speed = speed * (0.5 + Math.random());
       const s = (2 + Math.random() * 3);
       p.el.style.width = p.el.style.height = `${s}px`;
       p.el.style.opacity = (0.2 + Math.random() * 0.4).toFixed(2);
       pActive.push(p);
     }
-    // Убираем лишние
     while(pActive.length > targetAmount) {
       let p = pActive.pop(); p.active = false; p.el.style.opacity = 0; pPool.push(p);
     }
@@ -124,7 +122,8 @@
   const loop = () => {
     const forcePreview = previewLogo && previewLogo.offsetParent !== null;
     
-    if (!st.active && !forcePreview) {
+    // Движок работает, если включена ХОТЯ БЫ ОДНА настройка (даже если логотип не пульсирует)
+    if (!st.active && !st.bg && !st.particles && !st.shake && !st.glitch && !forcePreview) {
         animId = requestAnimationFrame(loop);
         return;
     }
@@ -254,11 +253,10 @@
     initParticlePool();
     syncUi();
     
-    // Слушаем смену трека для подгрузки JSON профиля из /librosa/
     W.addEventListener('player:trackChanged', async (e) => {
       activeProfile = null; beatIdx = 0; secIdx = -1;
       if (globalBg) globalBg.style.background = 'var(--primary-bg)';
-      setParticlesTarget(0, 0); // Прячем частицы до старта новой музыки
+      setParticlesTarget(0, 0); 
       
       const uid = e.detail?.uid;
       if (uid && W.TrackRegistry?.getTrackProfile) {
@@ -267,7 +265,7 @@
           if (profile && profile.beatmap) {
             activeProfile = profile;
             if (activeProfile.impactEvents) activeProfile.impactEvents.forEach(ev => ev._fired = false);
-            console.log(`[VisualFX] Загружен умный профиль: ${uid}`);
+            W.NotificationSystem?.success('✨ Умный FX-профиль загружен!');
           }
         } catch {}
       }
