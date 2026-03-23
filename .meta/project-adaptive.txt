@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-f8541e06ba79257820ebad4068542ca27046c71e.idx
-│   │       ├── pack-f8541e06ba79257820ebad4068542ca27046c71e.pack
-│   │       └── pack-f8541e06ba79257820ebad4068542ca27046c71e.rev
+│   │       ├── pack-d27a7a730a35bccbbde7a36102980b71ff91f3ba.idx
+│   │       ├── pack-d27a7a730a35bccbbde7a36102980b71ff91f3ba.pack
+│   │       └── pack-d27a7a730a35bccbbde7a36102980b71ff91f3ba.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -410,7 +410,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-23 16:02:16 UTC
+Сгенерировано: 2026-03-23 16:05:36 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -894,7 +894,7 @@ jobs:
   </template>
 
   <script>
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.64');
+    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.65');
     const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-03-22');
 
     // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
@@ -938,7 +938,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.1.64';
+const SW_VERSION = '8.1.65';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
