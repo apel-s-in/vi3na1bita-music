@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-453645c8ef70a8ef4f8e47063b6a9c0af10b2ebb.idx
-│   │       ├── pack-453645c8ef70a8ef4f8e47063b6a9c0af10b2ebb.pack
-│   │       └── pack-453645c8ef70a8ef4f8e47063b6a9c0af10b2ebb.rev
+│   │       ├── pack-2d60e11ec4ef70c4668a917b814bd67ed2a67342.idx
+│   │       ├── pack-2d60e11ec4ef70c4668a917b814bd67ed2a67342.pack
+│   │       └── pack-2d60e11ec4ef70c4668a917b814bd67ed2a67342.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -408,7 +408,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-23 11:36:16 UTC
+Сгенерировано: 2026-03-23 12:52:07 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -9175,6 +9175,12 @@ body.news-view #cover-wrap{display:none!important}
 .sleep-hero-text{display:flex;flex-direction:column}
 .sleep-hero-title{font-size:22px;font-weight:900;color:var(--secondary-color)}
 .sleep-hero-sub{font-size:12px;color:#9db7dd;margin-top:2px;opacity:0.8}
+.sleep-toggle-switch{position:relative;display:inline-block;width:48px;height:26px;flex-shrink:0}
+.sleep-toggle-switch input{opacity:0;width:0;height:0}
+.sleep-toggle-slider{position:absolute;cursor:pointer;inset:0;background:rgba(255,255,255,.1);border-radius:26px;transition:.3s}
+.sleep-toggle-slider:before{content:"";position:absolute;height:20px;width:20px;left:3px;bottom:3px;background:#888;border-radius:50%;transition:.3s}
+.sleep-toggle-switch input:checked + .sleep-toggle-slider{background:var(--secondary-color)}
+.sleep-toggle-switch input:checked + .sleep-toggle-slider:before{transform:translateX(22px);background:#fff}
 .sleep-status-card{background:rgba(0,0,0,0.2);border-radius:12px;padding:14px;border:1px solid rgba(255,255,255,0.05);display:flex;flex-direction:column;gap:6px}
 .sleep-status-row{display:flex;justify-content:space-between;font-size:13px;color:#9db7dd}
 .sleep-status-row strong{color:#fff;font-weight:800;font-variant-numeric:tabular-nums}
