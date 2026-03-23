@@ -28,7 +28,7 @@ export const APP_CONFIG = {
   INTEL_LAYER_ENABLED: true,
   INTEL_LAYER_BOOT_MODE: 'soft',
   INTEL_LAYER_PROFILE_INDEX_URL: './data/track-profiles-index.json',
-  INTEL_LAYER_PROFILE_DIR: './data/track-profiles/',
+  INTEL_LAYER_PROFILE_DIR: './data/track-profiles/librosa/',
   INTEL_LAYER_STORAGE_DISABLE_KEY: 'intel:disable',
   INTEL_LAYER_STORAGE_DEV_KEY: 'intel:dev'
 };
