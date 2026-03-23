@@ -28,7 +28,7 @@ import { resolveFavoritesOnlyState } from '../scripts/app/player/favorites-only-
     flags = { shuf: false, rep: false, mute: false }; shufHist = [];
     sound = null; qMode = qNorm(ls.getItem(LS_PQ));
     _tok = 0; _tick = null; _sleep = null; _skips = 0;
-    _ev = new Map(); _favSubs = new Set();
+    _ev = new Map(); _favSubs = new Set(); _playingUid = null;
     
     constructor() {
       W.addEventListener('offline:uiChanged', () => this.qMode = qNorm(ls.getItem(LS_PQ)));
@@ -179,7 +179,7 @@ import { resolveFavoritesOnlyState } from '../scripts/app/player/favorites-only-
 
       const pos = Number(opts.resumePosition) || 0, retry = Number(opts._retryN) || 0;
       
-      if (this.sound && this.getCurrentTrackUid() === uid && !opts._forceReload) {
+      if (this.sound && this._playingUid === uid && !opts._forceReload) {
         this.currentIndex = idx;
         this._emit('onTrackChange', t, idx);
         emitG('player:trackChanged', { uid, dir });
@@ -189,9 +189,10 @@ import { resolveFavoritesOnlyState } from '../scripts/app/player/favorites-only-
       }
       
       this._unload(true);
+      this._playingUid = uid;
       
       this.sound = new Howl({
-        src: [url], html5: !url.startsWith('blob:'), format: ['mp3'], xhr: { withCredentials: false }, autoplay: opts.autoPlay ?? this.isPlaying(),
+        src: [url], html5: true, format: ['mp3'], xhr: { withCredentials: false }, autoplay: opts.autoPlay ?? this.isPlaying(),
         onload: sf(() => { pos && this.seek(pos); this._updMedia(); }),
         onplay: sf(() => { this._startT(); this._emit('onPlay', t, idx); this._updMedia(); emitG('player:play', { uid, duration: this.getDuration(), type: 'audio', provider: aP }); emitG('player:providerChanged', { provider: aP }); }),
         onpause: sf(() => { this._stopT(); this._emit('onPause'); this._updMedia(); emitG('player:pause'); }),
@@ -209,6 +210,7 @@ import { resolveFavoritesOnlyState } from '../scripts/app/player/favorites-only-
 
     _unload(silent) {
       if (this.sound) { try { this.sound.stop(); this.sound.unload(); } catch {} this.sound = null; }
+      this._playingUid = null;
       if (this._oK && (!silent || (this._oKTok && this._oKTok !== this._tok))) {
         try { W.Utils?.blob?.revokeUrl?.(this._oK); } catch {}
         this._oK = null; this._oKTok = 0;
