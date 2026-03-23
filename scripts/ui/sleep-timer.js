@@ -51,45 +51,58 @@ export class SleepTimer {
 
   _getQuestsHtml() {
     const ae = window.achievementEngine; if (!ae || !ae.achievements) return '';
-    const qs = ae.achievements.filter(a => !a.isUnlocked && !a.isHidden && (a.progressMeta || a.id.startsWith('album_'))).sort((a,b) => (b.progress?.pct||0) - (a.progress?.pct||0)).slice(0, 2);
+    const qs = ae.achievements.filter(a => {
+      if (a.isUnlocked || a.isHidden) return false;
+      const pm = a.progressMeta;
+      if (pm?.kind === 'time_accum') return pm.remainingMs <= 900000;
+      if (a.progress?.target) return (a.progress.target - (a.progress.current || 0)) <= 3;
+      return false;
+    }).sort((a,b) => (b.progress?.pct||0) - (a.progress?.pct||0)).slice(0, 2);
     if (!qs.length) return '';
-    return `<div class="sleep-quests-wrap"><div class="sm-cap">КВЕСТЫ НА НОЧЬ</div>${qs.map(a => `<div class="sleep-quest-row" data-qid="${a.id}"><div class="sq-icon">${a.icon}</div><div class="sq-info"><div class="sq-title">${a.name}</div><div class="sq-desc">${a.short}</div></div></div>`).join('')}</div>`;
+    return `<div class="sleep-quests-wrap"><div class="sm-cap">БЫСТРЫЕ ДОСТИЖЕНИЯ</div>${qs.map(a => `<div class="sleep-quest-row" data-qid="${a.id}"><div class="sq-icon">${a.icon}</div><div class="sq-info"><div class="sq-title">${a.name}</div><div class="sq-desc">${a.short}</div></div></div>`).join('')}</div>`;
   }
 
   show() {
-    const isRunning = this._getRemainingMs() > 0;
-    let draftActive = isRunning;
-    let draftMins = isRunning ? Math.ceil(this._getRemainingMs() / 60000) : (this._state.lastDurationMin || 20);
+    const getIsRun = () => this._getRemainingMs() > 0;
+    let draftActive = getIsRun();
+    let draftMins = draftActive ? Math.ceil(this._getRemainingMs() / 60000) : (this._state.lastDurationMin || 20);
     
     const m = window.Modals?.open?.({ 
       title: '', maxWidth: 400, 
-      bodyHtml: `<div class="sleep-modal-wrapper"><div class="sleep-full"><div class="sleep-hero"><div class="sleep-hero-text"><div class="sleep-hero-title">Таймер сна</div><div class="sleep-hero-sub">Управление остановкой воспроизведения</div></div><label class="set-switch"><input type="checkbox" id="sm-toggle"><span class="set-slider"></span></label></div><div class="sleep-status-card"><div class="sleep-status-row"><span>Статус</span><strong id="sm-stat">Выключен</strong></div><div class="sleep-status-row"><span>Осталось</span><strong id="sm-rem">—</strong></div><div class="sleep-status-row"><span>Остановить в</span><strong id="sm-at">—</strong></div><div class="sleep-status-row"><span>Использован</span><strong>${this._state.usageCount ? `${this._state.usageCount} раз` : 'Нет'}</strong></div></div><div class="sleep-controls-card" id="sm-ctrls"><div class="sleep-input-row"><div class="sleep-label">Остановить через</div><div class="sleep-input-wrap mins"><input type="number" id="sm-inp-min" class="sleep-input" min="1" max="720"></div></div><div class="sleep-input-row"><div class="sleep-label">Точное время</div><div class="sleep-input-wrap"><input type="time" id="sm-inp-time" class="sleep-input"></div></div><label class="sleep-check"><input type="checkbox" id="sm-remind">Напомнить за 5 минут</label><button class="om-btn om-btn--outline sm-fullw" id="sm-apply">Закрыть</button></div>${this._getQuestsHtml()}</div></div>` 
+      bodyHtml: `<div class="sleep-modal-wrapper"><div class="sleep-full"><div class="sleep-hero"><div class="sleep-hero-text"><div class="sleep-hero-title">Таймер сна</div><div class="sleep-hero-sub">Управление остановкой воспроизведения</div></div><label class="sleep-toggle-switch"><input type="checkbox" id="sm-toggle"><span class="sleep-toggle-slider"></span></label></div><div class="sleep-status-card"><div class="sleep-status-row"><span>Статус</span><strong id="sm-stat">Выключен</strong></div><div class="sleep-status-row"><span>Осталось</span><strong id="sm-rem">—</strong></div><div class="sleep-status-row"><span>Остановить в</span><strong id="sm-at">—</strong></div><div class="sleep-status-row"><span>Использован</span><strong>${this._state.usageCount ? `${this._state.usageCount} раз` : 'Нет'}</strong></div></div><div class="sleep-controls-card" id="sm-ctrls"><div class="sleep-input-row"><div class="sleep-label">Остановить через</div><div class="sleep-input-wrap mins"><input type="number" id="sm-inp-min" class="sleep-input" min="1" max="720"></div></div><div class="sleep-input-row"><div class="sleep-label">Точное время</div><div class="sleep-input-wrap"><input type="time" id="sm-inp-time" class="sleep-input"></div></div><label class="sleep-check"><input type="checkbox" id="sm-remind"><span>Напомнить за 5 минут до отключения</span></label><div style="display:flex;gap:10px;margin-top:6px"><button class="om-btn om-btn--outline" style="flex:1" id="sm-btn-close">Закрыть</button><button class="om-btn om-btn--primary" style="flex:1;display:none" id="sm-btn-apply">Установить</button></div></div>${this._getQuestsHtml()}</div></div>` 
     });
     if (!m) return;
 
-    const tgl = m.querySelector('#sm-toggle'), ctrl = m.querySelector('#sm-ctrls'), iMin = m.querySelector('#sm-inp-min'), iTim = m.querySelector('#sm-inp-time'), btn = m.querySelector('#sm-apply'), remChk = m.querySelector('#sm-remind');
+    const tgl = m.querySelector('#sm-toggle'), ctrl = m.querySelector('#sm-ctrls'), iMin = m.querySelector('#sm-inp-min'), iTim = m.querySelector('#sm-inp-time'), btnApply = m.querySelector('#sm-btn-apply'), btnClose = m.querySelector('#sm-btn-close'), remChk = m.querySelector('#sm-remind');
     remChk.checked = !!this._state.remind5m;
 
     const updateUI = () => {
+      const isRun = getIsRun();
       tgl.checked = draftActive;
       ctrl.className = `sleep-controls-card ${draftActive ? '' : 'disabled'}`;
-      iMin.value = draftMins;
       
       const d = new Date(Date.now() + draftMins * 60000);
       const timeStr = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-      if (D.activeElement !== iTim) iTim.value = timeStr;
+      
+      if (document.activeElement !== iMin) iMin.value = draftMins;
+      if (document.activeElement !== iTim) iTim.value = timeStr;
 
-      m.querySelector('#sm-stat').textContent = draftActive ? (isRunning ? 'Активен' : 'Черновик') : 'Выключен';
+      m.querySelector('#sm-stat').textContent = draftActive ? (isRun ? 'Активен' : 'Черновик') : 'Выключен';
       m.querySelector('#sm-rem').textContent = draftActive ? `${draftMins} мин` : '—';
       m.querySelector('#sm-at').textContent = draftActive ? timeStr : '—';
 
-      btn.className = `om-btn sm-fullw ${draftActive ? 'om-btn--primary' : 'om-btn--outline'}`;
-      btn.textContent = draftActive ? 'Установить' : 'Закрыть';
+      if (draftActive) {
+        btnApply.style.display = '';
+        btnApply.textContent = isRun ? 'Обновить' : 'Установить';
+      } else {
+        btnApply.style.display = 'none';
+      }
     };
 
     tgl.addEventListener('change', e => {
       draftActive = e.target.checked;
-      if (draftActive && draftMins <= 0) draftMins = this._state.lastDurationMin || 20;
+      if (!draftActive && getIsRun()) { this.stop(true); draftMins = this._state.lastDurationMin || 20; }
+      else if (draftActive && draftMins <= 0) draftMins = this._state.lastDurationMin || 20;
       updateUI();
     });
 
@@ -98,7 +111,7 @@ export class SleepTimer {
       if (!isNaN(v) && v > 0) { draftMins = v; updateUI(); }
     });
 
-    iTim.addEventListener('change', e => {
+    iTim.addEventListener('input', e => {
       const [h, min] = e.target.value.split(':').map(Number);
       if (isNaN(h) || isNaN(min)) return;
       const d = new Date(), tgt = new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, min, 0);
@@ -109,11 +122,8 @@ export class SleepTimer {
 
     remChk.addEventListener('change', e => { this._state.remind5m = !!e.target.checked; this._saveState(); });
 
-    btn.addEventListener('click', () => {
-      if (draftActive) this.startMinutes(draftMins);
-      else if (isRunning) this.stop();
-      m.remove();
-    });
+    btnApply.addEventListener('click', () => { if (draftActive) this.startMinutes(draftMins); m.remove(); });
+    btnClose.addEventListener('click', () => m.remove());
 
     m.addEventListener('click', e => {
       const qid = e.target.closest('.sleep-quest-row')?.dataset.qid;
@@ -126,16 +136,13 @@ export class SleepTimer {
           if (qid.startsWith('album_')) {
             const aK = qid.replace('album_complete_', '');
             window.AlbumsManager?.loadAlbum?.(aK).then(() => { setTimeout(() => window.playerCore?.play?.(0), 300); });
-            this.startMinutes(60);
-          } else {
-            this.startMinutes(30);
           }
+          this.startMinutes(30);
         }
       });
     });
 
-    // Live update of real timer if active and untouched
-    const liveInt = setInterval(() => { if (isRunning && draftActive && D.activeElement !== iMin && D.activeElement !== iTim) { const r = this._getRemainingMs(); if (r>0) { draftMins = Math.ceil(r/60000); updateUI(); } } }, 1000);
+    const liveInt = setInterval(() => { if (getIsRun() && draftActive && document.activeElement !== iMin && document.activeElement !== iTim) { const r = this._getRemainingMs(); if (r>0) { draftMins = Math.ceil(r/60000); updateUI(); } } }, 1000);
     const oldRemove = m.remove.bind(m); m.remove = () => { clearInterval(liveInt); oldRemove(); };
     updateUI();
   }
