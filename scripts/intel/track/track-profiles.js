@@ -18,16 +18,18 @@ const getProfileDir = () => String(window.APP_CONFIG?.INTEL_LAYER_PROFILE_DIR ||
 
 async function fetchJson(url, cacheKey) {
   const fc = window.Utils?.fetchCache;
+  const cleanUrl = `${url}?cb=${Date.now()}`; // Пробиваем кэш браузера и CDN
+  
   if (fc?.getJson) {
     return fc.getJson({
       key: cacheKey,
-      url,
+      url: cleanUrl,
       ttlMs: 12 * 60 * 60 * 1000,
       store: 'session',
-      fetchInit: { cache: 'force-cache' }
+      fetchInit: { cache: 'no-cache' }
     });
   }
-  const res = await (window.NetPolicy?.fetchWithTraffic?.(url, { cache: 'force-cache' }) || fetch(url, { cache: 'force-cache' }));
+  const res = await (window.NetPolicy?.fetchWithTraffic?.(cleanUrl, { cache: 'no-cache' }) || fetch(cleanUrl, { cache: 'no-cache' }));
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
