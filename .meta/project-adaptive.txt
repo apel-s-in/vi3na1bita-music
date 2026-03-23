@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-0c0e6f9eb53670590f096c60e7d5e3759b797e18.idx
-│   │       ├── pack-0c0e6f9eb53670590f096c60e7d5e3759b797e18.pack
-│   │       └── pack-0c0e6f9eb53670590f096c60e7d5e3759b797e18.rev
+│   │       ├── pack-764eb61a66ee73c150b5c87993849a13ec20b158.idx
+│   │       ├── pack-764eb61a66ee73c150b5c87993849a13ec20b158.pack
+│   │       └── pack-764eb61a66ee73c150b5c87993849a13ec20b158.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -409,7 +409,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-23 15:09:52 UTC
+Сгенерировано: 2026-03-23 15:38:46 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4776,7 +4776,7 @@ export const APP_CONFIG = {
   INTEL_LAYER_ENABLED: true,
   INTEL_LAYER_BOOT_MODE: 'soft',
   INTEL_LAYER_PROFILE_INDEX_URL: './data/track-profiles-index.json',
-  INTEL_LAYER_PROFILE_DIR: './data/track-profiles/',
+  INTEL_LAYER_PROFILE_DIR: './data/track-profiles/librosa/',
   INTEL_LAYER_STORAGE_DISABLE_KEY: 'intel:disable',
   INTEL_LAYER_STORAGE_DEV_KEY: 'intel:dev'
 };
