@@ -82,11 +82,18 @@
   const loop = () => {
     const forcePreview = previewLogo && previewLogo.offsetParent !== null;
     
-    // ГЛАВНЫЙ ВЫКЛЮЧАТЕЛЬ. Если выключено - прячем фон и частицы.
-    if (globalBg) globalBg.classList.toggle('fx-active', st.active && st.bg);
-    if (particlesContainer) particlesContainer.classList.toggle('fx-active', st.active && st.particles);
+    // МАСТЕР ВЫКЛЮЧАТЕЛЬ: Если общая кнопка эффектов выключена
+    if (!st.active && !forcePreview) {
+      if (globalBg) globalBg.classList.remove('fx-active');
+      if (particlesContainer) particlesContainer.classList.remove('fx-active');
+      animId = requestAnimationFrame(loop);
+      return;
+    }
 
-    if (!st.active && !forcePreview) { animId = requestAnimationFrame(loop); return; }
+    // Если включена - активируем слои согласно настройкам пользователя
+    if (globalBg) globalBg.classList.toggle('fx-active', st.bg);
+    if (particlesContainer) particlesContainer.classList.toggle('fx-active', st.particles);
+
     if (!cachedTargets.length) { animId = requestAnimationFrame(loop); return; }
 
     let p = 0;
