@@ -185,6 +185,12 @@ body.news-view #cover-wrap{display:none!important}
 .sleep-hero-text{display:flex;flex-direction:column}
 .sleep-hero-title{font-size:22px;font-weight:900;color:var(--secondary-color)}
 .sleep-hero-sub{font-size:12px;color:#9db7dd;margin-top:2px;opacity:0.8}
+.sleep-toggle-switch{position:relative;display:inline-block;width:48px;height:26px;flex-shrink:0}
+.sleep-toggle-switch input{opacity:0;width:0;height:0}
+.sleep-toggle-slider{position:absolute;cursor:pointer;inset:0;background:rgba(255,255,255,.1);border-radius:26px;transition:.3s}
+.sleep-toggle-slider:before{content:"";position:absolute;height:20px;width:20px;left:3px;bottom:3px;background:#888;border-radius:50%;transition:.3s}
+.sleep-toggle-switch input:checked + .sleep-toggle-slider{background:var(--secondary-color)}
+.sleep-toggle-switch input:checked + .sleep-toggle-slider:before{transform:translateX(22px);background:#fff}
 .sleep-status-card{background:rgba(0,0,0,0.2);border-radius:12px;padding:14px;border:1px solid rgba(255,255,255,0.05);display:flex;flex-direction:column;gap:6px}
 .sleep-status-row{display:flex;justify-content:space-between;font-size:13px;color:#9db7dd}
 .sleep-status-row strong{color:#fff;font-weight:800;font-variant-numeric:tabular-nums}
