@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-caab44dfb88a193b4e1264e545f2cd95a8c373d4.idx
-│   │       ├── pack-caab44dfb88a193b4e1264e545f2cd95a8c373d4.pack
-│   │       └── pack-caab44dfb88a193b4e1264e545f2cd95a8c373d4.rev
+│   │       ├── pack-e11a78312d50b741997e57f624ba5124651de125.idx
+│   │       ├── pack-e11a78312d50b741997e57f624ba5124651de125.pack
+│   │       └── pack-e11a78312d50b741997e57f624ba5124651de125.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -410,7 +410,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-23 17:14:16 UTC
+Сгенерировано: 2026-03-23 17:15:01 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -6791,11 +6791,6 @@ export const trackProfiles = {
     } catch {
       return null; 
     }
-  },
-  
-  preloadAlbumProfiles(uids) {
-    // Тихая фоновая загрузка навсегда в localStorage
-    setTimeout(() => { (uids || []).forEach(u => this.getProfile(u).catch(()=>{})); }, 2000);
   },
 
   dropProfile(uid) {
