@@ -76,11 +76,10 @@ export const trackProfiles = {
     const url = `${getProfileDir()}${encodeURIComponent(key)}.json`;
     try {
       const data = await fetchJson(url, `intel:track-profile:${key}:v1`);
-      state.profileCache.set(key, data || null);
+      if (data) state.profileCache.set(key, data);
       return data || null;
     } catch {
-      state.profileCache.set(key, null);
-      return null;
+      return null; // Не кэшируем пустоту, чтобы плеер мог найти файл позже
     }
   },
 
