@@ -369,7 +369,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-24 23:14:49 UTC
+Сгенерировано: 2026-03-24 23:27:10 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -9611,7 +9611,7 @@ body{min-height:100vh;min-width:100vw;padding-top:env(safe-area-inset-top);-webk
 #promo-btn:disabled{opacity:.5;cursor:not-allowed}
 #promo-error{color:#ff6b6b;margin-top:12px;font-size:14px;min-height:20px}
 #main-block{max-width:420px;margin:0 auto;flex:1 0 auto;display:flex;flex-direction:column;align-items:center;width:100%;padding:0 10px env(safe-area-inset-bottom)}
-#hotkeys-btn.hotkeys-hidden,#sysinfo-btn.sysinfo-hidden,#sleep-timer-badge.sleep-badge-hidden{display:none}
+#hotkeys-btn.hotkeys-hidden,#sysinfo-btn.sysinfo-hidden{display:none}
 .track-list{margin:0 auto;max-width:370px;width:100%;font-size:1.05em;color:var(--c-e);background:0;padding:0}
 .fav-empty{padding:20px;text-align:center;color:#8ab8fd}
 .fav-empty h3{margin:0 0 10px}
@@ -9724,8 +9724,6 @@ body{min-height:100vh;min-width:100vw;padding-top:env(safe-area-inset-top);-webk
 .jump-to-playing{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);width:44px;height:44px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.45);color:var(--c-w);display:none;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 .jump-to-playing:active{transform:translateX(-50%) scale(.98)}
 .jump-to-playing button{all:unset;width:100%;height:100%;cursor:pointer;display:grid;place-items:center;line-height:1;user-select:none}
-@media (max-width:600px){.hotkeys-btn{display:none!important}}
-@media (max-width:380px){.promo-cover{width:200px;height:200px}}
 @media (display-mode:standalone){.bottom-controls-center{padding-bottom:calc(env(safe-area-inset-bottom) + 10px)}}
 @media (prefers-color-scheme:dark){body{background:#0d0d0d}}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border-width:0}
