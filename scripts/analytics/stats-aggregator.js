@@ -70,7 +70,7 @@ export class StatsAggregator {
 
     if (dailyActive) {
       const sObj = (await metaDB.getGlobal('global_streak'))?.value || { current: 0, longest: 0, lastActiveDate: '' };
-      if (sObj.lastActiveDate !== tStr) { const yd = new Date(); yd.setDate(yd.getDate() - 1); const yStr = `${yd.getFullYear()}-${String(yd.getMonth() + 1).padStart(2, '0')}-${String(yd.getDate()).padStart(2, '0')}`; sObj.current = (sObj.lastActiveDate === yStr) ? sObj.current + 1 : 1; sObj.longest = Math.max(sObj.longest, sObj.current); sObj.lastActiveDate = tStr; await metaDB.setGlobal('global_streak', sObj); }
+      if (sObj.lastActiveDate !== dateStr) { const yd = new Date(); yd.setDate(yd.getDate() - 1); const yStr = `${yd.getFullYear()}-${String(yd.getMonth() + 1).padStart(2, '0')}-${String(yd.getDate()).padStart(2, '0')}`; sObj.current = (sObj.lastActiveDate === yStr) ? sObj.current + 1 : 1; sObj.longest = Math.max(sObj.longest, sObj.current); sObj.lastActiveDate = dateStr; await metaDB.setGlobal('global_streak', sObj); }
     }
 
     await metaDB.addEvents(events, 'events_warm'); await metaDB.clearEvents('events_hot'); window.dispatchEvent(new CustomEvent('stats:updated'));
