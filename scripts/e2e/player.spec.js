@@ -177,6 +177,18 @@ test('social achievement tracks all four news social links', async ({ page }) =>
   expect(st.social_visit_all || 0).toBe(1);
 });
 
+test('logo pulse module is loaded without import/runtime crash', async ({ page }) => {
+  await loginByPromo(page);
+  const state = await page.evaluate(() => ({
+    hasLogoPulse: !!window.LogoPulse,
+    hasToggle: typeof window.LogoPulse?.toggle === 'function',
+    hasUpdate: typeof window.LogoPulse?.updateSettings === 'function'
+  }));
+  expect(state.hasLogoPulse).toBeTruthy();
+  expect(state.hasToggle).toBeTruthy();
+  expect(state.hasUpdate).toBeTruthy();
+});
+
 test('sleep timer logs feature usage into global stats', async ({ page }) => {
   await loginByPromo(page);
   await page.waitForSelector('#track-list .track', { timeout: 10000 });
