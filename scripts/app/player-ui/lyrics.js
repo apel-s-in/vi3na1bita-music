@@ -1,6 +1,6 @@
 (function () {
   'use strict';
-  const W = window, D = document, U = W.Utils, LS = { V: 'lyricsViewMode', A: 'lyricsAnimationEnabled' }, PRE = 'lyr_', fc = U?.fetchCache, esc = s => U?.escapeHtml?.(String(s||'')) || String(s||'');
+  const W = window, D = document, U = W.Utils, LS = { V: 'lyricsViewMode', A: 'lyricsAnimationEnabled' }, PRE = 'lyr_', fc = U?.fetchCache, esc = s => U?.escapeHtml?.(String(s||'')) || String(s||''), uiSuspended = () => !!W.PlaybackClock?.getPlaybackClock?.()?.uiBackgroundSuspend;
   let st = { list: [], has: false, mode: 'normal', anim: true, showBtn: false, lIdx: -100, mini: false }, dom = {}, _pend = new Map();
 
   const initDom = () => {
@@ -87,7 +87,7 @@
       if (d) { st.list = (Array.isArray(d) ? d : []).map(i => ({ time: Number(i?.time), text: String(i?.line || i?.text || '').trim() })).filter(i => Number.isFinite(i.time) && i.text).sort((a,b) => a.time - b.time); st.has = st.list.length > 0; }
       updateUI();
     },
-    onTick: (pos, opts) => { if (st.mode !== 'hidden' && !opts?.inMiniMode && st.has) render(pos); },
+    onTick: (pos, opts) => { if (!uiSuspended() && st.mode !== 'hidden' && !opts?.inMiniMode && st.has) render(pos); },
     toggleLyricsView: () => { const m = ['normal', 'hidden', 'expanded']; localStorage.setItem(LS.V, st.mode = m[(m.indexOf(st.mode) + 1) % 3]); updateUI(); W.NotificationSystem?.info?.({ normal: '📝 Обычный вид лирики', hidden: '🚫 Лирика скрыта', expanded: '📖 Расширенный вид лирики' }[st.mode]); },
     toggleAnimation: () => { if (st.mode === 'hidden') return W.NotificationSystem?.info?.('Лирика скрыта — анимация недоступна'); localStorage.setItem(LS.A, (st.anim = !st.anim) ? '1' : '0'); updateUI(); W.NotificationSystem?.info?.(st.anim ? '✨ Анимация: ВКЛ' : '✨ Анимация: ВЫКЛ'); },
     getMiniSaveState: () => ({ viewMode: st.mode === 'hidden' ? 'normal' : st.mode, animationEnabled: st.anim }),
