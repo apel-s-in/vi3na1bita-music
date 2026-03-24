@@ -364,7 +364,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-24 20:38:18 UTC
+Сгенерировано: 2026-03-24 20:38:53 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -9454,7 +9454,8 @@ body{min-height:100vh;min-width:100vw;padding-top:env(safe-area-inset-top);-webk
 .profile-tab-btn{flex:1;min-width:max-content;padding:8px 12px;background:transparent;border:none;color:#888;font-weight:700;font-size:13px;border-radius:8px;cursor:pointer;transition:.2s}
 .profile-tab-btn.active{background:var(--secondary-color);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.2)}
 .profile-tab-content{display:none;flex-direction:column;gap:12px}
-.profile-tab-content.active{display:flex;animation:slideUp .3s ease}
+.profile-tab-content.active{display:flex;animation:tabContentIn .45s cubic-bezier(.22,1,.36,1) both}
+@keyframes tabContentIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
 .profile-list-item{background:rgba(255,255,255,.03);border-radius:12px;padding:12px;border:1px solid rgba(255,255,255,.05);display:flex;gap:12px;align-items:center;transition:background .2s, border-color .2s}
 .profile-list-item.current{background:#232b38;border-color:var(--secondary-color)}
 .profile-list-item.current .log-title{color:var(--secondary-color)}
