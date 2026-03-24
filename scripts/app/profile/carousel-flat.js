@@ -143,8 +143,16 @@ export function mountProfileCarouselFlat({ root }) {
       const activeId = cardsData[norm].id;
       const tab = root.querySelector(`#tab-${activeId}`);
       if (tab && !tab.classList.contains('active')) {
-        root.querySelectorAll('.profile-tab-content').forEach(x => x.classList.remove('active'));
-        tab.classList.add('active');
+        const prev = root.querySelector('.profile-tab-content.active');
+        if (prev && prev !== tab) {
+          prev.classList.remove('active');
+        } else {
+          root.querySelectorAll('.profile-tab-content').forEach(x => x.classList.remove('active'));
+        }
+        // Небольшой микро-тик чтобы браузер успел снять active и пересчитать layout
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => tab.classList.add('active'));
+        });
       } else if (!tab) {
         W.NotificationSystem?.info(`Раздел «${cardsData[norm].tit}» открывается...`);
       }
