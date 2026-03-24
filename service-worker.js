@@ -115,7 +115,9 @@ self.addEventListener('fetch', (e) => {
 
   // 1. СТРОГИЙ ОБХОД ДЛЯ АУДИО (Игнорируем Range запросы и файлы музыки)
   // Строгий пропуск аудио. Возврат 503 ломает HTML5 Audio/Howler намертво.
-  if (req.headers.get('range') || /\.(mp3|ogg|m4a|flac)$/i.test(url.pathname)) {
+  // Исключение: silence.mp3 — маленький статический файл, его кэшируем для iOS offline keeper
+  const isSilenceFile = url.pathname.endsWith('/audio/silence.mp3');
+  if (!isSilenceFile && (req.headers.get('range') || /\.(mp3|ogg|m4a|flac)$/i.test(url.pathname))) {
     return; // Всегда отдаем браузеру
   }
 
