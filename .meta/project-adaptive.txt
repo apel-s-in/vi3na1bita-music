@@ -127,9 +127,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e7f3b439fcd66b92deddf5163bc1a2986a842b14.idx
-│   │       ├── pack-e7f3b439fcd66b92deddf5163bc1a2986a842b14.pack
-│   │       └── pack-e7f3b439fcd66b92deddf5163bc1a2986a842b14.rev
+│   │       ├── pack-10864a9bbe2687b98688d2fd9d095bee5f0a67fa.idx
+│   │       ├── pack-10864a9bbe2687b98688d2fd9d095bee5f0a67fa.pack
+│   │       └── pack-10864a9bbe2687b98688d2fd9d095bee5f0a67fa.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -414,7 +414,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-24 16:04:21 UTC
+Сгенерировано: 2026-03-24 18:17:12 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7481,7 +7481,9 @@ window.IconUtils = { renderIcon, setIconUse, renderFavoriteStar, setFavoriteStar
     targets: [],
     previewLogo: null,
     debugEl: null,
-    connected: false
+    connected: false,
+    zeroFrames: 0,
+    watchdogUsed: false
   };
 
   const isLowPowerDevice = () => {
@@ -7534,16 +7536,6 @@ window.IconUtils = { renderIcon, setIconUse, renderFavoriteStar, setFavoriteStar
       `zero: ${state.zeroFrames}`,
       `uiSuspend: ${getUiSuspend() ? '1' : '0'}`
     ].join('\n');
-  };
-
-  const getActiveHtml5Media = () => {
-    try {
-      const snd = W.playerCore?.sound;
-      const node = snd?._sounds?.find?.(s => s && s._node)?. _node || snd?._sounds?.[0]?._node || null;
-      return node instanceof HTMLMediaElement ? node : null;
-    } catch {
-      return null;
-    }
   };
 
   const setupAudio = () => {
