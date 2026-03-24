@@ -151,18 +151,18 @@ export function mountProfileCarouselFlat({ root }) {
         // Уводим старый контент с opacity перед удалением active
         const prev = root.querySelector('.profile-tab-content.active');
         if (prev && prev !== tab) {
-          prev.style.opacity = '0';
-          prev.style.transform = 'translateY(-8px)';
-          prev.style.transition = 'opacity .15s ease, transform .15s ease';
+          prev.style.cssText = 'opacity:0;transform:translateY(-8px);transition:opacity .15s ease,transform .15s ease';
           setTimeout(() => {
             prev.classList.remove('active');
             prev.style.cssText = '';
-            // Даём браузеру один тик перед появлением нового
-            requestAnimationFrame(() => requestAnimationFrame(() => tab.classList.add('active')));
+            // Форсируем reflow чтобы браузер точно применил удаление active до добавления нового
+            void tab.offsetHeight;
+            tab.classList.add('active');
           }, 150);
         } else {
           root.querySelectorAll('.profile-tab-content').forEach(x => { x.classList.remove('active'); x.style.cssText = ''; });
-          requestAnimationFrame(() => requestAnimationFrame(() => tab.classList.add('active')));
+          void tab.offsetHeight;
+          tab.classList.add('active');
         }
       }, 80); // debounce 80ms — нормально для листания
     };
@@ -315,6 +315,11 @@ export function mountProfileCarouselFlat({ root }) {
       }
     });
 
+    // При первом показе без анимации: форсируем правильное состояние active
+    // без анимации, чтобы не было вспышки при открытии
+    root.querySelectorAll('.profile-tab-content').forEach(x => x.classList.remove('active'));
+    const initTab = root.querySelector(`#tab-${cardsData[0].id}`);
+    if (initTab) initTab.classList.add('active');
     update(false);
     W.Intel_CarouselFlat = {
       jumpTo: (targetIdx) => {
