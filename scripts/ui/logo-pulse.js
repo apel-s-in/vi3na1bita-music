@@ -30,9 +30,7 @@
     targets: [],
     previewLogo: null,
     debugEl: null,
-    connected: false,
-    zeroFrames: 0,
-    watchdogUsed: false
+    connected: false
   };
 
   const isLowPowerDevice = () => {
@@ -198,8 +196,6 @@
     state.preset = PRESETS[ls('logoPulsePreset', 'balanced')] ? ls('logoPulsePreset', 'balanced') : 'balanced';
     state.debug = ls('logoPulseDebug', '0') === '1';
     state.pulse = 0;
-    state.zeroFrames = 0;
-    state.watchdogUsed = false;
     setupAudio();
     syncUi();
   };
@@ -213,9 +209,9 @@
   const init = () => {
     ensureStyles();
     syncUi();
-    W.addEventListener('player:play', () => { state.zeroFrames = 0; state.watchdogUsed = false; setupAudio(); });
-    W.addEventListener('player:trackChanged', () => { state.pulse = 0; state.zeroFrames = 0; state.watchdogUsed = false; setupAudio(); });
-    W.addEventListener('player:stop', () => { state.pulse = 0; state.zeroFrames = 0; });
+    W.addEventListener('player:play', () => { setupAudio(); });
+    W.addEventListener('player:trackChanged', () => { state.pulse = 0; setupAudio(); });
+    W.addEventListener('player:stop', () => { state.pulse = 0; });
     W.addEventListener('playback:clock', () => {});
   };
 
