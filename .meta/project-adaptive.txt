@@ -364,7 +364,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-24 21:38:03 UTC
+Сгенерировано: 2026-03-24 21:38:48 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -723,12 +723,17 @@ jobs:
 </div>
 <div class="profile-tab-content" id="tab-settings"></div>
 <div class="profile-tab-content" id="tab-account">
-<div class="profile-header">
-<div class="profile-avatar-btn" id="prof-avatar-btn" title="Изменить аватар"></div>
-<div class="profile-name-wrap">
-<input type="text" id="prof-name-inp" class="profile-name-input" maxlength="15" autocomplete="off" spellcheck="false">
-<span class="profile-edit-icon" id="prof-name-edit">✏️</span>
-</div>
+<div class="prof-account-card">
+  <button class="prof-ava-sq" id="prof-avatar-btn" title="Изменить аватар (нажмите для смены)"></button>
+  <div class="prof-account-info">
+    <div class="prof-name-row">
+      <input type="text" id="prof-name-inp" class="prof-name-inp-flat" maxlength="15" autocomplete="off" spellcheck="false" readonly>
+      <button class="prof-name-pencil" id="prof-name-edit" title="Изменить имя">✏️</button>
+    </div>
+    <div class="prof-meta-row" id="prof-meta-since">📅 Слушаю с: —</div>
+    <div class="prof-meta-row" id="prof-meta-days">🎵 Дней с нами: —</div>
+    <div class="prof-meta-row" id="prof-meta-level">⭐ Уровень: —</div>
+  </div>
 </div>
 <div class="profile-auth-grid" id="prof-auth-grid"></div>
 </div>
@@ -844,7 +849,7 @@ jobs:
   </template>
 
   <script>
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.84');
+    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.85');
     const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-03-24');
 
     // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
