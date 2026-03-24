@@ -25,16 +25,12 @@
     pulse: 0,
     raf: 0,
     analyser: null,
-    sink: null,
-    mediaSource: null,
     sourceKind: 'none',
     data: null,
     targets: [],
     previewLogo: null,
     debugEl: null,
-    connected: false,
-    zeroFrames: 0,
-    watchdogUsed: false
+    connected: false
   };
 
   const isLowPowerDevice = () => {
@@ -99,28 +95,26 @@
     }
   };
 
-  const setupAudio = (force = false) => {
+  const setupAudio = () => {
     const cfg = getPresetConfig();
     if (!W.Howler?.ctx || !W.Howler?.masterGain) return false;
-
     try {
-      if (W.Howler.ctx.state === 'suspended') W.Howler.ctx.resume().catch(() => {});
-
+      const ctx = W.Howler.ctx;
+      if (ctx.state === 'suspended') ctx.resume().catch(() => {});
       if (!state.analyser || state.analyser.fftSize !== cfg.fftSize) {
         if (state.analyser) { try { W.Howler.masterGain.disconnect(state.analyser); } catch {} }
-        state.analyser = W.Howler.ctx.createAnalyser();
+        state.analyser = ctx.createAnalyser();
         state.analyser.fftSize = cfg.fftSize;
         state.analyser.smoothingTimeConstant = 0;
         W.Howler.masterGain.connect(state.analyser);
         state.data = new Uint8Array(state.analyser.frequencyBinCount);
       }
-
       state.connected = true;
       state.sourceKind = 'masterGain';
-      state.zeroFrames = 0;
       return true;
-    } catch(e) {
+    } catch {
       state.connected = false;
+      state.sourceKind = 'none';
       return false;
     }
   };
