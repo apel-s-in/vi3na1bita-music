@@ -155,23 +155,16 @@ export function mountProfileCarouselFlat({ root }) {
         if (!tab) { W.NotificationSystem?.info(`Раздел «${cardsData[norm].tit}» открывается...`); return; }
         if (tab.classList.contains('active')) return;
 
-        // Уводим старый контент с opacity перед удалением active
-        const prev = root.querySelector('.profile-tab-content.active');
-        if (prev && prev !== tab) {
-          prev.style.cssText = 'opacity:0;transform:translateY(-8px);transition:opacity .15s ease,transform .15s ease';
-          setTimeout(() => {
-            prev.classList.remove('active');
-            prev.style.cssText = '';
-            // Форсируем reflow чтобы браузер точно применил удаление active до добавления нового
-            void tab.offsetHeight;
-            tab.classList.add('active');
-          }, 150);
-        } else {
-          root.querySelectorAll('.profile-tab-content').forEach(x => { x.classList.remove('active'); x.style.cssText = ''; });
-          void tab.offsetHeight;
-          tab.classList.add('active');
-        }
-      }, 80); // debounce 80ms — нормально для листания
+        // Мгновенно скрываем все старые табы, чтобы избежать схлопывания высоты и рывков
+        root.querySelectorAll('.profile-tab-content').forEach(x => {
+          x.classList.remove('active');
+          x.style.cssText = ''; 
+        });
+        
+        // Форсируем пересчет макета, чтобы CSS-анимация вылета (tabContentIn) сработала четко
+        void tab.offsetHeight;
+        tab.classList.add('active');
+      }, 80);
     };
 
     const update = (animated = true) => {
@@ -322,18 +315,17 @@ export function mountProfileCarouselFlat({ root }) {
       }
     });
 
-    // При первом показе: форсируем active без анимации через временный no-transition класс
+    // При первом показе: скрываем все, показываем первый таб без анимации
     root.querySelectorAll('.profile-tab-content').forEach(x => {
       x.classList.remove('active');
-      x.style.animation = 'none'; // подавляем анимацию для первого рендера
+      x.style.animation = 'none';
     });
     const initTab = root.querySelector(`#tab-${cardsData[0].id}`);
     if (initTab) {
       initTab.classList.add('active');
-      // Через 1 frame даём браузеру отрисовать, потом снимаем подавление
-      requestAnimationFrame(() => {
-        root.querySelectorAll('.profile-tab-content').forEach(x => x.style.removeProperty('animation'));
-      });
+      setTimeout(() => {
+        root.querySelectorAll('.profile-tab-content').forEach(x => x.style.animation = '');
+      }, 50); // Даем браузеру время отрендерить первый кадр статично
     }
     update(false);
     W.Intel_CarouselFlat = {
