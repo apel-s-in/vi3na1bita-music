@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-969e567bf22988679cf6802515d5e7954749b0aa.idx
-│   │       ├── pack-969e567bf22988679cf6802515d5e7954749b0aa.pack
-│   │       └── pack-969e567bf22988679cf6802515d5e7954749b0aa.rev
+│   │       ├── pack-db03aca938dff22edaf330e887b41326251ae7bb.idx
+│   │       ├── pack-db03aca938dff22edaf330e887b41326251ae7bb.pack
+│   │       └── pack-db03aca938dff22edaf330e887b41326251ae7bb.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -410,7 +410,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-24 11:44:17 UTC
+Сгенерировано: 2026-03-24 11:45:37 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3663,29 +3663,17 @@ export const renderProfileSettings = (root) => {
         <div class="set-preview-box">
           <img class="logo-pulse-target" id="lp-preview-logo" src="img/logo.png" alt="Логотип" style="width:70px;height:auto">
         </div>
+        <div class="set-row">
+          <div class="set-info"><div class="set-title">Включить пульсацию</div><div class="set-sub">Локальная реакция логотипа на бас без сети и сценариев</div></div>
+          <label class="set-switch"><input type="checkbox" id="lp-enabled"><span class="set-slider"></span></label>
+        </div>
         <div class="set-row" style="flex-direction:column;align-items:stretch;gap:8px">
-          <div class="set-info"><div class="set-title">Интенсивность бита</div></div>
+          <div class="set-info"><div class="set-title">Интенсивность</div><div class="set-sub">Мягкость масштаба и свечения логотипа</div></div>
           <div class="lp-slider-row">
             <span style="font-size:12px;color:#888">min</span>
-            <input type="range" id="lp-intensity" class="lp-slider" min="0" max="0.5" step="0.05" value="0.15">
+            <input type="range" id="lp-intensity" class="lp-slider" min="0.05" max="0.3" step="0.01" value="0.12">
             <span style="font-size:12px;color:#888">max</span>
           </div>
-        </div>
-        <div class="set-row">
-          <div class="set-info"><div class="set-title">Глитч эффект</div><div class="set-sub">Неоновые искажения логотипа</div></div>
-          <label class="set-switch"><input type="checkbox" id="lp-glitch"><span class="set-slider"></span></label>
-        </div>
-        <div class="set-row">
-          <div class="set-info"><div class="set-title">Тряска интерфейса</div><div class="set-sub">Землетрясение плеера на дропах</div></div>
-          <label class="set-switch"><input type="checkbox" id="lp-shake"><span class="set-slider"></span></label>
-        </div>
-        <div class="set-row">
-          <div class="set-info"><div class="set-title">Динамический фон</div><div class="set-sub">Перекраска фона приложения под трек</div></div>
-          <label class="set-switch"><input type="checkbox" id="lp-bg"><span class="set-slider"></span></label>
-        </div>
-        <div class="set-row">
-          <div class="set-info"><div class="set-title">Частицы (Снег/Искры)</div><div class="set-sub">Генерация частиц в зависимости от музыки</div></div>
-          <label class="set-switch"><input type="checkbox" id="lp-particles"><span class="set-slider"></span></label>
         </div>
         <button class="om-btn om-btn--outline om-fullw" id="lp-reset-btn">Сбросить по умолчанию</button>
       </div>
@@ -3765,29 +3753,25 @@ export const renderProfileSettings = (root) => {
   }
 
   // --- Логика Пульсации (Интерфейс) ---
-  const lpInt = root.querySelector('#lp-intensity'), lpGlitch = root.querySelector('#lp-glitch'), lpShake = root.querySelector('#lp-shake'), lpBg = root.querySelector('#lp-bg'), lpPart = root.querySelector('#lp-particles'), lpReset = root.querySelector('#lp-reset-btn');
-  if (lpInt && lpGlitch && lpReset) {
-    lpInt.value = localStorage.getItem('logoPulseIntensity') || '0.15';
-    lpGlitch.checked = localStorage.getItem('logoPulseGlitch') === '1';
-    lpShake.checked = localStorage.getItem('fxShakeEnabled') !== '0'; // по умолчанию вкл
-    lpBg.checked = localStorage.getItem('fxBgEnabled') !== '0';
-    lpPart.checked = localStorage.getItem('fxParticlesEnabled') !== '0';
+  const lpEnabled = root.querySelector('#lp-enabled'), lpInt = root.querySelector('#lp-intensity'), lpReset = root.querySelector('#lp-reset-btn');
+  if (lpEnabled && lpInt && lpReset) {
+    lpEnabled.checked = localStorage.getItem('logoPulseEnabled') === '1';
+    lpInt.value = localStorage.getItem('logoPulseIntensity') || '0.12';
 
     const applyLp = () => {
+      localStorage.setItem('logoPulseEnabled', lpEnabled.checked ? '1' : '0');
       localStorage.setItem('logoPulseIntensity', lpInt.value);
-      localStorage.setItem('logoPulseGlitch', lpGlitch.checked ? '1' : '0');
-      localStorage.setItem('fxShakeEnabled', lpShake.checked ? '1' : '0');
-      localStorage.setItem('fxBgEnabled', lpBg.checked ? '1' : '0');
-      localStorage.setItem('fxParticlesEnabled', lpPart.checked ? '1' : '0');
       W.LogoPulse?.updateSettings?.();
     };
 
-    [lpInt].forEach(el => el.addEventListener('input', applyLp));
-    [lpGlitch, lpShake, lpBg, lpPart].forEach(el => el.addEventListener('change', applyLp));
-    
+    lpEnabled.addEventListener('change', applyLp);
+    lpInt.addEventListener('input', applyLp);
+
     lpReset.addEventListener('click', () => {
-      lpInt.value = '0.15'; lpGlitch.checked = false; lpShake.checked = true; lpBg.checked = true; lpPart.checked = true;
-      applyLp(); W.NotificationSystem?.success?.('Настройки эффектов сброшены');
+      lpEnabled.checked = false;
+      lpInt.value = '0.12';
+      applyLp();
+      W.NotificationSystem?.success?.('Настройки пульсации сброшены');
     });
   }
 
