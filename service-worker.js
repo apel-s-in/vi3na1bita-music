@@ -1,4 +1,4 @@
-const SW_VERSION = '8.1.72';
+const SW_VERSION = '8.1.73';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
@@ -41,6 +41,7 @@ const STATIC_ASSETS = [
   './scripts/ui/logo-pulse.js',
   './scripts/app.js', './src/PlayerCore.js',
   './src/player-core/media-session.js',
+  './src/player-core/ios-audio-keeper.js',
   './scripts/app/track-registry.js',
   './scripts/app/offline-ui-bootstrap.js', './scripts/app/playback-cache-bootstrap.js',
   './data/track-profiles-index.json',
