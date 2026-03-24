@@ -123,9 +123,16 @@ export function mountProfileCarouselFlat({ root }) {
       <button class="sc-3d-btn sc-3d-btn-sq" id="sc-3d-next">▶</button>
     </div>`;
 
+  // Карусель монтируется либо вместо .profile-tabs, либо в начало .profile-wrap
   const oldTabs = root.querySelector('.profile-tabs');
-  if (!oldTabs) return;
-  oldTabs.replaceWith(wrap);
+  const mountTarget = oldTabs || root.querySelector('.profile-wrap');
+  if (!mountTarget) return;
+
+  if (oldTabs) {
+    oldTabs.replaceWith(wrap);
+  } else {
+    mountTarget.insertBefore(wrap, mountTarget.firstChild);
+  }
 
   let currIdx = 0, startX = 0, startY = 0, isDrag = false, dragDelta = 0;
 
