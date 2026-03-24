@@ -90,23 +90,26 @@ const renderCarouselSection = () => `
     </div>
   </div>`;
 
+const renderPlayerSection = () => `
+  <button type="button" class="set-acc-btn">ПЛЕЕР</button>
+  <div class="set-acc-body">
+    <div class="pl-prev-box">
+      <div class="pl-prev-lyr"><div class="pl-prev-bg" id="prev-a-bg"></div><div class="pl-prev-txt">Играет трек...</div></div>
+      <div class="pl-prev-btns"><div class="pl-prev-btn">Т</div><div class="pl-prev-btn a-btn" id="prev-a-btn">A</div><div class="pl-prev-btn">≡</div><div class="pl-prev-btn">ılı</div><div class="pl-prev-btn" style="background:#e80100;color:#fff;border-color:#e80100">Я</div><div class="pl-prev-btn">🤍</div><div class="pl-prev-btn">⬇</div></div>
+    </div>
+    <div class="set-row">
+      <div class="set-info"><div class="set-title">Кнопка Анимации (А)</div><div class="set-sub">Показывать кнопку (A) в меню управления плеера</div></div>
+      <label class="set-switch"><input type="checkbox" id="set-pl-btn-anim"><span class="set-slider"></span></label>
+    </div>
+    <div class="set-row">
+      <div class="set-info"><div class="set-title">Анимация фона</div><div class="set-sub">Цветовая пульсация фона в режиме лирики</div></div>
+      <label class="set-switch"><input type="checkbox" id="set-pl-anim-play"><span class="set-slider"></span></label>
+    </div>
+  </div>`;
+
 const renderInterfaceSection = () => `
   <div class="settings-content" id="set-interface">
-    <button type="button" class="set-acc-btn">ПЛЕЕР</button>
-    <div class="set-acc-body">
-      <div class="pl-prev-box">
-        <div class="pl-prev-lyr"><div class="pl-prev-bg" id="prev-a-bg"></div><div class="pl-prev-txt">Играет трек...</div></div>
-        <div class="pl-prev-btns"><div class="pl-prev-btn">Т</div><div class="pl-prev-btn a-btn" id="prev-a-btn">A</div><div class="pl-prev-btn">≡</div><div class="pl-prev-btn">ılı</div><div class="pl-prev-btn" style="background:#e80100;color:#fff;border-color:#e80100">Я</div><div class="pl-prev-btn">🤍</div><div class="pl-prev-btn">⬇</div></div>
-      </div>
-      <div class="set-row">
-        <div class="set-info"><div class="set-title">Кнопка Анимации (А)</div><div class="set-sub">Показывать кнопку (A) в меню управления плеера</div></div>
-        <label class="set-switch"><input type="checkbox" id="set-pl-btn-anim"><span class="set-slider"></span></label>
-      </div>
-      <div class="set-row">
-        <div class="set-info"><div class="set-title">Анимация фона</div><div class="set-sub">Цветовая пульсация фона в режиме лирики</div></div>
-        <label class="set-switch"><input type="checkbox" id="set-pl-anim-play"><span class="set-slider"></span></label>
-      </div>
-    </div>
+    ${renderPlayerSection()}
     ${renderPulseSection()}
     ${renderCarouselSection()}
   </div>`;
