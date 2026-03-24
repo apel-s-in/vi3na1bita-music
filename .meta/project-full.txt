@@ -364,7 +364,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-24 20:51:46 UTC
+Сгенерировано: 2026-03-24 20:53:18 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -844,7 +844,7 @@ jobs:
   </template>
 
   <script>
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.82');
+    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.83');
     const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-03-24');
 
     // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
@@ -888,7 +888,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.1.82';
+const SW_VERSION = '8.1.83';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
@@ -3650,23 +3650,26 @@ const renderCarouselSection = () => `
     </div>
   </div>`;
 
+const renderPlayerSection = () => `
+  <button type="button" class="set-acc-btn">ПЛЕЕР</button>
+  <div class="set-acc-body">
+    <div class="pl-prev-box">
+      <div class="pl-prev-lyr"><div class="pl-prev-bg" id="prev-a-bg"></div><div class="pl-prev-txt">Играет трек...</div></div>
+      <div class="pl-prev-btns"><div class="pl-prev-btn">Т</div><div class="pl-prev-btn a-btn" id="prev-a-btn">A</div><div class="pl-prev-btn">≡</div><div class="pl-prev-btn">ılı</div><div class="pl-prev-btn" style="background:#e80100;color:#fff;border-color:#e80100">Я</div><div class="pl-prev-btn">🤍</div><div class="pl-prev-btn">⬇</div></div>
+    </div>
+    <div class="set-row">
+      <div class="set-info"><div class="set-title">Кнопка Анимации (А)</div><div class="set-sub">Показывать кнопку (A) в меню управления плеера</div></div>
+      <label class="set-switch"><input type="checkbox" id="set-pl-btn-anim"><span class="set-slider"></span></label>
+    </div>
+    <div class="set-row">
+      <div class="set-info"><div class="set-title">Анимация фона</div><div class="set-sub">Цветовая пульсация фона в режиме лирики</div></div>
+      <label class="set-switch"><input type="checkbox" id="set-pl-anim-play"><span class="set-slider"></span></label>
+    </div>
+  </div>`;
+
 const renderInterfaceSection = () => `
   <div class="settings-content" id="set-interface">
-    <button type="button" class="set-acc-btn">ПЛЕЕР</button>
-    <div class="set-acc-body">
-      <div class="pl-prev-box">
-        <div class="pl-prev-lyr"><div class="pl-prev-bg" id="prev-a-bg"></div><div class="pl-prev-txt">Играет трек...</div></div>
-        <div class="pl-prev-btns"><div class="pl-prev-btn">Т</div><div class="pl-prev-btn a-btn" id="prev-a-btn">A</div><div class="pl-prev-btn">≡</div><div class="pl-prev-btn">ılı</div><div class="pl-prev-btn" style="background:#e80100;color:#fff;border-color:#e80100">Я</div><div class="pl-prev-btn">🤍</div><div class="pl-prev-btn">⬇</div></div>
-      </div>
-      <div class="set-row">
-        <div class="set-info"><div class="set-title">Кнопка Анимации (А)</div><div class="set-sub">Показывать кнопку (A) в меню управления плеера</div></div>
-        <label class="set-switch"><input type="checkbox" id="set-pl-btn-anim"><span class="set-slider"></span></label>
-      </div>
-      <div class="set-row">
-        <div class="set-info"><div class="set-title">Анимация фона</div><div class="set-sub">Цветовая пульсация фона в режиме лирики</div></div>
-        <label class="set-switch"><input type="checkbox" id="set-pl-anim-play"><span class="set-slider"></span></label>
-      </div>
-    </div>
+    ${renderPlayerSection()}
     ${renderPulseSection()}
     ${renderCarouselSection()}
   </div>`;
@@ -4827,7 +4830,7 @@ if (errs.length) { console.error('Failed:\n', errs.join('\n')); process.exit(2);
 // UID.092_(Incremental rollout order)_(делать staged внедрение через один конфиг)_(intel boot должен управляться отсюда)
 
 export const APP_CONFIG = {
-  APP_VERSION: '8.1.82',
+  APP_VERSION: '8.1.83',
   BUILD_DATE: '2026-03-24',
   PROMOCODE: 'VITRINA2025',
   ICON_ALBUMS_ORDER: [
