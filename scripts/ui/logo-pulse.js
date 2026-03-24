@@ -112,113 +112,23 @@
         }
       }
 
-      if (activeProfile.impactEvents && st.active) {
-        activeProfile.impactEvents.forEach(ev => {
-          if (!ev._fired && time >= ev.time && time < ev.time + 0.1) {
-            ev._fired = true;
-            if (ev.type === 'glitch') cachedTargets.forEach(t => t.classList.add('lp-glitch-fx'));
-            if (ev.uiEffect === 'shake_lyrics' && st.shake && playerBlock) playerBlock.classList.add('lp-shake-fx');
-            setTimeout(() => { cachedTargets.forEach(t => t.classList.remove('lp-glitch-fx')); if (playerBlock) playerBlock.classList.remove('lp-shake-fx'); }, 350);
-          } else if (time < ev.time || time > ev.time + 0.5) ev._fired = false;
-        });
-      }
-
-      if (activeProfile.structure && st.active) {
-        let sI = -1;
-        for (let i = 0; i < activeProfile.structure.length; i++) if (time >= activeProfile.structure[i].time) sI = i;
-        if (sI !== -1) {
-          const sec = activeProfile.structure[sI];
-          const baseP = (sec.baseIntensity || 0) * Math.pow(Math.abs(Math.sin(time * Math.PI * ((activeProfile.bpm||120)/60))), 4);
-          p = Math.max(p, baseP * 0.6);
-
-          if (secIdx !== sI) {
-            secIdx = sI;
-            if (st.bg && globalBg && sec.colorHint) globalBg.style.setProperty('--fx-color', `${sec.colorHint}55`);
-            if (st.particles && sec.particles) setParticlesTarget(sec.particles.amount || 0, sec.particles.speed || 0.2);
-          }
-        }
-      }
-    } else if (isPlaying || forcePreview) {
-      if (isPlaying && analyser && !isFallback) {
-        analyser.getByteFrequencyData(dataArray);
-        p = ((dataArray[0] + dataArray[1] + dataArray[2]) / 3) / 255;
-        if (p === 0 && dataArray[0] === 0 && dataArray[10] === 0) isFallback = true;
-      }
-      if (isFallback || !analyser || (!isPlaying && forcePreview)) p = Math.pow(Math.abs(Math.sin(time * Math.PI * 2.13)), 4);
-    }
-
-    // ДВИЖЕНИЕ ЧАСТИЦ 3D (Летят на нас)
-    if (st.particles && st.active && pActive.length > 0) {
-      pActive.forEach(part => {
-        part.z += part.speed * 8; // Приближаются
-        if (part.z > 800) resetParticle(part);
-        
-        let op = part.z > 600 ? 1 - ((part.z-600)/200) : (part.z < 100 ? part.z/100 : 1);
-        part.el.style.transform = `translate3d(${part.x}vw, ${part.y}vh, ${part.z}px)`;
-        part.el.style.opacity = op * 0.6; // Мягкое свечение
-      });
-    }
-
-    cachedTargets.forEach(el => {
-      if (!st.active && el.id === 'logo-bottom') return;
-      el.style.setProperty('--p', p.toFixed(3));
-      el.style.setProperty('--lp-int', st.intensity);
-      if (st.glitch && !activeProfile) {
-        el.style.setProperty('--lp-skew', `skewX(calc(var(--p) * -8deg))`);
-        el.style.setProperty('--lp-glitch', `drop-shadow(calc(var(--p) * 6px) 0 0 rgba(255,0,0,0.7)) drop-shadow(calc(var(--p) * -6px) 0 0 rgba(0,255,255,0.7))`);
-      } else { el.style.setProperty('--lp-skew', `skewX(0deg)`); el.style.setProperty('--lp-glitch', `drop-shadow(0 0 0 transparent)`); }
-    });
-    
-    animId = requestAnimationFrame(loop);
-  };
-
-  const syncUi = () => {
-    cachedTargets = Array.from(D.querySelectorAll('.logo-pulse-target'));
-    previewLogo = D.getElementById('lp-preview-logo');
-    playerBlock = D.getElementById('lyricsplayerblock');
-    globalBg = D.getElementById('global-fx-bg');
-
-    const h = D.getElementById('pulse-heart'), b = D.getElementById('pulse-btn');
-    if (h) h.textContent = st.active ? '❤️' : '🤍';
-    if (b) b.classList.toggle('active', st.active);
-    
-    cachedTargets.forEach(l => {
-      if (st.active || l.id === 'lp-preview-logo') l.classList.add('lp-active');
-      else { l.classList.remove('lp-active'); l.style.removeProperty('--p'); }
-    });
-    
-    if (!animId) { setupAudio(); loop(); }
+      ifPulseEnabled') === '1';
+    state.intensity = parseFloat(localStorage.getItem('logoPulseIntensity') || '0.12');
+    syncUi();
   };
 
   const toggle = () => {
-    st.active = !st.active;
-    localStorage.setItem('logoPulseEnabled', st.active ? '1' : '0');
+    state.active = !state.active;
+    localStorage.setItem('logoPulseEnabled', state.active ? '1' : '0');
     syncUi();
   };
 
   const init = () => {
-    initStyles(); initParticlePool(); syncUi();
-    
-    W.addEventListener('player:trackChanged', async (e) => {
-      activeProfile = null; beatIdx = 0; secIdx = -1;
-      if (globalBg) globalBg.style.setProperty('--fx-color', 'transparent');
-      setParticlesTarget(0, 0); 
-      
-      const uid = e.detail?.uid;
-      if (uid && W.TrackRegistry?.getProfile) {
-        try {
-          const profile = await W.TrackRegistry.getProfile(uid);
-          if (profile && profile.beatmap) {
-            activeProfile = profile;
-            if (activeProfile.impactEvents) activeProfile.impactEvents.forEach(ev => ev._fired = false);
-          }
-        } catch {}
-      }
-    });
-    W.addEventListener('player:stop', () => { activeProfile = null; if (globalBg) globalBg.style.setProperty('--fx-color', 'transparent'); setParticlesTarget(0, 0); });
+    initStyles();
+    syncUi();
+    W.addEventListener('player:play', setupAudio);
   };
 
   W.LogoPulse = { init, toggle, updateSettings };
   D.readyState === 'loading' ? D.addEventListener('DOMContentLoaded', init) : init();
-
 })(window, document);
