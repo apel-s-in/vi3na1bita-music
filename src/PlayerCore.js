@@ -54,8 +54,69 @@ import { resolveFavoritesOnlyState } from '../scripts/app/player/favorites-only-
       ['touchend', 'click', 'keydown'].forEach(e => document.addEventListener(e, unlock, { once: true, capture: true }));
     }
 
-    initialize() { Favorites?.init?.(); }
-    prepareContext() { if (W.Howler?.ctx?.state === 'suspended') W.Howler.ctx.resume().catch(()=>{}); }
+    initialize() {
+      Favorites?.init?.();
+      this._bindIosAudioSession();
+    }
+
+    prepareContext() {
+      if (W.Howler?.ctx?.state === 'suspended') W.Howler.ctx.resume().catch(()=>{});
+    }
+
+    _bindIosAudioSession() {
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !W.MSStream;
+      if (!isIOS) return;
+
+      // Восстанавливаем AudioContext после прерывания (звонок, Siri, etc.)
+      const handleCtxState = () => {
+        const ctx = W.Howler?.ctx;
+        if (!ctx) return;
+        if (ctx.state === 'interrupted' || ctx.state === 'suspended') {
+          ctx.resume().catch(() => {});
+        }
+      };
+
+      // Слушаем statechange AudioContext
+      const bindCtxWatcher = () => {
+        const ctx = W.Howler?.ctx;
+        if (ctx && !ctx._iosWatching) {
+          ctx._iosWatching = true;
+          ctx.addEventListener('statechange', () => {
+            if (this.isPlaying()) handleCtxState();
+          });
+        }
+      };
+
+      // Восстановление воспроизведения после прерывания iOS
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          bindCtxWatcher();
+          handleCtxState();
+          // Если Howl завис — перезапускаем с текущей позиции
+          if (this.sound && !this.isPlaying() && this._wasPlayingBeforeHide) {
+            this._wasPlayingBeforeHide = false;
+            const pos = this._lastKnownPos || 0;
+            setTimeout(() => {
+              if (this.sound && !this.isPlaying()) {
+                this.sound.seek(pos);
+                this.sound.play();
+              }
+            }, 300);
+          }
+          this._wasPlayingBeforeHide = false;
+        } else {
+          this._lastKnownPos = this.getPosition();
+          this._wasPlayingBeforeHide = this.isPlaying();
+        }
+      });
+
+      // Сохраняем позицию каждые 5 сек для аварийного восстановления
+      setInterval(() => {
+        if (this.isPlaying()) this._lastKnownPos = this.getPosition();
+      }, 5000);
+
+      W.addEventListener('player:play', () => { bindCtxWatcher(); handleCtxState(); });
+    }
 
     setPlaylist(tracks, startIdx = 0, meta, opts = {}) {
       const prevPos = this.getPosition(), wasPlay = this.isPlaying();
@@ -232,7 +293,33 @@ import { resolveFavoritesOnlyState } from '../scripts/app/player/favorites-only-
     }
 
     _syncMediaSessionPosition(force = false) { try { this._ms?.updatePositionState?.({ force }); } catch {} }
-    _startT() { this._stopT(); this._tick = setInterval(() => { this._emit('onTick', this.getPosition(), this.getDuration()); emitG('player:tick', { currentTime: this.getPosition(), volume: this.getVolume(), muted: this.isMuted() }); this._syncMediaSessionPosition(false); }, 250); }
+    _startT() {
+      this._stopT();
+      let _lastPos = -1, _stuckCount = 0;
+      this._tick = setInterval(() => {
+        const pos = this.getPosition(), dur = this.getDuration();
+        this._emit('onTick', pos, dur);
+        emitG('player:tick', { currentTime: pos, volume: this.getVolume(), muted: this.isMuted() });
+        this._syncMediaSessionPosition(false);
+
+        // iOS watchdog: если позиция не двигается 5 секунд пока звук "играет" — принудительно перезапускаем
+        if (this.sound && this.isPlaying() && dur > 0) {
+          if (Math.abs(pos - _lastPos) < 0.05) {
+            _stuckCount++;
+            if (_stuckCount >= 20) { // 5 сек (20 * 250ms)
+              _stuckCount = 0;
+              const ctx = W.Howler?.ctx;
+              if (ctx?.state !== 'running') ctx?.resume?.().catch(() => {});
+              // Пробуем seek на текущую позицию чтобы разбудить iOS
+              try { this.sound.seek(pos); } catch {}
+            }
+          } else {
+            _stuckCount = 0;
+          }
+          _lastPos = pos;
+        }
+      }, 250);
+    }
     _stopT() { if (this._tick) clearInterval(this._tick); this._tick = null; }
     _updMedia() { try { this._ms?.updateMetadata?.({ title: this.getCurrentTrack()?.title, artist: this.getCurrentTrack()?.artist, album: this.getCurrentTrack()?.album, artworkUrl: this.getCurrentTrack()?.cover, playing: this.isPlaying() }); } catch {} }
 
