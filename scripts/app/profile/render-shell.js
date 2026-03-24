@@ -40,7 +40,7 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
     || c.querySelector('.profile-auth-grid')
     || c.querySelector('.profile-tab-content#tab-account')
     || c.querySelector('.profile-wrap');
-  if (srcAnchor) srcAnchor?.insertAdjacentHTML?.('afterend', `<div class="prof-src-box"><div><div class="prof-src-title">Приоритет источника</div><div class="prof-src-sub">Моментальный резерв включен всегда</div></div><div class="prof-src-switch"><button data-src="yandex" class="prof-src-btn prof-src-btn--yandex ${ps==='yandex'?'prof-src-btn--active':''}">Yandex</button><button data-src="github" class="prof-src-btn prof-src-btn--github ${ps==='github'?'prof-src-btn--active':''}">GitHub</button></div></div>`);
+  if (srcAnchor) srcAnchor.insertAdjacentHTML('afterend', `<div class="prof-src-box"><div><div class="prof-src-title">Приоритет источника</div><div class="prof-src-sub">Моментальный резерв включен всегда</div></div><div class="prof-src-switch"><button data-src="yandex" class="prof-src-btn prof-src-btn--yandex ${ps==='yandex'?'prof-src-btn--active':''}">Yandex</button><button data-src="github" class="prof-src-btn prof-src-btn--github ${ps==='github'?'prof-src-btn--active':''}">GitHub</button></div></div>`);
   const statTracks = c.querySelector('#prof-stat-tracks');
   const statTime = c.querySelector('#prof-stat-time');
   const statStreak = c.querySelector('#prof-stat-streak');
