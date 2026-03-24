@@ -369,7 +369,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-24 23:27:10 UTC
+Сгенерировано: 2026-03-24 23:27:28 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -9792,7 +9792,6 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .album-icon.active{filter:none;opacity:1;box-shadow:0 2px 10px rgba(0,0,0,.35);width:clamp(68px,17vw,88px);height:clamp(68px,17vw,88px)}
 .album-icon:hover{transform:translateY(-2px);opacity:.9}
 .album-icon:active{transform:translateY(0) scale(.95)}
-#now-playing.now-playing-inline{width:100%;max-width:395px;margin:8px auto 0}
 #cover-wrap{width:100%;max-width:400px;margin:14px auto 0;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;position:relative}
 body.news-view #cover-wrap{display:none!important}
 .cover-gallery-arrow{position:absolute;top:50%;transform:translateY(-50%);z-index:2;border:0;cursor:pointer;background:0 0;padding:0;width:44px;height:44px;display:flex;align-items:center;justify-content:center;transition:opacity .2s;visibility:hidden;pointer-events:none}
@@ -9818,10 +9817,14 @@ body.news-view #cover-wrap{display:none!important}
 .lyrics-window-line.active{color:var(--primary-color);font-size:1.19em;font-weight:800;opacity:1;background:rgba(0,0,0,.07);text-shadow:0 1px 7px rgba(115,22,22,.27)}
 .lyrics-placeholder{text-align:center;padding:40px 16px;color:#5a6989;font-size:14px;opacity:.6;user-select:none}
 .lyrics-spinner{width:40px;height:40px;margin:40px auto;border:4px solid rgba(77,170,255,.2);border-top-color:var(--secondary-color);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 .lyrics-countdown{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:4em;font-weight:900;color:rgba(77,170,255,.35);z-index:0;pointer-events:none;user-select:none;text-shadow:0 2px 12px rgba(77,170,255,.2);animation:countdownPulse 1s ease-in-out infinite}
 .lyrics-countdown.fade-out{animation:countdownFadeOut 1s ease-out forwards}
+@keyframes countdownPulse{0%,to{transform:scale(1);opacity:.35}50%{transform:scale(1.05);opacity:.45}}
+@keyframes countdownFadeOut{from{opacity:.35;transform:scale(1)}to{opacity:0;transform:scale(.9)}}
 .lyrics-animated-bg{position:absolute;inset:0;opacity:0;pointer-events:none;z-index:0;transition:opacity .5s;background:linear-gradient(45deg,rgba(232,1,0,.15),rgba(77,170,255,.15),rgba(232,1,0,.15));background-size:400% 400%;animation:none}
 .lyrics-animated-bg.active{opacity:1;animation:lyricsGradient 10s ease infinite}
+@keyframes lyricsGradient{0%{background-position:0 50%}50%{background-position:100% 50%}to{background-position:0 50%}}
 .player-progress-wrapper{padding:16px 20px 12px;background:rgba(15,18,24,.6)}
 .player-progress-bar{position:relative;height:6px;background:rgba(255,255,255,.08);border-radius:3px;cursor:pointer;overflow:visible}
 .player-progress-fill{position:relative;height:100%;background:var(--grad-blue);border-radius:3px;width:0;transition:width .1s linear}
@@ -9841,7 +9844,9 @@ body.news-view #cover-wrap{display:none!important}
 .player-control-btn.main svg{width:24px;height:24px}
 .player-control-btn.active,.sleep-timer-btn.active{background:rgba(77,170,255,.2);border-color:var(--secondary-color);color:var(--secondary-color);box-shadow:0 0 12px rgba(77,170,255,.3)}
 #favorites-btn{position:relative}
-#favorites-btn-icon{width:18px;height:18px;transition:transform .2s;--star-hit-size:20px;--star-glyph-size:28px;margin:0!important;min-width:var(--star-hit-size);min-height:var(--star-hit-size);flex:0 0 var(--star-hit-size);display:inline-flex;align-items:center;justify-content:center}
+#favorites-btn-icon{width:18px;height:18px;transition:transform .2s}
+#mini-now-star{margin-left:8px!important;width:var(--star-hit-size);height:var(--star-hit-size);min-width:var(--star-hit-size);min-height:var(--star-hit-size);flex:0 0 var(--star-hit-size)}
+#favorites-btn, #mini-now-star{display:inline-flex;align-items:center;justify-content:center}
 #favorites-btn.favorites-active{background:rgba(77,170,255,.2);border-color:var(--secondary-color)}
 #favorites-btn.favorites-active #favorites-btn-icon{transform:scale(1.2)}
 #pq-btn{position:relative}
@@ -9939,6 +9944,7 @@ body.news-view #cover-wrap{display:none!important}
 .source-indicator:hover{opacity:1;transform:scale(1.1)}
 .lyrics-toggle-btn.disabled,.animation-btn.disabled,.karaoke-btn.disabled{background:rgba(30,30,30,.6)!important;border-color:rgba(255,255,255,.06)!important;color:rgba(255,255,255,.2)!important;box-shadow:none!important;cursor:not-allowed!important;opacity:.5;pointer-events:none;filter:grayscale(100%)}
 .lyrics-toggle-btn.disabled .lyrics-toggle-btn-visual{color:rgba(255,255,255,.2)!important}
+#now-playing.now-playing-inline{width:100%;max-width:395px;margin:8px auto 0}
 #now-playing{background:#11141a!important;border-radius:16px!important;padding:0!important;border:none!important;border-bottom:2px solid rgba(77,170,255,.3)!important;box-shadow:0 12px 32px rgba(0,0,0,.6)!important;margin:0 16px 24px!important;width:auto!important;bottom:calc(var(--nav-height,60px) + env(safe-area-inset-bottom))!important;overflow:hidden!important}
 .mini-now{position:relative;display:flex;align-items:center;height:32px;padding:0 14px;border-radius:16px 16px 0 0!important;background:0 0!important;margin:0!important;box-shadow:none!important;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer;overflow:hidden!important;transition:none!important}
 .mini-progress-fill{position:absolute;inset:0 auto 0 0;width:0;background:rgba(77,170,255,.12);border-right:1px solid rgba(77,170,255,.3);pointer-events:none;transition:width .1s linear;z-index:1}
@@ -9949,7 +9955,6 @@ body.news-view #cover-wrap{display:none!important}
 @keyframes swapTextMain{0%,40%{opacity:1}45%,95%{opacity:0}100%{opacity:1}}
 @keyframes swapTextHint{0%,40%{opacity:0}45%,95%{opacity:1}100%{opacity:0}}
 .mini-now .like-star{z-index:2;margin-left:10px}
-#mini-now-star{--star-hit-size:20px;--star-glyph-size:28px;margin-left:8px!important;width:var(--star-hit-size);height:var(--star-hit-size);min-width:var(--star-hit-size);min-height:var(--star-hit-size);flex:0 0 var(--star-hit-size);display:inline-flex;align-items:center;justify-content:center}
 #now-playing #lyricsplayerblock{border-radius:0!important;background:0 0!important;box-shadow:none!important;border-bottom:none!important;margin:0!important}
 #now-playing #lyricsplayerblock .player-controls{background:0 0!important;padding:4px 18px!important;display:flex!important;align-items:center!important;justify-content:center!important}
 #now-playing #lyricsplayerblock #lyrics-window,#now-playing #lyricsplayerblock .player-progress-wrapper,#now-playing #lyricsplayerblock .player-controls-row:nth-child(2),#now-playing #lyricsplayerblock .volume-control-wrapper,#now-playing #lyricsplayerblock .player-buttons-wrapper,#now-playing #next-up{display:none!important}
