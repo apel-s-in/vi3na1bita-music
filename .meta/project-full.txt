@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-22a39921013d338f008469da6614fa7365d24804.idx
-│   │       ├── pack-22a39921013d338f008469da6614fa7365d24804.pack
-│   │       └── pack-22a39921013d338f008469da6614fa7365d24804.rev
+│   │       ├── pack-011b7aec28a57aff4348114201ad40fbc903fcd1.idx
+│   │       ├── pack-011b7aec28a57aff4348114201ad40fbc903fcd1.pack
+│   │       └── pack-011b7aec28a57aff4348114201ad40fbc903fcd1.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -409,7 +409,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-24 13:27:22 UTC
+Сгенерировано: 2026-03-24 13:30:13 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -889,7 +889,7 @@ jobs:
   </template>
 
   <script>
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.69');
+    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.70');
     const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-03-24');
 
     // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
@@ -933,7 +933,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.1.69';
+const SW_VERSION = '8.1.70';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
@@ -4828,8 +4828,8 @@ if (errs.length) { console.error('Failed:\n', errs.join('\n')); process.exit(2);
 // UID.092_(Incremental rollout order)_(делать staged внедрение через один конфиг)_(intel boot должен управляться отсюда)
 
 export const APP_CONFIG = {
-  APP_VERSION: '8.1.69',
-  BUILD_DATE: '2026-03-22',
+  APP_VERSION: '8.1.70',
+  BUILD_DATE: '2026-03-24',
   PROMOCODE: 'VITRINA2025',
   ICON_ALBUMS_ORDER: [
     { key: 'odnazhdy-v-skazke', title: 'Однажды в Сказке', icon: 'img/icon_album/icon-album-03.png' },
@@ -9009,7 +9009,7 @@ import { resolveFavoritesOnlyState } from '../scripts/app/player/favorites-only-
       
       this.currentIndex = idx;
       if (!opts.isAutoSkip) this._skips = 0;
-      this._emit('onTrackChange', t, idx); emitG('player:trackChanged', { uid, dir }); try { this._ms?.updatePositionState?.({ force: true }); } catch {}
+      this._emit('onTrackChange', t, idx); emitG('player:trackChanged', { uid, dir }); this._syncMediaSessionPosition(true);
 
       let r = await W.TrackResolver?.resolve?.(uid, this.qMode).catch(()=>null);
       if (tok !== this._tok) return;
@@ -9054,8 +9054,8 @@ import { resolveFavoritesOnlyState } from '../scripts/app/player/favorites-only-
       this.sound = new Howl({
         src: [url], html5: true, format: ['mp3'], xhr: { withCredentials: false }, autoplay: opts.autoPlay ?? this.isPlaying(),
         onload: sf(() => { pos && this.seek(pos); this._updMedia(); }),
-        onplay: sf(() => { this._startT(); this._emit('onPlay', t, idx); this._updMedia(); try { this._ms?.updatePositionState?.({ force: true }); } catch {} emitG('player:play', { uid, duration: this.getDuration(), type: 'audio', provider: aP }); emitG('player:providerChanged', { provider: aP }); }),
-        onpause: sf(() => { this._stopT(); this._emit('onPause'); this._updMedia(); try { this._ms?.updatePositionState?.({ force: true }); } catch {} emitG('player:pause'); }),
+        onplay: sf(() => { this._startT(); this._emit('onPlay', t, idx); this._updMedia(); this._syncMediaSessionPosition(true); emitG('player:play', { uid, duration: this.getDuration(), type: 'audio', provider: aP }); emitG('player:providerChanged', { provider: aP }); }),
+        onpause: sf(() => { this._stopT(); this._emit('onPause'); this._updMedia(); this._syncMediaSessionPosition(true); emitG('player:pause'); }),
         onend: sf(() => { this._emit('onEnd'); this._updMedia(); emitG('player:ended'); emitG('analytics:forceFlush'); this.flags.rep ? this.play(this.currentIndex) : this.next(); }),
         onloaderror: sf(() => this._err(idx, retry, opts, dir)),
         onplayerror: sf(() => this._err(idx, retry, opts, dir))
@@ -9076,10 +9076,11 @@ import { resolveFavoritesOnlyState } from '../scripts/app/player/favorites-only-
         this._oK = null; this._oKTok = 0;
       }
       this._stopT();
-      if (!silent) { try { this._ms?.updatePositionState?.({ force: true }); } catch {} emitG('player:stop'); this._emit('onStop'); }
+      if (!silent) { this._syncMediaSessionPosition(true); emitG('player:stop'); this._emit('onStop'); }
     }
 
-    _startT() { this._stopT(); this._tick = setInterval(() => { this._emit('onTick', this.getPosition(), this.getDuration()); emitG('player:tick', { currentTime: this.getPosition(), volume: this.getVolume(), muted: this.isMuted() }); try { this._ms?.updatePositionState?.(); } catch {} }, 250); }
+    _syncMediaSessionPosition(force = false) { try { this._ms?.updatePositionState?.({ force }); } catch {} }
+    _startT() { this._stopT(); this._tick = setInterval(() => { this._emit('onTick', this.getPosition(), this.getDuration()); emitG('player:tick', { currentTime: this.getPosition(), volume: this.getVolume(), muted: this.isMuted() }); this._syncMediaSessionPosition(false); }, 250); }
     _stopT() { if (this._tick) clearInterval(this._tick); this._tick = null; }
     _updMedia() { try { this._ms?.updateMetadata?.({ title: this.getCurrentTrack()?.title, artist: this.getCurrentTrack()?.artist, album: this.getCurrentTrack()?.album, artworkUrl: this.getCurrentTrack()?.cover, playing: this.isPlaying() }); } catch {} }
 
