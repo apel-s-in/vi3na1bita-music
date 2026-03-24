@@ -127,9 +127,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-10864a9bbe2687b98688d2fd9d095bee5f0a67fa.idx
-│   │       ├── pack-10864a9bbe2687b98688d2fd9d095bee5f0a67fa.pack
-│   │       └── pack-10864a9bbe2687b98688d2fd9d095bee5f0a67fa.rev
+│   │       ├── pack-2caf8b2901877d54cfcfd44ce007c9d2f2b880ba.idx
+│   │       ├── pack-2caf8b2901877d54cfcfd44ce007c9d2f2b880ba.pack
+│   │       └── pack-2caf8b2901877d54cfcfd44ce007c9d2f2b880ba.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -414,7 +414,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-24 18:17:12 UTC
+Сгенерировано: 2026-03-24 18:17:54 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -8805,20 +8805,61 @@ export function initIosAudioKeeper() {
   _bound = true;
 
   window.addEventListener('player:play', () => startKeeper());
-
-  window.addEventListener('player:stop', () => {
-    // Останавливаем keeper только при явном stop пользователя
-    // При player:ended — НЕ останавливаем (автопереход на следующий трек)
-    stopKeeper();
-  });
+  window.addEventListener('player:stop', () => stopKeeper());
 
   // При возврате вкладки — перезапускаем keeper если плеер играл
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible') return;
-    if (window.playerCore?.isPlaying?.() && !_started) {
-      startKeeper();
-    }
+    if (window.playerCore?.isPlaying?.() && !_started) startKeeper();
   });
+
+  // Восстанавливаем AudioContext после прерывания (звонок, Siri)
+  const handleCtxState = () => {
+    const ctx = window.Howler?.ctx;
+    if (ctx && (ctx.state === 'interrupted' || ctx.state === 'suspended')) {
+      ctx.resume().catch(() => {});
+    }
+  };
+
+  const bindCtxWatcher = () => {
+    const ctx = window.Howler?.ctx;
+    if (ctx && !ctx._iosWatching) {
+      ctx._iosWatching = true;
+      ctx.addEventListener('statechange', () => {
+        if (window.playerCore?.isPlaying?.()) handleCtxState();
+      });
+    }
+  };
+
+  // Восстановление после прерывания iOS (звонок, Siri, блокировка)
+  let _lastKnownPos = 0, _wasPlayingBeforeHide = false;
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') {
+      _lastKnownPos = window.playerCore?.getPosition?.() || 0;
+      _wasPlayingBeforeHide = !!window.playerCore?.isPlaying?.();
+      return;
+    }
+    bindCtxWatcher();
+    handleCtxState();
+    if (window.playerCore?.sound && !window.playerCore.isPlaying() && _wasPlayingBeforeHide) {
+      _wasPlayingBeforeHide = false;
+      const pos = _lastKnownPos || 0;
+      setTimeout(() => {
+        if (window.playerCore?.sound && !window.playerCore.isPlaying()) {
+          window.playerCore.sound.seek(pos);
+          window.playerCore.sound.play();
+        }
+      }, 300);
+    }
+    _wasPlayingBeforeHide = false;
+  });
+
+  setInterval(() => {
+    if (window.playerCore?.isPlaying?.()) _lastKnownPos = window.playerCore.getPosition();
+  }, 5000);
+
+  window.addEventListener('player:play', () => { bindCtxWatcher(); handleCtxState(); });
 }
 
 export default { initIosAudioKeeper, startKeeper, stopKeeper };
