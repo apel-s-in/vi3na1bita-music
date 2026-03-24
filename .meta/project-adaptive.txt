@@ -365,7 +365,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-24 22:42:38 UTC
+Сгенерировано: 2026-03-24 22:44:43 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -851,7 +851,7 @@ jobs:
   </template>
 
   <script>
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.90');
+    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.91');
     const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-03-25');
 
     // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
@@ -895,7 +895,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.1.90';
+const SW_VERSION = '8.1.91';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
@@ -5030,7 +5030,7 @@ if (errs.length) { console.error('Failed:\n', errs.join('\n')); process.exit(2);
 // UID.092_(Incremental rollout order)_(делать staged внедрение через один конфиг)_(intel boot должен управляться отсюда)
 
 export const APP_CONFIG = {
-  APP_VERSION: '8.1.90',
+  APP_VERSION: '8.1.91',
   BUILD_DATE: '2026-03-25',
   PROMOCODE: 'VITRINA2025',
   ICON_ALBUMS_ORDER: [
@@ -7854,7 +7854,6 @@ window.IconUtils = { renderIcon, setIconUse, renderFavoriteStar, setFavoriteStar
     W.addEventListener('player:play', () => { setupAudio(); });
     W.addEventListener('player:trackChanged', () => { state.pulse = 0; setupAudio(); });
     W.addEventListener('player:stop', () => { state.pulse = 0; });
-    W.addEventListener('playback:clock', () => {});
   };
 
   W.LogoPulse = { init, toggle, updateSettings };
