@@ -25,12 +25,14 @@ function getFavoritesSourcePlaylist() {
   const st = pc?.getFavoritesState?.() || { active: [] };
   return (st.active || []).map(i => {
     const tr = W.TrackRegistry?.getTrackByUid?.(i.uid) || {};
+    const sAlb = i.sourceAlbum || tr.sourceAlbum || null;
+    const realCover = W.AlbumsManager?.covers?.get?.(sAlb) || 'img/logo.png';
     return {
       ...tr,
       uid: i.uid,
-      sourceAlbum: i.sourceAlbum || tr.sourceAlbum || null,
+      sourceAlbum: sAlb,
       album: 'Избранное',
-      cover: 'img/Fav_logo.png'
+      cover: realCover
     };
   }).filter(t => t?.uid);
 }
