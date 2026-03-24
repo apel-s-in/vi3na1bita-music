@@ -127,9 +127,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-2caf8b2901877d54cfcfd44ce007c9d2f2b880ba.idx
-│   │       ├── pack-2caf8b2901877d54cfcfd44ce007c9d2f2b880ba.pack
-│   │       └── pack-2caf8b2901877d54cfcfd44ce007c9d2f2b880ba.rev
+│   │       ├── pack-50081a069e37d9784386711513fa8ef0b22c69db.idx
+│   │       ├── pack-50081a069e37d9784386711513fa8ef0b22c69db.pack
+│   │       └── pack-50081a069e37d9784386711513fa8ef0b22c69db.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -414,7 +414,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-24 18:17:54 UTC
+Сгенерировано: 2026-03-24 18:19:08 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -938,7 +938,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.1.73';
+const SW_VERSION = '8.1.74';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
@@ -8960,67 +8960,11 @@ import { initIosAudioKeeper } from './player-core/ios-audio-keeper.js';
 
     initialize() {
       Favorites?.init?.();
-      this._bindIosAudioSession();
       initIosAudioKeeper();
     }
 
     prepareContext() {
       if (W.Howler?.ctx?.state === 'suspended') W.Howler.ctx.resume().catch(()=>{});
-    }
-
-    _bindIosAudioSession() {
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !W.MSStream;
-      if (!isIOS) return;
-
-      // Восстанавливаем AudioContext после прерывания (звонок, Siri, etc.)
-      const handleCtxState = () => {
-        const ctx = W.Howler?.ctx;
-        if (!ctx) return;
-        if (ctx.state === 'interrupted' || ctx.state === 'suspended') {
-          ctx.resume().catch(() => {});
-        }
-      };
-
-      // Слушаем statechange AudioContext
-      const bindCtxWatcher = () => {
-        const ctx = W.Howler?.ctx;
-        if (ctx && !ctx._iosWatching) {
-          ctx._iosWatching = true;
-          ctx.addEventListener('statechange', () => {
-            if (this.isPlaying()) handleCtxState();
-          });
-        }
-      };
-
-      // Восстановление воспроизведения после прерывания iOS
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') {
-          bindCtxWatcher();
-          handleCtxState();
-          // Если Howl завис — перезапускаем с текущей позиции
-          if (this.sound && !this.isPlaying() && this._wasPlayingBeforeHide) {
-            this._wasPlayingBeforeHide = false;
-            const pos = this._lastKnownPos || 0;
-            setTimeout(() => {
-              if (this.sound && !this.isPlaying()) {
-                this.sound.seek(pos);
-                this.sound.play();
-              }
-            }, 300);
-          }
-          this._wasPlayingBeforeHide = false;
-        } else {
-          this._lastKnownPos = this.getPosition();
-          this._wasPlayingBeforeHide = this.isPlaying();
-        }
-      });
-
-      // Сохраняем позицию каждые 5 сек для аварийного восстановления
-      setInterval(() => {
-        if (this.isPlaying()) this._lastKnownPos = this.getPosition();
-      }, 5000);
-
-      W.addEventListener('player:play', () => { bindCtxWatcher(); handleCtxState(); });
     }
 
     setPlaylist(tracks, startIdx = 0, meta, opts = {}) {
