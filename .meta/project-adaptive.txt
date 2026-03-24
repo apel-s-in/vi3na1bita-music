@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-1f88680a439f6005a1608559d67cbf302509a3f3.idx
-│   │       ├── pack-1f88680a439f6005a1608559d67cbf302509a3f3.pack
-│   │       └── pack-1f88680a439f6005a1608559d67cbf302509a3f3.rev
+│   │       ├── pack-475493012aa9cb9ffb0f31a7b31e523f45d1a144.idx
+│   │       ├── pack-475493012aa9cb9ffb0f31a7b31e523f45d1a144.pack
+│   │       └── pack-475493012aa9cb9ffb0f31a7b31e523f45d1a144.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -409,7 +409,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-24 13:25:09 UTC
+Сгенерировано: 2026-03-24 13:26:29 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3050,6 +3050,7 @@ let _state = {
   duration: 0,
   isPlaying: false,
   visibility: document.visibilityState || 'visible',
+  uiBackgroundSuspend: document.visibilityState === 'hidden',
   ts: Date.now()
 };
 
@@ -3060,13 +3061,15 @@ const emit = () => {
 
 const pull = () => {
   const pc = W.playerCore;
+  const vis = document.visibilityState || 'visible';
   _state = {
     ..._state,
     uid: String(pc?.getCurrentTrackUid?.() || '') || null,
     currentTime: Number(pc?.getPosition?.() || 0),
     duration: Number(pc?.getDuration?.() || 0),
     isPlaying: !!pc?.isPlaying?.(),
-    visibility: document.visibilityState || 'visible',
+    visibility: vis,
+    uiBackgroundSuspend: vis === 'hidden',
     ts: Date.now()
   };
   emit();
