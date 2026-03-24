@@ -263,7 +263,7 @@ export const renderProfileSettings = (root) => {
       lpInt.value = '0.12';
       lpDebug.checked = false;
       applyLp();
-      W.NotificationSystem?.success?.('Настройки пульсации сброшены');
+      W.NotificationSystem?.success('Настройки пульсации сброшены');
     });
   }
 
