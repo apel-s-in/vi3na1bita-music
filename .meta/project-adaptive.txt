@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-a7404f98d6830776791d87e47fd0dd3a8b48078e.idx
-│   │       ├── pack-a7404f98d6830776791d87e47fd0dd3a8b48078e.pack
-│   │       └── pack-a7404f98d6830776791d87e47fd0dd3a8b48078e.rev
+│   │       ├── pack-90d04a198d04f5f14a2e178d8cd94048f46a3c43.idx
+│   │       ├── pack-90d04a198d04f5f14a2e178d8cd94048f46a3c43.pack
+│   │       └── pack-90d04a198d04f5f14a2e178d8cd94048f46a3c43.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -409,7 +409,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-24 14:26:49 UTC
+Сгенерировано: 2026-03-24 14:28:45 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -889,7 +889,7 @@ jobs:
   </template>
 
   <script>
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.71');
+    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.72');
     const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-03-24');
 
     // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
@@ -933,7 +933,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.1.71';
+const SW_VERSION = '8.1.72';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
@@ -7447,9 +7447,9 @@ window.IconUtils = { renderIcon, setIconUse, renderFavoriteStar, setFavoriteStar
   'use strict';
 
   const PRESETS = {
-    bass: { fftSize: 256, binStart: 1, binEnd: 5, attack: 0.38, release: 0.11, gain: 1.18 },
-    balanced: { fftSize: 256, binStart: 1, binEnd: 7, attack: 0.32, release: 0.10, gain: 1.0 },
-    aggressive: { fftSize: 512, binStart: 1, binEnd: 10, attack: 0.46, release: 0.14, gain: 1.28 }
+    bass: { fftSize: 256, binStart: 1, binEnd: 3, attack: 0.55, release: 0.08, gain: 2.4 },
+    balanced: { fftSize: 256, binStart: 1, binEnd: 5, attack: 0.45, release: 0.10, gain: 1.8 },
+    aggressive: { fftSize: 256, binStart: 1, binEnd: 8, attack: 0.60, release: 0.12, gain: 2.8 }
   };
 
   const ls = (k, d) => localStorage.getItem(k) ?? d;
@@ -7548,15 +7548,6 @@ window.IconUtils = { renderIcon, setIconUse, renderFavoriteStar, setFavoriteStar
     try {
       if (W.Howler.ctx.state === 'suspended') W.Howler.ctx.resume().catch(() => {});
 
-      const media = getActiveHtml5Media();
-      if (media && !media._waRouted) {
-        try {
-          const source = W.Howler.ctx.createMediaElementSource(media);
-          source.connect(W.Howler.masterGain);
-          media._waRouted = true;
-        } catch(e) {}
-      }
-
       if (!state.analyser || state.analyser.fftSize !== cfg.fftSize) {
         if (state.analyser) { try { W.Howler.masterGain.disconnect(state.analyser); } catch {} }
         state.analyser = W.Howler.ctx.createAnalyser();
@@ -7567,7 +7558,7 @@ window.IconUtils = { renderIcon, setIconUse, renderFavoriteStar, setFavoriteStar
       }
 
       state.connected = true;
-      state.sourceKind = media ? 'mediaElement' : 'masterGain';
+      state.sourceKind = 'masterGain';
       state.zeroFrames = 0;
       return true;
     } catch(e) {
@@ -7585,23 +7576,24 @@ window.IconUtils = { renderIcon, setIconUse, renderFavoriteStar, setFavoriteStar
 
     state.analyser.getByteFrequencyData(state.data);
 
-    let sum = 0;
-    let count = 0;
+    let sum = 0, count = 0;
     for (let i = cfg.binStart; i <= cfg.binEnd && i < state.data.length; i++) {
-      sum += state.data[i];
-      count++;
+      sum += state.data[i]; count++;
     }
 
     let raw = count ? (sum / count) / 255 : 0;
     raw = Math.max(0, (raw - state.noiseGate) / (1 - state.noiseGate));
     raw = clamp(raw * cfg.gain, 0, 1);
 
-    if (W.playerCore?.isPlaying?.() && raw <= 0.0005) state.zeroFrames++;
-    else state.zeroFrames = 0;
-
-    if (!state.watchdogUsed && state.zeroFrames > 120 && W.playerCore?.isPlaying?.()) {
-      state.watchdogUsed = true;
-      setupAudio(true);
+    const isPlaying = W.playerCore?.isPlaying?.();
+    
+    // Если WebAudio недоступен (iOS HTML5), генерируем красивый математический грув
+    if (isPlaying && raw <= 0.005) {
+       const pos = W.playerCore?.getPosition?.() || 0;
+       raw = Math.pow(Math.abs(Math.sin(pos * Math.PI * (120 / 60))), 6) * 0.8;
+       state.sourceKind = 'mathFallback';
+    } else if (raw > 0.005) {
+       state.sourceKind = 'analyser';
     }
 
     const k = raw > state.pulse ? cfg.attack : cfg.release;
