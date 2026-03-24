@@ -364,7 +364,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-24 21:40:43 UTC
+Сгенерировано: 2026-03-24 21:41:29 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3181,9 +3181,24 @@ export const bindProfileActions = ({ ctx, container: c, achView: aV, profile: p,
       const id = el.dataset.auth;
       tk[id] ? (id==='yandex'&&cs?.sync?cs.sync(id):window.NotificationSystem?.info('Синхронизация...')) : (id==='yandex'&&cs?.auth?cs.auth(id):window.NotificationSystem?.info('Недоступно'));
     } else if (f('#prof-avatar-btn')) {
+      const AVA_ITEMS = ['😎','🎧','🎸','🦄','🦇','👽','🤖','🐱','🦊','🐼','🔥','💎','🎵','🌟','🦁','🐯','🦊','🎮','🎤','🎹','🥁','🎺'];
       window.Utils?.profileModals?.avatarPicker?.({
-        title: 'Аватар', items: ['😎','🎧','🎸','🦄','🦇','👽','🤖','🐱','🦊','🐼','🔥','💎'],
-        onPick: async (v, m) => { p.avatar = v; c.querySelector('#prof-avatar-btn').textContent = v; db && await db.setGlobal('user_profile', p).catch(()=>{}); m?.remove?.(); }
+        title: 'Аватар профиля',
+        items: [...AVA_ITEMS, '__reset__'],
+        onPick: async (v, m) => {
+          const isReset = v === '__reset__';
+          p.avatar = isReset ? '😎' : v;
+          c.querySelector('#prof-avatar-btn').textContent = p.avatar;
+          db && await db.setGlobal('user_profile', p).catch(()=>{});
+          m?.remove?.();
+          // Обновить карточку карусели
+          const card = c.querySelector('.sc-3d-card[data-id="account"]');
+          if (card) {
+            const ic = card.querySelector('.sc-3d-ic');
+            if (ic) ic.textContent = isReset ? '👤' : v;
+          }
+          if (isReset) window.NotificationSystem?.info('Аватар сброшен');
+        }
       });
     } else if (f('#prof-name-edit')) c.querySelector('#prof-name-inp')?.focus();
     else if (el = f('[data-src]')) {
