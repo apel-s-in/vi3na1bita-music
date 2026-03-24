@@ -57,67 +57,11 @@ import { initIosAudioKeeper } from './player-core/ios-audio-keeper.js';
 
     initialize() {
       Favorites?.init?.();
-      this._bindIosAudioSession();
       initIosAudioKeeper();
     }
 
     prepareContext() {
       if (W.Howler?.ctx?.state === 'suspended') W.Howler.ctx.resume().catch(()=>{});
-    }
-
-    _bindIosAudioSession() {
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !W.MSStream;
-      if (!isIOS) return;
-
-      // Восстанавливаем AudioContext после прерывания (звонок, Siri, etc.)
-      const handleCtxState = () => {
-        const ctx = W.Howler?.ctx;
-        if (!ctx) return;
-        if (ctx.state === 'interrupted' || ctx.state === 'suspended') {
-          ctx.resume().catch(() => {});
-        }
-      };
-
-      // Слушаем statechange AudioContext
-      const bindCtxWatcher = () => {
-        const ctx = W.Howler?.ctx;
-        if (ctx && !ctx._iosWatching) {
-          ctx._iosWatching = true;
-          ctx.addEventListener('statechange', () => {
-            if (this.isPlaying()) handleCtxState();
-          });
-        }
-      };
-
-      // Восстановление воспроизведения после прерывания iOS
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') {
-          bindCtxWatcher();
-          handleCtxState();
-          // Если Howl завис — перезапускаем с текущей позиции
-          if (this.sound && !this.isPlaying() && this._wasPlayingBeforeHide) {
-            this._wasPlayingBeforeHide = false;
-            const pos = this._lastKnownPos || 0;
-            setTimeout(() => {
-              if (this.sound && !this.isPlaying()) {
-                this.sound.seek(pos);
-                this.sound.play();
-              }
-            }, 300);
-          }
-          this._wasPlayingBeforeHide = false;
-        } else {
-          this._lastKnownPos = this.getPosition();
-          this._wasPlayingBeforeHide = this.isPlaying();
-        }
-      });
-
-      // Сохраняем позицию каждые 5 сек для аварийного восстановления
-      setInterval(() => {
-        if (this.isPlaying()) this._lastKnownPos = this.getPosition();
-      }, 5000);
-
-      W.addEventListener('player:play', () => { bindCtxWatcher(); handleCtxState(); });
     }
 
     setPlaylist(tracks, startIdx = 0, meta, opts = {}) {
