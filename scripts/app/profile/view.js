@@ -41,23 +41,38 @@ export const loadProfileView = async (ctx) => {
   const nInp = c.querySelector('#prof-name-inp');
   const pencilBtn = c.querySelector('#prof-name-edit');
   if (nInp) {
+    // Начальное состояние: НЕ readonly, просто визуально неактивен через CSS-класс
+    nInp.removeAttribute('readonly');
+    nInp.classList.add('name-inactive');
+
     const saveName = async () => {
       const newName = nInp.value.trim() || 'Слушатель';
       profile.name = newName;
-      nInp.setAttribute('readonly', '');
+      nInp.classList.add('name-inactive');
+      nInp.blur();
       metaDB && await metaDB.setGlobal('user_profile', profile).catch(()=>{});
       window.NotificationSystem?.success('Имя сохранено');
       syncCarouselAccountCard();
-      // Обновить мета-строку уровня
       const lvlEl = c.querySelector('#prof-meta-level');
       if (lvlEl) lvlEl.textContent = `⭐ Уровень: ${window.achievementEngine?.profile?.level || 1}`;
     };
-    nInp.onblur = saveName;
-    nInp.onkeydown = e => { if (e.key === 'Enter') nInp.blur(); if (e.key === 'Escape') { nInp.value = profile.name || 'Слушатель'; nInp.setAttribute('readonly', ''); } };
+
+    nInp.addEventListener('blur', saveName);
+    nInp.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); saveName(); }
+      if (e.key === 'Escape') { nInp.value = profile.name || 'Слушатель'; nInp.classList.add('name-inactive'); nInp.blur(); }
+    });
+    nInp.addEventListener('focus', () => nInp.classList.remove('name-inactive'));
+
     pencilBtn?.addEventListener('click', () => {
-      nInp.removeAttribute('readonly');
-      nInp.focus();
-      nInp.select();
+      nInp.classList.remove('name-inactive');
+      // iOS требует небольшой задержки перед focus после изменения состояния
+      requestAnimationFrame(() => {
+        nInp.focus();
+        // Ставим курсор в конец
+        const len = nInp.value.length;
+        nInp.setSelectionRange(len, len);
+      });
     });
   }
 
