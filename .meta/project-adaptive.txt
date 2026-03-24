@@ -127,9 +127,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5c4b1322c9935927956c94aa1fa1c0fb9c5215a7.idx
-│   │       ├── pack-5c4b1322c9935927956c94aa1fa1c0fb9c5215a7.pack
-│   │       └── pack-5c4b1322c9935927956c94aa1fa1c0fb9c5215a7.rev
+│   │       ├── pack-0e93d9ca38fe00d4dc9c962667f90b868bc8f343.idx
+│   │       ├── pack-0e93d9ca38fe00d4dc9c962667f90b868bc8f343.pack
+│   │       └── pack-0e93d9ca38fe00d4dc9c962667f90b868bc8f343.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -414,7 +414,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-24 16:01:55 UTC
+Сгенерировано: 2026-03-24 16:02:46 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -8871,6 +8871,7 @@ import { getTrackByUid } from '../scripts/app/track-registry.js';
 import { Favorites } from '../scripts/core/favorites-manager.js';
 import { ensureMediaSession } from './player-core/media-session.js';
 import { resolveFavoritesOnlyState } from '../scripts/app/player/favorites-only-resolver.js';
+import { initIosAudioKeeper } from './player-core/ios-audio-keeper.js';
 
 // UID.001_(Playback safety invariant)_(защитить священное правило проигрывания)_(никакие intel/recs/providers/telemetry не имеют права стопать/сбрасывать playback кроме уже разрешённых сценариев)
 // UID.008_(No playback mutation by intel)_(развести ядро плеера и интеллектуальный слой)_(PlayerCore остаётся единственным владельцем playback state, intel только читает и рекомендует)
@@ -8926,6 +8927,7 @@ import { resolveFavoritesOnlyState } from '../scripts/app/player/favorites-only-
     initialize() {
       Favorites?.init?.();
       this._bindIosAudioSession();
+      initIosAudioKeeper();
     }
 
     prepareContext() {
