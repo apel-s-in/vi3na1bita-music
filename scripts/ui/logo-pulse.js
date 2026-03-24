@@ -99,82 +99,37 @@
     }
   };
 
-  const disconnectAudio = () => {
-    try { if (state.analyser) W.Howler?.masterGain?.disconnect?.(state.analyser); } catch {}
-    try { if (state.mediaSource) state.mediaSource.disconnect(); } catch {}
-    try { if (state.analyser) state.analyser.disconnect(); } catch {}
-    try { if (state.sink) state.sink.disconnect(); } catch {}
-    state.mediaSource = null;
-    state.connected = false;
-    state.sourceKind = 'none';
-  };
-
-  const connectAnalyserTail = () => {
-    try { state.analyser.connect(state.sink); } catch {}
-    try { state.sink.connect(W.Howler.ctx.destination); } catch {}
-    state.connected = true;
-  };
-
   const setupAudio = (force = false) => {
     const cfg = getPresetConfig();
-    if (!W.Howler?.ctx) return false;
+    if (!W.Howler?.ctx || !W.Howler?.masterGain) return false;
 
     try {
       if (W.Howler.ctx.state === 'suspended') W.Howler.ctx.resume().catch(() => {});
-      if (force) disconnectAudio();
+
+      const media = getActiveHtml5Media();
+      if (media && !media._waRouted) {
+        try {
+          const source = W.Howler.ctx.createMediaElementSource(media);
+          source.connect(W.Howler.masterGain);
+          media._waRouted = true;
+        } catch(e) {}
+      }
 
       if (!state.analyser || state.analyser.fftSize !== cfg.fftSize) {
-        disconnectAudio();
+        if (state.analyser) { try { W.Howler.masterGain.disconnect(state.analyser); } catch {} }
         state.analyser = W.Howler.ctx.createAnalyser();
         state.analyser.fftSize = cfg.fftSize;
         state.analyser.smoothingTimeConstant = 0;
-        state.sink = W.Howler.ctx.createGain();
-        state.sink.gain.value = 0.0001;
+        W.Howler.masterGain.connect(state.analyser);
         state.data = new Uint8Array(state.analyser.frequencyBinCount);
       }
 
-      let ok = false;
-
-      if (W.Howler?.masterGain) {
-        try {
-          W.Howler.masterGain.connect(state.analyser);
-          connectAnalyserTail();
-          state.sourceKind = 'masterGain';
-          ok = true;
-        } catch {}
-      }
-
-      const media = getActiveHtml5Media();
-      if (media && (!ok || force)) {
-        try {
-          disconnectAudio();
-          if (!state.analyser || state.analyser.fftSize !== cfg.fftSize) {
-            state.analyser = W.Howler.ctx.createAnalyser();
-            state.analyser.fftSize = cfg.fftSize;
-            state.analyser.smoothingTimeConstant = 0;
-            state.sink = W.Howler.ctx.createGain();
-            state.sink.gain.value = 0.0001;
-            state.data = new Uint8Array(state.analyser.frequencyBinCount);
-          }
-          state.mediaSource = W.Howler.ctx.createMediaElementSource(media);
-          state.mediaSource.connect(state.analyser);
-          connectAnalyserTail();
-          state.sourceKind = 'mediaElement';
-          ok = true;
-        } catch {}
-      }
-
-      if (ok) {
-        state.zeroFrames = 0;
-        return true;
-      }
-
+      state.connected = true;
+      state.sourceKind = media ? 'mediaElement' : 'masterGain';
+      state.zeroFrames = 0;
+      return true;
+    } catch(e) {
       state.connected = false;
-      state.sourceKind = 'none';
-      return false;
-    } catch {
-      state.connected = false;
-      state.sourceKind = 'none';
       return false;
     }
   };
