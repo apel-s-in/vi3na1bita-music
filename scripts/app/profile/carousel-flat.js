@@ -137,25 +137,34 @@ export function mountProfileCarouselFlat({ root }) {
     const scene = root.querySelector('.sc-3d-scene');
     if (!car || !scene) return;
 
+    let _selectDebounce = null;
     const doSelect = () => {
-      clearTimeout(wrap._tAuto);
-      const norm = ((currIdx % TOTAL) + TOTAL) % TOTAL;
-      const activeId = cardsData[norm].id;
-      const tab = root.querySelector(`#tab-${activeId}`);
-      if (tab && !tab.classList.contains('active')) {
+      clearTimeout(_selectDebounce);
+      _selectDebounce = setTimeout(() => {
+        clearTimeout(wrap._tAuto);
+        const norm = ((currIdx % TOTAL) + TOTAL) % TOTAL;
+        const activeId = cardsData[norm].id;
+        const tab = root.querySelector(`#tab-${activeId}`);
+        if (!tab) { W.NotificationSystem?.info(`Раздел «${cardsData[norm].tit}» открывается...`); return; }
+        if (tab.classList.contains('active')) return;
+
+        // Уводим старый контент с opacity перед удалением active
         const prev = root.querySelector('.profile-tab-content.active');
         if (prev && prev !== tab) {
-          prev.classList.remove('active');
+          prev.style.opacity = '0';
+          prev.style.transform = 'translateY(-8px)';
+          prev.style.transition = 'opacity .15s ease, transform .15s ease';
+          setTimeout(() => {
+            prev.classList.remove('active');
+            prev.style.cssText = '';
+            // Даём браузеру один тик перед появлением нового
+            requestAnimationFrame(() => requestAnimationFrame(() => tab.classList.add('active')));
+          }, 150);
         } else {
-          root.querySelectorAll('.profile-tab-content').forEach(x => x.classList.remove('active'));
+          root.querySelectorAll('.profile-tab-content').forEach(x => { x.classList.remove('active'); x.style.cssText = ''; });
+          requestAnimationFrame(() => requestAnimationFrame(() => tab.classList.add('active')));
         }
-        // Небольшой микро-тик чтобы браузер успел снять active и пересчитать layout
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => tab.classList.add('active'));
-        });
-      } else if (!tab) {
-        W.NotificationSystem?.info(`Раздел «${cardsData[norm].tit}» открывается...`);
-      }
+      }, 80); // debounce 80ms — нормально для листания
     };
 
     const update = (animated = true) => {
