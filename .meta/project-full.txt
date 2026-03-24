@@ -365,7 +365,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-24 22:12:10 UTC
+Сгенерировано: 2026-03-24 22:12:24 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -850,7 +850,7 @@ jobs:
   </template>
 
   <script>
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.87');
+    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.88');
     const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-03-25');
 
     // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
