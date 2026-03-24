@@ -364,7 +364,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-24 20:13:24 UTC
+Сгенерировано: 2026-03-24 20:22:54 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3563,20 +3563,23 @@ const setDlFmt = (v) => {
   localStorage.setItem('dl_format_v1', JSON.stringify(v));
 };
 
+const renderDownloadSection = () => `
+  <button type="button" class="set-acc-btn open">СКАЧИВАНИЕ ТРЕКОВ</button>
+  <div class="set-acc-body">
+    <div class="set-sub" style="margin-bottom:4px;padding:0 4px">Соберите формат имени файла по умолчанию.</div>
+    <div class="dl-fmt-container">
+      <div class="dl-preview-box">
+        <div class="dl-preview-lbl">Пример файла:</div>
+        <div class="dl-preview-val" id="dl-fmt-preview"></div>
+      </div>
+      <div id="dl-fmt-list"></div>
+      <input type="text" id="dl-fmt-custom" class="dl-inp-custom" placeholder="Свой текст или Vi3na1bita" autocomplete="off">
+    </div>
+  </div>`;
+
 const renderGeneralSection = () => `
   <div class="settings-content active" id="set-general">
-    <button type="button" class="set-acc-btn open">СКАЧИВАНИЕ ТРЕКОВ</button>
-    <div class="set-acc-body">
-      <div class="set-sub" style="margin-bottom:4px;padding:0 4px">Соберите формат имени файла по умолчанию.</div>
-      <div class="dl-fmt-container">
-        <div class="dl-preview-box">
-          <div class="dl-preview-lbl">Пример файла:</div>
-          <div class="dl-preview-val" id="dl-fmt-preview"></div>
-        </div>
-        <div id="dl-fmt-list"></div>
-        <input type="text" id="dl-fmt-custom" class="dl-inp-custom" placeholder="Свой текст или Vi3na1bita" autocomplete="off">
-      </div>
-    </div>
+    ${renderDownloadSection()}
   </div>`;
 
 const renderPulseSection = () => `
