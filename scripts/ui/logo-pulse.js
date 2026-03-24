@@ -18,18 +18,19 @@
     intensity: clamp(ls('logoPulseIntensity', '0.12'), 0.05, 0.3),
     preset: PRESETS[ls('logoPulsePreset', 'balanced')] ? ls('logoPulsePreset', 'balanced') : 'balanced',
     debug: ls('logoPulseDebug', '0') === '1',
-    noiseGate: 0.06,
+    noiseGate: 0.035,
     glowBase: 4,
     glowBoost: 18,
     brightBoost: 0.18,
     pulse: 0,
     raf: 0,
     analyser: null,
+    sink: null,
     data: null,
     targets: [],
     previewLogo: null,
     debugEl: null,
-    hiddenAt: 0
+    connected: false
   };
 
   const isLowPowerDevice = () => {
@@ -41,11 +42,7 @@
   const getPresetConfig = () => {
     const base = PRESETS[state.preset] || PRESETS.balanced;
     if (!isLowPowerDevice()) return base;
-    return {
-      ...base,
-      fftSize: 256,
-      gain: base.gain * 0.82
-    };
+    return { ...base, fftSize: 256, gain: base.gain * 0.82 };
   };
 
   const ensureStyles = () => {
@@ -77,32 +74,54 @@
       `raw: ${raw.toFixed(3)}`,
       `pulse: ${pulse.toFixed(3)}`,
       `int: ${state.intensity.toFixed(2)}`,
+      `fft: ${state.analyser?.fftSize || 0}`,
+      `ctx: ${W.Howler?.ctx?.state || 'na'}`,
+      `conn: ${state.connected ? '1' : '0'}`,
       `lowPower: ${isLowPowerDevice() ? '1' : '0'}`
     ].join('\n');
   };
 
+  const disconnectAudio = () => {
+    try { if (state.analyser) W.Howler?.masterGain?.disconnect?.(state.analyser); } catch {}
+    try { if (state.analyser) state.analyser.disconnect(); } catch {}
+    try { if (state.sink) state.sink.disconnect(); } catch {}
+    state.connected = false;
+  };
+
   const setupAudio = () => {
     const cfg = getPresetConfig();
-    if (!W.Howler?.ctx || !W.Howler?.masterGain) return;
+    if (!W.Howler?.ctx || !W.Howler?.masterGain) return false;
     try {
       if (W.Howler.ctx.state === 'suspended') W.Howler.ctx.resume().catch(() => {});
-      if (state.analyser && state.analyser.fftSize === cfg.fftSize) return;
-      state.analyser = W.Howler.ctx.createAnalyser();
-      state.analyser.fftSize = cfg.fftSize;
-      state.analyser.smoothingTimeConstant = 0;
-      W.Howler.masterGain.connect(state.analyser);
-      state.data = new Uint8Array(state.analyser.frequencyBinCount);
-    } catch {}
+      if (!state.analyser || state.analyser.fftSize !== cfg.fftSize) {
+        disconnectAudio();
+        state.analyser = W.Howler.ctx.createAnalyser();
+        state.analyser.fftSize = cfg.fftSize;
+        state.analyser.smoothingTimeConstant = 0;
+        state.sink = W.Howler.ctx.createGain();
+        state.sink.gain.value = 0.0001;
+        state.data = new Uint8Array(state.analyser.frequencyBinCount);
+      }
+      try { W.Howler.masterGain.connect(state.analyser); } catch {}
+      try { state.analyser.connect(state.sink); } catch {}
+      try { state.sink.connect(W.Howler.ctx.destination); } catch {}
+      state.connected = true;
+      return true;
+    } catch {
+      state.connected = false;
+      return false;
+    }
   };
 
   const samplePulse = (forcePreview) => {
-    if (!state.active && !forcePreview) return 0;
-    if (!state.analyser || !state.data) return forcePreview ? 0.28 : 0;
+    if (!state.active && !forcePreview) return { raw: 0, pulse: 0 };
+    if (!state.analyser || !state.data || !state.connected) {
+      return { raw: 0, pulse: forcePreview ? 0.28 : 0 };
+    }
 
     const cfg = getPresetConfig();
-    if (state.analyser.fftSize !== cfg.fftSize) {
-      setupAudio();
-      if (!state.analyser || !state.data) return 0;
+    if (state.analyser.fftSize !== cfg.fftSize && !setupAudio()) {
+      return { raw: 0, pulse: 0 };
     }
 
     state.analyser.getByteFrequencyData(state.data);
@@ -120,7 +139,7 @@
 
     const k = raw > state.pulse ? cfg.attack : cfg.release;
     state.pulse += (raw - state.pulse) * k;
-    return clamp(state.pulse, 0, 1);
+    return { raw, pulse: clamp(state.pulse, 0, 1) };
   };
 
   const renderPulse = (p, forcePreview) => {
@@ -141,18 +160,15 @@
 
   const frame = () => {
     const forcePreview = !!(state.previewLogo && state.previewLogo.offsetParent !== null);
-    const hidden = D.visibilityState === 'hidden';
-    if (hidden) {
-      if (!state.hiddenAt) state.hiddenAt = Date.now();
+    if (D.visibilityState === 'hidden') {
       renderPulse(0, false);
       state.raf = requestAnimationFrame(frame);
       return;
     }
-    state.hiddenAt = 0;
 
-    const p = samplePulse(forcePreview);
-    renderPulse(p, forcePreview);
-    updateDebug(p, state.pulse);
+    const sampled = samplePulse(forcePreview);
+    renderPulse(sampled.pulse, forcePreview);
+    updateDebug(sampled.raw, sampled.pulse);
     state.raf = requestAnimationFrame(frame);
   };
 
@@ -190,7 +206,9 @@
   const init = () => {
     ensureStyles();
     syncUi();
-    W.addEventListener('player:play', setupAudio);
+    W.addEventListener('player:play', () => { setupAudio(); });
+    W.addEventListener('player:trackChanged', () => { state.pulse = 0; setupAudio(); });
+    W.addEventListener('player:stop', () => { state.pulse = 0; });
     D.addEventListener('visibilitychange', () => {
       if (D.visibilityState === 'hidden') state.pulse = 0;
     });
