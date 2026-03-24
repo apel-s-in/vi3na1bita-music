@@ -365,7 +365,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-24 22:31:28 UTC
+Сгенерировано: 2026-03-24 22:42:38 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3634,7 +3634,6 @@ export const renderProfileRecs = ({ container: c, all }) => {
 // UID.094_(No-paralysis rule)_(profile shell обязан работать без intel fragments)_(если intelligent blocks отсутствуют, legacy profile UI остаётся полноценным)
 // UID.095_(Ownership boundary: legacy vs intel)_(жёстко закрепить render-shell как legacy-shell, принимающий optional intel fragments)_(layout/profile navigation/stat shell здесь, а listener/recs/providers/community insights приходят как надстройка)
 import { mountProfileCarouselFlat } from './carousel-flat.js';
-import { mountProfileCarouselFlat } from './carousel-flat.js';
 import { renderProfileSettings } from './settings-view.js';
 
 const esc = s => window.Utils?.escapeHtml ? window.Utils.escapeHtml(String(s || '')) : String(s || '');
@@ -3655,14 +3654,16 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
   if (!c) return null; c.innerHTML = '';
   const ab = (id, n, ic) => `<button class="auth-btn ${id} ${tk[id] ? 'connected' : ''}" data-auth="${id}"><span>${ic}</span> ${tk[id] ? 'Подключено' : n}</button>`;
   const tpl = document.getElementById('profile-template').content.cloneNode(true);
-  // Аватарка
-  tpl.querySelector('#prof-avatar-btn').textContent = p.avatar || '😎';
-  // Имя
+  
+  const avaBtn = tpl.querySelector('#prof-avatar-btn');
+  if (avaBtn) avaBtn.textContent = p.avatar || '😎';
+  
   const nameInp = tpl.querySelector('#prof-name-inp');
   if (nameInp) nameInp.value = p.name || 'Слушатель';
-  tpl.querySelector('#prof-auth-grid').innerHTML = ab('yandex', 'Яндекс', '💽') + ab('google', 'Google', '☁️') + ab('vk', 'VK ID', '🔵');
+  
+  const authGrid = tpl.querySelector('#prof-auth-grid');
+  if (authGrid) authGrid.innerHTML = ab('yandex', 'Яндекс', '💽') + ab('google', 'Google', '☁️') + ab('vk', 'VK ID', '🔵');
 
-  // Мета-строки: дата установки и дни
   const instKey = 'app:first-install-ts';
   if (!localStorage.getItem(instKey)) localStorage.setItem(instKey, String(Date.now()));
   const instTs = Number(localStorage.getItem(instKey) || Date.now());
@@ -3673,14 +3674,18 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
   const dayEl = tpl.querySelector('#prof-meta-days');
   if (sincEl) sincEl.textContent = `📅 Слушаю с: ${instDate}`;
   if (dayEl) dayEl.textContent = `🎵 Дней с нами: ${daysDiff}`;
+  
   const ps = localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex';
   window.Utils?.dom?.createStyleOnce?.('profile-source-pref-styles', `.prof-src-box{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:12px;display:flex;justify-content:space-between;align-items:center;margin-top:10px}.prof-src-title{font-size:13px;font-weight:bold;color:#fff}.prof-src-sub{font-size:11px;color:#888}.prof-src-switch{display:flex;background:rgba(0,0,0,0.3);border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,0.1)}.prof-src-btn{all:unset;cursor:pointer;padding:6px 12px;font-size:12px;font-weight:bold;transition:.2s}.prof-src-btn--yandex.prof-src-btn--active{color:#fff;background:radial-gradient(circle,#cc0000 0%,#880000 100%)}.prof-src-btn--github.prof-src-btn--active{color:#fff;background:radial-gradient(circle,#444 0%,#000 100%)}.prof-src-btn:not(.prof-src-btn--active){color:#666}`);
   
   c.appendChild(tpl);
 
-  // Надежная вставка внутрь вкладки "Аккаунт"
   const tabAccount = c.querySelector('#tab-account');
-  if (tabAccount) tabAccount.insertAdjacentHTML('beforeend', renderSourceSelector(ps));
+  if (tabAccount) {
+    const wrap = document.createElement('div');
+    wrap.innerHTML = renderSourceSelector(ps);
+    tabAccount.appendChild(wrap.firstElementChild);
+  }
 
   const statTracks = c.querySelector('#prof-stat-tracks');
   const statTime = c.querySelector('#prof-stat-time');
@@ -3690,6 +3695,7 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
   if (statTime) statTime.textContent = window.Utils?.fmt?.durationHuman ? window.Utils.fmt.durationHuman(tS) : `${Math.floor(tS/60)}м`;
   if (statStreak) statStreak.textContent = strk;
   if (statAch) statAch.textContent = aC;
+  
   mountProfileCarouselFlat({ root: c });
   renderProfileSettings(c.querySelector('#tab-settings'));
 
