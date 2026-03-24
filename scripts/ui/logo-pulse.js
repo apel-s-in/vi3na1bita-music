@@ -116,7 +116,7 @@
     if (!state.analyser || !state.data || !state.connected) return { raw: 0, pulse: forcePreview ? 0.28 : 0 };
 
     const cfg = getPresetConfig();
-    if (state.analyser.fftSize !== cfg.fftSize && !setupAudio(true)) return { raw: 0, pulse: 0 };
+    if (state.analyser.fftSize !== cfg.fftSize && !setupAudio()) return { raw: 0, pulse: 0 };
 
     state.analyser.getByteFrequencyData(state.data);
 
