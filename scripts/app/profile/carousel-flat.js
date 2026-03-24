@@ -315,11 +315,19 @@ export function mountProfileCarouselFlat({ root }) {
       }
     });
 
-    // При первом показе без анимации: форсируем правильное состояние active
-    // без анимации, чтобы не было вспышки при открытии
-    root.querySelectorAll('.profile-tab-content').forEach(x => x.classList.remove('active'));
+    // При первом показе: форсируем active без анимации через временный no-transition класс
+    root.querySelectorAll('.profile-tab-content').forEach(x => {
+      x.classList.remove('active');
+      x.style.animation = 'none'; // подавляем анимацию для первого рендера
+    });
     const initTab = root.querySelector(`#tab-${cardsData[0].id}`);
-    if (initTab) initTab.classList.add('active');
+    if (initTab) {
+      initTab.classList.add('active');
+      // Через 1 frame даём браузеру отрисовать, потом снимаем подавление
+      requestAnimationFrame(() => {
+        root.querySelectorAll('.profile-tab-content').forEach(x => x.style.removeProperty('animation'));
+      });
+    }
     update(false);
     W.Intel_CarouselFlat = {
       jumpTo: (targetIdx) => {
