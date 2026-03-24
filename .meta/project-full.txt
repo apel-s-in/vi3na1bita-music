@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-7feea049c7611c21c4be1c69bf995bad55feb7a3.idx
-│   │       ├── pack-7feea049c7611c21c4be1c69bf995bad55feb7a3.pack
-│   │       └── pack-7feea049c7611c21c4be1c69bf995bad55feb7a3.rev
+│   │       ├── pack-1f88680a439f6005a1608559d67cbf302509a3f3.idx
+│   │       ├── pack-1f88680a439f6005a1608559d67cbf302509a3f3.pack
+│   │       └── pack-1f88680a439f6005a1608559d67cbf302509a3f3.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -409,7 +409,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-24 13:11:24 UTC
+Сгенерировано: 2026-03-24 13:25:09 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7436,7 +7436,7 @@ window.IconUtils = { renderIcon, setIconUse, renderFavoriteStar, setFavoriteStar
 //=================================================
 // FILE: /scripts/ui/logo-pulse.js
 // scripts/ui/logo-pulse.js
-// Лёгкая realtime-пульсация логотипа без профилей, FX-сценариев и сетевых зависимостей.
+// Лёгкая realtime-пульсация логотипа без сети. С fallback на реальный media element Howler.
 
 (function (W, D) {
   'use strict';
@@ -7463,11 +7463,15 @@ window.IconUtils = { renderIcon, setIconUse, renderFavoriteStar, setFavoriteStar
     raf: 0,
     analyser: null,
     sink: null,
+    mediaSource: null,
+    sourceKind: 'none',
     data: null,
     targets: [],
     previewLogo: null,
     debugEl: null,
-    connected: false
+    connected: false,
+    zeroFrames: 0,
+    watchdogUsed: false
   };
 
   const isLowPowerDevice = () => {
@@ -7481,6 +7485,8 @@ window.IconUtils = { renderIcon, setIconUse, renderFavoriteStar, setFavoriteStar
     if (!isLowPowerDevice()) return base;
     return { ...base, fftSize: 256, gain: base.gain * 0.82 };
   };
+
+  const getUiSuspend = () => !!W.PlaybackClock?.getPlaybackClock?.()?.uiBackgroundSuspend;
 
   const ensureStyles = () => {
     W.Utils?.dom?.createStyleOnce?.('logo-pulse-styles', `
@@ -7514,22 +7520,46 @@ window.IconUtils = { renderIcon, setIconUse, renderFavoriteStar, setFavoriteStar
       `fft: ${state.analyser?.fftSize || 0}`,
       `ctx: ${W.Howler?.ctx?.state || 'na'}`,
       `conn: ${state.connected ? '1' : '0'}`,
-      `lowPower: ${isLowPowerDevice() ? '1' : '0'}`
+      `src: ${state.sourceKind}`,
+      `zero: ${state.zeroFrames}`,
+      `uiSuspend: ${getUiSuspend() ? '1' : '0'}`
     ].join('\n');
+  };
+
+  const getActiveHtml5Media = () => {
+    try {
+      const snd = W.playerCore?.sound;
+      const node = snd?._sounds?.find?.(s => s && s._node)?. _node || snd?._sounds?.[0]?._node || null;
+      return node instanceof HTMLMediaElement ? node : null;
+    } catch {
+      return null;
+    }
   };
 
   const disconnectAudio = () => {
     try { if (state.analyser) W.Howler?.masterGain?.disconnect?.(state.analyser); } catch {}
+    try { if (state.mediaSource) state.mediaSource.disconnect(); } catch {}
     try { if (state.analyser) state.analyser.disconnect(); } catch {}
     try { if (state.sink) state.sink.disconnect(); } catch {}
+    state.mediaSource = null;
     state.connected = false;
+    state.sourceKind = 'none';
   };
 
-  const setupAudio = () => {
+  const connectAnalyserTail = () => {
+    try { state.analyser.connect(state.sink); } catch {}
+    try { state.sink.connect(W.Howler.ctx.destination); } catch {}
+    state.connected = true;
+  };
+
+  const setupAudio = (force = false) => {
     const cfg = getPresetConfig();
-    if (!W.Howler?.ctx || !W.Howler?.masterGain) return false;
+    if (!W.Howler?.ctx) return false;
+
     try {
       if (W.Howler.ctx.state === 'suspended') W.Howler.ctx.resume().catch(() => {});
+      if (force) disconnectAudio();
+
       if (!state.analyser || state.analyser.fftSize !== cfg.fftSize) {
         disconnectAudio();
         state.analyser = W.Howler.ctx.createAnalyser();
@@ -7539,27 +7569,59 @@ window.IconUtils = { renderIcon, setIconUse, renderFavoriteStar, setFavoriteStar
         state.sink.gain.value = 0.0001;
         state.data = new Uint8Array(state.analyser.frequencyBinCount);
       }
-      try { W.Howler.masterGain.connect(state.analyser); } catch {}
-      try { state.analyser.connect(state.sink); } catch {}
-      try { state.sink.connect(W.Howler.ctx.destination); } catch {}
-      state.connected = true;
-      return true;
+
+      let ok = false;
+
+      if (W.Howler?.masterGain) {
+        try {
+          W.Howler.masterGain.connect(state.analyser);
+          connectAnalyserTail();
+          state.sourceKind = 'masterGain';
+          ok = true;
+        } catch {}
+      }
+
+      const media = getActiveHtml5Media();
+      if (media && (!ok || force)) {
+        try {
+          disconnectAudio();
+          if (!state.analyser || state.analyser.fftSize !== cfg.fftSize) {
+            state.analyser = W.Howler.ctx.createAnalyser();
+            state.analyser.fftSize = cfg.fftSize;
+            state.analyser.smoothingTimeConstant = 0;
+            state.sink = W.Howler.ctx.createGain();
+            state.sink.gain.value = 0.0001;
+            state.data = new Uint8Array(state.analyser.frequencyBinCount);
+          }
+          state.mediaSource = W.Howler.ctx.createMediaElementSource(media);
+          state.mediaSource.connect(state.analyser);
+          connectAnalyserTail();
+          state.sourceKind = 'mediaElement';
+          ok = true;
+        } catch {}
+      }
+
+      if (ok) {
+        state.zeroFrames = 0;
+        return true;
+      }
+
+      state.connected = false;
+      state.sourceKind = 'none';
+      return false;
     } catch {
       state.connected = false;
+      state.sourceKind = 'none';
       return false;
     }
   };
 
   const samplePulse = (forcePreview) => {
     if (!state.active && !forcePreview) return { raw: 0, pulse: 0 };
-    if (!state.analyser || !state.data || !state.connected) {
-      return { raw: 0, pulse: forcePreview ? 0.28 : 0 };
-    }
+    if (!state.analyser || !state.data || !state.connected) return { raw: 0, pulse: forcePreview ? 0.28 : 0 };
 
     const cfg = getPresetConfig();
-    if (state.analyser.fftSize !== cfg.fftSize && !setupAudio()) {
-      return { raw: 0, pulse: 0 };
-    }
+    if (state.analyser.fftSize !== cfg.fftSize && !setupAudio(true)) return { raw: 0, pulse: 0 };
 
     state.analyser.getByteFrequencyData(state.data);
 
@@ -7574,6 +7636,14 @@ window.IconUtils = { renderIcon, setIconUse, renderFavoriteStar, setFavoriteStar
     raw = Math.max(0, (raw - state.noiseGate) / (1 - state.noiseGate));
     raw = clamp(raw * cfg.gain, 0, 1);
 
+    if (W.playerCore?.isPlaying?.() && raw <= 0.0005) state.zeroFrames++;
+    else state.zeroFrames = 0;
+
+    if (!state.watchdogUsed && state.zeroFrames > 120 && W.playerCore?.isPlaying?.()) {
+      state.watchdogUsed = true;
+      setupAudio(true);
+    }
+
     const k = raw > state.pulse ? cfg.attack : cfg.release;
     state.pulse += (raw - state.pulse) * k;
     return { raw, pulse: clamp(state.pulse, 0, 1) };
@@ -7581,10 +7651,12 @@ window.IconUtils = { renderIcon, setIconUse, renderFavoriteStar, setFavoriteStar
 
   const renderPulse = (p, forcePreview) => {
     state.targets.forEach(el => {
-      if (!state.active && !forcePreview && el.id !== 'lp-preview-logo') {
-        el.classList.remove('lp-active');
-        el.style.removeProperty('--p');
-        return;
+      if ((!state.active && !forcePreview) || getUiSuspend()) {
+        if (el.id !== 'lp-preview-logo') {
+          el.classList.remove('lp-active');
+          el.style.removeProperty('--p');
+          return;
+        }
       }
       el.classList.add('lp-active');
       el.style.setProperty('--p', p.toFixed(3));
@@ -7597,12 +7669,12 @@ window.IconUtils = { renderIcon, setIconUse, renderFavoriteStar, setFavoriteStar
 
   const frame = () => {
     const forcePreview = !!(state.previewLogo && state.previewLogo.offsetParent !== null);
-    if (D.visibilityState === 'hidden') {
+    if (getUiSuspend()) {
       renderPulse(0, false);
+      updateDebug(0, 0);
       state.raf = requestAnimationFrame(frame);
       return;
     }
-
     const sampled = samplePulse(forcePreview);
     renderPulse(sampled.pulse, forcePreview);
     updateDebug(sampled.raw, sampled.pulse);
@@ -7630,7 +7702,9 @@ window.IconUtils = { renderIcon, setIconUse, renderFavoriteStar, setFavoriteStar
     state.preset = PRESETS[ls('logoPulsePreset', 'balanced')] ? ls('logoPulsePreset', 'balanced') : 'balanced';
     state.debug = ls('logoPulseDebug', '0') === '1';
     state.pulse = 0;
-    setupAudio();
+    state.zeroFrames = 0;
+    state.watchdogUsed = false;
+    setupAudio(true);
     syncUi();
   };
 
@@ -7643,12 +7717,10 @@ window.IconUtils = { renderIcon, setIconUse, renderFavoriteStar, setFavoriteStar
   const init = () => {
     ensureStyles();
     syncUi();
-    W.addEventListener('player:play', () => { setupAudio(); });
-    W.addEventListener('player:trackChanged', () => { state.pulse = 0; setupAudio(); });
-    W.addEventListener('player:stop', () => { state.pulse = 0; });
-    D.addEventListener('visibilitychange', () => {
-      if (D.visibilityState === 'hidden') state.pulse = 0;
-    });
+    W.addEventListener('player:play', () => { state.zeroFrames = 0; state.watchdogUsed = false; setupAudio(true); });
+    W.addEventListener('player:trackChanged', () => { state.pulse = 0; state.zeroFrames = 0; state.watchdogUsed = false; setupAudio(true); });
+    W.addEventListener('player:stop', () => { state.pulse = 0; state.zeroFrames = 0; });
+    W.addEventListener('playback:clock', () => {});
   };
 
   W.LogoPulse = { init, toggle, updateSettings };
