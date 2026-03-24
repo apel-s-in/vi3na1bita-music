@@ -28,12 +28,12 @@ export const bindProfileActions = ({ ctx, container: c, achView: aV, profile: p,
       const id = el.dataset.auth;
       tk[id] ? (id==='yandex'&&cs?.sync?cs.sync(id):window.NotificationSystem?.info('Синхронизация...')) : (id==='yandex'&&cs?.auth?cs.auth(id):window.NotificationSystem?.info('Недоступно'));
     } else if (f('#prof-avatar-btn')) {
-      const AVA_ITEMS = ['😎','🎧','🎸','🦄','🦇','👽','🤖','🐱','🦊','🐼','🔥','💎','🎵','🌟','🦁','🐯','🦊','🎮','🎤','🎹','🥁','🎺'];
+      const AVA_ITEMS = ['😎','🎧','🎸','🦄','🦇','👽','🤖','🐱','🦊','🐼','🔥','💎','🎵','🌟','🦁','🐯','🦊','🎮','🎤','🎹','🥁','🎺','🔄'];
       window.Utils?.profileModals?.avatarPicker?.({
         title: 'Аватар профиля',
-        items: [...AVA_ITEMS, '__reset__'],
+        items: AVA_ITEMS,
         onPick: async (v, m) => {
-          const isReset = v === '__reset__';
+          const isReset = v === '🔄';
           p.avatar = isReset ? '😎' : v;
           c.querySelector('#prof-avatar-btn').textContent = p.avatar;
           db && await db.setGlobal('user_profile', p).catch(()=>{});
