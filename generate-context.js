@@ -9,14 +9,61 @@ const FULL_FILE = path.join(META_DIR, "project-full.txt"), ADAPTIVE_FILE = path.
 const toUnix = p => String(p).replace(/\\/g, "/");
 const SELF_FULL_REL = toUnix(path.relative(ROOT, FULL_FILE)), SELF_ADAPT_REL = toUnix(path.relative(ROOT, ADAPTIVE_FILE));
 const TEXT_EXTS = new Set([".html",".htm",".css",".js",".mjs",".cjs",".ts",".tsx",".json",".webmanifest",".md",".txt",".yml",".yaml"]);
-const globToRegExp = pat => new RegExp("^" + pat.replace(/[.+^${}()|[\]\\]/g, "\\$").replace(/\*\*/g, "___GLOBSTAR___").replace(/\*/g, "[^/]*").replace(/___GLOBSTAR___/g, ".*") + "$");
-const EXCLUDE_FILES_PATTERNS = ["node_modules/**",".git/**",".meta/**","assets/**",".next/**","dist/**","build/**","out/**","coverage/**",".cache/**",".vscode/**",".idea/**",".husky/**","**/*.log",".DS_Store","ai-rules.txt"].map(globToRegExp);
-const EXCLUDE_TREE_PATTERNS = ["node_modules/**",".git/**",".meta/**",".next/**","dist/**","build/**","out/**","coverage/**",".cache/**",".vscode/**",".idea/**",".husky/**","**/*.log",".DS_Store"].map(globToRegExp);
+const globToRegExp = pat => {
+  // Если паттерн без слешей и без ** — матчим как имя файла/папки в любом месте пути
+  const anchored = pat.includes("/") || pat.includes("**");
+  const escaped = pat
+    .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+    .replace(/\*\*/g, "___GLOBSTAR___")
+    .replace(/\*/g, "[^/]*")
+    .replace(/___GLOBSTAR___/g, ".*");
+  return anchored
+    ? new RegExp("^" + escaped + "$")
+    : new RegExp("(^|/)" + escaped + "(/|$)");
+};
+const EXCLUDE_FILES_RAW = [
+  "node_modules/**",".git/**",".meta/**","assets/**",
+  ".next/**","dist/**","build/**","out/**","coverage/**",
+  ".cache/**",".vscode/**",".idea/**",".husky/**",
+  "**/*.log",".DS_Store",
+  // ai-rules читается отдельно в headerBlock — не дублируем в теле
+  "ai-rules.txt","**/ai-rules.txt",
+  // AI-инструменты и временные сессии
+  "qwen-code-*","**/qwen-code-*",
+  ".aider*","**/.aider*",
+  ".continue/**",".copilot/**",
+  // Git-мусор
+  "**/*.orig","**/*.rej",
+  // Локи зависимостей
+  "package-lock.json","yarn.lock","pnpm-lock.yaml"
+];
+const EXCLUDE_TREE_RAW = [
+  "node_modules/**",".git/**",".meta/**",
+  ".next/**","dist/**","build/**","out/**","coverage/**",
+  ".cache/**",".vscode/**",".idea/**",".husky/**",
+  "**/*.log",".DS_Store",
+  // AI-инструменты и временные сессии
+  "qwen-code-*","**/qwen-code-*",
+  ".aider*","**/.aider*",
+  ".continue/**",".copilot/**",
+  // Git-мусор
+  "**/*.orig","**/*.rej",
+  // Локи зависимостей
+  "package-lock.json","yarn.lock","pnpm-lock.yaml"
+];
+const EXCLUDE_FILES_PATTERNS = EXCLUDE_FILES_RAW.map(globToRegExp);
+const EXCLUDE_TREE_PATTERNS  = EXCLUDE_TREE_RAW.map(globToRegExp);
 const PRIORITY = { critical: [/^index\.html?$/i,/^service-worker\.js$/i,/^manifest\.json$/i,/^albums\.json$/i,/^news\.html?$/i,/^generate-index\.(js|mjs|cjs)$/i,/^albums\/gallery\/[^/]+\/index\.json$/i,/^\.github\/workflows\/.*\.ya?ml$/i], high: [/^AudioController\.(js|mjs|cjs|ts)$/i,/^GlobalState\.(js|mjs|cjs|ts)$/i,/^scripts\/.*\.(mjs|js|ts)$/i,/^performance\/.*\.(js|ts)$/i,/^.*\.(ya?ml)$/i], medium: [/^.*\.(js|mjs|cjs|ts|tsx|json|html?|css)$/i] };
 const isTextFile = rel => TEXT_EXTS.has(path.extname(rel).toLowerCase());
 const readText = rel => { try { return fs.readFileSync(path.join(ROOT, rel), "utf8"); } catch (e) { return `// read error: ${e.message}`; } };
 const countLines = s => (s.match(/\n/g) || []).length + (s.length ? 1 : 0);
-const isExcluded = (rel, arr) => { const u = toUnix(rel); return !u || u === SELF_FULL_REL || u === SELF_ADAPT_REL || arr.some(re => re.test(u)); };
+const ALWAYS_EXCLUDE = new Set(["ai-rules.txt"]);
+const isExcluded = (rel, arr) => {
+  const u = toUnix(rel);
+  if (!u || u === SELF_FULL_REL || u === SELF_ADAPT_REL) return true;
+  if (ALWAYS_EXCLUDE.has(u) || ALWAYS_EXCLUDE.has(path.basename(u))) return true;
+  return arr.some(re => re.test(u));
+};
 const listAllEntries = (includeFiles = true, forTree = false) => {
   const res = [], stack = [ROOT];
   while (stack.length) {
