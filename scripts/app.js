@@ -79,6 +79,7 @@
     try { const sm = await import('./app/showcase/index.js'); await sm.default.initialize(); } catch (e) { console.error('Showcase init failed:', e); }
     if (await waitObj('AlbumsManager')) run('AlbumsManager');
     if (await waitObj('PlayerUI')) run('PlayerUI');
+    try { (await import('./app/player/playback-clock.js'))?.initPlaybackClock?.(); } catch (e) { console.warn('Playback clock skipped:', e); }
     try { await import('./ui/logo-pulse.js'); } catch(e) { console.warn(e); }
     ['SleepTimer', 'LyricsModal', 'SystemInfoManager'].forEach(run);
     import('./ui/statistics-modal.js').catch(e => console.warn('Statistics modal skipped:', e));
