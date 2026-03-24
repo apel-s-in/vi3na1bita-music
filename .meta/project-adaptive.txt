@@ -127,9 +127,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-cacd8114151c4d56732777b03f4d505cf38a4385.idx
-│   │       ├── pack-cacd8114151c4d56732777b03f4d505cf38a4385.pack
-│   │       └── pack-cacd8114151c4d56732777b03f4d505cf38a4385.rev
+│   │       ├── pack-67df6d59370de99d6764ab4b7c6fd46cc224cd4a.idx
+│   │       ├── pack-67df6d59370de99d6764ab4b7c6fd46cc224cd4a.pack
+│   │       └── pack-67df6d59370de99d6764ab4b7c6fd46cc224cd4a.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -413,7 +413,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-24 15:57:57 UTC
+Сгенерировано: 2026-03-24 16:01:02 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -959,6 +959,7 @@ let isAirplaneMode = false;
 const STATIC_ASSETS = [
   './', './index.html', './manifest.json',
   './albums.json',
+  './audio/silence.mp3',
   './data/lyrics-index-v1.json',
   './styles/main.css', './img/logo.png', './icons/ui-sprite.svg',
   './icons/favicon-32.png', './icons/favicon-16.png', './icons/apple-touch-icon.png',
