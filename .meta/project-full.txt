@@ -127,9 +127,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-085ab4286342a61bfb6ebbfcc05fa69e3c78e1fe.idx
-│   │       ├── pack-085ab4286342a61bfb6ebbfcc05fa69e3c78e1fe.pack
-│   │       └── pack-085ab4286342a61bfb6ebbfcc05fa69e3c78e1fe.rev
+│   │       ├── pack-54d09a62eabbf4beb5574f44a6971d23b378b07b.idx
+│   │       ├── pack-54d09a62eabbf4beb5574f44a6971d23b378b07b.pack
+│   │       └── pack-54d09a62eabbf4beb5574f44a6971d23b378b07b.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -414,7 +414,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-24 19:26:41 UTC
+Сгенерировано: 2026-03-24 19:27:48 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3856,7 +3856,7 @@ export const renderProfileSettings = (root) => {
       lpInt.value = '0.12';
       lpDebug.checked = false;
       applyLp();
-      W.NotificationSystem?.success?.('Настройки пульсации сброшены');
+      W.NotificationSystem?.success('Настройки пульсации сброшены');
     });
   }
 
