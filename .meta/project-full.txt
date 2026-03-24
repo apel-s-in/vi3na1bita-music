@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-475493012aa9cb9ffb0f31a7b31e523f45d1a144.idx
-│   │       ├── pack-475493012aa9cb9ffb0f31a7b31e523f45d1a144.pack
-│   │       └── pack-475493012aa9cb9ffb0f31a7b31e523f45d1a144.rev
+│   │       ├── pack-22a39921013d338f008469da6614fa7365d24804.idx
+│   │       ├── pack-22a39921013d338f008469da6614fa7365d24804.pack
+│   │       └── pack-22a39921013d338f008469da6614fa7365d24804.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -409,7 +409,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-24 13:26:28 UTC
+Сгенерировано: 2026-03-24 13:27:22 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2696,7 +2696,7 @@ window.PlaybackCache.getWindowState = getWindowState; window.PlaybackCache.prote
 // FILE: /scripts/app/player-ui/lyrics.js
 (function () {
   'use strict';
-  const W = window, D = document, U = W.Utils, LS = { V: 'lyricsViewMode', A: 'lyricsAnimationEnabled' }, PRE = 'lyr_', fc = U?.fetchCache, esc = s => U?.escapeHtml?.(String(s||'')) || String(s||'');
+  const W = window, D = document, U = W.Utils, LS = { V: 'lyricsViewMode', A: 'lyricsAnimationEnabled' }, PRE = 'lyr_', fc = U?.fetchCache, esc = s => U?.escapeHtml?.(String(s||'')) || String(s||''), uiSuspended = () => !!W.PlaybackClock?.getPlaybackClock?.()?.uiBackgroundSuspend;
   let st = { list: [], has: false, mode: 'normal', anim: true, showBtn: false, lIdx: -100, mini: false }, dom = {}, _pend = new Map();
 
   const initDom = () => {
@@ -2783,7 +2783,7 @@ window.PlaybackCache.getWindowState = getWindowState; window.PlaybackCache.prote
       if (d) { st.list = (Array.isArray(d) ? d : []).map(i => ({ time: Number(i?.time), text: String(i?.line || i?.text || '').trim() })).filter(i => Number.isFinite(i.time) && i.text).sort((a,b) => a.time - b.time); st.has = st.list.length > 0; }
       updateUI();
     },
-    onTick: (pos, opts) => { if (st.mode !== 'hidden' && !opts?.inMiniMode && st.has) render(pos); },
+    onTick: (pos, opts) => { if (!uiSuspended() && st.mode !== 'hidden' && !opts?.inMiniMode && st.has) render(pos); },
     toggleLyricsView: () => { const m = ['normal', 'hidden', 'expanded']; localStorage.setItem(LS.V, st.mode = m[(m.indexOf(st.mode) + 1) % 3]); updateUI(); W.NotificationSystem?.info?.({ normal: '📝 Обычный вид лирики', hidden: '🚫 Лирика скрыта', expanded: '📖 Расширенный вид лирики' }[st.mode]); },
     toggleAnimation: () => { if (st.mode === 'hidden') return W.NotificationSystem?.info?.('Лирика скрыта — анимация недоступна'); localStorage.setItem(LS.A, (st.anim = !st.anim) ? '1' : '0'); updateUI(); W.NotificationSystem?.info?.(st.anim ? '✨ Анимация: ВКЛ' : '✨ Анимация: ВЫКЛ'); },
     getMiniSaveState: () => ({ viewMode: st.mode === 'hidden' ? 'normal' : st.mode, animationEnabled: st.anim }),
