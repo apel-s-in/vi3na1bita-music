@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-7d9f69054a8b6fa351f52a6c704d089039ef53a4.idx
-│   │       ├── pack-7d9f69054a8b6fa351f52a6c704d089039ef53a4.pack
-│   │       └── pack-7d9f69054a8b6fa351f52a6c704d089039ef53a4.rev
+│   │       ├── pack-700bc4011b4ee311c58e5b2204fa1a8760c5e44e.idx
+│   │       ├── pack-700bc4011b4ee311c58e5b2204fa1a8760c5e44e.pack
+│   │       └── pack-700bc4011b4ee311c58e5b2204fa1a8760c5e44e.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -410,7 +410,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-24 12:32:46 UTC
+Сгенерировано: 2026-03-24 12:35:15 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -9589,6 +9589,7 @@ body.news-view #cover-wrap{display:none!important}
 .animation-btn:hover{background:linear-gradient(135deg,#5a2a8a,#3a1a5a);transform:translateY(-1px)}
 .pulse-btn{background:linear-gradient(135deg,#2a2a2a,#1a1a1a);border:1px solid rgba(255,255,255,.1);color:var(--c-w);font-size:20px}
 .pulse-btn.active{background:linear-gradient(135deg,#4a1a1a,#2a0a0a);border-color:rgba(232,1,0,.3);color:var(--primary-color);box-shadow:0 0 12px rgba(232,1,0,.3)}
+.pulse-btn select{font:inherit}
 .pulse-btn:hover{background:linear-gradient(135deg,#3a3a3a,#2a2a2a);transform:translateY(-1px)}
 .player-download-btn{background:linear-gradient(135deg,#1a4a7a,#0a2a4a);border:1px solid rgba(77,170,255,.3);color:var(--secondary-color)}
 .player-download-btn:hover{background:linear-gradient(135deg,#2a5a8a,#1a3a5a);transform:translateY(-1px);box-shadow:0 4px 12px rgba(77,170,255,.2)}
@@ -9744,7 +9745,7 @@ body.news-view #cover-wrap{display:none!important}
 #now-playing #lyricsplayerblock .player-controls-row{margin:0!important;align-items:center!important}
 .next-up .label{color:var(--c-blue);opacity:.9;font-size:13px}
 .next-up .title{color:var(--primary-color);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1;font-size:14px}
-.logo-bottom{max-width:112px;width:23vw;min-width:66px;height:auto;display:block;margin:0 auto 15px!important;cursor:pointer;transition:transform .05s ease-out!important;will-change:transform;transform:translateZ(0);transform-origin:center}
+.logo-bottom{max-width:112px;width:23vw;min-width:66px;height:auto;display:block;margin:0 auto 15px!important;cursor:pointer;transition:transform .05s ease-out!important;will-change:transform,filter;transform:translateZ(0);transform-origin:center}
 .logo-bottom:hover{opacity:.9}
 .bottom-controls-center{display:flex;flex-direction:column;align-items:center;justify-content:center;margin:32px auto 0;gap:10px;width:100%;max-width:300px;padding-bottom:env(safe-area-inset-bottom)}
 #install-pwa-btn{display:flex;align-items:center;justify-content:center;gap:10px;color:#fff;background:linear-gradient(135deg,#7c4dff,#4daaff);border:0;border-radius:14px;font-size:14px;font-weight:900;letter-spacing:0.5px;margin:0 auto 10px;padding:14px 20px;cursor:pointer;width:100%;max-width:370px;box-shadow:0 6px 20px rgba(124,77,255,.4);transition:transform .2s,box-shadow .2s,filter .2s;text-transform:uppercase}
