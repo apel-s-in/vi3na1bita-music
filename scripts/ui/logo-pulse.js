@@ -200,7 +200,7 @@
     state.pulse = 0;
     state.zeroFrames = 0;
     state.watchdogUsed = false;
-    setupAudio(true);
+    setupAudio();
     syncUi();
   };
 
@@ -213,8 +213,8 @@
   const init = () => {
     ensureStyles();
     syncUi();
-    W.addEventListener('player:play', () => { state.zeroFrames = 0; state.watchdogUsed = false; setupAudio(true); });
-    W.addEventListener('player:trackChanged', () => { state.pulse = 0; state.zeroFrames = 0; state.watchdogUsed = false; setupAudio(true); });
+    W.addEventListener('player:play', () => { state.zeroFrames = 0; state.watchdogUsed = false; setupAudio(); });
+    W.addEventListener('player:trackChanged', () => { state.pulse = 0; state.zeroFrames = 0; state.watchdogUsed = false; setupAudio(); });
     W.addEventListener('player:stop', () => { state.pulse = 0; state.zeroFrames = 0; });
     W.addEventListener('playback:clock', () => {});
   };
