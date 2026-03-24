@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-97e7d66292e1396ec9d42d76b6736ca63bdb3969.idx
-│   │       ├── pack-97e7d66292e1396ec9d42d76b6736ca63bdb3969.pack
-│   │       └── pack-97e7d66292e1396ec9d42d76b6736ca63bdb3969.rev
+│   │       ├── pack-bdd8e12e770bcb56624b566894200dbee38f11f8.idx
+│   │       ├── pack-bdd8e12e770bcb56624b566894200dbee38f11f8.pack
+│   │       └── pack-bdd8e12e770bcb56624b566894200dbee38f11f8.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -288,6 +288,7 @@ vi3na1bita-music/
 │   │   ├── player/
 │   │   │   ├── favorites-only-actions.js
 │   │   │   ├── favorites-only-resolver.js
+│   │   │   ├── playback-clock.js
 │   │   │   └── playback-context-source.js
 │   │   ├── player-ui/
 │   │   │   └── lyrics.js
@@ -408,7 +409,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-24 13:08:49 UTC
+Сгенерировано: 2026-03-24 13:09:13 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3036,6 +3037,54 @@ W.FavoritesOnlyResolver = api;
 
 export { resolveFavoritesOnlyState, getFavoritesOnlyVisibleUidSet, getFavoritesOnlyVisibleUidSetForContext, canLaunchTrackInFavoritesOnlyContext };
 export default api;
+
+//=================================================
+// FILE: /scripts/app/player/playback-clock.js
+const W = window;
+
+let _init = false;
+let _state = {
+  uid: null,
+  currentTime: 0,
+  duration: 0,
+  isPlaying: false,
+  visibility: document.visibilityState || 'visible',
+  ts: Date.now()
+};
+
+const emit = () => {
+  _state.ts = Date.now();
+  W.dispatchEvent(new CustomEvent('playback:clock', { detail: { ..._state } }));
+};
+
+const pull = () => {
+  const pc = W.playerCore;
+  _state = {
+    ..._state,
+    uid: String(pc?.getCurrentTrackUid?.() || '') || null,
+    currentTime: Number(pc?.getPosition?.() || 0),
+    duration: Number(pc?.getDuration?.() || 0),
+    isPlaying: !!pc?.isPlaying?.(),
+    visibility: document.visibilityState || 'visible',
+    ts: Date.now()
+  };
+  emit();
+};
+
+export function initPlaybackClock() {
+  if (_init) return;
+  _init = true;
+  ['player:play', 'player:pause', 'player:stop', 'player:ended', 'player:trackChanged', 'player:tick'].forEach(n => W.addEventListener(n, pull));
+  document.addEventListener('visibilitychange', pull);
+  pull();
+}
+
+export function getPlaybackClock() {
+  return { ..._state };
+}
+
+W.PlaybackClock = { initPlaybackClock, getPlaybackClock };
+export default { initPlaybackClock, getPlaybackClock };
 
 //=================================================
 // FILE: /scripts/app/player/playback-context-source.js
