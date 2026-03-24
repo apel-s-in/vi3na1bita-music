@@ -127,9 +127,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-0dc6b32a6b6b19fe2d9c30e46fcb1c89325f2871.idx
-│   │       ├── pack-0dc6b32a6b6b19fe2d9c30e46fcb1c89325f2871.pack
-│   │       └── pack-0dc6b32a6b6b19fe2d9c30e46fcb1c89325f2871.rev
+│   │       ├── pack-cb8dafb54ce6e1aa6c9c561f96cf6315acfd0172.idx
+│   │       ├── pack-cb8dafb54ce6e1aa6c9c561f96cf6315acfd0172.pack
+│   │       └── pack-cb8dafb54ce6e1aa6c9c561f96cf6315acfd0172.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -414,7 +414,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-24 19:11:20 UTC
+Сгенерировано: 2026-03-24 19:12:18 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7569,7 +7569,7 @@ window.IconUtils = { renderIcon, setIconUse, renderFavoriteStar, setFavoriteStar
     if (!state.analyser || !state.data || !state.connected) return { raw: 0, pulse: forcePreview ? 0.28 : 0 };
 
     const cfg = getPresetConfig();
-    if (state.analyser.fftSize !== cfg.fftSize && !setupAudio(true)) return { raw: 0, pulse: 0 };
+    if (state.analyser.fftSize !== cfg.fftSize && !setupAudio()) return { raw: 0, pulse: 0 };
 
     state.analyser.getByteFrequencyData(state.data);
 
