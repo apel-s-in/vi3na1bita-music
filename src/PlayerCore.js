@@ -274,6 +274,7 @@ import { resolveFavoritesOnlyState } from '../scripts/app/player/favorites-only-
       });
 
       if (auto) this.sound.play();
+    }
 
     _err(idx, r, o, d) {
       this._emit('onPlaybackError', { reason: 'error' });
