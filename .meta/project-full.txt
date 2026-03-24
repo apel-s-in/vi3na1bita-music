@@ -127,9 +127,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-67df6d59370de99d6764ab4b7c6fd46cc224cd4a.idx
-│   │       ├── pack-67df6d59370de99d6764ab4b7c6fd46cc224cd4a.pack
-│   │       └── pack-67df6d59370de99d6764ab4b7c6fd46cc224cd4a.rev
+│   │       ├── pack-ee57910bee797d9c895eba2c64d27f77c21e1f54.idx
+│   │       ├── pack-ee57910bee797d9c895eba2c64d27f77c21e1f54.pack
+│   │       └── pack-ee57910bee797d9c895eba2c64d27f77c21e1f54.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -413,7 +413,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-24 16:01:02 UTC
+Сгенерировано: 2026-03-24 16:01:25 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1054,7 +1054,9 @@ self.addEventListener('fetch', (e) => {
 
   // 1. СТРОГИЙ ОБХОД ДЛЯ АУДИО (Игнорируем Range запросы и файлы музыки)
   // Строгий пропуск аудио. Возврат 503 ломает HTML5 Audio/Howler намертво.
-  if (req.headers.get('range') || /\.(mp3|ogg|m4a|flac)$/i.test(url.pathname)) {
+  // Исключение: silence.mp3 — маленький статический файл, его кэшируем для iOS offline keeper
+  const isSilenceFile = url.pathname.endsWith('/audio/silence.mp3');
+  if (!isSilenceFile && (req.headers.get('range') || /\.(mp3|ogg|m4a|flac)$/i.test(url.pathname))) {
     return; // Всегда отдаем браузеру
   }
 
