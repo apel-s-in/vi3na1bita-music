@@ -36,6 +36,57 @@ const renderGeneralSection = () => `
     </div>
   </div>`;
 
+const renderPulseSection = () => `
+  <button type="button" class="set-acc-btn">ПУЛЬСАЦИЯ</button>
+  <div class="set-acc-body" id="set-pulse-body">
+    <div class="set-preview-box">
+      <img class="logo-pulse-target" id="lp-preview-logo" src="img/logo.png" alt="Логотип" style="width:70px;height:auto">
+    </div>
+    <div class="set-row">
+      <div class="set-info"><div class="set-title">Включить пульсацию</div><div class="set-sub">Локальная реакция логотипа на музыку без сети</div></div>
+      <label class="set-switch"><input type="checkbox" id="lp-enabled"><span class="set-slider"></span></label>
+    </div>
+    <div class="set-row">
+      <div class="set-info"><div class="set-title">Режим</div><div class="set-sub">Bass / Balanced / Aggressive</div></div>
+      <select id="lp-preset" style="max-width:160px">
+        <option value="bass">Bass</option>
+        <option value="balanced">Balanced</option>
+        <option value="aggressive">Aggressive</option>
+      </select>
+    </div>
+    <div class="set-row" style="flex-direction:column;align-items:stretch;gap:8px">
+      <div class="set-info"><div class="set-title">Интенсивность</div><div class="set-sub">Авто-ослабляется на слабых устройствах</div></div>
+      <div class="lp-slider-row">
+        <span style="font-size:12px;color:#888">min</span>
+        <input type="range" id="lp-intensity" class="lp-slider" min="0.05" max="0.3" step="0.01" value="0.12">
+        <span style="font-size:12px;color:#888">max</span>
+      </div>
+    </div>
+    <div class="set-row">
+      <div class="set-info"><div class="set-title">Debug pulse</div><div class="set-sub">Показывать лёгкий индикатор raw/pulse</div></div>
+      <label class="set-switch"><input type="checkbox" id="lp-debug"><span class="set-slider"></span></label>
+    </div>
+    <div class="set-row">
+      <div class="set-info"><div class="set-title">Сценарии треков</div><div class="set-sub">В разработке. Второй слой синхронизации будет добавлен позже</div></div>
+    </div>
+    <button class="om-btn om-btn--outline om-fullw" id="lp-reset-btn">Сбросить по умолчанию</button>
+  </div>`;
+
+const renderCarouselSection = () => `
+  <button type="button" class="set-acc-btn">КАРУСЕЛЬ</button>
+  <div class="set-acc-body">
+    <div class="set-preview-box">
+      <div class="sc-mini-preview" id="sc-mini-preview">
+        <div class="sc-mini-card"><div class="sc-mini-ic">📊</div></div>
+        <div class="sc-mini-controls"><div>◀</div><div class="sel">ВЫБРАТЬ</div><div>▶</div></div>
+      </div>
+    </div>
+    <div class="set-row">
+      <div class="set-info"><div class="set-title">Кнопки карусели</div><div class="set-sub">Показывать кнопки управления под 3D-каруселью</div></div>
+      <label class="set-switch"><input type="checkbox" id="set-car-controls"><span class="set-slider"></span></label>
+    </div>
+  </div>`;
+
 const renderInterfaceSection = () => `
   <div class="settings-content" id="set-interface">
     <button type="button" class="set-acc-btn open">ПЛЕЕР</button>
@@ -53,55 +104,8 @@ const renderInterfaceSection = () => `
         <label class="set-switch"><input type="checkbox" id="set-pl-anim-play"><span class="set-slider"></span></label>
       </div>
     </div>
-
-    <button type="button" class="set-acc-btn">ПУЛЬСАЦИЯ</button>
-    <div class="set-acc-body" id="set-pulse-body">
-      <div class="set-preview-box">
-        <img class="logo-pulse-target" id="lp-preview-logo" src="img/logo.png" alt="Логотип" style="width:70px;height:auto">
-      </div>
-      <div class="set-row">
-        <div class="set-info"><div class="set-title">Включить пульсацию</div><div class="set-sub">Локальная реакция логотипа на музыку без сети</div></div>
-        <label class="set-switch"><input type="checkbox" id="lp-enabled"><span class="set-slider"></span></label>
-      </div>
-      <div class="set-row">
-        <div class="set-info"><div class="set-title">Режим</div><div class="set-sub">Bass / Balanced / Aggressive</div></div>
-        <select id="lp-preset" style="max-width:160px">
-          <option value="bass">Bass</option>
-          <option value="balanced">Balanced</option>
-          <option value="aggressive">Aggressive</option>
-        </select>
-      </div>
-      <div class="set-row" style="flex-direction:column;align-items:stretch;gap:8px">
-        <div class="set-info"><div class="set-title">Интенсивность</div><div class="set-sub">Авто-ослабляется на слабых устройствах</div></div>
-        <div class="lp-slider-row">
-          <span style="font-size:12px;color:#888">min</span>
-          <input type="range" id="lp-intensity" class="lp-slider" min="0.05" max="0.3" step="0.01" value="0.12">
-          <span style="font-size:12px;color:#888">max</span>
-        </div>
-      </div>
-      <div class="set-row">
-        <div class="set-info"><div class="set-title">Debug pulse</div><div class="set-sub">Показывать лёгкий индикатор raw/pulse</div></div>
-        <label class="set-switch"><input type="checkbox" id="lp-debug"><span class="set-slider"></span></label>
-      </div>
-      <div class="set-row">
-        <div class="set-info"><div class="set-title">Сценарии треков</div><div class="set-sub">В разработке. Второй слой синхронизации будет добавлен позже</div></div>
-      </div>
-      <button class="om-btn om-btn--outline om-fullw" id="lp-reset-btn">Сбросить по умолчанию</button>
-    </div>
-
-    <button type="button" class="set-acc-btn">КАРУСЕЛЬ</button>
-    <div class="set-acc-body">
-      <div class="set-preview-box">
-        <div class="sc-mini-preview" id="sc-mini-preview">
-          <div class="sc-mini-card"><div class="sc-mini-ic">📊</div></div>
-          <div class="sc-mini-controls"><div>◀</div><div class="sel">ВЫБРАТЬ</div><div>▶</div></div>
-        </div>
-      </div>
-      <div class="set-row">
-        <div class="set-info"><div class="set-title">Кнопки карусели</div><div class="set-sub">Показывать кнопки управления под 3D-каруселью</div></div>
-        <label class="set-switch"><input type="checkbox" id="set-car-controls"><span class="set-slider"></span></label>
-      </div>
-    </div>
+    ${renderPulseSection()}
+    ${renderCarouselSection()}
   </div>`;
 
 export const renderProfileSettings = (root) => {
@@ -242,29 +246,35 @@ export const renderProfileSettings = (root) => {
   // --- Логика Пульсации (Интерфейс) ---
   const lpEnabled = root.querySelector('#lp-enabled'), lpPreset = root.querySelector('#lp-preset'), lpInt = root.querySelector('#lp-intensity'), lpDebug = root.querySelector('#lp-debug'), lpReset = root.querySelector('#lp-reset-btn');
   if (lpEnabled && lpPreset && lpInt && lpDebug && lpReset) {
-    lpEnabled.checked = localStorage.getItem('logoPulseEnabled') === '1';
-    lpPreset.value = localStorage.getItem('logoPulsePreset') || 'balanced';
-    lpInt.value = localStorage.getItem('logoPulseIntensity') || '0.12';
-    lpDebug.checked = localStorage.getItem('logoPulseDebug') === '1';
+
+    // Начальные значения
+    const lpDefaults = { logoPulseEnabled: '0', logoPulsePreset: 'balanced', logoPulseIntensity: '0.12', logoPulseDebug: '0' };
+    lpEnabled.checked  = (localStorage.getItem('logoPulseEnabled')  ?? lpDefaults.logoPulseEnabled)  === '1';
+    lpPreset.value     =  localStorage.getItem('logoPulsePreset')   ?? lpDefaults.logoPulsePreset;
+    lpInt.value        =  localStorage.getItem('logoPulseIntensity')  ?? lpDefaults.logoPulseIntensity;
+    lpDebug.checked    = (localStorage.getItem('logoPulseDebug')    ?? lpDefaults.logoPulseDebug)    === '1';
 
     const applyLp = () => {
-      localStorage.setItem('logoPulseEnabled', lpEnabled.checked ? '1' : '0');
-      localStorage.setItem('logoPulsePreset', lpPreset.value);
+      localStorage.setItem('logoPulseEnabled',   lpEnabled.checked ? '1' : '0');
+      localStorage.setItem('logoPulsePreset',    lpPreset.value);
       localStorage.setItem('logoPulseIntensity', lpInt.value);
-      localStorage.setItem('logoPulseDebug', lpDebug.checked ? '1' : '0');
+      localStorage.setItem('logoPulseDebug',     lpDebug.checked ? '1' : '0');
       W.LogoPulse?.updateSettings?.();
     };
 
-    lpEnabled.addEventListener('change', applyLp);
-    lpPreset.addEventListener('change', applyLp);
-    lpInt.addEventListener('input', applyLp);
-    lpDebug.addEventListener('change', applyLp);
+    // Единый маппинг: элемент → событие
+    [
+      [lpEnabled, 'change'],
+      [lpPreset,  'change'],
+      [lpInt,     'input'],
+      [lpDebug,   'change']
+    ].forEach(([el, ev]) => el.addEventListener(ev, applyLp));
 
     lpReset.addEventListener('click', () => {
       lpEnabled.checked = false;
-      lpPreset.value = 'balanced';
-      lpInt.value = '0.12';
-      lpDebug.checked = false;
+      lpPreset.value    = lpDefaults.logoPulsePreset;
+      lpInt.value       = lpDefaults.logoPulseIntensity;
+      lpDebug.checked   = false;
       applyLp();
       W.NotificationSystem?.success('Настройки пульсации сброшены');
     });
