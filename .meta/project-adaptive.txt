@@ -127,9 +127,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-effab235ff21b0b1723e436f80e3e42c0708187a.idx
-│   │       ├── pack-effab235ff21b0b1723e436f80e3e42c0708187a.pack
-│   │       └── pack-effab235ff21b0b1723e436f80e3e42c0708187a.rev
+│   │       ├── pack-c5839d6f60b21ae95a11c5a240c6e9cae74d6b39.idx
+│   │       ├── pack-c5839d6f60b21ae95a11c5a240c6e9cae74d6b39.pack
+│   │       └── pack-c5839d6f60b21ae95a11c5a240c6e9cae74d6b39.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -411,7 +411,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-24 14:45:27 UTC
+Сгенерировано: 2026-03-24 15:14:02 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -9014,16 +9014,7 @@ import { resolveFavoritesOnlyState } from '../scripts/app/player/favorites-only-
         onplayerror: sf(() => this._err(idx, retry, opts, dir))
       });
 
-      try {
-        const node = this.sound._sounds[0]?._node;
-        if (node && node instanceof HTMLMediaElement) {
-          node.crossOrigin = 'anonymous';
-          node.src = url; 
-        }
-      } catch(e) {}
-
       if (auto) this.sound.play();
-    }
 
     _err(idx, r, o, d) {
       this._emit('onPlaybackError', { reason: 'error' });
