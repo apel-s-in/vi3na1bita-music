@@ -7,6 +7,7 @@ let _state = {
   duration: 0,
   isPlaying: false,
   visibility: document.visibilityState || 'visible',
+  uiBackgroundSuspend: document.visibilityState === 'hidden',
   ts: Date.now()
 };
 
@@ -17,13 +18,15 @@ const emit = () => {
 
 const pull = () => {
   const pc = W.playerCore;
+  const vis = document.visibilityState || 'visible';
   _state = {
     ..._state,
     uid: String(pc?.getCurrentTrackUid?.() || '') || null,
     currentTime: Number(pc?.getPosition?.() || 0),
     duration: Number(pc?.getDuration?.() || 0),
     isPlaying: !!pc?.isPlaying?.(),
-    visibility: document.visibilityState || 'visible',
+    visibility: vis,
+    uiBackgroundSuspend: vis === 'hidden',
     ts: Date.now()
   };
   emit();
