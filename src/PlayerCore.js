@@ -2,6 +2,7 @@ import { getTrackByUid } from '../scripts/app/track-registry.js';
 import { Favorites } from '../scripts/core/favorites-manager.js';
 import { ensureMediaSession } from './player-core/media-session.js';
 import { resolveFavoritesOnlyState } from '../scripts/app/player/favorites-only-resolver.js';
+import { initIosAudioKeeper } from './player-core/ios-audio-keeper.js';
 
 // UID.001_(Playback safety invariant)_(защитить священное правило проигрывания)_(никакие intel/recs/providers/telemetry не имеют права стопать/сбрасывать playback кроме уже разрешённых сценариев)
 // UID.008_(No playback mutation by intel)_(развести ядро плеера и интеллектуальный слой)_(PlayerCore остаётся единственным владельцем playback state, intel только читает и рекомендует)
@@ -57,6 +58,7 @@ import { resolveFavoritesOnlyState } from '../scripts/app/player/favorites-only-
     initialize() {
       Favorites?.init?.();
       this._bindIosAudioSession();
+      initIosAudioKeeper();
     }
 
     prepareContext() {
