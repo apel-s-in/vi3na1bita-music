@@ -30,7 +30,9 @@
     targets: [],
     previewLogo: null,
     debugEl: null,
-    connected: false
+    connected: false,
+    zeroFrames: 0,
+    watchdogUsed: false
   };
 
   const isLowPowerDevice = () => {
@@ -83,16 +85,6 @@
       `zero: ${state.zeroFrames}`,
       `uiSuspend: ${getUiSuspend() ? '1' : '0'}`
     ].join('\n');
-  };
-
-  const getActiveHtml5Media = () => {
-    try {
-      const snd = W.playerCore?.sound;
-      const node = snd?._sounds?.find?.(s => s && s._node)?. _node || snd?._sounds?.[0]?._node || null;
-      return node instanceof HTMLMediaElement ? node : null;
-    } catch {
-      return null;
-    }
   };
 
   const setupAudio = () => {
