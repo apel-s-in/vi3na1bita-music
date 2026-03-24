@@ -6,6 +6,7 @@
 // UID.094_(No-paralysis rule)_(даже при сбоях расширенных слоёв системные media controls должны работать)_(этот bridge остаётся тонким адаптером между ОС и PlayerCore)
 export function ensureMediaSession(h = {}) {
   const ms = navigator.mediaSession; if (!ms) return null;
+  let lastPosTs = 0;
   if (!ms.__bound) {
     ms.__bound = true; const safe = fn => d => { try { fn?.(d); } catch {} };
     for (const [k, fn] of Object.entries({ play: h.onPlay, pause: h.onPause, stop: h.onStop, previoustrack: h.onPrev, nexttrack: h.onNext, seekbackward: d => h.onSeekBy?.(-(Number(d?.seekOffset)||10)), seekforward: d => h.onSeekBy?.((Number(d?.seekOffset)||10)), seekto: d => Number.isFinite(d?.seekTime) && h.onSeekTo?.(d.seekTime) })) ms.setActionHandler(k, safe(fn));
@@ -17,8 +18,15 @@ export function ensureMediaSession(h = {}) {
         ms.playbackState = playing ? 'playing' : 'paused';
       } catch {}
     },
-    updatePositionState: () => {
-      try { const st = h.getPositionState?.(); if (st && ms.setPositionState) ms.setPositionState({ duration: Number(st.duration)||0, playbackRate: Number(st.playbackRate)||1, position: Number(st.position)||0 }); } catch {}
+    updatePositionState: ({ force = false } = {}) => {
+      try {
+        const now = Date.now();
+        if (!force && now - lastPosTs < 900) return;
+        const st = h.getPositionState?.();
+        if (!st || !ms.setPositionState) return;
+        ms.setPositionState({ duration: Number(st.duration)||0, playbackRate: Number(st.playbackRate)||1, position: Number(st.position)||0 });
+        lastPosTs = now;
+      } catch {}
     }
   };
 }
