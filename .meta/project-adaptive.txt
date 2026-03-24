@@ -364,7 +364,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-24 20:38:53 UTC
+Сгенерировано: 2026-03-24 20:40:06 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -888,7 +888,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.1.81';
+const SW_VERSION = '8.1.82';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
@@ -3342,8 +3342,16 @@ export function mountProfileCarouselFlat({ root }) {
       const activeId = cardsData[norm].id;
       const tab = root.querySelector(`#tab-${activeId}`);
       if (tab && !tab.classList.contains('active')) {
-        root.querySelectorAll('.profile-tab-content').forEach(x => x.classList.remove('active'));
-        tab.classList.add('active');
+        const prev = root.querySelector('.profile-tab-content.active');
+        if (prev && prev !== tab) {
+          prev.classList.remove('active');
+        } else {
+          root.querySelectorAll('.profile-tab-content').forEach(x => x.classList.remove('active'));
+        }
+        // Небольшой микро-тик чтобы браузер успел снять active и пересчитать layout
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => tab.classList.add('active'));
+        });
       } else if (!tab) {
         W.NotificationSystem?.info(`Раздел «${cardsData[norm].tit}» открывается...`);
       }
