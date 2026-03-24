@@ -127,9 +127,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-e63e749af279c8936b6a605898eaf74f97b04c0e.idx
-│   │       ├── pack-e63e749af279c8936b6a605898eaf74f97b04c0e.pack
-│   │       └── pack-e63e749af279c8936b6a605898eaf74f97b04c0e.rev
+│   │       ├── pack-9050b608e9f57e064f257fb7ba1faa48c0d9c4b9.idx
+│   │       ├── pack-9050b608e9f57e064f257fb7ba1faa48c0d9c4b9.pack
+│   │       └── pack-9050b608e9f57e064f257fb7ba1faa48c0d9c4b9.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -414,7 +414,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-24 19:13:49 UTC
+Сгенерировано: 2026-03-24 19:25:21 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -613,8 +613,6 @@ jobs:
   <link rel="icon" href="icons/favicon-16.png" sizes="16x16" type="image/png">
 
   <link rel="preload" href="img/logo.png" as="image">
-  <!-- iOS audio session keepalive: preload тихого трека для быстрого старта keeper -->
-  <link rel="preload" href="audio/silence.mp3" as="audio" type="audio/mpeg">
   <link rel="stylesheet" href="styles/main.css">
 
   <!-- R0 streaming hardening — оба источника preconnect для мгновенного fallback -->
