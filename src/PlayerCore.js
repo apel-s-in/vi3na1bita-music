@@ -212,16 +212,7 @@ import { resolveFavoritesOnlyState } from '../scripts/app/player/favorites-only-
         onplayerror: sf(() => this._err(idx, retry, opts, dir))
       });
 
-      try {
-        const node = this.sound._sounds[0]?._node;
-        if (node && node instanceof HTMLMediaElement) {
-          node.crossOrigin = 'anonymous';
-          node.src = url; 
-        }
-      } catch(e) {}
-
       if (auto) this.sound.play();
-    }
 
     _err(idx, r, o, d) {
       this._emit('onPlaybackError', { reason: 'error' });
