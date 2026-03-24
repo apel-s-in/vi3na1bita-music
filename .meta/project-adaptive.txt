@@ -365,7 +365,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-24 22:30:53 UTC
+Сгенерировано: 2026-03-24 22:31:28 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -851,7 +851,7 @@ jobs:
   </template>
 
   <script>
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.89');
+    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.90');
     const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-03-25');
 
     // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
@@ -5024,7 +5024,7 @@ if (errs.length) { console.error('Failed:\n', errs.join('\n')); process.exit(2);
 // UID.092_(Incremental rollout order)_(делать staged внедрение через один конфиг)_(intel boot должен управляться отсюда)
 
 export const APP_CONFIG = {
-  APP_VERSION: '8.1.89',
+  APP_VERSION: '8.1.90',
   BUILD_DATE: '2026-03-25',
   PROMOCODE: 'VITRINA2025',
   ICON_ALBUMS_ORDER: [
