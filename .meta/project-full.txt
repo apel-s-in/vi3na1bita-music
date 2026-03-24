@@ -125,9 +125,9 @@ vi3na1bita-music/
 │   ├── objects/
 │   │   ├── info/
 │   │   └── pack/
-│   │       ├── pack-5d1a1efa0bc97cbaf81907fe6b44b3d83e405c7c.idx
-│   │       ├── pack-5d1a1efa0bc97cbaf81907fe6b44b3d83e405c7c.pack
-│   │       └── pack-5d1a1efa0bc97cbaf81907fe6b44b3d83e405c7c.rev
+│   │       ├── pack-0d6d21075f6e0722e43f555ac60e5e071f7c0a10.idx
+│   │       ├── pack-0d6d21075f6e0722e43f555ac60e5e071f7c0a10.pack
+│   │       └── pack-0d6d21075f6e0722e43f555ac60e5e071f7c0a10.rev
 │   ├── refs/
 │   │   ├── heads/
 │   │   │   └── main
@@ -408,7 +408,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-24 13:05:14 UTC
+Сгенерировано: 2026-03-24 13:06:38 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -8685,6 +8685,7 @@ try {
 // UID.094_(No-paralysis rule)_(даже при сбоях расширенных слоёв системные media controls должны работать)_(этот bridge остаётся тонким адаптером между ОС и PlayerCore)
 export function ensureMediaSession(h = {}) {
   const ms = navigator.mediaSession; if (!ms) return null;
+  let lastPosTs = 0;
   if (!ms.__bound) {
     ms.__bound = true; const safe = fn => d => { try { fn?.(d); } catch {} };
     for (const [k, fn] of Object.entries({ play: h.onPlay, pause: h.onPause, stop: h.onStop, previoustrack: h.onPrev, nexttrack: h.onNext, seekbackward: d => h.onSeekBy?.(-(Number(d?.seekOffset)||10)), seekforward: d => h.onSeekBy?.((Number(d?.seekOffset)||10)), seekto: d => Number.isFinite(d?.seekTime) && h.onSeekTo?.(d.seekTime) })) ms.setActionHandler(k, safe(fn));
@@ -8696,8 +8697,15 @@ export function ensureMediaSession(h = {}) {
         ms.playbackState = playing ? 'playing' : 'paused';
       } catch {}
     },
-    updatePositionState: () => {
-      try { const st = h.getPositionState?.(); if (st && ms.setPositionState) ms.setPositionState({ duration: Number(st.duration)||0, playbackRate: Number(st.playbackRate)||1, position: Number(st.position)||0 }); } catch {}
+    updatePositionState: ({ force = false } = {}) => {
+      try {
+        const now = Date.now();
+        if (!force && now - lastPosTs < 900) return;
+        const st = h.getPositionState?.();
+        if (!st || !ms.setPositionState) return;
+        ms.setPositionState({ duration: Number(st.duration)||0, playbackRate: Number(st.playbackRate)||1, position: Number(st.position)||0 });
+        lastPosTs = now;
+      } catch {}
     }
   };
 }
