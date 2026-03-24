@@ -364,7 +364,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-24 21:48:45 UTC
+Сгенерировано: 2026-03-24 21:49:17 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -849,8 +849,8 @@ jobs:
   </template>
 
   <script>
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.85');
-    const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-03-24');
+    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.86');
+    const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-03-25');
 
     // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
 
@@ -4978,8 +4978,8 @@ if (errs.length) { console.error('Failed:\n', errs.join('\n')); process.exit(2);
 // UID.092_(Incremental rollout order)_(делать staged внедрение через один конфиг)_(intel boot должен управляться отсюда)
 
 export const APP_CONFIG = {
-  APP_VERSION: '8.1.85',
-  BUILD_DATE: '2026-03-24',
+  APP_VERSION: '8.1.86',
+  BUILD_DATE: '2026-03-25',
   PROMOCODE: 'VITRINA2025',
   ICON_ALBUMS_ORDER: [
     { key: 'odnazhdy-v-skazke', title: 'Однажды в Сказке', icon: 'img/icon_album/icon-album-03.png' },
