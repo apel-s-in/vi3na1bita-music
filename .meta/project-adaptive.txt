@@ -364,7 +364,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-24 20:53:18 UTC
+Сгенерировано: 2026-03-24 21:10:23 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3396,9 +3396,48 @@ export function mountProfileCarouselFlat({ root }) {
     next?.addEventListener('click', () => step(1));
     sel?.addEventListener('click', doSelect);
 
+    // Плавно применяем translateY к активному контент-блоку пропорционально прогрессу свайпа
+    const getActiveTab = () => root.querySelector('.profile-tab-content.active');
+    
+    const setContentDrift = (progress, instant = false) => {
+      const tab = getActiveTab();
+      if (!tab) return;
+      // progress: 0 = на месте, 1 = улетел вниз (100vh)
+      const clampedP = Math.max(0, Math.min(1, Math.abs(progress)));
+      const eased = clampedP < 0.5
+        ? 2 * clampedP * clampedP                      // разгон: медленно начинает
+        : 1 - Math.pow(-2 * clampedP + 2, 2) / 2;     // торможение: замедляется к концу
+      const yPx = eased * 60; // максимальное смещение 60px (не весь экран — мягче)
+      if (instant) {
+        tab.style.transition = 'none';
+        tab.style.transform = `translateY(${yPx}px)`;
+        tab.style.opacity = String(1 - eased * 0.45);
+      } else {
+        tab.style.transition = 'transform .35s cubic-bezier(.22,1,.36,1), opacity .35s ease';
+        tab.style.transform = `translateY(${yPx}px)`;
+        tab.style.opacity = String(1 - eased * 0.45);
+      }
+    };
+
+    const resetContentDrift = (fast = false) => {
+      const tab = getActiveTab();
+      if (!tab) return;
+      tab.style.transition = fast
+        ? 'transform .18s cubic-bezier(.4,0,.2,1), opacity .18s ease'
+        : 'transform .4s cubic-bezier(.22,1,.36,1), opacity .4s ease';
+      tab.style.transform = '';
+      tab.style.opacity = '';
+      // Убираем инлайн-стили после завершения анимации
+      const cleanup = () => { tab.style.transition = ''; tab.removeEventListener('transitionend', cleanup); };
+      tab.addEventListener('transitionend', cleanup, { once: true });
+    };
+
+    let _swipeCommitted = false; // true когда палец прошёл порог — возврат невозможен
+
     scene.addEventListener('touchstart', e => {
       startX = e.touches[0].clientX; startY = e.touches[0].clientY;
-      isDrag = true; dragDelta = 0; car.style.transition = 'none';
+      isDrag = true; dragDelta = 0; _swipeCommitted = false;
+      car.style.transition = 'none';
       wrap.classList.remove('is-settled'); clearTimeout(wrap._tS);
     }, { passive: true });
 
@@ -3406,19 +3445,47 @@ export function mountProfileCarouselFlat({ root }) {
       if (!isDrag) return;
       const rawDx = e.touches[0].clientX - startX, dy = e.touches[0].clientY - startY;
       if (Math.abs(rawDx) < 8 && Math.abs(dy) < 8) return;
-      if (Math.abs(dy) > Math.abs(rawDx) + 14) { isDrag = false; update(true); return; }
-      
-      dragDelta = rawDx; 
-      const visualDelta = Math.max(-140, Math.min(140, rawDx)); // Широкий лимит для визуального поворота
-      car.style.transform = `rotateY(${currIdx * -STEP + visualDelta * 0.45}deg)`; // Легкое и предсказуемое следование за пальцем
+      if (Math.abs(dy) > Math.abs(rawDx) + 14) { isDrag = false; resetContentDrift(true); update(true); return; }
+
+      dragDelta = rawDx;
+      _swipeCommitted = Math.abs(rawDx) > 40;
+
+      // Карусель следует за пальцем
+      const visualDelta = Math.max(-140, Math.min(140, rawDx));
+      car.style.transform = `rotateY(${currIdx * -STEP + visualDelta * 0.45}deg)`;
+
+      // Контент отлетает вниз пропорционально ходу пальца (0..1 от 0 до 120px хода)
+      const swipeProgress = Math.min(1, Math.abs(rawDx) / 120);
+      setContentDrift(swipeProgress, true);
     }, { passive: true });
 
     scene.addEventListener('touchend', e => {
       if (!isDrag) return;
       isDrag = false;
-      if (dragDelta > 40) currIdx--;
-      else if (dragDelta < -40) currIdx++;
-      else if (Math.abs(dragDelta) < 10) {
+
+      const committed = Math.abs(dragDelta) > 40;
+
+      if (committed) {
+        // Безвозвратный свайп: контент улетает окончательно, затем появляется новый
+        const tab = getActiveTab();
+        if (tab) {
+          tab.style.transition = 'transform .22s cubic-bezier(.55,0,1,.45), opacity .18s ease';
+          tab.style.transform = 'translateY(80px)';
+          tab.style.opacity = '0';
+          tab.addEventListener('transitionend', () => {
+            // Сброс — новый контент появится через doSelect() с анимацией tabContentIn
+            tab.style.cssText = '';
+          }, { once: true });
+        }
+        if (dragDelta > 40) currIdx--;
+        else if (dragDelta < -40) currIdx++;
+      } else {
+        // Передумал — контент мягко возвращается на место
+        resetContentDrift(false);
+      }
+
+      // Тап без движения
+      if (Math.abs(dragDelta) < 10) {
         const card = e.target.closest('.sc-3d-card');
         if (card) {
           const idx = parseInt(card.dataset.idx, 10);
@@ -3426,6 +3493,7 @@ export function mountProfileCarouselFlat({ root }) {
           if (idx === norm && wrap.classList.contains('is-settled')) doSelect();
         }
       }
+
       dragDelta = 0; update(true);
     }, { passive: true });
 
