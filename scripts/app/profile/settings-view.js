@@ -92,7 +92,7 @@ const renderCarouselSection = () => `
 
 const renderInterfaceSection = () => `
   <div class="settings-content" id="set-interface">
-    <button type="button" class="set-acc-btn open">ПЛЕЕР</button>
+    <button type="button" class="set-acc-btn">ПЛЕЕР</button>
     <div class="set-acc-body">
       <div class="pl-prev-box">
         <div class="pl-prev-lyr"><div class="pl-prev-bg" id="prev-a-bg"></div><div class="pl-prev-txt">Играет трек...</div></div>
