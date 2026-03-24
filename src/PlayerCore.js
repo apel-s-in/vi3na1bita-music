@@ -200,8 +200,10 @@ import { resolveFavoritesOnlyState } from '../scripts/app/player/favorites-only-
       this._unload(true);
       this._playingUid = uid;
       
+      const auto = opts.autoPlay ?? this.isPlaying();
+      
       this.sound = new Howl({
-        src: [url], html5: true, format: ['mp3'], xhr: { withCredentials: false }, autoplay: opts.autoPlay ?? this.isPlaying(),
+        src: [url], html5: true, format: ['mp3'], xhr: { withCredentials: false }, autoplay: false,
         onload: sf(() => { pos && this.seek(pos); this._updMedia(); }),
         onplay: sf(() => { this._startT(); this._emit('onPlay', t, idx); this._updMedia(); this._syncMediaSessionPosition(true); emitG('player:play', { uid, duration: this.getDuration(), type: 'audio', provider: aP }); emitG('player:providerChanged', { provider: aP }); }),
         onpause: sf(() => { this._stopT(); this._emit('onPause'); this._updMedia(); this._syncMediaSessionPosition(true); emitG('player:pause'); }),
@@ -209,6 +211,16 @@ import { resolveFavoritesOnlyState } from '../scripts/app/player/favorites-only-
         onloaderror: sf(() => this._err(idx, retry, opts, dir)),
         onplayerror: sf(() => this._err(idx, retry, opts, dir))
       });
+
+      try {
+        const node = this.sound._sounds[0]?._node;
+        if (node && node instanceof HTMLMediaElement) {
+          node.crossOrigin = 'anonymous';
+          node.src = url; 
+        }
+      } catch(e) {}
+
+      if (auto) this.sound.play();
     }
 
     _err(idx, r, o, d) {
