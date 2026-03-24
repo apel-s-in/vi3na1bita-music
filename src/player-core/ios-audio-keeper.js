@@ -45,20 +45,61 @@ export function initIosAudioKeeper() {
   _bound = true;
 
   window.addEventListener('player:play', () => startKeeper());
-
-  window.addEventListener('player:stop', () => {
-    // Останавливаем keeper только при явном stop пользователя
-    // При player:ended — НЕ останавливаем (автопереход на следующий трек)
-    stopKeeper();
-  });
+  window.addEventListener('player:stop', () => stopKeeper());
 
   // При возврате вкладки — перезапускаем keeper если плеер играл
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible') return;
-    if (window.playerCore?.isPlaying?.() && !_started) {
-      startKeeper();
-    }
+    if (window.playerCore?.isPlaying?.() && !_started) startKeeper();
   });
+
+  // Восстанавливаем AudioContext после прерывания (звонок, Siri)
+  const handleCtxState = () => {
+    const ctx = window.Howler?.ctx;
+    if (ctx && (ctx.state === 'interrupted' || ctx.state === 'suspended')) {
+      ctx.resume().catch(() => {});
+    }
+  };
+
+  const bindCtxWatcher = () => {
+    const ctx = window.Howler?.ctx;
+    if (ctx && !ctx._iosWatching) {
+      ctx._iosWatching = true;
+      ctx.addEventListener('statechange', () => {
+        if (window.playerCore?.isPlaying?.()) handleCtxState();
+      });
+    }
+  };
+
+  // Восстановление после прерывания iOS (звонок, Siri, блокировка)
+  let _lastKnownPos = 0, _wasPlayingBeforeHide = false;
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') {
+      _lastKnownPos = window.playerCore?.getPosition?.() || 0;
+      _wasPlayingBeforeHide = !!window.playerCore?.isPlaying?.();
+      return;
+    }
+    bindCtxWatcher();
+    handleCtxState();
+    if (window.playerCore?.sound && !window.playerCore.isPlaying() && _wasPlayingBeforeHide) {
+      _wasPlayingBeforeHide = false;
+      const pos = _lastKnownPos || 0;
+      setTimeout(() => {
+        if (window.playerCore?.sound && !window.playerCore.isPlaying()) {
+          window.playerCore.sound.seek(pos);
+          window.playerCore.sound.play();
+        }
+      }, 300);
+    }
+    _wasPlayingBeforeHide = false;
+  });
+
+  setInterval(() => {
+    if (window.playerCore?.isPlaying?.()) _lastKnownPos = window.playerCore.getPosition();
+  }, 5000);
+
+  window.addEventListener('player:play', () => { bindCtxWatcher(); handleCtxState(); });
 }
 
 export default { initIosAudioKeeper, startKeeper, stopKeeper };
