@@ -19,6 +19,8 @@
   <link rel="icon" href="icons/favicon-16.png" sizes="16x16" type="image/png">
 
   <link rel="preload" href="img/logo.png" as="image">
+  <!-- iOS audio session keepalive: preload тихого трека для быстрого старта keeper -->
+  <link rel="preload" href="audio/silence.mp3" as="audio" type="audio/mpeg">
   <link rel="stylesheet" href="styles/main.css">
 
   <!-- R0 streaming hardening — оба источника preconnect для мгновенного fallback -->
@@ -300,7 +302,7 @@
   </template>
 
   <script>
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.73');
+    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.74');
     const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-03-24');
 
     // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
