@@ -212,7 +212,6 @@
     W.addEventListener('player:play', () => { setupAudio(); });
     W.addEventListener('player:trackChanged', () => { state.pulse = 0; setupAudio(); });
     W.addEventListener('player:stop', () => { state.pulse = 0; });
-    W.addEventListener('playback:clock', () => {});
   };
 
   W.LogoPulse = { init, toggle, updateSettings };
