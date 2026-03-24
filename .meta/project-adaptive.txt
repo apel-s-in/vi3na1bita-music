@@ -97,54 +97,6 @@ F всегда относится к playing-context, а не к просто о
 СТРУКТУРА ПРОЕКТА:
 vi3na1bita-music/
 ├── .git/
-│   ├── hooks/
-│   │   ├── applypatch-msg.sample
-│   │   ├── commit-msg.sample
-│   │   ├── fsmonitor-watchman.sample
-│   │   ├── post-update.sample
-│   │   ├── pre-applypatch.sample
-│   │   ├── pre-commit.sample
-│   │   ├── pre-merge-commit.sample
-│   │   ├── pre-push.sample
-│   │   ├── pre-rebase.sample
-│   │   ├── pre-receive.sample
-│   │   ├── prepare-commit-msg.sample
-│   │   ├── push-to-checkout.sample
-│   │   ├── sendemail-validate.sample
-│   │   └── update.sample
-│   ├── info/
-│   │   └── exclude
-│   ├── logs/
-│   │   ├── refs/
-│   │   │   ├── heads/
-│   │   │   │   └── main
-│   │   │   └── remotes/
-│   │   │       └── origin/
-│   │   │           ├── main
-│   │   │           ├── qwen-code-c0a6e5d8-7ce2-4015-b9e8-16c1eb5626f1
-│   │   │           └── qwen-code-c670b9c3-90a8-4bf4-a12a-b54705b66530
-│   │   └── HEAD
-│   ├── objects/
-│   │   ├── info/
-│   │   └── pack/
-│   │       ├── pack-979a09eeb3608d1e2e2ea17c8a1b7ebd3b833d5f.idx
-│   │       ├── pack-979a09eeb3608d1e2e2ea17c8a1b7ebd3b833d5f.pack
-│   │       └── pack-979a09eeb3608d1e2e2ea17c8a1b7ebd3b833d5f.rev
-│   ├── refs/
-│   │   ├── heads/
-│   │   │   └── main
-│   │   ├── remotes/
-│   │   │   └── origin/
-│   │   │       ├── main
-│   │   │       ├── qwen-code-c0a6e5d8-7ce2-4015-b9e8-16c1eb5626f1
-│   │   │       └── qwen-code-c670b9c3-90a8-4bf4-a12a-b54705b66530
-│   │   └── tags/
-│   ├── config
-│   ├── config.worktree
-│   ├── description
-│   ├── FETCH_HEAD
-│   ├── HEAD
-│   └── index
 ├── .github/
 │   └── workflows/
 │       ├── deploy.yml
@@ -153,7 +105,6 @@ vi3na1bita-music/
 │       ├── generate-lyrics-index.yml
 │       └── validate.yml
 ├── .meta/
-│   └── .gitkeep
 ├── albums/
 │   ├── gallery/
 │   │   ├── 00/
@@ -407,14 +358,13 @@ vi3na1bita-music/
 ├── styles/
 │   └── main.css
 ├── .gitignore
-├── ai-rules.txt
 ├── albums.json
 ├── generate-context.js
 ├── index.html
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-24 20:00:48 UTC
+Сгенерировано: 2026-03-24 20:12:24 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -894,7 +844,7 @@ jobs:
   </template>
 
   <script>
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.80');
+    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.81');
     const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-03-24');
 
     // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
@@ -938,7 +888,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.1.80';
+const SW_VERSION = '8.1.81';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
@@ -8669,14 +8619,61 @@ const FULL_FILE = path.join(META_DIR, "project-full.txt"), ADAPTIVE_FILE = path.
 const toUnix = p => String(p).replace(/\\/g, "/");
 const SELF_FULL_REL = toUnix(path.relative(ROOT, FULL_FILE)), SELF_ADAPT_REL = toUnix(path.relative(ROOT, ADAPTIVE_FILE));
 const TEXT_EXTS = new Set([".html",".htm",".css",".js",".mjs",".cjs",".ts",".tsx",".json",".webmanifest",".md",".txt",".yml",".yaml"]);
-const globToRegExp = pat => new RegExp("^" + pat.replace(/[.+^${}()|[\]\\]/g, "\\$").replace(/\*\*/g, "___GLOBSTAR___").replace(/\*/g, "[^/]*").replace(/___GLOBSTAR___/g, ".*") + "$");
-const EXCLUDE_FILES_PATTERNS = ["node_modules/**",".git/**",".meta/**","assets/**",".next/**","dist/**","build/**","out/**","coverage/**",".cache/**",".vscode/**",".idea/**",".husky/**","**/*.log",".DS_Store","ai-rules.txt"].map(globToRegExp);
-const EXCLUDE_TREE_PATTERNS = ["node_modules/**",".git/**",".meta/**",".next/**","dist/**","build/**","out/**","coverage/**",".cache/**",".vscode/**",".idea/**",".husky/**","**/*.log",".DS_Store"].map(globToRegExp);
+const globToRegExp = pat => {
+  // Если паттерн без слешей и без ** — матчим как имя файла/папки в любом месте пути
+  const anchored = pat.includes("/") || pat.includes("**");
+  const escaped = pat
+    .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+    .replace(/\*\*/g, "___GLOBSTAR___")
+    .replace(/\*/g, "[^/]*")
+    .replace(/___GLOBSTAR___/g, ".*");
+  return anchored
+    ? new RegExp("^" + escaped + "$")
+    : new RegExp("(^|/)" + escaped + "(/|$)");
+};
+const EXCLUDE_FILES_RAW = [
+  "node_modules/**",".git/**",".meta/**","assets/**",
+  ".next/**","dist/**","build/**","out/**","coverage/**",
+  ".cache/**",".vscode/**",".idea/**",".husky/**",
+  "**/*.log",".DS_Store",
+  // ai-rules читается отдельно в headerBlock — не дублируем в теле
+  "ai-rules.txt","**/ai-rules.txt",
+  // AI-инструменты и временные сессии
+  "qwen-code-*","**/qwen-code-*",
+  ".aider*","**/.aider*",
+  ".continue/**",".copilot/**",
+  // Git-мусор
+  "**/*.orig","**/*.rej",
+  // Локи зависимостей
+  "package-lock.json","yarn.lock","pnpm-lock.yaml"
+];
+const EXCLUDE_TREE_RAW = [
+  "node_modules/**",".git/**",".meta/**",
+  ".next/**","dist/**","build/**","out/**","coverage/**",
+  ".cache/**",".vscode/**",".idea/**",".husky/**",
+  "**/*.log",".DS_Store",
+  // AI-инструменты и временные сессии
+  "qwen-code-*","**/qwen-code-*",
+  ".aider*","**/.aider*",
+  ".continue/**",".copilot/**",
+  // Git-мусор
+  "**/*.orig","**/*.rej",
+  // Локи зависимостей
+  "package-lock.json","yarn.lock","pnpm-lock.yaml"
+];
+const EXCLUDE_FILES_PATTERNS = EXCLUDE_FILES_RAW.map(globToRegExp);
+const EXCLUDE_TREE_PATTERNS  = EXCLUDE_TREE_RAW.map(globToRegExp);
 const PRIORITY = { critical: [/^index\.html?$/i,/^service-worker\.js$/i,/^manifest\.json$/i,/^albums\.json$/i,/^news\.html?$/i,/^generate-index\.(js|mjs|cjs)$/i,/^albums\/gallery\/[^/]+\/index\.json$/i,/^\.github\/workflows\/.*\.ya?ml$/i], high: [/^AudioController\.(js|mjs|cjs|ts)$/i,/^GlobalState\.(js|mjs|cjs|ts)$/i,/^scripts\/.*\.(mjs|js|ts)$/i,/^performance\/.*\.(js|ts)$/i,/^.*\.(ya?ml)$/i], medium: [/^.*\.(js|mjs|cjs|ts|tsx|json|html?|css)$/i] };
 const isTextFile = rel => TEXT_EXTS.has(path.extname(rel).toLowerCase());
 const readText = rel => { try { return fs.readFileSync(path.join(ROOT, rel), "utf8"); } catch (e) { return `// read error: ${e.message}`; } };
 const countLines = s => (s.match(/\n/g) || []).length + (s.length ? 1 : 0);
-const isExcluded = (rel, arr) => { const u = toUnix(rel); return !u || u === SELF_FULL_REL || u === SELF_ADAPT_REL || arr.some(re => re.test(u)); };
+const ALWAYS_EXCLUDE = new Set(["ai-rules.txt"]);
+const isExcluded = (rel, arr) => {
+  const u = toUnix(rel);
+  if (!u || u === SELF_FULL_REL || u === SELF_ADAPT_REL) return true;
+  if (ALWAYS_EXCLUDE.has(u) || ALWAYS_EXCLUDE.has(path.basename(u))) return true;
+  return arr.some(re => re.test(u));
+};
 const listAllEntries = (includeFiles = true, forTree = false) => {
   const res = [], stack = [ROOT];
   while (stack.length) {
