@@ -17,7 +17,7 @@ export class StatsAggregator {
 
   async processHotEvents() {
     const events = await metaDB.getEvents('events_hot'); if (!events.length) return;
-    const n = new Date(), tStr = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
+    const n = new Date(), dateStr = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
     let dailyActive = false;
 
     for (const ev of events) {
@@ -45,8 +45,8 @@ export class StatsAggregator {
               if (isFavOnly && !isShuf && isFav) { if (this.session.favOrderedLastUid !== ev.uid) { this.session.favOrderedRun++; this.session.favOrderedLastUid = ev.uid; } } else { this.session.favOrderedRun = 0; this.session.favOrderedLastUid = null; }
               isFavOnly && isShuf && isFav ? this.session.favShuffleEvents.add(ev.uid) : this.session.favShuffleEvents.clear();
               
-              const tStr = new Date(ev.timestamp).toTimeString().slice(0, 8);
-              if (tStr >= '00:00:00' && tStr <= '00:30:00') { if (this.session.lastFullUid === ev.uid && this.session.midnightTripleTrack === ev.uid) this.session.midnightTripleCount++; else { this.session.midnightTripleTrack = ev.uid; this.session.midnightTripleCount = 1; } } else { this.session.midnightTripleTrack = null; this.session.midnightTripleCount = 0; }
+              const timeStr = new Date(ev.timestamp).toTimeString().slice(0, 8);
+              if (timeStr >= '00:00:00' && timeStr <= '00:30:00') { if (this.session.lastFullUid === ev.uid && this.session.midnightTripleTrack === ev.uid) this.session.midnightTripleCount++; else { this.session.midnightTripleTrack = ev.uid; this.session.midnightTripleCount = 1; } } else { this.session.midnightTripleTrack = null; this.session.midnightTripleCount = 0; }
               this.session.lastFullUid = ev.uid;
 
               if (this.session.favOrderedRun >= 5 || this.session.favShuffleEvents.size >= 5 || this.session.midnightTripleCount >= 3) {
