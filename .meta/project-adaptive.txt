@@ -364,7 +364,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-24 20:12:24 UTC
+Сгенерировано: 2026-03-24 20:13:24 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4802,7 +4802,7 @@ if (errs.length) { console.error('Failed:\n', errs.join('\n')); process.exit(2);
 // UID.092_(Incremental rollout order)_(делать staged внедрение через один конфиг)_(intel boot должен управляться отсюда)
 
 export const APP_CONFIG = {
-  APP_VERSION: '8.1.80',
+  APP_VERSION: '8.1.81',
   BUILD_DATE: '2026-03-24',
   PROMOCODE: 'VITRINA2025',
   ICON_ALBUMS_ORDER: [
