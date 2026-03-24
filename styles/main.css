@@ -87,7 +87,8 @@ body{min-height:100vh;min-width:100vw;padding-top:env(safe-area-inset-top);-webk
 .prof-account-info{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:5px}
 .prof-name-row{display:flex;align-items:center;gap:6px;margin-bottom:2px}
 .prof-name-inp-flat{all:unset;font-size:16px;font-weight:900;color:#fff;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:default}
-.prof-name-inp-flat:not([readonly]){border-bottom:1px dashed var(--secondary-color);cursor:text;padding-bottom:1px}
+.prof-name-inp-flat.name-inactive{cursor:default;pointer-events:none}
+.prof-name-inp-flat:not(.name-inactive){border-bottom:1px dashed var(--secondary-color);cursor:text;padding-bottom:1px;pointer-events:auto}
 .prof-name-inp-flat:focus{outline:none;border-bottom-color:#fff}
 .prof-name-pencil{all:unset;cursor:pointer;font-size:14px;opacity:.7;transition:opacity .15s,transform .15s;flex-shrink:0}
 .prof-name-pencil:hover{opacity:1;transform:scale(1.2)}
