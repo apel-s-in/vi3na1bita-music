@@ -21,7 +21,7 @@ const setDlFmt = (v) => {
 };
 
 const renderDownloadSection = () => `
-  <button type="button" class="set-acc-btn open">СКАЧИВАНИЕ ТРЕКОВ</button>
+  <button type="button" class="set-acc-btn">СКАЧИВАНИЕ ТРЕКОВ</button>
   <div class="set-acc-body">
     <div class="set-sub" style="margin-bottom:4px;padding:0 4px">Соберите формат имени файла по умолчанию.</div>
     <div class="dl-fmt-container">
@@ -110,6 +110,63 @@ const renderInterfaceSection = () => `
     ${renderPulseSection()}
     ${renderCarouselSection()}
   </div>`;
+
+const bindDownloadFormatLogic = (root) => {
+  let fmtSt = getDlFmt();
+  const listEl = root.querySelector('#dl-fmt-list'), custInp = root.querySelector('#dl-fmt-custom'), prevEl = root.querySelector('#dl-fmt-preview');
+  if (!listEl || !custInp || !prevEl) return;
+
+  const updatePreview = () => {
+    const pts = [];
+    fmtSt.ord.forEach(k => {
+      if (!fmtSt.en[k]) return;
+      if (k === 'custom') pts.push(fmtSt.cst || 'Vi3na1bita');
+      if (k === 'band') pts.push('Витрина разбита');
+      if (k === 'album') pts.push('Название Альбома');
+      if (k === 'num') pts.push('01');
+      if (k === 'title') pts.push('Название Песни');
+    });
+    prevEl.textContent = (pts.length ? pts.join(' - ') : 'track') + '.mp3';
+    setDlFmt(fmtSt);
+  };
+
+  const renderFmtList = () => {
+    listEl.innerHTML = fmtSt.ord.map((k, i) => `
+      <div class="dl-fmt-row" data-key="${k}">
+        <button type="button" class="dl-arr up" data-dir="-1" ${i === 0 ? 'disabled' : ''}>▲</button>
+        <div class="dl-fmt-lbl">${LABELS[k]}</div>
+        <label class="set-switch"><input type="checkbox" class="dl-chk" data-key="${k}" ${fmtSt.en[k] ? 'checked' : ''}><span class="set-slider"></span></label>
+        <button type="button" class="dl-arr down" data-dir="1" ${i === fmtSt.ord.length - 1 ? 'disabled' : ''}>▼</button>
+      </div>
+    `).join('');
+    updatePreview();
+  };
+
+  listEl.addEventListener('click', e => {
+    const arr = e.target.closest('.dl-arr');
+    if (arr && !arr.disabled) {
+      const row = arr.closest('.dl-fmt-row'), k = row.dataset.key, dir = parseInt(arr.dataset.dir, 10);
+      const i = fmtSt.ord.indexOf(k);
+      [fmtSt.ord[i], fmtSt.ord[i + dir]] = [fmtSt.ord[i + dir], fmtSt.ord[i]];
+      renderFmtList();
+    }
+  });
+
+  listEl.addEventListener('change', e => {
+    if (e.target.classList.contains('dl-chk')) {
+      fmtSt.en[e.target.dataset.key] = e.target.checked;
+      updatePreview();
+    }
+  });
+
+  custInp.value = fmtSt.cst;
+  custInp.addEventListener('input', e => {
+    fmtSt.cst = e.target.value.trim();
+    updatePreview();
+  });
+
+  renderFmtList();
+};
 
 export const renderProfileSettings = (root) => {
   if (!root) return;
@@ -284,57 +341,5 @@ export const renderProfileSettings = (root) => {
   }
 
   // --- Логика Конструктора имени (Общие) ---
-  let fmtSt = getDlFmt();
-  const listEl = root.querySelector('#dl-fmt-list'), custInp = root.querySelector('#dl-fmt-custom'), prevEl = root.querySelector('#dl-fmt-preview');
-
-  const updatePreview = () => {
-    const pts = [];
-    fmtSt.ord.forEach(k => {
-      if (!fmtSt.en[k]) return;
-      if (k === 'custom') pts.push(fmtSt.cst || 'Vi3na1bita');
-      if (k === 'band') pts.push('Витрина разбита');
-      if (k === 'album') pts.push('Название Альбома');
-      if (k === 'num') pts.push('01');
-      if (k === 'title') pts.push('Название Песни');
-    });
-    prevEl.textContent = (pts.length ? pts.join(' - ') : 'track') + '.mp3';
-    setDlFmt(fmtSt);
-  };
-
-  const renderFmtList = () => {
-    listEl.innerHTML = fmtSt.ord.map((k, i) => `
-      <div class="dl-fmt-row" data-key="${k}">
-        <button type="button" class="dl-arr up" data-dir="-1" ${i === 0 ? 'disabled' : ''}>▲</button>
-        <div class="dl-fmt-lbl">${LABELS[k]}</div>
-        <label class="set-switch"><input type="checkbox" class="dl-chk" data-key="${k}" ${fmtSt.en[k] ? 'checked' : ''}><span class="set-slider"></span></label>
-        <button type="button" class="dl-arr down" data-dir="1" ${i === fmtSt.ord.length - 1 ? 'disabled' : ''}>▼</button>
-      </div>
-    `).join('');
-    updatePreview();
-  };
-
-  listEl.addEventListener('click', e => {
-    const arr = e.target.closest('.dl-arr');
-    if (arr && !arr.disabled) {
-      const row = arr.closest('.dl-fmt-row'), k = row.dataset.key, dir = parseInt(arr.dataset.dir, 10);
-      const i = fmtSt.ord.indexOf(k);
-      [fmtSt.ord[i], fmtSt.ord[i + dir]] = [fmtSt.ord[i + dir], fmtSt.ord[i]];
-      renderFmtList();
-    }
-  });
-
-  listEl.addEventListener('change', e => {
-    if (e.target.classList.contains('dl-chk')) {
-      fmtSt.en[e.target.dataset.key] = e.target.checked;
-      updatePreview();
-    }
-  });
-
-  custInp.value = fmtSt.cst;
-  custInp.addEventListener('input', e => {
-    fmtSt.cst = e.target.value.trim();
-    updatePreview();
-  });
-
-  renderFmtList();
+  bindDownloadFormatLogic(root);
 };
