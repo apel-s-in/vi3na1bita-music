@@ -158,7 +158,7 @@ import { resolveFavoritesOnlyState } from '../scripts/app/player/favorites-only-
       
       this.currentIndex = idx;
       if (!opts.isAutoSkip) this._skips = 0;
-      this._emit('onTrackChange', t, idx); emitG('player:trackChanged', { uid, dir }); try { this._ms?.updatePositionState?.({ force: true }); } catch {}
+      this._emit('onTrackChange', t, idx); emitG('player:trackChanged', { uid, dir }); this._syncMediaSessionPosition(true);
 
       let r = await W.TrackResolver?.resolve?.(uid, this.qMode).catch(()=>null);
       if (tok !== this._tok) return;
@@ -203,8 +203,8 @@ import { resolveFavoritesOnlyState } from '../scripts/app/player/favorites-only-
       this.sound = new Howl({
         src: [url], html5: true, format: ['mp3'], xhr: { withCredentials: false }, autoplay: opts.autoPlay ?? this.isPlaying(),
         onload: sf(() => { pos && this.seek(pos); this._updMedia(); }),
-        onplay: sf(() => { this._startT(); this._emit('onPlay', t, idx); this._updMedia(); try { this._ms?.updatePositionState?.({ force: true }); } catch {} emitG('player:play', { uid, duration: this.getDuration(), type: 'audio', provider: aP }); emitG('player:providerChanged', { provider: aP }); }),
-        onpause: sf(() => { this._stopT(); this._emit('onPause'); this._updMedia(); try { this._ms?.updatePositionState?.({ force: true }); } catch {} emitG('player:pause'); }),
+        onplay: sf(() => { this._startT(); this._emit('onPlay', t, idx); this._updMedia(); this._syncMediaSessionPosition(true); emitG('player:play', { uid, duration: this.getDuration(), type: 'audio', provider: aP }); emitG('player:providerChanged', { provider: aP }); }),
+        onpause: sf(() => { this._stopT(); this._emit('onPause'); this._updMedia(); this._syncMediaSessionPosition(true); emitG('player:pause'); }),
         onend: sf(() => { this._emit('onEnd'); this._updMedia(); emitG('player:ended'); emitG('analytics:forceFlush'); this.flags.rep ? this.play(this.currentIndex) : this.next(); }),
         onloaderror: sf(() => this._err(idx, retry, opts, dir)),
         onplayerror: sf(() => this._err(idx, retry, opts, dir))
@@ -225,10 +225,11 @@ import { resolveFavoritesOnlyState } from '../scripts/app/player/favorites-only-
         this._oK = null; this._oKTok = 0;
       }
       this._stopT();
-      if (!silent) { try { this._ms?.updatePositionState?.({ force: true }); } catch {} emitG('player:stop'); this._emit('onStop'); }
+      if (!silent) { this._syncMediaSessionPosition(true); emitG('player:stop'); this._emit('onStop'); }
     }
 
-    _startT() { this._stopT(); this._tick = setInterval(() => { this._emit('onTick', this.getPosition(), this.getDuration()); emitG('player:tick', { currentTime: this.getPosition(), volume: this.getVolume(), muted: this.isMuted() }); try { this._ms?.updatePositionState?.(); } catch {} }, 250); }
+    _syncMediaSessionPosition(force = false) { try { this._ms?.updatePositionState?.({ force }); } catch {} }
+    _startT() { this._stopT(); this._tick = setInterval(() => { this._emit('onTick', this.getPosition(), this.getDuration()); emitG('player:tick', { currentTime: this.getPosition(), volume: this.getVolume(), muted: this.isMuted() }); this._syncMediaSessionPosition(false); }, 250); }
     _stopT() { if (this._tick) clearInterval(this._tick); this._tick = null; }
     _updMedia() { try { this._ms?.updateMetadata?.({ title: this.getCurrentTrack()?.title, artist: this.getCurrentTrack()?.artist, album: this.getCurrentTrack()?.album, artworkUrl: this.getCurrentTrack()?.cover, playing: this.isPlaying() }); } catch {} }
 
