@@ -365,7 +365,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-24 22:20:55 UTC
+Сгенерировано: 2026-03-24 22:29:16 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3642,9 +3642,23 @@ export const renderProfileRecs = ({ container: c, all }) => {
 // UID.094_(No-paralysis rule)_(profile shell обязан работать без intel fragments)_(если intelligent blocks отсутствуют, legacy profile UI остаётся полноценным)
 // UID.095_(Ownership boundary: legacy vs intel)_(жёстко закрепить render-shell как legacy-shell, принимающий optional intel fragments)_(layout/profile navigation/stat shell здесь, а listener/recs/providers/community insights приходят как надстройка)
 import { mountProfileCarouselFlat } from './carousel-flat.js';
+import { mountProfileCarouselFlat } from './carousel-flat.js';
 import { renderProfileSettings } from './settings-view.js';
 
 const esc = s => window.Utils?.escapeHtml ? window.Utils.escapeHtml(String(s || '')) : String(s || '');
+
+const renderSourceSelector = (ps) => `
+  <div class="prof-src-box">
+    <div>
+      <div class="prof-src-title">Приоритет источника</div>
+      <div class="prof-src-sub">Моментальный резерв включен всегда</div>
+    </div>
+    <div class="prof-src-switch">
+      <button data-src="yandex" class="prof-src-btn prof-src-btn--yandex ${ps === 'yandex' ? 'prof-src-btn--active' : ''}">Yandex</button>
+      <button data-src="github" class="prof-src-btn prof-src-btn--github ${ps === 'github' ? 'prof-src-btn--active' : ''}">GitHub</button>
+    </div>
+  </div>`;
+
 export const renderProfileShell = ({ container: c, profile: p, tokens: tk, totalFull: tF, totalSec: tS, streak: strk, achCount: aC }) => {
   if (!c) return null; c.innerHTML = '';
   const ab = (id, n, ic) => `<button class="auth-btn ${id} ${tk[id] ? 'connected' : ''}" data-auth="${id}"><span>${ic}</span> ${tk[id] ? 'Подключено' : n}</button>`;
@@ -3669,13 +3683,13 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
   if (dayEl) dayEl.textContent = `🎵 Дней с нами: ${daysDiff}`;
   const ps = localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex';
   window.Utils?.dom?.createStyleOnce?.('profile-source-pref-styles', `.prof-src-box{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:12px;display:flex;justify-content:space-between;align-items:center;margin-top:10px}.prof-src-title{font-size:13px;font-weight:bold;color:#fff}.prof-src-sub{font-size:11px;color:#888}.prof-src-switch{display:flex;background:rgba(0,0,0,0.3);border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,0.1)}.prof-src-btn{all:unset;cursor:pointer;padding:6px 12px;font-size:12px;font-weight:bold;transition:.2s}.prof-src-btn--yandex.prof-src-btn--active{color:#fff;background:radial-gradient(circle,#cc0000 0%,#880000 100%)}.prof-src-btn--github.prof-src-btn--active{color:#fff;background:radial-gradient(circle,#444 0%,#000 100%)}.prof-src-btn:not(.prof-src-btn--active){color:#666}`);
-  // Сначала монтируем в DOM, потом ищем якорь — иначе фрагмент теряет контекст
+  
   c.appendChild(tpl);
-  const srcAnchor = c.querySelector('.prof-account-card')
-    || c.querySelector('.profile-auth-grid')
-    || c.querySelector('.profile-tab-content#tab-account')
-    || c.querySelector('.profile-wrap');
-  if (srcAnchor) srcAnchor.insertAdjacentHTML('afterend', `<div class="prof-src-box"><div><div class="prof-src-title">Приоритет источника</div><div class="prof-src-sub">Моментальный резерв включен всегда</div></div><div class="prof-src-switch"><button data-src="yandex" class="prof-src-btn prof-src-btn--yandex ${ps==='yandex'?'prof-src-btn--active':''}">Yandex</button><button data-src="github" class="prof-src-btn prof-src-btn--github ${ps==='github'?'prof-src-btn--active':''}">GitHub</button></div></div>`);
+
+  // Надежная вставка внутрь вкладки "Аккаунт"
+  const tabAccount = c.querySelector('#tab-account');
+  if (tabAccount) tabAccount.insertAdjacentHTML('beforeend', renderSourceSelector(ps));
+
   const statTracks = c.querySelector('#prof-stat-tracks');
   const statTime = c.querySelector('#prof-stat-time');
   const statStreak = c.querySelector('#prof-stat-streak');
