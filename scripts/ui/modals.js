@@ -8,7 +8,6 @@
 (function () {
   'use strict';
   const esc = s => window.Utils?.escapeHtml?.(String(s ?? '')) ?? String(s ?? '');
-  window.Utils?.dom?.createStyleOnce?.('modals-inline-cleanup', `.modal-feedback--dynamic{width:min(100%,var(--modal-max-width,520px));max-width:var(--modal-max-width,520px)}.modal-confirm-text{color:#9db7dd;line-height:1.45;margin-bottom:14px}.modal-confirm-btn{min-width:130px}.modal-choice-actions{display:flex;flex-direction:column;gap:8px;width:100%}.modal-choice-actions .modal-action-btn{width:100%;justify-content:center;min-height:44px}`);
   
   const open = ({ title = '', bodyHtml = '', maxWidth = 520, onClose } = {}) => {
     let c = document.getElementById('modals-container') || Object.assign(document.createElement('div'), { id: 'modals-container' });
