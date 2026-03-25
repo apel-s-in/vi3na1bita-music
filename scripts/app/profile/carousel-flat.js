@@ -169,7 +169,6 @@ export function mountProfileCarouselFlat({ root }) {
         } else {
           enterNew();
         }
-        }
       }, 80);
     };
 
