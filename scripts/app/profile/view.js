@@ -98,7 +98,8 @@ export const loadProfileView = async (ctx) => {
     sessionStorage.removeItem('jumpToAch');
     setTimeout(() => {
       if (window.Intel_CarouselFlat) {
-        window.Intel_CarouselFlat.jumpTo(1); // 1 = Индекс карточки "Достижения"
+        const achIdx = ['account','stats','achievements','recs','logs','settings'].indexOf('achievements');
+        window.Intel_CarouselFlat.jumpTo(achIdx >= 0 ? achIdx : 2);
         window.Intel_CarouselFlat.selectCurrent();
         setTimeout(() => c.querySelector('.ach-classic-tab[data-filter="available"]')?.click(), 50);
       }
