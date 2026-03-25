@@ -376,7 +376,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-25 21:48:54 UTC
+Сгенерировано: 2026-03-25 21:49:49 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -805,7 +805,7 @@ jobs:
   </template>
 
   <script>
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.2.07');
+    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.2.08');
     const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-03-25');
 
     // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
@@ -849,7 +849,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.2.07';
+const SW_VERSION = '8.2.08';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
@@ -8625,8 +8625,6 @@ import { fmtAchTimerText } from './progress-formatters.js';
 
 export async function openStatisticsModal(uid = null) {
   if (!uid) uid = window.playerCore?.getCurrentTrackUid?.() || null;
-
-  window.Utils?.dom?.createStyleOnce?.('statistics-modal-styles', `.sm-center{text-align:center}.sm-mb20{margin-bottom:20px}.sm-cover{width:100px;height:100px;border-radius:12px;overflow:hidden;margin:0 auto 12px;box-shadow:0 4px 15px rgba(0,0,0,0.5)}.sm-cover img{width:100%;height:100%;object-fit:cover}.sm-title{margin:0;color:#fff;font-size:18px}.sm-sub{font-size:12px;color:var(--secondary-color);margin-top:4px}.sm-fullw{width:100%}.sm-note{padding:14px 0 0;color:rgba(234,242,255,.72);font-size:12px;line-height:1.35;text-align:center;margin-bottom:14px}.sm-card,.sm-card-lg{background:rgba(0,0,0,0.2);padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.05);color:#cfe3ff}.sm-card{margin-bottom:12px;font-size:12px}.sm-card-lg{margin-bottom:15px}.sm-cap{font-size:11px;color:#888;margin-bottom:8px;font-weight:bold;letter-spacing:1px}.sm-top-row{display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px;color:#eaf2ff;align-items:center}.sm-top-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:10px}.sm-top-val{color:var(--secondary-color);flex-shrink:0}.sm-empty{text-align:center;font-size:12px;color:#888}.sm-ach-wrap{max-height:220px;overflow-y:auto;padding-right:5px;display:flex;flex-direction:column;gap:8px}.sm-ach-row{display:flex;align-items:center;gap:12px;padding:10px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.05)}.sm-ach-icon{font-size:24px}.sm-ach-main{flex:1}.sm-ach-name{font-size:14px;font-weight:bold;color:#fff;margin-bottom:2px}.sm-ach-desc{font-size:11px;color:#aaa}.sm-ach-ok{color:#4caf50;font-weight:bold}`);
 
   if (uid) {
     const t = window.TrackRegistry?.getTrackByUid(uid);
