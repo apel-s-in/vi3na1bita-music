@@ -365,6 +365,7 @@ vi3na1bita-music/
 │   ├── main.css
 │   ├── player.css
 │   ├── profile.css
+│   ├── showcase.css
 │   └── ui-core.css
 ├── .gitignore
 ├── albums.json
@@ -373,7 +374,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-25 20:58:11 UTC
+Сгенерировано: 2026-03-25 20:58:31 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -10781,6 +10782,10 @@ input:checked + .set-slider:before{transform:translateX(20px);background:#fff}
 .profile-list-item .log-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .profile-list-item .log-desc{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .profile-list-item .rec-play-btn{flex-shrink:0}
+
+//=================================================
+// FILE: /styles/showcase.css
+
 
 //=================================================
 // FILE: /styles/ui-core.css
