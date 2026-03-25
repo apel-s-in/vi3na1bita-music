@@ -189,6 +189,47 @@ test('logo pulse module is loaded without import/runtime crash', async ({ page }
   expect(state.hasUpdate).toBeTruthy();
 });
 
+test('profile smoke: open profile, change avatar/name, no console errors, playback survives', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', e => errors.push(String(e?.message || e)));
+  page.on('console', msg => {
+    if (msg.type() === 'error') errors.push(msg.text());
+  });
+
+  await loginByPromo(page);
+  await page.waitForSelector('#track-list .track', { timeout: 10000 });
+  await page.click('#track-list .track >> nth=0');
+  await page.waitForSelector('#lyricsplayerblock', { timeout: 10000 });
+
+  await page.click('.album-icon[data-akey="__profile__"]');
+  await page.waitForSelector('#tab-account', { timeout: 10000 });
+
+  await page.click('#prof-avatar-btn');
+  await page.waitForSelector('.prof-ava-btn', { timeout: 10000 });
+  await page.locator('.prof-ava-btn').nth(1).click();
+
+  await page.click('#prof-name-edit');
+  await page.fill('#prof-name-inp', 'Тестовый профиль');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(300);
+
+  const state = await page.evaluate(() => ({
+    playing: !!window.playerCore?.isPlaying?.(),
+    name: document.querySelector('#prof-name-inp')?.value || '',
+    avatar: document.querySelector('#prof-avatar-btn')?.textContent || ''
+  }));
+
+  expect(state.playing).toBeTruthy();
+  expect(state.name).toBe('Тестовый профиль');
+  expect(state.avatar.length).toBeGreaterThan(0);
+
+  const filtered = errors.filter(e =>
+    !/favicon/i.test(e) &&
+    !/ERR_ABORTED/i.test(e)
+  );
+  expect(filtered).toEqual([]);
+});
+
 test('sleep timer logs feature usage into global stats', async ({ page }) => {
   await loginByPromo(page);
   await page.waitForSelector('#track-list .track', { timeout: 10000 });
