@@ -368,7 +368,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-25 08:55:39 UTC
+Сгенерировано: 2026-03-25 08:56:34 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4286,7 +4286,7 @@ import { bindProfileAccount } from './account-bindings.js';
 
 export const loadProfileView = async (ctx) => {
   ctx.renderAlbumTitle('👤 ЛИЧНЫЙ КАБИНЕТ 👤', 'profile');
-  document.getElementById('cover-wrap').style.display = 'none';
+  const cw = document.getElementById('cover-wrap'); if (cw) cw.style.display = 'none';
   const c = document.getElementById('track-list'); if (!c) return;
 
   const { metaDB, cloudSync, all, ach, streak, profile, totalFull, totalSec, tokens } = await loadProfileModel();
