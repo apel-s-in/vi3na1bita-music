@@ -366,7 +366,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-25 07:34:01 UTC
+Сгенерировано: 2026-03-25 07:35:14 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3319,7 +3319,6 @@ export function mountProfileCarouselFlat({ root }) {
           setTimeout(enterNew, 180);
         } else {
           enterNew();
-        }
         }
       }, 80);
     };
