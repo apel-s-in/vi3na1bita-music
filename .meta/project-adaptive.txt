@@ -370,7 +370,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-25 10:13:46 UTC
+Сгенерировано: 2026-03-25 10:14:14 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -829,7 +829,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.2.04';
+const SW_VERSION = '8.2.05';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
