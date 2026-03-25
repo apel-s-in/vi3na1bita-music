@@ -13,7 +13,7 @@ const esc = s => window.Utils?.escapeHtml ? window.Utils.escapeHtml(String(s || 
 
 export async function loadFavoritesAlbum(ctx) {
   ctx.renderAlbumTitle('⭐⭐⭐ ИЗБРАННОЕ ⭐⭐⭐', 'fav');
-  document.getElementById('cover-wrap').style.display = 'none';
+  const cw = document.getElementById('cover-wrap'); if (cw) cw.style.display = 'none';
   const c = document.getElementById('track-list'); if (!c) return;
 
   const rb = () => {
