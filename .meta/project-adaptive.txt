@@ -363,7 +363,8 @@ vi3na1bita-music/
 ├── styles/
 │   ├── base.css
 │   ├── main.css
-│   └── profile.css
+│   ├── profile.css
+│   └── ui-core.css
 ├── .gitignore
 ├── albums.json
 ├── generate-context.js
@@ -371,7 +372,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-25 20:56:50 UTC
+Сгенерировано: 2026-03-25 20:57:37 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -10767,4 +10768,29 @@ input:checked + .set-slider:before{transform:translateX(20px);background:#fff}
 .profile-list-item .log-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .profile-list-item .log-desc{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .profile-list-item .rec-play-btn{flex-shrink:0}
+
+//=================================================
+// FILE: /styles/ui-core.css
+/* ==========================================
+   БИБЛИОТЕКА КОМПОНЕНТОВ (ui-core.css)
+   Эти элементы можно использовать на любой странице.
+   Они НЕ ДОЛЖНЫ иметь внешних отступов (margin), 
+   чтобы легко встраиваться в любые контейнеры.
+   ========================================== */
+
+/* 1. КНОПКИ (Текущие: .om-btn, .showcase-btn, .backup-btn, .modal-action-btn) */
+/* В идеале в будущем свести их к единому префиксу: .ui-btn, .ui-btn--primary, .ui-btn--danger */
+
+/* 2. МОДАЛЬНЫЕ ОКНА (Текущие: .modal-bg, .modal-feedback, .bigclose, .om-actions) */
+/* В будущем: .ui-modal, .ui-modal__header, .ui-modal__body */
+
+/* 3. УВЕДОМЛЕНИЯ / TOASTS (Текущие: #toast-container, .toast, .toast-success, .toast-error) */
+
+/* 4. ИНДИКАТОРЫ И ИКОНКИ (Текущие: .like-star, .offline-ind) */
+/* Звездочка избранного и замочек офлайна используются и в витрине, и в плеере, и в профиле */
+
+/* 5. КАРТОЧКИ СТАТИСТИКИ (Текущие: .stat-card, .stat-box, .stats-grid-compact) */
+/* Используются в модалке трека и во вкладке профиля */
+
+/* 6. ГРАФИКИ (Текущие: .chart-block, .chart-row, .chart-bars) */
 
