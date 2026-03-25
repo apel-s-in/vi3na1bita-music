@@ -29,7 +29,7 @@ export class StatsAggregator {
           s.globalListenSeconds += (lSec || 0); s.lastPlayedAt = ev.timestamp; s.featuresUsed = s.featuresUsed || {};
           if (isV) {
             s.globalValidListenCount++; dailyActive = true;
-            try { const d = new Date(ev.timestamp), h = d.getHours(), w = (d.getDay() + 6) % 7; (s.byHour = s.byHour || Array(24).fill(0))[h]++; (s.byWeekday = s.byWeekday || Array(7).fill(0))[w]++; } catch {}
+            try { const d = new Date(ev.timestamp), h = d.getHours(), w = (d.getDay() + 6) % 7; if (!Array.isArray(s.byHour)) s.byHour = Array(24).fill(0); if (!Array.isArray(s.byWeekday)) s.byWeekday = Array(7).fill(0); s.byHour[h]++; s.byWeekday[w]++; } catch {}
           }
           if (isF && !isRateLimited && v !== 'short') {
             s.globalFullListenCount++; this.lastFullListens.set(ev.uid, ev.timestamp);
