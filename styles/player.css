@@ -1,0 +1,9 @@
+/* ==========================================
+   ПЛЕЕР И ЛИРИКА (player.css)
+   ========================================== */
+
+/* 1. ПОЛНЫЙ ПЛЕЕР (Текущие префиксы: .lyrics-player-block, .player-controls, .player-progress-) */
+/* 2. МИНИ-ПЛЕЕР (Текущие: #now-playing, .mini-now, .mini-track-) */
+/* 3. ЛИРИКА (Текущие: #lyrics-window, .lyrics-scroll, .lyrics-countdown, .lyrics-animated-bg) */
+/* 4. КОНТРОЛЫ ГРОМКОСТИ И КАЧЕСТВА (Текущие: .volume-track, .volume-slider, #pq-btn) */
+/* 5. ТАЙМЕР СНА (Текущие: .sleep-timer-btn, .sleep-full, .sleep-hero, .sleep-remind-) */
