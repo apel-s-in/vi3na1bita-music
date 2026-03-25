@@ -365,7 +365,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-25 07:02:19 UTC
+Сгенерировано: 2026-03-25 07:03:17 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7785,7 +7785,6 @@ window.IconUtils = { renderIcon, setIconUse, renderFavoriteStar, setFavoriteStar
       `ctx: ${W.Howler?.ctx?.state || 'na'}`,
       `conn: ${state.connected ? '1' : '0'}`,
       `src: ${state.sourceKind}`,
-      `zero: ${state.zeroFrames}`,
       `uiSuspend: ${getUiSuspend() ? '1' : '0'}`
     ].join('\n');
   };
