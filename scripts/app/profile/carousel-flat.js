@@ -1,12 +1,12 @@
 const W = window;
 
 const cardsData = [
+  { id: 'account', tit: 'Аккаунт', ic: '👤' },
   { id: 'stats', tit: 'Статистика', ic: '📊' },
   { id: 'achievements', tit: 'Достижения', ic: '🏆' },
   { id: 'recs', tit: 'Рекомендации', ic: '💡' },
   { id: 'logs', tit: 'Журнал', ic: '📜' },
-  { id: 'settings', tit: 'Настройки', ic: '⚙️' },
-  { id: 'account', tit: 'Аккаунт', ic: '👤' }
+  { id: 'settings', tit: 'Настройки', ic: '⚙️' }
 ];
 
 // Трещины теперь огромные, перекрывают всю карточку
@@ -203,30 +203,44 @@ export function mountProfileCarouselFlat({ root }) {
     sel?.addEventListener('click', () => doSelect(false));
 
     const getActiveTab = () => root.querySelector('.profile-tab-content.active');
-    
-    const setContentDrift = (rawDx, isEnd = false, commit = false) => {
+    const clearTabFx = tab => {
+      if (!tab) return;
+      tab.style.transition = '';
+      tab.style.transform = '';
+      tab.style.opacity = '';
+      tab.style.willChange = '';
+    };
+
+    const applyDragToTab = rawDx => {
       const tab = getActiveTab();
       if (!tab) return;
-      
-      if (!isEnd) {
-        const dy = Math.min(100, Math.abs(rawDx) * 0.7);
-        const op = Math.max(0, 1 - Math.abs(rawDx) / 140);
-        tab.style.transition = 'none';
-        tab.style.transform = `translateY(${dy}px)`;
-        tab.style.opacity = String(op);
-      } else {
-        if (commit) {
-          tab.style.transition = 'transform .2s ease-in, opacity .2s ease-in';
-          tab.style.transform = 'translateY(120px)';
-          tab.style.opacity = '0';
-        } else {
-          tab.style.transition = 'transform .3s cubic-bezier(.22,1,.36,1), opacity .3s ease';
-          tab.style.transform = 'translateY(0px)';
-          tab.style.opacity = '1';
-          const cleanup = () => { tab.style.transition = ''; tab.style.transform = ''; tab.style.opacity = ''; tab.removeEventListener('transitionend', cleanup); };
-          tab.addEventListener('transitionend', cleanup, { once: true });
-        }
-      }
+      const p = Math.min(1, Math.abs(rawDx) / 120); // нормализованный прогресс свайпа 0..1
+      const dy = Math.round(p * 84);                // максимальный физический уход вниз
+      const op = Math.max(0.22, 1 - p * 0.58);     // плавное затухание без полного пропадания во время drag
+      tab.style.willChange = 'transform, opacity';
+      tab.style.transition = 'none';
+      tab.style.transform = `translateY(${dy}px)`;
+      tab.style.opacity = String(op);
+    };
+
+    const restoreDraggedTab = () => {
+      const tab = getActiveTab();
+      if (!tab) return;
+      tab.style.willChange = 'transform, opacity';
+      tab.style.transition = 'transform .22s cubic-bezier(.22,1,.36,1), opacity .22s ease';
+      tab.style.transform = 'translateY(0px)';
+      tab.style.opacity = '1';
+      tab.addEventListener('transitionend', () => clearTabFx(tab), { once: true });
+    };
+
+    const commitDraggedTabOut = () => {
+      const tab = getActiveTab();
+      if (!tab) return;
+      tab.style.willChange = 'transform, opacity';
+      tab.style.transition = 'transform .18s cubic-bezier(.55,0,.85,.25), opacity .18s ease';
+      tab.style.transform = 'translateY(110px)';
+      tab.style.opacity = '0';
+      tab.addEventListener('transitionend', () => clearTabFx(tab), { once: true });
     };
 
     scene.addEventListener('touchstart', e => {
@@ -234,24 +248,25 @@ export function mountProfileCarouselFlat({ root }) {
       isDrag = true; dragDelta = 0;
       car.style.transition = 'none';
       wrap.classList.remove('is-settled'); clearTimeout(wrap._tS);
+      clearTimeout(_selectDebounce);
     }, { passive: true });
 
     scene.addEventListener('touchmove', e => {
       if (!isDrag) return;
       const rawDx = e.touches[0].clientX - startX, dy = e.touches[0].clientY - startY;
       if (Math.abs(rawDx) < 8 && Math.abs(dy) < 8) return;
-      if (Math.abs(dy) > Math.abs(rawDx) + 14) { 
-        isDrag = false; 
-        setContentDrift(0, true, false); 
-        update(true); 
-        return; 
+
+      if (Math.abs(dy) > Math.abs(rawDx) + 14) {
+        isDrag = false;
+        restoreDraggedTab();
+        update(true, false);
+        return;
       }
 
       dragDelta = rawDx;
       const visualDelta = Math.max(-140, Math.min(140, rawDx));
       car.style.transform = `rotateY(${currIdx * -STEP + visualDelta * 0.45}deg)`;
-
-      setContentDrift(rawDx, false, false);
+      applyDragToTab(rawDx);
     }, { passive: true });
 
     scene.addEventListener('touchend', e => {
@@ -261,23 +276,26 @@ export function mountProfileCarouselFlat({ root }) {
       const committed = Math.abs(dragDelta) > 40;
 
       if (committed) {
-        setContentDrift(dragDelta, true, true);
+        commitDraggedTabOut();
         if (dragDelta > 40) currIdx--;
         else if (dragDelta < -40) currIdx++;
+        dragDelta = 0;
         update(true, true);
-      } else {
-        setContentDrift(dragDelta, true, false);
-        if (Math.abs(dragDelta) < 10) {
-          const card = e.target.closest('.sc-3d-card');
-          if (card) {
-            const idx = parseInt(card.dataset.idx, 10);
-            const norm = ((currIdx % TOTAL) + TOTAL) % TOTAL;
-            if (idx === norm && wrap.classList.contains('is-settled')) doSelect();
-          }
-        }
-        update(true, false);
+        return;
       }
-      dragDelta = 0; 
+
+      if (Math.abs(dragDelta) < 10) {
+        const card = e.target.closest('.sc-3d-card');
+        if (card) {
+          const idx = parseInt(card.dataset.idx, 10);
+          const norm = ((currIdx % TOTAL) + TOTAL) % TOTAL;
+          if (idx === norm && wrap.classList.contains('is-settled')) doSelect(false);
+        }
+      }
+
+      dragDelta = 0;
+      restoreDraggedTab();
+      update(true, false);
     }, { passive: true });
 
     scene.addEventListener('wheel', e => {
