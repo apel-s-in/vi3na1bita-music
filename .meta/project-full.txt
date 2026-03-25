@@ -368,7 +368,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-25 08:08:32 UTC
+Сгенерировано: 2026-03-25 08:09:43 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -10519,6 +10519,17 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 
 .rec-play-btn{background:rgba(77,170,255,.15);color:var(--secondary-color);border:none;width:36px;height:36px;border-radius:50%;display:flex;justify-content:center;align-items:center;cursor:pointer;transition:.2s}
 .rec-play-btn:hover{background:var(--secondary-color);color:#fff;transform:scale(1.1)}
+
+.profile-section-title{font-size:14px;font-weight:900;color:#eaf2ff;letter-spacing:.06em;text-transform:uppercase;margin:4px 0 2px}
+
+.prof-src-box{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:12px;display:flex;justify-content:space-between;align-items:center;margin-top:10px}
+.prof-src-title{font-size:13px;font-weight:bold;color:#fff}
+.prof-src-sub{font-size:11px;color:#888}
+.prof-src-switch{display:flex;background:rgba(0,0,0,0.3);border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,0.1)}
+.prof-src-btn{all:unset;cursor:pointer;padding:6px 12px;font-size:12px;font-weight:bold;transition:.2s}
+.prof-src-btn--yandex.prof-src-btn--active{color:#fff;background:radial-gradient(circle,#cc0000 0%,#880000 100%)}
+.prof-src-btn--github.prof-src-btn--active{color:#fff;background:radial-gradient(circle,#444 0%,#000 100%)}
+.prof-src-btn:not(.prof-src-btn--active){color:#666}
 
 //=================================================
 // FILE: /data/track-profiles/README.txt
