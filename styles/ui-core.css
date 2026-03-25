@@ -55,7 +55,53 @@
 .toast-warning{border-left:4px solid #ff9800}
 .toast-offline{border-left:4px solid #666}
 
-/* 4. ИНДИКАТОРЫ И ИКОНКИ */
+/* 4. ДОПОЛНИТЕЛЬНЫЕ ОКНА И PWA (Бывшие инъекции) */
+.ios-install-prompt{position:fixed;bottom:0;left:0;right:0;background:#1a1a1a;border-radius:20px 20px 0 0;padding:24px 20px;transform:translateY(100%);transition:transform .3s cubic-bezier(.1,.8,.2,1);z-index:10000;box-shadow:0 -4px 30px rgba(0,0,0,.5)}
+.ios-install-prompt.show{transform:translateY(0)}
+.ios-prompt-icon{width:64px;height:64px;margin:0 auto 16px;display:block;border-radius:14px;box-shadow:0 4px 12px rgba(0,0,0,.4)}
+.ios-prompt-title{font-weight:900;font-size:18px;margin-bottom:8px;color:#fff;text-align:center}
+.ios-prompt-text{opacity:.85;margin-bottom:20px;text-align:center;font-size:14px;line-height:1.5;color:#eaf2ff}
+.ios-prompt-close{position:absolute;top:12px;right:12px;background:rgba(255,255,255,.1);border:0;color:#fff;font-size:24px;cursor:pointer;line-height:1;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.ios-prompt-button{background:linear-gradient(135deg,#7c4dff,#4daaff);color:#fff;border:0;padding:14px;border-radius:12px;font-weight:900;width:100%;cursor:pointer;font-size:15px}
+
+.fb-modal-note{margin-bottom:20px;color:#8ab8fd;text-align:center}
+.fb-modal-links{display:flex;flex-direction:column;gap:15px;max-width:300px;margin:0 auto}
+.fb-modal-link{color:#fff;padding:15px;border-radius:8px;text-decoration:none;text-align:center}
+.fb-modal-link--tg{background:#0088cc}
+.fb-modal-link--mail{background:#4daaff}
+.fb-modal-link--gh{background:#333}
+
+.modal-feedback--dynamic{width:min(100%,var(--modal-max-width,520px));max-width:var(--modal-max-width,520px)}
+.modal-confirm-text{color:#9db7dd;line-height:1.45;margin-bottom:14px}
+.modal-confirm-btn{min-width:130px}
+.modal-choice-actions{display:flex;flex-direction:column;gap:8px;width:100%}
+.modal-choice-actions .modal-action-btn{width:100%;justify-content:center;min-height:44px}
+
+.sm-center{text-align:center}
+.sm-mb20{margin-bottom:20px}
+.sm-cover{width:100px;height:100px;border-radius:12px;overflow:hidden;margin:0 auto 12px;box-shadow:0 4px 15px rgba(0,0,0,0.5)}
+.sm-cover img{width:100%;height:100%;object-fit:cover}
+.sm-title{margin:0;color:#fff;font-size:18px}
+.sm-sub{font-size:12px;color:var(--secondary-color);margin-top:4px}
+.sm-fullw{width:100%}
+.sm-note{padding:14px 0 0;color:rgba(234,242,255,.72);font-size:12px;line-height:1.35;text-align:center;margin-bottom:14px}
+.sm-card,.sm-card-lg{background:rgba(0,0,0,0.2);padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.05);color:#cfe3ff}
+.sm-card{margin-bottom:12px;font-size:12px}
+.sm-card-lg{margin-bottom:15px}
+.sm-cap{font-size:11px;color:#888;margin-bottom:8px;font-weight:bold;letter-spacing:1px}
+.sm-top-row{display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px;color:#eaf2ff;align-items:center}
+.sm-top-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:10px}
+.sm-top-val{color:var(--secondary-color);flex-shrink:0}
+.sm-empty{text-align:center;font-size:12px;color:#888}
+.sm-ach-wrap{max-height:220px;overflow-y:auto;padding-right:5px;display:flex;flex-direction:column;gap:8px}
+.sm-ach-row{display:flex;align-items:center;gap:12px;padding:10px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.05)}
+.sm-ach-icon{font-size:24px}
+.sm-ach-main{flex:1}
+.sm-ach-name{font-size:14px;font-weight:bold;color:#fff;margin-bottom:2px}
+.sm-ach-desc{font-size:11px;color:#aaa}
+.sm-ach-ok{color:#4caf50;font-weight:bold}
+
+/* 5. ИНДИКАТОРЫ И ИКОНКИ */
 .like-star{--star-hit-size:24px;--star-glyph-size:28px;margin-left:auto;width:var(--star-hit-size);height:var(--star-hit-size);min-width:var(--star-hit-size);min-height:var(--star-hit-size);cursor:pointer;opacity:.98;transition:transform .18s,filter .13s,opacity .13s,color .13s;pointer-events:auto!important;position:relative;z-index:10;flex:0 0 var(--star-hit-size);display:inline-flex;align-items:center;justify-content:center;transform-origin:center;line-height:0}
 .like-star:hover{filter:brightness(1.13);opacity:1;transform:scale(1.12)}
 .like-star:active{transform:scale(.95)}
