@@ -375,7 +375,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-25 20:59:23 UTC
+Сгенерировано: 2026-03-25 21:11:05 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -574,8 +574,22 @@ jobs:
   <link rel="icon" href="icons/favicon-16.png" sizes="16x16" type="image/png">
 
   <link rel="preload" href="img/logo.png" as="image">
+  
+  <!-- Фундамент и UI Kit -->
+  <link rel="stylesheet" href="styles/base.css">
+  <link rel="stylesheet" href="styles/ui-core.css">
+  
+  <!-- Основные стили (в процессе распила) -->
   <link rel="stylesheet" href="styles/main.css">
+  
+  <!-- Модули -->
+  <link rel="stylesheet" href="styles/player.css">
+  <link rel="stylesheet" href="styles/showcase.css">
+  <link rel="stylesheet" href="styles/offline.css">
   <link rel="stylesheet" href="styles/profile.css">
+  
+  <!-- Карантин (мёртвые стили на проверку) -->
+  <link rel="stylesheet" href="styles/quarantine.css">
 
   <!-- R0 streaming hardening — оба источника preconnect для мгновенного fallback -->
   <link rel="preconnect" href="https://storage.yandexcloud.net" crossorigin>
