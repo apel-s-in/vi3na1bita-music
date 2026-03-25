@@ -20,7 +20,7 @@ import { bindProfileAccount } from './account-bindings.js';
 
 export const loadProfileView = async (ctx) => {
   ctx.renderAlbumTitle('👤 ЛИЧНЫЙ КАБИНЕТ 👤', 'profile');
-  document.getElementById('cover-wrap').style.display = 'none';
+  const cw = document.getElementById('cover-wrap'); if (cw) cw.style.display = 'none';
   const c = document.getElementById('track-list'); if (!c) return;
 
   const { metaDB, cloudSync, all, ach, streak, profile, totalFull, totalSec, tokens } = await loadProfileModel();
