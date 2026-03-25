@@ -1,0 +1,15 @@
+/* ==========================================
+   КАРАНТИН (quarantine.css)
+   Сюда помещаются стили, которые кажутся мертвыми.
+   Если за неделю ничего не сломалось — файл очищается.
+   ========================================== */
+
+/* 1. Кнопка сброса в старом окне статистики (теперь кнопка в профиле) */
+.stats-btn-reset {
+  background: none !important;
+  border: none !important;
+  cursor: pointer !important;
+  font-size: 18px !important;
+  opacity: .8 !important;
+  padding: 0 8px !important;
+}
