@@ -363,6 +363,7 @@ vi3na1bita-music/
 ├── styles/
 │   ├── base.css
 │   ├── main.css
+│   ├── offline.css
 │   ├── player.css
 │   ├── profile.css
 │   ├── showcase.css
@@ -374,7 +375,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-25 20:58:52 UTC
+Сгенерировано: 2026-03-25 20:59:23 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -10626,6 +10627,18 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 #sc-search-sticky .showcase-btn{flex:0 0 auto;min-width:max-content;padding:9px 12px}
 .sc-sheet-close{position:absolute;top:14px;right:14px;all:unset;cursor:pointer;font-size:22px;color:#888;width:30px;height:30px;display:flex;align-items:center;justify-content:center}
 #achievementsFill,#xp-progress-fill{width:0}
+
+//=================================================
+// FILE: /styles/offline.css
+/* ==========================================
+   ОФЛАЙН МЕНЕДЖЕР (offline.css)
+   ========================================== */
+
+/* 1. ГЛАВНОЕ ОКНО (Текущие: .om-overlay, .om-modal, .om-header, .om-body, .om-section) */
+/* 2. ПОЛОСА ПАМЯТИ (Текущие: .om-storage-segbar, .om-segbar--, .om-storage-legend) */
+/* 3. СЕТЕВЫЕ СВИТЧЕРЫ (Текущие: .om-toggle, .om-traffic) */
+/* 4. СПИСКИ ЗАГРУЗОК (Текущие: .om-track-list, .om-list-item, .om-pc-toprow) */
+/* 5. PROGRESS BAR В ПЛЕЕРЕ (Текущие: .player-cache-layer, @keyframes cacheAnim) */
 
 //=================================================
 // FILE: /styles/player.css
