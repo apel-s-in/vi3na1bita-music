@@ -376,7 +376,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-25 21:11:48 UTC
+Сгенерировано: 2026-03-25 21:12:23 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -9872,21 +9872,62 @@ import { initIosAudioKeeper } from './player-core/ios-audio-keeper.js';
 // FILE: /styles/base.css
 /* ==========================================
    ФУНДАМЕНТ ПРИЛОЖЕНИЯ (base.css)
-   Здесь лежат только глобальные правила.
-   Никаких кнопок и карточек здесь быть не должно!
    ========================================== */
 
-/* 1. ПЕРЕМЕННЫЕ (Текущие префиксы: :root) */
-/* В будущем: здесь будут все цвета, z-index, тайминги анимаций */
+/* 1. ПЕРЕМЕННЫЕ */
+:root {
+  /* Глобальные цвета и параметры */
+  --primary-bg: #181818;
+  --primary-color: #e80100;
+  --secondary-color: #4daaff;
+  --text-color: #f2f2f2;
+  --modal-bg: #252d39;
+  --border-color: #394866;
+  --btn-size: 44px;
+  --btn-radius: 8px;
+  --bg-0: #0f1218;
+  --c-blue: #8ab8fd;
+  --c-w: #fff;
+  --c-e: #eee;
+  --shadow-1: 0 4px 24px rgba(0,0,0,.3);
+  --shadow-2: 0 8px 32px rgba(0,0,0,.4);
+  --grad-blue: linear-gradient(90deg, #4daaff, #357ac9);
+  
+  /* Переменные Offline Manager */
+  --om-bd: rgba(255,255,255,.1);
+  --om-sub: #9db7dd;
+  --om-bg: #141420;
+  --om-border: rgba(255,255,255,.08);
+  --om-muted: rgba(255,255,255,.4);
+  --om-dim: rgba(255,255,255,.6);
+  --om-card: rgba(255,255,255,.03);
+  --om-accent: #7c4dff;
+  --om-accent-a: rgba(124,77,255,.15);
+  --om-green: #4caf50;
+  --om-red: #f44336;
+  --om-yellow: #ffc107;
+  --om-r: 10px;
+}
 
-/* 2. СБРОС И ТЕГИ (Текущие: *, html, body, a, button, input) */
-/* В будущем: базовые стили скроллбаров, выделения текста */
+@media (prefers-color-scheme: dark) {
+  body { background: #0d0d0d; }
+}
 
-/* 3. ГЛОБАЛЬНЫЙ ЛЕЙАУТ (Текущие: #main-block, #modals-container, #promocode-block) */
-/* В будущем: сетки страницы, безопасные зоны (env(safe-area-inset)) */
+/* 2. СБРОС И БАЗОВЫЕ ТЕГИ */
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; background: var(--primary-bg); color: var(--text-color); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; flex-direction: column; }
+body { min-height: 100vh; min-width: 100vw; padding-top: env(safe-area-inset-top); -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; background: transparent !important; }
+button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid var(--secondary-color); outline-offset: 2px; }
 
-/* 4. УТИЛИТЫ (Текущие: .hidden, [hidden], .sr-only, .animate-in) */
-/* В будущем: классы для быстрого выравнивания (.text-center, .mt-10) */
+/* 3. ГЛОБАЛЬНЫЙ ЛЕЙАУТ */
+#main-block, #promocode-block, #modals-container { position: relative; z-index: 5; }
+
+/* 4. УТИЛИТЫ И АНИМАЦИИ */
+.hidden, [hidden] { display: none !important; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border-width: 0; }
+
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.animate-in { animation: fadeInUp .4s ease-out; }
 
 //=================================================
 // FILE: /styles/main.css
