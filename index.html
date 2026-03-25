@@ -139,14 +139,6 @@
 <div class="profile-wrap">
 <div class="profile-tabs" id="prof-tabs" style="display:none"></div>
 <div class="profile-tab-content active" id="tab-stats">
-<button class="profile-tab-btn active" data-tab="stats">Статистика</button>
-<button class="profile-tab-btn" data-tab="achievements">Достижения</button>
-<button class="profile-tab-btn" data-tab="recs">Для Вас</button>
-<button class="profile-tab-btn" data-tab="logs">Журнал</button>
-<button class="profile-tab-btn" data-tab="settings">Настройки</button>
-<button class="profile-tab-btn" data-tab="account">Аккаунт</button>
-</div>
-<div class="profile-tab-content active" id="tab-stats">
 <div class="stats-grid-compact">
 <div class="stat-box"><b id="prof-stat-tracks">0</b><span>Треков</span></div>
 <div class="stat-box"><b id="prof-stat-time">0м</b><span>В пути</span></div>
@@ -310,7 +302,7 @@
   </template>
 
   <script>
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.94');
+    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.95');
     const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-03-25');
 
     // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
