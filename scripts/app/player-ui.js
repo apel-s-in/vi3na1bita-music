@@ -72,7 +72,9 @@
 
   const ensureBlock = (idx, uInit) => {
     if (!dom.blk) {
-      dom.blk = D.getElementById('player-template').content.cloneNode(true).querySelector('#lyricsplayerblock'); dom.now = D.getElementById('now-playing');
+      const tpl = D.getElementById('next-up-template');
+      if (!tpl?.content) return;
+      dom.blk = tpl.content.cloneNode(true).querySelector('#lyricsplayerblock'); dom.now = D.getElementById('now-playing');
       const q = s => dom.blk.querySelector(s);
       dom.el = { srcInd: q('#source-indicator'), fill: q('#player-progress-fill'), bar: q('#player-progress-bar'), tE: q('#time-elapsed'), tR: q('#time-remaining'), vF: q('#volume-fill'), vH: q('#volume-handle'), vS: q('#volume-slider'), ico: q('#play-pause-icon'), pq: q('#pq-btn'), pqL: q('#pq-btn-label'), fav: q('#favorites-btn'), favI: q('#favorites-btn-icon'), dl: q('#track-download-btn') };
       
