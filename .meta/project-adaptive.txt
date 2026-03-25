@@ -370,7 +370,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-25 09:43:24 UTC
+Сгенерировано: 2026-03-25 09:44:01 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -682,7 +682,8 @@ jobs:
     </div>
   </template>
 
-<template id="next-up-template">
+<template id="player-template">
+    <div class="lyrics-player-block" id="lyricsplayerblock">
     <!-- (разметка без изменений) -->
     <div class="lyrics-player-block" id="lyricsplayerblock">
       <div id="lyrics-window" class="lyrics-normal">
