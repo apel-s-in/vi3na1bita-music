@@ -366,6 +366,7 @@ vi3na1bita-music/
 │   ├── offline.css
 │   ├── player.css
 │   ├── profile.css
+│   ├── quarantine.css
 │   ├── showcase.css
 │   └── ui-core.css
 ├── .gitignore
@@ -375,7 +376,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-25 21:11:05 UTC
+Сгенерировано: 2026-03-25 21:11:48 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -10809,6 +10810,24 @@ input:checked + .set-slider:before{transform:translateX(20px);background:#fff}
 .profile-list-item .log-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .profile-list-item .log-desc{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .profile-list-item .rec-play-btn{flex-shrink:0}
+
+//=================================================
+// FILE: /styles/quarantine.css
+/* ==========================================
+   КАРАНТИН (quarantine.css)
+   Сюда помещаются стили, которые кажутся мертвыми.
+   Если за неделю ничего не сломалось — файл очищается.
+   ========================================== */
+
+/* 1. Кнопка сброса в старом окне статистики (теперь кнопка в профиле) */
+.stats-btn-reset {
+  background: none !important;
+  border: none !important;
+  cursor: pointer !important;
+  font-size: 18px !important;
+  opacity: .8 !important;
+  padding: 0 8px !important;
+}
 
 //=================================================
 // FILE: /styles/showcase.css
