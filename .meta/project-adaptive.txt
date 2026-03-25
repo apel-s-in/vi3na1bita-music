@@ -370,7 +370,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-25 09:44:16 UTC
+Сгенерировано: 2026-03-25 09:45:39 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -829,7 +829,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.2.03';
+const SW_VERSION = '8.2.04';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
@@ -5283,7 +5283,7 @@ if (errs.length) { console.error('Failed:\n', errs.join('\n')); process.exit(2);
 // UID.092_(Incremental rollout order)_(делать staged внедрение через один конфиг)_(intel boot должен управляться отсюда)
 
 export const APP_CONFIG = {
-  APP_VERSION: '8.2.03',
+  APP_VERSION: '8.2.04',
   BUILD_DATE: '2026-03-25',
   PROMOCODE: 'VITRINA2025',
   ICON_ALBUMS_ORDER: [
@@ -10290,11 +10290,8 @@ body.news-view #cover-wrap{display:none!important}
 .mini-now .like-star{z-index:2;margin-left:10px}
 #now-playing #lyricsplayerblock{border-radius:0!important;background:0 0!important;box-shadow:none!important;border-bottom:none!important;margin:0!important}
 #now-playing #lyricsplayerblock .player-controls{background:0 0!important;padding:4px 18px!important;display:flex!important;align-items:center!important;justify-content:center!important}
-#now-playing #lyricsplayerblock #lyrics-window,#now-playing #lyricsplayerblock .player-progress-wrapper,#now-playing #lyricsplayerblock .player-controls-row:nth-child(2),#now-playing #lyricsplayerblock .volume-control-wrapper,#now-playing #lyricsplayerblock .player-buttons-wrapper,#now-playing #next-up{display:none!important}
-.next-up{display:none;margin:8px 4px 0;font-size:.98em;align-items:center;gap:8px;padding:6px 10px;background:rgba(255,255,255,.03);border-radius:8px;transition:none!important}
+#now-playing #lyricsplayerblock #lyrics-window,#now-playing #lyricsplayerblock .player-progress-wrapper,#now-playing #lyricsplayerblock .player-controls-row:nth-child(2),#now-playing #lyricsplayerblock .volume-control-wrapper,#now-playing #lyricsplayerblock .player-buttons-wrapper{display:none!important}
 #now-playing #lyricsplayerblock .player-controls-row{margin:0!important;align-items:center!important}
-.next-up .label{color:var(--c-blue);opacity:.9;font-size:13px}
-.next-up .title{color:var(--primary-color);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1;font-size:14px}
 .logo-bottom{max-width:112px;width:23vw;min-width:66px;height:auto;display:block;margin:0 auto 15px!important;cursor:pointer;transition:transform .05s ease-out!important;will-change:transform,filter;transform:translateZ(0);transform-origin:center}
 .logo-bottom:hover{opacity:.9}
 .bottom-controls-center{display:flex;flex-direction:column;align-items:center;justify-content:center;margin:32px auto 0;gap:10px;width:100%;max-width:300px;padding-bottom:env(safe-area-inset-bottom)}
