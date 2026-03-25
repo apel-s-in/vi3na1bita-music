@@ -376,7 +376,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-25 21:47:47 UTC
+Сгенерировано: 2026-03-25 21:48:54 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -8114,8 +8114,6 @@ window.IconUtils = { renderIcon, setIconUse, renderFavoriteStar, setFavoriteStar
     if (!txt) txt = (W.LyricsController?.getCurrentLyricsLines?.() || []).map(i => i.line).filter(Boolean).join('\n');
     if (!txt) return N?.warning('Текст песни недоступен');
     const esc = U?.escapeHtml || (s => String(s || ''));
-    
-    U?.dom?.createStyleOnce?.('lyrics-modal-styles', `.lyrics-modal-box{max-height:80vh}.lyrics-modal-meta{color:#8ab8fd;margin-bottom:16px;font-size:14px;text-align:center}.lyrics-modal-text-wrap{max-height:55vh;overflow-y:auto;overflow-x:hidden;padding:16px;background:rgba(0,0,0,0.2);border-radius:10px;scrollbar-width:thin;scrollbar-color:rgba(77,170,255,0.3) transparent}.lyrics-modal-text-inner{white-space:pre;font-size:15px;line-height:1.8;width:max-content}.lyrics-modal-actions{display:flex;gap:10px;margin-top:16px;justify-content:center;flex-wrap:wrap}`);
 
     const m = W.Modals?.open?.({ title: esc(t.title), maxWidth: 420, bodyHtml: `<div class="lyrics-modal lyrics-modal-box"><div class="lyrics-modal-meta">${esc(t.artist || 'Витрина Разбита')} · ${esc(t.album || '')}</div><div class="lyrics-modal-text-wrap" id="lm-wrap"><div class="lyrics-fulltext lyrics-modal-text-inner" id="lm-inner">${esc(txt)}</div></div><div class="lyrics-modal-actions"><button class="modal-action-btn" id="copy-lyrics-btn">📋 Копировать</button></div></div>` });
     if (!m) return N?.error('Система окон недоступна');
