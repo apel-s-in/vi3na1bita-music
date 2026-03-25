@@ -1,0 +1,63 @@
+export const getProfileTemplateHtml = () => `
+<div class="profile-wrap">
+  <div class="profile-tabs" id="prof-tabs" style="display:none"></div>
+
+  <div class="profile-tab-content active" id="tab-stats">
+    <div class="stats-grid-compact">
+      <div class="stat-box"><b id="prof-stat-tracks">0</b><span>Треков</span></div>
+      <div class="stat-box"><b id="prof-stat-time">0м</b><span>В пути</span></div>
+      <div class="stat-box"><b id="prof-stat-streak">0</b><span>Стрик (дней)</span></div>
+      <div class="stat-box"><b id="prof-stat-ach">0</b><span>Ачивок</span></div>
+    </div>
+    <div class="profile-section-title">🏆 ТОП-5 ТРЕКОВ</div>
+    <div id="prof-top-tracks"></div>
+  </div>
+
+  <div class="profile-tab-content" id="tab-achievements">
+    <div class="ach-rpg-header">
+      <div class="rpg-level-badge"><span class="lvl-lbl">УР</span><span class="lvl-val" id="user-level-badge">1</span></div>
+      <div class="ach-progress-bars">
+        <div class="ach-progress-header"><span class="ach-progress-title">ПРОГРЕСС ДОСТИЖЕНИЙ</span></div>
+        <div class="ach-bar ach-bar-single"><div class="ach-bar-fill" id="achievementsFill"></div></div>
+        <div class="ach-stat-row"><div class="ach-done-label" id="achievementsCount">ВЫПОЛНЕНО: 0 / 0</div><div class="ach-xp-label" id="xp-text">0 / 100 XP</div></div>
+        <div class="ach-bar ach-bar-xp"><div class="ach-bar-fill xp-fill" id="xp-progress-fill"></div></div>
+      </div>
+    </div>
+    <div class="ach-backup-controls" id="ach-backup-controls" style="margin-bottom:12px"><button class="backup-btn" id="dash-save-btn" type="button">СОХРАНИТЬ ПРОГРЕСС</button></div>
+    <div class="ach-classic-tabs" id="ach-inner-tabs">
+      <div class="ach-classic-tab active" data-filter="available">Доступные</div>
+      <div class="ach-classic-tab" data-filter="done">Выполненные</div>
+      <div class="ach-classic-tab" data-filter="secret">Секретные</div>
+    </div>
+    <div id="prof-ach-list"></div>
+  </div>
+
+  <div class="profile-tab-content" id="tab-recs">
+    <div class="profile-section-title">💡 МЫ РЕКОМЕНДУЕМ</div>
+    <div id="prof-recs-list"></div>
+  </div>
+
+  <div class="profile-tab-content" id="tab-logs">
+    <div class="profile-section-title">📜 ИСТОРИЯ АКТИВНОСТИ</div>
+    <div id="prof-logs-list">Загрузка...</div>
+  </div>
+
+  <div class="profile-tab-content" id="tab-settings"></div>
+
+  <div class="profile-tab-content" id="tab-account">
+    <div class="prof-account-card">
+      <button class="prof-ava-sq" id="prof-avatar-btn" title="Изменить аватар (нажмите для смены)"></button>
+      <div class="prof-account-info">
+        <div class="prof-name-row">
+          <input type="text" id="prof-name-inp" class="prof-name-inp-flat" maxlength="15" autocomplete="off" spellcheck="false" readonly>
+          <button class="prof-name-pencil" id="prof-name-edit" title="Изменить имя">✏️</button>
+        </div>
+        <div class="prof-meta-row" id="prof-meta-since">📅 Слушаю с: —</div>
+        <div class="prof-meta-row" id="prof-meta-days">🎵 Дней с нами: —</div>
+        <div class="prof-meta-row" id="prof-meta-level">⭐ Уровень: —</div>
+      </div>
+    </div>
+    <div class="profile-auth-grid" id="prof-auth-grid"></div>
+  </div>
+</div>`;
+export default { getProfileTemplateHtml };
