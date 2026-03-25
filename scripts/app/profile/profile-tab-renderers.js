@@ -1,32 +1,15 @@
-import { bindProfileActions } from './actions.js';
-import { bindProfileLiveBindings } from './live-bindings.js';
-import { bindProfileAccount } from './account-bindings.js';
+import { renderProfileStats } from './stats-view.js';
+import { renderProfileRecs } from './recs-view.js';
+import { renderProfileLogs } from './logs-view.js';
 
-export const bindProfileTabControllers = ({ ctx, container, achView, profile, metaDB, cloudSync, tokens, onProfileChanged, reloadProfile } = {}) => {
+export const renderProfileTabsData = async ({ container, all, metaDB } = {}) => {
   if (!container) return;
-
-  bindProfileAccount({
-    container,
-    profile,
-    metaDB,
-    onProfileChanged
-  });
-
-  bindProfileLiveBindings({
-    ctx,
-    getContainer: () => document.getElementById('track-list'),
-    achView
-  });
-
-  bindProfileActions({
-    ctx,
-    container,
-    achView,
-    metaDB,
-    cloudSync,
-    tokens,
-    reloadProfile
-  });
+  renderProfileStats({ container, all });
+  renderProfileRecs({ container, all });
+  setTimeout(() => {
+    renderProfileLogs({ container, metaDB });
+    window.AlbumsManager?.highlightCurrentTrack?.();
+  }, 120);
 };
 
-export default { bindProfileTabControllers };
+export default { renderProfileTabsData };
