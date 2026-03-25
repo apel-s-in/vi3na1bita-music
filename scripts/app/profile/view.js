@@ -16,6 +16,7 @@ import { bindProfileActions } from './actions.js';
 import { bindProfileLiveBindings } from './live-bindings.js';
 import { loadProfileModel } from './model.js';
 import { renderProfileShell } from './render-shell.js';
+import { bindProfileAccount } from './account-bindings.js';
 
 export const loadProfileView = async (ctx) => {
   ctx.renderAlbumTitle('👤 ЛИЧНЫЙ КАБИНЕТ 👤', 'profile');
@@ -38,51 +39,12 @@ export const loadProfileView = async (ctx) => {
   };
   syncCarouselAccountCard();
 
-  const nInp = c.querySelector('#prof-name-inp');
-  const pencilBtn = c.querySelector('#prof-name-edit');
-  if (nInp) {
-    // Начальное состояние: НЕ readonly, просто визуально неактивен через CSS-класс
-    nInp.removeAttribute('readonly');
-    nInp.classList.add('name-inactive');
-
-    const saveName = async () => {
-      const newName = nInp.value.trim() || 'Слушатель';
-      profile.name = newName;
-      nInp.classList.add('name-inactive');
-      nInp.blur();
-      metaDB && await metaDB.setGlobal('user_profile', profile).catch(()=>{});
-      window.NotificationSystem?.success('Имя сохранено');
-      syncCarouselAccountCard();
-      const lvlEl = c.querySelector('#prof-meta-level');
-      if (lvlEl) lvlEl.textContent = `⭐ Уровень: ${window.achievementEngine?.profile?.level || 1}`;
-    };
-
-    nInp.addEventListener('blur', saveName);
-    nInp.addEventListener('keydown', e => {
-      if (e.key === 'Enter') { e.preventDefault(); saveName(); }
-      if (e.key === 'Escape') { nInp.value = profile.name || 'Слушатель'; nInp.classList.add('name-inactive'); nInp.blur(); }
-    });
-    nInp.addEventListener('focus', () => nInp.classList.remove('name-inactive'));
-
-    pencilBtn?.addEventListener('click', () => {
-      nInp.classList.remove('name-inactive');
-      // iOS требует небольшой задержки перед focus после изменения состояния
-      requestAnimationFrame(() => {
-        nInp.focus();
-        // Ставим курсор в конец
-        const len = nInp.value.length;
-        nInp.setSelectionRange(len, len);
-      });
-    });
-  }
-
-  // Обновить уровень в мета-строке когда достижения загрузятся
-  const updateLevelMeta = () => {
-    const lvlEl = c.querySelector('#prof-meta-level');
-    if (lvlEl) lvlEl.textContent = `⭐ Уровень: ${window.achievementEngine?.profile?.level || 1}`;
-  };
-  updateLevelMeta();
-  window.addEventListener('achievements:updated', updateLevelMeta, { once: false });
+  bindProfileAccount({
+    container: c,
+    profile,
+    metaDB,
+    onProfileChanged: syncCarouselAccountCard
+  });
 
   const achView = createProfileAchievementsView({ ctx, container: c.querySelector('#prof-ach-list'), engine: window.achievementEngine });
   achView.render('available');
