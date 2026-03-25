@@ -19,9 +19,7 @@ export async function openStatisticsModal(uid = null) {
   }
 
   const allStats = await metaDB.getAllStats(), totalFull = allStats.reduce((acc, s) => acc + (s.globalFullListenCount || 0), 0), totalSecs = allStats.reduce((acc, s) => acc + (s.globalListenSeconds || 0), 0);
-  const byH = Array(24).fill(0), byW = Array(7).fill(0);
-  allStats.filter(s => s.uid !== 'global').forEach(s => { (s.byHour || []).forEach((v, h) => byH[h] += v || 0); (s.byWeekday || []).forEach((v, d) => byW[d] += v || 0); });
-  const gFeat = (allStats.find(s => s.uid === 'global') || {}).featuresUsed || {}, achVal = (await metaDB.getGlobal('unlocked_achievements'))?.value || {}, engine = window.achievementEngine;
+const byH = Array(24).fill(0), byW = Array(7).fill(0);
 
   const topTracks = [...allStats].filter(s => s.uid !== 'global').sort((a, b) => (b.globalFullListenCount || 0) - (a.globalFullListenCount || 0)).slice(0, 5).map(s => { const tr = window.TrackRegistry?.getTrackByUid(s.uid); return tr ? `<div class="sm-top-row" data-uid="${s.uid}"><span class="sm-top-title">${window.Utils?.escapeHtml(tr.title)}</span><b class="sm-top-val">${s.globalFullListenCount} раз</b></div>` : ''; }).join('') || '<div class="sm-empty">Слушайте музыку, чтобы увидеть топ</div>';
 
