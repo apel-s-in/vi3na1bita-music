@@ -96,7 +96,8 @@ class AlbumsManager {
     try {
       D.body.classList.toggle('profile-view', key === PROFILE);
       const tList = $('track-list'); if (tList) tList.innerHTML = '';
-      $('social-links').innerHTML = ''; W.GalleryManager?.clear?.();
+      const social = $('social-links'); if (social) social.innerHTML = '';
+      W.GalleryManager?.clear?.();
 
       const sp = { [FAV]: 'loadFavoritesAlbum', [NEWS]: 'loadNewsAlbum', [SHOWCASE]: 'loadShowcaseAlbum', [PROFILE]: 'loadProfileAlbum' };
       if (sp[key]) { await (await import('./albums/specials.js'))[sp[key]](this); } 
@@ -111,8 +112,10 @@ class AlbumsManager {
         
         await W.GalleryManager?.loadGallery?.(key); this.covers.set(key, await W.GalleryManager?.getFirstCoverUrl?.(key) || LOGO);
         const cSlot = $('cover-slot'); if (cSlot && W.GalleryManager?.getItemsCount?.() <= 0) cSlot.innerHTML = `<img src="${LOGO}" alt="Cover">`;
-        $('cover-wrap').style.display = ''; this.renderAlbumTitle(d.title);
-        $('social-links').innerHTML = (d.links || []).filter(l => l.url).map(l => `<a href="${l.url}" target="_blank" rel="noopener noreferrer">${l.label}</a>`).join('');
+        const coverWrap = $('cover-wrap'); if (coverWrap) coverWrap.style.display = '';
+        this.renderAlbumTitle(d.title);
+        const social = $('social-links');
+        if (social) social.innerHTML = (d.links || []).filter(l => l.url).map(l => `<a href="${l.url}" target="_blank" rel="noopener noreferrer">${l.label}</a>`).join('');
         
         if (tList) {
           tList.innerHTML = d.tracks.map((t, i) => `<div class="track" id="trk${i}" data-index="${i}" data-album="${escHtml(key)}" data-uid="${escHtml(t.uid)}"><div class="tnum">${String(t.num).padStart(2,'0')}.</div><div class="track-title">${escHtml(t.title)}</div>${renderFavoriteStar(!!(t.uid && W.playerCore?.isFavorite?.(t.uid)), `data-album="${escHtml(key)}" data-uid="${escHtml(t.uid)}"` )}</div>`).join('');
