@@ -4,7 +4,7 @@
 // UID.080_(Provider actions bridge)_(социальные/provider действия из профиля должны идти через единый bridge)_(не вызывать provider API напрямую из view)
 // UID.083_(Yandex Metrica safe export)_(profile interactions можно маппить наружу только через mapper)_(не писать external telemetry напрямую из action handlers)
 // UID.094_(No-paralysis rule)_(profile actions должны сохранять старое поведение при отсутствии intel layer)_(новые provider/consent controls strictly optional)
-export const bindProfileActions = ({ ctx, container: c, achView: aV, profile: p, metaDB: db, cloudSync: cs, tokens: tk, reloadProfile: rP }) => {
+export const bindProfileActions = ({ ctx, container: c, achView: aV, metaDB: db, cloudSync: cs, tokens: tk, reloadProfile: rP }) => {
   if (!c || ctx._pB) return; ctx._pB = true;
   c.addEventListener('click', async e => {
     const t = e.target, f = s => t.closest(s); let el;
@@ -27,27 +27,7 @@ export const bindProfileActions = ({ ctx, container: c, achView: aV, profile: p,
     } else if (el = f('.auth-btn')) {
       const id = el.dataset.auth;
       tk[id] ? (id==='yandex'&&cs?.sync?cs.sync(id):window.NotificationSystem?.info('Синхронизация...')) : (id==='yandex'&&cs?.auth?cs.auth(id):window.NotificationSystem?.info('Недоступно'));
-    } else if (f('#prof-avatar-btn')) {
-      const AVA_ITEMS = ['😎','🎧','🎸','🦄','🦇','👽','🤖','🐱','🦊','🐼','🔥','💎','🎵','🌟','🦁','🐯','🦊','🎮','🎤','🎹','🥁','🎺','🔄'];
-      window.Utils?.profileModals?.avatarPicker?.({
-        title: 'Аватар профиля',
-        items: AVA_ITEMS,
-        onPick: async (v, m) => {
-          const isReset = v === '🔄';
-          p.avatar = isReset ? '😎' : v;
-          c.querySelector('#prof-avatar-btn').textContent = p.avatar;
-          db && await db.setGlobal('user_profile', p).catch(()=>{});
-          m?.remove?.();
-          // Обновить карточку карусели
-          const card = c.querySelector('.sc-3d-card[data-id="account"]');
-          if (card) {
-            const ic = card.querySelector('.sc-3d-ic');
-            if (ic) ic.textContent = isReset ? '👤' : v;
-          }
-          if (isReset) window.NotificationSystem?.info('Аватар сброшен');
-        }
-      });
-    } else if (f('#prof-name-edit')) c.querySelector('#prof-name-inp')?.focus();
+    }
     else if (el = f('[data-src]')) {
       if (['yandex','github'].includes(el.dataset.src)) { localStorage.setItem('sourcePref', el.dataset.src); window.TrackRegistry?.resetSourceCache?.(); window.TrackRegistry?.ensurePopulated?.().catch(()=>{}); window.NotificationSystem?.success(`Приоритет: ${el.dataset.src}`); rP?.(); }
     } else if (el = f('.rec-play-btn')) { window.ShowcaseManager?.playContext?.(el.dataset.playuid); window.NotificationSystem?.info('Запуск рекомендации'); }
