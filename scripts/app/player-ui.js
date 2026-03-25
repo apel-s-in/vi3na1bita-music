@@ -8,7 +8,7 @@
 (function (W, D) {
   'use strict';
   const U = W.Utils, PC = () => W.playerCore, AM = () => W.AlbumsManager;
-  const st = { isMini: false, seeking: false, provider: 'unknown' }, dom = { blk: null, now: null, mini: null, nUp: null, jump: null, el: {} };
+  const st = { isMini: false, seeking: false, provider: 'unknown' }, dom = { blk: null, now: null, mini: null, jump: null, el: {} };
   let _inited = false, _booting = false;
 
   const applyFavoritesOnlyDomFilter = () => {
@@ -53,10 +53,8 @@
     if (e.srcInd) { const prv = { yandex: ['si-yandex', 'Yandex Cloud'], github: ['si-github', 'GitHub Pages'], cache: ['si-cache', 'Офлайн Кэш'] }[st.provider]; e.srcInd.className = `source-indicator ${prv ? prv[0] : ''}`; e.srcInd.style.opacity = prv ? '' : '0.3'; e.srcInd.title = prv ? `Источник: ${prv[1]}` : 'Определение источника...'; }
 
     if (st.isMini && dom.mini) {
-      const nt = c.getPlaylistSnapshot()?.[c.getNextIndex()];
       if (e.mTi) e.mTi.textContent = t?.title ? `${t.title} — ${W.TrackRegistry?.getAlbumTitle(t.sourceAlbum) || t.album || 'Альбом'}` : '—';
       if (e.mSr) W.IconUtils?.setFavoriteStarState?.(e.mSr, U.fav.isTrackLikedInContext({ playingAlbum: pA, track: t }));
-      if (e.mNUp) e.mNUp.textContent = nt?.title || '—';
     }
 
   };
@@ -72,7 +70,7 @@
 
   const ensureBlock = (idx, uInit) => {
     if (!dom.blk) {
-      const tpl = D.getElementById('next-up-template');
+      const tpl = D.getElementById('player-template');
       if (!tpl?.content) return;
       dom.blk = tpl.content.cloneNode(true).querySelector('#lyricsplayerblock');
       dom.now = D.getElementById('now-playing');
@@ -119,8 +117,7 @@
     if (st.isMini) {
       if (!dom.mini) {
         dom.mini = D.getElementById('mini-header-template').content.cloneNode(true).querySelector('#mini-now'); 
-        dom.nUp = D.getElementById('next-up-template').content.cloneNode(true).querySelector('#next-up');
-        Object.assign(dom.el, { mPrg: dom.mini?.querySelector('#mini-now-progress'), mTi: dom.mini?.querySelector('#mini-now-title'), mSr: dom.mini?.querySelector('#mini-now-star'), mNUp: dom.nUp?.querySelector('.title') });
+        Object.assign(dom.el, { mPrg: dom.mini?.querySelector('#mini-now-progress'), mTi: dom.mini?.querySelector('#mini-now-title'), mSr: dom.mini?.querySelector('#mini-now-star') });
         if (dom.mini) {
           dom.mini.onclick = e => {
             if (e.target.closest('#mini-now-star')) { e.stopPropagation(); const tr = PC().getCurrentTrack(); if(tr?.uid) PC().toggleFavorite(tr.uid, { source: AM()?.getPlayingAlbum?.() === W.SPECIAL_FAVORITES_KEY ? 'favorites' : 'album', albumKey: tr.sourceAlbum }); syncUI(); } 
@@ -131,17 +128,13 @@
       if (!dom.now.contains(dom.blk)) {
         if (dom.mini) dom.now.appendChild(dom.mini);
         dom.now.appendChild(dom.blk);
-        if (dom.nUp) dom.now.appendChild(dom.nUp);
       }
       W.LyricsController?.applyMiniMode?.(); 
-      const disp = l?.classList.contains('sc-is-searching') ? 'none' : 'flex';
-      if (dom.mini) dom.mini.style.display = disp;
-      if (dom.nUp) dom.nUp.style.display = disp;
+      if (dom.mini) dom.mini.style.display = l?.classList.contains('sc-is-searching') ? 'none' : 'flex';
     } else {
       if (r) { r.after(dom.blk); if (uInit) setTimeout(() => r.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50); }
       W.LyricsController?.restoreFromMiniMode?.(); dom.now.innerHTML = ''; 
       if (dom.mini) dom.mini.style.display = 'none';
-      if (dom.nUp) dom.nUp.style.display = 'none';
     }
 
     dom.blk.style.display = l?.classList.contains('sc-is-searching') ? 'none' : '';
@@ -197,6 +190,6 @@
     _booting = false;
   };
 
-  W.PlayerUI = { initialize: init, ensurePlayerBlock: (i, o) => ensureBlock(i, o?.userInitiated), updateMiniHeader: syncUI, updateNextUpLabel: syncUI, updatePlaylistFiltering: () => { applyFavoritesOnlyDomFilter(); if (dom.blk) syncUI(); }, applyFavoritesOnlyDomFilter, togglePlayPause: () => PC().isPlaying() ? PC().pause() : PC().play(), switchAlbumInstantly: () => { if (PC().getIndex() >= 0) ensureBlock(PC().getIndex()); } };
+  W.PlayerUI = { initialize: init, ensurePlayerBlock: (i, o) => ensureBlock(i, o?.userInitiated), updateMiniHeader: syncUI, updatePlaylistFiltering: () => { applyFavoritesOnlyDomFilter(); if (dom.blk) syncUI(); }, applyFavoritesOnlyDomFilter, togglePlayPause: () => PC().isPlaying() ? PC().pause() : PC().play(), switchAlbumInstantly: () => { if (PC().getIndex() >= 0) ensureBlock(PC().getIndex()); } };
   D.readyState === 'loading' ? D.addEventListener('DOMContentLoaded', init) : init();
 })(window, document);
