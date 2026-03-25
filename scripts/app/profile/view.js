@@ -12,11 +12,10 @@ import { createProfileAchievementsView } from './achievements-view.js';
 import { renderProfileStats } from './stats-view.js';
 import { renderProfileRecs } from './recs-view.js';
 import { renderProfileLogs } from './logs-view.js';
-import { bindProfileActions } from './actions.js';
-import { bindProfileLiveBindings } from './live-bindings.js';
 import { loadProfileModel } from './model.js';
 import { renderProfileShell } from './render-shell.js';
-import { bindProfileAccount } from './account-bindings.js';
+import { renderProfileTabsData } from './profile-tab-renderers.js';
+import { bindProfileTabControllers } from './profile-tab-bindings.js';
 
 export const loadProfileView = async (ctx) => {
   ctx.renderAlbumTitle('👤 ЛИЧНЫЙ КАБИНЕТ 👤', 'profile');
@@ -39,22 +38,22 @@ export const loadProfileView = async (ctx) => {
   };
   syncCarouselAccountCard();
 
-  bindProfileAccount({
-    container: c,
-    profile,
-    metaDB,
-    onProfileChanged: syncCarouselAccountCard
-  });
-
   const achView = createProfileAchievementsView({ ctx, container: c.querySelector('#prof-ach-list'), engine: window.achievementEngine });
   achView.render('available');
 
-  renderProfileStats({ container: c, all });
-  renderProfileRecs({ container: c, all });
-  setTimeout(() => { renderProfileLogs({ container: c, metaDB }); window.AlbumsManager?.highlightCurrentTrack?.(); }, 120);
+  await renderProfileTabsData({ container: c, all, metaDB });
 
-  bindProfileLiveBindings({ ctx, getContainer: () => document.getElementById('track-list'), achView });
-  bindProfileActions({ ctx, container: c, achView, metaDB, cloudSync, tokens, reloadProfile: () => loadProfileView(ctx) });
+  bindProfileTabControllers({
+    ctx,
+    container: c,
+    achView,
+    profile,
+    metaDB,
+    cloudSync,
+    tokens,
+    onProfileChanged: syncCarouselAccountCard,
+    reloadProfile: () => loadProfileView(ctx)
+  });
 
   if (sessionStorage.getItem('jumpToAch')) {
     sessionStorage.removeItem('jumpToAch');
