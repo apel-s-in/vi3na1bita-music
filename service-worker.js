@@ -1,4 +1,4 @@
-const SW_VERSION = '8.1.97';
+const SW_VERSION = '8.1.98';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
