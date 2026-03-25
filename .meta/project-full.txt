@@ -363,6 +363,7 @@ vi3na1bita-music/
 ├── styles/
 │   ├── base.css
 │   ├── main.css
+│   ├── player.css
 │   ├── profile.css
 │   └── ui-core.css
 ├── .gitignore
@@ -372,7 +373,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-25 20:57:37 UTC
+Сгенерировано: 2026-03-25 20:58:11 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -10624,6 +10625,18 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 #sc-search-sticky .showcase-btn{flex:0 0 auto;min-width:max-content;padding:9px 12px}
 .sc-sheet-close{position:absolute;top:14px;right:14px;all:unset;cursor:pointer;font-size:22px;color:#888;width:30px;height:30px;display:flex;align-items:center;justify-content:center}
 #achievementsFill,#xp-progress-fill{width:0}
+
+//=================================================
+// FILE: /styles/player.css
+/* ==========================================
+   ПЛЕЕР И ЛИРИКА (player.css)
+   ========================================== */
+
+/* 1. ПОЛНЫЙ ПЛЕЕР (Текущие префиксы: .lyrics-player-block, .player-controls, .player-progress-) */
+/* 2. МИНИ-ПЛЕЕР (Текущие: #now-playing, .mini-now, .mini-track-) */
+/* 3. ЛИРИКА (Текущие: #lyrics-window, .lyrics-scroll, .lyrics-countdown, .lyrics-animated-bg) */
+/* 4. КОНТРОЛЫ ГРОМКОСТИ И КАЧЕСТВА (Текущие: .volume-track, .volume-slider, #pq-btn) */
+/* 5. ТАЙМЕР СНА (Текущие: .sleep-timer-btn, .sleep-full, .sleep-hero, .sleep-remind-) */
 
 //=================================================
 // FILE: /styles/profile.css
