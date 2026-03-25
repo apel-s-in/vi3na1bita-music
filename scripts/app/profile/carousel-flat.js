@@ -211,36 +211,37 @@ export function mountProfileCarouselFlat({ root }) {
       tab.style.willChange = '';
     };
 
-    const applyDragToTab = rawDx => {
+    const setTabPhysics = (mode, rawDx = 0) => {
       const tab = getActiveTab();
       if (!tab) return;
-      const p = Math.min(1, Math.abs(rawDx) / 120); // нормализованный прогресс свайпа 0..1
-      const dy = Math.round(p * 84);                // максимальный физический уход вниз
-      const op = Math.max(0.22, 1 - p * 0.58);     // плавное затухание без полного пропадания во время drag
-      tab.style.willChange = 'transform, opacity';
-      tab.style.transition = 'none';
-      tab.style.transform = `translateY(${dy}px)`;
-      tab.style.opacity = String(op);
-    };
 
-    const restoreDraggedTab = () => {
-      const tab = getActiveTab();
-      if (!tab) return;
-      tab.style.willChange = 'transform, opacity';
-      tab.style.transition = 'transform .22s cubic-bezier(.22,1,.36,1), opacity .22s ease';
-      tab.style.transform = 'translateY(0px)';
-      tab.style.opacity = '1';
-      tab.addEventListener('transitionend', () => clearTabFx(tab), { once: true });
-    };
+      if (mode === 'drag') {
+        const p = Math.min(1, Math.abs(rawDx) / 120);
+        const dy = Math.round(p * 84);
+        const op = Math.max(0.22, 1 - p * 0.58);
+        tab.style.willChange = 'transform, opacity';
+        tab.style.transition = 'none';
+        tab.style.transform = `translateY(${dy}px)`;
+        tab.style.opacity = String(op);
+        return;
+      }
 
-    const commitDraggedTabOut = () => {
-      const tab = getActiveTab();
-      if (!tab) return;
-      tab.style.willChange = 'transform, opacity';
-      tab.style.transition = 'transform .18s cubic-bezier(.55,0,.85,.25), opacity .18s ease';
-      tab.style.transform = 'translateY(110px)';
-      tab.style.opacity = '0';
-      tab.addEventListener('transitionend', () => clearTabFx(tab), { once: true });
+      if (mode === 'restore') {
+        tab.style.willChange = 'transform, opacity';
+        tab.style.transition = 'transform .22s cubic-bezier(.22,1,.36,1), opacity .22s ease';
+        tab.style.transform = 'translateY(0px)';
+        tab.style.opacity = '1';
+        tab.addEventListener('transitionend', () => clearTabFx(tab), { once: true });
+        return;
+      }
+
+      if (mode === 'commit') {
+        tab.style.willChange = 'transform, opacity';
+        tab.style.transition = 'transform .18s cubic-bezier(.55,0,.85,.25), opacity .18s ease';
+        tab.style.transform = 'translateY(110px)';
+        tab.style.opacity = '0';
+        tab.addEventListener('transitionend', () => clearTabFx(tab), { once: true });
+      }
     };
 
     scene.addEventListener('touchstart', e => {
@@ -258,7 +259,7 @@ export function mountProfileCarouselFlat({ root }) {
 
       if (Math.abs(dy) > Math.abs(rawDx) + 14) {
         isDrag = false;
-        restoreDraggedTab();
+        setTabPhysics('restore');
         update(true, false);
         return;
       }
@@ -266,7 +267,7 @@ export function mountProfileCarouselFlat({ root }) {
       dragDelta = rawDx;
       const visualDelta = Math.max(-140, Math.min(140, rawDx));
       car.style.transform = `rotateY(${currIdx * -STEP + visualDelta * 0.45}deg)`;
-      applyDragToTab(rawDx);
+      setTabPhysics('drag', rawDx);
     }, { passive: true });
 
     scene.addEventListener('touchend', e => {
@@ -276,7 +277,7 @@ export function mountProfileCarouselFlat({ root }) {
       const committed = Math.abs(dragDelta) > 40;
 
       if (committed) {
-        commitDraggedTabOut();
+        setTabPhysics('commit');
         if (dragDelta > 40) currIdx--;
         else if (dragDelta < -40) currIdx++;
         dragDelta = 0;
@@ -294,7 +295,7 @@ export function mountProfileCarouselFlat({ root }) {
       }
 
       dragDelta = 0;
-      restoreDraggedTab();
+      setTabPhysics('restore');
       update(true, false);
     }, { passive: true });
 
