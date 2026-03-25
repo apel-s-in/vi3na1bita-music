@@ -118,18 +118,30 @@
 
     if (st.isMini) {
       if (!dom.mini) {
-        dom.mini = D.getElementById('mini-header-template').content.cloneNode(true).querySelector('#mini-now'); dom.nUp = D.getElementById('next-up-template').content.cloneNode(true).querySelector('#next-up');
-        Object.assign(dom.el, { mPrg: dom.mini.querySelector('#mini-now-progress'), mTi: dom.mini.querySelector('#mini-now-title'), mSr: dom.mini.querySelector('#mini-now-star'), mNUp: dom.nUp.querySelector('.title') });
-        dom.mini.onclick = e => {
-          if (e.target.closest('#mini-now-star')) { e.stopPropagation(); const tr = PC().getCurrentTrack(); if(tr?.uid) PC().toggleFavorite(tr.uid, { source: AM()?.getPlayingAlbum?.() === W.SPECIAL_FAVORITES_KEY ? 'favorites' : 'album', albumKey: tr.sourceAlbum }); syncUI(); } 
-          else { const p = AM()?.getPlayingAlbum?.(); if (p) AM().loadAlbum(p).then(() => setTimeout(() => dom.blk?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150)); }
-        };
+        dom.mini = D.getElementById('mini-header-template').content.cloneNode(true).querySelector('#mini-now'); 
+        dom.nUp = D.getElementById('next-up-template').content.cloneNode(true).querySelector('#next-up');
+        Object.assign(dom.el, { mPrg: dom.mini?.querySelector('#mini-now-progress'), mTi: dom.mini?.querySelector('#mini-now-title'), mSr: dom.mini?.querySelector('#mini-now-star'), mNUp: dom.nUp?.querySelector('.title') });
+        if (dom.mini) {
+          dom.mini.onclick = e => {
+            if (e.target.closest('#mini-now-star')) { e.stopPropagation(); const tr = PC().getCurrentTrack(); if(tr?.uid) PC().toggleFavorite(tr.uid, { source: AM()?.getPlayingAlbum?.() === W.SPECIAL_FAVORITES_KEY ? 'favorites' : 'album', albumKey: tr.sourceAlbum }); syncUI(); } 
+            else { const p = AM()?.getPlayingAlbum?.(); if (p) AM().loadAlbum(p).then(() => setTimeout(() => dom.blk?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150)); }
+          };
+        }
       }
-      if (!dom.now.contains(dom.blk)) dom.now.append(dom.mini, dom.blk, dom.nUp);
-      W.LyricsController?.applyMiniMode?.(); dom.mini.style.display = dom.nUp.style.display = l?.classList.contains('sc-is-searching') ? 'none' : 'flex';
+      if (!dom.now.contains(dom.blk)) {
+        if (dom.mini) dom.now.appendChild(dom.mini);
+        dom.now.appendChild(dom.blk);
+        if (dom.nUp) dom.now.appendChild(dom.nUp);
+      }
+      W.LyricsController?.applyMiniMode?.(); 
+      const disp = l?.classList.contains('sc-is-searching') ? 'none' : 'flex';
+      if (dom.mini) dom.mini.style.display = disp;
+      if (dom.nUp) dom.nUp.style.display = disp;
     } else {
       if (r) { r.after(dom.blk); if (uInit) setTimeout(() => r.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50); }
-      W.LyricsController?.restoreFromMiniMode?.(); dom.now.innerHTML = ''; if (dom.mini) dom.mini.style.display = dom.nUp.style.display = 'none';
+      W.LyricsController?.restoreFromMiniMode?.(); dom.now.innerHTML = ''; 
+      if (dom.mini) dom.mini.style.display = 'none';
+      if (dom.nUp) dom.nUp.style.display = 'none';
     }
 
     dom.blk.style.display = l?.classList.contains('sc-is-searching') ? 'none' : '';
