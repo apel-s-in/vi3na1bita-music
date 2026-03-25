@@ -376,7 +376,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-25 21:28:48 UTC
+Сгенерировано: 2026-03-25 21:39:57 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -10557,11 +10557,192 @@ body.mobile-device .volume-control-wrapper,body.mobile-device #mute-btn{display:
    ПЛЕЕР И ЛИРИКА (player.css)
    ========================================== */
 
-/* 1. ПОЛНЫЙ ПЛЕЕР (Текущие префиксы: .lyrics-player-block, .player-controls, .player-progress-) */
-/* 2. МИНИ-ПЛЕЕР (Текущие: #now-playing, .mini-now, .mini-track-) */
-/* 3. ЛИРИКА (Текущие: #lyrics-window, .lyrics-scroll, .lyrics-countdown, .lyrics-animated-bg) */
-/* 4. КОНТРОЛЫ ГРОМКОСТИ И КАЧЕСТВА (Текущие: .volume-track, .volume-slider, #pq-btn) */
-/* 5. ТАЙМЕР СНА (Текущие: .sleep-timer-btn, .sleep-full, .sleep-hero, .sleep-remind-) */
+/* --- ПОЛНЫЙ ПЛЕЕР --- */
+.lyrics-player-block{max-width:370px;width:100%;margin:20px auto 0;background:linear-gradient(180deg,rgba(30,34,45,.95),rgba(15,18,24,.98));border-radius:14px;overflow:hidden;box-shadow:var(--shadow-2);position:relative}
+.player-progress-wrapper{padding:16px 20px 12px;background:rgba(15,18,24,.6)}
+.player-progress-bar{position:relative;height:6px;background:rgba(255,255,255,.08);border-radius:3px;cursor:pointer;overflow:visible}
+.player-progress-fill{position:relative;height:100%;background:var(--grad-blue);border-radius:3px;width:0;transition:width .1s linear;z-index:1}
+.player-progress-handle{position:absolute;right:-7px;top:50%;transform:translateY(-50%);width:14px;height:14px;background:var(--c-w);border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.4);opacity:0;transition:opacity .2s,transform .1s}
+.player-progress-bar:hover .player-progress-handle{opacity:1}
+.player-progress-handle:hover{transform:translateY(-50%) scale(1.2)}
+.player-controls{padding:14px 18px 16px;background:rgba(25,28,36,.8)}
+.player-controls-row{display:flex;justify-content:center;align-items:center;gap:12px;margin-bottom:12px}
+.player-controls-row:last-child{margin-bottom:0}
+.time-in-controls{color:var(--c-blue);font-size:13px;min-width:42px;text-align:center;font-variant-numeric:tabular-nums;font-weight:500}
+.player-control-btn,.sleep-timer-btn{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:var(--c-blue);cursor:pointer;padding:10px;border-radius:50%;transition:.25s;display:flex;align-items:center;justify-content:center;width:var(--btn-size);height:var(--btn-size);outline:0}
+.player-control-btn:hover,.sleep-timer-btn:hover{background:rgba(77,170,255,.15);border-color:rgba(77,170,255,.3);transform:scale(1.05)}
+.player-control-btn:active,.sleep-timer-btn:active{transform:scale(.95)}
+.player-control-btn.main{background:var(--primary-color);border-color:var(--primary-color);color:var(--c-w);width:52px;height:52px}
+.player-control-btn.main:hover{background:#c60000}
+.player-control-btn svg{width:20px;height:20px}
+.player-control-btn.main svg{width:24px;height:24px}
+.player-control-btn.active,.sleep-timer-btn.active{background:rgba(77,170,255,.2);border-color:var(--secondary-color);color:var(--secondary-color);box-shadow:0 0 12px rgba(77,170,255,.3)}
+.volume-control-wrapper{position:relative;padding:16px 20px 12px;background:rgba(15,18,24,.5);border-top:1px solid rgba(255,255,255,.05)}
+.volume-track{position:relative;height:6px;background:rgba(255,255,255,.08);border-radius:3px}
+.volume-fill{position:absolute;inset:0 auto auto 0;height:6px;background:var(--grad-blue);width:0;border-radius:3px;pointer-events:none;transition:width .08s linear}
+.volume-handle{position:absolute;top:50%;left:0;transform:translate(-50%,-50%);width:14px;height:14px;background:var(--c-w);border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,.35);pointer-events:none;z-index:3;transition:left .05s linear}
+.volume-slider{position:absolute;left:20px;right:20px;top:50%;transform:translateY(-50%);height:28px;background:0 0;outline:0;-webkit-appearance:none;cursor:pointer;z-index:4;margin:0}
+.volume-slider::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;background:0 0;border-radius:50%;cursor:pointer;box-shadow:none}
+.volume-slider::-moz-range-thumb{width:14px;height:14px;background:0 0;border-radius:50%;cursor:pointer;border:0;box-shadow:none}
+.player-buttons-wrapper{background:rgba(15,18,24,.5);padding:12px 16px;border-top:1px solid rgba(255,255,255,.05);display:flex;gap:8px;flex-wrap:wrap}
+.player-extra-buttons-row{display:flex;flex:1;gap:8px;justify-content:space-between;width:100%}
+.lyrics-toggle-btn,.animation-btn,.pulse-btn,.karaoke-btn,.player-download-btn,.stats-btn,.source-indicator{flex:1 1 0;min-width:0;height:var(--btn-size);padding:0;border-radius:var(--btn-radius);font-weight:800;font-size:18px;cursor:pointer;transition:transform .1s,background .2s,border-color .2s,box-shadow .2s,color .2s;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;user-select:none;overflow:hidden}
+.karaoke-btn svg,.player-download-btn svg,.stats-btn svg{width:20px;height:20px;display:block}
+.lyrics-toggle-btn,.karaoke-btn{background:rgba(77,170,255,.12);border:1px solid rgba(77,170,255,.25);color:var(--secondary-color)}
+.lyrics-toggle-btn:hover,.karaoke-btn:hover{background:rgba(77,170,255,.2);transform:translateY(-1px)}
+.lyrics-toggle-btn:active,.karaoke-btn:active{transform:translateY(0)}
+.lyrics-toggle-btn-visual{display:inline-block;line-height:1;transition:font-size .2s,color .2s,transform .1s;pointer-events:none}
+.lyrics-toggle-btn.lyrics-normal .lyrics-toggle-btn-visual{color:var(--secondary-color);font-size:28px}
+.lyrics-toggle-btn.lyrics-expanded .lyrics-toggle-btn-visual{color:var(--secondary-color);font-size:18px}
+.lyrics-toggle-btn.lyrics-hidden{background:rgba(232,1,0,.12);border-color:rgba(232,1,0,.25)}
+.lyrics-toggle-btn.lyrics-hidden .lyrics-toggle-btn-visual{color:var(--primary-color);font-size:28px}
+.lyrics-toggle-btn.lyrics-hidden:hover{background:rgba(232,1,0,.2);border-color:rgba(232,1,0,.35)}
+.animation-btn{background:linear-gradient(135deg,#4a1a7a,#2a0a4a);border:1px solid rgba(138,43,226,.3);color:#c8a2ff}
+.animation-btn.active{background:linear-gradient(135deg,#5a2a8a,#3a1a5a);box-shadow:0 0 12px rgba(138,43,226,.4)}
+.animation-btn:hover{background:linear-gradient(135deg,#5a2a8a,#3a1a5a);transform:translateY(-1px)}
+.pulse-btn{background:linear-gradient(135deg,#2a2a2a,#1a1a1a);border:1px solid rgba(255,255,255,.1);color:var(--c-w);font-size:20px}
+.pulse-btn.active{background:linear-gradient(135deg,#4a1a1a,#2a0a0a);border-color:rgba(232,1,0,.3);color:var(--primary-color);box-shadow:0 0 12px rgba(232,1,0,.3)}
+.pulse-btn select{font:inherit}
+.pulse-btn:hover{background:linear-gradient(135deg,#3a3a3a,#2a2a2a);transform:translateY(-1px)}
+.player-download-btn{background:linear-gradient(135deg,#1a4a7a,#0a2a4a);border:1px solid rgba(77,170,255,.3);color:var(--secondary-color)}
+.player-download-btn:hover{background:linear-gradient(135deg,#2a5a8a,#1a3a5a);transform:translateY(-1px);box-shadow:0 4px 12px rgba(77,170,255,.2)}
+.stats-btn{background:rgba(77,170,255,.12);border:1px solid rgba(77,170,255,.25);color:var(--secondary-color)}
+.stats-btn:hover{background:rgba(77,170,255,.2);transform:translateY(-1px)}
+.stats-btn:active{transform:translateY(0)}
+.lyrics-toggle-btn.disabled,.animation-btn.disabled,.karaoke-btn.disabled{background:rgba(30,30,30,.6)!important;border-color:rgba(255,255,255,.06)!important;color:rgba(255,255,255,.2)!important;box-shadow:none!important;cursor:not-allowed!important;opacity:.5;pointer-events:none;filter:grayscale(100%)}
+.lyrics-toggle-btn.disabled .lyrics-toggle-btn-visual{color:rgba(255,255,255,.2)!important}
+#favorites-btn{position:relative}
+#favorites-btn.favorites-active{background:rgba(77,170,255,.2);border-color:var(--secondary-color)}
+#favorites-btn.favorites-active #favorites-btn-icon{transform:scale(1.2)}
+#pq-btn{position:relative}
+#pq-btn .pq-btn-label{font-weight:900;font-size:14px;letter-spacing:.02em}
+#pq-btn.pq-hi{background:rgba(39,179,76,.16);border-color:rgba(39,179,76,.35);color:#b8ffd0}
+#pq-btn.pq-lo{background:rgba(255,152,0,.16);border-color:rgba(255,152,0,.35);color:#ffe0b2}
+#pq-btn.disabled{background:rgba(30,30,30,.6)!important;border-color:rgba(255,255,255,.06)!important;color:rgba(255,255,255,.25)!important;box-shadow:none!important;cursor:not-allowed!important;opacity:.6}
+
+/* --- МИНИ-ПЛЕЕР --- */
+#now-playing{background:#11141a!important;border-radius:16px!important;padding:0!important;border:none!important;border-bottom:2px solid rgba(77,170,255,.3)!important;box-shadow:0 12px 32px rgba(0,0,0,.6)!important;margin:0 16px 24px!important;width:auto!important;bottom:calc(var(--nav-height,60px) + env(safe-area-inset-bottom))!important;overflow:hidden!important}
+.mini-now{position:relative;display:flex;align-items:center;height:32px;padding:0 14px;border-radius:16px 16px 0 0!important;background:0 0!important;margin:0!important;box-shadow:none!important;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer;overflow:hidden!important;transition:none!important}
+.mini-progress-fill{position:absolute;inset:0 auto 0 0;width:0;background:rgba(77,170,255,.12);border-right:1px solid rgba(77,170,255,.3);pointer-events:none;transition:width .1s linear;z-index:1}
+.mini-text-switcher{position:relative;flex:1;height:100%;min-width:0;z-index:2;pointer-events:none}
+.mini-track-title,.mini-track-hint{position:absolute;inset:0;display:flex;align-items:center;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0}
+.mini-track-title{color:#eaf2ff;animation:swapTextMain 6s infinite}
+.mini-track-hint{color:#9db7dd;font-size:12px;animation:swapTextHint 6s infinite}
+@keyframes swapTextMain{0%,40%{opacity:1}45%,95%{opacity:0}100%{opacity:1}}
+@keyframes swapTextHint{0%,40%{opacity:0}45%,95%{opacity:1}100%{opacity:0}}
+.mini-now .like-star{z-index:2;margin-left:10px}
+#now-playing #lyricsplayerblock{border-radius:0!important;background:0 0!important;box-shadow:none!important;border-bottom:none!important;margin:0!important}
+#now-playing #lyricsplayerblock .player-controls{background:0 0!important;padding:4px 18px!important;display:flex!important;align-items:center!important;justify-content:center!important}
+#now-playing #lyricsplayerblock #lyrics-window,#now-playing #lyricsplayerblock .player-progress-wrapper,#now-playing #lyricsplayerblock .player-controls-row:nth-child(2),#now-playing #lyricsplayerblock .volume-control-wrapper,#now-playing #lyricsplayerblock .player-buttons-wrapper{display:none!important}
+#now-playing #lyricsplayerblock .player-controls-row{margin:0!important;align-items:center!important}
+.jump-to-playing{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);width:44px;height:44px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.45);color:var(--c-w);display:none;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.jump-to-playing:active{transform:translateX(-50%) scale(.98)}
+.jump-to-playing button{all:unset;width:100%;height:100%;cursor:pointer;display:grid;place-items:center;line-height:1;user-select:none}
+
+/* --- ЛИРИКА И ИНДИКАТОР КЭША --- */
+#lyrics-window{position:relative;overflow:hidden;border-radius:12px 12px 0 0;background:var(--bg-0);transition:height .2s ease,opacity .2s ease}
+#lyrics-window.lyrics-normal{height:8.7em}
+#lyrics-window.lyrics-expanded{height:15.6em}
+#lyrics-window.lyrics-hidden{height:0!important;opacity:0!important;pointer-events:none!important;margin:0!important}
+.lyrics-scroll{position:relative;z-index:1;display:flex;flex-direction:column;justify-content:center;height:100%;overflow:hidden;padding:0}
+.lyrics-scroll::-webkit-scrollbar{display:none}
+.lyrics-window-line{text-align:center;padding:6px 16px;color:var(--c-e);font-size:15px;opacity:.57;transition:color .25s,opacity .25s,font-size .25s,font-weight .25s,background .25s;user-select:none;line-height:1.35}
+.lyrics-window-line.active{color:var(--primary-color);font-size:1.19em;font-weight:800;opacity:1;background:rgba(0,0,0,.07);text-shadow:0 1px 7px rgba(115,22,22,.27)}
+.lyrics-placeholder{text-align:center;padding:40px 16px;color:#5a6989;font-size:14px;opacity:.6;user-select:none}
+.lyrics-spinner{width:40px;height:40px;margin:40px auto;border:4px solid rgba(77,170,255,.2);border-top-color:var(--secondary-color);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.lyrics-countdown{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:4em;font-weight:900;color:rgba(77,170,255,.35);z-index:0;pointer-events:none;user-select:none;text-shadow:0 2px 12px rgba(77,170,255,.2);animation:countdownPulse 1s ease-in-out infinite}
+.lyrics-countdown.fade-out{animation:countdownFadeOut 1s ease-out forwards}
+@keyframes countdownPulse{0%,to{transform:scale(1);opacity:.35}50%{transform:scale(1.05);opacity:.45}}
+@keyframes countdownFadeOut{from{opacity:.35;transform:scale(1)}to{opacity:0;transform:scale(.9)}}
+.lyrics-animated-bg{position:absolute;inset:0;opacity:0;pointer-events:none;z-index:0;transition:opacity .5s;background:linear-gradient(45deg,rgba(232,1,0,.15),rgba(77,170,255,.15),rgba(232,1,0,.15));background-size:400% 400%;animation:none}
+.lyrics-animated-bg.active{opacity:1;animation:lyricsGradient 10s ease infinite}
+@keyframes lyricsGradient{0%{background-position:0 50%}50%{background-position:100% 50%}to{background-position:0 50%}}
+.player-cache-layer{position:absolute;inset:0 auto auto 0;height:100%;background:rgba(255,255,255,0.2);border-radius:3px;pointer-events:none;transition:width .3s ease,opacity .3s;width:0%;opacity:0;z-index:0}
+.player-cache-layer.is-loading{background:linear-gradient(90deg,rgba(255,255,255,0.05) 0%,rgba(255,255,255,0.3) 50%,rgba(255,255,255,0.05) 100%);background-size:200% 100%;animation:cacheAnim 1.5s infinite linear;width:100%;opacity:1}
+@keyframes cacheAnim{to{background-position:-200% 0}}
+.lyrics-modal-box{max-height:80vh}
+.lyrics-modal-meta{color:#8ab8fd;margin-bottom:16px;font-size:14px;text-align:center}
+.lyrics-modal-text-wrap{max-height:55vh;overflow-y:auto;overflow-x:hidden;padding:16px;background:rgba(0,0,0,0.2);border-radius:10px;scrollbar-width:thin;scrollbar-color:rgba(77,170,255,0.3) transparent}
+.lyrics-modal-text-inner{white-space:pre;font-size:15px;line-height:1.8;width:max-content}
+.lyrics-modal-actions{display:flex;gap:10px;margin-top:16px;justify-content:center;flex-wrap:wrap}
+
+/* --- ИНДИКАТОРЫ ИСТОЧНИКОВ --- */
+.source-indicator{background-size:cover;background-position:center;transition:transform .2s,opacity .2s,box-shadow .2s;opacity:.85;box-shadow:0 0 10px rgba(0,0,0,.5);cursor:help;background-color:#1a1a1a;font-weight:900;font-size:16px;font-family:sans-serif;pointer-events:auto}
+.source-indicator.si-yandex{background:radial-gradient(circle,#ff0000 0,#aa0000 100%);color:#fff;border:1px solid #ff4d4d}
+.source-indicator.si-yandex::after{content:'Я'}
+.source-indicator.si-github{background:radial-gradient(circle,#444 0,#000 100%);color:#fff;border:1px solid #666}
+.source-indicator.si-github::after{content:'GH';font-size:13px}
+.source-indicator.si-cache{background:radial-gradient(circle,#4caf50 0,#2e7d32 100%);color:#fff;border:1px solid #81c784}
+.source-indicator.si-cache::after{content:'\1F4BE';font-size:15px}
+.source-indicator:hover{opacity:1;transform:scale(1.1)}
+
+/* --- ТАЙМЕР СНА --- */
+.sleep-timer-btn{position:relative}
+.sleep-timer-badge{position:absolute;top:-4px;right:-4px;background:var(--primary-color);color:var(--c-w);font-size:10px;font-weight:800;border-radius:10px;padding:2px 6px;min-width:18px;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+.modal-feedback.sleep-modal-wrapper h2 { display: none !important; }
+.modal-feedback.sleep-modal-wrapper .bigclose { top: 22px; right: 20px; }
+.sleep-full{display:flex;flex-direction:column;gap:16px;margin-top:4px}
+.sleep-hero{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-right:32px}
+.sleep-hero-text{display:flex;flex-direction:column}
+.sleep-hero-title{font-size:22px;font-weight:900;color:var(--secondary-color)}
+.sleep-hero-sub{font-size:12px;color:#9db7dd;margin-top:2px;opacity:0.8}
+.sleep-toggle-switch{position:relative;display:inline-block;width:48px;height:26px;flex-shrink:0}
+.sleep-toggle-switch input{opacity:0;width:0;height:0}
+.sleep-toggle-slider{position:absolute;cursor:pointer;inset:0;background:rgba(255,255,255,.1);border-radius:26px;transition:.3s}
+.sleep-toggle-slider:before{content:"";position:absolute;height:20px;width:20px;left:3px;bottom:3px;background:#888;border-radius:50%;transition:.3s}
+.sleep-toggle-switch input:checked + .sleep-toggle-slider{background:var(--secondary-color)}
+.sleep-toggle-switch input:checked + .sleep-toggle-slider:before{transform:translateX(22px);background:#fff}
+.sleep-status-card{background:rgba(0,0,0,0.2);border-radius:12px;padding:14px;border:1px solid rgba(255,255,255,0.05);display:flex;flex-direction:column;gap:6px}
+.sleep-status-row{display:flex;justify-content:space-between;font-size:13px;color:#9db7dd}
+.sleep-status-row strong{color:#fff;font-weight:800;font-variant-numeric:tabular-nums}
+.sleep-controls-card{background:rgba(255,255,255,0.03);border-radius:14px;padding:16px;border:1px solid rgba(255,255,255,0.08);display:flex;flex-direction:column;gap:14px;transition:opacity 0.2s}
+.sleep-controls-card.disabled{opacity:0.4;pointer-events:none;filter:grayscale(0.5)}
+.sleep-input-row{display:flex;align-items:center;gap:12px}
+.sleep-label{flex:1;font-size:13px;color:#eaf2ff;font-weight:600}
+.sleep-input-wrap{position:relative;width:120px;display:flex;align-items:center}
+.sleep-input-wrap::after{position:absolute;right:14px;color:#888;font-size:12px;pointer-events:none}
+.sleep-input-wrap.mins::after{content:'мин'}
+.sleep-input{width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:#fff;font-size:16px;font-weight:800;padding:10px 14px;outline:none;text-align:right;transition:border-color 0.2s;-moz-appearance:textfield}
+.sleep-input:focus{border-color:var(--secondary-color)}
+.sleep-input::-webkit-outer-spin-button, .sleep-input::-webkit-inner-spin-button{-webkit-appearance:none}
+.sleep-input-wrap.mins .sleep-input{padding-right:45px}
+.sleep-input[type="time"]{text-align:center;padding-right:10px}
+.sleep-check{display:flex;align-items:center;gap:10px;color:#9db7dd;font-size:13px;cursor:pointer}
+.sleep-check input{width:18px;height:18px;accent-color:var(--secondary-color);cursor:pointer}
+.sleep-quests-wrap{margin-top:8px}
+.sleep-quest-row{display:flex;align-items:center;gap:12px;background:rgba(77,170,255,0.08);border:1px solid rgba(77,170,255,0.2);padding:12px;border-radius:12px;margin-bottom:8px;cursor:pointer;transition:transform 0.15s, background 0.15s}
+.sleep-quest-row:hover{background:rgba(77,170,255,0.15);transform:translateY(-1px)}
+.sq-icon{font-size:24px}
+.sq-info{flex:1;display:flex;flex-direction:column}
+.sq-title{font-size:13px;font-weight:800;color:#fff}
+.sq-desc{font-size:11px;color:#8ab8fd;margin-top:2px;line-height:1.3}
+.sleep-remind-box{display:flex;flex-direction:column;align-items:center;text-align:center;padding:10px 0 0}
+.sleep-remind-icon{font-size:40px;margin-bottom:10px;animation:pulse 2s infinite}
+.sleep-remind-title{font-size:20px;font-weight:900;color:#fff;margin-bottom:6px}
+.sleep-remind-sub{font-size:13px;color:#9db7dd;margin-bottom:24px}
+.sleep-remind-quick{display:flex;gap:8px;width:100%;margin-bottom:24px}
+.sleep-remind-qbtn{flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#eaf2ff;border-radius:10px;padding:12px 0;font-size:14px;font-weight:800;cursor:pointer;transition:0.2s}
+.sleep-remind-qbtn:hover{background:rgba(77,170,255,0.2);border-color:rgba(77,170,255,0.4);color:#fff}
+.sleep-remind-qbtn:active{transform:scale(0.95)}
+.sleep-remind-actions{display:flex;flex-direction:column;gap:10px;width:100%}
+
+/* --- АДАПТИВНОСТЬ --- */
+body.mobile-device .volume-control-wrapper,body.mobile-device #mute-btn{display:none!important}
+@media (max-width:600px){
+  .hotkeys-btn{display:none!important}
+  .player-controls-row{gap:8px}
+  .player-control-btn,.sleep-timer-btn{width:40px;height:40px;padding:8px}
+  .player-control-btn.main{width:48px;height:48px}
+  .player-control-btn svg{width:18px;height:18px}
+  .player-control-btn.main svg{width:22px;height:22px}
+  .time-in-controls{font-size:12px;min-width:38px}
+  .player-extra-buttons-row{flex-wrap:nowrap;gap:6px}
+  .lyrics-window-line{font-size:14px;padding:7px 12px}
+  .lyrics-window-line.active{font-size:16px}
+  .sleep-preset-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .sleep-inline{flex-direction:column}
+}
 
 //=================================================
 // FILE: /styles/profile.css
