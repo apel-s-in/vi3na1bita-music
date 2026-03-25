@@ -80,7 +80,6 @@
       `ctx: ${W.Howler?.ctx?.state || 'na'}`,
       `conn: ${state.connected ? '1' : '0'}`,
       `src: ${state.sourceKind}`,
-      `zero: ${state.zeroFrames}`,
       `uiSuspend: ${getUiSuspend() ? '1' : '0'}`
     ].join('\n');
   };
