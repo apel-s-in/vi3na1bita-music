@@ -7,20 +7,6 @@ export const renderProfileStats = ({ container: c, all }) => {
   const gs = (all || []).find(s => s.uid === 'global') || {};
   const gFeat = gs.featuresUsed || {};
 
-  window.Utils?.dom?.createStyleOnce?.('profile-stat-sub-styles', `
-    .stat-sub{color:#888;font-size:12px;text-align:center}
-    .chart-title--click{cursor:pointer}
-    .chart-bars--hidden{display:none}
-    .stat-card--mb10{margin-bottom:10px}
-    .stat-card--mb15{margin-bottom:15px}
-    .prof-reset-wrap{display:flex;justify-content:center;margin-top:8px}
-    .backup-btn--dark{background:#444}
-    .stats-mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
-    .stats-mini-box{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);border-radius:10px;padding:10px 12px;text-align:center}
-    .stats-mini-box b{display:block;color:#fff;font-size:16px}
-    .stats-mini-box span{font-size:10px;color:#888;text-transform:uppercase}
-  `);
-
   const mkL = (arr, fmt) => arr.length
     ? `<ul class="stat-list">${arr.map(s => `<li data-uid="${s.uid}"><span>${esc(window.TrackRegistry?.getTrackByUid(s.uid)?.title || s.uid)}</span><span>${fmt(s)}</span></li>`).join('')}</ul>`
     : `<div class="stat-sub">Недостаточно данных</div>`;
