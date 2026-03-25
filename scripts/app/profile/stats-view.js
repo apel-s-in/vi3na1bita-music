@@ -6,6 +6,9 @@ export const renderProfileStats = ({ container: c, all }) => {
   const mkL = (a, f) => a.length ? `<ul class="stat-list">${a.map(s => `<li data-uid="${s.uid}"><span>${esc(window.TrackRegistry?.getTrackByUid(s.uid)?.title)}</span><span>${f(s)}</span></li>`).join('')}</ul>` : `<div class="stat-sub">Недостаточно данных</div>`;
   const rCh = (id, tit, d, lsk, lb) => `<div class="chart-block" id="${id}"><div class="chart-title chart-title--click" data-tg="${id}-bars" data-ls="${lsk}">${tit}</div><div class="chart-bars ${localStorage.getItem(lsk)==='0'?'chart-bars--hidden':''}" id="${id}-bars">${d.map((v, i) => `<div class="chart-row"><div class="label">${lb?lb[i]:String(i).padStart(2,'0')}</div><div class="bar"><div class="fill" style="width:${Math.round((v/Math.max(1,...d))*100)}%"></div></div><div class="val">${v}</div></div>`).join('')}</div></div>`;
   const byH = Array(24).fill(0), byW = Array(7).fill(0);
-  vs.forEach(s => { (s.byHour||[]).forEach((v,h)=>byH[h]+=v||0); (s.byWeekday||[]).forEach((v,d)=>byW[d]+=v||0); });
+  vs.forEach(s => { 
+    if (Array.isArray(s.byHour)) s.byHour.forEach((v,h)=>{ if (h>=0&&h<24) byH[h]+=Number(v)||0; }); 
+    if (Array.isArray(s.byWeekday)) s.byWeekday.forEach((v,d)=>{ if (d>=0&&d<7) byW[d]+=Number(v)||0; }); 
+  });
   ttEl.innerHTML = rCh('chart-hours', 'По часам суток', byH, 'myStatsHoursOpen') + rCh('chart-week', 'По дням недели', byW, 'myStatsWeekOpen', ['Пн','Вт','Ср','Чт','Пт','Сб','Вс']) + `<div class="stat-card stat-card--mb10"><div class="stat-title">Топ‑5 по прослушиваниям</div>${mkL([...vs].sort((a,b)=>(b.globalValidListenCount||0)-(a.globalValidListenCount||0)).slice(0,5), s=>s.globalValidListenCount||0)}</div><div class="stat-card stat-card--mb15"><div class="stat-title">Топ‑5 по времени</div>${mkL([...vs].sort((a,b)=>(b.globalListenSeconds||0)-(a.globalListenSeconds||0)).slice(0,5), s=>window.Utils?.fmt?.durationHuman(s.globalListenSeconds||0))}</div><div class="prof-reset-wrap"><button class="backup-btn backup-btn--dark" id="stats-reset-open-btn" type="button">ОЧИСТИТЬ СТАТИСТИКУ</button></div>`;
 };
