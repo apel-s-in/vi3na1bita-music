@@ -365,7 +365,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-25 06:03:50 UTC
+Сгенерировано: 2026-03-25 06:05:29 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -855,7 +855,7 @@ jobs:
   </template>
 
   <script>
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.92');
+    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.1.93');
     const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-03-25');
 
     // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
@@ -899,7 +899,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.1.92';
+const SW_VERSION = '8.1.93';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
@@ -3371,29 +3371,34 @@ export function mountProfileCarouselFlat({ root }) {
     if (!car || !scene) return;
 
     let _selectDebounce = null;
-    const doSelect = () => {
+    const doSelect = (instantExit = false) => {
       clearTimeout(_selectDebounce);
       _selectDebounce = setTimeout(() => {
         clearTimeout(wrap._tAuto);
         const norm = ((currIdx % TOTAL) + TOTAL) % TOTAL;
         const activeId = cardsData[norm].id;
         const tab = root.querySelector(`#tab-${activeId}`);
-        if (!tab) { W.NotificationSystem?.info(`Раздел «${cardsData[norm].tit}» открывается...`); return; }
-        if (tab.classList.contains('active')) return;
+        if (!tab) return;
+        if (tab.classList.contains('active')) { tab.style.cssText = ''; return; }
 
-        // Мгновенно скрываем все старые табы, чтобы избежать схлопывания высоты и рывков
-        root.querySelectorAll('.profile-tab-content').forEach(x => {
-          x.classList.remove('active');
-          x.style.cssText = ''; 
-        });
-        
-        // Форсируем пересчет макета, чтобы CSS-анимация вылета (tabContentIn) сработала четко
-        void tab.offsetHeight;
-        tab.classList.add('active');
+        const prev = root.querySelector('.profile-tab-content.active');
+        const enterNew = () => {
+          root.querySelectorAll('.profile-tab-content').forEach(x => { x.classList.remove('active'); x.style.cssText = ''; });
+          requestAnimationFrame(() => requestAnimationFrame(() => tab.classList.add('active')));
+        };
+
+        if (prev && prev !== tab && !instantExit) {
+          prev.style.transition = 'opacity .15s ease, transform .15s ease';
+          prev.style.opacity = '0';
+          prev.style.transform = 'translateY(15px)';
+          setTimeout(enterNew, 150);
+        } else {
+          enterNew();
+        }
       }, 80);
     };
 
-    const update = (animated = true) => {
+    const update = (animated = true, instantExit = false) => {
       car.style.transition = animated ? 'transform .75s cubic-bezier(.22,1,.36,1)' : 'none';
       car.style.transform = `rotateY(${currIdx * -STEP}deg)`;
       
@@ -3409,11 +3414,11 @@ export function mountProfileCarouselFlat({ root }) {
       if (animated) {
         wrap._tS = setTimeout(() => {
           wrap.classList.add('is-settled');
-          doSelect();
-        }, 500); // Мгновенное открытие контента синхронно с подсветкой
+          doSelect(instantExit);
+        }, 500); 
       } else {
         wrap.classList.add('is-settled');
-        doSelect();
+        doSelect(instantExit);
       }
     };
 
@@ -3421,49 +3426,38 @@ export function mountProfileCarouselFlat({ root }) {
 
     prev?.addEventListener('click', () => step(-1));
     next?.addEventListener('click', () => step(1));
-    sel?.addEventListener('click', doSelect);
+    sel?.addEventListener('click', () => doSelect(false));
 
-    // Плавно применяем translateY к активному контент-блоку пропорционально прогрессу свайпа
     const getActiveTab = () => root.querySelector('.profile-tab-content.active');
     
-    const setContentDrift = (progress, instant = false) => {
+    const setContentDrift = (rawDx, isEnd = false, commit = false) => {
       const tab = getActiveTab();
       if (!tab) return;
-      // progress: 0 = на месте, 1 = улетел вниз (100vh)
-      const clampedP = Math.max(0, Math.min(1, Math.abs(progress)));
-      const eased = clampedP < 0.5
-        ? 2 * clampedP * clampedP                      // разгон: медленно начинает
-        : 1 - Math.pow(-2 * clampedP + 2, 2) / 2;     // торможение: замедляется к концу
-      const yPx = eased * 60; // максимальное смещение 60px (не весь экран — мягче)
-      if (instant) {
+      
+      if (!isEnd) {
+        const dy = Math.min(100, Math.abs(rawDx) * 0.7);
+        const op = Math.max(0, 1 - Math.abs(rawDx) / 140);
         tab.style.transition = 'none';
-        tab.style.transform = `translateY(${yPx}px)`;
-        tab.style.opacity = String(1 - eased * 0.45);
+        tab.style.transform = `translateY(${dy}px)`;
+        tab.style.opacity = String(op);
       } else {
-        tab.style.transition = 'transform .35s cubic-bezier(.22,1,.36,1), opacity .35s ease';
-        tab.style.transform = `translateY(${yPx}px)`;
-        tab.style.opacity = String(1 - eased * 0.45);
+        if (commit) {
+          tab.style.transition = 'transform .2s ease-in, opacity .2s ease-in';
+          tab.style.transform = 'translateY(120px)';
+          tab.style.opacity = '0';
+        } else {
+          tab.style.transition = 'transform .3s cubic-bezier(.22,1,.36,1), opacity .3s ease';
+          tab.style.transform = 'translateY(0px)';
+          tab.style.opacity = '1';
+          const cleanup = () => { tab.style.transition = ''; tab.style.transform = ''; tab.style.opacity = ''; tab.removeEventListener('transitionend', cleanup); };
+          tab.addEventListener('transitionend', cleanup, { once: true });
+        }
       }
     };
 
-    const resetContentDrift = (fast = false) => {
-      const tab = getActiveTab();
-      if (!tab) return;
-      tab.style.transition = fast
-        ? 'transform .18s cubic-bezier(.4,0,.2,1), opacity .18s ease'
-        : 'transform .4s cubic-bezier(.22,1,.36,1), opacity .4s ease';
-      tab.style.transform = '';
-      tab.style.opacity = '';
-      // Убираем инлайн-стили после завершения анимации
-      const cleanup = () => { tab.style.transition = ''; tab.removeEventListener('transitionend', cleanup); };
-      tab.addEventListener('transitionend', cleanup, { once: true });
-    };
-
-    let _swipeCommitted = false; // true когда палец прошёл порог — возврат невозможен
-
     scene.addEventListener('touchstart', e => {
       startX = e.touches[0].clientX; startY = e.touches[0].clientY;
-      isDrag = true; dragDelta = 0; _swipeCommitted = false;
+      isDrag = true; dragDelta = 0;
       car.style.transition = 'none';
       wrap.classList.remove('is-settled'); clearTimeout(wrap._tS);
     }, { passive: true });
@@ -3472,18 +3466,18 @@ export function mountProfileCarouselFlat({ root }) {
       if (!isDrag) return;
       const rawDx = e.touches[0].clientX - startX, dy = e.touches[0].clientY - startY;
       if (Math.abs(rawDx) < 8 && Math.abs(dy) < 8) return;
-      if (Math.abs(dy) > Math.abs(rawDx) + 14) { isDrag = false; resetContentDrift(true); update(true); return; }
+      if (Math.abs(dy) > Math.abs(rawDx) + 14) { 
+        isDrag = false; 
+        setContentDrift(0, true, false); 
+        update(true); 
+        return; 
+      }
 
       dragDelta = rawDx;
-      _swipeCommitted = Math.abs(rawDx) > 40;
-
-      // Карусель следует за пальцем
       const visualDelta = Math.max(-140, Math.min(140, rawDx));
       car.style.transform = `rotateY(${currIdx * -STEP + visualDelta * 0.45}deg)`;
 
-      // Контент отлетает вниз пропорционально ходу пальца (0..1 от 0 до 120px хода)
-      const swipeProgress = Math.min(1, Math.abs(rawDx) / 120);
-      setContentDrift(swipeProgress, true);
+      setContentDrift(rawDx, false, false);
     }, { passive: true });
 
     scene.addEventListener('touchend', e => {
@@ -3493,35 +3487,23 @@ export function mountProfileCarouselFlat({ root }) {
       const committed = Math.abs(dragDelta) > 40;
 
       if (committed) {
-        // Безвозвратный свайп: контент улетает окончательно, затем появляется новый
-        const tab = getActiveTab();
-        if (tab) {
-          tab.style.transition = 'transform .22s cubic-bezier(.55,0,1,.45), opacity .18s ease';
-          tab.style.transform = 'translateY(80px)';
-          tab.style.opacity = '0';
-          tab.addEventListener('transitionend', () => {
-            // Сброс — новый контент появится через doSelect() с анимацией tabContentIn
-            tab.style.cssText = '';
-          }, { once: true });
-        }
+        setContentDrift(dragDelta, true, true);
         if (dragDelta > 40) currIdx--;
         else if (dragDelta < -40) currIdx++;
+        update(true, true);
       } else {
-        // Передумал — контент мягко возвращается на место
-        resetContentDrift(false);
-      }
-
-      // Тап без движения
-      if (Math.abs(dragDelta) < 10) {
-        const card = e.target.closest('.sc-3d-card');
-        if (card) {
-          const idx = parseInt(card.dataset.idx, 10);
-          const norm = ((currIdx % TOTAL) + TOTAL) % TOTAL;
-          if (idx === norm && wrap.classList.contains('is-settled')) doSelect();
+        setContentDrift(dragDelta, true, false);
+        if (Math.abs(dragDelta) < 10) {
+          const card = e.target.closest('.sc-3d-card');
+          if (card) {
+            const idx = parseInt(card.dataset.idx, 10);
+            const norm = ((currIdx % TOTAL) + TOTAL) % TOTAL;
+            if (idx === norm && wrap.classList.contains('is-settled')) doSelect();
+          }
         }
+        update(true, false);
       }
-
-      dragDelta = 0; update(true);
+      dragDelta = 0; 
     }, { passive: true });
 
     scene.addEventListener('wheel', e => {
@@ -3537,11 +3519,10 @@ export function mountProfileCarouselFlat({ root }) {
         if (diff < -TOTAL / 2) diff += TOTAL;
         currIdx += diff; update(true);
       } else if (wrap.classList.contains('is-settled')) {
-        doSelect();
+        doSelect(false);
       }
     });
 
-    // При первом показе: скрываем все, показываем первый таб без анимации
     root.querySelectorAll('.profile-tab-content').forEach(x => {
       x.classList.remove('active');
       x.style.animation = 'none';
@@ -3551,7 +3532,7 @@ export function mountProfileCarouselFlat({ root }) {
       initTab.classList.add('active');
       setTimeout(() => {
         root.querySelectorAll('.profile-tab-content').forEach(x => x.style.animation = '');
-      }, 50); // Даем браузеру время отрендерить первый кадр статично
+      }, 50);
     }
     update(false);
     W.Intel_CarouselFlat = {
@@ -3562,7 +3543,7 @@ export function mountProfileCarouselFlat({ root }) {
         if (diff < -TOTAL / 2) diff += TOTAL;
         currIdx += diff; update(true);
       },
-      selectCurrent: () => doSelect()
+      selectCurrent: () => doSelect(false)
     };
   }, 60);
 }
