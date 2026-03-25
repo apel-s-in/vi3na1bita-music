@@ -54,7 +54,7 @@ export const loadProfileView = async (ctx) => {
   setTimeout(() => { renderProfileLogs({ container: c, metaDB }); window.AlbumsManager?.highlightCurrentTrack?.(); }, 120);
 
   bindProfileLiveBindings({ ctx, getContainer: () => document.getElementById('track-list'), achView });
-  bindProfileActions({ ctx, container: c, achView, profile, metaDB, cloudSync, tokens, reloadProfile: () => loadProfileView(ctx) });
+  bindProfileActions({ ctx, container: c, achView, metaDB, cloudSync, tokens, reloadProfile: () => loadProfileView(ctx) });
 
   if (sessionStorage.getItem('jumpToAch')) {
     sessionStorage.removeItem('jumpToAch');
