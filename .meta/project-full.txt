@@ -374,7 +374,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-25 20:58:31 UTC
+Сгенерировано: 2026-03-25 20:58:52 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -10785,7 +10785,14 @@ input:checked + .set-slider:before{transform:translateX(20px);background:#fff}
 
 //=================================================
 // FILE: /styles/showcase.css
+/* ==========================================
+   ВИТРИНА И АЛЬБОМЫ (showcase.css)
+   ========================================== */
 
+/* 1. ГАЛЕРЕЯ АЛЬБОМОВ (Текущие: #cover-wrap, #cover-slot, .album-icons, .album-icon, .cover-gallery-arrow) */
+/* 2. СПИСОК ТРЕКОВ (Текущие: .track-list, .track, .tnum, .track-title) */
+/* 3. РЕДАКТОР ВИТРИНЫ (Текущие: .showcase-header-controls, .sc-search-, .sc-pl-row, .sc-edit-row) */
+/* 4. МЕНЮ ТРЕКА (Текущие: .sc-bottom-sheet, .sc-sheet-btn, .showcase-sticky-bar) */
 
 //=================================================
 // FILE: /styles/ui-core.css
