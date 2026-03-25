@@ -256,6 +256,7 @@ vi3na1bita-music/
 │   │   │   ├── live-bindings.js
 │   │   │   ├── logs-view.js
 │   │   │   ├── model.js
+│   │   │   ├── profile-tab-renderers.js
 │   │   │   ├── recs-view.js
 │   │   │   ├── render-shell.js
 │   │   │   ├── settings-view.js
@@ -368,7 +369,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-25 08:56:34 UTC
+Сгенерировано: 2026-03-25 08:58:00 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3683,6 +3684,41 @@ export const loadProfileModel = async () => {
   return { metaDB: db, cloudSync: cs, all, ach, streak, profile, totalFull: f, totalSec: s, tokens: JSON.parse(localStorage.getItem('cloud_tokens') || '{}') };
 };
 export default { loadProfileModel };
+
+//=================================================
+// FILE: /scripts/app/profile/profile-tab-renderers.js
+import { bindProfileActions } from './actions.js';
+import { bindProfileLiveBindings } from './live-bindings.js';
+import { bindProfileAccount } from './account-bindings.js';
+
+export const bindProfileTabControllers = ({ ctx, container, achView, profile, metaDB, cloudSync, tokens, onProfileChanged, reloadProfile } = {}) => {
+  if (!container) return;
+
+  bindProfileAccount({
+    container,
+    profile,
+    metaDB,
+    onProfileChanged
+  });
+
+  bindProfileLiveBindings({
+    ctx,
+    getContainer: () => document.getElementById('track-list'),
+    achView
+  });
+
+  bindProfileActions({
+    ctx,
+    container,
+    achView,
+    metaDB,
+    cloudSync,
+    tokens,
+    reloadProfile
+  });
+};
+
+export default { bindProfileTabControllers };
 
 //=================================================
 // FILE: /scripts/app/profile/recs-view.js
