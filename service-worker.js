@@ -1,4 +1,4 @@
-const SW_VERSION = '8.2.05';
+const SW_VERSION = '8.2.06';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
@@ -22,7 +22,10 @@ const STATIC_ASSETS = [
   './albums.json',
   './audio/silence.mp3',
   './data/lyrics-index-v1.json',
-  './styles/main.css', './styles/profile.css',
+  './styles/base.css', './styles/ui-core.css',
+  './styles/main.css', './styles/player.css',
+  './styles/showcase.css', './styles/offline.css',
+  './styles/profile.css', './styles/quarantine.css',
   './img/logo.png', './icons/ui-sprite.svg',
   './icons/favicon-32.png', './icons/favicon-16.png', './icons/apple-touch-icon.png',
   './scripts/core/bootstrap.js', './scripts/core/config.js', './scripts/core/utils.js',
