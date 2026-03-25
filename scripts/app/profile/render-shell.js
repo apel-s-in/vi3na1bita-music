@@ -8,6 +8,7 @@
 // UID.095_(Ownership boundary: legacy vs intel)_(жёстко закрепить render-shell как legacy-shell, принимающий optional intel fragments)_(layout/profile navigation/stat shell здесь, а listener/recs/providers/community insights приходят как надстройка)
 import { mountProfileCarouselFlat } from './carousel-flat.js';
 import { renderProfileSettings } from './settings-view.js';
+import { getProfileTemplateHtml } from './template.js';
 
 const esc = s => window.Utils?.escapeHtml ? window.Utils.escapeHtml(String(s || '')) : String(s || '');
 
@@ -26,15 +27,15 @@ const renderSourceSelector = (ps) => `
 export const renderProfileShell = ({ container: c, profile: p, tokens: tk, totalFull: tF, totalSec: tS, streak: strk, achCount: aC }) => {
   if (!c) return null; c.innerHTML = '';
   const ab = (id, n, ic) => `<button class="auth-btn ${id} ${tk[id] ? 'connected' : ''}" data-auth="${id}"><span>${ic}</span> ${tk[id] ? 'Подключено' : n}</button>`;
-  const tpl = document.getElementById('profile-template').content.cloneNode(true);
-  
-  const avaBtn = tpl.querySelector('#prof-avatar-btn');
+  c.innerHTML = getProfileTemplateHtml();
+
+  const avaBtn = c.querySelector('#prof-avatar-btn');
   if (avaBtn) avaBtn.textContent = p.avatar || '😎';
-  
-  const nameInp = tpl.querySelector('#prof-name-inp');
+
+  const nameInp = c.querySelector('#prof-name-inp');
   if (nameInp) nameInp.value = p.name || 'Слушатель';
-  
-  const authGrid = tpl.querySelector('#prof-auth-grid');
+
+  const authGrid = c.querySelector('#prof-auth-grid');
   if (authGrid) authGrid.innerHTML = ab('yandex', 'Яндекс', '💽') + ab('google', 'Google', '☁️') + ab('vk', 'VK ID', '🔵');
 
   const instKey = 'app:first-install-ts';
@@ -51,8 +52,6 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
   const ps = localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex';
   window.Utils?.dom?.createStyleOnce?.('profile-source-pref-styles', `.prof-src-box{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:12px;display:flex;justify-content:space-between;align-items:center;margin-top:10px}.prof-src-title{font-size:13px;font-weight:bold;color:#fff}.prof-src-sub{font-size:11px;color:#888}.prof-src-switch{display:flex;background:rgba(0,0,0,0.3);border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,0.1)}.prof-src-btn{all:unset;cursor:pointer;padding:6px 12px;font-size:12px;font-weight:bold;transition:.2s}.prof-src-btn--yandex.prof-src-btn--active{color:#fff;background:radial-gradient(circle,#cc0000 0%,#880000 100%)}.prof-src-btn--github.prof-src-btn--active{color:#fff;background:radial-gradient(circle,#444 0%,#000 100%)}.prof-src-btn:not(.prof-src-btn--active){color:#666}`);
   
-  c.appendChild(tpl);
-
   const tabAccount = c.querySelector('#tab-account');
   if (tabAccount) {
     const wrap = document.createElement('div');
