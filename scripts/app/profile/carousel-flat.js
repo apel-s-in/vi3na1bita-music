@@ -162,12 +162,13 @@ export function mountProfileCarouselFlat({ root }) {
         };
 
         if (prev && prev !== tab && !instantExit) {
-          prev.style.transition = 'opacity .15s ease, transform .15s ease';
+          prev.style.transition = 'opacity .18s ease, transform .18s cubic-bezier(.22,1,.36,1)';
           prev.style.opacity = '0';
-          prev.style.transform = 'translateY(15px)';
-          setTimeout(enterNew, 150);
+          prev.style.transform = 'translateY(26px) scale(.965)';
+          setTimeout(enterNew, 180);
         } else {
           enterNew();
+        }
         }
       }, 80);
     };
@@ -216,20 +217,21 @@ export function mountProfileCarouselFlat({ root }) {
       if (!tab) return;
 
       if (mode === 'drag') {
-        const p = Math.min(1, Math.abs(rawDx) / 120);
-        const dy = Math.round(p * 84);
-        const op = Math.max(0.22, 1 - p * 0.58);
+        const p = Math.min(1, Math.abs(rawDx) / 135);
+        const dy = Math.round(p * 132);
+        const sc = 1 - p * 0.065;
+        const op = Math.max(0.12, 1 - p * 0.72);
         tab.style.willChange = 'transform, opacity';
         tab.style.transition = 'none';
-        tab.style.transform = `translateY(${dy}px)`;
+        tab.style.transform = `translateY(${dy}px) scale(${sc.toFixed(3)})`;
         tab.style.opacity = String(op);
         return;
       }
 
       if (mode === 'restore') {
         tab.style.willChange = 'transform, opacity';
-        tab.style.transition = 'transform .22s cubic-bezier(.22,1,.36,1), opacity .22s ease';
-        tab.style.transform = 'translateY(0px)';
+        tab.style.transition = 'transform .28s cubic-bezier(.16,1,.3,1), opacity .24s ease';
+        tab.style.transform = 'translateY(0px) scale(1)';
         tab.style.opacity = '1';
         tab.addEventListener('transitionend', () => clearTabFx(tab), { once: true });
         return;
@@ -237,8 +239,8 @@ export function mountProfileCarouselFlat({ root }) {
 
       if (mode === 'commit') {
         tab.style.willChange = 'transform, opacity';
-        tab.style.transition = 'transform .18s cubic-bezier(.55,0,.85,.25), opacity .18s ease';
-        tab.style.transform = 'translateY(110px)';
+        tab.style.transition = 'transform .20s cubic-bezier(.55,0,.85,.25), opacity .16s ease';
+        tab.style.transform = 'translateY(168px) scale(.92)';
         tab.style.opacity = '0';
         tab.addEventListener('transitionend', () => clearTabFx(tab), { once: true });
       }
@@ -265,8 +267,8 @@ export function mountProfileCarouselFlat({ root }) {
       }
 
       dragDelta = rawDx;
-      const visualDelta = Math.max(-140, Math.min(140, rawDx));
-      car.style.transform = `rotateY(${currIdx * -STEP + visualDelta * 0.45}deg)`;
+      const visualDelta = Math.max(-150, Math.min(150, rawDx));
+      car.style.transform = `rotateY(${currIdx * -STEP + visualDelta * 0.52}deg)`;
       setTabPhysics('drag', rawDx);
     }, { passive: true });
 
