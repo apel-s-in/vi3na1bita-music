@@ -368,7 +368,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-25 08:07:29 UTC
+Сгенерировано: 2026-03-25 08:08:32 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4253,7 +4253,7 @@ export const loadProfileView = async (ctx) => {
   setTimeout(() => { renderProfileLogs({ container: c, metaDB }); window.AlbumsManager?.highlightCurrentTrack?.(); }, 120);
 
   bindProfileLiveBindings({ ctx, getContainer: () => document.getElementById('track-list'), achView });
-  bindProfileActions({ ctx, container: c, achView, profile, metaDB, cloudSync, tokens, reloadProfile: () => loadProfileView(ctx) });
+  bindProfileActions({ ctx, container: c, achView, metaDB, cloudSync, tokens, reloadProfile: () => loadProfileView(ctx) });
 
   if (sessionStorage.getItem('jumpToAch')) {
     sessionStorage.removeItem('jumpToAch');
