@@ -376,7 +376,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-25 21:44:24 UTC
+Сгенерировано: 2026-03-25 21:45:37 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1991,7 +1991,6 @@ export class StatsAggregator {
             if ((await pwaPrompt.userChoice).outcome === 'accepted') { W.NotificationSystem?.success('Установка началась!'); b.style.display = 'none'; }
             pwaPrompt = null;
           } else if (W.Utils?.getPlatform()?.isIOS) {
-            W.Utils?.dom?.createStyleOnce?.('ios-prompt-styles', `.ios-install-prompt{position:fixed;bottom:0;left:0;right:0;background:#1a1a1a;border-radius:20px 20px 0 0;padding:24px 20px;transform:translateY(100%);transition:transform .3s cubic-bezier(.1,.8,.2,1);z-index:10000;box-shadow:0 -4px 30px rgba(0,0,0,.5)}.ios-install-prompt.show{transform:translateY(0)}.ios-prompt-icon{width:64px;height:64px;margin:0 auto 16px;display:block;border-radius:14px;box-shadow:0 4px 12px rgba(0,0,0,.4)}.ios-prompt-title{font-weight:900;font-size:18px;margin-bottom:8px;color:#fff;text-align:center}.ios-prompt-text{opacity:.85;margin-bottom:20px;text-align:center;font-size:14px;line-height:1.5;color:#eaf2ff}.ios-prompt-close{position:absolute;top:12px;right:12px;background:rgba(255,255,255,.1);border:0;color:#fff;font-size:24px;cursor:pointer;line-height:1;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center}.ios-prompt-button{background:linear-gradient(135deg,#7c4dff,#4daaff);color:#fff;border:0;padding:14px;border-radius:12px;font-weight:900;width:100%;cursor:pointer;font-size:15px}`);
             const el = D.createElement('div'); el.className = 'ios-install-prompt';
             el.innerHTML = `<button class="ios-prompt-close" type="button">×</button><img class="ios-prompt-icon" src="icons/apple-touch-icon.png"><div class="ios-prompt-title">Установить на iPhone</div><div class="ios-prompt-text">Нажмите <strong>Поделиться</strong> <span style="font-size:18px">↗️</span> в меню браузера,<br>а затем выберите <strong>«На экран Домой»</strong></div><button class="ios-prompt-button" type="button">Понятно</button>`;
             el.onclick = e => { if (e.target.closest('button')) { el.classList.remove('show'); setTimeout(() => el.remove(), 350); } };
