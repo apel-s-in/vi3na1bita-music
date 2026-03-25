@@ -92,46 +92,76 @@ class AlbumsManager {
   }
 
   async loadAlbum(key) {
-    if (this.loading) return; this.loading = true; this.galVis = true;
+    if (this.loading) return;
+    this.loading = true;
+    this.galVis = true;
     try {
       D.body.classList.toggle('profile-view', key === PROFILE);
-      const tList = $('track-list'); if (tList) tList.innerHTML = '';
-      const social = $('social-links'); if (social) social.innerHTML = '';
+
+      const tList = $('track-list');
+      const social = $('social-links');
+      if (tList) tList.innerHTML = '';
+      if (social) social.innerHTML = '';
       W.GalleryManager?.clear?.();
 
       const sp = { [FAV]: 'loadFavoritesAlbum', [NEWS]: 'loadNewsAlbum', [SHOWCASE]: 'loadShowcaseAlbum', [PROFILE]: 'loadProfileAlbum' };
-      if (sp[key]) { await (await import('./albums/specials.js'))[sp[key]](this); } 
-      else {
+      if (sp[key]) {
+        const mod = await import('./albums/specials.js');
+        const fn = mod?.[sp[key]];
+        if (typeof fn !== 'function') throw new Error(`Special loader missing: ${sp[key]}`);
+        await fn(this);
+      } else {
         if (this.cache.has(key)) delete this.cache.get(key)._pTracks;
+
         await W.TrackRegistry?.ensurePopulated?.();
         let d = this.cache.get(key);
         if (!d) {
-          const cfg = W.TrackRegistry.getAlbumConfig(key); if (!cfg) throw new Error(`Album ${key} missing`);
-          this.cache.set(key, d = { ...cfg, tracks: W.TrackRegistry.getTracksForAlbum(key) });
+          const cfg = W.TrackRegistry?.getAlbumConfig?.(key);
+          if (!cfg) throw new Error(`Album ${key} missing`);
+          this.cache.set(key, d = { ...cfg, tracks: W.TrackRegistry?.getTracksForAlbum?.(key) || [] });
         }
-        
-        await W.GalleryManager?.loadGallery?.(key); this.covers.set(key, await W.GalleryManager?.getFirstCoverUrl?.(key) || LOGO);
-        const cSlot = $('cover-slot'); if (cSlot && W.GalleryManager?.getItemsCount?.() <= 0) cSlot.innerHTML = `<img src="${LOGO}" alt="Cover">`;
-        const coverWrap = $('cover-wrap'); if (coverWrap) coverWrap.style.display = '';
-        this.renderAlbumTitle(d.title);
-        const social = $('social-links');
-        if (social) social.innerHTML = (d.links || []).filter(l => l.url).map(l => `<a href="${l.url}" target="_blank" rel="noopener noreferrer">${l.label}</a>`).join('');
-        
+
+        await W.GalleryManager?.loadGallery?.(key);
+        this.covers.set(key, await W.GalleryManager?.getFirstCoverUrl?.(key) || LOGO);
+
+        const cSlot = $('cover-slot');
+        if (cSlot && (W.GalleryManager?.getItemsCount?.() || 0) <= 0) cSlot.innerHTML = `<img src="${LOGO}" alt="Cover">`;
+
+        const coverWrap = $('cover-wrap');
+        if (coverWrap) coverWrap.style.display = '';
+
+        this.renderAlbumTitle(d?.title || '—');
+
+        if (social) {
+          social.innerHTML = ((d?.links || []).filter(l => l?.url)).map(l => `<a href="${l.url}" target="_blank" rel="noopener noreferrer">${l.label}</a>`).join('');
+        }
+
         if (tList) {
-          tList.innerHTML = d.tracks.map((t, i) => `<div class="track" id="trk${i}" data-index="${i}" data-album="${escHtml(key)}" data-uid="${escHtml(t.uid)}"><div class="tnum">${String(t.num).padStart(2,'0')}.</div><div class="track-title">${escHtml(t.title)}</div>${renderFavoriteStar(!!(t.uid && W.playerCore?.isFavorite?.(t.uid)), `data-album="${escHtml(key)}" data-uid="${escHtml(t.uid)}"` )}</div>`).join('');
+          const tracks = Array.isArray(d?.tracks) ? d.tracks : [];
+          tList.innerHTML = tracks.map((t, i) => `<div class="track" id="trk${i}" data-index="${i}" data-album="${escHtml(key)}" data-uid="${escHtml(t?.uid)}"><div class="tnum">${String(t?.num ?? i + 1).padStart(2,'0')}.</div><div class="track-title">${escHtml(t?.title || 'Без названия')}</div>${renderFavoriteStar(!!(t?.uid && W.playerCore?.isFavorite?.(t.uid)), `data-album="${escHtml(key)}" data-uid="${escHtml(t?.uid)}"` )}</div>`).join('');
           tList.querySelectorAll('.track[data-uid]').forEach(el => injectIndicator(el));
         }
+
         this.highlightCurrentTrack();
         W.PlayerUI?.updateMiniHeader?.();
       }
-      this.curr = key; localStorage.setItem('currentAlbum', key);
+
+      this.curr = key;
+      localStorage.setItem('currentAlbum', key);
+
       D.body.classList.toggle('news-view', key === NEWS);
       D.querySelectorAll('.album-icon').forEach(el => el.classList.toggle('active', el.dataset.album === key));
-      $('track-list')?.classList.remove('filtered');
+
+      if (tList) tList.classList.remove('filtered');
+
       W.PlayerUI?.switchAlbumInstantly?.(key);
       W.FavoritesOnlyActions?.syncFavoritesOnlyUiFrame?.();
-    } catch (e) { console.error('[AlbumsManager] Ошибка:', e); W.NotificationSystem?.error('Ошибка загрузки'); } 
-    finally { this.loading = false; }
+    } catch (e) {
+      console.error('[AlbumsManager] Ошибка:', e);
+      W.NotificationSystem?.error('Ошибка загрузки');
+    } finally {
+      this.loading = false;
+    }
   }
 
   highlightCurrentTrack() {
