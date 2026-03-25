@@ -44,8 +44,8 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
   const instDate = new Date(instTs).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
   const daysDiff = Math.max(1, Math.floor((Date.now() - instTs) / 86400000) + 1);
 
-  const sincEl = tpl.querySelector('#prof-meta-since');
-  const dayEl = tpl.querySelector('#prof-meta-days');
+  const sincEl = c.querySelector('#prof-meta-since');
+  const dayEl = c.querySelector('#prof-meta-days');
   if (sincEl) sincEl.textContent = `📅 Слушаю с: ${instDate}`;
   if (dayEl) dayEl.textContent = `🎵 Дней с нами: ${daysDiff}`;
   
