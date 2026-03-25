@@ -2,15 +2,6 @@ export function bindAppModals({ W, D, config }) {
   const $ = id => D.getElementById(id);
   const C = config || {};
 
-  W.Utils?.dom?.createStyleOnce?.('app-modals-styles', `
-    .fb-modal-note{margin-bottom:20px;color:#8ab8fd;text-align:center}
-    .fb-modal-links{display:flex;flex-direction:column;gap:15px;max-width:300px;margin:0 auto}
-    .fb-modal-link{color:#fff;padding:15px;border-radius:8px;text-decoration:none;text-align:center}
-    .fb-modal-link--tg{background:#0088cc}
-    .fb-modal-link--mail{background:#4daaff}
-    .fb-modal-link--gh{background:#333}
-  `);
-
   const fb = $('feedback-link');
   if (fb && !fb._appModalBound) {
     fb._appModalBound = 1;
