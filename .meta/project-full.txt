@@ -376,7 +376,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-25 21:15:51 UTC
+Сгенерировано: 2026-03-25 21:23:32 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -10875,26 +10875,83 @@ input:checked + .set-slider:before{transform:translateX(20px);background:#fff}
 // FILE: /styles/ui-core.css
 /* ==========================================
    БИБЛИОТЕКА КОМПОНЕНТОВ (ui-core.css)
-   Эти элементы можно использовать на любой странице.
-   Они НЕ ДОЛЖНЫ иметь внешних отступов (margin), 
-   чтобы легко встраиваться в любые контейнеры.
    ========================================== */
 
-/* 1. КНОПКИ (Текущие: .om-btn, .showcase-btn, .backup-btn, .modal-action-btn) */
-/* В идеале в будущем свести их к единому префиксу: .ui-btn, .ui-btn--primary, .ui-btn--danger */
+/* 1. КНОПКИ */
+.om-btn{all:unset;cursor:pointer;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 18px;border-radius:var(--om-r);font:600 13px inherit;text-align:center;transition:all .15s;user-select:none}
+.om-btn:active{transform:scale(.97)}
+.om-btn--primary{background:linear-gradient(135deg,#7c4dff,#651fff);color:#fff;box-shadow:0 2px 12px rgba(124,77,255,.25)}
+.om-btn--primary:hover{box-shadow:0 4px 20px rgba(124,77,255,.35);filter:brightness(1.08)}
+.om-btn--accent{background:var(--om-accent-a);color:#b388ff;border:1px solid rgba(124,77,255,.25)}
+.om-btn--accent:hover{background:rgba(124,77,255,.2)}
+.om-btn--ghost{background:rgba(255,255,255,.05);color:var(--om-dim);border:1px solid var(--om-border)}
+.om-btn--ghost:hover{background:rgba(255,255,255,.09);color:rgba(255,255,255,.8)}
+.om-btn--outline{background:transparent;color:var(--om-dim);border:1px solid rgba(255,255,255,.15)}
+.om-btn--outline:hover{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.25);color:#fff}
+.om-btn--danger{background:rgba(244,67,54,.12);color:#ef5350;border:1px solid rgba(244,67,54,.25)}
+.om-btn--danger:hover{background:rgba(244,67,54,.2);box-shadow:0 2px 16px rgba(244,67,54,.15)}
+.om-btn--danger-outline{background:transparent;color:rgba(244,67,54,.7);border:1px solid rgba(244,67,54,.2)}
+.om-btn--danger-outline:hover{background:rgba(244,67,54,.08);color:#ef5350}
+.om-btn--disabled{opacity:.35!important;pointer-events:none!important;cursor:not-allowed!important;filter:grayscale(.6)}
+.modal-action-btn{background:rgba(77,170,255,.15);border:1px solid rgba(77,170,255,.3);color:var(--secondary-color);padding:10px 20px;border-radius:8px;cursor:pointer;font-weight:900;font-size:14px;transition:.2s}
+.modal-action-btn:hover{background:rgba(77,170,255,.25);transform:translateY(-1px);box-shadow:0 4px 12px rgba(77,170,255,.2)}
+.modal-action-btn:active{transform:translateY(0)}
 
-/* 2. МОДАЛЬНЫЕ ОКНА (Текущие: .modal-bg, .modal-feedback, .bigclose, .om-actions) */
-/* В будущем: .ui-modal, .ui-modal__header, .ui-modal__body */
+/* 2. МОДАЛЬНЫЕ ОКНА И ОВЕРЛЕИ */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;backdrop-filter:blur(6px);z-index:10015;animation:fadeIn .3s}
+.modal-bg.active{display:flex}
+.modal-feedback{background:var(--modal-bg);border-radius:14px;padding:28px 24px;min-width:240px;max-width:90vw;max-height:85vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.6);position:relative;animation:slideUp .3s}
+.bigclose{background:0 0;border:0;position:absolute;top:14px;right:14px;cursor:pointer;color:var(--c-e);border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;transition:transform .2s,background .2s}
+.bigclose:hover{transform:scale(1.1);background:rgba(255,255,255,.1)}
+.bigclose:active{transform:scale(.95)}
+.bigclose svg{width:22px;height:22px}
+.om-actions{display:flex;gap:12px;width:100%;margin-top:14px}
+.om-actions .modal-action-btn{flex:1;display:flex;align-items:center;justify-content:center;text-align:center}
+.om-confirm-bg{position:fixed;inset:0;z-index:10010;display:flex;align-items:center;justify-content:center;background:transparent;transition:background .2s;padding:20px}
+.om-confirm-bg--visible{background:rgba(0,0,0,.55)}
+.om-confirm-box{background:#1a1a2e;border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:24px;max-width:340px;width:100%;box-shadow:0 16px 48px rgba(0,0,0,.5);opacity:0;transform:scale(.95);transition:opacity .2s,transform .2s}
+.om-confirm-bg--visible .om-confirm-box{opacity:1;transform:scale(1)}
+.om-confirm-title{font:700 16px/1.3 inherit;color:#fff;margin-bottom:10px}
+.om-confirm-body{font-size:14px;line-height:1.5;color:rgba(255,255,255,.65);margin-bottom:20px}
+.om-confirm-btns{display:flex;gap:10px;justify-content:flex-end}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}
 
-/* 3. УВЕДОМЛЕНИЯ / TOASTS (Текущие: #toast-container, .toast, .toast-success, .toast-error) */
+/* 3. УВЕДОМЛЕНИЯ / TOASTS */
+#toast-container{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:10000;pointer-events:none;display:flex;flex-direction:column;gap:10px;align-items:center}
+.toast{background:#2a2a2a;border-radius:12px;padding:15px 20px;box-shadow:0 4px 20px rgba(0,0,0,.3);opacity:0;transform:translateY(20px);transition:.3s ease;max-width:90vw;word-wrap:break-word;pointer-events:auto}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast-content{display:flex;align-items:center;gap:10px}
+.toast-emoji{width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px}
+.toast-message{flex:1;font-size:14px;line-height:1.4}
+.toast-info{border-left:4px solid var(--secondary-color)}
+.toast-success{border-left:4px solid #27b34c}
+.toast-error{border-left:4px solid var(--primary-color)}
+.toast-warning{border-left:4px solid #ff9800}
+.toast-offline{border-left:4px solid #666}
 
-/* 4. ИНДИКАТОРЫ И ИКОНКИ (Текущие: .like-star, .offline-ind) */
-/* Звездочка избранного и замочек офлайна используются и в витрине, и в плеере, и в профиле */
-
-/* 5. КАРТОЧКИ СТАТИСТИКИ (Текущие: .stat-card, .stat-box, .stats-grid-compact) */
-/* Используются в модалке трека и во вкладке профиля */
-
-/* 6. ГРАФИКИ (Текущие: .chart-block, .chart-row, .chart-bars) */
+/* 4. ИНДИКАТОРЫ И ИКОНКИ */
+.like-star{--star-hit-size:24px;--star-glyph-size:28px;margin-left:auto;width:var(--star-hit-size);height:var(--star-hit-size);min-width:var(--star-hit-size);min-height:var(--star-hit-size);cursor:pointer;opacity:.98;transition:transform .18s,filter .13s,opacity .13s,color .13s;pointer-events:auto!important;position:relative;z-index:10;flex:0 0 var(--star-hit-size);display:inline-flex;align-items:center;justify-content:center;transform-origin:center;line-height:0}
+.like-star:hover{filter:brightness(1.13);opacity:1;transform:scale(1.12)}
+.like-star:active{transform:scale(.95)}
+.like-star.animating{animation:starPulse .3s}
+.like-star-svg{display:inline-flex;align-items:center;justify-content:center;color:#f5f7fb;line-height:0}
+.like-star-svg svg{width:var(--star-glyph-size);height:var(--star-glyph-size);display:block;overflow:visible}
+.like-star-svg[data-liked="1"]{color:#ffd54a;filter:drop-shadow(0 0 8px rgba(255,213,74,.26))}
+.like-star-svg[data-liked="0"]{color:#f5f7fb}
+@keyframes starPulse{0%,to{transform:scale(1)}50%{transform:scale(1.4)}}
+.offline-ind{display:inline-flex;align-items:center;justify-content:center;width:25px;height:25px;min-width:25px;font-size:15px;line-height:1;cursor:pointer;user-select:none;flex-shrink:0;border-radius:3px;transition:opacity .2s,transform .15s;vertical-align:middle;margin-right:6px}
+.offline-ind:hover{transform:scale(1.2)}
+.offline-ind:active{transform:scale(.95)}
+.offline-ind--none{opacity:.4;color:#888}
+.offline-ind--none:hover{opacity:.6}
+.offline-ind--nospace{opacity:.2;color:#888}
+.offline-ind--pinned{opacity:1;color:#f5c842;text-shadow:0 0 4px rgba(245,200,66,.4)}
+.offline-ind--pinned-loading{opacity:1;color:#f5c842;animation:offline-ind-blink 1s ease-in-out infinite}
+.offline-ind--cloud{opacity:1;color:#5bc0de;text-shadow:0 0 4px rgba(91,192,222,.4)}
+.offline-ind--cloud:hover{color:#29b6f6}
+.offline-ind--cloud-loading{opacity:.4;color:#888;animation:offline-ind-blink 1s ease-in-out infinite}
+@keyframes offline-ind-blink{50%{opacity:.4}}
 
 //=================================================
 // FILE: /data/track-profiles/README.txt
