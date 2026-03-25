@@ -1,0 +1,9 @@
+/* ==========================================
+   ОФЛАЙН МЕНЕДЖЕР (offline.css)
+   ========================================== */
+
+/* 1. ГЛАВНОЕ ОКНО (Текущие: .om-overlay, .om-modal, .om-header, .om-body, .om-section) */
+/* 2. ПОЛОСА ПАМЯТИ (Текущие: .om-storage-segbar, .om-segbar--, .om-storage-legend) */
+/* 3. СЕТЕВЫЕ СВИТЧЕРЫ (Текущие: .om-toggle, .om-traffic) */
+/* 4. СПИСКИ ЗАГРУЗОК (Текущие: .om-track-list, .om-list-item, .om-pc-toprow) */
+/* 5. PROGRESS BAR В ПЛЕЕРЕ (Текущие: .player-cache-layer, @keyframes cacheAnim) */
