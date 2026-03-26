@@ -1,11 +1,11 @@
+// Компактный Store витрины.
 const NS = 'sc3:', deep = v => JSON.parse(JSON.stringify(v));
 export const createShowcaseStore = ({ trk, getCat, ls = localStorage }) => {
   const jGet = (k, d = null) => { try { const v = ls.getItem(NS + k); return v ? JSON.parse(v) : d; } catch { return d; } };
   const jSet = (k, v) => { try { ls.setItem(NS + k, JSON.stringify(v)); } catch {} };
 
   const normSnap = (c, fbOrd = getCat()) => {
-    c = c && typeof c === 'object' ? deep(c) : {};
-    const o = [], h = [], s = new Set();
+    c = c && typeof c === 'object' ? deep(c) : {}; const o = [], h = [], s = new Set();
     [...(c.order || []), ...fbOrd].forEach(u => trk(u) && !s.has(u) && (s.add(u), o.push(u)));
     (c.hidden || []).forEach(u => trk(u) && s.has(u) && !h.includes(u) && h.push(u));
     return { order: o, hidden: h };
@@ -43,11 +43,7 @@ export const createShowcaseStore = ({ trk, getCat, ls = localStorage }) => {
       this.base = { ord: [...(b.order || [])], hid: [...(b.hidden || [])] };
       this.ord = [...(s?.order || this.base.ord)]; this.hid = new Set(s?.hidden || this.base.hid); this.chk = new Set();
     }
-    getList() {
-      if (!this.isDef) return [...this.ord].filter(trk);
-      const s = new Set(), o = [];
-      [...this.ord, ...getCat()].forEach(u => trk(u) && !s.has(u) && (s.add(u), o.push(u))); return o;
-    }
+    getList() { if (!this.isDef) return [...this.ord].filter(trk); const s = new Set(), o = []; [...this.ord, ...getCat()].forEach(u => trk(u) && !s.has(u) && (s.add(u), o.push(u))); return o; }
     toggleChecked(uid) { this.chk.has(uid) ? this.chk.delete(uid) : this.chk.add(uid); }
     toggleHidden(uid) { this.hid.has(uid) ? this.hid.delete(uid) : this.hid.add(uid); }
     setAllChecked(on) { this.chk = new Set(on ? this.getList() : []); }
