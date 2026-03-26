@@ -372,7 +372,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-26 17:58:39 UTC
+Сгенерировано: 2026-03-26 17:59:47 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4129,58 +4129,18 @@ export default { initIntelBootstrap };
 
 //=================================================
 // FILE: /scripts/intel/community/cohorts.js
-// UID.065_(Cohort model)_(группировать пользователей по паттернам)_(держать место под будущие segment labels и cluster ids)
-// UID.066_(Similar listeners)_(построить future social-intelligence слой)_(пока подготовить стабильный API без runtime-нагрузки)
-// UID.095_(Ownership boundary: legacy vs intel)_(community labels не должны считаться локальной truth пользователя)_(cohort слой — только derived/aggregated intelligence и не владеет profile/stats/playback state)
-
-export const cohorts = {
-  async init() {
-    return true;
-  },
-
-  async getCurrentCohorts() {
-    return [];
-  }
-};
-
-export default cohorts;
+// UID.065_(Cohort model)_(группировать пользователей по паттернам)_(держать место под будущие segment labels и cluster ids) UID.066_(Similar listeners)_(построить future social-intelligence слой)_(пока подготовить стабильный API без runtime-нагрузки) UID.095_(Ownership boundary: legacy vs intel)_(community labels не должны считаться локальной truth пользователя)_(cohort слой — только derived/aggregated intelligence и не владеет profile/stats/playback state)
+export const cohorts = { async init() { return true; }, async getCurrentCohorts() { return []; } }; export default cohorts;
 
 //=================================================
 // FILE: /scripts/intel/community/community-stats.js
-// UID.064_(Global track stats)_(готовить community-level сигналы)_(держать слой агрегатов отдельно от локальных stats)
-// UID.067_(User-vs-community compare)_(готовить future сравнение пользователя с аудиторией)_(здесь будет вход для aggregated community metrics)
-// UID.068_(Public playlist analytics)_(готовить social metrics playlists/shares/views)_(держать place-holder API до появления backend/export pipeline)
-// UID.095_(Ownership boundary: legacy vs intel)_(community aggregates не должны подменять локальные stats truth)_(этот модуль хранит только outer/community signals и не пишет в local user stats)
-
-export const communityStats = {
-  async init() {
-    return true;
-  },
-
-  async getTrackStats(uid) {
-    return { uid: String(uid || '').trim(), popularity: 0, completionRate: 0, replayRate: 0 };
-  }
-};
-
-export default communityStats;
+// UID.064_(Global track stats)_(готовить community-level сигналы)_(держать слой агрегатов отдельно от локальных stats) UID.067_(User-vs-community compare)_(готовить future сравнение пользователя с аудиторией)_(здесь будет вход для aggregated community metrics) UID.068_(Public playlist analytics)_(готовить social metrics playlists/shares/views)_(держать place-holder API до появления backend/export pipeline) UID.095_(Ownership boundary: legacy vs intel)_(community aggregates не должны подменять локальные stats truth)_(этот модуль хранит только outer/community signals и не пишет в local user stats)
+export const communityStats = { async init() { return true; }, async getTrackStats(uid) { return { uid: String(uid || '').trim(), popularity: 0, completionRate: 0, replayRate: 0 }; } }; export default communityStats;
 
 //=================================================
 // FILE: /scripts/intel/community/similar-listeners.js
-// UID.066_(Similar listeners)_(готовить рекомендации по похожим пользователям)_(держать placeholder API для future remote/local matching)
-// UID.067_(User-vs-community compare)_(готовить сравнительные инсайты)_(пока возвращать безопасный пустой слой, не влияющий на UI)
-// UID.095_(Ownership boundary: legacy vs intel)_(similar-listeners слой не должен знать о UI и playback)_(модуль только отдаёт community intelligence candidates, а потребление остаётся внешним)
-
-export const similarListeners = {
-  async init() {
-    return true;
-  },
-
-  async getList() {
-    return [];
-  }
-};
-
-export default similarListeners;
+// UID.066_(Similar listeners)_(готовить рекомендации по похожим пользователям)_(держать placeholder API для future remote/local matching) UID.067_(User-vs-community compare)_(готовить сравнительные инсайты)_(пока возвращать безопасный пустой слой, не влияющий на UI) UID.095_(Ownership boundary: legacy vs intel)_(similar-listeners слой не должен знать о UI и playback)_(модуль только отдаёт community intelligence candidates, а потребление остаётся внешним)
+export const similarListeners = { async init() { return true; }, async getList() { return []; } }; export default similarListeners;
 
 //=================================================
 // FILE: /scripts/intel/flags.js
