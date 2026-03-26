@@ -189,12 +189,15 @@ export const YandexAuth = {
     window.dispatchEvent(new CustomEvent('yandex:auth:changed', { detail: { status: 'active', profile: read(LS_PROFILE) } }));
   },
 
-  // --- Авто-логин (Silent Refresh приближения) ---
+  // --- Авто-логин ---
   checkAutoRelogin() {
     if (!this.isAutoRelogin()) return;
     if (this.getSessionStatus() === 'expired') {
-      // Тихо перенаправляем — Яндекс не будет переспрашивать если сессия живая
-      this.login();
+      // Тихий автологин через popup — только если пользователь взаимодействует
+      // Не вызываем автоматически при старте — iOS/Safari блокируют popup без жеста
+      window.dispatchEvent(new CustomEvent('yandex:auth:changed', {
+        detail: { status: 'expired', needsRelogin: true }
+      }));
     }
   }
 };
