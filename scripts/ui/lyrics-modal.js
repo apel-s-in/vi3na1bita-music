@@ -13,18 +13,9 @@
     if (!txt) txt = (W.LyricsController?.getCurrentLyricsLines?.() || []).map(i => i.line).filter(Boolean).join('\n');
     if (!txt) return N?.warning('Текст песни недоступен');
     const esc = U?.escapeHtml || (s => String(s || ''));
-
     const m = W.Modals?.open?.({ title: esc(t.title), maxWidth: 420, bodyHtml: `<div class="lyrics-modal lyrics-modal-box"><div class="lyrics-modal-meta">${esc(t.artist || 'Витрина Разбита')} · ${esc(t.album || '')}</div><div class="lyrics-modal-text-wrap" id="lm-wrap"><div class="lyrics-fulltext lyrics-modal-text-inner" id="lm-inner">${esc(txt)}</div></div><div class="lyrics-modal-actions"><button class="modal-action-btn" id="copy-lyrics-btn">📋 Копировать</button></div></div>` });
     if (!m) return N?.error('Система окон недоступна');
-
-    requestAnimationFrame(() => {
-      const wrap = m.querySelector('#lm-wrap'), inner = m.querySelector('#lm-inner');
-      if (wrap && inner) {
-        const ratio = (wrap.clientWidth - 32) / inner.scrollWidth;
-        if (ratio < 1) inner.style.fontSize = Math.floor(15 * ratio) + 'px';
-      }
-    });
-
+    requestAnimationFrame(() => { const w = m.querySelector('#lm-wrap'), i = m.querySelector('#lm-inner'); if (w && i) { const r = (w.clientWidth - 32) / i.scrollWidth; if (r < 1) i.style.fontSize = Math.floor(15 * r) + 'px'; } });
     m.querySelector('#copy-lyrics-btn')?.addEventListener('click', async () => {
       try { await navigator.clipboard.writeText(txt); N?.success('Текст скопирован'); m.remove(); } catch {
         const ta = Object.assign(D.createElement('textarea'), { className: 'lyrics-copy-helper', value: txt }); D.body.appendChild(ta); ta.select();
