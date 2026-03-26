@@ -11,8 +11,60 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
   if ($('#prof-avatar-btn')) $('#prof-avatar-btn').textContent = p.avatar || '😎';
   if ($('#prof-name-inp')) $('#prof-name-inp').value = p.name || 'Слушатель';
 
-  const ab = (id, n, ic) => `<button class="auth-btn ${id} ${tk[id] ? 'connected' : ''}" data-auth="${id}"><span>${ic}</span> ${tk[id] ? 'Подключено' : n}</button>`;
-  if ($('#prof-auth-grid')) $('#prof-auth-grid').innerHTML = ab('yandex', 'Яндекс', '💽') + ab('google', 'Google', '☁️') + ab('vk', 'VK ID', '🔵');
+  // Яндекс OAuth статус
+  const renderAuthBlock = () => {
+    const authEl = $('#prof-auth-grid');
+    if (!authEl) return;
+    const ya = window.YandexAuth;
+    if (!ya) return;
+    const status = ya.getSessionStatus();
+    const profile = ya.getProfile();
+    const autoLogin = ya.isAutoRelogin();
+
+    const statusLabel = { active: '🟢 Подключено', expired: '🟡 Сессия истекла', logged_out: '⚪ Не подключено' }[status] || '⚪ Не подключено';
+    const statusColor = { active: '#4caf50', expired: '#ff9800', logged_out: '#888' }[status] || '#888';
+
+    authEl.innerHTML = `
+      <div class="yandex-auth-block">
+        <div class="yandex-auth-status" style="color:${statusColor};font-size:13px;font-weight:700;margin-bottom:12px">${statusLabel}</div>
+        ${profile ? `
+          <div class="yandex-auth-profile" style="display:flex;align-items:center;gap:12px;margin-bottom:14px;padding:12px;background:rgba(255,255,255,.04);border-radius:12px;border:1px solid rgba(255,255,255,.08)">
+            ${profile.avatar ? `<img src="${profile.avatar}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0" loading="lazy">` : '<div style="width:44px;height:44px;border-radius:50%;background:#232b38;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">👤</div>'}
+            <div style="min-width:0">
+              <div style="font-size:15px;font-weight:900;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${window.Utils?.escapeHtml?.(profile.displayName || 'Слушатель')}</div>
+              <div style="font-size:11px;color:#888;margin-top:2px">@${window.Utils?.escapeHtml?.(profile.login || '')} · ID ${profile.yandexId}</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:10px">
+            <button class="modal-action-btn" data-ya-action="rename" style="flex:1;font-size:12px;padding:8px">✏️ Изменить имя</button>
+            <button class="modal-action-btn" data-ya-action="save-backup" style="flex:1;font-size:12px;padding:8px">☁️ Сохранить</button>
+            <button class="modal-action-btn" data-ya-action="restore-backup" style="flex:1;font-size:12px;padding:8px">📥 Восстановить</button>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;padding:10px 12px;background:rgba(0,0,0,.2);border-radius:10px;margin-bottom:10px">
+            <span style="flex:1;font-size:12px;color:#9db7dd">Автовход при сбросе сессии</span>
+            <label class="set-switch"><input type="checkbox" id="ya-auto-relogin" ${autoLogin ? 'checked' : ''}><span class="set-slider"></span></label>
+          </div>
+          <button class="om-btn om-btn--outline om-fullw" data-ya-action="logout" style="font-size:12px">Выйти из аккаунта Яндекс</button>
+        ` : `
+          <div style="color:#9db7dd;font-size:13px;line-height:1.55;margin-bottom:16px">
+            Войдите через Яндекс, чтобы сохранять прогресс, достижения и плейлисты на всех устройствах.
+          </div>
+          <button class="auth-btn yandex" data-ya-action="login" style="width:100%;padding:14px;font-size:15px;border-radius:12px">
+            <span>💽</span> Войти через Яндекс
+          </button>
+        `}
+      </div>`;
+
+    // Биндим кнопки сразу после рендера
+    authEl.querySelectorAll('[data-ya-action]').forEach(btn => {
+      btn.onclick = () => window._handleYaAction?.(btn.dataset.yaAction, authEl, renderAuthBlock);
+    });
+    const autoChk = authEl.querySelector('#ya-auto-relogin');
+    if (autoChk) autoChk.onchange = e => ya.setAutoRelogin(e.target.checked);
+  };
+
+  renderAuthBlock();
+  window.addEventListener('yandex:auth:changed', renderAuthBlock);
 
   const instTs = Number(localStorage.getItem('app:first-install-ts') || (localStorage.setItem('app:first-install-ts', String(Date.now())), Date.now()));
   if ($('#prof-meta-since')) $('#prof-meta-since').textContent = `📅 Слушаю с: ${new Date(instTs).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}`;
