@@ -1,15 +1,2 @@
-// UID.066_(Similar listeners)_(готовить рекомендации по похожим пользователям)_(держать placeholder API для future remote/local matching)
-// UID.067_(User-vs-community compare)_(готовить сравнительные инсайты)_(пока возвращать безопасный пустой слой, не влияющий на UI)
-// UID.095_(Ownership boundary: legacy vs intel)_(similar-listeners слой не должен знать о UI и playback)_(модуль только отдаёт community intelligence candidates, а потребление остаётся внешним)
-
-export const similarListeners = {
-  async init() {
-    return true;
-  },
-
-  async getList() {
-    return [];
-  }
-};
-
-export default similarListeners;
+// UID.066_(Similar listeners)_(готовить рекомендации по похожим пользователям)_(держать placeholder API для future remote/local matching) UID.067_(User-vs-community compare)_(готовить сравнительные инсайты)_(пока возвращать безопасный пустой слой, не влияющий на UI) UID.095_(Ownership boundary: legacy vs intel)_(similar-listeners слой не должен знать о UI и playback)_(модуль только отдаёт community intelligence candidates, а потребление остаётся внешним)
+export const similarListeners = { async init() { return true; }, async getList() { return []; } }; export default similarListeners;
