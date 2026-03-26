@@ -27,7 +27,6 @@
 
     m.querySelector('#copy-lyrics-btn')?.addEventListener('click', async () => {
       try { await navigator.clipboard.writeText(txt); N?.success('Текст скопирован'); m.remove(); } catch {
-        U?.dom?.createStyleOnce?.('lyrics-modal-copy-helper-style', `.lyrics-copy-helper{position:fixed;opacity:0;pointer-events:none;inset:-9999px auto auto -9999px}`);
         const ta = Object.assign(D.createElement('textarea'), { className: 'lyrics-copy-helper', value: txt }); D.body.appendChild(ta); ta.select();
         try { D.execCommand('copy'); N?.success('Текст скопирован'); m.remove(); } catch { N?.error('Не удалось скопировать'); } ta.remove();
       }
