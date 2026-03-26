@@ -376,7 +376,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-03-26 22:00:56 UTC
+Сгенерировано: 2026-03-26 22:01:32 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -869,7 +869,7 @@ const DEFAULT_SW_CONFIG = {
 let isAirplaneMode = false;
 
 const STATIC_ASSETS = [
-  './', './index.html', './manifest.json',
+  './', './index.html', './oauth-callback.html', './manifest.json',
   './albums.json',
   './audio/silence.mp3',
   './data/lyrics-index-v1.json',
