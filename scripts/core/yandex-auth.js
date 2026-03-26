@@ -3,7 +3,7 @@
 // Хранит токен, профиль, displayName привязанный к yandexId.
 // НЕ влияет на воспроизведение, статистику и офлайн-режим.
 
-const CLIENT_ID = 'YOUR_YANDEX_CLIENT_ID'; // Вставить после регистрации на oauth.yandex.ru
+const CLIENT_ID = '70c0b7256956440eb5b55866d740ffae'; // Вставить после регистрации на oauth.yandex.ru
 const REDIRECT_URI = 'https://vi3na1bita.website.yandexcloud.net';
 const LS_TOKEN = 'yandex:token';
 const LS_TOKEN_EXP = 'yandex:token_exp';
