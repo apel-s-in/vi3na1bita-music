@@ -372,7 +372,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-26 17:42:31 UTC
+Сгенерировано: 2026-03-26 17:42:49 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2986,6 +2986,7 @@ export default { createShowcaseActions };
 
 //=================================================
 // FILE: /scripts/app/showcase/edit.js
+// Логика редактирования списков showcase. Код минимизирован.
 export const handleShowcaseEditClick = ({ event: e, draft: d, toggleSelected: tS, renderEdit: rE, getList: gL, getStatusCount: gSC }) => {
   const r = e.target.closest('.sc-edit-row'), u = r?.dataset.uid; if (!u || !d) return false;
   if (e.target.classList.contains('sc-chk')) { tS(u); r.classList.toggle('selected', d.chk.has(u)); gSC?.(); return true; }
