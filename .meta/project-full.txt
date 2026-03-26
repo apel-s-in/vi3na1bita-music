@@ -376,7 +376,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-03-26 22:14:57 UTC
+Сгенерировано: 2026-03-26 22:15:26 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3085,7 +3085,7 @@ export function initYandexActions() {
         window.NotificationSystem?.warning('Сессия истекла. Войдите снова.');
         return;
       }
-      if (!window.NetPolicy?.isNetworkAllowed?.() ?? !navigator.onLine) {
+      if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) {
         window.NotificationSystem?.error('Нет подключения к сети.');
         return;
       }
