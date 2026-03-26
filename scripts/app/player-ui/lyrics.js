@@ -15,12 +15,10 @@
     if (!(u = String(u || '').trim())) return null;
     const k = PRE + u, rec = fc?.get?.(k, 43200000, 'session'); if (rec && typeof rec === 'object') return rec.ok ? rec.data : null;
     if (_pend.has(u)) return _pend.get(u);
-
     const p = (async () => {
       const t = W.playerCore?.getCurrentTrack(), urls = [];
       if (t?.uid) { try { const smart = await W.TrackRegistry?.getSmartUrlInfo?.(t.uid, 'lyrics'); if (smart?.url) urls.push(smart.url); } catch {} }
       if (u && !urls.includes(u)) urls.push(u);
-
       for (const url of urls) {
         try {
           const j = fc?.getJson ? await fc.getJson({ key: `lyrics:timeline:${url}`, url, ttlMs: 43200000, store: 'session', fetchInit: { cache: 'force-cache', headers: { Accept: 'application/json' } } }) : await fetch(url, { cache: 'force-cache', headers: { Accept: 'application/json' } }).then(r => { if (!r.ok) throw new Error(); return r.json(); });
@@ -29,14 +27,12 @@
       }
       fc?.set?.(k, { ok: 0 }, 'session'); return null;
     })();
-
     _pend.set(u, p); const res = await p; _pend.delete(u); return res;
   };
 
   const updateUI = () => {
     if (!initDom() || !dom.win) return;
     const ok = st.has && st.mode !== 'hidden', { win, btnT, btnA, bg, btnK, lyr } = dom;
-
     if (st.mini) {
       win.style.display = 'none'; win.className = `lyrics-${st.mode}`;
       if (btnT) btnT.style.display = 'none';
@@ -46,7 +42,6 @@
       if (!st.has && lyr) lyr.innerHTML = '<div class="lyrics-placeholder">Текст не найден</div>';
       return;
     }
-
     win.style.display = st.has ? '' : 'none'; win.className = `lyrics-${st.mode}`;
     if (btnT) { btnT.style.display = st.has ? '' : 'none'; btnT.className = `lyrics-toggle-btn lyrics-${st.mode}`; U?.setAriaDisabled?.(btnT, !st.has); }
     if (btnA) { btnA.style.display = st.showBtn ? '' : 'none'; btnA.classList.toggle('active', st.anim && ok); btnA.classList.toggle('disabled', !st.has); }
@@ -58,18 +53,15 @@
   const render = (pos) => {
     if (!initDom() || !dom.lyr || !st.has) return;
     const lst = st.list, fT = lst[0].time;
-    
     if (pos < fT && fT > 5) {
       const rem = fT - pos, sec = Math.ceil(rem);
       if (st.lIdx === -sec && rem >= 1) return;
       dom.lyr.innerHTML = `<div class="lyrics-countdown${rem<1?' fade-out':''}"${rem<1?` style="opacity:${rem.toFixed(2)}"`:''}>${sec}</div>`;
       st.lIdx = -sec; return;
     }
-
     let idx = -1; for (let i = 0; i < lst.length && pos >= lst[i].time; i++) idx = i;
     if (idx === st.lIdx) return;
     st.lIdx = idx;
-
     const sz = st.mode === 'expanded' ? 9 : 5, hf = (sz-1)/2, s = Math.max(0, idx-hf), pT = Math.max(0, hf-idx), html = Array(sz).fill('<div class="lyrics-window-line"></div>');
     for(let i=0, end=Math.min(lst.length-s, sz-pT); i<end; i++) html[pT+i] = `<div class="lyrics-window-line${(s+i)===idx?' active':''}">${esc(lst[s+i].text)}</div>`;
     dom.lyr.innerHTML = html.join('');
