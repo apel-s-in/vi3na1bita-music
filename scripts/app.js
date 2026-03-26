@@ -37,6 +37,15 @@
     } catch (e) { console.warn('Analytics init skipped/failed:', e); }
 
     try { if (C.INTEL_LAYER_ENABLED !== false) { const intel = await import('./intel/bootstrap.js'); await intel.initIntelBootstrap?.({ W, D, C }); } } catch (e) { console.warn('Intel layer init skipped/failed:', e); }
+
+    // Яндекс OAuth: обработать callback после редиректа
+    try {
+      const { YandexAuth } = await import('./core/yandex-auth.js');
+      if (window.location.hash.includes('access_token')) {
+        await YandexAuth.handleCallback();
+      }
+      YandexAuth.checkAutoRelogin();
+    } catch (e) { console.warn('YandexAuth init skipped:', e); }
     const run = n => W[n]?.initialize?.();
     if (await waitObj('GalleryManager')) run('GalleryManager');
     try { const sm = await import('./app/showcase/index.js'); await sm.default.initialize(); } catch (e) { console.error('Showcase init failed:', e); }
