@@ -1,16 +1,2 @@
-// UID.064_(Global track stats)_(готовить community-level сигналы)_(держать слой агрегатов отдельно от локальных stats)
-// UID.067_(User-vs-community compare)_(готовить future сравнение пользователя с аудиторией)_(здесь будет вход для aggregated community metrics)
-// UID.068_(Public playlist analytics)_(готовить social metrics playlists/shares/views)_(держать place-holder API до появления backend/export pipeline)
-// UID.095_(Ownership boundary: legacy vs intel)_(community aggregates не должны подменять локальные stats truth)_(этот модуль хранит только outer/community signals и не пишет в local user stats)
-
-export const communityStats = {
-  async init() {
-    return true;
-  },
-
-  async getTrackStats(uid) {
-    return { uid: String(uid || '').trim(), popularity: 0, completionRate: 0, replayRate: 0 };
-  }
-};
-
-export default communityStats;
+// UID.064_(Global track stats)_(готовить community-level сигналы)_(держать слой агрегатов отдельно от локальных stats) UID.067_(User-vs-community compare)_(готовить future сравнение пользователя с аудиторией)_(здесь будет вход для aggregated community metrics) UID.068_(Public playlist analytics)_(готовить social metrics playlists/shares/views)_(держать place-holder API до появления backend/export pipeline) UID.095_(Ownership boundary: legacy vs intel)_(community aggregates не должны подменять локальные stats truth)_(этот модуль хранит только outer/community signals и не пишет в local user stats)
+export const communityStats = { async init() { return true; }, async getTrackStats(uid) { return { uid: String(uid || '').trim(), popularity: 0, completionRate: 0, replayRate: 0 }; } }; export default communityStats;
