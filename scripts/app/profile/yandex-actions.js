@@ -2,11 +2,12 @@
 // Обработчики пользовательских действий с Яндекс-авторизацией из профиля.
 
 import { BackupVault } from '../../analytics/backup-vault.js';
+import { YandexDisk } from '../../core/yandex-disk.js';
 
 export function initYandexActions() {
   window._handleYaAction = async (action, container, rerender) => {
     const ya = window.YandexAuth;
-    const disk = window.YandexDisk;
+    const disk = YandexDisk;
     if (!ya) return;
 
     if (action === 'login') {
