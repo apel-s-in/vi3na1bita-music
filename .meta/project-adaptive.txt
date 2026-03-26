@@ -372,7 +372,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-26 17:18:15 UTC
+Сгенерировано: 2026-03-26 17:18:53 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2724,31 +2724,10 @@ import { bindProfileAccount } from './account-bindings.js';
 
 export const bindProfileTabControllers = ({ ctx, container, achView, profile, metaDB, cloudSync, tokens, onProfileChanged, reloadProfile } = {}) => {
   if (!container) return;
-
-  bindProfileAccount({
-    container,
-    profile,
-    metaDB,
-    onProfileChanged
-  });
-
-  bindProfileLiveBindings({
-    ctx,
-    getContainer: () => document.getElementById('track-list'),
-    achView
-  });
-
-  bindProfileActions({
-    ctx,
-    container,
-    achView,
-    metaDB,
-    cloudSync,
-    tokens,
-    reloadProfile
-  });
+  bindProfileAccount({ container, profile, metaDB, onProfileChanged });
+  bindProfileLiveBindings({ ctx, getContainer: () => document.getElementById('track-list'), achView });
+  bindProfileActions({ ctx, container, achView, metaDB, cloudSync, tokens, reloadProfile });
 };
-
 export default { bindProfileTabControllers };
 
 //=================================================
