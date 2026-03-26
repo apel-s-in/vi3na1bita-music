@@ -47,14 +47,6 @@
 
   const getUiSuspend = () => !!W.PlaybackClock?.getPlaybackClock?.()?.uiBackgroundSuspend;
 
-  const ensureStyles = () => {
-    W.Utils?.dom?.createStyleOnce?.('logo-pulse-styles', `
-      .logo-pulse-target{transition:transform .05s linear,filter .05s linear!important;will-change:transform,filter}
-      .lp-active{transform:scale(calc(1 + var(--p,0) * var(--lp-int,0.12)))!important;filter:drop-shadow(0 0 calc(var(--lp-glow-base,4px) + var(--p,0) * var(--lp-glow-boost,18px)) var(--primary-color)) brightness(calc(1 + var(--p,0) * var(--lp-bright,0.18)))!important}
-      .logo-pulse-debug{position:fixed;right:10px;bottom:10px;z-index:10030;padding:6px 8px;border-radius:8px;background:rgba(8,12,18,.86);border:1px solid rgba(77,170,255,.25);color:#d8ecff;font:11px/1.35 monospace;pointer-events:none;white-space:pre;backdrop-filter:blur(4px);box-shadow:0 8px 20px rgba(0,0,0,.35)}
-    `);
-  };
-
   const ensureDebugEl = () => {
     if (!state.debug) {
       state.debugEl?.remove();
@@ -206,7 +198,6 @@
   };
 
   const init = () => {
-    ensureStyles();
     syncUi();
     W.addEventListener('player:play', () => { setupAudio(); });
     W.addEventListener('player:trackChanged', () => { state.pulse = 0; setupAudio(); });
