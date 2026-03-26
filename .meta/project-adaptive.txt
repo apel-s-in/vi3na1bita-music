@@ -372,7 +372,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-26 16:55:23 UTC
+Сгенерировано: 2026-03-26 16:55:47 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1680,14 +1680,7 @@ export class ShareGenerator {
 
 //=================================================
 // FILE: /scripts/analytics/stats-aggregator.js
-// UID.003_(Event log truth)_(сохранить агрегатор единственным строителем stats из событий)_(recs/intel/provider слой не должен писать aggregate truth напрямую)
-// UID.004_(Stats as cache)_(оставить stats производным кэшем)_(любые новые aggregate fields должны быть пересчитываемыми из event log)
-// UID.017_(Launch source stats)_(добавить future агрегирование discovery source)_(источники запуска должны считаться здесь, а не в UI state)
-// UID.018_(Variant and quality stats)_(держать честную аналитику режимов прослушивания)_(variant/quality aggregation должно развиваться именно здесь)
-// UID.045_(Tag preferences)_(подготовить future user taste aggregates)_(tag/theme/style/use-case preferences лучше собирать из stats/events, а не напрямую из UI)
-// UID.046_(Axis preferences)_(подготовить осевую аналитику слушателя)_(в будущем агрегатор может копить lightweight preference buckets для listener profile)
-// UID.062_(Recommendation memory and feedback)_(не смешивать rec feedback и media stats)_(recommendation interactions могут писаться в отдельные stores/events, но не ломать current stats path)
-// UID.094_(No-paralysis rule)_(агрегатор должен продолжать работать без intel слоя)_(новые intel-поля only additive и optional)
+// UID.003_(Event log truth)_(сохранить агрегатор единственным строителем stats из событий)_(recs/intel/provider слой не должен писать aggregate truth напрямую) // UID.004_(Stats as cache)_(оставить stats производным кэшем)_(любые новые aggregate fields должны быть пересчитываемыми из event log) // UID.017_(Launch source stats)_(добавить future агрегирование discovery source)_(источники запуска должны считаться здесь, а не в UI state) // UID.018_(Variant and quality stats)_(держать честную аналитику режимов прослушивания)_(variant/quality aggregation должно развиваться именно здесь) // UID.045_(Tag preferences)_(подготовить future user taste aggregates)_(tag/theme/style/use-case preferences лучше собирать из stats/events, а не напрямую из UI) // UID.046_(Axis preferences)_(подготовить осевую аналитику слушателя)_(в будущем агрегатор может копить lightweight preference buckets для listener profile) // UID.062_(Recommendation memory and feedback)_(не смешивать rec feedback и media stats)_(recommendation interactions могут писаться в отдельные stores/events, но не ломать current stats path) // UID.094_(No-paralysis rule)_(агрегатор должен продолжать работать без intel слоя)_(новые intel-поля only additive и optional)
 import { metaDB } from './meta-db.js';
 
 export class StatsAggregator {
@@ -1711,7 +1704,7 @@ export class StatsAggregator {
           s.globalListenSeconds += (lSec || 0); s.lastPlayedAt = ev.timestamp; s.featuresUsed = s.featuresUsed || {};
           if (isV) {
             s.globalValidListenCount++; dailyActive = true;
-            try { const d = new Date(ev.timestamp), h = d.getHours(), w = (d.getDay() + 6) % 7; if (!Array.isArray(s.byHour)) s.byHour = Array(24).fill(0); if (!Array.isArray(s.byWeekday)) s.byWeekday = Array(7).fill(0); s.byHour[h]++; s.byWeekday[w]++; } catch {}
+            try { const d = new Date(ev.timestamp), h = d.getHours(), w = (d.getDay() + 6) % 7; (s.byHour ??= Array(24).fill(0))[h]++; (s.byWeekday ??= Array(7).fill(0))[w]++; } catch {}
           }
           if (isF && !isRateLimited && v !== 'short') {
             s.globalFullListenCount++; this.lastFullListens.set(ev.uid, ev.timestamp);
@@ -1726,11 +1719,9 @@ export class StatsAggregator {
               if (isShuf) s.featuresUsed.shufflePlay = (s.featuresUsed.shufflePlay || 0) + 1;
               if (isFavOnly && !isShuf && isFav) { if (this.session.favOrderedLastUid !== ev.uid) { this.session.favOrderedRun++; this.session.favOrderedLastUid = ev.uid; } } else { this.session.favOrderedRun = 0; this.session.favOrderedLastUid = null; }
               isFavOnly && isShuf && isFav ? this.session.favShuffleEvents.add(ev.uid) : this.session.favShuffleEvents.clear();
-              
               const timeStr = new Date(ev.timestamp).toTimeString().slice(0, 8);
               if (timeStr >= '00:00:00' && timeStr <= '00:30:00') { if (this.session.lastFullUid === ev.uid && this.session.midnightTripleTrack === ev.uid) this.session.midnightTripleCount++; else { this.session.midnightTripleTrack = ev.uid; this.session.midnightTripleCount = 1; } } else { this.session.midnightTripleTrack = null; this.session.midnightTripleCount = 0; }
               this.session.lastFullUid = ev.uid;
-
               if (this.session.favOrderedRun >= 5 || this.session.favShuffleEvents.size >= 5 || this.session.midnightTripleCount >= 3) {
                 setTimeout(async () => await metaDB.updateStat('global', gs => { gs.featuresUsed = gs.featuresUsed || {}; if (this.session.favOrderedRun >= 5) gs.featuresUsed.fav_ordered_5 = 5; if (this.session.favShuffleEvents.size >= 5) gs.featuresUsed.fav_shuffle_5 = 5; if (this.session.midnightTripleCount >= 3) gs.featuresUsed.midnight_triple = 1; return gs; }), 500);
               }
@@ -1742,7 +1733,7 @@ export class StatsAggregator {
       else if (ev.type === 'FEATURE_USED') {
         await metaDB.updateStat(ev.uid || 'global', s => {
           s.featuresUsed = s.featuresUsed || {}; const f = ev.data.feature; s.featuresUsed[f] = (s.featuresUsed[f] || 0) + 1;
-          const d = new Date(ev.timestamp), h = d.getHours(), w = (d.getDay() + 6) % 7; (s.byHour = s.byHour || Array(24).fill(0))[h]++; (s.byWeekday = s.byWeekday || Array(7).fill(0))[w]++; s.lastPlayedAt = ev.timestamp;
+          const d = new Date(ev.timestamp), h = d.getHours(), w = (d.getDay() + 6) % 7; (s.byHour ??= Array(24).fill(0))[h]++; (s.byWeekday ??= Array(7).fill(0))[w]++; s.lastPlayedAt = ev.timestamp;
           if (f === 'social_visit') { const tgt = String(ev.data.target || 'other').toLowerCase(); s.featuresUsed[`social_visit_${tgt}`] = (s.featuresUsed[`social_visit_${tgt}`] || 0) + 1; if ((s.featuresUsed.social_visit_youtube || 0) > 0 && (s.featuresUsed.social_visit_telegram || 0) > 0 && (s.featuresUsed.social_visit_vk || 0) > 0 && (s.featuresUsed.social_visit_tiktok || 0) > 0) s.featuresUsed.social_visit_all = 1; }
           if (['sleep_timer_set', 'sleep_timer_extend', 'sleep_timer_cancel', 'sleep_timer'].includes(f)) { s.featuresUsed.sleep_timer_minutes_total = (s.featuresUsed.sleep_timer_minutes_total || 0) + Math.max(0, Number(ev.data.minutes || 0)); if (ev.data.mode) s.featuresUsed[`sleep_timer_mode_${String(ev.data.mode).toLowerCase()}`] = (s.featuresUsed[`sleep_timer_mode_${String(ev.data.mode).toLowerCase()}`] || 0) + 1; }
           return s;
