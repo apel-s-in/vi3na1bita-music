@@ -1,3 +1,4 @@
+// Логика редактирования списков showcase. Код минимизирован.
 export const handleShowcaseEditClick = ({ event: e, draft: d, toggleSelected: tS, renderEdit: rE, getList: gL, getStatusCount: gSC }) => {
   const r = e.target.closest('.sc-edit-row'), u = r?.dataset.uid; if (!u || !d) return false;
   if (e.target.classList.contains('sc-chk')) { tS(u); r.classList.toggle('selected', d.chk.has(u)); gSC?.(); return true; }
