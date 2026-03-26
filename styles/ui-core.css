@@ -93,6 +93,35 @@
 .sysinfo-row{margin:0 0 4px}
 .sysinfo-footer{margin-top:16px;border-top:1px solid #333;text-align:center;color:#666;font-size:10px;padding-top:10px}
 
+/* 6. СТАТИСТИКА И ГРАФИКИ (Универсальные) */
+.stats-grid-compact{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}
+.stat-box{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);border-radius:12px;padding:14px 10px;text-align:center}
+.stat-box b{display:block;color:#fff;font-size:18px;margin-bottom:4px;font-variant-numeric:tabular-nums}
+.stat-box span{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.5px}
+.stat-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);border-radius:14px;padding:16px;margin-bottom:12px}
+.stat-title{font-size:13px;font-weight:800;color:var(--secondary-color);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px}
+.stat-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px}
+.stat-list li{display:flex;justify-content:space-between;font-size:13px;color:#eaf2ff;align-items:center}
+.stat-list li span:last-child{font-weight:700;color:var(--secondary-color);font-variant-numeric:tabular-nums}
+.chart-block{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);border-radius:14px;padding:16px;margin-bottom:12px}
+.chart-title{font-size:13px;font-weight:800;color:var(--secondary-color);text-transform:uppercase;letter-spacing:.5px;display:flex;justify-content:space-between;align-items:center}
+.chart-title--click{cursor:pointer;user-select:none}
+.chart-title--click::after{content:'▼';font-size:10px;color:#888;transition:transform .2s}
+.chart-bars--hidden{display:none}
+.chart-bars{margin-top:14px;display:flex;flex-direction:column;gap:8px}
+.chart-row{display:flex;align-items:center;gap:10px;font-size:11px;color:#9db7dd}
+.chart-row .label{width:45px;text-align:right;flex-shrink:0}
+.chart-row .bar{flex:1;height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden}
+.chart-row .fill{height:100%;background:var(--grad-blue);border-radius:4px}
+.chart-row .val{width:30px;text-align:left;font-weight:700;color:#fff;font-variant-numeric:tabular-nums}
+
+/* 7. ВСПЛЫВАЮЩИЕ МЕНЮ */
+.cloud-menu{position:fixed;background:rgba(20,24,32,.98);border:1px solid rgba(77,170,255,.4);border-radius:12px;padding:6px;display:flex;flex-direction:column;gap:4px;box-shadow:0 8px 32px rgba(0,0,0,.8);backdrop-filter:blur(8px);z-index:99999}
+.cloud-menu__item{cursor:pointer;padding:10px 14px;color:#eaf2ff;font-size:14px;font-weight:700;border-radius:8px;transition:.15s;white-space:nowrap}
+.cloud-menu__item:hover{background:rgba(255,255,255,.08)}
+.cloud-menu__item--danger{color:#ff6b6b}
+.cloud-menu__item--danger:hover{background:rgba(255,107,107,.1)}
+
 .sm-center{text-align:center}
 .sm-mb20{margin-bottom:20px}
 .sm-cover{width:100px;height:100px;border-radius:12px;overflow:hidden;margin:0 auto 12px;box-shadow:0 4px 15px rgba(0,0,0,0.5)}
