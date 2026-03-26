@@ -125,17 +125,14 @@
     })(),
     profileModals: {
       promptName: ({ title: t = '', value: v = '', btnText: bT = 'Сохранить', onSubmit: oS } = {}) => {
-        U.dom.createStyleOnce('pm-name-styles', '.pm-name-inp{width:100%;padding:10px;border-radius:8px;background:rgba(255,255,255,.1);color:#fff;border:1px solid #666;margin-bottom:15px}.pm-name-save{width:100%}');
         const m = W.Modals?.open?.({ title: t, bodyHtml: `<input type="text" id="pm-name-inp" class="pm-name-inp" value="${U.ui.escapeHtml(v)}"><button class="showcase-btn pm-name-save" id="pm-name-save">${U.ui.escapeHtml(bT)}</button>` });
         if (!m) return null; setTimeout(() => m.querySelector('#pm-name-inp')?.select(), 50); m.querySelector('#pm-name-save')?.addEventListener('click', () => { const vl = m.querySelector('#pm-name-inp')?.value.trim(); if (vl) { m.remove(); oS?.(vl); } }); return m;
       },
       palettePicker: ({ title: t = 'Выбор цвета', items: i = [], value: v = '', resetText: rT = 'Сбросить цвет', onPick: oP } = {}) => {
-        U.dom.createStyleOnce('pm-palette-styles', '.pm-palette{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;justify-content:center}.pm-palette__dot{width:34px;height:34px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .2s;box-shadow:0 2px 8px rgba(0,0,0,.5)}.pm-palette__dot:hover{transform:scale(1.15)}.pm-palette__reset{margin-top:15px;width:100%}');
         const m = W.Modals?.open?.({ title: t, bodyHtml: `<div class="pm-palette">${i.map(x => `<div class="pm-palette__dot" style="background:${x};${v === (x === 'transparent' ? '' : x) ? 'border-color:#fff;' : ''}" data-col="${U.ui.escapeHtml(x)}"></div>`).join('')}</div><button class="showcase-btn pm-palette__reset" data-col="transparent">${U.ui.escapeHtml(rT)}</button>` });
         if (!m) return null; m.addEventListener('click', ev => { const b = ev.target.closest('[data-col]'); if (b) oP?.(b.dataset.col === 'transparent' ? '' : b.dataset.col, m); }); return m;
       },
       failScreen: m => {
-        U.dom.createStyleOnce('boot-fail-screen-styles', '.boot-fail{position:fixed;inset:0;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;font-family:sans-serif}.boot-fail__box{max-width:560px}.boot-fail__title{color:#e80100;margin:0 0 12px}.boot-fail__text{margin:0}.sysinfo-root{font-size:13px;line-height:1.6;color:#eaf2ff}.sysinfo-group-title{color:#8ab8fd;margin:12px 0 6px}.sysinfo-row{margin:0 0 4px}.sysinfo-footer{margin-top:16px;border-top:1px solid #333;text-align:center;color:#666;font-size:10px;padding-top:10px}');
         return `<div class="boot-fail"><div class="boot-fail__box"><h2 class="boot-fail__title">Ошибка запуска</h2><p class="boot-fail__text">${U.ui.escapeHtml(m)}</p></div></div>`;
       },
       sysInfo: {
@@ -143,12 +140,10 @@
         render: ({ appVersion: aV, buildDate: bD, isPwa: i, userAgent: uA, screenText: sT, online: o, audioText: aT, ramText: rT, swVersion: sV }) => `<div class="sysinfo-root">${U.profileModals.sysInfo.group('Приложение', U.profileModals.sysInfo.row('Версия', `${U.ui.escapeHtml(aV)} (${U.ui.escapeHtml(bD)})`) + U.profileModals.sysInfo.row('PWA', i ? '✅' : '❌') + `<div id="sw-ver-row" class="sysinfo-row"><strong>SW:</strong> ${U.ui.escapeHtml(sV)}</div>`)}${U.profileModals.sysInfo.group('Среда', U.profileModals.sysInfo.row('UA', U.ui.escapeHtml(uA).slice(0,45) + '...') + U.profileModals.sysInfo.row('Экран', sT) + U.profileModals.sysInfo.row('Online', o ? '✅' : '❌'))}${U.profileModals.sysInfo.group('Система', U.profileModals.sysInfo.row('Audio', aT) + U.profileModals.sysInfo.row('RAM', rT))}<div class="sysinfo-footer">Vi3na1bita © 2025</div></div>`
       },
       avatarPicker: ({ title: t = 'Аватар', items: i = [], onPick: oP } = {}) => {
-        U.dom.createStyleOnce('profile-avatar-picker-styles', '.prof-ava-grid{display:flex;flex-wrap:wrap;gap:12px;justify-content:center}.prof-ava-btn{font-size:24px;background:#232b38}');
         const m = W.Modals?.open?.({ title: t, bodyHtml: `<div class="prof-ava-grid">${i.map(a => `<button class="showcase-color-dot prof-ava-btn" data-ava="${U.ui.escapeHtml(a)}">${U.ui.escapeHtml(a)}</button>`).join('')}</div>` });
         if (!m) return null; m.addEventListener('click', ev => { const b = ev.target.closest('[data-ava]'); if (b) oP?.(b.dataset.ava, m); }); return m;
       },
       resetProfileData: ({ onAction: oA } = {}) => {
-        U.dom.createStyleOnce('profile-reset-modal-styles', '.prof-reset-btn{width:100%}.prof-reset-btn--mb{margin-bottom:8px}');
         const m = W.Modals?.confirm?.({ title: 'Очистка', textHtml: '<button class="om-btn om-btn--outline prof-reset-btn prof-reset-btn--mb" data-act="stats">Только статистику</button><button class="om-btn om-btn--outline prof-reset-btn prof-reset-btn--mb" data-act="ach">Только достижения</button><button class="om-btn om-btn--danger prof-reset-btn" data-act="all">Сбросить всё</button>', confirmText: 'Закрыть', cancelText: 'Отмена' });
         if (!m) return null; m.addEventListener('click', ev => { const a = ev.target.closest('.om-btn')?.dataset?.act; if (a) oA?.(a, m); }); return m;
       }
