@@ -376,7 +376,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-03-26 21:59:28 UTC
+Сгенерировано: 2026-03-26 22:00:56 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3882,8 +3882,8 @@ export const Favorites = new FavoritesManager(); window.FavoritesManager = Favor
 // Хранит токен, профиль, displayName привязанный к yandexId.
 // НЕ влияет на воспроизведение, статистику и офлайн-режим.
 
-const CLIENT_ID = '70c0b7256956440eb5b55866d740ffae'; // Вставить после регистрации на oauth.yandex.ru
-const REDIRECT_URI = 'https://vi3na1bita.website.yandexcloud.net';
+const CLIENT_ID = '70c0b7256956440eb5b55866d740ffae';
+const REDIRECT_URI = 'https://vi3na1bita.website.yandexcloud.net/oauth-callback.html';
 const LS_TOKEN = 'yandex:token';
 const LS_TOKEN_EXP = 'yandex:token_exp';
 const LS_PROFILE = 'yandex:profile';       // { yandexId, displayName, realName, login, avatar }
@@ -3915,47 +3915,58 @@ export const YandexAuth = {
     }
     const url = `https://oauth.yandex.ru/authorize?response_type=token&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&force_confirm=0`;
 
-    // Открываем popup — CSP родительской страницы не мешает Яндексу
     const w = 520, h = 620;
     const left = Math.round(window.screenX + (window.outerWidth - w) / 2);
     const top = Math.round(window.screenY + (window.outerHeight - h) / 2);
     const popup = window.open(url, 'yandex_oauth', `width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`);
 
     if (!popup) {
-      // Fallback если popup заблокирован браузером
-      window.NotificationSystem?.info('Разрешите всплывающие окна для входа через Яндекс, или перейдите по ссылке вручную.');
-      window.open(url, '_blank');
+      window.NotificationSystem?.info('Разрешите всплывающие окна для входа через Яндекс.');
       return;
     }
 
-    // Следим за URL popup — когда Яндекс редиректит обратно с токеном
-    const timer = setInterval(async () => {
-      try {
-        // Как только popup перешёл на наш домен — читаем hash
-        if (popup.closed) { clearInterval(timer); return; }
-        const popupUrl = popup.location.href;
-        if (popupUrl.startsWith(REDIRECT_URI) && popupUrl.includes('access_token')) {
-          clearInterval(timer);
-          const hash = new URLSearchParams(popupUrl.split('#')[1] || '');
-          const token = hash.get('access_token');
-          const expiresIn = Number(hash.get('expires_in') || 0);
-          popup.close();
-          if (token) {
-            const exp = expiresIn > 0 ? Date.now() + expiresIn * 1000 : 0;
-            localStorage.setItem(LS_TOKEN, token);
-            localStorage.setItem(LS_TOKEN_EXP, String(exp));
-            await new Promise(r => setTimeout(r, 400));
-            const profile = await this.fetchYandexProfile(token);
-            if (profile) await this._onFirstLogin(profile);
-          }
-        }
-      } catch {
-        // Cross-origin — popup ещё на Яндексе, игнорируем
-      }
-    }, 500);
+    // Слушаем postMessage от oauth-callback.html
+    const onMsg = async (e) => {
+      if (e.origin !== window.location.origin) return;
+      if (!e.data || e.data.type !== 'YANDEX_OAUTH_CALLBACK') return;
 
-    // Таймаут 5 минут — закрываем слежку
-    setTimeout(() => { clearInterval(timer); if (!popup.closed) popup.close(); }, 300000);
+      window.removeEventListener('message', onMsg);
+      clearTimeout(timeoutId);
+      try { if (!popup.closed) popup.close(); } catch {}
+
+      const { token, expiresIn, error } = e.data;
+
+      if (error || !token) {
+        window.NotificationSystem?.error('Ошибка авторизации Яндекс: ' + (error || 'нет токена'));
+        return;
+      }
+
+      const exp = Number(expiresIn) > 0 ? Date.now() + Number(expiresIn) * 1000 : 0;
+      localStorage.setItem(LS_TOKEN, token);
+      localStorage.setItem(LS_TOKEN_EXP, String(exp));
+
+      await new Promise(r => setTimeout(r, 200));
+      const profile = await this.fetchYandexProfile(token);
+      if (profile) await this._onFirstLogin(profile);
+    };
+
+    window.addEventListener('message', onMsg);
+
+    // Таймаут 5 минут
+    const timeoutId = setTimeout(() => {
+      window.removeEventListener('message', onMsg);
+      try { if (!popup.closed) popup.close(); } catch {}
+      window.NotificationSystem?.warning('Время авторизации истекло. Попробуйте снова.');
+    }, 300000);
+
+    // Если пользователь закрыл popup вручную
+    const closedCheck = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(closedCheck);
+        clearTimeout(timeoutId);
+        window.removeEventListener('message', onMsg);
+      }
+    }, 1000);
   },
 
   logout() {
