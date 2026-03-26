@@ -56,7 +56,9 @@ export const YandexAuth = {
     localStorage.setItem(LS_TOKEN_EXP, String(exp));
     window.history.replaceState(null, '', window.location.pathname);
 
-    // Загружаем профиль и показываем модалку с именем
+    // Ждём готовности UI перед показом модалки с именем
+    await new Promise(r => setTimeout(r, 800));
+
     const profile = await this.fetchYandexProfile(token);
     if (profile) {
       await this._onFirstLogin(profile);
