@@ -372,7 +372,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-26 17:46:15 UTC
+Сгенерировано: 2026-03-26 17:48:03 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -801,7 +801,7 @@ jobs:
   </template>
 
   <script>
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.2.12');
+    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.2.13');
     const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-03-26');
 
     // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
@@ -845,7 +845,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.2.12';
+const SW_VERSION = '8.2.13';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
