@@ -376,7 +376,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-03-26 22:03:16 UTC
+Сгенерировано: 2026-03-26 22:14:57 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3040,11 +3040,12 @@ export default { loadProfileView };
 // Обработчики пользовательских действий с Яндекс-авторизацией из профиля.
 
 import { BackupVault } from '../../analytics/backup-vault.js';
+import { YandexDisk } from '../../core/yandex-disk.js';
 
 export function initYandexActions() {
   window._handleYaAction = async (action, container, rerender) => {
     const ya = window.YandexAuth;
-    const disk = window.YandexDisk;
+    const disk = YandexDisk;
     if (!ya) return;
 
     if (action === 'login') {
