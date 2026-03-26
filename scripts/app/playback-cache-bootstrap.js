@@ -14,49 +14,32 @@ function getWin(pl, idx) {
 
 async function rebuild(dir = 1) {
   const mgr = getOfflineManager(), pc = window.playerCore;
-  if (!['R1', 'R2'].includes(mgr.getMode())) {
-    Object.values(_win).filter(Boolean).forEach(u => _pendingGC.add(u));
-    _win = { prev: null, cur: null, next: null };
-    if (pc && !pc.isPlaying?.()) flushGC().catch(()=>{}); return;
-  }
-
+  if (!['R1', 'R2'].includes(mgr.getMode())) { Object.values(_win).filter(Boolean).forEach(u => _pendingGC.add(u)); _win = { prev: null, cur: null, next: null }; if (pc && !pc.isPlaying?.()) flushGC().catch(()=>{}); return; }
   const pl = pc?.getPlaylistSnapshot?.() || [], idx = pc?.getIndex?.() ?? -1;
   if (idx < 0 || !pl.length) return;
-
   const nW = getWin(pl, idx); if (!nW.cur) return;
   const keep = new Set(Object.values(nW).filter(Boolean));
-  Object.values(_win).filter(u => u && !keep.has(u)).forEach(u => _pendingGC.add(u));
-  _win = nW;
-
+  Object.values(_win).filter(u => u && !keep.has(u)).forEach(u => _pendingGC.add(u)); _win = nW;
   if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine) || !(await mgr.hasSpace())) return;
-
-  let curIsStreaming = false;
-  try { if (nW.cur) curIsStreaming = (await window.TrackResolver?.resolve?.(nW.cur, mgr.getEffectiveQuality?.()))?.source === 'stream'; } catch {}
-
-  const order = dir >= 0 ? [nW.cur, nW.next, nW.prev] : [nW.cur, nW.prev, nW.next], prio = [100, 90, 80];
-  [...new Set(order)].filter(Boolean).forEach((u, i) => {
+  let curIsStreaming = false; try { if (nW.cur) curIsStreaming = (await window.TrackResolver?.resolve?.(nW.cur, mgr.getEffectiveQuality?.()))?.source === 'stream'; } catch {}
+  [...new Set(dir >= 0 ? [nW.cur, nW.next, nW.prev] : [nW.cur, nW.prev, nW.next])].filter(Boolean).forEach((u, i) => {
     if (i > 0 && curIsStreaming) return;
-    mgr.enqueueAudioDownload(u, { priority: prio[i] || 50, kind: 'playbackCache' });
+    mgr.enqueueAudioDownload(u, { priority: [100, 90, 80][i] || 50, kind: 'playbackCache' });
   });
 }
 
 async function flushGC() {
   if (_protected || !_pendingGC.size) return;
-  const keep = new Set(Object.values(_win).filter(Boolean)), toDel = [..._pendingGC].filter(u => u && !keep.has(u));
-  _pendingGC.clear();
-  for (const u of toDel) {
-    try { const m = await getTrackMeta(u); if (m && ['pinned', 'cloud', 'dynamic'].includes(m.type)) continue; await deleteTrackCache(u); } catch {}
-  }
+  const keep = new Set(Object.values(_win).filter(Boolean)), toDel = [..._pendingGC].filter(u => u && !keep.has(u)); _pendingGC.clear();
+  for (const u of toDel) try { const m = await getTrackMeta(u); if (m && ['pinned', 'cloud', 'dynamic'].includes(m.type)) continue; await deleteTrackCache(u); } catch {}
 }
 
 export function initPlaybackCache() {
   if (_init) return; _init = true;
-  const r = e => rebuild(Number(e?.detail?.dir) || 1).catch(()=>{});
+  const r = e => rebuild(Number(e?.detail?.dir) || 1).catch(()=>{}), toggleNet = () => { const b = !navigator.onLine || (window.NetPolicy && !window.NetPolicy.isNetworkAllowed()); b ? protectWindow() : unprotectWindow(); if (!b) r(); };
   window.addEventListener('player:trackChanged', r);
-  const toggleNet = () => { const b = !navigator.onLine || (window.NetPolicy && !window.NetPolicy.isNetworkAllowed()); b ? protectWindow() : unprotectWindow(); if (!b) r(); };
   ['online', 'offline', 'netPolicy:changed'].forEach(e => window.addEventListener(e, toggleNet));
-  window.playerCore?.on?.({ onPlay: () => flushGC().catch(()=>{}) });
-  toggleNet();
+  window.playerCore?.on?.({ onPlay: () => flushGC().catch(()=>{}) }); toggleNet();
 }
 
 export const protectWindow = () => { _protected = true; };
