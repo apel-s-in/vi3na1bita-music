@@ -372,7 +372,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-26 19:27:09 UTC
+Сгенерировано: 2026-03-26 19:27:26 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5508,74 +5508,30 @@ export const sleepTimerInstance = new SleepTimer(); window.SleepTimer = sleepTim
 
 //=================================================
 // FILE: /scripts/ui/statistics-modal.js
-// UID.038_(Track profile modal)_(не раздувать statistics-modal)_(future открыть отдельный scripts/intel/ui/track-profile-modal.js из этой точки)
-// UID.036_(Track presentation layer)_(показывать карточные summary/reasons/quotes)_(future брать safe presentation snapshot через intel-layer)
-// UID.052_(Track badges and completion)_(добавить collectible-состояние трека)_(future в модалке выводить badges/completion, не ломая текущую статистику)
-// UID.056_(Recommendation reasons)_(показывать почему трек рекомендован/ценен)_(statistics modal может стать точкой входа в explainable layer, но не считать причины сам)
-// UID.068_(Public playlist analytics)_(подготовить social-stat extension)_(future сюда можно добавлять share/save/community signals по треку)
-// UID.094_(No-paralysis rule)_(statistics modal должен оставаться usable без intel)_(если profile modal/intel недоступны, текущее окно работает как сейчас)
+// UID.038_(Track profile modal)_(не раздувать statistics-modal)_(future открыть отдельный scripts/intel/ui/track-profile-modal.js из этой точки) UID.036_(Track presentation layer)_(показывать карточные summary/reasons/quotes)_(future брать safe presentation snapshot через intel-layer) UID.052_(Track badges and completion)_(добавить collectible-состояние трека)_(future в модалке выводить badges/completion, не ломая текущую статистику) UID.056_(Recommendation reasons)_(показывать почему трек рекомендован/ценен)_(statistics modal может стать точкой входа в explainable layer, но не считать причины сам) UID.068_(Public playlist analytics)_(подготовить social-stat extension)_(future сюда можно добавлять share/save/community signals по треку) UID.094_(No-paralysis rule)_(statistics modal должен оставаться usable без intel)_(если profile modal/intel недоступны, текущее окно работает как сейчас)
 import { metaDB } from '../analytics/meta-db.js';
 import { fmtAchTimerText } from './progress-formatters.js';
 
 export async function openStatisticsModal(uid = null) {
   if (!uid) uid = window.playerCore?.getCurrentTrackUid?.() || null;
-
   if (uid) {
-    const t = window.TrackRegistry?.getTrackByUid(uid);
-    const stat = await metaDB.getStat(uid);
-    const plays = stat?.globalFullListenCount || 0;
-    const totalStarts = stat?.globalValidListenCount || 0;
-    const skips = Math.max(0, totalStarts - plays);
-    const time = Math.floor((stat?.globalListenSeconds || 0) / 60);
-    const lyricsUsed = stat?.featuresUsed?.lyrics || 0;
-
-    const m = window.Modals.open({
-      title: 'Статистика трека',
-      maxWidth: 340,
-      bodyHtml: `<div class="sm-center sm-mb20"><div class="sm-cover"><img src="${t?.cover || 'img/logo.png'}"></div><h3 class="sm-title">${window.Utils?.escapeHtml(t?.title || 'Без названия')}</h3><div class="sm-sub">${window.Utils?.escapeHtml(t?.album || '')}</div></div><div class="stats-grid-compact sm-mb20"><div class="stat-box"><b>${plays}</b><span>Дослушано</span></div><div class="stat-box"><b>${skips}</b><span>Пропущено</span></div><div class="stat-box"><b>${time}м</b><span>Время</span></div><div class="stat-box"><b>${lyricsUsed}</b><span>Текст (раз)</span></div></div><button class="om-btn om-btn--primary sm-fullw" id="share-track-stat">📸 Создать карточку трека</button>`
-    });
+    const t = window.TrackRegistry?.getTrackByUid(uid), stat = await metaDB.getStat(uid);
+    const plays = stat?.globalFullListenCount || 0, totalStarts = stat?.globalValidListenCount || 0, skips = Math.max(0, totalStarts - plays), time = Math.floor((stat?.globalListenSeconds || 0) / 60), lyricsUsed = stat?.featuresUsed?.lyrics || 0;
+    const m = window.Modals.open({ title: 'Статистика трека', maxWidth: 340, bodyHtml: `<div class="sm-center sm-mb20"><div class="sm-cover"><img src="${t?.cover || 'img/logo.png'}"></div><h3 class="sm-title">${window.Utils?.escapeHtml(t?.title || 'Без названия')}</h3><div class="sm-sub">${window.Utils?.escapeHtml(t?.album || '')}</div></div><div class="stats-grid-compact sm-mb20"><div class="stat-box"><b>${plays}</b><span>Дослушано</span></div><div class="stat-box"><b>${skips}</b><span>Пропущено</span></div><div class="stat-box"><b>${time}м</b><span>Время</span></div><div class="stat-box"><b>${lyricsUsed}</b><span>Текст (раз)</span></div></div><button class="om-btn om-btn--primary sm-fullw" id="share-track-stat">📸 Создать карточку трека</button>` });
     m.querySelector('#share-track-stat').onclick = () => import('../analytics/share-generator.js').then(mod => { m.remove(); mod.ShareGenerator.generateAndShare('track', t, stat); });
     return;
   }
-
-  const allStats = await metaDB.getAllStats();
-  const engine = window.achievementEngine;
-  const achVal = engine?.unlocked || {};
-  const globalStat = allStats.find(s => s.uid === 'global') || {};
-  const gFeat = globalStat.featuresUsed || {};
-  const trackStats = allStats.filter(s => s.uid && s.uid !== 'global');
-
-  const totalFull = trackStats.reduce((acc, s) => acc + (s.globalFullListenCount || 0), 0);
-  const totalSecs = trackStats.reduce((acc, s) => acc + (s.globalListenSeconds || 0), 0);
+  const allStats = await metaDB.getAllStats(), engine = window.achievementEngine, achVal = engine?.unlocked || {}, globalStat = allStats.find(s => s.uid === 'global') || {}, gFeat = globalStat.featuresUsed || {}, trackStats = allStats.filter(s => s.uid && s.uid !== 'global');
+  const totalFull = trackStats.reduce((a, s) => a + (s.globalFullListenCount || 0), 0), totalSecs = trackStats.reduce((a, s) => a + (s.globalListenSeconds || 0), 0);
   const byH = Array(24).fill(0), byW = Array(7).fill(0);
-
-  trackStats.forEach(s => {
-    if (Array.isArray(s.byHour)) s.byHour.forEach((v, i) => { if (i >= 0 && i < 24) byH[i] += Number(v) || 0; });
-    if (Array.isArray(s.byWeekday)) s.byWeekday.forEach((v, i) => { if (i >= 0 && i < 7) byW[i] += Number(v) || 0; });
-  });
-
-  const peakHour = byH.some(Boolean) ? byH.indexOf(Math.max(...byH)) : 0;
-  const quietHour = byH.some(Boolean) ? byH.indexOf(Math.min(...byH)) : 0;
-
-  const topTracks = [...trackStats]
-    .sort((a, b) => (b.globalFullListenCount || 0) - (a.globalFullListenCount || 0))
-    .slice(0, 5)
-    .map(s => {
-      const tr = window.TrackRegistry?.getTrackByUid(s.uid);
-      return tr ? `<div class="sm-top-row" data-uid="${s.uid}"><span class="sm-top-title">${window.Utils?.escapeHtml(tr.title)}</span><b class="sm-top-val">${s.globalFullListenCount || 0} раз</b></div>` : '';
-    }).join('') || '<div class="sm-empty">Слушайте музыку, чтобы увидеть топ</div>';
-
+  trackStats.forEach(s => { if (Array.isArray(s.byHour)) s.byHour.forEach((v, i) => { if (i >= 0 && i < 24) byH[i] += Number(v) || 0; }); if (Array.isArray(s.byWeekday)) s.byWeekday.forEach((v, i) => { if (i >= 0 && i < 7) byW[i] += Number(v) || 0; }); });
+  const peakHour = byH.some(Boolean) ? byH.indexOf(Math.max(...byH)) : 0, quietHour = byH.some(Boolean) ? byH.indexOf(Math.min(...byH)) : 0;
+  const topTracks = [...trackStats].sort((a, b) => (b.globalFullListenCount || 0) - (a.globalFullListenCount || 0)).slice(0, 5).map(s => { const tr = window.TrackRegistry?.getTrackByUid(s.uid); return tr ? `<div class="sm-top-row" data-uid="${s.uid}"><span class="sm-top-title">${window.Utils?.escapeHtml(tr.title)}</span><b class="sm-top-val">${s.globalFullListenCount || 0} раз</b></div>` : ''; }).join('') || '<div class="sm-empty">Слушайте музыку, чтобы увидеть топ</div>';
   const achRows = (engine?.achievements || []).map(a => `<div class="ach-item ${achVal[a.id] ? '' : 'locked'} sm-ach-row"><div class="ach-icon sm-ach-icon ${achVal[a.id] ? '' : 'sm-ach-locked'}">${a.icon}</div><div class="sm-ach-main"><div class="sm-ach-name">${a.name}</div><div class="sm-ach-desc">${a.desc}${!achVal[a.id] && a.progressMeta ? ` · ${fmtAchTimerText(a, 'remaining')}` : ''}</div></div>${achVal[a.id] ? '<div class="sm-ach-ok">✓</div>' : ''}</div>`).join('') || '<div class="sm-empty">Достижения пока недоступны</div>';
 
-  window.Modals.open({
-    title: 'Профиль слушателя',
-    maxWidth: 400,
-    bodyHtml: `<div class="sm-note">Не удалось определить текущий трек. Показана общая статистика.</div><div class="stats-grid-compact sm-mb20"><div class="stat-box"><b>${totalFull}</b><span>Треков</span></div><div class="stat-box"><b>${Math.floor(totalSecs / 60)}м</b><span>В пути</span></div><div class="stat-box"><b>${String(peakHour).padStart(2,'0')}:00</b><span>Пик активности</span></div><div class="stat-box"><b>${String(quietHour).padStart(2,'0')}:00</b><span>Тихий час</span></div></div><div class="sm-card"><div class="sm-cap">🌙 ТАЙМЕР СНА</div><div>Срабатываний: <b>${gFeat.sleep_timer || 0}</b></div><div>Установок: <b>${gFeat.sleep_timer_set || 0}</b></div><div>Продлений: <b>${gFeat.sleep_timer_extend || 0}</b></div><div>Отмен: <b>${gFeat.sleep_timer_cancel || 0}</b></div><div>Сумма минут: <b>${gFeat.sleep_timer_minutes_total || 0}</b></div></div><div class="sm-card-lg"><div class="sm-cap">🏆 ТОП 5 ТРЕКОВ</div>${topTracks}</div><div class="sm-cap">ДОСТИЖЕНИЯ (${Object.keys(achVal).length}/${engine?.achievements?.length || 0})</div><div class="sm-ach-wrap">${achRows}</div>`
-  });
-
+  window.Modals.open({ title: 'Профиль слушателя', maxWidth: 400, bodyHtml: `<div class="sm-note">Не удалось определить текущий трек. Показана общая статистика.</div><div class="stats-grid-compact sm-mb20"><div class="stat-box"><b>${totalFull}</b><span>Треков</span></div><div class="stat-box"><b>${Math.floor(totalSecs / 60)}м</b><span>В пути</span></div><div class="stat-box"><b>${String(peakHour).padStart(2,'0')}:00</b><span>Пик активности</span></div><div class="stat-box"><b>${String(quietHour).padStart(2,'0')}:00</b><span>Тихий час</span></div></div><div class="sm-card"><div class="sm-cap">🌙 ТАЙМЕР СНА</div><div>Срабатываний: <b>${gFeat.sleep_timer || 0}</b></div><div>Установок: <b>${gFeat.sleep_timer_set || 0}</b></div><div>Продлений: <b>${gFeat.sleep_timer_extend || 0}</b></div><div>Отмен: <b>${gFeat.sleep_timer_cancel || 0}</b></div><div>Сумма минут: <b>${gFeat.sleep_timer_minutes_total || 0}</b></div></div><div class="sm-card-lg"><div class="sm-cap">🏆 ТОП 5 ТРЕКОВ</div>${topTracks}</div><div class="sm-cap">ДОСТИЖЕНИЯ (${Object.keys(achVal).length}/${engine?.achievements?.length || 0})</div><div class="sm-ach-wrap">${achRows}</div>` });
   window.AlbumsManager?.highlightCurrentTrack?.();
 }
-
 window.StatisticsModal = { openStatisticsModal, init: () => document.addEventListener('click', e => { const btn = e.target.closest('.stats-trigger'); if (btn) openStatisticsModal(btn.dataset.uid); }) };
 
 //=================================================
