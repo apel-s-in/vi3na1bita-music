@@ -38,18 +38,18 @@ export const renderProfileStats = ({ container: c, all }) => {
   const topDayPart = [...dayParts].sort((a, b) => b.value - a.value)[0]?.label || '—';
 
   ttEl.innerHTML =
-    `<div class="stats-mini-grid">
-      <div class="stats-mini-box"><b>${uniqTracks}</b><span>Уникальных</span></div>
-      <div class="stats-mini-box"><b>${totalFull}</b><span>Полных</span></div>
-      <div class="stats-mini-box"><b>${totalValid}</b><span>Валидных</span></div>
-      <div class="stats-mini-box"><b>${window.Utils?.fmt?.durationHuman ? window.Utils.fmt.durationHuman(totalSecs) : `${Math.floor(totalSecs / 60)}м`}</b><span>Время</span></div>
+    `<div class="stats-grid-compact">
+      <div class="stat-box"><b>${uniqTracks}</b><span>Уникальных</span></div>
+      <div class="stat-box"><b>${totalFull}</b><span>Полных</span></div>
+      <div class="stat-box"><b>${totalValid}</b><span>Валидных</span></div>
+      <div class="stat-box"><b>${window.Utils?.fmt?.durationHuman ? window.Utils.fmt.durationHuman(totalSecs) : `${Math.floor(totalSecs / 60)}м`}</b><span>Время</span></div>
     </div>` +
 
-    `<div class="stats-mini-grid">
-      <div class="stats-mini-box"><b>${String(peakHour).padStart(2,'0')}:00</b><span>Пик часа</span></div>
-      <div class="stats-mini-box"><b>${topDayPart}</b><span>Время суток</span></div>
-      <div class="stats-mini-box"><b>${gFeat.sleep_timer || 0}</b><span>Таймер сна</span></div>
-      <div class="stats-mini-box"><b>${gFeat.social_visit_all || 0 ? 'Да' : 'Нет'}</b><span>Все соцсети</span></div>
+    `<div class="stats-grid-compact">
+      <div class="stat-box"><b>${String(peakHour).padStart(2,'0')}:00</b><span>Пик часа</span></div>
+      <div class="stat-box"><b>${topDayPart}</b><span>Время суток</span></div>
+      <div class="stat-box"><b>${gFeat.sleep_timer || 0}</b><span>Таймер сна</span></div>
+      <div class="stat-box"><b>${gFeat.social_visit_all || 0 ? 'Да' : 'Нет'}</b><span>Все соцсети</span></div>
     </div>` +
 
     rCh('chart-hours', 'По часам суток', byH, 'myStatsHoursOpen') +
