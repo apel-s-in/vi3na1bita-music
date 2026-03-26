@@ -1,9 +1,4 @@
-// UID.003_(Event log truth)_(оставить session-tracker строителем playback-session событий)_(session intelligence должна опираться на эти события, а не обходить их)
-// UID.018_(Variant and quality stats)_(готовить future variant-aware session accounting)_(audio/minus/stems/clip session semantics должны развиваться здесь)
-// UID.050_(Session profile)_(дать listener/intel слою корректную основу текущей сессии)_(session tracker остаётся truth-layer для session context, а не UI слой)
-// UID.060_(Session-aware next-track strategy)_(подготовить основу для context-aware рекомендаций)_(future session recs должны читать session data отсюда, не вмешиваясь в трекинг)
-// UID.084_(AI content analysis)_(не смешивать AI и session truth)_(AI может интерпретировать session patterns позже, но не заменяет этот слой)
-// UID.094_(No-paralysis rule)_(session tracking должен быть независимым от intel availability)_(никакой intel failure не должен ломать LISTEN_* events)
+// UID.003_(Event log truth)_(оставить session-tracker строителем playback-session событий)_(session intelligence должна опираться на эти события, а не обходить их) // UID.018_(Variant and quality stats)_(готовить future variant-aware session accounting)_(audio/minus/stems/clip session semantics должны развиваться здесь) // UID.050_(Session profile)_(дать listener/intel слою корректную основу текущей сессии)_(session tracker остаётся truth-layer для session context, а не UI слой) // UID.060_(Session-aware next-track strategy)_(подготовить основу для context-aware рекомендаций)_(future session recs должны читать session data отсюда, не вмешиваясь в трекинг) // UID.084_(AI content analysis)_(не смешивать AI и session truth)_(AI может интерпретировать session patterns позже, но не заменяет этот слой) // UID.094_(No-paralysis rule)_(session tracking должен быть независимым от intel availability)_(никакой intel failure не должен ломать LISTEN_* events)
 import { eventLogger } from './event-logger.js';
 import { isValidPlaybackDelta } from './playback-validity.js';
 import { makePlaybackRuntimeSnapshot } from './playback-runtime.js';
@@ -15,7 +10,7 @@ export class SessionTracker {
     window.addEventListener('player:play', e => this._start(e.detail));
     window.addEventListener('player:pause', () => this._pause());
     window.addEventListener('player:tick', e => this._tick(e.detail));
-    ['player:ended', 'player:stop', 'player:trackChanged'].forEach(ev => window.addEventListener(ev, () => { if(ev !== 'player:ended') this._resetContinuousRun(); this._end(ev === 'player:ended'); }));
+    ['player:ended', 'player:stop', 'player:trackChanged'].forEach(ev => window.addEventListener(ev, () => { if(ev !== 'player:ended') this._speedRunnerMs = 0; this._end(ev === 'player:ended'); }));
   }
 
   _start({ uid, duration, type = 'audio' }) {
@@ -32,23 +27,18 @@ export class SessionTracker {
     if (isValidPlaybackDelta({ deltaMs: rt.deltaMs, prevTime: rt.prevPos, currentTime: rt.currentTime, volume: rt.volume, muted: rt.muted })) {
       this.s.accumulatedMs += rt.deltaMs; this._speedRunnerMs += rt.deltaMs;
       if (this._speedRunnerMs >= 10800000 && !this._speedRunnerAwarded) { this._speedRunnerAwarded = true; eventLogger.log('FEATURE_USED', 'global', { feature: 'speed_runner' }); }
-    } else this._resetContinuousRun();
+    } else this._speedRunnerMs = 0;
   }
 
   _pause() {
-    if (this.s) {
-      this._tick({ currentTime: window.playerCore?.getPosition?.() || this.s.lastPos || 0, volume: window.playerCore?.getVolume?.() ?? 100, muted: window.playerCore?.isMuted?.() ?? false });
-      this.s.lastUpdate = Date.now();
-    }
-    this._resetContinuousRun();
+    if (this.s) { this._tick({ currentTime: window.playerCore?.getPosition?.() || this.s.lastPos || 0, volume: window.playerCore?.getVolume?.() ?? 100, muted: window.playerCore?.isMuted?.() ?? false }); this.s.lastUpdate = Date.now(); }
+    this._speedRunnerMs = 0;
   }
-  _resetContinuousRun() { this._speedRunnerMs = 0; }
 
   _end(isE) {
     if (!this.s) return;
     if (!isE) this._tick({ currentTime: window.playerCore?.getPosition?.() || this.s.lastPos || 0, volume: window.playerCore?.getVolume?.() ?? 100, muted: window.playerCore?.isMuted?.() ?? false });
-    const { uid, variant, quality, accumulatedMs, duration, lastPos } = this.s;
-    this.s = null;
+    const { uid, variant, quality, accumulatedMs, duration, lastPos } = this.s; this.s = null;
     if (duration <= 0 && !isE) return;
     const sec = Math.floor(accumulatedMs / 1000), prg = duration > 0 ? (lastPos / duration) : 0, isV = sec >= 13 || isE, isF = prg >= 0.9 || isE;
 
