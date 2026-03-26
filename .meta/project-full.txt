@@ -372,7 +372,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-26 18:00:40 UTC
+Сгенерировано: 2026-03-26 18:01:05 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4180,59 +4180,11 @@ export default listenerProfile;
 
 //=================================================
 // FILE: /scripts/intel/providers/hybrid-sync.js
-// UID.073_(Hybrid sync orchestrator)_(объединить несколько провайдеров вокруг одного профиля)_(держать единый sync state отдельно от cloud-sync legacy)
-// UID.074_(Primary backup provider)_(иметь основной источник бэкапа)_(сохранять primaryBackup role в state)
-// UID.075_(Secondary mirror backup)_(иметь резервную копию профиля)_(сохранять secondaryBackup role в state)
-// UID.076_(Restore policy)_(восстанавливать предсказуемо)_(фиксировать порядок primary -> secondary -> local merge)
-// UID.094_(No-paralysis rule)_(не ломать старый sync)_(пока быть только orchestration-layer без перехвата playback и core backup logic)
-// UID.095_(Ownership boundary: legacy vs intel)_(hybrid-sync не должен становиться новым backup engine)_(модуль только оркестрирует provider roles/state, а transport/backup truth остаются в legacy analytics sync/vault)
-
-const KEY = 'intel:hybrid-sync:v1';
-
-function defaults() {
-  return {
-    version: 'hybrid-sync-v1',
-    primaryBackup: 'yandex',
-    secondaryBackup: 'google',
-    socialProvider: 'vk',
-    lastSyncAt: 0,
-    lastSyncStatus: 'idle'
-  };
-}
-
-function read() {
-  try {
-    return { ...defaults(), ...(JSON.parse(localStorage.getItem(KEY) || '{}') || {}) };
-  } catch {
-    return defaults();
-  }
-}
-
-function write(value) {
-  localStorage.setItem(KEY, JSON.stringify(value));
-  window.dispatchEvent(new CustomEvent('intel:hybrid-sync:updated', { detail: value }));
-  return value;
-}
-
-export const hybridSync = {
-  async init() {
-    write(read());
-    return true;
-  },
-
-  get() {
-    return read();
-  },
-
-  setRoles(patch = {}) {
-    return write({ ...read(), ...(patch || {}) });
-  },
-
-  markSync(status = 'idle') {
-    return write({ ...read(), lastSyncAt: Date.now(), lastSyncStatus: status });
-  }
-};
-
+// UID.073_(Hybrid sync orchestrator)_(объединить несколько провайдеров вокруг одного профиля)_(держать единый sync state отдельно от cloud-sync legacy) UID.074_(Primary backup provider)_(иметь основной источник бэкапа)_(сохранять primaryBackup role в state) UID.075_(Secondary mirror backup)_(иметь резервную копию профиля)_(сохранять secondaryBackup role в state) UID.076_(Restore policy)_(восстанавливать предсказуемо)_(фиксировать порядок primary -> secondary -> local merge) UID.094_(No-paralysis rule)_(не ломать старый sync)_(пока быть только orchestration-layer без перехвата playback и core backup logic) UID.095_(Ownership boundary: legacy vs intel)_(hybrid-sync не должен становиться новым backup engine)_(модуль только оркестрирует provider roles/state, а transport/backup truth остаются в legacy analytics sync/vault)
+const KEY = 'intel:hybrid-sync:v1', defs = () => ({ version: 'hybrid-sync-v1', primaryBackup: 'yandex', secondaryBackup: 'google', socialProvider: 'vk', lastSyncAt: 0, lastSyncStatus: 'idle' });
+const read = () => { try { return { ...defs(), ...(JSON.parse(localStorage.getItem(KEY) || '{}') || {}) }; } catch { return defs(); } };
+const write = v => { localStorage.setItem(KEY, JSON.stringify(v)); window.dispatchEvent(new CustomEvent('intel:hybrid-sync:updated', { detail: v })); return v; };
+export const hybridSync = { async init() { write(read()); return true; }, get() { return read(); }, setRoles(patch = {}) { return write({ ...read(), ...patch }); }, markSync(status = 'idle') { return write({ ...read(), lastSyncAt: Date.now(), lastSyncStatus: status }); } };
 export default hybridSync;
 
 //=================================================
