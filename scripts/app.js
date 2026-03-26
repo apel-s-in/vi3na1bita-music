@@ -48,14 +48,22 @@
   };
 
   const setupHotkeys = () => {
-    const p = () => W.playerCore, m = {
+    const act = {
       k: () => W.PlayerUI?.togglePlayPause(), ' ': e => { e.preventDefault(); W.PlayerUI?.togglePlayPause(); },
-      n: () => p()?.next(), p: () => p()?.prev(), x: () => p()?.stop(), m: () => click('mute-btn'), r: () => click('repeat-btn'), u: () => click('shuffle-btn'),
-      a: () => click('animation-btn'), b: () => click('pulse-btn'), f: () => click('favorites-btn'), t: () => W.SleepTimer?.show?.(), y: () => click('lyrics-toggle-btn'),
-      arrowleft: () => p()?.seek(Math.max(0, (p().getPosition() || 0) - 5)), arrowright: () => p()?.seek(Math.min(p().getDuration() || 0, (p().getPosition() || 0) + 5)),
-      arrowup: e => { e.preventDefault(); p()?.setVolume(Math.min(100, p().getVolume() + 5)); }, arrowdown: e => { e.preventDefault(); p()?.setVolume(Math.max(0, p().getVolume() - 5)); }
+      n: 'next', p: 'prev', x: 'stop', arrowleft: () => W.playerCore?.seek(Math.max(0, (W.playerCore?.getPosition()||0)-5)),
+      arrowright: () => W.playerCore?.seek(Math.min(W.playerCore?.getDuration()||0, (W.playerCore?.getPosition()||0)+5)),
+      arrowup: e => { e.preventDefault(); W.playerCore?.setVolume(Math.min(100, W.playerCore.getVolume()+5)); },
+      arrowdown: e => { e.preventDefault(); W.playerCore?.setVolume(Math.max(0, W.playerCore.getVolume()-5)); }
     };
-    D.addEventListener('keydown', e => !['INPUT', 'TEXTAREA'].includes(e.target?.tagName) && m[e.key.toLowerCase()]?.(e));
+    const btns = { m: 'mute-btn', r: 'repeat-btn', u: 'shuffle-btn', a: 'animation-btn', b: 'pulse-btn', f: 'favorites-btn', y: 'lyrics-toggle-btn', t: () => W.SleepTimer?.show?.() };
+    
+    D.addEventListener('keydown', e => {
+      if (['INPUT','TEXTAREA'].includes(e.target?.tagName)) return;
+      const k = e.key.toLowerCase(), r = act[k] || btns[k];
+      if (typeof r === 'function') r(e);
+      else if (typeof r === 'string' && W.playerCore?.[r]) W.playerCore[r]();
+      else if (typeof r === 'string') click(r);
+    });
   };
 
   const setupPWA = () => {
