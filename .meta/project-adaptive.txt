@@ -375,7 +375,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-26 21:15:50 UTC
+Сгенерировано: 2026-03-26 21:17:20 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
