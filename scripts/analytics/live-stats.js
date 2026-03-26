@@ -13,14 +13,13 @@ class LiveStatsTracker {
     window.addEventListener('player:play', e => { this.state.playing = true; this._updMeta(e.detail?.uid, e.detail?.duration); this._ensureTicker(); this._emit(); });
     window.addEventListener('player:tick', e => { const d = e.detail || {}; this.state.volume = Number(d.volume ?? this.state.volume ?? 100); this.state.muted = !!d.muted; this._flush({ currentTime: d.currentTime, duration: window.playerCore?.getDuration?.() || this.state.duration, volume: this.state.volume, muted: this.state.muted }); });
     ['player:pause', 'player:stop', 'player:ended'].forEach(ev => window.addEventListener(ev, () => {
-      this._flush();
-      this.state.playing = false;
+      this._flush(); this.state.playing = false;
       if (ev === 'player:stop') { this.state.uid = null; this.state.lastPos = 0; }
       this._stopTickerIfIdle(); this._syncSleep(); this._emit();
     }));
     window.addEventListener('player:trackChanged', e => { this._flush(); this._updMeta(e.detail?.uid); this._emit(); });
     window.addEventListener('player:sleepTimerChanged', () => { this._syncSleep(); this._emit(); });
-    document.addEventListener('visibilitychange', () => { if (document.hidden) this._flush(); });
+    document.addEventListener('visibilitychange', () => document.hidden && this._flush());
     this._syncSleep(); this._emit();
   }
 
@@ -51,7 +50,7 @@ class LiveStatsTracker {
 
   getSnapshot() {
     const hasTdy = this.state.streakLastActiveDate === dayKeyLocal(), wdCnt = !hasTdy && Math.floor(this.state.liveAccumulatedMs / 1000) >= 13;
-    return { playing: this.state.playing, uid: this.state.uid, projectedTotalSec: this.state.baseTotalSec + Math.floor(this.state.liveAccumulatedMs / 1000), liveAccumulatedMs: this.state.liveAccumulatedMs, streak: this.state.globalStreak, projectedStreak: hasTdy ? this.state.globalStreak : (wdCnt ? this.state.globalStreak + 1 : this.state.globalStreak), streakLastActiveDate: this.state.streakLastActiveDate, hasTodayPersistent: hasTdy, wouldCountToday: wdCnt, sleepTargetAt: this.state.sleepTargetAt, sleepRemainingMs: this.state.sleepTargetAt > 0 ? Math.max(0, this.state.sleepTargetAt - Date.now()) : 0 };
+    return { playing: this.state.playing, uid: this.state.uid, projectedTotalSec: this.state.baseTotalSec + Math.floor(this.state.liveAccumulatedMs / 1000), liveAccumulatedMs: this.state.liveAccumulatedMs, streak: this.state.globalStreak, projectedStreak: hasTdy ? this.state.globalStreak : (wdCnt ? this.state.globalStreak + 1 : this.state.globalStreak), streakLastActiveDate: this.state.streakLastActiveDate, hasTodayPersistent: hasTdy, wouldCountToday: wdCnt, sleepTargetAt: this.state.sleepTargetAt, sleepRemainingMs: Math.max(0, this.state.sleepTargetAt - Date.now()) };
   }
 }
 export const liveStatsTracker = new LiveStatsTracker(); window.liveStatsTracker = liveStatsTracker;
