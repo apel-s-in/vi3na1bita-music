@@ -372,7 +372,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-26 19:25:23 UTC
+Сгенерировано: 2026-03-26 19:25:57 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5256,7 +5256,6 @@ export const loadAndRenderNewsInline = async c => {
   'use strict';
   const esc = s => String(s || '').replace(/[<>&'"]/g, m => ({'<':'&lt;','>':'&gt;','&':'&amp;',"'":'&#39;','"':'&quot;'}[m])), em = { info: 'ℹ️', success: '✅', error: '❌', warning: '⚠️', offline: '📴' };
   let c; const gC = () => c || (c = Object.assign(document.createElement('div'), { id: 'toast-container', style: 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:10000;pointer-events:none' })) && document.body.appendChild(c) && c;
-  
   class NotificationSystem {
     show(msg, type = 'info', dur = 3000) {
       const el = Object.assign(document.createElement('div'), { className: `toast toast-${type}`, innerHTML: `<div class="toast-content"><span class="toast-emoji">${em[type]||'ℹ️'}</span><span class="toast-message">${esc(msg)}</span></div>` });
@@ -5278,18 +5277,15 @@ let _timer = 0, _menu = null;
 export const refreshAllIndicators = async () => {
   const mgr = getOfflineManager(), hasSpace = await mgr.hasSpace().catch(() => true), metaMap = new Map((await getAllTrackMetas().catch(() => [])).map(m => [m.uid, m]));
   let needsAlert = false;
-
   document.querySelectorAll('.offline-ind').forEach(ind => {
     const m = metaMap.get(ind.dataset.uid);
-    let s = m?.type === 'pinned' ? 'pinned' : (m?.type === 'cloud' ? (m.cachedComplete ? 'cloud' : 'cloud_loading') : (['playbackCache', 'dynamic'].includes(m?.type) ? 'transient' : 'none'));
+    const s = m?.type === 'pinned' ? 'pinned' : (m?.type === 'cloud' ? (m.cachedComplete ? 'cloud' : 'cloud_loading') : (['playbackCache', 'dynamic'].includes(m?.type) ? 'transient' : 'none'));
     if (m?.needsReCache || m?.needsUpdate) needsAlert = true;
-
     ind.className = 'offline-ind'; ind.textContent = s === 'cloud' ? '☁' : '🔒';
     if (s === 'pinned') { const dl = mgr.queue?.act?.has(m.uid); ind.classList.add(dl ? 'offline-ind--pinned-loading' : 'offline-ind--pinned'); ind.title = dl ? 'Закреплён (загружается…)' : 'Закреплён офлайн'; } 
     else if (s === 'cloud') { ind.classList.add('offline-ind--cloud'); ind.title = `Облачный кэш (осталось ${Math.max(0, Math.ceil(((m.cloudExpiresAt || 0) - Date.now()) / 86400000))} дн.)`; } 
     else { ind.classList.add(hasSpace ? 'offline-ind--none' : 'offline-ind--nospace'); ind.title = s === 'cloud_loading' ? 'Облачный кэш (загружается…)' : (hasSpace ? 'Нажмите, чтобы закрепить' : 'Нет места на устройстве'); }
   });
-
   const btn = document.getElementById('offline-btn');
   if (btn) {
     btn.classList.toggle('active', mgr.getMode() === 'R1');
