@@ -6,18 +6,15 @@ let _timer = 0, _menu = null;
 export const refreshAllIndicators = async () => {
   const mgr = getOfflineManager(), hasSpace = await mgr.hasSpace().catch(() => true), metaMap = new Map((await getAllTrackMetas().catch(() => [])).map(m => [m.uid, m]));
   let needsAlert = false;
-
   document.querySelectorAll('.offline-ind').forEach(ind => {
     const m = metaMap.get(ind.dataset.uid);
-    let s = m?.type === 'pinned' ? 'pinned' : (m?.type === 'cloud' ? (m.cachedComplete ? 'cloud' : 'cloud_loading') : (['playbackCache', 'dynamic'].includes(m?.type) ? 'transient' : 'none'));
+    const s = m?.type === 'pinned' ? 'pinned' : (m?.type === 'cloud' ? (m.cachedComplete ? 'cloud' : 'cloud_loading') : (['playbackCache', 'dynamic'].includes(m?.type) ? 'transient' : 'none'));
     if (m?.needsReCache || m?.needsUpdate) needsAlert = true;
-
     ind.className = 'offline-ind'; ind.textContent = s === 'cloud' ? '☁' : '🔒';
     if (s === 'pinned') { const dl = mgr.queue?.act?.has(m.uid); ind.classList.add(dl ? 'offline-ind--pinned-loading' : 'offline-ind--pinned'); ind.title = dl ? 'Закреплён (загружается…)' : 'Закреплён офлайн'; } 
     else if (s === 'cloud') { ind.classList.add('offline-ind--cloud'); ind.title = `Облачный кэш (осталось ${Math.max(0, Math.ceil(((m.cloudExpiresAt || 0) - Date.now()) / 86400000))} дн.)`; } 
     else { ind.classList.add(hasSpace ? 'offline-ind--none' : 'offline-ind--nospace'); ind.title = s === 'cloud_loading' ? 'Облачный кэш (загружается…)' : (hasSpace ? 'Нажмите, чтобы закрепить' : 'Нет места на устройстве'); }
   });
-
   const btn = document.getElementById('offline-btn');
   if (btn) {
     btn.classList.toggle('active', mgr.getMode() === 'R1');
