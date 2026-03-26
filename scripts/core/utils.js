@@ -6,8 +6,7 @@
     dom: {
       byId: id => D.getElementById(id),
       on: (el, ev, fn, o) => { if (!el) return () => {}; el.addEventListener(ev, fn, o); return () => { try { el.removeEventListener(ev, fn, o); } catch {} }; },
-      raf: requestAnimationFrame, defer: fn => setTimeout(fn, 0),
-      createStyleOnce: (id, css) => { if (!D.getElementById(id)) { const s = D.createElement('style'); s.id = id; s.textContent = css; D.head.appendChild(s); } }
+      raf: requestAnimationFrame, defer: fn => setTimeout(fn, 0)
     },
     getNet: () => { const NP = W.NetPolicy; if (NP) return { online: NP.isNetworkAllowed(), kind: NP.detectNetworkType(), saveData: false }; const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection; return { online: navigator.onLine, kind: /cellular|2g|3g|4g/i.test(c?.type || '') ? 'cellular' : 'wifi', saveData: c?.saveData || false }; },
     getPlatform: () => { const ua = navigator.userAgent; return { isIOS: /iPad|iPhone|iPod/.test(ua) && !W.MSStream, isPWA: matchMedia('(display-mode: standalone)').matches || navigator.standalone, isDesktop: !/Mobi|Android/i.test(ua), isAndroid: /Android/.test(ua) }; },
