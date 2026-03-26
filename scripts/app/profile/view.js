@@ -1,17 +1,5 @@
-// UID.044_(ListenerProfile core)_(развить Личный кабинет до профиля вкуса пользователя)_(future интеграция через scripts/intel/listener/listener-profile.js)
-// UID.047_(Feature affinity)_(показывать продуктовые привычки пользователя)_(future profile insights рендерить отдельным intel-ui слоем)
-// UID.048_(Time profile)_(добавить temporal portrait пользователя)_(future profile view сможет показывать morning/night/weekend patterns через intel insights)
-// UID.049_(Behavior archetype)_(дать human-readable портрет слушателя)_(profile shell должен уметь принять explorer/repeater/lyrics-focused archetype без собственной логики расчёта)
-// UID.056_(Recommendation reasons)_(объяснять рекомендации прямо в профиле)_(recs tab и insights blocks должны уметь показывать why-this-track/why-this-user-fit)
-// UID.063_(Profile recs tab upgrade)_(сделать вкладку Для Вас умной)_(future recs брать из scripts/intel/recs/recommendation-engine.js)
-// UID.070_(Linked providers)_(показывать связанные Яндекс/Google/VK аккаунты как части одного профиля)_(future identity UI связать с scripts/intel/providers/provider-identity.js)
-// UID.072_(Provider consents)_(показывать и управлять разрешениями пользователя)_(profile станет главным UI для consent toggles, а не местом их хранения)
-// UID.073_(Hybrid sync orchestrator)_(сделать профиль центром управления sync roles)_(primary/mirror/social roles должны быть видимы отсюда)
-// UID.082_(Local truth vs external telemetry split)_(profile insights/recs не должны сами экспортировать raw user profile)_(наружу только mapper/consent-safe layer)
+// UID.044_(ListenerProfile core)_(развить Личный кабинет до профиля вкуса пользователя)_(future интеграция через scripts/intel/listener/listener-profile.js) UID.047_(Feature affinity)_(показывать продуктовые привычки пользователя)_(future profile insights рендерить отдельным intel-ui слоем) UID.048_(Time profile)_(добавить temporal portrait пользователя)_(future profile view сможет показывать morning/night/weekend patterns через intel insights) UID.049_(Behavior archetype)_(дать human-readable портрет слушателя)_(profile shell должен уметь принять explorer/repeater/lyrics-focused archetype без собственной логики расчёта) UID.056_(Recommendation reasons)_(объяснять рекомендации прямо в профиле)_(recs tab и insights blocks должны уметь показывать why-this-track/why-this-user-fit) UID.063_(Profile recs tab upgrade)_(сделать вкладку Для Вас умной)_(future recs брать из scripts/intel/recs/recommendation-engine.js) UID.070_(Linked providers)_(показывать связанные Яндекс/Google/VK аккаунты как части одного профиля)_(future identity UI связать с scripts/intel/providers/provider-identity.js) UID.072_(Provider consents)_(показывать и управлять разрешениями пользователя)_(profile станет главным UI для consent toggles, а не местом их хранения) UID.073_(Hybrid sync orchestrator)_(сделать профиль центром управления sync roles)_(primary/mirror/social roles должны быть видимы отсюда) UID.082_(Local truth vs external telemetry split)_(profile insights/recs не должны сами экспортировать raw user profile)_(наружу только mapper/consent-safe layer)
 import { createProfileAchievementsView } from './achievements-view.js';
-import { renderProfileStats } from './stats-view.js';
-import { renderProfileRecs } from './recs-view.js';
-import { renderProfileLogs } from './logs-view.js';
 import { loadProfileModel } from './model.js';
 import { renderProfileShell } from './render-shell.js';
 import { renderProfileTabsData } from './profile-tab-renderers.js';
@@ -25,16 +13,10 @@ export const loadProfileView = async (ctx) => {
   const { metaDB, cloudSync, all, ach, streak, profile, totalFull, totalSec, tokens } = await loadProfileModel();
   renderProfileShell({ container: c, profile, tokens, totalFull, totalSec, streak, achCount: Object.keys(ach).length });
 
-  // Синхронизация карточки карусели
   const syncCarouselAccountCard = () => {
-    const card = c.querySelector('.sc-3d-card[data-id="account"]');
-    if (!card) return;
-    const tit = card.querySelector('.sc-3d-tit');
-    const ic = card.querySelector('.sc-3d-ic');
-    const curName = profile.name && profile.name !== 'Слушатель' ? profile.name : null;
-    const curAva = profile.avatar && profile.avatar !== '😎' ? profile.avatar : null;
-    if (tit) tit.textContent = curName ? curName : 'Аккаунт';
-    if (ic) ic.textContent = curAva ? curAva : '👤';
+    const card = c.querySelector('.sc-3d-card[data-id="account"]'), tit = card?.querySelector('.sc-3d-tit'), ic = card?.querySelector('.sc-3d-ic');
+    if (tit) tit.textContent = profile.name && profile.name !== 'Слушатель' ? profile.name : 'Аккаунт';
+    if (ic) ic.textContent = profile.avatar && profile.avatar !== '😎' ? profile.avatar : '👤';
   };
   syncCarouselAccountCard();
 
@@ -43,28 +25,11 @@ export const loadProfileView = async (ctx) => {
 
   await renderProfileTabsData({ container: c, all, metaDB });
 
-  bindProfileTabControllers({
-    ctx,
-    container: c,
-    achView,
-    profile,
-    metaDB,
-    cloudSync,
-    tokens,
-    onProfileChanged: syncCarouselAccountCard,
-    reloadProfile: () => loadProfileView(ctx)
-  });
+  bindProfileTabControllers({ ctx, container: c, achView, profile, metaDB, cloudSync, tokens, onProfileChanged: syncCarouselAccountCard, reloadProfile: () => loadProfileView(ctx) });
 
   if (sessionStorage.getItem('jumpToAch')) {
     sessionStorage.removeItem('jumpToAch');
-    setTimeout(() => {
-      if (window.Intel_CarouselFlat) {
-        const achIdx = ['account','stats','achievements','recs','logs','settings'].indexOf('achievements');
-        window.Intel_CarouselFlat.jumpTo(achIdx >= 0 ? achIdx : 2);
-        window.Intel_CarouselFlat.selectCurrent();
-        setTimeout(() => c.querySelector('.ach-classic-tab[data-filter="available"]')?.click(), 50);
-      }
-    }, 150);
+    setTimeout(() => { if (window.Intel_CarouselFlat) { window.Intel_CarouselFlat.jumpTo(['account','stats','achievements','recs','logs','settings'].indexOf('achievements') >= 0 ? 2 : 2); window.Intel_CarouselFlat.selectCurrent(); setTimeout(() => c.querySelector('.ach-classic-tab[data-filter="available"]')?.click(), 50); } }, 150);
   }
 };
 export default { loadProfileView };
