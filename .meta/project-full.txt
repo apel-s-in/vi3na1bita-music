@@ -375,7 +375,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-26 21:33:22 UTC
+Сгенерировано: 2026-03-26 21:46:39 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3912,11 +3912,52 @@ export const YandexAuth = {
   // --- Авторизация ---
   login() {
     if (CLIENT_ID === 'YOUR_YANDEX_CLIENT_ID') {
-      window.NotificationSystem?.warning('ClientID не настроен. Обратитесь к разработчику.');
+      window.NotificationSystem?.warning('ClientID не настроен.');
       return;
     }
     const url = `https://oauth.yandex.ru/authorize?response_type=token&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&force_confirm=0`;
-    window.location.href = url;
+
+    // Открываем popup — CSP родительской страницы не мешает Яндексу
+    const w = 520, h = 620;
+    const left = Math.round(window.screenX + (window.outerWidth - w) / 2);
+    const top = Math.round(window.screenY + (window.outerHeight - h) / 2);
+    const popup = window.open(url, 'yandex_oauth', `width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`);
+
+    if (!popup) {
+      // Fallback если popup заблокирован браузером
+      window.NotificationSystem?.info('Разрешите всплывающие окна для входа через Яндекс, или перейдите по ссылке вручную.');
+      window.open(url, '_blank');
+      return;
+    }
+
+    // Следим за URL popup — когда Яндекс редиректит обратно с токеном
+    const timer = setInterval(async () => {
+      try {
+        // Как только popup перешёл на наш домен — читаем hash
+        if (popup.closed) { clearInterval(timer); return; }
+        const popupUrl = popup.location.href;
+        if (popupUrl.startsWith(REDIRECT_URI) && popupUrl.includes('access_token')) {
+          clearInterval(timer);
+          const hash = new URLSearchParams(popupUrl.split('#')[1] || '');
+          const token = hash.get('access_token');
+          const expiresIn = Number(hash.get('expires_in') || 0);
+          popup.close();
+          if (token) {
+            const exp = expiresIn > 0 ? Date.now() + expiresIn * 1000 : 0;
+            localStorage.setItem(LS_TOKEN, token);
+            localStorage.setItem(LS_TOKEN_EXP, String(exp));
+            await new Promise(r => setTimeout(r, 400));
+            const profile = await this.fetchYandexProfile(token);
+            if (profile) await this._onFirstLogin(profile);
+          }
+        }
+      } catch {
+        // Cross-origin — popup ещё на Яндексе, игнорируем
+      }
+    }, 500);
+
+    // Таймаут 5 минут — закрываем слежку
+    setTimeout(() => { clearInterval(timer); if (!popup.closed) popup.close(); }, 300000);
   },
 
   logout() {
