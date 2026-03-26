@@ -1,103 +1,16 @@
-// UID.019_(Compact TrackProfile index)_(быстро фильтровать и рекомендовать каталог)_(загружать и кэшировать легкий index отдельно от full profiles)
-// UID.020_(Full TrackProfile per uid)_(открывать детальную карточку трека)_(лениво загружать файлы data/track-profiles/UID.json)
-// UID.021_(musicAnalysis block)_(подготовить аудио-паспорт трека)_(читать этот блок из full profile когда он появится)
-// UID.022_(lyricAnalysis block)_(подготовить текстовый паспорт трека)_(читать этот блок из full profile когда он появится)
-// UID.023_(finalProfile block)_(иметь fused truth для рекомендаций)_(отдавать finalProfile из full JSON без влияния на playback)
-// UID.088_(Profiles data layout)_(сохранить лёгкий startup)_(держать индекс отдельно и полные профили грузить по uid)
-// UID.095_(Ownership boundary: legacy vs intel)_(не превращать semantic profiles в новый source-of-truth для playback/content)_(track-profiles слой только читает static semantic data и не владеет media/state logic)
-
-const state = {
-  index: null,
-  indexLoadedAt: 0,
-  profileCache: new Map(),
-  api: null
-};
-
-const getIndexUrl = () => String(window.APP_CONFIG?.INTEL_LAYER_PROFILE_INDEX_URL || './data/track-profiles-index.json');
-const getProfileDir = () => String(window.APP_CONFIG?.INTEL_LAYER_PROFILE_DIR || './data/track-profiles/').replace(/\/+$/, '') + '/';
-
-async function fetchJson(url, cacheKey) {
-  const fc = window.Utils?.fetchCache;
-  const cleanUrl = `${url}?cb=${Date.now()}`; // Пробиваем кэш браузера и CDN
-  
-  if (fc?.getJson) {
-    return fc.getJson({
-      key: cacheKey,
-      url: cleanUrl,
-      ttlMs: 12 * 60 * 60 * 1000,
-      store: 'session',
-      fetchInit: { cache: 'no-cache' }
-    });
-  }
-  const res = await (window.NetPolicy?.fetchWithTraffic?.(cleanUrl, { cache: 'no-cache' }) || fetch(cleanUrl, { cache: 'no-cache' }));
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
-}
-
+// UID.019_(Compact TrackProfile index)_(быстро фильтровать и рекомендовать каталог)_(загружать и кэшировать легкий index отдельно от full profiles) UID.020_(Full TrackProfile per uid)_(открывать детальную карточку трека)_(лениво загружать файлы data/track-profiles/UID.json) UID.021_(musicAnalysis block)_(подготовить аудио-паспорт трека)_(читать этот блок из full profile когда он появится) UID.022_(lyricAnalysis block)_(подготовить текстовый паспорт трека)_(читать этот блок из full profile когда он появится) UID.023_(finalProfile block)_(иметь fused truth для рекомендаций)_(отдавать finalProfile из full JSON без влияния на playback) UID.088_(Profiles data layout)_(сохранить лёгкий startup)_(держать индекс отдельно и полные профили грузить по uid) UID.095_(Ownership boundary: legacy vs intel)_(не превращать semantic profiles в новый source-of-truth для playback/content)_(track-profiles слой только читает static semantic data и не владеет media/state logic)
+const st = { idx: null, idxLoadedAt: 0, cache: new Map(), api: null };
+const getUrl = () => String(window.APP_CONFIG?.INTEL_LAYER_PROFILE_INDEX_URL || './data/track-profiles-index.json');
+const getDir = () => String(window.APP_CONFIG?.INTEL_LAYER_PROFILE_DIR || './data/track-profiles/').replace(/\/+$/, '') + '/';
+const fetchJ = async (u, k) => { const cU = `${u}?cb=${Date.now()}`, fc = window.Utils?.fetchCache; if (fc?.getJson) return fc.getJson({ key: k, url: cU, ttlMs: 43200000, store: 'session', fetchInit: { cache: 'no-cache' } }); const r = await (window.NetPolicy?.fetchWithTraffic?.(cU, { cache: 'no-cache' }) || fetch(cU, { cache: 'no-cache' })); if (!r.ok) throw 1; return r.json(); };
 export const trackProfiles = {
-  async init(api = {}) {
-    state.api = api;
-    return true;
-  },
-
-  async ensureIndex() {
-    if (state.index) return state.index;
-    try {
-      const data = await fetchJson(getIndexUrl(), 'intel:track-profiles-index:v1');
-      state.index = data && typeof data === 'object' ? data : { items: {} };
-      state.indexLoadedAt = Date.now();
-      window.dispatchEvent(new CustomEvent('intel:track-profiles:index-ready', { detail: { count: Object.keys(state.index.items || {}).length } }));
-      return state.index;
-    } catch {
-      state.index = { version: 'track-profiles-index-v1', items: {} };
-      return state.index;
-    }
-  },
-
-  async reloadIndex() {
-    state.index = null;
-    state.indexLoadedAt = 0;
-    return this.ensureIndex();
-  },
-
-  async hasPreview(uid) {
-    return !!this.getPreview(uid) || !!(await this.ensureIndex()).items?.[String(uid || '').trim()];
-  },
-
-  getPreview(uid) {
-    const key = String(uid || '').trim();
-    if (!key || !state.index?.items) return null;
-    return state.index.items[key] || null;
-  },
-
-  async getProfile(uid) {
-    const key = String(uid || '').trim();
-    if (!key) return null;
-    if (state.profileCache.has(key)) return state.profileCache.get(key);
-
-    const url = `${getProfileDir()}${encodeURIComponent(key)}.json`;
-    try {
-      const cleanUrl = `${url}?cb=${window.APP_CONFIG?.APP_VERSION || Date.now()}`;
-      const fc = window.Utils?.fetchCache;
-      const data = fc?.getJson ? await fc.getJson({ key: `intel:profile:${key}`, url: cleanUrl, ttlMs: 2592000000, store: 'local', fetchInit: { cache: 'force-cache' } }) : await fetch(cleanUrl).then(r => r.json());
-      if (data) state.profileCache.set(key, data);
-      return data || null;
-    } catch {
-      return null; 
-    }
-  },
-
-  dropProfile(uid) {
-    state.profileCache.delete(String(uid || '').trim());
-  },
-
-  getState() {
-    return {
-      indexLoaded: !!state.index,
-      indexLoadedAt: state.indexLoadedAt,
-      cachedProfiles: state.profileCache.size
-    };
-  }
+  async init(api = {}) { st.api = api; return true; },
+  async ensureIndex() { if (st.idx) return st.idx; try { const d = await fetchJ(getUrl(), 'intel:track-profiles-index:v1'); st.idx = d && typeof d === 'object' ? d : { items: {} }; st.idxLoadedAt = Date.now(); window.dispatchEvent(new CustomEvent('intel:track-profiles:index-ready', { detail: { count: Object.keys(st.idx.items || {}).length } })); return st.idx; } catch { return st.idx = { version: 'track-profiles-index-v1', items: {} }; } },
+  async reloadIndex() { st.idx = null; st.idxLoadedAt = 0; return this.ensureIndex(); },
+  async hasPreview(uid) { return !!this.getPreview(uid) || !!(await this.ensureIndex()).items?.[String(uid || '').trim()]; },
+  getPreview: u => { const k = String(u || '').trim(); return k && st.idx?.items ? st.idx.items[k] || null : null; },
+  async getProfile(uid) { const k = String(uid || '').trim(); if (!k) return null; if (st.cache.has(k)) return st.cache.get(k); try { const cU = `${getDir()}${encodeURIComponent(k)}.json?cb=${window.APP_CONFIG?.APP_VERSION || Date.now()}`, fc = window.Utils?.fetchCache, d = fc?.getJson ? await fc.getJson({ key: `intel:profile:${k}`, url: cU, ttlMs: 2592000000, store: 'local', fetchInit: { cache: 'force-cache' } }) : await fetch(cU).then(r => r.json()); if (d) st.cache.set(k, d); return d || null; } catch { return null; } },
+  dropProfile: u => st.cache.delete(String(u || '').trim()),
+  getState: () => ({ indexLoaded: !!st.idx, indexLoadedAt: st.idxLoadedAt, cachedProfiles: st.cache.size })
 };
-
 export default trackProfiles;
