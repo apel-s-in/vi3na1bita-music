@@ -372,7 +372,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-26 18:14:07 UTC
+Сгенерировано: 2026-03-26 18:14:55 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4873,146 +4873,32 @@ export default intelBus;
 
 //=================================================
 // FILE: /scripts/intel/shared/contracts.js
-// UID.002_(UID-first core)_(единые ключи и связи)_(держать contracts и store names централизованно)
-// UID.024_(Strict taxonomy-v2)_(не расползаться по разным схемам)_(фиксировать канонические URLs и имена store)
-// UID.071_(Provider capability model)_(не размазывать роли провайдеров)_(держать provider names и role slots в одном контракте)
-// UID.089_(Future MetaDB stores)_(подготовить persistent контур)_(объявить будущие store names заранее)
-// UID.095_(Ownership boundary: legacy vs intel)_(зафиксировать что intel работает поверх legacy truth)_(contracts описывают только intel data/API, но не подменяют PlayerCore/TrackRegistry/analytics truth)
-
-export const INTEL_CONTRACTS = Object.freeze({
-  version: 'intel-contracts-v1',
-  taxonomyVersion: 'taxonomy-v2',
-  profileIndexUrl: './data/track-profiles-index.json',
-  profileDir: './data/track-profiles/',
-  stores: Object.freeze({
-    listenerProfile: 'listener_profile',
-    providerIdentity: 'provider_identity',
-    hybridSync: 'hybrid_sync',
-    recommendationState: 'recommendation_state',
-    collectionState: 'collection_state',
-    intelRuntime: 'intel_runtime'
-  }),
-  helperKinds: Object.freeze([
-    'moduleInit',
-    'localStorageState',
-    'memoryState',
-    'safeEmitter',
-    'optionalGetter'
-  ]),
-  providers: Object.freeze(['yandex', 'google', 'vk']),
-  providerRoles: Object.freeze(['primaryAuth', 'primaryBackup', 'secondaryBackup', 'social', 'ai']),
-  events: Object.freeze([
-    'intel:ready',
-    'intel:disabled',
-    'intel:track-profiles:index-ready',
-    'intel:listener-profile:updated',
-    'intel:recommendations:updated',
-    'intel:provider-identity:updated',
-    'intel:hybrid-sync:updated'
-  ])
-});
-
+// UID.002_(UID-first core)_(единые ключи и связи)_(держать contracts и store names централизованно) UID.024_(Strict taxonomy-v2)_(не расползаться по разным схемам)_(фиксировать канонические URLs и имена store) UID.071_(Provider capability model)_(не размазывать роли провайдеров)_(держать provider names и role slots в одном контракте) UID.089_(Future MetaDB stores)_(подготовить persistent контур)_(объявить будущие store names заранее) UID.095_(Ownership boundary: legacy vs intel)_(зафиксировать что intel работает поверх legacy truth)_(contracts описывают только intel data/API, но не подменяют PlayerCore/TrackRegistry/analytics truth)
+export const INTEL_CONTRACTS = Object.freeze({ version: 'intel-contracts-v1', taxonomyVersion: 'taxonomy-v2', profileIndexUrl: './data/track-profiles-index.json', profileDir: './data/track-profiles/', stores: Object.freeze({ listenerProfile: 'listener_profile', providerIdentity: 'provider_identity', hybridSync: 'hybrid_sync', recommendationState: 'recommendation_state', collectionState: 'collection_state', intelRuntime: 'intel_runtime' }), helperKinds: Object.freeze(['moduleInit', 'localStorageState', 'memoryState', 'safeEmitter', 'optionalGetter']), providers: Object.freeze(['yandex', 'google', 'vk']), providerRoles: Object.freeze(['primaryAuth', 'primaryBackup', 'secondaryBackup', 'social', 'ai']), events: Object.freeze(['intel:ready', 'intel:disabled', 'intel:track-profiles:index-ready', 'intel:listener-profile:updated', 'intel:recommendations:updated', 'intel:provider-identity:updated', 'intel:hybrid-sync:updated']) });
 export default INTEL_CONTRACTS;
 
 //=================================================
 // FILE: /scripts/intel/shared/guards.js
-// UID.001_(Playback safety invariant)_(защитить ядро плеера)_(все intel-модули обязаны помнить что playback не трогается)
-// UID.008_(No playback mutation by intel)_(не ломать playing playlist и позицию)_(использовать guard helpers вместо прямого вмешательства)
-// UID.091_(No-op stubs before full implementation)_(оставить слой безопасным до реализации логики)_(делать safeCall/safeAsync и мягкие fallback)
-// UID.095_(Ownership boundary: legacy vs intel)_(не дать future коду проломить архитектурные границы)_(guards — это policy layer, запрещающий intel считать себя владельцем playback/core truth)
-
+// UID.001_(Playback safety invariant)_(защитить ядро плеера)_(все intel-модули обязаны помнить что playback не трогается) UID.008_(No playback mutation by intel)_(не ломать playing playlist и позицию)_(использовать guard helpers вместо прямого вмешательства) UID.091_(No-op stubs before full implementation)_(оставить слой безопасным до реализации логики)_(делать safeCall/safeAsync и мягкие fallback) UID.095_(Ownership boundary: legacy vs intel)_(не дать future коду проломить архитектурные границы)_(guards — это policy layer, запрещающий intel считать себя владельцем playback/core truth)
 export const intelGuards = {
-  getCurrentUid() {
-    try { return String(window.playerCore?.getCurrentTrackUid?.() || '').trim() || null; } catch { return null; }
-  },
-
-  isPlaybackActive() {
-    try { return !!window.playerCore?.isPlaying?.(); } catch { return false; }
-  },
-
-  canMutatePlayback() {
-    return false;
-  },
-
-  safeCall(fn, fallback = null) {
-    try { return fn(); } catch { return fallback; }
-  },
-
-  async safeAsync(fn, fallback = null) {
-    try { return await fn(); } catch { return fallback; }
-  },
-
-  normalizeKey(value) {
-    return String(value || '').trim();
-  },
-
-  isPlainObject(value) {
-    return !!value && typeof value === 'object' && !Array.isArray(value);
-  }
+  getCurrentUid: () => { try { return String(window.playerCore?.getCurrentTrackUid?.() || '').trim() || null; } catch { return null; } },
+  isPlaybackActive: () => { try { return !!window.playerCore?.isPlaying?.(); } catch { return false; } },
+  canMutatePlayback: () => false,
+  safeCall: (fn, fb = null) => { try { return fn(); } catch { return fb; } },
+  safeAsync: async (fn, fb = null) => { try { return await fn(); } catch { return fb; } },
+  normalizeKey: v => String(v || '').trim(),
+  isPlainObject: v => !!v && typeof v === 'object' && !Array.isArray(v)
 };
-
 export default intelGuards;
 
 //=================================================
 // FILE: /scripts/intel/shared/helpers.js
-// UID.091_(No-op stubs before full implementation)_(не плодить одинаковые заглушки по всем intel-модулям)_(вынести повторяющиеся init/state/storage patterns в shared helper layer)
-// UID.094_(No-paralysis rule)_(helper-ы должны быть максимально безопасными)_(все фабрики здесь обязаны быть no-throw и годиться для мягкого rollout)
-// UID.095_(Ownership boundary: legacy vs intel)_(helper-ы обслуживают только intel-layer plumbing, а не core playback/business truth)_(не тянуть сюда ничего из PlayerCore/legacy ownership)
-// UID.096_(Helper-first anti-duplication policy)_(жёстко закрепить унификацию повторяющегося кода)_(все новые простые intel-модули должны по возможности строиться через эти фабрики, а не копипастой)
-
-export function makeNoopModule(extra = {}) {
-  return {
-    async init() { return true; },
-    ...extra
-  };
-}
-
-export function makeMemoryState(initialState = {}) {
-  const box = { ...(initialState || {}) };
-  return {
-    getState() { return box; },
-    patch(patch = {}) { Object.assign(box, patch || {}); return box; },
-    reset(next = {}) {
-      Object.keys(box).forEach(k => delete box[k]);
-      Object.assign(box, next || {});
-      return box;
-    }
-  };
-}
-
-export function makeJsonStorage(key, defaults) {
-  const getDefaults = typeof defaults === 'function' ? defaults : () => ({ ...(defaults || {}) });
-  return {
-    read() {
-      try { return { ...getDefaults(), ...(JSON.parse(localStorage.getItem(key) || '{}') || {}) }; }
-      catch { return getDefaults(); }
-    },
-    write(value) {
-      const next = { ...getDefaults(), ...(value || {}) };
-      localStorage.setItem(key, JSON.stringify(next));
-      return next;
-    },
-    patch(patch = {}) {
-      return this.write({ ...this.read(), ...(patch || {}) });
-    }
-  };
-}
-
-export function safeEmit(name, detail = {}) {
-  try {
-    window.dispatchEvent(new CustomEvent(String(name || '').trim(), { detail }));
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export default {
-  makeNoopModule,
-  makeMemoryState,
-  makeJsonStorage,
-  safeEmit
-};
+// UID.091_(No-op stubs before full implementation)_(не плодить одинаковые заглушки по всем intel-модулям)_(вынести повторяющиеся init/state/storage patterns в shared helper layer) UID.094_(No-paralysis rule)_(helper-ы должны быть максимально безопасными)_(все фабрики здесь обязаны быть no-throw и годиться для мягкого rollout) UID.095_(Ownership boundary: legacy vs intel)_(helper-ы обслуживают только intel-layer plumbing, а не core playback/business truth)_(не тянуть сюда ничего из PlayerCore/legacy ownership) UID.096_(Helper-first anti-duplication policy)_(жёстко закрепить унификацию повторяющегося кода)_(все новые простые intel-модули должны по возможности строиться через эти фабрики, а не копипастой)
+export const makeNoopModule = (e = {}) => ({ async init() { return true; }, ...e });
+export const makeMemoryState = (i = {}) => { const b = { ...i }; return { getState: () => b, patch: p => Object.assign(b, p || {}), reset: n => { Object.keys(b).forEach(k => delete b[k]); return Object.assign(b, n || {}); } }; };
+export const makeJsonStorage = (k, d) => { const gD = typeof d === 'function' ? d : () => ({ ...(d || {}) }); return { read() { try { return { ...gD(), ...(JSON.parse(localStorage.getItem(k) || '{}') || {}) }; } catch { return gD(); } }, write(v) { const n = { ...gD(), ...(v || {}) }; localStorage.setItem(k, JSON.stringify(n)); return n; }, patch(p = {}) { return this.write({ ...this.read(), ...(p || {}) }); } }; };
+export const safeEmit = (n, detail = {}) => { try { window.dispatchEvent(new CustomEvent(String(n || '').trim(), { detail })); return true; } catch { return false; } };
+export default { makeNoopModule, makeMemoryState, makeJsonStorage, safeEmit };
 
 //=================================================
 // FILE: /scripts/intel/telemetry/telemetry-mapper.js
