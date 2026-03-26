@@ -373,9 +373,10 @@ vi3na1bita-music/
 ├── generate-context.js
 ├── index.html
 ├── manifest.json
+├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-03-26 21:48:58 UTC
+Сгенерировано: 2026-03-26 21:59:28 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -6477,6 +6478,51 @@ window.StatisticsModal = { openStatisticsModal, init: () => document.addEventLis
     }
   ]
 }
+
+//=================================================
+// FILE: /oauth-callback.html
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Авторизация...</title>
+  <style>
+    body { background: #0f1218; color: #eaf2ff; font-family: sans-serif;
+      display: flex; align-items: center; justify-content: center;
+      height: 100vh; margin: 0; font-size: 16px; }
+    .msg { text-align: center; opacity: 0.7; }
+  </style>
+</head>
+<body>
+  <div class="msg">Авторизация... Окно закроется автоматически.</div>
+  <script>
+    (function () {
+      try {
+        const hash = new URLSearchParams(window.location.hash.replace('#', ''));
+        const token = hash.get('access_token');
+        const expiresIn = hash.get('expires_in');
+        const error = hash.get('error');
+
+        if (window.opener && !window.opener.closed) {
+          window.opener.postMessage(
+            { type: 'YANDEX_OAUTH_CALLBACK', token: token || null, expiresIn: expiresIn || '0', error: error || null },
+            window.location.origin
+          );
+        }
+      } catch (e) {
+        if (window.opener && !window.opener.closed) {
+          window.opener.postMessage(
+            { type: 'YANDEX_OAUTH_CALLBACK', token: null, error: 'callback_error' },
+            window.location.origin
+          );
+        }
+      } finally {
+        setTimeout(() => window.close(), 300);
+      }
+    })();
+  </script>
+</body>
+</html>
 
 //=================================================
 // FILE: /src/player-core/ios-audio-keeper.js
