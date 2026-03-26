@@ -47,7 +47,7 @@ export function initYandexActions() {
         window.NotificationSystem?.warning('Сессия истекла. Войдите снова.');
         return;
       }
-      if (!window.NetPolicy?.isNetworkAllowed?.() ?? !navigator.onLine) {
+      if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) {
         window.NotificationSystem?.error('Нет подключения к сети.');
         return;
       }
