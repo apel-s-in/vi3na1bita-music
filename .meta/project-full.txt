@@ -376,7 +376,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-26 16:00:36 UTC
+Сгенерировано: 2026-03-26 16:01:51 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -10320,6 +10320,41 @@ body.mobile-device .volume-control-wrapper,body.mobile-device #mute-btn{display:
 #promo-btn:active{transform:translateY(0)}
 #promo-btn:disabled{opacity:.5;cursor:not-allowed}
 #promo-error{color:#ff6b6b;margin-top:12px;font-size:14px;min-height:20px}
+
+/* Avatar & Reset Modals */
+.prof-ava-grid{display:flex;flex-wrap:wrap;gap:12px;justify-content:center}
+.prof-ava-btn{font-size:24px;background:#232b38}
+.prof-reset-btn{width:100%}
+.prof-reset-btn--mb{margin-bottom:8px}
+
+/* Carousel 3D */
+.sc-3d-wrap{margin:8px 0 12px;padding:0 2px;touch-action:pan-y;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;overflow:visible}
+.sc-3d-scene{perspective:1080px;perspective-origin:50% 40%;height:210px;display:flex;align-items:center;justify-content:center;overflow:visible;padding-top:0}
+.sc-3d-car{width:128px;height:190px;position:relative;transform-style:preserve-3d;transition:transform .75s cubic-bezier(.22,1,.36,1);will-change:transform}
+.sc-3d-card{position:absolute;inset:0;cursor:pointer;will-change:transform;transition:opacity .25s ease,filter .25s ease,transform .55s cubic-bezier(.2,.8,.3,1);overflow:visible;transform-style:preserve-3d;transform:rotateY(var(--a)) translateZ(158px)}
+.sc-3d-wrap.is-settled .sc-3d-card{transform:rotateY(var(--a)) translateZ(142px)}
+.glass-halo{position:absolute;left:-20%;right:-20%;top:-20%;bottom:-20%;z-index:0;pointer-events:none;opacity:0;background:radial-gradient(circle at center,rgba(77,170,255,.25) 0%,transparent 60%);filter:blur(20px);transition:opacity .4s ease}
+.glass-face{position:absolute;inset:0;border-radius:22px;background:linear-gradient(180deg,rgba(26,49,82,.85),rgba(8,16,30,.98));box-shadow:inset 0 0 20px rgba(164,224,255,.1),inset 0 -20px 30px rgba(16,38,68,.4);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);overflow:hidden;transition:box-shadow .4s ease, border-color .4s ease}
+.surface-content{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px;pointer-events:none}
+.sc-3d-ic{font-size:46px;line-height:1;margin:0 0 14px;filter:drop-shadow(0 4px 10px rgba(0,0,0,.6))}
+.sc-3d-tit{font-size:9.5px;font-weight:900;color:#fff;letter-spacing:0.5px;text-transform:uppercase;text-align:center;text-shadow:0 2px 6px rgba(0,0,0,.8);line-height:1;width:100%;white-space:nowrap}
+.glass-noise{position:absolute;inset:0;z-index:3;pointer-events:none;opacity:.35;mix-blend-mode:screen;background:radial-gradient(circle at 10% 20%,rgba(255,255,255,.1) 0 1px,transparent 1.5px),radial-gradient(circle at 80% 40%,rgba(255,255,255,.08) 0 1px,transparent 1.5px),radial-gradient(circle at 40% 80%,rgba(255,255,255,.07) 0 1px,transparent 1.5px);background-size:40px 40px, 60px 60px, 80px 80px}
+.crack-layer{position:absolute;inset:0;z-index:4;pointer-events:none;overflow:hidden;opacity:.95}
+.crack-layer svg{width:100%;height:100%;display:block}
+.crack-layer image{mix-blend-mode:screen;filter:contrast(1.4) brightness(1.2) drop-shadow(0 0 3px rgba(210,240,255,.6))}
+.glass-3d-edge{position:absolute;inset:0;z-index:5;border-radius:22px;border:1px solid rgba(168,225,255,.4);transform:translateZ(4px);pointer-events:none;box-shadow:inset 0 0 8px rgba(255,255,255,.1);transition:border-color .4s ease}
+.sc-3d-card.is-back{opacity:.4;filter:saturate(.7) brightness(.8)}
+.sc-3d-wrap.is-settled .sc-3d-card.is-active .glass-halo {opacity: 1}
+.sc-3d-wrap.is-settled .sc-3d-card.is-active .glass-face {box-shadow: inset 0 0 30px rgba(180,232,255,.15), inset 0 -26px 38px rgba(16,39,68,.5), 0 0 20px rgba(77,170,255,.15)}
+.sc-3d-wrap.is-settled .sc-3d-card.is-active .glass-3d-edge {border-color: rgba(184,233,255,.9)}
+.sc-3d-controls{display:none;gap:14px;justify-content:center;padding:20px 16px 12px}
+.sc-3d-wrap.show-controls .sc-3d-controls{display:flex}
+.sc-3d-btn{position:relative;background:linear-gradient(180deg,#0d1828,#070d16);border:1px solid rgba(77,170,255,.3);color:#7ab4f5;border-radius:12px;font-weight:900;cursor:pointer;transition:all .3s cubic-bezier(.4,0,.2,1);overflow:hidden;box-shadow:0 6px 15px rgba(0,0,0,.6);height:44px}
+.sc-3d-btn::before{content:'';position:absolute;top:0;left:0;right:0;height:45%;background:linear-gradient(180deg,rgba(255,255,255,.1),transparent);border-radius:12px 12px 0 0;pointer-events:none}
+.sc-3d-btn:active{transform:translateY(2px) scale(.96);box-shadow:0 3px 8px rgba(0,0,0,.7)}
+.sc-3d-btn-sq{flex:0 0 44px;width:44px;padding:0;font-size:18px;display:flex;align-items:center;justify-content:center}
+.sc-3d-btn-sel{flex:1;max-width:140px;font-size:13px;text-transform:uppercase;letter-spacing:1px}
+.sc-3d-wrap.is-settled .sc-3d-btn-sel {color:#fff;background:linear-gradient(180deg,#0e2040,#071020);border-color:rgba(77,170,255,.5);box-shadow:0 0 12px rgba(77,170,255,.15),0 6px 15px rgba(0,0,0,.6);text-shadow:0 0 6px rgba(255,255,255,.4);}
 
 .profile-wrap{padding:0 10px 20px;display:flex;flex-direction:column;gap:16px;animation:fadeIn .3s ease}
 .profile-header{display:flex;flex-direction:column;align-items:center;gap:12px;background:rgba(255,255,255,.03);padding:20px;border-radius:16px;border:1px solid var(--border-color);position:relative}
