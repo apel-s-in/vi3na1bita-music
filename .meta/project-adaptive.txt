@@ -372,7 +372,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-26 19:24:32 UTC
+Сгенерировано: 2026-03-26 19:25:23 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5190,18 +5190,9 @@ window.IconUtils = { renderIcon, setIconUse, renderFavoriteStar, setFavoriteStar
     if (!txt) txt = (W.LyricsController?.getCurrentLyricsLines?.() || []).map(i => i.line).filter(Boolean).join('\n');
     if (!txt) return N?.warning('Текст песни недоступен');
     const esc = U?.escapeHtml || (s => String(s || ''));
-
     const m = W.Modals?.open?.({ title: esc(t.title), maxWidth: 420, bodyHtml: `<div class="lyrics-modal lyrics-modal-box"><div class="lyrics-modal-meta">${esc(t.artist || 'Витрина Разбита')} · ${esc(t.album || '')}</div><div class="lyrics-modal-text-wrap" id="lm-wrap"><div class="lyrics-fulltext lyrics-modal-text-inner" id="lm-inner">${esc(txt)}</div></div><div class="lyrics-modal-actions"><button class="modal-action-btn" id="copy-lyrics-btn">📋 Копировать</button></div></div>` });
     if (!m) return N?.error('Система окон недоступна');
-
-    requestAnimationFrame(() => {
-      const wrap = m.querySelector('#lm-wrap'), inner = m.querySelector('#lm-inner');
-      if (wrap && inner) {
-        const ratio = (wrap.clientWidth - 32) / inner.scrollWidth;
-        if (ratio < 1) inner.style.fontSize = Math.floor(15 * ratio) + 'px';
-      }
-    });
-
+    requestAnimationFrame(() => { const w = m.querySelector('#lm-wrap'), i = m.querySelector('#lm-inner'); if (w && i) { const r = (w.clientWidth - 32) / i.scrollWidth; if (r < 1) i.style.fontSize = Math.floor(15 * r) + 'px'; } });
     m.querySelector('#copy-lyrics-btn')?.addEventListener('click', async () => {
       try { await navigator.clipboard.writeText(txt); N?.success('Текст скопирован'); m.remove(); } catch {
         const ta = Object.assign(D.createElement('textarea'), { className: 'lyrics-copy-helper', value: txt }); D.body.appendChild(ta); ta.select();
@@ -5214,48 +5205,30 @@ window.IconUtils = { renderIcon, setIconUse, renderFavoriteStar, setFavoriteStar
 
 //=================================================
 // FILE: /scripts/ui/modals.js
-// UID.038_(Track profile modal)_(дать безопасный host для умных карточек и окон)_(Modals остаётся центральным generic UI-bridge, а не местом бизнес-логики профилей)
-// UID.070_(Linked providers)_(дать profile/provider слою единый способ открытия окон)_(provider/profile UI может использовать Modals как host, не дублируя modal engines)
-// UID.072_(Provider consents)_(позже показывать consent/policy окна через единый слой)_(consent content может приходить из intel/providers, но рендериться через этот generic bridge)
-// UID.073_(Hybrid sync orchestrator)_(позже показывать sync/restore/provider role dialogs)_(Modals только отображает, orchestration logic живёт вне этого файла)
-// UID.080_(Provider actions bridge)_(provider action confirmations/openers не должны плодить свои modal subsystems)_(все optional provider окна лучше вешать на этот central bridge)
-// UID.082_(Local truth vs external telemetry split)_(modals не должны экспортировать наружу raw state сами)_(любая внешняя аналитика modal-actions только через mapper/consent слой)
-// UID.094_(No-paralysis rule)_(generic modal engine должен быть независимым от intel)_(если intel/profile/providers выключены, базовые confirm/open продолжают работать как сейчас)
+// UID.038_(Track profile modal)_(дать безопасный host для умных карточек и окон)_(Modals остаётся центральным generic UI-bridge, а не местом бизнес-логики профилей) UID.070_(Linked providers)_(дать profile/provider слою единый способ открытия окон)_(provider/profile UI может использовать Modals как host, не дублируя modal engines) UID.072_(Provider consents)_(позже показывать consent/policy окна через единый слой)_(consent content может приходить из intel/providers, но рендериться через этот generic bridge) UID.073_(Hybrid sync orchestrator)_(позже показывать sync/restore/provider role dialogs)_(Modals только отображает, orchestration logic живёт вне этого файла) UID.080_(Provider actions bridge)_(provider action confirmations/openers не должны плодить свои modal subsystems)_(все optional provider окна лучше вешать на этот central bridge) UID.082_(Local truth vs external telemetry split)_(modals не должны экспортировать наружу raw state сами)_(любая внешняя аналитика modal-actions только через mapper/consent слой) UID.094_(No-paralysis rule)_(generic modal engine должен быть независимым от intel)_(если intel/profile/providers выключены, базовые confirm/open продолжают работать как сейчас)
 (function () {
   'use strict';
   const esc = s => window.Utils?.escapeHtml?.(String(s ?? '')) ?? String(s ?? '');
-  
   const open = ({ title = '', bodyHtml = '', maxWidth = 520, onClose } = {}) => {
     let c = document.getElementById('modals-container') || Object.assign(document.createElement('div'), { id: 'modals-container' });
     if (!c.isConnected) document.body.appendChild(c);
-    const bg = Object.assign(document.createElement('div'), { className: 'modal-bg active' });
-    bg.style.setProperty('--modal-max-width', `${maxWidth}px`);
-    bg.innerHTML = `<div class="modal-feedback modal-feedback--dynamic"><button class="bigclose" type="button" aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-close"></use></svg></button>${title ? `<h2>${esc(title)}</h2>` : ''}<div class="modal-body">${bodyHtml}</div></div>`;
-    c.appendChild(bg);
+    const bg = Object.assign(document.createElement('div'), { className: 'modal-bg active', innerHTML: `<div class="modal-feedback modal-feedback--dynamic"><button class="bigclose" type="button" aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-close"></use></svg></button>${title ? `<h2>${esc(title)}</h2>` : ''}<div class="modal-body">${bodyHtml}</div></div>` });
+    bg.style.setProperty('--modal-max-width', `${maxWidth}px`); c.appendChild(bg);
     const cl = () => { onClose?.(); bg.remove(); }, oK = e => { if (e.key === 'Escape') { e.preventDefault(); cl(); } };
     bg.onclick = e => { if (e.target === bg || e.target.closest('.bigclose')) cl(); }; window.addEventListener('keydown', oK);
     const _rem = bg.remove.bind(bg); bg.remove = () => { window.removeEventListener('keydown', oK); _rem(); };
     return bg;
   };
-
   const confirm = ({ title = 'Подтвердите', textHtml = '', confirmText = 'Ок', cancelText = 'Отмена', maxWidth = 460, onClose, onConfirm, onCancel } = {}) => {
     const m = open({ title, maxWidth, onClose, bodyHtml: `<div class="modal-confirm-text">${textHtml}</div><div class="om-actions"><button type="button" class="modal-action-btn modal-confirm-btn" data-act="cancel">${esc(cancelText)}</button><button type="button" class="modal-action-btn online modal-confirm-btn" data-act="confirm">${esc(confirmText)}</button></div>` });
     m.addEventListener('click', e => { if (e.target.closest('[data-act="cancel"]')) { onCancel?.(); m.remove(); } else if (e.target.closest('[data-act="confirm"]')) { onConfirm?.(); m.remove(); } });
     return m;
   };
-
   const choice = ({ title = '', textHtml = '', maxWidth = 460, actions = [], onClose } = {}) => {
-    const btns = (actions || []).map((a, i) => `<button type="button" class="modal-action-btn modal-confirm-btn ${a.primary ? 'online' : ''}" data-choice="${esc(a.key || String(i))}">${esc(a.text || 'OK')}</button>`).join('');
-    const m = open({ title, maxWidth, onClose, bodyHtml: `<div class="modal-confirm-text">${textHtml}</div><div class="modal-choice-actions">${btns}</div>` });
-    m.addEventListener('click', e => {
-      const b = e.target.closest('[data-choice]');
-      if (!b) return;
-      const act = (actions || []).find(x => String(x.key) === String(b.dataset.choice));
-      try { act?.onClick?.(); } finally { m.remove(); }
-    });
+    const m = open({ title, maxWidth, onClose, bodyHtml: `<div class="modal-confirm-text">${textHtml}</div><div class="modal-choice-actions">${(actions || []).map((a, i) => `<button type="button" class="modal-action-btn modal-confirm-btn ${a.primary ? 'online' : ''}" data-choice="${esc(a.key || String(i))}">${esc(a.text || 'OK')}</button>`).join('')}</div>` });
+    m.addEventListener('click', e => { const b = e.target.closest('[data-choice]'); if (!b) return; try { (actions || []).find(x => String(x.key) === String(b.dataset.choice))?.onClick?.(); } finally { m.remove(); } });
     return m;
   };
-
   window.Modals = { ...window.Modals, open, confirm, choice };
 })();
 
@@ -5266,14 +5239,13 @@ const renderCard = (it) => {
   const t = esc(it?.title || 'Новость'), m = it?.youtubeUrl ? `<div class="news-inline__media news-inline__media--youtube"><a class="news-inline__youtube-link" href="${esc(it.youtubeUrl)}" target="_blank" rel="noopener noreferrer" aria-label="${t}">${it.youtubeThumb ? `<img loading="lazy" src="${esc(it.youtubeThumb)}" alt="${t}" onerror="this.style.display='none';this.parentElement.classList.add('news-inline__youtube-link--fallback')">` : ''}<span class="news-inline__youtube-fallback-title">${t}</span><span class="news-inline__youtube-play">▶</span></a></div>` : (it?.image ? `<div class="news-inline__media"><img loading="lazy" src="${esc(it.image)}" alt="${t}"></div>` : (it?.video ? `<div class="news-inline__media"><video controls preload="metadata" src="${esc(it.video)}"></video></div>` : ''));
   return `<article class="news-inline__card"><div class="news-inline__title">${t}</div>${it?.date ? `<div class="news-inline__date">${esc(it.date)}</div>` : ''}${m}${it?.text ? `<div class="news-inline__text">${esc(it.text)}</div>` : ''}${it?.youtubeUrl ? `<div class="news-inline__actions"><a class="news-inline__action-link" href="${esc(it.youtubeUrl)}" target="_blank" rel="noopener noreferrer">Смотреть на YouTube</a></div>` : ''}${it?.tags?.length ? `<div class="news-inline__tags">${it.tags.map(tag => `<span class="news-inline__tag">#${esc(tag)}</span>`).join('')}</div>` : ''}</article>`;
 };
-
 export const renderNewsInlineSkeleton = c => { if (c) c.innerHTML = `<div class="news-inline__head"><div id="news-inline-status" class="news-inline__status">Загрузка...</div></div><div id="news-inline-list" class="news-inline__list"></div>`; };
 export const loadAndRenderNewsInline = async c => {
   if (!c) return; renderNewsInlineSkeleton(c);
   const st = c.querySelector('#news-inline-status'), lst = c.querySelector('#news-inline-list'); if (!lst) return;
   try {
     const j = window.Utils?.fetchCache?.getJson ? await window.Utils.fetchCache.getJson({ key: 'news:inline:v1', url: './news/news.json', ttlMs: 300000, store: 'session', fetchInit: { cache: 'force-cache' } }) : await fetch('./news/news.json', { cache: 'force-cache' }).then(r => r.ok ? r.json() : { items: [] });
-    if (!j?.items?.length) { if (st) st.textContent = 'Пока новостей нет'; return; }
+    if (!j?.items?.length) return st && (st.textContent = 'Пока новостей нет');
     if (st) st.style.display = 'none'; lst.innerHTML = j.items.map(renderCard).join('');
   } catch { if (st) { st.textContent = 'Не удалось загрузить новости'; st.classList.add('news-inline__status--error'); } }
 };
