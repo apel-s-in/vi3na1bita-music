@@ -376,7 +376,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-26 15:59:06 UTC
+Сгенерировано: 2026-03-26 15:59:56 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4601,7 +4601,6 @@ export const openShowcaseAddToPlaylistModal = ({ playlists: p, esc, onPick: oP, 
   if (m) m.addEventListener('click', e => { const b = e.target.closest('[data-pid]'); if (b) oP?.(b.dataset.pid, m); }); return m;
 };
 export const openShowcaseSettingsModal = ({ currentSort: cS, currentUi: cU, options: o, onApply: oA, modalApi: mA }) => {
-  window.Utils?.dom?.createStyleOnce?.('sc-settings-styles', `.sc-set-prev{background:rgba(0,0,0,0.3);border-radius:10px;padding:8px 10px;margin-bottom:16px;border:1px solid rgba(255,255,255,0.06);font-size:12px;min-height:120px;display:flex;flex-direction:column;gap:4px}.sc-set-prev-tr{display:flex;align-items:center;padding:4px 0;opacity:1;transition:opacity .25s,transform .2s}.sc-set-prev-tr.h{opacity:0.45}.sc-set-sec-title{font-size:11px;color:rgba(255,255,255,0.5);text-transform:uppercase;margin-bottom:10px;font-weight:900;letter-spacing:1px}.sc-set-tgls{display:flex;gap:8px;margin-bottom:18px}.sc-set-tgl{flex:1;padding:10px 4px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid transparent;color:rgba(255,255,255,0.6);font-size:13px;font-weight:700;cursor:pointer;text-align:center;transition:.2s;user-select:none}.sc-set-tgl.on{background:rgba(77,170,255,0.15);color:var(--secondary-color);border-color:rgba(77,170,255,0.3)}.sc-set-tgl-desc{font-size:10px;display:block;opacity:0.6;margin-top:4px;font-weight:500}`);
   let tS = cS, tN = !!cU?.showNumbers, tV = cU?.viewMode || 'flat', tP = cU?.hiddenPlacement || 'inline';
 
   const draw = bx => {
