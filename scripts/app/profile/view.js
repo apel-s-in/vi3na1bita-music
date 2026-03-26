@@ -4,9 +4,11 @@ import { loadProfileModel } from './model.js';
 import { renderProfileShell } from './render-shell.js';
 import { renderProfileTabsData } from './profile-tab-renderers.js';
 import { bindProfileTabControllers } from './profile-tab-bindings.js';
+import { initYandexActions } from './yandex-actions.js';
 
 export const loadProfileView = async (ctx) => {
   ctx.renderAlbumTitle('👤 ЛИЧНЫЙ КАБИНЕТ 👤', 'profile');
+  initYandexActions();
   const cw = document.getElementById('cover-wrap'); if (cw) cw.style.display = 'none';
   const c = document.getElementById('track-list'); if (!c) return;
 
