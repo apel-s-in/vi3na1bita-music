@@ -1,7 +1,4 @@
-// UID.069_(Internal user identity)_(не смешивать provider token и identity модели)_(future cloud sync должен работать поверх provider identity layer)
-// UID.073_(Hybrid sync orchestrator)_(дать primary/mirror/social роли провайдеров)_(текущий cloud-sync будет legacy transport под future hybrid-sync)
-// UID.074_(Primary backup provider)_(готовить Yandex как основной backup channel)_(future orchestration вынести в scripts/intel/providers/hybrid-sync.js)
-// UID.075_(Secondary mirror backup)_(подготовить Google как резервный mirror)_(future mirror backup не должен конфликтовать с primary sync)
+// UID.069_(Internal user identity)_(не смешивать provider token и identity модели)_(future cloud sync должен работать поверх provider identity layer) // UID.073_(Hybrid sync orchestrator)_(дать primary/mirror/social роли провайдеров)_(текущий cloud-sync будет legacy transport под future hybrid-sync) // UID.074_(Primary backup provider)_(готовить Yandex как основной backup channel)_(future orchestration вынести в scripts/intel/providers/hybrid-sync.js) // UID.075_(Secondary mirror backup)_(подготовить Google как резервный mirror)_(future mirror backup не должен конфликтовать с primary sync)
 import { BackupVault } from './backup-vault.js';
 import { eventLogger } from './event-logger.js';
 
@@ -26,8 +23,8 @@ export class CloudSyncManager {
     if (!window.NetPolicy?.isNetworkAllowed()) return window.NotificationSystem?.error('Сеть недоступна');
     window.NotificationSystem?.info('Синхронизация с облаком...');
     try {
-      const b = new Blob([JSON.stringify(await BackupVault.buildBackupObject())], { type: 'application/json' });
-      const r = await (window.NetPolicy?.guardedFetch?.('https://cloud-api.yandex.net/v1/disk/resources/upload?path=app:/vi3na1bita_sync.vi3bak&overwrite=true', { headers: { 'Authorization': `OAuth ${this.tokens.yandex}` } }) || fetch('https://cloud-api.yandex.net/v1/disk/resources/upload?path=app:/vi3na1bita_sync.vi3bak&overwrite=true', { headers: { 'Authorization': `OAuth ${this.tokens.yandex}` } }));
+      const b = new Blob([JSON.stringify(await BackupVault.buildBackupObject())], { type: 'application/json' }), req = url => (window.NetPolicy?.guardedFetch?.(url, { headers: { 'Authorization': `OAuth ${this.tokens.yandex}` } }) || fetch(url, { headers: { 'Authorization': `OAuth ${this.tokens.yandex}` } }));
+      const r = await req('https://cloud-api.yandex.net/v1/disk/resources/upload?path=app:/vi3na1bita_sync.vi3bak&overwrite=true');
       if (!r.ok) throw { status: r.status };
       await (window.NetPolicy?.guardedFetch?.((await r.json()).href, { method: 'PUT', body: b }) || fetch((await r.json()).href, { method: 'PUT', body: b }));
       window.NotificationSystem?.success('Синхронизация завершена'); eventLogger.log('CLOUD_SYNC_SUCCESS', null, { provider });
