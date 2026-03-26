@@ -1,11 +1,7 @@
-// UID.005_(Soft-disable intel layer)_(не парализовать приложение при rollout)_(вынести базовые intel flags в APP_CONFIG)
-// UID.019_(Compact TrackProfile index)_(дать стабильный путь до semantic data)_(хранить profile index/profile dir в config)
-// UID.069_(Internal user identity)_(подготовить мульти-provider контур)_(держать future identity/sync flags централизованно)
-// UID.092_(Incremental rollout order)_(делать staged внедрение через один конфиг)_(intel boot должен управляться отсюда)
-
+// UID.005_(Soft-disable intel layer)_(не парализовать приложение при rollout)_(вынести базовые intel flags в APP_CONFIG) UID.019_(Compact TrackProfile index)_(дать стабильный путь до semantic data)_(хранить profile index/profile dir в config) UID.069_(Internal user identity)_(подготовить мульти-provider контур)_(держать future identity/sync flags централизованно) UID.092_(Incremental rollout order)_(делать staged внедрение через один конфиг)_(intel boot должен управляться отсюда)
 export const APP_CONFIG = {
-  APP_VERSION: '8.2.12',
-  BUILD_DATE: '2026-03-25',
+  APP_VERSION: '8.2.13',
+  BUILD_DATE: '2026-03-26',
   PROMOCODE: 'VITRINA2025',
   ICON_ALBUMS_ORDER: [
     { key: 'odnazhdy-v-skazke', title: 'Однажды в Сказке', icon: 'img/icon_album/icon-album-03.png' },
@@ -24,7 +20,6 @@ export const APP_CONFIG = {
   SUPPORT_URL: 'https://vk.com/apelsinov',
   SUPPORT_EMAIL: 'apel-s-in@ya.ru',
   GITHUB_URL: 'https://github.com/apel-s-in/vi3na1bita-music',
-
   INTEL_LAYER_ENABLED: true,
   INTEL_LAYER_BOOT_MODE: 'soft',
   INTEL_LAYER_PROFILE_INDEX_URL: './data/track-profiles-index.json',
@@ -32,7 +27,6 @@ export const APP_CONFIG = {
   INTEL_LAYER_STORAGE_DISABLE_KEY: 'intel:disable',
   INTEL_LAYER_STORAGE_DEV_KEY: 'intel:dev'
 };
-
 if (typeof window !== 'undefined') {
   window.APP_CONFIG = APP_CONFIG;
   window.SPECIAL_FAVORITES_KEY = APP_CONFIG.SPECIAL_FAVORITES_KEY;
