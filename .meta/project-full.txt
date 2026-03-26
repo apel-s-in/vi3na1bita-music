@@ -372,7 +372,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-26 19:25:57 UTC
+Сгенерировано: 2026-03-26 19:26:20 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5336,11 +5336,7 @@ export default window.OfflineIndicators;
 
 //=================================================
 // FILE: /scripts/ui/offline-modal.js
-// UID.007_(Local-first compute)_(делать офлайн-политику видимой и управляемой пользователем)_(offline modal остаётся главным UI для cache/network/storage control)
-// UID.018_(Variant and quality stats)_(подготовить future отображение richer cache usage)_(в будущем сюда можно добавить variant-aware breakdown без смешивания с semantic UI)
-// UID.073_(Hybrid sync orchestrator)_(не смешивать backup sync и media cache UI)_(offline modal управляет physical cache/network, а не account/provider sync)
-// UID.082_(Local truth vs external telemetry split)_(готовить безопасную product analytics точку)_(future telemetry mapper может получать UI actions отсюда по consent, без raw leakage)
-// UID.094_(No-paralysis rule)_(offline modal должен жить независимо от intel)_(никакие intel/recs/provider features не должны быть required для этого окна)
+// UID.007_(Local-first compute)_(делать офлайн-политику видимой и управляемой пользователем)_(offline modal остаётся главным UI для cache/network/storage control) UID.018_(Variant and quality stats)_(подготовить future отображение richer cache usage)_(в будущем сюда можно добавить variant-aware breakdown без смешивания с semantic UI) UID.073_(Hybrid sync orchestrator)_(не смешивать backup sync и media cache UI)_(offline modal управляет physical cache/network, а не account/provider sync) UID.082_(Local truth vs external telemetry split)_(готовить безопасную product analytics точку)_(future telemetry mapper может получать UI actions отсюда по consent, без raw leakage) UID.094_(No-paralysis rule)_(offline modal должен жить независимо от intel)_(никакие intel/recs/provider features не должны быть required для этого окна)
 import { getOfflineManager } from '../offline/offline-manager.js';
 import * as Net from '../offline/net-policy.js';
 import { estimateUsage, getAllTrackMetas } from '../offline/cache-db.js';
@@ -5363,16 +5359,11 @@ const refresh = async () => {
   const isR2 = om.getMode() === 'R2', q = isR2 ? om.getCQ() : om.getQuality(), { N, D } = om.getCloudSettings(), dynLimitMB = isR2 && om.getDynamicLimitMB ? await om.getDynamicLimitMB() : 0;
   const bd = { pinned: 0, cloud: 0, transient: 0, dynamic: 0, other: 0 }, pcList = [];
   let mismatch = 0;
-
   metas.forEach(m => {
     const t = m.type, k = ['pinned','cloud','playbackCache','dynamic'].includes(t) ? (t === 'playbackCache' ? 'transient' : t) : 'other';
     bd[k] += (m.size || 0);
-    if (['pinned', 'cloud', 'dynamic'].includes(t)) {
-      if ((String(m.quality || '').toLowerCase() === 'lo' ? 'lo' : 'hi') !== q) mismatch++;
-      if (t === 'pinned' || t === 'cloud') pcList.push(m);
-    }
+    if (['pinned', 'cloud', 'dynamic'].includes(t)) { if ((String(m.quality || '').toLowerCase() === 'lo' ? 'lo' : 'hi') !== q) mismatch++; if (t === 'pinned' || t === 'cloud') pcList.push(m); }
   });
-
   const tot = Object.values(bd).reduce((a, v) => a + v, 0), pct = v => tot > 0 ? Math.max(0.5, (v / tot) * 100) : 0;
   const ns = Net.getNetPolicyState(), pl = Net.getPlatform(), ts = Net.getTrafficStats(), trRow = (l, v) => `<div class="om-traffic__row"><span>${l}</span><span>${fMB(v)}</span></div>`;
   pcList.sort((a, b) => a.type !== b.type ? (a.type === 'pinned' ? -1 : 1) : (a.type === 'pinned' ? (a.pinnedAt || 0) - (b.pinnedAt || 0) : (b.cloudExpiresAt || 0) - (a.cloudExpiresAt || 0)));
@@ -5392,13 +5383,12 @@ const refresh = async () => {
 async function handleAction(e) {
   const el = e.target.closest?.('[data-action]'); if (!el || el.disabled) return;
   const act = el.dataset.action, om = getOfflineManager();
-
   const handleQ = async (nq, isR2) => {
     if ((isR2 ? om.getCQ() : om.getQuality()) === nq) return;
-    let count = 0, bytes = 0;
-    (await getAllTrackMetas()).forEach(m => { if (['pinned', 'cloud', 'dynamic'].includes(m.type) && (String(m.quality || '').toLowerCase() === 'lo' ? 'lo' : 'hi') !== nq) { count++; bytes += (m.size || 0); } });
+    let cnt = 0, bts = 0;
+    (await getAllTrackMetas()).forEach(m => { if (['pinned', 'cloud', 'dynamic'].includes(m.type) && (String(m.quality || '').toLowerCase() === 'lo' ? 'lo' : 'hi') !== nq) { cnt++; bts += (m.size || 0); } });
     const apply = () => { isR2 ? om.setCQ(nq) : window.playerCore?.switchQuality?.(nq); refresh(); };
-    count > 5 ? confirmBox({ title: 'Смена качества', textHtml: `Смена затронет ${count} файлов (${fMB(bytes)}). Перекачать?`, confirmText: 'Перекачать', onConfirm: apply }) : apply();
+    cnt > 5 ? confirmBox({ title: 'Смена качества', textHtml: `Смена затронет ${cnt} файлов (${fMB(bts)}). Перекачать?`, confirmText: 'Перекачать', onConfirm: apply }) : apply();
   };
 
   const actions = {
@@ -5413,12 +5403,12 @@ async function handleAction(e) {
     'set-q': () => handleQ(el.dataset.val, false),
     'set-cq': () => handleQ(el.dataset.val, true),
     'recache': async () => {
-      const isR2 = om.getMode() === 'R2', targetQ = isR2 ? om.getCQ() : om.getQuality(), metas = await getAllTrackMetas(), winUids = Object.values(window.PlaybackCache?.getWindowState?.() || {}).filter(Boolean);
-      let uidCount = 0, bytes = 0;
-      for (const m of metas) if (m?.cachedComplete && ['pinned', 'cloud', 'dynamic', 'playbackCache'].includes(m.type) && (String(m.quality || '').toLowerCase() === 'lo' ? 'lo' : 'hi') !== targetQ) { uidCount++; bytes += (m.size || 0); }
-      const doRun = async () => { if (om.queue) om.queue.setParallel(3); await om.reCacheAll(targetQ); setTimeout(() => om.queue?.setParallel?.(1), 15000); refresh(); };
+      const isR2 = om.getMode() === 'R2', tQ = isR2 ? om.getCQ() : om.getQuality(), winUids = Object.values(window.PlaybackCache?.getWindowState?.() || {}).filter(Boolean);
+      let uC = 0, bts = 0;
+      for (const m of await getAllTrackMetas()) if (m?.cachedComplete && ['pinned', 'cloud', 'dynamic', 'playbackCache'].includes(m.type) && (String(m.quality || '').toLowerCase() === 'lo' ? 'lo' : 'hi') !== tQ) { uC++; bts += (m.size || 0); }
+      const doRun = async () => { if (om.queue) om.queue.setParallel(3); await om.reCacheAll(tQ); setTimeout(() => om.queue?.setParallel?.(1), 15000); refresh(); };
       if (!isR2) return doRun();
-      confirmBox({ title: 'Re-cache (R2)', textHtml: `Будут перекачаны треки в качестве ${targetQ === 'lo' ? 'Lo' : 'Hi'}.<br>Порядок: окно PREV/CUR/NEXT → 🔒 pinned → ☁ cloud → 🧠 dynamic.<br>${winUids.length ? `Окно: ${winUids.length} UID.` : ''}`, confirmText: 'Далее', cancelText: 'Отмена', onConfirm: () => confirmBox({ title: 'Re-cache (R2)', textHtml: `Будет перекачано: <strong>${uidCount}</strong> UID<br>Объём: <strong>${fMB(bytes)}</strong>`, confirmText: 'Начать', cancelText: 'Отмена', onConfirm: doRun }) });
+      confirmBox({ title: 'Re-cache (R2)', textHtml: `Будут перекачаны треки в качестве ${tQ === 'lo' ? 'Lo' : 'Hi'}.<br>Порядок: окно PREV/CUR/NEXT → 🔒 pinned → ☁ cloud → 🧠 dynamic.<br>${winUids.length ? `Окно: ${winUids.length} UID.` : ''}`, confirmText: 'Далее', cancelText: 'Отмена', onConfirm: () => confirmBox({ title: 'Re-cache (R2)', textHtml: `Будет перекачано: <strong>${uC}</strong> UID<br>Объём: <strong>${fMB(bts)}</strong>`, confirmText: 'Начать', cancelText: 'Отмена', onConfirm: doRun }) });
     },
     'apply-cloud': async () => { await om.confirmApplyCloudSettings({ newN: Math.max(1, parseInt($('#inp-n', _overlay)?.value || '5')), newD: Math.max(1, parseInt($('#inp-d', _overlay)?.value || '31')) }); refresh(); window.NotificationSystem?.success?.('Настройки применены'); },
     'apply-r2-dyn': async () => { if (om.setDynamicLimitMB) await om.setDynamicLimitMB(Math.max(0, parseInt($('#inp-dyn-mb', _overlay)?.value || '0'))); refresh(); window.NotificationSystem?.success?.('Лимит Dynamic применён'); },
@@ -5429,7 +5419,6 @@ async function handleAction(e) {
     'recheck-updates': async () => { await checkForUpdates(); refresh(); },
     'dl-toggle': () => { _dlPaused = !_dlPaused; if (om.queue) _dlPaused ? om.queue.pause() : om.queue.resume(); refresh(); }
   };
-
   actions[act]?.();
 }
 
@@ -5444,7 +5433,6 @@ export function openOfflineModal() {
 }
 
 export function closeOfflineModal() { try { _overlay?.remove(); } catch {} _overlay = null; }
-
 export function initOfflineModal() {
   if (!window.Utils?.func?.initOnce?.('ui:offline-modal:init', () => {})) return;
   document.getElementById('offline-btn')?.addEventListener('click', e => e.target?.classList?.contains('offline-btn-alert') ? window.NotificationSystem?.show?.('Есть треки для обновления', 'info', 6000) : openOfflineModal());
