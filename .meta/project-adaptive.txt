@@ -376,7 +376,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-03-26 22:15:50 UTC
+Сгенерировано: 2026-03-26 22:16:22 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -805,7 +805,7 @@ jobs:
   </template>
 
   <script>
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.2.22');
+    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.2.23');
     const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-03-27');
 
     // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
@@ -849,7 +849,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.2.22';
+const SW_VERSION = '8.2.23';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
