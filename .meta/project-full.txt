@@ -372,7 +372,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-26 19:27:49 UTC
+Сгенерировано: 2026-03-26 19:28:12 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5569,7 +5569,7 @@ window.StatisticsModal = { openStatisticsModal, init: () => document.addEventLis
       try {
         this.reg = await N.serviceWorker.register('./service-worker.js', { scope: './' });
         if (!this.reg.waiting) this._clearUpdateUi(); else this._notifyUpdate();
-        this.reg.addEventListener('updatefound', () => { const newW = this.reg.installing; newW?.addEventListener('statechange', () => { if (newW.state === 'installed' && N.serviceWorker.controller) this._notifyUpdate(); }); });
+        this.reg.addEventListener('updatefound', () => { const nW = this.reg.installing; nW?.addEventListener('statechange', () => { if (nW.state === 'installed' && N.serviceWorker.controller) this._notifyUpdate(); }); });
       } catch (e) { console.warn('SW Register Failed:', e); }
     }
     handleVersionMessage(d) { if (d?.swVer && d.swVer !== (W.VERSION || '')) this._notifyUpdate(); }
