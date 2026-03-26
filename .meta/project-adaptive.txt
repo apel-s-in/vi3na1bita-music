@@ -372,7 +372,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-26 17:43:20 UTC
+Сгенерировано: 2026-03-26 17:43:40 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3126,13 +3126,7 @@ export const searchUidsByQuery = ({ query: q }) => {
 
 //=================================================
 // FILE: /scripts/app/showcase/modals.js
-// UID.038_(Track profile modal)_(сделать showcase вторичной точкой входа в умные карточки)_(showcase-specific windows могут открывать track/intel/profile surfaces, но не владеть semantic logic)
-// UID.056_(Recommendation reasons)_(подготовить modals showcase к reason-aware подаче)_(bottom-sheet и sort/share/pick modals позже смогут принимать reason/explainer fragments извне)
-// UID.068_(Public playlist analytics)_(сделать модалки витрины частью social/discovery surface)_(share/import/public playlist confirmations должны быть отмечены как analytics touchpoints)
-// UID.080_(Provider actions bridge)_(не тащить external provider logic прямо в showcase modal helpers)_(любые provider/social actions приходят как callbacks через bridge, а не реализуются здесь)
-// UID.082_(Local truth vs external telemetry split)_(showcase modal actions не должны сами экспортировать raw data)_(наружу только mapper-safe события из внешнего orchestration слоя)
-// UID.094_(No-paralysis rule)_(showcase modal helpers обязаны жить без intel/social/provider слоя)_(эти функции — чистые UI hosts с optional callbacks)
-// UID.095_(Ownership boundary: legacy vs intel)_(showcase modals — secondary semantic/social modal surface, но не новый ShowcaseManager)_(этот файл только рендерит showcase-специфичные окна и не владеет rec/semantic/business logic)
+// UID.038_(Track profile modal)_(дать безопасный host для умных карточек и окон)_(Modals остаётся центральным generic UI-bridge, а не местом бизнес-логики профилей) UID.070_(Linked providers)_(дать profile/provider слою единый способ открытия окон)_(provider/profile UI может использовать Modals как host, не дублируя modal engines) UID.072_(Provider consents)_(позже показывать consent/policy окна через единый слой)_(consent content может приходить из intel/providers, но рендериться через этот generic bridge) UID.073_(Hybrid sync orchestrator)_(позже показывать sync/restore/provider role dialogs)_(Modals только отображает, orchestration logic живёт вне этого файла) UID.080_(Provider actions bridge)_(provider action confirmations/openers не должны плодить свои modal subsystems)_(все optional provider окна лучше вешать на этот central bridge) UID.082_(Local truth vs external telemetry split)_(modals не должны экспортировать наружу raw state сами)_(любая внешняя аналитика modal-actions только через mapper/consent слой) UID.094_(No-paralysis rule)_(generic modal engine должен быть независимым от intel)_(если intel/profile/providers выключены, базовые confirm/open продолжают работать как сейчас) UID.095_(Ownership boundary: legacy vs intel)_(showcase modals — secondary semantic/social modal surface, но не новый ShowcaseManager)_(этот файл только рендерит showcase-специфичные окна и не владеет rec/semantic/business logic)
 export const openShowcaseSheetModal = ({ title: t = '', subtitle: s = '', fromSearch: fS = false, inPlaylist: iP = false, hiddenLabel: hL = '', favoriteLabel: fL = '', onAction: oA } = {}) => {
   const bg = document.createElement('div'); bg.className = 'sc-bottom-sheet-bg';
   bg.innerHTML = `<div class="sc-bottom-sheet"><button class="sc-sheet-close">×</button><div class="sc-sheet-title">${t}</div><div class="sc-sheet-sub">${s}</div>${fS ? `<button class="sc-sheet-btn" id="bm-play">▶ Воспроизвести</button><hr class="sc-sheet-sep">` : ''}<button class="sc-sheet-btn" id="bm-pl">➕ Добавить в плейлист</button>${iP ? `<button class="sc-sheet-btn sc-sheet-btn--danger" id="bm-rm">✖ Удалить из плейлиста</button>` : ''}<button class="sc-sheet-btn" id="bm-eye">${hL}</button><button class="sc-sheet-btn" id="bm-fv">${fL}</button><button class="sc-sheet-btn" id="bm-of">🔒 Скачать / Офлайн</button><button class="sc-sheet-btn" id="bm-dl">⬇️ Сохранить mp3</button><button class="sc-sheet-btn" id="bm-st">📊 Статистика трека</button><button class="sc-sheet-btn" id="bm-sh">📸 Поделиться (Карточка)</button><button class="sc-sheet-btn" id="bm-cl">🎨 Цвет альбома</button><button class="sc-sheet-btn sc-sheet-btn--cancel" id="bm-cx">Отмена</button></div>`;
@@ -3147,61 +3141,27 @@ export const openShowcaseAddToPlaylistModal = ({ playlists: p, esc, onPick: oP, 
 };
 export const openShowcaseSettingsModal = ({ currentSort: cS, currentUi: cU, options: o, onApply: oA, modalApi: mA }) => {
   let tS = cS, tN = !!cU?.showNumbers, tV = cU?.viewMode || 'flat', tP = cU?.hiddenPlacement || 'inline';
-
   const draw = bx => {
-    let l = [ {id:1, t:'Упала Слеза', a:'КРЕВЕツTOCHKA', h:false}, {id:2, t:'Кошки-мышки', a:'Между Злом и Добром', h:true}, {id:3, t:'Принц', a:'КРЕВЕツTOCHKA', h:false} ];
+    let l = [{id:1, t:'Упала Слеза', a:'КРЕВЕツTOCHKA', h:false}, {id:2, t:'Кошки-мышки', a:'Между Злом и Добром', h:true}, {id:3, t:'Принц', a:'КРЕВЕツTOCHKA', h:false}];
     if (tS === 'name-asc') l.sort((x,y) => x.t.localeCompare(y.t));
     if (tS === 'name-desc') l.sort((x,y) => y.t.localeCompare(x.t));
     if (tS.includes('album')) l.sort((x,y) => x.a.localeCompare(y.a) || x.id - y.id);
     if (tS === 'favorites-first') l.reverse();
     if (tP === 'end') l = [...l.filter(x=>!x.h), ...l.filter(x=>x.h)];
-
     let h = '', cA = null;
     l.forEach((x, i) => {
       if (tV === 'grouped' && cA !== x.a) { h += `<div style="color:var(--secondary-color);font-size:10px;font-weight:800;margin-top:4px;opacity:0.9">── ${x.a} ──</div>`; cA = x.a; }
       h += `<div class="sc-set-prev-tr ${x.h ? 'h' : ''}"><span style="color:var(--secondary-color);font-weight:700;width:22px;display:${tN ? 'block' : 'none'}">${i+1}.</span><div><div style="font-weight:700;color:#eaf2ff">${x.t}</div><div style="font-size:10px;color:#888;margin-top:2px">${x.a}</div></div><div style="margin-left:auto;font-size:14px;opacity:0.5">${x.h ? '🙈' : '⭐'}</div></div>`;
-    });
-    bx.innerHTML = h;
+    }); bx.innerHTML = h;
   };
-
-  const m = mA?.open?.({ title: '⚙️ Настройки', maxWidth: 360, bodyHtml: `
-    <div class="sc-set-prev" id="sc-prev"></div>
-    <div class="sc-set-sec-title">Внешний вид списка</div>
-    <div class="sc-set-tgls">
-      <div class="sc-set-tgl ${tN?'on':''}" data-t="num">1,2,3<span class="sc-set-tgl-desc">Нумерация</span></div>
-      <div class="sc-set-tgl ${tV==='grouped'?'on':''}" data-t="view">⊞<span class="sc-set-tgl-desc">По альбомам</span></div>
-      <div class="sc-set-tgl ${tP==='end'?'on':''}" data-t="place">≡скр<span class="sc-set-tgl-desc">Скрытые вниз</span></div>
-    </div>
-    <div class="sc-set-sec-title">Сортировка треков</div>
-    <div class="sc-sort-grid" style="margin-bottom:20px">${o.map(([v, l]) => `<button class="showcase-btn ${tS === v ? 'active' : ''} ${v === 'user' ? 'sc-sort-grid-full' : ''}" data-val="${v}" style="padding:8px 10px;font-size:12px">${l}</button>`).join('')}</div>
-    <div class="om-actions">
-      <button class="modal-action-btn" data-act="cancel">Отмена</button>
-      <button class="modal-action-btn online" data-act="apply">Применить</button>
-    </div>
-  `});
-
-  if (!m) return null;
-  const bx = m.querySelector('#sc-prev'); draw(bx);
-
+  const m = mA?.open?.({ title: '⚙️ Настройки', maxWidth: 360, bodyHtml: `<div class="sc-set-prev" id="sc-prev"></div><div class="sc-set-sec-title">Внешний вид списка</div><div class="sc-set-tgls"><div class="sc-set-tgl ${tN?'on':''}" data-t="num">1,2,3<span class="sc-set-tgl-desc">Нумерация</span></div><div class="sc-set-tgl ${tV==='grouped'?'on':''}" data-t="view">⊞<span class="sc-set-tgl-desc">По альбомам</span></div><div class="sc-set-tgl ${tP==='end'?'on':''}" data-t="place">≡скр<span class="sc-set-tgl-desc">Скрытые вниз</span></div></div><div class="sc-set-sec-title">Сортировка треков</div><div class="sc-sort-grid" style="margin-bottom:20px">${o.map(([v, l]) => `<button class="showcase-btn ${tS === v ? 'active' : ''} ${v === 'user' ? 'sc-sort-grid-full' : ''}" data-val="${v}" style="padding:8px 10px;font-size:12px">${l}</button>`).join('')}</div><div class="om-actions"><button class="modal-action-btn" data-act="cancel">Отмена</button><button class="modal-action-btn online" data-act="apply">Применить</button></div>`});
+  if (!m) return null; const bx = m.querySelector('#sc-prev'); draw(bx);
   m.addEventListener('click', e => {
     const t = e.target.closest('.sc-set-tgl'), b = e.target.closest('.showcase-btn'), a = e.target.closest('.modal-action-btn');
-    if (t) {
-      const d = t.dataset.t;
-      if (d === 'num') { tN = !tN; t.classList.toggle('on', tN); }
-      if (d === 'view') { tV = tV === 'flat' ? 'grouped' : 'flat'; t.classList.toggle('on', tV === 'grouped'); }
-      if (d === 'place') { tP = tP === 'inline' ? 'end' : 'inline'; t.classList.toggle('on', tP === 'end'); }
-      draw(bx);
-    }
-    if (b && b.dataset.val) {
-      tS = b.dataset.val; m.querySelectorAll('.sc-sort-grid .showcase-btn').forEach(x => x.classList.remove('active')); b.classList.add('active');
-      draw(bx);
-    }
-    if (a) {
-      if (a.dataset.act === 'cancel') m.remove();
-      if (a.dataset.act === 'apply') oA?.({ sortMode: tS, showNumbers: tN, viewMode: tV, hiddenPlacement: tP }, m);
-    }
-  });
-  return m;
+    if (t) { const d = t.dataset.t; if (d === 'num') { tN = !tN; t.classList.toggle('on', tN); } if (d === 'view') { tV = tV === 'flat' ? 'grouped' : 'flat'; t.classList.toggle('on', tV === 'grouped'); } if (d === 'place') { tP = tP === 'inline' ? 'end' : 'inline'; t.classList.toggle('on', tP === 'end'); } draw(bx); }
+    if (b && b.dataset.val) { tS = b.dataset.val; m.querySelectorAll('.sc-sort-grid .showcase-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); draw(bx); }
+    if (a) { if (a.dataset.act === 'cancel') m.remove(); if (a.dataset.act === 'apply') oA?.({ sortMode: tS, showNumbers: tN, viewMode: tV, hiddenPlacement: tP }, m); }
+  }); return m;
 };
 export const openShowcaseSharedPlaylistConfirm = ({ raw: r, trk: t, esc, createPlaylist: cP, notify: n, modalApi: mA }) => {
   try {
