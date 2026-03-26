@@ -82,4 +82,26 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
   renderProfileSettings($('#tab-settings'));
   return c;
 };
+// Глобальный индикатор сессии на кнопке профиля в навбаре
+function updateNavSessionDot() {
+  const btn = document.getElementById('profile-nav-btn');
+  if (!btn) return;
+
+  let dot = btn.querySelector('.ya-session-dot');
+  if (!dot) {
+    dot = document.createElement('span');
+    dot.className = 'ya-session-dot';
+    dot.style.cssText = 'position:absolute;top:4px;right:4px;width:8px;height:8px;border-radius:50%;border:2px solid var(--primary-bg);transition:background .3s;pointer-events:none';
+    btn.style.position = 'relative';
+    btn.appendChild(dot);
+  }
+
+  const status = window.YandexAuth?.getSessionStatus?.() || 'logged_out';
+  const colors = { active: '#4caf50', expired: '#ff9800', logged_out: 'transparent' };
+  dot.style.background = colors[status] || 'transparent';
+  dot.title = { active: 'Яндекс подключён', expired: 'Сессия Яндекс истекла — войдите снова', logged_out: '' }[status] || '';
+}
+
+window.addEventListener('yandex:auth:changed', updateNavSessionDot);
+document.addEventListener('DOMContentLoaded', () => setTimeout(updateNavSessionDot, 500));
 export default { renderProfileShell };
