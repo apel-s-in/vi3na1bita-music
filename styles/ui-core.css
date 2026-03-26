@@ -77,6 +77,22 @@
 .modal-choice-actions{display:flex;flex-direction:column;gap:8px;width:100%}
 .modal-choice-actions .modal-action-btn{width:100%;justify-content:center;min-height:44px}
 
+/* Util Modals */
+.pm-name-inp{width:100%;padding:10px;border-radius:8px;background:rgba(255,255,255,.1);color:#fff;border:1px solid #666;margin-bottom:15px}
+.pm-name-save{width:100%}
+.pm-palette{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;justify-content:center}
+.pm-palette__dot{width:34px;height:34px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .2s;box-shadow:0 2px 8px rgba(0,0,0,.5)}
+.pm-palette__dot:hover{transform:scale(1.15)}
+.pm-palette__reset{margin-top:15px;width:100%}
+.boot-fail{position:fixed;inset:0;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;font-family:sans-serif;z-index:99999}
+.boot-fail__box{max-width:560px}
+.boot-fail__title{color:#e80100;margin:0 0 12px}
+.boot-fail__text{margin:0}
+.sysinfo-root{font-size:13px;line-height:1.6;color:#eaf2ff;text-align:left}
+.sysinfo-group-title{color:#8ab8fd;margin:12px 0 6px}
+.sysinfo-row{margin:0 0 4px}
+.sysinfo-footer{margin-top:16px;border-top:1px solid #333;text-align:center;color:#666;font-size:10px;padding-top:10px}
+
 .sm-center{text-align:center}
 .sm-mb20{margin-bottom:20px}
 .sm-cover{width:100px;height:100px;border-radius:12px;overflow:hidden;margin:0 auto 12px;box-shadow:0 4px 15px rgba(0,0,0,0.5)}
