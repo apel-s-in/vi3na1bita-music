@@ -375,7 +375,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-26 21:17:20 UTC
+Сгенерировано: 2026-03-26 21:29:58 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2828,11 +2828,11 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
           </div>
           <button class="om-btn om-btn--outline om-fullw" data-ya-action="logout" style="font-size:12px">Выйти из аккаунта Яндекс</button>
         ` : `
-          <div style="color:#9db7dd;font-size:13px;line-height:1.55;margin-bottom:16px">
-            Войдите через Яндекс, чтобы сохранять прогресс, достижения и плейлисты на всех устройствах.
+          <div style="color:#9db7dd;font-size:12px;line-height:1.5;margin-bottom:14px;word-break:break-word;white-space:normal">
+            Войдите через Яндекс — прогресс, достижения и плейлисты сохранятся на всех устройствах.
           </div>
-          <button class="auth-btn yandex" data-ya-action="login" style="width:100%;padding:14px;font-size:15px;border-radius:12px">
-            <span>💽</span> Войти через Яндекс
+          <button data-ya-action="login" style="width:100%;padding:14px;font-size:15px;font-weight:900;border-radius:12px;border:none;cursor:pointer;background:linear-gradient(135deg,#cc0000,#880000);color:#fff;display:flex;align-items:center;justify-content:center;gap:10px;transition:opacity .2s">
+            <span style="font-size:22px">Я</span> Войти через Яндекс
           </button>
         `}
       </div>`;
