@@ -372,7 +372,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-26 17:43:58 UTC
+Сгенерировано: 2026-03-26 17:44:35 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3196,6 +3196,7 @@ export default { renderShowcasePlaylists, renameShowcasePlaylist, shareShowcaseP
 
 //=================================================
 // FILE: /scripts/app/showcase/render.js
+// Компактный рендеринг блоков витрины (строки, хедер, списки).
 export const renderShowcaseHeader = ({ edit: e, query: q, sortMode: s, resetAble: r, dirty: d, esc }) => `
   <div class="showcase-header-controls">
     ${e ? `<div class="showcase-edit-banner">✏️ РЕЖИМ РЕДАКТИРОВАНИЯ<div class="sc-edit-actions"><button class="showcase-btn sc-btn-save sc-btn-save-ok">💾 Сохранить</button><button class="showcase-btn sc-btn-create sc-btn-create-accent">✨ Создать</button><button class="showcase-btn sc-btn-reset ${d ? '' : 'sc-btn-disabled'} sc-btn-reset-warn" ${d ? '' : 'disabled'}>↺ Сброс</button><button class="showcase-btn sc-btn-exit sc-btn-exit-danger">✕ Выйти</button></div></div>` : ''}
@@ -3228,8 +3229,7 @@ export const renderShowcaseSearch = ({ box, res, ctxOrder: cO, ctxHidden: cH, se
   const set = new Set(cO || []);
   let h = `<div class="sc-search-info">Найдено: ${res.length} треков по всему приложению</div>`;
   res.forEach((uid, i) => {
-    const t = bT(uid); if (!t) return;
-    const isH = !!cH?.has(uid);
+    const t = bT(uid); if (!t) return; const isH = !!cH?.has(uid);
     h += renderShowcaseRow({ track: t, index: i, options: { srh: true, chk: s.has(uid), bdg: set.has(uid) ? (isH ? '<span class="sc-badge sc-badge-hidden">скрыт</span>' : '<span class="sc-badge sc-badge-active">уже есть</span>') : '<span class="sc-badge sc-badge-missing">добавить?</span>', isH }, esc, albumTitle: aT, renderFavoriteStar: rFS, isFavorite: iF });
   });
   box.innerHTML = h || '<div class="fav-empty">Ничего не найдено</div>'; sSB?.(); sS?.(res.length, true);
@@ -3237,8 +3237,7 @@ export const renderShowcaseSearch = ({ box, res, ctxOrder: cO, ctxHidden: cH, se
 
 export const renderShowcaseEdit = ({ box, uids, draft: d, buildTrack: bT, esc, albumTitle: aT, setSelectionBar: sSB, setStatus: sS, bindDrag: bD }) => {
   box.innerHTML = uids.map(uid => {
-    const t = bT(uid); if (!t) return '';
-    const isH = d.hid.has(uid), chk = d.chk.has(uid);
+    const t = bT(uid); if (!t) return ''; const isH = d.hid.has(uid), chk = d.chk.has(uid);
     return `<div class="showcase-track sc-edit-row ${isH ? 'inactive ' : ''}${chk ? 'selected' : ''}" data-uid="${uid}" data-hidden="${isH ? '1' : '0'}" draggable="true"><button class="sc-arrow-up">▲</button><div class="showcase-drag-handle">⠿</div><input type="checkbox" class="sc-chk" ${chk ? 'checked' : ''}><img src="${t.cover}" class="showcase-track-thumb" loading="lazy"><div class="track-title"><div>${esc(t.title)}</div><div class="showcase-track-meta">${esc(aT(t.sourceAlbum))}${isH ? ' · неактивен' : ''}</div></div><button class="sc-eye-btn" title="Показать/Скрыть">${isH ? '🙈' : '👁'}</button><button class="sc-arrow-down">▼</button></div>`;
   }).join('') || '<div class="fav-empty">Нет треков</div>';
   bD?.(box); sSB?.(); sS?.(uids.length, false);
@@ -3254,11 +3253,9 @@ export const renderShowcaseSelectionBar = ({ selectedCount: sC, edit: e, onClick
   const old = document.getElementById('sc-selection-bar');
   if (old?.removeEventListener) old.removeEventListener('click', old._scClick); old?.remove();
   if (!sC) return null;
-  const b = document.createElement('div');
-  b.id = 'sc-selection-bar'; b.className = 'showcase-sticky-bar';
+  const b = Object.assign(document.createElement('div'), { id: 'sc-selection-bar', className: 'showcase-sticky-bar' });
   b.innerHTML = `<div class="sc-sel-count">${sC}</div><button type="button" class="sc-sel-btn accent sc-unified-action-menu">Действие</button><button type="button" class="sc-sel-btn sc-unified-all">✓ Всё</button><button type="button" class="sc-sel-btn sc-unified-none">✕ Снять</button><div class="sc-action-popup">${!e ? `<button type="button" class="sc-action-popup-btn" data-popact="add"><span class="ic">➕</span> Добавить в текущий</button>` : ''}<button type="button" class="sc-action-popup-btn" data-popact="create"><span class="ic">✨</span> Создать новый</button><button type="button" class="sc-action-popup-btn" data-popact="share"><span class="ic">📸</span> Сгенерировать карточку</button></div>`;
-  b.addEventListener('click', b._scClick = oC); document.body.appendChild(b);
-  return b;
+  b.addEventListener('click', b._scClick = oC); document.body.appendChild(b); return b;
 };
 
 export default { renderShowcaseHeader, renderShowcaseRow, renderShowcaseNormal, renderShowcaseSearch, renderShowcaseEdit, renderShowcaseStatus, renderShowcaseSelectionBar };
