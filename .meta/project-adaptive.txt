@@ -372,7 +372,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-26 19:41:01 UTC
+Сгенерировано: 2026-03-26 19:42:02 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5993,97 +5993,8 @@ window.StatisticsModal = { openStatisticsModal, init: () => document.addEventLis
 
 //=================================================
 // FILE: /src/player-core/ios-audio-keeper.js
-// src/player-core/ios-audio-keeper.js
-// iOS Silent Audio Keeper — держит аудио-сессию активной через тихий зацикленный файл.
-// Работает только на iOS. Не влияет на Howler/PlayerCore playback вообще.
-
-const SILENCE_URL = './audio/silence.mp3';
-const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-
-let _el = null;       // <audio> элемент
-let _started = false; // флаг что keeper запущен
-let _bound = false;   // флаг что обработчики уже навешаны
-
-function _createEl() {
-  if (_el) return _el;
-  _el = document.createElement('audio');
-  _el.src = SILENCE_URL;
-  _el.loop = true;
-  _el.volume = 0.001;        // почти беззвучно, но не 0 — iOS иначе оптимизирует
-  _el.preload = 'auto';
-  _el.setAttribute('playsinline', '');
-  _el.setAttribute('webkit-playsinline', '');
-  // Не добавляем в DOM — не нужно
-  return _el;
-}
-
-export function startKeeper() {
-  if (!isIOS) return;
-  const el = _createEl();
-  if (_started) return;
-  _started = true;
-  el.play().catch(() => {
-    // Если autoplay заблокирован — пробуем при следующем user gesture
-    // Это нормально: Howler уже разблокировал AudioContext через свой unlock
-    _started = false;
-  });
-}
-
-export function stopKeeper() {
-  if (!isIOS || !_el) return;
-  _started = false;
-  try { _el.pause(); _el.currentTime = 0; } catch {}
-}
-
-export function initIosAudioKeeper() {
-  if (!isIOS || _bound) return;
-  _bound = true;
-
-  window.addEventListener('player:play', () => { startKeeper(); bindCtxWatcher(); handleCtxState(); });
-  window.addEventListener('player:stop', () => stopKeeper());
-
-  const handleCtxState = () => {
-    const ctx = window.Howler?.ctx;
-    if (ctx && (ctx.state === 'interrupted' || ctx.state === 'suspended')) ctx.resume().catch(() => {});
-  };
-
-  const bindCtxWatcher = () => {
-    const ctx = window.Howler?.ctx;
-    if (ctx && !ctx._iosWatching) {
-      ctx._iosWatching = true;
-      ctx.addEventListener('statechange', () => { if (window.playerCore?.isPlaying?.()) handleCtxState(); });
-    }
-  };
-
-  let _lastKnownPos = 0, _wasPlayingBeforeHide = false;
-
-  // Единый visibilitychange — keeper + recovery + ctx restore
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState !== 'visible') {
-      _lastKnownPos = window.playerCore?.getPosition?.() || 0;
-      _wasPlayingBeforeHide = !!window.playerCore?.isPlaying?.();
-      return;
-    }
-    bindCtxWatcher();
-    handleCtxState();
-    if (!_started && window.playerCore?.isPlaying?.()) startKeeper();
-    if (window.playerCore?.sound && !window.playerCore.isPlaying() && _wasPlayingBeforeHide) {
-      _wasPlayingBeforeHide = false;
-      const pos = _lastKnownPos || 0;
-      setTimeout(() => {
-        if (window.playerCore?.sound && !window.playerCore.isPlaying()) {
-          window.playerCore.sound.seek(pos);
-          window.playerCore.sound.play();
-        }
-      }, 300);
-    }
-    _wasPlayingBeforeHide = false;
-  });
-
-  setInterval(() => { if (window.playerCore?.isPlaying?.()) _lastKnownPos = window.playerCore.getPosition(); }, 5000);
-}
-
-export default { initIosAudioKeeper, startKeeper, stopKeeper };
+// src/player-core/ios-audio-keeper.js iOS Silent Audio Keeper — держит аудио-сессию активной через тихий зацикленный файл. Работает только на iOS. Не влияет на Howler/PlayerCore playback вообще. <audio> элемент флаг что keeper запущен флаг что обработчики уже навешаны почти беззвучно, но не 0 — iOS иначе оптимизирует Не добавляем в DOM — не нужно Если autoplay заблокирован — пробуем при следующем user gesture Это нормально: Howler уже разблокировал AudioContext через свой unlock Единый visibilitychange — keeper + recovery + ctx restore
+const SILENCE_URL='./audio/silence.mp3',isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream;let _el=null,_started=!1,_bound=!1;function _createEl(){if(_el)return _el;_el=document.createElement('audio');_el.src=SILENCE_URL;_el.loop=!0;_el.volume=.001;_el.preload='auto';_el.setAttribute('playsinline','');_el.setAttribute('webkit-playsinline','');return _el;}export function startKeeper(){if(!isIOS||_started)return;_started=!0;_createEl().play().catch(()=>_started=!1);}export function stopKeeper(){if(!isIOS||!_el)return;_started=!1;try{_el.pause();_el.currentTime=0;}catch{}}export function initIosAudioKeeper(){if(!isIOS||_bound)return;_bound=!0;window.addEventListener('player:play',()=>{startKeeper();bindCtxWatcher();handleCtxState();});window.addEventListener('player:stop',stopKeeper);const handleCtxState=()=>{const c=window.Howler?.ctx;if(c&&(c.state==='interrupted'||c.state==='suspended'))c.resume().catch(()=>{});},bindCtxWatcher=()=>{const c=window.Howler?.ctx;if(c&&!c._iosWatching){c._iosWatching=!0;c.addEventListener('statechange',()=>{if(window.playerCore?.isPlaying?.())handleCtxState();});}};let _lKP=0,_wPBH=!1;document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible'){_lKP=window.playerCore?.getPosition?.()||0;_wPBH=!!window.playerCore?.isPlaying?.();return;}bindCtxWatcher();handleCtxState();if(!_started&&window.playerCore?.isPlaying?.())startKeeper();if(window.playerCore?.sound&&!window.playerCore.isPlaying()&&_wPBH){_wPBH=!1;const p=_lKP||0;setTimeout(()=>{if(window.playerCore?.sound&&!window.playerCore.isPlaying()){window.playerCore.sound.seek(p);window.playerCore.sound.play();}},300);}_wPBH=!1;});setInterval(()=>{if(window.playerCore?.isPlaying?.())_lKP=window.playerCore.getPosition();},5000);}export default{initIosAudioKeeper,startKeeper,stopKeeper};
 
 //=================================================
 // FILE: /src/player-core/media-session.js
