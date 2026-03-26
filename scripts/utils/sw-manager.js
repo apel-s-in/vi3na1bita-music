@@ -10,7 +10,7 @@
       try {
         this.reg = await N.serviceWorker.register('./service-worker.js', { scope: './' });
         if (!this.reg.waiting) this._clearUpdateUi(); else this._notifyUpdate();
-        this.reg.addEventListener('updatefound', () => { const newW = this.reg.installing; newW?.addEventListener('statechange', () => { if (newW.state === 'installed' && N.serviceWorker.controller) this._notifyUpdate(); }); });
+        this.reg.addEventListener('updatefound', () => { const nW = this.reg.installing; nW?.addEventListener('statechange', () => { if (nW.state === 'installed' && N.serviceWorker.controller) this._notifyUpdate(); }); });
       } catch (e) { console.warn('SW Register Failed:', e); }
     }
     handleVersionMessage(d) { if (d?.swVer && d.swVer !== (W.VERSION || '')) this._notifyUpdate(); }
