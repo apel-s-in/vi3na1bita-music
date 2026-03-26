@@ -375,7 +375,7 @@ vi3na1bita-music/
 ├── manifest.json
 └── service-worker.js
 
-Сгенерировано: 2026-03-26 21:29:58 UTC
+Сгенерировано: 2026-03-26 21:30:43 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3937,7 +3937,9 @@ export const YandexAuth = {
     localStorage.setItem(LS_TOKEN_EXP, String(exp));
     window.history.replaceState(null, '', window.location.pathname);
 
-    // Загружаем профиль и показываем модалку с именем
+    // Ждём готовности UI перед показом модалки с именем
+    await new Promise(r => setTimeout(r, 800));
+
     const profile = await this.fetchYandexProfile(token);
     if (profile) {
       await this._onFirstLogin(profile);
