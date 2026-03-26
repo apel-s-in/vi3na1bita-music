@@ -6,10 +6,6 @@ export const renderProfileTabsData = async ({ container, all, metaDB } = {}) => 
   if (!container) return;
   renderProfileStats({ container, all });
   renderProfileRecs({ container, all });
-  setTimeout(() => {
-    renderProfileLogs({ container, metaDB });
-    window.AlbumsManager?.highlightCurrentTrack?.();
-  }, 120);
+  setTimeout(() => { renderProfileLogs({ container, metaDB }); window.AlbumsManager?.highlightCurrentTrack?.(); }, 120);
 };
-
 export default { renderProfileTabsData };
