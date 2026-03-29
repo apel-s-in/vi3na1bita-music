@@ -377,7 +377,7 @@ vi3na1bita-music/
 ├── rrrrr.html
 └── service-worker.js
 
-Сгенерировано: 2026-03-29 10:58:36 UTC
+Сгенерировано: 2026-03-29 11:11:27 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -6843,7 +6843,7 @@ function renderTable(a){E.tbody.innerHTML="";pageRows=a.slice(0,+E.pageSize.valu
 function renderPreview(a){let d=E.previewOnlyWithFiles.value==="yes"?a.filter(r=>furl(r.file)):a;E.previewStrip.style.gridTemplateColumns=`repeat(${+E.screenPreviewCols.value||4},1fr)`;let h=+E.screenPreviewHeight.value||140;E.previewStrip.innerHTML=d.map(r=>{let u=furl(r.file);return`<div class="pc"><div class="pt" style="height:${h}px">${u?`<img src="${u}" alt="${esc(r.file)}">`:`<span class="small">Нет превью</span>`}</div><div class="pn">${esc(r.file)}</div></div>`}).join("");E.previewStrip.querySelectorAll("img").forEach(i=>i.addEventListener("click",()=>openViewer(i.getAttribute("alt"))))}
 function chartImg(id){let c=Chart.getChart(id)||CH[id.replace("Chart","")];try{return c?c.toBase64Image():""}catch(e){return""}}
 function titleDoc(a){if(!a.length)return"Документ";let y=[...new Set(a.map(r=>r.year))].sort((a,b)=>a-b);return y.length===1?`${y[0]} год`:`${y[0]}–${y[y.length-1]} годы`}
-function summaryFmt(s){return esc(String(s||"")).replace(/(\d[\d ]* ₽)/g,'<span class="sum">$1</span>')}
+function summaryFmt(s){return esc(String(s||"")).replace(/(\d[\d\s]*₽)/g,'<span class="sum">$1</span>')}
 function renderPrint(a,t){
 let ttl=String(E.printDocName.value||"").replace(/\s+/g," ").trim()||titleDoc(a),
 fs=+E.printTableFontSize.value||9,
