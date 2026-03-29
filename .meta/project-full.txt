@@ -377,7 +377,7 @@ vi3na1bita-music/
 ├── rrrrr.html
 └── service-worker.js
 
-Сгенерировано: 2026-03-29 10:41:48 UTC
+Сгенерировано: 2026-03-29 10:58:36 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -6601,6 +6601,8 @@ tr.sel{outline:2px solid #316dff;outline-offset:-2px;background:#eef4ff!importan
 .sec{margin-bottom:10px}
 .sec h3{font-size:15px;margin:0 0 6px;border-bottom:1px solid #ccc;padding-bottom:3px}
 .print-list{font-size:11px;line-height:1.25;word-break:break-word}
+.summary-list b{font-weight:700}
+.summary-list .sum{font-weight:700}
 .ptab{width:100%;border-collapse:collapse;table-layout:fixed;font-size:9px}
 .ptab th,.ptab td{border:1px solid #bbb;padding:1px 3px;vertical-align:middle;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.05}
 .ptab td.pdesc,.ptab th.pdesc{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;word-break:normal}
@@ -6609,7 +6611,7 @@ tr.sel{outline:2px solid #316dff;outline-offset:-2px;background:#eef4ff!importan
 .pchart h4{margin:0 0 4px;font-size:12px}
 .pchart img{display:block;width:100%;height:auto;object-fit:fill}
 .pgal{display:grid;gap:8px}
-.sec.files-sec{break-inside:avoid;page-break-inside:avoid}
+.sec.files-sec{}
 .pfc{border:1px solid #cfcfcf;padding:6px;border-radius:6px;text-align:center}
 .pfc img{width:100%;height:150px;object-fit:contain;display:block;margin:0 auto 6px;max-width:100%}
 .pfn{font-size:12px;font-weight:700;word-break:break-all;line-height:1.15}
@@ -6841,6 +6843,7 @@ function renderTable(a){E.tbody.innerHTML="";pageRows=a.slice(0,+E.pageSize.valu
 function renderPreview(a){let d=E.previewOnlyWithFiles.value==="yes"?a.filter(r=>furl(r.file)):a;E.previewStrip.style.gridTemplateColumns=`repeat(${+E.screenPreviewCols.value||4},1fr)`;let h=+E.screenPreviewHeight.value||140;E.previewStrip.innerHTML=d.map(r=>{let u=furl(r.file);return`<div class="pc"><div class="pt" style="height:${h}px">${u?`<img src="${u}" alt="${esc(r.file)}">`:`<span class="small">Нет превью</span>`}</div><div class="pn">${esc(r.file)}</div></div>`}).join("");E.previewStrip.querySelectorAll("img").forEach(i=>i.addEventListener("click",()=>openViewer(i.getAttribute("alt"))))}
 function chartImg(id){let c=Chart.getChart(id)||CH[id.replace("Chart","")];try{return c?c.toBase64Image():""}catch(e){return""}}
 function titleDoc(a){if(!a.length)return"Документ";let y=[...new Set(a.map(r=>r.year))].sort((a,b)=>a-b);return y.length===1?`${y[0]} год`:`${y[0]}–${y[y.length-1]} годы`}
+function summaryFmt(s){return esc(String(s||"")).replace(/(\d[\d ]* ₽)/g,'<span class="sum">$1</span>')}
 function renderPrint(a,t){
 let ttl=String(E.printDocName.value||"").replace(/\s+/g," ").trim()||titleDoc(a),
 fs=+E.printTableFontSize.value||9,
@@ -6849,13 +6852,13 @@ gh=+E.printGalleryCardHeight.value||180,
 gf=+E.printGalleryFontSize.value||12;
 
 let summary=[];
-if(modVisible("mod-month"))summary.push(`<div><b>По месяцам:</b> ${esc($("monthExpl").textContent)}</div>`);
-if(modVisible("mod-status"))summary.push(`<div><b>Статусы:</b> ${esc($("statusExpl").textContent)}</div>`);
-if(modVisible("mod-category"))summary.push(`<div><b>Категории:</b> ${esc($("categoryExpl").textContent)}</div>`);
-if(modVisible("mod-year"))summary.push(`<div><b>По годам:</b> ${esc($("yearExpl").textContent)}</div>`);
-if(modVisible("mod-top"))summary.push(`<div><b>Топ дорогих:</b> ${esc($("topExpl").textContent)}</div>`);
-if(modVisible("mod-brand"))summary.push(`<div><b>Бренды:</b> ${esc($("brandExpl").textContent)}</div>`);
-if(modVisible("mod-file"))summary.push(`<div><b>Файлы:</b> ${esc($("fileExpl").textContent)}</div>`);
+if(modVisible("mod-month"))summary.push(`<div><b>По месяцам:</b> ${summaryFmt($("monthExpl").textContent)}</div>`);
+if(modVisible("mod-status"))summary.push(`<div><b>Статусы:</b> ${summaryFmt($("statusExpl").textContent)}</div>`);
+if(modVisible("mod-category"))summary.push(`<div><b>Категории:</b> ${summaryFmt($("categoryExpl").textContent)}</div>`);
+if(modVisible("mod-year"))summary.push(`<div><b>По годам:</b> ${summaryFmt($("yearExpl").textContent)}</div>`);
+if(modVisible("mod-top"))summary.push(`<div><b>Топ дорогих:</b> ${summaryFmt($("topExpl").textContent)}</div>`);
+if(modVisible("mod-brand"))summary.push(`<div><b>Бренды:</b> ${summaryFmt($("brandExpl").textContent)}</div>`);
+if(modVisible("mod-file"))summary.push(`<div><b>Файлы:</b> ${summaryFmt($("fileExpl").textContent)}</div>`);
 
 let chartsList=[
   modVisible("mod-month")?{title:"По месяцам",img:chartImg("monthChart")}:null,
@@ -6908,7 +6911,7 @@ E.printDocument.innerHTML=`
 <div class="page">
 <div class="pttl">${esc(ttl)}</div>
 <div class="psub">Строк: ${a.length}; сумма: ${money(t.reduce((s,r)=>s+r.price,0))}</div>
-<div class="sec"><h3>Сводка</h3><div class="print-list">${summary.join("")}</div></div>
+<div class="sec"><h3>Сводка</h3><div class="print-list summary-list">${summary.join("")}</div></div>
 ${chartsBlock}
 ${tab}
 ${gal}
