@@ -1,61 +1,111 @@
 <!doctype html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Покупки — аналитика</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Покупки — stable</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-:root{--b:#d8dfeb;--bg:#e9edf5;--w:#fff;--t:#222;--bl:#316dff;--pgw:210mm;--pgh:297mm;--pgp:10mm}
-*{box-sizing:border-box}body{margin:0;font:14px Arial,sans-serif;background:var(--bg);color:var(--t)}.wrap{max-width:1900px;margin:0 auto;padding:16px}
-h1,h2,h3{margin:0 0 12px}.panel,.cards,.editor,.mods,.table-wrap,.print-wrap{background:#fff;border-radius:14px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.06);margin:0 0 16px}
-.row,.toggles,.controls,.editor-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.row{margin-bottom:12px}
-.filters{display:grid;grid-template-columns:repeat(8,minmax(130px,1fr));gap:12px}.filters label,.controls label,.editor-grid label{display:flex;flex-direction:column;gap:6px;font-size:13px}
+:root{--bg:#e9edf5;--card:#fff;--bd:#d8dfeb;--tx:#222;--mut:#666;--blue:#316dff;--green:#1f9d55;--gray:#6b7280;--orange:#d98b00;--a4w:210mm}
+*{box-sizing:border-box}
+body{margin:0;font:14px Arial,sans-serif;background:var(--bg);color:var(--tx)}
+.wrap{max-width:1800px;margin:0 auto;padding:16px}
+h1,h2,h3{margin:0 0 12px}
+.box{background:var(--card);border-radius:14px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.06);margin:0 0 16px}
+.row,.controls,.toggles,.editor-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.row{margin-bottom:12px}
+.filters{display:grid;grid-template-columns:repeat(8,minmax(130px,1fr));gap:12px}
+.filters label,.controls label,.editor-grid label{display:flex;flex-direction:column;gap:6px;font-size:13px}
 input[type=text],input[type=file],input[type=number],select{padding:8px 10px;border:1px solid #cfd6e4;border-radius:8px;background:#fff;font:14px Arial,sans-serif}
-button{padding:9px 12px;border:0;border-radius:8px;background:var(--bl);color:#fff;cursor:pointer}button.s{background:#6b7280}button.g{background:#1f9d55}button.o{background:#d98b00}
-.info{padding:8px 10px;background:#eef4ff;border-radius:8px;font-size:13px}.cards{display:grid;grid-template-columns:repeat(10,1fr);gap:12px}.card{background:#f8fafc;border:1px solid #e3e8f2;border-radius:12px;padding:12px}.card .t{font-size:12px;color:#666;margin-bottom:6px}.card .v{font-size:20px;font-weight:700;word-break:break-word}
-.editor-grid{display:grid;grid-template-columns:1fr 220px 220px auto;gap:12px;align-items:end}.mods-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px;align-items:start}
-.mod{background:#fafbfe;border:1px solid #e3e8f2;border-radius:12px;padding:12px;overflow:auto;resize:both;min-width:320px;width:100%;min-height:260px;height:340px;max-height:900px}.mod[data-s=wide]{grid-column:span 6}.mod[data-s=mid]{grid-column:span 4}.mod[data-s=small]{grid-column:span 3}.mod.hide{display:none!important}
-.drag{cursor:move;user-select:none;font-size:12px;color:#666;margin:0 0 8px;display:inline-block;padding:4px 8px;border-radius:6px;background:#eef3fb}.mt{font-size:15px;font-weight:700;margin:0 0 8px}
-.exp{display:none;margin-top:8px;font-size:11px;line-height:1.25;color:#444;background:#fff;border:1px dashed #d9dfeb;border-radius:8px;padding:6px;white-space:normal;word-break:break-word}.exp.show{display:block}
-.table-wrap .small,.print-wrap .small{font-size:12px;color:#777}
-.table-scroll{width:100%;height:auto;min-height:0;max-height:none;overflow:visible;border:1px solid #e6ebf3;border-radius:10px;resize:vertical;background:#fff}
-.table-scroll table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}
-.table-scroll thead th{position:sticky;top:0;background:#eef3fb;z-index:2;white-space:nowrap}
-.table-scroll th,.table-scroll td{border-bottom:1px solid #e6ebf3;padding:4px 6px;text-align:left;vertical-align:middle;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.15;height:28px;max-height:28px}
-.table-scroll td.c0,.table-scroll td.c1,.table-scroll td.c3,.table-scroll td.c8{text-align:center}
-.table-scroll td.c1{width:82px;min-width:82px;max-width:82px}
-.table-scroll td.c2{width:98px;min-width:98px;max-width:98px}
-.table-scroll td.c3{width:74px;min-width:74px;max-width:74px}
-.table-scroll td.c4{width:92px;min-width:92px;max-width:120px}
-.table-scroll td.c5{width:110px;min-width:110px;max-width:130px}
-.table-scroll td.c6{width:auto}
-.table-scroll td.c7{width:150px;min-width:150px;max-width:170px}
-.table-scroll td.c8{width:82px;min-width:82px;max-width:82px}
-.pct{margin-top:4px;font-size:10px;line-height:1.2;white-space:normal;word-break:break-word}
-.ptab{width:100%;border-collapse:collapse;table-layout:fixed;font-size:8.5px}
+button{padding:9px 12px;border:0;border-radius:8px;background:var(--blue);color:#fff;cursor:pointer}
+button.s{background:var(--gray)}button.g{background:var(--green)}button.o{background:var(--orange)}
+.info{padding:8px 10px;background:#eef4ff;border-radius:8px;font-size:13px}
+.cards{display:grid;grid-template-columns:repeat(10,1fr);gap:12px}
+.card{background:#f8fafc;border:1px solid #e3e8f2;border-radius:12px;padding:12px}
+.card .t{font-size:12px;color:var(--mut);margin-bottom:6px}.card .v{font-size:20px;font-weight:700;word-break:break-word}
+.editor-grid{display:grid;grid-template-columns:1fr 220px 220px auto;gap:12px;align-items:end}
+.mods-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px;align-items:start}
+.mod{background:#fafbfe;border:1px solid #e3e8f2;border-radius:12px;padding:12px;overflow:hidden;resize:both;min-width:280px;min-height:260px;height:340px;max-height:700px}
+.mod[data-s=wide]{grid-column:span 6}.mod[data-s=mid]{grid-column:span 4}.mod.hide{display:none!important}
+.drag{cursor:move;user-select:none;font-size:12px;color:#666;margin:0 0 8px;display:inline-block;padding:4px 8px;border-radius:6px;background:#eef3fb}
+.mt{font-size:15px;font-weight:700;margin:0 0 8px}
+.exp{display:none;margin-top:8px;font-size:11px;line-height:1.25;color:#444;background:#fff;border:1px dashed #d9dfeb;border-radius:8px;padding:6px;white-space:normal;word-break:break-word}
+.exp.show{display:block}
+.chart-wrap{position:relative;height:240px;max-height:240px}
+.small{font-size:12px;color:#777}
+
+.table-scroll{height:680px;overflow:auto;border:1px solid #e6ebf3;border-radius:10px;background:#fff}
+.tbl{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}
+.tbl thead th{position:sticky;top:0;background:#eef3fb;z-index:2;white-space:nowrap}
+.tbl th,.tbl td{border-bottom:1px solid #e6ebf3;padding:4px 6px;text-align:left;vertical-align:middle;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.15;height:28px}
+.tbl td.c0,.tbl td.c1,.tbl td.c3,.tbl td.c8{text-align:center}
+.tbl td.c1{width:82px}.tbl td.c2{width:98px}.tbl td.c3{width:74px}.tbl td.c4{width:92px}.tbl td.c5{width:110px}.tbl td.c7{width:150px}.tbl td.c8{width:82px}
+.tbl .desc{width:auto}
+tbody tr:hover{background:#f8fbff}
+tr.sel{outline:2px solid #316dff;outline-offset:-2px;background:#eef4ff!important}
+.dup{background:#fff6d6}.try{background:#ececec!important}
+.sd{color:#0a7a25;font-weight:700}.sr{color:#c62828;font-weight:700}.so{color:#666;font-weight:700}.sp{color:#c47f00;font-weight:700}
+.file-link{color:#316dff;cursor:pointer;text-decoration:underline;display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+
+.prev{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.pc{background:#fff;border:1px solid var(--bd);border-radius:10px;padding:8px}
+.pt{width:100%;height:140px;border:1px solid #ddd;background:#f8f8f8;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:8px}
+.pt img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+.pn{font-size:12px;word-break:break-all}
+
+.print-wrap{background:#dfe5ef}
+.page{width:var(--a4w);min-height:297mm;margin:0 auto 18px;background:#fff;padding:10mm;box-shadow:0 2px 12px rgba(0,0,0,.12)}
+.pttl{text-align:center;font-size:22px;font-weight:700;margin-bottom:12px}
+.psub{text-align:center;font-size:12px;color:#555;margin-bottom:14px}
+.sec{margin-bottom:14px}
+.sec h3{font-size:15px;margin-bottom:8px;border-bottom:1px solid #ccc;padding-bottom:4px}
+.print-list{font-size:11px;line-height:1.35;word-break:break-word}
+.ptab{width:100%;border-collapse:collapse;table-layout:fixed;font-size:9px}
 .ptab th,.ptab td{border:1px solid #bbb;padding:2px 3px;vertical-align:middle;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pgal{display:grid;gap:8px}
-.pfc{border:1px solid #cfcfcf;padding:6px;border-radius:6px;break-inside:avoid;text-align:center}
-.pfc img{max-width:100%;max-height:180px;object-fit:contain;display:block;margin:0 auto 6px}
-.pfn{font-size:14px;font-weight:700;word-break:break-all;line-height:1.15}
-.vm{position:fixed;inset:0;background:rgba(0,0,0,.78);display:none;align-items:center;justify-content:center;z-index:9999;padding:20px}.vm.show{display:flex}.vb{width:min(95vw,1200px);height:min(90vh,900px);background:#fff;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px}.vh{display:flex;justify-content:space-between;gap:12px;align-items:center}.vbody{flex:1;border:1px solid #ddd;display:flex;align-items:center;justify-content:center;overflow:auto;background:#f9f9f9}.vbody img{max-width:100%;max-height:100%;object-fit:contain}
-@media (max-width:1500px){.filters{grid-template-columns:repeat(4,1fr)}.cards{grid-template-columns:repeat(3,1fr)}.editor-grid,.mods-grid{grid-template-columns:1fr}.mod{grid-column:span 1!important}}
-@media print{body{background:#fff}.wrap>*:not(.print-wrap){display:none!important}.print-wrap{background:#fff;box-shadow:none;padding:0;margin:0}.page{box-shadow:none;margin:0;width:auto;min-height:auto;padding:10mm}}
+.pfc{border:1px solid #cfcfcf;padding:6px;border-radius:6px;text-align:center}
+.pfc img{width:100%;height:150px;object-fit:contain;display:block;margin:0 auto 6px;max-width:100%}
+.pfn{font-size:12px;font-weight:700;word-break:break-all;line-height:1.15}
+.print-charts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pchart{border:1px solid #cfcfcf;border-radius:6px;padding:6px;background:#fff;break-inside:avoid}
+.pchart h4{margin:0 0 6px;font-size:12px}
+.pchart img{display:block;width:100%;height:220px;object-fit:contain}
+.pchart .print-list{font-size:10px;line-height:1.2}
+
+.vm{position:fixed;inset:0;background:rgba(0,0,0,.78);display:none;align-items:center;justify-content:center;z-index:9999;padding:20px}
+.vm.show{display:flex}
+.vb{width:min(95vw,1200px);height:min(90vh,900px);background:#fff;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.vh{display:flex;justify-content:space-between;gap:12px;align-items:center}
+.vbody{flex:1;border:1px solid #ddd;display:flex;align-items:center;justify-content:center;overflow:auto;background:#f9f9f9}
+.vbody img{max-width:100%;max-height:100%;object-fit:contain}
+
+@media (max-width:1500px){
+  .filters{grid-template-columns:repeat(4,1fr)}
+  .cards{grid-template-columns:repeat(3,1fr)}
+  .editor-grid,.mods-grid{grid-template-columns:1fr}
+  .mod{grid-column:span 1!important}
+}
+@media print{
+  body{background:#fff}
+  .wrap>*:not(.print-wrap){display:none!important}
+  .print-wrap{background:#fff;box-shadow:none;padding:0;margin:0}
+  .page{box-shadow:none;margin:0;width:auto;min-height:auto}
+}
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>Покупки — аналитика</h1>
 
-  <div class="panel">
+  <div class="box">
     <div class="row">
       <input type="file" id="fileInput" accept=".csv,.txt,.json">
-      <label>Кодировка файла<select id="encodingSelect"><option value="utf-8">UTF-8</option><option value="windows-1251" selected>Windows-1251</option><option value="koi8-r">KOI8-R</option><option value="ibm866">IBM866</option></select></label>
+      <label>Кодировка<select id="encodingSelect"><option value="utf-8">UTF-8</option><option value="windows-1251" selected>Windows-1251</option><option value="koi8-r">KOI8-R</option><option value="ibm866">IBM866</option></select></label>
       <label>Папка с изображениями<input type="file" id="imagesInput" webkitdirectory directory multiple></label>
       <button id="reloadBtn" class="s">Перезагрузить</button>
       <button id="loadDemoBtn" class="s">Демо</button>
-      <button id="resetBtn" class="s">Сбросить фильтры</button>
-      <button id="exportBtn">Экспорт CSV</button>
+      <button id="resetBtn" class="s">Сброс</button>
+      <button id="exportBtn">CSV</button>
       <button id="printBtn" class="g">Печать / PDF</button>
       <div class="info" id="fileInfo">Файл не загружен</div>
     </div>
@@ -66,105 +116,90 @@ button{padding:9px 12px;border:0;border-radius:8px;background:var(--bl);color:#f
       <label>Статус<select id="statusFilter"></select></label>
       <label>Категория<select id="categoryFilter"></select></label>
       <label>Бренд<select id="brandFilter"></select></label>
-      <label>Дубли<select id="duplicatesMode"><option value="all">Все строки</option><option value="hide">Скрыть дубли</option><option value="only">Только дубли</option></select></label>
+      <label>Дубли<select id="duplicatesMode"><option value="all">Все</option><option value="hide">Скрыть</option><option value="only">Только</option></select></label>
       <label>Сортировка<select id="sortFilter"><option value="date_desc">Дата ↓</option><option value="date_asc">Дата ↑</option><option value="price_desc">Цена ↓</option><option value="price_asc">Цена ↑</option></select></label>
-      <label>Поиск<input id="searchFilter" type="text" placeholder="Описание / файл / бренд"></label>
+      <label>Поиск<input id="searchFilter" type="text"></label>
 
-      <label>Цена от<input id="priceMinFilter" type="number" min="0" step="1"></label>
-      <label>Цена до<input id="priceMaxFilter" type="number" min="0" step="1"></label>
-      <label>Детские товары<select id="childrenMode"><option value="all">Все</option><option value="only">Только детские</option><option value="exclude">Исключить детские</option></select></label>
-      <label>Учитывать дубли в суммах<select id="sumDuplicatesMode"><option value="with">Да</option><option value="without">Нет</option></select></label>
+      <label>Цена от<input id="priceMinFilter" type="number" min="0"></label>
+      <label>Цена до<input id="priceMaxFilter" type="number" min="0"></label>
+      <label>Детские<select id="childrenMode"><option value="all">Все</option><option value="only">Только</option><option value="exclude">Исключить</option></select></label>
+      <label>Дубли в суммах<select id="sumDuplicatesMode"><option value="with">Да</option><option value="without">Нет</option></select></label>
       <label>Логика дублей<select id="duplicateLogic"><option value="date_price" selected>Дата + цена</option><option value="date_price_file">Дата + цена + файл</option></select></label>
       <label>Строк на экране<select id="pageSize"><option value="100">100</option><option value="250" selected>250</option><option value="500">500</option><option value="100000">Все</option></select></label>
-      <label>Режим статусов<select id="statusMode"><option value="all">Все</option><option value="only_delivered">Только доставлен</option><option value="exclude_returns_cancel">Без возвратов/отмен</option><option value="financial_net">Финансовые строки</option></select></label>
-      <label>Примерочные дубли<select id="tryonHighlightMode"><option value="off">Нет</option><option value="on">Подсвечивать</option></select></label>
+      <label>Режим статусов<select id="statusMode"><option value="all">Все</option><option value="only_delivered">Только доставлен</option><option value="exclude_returns_cancel">Без возвратов/отмен</option><option value="financial_net">Финансовые</option></select></label>
+      <label>Примерочные<select id="tryonHighlightMode"><option value="off">Нет</option><option value="on">Подсвечивать</option></select></label>
     </div>
   </div>
 
-  <div class="editor">
+  <div class="box">
     <h3>Редактор категорий</h3>
     <div class="editor-grid">
-      <label>Быстрый массовый выбор<input id="categorySearchText" type="text" placeholder="Например: школьн / плаван / Samsung / IMG_7068"></label>
-      <label>Назначить категорию<select id="bulkCategorySelect"><option value="">Выберите категорию</option></select></label>
-      <label>Или новая категория<input id="newCategoryInput" type="text" placeholder="Например: Аптека"></label>
+      <label>Массовый поиск<input id="categorySearchText" type="text"></label>
+      <label>Категория<select id="bulkCategorySelect"><option value="">Выберите</option></select></label>
+      <label>Новая категория<input id="newCategoryInput" type="text"></label>
       <div class="editor-actions">
-        <button id="selectBySearchBtn" class="s">Выделить по поиску</button>
-        <button id="applyCategoryBtn" class="g">Назначить выбранным</button>
-        <button id="clearSelectionBtn" class="s">Снять выделение</button>
-        <button id="resetCategoriesBtn" class="o">Сбросить ручные категории</button>
+        <button id="selectBySearchBtn" class="s">Выделить</button>
+        <button id="applyCategoryBtn" class="g">Назначить</button>
+        <button id="clearSelectionBtn" class="s">Снять</button>
+        <button id="resetCategoriesBtn" class="o">Сбросить категории</button>
       </div>
     </div>
   </div>
 
-  <div class="cards">
-    <div class="card"><div class="t">Строк в выборке</div><div class="v" id="countRows">0</div></div>
-    <div class="card"><div class="t">Сумма всего</div><div class="v" id="sumAll">0 ₽</div></div>
-    <div class="card"><div class="t">Только доставлен</div><div class="v" id="sumDelivered">0 ₽</div></div>
+  <div class="box cards">
+    <div class="card"><div class="t">Строк</div><div class="v" id="countRows">0</div></div>
+    <div class="card"><div class="t">Сумма</div><div class="v" id="sumAll">0 ₽</div></div>
+    <div class="card"><div class="t">Доставлен</div><div class="v" id="sumDelivered">0 ₽</div></div>
     <div class="card"><div class="t">Возвращён</div><div class="v" id="sumReturned">0 ₽</div></div>
     <div class="card"><div class="t">Отменён</div><div class="v" id="sumCancelled">0 ₽</div></div>
     <div class="card"><div class="t">Принят к возврату</div><div class="v" id="sumPickupReturn">0 ₽</div></div>
-    <div class="card"><div class="t">Без возвратов/отмен</div><div class="v" id="sumNetNoReturns">0 ₽</div></div>
+    <div class="card"><div class="t">Без возвратов</div><div class="v" id="sumNetNoReturns">0 ₽</div></div>
     <div class="card"><div class="t">Чистый баланс</div><div class="v" id="sumNetBalance">0 ₽</div></div>
-    <div class="card"><div class="t">Уникальные позиции</div><div class="v" id="sumUniqueNoDup">0 ₽</div></div>
+    <div class="card"><div class="t">Уникальные</div><div class="v" id="sumUniqueNoDup">0 ₽</div></div>
     <div class="card"><div class="t">Дублей</div><div class="v" id="dupCountCard">0</div></div>
   </div>
 
-  <div class="mods">
-    <h3>Модули документа</h3>
+  <div class="box">
+    <h3>Модули</h3>
     <div class="toggles">
-      <label><input type="checkbox" class="mod-toggle" data-target="mod-month" checked> Суммы по месяцам</label>
+      <label><input type="checkbox" class="mod-toggle" data-target="mod-month" checked> По месяцам</label>
       <label><input type="checkbox" class="mod-toggle" data-target="mod-status" checked> Статусы</label>
       <label><input type="checkbox" class="mod-toggle" data-target="mod-category" checked> Категории</label>
       <label><input type="checkbox" class="mod-toggle" data-target="mod-year" checked> По годам</label>
-      <label><input type="checkbox" class="mod-toggle" data-target="mod-top" checked> Топ-20 дорогих</label>
+      <label><input type="checkbox" class="mod-toggle" data-target="mod-top" checked> Топ дорогих</label>
       <label><input type="checkbox" class="mod-toggle" data-target="mod-brand" checked> Бренды</label>
       <label><input type="checkbox" class="mod-toggle" data-target="mod-file" checked> Файлы</label>
     </div>
     <div class="controls">
-      <label>Пояснения под графиками<select id="chartTextMode"><option value="off">Скрыть</option><option value="on">Показать</option></select></label>
+      <label>Пояснения<select id="chartTextMode"><option value="off">Скрыть</option><option value="on">Показать</option></select></label>
       <label>Таблица в печати<select id="printTableMode"><option value="on">Показать</option><option value="off">Скрыть</option></select></label>
-      <label>Блок изображений в печати<select id="printGalleryMode"><option value="on">Показать</option><option value="off">Скрыть</option></select></label>
-      <label>Шрифт таблицы печати<input id="printTableFontSize" type="number" min="8" max="16" value="10"></label>
+      <label>Файлы в печати<select id="printGalleryMode"><option value="on">Показать</option><option value="off">Скрыть</option></select></label>
+      <label>Шрифт печатной таблицы<input id="printTableFontSize" type="number" min="8" max="16" value="9"></label>
     </div>
 
     <div id="modulesContainer" class="mods-grid">
-      <div class="mod" id="mod-month" data-s="wide" draggable="true"><div class="drag">⇅ Перетащить блок</div><div class="mt">Суммы по месяцам</div><canvas id="monthChart"></canvas><div class="exp" id="monthExpl"></div></div>
-      <div class="mod" id="mod-status" data-s="mid" draggable="true"><div class="drag">⇅ Перетащить блок</div><div class="mt">Статусы</div><canvas id="statusChart"></canvas><div class="exp" id="statusExpl"></div></div>
-      <div class="mod" id="mod-category" data-s="mid" draggable="true"><div class="drag">⇅ Перетащить блок</div><div class="mt">Категории</div><canvas id="categoryChart"></canvas><div class="exp" id="categoryExpl"></div></div>
-      <div class="mod" id="mod-year" data-s="mid" draggable="true"><div class="drag">⇅ Перетащить блок</div><div class="mt">По годам</div><canvas id="yearChart"></canvas><div class="exp" id="yearExpl"></div></div>
-      <div class="mod" id="mod-top" data-s="wide" draggable="true"><div class="drag">⇅ Перетащить блок</div><div class="mt">Топ-20 самых дорогих покупок</div><canvas id="topChart"></canvas><div class="exp" id="topExpl"></div></div>
-      <div class="mod" id="mod-brand" data-s="mid" draggable="true"><div class="drag">⇅ Перетащить блок</div><div class="mt">Топ-15 брендов</div><canvas id="brandChart"></canvas><div class="exp" id="brandExpl"></div></div>
-      <div class="mod" id="mod-file" data-s="mid" draggable="true"><div class="drag">⇅ Перетащить блок</div><div class="mt">Топ-15 файлов</div><canvas id="fileChart"></canvas><div class="exp" id="fileExpl"></div></div>
+      <div class="mod" id="mod-month" data-s="wide" draggable="true"><div class="drag">⇅ Перетащить</div><div class="mt">Суммы по месяцам</div><div class="chart-wrap"><canvas id="monthChart"></canvas></div><div class="exp" id="monthExpl"></div></div>
+      <div class="mod" id="mod-status" data-s="mid" draggable="true"><div class="drag">⇅ Перетащить</div><div class="mt">Статусы</div><div class="chart-wrap"><canvas id="statusChart"></canvas></div><div class="exp" id="statusExpl"></div></div>
+      <div class="mod" id="mod-category" data-s="mid" draggable="true"><div class="drag">⇅ Перетащить</div><div class="mt">Категории</div><div class="chart-wrap"><canvas id="categoryChart"></canvas></div><div class="exp" id="categoryExpl"></div></div>
+      <div class="mod" id="mod-year" data-s="mid" draggable="true"><div class="drag">⇅ Перетащить</div><div class="mt">По годам</div><div class="chart-wrap"><canvas id="yearChart"></canvas></div><div class="exp" id="yearExpl"></div></div>
+      <div class="mod" id="mod-top" data-s="wide" draggable="true"><div class="drag">⇅ Перетащить</div><div class="mt">Топ-20 дорогих</div><div class="chart-wrap"><canvas id="topChart"></canvas></div><div class="exp" id="topExpl"></div></div>
+      <div class="mod" id="mod-brand" data-s="mid" draggable="true"><div class="drag">⇅ Перетащить</div><div class="mt">Бренды</div><div class="chart-wrap"><canvas id="brandChart"></canvas></div><div class="exp" id="brandExpl"></div></div>
+      <div class="mod" id="mod-file" data-s="mid" draggable="true"><div class="drag">⇅ Перетащить</div><div class="mt">Файлы</div><div class="chart-wrap"><canvas id="fileChart"></canvas></div><div class="exp" id="fileExpl"></div></div>
     </div>
   </div>
 
-  <div class="table-wrap">
+  <div class="box">
     <h3>Строки выборки</h3>
     <div class="small" id="tableInfo"></div>
     <div class="table-scroll">
-      <table>
+      <table class="tbl">
         <colgroup>
-          <col style="width:30px">
-          <col style="width:82px">
-          <col style="width:98px">
-          <col style="width:74px">
-          <col style="width:92px">
-          <col style="width:110px">
-          <col style="width:auto">
-          <col style="width:150px">
-          <col style="width:82px">
+          <col style="width:30px"><col style="width:82px"><col style="width:98px"><col style="width:74px"><col style="width:92px"><col style="width:110px"><col><col style="width:150px"><col style="width:82px">
         </colgroup>
         <thead>
           <tr>
             <th><input type="checkbox" id="selectAllVisible"></th>
-            <th>Дата</th>
-            <th>Статус</th>
-            <th>Цена</th>
-            <th>Категория</th>
-            <th>Бренд</th>
-            <th>Описание</th>
-            <th>Файл</th>
-            <th>Просмотр</th>
+            <th>Дата</th><th>Статус</th><th>Цена</th><th>Категория</th><th>Бренд</th><th>Описание</th><th>Файл</th><th>Открыть</th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
@@ -172,26 +207,26 @@ button{padding:9px 12px;border:0;border-radius:8px;background:var(--bl);color:#f
     </div>
   </div>
 
-  <div class="panel">
-    <h3>Просмотр изображений</h3>
+  <div class="box">
+    <h3>Превью изображений</h3>
     <div class="controls">
-      <label>Колонок в превью<input id="screenPreviewCols" type="number" min="1" max="8" value="4"></label>
-      <label>Высота карточки<input id="screenPreviewHeight" type="number" min="80" max="400" value="140"></label>
-      <label>Показывать только строки с файлом<select id="previewOnlyWithFiles"><option value="yes">Да</option><option value="no">Нет</option></select></label>
+      <label>Колонок<input id="screenPreviewCols" type="number" min="1" max="8" value="4"></label>
+      <label>Высота<input id="screenPreviewHeight" type="number" min="80" max="400" value="140"></label>
+      <label>Только найденные<select id="previewOnlyWithFiles"><option value="yes">Да</option><option value="no">Нет</option></select></label>
     </div>
     <div id="previewStrip" class="prev"></div>
   </div>
 
-  <div class="panel">
-    <h3>Настройки печатного блока изображений</h3>
+  <div class="box">
+    <h3>Настройки печатных файлов</h3>
     <div class="controls">
       <label>Колонок на странице<input id="printGalleryCols" type="number" min="1" max="6" value="2"></label>
-      <label>Высота карточки на печати<input id="printGalleryCardHeight" type="number" min="80" max="260" value="180"></label>
-      <label>Размер подписи файла<input id="printGalleryFontSize" type="number" min="8" max="18" value="11"></label>
+      <label>Высота карточки<input id="printGalleryCardHeight" type="number" min="80" max="260" value="180"></label>
+      <label>Размер подписи<input id="printGalleryFontSize" type="number" min="8" max="18" value="12"></label>
     </div>
   </div>
 
-  <div class="print-wrap">
+  <div class="box print-wrap">
     <h2>Печатный документ / PDF</h2>
     <div id="printDocument"></div>
   </div>
@@ -205,10 +240,14 @@ button{padding:9px 12px;border:0;border-radius:8px;background:var(--bl);color:#f
 </div>
 
 <script>
-let rows=[],sel=new Set(),lastFile=null,manual={},pageRows=[],files=new Map(),monthChart,statusChart,categoryChart,yearChart,topChart,brandChart,fileChart;
-const K={f:"purchases_dashboard_filters_final",m:"purchases_dashboard_manual_categories_final",o:"purchases_dashboard_modules_order_final"},M=["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"],C=["Плавание","Обувь","Одежда","Школа","Книги","Электроника","Игрушки","Косметика","Гигиена","Дом","Спорт","Животные","Прочее"];
-const $=id=>document.getElementById(id),E={fileInput:$("fileInput"),imagesInput:$("imagesInput"),encodingSelect:$("encodingSelect"),reloadBtn:$("reloadBtn"),loadDemoBtn:$("loadDemoBtn"),resetBtn:$("resetBtn"),exportBtn:$("exportBtn"),printBtn:$("printBtn"),fileInfo:$("fileInfo"),year:$("yearFilter"),month:$("monthFilter"),status:$("statusFilter"),category:$("categoryFilter"),brand:$("brandFilter"),duplicatesMode:$("duplicatesMode"),sort:$("sortFilter"),search:$("searchFilter"),priceMin:$("priceMinFilter"),priceMax:$("priceMaxFilter"),childrenMode:$("childrenMode"),sumDuplicatesMode:$("sumDuplicatesMode"),duplicateLogic:$("duplicateLogic"),pageSize:$("pageSize"),statusMode:$("statusMode"),tryonHighlightMode:$("tryonHighlightMode"),chartTextMode:$("chartTextMode"),printTableMode:$("printTableMode"),printGalleryMode:$("printGalleryMode"),printTableFontSize:$("printTableFontSize"),screenPreviewCols:$("screenPreviewCols"),screenPreviewHeight:$("screenPreviewHeight"),previewOnlyWithFiles:$("previewOnlyWithFiles"),printGalleryCols:$("printGalleryCols"),printGalleryCardHeight:$("printGalleryCardHeight"),printGalleryFontSize:$("printGalleryFontSize"),categorySearchText:$("categorySearchText"),bulkCategorySelect:$("bulkCategorySelect"),newCategoryInput:$("newCategoryInput"),selectBySearchBtn:$("selectBySearchBtn"),applyCategoryBtn:$("applyCategoryBtn"),clearSelectionBtn:$("clearSelectionBtn"),resetCategoriesBtn:$("resetCategoriesBtn"),countRows:$("countRows"),sumAll:$("sumAll"),sumDelivered:$("sumDelivered"),sumReturned:$("sumReturned"),sumCancelled:$("sumCancelled"),sumPickupReturn:$("sumPickupReturn"),sumNetNoReturns:$("sumNetNoReturns"),sumNetBalance:$("sumNetBalance"),sumUniqueNoDup:$("sumUniqueNoDup"),dupCountCard:$("dupCountCard"),tbody:$("tbody"),tableInfo:$("tableInfo"),selectAllVisible:$("selectAllVisible"),previewStrip:$("previewStrip"),printDocument:$("printDocument"),modulesContainer:$("modulesContainer"),viewerModal:$("viewerModal"),viewerTitle:$("viewerTitle"),viewerBody:$("viewerBody"),viewerClose:$("viewerClose")};
-const money=n=>new Intl.NumberFormat("ru-RU").format(n)+" ₽",esc=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"),exDate=n=>{let d=new Date((Math.floor(+n-25569)*86400)*1000);return new Date(d.getFullYear(),d.getMonth(),d.getDate())},dateSmart=v=>{if(v==null||v==="")return null;v=String(v).trim();if(!isNaN(+v)&&v!==""&&+v>2e4&&+v<6e4)return exDate(+v);if(/^\d{4}-\d{2}-\d{2}$/.test(v)){let[a,b,c]=v.split("-").map(Number);return new Date(a,b-1,c)}if(/^\d{4}\.\d{2}\.\d{2}$/.test(v)){let[a,b,c]=v.split(".").map(Number);return new Date(a,b-1,c)}if(/^\d{2}\.\d{2}\.\d{4}$/.test(v)){let[a,b,c]=v.split(".").map(Number);return new Date(c,b-1,a)}let d=new Date(v);return isNaN(d)?null:new Date(d.getFullYear(),d.getMonth(),d.getDate())},norm=t=>String(t||"").toLowerCase().replace(/\s+/g," ").replace(/[.…]/g,"...").trim(),brand=d=>{d=String(d||"").trim();let i=d.indexOf("_");return i<0?"—":(d.slice(0,i).trim()||"—")},child=d=>["дет","детск","подрост","для мальчика","для девочки","школьн","1 класс","2 класс","7 класс","ребен","робlox","смарт часы детские","футболка поло","плавки","ласты","шапочка для плавания","очки для плавания","русский язык","география","математика","окружающий мир","пропись","пенал","дневник","циркуль","грифел","чудо-пропись"].some(k=>String(d||"").toLowerCase().includes(k)),rid=(ds,p,f,d)=>[ds,p,f,norm(d)].join("||");
+let rows=[],sel=new Set(),lastFile=null,manual={},pageRows=[],files=new Map(),CH={};
+const K={f:"stable_filters",m:"stable_manual",o:"stable_order"},M=["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"],C=["Плавание","Обувь","Одежда","Школа","Книги","Электроника","Игрушки","Косметика","Гигиена","Дом","Спорт","Животные","Прочее"];
+const $=id=>document.getElementById(id),E={fileInput:$("fileInput"),imagesInput:$("imagesInput"),encodingSelect:$("encodingSelect"),reloadBtn:$("reloadBtn"),loadDemoBtn:$("loadDemoBtn"),resetBtn:$("resetBtn"),exportBtn:$("exportBtn"),printBtn:$("printBtn"),fileInfo:$("fileInfo"),year:$("yearFilter"),month:$("monthFilter"),status:$("statusFilter"),category:$("categoryFilter"),brand:$("brandFilter"),duplicatesMode:$("duplicatesMode"),sort:$("sortFilter"),search:$("searchFilter"),priceMin:$("priceMinFilter"),priceMax:$("priceMaxFilter"),childrenMode:$("childrenMode"),sumDuplicatesMode:$("sumDuplicatesMode"),duplicateLogic:$("duplicateLogic"),pageSize:$("pageSize"),statusMode:$("statusMode"),tryonHighlightMode:$("tryonHighlightMode"),chartTextMode:$("chartTextMode"),printTableMode:$("printTableMode"),printGalleryMode:$("printGalleryMode"),printTableFontSize:$("printTableFontSize"),screenPreviewCols:$("screenPreviewCols"),screenPreviewHeight:$("screenPreviewHeight"),previewOnlyWithFiles:$("previewOnlyWithFiles"),printGalleryCols:$("printGalleryCols"),printGalleryCardHeight:$("printGalleryCardHeight"),printGalleryFontSize:$("printGalleryFontSize"),printDocTitle:$("printDocTitle"),printColDate:$("printColDate"),printColStatus:$("printColStatus"),printColPrice:$("printColPrice"),printColCategory:$("printColCategory"),printColBrand:$("printColBrand"),printColDescription:$("printColDescription"),printColFile:$("printColFile"),categorySearchText:$("categorySearchText"),bulkCategorySelect:$("bulkCategorySelect"),newCategoryInput:$("newCategoryInput"),selectBySearchBtn:$("selectBySearchBtn"),applyCategoryBtn:$("applyCategoryBtn"),clearSelectionBtn:$("clearSelectionBtn"),resetCategoriesBtn:$("resetCategoriesBtn"),countRows:$("countRows"),sumAll:$("sumAll"),sumDelivered:$("sumDelivered"),sumReturned:$("sumReturned"),sumCancelled:$("sumCancelled"),sumPickupReturn:$("sumPickupReturn"),sumNetNoReturns:$("sumNetNoReturns"),sumNetBalance:$("sumNetBalance"),sumUniqueNoDup:$("sumUniqueNoDup"),dupCountCard:$("dupCountCard"),tbody:$("tbody"),tableInfo:$("tableInfo"),selectAllVisible:$("selectAllVisible"),previewStrip:$("previewStrip"),printDocument:$("printDocument"),modulesContainer:$("modulesContainer"),viewerModal:$("viewerModal"),viewerTitle:$("viewerTitle"),viewerBody:$("viewerBody"),viewerClose:$("viewerClose")};
+const money=n=>new Intl.NumberFormat("ru-RU").format(n)+" ₽",esc=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const exDate=n=>{let d=new Date((Math.floor(+n-25569)*86400)*1000);return new Date(d.getFullYear(),d.getMonth(),d.getDate())};
+const dateSmart=v=>{if(v==null||v==="")return null;v=String(v).trim();if(!isNaN(+v)&&v!==""&&+v>2e4&&+v<6e4)return exDate(+v);if(/^\d{4}-\d{2}-\d{2}$/.test(v)){let[a,b,c]=v.split("-").map(Number);return new Date(a,b-1,c)}if(/^\d{4}\.\d{2}\.\d{2}$/.test(v)){let[a,b,c]=v.split(".").map(Number);return new Date(a,b-1,c)}if(/^\d{2}\.\d{2}\.\d{4}$/.test(v)){let[a,b,c]=v.split(".").map(Number);return new Date(c,b-1,a)}let d=new Date(v);return isNaN(d)?null:new Date(d.getFullYear(),d.getMonth(),d.getDate())};
+const norm=t=>String(t||"").toLowerCase().replace(/\s+/g," ").replace(/[.…]/g,"...").trim(),brand=d=>{d=String(d||"").trim();let i=d.indexOf("_");return i<0?"—":(d.slice(0,i).trim()||"—")},rid=(ds,p,f,d)=>[ds,p,f,norm(d)].join("||");
+const child=d=>["дет","детск","подрост","для мальчика","для девочки","школьн","1 класс","2 класс","7 класс","ребен","робlox","смарт часы детские","футболка поло","плавки","ласты","шапочка для плавания","очки для плавания","русский язык","география","математика","окружающий мир","пропись","пенал","дневник","циркуль","грифел","чудо-пропись"].some(k=>String(d||"").toLowerCase().includes(k));
 function cat(d){d=String(d||"").toLowerCase();const R=[["Плавание",["плаван","бассейн","ласты","плавки","шапочка для плавания","очки для плавания","трубка для плавания","лопатка для плавания","аквасоки","коралки"]],["Обувь",["кроссов","ботинки","туфли","балетки","сандалии","сабо","берцы","кеды","шлепан","полуботинки"]],["Одежда",["рубаш","брюки","джемпер","кардиган","пальто","свитшот","штаны","футболка","пижама","лонгслив","жилет","жилетка","сорочка","сарафан","шорты","блузка","поло","толстовка","худи","лосины","леггинсы","гольфы","колготки","джинсы","костюм","бомбер","свитер","манжеты","лифчик","бюстгальтер","трусы","топ","носки","велосипедки"]],["Школа",["школьн","тетрад","дневник","циркуль","грифел","ручк","пропись","чистописан","читательский дневник","пенал","карта мира","бейдж"]],["Книги",["книга","учебн","практикум","мир музыки","сольфеджио","география","математика","окружающий мир","английский","русский язык","нейропрописи","дисграфия","лабиринты"]],["Электроника",["смартфон","samsung galaxy","чехол","кабель","стекло","смарт часы","планшет","lenovo","микроскоп"]],["Игрушки",["конструктор","игра","игруш","головоломка","аппликация","картина по номерам","волшебная палочка","пистолет","робо"]],["Косметика",["карандаш для бровей","гель для бровей","тоник для лица","мусс для очищения","крем","дезодорант","антиперспирант","спрей для волос","плойка","крабик","болтушка"]],["Гигиена",["зубная паста","прокладки","ватные диски","ватные палочки","гель для душа","мыло","шампунь","бальзам","соль для ван","футляр для зубной щетк"]],["Дом",["пробка для раковины","удлинитель","лейка для душа","гель для стирки","кондиционер для стирк","чистящее средство","салфе","фильтр для воды","доска маркерная"]],["Спорт",["спортивн","бадминтон","настольного","велосипед","грипсы","покрышка","крылья для велосипеда","скандинавско","удочка"]],["Животные",["кошек","соба","когтерез","когтеточка","миска для кошек"]]];for(const[r,k]of R)if(k.some(x=>d.includes(x)))return r;return"Прочее"}
 function loadManual(){try{manual=JSON.parse(localStorage.getItem(K.m)||"{}")}catch(e){manual={}}}function saveManual(){localStorage.setItem(K.m,JSON.stringify(manual))}
 function statusNorm(s){s=String(s||"").trim();const m={"Доставлен":["доставлен","���������"],"Возвращён":["возвращён","возвращен"],"Отменён":["отменён","отменен","�������"],"Принят к возврату на ПВЗ":["принят к возврату на пвз","������ � �������� �� ���"]},l=s.toLowerCase();for(const[k,a]of Object.entries(m))if(a.some(x=>l===x.toLowerCase()))return k;return s}
@@ -217,165 +256,142 @@ function delim(t){let s=t.split(/\r?\n/).find(x=>x.trim());if(!s)return";";let c
 function parseCSV(t){let d=delim(t),L=t.split(/\r?\n/).filter(x=>x.trim());if(!L.length)return[];let f=split(L[0],d).map(x=>x.trim().toLowerCase()),hdr=["дата","статус","цена","описание","файл"].some(k=>f.includes(k)),s=hdr?1:0,di=0,si=1,pi=2,oi=3,fi=4;if(hdr){di=f.findIndex(x=>x.includes("дата"));si=f.findIndex(x=>x.includes("статус"));pi=f.findIndex(x=>x.includes("цена"));oi=f.findIndex(x=>x.includes("опис"));fi=f.findIndex(x=>x.includes("файл"))}let out=[];for(let i=s;i<L.length;i++){let c=split(L[i],d);if(!c.length)continue;let p=String(c[pi]??"").replace(/[^\d,-. ]/g,"").replace(/\s+/g,"").replace(",",".");out.push({date:c[di],status:statusNorm(c[si]),price:+p||0,description:c[oi],file:c[fi]})}return out}
 function parseJSON(t){let a=JSON.parse(t);if(!Array.isArray(a))throw Error("JSON должен содержать массив");return Array.isArray(a[0])?a.map(r=>({date:r[0],status:statusNorm(r[1]),price:r[2],description:r[3],file:r[4]})):a.map(r=>({date:r.date??r["Дата"],status:statusNorm(r.status??r["Статус"]),price:r.price??r["Цена"],description:r.description??r["Описание"],file:r.file??r["Файл"]}))}
 async function read(file,enc){return new TextDecoder(enc,{fatal:false}).decode(await file.arrayBuffer())}
-function makeRows(data){let a=data.map((r,i)=>{let dt=dateSmart(r.date);if(!dt)return null;let y=dt.getFullYear(),m=dt.getMonth()+1,dd=dt.getDate(),ds=`${y}-${String(m).padStart(2,"0")}-${String(dd).padStart(2,"0")}`,o=String(r.description||""),f=String(r.file||""),p=+r.price||0,b=brand(o),id=rid(ds,p,f,o);return{idx:i,rowId:id,date:dt,dateStr:ds,year:y,month:m,monthName:M[m-1],status:String(r.status||""),price:p,description:o,file:f,brand:b,category:manual[id]||cat(o),isChildren:child(o),duplicate:false,tryonDuplicate:false,dupKey:""}}).filter(Boolean);dup(a);tryon(a);return a}
+function makeRows(data){return data.map((r,i)=>{let dt=dateSmart(r.date);if(!dt)return null;let y=dt.getFullYear(),m=dt.getMonth()+1,dd=dt.getDate(),ds=`${y}-${String(m).padStart(2,"0")}-${String(dd).padStart(2,"0")}`,o=String(r.description||""),f=String(r.file||""),p=+r.price||0,b=brand(o),id=rid(ds,p,f,o);return{idx:i,rowId:id,date:dt,dateStr:ds,year:y,month:m,monthName:M[m-1],status:String(r.status||""),price:p,description:o,file:f,brand:b,category:manual[id]||cat(o),isChildren:child(o),duplicate:false,tryonDuplicate:false,dupKey:""}}).filter(Boolean)}
 function dup(a=rows){let logic=E.duplicateLogic.value,mp=new Map();for(const r of a){let k=logic==="date_price_file"?[r.dateStr,r.price,r.file].join("||"):[r.dateStr,r.price].join("||");r.dupKey=k;mp.set(k,(mp.get(k)||0)+1)}a.forEach(r=>r.duplicate=(mp.get(r.dupKey)||0)>1)}
 function tryon(a=rows){let mp=new Map();for(const r of a){let k=[r.dateStr,r.category].join("||");mp.set(k,(mp.get(k)||0)+1)}a.forEach(r=>r.tryonDuplicate=(mp.get([r.dateStr,r.category].join("||"))||0)>=2)}
 function fill(sel,vals,txt="Все"){let cur=sel.value;sel.innerHTML="";let o=document.createElement("option");o.value="";o.textContent=txt;sel.appendChild(o);vals.forEach(v=>{let x=document.createElement("option");x.value=v;x.textContent=v;sel.appendChild(x)});if([...sel.options].some(o=>o.value===cur))sel.value=cur}
-function rebuild(){fill(E.year,[...new Set(rows.map(r=>r.year))].sort((a,b)=>b-a));fill(E.month,M.map((m,i)=>`${String(i+1).padStart(2,"0")} — ${m}`));fill(E.status,[...new Set(rows.map(r=>r.status))].sort((a,b)=>a.localeCompare(b,"ru")));fill(E.category,[...new Set(rows.map(r=>r.category))].sort((a,b)=>a.localeCompare(b,"ru")));fill(E.brand,[...new Set(rows.map(r=>r.brand))].sort((a,b)=>a.localeCompare(b,"ru")));let cats=[...new Set([...C,...rows.map(r=>r.category)])].sort((a,b)=>a.localeCompare(b,"ru"));E.bulkCategorySelect.innerHTML=`<option value="">Выберите категорию</option>`+cats.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join("")}
-function saveFilters(){let toggles={};document.querySelectorAll(".mod-toggle").forEach(ch=>toggles[ch.dataset.target]=ch.checked);localStorage.setItem(K.f,JSON.stringify({year:E.year.value,month:E.month.value,status:E.status.value,category:E.category.value,brand:E.brand.value,duplicatesMode:E.duplicatesMode.value,sort:E.sort.value,search:E.search.value,priceMin:E.priceMin.value,priceMax:E.priceMax.value,childrenMode:E.childrenMode.value,sumDuplicatesMode:E.sumDuplicatesMode.value,duplicateLogic:E.duplicateLogic.value,pageSize:E.pageSize.value,statusMode:E.statusMode.value,encoding:E.encodingSelect.value,tryonHighlightMode:E.tryonHighlightMode.value,chartTextMode:E.chartTextMode.value,printTableMode:E.printTableMode.value,printGalleryMode:E.printGalleryMode.value,printTableFontSize:E.printTableFontSize.value,screenPreviewCols:E.screenPreviewCols.value,screenPreviewHeight:E.screenPreviewHeight.value,previewOnlyWithFiles:E.previewOnlyWithFiles.value,printGalleryCols:E.printGalleryCols.value,printGalleryCardHeight:E.printGalleryCardHeight.value,printGalleryFontSize:E.printGalleryFontSize.value,toggles}))}
-function loadFilters(){try{let d=JSON.parse(localStorage.getItem(K.f)||"{}");for(const[k,v]of Object.entries(d))if(E[k]&&v!==undefined)E[k].value=v;if(d.toggles)document.querySelectorAll(".mod-toggle").forEach(ch=>{if(d.toggles[ch.dataset.target]!==undefined)ch.checked=d.toggles[ch.dataset.target]})}catch(e){}}
+function rebuild(){fill(E.year,[...new Set(rows.map(r=>r.year))].sort((a,b)=>b-a));fill(E.month,M.map((m,i)=>`${String(i+1).padStart(2,"0")} — ${m}`));fill(E.status,[...new Set(rows.map(r=>r.status))].sort((a,b)=>a.localeCompare(b,"ru")));fill(E.category,[...new Set(rows.map(r=>r.category))].sort((a,b)=>a.localeCompare(b,"ru")));fill(E.brand,[...new Set(rows.map(r=>r.brand))].sort((a,b)=>a.localeCompare(b,"ru")));let cats=[...new Set([...C,...rows.map(r=>r.category)])].sort((a,b)=>a.localeCompare(b,"ru"));E.bulkCategorySelect.innerHTML=`<option value="">Выберите</option>`+cats.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join("")}
+function saveFilters(){let toggles={};document.querySelectorAll(".mod-toggle").forEach(ch=>toggles[ch.dataset.target]=ch.checked);localStorage.setItem(K.f,JSON.stringify({year:E.year.value,month:E.month.value,status:E.status.value,category:E.category.value,brand:E.brand.value,duplicatesMode:E.duplicatesMode.value,sort:E.sort.value,search:E.search.value,priceMin:E.priceMin.value,priceMax:E.priceMax.value,childrenMode:E.childrenMode.value,sumDuplicatesMode:E.sumDuplicatesMode.value,duplicateLogic:E.duplicateLogic.value,pageSize:E.pageSize.value,statusMode:E.statusMode.value,encoding:E.encodingSelect.value,tryonHighlightMode:E.tryonHighlightMode.value,chartTextMode:E.chartTextMode.value,printTableMode:E.printTableMode.value,printGalleryMode:E.printGalleryMode.value,printTableFontSize:E.printTableFontSize.value,screenPreviewCols:E.screenPreviewCols.value,screenPreviewHeight:E.screenPreviewHeight.value,previewOnlyWithFiles:E.previewOnlyWithFiles.value,printGalleryCols:E.printGalleryCols.value,printGalleryCardHeight:E.printGalleryCardHeight.value,printGalleryFontSize:E.printGalleryFontSize.value,printDocTitle:E.printDocTitle.value,printColDate:E.printColDate.checked,printColStatus:E.printColStatus.checked,printColPrice:E.printColPrice.checked,printColCategory:E.printColCategory.checked,printColBrand:E.printColBrand.checked,printColDescription:E.printColDescription.checked,printColFile:E.printColFile.checked,toggles}))}
+function loadFilters(){try{let d=JSON.parse(localStorage.getItem(K.f)||"{}");for(const[k,v]of Object.entries(d)){if(!E[k]||v===undefined)continue;if(E[k].type==="checkbox")E[k].checked=!!v;else E[k].value=v}if(d.toggles)document.querySelectorAll(".mod-toggle").forEach(ch=>{if(d.toggles[ch.dataset.target]!==undefined)ch.checked=d.toggles[ch.dataset.target]})}catch(e){}}
 function saveOrder(){localStorage.setItem(K.o,JSON.stringify([...E.modulesContainer.children].map(x=>x.id)))}function loadOrder(){try{let o=JSON.parse(localStorage.getItem(K.o)||"[]");o.forEach(id=>{let el=$(id);if(el)E.modulesContainer.appendChild(el)})}catch(e){}}
-function applySizes(){document.querySelectorAll(".mod").forEach(m=>{if(m.id==="mod-month")m.style.height="360px";if(m.id==="mod-status")m.style.height="360px";if(m.id==="mod-category")m.style.height="360px";if(m.id==="mod-year")m.style.height="320px";if(m.id==="mod-top")m.style.height="420px";if(m.id==="mod-brand")m.style.height="420px";if(m.id==="mod-file")m.style.height="420px"})}
+function applySizes(){document.querySelectorAll(".mod").forEach(m=>{if(m.id==="mod-month")m.style.height="340px";if(m.id==="mod-status")m.style.height="340px";if(m.id==="mod-category")m.style.height="340px";if(m.id==="mod-year")m.style.height="320px";if(m.id==="mod-top")m.style.height="380px";if(m.id==="mod-brand")m.style.height="380px";if(m.id==="mod-file")m.style.height="380px"})}
 function modVisible(id){let c=document.querySelector(`.mod-toggle[data-target="${id}"]`);return c?c.checked:true}
 function applyModVis(){document.querySelectorAll(".mod-toggle").forEach(ch=>{let el=$(ch.dataset.target);if(el)el.classList.toggle("hide",!ch.checked)})}
 function statusMode(a){let m=E.statusMode.value;if(m==="only_delivered")return a.filter(r=>r.status==="Доставлен");if(m==="exclude_returns_cancel")return a.filter(r=>!["Возвращён","Отменён","Принят к возврату на ПВЗ"].includes(r.status));if(m==="financial_net")return a.filter(r=>["Доставлен","Возвращён","Отменён","Принят к возврату на ПВЗ"].includes(r.status));return a}
 function filtered(){let a=[...rows],y=E.year.value,m=E.month.value,s=E.status.value,c=E.category.value,b=E.brand.value,q=E.search.value.trim().toLowerCase(),p1=+E.priceMin.value||0,p2=+E.priceMax.value||0;if(y)a=a.filter(r=>String(r.year)===String(y));if(m)a=a.filter(r=>String(r.month).padStart(2,"0")===m.slice(0,2));if(s)a=a.filter(r=>r.status===s);if(c)a=a.filter(r=>r.category===c);if(b)a=a.filter(r=>r.brand===b);if(E.childrenMode.value==="only")a=a.filter(r=>r.isChildren);if(E.childrenMode.value==="exclude")a=a.filter(r=>!r.isChildren);if(p1>0)a=a.filter(r=>r.price>=p1);if(p2>0)a=a.filter(r=>r.price<=p2);a=statusMode(a);if(q)a=a.filter(r=>r.description.toLowerCase().includes(q)||r.file.toLowerCase().includes(q)||r.brand.toLowerCase().includes(q)||r.category.toLowerCase().includes(q));if(E.duplicatesMode.value==="hide")a=a.filter(r=>!r.duplicate);if(E.duplicatesMode.value==="only")a=a.filter(r=>r.duplicate);let sort=E.sort.value;if(sort==="date_desc")a.sort((a,b)=>b.date-a.date||b.price-a.price);if(sort==="date_asc")a.sort((a,b)=>a.date-b.date||a.price-b.price);if(sort==="price_desc")a.sort((a,b)=>b.price-a.price||b.date-a.date);if(sort==="price_asc")a.sort((a,b)=>a.price-b.price||b.date-a.date);return a}
 function totalsRows(f){if(E.sumDuplicatesMode.value==="with")return f;let seen=new Set();return f.filter(r=>seen.has(r.dupKey)?0:(seen.add(r.dupKey),1))}
 function cards(f,t){let all=t.reduce((s,r)=>s+r.price,0),d=t.filter(r=>r.status==="Доставлен").reduce((s,r)=>s+r.price,0),rv=t.filter(r=>r.status==="Возвращён").reduce((s,r)=>s+r.price,0),cn=t.filter(r=>r.status==="Отменён").reduce((s,r)=>s+r.price,0),pv=t.filter(r=>r.status==="Принят к возврату на ПВЗ").reduce((s,r)=>s+r.price,0),nr=t.filter(r=>!["Возвращён","Отменён","Принят к возврату на ПВЗ"].includes(r.status)).reduce((s,r)=>s+r.price,0),nb=d-rv-cn-pv,seen=new Set(),uq=f.filter(r=>seen.has(r.dupKey)?0:(seen.add(r.dupKey),1)).reduce((s,r)=>s+r.price,0);E.countRows.textContent=f.length;E.sumAll.textContent=money(all);E.sumDelivered.textContent=money(d);E.sumReturned.textContent=money(rv);E.sumCancelled.textContent=money(cn);E.sumPickupReturn.textContent=money(pv);E.sumNetNoReturns.textContent=money(nr);E.sumNetBalance.textContent=money(nb);E.sumUniqueNoDup.textContent=money(uq);E.dupCountCard.textContent=f.filter(r=>r.duplicate).length}
-const aggr=(a,k,v=r=>r.price)=>{let m=new Map();a.forEach(r=>m.set(k(r),(m.get(k(r))||0)+v(r)));return m},
-cd=(m,s="label",l=null)=>{let e=[...m.entries()];if(s==="value_desc")e.sort((a,b)=>b[1]-a[1]);else e.sort((a,b)=>String(a[0]).localeCompare(String(b[0]),"ru"));if(l)e=e.slice(0,l);return{labels:e.map(x=>x[0]),values:e.map(x=>x[1])}},
-exp=(l,v)=>l.map((x,i)=>`${x} — ${money(v[i])}`).join("; ");
-function destroy(){[monthChart,statusChart,categoryChart,yearChart,topChart,brandChart,fileChart].forEach(c=>c&&c.destroy())}
+const aggr=(a,k,v=r=>r.price)=>{let m=new Map();a.forEach(r=>m.set(k(r),(m.get(k(r))||0)+v(r)));return m},cd=(m,s="label",l=null)=>{let e=[...m.entries()];if(s==="value_desc")e.sort((a,b)=>b[1]-a[1]);else e.sort((a,b)=>String(a[0]).localeCompare(String(b[0]),"ru"));if(l)e=e.slice(0,l);return{labels:e.map(x=>x[0]),values:e.map(x=>x[1])}},exp=(l,v)=>l.map((x,i)=>`${x} — ${money(v[i])}`).join("; ");
+function destroyCharts(){Object.values(CH).forEach(c=>c&&c.destroy());CH={}}
 function setExp(id,t){let e=$(id);e.textContent=t;e.classList.toggle("show",E.chartTextMode.value==="on")}
-function charts(a){destroy();let md=cd(aggr(a,r=>`${r.year}-${String(r.month).padStart(2,"0")}`),"label"),sd=cd(aggr(a,r=>r.status),"value_desc"),cad=cd(aggr(a,r=>r.category),"value_desc"),yd=cd(aggr(a,r=>String(r.year)),"label"),bd=cd(aggr(a,r=>r.brand),"value_desc",15),fd=cd(aggr(a,r=>r.file),"value_desc",15),top=[...a].sort((a,b)=>b.price-a.price).slice(0,20);
-monthChart=new Chart($("monthChart"),{type:"bar",data:{labels:md.labels,datasets:[{label:"Сумма",data:md.values}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
-statusChart=new Chart($("statusChart"),{type:"doughnut",data:{labels:sd.labels,datasets:[{data:sd.values,backgroundColor:["#2e9f4d","#d9534f","#888","#d9a404","#4aa3df"]}]},options:{responsive:true,maintainAspectRatio:false}});
-categoryChart=new Chart($("categoryChart"),{type:"bar",data:{labels:cad.labels,datasets:[{label:"Сумма",data:cad.values}]},options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
-yearChart=new Chart($("yearChart"),{type:"bar",data:{labels:yd.labels,datasets:[{label:"Сумма",data:yd.values}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
-topChart=new Chart($("topChart"),{type:"bar",data:{labels:top.map(r=>r.description.slice(0,40)),datasets:[{label:"Цена",data:top.map(r=>r.price)}]},options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
-brandChart=new Chart($("brandChart"),{type:"bar",data:{labels:bd.labels,datasets:[{label:"Сумма",data:bd.values}]},options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
-fileChart=new Chart($("fileChart"),{type:"bar",data:{labels:fd.labels,datasets:[{label:"Сумма",data:fd.values}]},options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
-setExp("monthExpl",exp(md.labels,md.values));setExp("statusExpl",exp(sd.labels,sd.values));setExp("categoryExpl",exp(cad.labels,cad.values));setExp("yearExpl",exp(yd.labels,yd.values));setExp("topExpl",top.map(r=>`${r.description} — ${money(r.price)}`).join("\n"));setExp("brandExpl",exp(bd.labels,bd.values));setExp("fileExpl",exp(fd.labels,fd.values))}
+function mkChart(id,cfg){let el=$(id);if(!el)return null;return new Chart(el,cfg)}
+function charts(a){destroyCharts();let md=cd(aggr(a,r=>`${r.year}-${String(r.month).padStart(2,"0")}`),"label"),sd=cd(aggr(a,r=>r.status),"value_desc"),cad=cd(aggr(a,r=>r.category),"value_desc"),yd=cd(aggr(a,r=>String(r.year)),"label"),bd=cd(aggr(a,r=>r.brand),"value_desc",15),fd=cd(aggr(a,r=>r.file),"value_desc",15),top=[...a].sort((a,b)=>b.price-a.price).slice(0,20);
+CH.month=mkChart("monthChart",{type:"bar",data:{labels:md.labels,datasets:[{label:"Сумма",data:md.values}]},options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false}}}});
+CH.status=mkChart("statusChart",{type:"doughnut",data:{labels:sd.labels,datasets:[{data:sd.values,backgroundColor:["#2e9f4d","#d9534f","#888","#d9a404","#4aa3df"]}]},options:{responsive:true,maintainAspectRatio:false,animation:false}});
+CH.category=mkChart("categoryChart",{type:"bar",data:{labels:cad.labels,datasets:[{label:"Сумма",data:cad.values}]},options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false}}}});
+CH.year=mkChart("yearChart",{type:"bar",data:{labels:yd.labels,datasets:[{label:"Сумма",data:yd.values}]},options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false}}}});
+CH.top=mkChart("topChart",{type:"bar",data:{labels:top.map(r=>r.description.slice(0,40)),datasets:[{label:"Цена",data:top.map(r=>r.price)}]},options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false}}}});
+CH.brand=mkChart("brandChart",{type:"bar",data:{labels:bd.labels,datasets:[{label:"Сумма",data:bd.values}]},options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false}}}});
+CH.file=mkChart("fileChart",{type:"bar",data:{labels:fd.labels,datasets:[{label:"Сумма",data:fd.values}]},options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false}}}});
+setExp("monthExpl",exp(md.labels,md.values));setExp("statusExpl",exp(sd.labels,sd.values));setExp("categoryExpl",exp(cad.labels,cad.values));setExp("yearExpl",exp(yd.labels,yd.values));setExp("topExpl",top.map(r=>`${r.description} — ${money(r.price)}`).join("; "));setExp("brandExpl",exp(bd.labels,bd.values));setExp("fileExpl",exp(fd.labels,fd.values))}
 const furl=f=>files.get(f)||null;
-function openViewer(f){let u=furl(f);E.viewerTitle.textContent=f;E.viewerBody.innerHTML=u?`<div style="width:100%;height:100%;display:flex;flex-direction:column;gap:10px"><div style="font-size:13px;color:#555;word-break:break-all">${esc(f)}</div><div style="flex:1;display:flex;align-items:center;justify-content:center;overflow:auto"><img src="${u}" alt="${esc(f)}" style="max-width:100%;max-height:100%;object-fit:contain"></div></div>`:`<div class="small" style="padding:20px">Файл <b>${esc(f)}</b> не найден в выбранной папке изображений.</div>`;E.viewerModal.classList.add("show")}
-function renderTable(a){E.tbody.innerHTML="";pageRows=a.slice(0,+E.pageSize.value||250);pageRows.forEach(r=>{let tr=document.createElement("tr");if(r.duplicate)tr.classList.add("dup");if(E.tryonHighlightMode.value==="on"&&r.tryonDuplicate)tr.classList.add("try");if(sel.has(r.rowId))tr.classList.add("sel");let sc=r.status==="Доставлен"?"sd":r.status==="Возвращён"?"sr":r.status==="Отменён"?"so":r.status.startsWith("Принят")?"sp":"",fu=furl(r.file),fc=fu?`<span class="file-link open-file-link" data-file="${esc(r.file)}" title="${esc(r.file)}">${esc(r.file)}</span>`:`<span title="${esc(r.file)}">${esc(r.file)}</span>`;tr.innerHTML=`<td class="c0"><input type="checkbox" class="row-check" data-rowid="${esc(r.rowId)}" ${sel.has(r.rowId)?"checked":""}></td><td class="c1" title="${esc(r.dateStr)}">${esc(r.dateStr)}</td><td class="c2 ${sc}" title="${esc(r.status)}">${esc(r.status)}</td><td class="c3" title="${money(r.price)}">${money(r.price)}</td><td class="c4" title="${esc(r.category)}">${esc(r.category)}</td><td class="c5" title="${esc(r.brand)}">${esc(r.brand)}</td><td class="c6" title="${esc(r.description)}">${esc(r.description)}</td><td class="c7" title="${esc(r.file)}">${fc}</td><td class="c8"><button class="s open-file-btn" data-file="${esc(r.file)}">Открыть</button></td>`;E.tbody.appendChild(tr)});E.tableInfo.textContent=`Показано строк: ${pageRows.length} из ${a.length}`;document.querySelectorAll(".row-check").forEach(ch=>ch.addEventListener("change",()=>{let id=ch.dataset.rowid;ch.checked?sel.add(id):sel.delete(id);update()}));document.querySelectorAll(".open-file-btn").forEach(b=>b.addEventListener("click",()=>openViewer(b.dataset.file)));document.querySelectorAll(".open-file-link").forEach(l=>l.addEventListener("dblclick",()=>openViewer(l.dataset.file)));E.selectAllVisible.checked=pageRows.length&&pageRows.every(r=>sel.has(r.rowId))}
+function openViewer(f){let u=furl(f);E.viewerTitle.textContent=f;E.viewerBody.innerHTML=u?`<img src="${u}" alt="${esc(f)}">`:`<div class="small" style="padding:20px">Файл <b>${esc(f)}</b> не найден.</div>`;E.viewerModal.classList.add("show")}
+function renderTable(a){E.tbody.innerHTML="";pageRows=a.slice(0,+E.pageSize.value||250);pageRows.forEach(r=>{let tr=document.createElement("tr");if(r.duplicate)tr.classList.add("dup");if(E.tryonHighlightMode.value==="on"&&r.tryonDuplicate)tr.classList.add("try");if(sel.has(r.rowId))tr.classList.add("sel");let sc=r.status==="Доставлен"?"sd":r.status==="Возвращён"?"sr":r.status==="Отменён"?"so":r.status.startsWith("Принят")?"sp":"",fu=furl(r.file),fc=fu?`<span class="file-link open-file-link" data-file="${esc(r.file)}" title="${esc(r.file)}">${esc(r.file)}</span>`:`<span title="${esc(r.file)}">${esc(r.file)}</span>`;tr.innerHTML=`<td class="c0"><input type="checkbox" class="row-check" data-rowid="${esc(r.rowId)}" ${sel.has(r.rowId)?"checked":""}></td><td class="c1">${esc(r.dateStr)}</td><td class="c2 ${sc}">${esc(r.status)}</td><td class="c3">${money(r.price)}</td><td class="c4">${esc(r.category)}</td><td class="c5">${esc(r.brand)}</td><td class="desc c6" title="${esc(r.description)}">${esc(r.description)}</td><td class="c7" title="${esc(r.file)}">${fc}</td><td class="c8"><button class="s open-file-btn" data-file="${esc(r.file)}">Открыть</button></td>`;E.tbody.appendChild(tr)});E.tableInfo.textContent=`Показано строк: ${pageRows.length} из ${a.length}`;document.querySelectorAll(".row-check").forEach(ch=>ch.addEventListener("change",()=>{let id=ch.dataset.rowid;ch.checked?sel.add(id):sel.delete(id);renderTable(filtered())}));document.querySelectorAll(".open-file-btn").forEach(b=>b.addEventListener("click",()=>openViewer(b.dataset.file)));document.querySelectorAll(".open-file-link").forEach(l=>l.addEventListener("dblclick",()=>openViewer(l.dataset.file)));E.selectAllVisible.checked=pageRows.length&&pageRows.every(r=>sel.has(r.rowId))}
 function renderPreview(a){let d=E.previewOnlyWithFiles.value==="yes"?a.filter(r=>furl(r.file)):a;E.previewStrip.style.gridTemplateColumns=`repeat(${+E.screenPreviewCols.value||4},1fr)`;let h=+E.screenPreviewHeight.value||140;E.previewStrip.innerHTML=d.map(r=>{let u=furl(r.file);return`<div class="pc"><div class="pt" style="height:${h}px">${u?`<img src="${u}" alt="${esc(r.file)}">`:`<span class="small">Нет превью</span>`}</div><div class="pn">${esc(r.file)}</div></div>`}).join("");E.previewStrip.querySelectorAll("img").forEach(i=>i.addEventListener("click",()=>openViewer(i.getAttribute("alt"))))}
+function chartImg(id){let c=Chart.getChart(id)||CH[id.replace("Chart","")];try{return c?c.toBase64Image():""}catch(e){return""}}
 function titleDoc(a){if(!a.length)return"Документ";let y=[...new Set(a.map(r=>r.year))].sort((a,b)=>a-b);return y.length===1?`${y[0]} год`:`${y[0]}–${y[y.length-1]} годы`}
-function printChartsHtml(){let b=[],p=(id,t,ch,ex)=>{if(!modVisible(id)||!ch)return;let tmp=`print-${id}-${Math.random().toString(36).slice(2)}`;b.push(`<div class="pcc"><div style="font-weight:700;margin-bottom:6px">${esc(t)}</div><canvas id="${tmp}"></canvas>${E.chartTextMode.value==="on"?`<div class="pct">${esc($(ex).textContent)}</div>`:""}</div>`)};p("mod-month","Суммы по месяцам",monthChart,"monthExpl");p("mod-status","Статусы",statusChart,"statusExpl");p("mod-category","Категории",categoryChart,"categoryExpl");p("mod-year","По годам",yearChart,"yearExpl");p("mod-top","Топ-20 самых дорогих покупок",topChart,"topExpl");p("mod-brand","Топ-15 брендов",brandChart,"brandExpl");p("mod-file","Топ-15 файлов",fileChart,"fileExpl");return b}
-function cloneChart(src,canvas){if(!src||!canvas)return;let type=src.config.type,data=JSON.parse(JSON.stringify(src.data)),opt=JSON.parse(JSON.stringify(src.options||{}));opt.animation=false;new Chart(canvas,{type,data,options:opt})}
 function renderPrint(a,t){
-  let ttl=titleDoc(a),
-      chs=printChartsHtml(),
-      fs=+E.printTableFontSize.value||9,
-      gc=+E.printGalleryCols.value||2,
-      gh=+E.printGalleryCardHeight.value||180,
-      gf=+E.printGalleryFontSize.value||14;
+let ttl=(E.printDocTitle.value||"").trim()||titleDoc(a),
+fs=+E.printTableFontSize.value||9,
+gc=+E.printGalleryCols.value||2,
+gh=+E.printGalleryCardHeight.value||180,
+gf=+E.printGalleryFontSize.value||12;
 
-  let tableRows=a.map(r=>`
-    <tr style="${E.tryonHighlightMode.value==="on"&&r.tryonDuplicate?"background:#ececec;":""}">
-      <td title="${esc(r.dateStr)}">${esc(r.dateStr)}</td>
-      <td title="${esc(r.status)}">${esc(r.status)}</td>
-      <td title="${money(r.price)}">${money(r.price)}</td>
-      <td title="${esc(r.category)}">${esc(r.category)}</td>
-      <td title="${esc(r.brand)}">${esc(r.brand)}</td>
-      <td title="${esc(r.description)}">${esc(r.description)}</td>
-      <td title="${esc(r.file)}">${esc(r.file)}</td>
-    </tr>
-  `).join("");
+let summary=[];
+if(modVisible("mod-month"))summary.push(`<div><b>По месяцам:</b> ${esc($("monthExpl").textContent)}</div>`);
+if(modVisible("mod-status"))summary.push(`<div><b>Статусы:</b> ${esc($("statusExpl").textContent)}</div>`);
+if(modVisible("mod-category"))summary.push(`<div><b>Категории:</b> ${esc($("categoryExpl").textContent)}</div>`);
+if(modVisible("mod-year"))summary.push(`<div><b>По годам:</b> ${esc($("yearExpl").textContent)}</div>`);
+if(modVisible("mod-top"))summary.push(`<div><b>Топ дорогих:</b> ${esc($("topExpl").textContent)}</div>`);
+if(modVisible("mod-brand"))summary.push(`<div><b>Бренды:</b> ${esc($("brandExpl").textContent)}</div>`);
+if(modVisible("mod-file"))summary.push(`<div><b>Файлы:</b> ${esc($("fileExpl").textContent)}</div>`);
 
-  let tab=E.printTableMode.value==="on"?`
-    <div class="sec">
-      <h3>Строки выборки</h3>
-      <table class="ptab" style="font-size:${fs}px">
-        <colgroup>
-          <col style="width:72px">
-          <col style="width:92px">
-          <col style="width:70px">
-          <col style="width:82px">
-          <col style="width:90px">
-          <col style="width:auto">
-          <col style="width:110px">
-        </colgroup>
-        <thead>
-          <tr>
-            <th>Дата</th>
-            <th>Статус</th>
-            <th>Цена</th>
-            <th>Категория</th>
-            <th>Бренд</th>
-            <th>Описание</th>
-            <th>Файл</th>
-          </tr>
-        </thead>
-        <tbody>${tableRows}</tbody>
-      </table>
-    </div>
-  `:"";
+let printCharts=[];
+if(modVisible("mod-month"))printCharts.push({title:"По месяцам",img:chartImg("monthChart"),text:$("monthExpl").textContent});
+if(modVisible("mod-status"))printCharts.push({title:"Статусы",img:chartImg("statusChart"),text:$("statusExpl").textContent});
+if(modVisible("mod-category"))printCharts.push({title:"Категории",img:chartImg("categoryChart"),text:$("categoryExpl").textContent});
+if(modVisible("mod-year"))printCharts.push({title:"По годам",img:chartImg("yearChart"),text:$("yearExpl").textContent});
+if(modVisible("mod-top"))printCharts.push({title:"Топ дорогих",img:chartImg("topChart"),text:$("topExpl").textContent});
+if(modVisible("mod-brand"))printCharts.push({title:"Бренды",img:chartImg("brandChart"),text:$("brandExpl").textContent});
+if(modVisible("mod-file"))printCharts.push({title:"Файлы",img:chartImg("fileChart"),text:$("fileExpl").textContent});
 
-  let seenFiles=new Set();
-  let uniqFiles=a.filter(r=>{
-    if(!furl(r.file)) return false;
-    if(seenFiles.has(r.file)) return false;
-    seenFiles.add(r.file);
-    return true;
-  });
+let cols=[
+  E.printColDate.checked?{key:"dateStr",title:"Дата",width:"72px",render:r=>esc(r.dateStr)}:null,
+  E.printColStatus.checked?{key:"status",title:"Статус",width:"88px",render:r=>esc(r.status)}:null,
+  E.printColPrice.checked?{key:"price",title:"Цена",width:"64px",render:r=>money(r.price)}:null,
+  E.printColCategory.checked?{key:"category",title:"Категория",width:"78px",render:r=>esc(r.category)}:null,
+  E.printColBrand.checked?{key:"brand",title:"Бренд",width:"92px",render:r=>esc(r.brand)}:null,
+  E.printColDescription.checked?{key:"description",title:"Описание",width:"auto",render:r=>esc(r.description)}:null,
+  E.printColFile.checked?{key:"file",title:"Файл",width:"96px",render:r=>esc(r.file)}:null
+].filter(Boolean);
 
-  let galPages=[],perPage=gc*6;
-  for(let i=0;i<uniqFiles.length;i+=perPage) galPages.push(uniqFiles.slice(i,i+perPage));
+let colgroup=cols.map(c=>`<col style="width:${c.width}">`).join("");
+let thead=cols.map(c=>`<th>${c.title}</th>`).join("");
+let tbody=a.map(r=>`<tr style="${E.tryonHighlightMode.value==="on"&&r.tryonDuplicate?"background:#ececec;":""}">${cols.map(c=>`<td title="${esc(String(r[c.key]??""))}">${c.render(r)}</td>`).join("")}</tr>`).join("");
 
-  let gal=E.printGalleryMode.value==="on"?galPages.map((pageFiles,idx)=>`
-    <div class="page">
-      ${idx===0?`<div class="pttl">${esc(ttl)}</div><div class="psub">Файлы: ${uniqFiles.length}</div>`:""}
-      <div class="sec">
-        <h3>Файлы</h3>
-        <div class="pgal" style="grid-template-columns:repeat(${gc},1fr)">
-          ${pageFiles.map(r=>`
-            <div class="pfc" style="min-height:${gh}px">
-              <img src="${furl(r.file)}" alt="${esc(r.file)}">
-              <div class="pfn" style="font-size:${gf}px">${esc(r.file)}</div>
-            </div>
-          `).join("")}
-        </div>
-      </div>
-    </div>
-  `).join(""):"";
+let chartsBlock=printCharts.length?`
+<div class="sec">
+<h3>Графики</h3>
+<div class="print-charts">
+${printCharts.map(ch=>`<div class="pchart"><h4>${esc(ch.title)}</h4>${ch.img?`<img src="${ch.img}" alt="${esc(ch.title)}">`:""}${E.chartTextMode.value==="on"&&ch.text?`<div class="print-list">${esc(ch.text)}</div>`:""}</div>`).join("")}
+</div>
+</div>`:"";
 
-  let firstPage=`
-    <div class="page">
-      <div class="pttl">${esc(ttl)}</div>
-      <div class="psub">Строк: ${a.length}; сумма: ${money(t.reduce((s,r)=>s+r.price,0))}</div>
-      ${chs.length?`<div class="sec"><h3>Диаграммы</h3><div class="pcg">${chs.join("")}</div></div>`:""}
-      ${tab}
-    </div>
-  `;
+let tab=E.printTableMode.value==="on"&&cols.length?`
+<div class="sec">
+<h3>Строки выборки</h3>
+<table class="ptab" style="font-size:${fs}px">
+<colgroup>${colgroup}</colgroup>
+<thead><tr>${thead}</tr></thead>
+<tbody>${tbody}</tbody>
+</table>
+</div>`:"";
 
-  E.printDocument.innerHTML=firstPage+gal;
+let seen=new Set(),uf=a.filter(r=>furl(r.file)&&!seen.has(r.file)&&(seen.add(r.file),1));
+let gal=E.printGalleryMode.value==="on"?`
+<div class="sec">
+<h3>Файлы</h3>
+<div class="pgal" style="grid-template-columns:repeat(${gc},1fr)">
+${uf.map(r=>`<div class="pfc" style="min-height:${gh}px"><img src="${furl(r.file)}" alt="${esc(r.file)}"><div class="pfn" style="font-size:${gf}px">${esc(r.file)}</div></div>`).join("")}
+</div>
+</div>`:"";
 
-  document.querySelectorAll(".page canvas").forEach((c,i)=>{
-    let v=[];
-    if(modVisible("mod-month"))v.push(monthChart);
-    if(modVisible("mod-status"))v.push(statusChart);
-    if(modVisible("mod-category"))v.push(categoryChart);
-    if(modVisible("mod-year"))v.push(yearChart);
-    if(modVisible("mod-top"))v.push(topChart);
-    if(modVisible("mod-brand"))v.push(brandChart);
-    if(modVisible("mod-file"))v.push(fileChart);
-    cloneChart(v[i],c);
-  });
+E.printDocument.innerHTML=`
+<div class="page">
+<div class="pttl">${esc(ttl)}</div>
+<div class="psub">Строк: ${a.length}; сумма: ${money(t.reduce((s,r)=>s+r.price,0))}</div>
+<div class="sec"><h3>Сводка</h3><div class="print-list">${summary.join("")}</div></div>
+${chartsBlock}
+${tab}
+${gal}
+</div>`
 }
-function update(){saveFilters();dup(rows);tryon(rows);applyModVis();rebuild();let f=filtered(),t=totalsRows(f);cards(f,t);charts(t);renderTable(f);renderPreview(f);renderPrint(f,t)}
+function renderAll(){let f=filtered(),t=totalsRows(f);cards(f,t);charts(t);renderTable(f);renderPreview(f);renderPrint(f,t)}
+function update(){saveFilters();dup(rows);tryon(rows);applyModVis();rebuild();renderAll()}
 function exportCSV(){let f=filtered(),L=[["Дата","Статус","Цена","Категория","Бренд","Описание","Файл","Примерка"].join(";")];f.forEach(r=>L.push([r.dateStr,r.status,r.price,r.category,r.brand,`"${String(r.description).replace(/"/g,'""')}"`,r.file,r.tryonDuplicate?"Да":""].join(";")));let b=new Blob(["\uFEFF"+L.join("\n")],{type:"text/csv;charset=utf-8;"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="filtered_table.csv";a.click()}
-async function handleFile(file){if(!file)return;lastFile=file;let enc=E.encodingSelect.value,txt=await read(file,enc),n=file.name.toLowerCase();try{let data=[];if(n.endsWith(".json"))data=parseJSON(txt);else if(n.endsWith(".csv")||n.endsWith(".txt"))data=parseCSV(txt);else throw Error("Поддерживаются только CSV, TXT, JSON");rows=makeRows(data);rebuild();loadFilters();dup(rows);tryon(rows);applyModVis();E.fileInfo.textContent=`${file.name} [${enc}]: загружено строк ${rows.length}; изображений: ${files.size}`;update()}catch(err){alert("Ошибка загрузки файла: "+err.message)}}
-function setCat(c){if(!c)return;rows.forEach(r=>{if(sel.has(r.rowId)){r.category=c;manual[r.rowId]=c}});saveManual();rebuild();update()}
-function resetCats(){manual={};saveManual();rows.forEach(r=>r.category=cat(r.description));update()}
-function selBySearch(t){t=String(t||"").trim().toLowerCase();if(!t)return;rows.forEach(r=>{if(r.description.toLowerCase().includes(t)||r.file.toLowerCase().includes(t)||r.brand.toLowerCase().includes(t)||r.category.toLowerCase().includes(t))sel.add(r.rowId)});update()}
+async function handleFile(file){if(!file)return;lastFile=file;let enc=E.encodingSelect.value,txt=await read(file,enc),n=file.name.toLowerCase();try{let data=n.endsWith(".json")?parseJSON(txt):(n.endsWith(".csv")||n.endsWith(".txt"))?parseCSV(txt):null;if(!data)throw Error("Поддерживаются только CSV, TXT, JSON");rows=makeRows(data);dup(rows);tryon(rows);rebuild();loadFilters();applyModVis();E.fileInfo.textContent=`${file.name} [${enc}]: строк ${rows.length}; изображений ${files.size}`;renderAll()}catch(err){alert("Ошибка загрузки файла: "+err.message)}}
+function setCat(c){if(!c)return;rows.forEach(r=>{if(sel.has(r.rowId)){r.category=c;manual[r.rowId]=c}});saveManual();renderAll()}
+function resetCats(){manual={};saveManual();rows.forEach(r=>r.category=cat(r.description));renderAll()}
+function selBySearch(t){t=String(t||"").trim().toLowerCase();if(!t)return;rows.forEach(r=>{if(r.description.toLowerCase().includes(t)||r.file.toLowerCase().includes(t)||r.brand.toLowerCase().includes(t)||r.category.toLowerCase().includes(t))sel.add(r.rowId)});renderTable(filtered())}
 function dragSort(){let dr=null;E.modulesContainer.querySelectorAll(".mod").forEach(m=>{m.addEventListener("dragstart",()=>dr=m);m.addEventListener("dragover",e=>e.preventDefault());m.addEventListener("drop",e=>{e.preventDefault();if(!dr||dr===m)return;let ch=[...E.modulesContainer.children],di=ch.indexOf(dr),ti=ch.indexOf(m);di<ti?E.modulesContainer.insertBefore(dr,m.nextSibling):E.modulesContainer.insertBefore(dr,m);saveOrder()})})}
+
 E.fileInput.addEventListener("change",async e=>await handleFile(e.target.files[0]));
-E.imagesInput.addEventListener("change",e=>{files.clear();[...e.target.files].forEach(f=>f.type.startsWith("image/")&&files.set(f.name,URL.createObjectURL(f)));update()});
+E.imagesInput.addEventListener("change",e=>{files.clear();[...e.target.files].forEach(f=>f.type.startsWith("image/")&&files.set(f.name,URL.createObjectURL(f)));renderAll()});
 E.reloadBtn.addEventListener("click",async()=>lastFile?await handleFile(lastFile):alert("Последний файл ещё не загружался."));
-E.loadDemoBtn.addEventListener("click",()=>{rows=makeRows([{date:"2025.09.23",status:"Доставлен",price:1489,description:"Апрель_Кроссовки школьные",file:"IMG_1.jpg"},{date:"2025.09.23",status:"Доставлен",price:1520,description:"Nike_Кроссовки детские",file:"IMG_2.jpg"},{date:"2025.09.23",status:"Возвращён",price:1490,description:"Adidas_Кроссовки подростковые",file:"IMG_3.jpg"},{date:"2025.10.11",status:"Доставлен",price:1206,description:"SYNERGETIC_Подарочный набор",file:"IMG_4.jpg"},{date:"2025.11.06",status:"Возвращён",price:6386,description:"KVIN_Пальто осеннее",file:"IMG_5.jpg"}]);rebuild();update()});
-[E.year,E.month,E.status,E.category,E.brand,E.duplicatesMode,E.sort,E.search,E.priceMin,E.priceMax,E.childrenMode,E.sumDuplicatesMode,E.duplicateLogic,E.pageSize,E.statusMode,E.encodingSelect,E.tryonHighlightMode,E.chartTextMode,E.printTableMode,E.printGalleryMode,E.printTableFontSize,E.screenPreviewCols,E.screenPreviewHeight,E.previewOnlyWithFiles,E.printGalleryCols,E.printGalleryCardHeight,E.printGalleryFontSize].forEach(el=>el.addEventListener("input",update));
-document.querySelectorAll(".mod-toggle").forEach(ch=>ch.addEventListener("change",update));
-E.resetBtn.addEventListener("click",()=>{E.year.value="";E.month.value="";E.status.value="";E.category.value="";E.brand.value="";E.duplicatesMode.value="all";E.sort.value="date_desc";E.search.value="";E.priceMin.value="";E.priceMax.value="";E.childrenMode.value="all";E.sumDuplicatesMode.value="with";E.duplicateLogic.value="date_price";E.pageSize.value="250";E.statusMode.value="all";E.tryonHighlightMode.value="off";E.chartTextMode.value="off";E.printTableMode.value="on";E.printGalleryMode.value="on";saveFilters();update()});
+E.loadDemoBtn.addEventListener("click",()=>{rows=makeRows([{date:"2025.09.23",status:"Доставлен",price:1489,description:"Апрель_Кроссовки школьные",file:"IMG_1.jpg"},{date:"2025.09.23",status:"Доставлен",price:1520,description:"Nike_Кроссовки детские",file:"IMG_2.jpg"},{date:"2025.09.23",status:"Возвращён",price:1490,description:"Adidas_Кроссовки подростковые",file:"IMG_3.jpg"},{date:"2025.10.11",status:"Доставлен",price:1206,description:"SYNERGETIC_Подарочный набор",file:"IMG_4.jpg"},{date:"2025.11.06",status:"Возвращён",price:6386,description:"KVIN_Пальто осеннее",file:"IMG_5.jpg"}]);dup(rows);tryon(rows);rebuild();renderAll()});
+[E.year,E.month,E.status,E.category,E.brand,E.duplicatesMode,E.sort,E.search,E.priceMin,E.priceMax,E.childrenMode,E.sumDuplicatesMode,E.duplicateLogic,E.pageSize,E.statusMode,E.encodingSelect,E.tryonHighlightMode,E.chartTextMode,E.printTableMode,E.printGalleryMode,E.printTableFontSize,E.screenPreviewCols,E.screenPreviewHeight,E.previewOnlyWithFiles,E.printGalleryCols,E.printGalleryCardHeight,E.printGalleryFontSize,E.printDocTitle,E.printColDate,E.printColStatus,E.printColPrice,E.printColCategory,E.printColBrand,E.printColDescription,E.printColFile].forEach(el=>el.addEventListener("input",renderAll));
+document.querySelectorAll(".mod-toggle").forEach(ch=>ch.addEventListener("change",()=>{applyModVis();renderAll()}));
+E.resetBtn.addEventListener("click",()=>{E.year.value="";E.month.value="";E.status.value="";E.category.value="";E.brand.value="";E.duplicatesMode.value="all";E.sort.value="date_desc";E.search.value="";E.priceMin.value="";E.priceMax.value="";E.childrenMode.value="all";E.sumDuplicatesMode.value="with";E.duplicateLogic.value="date_price";E.pageSize.value="250";E.statusMode.value="all";E.tryonHighlightMode.value="off";E.chartTextMode.value="off";E.printTableMode.value="on";E.printGalleryMode.value="on";E.printDocTitle.value="";E.printColDate.checked=true;E.printColStatus.checked=true;E.printColPrice.checked=true;E.printColCategory.checked=true;E.printColBrand.checked=true;E.printColDescription.checked=true;E.printColFile.checked=true;saveFilters();renderAll()});
 E.exportBtn.addEventListener("click",exportCSV);E.printBtn.addEventListener("click",()=>window.print());
 E.selectBySearchBtn.addEventListener("click",()=>selBySearch(E.categorySearchText.value));
 E.applyCategoryBtn.addEventListener("click",()=>{let c=E.newCategoryInput.value.trim()||E.bulkCategorySelect.value;if(!c)return alert("Укажи категорию.");setCat(c);E.newCategoryInput.value=""});
-E.clearSelectionBtn.addEventListener("click",()=>{sel.clear();update()});
+E.clearSelectionBtn.addEventListener("click",()=>{sel.clear();renderTable(filtered())});
 E.resetCategoriesBtn.addEventListener("click",()=>{if(confirm("Сбросить все вручную назначенные категории?"))resetCats()});
-E.selectAllVisible.addEventListener("change",()=>{E.selectAllVisible.checked?pageRows.forEach(r=>sel.add(r.rowId)):pageRows.forEach(r=>sel.delete(r.rowId));update()});
+E.selectAllVisible.addEventListener("change",()=>{E.selectAllVisible.checked?pageRows.forEach(r=>sel.add(r.rowId)):pageRows.forEach(r=>sel.delete(r.rowId));renderTable(filtered())});
 E.viewerClose.addEventListener("click",()=>E.viewerModal.classList.remove("show"));
 E.viewerModal.addEventListener("click",e=>{if(e.target===E.viewerModal)E.viewerModal.classList.remove("show")});
-loadManual();loadFilters();loadOrder();dragSort();applySizes();rebuild();applyModVis();update();
+
+loadManual();loadFilters();loadOrder();dragSort();applySizes();rebuild();applyModVis();renderAll();
 </script>
 </body>
 </html>
