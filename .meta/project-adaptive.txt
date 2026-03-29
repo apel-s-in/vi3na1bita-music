@@ -377,7 +377,7 @@ vi3na1bita-music/
 ├── rrrrr.html
 └── service-worker.js
 
-Сгенерировано: 2026-03-29 11:11:27 UTC
+Сгенерировано: 2026-03-29 13:44:47 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -6603,9 +6603,10 @@ tr.sel{outline:2px solid #316dff;outline-offset:-2px;background:#eef4ff!importan
 .print-list{font-size:11px;line-height:1.25;word-break:break-word}
 .summary-list b{font-weight:700}
 .summary-list .sum{font-weight:700}
-.ptab{width:100%;border-collapse:collapse;table-layout:fixed;font-size:9px}
-.ptab th,.ptab td{border:1px solid #bbb;padding:1px 3px;vertical-align:middle;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.05}
-.ptab td.pdesc,.ptab th.pdesc{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;word-break:normal}
+.ptab{width:100%;border-collapse:collapse;table-layout:auto;font-size:9px}
+.ptab th,.ptab td{border:1px solid #bbb;padding:1px 3px;vertical-align:middle;white-space:nowrap;line-height:1.05}
+.ptab th.pfit,.ptab td.pfit{width:1%;overflow:visible;text-overflow:clip}
+.ptab td.pdesc,.ptab th.pdesc{width:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;word-break:normal}
 .print-charts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .pchart{border:1px solid #cfcfcf;border-radius:6px;padding:4px;background:#fff;break-inside:avoid}
 .pchart h4{margin:0 0 4px;font-size:12px}
@@ -6614,7 +6615,7 @@ tr.sel{outline:2px solid #316dff;outline-offset:-2px;background:#eef4ff!importan
 .sec.files-sec{}
 .pfc{border:1px solid #cfcfcf;padding:6px;border-radius:6px;text-align:center}
 .pfc img{width:100%;height:150px;object-fit:contain;display:block;margin:0 auto 6px;max-width:100%}
-.pfn{font-size:12px;font-weight:700;word-break:break-all;line-height:1.15}
+.pfn{font-size:12px;font-weight:700;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:clip;word-break:normal}
 
 .vm{position:fixed;inset:0;background:rgba(0,0,0,.78);display:none;align-items:center;justify-content:center;z-index:9999;padding:20px}
 .vm.show{display:flex}
@@ -6851,6 +6852,16 @@ gc=+E.printGalleryCols.value||2,
 gh=+E.printGalleryCardHeight.value||180,
 gf=+E.printGalleryFontSize.value||12;
 
+const fitPrintFileFont=(name,base)=>{
+  let n=String(name||"");
+  if(n.length<=14)return base+1;
+  if(n.length<=18)return base;
+  if(n.length<=24)return Math.max(9,base-1);
+  if(n.length<=30)return Math.max(8,base-2);
+  if(n.length<=38)return Math.max(7,base-3);
+  return Math.max(6,base-4);
+};
+
 let summary=[];
 if(modVisible("mod-month"))summary.push(`<div><b>По месяцам:</b> ${summaryFmt($("monthExpl").textContent)}</div>`);
 if(modVisible("mod-status"))summary.push(`<div><b>Статусы:</b> ${summaryFmt($("statusExpl").textContent)}</div>`);
@@ -6879,13 +6890,13 @@ ${chartsList.map(x=>`<div class="pchart"><h4>${esc(x.title)}</h4>${x.img?`<img s
 </div>`:"";
 
 let cols=[
-  E.printColDate.checked?{title:"Дата",width:"58px",cls:"",cell:r=>esc(r.dateStr)}:null,
-  E.printColStatus.checked?{title:"Статус",width:"72px",cls:"",cell:r=>esc(r.status)}:null,
-  E.printColPrice.checked?{title:"Цена",width:"52px",cls:"",cell:r=>money(r.price)}:null,
-  E.printColCategory.checked?{title:"Категория",width:"68px",cls:"",cell:r=>esc(r.category)}:null,
-  E.printColBrand.checked?{title:"Бренд",width:"72px",cls:"",cell:r=>esc(r.brand)}:null,
+  E.printColDate.checked?{title:"Дата",width:"1%",cls:"pfit",cell:r=>esc(r.dateStr)}:null,
+  E.printColStatus.checked?{title:"Статус",width:"1%",cls:"pfit",cell:r=>esc(r.status)}:null,
+  E.printColPrice.checked?{title:"Цена",width:"1%",cls:"pfit",cell:r=>money(r.price)}:null,
+  E.printColCategory.checked?{title:"Категория",width:"1%",cls:"pfit",cell:r=>esc(r.category)}:null,
+  E.printColBrand.checked?{title:"Бренд",width:"1%",cls:"pfit",cell:r=>esc(r.brand)}:null,
   E.printColDescription.checked?{title:"Описание",width:"auto",cls:"pdesc",cell:r=>esc(r.description)}:null,
-  E.printColFile.checked?{title:"Файл",width:"78px",cls:"",cell:r=>esc(r.file)}:null
+  E.printColFile.checked?{title:"Файл",width:"1%",cls:"pfit",cell:r=>esc(r.file)}:null
 ].filter(Boolean);
 
 let tab=E.printTableMode.value==="on"&&cols.length?`
@@ -6903,7 +6914,7 @@ let gal=E.printGalleryMode.value==="on"?`
 <div class="sec files-sec">
 <h3>Файлы</h3>
 <div class="pgal" style="grid-template-columns:repeat(${gc},1fr)">
-${uf.map(r=>`<div class="pfc" style="min-height:${gh}px"><img src="${furl(r.file)}" alt="${esc(r.file)}"><div class="pfn" style="font-size:${gf}px">${esc(r.file)}</div></div>`).join("")}
+${uf.map(r=>`<div class="pfc" style="min-height:${gh}px"><img src="${furl(r.file)}" alt="${esc(r.file)}"><div class="pfn" style="font-size:${fitPrintFileFont(r.file,gf)}px" title="${esc(r.file)}">${esc(r.file)}</div></div>`).join("")}
 </div>
 </div>`:"";
 
