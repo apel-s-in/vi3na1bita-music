@@ -82,6 +82,8 @@ tr.sel{outline:2px solid #316dff;outline-offset:-2px;background:#eef4ff!importan
 .vh{display:flex;justify-content:space-between;gap:12px;align-items:center}
 .vbody{flex:1;border:1px solid #ddd;display:flex;align-items:center;justify-content:center;overflow:auto;background:#f9f9f9}
 .vbody img{max-width:100%;max-height:100%;object-fit:contain}
+.vbody iframe{width:100%;height:100%;border:0;background:#fff}
+.pt.pdf-thumb{font-size:12px;color:#444;text-align:center;padding:8px;line-height:1.3}
 
 @media (max-width:1500px){
   .filters{grid-template-columns:repeat(4,1fr)}
@@ -106,6 +108,7 @@ tr.sel{outline:2px solid #316dff;outline-offset:-2px;background:#eef4ff!importan
       <input type="file" id="fileInput" accept=".csv,.txt,.json">
       <label>Кодировка<select id="encodingSelect"><option value="utf-8">UTF-8</option><option value="windows-1251" selected>Windows-1251</option><option value="koi8-r">KOI8-R</option><option value="ibm866">IBM866</option></select></label>
       <label>Папка с изображениями<input type="file" id="imagesInput" webkitdirectory directory multiple></label>
+      <label>Папка с чеками<input type="file" id="receiptsInput" webkitdirectory directory multiple></label>
       <button id="reloadBtn" class="s">Перезагрузить</button>
       <button id="loadDemoBtn" class="s">Демо</button>
       <button id="resetBtn" class="s">Сброс</button>
@@ -198,12 +201,12 @@ tr.sel{outline:2px solid #316dff;outline-offset:-2px;background:#eef4ff!importan
     <div class="table-scroll">
       <table class="tbl">
         <colgroup>
-          <col style="width:30px"><col style="width:82px"><col style="width:98px"><col style="width:74px"><col style="width:92px"><col style="width:110px"><col><col style="width:150px"><col style="width:82px">
+          <col style="width:30px"><col style="width:82px"><col style="width:98px"><col style="width:74px"><col style="width:92px"><col style="width:110px"><col><col style="width:150px"><col style="width:150px"><col style="width:82px"><col style="width:82px">
         </colgroup>
         <thead>
           <tr>
             <th><input type="checkbox" id="selectAllVisible"></th>
-            <th>Дата</th><th>Статус</th><th>Цена</th><th>Категория</th><th>Бренд</th><th>Описание</th><th>Файл</th><th>Открыть</th>
+            <th>Дата</th><th>Статус</th><th>Цена</th><th>Категория</th><th>Бренд</th><th>Описание</th><th>Файл</th><th>Чеки</th><th>Открыть</th><th>Открыть</th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
@@ -222,12 +225,25 @@ tr.sel{outline:2px solid #316dff;outline-offset:-2px;background:#eef4ff!importan
   </div>
 
   <div class="box">
+    <h3>Превью чеков</h3>
+    <div class="controls">
+      <label>Колонок<input id="screenReceiptPreviewCols" type="number" min="1" max="8" value="4"></label>
+      <label>Высота<input id="screenReceiptPreviewHeight" type="number" min="80" max="400" value="140"></label>
+      <label>Только найденные<select id="previewOnlyWithReceipts"><option value="yes">Да</option><option value="no">Нет</option></select></label>
+    </div>
+    <div id="receiptPreviewStrip" class="prev"></div>
+  </div>
+
+  <div class="box">
     <h3>Настройки печатных файлов</h3>
     <div class="controls">
       <label>Название документа<input id="printDocName" type="text" placeholder="Например: Приложение №1"></label>
-      <label>Колонок на странице<input id="printGalleryCols" type="number" min="1" max="6" value="2"></label>
-      <label>Высота карточки<input id="printGalleryCardHeight" type="number" min="80" max="260" value="180"></label>
-      <label>Размер подписи<input id="printGalleryFontSize" type="number" min="8" max="18" value="12"></label>
+      <label>Колонок файлов<input id="printGalleryCols" type="number" min="1" max="6" value="2"></label>
+      <label>Высота карточки файлов<input id="printGalleryCardHeight" type="number" min="80" max="260" value="180"></label>
+      <label>Размер подписи файлов<input id="printGalleryFontSize" type="number" min="8" max="18" value="12"></label>
+      <label>Колонок чеков<input id="printReceiptCols" type="number" min="1" max="6" value="2"></label>
+      <label>Высота карточки чеков<input id="printReceiptCardHeight" type="number" min="80" max="260" value="180"></label>
+      <label>Размер подписи чеков<input id="printReceiptFontSize" type="number" min="8" max="18" value="12"></label>
     </div>
     <div class="controls">
       <label><input type="checkbox" id="printColDate" checked> Дата</label>
@@ -253,9 +269,9 @@ tr.sel{outline:2px solid #316dff;outline-offset:-2px;background:#eef4ff!importan
 </div>
 
 <script>
-let rows=[],sel=new Set(),lastFile=null,manual={},pageRows=[],files=new Map(),CH={};
+let rows=[],sel=new Set(),lastFile=null,manual={},pageRows=[],files=new Map(),receipts=new Map(),CH={};
 const K={f:"stable_filters",m:"stable_manual",o:"stable_order"},M=["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"],C=["Плавание","Обувь","Одежда","Школа","Книги","Электроника","Игрушки","Косметика","Гигиена","Дом","Спорт","Животные","Прочее"];
-const $=id=>document.getElementById(id),E={fileInput:$("fileInput"),imagesInput:$("imagesInput"),encodingSelect:$("encodingSelect"),reloadBtn:$("reloadBtn"),loadDemoBtn:$("loadDemoBtn"),resetBtn:$("resetBtn"),exportBtn:$("exportBtn"),printBtn:$("printBtn"),fileInfo:$("fileInfo"),year:$("yearFilter"),month:$("monthFilter"),status:$("statusFilter"),category:$("categoryFilter"),brand:$("brandFilter"),duplicatesMode:$("duplicatesMode"),sort:$("sortFilter"),search:$("searchFilter"),priceMin:$("priceMinFilter"),priceMax:$("priceMaxFilter"),childrenMode:$("childrenMode"),sumDuplicatesMode:$("sumDuplicatesMode"),duplicateLogic:$("duplicateLogic"),pageSize:$("pageSize"),statusMode:$("statusMode"),tryonHighlightMode:$("tryonHighlightMode"),chartTextMode:$("chartTextMode"),printTableMode:$("printTableMode"),printGalleryMode:$("printGalleryMode"),printTableFontSize:$("printTableFontSize"),screenPreviewCols:$("screenPreviewCols"),screenPreviewHeight:$("screenPreviewHeight"),previewOnlyWithFiles:$("previewOnlyWithFiles"),printGalleryCols:$("printGalleryCols"),printGalleryCardHeight:$("printGalleryCardHeight"),printGalleryFontSize:$("printGalleryFontSize"),printDocName:$("printDocName"),printColDate:$("printColDate"),printColStatus:$("printColStatus"),printColPrice:$("printColPrice"),printColCategory:$("printColCategory"),printColBrand:$("printColBrand"),printColDescription:$("printColDescription"),printColFile:$("printColFile"),categorySearchText:$("categorySearchText"),bulkCategorySelect:$("bulkCategorySelect"),newCategoryInput:$("newCategoryInput"),selectBySearchBtn:$("selectBySearchBtn"),applyCategoryBtn:$("applyCategoryBtn"),clearSelectionBtn:$("clearSelectionBtn"),resetCategoriesBtn:$("resetCategoriesBtn"),countRows:$("countRows"),sumAll:$("sumAll"),sumDelivered:$("sumDelivered"),sumReturned:$("sumReturned"),sumCancelled:$("sumCancelled"),sumPickupReturn:$("sumPickupReturn"),sumNetNoReturns:$("sumNetNoReturns"),sumNetBalance:$("sumNetBalance"),sumUniqueNoDup:$("sumUniqueNoDup"),dupCountCard:$("dupCountCard"),tbody:$("tbody"),tableInfo:$("tableInfo"),selectAllVisible:$("selectAllVisible"),previewStrip:$("previewStrip"),printDocument:$("printDocument"),modulesContainer:$("modulesContainer"),viewerModal:$("viewerModal"),viewerTitle:$("viewerTitle"),viewerBody:$("viewerBody"),viewerClose:$("viewerClose")};
+const $=id=>document.getElementById(id),E={fileInput:$("fileInput"),imagesInput:$("imagesInput"),receiptsInput:$("receiptsInput"),encodingSelect:$("encodingSelect"),reloadBtn:$("reloadBtn"),loadDemoBtn:$("loadDemoBtn"),resetBtn:$("resetBtn"),exportBtn:$("exportBtn"),printBtn:$("printBtn"),fileInfo:$("fileInfo"),year:$("yearFilter"),month:$("monthFilter"),status:$("statusFilter"),category:$("categoryFilter"),brand:$("brandFilter"),duplicatesMode:$("duplicatesMode"),sort:$("sortFilter"),search:$("searchFilter"),priceMin:$("priceMinFilter"),priceMax:$("priceMaxFilter"),childrenMode:$("childrenMode"),sumDuplicatesMode:$("sumDuplicatesMode"),duplicateLogic:$("duplicateLogic"),pageSize:$("pageSize"),statusMode:$("statusMode"),tryonHighlightMode:$("tryonHighlightMode"),chartTextMode:$("chartTextMode"),printTableMode:$("printTableMode"),printGalleryMode:$("printGalleryMode"),printTableFontSize:$("printTableFontSize"),screenPreviewCols:$("screenPreviewCols"),screenPreviewHeight:$("screenPreviewHeight"),previewOnlyWithFiles:$("previewOnlyWithFiles"),screenReceiptPreviewCols:$("screenReceiptPreviewCols"),screenReceiptPreviewHeight:$("screenReceiptPreviewHeight"),previewOnlyWithReceipts:$("previewOnlyWithReceipts"),receiptPreviewStrip:$("receiptPreviewStrip"),printGalleryCols:$("printGalleryCols"),printGalleryCardHeight:$("printGalleryCardHeight"),printGalleryFontSize:$("printGalleryFontSize"),printReceiptCols:$("printReceiptCols"),printReceiptCardHeight:$("printReceiptCardHeight"),printReceiptFontSize:$("printReceiptFontSize"),printDocName:$("printDocName"),printColDate:$("printColDate"),printColStatus:$("printColStatus"),printColPrice:$("printColPrice"),printColCategory:$("printColCategory"),printColBrand:$("printColBrand"),printColDescription:$("printColDescription"),printColFile:$("printColFile"),categorySearchText:$("categorySearchText"),bulkCategorySelect:$("bulkCategorySelect"),newCategoryInput:$("newCategoryInput"),selectBySearchBtn:$("selectBySearchBtn"),applyCategoryBtn:$("applyCategoryBtn"),clearSelectionBtn:$("clearSelectionBtn"),resetCategoriesBtn:$("resetCategoriesBtn"),countRows:$("countRows"),sumAll:$("sumAll"),sumDelivered:$("sumDelivered"),sumReturned:$("sumReturned"),sumCancelled:$("sumCancelled"),sumPickupReturn:$("sumPickupReturn"),sumNetNoReturns:$("sumNetNoReturns"),sumNetBalance:$("sumNetBalance"),sumUniqueNoDup:$("sumUniqueNoDup"),dupCountCard:$("dupCountCard"),tbody:$("tbody"),tableInfo:$("tableInfo"),selectAllVisible:$("selectAllVisible"),previewStrip:$("previewStrip"),printDocument:$("printDocument"),modulesContainer:$("modulesContainer"),viewerModal:$("viewerModal"),viewerTitle:$("viewerTitle"),viewerBody:$("viewerBody"),viewerClose:$("viewerClose")};
 const money=n=>new Intl.NumberFormat("ru-RU").format(n)+" ₽",esc=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 const exDate=n=>{let d=new Date((Math.floor(+n-25569)*86400)*1000);return new Date(d.getFullYear(),d.getMonth(),d.getDate())};
 const dateSmart=v=>{if(v==null||v==="")return null;v=String(v).trim();if(!isNaN(+v)&&v!==""&&+v>2e4&&+v<6e4)return exDate(+v);if(/^\d{4}-\d{2}-\d{2}$/.test(v)){let[a,b,c]=v.split("-").map(Number);return new Date(a,b-1,c)}if(/^\d{4}\.\d{2}\.\d{2}$/.test(v)){let[a,b,c]=v.split(".").map(Number);return new Date(a,b-1,c)}if(/^\d{2}\.\d{2}\.\d{4}$/.test(v)){let[a,b,c]=v.split(".").map(Number);return new Date(c,b-1,a)}let d=new Date(v);return isNaN(d)?null:new Date(d.getFullYear(),d.getMonth(),d.getDate())};
@@ -266,15 +282,15 @@ function loadManual(){try{manual=JSON.parse(localStorage.getItem(K.m)||"{}")}cat
 function statusNorm(s){s=String(s||"").trim();const m={"Доставлен":["доставлен","���������"],"Возвращён":["возвращён","возвращен"],"Отменён":["отменён","отменен","�������"],"Принят к возврату на ПВЗ":["принят к возврату на пвз","������ � �������� �� ���"]},l=s.toLowerCase();for(const[k,a]of Object.entries(m))if(a.some(x=>l===x.toLowerCase()))return k;return s}
 function split(line,d){let r=[],c="",q=0;for(let i=0;i<line.length;i++){let ch=line[i],n=line[i+1];if(ch==='"'){if(q&&n==='"'){c+='"';i++}else q=!q}else if(ch===d&&!q){r.push(c);c=""}else c+=ch}r.push(c);return r}
 function delim(t){let s=t.split(/\r?\n/).find(x=>x.trim());if(!s)return";";let c={";":(s.match(/;/g)||[]).length,"\t":(s.match(/\t/g)||[]).length,",":(s.match(/,/g)||[]).length};return Object.entries(c).sort((a,b)=>b[1]-a[1])[0][0]||";"}
-function parseCSV(t){let d=delim(t),L=t.split(/\r?\n/).filter(x=>x.trim());if(!L.length)return[];let f=split(L[0],d).map(x=>x.trim().toLowerCase()),hdr=["дата","статус","цена","описание","файл"].some(k=>f.includes(k)),s=hdr?1:0,di=0,si=1,pi=2,oi=3,fi=4;if(hdr){di=f.findIndex(x=>x.includes("дата"));si=f.findIndex(x=>x.includes("статус"));pi=f.findIndex(x=>x.includes("цена"));oi=f.findIndex(x=>x.includes("опис"));fi=f.findIndex(x=>x.includes("файл"))}let out=[];for(let i=s;i<L.length;i++){let c=split(L[i],d);if(!c.length)continue;let p=String(c[pi]??"").replace(/[^\d,-. ]/g,"").replace(/\s+/g,"").replace(",",".");out.push({date:c[di],status:statusNorm(c[si]),price:+p||0,description:c[oi],file:c[fi]})}return out}
-function parseJSON(t){let a=JSON.parse(t);if(!Array.isArray(a))throw Error("JSON должен содержать массив");return Array.isArray(a[0])?a.map(r=>({date:r[0],status:statusNorm(r[1]),price:r[2],description:r[3],file:r[4]})):a.map(r=>({date:r.date??r["Дата"],status:statusNorm(r.status??r["Статус"]),price:r.price??r["Цена"],description:r.description??r["Описание"],file:r.file??r["Файл"]}))}
+function parseCSV(t){let d=delim(t),L=t.split(/\r?\n/).filter(x=>x.trim());if(!L.length)return[];let f=split(L[0],d).map(x=>x.trim().toLowerCase()),hdr=["дата","статус","цена","описание","файл","чек","чеки"].some(k=>f.includes(k)),s=hdr?1:0,di=0,si=1,pi=2,oi=3,fi=4,ri=5;if(hdr){di=f.findIndex(x=>x.includes("дата"));si=f.findIndex(x=>x.includes("статус"));pi=f.findIndex(x=>x.includes("цена"));oi=f.findIndex(x=>x.includes("опис"));fi=f.findIndex(x=>x.includes("файл"));ri=f.findIndex(x=>x.includes("чек"))}let out=[];for(let i=s;i<L.length;i++){let c=split(L[i],d);if(!c.length)continue;let p=String(c[pi]??"").replace(/[^\d,-. ]/g,"").replace(/\s+/g,"").replace(",",".");out.push({date:c[di],status:statusNorm(c[si]),price:+p||0,description:c[oi],file:c[fi],receipt:ri>=0?(c[ri]??""):""})}return out}
+function parseJSON(t){let a=JSON.parse(t);if(!Array.isArray(a))throw Error("JSON должен содержать массив");return Array.isArray(a[0])?a.map(r=>({date:r[0],status:statusNorm(r[1]),price:r[2],description:r[3],file:r[4],receipt:r[5]??""})):a.map(r=>({date:r.date??r["Дата"],status:statusNorm(r.status??r["Статус"]),price:r.price??r["Цена"],description:r.description??r["Описание"],file:r.file??r["Файл"],receipt:r.receipt??r["Чек"]??r["Чеки"]??""}))}
 async function read(file,enc){return new TextDecoder(enc,{fatal:false}).decode(await file.arrayBuffer())}
-function makeRows(data){return data.map((r,i)=>{let dt=dateSmart(r.date);if(!dt)return null;let y=dt.getFullYear(),m=dt.getMonth()+1,dd=dt.getDate(),ds=`${y}-${String(m).padStart(2,"0")}-${String(dd).padStart(2,"0")}`,o=String(r.description||""),f=String(r.file||""),p=+r.price||0,b=brand(o),id=rid(ds,p,f,o);return{idx:i,rowId:id,date:dt,dateStr:ds,year:y,month:m,monthName:M[m-1],status:String(r.status||""),price:p,description:o,file:f,brand:b,category:manual[id]||cat(o),isChildren:child(o),duplicate:false,tryonDuplicate:false,dupKey:""}}).filter(Boolean)}
+function makeRows(data){return data.map((r,i)=>{let dt=dateSmart(r.date);if(!dt)return null;let y=dt.getFullYear(),m=dt.getMonth()+1,dd=dt.getDate(),ds=`${y}-${String(m).padStart(2,"0")}-${String(dd).padStart(2,"0")}`,o=String(r.description||""),f=String(r.file||""),rc=String(r.receipt||""),p=+r.price||0,b=brand(o),id=rid(ds,p,f,o);return{idx:i,rowId:id,date:dt,dateStr:ds,year:y,month:m,monthName:M[m-1],status:String(r.status||""),price:p,description:o,file:f,receipt:rc,brand:b,category:manual[id]||cat(o),isChildren:child(o),duplicate:false,tryonDuplicate:false,dupKey:""}}).filter(Boolean)}
 function dup(a=rows){let logic=E.duplicateLogic.value,mp=new Map();for(const r of a){let k=logic==="date_price_file"?[r.dateStr,r.price,r.file].join("||"):[r.dateStr,r.price].join("||");r.dupKey=k;mp.set(k,(mp.get(k)||0)+1)}a.forEach(r=>r.duplicate=(mp.get(r.dupKey)||0)>1)}
 function tryon(a=rows){let mp=new Map();for(const r of a){let k=[r.dateStr,r.category].join("||");mp.set(k,(mp.get(k)||0)+1)}a.forEach(r=>r.tryonDuplicate=(mp.get([r.dateStr,r.category].join("||"))||0)>=2)}
 function fill(sel,vals,txt="Все"){let cur=sel.value;sel.innerHTML="";let o=document.createElement("option");o.value="";o.textContent=txt;sel.appendChild(o);vals.forEach(v=>{let x=document.createElement("option");x.value=v;x.textContent=v;sel.appendChild(x)});if([...sel.options].some(o=>o.value===cur))sel.value=cur}
 function rebuild(){fill(E.year,[...new Set(rows.map(r=>r.year))].sort((a,b)=>b-a));fill(E.month,M.map((m,i)=>`${String(i+1).padStart(2,"0")} — ${m}`));fill(E.status,[...new Set(rows.map(r=>r.status))].sort((a,b)=>a.localeCompare(b,"ru")));fill(E.category,[...new Set(rows.map(r=>r.category))].sort((a,b)=>a.localeCompare(b,"ru")));fill(E.brand,[...new Set(rows.map(r=>r.brand))].sort((a,b)=>a.localeCompare(b,"ru")));let cats=[...new Set([...C,...rows.map(r=>r.category)])].sort((a,b)=>a.localeCompare(b,"ru"));E.bulkCategorySelect.innerHTML=`<option value="">Выберите</option>`+cats.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join("")}
-function saveFilters(){let toggles={};document.querySelectorAll(".mod-toggle").forEach(ch=>toggles[ch.dataset.target]=ch.checked);localStorage.setItem(K.f,JSON.stringify({year:E.year.value,month:E.month.value,status:E.status.value,category:E.category.value,brand:E.brand.value,duplicatesMode:E.duplicatesMode.value,sort:E.sort.value,search:E.search.value,priceMin:E.priceMin.value,priceMax:E.priceMax.value,childrenMode:E.childrenMode.value,sumDuplicatesMode:E.sumDuplicatesMode.value,duplicateLogic:E.duplicateLogic.value,pageSize:E.pageSize.value,statusMode:E.statusMode.value,encoding:E.encodingSelect.value,tryonHighlightMode:E.tryonHighlightMode.value,chartTextMode:E.chartTextMode.value,printTableMode:E.printTableMode.value,printGalleryMode:E.printGalleryMode.value,printTableFontSize:E.printTableFontSize.value,screenPreviewCols:E.screenPreviewCols.value,screenPreviewHeight:E.screenPreviewHeight.value,previewOnlyWithFiles:E.previewOnlyWithFiles.value,printGalleryCols:E.printGalleryCols.value,printGalleryCardHeight:E.printGalleryCardHeight.value,printGalleryFontSize:E.printGalleryFontSize.value,printDocName:E.printDocName.value,printColDate:E.printColDate.checked,printColStatus:E.printColStatus.checked,printColPrice:E.printColPrice.checked,printColCategory:E.printColCategory.checked,printColBrand:E.printColBrand.checked,printColDescription:E.printColDescription.checked,printColFile:E.printColFile.checked,toggles}))}
+function saveFilters(){let toggles={};document.querySelectorAll(".mod-toggle").forEach(ch=>toggles[ch.dataset.target]=ch.checked);localStorage.setItem(K.f,JSON.stringify({year:E.year.value,month:E.month.value,status:E.status.value,category:E.category.value,brand:E.brand.value,duplicatesMode:E.duplicatesMode.value,sort:E.sort.value,search:E.search.value,priceMin:E.priceMin.value,priceMax:E.priceMax.value,childrenMode:E.childrenMode.value,sumDuplicatesMode:E.sumDuplicatesMode.value,duplicateLogic:E.duplicateLogic.value,pageSize:E.pageSize.value,statusMode:E.statusMode.value,encoding:E.encodingSelect.value,tryonHighlightMode:E.tryonHighlightMode.value,chartTextMode:E.chartTextMode.value,printTableMode:E.printTableMode.value,printGalleryMode:E.printGalleryMode.value,printTableFontSize:E.printTableFontSize.value,screenPreviewCols:E.screenPreviewCols.value,screenPreviewHeight:E.screenPreviewHeight.value,previewOnlyWithFiles:E.previewOnlyWithFiles.value,screenReceiptPreviewCols:E.screenReceiptPreviewCols.value,screenReceiptPreviewHeight:E.screenReceiptPreviewHeight.value,previewOnlyWithReceipts:E.previewOnlyWithReceipts.value,printGalleryCols:E.printGalleryCols.value,printGalleryCardHeight:E.printGalleryCardHeight.value,printGalleryFontSize:E.printGalleryFontSize.value,printReceiptCols:E.printReceiptCols.value,printReceiptCardHeight:E.printReceiptCardHeight.value,printReceiptFontSize:E.printReceiptFontSize.value,printDocName:E.printDocName.value,printColDate:E.printColDate.checked,printColStatus:E.printColStatus.checked,printColPrice:E.printColPrice.checked,printColCategory:E.printColCategory.checked,printColBrand:E.printColBrand.checked,printColDescription:E.printColDescription.checked,printColFile:E.printColFile.checked,toggles}))}
 function loadFilters(){try{let d=JSON.parse(localStorage.getItem(K.f)||"{}");for(const[k,v]of Object.entries(d)){if(!E[k]||v===undefined)continue;if(E[k].type==="checkbox")E[k].checked=!!v;else E[k].value=v}if(d.toggles)document.querySelectorAll(".mod-toggle").forEach(ch=>{if(d.toggles[ch.dataset.target]!==undefined)ch.checked=d.toggles[ch.dataset.target]})}catch(e){}}
 function saveOrder(){localStorage.setItem(K.o,JSON.stringify([...E.modulesContainer.children].map(x=>x.id)))}function loadOrder(){try{let o=JSON.parse(localStorage.getItem(K.o)||"[]");o.forEach(id=>{let el=$(id);if(el)E.modulesContainer.appendChild(el)})}catch(e){}}
 function applySizes(){document.querySelectorAll(".mod").forEach(m=>{if(m.id==="mod-month")m.style.height="340px";if(m.id==="mod-status")m.style.height="340px";if(m.id==="mod-category")m.style.height="340px";if(m.id==="mod-year")m.style.height="320px";if(m.id==="mod-top")m.style.height="380px";if(m.id==="mod-brand")m.style.height="380px";if(m.id==="mod-file")m.style.height="380px"})}
@@ -298,9 +314,82 @@ CH.brand=mkChart("brandChart",{type:"bar",data:{labels:bd.labels,datasets:[{labe
 CH.file=mkChart("fileChart",{type:"bar",data:{labels:fd.labels,datasets:[{label:"Сумма",data:fd.values}]},options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false}}}});
 setExp("monthExpl",exp(md.labels,md.values));setExp("statusExpl",exp(sd.labels,sd.values));setExp("categoryExpl",exp(cad.labels,cad.values));setExp("yearExpl",exp(yd.labels,yd.values));setExp("topExpl",top.map(r=>`${r.description} — ${money(r.price)}`).join("; "));setExp("brandExpl",exp(bd.labels,bd.values));setExp("fileExpl",exp(fd.labels,fd.values))}
 const furl=f=>files.get(f)||null;
-function openViewer(f){let u=furl(f);E.viewerTitle.textContent=f;E.viewerBody.innerHTML=u?`<img src="${u}" alt="${esc(f)}">`:`<div class="small" style="padding:20px">Файл <b>${esc(f)}</b> не найден.</div>`;E.viewerModal.classList.add("show")}
-function renderTable(a){E.tbody.innerHTML="";pageRows=a.slice(0,+E.pageSize.value||250);pageRows.forEach(r=>{let tr=document.createElement("tr");if(r.duplicate)tr.classList.add("dup");if(E.tryonHighlightMode.value==="on"&&r.tryonDuplicate)tr.classList.add("try");if(sel.has(r.rowId))tr.classList.add("sel");let sc=r.status==="Доставлен"?"sd":r.status==="Возвращён"?"sr":r.status==="Отменён"?"so":r.status.startsWith("Принят")?"sp":"",fu=furl(r.file),fc=fu?`<span class="file-link open-file-link" data-file="${esc(r.file)}" title="${esc(r.file)}">${esc(r.file)}</span>`:`<span title="${esc(r.file)}">${esc(r.file)}</span>`;tr.innerHTML=`<td class="c0"><input type="checkbox" class="row-check" data-rowid="${esc(r.rowId)}" ${sel.has(r.rowId)?"checked":""}></td><td class="c1">${esc(r.dateStr)}</td><td class="c2 ${sc}">${esc(r.status)}</td><td class="c3">${money(r.price)}</td><td class="c4">${esc(r.category)}</td><td class="c5">${esc(r.brand)}</td><td class="desc c6" title="${esc(r.description)}">${esc(r.description)}</td><td class="c7" title="${esc(r.file)}">${fc}</td><td class="c8"><button class="s open-file-btn" data-file="${esc(r.file)}">Открыть</button></td>`;E.tbody.appendChild(tr)});E.tableInfo.textContent=`Показано строк: ${pageRows.length} из ${a.length}`;document.querySelectorAll(".row-check").forEach(ch=>ch.addEventListener("change",()=>{let id=ch.dataset.rowid;ch.checked?sel.add(id):sel.delete(id);renderTable(filtered())}));document.querySelectorAll(".open-file-btn").forEach(b=>b.addEventListener("click",()=>openViewer(b.dataset.file)));document.querySelectorAll(".open-file-link").forEach(l=>l.addEventListener("dblclick",()=>openViewer(l.dataset.file)));E.selectAllVisible.checked=pageRows.length&&pageRows.every(r=>sel.has(r.rowId))}
-function renderPreview(a){let d=E.previewOnlyWithFiles.value==="yes"?a.filter(r=>furl(r.file)):a;E.previewStrip.style.gridTemplateColumns=`repeat(${+E.screenPreviewCols.value||4},1fr)`;let h=+E.screenPreviewHeight.value||140;E.previewStrip.innerHTML=d.map(r=>{let u=furl(r.file);return`<div class="pc"><div class="pt" style="height:${h}px">${u?`<img src="${u}" alt="${esc(r.file)}">`:`<span class="small">Нет превью</span>`}</div><div class="pn">${esc(r.file)}</div></div>`}).join("");E.previewStrip.querySelectorAll("img").forEach(i=>i.addEventListener("click",()=>openViewer(i.getAttribute("alt"))))}
+const rurl=f=>receipts.get(f)||null;
+const isPdf=n=>/\.pdf$/i.test(String(n||""));
+function openViewer(f,type="file"){
+  let u=type==="receipt"?rurl(f):furl(f);
+  E.viewerTitle.textContent=f;
+  if(!u){
+    E.viewerBody.innerHTML=`<div class="small" style="padding:20px">Файл <b>${esc(f)}</b> не найден.</div>`;
+  }else if(isPdf(f)){
+    E.viewerBody.innerHTML=`<iframe src="${u}" title="${esc(f)}"></iframe>`;
+  }else{
+    E.viewerBody.innerHTML=`<img src="${u}" alt="${esc(f)}">`;
+  }
+  E.viewerModal.classList.add("show");
+}
+function renderTable(a){
+E.tbody.innerHTML="";
+pageRows=a.slice(0,+E.pageSize.value||250);
+pageRows.forEach(r=>{
+  let tr=document.createElement("tr");
+  if(r.duplicate)tr.classList.add("dup");
+  if(E.tryonHighlightMode.value==="on"&&r.tryonDuplicate)tr.classList.add("try");
+  if(sel.has(r.rowId))tr.classList.add("sel");
+
+  let sc=r.status==="Доставлен"?"sd":r.status==="Возвращён"?"sr":r.status==="Отменён"?"so":r.status.startsWith("Принят")?"sp":"";
+  let fu=furl(r.file);
+  let ru=rurl(r.receipt);
+
+  let fc=fu?`<span class="file-link open-file-link" data-file="${esc(r.file)}" title="${esc(r.file)}">${esc(r.file)}</span>`:`<span title="${esc(r.file)}">${esc(r.file)}</span>`;
+  let rc=r.receipt?(ru?`<span class="file-link open-receipt-link" data-receipt="${esc(r.receipt)}" title="${esc(r.receipt)}">${esc(r.receipt)}</span>`:`<span title="${esc(r.receipt)}">${esc(r.receipt)}</span>`):`<span class="small">—</span>`;
+
+  tr.innerHTML=`<td class="c0"><input type="checkbox" class="row-check" data-rowid="${esc(r.rowId)}" ${sel.has(r.rowId)?"checked":""}></td><td class="c1">${esc(r.dateStr)}</td><td class="c2 ${sc}">${esc(r.status)}</td><td class="c3">${money(r.price)}</td><td class="c4">${esc(r.category)}</td><td class="c5">${esc(r.brand)}</td><td class="desc c6" title="${esc(r.description)}">${esc(r.description)}</td><td class="c7" title="${esc(r.file)}">${fc}</td><td class="c7" title="${esc(r.receipt||"")}">${rc}</td><td class="c8"><button class="s open-file-btn" data-file="${esc(r.file)}" ${fu?"":"disabled"}>Открыть</button></td><td class="c8"><button class="s open-receipt-btn" data-receipt="${esc(r.receipt||"")}" ${r.receipt&&ru?"":"disabled"}>Открыть</button></td>`;
+  E.tbody.appendChild(tr)
+});
+E.tableInfo.textContent=`Показано строк: ${pageRows.length} из ${a.length}`;
+document.querySelectorAll(".row-check").forEach(ch=>ch.addEventListener("change",()=>{let id=ch.dataset.rowid;ch.checked?sel.add(id):sel.delete(id);renderTable(filtered())}));
+document.querySelectorAll(".open-file-btn").forEach(b=>b.addEventListener("click",()=>openViewer(b.dataset.file,"file")));
+document.querySelectorAll(".open-receipt-btn").forEach(b=>b.addEventListener("click",()=>openViewer(b.dataset.receipt,"receipt")));
+document.querySelectorAll(".open-file-link").forEach(l=>l.addEventListener("dblclick",()=>openViewer(l.dataset.file,"file")));
+document.querySelectorAll(".open-receipt-link").forEach(l=>l.addEventListener("dblclick",()=>openViewer(l.dataset.receipt,"receipt")));
+E.selectAllVisible.checked=pageRows.length&&pageRows.every(r=>sel.has(r.rowId))
+}
+function renderPreview(a){
+  let seen=new Set();
+  let d=a.filter(r=>{
+    if(!r.file)return false;
+    if(E.previewOnlyWithFiles.value==="yes"&&!furl(r.file))return false;
+    if(seen.has(r.file))return false;
+    seen.add(r.file);
+    return true;
+  });
+  E.previewStrip.style.gridTemplateColumns=`repeat(${+E.screenPreviewCols.value||4},1fr)`;
+  let h=+E.screenPreviewHeight.value||140;
+  E.previewStrip.innerHTML=d.map(r=>{
+    let u=furl(r.file);
+    return`<div class="pc"><div class="pt" style="height:${h}px">${u?`<img src="${u}" alt="${esc(r.file)}">`:`<span class="small">Нет превью</span>`}</div><div class="pn">${esc(r.file)}</div></div>`;
+  }).join("");
+  E.previewStrip.querySelectorAll("img").forEach(i=>i.addEventListener("click",()=>openViewer(i.getAttribute("alt"),"file")));
+}
+function renderReceiptPreview(a){
+  let seen=new Set();
+  let d=a.filter(r=>{
+    if(!r.receipt)return false;
+    if(E.previewOnlyWithReceipts.value==="yes"&&!rurl(r.receipt))return false;
+    if(seen.has(r.receipt))return false;
+    seen.add(r.receipt);
+    return true;
+  });
+  E.receiptPreviewStrip.style.gridTemplateColumns=`repeat(${+E.screenReceiptPreviewCols.value||4},1fr)`;
+  let h=+E.screenReceiptPreviewHeight.value||140;
+  E.receiptPreviewStrip.innerHTML=d.map(r=>{
+    let u=rurl(r.receipt);
+    let body=!u?`<span class="small">Нет превью</span>`:isPdf(r.receipt)?`<div class="pt pdf-thumb" style="height:${h}px">PDF<br>${esc(r.receipt)}</div>`:`<img src="${u}" alt="${esc(r.receipt)}">`;
+    return`<div class="pc"><div class="pt ${isPdf(r.receipt)?"pdf-thumb":""}" style="height:${h}px">${body}</div><div class="pn">${esc(r.receipt)}</div></div>`;
+  }).join("");
+  E.receiptPreviewStrip.querySelectorAll(".pc").forEach((card,i)=>card.addEventListener("click",()=>openViewer(d[i].receipt,"receipt")));
+}
 function chartImg(id){let c=Chart.getChart(id)||CH[id.replace("Chart","")];try{return c?c.toBase64Image():""}catch(e){return""}}
 function titleDoc(a){if(!a.length)return"Документ";let y=[...new Set(a.map(r=>r.year))].sort((a,b)=>a-b);return y.length===1?`${y[0]} год`:`${y[0]}–${y[y.length-1]} годы`}
 function summaryFmt(s){return esc(String(s||"")).replace(/(\d[\d\s]*₽)/g,'<span class="sum">$1</span>')}
@@ -309,7 +398,10 @@ let ttl=String(E.printDocName.value||"").replace(/\s+/g," ").trim()||titleDoc(a)
 fs=+E.printTableFontSize.value||9,
 gc=+E.printGalleryCols.value||2,
 gh=+E.printGalleryCardHeight.value||180,
-gf=+E.printGalleryFontSize.value||12;
+gf=+E.printGalleryFontSize.value||12,
+rc=+E.printReceiptCols.value||2,
+rh=+E.printReceiptCardHeight.value||180,
+rf=+E.printReceiptFontSize.value||12;
 
 const fitPrintFileFont=(name,base)=>{
   let n=String(name||"");
@@ -377,6 +469,15 @@ ${uf.map(r=>`<div class="pfc" style="min-height:${gh}px"><img src="${furl(r.file
 </div>
 </div>`:"";
 
+let seenReceipts=new Set(),ur=a.filter(r=>r.receipt&&rurl(r.receipt)&&!seenReceipts.has(r.receipt)&&(seenReceipts.add(r.receipt),1));
+let receiptsGal=ur.length?`
+<div class="sec files-sec">
+<h3>Чеки</h3>
+<div class="pgal" style="grid-template-columns:repeat(${rc},1fr)">
+${ur.map(r=>`<div class="pfc" style="min-height:${rh}px">${isPdf(r.receipt)?`<div class="pt pdf-thumb" style="height:${Math.max(120,rh-24)}px">PDF<br>${esc(r.receipt)}</div>`:`<img src="${rurl(r.receipt)}" alt="${esc(r.receipt)}" style="height:${Math.max(120,rh-24)}px">`}<div class="pfn" style="font-size:${fitPrintFileFont(r.receipt,rf)}px" title="${esc(r.receipt)}">${esc(r.receipt)}</div></div>`).join("")}
+</div>
+</div>`:"";
+
 E.printDocument.innerHTML=`
 <div class="page">
 <div class="pttl">${esc(ttl)}</div>
@@ -385,24 +486,34 @@ E.printDocument.innerHTML=`
 ${chartsBlock}
 ${tab}
 ${gal}
+${receiptsGal}
 </div>`
 }
-function renderAll(){let f=filtered(),t=totalsRows(f);cards(f,t);charts(t);renderTable(f);renderPreview(f);renderPrint(f,t)}
+function renderAll(){let f=filtered(),t=totalsRows(f);cards(f,t);charts(t);renderTable(f);renderPreview(f);renderReceiptPreview(f);renderPrint(f,t)}
 function update(){saveFilters();dup(rows);tryon(rows);applyModVis();rebuild();renderAll()}
-function exportCSV(){let f=filtered(),L=[["Дата","Статус","Цена","Категория","Бренд","Описание","Файл","Примерка"].join(";")];f.forEach(r=>L.push([r.dateStr,r.status,r.price,r.category,r.brand,`"${String(r.description).replace(/"/g,'""')}"`,r.file,r.tryonDuplicate?"Да":""].join(";")));let b=new Blob(["\uFEFF"+L.join("\n")],{type:"text/csv;charset=utf-8;"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="filtered_table.csv";a.click()}
-async function handleFile(file){if(!file)return;lastFile=file;let enc=E.encodingSelect.value,txt=await read(file,enc),n=file.name.toLowerCase();try{let data=n.endsWith(".json")?parseJSON(txt):(n.endsWith(".csv")||n.endsWith(".txt"))?parseCSV(txt):null;if(!data)throw Error("Поддерживаются только CSV, TXT, JSON");rows=makeRows(data);dup(rows);tryon(rows);rebuild();loadFilters();applyModVis();E.fileInfo.textContent=`${file.name} [${enc}]: строк ${rows.length}; изображений ${files.size}`;renderAll()}catch(err){alert("Ошибка загрузки файла: "+err.message)}}
+function exportCSV(){let f=filtered(),L=[["Дата","Статус","Цена","Категория","Бренд","Описание","Файл","Чек","Примерка"].join(";")];f.forEach(r=>L.push([r.dateStr,r.status,r.price,r.category,r.brand,`"${String(r.description).replace(/"/g,'""')}"`,r.file,r.receipt||"",r.tryonDuplicate?"Да":""].join(";")));let b=new Blob(["\uFEFF"+L.join("\n")],{type:"text/csv;charset=utf-8;"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="filtered_table.csv";a.click()}
+async function handleFile(file){if(!file)return;lastFile=file;let enc=E.encodingSelect.value,txt=await read(file,enc),n=file.name.toLowerCase();try{let data=n.endsWith(".json")?parseJSON(txt):(n.endsWith(".csv")||n.endsWith(".txt"))?parseCSV(txt):null;if(!data)throw Error("Поддерживаются только CSV, TXT, JSON");rows=makeRows(data);dup(rows);tryon(rows);rebuild();loadFilters();applyModVis();E.fileInfo.textContent=`${file.name} [${enc}]: строк ${rows.length}; изображений ${files.size}; чеков ${receipts.size}`;renderAll()}catch(err){alert("Ошибка загрузки файла: "+err.message)}}
 function setCat(c){if(!c)return;rows.forEach(r=>{if(sel.has(r.rowId)){r.category=c;manual[r.rowId]=c}});saveManual();renderAll()}
 function resetCats(){manual={};saveManual();rows.forEach(r=>r.category=cat(r.description));renderAll()}
 function selBySearch(t){t=String(t||"").trim().toLowerCase();if(!t)return;rows.forEach(r=>{if(r.description.toLowerCase().includes(t)||r.file.toLowerCase().includes(t)||r.brand.toLowerCase().includes(t)||r.category.toLowerCase().includes(t))sel.add(r.rowId)});renderTable(filtered())}
 function dragSort(){let dr=null;E.modulesContainer.querySelectorAll(".mod").forEach(m=>{m.addEventListener("dragstart",()=>dr=m);m.addEventListener("dragover",e=>e.preventDefault());m.addEventListener("drop",e=>{e.preventDefault();if(!dr||dr===m)return;let ch=[...E.modulesContainer.children],di=ch.indexOf(dr),ti=ch.indexOf(m);di<ti?E.modulesContainer.insertBefore(dr,m.nextSibling):E.modulesContainer.insertBefore(dr,m);saveOrder()})})}
 
 E.fileInput.addEventListener("change",async e=>await handleFile(e.target.files[0]));
-E.imagesInput.addEventListener("change",e=>{files.clear();[...e.target.files].forEach(f=>f.type.startsWith("image/")&&files.set(f.name,URL.createObjectURL(f)));renderAll()});
+E.imagesInput.addEventListener("change",e=>{files.clear();[...e.target.files].forEach(f=>f.type.startsWith("image/")&&files.set(f.name,URL.createObjectURL(f)));E.fileInfo.textContent=lastFile?`${lastFile.name} [${E.encodingSelect.value}]: строк ${rows.length}; изображений ${files.size}; чеков ${receipts.size}`:`Файл не загружен`;renderAll()});
+E.receiptsInput.addEventListener("change",e=>{
+  receipts.clear();
+  [...e.target.files].forEach(f=>{
+    let ok=f.type.startsWith("image/")||/\.pdf$/i.test(f.name);
+    if(ok)receipts.set(f.name,URL.createObjectURL(f));
+  });
+  E.fileInfo.textContent=lastFile?`${lastFile.name} [${E.encodingSelect.value}]: строк ${rows.length}; изображений ${files.size}; чеков ${receipts.size}`:`Файл не загружен`;
+  renderAll()
+});
 E.reloadBtn.addEventListener("click",async()=>lastFile?await handleFile(lastFile):alert("Последний файл ещё не загружался."));
-E.loadDemoBtn.addEventListener("click",()=>{rows=makeRows([{date:"2025.09.23",status:"Доставлен",price:1489,description:"Апрель_Кроссовки школьные",file:"IMG_1.jpg"},{date:"2025.09.23",status:"Доставлен",price:1520,description:"Nike_Кроссовки детские",file:"IMG_2.jpg"},{date:"2025.09.23",status:"Возвращён",price:1490,description:"Adidas_Кроссовки подростковые",file:"IMG_3.jpg"},{date:"2025.10.11",status:"Доставлен",price:1206,description:"SYNERGETIC_Подарочный набор",file:"IMG_4.jpg"},{date:"2025.11.06",status:"Возвращён",price:6386,description:"KVIN_Пальто осеннее",file:"IMG_5.jpg"}]);dup(rows);tryon(rows);rebuild();renderAll()});
-[E.year,E.month,E.status,E.category,E.brand,E.duplicatesMode,E.sort,E.search,E.priceMin,E.priceMax,E.childrenMode,E.sumDuplicatesMode,E.duplicateLogic,E.pageSize,E.statusMode,E.encodingSelect,E.tryonHighlightMode,E.chartTextMode,E.printTableMode,E.printGalleryMode,E.printTableFontSize,E.screenPreviewCols,E.screenPreviewHeight,E.previewOnlyWithFiles,E.printGalleryCols,E.printGalleryCardHeight,E.printGalleryFontSize,E.printDocName,E.printColDate,E.printColStatus,E.printColPrice,E.printColCategory,E.printColBrand,E.printColDescription,E.printColFile].forEach(el=>el.addEventListener("input",renderAll));
+E.loadDemoBtn.addEventListener("click",()=>{rows=makeRows([{date:"2025.09.23",status:"Доставлен",price:1489,description:"Апрель_Кроссовки школьные",file:"IMG_1.jpg",receipt:"Чек_1.pdf"},{date:"2025.09.23",status:"Доставлен",price:1520,description:"Nike_Кроссовки детские",file:"IMG_2.jpg",receipt:"Чек_1.pdf"},{date:"2025.09.23",status:"Возвращён",price:1490,description:"Adidas_Кроссовки подростковые",file:"IMG_3.jpg",receipt:"Чек_2.jpg"},{date:"2025.10.11",status:"Доставлен",price:1206,description:"SYNERGETIC_Подарочный набор",file:"IMG_4.jpg",receipt:""},{date:"2025.11.06",status:"Возвращён",price:6386,description:"KVIN_Пальто осеннее",file:"IMG_5.jpg",receipt:"Чек_3.png"}]);dup(rows);tryon(rows);rebuild();renderAll()});
+[E.year,E.month,E.status,E.category,E.brand,E.duplicatesMode,E.sort,E.search,E.priceMin,E.priceMax,E.childrenMode,E.sumDuplicatesMode,E.duplicateLogic,E.pageSize,E.statusMode,E.encodingSelect,E.tryonHighlightMode,E.chartTextMode,E.printTableMode,E.printGalleryMode,E.printTableFontSize,E.screenPreviewCols,E.screenPreviewHeight,E.previewOnlyWithFiles,E.screenReceiptPreviewCols,E.screenReceiptPreviewHeight,E.previewOnlyWithReceipts,E.printGalleryCols,E.printGalleryCardHeight,E.printGalleryFontSize,E.printReceiptCols,E.printReceiptCardHeight,E.printReceiptFontSize,E.printDocName,E.printColDate,E.printColStatus,E.printColPrice,E.printColCategory,E.printColBrand,E.printColDescription,E.printColFile].forEach(el=>el.addEventListener("input",renderAll));
 document.querySelectorAll(".mod-toggle").forEach(ch=>ch.addEventListener("change",()=>{applyModVis();renderAll()}));
-E.resetBtn.addEventListener("click",()=>{E.year.value="";E.month.value="";E.status.value="";E.category.value="";E.brand.value="";E.duplicatesMode.value="all";E.sort.value="date_desc";E.search.value="";E.priceMin.value="";E.priceMax.value="";E.childrenMode.value="all";E.sumDuplicatesMode.value="with";E.duplicateLogic.value="date_price";E.pageSize.value="250";E.statusMode.value="all";E.tryonHighlightMode.value="off";E.chartTextMode.value="off";E.printTableMode.value="on";E.printGalleryMode.value="on";E.printDocName.value="";E.printColDate.checked=true;E.printColStatus.checked=true;E.printColPrice.checked=true;E.printColCategory.checked=true;E.printColBrand.checked=true;E.printColDescription.checked=true;E.printColFile.checked=true;saveFilters();renderAll()});
+E.resetBtn.addEventListener("click",()=>{E.year.value="";E.month.value="";E.status.value="";E.category.value="";E.brand.value="";E.duplicatesMode.value="all";E.sort.value="date_desc";E.search.value="";E.priceMin.value="";E.priceMax.value="";E.childrenMode.value="all";E.sumDuplicatesMode.value="with";E.duplicateLogic.value="date_price";E.pageSize.value="250";E.statusMode.value="all";E.tryonHighlightMode.value="off";E.chartTextMode.value="off";E.printTableMode.value="on";E.printGalleryMode.value="on";E.screenReceiptPreviewCols.value="4";E.screenReceiptPreviewHeight.value="140";E.previewOnlyWithReceipts.value="yes";E.printReceiptCols.value="2";E.printReceiptCardHeight.value="180";E.printReceiptFontSize.value="12";E.printDocName.value="";E.printColDate.checked=true;E.printColStatus.checked=true;E.printColPrice.checked=true;E.printColCategory.checked=true;E.printColBrand.checked=true;E.printColDescription.checked=true;E.printColFile.checked=true;saveFilters();renderAll()});
 E.exportBtn.addEventListener("click",exportCSV);E.printBtn.addEventListener("click",()=>window.print());
 E.selectBySearchBtn.addEventListener("click",()=>selBySearch(E.categorySearchText.value));
 E.applyCategoryBtn.addEventListener("click",()=>{let c=E.newCategoryInput.value.trim()||E.bulkCategorySelect.value;if(!c)return alert("Укажи категорию.");setCat(c);E.newCategoryInput.value=""});
