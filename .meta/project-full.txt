@@ -379,7 +379,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-11 22:28:49 UTC
+Сгенерировано: 2026-04-11 22:29:45 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5806,8 +5806,13 @@ import { showcaseSemantic } from './ui/showcase-semantic.js';
 
 let booted = false;
 
-export async function initIntelBootstrap({ W = window, D = document, C = W.APP_CONFIG || {} } = {}) {
-  if (booted && W.Intel) return W.Intel;
+export function resetIntelBootstrap() {
+  booted = false;
+}
+
+export async function initIntelBootstrap({ W = window, D = document, C = W.APP_CONFIG || {}, force = false } = {}) {
+  if (booted && W.Intel && !force) return W.Intel;
+  if (force) booted = false;
 
   const flags = getIntelFlags(C);
   const api = {
@@ -5889,7 +5894,7 @@ export async function initIntelBootstrap({ W = window, D = document, C = W.APP_C
   return api;
 }
 
-export default { initIntelBootstrap };
+export default { initIntelBootstrap, resetIntelBootstrap };
 
 //=================================================
 // FILE: /scripts/intel/community/cohorts.js
