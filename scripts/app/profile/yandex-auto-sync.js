@@ -11,6 +11,13 @@ function formatDate(ts) {
   return new Date(ts).toLocaleString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
+function getLocalXp() {
+  try {
+    const rpg = window.achievementEngine?.profile;
+    return rpg ? { xp: Number(rpg.xp || 0), level: Number(rpg.level || 1) } : null;
+  } catch { return null; }
+}
+
 function buildDiffList(cloudMeta, localTs) {
   const lines = [];
   const cloudTs = Number(cloudMeta?.timestamp || 0);
@@ -24,10 +31,39 @@ function buildDiffList(cloudMeta, localTs) {
   if (cloudMeta?.favoritesCount) lines.push(`⭐ Избранных: ${cloudMeta.favoritesCount}`);
   if (cloudMeta?.playlistsCount) lines.push(`🎵 Плейлистов: ${cloudMeta.playlistsCount}`);
   if (cloudMeta?.devicesCount > 1) lines.push(`📱 Устройств в backup: ${cloudMeta.devicesCount}`);
+  // Сравниваем XP если доступно локально
+  const localRpg = getLocalXp();
+  if (localRpg && cloudMeta?.achievementsCount && localRpg.xp > 0) {
+    const localAch = Object.keys(window.achievementEngine?.unlocked || {}).length;
+    if (cloudMeta.achievementsCount > localAch) lines.push(`✨ В облаке достижений больше`);
+  }
   return lines;
 }
 
 export async function initYandexAutoSync() {
+  // Проверка при возврате на вкладку (обнаружение backup с другого устройства)
+  let _lastCloudTs = Number(localStorage.getItem('yandex:last_backup_local_ts') || 0);
+  document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState !== 'visible') return;
+    const ya = window.YandexAuth;
+    if (!ya || ya.getSessionStatus() !== 'active' || !ya.isTokenAlive()) return;
+    if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) return;
+    // Тихая фоновая проверка без уведомления если уже показывали
+    if (sessionStorage.getItem('ya:auto-check:done')) return;
+    const token = ya.getToken();
+    if (!token) return;
+    try {
+      const { YandexDisk } = await import('../../core/yandex-disk.js');
+      const meta = await YandexDisk.getMeta(token).catch(() => null);
+      const cloudTs = Number(meta?.timestamp || 0);
+      if (cloudTs > _lastCloudTs + 60000) {
+        // Облако обновилось с другого устройства — показываем ненавязчивое уведомление
+        window.NotificationSystem?.info('☁️ Обнаружен более новый backup с другого устройства. Откройте «📥 Из облака».');
+        _lastCloudTs = cloudTs;
+      }
+    } catch {}
+  });
+
   window._handleYaAutoSync = async () => {
     const ya = window.YandexAuth;
     if (!ya || ya.getSessionStatus() !== 'active') return;
