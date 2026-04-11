@@ -10,6 +10,7 @@ const LS_TOKEN_EXP = 'yandex:token_exp';
 const LS_TOKEN_SCOPE = 'yandex:token_scope';
 const LS_PROFILE = 'yandex:profile';       // { yandexId, displayName, realName, login, avatar }
 const LS_AUTO_RELOGIN = 'yandex:auto_relogin';
+const LS_FORCE_CONFIRM_NEXT = 'yandex:force_confirm_next';
 const REQUIRED_SCOPES = ['login:info', 'login:email', 'cloud_api:disk.app_folder'];
 
 const read = k => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } };
@@ -43,7 +44,8 @@ export const YandexAuth = {
       window.NotificationSystem?.warning('ClientID не настроен.');
       return;
     }
-    const forceConfirm = options?.forceConfirm ? '1' : '0';
+    const mustForceConfirm = !!options?.forceConfirm || localStorage.getItem(LS_FORCE_CONFIRM_NEXT) === '1';
+    const forceConfirm = mustForceConfirm ? '1' : '0';
     const scope = encodeURIComponent(REQUIRED_SCOPES.join(' '));
     const url = `https://oauth.yandex.ru/authorize?response_type=token&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&force_confirm=${forceConfirm}&scope=${scope}`;
 
@@ -78,6 +80,7 @@ export const YandexAuth = {
       localStorage.setItem(LS_TOKEN_EXP, String(exp));
       if (scope) localStorage.setItem(LS_TOKEN_SCOPE, String(scope).trim());
       else localStorage.removeItem(LS_TOKEN_SCOPE);
+      localStorage.removeItem(LS_FORCE_CONFIRM_NEXT);
 
       await new Promise(r => setTimeout(r, 200));
       const profile = await this.fetchYandexProfile(token);
@@ -105,6 +108,11 @@ export const YandexAuth = {
 
   logout() {
     del(LS_TOKEN); del(LS_TOKEN_EXP); del(LS_TOKEN_SCOPE); del(LS_PROFILE);
+    localStorage.setItem(LS_FORCE_CONFIRM_NEXT, '1');
+    try {
+      localStorage.removeItem('yandex:last_backup_check');
+      sessionStorage.removeItem('ya:auto-check:done');
+    } catch {}
     window.dispatchEvent(new CustomEvent('yandex:auth:changed', { detail: { status: 'logged_out' } }));
     window.NotificationSystem?.info('Вы вышли из аккаунта Яндекс');
   },
