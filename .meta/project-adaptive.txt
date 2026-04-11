@@ -376,7 +376,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-11 11:21:52 UTC
+Сгенерировано: 2026-04-11 11:22:11 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -849,7 +849,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.2.23';
+const SW_VERSION = '8.2.24';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
