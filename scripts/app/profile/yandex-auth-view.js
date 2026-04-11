@@ -129,6 +129,7 @@ export function renderYandexAuthBlock({ root, localProfile }) {
           <button class="modal-action-btn" data-ya-action="save-backup">☁️ В облако</button>
           <button class="modal-action-btn" data-ya-action="check-backup">🔎 Проверить</button>
           <button class="modal-action-btn" data-ya-action="restore-backup" id="ya-restore-btn">📥 Из облака</button>
+          <button class="modal-action-btn" data-ya-action="reconnect-rights">🔐 Права</button>
           <button class="modal-action-btn" data-ya-action="backup-export-manual">💾 В файл</button>
           <button class="modal-action-btn" data-ya-action="backup-import-manual">📂 Из файла</button>
         </div>
