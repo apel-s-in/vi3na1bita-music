@@ -376,7 +376,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-11 11:51:28 UTC
+Сгенерировано: 2026-04-11 11:52:20 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2830,15 +2830,15 @@ export const renderProfileLogs = async ({ container: c, metaDB: db }) => {
 // FILE: /scripts/app/profile/model.js
 // UID.044_(ListenerProfile core)_(profile model должен стать местом мягкой сборки user portrait)_(future сюда можно подмешивать listener profile summary без ломки legacy stats model) UID.070_(Linked providers)_(model должен уметь принимать provider identity snapshot)_(но truth linked accounts хранится не здесь, а в intel/providers/provider-identity.js) UID.072_(Provider consents)_(model сможет отдавать consent snapshot для profile UI)_(но хранение consent state вынесено в intel/providers/provider-consents.js) UID.073_(Hybrid sync orchestrator)_(model должен принять sync state как optional extension)_(но orchestration logic не должна появляться в этом файле) UID.094_(No-paralysis rule)_(legacy profile model остаётся валидным fallback)_(если intel слой недоступен, этот model продолжает работать сам)
 export const loadProfileModel = async () => {
-  let db = null, cs = null, all = [], ach = {}, streak = 0, profile = { name: 'Слушатель', avatar: '😎' };
+  let db = null, all = [], ach = {}, streak = 0, profile = { name: 'Слушатель', avatar: '😎' };
   try {
-    const [dbM, csM] = await Promise.all([import('../../analytics/meta-db.js'), import('../../analytics/cloud-sync.js')]);
-    db = dbM.metaDB; cs = csM.cloudSync;
+    const dbM = await import('../../analytics/meta-db.js');
+    db = dbM.metaDB;
     const [s, aD, sD, pD] = await Promise.all([db.getAllStats().catch(()=>[]), db.getGlobal('unlocked_achievements').catch(()=>null), db.getGlobal('global_streak').catch(()=>null), db.getGlobal('user_profile').catch(()=>null)]);
     all = s || []; ach = aD?.value || {}; streak = sD?.value?.current || 0; profile = pD?.value || profile;
   } catch (e) { console.error('[Profile] init err:', e); }
   const { f: totalFull, s: totalSec } = all.reduce((a, b) => ({ f: a.f + (b.globalFullListenCount||0), s: a.s + (b.globalListenSeconds||0) }), { f: 0, s: 0 });
-  return { metaDB: db, cloudSync: cs, all, ach, streak, profile, totalFull, totalSec, tokens: JSON.parse(localStorage.getItem('cloud_tokens') || '{}') };
+  return { metaDB: db, cloudSync: null, all, ach, streak, profile, totalFull, totalSec, tokens: {} };
 };
 export default { loadProfileModel };
 
