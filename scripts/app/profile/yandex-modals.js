@@ -98,22 +98,27 @@ export function openRestorePreviewModal(data, onConfirm) {
 
 export function openRestoreVersionPickerModal(items, onPick) {
   const list = (Array.isArray(items) ? items : []).slice(0, 4);
-  const m = window.Modals?.open?.({
-    title: 'Выберите облачную версию',
-    maxWidth: 500,
-    bodyHtml: `
-      <div class="modal-confirm-text">
-        Доступные версии backup в облаке:
-      </div>
-      <div class="modal-choice-actions">
-        ${list.map((it, i) => `
-          <button type="button" class="modal-action-btn ${i === 0 ? 'online' : ''}" data-restore-path="${window.Utils?.escapeHtml?.(it.path || '') || ''}">
-            ${(it.isLatest ? '☁️ Latest' : '🕘 Архив')} · ${it.timestamp ? new Date(it.timestamp).toLocaleString('ru-RU') : 'без даты'} · ${window.Utils?.escapeHtml?.(it.sizeHuman || 'unknown') || 'unknown'}${it.appVersion ? ` · v${window.Utils?.escapeHtml?.(String(it.appVersion)) || 'unknown'}` : ''}
-          </button>
-        `).join('')}
-      </div>`
-  });
-  m?.addEventListener('click', e => {
+  const esc = s => window.Utils?.escapeHtml?.(String(s || '')) || String(s || '');
+
+  const bodyHtml = list.length
+    ? `<div class="modal-confirm-text">Доступные версии backup в облаке:</div>
+       <div class="modal-choice-actions">
+         ${list.map((it, i) => `
+           <button type="button" class="modal-action-btn ${i === 0 ? 'online' : ''}" data-restore-path="${esc(it.path || '')}">
+             ${it.isLatest ? '☁️ Latest' : '🕘 Архив'} · ${it.timestamp ? new Date(it.timestamp).toLocaleString('ru-RU') : 'без даты'} · ${esc(it.sizeHuman || 'unknown')}${it.appVersion ? ` · v${esc(String(it.appVersion))}` : ''}${it.checksum ? ` · ✓` : ''}
+           </button>
+         `).join('')}
+       </div>`
+    : `<div class="modal-confirm-text" style="text-align:center;color:#9db7dd">
+         <div style="font-size:32px;margin-bottom:12px">☁️</div>
+         <div>Список версий backup не получен.</div>
+         <div style="margin-top:8px;font-size:12px;opacity:.7">Проверьте подключение и попробуйте сохранить backup заново.</div>
+       </div>`;
+
+  const m = window.Modals?.open?.({ title: 'Выберите облачную версию', maxWidth: 500, bodyHtml });
+  if (!m) return;
+
+  m.addEventListener('click', e => {
     const btn = e.target.closest('[data-restore-path]');
     if (!btn) return;
     const path = String(btn.dataset.restorePath || '').trim();
