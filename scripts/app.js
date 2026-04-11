@@ -8,7 +8,7 @@
     const C = W.APP_CONFIG || {};
     try { (await import('./offline/net-policy.js')).initNetPolicy?.(); (await import('./app/offline-ui-bootstrap.js'))?.initOfflineUI?.(); const om = await import('./offline/offline-manager.js'); await om.default.initialize(); (await import('./offline/track-resolver.js')).initTrackResolver(om.default); (await import('./app/playback-cache-bootstrap.js'))?.initPlaybackCache?.(); (await import('./offline/update-checker.js'))?.initUpdateChecker?.(); } catch (e) { console.error('Offline init failed:', e); }
     try {
-      const [M, L, ST, SA, AE, CS, LS, PF] = await Promise.all(['meta-db', 'event-logger', 'session-tracker', 'stats-aggregator', 'achievement-engine', 'cloud-sync', 'live-stats', '../ui/progress-formatters'].map(p => import(`./analytics/${p}.js`)));
+      const [M, L, ST, SA, AE, LS, PF] = await Promise.all(['meta-db', 'event-logger', 'session-tracker', 'stats-aggregator', 'achievement-engine', 'live-stats', '../ui/progress-formatters'].map(p => import(`./analytics/${p}.js`)));
       await M.metaDB.init(); await L.eventLogger.init(); new ST.SessionTracker(); new SA.StatsAggregator(); await LS.liveStatsTracker.initialize(); W.achievementEngine = new AE.AchievementEngine();
       W.addEventListener('achievements:updated', e => {
         const { total, unlocked, profile } = e.detail, $el = id => $(id);
