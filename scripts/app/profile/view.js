@@ -13,7 +13,13 @@ export const loadProfileView = async (ctx) => {
   const c = document.getElementById('track-list'); if (!c) return;
 
   const { metaDB, all, ach, streak, profile, totalFull, totalSec, tokens } = await loadProfileModel();
-  renderProfileShell({ container: c, profile, tokens, totalFull, totalSec, streak, achCount: Object.keys(ach).length });
+  try {
+    renderProfileShell({ container: c, profile, tokens, totalFull, totalSec, streak, achCount: Object.keys(ach).length });
+  } catch (e) {
+    console.error('[Profile] render shell failed:', e);
+    c.innerHTML = `<div class="fav-empty">Ошибка загрузки личного кабинета</div>`;
+    return;
+  }
 
   const syncCarouselAccountCard = () => {
     const card = c.querySelector('.sc-3d-card[data-id="account"]'), tit = card?.querySelector('.sc-3d-tit'), ic = card?.querySelector('.sc-3d-ic');
