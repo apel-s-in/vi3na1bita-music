@@ -5,9 +5,6 @@ import { YandexDisk } from '../../core/yandex-disk.js';
 import { BackupVault } from '../../analytics/backup-vault.js';
 
 function getLocalTs() { return Number(localStorage.getItem('yandex:last_backup_local_ts') || 0); }
-function getLocalAchCount() {
-  try { const raw = localStorage.getItem('yandex:last_ach_count'); return raw ? Number(raw) : -1; } catch { return -1; }
-}
 
 function formatDate(ts) {
   if (!ts) return 'неизвестно';
