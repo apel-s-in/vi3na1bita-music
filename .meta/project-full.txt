@@ -380,7 +380,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-11 21:44:09 UTC
+Сгенерировано: 2026-04-11 21:45:14 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2247,6 +2247,12 @@ export class StatsAggregator {
       const mod = await import('./core/yandex-auth.js');
       mod?.YandexAuth?.checkAutoRelogin?.();
     } catch (e) { console.warn('YandexAuth init skipped:', e); }
+
+    // Авто-синхронизация с Яндекс Диском при входе
+    try {
+      const { initYandexAutoSync } = await import('./app/profile/yandex-auto-sync.js');
+      await initYandexAutoSync();
+    } catch (e) { console.warn('YandexAutoSync init skipped:', e); }
 
     // Backup autosave debounce
     try {
