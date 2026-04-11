@@ -5,52 +5,66 @@
 
 const API = 'https://cloud-api.yandex.net/v1/disk';
 const BACKUP_PATH = 'app:/vi3na1bita_backup.vi3bak';
-const BACKUP_PATH_VERSIONED = (n) => `app:/vi3na1bita_backup_${n}.vi3bak`;
+const META_PATH = 'app:/vi3na1bita_backup_meta.json';
+const BACKUP_PATH_VERSIONED = stamp => `app:/history/vi3na1bita_backup_${stamp}.vi3bak`;
 
-const authHeader = (token) => ({ 'Authorization': `OAuth ${token}` });
+const authHeader = token => ({ 'Authorization': `OAuth ${token}` });
+
+async function getUploadHref(token, path) {
+  const r = await fetch(`${API}/resources/upload?path=${encodeURIComponent(path)}&overwrite=true`, { headers: authHeader(token) });
+  if (!r.ok) throw new Error(`upload_link_failed:${r.status}`);
+  return (await r.json()).href;
+}
+
+async function putJsonByPath(token, path, data) {
+  const href = await getUploadHref(token, path);
+  const res = await fetch(href, { method: 'PUT', body: new Blob([JSON.stringify(data)], { type: 'application/json' }) });
+  if (!res.ok) throw new Error(`upload_failed:${res.status}`);
+  return true;
+}
+
+async function getDownloadJsonByPath(token, path) {
+  const r = await fetch(`${API}/resources/download?path=${encodeURIComponent(path)}`, { headers: authHeader(token) });
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error(`download_link_failed:${r.status}`);
+  const { href } = await r.json();
+  const dataRes = await fetch(href);
+  if (!dataRes.ok) throw new Error(`download_failed:${dataRes.status}`);
+  return await dataRes.json();
+}
 
 export const YandexDisk = {
-
   async upload(token, dataObject) {
     if (!token) throw new Error('no_token');
-    const blob = new Blob([JSON.stringify(dataObject)], { type: 'application/json' });
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const meta = {
+      latestPath: BACKUP_PATH,
+      historyPath: BACKUP_PATH_VERSIONED(stamp),
+      timestamp: Date.now(),
+      version: dataObject?.version || 'unknown',
+      appVersion: dataObject?.appVersion || null
+    };
 
-    // Получаем URL для загрузки
-    const linkRes = await fetch(
-      `${API}/resources/upload?path=${encodeURIComponent(BACKUP_PATH)}&overwrite=true`,
-      { headers: authHeader(token) }
-    );
-    if (!linkRes.ok) throw new Error(`upload_link_failed:${linkRes.status}`);
-    const { href } = await linkRes.json();
-
-    // Загружаем файл
-    const uploadRes = await fetch(href, { method: 'PUT', body: blob });
-    if (!uploadRes.ok) throw new Error(`upload_failed:${uploadRes.status}`);
-    return true;
+    await putJsonByPath(token, BACKUP_PATH, dataObject);
+    await putJsonByPath(token, meta.historyPath, dataObject);
+    await putJsonByPath(token, META_PATH, meta);
+    return meta;
   },
 
   async download(token) {
     if (!token) throw new Error('no_token');
-    const linkRes = await fetch(
-      `${API}/resources/download?path=${encodeURIComponent(BACKUP_PATH)}`,
-      { headers: authHeader(token) }
-    );
-    if (linkRes.status === 404) return null; // Бэкапа ещё нет
-    if (!linkRes.ok) throw new Error(`download_link_failed:${linkRes.status}`);
-    const { href } = await linkRes.json();
+    return await getDownloadJsonByPath(token, BACKUP_PATH);
+  },
 
-    const dataRes = await fetch(href);
-    if (!dataRes.ok) throw new Error(`download_failed:${dataRes.status}`);
-    return await dataRes.json();
+  async getMeta(token) {
+    if (!token) throw new Error('no_token');
+    return await getDownloadJsonByPath(token, META_PATH);
   },
 
   async checkExists(token) {
     if (!token) return false;
     try {
-      const r = await fetch(
-        `${API}/resources?path=${encodeURIComponent(BACKUP_PATH)}`,
-        { headers: authHeader(token) }
-      );
+      const r = await fetch(`${API}/resources?path=${encodeURIComponent(BACKUP_PATH)}`, { headers: authHeader(token) });
       return r.ok;
     } catch { return false; }
   }
