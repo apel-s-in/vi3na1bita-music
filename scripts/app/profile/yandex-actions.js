@@ -142,7 +142,20 @@ export function initYandexActions() {
       if (!token || !ya.isTokenAlive()) return window.NotificationSystem?.warning('Сессия истекла. Войдите снова.');
       window.NotificationSystem?.info('Загружаем резервную копию...');
       try {
-        const data = await disk.download(token);
+        const data = await disk.download(token).catch(async e => {
+          // Если 403/401 от прокси — токен без прав на Диск
+          if (String(e?.message || '').includes('disk_forbidden') || String(e?.message || '').includes('disk_auth_error') || String(e?.message || '').includes('token_invalid')) {
+            window.Modals?.confirm?.({
+              title: '⚠️ Нужно обновить права доступа',
+              textHtml: 'Текущий токен не имеет доступа к Яндекс Диску.<br><br>Необходимо <b>выйти и войти снова</b> — при повторном входе права будут запрошены автоматически.',
+              confirmText: 'Выйти и войти снова',
+              cancelText: 'Отмена',
+              onConfirm: () => { ya.logout(); setTimeout(() => ya.login(), 300); }
+            });
+            throw new Error('__handled__');
+          }
+          throw e;
+        });
         if (!data) return window.NotificationSystem?.warning('Резервная копия не найдена на Диске.');
         openRestorePreviewModal(data, async mode => {
           try {
