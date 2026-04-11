@@ -379,7 +379,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-11 15:52:45 UTC
+Сгенерировано: 2026-04-11 15:53:07 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -808,7 +808,7 @@ jobs:
   </template>
 
   <script>
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.2.28');
+    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.2.29');
     const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-03-27');
 
     // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
