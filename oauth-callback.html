@@ -19,10 +19,11 @@
         const token = hash.get('access_token');
         const expiresIn = hash.get('expires_in');
         const error = hash.get('error');
+        const scope = hash.get('scope') || '';
 
         if (window.opener && !window.opener.closed) {
           window.opener.postMessage(
-            { type: 'YANDEX_OAUTH_CALLBACK', token: token || null, expiresIn: expiresIn || '0', error: error || null },
+            { type: 'YANDEX_OAUTH_CALLBACK', token: token || null, expiresIn: expiresIn || '0', error: error || null, scope },
             window.location.origin
           );
         }
