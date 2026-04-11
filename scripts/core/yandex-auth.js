@@ -7,8 +7,10 @@ const CLIENT_ID = '70c0b7256956440eb5b55866d740ffae';
 const REDIRECT_URI = 'https://vi3na1bita.website.yandexcloud.net/oauth-callback.html';
 const LS_TOKEN = 'yandex:token';
 const LS_TOKEN_EXP = 'yandex:token_exp';
+const LS_TOKEN_SCOPE = 'yandex:token_scope';
 const LS_PROFILE = 'yandex:profile';       // { yandexId, displayName, realName, login, avatar }
 const LS_AUTO_RELOGIN = 'yandex:auto_relogin';
+const REQUIRED_SCOPES = ['login:info', 'login:email', 'cloud_api:disk.app_folder'];
 
 const read = k => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } };
 const write = (k, v) => localStorage.setItem(k, JSON.stringify(v));
@@ -25,16 +27,25 @@ export const YandexAuth = {
     return 'active';
   },
   getProfile() { return read(LS_PROFILE) || null; },
+  getGrantedScopes() { return String(localStorage.getItem(LS_TOKEN_SCOPE) || '').trim().split(/\s+/).filter(Boolean); },
+  hasScope(scope) { return this.getGrantedScopes().includes(String(scope || '').trim()); },
+  hasDiskAccess() {
+    return this.hasScope('cloud_api:disk.app_folder')
+      || this.hasScope('cloud_api:disk.read')
+      || this.hasScope('cloud_api:disk.write');
+  },
   isAutoRelogin() { return localStorage.getItem(LS_AUTO_RELOGIN) === '1'; },
   setAutoRelogin(v) { localStorage.setItem(LS_AUTO_RELOGIN, v ? '1' : '0'); },
 
   // --- Авторизация ---
-  login() {
+  login(options = {}) {
     if (CLIENT_ID === 'YOUR_YANDEX_CLIENT_ID') {
       window.NotificationSystem?.warning('ClientID не настроен.');
       return;
     }
-    const url = `https://oauth.yandex.ru/authorize?response_type=token&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&force_confirm=0`;
+    const forceConfirm = options?.forceConfirm ? '1' : '0';
+    const scope = encodeURIComponent(REQUIRED_SCOPES.join(' '));
+    const url = `https://oauth.yandex.ru/authorize?response_type=token&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&force_confirm=${forceConfirm}&scope=${scope}`;
 
     const w = 520, h = 620;
     const left = Math.round(window.screenX + (window.outerWidth - w) / 2);
@@ -55,7 +66,7 @@ export const YandexAuth = {
       clearTimeout(timeoutId);
       try { if (!popup.closed) popup.close(); } catch {}
 
-      const { token, expiresIn, error } = e.data;
+      const { token, expiresIn, error, scope } = e.data;
 
       if (error || !token) {
         window.NotificationSystem?.error('Ошибка авторизации Яндекс: ' + (error || 'нет токена'));
@@ -65,6 +76,8 @@ export const YandexAuth = {
       const exp = Number(expiresIn) > 0 ? Date.now() + Number(expiresIn) * 1000 : 0;
       localStorage.setItem(LS_TOKEN, token);
       localStorage.setItem(LS_TOKEN_EXP, String(exp));
+      if (scope) localStorage.setItem(LS_TOKEN_SCOPE, String(scope).trim());
+      else localStorage.removeItem(LS_TOKEN_SCOPE);
 
       await new Promise(r => setTimeout(r, 200));
       const profile = await this.fetchYandexProfile(token);
@@ -91,7 +104,7 @@ export const YandexAuth = {
   },
 
   logout() {
-    del(LS_TOKEN); del(LS_TOKEN_EXP); del(LS_PROFILE);
+    del(LS_TOKEN); del(LS_TOKEN_EXP); del(LS_TOKEN_SCOPE); del(LS_PROFILE);
     window.dispatchEvent(new CustomEvent('yandex:auth:changed', { detail: { status: 'logged_out' } }));
     window.NotificationSystem?.info('Вы вышли из аккаунта Яндекс');
   },
