@@ -19,7 +19,7 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
 
   if (window.YandexAuth?.getSessionStatus?.() === 'active' && !sessionStorage.getItem('ya:auto-check:done')) {
     sessionStorage.setItem('ya:auto-check:done', '1');
-    setTimeout(() => window._handleYaAction?.('check-backup', $('#prof-auth-grid'), renderAuthBlock), 250);
+    setTimeout(() => window._handleYaAutoSync?.(), 400);
   }
 
   const instTs = Number(localStorage.getItem('app:first-install-ts') || (localStorage.setItem('app:first-install-ts', String(Date.now())), Date.now()));
