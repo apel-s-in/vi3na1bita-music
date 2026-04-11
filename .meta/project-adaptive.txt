@@ -376,7 +376,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-11 11:17:05 UTC
+Сгенерировано: 2026-04-11 11:17:56 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3187,7 +3187,8 @@ export function initYandexActions() {
       window.NotificationSystem?.info('Сохраняем на Яндекс Диск...');
       try {
         const backup = await BackupVault.buildBackupObject();
-        await disk.upload(token, backup);
+        const meta = await disk.upload(token, backup);
+        try { localStorage.setItem('yandex:last_backup_meta', JSON.stringify(meta)); } catch {}
         window.NotificationSystem?.success('Прогресс сохранён на Яндекс Диск ✅');
         if (window.eventLogger) {
           window.eventLogger.log('FEATURE_USED', 'global', { feature: 'backup' });
