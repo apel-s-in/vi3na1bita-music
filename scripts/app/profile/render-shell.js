@@ -16,10 +16,10 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
 
   renderAuthBlock();
 
-  // Убираем предыдущий listener чтобы не накапливались при повторных открытиях профиля
-  window.__yaAuthRenderHandler && window.removeEventListener('yandex:auth:changed', window.__yaAuthRenderHandler);
-  window.__yaAuthRenderHandler = renderAuthBlock;
-  window.addEventListener('yandex:auth:changed', renderAuthBlock);
+  // AbortController — чистый unmount listener при повторном рендере профиля
+  window.__yaAuthAC?.abort();
+  window.__yaAuthAC = new AbortController();
+  window.addEventListener('yandex:auth:changed', renderAuthBlock, { signal: window.__yaAuthAC.signal });
 
   if (window.YandexAuth?.getSessionStatus?.() === 'active' && !sessionStorage.getItem('ya:auto-check:done')) {
     sessionStorage.setItem('ya:auto-check:done', '1');
