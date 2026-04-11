@@ -91,6 +91,8 @@ export function renderYandexAuthBlock({ root, localProfile }) {
   const status = ya.getSessionStatus();
   const profile = ya.getProfile();
   const autoLogin = ya.isAutoRelogin();
+  const hasDiskAccess = !!ya.hasDiskAccess?.();
+  const grantedScopes = ya.getGrantedScopes?.() || [];
   const backupMeta = (() => { try { return JSON.parse(localStorage.getItem('yandex:last_backup_meta') || 'null'); } catch { return null; } })();
   const localInfo = getLocalBackupSnapshot(localProfile);
   const cloudInfo = backupMeta || (() => { try { return JSON.parse(localStorage.getItem('yandex:last_backup_check') || 'null'); } catch { return null; } })();
@@ -114,6 +116,7 @@ export function renderYandexAuthBlock({ root, localProfile }) {
           </div>
         </div>
         <div class="yandex-auth-caption">Безопасно: пароль Яндекса не передаётся приложению. Используется только официальный OAuth-вход и токен доступа к папке приложения на Яндекс Диске.</div>
+        <div class="yandex-auth-note">Права токена: ${hasDiskAccess ? '✅ доступ к папке приложения на Диске' : '⚠️ доступ к Диску не подтверждён'}${grantedScopes.length ? `<br>Scopes: ${esc(grantedScopes.join(' '))}` : ''}</div>
         <div class="yandex-auth-meta">
           <div class="yandex-auth-metabox"><div class="yandex-auth-metabox-label">Облако</div><div class="yandex-auth-metabox-value">${backupMeta?.timestamp ? new Date(backupMeta.timestamp).toLocaleString('ru-RU') : 'копии ещё нет'}</div></div>
           <div class="yandex-auth-metabox"><div class="yandex-auth-metabox-label">Сравнение</div><div class="yandex-auth-metabox-value">${cmp.label}</div></div>
