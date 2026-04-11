@@ -10,6 +10,10 @@ let _lastSaveAt = 0;
 let _dirty = false;
 let _bound = false;
 
+function emitSyncState(state) {
+  window.dispatchEvent(new CustomEvent('backup:sync:state', { detail: { state } }));
+}
+
 function scheduleAutosave() {
   if (!_dirty) return;
   const ya = window.YandexAuth;
@@ -21,10 +25,11 @@ function scheduleAutosave() {
   clearTimeout(_timer);
   _timer = setTimeout(async () => {
     _dirty = false;
+    emitSyncState('syncing');
     try {
       const { BackupVault } = await import('./backup-vault.js');
       const token = ya.getToken();
-      if (!token || !ya.isTokenAlive()) return;
+      if (!token || !ya.isTokenAlive()) { emitSyncState('idle'); return; }
       const backup = await BackupVault.buildBackupObject();
       const meta = await disk.upload(token, backup);
       _lastSaveAt = Date.now();
@@ -32,9 +37,11 @@ function scheduleAutosave() {
         localStorage.setItem('yandex:last_backup_meta', JSON.stringify(meta));
         localStorage.setItem('yandex:last_backup_local_ts', String(Number(backup?.revision?.timestamp || backup?.createdAt || Date.now())));
       } catch {}
+      emitSyncState('ok');
+      setTimeout(() => emitSyncState('idle'), 3000);
       console.debug('[BackupSyncEngine] autosave ok', new Date().toLocaleTimeString());
     } catch (e) {
-      // Тихий fail — не ломаем playback
+      emitSyncState('idle');
       console.debug('[BackupSyncEngine] autosave skip:', e?.message);
     }
   }, DEBOUNCE_MS);
