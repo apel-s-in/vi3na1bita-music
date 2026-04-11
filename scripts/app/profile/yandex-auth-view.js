@@ -151,6 +151,7 @@ export function renderYandexAuthBlock({ root, localProfile }) {
         <div class="yandex-auth-note">Один backup-файл объединяет прогресс, события, избранное, плейлисты, настройки, локальный профиль и данные устройств. Этот же файл можно сохранить вручную на устройство и перенести на другое своё устройство.</div>
         <div class="yandex-auth-bottomactions">
           <button class="om-btn om-btn--ghost" data-ya-action="backup-info">Что сохраняется?</button>
+          <button class="om-btn om-btn--ghost" data-ya-action="delete-old-backups">Удалить старые backup</button>
           <button class="om-btn om-btn--outline" data-ya-action="logout">Выйти из Яндекса</button>
         </div>
       ` : `
