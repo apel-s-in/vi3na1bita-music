@@ -28,26 +28,36 @@ function openBackupInfoModal() {
 }
 
 function openRestorePreviewModal(data, onConfirm) {
-  const ls = data?.data?.localStorage || {};
-  const favs = (() => { try { return JSON.parse(ls['__favorites_v2__'] || '[]'); } catch { return []; } })();
-  const pls = (() => { try { return JSON.parse(ls['sc3:playlists'] || '[]'); } catch { return []; } })();
-  const statsCount = Array.isArray(data?.data?.stats) ? data.data.stats.filter(x => x?.uid && x.uid !== 'global').length : 0;
-  const achCount = Object.keys(data?.data?.achievements || {}).length;
-  const profileName = data?.data?.userProfile?.name || 'Слушатель';
-  window.Modals?.confirm?.({
+  const sum = BackupVault.summarizeBackupObject(data);
+  const localTs = Number(localStorage.getItem('yandex:last_backup_local_ts') || 0);
+  const cmp = sum.timestamp > localTs ? 'Облачная копия новее локального состояния.' : (localTs > sum.timestamp ? 'Локальные данные новее облачной копии.' : 'Дата облачной и локальной копии совпадает.');
+  const m = window.Modals?.open?.({
     title: 'Предпросмотр восстановления',
-    textHtml: `
-      Будет загружена копия профиля:<br><br>
-      <b>Имя профиля:</b> ${window.Utils?.escapeHtml?.(profileName) || profileName}<br>
-      <b>Треков в статистике:</b> ${statsCount}<br>
-      <b>Достижений:</b> ${achCount}<br>
-      <b>Избранных записей:</b> ${favs.length}<br>
-      <b>Плейлистов витрины:</b> ${pls.length}<br><br>
-      <span style="color:#9db7dd">Восстановление выполняется поверх локальных данных. Сначала рекомендуется проверить состав копии и при необходимости сделать свежий backup текущего устройства.</span>
-    `,
-    confirmText: 'Восстановить',
-    cancelText: 'Отмена',
-    onConfirm
+    maxWidth: 480,
+    bodyHtml: `
+      <div class="modal-confirm-text">
+        <b>Имя профиля:</b> ${window.Utils?.escapeHtml?.(sum.profileName) || sum.profileName}<br>
+        <b>Дата backup:</b> ${sum.timestamp ? new Date(sum.timestamp).toLocaleString('ru-RU') : 'неизвестно'}<br>
+        <b>Версия приложения:</b> ${window.Utils?.escapeHtml?.(sum.appVersion) || sum.appVersion}<br>
+        <b>Треков в статистике:</b> ${sum.statsCount}<br>
+        <b>Достижений:</b> ${sum.achievementsCount}<br>
+        <b>Избранных записей:</b> ${sum.favoritesCount}<br>
+        <b>Плейлистов витрины:</b> ${sum.playlistsCount}<br><br>
+        <span style="color:#9db7dd">${cmp}</span><br><br>
+        <b>Выберите режим:</b>
+      </div>
+      <div class="modal-choice-actions">
+        <button type="button" class="modal-action-btn online" data-restore-mode="all">Восстановить всё</button>
+        <button type="button" class="modal-action-btn" data-restore-mode="profile">Только профиль и избранное</button>
+        <button type="button" class="modal-action-btn" data-restore-mode="stats">Только статистику и достижения</button>
+      </div>`
+  });
+  m?.addEventListener('click', e => {
+    const btn = e.target.closest('[data-restore-mode]');
+    if (!btn) return;
+    const mode = btn.dataset.restoreMode || 'all';
+    m.remove();
+    onConfirm?.(mode);
   });
 }
 
@@ -103,9 +113,13 @@ export function initYandexActions() {
       try {
         const [exists, meta] = await Promise.all([disk.checkExists(token), disk.getMeta(token).catch(() => null)]);
         if (!exists) {
+          try { localStorage.removeItem('yandex:last_backup_check'); } catch {}
           window.NotificationSystem?.warning('Облачная резервная копия не найдена.');
+          rerender?.();
           return;
         }
+        try { if (meta) localStorage.setItem('yandex:last_backup_check', JSON.stringify(meta)); } catch {}
+        rerender?.();
         window.Modals?.open?.({
           title: 'Облачная копия найдена',
           maxWidth: 460,
@@ -138,7 +152,10 @@ export function initYandexActions() {
       try {
         const backup = await BackupVault.buildBackupObject();
         const meta = await disk.upload(token, backup);
-        try { localStorage.setItem('yandex:last_backup_meta', JSON.stringify(meta)); } catch {}
+        try {
+          localStorage.setItem('yandex:last_backup_meta', JSON.stringify(meta));
+          localStorage.setItem('yandex:last_backup_local_ts', String(backup.timestamp || Date.now()));
+        } catch {}
         window.NotificationSystem?.success('Прогресс сохранён на Яндекс Диск ✅');
         if (window.eventLogger) {
           window.eventLogger.log('FEATURE_USED', 'global', { feature: 'backup' });
@@ -168,9 +185,9 @@ export function initYandexActions() {
           window.NotificationSystem?.warning('Резервная копия не найдена на Диске.');
           return;
         }
-        openRestorePreviewModal(data, async () => {
+        openRestorePreviewModal(data, async (mode) => {
           try {
-            await BackupVault.importData(new Blob([JSON.stringify(data)]));
+            await BackupVault.importData(new Blob([JSON.stringify(data)]), mode || 'all');
             window.NotificationSystem?.success('Прогресс восстановлен ✅ Обновляем...');
             setTimeout(() => window.location.reload(), 1500);
           } catch (e) {
