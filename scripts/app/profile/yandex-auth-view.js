@@ -39,6 +39,21 @@ function bindYandexActions(root, rerender) {
   const ya = window.YandexAuth;
   const autoChk = root.querySelector('#ya-auto-relogin');
   if (ya && autoChk) autoChk.onchange = e => ya.setAutoRelogin(e.target.checked);
+
+  // Индикатор автосинхронизации
+  const syncDot = root.querySelector('#ya-sync-dot');
+  if (!syncDot || syncDot._syncBound) return;
+  syncDot._syncBound = true;
+  window.addEventListener('backup:sync:state', e => {
+    const s = e.detail?.state;
+    const map = { syncing: { title: 'Синхронизируется...', color: '#ff9800', anim: true },
+                  ok: { title: 'Синхронизировано ✓', color: '#4caf50', anim: false },
+                  idle: { title: 'Авто-сохранение включено', color: '#4caf50', anim: false } };
+    const cfg = map[s] || map.idle;
+    syncDot.title = cfg.title;
+    syncDot.style.background = cfg.color;
+    syncDot.style.animation = cfg.anim ? 'syncPulse 1s infinite' : '';
+  });
 }
 
 export function renderYandexAuthBlock({ root, localProfile }) {
@@ -87,9 +102,14 @@ export function renderYandexAuthBlock({ root, localProfile }) {
           <button class="modal-action-btn" data-ya-action="backup-export-manual">💾 В файл</button>
           <button class="modal-action-btn" data-ya-action="backup-import-manual">📂 Из файла</button>
         </div>
-        <div class="yandex-auth-autologin">
+      <div class="yandex-auth-autologin">
           <span class="yandex-auth-autologin-text">Автовход при истечении сессии</span>
           <label class="set-switch"><input type="checkbox" id="ya-auto-relogin" ${autoLogin ? 'checked' : ''}><span class="set-slider"></span></label>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#7f93b5;padding:6px 0">
+          <style>.syncPulse{animation:syncPulse 1s infinite}@keyframes syncPulse{0%,to{opacity:1}50%{opacity:.3}}</style>
+          <span id="ya-sync-dot" title="Авто-сохранение включено" style="width:8px;height:8px;border-radius:50%;background:#4caf50;flex-shrink:0;transition:background .3s"></span>
+          <span>Авто-сохранение в облако</span>
         </div>
         <div class="yandex-auth-note">Один backup-файл объединяет прогресс, события, избранное, плейлисты, настройки, локальный профиль и данные устройств. Этот же файл можно сохранить вручную на устройство и перенести на другое своё устройство.</div>
         <div class="yandex-auth-bottomactions">
