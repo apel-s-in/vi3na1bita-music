@@ -39,8 +39,8 @@
 
     // Яндекс OAuth: инициализация (popup-режим, без обработки hash редиректа)
     try {
-      const { YandexAuth } = await import('./core/yandex-auth.js');
-      YandexAuth.checkAutoRelogin();
+      const mod = await import('./core/yandex-auth.js');
+      mod?.YandexAuth?.checkAutoRelogin?.();
     } catch (e) { console.warn('YandexAuth init skipped:', e); }
 
     // Backup autosave debounce
