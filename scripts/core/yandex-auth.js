@@ -96,28 +96,6 @@ export const YandexAuth = {
     window.NotificationSystem?.info('Вы вышли из аккаунта Яндекс');
   },
 
-  // --- Обработка callback после редиректа ---
-  async handleCallback() {
-    const hash = new URLSearchParams(window.location.hash.replace('#', ''));
-    const token = hash.get('access_token');
-    const expiresIn = Number(hash.get('expires_in') || 0);
-    if (!token) return false;
-
-    const exp = expiresIn > 0 ? Date.now() + expiresIn * 1000 : 0;
-    localStorage.setItem(LS_TOKEN, token);
-    localStorage.setItem(LS_TOKEN_EXP, String(exp));
-    window.history.replaceState(null, '', window.location.pathname);
-
-    // Ждём готовности UI перед показом модалки с именем
-    await new Promise(r => setTimeout(r, 800));
-
-    const profile = await this.fetchYandexProfile(token);
-    if (profile) {
-      await this._onFirstLogin(profile);
-    }
-    return true;
-  },
-
   async fetchYandexProfile(token) {
     try {
       const r = await fetch('https://login.yandex.ru/info?format=json', {
