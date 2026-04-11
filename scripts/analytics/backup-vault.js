@@ -98,6 +98,122 @@ async function readSnapshotData() {
   };
 }
 
+const toNum = v => Number.isFinite(Number(v)) ? Number(v) : 0;
+const minPositive = (...vals) => {
+  const xs = vals.map(toNum).filter(v => v > 0);
+  return xs.length ? Math.min(...xs) : 0;
+};
+const maxDateStr = (a, b) => [String(a || '').trim(), String(b || '').trim()].sort().pop() || '';
+const mergeNumArrayMax = (a, b, len = 0) => {
+  const size = Math.max(len, Array.isArray(a) ? a.length : 0, Array.isArray(b) ? b.length : 0);
+  return Array.from({ length: size }, (_, i) => Math.max(toNum(a?.[i]), toNum(b?.[i])));
+};
+const mergeNumericMapMax = (a = {}, b = {}) => {
+  const keys = new Set([...Object.keys(a || {}), ...Object.keys(b || {})]);
+  const out = {};
+  keys.forEach(k => {
+    const v = Math.max(toNum(a?.[k]), toNum(b?.[k]));
+    if (v > 0) out[k] = v;
+  });
+  return out;
+};
+const mergeStatRowSafe = (localRow = {}, remoteRow = {}) => {
+  const merged = {
+    uid: String(remoteRow?.uid || localRow?.uid || '').trim(),
+    globalListenSeconds: Math.max(toNum(localRow?.globalListenSeconds), toNum(remoteRow?.globalListenSeconds)),
+    globalValidListenCount: Math.max(toNum(localRow?.globalValidListenCount), toNum(remoteRow?.globalValidListenCount)),
+    globalFullListenCount: Math.max(toNum(localRow?.globalFullListenCount), toNum(remoteRow?.globalFullListenCount)),
+    firstPlayedAt: minPositive(localRow?.firstPlayedAt, remoteRow?.firstPlayedAt),
+    lastPlayedAt: Math.max(toNum(localRow?.lastPlayedAt), toNum(remoteRow?.lastPlayedAt)),
+    featuresUsed: mergeNumericMapMax(localRow?.featuresUsed || {}, remoteRow?.featuresUsed || {})
+  };
+  const byHour = mergeNumArrayMax(localRow?.byHour, remoteRow?.byHour, 24);
+  const byWeekday = mergeNumArrayMax(localRow?.byWeekday, remoteRow?.byWeekday, 7);
+  if (byHour.some(Boolean)) merged.byHour = byHour;
+  if (byWeekday.some(Boolean)) merged.byWeekday = byWeekday;
+  return merged;
+};
+const mergeAchievementsSafe = (localMap = {}, remoteMap = {}) => {
+  const out = { ...localMap };
+  Object.entries(remoteMap || {}).forEach(([key, value]) => {
+    const lv = toNum(out[key]);
+    const rv = toNum(value);
+    out[key] = lv > 0 && rv > 0 ? Math.min(lv, rv) : (rv || lv || Date.now());
+  });
+  return out;
+};
+const parseJsonSafe = (raw, fb) => { try { return JSON.parse(raw); } catch { return fb; } };
+const mergeFavoritesStorageSafe = (localRaw, remoteRaw) => {
+  const local = Array.isArray(parseJsonSafe(localRaw, [])) ? parseJsonSafe(localRaw, []) : [];
+  const remote = Array.isArray(parseJsonSafe(remoteRaw, [])) ? parseJsonSafe(remoteRaw, []) : [];
+  const map = new Map();
+  [...local, ...remote].forEach(item => {
+    const uid = String(item?.uid || '').trim();
+    if (!uid) return;
+    const prev = map.get(uid) || null;
+    const prevActive = prev && !prev.inactiveAt;
+    const curActive = !item?.inactiveAt;
+    if (!prev) {
+      map.set(uid, { ...item, uid });
+      return;
+    }
+    if (prevActive || curActive) {
+      map.set(uid, {
+        ...prev,
+        ...item,
+        uid,
+        inactiveAt: null,
+        addedAt: minPositive(prev.addedAt, item.addedAt) || Date.now(),
+        sourceAlbum: prev.sourceAlbum || item.sourceAlbum || prev.albumKey || item.albumKey || null,
+        albumKey: prev.albumKey || item.albumKey || prev.sourceAlbum || item.sourceAlbum || null
+      });
+      return;
+    }
+    map.set(uid, {
+      ...prev,
+      ...item,
+      uid,
+      inactiveAt: Math.max(toNum(prev.inactiveAt), toNum(item.inactiveAt))
+    });
+  });
+  return JSON.stringify([...map.values()]);
+};
+const uniq = arr => [...new Set((Array.isArray(arr) ? arr : []).filter(Boolean))];
+const mergePlaylistsStorageSafe = (localRaw, remoteRaw) => {
+  const local = Array.isArray(parseJsonSafe(localRaw, [])) ? parseJsonSafe(localRaw, []) : [];
+  const remote = Array.isArray(parseJsonSafe(remoteRaw, [])) ? parseJsonSafe(remoteRaw, []) : [];
+  const map = new Map();
+  [...local, ...remote].forEach(pl => {
+    const id = String(pl?.id || '').trim();
+    if (!id) return;
+    const prev = map.get(id);
+    if (!prev) {
+      map.set(id, { ...pl, id, order: uniq(pl?.order), hidden: uniq(pl?.hidden) });
+      return;
+    }
+    const order = uniq([...(prev.order || []), ...(pl.order || [])]);
+    const hidden = uniq([...(prev.hidden || []), ...(pl.hidden || [])]).filter(uid => order.includes(uid));
+    map.set(id, {
+      ...prev,
+      ...pl,
+      id,
+      name: prev.name || pl.name || 'Плейлист',
+      color: prev.color || pl.color || '',
+      createdAt: minPositive(prev.createdAt, pl.createdAt) || Date.now(),
+      order,
+      hidden
+    });
+  });
+  return JSON.stringify([...map.values()]);
+};
+const mergeProfileStorageValueSafe = (key, localVal, remoteVal) => {
+  if (remoteVal == null) return localVal;
+  if (localVal == null) return remoteVal;
+  if (key === '__favorites_v2__') return mergeFavoritesStorageSafe(localVal, remoteVal);
+  if (key === 'sc3:playlists') return mergePlaylistsStorageSafe(localVal, remoteVal);
+  return remoteVal;
+};
+
 export class BackupVault {
   static async buildBackupObject() {
     const identity = await readOwnerIdentity();
@@ -174,18 +290,51 @@ export class BackupVault {
           };
 
           if (mode === 'all' || mode === 'stats') {
+            const [localWarm, localStats, localAchievements, localStreaks, localRpg] = await Promise.all([
+              metaDB.getEvents('events_warm'),
+              metaDB.getAllStats(),
+              metaDB.getGlobal('unlocked_achievements'),
+              metaDB.getGlobal('global_streak'),
+              metaDB.getGlobal('user_profile_rpg')
+            ]);
+
             const seen = new Set();
-            const merged = [...await metaDB.getEvents('events_warm'), ...(b.data.eventLog.warm || [])]
+            const mergedEvents = [...localWarm, ...(b.data.eventLog.warm || [])]
               .filter(ev => ev?.eventId && !seen.has(ev.eventId) && seen.add(ev.eventId))
               .sort((x, y) => x.timestamp - y.timestamp);
 
             await metaDB.clearEvents('events_warm');
-            await metaDB.addEvents(merged, 'events_warm');
+            await metaDB.addEvents(mergedEvents, 'events_warm');
 
-            for (const s of (b.data.stats || [])) await metaDB.tx('stats', 'readwrite', st => st.put(s));
-            if (b.data.achievements) await metaDB.setGlobal('unlocked_achievements', b.data.achievements);
-            if (b.data.streaks) await metaDB.setGlobal('global_streak', b.data.streaks);
-            if (b.data.userProfileRpg) await metaDB.setGlobal('user_profile_rpg', b.data.userProfileRpg);
+            const localStatsMap = new Map((localStats || []).filter(x => x?.uid).map(x => [x.uid, x]));
+            const remoteStatsMap = new Map((b.data.stats || []).filter(x => x?.uid).map(x => [x.uid, x]));
+            const allUids = new Set([...localStatsMap.keys(), ...remoteStatsMap.keys()]);
+            for (const uid of allUids) {
+              const mergedStat = mergeStatRowSafe(localStatsMap.get(uid) || {}, remoteStatsMap.get(uid) || {});
+              if (mergedStat?.uid) await metaDB.tx('stats', 'readwrite', st => st.put(mergedStat));
+            }
+
+            const mergedAchievements = mergeAchievementsSafe(localAchievements?.value || {}, b.data.achievements || {});
+            await metaDB.setGlobal('unlocked_achievements', mergedAchievements);
+
+            const remoteStreaks = b.data.streaks || {};
+            const localStreakValue = localStreaks?.value || {};
+            await metaDB.setGlobal('global_streak', {
+              ...localStreakValue,
+              ...remoteStreaks,
+              current: Math.max(toNum(localStreakValue.current), toNum(remoteStreaks.current)),
+              longest: Math.max(toNum(localStreakValue.longest), toNum(remoteStreaks.longest)),
+              lastActiveDate: maxDateStr(localStreakValue.lastActiveDate, remoteStreaks.lastActiveDate)
+            });
+
+            const remoteRpg = b.data.userProfileRpg || {};
+            const localRpgValue = localRpg?.value || {};
+            await metaDB.setGlobal('user_profile_rpg', {
+              ...localRpgValue,
+              ...remoteRpg,
+              xp: Math.max(toNum(localRpgValue.xp), toNum(remoteRpg.xp)),
+              level: Math.max(toNum(localRpgValue.level || 1), toNum(remoteRpg.level || 1), 1)
+            });
 
             await writeStoreAll('listener_profile', intel.listenerProfile);
             await writeStoreAll('provider_identity', intel.providerIdentity);
@@ -199,7 +348,10 @@ export class BackupVault {
             if (b.data.userProfile) await metaDB.setGlobal('user_profile', b.data.userProfile);
             for (const [k, v] of Object.entries(b.data.localStorage || {})) {
               if (!PROFILE_ONLY_KEYS.has(k)) continue;
-              try { localStorage.setItem(k, v); } catch {}
+              try {
+                const localVal = localStorage.getItem(k);
+                localStorage.setItem(k, mergeProfileStorageValueSafe(k, localVal, v));
+              } catch {}
             }
           }
 
