@@ -140,19 +140,21 @@ vi3na1bita-music/
 │   │   │   ├── 02-cover-04.png
 │   │   │   ├── 02-cover-04.webp
 │   │   │   └── index.json
-│   │   └── 03/
-│   │       ├── 03-cover-01.jpg
-│   │       ├── 03-cover-01.png
-│   │       ├── 03-cover-01.webp
-│   │       ├── 03-cover-02.jpg
-│   │       ├── 03-cover-02.png
-│   │       ├── 03-cover-02.webp
-│   │       ├── 03-cover-03.jpg
-│   │       ├── 03-cover-03.png
-│   │       ├── 03-cover-03.webp
-│   │       ├── 03-cover-04.jpg
-│   │       ├── 03-cover-04.png
-│   │       ├── 03-cover-04.webp
+│   │   ├── 03/
+│   │   │   ├── 03-cover-01.jpg
+│   │   │   ├── 03-cover-01.png
+│   │   │   ├── 03-cover-01.webp
+│   │   │   ├── 03-cover-02.jpg
+│   │   │   ├── 03-cover-02.png
+│   │   │   ├── 03-cover-02.webp
+│   │   │   ├── 03-cover-03.jpg
+│   │   │   ├── 03-cover-03.png
+│   │   │   ├── 03-cover-03.webp
+│   │   │   ├── 03-cover-04.jpg
+│   │   │   ├── 03-cover-04.png
+│   │   │   ├── 03-cover-04.webp
+│   │   │   └── index.json
+│   │   └── 04/
 │   │       └── index.json
 │   └── .gitkeep
 ├── audio/
@@ -380,7 +382,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-11 22:57:26 UTC
+Сгенерировано: 2026-04-11 23:06:51 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -561,6 +563,10 @@ jobs:
 //=================================================
 // FILE: /albums/gallery/03/index.json
 {"items":[{"formats":{"webp":"albums/gallery/03/03-cover-01.webp","full":"albums/gallery/03/03-cover-01.png"}},{"formats":{"webp":"albums/gallery/03/03-cover-02.webp","full":"albums/gallery/03/03-cover-02.png"}},{"formats":{"webp":"albums/gallery/03/03-cover-03.webp","full":"albums/gallery/03/03-cover-03.png"}},{"formats":{"webp":"albums/gallery/03/03-cover-04.webp","full":"albums/gallery/03/03-cover-04.png"}}]}
+
+//=================================================
+// FILE: /albums/gallery/04/index.json
+{"items":[{"formats":{"webp":"albums/gallery/04/04-cover-01.webp","full":"albums/gallery/04/04-cover-01.png"}},{"formats":{"webp":"albums/gallery/04/04-cover-02.webp","full":"albums/gallery/04/04-cover-02.png"}}]}
 
 //=================================================
 // FILE: /index.html
