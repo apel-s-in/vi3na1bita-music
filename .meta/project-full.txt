@@ -379,7 +379,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-11 22:21:47 UTC
+Сгенерировано: 2026-04-11 22:28:02 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3245,10 +3245,10 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
 
   renderAuthBlock();
 
-  // Убираем предыдущий listener чтобы не накапливались при повторных открытиях профиля
-  window.__yaAuthRenderHandler && window.removeEventListener('yandex:auth:changed', window.__yaAuthRenderHandler);
-  window.__yaAuthRenderHandler = renderAuthBlock;
-  window.addEventListener('yandex:auth:changed', renderAuthBlock);
+  // AbortController — чистый unmount listener при повторном рендере профиля
+  window.__yaAuthAC?.abort();
+  window.__yaAuthAC = new AbortController();
+  window.addEventListener('yandex:auth:changed', renderAuthBlock, { signal: window.__yaAuthAC.signal });
 
   if (window.YandexAuth?.getSessionStatus?.() === 'active' && !sessionStorage.getItem('ya:auto-check:done')) {
     sessionStorage.setItem('ya:auto-check:done', '1');
