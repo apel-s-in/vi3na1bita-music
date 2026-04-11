@@ -15,6 +15,10 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
   const renderAuthBlock = () => renderYandexAuthBlock({ root: $('#prof-auth-grid'), localProfile: p });
 
   renderAuthBlock();
+
+  // Убираем предыдущий listener чтобы не накапливались при повторных открытиях профиля
+  window.__yaAuthRenderHandler && window.removeEventListener('yandex:auth:changed', window.__yaAuthRenderHandler);
+  window.__yaAuthRenderHandler = renderAuthBlock;
   window.addEventListener('yandex:auth:changed', renderAuthBlock);
 
   if (window.YandexAuth?.getSessionStatus?.() === 'active' && !sessionStorage.getItem('ya:auto-check:done')) {
