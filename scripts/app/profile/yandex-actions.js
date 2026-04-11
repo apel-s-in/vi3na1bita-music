@@ -4,6 +4,53 @@
 import { BackupVault } from '../../analytics/backup-vault.js';
 import { YandexDisk } from '../../core/yandex-disk.js';
 
+function openBackupInfoModal() {
+  window.Modals?.open?.({
+    title: 'Что сохраняется в облако',
+    maxWidth: 460,
+    bodyHtml: `
+      <div class="modal-confirm-text">
+        Резервная копия создаётся в личной папке приложения на Яндекс Диске.<br><br>
+        В состав входят:
+        <ul style="margin:10px 0 0 18px;color:#eaf2ff;line-height:1.5">
+          <li>статистика прослушивания</li>
+          <li>достижения, XP и стрики</li>
+          <li>локальный профиль пользователя</li>
+          <li>избранное</li>
+          <li>плейлисты и настройки витрины</li>
+          <li>настройки интерфейса и часть служебных данных восстановления</li>
+        </ul>
+        <div style="margin-top:12px;color:#9db7dd">
+          В резервную копию не попадает пароль Яндекса. Доступ идёт только через официальный OAuth и только к данным приложения.
+        </div>
+      </div>`
+  });
+}
+
+function openRestorePreviewModal(data, onConfirm) {
+  const ls = data?.data?.localStorage || {};
+  const favs = (() => { try { return JSON.parse(ls['__favorites_v2__'] || '[]'); } catch { return []; } })();
+  const pls = (() => { try { return JSON.parse(ls['sc3:playlists'] || '[]'); } catch { return []; } })();
+  const statsCount = Array.isArray(data?.data?.stats) ? data.data.stats.filter(x => x?.uid && x.uid !== 'global').length : 0;
+  const achCount = Object.keys(data?.data?.achievements || {}).length;
+  const profileName = data?.data?.userProfile?.name || 'Слушатель';
+  window.Modals?.confirm?.({
+    title: 'Предпросмотр восстановления',
+    textHtml: `
+      Будет загружена копия профиля:<br><br>
+      <b>Имя профиля:</b> ${window.Utils?.escapeHtml?.(profileName) || profileName}<br>
+      <b>Треков в статистике:</b> ${statsCount}<br>
+      <b>Достижений:</b> ${achCount}<br>
+      <b>Избранных записей:</b> ${favs.length}<br>
+      <b>Плейлистов витрины:</b> ${pls.length}<br><br>
+      <span style="color:#9db7dd">Восстановление выполняется поверх локальных данных. Сначала рекомендуется проверить состав копии и при необходимости сделать свежий backup текущего устройства.</span>
+    `,
+    confirmText: 'Восстановить',
+    cancelText: 'Отмена',
+    onConfirm
+  });
+}
+
 export function initYandexActions() {
   window._handleYaAction = async (action, container, rerender) => {
     const ya = window.YandexAuth;
@@ -38,6 +85,42 @@ export function initYandexActions() {
           window.NotificationSystem?.success('Имя обновлено');
         }
       });
+      return;
+    }
+
+    if (action === 'backup-info') {
+      openBackupInfoModal();
+      return;
+    }
+
+    if (action === 'check-backup') {
+      const token = ya.getToken();
+      if (!token || !ya.isTokenAlive()) {
+        window.NotificationSystem?.warning('Сессия истекла. Войдите снова.');
+        return;
+      }
+      window.NotificationSystem?.info('Проверяем облачную копию...');
+      try {
+        const [exists, meta] = await Promise.all([disk.checkExists(token), disk.getMeta(token).catch(() => null)]);
+        if (!exists) {
+          window.NotificationSystem?.warning('Облачная резервная копия не найдена.');
+          return;
+        }
+        window.Modals?.open?.({
+          title: 'Облачная копия найдена',
+          maxWidth: 460,
+          bodyHtml: `
+            <div class="modal-confirm-text">
+              <b>Статус:</b> копия доступна<br>
+              <b>Дата:</b> ${meta?.timestamp ? new Date(meta.timestamp).toLocaleString('ru-RU') : 'неизвестно'}<br>
+              <b>Версия backup:</b> ${window.Utils?.escapeHtml?.(meta?.version || 'unknown') || 'unknown'}<br>
+              <b>Версия приложения:</b> ${window.Utils?.escapeHtml?.(meta?.appVersion || 'unknown') || 'unknown'}<br><br>
+              <span style="color:#9db7dd">Копия хранится в личной папке приложения на Яндекс Диске. Она недоступна другим пользователям приложения.</span>
+            </div>`
+        });
+      } catch (e) {
+        window.NotificationSystem?.error('Не удалось проверить резервную копию: ' + String(e?.message || ''));
+      }
       return;
     }
 
@@ -78,26 +161,25 @@ export function initYandexActions() {
         window.NotificationSystem?.warning('Сессия истекла. Войдите снова.');
         return;
       }
-      window.Modals?.confirm?.({
-        title: 'Восстановить прогресс?',
-        textHtml: 'Данные с Яндекс Диска объединятся с локальными. Текущий прогресс не будет потерян.',
-        confirmText: 'Восстановить', cancelText: 'Отмена',
-        onConfirm: async () => {
-          window.NotificationSystem?.info('Загружаем резервную копию...');
+      window.NotificationSystem?.info('Загружаем резервную копию...');
+      try {
+        const data = await disk.download(token);
+        if (!data) {
+          window.NotificationSystem?.warning('Резервная копия не найдена на Диске.');
+          return;
+        }
+        openRestorePreviewModal(data, async () => {
           try {
-            const data = await disk.download(token);
-            if (!data) {
-              window.NotificationSystem?.warning('Резервная копия не найдена на Диске.');
-              return;
-            }
             await BackupVault.importData(new Blob([JSON.stringify(data)]));
             window.NotificationSystem?.success('Прогресс восстановлен ✅ Обновляем...');
             setTimeout(() => window.location.reload(), 1500);
           } catch (e) {
             window.NotificationSystem?.error('Ошибка восстановления: ' + String(e?.message || ''));
           }
-        }
-      });
+        });
+      } catch (e) {
+        window.NotificationSystem?.error('Ошибка восстановления: ' + String(e?.message || ''));
+      }
       return;
     }
   };
