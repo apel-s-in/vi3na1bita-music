@@ -7,6 +7,10 @@ const BACKUP_PATH = 'app:/vi3na1bita_backup.vi3bak';
 const META_PATH = 'app:/vi3na1bita_backup_meta.json';
 const BACKUP_PATH_VERSIONED = stamp => `app:/vi3na1bita_backup_${stamp}.vi3bak`;
 
+// Yandex Cloud Function proxy для обхода CORS при restore
+// Замени URL на свой после деплоя функции
+const PROXY_URL = 'https://functions.yandexcloud.net/d4ecdu6kgamevcauajid';
+
 const authHeader = token => ({ 'Authorization': `OAuth ${token}` });
 
 async function getUploadHref(token, path) {
@@ -116,17 +120,33 @@ export const YandexDisk = {
 
   async download(token) {
     if (!token) throw new Error('no_token');
-    const href = await getDownloadHref(token, BACKUP_PATH);
-    if (!href) return null;
-    try {
-      const res = await fetch(href, { mode: 'cors' });
-      if (!res.ok) throw new Error(`download_failed:${res.status}`);
-      return await res.json();
-    } catch {
-      const e = new Error('download_cors_fallback_required');
-      e.downloadHref = href;
-      throw e;
+
+    // Попытка 1: через Cloud Function proxy (надёжно, без CORS)
+    if (PROXY_URL && !PROXY_URL.includes('ВАШ_ID')) {
+      try {
+        const res = await fetch(PROXY_URL, {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.status === 404) return null;
+        if (res.ok) return await res.json();
+      } catch {}
     }
+
+    // Попытка 2: прямой fetch с CORS (иногда работает)
+    try {
+      const href = await getDownloadHref(token, BACKUP_PATH);
+      if (!href) return null;
+      const res = await fetch(href, { mode: 'cors' });
+      if (res.status === 404) return null;
+      if (res.ok) return await res.json();
+    } catch {}
+
+    // Fallback: попросить пользователя скачать файл вручную
+    const href = await getDownloadHref(token, BACKUP_PATH).catch(() => null);
+    const e = new Error('download_cors_fallback_required');
+    e.downloadHref = href;
+    throw e;
   },
 
   async getDownloadLink(token) {
