@@ -121,19 +121,29 @@ export const YandexDisk = {
   async download(token) {
     if (!token) throw new Error('no_token');
 
-    // Попытка 1: через Cloud Function proxy (надёжно, без CORS)
+    // Попытка 1: через Cloud Function proxy — здесь НЕ глушим детальную ошибку
     if (PROXY_URL && !PROXY_URL.includes('ВАШ_ID')) {
-      try {
-        const res = await fetch(PROXY_URL, {
-          method: 'GET',
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (res.status === 404) return null;
-        if (res.ok) return await res.json();
-      } catch {}
+      const res = await fetch(PROXY_URL, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${token}` }
+      }).catch(() => null);
+
+      if (res) {
+        let payload = null;
+        try { payload = await res.json(); } catch {}
+
+        if (res.status === 404 || payload?.error === 'not_found') return null;
+        if (res.ok && payload) return payload;
+
+        if (payload?.error) {
+          const err = new Error(String(payload.error));
+          err.payload = payload;
+          throw err;
+        }
+      }
     }
 
-    // Попытка 2: прямой fetch с CORS (иногда работает)
+    // Попытка 2: прямой fetch с CORS
     try {
       const href = await getDownloadHref(token, BACKUP_PATH);
       if (!href) return null;
@@ -142,7 +152,7 @@ export const YandexDisk = {
       if (res.ok) return await res.json();
     } catch {}
 
-    // Fallback: попросить пользователя скачать файл вручную
+    // Fallback: вручную скачать и импортировать файл
     const href = await getDownloadHref(token, BACKUP_PATH).catch(() => null);
     const e = new Error('download_cors_fallback_required');
     e.downloadHref = href;
