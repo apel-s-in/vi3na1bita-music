@@ -376,7 +376,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-11 11:58:39 UTC
+Сгенерировано: 2026-04-11 13:24:03 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7721,20 +7721,36 @@ body.mobile-device .volume-control-wrapper,body.mobile-device #mute-btn{display:
 .yandex-auth-block{width:100%;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:14px}
 .yandex-auth-statusline{display:flex;align-items:center;gap:8px;margin-bottom:12px}
 .yandex-auth-statusdot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.yandex-auth-statustext{font-size:14px;font-weight:900;color:#fff}
 .yandex-auth-caption{font-size:11px;color:#7f93b5;line-height:1.4}
-.yandex-auth-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:10px}
-.yandex-auth-actions .modal-action-btn{min-width:0;padding:10px 6px;font-size:11px;justify-content:center}
+.yandex-auth-profile{display:flex;align-items:center;gap:12px;margin-bottom:12px;padding:12px;background:rgba(255,255,255,.04);border-radius:12px;border:1px solid rgba(255,255,255,.08)}
+.yandex-auth-avatar{width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.yandex-auth-avatar--fallback{width:44px;height:44px;border-radius:50%;background:#232b38;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.yandex-auth-profileinfo{min-width:0;flex:1}
+.yandex-auth-profilename{font-size:15px;font-weight:900;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.yandex-auth-profilemeta{font-size:11px;color:#888;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.yandex-auth-autologin{display:flex;gap:8px;align-items:center;padding:10px 12px;background:rgba(0,0,0,.2);border-radius:10px;margin-bottom:10px}
+.yandex-auth-autologin-text{flex:1;font-size:12px;color:#9db7dd;line-height:1.35}
+.yandex-auth-bottomactions{display:flex;gap:8px;flex-wrap:wrap}
+.yandex-auth-bottomactions .om-btn{flex:1;justify-content:center;font-size:12px}
+.yandex-auth-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:10px}
+.yandex-auth-actions .modal-action-btn{min-width:0;min-height:44px;padding:8px 6px;font-size:11px;justify-content:center;white-space:normal;line-height:1.15;text-align:center;word-break:break-word}
+.yandex-auth-actions .modal-action-btn span{display:block}
 .yandex-auth-note{font-size:11px;color:#7f93b5;line-height:1.45;background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.05);border-radius:10px;padding:10px 12px;margin:10px 0}
 .yandex-auth-mainbtn{width:100%;min-height:48px;padding:14px 16px;font-size:16px;font-weight:900;border-radius:12px;border:1px solid rgba(255,255,255,.08);cursor:pointer;background:linear-gradient(135deg,#d50000,#8f0000);color:#fff;display:flex;align-items:center;justify-content:center;gap:10px;transition:opacity .2s,transform .15s;box-shadow:0 8px 22px rgba(213,0,0,.25)}
 .yandex-auth-mainbtn:active{transform:scale(.98)}
 .yandex-auth-mainbtn:hover{filter:brightness(1.06)}
+.yandex-auth-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+.yandex-auth-metabox{background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.05);border-radius:10px;padding:10px 12px}
+.yandex-auth-metabox-label{font-size:10px;color:#7f93b5;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+.yandex-auth-metabox-value{font-size:12px;color:#eaf2ff;font-weight:700;line-height:1.35;word-break:break-word}
 .auth-btn{padding:10px 0;border-radius:10px;border:none;font-weight:bold;font-size:13px;cursor:pointer;transition:.2s;display:flex;flex-direction:column;align-items:center;gap:4px;color:#fff}
 .auth-btn:active{transform:scale(.95)}
 .auth-btn.yandex{background:#E60000}
 .auth-btn.google{background:#4285F4}
 .auth-btn.vk{background:#0077FF}
 .auth-btn.connected{opacity:.5;border:2px solid #4caf50;background:#232b38}
-@media (max-width:380px){.yandex-auth-actions{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:380px){.yandex-auth-meta{grid-template-columns:1fr}}
 
 .profile-tabs{display:flex;background:rgba(255,255,255,.05);border-radius:10px;padding:4px;overflow-x:auto;scrollbar-width:none}
 .profile-tabs::-webkit-scrollbar{display:none}
