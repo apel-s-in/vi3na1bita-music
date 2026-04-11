@@ -376,7 +376,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-11 11:22:11 UTC
+Сгенерировано: 2026-04-11 11:47:58 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3084,7 +3084,7 @@ export const getProfileTemplateHtml = () => `
   <div class="profile-tab-content" id="tab-recs"><div class="profile-section-title">💡 МЫ РЕКОМЕНДУЕМ</div><div id="prof-recs-list"></div></div>
   <div class="profile-tab-content" id="tab-logs"><div class="profile-section-title">📜 ИСТОРИЯ АКТИВНОСТИ</div><div id="prof-logs-list">Загрузка...</div></div>
   <div class="profile-tab-content" id="tab-settings"></div>
-  <div class="profile-tab-content" id="tab-account"><div class="prof-account-card"><button class="prof-ava-sq" id="prof-avatar-btn" title="Изменить аватар (нажмите для смены)"></button><div class="prof-account-info"><div class="prof-name-row"><input type="text" id="prof-name-inp" class="prof-name-inp-flat" maxlength="15" autocomplete="off" spellcheck="false" readonly><button class="prof-name-pencil" id="prof-name-edit" title="Изменить имя">✏️</button></div><div class="prof-meta-row" id="prof-meta-since">📅 Слушаю с: —</div><div class="prof-meta-row" id="prof-meta-days">🎵 Дней с нами: —</div><div class="prof-meta-row" id="prof-meta-level">⭐ Уровень: —</div></div></div><div class="profile-auth-grid" id="prof-auth-grid"></div></div>
+  <div class="profile-tab-content" id="tab-account"><div class="prof-account-card"><button class="prof-ava-sq" id="prof-avatar-btn" title="Изменить аватар (нажмите для смены)"></button><div class="prof-account-info"><div class="prof-name-row"><input type="text" id="prof-name-inp" class="prof-name-inp-flat" maxlength="15" autocomplete="off" spellcheck="false" readonly><button class="prof-name-pencil" id="prof-name-edit" title="Изменить имя">✏️</button></div><div class="prof-meta-row" id="prof-meta-since">📅 Слушаю с: —</div><div class="prof-meta-row" id="prof-meta-days">🎵 Дней с нами: —</div><div class="prof-meta-row" id="prof-meta-level">⭐ Уровень: —</div></div></div><div class="profile-auth-grid profile-auth-grid--full" id="prof-auth-grid"></div></div>
 </div>`;
 export default { getProfileTemplateHtml };
 
