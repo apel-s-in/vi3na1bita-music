@@ -54,7 +54,8 @@ export function initYandexActions() {
       window.NotificationSystem?.info('Сохраняем на Яндекс Диск...');
       try {
         const backup = await BackupVault.buildBackupObject();
-        await disk.upload(token, backup);
+        const meta = await disk.upload(token, backup);
+        try { localStorage.setItem('yandex:last_backup_meta', JSON.stringify(meta)); } catch {}
         window.NotificationSystem?.success('Прогресс сохранён на Яндекс Диск ✅');
         if (window.eventLogger) {
           window.eventLogger.log('FEATURE_USED', 'global', { feature: 'backup' });
