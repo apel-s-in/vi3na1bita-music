@@ -379,7 +379,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-11 16:46:25 UTC
+Сгенерировано: 2026-04-11 16:49:12 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3503,7 +3503,29 @@ function compareBackupMeta(localInfo, cloudInfo) {
 
 function bindYandexActions(root, rerender) {
   root.querySelectorAll('[data-ya-action]').forEach(btn => {
-    btn.onclick = () => window._handleYaAction?.(btn.dataset.yaAction, root, rerender);
+    btn.onclick = async () => {
+      const act = btn.dataset.yaAction;
+      const prog = root.querySelector('#ya-restore-progress');
+      const bar = root.querySelector('#ya-restore-bar');
+      const status = root.querySelector('#ya-restore-status');
+
+      if (act === 'restore-backup' && prog) {
+        prog.style.display = 'block';
+        btn.disabled = true;
+        // Симулируем прогресс пока идёт загрузка
+        let pct = 0;
+        const t = setInterval(() => { pct = Math.min(pct + 3, 85); if (bar) bar.style.width = `${pct}%`; if (status) status.textContent = pct < 30 ? 'Подключение к Яндекс Диску...' : (pct < 60 ? 'Загрузка backup...' : 'Обработка данных...'); }, 200);
+        try {
+          await window._handleYaAction?.(act, root, rerender);
+        } finally {
+          clearInterval(t);
+          if (bar) bar.style.width = '100%';
+          setTimeout(() => { if (prog) prog.style.display = 'none'; if (bar) bar.style.width = '0%'; btn.disabled = false; }, 500);
+        }
+      } else {
+        window._handleYaAction?.(act, root, rerender);
+      }
+    };
   });
   const ya = window.YandexAuth;
   const autoChk = root.querySelector('#ya-auto-relogin');
@@ -3522,6 +3544,11 @@ function bindYandexActions(root, rerender) {
     syncDot.title = cfg.title;
     syncDot.style.background = cfg.color;
     syncDot.style.animation = cfg.anim ? 'syncPulse 1s infinite' : '';
+    // Обновляем метку времени после успешного сохранения
+    if (s === 'ok') {
+      const lbl = root.querySelector('#ya-last-sync-label');
+      if (lbl) lbl.textContent = `последнее: ${new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
+    }
   });
 }
 
@@ -3567,9 +3594,15 @@ export function renderYandexAuthBlock({ root, localProfile }) {
           <button class="modal-action-btn" data-ya-action="rename">✏️ Имя</button>
           <button class="modal-action-btn" data-ya-action="save-backup">☁️ В облако</button>
           <button class="modal-action-btn" data-ya-action="check-backup">🔎 Проверить</button>
-          <button class="modal-action-btn" data-ya-action="restore-backup">📥 Из облака</button>
+          <button class="modal-action-btn" data-ya-action="restore-backup" id="ya-restore-btn">📥 Из облака</button>
           <button class="modal-action-btn" data-ya-action="backup-export-manual">💾 В файл</button>
           <button class="modal-action-btn" data-ya-action="backup-import-manual">📂 Из файла</button>
+        </div>
+        <div id="ya-restore-progress" style="display:none;margin-top:8px">
+          <div style="height:4px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden">
+            <div id="ya-restore-bar" style="height:100%;width:0%;background:var(--grad-blue);transition:width .3s ease;border-radius:2px"></div>
+          </div>
+          <div id="ya-restore-status" style="font-size:11px;color:#9db7dd;margin-top:4px;text-align:center">Загрузка...</div>
         </div>
       <div class="yandex-auth-autologin">
           <span class="yandex-auth-autologin-text">Автовход при истечении сессии</span>
@@ -3578,7 +3611,7 @@ export function renderYandexAuthBlock({ root, localProfile }) {
         <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#7f93b5;padding:6px 0">
           <style>.syncPulse{animation:syncPulse 1s infinite}@keyframes syncPulse{0%,to{opacity:1}50%{opacity:.3}}</style>
           <span id="ya-sync-dot" title="Авто-сохранение включено" style="width:8px;height:8px;border-radius:50%;background:#4caf50;flex-shrink:0;transition:background .3s"></span>
-          <span>Авто-сохранение в облако</span>
+          <span>Авто-сохранение в облако · <span id="ya-last-sync-label">${(() => { const ts = Number(localStorage.getItem('yandex:last_backup_local_ts') || 0); return ts > 0 ? `последнее: ${new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}` : 'ещё не сохранялось'; })()}</span></span>
         </div>
         <div class="yandex-auth-note">Один backup-файл объединяет прогресс, события, избранное, плейлисты, настройки, локальный профиль и данные устройств. Этот же файл можно сохранить вручную на устройство и перенести на другое своё устройство.</div>
         <div class="yandex-auth-bottomactions">
