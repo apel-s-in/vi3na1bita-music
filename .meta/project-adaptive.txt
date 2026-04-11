@@ -376,7 +376,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-11 11:55:36 UTC
+Сгенерировано: 2026-04-11 11:56:54 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1503,7 +1503,7 @@ export class BackupVault {
 
 //=================================================
 // FILE: /scripts/analytics/cloud-sync.js
-// UID.069_(Internal user identity)_(не смешивать provider token и identity модели)_(future cloud sync должен работать поверх provider identity layer) // UID.073_(Hybrid sync orchestrator)_(дать primary/mirror/social роли провайдеров)_(текущий cloud-sync будет legacy transport под future hybrid-sync) // UID.074_(Primary backup provider)_(готовить Yandex как основной backup channel)_(future orchestration вынести в scripts/intel/providers/hybrid-sync.js) // UID.075_(Secondary mirror backup)_(подготовить Google как резервный mirror)_(future mirror backup не должен конфликтовать с primary sync)
+// UID.069_(Internal user identity)_(не смешивать provider token и identity модели)_(future cloud sync должен работать поверх provider identity layer) // UID.073_(Hybrid sync orchestrator)_(дать primary/mirror/social роли провайдеров)_(этот файл законсервирован как legacy-reference transport и не должен использоваться активным runtime) // UID.074_(Primary backup provider)_(готовить Yandex как основной backup channel)_(активный runtime уже работает через scripts/core/yandex-auth.js + scripts/core/yandex-disk.js + scripts/analytics/backup-vault.js) // UID.075_(Secondary mirror backup)_(подготовить Google как резервный mirror)_(эту заготовку можно переиспользовать позже при реальном multi-provider sync)
 import { BackupVault } from './backup-vault.js';
 import { eventLogger } from './event-logger.js';
 
