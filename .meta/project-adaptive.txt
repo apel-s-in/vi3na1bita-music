@@ -382,7 +382,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-11 23:06:51 UTC
+Сгенерировано: 2026-04-11 23:09:54 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -566,7 +566,7 @@ jobs:
 
 //=================================================
 // FILE: /albums/gallery/04/index.json
-{"items":[{"formats":{"webp":"albums/gallery/04/04-cover-01.webp","full":"albums/gallery/04/04-cover-01.png"}},{"formats":{"webp":"albums/gallery/04/04-cover-02.webp","full":"albums/gallery/04/04-cover-02.png"}}]}
+{"items":[{"formats":{"webp":"albums/gallery/04/04-cover-01.webp","full":"albums/gallery/04/04-cover-01.png"}},{"formats":{"webp":"albums/gallery/04/04-cover-02.webp","full":"albums/gallery/04/04-cover-02.png"}},{"formats":{"webp":"albums/gallery/04/04-cover-03.webp","full":"albums/gallery/04/04-cover-03.png"}},{"formats":{"webp":"albums/gallery/04/04-cover-04.webp","full":"albums/gallery/04/04-cover-04.png"}}]}
 
 //=================================================
 // FILE: /index.html
