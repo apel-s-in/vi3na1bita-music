@@ -106,7 +106,7 @@ export const AchievementDictionary = {
   },
   "backup_saves": {
     id: "backup_saves", type: "scalable", category: "features",
-    ui: { name: "Бережёного бережёт ур. {level}", short: "Сохраните бэкап {target} раз.", desc: "Защита прогресса.", howTo: "Откройте 'Сохранение достижений' и скачайте файл.", icon: "💽", color: "#00bcd4" },
+    ui: { name: "Бережёного бережёт ур. {level}", short: "Сохраните бэкап {target} раз.", desc: "Защита прогресса в облаке Яндекса.", howTo: "Откройте аккаунт и сохраните резервную копию на Яндекс Диск.", icon: "💽", color: "#00bcd4" },
     reward: { xpBase: 20, xpMultiplier: 1.5, tierBase: 1 },
     trigger: { conditions: [{ metric: "backups", operator: "gte" }] },
     scaling: { math: "custom", steps: [1, 3, 10] }
