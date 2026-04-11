@@ -60,6 +60,42 @@ export function initYandexActions() {
 
     if (action === 'backup-info') return openBackupInfoModal();
 
+    if (action === 'reconnect-rights') {
+      window.Modals?.confirm?.({
+        title: 'Переподключить права Яндекса?',
+        textHtml: 'Приложение выполнит локальный выход и при следующем входе попросит заново подтвердить доступ к Яндекс Диску.',
+        confirmText: 'Переподключить',
+        cancelText: 'Отмена',
+        onConfirm: () => {
+          ya.logout();
+          rerender?.();
+          setTimeout(() => ya.login({ forceConfirm: true }), 250);
+        }
+      });
+      return;
+    }
+
+    if (action === 'delete-old-backups') {
+      const token = ya.getToken();
+      if (!token || !ya.isTokenAlive()) return window.NotificationSystem?.warning('Сессия истекла. Войдите снова.');
+      window.Modals?.confirm?.({
+        title: 'Удалить старые backup-версии?',
+        textHtml: 'Будут удалены старые архивные backup-файлы, кроме последних 3 версий и актуального latest.',
+        confirmText: 'Удалить',
+        cancelText: 'Отмена',
+        onConfirm: async () => {
+          try {
+            const res = await disk.deleteOldBackups(token, { keep: 3 });
+            window.NotificationSystem?.success(`Удалено старых копий: ${Number(res?.deleted || 0)} ✅`);
+            rerender?.();
+          } catch (e) {
+            window.NotificationSystem?.error('Не удалось удалить старые backup: ' + String(e?.message || ''));
+          }
+        }
+      });
+      return;
+    }
+
     if (action === 'backup-export-manual') {
       try {
         await BackupVault.exportData();
