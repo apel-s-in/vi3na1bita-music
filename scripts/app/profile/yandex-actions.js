@@ -2,15 +2,26 @@ import { BackupVault } from '../../analytics/backup-vault.js';
 import { YandexDisk } from '../../core/yandex-disk.js';
 import { openBackupInfoModal, openBackupFoundModal, openRestorePreviewModal, openManualRestoreHelpModal } from './yandex-modals.js';
 
-function pickBackupFile() {
+let _cachedBackupFile = null;
+
+function pickBackupFile(useCache = false) {
+  if (useCache && _cachedBackupFile) {
+    return Promise.resolve(_cachedBackupFile);
+  }
   return new Promise(resolve => {
     const inp = document.createElement('input');
     inp.type = 'file';
     inp.accept = '.vi3bak,application/json';
-    inp.onchange = () => resolve(inp.files?.[0] || null);
+    inp.onchange = () => {
+      const file = inp.files?.[0] || null;
+      if (file) _cachedBackupFile = file;
+      resolve(file);
+    };
     inp.click();
   });
 }
+
+function clearCachedBackupFile() { _cachedBackupFile = null; }
 
 export function initYandexActions() {
   window._handleYaAction = async (action, container, rerender) => {
@@ -63,9 +74,10 @@ export function initYandexActions() {
       const token = ya.getToken();
       if (!token || !ya.isTokenAlive()) return window.NotificationSystem?.warning('Для восстановления нужен вход в Яндекс.');
       try {
-        const file = await pickBackupFile();
+        const file = await pickBackupFile(true);
         if (!file) return;
         await BackupVault.importData(file, 'all');
+        clearCachedBackupFile();
         window.NotificationSystem?.success('Backup восстановлен ✅ Обновляем...');
         setTimeout(() => window.location.reload(), 1400);
       } catch (e) {
