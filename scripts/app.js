@@ -32,8 +32,7 @@
         }
       });
       const bub = $('ach-hint-bubble'); if (bub) bub.onclick = () => { sessionStorage.setItem('jumpToAch', '1'); W.AlbumsManager?.loadAlbum(C.SPECIAL_PROFILE_KEY || '__profile__'); };
-      const sv = $('dash-save-btn'); if (sv) sv.onclick = () => { if (!W.NetPolicy?.isNetworkAllowed()) return W.NotificationSystem?.warning('Сеть недоступна'); const tk = JSON.parse(localStorage.getItem('cloud_tokens') || '{}'); tk.yandex ? CS.cloudSync.sync('yandex') : CS.cloudSync.auth('yandex'); };
-      CS.cloudSync?.checkAuthCallback?.(); W.dispatchEvent(new CustomEvent('analytics:logUpdated'));
+      W.dispatchEvent(new CustomEvent('analytics:logUpdated'));
     } catch (e) { console.warn('Analytics init skipped/failed:', e); }
 
     try { if (C.INTEL_LAYER_ENABLED !== false) { const intel = await import('./intel/bootstrap.js'); await intel.initIntelBootstrap?.({ W, D, C }); } } catch (e) { console.warn('Intel layer init skipped/failed:', e); }
