@@ -378,7 +378,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-11 14:39:07 UTC
+Сгенерировано: 2026-04-11 14:40:31 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3434,15 +3434,17 @@ export function renderYandexAuthBlock({ root, localProfile }) {
         <div class="yandex-auth-note">${cloudInfo?.diskUsageHuman ? `На Яндекс Диске приложение сейчас занимает примерно ${cloudInfo.diskUsageHuman}.` : 'Размер копии и суммарное место на Яндекс Диске появятся после успешной проверки облака.'}</div>
         <div class="yandex-auth-actions">
           <button class="modal-action-btn" data-ya-action="rename">✏️ Имя</button>
-          <button class="modal-action-btn" data-ya-action="save-backup">☁️ Сохранить</button>
+          <button class="modal-action-btn" data-ya-action="save-backup">☁️ В облако</button>
           <button class="modal-action-btn" data-ya-action="check-backup">🔎 Проверить</button>
-          <button class="modal-action-btn" data-ya-action="restore-backup">📥 Восстановить</button>
+          <button class="modal-action-btn" data-ya-action="restore-backup">📥 Из облака</button>
+          <button class="modal-action-btn" data-ya-action="backup-export-manual">💾 В файл</button>
+          <button class="modal-action-btn" data-ya-action="backup-import-manual">📂 Из файла</button>
         </div>
         <div class="yandex-auth-autologin">
           <span class="yandex-auth-autologin-text">Автовход при истечении сессии</span>
           <label class="set-switch"><input type="checkbox" id="ya-auto-relogin" ${autoLogin ? 'checked' : ''}><span class="set-slider"></span></label>
         </div>
-        <div class="yandex-auth-note">Что входит в резервную копию: статистика, достижения, локальный профиль, избранное, плейлисты витрины, настройки интерфейса и часть внутренних служебных данных для восстановления прогресса.</div>
+        <div class="yandex-auth-note">Один backup-файл объединяет прогресс, события, избранное, плейлисты, настройки, локальный профиль и данные устройств. Этот же файл можно сохранить вручную на устройство и перенести на другое своё устройство.</div>
         <div class="yandex-auth-bottomactions">
           <button class="om-btn om-btn--ghost" data-ya-action="backup-info">Что сохраняется?</button>
           <button class="om-btn om-btn--outline" data-ya-action="logout">Выйти из Яндекса</button>
