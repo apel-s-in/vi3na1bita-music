@@ -10,6 +10,12 @@ const PROFILE_KEYS = [
   'sleepTimerState:v2'
 ];
 
+// Ключи, которые не синхронизируются между устройствами (device-local)
+// Эти настройки каждое устройство хранит своё
+const DEVICE_LOCAL_KEYS = new Set([
+  'offline:mode:v1','offline:cacheQuality:v1','cloud:listenThreshold','cloud:ttlDays'
+]);
+
 const PROFILE_ONLY_KEYS = new Set([
   '__favorites_v2__','sc3:playlists','sc3:default','sc3:activeId','sc3:ui_v2','sc3:albumColors',
   'sourcePref','favoritesOnlyMode','qualityMode:v1','offline:mode:v1','offline:cacheQuality:v1',
@@ -59,6 +65,21 @@ async function readDeviceRegistry() {
   const out = [...map.values()].sort((a, b) => Number(a.firstSeenAt || 0) - Number(b.firstSeenAt || 0));
   try { localStorage.setItem('backup:device_registry:v1', JSON.stringify(out)); } catch {}
   return out;
+}
+
+async function readDeviceCacheMeta() {
+  // Читаем мета-данные кэша текущего устройства из cache-db
+  try {
+    const { getAllTrackMetas } = await import('../offline/cache-db.js');
+    const metas = await getAllTrackMetas();
+    const deviceHash = localStorage.getItem('deviceHash') || '';
+    // Сохраняем только pinned/cloud — transient/dynamic не нужны
+    const relevant = metas.filter(m => ['pinned', 'cloud'].includes(m.type)).map(m => ({
+      uid: m.uid, type: m.type, quality: m.quality, size: m.size || 0,
+      cloudExpiresAt: m.cloudExpiresAt || null, pinnedAt: m.pinnedAt || null
+    }));
+    return { deviceHash, items: relevant };
+  } catch { return null; }
 }
 
 async function readSnapshotData() {
@@ -219,6 +240,12 @@ export class BackupVault {
     const identity = await readOwnerIdentity();
     const devices = await readDeviceRegistry();
     const data = await readSnapshotData();
+    const deviceCacheMeta = await readDeviceCacheMeta();
+    // Добавляем device-specific кэш в devices registry
+    if (deviceCacheMeta?.deviceHash) {
+      const devIdx = devices.findIndex(d => d.deviceHash === deviceCacheMeta.deviceHash);
+      if (devIdx >= 0) devices[devIdx]._cacheMeta = deviceCacheMeta.items;
+    }
     const revision = {
       timestamp: Date.now(),
       appVersion: window.APP_CONFIG?.APP_VERSION || null,
@@ -348,6 +375,8 @@ export class BackupVault {
             if (b.data.userProfile) await metaDB.setGlobal('user_profile', b.data.userProfile);
             for (const [k, v] of Object.entries(b.data.localStorage || {})) {
               if (!PROFILE_ONLY_KEYS.has(k)) continue;
+              // Device-local ключи НЕ синхронизируем с других устройств
+              if (DEVICE_LOCAL_KEYS.has(k)) continue;
               try {
                 const localVal = localStorage.getItem(k);
                 localStorage.setItem(k, mergeProfileStorageValueSafe(k, localVal, v));
