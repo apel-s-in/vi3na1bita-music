@@ -379,7 +379,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-11 17:42:46 UTC
+Сгенерировано: 2026-04-11 17:44:10 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3864,7 +3864,8 @@ export function openRestorePreviewModal(data, onConfirm) {
         <b>Плейлистов витрины:</b> ${sum.playlistsCount}<br>
         <b>Устройств:</b> ${sum.devicesCount}<br>
         <b>Owner Yandex ID:</b> ${window.Utils?.escapeHtml?.(sum.ownerYandexId || 'unknown') || 'unknown'}<br><br>
-        <span style="color:#9db7dd">${cmp}</span><br><br>
+        <span style="color:#9db7dd">${cmp}</span><br>
+        <span style="color:#9db7dd">При восстановлении высокие статистические значения, достижения и XP не будут понижены: применяется безопасное слияние.</span><br><br>
         <b>Выберите режим:</b>
       </div>
       <div class="modal-choice-actions">
