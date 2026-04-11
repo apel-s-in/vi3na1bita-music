@@ -6,7 +6,7 @@
 const API = 'https://cloud-api.yandex.net/v1/disk';
 const BACKUP_PATH = 'app:/vi3na1bita_backup.vi3bak';
 const META_PATH = 'app:/vi3na1bita_backup_meta.json';
-const BACKUP_PATH_VERSIONED = stamp => `app:/history/vi3na1bita_backup_${stamp}.vi3bak`;
+const BACKUP_PATH_VERSIONED = stamp => `app:/vi3na1bita_backup_${stamp}.vi3bak`;
 
 const authHeader = token => ({ 'Authorization': `OAuth ${token}` });
 
@@ -46,7 +46,7 @@ export const YandexDisk = {
     };
 
     await putJsonByPath(token, BACKUP_PATH, dataObject);
-    await putJsonByPath(token, meta.historyPath, dataObject);
+    try { await putJsonByPath(token, meta.historyPath, dataObject); } catch {}
     await putJsonByPath(token, META_PATH, meta);
     return meta;
   },
