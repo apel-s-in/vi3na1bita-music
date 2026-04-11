@@ -12,7 +12,7 @@ export const loadProfileView = async (ctx) => {
   const cw = document.getElementById('cover-wrap'); if (cw) cw.style.display = 'none';
   const c = document.getElementById('track-list'); if (!c) return;
 
-  const { metaDB, cloudSync, all, ach, streak, profile, totalFull, totalSec, tokens } = await loadProfileModel();
+  const { metaDB, all, ach, streak, profile, totalFull, totalSec, tokens } = await loadProfileModel();
   renderProfileShell({ container: c, profile, tokens, totalFull, totalSec, streak, achCount: Object.keys(ach).length });
 
   const syncCarouselAccountCard = () => {
@@ -27,7 +27,7 @@ export const loadProfileView = async (ctx) => {
 
   await renderProfileTabsData({ container: c, all, metaDB });
 
-  bindProfileTabControllers({ ctx, container: c, achView, profile, metaDB, cloudSync, tokens, onProfileChanged: syncCarouselAccountCard, reloadProfile: () => loadProfileView(ctx) });
+  bindProfileTabControllers({ ctx, container: c, achView, profile, metaDB, tokens, onProfileChanged: syncCarouselAccountCard, reloadProfile: () => loadProfileView(ctx) });
 
   if (sessionStorage.getItem('jumpToAch')) {
     sessionStorage.removeItem('jumpToAch');
