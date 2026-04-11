@@ -379,7 +379,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-11 19:28:15 UTC
+Сгенерировано: 2026-04-11 19:30:16 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3883,6 +3883,32 @@ export function openRestorePreviewModal(data, onConfirm) {
   });
 }
 
+export function openRestoreVersionPickerModal(items, onPick) {
+  const list = (Array.isArray(items) ? items : []).slice(0, 4);
+  const m = window.Modals?.open?.({
+    title: 'Выберите облачную версию',
+    maxWidth: 500,
+    bodyHtml: `
+      <div class="modal-confirm-text">
+        Доступные версии backup в облаке:
+      </div>
+      <div class="modal-choice-actions">
+        ${list.map((it, i) => `
+          <button type="button" class="modal-action-btn ${i === 0 ? 'online' : ''}" data-restore-path="${window.Utils?.escapeHtml?.(it.path || '') || ''}">
+            ${(it.isLatest ? '☁️ Latest' : '🕘 Архив')} · ${it.timestamp ? new Date(it.timestamp).toLocaleString('ru-RU') : 'без даты'} · ${window.Utils?.escapeHtml?.(it.sizeHuman || 'unknown') || 'unknown'}${it.appVersion ? ` · v${window.Utils?.escapeHtml?.(String(it.appVersion)) || 'unknown'}` : ''}
+          </button>
+        `).join('')}
+      </div>`
+  });
+  m?.addEventListener('click', e => {
+    const btn = e.target.closest('[data-restore-path]');
+    if (!btn) return;
+    const path = String(btn.dataset.restorePath || '').trim();
+    m.remove();
+    onPick?.(path || null);
+  });
+}
+
 export function openManualRestoreHelpModal(downloadHref, onPickLocalFile) {
   const m = window.Modals?.open?.({
     title: 'Восстановление через файл',
@@ -3912,7 +3938,7 @@ export function openManualRestoreHelpModal(downloadHref, onPickLocalFile) {
     if (act === 'pick') onPickLocalFile?.();
   });
 }
-export default { openBackupInfoModal, openBackupFoundModal, openRestorePreviewModal, openManualRestoreHelpModal };
+export default { openBackupInfoModal, openBackupFoundModal, openRestorePreviewModal, openRestoreVersionPickerModal, openManualRestoreHelpModal };
 
 //=================================================
 // FILE: /scripts/app/promocode.js
