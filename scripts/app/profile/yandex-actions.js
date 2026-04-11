@@ -143,17 +143,23 @@ export function initYandexActions() {
       window.NotificationSystem?.info('Загружаем резервную копию...');
       try {
         const data = await disk.download(token).catch(async e => {
-          // Если 403/401 от прокси — токен без прав на Диск
-          if (String(e?.message || '').includes('disk_forbidden') || String(e?.message || '').includes('disk_auth_error') || String(e?.message || '').includes('token_invalid')) {
+          const msg = String(e?.message || '');
+          const hint = String(e?.payload?.hint || '');
+
+          if (msg.includes('disk_forbidden') || msg.includes('disk_auth_error') || msg.includes('token_invalid_or_expired')) {
             window.Modals?.confirm?.({
-              title: 'Доступ к Диску недоступен',
-              textHtml: 'Текущий OAuth client не поддерживает доступ к Яндекс Диску для автоматического restore.<br><br>Пока используйте сценарий <b>скачать backup и восстановить из файла</b>.',
-              confirmText: 'Понятно',
-              cancelText: 'Закрыть',
-              onConfirm: () => {}
+              title: 'Нужно переподключить Яндекс',
+              textHtml: `${hint || 'Текущему токену не хватает прав на папку приложения Яндекс.Диска.'}<br><br>Это всё ещё <b>одна и та же авторизация</b>, просто нужно заново выдать корректные права.`,
+              confirmText: 'Переподключить',
+              cancelText: 'Отмена',
+              onConfirm: () => {
+                ya.logout();
+                setTimeout(() => ya.login({ forceConfirm: true }), 250);
+              }
             });
             throw new Error('__handled__');
           }
+
           throw e;
         });
         if (!data) return window.NotificationSystem?.warning('Резервная копия не найдена на Диске.');
