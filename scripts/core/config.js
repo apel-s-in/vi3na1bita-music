@@ -4,6 +4,7 @@ export const APP_CONFIG = {
   BUILD_DATE: '2026-03-27',
   PROMOCODE: 'VITRINA2025',
   ICON_ALBUMS_ORDER: [
+    { key: 'ne-vse-ravno', title: 'Не всё равно', icon: 'img/icon_album/icon-album-04.png' },
     { key: 'odnazhdy-v-skazke', title: 'Однажды в Сказке', icon: 'img/icon_album/icon-album-03.png' },
     { key: 'golos-dushi', title: 'Голос Души', icon: 'img/icon_album/icon-album-02.png' },
     { key: 'mezhdu-zlom-i-dobrom', title: 'Между Злом и Добром', icon: 'img/icon_album/icon-album-01.png' },
