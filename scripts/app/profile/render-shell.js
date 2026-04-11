@@ -20,6 +20,7 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
     const status = ya.getSessionStatus();
     const profile = ya.getProfile();
     const autoLogin = ya.isAutoRelogin();
+    const backupMeta = (() => { try { return JSON.parse(localStorage.getItem('yandex:last_backup_meta') || 'null'); } catch { return null; } })();
 
     const statusLabel = { active: '🟢 Подключено', expired: '🟡 Сессия истекла', logged_out: '⚪ Не подключено' }[status] || '⚪ Не подключено';
     const statusColor = { active: '#4caf50', expired: '#ff9800', logged_out: '#888' }[status] || '#888';
@@ -40,6 +41,7 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
             <button class="modal-action-btn" data-ya-action="save-backup" style="font-size:12px;padding:10px 8px;min-width:0">☁️ Сохранить</button>
             <button class="modal-action-btn" data-ya-action="restore-backup" style="font-size:12px;padding:10px 8px;min-width:0">📥 Восстановить</button>
           </div>
+          ${backupMeta?.timestamp ? `<div style="font-size:11px;color:#7f93b5;margin:-2px 0 10px">Последний бэкап: ${new Date(backupMeta.timestamp).toLocaleString('ru-RU')}</div>` : ''}
           <div style="display:flex;gap:8px;align-items:center;padding:10px 12px;background:rgba(0,0,0,.2);border-radius:10px;margin-bottom:10px">
             <span style="flex:1;font-size:12px;color:#9db7dd;line-height:1.35">Автовход при сбросе сессии</span>
             <label class="set-switch"><input type="checkbox" id="ya-auto-relogin" ${autoLogin ? 'checked' : ''}><span class="set-slider"></span></label>
