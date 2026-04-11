@@ -25,6 +25,12 @@ export function openBackupInfoModal() {
 }
 
 export function openBackupFoundModal(meta) {
+  const localTs = Number(localStorage.getItem('yandex:last_backup_local_ts') || 0);
+  const cloudTs = Number(meta?.timestamp || 0);
+  const cmpLabel = cloudTs > localTs ? '☁️ Облако новее локального'
+    : localTs > cloudTs ? '💾 Локальные данные новее облака'
+    : '✅ Версии совпадают';
+
   window.Modals?.open?.({
     title: 'Облачная копия найдена',
     maxWidth: 460,
@@ -32,10 +38,11 @@ export function openBackupFoundModal(meta) {
       <div class="modal-confirm-text">
         <b>Статус:</b> копия доступна<br>
         <b>Дата:</b> ${meta?.timestamp ? new Date(meta.timestamp).toLocaleString('ru-RU') : 'неизвестно'}<br>
-        <b>Версия backup:</b> ${window.Utils?.escapeHtml?.(meta?.version || 'unknown') || 'unknown'}<br>
         <b>Версия приложения:</b> ${window.Utils?.escapeHtml?.(meta?.appVersion || 'unknown') || 'unknown'}<br>
-        <b>Размер:</b> ${window.Utils?.escapeHtml?.(meta?.sizeHuman || 'unknown') || 'unknown'}<br><br>
-        <span style="color:#9db7dd">Копия хранится в личной папке приложения на Яндекс Диске и привязана к аккаунту владельца.</span>
+        <b>Размер:</b> ${window.Utils?.escapeHtml?.(meta?.sizeHuman || 'unknown') || 'unknown'}<br>
+        <b>Сравнение:</b> ${cmpLabel}<br>
+        ${meta?.historyPath ? `<b>История:</b> версионированный backup сохранён<br>` : ''}
+        <br><span style="color:#9db7dd">Копия хранится в личной папке приложения на Яндекс Диске и привязана к аккаунту владельца.</span>
       </div>`
   });
 }
