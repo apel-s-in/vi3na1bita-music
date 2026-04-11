@@ -380,7 +380,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-11 22:33:14 UTC
+Сгенерировано: 2026-04-11 22:57:26 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -530,6 +530,12 @@ jobs:
       "title": "Однажды в Сказке",
       "yandex_base": "https://storage.yandexcloud.net/vi3na1bita/albums/odnazhdy-v-skazke/",
       "github_base": "https://apel-s-in.github.io/vi3na1bita-odnazhdy-v-skazke/"
+    },
+    {
+      "key": "ne-vse-ravno",
+      "title": "Не всё равно",
+      "yandex_base": "https://storage.yandexcloud.net/vi3na1bita/albums/ne-vse-ravno/",
+      "github_base": "https://apel-s-in.github.io/vi3na1bita-ne-vse-ravno/"
     },
     {
       "key": "krevetochka",
