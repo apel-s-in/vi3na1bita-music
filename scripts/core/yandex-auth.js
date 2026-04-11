@@ -1,233 +1,224 @@
-// scripts/core/yandex-disk.js
-// Сохранение и восстановление бэкапа прогресса на Яндекс Диск.
-// Browser-only режим: metadata через cloud-api, payload restore с graceful fallback.
+// scripts/core/yandex-auth.js
+// Яндекс OAuth 2.0 (Implicit Flow) — авторизация без бэкенда.
+// Хранит токен, профиль, displayName привязанный к yandexId.
+// НЕ влияет на воспроизведение, статистику и офлайн-режим.
 
-const API = 'https://cloud-api.yandex.net/v1/disk';
-const BACKUP_PATH = 'app:/vi3na1bita_backup.vi3bak';
-const META_PATH = 'app:/vi3na1bita_backup_meta.json';
-const BACKUP_PATH_VERSIONED = stamp => `app:/vi3na1bita_backup_${stamp}.vi3bak`;
-const PROXY_URL = 'https://functions.yandexcloud.net/d4ecdu6kgamevcauajid';
+const CLIENT_ID = '70c0b7256956440eb5b55866d740ffae';
+const REDIRECT_URI = 'https://vi3na1bita.website.yandexcloud.net/oauth-callback.html';
+const LS_TOKEN = 'yandex:token';
+const LS_TOKEN_EXP = 'yandex:token_exp';
+const LS_TOKEN_SCOPE = 'yandex:token_scope';
+const LS_PROFILE = 'yandex:profile';
+const LS_AUTO_RELOGIN = 'yandex:auto_relogin';
+const LS_FORCE_CONFIRM_NEXT = 'yandex:force_confirm_next';
+const REQUIRED_SCOPES = ['login:info', 'login:email', 'cloud_api:disk.app_folder'];
 
-const authHeader = token => ({ 'Authorization': `OAuth ${token}` });
-const buildProxyUrl = (mode = 'download', path = BACKUP_PATH) => {
-  const u = new URL(PROXY_URL);
-  u.searchParams.set('mode', mode);
-  if (path) u.searchParams.set('path', path);
-  return u.toString();
-};
+const read = k => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } };
+const write = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+const del = k => localStorage.removeItem(k);
 
-async function getUploadHref(token, path) {
-  const r = await fetch(`${API}/resources/upload?path=${encodeURIComponent(path)}&overwrite=true`, { headers: authHeader(token) });
-  if (!r.ok) throw new Error(`upload_link_failed:${r.status}`);
-  return (await r.json()).href;
-}
+export const YandexAuth = {
+  getToken() { return localStorage.getItem(LS_TOKEN) || null; },
+  getExpiry() { return Number(localStorage.getItem(LS_TOKEN_EXP) || 0); },
+  isTokenAlive() {
+    const exp = this.getExpiry();
+    return !!this.getToken() && (exp === 0 || Date.now() < exp);
+  },
+  getSessionStatus() {
+    if (!this.getToken()) return 'logged_out';
+    if (!this.isTokenAlive()) return 'expired';
+    return 'active';
+  },
+  getProfile() { return read(LS_PROFILE) || null; },
+  getGrantedScopes() {
+    return String(localStorage.getItem(LS_TOKEN_SCOPE) || '').trim().split(/\s+/).filter(Boolean);
+  },
+  hasScope(scope) {
+    return this.getGrantedScopes().includes(String(scope || '').trim());
+  },
+  hasDiskAccess() {
+    return this.hasScope('cloud_api:disk.app_folder')
+      || this.hasScope('cloud_api:disk.read')
+      || this.hasScope('cloud_api:disk.write');
+  },
+  isAutoRelogin() {
+    return localStorage.getItem(LS_AUTO_RELOGIN) === '1';
+  },
+  setAutoRelogin(v) {
+    localStorage.setItem(LS_AUTO_RELOGIN, v ? '1' : '0');
+  },
 
-async function putJsonByPath(token, path, data) {
-  const href = await getUploadHref(token, path);
-  const res = await fetch(href, { method: 'PUT', body: new Blob([JSON.stringify(data)], { type: 'application/json' }) });
-  if (!res.ok) throw new Error(`upload_failed:${res.status}`);
-  return true;
-}
+  login(options = {}) {
+    if (CLIENT_ID === 'YOUR_YANDEX_CLIENT_ID') {
+      window.NotificationSystem?.warning('ClientID не настроен.');
+      return;
+    }
 
-async function getResourceMeta(token, path) {
-  const r = await fetch(`${API}/resources?path=${encodeURIComponent(path)}`, { headers: authHeader(token) });
-  if (r.status === 404) return null;
-  if (!r.ok) throw new Error(`resource_meta_failed:${r.status}`);
-  return await r.json();
-}
+    const mustForceConfirm = !!options?.forceConfirm || localStorage.getItem(LS_FORCE_CONFIRM_NEXT) === '1';
+    const forceConfirm = mustForceConfirm ? '1' : '0';
+    const scope = encodeURIComponent(REQUIRED_SCOPES.join(' '));
+    const url = `https://oauth.yandex.ru/authorize?response_type=token&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&force_confirm=${forceConfirm}&scope=${scope}`;
 
-async function getDownloadHref(token, path) {
-  const r = await fetch(`${API}/resources/download?path=${encodeURIComponent(path)}`, { headers: authHeader(token) });
-  if (r.status === 404) return null;
-  if (!r.ok) throw new Error(`download_link_failed:${r.status}`);
-  return (await r.json()).href || null;
-}
+    const w = 520;
+    const h = 620;
+    const left = Math.round(window.screenX + (window.outerWidth - w) / 2);
+    const top = Math.round(window.screenY + (window.outerHeight - h) / 2);
+    const popup = window.open(url, 'yandex_oauth', `width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`);
 
-async function listAppFolder(token, limit = 100) {
-  const r = await fetch(`${API}/resources?path=${encodeURIComponent('app:/')}&limit=${limit}`, { headers: authHeader(token) });
-  if (!r.ok) throw new Error(`list_failed:${r.status}`);
-  return (await r.json())?._embedded?.items || [];
-}
+    if (!popup) {
+      window.NotificationSystem?.info('Разрешите всплывающие окна для входа через Яндекс.');
+      return;
+    }
 
-function humanSize(bytes = 0) {
-  const n = Number(bytes) || 0;
-  if (n <= 0) return '0 B';
-  const u = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.min(u.length - 1, Math.floor(Math.log(n) / Math.log(1024)));
-  return `${(n / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${u[i]}`;
-}
+    const onMsg = async e => {
+      if (e.origin !== window.location.origin) return;
+      if (!e.data || e.data.type !== 'YANDEX_OAUTH_CALLBACK') return;
 
-function isVersionedBackupPath(path) {
-  return /^app:\/vi3na1bita_backup(?:_[A-Za-z0-9._-]+)?\.vi3bak$/i.test(String(path || '').trim());
-}
+      window.removeEventListener('message', onMsg);
+      clearTimeout(timeoutId);
+      clearInterval(closedCheck);
+      try { if (!popup.closed) popup.close(); } catch {}
 
-export const YandexDisk = {
-  async upload(token, dataObject) {
-    if (!token) throw new Error('no_token');
-    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const meta = {
-      latestPath: BACKUP_PATH,
-      historyPath: BACKUP_PATH_VERSIONED(stamp),
-      timestamp: Number(dataObject?.revision?.timestamp || dataObject?.createdAt || Date.now()),
-      version: dataObject?.version || 'unknown',
-      appVersion: dataObject?.revision?.appVersion || dataObject?.appVersion || null,
-      ownerYandexId: dataObject?.identity?.ownerYandexId || null,
-      checksum: dataObject?.integrity?.payloadHash || null
+      const { token, expiresIn, error, scope } = e.data;
+      if (error || !token) {
+        window.NotificationSystem?.error('Ошибка авторизации Яндекс: ' + (error || 'нет токена'));
+        return;
+      }
+
+      const exp = Number(expiresIn) > 0 ? Date.now() + Number(expiresIn) * 1000 : 0;
+      localStorage.setItem(LS_TOKEN, token);
+      localStorage.setItem(LS_TOKEN_EXP, String(exp));
+      if (scope) localStorage.setItem(LS_TOKEN_SCOPE, String(scope).trim());
+      else localStorage.removeItem(LS_TOKEN_SCOPE);
+      localStorage.removeItem(LS_FORCE_CONFIRM_NEXT);
+
+      await new Promise(r => setTimeout(r, 200));
+      const profile = await this.fetchYandexProfile(token);
+      if (profile) await this._onFirstLogin(profile);
     };
 
-    await putJsonByPath(token, BACKUP_PATH, dataObject);
-    try { await putJsonByPath(token, meta.historyPath, dataObject); } catch {}
-    await putJsonByPath(token, META_PATH, meta);
-    return meta;
+    window.addEventListener('message', onMsg);
+
+    const timeoutId = setTimeout(() => {
+      window.removeEventListener('message', onMsg);
+      clearInterval(closedCheck);
+      try { if (!popup.closed) popup.close(); } catch {}
+      window.NotificationSystem?.warning('Время авторизации истекло. Попробуйте снова.');
+    }, 300000);
+
+    const closedCheck = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(closedCheck);
+        clearTimeout(timeoutId);
+        window.removeEventListener('message', onMsg);
+      }
+    }, 1000);
   },
 
-  async getMeta(token) {
-    if (!token) throw new Error('no_token');
-    const [latestMeta, metaMeta] = await Promise.all([
-      getResourceMeta(token, BACKUP_PATH).catch(() => null),
-      getResourceMeta(token, META_PATH).catch(() => null)
-    ]);
-    if (!latestMeta) return null;
-
-    let metaJson = null;
+  logout() {
+    del(LS_TOKEN);
+    del(LS_TOKEN_EXP);
+    del(LS_TOKEN_SCOPE);
+    del(LS_PROFILE);
+    localStorage.setItem(LS_FORCE_CONFIRM_NEXT, '1');
     try {
-      const href = await getDownloadHref(token, META_PATH);
-      if (href) {
-        const res = await fetch(href, { mode: 'cors' });
-        if (res.ok) metaJson = await res.json();
-      }
+      localStorage.removeItem('yandex:last_backup_check');
+      sessionStorage.removeItem('ya:auto-check:done');
     } catch {}
-
-    const size = Number(latestMeta?.size || 0);
-    const metaSize = Number(metaMeta?.size || 0);
-    return metaJson ? {
-      ...metaJson,
-      size,
-      sizeHuman: humanSize(size),
-      diskUsageBytes: size + metaSize,
-      diskUsageHuman: humanSize(size + metaSize),
-      modified: latestMeta?.modified || null
-    } : {
-      latestPath: BACKUP_PATH,
-      historyPath: null,
-      timestamp: latestMeta.modified ? Date.parse(latestMeta.modified) || 0 : 0,
-      version: 'unknown',
-      appVersion: 'unknown',
-      ownerYandexId: null,
-      checksum: null,
-      size,
-      sizeHuman: humanSize(size),
-      diskUsageBytes: size + metaSize,
-      diskUsageHuman: humanSize(size + metaSize),
-      modified: latestMeta?.modified || null
-    };
+    window.dispatchEvent(new CustomEvent('yandex:auth:changed', { detail: { status: 'logged_out' } }));
+    window.NotificationSystem?.info('Вы вышли из аккаунта Яндекс');
   },
 
-  async checkExists(token) {
-    if (!token) return false;
+  async fetchYandexProfile(token) {
     try {
-      const r = await fetch(`${API}/resources?path=${encodeURIComponent(BACKUP_PATH)}`, { headers: authHeader(token) });
-      return r.ok;
-    } catch {
-      return false;
-    }
-  },
-
-  async download(token, path = BACKUP_PATH) {
-    if (!token) throw new Error('no_token');
-
-    if (PROXY_URL && !PROXY_URL.includes('ВАШ_ID')) {
-      const res = await fetch(buildProxyUrl('download', path), {
-        method: 'GET',
-        headers: { 'Authorization': `Bearer ${token}` }
-      }).catch(() => null);
-
-      if (res) {
-        let payload = null;
-        try { payload = await res.json(); } catch {}
-
-        if (res.status === 404 || payload?.error === 'not_found') return null;
-        if (res.ok && payload) return payload;
-
-        if (payload?.error) {
-          const err = new Error(String(payload.error));
-          err.payload = payload;
-          throw err;
-        }
-      }
-    }
-
-    try {
-      const href = await getDownloadHref(token, path);
-      if (!href) return null;
-      const res = await fetch(href, { mode: 'cors' });
-      if (res.status === 404) return null;
-      if (res.ok) return await res.json();
-    } catch {}
-
-    const href = await getDownloadHref(token, path).catch(() => null);
-    const e = new Error('download_cors_fallback_required');
-    e.downloadHref = href;
-    e.requestedPath = path;
-    throw e;
-  },
-
-  async listBackups(token) {
-    if (!token) throw new Error('no_token');
-
-    if (PROXY_URL && !PROXY_URL.includes('ВАШ_ID')) {
-      const res = await fetch(buildProxyUrl('list'), {
-        method: 'GET',
-        headers: { 'Authorization': `Bearer ${token}` }
-      }).catch(() => null);
-
-      if (res) {
-        let payload = null;
-        try { payload = await res.json(); } catch {}
-        if (res.ok && Array.isArray(payload?.items)) return payload.items;
-        if (payload?.error) {
-          const err = new Error(String(payload.error));
-          err.payload = payload;
-          throw err;
-        }
-      }
-    }
-
-    const meta = await this.getMeta(token).catch(() => null);
-    return meta?.latestPath ? [{
-      path: meta.latestPath,
-      timestamp: Number(meta.timestamp || 0),
-      appVersion: String(meta.appVersion || 'unknown'),
-      checksum: String(meta.checksum || ''),
-      sizeHuman: String(meta.sizeHuman || 'unknown'),
-      isLatest: true
-    }] : [];
-  },
-
-  async deleteOldBackups(token, { keep = 3 } = {}) {
-    if (!token) throw new Error('no_token');
-    const items = await listAppFolder(token, 200);
-    const versioned = items
-      .filter(x => isVersionedBackupPath(x.path) && String(x.path || '') !== BACKUP_PATH)
-      .sort((a, b) => (Date.parse(b.modified || 0) || 0) - (Date.parse(a.modified || 0) || 0));
-
-    const toDelete = versioned.slice(Math.max(0, Number(keep) || 3));
-    for (const item of toDelete) {
-      await fetch(`${API}/resources?path=${encodeURIComponent(item.path)}`, {
-        method: 'DELETE',
-        headers: authHeader(token)
-      }).then(r => {
-        if (!r.ok && r.status !== 202 && r.status !== 204 && r.status !== 404) throw new Error(`delete_failed:${r.status}`);
+      const r = await fetch('https://login.yandex.ru/info?format=json', {
+        headers: { 'Authorization': `OAuth ${token}` }
       });
+      if (!r.ok) return null;
+      return await r.json();
+    } catch {
+      return null;
     }
-    return { deleted: toDelete.length, kept: Math.min(versioned.length, Math.max(0, Number(keep) || 3)) };
   },
 
-  async getDownloadLink(token, path = BACKUP_PATH) {
-    if (!token) throw new Error('no_token');
-    return await getDownloadHref(token, path);
+  async _onFirstLogin(yProfile) {
+    const yandexId = String(yProfile.id || '').trim();
+    const realName = String(yProfile.real_name || yProfile.display_name || yProfile.login || '').trim();
+    const login = String(yProfile.login || '').trim();
+    const avatar = yProfile.default_avatar_id
+      ? `https://avatars.yandex.net/get-yapic/${yProfile.default_avatar_id}/islands-200`
+      : null;
+
+    const existing = read(LS_PROFILE);
+    if (existing?.yandexId === yandexId && existing?.displayName) {
+      write(LS_PROFILE, { ...existing, realName, login, avatar, lastSync: Date.now() });
+      window.dispatchEvent(new CustomEvent('yandex:auth:changed', { detail: { status: 'active', profile: read(LS_PROFILE) } }));
+      window.NotificationSystem?.success(`С возвращением, ${existing.displayName}! 👋`);
+      return;
+    }
+
+    write(LS_PROFILE, { yandexId, displayName: realName || login, realName, login, avatar, lastSync: Date.now() });
+    window.dispatchEvent(new CustomEvent('yandex:auth:changed', { detail: { status: 'active', profile: read(LS_PROFILE) } }));
+    this._showNamePickModal(realName, login);
+  },
+
+  _showNamePickModal(realName, login) {
+    if (!window.Modals?.open) return;
+    const suggested = realName || login || 'Слушатель';
+    const esc = s => window.Utils?.escapeHtml?.(String(s || '')) || String(s || '');
+    const m = window.Modals.open({
+      title: '👋 Добро пожаловать!',
+      maxWidth: 400,
+      bodyHtml: `
+        <div style="color:#9db7dd;margin-bottom:16px;line-height:1.5">
+          Вы вошли через Яндекс.<br>
+          Как вас отображать в приложении?
+        </div>
+        <div style="margin-bottom:14px">
+          <label style="font-size:12px;color:#888;display:block;margin-bottom:6px">Ваше имя</label>
+          <input type="text" id="ya-display-name"
+            style="width:100%;padding:10px 14px;border-radius:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:16px;outline:none"
+            maxlength="20" placeholder="${esc(suggested)}" value="${esc(suggested)}" autocomplete="off">
+          <div style="font-size:11px;color:#666;margin-top:6px">Или оставьте как есть — ${esc(suggested)}</div>
+        </div>
+        <div class="om-actions">
+          <button class="modal-action-btn online" id="ya-name-save" style="flex:1;justify-content:center">Сохранить</button>
+        </div>`
+    });
+
+    const inp = m.querySelector('#ya-display-name');
+    const btn = m.querySelector('#ya-name-save');
+    setTimeout(() => inp?.focus(), 100);
+
+    const save = () => {
+      const name = inp?.value?.trim() || suggested;
+      const profile = read(LS_PROFILE) || {};
+      write(LS_PROFILE, { ...profile, displayName: name });
+      window.dispatchEvent(new CustomEvent('yandex:auth:changed', { detail: { status: 'active', profile: read(LS_PROFILE) } }));
+      window.NotificationSystem?.success(`Имя сохранено: ${name} ✅`);
+      m.remove();
+    };
+
+    btn?.addEventListener('click', save);
+    inp?.addEventListener('keydown', e => e.key === 'Enter' && save());
+  },
+
+  updateDisplayName(name) {
+    const profile = read(LS_PROFILE);
+    if (!profile) return;
+    write(LS_PROFILE, { ...profile, displayName: String(name || '').trim() || profile.displayName });
+    window.dispatchEvent(new CustomEvent('yandex:auth:changed', { detail: { status: 'active', profile: read(LS_PROFILE) } }));
+  },
+
+  checkAutoRelogin() {
+    if (!this.isAutoRelogin()) return;
+    if (this.getSessionStatus() === 'expired') {
+      window.dispatchEvent(new CustomEvent('yandex:auth:changed', {
+        detail: { status: 'expired', needsRelogin: true }
+      }));
+    }
   }
 };
 
-window.YandexDisk = YandexDisk;
-export default YandexDisk;
+window.YandexAuth = YandexAuth;
+export default YandexAuth;
