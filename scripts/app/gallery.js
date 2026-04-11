@@ -1,5 +1,5 @@
 const W = window, D = document, $ = id => D.getElementById(id), BASE = './albums/gallery/', LOGO = 'img/logo.png', C404 = 'gallery_404_cache:v2';
-const MAP = { 'krevetochka': '00', 'mezhdu-zlom-i-dobrom': '01', 'golos-dushi': '02', 'odnazhdy-v-skazke': '03' };
+const MAP = { 'krevetochka': '00', 'mezhdu-zlom-i-dobrom': '01', 'golos-dushi': '02', 'odnazhdy-v-skazke': '03', 'ne-vse-ravno': '04' };
 const ss = (k, v) => v === undefined ? JSON.parse(sessionStorage.getItem(k) || '{}') : sessionStorage.setItem(k, JSON.stringify(v));
 
 class GalleryManager {
