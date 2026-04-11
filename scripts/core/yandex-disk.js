@@ -12,6 +12,12 @@ const BACKUP_PATH_VERSIONED = stamp => `app:/vi3na1bita_backup_${stamp}.vi3bak`;
 const PROXY_URL = 'https://functions.yandexcloud.net/d4ecdu6kgamevcauajid';
 
 const authHeader = token => ({ 'Authorization': `OAuth ${token}` });
+const buildProxyUrl = (mode = 'download', path = BACKUP_PATH) => {
+  const u = new URL(PROXY_URL);
+  u.searchParams.set('mode', mode);
+  if (path) u.searchParams.set('path', path);
+  return u.toString();
+};
 
 async function getUploadHref(token, path) {
   const r = await fetch(`${API}/resources/upload?path=${encodeURIComponent(path)}&overwrite=true`, { headers: authHeader(token) });
@@ -118,12 +124,12 @@ export const YandexDisk = {
     } catch { return false; }
   },
 
-  async download(token) {
+  async download(token, path = BACKUP_PATH) {
     if (!token) throw new Error('no_token');
 
-    // Попытка 1: через Cloud Function proxy — здесь НЕ глушим детальную ошибку
+    // Попытка 1: через Cloud Function proxy — latest или конкретная versioned path
     if (PROXY_URL && !PROXY_URL.includes('ВАШ_ID')) {
-      const res = await fetch(PROXY_URL, {
+      const res = await fetch(buildProxyUrl('download', path), {
         method: 'GET',
         headers: { 'Authorization': `Bearer ${token}` }
       }).catch(() => null);
@@ -143,27 +149,57 @@ export const YandexDisk = {
       }
     }
 
-    // Попытка 2: прямой fetch с CORS
+    // Попытка 2: прямой fetch с CORS — только для latest/manual fallback
     try {
-      const href = await getDownloadHref(token, BACKUP_PATH);
+      const href = await getDownloadHref(token, path);
       if (!href) return null;
       const res = await fetch(href, { mode: 'cors' });
       if (res.status === 404) return null;
       if (res.ok) return await res.json();
     } catch {}
 
-    // Fallback: вручную скачать и импортировать файл
-    const href = await getDownloadHref(token, BACKUP_PATH).catch(() => null);
+    const href = await getDownloadHref(token, path).catch(() => null);
     const e = new Error('download_cors_fallback_required');
     e.downloadHref = href;
+    e.requestedPath = path;
     throw e;
   },
 
-  async getDownloadLink(token) {
+  async listBackups(token) {
     if (!token) throw new Error('no_token');
-    return await getDownloadHref(token, BACKUP_PATH);
+
+    if (PROXY_URL && !PROXY_URL.includes('ВАШ_ID')) {
+      const res = await fetch(buildProxyUrl('list'), {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${token}` }
+      }).catch(() => null);
+
+      if (res) {
+        let payload = null;
+        try { payload = await res.json(); } catch {}
+        if (res.ok && Array.isArray(payload?.items)) return payload.items;
+        if (payload?.error) {
+          const err = new Error(String(payload.error));
+          err.payload = payload;
+          throw err;
+        }
+      }
+    }
+
+    const meta = await this.getMeta(token).catch(() => null);
+    return meta?.latestPath ? [{
+      path: meta.latestPath,
+      timestamp: Number(meta.timestamp || 0),
+      appVersion: String(meta.appVersion || 'unknown'),
+      sizeHuman: String(meta.sizeHuman || 'unknown'),
+      isLatest: true
+    }] : [];
+  },
+
+  async getDownloadLink(token, path = BACKUP_PATH) {
+    if (!token) throw new Error('no_token');
+    return await getDownloadHref(token, path);
   }
-};
 
 window.YandexDisk = YandexDisk;
 export default YandexDisk;
