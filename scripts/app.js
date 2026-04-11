@@ -42,6 +42,12 @@
       const { YandexAuth } = await import('./core/yandex-auth.js');
       YandexAuth.checkAutoRelogin();
     } catch (e) { console.warn('YandexAuth init skipped:', e); }
+
+    // Backup autosave debounce
+    try {
+      const { initBackupSyncEngine } = await import('./analytics/backup-sync-engine.js');
+      initBackupSyncEngine();
+    } catch (e) { console.warn('BackupSyncEngine init skipped:', e); }
     const run = n => W[n]?.initialize?.();
     if (await waitObj('GalleryManager')) run('GalleryManager');
     try { const sm = await import('./app/showcase/index.js'); await sm.default.initialize(); } catch (e) { console.error('Showcase init failed:', e); }
