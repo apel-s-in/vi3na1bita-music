@@ -35,8 +35,13 @@ import { showcaseSemantic } from './ui/showcase-semantic.js';
 
 let booted = false;
 
-export async function initIntelBootstrap({ W = window, D = document, C = W.APP_CONFIG || {} } = {}) {
-  if (booted && W.Intel) return W.Intel;
+export function resetIntelBootstrap() {
+  booted = false;
+}
+
+export async function initIntelBootstrap({ W = window, D = document, C = W.APP_CONFIG || {}, force = false } = {}) {
+  if (booted && W.Intel && !force) return W.Intel;
+  if (force) booted = false;
 
   const flags = getIntelFlags(C);
   const api = {
@@ -118,4 +123,4 @@ export async function initIntelBootstrap({ W = window, D = document, C = W.APP_C
   return api;
 }
 
-export default { initIntelBootstrap };
+export default { initIntelBootstrap, resetIntelBootstrap };
