@@ -1,7 +1,6 @@
 // scripts/core/yandex-disk.js
 // Сохранение и восстановление бэкапа прогресса на Яндекс Диск.
-// Использует папку приложения (app_folder) — пользователь видит её в разделе "Приложения".
-// НЕ влияет на playback, статистику и офлайн.
+// Browser-only режим: metadata через cloud-api, payload restore с graceful fallback.
 
 const API = 'https://cloud-api.yandex.net/v1/disk';
 const BACKUP_PATH = 'app:/vi3na1bita_backup.vi3bak';
@@ -23,21 +22,18 @@ async function putJsonByPath(token, path, data) {
   return true;
 }
 
-async function getDownloadJsonByPath(token, path) {
-  const r = await fetch(`${API}/resources/download?path=${encodeURIComponent(path)}`, { headers: authHeader(token) });
-  if (r.status === 404) return null;
-  if (!r.ok) throw new Error(`download_link_failed:${r.status}`);
-  const { href } = await r.json();
-  const dataRes = await fetch(href, { mode: 'cors' });
-  if (!dataRes.ok) throw new Error(`download_failed:${dataRes.status}`);
-  return await dataRes.json();
-}
-
 async function getResourceMeta(token, path) {
   const r = await fetch(`${API}/resources?path=${encodeURIComponent(path)}`, { headers: authHeader(token) });
   if (r.status === 404) return null;
   if (!r.ok) throw new Error(`resource_meta_failed:${r.status}`);
   return await r.json();
+}
+
+async function getDownloadHref(token, path) {
+  const r = await fetch(`${API}/resources/download?path=${encodeURIComponent(path)}`, { headers: authHeader(token) });
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error(`download_link_failed:${r.status}`);
+  return (await r.json()).href || null;
 }
 
 function humanSize(bytes = 0) {
@@ -55,9 +51,11 @@ export const YandexDisk = {
     const meta = {
       latestPath: BACKUP_PATH,
       historyPath: BACKUP_PATH_VERSIONED(stamp),
-      timestamp: Date.now(),
+      timestamp: Number(dataObject?.revision?.timestamp || dataObject?.createdAt || Date.now()),
       version: dataObject?.version || 'unknown',
-      appVersion: dataObject?.appVersion || null
+      appVersion: dataObject?.revision?.appVersion || dataObject?.appVersion || null,
+      ownerYandexId: dataObject?.identity?.ownerYandexId || null,
+      checksum: dataObject?.integrity?.payloadHash || null
     };
 
     await putJsonByPath(token, BACKUP_PATH, dataObject);
@@ -66,37 +64,46 @@ export const YandexDisk = {
     return meta;
   },
 
-  async download(token) {
-    if (!token) throw new Error('no_token');
-    return await getDownloadJsonByPath(token, BACKUP_PATH);
-  },
-
   async getMeta(token) {
     if (!token) throw new Error('no_token');
-    const [metaJson, latestMeta, versionedMeta] = await Promise.all([
-      getDownloadJsonByPath(token, META_PATH).catch(() => null),
+    const [latestMeta, metaMeta] = await Promise.all([
       getResourceMeta(token, BACKUP_PATH).catch(() => null),
       getResourceMeta(token, META_PATH).catch(() => null)
     ]);
+    if (!latestMeta) return null;
+
+    let metaJson = null;
+    try {
+      const href = await getDownloadHref(token, META_PATH);
+      if (href) {
+        const res = await fetch(href, { mode: 'cors' });
+        if (res.ok) metaJson = await res.json();
+      }
+    } catch {}
+
     const size = Number(latestMeta?.size || 0);
-    const metaSize = Number(versionedMeta?.size || 0);
+    const metaSize = Number(metaMeta?.size || 0);
     return metaJson ? {
       ...metaJson,
       size,
       sizeHuman: humanSize(size),
       diskUsageBytes: size + metaSize,
-      diskUsageHuman: humanSize(size + metaSize)
-    } : (latestMeta ? {
+      diskUsageHuman: humanSize(size + metaSize),
+      modified: latestMeta?.modified || null
+    } : {
       latestPath: BACKUP_PATH,
       historyPath: null,
       timestamp: latestMeta.modified ? Date.parse(latestMeta.modified) || 0 : 0,
       version: 'unknown',
       appVersion: 'unknown',
+      ownerYandexId: null,
+      checksum: null,
       size,
       sizeHuman: humanSize(size),
       diskUsageBytes: size + metaSize,
-      diskUsageHuman: humanSize(size + metaSize)
-    } : null);
+      diskUsageHuman: humanSize(size + metaSize),
+      modified: latestMeta?.modified || null
+    };
   },
 
   async checkExists(token) {
@@ -105,6 +112,26 @@ export const YandexDisk = {
       const r = await fetch(`${API}/resources?path=${encodeURIComponent(BACKUP_PATH)}`, { headers: authHeader(token) });
       return r.ok;
     } catch { return false; }
+  },
+
+  async download(token) {
+    if (!token) throw new Error('no_token');
+    const href = await getDownloadHref(token, BACKUP_PATH);
+    if (!href) return null;
+    try {
+      const res = await fetch(href, { mode: 'cors' });
+      if (!res.ok) throw new Error(`download_failed:${res.status}`);
+      return await res.json();
+    } catch {
+      const e = new Error('download_cors_fallback_required');
+      e.downloadHref = href;
+      throw e;
+    }
+  },
+
+  async getDownloadLink(token) {
+    if (!token) throw new Error('no_token');
+    return await getDownloadHref(token, BACKUP_PATH);
   }
 };
 
