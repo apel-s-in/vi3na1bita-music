@@ -379,7 +379,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-11 17:12:52 UTC
+Сгенерировано: 2026-04-11 17:14:34 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3417,11 +3417,11 @@ export function initYandexActions() {
           // Если 403/401 от прокси — токен без прав на Диск
           if (String(e?.message || '').includes('disk_forbidden') || String(e?.message || '').includes('disk_auth_error') || String(e?.message || '').includes('token_invalid')) {
             window.Modals?.confirm?.({
-              title: '⚠️ Нужно обновить права доступа',
-              textHtml: 'Текущий токен не имеет доступа к Яндекс Диску.<br><br>Необходимо <b>выйти и войти снова</b> — при повторном входе права будут запрошены автоматически.',
-              confirmText: 'Выйти и войти снова',
-              cancelText: 'Отмена',
-              onConfirm: () => { ya.logout(); setTimeout(() => ya.login(), 300); }
+              title: 'Доступ к Диску недоступен',
+              textHtml: 'Текущий OAuth client не поддерживает доступ к Яндекс Диску для автоматического restore.<br><br>Пока используйте сценарий <b>скачать backup и восстановить из файла</b>.',
+              confirmText: 'Понятно',
+              cancelText: 'Закрыть',
+              onConfirm: () => {}
             });
             throw new Error('__handled__');
           }
@@ -3456,7 +3456,7 @@ export function initYandexActions() {
               else window.NotificationSystem?.error('Ошибка импорта backup: ' + msg);
             }
           });
-        } else {
+        } else if (String(e?.message || '') !== '__handled__') {
           window.NotificationSystem?.error('Ошибка восстановления: ' + String(e?.message || ''));
         }
       }
