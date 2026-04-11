@@ -8,6 +8,6 @@ export const loadProfileModel = async () => {
     all = s || []; ach = aD?.value || {}; streak = sD?.value?.current || 0; profile = pD?.value || profile;
   } catch (e) { console.error('[Profile] init err:', e); }
   const { f: totalFull, s: totalSec } = all.reduce((a, b) => ({ f: a.f + (b.globalFullListenCount||0), s: a.s + (b.globalListenSeconds||0) }), { f: 0, s: 0 });
-  return { metaDB: db, cloudSync: null, all, ach, streak, profile, totalFull, totalSec, tokens: {} };
+  return { metaDB: db, all, ach, streak, profile, totalFull, totalSec, tokens: {} };
 };
 export default { loadProfileModel };
