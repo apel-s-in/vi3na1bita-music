@@ -43,6 +43,12 @@
       mod?.YandexAuth?.checkAutoRelogin?.();
     } catch (e) { console.warn('YandexAuth init skipped:', e); }
 
+    // Авто-синхронизация с Яндекс Диском при входе
+    try {
+      const { initYandexAutoSync } = await import('./app/profile/yandex-auto-sync.js');
+      await initYandexAutoSync();
+    } catch (e) { console.warn('YandexAutoSync init skipped:', e); }
+
     // Backup autosave debounce
     try {
       const { initBackupSyncEngine } = await import('./analytics/backup-sync-engine.js');
