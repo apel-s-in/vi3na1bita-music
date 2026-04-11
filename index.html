@@ -148,8 +148,6 @@
 
 <template id="player-template">
     <div class="lyrics-player-block" id="lyricsplayerblock">
-    <!-- (разметка без изменений) -->
-    <div class="lyrics-player-block" id="lyricsplayerblock">
       <div id="lyrics-window" class="lyrics-normal">
         <div class="lyrics-animated-bg"></div>
         <div class="lyrics-scroll" id="lyrics">
@@ -245,11 +243,10 @@
           <a class="player-download-btn" href="#" id="track-download-btn" download title="Скачать трек"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-download"></use></svg></a>
         </div>
       </div>
-    </div>
   </template>
 
   <script>
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.2.32');
+    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.2.33');
     const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-03-27');
 
     // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
