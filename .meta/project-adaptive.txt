@@ -376,7 +376,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-11 13:24:03 UTC
+Сгенерировано: 2026-04-11 13:25:20 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2896,8 +2896,29 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
   if ($('#prof-avatar-btn')) $('#prof-avatar-btn').textContent = p.avatar || '😎';
   if ($('#prof-name-inp')) $('#prof-name-inp').value = p.name || 'Слушатель';
 
-  // Яндекс OAuth статус
-  const renderAuthBlock = () => {
+  const getLocalBackupSnapshot = () => {
+    try {
+      const favs = JSON.parse(localStorage.getItem('__favorites_v2__') || '[]');
+      const pls = JSON.parse(localStorage.getItem('sc3:playlists') || '[]');
+      return {
+        appVersion: window.APP_CONFIG?.APP_VERSION || 'unknown',
+        favoritesCount: Array.isArray(favs) ? favs.length            <span class="yandex-auth-autologin-text">Автовход при истечении сессии</span>
+            <label class="set-switch"><input type="checkbox" id="ya-auto-relogin" ${autoLogin ? 'checked' : ''}><span class="set-slider"></span></label>
+          </div>
+          <div class="yandex-auth-note">Что входит в резервную копию: статистика, достижения, локальный профиль, избранное, плейлисты витрины, настройки интерфейса и часть внутренних служебных данных для восстановления прогресса.</div>
+          <div class="yandex-auth-bottomactions">
+            <button class="om-btn om-btn--ghost" data-ya-action="backup-info">Что сохраняется?</button>
+            <button class="om-btn om-btn--outline" data-ya-action="logout">Выйти из Яндекса</button>
+          </div>
+        ` : `
+          <div class="yandex-auth-caption" style="margin-bottom:10px">Подключение Яндекса позволяет безопасно сохранять прогресс в личную папку приложения на Яндекс Диске и восстанавливать его на других устройствах.</div>
+          <div class="yandex-auth-note" style="margin-top:0">Мы не получаем пароль Яндекса. Авторизация идёт через официальный OAuth, а доступ даётся только к папке приложения.</div>
+          <button class="yandex-auth-mainbtn" data-ya-action="login">
+            <span style="font-size:22px;line-height:1">Я</span>
+            <span>Войти через Яндекс</span>
+          </button>
+        `}
+      </div>`;
     const authEl = $('#prof-auth-grid');
     if (!authEl) return;
     const ya = window.YandexAuth;
@@ -2961,6 +2982,10 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
 
   renderAuthBlock();
   window.addEventListener('yandex:auth:changed', renderAuthBlock);
+  if (window.YandexAuth?.getSessionStatus?.() === 'active' && !sessionStorage.getItem('ya:auto-check:done')) {
+    sessionStorage.setItem('ya:auto-check:done', '1');
+    setTimeout(() => window._handleYaAction?.('check-backup', $('#prof-auth-grid'), renderAuthBlock), 250);
+  }
 
   const instTs = Number(localStorage.getItem('app:first-install-ts') || (localStorage.setItem('app:first-install-ts', String(Date.now())), Date.now()));
   if ($('#prof-meta-since')) $('#prof-meta-since').textContent = `📅 Слушаю с: ${new Date(instTs).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}`;
