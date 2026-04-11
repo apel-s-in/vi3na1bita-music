@@ -34,7 +34,7 @@ export const YandexAuth = {
       window.NotificationSystem?.warning('ClientID не настроен.');
       return;
     }
-    const url = `https://oauth.yandex.ru/authorize?response_type=token&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&force_confirm=0`;
+    const url = `https://oauth.yandex.ru/authorize?response_type=token&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&force_confirm=0&scope=cloud_api%3Adisk.read+cloud_api%3Adisk.write+login%3Ainfo+login%3Aemail`;
 
     const w = 520, h = 620;
     const left = Math.round(window.screenX + (window.outerWidth - w) / 2);
