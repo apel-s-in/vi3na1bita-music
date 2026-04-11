@@ -376,7 +376,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-11 13:28:50 UTC
+Сгенерировано: 2026-04-11 13:32:42 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -805,7 +805,7 @@ jobs:
   </template>
 
   <script>
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.2.25');
+    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.2.26');
     const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-03-27');
 
     // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
@@ -849,7 +849,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.2.25';
+const SW_VERSION = '8.2.26';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
@@ -3205,26 +3205,36 @@ function openBackupInfoModal() {
 }
 
 function openRestorePreviewModal(data, onConfirm) {
-  const ls = data?.data?.localStorage || {};
-  const favs = (() => { try { return JSON.parse(ls['__favorites_v2__'] || '[]'); } catch { return []; } })();
-  const pls = (() => { try { return JSON.parse(ls['sc3:playlists'] || '[]'); } catch { return []; } })();
-  const statsCount = Array.isArray(data?.data?.stats) ? data.data.stats.filter(x => x?.uid && x.uid !== 'global').length : 0;
-  const achCount = Object.keys(data?.data?.achievements || {}).length;
-  const profileName = data?.data?.userProfile?.name || 'Слушатель';
-  window.Modals?.confirm?.({
+  const sum = BackupVault.summarizeBackupObject(data);
+  const localTs = Number(localStorage.getItem('yandex:last_backup_local_ts') || 0);
+  const cmp = sum.timestamp > localTs ? 'Облачная копия новее локального состояния.' : (localTs > sum.timestamp ? 'Локальные данные новее облачной копии.' : 'Дата облачной и локальной копии совпадает.');
+  const m = window.Modals?.open?.({
     title: 'Предпросмотр восстановления',
-    textHtml: `
-      Будет загружена копия профиля:<br><br>
-      <b>Имя профиля:</b> ${window.Utils?.escapeHtml?.(profileName) || profileName}<br>
-      <b>Треков в статистике:</b> ${statsCount}<br>
-      <b>Достижений:</b> ${achCount}<br>
-      <b>Избранных записей:</b> ${favs.length}<br>
-      <b>Плейлистов витрины:</b> ${pls.length}<br><br>
-      <span style="color:#9db7dd">Восстановление выполняется поверх локальных данных. Сначала рекомендуется проверить состав копии и при необходимости сделать свежий backup текущего устройства.</span>
-    `,
-    confirmText: 'Восстановить',
-    cancelText: 'Отмена',
-    onConfirm
+    maxWidth: 480,
+    bodyHtml: `
+      <div class="modal-confirm-text">
+        <b>Имя профиля:</b> ${window.Utils?.escapeHtml?.(sum.profileName) || sum.profileName}<br>
+        <b>Дата backup:</b> ${sum.timestamp ? new Date(sum.timestamp).toLocaleString('ru-RU') : 'неизвестно'}<br>
+        <b>Версия приложения:</b> ${window.Utils?.escapeHtml?.(sum.appVersion) || sum.appVersion}<br>
+        <b>Треков в статистике:</b> ${sum.statsCount}<br>
+        <b>Достижений:</b> ${sum.achievementsCount}<br>
+        <b>Избранных записей:</b> ${sum.favoritesCount}<br>
+        <b>Плейлистов витрины:</b> ${sum.playlistsCount}<br><br>
+        <span style="color:#9db7dd">${cmp}</span><br><br>
+        <b>Выберите режим:</b>
+      </div>
+      <div class="modal-choice-actions">
+        <button type="button" class="modal-action-btn online" data-restore-mode="all">Восстановить всё</button>
+        <button type="button" class="modal-action-btn" data-restore-mode="profile">Только профиль и избранное</button>
+        <button type="button" class="modal-action-btn" data-restore-mode="stats">Только статистику и достижения</button>
+      </div>`
+  });
+  m?.addEventListener('click', e => {
+    const btn = e.target.closest('[data-restore-mode]');
+    if (!btn) return;
+    const mode = btn.dataset.restoreMode || 'all';
+    m.remove();
+    onConfirm?.(mode);
   });
 }
 
@@ -3280,9 +3290,13 @@ export function initYandexActions() {
       try {
         const [exists, meta] = await Promise.all([disk.checkExists(token), disk.getMeta(token).catch(() => null)]);
         if (!exists) {
+          try { localStorage.removeItem('yandex:last_backup_check'); } catch {}
           window.NotificationSystem?.warning('Облачная резервная копия не найдена.');
+          rerender?.();
           return;
         }
+        try { if (meta) localStorage.setItem('yandex:last_backup_check', JSON.stringify(meta)); } catch {}
+        rerender?.();
         window.Modals?.open?.({
           title: 'Облачная копия найдена',
           maxWidth: 460,
@@ -3315,7 +3329,10 @@ export function initYandexActions() {
       try {
         const backup = await BackupVault.buildBackupObject();
         const meta = await disk.upload(token, backup);
-        try { localStorage.setItem('yandex:last_backup_meta', JSON.stringify(meta)); } catch {}
+        try {
+          localStorage.setItem('yandex:last_backup_meta', JSON.stringify(meta));
+          localStorage.setItem('yandex:last_backup_local_ts', String(backup.timestamp || Date.now()));
+        } catch {}
         window.NotificationSystem?.success('Прогресс сохранён на Яндекс Диск ✅');
         if (window.eventLogger) {
           window.eventLogger.log('FEATURE_USED', 'global', { feature: 'backup' });
@@ -3345,9 +3362,9 @@ export function initYandexActions() {
           window.NotificationSystem?.warning('Резервная копия не найдена на Диске.');
           return;
         }
-        openRestorePreviewModal(data, async () => {
+        openRestorePreviewModal(data, async (mode) => {
           try {
-            await BackupVault.importData(new Blob([JSON.stringify(data)]));
+            await BackupVault.importData(new Blob([JSON.stringify(data)]), mode || 'all');
             window.NotificationSystem?.success('Прогресс восстановлен ✅ Обновляем...');
             setTimeout(() => window.location.reload(), 1500);
           } catch (e) {
@@ -4002,7 +4019,7 @@ if (errs.length) { console.error('Failed:\n', errs.join('\n')); process.exit(2);
 // FILE: /scripts/core/config.js
 // UID.005_(Soft-disable intel layer)_(не парализовать приложение при rollout)_(вынести базовые intel flags в APP_CONFIG) UID.019_(Compact TrackProfile index)_(дать стабильный путь до semantic data)_(хранить profile index/profile dir в config) UID.069_(Internal user identity)_(подготовить мульти-provider контур)_(держать future identity/sync flags централизованно) UID.092_(Incremental rollout order)_(делать staged внедрение через один конфиг)_(intel boot должен управляться отсюда)
 export const APP_CONFIG = {
-  APP_VERSION: '8.2.25',
+  APP_VERSION: '8.2.26',
   BUILD_DATE: '2026-03-27',
   PROMOCODE: 'VITRINA2025',
   ICON_ALBUMS_ORDER: [
