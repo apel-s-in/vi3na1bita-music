@@ -380,7 +380,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-11 22:16:33 UTC
+Сгенерировано: 2026-04-11 22:17:31 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3925,9 +3925,6 @@ import { YandexDisk } from '../../core/yandex-disk.js';
 import { BackupVault } from '../../analytics/backup-vault.js';
 
 function getLocalTs() { return Number(localStorage.getItem('yandex:last_backup_local_ts') || 0); }
-function getLocalAchCount() {
-  try { const raw = localStorage.getItem('yandex:last_ach_count'); return raw ? Number(raw) : -1; } catch { return -1; }
-}
 
 function formatDate(ts) {
   if (!ts) return 'неизвестно';
