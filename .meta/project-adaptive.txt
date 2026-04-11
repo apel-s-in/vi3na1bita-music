@@ -202,6 +202,8 @@ vi3na1bita-music/
 │   │   │   ├── icon-album-02@2x.jpg
 │   │   │   ├── icon-album-03@1x.jpg
 │   │   │   ├── icon-album-03@2x.jpg
+│   │   │   ├── icon-album-04@1x.jpg
+│   │   │   ├── icon-album-04@2x.jpg
 │   │   │   ├── icon-album-news@1x.jpg
 │   │   │   ├── icon-album-news@2x.jpg
 │   │   │   ├── icon-album+00@1x.jpg
@@ -397,7 +399,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-11 23:37:39 UTC
+Сгенерировано: 2026-04-11 23:38:18 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
