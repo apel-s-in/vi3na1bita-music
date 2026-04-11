@@ -28,9 +28,24 @@ async function getDownloadJsonByPath(token, path) {
   if (r.status === 404) return null;
   if (!r.ok) throw new Error(`download_link_failed:${r.status}`);
   const { href } = await r.json();
-  const dataRes = await fetch(href);
+  const dataRes = await fetch(href, { mode: 'cors' });
   if (!dataRes.ok) throw new Error(`download_failed:${dataRes.status}`);
   return await dataRes.json();
+}
+
+async function getResourceMeta(token, path) {
+  const r = await fetch(`${API}/resources?path=${encodeURIComponent(path)}`, { headers: authHeader(token) });
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error(`resource_meta_failed:${r.status}`);
+  return await r.json();
+}
+
+function humanSize(bytes = 0) {
+  const n = Number(bytes) || 0;
+  if (n <= 0) return '0 B';
+  const u = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.min(u.length - 1, Math.floor(Math.log(n) / Math.log(1024)));
+  return `${(n / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${u[i]}`;
 }
 
 export const YandexDisk = {
@@ -58,7 +73,30 @@ export const YandexDisk = {
 
   async getMeta(token) {
     if (!token) throw new Error('no_token');
-    return await getDownloadJsonByPath(token, META_PATH);
+    const [metaJson, latestMeta, versionedMeta] = await Promise.all([
+      getDownloadJsonByPath(token, META_PATH).catch(() => null),
+      getResourceMeta(token, BACKUP_PATH).catch(() => null),
+      getResourceMeta(token, META_PATH).catch(() => null)
+    ]);
+    const size = Number(latestMeta?.size || 0);
+    const metaSize = Number(versionedMeta?.size || 0);
+    return metaJson ? {
+      ...metaJson,
+      size,
+      sizeHuman: humanSize(size),
+      diskUsageBytes: size + metaSize,
+      diskUsageHuman: humanSize(size + metaSize)
+    } : (latestMeta ? {
+      latestPath: BACKUP_PATH,
+      historyPath: null,
+      timestamp: latestMeta.modified ? Date.parse(latestMeta.modified) || 0 : 0,
+      version: 'unknown',
+      appVersion: 'unknown',
+      size,
+      sizeHuman: humanSize(size),
+      diskUsageBytes: size + metaSize,
+      diskUsageHuman: humanSize(size + metaSize)
+    } : null);
   },
 
   async checkExists(token) {
