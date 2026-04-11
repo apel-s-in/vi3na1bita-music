@@ -380,7 +380,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-11 21:49:19 UTC
+Сгенерировано: 2026-04-11 21:50:55 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4075,6 +4075,17 @@ export function openRestorePreviewModal(data, onConfirm) {
   const sum = BackupVault.summarizeBackupObject(data);
   const localTs = Number(localStorage.getItem('yandex:last_backup_local_ts') || 0);
   const cmp = sum.timestamp > localTs ? 'Облачная копия новее локального состояния.' : (localTs > sum.timestamp ? 'Локальные данные новее облачной копии.' : 'Дата облачной и локальной копии совпадает.');
+
+  // Что изменится — сравниваем с текущими данными
+  const localFavs = (() => { try { return JSON.parse(localStorage.getItem('__favorites_v2__') || '[]').filter(i => !i.inactiveAt).length; } catch { return 0; } })();
+  const localPls = (() => { try { return JSON.parse(localStorage.getItem('sc3:playlists') || '[]').length; } catch { return 0; } })();
+  const changes = [];
+  if (sum.favoritesCount !== localFavs) changes.push(`Избранное: ${localFavs} → ${sum.favoritesCount}`);
+  if (sum.playlistsCount !== localPls) changes.push(`Плейлисты: ${localPls} → ${sum.playlistsCount}`);
+  if (changes.length) changes.push('Статистика слияется по максимуму (ничего не понизится)');
+  const changesHtml = changes.length
+    ? `<div style="background:rgba(77,170,255,.08);border-radius:8px;padding:8px 12px;margin:8px 0;font-size:12px;display:flex;flex-direction:column;gap:4px">${changes.map(c => `<div>• ${c}</div>`).join('')}</div>`
+    : '';
   const m = window.Modals?.open?.({
     title: 'Предпросмотр восстановления',
     maxWidth: 500,
@@ -4090,7 +4101,7 @@ export function openRestorePreviewModal(data, onConfirm) {
         <b>Плейлистов витрины:</b> ${sum.playlistsCount}<br>
         <b>Устройств:</b> ${sum.devicesCount}<br>
         <b>Owner Yandex ID:</b> ${window.Utils?.escapeHtml?.(sum.ownerYandexId || 'unknown') || 'unknown'}<br><br>
-        <span style="color:#9db7dd">${cmp}</span><br>
+        <span style="color:#9db7dd">${cmp}</span>${changesHtml}<br>
         <span style="color:#9db7dd">При восстановлении высокие статистические значения, достижения и XP не будут понижены: применяется безопасное слияние.</span><br><br>
         <b>Выберите режим:</b>
       </div>
