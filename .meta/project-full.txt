@@ -400,7 +400,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-12 13:16:16 UTC
+Сгенерировано: 2026-04-12 14:31:23 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5474,246 +5474,131 @@ export default YandexAuth;
 //=================================================
 // FILE: /scripts/core/yandex-disk.js
 // scripts/core/yandex-disk.js
-// Сохранение и восстановление бэкапа прогресса на Яндекс Диск.
-// Browser-only режим: metadata через cloud-api, payload restore с graceful fallback.
+// Работа с папкой Auto-Save, автоматическая очистка и жесткий прокси без fallback на прямые CORS-запросы
 
 const API = 'https://cloud-api.yandex.net/v1/disk';
-const BACKUP_PATH = 'app:/vi3na1bita_backup.vi3bak';
-const META_PATH = 'app:/vi3na1bita_backup_meta.json';
-const BACKUP_PATH_VERSIONED = stamp => `app:/vi3na1bita_backup_${stamp}.vi3bak`;
+const BACKUP_DIR = 'app:/Auto-Save';
+const BACKUP_PATH = 'app:/Auto-Save/latest.vi3bak';
+const META_PATH = 'app:/Auto-Save/meta.json';
+const BACKUP_PATH_VERSIONED = stamp => `app:/Auto-Save/backup_${stamp}.vi3bak`;
 const PROXY_URL = 'https://functions.yandexcloud.net/d4ecdu6kgamevcauajid';
 
 const authHeader = token => ({ 'Authorization': `OAuth ${token}` });
-const buildProxyUrl = (mode = 'download', path = BACKUP_PATH) => {
-  const u = new URL(PROXY_URL);
-  u.searchParams.set('mode', mode);
-  if (path) u.searchParams.set('path', path);
-  return u.toString();
-};
 
-// Функция для обхода "холодных стартов" и временных 502/504 ошибок Cloud Functions
-async function fetchProxy(url, token, retries = 2) {
+async function ensureDir(token, path) {
+  const r = await fetch(`${API}/resources?path=${encodeURIComponent(path)}`, { method: 'PUT', headers: authHeader(token) });
+  return r.ok || r.status === 409;
+}
+
+async function fetchProxy(url, token, retries = 3) {
   for (let i = 0; i <= retries; i++) {
     try {
       const res = await fetch(url, { method: 'GET', headers: { 'Authorization': `Bearer ${token}` } });
-      if (!res.ok && [502, 503, 504, 429].includes(res.status) && i < retries) {
-        await new Promise(r => setTimeout(r, 800 * (i + 1))); continue;
+      if (!res.ok && [502, 503, 504].includes(res.status) && i < retries) {
+        await new Promise(r => setTimeout(r, 1000 * (i + 1))); continue;
       }
       return res;
     } catch (e) {
       if (i === retries) throw e;
-      await new Promise(r => setTimeout(r, 800 * (i + 1)));
+      await new Promise(r => setTimeout(r, 1000 * (i + 1)));
     }
   }
 }
 
-async function getUploadHref(token, path) {
-  const r = await fetch(`${API}/resources/upload?path=${encodeURIComponent(path)}&overwrite=true`, { headers: authHeader(token) });
-  if (!r.ok) throw new Error(`upload_link_failed:${r.status}`);
-  return (await r.json()).href;
-}
-
 async function putJsonByPath(token, path, data) {
-  const href = await getUploadHref(token, path);
-  const res = await fetch(href, {
-    method: 'PUT',
-    body: new Blob([JSON.stringify(data)], { type: 'application/json' })
-  });
+  const rLink = await fetch(`${API}/resources/upload?path=${encodeURIComponent(path)}&overwrite=true`, { headers: authHeader(token) });
+  if (!rLink.ok) throw new Error(`upload_link_failed:${rLink.status}`);
+  const href = (await rLink.json()).href;
+  const res = await fetch(href, { method: 'PUT', body: new Blob([JSON.stringify(data)], { type: 'application/json' }) });
   if (!res.ok) throw new Error(`upload_failed:${res.status}`);
   return true;
-}
-
-async function getResourceMeta(token, path) {
-  const r = await fetch(`${API}/resources?path=${encodeURIComponent(path)}`, { headers: authHeader(token) });
-  if (r.status === 404) return null;
-  if (!r.ok) throw new Error(`resource_meta_failed:${r.status}`);
-  return await r.json();
-}
-
-async function getDownloadHref(token, path) {
-  const r = await fetch(`${API}/resources/download?path=${encodeURIComponent(path)}`, { headers: authHeader(token) });
-  if (r.status === 404) return null;
-  if (!r.ok) throw new Error(`download_link_failed:${r.status}`);
-  return (await r.json()).href || null;
-}
-
-async function listAppFolder(token, limit = 100) {
-  const r = await fetch(`${API}/resources?path=${encodeURIComponent('app:/')}&limit=${limit}`, { headers: authHeader(token) });
-  if (!r.ok) throw new Error(`list_failed:${r.status}`);
-  return (await r.json())?._embedded?.items || [];
-}
-
-function humanSize(bytes = 0) {
-  const n = Number(bytes) || 0;
-  if (n <= 0) return '0 B';
-  const u = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.min(u.length - 1, Math.floor(Math.log(n) / Math.log(1024)));
-  return `${(n / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${u[i]}`;
-}
-
-function isVersionedBackupPath(path) {
-  return /^app:\/vi3na1bita_backup(?:_[A-Za-z0-9._-]+)?\.vi3bak$/i.test(String(path || '').trim());
 }
 
 export const YandexDisk = {
   async upload(token, dataObject) {
     if (!token) throw new Error('no_token');
+    await ensureDir(token, BACKUP_DIR);
+
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const rpg = dataObject?.data?.userProfileRpg || {};
+    const favs = dataObject?.data?.localStorage?.['__favorites_v2__'] || '[]';
+    let favCount = 0; try { favCount = JSON.parse(favs).filter(i=>!i.inactiveAt).length; } catch {}
+
     const meta = {
       latestPath: BACKUP_PATH,
       historyPath: BACKUP_PATH_VERSIONED(stamp),
       timestamp: Number(dataObject?.revision?.timestamp || dataObject?.createdAt || Date.now()),
-      version: dataObject?.version || 'unknown',
-      appVersion: dataObject?.revision?.appVersion || dataObject?.appVersion || null,
+      appVersion: dataObject?.revision?.appVersion || 'unknown',
       ownerYandexId: dataObject?.identity?.ownerYandexId || null,
-      checksum: dataObject?.integrity?.payloadHash || null
+      level: rpg.level || 1,
+      xp: rpg.xp || 0,
+      achievementsCount: Object.keys(dataObject?.data?.achievements || {}).length,
+      favoritesCount: favCount
     };
 
     await putJsonByPath(token, BACKUP_PATH, dataObject);
     try { await putJsonByPath(token, meta.historyPath, dataObject); } catch {}
     await putJsonByPath(token, META_PATH, meta);
+
+    // Автоматическая очистка: оставляем только 5 последних файлов
+    this.deleteOldBackups(token, { keep: 5 }).catch(() => {});
+
     return meta;
   },
 
   async getMeta(token) {
     if (!token) throw new Error('no_token');
-    const [latestMeta, metaMeta] = await Promise.all([
-      getResourceMeta(token, BACKUP_PATH).catch(() => null),
-      getResourceMeta(token, META_PATH).catch(() => null)
-    ]);
-    if (!latestMeta) return null;
-
-    let metaJson = null;
-    try {
-      const href = await getDownloadHref(token, META_PATH);
-      if (href) {
-        const res = await fetch(href, { mode: 'cors' });
-        if (res.ok) metaJson = await res.json();
-      }
-    } catch {}
-
-    const size = Number(latestMeta?.size || 0);
-    const metaSize = Number(metaMeta?.size || 0);
-    return metaJson ? {
-      ...metaJson,
-      size,
-      sizeHuman: humanSize(size),
-      diskUsageBytes: size + metaSize,
-      diskUsageHuman: humanSize(size + metaSize),
-      modified: latestMeta?.modified || null
-    } : {
-      latestPath: BACKUP_PATH,
-      historyPath: null,
-      timestamp: latestMeta.modified ? Date.parse(latestMeta.modified) || 0 : 0,
-      version: 'unknown',
-      appVersion: 'unknown',
-      ownerYandexId: null,
-      checksum: null,
-      size,
-      sizeHuman: humanSize(size),
-      diskUsageBytes: size + metaSize,
-      diskUsageHuman: humanSize(size + metaSize),
-      modified: latestMeta?.modified || null
-    };
-  },
-
-  async checkExists(token) {
-    if (!token) return false;
-    try {
-      const r = await fetch(`${API}/resources?path=${encodeURIComponent(BACKUP_PATH)}`, { headers: authHeader(token) });
-      return r.ok;
-    } catch {
-      return false;
-    }
+    const r = await fetch(`${API}/resources/download?path=${encodeURIComponent(META_PATH)}`, { headers: authHeader(token) });
+    if (!r.ok) return null;
+    const href = (await r.json()).href;
+    if (!href) return null;
+    const res = await fetch(href);
+    return res.ok ? await res.json() : null;
   },
 
   async download(token, path = BACKUP_PATH) {
     if (!token) throw new Error('no_token');
-
-    if (PROXY_URL && !PROXY_URL.includes('ВАШ_ID')) {
-      const res = await fetchProxy(buildProxyUrl('download', path), token).catch(() => null);
-
-      if (res) {
-        let payload = null;
-        try { payload = await res.json(); } catch {}
-
-        if (res.status === 404 || payload?.error === 'not_found') return null;
-        if (res.ok && payload) return payload;
-
-        if (payload?.error) {
-          const err = new Error(String(payload.error));
-          err.payload = payload;
-          throw err;
-        }
-      }
+    const u = new URL(PROXY_URL); u.searchParams.set('mode', 'download'); u.searchParams.set('path', path);
+    const res = await fetchProxy(u.toString(), token);
+    
+    if (res && res.ok) {
+      const data = await res.json();
+      if (data && !data.error) return data;
     }
-
-    try {
-      const href = await getDownloadHref(token, path);
-      if (!href) return null;
-      const res = await fetch(href, { mode: 'cors' });
-      if (res.status === 404) return null;
-      if (res.ok) return await res.json();
-    } catch {}
-
-    const href = await getDownloadHref(token, path).catch(() => null);
-    const e = new Error('download_cors_fallback_required');
-    e.downloadHref = href;
-    e.requestedPath = path;
-    throw e;
+    
+    // Никакого фоллбека на прямые ссылки — только прокси. Если упало, кидаем чистую ошибку.
+    throw new Error('proxy_failed_or_timeout');
   },
 
   async listBackups(token) {
     if (!token) throw new Error('no_token');
-
-    if (PROXY_URL && !PROXY_URL.includes('ВАШ_ID')) {
-      const res = await fetchProxy(buildProxyUrl('list'), token).catch(() => null);
-
-      if (res) {
-        let payload = null;
-        try { payload = await res.json(); } catch {}
-        if (res.ok && Array.isArray(payload?.items)) return payload.items;
-        if (payload?.error) {
-          const err = new Error(String(payload.error));
-          err.payload = payload;
-          throw err;
-        }
-      }
+    const u = new URL(PROXY_URL); u.searchParams.set('mode', 'list');
+    const res = await fetchProxy(u.toString(), token);
+    if (res && res.ok) {
+      const data = await res.json();
+      if (data?.items) return data.items;
     }
-
-    const meta = await this.getMeta(token).catch(() => null);
-    return meta?.latestPath ? [{
-      path: meta.latestPath,
-      timestamp: Number(meta.timestamp || 0),
-      appVersion: String(meta.appVersion || 'unknown'),
-      checksum: String(meta.checksum || ''),
-      sizeHuman: String(meta.sizeHuman || 'unknown'),
-      isLatest: true
-    }] : [];
+    return [];
   },
 
-  async deleteOldBackups(token, { keep = 3 } = {}) {
-    if (!token) throw new Error('no_token');
-    const items = await listAppFolder(token, 200);
-    const versioned = items
-      .filter(x => isVersionedBackupPath(x.path) && String(x.path || '') !== BACKUP_PATH)
-      .sort((a, b) => (Date.parse(b.modified || 0) || 0) - (Date.parse(a.modified || 0) || 0));
-
-    const toDelete = versioned.slice(Math.max(0, Number(keep) || 3));
+  async deleteOldBackups(token, { keep = 5 } = {}) {
+    if (!token) return;
+    const r = await fetch(`${API}/resources?path=${encodeURIComponent(BACKUP_DIR)}&limit=200`, { headers: authHeader(token) });
+    if (!r.ok) return;
+    const items = (await r.json())?._embedded?.items || [];
+    const versioned = items.filter(x => /^backup_.*\.vi3bak$/i.test(x.name)).sort((a, b) => Date.parse(b.modified) - Date.parse(a.modified));
+    const toDelete = versioned.slice(Math.max(0, keep));
+    
     for (const item of toDelete) {
-      await fetch(`${API}/resources?path=${encodeURIComponent(item.path)}`, {
-        method: 'DELETE',
-        headers: authHeader(token)
-      }).then(r => {
-        if (!r.ok && r.status !== 202 && r.status !== 204 && r.status !== 404) throw new Error(`delete_failed:${r.status}`);
-      });
+      await fetch(`${API}/resources?path=${encodeURIComponent(item.path)}`, { method: 'DELETE', headers: authHeader(token) }).catch(()=>{});
     }
-    return { deleted: toDelete.length, kept: Math.min(versioned.length, Math.max(0, Number(keep) || 3)) };
   },
 
-  async getDownloadLink(token, path = BACKUP_PATH) {
-    if (!token) throw new Error('no_token');
-    return await getDownloadHref(token, path);
+  async clearAutoSaveDir(token) {
+    if (!token) return;
+    // Удаляем саму папку Auto-Save (Яндекс удалит все внутри) и создаем заново
+    await fetch(`${API}/resources?path=${encodeURIComponent(BACKUP_DIR)}&permanently=true`, { method: 'DELETE', headers: authHeader(token) });
+    await ensureDir(token, BACKUP_DIR);
   }
 };
 
