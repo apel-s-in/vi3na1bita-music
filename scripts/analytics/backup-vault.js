@@ -19,7 +19,8 @@ const PROFILE_KEYS = [
 // Ключи, которые не синхронизируются между устройствами (device-local)
 // Эти настройки каждое устройство хранит своё
 const DEVICE_LOCAL_KEYS = new Set([
-  'offline:mode:v1','offline:cacheQuality:v1','cloud:listenThreshold','cloud:ttlDays'
+  'offline:mode:v1','offline:cacheQuality:v1','cloud:listenThreshold','cloud:ttlDays',
+  'playerVolume' // громкость — персональная для каждого устройства
 ]);
 
 const PROFILE_ONLY_KEYS = new Set([
