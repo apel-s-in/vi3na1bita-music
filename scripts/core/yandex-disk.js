@@ -16,6 +16,22 @@ const buildProxyUrl = (mode = 'download', path = BACKUP_PATH) => {
   return u.toString();
 };
 
+// Функция для обхода "холодных стартов" и временных 502/504 ошибок Cloud Functions
+async function fetchProxy(url, token, retries = 2) {
+  for (let i = 0; i <= retries; i++) {
+    try {
+      const res = await fetch(url, { method: 'GET', headers: { 'Authorization': `Bearer ${token}` } });
+      if (!res.ok && [502, 503, 504, 429].includes(res.status) && i < retries) {
+        await new Promise(r => setTimeout(r, 800 * (i + 1))); continue;
+      }
+      return res;
+    } catch (e) {
+      if (i === retries) throw e;
+      await new Promise(r => setTimeout(r, 800 * (i + 1)));
+    }
+  }
+}
+
 async function getUploadHref(token, path) {
   const r = await fetch(`${API}/resources/upload?path=${encodeURIComponent(path)}&overwrite=true`, { headers: authHeader(token) });
   if (!r.ok) throw new Error(`upload_link_failed:${r.status}`);
@@ -140,10 +156,7 @@ export const YandexDisk = {
     if (!token) throw new Error('no_token');
 
     if (PROXY_URL && !PROXY_URL.includes('ВАШ_ID')) {
-      const res = await fetch(buildProxyUrl('download', path), {
-        method: 'GET',
-        headers: { 'Authorization': `Bearer ${token}` }
-      }).catch(() => null);
+      const res = await fetchProxy(buildProxyUrl('download', path), token).catch(() => null);
 
       if (res) {
         let payload = null;
@@ -179,10 +192,7 @@ export const YandexDisk = {
     if (!token) throw new Error('no_token');
 
     if (PROXY_URL && !PROXY_URL.includes('ВАШ_ID')) {
-      const res = await fetch(buildProxyUrl('list'), {
-        method: 'GET',
-        headers: { 'Authorization': `Bearer ${token}` }
-      }).catch(() => null);
+      const res = await fetchProxy(buildProxyUrl('list'), token).catch(() => null);
 
       if (res) {
         let payload = null;
