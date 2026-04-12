@@ -400,7 +400,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-12 15:04:00 UTC
+Сгенерировано: 2026-04-12 15:05:02 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4072,7 +4072,7 @@ export function renderYandexAuthBlock({ root, localProfile }) {
         <div class="yandex-auth-note">Один backup-файл объединяет прогресс, события, избранное, плейлисты, настройки, локальный профиль и данные устройств. Этот же файл можно сохранить вручную на устройство и перенести на другое своё устройство.</div>
         <div class="yandex-auth-bottomactions">
           <button class="om-btn om-btn--ghost" data-ya-action="backup-info">Что сохраняется?</button>
-          <button class="om-btn om-btn--ghost" data-ya-action="clear-auto-saves">Очистить Auto-Save</button>
+          <button class="om-btn om-btn--ghost" data-ya-action="delete-old-backups">Удалить старые backup</button>
           <button class="om-btn om-btn--outline" data-ya-action="logout">Выйти из Яндекса</button>
         </div>
       ` : `
@@ -4086,7 +4086,16 @@ export function renderYandexAuthBlock({ root, localProfile }) {
     </div>`;
 
   bindYandexActions(root, () => renderYandexAuthBlock({ root, localProfile }));
+
+  if (!root._metaBound) {
+    root._metaBound = true;
+    window.addEventListener('yandex:backup:meta-updated', () => {
+      renderYandexAuthBlock({ root, localProfile });
+    });
+  }
 }
+
+export default { renderYandexAuthBlock };
 
 export default { renderYandexAuthBlock };
 
