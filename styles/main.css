@@ -12,16 +12,60 @@
 .active-album-title.fav{color:#ffd166;letter-spacing:.06em}
 .active-album-title.news{color:var(--c-blue);letter-spacing:.02em}
 
-.album-icons{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;align-items:center;justify-items:center;margin:12px auto 0;max-width:400px;width:100%;padding:4px 8px;overflow:hidden}
-.album-icons::-webkit-scrollbar{display:none}
-.album-icon[data-album="__favorites__"]{grid-row:2;grid-column:2}
-.album-icon[data-album="__reliz__"]{grid-row:2;grid-column:3}
-.album-icon[data-album="odnazhdy-v-skazke"],.album-icon[data-album="golos-dushi"],.album-icon[data-album="mezhdu-zlom-i-dobrom"],.album-icon[data-album="krevetochka"]{grid-row:1}
-.album-icon{width:clamp(62px,16vw,82px);height:clamp(62px,16vw,82px);border-radius:10px;overflow:hidden;border:1px solid var(--border-color);cursor:pointer;filter:grayscale(70%) brightness(.88);opacity:.72;transition:transform .15s,filter .15s,opacity .15s,box-shadow .15s,width .15s ease,height .15s ease;touch-action:manipulation;-webkit-touch-callout:none}
+/* --- КОНТЕЙНЕР ИКОНОК АЛЬБОМОВ --- */
+.album-icons{display:flex;flex-direction:column;gap:10px;margin:12px auto 0;max-width:400px;width:100%;padding:4px 8px}
+
+/* --- РЯД: ДВЕ СТРОКИ --- */
+.album-icons-row{display:flex;align-items:center;justify-content:center;gap:6px;width:100%}
+.album-icons-row--albums{flex-wrap:nowrap}
+.album-icons-row--nav{flex-wrap:nowrap}
+
+/* --- БАЗОВАЯ ИКОНКА --- */
+.album-icon{
+  flex-shrink:0;
+  border-radius:10px;overflow:hidden;
+  border:1px solid var(--border-color);cursor:pointer;
+  filter:grayscale(70%) brightness(.88);opacity:.72;
+  transition:width .3s cubic-bezier(.4,0,.2,1),
+             height .3s cubic-bezier(.4,0,.2,1),
+             min-width .3s cubic-bezier(.4,0,.2,1),
+             filter .25s,opacity .25s,
+             box-shadow .25s,transform .15s;
+  touch-action:manipulation;-webkit-touch-callout:none;
+  width:clamp(52px,13.5vw,72px);
+  height:clamp(52px,13.5vw,72px);
+}
 .album-icon img{width:100%;height:100%;object-fit:cover;display:block}
-.album-icon.active{filter:none;opacity:1;box-shadow:0 2px 10px rgba(0,0,0,.35);width:clamp(68px,17vw,88px);height:clamp(68px,17vw,88px)}
+
+/* --- АКТИВНАЯ ИКОНКА В РЯДУ АЛЬБОМОВ --- */
+.album-icons-row--albums .album-icon.active{
+  filter:none;opacity:1;
+  box-shadow:0 2px 14px rgba(77,170,255,.35);
+  width:clamp(64px,17vw,82px);
+  height:clamp(64px,17vw,82px);
+  border-color:rgba(77,170,255,.45);
+}
+
+/* --- НАВИГАЦИОННЫЙ РЯД: все иконки одинакового размера --- */
+.album-icons-row--nav .album-icon{
+  width:clamp(60px,15vw,76px);
+  height:clamp(60px,15vw,76px);
+}
+.album-icons-row--nav .album-icon.active{
+  filter:none;opacity:1;
+  box-shadow:0 2px 10px rgba(0,0,0,.35);
+  border-color:var(--secondary-color);
+}
+
+/* --- HOVER / ACTIVE --- */
 .album-icon:hover{transform:translateY(-2px);opacity:.9}
 .album-icon:active{transform:translateY(0) scale(.95)}
+
+/* --- Profile dynamic icon в nav-ряду --- */
+.album-icons-row--nav .profile-dyn-icon{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:4px;gap:2px;background:rgba(255,255,255,.03);
+}
 
 .track-list{margin:0 auto;max-width:370px;width:100%;font-size:1.05em;color:var(--c-e);background:0;padding:0}
 .fav-empty{padding:20px;text-align:center;color:#8ab8fd}
