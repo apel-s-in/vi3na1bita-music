@@ -400,7 +400,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-12 14:35:37 UTC
+Сгенерировано: 2026-04-12 14:37:03 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -836,7 +836,7 @@ jobs:
   </template>
 
   <script>
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.2.38');
+    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.2.39');
     const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-04-12');
 
     // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
@@ -880,7 +880,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.2.38';
+const SW_VERSION = '8.2.39';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
@@ -4069,7 +4069,7 @@ export function renderYandexAuthBlock({ root, localProfile }) {
         <div class="yandex-auth-note">Один backup-файл объединяет прогресс, события, избранное, плейлисты, настройки, локальный профиль и данные устройств. Этот же файл можно сохранить вручную на устройство и перенести на другое своё устройство.</div>
         <div class="yandex-auth-bottomactions">
           <button class="om-btn om-btn--ghost" data-ya-action="backup-info">Что сохраняется?</button>
-          <button class="om-btn om-btn--ghost" data-ya-action="delete-old-backups">Удалить старые backup</button>
+          <button class="om-btn om-btn--ghost" data-ya-action="clear-auto-saves">Очистить Auto-Save</button>
           <button class="om-btn om-btn--outline" data-ya-action="logout">Выйти из Яндекса</button>
         </div>
       ` : `
@@ -5061,7 +5061,7 @@ if (errs.length) { console.error('Failed:\n', errs.join('\n')); process.exit(2);
 // FILE: /scripts/core/config.js
 // UID.005_(Soft-disable intel layer)_(не парализовать приложение при rollout)_(вынести базовые intel flags в APP_CONFIG) UID.019_(Compact TrackProfile index)_(дать стабильный путь до semantic data)_(хранить profile index/profile dir в config) UID.069_(Internal user identity)_(подготовить мульти-provider контур)_(держать future identity/sync flags централизованно) UID.092_(Incremental rollout order)_(делать staged внедрение через один конфиг)_(intel boot должен управляться отсюда)
 export const APP_CONFIG = {
-  APP_VERSION: '8.2.38',
+  APP_VERSION: '8.2.39',
   BUILD_DATE: '2026-04-12',
   PROMOCODE: 'VITRINA2025',
   ICON_ALBUMS_ORDER: [
