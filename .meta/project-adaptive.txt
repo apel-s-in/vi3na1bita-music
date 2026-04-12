@@ -400,7 +400,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-12 11:04:44 UTC
+Сгенерировано: 2026-04-12 11:15:24 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3954,10 +3954,12 @@ function bindYandexActions(root, rerender) {
     };
   }
 
-  // Обновляем sync-dot с учётом ready-статуса
+  // Sync dot — единый блок, без дублирования переменной
   const syncDot = root.querySelector('#ya-sync-dot');
   if (syncDot && !syncDot._syncBound) {
     syncDot._syncBound = true;
+
+    // Обновление цвета по ready/enabled состоянию
     const updateDot = async () => {
       try {
         const { isSyncReady, isSyncEnabled } = await import('../../analytics/backup-sync-engine.js');
@@ -3969,28 +3971,26 @@ function bindYandexActions(root, rerender) {
     updateDot();
     window.addEventListener('backup:sync:ready', updateDot);
     window.addEventListener('backup:sync:settings:changed', updateDot);
-  }
 
-  // Индикатор автосинхронизации
-  const syncDot = root.querySelector('#ya-sync-dot');
-  if (!syncDot || syncDot._syncBound) return;
-  syncDot._syncBound = true;
-  window.addEventListener('backup:sync:state', e => {
-    const syncDot2 = root.querySelector('#ya-sync-dot'); if (!syncDot2) return;
-    const s = e.detail?.state;
-    const map = { syncing: { title: 'Синхронизируется...', color: '#ff9800', anim: true },
-                  ok: { title: 'Синхронизировано ✓', color: '#4caf50', anim: false },
-                  idle: { title: 'Авто-сохранение активно', color: '#4caf50', anim: false } };
-    const cfg = map[s] || map.idle;
-    syncDot2.title = cfg.title;
-    syncDot2.style.background = cfg.color;
-    syncDot2.style.animation = cfg.anim ? 'syncPulse 1s infinite' : '';
-    // Обновляем метку времени после успешного сохранения
-    if (s === 'ok') {
-      const lbl = root.querySelector('#ya-last-sync-label');
-      if (lbl) lbl.textContent = `последнее: ${new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
-    }
-  });
+    // Обновление по событию sync:state
+    window.addEventListener('backup:sync:state', e => {
+      const dot = root.querySelector('#ya-sync-dot'); if (!dot) return;
+      const s = e.detail?.state;
+      const map = {
+        syncing: { title: 'Синхронизируется...', color: '#ff9800', anim: true },
+        ok:      { title: 'Синхронизировано ✓',  color: '#4caf50', anim: false },
+        idle:    { title: 'Авто-сохранение активно', color: '#4caf50', anim: false }
+      };
+      const cfg = map[s] || map.idle;
+      dot.title = cfg.title;
+      dot.style.background = cfg.color;
+      dot.style.animation = cfg.anim ? 'syncPulse 1s infinite' : '';
+      if (s === 'ok') {
+        const lbl = root.querySelector('#ya-last-sync-label');
+        if (lbl) lbl.textContent = `последнее: ${new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
+      }
+    });
+  }
 }
 
 export function renderYandexAuthBlock({ root, localProfile }) {
