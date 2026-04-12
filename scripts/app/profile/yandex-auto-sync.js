@@ -79,6 +79,17 @@ export async function initYandexAutoSync() {
 
       const cloudTs = Number(meta.timestamp || 0);
       const localTs = getLocalTs();
+      const localDirtyTs = Number(localStorage.getItem('backup:local_dirty_ts') || 0);
+
+      // Если локально есть несохраненные правки, и они сделаны ПОЗЖЕ чем облачный бэкап
+      // Мы не должны предлагать восстановить старое облако, мы должны разрешить выгрузку локального
+      if (localDirtyTs > cloudTs && localDirtyTs > localTs) {
+        try {
+          const { markSyncReady } = await import('../../analytics/backup-sync-engine.js');
+          markSyncReady('local_dirty_newer');
+        } catch {}
+        return;
+      }
 
       // Облако не новее — данные актуальны, разрешаем autosync
       if (!cloudTs || cloudTs <= localTs) {
