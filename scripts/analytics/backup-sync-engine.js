@@ -103,6 +103,7 @@ function scheduleAutosave() {
 
 function markDirty() {
   _dirty = true;
+  try { localStorage.setItem('backup:local_dirty_ts', String(Date.now())); } catch {}
   scheduleAutosave();
 }
 
@@ -130,17 +131,9 @@ export function initBackupSyncEngine() {
     localStorage._bsePatched = true;
   }
 
-  // Проверяем: если пользователь уже авторизован И localTs актуален — разрешаем sync
-  const ya = window.YandexAuth;
-  if (ya?.getSessionStatus?.() === 'active') {
-    const localTs = Number(localStorage.getItem('yandex:last_backup_local_ts') || 0);
-    if (localTs > 0) {
-      // Данные уже были восстановлены ранее — safe to enable sync
-      setTimeout(() => markSyncReady('session_restored'), 2000);
-    }
-    // Иначе ждём события из auto-sync
-  }
-
+  // Мы больше не разблокируем Sync автоматически по таймауту. 
+  // Этим полностью и эксклюзивно управляет yandex-auto-sync.js, чтобы избежать затирания облака 
+  // локальными старыми данными при медленном интернете.
   console.debug('[BackupSyncEngine] initialized, interval:', getSyncIntervalSec(), 'sec, ready:', _syncReady);
 }
 
