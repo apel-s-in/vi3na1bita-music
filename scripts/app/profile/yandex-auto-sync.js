@@ -1,5 +1,5 @@
 // scripts/app/profile/yandex-auto-sync.js
-// Автоматическая проверка облака при входе. Не трогает playback.
+// Фоновый polling каждые 30 секунд (Push simulation) и умное сравнение
 
 import { YandexDisk } from '../../core/yandex-disk.js';
 import { BackupVault } from '../../analytics/backup-vault.js';
@@ -41,27 +41,51 @@ function buildTwoColumnDiff(cloudMeta) {
 }
 
 export async function initYandexAutoSync() {
-  // Проверка при возврате на вкладку (обнаружение backup с другого устройства)
   let _lastCloudTs = Number(localStorage.getItem('yandex:last_backup_local_ts') || 0);
-  document.addEventListener('visibilitychange', async () => {
-    if (document.visibilityState !== 'visible') return;
+
+  // Функция тихой проверки (Polling)
+  const checkCloudSilently = async (showNotification = false) => {
     const ya = window.YandexAuth;
     if (!ya || ya.getSessionStatus() !== 'active' || !ya.isTokenAlive()) return;
     if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) return;
-    // Тихая фоновая проверка без уведомления если уже показывали
-    if (sessionStorage.getItem('ya:auto-check:done')) return;
+    
     const token = ya.getToken();
     if (!token) return;
+
     try {
       const { YandexDisk } = await import('../../core/yandex-disk.js');
       const meta = await YandexDisk.getMeta(token).catch(() => null);
-      const cloudTs = Number(meta?.timestamp || 0);
-      if (cloudTs > _lastCloudTs + 60000) {
-        // Облако обновилось с другого устройства — показываем ненавязчивое уведомление
-        window.NotificationSystem?.info('☁️ Обнаружен более новый backup с другого устройства. Откройте «📥 Из облака».');
-        _lastCloudTs = cloudTs;
+      if (meta) {
+        localStorage.setItem('yandex:last_backup_check', JSON.stringify(meta));
+        // Триггерим обновление UI Личного Кабинета
+        window.dispatchEvent(new CustomEvent('yandex:backup:meta-updated'));
+        
+        const cloudTs = Number(meta.timestamp || 0);
+        const localTs = getLocalTs();
+        
+        if (cloudTs > localTs && cloudTs > _lastCloudTs) {
+          _lastCloudTs = cloudTs;
+          // Зажигаем оранжевую лампочку автосохранения
+          try {
+            const { markSyncReady } = await import('../../analytics/backup-sync-engine.js');
+            markSyncReady('cloud_is_newer_wait'); 
+          } catch {}
+          
+          if (showNotification) {
+            window.NotificationSystem?.info('☁️ В облаке появились новые данные. Зайдите в Личный кабинет.', 5000);
+          }
+        }
       }
     } catch {}
+  };
+
+  // Polling каждые 30 секунд
+  setInterval(() => checkCloudSilently(false), 30000);
+  
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && !sessionStorage.getItem('ya:auto-check:done')) {
+      checkCloudSilently(true);
+    }
   });
 
   window._handleYaAutoSync = async () => {
@@ -75,14 +99,16 @@ export async function initYandexAutoSync() {
       const meta = await YandexDisk.getMeta(token).catch(() => null);
       if (!meta) return;
 
-      try { localStorage.setItem('yandex:last_backup_check', JSON.stringify(meta)); } catch {}
+      try { 
+        localStorage.setItem('yandex:last_backup_check', JSON.stringify(meta)); 
+        window.dispatchEvent(new CustomEvent('yandex:backup:meta-updated'));
+      } catch {}
 
       const cloudTs = Number(meta.timestamp || 0);
       const localTs = getLocalTs();
       const localDirtyTs = Number(localStorage.getItem('backup:local_dirty_ts') || 0);
 
-      // Если локально есть несохраненные правки, и они сделаны ПОЗЖЕ чем облачный бэкап
-      // Мы не должны предлагать восстановить старое облако, мы должны разрешить выгрузку локального
+      // Локальные правки новее облака -> разрешаем выгрузку в облако
       if (localDirtyTs > cloudTs && localDirtyTs > localTs) {
         try {
           const { markSyncReady } = await import('../../analytics/backup-sync-engine.js');
@@ -91,7 +117,7 @@ export async function initYandexAutoSync() {
         return;
       }
 
-      // Облако не новее — данные актуальны, разрешаем autosync
+      // Облако не новее -> разрешаем автосохранение
       if (!cloudTs || cloudTs <= localTs) {
         try {
           const { markSyncReady } = await import('../../analytics/backup-sync-engine.js');
@@ -100,7 +126,6 @@ export async function initYandexAutoSync() {
         return;
       }
 
-      // Проверяем: есть ли вообще локальные данные (новый пользователь)
       const isNewDevice = localTs === 0;
       const diffMin = Math.round((cloudTs - localTs) / 60000);
 
@@ -127,7 +152,6 @@ export async function initYandexAutoSync() {
         confirmText: '📥 Восстановить из облака',
         cancelText: 'Пропустить',
         onCancel: async () => {
-          // Пользователь пропустил — его локальные данные актуальны
           try {
             const { markSyncReady } = await import('../../analytics/backup-sync-engine.js');
             markSyncReady('user_skipped_restore');
@@ -150,14 +174,7 @@ export async function initYandexAutoSync() {
             window.NotificationSystem?.success('Прогресс восстановлен ✅ Обновляем...');
             setTimeout(() => window.location.reload(), 1500);
           } catch (e) {
-            const msg = String(e?.message || '');
-            if (msg.includes('disk_forbidden') || msg.includes('disk_auth_error')) {
-              window.NotificationSystem?.warning('Нет доступа к Диску. Войдите снова через 🔐 Права.');
-            } else if (msg.includes('download_cors_fallback_required')) {
-              window.NotificationSystem?.info('Восстановите вручную через «📥 Из облака» в Личном кабинете.');
-            } else {
-              window.NotificationSystem?.error('Ошибка: ' + msg);
-            }
+            window.NotificationSystem?.error('Ошибка: ' + String(e?.message || ''));
           }
         }
       });
