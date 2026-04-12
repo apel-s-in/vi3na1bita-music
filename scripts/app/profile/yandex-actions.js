@@ -75,28 +75,29 @@ export function initYandexActions() {
       return;
     }
 
-    if (action === 'clear-auto-saves') {
+    if (action === 'delete-old-backups') {
       const token = ya.getToken();
       if (!token || !ya.isTokenAlive()) return window.NotificationSystem?.warning('Сессия истекла. Войдите снова.');
       window.Modals?.confirm?.({
-        title: 'Очистить папку автосохранений?',
-        textHtml: 'Папка Auto-Save в Яндекс Диске будет полностью очищена, и сразу же будет создана новая резервная копия.',
-        confirmText: 'Очистить и создать',
+        title: 'Удалить старые backup-версии?',
+        textHtml: 'Будут удалены архивные backup-файлы, кроме последних 5 версий и актуального файла latest.',
+        confirmText: 'Удалить',
         cancelText: 'Отмена',
         onConfirm: async () => {
-          window.NotificationSystem?.info('Очистка папки...');
           try {
-            await disk.clearAutoSaveDir(token);
-            const backup = await BackupVault.buildBackupObject();
-            const meta = await disk.upload(token, backup);
-            try {
-              localStorage.setItem('yandex:last_backup_meta', JSON.stringify(meta));
-              localStorage.setItem('yandex:last_backup_local_ts', String(Number(backup?.revision?.timestamp || backup?.createdAt || Date.now())));
-            } catch {}
-            window.NotificationSystem?.success('Очищено. Новая копия сохранена ✅');
+            await disk.deleteOldBackups(token, { keep: 5 });
+            window.NotificationSystem?.success(`Старые копии удалены ✅`);
+            
+            // Запрашиваем актуальную мету, чтобы UI обновился
+            const realMeta = await disk.getMeta(token).catch(() => null);
+            if (realMeta) {
+              localStorage.setItem('yandex:last_backup_check', JSON.stringify(realMeta));
+              localStorage.setItem('yandex:last_backup_meta', JSON.stringify(realMeta));
+              window.dispatchEvent(new CustomEvent('yandex:backup:meta-updated'));
+            }
             rerender?.();
           } catch (e) {
-            window.NotificationSystem?.error('Ошибка очистки: ' + String(e?.message || ''));
+            window.NotificationSystem?.error('Ошибка: ' + String(e?.message || ''));
           }
         }
       });
@@ -164,7 +165,9 @@ export function initYandexActions() {
         const meta = await disk.upload(token, backup);
         try {
           localStorage.setItem('yandex:last_backup_meta', JSON.stringify(meta));
+          localStorage.setItem('yandex:last_backup_check', JSON.stringify(meta));
           localStorage.setItem('yandex:last_backup_local_ts', String(Number(backup?.revision?.timestamp || backup?.createdAt || Date.now())));
+          window.dispatchEvent(new CustomEvent('yandex:backup:meta-updated'));
         } catch {}
         window.NotificationSystem?.success('Прогресс сохранён на Яндекс Диск ✅');
         // После первого ручного сохранения разрешаем автосохранение
