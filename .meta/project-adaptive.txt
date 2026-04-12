@@ -400,7 +400,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-12 15:09:23 UTC
+Сгенерировано: 2026-04-12 15:20:15 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4100,17 +4100,15 @@ export function renderYandexAuthBlock({ root, localProfile }) {
 
   bindYandexActions(root, () => renderYandexAuthBlock({ root, localProfile }));
 
-  if (!root._metaBound) {
-    root._metaBound = true;
-    window.addEventListener('yandex:backup:meta-updated', () => {
-      renderYandexAuthBlock({ root, localProfile });
-    });
-  }
-}
+      if (!root._metaBound) {
+        root._metaBound = true;
+        window.addEventListener('yandex:backup:meta-updated', () => {
+          renderYandexAuthBlock({ root, localProfile });
+        });
+      }
+    }
 
-export default { renderYandexAuthBlock };
-
-export default { renderYandexAuthBlock };
+    export default { renderYandexAuthBlock };
 
 //=================================================
 // FILE: /scripts/app/profile/yandex-auto-sync.js
