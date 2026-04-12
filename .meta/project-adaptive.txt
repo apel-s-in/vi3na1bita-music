@@ -400,7 +400,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-12 14:33:47 UTC
+Сгенерировано: 2026-04-12 14:35:37 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3704,21 +3704,28 @@ export function initYandexActions() {
       return;
     }
 
-    if (action === 'delete-old-backups') {
+    if (action === 'clear-auto-saves') {
       const token = ya.getToken();
       if (!token || !ya.isTokenAlive()) return window.NotificationSystem?.warning('Сессия истекла. Войдите снова.');
       window.Modals?.confirm?.({
-        title: 'Удалить старые backup-версии?',
-        textHtml: 'Будут удалены старые архивные backup-файлы, кроме последних 3 версий и актуального latest.',
-        confirmText: 'Удалить',
+        title: 'Очистить папку автосохранений?',
+        textHtml: 'Папка Auto-Save в Яндекс Диске будет полностью очищена, и сразу же будет создана новая резервная копия.',
+        confirmText: 'Очистить и создать',
         cancelText: 'Отмена',
         onConfirm: async () => {
+          window.NotificationSystem?.info('Очистка папки...');
           try {
-            const res = await disk.deleteOldBackups(token, { keep: 3 });
-            window.NotificationSystem?.success(`Удалено старых копий: ${Number(res?.deleted || 0)} ✅`);
+            await disk.clearAutoSaveDir(token);
+            const backup = await BackupVault.buildBackupObject();
+            const meta = await disk.upload(token, backup);
+            try {
+              localStorage.setItem('yandex:last_backup_meta', JSON.stringify(meta));
+              localStorage.setItem('yandex:last_backup_local_ts', String(Number(backup?.revision?.timestamp || backup?.createdAt || Date.now())));
+            } catch {}
+            window.NotificationSystem?.success('Очищено. Новая копия сохранена ✅');
             rerender?.();
           } catch (e) {
-            window.NotificationSystem?.error('Не удалось удалить старые backup: ' + String(e?.message || ''));
+            window.NotificationSystem?.error('Ошибка очистки: ' + String(e?.message || ''));
           }
         }
       });
@@ -3814,28 +3821,8 @@ export function initYandexActions() {
       const runRestoreByPath = async selectedPath => {
         window.NotificationSystem?.info('Загружаем резервную копию...');
         try {
-          const data = await disk.download(token, selectedPath || undefined).catch(async e => {
-            const msg = String(e?.message || '');
-            const hint = String(e?.payload?.hint || '');
-
-            if (msg.includes('disk_forbidden') || msg.includes('disk_auth_error') || msg.includes('token_invalid_or_expired')) {
-              window.Modals?.confirm?.({
-                title: 'Нужно переподключить Яндекс',
-                textHtml: `${hint || 'Текущему токену не хватает прав на папку приложения Яндекс.Диска.'}<br><br>После выхода следующий вход запросит подтверждение заново.`,
-                confirmText: 'Переподключить',
-                cancelText: 'Отмена',
-                onConfirm: () => {
-                  ya.logout();
-                  setTimeout(() => ya.login({ forceConfirm: true }), 250);
-                }
-              });
-              throw new Error('__handled__');
-            }
-
-            throw e;
-          });
-
-          if (!data) return window.NotificationSystem?.warning('Резервная копия не найдена на Диске.');
+          const data = await disk.download(token, selectedPath || undefined);
+          if (!data) throw new Error('Файл не найден или пуст');
           openRestorePreviewModal(data, async mode => {
             try {
               await BackupVault.importData(new Blob([JSON.stringify(data)]), mode || 'all');
@@ -3854,25 +3841,11 @@ export function initYandexActions() {
             }
           });
         } catch (e) {
-          if (String(e?.message || '').includes('download_cors_fallback_required')) {
-            const href = e?.downloadHref || await disk.getDownloadLink(token, selectedPath || undefined).catch(() => null);
-            openManualRestoreHelpModal(href, async () => {
-              const file = await pickBackupFile(true);
-              if (!file) return;
-              try {
-                await BackupVault.importData(file, 'all');
-                clearCachedBackupFile();
-                window.NotificationSystem?.success('Backup восстановлен ✅ Обновляем...');
-                setTimeout(() => window.location.reload(), 1500);
-              } catch (err) {
-                const msg = String(err?.message || '');
-                if (msg.includes('restore_owner_mismatch')) window.NotificationSystem?.error('Этот backup принадлежит другому Яндекс-аккаунту.');
-                else if (msg.includes('backup_integrity_failed')) window.NotificationSystem?.error('Файл backup повреждён или изменён.');
-                else window.NotificationSystem?.error('Ошибка импорта backup: ' + msg);
-              }
-            });
-          } else if (String(e?.message || '') !== '__handled__') {
-            window.NotificationSystem?.error('Ошибка восстановления: ' + String(e?.message || ''));
+          const msg = String(e?.message || '');
+          if (msg.includes('proxy_failed_or_timeout')) {
+            window.NotificationSystem?.error('Сервер Яндекса не отвечает. Попробуйте "Из файла" или повторите попытку позже.');
+          } else {
+            window.NotificationSystem?.error('Ошибка восстановления: ' + msg);
           }
         }
       };
