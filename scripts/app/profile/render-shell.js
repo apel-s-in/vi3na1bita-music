@@ -21,9 +21,14 @@ export const renderProfileShell = ({ container: c, profile: p, tokens: tk, total
   window.__yaAuthAC = new AbortController();
   window.addEventListener('yandex:auth:changed', renderAuthBlock, { signal: window.__yaAuthAC.signal });
 
-  if (window.YandexAuth?.getSessionStatus?.() === 'active' && !sessionStorage.getItem('ya:auto-check:done')) {
-    sessionStorage.setItem('ya:auto-check:done', '1');
-    setTimeout(() => window._handleYaAutoSync?.(), 400);
+  // Авто-синхронизация теперь управляется из yandex-auto-sync.js через _tryAutoSyncOnStart
+  // Здесь только обновляем UI если синхронизация уже была выполнена
+  if (window.YandexAuth?.getSessionStatus?.() === 'active') {
+    const existingMeta = (() => { try { return JSON.parse(localStorage.getItem('yandex:last_backup_check') || 'null'); } catch { return null; } })();
+    if (existingMeta) {
+      // Метаданные уже есть — просто триггерим обновление UI
+      window.dispatchEvent(new CustomEvent('yandex:backup:meta-updated'));
+    }
   }
 
   const instTs = Number(localStorage.getItem('app:first-install-ts') || (localStorage.setItem('app:first-install-ts', String(Date.now())), Date.now()));
