@@ -213,14 +213,12 @@ export function renderYandexAuthBlock({ root, localProfile }) {
 
   bindYandexActions(root, () => renderYandexAuthBlock({ root, localProfile }));
 
-  if (!root._metaBound) {
-    root._metaBound = true;
-    window.addEventListener('yandex:backup:meta-updated', () => {
-      renderYandexAuthBlock({ root, localProfile });
-    });
-  }
-}
+      if (!root._metaBound) {
+        root._metaBound = true;
+        window.addEventListener('yandex:backup:meta-updated', () => {
+          renderYandexAuthBlock({ root, localProfile });
+        });
+      }
+    }
 
-export default { renderYandexAuthBlock };
-
-export default { renderYandexAuthBlock };
+    export default { renderYandexAuthBlock };
