@@ -1,19 +1,14 @@
 // scripts/core/yandex-disk.js
-// Работа с папкой Auto-Save, автоматическая очистка и жесткий прокси без fallback на прямые CORS-запросы
+// Сохранение прогресса в корень приложения (app:/)
+// Без ошибок 409 и с умной ротацией 5 последних файлов
 
 const API = 'https://cloud-api.yandex.net/v1/disk';
-const BACKUP_DIR = 'app:/Auto-Save';
-const BACKUP_PATH = 'app:/Auto-Save/latest.vi3bak';
-const META_PATH = 'app:/Auto-Save/meta.json';
-const BACKUP_PATH_VERSIONED = stamp => `app:/Auto-Save/backup_${stamp}.vi3bak`;
+const BACKUP_PATH = 'app:/vi3na1bita_backup.vi3bak';
+const META_PATH = 'app:/vi3na1bita_backup_meta.json';
+const BACKUP_PATH_VERSIONED = stamp => `app:/vi3na1bita_backup_${stamp}.vi3bak`;
 const PROXY_URL = 'https://functions.yandexcloud.net/d4ecdu6kgamevcauajid';
 
 const authHeader = token => ({ 'Authorization': `OAuth ${token}` });
-
-async function ensureDir(token, path) {
-  const r = await fetch(`${API}/resources?path=${encodeURIComponent(path)}`, { method: 'PUT', headers: authHeader(token) });
-  return r.ok || r.status === 409;
-}
 
 async function fetchProxy(url, token, retries = 3) {
   for (let i = 0; i <= retries; i++) {
@@ -39,10 +34,17 @@ async function putJsonByPath(token, path, data) {
   return true;
 }
 
+function humanSize(bytes) {
+  const n = Number(bytes) || 0;
+  if (n <= 0) return '0 B';
+  const u = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.min(u.length - 1, Math.floor(Math.log(n) / Math.log(1024)));
+  return `${(n / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${u[i]}`;
+}
+
 export const YandexDisk = {
   async upload(token, dataObject) {
     if (!token) throw new Error('no_token');
-    await ensureDir(token, BACKUP_DIR);
 
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
     const rpg = dataObject?.data?.userProfileRpg || {};
@@ -65,20 +67,38 @@ export const YandexDisk = {
     try { await putJsonByPath(token, meta.historyPath, dataObject); } catch {}
     await putJsonByPath(token, META_PATH, meta);
 
-    // Автоматическая очистка: оставляем только 5 последних файлов
+    // Очистка старых версий (оставляем 5)
     this.deleteOldBackups(token, { keep: 5 }).catch(() => {});
 
-    return meta;
+    // Запрашиваем реальные метаданные чтобы UI получил точный размер файлов
+    const realMeta = await this.getMeta(token).catch(() => null);
+    return realMeta || meta;
   },
 
   async getMeta(token) {
     if (!token) throw new Error('no_token');
-    const r = await fetch(`${API}/resources/download?path=${encodeURIComponent(META_PATH)}`, { headers: authHeader(token) });
-    if (!r.ok) return null;
-    const href = (await r.json()).href;
-    if (!href) return null;
-    const res = await fetch(href);
-    return res.ok ? await res.json() : null;
+    try {
+      const [latestMeta, metaRes] = await Promise.all([
+        fetch(`${API}/resources?path=${encodeURIComponent(BACKUP_PATH)}`, { headers: authHeader(token) }).then(r => r.ok ? r.json() : null),
+        fetch(`${API}/resources/download?path=${encodeURIComponent(META_PATH)}`, { headers: authHeader(token) }).then(r => r.ok ? r.json() : null)
+      ]);
+      
+      let metaJson = null;
+      if (metaRes?.href) {
+        const fileRes = await fetch(metaRes.href);
+        if (fileRes.ok) metaJson = await fileRes.json();
+      }
+
+      if (!latestMeta && !metaJson) return null;
+
+      const size = Number(latestMeta?.size || 0);
+      return metaJson ? {
+        ...metaJson,
+        size,
+        sizeHuman: humanSize(size),
+        timestamp: latestMeta?.modified ? Date.parse(latestMeta.modified) : metaJson.timestamp
+      } : null;
+    } catch { return null; }
   },
 
   async download(token, path = BACKUP_PATH) {
@@ -90,8 +110,6 @@ export const YandexDisk = {
       const data = await res.json();
       if (data && !data.error) return data;
     }
-    
-    // Никакого фоллбека на прямые ссылки — только прокси. Если упало, кидаем чистую ошибку.
     throw new Error('proxy_failed_or_timeout');
   },
 
@@ -108,10 +126,10 @@ export const YandexDisk = {
 
   async deleteOldBackups(token, { keep = 5 } = {}) {
     if (!token) return;
-    const r = await fetch(`${API}/resources?path=${encodeURIComponent(BACKUP_DIR)}&limit=200`, { headers: authHeader(token) });
+    const r = await fetch(`${API}/resources?path=${encodeURIComponent('app:/')}&limit=200`, { headers: authHeader(token) });
     if (!r.ok) return;
     const items = (await r.json())?._embedded?.items || [];
-    const versioned = items.filter(x => /^backup_.*\.vi3bak$/i.test(x.name)).sort((a, b) => Date.parse(b.modified) - Date.parse(a.modified));
+    const versioned = items.filter(x => /^vi3na1bita_backup_.*\.vi3bak$/i.test(x.name)).sort((a, b) => Date.parse(b.modified) - Date.parse(a.modified));
     const toDelete = versioned.slice(Math.max(0, keep));
     
     for (const item of toDelete) {
@@ -119,11 +137,12 @@ export const YandexDisk = {
     }
   },
 
-  async clearAutoSaveDir(token) {
-    if (!token) return;
-    // Удаляем саму папку Auto-Save (Яндекс удалит все внутри) и создаем заново
-    await fetch(`${API}/resources?path=${encodeURIComponent(BACKUP_DIR)}&permanently=true`, { method: 'DELETE', headers: authHeader(token) });
-    await ensureDir(token, BACKUP_DIR);
+  async checkExists(token) {
+    if (!token) return false;
+    try {
+      const r = await fetch(`${API}/resources?path=${encodeURIComponent(BACKUP_PATH)}`, { headers: authHeader(token) });
+      return r.ok;
+    } catch { return false; }
   }
 };
 
