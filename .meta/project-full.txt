@@ -400,7 +400,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-12 10:59:48 UTC
+Сгенерировано: 2026-04-12 11:02:12 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3930,19 +3930,59 @@ function bindYandexActions(root, rerender) {
   const autoChk = root.querySelector('#ya-auto-relogin');
   if (ya && autoChk) autoChk.onchange = e => ya.setAutoRelogin(e.target.checked);
 
+  const autosaveToggle = root.querySelector('#ya-autosave-toggle');
+  if (autosaveToggle) {
+    autosaveToggle.onchange = async e => {
+      try {
+        const { setSyncEnabled } = await import('../../analytics/backup-sync-engine.js');
+        setSyncEnabled(e.target.checked);
+        window.NotificationSystem?.info(e.target.checked ? 'Автосохранение включено' : 'Автосохранение выключено');
+      } catch {}
+    };
+  }
+
+  const autosaveInterval = root.querySelector('#ya-autosave-interval');
+  if (autosaveInterval) {
+    autosaveInterval.onchange = async e => {
+      try {
+        const { setSyncInterval } = await import('../../analytics/backup-sync-engine.js');
+        setSyncInterval(Number(e.target.value));
+        window.NotificationSystem?.info(`Интервал: ${e.target.value} сек`);
+      } catch {}
+    };
+  }
+
+  // Обновляем sync-dot с учётом ready-статуса
+  const syncDot = root.querySelector('#ya-sync-dot');
+  if (syncDot && !syncDot._syncBound) {
+    syncDot._syncBound = true;
+    const updateDot = async () => {
+      try {
+        const { isSyncReady, isSyncEnabled } = await import('../../analytics/backup-sync-engine.js');
+        if (!isSyncEnabled()) { syncDot.style.background = '#888'; syncDot.title = 'Автосохранение выключено'; return; }
+        if (!isSyncReady()) { syncDot.style.background = '#ff9800'; syncDot.title = 'Ожидание подтверждения данных...'; return; }
+        syncDot.style.background = '#4caf50'; syncDot.title = 'Автосохранение активно';
+      } catch {}
+    };
+    updateDot();
+    window.addEventListener('backup:sync:ready', updateDot);
+    window.addEventListener('backup:sync:settings:changed', updateDot);
+  }
+
   // Индикатор автосинхронизации
   const syncDot = root.querySelector('#ya-sync-dot');
   if (!syncDot || syncDot._syncBound) return;
   syncDot._syncBound = true;
   window.addEventListener('backup:sync:state', e => {
+    const syncDot2 = root.querySelector('#ya-sync-dot'); if (!syncDot2) return;
     const s = e.detail?.state;
     const map = { syncing: { title: 'Синхронизируется...', color: '#ff9800', anim: true },
                   ok: { title: 'Синхронизировано ✓', color: '#4caf50', anim: false },
-                  idle: { title: 'Авто-сохранение включено', color: '#4caf50', anim: false } };
+                  idle: { title: 'Авто-сохранение активно', color: '#4caf50', anim: false } };
     const cfg = map[s] || map.idle;
-    syncDot.title = cfg.title;
-    syncDot.style.background = cfg.color;
-    syncDot.style.animation = cfg.anim ? 'syncPulse 1s infinite' : '';
+    syncDot2.title = cfg.title;
+    syncDot2.style.background = cfg.color;
+    syncDot2.style.animation = cfg.anim ? 'syncPulse 1s infinite' : '';
     // Обновляем метку времени после успешного сохранения
     if (s === 'ok') {
       const lbl = root.querySelector('#ya-last-sync-label');
@@ -4011,10 +4051,17 @@ export function renderYandexAuthBlock({ root, localProfile }) {
           <span class="yandex-auth-autologin-text">Автовход при истечении сессии</span>
           <label class="set-switch"><input type="checkbox" id="ya-auto-relogin" ${autoLogin ? 'checked' : ''}><span class="set-slider"></span></label>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#7f93b5;padding:6px 0">
+        <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#7f93b5;padding:6px 0;flex-wrap:wrap">
           <style>.syncPulse{animation:syncPulse 1s infinite}@keyframes syncPulse{0%,to{opacity:1}50%{opacity:.3}}</style>
-          <span id="ya-sync-dot" title="Авто-сохранение включено" style="width:8px;height:8px;border-radius:50%;background:#4caf50;flex-shrink:0;transition:background .3s"></span>
-          <span>Авто-сохранение в облако · <span id="ya-last-sync-label">${(() => { const ts = Number(localStorage.getItem('yandex:last_backup_local_ts') || 0); return ts > 0 ? `последнее: ${new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}` : 'ещё не сохранялось'; })()}</span></span>
+          <span id="ya-sync-dot" title="Авто-сохранение" style="width:8px;height:8px;border-radius:50%;background:#888;flex-shrink:0;transition:background .3s"></span>
+          <span style="flex:1">Авто-сохранение · <span id="ya-last-sync-label">${(() => { const ts = Number(localStorage.getItem('yandex:last_backup_local_ts') || 0); return ts > 0 ? `последнее: ${new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}` : 'ещё не сохранялось'; })()}</span></span>
+          <label class="set-switch" style="flex-shrink:0" title="Вкл/выкл автосохранение"><input type="checkbox" id="ya-autosave-toggle" ${(() => { try { return localStorage.getItem('backup:autosync:enabled') !== '0' ? 'checked' : ''; } catch { return 'checked'; } })()}><span class="set-slider"></span></label>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#7f93b5;padding:2px 0;margin-bottom:4px">
+          <span style="flex:1;color:#888">Интервал автосохранения</span>
+          <select id="ya-autosave-interval" style="background:#1a2030;border:1px solid rgba(255,255,255,.15);color:#eaf2ff;border-radius:6px;padding:2px 6px;font-size:11px">
+            ${[15,30,60,120,300].map(s => `<option value="${s}" ${Number(localStorage.getItem('backup:autosync:intervalSec') || 30) === s ? 'selected' : ''}>${s < 60 ? s + ' сек' : (s/60) + ' мин'}</option>`).join('')}
+          </select>
         </div>
         <div class="yandex-auth-note">Один backup-файл объединяет прогресс, события, избранное, плейлисты, настройки, локальный профиль и данные устройств. Этот же файл можно сохранить вручную на устройство и перенести на другое своё устройство.</div>
         <div class="yandex-auth-bottomactions">
