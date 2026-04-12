@@ -20,7 +20,11 @@ class AlbumsManager {
   _renderIcons() {
     const box = $('album-icons'); if (!box) return;
     const isMob = isMobileUA(), idx = W.albumsIndex || [];
-    box.innerHTML = (C.ICON_ALBUMS_ORDER || []).filter(it => it.key && (it.key.startsWith('__') || idx.some(a => a.key === it.key))).map(it => {
+    const allItems = (C.ICON_ALBUMS_ORDER || []).filter(it => it.key && (it.key.startsWith('__') || idx.some(a => a.key === it.key)));
+    const albumItems = allItems.filter(it => it.row === 'albums' || (!it.row && !it.key.startsWith('__')));
+    const navItems = allItems.filter(it => it.row === 'nav' || (!it.row && it.key.startsWith('__')));
+
+    const mkIcon = it => {
       if (it.key === PROFILE) {
         const l = W.achievementEngine?.profile?.level || '-', x = W.achievementEngine?.profile?.xp !== undefined ? `${W.achievementEngine.profile.xp} XP` : '...';
         return `<div class="album-icon profile-dyn-icon" data-album="${it.key}" data-akey="${it.key}" title="${escHtml(it.title)}"><span class="pg-lvl-val" id="pg-lvl-val">${l}</span><div class="pg-xp-cur" id="pg-xp-cur">${x}</div></div>`;
@@ -28,7 +32,9 @@ class AlbumsManager {
       let b = it.icon || LOGO, p1 = b, p2 = b;
       if (b.includes('icon_album') && !b.includes('Fav_logo')) { p1 = isMob ? b.replace(/icon_album\/(.+)\.png$/, 'icon_album/mobile/$1@1x.jpg') : b.replace(/\.png$/, '@1x.png'); p2 = isMob ? p1.replace(/@1x\.jpg$/, '@2x.jpg') : p1.replace(/@1x\.png$/, '@2x.png'); }
       return `<div class="album-icon" data-album="${it.key}" data-akey="${it.key}" title="${escHtml(it.title)}"><img src="${p1}" srcset="${p2} 2x" alt="${escHtml(it.title)}" draggable="false" loading="lazy" width="60" height="60"></div>`;
-    }).join('');
+    };
+
+    box.innerHTML = `<div class="album-icons-row album-icons-row--albums" id="album-icons-albums">${albumItems.map(mkIcon).join('')}</div><div class="album-icons-row album-icons-row--nav" id="album-icons-nav">${navItems.map(mkIcon).join('')}</div>`;
   }
 
   _bindEvents() {
@@ -119,6 +125,9 @@ class AlbumsManager {
       this.curr = key; localStorage.setItem('currentAlbum', key);
       D.body.classList.toggle('news-view', key === NEWS);
       D.querySelectorAll('.album-icon').forEach(el => el.classList.toggle('active', el.dataset.album === key));
+      // Обновляем CSS-переменную для анимации сжатия в ряду альбомов
+      const albumsRow = D.getElementById('album-icons-albums');
+      if (albumsRow) albumsRow.dataset.active = key;
       if (tList) tList.classList.remove('filtered');
       W.PlayerUI?.switchAlbumInstantly?.(key); W.FavoritesOnlyActions?.syncFavoritesOnlyUiFrame?.();
     } catch (e) {
