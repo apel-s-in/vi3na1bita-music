@@ -26,10 +26,10 @@ export const renderProfileStats = ({ container: c, all }) => {
           <div class="log-info"><div class="log-title">${platform}${isCur ? ' (это устройство)' : ''}</div>
           <div class="log-desc">Последний раз: ${lastSeen}</div></div></div>`;
       }).join('');
-      const canDelete = devReg.filter(d => d.deviceHash !== curHash).length > 0;
+      const otherDevices = devReg.filter(d => d.deviceHash !== curHash);
       deviceStatsHtml = `<div class="profile-section-title" style="margin-top:8px;display:flex;align-items:center;justify-content:space-between">
         <span>📱 УСТРОЙСТВА</span>
-        ${canDelete ? `<button id="cleanup-devices-btn" class="om-btn om-btn--ghost" style="font-size:11px;padding:4px 10px">🗑 Очистить старые</button>` : ''}
+        ${otherDevices.length > 0 ? `<button id="cleanup-devices-btn" class="om-btn om-btn--ghost" style="font-size:11px;padding:4px 10px">✏️ Управление</button>` : ''}
       </div>
       <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">${rows}</div>`;
     }
