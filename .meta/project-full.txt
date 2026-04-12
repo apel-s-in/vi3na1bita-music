@@ -400,7 +400,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-12 14:32:43 UTC
+Сгенерировано: 2026-04-12 14:33:47 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4136,26 +4136,26 @@ function getLocalXp() {
   } catch { return null; }
 }
 
-function buildDiffList(cloudMeta, localTs) {
-  const lines = [];
-  const cloudTs = Number(cloudMeta?.timestamp || 0);
-  const diffMin = Math.round(Math.abs(cloudTs - localTs) / 60000);
-  if (cloudTs > localTs) {
-    const h = Math.floor(diffMin / 60), m = diffMin % 60;
-    lines.push(`☁️ Облако новее на ${h > 0 ? `${h}ч ` : ''}${m}м`);
-  }
-  if (cloudMeta?.statsCount) lines.push(`📊 Статистика: ${cloudMeta.statsCount} треков`);
-  if (cloudMeta?.achievementsCount) lines.push(`🏆 Достижений: ${cloudMeta.achievementsCount}`);
-  if (cloudMeta?.favoritesCount) lines.push(`⭐ Избранных: ${cloudMeta.favoritesCount}`);
-  if (cloudMeta?.playlistsCount) lines.push(`🎵 Плейлистов: ${cloudMeta.playlistsCount}`);
-  if (cloudMeta?.devicesCount > 1) lines.push(`📱 Устройств в backup: ${cloudMeta.devicesCount}`);
-  // Сравниваем XP если доступно локально
-  const localRpg = getLocalXp();
-  if (localRpg && cloudMeta?.achievementsCount && localRpg.xp > 0) {
-    const localAch = Object.keys(window.achievementEngine?.unlocked || {}).length;
-    if (cloudMeta.achievementsCount > localAch) lines.push(`✨ В облаке достижений больше`);
-  }
-  return lines;
+function buildTwoColumnDiff(cloudMeta) {
+  const lRpg = getLocalXp() || { level: 1, xp: 0 };
+  const lAch = Object.keys(window.achievementEngine?.unlocked || {}).length;
+  const lFavs = (() => { try { return JSON.parse(localStorage.getItem('__favorites_v2__') || '[]').filter(i => !i.inactiveAt).length; } catch { return 0; } })();
+  
+  return `
+    <div style="display:flex;gap:10px;margin:12px 0;text-align:center">
+      <div style="flex:1;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);border-radius:12px;padding:12px 8px">
+        <div style="font-size:11px;color:#888;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">💾 На устройстве</div>
+        <div style="font-size:14px;font-weight:900;color:#fff;margin-bottom:4px">Ур. ${lRpg.level} <span style="font-size:11px;color:#ff9800">(${lRpg.xp} XP)</span></div>
+        <div style="font-size:12px;color:#eaf2ff;margin-bottom:2px">🏆 Ачивок: <b>${lAch}</b></div>
+        <div style="font-size:12px;color:#eaf2ff">⭐ Избранных: <b>${lFavs}</b></div>
+      </div>
+      <div style="flex:1;background:rgba(77,170,255,.08);border:1px solid rgba(77,170,255,.2);border-radius:12px;padding:12px 8px">
+        <div style="font-size:11px;color:#8ab8fd;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">☁️ В облаке</div>
+        <div style="font-size:14px;font-weight:900;color:#fff;margin-bottom:4px">Ур. ${cloudMeta.level || 1} <span style="font-size:11px;color:#ff9800">(${cloudMeta.xp || 0} XP)</span></div>
+        <div style="font-size:12px;color:#eaf2ff;margin-bottom:2px">🏆 Ачивок: <b>${cloudMeta.achievementsCount || 0}</b></div>
+        <div style="font-size:12px;color:#eaf2ff">⭐ Избранных: <b>${cloudMeta.favoritesCount || 0}</b></div>
+      </div>
+    </div>`;
 }
 
 export async function initYandexAutoSync() {
@@ -4225,18 +4225,17 @@ export async function initYandexAutoSync() {
       // Слишком маленькая разница (< 2 минут) — игнорируем
       if (!isNewDevice && diffMin < 2) return;
 
-      const diff = buildDiffList(meta, localTs);
       const title = isNewDevice ? '☁️ Найден ваш облачный прогресс' : '☁️ В облаке есть более новые данные';
       const textHtml = `
-        <div style="margin-bottom:12px;color:#eaf2ff;line-height:1.5">
+        <div style="margin-bottom:4px;color:#eaf2ff;line-height:1.5;font-size:13px">
           ${isNewDevice
             ? 'Ваши данные сохранены в Яндекс Диске. Хотите восстановить прогресс на этом устройстве?'
-            : `В облаке обнаружена версия от <b>${formatDate(cloudTs)}</b>.<br>Локальная версия: ${localTs ? formatDate(localTs) : 'нет данных'}.`
+            : `В облаке обнаружена версия от <b>${formatDate(cloudTs)}</b>.`
           }
         </div>
-        ${diff.length ? `<div style="background:rgba(77,170,255,.08);border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;flex-direction:column;gap:6px;font-size:13px">${diff.map(d => `<div>${d}</div>`).join('')}</div>` : ''}
-        <div style="font-size:11px;color:#7f93b5;line-height:1.4">
-          Восстановление применяется безопасно: высокие результаты, достижения и XP не будут понижены.
+        ${buildTwoColumnDiff(meta)}
+        <div style="font-size:11px;color:#7f93b5;line-height:1.4;text-align:center">
+          Применяется безопасное слияние: высокие результаты (XP, достижения) не будут понижены.
         </div>`;
 
       window.Modals?.confirm?.({
