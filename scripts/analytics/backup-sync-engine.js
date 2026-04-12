@@ -1,14 +1,55 @@
 // scripts/analytics/backup-sync-engine.js
-// Debounce autosave: слушает dirty-события, не чаще чем раз в 30 секунд
-// Не трогает playback, не мешает iOS background audio
+// Умное автосохранение: включается только ПОСЛЕ того как данные восстановлены.
+// Не трогает playback, не мешает iOS background audio.
 
-const DEBOUNCE_MS = 30000;
-const MIN_INTERVAL_MS = 20000;
+const LS_SYNC_ENABLED = 'backup:autosync:enabled';
+const LS_SYNC_INTERVAL = 'backup:autosync:intervalSec';
+const DEFAULT_INTERVAL_SEC = 30;
+const MIN_INTERVAL_SEC = 15;
 
 let _timer = null;
 let _lastSaveAt = 0;
 let _dirty = false;
 let _bound = false;
+let _syncReady = false; // Главный флаг — включается только после восстановления
+
+function getIntervalMs() {
+  const sec = Math.max(MIN_INTERVAL_SEC, Number(localStorage.getItem(LS_SYNC_INTERVAL) || DEFAULT_INTERVAL_SEC));
+  return sec * 1000;
+}
+
+export function isSyncEnabled() {
+  return localStorage.getItem(LS_SYNC_ENABLED) !== '0';
+}
+
+export function isSyncReady() {
+  return _syncReady;
+}
+
+// Вызывается только когда мы УВЕРЕНЫ что данные актуальны
+export function markSyncReady(reason = 'manual') {
+  _syncReady = true;
+  console.debug('[BackupSyncEngine] sync READY, reason:', reason);
+  window.dispatchEvent(new CustomEvent('backup:sync:ready', { detail: { reason } }));
+  // Сразу планируем первое сохранение
+  markDirty();
+}
+
+export function setSyncEnabled(v) {
+  localStorage.setItem(LS_SYNC_ENABLED, v ? '1' : '0');
+  if (!v) { clearTimeout(_timer); _timer = null; }
+  window.dispatchEvent(new CustomEvent('backup:sync:settings:changed'));
+}
+
+export function setSyncInterval(sec) {
+  const s = Math.max(MIN_INTERVAL_SEC, Number(sec) || DEFAULT_INTERVAL_SEC);
+  localStorage.setItem(LS_SYNC_INTERVAL, String(s));
+  window.dispatchEvent(new CustomEvent('backup:sync:settings:changed'));
+}
+
+export function getSyncIntervalSec() {
+  return Math.max(MIN_INTERVAL_SEC, Number(localStorage.getItem(LS_SYNC_INTERVAL) || DEFAULT_INTERVAL_SEC));
+}
 
 function emitSyncState(state) {
   window.dispatchEvent(new CustomEvent('backup:sync:state', { detail: { state } }));
@@ -16,14 +57,27 @@ function emitSyncState(state) {
 
 function scheduleAutosave() {
   if (!_dirty) return;
+  if (!_syncReady) return; // Не сохраняем пока данные не восстановлены
+  if (!isSyncEnabled()) return;
+
   const ya = window.YandexAuth;
   const disk = window.YandexDisk;
   if (!ya || !disk) return;
   if (ya.getSessionStatus() !== 'active' || !ya.isTokenAlive()) return;
-  if (Date.now() - _lastSaveAt < MIN_INTERVAL_MS) return;
+
+  const now = Date.now();
+  const intervalMs = getIntervalMs();
+  if (now - _lastSaveAt < intervalMs) {
+    // Перепланируем через оставшееся время
+    const remaining = intervalMs - (now - _lastSaveAt);
+    clearTimeout(_timer);
+    _timer = setTimeout(scheduleAutosave, remaining);
+    return;
+  }
 
   clearTimeout(_timer);
   _timer = setTimeout(async () => {
+    if (!_syncReady || !isSyncEnabled()) return;
     _dirty = false;
     emitSyncState('syncing');
     try {
@@ -44,7 +98,7 @@ function scheduleAutosave() {
       emitSyncState('idle');
       console.debug('[BackupSyncEngine] autosave skip:', e?.message);
     }
-  }, DEBOUNCE_MS);
+  }, 0);
 }
 
 function markDirty() {
@@ -66,7 +120,7 @@ export function initBackupSyncEngine() {
   window.addEventListener('stats:updated', markDirty);
   window.addEventListener('analytics:logUpdated', markDirty);
 
-  // Патч localStorage — устанавливаем один раз, защищаем от двойного патча
+  // Патч localStorage — защита от двойного патча
   if (!localStorage._bsePatched) {
     const origSetItem = localStorage.setItem.bind(localStorage);
     localStorage.setItem = function(key, value) {
@@ -76,7 +130,18 @@ export function initBackupSyncEngine() {
     localStorage._bsePatched = true;
   }
 
-  console.debug('[BackupSyncEngine] initialized, debounce:', DEBOUNCE_MS / 1000, 'sec');
+  // Проверяем: если пользователь уже авторизован И localTs актуален — разрешаем sync
+  const ya = window.YandexAuth;
+  if (ya?.getSessionStatus?.() === 'active') {
+    const localTs = Number(localStorage.getItem('yandex:last_backup_local_ts') || 0);
+    if (localTs > 0) {
+      // Данные уже были восстановлены ранее — safe to enable sync
+      setTimeout(() => markSyncReady('session_restored'), 2000);
+    }
+    // Иначе ждём события из auto-sync
+  }
+
+  console.debug('[BackupSyncEngine] initialized, interval:', getSyncIntervalSec(), 'sec, ready:', _syncReady);
 }
 
-export default { initBackupSyncEngine };
+export default { initBackupSyncEngine, markSyncReady, isSyncReady, isSyncEnabled, setSyncEnabled, setSyncInterval, getSyncIntervalSec };
