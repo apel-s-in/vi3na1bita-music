@@ -309,6 +309,7 @@ vi3na1bita-music/
 │   ├── core/
 │   │   ├── bootstrap.js
 │   │   ├── config.js
+│   │   ├── device-identity.js
 │   │   ├── favorites-manager.js
 │   │   ├── utils.js
 │   │   ├── yandex-auth.js
@@ -399,7 +400,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-12 09:54:40 UTC
+Сгенерировано: 2026-04-12 10:49:23 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4900,6 +4901,67 @@ if (typeof window !== 'undefined') {
   window.SPECIAL_RELIZ_KEY = APP_CONFIG.SPECIAL_RELIZ_KEY;
   window.SPECIAL_SHOWCASE_KEY = APP_CONFIG.SPECIAL_SHOWCASE_KEY;
 }
+
+//=================================================
+// FILE: /scripts/core/device-identity.js
+// scripts/core/device-identity.js
+// Стабильная идентификация устройства без зависимости от случайного UUID.
+// Fingerprint строится из стабильных характеристик браузера.
+
+const LS_DEVICE_HASH = 'deviceHash';
+const LS_DEVICE_STABLE = 'deviceStableFingerprint';
+
+function buildStableFingerprint() {
+  const parts = [
+    navigator.platform || '',
+    navigator.language || '',
+    String(screen.width || 0),
+    String(screen.height || 0),
+    String(screen.colorDepth || 0),
+    String(navigator.hardwareConcurrency || 0),
+    Intl.DateTimeFormat().resolvedOptions().timeZone || '',
+    navigator.userAgent.slice(0, 80)
+  ];
+  return parts.join('|');
+}
+
+async function sha256Short(str) {
+  try {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+    return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
+  } catch {
+    // fallback для старых браузеров
+    let h = 0;
+    for (let i = 0; i < str.length; i++) h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+    return Math.abs(h).toString(16).padStart(8, '0');
+  }
+}
+
+export async function getOrCreateDeviceHash() {
+  const existing = localStorage.getItem(LS_DEVICE_HASH);
+  const stableFingerprint = buildStableFingerprint();
+  const storedFingerprint = localStorage.getItem(LS_DEVICE_STABLE);
+
+  // Если fingerprint совпадает — устройство то же самое, возвращаем существующий hash
+  if (existing && storedFingerprint === stableFingerprint) {
+    return existing;
+  }
+
+  // Если fingerprint изменился ИЛИ нет hash — генерируем детерминированный hash из fingerprint + соль
+  // Соль берём из существующего hash чтобы разные установки на одном устройстве имели разный hash
+  const salt = existing ? existing.slice(0, 8) : Math.random().toString(36).slice(2, 10);
+  const newHash = 'dv_' + await sha256Short(stableFingerprint + salt);
+
+  localStorage.setItem(LS_DEVICE_HASH, newHash);
+  localStorage.setItem(LS_DEVICE_STABLE, stableFingerprint);
+  return newHash;
+}
+
+export function getCurrentDeviceHash() {
+  return localStorage.getItem(LS_DEVICE_HASH) || null;
+}
+
+export default { getOrCreateDeviceHash, getCurrentDeviceHash };
 
 //=================================================
 // FILE: /scripts/core/favorites-manager.js
