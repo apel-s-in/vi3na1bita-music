@@ -50,35 +50,38 @@ export function openBackupFoundModal(meta) {
 export function openRestorePreviewModal(data, onConfirm) {
   const sum = BackupVault.summarizeBackupObject(data);
   const localTs = Number(localStorage.getItem('yandex:last_backup_local_ts') || 0);
-  const cmp = sum.timestamp > localTs ? 'Облачная копия новее локального состояния.' : (localTs > sum.timestamp ? 'Локальные данные новее облачной копии.' : 'Дата облачной и локальной копии совпадает.');
 
-  // Что изменится — сравниваем с текущими данными
-  const localFavs = (() => { try { return JSON.parse(localStorage.getItem('__favorites_v2__') || '[]').filter(i => !i.inactiveAt).length; } catch { return 0; } })();
-  const localPls = (() => { try { return JSON.parse(localStorage.getItem('sc3:playlists') || '[]').length; } catch { return 0; } })();
-  const changes = [];
-  if (sum.favoritesCount !== localFavs) changes.push(`Избранное: ${localFavs} → ${sum.favoritesCount}`);
-  if (sum.playlistsCount !== localPls) changes.push(`Плейлисты: ${localPls} → ${sum.playlistsCount}`);
-  if (changes.length) changes.push('Статистика слияется по максимуму (ничего не понизится)');
-  const changesHtml = changes.length
-    ? `<div style="background:rgba(77,170,255,.08);border-radius:8px;padding:8px 12px;margin:8px 0;font-size:12px;display:flex;flex-direction:column;gap:4px">${changes.map(c => `<div>• ${c}</div>`).join('')}</div>`
-    : '';
+  const lRpg = window.achievementEngine?.profile || { level: 1, xp: 0 };
+  const lAchCount = Object.keys(window.achievementEngine?.unlocked || {}).length;
+  const lFavs = (() => { try { return JSON.parse(localStorage.getItem('__favorites_v2__') || '[]').filter(i => !i.inactiveAt).length; } catch { return 0; } })();
+  
+  const cRpg = data.data?.userProfileRpg || { level: 1, xp: 0 };
+
+  const tableHtml = `
+    <div style="display:flex;gap:10px;margin:16px 0;text-align:center">
+      <div style="flex:1;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);border-radius:12px;padding:12px 8px">
+        <div style="font-size:11px;color:#888;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">💾 На устройстве</div>
+        <div style="font-size:14px;font-weight:900;color:#fff;margin-bottom:4px">Ур. ${lRpg.level} <span style="font-size:11px;color:#ff9800">(${lRpg.xp} XP)</span></div>
+        <div style="font-size:12px;color:#eaf2ff;margin-bottom:2px">🏆 Ачивок: <b>${lAchCount}</b></div>
+        <div style="font-size:12px;color:#eaf2ff">⭐ Избранных: <b>${lFavs}</b></div>
+      </div>
+      <div style="flex:1;background:rgba(77,170,255,.08);border:1px solid rgba(77,170,255,.2);border-radius:12px;padding:12px 8px">
+        <div style="font-size:11px;color:#8ab8fd;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">☁️ В облаке</div>
+        <div style="font-size:14px;font-weight:900;color:#fff;margin-bottom:4px">Ур. ${cRpg.level || 1} <span style="font-size:11px;color:#ff9800">(${cRpg.xp || 0} XP)</span></div>
+        <div style="font-size:12px;color:#eaf2ff;margin-bottom:2px">🏆 Ачивок: <b>${sum.achievementsCount}</b></div>
+        <div style="font-size:12px;color:#eaf2ff">⭐ Избранных: <b>${sum.favoritesCount}</b></div>
+      </div>
+    </div>`;
+
   const m = window.Modals?.open?.({
     title: 'Предпросмотр восстановления',
     maxWidth: 500,
     bodyHtml: `
-      <div class="modal-confirm-text">
-        <b>Имя профиля:</b> ${window.Utils?.escapeHtml?.(sum.profileName) || sum.profileName}<br>
+      <div class="modal-confirm-text" style="font-size:13px">
         <b>Дата backup:</b> ${sum.timestamp ? new Date(sum.timestamp).toLocaleString('ru-RU') : 'неизвестно'}<br>
         <b>Версия приложения:</b> ${window.Utils?.escapeHtml?.(sum.appVersion) || sum.appVersion}<br>
-        <b>Событий:</b> ${sum.eventCount}<br>
-        <b>Треков в статистике:</b> ${sum.statsCount}<br>
-        <b>Достижений:</b> ${sum.achievementsCount}<br>
-        <b>Избранных записей:</b> ${sum.favoritesCount}<br>
-        <b>Плейлистов витрины:</b> ${sum.playlistsCount}<br>
-        <b>Устройств:</b> ${sum.devicesCount}<br>
-        <b>Owner Yandex ID:</b> ${window.Utils?.escapeHtml?.(sum.ownerYandexId || 'unknown') || 'unknown'}<br><br>
-        <span style="color:#9db7dd">${cmp}</span>${changesHtml}<br>
-        <span style="color:#9db7dd">При восстановлении высокие статистические значения, достижения и XP не будут понижены: применяется безопасное слияние.</span><br><br>
+        ${tableHtml}
+        <span style="color:#9db7dd">При восстановлении применяется безопасное слияние: высокие результаты (XP, уровни, достижения) не будут понижены, а добавятся к текущим.</span><br><br>
         <b>Выберите режим:</b>
       </div>
       <div class="modal-choice-actions">
