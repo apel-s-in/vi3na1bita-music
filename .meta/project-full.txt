@@ -400,7 +400,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-12 15:20:15 UTC
+Сгенерировано: 2026-04-12 15:38:45 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4156,6 +4156,7 @@ function buildTwoColumnDiff(cloudMeta) {
 
 export async function initYandexAutoSync() {
   let _lastCloudTs = Number(localStorage.getItem('yandex:last_backup_local_ts') || 0);
+  let _autoSyncDone = false; // флаг: авто-синхронизация уже выполнена в этой сессии
 
   // Функция тихой проверки (Polling)
   const checkCloudSilently = async (showNotification = false) => {
@@ -4195,10 +4196,45 @@ export async function initYandexAutoSync() {
 
   // Polling каждые 30 секунд
   setInterval(() => checkCloudSilently(false), 30000);
-  
+
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && !sessionStorage.getItem('ya:auto-check:done')) {
-      checkCloudSilently(true);
+    if (document.visibilityState === 'visible') {
+      // При возврате в приложение — всегда проверяем облако тихо
+      checkCloudSilently(false);
+    }
+  });
+
+  // Авто-запуск при старте если уже залогинен
+  const _tryAutoSyncOnStart = async () => {
+    const ya = window.YandexAuth;
+    if (!ya || ya.getSessionStatus() !== 'active' || !ya.isTokenAlive()) {
+      // Не залогинен — разрешаем автосейв без восстановления
+      try {
+        const { markSyncReady } = await import('../../analytics/backup-sync-engine.js');
+        markSyncReady('no_auth_local_only');
+      } catch {}
+      return;
+    }
+    if (_autoSyncDone) return;
+    _autoSyncDone = true;
+    await window._handleYaAutoSync?.();
+  };
+
+  // Запускаем через небольшую задержку чтобы всё успело инициализироваться
+  setTimeout(_tryAutoSyncOnStart, 1500);
+
+  // Слушаем событие входа — если пользователь залогинился во время сессии
+  window.addEventListener('yandex:auth:changed', async (e) => {
+    if (e.detail?.status === 'active') {
+      _autoSyncDone = false;
+      setTimeout(_tryAutoSyncOnStart, 500);
+    } else if (e.detail?.status === 'logged_out') {
+      _autoSyncDone = false;
+      // При выходе — сразу разрешаем локальный автосейв
+      try {
+        const { markSyncReady } = await import('../../analytics/backup-sync-engine.js');
+        markSyncReady('logged_out_local_only');
+      } catch {}
     }
   });
 
