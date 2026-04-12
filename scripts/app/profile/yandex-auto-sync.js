@@ -80,8 +80,14 @@ export async function initYandexAutoSync() {
       const cloudTs = Number(meta.timestamp || 0);
       const localTs = getLocalTs();
 
-      // Облако не новее — ничего не делаем
-      if (!cloudTs || cloudTs <= localTs) return;
+      // Облако не новее — данные актуальны, разрешаем autosync
+      if (!cloudTs || cloudTs <= localTs) {
+        try {
+          const { markSyncReady } = await import('../../analytics/backup-sync-engine.js');
+          markSyncReady('cloud_not_newer');
+        } catch {}
+        return;
+      }
 
       // Проверяем: есть ли вообще локальные данные (новый пользователь)
       const isNewDevice = localTs === 0;
@@ -110,6 +116,13 @@ export async function initYandexAutoSync() {
         maxWidth: 480,
         confirmText: '📥 Восстановить из облака',
         cancelText: 'Пропустить',
+        onCancel: async () => {
+          // Пользователь пропустил — его локальные данные актуальны
+          try {
+            const { markSyncReady } = await import('../../analytics/backup-sync-engine.js');
+            markSyncReady('user_skipped_restore');
+          } catch {}
+        },
         onConfirm: async () => {
           window.NotificationSystem?.info('Загружаем резервную копию...');
           try {
@@ -120,6 +133,10 @@ export async function initYandexAutoSync() {
               return window.NotificationSystem?.error('Backup принадлежит другому аккаунту.');
             }
             await BackupVault.importData(new Blob([JSON.stringify(data)]), 'all');
+            try {
+              const { markSyncReady } = await import('../../analytics/backup-sync-engine.js');
+              markSyncReady('auto_restore');
+            } catch {}
             window.NotificationSystem?.success('Прогресс восстановлен ✅ Обновляем...');
             setTimeout(() => window.location.reload(), 1500);
           } catch (e) {
