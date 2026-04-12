@@ -400,7 +400,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-12 10:49:23 UTC
+Сгенерировано: 2026-04-12 10:50:20 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1913,12 +1913,25 @@ import { metaDB } from './meta-db.js';
 
 class EventLogger {
   constructor() {
-    this.queue = []; this.deviceHash = localStorage.getItem('deviceHash') || crypto.randomUUID(); this.sessionId = crypto.randomUUID();
-    localStorage.setItem('deviceHash', this.deviceHash);
+    this.queue = [];
+    this.deviceHash = localStorage.getItem('deviceHash') || ('tmp_' + crypto.randomUUID());
+    this.sessionId = crypto.randomUUID();
   }
 
   async init() {
     await metaDB.init();
+    // Инициализируем стабильный deviceHash
+    try {
+      const { getOrCreateDeviceHash } = await import('../core/device-identity.js');
+      this.deviceHash = await getOrCreateDeviceHash();
+    } catch {
+      if (!localStorage.getItem('deviceHash')) {
+        this.deviceHash = 'dv_' + crypto.randomUUID().replace(/-/g, '').slice(0, 16);
+        localStorage.setItem('deviceHash', this.deviceHash);
+      } else {
+        this.deviceHash = localStorage.getItem('deviceHash');
+      }
+    }
     ['visibilitychange', 'beforeunload'].forEach(e => window.addEventListener(e, () => document.hidden !== false && this.flush()));
     window.addEventListener('analytics:forceFlush', () => this.flush());
     setInterval(() => this.flush(), 15000);
