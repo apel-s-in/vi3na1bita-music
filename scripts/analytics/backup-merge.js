@@ -83,12 +83,25 @@ export const mergePlaylistsStorageSafe = (localRaw, remoteRaw) => {
     const id = String(pl?.id || '').trim();
     if (!id) return;
     const prev = map.get(id);
-    if (!prev) { map.set(id, { ...pl, id, order: uniq(pl?.order), hidden: uniq(pl?.hidden) }); return; }
-    const order = uniq([...(prev.order || []), ...(pl.order || [])]);
+    if (!prev) { map.set(id, { ...pl, id, order: uniq(pl?.order), hidden: uniq(pl?.hidden), ops: pl.ops || [] }); return; }
+    
+    let order = [];
+    let ops = [];
+    if (prev.ops && pl.ops && (prev.ops.length || pl.ops.length)) {
+      const opsMap = new Map();
+      [...prev.ops, ...pl.ops].forEach(op => opsMap.set(`${op.t}:${op.u}:${op.ts}`, op));
+      ops = [...opsMap.values()].sort((a, b) => a.ts - b.ts);
+      const state = new Set();
+      ops.forEach(op => op.t === 'add' ? state.add(op.u) : state.delete(op.u));
+      order = [...state];
+    } else {
+      order = uniq([...(prev.order || []), ...(pl.order || [])]);
+    }
+    
     const hidden = uniq([...(prev.hidden || []), ...(pl.hidden || [])]).filter(uid => order.includes(uid));
     map.set(id, { ...prev, ...pl, id, name: prev.name || pl.name || 'Плейлист',
       color: prev.color || pl.color || '',
-      createdAt: minPositive(prev.createdAt, pl.createdAt) || Date.now(), order, hidden });
+      createdAt: minPositive(prev.createdAt, pl.createdAt) || Date.now(), order, hidden, ops });
   });
   return JSON.stringify([...map.values()]);
 };
