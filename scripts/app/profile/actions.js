@@ -12,6 +12,27 @@ export const bindProfileActions = ({ ctx, container: c, achView: aV, metaDB: db,
     { sel: '.auth-btn', run: ({ el }) => { window.NotificationSystem?.info('Используйте кнопки Яндекс выше'); } },
     { sel: '[data-src]', run: ({ el }) => { const src = el.dataset.src; if (!['yandex', 'github'].includes(src)) return; localStorage.setItem('sourcePref', src); window.TrackRegistry?.resetSourceCache?.(); window.TrackRegistry?.ensurePopulated?.().catch(()=>{}); window.NotificationSystem?.success(`Приоритет: ${src}`); rP?.(); } },
     { sel: '.rec-play-btn', run: ({ el }) => { window.ShowcaseManager?.playContext?.(el.dataset.playuid); window.NotificationSystem?.info('Запуск рекомендации'); } },
+    { sel: '#cleanup-devices-btn', run: async () => {
+      if (!window.Modals?.confirm) return;
+      const curHash = localStorage.getItem('deviceHash') || '';
+      window.Modals.confirm({
+        title: 'Очистить лишние устройства?',
+        textHtml: 'Будут удалены все записи об устройствах кроме текущего. Это очистит список и уменьшит размер backup.',
+        confirmText: 'Очистить',
+        cancelText: 'Отмена',
+        onConfirm: () => {
+          try {
+            const reg = JSON.parse(localStorage.getItem('backup:device_registry:v1') || '[]');
+            const cleaned = reg.filter(d => d.deviceHash === curHash);
+            localStorage.setItem('backup:device_registry:v1', JSON.stringify(cleaned));
+            window.NotificationSystem?.success(`Удалено ${reg.length - cleaned.length} устройств ✅`);
+            window.AlbumsManager?.loadAlbum?.(window.APP_CONFIG?.SPECIAL_PROFILE_KEY || '__profile__');
+          } catch (e) {
+            window.NotificationSystem?.error('Ошибка: ' + String(e?.message || ''));
+          }
+        }
+      });
+    }},
     { sel: '#stats-reset-open-btn', run: async () => { if (!window.Modals?.confirm) return; window.Utils?.profileModals?.resetProfileData?.({ onAction: async act => { if (act === 'stats') await db.tx('stats', 'readwrite', s => s.clear()); else if (act === 'ach') { await db.setGlobal('unlocked_achievements', {}); await db.setGlobal('user_profile_rpg', { xp: 0, level: 1 }); } else if (act === 'all') { await db.tx('stats', 'readwrite', s => s.clear()); await db.setGlobal('unlocked_achievements', {}); await db.setGlobal('user_profile_rpg', { xp: 0, level: 1 }); await db.setGlobal('global_streak', { current: 0, longest: 0 }); } window.location.reload(); } }); } }
   ];
 
