@@ -115,11 +115,21 @@ const WATCH_KEYS = new Set([
 ]);
 
 export function initBackupSyncEngine() {
+export function initBackupSyncEngine() {
   if (_bound) return;
   _bound = true;
 
   window.addEventListener('stats:updated', markDirty);
   window.addEventListener('analytics:logUpdated', markDirty);
+
+  // Страховка: если через 3 минуты sync всё ещё не разблокирован
+  // (например нет интернета, прокси недоступен) — разрешаем локальный автосейв
+  setTimeout(() => {
+    if (!_syncReady) {
+      console.debug('[BackupSyncEngine] timeout fallback: forcing sync ready (no cloud check completed)');
+      markSyncReady('timeout_fallback');
+    }
+  }, 3 * 60 * 1000);
 
   // Патч localStorage — защита от двойного патча
   if (!localStorage._bsePatched) {
