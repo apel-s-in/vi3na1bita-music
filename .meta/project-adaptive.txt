@@ -400,7 +400,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-12 15:05:02 UTC
+Сгенерировано: 2026-04-12 15:06:24 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4844,7 +4844,23 @@ export const createShowcaseStore = ({ trk, getCat, ls = localStorage }) => {
     pl: () => (jGet('playlists', []) || []).filter(p => p?.id).map(p => normCtx(p, false, p.order || getCat())),
     setPl: v => jSet('playlists', (Array.isArray(v) ? v : []).map(p => normCtx(p, false, p?.order || getCat()))),
     get: id => Store.pl().find(p => p.id === id) || null,
-    save: p => { const a = Store.pl(), i = a.findIndex(x => x.id === p.id), n = normCtx(p, false, p.order || getCat()); i >= 0 ? a.splice(i, 1, n) : a.push(n); Store.setPl(a); },
+    save: p => { 
+      const a = Store.pl(), i = a.findIndex(x => x.id === p.id);
+      const prev = i >= 0 ? a[i] : null;
+      const ops = prev ? [...(prev.ops || [])] : [];
+      const now = Date.now();
+      if (prev) {
+        p.order.filter(u => !prev.order.includes(u)).forEach(u => ops.push({ t: 'add', u, ts: now }));
+        prev.order.filter(u => !p.order.includes(u)).forEach(u => ops.push({ t: 'del', u, ts: now }));
+      } else {
+        p.order.forEach(u => ops.push({ t: 'add', u, ts: p.createdAt || now }));
+      }
+      p.ops = ops.slice(-300); // Ограничиваем историю 300 последних операций
+      const n = normCtx(p, false, p.order || getCat());
+      n.ops = p.ops;
+      i >= 0 ? a.splice(i, 1, n) : a.push(n);
+      Store.setPl(a); 
+    },
     del: id => Store.setPl(Store.pl().filter(p => p.id !== id)),
     act: () => jGet('activeId', '__default__'), setAct: id => jSet('activeId', id),
     ui: () => jGet('ui_v2', { viewMode: 'flat', showNumbers: false, showHidden: false, hiddenPlacement: 'inline' }), setUi: v => jSet('ui_v2', v),
