@@ -1,4 +1,4 @@
-const SW_VERSION = '8.2.37';
+const SW_VERSION = '8.2.38';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
@@ -35,6 +35,7 @@ const STATIC_ASSETS = [
   './scripts/ui/modals.js',
   './scripts/core/yandex-auth.js',
   './scripts/core/yandex-disk.js',
+  './scripts/core/device-identity.js',
   './scripts/app/profile/yandex-actions.js',
   './scripts/app/profile/yandex-modals.js',
   './scripts/app/profile/yandex-auth-view.js',
