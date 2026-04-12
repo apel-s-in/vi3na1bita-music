@@ -13,23 +13,58 @@ export const bindProfileActions = ({ ctx, container: c, achView: aV, metaDB: db,
     { sel: '[data-src]', run: ({ el }) => { const src = el.dataset.src; if (!['yandex', 'github'].includes(src)) return; localStorage.setItem('sourcePref', src); window.TrackRegistry?.resetSourceCache?.(); window.TrackRegistry?.ensurePopulated?.().catch(()=>{}); window.NotificationSystem?.success(`Приоритет: ${src}`); rP?.(); } },
     { sel: '.rec-play-btn', run: ({ el }) => { window.ShowcaseManager?.playContext?.(el.dataset.playuid); window.NotificationSystem?.info('Запуск рекомендации'); } },
     { sel: '#cleanup-devices-btn', run: async () => {
-      if (!window.Modals?.confirm) return;
+      if (!window.Modals?.open) return;
       const curHash = localStorage.getItem('deviceHash') || '';
-      window.Modals.confirm({
-        title: 'Очистить лишние устройства?',
-        textHtml: 'Будут удалены все записи об устройствах кроме текущего. Это очистит список и уменьшит размер backup.',
-        confirmText: 'Очистить',
-        cancelText: 'Отмена',
-        onConfirm: () => {
-          try {
-            const reg = JSON.parse(localStorage.getItem('backup:device_registry:v1') || '[]');
-            const cleaned = reg.filter(d => d.deviceHash === curHash);
-            localStorage.setItem('backup:device_registry:v1', JSON.stringify(cleaned));
-            window.NotificationSystem?.success(`Удалено ${reg.length - cleaned.length} устройств ✅`);
-            window.AlbumsManager?.loadAlbum?.(window.APP_CONFIG?.SPECIAL_PROFILE_KEY || '__profile__');
-          } catch (e) {
-            window.NotificationSystem?.error('Ошибка: ' + String(e?.message || ''));
-          }
+      let reg = [];
+      try { reg = JSON.parse(localStorage.getItem('backup:device_registry:v1') || '[]'); } catch {}
+      const others = reg.filter(d => d.deviceHash !== curHash);
+      if (!others.length) return window.NotificationSystem?.info('Других устройств нет');
+
+      const esc = s => window.Utils?.escapeHtml?.(String(s || '')) || String(s || '');
+      const platformLabel = p => ({ ios: '📱 iOS', android: '📱 Android', web: '💻 Desktop' }[p] || '💻');
+
+      const bodyHtml = `
+        <div style="color:#9db7dd;margin-bottom:12px;font-size:13px;line-height:1.4">
+          Выберите устройства для удаления.<br>
+          Текущее устройство удалить нельзя.
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+          ${others.map((d, i) => {
+            const lastSeen = d.lastSeenAt ? new Date(d.lastSeenAt).toLocaleDateString('ru-RU') : '—';
+            return `<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;cursor:pointer">
+              <input type="checkbox" data-dev-idx="${i}" style="width:18px;height:18px;accent-color:var(--secondary-color);cursor:pointer">
+              <div style="flex:1;min-width:0">
+                <div style="font-size:13px;font-weight:700;color:#fff">${platformLabel(d.platform)}</div>
+                <div style="font-size:11px;color:#888;margin-top:2px">Последний раз: ${esc(lastSeen)}</div>
+                <div style="font-size:10px;color:#555;margin-top:1px">${esc(d.deviceHash.slice(0, 20))}…</div>
+              </div>
+            </label>`;
+          }).join('')}
+        </div>
+        <div class="om-actions">
+          <button type="button" class="om-btn om-btn--ghost" id="dev-sel-all">Выбрать все</button>
+          <button type="button" class="modal-action-btn" id="dev-del-btn" style="background:rgba(244,67,54,.12);border-color:rgba(244,67,54,.3);color:#ef9a9a">🗑 Удалить</button>
+        </div>`;
+
+      const m = window.Modals.open({ title: '📱 Управление устройствами', maxWidth: 440, bodyHtml });
+      if (!m) return;
+
+      m.querySelector('#dev-sel-all')?.addEventListener('click', () => {
+        m.querySelectorAll('[data-dev-idx]').forEach(cb => cb.checked = true);
+      });
+
+      m.querySelector('#dev-del-btn')?.addEventListener('click', () => {
+        const toDelete = new Set([...m.querySelectorAll('[data-dev-idx]:checked')].map(cb => Number(cb.dataset.devIdx)));
+        if (!toDelete.size) return window.NotificationSystem?.info('Ничего не выбрано');
+        const hashesToDelete = new Set(others.filter((_, i) => toDelete.has(i)).map(d => d.deviceHash));
+        try {
+          const cleaned = reg.filter(d => !hashesToDelete.has(d.deviceHash));
+          localStorage.setItem('backup:device_registry:v1', JSON.stringify(cleaned));
+          m.remove();
+          window.NotificationSystem?.success(`Удалено устройств: ${hashesToDelete.size} ✅`);
+          window.AlbumsManager?.loadAlbum?.(window.APP_CONFIG?.SPECIAL_PROFILE_KEY || '__profile__');
+        } catch (e) {
+          window.NotificationSystem?.error('Ошибка: ' + String(e?.message || ''));
         }
       });
     }},
