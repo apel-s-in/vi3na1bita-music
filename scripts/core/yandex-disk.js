@@ -103,13 +103,35 @@ export const YandexDisk = {
 
   async download(token, path = BACKUP_PATH) {
     if (!token) throw new Error('no_token');
-    const u = new URL(PROXY_URL); u.searchParams.set('mode', 'download'); u.searchParams.set('path', path);
-    const res = await fetchProxy(u.toString(), token);
-    
-    if (res && res.ok) {
-      const data = await res.json();
-      if (data && !data.error) return data;
-    }
+
+    // Попытка 1: через прокси Cloud Function
+    try {
+      const u = new URL(PROXY_URL); u.searchParams.set('mode', 'download'); u.searchParams.set('path', path);
+      const res = await fetchProxy(u.toString(), token, 2);
+      if (res && res.ok) {
+        const data = await res.json();
+        if (data && !data.error) return data;
+      }
+    } catch {}
+
+    // Попытка 2: прямое скачивание через Яндекс Диск API (может работать в некоторых браузерах)
+    try {
+      const linkRes = await fetch(
+        `${API}/resources/download?path=${encodeURIComponent(path)}`,
+        { headers: authHeader(token) }
+      );
+      if (linkRes.ok) {
+        const linkData = await linkRes.json();
+        if (linkData?.href) {
+          const fileRes = await fetch(linkData.href);
+          if (fileRes.ok) {
+            const data = await fileRes.json();
+            if (data && typeof data === 'object') return data;
+          }
+        }
+      }
+    } catch {}
+
     throw new Error('proxy_failed_or_timeout');
   },
 
