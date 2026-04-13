@@ -1,4 +1,5 @@
 import { BackupVault } from '../../analytics/backup-vault.js';
+import { getLocalBackupUiSnapshot, compareLocalVsCloud, getBackupCompareLabel } from '../../analytics/backup-summary.js';
 
 export function openBackupInfoModal() {
   window.Modals?.open?.({
@@ -25,11 +26,9 @@ export function openBackupInfoModal() {
 }
 
 export function openBackupFoundModal(meta) {
-  const localTs = Number(localStorage.getItem('yandex:last_backup_local_ts') || 0);
-  const cloudTs = Number(meta?.timestamp || 0);
-  const cmpLabel = cloudTs > localTs ? '☁️ Облако новее локального'
-    : localTs > cloudTs ? '💾 Локальные данные новее облака'
-    : '✅ Версии совпадают';
+  const localInfo = getLocalBackupUiSnapshot({ name: 'Слушатель' });
+  const cmp = compareLocalVsCloud(localInfo, meta || {});
+  const cmpLabel = getBackupCompareLabel(localInfo, meta || {});
 
   window.Modals?.open?.({
     title: 'Облачная копия найдена',
@@ -41,6 +40,7 @@ export function openBackupFoundModal(meta) {
         <b>Версия приложения:</b> ${window.Utils?.escapeHtml?.(meta?.appVersion || 'unknown') || 'unknown'}<br>
         <b>Размер:</b> ${window.Utils?.escapeHtml?.(meta?.sizeHuman || 'unknown') || 'unknown'}<br>
         <b>Сравнение:</b> ${cmpLabel}<br>
+        <b>Тип:</b> ${cmp.state}<br>
         ${meta?.historyPath ? `<b>История:</b> версионированный backup сохранён<br>` : ''}
         <br><span style="color:#9db7dd">Копия хранится в личной папке приложения на Яндекс Диске и привязана к аккаунту владельца.</span>
       </div>`
@@ -49,7 +49,9 @@ export function openBackupFoundModal(meta) {
 
 export function openRestorePreviewModal(data, onConfirm) {
   const sum = BackupVault.summarizeBackupObject(data);
-  const localTs = Number(localStorage.getItem('yandex:last_backup_local_ts') || 0);
+  const localInfo = getLocalBackupUiSnapshot({ name: 'Слушатель' });
+  const cmp = compareLocalVsCloud(localInfo, sum || {});
+  const cmpLabel = getBackupCompareLabel(localInfo, sum || {});
 
   const lRpg = window.achievementEngine?.profile || { level: 1, xp: 0 };
   const lAchCount = Object.keys(window.achievementEngine?.unlocked || {}).length;
@@ -81,7 +83,7 @@ export function openRestorePreviewModal(data, onConfirm) {
         <b>Дата backup:</b> ${sum.timestamp ? new Date(sum.timestamp).toLocaleString('ru-RU') : 'неизвестно'}<br>
         <b>Версия приложения:</b> ${window.Utils?.escapeHtml?.(sum.appVersion) || sum.appVersion}<br>
         ${tableHtml}
-        <span style="color:#9db7dd">При восстановлении применяется безопасное слияние: высокие результаты (XP, уровни, достижения) не будут понижены, а добавятся к текущим.</span><br><br>
+        <span style="color:#9db7dd">Сравнение: ${cmpLabel} (${cmp.state}). При восстановлении применяется безопасное слияние: высокие результаты (XP, уровни, достижения) не будут понижены, а добавятся к текущим.</span><br><br>
         <b>Выберите режим:</b>
       </div>
       <div class="modal-choice-actions">
