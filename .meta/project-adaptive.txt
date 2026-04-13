@@ -401,7 +401,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-13 18:58:20 UTC
+Сгенерировано: 2026-04-13 18:59:14 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3896,9 +3896,7 @@ import { renderYandexAuthBlock } from './yandex-auth-view.js';
   // ДОБАВИТЬ слушатель события "облако новее":
   window.addEventListener('yandex:cloud:newer', (e) => {
     // Зажигаем бейдж ! на кнопке профиля
-    const profileBtn = document.querySelector(
-      '[data-modal="profile"], .profile-btn, #profile-trigger, [data-action="open-profile"]'
-    );
+    const profileBtn = document.querySelector('.album-icon[data-album="__profile__"]');
     if (!profileBtn) return;
 
     // Не дублируем
