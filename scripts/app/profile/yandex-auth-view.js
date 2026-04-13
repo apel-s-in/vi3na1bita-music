@@ -6,7 +6,7 @@ function getLocalBackupSnapshot(localProfile) {
     const pls = JSON.parse(localStorage.getItem('sc3:playlists') || '[]');
     return {
       appVersion: window.APP_CONFIG?.APP_VERSION || 'unknown',
-      favoritesCount: Array.isArray(favs) ? favs.length : 0,
+      favoritesCount: Array.isArray(favs) ? favs.filter(i => !i?.inactiveAt).length : 0,
       playlistsCount: Array.isArray(pls) ? pls.length : 0,
       profileName: localProfile?.name || 'Слушатель'
     };
@@ -43,21 +43,31 @@ function bindYandexActions(root, rerender) {
       if (act === 'restore-backup' && prog) {
         prog.style.display = 'block';
         btn.disabled = true;
-        // Симулируем прогресс пока идёт загрузка
         let pct = 0;
-        const t = setInterval(() => { pct = Math.min(pct + 3, 85); if (bar) bar.style.width = `${pct}%`; if (status) status.textContent = pct < 30 ? 'Подключение к Яндекс Диску...' : (pct < 60 ? 'Загрузка backup...' : 'Обработка данных...'); }, 200);
+        const t = setInterval(() => {
+          pct = Math.min(pct + 3, 85);
+          if (bar) bar.style.width = `${pct}%`;
+          if (status) status.textContent = pct < 30
+            ? 'Подключение к Яндекс Диску...'
+            : (pct < 60 ? 'Загрузка backup...' : 'Обработка данных...');
+        }, 200);
         try {
           await window._handleYaAction?.(act, root, rerender);
         } finally {
           clearInterval(t);
           if (bar) bar.style.width = '100%';
-          setTimeout(() => { if (prog) prog.style.display = 'none'; if (bar) bar.style.width = '0%'; btn.disabled = false; }, 500);
+          setTimeout(() => {
+            if (prog) prog.style.display = 'none';
+            if (bar) bar.style.width = '0%';
+            btn.disabled = false;
+          }, 500);
         }
       } else {
-        window._handleYaAction?.(act, root, rerender);
+        await window._handleYaAction?.(act, root, rerender);
       }
     };
   });
+
   const ya = window.YandexAuth;
   const autoChk = root.querySelector('#ya-auto-relogin');
   if (ya && autoChk) autoChk.onchange = e => ya.setAutoRelogin(e.target.checked);
@@ -83,50 +93,97 @@ function bindYandexActions(root, rerender) {
       } catch {}
     };
   }
+}
 
-  // Sync dot — единый блок, без дублирования переменной
-  const syncDot = root.querySelector('#ya-sync-dot');
-  if (syncDot && !syncDot._syncBound) {
-    syncDot._syncBound = true;
+async function updateSyncDot(root) {
+  const syncDot = root?.querySelector('#ya-sync-dot');
+  if (!syncDot) return;
 
-    // Обновление цвета по ready/enabled состоянию
-    const updateDot = async () => {
-      try {
-        const { isSyncReady, isSyncEnabled } = await import('../../analytics/backup-sync-engine.js');
-        if (!isSyncEnabled()) { syncDot.style.background = '#888'; syncDot.title = 'Автосохранение выключено'; return; }
-        if (!isSyncReady()) { syncDot.style.background = '#ff9800'; syncDot.title = 'Ожидание подтверждения данных...'; return; }
-        syncDot.style.background = '#4caf50'; syncDot.title = 'Автосохранение активно';
-      } catch {}
-    };
-    updateDot();
-    window.addEventListener('backup:sync:ready', updateDot);
-    window.addEventListener('backup:sync:settings:changed', updateDot);
+  try {
+    const { isSyncReady, isSyncEnabled } = await import('../../analytics/backup-sync-engine.js');
+    if (!isSyncEnabled()) {
+      syncDot.style.background = '#888';
+      syncDot.style.animation = '';
+      syncDot.title = 'Автосохранение выключено';
+      return;
+    }
+    if (!isSyncReady()) {
+      syncDot.style.background = '#ff9800';
+      syncDot.style.animation = '';
+      syncDot.title = 'Ожидание подтверждения данных...';
+      return;
+    }
+    syncDot.style.background = '#4caf50';
+    syncDot.style.animation = '';
+    syncDot.title = 'Автосохранение активно';
+  } catch {
+    syncDot.style.background = '#888';
+    syncDot.style.animation = '';
+    syncDot.title = 'Статус синхронизации недоступен';
+  }
+}
 
-    // Обновление по событию sync:state
-    window.addEventListener('backup:sync:state', e => {
-      const dot = root.querySelector('#ya-sync-dot'); if (!dot) return;
+function bindReactiveEvents(root, rerender) {
+  if (root._yaReactiveBound) return;
+  root._yaReactiveBound = true;
+
+  const rerenderSafe = () => {
+    if (!root.isConnected) return;
+    rerender();
+  };
+
+  const updateDotSafe = () => {
+    if (!root.isConnected) return;
+    updateSyncDot(root);
+  };
+
+  root._yaReactiveHandlers = {
+    onAuthChanged: () => rerenderSafe(),
+    onBackupMetaUpdated: () => rerenderSafe(),
+    onSyncReady: () => {
+      rerenderSafe();
+      updateDotSafe();
+    },
+    onSyncSettingsChanged: () => updateDotSafe(),
+    onSyncState: e => {
+      const dot = root.querySelector('#ya-sync-dot');
+      if (!dot) return;
       const s = e.detail?.state;
       const map = {
         syncing: { title: 'Синхронизируется...', color: '#ff9800', anim: true },
-        ok:      { title: 'Синхронизировано ✓',  color: '#4caf50', anim: false },
-        idle:    { title: 'Авто-сохранение активно', color: '#4caf50', anim: false }
+        ok: { title: 'Синхронизировано ✓', color: '#4caf50', anim: false },
+        idle: { title: 'Авто-сохранение активно', color: '#4caf50', anim: false }
       };
       const cfg = map[s] || map.idle;
       dot.title = cfg.title;
       dot.style.background = cfg.color;
       dot.style.animation = cfg.anim ? 'syncPulse 1s infinite' : '';
+
       if (s === 'ok') {
         const lbl = root.querySelector('#ya-last-sync-label');
-        if (lbl) lbl.textContent = `последнее: ${new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
+        if (lbl) {
+          lbl.textContent = `последнее: ${new Date().toLocaleTimeString('ru-RU', {
+            hour: '2-digit',
+            minute: '2-digit'
+          })}`;
+        }
       }
-    });
-  }
+    }
+  };
+
+  window.addEventListener('yandex:auth:changed', root._yaReactiveHandlers.onAuthChanged);
+  window.addEventListener('yandex:backup:meta-updated', root._yaReactiveHandlers.onBackupMetaUpdated);
+  window.addEventListener('backup:sync:ready', root._yaReactiveHandlers.onSyncReady);
+  window.addEventListener('backup:sync:settings:changed', root._yaReactiveHandlers.onSyncSettingsChanged);
+  window.addEventListener('backup:sync:state', root._yaReactiveHandlers.onSyncState);
 }
 
 export function renderYandexAuthBlock({ root, localProfile }) {
   if (!root) return;
   const ya = window.YandexAuth;
   if (!ya) return;
+
+  const rerender = () => renderYandexAuthBlock({ root, localProfile });
 
   const status = ya.getSessionStatus();
   const profile = ya.getProfile();
@@ -138,8 +195,17 @@ export function renderYandexAuthBlock({ root, localProfile }) {
   const cloudInfo = backupMeta || (() => { try { return JSON.parse(localStorage.getItem('yandex:last_backup_check') || 'null'); } catch { return null; } })();
   const cmp = compareBackupMeta(localInfo, cloudInfo);
 
-  const statusLabel = { active: 'Подключено', expired: 'Сессия истекла', logged_out: 'Не подключено' }[status] || 'Не подключено';
-  const statusColor = { active: '#4caf50', expired: '#ff9800', logged_out: '#888' }[status] || '#888';
+  const statusLabel = {
+    active: 'Подключено',
+    expired: 'Сессия истекла',
+    logged_out: 'Не подключено'
+  }[status] || 'Не подключено';
+
+  const statusColor = {
+    active: '#4caf50',
+    expired: '#ff9800',
+    logged_out: '#888'
+  }[status] || '#888';
 
   root.innerHTML = `
     <div class="yandex-auth-block">
@@ -186,15 +252,22 @@ export function renderYandexAuthBlock({ root, localProfile }) {
           </div>
           <div id="ya-restore-status" style="font-size:11px;color:#9db7dd;margin-top:4px;text-align:center">Загрузка...</div>
         </div>
-      <div class="yandex-auth-autologin">
+        <div class="yandex-auth-autologin">
           <span class="yandex-auth-autologin-text">Автовход при истечении сессии</span>
           <label class="set-switch"><input type="checkbox" id="ya-auto-relogin" ${autoLogin ? 'checked' : ''}><span class="set-slider"></span></label>
         </div>
         <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#7f93b5;padding:6px 0;flex-wrap:wrap">
           <style>.syncPulse{animation:syncPulse 1s infinite}@keyframes syncPulse{0%,to{opacity:1}50%{opacity:.3}}</style>
           <span id="ya-sync-dot" title="Авто-сохранение" style="width:8px;height:8px;border-radius:50%;background:#888;flex-shrink:0;transition:background .3s"></span>
-          <span style="flex:1">Авто-сохранение · <span id="ya-last-sync-label">${(() => { const ts = Number(localStorage.getItem('yandex:last_backup_local_ts') || 0); return ts > 0 ? `последнее: ${new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}` : 'ещё не сохранялось'; })()}</span></span>
-          <label class="set-switch" style="flex-shrink:0" title="Вкл/выкл автосохранение"><input type="checkbox" id="ya-autosave-toggle" ${(() => { try { return localStorage.getItem('backup:autosync:enabled') !== '0' ? 'checked' : ''; } catch { return 'checked'; } })()}><span class="set-slider"></span></label>
+          <span style="flex:1">Авто-сохранение · <span id="ya-last-sync-label">${(() => {
+            const ts = Number(localStorage.getItem('yandex:last_backup_local_ts') || 0);
+            return ts > 0
+              ? `последнее: ${new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`
+              : 'ещё не сохранялось';
+          })()}</span></span>
+          <label class="set-switch" style="flex-shrink:0" title="Вкл/выкл автосохранение"><input type="checkbox" id="ya-autosave-toggle" ${(() => {
+            try { return localStorage.getItem('backup:autosync:enabled') !== '0' ? 'checked' : ''; } catch { return 'checked'; }
+          })()}><span class="set-slider"></span></label>
         </div>
         <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#7f93b5;padding:2px 0;margin-bottom:4px">
           <span style="flex:1;color:#888">Интервал автосохранения</span>
@@ -216,14 +289,9 @@ export function renderYandexAuthBlock({ root, localProfile }) {
       `}
     </div>`;
 
-  bindYandexActions(root, () => renderYandexAuthBlock({ root, localProfile }));
+  bindYandexActions(root, rerender);
+  bindReactiveEvents(root, rerender);
+  updateSyncDot(root);
+}
 
-      if (!root._metaBound) {
-        root._metaBound = true;
-        window.addEventListener('yandex:backup:meta-updated', () => {
-          renderYandexAuthBlock({ root, localProfile });
-        });
-      }
-    }
-
-    export default { renderYandexAuthBlock };
+export default { renderYandexAuthBlock };
