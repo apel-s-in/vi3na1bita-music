@@ -179,7 +179,6 @@ export function renderYandexAuthBlock({ root, localProfile }) {
           <button class="modal-action-btn" data-ya-action="restore-backup">📥 Из облака</button>
           <button class="modal-action-btn" data-ya-action="backup-export-manual">💾 В файл</button>
           <button class="modal-action-btn" data-ya-action="backup-import-manual">📂 Из файла</button>
-          <button class="modal-action-btn" data-ya-action="qr-export">📱 QR-перенос</button>
         </div>
         <div id="ya-restore-progress" style="display:none;margin-top:8px">
           <div style="height:4px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden">
