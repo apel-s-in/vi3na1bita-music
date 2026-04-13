@@ -121,7 +121,8 @@ export function initBackupSyncEngine() {
     const origSetItem = localStorage.setItem.bind(localStorage);
     localStorage.setItem = function(key, value) {
       origSetItem(key, value);
-      if (PROFILE_WATCH_KEYS.has(key) && _syncReady) {
+      // Игнорируем служебные ключи чтобы не вызывать рекурсию
+      if (PROFILE_WATCH_KEYS.has(key) && _syncReady && !key.startsWith('backup:') && !key.startsWith('yandex:')) {
         markDirty(false);
       }
     };
