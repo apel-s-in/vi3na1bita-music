@@ -123,7 +123,6 @@ export const YandexAuth = {
     localStorage.setItem(LS_FORCE_CONFIRM_NEXT, '1');
     try {
       localStorage.removeItem('yandex:last_backup_check');
-      sessionStorage.removeItem('ya:auto-check:done');
     } catch {}
     window.dispatchEvent(new CustomEvent('yandex:auth:changed', { detail: { status: 'logged_out' } }));
     window.NotificationSystem?.info('Вы вышли из аккаунта Яндекс');
