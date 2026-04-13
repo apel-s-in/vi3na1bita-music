@@ -157,7 +157,11 @@ import { initIosAudioKeeper } from './player-core/ios-audio-keeper.js';
       
       this.currentIndex = idx;
       if (!opts.isAutoSkip) this._skips = 0;
-      this._emit('onTrackChange', t, idx); emitG('player:trackChanged', { uid, dir }); this._syncMediaSessionPosition(true);
+      this._emit('onTrackChange', t, idx);
+      emitG('player:trackChanged', { uid, dir });
+      // Обновляем lockscreen metadata сразу при смене трека (до загрузки аудио)
+      this._updMedia();
+      this._syncMediaSessionPosition(true);
 
       let r = await W.TrackResolver?.resolve?.(uid, this.qMode).catch(()=>null);
       if (tok !== this._tok) return;
@@ -204,7 +208,19 @@ import { initIosAudioKeeper } from './player-core/ios-audio-keeper.js';
       this.sound = new Howl({
         src: [url], html5: true, format: ['mp3'], xhr: { withCredentials: false }, autoplay: false,
         onload: sf(() => { pos && this.seek(pos); this._updMedia(); }),
-        onplay: sf(() => { this._startT(); this._emit('onPlay', t, idx); this._updMedia(); this._syncMediaSessionPosition(true); emitG('player:play', { uid, duration: this.getDuration(), type: 'audio', provider: aP }); emitG('player:providerChanged', { provider: aP }); }),
+        onload: sf(() => {
+          pos && this.seek(pos);
+          // Сразу обновляем lockscreen artwork как только трек загружен
+          this._updMedia();
+        }),
+        onplay: sf(() => {
+          this._startT();
+          this._emit('onPlay', t, idx);
+          this._updMedia();
+          this._syncMediaSessionPosition(true);
+          emitG('player:play', { uid, duration: this.getDuration(), type: 'audio', provider: aP });
+          emitG('player:providerChanged', { provider: aP });
+        }),
         onpause: sf(() => { this._stopT(); this._emit('onPause'); this._updMedia(); this._syncMediaSessionPosition(true); emitG('player:pause'); }),
         onend: sf(() => { this._emit('onEnd'); this._updMedia(); emitG('player:ended'); emitG('analytics:forceFlush'); this.flags.rep ? this.play(this.currentIndex) : this.next(); }),
         onloaderror: sf(() => this._err(idx, retry, opts, dir)),
