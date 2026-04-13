@@ -40,7 +40,6 @@ const STATIC_ASSETS = [
   './scripts/app/profile/yandex-modals.js',
   './scripts/app/profile/yandex-auth-view.js',
   './scripts/app/profile/yandex-auto-sync.js',
-  './scripts/app/profile/qr-transfer.js',
   './scripts/analytics/backup-sync-engine.js',
   './scripts/analytics/backup-merge.js',
   './scripts/ui/offline-modal.js', './scripts/ui/offline-indicators.js',
