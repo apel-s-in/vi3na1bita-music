@@ -88,23 +88,6 @@ async function putJsonByPath(token, path, data) {
   return true;
 }
 
-async function getLatestFileMetaDirect(token) {
-  const r = await fetch(`${API}/resources?path=${encodeURIComponent(BACKUP_PATH)}`, {
-    headers: authHeader(token)
-  });
-  if (r.status === 404) return null;
-  if (!r.ok) throw new Error(`latest_meta_failed:${r.status}`);
-  const j = await r.json();
-  const size = safeNum(j?.size);
-  return {
-    path: safeString(j?.path || BACKUP_PATH),
-    modified: j?.modified || null,
-    timestamp: j?.modified ? (Date.parse(j.modified) || 0) : 0,
-    size,
-    sizeHuman: humanSize(size)
-  };
-}
-
 export const YandexDisk = {
   async upload(token, dataObject) {
     if (!token) throw new Error('no_token');
