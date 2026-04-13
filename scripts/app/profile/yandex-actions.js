@@ -170,10 +170,11 @@ export function initYandexActions() {
           window.dispatchEvent(new CustomEvent('yandex:backup:meta-updated'));
         } catch {}
         window.NotificationSystem?.success('Прогресс сохранён на Яндекс Диск ✅');
-        // После первого ручного сохранения разрешаем автосохранение
+        // После ручного сохранения разрешаем автосохранение + снимаем блокировку
         try {
-          const { markSyncReady } = await import('../../analytics/backup-sync-engine.js');
+          const { markSyncReady, markRestoreOrSkipDone } = await import('../../analytics/backup-sync-engine.js');
           markSyncReady('manual_save');
+          markRestoreOrSkipDone('manual_save');
         } catch {}
         if (window.eventLogger) {
           window.eventLogger.log('FEATURE_USED', 'global', { feature: 'backup' });
@@ -201,10 +202,11 @@ export function initYandexActions() {
             try {
               await BackupVault.importData(new Blob([JSON.stringify(data)]), mode || 'all');
               clearCachedBackupFile();
-              // После восстановления помечаем sync как готовый
+              // После восстановления помечаем sync как готовый + снимаем блокировку
               try {
-                const { markSyncReady } = await import('../../analytics/backup-sync-engine.js');
+                const { markSyncReady, markRestoreOrSkipDone } = await import('../../analytics/backup-sync-engine.js');
                 markSyncReady('restore_completed');
+                markRestoreOrSkipDone('restore_completed');
               } catch {}
               window.NotificationSystem?.success('Прогресс восстановлен ✅ Обновляем...');
               setTimeout(() => window.location.reload(), 1500);
