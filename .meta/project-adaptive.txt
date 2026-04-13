@@ -401,7 +401,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-13 18:48:11 UTC
+Сгенерировано: 2026-04-13 18:49:58 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3891,6 +3891,71 @@ import { mountProfileCarouselFlat } from './carousel-flat.js';
 import { renderProfileSettings } from './settings-view.js';
 import { getProfileTemplateHtml } from './template.js';
 import { renderYandexAuthBlock } from './yandex-auth-view.js';
+
+  // ДОБАВИТЬ слушатель события "облако новее":
+  window.addEventListener('yandex:cloud:newer', (e) => {
+    // Зажигаем бейдж ! на кнопке профиля
+    const profileBtn = document.querySelector(
+      '[data-modal="profile"], .profile-btn, #profile-trigger, [data-action="open-profile"]'
+    );
+    if (!profileBtn) return;
+
+    // Не дублируем
+    if (profileBtn.querySelector('.cloud-newer-badge')) return;
+
+    const badge = document.createElement('span');
+    badge.className = 'cloud-newer-badge';
+    badge.setAttribute('title', 'В облаке есть более новые данные');
+    badge.style.cssText = `
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      width: 16px;
+      height: 16px;
+      background: #ff9800;
+      border-radius: 50%;
+      font-size: 10px;
+      font-weight: 900;
+      color: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      pointer-events: none;
+      animation: badgePop 0.3s cubic-bezier(.34,1.56,.64,1) both;
+    `;
+    badge.textContent = '!';
+
+    // Убедимся что родитель position:relative
+    const parent = profileBtn.parentElement;
+    if (parent && getComputedStyle(parent).position === 'static') {
+      parent.style.position = 'relative';
+    }
+
+    profileBtn.style.position = 'relative';
+    profileBtn.appendChild(badge);
+
+    // Анимация появления
+    if (!document.getElementById('cloud-badge-style')) {
+      const style = document.createElement('style');
+      style.id = 'cloud-badge-style';
+      style.textContent = `
+        @keyframes badgePop {
+          0%   { transform: scale(0); opacity: 0; }
+          60%  { transform: scale(1.3); opacity: 1; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  });
+
+  // Убираем бейдж после успешного restore
+  window.addEventListener('backup:sync:ready', (e) => {
+    if (['auto_restore', 'cloud_not_newer', 'user_skipped_restore'].includes(e.detail?.reason)) {
+      document.querySelectorAll('.cloud-newer-badge').forEach(b => b.remove());
+    }
+  });
 
 export const renderProfileShell = ({ container: c, profile: p, tokens: tk, totalFull: tF, totalSec: tS, streak: strk, achCount: aC }) => {
   if (!c) return null;
