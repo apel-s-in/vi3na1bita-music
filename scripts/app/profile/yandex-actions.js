@@ -122,8 +122,16 @@ export function initYandexActions() {
         if (!file) return;
         await BackupVault.importData(file, 'all');
         clearCachedBackupFile();
-        window.NotificationSystem?.success('Backup восстановлен ✅ Обновляем...');
-        setTimeout(() => window.location.reload(), 1400);
+        try {
+          const { markSyncReady, markRestoreOrSkipDone } = await import('../../analytics/backup-sync-engine.js');
+          markSyncReady('restore_completed');
+          markRestoreOrSkipDone('restore_completed');
+        } catch {}
+        try {
+          const { runPostRestoreRefresh } = await import('./yandex-runtime-refresh.js');
+          await runPostRestoreRefresh({ reason: 'manual_file_restore' });
+        } catch {}
+        window.NotificationSystem?.success('Backup восстановлен ✅');
       } catch (e) {
         const msg = String(e?.message || '');
         if (msg.includes('restore_owner_mismatch')) window.NotificationSystem?.error('Этот backup принадлежит другому Яндекс-аккаунту.');
@@ -202,14 +210,16 @@ export function initYandexActions() {
             try {
               await BackupVault.importData(new Blob([JSON.stringify(data)]), mode || 'all');
               clearCachedBackupFile();
-              // После восстановления помечаем sync как готовый + снимаем блокировку
               try {
                 const { markSyncReady, markRestoreOrSkipDone } = await import('../../analytics/backup-sync-engine.js');
                 markSyncReady('restore_completed');
                 markRestoreOrSkipDone('restore_completed');
               } catch {}
-              window.NotificationSystem?.success('Прогресс восстановлен ✅ Обновляем...');
-              setTimeout(() => window.location.reload(), 1500);
+              try {
+                const { runPostRestoreRefresh } = await import('./yandex-runtime-refresh.js');
+                await runPostRestoreRefresh({ reason: 'cloud_restore' });
+              } catch {}
+              window.NotificationSystem?.success('Прогресс восстановлен ✅');
             } catch (e) {
               const msg = String(e?.message || '');
               if (msg.includes('restore_owner_mismatch')) window.NotificationSystem?.error('Этот backup принадлежит другому Яндекс-аккаунту.');
