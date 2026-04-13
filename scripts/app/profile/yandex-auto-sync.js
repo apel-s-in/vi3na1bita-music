@@ -169,8 +169,11 @@ function _showRestoreModal(meta, token, ctx = {}) {
         }
         await BackupVault.importData(new Blob([JSON.stringify(data)]), 'all');
         _markReady('auto_restore');
-        window.NotificationSystem?.success('Прогресс восстановлен ✅ Обновляем...');
-        setTimeout(() => window.location.reload(), 1500);
+        try {
+          const { runPostRestoreRefresh } = await import('./yandex-runtime-refresh.js');
+          await runPostRestoreRefresh({ reason: 'auto_restore' });
+        } catch {}
+        window.NotificationSystem?.success('Прогресс восстановлен ✅');
       } catch (e) {
         _markReady('restore_failed');
         window.NotificationSystem?.error('Ошибка: ' + String(e?.message || ''));
