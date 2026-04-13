@@ -400,7 +400,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-13 21:56:26 UTC
+Сгенерировано: 2026-04-13 22:15:36 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1830,8 +1830,15 @@ const PROFILE_KEYS = [
 // Ключи, которые не синхронизируются между устройствами (device-local)
 // Эти настройки каждое устройство хранит своё
 const DEVICE_LOCAL_KEYS = new Set([
-  'offline:mode:v1','offline:cacheQuality:v1','cloud:listenThreshold','cloud:ttlDays',
-  'playerVolume' // громкость — персональная для каждого устройства
+  'offline:mode:v1',
+  'offline:cacheQuality:v1',
+  'cloud:listenThreshold',
+  'cloud:ttlDays',
+  'playerVolume',
+  'playerStateV2',
+  'sleepTimerState:v2',
+  'favoritesOnlyMode',
+  'qualityMode:v1'
 ]);
 
 const PROFILE_ONLY_KEYS = new Set([
@@ -1870,9 +1877,6 @@ async function rebuildStatsFromWarmEventsSafe() {
     return false;
   }
 }
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(str || '')));
-  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
-}
 
 async function readOwnerIdentity() {
   const ya = window.YandexAuth;
@@ -1887,35 +1891,77 @@ async function readOwnerIdentity() {
 }
 
 async function readDeviceRegistry() {
+  const { getOrCreateDeviceHash, getOrCreateDeviceStableId } = await import('../core/device-identity.js');
+  const deviceHash = await getOrCreateDeviceHash();
+  const deviceStableId = await getOrCreateDeviceStableId();
+
   const cur = {
-    deviceHash: localStorage.getItem('deviceHash') || crypto.randomUUID(),
+    deviceHash,
+    deviceStableId,
     platform: window.Utils?.getPlatform?.()?.isIOS ? 'ios' : (/Android/i.test(navigator.userAgent) ? 'android' : 'web'),
     userAgent: navigator.userAgent,
     firstSeenAt: Number(localStorage.getItem('app:first-install-ts') || Date.now()),
-    lastSeenAt: Date.now()
+    lastSeenAt: Date.now(),
+    seenHashes: [deviceHash]
   };
+
   let list = [];
   try { list = JSON.parse(localStorage.getItem('backup:device_registry:v1') || '[]'); } catch {}
-  const map = new Map((Array.isArray(list) ? list : []).filter(Boolean).map(x => [String(x.deviceHash || '').trim(), x]));
-  const prev = map.get(cur.deviceHash) || {};
-  map.set(cur.deviceHash, { ...prev, ...cur, firstSeenAt: Number(prev.firstSeenAt || cur.firstSeenAt), lastSeenAt: Date.now() });
-  const out = [...map.values()].sort((a, b) => Number(a.firstSeenAt || 0) - Number(b.firstSeenAt || 0));
+
+  const rows = Array.isArray(list) ? list.filter(Boolean) : [];
+  const byStable = new Map();
+  rows.forEach(x => {
+    const key = String(x?.deviceStableId || '').trim() || String(x?.deviceHash || '').trim();
+    if (!key) return;
+    const prev = byStable.get(key);
+    if (!prev) {
+      byStable.set(key, x);
+      return;
+    }
+    byStable.set(key, {
+      ...prev,
+      ...x,
+      firstSeenAt: minPositive(prev.firstSeenAt, x.firstSeenAt) || Date.now(),
+      lastSeenAt: Math.max(toNum(prev.lastSeenAt), toNum(x.lastSeenAt)),
+      seenHashes: [...new Set([...(prev.seenHashes || []), ...(x.seenHashes || []), prev.deviceHash, x.deviceHash].filter(Boolean))]
+    });
+  });
+
+  const stableKey = cur.deviceStableId || cur.deviceHash;
+  const prev = byStable.get(stableKey) || null;
+  byStable.set(stableKey, {
+    ...prev,
+    ...cur,
+    firstSeenAt: minPositive(prev?.firstSeenAt, cur.firstSeenAt) || cur.firstSeenAt,
+    lastSeenAt: Date.now(),
+    seenHashes: [...new Set([...(prev?.seenHashes || []), ...(cur.seenHashes || []), prev?.deviceHash, cur.deviceHash].filter(Boolean))]
+  });
+
+  const out = [...byStable.values()]
+    .sort((a, b) => Number(a.firstSeenAt || 0) - Number(b.firstSeenAt || 0));
+
   try { localStorage.setItem('backup:device_registry:v1', JSON.stringify(out)); } catch {}
   return out;
 }
 
 async function readDeviceCacheMeta() {
-  // Читаем мета-данные кэша текущего устройства из cache-db
   try {
-    const { getAllTrackMetas } = await import('../offline/cache-db.js');
+    const [{ getAllTrackMetas }, { getCurrentDeviceHash, getCurrentDeviceStableId }] = await Promise.all([
+      import('../offline/cache-db.js'),
+      import('../core/device-identity.js')
+    ]);
     const metas = await getAllTrackMetas();
-    const deviceHash = localStorage.getItem('deviceHash') || '';
-    // Сохраняем только pinned/cloud — transient/dynamic не нужны
+    const deviceHash = getCurrentDeviceHash?.() || localStorage.getItem('deviceHash') || '';
+    const deviceStableId = getCurrentDeviceStableId?.() || localStorage.getItem('deviceStableId') || '';
     const relevant = metas.filter(m => ['pinned', 'cloud'].includes(m.type)).map(m => ({
-      uid: m.uid, type: m.type, quality: m.quality, size: m.size || 0,
-      cloudExpiresAt: m.cloudExpiresAt || null, pinnedAt: m.pinnedAt || null
+      uid: m.uid,
+      type: m.type,
+      quality: m.quality,
+      size: m.size || 0,
+      cloudExpiresAt: m.cloudExpiresAt || null,
+      pinnedAt: m.pinnedAt || null
     }));
-    return { deviceHash, items: relevant };
+    return { deviceHash, deviceStableId, items: relevant };
   } catch { return null; }
 }
 
@@ -1965,8 +2011,11 @@ export class BackupVault {
     const data = await readSnapshotData();
     const deviceCacheMeta = await readDeviceCacheMeta();
     // Добавляем device-specific кэш в devices registry
-    if (deviceCacheMeta?.deviceHash) {
-      const devIdx = devices.findIndex(d => d.deviceHash === deviceCacheMeta.deviceHash);
+    if (deviceCacheMeta?.deviceHash || deviceCacheMeta?.deviceStableId) {
+      const devIdx = devices.findIndex(d =>
+        (deviceCacheMeta.deviceStableId && d.deviceStableId === deviceCacheMeta.deviceStableId) ||
+        (deviceCacheMeta.deviceHash && d.deviceHash === deviceCacheMeta.deviceHash)
+      );
       if (devIdx >= 0) devices[devIdx]._cacheMeta = deviceCacheMeta.items;
     }
     const revision = {
