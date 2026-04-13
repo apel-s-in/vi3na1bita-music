@@ -1,3 +1,5 @@
+import '../../analytics/device-registry.js';
+
 const esc = s => window.Utils?.escapeHtml ? window.Utils.escapeHtml(String(s || '')) : String(s || '');
 
 export const renderProfileStats = ({ container: c, all }) => {
@@ -15,16 +17,10 @@ export const renderProfileStats = ({ container: c, all }) => {
   // Статистика по устройствам из device registry
   let deviceStatsHtml = '';
   try {
-    const devReg = JSON.parse(localStorage.getItem('backup:device_registry:v1') || '[]');
+    const devReg = window.DeviceRegistry?.getDeviceRegistry?.() || [];
     if (Array.isArray(devReg) && devReg.length > 1) {
-      const curHash = localStorage.getItem('deviceHash') || '';
-      const curStableId = localStorage.getItem('deviceStableId') || '';
-      const isCurrentDevice = d =>
-        (curStableId && String(d?.deviceStableId || '').trim() === curStableId) ||
-        (!curStableId && curHash && String(d?.deviceHash || '').trim() === curHash);
-
       const rows = devReg.map(d => {
-        const isCur = isCurrentDevice(d);
+        const isCur = !!window.DeviceRegistry?.isCurrentDevice?.(d);
         const platform = { ios: '📱 iOS', android: '📱 Android', web: '💻 Desktop' }[d.platform] || '💻';
         const lastSeen = d.lastSeenAt ? new Date(d.lastSeenAt).toLocaleDateString('ru-RU') : '—';
         return `<div class="profile-list-item${isCur ? ' current' : ''}">
@@ -32,7 +28,7 @@ export const renderProfileStats = ({ container: c, all }) => {
           <div class="log-desc">Последний раз: ${lastSeen}</div></div></div>`;
       }).join('');
 
-      const otherDevices = devReg.filter(d => !isCurrentDevice(d));
+      const otherDevices = window.DeviceRegistry?.getOtherDevices?.(devReg) || [];
       deviceStatsHtml = `<div class="profile-section-title" style="margin-top:8px;display:flex;align-items:center;justify-content:space-between">
         <span>📱 УСТРОЙСТВА</span>
         ${otherDevices.length > 0 ? `<button id="cleanup-devices-btn" class="om-btn om-btn--ghost" style="font-size:11px;padding:4px 10px">✏️ Управление</button>` : ''}
