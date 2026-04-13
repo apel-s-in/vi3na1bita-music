@@ -400,7 +400,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-13 22:23:55 UTC
+Сгенерировано: 2026-04-13 22:26:23 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4506,13 +4506,26 @@ function getLocalProfileSummary() {
   let favs = 0, playlists = 0;
   try { favs = JSON.parse(localStorage.getItem('__favorites_v2__') || '[]').filter(i => !i?.inactiveAt).length; } catch {}
   try { playlists = JSON.parse(localStorage.getItem('sc3:playlists') || '[]').length; } catch {}
+  let statsCount = 0, eventCount = 0, devicesCount = 0, deviceStableCount = 0;
+  try {
+    const reg = JSON.parse(localStorage.getItem('backup:device_registry:v1') || '[]');
+    if (Array.isArray(reg)) {
+      devicesCount = reg.length;
+      deviceStableCount = new Set(reg.map(d => safeString(d?.deviceStableId || '')).filter(Boolean)).size;
+    }
+  } catch {}
+
   return {
     timestamp: getLocalTs(),
     level: safeNum(rpg.level || 1),
     xp: safeNum(rpg.xp || 0),
     achievementsCount: Object.keys(ach || {}).length,
     favoritesCount: safeNum(favs),
-    playlistsCount: safeNum(playlists)
+    playlistsCount: safeNum(playlists),
+    statsCount,
+    eventCount,
+    devicesCount,
+    deviceStableCount
   };
 }
 
@@ -4522,7 +4535,11 @@ function getRichnessScore(summary = {}) {
     safeNum(summary.xp) +
     safeNum(summary.achievementsCount) * 250 +
     safeNum(summary.favoritesCount) * 40 +
-    safeNum(summary.playlistsCount) * 60
+    safeNum(summary.playlistsCount) * 60 +
+    safeNum(summary.statsCount) * 6 +
+    safeNum(summary.eventCount) * 2 +
+    safeNum(summary.devicesCount) * 25 +
+    safeNum(summary.deviceStableCount) * 30
   );
 }
 
@@ -4545,6 +4562,23 @@ function compareLocalVsCloud(localSummary, cloudMeta) {
   if (cloudScore > localScore && cloudTs >= localTs) return { state: 'cloud_probably_richer', localTs, cloudTs, localScore, cloudScore, scoreDiff, tsDiff };
   if (localScore > cloudScore && localTs >= cloudTs) return { state: 'local_probably_richer', localTs, cloudTs, localScore, cloudScore, scoreDiff, tsDiff };
   return { state: 'conflict', localTs, cloudTs, localScore, cloudScore, scoreDiff, tsDiff };
+}
+
+async function enrichLocalSummaryWithDb(summary) {
+  try {
+    const { metaDB } = await import('../../analytics/meta-db.js');
+    const [stats, warm] = await Promise.all([
+      metaDB.getAllStats().catch(() => []),
+      metaDB.getEvents('events_warm').catch(() => [])
+    ]);
+    return {
+      ...summary,
+      statsCount: Array.isArray(stats) ? stats.filter(x => x?.uid && x.uid !== 'global').length : safeNum(summary?.statsCount),
+      eventCount: Array.isArray(warm) ? warm.length : safeNum(summary?.eventCount)
+    };
+  } catch {
+    return summary;
+  }
 }
 
 export async function initYandexAutoSync() {
@@ -4573,7 +4607,7 @@ async function _checkCloudMetaOnly() {
   try {
     const token = ya.getToken();
     const meta = await YandexDisk.getMeta(token).catch(() => null);
-    const localSummary = getLocalProfileSummary();
+    const localSummary = await enrichLocalSummaryWithDb(getLocalProfileSummary());
 
     if (!meta) {
       _markReady('no_cloud_backup');
@@ -4636,12 +4670,12 @@ function _showRestoreModal(meta, token, ctx = {}) {
         <div style="flex:1;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:10px 8px">
           <div style="font-size:10px;color:#888;margin-bottom:6px;text-transform:uppercase">💾 Сейчас</div>
           <div style="font-size:13px;font-weight:900;color:#fff">Ур. ${localSummary.level || 1}</div>
-          <div style="font-size:11px;color:#eaf2ff">⭐ ${localSummary.favoritesCount || 0} треков</div>
+          <div style="font-size:11px;color:#eaf2ff">⭐ ${localSummary.favoritesCount || 0} треков · ▶ ${localSummary.playlistsCount || 0}</div>
         </div>
         <div style="flex:1;background:rgba(77,170,255,.08);border:1px solid rgba(77,170,255,.2);border-radius:12px;padding:10px 8px">
           <div style="font-size:10px;color:#8ab8fd;margin-bottom:6px;text-transform:uppercase">☁️ Облако</div>
           <div style="font-size:13px;font-weight:900;color:#fff">Ур. ${meta.level || 1}</div>
-          <div style="font-size:11px;color:#eaf2ff">⭐ ${meta.favoritesCount || 0} треков</div>
+          <div style="font-size:11px;color:#eaf2ff">⭐ ${meta.favoritesCount || 0} треков · ▶ ${meta.playlistsCount || 0}</div>
         </div>
       </div>
       <div style="font-size:11px;color:#7f93b5">
