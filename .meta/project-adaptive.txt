@@ -401,7 +401,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-13 18:49:58 UTC
+Сгенерировано: 2026-04-13 18:56:12 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4645,12 +4645,7 @@ export function renderYandexAuthBlock({ root, localProfile }) {
         </button>
       `}
     </div>`;
-  case 'qr-export': {
-    // ДОБАВИТЬ этот case:
-    const { openQrExportModal } = await import('./qr-transfer.js');
-    openQrExportModal();
-    break;
-  }
+
   bindYandexActions(root, () => renderYandexAuthBlock({ root, localProfile }));
 
       if (!root._metaBound) {
