@@ -400,7 +400,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-13 19:16:10 UTC
+Сгенерировано: 2026-04-13 19:16:41 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3912,12 +3912,6 @@ export function initYandexActions() {
         if (msg.includes('401') || msg.includes('403')) window.NotificationSystem?.warning('Сессия истекла. Войдите снова.');
         else window.NotificationSystem?.error('Ошибка сохранения: ' + msg);
       }
-      return;
-    }
-
-    if (action === 'qr-export') {
-      const { openQrExportModal } = await import('./qr-transfer.js');
-      openQrExportModal();
       return;
     }
 
