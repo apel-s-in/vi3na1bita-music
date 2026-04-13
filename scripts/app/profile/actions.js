@@ -72,47 +72,52 @@ export const bindProfileActions = ({ ctx, container: c, achView: aV, metaDB: db,
         }
       });
     }},
-    { sel: '#stats-reset-open-btn', run: async () => {
-      if (!window.Modals?.confirm) return;
-      window.Utils?.profileModals?.resetProfileData?.({
-        onAction: async act => {
-          try {
-            if (act === 'stats') {
-              await db.tx('stats', 'readwrite', s => s.clear());
-              await db.clearEvents?.('events_hot').catch(() => {});
-              await db.clearEvents?.('events_warm').catch(() => {});
-              await db.setGlobal('global_streak', { current: 0, longest: 0, lastActiveDate: '' }).catch(() => {});
-            } else if (act === 'ach') {
-              await db.setGlobal('unlocked_achievements', {});
-              await db.setGlobal('user_profile_rpg', { xp: 0, level: 1 });
-            } else if (act === 'all') {
-              await db.tx('stats', 'readwrite', s => s.clear());
-              await db.clearEvents?.('events_hot').catch(() => {});
-              await db.clearEvents?.('events_warm').catch(() => {});
-              await db.setGlobal('unlocked_achievements', {});
-              await db.setGlobal('user_profile_rpg', { xp: 0, level: 1 });
-              await db.setGlobal('global_streak', { current: 0, longest: 0, lastActiveDate: '' });
-              await db.setGlobal('listener_profile_summary', null).catch(() => {});
-            }
-
+    {
+      sel: '#stats-reset-open-btn',
+      run: async () => {
+        if (!window.Modals?.confirm) return;
+        window.Utils?.profileModals?.resetProfileData?.({
+          onAction: async act => {
             try {
-              const { runPostRestoreRefresh } = await import('./yandex-runtime-refresh.js');
-              await runPostRestoreRefresh({ reason: `profile_reset:${act}`, keepCurrentAlbum: true });
-            } catch {}
+              if (act === 'stats') {
+                await db.tx('stats', 'readwrite', s => s.clear());
+                await db.clearEvents?.('events_hot').catch(() => {});
+                await db.clearEvents?.('events_warm').catch(() => {});
+                await db.setGlobal('global_streak', { current: 0, longest: 0, lastActiveDate: '' }).catch(() => {});
+              } else if (act === 'ach') {
+                await db.setGlobal('unlocked_achievements', {});
+                await db.setGlobal('user_profile_rpg', { xp: 0, level: 1 });
+              } else if (act === 'all') {
+                await db.tx('stats', 'readwrite', s => s.clear());
+                await db.clearEvents?.('events_hot').catch(() => {});
+                await db.clearEvents?.('events_warm').catch(() => {});
+                await db.setGlobal('unlocked_achievements', {});
+                await db.setGlobal('user_profile_rpg', { xp: 0, level: 1 });
+                await db.setGlobal('global_streak', { current: 0, longest: 0, lastActiveDate: '' });
+                await db.setGlobal('listener_profile_summary', null).catch(() => {});
+              }
 
-            window.NotificationSystem?.success(
-              act === 'stats' ? 'Статистика очищена ✅' :
-              act === 'ach' ? 'Достижения сброшены ✅' :
-              'Профиль статистики сброшен ✅'
-            );
+              try {
+                const { runPostRestoreRefresh } = await import('./yandex-runtime-refresh.js');
+                await runPostRestoreRefresh({ reason: `profile_reset:${act}`, keepCurrentAlbum: true });
+              } catch {}
 
-            rP?.();
-          } catch (e) {
-            window.NotificationSystem?.error('Ошибка: ' + String(e?.message || ''));
+              window.NotificationSystem?.success(
+                act === 'stats'
+                  ? 'Статистика очищена ✅'
+                  : act === 'ach'
+                    ? 'Достижения сброшены ✅'
+                    : 'Профиль статистики сброшен ✅'
+              );
+
+              rP?.();
+            } catch (e) {
+              window.NotificationSystem?.error('Ошибка: ' + String(e?.message || ''));
+            }
           }
-        }
-      });
-    } }
+        });
+      }
+    }
   ];
 
   c.addEventListener('click', async e => {
