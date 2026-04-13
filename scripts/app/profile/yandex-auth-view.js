@@ -216,12 +216,7 @@ export function renderYandexAuthBlock({ root, localProfile }) {
         </button>
       `}
     </div>`;
-  case 'qr-export': {
-    // ДОБАВИТЬ этот case:
-    const { openQrExportModal } = await import('./qr-transfer.js');
-    openQrExportModal();
-    break;
-  }
+
   bindYandexActions(root, () => renderYandexAuthBlock({ root, localProfile }));
 
       if (!root._metaBound) {
