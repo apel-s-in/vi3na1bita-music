@@ -4,110 +4,46 @@ import { renderProfileSettings } from './settings-view.js';
 import { getProfileTemplateHtml } from './template.js';
 import { renderYandexAuthBlock } from './yandex-auth-view.js';
 
-  // ДОБАВИТЬ слушатель события "облако новее":
-  window.addEventListener('yandex:cloud:newer', (e) => {
-    // Зажигаем бейдж ! на кнопке профиля
+// ─── Глобальные слушатели badge — инициализируются один раз при первом импорте ──
+let _badgeListenersBound = false;
+function _initBadgeListeners() {
+  if (_badgeListenersBound) return;
+  _badgeListenersBound = true;
+
+  window.addEventListener('yandex:cloud:newer', () => {
     const profileBtn = document.querySelector('.album-icon[data-album="__profile__"]');
-    if (!profileBtn) return;
+    if (!profileBtn || profileBtn.querySelector('.cloud-newer-badge')) return;
 
-    // Не дублируем
-    if (profileBtn.querySelector('.cloud-newer-badge')) return;
+    if (!document.getElementById('cloud-badge-style')) {
+      const style = document.createElement('style');
+      style.id = 'cloud-badge-style';
+      style.textContent = `@keyframes badgePop{0%{transform:scale(0);opacity:0}60%{transform:scale(1.3);opacity:1}100%{transform:scale(1);opacity:1}}`;
+      document.head.appendChild(style);
+    }
 
-    const badge = document.createElement('span');
-    badge.className = 'cloud-newer-badge';
-    badge.setAttribute('title', 'В облаке есть более новые данные');
-    badge.style.cssText = `
-      position: absolute;
-      top: -4px;
-      right: -4px;
-      width: 16px;
-      height: 16px;
-      background: #ff9800;
-      border-radius: 50%;
-      font-size: 10px;
-      font-weight: 900;
-      color: #000;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 10;
-      pointer-events: none;
-      animation: badgePop 0.3s cubic-bezier(.34,1.56,.64,1) both;
-    `;
-    badge.textContent = '!';
-
-    // Убедимся что родитель position:relative
+    profileBtn.style.position = 'relative';
     const parent = profileBtn.parentElement;
     if (parent && getComputedStyle(parent).position === 'static') {
       parent.style.position = 'relative';
     }
 
-    profileBtn.style.position = 'relative';
+    const badge = Object.assign(document.createElement('span'), {
+      className: 'cloud-newer-badge',
+      textContent: '!'
+    });
+    badge.title = 'В облаке есть более новые данные';
+    badge.style.cssText = 'position:absolute;top:-4px;right:-4px;width:16px;height:16px;background:#ff9800;border-radius:50%;font-size:10px;font-weight:900;color:#000;display:flex;align-items:center;justify-content:center;z-index:10;pointer-events:none;animation:badgePop 0.3s cubic-bezier(.34,1.56,.64,1) both';
     profileBtn.appendChild(badge);
-
-    // Анимация появления
-    if (!document.getElementById('cloud-badge-style')) {
-      const style = document.createElement('style');
-      style.id = 'cloud-badge-style';
-      style.textContent = `
-        @keyframes badgePop {
-          0%   { transform: scale(0); opacity: 0; }
-          60%  { transform: scale(1.3); opacity: 1; }
-          100% { transform: scale(1); opacity: 1; }
-        }
-      `;
-      document.head.appendChild(style);
-    }
   });
 
-  // Убираем бейдж после успешного restore
   window.addEventListener('backup:sync:ready', (e) => {
     if (['auto_restore', 'cloud_not_newer', 'user_skipped_restore'].includes(e.detail?.reason)) {
       document.querySelectorAll('.cloud-newer-badge').forEach(b => b.remove());
     }
   });
+}
+
+// Вызываем сразу при импорте модуля — один раз за время жизни страницы
+_initBadgeListeners();
 
 export const renderProfileShell = ({ container: c, profile: p, tokens: tk, totalFull: tF, totalSec: tS, streak: strk, achCount: aC }) => {
-  if (!c) return null;
-  c.innerHTML = getProfileTemplateHtml();
-  const $ = s => c.querySelector(s);
-
-  if ($('#prof-avatar-btn')) $('#prof-avatar-btn').textContent = p.avatar || '😎';
-  if ($('#prof-name-inp')) $('#prof-name-inp').value = p.name || 'Слушатель';
-
-  const renderAuthBlock = () => renderYandexAuthBlock({ root: $('#prof-auth-grid'), localProfile: p });
-
-  renderAuthBlock();
-
-  // AbortController — чистый unmount listener при повторном рендере профиля
-  window.__yaAuthAC?.abort();
-  window.__yaAuthAC = new AbortController();
-  window.addEventListener('yandex:auth:changed', renderAuthBlock, { signal: window.__yaAuthAC.signal });
-
-  // Авто-синхронизация теперь управляется из yandex-auto-sync.js через _tryAutoSyncOnStart
-  // Здесь только обновляем UI если синхронизация уже была выполнена
-  if (window.YandexAuth?.getSessionStatus?.() === 'active') {
-    const existingMeta = (() => { try { return JSON.parse(localStorage.getItem('yandex:last_backup_check') || 'null'); } catch { return null; } })();
-    if (existingMeta) {
-      // Метаданные уже есть — просто триггерим обновление UI
-      window.dispatchEvent(new CustomEvent('yandex:backup:meta-updated'));
-    }
-  }
-
-  const instTs = Number(localStorage.getItem('app:first-install-ts') || (localStorage.setItem('app:first-install-ts', String(Date.now())), Date.now()));
-  if ($('#prof-meta-since')) $('#prof-meta-since').textContent = `📅 Слушаю с: ${new Date(instTs).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}`;
-  if ($('#prof-meta-days')) $('#prof-meta-days').textContent = `🎵 Дней с нами: ${Math.max(1, Math.floor((Date.now() - instTs) / 86400000) + 1)}`;
-
-  const ps = localStorage.getItem('sourcePref') === 'github' ? 'github' : 'yandex';
-  if ($('#tab-account')) $('#tab-account').insertAdjacentHTML('beforeend', `<div class="prof-src-box"><div><div class="prof-src-title">Приоритет источника</div><div class="prof-src-sub">Моментальный резерв включен всегда</div></div><div class="prof-src-switch"><button data-src="yandex" class="prof-src-btn prof-src-btn--yandex ${ps === 'yandex' ? 'prof-src-btn--active' : ''}">Yandex</button><button data-src="github" class="prof-src-btn prof-src-btn--github ${ps === 'github' ? 'prof-src-btn--active' : ''}">GitHub</button></div></div>`);
-
-  if ($('#prof-stat-tracks')) $('#prof-stat-tracks').textContent = tF;
-  if ($('#prof-stat-time')) $('#prof-stat-time').textContent = window.Utils?.fmt?.durationHuman ? window.Utils.fmt.durationHuman(tS) : `${Math.floor(tS / 60)}м`;
-  if ($('#prof-stat-streak')) $('#prof-stat-streak').textContent = strk;
-  if ($('#prof-stat-ach')) $('#prof-stat-ach').textContent = aC;
-
-  mountProfileCarouselFlat({ root: c });
-  renderProfileSettings($('#tab-settings'));
-  return c;
-};
-export default { renderProfileShell };
