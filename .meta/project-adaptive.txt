@@ -403,7 +403,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-13 23:43:54 UTC
+Сгенерировано: 2026-04-13 23:44:36 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -6341,23 +6341,6 @@ async function putJsonByPath(token, path, data) {
   });
   if (!res.ok) throw new Error(`upload_failed:${res.status}`);
   return true;
-}
-
-async function getLatestFileMetaDirect(token) {
-  const r = await fetch(`${API}/resources?path=${encodeURIComponent(BACKUP_PATH)}`, {
-    headers: authHeader(token)
-  });
-  if (r.status === 404) return null;
-  if (!r.ok) throw new Error(`latest_meta_failed:${r.status}`);
-  const j = await r.json();
-  const size = safeNum(j?.size);
-  return {
-    path: safeString(j?.path || BACKUP_PATH),
-    modified: j?.modified || null,
-    timestamp: j?.modified ? (Date.parse(j.modified) || 0) : 0,
-    size,
-    sizeHuman: humanSize(size)
-  };
 }
 
 export const YandexDisk = {
