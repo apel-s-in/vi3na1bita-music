@@ -271,10 +271,9 @@ export function initBackupSyncEngine() {
 }
 
 export function getSyncIntervalSec() { return 60; }
-export function setSyncInterval() {}
 
 export default {
   initBackupSyncEngine, markSyncReady, isSyncReady,
-  isSyncEnabled, setSyncEnabled, getSyncIntervalSec, setSyncInterval,
+  isSyncEnabled, setSyncEnabled, getSyncIntervalSec,
   markRestoreOrSkipDone, isRestoreOrSkipDone
 };
