@@ -188,6 +188,12 @@ export function initYandexActions() {
       return;
     }
 
+    if (action === 'qr-export') {
+      const { openQrExportModal } = await import('./qr-transfer.js');
+      openQrExportModal();
+      return;
+    }
+
     if (action === 'restore-backup') {
       const token = ya.getToken();
       if (!token || !ya.isTokenAlive()) return window.NotificationSystem?.warning('Сессия истекла. Войдите снова.');
