@@ -27,11 +27,6 @@ const PROFILE_WATCH_KEYS = new Set([
   'dl_format_v1',           // Формат скачивания
 ]);
 
-// Достижения — тоже важное событие
-const ACHIEVEMENT_EVENTS = new Set([
-  'achievements:updated', // Разблокировано новое достижение
-]);
-
 export function isSyncEnabled() {
   return localStorage.getItem(LS_SYNC_ENABLED) !== '0';
 }
