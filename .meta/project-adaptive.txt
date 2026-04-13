@@ -400,7 +400,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-13 19:27:27 UTC
+Сгенерировано: 2026-04-13 19:29:03 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -836,7 +836,7 @@ jobs:
   </template>
 
   <script>
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.2.42');
+    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.2.43');
     const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-04-12');
 
     // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
@@ -880,7 +880,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.2.42';
+const SW_VERSION = '8.2.43';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
@@ -5210,7 +5210,7 @@ if (errs.length) { console.error('Failed:\n', errs.join('\n')); process.exit(2);
 // FILE: /scripts/core/config.js
 // UID.005_(Soft-disable intel layer)_(не парализовать приложение при rollout)_(вынести базовые intel flags в APP_CONFIG) UID.019_(Compact TrackProfile index)_(дать стабильный путь до semantic data)_(хранить profile index/profile dir в config) UID.069_(Internal user identity)_(подготовить мульти-provider контур)_(держать future identity/sync flags централизованно) UID.092_(Incremental rollout order)_(делать staged внедрение через один конфиг)_(intel boot должен управляться отсюда)
 export const APP_CONFIG = {
-  APP_VERSION: '8.2.42',
+  APP_VERSION: '8.2.43',
   BUILD_DATE: '2026-04-12',
   PROMOCODE: 'VITRINA2025',
   ICON_ALBUMS_ORDER: [
@@ -5495,7 +5495,6 @@ export const YandexAuth = {
     localStorage.setItem(LS_FORCE_CONFIRM_NEXT, '1');
     try {
       localStorage.removeItem('yandex:last_backup_check');
-      sessionStorage.removeItem('ya:auto-check:done');
     } catch {}
     window.dispatchEvent(new CustomEvent('yandex:auth:changed', { detail: { status: 'logged_out' } }));
     window.NotificationSystem?.info('Вы вышли из аккаунта Яндекс');
