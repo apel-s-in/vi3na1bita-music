@@ -400,7 +400,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-13 19:26:17 UTC
+Сгенерировано: 2026-04-13 19:27:27 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1550,11 +1550,6 @@ const PROFILE_WATCH_KEYS = new Set([
   'lyricsAnimationEnabled', // Анимация лирики
   'logoPulseEnabled',       // Пульсация
   'dl_format_v1',           // Формат скачивания
-]);
-
-// Достижения — тоже важное событие
-const ACHIEVEMENT_EVENTS = new Set([
-  'achievements:updated', // Разблокировано новое достижение
 ]);
 
 export function isSyncEnabled() {
