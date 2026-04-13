@@ -17,10 +17,12 @@ function getLocalProfileSummary() {
   let devicesCount = 0, deviceStableCount = 0;
 
   try {
-    const reg = safeJsonParse(localStorage.getItem('backup:device_registry:v1') || '[]', []) || [];
+    const reg = window.DeviceRegistry?.getDeviceRegistry?.()
+      || safeJsonParse(localStorage.getItem('backup:device_registry:v1') || '[]', []) || [];
     if (Array.isArray(reg)) {
       devicesCount = reg.length;
-      deviceStableCount = new Set(reg.map(d => safeString(d?.deviceStableId || '')).filter(Boolean)).size;
+      deviceStableCount = window.DeviceRegistry?.countDeviceStableIds?.(reg)
+        || new Set(reg.map(d => safeString(d?.deviceStableId || '')).filter(Boolean)).size;
     }
   } catch {}
 
