@@ -401,7 +401,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-13 22:50:10 UTC
+Сгенерировано: 2026-04-13 22:51:52 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4639,16 +4639,9 @@ export default { renderYandexAuthBlock };
 // scripts/app/profile/yandex-auto-sync.js
 import { YandexDisk } from '../../core/yandex-disk.js';
 import { BackupVault } from '../../analytics/backup-vault.js';
+import { safeNum, safeString, compareLocalVsCloud } from '../../analytics/backup-summary.js';
 
 function getLocalTs() { return Number(localStorage.getItem('yandex:last_backup_local_ts') || 0); }
-
-function safeNum(v) {
-  return Number.isFinite(Number(v)) ? Number(v) : 0;
-}
-
-function safeString(v) {
-  return String(v == null ? '' : v).trim();
-}
 
 function getLocalProfileSummary() {
   const rpg = window.achievementEngine?.profile || { level: 1, xp: 0 };
@@ -4677,41 +4670,6 @@ function getLocalProfileSummary() {
     devicesCount,
     deviceStableCount
   };
-}
-
-function getRichnessScore(summary = {}) {
-  return (
-    safeNum(summary.level) * 1000 +
-    safeNum(summary.xp) +
-    safeNum(summary.achievementsCount) * 250 +
-    safeNum(summary.favoritesCount) * 40 +
-    safeNum(summary.playlistsCount) * 60 +
-    safeNum(summary.statsCount) * 6 +
-    safeNum(summary.eventCount) * 2 +
-    safeNum(summary.devicesCount) * 25 +
-    safeNum(summary.deviceStableCount) * 30
-  );
-}
-
-function compareLocalVsCloud(localSummary, cloudMeta) {
-  const localTs = safeNum(localSummary?.timestamp);
-  const cloudTs = safeNum(cloudMeta?.timestamp);
-  const localScore = getRichnessScore(localSummary);
-  const cloudScore = getRichnessScore(cloudMeta);
-  const scoreDiff = cloudScore - localScore;
-  const tsDiff = cloudTs - localTs;
-
-  const noCloudData = !cloudMeta || (!cloudTs && cloudScore === 0);
-  const noLocalEvidence = localTs === 0 && localScore <= 1200;
-
-  if (noCloudData) return { state: 'no_cloud', localTs, cloudTs, localScore, cloudScore, scoreDiff, tsDiff };
-  if (noLocalEvidence && cloudScore > 0) return { state: 'cloud_richer_new_device', localTs, cloudTs, localScore, cloudScore, scoreDiff, tsDiff };
-  if (cloudTs > localTs && cloudScore >= localScore) return { state: 'cloud_richer', localTs, cloudTs, localScore, cloudScore, scoreDiff, tsDiff };
-  if (localTs > cloudTs && localScore >= cloudScore) return { state: 'local_richer', localTs, cloudTs, localScore, cloudScore, scoreDiff, tsDiff };
-  if (Math.abs(tsDiff) < 2 * 60000 && Math.abs(scoreDiff) < 300) return { state: 'equivalent', localTs, cloudTs, localScore, cloudScore, scoreDiff, tsDiff };
-  if (cloudScore > localScore && cloudTs >= localTs) return { state: 'cloud_probably_richer', localTs, cloudTs, localScore, cloudScore, scoreDiff, tsDiff };
-  if (localScore > cloudScore && localTs >= cloudTs) return { state: 'local_probably_richer', localTs, cloudTs, localScore, cloudScore, scoreDiff, tsDiff };
-  return { state: 'conflict', localTs, cloudTs, localScore, cloudScore, scoreDiff, tsDiff };
 }
 
 async function enrichLocalSummaryWithDb(summary) {
