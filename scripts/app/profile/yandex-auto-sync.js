@@ -8,6 +8,10 @@ function safeNum(v) {
   return Number.isFinite(Number(v)) ? Number(v) : 0;
 }
 
+function safeString(v) {
+  return String(v == null ? '' : v).trim();
+}
+
 function getLocalProfileSummary() {
   const rpg = window.achievementEngine?.profile || { level: 1, xp: 0 };
   const ach = window.achievementEngine?.unlocked || {};
