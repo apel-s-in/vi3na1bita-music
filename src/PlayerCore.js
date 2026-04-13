@@ -248,30 +248,14 @@ import { initIosAudioKeeper } from './player-core/ios-audio-keeper.js';
     }
 
     _syncMediaSessionPosition(force = false) { try { this._ms?.updatePositionState?.({ force }); } catch {} }
-    _iosWatchdog(pos, dur) {
-      if (!this.sound || !this.isPlaying() || dur <= 0) return;
-      if (Math.abs(pos - (this._wdLastPos ?? -1)) < 0.05) {
-        if (++this._wdCount >= 20) {
-          this._wdCount = 0;
-          const ctx = W.Howler?.ctx;
-          if (ctx?.state !== 'running') ctx?.resume?.().catch(() => {});
-          try { this.sound.seek(pos); } catch {}
-        }
-      } else {
-        this._wdCount = 0;
-      }
-      this._wdLastPos = pos;
-    }
 
     _startT() {
       this._stopT();
-      this._wdLastPos = -1; this._wdCount = 0;
       this._tick = setInterval(() => {
         const pos = this.getPosition(), dur = this.getDuration();
         this._emit('onTick', pos, dur);
         emitG('player:tick', { currentTime: pos, volume: this.getVolume(), muted: this.isMuted() });
         this._syncMediaSessionPosition(false);
-        this._iosWatchdog(pos, dur);
       }, 250);
     }
     _stopT() { if (this._tick) clearInterval(this._tick); this._tick = null; }
