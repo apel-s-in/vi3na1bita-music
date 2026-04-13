@@ -25,6 +25,23 @@ export async function runPostRestoreRefresh({ reason = 'restore', keepCurrentAlb
   } catch {}
 
   try {
+    const intelEvents = [
+      'intel:listener-profile:rebuild-request',
+      'intel:recommendations:refresh-request',
+      'intel:collection:refresh-request',
+      'intel:runtime:refresh-request'
+    ];
+    intelEvents.forEach(name => window.dispatchEvent(new CustomEvent(name, {
+      detail: { reason, at: Date.now() }
+    })));
+  } catch {}
+
+  try {
+    const { listenerProfile } = await import('../../intel/listener/listener-profile.js');
+    await listenerProfile?.build?.().catch(() => null);
+  } catch {}
+
+  try {
     const currentAlbum = keepCurrentAlbum ? (window.AlbumsManager?.getCurrentAlbum?.() || null) : null;
     if (currentAlbum === (window.APP_CONFIG?.SPECIAL_PROFILE_KEY || '__profile__')) {
       const mod = await import('./view.js');
@@ -43,6 +60,12 @@ export async function runPostRestoreRefresh({ reason = 'restore', keepCurrentAlb
 
   try {
     window.dispatchEvent(new CustomEvent('backup:restore:applied', {
+      detail: { reason, at: Date.now() }
+    }));
+  } catch {}
+
+  try {
+    window.dispatchEvent(new CustomEvent('profile:data:refreshed', {
       detail: { reason, at: Date.now() }
     }));
   } catch {}
