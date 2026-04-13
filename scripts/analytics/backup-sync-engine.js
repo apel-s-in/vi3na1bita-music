@@ -1,61 +1,58 @@
 // scripts/analytics/backup-sync-engine.js
 // Умный автосейв: только при реальных изменениях, с защитой от затирания облака.
 
+import { safeNum, safeString, safeJsonParse, compareLocalVsCloud } from './backup-summary.js';
+
 const LS_SYNC_ENABLED = 'backup:autosync:enabled';
 const LS_RESTORE_DONE = 'backup:restore_or_skip_done';
 const COOLDOWN_MS = 60 * 1000;
 
 let _timer = null, _lastSaveAt = 0, _bound = false, _syncReady = false;
 
-function safeNum(v) {
-  return Number.isFinite(Number(v)) ? Number(v) : 0;
-}
-
-function safeJsonParse(raw, fallback = null) {
-  try { return JSON.parse(raw); } catch { return fallback; }
-}
-
 function getLocalProfileSummary() {
   const rpg = window.achievementEngine?.profile || { level: 1, xp: 0 };
   const ach = window.achievementEngine?.unlocked || {};
   const favs = safeJsonParse(localStorage.getItem('__favorites_v2__') || '[]', []) || [];
   const pls = safeJsonParse(localStorage.getItem('sc3:playlists') || '[]', []) || [];
+  let devicesCount = 0, deviceStableCount = 0;
+
+  try {
+    const reg = safeJsonParse(localStorage.getItem('backup:device_registry:v1') || '[]', []) || [];
+    if (Array.isArray(reg)) {
+      devicesCount = reg.length;
+      deviceStableCount = new Set(reg.map(d => safeString(d?.deviceStableId || '')).filter(Boolean)).size;
+    }
+  } catch {}
+
   return {
     timestamp: safeNum(localStorage.getItem('yandex:last_backup_local_ts') || 0),
     level: safeNum(rpg.level || 1),
     xp: safeNum(rpg.xp || 0),
     achievementsCount: Object.keys(ach || {}).length,
     favoritesCount: Array.isArray(favs) ? favs.filter(i => !i?.inactiveAt).length : 0,
-    playlistsCount: Array.isArray(pls) ? pls.length : 0
+    playlistsCount: Array.isArray(pls) ? pls.length : 0,
+    statsCount: 0,
+    eventCount: 0,
+    devicesCount,
+    deviceStableCount
   };
 }
 
-function getRichnessScore(summary = {}) {
-  return (
-    safeNum(summary.level) * 1000 +
-    safeNum(summary.xp) +
-    safeNum(summary.achievementsCount) * 250 +
-    safeNum(summary.favoritesCount) * 40 +
-    safeNum(summary.playlistsCount) * 60
-  );
-}
-
-function compareLocalVsCloud(localSummary, cloudMeta) {
-  const localTs = safeNum(localSummary?.timestamp);
-  const cloudTs = safeNum(cloudMeta?.timestamp);
-  const localScore = getRichnessScore(localSummary);
-  const cloudScore = getRichnessScore(cloudMeta);
-  const scoreDiff = cloudScore - localScore;
-  const tsDiff = cloudTs - localTs;
-
-  const noCloudData = !cloudMeta || (!cloudTs && cloudScore === 0);
-  if (noCloudData) return { state: 'no_cloud', localTs, cloudTs, localScore, cloudScore, scoreDiff, tsDiff };
-  if (cloudTs > localTs && cloudScore >= localScore) return { state: 'cloud_richer', localTs, cloudTs, localScore, cloudScore, scoreDiff, tsDiff };
-  if (localTs > cloudTs && localScore >= cloudScore) return { state: 'local_richer', localTs, cloudTs, localScore, cloudScore, scoreDiff, tsDiff };
-  if (Math.abs(tsDiff) < 2 * 60000 && Math.abs(scoreDiff) < 300) return { state: 'equivalent', localTs, cloudTs, localScore, cloudScore, scoreDiff, tsDiff };
-  if (cloudScore > localScore && cloudTs >= localTs) return { state: 'cloud_probably_richer', localTs, cloudTs, localScore, cloudScore, scoreDiff, tsDiff };
-  if (localScore > cloudScore && localTs >= cloudTs) return { state: 'local_probably_richer', localTs, cloudTs, localScore, cloudScore, scoreDiff, tsDiff };
-  return { state: 'conflict', localTs, cloudTs, localScore, cloudScore, scoreDiff, tsDiff };
+async function enrichLocalSummaryWithDb(summary) {
+  try {
+    const { metaDB } = await import('./meta-db.js');
+    const [stats, warm] = await Promise.all([
+      metaDB.getAllStats().catch(() => []),
+      metaDB.getEvents('events_warm').catch(() => [])
+    ]);
+    return {
+      ...summary,
+      statsCount: Array.isArray(stats) ? stats.filter(x => x?.uid && x.uid !== 'global').length : safeNum(summary?.statsCount),
+      eventCount: Array.isArray(warm) ? warm.length : safeNum(summary?.eventCount)
+    };
+  } catch {
+    return summary;
+  }
 }
 
 const PROFILE_WATCH_KEYS = new Set([
@@ -125,7 +122,7 @@ function emitState(state) {
 async function canSafelyUploadAgainstCloud(disk, token) {
   try {
     const cloudMeta = await disk.getMeta(token).catch(() => null);
-    const localSummary = getLocalProfileSummary();
+    const localSummary = await enrichLocalSummaryWithDb(getLocalProfileSummary());
     const cmp = compareLocalVsCloud(localSummary, cloudMeta);
 
     if (cmp.state === 'no_cloud') {
