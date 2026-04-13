@@ -112,8 +112,17 @@ export const YandexDisk = {
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
     const rpg = dataObject?.data?.userProfileRpg || {};
     const favs = dataObject?.data?.localStorage?.['__favorites_v2__'] || '[]';
-    let favCount = 0;
-    try { favCount = JSON.parse(favs).filter(i => !i.inactiveAt).length; } catch {}
+    const pls = dataObject?.data?.localStorage?.['sc3:playlists'] || '[]';
+    const stats = Array.isArray(dataObject?.data?.stats) ? dataObject.data.stats : [];
+    const warm = Array.isArray(dataObject?.data?.eventLog?.warm) ? dataObject.data.eventLog.warm : [];
+    const devices = Array.isArray(dataObject?.devices) ? dataObject.devices : [];
+    let favCount = 0, playlistsCount = 0;
+    try { favCount = JSON.parse(favs).filter(i => !i?.inactiveAt).length; } catch {}
+    try { playlistsCount = JSON.parse(pls).length; } catch {}
+
+    const stableIds = new Set(
+      devices.map(d => safeString(d?.deviceStableId || '')).filter(Boolean)
+    );
 
     const meta = {
       latestPath: BACKUP_PATH,
@@ -125,6 +134,11 @@ export const YandexDisk = {
       xp: safeNum(rpg.xp || 0),
       achievementsCount: Object.keys(dataObject?.data?.achievements || {}).length,
       favoritesCount: safeNum(favCount),
+      playlistsCount: safeNum(playlistsCount),
+      statsCount: stats.filter(x => x?.uid && x.uid !== 'global').length,
+      eventCount: warm.length,
+      devicesCount: devices.length,
+      deviceStableCount: stableIds.size,
       checksum: safeString(dataObject?.integrity?.payloadHash || ''),
       version: safeString(dataObject?.version || dataObject?.revision?.schemaVersion || 'unknown')
     };
