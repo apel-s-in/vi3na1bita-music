@@ -400,7 +400,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-13 20:19:44 UTC
+Сгенерировано: 2026-04-13 20:20:18 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4257,43 +4257,30 @@ export function renderYandexAuthBlock({ root, localProfile }) {
 //=================================================
 // FILE: /scripts/app/profile/yandex-auto-sync.js
 // scripts/app/profile/yandex-auto-sync.js
-// Минималистичная синхронизация: NO polling, умный автосейв, QR-перенос.
-
 import { YandexDisk } from '../../core/yandex-disk.js';
 import { BackupVault } from '../../analytics/backup-vault.js';
 
 const LS_LAST_STATS_SAVE = 'backup:last_stats_save_ts';
-const STATS_AUTOSAVE_INTERVAL = 12 * 60 * 60 * 1000; // 12 часов
+const STATS_AUTOSAVE_INTERVAL = 12 * 60 * 60 * 1000;
 
 function getLocalTs() { return Number(localStorage.getItem('yandex:last_backup_local_ts') || 0); }
 
-// ─── Единственная точка входа ──────────────────────────────────────────────
 export async function initYandexAutoSync() {
-
-  // 1. Разрешаем автосейв если не залогинены
   const ya = window.YandexAuth;
   if (!ya || ya.getSessionStatus() !== 'active' || !ya.isTokenAlive()) {
     _markReady('no_auth_local_only');
     return;
   }
-
-  // 2. Тихая проверка метаданных (ТОЛЬКО getMeta — без скачивания!)
   await _checkCloudMetaOnly();
 
-  // 3. Слушаем события входа/выхода
   window.addEventListener('yandex:auth:changed', async e => {
-    if (e.detail?.status === 'active') {
-      await _checkCloudMetaOnly();
-    } else if (e.detail?.status === 'logged_out') {
-      _markReady('logged_out_local_only');
-    }
+    if (e.detail?.status === 'active') await _checkCloudMetaOnly();
+    else if (e.detail?.status === 'logged_out') _markReady('logged_out_local_only');
   });
 
-  // 4. Автосейв статистики раз в 12 часов (при наличии изменений)
   _scheduleStatsSave();
 }
 
-// ─── Тихая проверка только метаданных (без скачивания!) ────────────────────
 async function _checkCloudMetaOnly() {
   const ya = window.YandexAuth;
   if (!ya || ya.getSessionStatus() !== 'active' || !ya.isTokenAlive()) return;
@@ -4307,7 +4294,7 @@ async function _checkCloudMetaOnly() {
     const meta = await YandexDisk.getMeta(token).catch(() => null);
 
     if (!meta) {
-      // Нет облачной копии — разрешаем сейвить
+      // Нет облачной копии — безопасно разрешаем сейвить
       _markReady('no_cloud_backup');
       return;
     }
@@ -4319,7 +4306,7 @@ async function _checkCloudMetaOnly() {
     const localTs = getLocalTs();
 
     if (cloudTs <= localTs) {
-      // Локальные данные актуальны или совпадают
+      // Локальные данные актуальны — безопасно разрешаем
       _markReady('cloud_not_newer');
       return;
     }
@@ -4332,30 +4319,26 @@ async function _checkCloudMetaOnly() {
       return;
     }
 
-    // Показываем уведомление — облако новее, НО не скачиваем автоматически!
-    // Пользователь сам решает через кнопку в профиле
+    // КРИТИЧНО: НЕ вызываем markRestoreOrSkipDone здесь!
+    // Только markSyncReady — но автосейв заблокирован до restore/skip
     _markReady('cloud_newer_user_choice');
 
-    // Зажигаем индикатор ! в личном кабинете
     window.dispatchEvent(new CustomEvent('yandex:cloud:newer', {
       detail: { cloudTs, localTs, diffMin, isNewDevice, meta }
     }));
 
-    // Показываем модалку только если это новое устройство (нет истории)
     if (isNewDevice) {
       _showRestoreModal(meta, ya.getToken());
     }
-
   } catch (e) {
     console.debug('[AutoSync] meta check failed:', e?.message);
     _markReady('meta_check_failed');
   }
 }
 
-// ─── Модалка восстановления (только для нового устройства) ─────────────────
 function _showRestoreModal(meta, token) {
   const lRpg = window.achievementEngine?.profile || { level: 1, xp: 0 };
-  const lFavs = (() => { try { return JSON.parse(localStorage.getItem('__favorites_v2__') || '[]').filter(i=>!i.inactiveAt).length; } catch { return 0; } })();
+  const lFavs = (() => { try { return JSON.parse(localStorage.getItem('__favorites_v2__') || '[]').filter(i => !i.inactiveAt).length; } catch { return 0; } })();
 
   window.Modals?.confirm?.({
     title: '☁️ Найден ваш облачный прогресс',
@@ -4381,7 +4364,10 @@ function _showRestoreModal(meta, token) {
     maxWidth: 460,
     confirmText: '📥 Восстановить',
     cancelText: 'Пропустить',
-    onCancel: () => _markReady('user_skipped_restore'),
+    onCancel: () => {
+      // Пользователь ЯВНО пропустил — теперь безопасно разрешаем аплоад
+      _markReady('user_skipped_restore');
+    },
     onConfirm: async () => {
       window.NotificationSystem?.info('Загружаем резервную копию...');
       try {
@@ -4393,6 +4379,7 @@ function _showRestoreModal(meta, token) {
           return window.NotificationSystem?.error('Backup принадлежит другому аккаунту.');
         }
         await BackupVault.importData(new Blob([JSON.stringify(data)]), 'all');
+        // Восстановление успешно — теперь безопасно разрешаем аплоад
         _markReady('auto_restore');
         window.NotificationSystem?.success('Прогресс восстановлен ✅ Обновляем...');
         setTimeout(() => window.location.reload(), 1500);
@@ -4404,16 +4391,13 @@ function _showRestoreModal(meta, token) {
   });
 }
 
-// ─── Автосейв статистики раз в 12 часов ────────────────────────────────────
 function _scheduleStatsSave() {
   const now = Date.now();
   const lastSave = Number(localStorage.getItem(LS_LAST_STATS_SAVE) || 0);
-  const nextSave = lastSave + STATS_AUTOSAVE_INTERVAL;
-  const delay = Math.max(0, nextSave - now);
+  const delay = Math.max(0, (lastSave + STATS_AUTOSAVE_INTERVAL) - now);
 
   setTimeout(async () => {
     await _doStatsSave();
-    // Планируем следующий через 12 часов
     setInterval(_doStatsSave, STATS_AUTOSAVE_INTERVAL);
   }, delay);
 }
@@ -4423,10 +4407,15 @@ async function _doStatsSave() {
   if (!ya || ya.getSessionStatus() !== 'active' || !ya.isTokenAlive()) return;
   if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) return;
 
-  // Проверяем есть ли грязные данные (изменения за 12 часов)
+  // Проверяем что restore/skip уже произошёл
+  try {
+    const { isRestoreOrSkipDone } = await import('../../analytics/backup-sync-engine.js');
+    if (!isRestoreOrSkipDone()) return;
+  } catch {}
+
   const dirtyTs = Number(localStorage.getItem('backup:local_dirty_ts') || 0);
   const lastSave = Number(localStorage.getItem(LS_LAST_STATS_SAVE) || 0);
-  if (dirtyTs <= lastSave) return; // Изменений не было — пропускаем
+  if (dirtyTs <= lastSave) return;
 
   try {
     const token = ya.getToken();
@@ -4440,7 +4429,6 @@ async function _doStatsSave() {
   }
 }
 
-// ─── Хелпер: разблокировать автосейв ───────────────────────────────────────
 async function _markReady(reason) {
   try {
     const { markSyncReady } = await import('../../analytics/backup-sync-engine.js');
