@@ -239,11 +239,6 @@ export const YandexDisk = {
         headers: authHeader(token)
       }).catch(() => {});
     }
-  },
-
-  async getDirectLatestMeta(token) {
-    if (!token) throw new Error('no_token');
-    return getLatestFileMetaDirect(token);
   }
 };
 
