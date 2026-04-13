@@ -400,7 +400,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-13 18:36:30 UTC
+Сгенерировано: 2026-04-13 18:39:16 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1524,24 +1524,38 @@ export default {
 //=================================================
 // FILE: /scripts/analytics/backup-sync-engine.js
 // scripts/analytics/backup-sync-engine.js
-// Умное автосохранение: включается только ПОСЛЕ того как данные восстановлены.
-// Не трогает playback, не мешает iOS background audio.
+// Умный автосейв: только при реальных изменениях, с 1-минутным cooldown.
+// Статистика — отдельный цикл (12 часов), управляемый из yandex-auto-sync.js
 
 const LS_SYNC_ENABLED = 'backup:autosync:enabled';
-const LS_SYNC_INTERVAL = 'backup:autosync:intervalSec';
-const DEFAULT_INTERVAL_SEC = 30;
-const MIN_INTERVAL_SEC = 15;
+const COOLDOWN_MS = 60 * 1000; // 1 минута cooldown после последнего изменения
 
 let _timer = null;
 let _lastSaveAt = 0;
-let _dirty = false;
 let _bound = false;
-let _syncReady = false; // Главный флаг — включается только после восстановления
+let _syncReady = false;
 
-function getIntervalMs() {
-  const sec = Math.max(MIN_INTERVAL_SEC, Number(localStorage.getItem(LS_SYNC_INTERVAL) || DEFAULT_INTERVAL_SEC));
-  return sec * 1000;
-}
+// Ключи localStorage, которые считаются "важными изменениями профиля"
+// (НЕ включаем статистику — она через отдельный 12-часовой цикл)
+const PROFILE_WATCH_KEYS = new Set([
+  '__favorites_v2__',       // Избранное
+  'sc3:playlists',          // Плейлисты
+  'sc3:default',            // Порядок витрины
+  'sc3:activeId',           // Активный плейлист
+  'sc3:ui_v2',              // Настройки UI
+  'sourcePref',             // Приоритет источника
+  'favoritesOnlyMode',      // Режим только избранные
+  'qualityMode:v1',         // Качество
+  'lyricsViewMode',         // Вид лирики
+  'lyricsAnimationEnabled', // Анимация лирики
+  'logoPulseEnabled',       // Пульсация
+  'dl_format_v1',           // Формат скачивания
+]);
+
+// Достижения — тоже важное событие
+const ACHIEVEMENT_EVENTS = new Set([
+  'achievements:updated', // Разблокировано новое достижение
+]);
 
 export function isSyncEnabled() {
   return localStorage.getItem(LS_SYNC_ENABLED) !== '0';
@@ -1551,13 +1565,11 @@ export function isSyncReady() {
   return _syncReady;
 }
 
-// Вызывается только когда мы УВЕРЕНЫ что данные актуальны
 export function markSyncReady(reason = 'manual') {
+  if (_syncReady) return;
   _syncReady = true;
   console.debug('[BackupSyncEngine] sync READY, reason:', reason);
   window.dispatchEvent(new CustomEvent('backup:sync:ready', { detail: { reason } }));
-  // Сразу планируем первое сохранение
-  markDirty();
 }
 
 export function setSyncEnabled(v) {
@@ -1566,113 +1578,107 @@ export function setSyncEnabled(v) {
   window.dispatchEvent(new CustomEvent('backup:sync:settings:changed'));
 }
 
-export function setSyncInterval(sec) {
-  const s = Math.max(MIN_INTERVAL_SEC, Number(sec) || DEFAULT_INTERVAL_SEC);
-  localStorage.setItem(LS_SYNC_INTERVAL, String(s));
-  window.dispatchEvent(new CustomEvent('backup:sync:settings:changed'));
-}
-
-export function getSyncIntervalSec() {
-  return Math.max(MIN_INTERVAL_SEC, Number(localStorage.getItem(LS_SYNC_INTERVAL) || DEFAULT_INTERVAL_SEC));
-}
-
-function emitSyncState(state) {
+function emitState(state) {
   window.dispatchEvent(new CustomEvent('backup:sync:state', { detail: { state } }));
 }
 
-function scheduleAutosave() {
-  if (!_dirty) return;
-  if (!_syncReady) return; // Не сохраняем пока данные не восстановлены
-  if (!isSyncEnabled()) return;
-
-  const ya = window.YandexAuth;
-  const disk = window.YandexDisk;
-  if (!ya || !disk) return;
-  if (ya.getSessionStatus() !== 'active' || !ya.isTokenAlive()) return;
-
-  const now = Date.now();
-  const intervalMs = getIntervalMs();
-  if (now - _lastSaveAt < intervalMs) {
-    // Перепланируем через оставшееся время
-    const remaining = intervalMs - (now - _lastSaveAt);
-    clearTimeout(_timer);
-    _timer = setTimeout(scheduleAutosave, remaining);
-    return;
-  }
+// Дебаунс: откладываем сейв на COOLDOWN_MS после последнего изменения
+function markDirty(isAchievement = false) {
+  if (!_syncReady || !isSyncEnabled()) return;
+  try { localStorage.setItem('backup:local_dirty_ts', String(Date.now())); } catch {}
 
   clearTimeout(_timer);
+
+  // Для достижений — cooldown 5 сек (срочнее)
+  const delay = isAchievement ? 5000 : COOLDOWN_MS;
+
   _timer = setTimeout(async () => {
-    if (!_syncReady || !isSyncEnabled()) return;
-    _dirty = false;
-    emitSyncState('syncing');
+    const ya = window.YandexAuth;
+    const disk = window.YandexDisk;
+    if (!ya || !disk) return;
+    if (ya.getSessionStatus() !== 'active' || !ya.isTokenAlive()) return;
+    if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) return;
+
+    // Дополнительная проверка: прошло ли достаточно времени с последнего сейва
+    if (Date.now() - _lastSaveAt < 10000) return; // Не чаще раза в 10 сек
+
+    emitState('syncing');
     try {
       const { BackupVault } = await import('./backup-vault.js');
       const token = ya.getToken();
-      if (!token || !ya.isTokenAlive()) { emitSyncState('idle'); return; }
+      if (!token || !ya.isTokenAlive()) { emitState('idle'); return; }
+
       const backup = await BackupVault.buildBackupObject();
       const meta = await disk.upload(token, backup);
       _lastSaveAt = Date.now();
+
       try {
         localStorage.setItem('yandex:last_backup_meta', JSON.stringify(meta));
-        localStorage.setItem('yandex:last_backup_local_ts', String(Number(backup?.revision?.timestamp || backup?.createdAt || Date.now())));
+        localStorage.setItem('yandex:last_backup_check', JSON.stringify(meta));
+        localStorage.setItem('yandex:last_backup_local_ts', String(
+          Number(backup?.revision?.timestamp || backup?.createdAt || Date.now())
+        ));
+        window.dispatchEvent(new CustomEvent('yandex:backup:meta-updated'));
       } catch {}
-      emitSyncState('ok');
-      setTimeout(() => emitSyncState('idle'), 3000);
-      console.debug('[BackupSyncEngine] autosave ok', new Date().toLocaleTimeString());
+
+      emitState('ok');
+      setTimeout(() => emitState('idle'), 3000);
+      console.debug('[BackupSyncEngine] profile autosave ok', new Date().toLocaleTimeString());
+
+      // Логируем backup для ачивки
+      if (window.eventLogger) {
+        window.eventLogger.log('FEATURE_USED', 'global', { feature: 'backup' });
+        window.dispatchEvent(new CustomEvent('analytics:forceFlush'));
+      }
     } catch (e) {
-      emitSyncState('idle');
+      emitState('idle');
       console.debug('[BackupSyncEngine] autosave skip:', e?.message);
     }
-  }, 0);
+  }, delay);
 }
 
-function markDirty() {
-  _dirty = true;
-  try { localStorage.setItem('backup:local_dirty_ts', String(Date.now())); } catch {}
-  scheduleAutosave();
-}
-
-const WATCH_KEYS = new Set([
-  '__favorites_v2__', 'sc3:playlists', 'sc3:default', 'sc3:activeId',
-  'sc3:ui_v2', 'sourcePref', 'favoritesOnlyMode', 'qualityMode:v1',
-  'lyricsViewMode', 'lyricsAnimationEnabled', 'logoPulseEnabled',
-  'sleepTimerState:v2', 'dl_format_v1'
-]);
-
-export function initBackupSyncEngine() {
 export function initBackupSyncEngine() {
   if (_bound) return;
   _bound = true;
 
-  window.addEventListener('stats:updated', markDirty);
-  window.addEventListener('analytics:logUpdated', markDirty);
-
-  // Страховка: если через 3 минуты sync всё ещё не разблокирован
-  // (например нет интернета, прокси недоступен) — разрешаем локальный автосейв
-  setTimeout(() => {
-    if (!_syncReady) {
-      console.debug('[BackupSyncEngine] timeout fallback: forcing sync ready (no cloud check completed)');
-      markSyncReady('timeout_fallback');
-    }
-  }, 3 * 60 * 1000);
-
-  // Патч localStorage — защита от двойного патча
+  // Патч localStorage — отслеживаем только ВАЖНЫЕ ключи профиля
   if (!localStorage._bsePatched) {
     const origSetItem = localStorage.setItem.bind(localStorage);
     localStorage.setItem = function(key, value) {
       origSetItem(key, value);
-      if (WATCH_KEYS.has(key)) markDirty();
+      if (PROFILE_WATCH_KEYS.has(key) && _syncReady) {
+        markDirty(false);
+      }
     };
     localStorage._bsePatched = true;
   }
 
-  // Мы больше не разблокируем Sync автоматически по таймауту. 
-  // Этим полностью и эксклюзивно управляет yandex-auto-sync.js, чтобы избежать затирания облака 
-  // локальными старыми данными при медленном интернете.
-  console.debug('[BackupSyncEngine] initialized, interval:', getSyncIntervalSec(), 'sec, ready:', _syncReady);
+  // Слушаем достижения (важное событие — сейвим быстрее)
+  window.addEventListener('achievements:updated', (e) => {
+    // Проверяем есть ли новые разблокированные (detail.unlocked изменился)
+    if (e.detail?.unlocked > 0 && _syncReady) {
+      markDirty(true); // isAchievement=true → cooldown 5 сек
+    }
+  });
+
+  // Страховка: если через 5 минут sync всё ещё не разблокирован
+  setTimeout(() => {
+    if (!_syncReady) {
+      console.debug('[BackupSyncEngine] timeout fallback: forcing sync ready');
+      markSyncReady('timeout_fallback');
+    }
+  }, 5 * 60 * 1000);
+
+  console.debug('[BackupSyncEngine] initialized (profile watch only, NO stats polling)');
 }
 
-export default { initBackupSyncEngine, markSyncReady, isSyncReady, isSyncEnabled, setSyncEnabled, setSyncInterval, getSyncIntervalSec };
+export function getSyncIntervalSec() { return 60; } // для совместимости UI
+export function setSyncInterval() {} // no-op, cooldown фиксированный
+
+export default {
+  initBackupSyncEngine, markSyncReady, isSyncReady,
+  isSyncEnabled, setSyncEnabled, getSyncIntervalSec, setSyncInterval
+};
 
 //=================================================
 // FILE: /scripts/analytics/backup-vault.js
