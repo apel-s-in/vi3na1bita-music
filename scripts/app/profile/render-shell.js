@@ -7,9 +7,7 @@ import { renderYandexAuthBlock } from './yandex-auth-view.js';
   // ДОБАВИТЬ слушатель события "облако новее":
   window.addEventListener('yandex:cloud:newer', (e) => {
     // Зажигаем бейдж ! на кнопке профиля
-    const profileBtn = document.querySelector(
-      '[data-modal="profile"], .profile-btn, #profile-trigger, [data-action="open-profile"]'
-    );
+    const profileBtn = document.querySelector('.album-icon[data-album="__profile__"]');
     if (!profileBtn) return;
 
     // Не дублируем
