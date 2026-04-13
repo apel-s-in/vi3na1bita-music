@@ -7,6 +7,57 @@ const COOLDOWN_MS = 60 * 1000;
 
 let _timer = null, _lastSaveAt = 0, _bound = false, _syncReady = false;
 
+function safeNum(v) {
+  return Number.isFinite(Number(v)) ? Number(v) : 0;
+}
+
+function safeJsonParse(raw, fallback = null) {
+  try { return JSON.parse(raw); } catch { return fallback; }
+}
+
+function getLocalProfileSummary() {
+  const rpg = window.achievementEngine?.profile || { level: 1, xp: 0 };
+  const ach = window.achievementEngine?.unlocked || {};
+  const favs = safeJsonParse(localStorage.getItem('__favorites_v2__') || '[]', []) || [];
+  const pls = safeJsonParse(localStorage.getItem('sc3:playlists') || '[]', []) || [];
+  return {
+    timestamp: safeNum(localStorage.getItem('yandex:last_backup_local_ts') || 0),
+    level: safeNum(rpg.level || 1),
+    xp: safeNum(rpg.xp || 0),
+    achievementsCount: Object.keys(ach || {}).length,
+    favoritesCount: Array.isArray(favs) ? favs.filter(i => !i?.inactiveAt).length : 0,
+    playlistsCount: Array.isArray(pls) ? pls.length : 0
+  };
+}
+
+function getRichnessScore(summary = {}) {
+  return (
+    safeNum(summary.level) * 1000 +
+    safeNum(summary.xp) +
+    safeNum(summary.achievementsCount) * 250 +
+    safeNum(summary.favoritesCount) * 40 +
+    safeNum(summary.playlistsCount) * 60
+  );
+}
+
+function compareLocalVsCloud(localSummary, cloudMeta) {
+  const localTs = safeNum(localSummary?.timestamp);
+  const cloudTs = safeNum(cloudMeta?.timestamp);
+  const localScore = getRichnessScore(localSummary);
+  const cloudScore = getRichnessScore(cloudMeta);
+  const scoreDiff = cloudScore - localScore;
+  const tsDiff = cloudTs - localTs;
+
+  const noCloudData = !cloudMeta || (!cloudTs && cloudScore === 0);
+  if (noCloudData) return { state: 'no_cloud', localTs, cloudTs, localScore, cloudScore, scoreDiff, tsDiff };
+  if (cloudTs > localTs && cloudScore >= localScore) return { state: 'cloud_richer', localTs, cloudTs, localScore, cloudScore, scoreDiff, tsDiff };
+  if (localTs > cloudTs && localScore >= cloudScore) return { state: 'local_richer', localTs, cloudTs, localScore, cloudScore, scoreDiff, tsDiff };
+  if (Math.abs(tsDiff) < 2 * 60000 && Math.abs(scoreDiff) < 300) return { state: 'equivalent', localTs, cloudTs, localScore, cloudScore, scoreDiff, tsDiff };
+  if (cloudScore > localScore && cloudTs >= localTs) return { state: 'cloud_probably_richer', localTs, cloudTs, localScore, cloudScore, scoreDiff, tsDiff };
+  if (localScore > cloudScore && localTs >= cloudTs) return { state: 'local_probably_richer', localTs, cloudTs, localScore, cloudScore, scoreDiff, tsDiff };
+  return { state: 'conflict', localTs, cloudTs, localScore, cloudScore, scoreDiff, tsDiff };
+}
+
 const PROFILE_WATCH_KEYS = new Set([
   '__favorites_v2__', 'sc3:playlists', 'sc3:default', 'sc3:activeId',
   'sc3:ui_v2', 'sourcePref', 'favoritesOnlyMode', 'qualityMode:v1',
@@ -71,6 +122,30 @@ function emitState(state) {
   window.dispatchEvent(new CustomEvent('backup:sync:state', { detail: { state } }));
 }
 
+async function canSafelyUploadAgainstCloud(disk, token) {
+  try {
+    const cloudMeta = await disk.getMeta(token).catch(() => null);
+    const localSummary = getLocalProfileSummary();
+    const cmp = compareLocalVsCloud(localSummary, cloudMeta);
+
+    if (cmp.state === 'no_cloud') {
+      return { ok: true, reason: 'no_cloud' };
+    }
+
+    if (cmp.state === 'local_richer' || cmp.state === 'local_probably_richer' || cmp.state === 'equivalent') {
+      return { ok: true, reason: cmp.state, compare: cmp, cloudMeta };
+    }
+
+    if (cmp.state === 'cloud_richer' || cmp.state === 'cloud_probably_richer') {
+      return { ok: false, reason: cmp.state, compare: cmp, cloudMeta };
+    }
+
+    return { ok: false, reason: 'conflict', compare: cmp, cloudMeta };
+  } catch (e) {
+    return { ok: false, reason: 'cloud_compare_failed', error: String(e?.message || '') };
+  }
+}
+
 function markDirty(isAchievement = false) {
   if (!canUpload()) return;
   try { localStorage.setItem('backup:local_dirty_ts', String(Date.now())); } catch {}
@@ -102,13 +177,41 @@ function markDirty(isAchievement = false) {
       const eventsCount = backup?.data?.eventLog?.warm?.length || 0;
       const achCount = Object.keys(backup?.data?.achievements || {}).length;
       const favsRaw = backup?.data?.localStorage?.['__favorites_v2__'];
-      let favsCount = 0;
+      const plsRaw = backup?.data?.localStorage?.['sc3:playlists'];
+      let favsCount = 0, plsCount = 0;
       try { favsCount = JSON.parse(favsRaw || '[]').filter(i => !i.inactiveAt).length; } catch {}
+      try { plsCount = JSON.parse(plsRaw || '[]').length; } catch {}
 
       // Если всё пустое — скорее всего это свежее устройство, НЕ аплоадим
-      if (statsCount <= 1 && eventsCount === 0 && achCount === 0 && favsCount === 0) {
+      if (statsCount <= 1 && eventsCount === 0 && achCount === 0 && favsCount === 0 && plsCount === 0) {
         console.debug('[BackupSyncEngine] skip upload: backup appears empty (fresh device?)');
         emitState('idle');
+        return;
+      }
+
+      // compare-before-write: не затираем облако, если оно богаче
+      const safeUpload = await canSafelyUploadAgainstCloud(disk, token);
+      if (!safeUpload.ok) {
+        console.debug('[BackupSyncEngine] skip upload: cloud is richer or compare failed', safeUpload.reason);
+        emitState('idle');
+        if (safeUpload.cloudMeta) {
+          try {
+            localStorage.setItem('yandex:last_backup_check', JSON.stringify(safeUpload.cloudMeta));
+            window.dispatchEvent(new CustomEvent('yandex:backup:meta-updated'));
+          } catch {}
+        }
+        if (safeUpload.reason === 'cloud_richer' || safeUpload.reason === 'cloud_probably_richer') {
+          window.dispatchEvent(new CustomEvent('yandex:cloud:newer', {
+            detail: {
+              meta: safeUpload.cloudMeta || null,
+              compareState: safeUpload.reason,
+              localScore: safeUpload.compare?.localScore || 0,
+              cloudScore: safeUpload.compare?.cloudScore || 0,
+              localTs: safeUpload.compare?.localTs || 0,
+              cloudTs: safeUpload.compare?.cloudTs || 0
+            }
+          }));
+        }
         return;
       }
 
@@ -167,7 +270,7 @@ export function initBackupSyncEngine() {
     }
   }, 5 * 60 * 1000);
 
-  console.debug('[BackupSyncEngine] initialized (profile watch only, NO stats polling)');
+  console.debug('[BackupSyncEngine] initialized (profile watch only, compare-before-write enabled)');
 }
 
 export function getSyncIntervalSec() { return 60; }
