@@ -77,16 +77,6 @@ function bindYandexActions(root, rerender) {
     };
   }
 
-  const autosaveInterval = root.querySelector('#ya-autosave-interval');
-  if (autosaveInterval) {
-    autosaveInterval.onchange = async e => {
-      try {
-        const { setSyncInterval } = await import('../../analytics/backup-sync-engine.js');
-        setSyncInterval(Number(e.target.value));
-        window.NotificationSystem?.info(`Интервал: ${e.target.value} сек`);
-      } catch {}
-    };
-  }
 }
 
 async function updateSyncDot(root) {
@@ -266,8 +256,8 @@ export function renderYandexAuthBlock({ root, localProfile }) {
           })()}><span class="set-slider"></span></label>
         </div>
         <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#7f93b5;padding:2px 0;margin-bottom:4px">
-          <span style="flex:1;color:#888">Интервал автосохранения</span>
-          <span style="color:#888;font-size:11px">Cooldown: 1 мин после изменения</span>
+          <span style="flex:1;color:#888">Автосохранение срабатывает по изменениям профиля</span>
+          <span style="color:#888;font-size:11px">Cooldown: 1 мин</span>
         </div>
         <div class="yandex-auth-note">Один backup-файл объединяет прогресс, события, избранное, плейлисты, настройки, локальный профиль и данные устройств. Этот же файл можно сохранить вручную на устройство и перенести на другое своё устройство.</div>
         <div class="yandex-auth-bottomactions">
