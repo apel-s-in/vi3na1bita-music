@@ -44,6 +44,25 @@ async function sha256Hex(str) {
   return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+async function rebuildStatsFromWarmEventsSafe() {
+  try {
+    const [{ StatsAggregator }, { metaDB }] = await Promise.all([
+      import('./stats-aggregator.js'),
+      import('./meta-db.js')
+    ]);
+    await metaDB.tx('stats', 'readwrite', s => s.clear());
+    const aggr = new StatsAggregator();
+    await aggr.processHotEvents();
+    return true;
+  } catch (e) {
+    console.debug('[BackupVault] rebuildStatsFromWarmEventsSafe failed:', e?.message);
+    return false;
+  }
+}
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(str || '')));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 async function readOwnerIdentity() {
   const ya = window.YandexAuth;
   const p = ya?.getProfile?.() || null;
@@ -210,9 +229,8 @@ export class BackupVault {
           };
 
           if (mode === 'all' || mode === 'stats') {
-            const [localWarm, localStats, localAchievements, localStreaks, localRpg] = await Promise.all([
+            const [localWarm, localAchievements, localStreaks, localRpg] = await Promise.all([
               metaDB.getEvents('events_warm'),
-              metaDB.getAllStats(),
               metaDB.getGlobal('unlocked_achievements'),
               metaDB.getGlobal('global_streak'),
               metaDB.getGlobal('user_profile_rpg')
@@ -226,13 +244,7 @@ export class BackupVault {
             await metaDB.clearEvents('events_warm');
             await metaDB.addEvents(mergedEvents, 'events_warm');
 
-            const localStatsMap = new Map((localStats || []).filter(x => x?.uid).map(x => [x.uid, x]));
-            const remoteStatsMap = new Map((b.data.stats || []).filter(x => x?.uid).map(x => [x.uid, x]));
-            const allUids = new Set([...localStatsMap.keys(), ...remoteStatsMap.keys()]);
-            for (const uid of allUids) {
-              const mergedStat = mergeStatRowSafe(localStatsMap.get(uid) || {}, remoteStatsMap.get(uid) || {});
-              if (mergedStat?.uid) await metaDB.tx('stats', 'readwrite', st => st.put(mergedStat));
-            }
+            await rebuildStatsFromWarmEventsSafe();
 
             const mergedAchievements = mergeAchievementsSafe(localAchievements?.value || {}, b.data.achievements || {});
             await metaDB.setGlobal('unlocked_achievements', mergedAchievements);
