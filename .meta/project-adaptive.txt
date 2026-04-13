@@ -402,7 +402,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-13 23:16:31 UTC
+Сгенерировано: 2026-04-13 23:17:18 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -6342,11 +6342,6 @@ export const YandexDisk = {
         headers: authHeader(token)
       }).catch(() => {});
     }
-  },
-
-  async getDirectLatestMeta(token) {
-    if (!token) throw new Error('no_token');
-    return getLatestFileMetaDirect(token);
   }
 };
 
