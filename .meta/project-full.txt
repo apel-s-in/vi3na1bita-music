@@ -400,7 +400,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-13 22:28:11 UTC
+Сгенерировано: 2026-04-13 22:40:19 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4539,6 +4539,10 @@ function getLocalTs() { return Number(localStorage.getItem('yandex:last_backup_l
 
 function safeNum(v) {
   return Number.isFinite(Number(v)) ? Number(v) : 0;
+}
+
+function safeString(v) {
+  return String(v == null ? '' : v).trim();
 }
 
 function getLocalProfileSummary() {
