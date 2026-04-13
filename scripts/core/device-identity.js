@@ -4,6 +4,7 @@
 
 const LS_DEVICE_HASH = 'deviceHash';
 const LS_DEVICE_STABLE = 'deviceStableFingerprint';
+const LS_DEVICE_STABLE_ID = 'deviceStableId';
 
 function buildStableFingerprint() {
   const parts = [
@@ -51,8 +52,26 @@ export async function getOrCreateDeviceHash() {
   return newHash;
 }
 
+export async function getOrCreateDeviceStableId() {
+  const existing = localStorage.getItem(LS_DEVICE_STABLE_ID);
+  const stableFingerprint = buildStableFingerprint();
+  if (existing) return existing;
+  const stableId = 'dst_' + await sha256Short(stableFingerprint);
+  localStorage.setItem(LS_DEVICE_STABLE_ID, stableId);
+  return stableId;
+}
+
 export function getCurrentDeviceHash() {
   return localStorage.getItem(LS_DEVICE_HASH) || null;
 }
 
-export default { getOrCreateDeviceHash, getCurrentDeviceHash };
+export function getCurrentDeviceStableId() {
+  return localStorage.getItem(LS_DEVICE_STABLE_ID) || null;
+}
+
+export default {
+  getOrCreateDeviceHash,
+  getOrCreateDeviceStableId,
+  getCurrentDeviceHash,
+  getCurrentDeviceStableId
+};
