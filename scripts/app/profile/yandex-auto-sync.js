@@ -2,10 +2,58 @@
 import { YandexDisk } from '../../core/yandex-disk.js';
 import { BackupVault } from '../../analytics/backup-vault.js';
 
-const LS_LAST_STATS_SAVE = 'backup:last_stats_save_ts';
-const STATS_AUTOSAVE_INTERVAL = 12 * 60 * 60 * 1000;
-
 function getLocalTs() { return Number(localStorage.getItem('yandex:last_backup_local_ts') || 0); }
+
+function safeNum(v) {
+  return Number.isFinite(Number(v)) ? Number(v) : 0;
+}
+
+function getLocalProfileSummary() {
+  const rpg = window.achievementEngine?.profile || { level: 1, xp: 0 };
+  const ach = window.achievementEngine?.unlocked || {};
+  let favs = 0, playlists = 0;
+  try { favs = JSON.parse(localStorage.getItem('__favorites_v2__') || '[]').filter(i => !i?.inactiveAt).length; } catch {}
+  try { playlists = JSON.parse(localStorage.getItem('sc3:playlists') || '[]').length; } catch {}
+  return {
+    timestamp: getLocalTs(),
+    level: safeNum(rpg.level || 1),
+    xp: safeNum(rpg.xp || 0),
+    achievementsCount: Object.keys(ach || {}).length,
+    favoritesCount: safeNum(favs),
+    playlistsCount: safeNum(playlists)
+  };
+}
+
+function getRichnessScore(summary = {}) {
+  return (
+    safeNum(summary.level) * 1000 +
+    safeNum(summary.xp) +
+    safeNum(summary.achievementsCount) * 250 +
+    safeNum(summary.favoritesCount) * 40 +
+    safeNum(summary.playlistsCount) * 60
+  );
+}
+
+function compareLocalVsCloud(localSummary, cloudMeta) {
+  const localTs = safeNum(localSummary?.timestamp);
+  const cloudTs = safeNum(cloudMeta?.timestamp);
+  const localScore = getRichnessScore(localSummary);
+  const cloudScore = getRichnessScore(cloudMeta);
+  const scoreDiff = cloudScore - localScore;
+  const tsDiff = cloudTs - localTs;
+
+  const noCloudData = !cloudMeta || (!cloudTs && cloudScore === 0);
+  const noLocalEvidence = localTs === 0 && localScore <= 1200;
+
+  if (noCloudData) return { state: 'no_cloud', localTs, cloudTs, localScore, cloudScore, scoreDiff, tsDiff };
+  if (noLocalEvidence && cloudScore > 0) return { state: 'cloud_richer_new_device', localTs, cloudTs, localScore, cloudScore, scoreDiff, tsDiff };
+  if (cloudTs > localTs && cloudScore >= localScore) return { state: 'cloud_richer', localTs, cloudTs, localScore, cloudScore, scoreDiff, tsDiff };
+  if (localTs > cloudTs && localScore >= cloudScore) return { state: 'local_richer', localTs, cloudTs, localScore, cloudScore, scoreDiff, tsDiff };
+  if (Math.abs(tsDiff) < 2 * 60000 && Math.abs(scoreDiff) < 300) return { state: 'equivalent', localTs, cloudTs, localScore, cloudScore, scoreDiff, tsDiff };
+  if (cloudScore > localScore && cloudTs >= localTs) return { state: 'cloud_probably_richer', localTs, cloudTs, localScore, cloudScore, scoreDiff, tsDiff };
+  if (localScore > cloudScore && localTs >= cloudTs) return { state: 'local_probably_richer', localTs, cloudTs, localScore, cloudScore, scoreDiff, tsDiff };
+  return { state: 'conflict', localTs, cloudTs, localScore, cloudScore, scoreDiff, tsDiff };
+}
 
 export async function initYandexAutoSync() {
   const ya = window.YandexAuth;
@@ -20,7 +68,6 @@ export async function initYandexAutoSync() {
     else if (e.detail?.status === 'logged_out') _markReady('logged_out_local_only');
   });
 
-  _scheduleStatsSave();
 }
 
 async function _checkCloudMetaOnly() {
@@ -34,9 +81,9 @@ async function _checkCloudMetaOnly() {
   try {
     const token = ya.getToken();
     const meta = await YandexDisk.getMeta(token).catch(() => null);
+    const localSummary = getLocalProfileSummary();
 
     if (!meta) {
-      // Нет облачной копии — безопасно разрешаем сейвить
       _markReady('no_cloud_backup');
       return;
     }
@@ -44,33 +91,38 @@ async function _checkCloudMetaOnly() {
     try { localStorage.setItem('yandex:last_backup_check', JSON.stringify(meta)); } catch {}
     window.dispatchEvent(new CustomEvent('yandex:backup:meta-updated'));
 
-    const cloudTs = Number(meta.timestamp || 0);
-    const localTs = getLocalTs();
+    const cmp = compareLocalVsCloud(localSummary, meta);
+    const diffMin = Math.round((safeNum(cmp.cloudTs) - safeNum(cmp.localTs)) / 60000);
+    const isNewDevice = cmp.state === 'cloud_richer_new_device';
 
-    if (cloudTs <= localTs) {
-      // Локальные данные актуальны — безопасно разрешаем
-      _markReady('cloud_not_newer');
+    if (cmp.state === 'local_richer' || cmp.state === 'local_probably_richer' || cmp.state === 'equivalent') {
+      _markReady(cmp.state === 'equivalent' ? 'diff_too_small' : 'cloud_not_newer');
       return;
     }
 
-    const diffMin = Math.round((cloudTs - localTs) / 60000);
-    const isNewDevice = localTs === 0;
-
-    if (!isNewDevice && diffMin < 2) {
-      _markReady('diff_too_small');
+    if (cmp.state === 'no_cloud') {
+      _markReady('no_cloud_backup');
       return;
     }
 
-    // КРИТИЧНО: НЕ вызываем markRestoreOrSkipDone здесь!
-    // Только markSyncReady — но автосейв заблокирован до restore/skip
     _markReady('cloud_newer_user_choice');
 
     window.dispatchEvent(new CustomEvent('yandex:cloud:newer', {
-      detail: { cloudTs, localTs, diffMin, isNewDevice, meta }
+      detail: {
+        cloudTs: cmp.cloudTs,
+        localTs: cmp.localTs,
+        diffMin,
+        isNewDevice,
+        meta,
+        compareState: cmp.state,
+        localSummary,
+        localScore: cmp.localScore,
+        cloudScore: cmp.cloudScore
+      }
     }));
 
-    if (isNewDevice) {
-      _showRestoreModal(meta, ya.getToken());
+    if (isNewDevice || cmp.state === 'cloud_richer' || cmp.state === 'cloud_probably_richer' || cmp.state === 'conflict') {
+      _showRestoreModal(meta, token, { localSummary, compare: cmp });
     }
   } catch (e) {
     console.debug('[AutoSync] meta check failed:', e?.message);
@@ -78,9 +130,9 @@ async function _checkCloudMetaOnly() {
   }
 }
 
-function _showRestoreModal(meta, token) {
-  const lRpg = window.achievementEngine?.profile || { level: 1, xp: 0 };
-  const lFavs = (() => { try { return JSON.parse(localStorage.getItem('__favorites_v2__') || '[]').filter(i => !i.inactiveAt).length; } catch { return 0; } })();
+function _showRestoreModal(meta, token, ctx = {}) {
+  const localSummary = ctx.localSummary || getLocalProfileSummary();
+  const cmp = ctx.compare || compareLocalVsCloud(localSummary, meta);
 
   window.Modals?.confirm?.({
     title: '☁️ Найден ваш облачный прогресс',
@@ -91,8 +143,8 @@ function _showRestoreModal(meta, token) {
       <div style="display:flex;gap:10px;margin:0 0 12px;text-align:center">
         <div style="flex:1;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:10px 8px">
           <div style="font-size:10px;color:#888;margin-bottom:6px;text-transform:uppercase">💾 Сейчас</div>
-          <div style="font-size:13px;font-weight:900;color:#fff">Ур. ${lRpg.level}</div>
-          <div style="font-size:11px;color:#eaf2ff">⭐ ${lFavs} треков</div>
+          <div style="font-size:13px;font-weight:900;color:#fff">Ур. ${localSummary.level || 1}</div>
+          <div style="font-size:11px;color:#eaf2ff">⭐ ${localSummary.favoritesCount || 0} треков</div>
         </div>
         <div style="flex:1;background:rgba(77,170,255,.08);border:1px solid rgba(77,170,255,.2);border-radius:12px;padding:10px 8px">
           <div style="font-size:10px;color:#8ab8fd;margin-bottom:6px;text-transform:uppercase">☁️ Облако</div>
@@ -101,13 +153,12 @@ function _showRestoreModal(meta, token) {
         </div>
       </div>
       <div style="font-size:11px;color:#7f93b5">
-        Применяется безопасное слияние — высокие результаты не будут понижены.
+        Сравнение: ${cmp.state}. Применяется безопасное слияние — высокие результаты не будут понижены.
       </div>`,
     maxWidth: 460,
     confirmText: '📥 Восстановить',
     cancelText: 'Пропустить',
     onCancel: () => {
-      // Пользователь ЯВНО пропустил — теперь безопасно разрешаем аплоад
       _markReady('user_skipped_restore');
     },
     onConfirm: async () => {
@@ -121,7 +172,6 @@ function _showRestoreModal(meta, token) {
           return window.NotificationSystem?.error('Backup принадлежит другому аккаунту.');
         }
         await BackupVault.importData(new Blob([JSON.stringify(data)]), 'all');
-        // Восстановление успешно — теперь безопасно разрешаем аплоад
         _markReady('auto_restore');
         window.NotificationSystem?.success('Прогресс восстановлен ✅ Обновляем...');
         setTimeout(() => window.location.reload(), 1500);
@@ -131,44 +181,6 @@ function _showRestoreModal(meta, token) {
       }
     }
   });
-}
-
-function _scheduleStatsSave() {
-  const now = Date.now();
-  const lastSave = Number(localStorage.getItem(LS_LAST_STATS_SAVE) || 0);
-  const delay = Math.max(0, (lastSave + STATS_AUTOSAVE_INTERVAL) - now);
-
-  setTimeout(async () => {
-    await _doStatsSave();
-    setInterval(_doStatsSave, STATS_AUTOSAVE_INTERVAL);
-  }, delay);
-}
-
-async function _doStatsSave() {
-  const ya = window.YandexAuth;
-  if (!ya || ya.getSessionStatus() !== 'active' || !ya.isTokenAlive()) return;
-  if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) return;
-
-  // Проверяем что restore/skip уже произошёл
-  try {
-    const { isRestoreOrSkipDone } = await import('../../analytics/backup-sync-engine.js');
-    if (!isRestoreOrSkipDone()) return;
-  } catch {}
-
-  const dirtyTs = Number(localStorage.getItem('backup:local_dirty_ts') || 0);
-  const lastSave = Number(localStorage.getItem(LS_LAST_STATS_SAVE) || 0);
-  if (dirtyTs <= lastSave) return;
-
-  try {
-    const token = ya.getToken();
-    const backup = await BackupVault.buildBackupObject();
-    await YandexDisk.upload(token, backup);
-    localStorage.setItem(LS_LAST_STATS_SAVE, String(Date.now()));
-    localStorage.setItem('yandex:last_backup_local_ts', String(backup?.revision?.timestamp || Date.now()));
-    console.debug('[AutoSync] stats autosave ok', new Date().toLocaleTimeString());
-  } catch (e) {
-    console.debug('[AutoSync] stats autosave failed:', e?.message);
-  }
 }
 
 async function _markReady(reason) {
