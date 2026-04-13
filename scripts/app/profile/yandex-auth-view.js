@@ -1,74 +1,29 @@
+import { safeNum, getLocalBackupUiSnapshot, compareLocalVsCloud, getBackupCompareLabel } from '../../analytics/backup-summary.js';
+
 const esc = s => window.Utils?.escapeHtml?.(String(s || '')) || String(s || '');
 
-function safeNum(v) {
-  return Number.isFinite(Number(v)) ? Number(v) : 0;
-}
-
 function getLocalBackupSnapshot(localProfile) {
-  try {
-    const favs = JSON.parse(localStorage.getItem('__favorites_v2__') || '[]');
-    const pls = JSON.parse(localStorage.getItem('sc3:playlists') || '[]');
-    const reg = JSON.parse(localStorage.getItem('backup:device_registry:v1') || '[]');
-    return {
-      appVersion: window.APP_CONFIG?.APP_VERSION || 'unknown',
-      timestamp: safeNum(localStorage.getItem('yandex:last_backup_local_ts') || 0),
-      favoritesCount: Array.isArray(favs) ? favs.filter(i => !i?.inactiveAt).length : 0,
-      playlistsCount: Array.isArray(pls) ? pls.length : 0,
-      profileName: localProfile?.name || 'Слушатель',
-      level: safeNum(window.achievementEngine?.profile?.level || 1),
-      xp: safeNum(window.achievementEngine?.profile?.xp || 0),
-      achievementsCount: Object.keys(window.achievementEngine?.unlocked || {}).length,
-      devicesCount: Array.isArray(reg) ? reg.length : 0,
-      deviceStableCount: Array.isArray(reg) ? new Set(reg.map(d => String(d?.deviceStableId || '').trim()).filter(Boolean)).size : 0
-    };
-  } catch {
-    return {
-      appVersion: window.APP_CONFIG?.APP_VERSION || 'unknown',
-      timestamp: safeNum(localStorage.getItem('yandex:last_backup_local_ts') || 0),
-      favoritesCount: 0,
-      playlistsCount: 0,
-      profileName: localProfile?.name || 'Слушатель',
-      level: safeNum(window.achievementEngine?.profile?.level || 1),
-      xp: safeNum(window.achievementEngine?.profile?.xp || 0),
-      achievementsCount: Object.keys(window.achievementEngine?.unlocked || {}).length,
-      devicesCount: 0,
-      deviceStableCount: 0
-    };
-  }
-}
-
-function getRichnessScore(summary = {}) {
-  return (
-    safeNum(summary.level) * 1000 +
-    safeNum(summary.xp) +
-    safeNum(summary.achievementsCount) * 250 +
-    safeNum(summary.favoritesCount) * 40 +
-    safeNum(summary.playlistsCount) * 60 +
-    safeNum(summary.statsCount) * 6 +
-    safeNum(summary.eventCount) * 2 +
-    safeNum(summary.devicesCount) * 25 +
-    safeNum(summary.deviceStableCount) * 30
-  );
+  return getLocalBackupUiSnapshot(localProfile);
 }
 
 function compareBackupMeta(localInfo, cloudInfo) {
   if (!cloudInfo) return { state: 'unknown', label: 'Нет данных о копии' };
-
-  const localTs = safeNum(localInfo?.timestamp);
-  const cloudTs = safeNum(cloudInfo?.timestamp);
-  const localScore = getRichnessScore(localInfo);
-  const cloudScore = getRichnessScore(cloudInfo);
-  const scoreDiff = cloudScore - localScore;
-  const tsDiff = cloudTs - localTs;
-
-  if (!cloudTs && cloudScore === 0 && !localTs) return { state: 'unknown', label: 'Сравнение недоступно' };
-  if (!cloudTs && cloudScore === 0) return { state: 'local_newer', label: 'Облачная копия отсутствует или пуста' };
-  if (cloudTs > localTs && cloudScore >= localScore) return { state: 'cloud_newer', label: 'Облако выглядит богаче и новее локального профиля' };
-  if (localTs > cloudTs && localScore >= cloudScore) return { state: 'local_newer', label: 'Локальные данные выглядят богаче облачной копии' };
-  if (Math.abs(tsDiff) < 2 * 60000 && Math.abs(scoreDiff) < 300) return { state: 'equal', label: 'Локальная и облачная копии практически эквивалентны' };
-  if (cloudScore > localScore && cloudTs >= localTs) return { state: 'cloud_probable', label: 'Облако вероятно богаче локального профиля' };
-  if (localScore > cloudScore && localTs >= cloudTs) return { state: 'local_probable', label: 'Локальный профиль вероятно богаче облачного' };
-  return { state: 'mixed', label: 'Есть смешанные признаки: требуется ручная проверка' };
+  const cmp = compareLocalVsCloud(localInfo || {}, cloudInfo || {});
+  const stateMap = {
+    no_cloud: 'local_newer',
+    cloud_richer_new_device: 'cloud_newer',
+    cloud_richer: 'cloud_newer',
+    cloud_probably_richer: 'cloud_probable',
+    local_richer: 'local_newer',
+    local_probably_richer: 'local_probable',
+    equivalent: 'equal',
+    conflict: 'mixed'
+  };
+  return {
+    state: stateMap[cmp.state] || 'mixed',
+    label: getBackupCompareLabel(localInfo, cloudInfo),
+    compare: cmp
+  };
 }
 
 function bindYandexActions(root, rerender) {
