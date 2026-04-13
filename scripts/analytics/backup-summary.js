@@ -49,7 +49,9 @@ export function getLocalBackupUiSnapshot(localProfile) {
   try {
     const favs = safeJsonParse(localStorage.getItem('__favorites_v2__') || '[]', []) || [];
     const pls = safeJsonParse(localStorage.getItem('sc3:playlists') || '[]', []) || [];
-    const reg = window.DeviceRegistry?.getDeviceRegistry?.() || [];
+    const reg = window.DeviceRegistry?.getDeviceRegistry?.()
+      || safeJsonParse(localStorage.getItem('backup:device_registry:v1') || '[]', [])
+      || [];
     return {
       appVersion: window.APP_CONFIG?.APP_VERSION || 'unknown',
       timestamp: safeNum(localStorage.getItem('yandex:last_backup_local_ts') || 0),
@@ -60,7 +62,8 @@ export function getLocalBackupUiSnapshot(localProfile) {
       xp: safeNum(window.achievementEngine?.profile?.xp || 0),
       achievementsCount: Object.keys(window.achievementEngine?.unlocked || {}).length,
       devicesCount: Array.isArray(reg) ? reg.length : 0,
-      deviceStableCount: window.DeviceRegistry?.countDeviceStableIds?.(reg) || 0
+      deviceStableCount: window.DeviceRegistry?.countDeviceStableIds?.(reg)
+        || new Set((Array.isArray(reg) ? reg : []).map(d => safeString(d?.deviceStableId || '')).filter(Boolean)).size
     };
   } catch {
     return {
