@@ -403,7 +403,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-13 23:44:36 UTC
+Сгенерировано: 2026-04-13 23:48:12 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -840,7 +840,7 @@ jobs:
   </template>
 
   <script>
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.2.46');
+    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.2.47');
     const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-04-14');
 
     // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
@@ -884,7 +884,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.2.46';
+const SW_VERSION = '8.2.47';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
@@ -1658,10 +1658,12 @@ function getLocalProfileSummary() {
   let devicesCount = 0, deviceStableCount = 0;
 
   try {
-    const reg = safeJsonParse(localStorage.getItem('backup:device_registry:v1') || '[]', []) || [];
+    const reg = window.DeviceRegistry?.getDeviceRegistry?.()
+      || safeJsonParse(localStorage.getItem('backup:device_registry:v1') || '[]', []) || [];
     if (Array.isArray(reg)) {
       devicesCount = reg.length;
-      deviceStableCount = new Set(reg.map(d => safeString(d?.deviceStableId || '')).filter(Boolean)).size;
+      deviceStableCount = window.DeviceRegistry?.countDeviceStableIds?.(reg)
+        || new Set(reg.map(d => safeString(d?.deviceStableId || '')).filter(Boolean)).size;
     }
   } catch {}
 
@@ -5848,7 +5850,7 @@ if (errs.length) { console.error('Failed:\n', errs.join('\n')); process.exit(2);
 // FILE: /scripts/core/config.js
 // UID.005_(Soft-disable intel layer)_(не парализовать приложение при rollout)_(вынести базовые intel flags в APP_CONFIG) UID.019_(Compact TrackProfile index)_(дать стабильный путь до semantic data)_(хранить profile index/profile dir в config) UID.069_(Internal user identity)_(подготовить мульти-provider контур)_(держать future identity/sync flags централизованно) UID.092_(Incremental rollout order)_(делать staged внедрение через один конфиг)_(intel boot должен управляться отсюда)
 export const APP_CONFIG = {
-  APP_VERSION: '8.2.46',
+  APP_VERSION: '8.2.47',
   BUILD_DATE: '2026-04-14',
   PROMOCODE: 'VITRINA2025',
   ICON_ALBUMS_ORDER: [
