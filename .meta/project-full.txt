@@ -402,7 +402,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-13 23:03:55 UTC
+Сгенерировано: 2026-04-13 23:13:43 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3509,10 +3509,23 @@ export const bindProfileActions = ({ ctx, container: c, achView: aV, metaDB: db,
     { sel: '.rec-play-btn', run: ({ el }) => { window.ShowcaseManager?.playContext?.(el.dataset.playuid); window.NotificationSystem?.info('Запуск рекомендации'); } },
     { sel: '#cleanup-devices-btn', run: async () => {
       if (!window.Modals?.open) return;
-      const curHash = localStorage.getItem('deviceHash') || '';
+
       let reg = [];
       try { reg = JSON.parse(localStorage.getItem('backup:device_registry:v1') || '[]'); } catch {}
-      const others = reg.filter(d => d.deviceHash !== curHash);
+
+      let curStableId = localStorage.getItem('deviceStableId') || '';
+      let curHash = localStorage.getItem('deviceHash') || '';
+      try {
+        const mod = await import('../../core/device-identity.js');
+        curStableId = mod.getCurrentDeviceStableId?.() || curStableId;
+        curHash = mod.getCurrentDeviceHash?.() || curHash;
+      } catch {}
+
+      const isCurrentDevice = d =>
+        (curStableId && String(d?.deviceStableId || '').trim() === curStableId) ||
+        (!curStableId && curHash && String(d?.deviceHash || '').trim() === curHash);
+
+      const others = reg.filter(d => !isCurrentDevice(d));
       if (!others.length) return window.NotificationSystem?.info('Других устройств нет');
 
       const esc = s => window.Utils?.escapeHtml?.(String(s || '')) || String(s || '');
@@ -3526,12 +3539,14 @@ export const bindProfileActions = ({ ctx, container: c, achView: aV, metaDB: db,
         <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
           ${others.map((d, i) => {
             const lastSeen = d.lastSeenAt ? new Date(d.lastSeenAt).toLocaleDateString('ru-RU') : '—';
+            const stable = String(d?.deviceStableId || '').trim();
+            const hashes = Array.isArray(d?.seenHashes) ? d.seenHashes.filter(Boolean).length : 0;
             return `<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;cursor:pointer">
               <input type="checkbox" data-dev-idx="${i}" style="width:18px;height:18px;accent-color:var(--secondary-color);cursor:pointer">
               <div style="flex:1;min-width:0">
                 <div style="font-size:13px;font-weight:700;color:#fff">${platformLabel(d.platform)}</div>
                 <div style="font-size:11px;color:#888;margin-top:2px">Последний раз: ${esc(lastSeen)}</div>
-                <div style="font-size:10px;color:#555;margin-top:1px">${esc(d.deviceHash.slice(0, 20))}…</div>
+                <div style="font-size:10px;color:#555;margin-top:1px">${esc((stable || d.deviceHash || '').slice(0, 24))}${hashes > 1 ? ` · aliases: ${hashes}` : ''}</div>
               </div>
             </label>`;
           }).join('')}
@@ -3551,12 +3566,25 @@ export const bindProfileActions = ({ ctx, container: c, achView: aV, metaDB: db,
       m.querySelector('#dev-del-btn')?.addEventListener('click', () => {
         const toDelete = new Set([...m.querySelectorAll('[data-dev-idx]:checked')].map(cb => Number(cb.dataset.devIdx)));
         if (!toDelete.size) return window.NotificationSystem?.info('Ничего не выбрано');
-        const hashesToDelete = new Set(others.filter((_, i) => toDelete.has(i)).map(d => d.deviceHash));
+
+        const stableIdsToDelete = new Set(
+          others.filter((_, i) => toDelete.has(i)).map(d => String(d?.deviceStableId || '').trim()).filter(Boolean)
+        );
+        const hashesToDelete = new Set(
+          others.filter((_, i) => toDelete.has(i)).map(d => String(d?.deviceHash || '').trim()).filter(Boolean)
+        );
+
         try {
-          const cleaned = reg.filter(d => !hashesToDelete.has(d.deviceHash));
+          const cleaned = reg.filter(d => {
+            const stable = String(d?.deviceStableId || '').trim();
+            const hash = String(d?.deviceHash || '').trim();
+            if (stable && stableIdsToDelete.has(stable)) return false;
+            if (!stable && hash && hashesToDelete.has(hash)) return false;
+            return true;
+          });
           localStorage.setItem('backup:device_registry:v1', JSON.stringify(cleaned));
           m.remove();
-          window.NotificationSystem?.success(`Удалено устройств: ${hashesToDelete.size} ✅`);
+          window.NotificationSystem?.success(`Удалено устройств: ${toDelete.size} ✅`);
           window.AlbumsManager?.loadAlbum?.(window.APP_CONFIG?.SPECIAL_PROFILE_KEY || '__profile__');
         } catch (e) {
           window.NotificationSystem?.error('Ошибка: ' + String(e?.message || ''));
