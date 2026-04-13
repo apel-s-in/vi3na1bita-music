@@ -43,6 +43,7 @@ const STATIC_ASSETS = [
   './scripts/app/profile/yandex-runtime-refresh.js',
   './scripts/analytics/backup-sync-engine.js',
   './scripts/analytics/backup-merge.js',
+  './scripts/analytics/device-registry.js',
   './scripts/ui/offline-modal.js', './scripts/ui/offline-indicators.js',
   './scripts/ui/cache-progress-overlay.js', './scripts/ui/statistics-modal.js',
   './scripts/app/player/favorites-only-resolver.js',
