@@ -164,14 +164,22 @@ export function renderYandexAuthBlock({ root, localProfile }) {
           <div class="yandex-auth-metabox"><div class="yandex-auth-metabox-label">Объём backup</div><div class="yandex-auth-metabox-value">${cloudInfo?.sizeHuman || 'неизвестно'}</div></div>
         </div>
         <div class="yandex-auth-note">${cloudInfo?.diskUsageHuman ? `На Яндекс Диске приложение сейчас занимает примерно ${cloudInfo.diskUsageHuman}.` : 'Размер копии и суммарное место на Яндекс Диске появятся после успешной проверки облака.'}</div>
+        ${cmp.state === 'cloud_newer' ? `
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(255,152,0,.1);border:1px solid rgba(255,152,0,.3);border-radius:10px;margin-bottom:10px">
+          <span style="font-size:18px">⚠️</span>
+          <div style="flex:1;font-size:12px;color:#ffb74d;line-height:1.4">
+            В облаке есть более новые данные.<br>Рекомендуем восстановить или сравнить.
+          </div>
+          <button class="modal-action-btn" data-ya-action="restore-backup" style="font-size:11px;padding:6px 10px;flex-shrink:0">📥 Загрузить</button>
+        </div>` : ''}
         <div class="yandex-auth-actions">
           <button class="modal-action-btn" data-ya-action="rename">✏️ Имя</button>
-          <button class="modal-action-btn" data-ya-action="save-backup">☁️ В облако</button>
-          <button class="modal-action-btn" data-ya-action="check-backup">🔎 Проверить</button>
-          <button class="modal-action-btn" data-ya-action="restore-backup" id="ya-restore-btn">📥 Из облака</button>
-          <button class="modal-action-btn" data-ya-action="reconnect-rights">🔐 Права</button>
+          <button class="modal-action-btn" data-ya-action="save-backup">☁️ Сохранить</button>
+          <button class="modal-action-btn" data-ya-action="check-backup">🔎 Сравнить</button>
+          <button class="modal-action-btn" data-ya-action="restore-backup">📥 Из облака</button>
           <button class="modal-action-btn" data-ya-action="backup-export-manual">💾 В файл</button>
           <button class="modal-action-btn" data-ya-action="backup-import-manual">📂 Из файла</button>
+          <button class="modal-action-btn" data-ya-action="qr-export">📱 QR-перенос</button>
         </div>
         <div id="ya-restore-progress" style="display:none;margin-top:8px">
           <div style="height:4px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden">
@@ -191,9 +199,7 @@ export function renderYandexAuthBlock({ root, localProfile }) {
         </div>
         <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#7f93b5;padding:2px 0;margin-bottom:4px">
           <span style="flex:1;color:#888">Интервал автосохранения</span>
-          <select id="ya-autosave-interval" style="background:#1a2030;border:1px solid rgba(255,255,255,.15);color:#eaf2ff;border-radius:6px;padding:2px 6px;font-size:11px">
-            ${[15,30,60,120,300].map(s => `<option value="${s}" ${Number(localStorage.getItem('backup:autosync:intervalSec') || 30) === s ? 'selected' : ''}>${s < 60 ? s + ' сек' : (s/60) + ' мин'}</option>`).join('')}
-          </select>
+          <span style="color:#888;font-size:11px">Cooldown: 1 мин после изменения</span>
         </div>
         <div class="yandex-auth-note">Один backup-файл объединяет прогресс, события, избранное, плейлисты, настройки, локальный профиль и данные устройств. Этот же файл можно сохранить вручную на устройство и перенести на другое своё устройство.</div>
         <div class="yandex-auth-bottomactions">
