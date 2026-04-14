@@ -22,6 +22,22 @@ function safeParseJson(text) {
   try { return JSON.parse(text); } catch { return null; }
 }
 
+function makeProxyError(prefix, err) {
+  const status = Number(err?.status || 0);
+  const payload = err?.payload && typeof err.payload === 'object' ? err.payload : null;
+  const details = [
+    safeString(payload?.error || ''),
+    safeString(payload?.stage || ''),
+    safeString(payload?.path || ''),
+    safeString(payload?.raw || '')
+  ].filter(Boolean).join(' | ');
+
+  const e = new Error(details ? `${prefix}:${details}` : prefix);
+  e.status = status;
+  e.payload = payload;
+  return e;
+}
+
 function humanSize(bytes) {
   const n = safeNum(bytes);
   if (n <= 0) return '0 B';
@@ -147,9 +163,9 @@ export const YandexDisk = {
       return data.latest || null;
     } catch (e) {
       if (Number(e?.status || 0) === 404) return null;
-      if (Number(e?.status || 0) === 401) throw new Error('disk_auth_error');
-      if (Number(e?.status || 0) === 403) throw new Error('disk_forbidden');
-      throw new Error(safeString(e?.message || 'meta_proxy_failed'));
+      if (Number(e?.status || 0) === 401) throw makeProxyError('disk_auth_error', e);
+      if (Number(e?.status || 0) === 403) throw makeProxyError('disk_forbidden', e);
+      throw makeProxyError(safeString(e?.message || 'meta_proxy_failed'), e);
     }
   },
 
@@ -166,11 +182,11 @@ export const YandexDisk = {
       return data;
     } catch (e) {
       const st = Number(e?.status || 0);
-      if (st === 404) throw new Error('backup_not_found');
-      if (st === 401) throw new Error('disk_auth_error');
-      if (st === 403) throw new Error('disk_forbidden');
-      if ([502, 503, 504].includes(st)) throw new Error('proxy_failed_or_timeout');
-      throw new Error(safeString(e?.message || 'proxy_failed_or_timeout'));
+      if (st === 404) throw makeProxyError('backup_not_found', e);
+      if (st === 401) throw makeProxyError('disk_auth_error', e);
+      if (st === 403) throw makeProxyError('disk_forbidden', e);
+      if ([502, 503, 504].includes(st)) throw makeProxyError('proxy_failed_or_timeout', e);
+      throw makeProxyError(safeString(e?.message || 'proxy_failed_or_timeout'), e);
     }
   },
 
@@ -185,10 +201,10 @@ export const YandexDisk = {
       return Array.isArray(data?.items) ? data.items : [];
     } catch (e) {
       const st = Number(e?.status || 0);
-      if (st === 401) throw new Error('disk_auth_error');
-      if (st === 403) throw new Error('disk_forbidden');
-      if ([502, 503, 504].includes(st)) throw new Error('list_proxy_failed');
-      throw new Error(safeString(e?.message || 'list_proxy_failed'));
+      if (st === 401) throw makeProxyError('disk_auth_error', e);
+      if (st === 403) throw makeProxyError('disk_forbidden', e);
+      if ([502, 503, 504].includes(st)) throw makeProxyError('list_proxy_failed', e);
+      throw makeProxyError(safeString(e?.message || 'list_proxy_failed'), e);
     }
   },
 
