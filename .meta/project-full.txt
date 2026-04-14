@@ -399,11 +399,12 @@ vi3na1bita-music/
 ├── albums.json
 ├── generate-context.js
 ├── index.html
+├── index.js для Cloud Function.txt
 ├── manifest.json
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-14 11:57:06 UTC
+Сгенерировано: 2026-04-14 12:10:51 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -10830,4 +10831,604 @@ body.news-view #cover-wrap{display:none!important}
 //=================================================
 // FILE: /data/track-profiles/README.txt
 UID.088_(директория полных TrackProfile JSON)_(хранить детальные паспорта треков отдельно от легкого индекса)_(складывать сюда файлы вида UID.json и грузить их лениво через scripts/intel/track/track-profiles.js)
+
+//=================================================
+// FILE: /index.js для Cloud Function.txt
+'use strict';
+const https = require('https');
+const { URL } = require('url');
+
+const ALLOWED_ORIGINS = [
+  'https://vi3na1bita.website.yandexcloud.net',
+  'https://apel-s-in.github.io',
+  'http://localhost:4173',
+  'http://127.0.0.1:4173'
+];
+
+const API = 'https://cloud-api.yandex.net/v1/disk';
+const APP_ROOT = 'app:/';
+const BACKUP_PATH = 'app:/vi3na1bita_backup.vi3bak';
+const META_PATH = 'app:/vi3na1bita_backup_meta.json';
+const VERSION_RE = /^app:\/vi3na1bita_backup(?:_[A-Za-z0-9._-]+)?\.vi3bak$/;
+const META_ONLY_TIMEOUT_MS = 10000;
+const DEFAULT_TIMEOUT_MS = 20000;
+const DOWNLOAD_TIMEOUT_MS = 25000;
+const MAX_BODY_BYTES = 10 * 1024 * 1024;
+const ALLOWED_MODES = new Set(['ping', 'meta', 'list', 'download']);
+
+const safeString = v => String(v == null ? '' : v).trim();
+const safeNum = v => Number.isFinite(Number(v)) ? Number(v) : 0;
+
+const corsHeaders = origin => {
+  const isAllowed = ALLOWED_ORIGINS.includes(origin);
+  return {
+    'Access-Control-Allow-Origin': isAllowed ? origin : ALLOWED_ORIGINS[0],
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Authorization, Content-Type, Accept',
+    'Access-Control-Max-Age': '86400',
+    'Vary': 'Origin'
+  };
+};
+
+const json = (statusCode, cors, body) => ({
+  statusCode,
+  headers: {
+    ...cors,
+    'Content-Type': 'application/json; charset=utf-8',
+    'Cache-Control': 'no-store'
+  },
+  body: JSON.stringify(body)
+});
+
+const humanSize = bytes => {
+  const n = safeNum(bytes);
+  if (n <= 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.min(units.length - 1, Math.floor(Math.log(n) / Math.log(1024)));
+  return `${(n / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+};
+
+function httpsGet(url, customHeaders = {}, maxRedirects = 5, timeoutMs = DEFAULT_TIMEOUT_MS) {
+  return new Promise((resolve, reject) => {
+    let parsedUrl;
+    try {
+      parsedUrl = new URL(url);
+    } catch {
+      return reject(new Error('invalid_url'));
+    }
+
+    const options = {
+      hostname: parsedUrl.hostname,
+      path: parsedUrl.pathname + parsedUrl.search,
+      method: 'GET',
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ' +
+          'AppleWebKit/537.36 (KHTML, like Gecko) ' +
+          'Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/plain, */*',
+        ...customHeaders
+      }
+    };
+
+    const req = https.request(options, res => {
+      if (
+        [301, 302, 303, 307, 308].includes(res.statusCode) &&
+        res.headers.location &&
+        maxRedirects > 0
+      ) {
+        res.resume();
+        let nextUrl;
+        try {
+          nextUrl = new URL(res.headers.location, url).toString();
+        } catch {
+          return reject(new Error('bad_redirect_url'));
+        }
+
+        const nextHeaders = { ...customHeaders };
+        delete nextHeaders.Authorization;
+        delete nextHeaders.authorization;
+
+        return httpsGet(nextUrl, nextHeaders, maxRedirects - 1, timeoutMs)
+          .then(resolve)
+          .catch(reject);
+      }
+
+      let data = '';
+      let byteCount = 0;
+      res.setEncoding('utf8');
+
+      res.on('data', chunk => {
+        byteCount += Buffer.byteLength(chunk, 'utf8');
+        if (byteCount > MAX_BODY_BYTES) {
+          req.destroy();
+          reject(new Error('response_too_large'));
+          return;
+        }
+        data += chunk;
+      });
+
+      res.on('end', () => resolve({
+        status: res.statusCode,
+        headers: res.headers,
+        body: data
+      }));
+    });
+
+    req.setTimeout(timeoutMs, () => {
+      req.destroy();
+      reject(new Error('timeout'));
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+const safeParse = str => {
+  try { return JSON.parse(str); } catch { return null; }
+};
+
+const getQuery = (event, key) => {
+  const q = event.queryStringParameters || {};
+  return safeString(q[key]);
+};
+
+const normalizeBackupItem = (item, meta = null, opts = {}) => ({
+  path: safeString(item?.path),
+  name: safeString(item?.name),
+  timestamp: item?.modified ? (Date.parse(item.modified) || 0) : safeNum(item?.timestamp),
+  modified: item?.modified || null,
+  size: safeNum(item?.size),
+  sizeHuman: humanSize(item?.size),
+  appVersion: safeString(meta?.appVersion || item?.appVersion || 'unknown'),
+  version: safeString(meta?.version || item?.version || 'unknown'),
+  checksum: opts.enrichFromMeta ? safeString(meta?.checksum || item?.checksum || '') : safeString(item?.checksum || ''),
+  ownerYandexId: opts.enrichFromMeta ? safeString(meta?.ownerYandexId || item?.ownerYandexId || '') : safeString(item?.ownerYandexId || ''),
+  latestPath: opts.enrichFromMeta ? safeString(meta?.latestPath || BACKUP_PATH) : safeString(item?.latestPath || ''),
+  historyPath: opts.enrichFromMeta ? safeString(meta?.historyPath || '') : safeString(item?.historyPath || ''),
+  level: opts.enrichFromMeta ? safeNum(meta?.level || item?.level || 0) : safeNum(item?.level || 0),
+  xp: opts.enrichFromMeta ? safeNum(meta?.xp || item?.xp || 0) : safeNum(item?.xp || 0),
+  achievementsCount: opts.enrichFromMeta ? safeNum(meta?.achievementsCount || item?.achievementsCount || 0) : safeNum(item?.achievementsCount || 0),
+  favoritesCount: opts.enrichFromMeta ? safeNum(meta?.favoritesCount || item?.favoritesCount || 0) : safeNum(item?.favoritesCount || 0),
+  playlistsCount: opts.enrichFromMeta ? safeNum(meta?.playlistsCount || item?.playlistsCount || 0) : safeNum(item?.playlistsCount || 0),
+  statsCount: opts.enrichFromMeta ? safeNum(meta?.statsCount || item?.statsCount || 0) : safeNum(item?.statsCount || 0),
+  eventCount: opts.enrichFromMeta ? safeNum(meta?.eventCount || item?.eventCount || 0) : safeNum(item?.eventCount || 0),
+  devicesCount: opts.enrichFromMeta ? safeNum(meta?.devicesCount || item?.devicesCount || 0) : safeNum(item?.devicesCount || 0),
+  deviceStableCount: opts.enrichFromMeta ? safeNum(meta?.deviceStableCount || item?.deviceStableCount || 0) : safeNum(item?.deviceStableCount || 0),
+  isLatest: safeString(item?.path) === BACKUP_PATH
+});
+
+const makeSummary = (latest, items = [], diskUsageBytes = 0) => {
+  if (!latest) {
+    return {
+      exists: false,
+      latest: null,
+      items: [],
+      diskUsageBytes,
+      diskUsageHuman: humanSize(diskUsageBytes)
+    };
+  }
+  return {
+    exists: true,
+    latest: {
+      ...latest,
+      diskUsageBytes,
+      diskUsageHuman: humanSize(diskUsageBytes)
+    },
+    items,
+    diskUsageBytes,
+    diskUsageHuman: humanSize(diskUsageBytes)
+  };
+};
+
+async function getDiskJson(url, token, timeoutMs = DEFAULT_TIMEOUT_MS) {
+  const res = await httpsGet(url, { Authorization: `OAuth ${token}` }, 5, timeoutMs);
+  return { ...res, json: safeParse(res.body), rawBody: res.body };
+}
+
+async function downloadJsonBySignedHref(href, timeoutMs = META_ONLY_TIMEOUT_MS) {
+  const res = await httpsGet(href, {}, 5, timeoutMs);
+  if (res.status !== 200) return null;
+  return safeParse(res.body);
+}
+
+async function validateToken(token) {
+  try {
+    const infoRes = await httpsGet(
+      'https://login.yandex.ru/info?format=json',
+      { Authorization: `OAuth ${token}` },
+      5,
+      8000
+    );
+    if (infoRes.status === 401 || infoRes.status === 403) {
+      return { ok: false, status: infoRes.status, error: 'token_invalid_or_expired', degraded: false };
+    }
+    return { ok: true, degraded: false };
+  } catch {
+    return { ok: true, degraded: true };
+  }
+}
+
+async function readMetaJson(token) {
+  const metaFileRes = await getDiskJson(
+    `${API}/resources/download?path=${encodeURIComponent(META_PATH)}`,
+    token,
+    META_ONLY_TIMEOUT_MS
+  );
+  if (metaFileRes.status !== 200 || !metaFileRes.json?.href) return null;
+  return await downloadJsonBySignedHref(metaFileRes.json.href, META_ONLY_TIMEOUT_MS);
+}
+
+async function getLatestBackupMeta(token) {
+  const [latestRes, metaJson] = await Promise.all([
+    getDiskJson(`${API}/resources?path=${encodeURIComponent(BACKUP_PATH)}`, token, META_ONLY_TIMEOUT_MS),
+    readMetaJson(token).catch(() => null)
+  ]);
+
+  if (latestRes.status === 401 || latestRes.status === 403) {
+    return {
+      error: 'disk_forbidden',
+      status: latestRes.status,
+      raw: safeString(latestRes.rawBody).slice(0, 500)
+    };
+  }
+
+  if (latestRes.status === 404) return { exists: false, latest: null };
+  if (latestRes.status !== 200) {
+    return {
+      error: 'disk_meta_error',
+      status: latestRes.status,
+      raw: safeString(latestRes.rawBody).slice(0, 500)
+    };
+  }
+
+  const latest = normalizeBackupItem({
+    path: latestRes.json?.path || BACKUP_PATH,
+    name: 'vi3na1bita_backup.vi3bak',
+    modified: latestRes.json?.modified || null,
+    size: safeNum(latestRes.json?.size)
+  }, metaJson || null, { enrichFromMeta: true });
+
+  return { exists: true, latest };
+}
+
+async function listBackups(token) {
+  const [latestMetaResult, folderRes] = await Promise.all([
+    getLatestBackupMeta(token),
+    getDiskJson(`${API}/resources?path=${encodeURIComponent(APP_ROOT)}&limit=100`, token)
+  ]);
+
+  if (latestMetaResult?.error) return latestMetaResult;
+
+  if (folderRes.status === 401 || folderRes.status === 403) {
+    return {
+      error: 'disk_forbidden',
+      status: folderRes.status,
+      raw: safeString(folderRes.rawBody).slice(0, 500)
+    };
+  }
+
+  if (folderRes.status !== 200) {
+    return {
+      error: 'disk_list_error',
+      status: folderRes.status,
+      raw: safeString(folderRes.rawBody).slice(0, 500)
+    };
+  }
+
+  const embedded = folderRes.json?._embedded?.items;
+  const allItems = Array.isArray(embedded) ? embedded : [];
+  const diskUsageBytes = allItems.reduce((sum, x) => sum + safeNum(x?.size), 0);
+
+  const versioned = allItems
+    .filter(x => VERSION_RE.test(safeString(x.path)) && safeString(x.path) !== BACKUP_PATH)
+    .map(x => normalizeBackupItem(x, null, { enrichFromMeta: false }))
+    .sort((a, b) => safeNum(b.timestamp) - safeNum(a.timestamp))
+    .slice(0, 5);
+
+  const latest = latestMetaResult.exists
+    ? {
+        ...latestMetaResult.latest,
+        diskUsageBytes,
+        diskUsageHuman: humanSize(diskUsageBytes)
+      }
+    : null;
+
+  const items = [...(latest ? [latest] : []), ...versioned];
+
+  return {
+    items,
+    summary: makeSummary(latest, items, diskUsageBytes)
+  };
+}
+
+function sanitizeSelectedPath(selectedPath) {
+  const path = safeString(selectedPath);
+  if (!path) return BACKUP_PATH;
+  if (path === BACKUP_PATH) return BACKUP_PATH;
+  return VERSION_RE.test(path) ? path : BACKUP_PATH;
+}
+
+async function downloadBackup(token, selectedPath) {
+  const path = sanitizeSelectedPath(selectedPath);
+
+  const linkRes = await httpsGet(
+    `${API}/resources/download?path=${encodeURIComponent(path)}`,
+    { Authorization: `OAuth ${token}` },
+    5,
+    DEFAULT_TIMEOUT_MS
+  );
+
+  if (linkRes.status === 404) {
+    return {
+      type: 'not_found',
+      path
+    };
+  }
+
+  if (linkRes.status === 401) {
+    return {
+      type: 'auth',
+      status: 401,
+      path,
+      raw: safeString(linkRes.body).slice(0, 500)
+    };
+  }
+
+  if (linkRes.status === 403) {
+    return {
+      type: 'forbidden',
+      status: 403,
+      path,
+      raw: safeString(linkRes.body).slice(0, 500),
+      stage: 'download_link_request'
+    };
+  }
+
+  if (linkRes.status !== 200) {
+    return {
+      type: 'api_error',
+      status: linkRes.status,
+      path,
+      raw: safeString(linkRes.body).slice(0, 500),
+      stage: 'download_link_request'
+    };
+  }
+
+  const linkData = safeParse(linkRes.body);
+  const downloadUrl = linkData?.href;
+  if (!downloadUrl) {
+    return {
+      type: 'bad_link',
+      path,
+      raw: safeString(linkRes.body).slice(0, 200),
+      stage: 'download_link_parse'
+    };
+  }
+
+  let fileRes;
+  try {
+    fileRes = await httpsGet(downloadUrl, {}, 5, DOWNLOAD_TIMEOUT_MS);
+  } catch (e) {
+    if (e.message === 'response_too_large') {
+      return {
+        type: 'too_large',
+        status: 413,
+        path,
+        raw: 'backup_file_too_large',
+        stage: 'download_file'
+      };
+    }
+    return {
+      type: 'download_failed',
+      status: 0,
+      path,
+      raw: safeString(e.message || 'unknown_error'),
+      stage: 'download_file'
+    };
+  }
+
+  if (fileRes.status !== 200) {
+    return {
+      type: 'download_failed',
+      status: fileRes.status,
+      path,
+      raw: safeString(fileRes.body).slice(0, 200),
+      stage: 'download_file'
+    };
+  }
+
+  const parsed = safeParse(fileRes.body);
+  if (!parsed) {
+    return {
+      type: 'invalid_json',
+      path,
+      stage: 'download_file_parse'
+    };
+  }
+
+  return { type: 'ok', path, data: parsed };
+}
+
+module.exports.handler = async event => {
+  const hdrs = event.headers || {};
+  const origin = hdrs.origin || hdrs.Origin || '';
+  const cors = corsHeaders(origin);
+
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 200, headers: cors, body: '' };
+  }
+
+  const mode = getQuery(event, 'mode') || 'download';
+  if (!ALLOWED_MODES.has(mode)) {
+    return json(400, cors, {
+      error: 'bad_mode',
+      allowedModes: [...ALLOWED_MODES]
+    });
+  }
+
+  if (mode === 'ping') {
+    return json(200, cors, {
+      ok: true,
+      mode: 'ping',
+      service: 'yandex-disk-proxy',
+      time: Date.now()
+    });
+  }
+
+  const authHeader = hdrs.authorization || hdrs.Authorization || '';
+  const token = safeString(authHeader.replace(/^Bearer\s+/i, ''));
+  if (!token) return json(401, cors, { error: 'no_token' });
+
+  const valid = await validateToken(token);
+  if (!valid.ok) {
+    return json(401, cors, {
+      error: valid.error,
+      hint: 'Token rejected by Yandex OAuth. User needs to re-login.',
+      status: valid.status
+    });
+  }
+
+  if (mode === 'meta') {
+    try {
+      const result = await getLatestBackupMeta(token);
+      if (result?.error === 'disk_forbidden') {
+        return json(403, cors, {
+          error: result.error,
+          hint: 'Token lacks disk scope. Re-authorize and confirm disk access.',
+          status: result.status,
+          raw: result.raw,
+          authValidationDegraded: !!valid.degraded
+        });
+      }
+      if (result?.error) {
+        return json(502, cors, {
+          error: result.error,
+          status: result.status,
+          raw: result.raw,
+          authValidationDegraded: !!valid.degraded
+        });
+      }
+      return json(200, cors, {
+        ...result,
+        authValidationDegraded: !!valid.degraded
+      });
+    } catch (e) {
+      return json(500, cors, {
+        error: 'meta_proxy_error',
+        message: safeString(e?.message),
+        authValidationDegraded: !!valid.degraded
+      });
+    }
+  }
+
+  if (mode === 'list') {
+    try {
+      const result = await listBackups(token);
+      if (result?.error === 'disk_forbidden') {
+        return json(403, cors, {
+          error: result.error,
+          hint: 'Token lacks disk scope. Re-authorize and confirm disk access.',
+          status: result.status,
+          raw: result.raw,
+          authValidationDegraded: !!valid.degraded
+        });
+      }
+      if (result?.error) {
+        return json(502, cors, {
+          error: result.error,
+          status: result.status,
+          raw: result.raw,
+          authValidationDegraded: !!valid.degraded
+        });
+      }
+      return json(200, cors, {
+        ...result,
+        authValidationDegraded: !!valid.degraded
+      });
+    } catch (e) {
+      return json(500, cors, {
+        error: 'list_proxy_error',
+        message: safeString(e?.message),
+        authValidationDegraded: !!valid.degraded
+      });
+    }
+  }
+
+  try {
+    const selectedPath = getQuery(event, 'path') || BACKUP_PATH;
+    const result = await downloadBackup(token, selectedPath);
+
+    if (result.type === 'not_found') {
+      return json(404, cors, {
+        error: 'not_found',
+        path: result.path || BACKUP_PATH
+      });
+    }
+    if (result.type === 'auth') {
+      return json(401, cors, {
+        error: 'disk_auth_error',
+        path: result.path || BACKUP_PATH,
+        raw: result.raw
+      });
+    }
+    if (result.type === 'forbidden') {
+      return json(403, cors, {
+        error: 'disk_forbidden',
+        path: result.path || BACKUP_PATH,
+        raw: result.raw,
+        stage: result.stage || 'unknown'
+      });
+    }
+    if (result.type === 'api_error') {
+      return json(502, cors, {
+        error: 'disk_api_error',
+        status: result.status,
+        path: result.path || BACKUP_PATH,
+        raw: result.raw,
+        stage: result.stage || 'unknown'
+      });
+    }
+    if (result.type === 'bad_link') {
+      return json(502, cors, {
+        error: 'no_href',
+        path: result.path || BACKUP_PATH,
+        raw: result.raw,
+        stage: result.stage || 'unknown'
+      });
+    }
+    if (result.type === 'too_large') {
+      return json(413, cors, {
+        error: 'backup_file_too_large',
+        status: result.status,
+        path: result.path || BACKUP_PATH,
+        raw: result.raw,
+        stage: result.stage || 'unknown'
+      });
+    }
+    if (result.type === 'download_failed') {
+      return json(502, cors, {
+        error: 'download_failed',
+        status: result.status,
+        path: result.path || BACKUP_PATH,
+        raw: result.raw,
+        stage: result.stage || 'unknown'
+      });
+    }
+    if (result.type === 'invalid_json') {
+      return json(502, cors, {
+        error: 'invalid_json_in_backup',
+        path: result.path || BACKUP_PATH,
+        stage: result.stage || 'unknown'
+      });
+    }
+
+    return json(200, cors, result.data);
+  } catch (e) {
+    return json(500, cors, {
+      error: 'proxy_error',
+      message: safeString(e?.message)
+    });
+  }
+};
 
