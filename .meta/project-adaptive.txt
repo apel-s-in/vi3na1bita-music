@@ -403,7 +403,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-14 14:28:29 UTC
+Сгенерировано: 2026-04-14 14:41:28 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1123,12 +1123,7 @@ self.addEventListener('message', (e) => {
 
 //=================================================
 // FILE: /scripts/analytics/achievement-engine.js
-// UID.004_(Stats as cache)_(ачивки должны опираться на агрегаты/event truth, а не на UI)_(achievement engine остаётся отдельным геймификационным слоем)
-// UID.051_(Collection state)_(подготовить future связь achievements и collectible progress)_(часть track mastery/badges позже может подмешиваться как условия/визуал)
-// UID.052_(Track badges and completion)_(не смешивать badge truth и unlock truth)_(achievement engine отвечает за unlock/XP, collection engine — за per-track completion)
-// UID.063_(Profile recs tab upgrade)_(позже использовать achievements как мягкий recommendation signal)_(например rediscovery/collection-driven recs, но без логики внутри engine)
-// UID.068_(Public playlist analytics)_(подготовить future social achievements)_(playlist/share/community unlocks могут появиться additively)
-// UID.094_(No-paralysis rule)_(ачивки не должны зависеть от intel-слоя)_(semantic/community/provider achievements только optional extensions)
+// UID.004_(Stats as cache)_(ачивки должны опираться на агрегаты/event truth, а не на UI)_(achievement engine остаётся отдельным геймификационным слоем) UID.051_(Collection state)_(подготовить future связь achievements и collectible progress)_(часть track mastery/badges позже может подмешиваться как условия/визуал) UID.052_(Track badges and completion)_(не смешивать badge truth и unlock truth)_(achievement engine отвечает за unlock/XP, collection engine — за per-track completion) UID.063_(Profile recs tab upgrade)_(позже использовать achievements как мягкий recommendation signal)_(например rediscovery/collection-driven recs, но без логики внутри engine) UID.068_(Public playlist analytics)_(подготовить future social achievements)_(playlist/share/community unlocks могут появиться additively) UID.094_(No-paralysis rule)_(ачивки не должны зависеть от intel-слоя)_(semantic/community/provider achievements только optional extensions)
 import { metaDB } from './meta-db.js';
 import { eventLogger } from './event-logger.js';
 import { AchievementDictionary } from './achievements-dict.js';
@@ -1150,18 +1145,17 @@ export class AchievementEngine {
       if (d && typeof d === 'object') Object.assign(this.dict, d);
     } catch {}
 
-    (window.albumsIndex || []).forEach(a => {
-      if (!a.key.startsWith('__')) this.dict[`album_complete_${a.key}`] = { id: `album_complete_${a.key}`, type: "static", category: "albums", ui: { name: `Альбом «${a.title}»`, short: `Послушайте все треки альбома.`, desc: `Соберите полные прослушивания всех треков релиза.`, howTo: `Зайдите в альбом и слушайте без пропусков.`, icon: "💿", color: "#4caf50" }, reward: { xp: 150, tier: 3 }, trigger: { conditions: [{ metric: `album_${a.key}_complete`, operator: "gte", target: 1 }] } };
+    (window.albumsIndex || []).filter(a => !a.key.startsWith('__')).forEach(a => {
+      this.dict[`album_complete_${a.key}`] = { id: `album_complete_${a.key}`, type: "static", category: "albums", ui: { name: `Альбом «${a.title}»`, short: `Послушайте все треки альбома.`, desc: `Соберите полные прослушивания всех треков релиза.`, howTo: `Зайдите в альбом и слушайте без пропусков.`, icon: "💿", color: "#4caf50" }, reward: { xp: 150, tier: 3 }, trigger: { conditions: [{ metric: `album_${a.key}_complete`, operator: "gte", target: 1 }] } };
     });
 
-    this.achievements = this._buildUIArray();
-    this.broadcast(0);
+    this.achievements = this._buildUIArray(); this.broadcast(0);
     if (window.TrackRegistry?.ensurePopulated) await window.TrackRegistry.ensurePopulated();
     await this.check();
   }
 
   _evalCondition(c, agg) { const v = agg[c.metric] || 0; return c.operator === 'gte' ? v >= c.target : v === c.target; }
-  _getSc(r, lvl, isXp) { if (isXp) return Math.floor(r.reward.xpBase * Math.pow(r.reward.xpMultiplier, lvl - 1)); const s = r.scaling; return s.math === 'custom' ? (s.steps[lvl - 1] || s.steps[s.steps.length - 1]) : r.trigger.conditions[0].startTarget * Math.pow(s.factor, lvl - 1); }
+  _getSc(r, lvl, isXp) { if (isXp) return Math.floor(r.reward.xpBase * Math.pow(r.reward.xpMultiplier, lvl - 1)); const s = r.scaling; return s.math === 'custom' ? (s.steps[lvl - 1] ?? s.steps[s.steps.length - 1]) : r.trigger.conditions[0].startTarget * Math.pow(s.factor, lvl - 1); }
 
   async check() {
     const statsArr = await metaDB.getAllStats(), gStat = statsArr.find(s => s.uid === 'global')?.featuresUsed || {};
@@ -1172,16 +1166,13 @@ export class AchievementEngine {
       const f = b.featuresUsed || {}; a.validPlays += b.globalValidListenCount || 0; a.fullPlays += b.globalFullListenCount || 0; a.totalSec += b.globalListenSeconds || 0;
       if (b.globalValidListenCount > 0) a.uniqueTracks++;
       a.maxOneTrackFull = Math.max(a.maxOneTrackFull, b.globalFullListenCount || 0);
-      ['lyrics', 'nightPlay', 'earlyPlay', 'hiQuality', 'shufflePlay'].forEach(k => a[['featLyrics','nightPlays','earlyPlays','hiPlays','shufflePlays'][['lyrics','nightPlay','earlyPlay','hiQuality','shufflePlay'].indexOf(k)]] += f[k] || 0);
+      ['lyrics', 'nightPlay', 'earlyPlay', 'hiQuality', 'shufflePlay'].forEach((k, i) => a[['featLyrics','nightPlays','earlyPlays','hiPlays','shufflePlays'][i]] += f[k] || 0);
       return a;
     }, { validPlays: 0, fullPlays: 0, totalSec: 0, uniqueTracks: 0, maxOneTrackFull: 0, featLyrics: 0, nightPlays: 0, earlyPlays: 0, hiPlays: 0, shufflePlays: 0, favCount, streak: strk, play11_11: gStat.play_11_11 || 0, weekendPlays: gStat.weekend_play || 0, backups: gStat.backup || 0, pwaInstalled: gStat.pwa_installed || 0, sleepTimerTriggers: gStat.sleep_timer || 0, socialVisits: gStat.social_visit || 0, socialVisitAll: gStat.social_visit_all || 0, favOrderedCombo: gStat.fav_ordered_5 || 0, favShuffleCombo: gStat.fav_shuffle_5 || 0, midnightTriple: gStat.midnight_triple || 0, speedRunnerCombo: gStat.speed_runner || 0 });
 
     if (window.TrackRegistry) {
       const allReg = window.TrackRegistry.getAllUids().map(u => window.TrackRegistry.getTrackByUid(u)), playedUids = new Set(trStats.filter(s => s.globalFullListenCount > 0).map(s => s.uid));
-      new Set(allReg.map(t => t.sourceAlbum).filter(Boolean)).forEach(aKey => {
-        const aT = allReg.filter(t => t.sourceAlbum === aKey);
-        agg[`album_${aKey}_complete`] = (aT.filter(t => playedUids.has(t.uid)).length >= aT.length && aT.length > 0) ? 1 : 0;
-      });
+      new Set(allReg.map(t => t.sourceAlbum).filter(Boolean)).forEach(aKey => { const aT = allReg.filter(t => t.sourceAlbum === aKey); agg[`album_${aKey}_complete`] = (aT.filter(t => playedUids.has(t.uid)).length >= aT.length && aT.length > 0) ? 1 : 0; });
     }
 
     let chg = false, eXp = 0, now = Date.now();
@@ -1192,10 +1183,7 @@ export class AchievementEngine {
       } else if (r.type === 'scalable') {
         let lvl = 1, sft = 50; while (this.unlocked[`${k}_${lvl}`]) lvl++;
         while (sft-- > 0 && (!r.scaling.maxLevel || lvl <= r.scaling.maxLevel) && (!r.scaling.steps || lvl <= r.scaling.steps.length)) {
-          if (r.trigger.conditions.every(c => this._evalCondition({ ...c, target: this._getSc(r, lvl, false) }, agg))) {
-            this.unlocked[`${k}_${lvl}`] = now; const xp = this._getSc(r, lvl, true); eXp += xp; chg = true;
-            this._notifyUnlock(r.ui.name.replace('{level}', lvl), r.ui.icon, xp); lvl++;
-          } else break;
+          if (r.trigger.conditions.every(c => this._evalCondition({ ...c, target: this._getSc(r, lvl, false) }, agg))) { this.unlocked[`${k}_${lvl}`] = now; const xp = this._getSc(r, lvl, true); eXp += xp; chg = true; this._notifyUnlock(r.ui.name.replace('{level}', lvl), r.ui.icon, xp); lvl++; } else break;
         }
       }
     }
@@ -1207,18 +1195,9 @@ export class AchievementEngine {
         this.profile.level = nLvl; 
         setTimeout(() => {
           window.NotificationSystem?.success(`🎉 ПОЗДРАВЛЯЕМ! Ваш уровень повышен до ${nLvl}!`);
-          // Ненавязчивое предложение Яндекса при получении уровня (если не авторизован)
           const ya = window.YandexAuth;
           if (ya && ya.getSessionStatus() !== 'active' && window.Modals?.confirm) {
-            setTimeout(() => {
-              window.Modals.confirm({
-                title: '☁️ Сохраните ваш прогресс',
-                textHtml: `Вы достигли <b>${nLvl} уровня</b>! Ваш прогресс, достижения и плейлисты пока хранятся только в браузере.<br><br>Рекомендуем подключить Яндекс Аккаунт, чтобы не потерять данные при очистке кэша. Это бесплатно и безопасно.`,
-                confirmText: 'Подключить',
-                cancelText: 'Позже',
-                onConfirm: () => ya.login()
-              });
-            }, 1000);
+            setTimeout(() => window.Modals.confirm({ title: '☁️ Сохраните ваш прогресс', textHtml: `Вы достигли <b>${nLvl} уровня</b>! Ваш прогресс, достижения и плейлисты пока хранятся только в браузере.<br><br>Рекомендуем подключить Яндекс Аккаунт, чтобы не потерять данные при очистке кэша. Это бесплатно и безопасно.`, confirmText: 'Подключить', cancelText: 'Позже', onConfirm: () => ya.login() }), 1000);
           }
         }, 2000); 
       }
