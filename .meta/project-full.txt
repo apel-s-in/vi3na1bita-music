@@ -403,7 +403,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-14 15:32:30 UTC
+Сгенерировано: 2026-04-14 15:33:20 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4157,7 +4157,7 @@ window.YandexAuth=YandexAuth;export default YandexAuth;
 //=================================================
 // FILE: /scripts/core/yandex-disk.js
 // scripts/core/yandex-disk.js Сохранение прогресса в app:/ + стабильное чтение только через Cloud Function proxy. Без direct browser fallback на signed Yandex URL.
-const API='https://cloud-api.yandex.net/v1/disk',BP='app:/vi3na1bita_backup.vi3bak',MP='app:/vi3na1bita_backup_meta.json',BPV=s=>`app:/vi3na1bita_backup_${s}.vi3bak`,PROXY='https://functions.yandexcloud.net/d4ecdu6kgamevcauajid',aH=t=>({'Authorization':`OAuth ${t}`}),sS=v=>String(v==null?'':v).trim(),sN=v=>Number.isFinite(Number(v))?Number(v):0,sPJ=t=>{try{return JSON.parse(t)}catch{return null}},mPE=(p,e)=>{const s=Number(e?.status||0),pl=e?.payload&&typeof e.payload==='object'?e.payload:null,d=[sS(pl?.error),sS(pl?.stage),sS(pl?.path),sS(pl?.raw)].filter(Boolean).join(' | '),err=new Error(d?`${p}:${d}`:p);err.status=s;err.payload=pl;return err};
+const API='https://cloud-api.yandex.net/v1/disk',BP='app:/vi3na1bita_backup.vi3bak',MP='app:/vi3na1bita_backup_meta.json',BPV=s=>`app:/vi3na1bita_backup_${s}.vi3bak`,PROXY='https://functions.yandexcloud.net/d4ecdu6kgamevcauajid',aH=t=>({'Authorization':`OAuth ${t}`}),sS=v=>String(v==null?'':v).trim(),sN=v=>Number.isFinite(Number(v))?Number(v):0,sPJ=t=>{try{return JSON.parse(t)}catch{return null}},mPE=(p,e)=>{const s=Number(e?.status||0),pl=e?.payload&&typeof e.payload==='object'?e.payload:null,d=[sS(pl?.error),sS(pl?.stage),sS(pl?.path),sS(pl?.raw),sS(pl?.hint)].filter(Boolean).join(' | '),err=new Error(d?`${p}:${d}`:p);err.status=s;err.payload=pl;return err};
 async function fPJ(u,t,r=2){let lE=null;for(let i=0;i<=r;i++){try{const rs=await fetch(u,{method:'GET',headers:{'Authorization':`Bearer ${t}`,'Accept':'application/json'}}),tx=await rs.text(),d=sPJ(tx);if(!rs.ok){if([502,503,504].includes(rs.status)&&i<r){await new Promise(x=>setTimeout(x,800*(i+1)));continue}const e=new Error(sS(d?.error||`http_${rs.status}`));e.status=rs.status;e.payload=d;throw e}return d}catch(e){lE=e;if(!([502,503,504].includes(Number(e?.status||0))||!e?.status)||i>=r)break;await new Promise(x=>setTimeout(x,800*(i+1)))}}throw lE||new Error('proxy_failed')}
 async function pJP(t,p,d){const rL=await fetch(`${API}/resources/upload?path=${encodeURIComponent(p)}&overwrite=true`,{headers:aH(t)});if(!rL.ok)throw new Error(`upload_link_failed:${rL.status}`);const rs=await fetch((await rL.json()).href,{method:'PUT',body:new Blob([JSON.stringify(d)],{type:'application/json'})});if(!rs.ok)throw new Error(`upload_failed:${rs.status}`);return true}
 export const YandexDisk={
