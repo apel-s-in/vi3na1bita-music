@@ -78,7 +78,25 @@ export class AchievementEngine {
     this.lastAgg = agg;
     if (chg) {
       this.profile.xp += eXp; const nLvl = Math.floor(Math.sqrt(this.profile.xp / 100)) + 1;
-      if (nLvl > this.profile.level) { this.profile.level = nLvl; setTimeout(() => window.NotificationSystem?.success(`🎉 ПОЗДРАВЛЯЕМ! Ваш уровень повышен до ${nLvl}!`), 2000); }
+      if (nLvl > this.profile.level) { 
+        this.profile.level = nLvl; 
+        setTimeout(() => {
+          window.NotificationSystem?.success(`🎉 ПОЗДРАВЛЯЕМ! Ваш уровень повышен до ${nLvl}!`);
+          // Ненавязчивое предложение Яндекса при получении уровня (если не авторизован)
+          const ya = window.YandexAuth;
+          if (ya && ya.getSessionStatus() !== 'active' && window.Modals?.confirm) {
+            setTimeout(() => {
+              window.Modals.confirm({
+                title: '☁️ Сохраните ваш прогресс',
+                textHtml: `Вы достигли <b>${nLvl} уровня</b>! Ваш прогресс, достижения и плейлисты пока хранятся только в браузере.<br><br>Рекомендуем подключить Яндекс Аккаунт, чтобы не потерять данные при очистке кэша. Это бесплатно и безопасно.`,
+                confirmText: 'Подключить',
+                cancelText: 'Позже',
+                onConfirm: () => ya.login()
+              });
+            }, 1000);
+          }
+        }, 2000); 
+      }
       await Promise.all([metaDB.setGlobal('unlocked_achievements', this.unlocked), metaDB.setGlobal('user_profile_rpg', this.profile)]);
     }
     this.achievements = this._buildUIArray(); this.broadcast(agg.streak);
