@@ -226,14 +226,19 @@ export function initYandexActions() {
               else window.NotificationSystem?.error('Ошибка восстановления: ' + msg);
             }
           });
-        } catch (e) {
-          const msg = String(e?.message || '');
-          if (msg.includes('proxy_failed_or_timeout')) {
-            window.NotificationSystem?.error('Сервер Яндекса не отвечает. Попробуйте "Из файла" или повторите попытку позже.');
-          } else {
-            window.NotificationSystem?.error('Ошибка восстановления: ' + msg);
+          } catch (e) {
+            const msg = String(e?.message || '');
+            console.error('[Yandex restore failed]', e);
+            if (msg.includes('proxy_failed_or_timeout')) {
+              window.NotificationSystem?.error('Сервер Яндекса не отвечает. Попробуйте "Из файла" или повторите попытку позже.');
+            } else if (msg.includes('disk_forbidden')) {
+              window.NotificationSystem?.error('Доступ к backup через Cloud Function запрещён: ' + msg);
+            } else if (msg.includes('backup_not_found')) {
+              window.NotificationSystem?.error('Backup-файл не найден в облаке: ' + msg);
+            } else {
+              window.NotificationSystem?.error('Ошибка восстановления: ' + msg);
+            }
           }
-        }
       };
 
       try {
