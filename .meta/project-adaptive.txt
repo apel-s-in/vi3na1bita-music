@@ -403,7 +403,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-14 13:41:20 UTC
+Сгенерировано: 2026-04-14 13:43:15 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -840,7 +840,7 @@ jobs:
   </template>
 
   <script>
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.2.48');
+    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.2.49');
     const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-04-14');
 
     // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
@@ -884,7 +884,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.2.48';
+const SW_VERSION = '8.2.49';
 
 // Cache Names (Required by lint-sw.mjs)
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`;
@@ -1799,8 +1799,13 @@ async function canSafelyUploadAgainstCloud(disk, token) {
     }
 
     return { ok: false, reason: 'conflict', compare: cmp, cloudMeta };
-  } catch (e) {
-    return { ok: false, reason: 'cloud_compare_failed', error: String(e?.message || '') };
+    } catch (e) {
+    const errStr = String(e?.message || '');
+    if (errStr.includes('disk_forbidden') || errStr.includes('disk_auth_error')) {
+       window.YandexAuth?.logout?.(); // Токен умер или отозван
+       window.NotificationSystem?.error('Сессия Яндекса устарела или нет прав. Автосохранение остановлено.');
+    }
+    return { ok: false, reason: 'cloud_compare_failed', error: errStr };
   }
 }
 
@@ -5815,7 +5820,7 @@ if (errs.length) { console.error('Failed:\n', errs.join('\n')); process.exit(2);
 // FILE: /scripts/core/config.js
 // UID.005_(Soft-disable intel layer)_(не парализовать приложение при rollout)_(вынести базовые intel flags в APP_CONFIG) UID.019_(Compact TrackProfile index)_(дать стабильный путь до semantic data)_(хранить profile index/profile dir в config) UID.069_(Internal user identity)_(подготовить мульти-provider контур)_(держать future identity/sync flags централизованно) UID.092_(Incremental rollout order)_(делать staged внедрение через один конфиг)_(intel boot должен управляться отсюда)
 export const APP_CONFIG = {
-  APP_VERSION: '8.2.48',
+  APP_VERSION: '8.2.49',
   BUILD_DATE: '2026-04-14',
   PROMOCODE: 'VITRINA2025',
   ICON_ALBUMS_ORDER: [
